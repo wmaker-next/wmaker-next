@@ -38,6 +38,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <ctype.h>
 
 #ifdef USE_XINERAMA
@@ -84,6 +85,20 @@ Pixmap CurrentPixmap = None;
 char *PixmapPath = NULL;
 
 static const char *prog_name;
+
+static int validDefaultDomain(const char *domain)
+{
+	const char *p;
+
+	if (!domain || domain[0] == '\0')
+		return 0;
+
+	for (p = domain; *p; p++)
+		if (*p == '/' || *p == '\\')
+			return 0;
+
+	return 1;
+}
 
 typedef struct BackgroundTexture {
 	int refcount;
@@ -999,16 +1014,25 @@ static noreturn void helperLoop(RContext * rc)
 
 static void updateDomain(const char *domain, const char *key, const char *texture)
 {
-	int result;
+	pid_t pid;
+	int status;
 	char *program = "wdwrite";
-	char cmd_smooth[1024];
 
-	snprintf(cmd_smooth, sizeof(cmd_smooth),
-	         "wdwrite %s SmoothWorkspaceBack %s",
-	         domain, smooth ? "YES" : "NO");
-	result = system(cmd_smooth);
-	if (result == -1)
-		werror("error executing system(\"%s\")", cmd_smooth);
+	if (!validDefaultDomain(domain)) {
+		werror("invalid defaults domain \"%s\"", domain ? domain : "(null)");
+		return;
+	}
+
+	pid = fork();
+	if (pid == 0) {
+		execlp(program, program, domain, "SmoothWorkspaceBack", smooth ? "YES" : "NO", NULL);
+		werror("error executing wdwrite");
+		_exit(127);
+	} else if (pid > 0) {
+		waitpid(pid, &status, 0);
+	} else {
+		werror("error forking to run wdwrite");
+	}
 
 	execlp(program, program, domain, key, texture, NULL);
 	wwarning("warning could not run \"%s\"", program);
