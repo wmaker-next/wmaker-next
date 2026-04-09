@@ -1055,10 +1055,10 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 	long monitor;
 	WMRect rect1, rect2;
 
-	if ((int)top < wwin->screen_ptr->xine_info.count &&
-	    (int)bottom < wwin->screen_ptr->xine_info.count &&
-	    (int)left < wwin->screen_ptr->xine_info.count &&
-	    (int)right < wwin->screen_ptr->xine_info.count) {
+	if (top    < (unsigned long)wwin->screen_ptr->xine_info.count &&
+	    bottom < (unsigned long)wwin->screen_ptr->xine_info.count &&
+	    left   < (unsigned long)wwin->screen_ptr->xine_info.count &&
+	    right  < (unsigned long)wwin->screen_ptr->xine_info.count) {
 		wwin->flags.fullscreen_monitors[0] = top;
 		wwin->flags.fullscreen_monitors[1] = bottom;
 		wwin->flags.fullscreen_monitors[2] = left;
