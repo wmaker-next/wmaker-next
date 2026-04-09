@@ -50,6 +50,10 @@ RImage *RLoadGIF(const char *file, int index)
 	GifRecordType recType;
 	ColorMapObject *colormap;
 	unsigned char rmap[256], gmap[256], bmap[256];
+
+	memset(rmap, 0, sizeof(rmap));
+	memset(gmap, 0, sizeof(gmap));
+	memset(bmap, 0, sizeof(bmap));
 	int gif_error;
 
 	if (index < 0)
@@ -112,6 +116,10 @@ RImage *RLoadGIF(const char *file, int index)
 
 			width = gif->Image.Width;
 			height = gif->Image.Height;
+			if (width < 1 || height < 1) {
+				RErrorCode = RERR_BADIMAGEFILE;
+				goto bye;
+			}
 
 			if (gif->Image.ColorMap)
 				colormap = gif->Image.ColorMap;
