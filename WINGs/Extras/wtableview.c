@@ -1051,7 +1051,7 @@ void WMSelectTableViewRow(WMTableView * table, int row)
 	if (table->clickedRow >= 0)
 		setRowSelected(table, table->clickedRow, False);
 
-	if (row >= table->rows) {
+	if (row < 0 || row >= table->rows) {
 		return;
 	}
 
@@ -1110,8 +1110,16 @@ static void handleTableEvents(XEvent * event, void *data)
 			WMRect rect = getVisibleRect(table);
 
 			row = (event->xbutton.y + rect.pos.y) / table->rowHeight;
+			if (row < 0 || row >= table->rows) {
+				if (table->clickedRow >= 0)
+					setRowSelected(table, table->clickedRow, False);
+				table->clickedRow = -1;
+				table->dragging = 0;
+				break;
+			}
 			if (row != table->clickedRow) {
-				setRowSelected(table, table->clickedRow, False);
+				if (table->clickedRow >= 0)
+					setRowSelected(table, table->clickedRow, False);
 				setRowSelected(table, row, True);
 				table->clickedRow = row;
 				table->dragging = 1;
@@ -1136,9 +1144,11 @@ static void handleTableEvents(XEvent * event, void *data)
 
 	case ButtonRelease:
 		if (event->xbutton.button == Button1) {
-			if (table->action)
-				(*table->action) (table, table->clientData);
-			WMPostNotificationName(WMTableViewSelectionDidChangeNotification, table, NULL);
+			if (table->clickedRow >= 0 && table->clickedRow < table->rows) {
+				if (table->action)
+					(*table->action) (table, table->clientData);
+				WMPostNotificationName(WMTableViewSelectionDidChangeNotification, table, NULL);
+			}
 			table->dragging = 0;
 		}
 		break;
