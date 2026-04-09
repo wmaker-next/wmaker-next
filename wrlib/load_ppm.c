@@ -60,8 +60,10 @@ char pm_getc(FILE *const fileP, const char *filename)
 	if (ch == '#') {
 		do {
 			ich = getc(fileP);
-			if (ich == EOF)
+			if (ich == EOF) {
 				fprintf(stderr, _("wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"), filename);
+				return '\n';
+			}
 			ch = (char)ich;
 		} while (ch != '\n' && ch != '\r');
 	}
