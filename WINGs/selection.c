@@ -120,7 +120,8 @@ static Bool writeSelection(Display * dpy, Window requestor, Atom property, Atom 
 	if (format == 0)
 		format = 8;
 
-	bpi = format / 8;
+	/* Xlib stores format-32 items as longs (8 bytes on LP64), not 4 */
+	bpi = (format == 32) ? sizeof(long) : format / 8;
 
 	/* printf("write to %x: %s\n", requestor, XGetAtomName(dpy, property)); */
 
@@ -259,7 +260,8 @@ static WMData *getSelectionData(Display * dpy, Window win, Atom where)
 		return NULL;
 	}
 
-	bpi = bits / 8;
+	/* Xlib stores format-32 items as longs (8 bytes on LP64), not 4 */
+	bpi = (bits == 32) ? sizeof(long) : bits / 8;
 
 	wdata = WMCreateDataWithBytesNoCopy(data, len * bpi, (void *) XFree);
 	WMSetDataFormat(wdata, bits);
