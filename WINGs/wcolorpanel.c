@@ -3479,10 +3479,13 @@ static char *generateNewFilename(const char *curName)
 	if (((ptr = strrchr(ptr, '{')) == 0) || sscanf(ptr, "{%i}%c", &n, &c) != 1)
 		return wstrconcat(curName, " {1}");
 
+	if (ptr == curName || ptr[-1] != ' ')
+		return wstrconcat(curName, " {1}");
+
 	baseLen = ptr - curName - 1;
 
 	newName = wmalloc(baseLen + 16);
-	strncpy(newName, curName, baseLen);
+	memcpy(newName, curName, baseLen);
 
 	snprintf(&newName[baseLen], 16, " {%i}", n + 1);
 
