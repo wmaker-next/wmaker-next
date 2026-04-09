@@ -22,6 +22,8 @@
 
 #include "config.h"
 
+#include <limits.h>
+
 #ifdef USE_MAGICK
 #if USE_MAGICK < 7
 #include <wand/magick_wand.h>
@@ -70,9 +72,14 @@ RImage *RLoadMagick(const char *file_name)
 	w = MagickGetImageWidth(m_wand);
 	h = MagickGetImageHeight(m_wand);
 
+	if (w == 0 || h == 0 || w > UINT_MAX || h > UINT_MAX) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		goto bye;
+	}
+
 	hasAlfa = MagickGetImageAlphaChannel(m_wand);
 
-	image = RCreateImage(w, h, (unsigned int) hasAlfa);
+	image = RCreateImage((unsigned)w, (unsigned)h, (unsigned int) hasAlfa);
 	if (!image) {
 		RErrorCode = RERR_NOMEMORY;
 		goto bye;
@@ -80,9 +87,9 @@ RImage *RLoadMagick(const char *file_name)
 
 	ptr = image->data;
 	if (hasAlfa == MagickFalse)
-		mrc = MagickExportImagePixels(m_wand, 0, 0, (size_t)w, (size_t)h, "RGB", CharPixel, ptr);
+		mrc = MagickExportImagePixels(m_wand, 0, 0, (size_t)image->width, (size_t)image->height, "RGB", CharPixel, ptr);
 	else
-		mrc = MagickExportImagePixels(m_wand, 0, 0, (size_t)w, (size_t)h, "RGBA", CharPixel, ptr);
+		mrc = MagickExportImagePixels(m_wand, 0, 0, (size_t)image->width, (size_t)image->height, "RGBA", CharPixel, ptr);
 
 	if (mrc == MagickFalse) {
 		RErrorCode = RERR_BADIMAGEFILE;
