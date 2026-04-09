@@ -89,6 +89,36 @@ static void wXDNDDecodeURI(char *uri)
 	}
 }
 
+static size_t wXDNDQuotedLength(const char *string)
+{
+	size_t length = 3;
+
+	while (*string) {
+		if (*string == '"' || *string == '\\')
+			length++;
+		length++;
+		string++;
+	}
+
+	return length;
+}
+
+static void wXDNDAppendQuoted(char **dest, const char *string)
+{
+	char *p = *dest;
+
+	*p++ = ' ';
+	*p++ = '"';
+	while (*string) {
+		if (*string == '"' || *string == '\\')
+			*p++ = '\\';
+		*p++ = *string++;
+	}
+	*p++ = '"';
+	*p = '\0';
+	*dest = p;
+}
+
 Bool wXDNDProcessSelection(XEvent *event)
 {
 	WScreen *scr = wScreenForWindow(event->xselection.requestor);
@@ -113,9 +143,10 @@ Bool wXDNDProcessSelection(XEvent *event)
 	if (delme) {
 		WMArray *items;
 		WMArrayIterator iter;
-		int length, str_size;
-		int total_size = 0;
+		int length;
+		size_t total_size = 0;
 		char *tmp;
+		char *out;
 
 		scr->xdestring = delme;
 		items = WMCreateArray(4);
@@ -130,10 +161,13 @@ Bool wXDNDProcessSelection(XEvent *event)
 				retain[length] = 0;
 			}
 			if (retain[length] == '\n') {
-				str_size = strlen(&retain[length + 1]);
-				if (str_size) {
-					WMAddToArray(items, wstrdup(&retain[length + 1]));
-					total_size += str_size + 3;	/* reserve for " \"\"" */
+				if (retain[length + 1] != '\0') {
+					tmp = wstrdup(&retain[length + 1]);
+					if (!strncmp(tmp, "file://", 7)) {
+						wXDNDDecodeURI(&tmp[7]);
+						total_size += wXDNDQuotedLength(&tmp[7]);
+					}
+					WMAddToArray(items, tmp);
 					/* this is nonsense -- if (length)
 					   WMAppendArray(items, WMCreateArray(1)); */
 				}
@@ -141,21 +175,22 @@ Bool wXDNDProcessSelection(XEvent *event)
 			}
 		}
 		/* final one */
-		WMAddToArray(items, wstrdup(retain));
-		total_size += strlen(retain) + 3;
+		tmp = wstrdup(retain);
+		if (!strncmp(tmp, "file://", 7)) {
+			wXDNDDecodeURI(&tmp[7]);
+			total_size += wXDNDQuotedLength(&tmp[7]);
+		}
+		WMAddToArray(items, tmp);
 		wfree(retain);
 
 		/* now pack new string */
-		scr->xdestring = wmalloc(total_size);
+		scr->xdestring = wmalloc(total_size + 1);
 		scr->xdestring[0] = 0;	/* empty string */
+		out = scr->xdestring;
 		WM_ETARETI_ARRAY(items, tmp, iter) {
 			/* only supporting file: URI objects */
 			if (!strncmp(tmp, "file://", 7)) {
-				/* drag-and-drop file name format as per the spec is encoded as an URI */
-				wXDNDDecodeURI(&tmp[7]);
-				strcat(scr->xdestring, " \"");
-				strcat(scr->xdestring, &tmp[7]);
-				strcat(scr->xdestring, "\"");
+				wXDNDAppendQuoted(&out, &tmp[7]);
 			}
 			wfree(tmp);
 		}
