@@ -46,9 +46,9 @@ RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 {
 	RImage *image = NULL;
 
-	assert(width > 0 && height > 0);
-
-	if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+	if (width < 1 || height < 1 ||
+	    width > MAX_WIDTH || height > MAX_HEIGHT) {
+		/* dimensions may come from untrusted image headers */
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
