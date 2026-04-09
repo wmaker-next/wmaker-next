@@ -333,14 +333,26 @@ RImage *RSmoothScaleImage(RImage * src, unsigned new_width, unsigned new_height)
 	int sch = src->format == RRGBAFormat ? 4 : 3;
 
 	dst = RCreateImage(new_width, new_height, False);
+	if (!dst)
+		return NULL;
 
 	/* create intermediate image to hold horizontal zoom */
 	tmp = RCreateImage(dst->width, src->height, False);
+	if (!tmp) {
+		RReleaseImage(dst);
+		return NULL;
+	}
 	xscale = (double)new_width / (double)src->width;
 	yscale = (double)new_height / (double)src->height;
 
 	/* pre-calculate filter contributions for a row */
 	contrib = (CLIST *) calloc(new_width, sizeof(CLIST));
+	if (!contrib) {
+		RReleaseImage(tmp);
+		RReleaseImage(dst);
+		RErrorCode = RERR_NOMEMORY;
+		return NULL;
+	}
 	if (xscale < 1.0) {
 		width = fwidth / xscale;
 		fscale = 1.0 / xscale;
