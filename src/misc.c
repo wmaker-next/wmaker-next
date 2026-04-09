@@ -412,7 +412,13 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 
 		timer = WMAddTimerHandler(1000, timeoutHandler, &timeout);
 
-		while (!XCheckTypedWindowEvent(dpy, screen->info_window, SelectionNotify, &ev) && !timeout) ;
+		while (!XCheckTypedWindowEvent(dpy, screen->info_window, SelectionNotify, &ev) && !timeout) {
+			/* The WINGs timer only fires from inside the WINGs event
+			 * loop, which we never re-enter here; pump it manually so
+			 * a hostile selection owner cannot hang us (WM-2026-20). */
+			W_CheckTimerHandlers();
+			wusleep(10000);
+		}
 
 		if (!timeout) {
 			WMDeleteTimerHandler(timer);
