@@ -628,8 +628,8 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 		WMRunAlertPanel(scr, mainw, _("Error"), mbuf, _("OK"), NULL, NULL);
 	}
 
-	path = getenv("WMAKER_BIN_NAME");
-	if (!path)
+	path = getenv("WMAKER_BIN_NAME");	/* must be a plain path -- goes through /bin/sh */
+	if (!path || strpbrk(path, ";|&`$<>(){}[]*?!~\\\"' \t\n"))
 		path = "wmaker";
 	{
 		char *command;
