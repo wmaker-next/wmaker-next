@@ -376,6 +376,11 @@ RImage *RLoadPPM(const char *file_name)
 			fclose(file);
 			return NULL;
 		}
+		if (m > 255) {
+			RErrorCode = RERR_BADIMAGEFILE;
+			fclose(file);
+			return NULL;
+		}
 	} else {
 		m = 1;
 	}
