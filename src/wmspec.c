@@ -1633,6 +1633,11 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 			long value;
 
 			value = event->data.l[0];
+			if (value < 1)
+				value = 1;
+			else if (value > MAX_WORKSPACES)
+				value = MAX_WORKSPACES;
+
 			if (value > scr->workspace_count) {
 				wWorkspaceMake(scr, value - scr->workspace_count);
 			} else if (value < scr->workspace_count) {
