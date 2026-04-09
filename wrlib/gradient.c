@@ -63,7 +63,7 @@ RImage *RRenderMultiGradient(unsigned width, unsigned height, RColor **colors, R
 	} else if (count > 0) {
 		return RRenderGradient(width, height, colors[0], colors[0], style);
 	}
-	assert(0);
+	RErrorCode = RERR_BADIMAGEFILE;
 	return NULL;
 }
 
