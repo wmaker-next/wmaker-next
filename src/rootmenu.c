@@ -1404,36 +1404,40 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 
 	WM_ITERATE_ARRAY(files, data, iter) {
 		/* executable: add as entry */
-		length = strlen(path[data->index]) + strlen(data->name) + 6;
-		if (command)
-			length += strlen(command);
+		char *fullpath;
+		char *quoted;
 
-		buffer = malloc(length);
-		if (!buffer) {
+		length = strlen(path[data->index]) + strlen(data->name) + 2;
+		fullpath = malloc(length);
+		if (!fullpath) {
+			werror(_("out of memory while constructing directory menu %s"), path[data->index]);
+			break;
+		}
+		snprintf(fullpath, length, "%s/%s", path[data->index], data->name);
+		quoted = wshellquote(fullpath);
+		free(fullpath);
+		if (!quoted) {
 			werror(_("out of memory while constructing directory menu %s"), path[data->index]);
 			break;
 		}
 
-		have_space = strchr(path[data->index], ' ') != NULL || strchr(data->name, ' ') != NULL;
-		if (command != NULL) {
-			strcpy(buffer, command);
-			strcat(buffer, " ");
-			if (have_space)
-				strcat(buffer, "\"");
-			strcat(buffer, path[data->index]);
-		} else {
-			if (have_space) {
-				buffer[0] = '"';
-				buffer[1] = 0;
-				strcat(buffer, path[data->index]);
-			} else {
-				strcpy(buffer, path[data->index]);
-			}
+		length = strlen(quoted) + 1;
+		if (command)
+			length += strlen(command) + 1;
+
+		buffer = malloc(length);
+		if (!buffer) {
+			wfree(quoted);
+			werror(_("out of memory while constructing directory menu %s"), path[data->index]);
+			break;
 		}
-		strcat(buffer, "/");
-		strcat(buffer, data->name);
-		if (have_space)
-			strcat(buffer, "\"");
+
+		if (command != NULL) {
+			snprintf(buffer, length, "%s %s", command, quoted);
+		} else {
+			snprintf(buffer, length, "%s", quoted);
+		}
+		wfree(quoted);
 
 		if (stripExtension) {
 			char *ptr = strrchr(data->name, '.');
