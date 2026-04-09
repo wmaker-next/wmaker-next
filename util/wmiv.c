@@ -338,6 +338,34 @@ static Bool is_archive_file(const char *filename)
 
 #ifdef HAVE_LIBARCHIVE
 
+static Bool archive_entry_path_is_safe(const char *path)
+{
+	const char *component;
+
+	if (!path || path[0] == '\0' || path[0] == '/' || path[0] == '\\')
+		return False;
+
+	component = path;
+	while (*component) {
+		const char *slash = component;
+		size_t length;
+
+		while (*slash && *slash != '/' && *slash != '\\')
+			slash++;
+
+		length = slash - component;
+		if ((length == 1 && component[0] == '.') ||
+		    (length == 2 && component[0] == '.' && component[1] == '.'))
+			return False;
+
+		if (*slash == '\0')
+			break;
+		component = slash + 1;
+	}
+
+	return True;
+}
+
 /*
 	Recursively find directory containing image files
 	Returns path to directory with images, or NULL if not found
@@ -442,12 +470,17 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 		if (!entry_name)
 			continue;
 
+		if (!archive_entry_path_is_safe(entry_name))
+			continue;
+
 		/* Skip directories and special files */
 		if (!S_ISREG(entry_mode) || entry_size <= 0)
 			continue;
 
 		/* Create destination path */
-		snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry_name);
+		r = snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry_name);
+		if (r < 0 || r >= (int)sizeof(dest_path))
+			continue;
 
 		/* Create directory structure if needed */
 		char *dir_end = strrchr(dest_path, '/');
