@@ -95,6 +95,9 @@ RImage *RGetImageFromXPMData(RContext * context, char **data)
 	if (csize != 1 && csize != 2)
 		goto bad_format;
 
+	if (ccount > 1 << (8 * csize))
+		goto bad_format;
+
 	color_table[0] = malloc(ccount);
 	color_table[1] = malloc(ccount);
 	color_table[2] = malloc(ccount);
@@ -281,6 +284,9 @@ RImage *RLoadXPM(RContext * context, const char *file)
 		goto bad_file;
 
 	if (csize != 1 && csize != 2)
+		goto bad_format;
+
+	if (ccount > 1 << (8 * csize))
 		goto bad_format;
 
 	color_table[0] = malloc(ccount);
