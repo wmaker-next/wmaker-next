@@ -139,7 +139,7 @@ static void hackPathInTexture(WMPropList * texture, const char *prefix)
 
 		/* get pixmap file path */
 		file = WMGetFromPLArray(texture, 1);
-		sprintf(buffer, "%s/%s", prefix, WMGetFromPLString(file));
+		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
 		/* replace path with full path */
 		WMDeleteFromPLArray(texture, 1);
 		WMInsertInPLArray(texture, 1, WMCreatePLString(buffer));
@@ -150,14 +150,14 @@ static void hackPathInTexture(WMPropList * texture, const char *prefix)
 
 		/* get bitmap file path */
 		file = WMGetFromPLArray(texture, 1);
-		sprintf(buffer, "%s/%s", prefix, WMGetFromPLString(file));
+		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
 		/* replace path with full path */
 		WMDeleteFromPLArray(texture, 1);
 		WMInsertInPLArray(texture, 1, WMCreatePLString(buffer));
 
 		/* get mask file path */
 		file = WMGetFromPLArray(texture, 2);
-		sprintf(buffer, "%s/%s", prefix, WMGetFromPLString(file));
+		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
 		/* replace path with full path */
 		WMDeleteFromPLArray(texture, 2);
 		WMInsertInPLArray(texture, 2, WMCreatePLString(buffer));
