@@ -40,6 +40,7 @@ typedef struct PLData {
 	int pos;
 	const char *filename;
 	int lineNumber;
+	int depth;
 } PLData;
 
 typedef struct StringBuffer {
@@ -67,6 +68,8 @@ static const WMHashTableCallbacks WMPropListHashCallbacks = {
 static Bool caseSensitive = True;
 
 #define BUFFERSIZE           8192
+#define MAX_PROPLIST_DEPTH   512
+
 #define BUFFERSIZE_INCREMENT 1024
 
 #if 0
@@ -848,6 +851,12 @@ static WMPropList *getPropList(PLData * pldata)
 	WMPropList *plist;
 	int c;
 
+	if (pldata->depth > MAX_PROPLIST_DEPTH) {
+		COMPLAIN(pldata, _("PropList nested too deeply"));
+		return NULL;
+	}
+	pldata->depth++;
+
 	c = getNonSpaceChar(pldata);
 
 	switch (c) {
@@ -891,6 +900,8 @@ static WMPropList *getPropList(PLData * pldata)
 		}
 		break;
 	}
+
+	pldata->depth--;
 
 	return plist;
 }
