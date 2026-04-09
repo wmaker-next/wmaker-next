@@ -147,7 +147,7 @@ static WMArray *sourceOperationList(WMScreen * scr, Window sourceWin)
 {
 	Atom dataType, *actionList;
 	int i, size;
-	unsigned long count, remaining;
+	unsigned long count, atomCount, remaining;
 	unsigned char *actionDatas = NULL;
 	unsigned char *descriptionList = NULL;
 	WMArray *operationArray;
@@ -167,6 +167,7 @@ static WMArray *sourceOperationList(WMScreen * scr, Window sourceWin)
 	}
 
 	actionList = (Atom *) actionDatas;
+	atomCount = count;
 
 	XGetWindowProperty(scr->display, sourceWin, scr->xdndActionDescriptionAtom,
 			   0, 0x8000000L, False, XA_STRING, &dataType, &size,
@@ -183,16 +184,18 @@ static WMArray *sourceOperationList(WMScreen * scr, Window sourceWin)
 		return NULL;
 	}
 
-	operationArray = WMCreateDragOperationArray(count);
+	operationArray = WMCreateDragOperationArray(atomCount);
 	description = (char *)descriptionList;
 
-	for (i = 0; count > 0; i++) {
+	for (i = 0; count > 0 && (unsigned long)i < atomCount; i++) {
 		size = strlen(description);
 		operationItem = WMCreateDragOperationItem(W_ActionToOperation(scr, actionList[i]),
 							  wstrdup(description));
 
 		WMAddToArray(operationArray, operationItem);
-		count -= (size + 1);	/* -1 : -NULL char */
+		if ((unsigned long)(size + 1) > count)
+			break;
+		count -= (size + 1);
 
 		/* next description */
 		description = &(description[size + 1]);
