@@ -940,8 +940,14 @@ static void updateWorkspaceNames(WScreen *scr)
 	pos = buf;
 	len = 0;
 	for (i = 0; i < scr->workspace_count; i++) {
-		curr_size = strlen(scr->workspaces[i]->name);
-		strncpy(pos, scr->workspaces[i]->name, sizeof(pos) - 1);
+		size_t room = sizeof(buf) - len;
+
+		curr_size = wstrlcpy(pos, scr->workspaces[i]->name, room);
+		/* wstrlcpy returns strlen(src), so on truncation curr_size
+		 * is larger than what was actually written. Stop rather than
+		 * advance past the buffer and underflow room next time. */
+		if (curr_size + 1 >= room)
+			break;
 		pos += (curr_size + 1);
 		len += (curr_size + 1);
 	}
