@@ -707,6 +707,18 @@ AC_SUBST(XFT_CFLAGS)
 AC_SUBST(XFT_LIBS)
 
 
+dnl XCB (with Xlib bridge) for the typed property/ICCCM layer
+dnl =========================================================
+dnl xcb-icccm 0.3.8 renamed every public symbol from xcb_* to xcb_icccm_*,
+dnl wxhints.c uses the new names so reject the older API at configure time
+dnl rather than failing the build (NetBSD base X11R7 still ships 0.3.6,
+dnl install pkgsrc xcb-util-wm and put /usr/pkg/lib/pkgconfig first)
+PKG_CHECK_MODULES([XCB], [xcb xcb-icccm >= 0.3.8 x11-xcb], [],
+    [AC_MSG_ERROR([libxcb, xcb-icccm >= 0.3.8 and x11-xcb are required -- $XCB_PKG_ERRORS])])
+AC_SUBST(XCB_CFLAGS)
+AC_SUBST(XCB_LIBS)
+
+
 dnl PANGO support
 dnl =============
 dnl The libray can be used by WINGs to get better support on UTF-8 for i18n
