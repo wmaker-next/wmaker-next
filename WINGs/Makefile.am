@@ -26,6 +26,8 @@ libWINGs_la_SOURCES = 	\
 	dragsource.c \
 	rgb.h \
 	selection.c \
+	wxprop.c \
+	wxhints.c \
 	wappresource.c \
 	wballoon.c \
 	wbox.c \
