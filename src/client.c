@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <WINGs/WXProp.h>
+#include <WINGs/WXHints.h>
+
 #include "WindowMaker.h"
 #include "framewin.h"
 #include "window.h"
@@ -88,16 +91,15 @@ void wClientRestore(WWindow * wwin)
  */
 void wClientSetState(WWindow * wwin, int state, Window icon_win)
 {
-	long data[2];
+	uint32_t data[2];
 
 	wwin->state = state;
 
-	data[0] = (unsigned long)state;
-	data[1] = (unsigned long)icon_win;
+	data[0] = (uint32_t)state;
+	data[1] = (uint32_t)icon_win;
 
-	XChangeProperty(dpy, wwin->client_win, w_global.atom.wm.state,
-			w_global.atom.wm.state, 32, PropModeReplace,
-			(unsigned char *)data, 2);
+	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wm.state,
+		       w_global.atom.wm.state, data, 2);
 }
 
 void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
@@ -269,18 +271,9 @@ void wClientConfigure(WWindow * wwin, XConfigureRequestEvent * xcre)
 
 void wClientSendProtocol(WWindow * wwin, Atom protocol, Time time)
 {
-	XEvent event;
-
-	event.xclient.type = ClientMessage;
-	event.xclient.message_type = w_global.atom.wm.protocols;
-	event.xclient.format = 32;
-	event.xclient.display = dpy;
-	event.xclient.window = wwin->client_win;
-	event.xclient.data.l[0] = protocol;
-	event.xclient.data.l[1] = time;
-	event.xclient.data.l[2] = 0;
-	event.xclient.data.l[3] = 0;
-	XSendEvent(dpy, wwin->client_win, False, NoEventMask, &event);
+	WXSendClientMessage(dpy, wwin->client_win, NoEventMask,
+			    wwin->client_win, w_global.atom.wm.protocols,
+			    (long)protocol, (long)time, 0, 0, 0);
 	XSync(dpy, False);
 }
 
@@ -307,7 +300,7 @@ void wClientKill(WWindow * wwin)
 void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 {
 	XWindowAttributes attribs;
-	XWMHints *new_hints;
+	WXWMHints *new_hints;
 	int i, g1, g2;
 	char *tmp = NULL;
 
@@ -321,7 +314,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 				wWindowUpdateName(wwin, tmp);
 			}
 			if (tmp)
-				XFree(tmp);
+				wfree(tmp);
 		}
 		break;
 
@@ -353,7 +346,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 	case XA_WM_HINTS:
 		/* WM_HINTS */
 
-		new_hints = XGetWMHints(dpy, wwin->client_win);
+		new_hints = WXGetWMHints(dpy, wwin->client_win);
 
 		/* group leader update
 		 *
@@ -422,7 +415,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 		}
 
 		if (wwin->wm_hints)
-			XFree(wwin->wm_hints);
+			wfree(wwin->wm_hints);
 
 		wwin->wm_hints = new_hints;
 
@@ -511,7 +504,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 			Window new_owner;
 			WWindow *owner;
 
-			if (!XGetTransientForHint(dpy, wwin->client_win, &new_owner)) {
+			if (!WXGetTransientFor(dpy, wwin->client_win, &new_owner)) {
 				new_owner = None;
 			} else {
 				if (new_owner == 0 || new_owner == wwin->client_win) {
@@ -633,7 +626,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 
 			wWindowUpdateGNUstepAttr(wwin, attr);
 
-			XFree(attr);
+			wfree(attr);
 		} else {
 			wNETWMCheckClientHintChange(wwin, event);
 		}
@@ -660,7 +653,7 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 
 	/* find a position for the window */
 	if (!wwin->normal_hints)
-		wwin->normal_hints = XAllocSizeHints();
+		wwin->normal_hints = WXAllocSizeHints();
 
 	if (!PropGetNormalHints(wwin->client_win, wwin->normal_hints, &pre_icccm)) {
 		wwin->normal_hints->flags = 0;

@@ -118,7 +118,6 @@ static Bool replace_existing_wm(WScreen *scr)
 	char atomName[16];
 	Window wm;
 	XSetWindowAttributes attribs;
-	XClientMessageEvent event;
 	unsigned long current_time;
 	int ret;
 
@@ -187,16 +186,10 @@ static Bool replace_existing_wm(WScreen *scr)
 	if (XGetSelectionOwner(dpy, scr->sn_atom) != scr->info_window)
 		return False;
 
-	event.type = ClientMessage;
-	event.message_type = scr->sn_atom;
-	event.format = 32;
-	event.data.l[0] = (long) current_time;
-	event.data.l[1] = (long) scr->sn_atom;
-	event.data.l[2] = (long) scr->info_window;
-	event.data.l[3] = (long) 0L;
-	event.data.l[4] = (long) 0L;
-	event.window = scr->root_win;
-	XSendEvent(dpy, scr->root_win, False, StructureNotifyMask, (XEvent *) &event);
+	WXSendClientMessage(dpy, scr->root_win, StructureNotifyMask,
+			    scr->root_win, scr->sn_atom,
+			    (long)current_time, (long)scr->sn_atom,
+			    (long)scr->info_window, 0, 0);
 #endif
 
 	return True;
@@ -792,10 +785,8 @@ WScreen *wScreenInit(int screen_number)
 	PropSetWMakerProtocols(scr->root_win);
 
 	/* setup our noticeboard */
-	XChangeProperty(dpy, scr->info_window, w_global.atom.wmaker.noticeboard,
-			XA_WINDOW, 32, PropModeReplace, (unsigned char *)&scr->info_window, 1);
-	XChangeProperty(dpy, scr->root_win, w_global.atom.wmaker.noticeboard,
-			XA_WINDOW, 32, PropModeReplace, (unsigned char *)&scr->info_window, 1);
+	WXSetWindow(dpy, scr->info_window, w_global.atom.wmaker.noticeboard, scr->info_window);
+	WXSetWindow(dpy, scr->root_win, w_global.atom.wmaker.noticeboard, scr->info_window);
 
 #ifdef BALLOON_TEXT
 	/* initialize balloon text stuff */

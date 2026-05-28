@@ -32,6 +32,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <WINGs/WXProp.h>
 #include <string.h>
 #include <strings.h>
 #include <pwd.h>
@@ -814,11 +815,7 @@ static int dummyErrorHandler(Display * dpy, XErrorEvent * err)
 static void setPixmapProperty(Pixmap pixmap)
 {
 	static Atom prop = 0;
-	Atom type;
-	int format;
-	unsigned long length, after;
-	unsigned char *data;
-	int mode;
+	uint32_t old_pixmap;
 
 	if (!prop) {
 		prop = XInternAtom(dpy, "_XROOTPMAP_ID", False);
@@ -827,22 +824,18 @@ static void setPixmapProperty(Pixmap pixmap)
 	XGrabServer(dpy);
 
 	/* Clear out the old pixmap */
-	XGetWindowProperty(dpy, root, prop, 0L, 1L, False, AnyPropertyType,
-			   &type, &format, &length, &after, &data);
-
-	if ((type == XA_PIXMAP) && (format == 32) && (length == 1)) {
+	if (WXGetFormat32N(dpy, root, prop, XA_PIXMAP, &old_pixmap, 1)) {
 		XSetErrorHandler(dummyErrorHandler);
-		XKillClient(dpy, *((Pixmap *) data));
+		XKillClient(dpy, (XID)old_pixmap);
 		XSync(dpy, False);
 		XSetErrorHandler(NULL);
-		mode = PropModeReplace;
-	} else {
-		mode = PropModeAppend;
 	}
-	if (pixmap)
-		XChangeProperty(dpy, root, prop, XA_PIXMAP, 32, mode, (unsigned char *)&pixmap, 1);
-	else
-		XDeleteProperty(dpy, root, prop);
+	if (pixmap) {
+		uint32_t v = (uint32_t)pixmap;
+		WXSetFormat32N(dpy, root, prop, XA_PIXMAP, &v, 1);
+	} else {
+		WXDeleteProperty(dpy, root, prop);
+	}
 
 	XUngrabServer(dpy);
 	XFlush(dpy);

@@ -29,6 +29,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 
+#include <WINGs/WXProp.h>
+
 #include "WindowMaker.h"
 #include "dock.h"
 #include "xdnd.h"
@@ -68,9 +70,7 @@ void wXDNDInitializeAtoms(void)
 
 void wXDNDMakeAwareness(Window window)
 {
-	long int xdnd_version = XDND_VERSION;
-	XChangeProperty(dpy, window, _XA_XdndAware, XA_ATOM, 32,
-					PropModeAppend, (unsigned char *)&xdnd_version, 1);
+	WXSetAtom(dpy, window, _XA_XdndAware, (Atom)XDND_VERSION);
 }
 
 static void wXDNDDecodeURI(char *uri)
@@ -98,7 +98,6 @@ Bool wXDNDProcessSelection(XEvent *event)
 	unsigned long ret_item;
 	unsigned long remain_byte;
 	char *delme;
-	XEvent xevent;
 	Window selowner = XGetSelectionOwner(dpy, _XA_XdndSelection);
 
 	XGetWindowProperty(dpy, event->xselection.requestor,
@@ -107,14 +106,8 @@ Bool wXDNDProcessSelection(XEvent *event)
 			   &ret_item, &remain_byte, (unsigned char **)&delme);
 
 	/*send finished */
-	memset(&xevent, 0, sizeof(xevent));
-	xevent.xany.type = ClientMessage;
-	xevent.xany.display = dpy;
-	xevent.xclient.window = selowner;
-	xevent.xclient.message_type = _XA_XdndFinished;
-	xevent.xclient.format = 32;
-	XDND_FINISHED_TARGET_WIN(&xevent) = event->xselection.requestor;
-	XSendEvent(dpy, selowner, 0, 0, &xevent);
+	WXSendClientMessage(dpy, selowner, 0, selowner, _XA_XdndFinished,
+			    event->xselection.requestor, 0, 0, 0, 0);
 
 	/*process dropping */
 	if (delme) {
@@ -177,23 +170,11 @@ Bool wXDNDProcessSelection(XEvent *event)
 
 static Bool isAwareXDND(Window window)
 {
-	Atom actual;
-	int format;
-	unsigned long count, remaining;
-	unsigned char *data = 0;
+	Atom version;
 
 	if (!window)
 		return False;
-	XGetWindowProperty(dpy, window, _XA_XdndAware,
-			   0, 0x8000000L, False, XA_ATOM, &actual, &format, &count, &remaining, &data);
-	if (actual != XA_ATOM || format != 32 || count == 0 || !data) {
-		if (data)
-			XFree(data);
-		return False;
-	}
-	if (data)
-		XFree(data);
-	return True;
+	return WXGetAtom(dpy, window, _XA_XdndAware, &version);
 }
 
 static Bool acceptXDND(Window window)
@@ -239,35 +220,22 @@ static Bool acceptXDND(Window window)
 
 static void wXDNDGetTypeList(Display *dpy, Window window)
 {
-	Atom type, *a;
 	Atom *typelist;
-	int format, i;
-	unsigned long count, remaining;
-	unsigned char *data = NULL;
+	size_t i, count;
 
-	XGetWindowProperty(dpy, window, _XA_XdndTypeList,
-						0, 0x8000000L, False, XA_ATOM,
-						&type, &format, &count, &remaining, &data);
-
-	if (type != XA_ATOM || format != 32 || count == 0 || !data) {
-		if (data)
-			XFree(data);
+	typelist = WXGetAtomList(dpy, window, _XA_XdndTypeList, 0x8000000L, &count);
+	if (!typelist) {
 		wwarning(_("wXDNDGetTypeList failed = %ld"), _XA_XdndTypeList);
 		return;
 	}
 
-	typelist = malloc((count + 1) * sizeof(Atom));
-	a = (Atom *) data;
 	for (i = 0; i < count; i++) {
-		typelist[i] = a[i];
 		if (typelist[i] == supported_typelist) {
 			selected_typelist = typelist[i];
 			break;
 		}
 	}
-	typelist[count] = 0;
-	XFree(data);
-	free(typelist);
+	wfree(typelist);
 }
 
 Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
@@ -294,23 +262,11 @@ Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
 		}
 		return True;
 	} else if (event->message_type == _XA_XdndPosition) {
-		XEvent xevent;
 		Window srcwin = XDND_POSITION_SOURCE_WIN(event);
 		if (selected_typelist == supported_typelist) {
-			memset(&xevent, 0, sizeof(xevent));
-			xevent.xany.type = ClientMessage;
-			xevent.xany.display = dpy;
-			xevent.xclient.window = srcwin;
-			xevent.xclient.message_type = _XA_XdndStatus;
-			xevent.xclient.format = 32;
-
-			XDND_STATUS_TARGET_WIN(&xevent) = event->window;
-			XDND_STATUS_WILL_ACCEPT_SET(&xevent, acceptXDND(event->window));
-			XDND_STATUS_WANT_POSITION_SET(&xevent, True);
-			XDND_STATUS_RECT_SET(&xevent, 0, 0, 0, 0);
-			XDND_STATUS_ACTION(&xevent) = _XA_XdndActionCopy;
-
-			XSendEvent(dpy, srcwin, 0, 0, &xevent);
+			long flags = (acceptXDND(event->window) ? 0x1L : 0L) | 0x2L;
+			WXSendClientMessage(dpy, srcwin, 0, srcwin, _XA_XdndStatus,
+					    event->window, flags, 0, 0, _XA_XdndActionCopy);
 		}
 		return True;
 	}

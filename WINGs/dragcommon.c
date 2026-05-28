@@ -129,8 +129,6 @@ W_SendDnDClientMessage(Display * dpy, Window win, Atom message,
 		       unsigned long data0,
 		       unsigned long data1, unsigned long data2, unsigned long data3, unsigned long data4)
 {
-	XEvent ev;
-
 #ifdef XDND_DEBUG
 	char *msgName = XGetAtomName(dpy, message);
 
@@ -143,17 +141,7 @@ W_SendDnDClientMessage(Display * dpy, Window win, Atom message,
 		return False;	/* message not sent */
 	}
 
-	ev.type = ClientMessage;
-	ev.xclient.message_type = message;
-	ev.xclient.format = 32;
-	ev.xclient.window = win;
-	ev.xclient.data.l[0] = data0;
-	ev.xclient.data.l[1] = data1;
-	ev.xclient.data.l[2] = data2;
-	ev.xclient.data.l[3] = data3;
-	ev.xclient.data.l[4] = data4;
-
-	XSendEvent(dpy, win, False, 0, &ev);
+	WXSendClientMessage(dpy, win, 0, win, message, data0, data1, data2, data3, data4);
 	XFlush(dpy);
 
 #ifdef XDND_DEBUG

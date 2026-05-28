@@ -61,30 +61,20 @@ static WMArray *createDropDataArray(WMArray * requiredTypes)
 
 static WMArray *getTypesFromTypeList(WMScreen * scr, Window sourceWin)
 {
-	Atom dataType;
 	Atom *typeAtomList;
 	WMArray *typeList;
-	int i, format;
-	unsigned long count, remaining;
-	unsigned char *data = NULL;
+	size_t i, count;
 
-	XGetWindowProperty(scr->display, sourceWin, scr->xdndTypeListAtom,
-			   0, 0x8000000L, False, XA_ATOM, &dataType, &format, &count, &remaining, &data);
-
-	if (dataType != XA_ATOM || format != XDND_PROPERTY_FORMAT || count == 0 || !data) {
-		if (data) {
-			XFree(data);
-		}
+	typeAtomList = WXGetAtomList(scr->display, sourceWin, scr->xdndTypeListAtom, 0x8000000L, &count);
+	if (typeAtomList == NULL)
 		return createSourceTypeArray(0);
-	}
 
 	typeList = createSourceTypeArray(count);
-	typeAtomList = (Atom *) data;
 	for (i = 0; i < count; i++) {
 		WMAddToArray(typeList, XGetAtomName(scr->display, typeAtomList[i]));
 	}
 
-	XFree(data);
+	wfree(typeAtomList);
 
 	return typeList;
 }
@@ -830,8 +820,7 @@ static void realizedObserver(void *self, WMNotification * notif)
 	WMView *view = (WMView *) WMGetNotificationObject(notif);
 	WMScreen *scr = W_VIEW_SCREEN(view);
 
-	XChangeProperty(scr->display, W_VIEW_DRAWABLE(view),
-			scr->xdndAwareAtom, XA_ATOM, XDND_PROPERTY_FORMAT, PropModeReplace, &XDNDversion, 1);
+	WXSetAtom(scr->display, W_VIEW_DRAWABLE(view), scr->xdndAwareAtom, XDNDversion);
 
 	WMRemoveNotificationObserver(self);
 }
@@ -844,9 +833,7 @@ static void W_SetXdndAwareProperty(WMScreen *scr, WMView *view)
 		toplevel->flags.xdndHintSet = 1;
 
 		if (toplevel->flags.realized) {
-			XChangeProperty(scr->display, W_VIEW_DRAWABLE(toplevel),
-					scr->xdndAwareAtom, XA_ATOM, XDND_PROPERTY_FORMAT,
-					PropModeReplace, &XDNDversion, 1);
+			WXSetAtom(scr->display, W_VIEW_DRAWABLE(toplevel), scr->xdndAwareAtom, XDNDversion);
 		} else {
 			WMAddNotificationObserver(realizedObserver,
 						  /* just use as an id */

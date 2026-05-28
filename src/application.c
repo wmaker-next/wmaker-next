@@ -21,6 +21,7 @@
 #include "wconfig.h"
 
 #include <X11/Xlib.h>
+#include <WINGs/WXHints.h>
 #include <string.h>
 
 #include "WindowMaker.h"
@@ -52,7 +53,7 @@ static WWindow *makeMainWindow(WScreen * scr, Window window)
 	wwin->screen_ptr = scr;
 	wwin->client_win = window;
 	wwin->main_window = window;
-	wwin->wm_hints = XGetWMHints(dpy, window);
+	wwin->wm_hints = WXGetWMHints(dpy, window);
 
 	PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
 

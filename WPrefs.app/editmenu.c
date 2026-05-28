@@ -312,7 +312,7 @@ typedef struct {
 
 static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttributes * attr)
 {
-	unsigned long data[9];
+	uint32_t data[9];
 
 	/* handle idiot compilers where array of CARD32 != struct of CARD32 */
 	data[0] = attr->flags;
@@ -325,8 +325,8 @@ static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttribute
 	data[6] = attr->miniaturize_mask;
 	data[7] = attr->close_mask;
 	data[8] = attr->extra_flags;
-	XChangeProperty(scr->display, window, scr->attribsAtom, scr->attribsAtom,
-			32, PropModeReplace, (unsigned char *)data, 9);
+	WXSetFormat32N(scr->display, window, scr->attribsAtom, scr->attribsAtom,
+		       data, 9);
 }
 
 static void realizeObserver(void *self, WMNotification * not)
@@ -649,17 +649,17 @@ void WEditMenuUnhide(WEditMenu * mPtr)
 
 void WEditMenuShowAt(WEditMenu * menu, int x, int y)
 {
-	XSizeHints *hints;
+	WXSizeHints *hints;
 
-	hints = XAllocSizeHints();
+	hints = WXAllocSizeHints();
 
 	hints->flags = USPosition;
 	hints->x = x;
 	hints->y = y;
 
 	WMMoveWidget(menu, x, y);
-	XSetWMNormalHints(W_VIEW_DISPLAY(menu->view), W_VIEW_DRAWABLE(menu->view), hints);
-	XFree(hints);
+	WXSetNormalHints(W_VIEW_DISPLAY(menu->view), W_VIEW_DRAWABLE(menu->view), hints);
+	wfree(hints);
 
 	WMMapWidget(menu);
 }

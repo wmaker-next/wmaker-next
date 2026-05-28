@@ -24,6 +24,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <WINGs/WXHints.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -1197,7 +1198,7 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 
 	WMMapWidget(panel->win);
 
-	XSetTransientForHint(dpy, parent, wwin->client_win);
+	WXSetTransientFor(dpy, parent, wwin->client_win);
 
 	if (xpos == UNDEFINED_POS) {
 		x = wwin->frame_x + wwin->frame->core->width / 2;

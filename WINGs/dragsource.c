@@ -13,9 +13,6 @@
 #define MIN_Y_MOVE_OFFSET 5
 #define MAX_SLIDEBACK_ITER 15
 
-#define XDND_PROPERTY_FORMAT 32
-#define XDND_ACTION_DESCRIPTION_FORMAT 8
-
 #define XDND_DEST_VERSION(dragInfo) dragInfo->protocolVersion
 #define XDND_SOURCE_INFO(dragInfo) dragInfo->sourceInfo
 #define XDND_DEST_WIN(dragInfo) dragInfo->sourceInfo->destinationWindow
@@ -454,10 +451,7 @@ static void registerDropTypes(WMScreen * scr, WMView * view, WMDraggingInfo * in
 		XDND_3_TYPES(info)[i] = None;
 
 	/* store the entire type list */
-	XChangeProperty(scr->display,
-			WMViewXID(view),
-			scr->xdndTypeListAtom,
-			XA_ATOM, XDND_PROPERTY_FORMAT, PropModeReplace, (unsigned char *)typeList, count);
+	WXSetAtomN(scr->display, WMViewXID(view), scr->xdndTypeListAtom, typeList, count);
 }
 
 static void registerOperationList(WMScreen * scr, WMView * view, WMArray * operationArray)
@@ -474,10 +468,7 @@ static void registerOperationList(WMScreen * scr, WMView * view, WMArray * opera
 		actionList[i] = W_OperationToAction(scr, operation);
 	}
 
-	XChangeProperty(scr->display,
-			WMViewXID(view),
-			scr->xdndActionListAtom,
-			XA_ATOM, XDND_PROPERTY_FORMAT, PropModeReplace, (unsigned char *)actionList, count);
+	WXSetAtomN(scr->display, WMViewXID(view), scr->xdndActionListAtom, actionList, count);
 }
 
 static void registerDescriptionList(WMScreen * scr, WMView * view, WMArray * operationArray)
@@ -504,11 +495,7 @@ static void registerDescriptionList(WMScreen * scr, WMView * view, WMArray * ope
 		textListItem = &(textListItem[strlen(textListItem) + 1]);
 	}
 
-	XChangeProperty(scr->display,
-			WMViewXID(view),
-			scr->xdndActionDescriptionAtom,
-			XA_STRING,
-			XDND_ACTION_DESCRIPTION_FORMAT, PropModeReplace, (unsigned char *)textList, size);
+	WXSetLatin1String(scr->display, WMViewXID(view), scr->xdndActionDescriptionAtom, textList, size);
 }
 
 /* called if wanted operation is WDOperationAsk */
@@ -645,25 +632,12 @@ void WMSetViewDragSourceProcs(WMView * view, WMDragSourceProcs * procs)
 
 static Bool isXdndAware(WMScreen * scr, Window win)
 {
-	Atom type;
-	int format;
-	unsigned long count, remain;
-	unsigned char *winXdndVersion;
+	Atom winXdndVersion;
 
 	if (win == None)
 		return False;
 
-	XGetWindowProperty(scr->display, win, scr->xdndAwareAtom,
-			   0, 1, False, XA_ATOM, &type, &format, &count, &remain, &winXdndVersion);
-
-	if (type != XA_ATOM || format != XDND_PROPERTY_FORMAT || count == 0 || !winXdndVersion) {
-		if (winXdndVersion)
-			XFree(winXdndVersion);
-		return False;
-	}
-
-	XFree(winXdndVersion);
-	return (count == 1);	/* xdnd version is set */
+	return WXGetAtom(scr->display, win, scr->xdndAwareAtom, &winXdndVersion);
 }
 
 static Window *windowChildren(Display * dpy, Window win, unsigned *nchildren)
@@ -739,20 +713,13 @@ static Window findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 
 static void storeDestinationProtocolVersion(WMDraggingInfo * info)
 {
-	Atom type;
-	int format;
-	unsigned long count, remain;
-	unsigned char *winXdndVersion;
+	Atom winXdndVersion;
 	WMScreen *scr = W_VIEW_SCREEN(XDND_SOURCE_VIEW(info));
 
 	wassertr(XDND_DEST_WIN(info) != None);
 
-	if (XGetWindowProperty(scr->display, XDND_DEST_WIN(info),
-			       scr->xdndAwareAtom,
-			       0, 1, False, XA_ATOM, &type, &format,
-			       &count, &remain, &winXdndVersion) == Success) {
-		XDND_DEST_VERSION(info) = *winXdndVersion;
-		XFree(winXdndVersion);
+	if (WXGetAtom(scr->display, XDND_DEST_WIN(info), scr->xdndAwareAtom, &winXdndVersion)) {
+		XDND_DEST_VERSION(info) = (unsigned char)winXdndVersion;
 	} else {
 		XDND_DEST_VERSION(info) = 0;
 		wwarning(_("could not get XDND version for target of drop"));

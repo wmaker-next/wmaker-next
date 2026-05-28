@@ -65,63 +65,15 @@ static void UnescapeWM_CLASS(const char *str, char **name, char **class);
 /* XFetchName Wrapper */
 Bool wFetchName(Display *dpy, Window win, char **winname)
 {
-	XTextProperty text_prop;
-	char **list;
-	int num;
-
-	if (XGetWMName(dpy, win, &text_prop)) {
-		if (text_prop.value && text_prop.nitems > 0) {
-			if (text_prop.encoding == XA_STRING) {
-				*winname = wstrdup((char *)text_prop.value);
-				XFree(text_prop.value);
-			} else {
-				text_prop.nitems = strlen((char *)text_prop.value);
-				if (XmbTextPropertyToTextList(dpy, &text_prop, &list, &num) >=
-				    Success && num > 0 && *list) {
-					XFree(text_prop.value);
-					*winname = wstrdup(*list);
-					XFreeStringList(list);
-				} else {
-					*winname = wstrdup((char *)text_prop.value);
-					XFree(text_prop.value);
-				}
-			}
-		} else {
-			/* the title is set, but it was set to none */
-			*winname = wstrdup("");
-		}
-		return True;
-	} else {
-		/* the hint is probably not set */
-		*winname = NULL;
-
-		return False;
-	}
+	*winname = WXGetWMName(dpy, win);
+	return *winname != NULL;
 }
 
 /* XGetIconName Wrapper */
 Bool wGetIconName(Display *dpy, Window win, char **iconname)
 {
-	XTextProperty text_prop;
-	char **list;
-	int num;
-
-	if (XGetWMIconName(dpy, win, &text_prop) != 0 && text_prop.value && text_prop.nitems > 0) {
-		if (text_prop.encoding == XA_STRING)
-			*iconname = (char *)text_prop.value;
-		else {
-			text_prop.nitems = strlen((char *)text_prop.value);
-			if (XmbTextPropertyToTextList(dpy, &text_prop, &list, &num) >= Success && num > 0 && *list) {
-				XFree(text_prop.value);
-				*iconname = wstrdup(*list);
-				XFreeStringList(list);
-			} else
-				*iconname = (char *)text_prop.value;
-		}
-		return True;
-	}
-	*iconname = NULL;
-	return False;
+	*iconname = WXGetWMIconName(dpy, win);
+	return *iconname != NULL;
 }
 
 int WMStrEqual(const char *x, const char *y)
@@ -437,13 +389,15 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 		int size;
 
 		data = XFetchBuffer(dpy, &size, buffer);
-
-		return data;
+		if (data) {
+			char *copy = wstrndup(data, size);
+			XFree(data);
+			return copy;
+		}
+		return NULL;
 	} else {
 		char *data;
-		int bits;
-		Atom rtype;
-		unsigned long len, bytes;
+		size_t len;
 		WMHandlerID timer;
 		int timeout = 0;
 		XEvent ev;
@@ -452,7 +406,7 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 		if (!clipboard)
 			clipboard = XInternAtom(dpy, "CLIPBOARD", False);
 
-		XDeleteProperty(dpy, screen->info_window, clipboard);
+		WXDeleteProperty(dpy, screen->info_window, clipboard);
 
 		XConvertSelection(dpy, selection, XA_STRING, clipboard, screen->info_window, CurrentTime);
 
@@ -473,16 +427,9 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 			return NULL;
 		}
 
-		if (XGetWindowProperty(dpy, screen->info_window,
-				       clipboard, 0, 1024,
-				       False, XA_STRING, &rtype, &bits, &len,
-				       &bytes, (unsigned char **)&data) != Success) {
-			return NULL;
-		}
-		if (rtype != XA_STRING || bits != 8) {
+		data = WXGetLatin1String(dpy, screen->info_window, clipboard, &len);
+		if (!data) {
 			wwarning("invalid data in text selection");
-			if (data)
-				XFree(data);
 			return NULL;
 		}
 		return data;
@@ -734,13 +681,13 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 		ptr++;
 	}
 	if (selection)
-		XFree(selection);
+		wfree(selection);
 	return out;
 
  error:
 	wfree(out);
 	if (selection)
-		XFree(selection);
+		wfree(selection);
 	return NULL;
 }
 
@@ -1218,7 +1165,7 @@ static char *getCommandForWindow(Window win, int elements)
 	char **argv, *command = NULL;
 	int argc;
 
-	if (XGetCommand(dpy, win, &argv, &argc)) {
+	if (WXGetCommand(dpy, win, &argv, &argc)) {
 		if (argc > 0 && argv != NULL) {
 			if (elements == 0)
 				elements = argc;
@@ -1229,7 +1176,7 @@ static char *getCommandForWindow(Window win, int elements)
 			}
 		}
 		if (argv) {
-			XFreeStringList(argv);
+			WXFreeStringList(argv, argc);
 		}
 	}
 

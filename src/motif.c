@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <WINGs/WXProp.h>
+
 #include "WindowMaker.h"
 #include "framewin.h"
 #include "window.h"
@@ -161,30 +163,29 @@ static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 
 static int getMWMHints(Window window, MWMHints *mwmhints)
 {
-	unsigned long *data;
-	int count;
+	uint32_t data[5];
 
 	if (!_XA_MOTIF_WM_HINTS)
 		_XA_MOTIF_WM_HINTS = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
 
-	data = (unsigned long *)PropGetCheckProperty(window, _XA_MOTIF_WM_HINTS,
-						     _XA_MOTIF_WM_HINTS, 32, 0, &count);
-
-	if (!data)
-		return 0;
-
 	mwmhints->flags = 0;
-	if (count >= 4) {
+
+	if (WXGetFormat32N(dpy, window, _XA_MOTIF_WM_HINTS, _XA_MOTIF_WM_HINTS, data, 5)) {
 		mwmhints->flags = data[0];
 		mwmhints->functions = data[1];
 		mwmhints->decorations = data[2];
 		mwmhints->inputMode = data[3];
-		if (count > 5)
-			mwmhints->status = data[4];
+		mwmhints->status = data[4];
+		return 1;
 	}
-	XFree(data);
-
-	return 1;
+	if (WXGetFormat32N(dpy, window, _XA_MOTIF_WM_HINTS, _XA_MOTIF_WM_HINTS, data, 4)) {
+		mwmhints->flags = data[0];
+		mwmhints->functions = data[1];
+		mwmhints->decorations = data[2];
+		mwmhints->inputMode = data[3];
+		return 1;
+	}
+	return 0;
 }
 
 void wMWMCheckClientHints(WWindow *wwin)

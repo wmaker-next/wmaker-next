@@ -20,12 +20,9 @@
  */
 
 /*
- * TODO
- * ----
- *
- * This file needs to be checked for all calls to XGetWindowProperty() and
- * proper checks need to be made on the returned values. Only checking for
- * return to be Success is not enough. -Dan
+ * All property reads/writes go through the typed WXProp helper layer
+ * (WINGs/WXProp.h), which validates type/format/count and normalises the
+ * Xlib long[] representation to uint32_t.
  */
 
 #include "wconfig.h"
@@ -37,6 +34,7 @@
 #include <unistd.h>
 
 #include <WINGs/WUtil.h>
+#include <WINGs/WXProp.h>
 #include "WindowMaker.h"
 #include "window.h"
 #include "screen.h"
@@ -245,11 +243,10 @@ typedef struct NetData {
 
 static void setSupportedHints(WScreen *scr)
 {
+	static const char wm_class[] = "wmaker\0WindowMaker";
 	Atom atom[wlengthof(atomNames)];
 	int i = 0;
-	long pid = 0;
 	char wm_name[64] = "";
-	XClassHint *class_hint;
 
 	/* set supported hints list */
 	/* XXX: extend this !!! */
@@ -323,45 +320,33 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_name;
 	atom[i++] = net_wm_icon_name;
 
-	XChangeProperty(dpy, scr->root_win, net_supported, XA_ATOM, 32, PropModeReplace, (unsigned char *)atom, i);
+	WXSetAtomN(dpy, scr->root_win, net_supported, atom, i);
 
 	/* set supporting wm hint */
-	XChangeProperty(dpy, scr->root_win, net_supporting_wm_check, XA_WINDOW, 32,
-			PropModeReplace, (unsigned char *)&scr->info_window, 1);
-
-	XChangeProperty(dpy, scr->info_window, net_supporting_wm_check, XA_WINDOW,
-			32, PropModeReplace, (unsigned char *)&scr->info_window, 1);
+	WXSetWindow(dpy, scr->root_win, net_supporting_wm_check, scr->info_window);
+	WXSetWindow(dpy, scr->info_window, net_supporting_wm_check, scr->info_window);
 
 	/* set _NET_WM_NAME on supporting window */
 	snprintf(wm_name, sizeof(wm_name), "WindowMaker %s", VERSION);
-	XChangeProperty(dpy, scr->info_window, net_wm_name, utf8_string, 8,
-					PropModeReplace, (unsigned char *)wm_name, strlen(wm_name));
+	WXSetUTF8String(dpy, scr->info_window, net_wm_name, wm_name, strlen(wm_name));
 
 	/* set _NET_WM_PID on supporting window */
-	pid = getpid();
-	XChangeProperty(dpy, scr->info_window, net_wm_pid, XA_CARDINAL, 32,
-					PropModeReplace, (unsigned char *)&pid, 1);
+	WXSetCardinal(dpy, scr->info_window, net_wm_pid, (uint32_t)getpid());
 
-	/* set WM_CLASS on supporting window */
-	class_hint = XAllocClassHint();
-	if (class_hint) {
-			class_hint->res_name = "wmaker";
-			class_hint->res_class = "WindowMaker";
-			XSetClassHint(dpy, scr->info_window, class_hint);
-			XFree(class_hint);
-	}
+	/* set WM_CLASS on supporting window: instance\0class\0 */
+	WXSetLatin1String(dpy, scr->info_window, XA_WM_CLASS, wm_class, sizeof(wm_class));
 }
 
 void wNETWMUpdateDesktop(WScreen *scr)
 {
-	long *views, sizes[2];
+	uint32_t *views, sizes[2];
 	int count, i;
 
 	if (scr->workspace_count == 0)
 		return;
 
 	count = scr->workspace_count * 2;
-	views = wmalloc(sizeof(long) * count);
+	views = wmalloc(sizeof(uint32_t) * count);
 	sizes[0] = scr->scr_width;
 	sizes[1] = scr->scr_height;
 
@@ -370,35 +355,27 @@ void wNETWMUpdateDesktop(WScreen *scr)
 		views[2 * i + 1] = 0;
 	}
 
-	XChangeProperty(dpy, scr->root_win, net_desktop_geometry, XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *)sizes, 2);
-
-	XChangeProperty(dpy, scr->root_win, net_desktop_viewport, XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *)views, count);
+	WXSetCardinalN(dpy, scr->root_win, net_desktop_geometry, sizes, 2);
+	WXSetCardinalN(dpy, scr->root_win, net_desktop_viewport, views, count);
 
 	wfree(views);
 }
 
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
 {
-	int count;
-	unsigned char *prop;
+	int32_t desktop;
 
-	prop = PropGetCheckProperty(scr->root_win, net_current_desktop, XA_CARDINAL, 0, 1, &count);
-	if (prop) {
-		int desktop = *(long *)prop;
-		XFree(prop);
+	if (WXGetCardinalSigned(dpy, scr->root_win, net_current_desktop, &desktop))
 		return desktop;
-	}
 	return -1;
 }
 
-static RImage *makeRImageFromARGBData(unsigned long *data)
+static RImage *makeRImageFromARGBData(const uint32_t *data)
 {
 	int size, width, height, i;
 	RImage *image;
 	unsigned char *imgdata;
-	unsigned long pixel;
+	uint32_t pixel;
 
 	width = data[0];
 	height = data[1];
@@ -423,14 +400,14 @@ static RImage *makeRImageFromARGBData(unsigned long *data)
 }
 
 /* Find the best icon to be used by Window Maker for appicon/miniwindows. */
-static RImage *findBestIcon(unsigned long *data, unsigned long items)
+static RImage *findBestIcon(const uint32_t *data, size_t items)
 {
 	int wanted;
 	int dx, dy, d;
 	int sx, sy, size;
 	int best_d, largest;
-	unsigned long i;
-	unsigned long *icon;
+	size_t i;
+	const uint32_t *icon;
 	RImage *src_image, *ret_image;
 	double f;
 
@@ -462,8 +439,8 @@ static RImage *findBestIcon(unsigned long *data, unsigned long items)
 		sy = (int)data[i + 1];
 		if (sx < 1 || sy < 1 || sx > 4096 || sy > 4096)
 			break;
-		size = (unsigned long)sx * (unsigned long)sy + 2;
-		if ((unsigned long)size > items - i)
+		size = sx * sy + 2;
+		if ((size_t)size > items - i)
 			break;
 
 		/* check the size difference if it's not too large */
@@ -493,8 +470,8 @@ static RImage *findBestIcon(unsigned long *data, unsigned long items)
 		sy = (int)data[i + 1];
 		if (sx < 1 || sy < 1 || sx > 4096 || sy > 4096)
 			break;
-		size = (unsigned long)sx * (unsigned long)sy;
-		if ((unsigned long)size + 2 > items - i)
+		size = sx * sy;
+		if ((size_t)size + 2 > items - i)
 			break;
 		if (size > largest) {
 			icon = &data[i];
@@ -523,25 +500,22 @@ static RImage *findBestIcon(unsigned long *data, unsigned long items)
 RImage *get_window_image_from_x11(Window window)
 {
 	RImage *image;
-	Atom type;
-	int format;
-	unsigned long items, rest;
-	unsigned long *property;
+	size_t items;
+	uint32_t *property;
 
 	/* Get the icon from X11 Window */
-	if (XGetWindowProperty(dpy, window, net_wm_icon, 0L, LONG_MAX,
-			       False, XA_CARDINAL, &type, &format, &items, &rest,
-			       (unsigned char **)&property) != Success || !property)
+	property = WXGetCardinalList(dpy, window, net_wm_icon, 1u << 24, &items);
+	if (!property)
 		return NULL;
 
-	if (type != XA_CARDINAL || format != 32 || items < 2) {
-		XFree(property);
+	if (items < 2) {
+		wfree(property);
 		return NULL;
 	}
 
 	/* Find the best icon */
 	image = findBestIcon(property, items);
-	XFree(property);
+	wfree(property);
 	if (!image)
 		return NULL;
 
@@ -574,39 +548,22 @@ static void updateIconImage(WWindow *wwin)
 
 static void updateWindowOpacity(WWindow *wwin)
 {
-	Atom type;
-	int format;
-	unsigned long items, rest;
-	unsigned long *property;
+	uint32_t opacity;
 
 	if (!wwin->frame)
 		return;
 
 	/* We don't care about this ourselves, but other programs need us to copy
 	 * this to the frame window. */
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_window_opacity, 0L, 1L,
-				False, XA_CARDINAL, &type, &format, &items, &rest,
-				(unsigned char **)&property) != Success)
-		return;
-
-	if (type == None) {
-		XDeleteProperty(dpy, wwin->frame->core->window, net_wm_window_opacity);
-	} else if (type == XA_CARDINAL && format == 32 && items == 1 && property) {
-		XChangeProperty(dpy, wwin->frame->core->window, net_wm_window_opacity,
-				XA_CARDINAL, 32, PropModeReplace, (unsigned char *)property, 1L);
-	}
-
-	if (property)
-		XFree(property);
+	if (WXGetCardinal(dpy, wwin->client_win, net_wm_window_opacity, &opacity))
+		WXSetCardinal(dpy, wwin->frame->core->window, net_wm_window_opacity, opacity);
+	else
+		WXDeleteProperty(dpy, wwin->frame->core->window, net_wm_window_opacity);
 }
 
 static void updateShowDesktop(WScreen *scr, Bool show)
 {
-	long foo;
-
-	foo = (show == True);
-	XChangeProperty(dpy, scr->root_win, net_showing_desktop, XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *)&foo, 1);
+	WXSetCardinal(dpy, scr->root_win, net_showing_desktop, show == True);
 }
 
 static void wNETWMShowingDesktop(WScreen *scr, Bool show)
@@ -712,7 +669,7 @@ void wNETWMCleanup(WScreen *scr)
 	int i;
 
 	for (i = 0; i < wlengthof(atomNames); i++)
-		XDeleteProperty(dpy, scr->root_win, *atomNames[i].atom);
+		WXDeleteProperty(dpy, scr->root_win, *atomNames[i].atom);
 }
 
 void wNETWMUpdateActions(WWindow *wwin, Bool del)
@@ -721,7 +678,7 @@ void wNETWMUpdateActions(WWindow *wwin, Bool del)
 	int i = 0;
 
 	if (del) {
-		XDeleteProperty(dpy, wwin->client_win, net_wm_allowed_actions);
+		WXDeleteProperty(dpy, wwin->client_win, net_wm_allowed_actions);
 		return;
 	}
 
@@ -757,8 +714,7 @@ void wNETWMUpdateActions(WWindow *wwin, Bool del)
 	if (!WFLAGP(wwin, no_closable))
 		action[i++] = net_wm_action_close;
 
-	XChangeProperty(dpy, wwin->client_win, net_wm_allowed_actions,
-			XA_ATOM, 32, PropModeReplace, (unsigned char *)action, i);
+	WXSetAtomN(dpy, wwin->client_win, net_wm_allowed_actions, action, i);
 }
 
 void wNETWMUpdateWorkarea(WScreen *scr)
@@ -811,7 +767,7 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 		nb_workspace = scr->workspace_count;
 
 	{
-		long property_value[nb_workspace * 4];
+		uint32_t property_value[nb_workspace * 4];
 		int i;
 
 		for (i = 0; i < nb_workspace; i++) {
@@ -821,8 +777,7 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 			property_value[4 * i + 3] = total_usable.y2 - total_usable.y1;
 		}
 
-		XChangeProperty(dpy, scr->root_win, net_workarea, XA_CARDINAL, 32, PropModeReplace,
-		                (unsigned char *) property_value, nb_workspace * 4);
+		WXSetCardinalN(dpy, scr->root_win, net_workarea, property_value, nb_workspace * 4);
 	}
 }
 
@@ -923,8 +878,7 @@ static void updateClientList(WScreen *scr)
 		windows[count++] = wwin->client_win;
 		wwin = wwin->prev;
 	}
-	XChangeProperty(dpy, scr->root_win, net_client_list, XA_WINDOW, 32,
-			PropModeReplace, (unsigned char *)windows, count);
+	WXSetWindowN(dpy, scr->root_win, net_client_list, windows, count);
 
 	wfree(windows);
 	XFlush(dpy);
@@ -960,8 +914,7 @@ static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
 		client_list_reverse[i] = w;
 	}
 
-	XChangeProperty(dpy, scr->root_win, net_client_list_stacking, XA_WINDOW, 32,
-			PropModeReplace, (unsigned char *)client_list_reverse, client_count);
+	WXSetWindowN(dpy, scr->root_win, net_client_list_stacking, client_list_reverse, client_count);
 
 	wfree(client_list);
 	wfree(client_list_reverse);
@@ -971,22 +924,12 @@ static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
 
 static void updateWorkspaceCount(WScreen *scr)
 {				/* changeable */
-	long count;
-
-	count = scr->workspace_count;
-
-	XChangeProperty(dpy, scr->root_win, net_number_of_desktops, XA_CARDINAL,
-			32, PropModeReplace, (unsigned char *)&count, 1);
+	WXSetCardinal(dpy, scr->root_win, net_number_of_desktops, scr->workspace_count);
 }
 
 static void updateCurrentWorkspace(WScreen *scr)
 {				/* changeable */
-	long count;
-
-	count = scr->current_workspace;
-
-	XChangeProperty(dpy, scr->root_win, net_current_desktop, XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *)&count, 1);
+	WXSetCardinal(dpy, scr->root_win, net_current_desktop, scr->current_workspace);
 }
 
 static void updateWorkspaceNames(WScreen *scr)
@@ -1003,8 +946,7 @@ static void updateWorkspaceNames(WScreen *scr)
 		len += (curr_size + 1);
 	}
 
-	XChangeProperty(dpy, scr->root_win, net_desktop_names, utf8_string, 8,
-			PropModeReplace, (unsigned char *)buf, len);
+	WXSetUTF8String(dpy, scr->root_win, net_desktop_names, buf, len);
 }
 
 static void updateFocusHint(WScreen *scr)
@@ -1016,29 +958,25 @@ static void updateFocusHint(WScreen *scr)
 	else
 		window = scr->focused_window->client_win;
 
-	XChangeProperty(dpy, scr->root_win, net_active_window, XA_WINDOW, 32,
-			PropModeReplace, (unsigned char *)&window, 1);
+	WXSetWindow(dpy, scr->root_win, net_active_window, window);
 }
 
 static void updateWorkspaceHint(WWindow *wwin, Bool fake, Bool del)
 {
-	long l;
-
 	if (del) {
-		XDeleteProperty(dpy, wwin->client_win, net_wm_desktop);
+		WXDeleteProperty(dpy, wwin->client_win, net_wm_desktop);
 	} else {
-		l = ((fake || IS_OMNIPRESENT(wwin)) ? -1 : wwin->frame->workspace);
-		XChangeProperty(dpy, wwin->client_win, net_wm_desktop, XA_CARDINAL,
-				32, PropModeReplace, (unsigned char *)&l, 1);
+		uint32_t l = ((fake || IS_OMNIPRESENT(wwin)) ? 0xffffffffu : (uint32_t)wwin->frame->workspace);
+		WXSetCardinal(dpy, wwin->client_win, net_wm_desktop, l);
 	}
 }
 
 static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 {				/* changeable */
 	if (del) {
-		XDeleteProperty(dpy, wwin->client_win, net_wm_state);
+		WXDeleteProperty(dpy, wwin->client_win, net_wm_state);
 #ifdef USE_XINERAMA
-		XDeleteProperty(dpy, wwin->client_win, net_wm_fullscreen_monitors);
+		WXDeleteProperty(dpy, wwin->client_win, net_wm_fullscreen_monitors);
 #endif
 	} else {
 		Atom state[15];	/* nr of defined state atoms */
@@ -1078,20 +1016,18 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 		if (wwin->flags.focused)
 			state[i++] = net_wm_state_focused; 
 
-		XChangeProperty(dpy, wwin->client_win, net_wm_state, XA_ATOM, 32,
-				PropModeReplace, (unsigned char *)state, i);
+		WXSetAtomN(dpy, wwin->client_win, net_wm_state, state, i);
 
 #ifdef USE_XINERAMA
 		if (wwin->flags.fullscreen && (wwin->flags.fullscreen_monitors[0] != -1)) {
-			unsigned long data[4];
+			uint32_t data[4];
 
 			data[0] = wwin->flags.fullscreen_monitors[0];
 			data[1] = wwin->flags.fullscreen_monitors[1];
 			data[2] = wwin->flags.fullscreen_monitors[2];
 			data[3] = wwin->flags.fullscreen_monitors[3];
 
-			XChangeProperty(dpy, wwin->client_win, net_wm_fullscreen_monitors, XA_CARDINAL, 32,
-				PropModeReplace, (unsigned char *)data, 4);
+			WXSetCardinalN(dpy, wwin->client_win, net_wm_fullscreen_monitors, data, 4);
 		}
 #endif
 	}
@@ -1103,37 +1039,28 @@ static Bool updateStrut(WScreen *scr, Window w, Bool adding)
 	Bool hasState = False;
 
 	if (adding) {
-		Atom type_ret;
-		int fmt_ret;
-		unsigned long nitems_ret, bytes_after_ret;
-		long *data = NULL;
+		uint32_t strut[12];
 
-		if ((XGetWindowProperty(dpy, w, net_wm_strut, 0, 4, False,
-				       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-				       &bytes_after_ret, (unsigned char **)&data) == Success && data) ||
-		    ((XGetWindowProperty(dpy, w, net_wm_strut_partial, 0, 12, False,
-				       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-				       &bytes_after_ret, (unsigned char **)&data) == Success && data))) {
+		/* XXX: For net_wm_strut_partial we discard the start/end fields
+		 * and treat it as a (deprecated) net_wm_strut. This means we
+		 * are marking the whole width or height of the screen as
+		 * reserved, which is not necessarily what the strut defines,
+		 * but for placement or maximization it's good enough.
+		 */
+		if (WXGetCardinalN(dpy, w, net_wm_strut, strut, 4) ||
+		    WXGetCardinalN(dpy, w, net_wm_strut_partial, strut, 12)) {
 
-			/* XXX: This is strictly incorrect in the case of net_wm_strut_partial...
-			 * Discard the start and end properties from the partial strut and treat it as
-			 * a (deprecated) strut.
-			 * This means we are marking the whole width or height of the screen as
-			 * reserved, which is not necessarily what the strut defines.  However for the
-			 * purposes of determining placement or maximization it's probably good enough.
-			 */
 			area = (WReservedArea *) wmalloc(sizeof(WReservedArea));
-			area->area.x1 = data[0];
-			area->area.x2 = data[1];
-			area->area.y1 = data[2];
-			area->area.y2 = data[3];
+			area->area.x1 = strut[0];
+			area->area.x2 = strut[1];
+			area->area.y1 = strut[2];
+			area->area.y2 = strut[3];
 
 			area->window = w;
 
 			area->next = scr->netdata->strut;
 			scr->netdata->strut = area;
 
-			XFree(data);
 			hasState = True;
 		}
 	} else {
@@ -1483,23 +1410,17 @@ void wNETWMPositionSplash(WWindow *wwin, int *x, int *y, int width, int height)
 
 static void updateWindowType(WWindow *wwin)
 {
-	Atom type_ret;
-	int fmt_ret;
 	int layer = INT_MIN; //illegal level
-	unsigned long nitems_ret, bytes_after_ret;
-	long *data = NULL;
+	size_t i, nitems;
+	Atom *type;
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_window_type, 0, 1,
-			       False, XA_ATOM, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-
-		int i;
-		Atom *type = (Atom *) data;
-		for (i = 0; i < nitems_ret; ++i) {
+	type = WXGetAtomList(dpy, wwin->client_win, net_wm_window_type, 32, &nitems);
+	if (type) {
+		for (i = 0; i < nitems; ++i) {
 			if (handleWindowType(wwin, type[i], &layer))
 				break;
 		}
-		XFree(data);
+		wfree(type);
 	}
 
 	if (wwin->frame != NULL) {
@@ -1514,45 +1435,31 @@ static void updateWindowType(WWindow *wwin)
 
 void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
 {
-	Atom type_ret;
-	int fmt_ret, i;
-	unsigned long nitems_ret, bytes_after_ret;
-	long *data = NULL;
+	int32_t desktop;
+	size_t i, nitems;
+	Atom *atoms;
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_desktop, 0, 1, False,
-			       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-
-		long desktop = *data;
-		XFree(data);
-
+	if (WXGetCardinalSigned(dpy, wwin->client_win, net_wm_desktop, &desktop)) {
 		if (desktop == -1)
 			wwin->client_flags.omnipresent = 1;
 		else
 			*workspace = desktop;
 	}
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_state, 0, 1024L, False,
-			       XA_ATOM, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-
-		Atom *state = (Atom *) data;
-		for (i = 0; i < nitems_ret; ++i)
-			doStateAtom(wwin, state[i], _NET_WM_STATE_ADD, True);
-
-		XFree(data);
+	atoms = WXGetAtomList(dpy, wwin->client_win, net_wm_state, 1024, &nitems);
+	if (atoms) {
+		for (i = 0; i < nitems; ++i)
+			doStateAtom(wwin, atoms[i], _NET_WM_STATE_ADD, True);
+		wfree(atoms);
 	}
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_window_type, 0, 1024L, False,
-			       XA_ATOM, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-
-		Atom *type = (Atom *) data;
-		for (i = 0; i < nitems_ret; ++i) {
-			if (handleWindowType(wwin, type[i], layer))
+	atoms = WXGetAtomList(dpy, wwin->client_win, net_wm_window_type, 1024, &nitems);
+	if (atoms) {
+		for (i = 0; i < nitems; ++i) {
+			if (handleWindowType(wwin, atoms[i], layer))
 				break;
 		}
-		XFree(data);
+		wfree(atoms);
 	}
 
 	wNETWMUpdateActions(wwin, False);
@@ -1564,44 +1471,32 @@ void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
 
 static Bool updateNetIconInfo(WWindow *wwin)
 {
-	Atom type_ret;
-	int fmt_ret;
-	unsigned long nitems_ret, bytes_after_ret;
-	long *data = NULL;
+	uint32_t handled;
+	uint32_t geom[4];
 	Bool hasState = False;
 	Bool old_state = wwin->flags.net_handle_icon;
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_handled_icons, 0, 1, False,
-			       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-		long handled = *data;
+	if (WXGetCardinal(dpy, wwin->client_win, net_wm_handled_icons, &handled)) {
 		wwin->flags.net_handle_icon = (handled != 0);
-		XFree(data);
 		hasState = True;
-
 	} else {
 		wwin->flags.net_handle_icon = False;
 	}
 
-	if (XGetWindowProperty(dpy, wwin->client_win, net_wm_icon_geometry, 0, 4, False,
-			       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-
+	if (WXGetCardinalN(dpy, wwin->client_win, net_wm_icon_geometry, geom, 4)) {
 #ifdef NETWM_PROPER
 		if (wwin->flags.net_handle_icon)
 #else
 		wwin->flags.net_handle_icon = True;
 #endif
 		{
-			wwin->icon_x = data[0];
-			wwin->icon_y = data[1];
-			wwin->icon_w = data[2];
-			wwin->icon_h = data[3];
+			wwin->icon_x = geom[0];
+			wwin->icon_y = geom[1];
+			wwin->icon_w = geom[2];
+			wwin->icon_h = geom[3];
 		}
 
-		XFree(data);
 		hasState = True;
-
 	} else {
 		wwin->flags.net_handle_icon = False;
 	}
@@ -1643,33 +1538,28 @@ void wNETWMCheckInitialFrameState(WWindow *wwin)
 
 static void handleDesktopNames(WScreen *scr)
 {
-	unsigned long nitems_ret, bytes_after_ret;
 	char *data, *names[32];
-	int fmt_ret, i, n;
-	Atom type_ret;
+	size_t i, len;
+	int n;
 
-	if (XGetWindowProperty(dpy, scr->root_win, net_desktop_names, 0, 1, False,
-			       utf8_string, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) != Success)
-		return;
-
+	data = WXGetUTF8String(dpy, scr->root_win, net_desktop_names, &len);
 	if (data == NULL)
-		return;
-
-	if (type_ret != utf8_string || fmt_ret != 8)
 		return;
 
 	n = 0;
 	names[n] = data;
-	for (i = 0; i < nitems_ret; i++) {
+	for (i = 0; i < len; i++) {
 		if (data[i] == 0) {
 			n++;
+			if (n >= (int)wlengthof(names))
+				break;
 			names[n] = &data[i];
 		} else if (*names[n] == 0) {
 			names[n] = &data[i];
 			wWorkspaceRename(scr, n, names[n]);
 		}
 	}
+	wfree(data);
 }
 
 Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
@@ -1928,56 +1818,21 @@ void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event)
 
 int wNETWMGetPidForWindow(Window window)
 {
-	Atom type_ret;
-	int fmt_ret;
-	unsigned long nitems_ret, bytes_after_ret;
-	long *data = NULL;
-	int pid;
+	uint32_t pid;
 
-	if (XGetWindowProperty(dpy, window, net_wm_pid, 0, 1, False,
-			       XA_CARDINAL, &type_ret, &fmt_ret, &nitems_ret,
-			       &bytes_after_ret, (unsigned char **)&data) == Success && data) {
-		pid = *data;
-		XFree(data);
-	} else {
-		pid = 0;
-	}
-
-	return pid;
+	if (WXGetCardinal(dpy, window, net_wm_pid, &pid))
+		return (int)pid;
+	return 0;
 }
 
 char *wNETWMGetWindowName(Window window)
 {
-	char *name;
-	char *ret;
-	int size;
-
-	name = (char *)PropGetCheckProperty(window, net_wm_name, utf8_string, 0, 0, &size);
-	if (name) {
-		ret = wstrndup(name, size);
-		XFree(name);
-	} else {
-		ret = NULL;
-	}
-
-	return ret;
+	return WXGetUTF8String(dpy, window, net_wm_name, NULL);
 }
 
 char *wNETWMGetIconName(Window window)
 {
-	char *name;
-	char *ret;
-	int size;
-
-	name = (char *)PropGetCheckProperty(window, net_wm_icon_name, utf8_string, 0, 0, &size);
-	if (name) {
-		ret = wstrndup(name, size);
-		XFree(name);
-	} else {
-		ret = NULL;
-	}
-
-	return ret;
+	return WXGetUTF8String(dpy, window, net_wm_icon_name, NULL);
 }
 
 static void observer(void *self, WMNotification *notif)
@@ -2046,7 +1901,7 @@ static void wsobserver(void *self, WMNotification *notif)
 
 void wNETFrameExtents(WWindow *wwin)
 {
-	long extents[4] = { 0, 0, 0, 0 };
+	uint32_t extents[4] = { 0, 0, 0, 0 };
 
 	/* The extents array describes dimensions which are not
 	 * part of the client window.  In our case that means
@@ -2068,10 +1923,10 @@ void wNETFrameExtents(WWindow *wwin)
 		extents[3] += wwin->screen_ptr->frame_border_width;
 	}
 
-	XChangeProperty(dpy, wwin->client_win, net_frame_extents, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) extents, 4);
+	WXSetCardinalN(dpy, wwin->client_win, net_frame_extents, extents, 4);
 }
 
 void wNETCleanupFrameExtents(WWindow *wwin)
 {
-	XDeleteProperty(dpy, wwin->client_win, net_frame_extents);
+	WXDeleteProperty(dpy, wwin->client_win, net_frame_extents);
 }

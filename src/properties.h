@@ -23,13 +23,11 @@
 #define WMPROPERTIES_H_
 
 #include "GNUstep.h"
-
-unsigned char* PropGetCheckProperty(Window window, Atom hint, Atom type,
-                                    int format, int count, int *retCount);
+#include <WINGs/WXHints.h>
 
 int PropGetWindowState(Window window);
 
-int PropGetNormalHints(Window window, XSizeHints *size_hints, int *pre_iccm);
+int PropGetNormalHints(Window window, WXSizeHints *size_hints, int *pre_iccm);
 void PropGetProtocols(Window window, WProtocols *prots);
 int PropGetWMClass(Window window, char **wm_class, char **wm_instance);
 int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes **attr);

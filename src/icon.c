@@ -231,7 +231,7 @@ void wIconDestroy(WIcon *icon)
 		XReparentWindow(dpy, icon->icon_win, scr->root_win, x, y);
 	}
 	if (icon->icon_name)
-		XFree(icon->icon_name);
+		wfree(icon->icon_name);
 
 	if (icon->pixmap)
 		XFreePixmap(dpy, icon->pixmap);
@@ -337,7 +337,7 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 
 	/* Remove the previous icon title */
 	if (icon->icon_name != NULL)
-		XFree(icon->icon_name);
+		wfree(icon->icon_name);
 
 	/* Set the new one, using two methods to identify
 	the icon name or switch back to window name */
@@ -345,7 +345,7 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 	if (icon->icon_name) {
 		/* treat empty string as unset */
 		if (icon->icon_name[0] == '\0') {
-			XFree(icon->icon_name);
+			wfree(icon->icon_name);
 			icon->icon_name = NULL;
 		}
 	}
@@ -465,7 +465,7 @@ static char *get_icon_cache_path(void)
 static RImage *get_wwindow_image_from_wmhints(WWindow *wwin, WIcon *icon)
 {
 	RImage *image = NULL;
-	XWMHints *hints = wwin->wm_hints;
+	WXWMHints *hints = wwin->wm_hints;
 
 	if (hints && (hints->flags & IconPixmapHint) && hints->icon_pixmap != None)
 		image = RCreateImageFromDrawable(icon->core->screen_ptr->rcontext,

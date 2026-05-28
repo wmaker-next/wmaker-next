@@ -25,6 +25,8 @@
 #include <X11/Xutil.h>
 #include <X11/Xproto.h>
 #include <X11/Xatom.h>
+#include <WINGs/WXProp.h>
+#include <WINGs/WXHints.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -57,18 +59,9 @@ enum {
 
 static void sendMessage(Window window, int what, int tag)
 {
-	XEvent event;
-
-	event.xclient.type = ClientMessage;
-	event.xclient.message_type = w_global.atom.wmaker.menu;
-	event.xclient.format = 32;
-	event.xclient.display = dpy;
-	event.xclient.window = window;
-	event.xclient.data.l[0] = w_global.timestamp.last_event;
-	event.xclient.data.l[1] = what;
-	event.xclient.data.l[2] = tag;
-	event.xclient.data.l[3] = 0;
-	XSendEvent(dpy, window, False, NoEventMask, &event);
+	WXSendClientMessage(dpy, window, NoEventMask, window,
+			    w_global.atom.wmaker.menu,
+			    w_global.timestamp.last_event, what, tag, 0, 0);
 	XFlush(dpy);
 }
 
@@ -202,22 +195,20 @@ static WMenu *parseMenuCommand(WScreen * scr, Window win, char **slist, int coun
 
 WMenu *wAppMenuGet(WScreen * scr, Window window)
 {
-	XTextProperty text_prop;
 	int count, i;
 	char **slist;
 	WMenu *menu;
 
-	if (!XGetTextProperty(dpy, window, &text_prop, w_global.atom.wmaker.menu)) {
+	slist = WXGetTextPropertyList(dpy, window, w_global.atom.wmaker.menu, &count);
+	if (!slist)
+		return NULL;
+	if (count < 1) {
+		WXFreeStringList(slist, count);
 		return NULL;
 	}
-	if (!XTextPropertyToStringList(&text_prop, &slist, &count) || count < 1) {
-		XFree(text_prop.value);
-		return NULL;
-	}
-	XFree(text_prop.value);
 	if (strcmp(slist[0], "WMMenu 0") != 0) {
 		wwarning(_("appmenu: unknown version of WMMenu in window %lx: %s"), window, slist[0]);
-		XFreeStringList(slist);
+		WXFreeStringList(slist, count);
 		return NULL;
 	}
 
@@ -226,7 +217,7 @@ WMenu *wAppMenuGet(WScreen * scr, Window window)
 	if (menu)
 		menu->parent = NULL;
 
-	XFreeStringList(slist);
+	WXFreeStringList(slist, count);
 
 	return menu;
 }

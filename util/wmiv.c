@@ -109,8 +109,6 @@ Bool slideshow_flag = False;
 int slideshow_delay = 5;
 pthread_t tid = 0;
 #endif
-XTextProperty title_property;
-XTextProperty icon_property;
 unsigned current_index = 1;
 unsigned max_index = 1;
 
@@ -192,21 +190,10 @@ int wait_for_frame_extents(Display *disp, Window win, int timeout_ms) {
 
 	while (elapsed < timeout_ms) {
 		/* Check if property is already available */
-		Atom actual_type;
-		int actual_format;
-		unsigned long num_items;
-		unsigned long bytes_after;
-		unsigned char *prop_return = NULL;
+		uint32_t tmp;
 
-		int status = XGetWindowProperty(disp, win, net_frame_extents, 0L, 1L, False, XA_CARDINAL,
-				&actual_type, &actual_format, &num_items, &bytes_after, &prop_return);
-
-		if (status == Success && actual_type == XA_CARDINAL && num_items >= 1) {
-			if (prop_return)
-				XFree(prop_return);
+		if (WXGetCardinal(disp, win, net_frame_extents, &tmp))
 			return 1;
-		}
-		if (prop_return) XFree(prop_return);
 
 		/* Wait for events or timeout */
 		if (XPending(disp)) {
@@ -232,13 +219,8 @@ int wait_for_frame_extents(Display *disp, Window win, int timeout_ms) {
 	Returns 1 on success, 0 on failure
 */
 int get_window_decor_size(Display *disp, Window win, FrameExtents *extents) {
-	Atom actual_type;
-	int actual_format;
-	unsigned long num_items;
-	unsigned long bytes_after;
-	unsigned char *prop_return = NULL;
+	uint32_t ext[4];
 	Atom net_frame_extents;
-	int status;
 
 	/* Get the atom for the _NET_FRAME_EXTENTS property */
 	net_frame_extents = XInternAtom(disp, "_NET_FRAME_EXTENTS", False);
@@ -248,45 +230,21 @@ int get_window_decor_size(Display *disp, Window win, FrameExtents *extents) {
 	}
 
 	/* Retrieve the property value */
-	status = XGetWindowProperty(disp, win, net_frame_extents, 0L, 4L, False, XA_CARDINAL,
-				&actual_type, &actual_format, &num_items, &bytes_after, &prop_return);
-
-	if (status == Success && actual_type == XA_CARDINAL && actual_format == 32 && num_items == 4) {
-		unsigned long *extents_data = (unsigned long *)prop_return;
-		extents->left = extents_data[0];
-		extents->right = extents_data[1];
-		extents->top = extents_data[2];
-		extents->bottom = extents_data[3];
+	if (WXGetCardinalN(disp, win, net_frame_extents, ext, 4)) {
+		extents->left = ext[0];
+		extents->right = ext[1];
+		extents->top = ext[2];
+		extents->bottom = ext[3];
 
 		if (WMIV_DEBUG) {
 			fprintf(stderr, "Successfully got frame extents: left=%lu, right=%lu, top=%lu, bottom=%lu\n",
 				extents->left, extents->right, extents->top, extents->bottom);
 		}
-
-		XFree(prop_return);
 		return 1;
 	}
 
-	if (prop_return)
-		XFree(prop_return);
-
-	if (status != Success) {
-		if (WMIV_DEBUG) {
-			fprintf(stderr, "Error: XGetWindowProperty failed with status: %d\n", status);
-		}
-	} else if (actual_type != XA_CARDINAL) {
-		if (WMIV_DEBUG) {
-			fprintf(stderr, "Error: wrong property type: got %lu, expected %lu (XA_CARDINAL)\n",
-				(unsigned long)actual_type, (unsigned long)XA_CARDINAL);
-		}
-	} else if (actual_format != 32) {
-		if (WMIV_DEBUG) {
-			fprintf(stderr, "Error: wrong property format: got %d, expected 32\n", actual_format);
-		}
-	} else if (num_items != 4) {
-		if (WMIV_DEBUG) {
-			fprintf(stderr, "Error: wrong number of items: got %lu, expected 4\n", num_items);
-		}
+	if (WMIV_DEBUG) {
+		fprintf(stderr, "Error: failed to read _NET_FRAME_EXTENTS (wrong type/format/count or missing)\n");
 	}
 
 	return 0;
@@ -965,7 +923,7 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 	Change window title
 	Returns EXIT_SUCCESS on success, EXIT_FAILURE on failure
 */
-int change_title(XTextProperty *prop, char *filename)
+int change_title(char *filename)
 {
 	char *combined_title = NULL;
 	if (ignore_unknown_file_format) {
@@ -977,10 +935,7 @@ int change_title(XTextProperty *prop, char *filename)
 			if (!asprintf(&combined_title, "%s - %u/%u", APPNAME, current_index, max_index))
 				return EXIT_FAILURE;
 	}
-	Xutf8TextListToTextProperty(dpy, &combined_title, 1, XUTF8StringStyle, prop);
-	XSetWMName(dpy, win, prop);
-	if (prop->value)
-		XFree(prop->value);
+	WXSetWMName(dpy, win, combined_title);
 	free(combined_title);
 	return EXIT_SUCCESS;
 }
@@ -1461,7 +1416,7 @@ int change_image(int way)
 					XResizeWindow(dpy, win, img->width, img->height);
 				else
 					XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0, img->width, img->height, 0, 0);
-				change_title(&title_property, (char *)current_link->data);
+				change_title((char *)current_link->data);
 			} else {
 				XClearWindow(dpy, win);
 				XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
@@ -1696,9 +1651,8 @@ int main(int argc, char **argv)
 	char *reading_filename = "";
 	int screen_num, file_i;
 	int quit = 0;
-	XClassHint *class_hints;
-	XSizeHints *size_hints;
-	XWMHints *win_hints;
+	WXSizeHints *size_hints;
+	WXWMHints *win_hints;
 	Atom delWindow;
 	Atom xdnd_aware;
 	Atom xdnd_version = XDND_VERSION;
@@ -1706,14 +1660,6 @@ int main(int argc, char **argv)
 #ifdef USE_XPM
 	Pixmap icon_pixmap, icon_shape;
 #endif
-
-	class_hints = XAllocClassHint();
-	if (!class_hints) {
-		fprintf(stderr, "Error: failed to allocate memory\n");
-		return EXIT_FAILURE;
-	}
-	class_hints->res_name = (char *)APPNAME;
-	class_hints->res_class = "wmiv";
 
 	/* Init colors */
 	lightGray.red = lightGray.green = lightGray.blue = 211;
@@ -1849,7 +1795,7 @@ int main(int argc, char **argv)
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 10, 10, 0, 0, BlackPixel(dpy, screen_num));
 	XSelectInput(dpy, win, KeyPressMask|StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|FocusChangeMask|PropertyChangeMask);
 
-	size_hints = XAllocSizeHints();
+	size_hints = WXAllocSizeHints();
 	if (!size_hints) {
 		fprintf(stderr, "Error: failed to allocate memory\n");
 		return EXIT_FAILURE;
@@ -1858,12 +1804,12 @@ int main(int argc, char **argv)
 	size_hints->height = img->height;
 
 	delWindow = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-	XSetWMProtocols(dpy, win, &delWindow, 1);
-	change_title(&title_property, reading_filename);
+	WXSetWMProtocols(dpy, win, &delWindow, 1);
+	change_title(reading_filename);
 
 	xdnd_aware = XInternAtom(dpy, "XdndAware", False);
-	XChangeProperty(dpy, win, xdnd_aware, XA_ATOM, 32, PropModeReplace, (unsigned char *) &xdnd_version, 1);
-	win_hints = XAllocWMHints();
+	WXSetAtom(dpy, win, xdnd_aware, xdnd_version);
+	win_hints = WXAllocWMHints();
 
 	if (win_hints) {
 		win_hints->flags = StateHint|InputHint|WindowGroupHint;
@@ -1887,7 +1833,7 @@ int main(int argc, char **argv)
 						}
 
 						/* Create ARGB32 data: width, height, followed by ARGB pixel data */
-						unsigned long *icon_data = malloc(sizeof(unsigned long) * (2 + icon_width * icon_height));
+						uint32_t *icon_data = malloc(sizeof(uint32_t) * (2 + icon_width * icon_height));
 						if (icon_data) {
 							icon_data[0] = icon_width;
 							icon_data[1] = icon_height;
@@ -1909,8 +1855,7 @@ int main(int argc, char **argv)
 								}
 							}
 
-							XChangeProperty(dpy, win, net_wm_icon, XA_CARDINAL, 32, PropModeReplace,
-								(unsigned char *)icon_data, 2 + icon_width * icon_height);
+							WXSetCardinalN(dpy, win, net_wm_icon, icon_data, 2 + icon_width * icon_height);
 							free(icon_data);
 						}
 
@@ -1926,13 +1871,13 @@ int main(int argc, char **argv)
 		win_hints->initial_state = NormalState;
 		win_hints->input = True;
 		win_hints->window_group = win;
-		XStringListToTextProperty((char **)&APPNAME, 1, &icon_property);
-		XSetWMProperties(dpy, win, NULL, &icon_property, argv, argc, size_hints, win_hints, class_hints);
-		if (icon_property.value)
-			XFree(icon_property.value);
-		XFree(win_hints);
-		XFree(class_hints);
-		XFree(size_hints);
+		WXSetWMIconName(dpy, win, APPNAME);
+		WXSetCommand(dpy, win, argv, argc);
+		WXSetNormalHints(dpy, win, size_hints);
+		WXSetWMHints(dpy, win, win_hints);
+		WXSetWMClass(dpy, win, APPNAME, "wmiv");
+		wfree(win_hints);
+		wfree(size_hints);
 	}
 	XMapWindow(dpy, win);
 	XFlush(dpy);
@@ -2106,7 +2051,7 @@ int main(int argc, char **argv)
 						RReleaseImage(old_img);
 						img = RCloneImage(tmp2);
 						RReleaseImage(tmp2);
-						change_title(&title_property, (char *)current_link->data);
+						change_title((char *)current_link->data);
 						XSync(dpy, True);
 						rescale_image();
 						XResizeWindow(dpy, win, img->width, img->height);

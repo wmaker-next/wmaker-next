@@ -26,17 +26,19 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <WINGs/WXProp.h>
+
 #include "WindowMaker.h"
 #include "window.h"
 #include "GNUstep.h"
 #include "properties.h"
 
 
-int PropGetNormalHints(Window window, XSizeHints * size_hints, int *pre_iccm)
+int PropGetNormalHints(Window window, WXSizeHints *size_hints, int *pre_iccm)
 {
 	long supplied_hints;
 
-	if (!XGetWMNormalHints(dpy, window, size_hints, &supplied_hints)) {
+	if (!WXGetNormalHints(dpy, window, size_hints, &supplied_hints)) {
 		return False;
 	}
 	if (supplied_hints == (USPosition | USSize | PPosition | PSize | PMinSize | PMaxSize
@@ -50,34 +52,24 @@ int PropGetNormalHints(Window window, XSizeHints * size_hints, int *pre_iccm)
 
 int PropGetWMClass(Window window, char **wm_class, char **wm_instance)
 {
-	XClassHint *class_hint;
-
-	class_hint = XAllocClassHint();
-	if (XGetClassHint(dpy, window, class_hint) == 0) {
-		*wm_class = strdup("default");
-		*wm_instance = strdup("default");
-		XFree(class_hint);
+	if (!WXGetWMClass(dpy, window, wm_instance, wm_class)) {
+		*wm_class = wstrdup("default");
+		*wm_instance = wstrdup("default");
 		return False;
 	}
-	*wm_instance = strdup(class_hint->res_name);
-	*wm_class = strdup(class_hint->res_class);
-
-	XFree(class_hint->res_name);
-	XFree(class_hint->res_class);
-	XFree(class_hint);
-
 	return True;
 }
 
 void PropGetProtocols(Window window, WProtocols * prots)
 {
 	Atom *protocols;
-	int count, i;
+	size_t count, i;
 
 	memset(prots, 0, sizeof(WProtocols));
-	if (!XGetWMProtocols(dpy, window, &protocols, &count)) {
+	protocols = WXGetWMProtocols(dpy, window, &count);
+	if (!protocols)
 		return;
-	}
+
 	for (i = 0; i < count; i++) {
 		if (protocols[i] == w_global.atom.wm.take_focus)
 			prots->TAKE_FOCUS = 1;
@@ -88,56 +80,18 @@ void PropGetProtocols(Window window, WProtocols * prots)
 		else if (protocols[i] == w_global.atom.gnustep.wm_miniaturize_window)
 			prots->MINIATURIZE_WINDOW = 1;
 	}
-	XFree(protocols);
-}
-
-unsigned char *PropGetCheckProperty(Window window, Atom hint, Atom type, int format, int count, int *retCount)
-{
-	Atom type_ret;
-	int fmt_ret;
-	unsigned long nitems_ret;
-	unsigned long bytes_after_ret;
-	unsigned char *data;
-	int tmp;
-
-	if (count <= 0)
-		tmp = 0xffffff;
-	else
-		tmp = count;
-
-	if (XGetWindowProperty(dpy, window, hint, 0, tmp, False, type,
-			       &type_ret, &fmt_ret, &nitems_ret, &bytes_after_ret,
-			       (unsigned char **)&data) != Success || !data)
-		return NULL;
-
-	if ((type != AnyPropertyType && type != type_ret)
-	    || (count > 0 && nitems_ret != count)
-	    || (format != 0 && format != fmt_ret)) {
-		XFree(data);
-		return NULL;
-	}
-
-	if (retCount)
-		*retCount = nitems_ret;
-
-	return data;
+	wfree(protocols);
 }
 
 int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes ** attr)
 {
-	unsigned long *data;
+	uint32_t data[9];
 
-	data = (unsigned long *)PropGetCheckProperty(window, w_global.atom.gnustep.wm_attr,
-						     w_global.atom.gnustep.wm_attr, 32, 9, NULL);
-
-	if (!data)
+	if (!WXGetFormat32N(dpy, window, w_global.atom.gnustep.wm_attr,
+			    w_global.atom.gnustep.wm_attr, data, 9))
 		return False;
 
-	*attr = malloc(sizeof(GNUstepWMAttributes));
-	if (!*attr) {
-		XFree(data);
-		return False;
-	}
+	*attr = wmalloc(sizeof(GNUstepWMAttributes));
 	(*attr)->flags = data[0];
 	(*attr)->window_style = data[1];
 	(*attr)->window_level = data[2];
@@ -147,8 +101,6 @@ int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes ** attr)
 	(*attr)->miniaturize_mask = data[6];
 	(*attr)->close_mask = data[7];
 	(*attr)->extra_flags = data[8];
-
-	XFree(data);
 
 	return True;
 }
@@ -162,8 +114,7 @@ void PropSetWMakerProtocols(Window root)
 	protocols[count++] = w_global.atom.wmaker.wm_function;
 	protocols[count++] = w_global.atom.wmaker.noticeboard;
 
-	XChangeProperty(dpy, root, w_global.atom.wmaker.wm_protocols, XA_ATOM,
-			32, PropModeReplace, (unsigned char *)protocols, count);
+	WXSetAtomN(dpy, root, w_global.atom.wmaker.wm_protocols, protocols, count);
 }
 
 void PropSetIconTileHint(WScreen * scr, RImage * image)
@@ -210,48 +161,36 @@ void PropSetIconTileHint(WScreen * scr, RImage * image)
 		}
 	}
 
-	XChangeProperty(dpy, scr->info_window, w_global.atom.wmaker.icon_tile,
-			imageAtom, 8, PropModeReplace, tmp, image->width * image->height * 4 + 4);
+	WXSetFormat8(dpy, scr->info_window, w_global.atom.wmaker.icon_tile,
+		     imageAtom, tmp, image->width * image->height * 4 + 4);
 	wfree(tmp);
 
 }
 
 Window PropGetClientLeader(Window window)
 {
-	Window *win;
 	Window leader;
 
-	win = (Window *) PropGetCheckProperty(window, w_global.atom.wm.client_leader, XA_WINDOW, 32, 1, NULL);
-
-	if (!win)
+	if (!WXGetWindow(dpy, window, w_global.atom.wm.client_leader, &leader))
 		return None;
-
-	leader = (Window) * win;
-	XFree(win);
 
 	return leader;
 }
 
 int PropGetWindowState(Window window)
 {
-	long *data;
-	long state;
+	uint32_t state;
 
-	data = (long *)PropGetCheckProperty(window, w_global.atom.wm.state,
-				w_global.atom.wm.state, 32, 1, NULL);
-
-	if (!data)
+	if (!WXGetFormat32N(dpy, window, w_global.atom.wm.state,
+			    w_global.atom.wm.state, &state, 1))
 		return -1;
 
-	state = *data;
-	XFree(data);
-
-	return state;
+	return (int)state;
 }
 
 void PropCleanUp(Window root)
 {
-	XDeleteProperty(dpy, root, w_global.atom.wmaker.wm_protocols);
-	XDeleteProperty(dpy, root, w_global.atom.wmaker.noticeboard);
-	XDeleteProperty(dpy, root, XA_WM_ICON_SIZE);
+	WXDeleteProperty(dpy, root, w_global.atom.wmaker.wm_protocols);
+	WXDeleteProperty(dpy, root, w_global.atom.wmaker.noticeboard);
+	WXDeleteProperty(dpy, root, XA_WM_ICON_SIZE);
 }

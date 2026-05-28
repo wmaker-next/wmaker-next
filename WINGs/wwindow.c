@@ -99,7 +99,7 @@ void WMChangePanelOwner(WMWindow * win, WMWindow * newOwner)
 	win->owner = newOwner;
 
 	if (win->view->flags.realized && newOwner) {
-		XSetTransientForHint(win->view->screen->display, win->view->window, newOwner->view->window);
+		WXSetTransientFor(win->view->screen->display, win->view->window, newOwner->view->window);
 	}
 }
 
@@ -152,56 +152,34 @@ WMWindow *WMCreateWindowWithStyle(WMScreen * screen, const char *name, int style
 static void setWindowTitle(WMWindow * win, const char *title)
 {
 	WMScreen *scr = win->view->screen;
-	XTextProperty property;
-	int result;
 
-	result = XmbTextListToTextProperty(scr->display, (char **)&title, 1, XStdICCTextStyle, &property);
-	if (result == XNoMemory || result == XLocaleNotSupported) {
-		wwarning(_("window title conversion error... using STRING encoding"));
-		XStoreName(scr->display, win->view->window, title);
-	} else {
-		XSetWMName(scr->display, win->view->window, &property);
-		if (property.value)
-			XFree(property.value);
-	}
+	WXSetWMName(scr->display, win->view->window, title);
 
-	XChangeProperty(scr->display, win->view->window,
-			scr->netwmName, scr->utf8String, 8,
-			PropModeReplace, (unsigned char *)title, strlen(title));
+	WXSetUTF8String(scr->display, win->view->window, scr->netwmName,
+			title, strlen(title));
 }
 
 static void setMiniwindowTitle(WMWindow * win, const char *title)
 {
 	WMScreen *scr = win->view->screen;
-	XTextProperty property;
-	int result;
 
-	result = XmbTextListToTextProperty(scr->display, (char **)&title, 1, XStdICCTextStyle, &property);
-	if (result == XNoMemory || result == XLocaleNotSupported) {
-		wwarning(_("icon title conversion error... using STRING encoding"));
-		XSetIconName(scr->display, win->view->window, title);
-	} else {
-		XSetWMIconName(scr->display, win->view->window, &property);
-		if (property.value)
-			XFree(property.value);
-	}
+	WXSetWMIconName(scr->display, win->view->window, title);
 
-	XChangeProperty(scr->display, win->view->window,
-			scr->netwmIconName, scr->utf8String, 8,
-			PropModeReplace, (unsigned char *)title, strlen(title));
+	WXSetUTF8String(scr->display, win->view->window, scr->netwmIconName,
+			title, strlen(title));
 }
 
 static void setMiniwindow(WMWindow *win, RImage *image)
 {
 	WMScreen *scr = win->view->screen;
-	unsigned long *data;
+	uint32_t *data;
 	int x, y;
 	int o;
 
 	if (!image)
 		return;
 
-	data = wmalloc((image->width * image->height + 2) * sizeof(long));
+	data = wmalloc((image->width * image->height + 2) * sizeof(uint32_t));
 
 	o = 0;
 	data[o++] = image->width;
@@ -209,27 +187,26 @@ static void setMiniwindow(WMWindow *win, RImage *image)
 
 	for (y = 0; y < image->height; y++) {
 		for (x = 0; x < image->width; x++) {
-			unsigned long pixel;
+			uint32_t pixel;
 			int offs = (x + y * image->width);
 
 			if (image->format == RRGBFormat) {
-				pixel  = ((unsigned long) image->data[offs * 3    ]) << 16;
-				pixel |= ((unsigned long) image->data[offs * 3 + 1]) <<  8;
-				pixel |= ((unsigned long) image->data[offs * 3 + 2]);
+				pixel  = ((uint32_t) image->data[offs * 3    ]) << 16;
+				pixel |= ((uint32_t) image->data[offs * 3 + 1]) <<  8;
+				pixel |= ((uint32_t) image->data[offs * 3 + 2]);
 			} else {
-				pixel  = ((unsigned long) image->data[offs * 4    ]) << 16;
-				pixel |= ((unsigned long) image->data[offs * 4 + 1]) <<  8;
-				pixel |= ((unsigned long) image->data[offs * 4 + 2]);
-				pixel |= ((unsigned long) image->data[offs * 4 + 3]) << 24;
+				pixel  = ((uint32_t) image->data[offs * 4    ]) << 16;
+				pixel |= ((uint32_t) image->data[offs * 4 + 1]) <<  8;
+				pixel |= ((uint32_t) image->data[offs * 4 + 2]);
+				pixel |= ((uint32_t) image->data[offs * 4 + 3]) << 24;
 			}
 
 			data[o++] = pixel;
 		}
 	}
 
-	XChangeProperty(scr->display, win->view->window, scr->netwmIcon,
-			XA_CARDINAL, 32, PropModeReplace,
-			(unsigned char *)data, (image->width * image->height + 2));
+	WXSetCardinalN(scr->display, win->view->window, scr->netwmIcon,
+		       data, (image->width * image->height + 2));
 
 	wfree(data);
 }
@@ -252,26 +229,28 @@ void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 {
 	Atom *atoms = NULL;
 	Atom *newAtoms;
-	int count;
+	size_t count;
 	WMScreen *scr = win->view->screen;
 
 	if (win->view->flags.realized) {
 		if (action && !win->closeAction) {
-			if (!XGetWMProtocols(scr->display, win->view->window, &atoms, &count)) {
+			atoms = WXGetWMProtocols(scr->display, win->view->window, &count);
+			if (!atoms) {
 				count = 0;
 			}
 			newAtoms = wmalloc((count + 1) * sizeof(Atom));
 			if (count > 0)
 				memcpy(newAtoms, atoms, count * sizeof(Atom));
 			newAtoms[count++] = scr->deleteWindowAtom;
-			XSetWMProtocols(scr->display, win->view->window, newAtoms, count);
+			WXSetWMProtocols(scr->display, win->view->window, newAtoms, count);
 			if (atoms)
-				XFree(atoms);
+				wfree(atoms);
 			wfree(newAtoms);
 		} else if (!action && win->closeAction) {
-			int i, ncount;
+			size_t i, ncount;
 
-			if (XGetWMProtocols(scr->display, win->view->window, &atoms, &count) && count > 0) {
+			atoms = WXGetWMProtocols(scr->display, win->view->window, &count);
+			if (atoms && count > 0) {
 				newAtoms = wmalloc((count - 1) * sizeof(Atom));
 				ncount = 0;
 				for (i = 0; i < count; i++) {
@@ -280,9 +259,9 @@ void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 						ncount++;
 					}
 				}
-				XSetWMProtocols(scr->display, win->view->window, newAtoms, ncount);
+				WXSetWMProtocols(scr->display, win->view->window, newAtoms, ncount);
 				if (atoms)
-					XFree(atoms);
+					wfree(atoms);
 				wfree(newAtoms);
 			}
 		}
@@ -315,9 +294,9 @@ static void willResizeWindow(W_ViewDelegate * self, WMView * view, unsigned *wid
 
 static void setSizeHints(WMWindow * win)
 {
-	XSizeHints *hints;
+	WXSizeHints *hints;
 
-	hints = XAllocSizeHints();
+	hints = WXAllocSizeHints();
 	if (!hints) {
 		wwarning("could not allocate memory for window size hints");
 		return;
@@ -364,14 +343,14 @@ static void setSizeHints(WMWindow * win)
 	}
 
 	if (hints->flags) {
-		XSetWMNormalHints(win->view->screen->display, win->view->window, hints);
+		WXSetNormalHints(win->view->screen->display, win->view->window, hints);
 	}
-	XFree(hints);
+	wfree(hints);
 }
 
 static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttributes * attr)
 {
-	unsigned long data[9];
+	uint32_t data[9];
 
 	/* handle idiot compilers where array of CARD32 != struct of CARD32 */
 	data[0] = attr->flags;
@@ -384,8 +363,8 @@ static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttribute
 	data[6] = attr->miniaturize_mask;
 	data[7] = attr->close_mask;
 	data[8] = attr->extra_flags;
-	XChangeProperty(scr->display, window, scr->attribsAtom, scr->attribsAtom,
-			32, PropModeReplace, (unsigned char *)data, 9);
+	WXSetFormat32N(scr->display, window, scr->attribsAtom, scr->attribsAtom,
+		       data, 9);
 }
 
 static void setWindowMakerHints(WMWindow * win)
@@ -411,19 +390,14 @@ static void setWindowMakerHints(WMWindow * win)
 
 static void realizeWindow(WMWindow * win)
 {
-	XWMHints *hints;
-	XClassHint *classHint;
+	WXWMHints *hints;
 	WMScreen *scr = win->view->screen;
 	Atom atoms[4];
 	int count;
 
-	classHint = XAllocClassHint();
-	classHint->res_name = win->wname;
-	classHint->res_class = WMGetApplicationName();
-	XSetClassHint(scr->display, win->view->window, classHint);
-	XFree(classHint);
+	WXSetWMClass(scr->display, win->view->window, win->wname, WMGetApplicationName());
 
-	hints = XAllocWMHints();
+	hints = WXAllocWMHints();
 	hints->flags = 0;
 	if (!scr->aflags.simpleApplication) {
 		hints->flags |= WindowGroupHint;
@@ -438,8 +412,8 @@ static void realizeWindow(WMWindow * win)
 		}
 	}
 	if (hints->flags != 0)
-		XSetWMHints(scr->display, win->view->window, hints);
-	XFree(hints);
+		WXSetWMHints(scr->display, win->view->window, hints);
+	wfree(hints);
 
 	count = 0;
 	if (win->closeAction) {
@@ -447,18 +421,19 @@ static void realizeWindow(WMWindow * win)
 	}
 
 	if (count > 0)
-		XSetWMProtocols(scr->display, win->view->window, atoms, count);
+		WXSetWMProtocols(scr->display, win->view->window, atoms, count);
 
-	if (win->title || win->miniTitle)
-		XmbSetWMProperties(scr->display, win->view->window, win->title,
-				   win->miniTitle, NULL, 0, NULL, NULL, NULL);
+	if (win->title)
+		WXSetWMName(scr->display, win->view->window, win->title);
+	if (win->miniTitle)
+		WXSetWMIconName(scr->display, win->view->window, win->miniTitle);
 
 	setWindowMakerHints(win);
 
 	setSizeHints(win);
 
 	if (win->owner) {
-		XSetTransientForHint(scr->display, win->view->window, win->owner->view->window);
+		WXSetTransientFor(scr->display, win->view->window, win->owner->view->window);
 	}
 
 	if (win->title)
@@ -564,11 +539,11 @@ void WMSetWindowMiniwindowPixmap(WMWindow * win, WMPixmap * pixmap)
 			win->miniImage = NULL;
 
 		if (win->view->flags.realized) {
-			XWMHints *hints;
+			WXWMHints *hints;
 
-			hints = XGetWMHints(win->view->screen->display, win->view->window);
+			hints = WXGetWMHints(win->view->screen->display, win->view->window);
 			if (!hints) {
-				hints = XAllocWMHints();
+				hints = WXAllocWMHints();
 				if (!hints) {
 					wwarning("could not allocate memory for WM hints");
 					return;
@@ -583,8 +558,8 @@ void WMSetWindowMiniwindowPixmap(WMWindow * win, WMPixmap * pixmap)
 					hints->flags |= IconMaskHint;
 				}
 			}
-			XSetWMHints(win->view->screen->display, win->view->window, hints);
-			XFree(hints);
+			WXSetWMHints(win->view->screen->display, win->view->window, hints);
+			wfree(hints);
 		}
 	}
 }

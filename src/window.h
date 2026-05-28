@@ -22,6 +22,7 @@
 #define WMWINDOW_H_
 
 #include <wraster.h>
+#include <WINGs/WXHints.h>
 
 #include "wconfig.h"
 #include "GNUstep.h"
@@ -214,8 +215,8 @@ typedef struct WWindow {
 		unsigned int width, height;	/* size of the client window */
 	} client;
 
-	XSizeHints *normal_hints;		/* WM_NORMAL_HINTS */
-	XWMHints *wm_hints;			/* WM_HINTS (optional) */
+	WXSizeHints *normal_hints;		/* WM_NORMAL_HINTS */
+	WXWMHints *wm_hints;			/* WM_HINTS (optional) */
 	char *wm_instance;			/* instance of WM_CLASS */
 	char *wm_class;				/* class of WM_CLASS */
 	GNUstepWMAttributes *wm_gnustep_attr;	/* GNUstep window attributes */

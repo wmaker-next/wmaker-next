@@ -35,6 +35,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
+#include <WINGs/WXHints.h>
 #include <X11/cursorfont.h>
 #include <X11/Xproto.h>
 #include <X11/keysym.h>
@@ -778,16 +779,16 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 
 	/* first remove all icon windows */
 	for (i = 0; i < nchildren; i++) {
-		XWMHints *wmhints;
+		WXWMHints *wmhints;
 
 		if (children[i] == None)
 			continue;
 
-		wmhints = XGetWMHints(dpy, children[i]);
+		wmhints = WXGetWMHints(dpy, children[i]);
 		if (wmhints && (wmhints->flags & IconWindowHint)) {
 			for (j = 0; j < nchildren; j++) {
 				if (children[j] == wmhints->icon_window) {
-					XFree(wmhints);
+					wfree(wmhints);
 					wmhints = NULL;
 					children[j] = None;
 					break;
@@ -795,7 +796,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 			}
 		}
 		if (wmhints) {
-			XFree(wmhints);
+			wfree(wmhints);
 		}
 	}
 

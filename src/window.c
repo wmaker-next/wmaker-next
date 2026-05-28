@@ -48,6 +48,8 @@
 
 /* For getting mouse wheel mappings from WINGs */
 #include <WINGs/WINGs.h>
+#include <WINGs/WXProp.h>
+#include <WINGs/WXHints.h>
 
 #include "WindowMaker.h"
 #include "GNUstep.h"
@@ -216,16 +218,16 @@ void wWindowDestroy(WWindow *wwin)
 	}
 
 	if (wwin->normal_hints)
-		XFree(wwin->normal_hints);
+		wfree(wwin->normal_hints);
 
 	if (wwin->wm_hints)
-		XFree(wwin->wm_hints);
+		wfree(wwin->wm_hints);
 
 	if (wwin->wm_instance)
-		XFree(wwin->wm_instance);
+		wfree(wwin->wm_instance);
 
 	if (wwin->wm_class)
-		XFree(wwin->wm_class);
+		wfree(wwin->wm_class);
 
 	if (wwin->wm_gnustep_attr)
 		wfree(wwin->wm_gnustep_attr);
@@ -306,21 +308,10 @@ static void setupGNUstepHints(WWindow *wwin, GNUstepWMAttributes *gs_hints)
 
 static void discard_hints_from_gtk(WWindow *wwin)
 {
-	Atom type;
-	int format;
-	unsigned long nb_item, nb_remain;
-	unsigned char *result;
-	int status;
-
-	status = XGetWindowProperty(dpy, wwin->client_win, w_global.atom.desktop.gtk_object_path, 0, 16, False,
-	                            AnyPropertyType, &type, &format, &nb_item, &nb_remain, &result);
-	if (status != Success)
+	if (!WXPropExists(dpy, wwin->client_win, w_global.atom.desktop.gtk_object_path))
 		return;
 
 	/* If we're here, that means the Property exists. We don't care what is inside, it means it is a GTK-based application */
-
-	if (result != NULL)
-		XFree(result);
 
 	/* GTK is asking to remove these decorations: */
 	wwin->client_flags.no_titlebar = 0;
@@ -557,16 +548,14 @@ static pid_t getWindowPid(Window win)
 
 static void fixLeaderProperties(WWindow *wwin)
 {
-	XClassHint *classHint;
-	XWMHints *hints, *clientHints;
+	WXWMHints *hints, *clientHints;
 	XWindowAttributes attr;
 	Window leaders[2], window;
 	char **argv, *command;
 	int argc, i, pid;
 	Bool haveCommand;
 
-	classHint = XAllocClassHint();
-	clientHints = XGetWMHints(dpy, wwin->client_win);
+	clientHints = WXGetWMHints(dpy, wwin->client_win);
 	pid = getWindowPid(wwin->client_win);
 	if (pid > 0)
 		haveCommand = GetCommandForPid(pid, &argv, &argc);
@@ -581,25 +570,27 @@ static void fixLeaderProperties(WWindow *wwin)
 		if (command)
 			wfree(command); /* command already set. nothing to do. */
 		else
-			XSetCommand(dpy, wwin->client_win, argv, argc);
+			WXSetCommand(dpy, wwin->client_win, argv, argc);
 	}
 
 	for (i = 0; i < 2; i++) {
 		window = leaders[i];
 		if (window) {
-			if (XGetClassHint(dpy, window, classHint) == 0) {
-				classHint->res_name = wwin->wm_instance;
-				classHint->res_class = wwin->wm_class;
-				XSetClassHint(dpy, window, classHint);
+			char *inst, *cls;
+			if (WXGetWMClass(dpy, window, &inst, &cls)) {
+				wfree(inst);
+				wfree(cls);
+			} else {
+				WXSetWMClass(dpy, window, wwin->wm_instance, wwin->wm_class);
 			}
-			hints = XGetWMHints(dpy, window);
+			hints = WXGetWMHints(dpy, window);
 			if (hints) {
-				XFree(hints);
+				wfree(hints);
 			} else if (clientHints) {
 				/* set window group leader to self */
 				clientHints->window_group = window;
 				clientHints->flags |= WindowGroupHint;
-				XSetWMHints(dpy, window, clientHints);
+				WXSetWMHints(dpy, window, clientHints);
 			}
 
 			if (haveCommand) {
@@ -607,7 +598,7 @@ static void fixLeaderProperties(WWindow *wwin)
 				if (command)
 					wfree(command); /* command already set. nothing to do. */
 				else
-					XSetCommand(dpy, window, argv, argc);
+					WXSetCommand(dpy, window, argv, argc);
 			}
 
 			/* Make sure we get notification when this window is destroyed */
@@ -616,44 +607,38 @@ static void fixLeaderProperties(WWindow *wwin)
 		}
 	}
 
-	XFree(classHint);
 	if (clientHints)
-		XFree(clientHints);
+		wfree(clientHints);
 	if (haveCommand)
 		wfree(argv);
 }
 
 static Window createFakeWindowGroupLeader(WScreen *scr, Window win, char *instance, char *class)
 {
-	XClassHint *classHint;
-	XWMHints *hints;
+	WXWMHints *hints;
 	Window leader;
 	int argc;
 	char **argv;
 
 	leader = XCreateSimpleWindow(dpy, scr->root_win, 10, 10, 10, 10, 0, 0, 0);
 	/* set class hint */
-	classHint = XAllocClassHint();
-	classHint->res_name = instance;
-	classHint->res_class = class;
-	XSetClassHint(dpy, leader, classHint);
-	XFree(classHint);
+	WXSetWMClass(dpy, leader, instance, class);
 
 	/* inherit these from the original leader if available */
-	hints = XGetWMHints(dpy, win);
+	hints = WXGetWMHints(dpy, win);
 	if (!hints) {
-		hints = XAllocWMHints();
+		hints = WXAllocWMHints();
 		hints->flags = 0;
 	}
 	/* set window group leader to self */
 	hints->window_group = leader;
 	hints->flags |= WindowGroupHint;
-	XSetWMHints(dpy, leader, hints);
-	XFree(hints);
+	WXSetWMHints(dpy, leader, hints);
+	wfree(hints);
 
-	if (XGetCommand(dpy, win, &argv, &argc) != 0 && argc > 0) {
-		XSetCommand(dpy, leader, argv, argc);
-		XFreeStringList(argv);
+	if (WXGetCommand(dpy, win, &argv, &argc) && argc > 0) {
+		WXSetCommand(dpy, leader, argv, argc);
+		WXFreeStringList(argv, argc);
 	}
 
 	return leader;
@@ -787,7 +772,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	if (wwin->client_leader != None)
 		wwin->main_window = wwin->client_leader;
 
-	wwin->wm_hints = XGetWMHints(dpy, window);
+	wwin->wm_hints = WXGetWMHints(dpy, window);
 
 	if (wwin->wm_hints) {
 		if (wwin->wm_hints->flags & StateHint) {
@@ -817,7 +802,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 
 	PropGetProtocols(window, &wwin->protocols);
 
-	if (!XGetTransientForHint(dpy, window, &wwin->transient_for)) {
+	if (!WXGetTransientFor(dpy, window, &wwin->transient_for)) {
 		wwin->transient_for = None;
 	} else {
 		if (wwin->transient_for == None || wwin->transient_for == window) {
@@ -865,9 +850,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 		wwin->client_flags.shared_appicon = 0;
 
 	if (wwin->main_window) {
-		XTextProperty text_prop;
-
-		if (XGetTextProperty(dpy, wwin->main_window, &text_prop, w_global.atom.wmaker.menu))
+		if (WXPropExists(dpy, wwin->main_window, w_global.atom.wmaker.menu))
 			wwin->client_flags.shared_appicon = 0;
 	}
 
@@ -1425,7 +1408,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	/* Update name must come after WApplication stuff is done */
 	wWindowUpdateName(wwin, title);
 	if (title)
-		XFree(title);
+		wfree(title);
 
 	XUngrabServer(dpy);
 
@@ -2541,10 +2524,10 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 void wWindowSaveState(WWindow *wwin)
 {
-	long data[10];
+	uint32_t data[10];
 	int i;
 
-	memset(data, 0, sizeof(long) * 10);
+	memset(data, 0, sizeof(data));
 	data[0] = wwin->frame->workspace;
 	data[1] = wwin->flags.miniaturized;
 	data[2] = wwin->flags.shaded;
@@ -2568,37 +2551,26 @@ void wWindowSaveState(WWindow *wwin)
 			data[9] |= 1 << i;
 	}
 
-	XChangeProperty(dpy, wwin->client_win, w_global.atom.wmaker.state,
-			w_global.atom.wmaker.state, 32, PropModeReplace, (unsigned char *)data, 10);
+	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wmaker.state,
+		       w_global.atom.wmaker.state, data, 10);
 
 	if (wwin->mark_key_label != NULL)
-		XChangeProperty(dpy, wwin->client_win, w_global.atom.wmaker.mark_key,
-					XA_STRING, 8, PropModeReplace,
-					(unsigned char *)wwin->mark_key_label,
-					strlen(wwin->mark_key_label));
+		WXSetLatin1String(dpy, wwin->client_win, w_global.atom.wmaker.mark_key,
+				  wwin->mark_key_label, strlen(wwin->mark_key_label));
 	else
-		XDeleteProperty(dpy, wwin->client_win, w_global.atom.wmaker.mark_key);
+		WXDeleteProperty(dpy, wwin->client_win, w_global.atom.wmaker.mark_key);
 }
 
 static int getSavedState(Window window, WSavedState ** state)
 {
-	Atom type_ret;
-	int fmt_ret;
-	unsigned long nitems_ret;
-	unsigned long bytes_after_ret;
-	long *data;
-	unsigned char *mk_data = NULL;
+	uint32_t data[10];
+	size_t len;
 
-	if (XGetWindowProperty(dpy, window, w_global.atom.wmaker.state, 0, 10,
-			       True, w_global.atom.wmaker.state,
-			       &type_ret, &fmt_ret, &nitems_ret, &bytes_after_ret,
-			       (unsigned char **)&data) != Success || !data || nitems_ret < 10)
+	if (!WXGetFormat32N(dpy, window, w_global.atom.wmaker.state,
+			    w_global.atom.wmaker.state, data, 10))
 		return 0;
 
-	if (type_ret != w_global.atom.wmaker.state) {
-		XFree(data);
-		return 0;
-	}
+	WXDeleteProperty(dpy, window, w_global.atom.wmaker.state);
 
 	*state = wmalloc(sizeof(WSavedState));
 
@@ -2607,22 +2579,15 @@ static int getSavedState(Window window, WSavedState ** state)
 	(*state)->shaded = data[2];
 	(*state)->hidden = data[3];
 	(*state)->maximized = data[4];
-	(*state)->x = data[5];
-	(*state)->y = data[6];
+	(*state)->x = (int32_t)data[5];
+	(*state)->y = (int32_t)data[6];
 	(*state)->w = data[7];
 	(*state)->h = data[8];
 	(*state)->window_shortcuts = data[9];
 
-	XFree(data);
-
-	(*state)->mark_key = NULL;
-	if (XGetWindowProperty(dpy, window, w_global.atom.wmaker.mark_key, 0, 256,
-							True, XA_STRING, &type_ret, &fmt_ret, &nitems_ret, &bytes_after_ret,
-							&mk_data) == Success && mk_data && nitems_ret > 0 && type_ret == XA_STRING)
-		(*state)->mark_key = wstrdup((char *)mk_data);
-
-	if (mk_data)
-		XFree(mk_data);
+	(*state)->mark_key = WXGetLatin1String(dpy, window, w_global.atom.wmaker.mark_key, &len);
+	if ((*state)->mark_key)
+		WXDeleteProperty(dpy, window, w_global.atom.wmaker.mark_key);
 
 	return 1;
 }

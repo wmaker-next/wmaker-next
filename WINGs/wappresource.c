@@ -13,14 +13,14 @@ void WMSetApplicationIconWindow(WMScreen * scr, Window window)
 	scr->applicationIconWindow = window;
 
 	if (scr->groupLeader) {
-		XWMHints *hints;
+		WXWMHints *hints;
 
-		hints = XGetWMHints(scr->display, scr->groupLeader);
+		hints = WXGetWMHints(scr->display, scr->groupLeader);
 		hints->flags |= IconWindowHint;
 		hints->icon_window = window;
 
-		XSetWMHints(scr->display, scr->groupLeader, hints);
-		XFree(hints);
+		WXSetWMHints(scr->display, scr->groupLeader, hints);
+		wfree(hints);
 	}
 }
 
@@ -59,15 +59,15 @@ void WMSetApplicationIconPixmap(WMScreen * scr, WMPixmap * icon)
 	scr->applicationIconPixmap = WMRetainPixmap(icon);
 
 	if (scr->groupLeader) {
-		XWMHints *hints;
+		WXWMHints *hints;
 
-		hints = XGetWMHints(scr->display, scr->groupLeader);
+		hints = WXGetWMHints(scr->display, scr->groupLeader);
 		hints->flags |= IconPixmapHint | IconMaskHint;
 		hints->icon_pixmap = (icon != NULL ? icon->pixmap : None);
 		hints->icon_mask = (icon != NULL ? icon->mask : None);
 
-		XSetWMHints(scr->display, scr->groupLeader, hints);
-		XFree(hints);
+		WXSetWMHints(scr->display, scr->groupLeader, hints);
+		wfree(hints);
 	}
 }
 
@@ -107,21 +107,16 @@ void WMSetApplicationHasAppIcon(WMScreen * scr, Bool flag)
 void W_InitApplication(WMScreen * scr)
 {
 	Window leader;
-	XClassHint *classHint;
-	XWMHints *hints;
+	WXWMHints *hints;
 
 	leader = XCreateSimpleWindow(scr->display, scr->rootWin, -1, -1, 1, 1, 0, 0, 0);
 
 	if (!scr->aflags.simpleApplication) {
-		classHint = XAllocClassHint();
-		classHint->res_name = "groupLeader";
-		classHint->res_class = WMApplication.applicationName;
-		XSetClassHint(scr->display, leader, classHint);
-		XFree(classHint);
+		WXSetWMClass(scr->display, leader, "groupLeader", WMApplication.applicationName);
 
-		XSetCommand(scr->display, leader, WMApplication.argv, WMApplication.argc);
+		WXSetCommand(scr->display, leader, WMApplication.argv, WMApplication.argc);
 
-		hints = XAllocWMHints();
+		hints = WXAllocWMHints();
 
 		hints->flags = WindowGroupHint;
 		hints->window_group = leader;
@@ -140,9 +135,9 @@ void W_InitApplication(WMScreen * scr)
 			}
 		}
 
-		XSetWMHints(scr->display, leader, hints);
+		WXSetWMHints(scr->display, leader, hints);
 
-		XFree(hints);
+		wfree(hints);
 	}
 	scr->groupLeader = leader;
 }

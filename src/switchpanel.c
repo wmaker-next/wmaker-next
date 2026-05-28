@@ -35,6 +35,7 @@
 #include "misc.h"
 #include "xinerama.h"
 
+#include <WINGs/WXProp.h>
 
 #ifdef USE_XSHAPE
 #include <X11/extensions/shape.h>
@@ -549,17 +550,15 @@ void wSwitchPanelDestroy(WSwitchPanel *panel)
 
 	if (panel->win) {
 		Window info_win = panel->scr->info_window;
-		XEvent ev;
-		ev.xclient.type = ClientMessage;
-		ev.xclient.message_type = w_global.atom.wm.ignore_focus_events;
-		ev.xclient.format = 32;
-		ev.xclient.data.l[0] = True;
 
-		XSendEvent(dpy, info_win, True, EnterWindowMask, &ev);
+		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+				    w_global.atom.wm.ignore_focus_events,
+				    True, 0, 0, 0, 0);
 		WMUnmapWidget(panel->win);
 
-		ev.xclient.data.l[0] = False;
-		XSendEvent(dpy, info_win, True, EnterWindowMask, &ev);
+		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+				    w_global.atom.wm.ignore_focus_events,
+				    False, 0, 0, 0, 0);
 	}
 
 	if (panel->images) {
