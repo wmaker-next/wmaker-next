@@ -876,7 +876,7 @@ static void revertSettings(WMWidget *button, void *client_data)
 	memset(&wwin->user_flags, 0, sizeof(WWindowAttributes));
 	memset(&wwin->client_flags, 0, sizeof(WWindowAttributes));
 
-	wWindowSetupInitialAttributes(wwin, &level, &workspace);
+	wWindowSetupInitialAttributes(wwin, NULL, &level, &workspace);
 
 	/* Attributes... --> Window Attributes */
 	for (i = 0; i < wlengthof(window_attribute); i++) {

@@ -27,6 +27,7 @@
 #include "screen.h"
 #include "window.h"
 #include <X11/Xlib.h>
+#include <WINGs/WXProp.h>
 
 /*
  * These constant provide information on the kind of window move/resize when
@@ -56,6 +57,10 @@ void wNETWMCheckInitialClientState(WWindow *wwin);
 void wNETWMCheckInitialFrameState(WWindow *wwin);
 Bool wNETWMProcessClientMessage(XClientMessageEvent *event);
 void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace);
+
+void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck);
+void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace);
+WXCookie wNETWMReqWindowName(Window window);
 void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event);
 void wNETWMUpdateActions(WWindow *wwin, Bool del);
 void wNETWMUpdateDesktop(WScreen *scr);

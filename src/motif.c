@@ -161,37 +161,53 @@ static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 	}
 }
 
-static int getMWMHints(Window window, MWMHints *mwmhints)
+static Atom mwm_atom(void)
 {
-	uint32_t data[5];
-
 	if (!_XA_MOTIF_WM_HINTS)
 		_XA_MOTIF_WM_HINTS = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+	return _XA_MOTIF_WM_HINTS;
+}
+
+WXCookie wMWMReqClientHints(Window window)
+{
+	return WXReqFormat32(dpy, window, mwm_atom(), mwm_atom(), 5);
+}
+
+static int rcvMWMHints(WXCookie ck, MWMHints *mwmhints)
+{
+	uint32_t *data;
+	size_t n;
 
 	mwmhints->flags = 0;
 
-	if (WXGetFormat32N(dpy, window, _XA_MOTIF_WM_HINTS, _XA_MOTIF_WM_HINTS, data, 5)) {
-		mwmhints->flags = data[0];
-		mwmhints->functions = data[1];
-		mwmhints->decorations = data[2];
-		mwmhints->inputMode = data[3];
+	data = WXRcvFormat32List(dpy, ck, &n);
+	if (!data)
+		return 0;
+	if (n < 4) {
+		wfree(data);
+		return 0;
+	}
+
+	mwmhints->flags = data[0];
+	mwmhints->functions = data[1];
+	mwmhints->decorations = data[2];
+	mwmhints->inputMode = data[3];
+	if (n >= 5)
 		mwmhints->status = data[4];
-		return 1;
-	}
-	if (WXGetFormat32N(dpy, window, _XA_MOTIF_WM_HINTS, _XA_MOTIF_WM_HINTS, data, 4)) {
-		mwmhints->flags = data[0];
-		mwmhints->functions = data[1];
-		mwmhints->decorations = data[2];
-		mwmhints->inputMode = data[3];
-		return 1;
-	}
-	return 0;
+
+	wfree(data);
+	return 1;
+}
+
+void wMWMRcvClientHints(WWindow *wwin, WXCookie ck)
+{
+	MWMHints hints;
+
+	if (rcvMWMHints(ck, &hints))
+		setupMWMHints(wwin, &hints);
 }
 
 void wMWMCheckClientHints(WWindow *wwin)
 {
-	MWMHints hints;
-
-	if (getMWMHints(wwin->client_win, &hints))
-		setupMWMHints(wwin, &hints);
+	wMWMRcvClientHints(wwin, wMWMReqClientHints(wwin->client_win));
 }

@@ -339,6 +339,41 @@ typedef struct WWindowState {
 
 typedef void* WMagicNumber;
 
+/*
+ * Batched property prefetch for managing a window.  wManagePrefetch()
+ * issues every WXReq* in one burst so the replies arrive in a single
+ * server round-trip, and consumers in wManageWindow() and the helpers
+ * it calls receive individual cookies via WXRcv*.  wManageDiscard()
+ * releases any cookie that was not consumed (already-consumed or
+ * never-issued sequence numbers are harmless to discard).
+ */
+typedef struct {
+    WXCookie desktop;       /* _NET_WM_DESKTOP */
+    WXCookie state;         /* _NET_WM_STATE */
+    WXCookie type;          /* _NET_WM_WINDOW_TYPE */
+    WXCookie strut;         /* _NET_WM_STRUT */
+    WXCookie strut_partial; /* _NET_WM_STRUT_PARTIAL */
+} WNETWMHintCookies;
+
+typedef struct {
+    WXCookie wm_state;      /* WM_STATE */
+    WXCookie net_name;      /* _NET_WM_NAME */
+    WXCookie name;          /* WM_NAME */
+    WXCookie wclass;        /* WM_CLASS */
+    WXCookie gnustep;       /* _GNUSTEP_WM_ATTR */
+    WXCookie leader;        /* WM_CLIENT_LEADER */
+    WXCookie hints;         /* WM_HINTS */
+    WXCookie protocols;     /* WM_PROTOCOLS */
+    WXCookie transient;     /* WM_TRANSIENT_FOR */
+    WXCookie normal;        /* WM_NORMAL_HINTS */
+    WXCookie motif;         /* _MOTIF_WM_HINTS */
+    WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
+    WNETWMHintCookies netwm;
+} WManageCookies;
+
+void wManagePrefetch(Window window, WManageCookies *ck);
+void wManageDiscard(WManageCookies *ck);
+
 void wWindowDestroy(WWindow *wwin);
 WWindow *wWindowCreate(void);
 
@@ -389,7 +424,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
                                const char *title, int x, int y,
                                int width, int height);
 
-void wWindowSetupInitialAttributes(WWindow *wwin, int *level, int *workspace);
+void wWindowSetupInitialAttributes(WWindow *wwin, WManageCookies *ck, int *level, int *workspace);
 
 void wWindowUpdateGNUstepAttr(WWindow *wwin, GNUstepWMAttributes *attr);
 

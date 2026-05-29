@@ -23,6 +23,10 @@
 #ifndef WMMWM_H_
 #define WMMWM_H_
 
+#include <WINGs/WXProp.h>
+
+WXCookie wMWMReqClientHints(Window window);
+void wMWMRcvClientHints(WWindow *wwin, WXCookie ck);
 void wMWMCheckClientHints(WWindow *wwin);
 
 #endif

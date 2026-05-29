@@ -38,4 +38,13 @@ void PropSetIconTileHint(WScreen *scr, RImage *image);
 
 Window PropGetClientLeader(Window window);
 
+/* Split-phase variants for batching: caller issues the matching WXReq*
+ * (see wManagePrefetch in window.c) and passes the cookie here. */
+int    PropRcvWindowState  (WXCookie ck);
+int    PropRcvNormalHints  (WXCookie ck, WXSizeHints *size_hints, int *pre_iccm);
+void   PropRcvProtocols    (WXCookie ck, WProtocols *prots);
+int    PropRcvWMClass      (WXCookie ck, char **wm_class, char **wm_instance);
+int    PropRcvGNUstepWMAttr(WXCookie ck, GNUstepWMAttributes **attr);
+Window PropRcvClientLeader (WXCookie ck);
+
 #endif

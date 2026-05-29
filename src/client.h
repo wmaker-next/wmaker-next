@@ -32,7 +32,8 @@ void wClientCheckProperty(WWindow *wwin, XPropertyEvent *event);
 
 
 void wClientGetNormalHints(WWindow *wwin, XWindowAttributes *wattribs,
-                           Bool geometry, int *x, int *y, unsigned *width,
+                           Bool geometry, WXCookie normal_ck,
+                           int *x, int *y, unsigned *width,
                            unsigned *height);
 void GetColormapWindows(WWindow *wwin);
 

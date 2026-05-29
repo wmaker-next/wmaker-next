@@ -306,9 +306,49 @@ static void setupGNUstepHints(WWindow *wwin, GNUstepWMAttributes *gs_hints)
 		wwin->client_flags.no_appicon = 1;
 }
 
-static void discard_hints_from_gtk(WWindow *wwin)
+void wManagePrefetch(Window window, WManageCookies *ck)
 {
-	if (!WXPropExists(dpy, wwin->client_win, w_global.atom.desktop.gtk_object_path))
+	ck->wm_state  = WXReqFormat32(dpy, window, w_global.atom.wm.state,
+				      w_global.atom.wm.state, 1);
+	ck->net_name  = wNETWMReqWindowName(window);
+	ck->name      = WXReqWMName(dpy, window);
+	ck->wclass    = WXReqWMClass(dpy, window);
+	ck->gnustep   = WXReqFormat32(dpy, window, w_global.atom.gnustep.wm_attr,
+				      w_global.atom.gnustep.wm_attr, 9);
+	ck->leader    = WXReqFormat32(dpy, window, w_global.atom.wm.client_leader,
+				      XA_WINDOW, 1);
+	ck->hints     = WXReqWMHints(dpy, window);
+	ck->protocols = WXReqWMProtocols(dpy, window);
+	ck->transient = WXReqTransientFor(dpy, window);
+	ck->normal    = WXReqNormalHints(dpy, window);
+#ifdef USE_MWM_HINTS
+	ck->motif     = wMWMReqClientHints(window);
+#else
+	ck->motif.seq = 0;
+#endif
+	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
+	wNETWMReqClientHints(window, &ck->netwm);
+}
+
+void wManageDiscard(WManageCookies *ck)
+{
+	WXCookie *p = (WXCookie *)ck;
+	size_t i, n = sizeof(WManageCookies) / sizeof(WXCookie);
+
+	/* the loop below walks ck as a flat WXCookie array, so the struct
+	 * must contain nothing but WXCookie fields with no padding */
+	_wutil_static_assert(sizeof(WManageCookies) % sizeof(WXCookie) == 0,
+			     "WManageCookies must contain only WXCookie fields");
+
+	for (i = 0; i < n; i++) {
+		if (p[i].seq)
+			WXDiscard(dpy, p[i]);
+	}
+}
+
+static void discard_hints_from_gtk(WWindow *wwin, WXCookie ck)
+{
+	if (!WXRcvExists(dpy, ck))
 		return;
 
 	/* If we're here, that means the Property exists. We don't care what is inside, it means it is a GTK-based application */
@@ -320,9 +360,25 @@ static void discard_hints_from_gtk(WWindow *wwin)
 	wwin->client_flags.no_resizebar = 0;
 }
 
-void wWindowSetupInitialAttributes(WWindow *wwin, int *level, int *workspace)
+void wWindowSetupInitialAttributes(WWindow *wwin, WManageCookies *ck, int *level, int *workspace)
 {
 	WScreen *scr = wwin->screen_ptr;
+	WManageCookies local_ck;
+	Bool own_ck = False;
+
+	if (!ck) {
+		/* No prefetch supplied (e.g. inspector reload): issue only the
+		 * cookies this function consumes and own their lifetime. */
+		memset(&local_ck, 0, sizeof(local_ck));
+#ifdef USE_MWM_HINTS
+		local_ck.motif = wMWMReqClientHints(wwin->client_win);
+#endif
+		local_ck.gtk = WXReqExists(dpy, wwin->client_win,
+					   w_global.atom.desktop.gtk_object_path);
+		wNETWMReqClientHints(wwin->client_win, &local_ck.netwm);
+		ck = &local_ck;
+		own_ck = True;
+	}
 
 	/* sets global default stuff */
 	wDefaultFillAttributes(wwin->wm_instance, wwin->wm_class, &wwin->user_flags, NULL, True);
@@ -378,13 +434,13 @@ void wWindowSetupInitialAttributes(WWindow *wwin, int *level, int *workspace)
 		int tmp_level = INT_MIN;	/* INT_MIN is never used by the window levels */
 
 #ifdef USE_MWM_HINTS
-		wMWMCheckClientHints(wwin);
+		wMWMRcvClientHints(wwin, ck->motif);
 #endif	/* USE_MWM_HINTS */
 
-		wNETWMCheckClientHints(wwin, &tmp_level, &tmp_workspace);
+		wNETWMRcvClientHints(wwin, &ck->netwm, &tmp_level, &tmp_workspace);
 
 		if (wPreferences.ignore_gtk_decoration_hints)
-			discard_hints_from_gtk(wwin);
+			discard_hints_from_gtk(wwin, ck->gtk);
 
 		/* window levels are between INT_MIN+1 and INT_MAX, so if we still
 		 * have INT_MIN that means that no window level was requested. -Dan
@@ -459,6 +515,9 @@ void wWindowSetupInitialAttributes(WWindow *wwin, int *level, int *workspace)
 	/* windows that have takefocus=False shouldn't take focus at all */
 	if (wwin->focus_mode == WFM_NO_INPUT)
 		wwin->client_flags.no_focusable = 1;
+
+	if (own_ck)
+		wManageDiscard(ck);
 }
 
 /*
@@ -690,6 +749,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	char *title;
 	Bool withdraw = False;
 	Bool raise = False;
+	WManageCookies ck;
 
 	/* mutex. */
 	XGrabServer(dpy);
@@ -707,21 +767,26 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 		return NULL;
 	}
 
-	wm_state = PropGetWindowState(window);
+	/* Issue every property request for this window in one burst, the
+	 * first WXRcv* below blocks once for the whole batch. */
+	wManagePrefetch(window, &ck);
+
+	wm_state = PropRcvWindowState(ck.wm_state);
 
 	/* if it's startup and the window is unmapped, don't manage it */
 	if (scr->flags.startup && wm_state < 0 && wattribs.map_state == IsUnmapped) {
+		wManageDiscard(&ck);
 		XUngrabServer(dpy);
 		return NULL;
 	}
 
 	wwin = wWindowCreate();
 
-	title = wNETWMGetWindowName(window);
+	title = WXRcvString(dpy, ck.net_name, NULL);
 	if (title)
 		wwin->flags.net_has_title = 1;
-	else if (!wFetchName(dpy, window, &title))
-		title = NULL;
+	else
+		title = WXRcvWMName(dpy, ck.name);
 
 	XSaveContext(dpy, window, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
 
@@ -739,7 +804,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 #endif
 
 	/* Get hints and other information in properties */
-	PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
+	PropRcvWMClass(ck.wclass, &wwin->wm_class, &wwin->wm_instance);
 
 	/* setup descriptor */
 	wwin->client_win = window;
@@ -760,7 +825,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	if (wwin->wm_class != NULL && strcmp(wwin->wm_class, "GNUstep") == 0)
 		wwin->flags.is_gnustep = 1;
 
-	if (!PropGetGNUstepWMAttr(window, &wwin->wm_gnustep_attr))
+	if (!PropRcvGNUstepWMAttr(ck.gnustep, &wwin->wm_gnustep_attr))
 		wwin->wm_gnustep_attr = NULL;
 
 	if (wwin->wm_class != NULL && strcmp(wwin->wm_class, "DockApp") == 0) {
@@ -768,11 +833,11 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 		withdraw = True;
 	}
 
-	wwin->client_leader = PropGetClientLeader(window);
+	wwin->client_leader = PropRcvClientLeader(ck.leader);
 	if (wwin->client_leader != None)
 		wwin->main_window = wwin->client_leader;
 
-	wwin->wm_hints = WXGetWMHints(dpy, window);
+	wwin->wm_hints = WXRcvWMHints(dpy, ck.hints);
 
 	if (wwin->wm_hints) {
 		if (wwin->wm_hints->flags & StateHint) {
@@ -800,9 +865,9 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 		wwin->group_id = None;
 	}
 
-	PropGetProtocols(window, &wwin->protocols);
+	PropRcvProtocols(ck.protocols, &wwin->protocols);
 
-	if (!WXGetTransientFor(dpy, window, &wwin->transient_for)) {
+	if (!WXRcvTransientFor(dpy, ck.transient, &wwin->transient_for)) {
 		wwin->transient_for = None;
 	} else {
 		if (wwin->transient_for == None || wwin->transient_for == window) {
@@ -818,12 +883,13 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	wwin->focus_mode = getFocusMode(wwin);
 
 	/* get geometry stuff */
-	wClientGetNormalHints(wwin, &wattribs, True, &x, &y, &width, &height);
+	wClientGetNormalHints(wwin, &wattribs, True, ck.normal, &x, &y, &width, &height);
 
 	/* Some applications create placeholder windows with 1x1 size
 	 * (e.g. VirtualBox internal windows). Don't manage those initial
 	 * 1x1 windows. */
 	if (width <= 1 && height <= 1 && !wwin->flags.is_dockapp) {
+		wManageDiscard(&ck);
 		wWindowDestroy(wwin);
 		XUngrabServer(dpy);
 		return NULL;
@@ -836,7 +902,12 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	 * Setup the decoration/window attributes and
 	 * geometry
 	 */
-	wWindowSetupInitialAttributes(wwin, &window_level, &workspace);
+	wWindowSetupInitialAttributes(wwin, &ck, &window_level, &workspace);
+
+	/* All prefetched cookies are now either consumed or skipped (the
+	 * GNUstep branch above bypasses motif/netwm/gtk).  Discard whatever
+	 * remains, already-consumed sequence numbers are a no-op. */
+	wManageDiscard(&ck);
 
 	/* Make broken apps behave as a nice app. */
 	if (WFLAGP(wwin, emulate_appicon))

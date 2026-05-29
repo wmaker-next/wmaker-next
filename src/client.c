@@ -493,7 +493,9 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 			unsigned bar;
 
 			if (XGetWindowAttributes(dpy, wwin->client_win, &attribs) != 0)
-				wClientGetNormalHints(wwin, &attribs, False, &foo, &foo, &bar, &bar);
+				wClientGetNormalHints(wwin, &attribs, False,
+						      WXReqNormalHints(dpy, wwin->client_win),
+						      &foo, &foo, &bar, &bar);
 			/* TODO: should we check for consistency of the current
 			 * size against the new geometry hints? */
 		}
@@ -647,6 +649,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
  */
 void
 wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometry,
+		      WXCookie normal_ck,
 		      int *x, int *y, unsigned *width, unsigned *height)
 {
 	int pre_icccm = 0;	/* not used */
@@ -655,7 +658,7 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 	if (!wwin->normal_hints)
 		wwin->normal_hints = WXAllocSizeHints();
 
-	if (!PropGetNormalHints(wwin->client_win, wwin->normal_hints, &pre_icccm)) {
+	if (!PropRcvNormalHints(normal_ck, wwin->normal_hints, &pre_icccm)) {
 		wwin->normal_hints->flags = 0;
 	}
 	*x = wattribs->x;

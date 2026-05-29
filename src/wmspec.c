@@ -1439,27 +1439,59 @@ static void updateWindowType(WWindow *wwin)
 	}
 }
 
-void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
+static void addStrutCk(WScreen *scr, Window w, WXCookie strut, WXCookie strut_partial)
+{
+	WReservedArea *area;
+	uint32_t v[12];
+
+	/* consume both cookies on every path so callers do not have to */
+	if (WXRcvCardinalN(dpy, strut, v, 4)) {
+		WXDiscard(dpy, strut_partial);
+	} else if (!WXRcvCardinalN(dpy, strut_partial, v, 12)) {
+		return;
+	}
+
+	area = (WReservedArea *) wmalloc(sizeof(WReservedArea));
+	area->area.x1 = v[0];
+	area->area.x2 = v[1];
+	area->area.y1 = v[2];
+	area->area.y2 = v[3];
+	area->window = w;
+
+	area->next = scr->netdata->strut;
+	scr->netdata->strut = area;
+}
+
+void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck)
+{
+	ck->desktop       = WXReqFormat32(dpy, window, net_wm_desktop, XA_CARDINAL, 1);
+	ck->state         = WXReqFormat32(dpy, window, net_wm_state, XA_ATOM, 1024);
+	ck->type          = WXReqFormat32(dpy, window, net_wm_window_type, XA_ATOM, 1024);
+	ck->strut         = WXReqFormat32(dpy, window, net_wm_strut, XA_CARDINAL, 4);
+	ck->strut_partial = WXReqFormat32(dpy, window, net_wm_strut_partial, XA_CARDINAL, 12);
+}
+
+void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
 {
 	int32_t desktop;
 	size_t i, nitems;
 	Atom *atoms;
 
-	if (WXGetCardinalSigned(dpy, wwin->client_win, net_wm_desktop, &desktop)) {
+	if (WXRcvCardinalSigned(dpy, ck->desktop, &desktop)) {
 		if (desktop == -1)
 			wwin->client_flags.omnipresent = 1;
 		else
 			*workspace = desktop;
 	}
 
-	atoms = WXGetAtomList(dpy, wwin->client_win, net_wm_state, 1024, &nitems);
+	atoms = WXRcvAtomList(dpy, ck->state, &nitems);
 	if (atoms) {
 		for (i = 0; i < nitems; ++i)
 			doStateAtom(wwin, atoms[i], _NET_WM_STATE_ADD, True);
 		wfree(atoms);
 	}
 
-	atoms = WXGetAtomList(dpy, wwin->client_win, net_wm_window_type, 1024, &nitems);
+	atoms = WXRcvAtomList(dpy, ck->type, &nitems);
 	if (atoms) {
 		for (i = 0; i < nitems; ++i) {
 			if (handleWindowType(wwin, atoms[i], layer))
@@ -1470,9 +1502,22 @@ void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
 
 	wNETWMUpdateActions(wwin, False);
 	updateStrut(wwin->screen_ptr, wwin->client_win, False);
-	updateStrut(wwin->screen_ptr, wwin->client_win, True);
+	addStrutCk(wwin->screen_ptr, wwin->client_win, ck->strut, ck->strut_partial);
 
 	wScreenUpdateUsableArea(wwin->screen_ptr);
+}
+
+void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
+{
+	WNETWMHintCookies ck;
+
+	wNETWMReqClientHints(wwin->client_win, &ck);
+	wNETWMRcvClientHints(wwin, &ck, layer, workspace);
+}
+
+WXCookie wNETWMReqWindowName(Window window)
+{
+	return WXReqString8(dpy, window, net_wm_name, utf8_string);
 }
 
 static Bool updateNetIconInfo(WWindow *wwin)
