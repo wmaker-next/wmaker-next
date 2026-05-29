@@ -147,10 +147,9 @@ AS_IF([test "x$native" = "xyes"],
 AX_CFLAGS_GCC_OPTION([-Wall])
 AX_CFLAGS_GCC_OPTION([-Wextra -Wno-sign-compare])
 dnl
-dnl The use of trampolines cause code that can crash on some secured OS, it is
-dnl also known to be a source of crash if not used properly, in a more general
-dnl way it tends to generate binary code that may not be optimal, and it is
-dnl not compatible with the 'nested-func-to-macro' workaround
+dnl Trampolines (executable stack thunks for nested-function pointers) crash
+dnl on hardened systems and are not portable. The tree no longer uses GCC
+dnl nested functions, so this stays as an error to catch any reintroduction.
 WM_CFLAGS_CHECK_FIRST([-Wtrampolines],
          [-Werror=trampolines  dnl try to generate an error if possible
           -Wtrampolines        dnl if not, try to fall back to a simple warning
@@ -259,11 +258,6 @@ AC_ARG_WITH([web-repo],
     [WEB_REPO_ROOT=""])
 m4_divert_pop([INIT_PREPARE])dnl
 WM_CHECK_WEBREPODIR
-
-
-dnl Support for Nested Functions by the compiler
-dnl ============================================
-WM_PROG_CC_NESTEDFUNC
 
 
 dnl Posix thread
@@ -1073,9 +1067,6 @@ AS_IF([test "x$WEB_REPO_ROOT" != "x"],
 AS_IF([test "x$debug" = "xyes"],
     [AS_ECHO(["Debug enabled: CFLAGS = $CFLAGS"]) ])
 echo
-
-AS_IF([test "x$wm_cv_prog_cc_nestedfunc" != "xyes"],
-    [AC_MSG_WARN([[Your compiler does not support Nested Function, work-around enabled]])])
 
 AS_IF([test "x$supported_locales" = "x"],
     [AC_MSG_WARN([[No language from \$LINGUAS are supported]])])
