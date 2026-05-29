@@ -57,6 +57,9 @@ enum {
 	wmSelectItem = 1
 };
 
+#define MAX_APPMENU_DEPTH 64
+#define MAX_APPMENU_ENTRIES 1024
+
 static void sendMessage(Window window, int what, int tag)
 {
 	WXSendClientMessage(dpy, window, NoEventMask, window,
@@ -75,13 +78,19 @@ static void notifyClient(WMenu * menu, WMenuEntry * entry)
 	sendMessage(data->window, wmSelectItem, data->tag);
 }
 
-static WMenu *parseMenuCommand(WScreen * scr, Window win, char **slist, int count, int *index)
+static WMenu *parseMenuCommandWithDepth(WScreen *scr, Window win, char **slist,
+					int count, int *index, int depth)
 {
 	WMenu *menu;
 	int command;
 	int code, pos;
 	char title[300];
 	char rtext[300];
+
+	if (depth > MAX_APPMENU_DEPTH) {
+		wwarning(_("appmenu: menu nesting too deep in window %lx"), win);
+		return NULL;
+	}
 
 	if (sscanf(slist[*index], "%i %i %n", &command, &code, &pos) < 2 || command != wmBeginMenu) {
 		wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"), slist[*index], win);
@@ -123,7 +132,7 @@ static WMenu *parseMenuCommand(WScreen * scr, Window win, char **slist, int coun
 				wstrlcpy(title, &slist[*index][pos], sizeof(title));
 				rtext[0] = 0;
 			} else {
-				if (sscanf(slist[*index], "%i %i %i %i %s %n",
+				if (sscanf(slist[*index], "%i %i %i %i %299s %n",
 					   &command, &ecode, &etag, &enab, rtext, &pos) != 5 || ecode != code) {
 					wMenuDestroy(menu, True);
 					wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"),
@@ -170,7 +179,11 @@ static WMenu *parseMenuCommand(WScreen * scr, Window win, char **slist, int coun
 			wstrlcpy(title, &slist[*index][pos], sizeof(title));
 			*index += 1;
 
-			submenu = parseMenuCommand(scr, win, slist, count, index);
+			submenu = parseMenuCommandWithDepth(scr, win, slist, count, index, depth + 1);
+			if (!submenu) {
+				wMenuDestroy(menu, True);
+				return NULL;
+			}
 
 			entry = wMenuAddCallback(menu, title, NULL, NULL);
 
@@ -193,6 +206,11 @@ static WMenu *parseMenuCommand(WScreen * scr, Window win, char **slist, int coun
 	return menu;
 }
 
+static WMenu *parseMenuCommand(WScreen *scr, Window win, char **slist, int count, int *index)
+{
+	return parseMenuCommandWithDepth(scr, win, slist, count, index, 0);
+}
+
 WMenu *wAppMenuGet(WScreen * scr, Window window)
 {
 	int count, i;
@@ -208,6 +226,11 @@ WMenu *wAppMenuGet(WScreen * scr, Window window)
 	}
 	if (strcmp(slist[0], "WMMenu 0") != 0) {
 		wwarning(_("appmenu: unknown version of WMMenu in window %lx: %s"), window, slist[0]);
+		WXFreeStringList(slist, count);
+		return NULL;
+	}
+	if (count > MAX_APPMENU_ENTRIES) {
+		wwarning(_("appmenu: too many menu entries (%d) in window %lx"), count, window);
 		WXFreeStringList(slist, count);
 		return NULL;
 	}
