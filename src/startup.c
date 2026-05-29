@@ -771,20 +771,24 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	unsigned int nchildren;
 	unsigned int i, j;
 	WWindow *wwin;
+	WXCookie *hints_ck;
 
 	XGrabServer(dpy);
 	XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
 
+	/* Issue WM_HINTS for every child up front so the icon-window filter
+	 * costs one round-trip instead of nchildren. */
+	hints_ck = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
+	for (i = 0; i < nchildren; i++)
+		hints_ck[i] = WXReqWMHints(dpy, children[i]);
+
 	/* first remove all icon windows */
 	for (i = 0; i < nchildren; i++) {
 		WXWMHints *wmhints;
 
-		if (children[i] == None)
-			continue;
-
-		wmhints = WXGetWMHints(dpy, children[i]);
+		wmhints = WXRcvWMHints(dpy, hints_ck[i]);
 		if (wmhints && (wmhints->flags & IconWindowHint)) {
 			for (j = 0; j < nchildren; j++) {
 				if (children[j] == wmhints->icon_window) {
@@ -799,6 +803,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 			wfree(wmhints);
 		}
 	}
+	wfree(hints_ck);
 
 	for (i = 0; i < nchildren; i++) {
 		if (children[i] == None)
