@@ -30,12 +30,36 @@
 #include <X11/Xutil.h>
 #include <stddef.h>
 
+#include <WINGs/WXProp.h>   /* WXCookie */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef XSizeHints WXSizeHints;
 typedef XWMHints   WXWMHints;
+
+/* --- Split-phase request/reply -------------------------------------- */
+
+WXCookie WXReqNormalHints     (Display *dpy, Window w);
+WXCookie WXReqWMHints         (Display *dpy, Window w);
+WXCookie WXReqWMClass         (Display *dpy, Window w);
+WXCookie WXReqWMProtocols     (Display *dpy, Window w);
+WXCookie WXReqTransientFor    (Display *dpy, Window w);
+WXCookie WXReqWMName          (Display *dpy, Window w);
+WXCookie WXReqWMIconName      (Display *dpy, Window w);
+WXCookie WXReqCommand         (Display *dpy, Window w);
+WXCookie WXReqTextPropertyList(Display *dpy, Window w, Atom prop);
+
+Bool       WXRcvNormalHints     (Display *dpy, WXCookie ck, WXSizeHints *out, long *supplied);
+WXWMHints *WXRcvWMHints         (Display *dpy, WXCookie ck);
+Bool       WXRcvWMClass         (Display *dpy, WXCookie ck, char **instance, char **wclass);
+Atom      *WXRcvWMProtocols     (Display *dpy, WXCookie ck, size_t *count);
+Bool       WXRcvTransientFor    (Display *dpy, WXCookie ck, Window *out);
+char      *WXRcvWMName          (Display *dpy, WXCookie ck);
+char      *WXRcvWMIconName      (Display *dpy, WXCookie ck);
+Bool       WXRcvCommand         (Display *dpy, WXCookie ck, char ***argv, int *argc);
+char     **WXRcvTextPropertyList(Display *dpy, WXCookie ck, int *count);
 
 /* --- WM_NORMAL_HINTS / WM_HINTS ------------------------------------- */
 

@@ -29,7 +29,45 @@
 extern "C" {
 #endif
 
-/* --- Readers ---------------------------------------------------------- */
+/* --- Split-phase request/reply ---------------------------------------
+ *
+ * WXReq* queues a GetProperty request without blocking and returns an
+ * opaque cookie.  WXRcv* blocks for that cookie's reply, validates
+ * format/count, and decodes into the caller's output.  Issuing N WXReq*
+ * calls followed by one WXFlush() and N WXRcv* calls in the same order
+ * collapses N round-trips into one.
+ *
+ * The synchronous WXGet* readers below are implemented as
+ * WXRcv*(dpy, WXReq*(...), ...) and remain the convenient choice for
+ * single-property reads.
+ *
+ * Every issued cookie must eventually be passed to a WXRcv* or to
+ * WXDiscard(), otherwise the reply stays cached for the lifetime of the
+ * connection.
+ */
+
+typedef struct { unsigned int seq; } WXCookie;
+
+WXCookie WXReqFormat32(Display *dpy, Window w, Atom prop, Atom type, size_t max);
+WXCookie WXReqString8 (Display *dpy, Window w, Atom prop, Atom type);
+WXCookie WXReqExists  (Display *dpy, Window w, Atom prop);
+
+void WXFlush  (Display *dpy);
+void WXDiscard(Display *dpy, WXCookie ck);
+
+Bool      WXRcvCardinal      (Display *dpy, WXCookie ck, uint32_t *out);
+Bool      WXRcvCardinalSigned(Display *dpy, WXCookie ck, int32_t  *out);
+Bool      WXRcvCardinalN     (Display *dpy, WXCookie ck, uint32_t *out, size_t n);
+uint32_t *WXRcvCardinalList  (Display *dpy, WXCookie ck, size_t *count);
+Bool      WXRcvAtom          (Display *dpy, WXCookie ck, Atom *out);
+Atom     *WXRcvAtomList      (Display *dpy, WXCookie ck, size_t *count);
+Bool      WXRcvWindow        (Display *dpy, WXCookie ck, Window *out);
+Window   *WXRcvWindowList    (Display *dpy, WXCookie ck, size_t *count);
+Bool      WXRcvFormat32N     (Display *dpy, WXCookie ck, uint32_t *out, size_t n);
+char     *WXRcvString        (Display *dpy, WXCookie ck, size_t *len);
+Bool      WXRcvExists        (Display *dpy, WXCookie ck);
+
+/* --- Readers (synchronous) -------------------------------------------- */
 
 Bool      WXGetCardinal      (Display *dpy, Window w, Atom prop, uint32_t *out);
 Bool      WXGetCardinalSigned(Display *dpy, Window w, Atom prop, int32_t  *out);

@@ -10,10 +10,14 @@
  *
  *  Property fetches go through xcb / xcb-icccm on the connection
  *  underlying the caller's Display* (XGetXCBConnection).  Xlib keeps
- *  ownership of the event queue.  Locale-sensitive decoding of
- *  COMPOUND_TEXT (WM_NAME, WM_ICON_NAME, generic text properties) stays
- *  on Xmb/Xutf8 conversion routines, which operate purely on client-side
- *  data and need no server round-trip, xcb has no equivalent.
+ *  ownership of the event queue.  Each getter is split into a WXReq*
+ *  request half (queues a GetProperty without blocking) and a WXRcv*
+ *  reply half, and the synchronous WXGet* wrappers compose the two.
+ *
+ *  Locale-sensitive decoding of COMPOUND_TEXT (WM_NAME, WM_ICON_NAME,
+ *  WM_COMMAND, generic text properties) stays on Xmb/Xutf8 conversion
+ *  routines, which operate purely on client-side data and need no server
+ *  round-trip, xcb has no equivalent.
  */
 
 #include "wconfig.h"
@@ -34,6 +38,18 @@
 static inline xcb_connection_t *wx_conn(Display *dpy)
 {
 	return XGetXCBConnection(dpy);
+}
+
+static inline WXCookie wx_ck(xcb_get_property_cookie_t xck)
+{
+	WXCookie ck = { xck.sequence };
+	return ck;
+}
+
+static inline xcb_get_property_cookie_t wx_xck(WXCookie ck)
+{
+	xcb_get_property_cookie_t xck = { ck.seq };
+	return xck;
 }
 
 static xcb_atom_t wx_wm_protocols(Display *dpy)
@@ -69,16 +85,18 @@ WXWMHints *WXAllocWMHints(void)
 	(USPosition | USSize | PPosition | PSize | \
 	 PMinSize | PMaxSize | PResizeInc | PAspect)
 
-Bool WXGetNormalHints(Display *dpy, Window w, WXSizeHints *out, long *supplied)
+WXCookie WXReqNormalHints(Display *dpy, Window w)
 {
-	xcb_connection_t *c = wx_conn(dpy);
-	xcb_get_property_cookie_t ck;
+	return wx_ck(xcb_icccm_get_wm_normal_hints(wx_conn(dpy), (xcb_window_t)w));
+}
+
+Bool WXRcvNormalHints(Display *dpy, WXCookie ck, WXSizeHints *out, long *supplied)
+{
 	xcb_get_property_reply_t *r;
 	xcb_size_hints_t h;
 	uint32_t n;
 
-	ck = xcb_icccm_get_wm_normal_hints(c, (xcb_window_t)w);
-	r = xcb_get_property_reply(c, ck, NULL);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return False;
 
@@ -118,6 +136,11 @@ Bool WXGetNormalHints(Display *dpy, Window w, WXSizeHints *out, long *supplied)
 	return True;
 }
 
+Bool WXGetNormalHints(Display *dpy, Window w, WXSizeHints *out, long *supplied)
+{
+	return WXRcvNormalHints(dpy, WXReqNormalHints(dpy, w), out, supplied);
+}
+
 void WXSetNormalHints(Display *dpy, Window w, const WXSizeHints *in)
 {
 	xcb_size_hints_t h;
@@ -147,14 +170,17 @@ void WXSetNormalHints(Display *dpy, Window w, const WXSizeHints *in)
 
 /* --- WM_HINTS -------------------------------------------------------- */
 
-WXWMHints *WXGetWMHints(Display *dpy, Window w)
+WXCookie WXReqWMHints(Display *dpy, Window w)
 {
-	xcb_connection_t *c = wx_conn(dpy);
+	return wx_ck(xcb_icccm_get_wm_hints(wx_conn(dpy), (xcb_window_t)w));
+}
+
+WXWMHints *WXRcvWMHints(Display *dpy, WXCookie ck)
+{
 	xcb_icccm_wm_hints_t h;
 	WXWMHints *out;
 
-	if (!xcb_icccm_get_wm_hints_reply(c,
-			xcb_icccm_get_wm_hints(c, (xcb_window_t)w), &h, NULL))
+	if (!xcb_icccm_get_wm_hints_reply(wx_conn(dpy), wx_xck(ck), &h, NULL))
 		return NULL;
 
 	out = wmalloc(sizeof(WXWMHints));
@@ -168,6 +194,11 @@ WXWMHints *WXGetWMHints(Display *dpy, Window w)
 	out->icon_mask     = (Pixmap)h.icon_mask;
 	out->window_group  = (XID)h.window_group;
 	return out;
+}
+
+WXWMHints *WXGetWMHints(Display *dpy, Window w)
+{
+	return WXRcvWMHints(dpy, WXReqWMHints(dpy, w));
 }
 
 void WXSetWMHints(Display *dpy, Window w, const WXWMHints *in)
@@ -190,13 +221,16 @@ void WXSetWMHints(Display *dpy, Window w, const WXWMHints *in)
 
 /* --- WM_CLASS -------------------------------------------------------- */
 
-Bool WXGetWMClass(Display *dpy, Window w, char **instance, char **wclass)
+WXCookie WXReqWMClass(Display *dpy, Window w)
 {
-	xcb_connection_t *c = wx_conn(dpy);
+	return wx_ck(xcb_icccm_get_wm_class(wx_conn(dpy), (xcb_window_t)w));
+}
+
+Bool WXRcvWMClass(Display *dpy, WXCookie ck, char **instance, char **wclass)
+{
 	xcb_icccm_get_wm_class_reply_t r;
 
-	if (!xcb_icccm_get_wm_class_reply(c,
-			xcb_icccm_get_wm_class(c, (xcb_window_t)w), &r, NULL))
+	if (!xcb_icccm_get_wm_class_reply(wx_conn(dpy), wx_xck(ck), &r, NULL))
 		return False;
 
 	if (instance)
@@ -206,6 +240,11 @@ Bool WXGetWMClass(Display *dpy, Window w, char **instance, char **wclass)
 
 	xcb_icccm_get_wm_class_reply_wipe(&r);
 	return True;
+}
+
+Bool WXGetWMClass(Display *dpy, Window w, char **instance, char **wclass)
+{
+	return WXRcvWMClass(dpy, WXReqWMClass(dpy, w), instance, wclass);
 }
 
 void WXSetWMClass(Display *dpy, Window w, const char *instance, const char *wclass)
@@ -233,9 +272,14 @@ void WXSetWMClass(Display *dpy, Window w, const char *instance, const char *wcla
 
 /* --- WM_PROTOCOLS ---------------------------------------------------- */
 
-Atom *WXGetWMProtocols(Display *dpy, Window w, size_t *count)
+WXCookie WXReqWMProtocols(Display *dpy, Window w)
 {
-	xcb_connection_t *c = wx_conn(dpy);
+	return wx_ck(xcb_icccm_get_wm_protocols(wx_conn(dpy), (xcb_window_t)w,
+						wx_wm_protocols(dpy)));
+}
+
+Atom *WXRcvWMProtocols(Display *dpy, WXCookie ck, size_t *count)
+{
 	xcb_icccm_get_wm_protocols_reply_t r;
 	Atom *out;
 	uint32_t i;
@@ -243,10 +287,7 @@ Atom *WXGetWMProtocols(Display *dpy, Window w, size_t *count)
 	if (count)
 		*count = 0;
 
-	if (!xcb_icccm_get_wm_protocols_reply(c,
-			xcb_icccm_get_wm_protocols(c, (xcb_window_t)w,
-						   wx_wm_protocols(dpy)),
-			&r, NULL))
+	if (!xcb_icccm_get_wm_protocols_reply(wx_conn(dpy), wx_xck(ck), &r, NULL))
 		return NULL;
 
 	if (r.atoms_len == 0) {
@@ -262,6 +303,11 @@ Atom *WXGetWMProtocols(Display *dpy, Window w, size_t *count)
 		*count = r.atoms_len;
 	xcb_icccm_get_wm_protocols_reply_wipe(&r);
 	return out;
+}
+
+Atom *WXGetWMProtocols(Display *dpy, Window w, size_t *count)
+{
+	return WXRcvWMProtocols(dpy, WXReqWMProtocols(dpy, w), count);
 }
 
 void WXSetWMProtocols(Display *dpy, Window w, const Atom *atoms, size_t count)
@@ -280,17 +326,25 @@ void WXSetWMProtocols(Display *dpy, Window w, const Atom *atoms, size_t count)
 
 /* --- WM_TRANSIENT_FOR ----------------------------------------------- */
 
-Bool WXGetTransientFor(Display *dpy, Window w, Window *out)
+WXCookie WXReqTransientFor(Display *dpy, Window w)
 {
-	xcb_connection_t *c = wx_conn(dpy);
+	return wx_ck(xcb_icccm_get_wm_transient_for(wx_conn(dpy), (xcb_window_t)w));
+}
+
+Bool WXRcvTransientFor(Display *dpy, WXCookie ck, Window *out)
+{
 	xcb_window_t owner;
 
-	if (!xcb_icccm_get_wm_transient_for_reply(c,
-			xcb_icccm_get_wm_transient_for(c, (xcb_window_t)w),
-			&owner, NULL))
+	if (!xcb_icccm_get_wm_transient_for_reply(wx_conn(dpy), wx_xck(ck),
+						  &owner, NULL))
 		return False;
 	*out = (Window)owner;
 	return True;
+}
+
+Bool WXGetTransientFor(Display *dpy, Window w, Window *out)
+{
+	return WXRcvTransientFor(dpy, WXReqTransientFor(dpy, w), out);
 }
 
 void WXSetTransientFor(Display *dpy, Window w, Window owner)
@@ -301,12 +355,17 @@ void WXSetTransientFor(Display *dpy, Window w, Window owner)
 
 /* --- text-property helpers ------------------------------------------ */
 
-/* Fetch a text property over xcb, then hand the bytes to Xlib's locale
- * converter.  XmbTextPropertyToTextList is purely client-side. */
-static char **wx_get_text_list(Display *dpy, Window w, Atom prop, int *count)
+WXCookie WXReqTextPropertyList(Display *dpy, Window w, Atom prop)
 {
-	xcb_connection_t *c = wx_conn(dpy);
-	xcb_get_property_cookie_t ck;
+	return wx_ck(xcb_get_property(wx_conn(dpy), 0, (xcb_window_t)w,
+				      (xcb_atom_t)prop,
+				      XCB_GET_PROPERTY_TYPE_ANY, 0, 0x00100000u));
+}
+
+/* Collect a text-property reply over xcb, then hand the bytes to Xlib's
+ * locale converter.  XmbTextPropertyToTextList is purely client-side. */
+char **WXRcvTextPropertyList(Display *dpy, WXCookie ck, int *count)
+{
 	xcb_get_property_reply_t *r;
 	XTextProperty tp;
 	char **xlist = NULL, **out;
@@ -314,15 +373,22 @@ static char **wx_get_text_list(Display *dpy, Window w, Atom prop, int *count)
 
 	*count = 0;
 
-	ck = xcb_get_property(c, 0, (xcb_window_t)w, (xcb_atom_t)prop,
-			      XCB_GET_PROPERTY_TYPE_ANY, 0, 0x00100000u);
-	r = xcb_get_property_reply(c, ck, NULL);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
-	if (r->type == XCB_ATOM_NONE || r->format != 8 ||
-	    xcb_get_property_value_length(r) == 0) {
+	if (r->type == XCB_ATOM_NONE || r->format != 8) {
 		free(r);
 		return NULL;
+	}
+	/* a present but empty WM_NAME or WM_ICON_NAME is a deliberate
+	 * blank title, return one empty string so callers do not fall
+	 * back to a generated name */
+	if (xcb_get_property_value_length(r) == 0) {
+		free(r);
+		out = wmalloc(sizeof(char *));
+		out[0] = wstrdup("");
+		*count = 1;
+		return out;
 	}
 
 	tp.value    = xcb_get_property_value(r);
@@ -348,12 +414,12 @@ static char **wx_get_text_list(Display *dpy, Window w, Atom prop, int *count)
 	return out;
 }
 
-static char *wx_get_text_single(Display *dpy, Window w, Atom prop)
+static char *wx_rcv_text_single(Display *dpy, WXCookie ck)
 {
 	char **list, *ret;
 	int n;
 
-	list = wx_get_text_list(dpy, w, prop, &n);
+	list = WXRcvTextPropertyList(dpy, ck, &n);
 	if (!list)
 		return NULL;
 	ret = list[0];
@@ -364,14 +430,34 @@ static char *wx_get_text_single(Display *dpy, Window w, Atom prop)
 	return ret;
 }
 
+WXCookie WXReqWMName(Display *dpy, Window w)
+{
+	return WXReqTextPropertyList(dpy, w, XA_WM_NAME);
+}
+
+char *WXRcvWMName(Display *dpy, WXCookie ck)
+{
+	return wx_rcv_text_single(dpy, ck);
+}
+
 char *WXGetWMName(Display *dpy, Window w)
 {
-	return wx_get_text_single(dpy, w, XA_WM_NAME);
+	return WXRcvWMName(dpy, WXReqWMName(dpy, w));
+}
+
+WXCookie WXReqWMIconName(Display *dpy, Window w)
+{
+	return WXReqTextPropertyList(dpy, w, XA_WM_ICON_NAME);
+}
+
+char *WXRcvWMIconName(Display *dpy, WXCookie ck)
+{
+	return wx_rcv_text_single(dpy, ck);
 }
 
 char *WXGetWMIconName(Display *dpy, Window w)
 {
-	return wx_get_text_single(dpy, w, XA_WM_ICON_NAME);
+	return WXRcvWMIconName(dpy, WXReqWMIconName(dpy, w));
 }
 
 static void wx_set_text(Display *dpy, Window w, Atom prop, const char *s)
@@ -403,10 +489,20 @@ void WXSetWMIconName(Display *dpy, Window w, const char *name)
 
 /* --- WM_COMMAND ------------------------------------------------------ */
 
+WXCookie WXReqCommand(Display *dpy, Window w)
+{
+	return WXReqTextPropertyList(dpy, w, XA_WM_COMMAND);
+}
+
+Bool WXRcvCommand(Display *dpy, WXCookie ck, char ***argv, int *argc)
+{
+	*argv = WXRcvTextPropertyList(dpy, ck, argc);
+	return *argv != NULL;
+}
+
 Bool WXGetCommand(Display *dpy, Window w, char ***argv, int *argc)
 {
-	*argv = wx_get_text_list(dpy, w, XA_WM_COMMAND, argc);
-	return *argv != NULL;
+	return WXRcvCommand(dpy, WXReqCommand(dpy, w), argv, argc);
 }
 
 void WXSetCommand(Display *dpy, Window w, char **argv, int argc)
@@ -427,7 +523,7 @@ void WXSetCommand(Display *dpy, Window w, char **argv, int argc)
 
 char **WXGetTextPropertyList(Display *dpy, Window w, Atom prop, int *count)
 {
-	return wx_get_text_list(dpy, w, prop, count);
+	return WXRcvTextPropertyList(dpy, WXReqTextPropertyList(dpy, w, prop), count);
 }
 
 void WXSetTextPropertyList(Display *dpy, Window w, Atom prop,

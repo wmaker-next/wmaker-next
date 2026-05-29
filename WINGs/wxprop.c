@@ -15,12 +15,15 @@
  *  request ordering between Xlib calls and these helpers is preserved
  *  without explicit cross-flushing.
  *
- *  Readers issue a checked xcb_get_property and block on the reply with
- *  the error pointer set to NULL: a BadWindow on a vanished client is
- *  consumed by xcb and the helper simply returns False/NULL.  Writers,
- *  delete and send_event are reply-less and therefore asynchronous; any
- *  error reaches the event stream and is dispatched through the existing
- *  Xlib error handler, matching the previous Xlib-backend behaviour.
+ *  Readers come in two layers.  WXReq* queues a GetProperty request and
+ *  returns an opaque WXCookie without blocking, WXRcv* blocks for that
+ *  cookie's reply, validates format/count, and decodes into the caller's
+ *  output.  The synchronous WXGet* convenience wrappers compose the two.
+ *  Replies are requested with the error pointer set to NULL: a BadWindow
+ *  on a vanished client is consumed by xcb and the helper simply returns
+ *  False/NULL.  Writers, delete and send_event are reply-less and
+ *  therefore asynchronous, any error reaches the event stream and is
+ *  dispatched through the existing Xlib error handler.
  */
 
 #include "wconfig.h"
@@ -46,6 +49,12 @@ static inline xcb_connection_t *wx_conn(Display *dpy)
 	return XGetXCBConnection(dpy);
 }
 
+static inline xcb_get_property_cookie_t wx_xck(WXCookie ck)
+{
+	xcb_get_property_cookie_t xck = { ck.seq };
+	return xck;
+}
+
 static xcb_atom_t wx_utf8_string(Display *dpy)
 {
 	static Display *cached_dpy = NULL;
@@ -60,38 +69,76 @@ static xcb_atom_t wx_utf8_string(Display *dpy)
 	return cached;
 }
 
-/*
- * Fetch a property and validate type/format/count.  On success returns the
- * xcb reply (caller in this file free()s it) and sets *nitems.  Returns
- * NULL if the property is absent, the server reports an error, or the
- * actual type/format do not match what was requested.
- *
- * min_items: reject results shorter than this.
- * max_items: longest read in 32-bit units; pass 0 for "as much as fits".
- */
-static xcb_get_property_reply_t *wx_get_raw(Display *dpy, Window w, Atom prop,
-					    Atom req_type, int req_fmt,
-					    uint32_t min_items, uint32_t max_items,
-					    uint32_t *nitems)
-{
-	xcb_connection_t *c = wx_conn(dpy);
-	xcb_get_property_cookie_t ck;
-	xcb_get_property_reply_t *r;
-	uint32_t len, n;
+/* ---- request half --------------------------------------------------- */
 
-	if (max_items == 0 || max_items > WX_MAX_PROP_QUADS)
+static WXCookie wx_req(Display *dpy, Window w, Atom prop, Atom type, uint32_t len)
+{
+	xcb_get_property_cookie_t xck;
+	WXCookie ck;
+
+	xck = xcb_get_property(wx_conn(dpy), 0, (xcb_window_t)w,
+			       (xcb_atom_t)prop, (xcb_atom_t)type, 0, len);
+	ck.seq = xck.sequence;
+	return ck;
+}
+
+WXCookie WXReqFormat32(Display *dpy, Window w, Atom prop, Atom type, size_t max)
+{
+	uint32_t len;
+
+	if (max == 0 || max > WX_MAX_PROP_QUADS)
 		len = WX_MAX_PROP_QUADS;
 	else
-		len = max_items;
+		len = (uint32_t)max;
+	return wx_req(dpy, w, prop, type, len);
+}
 
-	ck = xcb_get_property(c, 0, (xcb_window_t)w, (xcb_atom_t)prop,
-			      (xcb_atom_t)req_type, 0, len);
-	r = xcb_get_property_reply(c, ck, NULL);
+WXCookie WXReqString8(Display *dpy, Window w, Atom prop, Atom type)
+{
+	return wx_req(dpy, w, prop, type, WX_MAX_PROP_QUADS);
+}
+
+WXCookie WXReqExists(Display *dpy, Window w, Atom prop)
+{
+	return wx_req(dpy, w, prop, AnyPropertyType, 0);
+}
+
+void WXFlush(Display *dpy)
+{
+	xcb_flush(wx_conn(dpy));
+}
+
+void WXDiscard(Display *dpy, WXCookie ck)
+{
+	xcb_discard_reply(wx_conn(dpy), ck.seq);
+}
+
+/* ---- reply half: validating fetch ----------------------------------- */
+
+/*
+ * Collect the reply for a cookie and validate format/count.  On success
+ * returns the xcb reply (caller in this file free()s it) and sets *nitems.
+ * Returns NULL if the property is absent, the server reported an error,
+ * or the actual format/count do not match what was requested.
+ *
+ * The required type was already supplied to xcb_get_property(), so when it
+ * does not match, the server returns the actual type and format with an
+ * empty value and bytes_after set to the full length. Reject that case
+ * explicitly so string readers (which pass min_items 0) still see NULL on
+ * a wrong-type property instead of an empty string.
+ */
+static xcb_get_property_reply_t *wx_rcv_raw(Display *dpy, WXCookie ck,
+					    int req_fmt, uint32_t min_items,
+					    uint32_t *nitems)
+{
+	xcb_get_property_reply_t *r;
+	uint32_t n;
+
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
 
 	if (r->type == XCB_ATOM_NONE ||
-	    (req_type != AnyPropertyType && r->type != (xcb_atom_t)req_type) ||
 	    (req_fmt != 0 && r->format != req_fmt)) {
 		free(r);
 		return NULL;
@@ -104,7 +151,7 @@ static xcb_get_property_reply_t *wx_get_raw(Display *dpy, Window w, Atom prop,
 	else
 		n = (uint32_t)xcb_get_property_value_length(r);
 
-	if (n < min_items) {
+	if (n < min_items || (n == 0 && r->bytes_after > 0)) {
 		free(r);
 		return NULL;
 	}
@@ -113,15 +160,21 @@ static xcb_get_property_reply_t *wx_get_raw(Display *dpy, Window w, Atom prop,
 	return r;
 }
 
-/* ---- format-32 readers ---------------------------------------------- */
+/* ---- reply half: format-32 ------------------------------------------ */
 
-Bool WXGetFormat32N(Display *dpy, Window w, Atom prop, Atom type,
-		    uint32_t *out, size_t n)
+Bool WXRcvFormat32N(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
 
-	r = wx_get_raw(dpy, w, prop, type, 32, (uint32_t)n, (uint32_t)n, &nitems);
+	/* keep the min_items check and the copy length in step, a size_t n
+	 * larger than the request cap cannot have been satisfied anyway */
+	if (n > WX_MAX_PROP_QUADS) {
+		WXDiscard(dpy, ck);
+		return False;
+	}
+
+	r = wx_rcv_raw(dpy, ck, 32, (uint32_t)n, &nitems);
 	if (!r)
 		return False;
 
@@ -130,29 +183,28 @@ Bool WXGetFormat32N(Display *dpy, Window w, Atom prop, Atom type,
 	return True;
 }
 
-Bool WXGetCardinal(Display *dpy, Window w, Atom prop, uint32_t *out)
+Bool WXRcvCardinal(Display *dpy, WXCookie ck, uint32_t *out)
 {
-	return WXGetFormat32N(dpy, w, prop, XA_CARDINAL, out, 1);
+	return WXRcvFormat32N(dpy, ck, out, 1);
 }
 
-Bool WXGetCardinalSigned(Display *dpy, Window w, Atom prop, int32_t *out)
+Bool WXRcvCardinalSigned(Display *dpy, WXCookie ck, int32_t *out)
 {
-	return WXGetFormat32N(dpy, w, prop, XA_CARDINAL, (uint32_t *)out, 1);
+	return WXRcvFormat32N(dpy, ck, (uint32_t *)out, 1);
 }
 
-Bool WXGetCardinalN(Display *dpy, Window w, Atom prop, uint32_t *out, size_t n)
+Bool WXRcvCardinalN(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
 {
-	return WXGetFormat32N(dpy, w, prop, XA_CARDINAL, out, n);
+	return WXRcvFormat32N(dpy, ck, out, n);
 }
 
-uint32_t *WXGetCardinalList(Display *dpy, Window w, Atom prop,
-			    size_t max, size_t *count)
+uint32_t *WXRcvCardinalList(Display *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
 	uint32_t *dst;
 
-	r = wx_get_raw(dpy, w, prop, XA_CARDINAL, 32, 1, (uint32_t)max, &nitems);
+	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
 	if (!r)
 		return NULL;
 
@@ -164,24 +216,24 @@ uint32_t *WXGetCardinalList(Display *dpy, Window w, Atom prop,
 	return dst;
 }
 
-Bool WXGetAtom(Display *dpy, Window w, Atom prop, Atom *out)
+Bool WXRcvAtom(Display *dpy, WXCookie ck, Atom *out)
 {
 	uint32_t v;
 
-	if (!WXGetFormat32N(dpy, w, prop, XA_ATOM, &v, 1))
+	if (!WXRcvFormat32N(dpy, ck, &v, 1))
 		return False;
 	*out = (Atom)v;
 	return True;
 }
 
-Atom *WXGetAtomList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+Atom *WXRcvAtomList(Display *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
 	const uint32_t *src;
 	Atom *dst;
 
-	r = wx_get_raw(dpy, w, prop, XA_ATOM, 32, 1, (uint32_t)max, &nitems);
+	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
 	if (!r)
 		return NULL;
 
@@ -195,24 +247,24 @@ Atom *WXGetAtomList(Display *dpy, Window w, Atom prop, size_t max, size_t *count
 	return dst;
 }
 
-Bool WXGetWindow(Display *dpy, Window w, Atom prop, Window *out)
+Bool WXRcvWindow(Display *dpy, WXCookie ck, Window *out)
 {
 	uint32_t v;
 
-	if (!WXGetFormat32N(dpy, w, prop, XA_WINDOW, &v, 1))
+	if (!WXRcvFormat32N(dpy, ck, &v, 1))
 		return False;
 	*out = (Window)v;
 	return True;
 }
 
-Window *WXGetWindowList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+Window *WXRcvWindowList(Display *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
 	const uint32_t *src;
 	Window *dst;
 
-	r = wx_get_raw(dpy, w, prop, XA_WINDOW, 32, 1, (uint32_t)max, &nitems);
+	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
 	if (!r)
 		return NULL;
 
@@ -226,15 +278,15 @@ Window *WXGetWindowList(Display *dpy, Window w, Atom prop, size_t max, size_t *c
 	return dst;
 }
 
-/* ---- format-8 string readers ---------------------------------------- */
+/* ---- reply half: format-8 strings ----------------------------------- */
 
-static char *wx_get_string8(Display *dpy, Window w, Atom prop, Atom type, size_t *len)
+char *WXRcvString(Display *dpy, WXCookie ck, size_t *len)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
 	char *dst;
 
-	r = wx_get_raw(dpy, w, prop, type, 8, 0, 0, &nitems);
+	r = wx_rcv_raw(dpy, ck, 8, 0, &nitems);
 	if (!r)
 		return NULL;
 
@@ -249,31 +301,81 @@ static char *wx_get_string8(Display *dpy, Window w, Atom prop, Atom type, size_t
 	return dst;
 }
 
-char *WXGetUTF8String(Display *dpy, Window w, Atom prop, size_t *len)
+Bool WXRcvExists(Display *dpy, WXCookie ck)
 {
-	return wx_get_string8(dpy, w, prop, (Atom)wx_utf8_string(dpy), len);
-}
-
-char *WXGetLatin1String(Display *dpy, Window w, Atom prop, size_t *len)
-{
-	return wx_get_string8(dpy, w, prop, XA_STRING, len);
-}
-
-Bool WXPropExists(Display *dpy, Window w, Atom prop)
-{
-	xcb_connection_t *c = wx_conn(dpy);
-	xcb_get_property_cookie_t ck;
 	xcb_get_property_reply_t *r;
 	Bool exists;
 
-	ck = xcb_get_property(c, 0, (xcb_window_t)w, (xcb_atom_t)prop,
-			      XCB_GET_PROPERTY_TYPE_ANY, 0, 0);
-	r = xcb_get_property_reply(c, ck, NULL);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return False;
 	exists = (r->type != XCB_ATOM_NONE);
 	free(r);
 	return exists;
+}
+
+/* ---- synchronous readers -------------------------------------------- */
+
+Bool WXGetFormat32N(Display *dpy, Window w, Atom prop, Atom type,
+		    uint32_t *out, size_t n)
+{
+	return WXRcvFormat32N(dpy, WXReqFormat32(dpy, w, prop, type, n), out, n);
+}
+
+Bool WXGetCardinal(Display *dpy, Window w, Atom prop, uint32_t *out)
+{
+	return WXRcvCardinal(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, 1), out);
+}
+
+Bool WXGetCardinalSigned(Display *dpy, Window w, Atom prop, int32_t *out)
+{
+	return WXRcvCardinalSigned(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, 1), out);
+}
+
+Bool WXGetCardinalN(Display *dpy, Window w, Atom prop, uint32_t *out, size_t n)
+{
+	return WXRcvCardinalN(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, n), out, n);
+}
+
+uint32_t *WXGetCardinalList(Display *dpy, Window w, Atom prop,
+			    size_t max, size_t *count)
+{
+	return WXRcvCardinalList(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, max), count);
+}
+
+Bool WXGetAtom(Display *dpy, Window w, Atom prop, Atom *out)
+{
+	return WXRcvAtom(dpy, WXReqFormat32(dpy, w, prop, XA_ATOM, 1), out);
+}
+
+Atom *WXGetAtomList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+{
+	return WXRcvAtomList(dpy, WXReqFormat32(dpy, w, prop, XA_ATOM, max), count);
+}
+
+Bool WXGetWindow(Display *dpy, Window w, Atom prop, Window *out)
+{
+	return WXRcvWindow(dpy, WXReqFormat32(dpy, w, prop, XA_WINDOW, 1), out);
+}
+
+Window *WXGetWindowList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+{
+	return WXRcvWindowList(dpy, WXReqFormat32(dpy, w, prop, XA_WINDOW, max), count);
+}
+
+char *WXGetUTF8String(Display *dpy, Window w, Atom prop, size_t *len)
+{
+	return WXRcvString(dpy, WXReqString8(dpy, w, prop, (Atom)wx_utf8_string(dpy)), len);
+}
+
+char *WXGetLatin1String(Display *dpy, Window w, Atom prop, size_t *len)
+{
+	return WXRcvString(dpy, WXReqString8(dpy, w, prop, XA_STRING), len);
+}
+
+Bool WXPropExists(Display *dpy, Window w, Atom prop)
+{
+	return WXRcvExists(dpy, WXReqExists(dpy, w, prop));
 }
 
 /* ---- format-32 writers ---------------------------------------------- */
