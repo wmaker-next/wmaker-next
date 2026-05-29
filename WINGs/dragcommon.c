@@ -55,10 +55,7 @@ WMDragOperationType W_ActionToOperation(WMScreen * scr, Atom action)
 
 		return WDOperationNone;
 	} else {
-		char *tmp = XGetAtomName(scr->display, action);
-
-		wwarning(_("unknown XDND action %s"), tmp);
-		XFree(tmp);
+		wwarning(_("unknown XDND action %lu"), (unsigned long)action);
 
 		return WDOperationCopy;
 	}

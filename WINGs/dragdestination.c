@@ -25,6 +25,7 @@
 
 static const unsigned char XDNDversion = XDND_VERSION;
 static WMHandlerID dndDestinationTimer = NULL;
+static Bool badAtomError;
 
 static void *idleState(WMView * destView, XClientMessageEvent * event, WMDraggingInfo * info);
 static void *waitEnterState(WMView * destView, XClientMessageEvent * event, WMDraggingInfo * info);
@@ -42,6 +43,36 @@ static void freeSourceTypeArrayItem(void *type)
 static WMArray *createSourceTypeArray(int initialSize)
 {
 	return WMCreateArrayWithDestructor(initialSize, freeSourceTypeArrayItem);
+}
+
+static int handleBadAtomError(Display *dpy, XErrorEvent *event)
+{
+	(void)dpy;
+
+	if (event->error_code == BadAtom)
+		badAtomError = True;
+
+	return 0;
+}
+
+static char *safeGetAtomName(Display *dpy, Atom atom)
+{
+	XErrorHandler oldHandler;
+	char *name;
+
+	badAtomError = False;
+	XSync(dpy, False);
+	oldHandler = XSetErrorHandler(handleBadAtomError);
+	name = XGetAtomName(dpy, atom);
+	XSync(dpy, False);
+	XSetErrorHandler(oldHandler);
+
+	if (badAtomError && name) {
+		XFree(name);
+		name = NULL;
+	}
+
+	return name;
 }
 
 static void freeDropDataArrayItem(void *data)
@@ -71,7 +102,9 @@ static WMArray *getTypesFromTypeList(WMScreen * scr, Window sourceWin)
 
 	typeList = createSourceTypeArray(count);
 	for (i = 0; i < count; i++) {
-		WMAddToArray(typeList, XGetAtomName(scr->display, typeAtomList[i]));
+		char *typeName = safeGetAtomName(scr->display, typeAtomList[i]);
+		if (typeName != NULL)
+			WMAddToArray(typeList, typeName);
 	}
 
 	wfree(typeAtomList);
@@ -88,8 +121,11 @@ static WMArray *getTypesFromThreeTypes(WMScreen * scr, XClientMessageEvent * eve
 	typeList = createSourceTypeArray(3);
 	for (i = 2; i < 5; i++) {
 		if (event->data.l[i] != None) {
+			char *typeName;
 			atom = (Atom) event->data.l[i];
-			WMAddToArray(typeList, XGetAtomName(scr->display, atom));
+			typeName = safeGetAtomName(scr->display, atom);
+			if (typeName != NULL)
+				WMAddToArray(typeList, typeName);
 		}
 	}
 
