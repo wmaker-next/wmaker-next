@@ -69,25 +69,12 @@
 #endif /* !NDEBUG */
 
 
-#ifdef static_assert
-# define _wutil_static_assert(check, message) static_assert(check, message)
-#else
-# ifdef __STDC_VERSION__
-#  if __STDC_VERSION__ >= 201112L
 /*
- * Ideally, we would like to include <assert.h> to have 'static_assert'
- * properly defined, but as we have to be sure about portability and
- * because we're a public header we can't count on 'configure' to tell
- * us about availability, so we use the raw C11 keyword
+ * C11 is the minimum supported language level (configure pins -std=gnu11),
+ * so the _Static_assert keyword is always available and the check is never
+ * silently dropped. GCC and Clang also accept _Static_assert in C++ mode.
  */
-#   define _wutil_static_assert(check, message) _Static_assert(check, message)
-#  else
-#   define _wutil_static_assert(check, message) /**/
-#  endif
-# else
-#  define _wutil_static_assert(check, message) /**/
-# endif
-#endif
+#define _wutil_static_assert(check, message) _Static_assert(check, message)
 
 
 #ifdef __cplusplus
