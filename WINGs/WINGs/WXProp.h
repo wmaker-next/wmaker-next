@@ -64,6 +64,7 @@ Atom     *WXRcvAtomList      (Display *dpy, WXCookie ck, size_t *count);
 Bool      WXRcvWindow        (Display *dpy, WXCookie ck, Window *out);
 Window   *WXRcvWindowList    (Display *dpy, WXCookie ck, size_t *count);
 Bool      WXRcvFormat32N     (Display *dpy, WXCookie ck, uint32_t *out, size_t n);
+uint32_t *WXRcvFormat32List  (Display *dpy, WXCookie ck, size_t *count);
 char     *WXRcvString        (Display *dpy, WXCookie ck, size_t *len);
 Bool      WXRcvExists        (Display *dpy, WXCookie ck);
 

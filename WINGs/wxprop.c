@@ -198,7 +198,7 @@ Bool WXRcvCardinalN(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
 	return WXRcvFormat32N(dpy, ck, out, n);
 }
 
-uint32_t *WXRcvCardinalList(Display *dpy, WXCookie ck, size_t *count)
+uint32_t *WXRcvFormat32List(Display *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
@@ -214,6 +214,11 @@ uint32_t *WXRcvCardinalList(Display *dpy, WXCookie ck, size_t *count)
 
 	*count = nitems;
 	return dst;
+}
+
+uint32_t *WXRcvCardinalList(Display *dpy, WXCookie ck, size_t *count)
+{
+	return WXRcvFormat32List(dpy, ck, count);
 }
 
 Bool WXRcvAtom(Display *dpy, WXCookie ck, Atom *out)
