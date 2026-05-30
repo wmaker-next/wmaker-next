@@ -117,7 +117,9 @@ static Bool writeSelection(Display * dpy, Window requestor, Atom property, Atom 
 	int format, bpi;
 
 	format = WMGetDataFormat(data);
-	if (format == 0)
+	/* X selections only carry format 8, 16 or 32, anything else is a
+	 * caller bug and would make bpi zero below */
+	if (format != 8 && format != 16 && format != 32)
 		format = 8;
 
 	/* Xlib stores format-32 items as longs (8 bytes on LP64), not 4 */
