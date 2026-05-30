@@ -503,8 +503,13 @@ RImage *get_window_image_from_x11(Window window)
 	size_t items;
 	uint32_t *property;
 
-	/* Get the icon from X11 Window */
-	property = WXGetCardinalList(dpy, window, net_wm_icon, 1u << 24, &items);
+	/* Get the icon from X11 Window. Cap the read at 4 Mi CARDINALs
+	 * (16 MiB), Electron and Chromium based applications ship a
+	 * single 1024x1024 icon (1,048,578 cardinals) and nothing
+	 * smaller, so the bound must cover that, while still preventing
+	 * a hostile client from forcing an arbitrarily large transient
+	 * allocation by stuffing the property. */
+	property = WXGetCardinalList(dpy, window, net_wm_icon, 1u << 22, &items);
 	if (!property)
 		return NULL;
 
