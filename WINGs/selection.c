@@ -249,7 +249,7 @@ static void handleRequestEvent(XEvent * event)
 	WMFreeArray(copy);
 }
 
-static WMData *getSelectionData(Display * dpy, Window win, Atom where)
+static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expected_type)
 {
 	WMData *wdata;
 	unsigned char *data;
@@ -258,7 +258,19 @@ static WMData *getSelectionData(Display * dpy, Window win, Atom where)
 	unsigned long len, bytes;
 
 	if (XGetWindowProperty(dpy, win, where, 0, MAX_PROPERTY_SIZE,
-			       False, AnyPropertyType, &rtype, &bits, &len, &bytes, &data) != Success) {
+			       False, expected_type, &rtype, &bits, &len, &bytes, &data) != Success) {
+		return NULL;
+	}
+
+	/* the property is owner-supplied, only accept the formats X
+	 * actually defines and refuse a partial read so callbacks never see
+	 * a truncated value. Requesting expected_type means a type mismatch
+	 * comes back as len == 0 with bytes_after set, which the bytes != 0
+	 * test rejects, so the callback is never handed data of a type it
+	 * did not ask for. */
+	if (rtype == None || (bits != 8 && bits != 16 && bits != 32) || bytes != 0) {
+		if (data)
+			XFree(data);
 		return NULL;
 	}
 
@@ -281,7 +293,8 @@ static void handleNotifyEvent(XEvent * event)
 	WM_ITERATE_ARRAY(selCallbacks, handler, iter) {
 
 		if (W_VIEW_DRAWABLE(handler->view) != event->xselection.requestor
-		    || handler->selection != event->xselection.selection) {
+		    || handler->selection != event->xselection.selection
+		    || handler->target != event->xselection.target) {
 			continue;
 		}
 		handler->flags.done_pending = 1;
@@ -290,7 +303,9 @@ static void handleNotifyEvent(XEvent * event)
 			data = NULL;
 		} else {
 			data = getSelectionData(event->xselection.display,
-						event->xselection.requestor, event->xselection.property);
+						event->xselection.requestor,
+						event->xselection.property,
+						handler->target);
 		}
 
 		(*handler->callback) (handler->view, handler->selection,
