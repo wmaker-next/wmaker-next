@@ -67,7 +67,9 @@ POTFILES += \
 	$(top_srcdir)/WINGs/wtext.c \
 	$(top_srcdir)/WINGs/wtextfield.c \
 	$(top_srcdir)/WINGs/wview.c \
-	$(top_srcdir)/WINGs/wwindow.c
+	$(top_srcdir)/WINGs/wwindow.c \
+	$(top_srcdir)/WINGs/wxhints.c \
+	$(top_srcdir)/WINGs/wxprop.c
 
 SUFFIXES = .po .mo
 
