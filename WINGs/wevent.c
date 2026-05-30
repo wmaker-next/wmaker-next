@@ -46,6 +46,15 @@ static const unsigned long eventMasks[] = {
 	0,			/* Mapping Notify */
 };
 
+/* extension events (XKB, RandR, Shape, XI2, ...) carry types past LASTEvent,
+ * they have no corresponding select mask in the core table */
+static inline unsigned long maskForEventType(int type)
+{
+	if (type < 0 || (size_t)type >= wlengthof(eventMasks))
+		return 0;
+	return eventMasks[type];
+}
+
 /* hook for other toolkits or wmaker process their events */
 static WMEventHook *extraEventHandler = NULL;
 
@@ -158,7 +167,7 @@ void WMSetViewNextResponder(WMView * view, WMView * responder)
 
 void WMRelayToNextResponder(WMView * view, XEvent * event)
 {
-	unsigned long mask = eventMasks[event->xany.type];
+	unsigned long mask = maskForEventType(event->xany.type);
 
 	if (view->nextResponder) {
 		WMView *next = view->nextResponder;
@@ -190,7 +199,7 @@ int WMHandleEvent(XEvent * event)
 		return False;
 	}
 
-	mask = eventMasks[event->xany.type];
+	mask = maskForEventType(event->xany.type);
 
 	window = event->xany.window;
 
