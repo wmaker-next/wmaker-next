@@ -165,6 +165,11 @@ void W_HandleDNDClientMessage(WMView * toplevel, XClientMessageEvent * event)
 	WMDraggingInfo *info = &scr->dragInfo;
 	Atom messageType = event->message_type;
 
+	/* every XDND client message carries 32-bit data fields, refuse
+	 * format-8/16 spoofs before any handler reads data.l[] */
+	if (event->format != 32)
+		return;
+
 #ifdef XDND_DEBUG
 	{
 		char *msgTypeName = XGetAtomName(scr->display, messageType);
