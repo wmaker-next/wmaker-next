@@ -76,6 +76,11 @@ typedef struct WFrameWindow {
 #ifdef XKB_BUTTON_HINT
     Pixmap languagebutton_back[3];
 #endif
+    /* cache entries the Pixmaps above are borrowed from, the Pixmaps are
+     * not owned by this frame and must be released through the cache,
+     * never via XFreePixmap directly */
+    struct WFrameTexCache *title_cache[3];
+    struct WFrameTexCache *resizebar_cache;
 
     WPixmap *lbutton_image;
     WPixmap *rbutton_image;

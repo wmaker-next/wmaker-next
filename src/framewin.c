@@ -44,6 +44,90 @@
 #include "event.h"
 
 
+/* ----- shared frame texture cache ------------------------------------ *
+ *
+ * Titlebar and resizebar gradient Pixmaps were previously rendered and
+ * owned per WFrameWindow, so N windows of the same width held N copies
+ * of the same pixels (xrestop measured ~122 kB of server memory per
+ * 600 px window with a gradient theme). Cache the rendered set keyed on
+ * everything renderTexture()/renderResizebarTexture() reads, and let
+ * frames share a refcounted entry instead.
+ *
+ * The Pixmap fields in WFrameWindow stay and hold copies of the cached
+ * XIDs so existing read sites (updateTexture, the title XCopyArea path)
+ * are unchanged, only the create/free sites move to acquire/release.
+ */
+
+struct WFrameTexCache {
+	/* key */
+	WTexture *texture;
+	int width, height;
+	int extra;                /* title: packed left|right|lang, resizebar: cwidth */
+	/* value */
+	Pixmap title;
+	Pixmap lbutton, rbutton;
+#ifdef XKB_BUTTON_HINT
+	Pixmap langbutton;
+#endif
+	int refcount;
+	struct WFrameTexCache *next;
+};
+
+static struct WFrameTexCache *title_tex_cache;
+static struct WFrameTexCache *resize_tex_cache;
+
+static struct WFrameTexCache *texcache_find(struct WFrameTexCache *head, WTexture *tex,
+					     int w, int h, int extra)
+{
+	struct WFrameTexCache *e;
+
+	for (e = head; e; e = e->next)
+		if (e->texture == tex && e->width == w && e->height == h && e->extra == extra)
+			return e;
+	return NULL;
+}
+
+static void texcache_release(struct WFrameTexCache **head, struct WFrameTexCache *e)
+{
+	struct WFrameTexCache **pp;
+
+	if (!e || --e->refcount > 0)
+		return;
+
+	for (pp = head; *pp; pp = &(*pp)->next) {
+		if (*pp == e) {
+			*pp = e->next;
+			break;
+		}
+	}
+	FREE_PIXMAP(e->title);
+	FREE_PIXMAP(e->lbutton);
+	FREE_PIXMAP(e->rbutton);
+#ifdef XKB_BUTTON_HINT
+	FREE_PIXMAP(e->langbutton);
+#endif
+	wfree(e);
+}
+
+static void release_title_set(WFrameWindow *fwin, int state)
+{
+	texcache_release(&title_tex_cache, fwin->title_cache[state]);
+	fwin->title_cache[state] = NULL;
+	fwin->title_back[state] = None;
+	fwin->lbutton_back[state] = None;
+	fwin->rbutton_back[state] = None;
+#ifdef XKB_BUTTON_HINT
+	fwin->languagebutton_back[state] = None;
+#endif
+}
+
+static void release_resizebar_set(WFrameWindow *fwin)
+{
+	texcache_release(&resize_tex_cache, fwin->resizebar_cache);
+	fwin->resizebar_cache = NULL;
+	fwin->resizebar_back[0] = None;
+}
+
 static void handleExpose(WObjDescriptor * desc, XEvent * event);
 static void handleButtonExpose(WObjDescriptor * desc, XEvent * event);
 
@@ -197,16 +281,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			/* we had a titlebar, but now we don't need it anymore */
-			for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++) {
-				FREE_PIXMAP(fwin->title_back[i]);
-				if (wPreferences.new_style == TS_NEW) {
-					FREE_PIXMAP(fwin->lbutton_back[i]);
-					FREE_PIXMAP(fwin->rbutton_back[i]);
-#ifdef XKB_BUTTON_HINT
-					FREE_PIXMAP(fwin->languagebutton_back[i]);
-#endif
-				}
-			}
+			for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
+				release_title_set(fwin, i);
 			if (fwin->left_button)
 				wCoreDestroy(fwin->left_button);
 			fwin->left_button = NULL;
@@ -361,6 +437,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 		if (fwin->resizebar) {
 			fwin->bottom_width = 0;
+			release_resizebar_set(fwin);
 			wCoreDestroy(fwin->resizebar);
 			fwin->resizebar = NULL;
 		}
@@ -461,16 +538,9 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 	if (fwin->title)
 		wfree(fwin->title);
 
-	for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++) {
-		FREE_PIXMAP(fwin->title_back[i]);
-		if (wPreferences.new_style == TS_NEW) {
-			FREE_PIXMAP(fwin->lbutton_back[i]);
-#ifdef XKB_BUTTON_HINT
-			FREE_PIXMAP(fwin->languagebutton_back[i]);
-#endif
-			FREE_PIXMAP(fwin->rbutton_back[i]);
-		}
-	}
+	for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
+		release_title_set(fwin, i);
+	release_resizebar_set(fwin);
 
 	wfree(fwin);
 }
@@ -843,30 +913,18 @@ static void updateTexture(WFrameWindow * fwin)
 
 static void remakeTexture(WFrameWindow * fwin, int state)
 {
-	Pixmap pmap, lpmap, rpmap;
-#ifdef XKB_BUTTON_HINT
-	Pixmap tpmap;
-#endif
+	struct WFrameTexCache *e;
 
 	if (fwin->title_texture[state] && fwin->titlebar) {
-		FREE_PIXMAP(fwin->title_back[state]);
-		if (wPreferences.new_style == TS_NEW) {
-			FREE_PIXMAP(fwin->lbutton_back[state]);
-			FREE_PIXMAP(fwin->rbutton_back[state]);
-#ifdef XKB_BUTTON_HINT
-			FREE_PIXMAP(fwin->languagebutton_back[state]);
-#endif
-		}
+		release_title_set(fwin, state);
 
 		if (fwin->title_texture[state]->any.type != WTEX_SOLID) {
-			int left, right;
-			int width;
-#ifdef XKB_BUTTON_HINT
-			int language;
-#endif
+			WTexture *tex = fwin->title_texture[state];
+			int left, right, language = 0;
+			int width, height, extra;
 
-			/* eventually surrounded by if new_style */
-			left = fwin->left_button && !fwin->flags.hide_left_button && !fwin->flags.lbutton_dont_fit;
+			left = fwin->left_button && !fwin->flags.hide_left_button
+			    && !fwin->flags.lbutton_dont_fit;
 #ifdef XKB_BUTTON_HINT
 			language = fwin->language_button && !fwin->flags.hide_language_button
 			    && !fwin->flags.languagebutton_dont_fit;
@@ -875,25 +933,41 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			    && !fwin->flags.rbutton_dont_fit;
 
 			width = fwin->core->width + 1;
+			height = fwin->titlebar->height;
+			/* button presence only changes the output in TS_NEW,
+			 * fold it out of the key for the other styles so they
+			 * share more */
+			extra = (wPreferences.new_style == TS_NEW)
+				? ((left ? 1 : 0) | (right ? 2 : 0) | (language ? 4 : 0))
+				: 0;
 
+			e = texcache_find(title_tex_cache, tex, width, height, extra);
+			if (!e) {
+				e = wmalloc(sizeof(*e));
+				e->texture = tex;
+				e->width = width;
+				e->height = height;
+				e->extra = extra;
 #ifdef XKB_BUTTON_HINT
-			renderTexture(fwin->screen_ptr, fwin->title_texture[state],
-				      width, fwin->titlebar->height,
-				      fwin->titlebar->height, fwin->titlebar->height,
-				      left, language, right, &pmap, &lpmap, &tpmap, &rpmap);
+				renderTexture(fwin->screen_ptr, tex, width, height,
+					      height, height, left, language, right,
+					      &e->title, &e->lbutton, &e->langbutton, &e->rbutton);
 #else
-			renderTexture(fwin->screen_ptr, fwin->title_texture[state],
-				      width, fwin->titlebar->height,
-				      fwin->titlebar->height, fwin->titlebar->height,
-				      left, right, &pmap, &lpmap, &rpmap);
+				renderTexture(fwin->screen_ptr, tex, width, height,
+					      height, height, left, right,
+					      &e->title, &e->lbutton, &e->rbutton);
 #endif
-
-			fwin->title_back[state] = pmap;
+				e->next = title_tex_cache;
+				title_tex_cache = e;
+			}
+			e->refcount++;
+			fwin->title_cache[state] = e;
+			fwin->title_back[state] = e->title;
 			if (wPreferences.new_style == TS_NEW) {
-				fwin->lbutton_back[state] = lpmap;
-				fwin->rbutton_back[state] = rpmap;
+				fwin->lbutton_back[state] = e->lbutton;
+				fwin->rbutton_back[state] = e->rbutton;
 #ifdef XKB_BUTTON_HINT
-				fwin->languagebutton_back[state] = tpmap;
+				fwin->languagebutton_back[state] = e->langbutton;
 #endif
 			}
 		}
@@ -901,16 +975,29 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 	if (fwin->resizebar_texture && fwin->resizebar_texture[0]
 	    && fwin->resizebar && state == 0) {
 
-		FREE_PIXMAP(fwin->resizebar_back[0]);
+		release_resizebar_set(fwin);
 
 		if (fwin->resizebar_texture[0]->any.type != WTEX_SOLID) {
+			WTexture *tex = fwin->resizebar_texture[0];
+			int width = fwin->resizebar->width;
+			int height = fwin->resizebar->height;
+			int cwidth = fwin->resizebar_corner_width;
 
-			renderResizebarTexture(fwin->screen_ptr,
-					       fwin->resizebar_texture[0],
-					       fwin->resizebar->width,
-					       fwin->resizebar->height, fwin->resizebar_corner_width, &pmap);
-
-			fwin->resizebar_back[0] = pmap;
+			e = texcache_find(resize_tex_cache, tex, width, height, cwidth);
+			if (!e) {
+				e = wmalloc(sizeof(*e));
+				e->texture = tex;
+				e->width = width;
+				e->height = height;
+				e->extra = cwidth;
+				renderResizebarTexture(fwin->screen_ptr, tex,
+						       width, height, cwidth, &e->title);
+				e->next = resize_tex_cache;
+				resize_tex_cache = e;
+			}
+			e->refcount++;
+			fwin->resizebar_cache = e;
+			fwin->resizebar_back[0] = e->title;
 		}
 
 		/* this part should be in updateTexture() */
