@@ -104,6 +104,7 @@ static void test_hashtable(void)
 static void test_data(void)
 {
 	unsigned char raw[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+	unsigned char more[] = { 9, 10 };
 	WMData *d;
 
 	d = WMCreateDataWithBytes(raw, sizeof(raw));
@@ -113,7 +114,34 @@ static void test_data(void)
 	WMSetDataFormat(d, 32);
 	CHECK(WMGetDataFormat(d) == 32);
 
+	WMAppendDataBytes(d, more, sizeof(more));
+	CHECK(WMGetDataLength(d) == sizeof(raw) + sizeof(more));
+	CHECK(((const unsigned char *)WMDataBytes(d))[8] == 9);
+	CHECK(((const unsigned char *)WMDataBytes(d))[9] == 10);
+
 	WMReleaseData(d);
+}
+
+static void test_spawn(void)
+{
+	int st;
+	char *out;
+
+	CHECK(wspawnvp_wait((char *[]){ "true", NULL }) == 0);
+	CHECK(wspawnvp_wait((char *[]){ "false", NULL }) != 0);
+
+	out = wspawnvp_capture((char *[]){ "printf", "ab%s", "cd", NULL }, 64, &st);
+	CHECK(out != NULL);
+	CHECK(st == 0);
+	CHECK(out && strcmp(out, "abcd") == 0);
+	wfree(out);
+
+	/* maxlen bound is honoured and the result is NUL-terminated */
+	out = wspawnvp_capture((char *[]){ "printf", "0123456789", NULL }, 4, &st);
+	CHECK(out != NULL);
+	CHECK(out && strlen(out) == 4);
+	CHECK(out && strncmp(out, "0123", 4) == 0);
+	wfree(out);
 }
 
 int main(void)
@@ -123,6 +151,7 @@ int main(void)
 	test_array();
 	test_hashtable();
 	test_data();
+	test_spawn();
 
 	if (failures) {
 		fprintf(stderr, "%d check(s) failed\n", failures);

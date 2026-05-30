@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <limits.h>
 #include "WUtil.h"
 
 typedef struct W_Data {
@@ -157,6 +158,7 @@ void WMSetDataFormat(WMData * aData, unsigned format)
 
 void WMIncreaseDataLengthBy(WMData * aData, unsigned extraLength)
 {
+	wassertr(extraLength <= UINT_MAX - aData->length);
 	WMSetDataLength(aData, aData->length + extraLength);
 }
 
@@ -233,15 +235,26 @@ unsigned WMGetDataLength(WMData * aData)
 void WMAppendDataBytes(WMData * aData, const void *bytes, unsigned length)
 {
 	unsigned oldLength = aData->length;
-	unsigned newLength = oldLength + length;
+	unsigned newLength;
+
+	/* refuse appends that would wrap the 32-bit length, otherwise the
+	 * capacity check below passes and memcpy() overruns the buffer */
+	wassertr(length <= UINT_MAX - oldLength);
+	newLength = oldLength + length;
 
 	if (newLength > aData->capacity) {
 		unsigned nextCapacity = aData->capacity + aData->growth;
 		unsigned nextGrowth = aData->capacity ? aData->capacity : 1;
 
 		while (nextCapacity < newLength) {
-			unsigned tmp = nextCapacity + nextGrowth;
+			unsigned tmp;
 
+			/* Fibonacci growth, guard the step against wrap */
+			if (nextGrowth > UINT_MAX - nextCapacity) {
+				nextCapacity = newLength;
+				break;
+			}
+			tmp = nextCapacity + nextGrowth;
 			nextGrowth = nextCapacity;
 			nextCapacity = tmp;
 		}
