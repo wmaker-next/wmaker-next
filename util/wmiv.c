@@ -1248,11 +1248,8 @@ RImage *draw_failed_image(void)
 */
 int full_screen(void)
 {
-	XEvent xev;
-
 	Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", True);
 	Atom fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", True);
-	long mask = SubstructureNotifyMask;
 
 	if (fullscreen_flag) {
 		fullscreen_flag = False;
@@ -1269,19 +1266,8 @@ int full_screen(void)
 			merge_with_background(img);
 	}
 
-	memset(&xev, 0, sizeof(xev));
-	xev.type = ClientMessage;
-	xev.xclient.display = dpy;
-	xev.xclient.window = win;
-	xev.xclient.message_type = wm_state;
-	xev.xclient.format = 32;
-	xev.xclient.data.l[0] = fullscreen_flag;
-	xev.xclient.data.l[1] = fullscreen;
-
-	if (!XSendEvent(dpy, DefaultRootWindow(dpy), False, mask, &xev)) {
-		fprintf(stderr, "Error: sending fullscreen event to xserver\n");
-		return EXIT_FAILURE;
-	}
+	WXSendClientMessage(dpy, DefaultRootWindow(dpy), SubstructureNotifyMask,
+			    win, wm_state, fullscreen_flag, fullscreen, 0, 0, 0);
 	return EXIT_SUCCESS;
 }
 
