@@ -1236,9 +1236,8 @@ void ScreenCapture(WScreen *scr, int mode)
 	time_t s;
 	short i = 0;
 	struct tm *tm_info;
-	char index_str[12] = "";
 	char filename_date_part[60];
-	char filename[60];
+	char filename[80];
 	char *filepath;
 	char *screenshot_dir;
 	RImage *img = NULL;
@@ -1276,16 +1275,14 @@ void ScreenCapture(WScreen *scr, int mode)
 		return;
 	}
 
-	strcpy(filename, filename_date_part);
+	snprintf(filename, sizeof(filename), "%s%s", filename_date_part, filetype);
 
-	filepath = wstrconcat(screenshot_dir, strcat(filename, filetype));
+	filepath = wstrconcat(screenshot_dir, filename);
 	while (access(filepath, F_OK) == 0 && i < 600) {
 		i++;
-		strcpy(filename, filename_date_part);
-		sprintf(index_str, "_%d", i);
-		strncat(filename, index_str, sizeof(filename) - strlen(filename) - 1);
+		snprintf(filename, sizeof(filename), "%s_%d%s", filename_date_part, i, filetype);
 		wfree(filepath);
-		filepath = wstrconcat(screenshot_dir, strcat(filename, filetype));
+		filepath = wstrconcat(screenshot_dir, filename);
 	}
 
 	/* cannot generate an available filename ?! */
