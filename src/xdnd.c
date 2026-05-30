@@ -50,6 +50,7 @@ static Atom _XA_XdndTypeList;
 static Atom _XA_WINDOWMAKER_XDNDEXCHANGE;
 static Atom supported_typelist;
 static Atom selected_typelist;
+static Window xdnd_requestor = None;
 
 void wXDNDInitializeAtoms(void)
 {
@@ -123,17 +124,26 @@ Bool wXDNDProcessSelection(XEvent *event)
 {
 	WScreen *scr = wScreenForWindow(event->xselection.requestor);
 	char *retain;
-	Atom ret_type;
-	int ret_format;
-	unsigned long ret_item;
-	unsigned long remain_byte;
-	char *delme;
+	char *delme = NULL;
 	Window selowner = XGetSelectionOwner(dpy, _XA_XdndSelection);
 
-	XGetWindowProperty(dpy, event->xselection.requestor,
-			   _XA_WINDOWMAKER_XDNDEXCHANGE,
-			   0, 65536, True, selected_typelist, &ret_type, &ret_format,
-			   &ret_item, &remain_byte, (unsigned char **)&delme);
+	/* only act on the conversion we requested in the XdndDrop handler,
+	 * a forged SelectionNotify must match every field we passed to
+	 * XConvertSelection() including the requestor window we own */
+	if (xdnd_requestor != None &&
+	    event->xselection.requestor == xdnd_requestor &&
+	    event->xselection.selection == _XA_XdndSelection &&
+	    event->xselection.target == selected_typelist &&
+	    event->xselection.property == _XA_WINDOWMAKER_XDNDEXCHANGE) {
+		delme = WXRcvString(dpy,
+				    WXReqString8(dpy, xdnd_requestor,
+						 _XA_WINDOWMAKER_XDNDEXCHANGE,
+						 selected_typelist),
+				    NULL);
+		XDeleteProperty(dpy, xdnd_requestor, _XA_WINDOWMAKER_XDNDEXCHANGE);
+	}
+	xdnd_requestor = None;
+	selected_typelist = None;
 
 	/*send finished */
 	WXSendClientMessage(dpy, selowner, 0, selowner, _XA_XdndFinished,
@@ -151,7 +161,7 @@ Bool wXDNDProcessSelection(XEvent *event)
 		scr->xdestring = delme;
 		items = WMCreateArray(4);
 		retain = wstrdup(scr->xdestring);
-		XFree(scr->xdestring);	/* since xdestring was created by Xlib */
+		wfree(scr->xdestring);
 
 		length = strlen(retain);
 
@@ -258,7 +268,7 @@ static void wXDNDGetTypeList(Display *dpy, Window window)
 	Atom *typelist;
 	size_t i, count;
 
-	typelist = WXGetAtomList(dpy, window, _XA_XdndTypeList, 0x8000000L, &count);
+	typelist = WXGetAtomList(dpy, window, _XA_XdndTypeList, 1024, &count);
 	if (!typelist) {
 		wwarning(_("wXDNDGetTypeList failed = %ld"), _XA_XdndTypeList);
 		return;
@@ -275,25 +285,40 @@ static void wXDNDGetTypeList(Display *dpy, Window window)
 
 Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
 {
+	/* every XDND client message carries 32-bit data fields */
+	if (event->format != 32)
+		return False;
+
 	if (event->message_type == _XA_XdndEnter) {
+		int i;
+
+		/* reset so a previous drag's negotiated type does not leak
+		 * into XdndPosition/XdndDrop for this one */
+		selected_typelist = None;
 
 		if (XDND_ENTER_THREE_TYPES(event)) {
-			selected_typelist = XDND_ENTER_TYPE(event, 0);
+			for (i = 0; i < 3; i++) {
+				if (XDND_ENTER_TYPE(event, i) == supported_typelist) {
+					selected_typelist = supported_typelist;
+					break;
+				}
+			}
 		} else {
 			wXDNDGetTypeList(dpy, XDND_ENTER_SOURCE_WIN(event));
-			/*
-			char *name = XGetAtomName(dpy, selected_typelist);
-			fprintf(stderr, "Get %s\n",name);
-			XFree(name);
-			*/
 		}
 		return True;
 	} else if (event->message_type == _XA_XdndLeave) {
+		selected_typelist = None;
+		xdnd_requestor = None;
 		return True;
 	} else if (event->message_type == _XA_XdndDrop) {
-		if (XDND_DROP_SOURCE_WIN(event) == XGetSelectionOwner(dpy, _XA_XdndSelection)) {
+		if (selected_typelist == supported_typelist &&
+		    XDND_DROP_SOURCE_WIN(event) == XGetSelectionOwner(dpy, _XA_XdndSelection)) {
+			xdnd_requestor = event->window;
 			XConvertSelection(dpy, _XA_XdndSelection, selected_typelist,
-					  _XA_WINDOWMAKER_XDNDEXCHANGE, event->window, CurrentTime);
+					  _XA_WINDOWMAKER_XDNDEXCHANGE, xdnd_requestor, CurrentTime);
+		} else {
+			selected_typelist = None;
 		}
 		return True;
 	} else if (event->message_type == _XA_XdndPosition) {
