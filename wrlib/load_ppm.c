@@ -355,8 +355,10 @@ RImage *RLoadPPM(const char *file_name)
 			break;
 	}
 
-	/* get size */
-	if (sscanf(buffer, "%i %i", &w, &h) != 2 || w < 1 || h < 1) {
+	/* get size, header fields are ASCII decimal per the PNM spec, and a
+	 * 9-digit field width keeps the conversion inside INT_MAX so the
+	 * range checks below and in RCreateImage() see a defined value */
+	if (sscanf(buffer, "%9d %9d", &w, &h) != 2 || w < 1 || h < 1) {
 		/* Short file */
 		RErrorCode = RERR_BADIMAGEFILE;
 		fclose(file);
@@ -370,13 +372,7 @@ RImage *RLoadPPM(const char *file_name)
 			return NULL;
 		}
 		/* get max value */
-		if (sscanf(buffer, "%i", &m) != 1 || m < 1) {
-			/* Short file */
-			RErrorCode = RERR_BADIMAGEFILE;
-			fclose(file);
-			return NULL;
-		}
-		if (m > 255) {
+		if (sscanf(buffer, "%9d", &m) != 1 || m < 1 || m > 255) {
 			RErrorCode = RERR_BADIMAGEFILE;
 			fclose(file);
 			return NULL;
