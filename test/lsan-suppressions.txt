@@ -1,0 +1,12 @@
+# LeakSanitizer suppressions for process-lifetime allocations in
+# third-party libraries that wmaker cannot release.
+#
+# fontconfig keeps its parsed configuration (FcInit) and the FcPattern
+# returned by XftFontMatch alive for the process lifetime, FcFini would
+# free them but cannot be called while any XftFont remains open.
+leak:libfontconfig.so
+# pangoxft registers an XCloseDisplay hook that allocates a glib slist
+# it never frees, and glib itself keeps type-system bookkeeping.
+leak:libpangoxft-1.0.so
+leak:libglib-2.0.so
+leak:libgobject-2.0.so
