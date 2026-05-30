@@ -1051,6 +1051,8 @@ static WMPropList *getValueForKey(const char *domain, const char *keyName)
 	}
 	/* try to find PixmapPath in global defaults */
 	if (!val) {
+		if (d)
+			WMReleasePropList(d);
 		path = wglobaldefaultspathfordomain(domain);
 		if (!path) {
 			wwarning("could not locate file for domain %s", domain);
