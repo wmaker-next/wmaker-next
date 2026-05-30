@@ -1786,6 +1786,14 @@ int wmkdirhier(const char *path)
 	p = strlen(buf);
 	plen = strlen(thePath);
 
+	/* the loop below copies up to plen+1 bytes into buf, so refuse paths
+	 * that would not fit instead of overrunning the stack buffer */
+	if (plen >= sizeof(buf)) {
+		werror(_("path too long for wmkdirhier: %s"), path);
+		wfree(thePath);
+		return 0;
+	}
+
 	do {
 		while (p++ < plen && thePath[p] != '/')
 			;
