@@ -1759,14 +1759,8 @@ int wmkdirhier(const char *path)
 {
 	const char *t;
 	char *thePath = NULL, buf[1024];
-	size_t p, plen;
+	size_t p, plen, rootlen;
 	struct stat st;
-
-	/* Only create directories under $WMAKER_USER_ROOT */
-	if ((t = wusergnusteppath()) == NULL)
-		return 0;
-	if (strncmp(path, t, strlen(t)) != 0)
-		return 0;
 
 	thePath = wstrdup(path);
 	/* Strip the trailing component if it is a file */
@@ -1776,8 +1770,13 @@ int wmkdirhier(const char *path)
 
 	thePath[p] = '\0';
 
-	/* Shortcut if it already exists */
-	if (stat(thePath, &st) == 0) {
+	/* If the parent already exists nothing needs creating, regardless
+	 * of where it lives or whether the path contains "..". This
+	 * function only confines directory *creation* below, it is not a
+	 * general path-confinement gate for the eventual file write,
+	 * callers like getstyle pass arbitrary user-chosen output paths.
+	 * A bare filename leaves thePath empty, treat that as "." */
+	if (stat(thePath[0] ? thePath : ".", &st) == 0) {
 		wfree(thePath);
 		if (S_ISDIR(st.st_mode)) {
 			/* Is a directory alright */
@@ -1785,6 +1784,28 @@ int wmkdirhier(const char *path)
 		} else {
 			/* Exists, but not a directory, the caller
 			 * might just as well abort now */
+			return 0;
+		}
+	}
+
+	/* Need to create something, only allow that under $WMAKER_USER_ROOT.
+	 * Reject sibling-prefix matches like ".../GNUstep_evil/" by requiring
+	 * a path separator (or end of string) right after the root, and
+	 * reject any ".." component so the walk cannot escape the root. */
+	if ((t = wusergnusteppath()) == NULL) {
+		wfree(thePath);
+		return 0;
+	}
+	rootlen = strlen(t);
+	if (strncmp(path, t, rootlen) != 0 ||
+	    (path[rootlen] != '/' && path[rootlen] != '\0')) {
+		wfree(thePath);
+		return 0;
+	}
+	for (p = rootlen; thePath[p]; p++) {
+		if (thePath[p] == '/' && thePath[p + 1] == '.' && thePath[p + 2] == '.' &&
+		    (thePath[p + 3] == '/' || thePath[p + 3] == '\0')) {
+			wfree(thePath);
 			return 0;
 		}
 	}
@@ -1802,14 +1823,25 @@ int wmkdirhier(const char *path)
 		return 0;
 	}
 
+	/* the loop below starts after the root prefix, so on a fresh
+	 * account where the user root itself does not exist yet every
+	 * mkdir would fail with ENOENT, create the root first */
+	if (mkdir(buf, 0777) == -1 && errno != EEXIST) {
+		werror(_("Could not create %s: %s"), buf, strerror(errno));
+		wfree(thePath);
+		return 0;
+	}
+
 	do {
 		while (p++ < plen && thePath[p] != '/')
 			;
 
 		strncpy(buf, thePath, p);
-		if (mkdir(buf, 0777) == -1 && errno == EEXIST &&
-		    stat(buf, &st) == 0 && !S_ISDIR(st.st_mode)) {
-			werror(_("Could not create component %s"), buf);
+		if (mkdir(buf, 0777) == -1
+		    && (errno != EEXIST
+			|| (stat(buf, &st) == 0 && !S_ISDIR(st.st_mode)))) {
+			werror(_("Could not create component %s: %s"),
+			       buf, strerror(errno));
 			wfree(thePath);
 			return 0;
 		}

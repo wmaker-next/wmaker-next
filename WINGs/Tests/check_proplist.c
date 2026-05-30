@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <unistd.h>
 
 #include <WINGs/WUtil.h>
 
@@ -112,8 +114,50 @@ static void test_pipe_cap(void)
 	CHECK(p == NULL);
 }
 
+static void test_wmkdirhier_confinement(const char *root)
+{
+	char buf[PATH_MAX];
+
+	/* bare filename, parent is cwd which exists */
+	CHECK(wmkdirhier("plain.out") == 1);
+
+	/* existing parent outside the GNUstep root */
+	CHECK(wmkdirhier("/tmp/plain.out") == 1);
+
+	if (!root || strlen(root) + 64 >= sizeof(buf))
+		return;
+
+	/* sibling directory whose name shares the root as a prefix */
+	snprintf(buf, sizeof(buf), "%s_evil/sub/file", root);
+	CHECK(wmkdirhier(buf) == 0);
+
+	/* dot-dot escape from inside the root */
+	snprintf(buf, sizeof(buf), "%s/../wmk-escape/sub/file", root);
+	CHECK(wmkdirhier(buf) == 0);
+
+	/* legitimate descendant still creates */
+	snprintf(buf, sizeof(buf), "%s/Library/WindowMaker/wmk-check-tmp/sub/file", root);
+	CHECK(wmkdirhier(buf) == 1);
+	snprintf(buf, sizeof(buf), "%s/Library/WindowMaker/wmk-check-tmp/sub", root);
+	CHECK(rmdir(buf) == 0);
+	snprintf(buf, sizeof(buf), "%s/Library/WindowMaker/wmk-check-tmp", root);
+	CHECK(rmdir(buf) == 0);
+}
+
 int main(void)
 {
+	char rootbuf[] = "/tmp/check_proplist_root_XXXXXX";
+	const char *root;
+
+	/* run against a hermetic user root so the wmkdirhier checks do not
+	 * depend on ~/GNUstep existing or write into it, the directory is
+	 * removed again so wmkdirhier has to create the root itself */
+	root = mkdtemp(rootbuf);
+	if (root) {
+		setenv("WMAKER_USER_ROOT", root, 1);
+		rmdir(root);
+	}
+
 	test_roundtrip("hello");
 	test_roundtrip("\"two words\"");
 	test_roundtrip("(a, b, c)");
@@ -123,6 +167,10 @@ int main(void)
 	test_string_escape();
 	test_recursion_limit();
 	test_pipe_cap();
+	test_wmkdirhier_confinement(root);
+
+	if (root)
+		wrmdirhier(root);
 
 	if (failures) {
 		fprintf(stderr, "%d check(s) failed\n", failures);
