@@ -473,7 +473,7 @@ static void check_defaults(void)
 	if (access(path, R_OK) != 0) {
 		wwarning(_("could not find user GNUstep directory (%s)."), path);
 
-		if (system("wmaker.inst --batch") != 0) {
+		if (wspawnvp_wait((char *[]){ "wmaker.inst", "--batch", NULL }) != 0) {
 			wwarning(_("There was an error while creating GNUstep directory, please "
 				   "make sure you have installed Window Maker correctly and run wmaker.inst"));
 		} else {
@@ -529,7 +529,9 @@ static void execInitScript(void)
 	wfree(paths);
 
 	if (file) {
-		if (system(file) != 0)
+		/* run the script directly (its shebang picks the interpreter)
+		 * rather than handing the path to /bin/sh -c */
+		if (wspawnvp_wait((char *[]){ file, NULL }) != 0)
 			werror(_("%s:could not execute initialization script"), file);
 
 		wfree(file);
@@ -547,7 +549,7 @@ void ExecExitScript(void)
 	wfree(paths);
 
 	if (file) {
-		if (system(file) != 0)
+		if (wspawnvp_wait((char *[]){ file, NULL }) != 0)
 			werror(_("%s:could not execute exit script"), file);
 
 		wfree(file);

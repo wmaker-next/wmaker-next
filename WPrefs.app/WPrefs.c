@@ -607,7 +607,6 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 {
 	WMPropList *db, *gdb;
 	char *path;
-	FILE *file;
 	char buffer[1024];
 	char mbuf[1069]; /* Size of buffer and extra characters for the sprintfs */
 	int v1, v2, v3;
@@ -628,28 +627,27 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 		WMRunAlertPanel(scr, mainw, _("Error"), mbuf, _("OK"), NULL, NULL);
 	}
 
-	path = getenv("WMAKER_BIN_NAME");	/* must be a plain path -- goes through /bin/sh */
-	if (!path || strpbrk(path, ";|&`$<>(){}[]*?!~\\\"' \t\n"))
+	path = getenv("WMAKER_BIN_NAME");
+	if (!path || !*path)
 		path = "wmaker";
 	{
-		char *command;
+		char *argv[] = { path, "--version", NULL };
+		char *out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
 
-		command = wstrconcat(path, " --version");
-		file = popen(command, "r");
-		wfree(command);
-	}
-	if (!file || !fgets(buffer, 1023, file)) {
-		werror(_("could not extract version information from Window Maker"));
-		wfatal(_("Make sure wmaker is in your search path."));
+		if (out)
+			wstrlcpy(buffer, out, sizeof(buffer));
+		wfree(out);
+		if (!out || buffer[0] == '\0') {
+			werror(_("could not extract version information from Window Maker"));
+			wfatal(_("Make sure wmaker is in your search path."));
 
-		WMRunAlertPanel(scr, mainw, _("Error"),
-				_
-				("Could not extract version from Window Maker. Make sure it is correctly installed and is in your PATH environment variable."),
-				_("OK"), NULL, NULL);
-		exit(1);
+			WMRunAlertPanel(scr, mainw, _("Error"),
+					_
+					("Could not extract version from Window Maker. Make sure it is correctly installed and is in your PATH environment variable."),
+					_("OK"), NULL, NULL);
+			exit(1);
+		}
 	}
-	if (file)
-		pclose(file);
 
 	if (sscanf(buffer, "Window Maker %i.%i.%i", &v1, &v2, &v3) != 3
 	    && sscanf(buffer, "WindowMaker %i.%i.%i", &v1, &v2, &v3) != 3) {
@@ -676,17 +674,17 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 	}
 
 	{
-		char *command;
-
-		command = wstrconcat(path, " --global_defaults_path");
-		file = popen(command, "r");
-		wfree(command);
-	}
-	if (!file || !fgets(buffer, sizeof(buffer), file)) {
-		werror(_("could not run \"%s --global_defaults_path\"."), path);
-		exit(1);
-	} else {
+		char *argv[] = { path, "--global_defaults_path", NULL };
+		char *out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
 		char *ptr;
+
+		if (!out || out[0] == '\0') {
+			wfree(out);
+			werror(_("could not run \"%s --global_defaults_path\"."), path);
+			exit(1);
+		}
+		wstrlcpy(buffer, out, sizeof(buffer));
+		wfree(out);
 		ptr = strchr(buffer, '\n');
 		if (ptr)
 			*ptr = 0;
@@ -695,9 +693,6 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 			exit(1);
 		}
 	}
-
-	if (file)
-		pclose(file);
 
 	gdb = WMReadPropListFromFile(buffer);
 
