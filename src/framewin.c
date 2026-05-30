@@ -142,19 +142,25 @@ static void paintButton(WCoreWindow * button, WTexture * texture,
 
 static void updateTitlebar(WFrameWindow * fwin);
 
-static void allocFrameBorderPixel(WFrameWindow *fwin, const char *color_name, unsigned long **pixel);
-
-static void allocFrameBorderPixel(WFrameWindow *fwin, const char *color_name, unsigned long **pixel) {
+static void allocFrameBorderPixel(WFrameWindow *fwin, WMColor *color, unsigned long **pixel)
+{
 	XColor xcol;
+	char *desc;
 
+	/* this is called on every wFrameWindowUpdateBorders, drop the
+	 * previous allocation before recomputing */
+	wfree(*pixel);
 	*pixel = NULL;
 
-	if (! wGetColorForColormap(fwin->screen_ptr, fwin->colormap, color_name, &xcol))
+	desc = WMGetColorRGBDescription(color);
+	if (!desc)
 		return;
 
-	*pixel = wmalloc(sizeof(unsigned long));
-	if (*pixel)
-		**pixel = xcol.pixel |= 0xffUL << 24;
+	if (wGetColorForColormap(fwin->screen_ptr, fwin->colormap, desc, &xcol)) {
+		*pixel = wmalloc(sizeof(unsigned long));
+		**pixel = xcol.pixel | (0xffUL << 24);
+	}
+	wfree(desc);
 }
 
 WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
@@ -491,9 +497,9 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 	checkTitleSize(fwin);
 
-	allocFrameBorderPixel(fwin, WMGetColorRGBDescription(scr->frame_border_color), &fwin->border_pixel);
-	allocFrameBorderPixel(fwin, WMGetColorRGBDescription(scr->frame_focused_border_color), &fwin->focused_border_pixel);
-	allocFrameBorderPixel(fwin, WMGetColorRGBDescription(scr->frame_selected_border_color), &fwin->selected_border_pixel);
+	allocFrameBorderPixel(fwin, scr->frame_border_color, &fwin->border_pixel);
+	allocFrameBorderPixel(fwin, scr->frame_focused_border_color, &fwin->focused_border_pixel);
+	allocFrameBorderPixel(fwin, scr->frame_selected_border_color, &fwin->selected_border_pixel);
 
 	if (flags & WFF_SELECTED) {
 		if (fwin->selected_border_pixel)
@@ -541,6 +547,10 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 	for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
 		release_title_set(fwin, i);
 	release_resizebar_set(fwin);
+
+	wfree(fwin->border_pixel);
+	wfree(fwin->focused_border_pixel);
+	wfree(fwin->selected_border_pixel);
 
 	wfree(fwin);
 }

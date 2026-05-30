@@ -753,13 +753,20 @@ WScreen *wScreenInit(int screen_number)
 
 	{
 		XColor xcol;
+		char *desc;
 		/* frame boder color */
-		wGetColor(scr, WMGetColorRGBDescription(scr->frame_border_color), &xcol);
+		desc = WMGetColorRGBDescription(scr->frame_border_color);
+		wGetColor(scr, desc, &xcol);
 		scr->frame_border_pixel = xcol.pixel;
-		wGetColor(scr, WMGetColorRGBDescription(scr->frame_focused_border_color), &xcol);
+		wfree(desc);
+		desc = WMGetColorRGBDescription(scr->frame_focused_border_color);
+		wGetColor(scr, desc, &xcol);
 		scr->frame_focused_border_pixel = xcol.pixel;
-		wGetColor(scr, WMGetColorRGBDescription(scr->frame_selected_border_color), &xcol);
+		wfree(desc);
+		desc = WMGetColorRGBDescription(scr->frame_selected_border_color);
+		wGetColor(scr, desc, &xcol);
 		scr->frame_selected_border_pixel = xcol.pixel;
+		wfree(desc);
 	}
 
 	createInternalWindows(scr);
