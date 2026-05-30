@@ -130,6 +130,33 @@ AS_IF([test "x$debug" = "xyes"],
 ])
 
 
+dnl Address/Undefined-Behaviour Sanitizer
+dnl =====================================
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([asan],
+    [AS_HELP_STRING([--enable-asan],
+        [build with AddressSanitizer and UBSan, for running make check under sanitizers @<:@default=no@:>@])],
+    [AS_CASE(["$enableval"],
+        [yes], [asan=yes],
+        [no],  [asan=no],
+        [AC_MSG_ERROR([bad value $enableval for --enable-asan])] )],
+    [asan=no])
+m4_divert_pop([INIT_PREPARE])dnl
+AS_IF([test "x$asan" = "xyes"],
+    [AC_MSG_CHECKING([whether the compiler accepts -fsanitize=address,undefined])
+     wm_save_CFLAGS="$CFLAGS"
+     wm_save_LDFLAGS="$LDFLAGS"
+     CFLAGS="$CFLAGS -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined"
+     LDFLAGS="$LDFLAGS -fsanitize=address,undefined"
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([], [])],
+         [AC_MSG_RESULT([yes])],
+         [AC_MSG_RESULT([no])
+          CFLAGS="$wm_save_CFLAGS"
+          LDFLAGS="$wm_save_LDFLAGS"
+          AC_MSG_ERROR([--enable-asan was given but the compiler does not support -fsanitize=address,undefined])])
+    ])
+
+
 dnl Native CPU Optimizations Option
 dnl =================
 m4_divert_push([INIT_PREPARE])dnl

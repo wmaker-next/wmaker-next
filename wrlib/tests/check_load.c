@@ -23,11 +23,22 @@
 #include "../config.h"
 #include <wraster.h>
 
-/* RLoadImage is annotated nonnull(context) but the PNM dispatch never
- * touches it, and these tests must run without a Display */
-#pragma GCC diagnostic ignored "-Wnonnull"
-
 static int failures;
+
+/* RLoadImage is annotated nonnull(context) but the PNM and normalized-XPM
+ * dispatches never touch it, and these tests must run without a Display.
+ * Suppress both the compile-time warning and the runtime UBSan check for
+ * this wrapper only. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull"
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("nonnull-attribute")))
+#endif
+static RImage *load_noctx(const char *path)
+{
+	return RLoadImage(NULL, path, 0);
+}
+#pragma GCC diagnostic pop
 
 #define CHECK(cond) do {                                                   \
 	if (!(cond)) {                                                     \
@@ -85,17 +96,17 @@ static void test_pnm(void)
 	/* P1 ascii bitmap, 2x1, pixels 1 0 -> black white */
 	s = "P1\n2 1\n1 0\n";
 	p = write_sample("a.pbm", s, strlen(s));
-	expect_image("P1", RLoadImage(NULL, p, 0), 2, 1, 0, 0, 0);
+	expect_image("P1", load_noctx(p), 2, 1, 0, 0, 0);
 
 	/* P2 ascii graymap, 2x1, max 255, pixels 64 200 */
 	s = "P2\n2 1\n255\n64 200\n";
 	p = write_sample("a.pgm", s, strlen(s));
-	expect_image("P2", RLoadImage(NULL, p, 0), 2, 1, 64, 64, 64);
+	expect_image("P2", load_noctx(p), 2, 1, 64, 64, 64);
 
 	/* P3 ascii pixmap, 1x1, max 255, pixel (10 20 30) */
 	s = "P3\n1 1\n255\n10 20 30\n";
 	p = write_sample("a.ppm", s, strlen(s));
-	expect_image("P3", RLoadImage(NULL, p, 0), 1, 1, 10, 20, 30);
+	expect_image("P3", load_noctx(p), 1, 1, 10, 20, 30);
 
 	/* P4 binary bitmap, 2x1, byte 0x80 -> first pixel set (black) */
 	s = "P4\n2 1\n";
@@ -105,7 +116,7 @@ static void test_pnm(void)
 		fputc(0x80, f);
 		fclose(f);
 	}
-	expect_image("P4", RLoadImage(NULL, p, 0), 2, 1, 0, 0, 0);
+	expect_image("P4", load_noctx(p), 2, 1, 0, 0, 0);
 
 	/* P5 binary graymap, 2x1, max 255, bytes 64 200 */
 	s = "P5\n2 1\n255\n";
@@ -115,7 +126,7 @@ static void test_pnm(void)
 		fputc(0x40, f); fputc(0xc8, f);
 		fclose(f);
 	}
-	expect_image("P5", RLoadImage(NULL, p, 0), 2, 1, 64, 64, 64);
+	expect_image("P5", load_noctx(p), 2, 1, 64, 64, 64);
 
 	/* P6 binary pixmap, 1x1, max 255, bytes 10 20 30 */
 	s = "P6\n1 1\n255\n";
@@ -125,7 +136,7 @@ static void test_pnm(void)
 		fputc(10, f); fputc(20, f); fputc(30, f);
 		fclose(f);
 	}
-	expect_image("P6", RLoadImage(NULL, p, 0), 1, 1, 10, 20, 30);
+	expect_image("P6", load_noctx(p), 1, 1, 10, 20, 30);
 }
 
 static void test_pnm_reject(void)
@@ -138,13 +149,13 @@ static void test_pnm_reject(void)
 	/* dimension overflow must be rejected, not handed to RCreateImage */
 	s = "P6\n9999999999 1\n255\n";
 	p = write_sample("huge.ppm", s, strlen(s));
-	img = RLoadImage(NULL, p, 0);
+	img = load_noctx(p);
 	CHECK(img == NULL);
 
 	/* maxval > 255 must be rejected */
 	s = "P6\n1 1\n65535\nxxxxxx";
 	p = write_sample("wide.ppm", s, strlen(s));
-	img = RLoadImage(NULL, p, 0);
+	img = load_noctx(p);
 	CHECK(img == NULL);
 }
 

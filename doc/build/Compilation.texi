@@ -640,6 +640,11 @@ option, so it will save and re-use the status of what have been detected in the 
 Enable debugging features (debug symbol, some extra verbosity and checks) and add a number of
 check flags (warnings) for the compiler (in @emph{gcc} fashion).
 
+@item --enable-asan
+Build with AddressSanitizer and UndefinedBehaviorSanitizer (@option{-fsanitize=address,undefined}),
+intended for running @command{make check} and for interactive testing under sanitizers.
+Works with @emph{gcc} and @emph{clang} on Linux and the BSDs; do not use for an installed build.
+
 @item --enable-lcov=@i{DIRECTORY}
 Enable generation of code coverage and profiling data;
 if the @file{@i{DIRECTORY}} is not specified, use @file{coverage-report}.
