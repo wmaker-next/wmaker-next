@@ -78,7 +78,7 @@ static WMPropList *dDropCommand = NULL;
 #endif
 static WMPropList *dAutoLaunch, *dLock;
 static WMPropList *dName, *dForced, *dBuggyApplication, *dYes, *dNo;
-static WMPropList *dHost, *dDock, *dClip;
+static WMPropList *dDock, *dClip;
 static WMPropList *dAutoAttractIcons;
 
 static WMPropList *dPosition, *dApplications, *dLowered, *dCollapsed;
@@ -146,7 +146,6 @@ static void make_keys(void)
 	dBuggyApplication = WMRetainPropList(WMCreatePLString("BuggyApplication"));
 	dYes = WMRetainPropList(WMCreatePLString("Yes"));
 	dNo = WMRetainPropList(WMCreatePLString("No"));
-	dHost = WMRetainPropList(WMCreatePLString("Host"));
 
 	dPosition = WMCreatePLString("Position");
 	dApplications = WMCreatePLString("Applications");
