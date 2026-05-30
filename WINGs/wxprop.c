@@ -319,6 +319,68 @@ Bool WXRcvExists(Display *dpy, WXCookie ck)
 	return exists;
 }
 
+/* ---- window attributes / geometry ----------------------------------- */
+
+WXCookie WXReqWindowAttributes(Display *dpy, Window w)
+{
+	xcb_get_window_attributes_cookie_t xck =
+		xcb_get_window_attributes(wx_conn(dpy), (xcb_window_t)w);
+	WXCookie ck;
+	ck.seq = xck.sequence;
+	return ck;
+}
+
+WXCookie WXReqGeometry(Display *dpy, Window w)
+{
+	xcb_get_geometry_cookie_t xck =
+		xcb_get_geometry(wx_conn(dpy), (xcb_drawable_t)w);
+	WXCookie ck;
+	ck.seq = xck.sequence;
+	return ck;
+}
+
+Bool WXRcvWindowAttributes(Display *dpy, WXCookie ck, WXWindowAttributes *out)
+{
+	xcb_get_window_attributes_cookie_t xck;
+	xcb_get_window_attributes_reply_t *r;
+
+	xck.sequence = ck.seq;
+	r = xcb_get_window_attributes_reply(wx_conn(dpy), xck, NULL);
+	if (!r)
+		return False;
+
+	out->override_redirect = r->override_redirect;
+	out->map_state         = r->map_state;
+	out->window_class      = r->_class;
+	out->visual            = r->visual;
+	out->colormap          = r->colormap;
+	out->all_event_masks   = r->all_event_masks;
+	out->your_event_mask   = r->your_event_mask;
+	free(r);
+	return True;
+}
+
+Bool WXRcvGeometry(Display *dpy, WXCookie ck, WXGeometry *out)
+{
+	xcb_get_geometry_cookie_t xck;
+	xcb_get_geometry_reply_t *r;
+
+	xck.sequence = ck.seq;
+	r = xcb_get_geometry_reply(wx_conn(dpy), xck, NULL);
+	if (!r)
+		return False;
+
+	out->root         = r->root;
+	out->x            = r->x;
+	out->y            = r->y;
+	out->width        = r->width;
+	out->height       = r->height;
+	out->border_width = r->border_width;
+	out->depth        = r->depth;
+	free(r);
+	return True;
+}
+
 /* ---- synchronous readers -------------------------------------------- */
 
 Bool WXGetFormat32N(Display *dpy, Window w, Atom prop, Atom type,

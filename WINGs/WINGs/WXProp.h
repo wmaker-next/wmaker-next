@@ -68,6 +68,36 @@ uint32_t *WXRcvFormat32List  (Display *dpy, WXCookie ck, size_t *count);
 char     *WXRcvString        (Display *dpy, WXCookie ck, size_t *len);
 Bool      WXRcvExists        (Display *dpy, WXCookie ck);
 
+/* --- Window attributes / geometry (split-phase) -----------------------
+ *
+ * XGetWindowAttributes() is one Xlib call but two protocol requests
+ * (GetWindowAttributes + GetGeometry, since border_width/depth/x/y/width/
+ * height come from the latter). Expose both so they can be batched.
+ */
+
+typedef struct {
+    int      override_redirect;
+    int      map_state;        /* IsUnmapped/IsUnviewable/IsViewable */
+    int      window_class;     /* InputOutput/InputOnly */
+    uint32_t visual;           /* VisualID, resolve with XGetVisualInfo() */
+    uint32_t colormap;
+    uint32_t all_event_masks;
+    uint32_t your_event_mask;
+} WXWindowAttributes;
+
+typedef struct {
+    Window   root;
+    int16_t  x, y;
+    uint16_t width, height;
+    uint16_t border_width;
+    uint8_t  depth;
+} WXGeometry;
+
+WXCookie WXReqWindowAttributes(Display *dpy, Window w);
+WXCookie WXReqGeometry        (Display *dpy, Window w);
+Bool     WXRcvWindowAttributes(Display *dpy, WXCookie ck, WXWindowAttributes *out);
+Bool     WXRcvGeometry        (Display *dpy, WXCookie ck, WXGeometry *out);
+
 /* --- Readers (synchronous) -------------------------------------------- */
 
 Bool      WXGetCardinal      (Display *dpy, Window w, Atom prop, uint32_t *out);
