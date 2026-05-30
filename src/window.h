@@ -355,6 +355,15 @@ typedef struct {
     WXCookie strut_partial; /* _NET_WM_STRUT_PARTIAL */
 } WNETWMHintCookies;
 
+/* one-shot reads done only on the manage path, kept separate from
+ * WNETWMHintCookies so the shared bundle's other consumers do not have
+ * to discard cookies they never asked for */
+typedef struct {
+    WXCookie handled_icons; /* _NET_WM_HANDLED_ICONS */
+    WXCookie icon_geom;     /* _NET_WM_ICON_GEOMETRY */
+    WXCookie opacity;       /* _NET_WM_WINDOW_OPACITY */
+} WNETWMInitialCookies;
+
 typedef struct {
     WXCookie wm_state;      /* WM_STATE */
     WXCookie net_name;      /* _NET_WM_NAME */
@@ -368,7 +377,10 @@ typedef struct {
     WXCookie normal;        /* WM_NORMAL_HINTS */
     WXCookie motif;         /* _MOTIF_WM_HINTS */
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
+    WXCookie saved_state;   /* _WINDOWMAKER_STATE */
+    WXCookie mark_key;      /* _WINDOWMAKER_MARK_KEY */
     WNETWMHintCookies netwm;
+    WNETWMInitialCookies netwm_initial;
 } WManageCookies;
 
 void wManagePrefetch(Window window, WManageCookies *ck);

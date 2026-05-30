@@ -551,19 +551,27 @@ static void updateIconImage(WWindow *wwin)
 	}
 }
 
-static void updateWindowOpacity(WWindow *wwin)
+static void updateWindowOpacityCk(WWindow *wwin, WXCookie ck)
 {
 	uint32_t opacity;
 
-	if (!wwin->frame)
+	if (!wwin->frame) {
+		WXDiscard(dpy, ck);
 		return;
+	}
 
 	/* We don't care about this ourselves, but other programs need us to copy
 	 * this to the frame window. */
-	if (WXGetCardinal(dpy, wwin->client_win, net_wm_window_opacity, &opacity))
+	if (WXRcvCardinal(dpy, ck, &opacity))
 		WXSetCardinal(dpy, wwin->frame->core->window, net_wm_window_opacity, opacity);
 	else
 		WXDeleteProperty(dpy, wwin->frame->core->window, net_wm_window_opacity);
+}
+
+static void updateWindowOpacity(WWindow *wwin)
+{
+	updateWindowOpacityCk(wwin,
+		WXReqFormat32(dpy, wwin->client_win, net_wm_window_opacity, XA_CARDINAL, 1));
 }
 
 static void updateShowDesktop(WScreen *scr, Bool show)
@@ -1476,6 +1484,13 @@ void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck)
 	ck->strut_partial = WXReqFormat32(dpy, window, net_wm_strut_partial, XA_CARDINAL, 12);
 }
 
+void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck)
+{
+	ck->handled_icons = WXReqFormat32(dpy, window, net_wm_handled_icons, XA_CARDINAL, 1);
+	ck->icon_geom     = WXReqFormat32(dpy, window, net_wm_icon_geometry, XA_CARDINAL, 4);
+	ck->opacity       = WXReqFormat32(dpy, window, net_wm_window_opacity, XA_CARDINAL, 1);
+}
+
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
 {
 	int32_t desktop;
@@ -1525,21 +1540,21 @@ WXCookie wNETWMReqWindowName(Window window)
 	return WXReqString8(dpy, window, net_wm_name, utf8_string);
 }
 
-static Bool updateNetIconInfo(WWindow *wwin)
+static Bool updateNetIconInfoCk(WWindow *wwin, WXCookie handled_ck, WXCookie geom_ck)
 {
 	uint32_t handled;
 	uint32_t geom[4];
 	Bool hasState = False;
 	Bool old_state = wwin->flags.net_handle_icon;
 
-	if (WXGetCardinal(dpy, wwin->client_win, net_wm_handled_icons, &handled)) {
+	if (WXRcvCardinal(dpy, handled_ck, &handled)) {
 		wwin->flags.net_handle_icon = (handled != 0);
 		hasState = True;
 	} else {
 		wwin->flags.net_handle_icon = False;
 	}
 
-	if (WXGetCardinalN(dpy, wwin->client_win, net_wm_icon_geometry, geom, 4)) {
+	if (WXRcvCardinalN(dpy, geom_ck, geom, 4)) {
 #ifdef NETWM_PROPER
 		if (wwin->flags.net_handle_icon)
 #else
@@ -1570,7 +1585,14 @@ static Bool updateNetIconInfo(WWindow *wwin)
 	return hasState;
 }
 
-void wNETWMCheckInitialClientState(WWindow *wwin)
+static Bool updateNetIconInfo(WWindow *wwin)
+{
+	return updateNetIconInfoCk(wwin,
+		WXReqFormat32(dpy, wwin->client_win, net_wm_handled_icons, XA_CARDINAL, 1),
+		WXReqFormat32(dpy, wwin->client_win, net_wm_icon_geometry, XA_CARDINAL, 4));
+}
+
+void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 {
 #ifdef DEBUG_WMSPEC
 	wmessage("wNETWMCheckInitialClientState");
@@ -1578,18 +1600,47 @@ void wNETWMCheckInitialClientState(WWindow *wwin)
 
 	wNETWMShowingDesktop(wwin->screen_ptr, False);
 
-	updateWindowType(wwin);
-	updateNetIconInfo(wwin);
+	/* wNETWMRcvClientHints() already consumed _NET_WM_WINDOW_TYPE and
+	 * stored the matched atom in wwin->type, so reapply the derived
+	 * client flags from that instead of fetching the property again.
+	 * The GNUstep branch in wWindowSetupInitialAttributes() skips
+	 * wNETWMRcvClientHints(), so for those windows wwin->type is still
+	 * None and we fall back to the synchronous fetch the old code path
+	 * used. The frame does not exist yet here so the frame-update tail
+	 * of updateWindowType() is a no-op either way. */
+	if (wwin->type != None) {
+		int layer;
+		handleWindowType(wwin, wwin->type, &layer);
+	} else {
+		updateWindowType(wwin);
+	}
+
+	updateNetIconInfoCk(wwin, ck->handled_icons, ck->icon_geom);
 	updateIconImage(wwin);
 }
 
-void wNETWMCheckInitialFrameState(WWindow *wwin)
+void wNETWMCheckInitialClientState(WWindow *wwin)
+{
+	WNETWMInitialCookies ck;
+
+	wNETWMReqInitialStateCookies(wwin->client_win, &ck);
+	wNETWMCheckInitialClientStateCk(wwin, &ck);
+	WXDiscard(dpy, ck.opacity);
+}
+
+void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity)
 {
 #ifdef DEBUG_WMSPEC
 	wmessage("wNETWMCheckInitialFrameState");
 #endif
 
-	updateWindowOpacity(wwin);
+	updateWindowOpacityCk(wwin, opacity);
+}
+
+void wNETWMCheckInitialFrameState(WWindow *wwin)
+{
+	wNETWMCheckInitialFrameStateCk(wwin,
+		WXReqFormat32(dpy, wwin->client_win, net_wm_window_opacity, XA_CARDINAL, 1));
 }
 
 static void handleDesktopNames(WScreen *scr)

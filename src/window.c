@@ -90,7 +90,8 @@
 /***** Local Stuff *****/
 static WWindowState *windowState = NULL;
 static FocusMode getFocusMode(WWindow *wwin);
-static int getSavedState(Window window, WSavedState **state);
+static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
+			   WSavedState **state);
 static void setupGNUstepHints(WWindow *wwin, GNUstepWMAttributes *gs_hints);
 
 /* frame window (during window grabs) */
@@ -327,7 +328,11 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 	ck->motif.seq = 0;
 #endif
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
+	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
+					w_global.atom.wmaker.state, 10);
+	ck->mark_key  = WXReqString8(dpy, window, w_global.atom.wmaker.mark_key, XA_STRING);
 	wNETWMReqClientHints(window, &ck->netwm);
+	wNETWMReqInitialStateCookies(window, &ck->netwm_initial);
 }
 
 void wManageDiscard(WManageCookies *ck)
@@ -904,11 +909,6 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	 */
 	wWindowSetupInitialAttributes(wwin, &ck, &window_level, &workspace);
 
-	/* All prefetched cookies are now either consumed or skipped (the
-	 * GNUstep branch above bypasses motif/netwm/gtk).  Discard whatever
-	 * remains, already-consumed sequence numbers are a no-op. */
-	wManageDiscard(&ck);
-
 	/* Make broken apps behave as a nice app. */
 	if (WFLAGP(wwin, emulate_appicon))
 		wwin->main_window = wwin->client_win;
@@ -1003,7 +1003,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	if (WFLAGP(wwin, start_maximized) && IS_RESIZABLE(wwin))
 		wwin->flags.maximized = MAX_VERTICAL | MAX_HORIZONTAL;
 
-	wNETWMCheckInitialClientState(wwin);
+	wNETWMCheckInitialClientStateCk(wwin, &ck.netwm_initial);
 
 	/* apply previous state if it exists and we're in startup */
 	if (scr->flags.startup && wm_state >= 0) {
@@ -1053,7 +1053,7 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	{
 		WSavedState *wstate;
 
-		if (getSavedState(window, &wstate)) {
+		if (getSavedStateCk(window, ck.saved_state, ck.mark_key, &wstate)) {
 			wwin->flags.shaded = wstate->shaded;
 			wwin->flags.hidden = wstate->hidden;
 			wwin->flags.miniaturized = wstate->miniaturized;
@@ -1308,7 +1308,13 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	wwin->frame->flags.is_client_window_frame = 1;
 	wwin->frame->flags.justification = wPreferences.title_justification;
 
-	wNETWMCheckInitialFrameState(wwin);
+	wNETWMCheckInitialFrameStateCk(wwin, ck.netwm_initial.opacity);
+
+	/* All prefetched cookies are now either consumed or skipped (the
+	 * GNUstep branch bypasses motif/netwm/gtk, restore-on-startup may
+	 * skip saved_state/mark_key). Discard whatever remains,
+	 * already-consumed sequence numbers are a no-op. */
+	wManageDiscard(&ck);
 
 	/* setup button images */
 	wWindowUpdateButtonImages(wwin);
@@ -2632,14 +2638,16 @@ void wWindowSaveState(WWindow *wwin)
 		WXDeleteProperty(dpy, wwin->client_win, w_global.atom.wmaker.mark_key);
 }
 
-static int getSavedState(Window window, WSavedState ** state)
+static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
+			   WSavedState **state)
 {
 	uint32_t data[10];
 	size_t len;
 
-	if (!WXGetFormat32N(dpy, window, w_global.atom.wmaker.state,
-			    w_global.atom.wmaker.state, data, 10))
+	if (!WXRcvFormat32N(dpy, state_ck, data, 10)) {
+		WXDiscard(dpy, mark_ck);
 		return 0;
+	}
 
 	WXDeleteProperty(dpy, window, w_global.atom.wmaker.state);
 
@@ -2656,7 +2664,7 @@ static int getSavedState(Window window, WSavedState ** state)
 	(*state)->h = data[8];
 	(*state)->window_shortcuts = data[9];
 
-	(*state)->mark_key = WXGetLatin1String(dpy, window, w_global.atom.wmaker.mark_key, &len);
+	(*state)->mark_key = WXRcvString(dpy, mark_ck, &len);
 	if ((*state)->mark_key)
 		WXDeleteProperty(dpy, window, w_global.atom.wmaker.mark_key);
 

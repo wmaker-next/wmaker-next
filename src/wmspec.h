@@ -55,10 +55,13 @@ void wNETWMUpdateWorkarea(WScreen *scr);
 Bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area);
 void wNETWMCheckInitialClientState(WWindow *wwin);
 void wNETWMCheckInitialFrameState(WWindow *wwin);
+void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck);
+void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity);
 Bool wNETWMProcessClientMessage(XClientMessageEvent *event);
 void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace);
 
 void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck);
+void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck);
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace);
 WXCookie wNETWMReqWindowName(Window window);
 void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event);
