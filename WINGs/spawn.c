@@ -21,12 +21,59 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #include "WINGs/WUtil.h"
 
-pid_t wspawnvp(char *const argv[])
+static pid_t waitpid_nointr(pid_t pid, int *status, int options)
+{
+	pid_t r;
+
+	do {
+		r = waitpid(pid, status, options);
+	} while (r < 0 && errno == EINTR);
+
+	return r;
+}
+
+static void sleep_msec(long msec)
+{
+	struct timespec req, rem;
+
+	req.tv_sec = msec / 1000;
+	req.tv_nsec = (msec % 1000) * 1000000L;
+	while (nanosleep(&req, &rem) < 0 && errno == EINTR)
+		req = rem;
+}
+
+static void terminate_after_capture_cap(pid_t pid, int *status)
+{
+	int i;
+	pid_t r;
+
+	if (status)
+		*status = -1;
+
+	if (kill(pid, SIGTERM) < 0 && errno == ESRCH)
+		return;
+
+	for (i = 0; i < 20; i++) {
+		r = waitpid_nointr(pid, status, WNOHANG);
+		if (r == pid || r < 0)
+			return;
+		sleep_msec(10);
+	}
+
+	if (kill(pid, SIGKILL) < 0 && errno == ESRCH)
+		return;
+
+	(void)waitpid_nointr(pid, status, 0);
+}
+
+pid_t wspawnvp_setup(char *const argv[], void (*pre_exec)(void *udata), void *udata)
 {
 	pid_t pid;
 
@@ -41,11 +88,18 @@ pid_t wspawnvp(char *const argv[])
 		return -1;
 	}
 	if (pid == 0) {
+		if (pre_exec)
+			pre_exec(udata);
 		execvp(argv[0], argv);
 		werror(_("could not execute %s: %s"), argv[0], strerror(errno));
 		_exit(127);
 	}
 	return pid;
+}
+
+pid_t wspawnvp(char *const argv[])
+{
+	return wspawnvp_setup(argv, NULL, NULL);
 }
 
 int wspawnvp_wait(char *const argv[])
@@ -57,10 +111,8 @@ int wspawnvp_wait(char *const argv[])
 	if (pid < 0)
 		return -1;
 
-	while (waitpid(pid, &status, 0) < 0) {
-		if (errno != EINTR)
-			return -1;
-	}
+	if (waitpid_nointr(pid, &status, 0) < 0)
+		return -1;
 	if (WIFEXITED(status))
 		return WEXITSTATUS(status);
 	return -1;
@@ -69,9 +121,8 @@ int wspawnvp_wait(char *const argv[])
 /*
  * Run argv with stdout connected to a pipe, read up to maxlen bytes into
  * a wmalloc'd NUL-terminated buffer, wait for the child, and return the
- * buffer (or NULL on fork/pipe failure). The buffer is returned even when
- * the child exits non-zero, with the status placed in *exit_status when
- * that pointer is not NULL.
+ * buffer (or NULL on fork/pipe failure). maxlen is a hard cap: when the
+ * buffer fills, the child is terminated and *exit_status is set to -1.
  */
 char *wspawnvp_capture(char *const argv[], size_t maxlen, int *exit_status)
 {
@@ -80,7 +131,8 @@ char *wspawnvp_capture(char *const argv[], size_t maxlen, int *exit_status)
 	char *buf;
 	size_t got = 0;
 	ssize_t r;
-	int status;
+	int status = -1;
+	int capped = 0;
 
 	if (exit_status)
 		*exit_status = -1;
@@ -126,20 +178,18 @@ char *wspawnvp_capture(char *const argv[], size_t maxlen, int *exit_status)
 		got += (size_t)r;
 	}
 	buf[got] = '\0';
-	/* drain anything left so the child does not block on a full pipe */
-	{
-		char drain[256];
-		while (read(fds[0], drain, sizeof(drain)) > 0)
-			;
-	}
+	capped = got == maxlen;
 	close(fds[0]);
 
-	while (waitpid(pid, &status, 0) < 0) {
-		if (errno != EINTR) {
-			status = -1;
-			break;
-		}
+	if (capped) {
+		terminate_after_capture_cap(pid, &status);
+		if (exit_status)
+			*exit_status = -1;
+		return buf;
 	}
+
+	if (waitpid_nointr(pid, &status, 0) < 0)
+		status = -1;
 	if (exit_status)
 		*exit_status = (status >= 0 && WIFEXITED(status)) ? WEXITSTATUS(status) : -1;
 

@@ -12,9 +12,11 @@
  *  failing assertion with the file and line printed to stderr.
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include <WINGs/WUtil.h>
 
@@ -122,13 +124,40 @@ static void test_data(void)
 	WMReleaseData(d);
 }
 
+static int child_exit_status(pid_t pid)
+{
+	int status;
+
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno != EINTR)
+			return -1;
+	}
+
+	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+static void set_probe_env(void *data)
+{
+	(void)data;
+	setenv("WSPAWN_PROBE", "ok", 1);
+}
+
 static void test_spawn(void)
 {
 	int st;
 	char *out;
+	pid_t pid;
 
 	CHECK(wspawnvp_wait((char *[]){ "true", NULL }) == 0);
 	CHECK(wspawnvp_wait((char *[]){ "false", NULL }) != 0);
+
+	unsetenv("WSPAWN_PROBE");
+	pid = wspawnvp_setup((char *[]){ "/bin/sh", "-c", "test \"$WSPAWN_PROBE\" = ok", NULL },
+			     set_probe_env, NULL);
+	CHECK(pid > 0);
+	if (pid > 0)
+		CHECK(child_exit_status(pid) == 0);
+	unsetenv("WSPAWN_PROBE");
 
 	out = wspawnvp_capture((char *[]){ "printf", "ab%s", "cd", NULL }, 64, &st);
 	CHECK(out != NULL);
@@ -136,11 +165,21 @@ static void test_spawn(void)
 	CHECK(out && strcmp(out, "abcd") == 0);
 	wfree(out);
 
-	/* maxlen bound is honoured and the result is NUL-terminated */
+	/* maxlen is a hard cap and the result is NUL-terminated */
 	out = wspawnvp_capture((char *[]){ "printf", "0123456789", NULL }, 4, &st);
 	CHECK(out != NULL);
+	CHECK(st == -1);
 	CHECK(out && strlen(out) == 4);
 	CHECK(out && strncmp(out, "0123", 4) == 0);
+	wfree(out);
+
+	/* hostile writers that ignore SIGPIPE/SIGTERM are still reaped */
+	out = wspawnvp_capture((char *[]){ "/bin/sh", "-c",
+					"trap '' TERM PIPE; while :; do printf x; done",
+					NULL }, 4, &st);
+	CHECK(out != NULL);
+	CHECK(st == -1);
+	CHECK(out && strlen(out) == 4);
 	wfree(out);
 }
 

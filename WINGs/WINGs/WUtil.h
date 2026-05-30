@@ -275,15 +275,19 @@ size_t wstrlcat(char *, const char *, size_t);
  * semantics are intended.
  */
 
-/* fork + execvp(argv[0], argv), return child pid or -1 */
+/* spawn argv[0] with optional child setup, return child pid or -1 */
+pid_t wspawnvp_setup(char *const argv[], void (*pre_exec)(void *udata), void *udata);
+
+/* spawn argv[0], return child pid or -1 */
 pid_t wspawnvp(char *const argv[]);
 
 /* same, then waitpid and return the child's exit status (or -1) */
 int wspawnvp_wait(char *const argv[]);
 
 /* run argv with stdout captured, read up to maxlen bytes into a wmalloc'd
- * NUL-terminated buffer, wait for the child, return the buffer (NULL only
- * on fork/pipe failure). *exit_status receives the child's exit status. */
+ * NUL-terminated buffer, hard-stop the child at maxlen, wait for it, and
+ * return the buffer (NULL only on fork/pipe failure). *exit_status receives
+ * the child's exit status, or -1 on cap hit or abnormal termination. */
 char *wspawnvp_capture(char *const argv[], size_t maxlen, int *exit_status);
 
 
