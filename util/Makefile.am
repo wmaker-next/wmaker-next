@@ -80,7 +80,7 @@ wmiv_LDADD = \
 	@PANGO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@ @LIBXRANDR@
 
-wmiv_SOURCES = wmiv.c wmiv.hi xdnd.c xdnd.h
+wmiv_SOURCES = wmiv.c wmiv.hi
 
 CLEANFILES = wmaker.inst
 

@@ -39,7 +39,6 @@
 #include <ftw.h>
 #include <libgen.h>
 #include "config.h"
-#include "xdnd.h"
 
 #ifdef HAVE_EXIF
 #include <libexif/exif-data.h>
@@ -81,12 +80,28 @@ RContext *ctx;
 RImage *img;
 Pixmap pix;
 
-/* DND support for sending drops */
-static DndClass send_dnd;
-static Bool dnd_initialized = False;
+/* XDND drag-out support */
 static Bool button1_pressed = False;
 static int drag_start_x, drag_start_y;
 static int drag_threshold = 5; /* pixels */
+
+/* XDND protocol atoms, interned once in wmiv_xdnd_init_atoms() */
+#define WMIV_XDND_VERSION 5
+#define WMIV_XDND_MAX_TYPES 64
+static Atom atom_XdndAware, atom_XdndEnter, atom_XdndPosition, atom_XdndStatus;
+static Atom atom_XdndLeave, atom_XdndDrop, atom_XdndFinished, atom_XdndSelection;
+static Atom atom_XdndTypeList, atom_XdndActionCopy;
+static Atom atom_uri_list, atom_text_plain;
+
+/* XDND drop-target state, updated as ClientMessages arrive */
+static struct {
+	Window source;
+	Atom   want_type;
+	int    version;
+} xdnd_target;
+
+/* file:// URI for the current image, served on XdndSelection requests */
+static char *xdnd_drag_uri = NULL;
 
 const char *APPNAME = "wmiv";
 int NEXT = 0;
@@ -797,6 +812,20 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 	ev.xselection.target = req->target;
 	ev.xselection.time = req->time;
 	ev.xselection.property = None;
+
+	if (req->selection == atom_XdndSelection) {
+		/* serve the file:// URI prepared by initiate_file_drag() */
+		if (xdnd_drag_uri &&
+		    (req->target == atom_uri_list || req->target == atom_text_plain)) {
+			XChangeProperty(dpy, req->requestor, req->property, req->target, 8,
+					PropModeReplace, (unsigned char *)xdnd_drag_uri,
+					(int)strlen(xdnd_drag_uri));
+			ev.xselection.property = req->property;
+		}
+		XSendEvent(dpy, req->requestor, False, 0, &ev);
+		XFlush(dpy);
+		return;
+	}
 
 	if (req->target == targets_atom) {
 		/* advertise supported targets, ICCCM requires TARGETS to list itself */
@@ -1583,93 +1612,370 @@ void decode_uri(char *uri)
 	}
 }
 
+/* ----- XDND ---------------------------------------------------------- *
+ *
+ * Minimal XDND v5 source and target implementation, replacing the
+ * previously vendored util/xdnd.{c,h}. Only text/uri-list and text/plain
+ * are offered or accepted, which is all wmiv needs to drag the current
+ * image file out and to receive image files dropped from a file manager.
+ */
+
+static void wmiv_xdnd_init_atoms(void)
+{
+	atom_XdndAware      = XInternAtom(dpy, "XdndAware", False);
+	atom_XdndEnter      = XInternAtom(dpy, "XdndEnter", False);
+	atom_XdndPosition   = XInternAtom(dpy, "XdndPosition", False);
+	atom_XdndStatus     = XInternAtom(dpy, "XdndStatus", False);
+	atom_XdndLeave      = XInternAtom(dpy, "XdndLeave", False);
+	atom_XdndDrop       = XInternAtom(dpy, "XdndDrop", False);
+	atom_XdndFinished   = XInternAtom(dpy, "XdndFinished", False);
+	atom_XdndSelection  = XInternAtom(dpy, "XdndSelection", False);
+	atom_XdndTypeList   = XInternAtom(dpy, "XdndTypeList", False);
+	atom_XdndActionCopy = XInternAtom(dpy, "XdndActionCopy", False);
+	atom_uri_list       = XInternAtom(dpy, "text/uri-list", False);
+	atom_text_plain     = XInternAtom(dpy, "text/plain", False);
+}
+
+/* ----- XDND drop target ---------------------------------------------- */
+
+static Atom wmiv_xdnd_pick_type(const Atom *types, size_t count)
+{
+	size_t i;
+
+	for (i = 0; i < count; i++)
+		if (types[i] == atom_uri_list)
+			return atom_uri_list;
+	for (i = 0; i < count; i++)
+		if (types[i] == atom_text_plain)
+			return atom_text_plain;
+	return None;
+}
+
+static void wmiv_xdnd_send_status(Bool accept)
+{
+	WXSendClientMessage(dpy, xdnd_target.source, NoEventMask,
+			    xdnd_target.source, atom_XdndStatus,
+			    (long)win,
+			    accept ? 1 : 0,
+			    0, 0,
+			    accept ? (long)atom_XdndActionCopy : 0);
+	XFlush(dpy);
+}
+
+static void wmiv_xdnd_send_finished(Bool ok)
+{
+	WXSendClientMessage(dpy, xdnd_target.source, NoEventMask,
+			    xdnd_target.source, atom_XdndFinished,
+			    (long)win,
+			    (xdnd_target.version >= 5 && ok) ? 1 : 0,
+			    (xdnd_target.version >= 5 && ok) ? (long)atom_XdndActionCopy : 0,
+			    0, 0);
+	XFlush(dpy);
+}
+
+static Bool wmiv_xdnd_is_selnotify(Display *d, XEvent *ev, XPointer arg)
+{
+	(void)d; (void)arg;
+	return ev->type == SelectionNotify && ev->xselection.selection == atom_XdndSelection;
+}
+
+/* bounded wait for the XdndSelection SelectionNotify so a hostile or
+ * crashed source cannot wedge the main loop indefinitely */
+static Bool wmiv_xdnd_wait_selnotify(XEvent *out)
+{
+	struct timespec ts = {0, 20 * 1000 * 1000};
+	int i;
+
+	for (i = 0; i < 100; i++) {  /* ~2 s total */
+		if (XCheckIfEvent(dpy, out, wmiv_xdnd_is_selnotify, NULL))
+			return True;
+		XFlush(dpy);
+		nanosleep(&ts, NULL);
+	}
+	return False;
+}
+
 /*
-	Provide data for drag operations
-*/
-static void widget_get_data_callback(DndClass *dnd, Window window, unsigned char **data, int *length, Atom type) {
-	/* Mark unused parameters to suppress compiler warnings */
-	(void)dnd;
-	(void)window;
-	(void)type;
-	char *filename, *full_path, *uri_data;
-	int uri_length = 0;
-	static char *last_provided_data = NULL;
+ * Called from the main loop for every ClientMessage. Advances the XDND
+ * target state machine and returns 1 with a NUL-terminated wmalloc'd copy
+ * of the dropped data only when an XdndDrop completes. Returns 0 for
+ * non-XDND messages and for intermediate XDND messages so the caller can
+ * continue dispatching.
+ */
+static int wmiv_xdnd_handle_message(XClientMessageEvent *ev, unsigned char **out, int *out_len)
+{
+	/* every XDND message is a format-32 ClientMessage, anything else
+	 * has garbage in data.l[] */
+	if (ev->format != 32)
+		return 0;
 
-	if (!current_link || !current_link->data) {
-		*data = NULL;
-		*length = 0;
-		return;
+	if (ev->message_type == atom_XdndEnter) {
+		Atom inline_types[3];
+
+		xdnd_target.source  = (Window)ev->data.l[0];
+		xdnd_target.version = (int)((unsigned long)ev->data.l[1] >> 24);
+		xdnd_target.want_type = None;
+
+		if (ev->data.l[1] & 1) {
+			/* more than three types, fetch the bounded list from the
+			 * source window using the validating helper */
+			size_t n;
+			Atom *types = WXGetAtomList(dpy, xdnd_target.source,
+						    atom_XdndTypeList, WMIV_XDND_MAX_TYPES, &n);
+			if (types) {
+				xdnd_target.want_type = wmiv_xdnd_pick_type(types, n);
+				wfree(types);
+			}
+		} else {
+			inline_types[0] = (Atom)ev->data.l[2];
+			inline_types[1] = (Atom)ev->data.l[3];
+			inline_types[2] = (Atom)ev->data.l[4];
+			xdnd_target.want_type = wmiv_xdnd_pick_type(inline_types, 3);
+		}
+		return 0;
 	}
 
-	/* Get the full absolute path for the current file */
-	filename = (char *)current_link->data;
-	full_path = realpath(filename, NULL);
-
-	if (!full_path) {
-		*data = NULL;
-		*length = 0;
-		return;
+	if (ev->message_type == atom_XdndPosition) {
+		if ((Window)ev->data.l[0] == xdnd_target.source)
+			wmiv_xdnd_send_status(xdnd_target.want_type != None);
+		return 0;
 	}
 
-	/* Create file:// URI for the current file */
-	uri_length = strlen("file://") + strlen(full_path) + 1;
-	uri_data = malloc(uri_length);
-	if (!uri_data) {
-		free(full_path);
-		*data = NULL;
-		*length = 0;
-		return;
+	if (ev->message_type == atom_XdndLeave) {
+		xdnd_target.source = None;
+		xdnd_target.want_type = None;
+		return 0;
 	}
 
-	snprintf(uri_data, uri_length, "file://%s", full_path);
-	*data = (unsigned char *)uri_data;
-	*length = strlen(uri_data);
+	if (ev->message_type == atom_XdndDrop) {
+		XEvent sn;
+		size_t len = 0;
+		char *data;
 
-	/* Only log if this is different data than last time */
-	if (WMIV_DEBUG && (!last_provided_data || strcmp(uri_data, last_provided_data) != 0)) {
-		fprintf(stderr, "Providing drag data: %s\n", uri_data);
-		if (last_provided_data)
-			free(last_provided_data);
-		last_provided_data = strdup(uri_data);
+		if ((Window)ev->data.l[0] != xdnd_target.source ||
+		    xdnd_target.want_type == None) {
+			wmiv_xdnd_send_finished(False);
+			xdnd_target.source = None;
+			return 0;
+		}
+
+		XConvertSelection(dpy, atom_XdndSelection, xdnd_target.want_type,
+				  atom_XdndSelection, win, (Time)ev->data.l[2]);
+		XFlush(dpy);
+
+		/* wait for the source to deliver the converted selection,
+		 * bounded so an unresponsive source cannot block us */
+		if (!wmiv_xdnd_wait_selnotify(&sn)) {
+			wmiv_xdnd_send_finished(False);
+			xdnd_target.source = None;
+			xdnd_target.want_type = None;
+			return 0;
+		}
+
+		if (sn.xselection.property == None) {
+			wmiv_xdnd_send_finished(False);
+			xdnd_target.source = None;
+			return 0;
+		}
+
+		data = WXRcvString(dpy, WXReqString8(dpy, win, sn.xselection.property,
+						     xdnd_target.want_type), &len);
+		XDeleteProperty(dpy, win, sn.xselection.property);
+		wmiv_xdnd_send_finished(data != NULL);
+		xdnd_target.source = None;
+		xdnd_target.want_type = None;
+
+		if (!data)
+			return 0;
+
+		*out = (unsigned char *)data;
+		*out_len = (int)len;
+		return 1;
 	}
+
+	/* not an XDND message */
+	return 0;
+}
+
+/* ----- XDND drag source ---------------------------------------------- */
+
+static char *wmiv_build_drag_uri(void)
+{
+	char *full_path, *uri;
+	size_t n;
+
+	if (!current_link || !current_link->data)
+		return NULL;
+
+	full_path = realpath((char *)current_link->data, NULL);
+	if (!full_path)
+		return NULL;
+
+	n = strlen("file://") + strlen(full_path) + 1;
+	uri = wmalloc(n);
+	snprintf(uri, n, "file://%s", full_path);
 	free(full_path);
+	return uri;
 }
 
 /*
-	Initialize DND for sending
-*/
-static void init_dnd_send(void) {
-	if (!dnd_initialized) {
-		Atom typelist[] = {
-			XInternAtom(dpy, "text/uri-list", False),
-			XInternAtom(dpy, "text/plain", False),
-			None
-		};
+ * Walk down from the root to the deepest child under (rx,ry) that carries
+ * the XdndAware property. Some toolkits set it on the toplevel only, so
+ * remember the highest aware ancestor and keep descending while children
+ * exist under the pointer.
+ */
+static Window wmiv_xdnd_find_target(Window root, int rx, int ry)
+{
+	Window cur = root, child, aware = None;
+	int cx = rx, cy = ry;
+	Atom version;
 
-		xdnd_init(&send_dnd, dpy);
-
-		send_dnd.widget_get_data = widget_get_data_callback;
-		dnd_initialized = True;
-		xdnd_set_dnd_aware(&send_dnd, win, typelist);
+	for (;;) {
+		if (cur != root && cur != win &&
+		    WXGetAtom(dpy, cur, atom_XdndAware, &version))
+			aware = cur;
+		if (!XTranslateCoordinates(dpy, root, cur, rx, ry, &cx, &cy, &child) ||
+		    child == None)
+			break;
+		cur = child;
 	}
+	return aware;
+}
+
+static void wmiv_xdnd_send_enter(Window target)
+{
+	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndEnter,
+			    (long)win,
+			    (long)WMIV_XDND_VERSION << 24,
+			    (long)atom_uri_list,
+			    (long)atom_text_plain,
+			    0);
+}
+
+static void wmiv_xdnd_send_position(Window target, int rx, int ry, Time t)
+{
+	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndPosition,
+			    (long)win, 0,
+			    ((long)rx << 16) | (ry & 0xffff),
+			    (long)t,
+			    (long)atom_XdndActionCopy);
+}
+
+static void wmiv_xdnd_send_leave(Window target)
+{
+	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndLeave,
+			    (long)win, 0, 0, 0, 0);
+}
+
+static void wmiv_xdnd_send_drop(Window target, Time t)
+{
+	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndDrop,
+			    (long)win, 0, (long)t, 0, 0);
 }
 
 /*
-	Initiate a file drag operation
-*/
-static void initiate_file_drag(void) {
-	Atom action = XInternAtom(dpy, "XdndActionCopy", False);
-	Atom typelist[] = {
-		XInternAtom(dpy, "text/uri-list", False),
-		None
-	};
+ * Run the XDND source state machine until button release. The selection
+ * data is precomputed into xdnd_drag_uri so the existing
+ * handle_selection_request() can serve it when the target asks.
+ */
+static void initiate_file_drag(void)
+{
+	Window root = DefaultRootWindow(dpy);
+	Window target = None;
+	Bool target_accepts = False;
+	XEvent ev;
 
-	if (!current_link || !current_link->data) {
+	if (xdnd_drag_uri)
+		wfree(xdnd_drag_uri);
+	xdnd_drag_uri = wmiv_build_drag_uri();
+	if (!xdnd_drag_uri)
+		return;
+
+	XSetSelectionOwner(dpy, atom_XdndSelection, win, CurrentTime);
+	if (XGetSelectionOwner(dpy, atom_XdndSelection) != win) {
+		wfree(xdnd_drag_uri);
+		xdnd_drag_uri = NULL;
 		return;
 	}
 
-	init_dnd_send();
-	xdnd_drag(&send_dnd, win, action, typelist);
+	if (XGrabPointer(dpy, win, False,
+			 ButtonReleaseMask | PointerMotionMask,
+			 GrabModeAsync, GrabModeAsync, None, None,
+			 CurrentTime) != GrabSuccess) {
+		wfree(xdnd_drag_uri);
+		xdnd_drag_uri = NULL;
+		return;
+	}
+
+	if (WMIV_DEBUG)
+		fprintf(stderr, "XDND drag started: %s\n", xdnd_drag_uri);
+
+	for (;;) {
+		XNextEvent(dpy, &ev);
+
+		if (ev.type == MotionNotify) {
+			Window over = wmiv_xdnd_find_target(root,
+							    ev.xmotion.x_root,
+							    ev.xmotion.y_root);
+			if (over != target) {
+				if (target != None)
+					wmiv_xdnd_send_leave(target);
+				target = over;
+				target_accepts = False;
+				if (target != None)
+					wmiv_xdnd_send_enter(target);
+			}
+			if (target != None)
+				wmiv_xdnd_send_position(target,
+							ev.xmotion.x_root,
+							ev.xmotion.y_root,
+							ev.xmotion.time);
+			XFlush(dpy);
+			continue;
+		}
+
+		if (ev.type == ClientMessage &&
+		    ev.xclient.message_type == atom_XdndStatus) {
+			if ((Window)ev.xclient.data.l[0] == target)
+				target_accepts = (ev.xclient.data.l[1] & 1) != 0;
+			continue;
+		}
+
+		if (ev.type == SelectionRequest) {
+			handle_selection_request(&ev.xselectionrequest);
+			continue;
+		}
+
+		if (ev.type == ButtonRelease) {
+			XUngrabPointer(dpy, ev.xbutton.time);
+			if (target != None && target_accepts) {
+				int wait;
+
+				wmiv_xdnd_send_drop(target, ev.xbutton.time);
+				XFlush(dpy);
+				/* serve the selection and wait briefly for
+				 * XdndFinished, but do not block forever if
+				 * the target never sends it */
+				for (wait = 0; wait < 200; wait++) {
+					if (XCheckTypedEvent(dpy, SelectionRequest, &ev)) {
+						handle_selection_request(&ev.xselectionrequest);
+						continue;
+					}
+					if (XCheckTypedWindowEvent(dpy, win, ClientMessage, &ev) &&
+					    ev.xclient.message_type == atom_XdndFinished)
+						break;
+					usleep(5000);
+				}
+			} else if (target != None) {
+				wmiv_xdnd_send_leave(target);
+			}
+			XFlush(dpy);
+			break;
+		}
+	}
+
+	wfree(xdnd_drag_uri);
+	xdnd_drag_uri = NULL;
 }
 
 /*
@@ -1687,8 +1993,6 @@ int main(int argc, char **argv)
 	WXSizeHints *size_hints;
 	WXWMHints *win_hints;
 	Atom delWindow;
-	Atom xdnd_aware;
-	Atom xdnd_version = XDND_VERSION;
 
 #ifdef USE_XPM
 	Pixmap icon_pixmap, icon_shape;
@@ -1840,8 +2144,8 @@ int main(int argc, char **argv)
 	WXSetWMProtocols(dpy, win, &delWindow, 1);
 	change_title(reading_filename);
 
-	xdnd_aware = XInternAtom(dpy, "XdndAware", False);
-	WXSetAtom(dpy, win, xdnd_aware, xdnd_version);
+	wmiv_xdnd_init_atoms();
+	WXSetAtom(dpy, win, atom_XdndAware, (Atom)WMIV_XDND_VERSION);
 	win_hints = WXAllocWMHints();
 
 	if (win_hints) {
@@ -1940,21 +2244,9 @@ int main(int argc, char **argv)
 		XNextEvent(dpy, &e);
 		if (e.type == ClientMessage) {
 			unsigned char *dropBuffer;
-			Atom typelist[] = {
-				XInternAtom(dpy, "text/uri-list", False),
-				XInternAtom(dpy, "text/plain", False),
-				None
-			};
-			Atom actionlist[] = {
-				XInternAtom(dpy, "XdndActionCopy", False),
-				XInternAtom(dpy, "XdndActionMove", False),
-				None
-			};
 			int length;
-			Atom type;
-			int x, y;
 
-			if (xdnd_get_drop(dpy, &e, typelist, actionlist, &dropBuffer, &length, &type, &x, &y)) {
+			if (wmiv_xdnd_handle_message(&e.xclient, &dropBuffer, &length)) {
 				char *handled_uri_header = "file://";
 				char *filename_separator = "\n";
 				char *ptr = strtok((char *)dropBuffer, filename_separator);
@@ -1980,7 +2272,7 @@ int main(int argc, char **argv)
 					}
 					ptr = strtok(NULL, filename_separator);
 				}
-				free(dropBuffer);
+				wfree(dropBuffer);
 
 				if (find_one_file) {
 					max_index = list.count;
