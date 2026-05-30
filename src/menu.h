@@ -75,6 +75,9 @@ typedef struct WMenu {
 	struct WFrameWindow *frame;
 	WCoreWindow *menu;		       /* the window menu */
 	Pixmap menu_texture_data;
+	struct WMenuTexCache *menu_texture_cache;  /* entry the Pixmap above is
+						    * borrowed from, or NULL when
+						    * this menu owns it directly */
 	int frame_x, frame_y;	       /* position of the frame in root*/
 
 	WMenuEntry **entries;	       /* array of entries. This is shared

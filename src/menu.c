@@ -389,6 +389,50 @@ void wMenuRemoveItem(WMenu * menu, int index)
 	menu->brother->entry_no--;
 }
 
+/* ----- shared menu texture cache ------------------------------------- *
+ *
+ * In the default MS_NORMAL style every menu renders the same
+ * (menu_item_texture, width, entry_height) strip and lets the server
+ * tile it, so menus of the same width can share one Pixmap instead of
+ * holding a copy each. MS_FLAT and MS_SINGLE_TEXTURE render full-height
+ * images, so those keep per-menu ownership.
+ */
+
+struct WMenuTexCache {
+	WTexture *texture;
+	int width, height;
+	Pixmap pixmap;
+	int refcount;
+	struct WMenuTexCache *next;
+};
+
+static struct WMenuTexCache *menu_tex_cache;
+
+static void release_menu_texture(WMenu *menu)
+{
+	if (menu->menu_texture_cache) {
+		struct WMenuTexCache *e = menu->menu_texture_cache;
+
+		menu->menu_texture_cache = NULL;
+		menu->menu_texture_data = None;
+		if (--e->refcount > 0)
+			return;
+		{
+			struct WMenuTexCache **pp;
+			for (pp = &menu_tex_cache; *pp; pp = &(*pp)->next) {
+				if (*pp == e) {
+					*pp = e->next;
+					break;
+				}
+			}
+		}
+		FREE_PIXMAP(e->pixmap);
+		wfree(e);
+	} else {
+		FREE_PIXMAP(menu->menu_texture_data);
+	}
+}
+
 static Pixmap renderTexture(WMenu * menu)
 {
 	RImage *img;
@@ -447,9 +491,32 @@ static void updateTexture(WMenu * menu)
 	/* setup background texture */
 	if (scr->menu_item_texture->any.type != WTEX_SOLID) {
 		if (!menu->flags.brother) {
-			FREE_PIXMAP(menu->menu_texture_data);
+			release_menu_texture(menu);
 
-			menu->menu_texture_data = renderTexture(menu);
+			if (wPreferences.menu_style == MS_NORMAL) {
+				WTexture *tex = scr->menu_item_texture;
+				int w = menu->menu->width;
+				int h = menu->entry_height;
+				struct WMenuTexCache *e;
+
+				for (e = menu_tex_cache; e; e = e->next)
+					if (e->texture == tex && e->width == w && e->height == h)
+						break;
+				if (!e) {
+					e = wmalloc(sizeof(*e));
+					e->texture = tex;
+					e->width = w;
+					e->height = h;
+					e->pixmap = renderTexture(menu);
+					e->next = menu_tex_cache;
+					menu_tex_cache = e;
+				}
+				e->refcount++;
+				menu->menu_texture_cache = e;
+				menu->menu_texture_data = e->pixmap;
+			} else {
+				menu->menu_texture_data = renderTexture(menu);
+			}
 
 			XSetWindowBackgroundPixmap(dpy, menu->menu->window, menu->menu_texture_data);
 			XClearWindow(dpy, menu->menu->window);
@@ -604,7 +671,7 @@ void wMenuDestroy(WMenu * menu, int recurse)
 
 	}
 
-	FREE_PIXMAP(menu->menu_texture_data);
+	release_menu_texture(menu);
 
 	if (menu->cascades)
 		wfree(menu->cascades);
