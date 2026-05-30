@@ -986,6 +986,10 @@ void set_icon_image_from_database(WIcon *icon, const char *wm_instance, const ch
 
 	file = get_icon_filename(wm_instance, wm_class, command, False);
 	if (file) {
+		/* removeAppIconFor() calls this on a docked icon that may
+		 * still hold the live _NET_WM_ICON image and its cache path,
+		 * release those before replacing them */
+		unset_icon_image(icon);
 		icon->file = wstrdup(file);
 		icon->file_image = get_rimage_from_file(icon->core->screen_ptr, icon->file, wPreferences.icon_size);
 		wfree(file);
