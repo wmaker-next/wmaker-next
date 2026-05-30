@@ -141,6 +141,15 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	/* application descriptor */
 	XSaveContext(dpy, main_window, w_global.context.app_win, (XPointer) wapp);
 
+	/* link into the per-screen application list, wApplicationDestroy
+	 * unlinks from here and the list keeps wapp reachable from
+	 * w_global once XCloseDisplay drops the XSaveContext reference */
+	wapp->prev = NULL;
+	wapp->next = scr->wapp_list;
+	if (scr->wapp_list)
+		scr->wapp_list->prev = wapp;
+	scr->wapp_list = wapp;
+
 	create_appicon_for_application(wapp, wwin);
 
 	return wapp;
