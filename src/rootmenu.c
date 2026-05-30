@@ -1115,6 +1115,46 @@ static WMenu *readMenuFile(WScreen *scr, const char *file_name)
 	return menu;
 }
 
+
+static FILE *open_menu_pipe_output(const char *command, char **output)
+{
+	FILE *file;
+	size_t len;
+	char *argv[] = { "/bin/sh", "-c", (char *)command, NULL };
+
+	*output = wspawnvp_capture(argv, 1024u * 1024u, NULL);
+	if (!*output) {
+		werror(_("could not open menu file \"%s\": %s"), command, strerror(errno));
+		return NULL;
+	}
+
+	len = strlen(*output);
+#ifdef HAVE_FMEMOPEN
+	file = fmemopen(*output, len, "r");
+	if (!file)
+		werror(_("could not open menu file \"%s\": %s"), command, strerror(errno));
+	return file;
+#else
+	file = tmpfile();
+	if (!file) {
+		werror(_("could not open menu file \"%s\": %s"), command, strerror(errno));
+		return NULL;
+	}
+	if (len > 0 && fwrite(*output, 1, len, file) != len) {
+		werror(_("could not read menu pipe \"%s\": %s"), command, strerror(errno));
+		fclose(file);
+		return NULL;
+	}
+	if (fflush(file) < 0) {
+		werror(_("could not read menu pipe \"%s\": %s"), command, strerror(errno));
+		fclose(file);
+		return NULL;
+	}
+	rewind(file);
+	return file;
+#endif
+}
+
 static inline int generate_command_from_list(char *buffer, size_t buffer_size, char **command_elements)
 {
 	char *rd;
@@ -1175,6 +1215,7 @@ static WMenu *readMenuPipe(WScreen * scr, char **file_name)
 	WMenu *menu = NULL;
 	FILE *file = NULL;
 	char *filename;
+	char *output = NULL;
 	char flat_file[MAXLINE];
 
 	if (generate_command_from_list(flat_file, sizeof(flat_file), file_name)) {
@@ -1184,19 +1225,15 @@ static WMenu *readMenuPipe(WScreen * scr, char **file_name)
 	}
 	filename = flat_file + (flat_file[1] == '|' ? 2 : 1);
 
-	/*
-	 * In case of memory problem, 'popen' will not set the errno, so we initialise it
-	 * to be able to display a meaningful message. For other problems, 'popen' will
-	 * properly set errno, so we'll still get a good message
-	 */
-	errno = ENOMEM;
-	file = popen(filename, "r");
+	file = open_menu_pipe_output(filename, &output);
 	if (!file) {
-		werror(_("could not open menu file \"%s\": %s"), filename, strerror(errno));
+		if (output)
+			wfree(output);
 		return NULL;
 	}
 	menu = readMenu(scr, flat_file, file);
-	pclose(file);
+	fclose(file);
+	wfree(output);
 
 	return menu;
 }
