@@ -1021,10 +1021,33 @@ static void track_bg_helper_death(pid_t pid, unsigned int status, void *client_d
 	scr->flags.backimage_helper_launched = 0;
 }
 
+typedef struct {
+	WScreen *scr;
+	int read_fd;
+	int write_fd;
+} BgHelperSetup;
+
+static void bg_helper_pre_exec(void *data)
+{
+	BgHelperSetup *setup = data;
+
+	close(setup->write_fd);
+	SetupEnvironment(setup->scr);
+	if (dup2(setup->read_fd, STDIN_FILENO) < 0) {
+		werror(_("%s failed, can't set workspace specific background image (%s)"),
+		       "dup2()", strerror(errno));
+		_exit(1);
+	}
+	close(setup->read_fd);
+}
+
 Bool start_bg_helper(WScreen *scr)
 {
 	pid_t pid;
 	int filedes[2];
+	const char *dither;
+	char *helper_argv[5];
+	BgHelperSetup setup;
 
 	if (pipe(filedes) < 0) {
 		werror(_("%s failed, can't set workspace specific background image (%s)"),
@@ -1032,39 +1055,26 @@ Bool start_bg_helper(WScreen *scr)
 		return False;
 	}
 
-	pid = fork();
+	dither = wPreferences.no_dithering ? "-m" : "-d";
+	helper_argv[0] = "wmsetbg";
+	helper_argv[1] = "-helper";
+	if (wPreferences.smooth_workspace_back) {
+		helper_argv[2] = "-S";
+		helper_argv[3] = (char *)dither;
+		helper_argv[4] = NULL;
+	} else {
+		helper_argv[2] = (char *)dither;
+		helper_argv[3] = NULL;
+	}
+	setup.scr = scr;
+	setup.read_fd = filedes[0];
+	setup.write_fd = filedes[1];
+
+	pid = wspawnvp_setup(helper_argv, bg_helper_pre_exec, &setup);
 	if (pid < 0) {
-		werror(_("%s failed, can't set workspace specific background image (%s)"),
-		       "fork()", strerror(errno));
 		close(filedes[0]);
 		close(filedes[1]);
 		return False;
-
-	} else if (pid == 0) {
-		const char *dither;
-
-		/* We don't need this side of the pipe in the child process */
-		close(filedes[1]);
-
-		SetupEnvironment(scr);
-
-		close(STDIN_FILENO);
-		if (dup2(filedes[0], STDIN_FILENO) < 0) {
-			werror(_("%s failed, can't set workspace specific background image (%s)"),
-			       "dup2()", strerror(errno));
-			exit(1);
-		}
-		close(filedes[0]);
-
-		dither = wPreferences.no_dithering ? "-m" : "-d";
-		if (wPreferences.smooth_workspace_back)
-			execlp("wmsetbg", "wmsetbg", "-helper", "-S", dither, NULL);
-		else
-			execlp("wmsetbg", "wmsetbg", "-helper", dither, NULL);
-
-		werror(_("could not execute \"%s\": %s"), "wmsetbg", strerror(errno));
-		exit(1);
-
 	} else {
 		/* We don't need this side of the pipe in the parent process */
 		close(filedes[0]);

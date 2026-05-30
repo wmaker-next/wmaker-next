@@ -33,6 +33,8 @@
 #include <X11/Xutil.h>
 #include <X11/Xproto.h>
 
+#include <WINGs/WUtil.h>
+
 #include "WindowMaker.h"
 #include "screen.h"
 #include "window.h"
@@ -92,12 +94,8 @@ int MonitorLoop(int argc, char **argv)
 		last_start = time(NULL);
 
 		/* Start Window Maker */
-		pid = fork();
-		if (pid == 0) {
-			execvp(child_argv[0], child_argv);
-			werror(_("Error respawning Window Maker"));
-			exit(1);
-		} else if (pid < 0) {
+		pid = wspawnvp(child_argv);
+		if (pid < 0) {
 			werror(_("Error respawning Window Maker"));
 			exit(1);
 		}

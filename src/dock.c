@@ -34,6 +34,8 @@
 #include <math.h>
 #include <limits.h>
 
+#include <WINGs/WUtil.h>
+
 #ifndef PATH_MAX
 #define PATH_MAX DEFAULT_PATH_MAX
 #endif
@@ -3090,11 +3092,19 @@ void wClipSnapToHead(WDock *clip)
 	moveDock(clip, x, y);
 }
 
+static void dock_child_env_session(void *data)
+{
+	SetupEnvironment(data);
+#ifdef HAVE_SETSID
+	setsid();
+#endif
+}
+
 static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 {
 	WScreen *scr = btn->icon->core->screen_ptr;
 	pid_t pid;
-	char **argv;
+	char **argv = NULL;
 	int argc;
 	char *cmdline;
 
@@ -3118,28 +3128,10 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 		return 0;
 	}
 
-	pid = fork();
-	if (pid == 0) {
-		char **args;
-		int i;
+	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
+	argv[argc] = NULL;
 
-		SetupEnvironment(scr);
-
-#ifdef HAVE_SETSID
-		setsid();
-#endif
-
-		args = malloc(sizeof(char *) * (argc + 1));
-		if (!args)
-			exit(111);
-
-		for (i = 0; i < argc; i++)
-			args[i] = argv[i];
-
-		args[argc] = NULL;
-		execvp(argv[0], args);
-		exit(111);
-	}
+	pid = wspawnvp_setup(argv, dock_child_env_session, scr);
 	wtokenfree(argv, argc);
 
 	if (pid > 0) {
@@ -3415,7 +3407,7 @@ static void trackDeadProcess(pid_t pid, unsigned int status, void *cdata)
 			}
 			wDockFinishLaunch(icon);
 			icon->pid = 0;
-			if (status == 111) {
+			if (status == 127) {
 				char msg[PATH_MAX];
 				char *cmd;
 

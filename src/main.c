@@ -324,6 +324,14 @@ static void shellCommandHandler(pid_t pid, unsigned int status, void *client_dat
 	wfree(data);
 }
 
+static void child_env_session(void *data)
+{
+	SetupEnvironment(data);
+#ifdef HAVE_SETSID
+	setsid();
+#endif
+}
+
 void ExecuteShellCommand(WScreen *scr, const char *command)
 {
 	static char *shell = NULL;
@@ -341,20 +349,9 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 	 */
 	shell = "/bin/sh";
 
-	pid = fork();
+	pid = wspawnvp_setup((char *[]){ shell, "-c", (char *)command, NULL }, child_env_session, scr);
 
-	if (pid == 0) {
-
-		SetupEnvironment(scr);
-
-#ifdef HAVE_SETSID
-		setsid();
-#endif
-		execl(shell, shell, "-c", command, NULL);
-		werror("could not execute %s -c %s", shell, command);
-		/* exec failed in child -- exit immediately without running parent cleanup */
-		_exit(127);
-	} else if (pid < 0) {
+	if (pid < 0) {
 		werror("cannot fork a new process");
 	} else {
 		_tuple *data = wmalloc(sizeof(_tuple));
@@ -380,7 +377,7 @@ Bool RelaunchWindow(WWindow *wwin)
 		return False;
 	}
 
-	char **argv;
+	char **argv = NULL;
 	int argc;
 	char *command = NULL;
 
@@ -395,30 +392,17 @@ Bool RelaunchWindow(WWindow *wwin)
 	} else
 		wtokensplit(command, &argv, &argc);
 
+	if (!argc) {
+		wfree(command);
+		return False;
+	}
 
-	pid_t pid = fork();
+	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
+	argv[argc] = NULL;
 
-	if (pid == 0) {
-		SetupEnvironment(wwin->screen_ptr);
-#ifdef HAVE_SETSID
-		setsid();
-#endif
-		/* argv is not null-terminated */
-		char **a = malloc((argc + 1) * sizeof(char *));
-		if (! a) {
-			werror("out of memory trying to relaunch the application");
-			_exit(127);
-		}
+	pid_t pid = wspawnvp_setup(argv, child_env_session, wwin->screen_ptr);
 
-		int i;
-		for (i = 0; i < argc; i++)
-			a[i] = argv[i];
-		a[i] = NULL;
-
-		execvp(a[0], a);
-		/* exec failed in child -- exit immediately */
-		_exit(127);
-	} else if (pid < 0) {
+	if (pid < 0) {
 		werror("cannot fork a new process");
 
 		wtokenfree(argv, argc);

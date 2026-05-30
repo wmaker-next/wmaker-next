@@ -345,36 +345,26 @@ void wSessionClearState(WScreen * scr)
 	WMRemoveFromPLDictionary(scr->session_state, sWorkspace);
 }
 
+static void child_env(void *data)
+{
+	SetupEnvironment(data);
+}
+
 static pid_t execCommand(WScreen *scr, char *command)
 {
 	pid_t pid;
-	char **argv;
+	char **argv = NULL;
 	int argc;
 
 	wtokensplit(command, &argv, &argc);
 
-	if (!argc) {
-		wfree(argv);
+	if (!argc)
 		return 0;
-	}
 
-	pid = fork();
-	if (pid == 0) {
-		char **args;
-		int i;
+	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
+	argv[argc] = NULL;
 
-		SetupEnvironment(scr);
-
-		args = malloc(sizeof(char *) * (argc + 1));
-		if (!args)
-			exit(111);
-		for (i = 0; i < argc; i++) {
-			args[i] = argv[i];
-		}
-		args[argc] = NULL;
-		execvp(argv[0], args);
-		exit(111);
-	}
+	pid = wspawnvp_setup(argv, child_env, scr);
 	wtokenfree(argv, argc);
 	return pid;
 }
