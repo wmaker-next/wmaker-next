@@ -1000,27 +1000,22 @@ static noreturn void helperLoop(RContext * rc)
 	}
 }
 
-static void updateDomain(const char *domain, const char *key, const char *texture)
+static int updateDomain(const char *domain, const char *key, const char *texture)
 {
-	pid_t pid;
-	int status;
 	char *program = "wdwrite";
+	int status;
 
 	/* domain name validation now lives in wdefaultspathfordomain(),
 	 * wdwrite will refuse a bad name with a clear message */
-	pid = fork();
-	if (pid == 0) {
-		execlp(program, program, domain, "SmoothWorkspaceBack", smooth ? "YES" : "NO", NULL);
-		werror("error executing wdwrite");
-		_exit(127);
-	} else if (pid > 0) {
-		waitpid(pid, &status, 0);
-	} else {
-		werror("error forking to run wdwrite");
-	}
+	(void)wspawnvp_wait((char *[]){ program, (char *)domain, "SmoothWorkspaceBack",
+					smooth ? "YES" : "NO", NULL });
 
-	execlp(program, program, domain, key, texture, NULL);
-	wwarning("warning could not run \"%s\"", program);
+	status = wspawnvp_wait((char *[]){ program, (char *)domain, (char *)key,
+					  (char *)texture, NULL });
+	if (status < 0)
+		wwarning("warning could not run \"%s\"", program);
+
+	return status;
 }
 
 static WMPropList *getValueForKey(const char *domain, const char *keyName)
@@ -1192,16 +1187,16 @@ static void print_help(void)
 	puts(" -h, --help                    show this help and exit");
 }
 
-static void changeTextureForWorkspace(const char *domain, char *texture, int workspace)
+static int changeTextureForWorkspace(const char *domain, char *texture, int workspace)
 {
 	WMPropList *array, *val;
 	char *value;
-	int j;
+	int j, status;
 
 	val = WMCreatePropListFromDescription(texture);
 	if (!val) {
 		wwarning("could not parse texture %s", texture);
-		return;
+		return -1;
 	}
 
 	array = getValueForKey("WindowMaker", "WorkspaceSpecificBack");
@@ -1228,9 +1223,12 @@ static void changeTextureForWorkspace(const char *domain, char *texture, int wor
 	}
 
 	value = WMGetPropListDescription(array, False);
-	updateDomain(domain, "WorkspaceSpecificBack", value);
+	status = updateDomain(domain, "WorkspaceSpecificBack", value);
 
+	wfree(value);
+	WMReleasePropList(val);
 	WMReleasePropList(array);
+	return status;
 }
 
 int main(int argc, char **argv)
@@ -1425,6 +1423,7 @@ int main(int argc, char **argv)
 	} else {
 		BackgroundTexture *tex;
 		char *gen_texture = NULL;
+		int update_status = -1;
 
 		if (!texture) {
 			char *image_path = getFullPixmapPath(image_name);
@@ -1443,7 +1442,14 @@ int main(int argc, char **argv)
 		}
 
 		if (update && workspace < 0) {
-			updateDomain(domain, "WorkspaceBack", texture);
+			update_status = updateDomain(domain, "WorkspaceBack", texture);
+			if (update_status >= 0) {
+				if (gen_texture)
+					wfree(gen_texture);
+				RDestroyContext(rc);
+				WMReleaseApplication();
+				return update_status;
+			}
 		}
 
 		tex = parseTexture(rc, texture);
@@ -1454,12 +1460,17 @@ int main(int argc, char **argv)
 			changeTexture(tex);
 		else {
 			/* always update domain */
-			changeTextureForWorkspace(domain, texture, workspace);
+			update_status = changeTextureForWorkspace(domain, texture, workspace);
 		}
 
 		freeTexture(tex);
 		if (gen_texture)
 			wfree(gen_texture);
+		if (update_status >= 0) {
+			RDestroyContext(rc);
+			WMReleaseApplication();
+			return update_status;
+		}
 	}
 
 	RDestroyContext(rc);
