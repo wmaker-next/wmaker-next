@@ -114,6 +114,42 @@ static void test_pipe_cap(void)
 	CHECK(p == NULL);
 }
 
+static void test_file_cap(void)
+{
+	WMPropList *p;
+	char path[] = "/tmp/check_proplist_big_XXXXXX";
+	int fd;
+	FILE *f;
+
+	fd = mkstemp(path);
+	CHECK(fd >= 0);
+	if (fd < 0)
+		return;
+
+	/* a well-formed small file parses */
+	CHECK(write(fd, "(a, b, c)\n", 10) == 10);
+	close(fd);
+	p = WMReadPropListFromFile(path);
+	CHECK(p != NULL);
+	CHECK(p && WMIsPLArray(p));
+	if (p)
+		WMReleasePropList(p);
+
+	/* a file larger than the 4 MiB input cap is rejected before being
+	 * read into memory, regardless of whether it would parse */
+	f = fopen(path, "wb");
+	CHECK(f != NULL);
+	if (f) {
+		CHECK(fseek(f, 5L * 1024 * 1024, SEEK_SET) == 0);
+		CHECK(fputc('a', f) == 'a');
+		fclose(f);
+	}
+	p = WMReadPropListFromFile(path);
+	CHECK(p == NULL);
+
+	unlink(path);
+}
+
 static void test_wmkdirhier_confinement(const char *root)
 {
 	char buf[PATH_MAX];
@@ -167,6 +203,7 @@ int main(void)
 	test_string_escape();
 	test_recursion_limit();
 	test_pipe_cap();
+	test_file_cap();
 	test_wmkdirhier_confinement(root);
 
 	if (root)

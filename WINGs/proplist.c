@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <ftw.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,7 @@ static Bool caseSensitive = True;
 
 #define BUFFERSIZE           8192
 #define MAX_PROPLIST_DEPTH   512
+#define MAX_PROPLIST_INPUT   (4u * 1024u * 1024u)
 
 #define BUFFERSIZE_INCREMENT 1024
 
@@ -1540,13 +1542,18 @@ WMPropList *WMReadPropListFromFile(const char *file)
 		return NULL;
 	}
 
-	if (stat(file, &stbuf) == 0) {
-		length = (size_t) stbuf.st_size;
-	} else {
+	if (fstat(fileno(f), &stbuf) != 0 || stbuf.st_size < 0) {
 		werror(_("could not get size for file '%s'"), file);
 		fclose(f);
 		return NULL;
 	}
+	if ((uintmax_t)stbuf.st_size > MAX_PROPLIST_INPUT) {
+		werror(_("property list file '%s' exceeds %u bytes, refusing to load"),
+		       file, MAX_PROPLIST_INPUT);
+		fclose(f);
+		return NULL;
+	}
+	length = (size_t)stbuf.st_size;
 
 	read_buf = wmalloc(length + 1);
 	if (fread(read_buf, length, 1, f) != 1) {
@@ -1587,50 +1594,20 @@ WMPropList *WMReadPropListFromFile(const char *file)
 
 WMPropList *WMReadPropListFromPipe(const char *command)
 {
-	FILE *file;
 	WMPropList *plist;
 	PLData *pldata;
-	char *read_buf, *read_ptr;
-	size_t remain_size, line_size;
-	const size_t block_read_size = 4096;
-	const size_t block_read_margin = 512;
+	char *read_buf;
+	int status;
+	char *argv[] = { "/bin/sh", "-c", (char *)command, NULL };
 
-	file = popen(command, "r");
-
-	if (!file) {
+	read_buf = wspawnvp_capture(argv, MAX_PROPLIST_INPUT, &status);
+	if (!read_buf) {
 		werror(_("%s:could not open menu file"), command);
 		return NULL;
 	}
-
-	/* read from file till EOF and fill proplist buffer, but stop at a
-	 * sane limit so a runaway or hostile generator cannot grow the
-	 * buffer without bound before any parsing happens */
-	const size_t max_pipe_size = 4u * 1024 * 1024;
-	remain_size = block_read_size;
-	read_buf = wmalloc(remain_size);
-	read_ptr = read_buf;
-	while (fgets(read_ptr, remain_size, file) != NULL) {
-		line_size = strlen(read_ptr);
-
-		remain_size -= line_size;
-		read_ptr += line_size;
-
-		if (remain_size < block_read_margin) {
-			size_t read_length;
-
-			read_length = read_ptr - read_buf;
-			if (read_length >= max_pipe_size) {
-				werror(_("%s: pipe output exceeds %zu bytes, truncating"),
-				       command, max_pipe_size);
-				break;
-			}
-			read_buf = wrealloc(read_buf, read_length + block_read_size);
-			read_ptr = read_buf + read_length;
-			remain_size = block_read_size;
-		}
-	}
-
-	pclose(file);
+	if (status < 0)
+		werror(_("%s: pipe output exceeds %u bytes or child did not exit normally, truncating"),
+		       command, MAX_PROPLIST_INPUT);
 
 	pldata = (PLData *) wmalloc(sizeof(PLData));
 	pldata->ptr = read_buf;
