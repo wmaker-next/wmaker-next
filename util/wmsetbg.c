@@ -696,6 +696,8 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 
 	texture->spec = wstrdup(text);
 
+	WMReleasePropList(texarray);
+
 	return texture;
 
  error:
@@ -1368,6 +1370,8 @@ int main(int argc, char **argv)
 
 		if (val && WMIsPLString(val) && strcasecmp(WMGetFromPLString(val), "YES") == 0)
 			smooth = True;
+		if (val)
+			WMReleasePropList(val);
 	}
 
 	dpy = XOpenDisplay(display);
@@ -1453,10 +1457,12 @@ int main(int argc, char **argv)
 			changeTextureForWorkspace(domain, texture, workspace);
 		}
 
+		freeTexture(tex);
 		if (gen_texture)
 			wfree(gen_texture);
 	}
 
+	RDestroyContext(rc);
 	WMReleaseApplication();
 	return 0;
 }
