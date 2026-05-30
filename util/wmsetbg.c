@@ -1418,13 +1418,22 @@ int main(int argc, char **argv)
 		helperLoop(rc);
 	} else {
 		BackgroundTexture *tex;
-		char buffer[4098];
+		char *gen_texture = NULL;
 
 		if (!texture) {
 			char *image_path = getFullPixmapPath(image_name);
-			snprintf(buffer, sizeof(buffer), "(%s, \"%s\", %s)", style, image_path, back_color);
+			/* build the (style, path, color) array via the proplist
+			 * API so quotes and backslashes in the path are escaped
+			 * in the serialized description, instead of breaking
+			 * out of a hand-built "..." */
+			WMPropList *pl = WMCreatePLArray(WMCreatePLString(style),
+							 WMCreatePLString(image_path),
+							 WMCreatePLString(back_color),
+							 NULL);
+			gen_texture = WMGetPropListDescription(pl, False);
+			WMReleasePropList(pl);
 			wfree(image_path);
-			texture = (char *)buffer;
+			texture = gen_texture;
 		}
 
 		if (update && workspace < 0) {
@@ -1441,6 +1450,9 @@ int main(int argc, char **argv)
 			/* always update domain */
 			changeTextureForWorkspace(domain, texture, workspace);
 		}
+
+		if (gen_texture)
+			wfree(gen_texture);
 	}
 
 	WMReleaseApplication();

@@ -109,6 +109,29 @@ static Bool isFontOption(const char *option)
 	return False;
 }
 
+/* prepend prefix and a separator to the string at arr[idx], leaving the
+ * entry untouched if it is missing or not a string */
+static void prefixPathInArray(WMPropList *arr, int idx, const char *prefix)
+{
+	WMPropList *file = WMGetFromPLArray(arr, idx);
+	const char *name;
+	char *dir, *full;
+
+	if (!file || !WMIsPLString(file))
+		return;
+	name = WMGetFromPLString(file);
+	if (!name)
+		return;
+
+	dir = wstrconcat(prefix, "/");
+	full = wstrconcat(dir, name);
+	wfree(dir);
+
+	WMDeleteFromPLArray(arr, idx);
+	WMInsertInPLArray(arr, idx, WMCreatePLString(full));
+	wfree(full);
+}
+
 /*
  * finds elements in `texture' that reference external files,
  * prepends `prefix' to these files. `prefix' is a path component
@@ -134,33 +157,10 @@ static void hackPathInTexture(WMPropList * texture, const char *prefix)
 	    strcasecmp(t, "tvgradient") == 0 ||
 	    strcasecmp(t, "thgradient") == 0 ||
 	    strcasecmp(t, "tdgradient") == 0) {
-		WMPropList *file;
-		char buffer[4018];
-
-		/* get pixmap file path */
-		file = WMGetFromPLArray(texture, 1);
-		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
-		/* replace path with full path */
-		WMDeleteFromPLArray(texture, 1);
-		WMInsertInPLArray(texture, 1, WMCreatePLString(buffer));
-
+		prefixPathInArray(texture, 1, prefix);
 	} else if (strcasecmp(t, "bitmap") == 0) {
-		WMPropList *file;
-		char buffer[4018];
-
-		/* get bitmap file path */
-		file = WMGetFromPLArray(texture, 1);
-		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
-		/* replace path with full path */
-		WMDeleteFromPLArray(texture, 1);
-		WMInsertInPLArray(texture, 1, WMCreatePLString(buffer));
-
-		/* get mask file path */
-		file = WMGetFromPLArray(texture, 2);
-		snprintf(buffer, sizeof(buffer), "%s/%s", prefix, WMGetFromPLString(file));
-		/* replace path with full path */
-		WMDeleteFromPLArray(texture, 2);
-		WMInsertInPLArray(texture, 2, WMCreatePLString(buffer));
+		prefixPathInArray(texture, 1, prefix);
+		prefixPathInArray(texture, 2, prefix);
 	}
 }
 
