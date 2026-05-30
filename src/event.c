@@ -1054,12 +1054,15 @@ static void handleClientMessage(XEvent * event)
 		}
 	} else if (event->xclient.message_type == w_global.atom.wmaker.command) {
 
-		char *command;
-		size_t len;
+		char command[sizeof(event->xclient.data.b) + 1];
 
-		len = sizeof(event->xclient.data.b);
-		command = wmalloc(len + 1);
-		strncpy(command, event->xclient.data.b, len);
+		/* WPrefs and setstyle send this as format 8, anything else
+		 * means data.b is not the right view of the payload */
+		if (event->xclient.format != 8)
+			return;
+
+		strncpy(command, event->xclient.data.b, sizeof(command) - 1);
+		command[sizeof(command) - 1] = '\0';
 
 		if (strncmp(command, "Reconfigure", sizeof("Reconfigure")) == 0) {
 			wwarning(_("Got Reconfigure command"));
@@ -1067,8 +1070,6 @@ static void handleClientMessage(XEvent * event)
 		} else {
 			wwarning(_("Got unknown command %s"), command);
 		}
-
-		wfree(command);
 
 	} else if (event->xclient.message_type == w_global.atom.wmaker.wm_function) {
 		WApplication *wapp;
