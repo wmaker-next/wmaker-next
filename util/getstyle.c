@@ -344,13 +344,16 @@ int main(int argc, char **argv)
 	prop = WMReadPropListFromFile(path);
 	if (!prop) {
 		printf("%s: could not load WindowMaker configuration file \"%s\".\n", prog_name, path);
+		wfree(path);
 		return 1;
 	}
+	wfree(path);
 
 	/* get global value */
 	path = wglobaldefaultspathfordomain("WindowMaker");
 
 	val = WMReadPropListFromFile(path);
+	wfree(path);
 	if (val) {
 		WMMergePLDictionaries(val, prop, True);
 		WMReleasePropList(prop);
@@ -383,7 +386,9 @@ int main(int argc, char **argv)
 		WMReleasePropList(key);
 	}
 
-	val = WMGetFromPLDictionary(prop, WMCreatePLString("PixmapPath"));
+	key = WMCreatePLString("PixmapPath");
+	val = WMGetFromPLDictionary(prop, key);
+	WMReleasePropList(key);
 	if (val)
 		PixmapPath = val;
 
@@ -394,6 +399,7 @@ int main(int argc, char **argv)
 			val = WMGetFromPLDictionary(prop, key);
 			if (val)
 				WMPutInPLDictionary(style, key, val);
+			WMReleasePropList(key);
 		}
 	}
 
@@ -405,14 +411,30 @@ int main(int argc, char **argv)
 		path = wmalloc(strlen(ThemePath) + 32);
 		strcpy(path, ThemePath);
 		strcat(path, "/style");
-		WMWritePropListToFile(style, path);
+		if (!WMWritePropListToFile(style, path)) {
+			werror("could not write style to %s", path);
+			wfree(path);
+			WMReleasePropList(style);
+			WMReleasePropList(prop);
+			return 1;
+		}
 		wfree(path);
 	} else {
 		if (style_file) {
-			WMWritePropListToFile(style, style_file);
+			if (!WMWritePropListToFile(style, style_file)) {
+				werror("could not write style to %s", style_file);
+				WMReleasePropList(style);
+				WMReleasePropList(prop);
+				return 1;
+			}
 		} else {
-			puts(WMGetPropListDescription(style, True));
+			char *desc = WMGetPropListDescription(style, True);
+			puts(desc);
+			wfree(desc);
 		}
 	}
+
+	WMReleasePropList(style);
+	WMReleasePropList(prop);
 	return 0;
 }

@@ -93,12 +93,15 @@ int main(int argc, char **argv)
 	all_windows = WMReadPropListFromFile(path);
 	if (!all_windows) {
 		printf("%s: could not load WindowMaker configuration file \"%s\".\n", prog_name, path);
+		wfree(path);
 		return 1;
 	}
 
 	iconset = WMReadPropListFromFile(argv[0]);
 	if (!iconset) {
 		printf("%s: could not load icon set file \"%s\".\n", prog_name, argv[0]);
+		WMReleasePropList(all_windows);
+		wfree(path);
 		return 1;
 	}
 
@@ -123,7 +126,14 @@ int main(int argc, char **argv)
 		}
 	}
 
-	WMWritePropListToFile(all_windows, path);
+	i = WMWritePropListToFile(all_windows, path) ? 0 : 1;
+	if (i)
+		werror("could not write to %s", path);
 
-	return 0;
+	WMReleasePropList(keylist);
+	WMReleasePropList(iconset);
+	WMReleasePropList(all_windows);
+	wfree(path);
+
+	return i;
 }

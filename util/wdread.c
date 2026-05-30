@@ -97,19 +97,29 @@ int main(int argc, char **argv)
 	key = WMCreatePLString(argv[1]);
 
 	dpath = wdefaultspathfordomain(argv[0]);
-	if (!dpath)
+	if (!dpath) {
+		WMReleasePropList(key);
 		return 1;
+	}
 	snprintf(path, sizeof(path), "%s", dpath);
 	wfree(dpath);
 
 	dict = WMReadPropListFromFile(path);
-	if (dict == NULL)
+	if (dict == NULL) {
+		WMReleasePropList(key);
 		return 1;	/* bad domain */
+	}
 
 	value = WMGetFromPLDictionary(dict, key);
-	if (value == NULL)
+	WMReleasePropList(key);
+	if (value == NULL) {
+		WMReleasePropList(dict);
 		return 2;	/* bad key */
+	}
 
-	printf("%s\n", WMGetPropListDescription(value, True));
+	dpath = WMGetPropListDescription(value, True);
+	printf("%s\n", dpath);
+	wfree(dpath);
+	WMReleasePropList(dict);
 	return 0;
 }

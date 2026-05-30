@@ -97,12 +97,16 @@ int main(int argc, char **argv)
 	value = WMCreatePropListFromDescription(argv[2]);
 	if (!value) {
 		printf("%s: syntax error in value \"%s\"", prog_name, argv[2]);
+		WMReleasePropList(key);
 		return 1;
 	}
 
 	dpath = wdefaultspathfordomain(argv[0]);
-	if (!dpath)
+	if (!dpath) {
+		WMReleasePropList(key);
+		WMReleasePropList(value);
 		return 1;
+	}
 	snprintf(path, sizeof(path), "%s", dpath);
 	wfree(dpath);
 
@@ -112,8 +116,15 @@ int main(int argc, char **argv)
 	} else {
 		WMPutInPLDictionary(dict, key, value);
 	}
+	WMReleasePropList(key);
+	WMReleasePropList(value);
 
-	WMWritePropListToFile(dict, path);
+	if (!WMWritePropListToFile(dict, path)) {
+		werror("could not write to %s", path);
+		WMReleasePropList(dict);
+		return 1;
+	}
+	WMReleasePropList(dict);
 
 	return 0;
 }

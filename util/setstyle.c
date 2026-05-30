@@ -207,6 +207,9 @@ static void hackPaths(WMPropList * style, const char *prefix)
 	WMReleasePropList(keys);
 }
 
+/* Return the representative colour of a texture description as a
+ * caller-owned proplist string (release with WMReleasePropList), or
+ * NULL when none can be derived. */
 static WMPropList *getColor(WMPropList * texture)
 {
 	WMPropList *value, *type;
@@ -233,7 +236,7 @@ static WMPropList *getColor(WMPropList * texture)
 			if (sscanf(WMGetFromPLString(c1), "#%2x%2x%2x", &r1, &g1, &b1) == 3
 			    && sscanf(WMGetFromPLString(c2), "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
 				sprintf(buffer, "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
-				value = WMCreatePLString(buffer);
+				return WMCreatePLString(buffer);
 			} else {
 				value = c1;
 			}
@@ -247,7 +250,7 @@ static WMPropList *getColor(WMPropList * texture)
 			sprintf(buffer, "#%02x%02x%02x",
 				(color1.red + color2.red) >> 9,
 				(color1.green + color2.green) >> 9, (color1.blue + color2.blue) >> 9);
-			value = WMCreatePLString(buffer);
+			return WMCreatePLString(buffer);
 		}
 	} else if (strcasecmp(str, "mdgradient") == 0
 		   || strcasecmp(str, "mhgradient") == 0 || strcasecmp(str, "mvgradient") == 0) {
@@ -260,7 +263,7 @@ static WMPropList *getColor(WMPropList * texture)
 		value = WMGetFromPLArray(texture, 2);
 	}
 
-	return value;
+	return value ? WMRetainPropList(value) : NULL;
 }
 
 /*
@@ -270,6 +273,24 @@ static WMPropList *getColor(WMPropList * texture)
  * IconTitleColor
  * IconTitleBack
  */
+/* look up dict[key] without leaking the temporary key proplist */
+static WMPropList *lookupStringKey(WMPropList *dict, const char *key)
+{
+	WMPropList *k = WMCreatePLString(key);
+	WMPropList *v = WMGetFromPLDictionary(dict, k);
+	WMReleasePropList(k);
+	return v;
+}
+
+/* dict[key] = value without leaking the temporary key proplist,
+ * the dictionary retains both key and value */
+static void putStringKey(WMPropList *dict, const char *key, WMPropList *value)
+{
+	WMPropList *k = WMCreatePLString(key);
+	WMPutInPLDictionary(dict, k, value);
+	WMReleasePropList(k);
+}
+
 static void hackStyle(WMPropList * style)
 {
 	WMPropList *keys, *tmp;
@@ -319,43 +340,40 @@ static void hackStyle(WMPropList * style)
 
 	if (!foundIconTitle) {
 		/* set the default values */
-		tmp = WMGetFromPLDictionary(style, WMCreatePLString("FTitleColor"));
+		tmp = lookupStringKey(style, "FTitleColor");
+		if (tmp)
+			putStringKey(style, "IconTitleColor", tmp);
+
+		tmp = lookupStringKey(style, "FTitleBack");
 		if (tmp) {
-			WMPutInPLDictionary(style, WMCreatePLString("IconTitleColor"), tmp);
-		}
-
-		tmp = WMGetFromPLDictionary(style, WMCreatePLString("FTitleBack"));
-		if (tmp) {
-			WMPropList *value;
-
-			value = getColor(tmp);
-
+			WMPropList *value = getColor(tmp);
 			if (value) {
-				WMPutInPLDictionary(style, WMCreatePLString("IconTitleBack"), value);
+				putStringKey(style, "IconTitleBack", value);
+				WMReleasePropList(value);
 			}
 		}
 	}
 
 	if (!foundResizebarBack) {
 		/* set the default values */
-		tmp = WMGetFromPLDictionary(style, WMCreatePLString("UTitleBack"));
+		tmp = lookupStringKey(style, "UTitleBack");
 		if (tmp) {
-			WMPropList *value;
-
-			value = getColor(tmp);
-
+			WMPropList *value = getColor(tmp);
 			if (value) {
-				WMPropList *t;
-
-				t = WMCreatePLArray(WMCreatePLString("solid"), value, NULL);
-				WMPutInPLDictionary(style, WMCreatePLString("ResizebarBack"), t);
+				WMPropList *solid = WMCreatePLString("solid");
+				WMPropList *t = WMCreatePLArray(solid, value, NULL);
+				putStringKey(style, "ResizebarBack", t);
+				WMReleasePropList(t);
+				WMReleasePropList(solid);
 				WMReleasePropList(value);
 			}
 		}
 	}
 
-	if (!WMGetFromPLDictionary(style, WMCreatePLString("MenuStyle"))) {
-		WMPutInPLDictionary(style, WMCreatePLString("MenuStyle"), WMCreatePLString("normal"));
+	if (!lookupStringKey(style, "MenuStyle")) {
+		WMPropList *normal = WMCreatePLString("normal");
+		putStringKey(style, "MenuStyle", normal);
+		WMReleasePropList(normal);
 	}
 }
 
@@ -429,18 +447,19 @@ int main(int argc, char **argv)
 
 	WMPLSetCaseSensitive(False);
 
+	style = NULL;
 	path = wdefaultspathfordomain("WindowMaker");
 
 	prop = WMReadPropListFromFile(path);
 	if (!prop) {
 		perror(path);
 		printf("%s: could not load WindowMaker configuration file.\n", prog_name);
-		return 1;
+		goto fail;
 	}
 
 	if (stat(file, &st) < 0) {
 		perror(file);
-		return 1;
+		goto fail;
 	}
 	if (S_ISDIR(st.st_mode)) {		/* theme pack */
 		char buf[PATH_MAX];
@@ -448,20 +467,20 @@ int main(int argc, char **argv)
 
 		if (realpath(file, buf) == NULL) {
 			perror(file);
-			return 1;
+			goto fail;
 		}
 		strncat(buf, "/style", sizeof(buf) - strlen(buf) - 1);
 
 		if (stat(buf, &st) != 0 || !S_ISREG(st.st_mode)) {	/* maybe symlink too? */
 			printf("%s: %s: style file not found or not a file\n", prog_name, buf);
-			return 1;
+			goto fail;
 		}
 
 		style = WMReadPropListFromFile(buf);
 		if (!style) {
 			perror(buf);
 			printf("%s: could not load style file.\n", prog_name);
-			return 1;
+			goto fail;
 		}
 
 		buf[strlen(buf) - 6 /* strlen("/style") */] = '\0';
@@ -484,26 +503,35 @@ int main(int argc, char **argv)
 		if (!style) {
 			perror(file);
 			printf("%s:could not load style file.\n", prog_name);
-			return 1;
+			goto fail;
 		}
 	}
 
 	if (!WMIsPLDictionary(style)) {
 		printf("%s: '%s' is not a style file/theme\n", prog_name, file);
-		return 1;
+		goto fail;
 	}
 
 	hackStyle(style);
 
 	if (ignoreCount > 0) {
 		for (i = 0; i < ignoreCount; i++) {
-			WMRemoveFromPLDictionary(style, WMCreatePLString(ignoreList[i]));
+			WMPropList *ikey = WMCreatePLString(ignoreList[i]);
+			WMRemoveFromPLDictionary(style, ikey);
+			WMReleasePropList(ikey);
 		}
 	}
 
 	WMMergePLDictionaries(prop, style, True);
+	WMReleasePropList(style);
+	style = NULL;
 
-	WMWritePropListToFile(prop, path);
+	if (!WMWritePropListToFile(prop, path)) {
+		werror("could not write %s", path);
+		goto fail;
+	}
+	WMReleasePropList(prop);
+	wfree(path);
 
 	dpy = XOpenDisplay("");
 	if (dpy) {
@@ -517,7 +545,16 @@ int main(int argc, char **argv)
 
 		XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureRedirectMask, &ev);
 		XFlush(dpy);
+		XCloseDisplay(dpy);
 	}
 
 	return 0;
+
+fail:
+	if (style)
+		WMReleasePropList(style);
+	if (prop)
+		WMReleasePropList(prop);
+	wfree(path);
+	return 1;
 }

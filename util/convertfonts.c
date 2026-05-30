@@ -142,6 +142,7 @@ int main(int argc, char **argv)
 
 	if (!WMIsPLDictionary(style)) {
 		printf("%s: '%s' is not a well formatted style file\n", prog_name, file);
+		WMReleasePropList(style);
 		return 1;
 	}
 
@@ -161,7 +162,12 @@ int main(int argc, char **argv)
 		WMReleasePropList(key);
 	}
 
-	WMWritePropListToFile(style, file);
+	if (!WMWritePropListToFile(style, file)) {
+		werror("could not write to %s", file);
+		WMReleasePropList(style);
+		return 1;
+	}
+	WMReleasePropList(style);
 
 	return 0;
 }
