@@ -1269,7 +1269,7 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 	char *buffer;
 	WMArray *dirs = NULL, *files = NULL;
 	WMArrayIterator iter;
-	int length, i, have_space = 0;
+	int length, i;
 	dir_data *data;
 	int stripExtension = 0;
 
@@ -1376,20 +1376,28 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 			break;
 		}
 
+		/* the generated OPEN_MENU argument is reparsed by next_token(),
+		 * which has no escape inside double quotes, so a '"' in the
+		 * path cannot be encoded. Skip such entries rather than let
+		 * them break out of the quoting and reach the WITH command. */
+		if (strchr(path[data->index], '"') || strchr(data->name, '"')) {
+			wwarning(_("ignoring directory menu entry with '\"' in its path: %s/%s"),
+				 path[data->index], data->name);
+			wfree(buffer);
+			wfree(data->name);
+			wfree(data);
+			continue;
+		}
+
 		buffer[0] = '\0';
 		if (stripExtension)
 			strcat(buffer, "-noext ");
 
-		have_space = strchr(path[data->index], ' ') != NULL || strchr(data->name, ' ') != NULL;
-
-		if (have_space)
-			strcat(buffer, "\"");
+		strcat(buffer, "\"");
 		strcat(buffer, path[data->index]);
-
 		strcat(buffer, "/");
 		strcat(buffer, data->name);
-		if (have_space)
-			strcat(buffer, "\"");
+		strcat(buffer, "\"");
 		if (command) {
 			strcat(buffer, " WITH ");
 			strcat(buffer, command);
