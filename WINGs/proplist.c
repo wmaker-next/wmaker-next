@@ -1602,7 +1602,10 @@ WMPropList *WMReadPropListFromPipe(const char *command)
 		return NULL;
 	}
 
-	/* read from file till EOF or OOM and fill proplist buffer*/
+	/* read from file till EOF and fill proplist buffer, but stop at a
+	 * sane limit so a runaway or hostile generator cannot grow the
+	 * buffer without bound before any parsing happens */
+	const size_t max_pipe_size = 4u * 1024 * 1024;
 	remain_size = block_read_size;
 	read_buf = wmalloc(remain_size);
 	read_ptr = read_buf;
@@ -1616,6 +1619,11 @@ WMPropList *WMReadPropListFromPipe(const char *command)
 			size_t read_length;
 
 			read_length = read_ptr - read_buf;
+			if (read_length >= max_pipe_size) {
+				werror(_("%s: pipe output exceeds %zu bytes, truncating"),
+				       command, max_pipe_size);
+				break;
+			}
 			read_buf = wrealloc(read_buf, read_length + block_read_size);
 			read_ptr = read_buf + read_length;
 			remain_size = block_read_size;
