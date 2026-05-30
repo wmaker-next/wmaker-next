@@ -558,8 +558,8 @@ void ExecExitScript(void)
 
 int main(int argc, char **argv)
 {
-	int i_am_the_monitor, i, len;
-	char *str, *alt;
+	int i_am_the_monitor, i;
+	char *alt;
 
 	memset(&w_global, 0, sizeof(w_global));
 	w_global.program.state = WSTATE_NORMAL;
@@ -604,10 +604,7 @@ int main(int argc, char **argv)
 	}
 
 	DisplayName = XDisplayName(DisplayName);
-	len = strlen(DisplayName) + 64;
-	str = wmalloc(len);
-	snprintf(str, len, "DISPLAY=%s", DisplayName);
-	putenv(str);
+	setenv("DISPLAY", DisplayName, 1);
 
 	if (i_am_the_monitor)
 		return MonitorLoop(argc, argv);
