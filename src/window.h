@@ -394,7 +394,8 @@ void wWindowSetShape(WWindow *wwin);
 void wWindowClearShape(WWindow *wwin);
 #endif
 
-WWindow *wManageWindow(WScreen *scr, Window window);
+WWindow *wManageWindow(WScreen *scr, Window window,
+		       const XWindowAttributes *prefetched_attrs);
 
 void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed);
 

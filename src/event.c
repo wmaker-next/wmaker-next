@@ -653,7 +653,7 @@ static void handleMapRequest(XEvent * ev)
 
 	scr = wScreenForRootWindow(ev->xmaprequest.parent);
 
-	wwin = wManageWindow(scr, window);
+	wwin = wManageWindow(scr, window, NULL);
 
 	/*
 	 * This is to let the Dock know that the application it launched

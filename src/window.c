@@ -738,7 +738,8 @@ static int matchIdentifier(const void *item, const void *cdata)
  *
  *----------------------------------------------------------------
  */
-WWindow *wManageWindow(WScreen *scr, Window window)
+WWindow *wManageWindow(WScreen *scr, Window window,
+		       const XWindowAttributes *prefetched_attrs)
 {
 	WWindow *wwin;
 	int x, y;
@@ -760,8 +761,12 @@ WWindow *wManageWindow(WScreen *scr, Window window)
 	XGrabServer(dpy);
 	XSync(dpy, False);
 
-	/* make sure the window is still there */
-	if (!XGetWindowAttributes(dpy, window, &wattribs)) {
+	/* make sure the window is still there. manageAllWindows() supplies
+	 * attributes it already batched across every child, the MapRequest
+	 * path passes NULL and we fetch here. */
+	if (prefetched_attrs) {
+		wattribs = *prefetched_attrs;
+	} else if (!XGetWindowAttributes(dpy, window, &wattribs)) {
 		XUngrabServer(dpy);
 		return NULL;
 	}

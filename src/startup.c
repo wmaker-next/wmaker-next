@@ -764,6 +764,33 @@ static Bool windowInList(Window window, Window * list, int count)
  * reparented/managed.
  *-----------------------------------------------------------------------
  */
+static Visual *visualForId(WScreen *scr, VisualID vid)
+{
+	XVisualInfo tmpl, *vi;
+	int n;
+	Visual *v;
+
+	/* almost every client uses the screen's default visual, so try
+	 * that first before walking the full visual list */
+	if (scr->w_visual && XVisualIDFromVisual(scr->w_visual) == vid)
+		return scr->w_visual;
+
+	tmpl.visualid = vid;
+	vi = XGetVisualInfo(dpy, VisualIDMask, &tmpl, &n);
+	if (!vi || n < 1) {
+		if (vi)
+			XFree(vi);
+		/* do not guess, a non-default (e.g. ARGB) visual paired
+		 * with the prefetched depth/colormap would BadMatch on
+		 * frame creation. Caller falls back to a fresh
+		 * XGetWindowAttributes() instead. */
+		return NULL;
+	}
+	v = vi[0].visual;
+	XFree(vi);
+	return v;
+}
+
 static void manageAllWindows(WScreen * scr, int crashRecovery)
 {
 	Window root, parent;
@@ -771,18 +798,25 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	unsigned int nchildren;
 	unsigned int i, j;
 	WWindow *wwin;
-	WXCookie *hints_ck;
+	WXCookie *hints_ck, *attr_ck, *geom_ck;
 
 	XGrabServer(dpy);
 	XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
 
-	/* Issue WM_HINTS for every child up front so the icon-window filter
-	 * costs one round-trip instead of nchildren. */
+	/* Issue WM_HINTS, GetWindowAttributes and GetGeometry for every
+	 * child up front so the icon-window and override-redirect filters,
+	 * and the per-window XGetWindowAttributes that wManageWindow would
+	 * otherwise do, all cost one round-trip instead of nchildren. */
 	hints_ck = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
-	for (i = 0; i < nchildren; i++)
+	attr_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
+	geom_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
+	for (i = 0; i < nchildren; i++) {
 		hints_ck[i] = WXReqWMHints(dpy, children[i]);
+		attr_ck[i]  = WXReqWindowAttributes(dpy, children[i]);
+		geom_ck[i]  = WXReqGeometry(dpy, children[i]);
+	}
 
 	/* first remove all icon windows */
 	for (i = 0; i < nchildren; i++) {
@@ -806,10 +840,53 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	wfree(hints_ck);
 
 	for (i = 0; i < nchildren; i++) {
-		if (children[i] == None)
+		WXWindowAttributes xa;
+		WXGeometry xg;
+		XWindowAttributes wattribs;
+
+		if (children[i] == None) {
+			WXDiscard(dpy, attr_ck[i]);
+			WXDiscard(dpy, geom_ck[i]);
+			continue;
+		}
+
+		if (!WXRcvWindowAttributes(dpy, attr_ck[i], &xa)) {
+			WXDiscard(dpy, geom_ck[i]);
+			continue;
+		}
+
+		/* drop override-redirect and unviewable children here so the
+		 * many wmaker-owned helper windows do not each cycle
+		 * XGrabServer/XUngrabServer inside wManageWindow */
+		if (xa.override_redirect || xa.map_state == IsUnviewable) {
+			WXDiscard(dpy, geom_ck[i]);
+			continue;
+		}
+
+		if (!WXRcvGeometry(dpy, geom_ck[i], &xg))
 			continue;
 
-		wwin = wManageWindow(scr, children[i]);
+		/* assemble what wManageWindow and wClientGetNormalHints read
+		 * from XWindowAttributes */
+		memset(&wattribs, 0, sizeof(wattribs));
+		wattribs.override_redirect = xa.override_redirect;
+		wattribs.map_state         = xa.map_state;
+		wattribs.class             = xa.window_class;
+		wattribs.colormap          = xa.colormap;
+		wattribs.visual            = visualForId(scr, xa.visual);
+		wattribs.root              = xg.root;
+		wattribs.x                 = xg.x;
+		wattribs.y                 = xg.y;
+		wattribs.width             = xg.width;
+		wattribs.height            = xg.height;
+		wattribs.border_width      = xg.border_width;
+		wattribs.depth             = xg.depth;
+
+		/* if the visual could not be resolved do not hand a guessed
+		 * one to frame creation, let wManageWindow fetch its own
+		 * coherent XWindowAttributes instead */
+		wwin = wManageWindow(scr, children[i],
+				     wattribs.visual ? &wattribs : NULL);
 		if (wwin) {
 			/* apply states got from WSavedState */
 			/* shaded + minimized is not restored correctly */
@@ -839,6 +916,8 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 			}
 		}
 	}
+	wfree(attr_ck);
+	wfree(geom_ck);
 	XUngrabServer(dpy);
 
 	/* hide apps */
