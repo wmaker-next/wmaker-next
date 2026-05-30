@@ -1627,6 +1627,11 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	wmessage("processClientMessage type %s", XGetAtomName(dpy, event->message_type));
 #endif
 
+	/* every NETWM client message carries 32-bit data fields, refuse
+	 * format-8/16 spoofs before reading data.l[] */
+	if (event->format != 32)
+		return False;
+
 	scr = wScreenForWindow(event->window);
 	if (scr) {
 		/* generic client messages */
