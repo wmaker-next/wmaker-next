@@ -1,7 +1,7 @@
 ## automake input file for wrlib
 
-SUBDIRS = . po
-DIST_SUBDIRS = $(SUBDIRS) tests
+SUBDIRS = . po tests
+DIST_SUBDIRS = $(SUBDIRS)
 
 AUTOMAKE_OPTIONS =
 
