@@ -4,9 +4,6 @@
 
 #define XDND_SOURCE_RESPONSE_MAX_DELAY 3000
 
-#define XDND_PROPERTY_FORMAT 32
-#define XDND_ACTION_DESCRIPTION_FORMAT 8
-
 #define XDND_SOURCE_VERSION(dragInfo) dragInfo->protocolVersion
 #define XDND_DEST_INFO(dragInfo) dragInfo->destInfo
 #define XDND_AWARE_VIEW(dragInfo) dragInfo->destInfo->xdndAwareView
@@ -179,66 +176,48 @@ static char *getNextRequestedDataType(WMDraggingInfo * info)
 
 /* ----- Action list ----- */
 
+#define XDND_MAX_ACTIONS 32
+
 static WMArray *sourceOperationList(WMScreen * scr, Window sourceWin)
 {
-	Atom dataType, *actionList;
-	int i, size;
-	unsigned long count, atomCount, remaining;
-	unsigned char *actionDatas = NULL;
-	unsigned char *descriptionList = NULL;
+	Atom *actionList;
+	size_t i, atomCount, descLen, n;
+	char *descriptionList, *p, *end;
 	WMArray *operationArray;
 	WMDragOperationItem *operationItem;
-	char *description;
 
-	remaining = 0;
-	XGetWindowProperty(scr->display, sourceWin, scr->xdndActionListAtom,
-			   0, 0x8000000L, False, XA_ATOM, &dataType, &size, &count, &remaining, &actionDatas);
-
-	if (dataType != XA_ATOM || size != XDND_PROPERTY_FORMAT || count == 0 || !actionDatas) {
+	actionList = WXGetAtomList(scr->display, sourceWin, scr->xdndActionListAtom,
+				   XDND_MAX_ACTIONS, &atomCount);
+	if (!actionList) {
 		wwarning("Cannot read action list");
-		if (actionDatas) {
-			XFree(actionDatas);
-		}
 		return NULL;
 	}
 
-	actionList = (Atom *) actionDatas;
-	atomCount = count;
-
-	XGetWindowProperty(scr->display, sourceWin, scr->xdndActionDescriptionAtom,
-			   0, 0x8000000L, False, XA_STRING, &dataType, &size,
-			   &count, &remaining, &descriptionList);
-
-	if (dataType != XA_STRING || size != XDND_ACTION_DESCRIPTION_FORMAT || count == 0 || !descriptionList) {
+	descriptionList = WXGetLatin1String(scr->display, sourceWin,
+					    scr->xdndActionDescriptionAtom, &descLen);
+	if (!descriptionList) {
 		wwarning("Cannot read action description list");
-		if (actionList) {
-			XFree(actionList);
-		}
-		if (descriptionList) {
-			XFree(descriptionList);
-		}
+		wfree(actionList);
 		return NULL;
 	}
 
 	operationArray = WMCreateDragOperationArray(atomCount);
-	description = (char *)descriptionList;
 
-	for (i = 0; count > 0 && (unsigned long)i < atomCount; i++) {
-		size = strlen(description);
+	/* descriptions are NUL-separated within descLen bytes, walk by byte
+	 * count so a missing terminator on the last entry cannot run past
+	 * the buffer */
+	p = descriptionList;
+	end = descriptionList + descLen;
+	for (i = 0; i < atomCount && p < end; i++) {
+		n = strnlen(p, (size_t)(end - p));
 		operationItem = WMCreateDragOperationItem(W_ActionToOperation(scr, actionList[i]),
-							  wstrdup(description));
-
+							  wstrndup(p, n));
 		WMAddToArray(operationArray, operationItem);
-		if ((unsigned long)(size + 1) > count)
-			break;
-		count -= (size + 1);
-
-		/* next description */
-		description = &(description[size + 1]);
+		p += n + 1;
 	}
 
-	XFree(actionList);
-	XFree(descriptionList);
+	wfree(actionList);
+	wfree(descriptionList);
 
 	return operationArray;
 }
