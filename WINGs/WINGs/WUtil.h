@@ -267,6 +267,26 @@ size_t wstrlcpy(char *, const char *, size_t);
 size_t wstrlcat(char *, const char *, size_t);
 
 
+/* ---[ WINGs/spawn.c ]---------------------------------------------------
+ *
+ * argv-based child process helpers. Nothing here goes through /bin/sh,
+ * so arguments reach the child verbatim with no quoting, splitting or
+ * glob expansion. Use {"/bin/sh", "-c", cmd, NULL} explicitly when shell
+ * semantics are intended.
+ */
+
+/* fork + execvp(argv[0], argv), return child pid or -1 */
+pid_t wspawnvp(char *const argv[]);
+
+/* same, then waitpid and return the child's exit status (or -1) */
+int wspawnvp_wait(char *const argv[]);
+
+/* run argv with stdout captured, read up to maxlen bytes into a wmalloc'd
+ * NUL-terminated buffer, wait for the child, return the buffer (NULL only
+ * on fork/pipe failure). *exit_status receives the child's exit status. */
+char *wspawnvp_capture(char *const argv[], size_t maxlen, int *exit_status);
+
+
 void wtokensplit(char *command, char ***argv, int *argc);
 
 char* wtokennext(char *word, char **next);

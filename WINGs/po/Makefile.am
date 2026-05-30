@@ -21,6 +21,7 @@ POTFILES  = \
 	$(top_srcdir)/WINGs/misc.c \
 	$(top_srcdir)/WINGs/notification.c \
 	$(top_srcdir)/WINGs/proplist.c \
+	$(top_srcdir)/WINGs/spawn.c \
 	$(top_srcdir)/WINGs/string.c \
 	$(top_srcdir)/WINGs/tree.c \
 	$(top_srcdir)/WINGs/userdefaults.c \

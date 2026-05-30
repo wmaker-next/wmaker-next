@@ -79,6 +79,7 @@ libWUtil_la_SOURCES = 	\
 	misc.c \
 	notification.c \
 	proplist.c \
+	spawn.c \
 	string.c \
 	tree.c \
 	userdefaults.c \
