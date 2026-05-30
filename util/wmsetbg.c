@@ -86,20 +86,6 @@ char *PixmapPath = NULL;
 
 static const char *prog_name;
 
-static int validDefaultDomain(const char *domain)
-{
-	const char *p;
-
-	if (!domain || domain[0] == '\0')
-		return 0;
-
-	for (p = domain; *p; p++)
-		if (*p == '/' || *p == '\\')
-			return 0;
-
-	return 1;
-}
-
 typedef struct BackgroundTexture {
 	int refcount;
 
@@ -1018,11 +1004,8 @@ static void updateDomain(const char *domain, const char *key, const char *textur
 	int status;
 	char *program = "wdwrite";
 
-	if (!validDefaultDomain(domain)) {
-		werror("invalid defaults domain \"%s\"", domain ? domain : "(null)");
-		return;
-	}
-
+	/* domain name validation now lives in wdefaultspathfordomain(),
+	 * wdwrite will refuse a bad name with a clear message */
 	pid = fork();
 	if (pid == 0) {
 		execlp(program, program, domain, "SmoothWorkspaceBack", smooth ? "YES" : "NO", NULL);
@@ -1047,6 +1030,10 @@ static WMPropList *getValueForKey(const char *domain, const char *keyName)
 
 	/* try to find PixmapPath in user defaults */
 	path = wdefaultspathfordomain(domain);
+	if (!path) {
+		WMReleasePropList(key);
+		return NULL;
+	}
 	d = WMReadPropListFromFile(path);
 	if (!d) {
 		wwarning("could not open domain file %s", path);

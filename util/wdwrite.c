@@ -45,20 +45,6 @@
 
 static const char *prog_name;
 
-static int validDefaultDomain(const char *domain)
-{
-	const char *p;
-
-	if (!domain || domain[0] == '\0')
-		return 0;
-
-	for (p = domain; *p; p++)
-		if (*p == '/' || *p == '\\')
-			return 0;
-
-	return 1;
-}
-
 static noreturn void print_help(int print_usage, int exitval)
 {
 	printf("Usage: %s [OPTIONS] <domain> <key> <value>\n", prog_name);
@@ -74,6 +60,7 @@ static noreturn void print_help(int print_usage, int exitval)
 int main(int argc, char **argv)
 {
 	char path[PATH_MAX];
+	char *dpath;
 	WMPropList *key, *value, *dict;
 	int ch;
 
@@ -106,10 +93,6 @@ int main(int argc, char **argv)
 	if (argc != 3)
 		print_help(0, 1);
 
-	if (!validDefaultDomain(argv[0])) {
-		fprintf(stderr, "%s: invalid defaults domain \"%s\"\n", prog_name, argv[0] ? argv[0] : "(null)");
-		return 1;
-	}
 	key = WMCreatePLString(argv[1]);
 	value = WMCreatePropListFromDescription(argv[2]);
 	if (!value) {
@@ -117,7 +100,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	snprintf(path, sizeof(path), "%s", wdefaultspathfordomain(argv[0]));
+	dpath = wdefaultspathfordomain(argv[0]);
+	if (!dpath)
+		return 1;
+	snprintf(path, sizeof(path), "%s", dpath);
+	wfree(dpath);
 
 	dict = WMReadPropListFromFile(path);
 	if (!dict) {

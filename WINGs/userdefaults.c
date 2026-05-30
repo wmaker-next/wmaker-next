@@ -93,11 +93,35 @@ const char *wuserdatapath(void)
 	return path;
 }
 
+/*
+ * A defaults domain is a plain name, never a path. Reject anything that
+ * would let the caller escape the Defaults directory. The empty string is
+ * accepted so callers can obtain the directory itself (used for inotify).
+ */
+static int domain_name_is_valid(const char *domain)
+{
+	const char *p;
+
+	if (!domain)
+		return 0;
+	if (strcmp(domain, ".") == 0 || strcmp(domain, "..") == 0)
+		return 0;
+	for (p = domain; *p; p++)
+		if (*p == '/' || *p == '\\')
+			return 0;
+	return 1;
+}
+
 char *wdefaultspathfordomain(const char *domain)
 {
 	char *path;
 	const char *gspath;
 	size_t slen;
+
+	if (!domain_name_is_valid(domain)) {
+		wwarning(_("invalid defaults domain name: %s"), domain ? domain : "(null)");
+		return NULL;
+	}
 
 	gspath = wusergnusteppath();
 	slen = strlen(gspath) + strlen("/" DEFAULTS_SUBDIR "/") + strlen(domain) + 1;
@@ -113,6 +137,10 @@ char *wdefaultspathfordomain(const char *domain)
 /* XXX: doesn't quite belong to *user*defaults.c */
 char *wglobaldefaultspathfordomain(const char *domain)
 {
+	if (!domain_name_is_valid(domain)) {
+		wwarning(_("invalid defaults domain name: %s"), domain ? domain : "(null)");
+		return NULL;
+	}
 	return wstrconcat(PKGCONFDIR "/", domain);
 }
 

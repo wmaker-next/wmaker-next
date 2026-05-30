@@ -61,6 +61,7 @@ static noreturn void print_help(int print_usage, int exitval)
 int main(int argc, char **argv)
 {
 	char path[PATH_MAX];
+	char *dpath;
 	WMPropList *key, *value, *dict;
 	int ch;
 
@@ -95,7 +96,11 @@ int main(int argc, char **argv)
 
 	key = WMCreatePLString(argv[1]);
 
-	snprintf(path, sizeof(path), "%s", wdefaultspathfordomain(argv[0]));
+	dpath = wdefaultspathfordomain(argv[0]);
+	if (!dpath)
+		return 1;
+	snprintf(path, sizeof(path), "%s", dpath);
+	wfree(dpath);
 
 	dict = WMReadPropListFromFile(path);
 	if (dict == NULL)
