@@ -1130,7 +1130,7 @@ static void extractTexture(WMWidget * w, void *data)
 static void changePage(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
-	int section;
+	int section = 0;
 	WMScreen *scr = WMWidgetScreen(panel->box);
 	RContext *rc = WMScreenRContext(scr);
 
