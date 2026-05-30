@@ -373,8 +373,7 @@ void wMenuRemoveItem(WMenu * menu, int index)
 	if (menu->entries[index]->icon)
 		wPixmapDestroy(menu->entries[index]->icon);
 
-	if (menu->entries[index]->rtext)
-		wfree(menu->entries[index]->rtext);
+	wMenuEntrySetShortcutText(menu->entries[index], NULL);
 
 	if (menu->entries[index]->free_cdata && menu->entries[index]->clientdata)
 		(*menu->entries[index]->free_cdata) (menu->entries[index]->clientdata);
@@ -1290,6 +1289,17 @@ void wMenuSetEnabled(WMenu * menu, int index, int enable)
 	menu->entries[index]->flags.enabled = enable;
 	paintEntry(menu, index, index == menu->selected_entry);
 	paintEntry(menu->brother, index, index == menu->selected_entry);
+}
+
+/*
+ * Replace the right-hand shortcut label of a menu entry, releasing the
+ * previous one. The update*Menu functions refresh these labels every
+ * time a menu opens, so plain assignment leaks the old string.
+ */
+void wMenuEntrySetShortcutText(WMenuEntry *entry, char *rtext)
+{
+	wfree(entry->rtext);
+	entry->rtext = rtext;
 }
 
 

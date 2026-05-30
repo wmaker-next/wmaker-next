@@ -815,9 +815,10 @@ void wWorkspaceMenuUpdate(WScreen * scr, WMenu * menu)
 	for (i = 0; i < scr->workspace_count; i++) {
 		/* workspace shortcut labels */
 		if (i / 10 == scr->current_workspace / 10)
-			menu->entries[i + MC_WORKSPACE1]->rtext = GetShortcutKey(wKeyBindings[WKBD_WORKSPACE1 + (i % 10)]);
+			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1],
+						  GetShortcutKey(wKeyBindings[WKBD_WORKSPACE1 + (i % 10)]));
 		else
-			menu->entries[i + MC_WORKSPACE1]->rtext = NULL;
+			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1], NULL);
 
 		menu->entries[i + MC_WORKSPACE1]->flags.indicator_on = 0;
 	}
