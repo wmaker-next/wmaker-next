@@ -949,10 +949,11 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		/* // only enter here if PropGetWMClass() succeeds */
 		PropGetWMClass(wwin->main_window, &class, &instance);
 		if (!class || class[0] == '\0') {
+			wfree(class);
 			if (wwin->wm_class && wwin->wm_class[0] != '\0')
-				class = strdup(wwin->wm_class);
+				class = wstrdup(wwin->wm_class);
 			else
-				class = strdup("default");
+				class = wstrdup("default");
 		}
 		buffer = StrConcatDot(instance, class);
 
