@@ -43,6 +43,12 @@ README.i18n
 *.la
 *.a
 
+# Automake test harness output
+*.log
+*.trs
+test-suite.log
+test-driver
+
 # These are compilation results
 src/wmaker
 test/wtest
@@ -68,6 +74,7 @@ wrlib/tests/testdraw
 wrlib/tests/testgrad
 wrlib/tests/testrot
 wrlib/tests/view
+wrlib/tests/check_load
 
 WINGs/Examples/colorpick
 WINGs/Examples/connect
@@ -79,6 +86,8 @@ WINGs/Tests/testmywidget
 WINGs/Tests/wmfile
 WINGs/Tests/wmquery
 WINGs/Tests/wtest
+WINGs/Tests/check_wutil
+WINGs/Tests/check_proplist
 
 WPrefs.app/WPrefs
 

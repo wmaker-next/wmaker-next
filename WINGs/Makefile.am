@@ -2,8 +2,8 @@
 
 AUTOMAKE_OPTIONS =
 
-SUBDIRS = WINGs . po Documentation Resources
-DIST_SUBDIRS = $(SUBDIRS) Tests Examples Extras
+SUBDIRS = WINGs . po Documentation Resources Tests
+DIST_SUBDIRS = $(SUBDIRS) Examples Extras
 
 libWINGs_la_LDFLAGS = -version-info @WINGS_VERSION@
 libWUtil_la_LDFLAGS = -version-info @WUTIL_VERSION@
