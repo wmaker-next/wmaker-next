@@ -3244,8 +3244,10 @@ static int setWorkspaceSpecificBack(WScreen * scr, WDefaultEntry * entry, void *
 			return 0;
 		}
 	} else {
-		if (WMGetPropListItemCount(value) == 0)
+		if (WMGetPropListItemCount(value) == 0) {
+			WMReleasePropList(value);
 			return 0;
+		}
 
 		if (!start_bg_helper(scr)) {
 			WMReleasePropList(value);
