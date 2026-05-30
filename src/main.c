@@ -41,6 +41,32 @@
  */
 #include <X11/Xlocale.h>
 
+/*
+ * When built with --enable-asan, suppress LeakSanitizer reports for
+ * process-lifetime allocations inside third-party libraries that we
+ * cannot release (fontconfig keeps its FcInit configuration and the
+ * FcPattern from XftFontMatch alive, FcFini cannot run while any
+ * XftFont is open, and pangoxft/glib keep type-system bookkeeping).
+ * This makes a plain `./src/wmaker` ASan run report only our own leaks.
+ */
+#if defined(__SANITIZE_ADDRESS__)
+# define WMAKER_ASAN 1
+#elif defined(__has_feature)
+# if __has_feature(address_sanitizer)
+#  define WMAKER_ASAN 1
+# endif
+#endif
+#ifdef WMAKER_ASAN
+const char *__lsan_default_suppressions(void);
+const char *__lsan_default_suppressions(void)
+{
+	return "leak:libfontconfig.so\n"
+	       "leak:libpangoxft-1.0.so\n"
+	       "leak:libglib-2.0.so\n"
+	       "leak:libgobject-2.0.so\n";
+}
+#endif
+
 #define MAINFILE
 
 #include "WindowMaker.h"
