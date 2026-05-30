@@ -682,7 +682,7 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 		file = popen(command, "r");
 		wfree(command);
 	}
-	if (!file || !fgets(buffer, 1023, file)) {
+	if (!file || !fgets(buffer, sizeof(buffer), file)) {
 		werror(_("could not run \"%s --global_defaults_path\"."), path);
 		exit(1);
 	} else {
@@ -690,7 +690,10 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 		ptr = strchr(buffer, '\n');
 		if (ptr)
 			*ptr = 0;
-		strcat(buffer, "/WindowMaker");
+		if (wstrlcat(buffer, "/WindowMaker", sizeof(buffer)) >= sizeof(buffer)) {
+			werror(_("global defaults path is too long"));
+			exit(1);
+		}
 	}
 
 	if (file)
