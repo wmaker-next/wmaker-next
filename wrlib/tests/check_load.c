@@ -77,32 +77,28 @@ static void expect_image(const char *what, RImage *img, int w, int h,
 	RReleaseImage(img);
 }
 
-/* identFile() reads a 32-byte header, so every fixture carries a comment
- * line to push it past that minimum */
-#define PAD "# wrlib check fixture padding\n"
-
 static void test_pnm(void)
 {
 	const char *s;
 	char *p;
 
 	/* P1 ascii bitmap, 2x1, pixels 1 0 -> black white */
-	s = "P1\n" PAD "2 1\n1 0\n";
+	s = "P1\n2 1\n1 0\n";
 	p = write_sample("a.pbm", s, strlen(s));
 	expect_image("P1", RLoadImage(NULL, p, 0), 2, 1, 0, 0, 0);
 
 	/* P2 ascii graymap, 2x1, max 255, pixels 64 200 */
-	s = "P2\n" PAD "2 1\n255\n64 200\n";
+	s = "P2\n2 1\n255\n64 200\n";
 	p = write_sample("a.pgm", s, strlen(s));
 	expect_image("P2", RLoadImage(NULL, p, 0), 2, 1, 64, 64, 64);
 
 	/* P3 ascii pixmap, 1x1, max 255, pixel (10 20 30) */
-	s = "P3\n" PAD "1 1\n255\n10 20 30\n";
+	s = "P3\n1 1\n255\n10 20 30\n";
 	p = write_sample("a.ppm", s, strlen(s));
 	expect_image("P3", RLoadImage(NULL, p, 0), 1, 1, 10, 20, 30);
 
 	/* P4 binary bitmap, 2x1, byte 0x80 -> first pixel set (black) */
-	s = "P4\n" PAD "2 1\n";
+	s = "P4\n2 1\n";
 	p = write_sample("b.pbm", s, strlen(s));
 	{
 		FILE *f = fopen(p, "ab");
@@ -112,7 +108,7 @@ static void test_pnm(void)
 	expect_image("P4", RLoadImage(NULL, p, 0), 2, 1, 0, 0, 0);
 
 	/* P5 binary graymap, 2x1, max 255, bytes 64 200 */
-	s = "P5\n" PAD "2 1\n255\n";
+	s = "P5\n2 1\n255\n";
 	p = write_sample("b.pgm", s, strlen(s));
 	{
 		FILE *f = fopen(p, "ab");
@@ -122,7 +118,7 @@ static void test_pnm(void)
 	expect_image("P5", RLoadImage(NULL, p, 0), 2, 1, 64, 64, 64);
 
 	/* P6 binary pixmap, 1x1, max 255, bytes 10 20 30 */
-	s = "P6\n" PAD "1 1\n255\n";
+	s = "P6\n1 1\n255\n";
 	p = write_sample("b.ppm", s, strlen(s));
 	{
 		FILE *f = fopen(p, "ab");
@@ -140,13 +136,13 @@ static void test_pnm_reject(void)
 	const char *s;
 
 	/* dimension overflow must be rejected, not handed to RCreateImage */
-	s = "P6\n" PAD "9999999999 1\n255\n";
+	s = "P6\n9999999999 1\n255\n";
 	p = write_sample("huge.ppm", s, strlen(s));
 	img = RLoadImage(NULL, p, 0);
 	CHECK(img == NULL);
 
 	/* maxval > 255 must be rejected */
-	s = "P6\n" PAD "1 1\n65535\nxxxxxx";
+	s = "P6\n1 1\n65535\nxxxxxx";
 	p = write_sample("wide.ppm", s, strlen(s));
 	img = RLoadImage(NULL, p, 0);
 	CHECK(img == NULL);

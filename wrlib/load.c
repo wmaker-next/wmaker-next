@@ -360,8 +360,13 @@ static WRImgFormat identFile(const char *path)
 		}
 	}
 
+	/* zero so the magic checks below see a definite mismatch past
+	 * end-of-file instead of stack garbage, then accept any non-empty
+	 * read so small but valid files (a tiny PNM is well under 32 bytes)
+	 * reach the per-format checks instead of being rejected here */
+	memset(buffer, 0, sizeof(buffer));
 	nread = fread(buffer, 1, sizeof(buffer), file);
-	if (nread < sizeof(buffer) || ferror(file)) {
+	if (nread < 2 || ferror(file)) {
 		fclose(file);
 		RErrorCode = RERR_READ;
 		return IM_ERROR;
