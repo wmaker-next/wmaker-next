@@ -97,12 +97,28 @@ void W_InitNotificationCenter(void)
 void W_ReleaseNotificationCenter(void)
 {
 	if (notificationCenter) {
+		if (notificationCenter->observerTable) {
+			/* every NotificationObserver record lives in
+			 * observerTable, chained per observer through
+			 * nextAction, free those chains before dropping
+			 * the tables that index the same records */
+			WMHashEnumerator e;
+			NotificationObserver *rec, *next;
+
+			e = WMEnumerateHashTable(notificationCenter->observerTable);
+			while ((rec = WMNextHashEnumeratorItem(&e)) != NULL) {
+				while (rec) {
+					next = rec->nextAction;
+					wfree(rec);
+					rec = next;
+				}
+			}
+			WMFreeHashTable(notificationCenter->observerTable);
+		}
 		if (notificationCenter->nameTable)
 			WMFreeHashTable(notificationCenter->nameTable);
 		if (notificationCenter->objectTable)
 			WMFreeHashTable(notificationCenter->objectTable);
-		if (notificationCenter->observerTable)
-			WMFreeHashTable(notificationCenter->observerTable);
 
 		wfree(notificationCenter);
 		notificationCenter = NULL;
