@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <math.h>
 #include <ftw.h>
@@ -474,13 +475,18 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 		return -1;
 	}
 
-	/* Extract each entry */
+	/* Extract each entry. Cap the total at 256 MiB so a hostile archive
+	 * cannot fill the temporary directory. */
+	const la_int64_t budget_max = (la_int64_t)256 * 1024 * 1024;
+	la_int64_t budget_used = 0;
 	while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
 		const char *entry_name = archive_entry_pathname(entry);
 		la_int64_t entry_size = archive_entry_size(entry);
 		mode_t entry_mode = archive_entry_mode(entry);
 		FILE *output_file;
 		la_ssize_t bytes_read;
+		int write_failed = 0;
+		int out_fd;
 
 		if (!entry_name)
 			continue;
@@ -491,6 +497,14 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 		/* Skip directories and special files */
 		if (!S_ISREG(entry_mode) || entry_size <= 0)
 			continue;
+
+		/* Stay within the extraction budget, the declared entry size
+		 * may also understate the decoded stream so the inner loop
+		 * checks again as bytes arrive */
+		if (entry_size > budget_max - budget_used) {
+			fprintf(stderr, "Error: archive exceeds extraction limit, stopping\n");
+			break;
+		}
 
 		/* Create destination path */
 		r = snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry_name);
@@ -508,17 +522,35 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 			*dir_end = '/';
 		}
 
-		/* Create output file */
-		output_file = fopen(dest_path, "wb");
-		if (!output_file) {
+		/* Create output file. O_EXCL refuses to clobber an entry a
+		 * previous header already produced, and O_NOFOLLOW keeps the
+		 * leaf write inside the mkdtemp tree even if a symlink is
+		 * raced into place. */
+		out_fd = open(dest_path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+		if (out_fd < 0) {
 			if (WMIV_DEBUG)
 				fprintf(stderr, "Warning: failed to create file: %s\n", dest_path);
+			continue;
+		}
+		output_file = fdopen(out_fd, "wb");
+		if (!output_file) {
+			close(out_fd);
 			continue;
 		}
 
 		/* Extract file content */
 		while ((bytes_read = archive_read_data(a, buffer, buffer_size)) > 0) {
-			fwrite(buffer, 1, bytes_read, output_file);
+			budget_used += bytes_read;
+			if (budget_used > budget_max) {
+				fprintf(stderr, "Error: archive exceeds extraction limit, stopping\n");
+				write_failed = 1;
+				break;
+			}
+			if (fwrite(buffer, 1, bytes_read, output_file) != (size_t)bytes_read) {
+				fprintf(stderr, "Error: short write extracting %s\n", entry_name);
+				write_failed = 1;
+				break;
+			}
 		}
 
 		if (bytes_read < 0) {
@@ -528,8 +560,10 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 
 		fclose(output_file);
 
-		//if (WMIV_DEBUG)
-		//	fprintf(stderr, "Extracted %s\n", entry_name);
+		if (write_failed) {
+			unlink(dest_path);
+			break;
+		}
 	}
 
 	if (r != ARCHIVE_EOF)
