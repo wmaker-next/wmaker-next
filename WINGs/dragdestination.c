@@ -981,11 +981,11 @@ void WMSetViewDragDestinationProcs(WMView * view, WMDragDestinationProcs * procs
 
 	*view->dragDestinationProcs = *procs;
 
-	/*XXX fill in non-implemented stuffs */
+	/* fill in defaults for callbacks the caller did not supply */
 	if (procs->allowedOperation == NULL) {
 		view->dragDestinationProcs->allowedOperation = defAllowedOperation;
 	}
-	if (procs->allowedOperation == NULL) {
+	if (procs->requiredDataTypes == NULL) {
 		view->dragDestinationProcs->requiredDataTypes = defRequiredDataTypes;
 	}
 
