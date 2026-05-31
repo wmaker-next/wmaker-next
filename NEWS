@@ -72,6 +72,17 @@ Maker (or taking over with --replace) with many existing clients is
 noticeably quicker, especially over a remote or high-latency display.
 
 
+AutoFocusAcrossHeads option
+---------------------------
+
+When "AutoFocus" is enabled on a multi-head setup, a newly mapped
+window has always received focus regardless of which head the pointer
+is on. Setting the new "AutoFocusAcrossHeads" option to NO in
+~/GNUstep/Defaults/WindowMaker restricts auto-focus to windows that
+appear on the same head as the pointer. The default is YES, matching
+previous behaviour.
+
+
 Application icon updates after mapping
 --------------------------------------
 
