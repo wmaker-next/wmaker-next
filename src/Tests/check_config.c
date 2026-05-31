@@ -1,0 +1,1924 @@
+/*
+ * check_config - tests for the typed Window Maker config slice.
+ */
+
+#include "wconfig.h"
+
+#include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <strings.h>
+
+#include "WindowMaker.h"
+#include "screen.h"
+#include "config-schema.h"
+#include "wconfigmodel.h"
+
+struct WPreferences wPreferences;
+struct wmaker_global_variables w_global;
+static int failures;
+static int usable_area_updates;
+static int root_mask_updates;
+static int double_click_delay;
+static int arrange_icons_all;
+static int arrange_icons_visible;
+static int workspace_force_changes;
+static int workspace_force_last;
+static int dock_swaps;
+static int switch_panel_updates;
+static char *switch_panel_tile;
+static char *switch_panel_background;
+static int switch_panel_center_width;
+static int switch_panel_center_height;
+static int modifier_label_updates;
+static int modifier_short_label_updates;
+static int hot_corner_updates;
+static int modifier_key_updates;
+static int background_spec_updates;
+static int workspace_specific_background_updates;
+static int workspace_background_updates;
+static int workspace_background_saw_smooth;
+static int key_binding_updates;
+static int key_binding_changed_updates;
+static int key_binding_seen[WKBD_LAST];
+static char *last_key_binding_spec;
+static int last_key_binding_index;
+static int key_tree_rebuilds;
+static int texture_spec_updates;
+static int font_spec_updates;
+static int color_spec_updates;
+static int cursor_spec_updates;
+static int last_texture_target;
+static int last_font_target;
+static int last_color_target;
+static int last_cursor_target;
+static int last_background_target;
+static char *last_modifier_key_spec;
+static char *last_texture_spec;
+static char *last_font_spec;
+static char *last_color_spec;
+static char *last_cursor_spec;
+static char *last_background_spec;
+
+#define EXPECTED_PIXMAP_PATH \
+	"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps:" \
+	"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds:" \
+	"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps:" \
+	"~/pixmaps:" PKGDATADIR "/Pixmaps:" PKGDATADIR "/Backgrounds:" \
+	PIXMAPDIR
+
+#define EXPECTED_ICON_PATH \
+	"$WMAKER_USER_ROOT/Library/Icons:" \
+	"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps:" \
+	"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps:" \
+	"~/pixmaps:" PKGDATADIR "/Icons:" PKGDATADIR "/Pixmaps:" \
+	PIXMAPDIR
+
+#define CHECK(cond) do {                                                   \
+	if (!(cond)) {                                                     \
+		fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
+		failures++;                                                \
+	}                                                                  \
+} while (0)
+
+void wScreenUpdateUsableArea(WScreen *scr)
+{
+	(void)scr;
+	usable_area_updates++;
+}
+
+void wScreenUpdateRootEventMask(WScreen *scr)
+{
+	(void)scr;
+	root_mask_updates++;
+}
+
+void W_setconf_doubleClickDelay(int value)
+{
+	double_click_delay = value;
+}
+
+void wArrangeIcons(WScreen *scr, Bool arrangeAll)
+{
+	(void)scr;
+	if (arrangeAll)
+		arrange_icons_all++;
+	else
+		arrange_icons_visible++;
+}
+
+void wWorkspaceForceChange(WScreen *scr, int workspace)
+{
+	(void)scr;
+	workspace_force_changes++;
+	workspace_force_last = workspace;
+}
+
+void wDockSwap(struct WDock *dock)
+{
+	(void)dock;
+	dock_swaps++;
+}
+
+static void replace_test_string(char **target, const char *value)
+{
+	if (*target)
+		wfree(*target);
+	*target = value ? wstrdup(value) : NULL;
+}
+
+
+unsigned int wConfigApplyTextureSpec(WScreen *scr, const char *key,
+				     int target,
+				     const WConfigResourceSpec *spec,
+				     const char *default_spec)
+{
+	(void)scr;
+	(void)key;
+	(void)default_spec;
+	texture_spec_updates++;
+	last_texture_target = target;
+	replace_test_string(&last_texture_spec, spec ? spec->spec : NULL);
+	return WCFG_REFRESH_WINDOW_TEXTURES;
+}
+
+unsigned int wConfigApplyFontSpec(WScreen *scr, const char *key,
+				  int target,
+				  const WConfigResourceSpec *spec,
+				  const char *default_spec)
+{
+	(void)scr;
+	(void)key;
+	(void)default_spec;
+	font_spec_updates++;
+	last_font_target = target;
+	replace_test_string(&last_font_spec, spec ? spec->spec : NULL);
+	return WCFG_REFRESH_WINDOW_FONT;
+}
+
+unsigned int wConfigApplyColorSpec(WScreen *scr, const char *key,
+				   int target,
+				   const WConfigResourceSpec *spec,
+				   const char *default_spec)
+{
+	(void)scr;
+	(void)key;
+	(void)default_spec;
+	color_spec_updates++;
+	last_color_target = target;
+	replace_test_string(&last_color_spec, spec ? spec->spec : NULL);
+	return WCFG_REFRESH_MENU_COLOR;
+}
+
+unsigned int wConfigApplyCursorSpec(WScreen *scr, const char *key,
+				    int target,
+				    const WConfigResourceSpec *spec,
+				    const char *default_spec)
+{
+	(void)scr;
+	(void)key;
+	(void)default_spec;
+	cursor_spec_updates++;
+	last_cursor_target = target;
+	replace_test_string(&last_cursor_spec, spec ? spec->spec : NULL);
+	return 0;
+}
+
+void wConfigApplyModifierKey(const char *spec, const char *default_spec)
+{
+	const char *candidate = spec ? spec : default_spec;
+
+	modifier_key_updates++;
+	replace_test_string(&last_modifier_key_spec, candidate);
+	if (candidate && strcmp(candidate, "Mod4") == 0)
+		wPreferences.modifier_mask = Mod4Mask;
+	else if (candidate && strcmp(candidate, "Mod1") == 0)
+		wPreferences.modifier_mask = Mod1Mask;
+}
+
+unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
+						 int target,
+						 const WConfigResourceSpec *spec,
+						 const char *default_spec)
+{
+	const char *candidate = spec && spec->spec ? spec->spec : default_spec;
+
+	(void)key;
+	background_spec_updates++;
+	last_background_target = target;
+	replace_test_string(&last_background_spec, candidate);
+	if (target == WCFG_BACKGROUND_WORKSPACE_SPECIFIC) {
+		workspace_specific_background_updates++;
+		if (scr && candidate && strcmp(candidate, "()") != 0)
+			scr->flags.backimage_helper_launched = 1;
+	} else if (target == WCFG_BACKGROUND_WORKSPACE) {
+		workspace_background_updates++;
+		workspace_background_saw_smooth = wPreferences.smooth_workspace_back;
+	}
+	return 0;
+}
+
+void wConfigApplySwitchPanelImages(WScreen *scr,
+				   const WConfigSwitchPanelImages *images)
+{
+	(void)scr;
+	switch_panel_updates++;
+	replace_test_string(&switch_panel_tile, images ? images->tile : NULL);
+	replace_test_string(&switch_panel_background,
+			    images ? images->background : NULL);
+	switch_panel_center_width = images ? images->center_width : 0;
+	switch_panel_center_height = images ? images->center_height : 0;
+}
+
+void wConfigApplyModifierKeyLabels(WScreen *scr,
+				   const WConfigStringArray *labels)
+{
+	size_t i;
+
+	(void)scr;
+	modifier_label_updates++;
+	for (i = 0; i < 7; i++) {
+		replace_test_string(&wPreferences.modifier_labels[i],
+				    labels && i < labels->count ? labels->items[i] : NULL);
+	}
+}
+
+void wConfigApplyModifierKeyShortLabels(WScreen *scr,
+					const WConfigStringArray *labels)
+{
+	size_t i;
+
+	(void)scr;
+	modifier_short_label_updates++;
+	for (i = 0; i < 9; i++) {
+		const char *value = labels && i < labels->count ? labels->items[i] : NULL;
+		replace_test_string(&wPreferences.modifier_short_labels[i],
+				    value && value[0] != '\0' ? value : NULL);
+	}
+}
+
+void wConfigApplyHotCornerActions(WScreen *scr,
+				  const WConfigStringArray *actions)
+{
+	size_t i;
+
+	(void)scr;
+	hot_corner_updates++;
+	for (i = 0; i < 4; i++) {
+		const char *value = actions && i < actions->count ? actions->items[i] : NULL;
+		replace_test_string(&wPreferences.hot_corner_actions[i],
+				    value && strcasecmp(value, "None") != 0 ? value : NULL);
+	}
+}
+
+unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
+				    int binding_index, const char *spec,
+				    const char *default_spec,
+				    Bool *binding_changed)
+{
+	(void)scr;
+	(void)key;
+	(void)default_spec;
+	key_binding_updates++;
+	last_key_binding_index = binding_index;
+	replace_test_string(&last_key_binding_spec, spec);
+	if (binding_index >= 0 && binding_index < WKBD_LAST)
+		key_binding_seen[binding_index]++;
+	if (binding_changed) {
+		*binding_changed = True;
+		key_binding_changed_updates++;
+	}
+	if ((binding_index >= WKBD_WORKSPACE1 && binding_index <= WKBD_WORKSPACE10) ||
+	    binding_index == WKBD_LASTWORKSPACE ||
+	    (binding_index >= WKBD_MOVE_WORKSPACE1 &&
+	     binding_index <= WKBD_MOVE_WORKSPACE10))
+		return WCFG_REFRESH_WORKSPACE_MENU;
+	return 0;
+}
+
+void wKeyTreeRebuild(WScreen *scr)
+{
+	(void)scr;
+	key_tree_rebuilds++;
+}
+
+static void reset_phase4_counters(void)
+{
+	switch_panel_updates = 0;
+	modifier_label_updates = 0;
+	modifier_short_label_updates = 0;
+	hot_corner_updates = 0;
+	modifier_key_updates = 0;
+	background_spec_updates = 0;
+	workspace_specific_background_updates = 0;
+	workspace_background_updates = 0;
+	workspace_background_saw_smooth = -1;
+	key_binding_updates = 0;
+	key_binding_changed_updates = 0;
+	key_tree_rebuilds = 0;
+	texture_spec_updates = 0;
+	font_spec_updates = 0;
+	color_spec_updates = 0;
+	cursor_spec_updates = 0;
+	last_key_binding_index = -1;
+	last_texture_target = -1;
+	last_font_target = -1;
+	last_color_target = -1;
+	last_cursor_target = -1;
+	last_background_target = -1;
+	memset(key_binding_seen, 0, sizeof(key_binding_seen));
+	replace_test_string(&switch_panel_tile, NULL);
+	replace_test_string(&switch_panel_background, NULL);
+	replace_test_string(&last_key_binding_spec, NULL);
+	replace_test_string(&last_modifier_key_spec, NULL);
+	replace_test_string(&last_texture_spec, NULL);
+	replace_test_string(&last_font_spec, NULL);
+	replace_test_string(&last_color_spec, NULL);
+	replace_test_string(&last_cursor_spec, NULL);
+	replace_test_string(&last_background_spec, NULL);
+	switch_panel_center_width = 0;
+	switch_panel_center_height = 0;
+}
+
+static unsigned int apply_runtime_defaults_for_test(WScreen *scr,
+						    WMPropList *new_dict,
+						    WMPropList *old_dict)
+{
+	if (old_dict)
+		wConfigCacheWindowMaker(old_dict);
+	else
+		wConfigClearWindowMaker();
+	return wConfigApplyRuntimeDefaults(scr, new_dict);
+}
+
+static void reset_preferences(void)
+{
+	wConfigClearWindowMaker();
+	if (wPreferences.pixmap_path)
+		wfree(wPreferences.pixmap_path);
+	if (wPreferences.icon_path)
+		wfree(wPreferences.icon_path);
+	if (wPreferences.screenshot_filename_template)
+		wfree(wPreferences.screenshot_filename_template);
+	for (size_t i = 0; i < 7; i++)
+		if (wPreferences.modifier_labels[i])
+			wfree(wPreferences.modifier_labels[i]);
+	for (size_t i = 0; i < 9; i++)
+		if (wPreferences.modifier_short_labels[i])
+			wfree(wPreferences.modifier_short_labels[i]);
+	for (size_t i = 0; i < 4; i++)
+		if (wPreferences.hot_corner_actions[i])
+			wfree(wPreferences.hot_corner_actions[i]);
+	memset(&wPreferences, 0, sizeof(wPreferences));
+	reset_phase4_counters();
+}
+
+static WMPropList *dict_from_desc(const char *desc)
+{
+	WMPropList *dict;
+
+	dict = WMCreatePropListFromDescription(desc);
+	if (!dict)
+		fprintf(stderr, "bad proplist description: %s\n", desc);
+	CHECK(dict != NULL);
+	CHECK(dict == NULL || WMIsPLDictionary(dict));
+
+	return dict;
+}
+
+static void dict_put_string(WMPropList *dict, const char *key, const char *value)
+{
+	WMPropList *plkey, *plvalue;
+
+	plkey = WMCreatePLString(key);
+	plvalue = WMCreatePLString(value);
+	WMPutInPLDictionary(dict, plkey, plvalue);
+	WMReleasePropList(plvalue);
+	WMReleasePropList(plkey);
+}
+
+static WMPropList *dict_get_key(WMPropList *dict, const char *key)
+{
+	WMPropList *plkey, *value;
+
+	plkey = WMCreatePLString(key);
+	value = WMGetFromPLDictionary(dict, plkey);
+	WMReleasePropList(plkey);
+	return value;
+}
+
+static char *read_text_file(const char *path)
+{
+	FILE *file;
+	long size;
+	char *buffer;
+	size_t read_size;
+
+	file = fopen(path, "rb");
+	if (!file)
+		return NULL;
+	if (fseek(file, 0, SEEK_END) != 0) {
+		fclose(file);
+		return NULL;
+	}
+	size = ftell(file);
+	if (size < 0) {
+		fclose(file);
+		return NULL;
+	}
+	rewind(file);
+	buffer = wmalloc((size_t)size + 1);
+	read_size = fread(buffer, 1, (size_t)size, file);
+	fclose(file);
+	if (read_size != (size_t)size) {
+		wfree(buffer);
+		return NULL;
+	}
+	buffer[(size_t)size] = '\0';
+	return buffer;
+}
+
+static char *replace_all_text(const char *text, const char *needle,
+			      const char *replacement)
+{
+	const char *scan;
+	char *result, *out;
+	size_t text_len, needle_len, replacement_len, count = 0;
+
+	needle_len = strlen(needle);
+	if (needle_len == 0)
+		return wstrdup(text);
+	replacement_len = strlen(replacement);
+	for (scan = text; (scan = strstr(scan, needle)) != NULL; scan += needle_len)
+		count++;
+	if (count == 0)
+		return wstrdup(text);
+
+	text_len = strlen(text);
+	if (replacement_len >= needle_len) {
+		size_t growth = replacement_len - needle_len;
+
+		if (growth > 0 && count > (SIZE_MAX - text_len) / growth)
+			return NULL;
+		text_len += count * growth;
+	} else {
+		text_len -= count * (needle_len - replacement_len);
+	}
+	result = wmalloc(text_len + 1);
+	out = result;
+	while ((scan = strstr(text, needle)) != NULL) {
+		size_t prefix_len = (size_t)(scan - text);
+
+		memcpy(out, text, prefix_len);
+		out += prefix_len;
+		memcpy(out, replacement, replacement_len);
+		out += replacement_len;
+		text = scan + needle_len;
+	}
+	strcpy(out, text);
+	return result;
+}
+
+static char *read_installed_defaults_template_text(void)
+{
+	static const char *paths[] = {
+#ifdef WMAKER_DEFAULTS_TEMPLATE
+		WMAKER_DEFAULTS_TEMPLATE,
+#endif
+		"../../WindowMaker/Defaults/WindowMaker.in",
+		"WindowMaker/Defaults/WindowMaker.in"
+	};
+	char *text = NULL;
+	size_t i;
+
+	for (i = 0; i < sizeof(paths) / sizeof(paths[0]) && !text; i++)
+		text = read_text_file(paths[i]);
+	CHECK(text != NULL);
+	return text;
+}
+
+static WMPropList *read_installed_defaults_template(void)
+{
+	char *text, *resolved_pkgdatadir, *resolved_pixmapdir;
+	WMPropList *dict;
+
+	text = read_installed_defaults_template_text();
+	if (!text)
+		return NULL;
+	resolved_pkgdatadir = replace_all_text(text, "#pkgdatadir#", PKGDATADIR);
+	wfree(text);
+	if (!resolved_pkgdatadir)
+		return NULL;
+	resolved_pixmapdir = replace_all_text(resolved_pkgdatadir,
+					    "#pixmapdir#", PIXMAPDIR);
+	wfree(resolved_pkgdatadir);
+	if (!resolved_pixmapdir)
+		return NULL;
+
+	dict = WMCreatePropListFromDescription(resolved_pixmapdir);
+	wfree(resolved_pixmapdir);
+	CHECK(dict != NULL);
+	CHECK(dict == NULL || WMIsPLDictionary(dict));
+	return dict;
+}
+
+static WMPropList *schema_default_plist(const WConfigEntry *entry)
+{
+	switch (entry->type) {
+	case WCFG_STRING:
+	case WCFG_KEY_BINDING:
+	case WCFG_FONT_SPEC:
+	case WCFG_COLOR_SPEC:
+	case WCFG_BOOL:
+	case WCFG_INT:
+	case WCFG_UINT:
+	case WCFG_ENUM:
+		return WMCreatePLString(entry->default_value);
+	case WCFG_PATH_LIST:
+	case WCFG_COORD:
+	case WCFG_STRING_ARRAY:
+	case WCFG_SWITCH_PANEL_IMAGES:
+	case WCFG_TEXTURE_SPEC:
+	case WCFG_CURSOR_SPEC:
+	case WCFG_BACKGROUND_SPEC:
+		return WMCreatePropListFromDescription(entry->default_value);
+	}
+
+	return NULL;
+}
+
+static Bool is_non_schema_defaults_key(const char *key)
+{
+	(void)key;
+#ifndef USE_RANDR
+	if (strcmp(key, "HotplugMonitor") == 0)
+		return True;
+#endif
+#ifndef KEEP_XKB_LOCK_STATUS
+	if (strcmp(key, "KbdModeLock") == 0 ||
+	    strcmp(key, "ToggleKbdModeKey") == 0)
+		return True;
+#endif
+
+	return False;
+}
+
+static size_t expected_schema_field_size(const WConfigEntry *entry)
+{
+	switch (entry->type) {
+	case WCFG_BOOL:
+		return sizeof(char);
+	case WCFG_INT:
+		return sizeof(int);
+	case WCFG_UINT:
+		return sizeof(unsigned int);
+	case WCFG_ENUM:
+		return sizeof(signed char);
+	case WCFG_STRING:
+	case WCFG_PATH_LIST:
+		return sizeof(char *);
+	case WCFG_COORD:
+		return sizeof(WConfigCoord);
+	case WCFG_STRING_ARRAY:
+		return sizeof(WConfigStringArray);
+	case WCFG_SWITCH_PANEL_IMAGES:
+		return sizeof(WConfigSwitchPanelImages);
+	case WCFG_KEY_BINDING:
+		return sizeof(WConfigKeyBinding);
+	case WCFG_TEXTURE_SPEC:
+	case WCFG_FONT_SPEC:
+	case WCFG_COLOR_SPEC:
+	case WCFG_CURSOR_SPEC:
+	case WCFG_BACKGROUND_SPEC:
+		return sizeof(WConfigResourceSpec);
+	}
+
+	return 0;
+}
+
+static void test_schema_integrity(void)
+{
+	const WConfigEntry *schema;
+	unsigned int seen[WCFG_KEY_COUNT];
+	size_t i, count;
+
+	memset(seen, 0, sizeof(seen));
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	CHECK(count == WCFG_KEY_COUNT);
+
+	for (i = 0; i < count; i++) {
+		CHECK(schema[i].key != NULL);
+		CHECK(schema[i].default_value != NULL);
+		CHECK(schema[i].size == expected_schema_field_size(&schema[i]));
+		if (schema[i].type == WCFG_ENUM)
+			CHECK(schema[i].enum_values != NULL);
+		CHECK(schema[i].config_key < WCFG_KEY_COUNT);
+		if (schema[i].config_key < WCFG_KEY_COUNT)
+			seen[schema[i].config_key]++;
+	}
+
+	for (i = 0; i < WCFG_KEY_COUNT; i++)
+		CHECK(seen[i] == 1);
+	CHECK(wConfigRuntimePreferenceCopiesAreValid());
+}
+
+static void test_unchanged_diff(void)
+{
+	WConfig *config;
+	WConfigChanges changes;
+	size_t i;
+
+	config = wConfigReadWindowMaker(NULL);
+	CHECK(config != NULL);
+	CHECK(wConfigDiff(config, config, &changes));
+	for (i = 0; i < WCFG_CHANGE_WORDS; i++)
+		CHECK(changes.changed[i] == 0);
+	wConfigDestroy(config);
+}
+
+static void test_defaults(void)
+{
+	WConfig *config;
+
+	config = wConfigReadWindowMaker(NULL);
+	CHECK(config != NULL);
+	CHECK(config->colormap_size == 4);
+	CHECK(config->disable_dithering == 0);
+	CHECK(config->icon_size == 64);
+	CHECK(strcmp(config->modifier_key, "Mod1") == 0);
+	CHECK(config->focus_mode == WKF_CLICK);
+	CHECK(config->new_style == TS_NEW);
+	CHECK(config->disable_dock == 0);
+	CHECK(config->disable_clip == 0);
+	CHECK(config->disable_drawers == 0);
+	CHECK(config->clip_merged_in_dock == 0);
+	CHECK(config->disable_miniwindows == 0);
+	CHECK(config->enable_workspace_pager == 0);
+	CHECK(config->switch_panel_icon_size == 64);
+	CHECK(config->icon_yard == (IY_BOTTOM | IY_LEFT | IY_HORIZ));
+	CHECK(strcmp(config->pixmap_path, EXPECTED_PIXMAP_PATH) == 0);
+	CHECK(strcmp(config->icon_path, EXPECTED_ICON_PATH) == 0);
+	CHECK(config->sticky_icons == 0);
+	CHECK(config->wrap_appicons_in_dock == 1);
+	CHECK(config->window_place_origin.x == 64);
+	CHECK(config->window_place_origin.y == 0);
+	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(strcmp(config->screenshot_filename_template,
+		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
+	CHECK(config->menu_style == MS_NORMAL);
+	CHECK(config->title_justification == WTJ_CENTER);
+	CHECK(config->window_title_clearance == 0);
+	CHECK(config->window_title_min_height == 0);
+	CHECK(config->window_title_max_height == INT_MAX);
+	CHECK(config->menu_title_clearance == 0);
+	CHECK(config->menu_title_min_height == 0);
+	CHECK(config->menu_title_max_height == INT_MAX);
+	CHECK(config->menu_text_clearance == 0);
+	CHECK(config->iconification_style == WIS_ZOOM);
+	CHECK(config->enforce_icon_margin == 0);
+	CHECK(config->disable_root_mouse == 0);
+	CHECK(config->mouse_button1 == WA_SELECT_WINDOWS);
+	CHECK(config->mouse_button2 == WA_OPEN_WINLISTMENU);
+	CHECK(config->mouse_button3 == WA_OPEN_APPMENU);
+	CHECK(config->mouse_button8 == WA_NONE);
+	CHECK(config->mouse_button9 == WA_NONE);
+	CHECK(config->mouse_wheel_scroll == WA_NONE);
+	CHECK(config->mouse_wheel_tilt == WA_NONE);
+	CHECK(config->dont_confirm_kill == 0);
+	CHECK(config->window_balloon == 1);
+	CHECK(config->miniwin_title_balloon == 0);
+	CHECK(config->miniwin_preview_balloon == 0);
+	CHECK(config->appicon_balloon == 0);
+	CHECK(config->help_balloon == 0);
+	CHECK(config->edge_resistance == 30);
+	CHECK(config->resize_increment == 0);
+	CHECK(config->attract == 0);
+	CHECK(config->dont_blink == 0);
+	CHECK(config->single_click == 0);
+	CHECK(config->strict_windoze_cycle == 1);
+	CHECK(config->panel_only_open == 0);
+	CHECK(config->minipreview_size == 128);
+	CHECK(config->ignore_gtk_decoration_hints == 0);
+	CHECK(config->no_window_over_dock == 0);
+	CHECK(config->no_window_over_icons == 0);
+	CHECK(config->size_display == WDIS_CENTER);
+	CHECK(config->move_display == WDIS_FRAME_CENTER);
+#ifdef USE_RANDR
+	CHECK(config->hotplug_monitor == 0);
+#endif
+	CHECK(config->hot_corners == 0);
+	CHECK(config->hot_corner_delay == 250);
+	CHECK(config->hot_corner_edge == 2);
+	CHECK(config->window_list_app_icons == 0);
+	CHECK(config->mouse_wheel_focus == 0);
+	CHECK(config->keychain_timeout_delay == 500);
+	CHECK(config->show_clip_title == 1);
+#ifdef KEEP_XKB_LOCK_STATUS
+	CHECK(config->modelock == 0);
+#endif
+	CHECK(config->history_lines == 500);
+	CHECK(config->cycle_active_head_only == 0);
+	CHECK(config->cycle_all_workspaces == 0);
+	CHECK(config->cycle_ignore_minimized == 0);
+	CHECK(config->double_click_fullscreen == 0);
+	CHECK(config->close_rootmenu_left_right_click == 0);
+	CHECK(config->colormap_mode == WCM_POINTER);
+	CHECK(config->auto_focus == 1);
+	CHECK(config->auto_focus_across_heads == 1);
+	CHECK(config->raise_delay == 0);
+	CHECK(config->circ_raise == 0);
+	CHECK(config->superfluous == 1);
+	CHECK(config->ws_advance == 0);
+	CHECK(config->ws_cycle == 0);
+	CHECK(config->workspace_name_display_position == WD_CENTER);
+	CHECK(config->window_placement == WPM_AUTO);
+	CHECK(config->workspace_border_position == WB_NONE);
+	CHECK(config->workspace_border_size == 0);
+	CHECK(config->wrap_menus == 0);
+	CHECK(config->scrollable_menus == 1);
+	CHECK(config->double_click_time == 250);
+	CHECK(config->save_session_on_exit == 0);
+	CHECK(config->menu_scroll_speed == SPEED_FAST);
+	CHECK(config->icon_slide_speed == SPEED_FAST);
+	CHECK(config->shade_speed == SPEED_FAST);
+	CHECK(config->bounce_appicons_when_urgent == 1);
+	CHECK(config->raise_appicons_when_bouncing == 0);
+	CHECK(config->do_not_make_appicons_bounce == 0);
+	CHECK(config->clip_auto_raise_delay == 600);
+	CHECK(config->clip_auto_lower_delay == 1000);
+	CHECK(config->clip_auto_expand_delay == 600);
+	CHECK(config->clip_auto_collapse_delay == 1000);
+	CHECK(config->align_menus == 0);
+	CHECK(config->vi_key_menus == 0);
+	CHECK(config->open_transients_with_parent == 0);
+	CHECK(config->ignore_focus_click == 0);
+	CHECK(config->use_saveunders == 0);
+	CHECK(config->opaque_move == 1);
+	CHECK(config->opaque_resize == 0);
+	CHECK(config->opaque_move_resize_keyboard == 0);
+	CHECK(config->no_animations == 0);
+	CHECK(config->no_autowrap == 1);
+	CHECK(config->window_snapping == 0);
+	CHECK(config->snap_edge_detect == 1);
+	CHECK(config->snap_corner_detect == 10);
+	CHECK(config->snap_to_top_maximizes_fullscreen == 0);
+	CHECK(config->drag_maximized_window == DRAGMAX_MOVE);
+	CHECK(config->move_half_max_between_heads == 0);
+	CHECK(config->alt_half_maximize == 0);
+	CHECK(config->pointer_with_half_max_windows == 0);
+	CHECK(config->highlight_active_app == 1);
+	CHECK(config->auto_arrange_icons == 0);
+	CHECK(strcmp(config->workspace_specific_back.spec, "()") == 0);
+	CHECK(strcmp(config->workspace_back.spec,
+		     "(solid, \"rgb:50/50/75\")") == 0);
+	CHECK(config->smooth_workspace_back == 0);
+	CHECK(strcmp(config->widget_color.spec, "(solid, gray)") == 0);
+	CHECK(strcmp(config->icon_back.spec,
+		     "(dgradient, \"rgb:a6/a6/b6\", \"rgb:51/55/61\")") == 0);
+	CHECK(strcmp(config->window_title_font.spec, "Sans:bold:pixelsize=12") == 0);
+	CHECK(strcmp(config->highlight_color.spec, "white") == 0);
+	CHECK(strcmp(config->cclip_title_color.spec, "rgb:61/61/61") == 0);
+	CHECK(config->frame_border_width == 1);
+	CHECK(strcmp(config->normal_cursor.spec, "(builtin, left_ptr)") == 0);
+	CHECK(config->hot_corner_actions.count == 4);
+	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
+	CHECK(strcmp(config->hot_corner_actions.items[3], "None") == 0);
+	CHECK(strcmp(config->switch_panel_images.tile, "swtile.png") == 0);
+	CHECK(strcmp(config->switch_panel_images.background, "swback.png") == 0);
+	CHECK(config->switch_panel_images.center_width == 30);
+	CHECK(config->switch_panel_images.center_height == 40);
+	CHECK(config->modifier_key_labels.count == 7);
+	CHECK(strcmp(config->modifier_key_labels.items[1], "Control+") == 0);
+	CHECK(config->modifier_key_short_labels.count == 9);
+	CHECK(strcmp(config->modifier_key_short_labels.items[7], "M+") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_ROOTMENU].spec, "F12") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_WINDOWMENU].spec,
+		     "Control+Escape") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_KEYCHAIN_CANCEL].spec, "None") == 0);
+	wConfigDestroy(config);
+}
+
+static void test_defaults_file_matches_schema(void)
+{
+	const WConfigEntry *schema;
+	WMPropList *dict, *keys;
+	WConfig *defaults, *from_file;
+	WConfigChanges changes;
+	size_t i, count;
+
+	dict = read_installed_defaults_template();
+	if (!dict)
+		return;
+
+	defaults = wConfigCreateDefault();
+	from_file = wConfigReadWindowMaker(dict);
+	CHECK(defaults != NULL);
+	CHECK(from_file != NULL);
+	CHECK(wConfigDiff(defaults, from_file, &changes));
+
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (i = 0; i < count; i++) {
+		WMPropList *value, *expected;
+
+		value = dict_get_key(dict, schema[i].key);
+		if (!value) {
+			fprintf(stderr, "missing WindowMaker.in default for schema key %s\n",
+				schema[i].key);
+			CHECK(value != NULL);
+			continue;
+		}
+
+		expected = schema_default_plist(&schema[i]);
+		if (!expected || !WMIsPropListEqualTo(value, expected)) {
+			char *actual_desc = WMGetPropListDescription(value, False);
+			char *expected_desc = expected ?
+			    WMGetPropListDescription(expected, False) : NULL;
+
+			fprintf(stderr,
+				"WindowMaker.in default mismatch for %s: got %s, expected %s\n",
+				schema[i].key,
+				actual_desc ? actual_desc : "<invalid>",
+				expected_desc ? expected_desc : "<invalid>");
+			if (actual_desc)
+				wfree(actual_desc);
+			if (expected_desc)
+				wfree(expected_desc);
+			CHECK(expected != NULL && WMIsPropListEqualTo(value, expected));
+		}
+		if (expected)
+			WMReleasePropList(expected);
+		CHECK(!wConfigChangesHas(&changes, schema[i].config_key));
+	}
+
+	keys = WMGetPLDictionaryKeys(dict);
+	CHECK(keys != NULL);
+	if (keys) {
+		int key_count = WMGetPropListItemCount(keys);
+		int k;
+
+		for (k = 0; k < key_count; k++) {
+			WMPropList *key_pl = WMGetFromPLArray(keys, k);
+			const char *key;
+
+			CHECK(key_pl != NULL && WMIsPLString(key_pl));
+			if (!key_pl || !WMIsPLString(key_pl))
+				continue;
+			key = WMGetFromPLString(key_pl);
+			if (!wConfigEntryForKey(key) && !is_non_schema_defaults_key(key)) {
+				fprintf(stderr,
+					"WindowMaker.in has non-schema default key %s\n", key);
+				CHECK(False);
+			}
+		}
+		WMReleasePropList(keys);
+	}
+
+	wConfigDestroy(defaults);
+	wConfigDestroy(from_file);
+	WMReleasePropList(dict);
+}
+
+static void test_valid_parse(void)
+{
+	WMPropList *dict;
+	WConfig *config;
+
+	dict = dict_from_desc("{ IconSize = 48; DisableDithering = YES; "
+			      "ModifierKey = Mod4; "
+			      "FocusMode = Sloppy; NewStyle = next; "
+			      "DisableDock = YES; DisableClip = YES; "
+			      "DisableDrawers = YES; ClipMergedInDock = YES; "
+			      "DisableMiniwindows = YES; EnableWorkspacePager = YES; "
+			      "SwitchPanelIconSize = 40; IconPosition = trv; "
+			      "PixmapPath = (\"/tmp/pix\", \"/tmp/bg\"); "
+			      "IconPath = (\"/tmp/icons\"); StickyIcons = YES; "
+			      "WrapAppiconsInDock = NO; "
+			      "WindowPlaceOrigin = (600, \"-3\"); "
+			      "KeepDockOnPrimaryHead = YES; "
+			      "ScreenshotFilenameTemplate = \"shot_%H\"; "
+			      "MenuStyle = flat; TitleJustify = Right; "
+			      "WindowTitleExtendSpace = 1; "
+			      "WindowTitleMinHeight = 2; "
+			      "WindowTitleMaxHeight = 30; "
+			      "MenuTitleExtendSpace = 3; "
+			      "MenuTitleMinHeight = 4; "
+			      "MenuTitleMaxHeight = 40; "
+			      "MenuTextExtendSpace = 5; "
+			      "IconificationStyle = Flip; EnforceIconMargin = YES; "
+			      "DisableWSMouseActions = YES; "
+			      "MouseLeftButtonAction = MoveToNextWindow; "
+			      "MouseMiddleButtonAction = MoveToPrevWindow; "
+			      "MouseRightButtonAction = MoveToNextWorkspace; "
+			      "MouseBackwardButtonAction = MoveToPrevWorkspace; "
+			      "MouseForwardButtonAction = OpenApplicationsMenu; "
+			      "MouseWheelAction = SwitchWorkspaces; "
+			      "MouseWheelTiltAction = SwitchWindows; "
+			      "DontConfirmKill = YES; WindowTitleBalloons = NO; "
+			      "MiniwindowTitleBalloons = YES; "
+			      "MiniwindowPreviewBalloons = YES; "
+			      "AppIconBalloons = YES; HelpBalloons = YES; "
+			      "EdgeResistance = 45; ResizeIncrement = 12; "
+			      "Attraction = YES; DisableBlinking = YES; "
+			      "SingleClickLaunch = YES; StrictWindozeCycle = NO; "
+			      "SwitchPanelOnlyOpen = YES; MiniPreviewSize = 96; "
+			      "IgnoreGtkHints = YES; NoWindowOverDock = YES; "
+			      "NoWindowOverIcons = YES; ResizeDisplay = Line; "
+			      "MoveDisplay = Corner; "
+#ifdef USE_RANDR
+			      "HotplugMonitor = YES; "
+#endif
+			      "HotCorners = YES; HotCornerDelay = 77; "
+			      "HotCornerEdge = 4; WindowListAppIcons = YES; "
+			      "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
+			      "ShowClipTitle = NO; "
+#ifdef KEEP_XKB_LOCK_STATUS
+			      "KbdModeLock = YES; "
+#endif
+			      "DialogHistoryLines = 12; CycleActiveHeadOnly = YES; "
+			      "CycleAllWorkspaces = YES; CycleIgnoreMinimized = YES; "
+			      "DbClickFullScreen = YES; "
+			      "CloseRootMenuByLeftOrRightMouseClick = YES; "
+			      "ColormapMode = Manual; AutoFocus = NO; "
+			      "AutoFocusAcrossHeads = NO; RaiseDelay = 12; "
+			      "CirculateRaise = YES; Superfluous = NO; "
+			      "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+			      "WorkspaceNameDisplayPosition = topright; "
+			      "WindowPlacement = Center; WorkspaceBorder = AllDirections; "
+			      "WorkspaceBorderSize = 7; WrapMenus = YES; "
+			      "ScrollableMenus = NO; DoubleClickTime = 333; "
+			      "SaveSessionOnExit = YES; MenuScrollSpeed = UltraSlow; "
+			      "IconSlideSpeed = Medium; ShadeSpeed = Slow; "
+			      "BounceAppIconsWhenUrgent = NO; "
+			      "RaiseAppIconsWhenBouncing = YES; "
+			      "DoNotMakeAppIconsBounce = YES; "
+			      "ClipAutoraiseDelay = 11; ClipAutolowerDelay = 22; "
+			      "ClipAutoexpandDelay = 33; ClipAutocollapseDelay = 44; "
+			      "AlignSubmenus = YES; ViKeyMenus = YES; "
+			      "OpenTransientOnOwnerWorkspace = YES; "
+			      "IgnoreFocusClick = YES; UseSaveUnders = YES; "
+			      "OpaqueMove = NO; OpaqueResize = YES; "
+			      "OpaqueMoveResizeKeyboard = YES; DisableAnimations = YES; "
+			      "DontLinkWorkspaces = NO; WindowSnapping = YES; "
+			      "SnapEdgeDetect = 5; SnapCornerDetect = 15; "
+			      "SnapToTopMaximizesFullscreen = YES; "
+			      "DragMaximizedWindow = RestoreGeometry; "
+			      "MoveHalfMaximizedWindowsBetweenScreens = YES; "
+			      "AlternativeHalfMaximized = YES; "
+			      "PointerWithHalfMaxWindows = YES; "
+			      "HighlightActiveApp = NO; AutoArrangeIcons = YES; "
+			      "WorkspaceSpecificBack = ((solid, black), (solid, white)); "
+			      "WorkspaceBack = (solid, \"rgb:11/22/33\"); "
+			      "SmoothWorkspaceBack = YES; "
+			      "WidgetColor = (solid, blue); "
+			      "WindowTitleFont = \"Sans 10\"; "
+			      "HighlightColor = red; FrameBorderWidth = 5; "
+			      "NormalCursor = (builtin, watch); "
+			      "HotCornerActions = (OpenRootMenu, None, Run, Workspace1); "
+			      "SwitchPanelImages = (tile.png, back.png, 12, 13); "
+			      "ModifierKeyLabels = (\"S+\", \"C+\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\"); "
+			      "ModifierKeyShortLabels = (S, C, M1, M2, M3, M4, M5, M, A); "
+			      "RootMenuKey = \"Mod1+X Control+Y\"; "
+			      "Workspace1Key = \"Mod4+1\"; }");
+	if (!dict)
+		return;
+
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->icon_size == 48);
+	CHECK(config->disable_dithering == 1);
+	CHECK(strcmp(config->modifier_key, "Mod4") == 0);
+	CHECK(config->focus_mode == WKF_SLOPPY);
+	CHECK(config->new_style == TS_NEXT);
+	CHECK(config->disable_dock == 1);
+	CHECK(config->disable_clip == 1);
+	CHECK(config->disable_drawers == 1);
+	CHECK(config->clip_merged_in_dock == 1);
+	CHECK(config->disable_miniwindows == 1);
+	CHECK(config->enable_workspace_pager == 1);
+	CHECK(config->switch_panel_icon_size == 40);
+	CHECK(config->icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
+	CHECK(strcmp(config->pixmap_path, "/tmp/pix:/tmp/bg") == 0);
+	CHECK(strcmp(config->icon_path, "/tmp/icons") == 0);
+	CHECK(config->sticky_icons == 1);
+	CHECK(config->wrap_appicons_in_dock == 0);
+	CHECK(config->window_place_origin.x == 600);
+	CHECK(config->window_place_origin.y == -3);
+	CHECK(config->keep_dock_on_primary_head == 1);
+	CHECK(strcmp(config->screenshot_filename_template, "shot_%H") == 0);
+	CHECK(config->menu_style == MS_FLAT);
+	CHECK(config->title_justification == WTJ_RIGHT);
+	CHECK(config->window_title_clearance == 1);
+	CHECK(config->window_title_min_height == 2);
+	CHECK(config->window_title_max_height == 30);
+	CHECK(config->menu_title_clearance == 3);
+	CHECK(config->menu_title_min_height == 4);
+	CHECK(config->menu_title_max_height == 40);
+	CHECK(config->menu_text_clearance == 5);
+	CHECK(config->iconification_style == WIS_FLIP);
+	CHECK(config->enforce_icon_margin == 1);
+	CHECK(config->disable_root_mouse == 1);
+	CHECK(config->mouse_button1 == WA_MOVE_NEXTWINDOW);
+	CHECK(config->mouse_button2 == WA_MOVE_PREVWINDOW);
+	CHECK(config->mouse_button3 == WA_MOVE_NEXTWORKSPACE);
+	CHECK(config->mouse_button8 == WA_MOVE_PREVWORKSPACE);
+	CHECK(config->mouse_button9 == WA_OPEN_APPMENU);
+	CHECK(config->mouse_wheel_scroll == WA_SWITCH_WORKSPACES);
+	CHECK(config->mouse_wheel_tilt == WA_SWITCH_WINDOWS);
+	CHECK(config->dont_confirm_kill == 1);
+	CHECK(config->window_balloon == 0);
+	CHECK(config->miniwin_title_balloon == 1);
+	CHECK(config->miniwin_preview_balloon == 1);
+	CHECK(config->appicon_balloon == 1);
+	CHECK(config->help_balloon == 1);
+	CHECK(config->edge_resistance == 45);
+	CHECK(config->resize_increment == 12);
+	CHECK(config->attract == 1);
+	CHECK(config->dont_blink == 1);
+	CHECK(config->single_click == 1);
+	CHECK(config->strict_windoze_cycle == 0);
+	CHECK(config->panel_only_open == 1);
+	CHECK(config->minipreview_size == 96);
+	CHECK(config->ignore_gtk_decoration_hints == 1);
+	CHECK(config->no_window_over_dock == 1);
+	CHECK(config->no_window_over_icons == 1);
+	CHECK(config->size_display == WDIS_NEW);
+	CHECK(config->move_display == WDIS_TOPLEFT);
+#ifdef USE_RANDR
+	CHECK(config->hotplug_monitor == 1);
+#endif
+	CHECK(config->hot_corners == 1);
+	CHECK(config->hot_corner_delay == 77);
+	CHECK(config->hot_corner_edge == 4);
+	CHECK(config->window_list_app_icons == 1);
+	CHECK(config->mouse_wheel_focus == 1);
+	CHECK(config->keychain_timeout_delay == 88);
+	CHECK(config->show_clip_title == 0);
+#ifdef KEEP_XKB_LOCK_STATUS
+	CHECK(config->modelock == 1);
+#endif
+	CHECK(config->history_lines == 12);
+	CHECK(config->cycle_active_head_only == 1);
+	CHECK(config->cycle_all_workspaces == 1);
+	CHECK(config->cycle_ignore_minimized == 1);
+	CHECK(config->double_click_fullscreen == 1);
+	CHECK(config->close_rootmenu_left_right_click == 1);
+	CHECK(config->colormap_mode == WCM_CLICK);
+	CHECK(config->auto_focus == 0);
+	CHECK(config->auto_focus_across_heads == 0);
+	CHECK(config->raise_delay == 12);
+	CHECK(config->circ_raise == 1);
+	CHECK(config->superfluous == 0);
+	CHECK(config->ws_advance == 1);
+	CHECK(config->ws_cycle == 1);
+	CHECK(config->workspace_name_display_position == WD_TOPRIGHT);
+	CHECK(config->window_placement == WPM_CENTER);
+	CHECK(config->workspace_border_position == WB_ALLDIRS);
+	CHECK(config->workspace_border_size == 7);
+	CHECK(config->wrap_menus == 1);
+	CHECK(config->scrollable_menus == 0);
+	CHECK(config->double_click_time == 333);
+	CHECK(config->save_session_on_exit == 1);
+	CHECK(config->menu_scroll_speed == SPEED_ULTRASLOW);
+	CHECK(config->icon_slide_speed == SPEED_MEDIUM);
+	CHECK(config->shade_speed == SPEED_SLOW);
+	CHECK(config->bounce_appicons_when_urgent == 0);
+	CHECK(config->raise_appicons_when_bouncing == 1);
+	CHECK(config->do_not_make_appicons_bounce == 1);
+	CHECK(config->clip_auto_raise_delay == 11);
+	CHECK(config->clip_auto_lower_delay == 22);
+	CHECK(config->clip_auto_expand_delay == 33);
+	CHECK(config->clip_auto_collapse_delay == 44);
+	CHECK(config->align_menus == 1);
+	CHECK(config->vi_key_menus == 1);
+	CHECK(config->open_transients_with_parent == 1);
+	CHECK(config->ignore_focus_click == 1);
+	CHECK(config->use_saveunders == 1);
+	CHECK(config->opaque_move == 0);
+	CHECK(config->opaque_resize == 1);
+	CHECK(config->opaque_move_resize_keyboard == 1);
+	CHECK(config->no_animations == 1);
+	CHECK(config->no_autowrap == 0);
+	CHECK(config->window_snapping == 1);
+	CHECK(config->snap_edge_detect == 5);
+	CHECK(config->snap_corner_detect == 15);
+	CHECK(config->snap_to_top_maximizes_fullscreen == 1);
+	CHECK(config->drag_maximized_window == DRAGMAX_RESTORE);
+	CHECK(config->move_half_max_between_heads == 1);
+	CHECK(config->alt_half_maximize == 1);
+	CHECK(config->pointer_with_half_max_windows == 1);
+	CHECK(config->highlight_active_app == 0);
+	CHECK(config->auto_arrange_icons == 1);
+	CHECK(strcmp(config->workspace_specific_back.spec,
+		     "((solid, black), (solid, white))") == 0);
+	CHECK(strcmp(config->workspace_back.spec,
+		     "(solid, \"rgb:11/22/33\")") == 0);
+	CHECK(config->smooth_workspace_back == 1);
+	CHECK(strcmp(config->widget_color.spec, "(solid, blue)") == 0);
+	CHECK(strcmp(config->window_title_font.spec, "Sans 10") == 0);
+	CHECK(strcmp(config->highlight_color.spec, "red") == 0);
+	CHECK(config->frame_border_width == 5);
+	CHECK(strcmp(config->normal_cursor.spec, "(builtin, watch)") == 0);
+	CHECK(config->hot_corner_actions.count == 4);
+	CHECK(strcmp(config->hot_corner_actions.items[0], "OpenRootMenu") == 0);
+	CHECK(strcmp(config->hot_corner_actions.items[1], "None") == 0);
+	CHECK(strcmp(config->switch_panel_images.tile, "tile.png") == 0);
+	CHECK(strcmp(config->switch_panel_images.background, "back.png") == 0);
+	CHECK(config->switch_panel_images.center_width == 12);
+	CHECK(config->switch_panel_images.center_height == 13);
+	CHECK(config->modifier_key_labels.count == 7);
+	CHECK(strcmp(config->modifier_key_labels.items[0], "S+") == 0);
+	CHECK(config->modifier_key_short_labels.count == 9);
+	CHECK(strcmp(config->modifier_key_short_labels.items[8], "A") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_ROOTMENU].spec,
+		     "Mod1+X Control+Y") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_WORKSPACE1].spec, "Mod4+1") == 0);
+
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+}
+
+static void test_static_apply(void)
+{
+	WMPropList *dict;
+
+	reset_preferences();
+	dict = dict_from_desc("{ DisableDock = YES; DisableClip = NO; "
+			      "DisableDrawers = NO; ClipMergedInDock = YES; "
+			      "DisableMiniwindows = YES; EnableWorkspacePager = YES; "
+			      "ModifierKey = Mod4; SwitchPanelIconSize = 48; }");
+	if (!dict)
+		return;
+
+	wConfigApplyStaticDefaults(dict);
+	CHECK(wPreferences.flags.nodock == 1);
+	CHECK(wPreferences.flags.nodrawer == 1);
+	CHECK(wPreferences.flags.noclip == 1);
+	CHECK(wPreferences.flags.clip_merged_in_dock == 1);
+	CHECK(wPreferences.disable_miniwindows == 1);
+	CHECK(wPreferences.enable_workspace_pager == 1);
+	CHECK(wPreferences.switch_panel_icon_size == 48);
+	CHECK(modifier_key_updates == 1);
+	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
+	CHECK(wPreferences.modifier_mask == Mod4Mask);
+
+	WMReleasePropList(dict);
+}
+
+static void test_invalid_fallback(void)
+{
+	WMPropList *dict;
+	WConfig *config;
+
+	dict = dict_from_desc("{ IconSize = 0; ColormapMode = nowhere; "
+			      "RaiseDelay = \"-1\"; WorkspaceNameDisplayPosition = edge; "
+			      "WindowPlacement = nowhere; DoubleClickTime = 0; "
+			      "DisableDock = maybe; SwitchPanelIconSize = bad; "
+			      "ModifierKey = (); "
+			      "IconPosition = middle; PixmapPath = bad; "
+			      "IconPath = (); StickyIcons = maybe; "
+			      "WrapAppiconsInDock = maybe; "
+			      "WindowPlaceOrigin = (bad, 2); "
+			      "KeepDockOnPrimaryHead = maybe; "
+			      "ScreenshotFilenameTemplate = (bad); "
+			      "MenuStyle = diagonal; TitleJustify = middle; "
+			      "WindowTitleExtendSpace = bad; "
+			      "WindowTitleMaxHeight = bad; "
+			      "MenuTitleExtendSpace = bad; "
+			      "MenuTextExtendSpace = bad; "
+			      "IconificationStyle = nowhere; EnforceIconMargin = maybe; "
+			      "MouseLeftButtonAction = nope; MouseWheelAction = nope; "
+			      "DontConfirmKill = maybe; WindowTitleBalloons = maybe; "
+			      "EdgeResistance = bad; MiniPreviewSize = bad; "
+			      "NoWindowOverDock = maybe; ResizeDisplay = nowhere; "
+			      "HotCornerDelay = bad; DialogHistoryLines = bad; "
+			      "ScrollableMenus = maybe; MenuScrollSpeed = nowhere; "
+			      "ClipAutoraiseDelay = \"-1\"; AlignSubmenus = maybe; "
+			      "OpaqueMove = maybe; SnapEdgeDetect = bad; "
+			      "DragMaximizedWindow = nowhere; "
+			      "WorkspaceSpecificBack = bad; WorkspaceBack = bad; "
+			      "SmoothWorkspaceBack = maybe; FrameBorderWidth = bad; "
+			      "HotCornerActions = (OnlyOne); "
+			      "SwitchPanelImages = (tile.png, back.png, bad, 4); "
+			      "ModifierKeyLabels = (Shift); "
+			      "ModifierKeyShortLabels = (A, B); "
+			      "WidgetColor = (dgradient, black, white); "
+			      "WindowTitleFont = (bad); HighlightColor = (bad); "
+			      "NormalCursor = bad; RootMenuKey = (bad); }");
+	if (!dict)
+		return;
+	dict_put_string(dict, "WrapMenus", "");
+
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->icon_size == 64);
+	CHECK(config->disable_dock == 0);
+	CHECK(config->switch_panel_icon_size == 64);
+	CHECK(strcmp(config->modifier_key, "Mod1") == 0);
+	CHECK(config->icon_yard == (IY_BOTTOM | IY_LEFT | IY_HORIZ));
+	CHECK(strcmp(config->pixmap_path, EXPECTED_PIXMAP_PATH) == 0);
+	CHECK(strcmp(config->icon_path, EXPECTED_ICON_PATH) == 0);
+	CHECK(config->sticky_icons == 0);
+	CHECK(config->wrap_appicons_in_dock == 1);
+	CHECK(config->window_place_origin.x == 64);
+	CHECK(config->window_place_origin.y == 0);
+	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(strcmp(config->screenshot_filename_template,
+		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
+	CHECK(config->menu_style == MS_NORMAL);
+	CHECK(config->title_justification == WTJ_CENTER);
+	CHECK(config->window_title_clearance == 0);
+	CHECK(config->window_title_max_height == INT_MAX);
+	CHECK(config->menu_title_clearance == 0);
+	CHECK(config->menu_text_clearance == 0);
+	CHECK(config->colormap_mode == WCM_POINTER);
+	CHECK(config->raise_delay == 0);
+	CHECK(config->workspace_name_display_position == WD_CENTER);
+	CHECK(config->window_placement == WPM_AUTO);
+	CHECK(config->double_click_time == 250);
+	CHECK(config->iconification_style == WIS_ZOOM);
+	CHECK(config->enforce_icon_margin == 0);
+	CHECK(config->mouse_button1 == WA_SELECT_WINDOWS);
+	CHECK(config->mouse_wheel_scroll == WA_NONE);
+	CHECK(config->dont_confirm_kill == 0);
+	CHECK(config->window_balloon == 1);
+	CHECK(config->edge_resistance == 30);
+	CHECK(config->minipreview_size == 128);
+	CHECK(config->no_window_over_dock == 0);
+	CHECK(config->size_display == WDIS_CENTER);
+	CHECK(config->hot_corner_delay == 250);
+	CHECK(config->history_lines == 500);
+	CHECK(config->scrollable_menus == 1);
+	CHECK(config->wrap_menus == 0);
+	CHECK(config->menu_scroll_speed == SPEED_FAST);
+	CHECK(config->clip_auto_raise_delay == 600);
+	CHECK(config->align_menus == 0);
+	CHECK(config->opaque_move == 1);
+	CHECK(config->snap_edge_detect == 1);
+	CHECK(config->drag_maximized_window == DRAGMAX_MOVE);
+	CHECK(strcmp(config->workspace_specific_back.spec, "()") == 0);
+	CHECK(strcmp(config->workspace_back.spec,
+		     "(solid, \"rgb:50/50/75\")") == 0);
+	CHECK(config->smooth_workspace_back == 0);
+	CHECK(config->frame_border_width == 1);
+	CHECK(config->hot_corner_actions.count == 4);
+	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
+	CHECK(strcmp(config->switch_panel_images.tile, "swtile.png") == 0);
+	CHECK(strcmp(config->switch_panel_images.background, "swback.png") == 0);
+	CHECK(config->modifier_key_labels.count == 7);
+	CHECK(strcmp(config->modifier_key_labels.items[0], "Shift+") == 0);
+	CHECK(config->modifier_key_short_labels.count == 9);
+	CHECK(strcmp(config->modifier_key_short_labels.items[0], "Sh+") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_ROOTMENU].spec, "F12") == 0);
+	CHECK(strcmp(config->widget_color.spec, "(solid, gray)") == 0);
+	CHECK(strcmp(config->window_title_font.spec, "Sans:bold:pixelsize=12") == 0);
+	CHECK(strcmp(config->highlight_color.spec, "white") == 0);
+	CHECK(strcmp(config->normal_cursor.spec, "(builtin, left_ptr)") == 0);
+
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+}
+
+static void test_runtime_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	screen.scr_width = 900;
+	screen.scr_height = 600;
+	screen.workspaces = (struct WWorkspace **)&screen;
+	screen.current_workspace = 3;
+	screen.dock = (struct WDock *)&screen;
+	usable_area_updates = 0;
+	root_mask_updates = 0;
+	double_click_delay = 0;
+	arrange_icons_all = 0;
+	arrange_icons_visible = 0;
+	workspace_force_changes = 0;
+	workspace_force_last = -1;
+	dock_swaps = 0;
+
+	old_dict = dict_from_desc("{ IconPosition = blh; "
+				  "PixmapPath = (\"/old/pix\", \"/old/bg\"); "
+				  "IconPath = (\"/old/icons\"); StickyIcons = NO; "
+				  "WrapAppiconsInDock = YES; "
+				  "WindowPlaceOrigin = (64, 0); "
+				  "KeepDockOnPrimaryHead = NO; "
+				  "ScreenshotFilenameTemplate = \"old_%H\"; "
+				  "MenuStyle = normal; TitleJustify = Center; "
+				  "WindowTitleExtendSpace = 0; "
+				  "WindowTitleMinHeight = 0; "
+				  "WindowTitleMaxHeight = 2147483647; "
+				  "MenuTitleExtendSpace = 0; "
+				  "MenuTitleMinHeight = 0; "
+				  "MenuTitleMaxHeight = 2147483647; "
+				  "MenuTextExtendSpace = 0; "
+				  "IconificationStyle = Zoom; "
+				  "EnforceIconMargin = NO; DisableWSMouseActions = NO; "
+				  "MouseLeftButtonAction = SelectWindows; "
+				  "MouseMiddleButtonAction = OpenWindowListMenu; "
+				  "MouseRightButtonAction = OpenApplicationsMenu; "
+				  "MouseBackwardButtonAction = None; "
+				  "MouseForwardButtonAction = None; "
+				  "MouseWheelAction = None; MouseWheelTiltAction = None; "
+				  "DontConfirmKill = NO; WindowTitleBalloons = YES; "
+				  "MiniwindowTitleBalloons = NO; "
+				  "MiniwindowPreviewBalloons = NO; "
+				  "AppIconBalloons = NO; HelpBalloons = NO; "
+				  "EdgeResistance = 30; ResizeIncrement = 0; "
+				  "Attraction = NO; DisableBlinking = NO; "
+				  "SingleClickLaunch = NO; StrictWindozeCycle = YES; "
+				  "SwitchPanelOnlyOpen = NO; MiniPreviewSize = 128; "
+				  "IgnoreGtkHints = NO; NoWindowOverDock = NO; "
+				  "NoWindowOverIcons = NO; ResizeDisplay = center; "
+				  "MoveDisplay = floating; "
+#ifdef USE_RANDR
+				  "HotplugMonitor = NO; "
+#endif
+				  "HotCorners = NO; HotCornerDelay = 250; "
+				  "HotCornerEdge = 2; WindowListAppIcons = NO; "
+				  "MouseWheelFocus = NO; KeychainTimeoutDelay = 500; "
+				  "ShowClipTitle = YES; "
+#ifdef KEEP_XKB_LOCK_STATUS
+				  "KbdModeLock = NO; "
+#endif
+				  "DialogHistoryLines = 500; CycleActiveHeadOnly = NO; "
+				  "CycleAllWorkspaces = NO; CycleIgnoreMinimized = NO; "
+				  "DbClickFullScreen = NO; "
+				  "CloseRootMenuByLeftOrRightMouseClick = NO; "
+				  "ColormapMode = Auto; AutoFocus = YES; "
+				  "AutoFocusAcrossHeads = YES; RaiseDelay = 0; "
+				  "CirculateRaise = NO; Superfluous = YES; "
+				  "AdvanceToNewWorkspace = NO; CycleWorkspaces = NO; "
+				  "WorkspaceNameDisplayPosition = center; "
+				  "WorkspaceBorderSize = 0; ScrollableMenus = YES; "
+				  "DoubleClickTime = 250; SaveSessionOnExit = NO; "
+				  "MenuScrollSpeed = Fast; IconSlideSpeed = Fast; "
+				  "ShadeSpeed = Fast; BounceAppIconsWhenUrgent = YES; "
+				  "RaiseAppIconsWhenBouncing = NO; "
+				  "DoNotMakeAppIconsBounce = NO; "
+				  "ClipAutoraiseDelay = 600; ClipAutolowerDelay = 1000; "
+				  "ClipAutoexpandDelay = 600; ClipAutocollapseDelay = 1000; "
+				  "AlignSubmenus = NO; ViKeyMenus = NO; "
+				  "OpenTransientOnOwnerWorkspace = NO; "
+				  "IgnoreFocusClick = NO; UseSaveUnders = NO; "
+				  "OpaqueMove = YES; OpaqueResize = NO; "
+				  "OpaqueMoveResizeKeyboard = NO; DisableAnimations = NO; "
+				  "DontLinkWorkspaces = YES; WindowSnapping = NO; "
+				  "SnapEdgeDetect = 1; SnapCornerDetect = 10; "
+				  "SnapToTopMaximizesFullscreen = NO; "
+				  "DragMaximizedWindow = Move; "
+				  "MoveHalfMaximizedWindowsBetweenScreens = NO; "
+				  "AlternativeHalfMaximized = NO; "
+				  "PointerWithHalfMaxWindows = NO; "
+				  "HighlightActiveApp = YES; AutoArrangeIcons = NO; }");
+	new_dict = dict_from_desc("{ IconPosition = trv; "
+				  "PixmapPath = (\"/new/pix\", \"/new/bg\"); "
+				  "IconPath = (\"/new/icons\", \"/new/more\"); "
+				  "StickyIcons = YES; WrapAppiconsInDock = NO; "
+				  "WindowPlaceOrigin = (900, \"-4\"); "
+				  "KeepDockOnPrimaryHead = YES; "
+				  "ScreenshotFilenameTemplate = \"shot_%S\"; "
+				  "MenuStyle = flat; TitleJustify = Right; "
+				  "WindowTitleExtendSpace = 1; "
+				  "WindowTitleMinHeight = 2; "
+				  "WindowTitleMaxHeight = 30; "
+				  "MenuTitleExtendSpace = 3; "
+				  "MenuTitleMinHeight = 4; "
+				  "MenuTitleMaxHeight = 40; "
+				  "MenuTextExtendSpace = 5; "
+				  "IconificationStyle = Twist; "
+				  "EnforceIconMargin = YES; DisableWSMouseActions = YES; "
+				  "MouseLeftButtonAction = MoveToNextWindow; "
+				  "MouseMiddleButtonAction = MoveToPrevWindow; "
+				  "MouseRightButtonAction = MoveToNextWorkspace; "
+				  "MouseBackwardButtonAction = MoveToPrevWorkspace; "
+				  "MouseForwardButtonAction = OpenApplicationsMenu; "
+				  "MouseWheelAction = SwitchWorkspaces; "
+				  "MouseWheelTiltAction = SwitchWindows; "
+				  "DontConfirmKill = YES; WindowTitleBalloons = NO; "
+				  "MiniwindowTitleBalloons = YES; "
+				  "MiniwindowPreviewBalloons = YES; "
+				  "AppIconBalloons = YES; HelpBalloons = YES; "
+				  "EdgeResistance = 45; ResizeIncrement = 12; "
+				  "Attraction = YES; DisableBlinking = YES; "
+				  "SingleClickLaunch = YES; StrictWindozeCycle = NO; "
+				  "SwitchPanelOnlyOpen = YES; MiniPreviewSize = 96; "
+				  "IgnoreGtkHints = YES; NoWindowOverDock = YES; "
+				  "NoWindowOverIcons = YES; ResizeDisplay = Line; "
+				  "MoveDisplay = Corner; "
+#ifdef USE_RANDR
+				  "HotplugMonitor = YES; "
+#endif
+				  "HotCorners = YES; HotCornerDelay = 77; "
+				  "HotCornerEdge = 4; WindowListAppIcons = YES; "
+				  "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
+				  "ShowClipTitle = NO; "
+#ifdef KEEP_XKB_LOCK_STATUS
+				  "KbdModeLock = YES; "
+#endif
+				  "DialogHistoryLines = 12; CycleActiveHeadOnly = YES; "
+				  "CycleAllWorkspaces = YES; CycleIgnoreMinimized = YES; "
+				  "DbClickFullScreen = YES; "
+				  "CloseRootMenuByLeftOrRightMouseClick = YES; "
+				  "ColormapMode = Manual; AutoFocus = NO; "
+				  "AutoFocusAcrossHeads = NO; RaiseDelay = 15; "
+				  "CirculateRaise = YES; Superfluous = NO; "
+				  "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+				  "WorkspaceNameDisplayPosition = bottomleft; "
+				  "WorkspaceBorderSize = 4; ScrollableMenus = NO; "
+				  "DoubleClickTime = 400; SaveSessionOnExit = YES; "
+				  "MenuScrollSpeed = UltraFast; IconSlideSpeed = Medium; "
+				  "ShadeSpeed = UltraSlow; BounceAppIconsWhenUrgent = NO; "
+				  "RaiseAppIconsWhenBouncing = YES; "
+				  "DoNotMakeAppIconsBounce = YES; "
+				  "ClipAutoraiseDelay = 1; ClipAutolowerDelay = 2; "
+				  "ClipAutoexpandDelay = 3; ClipAutocollapseDelay = 4; "
+				  "AlignSubmenus = YES; ViKeyMenus = YES; "
+				  "OpenTransientOnOwnerWorkspace = YES; "
+				  "IgnoreFocusClick = YES; UseSaveUnders = YES; "
+				  "OpaqueMove = NO; OpaqueResize = YES; "
+				  "OpaqueMoveResizeKeyboard = YES; DisableAnimations = YES; "
+				  "DontLinkWorkspaces = NO; WindowSnapping = YES; "
+				  "SnapEdgeDetect = 5; SnapCornerDetect = 15; "
+				  "SnapToTopMaximizesFullscreen = YES; "
+				  "DragMaximizedWindow = NoMove; "
+				  "MoveHalfMaximizedWindowsBetweenScreens = YES; "
+				  "AlternativeHalfMaximized = YES; "
+				  "PointerWithHalfMaxWindows = YES; "
+				  "HighlightActiveApp = NO; AutoArrangeIcons = YES; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(wPreferences.icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
+	CHECK(strcmp(wPreferences.pixmap_path, "/new/pix:/new/bg") == 0);
+	CHECK(strcmp(wPreferences.icon_path, "/new/icons:/new/more") == 0);
+	CHECK(wPreferences.sticky_icons == 1);
+	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
+	CHECK(wPreferences.window_place_origin.x == 300);
+	CHECK(wPreferences.window_place_origin.y == 0);
+	CHECK(wPreferences.keep_dock_on_primary_head == 1);
+	CHECK(strcmp(wPreferences.screenshot_filename_template, "shot_%S") == 0);
+	CHECK(wPreferences.menu_style == MS_FLAT);
+	CHECK(wPreferences.title_justification == WTJ_RIGHT);
+	CHECK(wPreferences.window_title_clearance == 1);
+	CHECK(wPreferences.window_title_min_height == 2);
+	CHECK(wPreferences.window_title_max_height == 30);
+	CHECK(wPreferences.menu_title_clearance == 3);
+	CHECK(wPreferences.menu_title_min_height == 4);
+	CHECK(wPreferences.menu_title_max_height == 40);
+	CHECK(wPreferences.menu_text_clearance == 5);
+	CHECK(wPreferences.iconification_style == WIS_TWIST);
+	CHECK(wPreferences.enforce_icon_margin == 1);
+	CHECK(wPreferences.disable_root_mouse == 1);
+	CHECK(wPreferences.mouse_button1 == WA_MOVE_NEXTWINDOW);
+	CHECK(wPreferences.mouse_button2 == WA_MOVE_PREVWINDOW);
+	CHECK(wPreferences.mouse_button3 == WA_MOVE_NEXTWORKSPACE);
+	CHECK(wPreferences.mouse_button8 == WA_MOVE_PREVWORKSPACE);
+	CHECK(wPreferences.mouse_button9 == WA_OPEN_APPMENU);
+	CHECK(wPreferences.mouse_wheel_scroll == WA_SWITCH_WORKSPACES);
+	CHECK(wPreferences.mouse_wheel_tilt == WA_SWITCH_WINDOWS);
+	CHECK(wPreferences.dont_confirm_kill == 1);
+	CHECK(wPreferences.window_balloon == 0);
+	CHECK(wPreferences.miniwin_title_balloon == 1);
+	CHECK(wPreferences.miniwin_preview_balloon == 1);
+	CHECK(wPreferences.appicon_balloon == 1);
+	CHECK(wPreferences.help_balloon == 1);
+	CHECK(wPreferences.edge_resistance == 45);
+	CHECK(wPreferences.resize_increment == 12);
+	CHECK(wPreferences.attract == 1);
+	CHECK(wPreferences.dont_blink == 1);
+	CHECK(wPreferences.single_click == 1);
+	CHECK(wPreferences.strict_windoze_cycle == 0);
+	CHECK(wPreferences.panel_only_open == 1);
+	CHECK(wPreferences.minipreview_size == 96);
+	CHECK(wPreferences.ignore_gtk_decoration_hints == 1);
+	CHECK(wPreferences.no_window_over_dock == 1);
+	CHECK(wPreferences.no_window_over_icons == 1);
+	CHECK(wPreferences.size_display == WDIS_NEW);
+	CHECK(wPreferences.move_display == WDIS_TOPLEFT);
+#ifdef USE_RANDR
+	CHECK(wPreferences.hotplug_monitor == 1);
+#endif
+	CHECK(wPreferences.hot_corners == 1);
+	CHECK(wPreferences.hot_corner_delay == 77);
+	CHECK(wPreferences.hot_corner_edge == 4);
+	CHECK(wPreferences.window_list_app_icons == 1);
+	CHECK(wPreferences.mouse_wheel_focus == 1);
+	CHECK(wPreferences.keychain_timeout_delay == 88);
+	CHECK(wPreferences.show_clip_title == 0);
+#ifdef KEEP_XKB_LOCK_STATUS
+	CHECK(wPreferences.modelock == 1);
+#endif
+	CHECK(wPreferences.history_lines == 12);
+	CHECK(wPreferences.cycle_active_head_only == 1);
+	CHECK(wPreferences.cycle_all_workspaces == 1);
+	CHECK(wPreferences.cycle_ignore_minimized == 1);
+	CHECK(wPreferences.double_click_fullscreen == 1);
+	CHECK(wPreferences.close_rootmenu_left_right_click == 1);
+	CHECK(wPreferences.colormap_mode == WCM_CLICK);
+	CHECK(wPreferences.auto_focus == 0);
+	CHECK(wPreferences.auto_focus_across_heads == 0);
+	CHECK(wPreferences.raise_delay == 15);
+	CHECK(wPreferences.circ_raise == 1);
+	CHECK(wPreferences.superfluous == 0);
+	CHECK(wPreferences.ws_advance == 1);
+	CHECK(wPreferences.ws_cycle == 1);
+	CHECK(wPreferences.workspace_name_display_position == WD_BOTTOMLEFT);
+	CHECK(wPreferences.workspace_border_size == 4);
+	CHECK(wPreferences.scrollable_menus == 0);
+	CHECK(wPreferences.dblclick_time == 400);
+	CHECK(wPreferences.save_session_on_exit == 1);
+	CHECK(wPreferences.menu_scroll_speed == SPEED_ULTRAFAST);
+	CHECK(wPreferences.icon_slide_speed == SPEED_MEDIUM);
+	CHECK(wPreferences.shade_speed == SPEED_ULTRASLOW);
+	CHECK(wPreferences.bounce_appicons_when_urgent == 0);
+	CHECK(wPreferences.raise_appicons_when_bouncing == 1);
+	CHECK(wPreferences.do_not_make_appicons_bounce == 1);
+	CHECK(wPreferences.clip_auto_raise_delay == 1);
+	CHECK(wPreferences.clip_auto_lower_delay == 2);
+	CHECK(wPreferences.clip_auto_expand_delay == 3);
+	CHECK(wPreferences.clip_auto_collapse_delay == 4);
+	CHECK(wPreferences.align_menus == 1);
+	CHECK(wPreferences.vi_key_menus == 1);
+	CHECK(wPreferences.open_transients_with_parent == 1);
+	CHECK(wPreferences.ignore_focus_click == 1);
+	CHECK(wPreferences.use_saveunders == 1);
+	CHECK(wPreferences.opaque_move == 0);
+	CHECK(wPreferences.opaque_resize == 1);
+	CHECK(wPreferences.opaque_move_resize_keyboard == 1);
+	CHECK(wPreferences.no_animations == 1);
+	CHECK(wPreferences.no_autowrap == 0);
+	CHECK(wPreferences.window_snapping == 1);
+	CHECK(wPreferences.snap_edge_detect == 5);
+	CHECK(wPreferences.snap_corner_detect == 15);
+	CHECK(wPreferences.snap_to_top_maximizes_fullscreen == 1);
+	CHECK(wPreferences.drag_maximized_window == DRAGMAX_NOMOVE);
+	CHECK(wPreferences.move_half_max_between_heads == 1);
+	CHECK(wPreferences.alt_half_maximize == 1);
+	CHECK(wPreferences.pointer_with_half_max_windows == 1);
+	CHECK(wPreferences.highlight_active_app == 0);
+	CHECK(wPreferences.auto_arrange_icons == 1);
+	CHECK(double_click_delay == 400);
+	CHECK(usable_area_updates == 1);
+	CHECK(arrange_icons_all == 1);
+	CHECK(arrange_icons_visible == 1);
+	CHECK(workspace_force_changes == 1);
+	CHECK(workspace_force_last == 3);
+	CHECK(dock_swaps == 1);
+	CHECK(root_mask_updates == 1);
+	CHECK(refresh == (WCFG_REFRESH_MENU_TEXTURE |
+			  WCFG_REFRESH_WINDOW_TITLE_COLOR |
+			  WCFG_REFRESH_WINDOW_FONT |
+			  WCFG_REFRESH_BUTTON_IMAGES |
+			  WCFG_REFRESH_MENU_TITLE_FONT |
+			  WCFG_REFRESH_MENU_FONT));
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+static void test_runtime_apply_phase4(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ HotCornerActions = (None, None, None, None); "
+				  "SwitchPanelImages = (swtile.png, swback.png, 30, 40); "
+				  "ModifierKeyLabels = (\"Shift+\", \"Control+\", \"Mod1+\", \"Mod2+\", \"Mod3+\", \"Mod4+\", \"Mod5+\"); "
+				  "ModifierKeyShortLabels = (\"Sh+\", \"^\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\", \"M+\", \"A+\"); "
+				  "RootMenuKey = F12; Workspace1Key = \"Mod1+1\"; }");
+	new_dict = dict_from_desc("{ HotCornerActions = (OpenRootMenu, None, Run, Workspace1); "
+				  "SwitchPanelImages = (tile.png, back.png, 12, 13); "
+				  "ModifierKeyLabels = (\"S+\", \"C+\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\"); "
+				  "ModifierKeyShortLabels = (S, C, M1, M2, M3, M4, M5, M, A); "
+				  "RootMenuKey = \"Mod1+X Control+Y\"; "
+				  "Workspace1Key = \"Mod4+1\"; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(hot_corner_updates == 1);
+	CHECK(strcmp(wPreferences.hot_corner_actions[0], "OpenRootMenu") == 0);
+	CHECK(wPreferences.hot_corner_actions[1] == NULL);
+	CHECK(strcmp(wPreferences.hot_corner_actions[2], "Run") == 0);
+	CHECK(switch_panel_updates == 1);
+	CHECK(strcmp(switch_panel_tile, "tile.png") == 0);
+	CHECK(strcmp(switch_panel_background, "back.png") == 0);
+	CHECK(switch_panel_center_width == 12);
+	CHECK(switch_panel_center_height == 13);
+	CHECK(modifier_label_updates == 1);
+	CHECK(strcmp(wPreferences.modifier_labels[0], "S+") == 0);
+	CHECK(modifier_short_label_updates == 1);
+	CHECK(strcmp(wPreferences.modifier_short_labels[8], "A") == 0);
+	CHECK(key_binding_updates == 2);
+	CHECK(key_binding_seen[WKBD_ROOTMENU] == 1);
+	CHECK(key_binding_seen[WKBD_WORKSPACE1] == 1);
+	CHECK(key_binding_changed_updates == 2);
+	CHECK(key_tree_rebuilds == 1);
+	CHECK(refresh == WCFG_REFRESH_WORKSPACE_MENU);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+
+static void test_runtime_apply_phase5(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ WidgetColor = (solid, gray); "
+				  "WindowTitleFont = \"Sans:bold:pixelsize=12\"; "
+				  "HighlightColor = white; "
+				  "NormalCursor = (builtin, left_ptr); }");
+	new_dict = dict_from_desc("{ WidgetColor = (solid, blue); "
+				  "WindowTitleFont = \"Sans 10\"; "
+				  "HighlightColor = red; "
+				  "NormalCursor = (builtin, watch); }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(texture_spec_updates == 1);
+	CHECK(font_spec_updates == 1);
+	CHECK(color_spec_updates == 1);
+	CHECK(cursor_spec_updates == 1);
+	CHECK(last_texture_target == WCFG_TEXTURE_WIDGET_COLOR);
+	CHECK(last_font_target == WCFG_FONT_WINDOW_TITLE);
+	CHECK(last_color_target == WCFG_COLOR_HIGHLIGHT);
+	CHECK(last_cursor_target == WCFG_CURSOR_NORMAL);
+	CHECK(strcmp(last_texture_spec, "(solid, blue)") == 0);
+	CHECK(strcmp(last_font_spec, "Sans 10") == 0);
+	CHECK(strcmp(last_color_spec, "red") == 0);
+	CHECK(strcmp(last_cursor_spec, "(builtin, watch)") == 0);
+	CHECK(refresh == (WCFG_REFRESH_WINDOW_TEXTURES |
+			  WCFG_REFRESH_WINDOW_FONT |
+			  WCFG_REFRESH_MENU_COLOR));
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+static void test_runtime_apply_uses_cached_old_config(void)
+{
+	WMPropList *cache_dict, *old_dict, *new_dict;
+	unsigned int refresh;
+
+	reset_preferences();
+	wPreferences.menu_style = MS_FLAT;
+	cache_dict = dict_from_desc("{ MenuStyle = flat; }");
+	old_dict = dict_from_desc("{ MenuStyle = normal; }");
+	new_dict = dict_from_desc("{ MenuStyle = flat; }");
+	if (!cache_dict || !old_dict || !new_dict)
+		goto out;
+
+	wConfigCacheWindowMaker(cache_dict);
+	refresh = wConfigApplyRuntimeDefaults(NULL, new_dict);
+	CHECK(refresh == 0);
+	CHECK(wPreferences.menu_style == MS_FLAT);
+
+out:
+	if (cache_dict)
+		WMReleasePropList(cache_dict);
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+
+static void test_runtime_apply_phase7(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ WorkspaceSpecificBack = (); "
+				  "WorkspaceBack = (solid, black); "
+				  "SmoothWorkspaceBack = NO; FrameBorderWidth = 1; }");
+	new_dict = dict_from_desc("{ WorkspaceSpecificBack = ((solid, red)); "
+				  "WorkspaceBack = (solid, blue); "
+				  "SmoothWorkspaceBack = YES; FrameBorderWidth = 5; }");
+	if (!old_dict || !new_dict)
+		goto first_out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(background_spec_updates == 2);
+	CHECK(workspace_specific_background_updates == 1);
+	CHECK(workspace_background_updates == 1);
+	CHECK(last_background_target == WCFG_BACKGROUND_WORKSPACE);
+	CHECK(strcmp(last_background_spec, "(solid, blue)") == 0);
+	CHECK(workspace_background_saw_smooth == 0);
+	CHECK(wPreferences.smooth_workspace_back == 1);
+	CHECK(screen.frame_border_width == 5);
+	CHECK(refresh == WCFG_REFRESH_FRAME_BORDER);
+
+first_out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ WorkspaceSpecificBack = (); "
+				  "WorkspaceBack = (solid, black); }");
+	new_dict = dict_from_desc("{ WorkspaceSpecificBack = ((solid, red)); "
+				  "WorkspaceBack = (solid, black); }");
+	if (!old_dict || !new_dict)
+		goto second_out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(background_spec_updates == 2);
+	CHECK(workspace_specific_background_updates == 1);
+	CHECK(workspace_background_updates == 1);
+	CHECK(strcmp(last_background_spec, "(solid, black)") == 0);
+	CHECK(refresh == 0);
+
+second_out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+static void test_deleted_key_keeps_current(void)
+{
+	WMPropList *old_dict, *new_dict;
+	unsigned int refresh;
+
+	reset_preferences();
+	wPreferences.auto_focus = 1;
+	wPreferences.wrap_menus = 1;
+	wPreferences.align_menus = 1;
+	wPreferences.clip_auto_raise_delay = 123;
+	wPreferences.use_saveunders = 1;
+	wPreferences.snap_edge_detect = 77;
+	wPreferences.disable_root_mouse = 1;
+	wPreferences.mouse_button1 = WA_MOVE_NEXTWINDOW;
+	wPreferences.dont_confirm_kill = 1;
+	wPreferences.edge_resistance = 66;
+	wPreferences.window_balloon = 0;
+	wPreferences.icon_yard = IY_TOP | IY_RIGHT | IY_VERT;
+	wPreferences.pixmap_path = wstrdup("/keep/pix:/keep/bg");
+	wPreferences.icon_path = wstrdup("/keep/icons");
+	wPreferences.sticky_icons = 1;
+	wPreferences.flags.wrap_appicons_in_dock = 0;
+	wPreferences.window_place_origin.x = 123;
+	wPreferences.window_place_origin.y = 45;
+	wPreferences.keep_dock_on_primary_head = 1;
+	wPreferences.screenshot_filename_template = wstrdup("keep_%S");
+	wPreferences.menu_style = MS_FLAT;
+	wPreferences.title_justification = WTJ_RIGHT;
+	wPreferences.window_title_clearance = 1;
+	wPreferences.window_title_min_height = 2;
+	wPreferences.window_title_max_height = 30;
+	wPreferences.menu_title_clearance = 3;
+	wPreferences.menu_title_min_height = 4;
+	wPreferences.menu_title_max_height = 40;
+	wPreferences.menu_text_clearance = 5;
+	wPreferences.no_window_over_dock = 1;
+	wPreferences.hot_corners = 1;
+	wPreferences.keychain_timeout_delay = 88;
+	wPreferences.history_lines = 12;
+	wPreferences.smooth_workspace_back = 1;
+
+	old_dict = dict_from_desc("{ HotCornerActions = (OpenRootMenu, None, Run, Workspace1); "
+				  "WorkspaceSpecificBack = ((solid, black)); "
+				  "WorkspaceBack = (solid, blue); "
+				  "SmoothWorkspaceBack = YES; "
+				  "WidgetColor = (solid, blue); "
+				  "WindowTitleFont = \"Sans 10\"; "
+				  "HighlightColor = red; "
+				  "NormalCursor = (builtin, watch); "
+				  "RootMenuKey = \"Mod1+X Control+Y\"; "
+				  "IconPosition = trv; "
+				  "PixmapPath = (\"/keep/pix\", \"/keep/bg\"); "
+				  "IconPath = (\"/keep/icons\"); "
+				  "StickyIcons = YES; WrapAppiconsInDock = NO; "
+				  "WindowPlaceOrigin = (123, 45); "
+				  "KeepDockOnPrimaryHead = YES; "
+				  "ScreenshotFilenameTemplate = \"keep_%S\"; "
+				  "MenuStyle = flat; TitleJustify = Right; "
+				  "WindowTitleExtendSpace = 1; "
+				  "WindowTitleMinHeight = 2; "
+				  "WindowTitleMaxHeight = 30; "
+				  "MenuTitleExtendSpace = 3; "
+				  "MenuTitleMinHeight = 4; "
+				  "MenuTitleMaxHeight = 40; "
+				  "MenuTextExtendSpace = 5; "
+				  "DisableWSMouseActions = YES; "
+				  "MouseLeftButtonAction = MoveToNextWindow; "
+				  "DontConfirmKill = YES; EdgeResistance = 66; "
+				  "WindowTitleBalloons = NO; NoWindowOverDock = YES; "
+				  "HotCorners = YES; KeychainTimeoutDelay = 88; "
+				  "DialogHistoryLines = 12; "
+				  "AutoFocus = YES; WrapMenus = YES; "
+				  "AlignSubmenus = YES; ClipAutoraiseDelay = 123; "
+				  "UseSaveUnders = YES; SnapEdgeDetect = 77; }");
+	new_dict = dict_from_desc("{ ScrollableMenus = YES; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(wPreferences.auto_focus == 1);
+	CHECK(wPreferences.wrap_menus == 1);
+	CHECK(wPreferences.align_menus == 1);
+	CHECK(wPreferences.clip_auto_raise_delay == 123);
+	CHECK(wPreferences.use_saveunders == 1);
+	CHECK(wPreferences.snap_edge_detect == 77);
+	CHECK(wPreferences.disable_root_mouse == 1);
+	CHECK(wPreferences.mouse_button1 == WA_MOVE_NEXTWINDOW);
+	CHECK(wPreferences.dont_confirm_kill == 1);
+	CHECK(wPreferences.edge_resistance == 66);
+	CHECK(wPreferences.window_balloon == 0);
+	CHECK(wPreferences.icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
+	CHECK(strcmp(wPreferences.pixmap_path, "/keep/pix:/keep/bg") == 0);
+	CHECK(strcmp(wPreferences.icon_path, "/keep/icons") == 0);
+	CHECK(wPreferences.sticky_icons == 1);
+	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
+	CHECK(wPreferences.window_place_origin.x == 123);
+	CHECK(wPreferences.window_place_origin.y == 45);
+	CHECK(wPreferences.keep_dock_on_primary_head == 1);
+	CHECK(strcmp(wPreferences.screenshot_filename_template, "keep_%S") == 0);
+	CHECK(wPreferences.menu_style == MS_FLAT);
+	CHECK(wPreferences.title_justification == WTJ_RIGHT);
+	CHECK(wPreferences.window_title_clearance == 1);
+	CHECK(wPreferences.window_title_min_height == 2);
+	CHECK(wPreferences.window_title_max_height == 30);
+	CHECK(wPreferences.menu_title_clearance == 3);
+	CHECK(wPreferences.menu_title_min_height == 4);
+	CHECK(wPreferences.menu_title_max_height == 40);
+	CHECK(wPreferences.menu_text_clearance == 5);
+	CHECK(wPreferences.no_window_over_dock == 1);
+	CHECK(wPreferences.hot_corners == 1);
+	CHECK(wPreferences.keychain_timeout_delay == 88);
+	CHECK(wPreferences.history_lines == 12);
+	CHECK(wPreferences.smooth_workspace_back == 1);
+	CHECK(hot_corner_updates == 0);
+	CHECK(background_spec_updates == 0);
+	CHECK(texture_spec_updates == 0);
+	CHECK(font_spec_updates == 0);
+	CHECK(color_spec_updates == 0);
+	CHECK(cursor_spec_updates == 0);
+	CHECK(key_binding_updates == 0);
+	CHECK(refresh == 0);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+int main(void)
+{
+	WMPLSetCaseSensitive(False);
+
+	test_schema_integrity();
+	test_unchanged_diff();
+	test_defaults();
+	test_defaults_file_matches_schema();
+	test_valid_parse();
+	test_static_apply();
+	test_invalid_fallback();
+	test_runtime_apply();
+	test_runtime_apply_phase4();
+	test_runtime_apply_phase5();
+	test_runtime_apply_phase7();
+	test_runtime_apply_uses_cached_old_config();
+	test_deleted_key_keeps_current();
+
+	if (failures) {
+		fprintf(stderr, "%d check(s) failed\n", failures);
+		reset_preferences();
+		return 1;
+	}
+
+	printf("ok - check_config\n");
+	reset_preferences();
+	return 0;
+}

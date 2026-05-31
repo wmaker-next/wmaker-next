@@ -18,6 +18,7 @@ POTFILES  = \
 	$(top_srcdir)/src/balloon.c \
 	$(top_srcdir)/src/client.c \
 	$(top_srcdir)/src/colormap.c \
+	$(top_srcdir)/src/config-schema.c \
 	$(top_srcdir)/src/cycling.c \
 	$(top_srcdir)/src/defaults.c \
 	$(top_srcdir)/src/dialog.c \
@@ -54,6 +55,7 @@ POTFILES  = \
 	$(top_srcdir)/src/switchmenu.c \
 	$(top_srcdir)/src/texture.c \
 	$(top_srcdir)/src/usermenu.c \
+	$(top_srcdir)/src/wconfigmodel.c \
 	$(top_srcdir)/src/wcore.c \
 	$(top_srcdir)/src/wdefaults.c \
 	$(top_srcdir)/src/window.c \

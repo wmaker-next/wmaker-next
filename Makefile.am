@@ -49,7 +49,6 @@ EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
 	email-clients.txt checkpatch.pl update-changelog.pl \
 	script/check-cmdline-options-doc.sh \
 	script/check-translation-sources.sh \
-	script/check-wmaker-loaddef-callbacks.sh \
 	script/generate-html-from-man.sh \
 	script/generate-mapfile-from-header.sh \
 	script/generate-po-from-template.sh \

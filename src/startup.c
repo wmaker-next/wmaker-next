@@ -67,6 +67,7 @@
 #include "wmspec.h"
 #include "event.h"
 #include "switchmenu.h"
+#include "wconfigmodel.h"
 #ifdef USE_DOCK_XDND
 #include "xdnd.h"
 #endif
@@ -670,6 +671,8 @@ void StartUp(Bool defaultScreenOnly)
 		}
 		w_global.screen_count++;
 	}
+	wConfigCacheWindowMaker(w_global.domain.wmaker ?
+	                        w_global.domain.wmaker->dictionary : NULL);
 
 	InitializeSwitchMenu();
 

@@ -11,8 +11,10 @@
 	ClipMergedInDock = NO;
 	DisableMiniwindows = NO;
 	EnableWorkspacePager = NO;
+	SwitchPanelIconSize = 64;
 	IconPosition = blh;
 	IconificationStyle = Zoom;
+	EnforceIconMargin = NO;
 	DisableWSMouseActions = NO;
 	MouseLeftButtonAction = SelectWindows;
 	MouseMiddleButtonAction = OpenWindowListMenu;
@@ -21,6 +23,7 @@
 	MouseForwardButtonAction = None;
 	MouseWheelAction = None;
 	MouseWheelTiltAction = None;
+	MouseWheelFocus = NO;
 	PixmapPath = (
 		"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps",
 		"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds",
@@ -41,6 +44,7 @@
 	);
 	ColormapMode = auto;
 	AutoFocus = YES;
+	AutoFocusAcrossHeads = YES;
 	RaiseDelay = 0;
 	CirculateRaise = NO;
 	Superfluous = YES;
@@ -89,8 +93,14 @@
 	NoWindowOverDock = NO;
 	NoWindowOverIcons = NO;
 	WindowPlaceOrigin = (64, 0);
+	ScreenshotFilenameTemplate = "screenshot_%Y-%m-%d_at_%H:%M:%S";
 	ResizeDisplay = center;
 	MoveDisplay = floating;
+	HotplugMonitor = NO;
+	HotCorners = NO;
+	HotCornerDelay = 250;
+	HotCornerEdge = 2;
+	HotCornerActions = ("None", "None", "None", "None");
 	DontConfirmKill = NO;
 	WindowTitleBalloons = YES;
 	MiniwindowTitleBalloons = NO;
@@ -103,10 +113,13 @@
 	DisableBlinking = NO;
 	SingleClickLaunch = NO;
 	StrictWindozeCycle = YES;
+	DbClickFullScreen = NO;
+	CloseRootMenuByLeftOrRightMouseClick = NO;
 	SwitchPanelOnlyOpen = NO;
 	MiniPreviewSize = 128;
 	IgnoreGtkHints = NO;
 	KeepDockOnPrimaryHead = NO;
+	KeychainTimeoutDelay = 500;
 	MenuStyle = normal;
 	WidgetColor = (solid, gray);
 	WorkspaceSpecificBack = ();
@@ -127,6 +140,7 @@
 	IconTitleFont = "Sans:pixelsize=9";
 	ClipTitleFont = "Sans:bold:pixelsize=10";
 	ShowClipTitle = YES;
+	KbdModeLock = NO;
 	LargeDisplayFont = "Sans:pixelsize=24";
 	HighlightColor = white;
 	HighlightTextColor = black;
@@ -148,6 +162,7 @@
 	IconTitleBack = black;
 	SwitchPanelImages = (swtile.png, swback.png, 30, 40);
 	ModifierKeyLabels = ("Shift+", "Control+", "Mod1+", "Mod2+", "Mod3+", "Mod4+", "Mod5+");
+	ModifierKeyShortLabels = ("Sh+", "^", "M1+", "M2+", "M3+", "M4+", "M5+", "M+", "A+");
 	FrameBorderWidth = 1;
 	FrameBorderColor = black;
 	FrameFocusedBorderColor = black;
@@ -156,6 +171,7 @@
 	RootMenuKey = F12;
 	WindowListKey = F11;
 	WindowMenuKey = "Control+Escape";
+	KeychainCancelKey = None;
 	DockRaiseLowerKey = None;
 	ClipRaiseLowerKey = None;
 	MiniaturizeKey = "Mod1+M";
@@ -176,6 +192,7 @@
 	BLCMaximizeKey = None;
 	BRCMaximizeKey = None;
 	MaximusKey = None;
+	CenterKey = None;
 	KeepOnTopKey = None;
 	KeepAtBottomKey = None;
 	OmnipresentKey = None;
@@ -187,6 +204,10 @@
 	WorkspaceMapKey = None;
 	FocusNextKey = "Mod1+Tab";
 	FocusPrevKey = "Mod1+Shift+Tab";
+	FocusWindowLeftKey = None;
+	FocusWindowRightKey = None;
+	FocusWindowUpKey = None;
+	FocusWindowDownKey = None;
 	GroupNextKey = None;
 	GroupPrevKey = None;
 	NextWorkspaceKey = "Mod1+Control+Right";
@@ -229,6 +250,8 @@
 	WindowShortcut8Key = None;
 	WindowShortcut9Key = None;
 	WindowShortcut10Key = None;
+	MoveTo12to6Head = None;
+	MoveTo6to12Head = None;
 	WindowRelaunchKey = None;
 	ScreenSwitchKey = None;
 	RunKey = None;
@@ -236,6 +259,12 @@
 	ScreenCaptureKey = None;
 	WindowCaptureKey = None;
 	PartialCaptureKey = None;
+	MarkSetKey = None;
+	MarkUnsetKey = None;
+	MarkBringKey = None;
+	MarkJumpKey = None;
+	MarkSwapKey = None;
+	ToggleKbdModeKey = None;
 	NormalCursor = (builtin, left_ptr);
 	ArrowCursor = (builtin, top_left_arrow);
 	MoveCursor = (builtin, fleur);
@@ -250,6 +279,7 @@
 	QuestionCursor = (builtin, question_arrow);
 	TextCursor = (builtin, xterm);
 	SelectCursor = (builtin, cross);
+	CaptureCursor = (builtin, crosshair);
 	DialogHistoryLines = 500;
 	CycleActiveHeadOnly = NO;
 	CycleAllWorkspaces = NO;

@@ -53,6 +53,8 @@
 #include "screen.h"
 #include "resources.h"
 #include "defaults.h"
+#include "config-schema.h"
+#include "wconfigmodel.h"
 #include "keybind.h"
 #include "xmodifier.h"
 #include "icon.h"
@@ -65,866 +67,63 @@
 #include "winmenu.h"
 #include "rootmenu.h"
 
-typedef struct _WDefaultEntry  WDefaultEntry;
-typedef int (WDECallbackConvert) (WScreen *scr, WDefaultEntry *entry, WMPropList *plvalue, void *addr, void **tdata);
-typedef int (WDECallbackUpdate) (WScreen *scr, WDefaultEntry *entry, void *tdata, void *extra_data);
-
-struct _WDefaultEntry {
-	const char *key;
-	const char *default_value;
-	void *extra_data;
-	void *addr;
-	WDECallbackConvert *convert;
-	WDECallbackUpdate *update;
-	WMPropList *plkey;
-	WMPropList *plvalue;	/* default value */
-};
-
-/* used to map strings to integers */
-typedef struct {
-	const char *string;
-	short value;
-	char is_alias;
-} WOptionEnumeration;
-
-/* type converters */
-static WDECallbackConvert getBool;
-static WDECallbackConvert getInt;
-static WDECallbackConvert getString;
-static WDECallbackConvert getCoord;
-static WDECallbackConvert getPathList;
-static WDECallbackConvert getEnum;
-static WDECallbackConvert getTexture;
-static WDECallbackConvert getWSBackground;
-static WDECallbackConvert getWSSpecificBackground;
-static WDECallbackConvert getFont;
-static WDECallbackConvert getColor;
-static WDECallbackConvert getKeybind;
-static WDECallbackConvert getModMask;
-static WDECallbackConvert getPropList;
+typedef int (WConfigUpdateCallback)(WScreen *scr, void *tdata,
+				    void *extra_data);
 
 /* value setting functions */
-static WDECallbackUpdate setJustify;
-static WDECallbackUpdate setClearance;
-static WDECallbackUpdate setIfDockPresent;
-static WDECallbackUpdate setClipMergedInDock;
-static WDECallbackUpdate setWrapAppiconsInDock;
-static WDECallbackUpdate setStickyIcons;
-static WDECallbackUpdate setWidgetColor;
-static WDECallbackUpdate setIconTile;
-static WDECallbackUpdate setWinTitleFont;
-static WDECallbackUpdate setMenuTitleFont;
-static WDECallbackUpdate setMenuTextFont;
-static WDECallbackUpdate setIconTitleFont;
-static WDECallbackUpdate setIconTitleColor;
-static WDECallbackUpdate setIconTitleBack;
-static WDECallbackUpdate setFrameBorderWidth;
-static WDECallbackUpdate setFrameBorderColor;
-static WDECallbackUpdate setFrameFocusedBorderColor;
-static WDECallbackUpdate setFrameSelectedBorderColor;
-static WDECallbackUpdate setLargeDisplayFont;
-static WDECallbackUpdate setWTitleColor;
-static WDECallbackUpdate setFTitleBack;
-static WDECallbackUpdate setPTitleBack;
-static WDECallbackUpdate setUTitleBack;
-static WDECallbackUpdate setResizebarBack;
-static WDECallbackUpdate setWorkspaceBack;
-static WDECallbackUpdate setWorkspaceSpecificBack;
-static WDECallbackUpdate setMenuTitleColor;
-static WDECallbackUpdate setMenuTextColor;
-static WDECallbackUpdate setMenuDisabledColor;
-static WDECallbackUpdate setMenuTitleBack;
-static WDECallbackUpdate setMenuTextBack;
-static WDECallbackUpdate setHightlight;
-static WDECallbackUpdate setHightlightText;
-static WDECallbackUpdate setKeyGrab;
-static WDECallbackUpdate setDoubleClick;
-static WDECallbackUpdate setIconPosition;
-static WDECallbackUpdate setWorkspaceMapBackground;
+static WConfigUpdateCallback setWidgetColor;
+static WConfigUpdateCallback setIconTile;
+static WConfigUpdateCallback setWinTitleFont;
+static WConfigUpdateCallback setMenuTitleFont;
+static WConfigUpdateCallback setMenuTextFont;
+static WConfigUpdateCallback setIconTitleFont;
+static WConfigUpdateCallback setIconTitleColor;
+static WConfigUpdateCallback setIconTitleBack;
+static WConfigUpdateCallback setFrameBorderColor;
+static WConfigUpdateCallback setFrameFocusedBorderColor;
+static WConfigUpdateCallback setFrameSelectedBorderColor;
+static WConfigUpdateCallback setLargeDisplayFont;
+static WConfigUpdateCallback setWTitleColor;
+static WConfigUpdateCallback setFTitleBack;
+static WConfigUpdateCallback setPTitleBack;
+static WConfigUpdateCallback setUTitleBack;
+static WConfigUpdateCallback setResizebarBack;
+static WConfigUpdateCallback setWorkspaceBack;
+static WConfigUpdateCallback setWorkspaceSpecificBack;
+static WConfigUpdateCallback setMenuTitleColor;
+static WConfigUpdateCallback setMenuTextColor;
+static WConfigUpdateCallback setMenuDisabledColor;
+static WConfigUpdateCallback setMenuTitleBack;
+static WConfigUpdateCallback setMenuTextBack;
+static WConfigUpdateCallback setHightlight;
+static WConfigUpdateCallback setHightlightText;
+static WConfigUpdateCallback setWorkspaceMapBackground;
 
-static WDECallbackUpdate setClipTitleFont;
-static WDECallbackUpdate setClipTitleColor;
+static WConfigUpdateCallback setClipTitleFont;
+static WConfigUpdateCallback setClipTitleColor;
 
-static WDECallbackUpdate setMenuStyle;
-static WDECallbackUpdate setSwPOptions;
-static WDECallbackUpdate updateUsableArea;
+static WConfigUpdateCallback setCursor;
 
-static WDECallbackUpdate setModifierKeyLabels;
-static WDECallbackUpdate setModifierShortKeyLabels;
-static WDECallbackUpdate setHotCornerActions;
+static void wApplyDefaultsChanges(WScreen *scr, const WConfig *old_config,
+				  const WConfig *new_config,
+				  const WConfigChanges *changes);
 
-static WDECallbackConvert getCursor;
-static WDECallbackUpdate setCursor;
-static WDECallbackUpdate updateDock;
-static WDECallbackUpdate setRootMotionMask;
-
-/*
- * Tables to convert strings to enumeration values.
- * Values stored are char
- */
-
-/* WARNING: sum of length of all value strings must not exceed
- * this value */
-#define TOTAL_VALUES_LENGTH	80
-
-#define REFRESH_WINDOW_TEXTURES	(1<<0)
-#define REFRESH_MENU_TEXTURE	(1<<1)
-#define REFRESH_MENU_FONT	(1<<2)
-#define REFRESH_MENU_COLOR	(1<<3)
-#define REFRESH_MENU_TITLE_TEXTURE	(1<<4)
-#define REFRESH_MENU_TITLE_FONT	(1<<5)
-#define REFRESH_MENU_TITLE_COLOR	(1<<6)
-#define REFRESH_WINDOW_TITLE_COLOR (1<<7)
-#define REFRESH_WINDOW_FONT	(1<<8)
-#define REFRESH_ICON_TILE	(1<<9)
-#define REFRESH_ICON_FONT	(1<<10)
-
-#define REFRESH_BUTTON_IMAGES   (1<<11)
-
-#define REFRESH_ICON_TITLE_COLOR (1<<12)
-#define REFRESH_ICON_TITLE_BACK (1<<13)
-
-#define REFRESH_WORKSPACE_MENU	(1<<14)
-
-#define REFRESH_FRAME_BORDER REFRESH_MENU_FONT|REFRESH_WINDOW_FONT
-
-static WOptionEnumeration seFocusModes[] = {
-	{"Manual", WKF_CLICK, 0}, {"ClickToFocus", WKF_CLICK, 1},
-	{"Sloppy", WKF_SLOPPY, 0}, {"SemiAuto", WKF_SLOPPY, 1}, {"Auto", WKF_SLOPPY, 1},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seTitlebarModes[] = {
-	{"new", TS_NEW, 0}, {"old", TS_OLD, 0},
-	{"next", TS_NEXT, 0}, {NULL, 0, 0}
-};
-
-static WOptionEnumeration seColormapModes[] = {
-	{"Manual", WCM_CLICK, 0}, {"ClickToFocus", WCM_CLICK, 1},
-	{"Auto", WCM_POINTER, 0}, {"FocusFollowMouse", WCM_POINTER, 1},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration sePlacements[] = {
-	{"Auto", WPM_AUTO, 0},
-	{"Smart", WPM_SMART, 0},
-	{"Cascade", WPM_CASCADE, 0},
-	{"Random", WPM_RANDOM, 0},
-	{"Manual", WPM_MANUAL, 0},
-	{"Center", WPM_CENTER, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seGeomDisplays[] = {
-	{"None", WDIS_NONE, 0},
-	{"Center", WDIS_CENTER, 0},
-	{"Corner", WDIS_TOPLEFT, 0},
-	{"Floating", WDIS_FRAME_CENTER, 0},
-	{"Line", WDIS_NEW, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seSpeeds[] = {
-	{"UltraFast", SPEED_ULTRAFAST, 0},
-	{"Fast", SPEED_FAST, 0},
-	{"Medium", SPEED_MEDIUM, 0},
-	{"Slow", SPEED_SLOW, 0},
-	{"UltraSlow", SPEED_ULTRASLOW, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seMouseButtonActions[] = {
-	{"None", WA_NONE, 0},
-	{"SelectWindows", WA_SELECT_WINDOWS, 0},
-	{"OpenApplicationsMenu", WA_OPEN_APPMENU, 0},
-	{"OpenWindowListMenu", WA_OPEN_WINLISTMENU, 0},
-	{"MoveToPrevWorkspace", WA_MOVE_PREVWORKSPACE, 0},
-	{"MoveToNextWorkspace", WA_MOVE_NEXTWORKSPACE, 0},
-	{"MoveToPrevWindow", WA_MOVE_PREVWINDOW, 0},
-	{"MoveToNextWindow", WA_MOVE_NEXTWINDOW, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seMouseWheelActions[] = {
-	{"None", WA_NONE, 0},
-	{"SwitchWorkspaces", WA_SWITCH_WORKSPACES, 0},
-	{"SwitchWindows", WA_SWITCH_WINDOWS, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seIconificationStyles[] = {
-	{"Zoom", WIS_ZOOM, 0},
-	{"Twist", WIS_TWIST, 0},
-	{"Flip", WIS_FLIP, 0},
-	{"None", WIS_NONE, 0},
-	{"random", WIS_RANDOM, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seJustifications[] = {
-	{"Left", WTJ_LEFT, 0},
-	{"Center", WTJ_CENTER, 0},
-	{"Right", WTJ_RIGHT, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seIconPositions[] = {
-	{"blv", IY_BOTTOM | IY_LEFT | IY_VERT, 0},
-	{"blh", IY_BOTTOM | IY_LEFT | IY_HORIZ, 0},
-	{"brv", IY_BOTTOM | IY_RIGHT | IY_VERT, 0},
-	{"brh", IY_BOTTOM | IY_RIGHT | IY_HORIZ, 0},
-	{"tlv", IY_TOP | IY_LEFT | IY_VERT, 0},
-	{"tlh", IY_TOP | IY_LEFT | IY_HORIZ, 0},
-	{"trv", IY_TOP | IY_RIGHT | IY_VERT, 0},
-	{"trh", IY_TOP | IY_RIGHT | IY_HORIZ, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seMenuStyles[] = {
-	{"normal", MS_NORMAL, 0},
-	{"singletexture", MS_SINGLE_TEXTURE, 0},
-	{"flat", MS_FLAT, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seDisplayPositions[] = {
-	{"none", WD_NONE, 0},
-	{"center", WD_CENTER, 0},
-	{"top", WD_TOP, 0},
-	{"bottom", WD_BOTTOM, 0},
-	{"topleft", WD_TOPLEFT, 0},
-	{"topright", WD_TOPRIGHT, 0},
-	{"bottomleft", WD_BOTTOMLEFT, 0},
-	{"bottomright", WD_BOTTOMRIGHT, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seWorkspaceBorder[] = {
-	{"None", WB_NONE, 0},
-	{"LeftRight", WB_LEFTRIGHT, 0},
-	{"TopBottom", WB_TOPBOTTOM, 0},
-	{"AllDirections", WB_ALLDIRS, 0},
-	{NULL, 0, 0}
-};
-
-static WOptionEnumeration seDragMaximizedWindow[] = {
-	{"Move", DRAGMAX_MOVE, 0},
-	{"RestoreGeometry", DRAGMAX_RESTORE, 0},
-	{"Unmaximize", DRAGMAX_UNMAXIMIZE, 0},
-	{"NoMove", DRAGMAX_NOMOVE, 0},
-	{NULL, 0, 0}
-};
-
-/*
- * ALL entries in the tables below NEED to have a default value
- * defined, and this value needs to be correct.
- *
- * Also add the default key/value pair to WindowMaker/Defaults/WindowMaker.in
- */
-
-/* these options will only affect the window manager on startup
- *
- * static defaults can't access the screen data, because it is
- * created after these defaults are read
- */
-WDefaultEntry staticOptionList[] = {
-
-	{"ColormapSize", "4", NULL,
-	    &wPreferences.cmap_size, getInt, NULL, NULL, NULL},
-	{"DisableDithering", "NO", NULL,
-	    &wPreferences.no_dithering, getBool, NULL, NULL, NULL},
-	{"IconSize", "64", NULL,
-	    &wPreferences.icon_size, getInt, NULL, NULL, NULL},
-	{"ModifierKey", "Mod1", NULL,
-	    &wPreferences.modifier_mask, getModMask, NULL, NULL, NULL},
-	{"FocusMode", "manual", seFocusModes,				/* have a problem when switching from */
-	    &wPreferences.focus_mode, getEnum, NULL, NULL, NULL},	/* manual to sloppy without restart */
-	{"NewStyle", "new", seTitlebarModes,
-	    &wPreferences.new_style, getEnum, NULL, NULL, NULL},
-	{"DisableDock", "NO", (void *)WM_DOCK,
-	    NULL, getBool, setIfDockPresent, NULL, NULL},
-	{"DisableClip", "NO", (void *)WM_CLIP,
-	    NULL, getBool, setIfDockPresent, NULL, NULL},
-	{"DisableDrawers", "NO", (void *)WM_DRAWER,
-	    NULL, getBool, setIfDockPresent, NULL, NULL},
-	{"ClipMergedInDock", "NO", NULL,
-	    NULL, getBool, setClipMergedInDock, NULL, NULL},
-	{"DisableMiniwindows", "NO", NULL,
-	    &wPreferences.disable_miniwindows, getBool, NULL, NULL, NULL},
-	{"EnableWorkspacePager", "NO", NULL,
-	    &wPreferences.enable_workspace_pager, getBool, NULL, NULL, NULL},
-	{"SwitchPanelIconSize", "64", NULL,
-	    &wPreferences.switch_panel_icon_size, getInt, NULL, NULL, NULL},
-};
-
-#define NUM2STRING_(x) #x
-#define NUM2STRING(x) NUM2STRING_(x)
-
-WDefaultEntry optionList[] = {
-
-	/* dynamic options */
-
-	{"IconPosition", "blh", seIconPositions,
-	    &wPreferences.icon_yard, getEnum, setIconPosition, NULL, NULL},
-	{"IconificationStyle", "Zoom", seIconificationStyles,
-	    &wPreferences.iconification_style, getEnum, NULL, NULL, NULL},
-	{"EnforceIconMargin", "NO", NULL,
-	    &wPreferences.enforce_icon_margin, getBool, NULL, NULL, NULL},
-	{"DisableWSMouseActions", "NO", NULL,
-	    &wPreferences.disable_root_mouse, getBool, NULL, NULL, NULL},
-	{"MouseLeftButtonAction", "SelectWindows", seMouseButtonActions,
-	    &wPreferences.mouse_button1, getEnum, NULL, NULL, NULL},
-	{"MouseMiddleButtonAction", "OpenWindowListMenu", seMouseButtonActions,
-	    &wPreferences.mouse_button2, getEnum, NULL, NULL, NULL},
-	{"MouseRightButtonAction", "OpenApplicationsMenu", seMouseButtonActions,
-	    &wPreferences.mouse_button3, getEnum, NULL, NULL, NULL},
-	{"MouseBackwardButtonAction", "None", seMouseButtonActions,
-	    &wPreferences.mouse_button8, getEnum, NULL, NULL, NULL},
-	{"MouseForwardButtonAction", "None", seMouseButtonActions,
-	    &wPreferences.mouse_button9, getEnum, NULL, NULL, NULL},
-	{"MouseWheelAction", "None", seMouseWheelActions,
-	    &wPreferences.mouse_wheel_scroll, getEnum, NULL, NULL, NULL},
-	{"MouseWheelTiltAction", "None", seMouseWheelActions,
-	    &wPreferences.mouse_wheel_tilt, getEnum, NULL, NULL, NULL},
-	{"PixmapPath", DEF_PIXMAP_PATHS, NULL,
-	    &wPreferences.pixmap_path, getPathList, NULL, NULL, NULL},
-	{"IconPath", DEF_ICON_PATHS, NULL,
-	    &wPreferences.icon_path, getPathList, NULL, NULL, NULL},
-	{"ColormapMode", "auto", seColormapModes,
-	    &wPreferences.colormap_mode, getEnum, NULL, NULL, NULL},
-	{"AutoFocus", "YES", NULL,
-	    &wPreferences.auto_focus, getBool, NULL, NULL, NULL},
-	{"AutoFocusAcrossHeads", "YES", NULL,
-	    &wPreferences.auto_focus_across_heads, getBool, NULL, NULL, NULL},
-	{"RaiseDelay", "0", NULL,
-	    &wPreferences.raise_delay, getInt, NULL, NULL, NULL},
-	{"CirculateRaise", "NO", NULL,
-	    &wPreferences.circ_raise, getBool, NULL, NULL, NULL},
-	{"Superfluous", "YES", NULL,
-	    &wPreferences.superfluous, getBool, NULL, NULL, NULL},
-	{"AdvanceToNewWorkspace", "NO", NULL,
-	    &wPreferences.ws_advance, getBool, NULL, NULL, NULL},
-	{"CycleWorkspaces", "NO", NULL,
-	    &wPreferences.ws_cycle, getBool, NULL, NULL, NULL},
-	{"WorkspaceNameDisplayPosition", "center", seDisplayPositions,
-	    &wPreferences.workspace_name_display_position, getEnum, NULL, NULL, NULL},
-	{"WorkspaceBorder", "None", seWorkspaceBorder,
-	    &wPreferences.workspace_border_position, getEnum, updateUsableArea, NULL, NULL},
-	{"WorkspaceBorderSize", "0", NULL,
-	    &wPreferences.workspace_border_size, getInt, updateUsableArea, NULL, NULL},
-	{"StickyIcons", "NO", NULL,
-	    &wPreferences.sticky_icons, getBool, setStickyIcons, NULL, NULL},
-	{"SaveSessionOnExit", "NO", NULL,
-	    &wPreferences.save_session_on_exit, getBool, NULL, NULL, NULL},
-	{"WrapMenus", "NO", NULL,
-	    &wPreferences.wrap_menus, getBool, NULL, NULL, NULL},
-	{"ScrollableMenus", "YES", NULL,
-	    &wPreferences.scrollable_menus, getBool, setRootMotionMask, NULL, NULL},
-	{"MenuScrollSpeed", "fast", seSpeeds,
-	    &wPreferences.menu_scroll_speed, getEnum, NULL, NULL, NULL},
-	{"IconSlideSpeed", "fast", seSpeeds,
-	    &wPreferences.icon_slide_speed, getEnum, NULL, NULL, NULL},
-	{"ShadeSpeed", "fast", seSpeeds,
-	    &wPreferences.shade_speed, getEnum, NULL, NULL, NULL},
-	{"BounceAppIconsWhenUrgent", "YES", NULL,
-	    &wPreferences.bounce_appicons_when_urgent, getBool, NULL, NULL, NULL},
-	{"RaiseAppIconsWhenBouncing", "NO", NULL,
-	    &wPreferences.raise_appicons_when_bouncing, getBool, NULL, NULL, NULL},
-	{"DoNotMakeAppIconsBounce", "NO", NULL,
-	    &wPreferences.do_not_make_appicons_bounce, getBool, NULL, NULL, NULL},
-	{"DoubleClickTime", "250", (void *)&wPreferences.dblclick_time,
-	    &wPreferences.dblclick_time, getInt, setDoubleClick, NULL, NULL},
-	{"ClipAutoraiseDelay", "600", NULL,
-	     &wPreferences.clip_auto_raise_delay, getInt, NULL, NULL, NULL},
-	{"ClipAutolowerDelay", "1000", NULL,
-	    &wPreferences.clip_auto_lower_delay, getInt, NULL, NULL, NULL},
-	{"ClipAutoexpandDelay", "600", NULL,
-	    &wPreferences.clip_auto_expand_delay, getInt, NULL, NULL, NULL},
-	{"ClipAutocollapseDelay", "1000", NULL,
-	    &wPreferences.clip_auto_collapse_delay, getInt, NULL, NULL, NULL},
-	{"WrapAppiconsInDock", "YES", NULL,
-	    NULL, getBool, setWrapAppiconsInDock, NULL, NULL},
-	{"AlignSubmenus", "NO", NULL,
-	    &wPreferences.align_menus, getBool, NULL, NULL, NULL},
-	{"ViKeyMenus", "NO", NULL,
-	    &wPreferences.vi_key_menus, getBool, NULL, NULL, NULL},
-	{"OpenTransientOnOwnerWorkspace", "NO", NULL,
-	    &wPreferences.open_transients_with_parent, getBool, NULL, NULL, NULL},
-	{"WindowPlacement", "auto", sePlacements,
-	    &wPreferences.window_placement, getEnum, NULL, NULL, NULL},
-	{"IgnoreFocusClick", "NO", NULL,
-	    &wPreferences.ignore_focus_click, getBool, NULL, NULL, NULL},
-	{"UseSaveUnders", "NO", NULL,
-	    &wPreferences.use_saveunders, getBool, NULL, NULL, NULL},
-	{"OpaqueMove", "YES", NULL,
-	    &wPreferences.opaque_move, getBool, NULL, NULL, NULL},
-	{"OpaqueResize", "NO", NULL,
-	    &wPreferences.opaque_resize, getBool, NULL, NULL, NULL},
-	{"OpaqueMoveResizeKeyboard", "NO", NULL,
-	    &wPreferences.opaque_move_resize_keyboard, getBool, NULL, NULL, NULL},
-	{"DisableAnimations", "NO", NULL,
-	    &wPreferences.no_animations, getBool, NULL, NULL, NULL},
-	{"DontLinkWorkspaces", "YES", NULL,
-	    &wPreferences.no_autowrap, getBool, NULL, NULL, NULL},
-	{"WindowSnapping", "NO", NULL,
-	    &wPreferences.window_snapping, getBool, NULL, NULL, NULL},
-	{"SnapEdgeDetect", "1", NULL,
-	    &wPreferences.snap_edge_detect, getInt, NULL, NULL, NULL},
-	{"SnapCornerDetect", "10", NULL,
-	    &wPreferences.snap_corner_detect, getInt, NULL, NULL, NULL},
-	{"SnapToTopMaximizesFullscreen", "NO", NULL,
-	    &wPreferences.snap_to_top_maximizes_fullscreen, getBool, NULL, NULL, NULL},
-	{"DragMaximizedWindow", "Move", seDragMaximizedWindow,
-	    &wPreferences.drag_maximized_window, getEnum, NULL, NULL, NULL},
-	{"MoveHalfMaximizedWindowsBetweenScreens", "NO", NULL,
-	    &wPreferences.move_half_max_between_heads, getBool, NULL, NULL, NULL},
-	{"AlternativeHalfMaximized", "NO", NULL,
-	    &wPreferences.alt_half_maximize, getBool, NULL, NULL, NULL},
-	{"PointerWithHalfMaxWindows", "NO", NULL,
-	    &wPreferences.pointer_with_half_max_windows, getBool, NULL, NULL, NULL},
-	{"HighlightActiveApp", "YES", NULL,
-	    &wPreferences.highlight_active_app, getBool, NULL, NULL, NULL},
-	{"AutoArrangeIcons", "NO", NULL,
-	    &wPreferences.auto_arrange_icons, getBool, NULL, NULL, NULL},
-	{"NoWindowOverDock", "NO", NULL,
-	    &wPreferences.no_window_over_dock, getBool, updateUsableArea, NULL, NULL},
-	{"NoWindowOverIcons", "NO", NULL,
-	    &wPreferences.no_window_over_icons, getBool, updateUsableArea, NULL, NULL},
-	{"WindowPlaceOrigin", "(64, 0)", NULL,
-	    &wPreferences.window_place_origin, getCoord, NULL, NULL, NULL},
-	{"ResizeDisplay", "center", seGeomDisplays,
-	    &wPreferences.size_display, getEnum, NULL, NULL, NULL},
-	{"MoveDisplay", "floating", seGeomDisplays,
-	    &wPreferences.move_display, getEnum, NULL, NULL, NULL},
-	{"DontConfirmKill", "NO", NULL,
-	    &wPreferences.dont_confirm_kill, getBool, NULL, NULL, NULL},
-	{"WindowTitleBalloons", "YES", NULL,
-	    &wPreferences.window_balloon, getBool, NULL, NULL, NULL},
-	{"MiniwindowTitleBalloons", "NO", NULL,
-	    &wPreferences.miniwin_title_balloon, getBool, NULL, NULL, NULL},
-	{"MiniwindowPreviewBalloons", "NO", NULL,
-	    &wPreferences.miniwin_preview_balloon, getBool, NULL, NULL, NULL},
-	{"AppIconBalloons", "NO", NULL,
-	    &wPreferences.appicon_balloon, getBool, NULL, NULL, NULL},
-	{"HelpBalloons", "NO", NULL,
-	    &wPreferences.help_balloon, getBool, NULL, NULL, NULL},
-	{"EdgeResistance", "30", NULL,
-	    &wPreferences.edge_resistance, getInt, NULL, NULL, NULL},
-	{"ResizeIncrement", "0", NULL,
-	    &wPreferences.resize_increment, getInt, NULL, NULL, NULL},
-	{"Attraction", "NO", NULL,
-	    &wPreferences.attract, getBool, NULL, NULL, NULL},
-	{"DisableBlinking", "NO", NULL,
-	    &wPreferences.dont_blink, getBool, NULL, NULL, NULL},
-	{"SingleClickLaunch",	"NO",	NULL,
-	    &wPreferences.single_click, getBool, NULL, NULL, NULL},
-	{"StrictWindozeCycle",	"YES",	NULL,
-	    &wPreferences.strict_windoze_cycle, getBool, NULL, NULL, NULL},
-	{"SwitchPanelOnlyOpen",	"NO",	NULL,
-	    &wPreferences.panel_only_open, getBool, NULL, NULL, NULL},
-	{"MiniPreviewSize", "128", NULL,
-	    &wPreferences.minipreview_size, getInt, NULL, NULL, NULL},
-	{"IgnoreGtkHints", "NO", NULL,
-	    &wPreferences.ignore_gtk_decoration_hints, getBool, NULL, NULL, NULL},
-	{"KeepDockOnPrimaryHead", "NO", NULL,
-	    &wPreferences.keep_dock_on_primary_head, getBool, updateDock,
-	    NULL, NULL},
-#ifdef USE_RANDR
-	{"HotplugMonitor", "NO", NULL,
-	    &wPreferences.hotplug_monitor, getBool, NULL, NULL, NULL},
-#endif
-	{"HotCorners", "NO", NULL,
-	    &wPreferences.hot_corners, getBool, setRootMotionMask, NULL, NULL},
-	{"HotCornerDelay", "250", (void *)&wPreferences.hot_corner_delay,
-	    &wPreferences.hot_corner_delay, getInt, NULL, NULL, NULL},
-	{"HotCornerEdge", "2", (void *)&wPreferences.hot_corner_edge,
-	    &wPreferences.hot_corner_edge, getInt, NULL, NULL, NULL},
-	{"HotCornerActions", "(\"None\", \"None\", \"None\", \"None\")", &wPreferences,
-	    NULL, getPropList, setHotCornerActions, NULL, NULL},
-	{"WindowListAppIcons", "NO", NULL,
-		&wPreferences.window_list_app_icons, getBool, NULL, NULL, NULL},
-	{"MouseWheelFocus", "NO", NULL,
-		&wPreferences.mouse_wheel_focus, getBool, NULL, NULL, NULL},
-	{"KeychainTimeoutDelay", "500", NULL,
-	    &wPreferences.keychain_timeout_delay, getInt, NULL, NULL, NULL},
-	{"ScreenshotFilenameTemplate", DEF_SCREENSHOT_FILENAME_TEMPLATE, NULL,
-	    &wPreferences.screenshot_filename_template, getString, NULL, NULL, NULL},
-
-	/* style options */
-
-	{"MenuStyle", "normal", seMenuStyles,
-	    &wPreferences.menu_style, getEnum, setMenuStyle, NULL, NULL},
-	{"WidgetColor", "(solid, gray)", NULL,
-	    NULL, getTexture, setWidgetColor, NULL, NULL},
-	{"WorkspaceSpecificBack", "()", NULL,
-	    NULL, getWSSpecificBackground, setWorkspaceSpecificBack, NULL, NULL},
-	/* WorkspaceBack must come after WorkspaceSpecificBack or
-	 * WorkspaceBack won't know WorkspaceSpecificBack was also
-	 * specified and 2 copies of wmsetbg will be launched */
-	{"WorkspaceBack", "(solid, \"rgb:50/50/75\")", NULL,
-	    NULL, getWSBackground, setWorkspaceBack, NULL, NULL},
-	{"SmoothWorkspaceBack", "NO", NULL,
-	    NULL, getBool, NULL, NULL, NULL},
-	{"IconBack", "(dgradient, \"rgb:a6/a6/b6\", \"rgb:51/55/61\")", NULL,
-	    NULL, getTexture, setIconTile, NULL, NULL},
-	{"TitleJustify", "center", seJustifications,
-	    &wPreferences.title_justification, getEnum, setJustify, NULL, NULL},
-	{"WindowTitleFont", DEF_TITLE_FONT, NULL,
-	    NULL, getFont, setWinTitleFont, NULL, NULL},
-	{"WindowTitleExtendSpace", DEF_WINDOW_TITLE_EXTEND_SPACE, NULL,
-	    &wPreferences.window_title_clearance, getInt, setClearance, NULL, NULL},
-	{"WindowTitleMinHeight", "0", NULL,
-	    &wPreferences.window_title_min_height, getInt, setClearance, NULL, NULL},
-	{"WindowTitleMaxHeight", NUM2STRING(INT_MAX), NULL,
-	    &wPreferences.window_title_max_height, getInt, setClearance, NULL, NULL},
-	{"MenuTitleExtendSpace", DEF_MENU_TITLE_EXTEND_SPACE, NULL,
-	    &wPreferences.menu_title_clearance, getInt, setClearance, NULL, NULL},
-	{"MenuTitleMinHeight", "0", NULL,
-	    &wPreferences.menu_title_min_height, getInt, setClearance, NULL, NULL},
-	{"MenuTitleMaxHeight", NUM2STRING(INT_MAX), NULL,
-	    &wPreferences.menu_title_max_height, getInt, setClearance, NULL, NULL},
-	{"MenuTextExtendSpace", DEF_MENU_TEXT_EXTEND_SPACE, NULL,
-	    &wPreferences.menu_text_clearance, getInt, setClearance, NULL, NULL},
-	{"MenuTitleFont", DEF_MENU_TITLE_FONT, NULL,
-	    NULL, getFont, setMenuTitleFont, NULL, NULL},
-	{"MenuTextFont", DEF_MENU_ENTRY_FONT, NULL,
-	    NULL, getFont, setMenuTextFont, NULL, NULL},
-	{"IconTitleFont", DEF_ICON_TITLE_FONT, NULL,
-	    NULL, getFont, setIconTitleFont, NULL, NULL},
-	{"ClipTitleFont", DEF_CLIP_TITLE_FONT, NULL,
-	    NULL, getFont, setClipTitleFont, NULL, NULL},
-	{"ShowClipTitle", "YES", NULL,
-		&wPreferences.show_clip_title, getBool, NULL, NULL, NULL},
-	{"LargeDisplayFont", DEF_WORKSPACE_NAME_FONT, NULL,
-	    NULL, getFont, setLargeDisplayFont, NULL, NULL},
-	{"HighlightColor", "white", NULL,
-	    NULL, getColor, setHightlight, NULL, NULL},
-	{"HighlightTextColor", "black", NULL,
-	    NULL, getColor, setHightlightText, NULL, NULL},
-	{"ClipTitleColor", "black", (void *)CLIP_NORMAL,
-	    NULL, getColor, setClipTitleColor, NULL, NULL},
-	{"CClipTitleColor", "\"rgb:61/61/61\"", (void *)CLIP_COLLAPSED,
-	    NULL, getColor, setClipTitleColor, NULL, NULL},
-	{"FTitleColor", "white", (void *)WS_FOCUSED,
-	    NULL, getColor, setWTitleColor, NULL, NULL},
-	{"PTitleColor", "white", (void *)WS_PFOCUSED,
-	    NULL, getColor, setWTitleColor, NULL, NULL},
-	{"UTitleColor", "black", (void *)WS_UNFOCUSED,
-	    NULL, getColor, setWTitleColor, NULL, NULL},
-	{"FTitleBack", "(solid, black)", NULL,
-	    NULL, getTexture, setFTitleBack, NULL, NULL},
-	{"PTitleBack", "(solid, gray40)", NULL,
-	    NULL, getTexture, setPTitleBack, NULL, NULL},
-	{"UTitleBack", "(solid, \"rgb:aa/aa/aa\")", NULL,
-	    NULL, getTexture, setUTitleBack, NULL, NULL},
-	{"ResizebarBack", "(solid, \"rgb:aa/aa/aa\")", NULL,
-	    NULL, getTexture, setResizebarBack, NULL, NULL},
-	{"MenuTitleColor", "white", NULL,
-	    NULL, getColor, setMenuTitleColor, NULL, NULL},
-	{"MenuTextColor", "black", NULL,
-	    NULL, getColor, setMenuTextColor, NULL, NULL},
-	{"MenuDisabledColor", "gray50", NULL,
-	    NULL, getColor, setMenuDisabledColor, NULL, NULL},
-	{"MenuTitleBack", "(solid, black)", NULL,
-	    NULL, getTexture, setMenuTitleBack, NULL, NULL},
-	{"MenuTextBack", "(solid, \"rgb:aa/aa/aa\")", NULL,
-	    NULL, getTexture, setMenuTextBack, NULL, NULL},
-	{"IconTitleColor", "white", NULL,
-	    NULL, getColor, setIconTitleColor, NULL, NULL},
-	{"IconTitleBack", "black", NULL,
-	    NULL, getColor, setIconTitleBack, NULL, NULL},
-	{"SwitchPanelImages", "(swtile.png, swback.png, 30, 40)", &wPreferences,
-	    NULL, getPropList, setSwPOptions, NULL, NULL},
-	{"ModifierKeyLabels", "(\"Shift+\", \"Control+\", \"Mod1+\", \"Mod2+\", \"Mod3+\", \"Mod4+\", \"Mod5+\")", &wPreferences,
-	    NULL, getPropList, setModifierKeyLabels, NULL, NULL},
-	{"ModifierKeyShortLabels", "(\"Sh+\", \"^\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\", \"M+\", \"A+\")", &wPreferences,
-	    NULL, getPropList, setModifierShortKeyLabels, NULL, NULL},
-	{"FrameBorderWidth", "1", NULL,
-	    NULL, getInt, setFrameBorderWidth, NULL, NULL},
-	{"FrameBorderColor", "black", NULL,
-	    NULL, getColor, setFrameBorderColor, NULL, NULL},
-	{"FrameFocusedBorderColor", "black", NULL,
-	    NULL, getColor, setFrameFocusedBorderColor, NULL, NULL},
-	{"FrameSelectedBorderColor", "white", NULL,
-	    NULL, getColor, setFrameSelectedBorderColor, NULL, NULL},
-	{"WorkspaceMapBack", "(solid, black)", NULL,
-	    NULL, getTexture, setWorkspaceMapBackground, NULL, NULL},
-
-	/* keybindings */
-
-	{"RootMenuKey", "F12", (void *)WKBD_ROOTMENU,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowListKey", "F11", (void *)WKBD_WINDOWLIST,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowMenuKey", "Control+Escape", (void *)WKBD_WINDOWMENU,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"KeychainCancelKey", "None", (void *)WKBD_KEYCHAIN_CANCEL,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"DockRaiseLowerKey", "None", (void*)WKBD_DOCKRAISELOWER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"ClipRaiseLowerKey", "None", (void *)WKBD_CLIPRAISELOWER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MiniaturizeKey", "Mod1+M", (void *)WKBD_MINIATURIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MinimizeAllKey", "None", (void *)WKBD_MINIMIZEALL,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL },
-	{"HideKey", "Mod1+H", (void *)WKBD_HIDE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"HideOthersKey", "None", (void *)WKBD_HIDE_OTHERS,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveResizeKey", "None", (void *)WKBD_MOVERESIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"CloseKey", "None", (void *)WKBD_CLOSE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MaximizeKey", "None", (void *)WKBD_MAXIMIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"VMaximizeKey", "None", (void *)WKBD_VMAXIMIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"HMaximizeKey", "None", (void *)WKBD_HMAXIMIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"LHMaximizeKey", "None", (void*)WKBD_LHMAXIMIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"RHMaximizeKey", "None", (void*)WKBD_RHMAXIMIZE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"THMaximizeKey", "None", (void*)WKBD_THMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"BHMaximizeKey", "None", (void*)WKBD_BHMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"TLCMaximizeKey", "None", (void*)WKBD_LTCMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"TRCMaximizeKey", "None", (void*)WKBD_RTCMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"BLCMaximizeKey", "None", (void*)WKBD_LBCMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"BRCMaximizeKey", "None", (void*)WKBD_RBCMAXIMIZE,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MaximusKey", "None", (void*)WKBD_MAXIMUS,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"CenterKey", "None", (void *)WKBD_CENTRAL,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"KeepOnTopKey", "None", (void *)WKBD_KEEP_ON_TOP,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"KeepAtBottomKey", "None", (void *)WKBD_KEEP_AT_BOTTOM,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"OmnipresentKey", "None", (void *)WKBD_OMNIPRESENT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"RaiseKey", "Mod1+Up", (void *)WKBD_RAISE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"LowerKey", "Mod1+Down", (void *)WKBD_LOWER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"RaiseLowerKey", "None", (void *)WKBD_RAISELOWER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"ShadeKey", "None", (void *)WKBD_SHADE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"SelectKey", "None", (void *)WKBD_SELECT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WorkspaceMapKey", "None", (void *)WKBD_WORKSPACEMAP,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"FocusNextKey", "Mod1+Tab", (void *)WKBD_FOCUSNEXT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"FocusPrevKey", "Mod1+Shift+Tab", (void *)WKBD_FOCUSPREV,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	/* Directional window focus */
-	{"FocusWindowLeftKey", "None", (void *)WKBD_FOCUSLEFT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"FocusWindowRightKey", "None", (void *)WKBD_FOCUSRIGHT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"FocusWindowUpKey", "None", (void *)WKBD_FOCUSUP,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"FocusWindowDownKey", "None", (void *)WKBD_FOCUSDOWN,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"GroupNextKey", "None", (void *)WKBD_GROUPNEXT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"GroupPrevKey", "None", (void *)WKBD_GROUPPREV,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"NextWorkspaceKey", "Mod1+Control+Right", (void *)WKBD_NEXTWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"PrevWorkspaceKey", "Mod1+Control+Left", (void *)WKBD_PREVWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"LastWorkspaceKey", "None", (void *)WKBD_LASTWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"NextWorkspaceLayerKey", "None", (void *)WKBD_NEXTWSLAYER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"PrevWorkspaceLayerKey", "None", (void *)WKBD_PREVWSLAYER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace1Key", "Mod1+1", (void *)WKBD_WORKSPACE1,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace2Key", "Mod1+2", (void *)WKBD_WORKSPACE2,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace3Key", "Mod1+3", (void *)WKBD_WORKSPACE3,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace4Key", "Mod1+4", (void *)WKBD_WORKSPACE4,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace5Key", "Mod1+5", (void *)WKBD_WORKSPACE5,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace6Key", "Mod1+6", (void *)WKBD_WORKSPACE6,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace7Key", "Mod1+7", (void *)WKBD_WORKSPACE7,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace8Key", "Mod1+8", (void *)WKBD_WORKSPACE8,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace9Key", "Mod1+9", (void *)WKBD_WORKSPACE9,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"Workspace10Key", "Mod1+0", (void *)WKBD_WORKSPACE10,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace1Key", "None", (void *)WKBD_MOVE_WORKSPACE1,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace2Key", "None", (void *)WKBD_MOVE_WORKSPACE2,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace3Key", "None", (void *)WKBD_MOVE_WORKSPACE3,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace4Key", "None", (void *)WKBD_MOVE_WORKSPACE4,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace5Key", "None", (void *)WKBD_MOVE_WORKSPACE5,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace6Key", "None", (void *)WKBD_MOVE_WORKSPACE6,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace7Key", "None", (void *)WKBD_MOVE_WORKSPACE7,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace8Key", "None", (void *)WKBD_MOVE_WORKSPACE8,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace9Key", "None", (void *)WKBD_MOVE_WORKSPACE9,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToWorkspace10Key", "None", (void *)WKBD_MOVE_WORKSPACE10,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToNextWorkspaceKey", "None", (void *)WKBD_MOVE_NEXTWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToPrevWorkspaceKey", "None", (void *)WKBD_MOVE_PREVWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToLastWorkspaceKey", "None", (void *)WKBD_MOVE_LASTWORKSPACE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToNextWorkspaceLayerKey", "None", (void *)WKBD_MOVE_NEXTWSLAYER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveToPrevWorkspaceLayerKey", "None", (void *)WKBD_MOVE_PREVWSLAYER,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut1Key", "None", (void *)WKBD_WINDOW1,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut2Key", "None", (void *)WKBD_WINDOW2,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut3Key", "None", (void *)WKBD_WINDOW3,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut4Key", "None", (void *)WKBD_WINDOW4,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut5Key", "None", (void *)WKBD_WINDOW5,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut6Key", "None", (void *)WKBD_WINDOW6,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut7Key", "None", (void *)WKBD_WINDOW7,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut8Key", "None", (void *)WKBD_WINDOW8,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut9Key", "None", (void *)WKBD_WINDOW9,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowShortcut10Key", "None", (void *)WKBD_WINDOW10,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveTo12to6Head", "None", (void *)WKBD_MOVE_12_TO_6_HEAD,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MoveTo6to12Head", "None", (void *)WKBD_MOVE_6_TO_12_HEAD,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowRelaunchKey", "None", (void *)WKBD_RELAUNCH,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"ScreenSwitchKey", "None", (void *)WKBD_SWITCH_SCREEN,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"RunKey", "None", (void *)WKBD_RUN,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"ExitKey", "None", (void *)WKBD_EXIT,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"ScreenCaptureKey", "None", (void *)WKBD_PRINTS,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"WindowCaptureKey", "None", (void *)WKBD_PRINTW,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"PartialCaptureKey", "None", (void *)WKBD_PRINTP,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	/* Vim-like Window Marking */
-	{"MarkSetKey", "None", (void *)WKBD_MARK_SET,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MarkUnsetKey", "None", (void *)WKBD_MARK_UNSET,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MarkBringKey", "None", (void *)WKBD_MARK_BRING,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MarkJumpKey", "None", (void *)WKBD_MARK_JUMP,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"MarkSwapKey", "None", (void *)WKBD_MARK_SWAP,
-		NULL, getKeybind, setKeyGrab, NULL, NULL},
-
-#ifdef KEEP_XKB_LOCK_STATUS
-	{"ToggleKbdModeKey", "None", (void *)WKBD_TOGGLE,
-	    NULL, getKeybind, setKeyGrab, NULL, NULL},
-	{"KbdModeLock", "NO", NULL,
-	    &wPreferences.modelock, getBool, NULL, NULL, NULL},
-#endif				/* KEEP_XKB_LOCK_STATUS */
-
-	{"NormalCursor", "(builtin, left_ptr)", (void *)WCUR_ROOT,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"ArrowCursor", "(builtin, top_left_arrow)", (void *)WCUR_ARROW,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"MoveCursor", "(builtin, fleur)", (void *)WCUR_MOVE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"ResizeCursor", "(builtin, sizing)", (void *)WCUR_RESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"TopLeftResizeCursor", "(builtin, top_left_corner)", (void *)WCUR_TOPLEFTRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"TopRightResizeCursor", "(builtin, top_right_corner)", (void *)WCUR_TOPRIGHTRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"BottomLeftResizeCursor", "(builtin, bottom_left_corner)", (void *)WCUR_BOTTOMLEFTRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"BottomRightResizeCursor", "(builtin, bottom_right_corner)", (void *)WCUR_BOTTOMRIGHTRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"VerticalResizeCursor", "(builtin, sb_v_double_arrow)", (void *)WCUR_VERTICALRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"HorizontalResizeCursor", "(builtin, sb_h_double_arrow)", (void *)WCUR_HORIZONRESIZE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"WaitCursor", "(builtin, watch)", (void *)WCUR_WAIT,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"QuestionCursor", "(builtin, question_arrow)", (void *)WCUR_QUESTION,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"TextCursor", "(builtin, xterm)", (void *)WCUR_TEXT,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"SelectCursor", "(builtin, cross)", (void *)WCUR_SELECT,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"CaptureCursor", "(builtin, crosshair)", (void *)WCUR_CAPTURE,
-	    NULL, getCursor, setCursor, NULL, NULL},
-	{"DialogHistoryLines", "500", NULL,
-	    &wPreferences.history_lines, getInt, NULL, NULL, NULL},
-	{"CycleActiveHeadOnly", "NO", NULL,
-	    &wPreferences.cycle_active_head_only, getBool, NULL, NULL, NULL},
-	{"CycleAllWorkspaces", "NO", NULL,
-	    &wPreferences.cycle_all_workspaces, getBool, NULL, NULL, NULL},
-	{"CycleIgnoreMinimized", "NO", NULL,
-	    &wPreferences.cycle_ignore_minimized, getBool, NULL, NULL, NULL},
-	{"DbClickFullScreen", "NO", NULL,
-	    &wPreferences.double_click_fullscreen, getBool, NULL, NULL, NULL},
-	{"CloseRootMenuByLeftOrRightMouseClick", "NO", NULL,
-	    &wPreferences.close_rootmenu_left_right_click, getBool, NULL, NULL, NULL}
-};
-
-static void initDefaults(void)
-{
-	unsigned int i;
-	WDefaultEntry *entry;
-
-	WMPLSetCaseSensitive(False);
-
-	for (i = 0; i < wlengthof(optionList); i++) {
-		entry = &optionList[i];
-
-		entry->plkey = WMCreatePLString(entry->key);
-		if (entry->default_value)
-			entry->plvalue = WMCreatePropListFromDescription(entry->default_value);
-		else
-			entry->plvalue = NULL;
-	}
-
-	for (i = 0; i < wlengthof(staticOptionList); i++) {
-		entry = &staticOptionList[i];
-
-		entry->plkey = WMCreatePLString(entry->key);
-		if (entry->default_value)
-			entry->plvalue = WMCreatePropListFromDescription(entry->default_value);
-		else
-			entry->plvalue = NULL;
-	}
-}
+#define REFRESH_WINDOW_TEXTURES WCFG_REFRESH_WINDOW_TEXTURES
+#define REFRESH_MENU_TEXTURE WCFG_REFRESH_MENU_TEXTURE
+#define REFRESH_MENU_FONT WCFG_REFRESH_MENU_FONT
+#define REFRESH_MENU_COLOR WCFG_REFRESH_MENU_COLOR
+#define REFRESH_MENU_TITLE_TEXTURE WCFG_REFRESH_MENU_TITLE_TEXTURE
+#define REFRESH_MENU_TITLE_FONT WCFG_REFRESH_MENU_TITLE_FONT
+#define REFRESH_MENU_TITLE_COLOR WCFG_REFRESH_MENU_TITLE_COLOR
+#define REFRESH_WINDOW_TITLE_COLOR WCFG_REFRESH_WINDOW_TITLE_COLOR
+#define REFRESH_WINDOW_FONT WCFG_REFRESH_WINDOW_FONT
+#define REFRESH_ICON_TILE WCFG_REFRESH_ICON_TILE
+#define REFRESH_ICON_FONT WCFG_REFRESH_ICON_FONT
+#define REFRESH_BUTTON_IMAGES WCFG_REFRESH_BUTTON_IMAGES
+#define REFRESH_ICON_TITLE_COLOR WCFG_REFRESH_ICON_TITLE_COLOR
+#define REFRESH_ICON_TITLE_BACK WCFG_REFRESH_ICON_TITLE_BACK
+#define REFRESH_WORKSPACE_MENU WCFG_REFRESH_WORKSPACE_MENU
+#define REFRESH_FRAME_BORDER WCFG_REFRESH_FRAME_BORDER
 
 static WMPropList *readGlobalDomain(const char *domainName, Bool requireDictionary)
 {
@@ -1021,7 +220,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 
 	if (!inited) {
 		inited = 1;
-		initDefaults();
+		WMPLSetCaseSensitive(False);
 	}
 
 	db = wmalloc(sizeof(WDDomain));
@@ -1067,30 +266,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 
 void wReadStaticDefaults(WMPropList * dict)
 {
-	WMPropList *plvalue;
-	WDefaultEntry *entry;
-	unsigned int i;
-	void *tdata;
-
-	for (i = 0; i < wlengthof(staticOptionList); i++) {
-		entry = &staticOptionList[i];
-
-		if (dict)
-			plvalue = WMGetFromPLDictionary(dict, entry->plkey);
-		else
-			plvalue = NULL;
-
-		/* no default in the DB. Use builtin default */
-		if (!plvalue)
-			plvalue = entry->plvalue;
-
-		if (plvalue) {
-			/* convert data */
-			(*entry->convert) (NULL, entry, plvalue, entry->addr, &tdata);
-			if (entry->update)
-				(*entry->update) (NULL, entry, tdata, entry->extra_data);
-		}
-	}
+	wConfigApplyStaticDefaults(dict);
 }
 
 void wDefaultsCheckDomains(void* arg)
@@ -1127,10 +303,18 @@ void wDefaultsCheckDomains(void* arg)
 					shared_dict = NULL;
 				}
 
-				for (i = 0; i < w_global.screen_count; i++) {
-					scr = wScreenWithNumber(i);
-					if (scr)
-						wReadDefaults(scr, dict);
+				{
+					const WConfig *old_config = w_global.config;
+					WConfig *new_config = wConfigReadWindowMaker(dict);
+					WConfigChanges changes;
+
+					wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
+					for (i = 0; i < w_global.screen_count; i++) {
+						scr = wScreenWithNumber(i);
+						if (scr)
+							wApplyDefaultsChanges(scr, old_config, new_config, &changes);
+					}
+					wConfigAdoptWindowMaker(new_config);
 				}
 
 				if (w_global.domain.wmaker->dictionary)
@@ -1224,71 +408,13 @@ void wDefaultsCheckDomains(void* arg)
 #endif
 }
 
-void wReadDefaults(WScreen * scr, WMPropList * new_dict)
+static void wApplyDefaultsChanges(WScreen *scr, const WConfig *old_config,
+				  const WConfig *new_config,
+				  const WConfigChanges *changes)
 {
-	WMPropList *plvalue, *old_value;
-	WDefaultEntry *entry;
-	unsigned int i;
-	int update_workspace_back = 0;	/* kluge :/ */
 	unsigned int needs_refresh;
-	void *tdata;
-	WMPropList *old_dict = (w_global.domain.wmaker->dictionary != new_dict ? w_global.domain.wmaker->dictionary : NULL);
 
-	needs_refresh = 0;
-
-	for (i = 0; i < wlengthof(optionList); i++) {
-		entry = &optionList[i];
-
-		if (new_dict)
-			plvalue = WMGetFromPLDictionary(new_dict, entry->plkey);
-		else
-			plvalue = NULL;
-
-		if (!old_dict)
-			old_value = NULL;
-		else
-			old_value = WMGetFromPLDictionary(old_dict, entry->plkey);
-
-		if (!plvalue && !old_value) {
-			/* no default in  the DB. Use builtin default */
-			plvalue = entry->plvalue;
-			if (plvalue && new_dict)
-				WMPutInPLDictionary(new_dict, entry->plkey, plvalue);
-
-		} else if (!plvalue) {
-			/* value was deleted from DB. Keep current value */
-			continue;
-		} else if (!old_value) {
-			/* set value for the 1st time */
-		} else if (!WMIsPropListEqualTo(plvalue, old_value)) {
-			/* value has changed */
-		} else {
-			if (strcmp(entry->key, "WorkspaceBack") == 0
-			    && update_workspace_back && scr->flags.backimage_helper_launched) {
-			} else {
-				/* value was not changed since last time */
-				continue;
-			}
-		}
-
-		if (plvalue) {
-			/* convert data */
-			if ((*entry->convert) (scr, entry, plvalue, entry->addr, &tdata)) {
-				/*
-				 * If the WorkspaceSpecificBack data has been changed
-				 * so that the helper will be launched now, we must be
-				 * sure to send the default background texture config
-				 * to the helper.
-				 */
-				if (strcmp(entry->key, "WorkspaceSpecificBack") == 0 &&
-				    !scr->flags.backimage_helper_launched)
-					update_workspace_back = 1;
-
-				if (entry->update)
-					needs_refresh |= (*entry->update) (scr, entry, tdata, entry->extra_data);
-			}
-		}
-	}
+	needs_refresh = wConfigApplyRuntime(scr, old_config, new_config, changes);
 
 	if (needs_refresh != 0 && !scr->flags.startup) {
 		int foo;
@@ -1352,54 +478,53 @@ void wReadDefaults(WScreen * scr, WMPropList * new_dict)
 	}
 }
 
+void wReadDefaults(WScreen *scr, WMPropList *new_dict)
+{
+	const WConfig *old_config = w_global.config;
+	WConfig *new_config;
+	WConfigChanges changes;
+
+	new_config = wConfigReadWindowMaker(new_dict);
+	wConfigPrepareRuntimeDefaults(new_dict, old_config, new_config, &changes);
+	wApplyDefaultsChanges(scr, old_config, new_config, &changes);
+	wConfigDestroy(new_config);
+}
+
 void wReadKeybindings(WScreen *scr, WMPropList *dict)
 {
-	WDefaultEntry *entry;
-	unsigned int i;
+	const WConfig *config;
+	WConfig *owned_config = NULL;
+	const WConfigEntry *schema;
+	size_t i, count;
 	Bool keybindings_changed = False;
-	void *tdata;
 
-	for (i = 0; i < wlengthof(optionList); i++) {
-		entry = &optionList[i];
-		if (entry->convert == getKeybind) {
-			WMPropList *plvalue = NULL;
-			if (dict)
-				plvalue = WMGetFromPLDictionary(dict, entry->plkey);
-			if (!plvalue)
-				plvalue = entry->plvalue;
-			if (plvalue) {
-				int ok = (*entry->convert)(scr, entry, plvalue, entry->addr, &tdata);
-				if (ok && entry->update) {
-					/* Check whether the (re-)computed binding differs from
-					 * the one already in wKeyBindings[] */
-					long widx = (long)entry->extra_data;
-					WShortKey *nw  = (WShortKey *)tdata;
-					WShortKey *cur = &wKeyBindings[widx];
-					Bool binding_changed =
-					    (cur->modifier    != nw->modifier    ||
-					     cur->keycode     != nw->keycode     ||
-					     cur->chain_length != nw->chain_length);
+	config = w_global.config;
+	if (!config) {
+		owned_config = wConfigReadWindowMaker(dict);
+		config = owned_config;
+	}
 
-					if (!binding_changed && nw->chain_length > 1 &&
-						cur->chain_modifiers && cur->chain_keycodes) {
-						int n = nw->chain_length - 1;
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (i = 0; i < count; i++) {
+		const WConfigKeyBinding *binding;
+		Bool binding_changed = False;
 
-						binding_changed =
-						    (memcmp(cur->chain_modifiers, nw->chain_modifiers,
-						            n * sizeof(unsigned int)) != 0 ||
-						     memcmp(cur->chain_keycodes,  nw->chain_keycodes,
-						            n * sizeof(KeyCode)) != 0);
-					}
-					(*entry->update)(scr, entry, tdata, entry->extra_data);
-					if (binding_changed)
-						keybindings_changed = True;
-				}
-			}
-		}
+		if (schema[i].type != WCFG_KEY_BINDING)
+			continue;
+
+		binding = (const WConfigKeyBinding *)
+		    ((const char *)config + schema[i].offset);
+		(void)wConfigApplyKeyBinding(scr, schema[i].key, schema[i].min_value,
+					     binding->spec, schema[i].default_value,
+					     &binding_changed);
+		keybindings_changed = keybindings_changed || binding_changed;
 	}
 
 	if (keybindings_changed)
 		wKeyTreeRebuild(scr);
+
+	wConfigDestroy(owned_config);
 }
 
 void wDefaultUpdateIcons(WScreen *scr)
@@ -1481,328 +606,6 @@ void wKeyTreeRebuild(WScreen *scr)
 
 /* --------------------------- Local ----------------------- */
 
-#define GET_STRING_OR_DEFAULT(x, var) if (!WMIsPLString(value)) { \
-    wwarning(_("Wrong option format for key \"%s\". Should be %s."), \
-    entry->key, x); \
-    wwarning(_("using default \"%s\" instead"), entry->default_value); \
-    var = entry->default_value;\
-    } else var = WMGetFromPLString(value)\
-
-
-static int string2index(WMPropList *key, WMPropList *val, const char *def, WOptionEnumeration * values)
-{
-	char *str;
-	WOptionEnumeration *v;
-	char buffer[TOTAL_VALUES_LENGTH];
-
-	if (WMIsPLString(val) && (str = WMGetFromPLString(val))) {
-		for (v = values; v->string != NULL; v++) {
-			if (strcasecmp(v->string, str) == 0)
-				return v->value;
-		}
-	}
-
-	buffer[0] = 0;
-	for (v = values; v->string != NULL; v++) {
-		if (!v->is_alias) {
-			if (buffer[0] != 0)
-				strcat(buffer, ", ");
-			snprintf(buffer+strlen(buffer),
-				sizeof(buffer)-strlen(buffer)-1, "\"%s\"", v->string);
-		}
-	}
-	wwarning(_("wrong option value for key \"%s\"; got \"%s\", should be one of %s."),
-		WMGetFromPLString(key),
-		WMIsPLString(val) ? WMGetFromPLString(val) : "(unknown)",
-		buffer);
-
-	if (def) {
-		return string2index(key, val, NULL, values);
-	}
-
-	return -1;
-}
-
-/*
- * value - is the value in the defaults DB
- * addr - is the address to store the data
- * ret - is the address to store a pointer to a temporary buffer. ret
- * 	must not be freed and is used by the set functions
- */
-static int getString(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	const char *val;
-	char **sptr;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-
-	GET_STRING_OR_DEFAULT("String", val);
-
-	if (ret)
-		*ret = (void *)val;
-
-	if (addr) {
-		sptr = (char **)addr;
-		if (*sptr)
-			wfree(*sptr);
-		*sptr = wstrdup(val);
-	}
-
-	return True;
-}
-
-static int getBool(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static char data;
-	const char *val;
-	int second_pass = 0;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-
-	GET_STRING_OR_DEFAULT("Boolean", val);
-
- again:
-	if ((val[1] == '\0' && (val[0] == 'y' || val[0] == 'Y'))
-	    || strcasecmp(val, "YES") == 0) {
-
-		data = 1;
-	} else if ((val[1] == '\0' && (val[0] == 'n' || val[0] == 'N'))
-		   || strcasecmp(val, "NO") == 0) {
-		data = 0;
-	} else {
-		int i;
-		if (sscanf(val, "%i", &i) == 1) {
-			if (i != 0)
-				data = 1;
-			else
-				data = 0;
-		} else {
-			wwarning(_("can't convert \"%s\" to boolean for key \"%s\""), val, entry->key);
-			if (second_pass == 0) {
-				val = WMGetFromPLString(entry->plvalue);
-				second_pass = 1;
-				wwarning(_("using default \"%s\" instead"), val);
-				goto again;
-			}
-			return False;
-		}
-	}
-
-	if (ret)
-		*ret = &data;
-	if (addr)
-		*(char *)addr = data;
-
-	return True;
-}
-
-static int getInt(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static int data;
-	const char *val;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-
-	GET_STRING_OR_DEFAULT("Integer", val);
-
-	if (sscanf(val, "%i", &data) != 1) {
-		wwarning(_("can't convert \"%s\" to integer for key \"%s\""), val, entry->key);
-		val = WMGetFromPLString(entry->plvalue);
-		wwarning(_("using default \"%s\" instead"), val);
-		if (sscanf(val, "%i", &data) != 1) {
-			return False;
-		}
-	}
-
-	if (ret)
-		*ret = &data;
-	if (addr)
-		*(int *)addr = data;
-
-	return True;
-}
-
-static int getCoord(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static WCoord data;
-	char *val_x, *val_y;
-	int nelem, changed = 0;
-	WMPropList *elem_x, *elem_y;
-
- again:
-	if (!WMIsPLArray(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."), entry->key, "Coordinate");
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	nelem = WMGetPropListItemCount(value);
-	if (nelem != 2) {
-		wwarning(_("Incorrect number of elements in array for key \"%s\"."), entry->key);
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	elem_x = WMGetFromPLArray(value, 0);
-	elem_y = WMGetFromPLArray(value, 1);
-
-	if (!elem_x || !elem_y || !WMIsPLString(elem_x) || !WMIsPLString(elem_y)) {
-		wwarning(_("Wrong value for key \"%s\". Should be Coordinate."), entry->key);
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	val_x = WMGetFromPLString(elem_x);
-	val_y = WMGetFromPLString(elem_y);
-
-	if (sscanf(val_x, "%i", &data.x) != 1 || sscanf(val_y, "%i", &data.y) != 1) {
-		wwarning(_("can't convert array to integers for \"%s\"."), entry->key);
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	if (data.x < 0)
-		data.x = 0;
-	else if (data.x > scr->scr_width / 3)
-		data.x = scr->scr_width / 3;
-	if (data.y < 0)
-		data.y = 0;
-	else if (data.y > scr->scr_height / 3)
-		data.y = scr->scr_height / 3;
-
-	if (ret)
-		*ret = &data;
-	if (addr)
-		*(WCoord *) addr = data;
-
-	return True;
-}
-
-static int getPropList(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) addr;
-
-	WMRetainPropList(value);
-
-	*ret = value;
-
-	return True;
-}
-
-static int getPathList(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static char *data;
-	int i, count, len;
-	char *ptr;
-	WMPropList *d;
-	int changed = 0;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) ret;
-
- again:
-	if (!WMIsPLArray(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."), entry->key, "an array of paths");
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	i = 0;
-	count = WMGetPropListItemCount(value);
-	if (count < 1) {
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	len = 0;
-	for (i = 0; i < count; i++) {
-		d = WMGetFromPLArray(value, i);
-		if (!d || !WMIsPLString(d)) {
-			count = i;
-			break;
-		}
-		len += strlen(WMGetFromPLString(d)) + 1;
-	}
-
-	ptr = data = wmalloc(len + 1);
-
-	for (i = 0; i < count; i++) {
-		d = WMGetFromPLArray(value, i);
-		if (!d || !WMIsPLString(d)) {
-			break;
-		}
-		strcpy(ptr, WMGetFromPLString(d));
-		ptr += strlen(WMGetFromPLString(d));
-		*ptr = ':';
-		ptr++;
-	}
-	ptr--;
-	*(ptr--) = 0;
-
-	if (*(char **)addr != NULL) {
-		wfree(*(char **)addr);
-	}
-	*(char **)addr = data;
-
-	return True;
-}
-
-static int getEnum(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static signed char data;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-
-	data = string2index(entry->plkey, value, entry->default_value, (WOptionEnumeration *) entry->extra_data);
-	if (data < 0)
-		return False;
-
-	if (ret)
-		*ret = &data;
-	if (addr)
-		*(signed char *)addr = data;
-
-	return True;
-}
-
 /*
  * (solid <color>)
  * (hgradient <color> <color>)
@@ -1821,7 +624,7 @@ static int getEnum(WScreen * scr, WDefaultEntry * entry, WMPropList * value, voi
  * (function <lib> <function> ...)
  */
 
-static WTexture *parse_texture(WScreen * scr, WMPropList * pl)
+static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 {
 	WMPropList *elem;
 	char *val;
@@ -2130,231 +933,8 @@ static WTexture *parse_texture(WScreen * scr, WMPropList * pl)
 	return texture;
 }
 
-static int getTexture(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static WTexture *texture;
-	int changed = 0;
-
- again:
-	if (!WMIsPLArray(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."), entry->key, "Texture");
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	if (strcmp(entry->key, "WidgetColor") == 0 && !changed) {
-		WMPropList *pl;
-
-		pl = WMGetFromPLArray(value, 0);
-		if (!pl || !WMIsPLString(pl) || !WMGetFromPLString(pl)
-		    || strcasecmp(WMGetFromPLString(pl), "solid") != 0) {
-			wwarning(_("Wrong option format for key \"%s\". Should be %s."),
-				 entry->key, "Solid Texture");
-
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-	}
-
-	texture = parse_texture(scr, value);
-
-	if (!texture) {
-		wwarning(_("Error in texture specification for key \"%s\""), entry->key);
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	if (ret)
-		*ret = &texture;
-
-	if (addr)
-		*(WTexture **) addr = texture;
-
-	return True;
-}
-
-static int getWSBackground(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	WMPropList *elem;
-	int changed = 0;
-	char *val;
-	int nelem;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) addr;
-
- again:
-	if (!WMIsPLArray(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."),
-			 "WorkspaceBack", "Texture or None");
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	/* only do basic error checking and verify for None texture */
-
-	nelem = WMGetPropListItemCount(value);
-	if (nelem > 0) {
-		elem = WMGetFromPLArray(value, 0);
-		if (!elem || !WMIsPLString(elem)) {
-			wwarning(_("Wrong type for workspace background. Should be a texture type."));
-			if (changed == 0) {
-				value = entry->plvalue;
-				changed = 1;
-				wwarning(_("using default \"%s\" instead"), entry->default_value);
-				goto again;
-			}
-			return False;
-		}
-		val = WMGetFromPLString(elem);
-
-		if (strcasecmp(val, "None") == 0)
-			return True;
-	}
-	*ret = WMRetainPropList(value);
-
-	return True;
-}
-
-static int
-getWSSpecificBackground(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	WMPropList *elem;
-	int nelem;
-	int changed = 0;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) addr;
-
- again:
-	if (!WMIsPLArray(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."),
-			 "WorkspaceSpecificBack", "an array of textures");
-		if (changed == 0) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
-			goto again;
-		}
-		return False;
-	}
-
-	/* only do basic error checking and verify for None texture */
-
-	nelem = WMGetPropListItemCount(value);
-	if (nelem > 0) {
-		while (nelem--) {
-			elem = WMGetFromPLArray(value, nelem);
-			if (!elem || !WMIsPLArray(elem)) {
-				wwarning(_("Wrong type for background of workspace %i. Should be a texture."),
-					 nelem);
-			}
-		}
-	}
-
-	*ret = WMRetainPropList(value);
-
-#ifdef notworking
-	/*
-	 * Kluge to force wmsetbg helper to set the default background.
-	 * If the WorkspaceSpecificBack is changed once wmaker has started,
-	 * the WorkspaceBack won't be sent to the helper, unless the user
-	 * changes its value too. So, we must force this by removing the
-	 * value from the defaults DB.
-	 */
-	if (!scr->flags.backimage_helper_launched && !scr->flags.startup) {
-		WMPropList *key = WMCreatePLString("WorkspaceBack");
-
-		WMRemoveFromPLDictionary(w_global.domain.wmaker->dictionary, key);
-
-		WMReleasePropList(key);
-	}
-#endif
-	return True;
-}
-
-static int getFont(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static WMFont *font;
-	const char *val;
-
-	(void) addr;
-
-	GET_STRING_OR_DEFAULT("Font", val);
-
-	font = WMCreateFont(scr->wmscreen, val);
-	if (!font)
-		font = WMCreateFont(scr->wmscreen, "fixed");
-
-	if (!font) {
-		wfatal(_("could not load any usable font!!!"));
-		exit(1);
-	}
-
-	if (ret)
-		*ret = font;
-
-	/* can't assign font value outside update function */
-	wassertrv(addr == NULL, True);
-
-	return True;
-}
-
-static int getColor(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static XColor color;
-	const char *val;
-	int second_pass = 0;
-
-	(void) addr;
-
-	GET_STRING_OR_DEFAULT("Color", val);
-
- again:
-	if (!wGetColor(scr, val, &color)) {
-		wwarning(_("could not get color for key \"%s\""), entry->key);
-		if (second_pass == 0) {
-			val = WMGetFromPLString(entry->plvalue);
-			second_pass = 1;
-			wwarning(_("using default \"%s\" instead"), val);
-			goto again;
-		}
-		return False;
-	}
-
-	if (ret)
-		*ret = &color;
-
-	assert(addr == NULL);
-	/*
-	   if (addr)
-	   *(unsigned long*)addr = pixel;
-	 */
-
-	return True;
-}
-
-static Bool parseOneKey(WDefaultEntry *entry, const char *token,
-                        unsigned int *out_mod, KeyCode *out_code)
+static Bool parseOneKey(const char *key, const char *token,
+			unsigned int *out_mod, KeyCode *out_code)
 {
 	char tmp[MAX_SHORTCUT_LENGTH];
 	char *b, *k;
@@ -2369,7 +949,7 @@ static Bool parseOneKey(WDefaultEntry *entry, const char *token,
 		*k = 0;
 		mod = wXModifierFromKey(b);
 		if (mod < 0) {
-			wwarning(_("%s: invalid key modifier \"%s\""), entry->key, b);
+			wwarning(_("%s: invalid key modifier \"%s\""), key, b);
 			return False;
 		}
 		*out_mod |= mod;
@@ -2378,108 +958,65 @@ static Bool parseOneKey(WDefaultEntry *entry, const char *token,
 
 	ksym = XStringToKeysym(b);
 	if (ksym == NoSymbol) {
-		wwarning(_("%s: invalid kbd shortcut specification \"%s\""), entry->key, token);
+		wwarning(_("%s: invalid kbd shortcut specification \"%s\""), key, token);
 		return False;
 	}
 
 	*out_code = XKeysymToKeycode(dpy, ksym);
 	if (*out_code == 0) {
-		wwarning(_("%s: invalid key in shortcut \"%s\""), entry->key, token);
+		wwarning(_("%s: invalid key in shortcut \"%s\""), key, token);
 		return False;
 	}
 
 	return True;
 }
 
-static int getKeybind(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
+static Bool parse_shortcut_spec(const char *key, const char *spec,
+				WShortKey *shortcut)
 {
-	static WShortKey shortcut;
-	const char *val;
 	char buf[MAX_SHORTCUT_LENGTH];
 	char *token, *saveptr;
 	int step;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) addr;
-
-	GET_STRING_OR_DEFAULT("Key spec", val);
-
-	/* Free old chain arrays before overwriting */
-	wShortKeyFree(&shortcut);
-
-	if (!val || strcasecmp(val, "NONE") == 0) {
-		shortcut.chain_length = 1;
-		if (ret)
-			*ret = &shortcut;
+	memset(shortcut, 0, sizeof(*shortcut));
+	if (!spec || strcasecmp(spec, "NONE") == 0) {
+		shortcut->chain_length = 1;
 		return True;
 	}
 
-	wstrlcpy(buf, val, MAX_SHORTCUT_LENGTH);
+	if (strlen(spec) >= sizeof(buf)) {
+		wwarning(_("%s: kbd shortcut specification is too long"), key);
+		return False;
+	}
+	wstrlcpy(buf, spec, sizeof(buf));
 
-	/*
-	 * Support both the traditional single-key syntax and the
-	 * key-chain syntax where space-separated tokens represent
-	 * keys that must be pressed in sequence
-	 */
 	step = 0;
 	token = strtok_r(buf, " ", &saveptr);
 	while (token != NULL) {
 		unsigned int mod;
 		KeyCode kcode;
 
-		if (!parseOneKey(entry, token, &mod, &kcode))
+		if (!parseOneKey(key, token, &mod, &kcode)) {
+			wShortKeyFree(shortcut);
 			return False;
+		}
 
 		if (step == 0) {
-			shortcut.modifier = mod;
-			shortcut.keycode  = kcode;
+			shortcut->modifier = mod;
+			shortcut->keycode = kcode;
 		} else {
-			shortcut.chain_modifiers = wrealloc(shortcut.chain_modifiers,
-			                                    step * sizeof(unsigned int));
-			shortcut.chain_keycodes  = wrealloc(shortcut.chain_keycodes,
-			                                    step * sizeof(KeyCode));
-			shortcut.chain_modifiers[step - 1] = mod;
-			shortcut.chain_keycodes[step - 1]  = kcode;
+			shortcut->chain_modifiers = wrealloc(shortcut->chain_modifiers,
+							    step * sizeof(unsigned int));
+			shortcut->chain_keycodes = wrealloc(shortcut->chain_keycodes,
+							  step * sizeof(KeyCode));
+			shortcut->chain_modifiers[step - 1] = mod;
+			shortcut->chain_keycodes[step - 1] = kcode;
 		}
 		step++;
 		token = strtok_r(NULL, " ", &saveptr);
 	}
 
-	shortcut.chain_length = (step > 1) ? step : 1;
-
-	if (ret)
-		*ret = &shortcut;
-
-	return True;
-}
-
-static int getModMask(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
-{
-	static int mask;
-	const char *str;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-
-	GET_STRING_OR_DEFAULT("Modifier Key", str);
-
-	if (!str)
-		return False;
-
-	mask = wXModifierFromKey(str);
-	if (mask < 0) {
-		wwarning(_("%s: modifier key %s is not valid"), entry->key, str);
-		mask = 0;
-		return False;
-	}
-
-	if (addr)
-		*(int *)addr = mask;
-
-	if (ret)
-		*ret = &mask;
-
+	shortcut->chain_length = (step > 1) ? step : 1;
 	return True;
 }
 
@@ -2595,7 +1132,7 @@ static void check_bitmap_status(int status, const char *filename, Pixmap bitmap)
  * (builtin, <cursor_name>)
  * (bitmap, <cursor_bitmap>, <cursor_mask>)
  */
-static int parse_cursor(WScreen * scr, WMPropList * pl, Cursor * cursor)
+static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 {
 	WMPropList *elem;
 	char *val;
@@ -2696,138 +1233,454 @@ static int parse_cursor(WScreen * scr, WMPropList * pl, Cursor * cursor)
 	return (status);
 }
 
-static int getCursor(WScreen * scr, WDefaultEntry * entry, WMPropList * value, void *addr, void **ret)
+static Bool resource_retry_default(WScreen *scr, int used_default,
+				   const char *default_spec)
 {
-	static Cursor cursor;
-	int status;
-	int changed = 0;
+	return scr && scr->flags.startup && !used_default && default_spec;
+}
 
- again:
-	if (!WMIsPLArray(value)) {
+static Bool resource_array_first_is(WMPropList *pl, const char *expected)
+{
+	WMPropList *item;
+
+	item = WMGetFromPLArray(pl, 0);
+	return item && WMIsPLString(item) && WMGetFromPLString(item) &&
+	    strcasecmp(WMGetFromPLString(item), expected) == 0;
+}
+
+static WMPropList *resource_spec_array(const char *key, const char *description,
+				       const char *kind)
+{
+	WMPropList *pl;
+
+	pl = WMCreatePropListFromDescription(description);
+	if (!pl || !WMIsPLArray(pl)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be %s."),
-			 entry->key, "cursor specification");
-		if (!changed) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
+			 key, kind);
+		if (pl)
+			WMReleasePropList(pl);
+		return NULL;
+	}
+
+	return pl;
+}
+
+static WConfigUpdateCallback *texture_update_for_target(int target)
+{
+	switch (target) {
+	case WCFG_TEXTURE_WIDGET_COLOR:
+		return setWidgetColor;
+	case WCFG_TEXTURE_ICON_BACK:
+		return setIconTile;
+	case WCFG_TEXTURE_F_TITLE_BACK:
+		return setFTitleBack;
+	case WCFG_TEXTURE_P_TITLE_BACK:
+		return setPTitleBack;
+	case WCFG_TEXTURE_U_TITLE_BACK:
+		return setUTitleBack;
+	case WCFG_TEXTURE_RESIZEBAR_BACK:
+		return setResizebarBack;
+	case WCFG_TEXTURE_MENU_TITLE_BACK:
+		return setMenuTitleBack;
+	case WCFG_TEXTURE_MENU_TEXT_BACK:
+		return setMenuTextBack;
+	case WCFG_TEXTURE_WORKSPACE_MAP_BACK:
+		return setWorkspaceMapBackground;
+	}
+
+	return NULL;
+}
+
+unsigned int wConfigApplyTextureSpec(WScreen *scr, const char *key,
+				     int target,
+				     const WConfigResourceSpec *spec,
+				     const char *default_spec)
+{
+	WConfigUpdateCallback *update;
+	const char *candidate;
+	WTexture *texture = NULL;
+	int used_default;
+
+	if (!scr)
+		return 0;
+
+	candidate = spec && spec->spec ? spec->spec : default_spec;
+	used_default = !(spec && spec->spec);
+
+again:
+	if (!candidate)
+		return 0;
+
+	{
+		WMPropList *pl;
+
+		pl = resource_spec_array(key, candidate, "Texture");
+		if (pl) {
+			if (target == WCFG_TEXTURE_WIDGET_COLOR &&
+			    !resource_array_first_is(pl, "solid")) {
+				wwarning(_("Wrong option format for key \"%s\". Should be %s."),
+					 key, "Solid Texture");
+			} else {
+				texture = parse_texture(scr, pl);
+			}
+			WMReleasePropList(pl);
+		}
+	}
+
+	if (!texture) {
+		wwarning(_("Error in texture specification for key \"%s\""), key);
+		if (resource_retry_default(scr, used_default, default_spec)) {
+			candidate = default_spec;
+			used_default = 1;
+			wwarning(_("using default \"%s\" instead"), default_spec);
 			goto again;
 		}
-		return (False);
+		return 0;
 	}
-	status = parse_cursor(scr, value, &cursor);
+
+	update = texture_update_for_target(target);
+	if (!update) {
+		wTextureDestroy(scr, texture);
+		return 0;
+	}
+
+	return update(scr, &texture, NULL);
+}
+
+static WConfigUpdateCallback *font_update_for_target(int target)
+{
+	switch (target) {
+	case WCFG_FONT_WINDOW_TITLE:
+		return setWinTitleFont;
+	case WCFG_FONT_MENU_TITLE:
+		return setMenuTitleFont;
+	case WCFG_FONT_MENU_TEXT:
+		return setMenuTextFont;
+	case WCFG_FONT_ICON_TITLE:
+		return setIconTitleFont;
+	case WCFG_FONT_CLIP_TITLE:
+		return setClipTitleFont;
+	case WCFG_FONT_LARGE_DISPLAY:
+		return setLargeDisplayFont;
+	}
+
+	return NULL;
+}
+
+unsigned int wConfigApplyFontSpec(WScreen *scr, const char *key,
+				  int target,
+				  const WConfigResourceSpec *spec,
+				  const char *default_spec)
+{
+	WConfigUpdateCallback *update;
+	const char *candidate;
+	WMFont *font;
+	int used_default;
+
+	if (!scr)
+		return 0;
+
+	candidate = spec && spec->spec ? spec->spec : default_spec;
+	used_default = !(spec && spec->spec);
+
+again:
+	if (!candidate)
+		return 0;
+
+	font = WMCreateFont(scr->wmscreen, candidate);
+	if (!font && resource_retry_default(scr, used_default, default_spec)) {
+		candidate = default_spec;
+		used_default = 1;
+		wwarning(_("using default \"%s\" instead"), default_spec);
+		goto again;
+	}
+	if (!font && scr->flags.startup)
+		font = WMCreateFont(scr->wmscreen, "fixed");
+	if (!font) {
+		if (scr->flags.startup) {
+			wfatal(_("could not load any usable font!!!"));
+			exit(1);
+		}
+		wwarning(_("could not load font for key \"%s\""), key);
+		return 0;
+	}
+
+	update = font_update_for_target(target);
+	if (!update) {
+		WMReleaseFont(font);
+		return 0;
+	}
+
+	return update(scr, font, NULL);
+}
+
+static WConfigUpdateCallback *color_update_for_target(int target, void **extra_data)
+{
+	*extra_data = NULL;
+	switch (target) {
+	case WCFG_COLOR_HIGHLIGHT:
+		return setHightlight;
+	case WCFG_COLOR_HIGHLIGHT_TEXT:
+		return setHightlightText;
+	case WCFG_COLOR_CLIP_TITLE:
+		*extra_data = (void *)CLIP_NORMAL;
+		return setClipTitleColor;
+	case WCFG_COLOR_C_CLIP_TITLE:
+		*extra_data = (void *)CLIP_COLLAPSED;
+		return setClipTitleColor;
+	case WCFG_COLOR_F_TITLE:
+		*extra_data = (void *)WS_FOCUSED;
+		return setWTitleColor;
+	case WCFG_COLOR_P_TITLE:
+		*extra_data = (void *)WS_PFOCUSED;
+		return setWTitleColor;
+	case WCFG_COLOR_U_TITLE:
+		*extra_data = (void *)WS_UNFOCUSED;
+		return setWTitleColor;
+	case WCFG_COLOR_MENU_TITLE:
+		return setMenuTitleColor;
+	case WCFG_COLOR_MENU_TEXT:
+		return setMenuTextColor;
+	case WCFG_COLOR_MENU_DISABLED:
+		return setMenuDisabledColor;
+	case WCFG_COLOR_ICON_TITLE:
+		return setIconTitleColor;
+	case WCFG_COLOR_ICON_TITLE_BACK:
+		return setIconTitleBack;
+	case WCFG_COLOR_FRAME_BORDER:
+		return setFrameBorderColor;
+	case WCFG_COLOR_FRAME_FOCUSED_BORDER:
+		return setFrameFocusedBorderColor;
+	case WCFG_COLOR_FRAME_SELECTED_BORDER:
+		return setFrameSelectedBorderColor;
+	}
+
+	return NULL;
+}
+
+unsigned int wConfigApplyColorSpec(WScreen *scr, const char *key,
+				   int target,
+				   const WConfigResourceSpec *spec,
+				   const char *default_spec)
+{
+	WConfigUpdateCallback *update;
+	const char *candidate;
+	void *extra_data;
+	XColor color;
+	int used_default;
+
+	if (!scr)
+		return 0;
+
+	candidate = spec && spec->spec ? spec->spec : default_spec;
+	used_default = !(spec && spec->spec);
+
+again:
+	if (!candidate)
+		return 0;
+
+	if (!wGetColor(scr, candidate, &color)) {
+		wwarning(_("could not get color for key \"%s\""), key);
+		if (resource_retry_default(scr, used_default, default_spec)) {
+			candidate = default_spec;
+			used_default = 1;
+			wwarning(_("using default \"%s\" instead"), default_spec);
+			goto again;
+		}
+		return 0;
+	}
+
+	update = color_update_for_target(target, &extra_data);
+	if (!update) {
+		wFreeColor(scr, color.pixel);
+		return 0;
+	}
+
+	return update(scr, &color, extra_data);
+}
+
+static int cursor_index_for_target(int target)
+{
+	switch (target) {
+	case WCFG_CURSOR_NORMAL:
+		return WCUR_ROOT;
+	case WCFG_CURSOR_ARROW:
+		return WCUR_ARROW;
+	case WCFG_CURSOR_MOVE:
+		return WCUR_MOVE;
+	case WCFG_CURSOR_RESIZE:
+		return WCUR_RESIZE;
+	case WCFG_CURSOR_TOP_LEFT_RESIZE:
+		return WCUR_TOPLEFTRESIZE;
+	case WCFG_CURSOR_TOP_RIGHT_RESIZE:
+		return WCUR_TOPRIGHTRESIZE;
+	case WCFG_CURSOR_BOTTOM_LEFT_RESIZE:
+		return WCUR_BOTTOMLEFTRESIZE;
+	case WCFG_CURSOR_BOTTOM_RIGHT_RESIZE:
+		return WCUR_BOTTOMRIGHTRESIZE;
+	case WCFG_CURSOR_VERTICAL_RESIZE:
+		return WCUR_VERTICALRESIZE;
+	case WCFG_CURSOR_HORIZONTAL_RESIZE:
+		return WCUR_HORIZONRESIZE;
+	case WCFG_CURSOR_WAIT:
+		return WCUR_WAIT;
+	case WCFG_CURSOR_QUESTION:
+		return WCUR_QUESTION;
+	case WCFG_CURSOR_TEXT:
+		return WCUR_TEXT;
+	case WCFG_CURSOR_SELECT:
+		return WCUR_SELECT;
+	case WCFG_CURSOR_CAPTURE:
+		return WCUR_CAPTURE;
+	}
+
+	return -1;
+}
+
+unsigned int wConfigApplyCursorSpec(WScreen *scr, const char *key,
+				    int target,
+				    const WConfigResourceSpec *spec,
+				    const char *default_spec)
+{
+	const char *candidate;
+	Cursor cursor;
+	int cursor_index;
+	int used_default;
+	int status = 0;
+
+	if (!scr)
+		return 0;
+
+	cursor_index = cursor_index_for_target(target);
+	if (cursor_index < 0)
+		return 0;
+
+	candidate = spec && spec->spec ? spec->spec : default_spec;
+	used_default = !(spec && spec->spec);
+
+again:
+	if (!candidate)
+		return 0;
+
+	{
+		WMPropList *pl;
+
+		pl = resource_spec_array(key, candidate, "cursor specification");
+		if (pl) {
+			status = parse_cursor(scr, pl, &cursor);
+			WMReleasePropList(pl);
+		}
+	}
+
 	if (!status) {
-		wwarning(_("Error in cursor specification for key \"%s\""), entry->key);
-		if (!changed) {
-			value = entry->plvalue;
-			changed = 1;
-			wwarning(_("using default \"%s\" instead"), entry->default_value);
+		wwarning(_("Error in cursor specification for key \"%s\""), key);
+		if (resource_retry_default(scr, used_default, default_spec)) {
+			candidate = default_spec;
+			used_default = 1;
+			wwarning(_("using default \"%s\" instead"), default_spec);
 			goto again;
 		}
-		return (False);
+		return 0;
 	}
-	if (ret) {
-		*ret = &cursor;
+
+	return setCursor(scr, &cursor, (void *)(long)cursor_index);
+}
+
+void wConfigApplyModifierKey(const char *spec, const char *default_spec)
+{
+	const char *candidate = spec ? spec : default_spec;
+	int mask;
+
+	if (!candidate)
+		return;
+
+	mask = wXModifierFromKey(candidate);
+	if (mask < 0) {
+		wwarning(_("%s: modifier key %s is not valid"), "ModifierKey",
+			 candidate);
+		return;
 	}
-	if (addr) {
-		*(Cursor *) addr = cursor;
+
+	wPreferences.modifier_mask = mask;
+}
+
+static Bool workspace_background_spec_valid(const char *key, int target,
+					    WMPropList *value)
+{
+	WMPropList *elem;
+	int i, count;
+
+	count = WMGetPropListItemCount(value);
+	if (target == WCFG_BACKGROUND_WORKSPACE && count > 0) {
+		elem = WMGetFromPLArray(value, 0);
+		if (!elem || !WMIsPLString(elem)) {
+			wwarning(_("Wrong type for workspace background. Should be a texture type."));
+			return False;
+		}
 	}
-	return (True);
+
+	if (target == WCFG_BACKGROUND_WORKSPACE_SPECIFIC) {
+		for (i = count - 1; i >= 0; i--) {
+			elem = WMGetFromPLArray(value, i);
+			if (!elem || !WMIsPLArray(elem))
+				wwarning(_("Wrong type for background of workspace %i. Should be a texture."),
+					 i);
+		}
+		return True;
+	}
+
+	if (target != WCFG_BACKGROUND_WORKSPACE) {
+		wwarning(_("Invalid background target for key \"%s\""), key);
+		return False;
+	}
+
+	return True;
+}
+
+unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
+						 int target,
+						 const WConfigResourceSpec *spec,
+						 const char *default_spec)
+{
+	const char *kind;
+	const char *candidate;
+	WMPropList *value;
+	int used_default;
+
+	if (!scr)
+		return 0;
+
+	kind = (target == WCFG_BACKGROUND_WORKSPACE) ?
+	    "Texture or None" : "an array of textures";
+	candidate = spec && spec->spec ? spec->spec : default_spec;
+	used_default = !(spec && spec->spec);
+
+again:
+	if (!candidate)
+		return 0;
+
+	value = resource_spec_array(key, candidate, kind);
+	if (!value || !workspace_background_spec_valid(key, target, value)) {
+		if (value)
+			WMReleasePropList(value);
+		if (resource_retry_default(scr, used_default, default_spec)) {
+			candidate = default_spec;
+			used_default = 1;
+			wwarning(_("using default \"%s\" instead"), default_spec);
+			goto again;
+		}
+		return 0;
+	}
+
+	if (target == WCFG_BACKGROUND_WORKSPACE_SPECIFIC)
+		return setWorkspaceSpecificBack(scr, value, NULL);
+	return setWorkspaceBack(scr, value, NULL);
 }
 
 #undef CURSOR_ID_NONE
 
 /* ---------------- value setting functions --------------- */
-static int setJustify(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) tdata;
-	(void) extra_data;
-
-	return REFRESH_WINDOW_TITLE_COLOR;
-}
-
-static int setClearance(WScreen * scr, WDefaultEntry * entry, void *bar, void *foo)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) bar;
-	(void) foo;
-
-	return REFRESH_WINDOW_FONT | REFRESH_BUTTON_IMAGES | REFRESH_MENU_TITLE_FONT | REFRESH_MENU_FONT;
-}
-
-static int setIfDockPresent(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
-{
-	char *flag = tdata;
-	long which = (long) extra_data;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-
-	switch (which) {
-	case WM_DOCK:
-		wPreferences.flags.nodock = wPreferences.flags.nodock || *flag;
-		// Drawers require the dock
-		wPreferences.flags.nodrawer = wPreferences.flags.nodrawer || wPreferences.flags.nodock;
-		break;
-	case WM_CLIP:
-		wPreferences.flags.noclip = wPreferences.flags.noclip || *flag;
-		break;
-	case WM_DRAWER:
-		wPreferences.flags.nodrawer = wPreferences.flags.nodrawer || *flag;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
-static int setClipMergedInDock(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
-{
-	char *flag = tdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) foo;
-
-	wPreferences.flags.clip_merged_in_dock = *flag;
-	wPreferences.flags.noclip = wPreferences.flags.noclip || *flag;
-	return 0;
-}
-
-static int setWrapAppiconsInDock(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
-{
-	char *flag = tdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) foo;
-
-	wPreferences.flags.wrap_appicons_in_dock = *flag;
-	return 0;
-}
-
-static int setStickyIcons(WScreen * scr, WDefaultEntry * entry, void *bar, void *foo)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
-	(void) bar;
-	(void) foo;
-
-	if (scr->workspaces) {
-		wWorkspaceForceChange(scr, scr->current_workspace);
-		wArrangeIcons(scr, False);
-	}
-	return 0;
-}
-
-static int setIconTile(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setIconTile(WScreen *scr, void *tdata, void *foo)
 {
 	Pixmap pixmap;
 	RImage *img;
@@ -2842,8 +1695,7 @@ static int setIconTile(WScreen * scr, WDefaultEntry * entry, void *tdata, void *
 				  ? WREL_ICON : WREL_FLAT);
 	if (!img) {
 		wwarning(_("could not render texture for icon background"));
-		if (!entry->addr)
-			wTextureDestroy(scr, *texture);
+		wTextureDestroy(scr, *texture);
 		return 0;
 	}
 	RConvertImage(scr->rcontext, img, &pixmap);
@@ -2886,18 +1738,16 @@ static int setIconTile(WScreen * scr, WDefaultEntry * entry, void *tdata, void *
 	scr->icon_back_texture = wTextureMakeSolid(scr, &((*texture)->any.color));
 
 	/* Free the texture as nobody else will use it, nor refer to it.  */
-	if (!entry->addr)
-		wTextureDestroy(scr, *texture);
+	wTextureDestroy(scr, *texture);
 
 	return (reset ? REFRESH_ICON_TILE : 0);
 }
 
-static int setWinTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setWinTitleFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->title_font) {
@@ -2908,12 +1758,11 @@ static int setWinTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, vo
 	return REFRESH_WINDOW_FONT | REFRESH_BUTTON_IMAGES;
 }
 
-static int setMenuTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuTitleFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->menu_title_font) {
@@ -2925,12 +1774,11 @@ static int setMenuTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_MENU_TITLE_FONT;
 }
 
-static int setMenuTextFont(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuTextFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->menu_entry_font) {
@@ -2941,12 +1789,11 @@ static int setMenuTextFont(WScreen * scr, WDefaultEntry * entry, void *tdata, vo
 	return REFRESH_MENU_FONT;
 }
 
-static int setIconTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setIconTitleFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->icon_title_font) {
@@ -2958,12 +1805,11 @@ static int setIconTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_ICON_FONT;
 }
 
-static int setClipTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setClipTitleFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->clip_title_font) {
@@ -2975,13 +1821,12 @@ static int setClipTitleFont(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_ICON_FONT;
 }
 
-static int setLargeDisplayFont(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
+static int setLargeDisplayFont(WScreen *scr, void *tdata, void *foo)
 {
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) scr;
-	(void) entry;
 	(void) foo;
 
 	if (scr->workspace_name_font)
@@ -2992,12 +1837,11 @@ static int setLargeDisplayFont(WScreen *scr, WDefaultEntry *entry, void *tdata, 
 	return 0;
 }
 
-static int setHightlight(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setHightlight(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->select_color)
@@ -3010,12 +1854,11 @@ static int setHightlight(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 	return REFRESH_MENU_COLOR;
 }
 
-static int setHightlightText(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setHightlightText(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->select_text_color)
@@ -3028,13 +1871,12 @@ static int setHightlightText(WScreen * scr, WDefaultEntry * entry, void *tdata, 
 	return REFRESH_MENU_COLOR;
 }
 
-static int setClipTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
+static int setClipTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
 	XColor *color = tdata;
 	long widx = (long) extra_data;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 
 	if (scr->clip_title_color[widx])
 		WMReleaseColor(scr->clip_title_color[widx]);
@@ -3045,13 +1887,12 @@ static int setClipTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, 
 	return REFRESH_ICON_TITLE_COLOR;
 }
 
-static int setWTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
+static int setWTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
 	XColor *color = tdata;
 	long widx = (long) extra_data;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 
 	if (scr->window_title_color[widx])
 		WMReleaseColor(scr->window_title_color[widx]);
@@ -3064,12 +1905,11 @@ static int setWTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, voi
 	return REFRESH_WINDOW_TITLE_COLOR;
 }
 
-static int setMenuTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
+static int setMenuTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) extra_data;
 
 	if (scr->menu_title_color[0])
@@ -3082,12 +1922,11 @@ static int setMenuTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, 
 	return REFRESH_MENU_TITLE_COLOR;
 }
 
-static int setMenuTextColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuTextColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->mtext_color)
@@ -3106,12 +1945,11 @@ static int setMenuTextColor(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_MENU_COLOR;
 }
 
-static int setMenuDisabledColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuDisabledColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->dtext_color)
@@ -3130,12 +1968,11 @@ static int setMenuDisabledColor(WScreen * scr, WDefaultEntry * entry, void *tdat
 	return REFRESH_MENU_COLOR;
 }
 
-static int setIconTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setIconTitleColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->icon_title_color)
@@ -3147,12 +1984,11 @@ static int setIconTitleColor(WScreen * scr, WDefaultEntry * entry, void *tdata, 
 	return REFRESH_ICON_TITLE_COLOR;
 }
 
-static int setIconTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setIconTitleBack(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->icon_title_texture) {
@@ -3163,25 +1999,11 @@ static int setIconTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_ICON_TITLE_BACK;
 }
 
-static int setFrameBorderWidth(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
-{
-	int *value = tdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
-	(void) foo;
-
-	scr->frame_border_width = *value;
-
-	return REFRESH_FRAME_BORDER;
-}
-
-static int setFrameBorderColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setFrameBorderColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->frame_border_color)
@@ -3193,12 +2015,11 @@ static int setFrameBorderColor(WScreen * scr, WDefaultEntry * entry, void *tdata
 	return REFRESH_FRAME_BORDER;
 }
 
-static int setFrameFocusedBorderColor(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
+static int setFrameFocusedBorderColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->frame_focused_border_color)
@@ -3210,12 +2031,11 @@ static int setFrameFocusedBorderColor(WScreen *scr, WDefaultEntry *entry, void *
 	return REFRESH_FRAME_BORDER;
 }
 
-static int setFrameSelectedBorderColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setFrameSelectedBorderColor(WScreen *scr, void *tdata, void *foo)
 {
 	XColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->frame_selected_border_color)
@@ -3227,7 +2047,7 @@ static int setFrameSelectedBorderColor(WScreen * scr, WDefaultEntry * entry, voi
 	return REFRESH_FRAME_BORDER;
 }
 
-static int setWorkspaceSpecificBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *bar)
+static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)
 {
 	WMPropList *value = tdata;
 	WMPropList *val;
@@ -3235,7 +2055,6 @@ static int setWorkspaceSpecificBack(WScreen * scr, WDefaultEntry * entry, void *
 	int i;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) bar;
 
 	if (scr->flags.backimage_helper_launched) {
@@ -3278,12 +2097,11 @@ static int setWorkspaceSpecificBack(WScreen * scr, WDefaultEntry * entry, void *
 	return 0;
 }
 
-static int setWorkspaceBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *bar)
+static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 {
 	WMPropList *value = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) bar;
 
 	if (scr->flags.backimage_helper_launched) {
@@ -3327,12 +2145,11 @@ static int setWorkspaceBack(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return 0;
 }
 
-static int setWidgetColor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setWidgetColor(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->widget_texture) {
@@ -3343,12 +2160,11 @@ static int setWidgetColor(WScreen * scr, WDefaultEntry * entry, void *tdata, voi
 	return 0;
 }
 
-static int setFTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setFTitleBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->window_title_texture[WS_FOCUSED]) {
@@ -3359,12 +2175,11 @@ static int setFTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 	return REFRESH_WINDOW_TEXTURES;
 }
 
-static int setPTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setPTitleBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->window_title_texture[WS_PFOCUSED]) {
@@ -3375,12 +2190,11 @@ static int setPTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 	return REFRESH_WINDOW_TEXTURES;
 }
 
-static int setUTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setUTitleBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->window_title_texture[WS_UNFOCUSED]) {
@@ -3391,12 +2205,11 @@ static int setUTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 	return REFRESH_WINDOW_TEXTURES;
 }
 
-static int setResizebarBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setResizebarBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->resizebar_texture[0]) {
@@ -3407,12 +2220,11 @@ static int setResizebarBack(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_WINDOW_TEXTURES;
 }
 
-static int setMenuTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuTitleBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->menu_title_texture[0]) {
@@ -3423,12 +2235,11 @@ static int setMenuTitleBack(WScreen * scr, WDefaultEntry * entry, void *tdata, v
 	return REFRESH_MENU_TITLE_TEXTURE;
 }
 
-static int setMenuTextBack(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static int setMenuTextBack(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (scr->menu_item_texture) {
@@ -3442,88 +2253,116 @@ static int setMenuTextBack(WScreen * scr, WDefaultEntry * entry, void *tdata, vo
 	return REFRESH_MENU_TEXTURE;
 }
 
-static int setKeyGrab(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
+static Bool shortcut_values_equal(const WShortKey *old_key,
+				  const WShortKey *new_key)
 {
-	WShortKey *shortcut = tdata;
-	WWindow *wwin;
-	long widx = (long) extra_data;
+	int count;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
+	if (old_key->modifier != new_key->modifier ||
+	    old_key->keycode != new_key->keycode ||
+	    old_key->chain_length != new_key->chain_length)
+		return False;
 
-	/* Free old chain arrays before overwriting */
-	wShortKeyFree(&wKeyBindings[widx]);
+	if (new_key->chain_length <= 1)
+		return True;
 
-	/* Shallow copy, then deep-copy the heap arrays */
-	wKeyBindings[widx] = *shortcut;
+	if (!old_key->chain_modifiers || !old_key->chain_keycodes ||
+	    !new_key->chain_modifiers || !new_key->chain_keycodes)
+		return False;
+
+	count = new_key->chain_length - 1;
+	return memcmp(old_key->chain_modifiers, new_key->chain_modifiers,
+		      count * sizeof(unsigned int)) == 0 &&
+	    memcmp(old_key->chain_keycodes, new_key->chain_keycodes,
+		   count * sizeof(KeyCode)) == 0;
+}
+
+static void store_key_binding(int binding_index, const WShortKey *shortcut)
+{
+	wShortKeyFree(&wKeyBindings[binding_index]);
+	wKeyBindings[binding_index] = *shortcut;
 	if (shortcut->chain_length > 1) {
-		int n = shortcut->chain_length - 1;
+		int count = shortcut->chain_length - 1;
 
-		wKeyBindings[widx].chain_modifiers = wmalloc(n * sizeof(unsigned int));
-		wKeyBindings[widx].chain_keycodes  = wmalloc(n * sizeof(KeyCode));
-
-		memcpy(wKeyBindings[widx].chain_modifiers, shortcut->chain_modifiers,
-		       n * sizeof(unsigned int));
-		memcpy(wKeyBindings[widx].chain_keycodes,  shortcut->chain_keycodes,
-		       n * sizeof(KeyCode));
+		wKeyBindings[binding_index].chain_modifiers =
+		    wmalloc(count * sizeof(unsigned int));
+		wKeyBindings[binding_index].chain_keycodes =
+		    wmalloc(count * sizeof(KeyCode));
+		memcpy(wKeyBindings[binding_index].chain_modifiers,
+		       shortcut->chain_modifiers, count * sizeof(unsigned int));
+		memcpy(wKeyBindings[binding_index].chain_keycodes,
+		       shortcut->chain_keycodes, count * sizeof(KeyCode));
 	} else {
-		wKeyBindings[widx].chain_modifiers = NULL;
-		wKeyBindings[widx].chain_keycodes  = NULL;
+		wKeyBindings[binding_index].chain_modifiers = NULL;
+		wKeyBindings[binding_index].chain_keycodes = NULL;
 	}
+}
+
+static void regrab_focused_window_keys(WScreen *scr)
+{
+	WWindow *wwin;
+
+	if (!scr)
+		return;
 
 	wwin = scr->focused_window;
-
 	while (wwin != NULL) {
 		XUngrabKey(dpy, AnyKey, AnyModifier, wwin->frame->core->window);
-
-		if (!WFLAGP(wwin, no_bind_keys)) {
+		if (!WFLAGP(wwin, no_bind_keys))
 			wWindowSetKeyGrabs(wwin);
-		}
 		wwin = wwin->prev;
 	}
-
-	/* do we need to update window menus? */
-	if (widx >= WKBD_WORKSPACE1 && widx <= WKBD_WORKSPACE10)
-		return REFRESH_WORKSPACE_MENU;
-	if (widx == WKBD_LASTWORKSPACE)
-		return REFRESH_WORKSPACE_MENU;
-	if (widx >= WKBD_MOVE_WORKSPACE1 && widx <= WKBD_MOVE_WORKSPACE10)
-		return REFRESH_WORKSPACE_MENU;
-
-	return 0;
 }
 
-static int setIconPosition(WScreen * scr, WDefaultEntry * entry, void *bar, void *foo)
+static unsigned int key_binding_refresh_mask(int binding_index)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
-	(void) bar;
-	(void) foo;
-
-	wScreenUpdateUsableArea(scr);
-	wArrangeIcons(scr, True);
+	if (binding_index >= WKBD_WORKSPACE1 && binding_index <= WKBD_WORKSPACE10)
+		return REFRESH_WORKSPACE_MENU;
+	if (binding_index == WKBD_LASTWORKSPACE)
+		return REFRESH_WORKSPACE_MENU;
+	if (binding_index >= WKBD_MOVE_WORKSPACE1 &&
+	    binding_index <= WKBD_MOVE_WORKSPACE10)
+		return REFRESH_WORKSPACE_MENU;
 
 	return 0;
 }
 
-static int updateUsableArea(WScreen * scr, WDefaultEntry * entry, void *bar, void *foo)
+unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
+				    int binding_index, const char *spec,
+				    const char *default_spec,
+				    Bool *binding_changed)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
-	(void) bar;
-	(void) foo;
+	WShortKey shortcut;
+	Bool changed;
 
-	wScreenUpdateUsableArea(scr);
+	if (binding_changed)
+		*binding_changed = False;
+	if (binding_index < 0 || binding_index >= WKBD_LAST)
+		return 0;
 
-	return 0;
+	if (!parse_shortcut_spec(key, spec, &shortcut)) {
+		wwarning(_("using default \"%s\" instead"), default_spec);
+		if (!parse_shortcut_spec(key, default_spec, &shortcut))
+			return 0;
+	}
+
+	changed = !shortcut_values_equal(&wKeyBindings[binding_index], &shortcut);
+	if (changed)
+		store_key_binding(binding_index, &shortcut);
+	if (binding_changed)
+		*binding_changed = changed;
+
+	regrab_focused_window_keys(scr);
+	wShortKeyFree(&shortcut);
+
+	return key_binding_refresh_mask(binding_index);
 }
 
-static int setWorkspaceMapBackground(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
+static int setWorkspaceMapBackground(WScreen *scr, void *tdata, void *foo)
 {
 	WTexture **texture = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 	(void) foo;
 
 	if (wPreferences.wsmbackTexture)
@@ -3532,17 +2371,6 @@ static int setWorkspaceMapBackground(WScreen *scr, WDefaultEntry *entry, void *t
 	wPreferences.wsmbackTexture = *texture;
 
 	return REFRESH_WINDOW_TEXTURES;
-}
-
-static int setMenuStyle(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
-	(void) entry;
-	(void) tdata;
-	(void) foo;
-
-	return REFRESH_MENU_TEXTURE;
 }
 
 static RImage *chopOffImage(RImage * image, int x, int y, int w, int h)
@@ -3554,56 +2382,58 @@ static RImage *chopOffImage(RImage * image, int x, int y, int w, int h)
 	return img;
 }
 
-static int setSwPOptions(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+static void release_switch_panel_back_images(struct WPreferences *prefs)
 {
-	WMPropList *array = tdata;
+	int i;
+
+	for (i = 0; i < 9; i++) {
+		if (prefs->swbackImage[i])
+			RReleaseImage(prefs->swbackImage[i]);
+		prefs->swbackImage[i] = NULL;
+	}
+}
+
+void wConfigApplySwitchPanelImages(WScreen *scr,
+				   const WConfigSwitchPanelImages *images)
+{
 	char *path;
 	RImage *bgimage;
-	int cwidth, cheight;
-	struct WPreferences *prefs = foo;
+	struct WPreferences *prefs = &wPreferences;
 
-	if (!WMIsPLArray(array) || WMGetPropListItemCount(array) == 0) {
+	if (!images || !images->tile) {
 		if (prefs->swtileImage)
 			RReleaseImage(prefs->swtileImage);
 		prefs->swtileImage = NULL;
-
-		WMReleasePropList(array);
-		return 0;
+		release_switch_panel_back_images(prefs);
+		return;
 	}
 
-	switch (WMGetPropListItemCount(array)) {
-	case 4:
-		if (!WMIsPLString(WMGetFromPLArray(array, 1))) {
-			wwarning(_("Invalid arguments for option \"%s\""), entry->key);
-			break;
-		} else
-			path = FindImage(wPreferences.pixmap_path, WMGetFromPLString(WMGetFromPLArray(array, 1)));
+	if (!scr)
+		return;
 
+	if (images->background) {
+		path = FindImage(wPreferences.pixmap_path, images->background);
 		if (!path) {
 			wwarning(_("Could not find image \"%s\" for option \"%s\""),
-				 WMGetFromPLString(WMGetFromPLArray(array, 1)), entry->key);
+				 images->background, "SwitchPanelImages");
 		} else {
 			bgimage = RLoadImage(scr->rcontext, path, 0);
 			if (!bgimage) {
-				wwarning(_("Could not load image \"%s\" for option \"%s\""), path, entry->key);
+				wwarning(_("Could not load image \"%s\" for option \"%s\""),
+					 path, "SwitchPanelImages");
 				wfree(path);
 			} else {
+				int i;
+				int swidth, theight;
+				int cwidth = images->center_width;
+				int cheight = images->center_height;
+
 				wfree(path);
-
-				cwidth = atoi(WMGetFromPLString(WMGetFromPLArray(array, 2)));
-				cheight = atoi(WMGetFromPLString(WMGetFromPLArray(array, 3)));
-
 				if (cwidth <= 0 || cheight <= 0 ||
-				    cwidth >= bgimage->width - 2 || cheight >= bgimage->height - 2)
+				    cwidth >= bgimage->width - 2 || cheight >= bgimage->height - 2) {
 					wwarning(_("Invalid split sizes for switch panel back image."));
-				else {
-					int i;
-					int swidth, theight;
-					for (i = 0; i < 9; i++) {
-						if (prefs->swbackImage[i])
-							RReleaseImage(prefs->swbackImage[i]);
-						prefs->swbackImage[i] = NULL;
-					}
+				} else {
+					release_switch_panel_back_images(prefs);
 					swidth = (bgimage->width - cwidth) / 2;
 					theight = (bgimage->height - cheight) / 2;
 
@@ -3611,28 +2441,22 @@ static int setSwPOptions(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 					prefs->swbackImage[1] = chopOffImage(bgimage, swidth, 0, cwidth, theight);
 					prefs->swbackImage[2] = chopOffImage(bgimage, swidth + cwidth, 0,
 									     swidth, theight);
-
 					prefs->swbackImage[3] = chopOffImage(bgimage, 0, theight, swidth, cheight);
 					prefs->swbackImage[4] = chopOffImage(bgimage, swidth, theight,
 									     cwidth, cheight);
 					prefs->swbackImage[5] = chopOffImage(bgimage, swidth + cwidth, theight,
 									     swidth, cheight);
-
 					prefs->swbackImage[6] = chopOffImage(bgimage, 0, theight + cheight,
 									     swidth, theight);
 					prefs->swbackImage[7] = chopOffImage(bgimage, swidth, theight + cheight,
 									     cwidth, theight);
 					prefs->swbackImage[8] =
-					    chopOffImage(bgimage, swidth + cwidth, theight + cheight, swidth,
-							 theight);
+					    chopOffImage(bgimage, swidth + cwidth, theight + cheight,
+							 swidth, theight);
 
-					// check if anything failed
 					for (i = 0; i < 9; i++) {
 						if (!prefs->swbackImage[i]) {
-							for (; i >= 0; --i) {
-								RReleaseImage(prefs->swbackImage[i]);
-								prefs->swbackImage[i] = NULL;
-							}
+							release_switch_panel_back_images(prefs);
 							break;
 						}
 					}
@@ -3640,168 +2464,101 @@ static int setSwPOptions(WScreen * scr, WDefaultEntry * entry, void *tdata, void
 				RReleaseImage(bgimage);
 			}
 		}
-
-		/* Fall through. */
-
-	case 1:
-		if (!WMIsPLString(WMGetFromPLArray(array, 0))) {
-			wwarning(_("Invalid arguments for option \"%s\""), entry->key);
-			break;
-		} else
-			path = FindImage(wPreferences.pixmap_path, WMGetFromPLString(WMGetFromPLArray(array, 0)));
-
-		if (!path) {
-			wwarning(_("Could not find image \"%s\" for option \"%s\""),
-				 WMGetFromPLString(WMGetFromPLArray(array, 0)), entry->key);
-		} else {
-			if (prefs->swtileImage)
-				RReleaseImage(prefs->swtileImage);
-
-			prefs->swtileImage = RLoadImage(scr->rcontext, path, 0);
-			if (!prefs->swtileImage) {
-				wwarning(_("Could not load image \"%s\" for option \"%s\""), path, entry->key);
-			}
-			wfree(path);
-		}
-		break;
-
-	default:
-		wwarning(_("Invalid number of arguments for option \"%s\""), entry->key);
-		break;
 	}
 
-	WMReleasePropList(array);
-
-	return 0;
+	path = FindImage(wPreferences.pixmap_path, images->tile);
+	if (!path) {
+		wwarning(_("Could not find image \"%s\" for option \"%s\""),
+			 images->tile, "SwitchPanelImages");
+	} else {
+		if (prefs->swtileImage)
+			RReleaseImage(prefs->swtileImage);
+		prefs->swtileImage = RLoadImage(scr->rcontext, path, 0);
+		if (!prefs->swtileImage)
+			wwarning(_("Could not load image \"%s\" for option \"%s\""),
+				 path, "SwitchPanelImages");
+		wfree(path);
+	}
 }
 
-static int setModifierKeyLabels(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+void wConfigApplyModifierKeyLabels(WScreen *scr,
+				   const WConfigStringArray *labels)
 {
-	WMPropList *array = tdata;
-	int i;
-	struct WPreferences *prefs = foo;
+	size_t i;
 
-	if (!WMIsPLArray(array) || WMGetPropListItemCount(array) != 7) {
-		wwarning(_("Value for option \"%s\" must be an array of 7 strings"), entry->key);
-		WMReleasePropList(array);
-		return 0;
+	if (!labels || labels->count != 7) {
+		wwarning(_("Value for option \"%s\" must be an array of 7 strings"),
+			 "ModifierKeyLabels");
+		return;
 	}
 
-	DestroyWindowMenu(scr);
+	if (scr)
+		DestroyWindowMenu(scr);
 
 	for (i = 0; i < 7; i++) {
-		if (prefs->modifier_labels[i])
-			wfree(prefs->modifier_labels[i]);
-
-		if (WMIsPLString(WMGetFromPLArray(array, i))) {
-			prefs->modifier_labels[i] = wstrdup(WMGetFromPLString(WMGetFromPLArray(array, i)));
-		} else {
-			wwarning(_("Invalid argument for option \"%s\" item %d"), entry->key, i);
-			prefs->modifier_labels[i] = NULL;
-		}
+		if (wPreferences.modifier_labels[i])
+			wfree(wPreferences.modifier_labels[i]);
+		wPreferences.modifier_labels[i] = wstrdup(labels->items[i]);
 	}
-
-	WMReleasePropList(array);
-
-	return 0;
 }
 
-static int setModifierShortKeyLabels(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+void wConfigApplyModifierKeyShortLabels(WScreen *scr,
+					const WConfigStringArray *labels)
 {
-	WMPropList *array = tdata;
-	int i;
-	struct WPreferences *prefs = foo;
+	size_t i;
 
-	if (!WMIsPLArray(array) || WMGetPropListItemCount(array) != 9) {
-		wwarning(_("Value for option \"%s\" must be an array of 9 strings"), entry->key);
-		WMReleasePropList(array);
-		return 0;
+	if (!labels || labels->count != 9) {
+		wwarning(_("Value for option \"%s\" must be an array of 9 strings"),
+			 "ModifierKeyShortLabels");
+		return;
 	}
 
-	DestroyWindowMenu(scr);
+	if (scr)
+		DestroyWindowMenu(scr);
 
 	for (i = 0; i < 9; i++) {
-		if (prefs->modifier_short_labels[i])
-			wfree(prefs->modifier_short_labels[i]);
-
-		if (WMIsPLString(WMGetFromPLArray(array, i))) {
-			prefs->modifier_short_labels[i] = wstrdup(WMGetFromPLString(WMGetFromPLArray(array, i)));
-			if (prefs->modifier_short_labels[i][0] == '\0') {
-				wwarning(_("Invalid argument for option \"%s\" item %d, cannot be empty"), entry->key, i);
-				wfree(prefs->modifier_short_labels[i]);
-				prefs->modifier_short_labels[i] = NULL;
-			}
+		if (wPreferences.modifier_short_labels[i])
+			wfree(wPreferences.modifier_short_labels[i]);
+		if (labels->items[i][0] == '\0') {
+			wwarning(_("Invalid argument for option \"%s\" item %zu, cannot be empty"),
+				 "ModifierKeyShortLabels", i);
+			wPreferences.modifier_short_labels[i] = NULL;
 		} else {
-			wwarning(_("Invalid argument for option \"%s\" item %d"), entry->key, i);
-			prefs->modifier_short_labels[i] = NULL;
+			wPreferences.modifier_short_labels[i] = wstrdup(labels->items[i]);
 		}
 	}
-
-	WMReleasePropList(array);
-
-	return 0;
 }
 
-static int setHotCornerActions(WScreen * scr, WDefaultEntry * entry, void *tdata, void *foo)
+void wConfigApplyHotCornerActions(WScreen *scr,
+				  const WConfigStringArray *actions)
 {
-	WMPropList *array = tdata;
-	int i;
-	struct WPreferences *prefs = foo;
+	size_t i;
 
-	if (!WMIsPLArray(array) || WMGetPropListItemCount(array) != 4) {
-		wwarning(_("Value for option \"%s\" must be an array of 4 strings"), entry->key);
-		WMReleasePropList(array);
-		return 0;
+	if (!actions || actions->count != 4) {
+		wwarning(_("Value for option \"%s\" must be an array of 4 strings"),
+			 "HotCornerActions");
+		return;
 	}
 
-	DestroyWindowMenu(scr);
+	if (scr)
+		DestroyWindowMenu(scr);
 
 	for (i = 0; i < 4; i++) {
-		if (prefs->hot_corner_actions[i])
-			wfree(prefs->hot_corner_actions[i]);
-
-		if (WMIsPLString(WMGetFromPLArray(array, i))) {
-			const char *val;
-			val = WMGetFromPLString(WMGetFromPLArray(array, i));
-			if (strcasecmp(val, "NONE") != 0)
-				prefs->hot_corner_actions[i] = wstrdup(val);
-			else
-				prefs->hot_corner_actions[i] = NULL;
-		} else {
-			wwarning(_("Invalid argument for option \"%s\" item %d"), entry->key, i);
-			prefs->hot_corner_actions[i] = NULL;
-		}
+		if (wPreferences.hot_corner_actions[i])
+			wfree(wPreferences.hot_corner_actions[i]);
+		if (strcasecmp(actions->items[i], "NONE") != 0)
+			wPreferences.hot_corner_actions[i] = wstrdup(actions->items[i]);
+		else
+			wPreferences.hot_corner_actions[i] = NULL;
 	}
-
-	WMReleasePropList(array);
-
-	return 0;
 }
 
-
-static int setDoubleClick(WScreen *scr, WDefaultEntry *entry, void *tdata, void *foo)
-{
-	int *value = tdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
-	(void) scr;
-
-	if (*value <= 0)
-		*(int *)foo = 1;
-
-	W_setconf_doubleClickDelay(*value);
-
-	return 0;
-}
-
-static int setCursor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *extra_data)
+static int setCursor(WScreen *scr, void *tdata, void *extra_data)
 {
 	Cursor *cursor = tdata;
 	long widx = (long) extra_data;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) entry;
 
 	if (wPreferences.cursor[widx] != None) {
 		XFreeCursor(dpy, wPreferences.cursor[widx]);
@@ -3813,34 +2570,5 @@ static int setCursor(WScreen * scr, WDefaultEntry * entry, void *tdata, void *ex
 		XDefineCursor(dpy, scr->root_win, *cursor);
 	}
 
-	return 0;
-}
-
-static int updateDock(WScreen * scr, WDefaultEntry * entry,
-			      void *tdata, void *extra_data) {
-	(void) entry;
-	(void) tdata;
-	(void) extra_data;
-
-	if (scr->dock)
-		wDockSwap(scr->dock);
-
-	return 0;
-}
-
-/*
- * HotCorners and ScrollableMenus are the only consumers of root-window
- * MotionNotify, so PointerMotionMask is selected on the root only while
- * either is on. getBool has already written wPreferences by the time
- * this runs.
- */
-static int setRootMotionMask(WScreen *scr, WDefaultEntry *entry,
-			     void *tdata, void *extra_data)
-{
-	(void) entry;
-	(void) tdata;
-	(void) extra_data;
-
-	wScreenUpdateRootEventMask(scr);
 	return 0;
 }

@@ -3,6 +3,7 @@ AUTOMAKE_OPTIONS =
 BUILT_SOURCES = wconfig.h
 
 bin_PROGRAMS = wmaker
+SUBDIRS = Tests
 
 EXTRA_DIST =
 
@@ -23,6 +24,8 @@ wmaker_SOURCES = 	\
 	client.h \
 	colormap.c \
 	colormap.h \
+	config-schema.c \
+	config-schema.h \
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
@@ -96,6 +99,8 @@ wmaker_SOURCES = 	\
 	xutil.c \
 	xutil.h \
 	wconfig.h \
+	wconfigmodel.c \
+	wconfigmodel.h \
 	wcore.c \
 	wcore.h \
 	wdefaults.c \
@@ -153,31 +158,3 @@ wmaker_LDADD = \
 	@XLIBS@ \
 	@LIBM@ \
 	@INTLIBS@
-
-######################################################################
-
-# Create a 'silent rule' for our make check the same way automake does
-AM_V_CHKOPTS = $(am__v_CHKOPTS_$(V))
-am__v_CHKOPTS_  = $(am__v_CHKOPTS_$(AM_DEFAULT_VERBOSITY))
-am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
-am__v_CHKOPTS_1 =
-
-check-local: defaults-callbacks-static defaults-callbacks-dynamic
-
-# Check that the callback functions used to load the configuration match
-# the type of the variable where the value will be stored
-defaults-callbacks-static:
-	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-wmaker-loaddef-callbacks.sh  \
-		--source "$(srcdir)/defaults.c" --structure "staticOptionList"  \
-		--field-value-ptr 4 --field-callback 5  \
-		--struct-def "wPreferences=$(srcdir)/WindowMaker.h"  \
-		--callback "getBool=char, getEnum=char, getInt=int"  \
-		--callback "getModMask=int"
-
-defaults-callbacks-dynamic:
-	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-wmaker-loaddef-callbacks.sh  \
-		--source "$(srcdir)/defaults.c" --structure "optionList"  \
-		--field-value-ptr 4 --field-callback 5  \
-		--struct-def "wPreferences=$(srcdir)/WindowMaker.h"  \
-		--callback "getBool=char, getEnum=char, getInt=int, getString=char*"  \
-		--callback "getPathList=char*, getCoord=WCoord"

@@ -169,14 +169,6 @@
 /* default style */
 #define DEF_FRAME_COLOR   "white"
 
-/* default fonts */
-#define DEF_TITLE_FONT          "\"Sans:bold:pixelsize=12\""
-#define DEF_MENU_TITLE_FONT     "\"Sans:bold:pixelsize=12\""
-#define DEF_MENU_ENTRY_FONT     "\"Sans:pixelsize=12\""
-#define DEF_ICON_TITLE_FONT     "\"Sans:pixelsize=9\""
-#define DEF_CLIP_TITLE_FONT     "\"Sans:bold:pixelsize=10\""
-#define DEF_WORKSPACE_NAME_FONT "\"Sans:pixelsize=24\""
-
 /* line width of the move/resize frame */
 #define DEF_FRAME_THICKNESS              1
 
@@ -192,7 +184,7 @@
 #define DEF_APPMENU_Y		         10
 
 /* default strftime format for screenshot filenames */
-#define DEF_SCREENSHOT_FILENAME_TEMPLATE "\"screenshot_%Y-%m-%d_at_%H:%M:%S\""
+#define DEF_SCREENSHOT_FILENAME_TEMPLATE "screenshot_%Y-%m-%d_at_%H:%M:%S"
 
 /* calculate window edge resistance from edge resistance */
 #define WIN_RESISTANCE(x)	(((x)*20)/30)

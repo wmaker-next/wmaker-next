@@ -544,6 +544,9 @@ extern struct wmaker_global_variables {
 		struct WDDomain *root_menu;
 	} domain;
 
+	/* Parsed WindowMaker domain currently applied to wPreferences. */
+	struct WConfig *config;
+
 	/* Screens related */
 	int screen_count;
 
