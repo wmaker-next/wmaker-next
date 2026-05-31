@@ -33,7 +33,9 @@ cleanup() {
 trap cleanup EXIT
 
 note() { printf '\n=== %s ===\n' "$*" | tee -a "$LOG"; }
-xdo()  { DISPLAY=$DPY xdotool "$@"; }
+# xdotool's search/activate probes _NET_WM_DESKTOP on every window and
+# whines for override-redirect ones that do not carry it, drop just that
+xdo()  { DISPLAY=$DPY xdotool "$@" 2> >(grep -v '^XGetWindowProperty\[_NET_WM_DESKTOP\] failed' >&2); }
 
 # dump the Xephyr root window as a PNG when WMAKER_SHOTS_DIR is set,
 # ad-hoc debugging aid (e.g. `WMAKER_SHOTS_DIR=/tmp/shots ./asan-drive.sh`)
@@ -137,7 +139,7 @@ echo $! >> "$PIDFILE"
 sleep 1
 
 # pick one managed client window to drive
-WID=$(DISPLAY=$DPY xdotool search --class XTerm | head -1)
+WID=$(xdo search --class XTerm | head -1)
 note "driving window $WID"
 shot clients-mapped
 
@@ -201,7 +203,7 @@ xdo keyup alt; sleep 0.3
 
 # --- iconify / deiconify (icon.c) -------------------------------------------
 note "iconify / deiconify"
-DISPLAY=$DPY xdotool windowminimize "$WID"; sleep 0.4
+xdo windowminimize "$WID"; sleep 0.4
 xdo windowactivate "$WID"; sleep 0.3
 
 # --- property churn on a client (client.c wClientCheckProperty) -------------
@@ -252,7 +254,7 @@ fi
 # --- kill clients while managed (wUnmanageWindow path) ----------------------
 note "client deaths"
 kill "$XT2" 2>/dev/null; sleep 0.3
-for p in $(DISPLAY=$DPY xdotool search --class xeyes); do
+for p in $(xdo search --class xeyes); do
     DISPLAY=$DPY wmctrl -i -c "$p" 2>/dev/null
 done
 sleep 0.5
