@@ -11,7 +11,6 @@
 #include <X11/Xft/Xft.h>
 #include <fontconfig/fontconfig.h>
 
-/* XXX TODO */
 char *WMFontPanelFontChangedNotification = "WMFontPanelFontChangedNotification";
 
 typedef struct W_FontPanel {

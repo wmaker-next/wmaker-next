@@ -861,7 +861,6 @@ static void freeItemData(ItemData * data)
 {
 #define CFREE(d) if (d) wfree(d)
 
-	/* TODO */
 	switch (data->type) {
 	case CommandInfo:
 		CFREE(data->param.command.parameter);

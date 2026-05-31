@@ -249,8 +249,6 @@ static void setSupportedHints(WScreen *scr)
 	char wm_name[64] = "";
 
 	/* set supported hints list */
-	/* XXX: extend this !!! */
-
 	atom[i++] = net_client_list;
 	atom[i++] = net_client_list_stacking;
 	atom[i++] = net_number_of_desktops;

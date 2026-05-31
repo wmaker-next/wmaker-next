@@ -2017,7 +2017,7 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		 * incremented in the loop above.
 		 */
 	} else if (old_top != dock->icon_array[0]) {
-		if (old_top == scr->clip_icon) // TODO dande: understand the logic
+		if (old_top == scr->clip_icon)
 			scr->clip_icon = dock->icon_array[0];
 
 		wAppIconDestroy(old_top);

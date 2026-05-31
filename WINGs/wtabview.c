@@ -256,7 +256,7 @@ void WMInsertItemInTabView(WMTabView * tPtr, int index, WMTabViewItem * item)
 		WMTabViewItem **items;
 
 		items = wrealloc(tPtr->items, sizeof(WMTabViewItem *) * (tPtr->maxItems + 10));
-		memset(&items[tPtr->maxItems], 0, sizeof(WMTabViewItem *) * 10); /* XXX */
+		memset(&items[tPtr->maxItems], 0, sizeof(WMTabViewItem *) * 10);
 		tPtr->items = items;
 		tPtr->maxItems += 10;
 	}
