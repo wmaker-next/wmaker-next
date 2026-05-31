@@ -766,36 +766,6 @@ char *GetStringForKey(const char *defaultName)
 	return WMGetFromPLString(val);
 }
 
-WMPropList *GetArrayForKey(const char *defaultName)
-{
-	WMPropList *val;
-
-	val = GetObjectForKey(defaultName);
-
-	if (!val)
-		return NULL;
-
-	if (!WMIsPLArray(val))
-		return NULL;
-
-	return val;
-}
-
-WMPropList *GetDictionaryForKey(const char *defaultName)
-{
-	WMPropList *val;
-
-	val = GetObjectForKey(defaultName);
-
-	if (!val)
-		return NULL;
-
-	if (!WMIsPLDictionary(val))
-		return NULL;
-
-	return val;
-}
-
 int GetIntegerForKey(const char *defaultName)
 {
 	WMPropList *val;

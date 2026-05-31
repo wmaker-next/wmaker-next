@@ -25,9 +25,6 @@
 #include "GNUstep.h"
 #include <WINGs/WXHints.h>
 
-int PropGetWindowState(Window window);
-
-int PropGetNormalHints(Window window, WXSizeHints *size_hints, int *pre_iccm);
 void PropGetProtocols(Window window, WProtocols *prots);
 int PropGetWMClass(Window window, char **wm_class, char **wm_instance);
 int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes **attr);
@@ -35,8 +32,6 @@ int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes **attr);
 void PropSetWMakerProtocols(Window root);
 void PropCleanUp(Window root);
 void PropSetIconTileHint(WScreen *scr, RImage *image);
-
-Window PropGetClientLeader(Window window);
 
 /* Split-phase variants for batching: caller issues the matching WXReq*
  * (see wManagePrefetch in window.c) and passes the cookie here. */

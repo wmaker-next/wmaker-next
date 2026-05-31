@@ -58,7 +58,6 @@ void wNETWMCheckInitialFrameState(WWindow *wwin);
 void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck);
 void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity);
 Bool wNETWMProcessClientMessage(XClientMessageEvent *event);
-void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace);
 
 void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck);
 void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck);

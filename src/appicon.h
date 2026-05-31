@@ -83,7 +83,6 @@ void paint_app_icon(WApplication *wapp);
 void unpaint_app_icon(WApplication *wapp);
 void wApplicationExtractDirPackIcon(const char *path, const char *wm_instance,
 				    const char *wm_class);
-WAppIcon *wAppIconFor(Window window);
 
 void appIconMouseDown(WObjDescriptor * desc, XEvent * event);
 

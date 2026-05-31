@@ -50,11 +50,6 @@ int PropRcvNormalHints(WXCookie ck, WXSizeHints *size_hints, int *pre_iccm)
 	return True;
 }
 
-int PropGetNormalHints(Window window, WXSizeHints *size_hints, int *pre_iccm)
-{
-	return PropRcvNormalHints(WXReqNormalHints(dpy, window), size_hints, pre_iccm);
-}
-
 int PropRcvWMClass(WXCookie ck, char **wm_class, char **wm_instance)
 {
 	char *inst, *cls;
@@ -204,12 +199,6 @@ Window PropRcvClientLeader(WXCookie ck)
 	return leader;
 }
 
-Window PropGetClientLeader(Window window)
-{
-	return PropRcvClientLeader(WXReqFormat32(dpy, window,
-				   w_global.atom.wm.client_leader, XA_WINDOW, 1));
-}
-
 int PropRcvWindowState(WXCookie ck)
 {
 	uint32_t state;
@@ -218,13 +207,6 @@ int PropRcvWindowState(WXCookie ck)
 		return -1;
 
 	return (int)state;
-}
-
-int PropGetWindowState(Window window)
-{
-	return PropRcvWindowState(WXReqFormat32(dpy, window,
-				  w_global.atom.wm.state,
-				  w_global.atom.wm.state, 1));
 }
 
 void PropCleanUp(Window root)

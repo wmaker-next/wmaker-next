@@ -206,8 +206,3 @@ void wMWMRcvClientHints(WWindow *wwin, WXCookie ck)
 	if (rcvMWMHints(ck, &hints))
 		setupMWMHints(wwin, &hints);
 }
-
-void wMWMCheckClientHints(WWindow *wwin)
-{
-	wMWMRcvClientHints(wwin, wMWMReqClientHints(wwin->client_win));
-}

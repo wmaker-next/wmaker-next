@@ -27,6 +27,5 @@
 
 WXCookie wMWMReqClientHints(Window window);
 void wMWMRcvClientHints(WWindow *wwin, WXCookie ck);
-void wMWMCheckClientHints(WWindow *wwin);
 
 #endif

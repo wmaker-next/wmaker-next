@@ -1550,14 +1550,6 @@ void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int 
 	wScreenUpdateUsableArea(wwin->screen_ptr);
 }
 
-void wNETWMCheckClientHints(WWindow *wwin, int *layer, int *workspace)
-{
-	WNETWMHintCookies ck;
-
-	wNETWMReqClientHints(wwin->client_win, &ck);
-	wNETWMRcvClientHints(wwin, &ck, layer, workspace);
-}
-
 WXCookie wNETWMReqWindowName(Window window)
 {
 	return WXReqString8(dpy, window, net_wm_name, utf8_string);

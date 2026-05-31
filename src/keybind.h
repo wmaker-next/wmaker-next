@@ -193,7 +193,6 @@ extern WShortKey wKeyBindings[WKBD_LAST];
 
 /* ---[ Functions ]------------------------------------------------------- */
 
-void wKeyboardInitialize(void);
 void wShortKeyFree(WShortKey *key);
 
 #endif /* WMKEYBIND_H */

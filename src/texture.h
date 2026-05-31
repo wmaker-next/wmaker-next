@@ -166,8 +166,6 @@ WTexIGradient *wTextureMakeIGradient(WScreen*, int, const RColor[2], int, const 
 WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file,
                                XColor *color);
 void wTextureDestroy(WScreen*, WTexture*);
-void wTexturePaint(WTexture *, Pixmap *, WCoreWindow*, int, int);
-void wTextureRender(WScreen*, WTexture*, Pixmap*, int, int, int);
 struct RImage *wTextureRenderImage(WTexture*, int, int, int);
 
 
