@@ -10,7 +10,7 @@
  *
  * SHORTCUT jout in fluchtoets op foar dy yngong. <Fluchtoets> hat
  * deselde opmaak as de fluchtoetsopsjes yn it
- * $HOME/GNUstep/Defaults/WindowMaker bestân, sa as RootMenuKey of MiniaturizeKey.
+ * $WMAKER_USER_ROOT/Defaults/WindowMaker bestân, sa as RootMenuKey of MiniaturizeKey.
  *
  * Jo kinne gjin fluchtoets opjaan foar in MENU- of OPEN_MENU-ûnderdiel.
  *
@@ -76,8 +76,7 @@
  *
  *      // Brûk #usergnusteppath# as tydlike oantsjutting foar it paad nei de
  *      // brûkers-GNUstep-map.  Window Maker sil dy ferfange mei de wearde
- *      // fan WMAKER_USER_ROOT, at dizze omjouwingsfariabele ynsteld is, of
- *      // oars "~/GNUstep"
+ *      // fan WMAKER_USER_ROOT
  *
  * <Parameters> is it út te fieren programma.
  *

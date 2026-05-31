@@ -85,6 +85,6 @@ EXTRA_DIST = $(addsuffix .in, $(GENERATED_MENUS)) wmaker.desktop
 
 CLEANFILES = $(GENERATED_MENUS)
 
-$(GENERATED_MENUS):
+$(GENERATED_MENUS): %: $(srcdir)/%.in
 	$(AM_V_GEN)sed -e "s:#wprefs#:$(wpexecbindir)/WPrefs:" \
-		-e "s:#wmdatadir#:$(pkgdatadir):" $(srcdir)/$@.in > $@
+		-e "s:#wmdatadir#:$(pkgdatadir):" $< > $@

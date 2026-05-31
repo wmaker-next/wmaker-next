@@ -10,7 +10,7 @@
  *
  * SHORTCUT geeft een sneltoets op voor die ingang. <Sneltoets> heeft
  * dezelfde opmaak als de sneltoetsopties in het
- * $HOME/GNUstep/Defaults/WindowMaker bestand, zoals RootMenuKey of MiniaturizeKey.
+ * $WMAKER_USER_ROOT/Defaults/WindowMaker bestand, zoals RootMenuKey of MiniaturizeKey.
  *
  * U kunt geen sneltoets opgeven voor een MENU- of OPEN_MENU-onderdeel.
  *
@@ -76,8 +76,7 @@
  *
  *      // Gebruik #usergnusteppath# als tijdelijke aanduiding voor het pad naar de
  *      // gebruikers-GNUstep-map.  Window Maker zal die vervangen met de waarde
- *      // van WMAKER_USER_ROOT, als deze omgevingsvariabele is ingesteld, of
- *      // anders "~/GNUstep"
+ *      // van WMAKER_USER_ROOT
  *
  * <Parameters> is het uit te voeren programma.
  *

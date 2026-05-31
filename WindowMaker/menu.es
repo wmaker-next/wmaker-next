@@ -42,7 +42,7 @@
 
 	"Informacion ..." MENU
 		"Copyright..." SHEXEC xmessage -center -font variable -title \
-	'WindowMaker 'WM_VERSION -file ~/GNUstep/Library/WindowMaker/Copyright
+	'WindowMaker 'WM_VERSION -file $WMAKER_USER_ROOT/Library/WindowMaker/Copyright
 		"Carga del sistema" SHEXEC xosview || xload
 		"Lista de tarifas (top)" EXEC rxvt -ls -fg white -bg black -fn vga -e top
 		"Manual" EXEC xman

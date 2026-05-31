@@ -88,17 +88,17 @@
     (
       Teme,
       OPEN_MENU,
-      "-noext /usr/local/share/WindowMaker/Themes $HOME/GNUstep/Library/WindowMaker/Themes WITH setstyle"
+      "-noext /usr/local/share/WindowMaker/Themes $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"
     ),
     (
       Stilovi,
       OPEN_MENU,
-      "-noext /usr/local/share/WindowMaker/Styles $HOME/GNUstep/Library/WindowMaker/Styles WITH setstyle"
+      "-noext /usr/local/share/WindowMaker/Styles $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"
     ),
     (
       "Setovi ikona",
       OPEN_MENU,
-      "-noext /usr/local/share/WindowMaker/IconSets $HOME/GNUstep/Library/WindowMaker/IconSets WITH seticons"
+      "-noext /usr/local/share/WindowMaker/IconSets $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"
     ),
     (
       Pozadina,
@@ -191,18 +191,18 @@
       (
         Slike,
         OPEN_MENU,
-        "-noext /usr/local/share/WindowMaker/Backgrounds $HOME/GNUstep/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t"
+        "-noext /usr/local/share/WindowMaker/Backgrounds $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t"
       )
     ),
     (
       "Snimi temu",
       SHEXEC,
-      "getstyle -t $HOME/GNUstep/Library/WindowMaker/Themes/\"%a(Theme name)\""
+      "getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/\"%a(Theme name)\""
     ),
     (
       "Snimi set ikona",
       SHEXEC,
-      "geticonset $HOME/GNUstep/Library/WindowMaker/IconSets/\"%a(IconSet name)\""
+      "geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/\"%a(IconSet name)\""
     )
   ),
   (

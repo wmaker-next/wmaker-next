@@ -11,9 +11,9 @@ support XIM, it will not allow you to make menus in languages such as
 Japanese.
 
 To use the menu in the property list format (plmenu), just replace the
-~/GNUstep/Defaults/WMRootMenu with it. To use the plain text menu,
-place the path for the menu in ~/GNUstep/Defaults/WMRootMenu, enclosed
-in double quotes ("). Ex: "~/GNUstep/Library/WindowMaker/menu"
+$WMAKER_USER_ROOT/Defaults/WMRootMenu with it. To use the plain text menu,
+place the path for the menu in $WMAKER_USER_ROOT/Defaults/WMRootMenu, enclosed
+in double quotes ("). Ex: "$WMAKER_USER_ROOT/Library/WindowMaker/menu"
 
 Instructions for editing the plain text menus can be found in the menu
 file itself, kindly translated to your tongue for your convenience, by
