@@ -873,7 +873,10 @@ Bool WMWritePropListToFile(WMPropList *plist, const char *path);
 
 /* ---[ WINGs/userdefaults.c ]-------------------------------------------- */
 
-/* don't free the returned string */
+/* Returns the per-user configuration root: $WMAKER_USER_ROOT, else ~/GNUstep
+ * if a legacy ~/GNUstep/Defaults exists, else ${XDG_CONFIG_HOME:-~/.config}/WindowMaker.
+ * The result is exported as WMAKER_USER_ROOT for child processes.
+ * Don't free the returned string. */
 const char* wusergnusteppath(void);
 const char* wuserdatapath(void);
 

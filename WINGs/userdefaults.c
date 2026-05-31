@@ -46,13 +46,24 @@ static void synchronizeUserDefaults(void *foo);
 #define UD_SYNC_INTERVAL	2000
 #endif
 
+/*
+ * Resolve the per-user configuration root. Order:
+ *   1. $WMAKER_USER_ROOT (expanded), if set
+ *   2. ~/GNUstep, if ~/GNUstep/Defaults already exists (legacy install)
+ *   3. $XDG_CONFIG_HOME/WindowMaker, if XDG_CONFIG_HOME is set and absolute
+ *   4. ~/.config/WindowMaker
+ *
+ * The result is cached for the process lifetime and exported back to the
+ * environment as WMAKER_USER_ROOT (without overwriting an explicit value),
+ * so wexpandpath("$WMAKER_USER_ROOT/...") and spawned children see the
+ * resolved root regardless of which branch was taken.
+ */
 const char *wusergnusteppath(void)
 {
-	static const char subdir[] = "/" GSUSER_SUBDIR;
 	static char *path = NULL;
-	char *gspath;
-	const char *h;
-	int pathlen;
+	struct stat st;
+	const char *home, *xdg;
+	char *gspath, *probe;
 
 	if (path)
 		/* Value have been already computed, re-use it */
@@ -63,20 +74,33 @@ const char *wusergnusteppath(void)
 		gspath = wexpandpath(gspath);
 		if (gspath) {
 			path = gspath;
-			return path;
+			goto done;
 		}
 		wwarning(_("variable WMAKER_USER_ROOT defined with invalid path, not used"));
 	}
 
-	h = wgethomedir();
-	if (!h)
+	home = wgethomedir();
+	if (!home)
 		return NULL;
 
-	pathlen = strlen(h);
-	path = wmalloc(pathlen + sizeof(subdir));
-	strcpy(path, h);
-	strcpy(path + pathlen, subdir);
+	/* legacy ~/GNUstep tree, keyed on the wmaker-specific Defaults dir */
+	probe = wstrconcat(home, "/" GSUSER_SUBDIR "/" DEFAULTS_SUBDIR);
+	if (stat(probe, &st) == 0 && S_ISDIR(st.st_mode)) {
+		wfree(probe);
+		path = wstrconcat(home, "/" GSUSER_SUBDIR);
+		goto done;
+	}
+	wfree(probe);
 
+	/* XDG basedir, spec requires the value to be absolute */
+	xdg = GETENV("XDG_CONFIG_HOME");
+	if (xdg && xdg[0] == '/')
+		path = wstrconcat(xdg, "/" PACKAGE_TARNAME);
+	else
+		path = wstrconcat(home, "/.config/" PACKAGE_TARNAME);
+
+done:
+	setenv("WMAKER_USER_ROOT", path, 0);
 	return path;
 }
 

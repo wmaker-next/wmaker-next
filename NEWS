@@ -3,6 +3,22 @@ NEWS for veteran Window Maker users
 
 -- 0.97.0
 
+XDG-based user configuration directory
+--------------------------------------
+
+For new users (no existing ~/GNUstep/Defaults directory), the per-user
+configuration root is now ${XDG_CONFIG_HOME}/WindowMaker, defaulting to
+~/.config/WindowMaker, instead of the visible ~/GNUstep directory. The
+internal layout (Defaults/, Library/WindowMaker/, Library/Icons/) is
+unchanged.
+
+Existing installs are unaffected: when ~/GNUstep/Defaults is present it is
+used as before, and the WMAKER_USER_ROOT environment variable still takes
+precedence over both. WMAKER_USER_ROOT is now also exported to child
+processes with the resolved path, so scripts launched from autostart or
+the root menu can rely on it being set.
+
+
 Directional window focus
 ------------------------
 

@@ -22,18 +22,18 @@
 	MouseWheelAction = None;
 	MouseWheelTiltAction = None;
 	PixmapPath = (
-		"~/GNUstep/Library/WindowMaker/Pixmaps",
-		"~/GNUstep/Library/WindowMaker/Backgrounds",
-		"~/GNUstep/Library/WindowMaker/CachedPixmaps",
+		"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps",
+		"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds",
+		"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps",
 		"~/pixmaps",
 		"#pkgdatadir#/Pixmaps",
 		"#pkgdatadir#/Backgrounds",
 		"#pixmapdir#"
 	);
 	IconPath =  (
-		"~/GNUstep/Library/Icons",
-		"~/GNUstep/Library/WindowMaker/Pixmaps",
-		"~/GNUstep/Library/WindowMaker/CachedPixmaps",
+		"$WMAKER_USER_ROOT/Library/Icons",
+		"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps",
+		"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps",
 		"~/pixmaps",
 		"#pkgdatadir#/Icons",
 		"#pkgdatadir#/Pixmaps",

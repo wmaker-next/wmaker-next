@@ -522,7 +522,7 @@ static void createPanel(_Panel * p)
 		data->param.directory.directory =
 		    "/usr/share/" PACKAGE_TARNAME "/Themes"
 		    " /usr/local/share/" PACKAGE_TARNAME "/Themes"
-		    " $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
+		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
 		data->param.directory.stripExt = 1;
 
 		data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (scale)"));
@@ -530,7 +530,7 @@ static void createPanel(_Panel * p)
 		data->param.directory.directory =
 		    "/opt/kde2/share/wallpapers"
 		    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
-		    " $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
 		data->param.directory.stripExt = 1;
 
 		data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (tile)"));
@@ -538,7 +538,7 @@ static void createPanel(_Panel * p)
 		data->param.directory.directory =
 		    "/opt/kde2/share/wallpapers"
 		    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
-		    " $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
 		data->param.directory.stripExt = 1;
 
 		smenu = putNewSubmenu(pad, _("Assorted XTerms"));
@@ -627,7 +627,7 @@ static void createPanel(_Panel * p)
 	WMSetLabelText(label, _("Enter the path for a file containing a menu\n"
 				"or a list of directories with the programs you\n"
 				"want to have listed in the menu. Ex:\n"
-				"~/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/menu\n"
+				"$WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/menu\n"
 				"or\n" "/usr/bin ~/xbin"));
 
 	WMMapSubwidgets(panel->pathF);

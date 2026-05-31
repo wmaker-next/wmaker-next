@@ -526,51 +526,19 @@ found_end_define_fname:
 	fh = fopen(fullfilename, "rb");
 
 	/* Not found? Search in wmaker's known places */
-	if (fh == NULL) {
-		if (req_filename[0] != '/') {
-			const char *src;
-			int idx;
-
-			fullfilename = buffer;
-			src = parser->include_default_paths;
-			while (*src != '\0') {
-				idx = 0;
-				if (*src == '~') {
-					const char *home = wgethomedir();
-					while (*home != '\0') {
-						if (idx < sizeof(buffer) - 2)
-							buffer[idx++] = *home;
-						home++;
-					}
-					src++;
-				}
-
-				while ((*src != '\0') && (*src != ':')) {
-					if (idx < sizeof(buffer) - 2)
-						buffer[idx++] = *src;
-					src++;
-				}
-
-				buffer[idx++] = '/';
-				for (p = req_filename; *p != '\0'; p++)
-					if (idx < sizeof(buffer) - 1)
-						buffer[idx++] = *p;
-				buffer[idx] = '\0';
-
-				fh = fopen(fullfilename, "rb");
-				if (fh != NULL)
-					goto found_valid_file;
-
-				if (*src == ':')
-					src++;
-			}
+	if (fh == NULL && req_filename[0] != '/') {
+		char *found = wfindfile(parser->include_default_paths, req_filename);
+		if (found) {
+			fh = fopen(found, "rb");
+			wfree(found);
 		}
+	}
+	if (fh == NULL) {
 		WMenuParserError(parser, _("could not find file \"%s\" for #include"), req_filename);
 		return False;
 	}
 
 	/* Found the file, make it our new source */
-found_valid_file:
 	parser->include_file = menu_parser_create_new(wstrdup(req_filename), fh, parser->include_default_paths);
 	parser->include_file->parent_file = parser;
 	return True;

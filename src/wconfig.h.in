@@ -116,7 +116,7 @@
  */
 
 /* list of paths to look for the config files, searched in order of appearance */
-#define DEF_CONFIG_PATHS "~/GNUstep/Library/WindowMaker:"PKGDATADIR
+#define DEF_CONFIG_PATHS "$WMAKER_USER_ROOT/Library/WindowMaker:"PKGDATADIR
 #define DEF_MENU_FILE	 "menu"
 
 /* name of the script to execute at startup */
@@ -135,32 +135,32 @@
 
 /* pixmap path */
 #define DEF_PIXMAP_PATHS \
-	"("                                                        \
-		"\"~/GNUstep/Library/WindowMaker/Pixmaps\","       \
-		"\"~/GNUstep/Library/WindowMaker/Backgrounds\","   \
-		"\"~/GNUstep/Library/WindowMaker/CachedPixmaps\"," \
-		"\"~/pixmaps\","                                   \
-		"\""PKGDATADIR"/Pixmaps\","                        \
-		"\""PKGDATADIR"/Backgrounds\","                    \
-		"\""PIXMAPDIR"\""                                  \
+	"("                                                                  \
+		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps\","         \
+		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds\","     \
+		"\"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps\","   \
+		"\"~/pixmaps\","                                             \
+		"\""PKGDATADIR"/Pixmaps\","                                  \
+		"\""PKGDATADIR"/Backgrounds\","                              \
+		"\""PIXMAPDIR"\""                                            \
 	")"
 
 #ifdef USER_MENU
 #define GLOBAL_USER_MENU_PATH PKGDATADIR"/UserMenus"
 #define DEF_USER_MENU_PATHS \
-    "~/GNUstep/Library/WindowMaker/UserMenus:"GLOBAL_USER_MENU_PATH
+    "$WMAKER_USER_ROOT/Library/WindowMaker/UserMenus:"GLOBAL_USER_MENU_PATH
 #endif
 
 /* icon path */
 #define DEF_ICON_PATHS \
-	"("                                                        \
-		"\"~/GNUstep/Library/Icons\","                     \
-		"\"~/GNUstep/Library/WindowMaker/Pixmaps\","       \
-		"\"~/GNUstep/Library/WindowMaker/CachedPixmaps\"," \
-		"\"~/pixmaps\","                                   \
-		"\""PKGDATADIR"/Icons\","                          \
-		"\""PKGDATADIR"/Pixmaps\","                        \
-		"\""PIXMAPDIR"\""                                  \
+	"("                                                                  \
+		"\"$WMAKER_USER_ROOT/Library/Icons\","                       \
+		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps\","         \
+		"\"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps\","   \
+		"\"~/pixmaps\","                                             \
+		"\""PKGDATADIR"/Icons\","                                    \
+		"\""PKGDATADIR"/Pixmaps\","                                  \
+		"\""PIXMAPDIR"\""                                            \
 	")"
 
 /* window title to use for untitled windows */

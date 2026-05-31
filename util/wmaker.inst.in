@@ -32,21 +32,17 @@ make_dir() {
 }
 
 #
-# Copy files considering special cases
+# Copy files, rewriting any user-root placeholder to the resolved $GSDIR.
+# The substitutions are no-ops on files that do not contain a placeholder.
 #
 copy() {
 	source="$1"
 	target="$2"
-	file="$(basename "$source")"
 	rm -f "$target"
-	if [ "$file" = "WindowMaker" ]; then
-		sed -e "s|~/GNUstep|$GSDIR|g" "$source" > "$target"
-	else
-		if test "x$WMAKER_USER_ROOT" != "x"; then
-			sed -e "s|\$HOME/GNUstep|$GSDIR|g" \
-					"$source" > "$target"
-		fi
-	fi
+	sed -e "s|\$WMAKER_USER_ROOT|$GSDIR|g" \
+	    -e "s|\$HOME/GNUstep|$GSDIR|g" \
+	    -e "s|~/GNUstep|$GSDIR|g" \
+	    "$source" > "$target"
 }
 
 #
@@ -77,26 +73,30 @@ if [ ! -d "$USERDIR" ]; then
 fi
 
 
-if test "x$WMAKER_USER_ROOT" = "x"; then
-	cd "$USERDIR"
-	GSDIR="$USERDIR/GNUstep"
-	if [ ! -d "$GSDIR" ]; then
-		echo "Creating $GSDIR user directory"
-		make_dir "$GSDIR"
-	fi
-else
+#
+# Resolve the user configuration root, must match wusergnusteppath():
+#   1. $WMAKER_USER_ROOT
+#   2. ~/GNUstep when ~/GNUstep/Defaults already exists (legacy install)
+#   3. ${XDG_CONFIG_HOME:-~/.config}/WindowMaker
+#
+if test "x$WMAKER_USER_ROOT" != "x"; then
 	GSDIR="$WMAKER_USER_ROOT"
-	if [ ! -d "$GSDIR" ]; then
-		# in this case, and in this case only, mkdir needs -p option
-		mkdir -p $GSDIR || {
-		    echo "Directory specified in WMAKER_USER_ROOT environment variable does not exist and could not be created"
-		    exit 1
-		}
-		chmod +rwx $GSDIR || exit 1
-	fi
-	cd "$GSDIR"
-	cd ..
+elif [ -d "$USERDIR/GNUstep/Defaults" ]; then
+	GSDIR="$USERDIR/GNUstep"
+else
+	GSDIR="${XDG_CONFIG_HOME:-$USERDIR/.config}/WindowMaker"
 fi
+
+if [ ! -d "$GSDIR" ]; then
+	echo "Creating $GSDIR user directory"
+	mkdir -p "$GSDIR" || {
+	    echo "User configuration directory $GSDIR does not exist and could not be created"
+	    exit 1
+	}
+	chmod +rwx "$GSDIR" || exit 1
+fi
+cd "$GSDIR"
+cd ..
 
 
 if [ ! -d "$GSDIR/Defaults" ]; then
