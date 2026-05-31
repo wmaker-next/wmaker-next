@@ -302,10 +302,16 @@ static void assemblePLMenuFunc(WMTreeNode *aNode, void *data)
 			WMPropList *tmp3;
 
 			memset(buf, 0, sizeof(buf));
-			if (wm->Flags & F_TERMINAL)	/* XXX: quoting! */
-				snprintf(buf, sizeof(buf), "%s -e \"%s\"", terminal, wm->CmdLine);
-			else
+			if (wm->Flags & F_TERMINAL) {
+				/* the result is a SHEXEC entry that goes through
+				 * /bin/sh -c, so the desktop entry's Exec value must
+				 * be quoted as a single shell word */
+				char *quoted = wshellquote(wm->CmdLine);
+				snprintf(buf, sizeof(buf), "%s -e %s", terminal, quoted);
+				wfree(quoted);
+			} else {
 				snprintf(buf, sizeof(buf), "%s", wm->CmdLine);
+			}
 			tmp1 = WMCreatePLString(wm->Name);
 			tmp2 = WMCreatePLString("SHEXEC");
 			tmp3 = WMCreatePLString(buf);
