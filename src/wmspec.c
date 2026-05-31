@@ -543,11 +543,23 @@ static void updateIconImage(WWindow *wwin)
 	if (wwin->icon)
 		wIconUpdate(wwin->icon);
 
-	/* Refresh the application icon */
+	/* Refresh the application icon. The app_icon's owner is
+	 * main_window_desc, whose net_icon_image was copied once at
+	 * wApplicationCreate time, so propagate the new image there too
+	 * or wIconUpdate below will not see it (clients that set
+	 * _NET_WM_ICON only after mapping otherwise keep the default). */
 	WApplication *app = wApplicationOf(wwin->main_window);
-	if (app && app->app_icon) {
-		wIconUpdate(app->app_icon->icon);
-		wAppIconPaint(app->app_icon);
+	if (app) {
+		if (app->main_window_desc && app->main_window_desc != wwin) {
+			if (app->main_window_desc->net_icon_image)
+				RReleaseImage(app->main_window_desc->net_icon_image);
+			app->main_window_desc->net_icon_image =
+				RRetainImage(wwin->net_icon_image);
+		}
+		if (app->app_icon) {
+			wIconUpdate(app->app_icon->icon);
+			wAppIconPaint(app->app_icon);
+		}
 	}
 }
 

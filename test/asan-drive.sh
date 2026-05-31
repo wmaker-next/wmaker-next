@@ -195,6 +195,45 @@ DISPLAY=$DPY xprop -id "$WID" -f _NET_WM_NAME 8u -set _NET_WM_NAME "renamed-by-d
 DISPLAY=$DPY xprop -id "$WID" -remove _NET_WM_NAME; sleep 0.2
 DISPLAY=$DPY xprop -id "$WID" -f WM_NAME 8s -set WM_NAME "renamed-again"; sleep 0.2
 
+# --- late-set _NET_WM_ICON (updateIconImage main_window_desc propagation) ---
+# Electron/Chromium clients set _NET_WM_ICON after mapping, then change it.
+# This exercises the release-old/retain-new pair in updateIconImage() across
+# move/resize/miniaturize so a refcount mistake shows up under ASan.
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import Xlib' 2>/dev/null; then
+    note "late-set _NET_WM_ICON"
+    DISPLAY=$DPY python3 - >/tmp/icon-ids.txt 2>&1 <<'PYEOF' &
+import sys, time
+from Xlib import X, display, Xatom
+d = display.Display(); scr = d.screen(); root = scr.root
+NET_WM_ICON = d.intern_atom('_NET_WM_ICON')
+leader = root.create_window(0, 0, 1, 1, 0, scr.root_depth, X.InputOutput, X.CopyFromParent)
+leader.set_wm_class("lateicon", "LateIcon")
+leader.set_wm_hints(flags=64, window_group=leader.id)
+vis = root.create_window(150, 150, 320, 240, 1, scr.root_depth, X.InputOutput, X.CopyFromParent,
+                         background_pixel=scr.white_pixel)
+vis.set_wm_name("LateIcon"); vis.set_wm_class("lateicon", "LateIcon")
+vis.set_wm_hints(flags=65, input=1, window_group=leader.id)
+vis.change_property(d.intern_atom('WM_CLIENT_LEADER'), Xatom.WINDOW, 32, [leader.id])
+vis.map(); d.flush(); time.sleep(0.4)
+vis.change_property(NET_WM_ICON, Xatom.CARDINAL, 32, [32,32]+[0xFFFF0000]*1024); d.flush()
+time.sleep(0.3)
+vis.change_property(NET_WM_ICON, Xatom.CARDINAL, 32, [32,32]+[0xFF00FF00]*1024); d.flush()
+print(hex(vis.id)); sys.stdout.flush()
+time.sleep(30)
+PYEOF
+    LIPID=$!; echo "$LIPID" >> "$PIDFILE"
+    sleep 1.2
+    LIW=$(cat /tmp/icon-ids.txt 2>/dev/null)
+    if [ -n "$LIW" ]; then
+        xdo windowmove "$LIW" 300 250; sleep 0.2
+        xdo windowsize "$LIW" 420 300; sleep 0.2
+        xdo windowminimize "$LIW"; sleep 0.3
+        xdo windowactivate "$LIW"; sleep 0.3
+    fi
+    kill "$LIPID" 2>/dev/null; sleep 0.3
+    rm -f /tmp/icon-ids.txt
+fi
+
 # --- kill clients while managed (wUnmanageWindow path) ----------------------
 note "client deaths"
 kill "$XT2" 2>/dev/null; sleep 0.3
