@@ -3,6 +3,27 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Typed configuration parsing
+---------------------------
+
+The WindowMaker defaults domain is now parsed once into a typed
+configuration model and diffed against the previously applied state on
+reload, instead of being string-compared and re-converted key by key.
+User configuration files keep the same property-list format and keys,
+but a few values are validated more strictly:
+
+- integer options (RaiseDelay, EdgeResistance, the various *Delay and
+  *Size settings, etc.) no longer accept trailing text after the
+  number, a value such as "100ms" now warns and falls back to the
+  built-in default instead of silently reading 100,
+- IconSize must be at least 1, DoubleClickTime at least 1, and
+  RaiseDelay/ClipAutoraiseDelay/ClipAutolowerDelay/ClipAutoexpandDelay/
+  ClipAutocollapseDelay must be non-negative.
+
+WindowMaker/Defaults/WindowMaker now lists every recognised key with
+its built-in default and is kept in sync with the schema by make check.
+
+
 xcb is now a required dependency
 --------------------------------
 
