@@ -76,6 +76,7 @@ static WMPropList *ADontSaveSession;	/* app */
 static WMPropList *AEmulateAppIcon;
 static WMPropList *AFocusAcrossWorkspace;
 static WMPropList *AFullMaximize;
+static WMPropList *ASwallowChild;
 static WMPropList *ASharedAppIcon;	/* app */
 #ifdef XKB_BUTTON_HINT
 static WMPropList *ANoLanguageButton;
@@ -115,6 +116,7 @@ static void init_wdefaults(void)
 	AEmulateAppIcon = WMCreatePLString("EmulateAppIcon");
 	AFocusAcrossWorkspace = WMCreatePLString("FocusAcrossWorkspace");
 	AFullMaximize = WMCreatePLString("FullMaximize");
+	ASwallowChild = WMCreatePLString("SwallowChild");
 	ASharedAppIcon = WMCreatePLString("SharedAppIcon");
 #ifdef XKB_BUTTON_HINT
 	ANoLanguageButton = WMCreatePLString("NoLanguageButton");
@@ -301,6 +303,9 @@ void wDefaultFillAttributes(const char *instance, const char *class,
 
 	value = get_value(dw, dc, dn, da, AFullMaximize, No, useGlobalDefault);
 	APPLY_VAL(value, full_maximize, AFullMaximize);
+
+	value = get_value(dw, dc, dn, da, ASwallowChild, No, useGlobalDefault);
+	APPLY_VAL(value, swallow_child, ASwallowChild);
 
 	value = get_value(dw, dc, dn, da, AIgnoreDecorationChanges, No, useGlobalDefault);
 	APPLY_VAL(value, ignore_decoration_changes, AIgnoreDecorationChanges);

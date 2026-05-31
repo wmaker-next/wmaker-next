@@ -112,7 +112,12 @@ static const struct {
 	{ "FullMaximize", { .full_maximize = 1 }, N_("Full screen maximization"),
 	  N_("Make the window use the whole screen space when it's\n"
 				  "maximized. The titlebar and resizebar will be moved\n"
-				  "to outside the screen.") }
+				  "to outside the screen.") },
+
+	{ "SwallowChild", { .swallow_child = 1 }, N_("Swallow child window"),
+	  N_("When a child process of this window maps its own window,\n"
+	     "hide this one and place the child where it was. When the\n"
+	     "child closes, this window reappears.") }
 
 }, advanced_option[] = {
 	{ "NoKeyBindings", { .no_bind_keys = 1 }, N_("Do not bind keyboard shortcuts"),
@@ -1292,7 +1297,7 @@ static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, i
 	panel->attrFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->attrFrm, _("Attributes"));
 	WMMoveWidget(panel->attrFrm, 15, 45);
-	WMResizeWidget(panel->attrFrm, frame_width, 250);
+	WMResizeWidget(panel->attrFrm, frame_width, 265);
 
 	for (i = 0; i < wlengthof(window_attribute); i++) {
 		int is_userdef, flag;

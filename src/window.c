@@ -578,36 +578,136 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 /* Get the corresponding Process Identification Number of the active window */
 static pid_t getWindowPid(Window win)
 {
-	pid_t pid = -1;
-
-	pid = wNETWMGetPidForWindow(win);
 #ifdef USE_XRES
-	if (pid > 0)
-		return pid;
-	else {
+	{
+		pid_t xres_pid = -1;
 		XResClientIdSpec spec;
-		int status;
 		long i, num_ids = 0;
 		XResClientIdValue *client_ids = NULL;
 
 		spec.client = win;
 		spec.mask = XRES_CLIENT_ID_PID_MASK;
 
-		status = XResQueryClientIds(dpy, 1, &spec, &num_ids, &client_ids);
-
-		if (status != Success)
-			return -1;
-
-		for (i = 0; i < num_ids; i++) {
-			if (client_ids[i].spec.mask == XRES_CLIENT_ID_PID_MASK) {
-				pid = XResGetClientPid(&client_ids[i]);
-				break;
+		if (XResQueryClientIds(dpy, 1, &spec, &num_ids, &client_ids) == Success) {
+			for (i = 0; i < num_ids; i++) {
+				if (client_ids[i].spec.mask == XRES_CLIENT_ID_PID_MASK) {
+					xres_pid = XResGetClientPid(&client_ids[i]);
+					break;
+				}
 			}
+			XResClientIdsDestroy(num_ids, client_ids);
 		}
-		XResClientIdsDestroy(num_ids, client_ids);
+
+		if (xres_pid > 0)
+			return xres_pid;
 	}
 #endif
-	return pid;
+	return wNETWMGetPidForWindow(win);
+}
+
+/*
+ * wWindowTrySwallow--
+ * Called after a new window is fully managed. If the window's process
+ * is a descendant of a managed window that has the swallow_child
+ * attribute set, hide that parent and place the new window where it
+ * was. Backgrounded children (started with &) are never swallowed.
+ */
+static void wWindowTrySwallow(WWindow *wwin)
+{
+	WScreen *scr = wwin->screen_ptr;
+	WWindow *parent;
+	pid_t child_pid;
+
+	child_pid = getWindowPid(wwin->client_win);
+
+	for (parent = scr->focused_window; parent; parent = parent->prev) {
+		pid_t parent_pid;
+
+		if (parent == wwin)
+			continue;
+		if (!WFLAGP(parent, swallow_child))
+			continue;
+		if (parent->swallowed)		/* already swallowing something */
+			continue;
+
+		parent_pid = getWindowPid(parent->client_win);
+		if (parent_pid <= 0)
+			continue;
+
+		/* When the new window does not expose _NET_WM_PID, fall back
+		 * to scanning the parent's process subtree for a process
+		 * whose name matches WM_COMMAND or WM_CLASS */
+		if (child_pid <= 0) {
+			char *cmd = GetCommandForWindow(wwin->client_win);
+			if (cmd) {
+				char *tok = wstrdup(cmd);
+				char *first = strtok(tok, " \t");
+				if (first)
+					child_pid = FindDescendantPidByCmdName(parent_pid, first);
+				wfree(tok);
+				wfree(cmd);
+			}
+		}
+		if (child_pid <= 0 && wwin->wm_instance)
+			child_pid = FindDescendantPidByCmdName(parent_pid, wwin->wm_instance);
+		if (child_pid <= 0 && wwin->wm_class)
+			child_pid = FindDescendantPidByCmdName(parent_pid, wwin->wm_class);
+
+		if (child_pid <= 0)
+			continue;
+		if (IsBackgroundProcess(child_pid) > 0)
+			continue;
+		if (!IsProcessAncestor(parent_pid, child_pid))
+			continue;
+
+		/* perform the swallow */
+		parent->swallowed = wwin;
+		wwin->swallower = parent;
+
+		wWindowConfigure(wwin, parent->frame_x, parent->frame_y,
+				 parent->client.width, parent->client.height);
+
+		/* hide the parent through the standard hidden-flag path so
+		 * the switch panel, workspace change, etc. all see it as
+		 * hidden */
+		parent->flags.hidden = 1;
+		wWindowUnmap(parent);
+		wClientSetState(parent, IconicState, None);
+		WMPostNotificationName(WMNChangedState, parent, "hide");
+
+		wSetFocusTo(scr, wwin);
+		wRaiseFrame(wwin->frame->core);
+		break;
+	}
+}
+
+/*
+ * wWindowUnswallow--
+ * Called when a swallowed window is being unmanaged. Restores the
+ * swallower that was hidden when the swallow happened.
+ */
+static void wWindowUnswallow(WWindow *wwin)
+{
+	WWindow *parent = wwin->swallower;
+
+	if (!parent)
+		return;
+
+	parent->swallowed = NULL;
+	wwin->swallower = NULL;
+
+	/* unhide the parent directly rather than through wMakeWindowVisible(),
+	 * which would unhide the whole application */
+	parent->flags.hidden = 0;
+	parent->flags.skip_next_animation = 1;
+	if (parent->screen_ptr->current_workspace == parent->frame->workspace) {
+		XMapWindow(dpy, parent->client_win);
+		XMapWindow(dpy, parent->frame->core->window);
+		wClientSetState(parent, NormalState, None);
+		parent->flags.mapped = 1;
+		wRaiseFrame(parent->frame->core);
+		wSetFocusTo(parent->screen_ptr, parent);
+	}
 }
 
 static void fixLeaderProperties(WWindow *wwin)
@@ -1545,6 +1645,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wwin = NULL;
 	}
 
+	/* try to swallow this window into a parent terminal */
+	if (wwin)
+		wWindowTrySwallow(wwin);
+
 	return wwin;
 }
 
@@ -1690,6 +1794,16 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	WWindow *newFocusedWindow = NULL;
 	int wasFocused;
 	WScreen *scr = wwin->screen_ptr;
+
+	/* if this window was swallowed by a terminal, restore the terminal */
+	wWindowUnswallow(wwin);
+
+	/* if this window was itself swallowing a child, drop the link so the
+	 * child does not keep a dangling swallower pointer */
+	if (wwin->swallowed) {
+		wwin->swallowed->swallower = NULL;
+		wwin->swallowed = NULL;
+	}
 
 	/* First close attribute editor window if open */
 	if (wwin->flags.inspector_open)

@@ -138,6 +138,7 @@ typedef struct {
     unsigned int dont_save_session:1;  /* do not save app's state in session */
 
     unsigned int full_maximize:1;
+    unsigned int swallow_child:1;
     /*
      * emulate_app_icon must be automatically disabled for apps that can
      * generate their own appicons and for apps that have no_appicon=1
@@ -301,6 +302,12 @@ typedef struct WWindow {
 	RImage *net_icon_image;			/* Window Image */
 	Atom type;
 	char *mark_key_label;		/* Vim-like Window Marking */
+
+	/* window swallowing: terminals with swallow_child hide themselves
+	 * when a child GUI process maps a window, and reappear when it
+	 * exits */
+	struct WWindow *swallowed;	/* child window this terminal is swallowing */
+	struct WWindow *swallower;	/* terminal that swallowed this window */
 } WWindow;
 
 #define HAS_TITLEBAR(w)		(!(WFLAGP((w), no_titlebar) || (w)->flags.fullscreen))
