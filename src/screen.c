@@ -65,8 +65,12 @@
 
 #include "defaults.h"
 
+/* PointerMotionMask is added on demand by wScreenUpdateRootEventMask()
+ * below, only when HotCorners or ScrollableMenus actually needs it,
+ * so an idle desktop with both off receives no root MotionNotify at
+ * all instead of one per pointer pixel */
 #define EVENT_MASK (LeaveWindowMask|EnterWindowMask|PropertyChangeMask\
-    |SubstructureNotifyMask|PointerMotionMask \
+    |SubstructureNotifyMask \
     |SubstructureRedirectMask|ButtonPressMask|ButtonReleaseMask\
     |KeyPressMask|KeyReleaseMask)
 
@@ -653,6 +657,10 @@ WScreen *wScreenInit(int screen_number)
 
 	event_mask = EVENT_MASK;
 	XSelectInput(dpy, scr->root_win, event_mask);
+	/* defaults are read after this point, so the conditional motion mask
+	 * is applied again from wReadDefaults() once the preference values
+	 * are known, and again whenever HotCorners or ScrollableMenus
+	 * changes at runtime */
 
 #ifdef KEEP_XKB_LOCK_STATUS
 	if (w_global.xext.xkb.supported)
@@ -812,6 +820,22 @@ WScreen *wScreenInit(int screen_number)
 	wScreenUpdateUsableArea(scr);
 
 	return scr;
+}
+
+/*
+ * Re-select the root window event mask with PointerMotionMask added
+ * only when a feature that consumes root MotionNotify is enabled.
+ * Called once from wReadDefaults() after the preference values are
+ * known and again whenever HotCorners or ScrollableMenus changes.
+ */
+void wScreenUpdateRootEventMask(WScreen *scr)
+{
+	long mask = EVENT_MASK;
+
+	if (wPreferences.hot_corners || wPreferences.scrollable_menus)
+		mask |= PointerMotionMask;
+
+	XSelectInput(dpy, scr->root_win, mask);
 }
 
 void wScreenUpdateUsableArea(WScreen *scr)

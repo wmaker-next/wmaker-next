@@ -156,6 +156,7 @@ static WDECallbackUpdate setHotCornerActions;
 static WDECallbackConvert getCursor;
 static WDECallbackUpdate setCursor;
 static WDECallbackUpdate updateDock;
+static WDECallbackUpdate setRootMotionMask;
 
 /*
  * Tables to convert strings to enumeration values.
@@ -416,7 +417,7 @@ WDefaultEntry optionList[] = {
 	{"WrapMenus", "NO", NULL,
 	    &wPreferences.wrap_menus, getBool, NULL, NULL, NULL},
 	{"ScrollableMenus", "YES", NULL,
-	    &wPreferences.scrollable_menus, getBool, NULL, NULL, NULL},
+	    &wPreferences.scrollable_menus, getBool, setRootMotionMask, NULL, NULL},
 	{"MenuScrollSpeed", "fast", seSpeeds,
 	    &wPreferences.menu_scroll_speed, getEnum, NULL, NULL, NULL},
 	{"IconSlideSpeed", "fast", seSpeeds,
@@ -531,7 +532,7 @@ WDefaultEntry optionList[] = {
 	    &wPreferences.hotplug_monitor, getBool, NULL, NULL, NULL},
 #endif
 	{"HotCorners", "NO", NULL,
-	    &wPreferences.hot_corners, getBool, NULL, NULL, NULL},
+	    &wPreferences.hot_corners, getBool, setRootMotionMask, NULL, NULL},
 	{"HotCornerDelay", "250", (void *)&wPreferences.hot_corner_delay,
 	    &wPreferences.hot_corner_delay, getInt, NULL, NULL, NULL},
 	{"HotCornerEdge", "2", (void *)&wPreferences.hot_corner_edge,
@@ -3822,5 +3823,22 @@ static int updateDock(WScreen * scr, WDefaultEntry * entry,
 	if (scr->dock)
 		wDockSwap(scr->dock);
 
+	return 0;
+}
+
+/*
+ * HotCorners and ScrollableMenus are the only consumers of root-window
+ * MotionNotify, so PointerMotionMask is selected on the root only while
+ * either is on. getBool has already written wPreferences by the time
+ * this runs.
+ */
+static int setRootMotionMask(WScreen *scr, WDefaultEntry *entry,
+			     void *tdata, void *extra_data)
+{
+	(void) entry;
+	(void) tdata;
+	(void) extra_data;
+
+	wScreenUpdateRootEventMask(scr);
 	return 0;
 }
