@@ -600,8 +600,6 @@ static void createInternalWindows(WScreen * scr)
  * 	Many resources are allocated and the IconSize property is
  * set on the root window.
  *	The program can be aborted if some fatal error occurs.
- *
- * TODO: User specifiable visual.
  *----------------------------------------------------------------------
  */
 WScreen *wScreenInit(int screen_number)

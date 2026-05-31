@@ -42,7 +42,6 @@ static void synchronizeUserDefaults(void *foo);
 
 #ifndef HAVE_INOTIFY
 /* Check defaults database for changes every this many milliseconds */
-/* XXX: this is shared with src/ stuff, put it in some common header */
 #define UD_SYNC_INTERVAL	2000
 #endif
 

@@ -120,11 +120,11 @@ static Atom net_wm_action_fullscreen;
 static Atom net_wm_action_change_desktop;
 static Atom net_wm_action_close;
 static Atom net_wm_strut;
-static Atom net_wm_strut_partial;	/* TODO: doesn't really fit into the current strut scheme */
-static Atom net_wm_icon_geometry;	/* FIXME: should work together with net_wm_handled_icons, gnome-panel-2.2.0.1 doesn't use _NET_WM_HANDLED_ICONS, thus present situation. */
+static Atom net_wm_strut_partial;
+static Atom net_wm_icon_geometry;
 static Atom net_wm_icon;
 static Atom net_wm_pid;
-static Atom net_wm_handled_icons;	/* FIXME: see net_wm_icon_geometry */
+static Atom net_wm_handled_icons;
 static Atom net_wm_window_opacity;
 
 static Atom net_frame_extents;

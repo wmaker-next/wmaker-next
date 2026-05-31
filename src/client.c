@@ -293,8 +293,6 @@ void wClientKill(WWindow * wwin)
  *
  * Side effects:
  * 	Depends on the changed property.
- *
- * TODO: _GNUSTEP_WM_ATTR
  *----------------------------------------------------------------------
  */
 void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
