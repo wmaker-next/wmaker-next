@@ -21,6 +21,29 @@
 #ifndef WMOSDEP_H_
 #define WMOSDEP_H_
 
+#include <sys/types.h>
+
 Bool GetCommandForPid(int pid, char ***argv, int *argc);
+
+/*
+ * Walk /proc/<pid>/stat up the process tree to check if 'ancestor'
+ * is a parent (or grandparent, ...) of 'pid'. Linux-only; stubs on
+ * other platforms return False.
+ */
+Bool IsProcessAncestor(pid_t ancestor, pid_t pid);
+
+/*
+ * Read /proc/<pid>/stat to determine whether the process was started
+ * in the background (via shell '&'). Returns 1 if background, 0 if
+ * foreground, -1 on error. Linux-only; stubs return 0.
+ */
+int IsBackgroundProcess(pid_t pid);
+
+/*
+ * Scan /proc for a process whose command (basename) matches 'cmd' and
+ * that is a descendant of 'parent'. Returns the pid or 0 if not found.
+ * Linux-only; stubs return 0.
+ */
+pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd);
 
 #endif

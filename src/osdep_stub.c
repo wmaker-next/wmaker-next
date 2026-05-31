@@ -34,3 +34,29 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 	return False;
 }
+
+
+Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+{
+	(void)ancestor;
+	(void)pid;
+
+	return False;
+}
+
+
+int IsBackgroundProcess(pid_t pid)
+{
+	(void)pid;
+
+	return 0;
+}
+
+
+pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
+{
+	(void)parent;
+	(void)cmd;
+
+	return 0;
+}

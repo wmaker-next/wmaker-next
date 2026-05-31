@@ -29,10 +29,273 @@
 
 #include <unistd.h>
 
+/* Additional headers for process introspection (IsProcessAncestor, etc.) */
+#if defined( FREEBSD )
+#   include <sys/user.h>		/* struct kinfo_proc (ki_* fields) */
+#elif defined( DRAGONFLYBSD )
+#   include <sys/kinfo.h>		/* struct kinfo_proc (kp_* fields) */
+#endif
+#include <strings.h>			/* strcasecmp */
+
 #include <WINGs/WUtil.h>
 
 #include "wconfig.h"
 #include "osdep.h"
+
+/*
+ * IsProcessAncestor--
+ * Returns True if 'ancestor' is a parent (or grandparent, ...) of 'pid'
+ * by walking the process tree via the OS-native process info interface.
+ */
+Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+{
+#if defined( OPENBSD )
+	char kvmerr[_POSIX2_LINE_MAX];
+	kvm_t *kd;
+	struct kinfo_proc *kp;
+	int procs;
+
+	while (pid > 1) {
+		pid_t ppid = -1;
+
+		kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, kvmerr);
+		if (!kd)
+			return False;
+		kp = kvm_getprocs(kd, KERN_PROC_PID, (int)pid, sizeof(*kp), &procs);
+		if (kp && procs > 0)
+			ppid = (pid_t)kp[0].p_ppid;
+		kvm_close(kd);
+		if (ppid < 0)
+			return False;
+		if (ppid == ancestor)
+			return True;
+		pid = ppid;
+	}
+	return False;
+#elif defined( NETBSD )
+	while (pid > 1) {
+		struct kinfo_proc2 kp;
+		int mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_PID,
+			       (int)pid, sizeof(kp), 1 };
+		size_t count = sizeof(kp);
+		pid_t ppid;
+
+		if (sysctl(mib, 6, &kp, &count, NULL, 0) == -1 || count == 0)
+			return False;
+		ppid = (pid_t)kp.p_ppid;
+		if (ppid == ancestor)
+			return True;
+		pid = ppid;
+	}
+	return False;
+#elif defined( FREEBSD ) || defined( DRAGONFLYBSD )
+	while (pid > 1) {
+		struct kinfo_proc kp;
+		int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)pid };
+		size_t count = sizeof(kp);
+		pid_t ppid;
+
+		if (sysctl(mib, 4, &kp, &count, NULL, 0) == -1 || count == 0)
+			return False;
+#  if defined( FREEBSD )
+		ppid = (pid_t)kp.ki_ppid;
+#  else /* DRAGONFLYBSD */
+		ppid = (pid_t)kp.kp_ppid;
+#  endif
+		if (ppid == ancestor)
+			return True;
+		pid = ppid;
+	}
+	return False;
+#else
+	(void)ancestor;
+	(void)pid;
+	return False;
+#endif
+}
+
+/*
+ * IsBackgroundProcess--
+ * Returns 1 if the process was started in the background (shell '&'),
+ * 0 if foreground, -1 on error. Determined by comparing the process
+ * group against the terminal's foreground process group (tpgid).
+ */
+int IsBackgroundProcess(pid_t pid)
+{
+#if defined( OPENBSD )
+	char kvmerr[_POSIX2_LINE_MAX];
+	kvm_t *kd;
+	struct kinfo_proc *kp;
+	int procs, result;
+
+	kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, kvmerr);
+	if (!kd)
+		return -1;
+	kp = kvm_getprocs(kd, KERN_PROC_PID, (int)pid, sizeof(*kp), &procs);
+	if (!kp || procs == 0) {
+		kvm_close(kd);
+		return -1;
+	}
+	/* p_tpgid is -1 when the process has no controlling terminal */
+	if ((pid_t)kp[0].p_tpgid == (pid_t)-1 || kp[0].p_tpgid == 0)
+		result = 0;
+	else
+		result = ((pid_t)kp[0].p__pgid != (pid_t)kp[0].p_tpgid) ? 1 : 0;
+	kvm_close(kd);
+	return result;
+#elif defined( NETBSD )
+	struct kinfo_proc2 kp;
+	int mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_PID,
+		       (int)pid, sizeof(kp), 1 };
+	size_t count = sizeof(kp);
+
+	if (sysctl(mib, 6, &kp, &count, NULL, 0) == -1 || count == 0)
+		return -1;
+	if ((pid_t)kp.p_tpgid == (pid_t)-1 || kp.p_tpgid == 0)
+		return 0;
+	return ((pid_t)kp.p__pgid != (pid_t)kp.p_tpgid) ? 1 : 0;
+#elif defined( FREEBSD )
+	struct kinfo_proc kp;
+	int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)pid };
+	size_t count = sizeof(kp);
+
+	if (sysctl(mib, 4, &kp, &count, NULL, 0) == -1 || count == 0)
+		return -1;
+	if (kp.ki_tpgid == (pid_t)-1 || kp.ki_tpgid == 0)
+		return 0;
+	return (kp.ki_pgid != kp.ki_tpgid) ? 1 : 0;
+#elif defined( DRAGONFLYBSD )
+	struct kinfo_proc kp;
+	int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)pid };
+	size_t count = sizeof(kp);
+
+	if (sysctl(mib, 4, &kp, &count, NULL, 0) == -1 || count == 0)
+		return -1;
+	if (kp.kp_tpgid == (pid_t)-1 || kp.kp_tpgid == 0)
+		return 0;
+	return (kp.kp_pgid != kp.kp_tpgid) ? 1 : 0;
+#else
+	(void)pid;
+	return 0;
+#endif
+}
+
+/*
+ * FindDescendantPidByCmdName--
+ * Scan all processes for one whose command name (case-insensitive) matches
+ * 'cmd' and that is a descendant of 'parent'. Returns the pid or 0 if not
+ * found.
+ *
+ * Note: BSD stores a truncated command name (MAXCOMLEN characters) in the
+ * process table. Names longer than MAXCOMLEN may not match.
+ */
+#if defined( OPENBSD )
+static pid_t find_descendant_pid(pid_t parent, const char *cmd)
+{
+	char kvmerr[_POSIX2_LINE_MAX];
+	kvm_t *kd;
+	struct kinfo_proc *kp;
+	int procs, i;
+	pid_t found = 0;
+
+	kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, kvmerr);
+	if (!kd)
+		return 0;
+	kp = kvm_getprocs(kd, KERN_PROC_ALL, 0, sizeof(*kp), &procs);
+	if (kp) {
+		for (i = 0; i < procs; i++) {
+			if (strcasecmp(kp[i].p_comm, cmd) == 0 &&
+			    IsProcessAncestor(parent, (pid_t)kp[i].p_pid)) {
+				found = (pid_t)kp[i].p_pid;
+				break;
+			}
+		}
+	}
+	kvm_close(kd);
+	return found;
+}
+#elif defined( NETBSD )
+static pid_t find_descendant_pid(pid_t parent, const char *cmd)
+{
+	int mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0,
+		       sizeof(struct kinfo_proc2), 0 };
+	size_t len;
+	struct kinfo_proc2 *kp;
+	int nprocs, i;
+	pid_t found = 0;
+
+	if (sysctl(mib, 6, NULL, &len, NULL, 0) == -1 || len == 0)
+		return 0;
+	kp = (struct kinfo_proc2 *)malloc(len);
+	if (!kp)
+		return 0;
+	mib[5] = len / sizeof(struct kinfo_proc2);
+	if (sysctl(mib, 6, kp, &len, NULL, 0) == -1) {
+		free(kp);
+		return 0;
+	}
+	nprocs = (int)(len / sizeof(struct kinfo_proc2));
+	for (i = 0; i < nprocs; i++) {
+		if (strcasecmp(kp[i].p_comm, cmd) == 0 &&
+		    IsProcessAncestor(parent, (pid_t)kp[i].p_pid)) {
+			found = (pid_t)kp[i].p_pid;
+			break;
+		}
+	}
+	free(kp);
+	return found;
+}
+#elif defined( FREEBSD ) || defined( DRAGONFLYBSD )
+static pid_t find_descendant_pid(pid_t parent, const char *cmd)
+{
+	int mib[3] = { CTL_KERN, KERN_PROC, KERN_PROC_PROC };
+	size_t len;
+	struct kinfo_proc *kp;
+	int nprocs, i;
+	pid_t found = 0;
+
+	if (sysctl(mib, 3, NULL, &len, NULL, 0) == -1 || len == 0)
+		return 0;
+	kp = (struct kinfo_proc *)malloc(len);
+	if (!kp)
+		return 0;
+	if (sysctl(mib, 3, kp, &len, NULL, 0) == -1) {
+		free(kp);
+		return 0;
+	}
+	nprocs = (int)(len / sizeof(struct kinfo_proc));
+	for (i = 0; i < nprocs; i++) {
+#  if defined( FREEBSD )
+		if (strcasecmp(kp[i].ki_comm, cmd) == 0 &&
+		    IsProcessAncestor(parent, (pid_t)kp[i].ki_pid)) {
+			found = (pid_t)kp[i].ki_pid;
+#  else /* DRAGONFLYBSD */
+		if (strcasecmp(kp[i].kp_comm, cmd) == 0 &&
+		    IsProcessAncestor(parent, (pid_t)kp[i].kp_pid)) {
+			found = (pid_t)kp[i].kp_pid;
+#  endif
+			break;
+		}
+	}
+	free(kp);
+	return found;
+}
+#else
+static pid_t find_descendant_pid(pid_t parent, const char *cmd)
+{
+	(void)parent;
+	(void)cmd;
+	return 0;
+}
+#endif
+
+pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
+{
+	if (!cmd)
+		return 0;
+
+	return find_descendant_pid(parent, cmd);
+}
 
 /*
  * copy argc and argv for an existing process identified by `pid'
