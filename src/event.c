@@ -23,7 +23,6 @@
 #include "wconfig.h"
 
 #ifdef HAVE_INOTIFY
-#include <sys/select.h>
 #include <sys/inotify.h>
 #endif
 
@@ -336,20 +335,12 @@ static void handle_inotify_events(void)
 		if (pevent->mask & IN_DELETE_SELF) {
 			wwarning(_("the defaults database has been deleted!"
 				   " Restart Window Maker to create the database" " with the default settings"));
-
-			if (w_global.inotify.fd_event_queue >= 0) {
-				close(w_global.inotify.fd_event_queue);
-				w_global.inotify.fd_event_queue = -1;
-			}
+			wInotifyCleanup();
 		}
 		if (pevent->mask & IN_UNMOUNT) {
 			wwarning(_("the unit containing the defaults database has"
 				   " been unmounted. Setting --static mode." " Any changes will not be saved."));
-
-			if (w_global.inotify.fd_event_queue >= 0) {
-				close(w_global.inotify.fd_event_queue);
-				w_global.inotify.fd_event_queue = -1;
-			}
+			wInotifyCleanup();
 
 			wPreferences.flags.noupdates = 1;
 		}
@@ -387,6 +378,31 @@ static void handle_inotify_events(void)
 			wKeyTreeRebuild(scr);
 	}
 }
+
+void wInotifyCleanup(void)
+{
+	if (w_global.inotify.input_handler) {
+		WMDeleteInputHandler(w_global.inotify.input_handler);
+		w_global.inotify.input_handler = NULL;
+	}
+
+	if (w_global.inotify.fd_event_queue >= 0)
+		close(w_global.inotify.fd_event_queue);
+
+	w_global.inotify.fd_event_queue = -1;
+	w_global.inotify.wd_defaults = -1;
+}
+
+static void inotify_input(int fd, int mask, void *clientData)
+{
+	(void) mask;
+	(void) clientData;
+
+	if (fd != w_global.inotify.fd_event_queue)
+		return;
+
+	handle_inotify_events();
+}
 #endif /* HAVE_INOTIFY */
 
 /*
@@ -399,47 +415,28 @@ static void handle_inotify_events(void)
  *
  * Side effects:
  * 	The LastTimestamp global variable is updated.
- *      Calls inotifyGetEvents if defaults database changes.
+ *      Calls handle_inotify_events if the defaults database changes.
  *----------------------------------------------------------------------
  */
 noreturn void EventLoop(void)
 {
 	XEvent event;
-#ifdef HAVE_INOTIFY
-	struct timeval time;
-	fd_set rfds;
-	int retVal = 0;
 
-	if (w_global.inotify.fd_event_queue < 0 || w_global.inotify.wd_defaults < 0)
-		retVal = -1;
+#ifdef HAVE_INOTIFY
+	/* register the inotify fd with the WINGs input-handler set so it
+	 * shares the same select() as the X connection inside WMNextEvent,
+	 * otherwise an inotify event on an idle display would not be seen
+	 * until the next X event arrived */
+	if (w_global.inotify.fd_event_queue >= 0 &&
+	    w_global.inotify.wd_defaults >= 0 &&
+	    !w_global.inotify.input_handler)
+		w_global.inotify.input_handler = WMAddInputHandler(w_global.inotify.fd_event_queue,
+							      WIReadMask, inotify_input, NULL);
 #endif
 
 	for (;;) {
-
 		WMNextEvent(dpy, &event);	/* Blocks here */
 		WMHandleEvent(&event);
-#ifdef HAVE_INOTIFY
-		if (retVal != -1) {
-			time.tv_sec = 0;
-			time.tv_usec = 0;
-			FD_ZERO(&rfds);
-			FD_SET(w_global.inotify.fd_event_queue, &rfds);
-
-			/* check for available read data from inotify - don't block! */
-			retVal = select(w_global.inotify.fd_event_queue + 1, &rfds, NULL, NULL, &time);
-
-			if (retVal < 0) {	/* an error has occurred */
-				wwarning(_("select failed. The inotify instance will be closed."
-					   " Changes to the defaults database will require"
-					   " a restart to take effect."));
-				close(w_global.inotify.fd_event_queue);
-				w_global.inotify.fd_event_queue = -1;
-				continue;
-			}
-			if (FD_ISSET(w_global.inotify.fd_event_queue, &rfds))
-				handle_inotify_events();
-		}
-#endif
 	}
 }
 

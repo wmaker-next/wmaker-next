@@ -520,8 +520,7 @@ static void inotifyWatchConfig(void)
 			wwarning(_("could not add an inotify watch on path %s."
 				   " Changes to the defaults database will require"
 				   " a restart to take effect."), watchPath);
-			close(w_global.inotify.fd_event_queue);
-			w_global.inotify.fd_event_queue = -1;
+			wInotifyCleanup();
 		}
 	}
 	wfree(watchPath);
@@ -578,6 +577,10 @@ int main(int argc, char **argv)
 	w_global.timestamp.focus_change = CurrentTime;
 	w_global.ignore_workspace_change = False;
 	w_global.shortcut.modifiers_mask = 0xff;
+#ifdef HAVE_INOTIFY
+	w_global.inotify.fd_event_queue = -1;
+	w_global.inotify.wd_defaults = -1;
+#endif
 
 	/* setup common stuff for the monitor and wmaker itself */
 	WMInitializeApplication("WindowMaker", &argc, argv);

@@ -34,6 +34,9 @@ noreturn void EventLoop(void);
 void DispatchEvent(XEvent *event);
 void ProcessPendingEvents(void);
 WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata);
+#ifdef HAVE_INOTIFY
+void wInotifyCleanup(void);
+#endif
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
 
 /* called from the signal handler */

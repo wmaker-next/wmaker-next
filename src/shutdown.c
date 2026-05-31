@@ -36,6 +36,7 @@
 #include "winspector.h"
 #include "wmspec.h"
 #include "colormap.h"
+#include "event.h"
 #include "screen.h"
 #include "shutdown.h"
 
@@ -63,10 +64,7 @@ void Shutdown(WShutdownMode mode)
 		/* if there is no session manager, send SAVE_YOURSELF to
 		 * the clients */
 #ifdef HAVE_INOTIFY
-		if (w_global.inotify.fd_event_queue >= 0) {
-			close(w_global.inotify.fd_event_queue);
-			w_global.inotify.fd_event_queue = -1;
-		}
+		wInotifyCleanup();
 #endif
 		for (i = 0; i < w_global.screen_count; i++) {
 			WScreen *scr;
@@ -94,10 +92,7 @@ void Shutdown(WShutdownMode mode)
 			WScreen *scr;
 
 #ifdef HAVE_INOTIFY
-			if (w_global.inotify.fd_event_queue >= 0) {
-				close(w_global.inotify.fd_event_queue);
-				w_global.inotify.fd_event_queue = -1;
-			}
+			wInotifyCleanup();
 #endif
 			scr = wScreenWithNumber(i);
 			if (scr) {
