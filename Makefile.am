@@ -72,6 +72,19 @@ coverage:
 	genhtml --output-directory @lcov_output_directory@ coverage/coverage.info
 endif
 
+.PHONY:	analyze
+
+ANALYZE_DIRS = src WINGs wrlib util WPrefs.app
+
+analyze:
+	@if test -f "$(top_builddir)/compile_commands.json" && command -v run-clang-tidy > /dev/null 2>&1 ; then \
+	  echo "Running run-clang-tidy against $(top_builddir)/compile_commands.json" ; \
+	  run-clang-tidy -quiet -p "$(top_builddir)" $(ANALYZE_DIRS) ; \
+	else \
+	  echo "compile_commands.json or run-clang-tidy not found, falling back to scan-build" ; \
+	  scan-build --status-bugs $(MAKE) $(AM_MAKEFLAGS) clean all ; \
+	fi
+
 ################################################################################
 # Section for the I18N processing
 ################################################################################
