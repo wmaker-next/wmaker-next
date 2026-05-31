@@ -97,6 +97,11 @@ wrlib/wrlib.pc
 WINGs/WINGs.pc
 WINGs/WUtil.pc
 
+# Fetched or cached by 'make checkpatch'
+/spelling.txt
+/const_structs.checkpatch
+/.checkpatch-camelcase.*
+
 wrlib/libwraster.map
 
 WindowMaker/appearance.menu

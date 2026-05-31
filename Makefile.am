@@ -85,7 +85,50 @@ analyze:
 	  scan-build --status-bugs $(MAKE) $(AM_MAKEFLAGS) clean all ; \
 	fi
 
+ .PHONY:	checkpatch
+
+# Kernel-only conventions that do not apply to Window Maker, plus categories
+# that fight the existing tree style (block-comment layout, line length) or
+# are near-pure false positives in C ("Window window" repeated-word).
+CHECKPATCH_IGNORE = NEW_TYPEDEFS,SPDX_LICENSE_TAG,COMPLEX_MACRO,PREFER_KERNEL_TYPES,ARRAY_SIZE,EMAIL_SUBJECT,FILE_PATH_CHANGES,GIT_COMMIT_ID,MISSING_SIGN_OFF,BAD_SIGN_OFF,NO_AUTHOR_SIGN_OFF,BAD_REPORTED_BY_LINK,BAD_FIXES_TAG,STRCPY,STRNCPY,SPRINTF,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE,EMBEDDED_FUNCTION_NAME,BLOCK_COMMENT_STYLE,LONG_LINE,LONG_LINE_STRING,LONG_LINE_COMMENT,REPEATED_WORD
+SPELLING_URL = https://raw.githubusercontent.com/torvalds/linux/master/scripts/spelling.txt
+
+checkpatch:
+	@if test ! -f "$(top_srcdir)/spelling.txt" ; then \
+	  echo "Fetching spelling.txt (one-time)" ; \
+	  if command -v curl > /dev/null 2>&1 ; then \
+	    curl -sfL "$(SPELLING_URL)" -o "$(top_srcdir)/spelling.txt" ; \
+	  elif command -v wget > /dev/null 2>&1 ; then \
+	    wget -qO "$(top_srcdir)/spelling.txt" "$(SPELLING_URL)" ; \
+	  fi ; \
+	  test -s "$(top_srcdir)/spelling.txt" || \
+	    echo "Could not fetch spelling.txt, continuing without typo checks" ; \
+	fi
+	@test -f "$(top_srcdir)/const_structs.checkpatch" || \
+	  : > "$(top_srcdir)/const_structs.checkpatch"
+	@range='$(RANGE)' ; \
+	if test -z "$$range" ; then \
+	  if test -n "`git -C '$(top_srcdir)' diff HEAD`" ; then \
+	    echo "checkpatch: working tree changes" ; \
+	    git -C "$(top_srcdir)" diff HEAD | \
+	      "$(top_srcdir)/checkpatch.pl" --no-tree --show-types \
+	        --ignore $(CHECKPATCH_IGNORE) - ; \
+	    exit $$? ; \
+	  fi ; \
+	  range="master..HEAD" ; \
+	fi ; \
+	rc=0 ; \
+	for c in `git -C "$(top_srcdir)" rev-list --reverse "$$range"` ; do \
+	  s=`git -C "$(top_srcdir)" log -1 --format='%h %s' "$$c"` ; \
+	  echo "=== checkpatch: $$s" ; \
+	  git -C "$(top_srcdir)" format-patch -1 --stdout "$$c" | \
+	    "$(top_srcdir)/checkpatch.pl" --no-tree --show-types \
+	      --ignore $(CHECKPATCH_IGNORE) - || rc=1 ; \
+	done ; \
+ 	exit $$rc
+ 
 ################################################################################
+
 # Section for the I18N processing
 ################################################################################
 
