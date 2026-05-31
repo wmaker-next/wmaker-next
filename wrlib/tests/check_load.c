@@ -48,6 +48,15 @@ static RImage *load_noctx(const char *path)
     } while (0)
 
 static char tmpdir[] = "/tmp/wrlib-check-XXXXXX";
+static const char *srcdir;
+
+static const char *fixture_path(const char *name)
+{
+	static char path[256];
+
+	snprintf(path, sizeof(path), "%s/%s", srcdir, name);
+	return path;
+}
 
 static char *write_sample(const char *name, const void *data, size_t len)
 {
@@ -139,6 +148,74 @@ static void test_pnm(void)
 	expect_image("P6", load_noctx(p), 1, 1, 10, 20, 30);
 }
 
+static void expect_golden(const char *what, RImage *img, int w, int h,
+			  int fr, int fg, int fb, int lr, int lg, int lb)
+{
+	int bpp, last;
+
+	if (!img) {
+		fprintf(stderr, "FAIL %s: RLoadImage returned NULL (%s)\n",
+			what, RMessageForError(RErrorCode));
+		failures++;
+		return;
+	}
+	CHECK(img->width == w);
+	CHECK(img->height == h);
+
+	bpp = (img->format == RRGBAFormat) ? 4 : 3;
+	last = (w * h - 1) * bpp;
+
+	CHECK(img->data[0] == fr);
+	CHECK(img->data[1] == fg);
+	CHECK(img->data[2] == fb);
+	CHECK(img->data[last + 0] == lr);
+	CHECK(img->data[last + 1] == lg);
+	CHECK(img->data[last + 2] == lb);
+
+	RReleaseImage(img);
+}
+
+/* Golden-file decode tests for all six PNM variants. These pin the exact
+ * output of the current loader so behaviour stays identical when the
+ * backend is later swapped (stb_image only handles P5/P6 natively). Each
+ * fixture is a 3x2 image with a known pattern, and both the first and the
+ * last pixel are checked so row stride and end-of-buffer placement are
+ * covered as well as the basic colour mapping. */
+static void test_pnm_golden(void)
+{
+	const char *p;
+
+	/* P1 ascii bitmap: 0->white, 1->black */
+	p = fixture_path("pnm-p1.pbm");
+	expect_golden("golden P1", load_noctx(p), 3, 2,
+		      255, 255, 255, 0, 0, 0);
+
+	/* P2 ascii greymap: grey expands to R=G=B */
+	p = fixture_path("pnm-p2.pgm");
+	expect_golden("golden P2", load_noctx(p), 3, 2,
+		      255, 255, 255, 32, 32, 32);
+
+	/* P3 ascii pixmap: row 0 red/green/blue, row 1 white/black/grey128 */
+	p = fixture_path("pnm-p3.ppm");
+	expect_golden("golden P3", load_noctx(p), 3, 2,
+		      255, 0, 0, 128, 128, 128);
+
+	/* P4 raw bitmap: packed MSB first, rows padded to byte boundary */
+	p = fixture_path("pnm-p4.pbm");
+	expect_golden("golden P4", load_noctx(p), 3, 2,
+		      255, 255, 255, 0, 0, 0);
+
+	/* P5 raw greymap */
+	p = fixture_path("pnm-p5.pgm");
+	expect_golden("golden P5", load_noctx(p), 3, 2,
+		      255, 255, 255, 32, 32, 32);
+
+	/* P6 raw pixmap */
+	p = fixture_path("pnm-p6.ppm");
+	expect_golden("golden P6", load_noctx(p), 3, 2,
+		      255, 0, 0, 128, 128, 128);
+}
+
 static void test_pnm_reject(void)
 {
 	char *p;
@@ -204,12 +281,17 @@ static void test_xpm_transparent(void)
 
 int main(void)
 {
+	srcdir = getenv("srcdir");
+	if (!srcdir)
+		srcdir = ".";
+
 	if (!mkdtemp(tmpdir)) {
 		perror("mkdtemp");
 		return 2;
 	}
 
 	test_pnm();
+	test_pnm_golden();
 	test_pnm_reject();
 	test_xpm_transparent();
 
