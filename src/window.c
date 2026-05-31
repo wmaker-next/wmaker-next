@@ -1602,20 +1602,22 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (((transientOwner && transientOwner->flags.focused)
 		     || wPreferences.auto_focus) && !WFLAGP(wwin, no_focusable)) {
 
-			/* only auto_focus if on same screen as mouse
-			 * (and same head for xinerama mode)
-			 * TODO: make it an option */
-
-			/*TODO add checking the head of the window, is it available? */
+			/* only auto_focus if the pointer is on the same X screen,
+			 * and optionally on the same Xinerama head, as the new
+			 * window (AutoFocusAcrossHeads = NO for the latter) */
 			short same_screen = 0, same_head = 1;
 
-			int foo;
+			int px, py, foo;
 			unsigned int bar;
 			Window dummy;
 
 			if (XQueryPointer(dpy, scr->root_win, &dummy, &dummy,
-					  &foo, &foo, &foo, &foo, &bar) != False)
+					  &px, &py, &foo, &foo, &bar) != False) {
 				same_screen = 1;
+				if (!wPreferences.auto_focus_across_heads && scr->xine_info.count > 1)
+					same_head = (wGetHeadForPoint(scr, wmkpoint(px, py))
+						     == wGetHeadForWindow(wwin));
+			}
 
 			if (same_screen == 1 && same_head == 1)
 				wSetFocusTo(scr, wwin);

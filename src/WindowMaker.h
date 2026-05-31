@@ -377,6 +377,7 @@ extern struct WPreferences {
 	signed char iconification_style;   /* position to place icons */
 	char disable_root_mouse;           /* disable button events in root window */
 	char auto_focus;                   /* focus window when it's mapped */
+	char auto_focus_across_heads;      /* let auto_focus steal focus across Xinerama heads */
 	char *icon_back_file;              /* background image for icons */
 	char enforce_icon_margin;          /* auto-shrink icon images */
 	char mouse_wheel_focus;            /* allow focus window with mouse wheel */

@@ -394,6 +394,8 @@ WDefaultEntry optionList[] = {
 	    &wPreferences.colormap_mode, getEnum, NULL, NULL, NULL},
 	{"AutoFocus", "YES", NULL,
 	    &wPreferences.auto_focus, getBool, NULL, NULL, NULL},
+	{"AutoFocusAcrossHeads", "YES", NULL,
+	    &wPreferences.auto_focus_across_heads, getBool, NULL, NULL, NULL},
 	{"RaiseDelay", "0", NULL,
 	    &wPreferences.raise_delay, getInt, NULL, NULL, NULL},
 	{"CirculateRaise", "NO", NULL,
