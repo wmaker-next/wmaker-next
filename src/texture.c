@@ -124,7 +124,7 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 	unsigned long colors[8];
 
 	/*
-	 * some stupid servers don't like white or black being freed...
+	 * some X servers misbehave when the black or white pixel is freed
 	 */
 #define CANFREE(c) (c!=scr->black_pixel && c!=scr->white_pixel && c!=0)
 	switch (texture->any.type) {

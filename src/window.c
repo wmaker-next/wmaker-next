@@ -2258,7 +2258,7 @@ void wWindowConstrainSize(WWindow *wwin, unsigned int *nwidth, unsigned int *nhe
 			height = (((height - minH) / hinc) * hinc) + minH;
 	}
 
-	/* broken stupid apps may cause preposterous values for these.. */
+	/* misbehaving clients may cause preposterous values for these */
 	if (width > 0)
 		*nwidth = width;
 	if (height > 0)

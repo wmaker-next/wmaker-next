@@ -3101,7 +3101,7 @@ static void customPaletteMenuRename(W_ColorPanel * panel)
 
 	if (toName) {
 
-		/* As some people do certain stupid things... */
+		/* Guard against renaming to the same name */
 		if (strcmp(toName, fromName) == 0) {
 			wfree(toName);
 			return;

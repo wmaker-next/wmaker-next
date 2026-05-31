@@ -333,7 +333,7 @@ WMUserDefaults *WMGetStandardUserDefaults(void)
 		}
 	}
 
-	/* we didn't found the database we are looking for. Go read it. XXX: wtf? */
+	/* the database we are looking for is not loaded yet, read it now */
 	defaults = wmalloc(sizeof(WMUserDefaults));
 	defaults->defaults = WMCreatePLDictionary(NULL, NULL);
 	defaults->searchList = wmalloc(sizeof(WMPropList *) * 3);
@@ -423,7 +423,7 @@ WMUserDefaults *WMGetDefaultsFromPath(const char *path)
 		}
 	}
 
-	/* we didn't found the database we are looking for. Go read it. XXX wtf? */
+	/* the database we are looking for is not loaded yet, read it now */
 	defaults = wmalloc(sizeof(WMUserDefaults));
 	defaults->defaults = WMCreatePLDictionary(NULL, NULL);
 	defaults->searchList = wmalloc(sizeof(WMPropList *) * 2);

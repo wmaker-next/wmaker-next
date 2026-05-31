@@ -314,7 +314,7 @@ static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttribute
 {
 	uint32_t data[9];
 
-	/* handle idiot compilers where array of CARD32 != struct of CARD32 */
+	/* copy fields explicitly, the struct layout may carry padding */
 	data[0] = attr->flags;
 	data[1] = attr->window_style;
 	data[2] = attr->window_level;
