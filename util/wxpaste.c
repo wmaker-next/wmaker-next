@@ -69,7 +69,7 @@ static Time getTimestamp(Display * dpy, Window win)
 	XSelectInput(dpy, win, PropertyChangeMask);
 
 	/* Generate a PropertyNotify event */
-	XStoreName(dpy, win, "shit");
+	XStoreName(dpy, win, "wxpaste");
 
 	/* wait for the event */
 	while (1) {
