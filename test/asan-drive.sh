@@ -320,7 +320,7 @@ run_gui "$ROOT/util/.libs/wmagnify" "Magnify"
 xdo mousemove 400 300; sleep 0.3; xdo mousemove 500 400; sleep 0.3
 close_gui wmagnify
 
-run_gui "$ROOT/util/.libs/wmiv" "wmiv" "$ROOT/wrlib/tests/test.png"
+run_gui "$ROOT/util/.libs/wmiv" "wmiv" "$ROOT/wrlib/Tests/test.png"
 [ -n "$GUI_WIN" ] && xdo key --window "$GUI_WIN" Right Left plus minus 2>/dev/null
 sleep 0.3
 [ -n "$GUI_WIN" ] && xdo key --window "$GUI_WIN" q 2>/dev/null

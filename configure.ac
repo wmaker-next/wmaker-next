@@ -1040,7 +1040,7 @@ AC_CONFIG_FILES(
 
     dnl WRaster Library
     wrlib/Makefile wrlib/po/Makefile
-    wrlib/tests/Makefile
+    wrlib/Tests/Makefile
 
     dnl WINGs toolkit
     WINGs/Makefile WINGs/WINGs/Makefile WINGs/po/Makefile
@@ -1048,7 +1048,7 @@ AC_CONFIG_FILES(
     WINGs/Examples/Makefile WINGs/Tests/Makefile
 
     dnl Window Maker's core
-    src/Makefile src/wconfig.h po/Makefile
+    src/Makefile src/Tests/Makefile src/wconfig.h po/Makefile
     doc/Makefile doc/build/Makefile
     doc/sk/Makefile doc/cs/Makefile doc/ru/Makefile
     WindowMaker/Makefile WindowMaker/Backgrounds/Makefile

@@ -71,11 +71,11 @@ util/wmsetup
 util/wxcopy
 util/wxpaste
 
-wrlib/tests/testdraw
-wrlib/tests/testgrad
-wrlib/tests/testrot
-wrlib/tests/view
-wrlib/tests/check_load
+wrlib/Tests/testdraw
+wrlib/Tests/testgrad
+wrlib/Tests/testrot
+wrlib/Tests/view
+wrlib/Tests/check_load
 
 WINGs/Examples/colorpick
 WINGs/Examples/connect
