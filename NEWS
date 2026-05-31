@@ -1,6 +1,86 @@
 NEWS for veteran Window Maker users
 -----------------------------------
 
+-- next
+
+xcb is now a required dependency
+--------------------------------
+
+libWINGs now issues all window-property and ICCCM hint requests over
+xcb, sharing the existing X connection via x11-xcb. The pkg-config
+modules xcb, xcb-icccm and x11-xcb must be present at build time.
+There is no configure switch to disable this.
+
+
+Support for _NET_WM_STATE_MODAL
+-------------------------------
+
+Window Maker now honours the _NET_WM_STATE_MODAL hint set by modal
+dialog windows. When focus is requested on a window that has a mapped
+modal transient, the dialog is raised and focused instead, so clicking
+the parent of a modal dialog brings the dialog forward rather than
+burying it. Modal transients are also omitted from the Alt-Tab switch
+panel when their parent is already listed, since selecting the parent
+reaches them anyway.
+
+
+Swallow child window attribute
+------------------------------
+
+A new "SwallowChild" per-window attribute makes a window hide itself
+when a foreground child process maps its own window, placing the child
+at the parent's position and size. When the child closes, the parent
+reappears in place. This lets a graphical program launched from a
+terminal replace the terminal window until it exits.
+
+The attribute can be set from the window inspector's "Attributes" page
+as "Swallow child window", or by adding SwallowChild = YES to the
+window's entry in ~/GNUstep/Defaults/WMWindowAttributes (NO by
+default). Children started in the background (in a separate process
+group) are never swallowed.
+
+
+Reduced idle wake-ups
+---------------------
+
+Window Maker no longer wakes for every pixel of pointer movement over
+the root window unless a feature that consumes it is enabled
+("HotCorners" or "ScrollableMenus"). With both options turned off the
+event loop stays asleep while the pointer crosses an empty desktop.
+
+Changes written to the defaults files are now also noticed within
+about 100 ms even when there is no X activity, where previously they
+could wait until the next X event arrived.
+
+
+Lower X server pixmap usage
+---------------------------
+
+Rendered titlebar, resizebar and menu item textures are now shared
+between windows and menus of the same width instead of each holding
+its own copy on the X server. With several same-width windows open
+this roughly halves the pixmap memory Window Maker holds on the
+server.
+
+
+Faster startup with many open windows
+-------------------------------------
+
+Per-window property reads at startup and when adopting a new client
+are now batched into a single server round-trip, so starting Window
+Maker (or taking over with --replace) with many existing clients is
+noticeably quicker, especially over a remote or high-latency display.
+
+
+Application icon updates after mapping
+--------------------------------------
+
+Applications that set or change their _NET_WM_ICON property only after
+the window has been mapped now have the new icon reflected in the
+application icon and the Alt-Tab switch panel, instead of keeping the
+default icon.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory
