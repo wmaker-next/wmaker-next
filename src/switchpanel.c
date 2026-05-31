@@ -110,6 +110,32 @@ static Bool sameWindowClass(WWindow *wwin, WWindow *curwin)
 	return True;
 }
 
+static Bool modalReachableThroughParent(WScreen *scr, WWindow *wwin, int include_unmapped, Bool class_only)
+{
+	WWindow *parent;
+
+	if (!wwin->flags.net_modal)
+		return False;
+	if (wwin->transient_for == None || wwin->transient_for == scr->root_win)
+		return False;
+
+	parent = wWindowFor(wwin->transient_for);
+	if (!parent || parent == wwin)
+		return False;
+
+	/* Keep this predicate in sync with makeWindowListArray()'s list filter. */
+	if (WFLAGP(parent, skip_switchpanel))
+		return False;
+	if (canReceiveFocus(parent) == 0)
+		return False;
+	if (!(parent->flags.mapped || parent->flags.shaded || include_unmapped))
+		return False;
+	if (class_only && !sameWindowClass(scr->focused_window, parent))
+		return False;
+
+	return True;
+}
+
 static void changeImage(WSwitchPanel *panel, int idecks, int selected, Bool dim, Bool force)
 {
 	WMFrame *icon = NULL;
@@ -381,7 +407,10 @@ static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, Bool cla
 					wwin = wwin->prev;
 					continue;
 				}
-			if (!WFLAGP(wwin, skip_switchpanel))
+			/* A direct modal transient is redundant only when its
+			 * parent would be listed and can redirect focus to it. */
+			if (!WFLAGP(wwin, skip_switchpanel) &&
+			    !modalReachableThroughParent(scr, wwin, include_unmapped, class_only))
 				WMAddToArray(windows, wwin);
 		}
 		wwin = wwin->prev;

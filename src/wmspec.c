@@ -96,7 +96,7 @@ static Atom net_wm_window_type_combo;
 static Atom net_wm_window_type_dnd;
 static Atom net_wm_window_type_normal;
 static Atom net_wm_state;
-static Atom net_wm_state_modal;	/* XXX: what is this?!? */
+static Atom net_wm_state_modal;
 static Atom net_wm_state_sticky;
 static Atom net_wm_state_maximized_vert;
 static Atom net_wm_state_maximized_horz;
@@ -284,7 +284,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_window_type_normal;
 
 	atom[i++] = net_wm_state;
-	/*    atom[i++] = net_wm_state_modal; *//* XXX: not sure where/when to use it. */
+	atom[i++] = net_wm_state_modal;
 	atom[i++] = net_wm_state_sticky;
 	atom[i++] = net_wm_state_shaded;
 	atom[i++] = net_wm_state_maximized_horz;
@@ -1033,7 +1033,9 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 		if (wwin->flags.fullscreen)
 			state[i++] = net_wm_state_fullscreen;
 		if (wwin->flags.focused)
-			state[i++] = net_wm_state_focused; 
+			state[i++] = net_wm_state_focused;
+		if (wwin->flags.net_modal)
+			state[i++] = net_wm_state_modal;
 
 		WXSetAtomN(dpy, wwin->client_win, net_wm_state, state, i);
 
@@ -1258,6 +1260,17 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 		} else {
 			wwin->client_flags.sunken = set;
 			ChangeStackingLevel(wwin->frame->core, getWindowLayer(wwin));
+		}
+
+	} else if (state == net_wm_state_modal) {
+		if (set == _NET_WM_STATE_TOGGLE)
+			set = !wwin->flags.net_modal;
+
+		wwin->flags.net_modal = set;
+
+		if (!init && set && wwin->frame) {
+			wRaiseFrame(wwin->frame->core);
+			wSetFocusTo(wwin->screen_ptr, wwin);
 		}
 
 	} else {

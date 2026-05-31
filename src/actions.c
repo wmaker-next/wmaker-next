@@ -132,6 +132,22 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (scr->flags.ignore_focus_events || compareTimes(w_global.timestamp.focus_change, timestamp) > 0)
 		return;
 
+	/* if the target window has a mapped modal transient, redirect focus
+	 * to that transient so clicking the parent of a modal dialog brings
+	 * the dialog forward instead of burying it */
+	if (wwin) {
+		WWindow *tmp;
+		for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
+			if (tmp != wwin && tmp->flags.net_modal &&
+			    tmp->transient_for == wwin->client_win &&
+			    !tmp->flags.miniaturized && !tmp->flags.hidden &&
+			    tmp->flags.mapped) {
+				wwin = tmp;
+				break;
+			}
+		}
+	}
+
 	if (!old_scr)
 		old_scr = scr;
 
