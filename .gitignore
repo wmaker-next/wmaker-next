@@ -99,6 +99,9 @@ WINGs/WUtil.pc
 wrlib/libwraster.map
 
 WindowMaker/appearance.menu
+WindowMaker/appearance.menu.fy
+WindowMaker/appearance.menu.nl
+WindowMaker/appearance.menu.sr
 WindowMaker/menu
 WindowMaker/menu.bg
 WindowMaker/menu.fi
@@ -108,6 +111,7 @@ WindowMaker/menu.ko
 WindowMaker/menu.nl
 WindowMaker/menu.ro
 WindowMaker/menu.sk
+WindowMaker/menu.sr
 WindowMaker/menu.zh_TW
 WindowMaker/plmenu
 WindowMaker/plmenu.bg
@@ -120,6 +124,7 @@ WindowMaker/plmenu.nl
 WindowMaker/plmenu.pl
 WindowMaker/plmenu.ro
 WindowMaker/plmenu.sk
+WindowMaker/plmenu.sr
 WindowMaker/plmenu.zh_CN
 WindowMaker/plmenu.zh_TW
 WindowMaker/wmmacros
