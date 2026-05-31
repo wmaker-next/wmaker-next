@@ -267,6 +267,17 @@ size_t wstrlcpy(char *, const char *, size_t);
 size_t wstrlcat(char *, const char *, size_t);
 
 
+/* ---[ WINGs/intern.c ]-------------------------------------------------- */
+
+/* Return a stable interned copy of s with its refcount bumped. NULL in,
+ * NULL out. Repeated calls with equal strings return the same pointer. */
+const char *wintern(const char *s);
+
+/* Drop one reference, free the storage when the count reaches zero.
+ * NULL is accepted and ignored. */
+void wunintern(const char *s);
+
+
 /* ---[ WINGs/spawn.c ]---------------------------------------------------
  *
  * argv-based child process helpers. Nothing here goes through /bin/sh,

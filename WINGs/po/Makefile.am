@@ -15,6 +15,7 @@ POTFILES  = \
 	$(top_srcdir)/WINGs/findfile.c \
 	$(top_srcdir)/WINGs/handlers.c \
 	$(top_srcdir)/WINGs/hashtable.c \
+	$(top_srcdir)/WINGs/intern.c \
 	$(top_srcdir)/WINGs/memory.c \
 	$(top_srcdir)/WINGs/menuparser.c \
 	$(top_srcdir)/WINGs/menuparser_macros.c \

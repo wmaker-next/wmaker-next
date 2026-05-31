@@ -3265,8 +3265,8 @@ void wDockTrackWindowLaunch(WDock *dock, Window window)
 	char *command = NULL;
 
 	if (!PropGetWMClass(window, &wm_class, &wm_instance)) {
-		free(wm_class);
-		free(wm_instance);
+		wunintern(wm_class);
+		wunintern(wm_instance);
 		return;
 	}
 
@@ -3347,9 +3347,9 @@ void wDockTrackWindowLaunch(WDock *dock, Window window)
 		wfree(command);
 
 	if (wm_class)
-		free(wm_class);
+		wunintern(wm_class);
 	if (wm_instance)
-		free(wm_instance);
+		wunintern(wm_instance);
 }
 
 void wClipUpdateForWorkspaceChange(WScreen *scr, int workspace)

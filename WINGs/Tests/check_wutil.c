@@ -63,6 +63,34 @@ static void test_wstrndup(void)
 	wfree(s);
 }
 
+static void test_intern(void)
+{
+	const char *a, *b, *c;
+	char buf[8];
+
+	CHECK(wintern(NULL) == NULL);
+	wunintern(NULL);                /* must be a no-op */
+
+	a = wintern("XTerm");
+	/* equal content from a different buffer must yield the same pointer */
+	strcpy(buf, "XTerm");
+	b = wintern(buf);
+	CHECK(a == b);
+	CHECK(strcmp(a, "XTerm") == 0);
+
+	c = wintern("xterm");
+	CHECK(c != a);
+
+	/* a has refcount 2, dropping one keeps the storage alive */
+	wunintern(b);
+	CHECK(strcmp(a, "XTerm") == 0);
+	CHECK(wintern("XTerm") == a);   /* still the same slot */
+	wunintern(a);                   /* back to refcount 1 */
+
+	wunintern(a);                   /* refcount hits 0, freed */
+	wunintern(c);
+}
+
 static void test_array(void)
 {
 	WMArray *a = WMCreateArray(0);
@@ -187,6 +215,7 @@ int main(void)
 {
 	test_wstrlcpy();
 	test_wstrndup();
+	test_intern();
 	test_array();
 	test_hashtable();
 	test_data();

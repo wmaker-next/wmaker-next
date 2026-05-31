@@ -225,10 +225,10 @@ void wWindowDestroy(WWindow *wwin)
 		wfree(wwin->wm_hints);
 
 	if (wwin->wm_instance)
-		wfree(wwin->wm_instance);
+		wunintern(wwin->wm_instance);
 
 	if (wwin->wm_class)
-		wfree(wwin->wm_class);
+		wunintern(wwin->wm_class);
 
 	if (wwin->wm_gnustep_attr)
 		wfree(wwin->wm_gnustep_attr);
@@ -1049,11 +1049,11 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		/* // only enter here if PropGetWMClass() succeeds */
 		PropGetWMClass(wwin->main_window, &class, &instance);
 		if (!class || class[0] == '\0') {
-			wfree(class);
+			wunintern(class);
 			if (wwin->wm_class && wwin->wm_class[0] != '\0')
-				class = wstrdup(wwin->wm_class);
+				class = (char *)wintern(wwin->wm_class);
 			else
-				class = wstrdup("default");
+				class = (char *)wintern("default");
 		}
 		buffer = StrConcatDot(instance, class);
 
@@ -1093,10 +1093,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		}
 
 		if (instance)
-			free(instance);
+			wunintern(instance);
 
 		if (class)
-			free(class);
+			wunintern(class);
 #undef ADEQUATE
 	}
 
@@ -3047,9 +3047,9 @@ WMagicNumber wWindowGetSavedState(Window win)
 	if (command)
 		wfree(command);
 	if (instance)
-		free(instance);
+		wunintern(instance);
 	if (class)
-		free(class);
+		wunintern(class);
 
 	return wstate;
 }

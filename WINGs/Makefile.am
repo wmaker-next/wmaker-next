@@ -72,6 +72,7 @@ libWUtil_la_SOURCES = 	\
 	findfile.c \
 	handlers.c \
 	hashtable.c \
+	intern.c \
 	memory.c \
 	menuparser.c \
 	menuparser.h \

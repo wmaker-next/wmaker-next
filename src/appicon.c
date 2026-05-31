@@ -121,10 +121,10 @@ WAppIcon *wAppIconCreateForDock(WScreen *scr, const char *command, const char *w
 		aicon->command = wstrdup(command);
 
 	if (wm_class)
-		aicon->wm_class = wstrdup(wm_class);
+		aicon->wm_class = (char *)wintern(wm_class);
 
 	if (wm_instance)
-		aicon->wm_instance = wstrdup(wm_instance);
+		aicon->wm_instance = (char *)wintern(wm_instance);
 
 	if (wPreferences.flags.clip_merged_in_dock && wm_class != NULL && strcmp(wm_class, "WMDock") == 0)
 		tile = TILE_CLIP;
@@ -311,10 +311,10 @@ static WAppIcon *wAppIconCreate(WWindow *leader_win)
 	aicon->next = NULL;
 
 	if (leader_win->wm_class)
-		aicon->wm_class = wstrdup(leader_win->wm_class);
+		aicon->wm_class = (char *)wintern(leader_win->wm_class);
 
 	if (leader_win->wm_instance)
-		aicon->wm_instance = wstrdup(leader_win->wm_instance);
+		aicon->wm_instance = (char *)wintern(leader_win->wm_instance);
 
 	aicon->icon = icon_create_for_wwindow(leader_win);
 #ifdef USE_DOCK_XDND
@@ -345,10 +345,10 @@ void wAppIconDestroy(WAppIcon * aicon)
 		wfree(aicon->dnd_command);
 #endif
 	if (aicon->wm_instance)
-		wfree(aicon->wm_instance);
+		wunintern(aicon->wm_instance);
 
 	if (aicon->wm_class)
-		wfree(aicon->wm_class);
+		wunintern(aicon->wm_class);
 
 	remove_from_appicon_list(scr, aicon);
 

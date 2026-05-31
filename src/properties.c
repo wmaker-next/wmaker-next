@@ -57,11 +57,17 @@ int PropGetNormalHints(Window window, WXSizeHints *size_hints, int *pre_iccm)
 
 int PropRcvWMClass(WXCookie ck, char **wm_class, char **wm_instance)
 {
-	if (!WXRcvWMClass(dpy, ck, wm_instance, wm_class)) {
-		*wm_class = wstrdup("default");
-		*wm_instance = wstrdup("default");
+	char *inst, *cls;
+
+	if (!WXRcvWMClass(dpy, ck, &inst, &cls)) {
+		*wm_class = (char *)wintern("default");
+		*wm_instance = (char *)wintern("default");
 		return False;
 	}
+	*wm_instance = (char *)wintern(inst);
+	*wm_class = (char *)wintern(cls);
+	wfree(inst);
+	wfree(cls);
 	return True;
 }
 
