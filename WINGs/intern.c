@@ -1,5 +1,5 @@
 /*
- *  Window Maker miscelaneous function library
+ *  Window Maker miscellaneous function library
  *
  *  Copyright (c) 2026 Window Maker Team
  *

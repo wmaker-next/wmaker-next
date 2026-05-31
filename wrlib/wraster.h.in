@@ -317,7 +317,7 @@ typedef enum {
 
 /* error codes */
 #define RERR_NONE		0
-#define RERR_OPEN	 	1      /* cant open file */
+#define RERR_OPEN	 	1      /* can't open file */
 #define RERR_READ		2      /* error reading from file */
 #define RERR_WRITE		3      /* error writing to file */
 #define RERR_NOMEMORY		4      /* out of memory */

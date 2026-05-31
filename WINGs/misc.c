@@ -18,7 +18,7 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-/* Miscelaneous helper functions */
+/* Miscellaneous helper functions */
 
 #include <WUtil.h>
 

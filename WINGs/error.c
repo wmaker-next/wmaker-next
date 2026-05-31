@@ -1,5 +1,5 @@
 /*
- *  Window Maker miscelaneous function library
+ *  Window Maker miscellaneous function library
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
  *

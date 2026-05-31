@@ -1414,7 +1414,7 @@ int main(int argc, char **argv)
 	if (helperMode) {
 		int result;
 
-		/* lower priority, so that it wont use all the CPU */
+		/* lower priority, so that it won't use all the CPU */
 		result = nice(15);
 		if (result == -1)
 			wwarning("error could not nice process");

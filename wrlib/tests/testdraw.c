@@ -572,7 +572,7 @@ int main(int argc, char **argv)
 
 	dpy = XOpenDisplay("");
 	if (!dpy) {
-		puts("cant open display");
+		puts("can't open display");
 		exit(1);
 	}
 

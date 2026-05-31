@@ -3842,7 +3842,7 @@ void WMThawText(WMText * tPtr)
 
 }
 
-/* find first occurence of a string */
+/* find first occurrence of a string */
 static const char *mystrstr(const char *haystack, const char *needle, unsigned short len, const char *end, Bool caseSensitive)
 {
 	const char *ptr;
@@ -3864,7 +3864,7 @@ static const char *mystrstr(const char *haystack, const char *needle, unsigned s
 	return NULL;
 }
 
-/* find last occurence of a string */
+/* find last occurrence of a string */
 static const char *mystrrstr(const char *haystack, const char *needle, unsigned short len, const char *end, Bool caseSensitive)
 {
 	const char *ptr;

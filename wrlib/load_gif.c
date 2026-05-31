@@ -125,7 +125,7 @@ RImage *RLoadGIF(const char *file, int index)
 				colormap = gif->Image.ColorMap;
 
 			/* the gif specs talk about a default colormap, but it
-			 * doesnt say what the heck is this default colormap
+			 * doesn't say what the heck is this default colormap
 			 * Render anything */
 			if (colormap) {
 				for (j = 0; j < colormap->ColorCount; j++) {

@@ -165,7 +165,7 @@ Bool wmconfig_validate_file(const char *filename, const struct stat *st, int tfl
 	if (!S_ISREG(st->st_mode) ||				/* not a regular file */
 	    (st->st_uid != 0 && st->st_uid != getuid()) ||	/* bad guy injected this file */
 	    strpbrk(base_name, ".") ||				/* wmconfig typically has no extension */
-	    st->st_size >= 128 * 131072	||			/* noone writes wmconfig files > 128K */
+	    st->st_size >= 128 * 131072	||			/* no one writes wmconfig files > 128K */
 	    st->st_size == 0 ||					/* nor empty ones */
 	    ftw->level > 16)					/* how did we get this deep? */
 		ret = False;

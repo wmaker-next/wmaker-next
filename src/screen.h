@@ -114,7 +114,7 @@ typedef struct _WScreen {
 
     struct WAppIcon *app_icon_list;    /* list of all app-icons on screen */
 
-    struct WApplication *wapp_list;    /* list of all aplications */
+    struct WApplication *wapp_list;    /* list of all applications */
 
     WMBag *stacking_list;	       /* bag of lists of windows
                                         * in stacking order.

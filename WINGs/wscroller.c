@@ -611,7 +611,7 @@ static void handlePush(Scroller * sPtr, int pushX, int pushY, int alternate)
 				sPtr->dragPoint -= 2 + knobP;
 		}
 #endif				/* STRICT_NEXT_BEHAVIOUR */
-		/* This does not seem necesary here since we don't know yet if the
+		/* This does not seem necessary here since we don't know yet if the
 		 * knob will be dragged later. -Dan
 		 handleMotion(sPtr, pushX, pushY); */
 		break;

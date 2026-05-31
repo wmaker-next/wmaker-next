@@ -28,7 +28,7 @@
 
 
 static const char *const terminals[] = {
-	"x-terminal-emulator", /* Debian wrapper to launch user's prefered X terminal */
+	"x-terminal-emulator", /* Debian wrapper to launch user's preferred X terminal */
 	"aterm",    /* AfterStep's X terminal, which provides "transparency" */
 	"eterm",    /* Enlightenment's terminal, designed for eye-candyness (and efficiency) */
 	"gnome-terminal",      /* GNOME project's terminal */

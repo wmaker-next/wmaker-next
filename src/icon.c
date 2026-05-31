@@ -48,7 +48,7 @@
 #include "event.h"
 #include "winmenu.h"
 
-/**** Global varianebles ****/
+/**** Global variables ****/
 
 #define MOD_MASK wPreferences.modifier_mask
 #define CACHE_ICON_PATH "/" PACKAGE_TARNAME "/CachedPixmaps"
@@ -190,7 +190,7 @@ static WIcon *icon_create_core(WScreen *scr, int coord_x, int coord_y)
 					 0, scr->w_depth, scr->w_visual, scr->w_colormap,
 					 scr->white_pixel);
 
-	/* will be overriden if this is a application icon */
+	/* will be overridden if this is a application icon */
 	icon->core->descriptor.handle_mousedown = miniwindowMouseDown;
 	icon->core->descriptor.handle_expose = miniwindowExpose;
 	icon->core->descriptor.parent_type = WCLASS_MINIWINDOW;

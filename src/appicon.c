@@ -134,7 +134,7 @@ WAppIcon *wAppIconCreateForDock(WScreen *scr, const char *command, const char *w
 	wXDNDMakeAwareness(aicon->icon->core->window);
 #endif
 
-	/* will be overriden by dock */
+	/* will be overridden by dock */
 	aicon->icon->core->descriptor.handle_mousedown = appIconMouseDown;
 	aicon->icon->core->descriptor.handle_expose = iconExpose;
 	aicon->icon->core->descriptor.parent_type = WCLASS_APPICON;
@@ -321,7 +321,7 @@ static WAppIcon *wAppIconCreate(WWindow *leader_win)
 	wXDNDMakeAwareness(aicon->icon->core->window);
 #endif
 
-	/* will be overriden if docked */
+	/* will be overridden if docked */
 	aicon->icon->core->descriptor.handle_mousedown = appIconMouseDown;
 	aicon->icon->core->descriptor.handle_expose = iconExpose;
 	aicon->icon->core->descriptor.parent_type = WCLASS_APPICON;
