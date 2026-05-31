@@ -619,6 +619,10 @@ int main(int argc, char **argv)
 	DisplayName = XDisplayName(DisplayName);
 	setenv("DISPLAY", DisplayName, 1);
 
+	/* Let xdg-open, portal backends and toolkit theme pickers identify the
+	 * desktop, but do not overwrite a value supplied by the session manager. */
+	setenv("XDG_CURRENT_DESKTOP", "WindowMaker", 0);
+
 	if (i_am_the_monitor)
 		return MonitorLoop(argc, argv);
 	else
