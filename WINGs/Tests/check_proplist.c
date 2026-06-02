@@ -180,6 +180,63 @@ static void test_wmkdirhier_confinement(const char *root)
 	CHECK(rmdir(buf) == 0);
 }
 
+static void test_utf8_roundtrip(void)
+{
+	/* h<e-acute>llo <em-dash> <han><zi> */
+	const char *input = "h\303\251llo \342\200\224 \346\274\242\345\255\227";
+	WMPropList *orig, *parsed;
+	char *desc;
+
+	orig = WMCreatePLString(input);
+	desc = WMGetPropListDescription(orig, False);
+
+	CHECK(desc != NULL);
+	/* multibyte chars must pass through, not become \3nn octal runs */
+	CHECK(strstr(desc, "\\3") == NULL);
+	CHECK(strstr(desc, "\303\251") != NULL);
+
+	parsed = WMCreatePropListFromDescription(desc);
+	CHECK(parsed && WMIsPLString(parsed));
+	CHECK(parsed && strcmp(WMGetFromPLString(parsed), input) == 0);
+	CHECK(parsed && WMIsPropListEqualTo(orig, parsed));
+
+	if (parsed)
+		WMReleasePropList(parsed);
+	WMReleasePropList(orig);
+	wfree(desc);
+}
+
+static void check_escaped_roundtrip(const char *label, const char *input)
+{
+	WMPropList *orig, *parsed;
+	char *desc;
+
+	(void)label;
+	orig = WMCreatePLString(input);
+	desc = WMGetPropListDescription(orig, False);
+
+	/* invalid sequences must be octal-escaped, not passed through raw */
+	CHECK(strchr(desc, '\\') != NULL);
+	CHECK(strstr(desc, input) == NULL);
+
+	parsed = WMCreatePropListFromDescription(desc);
+	CHECK(parsed && strcmp(WMGetFromPLString(parsed), input) == 0);
+
+	if (parsed)
+		WMReleasePropList(parsed);
+	WMReleasePropList(orig);
+	wfree(desc);
+}
+
+static void test_invalid_high_byte(void)
+{
+	check_escaped_roundtrip("lone-latin1", "caf\351");
+	check_escaped_roundtrip("overlong-3", "x\340\200\200y");
+	check_escaped_roundtrip("surrogate", "x\355\240\200y");
+	check_escaped_roundtrip("past-10FFFF", "x\364\220\200\200y");
+	check_escaped_roundtrip("overlong-4", "x\360\200\200\200y");
+}
+
 int main(void)
 {
 	char rootbuf[] = "/tmp/check_proplist_root_XXXXXX";
@@ -201,6 +258,8 @@ int main(void)
 	test_roundtrip("{ nested = { a = (x, y); }; }");
 
 	test_string_escape();
+	test_utf8_roundtrip();
+	test_invalid_high_byte();
 	test_recursion_limit();
 	test_pipe_cap();
 	test_file_cap();

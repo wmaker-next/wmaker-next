@@ -97,7 +97,7 @@ static Bool caseSensitive = True;
 #define inrange(ch, min, max) ((ch)>=(min) && (ch)<=(max))
 #define noquote(ch) (inrange(ch, 'a', 'z') || inrange(ch, 'A', 'Z') || inrange(ch, '0', '9') || ((ch)=='_') || ((ch)=='.') || ((ch)=='$'))
 #define charesc(ch) (inrange(ch, 0x07, 0x0c) || ((ch)=='"') || ((ch)=='\\'))
-#define numesc(ch) (((ch)<=0x06) || inrange(ch, 0x0d, 0x1f) || ((ch)>0x7e))
+#define numesc(ch) (((ch)<=0x06) || inrange(ch, 0x0d, 0x1f) || ((ch)==0x7f))
 #define ishexdigit(ch) (inrange(ch, 'a', 'f') || inrange(ch, 'A', 'F') || inrange(ch, '0', '9'))
 #define char2num(ch) (inrange(ch,'0','9') ? ((ch)-'0') : (inrange(ch,'a','f') ? ((ch)-0x57) : ((ch)-0x37)))
 #define num2char(num) ((num) < 0xa ? ((num)+'0') : ((num)+0x57))
@@ -251,11 +251,58 @@ static char *dataDescription(WMPropList * plist)
 	return retVal;
 }
 
+/*
+ * Return the byte length of the UTF-8 sequence starting at s, or 0 if
+ * the bytes do not form a valid sequence. Only a minimal structural
+ * check is performed, enough to decide whether the bytes can be passed
+ * through verbatim instead of being octal-escaped.
+ */
+static int utf8SeqLen(const unsigned char *s)
+{
+	unsigned char c = s[0];
+	int want, i;
+
+	if (c < 0x80)
+		return 1;
+	if (c < 0xC2)
+		return 0;	/* stray continuation byte, or overlong 2-byte lead */
+	if (c < 0xE0)
+		want = 2;
+	else if (c < 0xF0)
+		want = 3;
+	else if (c < 0xF5)
+		want = 4;
+	else
+		return 0;
+
+	for (i = 1; i < want; i++) {
+		if ((s[i] & 0xC0) != 0x80)
+			return 0;
+	}
+
+	/* reject overlong encodings, UTF-16 surrogates, and codepoints
+	 * past U+10FFFF, all of which are well-formed at the byte level
+	 * but invalid UTF-8 */
+	if (want == 3) {
+		if (c == 0xE0 && s[1] < 0xA0)
+			return 0;
+		if (c == 0xED && s[1] > 0x9F)
+			return 0;
+	} else if (want == 4) {
+		if (c == 0xF0 && s[1] < 0x90)
+			return 0;
+		if (c == 0xF4 && s[1] > 0x8F)
+			return 0;
+	}
+	return want;
+}
+
 static char *stringDescription(WMPropList * plist)
 {
 	const char *str;
-	char *retVal, *sPtr, *dPtr;
-	int len, quote;
+	const unsigned char *sPtr;
+	char *retVal, *dPtr;
+	int len, quote, seq;
 	unsigned char ch;
 
 	str = plist->d.string;
@@ -264,12 +311,22 @@ static char *stringDescription(WMPropList * plist)
 		return wstrdup("\"\"");
 	}
 
-	/* FIXME: make this work with unichars. */
-
 	quote = 0;
-	sPtr = (char *)str;
+	sPtr = (const unsigned char *)str;
 	len = 0;
 	while ((ch = *sPtr)) {
+		if (ch & 0x80) {
+			quote = 1;
+			seq = utf8SeqLen(sPtr);
+			if (seq > 0) {
+				len += seq;
+				sPtr += seq;
+			} else {
+				len += 4;
+				sPtr++;
+			}
+			continue;
+		}
 		if (!noquote(ch)) {
 			quote = 1;
 			if (charesc(ch))
@@ -286,13 +343,27 @@ static char *stringDescription(WMPropList * plist)
 
 	retVal = (char *)wmalloc(len + 1);
 
-	sPtr = (char *)str;
+	sPtr = (const unsigned char *)str;
 	dPtr = retVal;
 
 	if (quote)
 		*dPtr++ = '"';
 
 	while ((ch = *sPtr)) {
+		if (ch & 0x80) {
+			seq = utf8SeqLen(sPtr);
+			if (seq > 0) {
+				while (seq--)
+					*dPtr++ = *sPtr++;
+			} else {
+				*(dPtr++) = '\\';
+				*(dPtr++) = '0' + ((ch >> 6) & 07);
+				*(dPtr++) = '0' + ((ch >> 3) & 07);
+				*(dPtr++) = '0' + (ch & 07);
+				sPtr++;
+			}
+			continue;
+		}
 		if (charesc(ch)) {
 			*(dPtr++) = '\\';
 			switch (ch) {
