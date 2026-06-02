@@ -2137,6 +2137,10 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 	else
 		title = newTitle;
 
+	/* publish _NET_WM_VISIBLE_NAME when we substitute a title that
+	 * differs from what the client supplied, remove it when they match */
+	wNETWMUpdateVisibleName(wwin, title, newTitle);
+
 	if (wFrameWindowChangeTitle(wwin->frame, title))
 		WMPostNotificationName(WMNChangedName, wwin, NULL);
 }

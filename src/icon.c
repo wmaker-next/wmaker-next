@@ -331,6 +331,8 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 
 void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 {
+	Bool from_client = True;
+
 	if (!icon || !wwin)
 		return;
 
@@ -350,8 +352,15 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 	}
 
 	if (!icon->icon_name)
-		if (!wGetIconName(dpy, wwin->client_win, &icon->icon_name))
+		if (!wGetIconName(dpy, wwin->client_win, &icon->icon_name)) {
 			icon->icon_name = wNETWMGetWindowName(wwin->client_win);
+			from_client = False;
+		}
+
+	/* publish _NET_WM_VISIBLE_ICON_NAME when we fall back to a name
+	 * the client did not set as its icon name, remove it otherwise */
+	wNETWMUpdateVisibleIconName(wwin, icon->icon_name,
+				    from_client ? icon->icon_name : NULL);
 }
 
 RImage *wIconValidateIconSize(RImage *icon, int max_size)

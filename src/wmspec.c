@@ -72,9 +72,9 @@ static Atom net_wm_moveresize;
 
 /* Application Window Properties */
 static Atom net_wm_name;
-static Atom net_wm_visible_name;	/* TODO (unnecessary?) */
+static Atom net_wm_visible_name;
 static Atom net_wm_icon_name;
-static Atom net_wm_visible_icon_name;	/* TODO (unnecessary?) */
+static Atom net_wm_visible_icon_name;
 static Atom net_wm_desktop;
 #ifdef USE_XINERAMA
 static Atom net_wm_fullscreen_monitors;
@@ -316,7 +316,9 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_frame_extents;
 
 	atom[i++] = net_wm_name;
+	atom[i++] = net_wm_visible_name;
 	atom[i++] = net_wm_icon_name;
+	atom[i++] = net_wm_visible_icon_name;
 
 	WXSetAtomN(dpy, scr->root_win, net_supported, atom, i);
 
@@ -2047,6 +2049,32 @@ char *wNETWMGetIconName(Window window)
 	return WXGetUTF8String(dpy, window, net_wm_icon_name, NULL);
 }
 
+/*
+ * Publish the title actually shown by the window manager when it differs
+ * from what the client set, or remove the property when they match again.
+ */
+static void updateVisibleNameProp(Window window, Atom prop,
+				  const char *visible, const char *client_name)
+{
+	if (window == None)
+		return;
+
+	if (visible && (!client_name || strcmp(visible, client_name) != 0))
+		WXSetUTF8String(dpy, window, prop, visible, strlen(visible));
+	else
+		WXDeleteProperty(dpy, window, prop);
+}
+
+void wNETWMUpdateVisibleName(WWindow *wwin, const char *visible, const char *client_name)
+{
+	updateVisibleNameProp(wwin->client_win, net_wm_visible_name, visible, client_name);
+}
+
+void wNETWMUpdateVisibleIconName(WWindow *wwin, const char *visible, const char *client_name)
+{
+	updateVisibleNameProp(wwin->client_win, net_wm_visible_icon_name, visible, client_name);
+}
+
 static void observer(void *self, WMNotification *notif)
 {
 	WWindow *wwin = (WWindow *) WMGetNotificationObject(notif);
@@ -2068,6 +2096,8 @@ static void observer(void *self, WMNotification *notif)
 		updateWorkspaceHint(wwin, False, True);
 		updateStateHint(wwin, False, True);
 		wNETWMUpdateActions(wwin, True);
+		wNETWMUpdateVisibleName(wwin, NULL, NULL);
+		wNETWMUpdateVisibleIconName(wwin, NULL, NULL);
 
 		updateStrut(wwin->screen_ptr, wwin->client_win, False);
 		wScreenUpdateUsableArea(wwin->screen_ptr);

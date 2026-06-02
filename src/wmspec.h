@@ -70,6 +70,8 @@ int wNETWMGetPidForWindow(Window window);
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr);
 char *wNETWMGetIconName(Window window);
 char *wNETWMGetWindowName(Window window);
+void wNETWMUpdateVisibleName(WWindow *wwin, const char *visible, const char *client_name);
+void wNETWMUpdateVisibleIconName(WWindow *wwin, const char *visible, const char *client_name);
 void wNETFrameExtents(WWindow *wwin);
 void wNETCleanupFrameExtents(WWindow *wwin);
 RImage *get_window_image_from_x11(Window window);
