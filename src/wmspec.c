@@ -67,7 +67,7 @@ static Atom net_showing_desktop;
 
 /* Other Root Window Messages */
 static Atom net_close_window;
-static Atom net_moveresize_window;	/* TODO */
+static Atom net_moveresize_window;
 static Atom net_wm_moveresize;
 
 /* Application Window Properties */
@@ -259,6 +259,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_workarea;
 	atom[i++] = net_supporting_wm_check;
 	atom[i++] = net_showing_desktop;
+	atom[i++] = net_moveresize_window;
 	atom[i++] = net_wm_moveresize;
 	atom[i++] = net_wm_desktop;
 #ifdef USE_XINERAMA
@@ -1852,6 +1853,34 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 				wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 										  w_global.timestamp.last_event);
 		}
+		return True;
+
+	} else if (event->message_type == net_moveresize_window) {
+		XConfigureRequestEvent xcre;
+		unsigned long flags = (unsigned long)event->data.l[0];
+		int gravity = flags & 0xff;
+		int saved_gravity = wwin->normal_hints->win_gravity;
+
+		/*
+		 * Reuse the ConfigureRequest path so frame extents, size
+		 * constraints and maximize state are handled in one place.
+		 * Presence bits 8-11 map directly onto CWX..CWHeight.
+		 */
+		memset(&xcre, 0, sizeof(xcre));
+		xcre.window = event->window;
+		xcre.value_mask = (flags >> 8) & (CWX | CWY | CWWidth | CWHeight);
+		xcre.x = event->data.l[1];
+		xcre.y = event->data.l[2];
+		xcre.width = event->data.l[3];
+		xcre.height = event->data.l[4];
+		xcre.border_width = wwin->old_border_width;
+
+		/* gravity 0 means honour the window's own gravity, anything
+		 * outside the X11 gravity range is hostile input */
+		if (gravity >= NorthWestGravity && gravity <= StaticGravity)
+			wwin->normal_hints->win_gravity = gravity;
+		wClientConfigure(wwin, &xcre);
+		wwin->normal_hints->win_gravity = saved_gravity;
 		return True;
 
 	} else if (event->message_type == net_wm_state) {

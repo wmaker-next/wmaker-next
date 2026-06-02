@@ -104,6 +104,7 @@ void wClientSetState(WWindow * wwin, int state, Window icon_win)
 void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
 {
 	switch (wwin->normal_hints->win_gravity) {
+	default:
 	case ForgetGravity:
 	case CenterGravity:
 	case StaticGravity:
