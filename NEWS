@@ -3,6 +3,20 @@ NEWS for veteran Window Maker users
 
 -- next
 
+libev is now a required dependency
+----------------------------------
+
+The WINGs/WUtil event loop (timers, idle handlers, and file-descriptor
+input handlers) is now driven by libev. libev picks the best available
+backend at runtime, so the loop uses epoll on Linux and kqueue on the
+BSDs with no per-platform code path. Timer handlers are scheduled on a
+monotonic clock, so wall-clock jumps from NTP corrections or suspend
+and resume no longer fire balloon, auto-raise, double-click, dock
+auto-collapse and defaults-reload timers early or stall them. The
+libev development package must be present at build time, there is no
+configure switch to disable this.
+
+
 EWMH coverage
 -------------
 
