@@ -682,31 +682,48 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	}
 
 	scrPtr->ignoredModifierMask = 0;
+	scrPtr->altModifierMask = 0;
 	{
 		int i;
 		XModifierKeymap *modmap;
 		KeyCode nlock, slock;
+		KeyCode altl, altr, metal, metar;
 		static int mask_table[8] = {
 			ShiftMask, LockMask, ControlMask, Mod1Mask,
 			Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
 		};
 		unsigned int numLockMask = 0, scrollLockMask = 0;
+		unsigned int altMask = 0, metaMask = 0;
 
 		nlock = XKeysymToKeycode(display, XK_Num_Lock);
 		slock = XKeysymToKeycode(display, XK_Scroll_Lock);
+		altl = XKeysymToKeycode(display, XK_Alt_L);
+		altr = XKeysymToKeycode(display, XK_Alt_R);
+		metal = XKeysymToKeycode(display, XK_Meta_L);
+		metar = XKeysymToKeycode(display, XK_Meta_R);
 
 		/*
 		 * Find out the masks for the NumLock and ScrollLock modifiers,
 		 * so that we can bind the grabs for when they are enabled too.
+		 * Also resolve which mask the Alt (or, failing that, Meta) keys
+		 * generate so widgets do not have to hard-code Mod1Mask.
 		 */
 		modmap = XGetModifierMapping(display);
 
 		if (modmap != NULL && modmap->max_keypermod > 0) {
 			for (i = 0; i < 8 * modmap->max_keypermod; i++) {
-				if (modmap->modifiermap[i] == nlock && nlock != 0)
+				KeyCode kc = modmap->modifiermap[i];
+
+				if (kc == 0)
+					continue;
+				if (kc == nlock)
 					numLockMask = mask_table[i / modmap->max_keypermod];
-				else if (modmap->modifiermap[i] == slock && slock != 0)
+				else if (kc == slock)
 					scrollLockMask = mask_table[i / modmap->max_keypermod];
+				if (kc == altl || kc == altr)
+					altMask |= mask_table[i / modmap->max_keypermod];
+				else if (kc == metal || kc == metar)
+					metaMask |= mask_table[i / modmap->max_keypermod];
 			}
 		}
 
@@ -714,6 +731,7 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 			XFreeModifiermap(modmap);
 
 		scrPtr->ignoredModifierMask = numLockMask | scrollLockMask | LockMask;
+		scrPtr->altModifierMask = altMask ? altMask : (metaMask ? metaMask : Mod1Mask);
 	}
 
 	/* initially allocate some colors */

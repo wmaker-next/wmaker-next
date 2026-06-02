@@ -164,6 +164,8 @@ typedef struct W_Screen {
 
     unsigned int ignoredModifierMask; /* modifiers to ignore when typing txt */
 
+    unsigned int altModifierMask;     /* mask bound to Alt_L/Alt_R keysyms */
+
     struct W_Balloon *balloon;
 
 

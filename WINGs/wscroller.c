@@ -758,7 +758,6 @@ static void handleActionEvents(XEvent * event, void *data)
 		break;
 
 	case ButtonPress:
-		/* FIXME: change Mod1Mask with something else */
 		if (sPtr->flags.documentFullyVisible)
 			break;
 
@@ -795,7 +794,8 @@ static void handleActionEvents(XEvent * event, void *data)
 				WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
 			}
 		} else {
-			handlePush(sPtr, event->xbutton.x, event->xbutton.y, (event->xbutton.state & Mod1Mask)
+			handlePush(sPtr, event->xbutton.x, event->xbutton.y,
+				   (event->xbutton.state & sPtr->view->screen->altModifierMask)
 				   || event->xbutton.button == Button2);
 			/* continue scrolling if pushed on the buttons */
 			if (sPtr->flags.hitPart == WSIncrementLine || sPtr->flags.hitPart == WSDecrementLine) {
