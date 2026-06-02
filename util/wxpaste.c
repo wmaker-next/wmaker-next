@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
+#include <time.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <sys/time.h>
@@ -47,108 +49,164 @@ static void print_help(void)
 	puts("  -v, --version            output version information and exit");
 }
 
+
+typedef Bool XEventMatchProc(XEvent *event, void *data);
+
+static void addMilliseconds(struct timespec *deadline, int timeout_ms)
+{
+	deadline->tv_sec += timeout_ms / 1000;
+	deadline->tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
+	if (deadline->tv_nsec >= 1000000000L) {
+		deadline->tv_sec++;
+		deadline->tv_nsec -= 1000000000L;
+	}
+}
+
+static int remainingMilliseconds(const struct timespec *deadline)
+{
+	struct timespec now;
+	time_t sec;
+	long nsec;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	sec = deadline->tv_sec - now.tv_sec;
+	nsec = deadline->tv_nsec - now.tv_nsec;
+	if (nsec < 0) {
+		sec--;
+		nsec += 1000000000L;
+	}
+	if (sec < 0)
+		return 0;
+	if (sec > INT_MAX / 1000)
+		return INT_MAX;
+	return (int)(sec * 1000 + (nsec + 999999L) / 1000000L);
+}
+
+static int waitForXEvent(Display *dpy, int timeout_ms, XEventMatchProc *match, void *data, XEvent *out)
+{
+	struct timespec deadline;
+	Bool bounded = timeout_ms >= 0;
+
+	if (bounded) {
+		clock_gettime(CLOCK_MONOTONIC, &deadline);
+		addMilliseconds(&deadline, timeout_ms);
+	}
+
+	for (;;) {
+		while (XPending(dpy) > 0) {
+			XNextEvent(dpy, out);
+			if ((*match)(out, data))
+				return 1;
+		}
+
+		struct timeval timeout;
+		struct timeval *timeout_ptr = NULL;
+		fd_set fdset;
+		int ready;
+
+		if (bounded) {
+			int remaining = remainingMilliseconds(&deadline);
+			if (remaining <= 0)
+				return 0;
+			timeout.tv_sec = remaining / 1000;
+			timeout.tv_usec = (remaining % 1000) * 1000;
+			timeout_ptr = &timeout;
+		}
+
+		FD_ZERO(&fdset);
+		FD_SET(ConnectionNumber(dpy), &fdset);
+		XFlush(dpy);
+		ready = select(ConnectionNumber(dpy) + 1, &fdset, NULL, NULL, timeout_ptr);
+		if (ready < 0) {
+			if (errno == EINTR)
+				continue;
+			return -1;
+		}
+		if (ready == 0)
+			return 0;
+	}
+}
+
+static Bool timestampEventMatches(XEvent *event, void *data)
+{
+	Window win = *(Window *)data;
+
+	return event->type == PropertyNotify && event->xproperty.window == win;
+}
+
 static Time getTimestamp(Display * dpy, Window win)
 {
 	XEvent ev;
 
-	/* So we do this trickery to get a time stamp:
-	 *
-	 * 1. Grab the server because we are paranoid and don't want to
-	 * get in a race with another instance of wxpaste being ran at the
-	 * same time.
-	 *
-	 * 2. Set a dummy property in our window.
-	 *
-	 * 3. Get the PropertyNotify event and get its timestamp.
-	 *
-	 * 4. Ungrab the server.
-	 */
-
+	/* Generate a server timestamp on our private window and bound the
+	 * wait so a broken display connection cannot wedge wxpaste forever. */
 	XSelectInput(dpy, win, PropertyChangeMask);
-
-	/* Generate a PropertyNotify event */
 	XStoreName(dpy, win, "wxpaste");
 
-	/* wait for the event */
-	while (1) {
-		XNextEvent(dpy, &ev);
-		if (ev.type == PropertyNotify)
-			break;
-	}
+	if (waitForXEvent(dpy, 1000, timestampEventMatches, &win, &ev) > 0)
+		return ev.xproperty.time;
 
-	return ev.xproperty.time;
+	return CurrentTime;
 }
 
-static char *fetchSelection(Display *dpy, const char *selection)
+typedef struct SelectionWaitData {
+	Window requestor;
+	Atom selection;
+} SelectionWaitData;
+
+static Bool selectionNotifyMatches(XEvent *event, void *data)
+{
+	SelectionWaitData *wait = data;
+
+	return event->type == SelectionNotify &&
+		event->xselection.requestor == wait->requestor &&
+		event->xselection.selection == wait->selection;
+}
+
+static char *fetchSelection(Display *dpy, const char *selection, int *length)
 {
 	Atom selatom = XInternAtom(dpy, selection, False);
 	Atom clipatom = XInternAtom(dpy, "CLIPBOARD", False);
 	Time now;
 	XEvent ev;
 	Window win;
-	int ok = 0;
-	struct timeval timeout;
-	fd_set fdset;
+	SelectionWaitData wait;
+	char *result = NULL;
 
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 1, 1, 0, 0, 0);
-	/*
-	 * The ICCCM says that we can't pass CurrentTime as the timestamp
-	 * for XConvertSelection(), but we don't have anything to use as
-	 * a timestamp...
-	 */
+	/* The ICCCM says CurrentTime is not valid for XConvertSelection(),
+	 * so generate a timestamp on our requestor window first. */
 	now = getTimestamp(dpy, win);
 
+	wait.requestor = win;
+	wait.selection = selatom;
 	XConvertSelection(dpy, selatom, XA_STRING, clipatom, win, now);
 
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
-
-	/* wait for the convertion */
-	while (0) {
-		int res;
-
-		if (XPending(dpy) == 0) {
-			FD_ZERO(&fdset);
-			FD_SET(ConnectionNumber(dpy), &fdset);
-			res = select(ConnectionNumber(dpy) + 1, &fdset, NULL, NULL, &timeout);
-			if (res <= 0) {
-				ok = 0;
-				break;
-			}
-		}
-		if (res > 0 || XPending(dpy) > 0) {
-			XNextEvent(dpy, &ev);
-			if (ev.type == SelectionNotify && ev.xany.window == win) {
-				ok = 1;
-				break;
-			}
-		}
-	}
-
-	/* if success, return the data */
-	if (ok) {
+	if (waitForXEvent(dpy, 1000, selectionNotifyMatches, &wait, &ev) > 0 &&
+	    ev.xselection.property != None) {
 		Atom rtype;
 		int bits;
 		unsigned long len, bytes;
-		unsigned char *data;
+		unsigned char *data = NULL;
 
-		if (XGetWindowProperty(dpy, win, clipatom, 0, MAXDATA / 4, False,
-				       XA_STRING, &rtype, &bits, &len, &bytes, &data) != 0)
-			return NULL;
-
-		if ((rtype != XA_STRING) || (bits != 8)) {
-			return NULL;
-		} else {
-			return (char *)data;
+		if (XGetWindowProperty(dpy, win, ev.xselection.property, 0, MAXDATA / 4, False,
+				       XA_STRING, &rtype, &bits, &len, &bytes, &data) == Success &&
+		    rtype == XA_STRING && bits == 8 && len <= INT_MAX) {
+			*length = (int)len;
+			result = (char *)data;
+		} else if (data) {
+			XFree(data);
 		}
 	}
-	return NULL;
+
+	XDestroyWindow(dpy, win);
+	return result;
 }
 
 int main(int argc, char **argv)
 {
 	Display *dpy;
-	int i, l;
+	int i, l = 0;
 	int buffer = 0;
 	char *buf;
 	int status;
@@ -208,7 +266,7 @@ int main(int argc, char **argv)
 	}
 
 	if (selection_name) {
-		buf = fetchSelection(dpy, selection_name);
+		buf = fetchSelection(dpy, selection_name, &l);
 	} else {
 		buf = NULL;
 	}
