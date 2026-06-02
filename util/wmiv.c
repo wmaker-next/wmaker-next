@@ -32,9 +32,15 @@
 #include <limits.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <time.h>
 #include <math.h>
 #include <ftw.h>
 #include <libgen.h>
@@ -189,6 +195,104 @@ static incr_transfer_t incr = { .active = False };
 
 /* End clipboard globals */
 
+static void wmiv_set_deadline(struct timespec *deadline, int timeout_ms)
+{
+	clock_gettime(CLOCK_MONOTONIC, deadline);
+	deadline->tv_sec += timeout_ms / 1000;
+	deadline->tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
+	if (deadline->tv_nsec >= 1000000000L) {
+		deadline->tv_sec++;
+		deadline->tv_nsec -= 1000000000L;
+	}
+}
+
+static int wmiv_deadline_remaining_ms(const struct timespec *deadline)
+{
+	struct timespec now;
+	time_t sec;
+	long nsec;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	sec = deadline->tv_sec - now.tv_sec;
+	nsec = deadline->tv_nsec - now.tv_nsec;
+	if (nsec < 0) {
+		sec--;
+		nsec += 1000000000L;
+	}
+	if (sec < 0)
+		return 0;
+	if (sec > INT_MAX / 1000)
+		return INT_MAX;
+	return (int)(sec * 1000 + (nsec + 999999L) / 1000000L);
+}
+
+static int wmiv_wait_x_until(Display *disp, const struct timespec *deadline)
+{
+	int remaining = wmiv_deadline_remaining_ms(deadline);
+	struct timeval timeout;
+	fd_set fdset;
+	int ready;
+
+	if (remaining <= 0)
+		return 0;
+
+	FD_ZERO(&fdset);
+	FD_SET(ConnectionNumber(disp), &fdset);
+	timeout.tv_sec = remaining / 1000;
+	timeout.tv_usec = (remaining % 1000) * 1000;
+	XFlush(disp);
+
+	ready = select(ConnectionNumber(disp) + 1, &fdset, NULL, NULL, &timeout);
+	if (ready < 0) {
+		if (errno == EINTR)
+			return 1;
+		return -1;
+	}
+	return ready > 0;
+}
+
+static Bool wmiv_wait_for_matching_event_until(Display *disp, XEvent *event,
+		Bool (*predicate)(Display *, XEvent *, XPointer), XPointer arg,
+		const struct timespec *deadline)
+{
+	int ready;
+
+	for (;;) {
+		if (XCheckIfEvent(disp, event, predicate, arg))
+			return True;
+
+		ready = wmiv_wait_x_until(disp, deadline);
+		if (ready <= 0)
+			return False;
+	}
+}
+
+static Bool wmiv_wait_for_matching_event(Display *disp, XEvent *event,
+		Bool (*predicate)(Display *, XEvent *, XPointer), XPointer arg,
+		int timeout_ms)
+{
+	struct timespec deadline;
+
+	wmiv_set_deadline(&deadline, timeout_ms);
+	return wmiv_wait_for_matching_event_until(disp, event, predicate, arg, &deadline);
+}
+
+typedef struct FrameExtentsWaitData {
+	Window window;
+	Atom atom;
+} FrameExtentsWaitData;
+
+static Bool frameExtentsNotifyMatches(Display *disp, XEvent *event, XPointer arg)
+{
+	FrameExtentsWaitData *wait = (FrameExtentsWaitData *)arg;
+
+	(void)disp;
+	return event->type == PropertyNotify &&
+		event->xproperty.window == wait->window &&
+		event->xproperty.atom == wait->atom &&
+		event->xproperty.state == PropertyNewValue;
+}
+
 /*
 	Wait for the window manager to set the _NET_FRAME_EXTENTS property
 	by listening for PropertyNotify events
@@ -196,37 +300,27 @@ static incr_transfer_t incr = { .active = False };
 */
 int wait_for_frame_extents(Display *disp, Window win, int timeout_ms) {
 	Atom net_frame_extents = XInternAtom(disp, "_NET_FRAME_EXTENTS", False);
+	FrameExtentsWaitData wait;
+	struct timespec deadline;
+	XEvent event;
+
 	if (net_frame_extents == None)
 		return 0;
 
-	XEvent event;
-	int elapsed = 0;
-	const int poll_interval = 10; /* milliseconds */
+	wait.window = win;
+	wait.atom = net_frame_extents;
+	wmiv_set_deadline(&deadline, timeout_ms);
 
-	while (elapsed < timeout_ms) {
-		/* Check if property is already available */
+	for (;;) {
 		uint32_t tmp;
 
 		if (WXGetCardinal(disp, win, net_frame_extents, &tmp))
 			return 1;
-
-		/* Wait for events or timeout */
-		if (XPending(disp)) {
-			XNextEvent(disp, &event);
-			if (event.type == PropertyNotify &&
-				event.xproperty.window == win &&
-				event.xproperty.atom == net_frame_extents &&
-				event.xproperty.state == PropertyNewValue) {
-				return 1;
-			}
-		}
-
-		usleep(poll_interval * 1000);
-		elapsed += poll_interval;
-		XFlush(disp);
+		if (XCheckIfEvent(disp, &event, frameExtentsNotifyMatches, (XPointer)&wait))
+			return 1;
+		if (wmiv_wait_x_until(disp, &deadline) <= 0)
+			return 0;
 	}
-
-	return 0;
 }
 
 /*
@@ -1702,16 +1796,18 @@ static Bool wmiv_xdnd_is_selnotify(Display *d, XEvent *ev, XPointer arg)
  * crashed source cannot wedge the main loop indefinitely */
 static Bool wmiv_xdnd_wait_selnotify(XEvent *out)
 {
-	struct timespec ts = {0, 20 * 1000 * 1000};
-	int i;
+	return wmiv_wait_for_matching_event(dpy, out, wmiv_xdnd_is_selnotify, NULL, 2000);
+}
 
-	for (i = 0; i < 100; i++) {  /* ~2 s total */
-		if (XCheckIfEvent(dpy, out, wmiv_xdnd_is_selnotify, NULL))
-			return True;
-		XFlush(dpy);
-		nanosleep(&ts, NULL);
-	}
-	return False;
+static Bool wmiv_xdnd_is_drag_reply(Display *display, XEvent *event, XPointer arg)
+{
+	(void)display;
+	(void)arg;
+
+	return event->type == SelectionRequest ||
+		(event->type == ClientMessage &&
+		 event->xclient.window == win &&
+		 event->xclient.message_type == atom_XdndFinished);
 }
 
 /*
@@ -1968,22 +2064,21 @@ static void initiate_file_drag(void)
 		if (ev.type == ButtonRelease) {
 			XUngrabPointer(dpy, ev.xbutton.time);
 			if (target != None && target_accepts) {
-				int wait;
+				struct timespec deadline;
 
 				wmiv_xdnd_send_drop(target, ev.xbutton.time);
 				XFlush(dpy);
 				/* serve the selection and wait briefly for
 				 * XdndFinished, but do not block forever if
 				 * the target never sends it */
-				for (wait = 0; wait < 200; wait++) {
-					if (XCheckTypedEvent(dpy, SelectionRequest, &ev)) {
+				wmiv_set_deadline(&deadline, 1000);
+				while (wmiv_wait_for_matching_event_until(dpy, &ev, wmiv_xdnd_is_drag_reply,
+								       NULL, &deadline)) {
+					if (ev.type == SelectionRequest) {
 						handle_selection_request(&ev.xselectionrequest);
 						continue;
 					}
-					if (XCheckTypedWindowEvent(dpy, win, ClientMessage, &ev) &&
-					    ev.xclient.message_type == atom_XdndFinished)
-						break;
-					usleep(5000);
+					break;
 				}
 			} else if (target != None) {
 				wmiv_xdnd_send_leave(target);
