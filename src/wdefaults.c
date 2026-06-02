@@ -26,6 +26,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -379,6 +380,105 @@ static WMPropList *get_generic_value(const char *instance, const char *class,
 	return value;
 }
 
+/*
+ * Remove a stale Icon entry from the WMWindowAttributes domain so the
+ * missing-icon warning is emitted only once and the application falls
+ * back to the default icon. The entry is always dropped from the
+ * in-memory dictionary, the on-disk user defaults are rewritten only
+ * when the stale entry actually came from there, entries inherited from
+ * the global system defaults are left on disk and merely suppressed in
+ * memory until the domain is next reloaded.
+ */
+static void drop_stale_icon(const char *instance, const char *class, const char *file_name)
+{
+	WDDomain *db = w_global.domain.window_attr;
+	WMPropList *dict, *attr, *value, *user_dict, *user_attr;
+	WMPropList *keys[3];
+	WMPropList *match_key = NULL, *match_attr = NULL;
+	Bool from_user = False;
+	Bool persist;
+	int i, nkeys = 0;
+
+	if (!db || !db->dictionary || !file_name || file_name[0] == '\0')
+		return;
+
+	/*
+	 * For absolute paths only prune when the file is really gone, do not
+	 * drop the entry on transient errors such as EACCES on a network mount
+	 * that is briefly unavailable. Relative names are searched through
+	 * IconPath by FindImage(), which loses errno, so for those we only
+	 * suppress in memory and never rewrite the user file, a transient
+	 * search-path failure then self-heals on the next domain reload.
+	 */
+	if (file_name[0] == '/') {
+		if (access(file_name, F_OK) < 0 && errno != ENOENT)
+			return;
+		persist = True;
+	} else {
+		persist = False;
+	}
+
+	dict = db->dictionary;
+
+	WMPLSetCaseSensitive(True);
+
+	if (instance && class) {
+		char *both = StrConcatDot(instance, class);
+		keys[nkeys++] = WMCreatePLString(both);
+		wfree(both);
+	}
+	if (instance)
+		keys[nkeys++] = WMCreatePLString(instance);
+	if (class)
+		keys[nkeys++] = WMCreatePLString(class);
+
+	/* Find which per-app entry actually holds the stale Icon value */
+	for (i = 0; i < nkeys; i++) {
+		attr = WMGetFromPLDictionary(dict, keys[i]);
+		if (!attr || !WMIsPLDictionary(attr))
+			continue;
+		value = WMGetFromPLDictionary(attr, AIcon);
+		if (value && WMIsPLString(value) &&
+		    strcmp(WMGetFromPLString(value), file_name) == 0) {
+			match_key = keys[i];
+			match_attr = attr;
+			break;
+		}
+	}
+
+	if (!match_attr)
+		goto out;
+
+	/*
+	 * Decide whether the stale entry came from the user's own defaults
+	 * file or was merged in from the global system defaults, we only
+	 * rewrite the user file in the former case.
+	 */
+	user_dict = db->path ? WMReadPropListFromFile(db->path) : NULL;
+	if (user_dict) {
+		if (WMIsPLDictionary(user_dict)) {
+			user_attr = WMGetFromPLDictionary(user_dict, match_key);
+			if (user_attr && WMIsPLDictionary(user_attr) &&
+			    WMGetFromPLDictionary(user_attr, AIcon))
+				from_user = True;
+		}
+		WMReleasePropList(user_dict);
+	}
+
+	WMRemoveFromPLDictionary(match_attr, AIcon);
+	if (WMGetPropListItemCount(match_attr) == 0)
+		WMRemoveFromPLDictionary(dict, match_key);
+
+	if (persist && from_user && !wPreferences.flags.noupdates)
+		UpdateDomainFile(db);
+
+out:
+	for (i = 0; i < nkeys; i++)
+		WMReleasePropList(keys[i]);
+
+	WMPLSetCaseSensitive(False);
+}
+
 /* Get the file name of the image, using instance and class */
 char *get_icon_filename(const char *winstance, const char *wclass, const char *command,
 			Bool default_icon)
@@ -386,8 +486,8 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 	char *file_name;
 	char *file_path;
 
-	/* Get the file name of the image, using instance and class */
-	file_name = wDefaultGetIconFile(winstance, wclass, default_icon);
+	/* Look up the per-app icon file name, using instance and class */
+	file_name = wDefaultGetIconFile(winstance, wclass, False);
 
 	/* Check if the file really exists in the disk */
 	if (file_name)
@@ -400,17 +500,20 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 	if (!file_path && command) {
 		wApplicationExtractDirPackIcon(command, winstance, wclass);
 		file_name = wDefaultGetIconFile(winstance, wclass, False);
-
-		if (file_name) {
+		if (file_name)
 			file_path = FindImage(wPreferences.icon_path, file_name);
-			if (!file_path)
-				wwarning(_("icon \"%s\" doesn't exist, check your config files"), file_name);
+	}
 
-			/* FIXME: Here, if file_path does not exist then the icon is still in the
-			 * "icon database" (w_global.domain.window_attr->dictionary), but the file
-			 * for the icon is no more on disk. Therefore, we should remove it from the
-			 * database. Is possible to do that using wDefaultChangeIcon() */
-		}
+	/*
+	 * If a per-app Icon entry exists but the image file is gone, warn once
+	 * and drop the stale entry from WMWindowAttributes so we fall back to
+	 * the default icon instead of repeating the warning on every lookup.
+	 */
+	if (file_name && !file_path) {
+		wwarning(_("icon \"%s\" doesn't exist, check your config files"), file_name);
+		drop_stale_icon(winstance, wclass, file_name);
+		/* file_name pointed into the dictionary entry we just removed */
+		file_name = NULL;
 	}
 
 	/*
