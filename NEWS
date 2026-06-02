@@ -3,6 +3,29 @@ NEWS for veteran Window Maker users
 
 -- next
 
+EWMH coverage
+-------------
+
+_NET_MOVERESIZE_WINDOW is now handled, so wmctrl -e and pagers that
+reposition or resize windows through EWMH work. _NET_WM_STRUT_PARTIAL
+start/end fields are honoured per head, so a panel reserving only part
+of one monitor edge no longer shrinks the usable area on every other
+monitor, and the property is advertised in _NET_SUPPORTED.
+_NET_WM_VISIBLE_NAME and _NET_WM_VISIBLE_ICON_NAME are set on the
+client window whenever Window Maker displays a title that differs from
+the one the client supplied.
+
+
+UTF-8 in saved property lists
+-----------------------------
+
+Strings written by WMGetPropListDescription() (and therefore every
+saved defaults domain, theme and style file) now keep valid UTF-8
+characters as-is instead of expanding each byte into a \nnn octal
+escape. Invalid byte sequences are still escaped, and existing files
+with octal escapes continue to load unchanged.
+
+
 Typed configuration parsing
 ---------------------------
 
