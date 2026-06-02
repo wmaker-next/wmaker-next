@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = wtest wmquery wmfile testmywidget
 
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist
+check_PROGRAMS = check_wutil check_proplist check_handlers
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -14,6 +14,9 @@ check_wutil_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 check_proplist_SOURCES = check_proplist.c
 check_proplist_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+check_handlers_SOURCES = check_handlers.c
+check_handlers_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
