@@ -3,6 +3,16 @@ NEWS for veteran Window Maker users
 
 -- next
 
+wxpaste -s reads the named selection again
+------------------------------------------
+
+wxpaste -s NAME requested the conversion but never waited for the
+owner to reply, so it always fell back to the cut buffer. It now
+waits up to one second for the SelectionNotify and writes exactly
+the number of bytes the owner returned rather than relying on a
+NUL terminator.
+
+
 libev is now a required dependency
 ----------------------------------
 
