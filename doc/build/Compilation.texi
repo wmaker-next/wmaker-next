@@ -145,6 +145,13 @@ Dependencies include @emph{freetype2} and @emph{fontconfig}.
 You will also need the development files for them (@file{xft2-devel}).
 Sources are available at: @uref{http://www.freedesktop.org/wiki/Software/Xft/}
 
+@item @emph{libev}
+
+Drives the WINGs/WUtil event loop (timers, idle and input handlers).
+Packaged as @file{libev-dev} on Debian/Ubuntu, @file{libev-devel} on Fedora and SUSE,
+and @file{libev} in the FreeBSD, OpenBSD, NetBSD and DragonFly package collections.
+Sources: @uref{http://software.schmorp.de/pkg/libev.html}
+
 @end itemize
 
 @noindent @b{Note}:

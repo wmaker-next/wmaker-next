@@ -420,9 +420,23 @@ dnl ============================
 AC_FUNC_MEMCMP
 AC_FUNC_VPRINTF
 WM_FUNC_SECURE_GETENV
-AC_CHECK_FUNCS(gethostname select poll strcasecmp strncasecmp \
+AC_CHECK_FUNCS(gethostname strcasecmp strncasecmp \
 	       setsid mallinfo2 mkstemp sysconf fmemopen)
 AC_SEARCH_LIBS([strerror], [cposix])
+
+dnl libev drives the WINGs event loop (timer, idle and input handlers).
+dnl Upstream ships no .pc file, so probe header + library directly and
+dnl keep the result out of the global LIBS so only libWUtil links it.
+AC_CHECK_HEADER([ev.h], [],
+    [AC_MSG_ERROR([libev header <ev.h> not found, install libev-dev / libev])])
+LIBEV_LIBS=
+wm_save_LIBS=$LIBS
+AC_SEARCH_LIBS([ev_run], [ev],
+    [AS_IF([test "x$ac_cv_search_ev_run" != "xnone required"],
+        [LIBEV_LIBS="$ac_cv_search_ev_run"])],
+    [AC_MSG_ERROR([libev not found])])
+LIBS=$wm_save_LIBS
+AC_SUBST([LIBEV_LIBS])
 
 dnl nanosleep is generally available in standard libc, although not always the
 dnl case. One known example is Solaris which needs -lrt
@@ -489,7 +503,7 @@ AC_CHECK_HEADERS([syslog.h], [AC_DEFINE([HAVE_SYSLOG], [1], [Check for syslog])]
 dnl Checks for header files
 dnl =======================
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h limits.h sys/ioctl.h libintl.h poll.h malloc.h ctype.h \
+AC_CHECK_HEADERS(fcntl.h limits.h sys/ioctl.h libintl.h malloc.h ctype.h \
 		 string.h strings.h)
 
 
