@@ -22,8 +22,6 @@
 
 #include "WPrefs.h"
 #include <ctype.h>
-#include <sys/select.h>
-#include <sys/time.h>
 
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
@@ -341,6 +339,28 @@ static void build_key_combo(unsigned int xkstate, const char *keyname,
 	wstrlcat(keybuf, keyname, 64);
 }
 
+static void keychainTimeout(void *data)
+{
+	*(Bool *)data = True;
+}
+
+static Bool waitForKeychainEvent(Display *dpy, int timeout_ms)
+{
+	Bool fired = False;
+	WMHandlerID timer;
+
+	timer = WMAddTimerHandler(timeout_ms, keychainTimeout, &fired);
+	while (!fired && !XPending(dpy)) {
+		XFlush(dpy);
+		W_HandleInputEvents(True, ConnectionNumber(dpy));
+	}
+
+	if (!fired)
+		WMDeleteTimerHandler(timer);
+
+	return XPending(dpy) > 0;
+}
+
 /*
  * Interactively capture a key shortcut or keychain,
  * function waits KeychainTimeoutDelay or 300 ms after
@@ -397,19 +417,8 @@ char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case)
 	/* ---- Phase 2: collect additional chain keys with timeout ---- */
 	chain_mode = (timeout_ms > 0);
 	while (*capturing && chain_mode) {
-		int xfd = ConnectionNumber(dpy);
-		fd_set rfds;
-		struct timeval tv;
-
-		if (!XPending(dpy)) {
-			FD_ZERO(&rfds);
-			FD_SET(xfd, &rfds);
-			tv.tv_sec  = timeout_ms / 1000;
-			tv.tv_usec = (timeout_ms % 1000) * 1000;
-			XFlush(dpy);
-			if (select(xfd + 1, &rfds, NULL, NULL, &tv) == 0)
-				break;  /* timeout: the chain is complete */
-		}
+		if (!XPending(dpy) && !waitForKeychainEvent(dpy, timeout_ms))
+			break;  /* timeout: the chain is complete */
 
 		XAllowEvents(dpy, AsyncKeyboard, CurrentTime);
 		WMNextEvent(dpy, &ev);
