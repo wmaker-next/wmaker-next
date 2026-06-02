@@ -307,6 +307,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_action_close;
 
 	atom[i++] = net_wm_strut;
+	atom[i++] = net_wm_strut_partial;
 	atom[i++] = net_wm_icon_geometry;
 	atom[i++] = net_wm_icon;
 	atom[i++] = net_wm_handled_icons;
@@ -803,6 +804,11 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 	}
 }
 
+static inline int clampi(int v, int lo, int hi)
+{
+	return v < lo ? lo : (v > hi ? hi : v);
+}
+
 Bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area)
 {
 	WReservedArea *cur;
@@ -813,24 +819,42 @@ Bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area)
 
 	area->x1 = area->y1 = area->x2 = area->y2 = 0;
 
+	rect = wGetRectForHead(scr, head);
+
 	for (cur = scr->netdata->strut; cur; cur = cur->next) {
-		WWindow *wwin = wWindowFor(cur->window);
-		if (wWindowTouchesHead(wwin, head)) {
-			if (cur->area.x1 > area->x1)
-				area->x1 = cur->area.x1;
-			if (cur->area.y1 > area->y1)
-				area->y1 = cur->area.y1;
-			if (cur->area.x2 > area->x2)
-				area->x2 = cur->area.x2;
-			if (cur->area.y2 > area->y2)
-				area->y2 = cur->area.y2;
-		}
+		/* Only honour an edge reservation when the reserved rectangle
+		 * actually intersects this head, so a panel reserving 64 px on
+		 * the root left edge does not also shrink a side-by-side head
+		 * at x=1920. Each edge is tested on both axes, the start/end
+		 * span from _NET_WM_STRUT_PARTIAL and the thickness reaching
+		 * into the head along the perpendicular axis. */
+		if (cur->area.x1 > area->x1
+		    && cur->area.x1 > rect.pos.x
+		    && cur->left_start < rect.pos.y + rect.size.height
+		    && cur->left_end >= rect.pos.y)
+			area->x1 = cur->area.x1;
+
+		if (cur->area.x2 > area->x2
+		    && scr->scr_width - cur->area.x2 < rect.pos.x + rect.size.width
+		    && cur->right_start < rect.pos.y + rect.size.height
+		    && cur->right_end >= rect.pos.y)
+			area->x2 = cur->area.x2;
+
+		if (cur->area.y1 > area->y1
+		    && cur->area.y1 > rect.pos.y
+		    && cur->top_start < rect.pos.x + rect.size.width
+		    && cur->top_end >= rect.pos.x)
+			area->y1 = cur->area.y1;
+
+		if (cur->area.y2 > area->y2
+		    && scr->scr_height - cur->area.y2 < rect.pos.y + rect.size.height
+		    && cur->bottom_start < rect.pos.x + rect.size.width
+		    && cur->bottom_end >= rect.pos.x)
+			area->y2 = cur->area.y2;
 	}
 
 	if (area->x1 == 0 && area->x2 == 0 && area->y1 == 0 && area->y2 == 0)
 		return False;
-
-	rect = wGetRectForHead(scr, head);
 
 	/* NOTE(gryf): calculation for the reserved area should be preformed for
 	 * current head, but area, which comes form _NET_WM_STRUT, has to be
@@ -882,6 +906,23 @@ Bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area)
 		area->y2 = rect.pos.y + rect.size.height;
 	else
 		area->y2 = scr->scr_height - area->y2;
+
+	/* Opposing or oversized struts can leave the usable rectangle
+	 * inverted or outside this head, which placement and maximize then
+	 * trust as width = x2 - x1. Clamp to the head and collapse any
+	 * inversion onto the head edges so callers always see x1 <= x2. */
+	area->x1 = clampi(area->x1, rect.pos.x, rect.pos.x + rect.size.width);
+	area->x2 = clampi(area->x2, rect.pos.x, rect.pos.x + rect.size.width);
+	area->y1 = clampi(area->y1, rect.pos.y, rect.pos.y + rect.size.height);
+	area->y2 = clampi(area->y2, rect.pos.y, rect.pos.y + rect.size.height);
+	if (area->x1 > area->x2) {
+		area->x1 = rect.pos.x;
+		area->x2 = rect.pos.x + rect.size.width;
+	}
+	if (area->y1 > area->y2) {
+		area->y1 = rect.pos.y;
+		area->y2 = rect.pos.y + rect.size.height;
+	}
 
 	return True;
 }
@@ -1063,6 +1104,54 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 	}
 }
 
+/*
+ * Build a WReservedArea from raw _NET_WM_STRUT(_PARTIAL) data. The values
+ * come from an untrusted client property, so clamp every field to the root
+ * extent and drop edges whose start/end span is inverted, otherwise a
+ * hostile or buggy panel can produce a nonsensical workarea.
+ */
+static WReservedArea *makeReservedArea(WScreen *scr, Window w,
+				       const uint32_t *v, Bool partial)
+{
+	WReservedArea *area = wmalloc(sizeof(WReservedArea));
+	int sw = scr->scr_width, sh = scr->scr_height;
+
+	area->area.x1 = clampi(v[0], 0, sw);
+	area->area.x2 = clampi(v[1], 0, sw);
+	area->area.y1 = clampi(v[2], 0, sh);
+	area->area.y2 = clampi(v[3], 0, sh);
+
+	if (partial) {
+		area->left_start   = clampi(v[4],  0, sh - 1);
+		area->left_end     = clampi(v[5],  0, sh - 1);
+		area->right_start  = clampi(v[6],  0, sh - 1);
+		area->right_end    = clampi(v[7],  0, sh - 1);
+		area->top_start    = clampi(v[8],  0, sw - 1);
+		area->top_end      = clampi(v[9],  0, sw - 1);
+		area->bottom_start = clampi(v[10], 0, sw - 1);
+		area->bottom_end   = clampi(v[11], 0, sw - 1);
+
+		/* an inverted span is degenerate, treat that edge as absent */
+		if (area->left_start > area->left_end)
+			area->area.x1 = 0;
+		if (area->right_start > area->right_end)
+			area->area.x2 = 0;
+		if (area->top_start > area->top_end)
+			area->area.y1 = 0;
+		if (area->bottom_start > area->bottom_end)
+			area->area.y2 = 0;
+	} else {
+		/* plain _NET_WM_STRUT reserves the full edge */
+		area->left_start  = area->right_start  = 0;
+		area->left_end    = area->right_end    = sh - 1;
+		area->top_start   = area->bottom_start = 0;
+		area->top_end     = area->bottom_end   = sw - 1;
+	}
+
+	area->window = w;
+	return area;
+}
+
 static Bool updateStrut(WScreen *scr, Window w, Bool adding)
 {
 	WReservedArea *area;
@@ -1070,23 +1159,16 @@ static Bool updateStrut(WScreen *scr, Window w, Bool adding)
 
 	if (adding) {
 		uint32_t strut[12];
+		Bool partial;
 
-		/* XXX: For net_wm_strut_partial we discard the start/end fields
-		 * and treat it as a (deprecated) net_wm_strut. This means we
-		 * are marking the whole width or height of the screen as
-		 * reserved, which is not necessarily what the strut defines,
-		 * but for placement or maximization it's good enough.
-		 */
-		if (WXGetCardinalN(dpy, w, net_wm_strut, strut, 4) ||
-		    WXGetCardinalN(dpy, w, net_wm_strut_partial, strut, 12)) {
+		/* _NET_WM_STRUT_PARTIAL takes precedence over the legacy
+		 * _NET_WM_STRUT, and carries per-edge start/end spans so a
+		 * panel reserving only part of an edge does not steal that
+		 * edge on every head. */
+		partial = WXGetCardinalN(dpy, w, net_wm_strut_partial, strut, 12);
+		if (partial || WXGetCardinalN(dpy, w, net_wm_strut, strut, 4)) {
 
-			area = (WReservedArea *) wmalloc(sizeof(WReservedArea));
-			area->area.x1 = strut[0];
-			area->area.x2 = strut[1];
-			area->area.y1 = strut[2];
-			area->area.y2 = strut[3];
-
-			area->window = w;
+			area = makeReservedArea(scr, w, strut, partial);
 
 			area->next = scr->netdata->strut;
 			scr->netdata->strut = area;
@@ -1478,21 +1560,20 @@ static void addStrutCk(WScreen *scr, Window w, WXCookie strut, WXCookie strut_pa
 {
 	WReservedArea *area;
 	uint32_t v[12];
+	Bool partial;
 
-	/* consume both cookies on every path so callers do not have to */
-	if (WXRcvCardinalN(dpy, strut, v, 4)) {
-		WXDiscard(dpy, strut_partial);
-	} else if (!WXRcvCardinalN(dpy, strut_partial, v, 12)) {
+	/* consume both cookies on every path so callers do not have to,
+	 * _NET_WM_STRUT_PARTIAL takes precedence over the legacy strut */
+	if (WXRcvCardinalN(dpy, strut_partial, v, 12)) {
+		WXDiscard(dpy, strut);
+		partial = True;
+	} else if (WXRcvCardinalN(dpy, strut, v, 4)) {
+		partial = False;
+	} else {
 		return;
 	}
 
-	area = (WReservedArea *) wmalloc(sizeof(WReservedArea));
-	area->area.x1 = v[0];
-	area->area.x2 = v[1];
-	area->area.y1 = v[2];
-	area->area.y2 = v[3];
-	area->window = w;
-
+	area = makeReservedArea(scr, w, v, partial);
 	area->next = scr->netdata->strut;
 	scr->netdata->strut = area;
 }

@@ -40,7 +40,11 @@ typedef struct {
 
 /* an area of the screen reserved by some window */
 typedef struct WReservedArea {
-    WArea area;
+    WArea area;                        /* left, right, top, bottom thickness from the root edges */
+    int left_start, left_end;          /* y span of the left strut, root relative and inclusive */
+    int right_start, right_end;        /* y span of the right strut, root relative and inclusive */
+    int top_start, top_end;            /* x span of the top strut, root relative and inclusive */
+    int bottom_start, bottom_end;      /* x span of the bottom strut, root relative and inclusive */
     Window window;
     struct WReservedArea *next;
 } WReservedArea;
