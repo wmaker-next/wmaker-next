@@ -21,6 +21,7 @@
 
 #include <WUtil.h>
 
+#include "WINGsP.h"
 #include "error.h"
 
 WMRange wmkrange(int start, int count)
@@ -38,6 +39,7 @@ WMRange wmkrange(int start, int count)
  */
 void wutil_shutdown(void)
 {
+	W_EventLoopShutdown();
 #ifdef HAVE_SYSLOG
 	w_syslog_close();
 #endif

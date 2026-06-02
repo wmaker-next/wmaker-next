@@ -375,6 +375,8 @@ void W_CheckTimerHandlers(void);
 
 Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
 
+void W_EventLoopShutdown(void);
+
 
 /* ---[ notification.c ]-------------------------------------------------- */
 

@@ -82,6 +82,10 @@ pid_t wspawnvp_setup(char *const argv[], void (*pre_exec)(void *udata), void *ud
 		return -1;
 	}
 
+	/* children created here exec immediately and never re-enter the
+	 * libev-backed WINGs event loop, so ev_loop_fork() is not called,
+	 * a future child that does want to keep running and use WMAdd*Handler
+	 * after fork must call it before the first ev_run() */
 	pid = fork();
 	if (pid < 0) {
 		werror(_("could not fork to run %s: %s"), argv[0], strerror(errno));
