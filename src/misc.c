@@ -348,11 +348,6 @@ char *FindImage(const char *paths, const char *file)
 	return path;
 }
 
-static void timeoutHandler(void *data)
-{
-	*(int *)data = 1;
-}
-
 static char *getTextSelection(WScreen * screen, Atom selection)
 {
 	int buffer = -1;
@@ -397,7 +392,7 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 	} else {
 		char *data;
 		size_t len;
-		WMHandlerID timer;
+		struct timespec now, deadline;
 		int timeout = 0;
 		XEvent ev;
 		static Atom clipboard = 0;
@@ -409,19 +404,24 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 
 		XConvertSelection(dpy, selection, XA_STRING, clipboard, screen->info_window, CurrentTime);
 
-		timer = WMAddTimerHandler(1000, timeoutHandler, &timeout);
+		/* bound the wait with a local monotonic deadline so a hostile
+		 * or hung selection owner cannot stall us, this loop never
+		 * re-enters the WINGs event loop so a WINGs timer would not
+		 * fire here (WM-2026-20) */
+		clock_gettime(CLOCK_MONOTONIC, &deadline);
+		deadline.tv_sec += 1;
 
-		while (!XCheckTypedWindowEvent(dpy, screen->info_window, SelectionNotify, &ev) && !timeout) {
-			/* The WINGs timer only fires from inside the WINGs event
-			 * loop, which we never re-enter here; pump it manually so
-			 * a hostile selection owner cannot hang us (WM-2026-20). */
-			W_CheckTimerHandlers();
+		while (!XCheckTypedWindowEvent(dpy, screen->info_window, SelectionNotify, &ev)) {
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			if (now.tv_sec > deadline.tv_sec ||
+			    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
+				timeout = 1;
+				break;
+			}
 			wusleep(10000);
 		}
 
-		if (!timeout) {
-			WMDeleteTimerHandler(timer);
-		} else {
+		if (timeout) {
 			wwarning("selection retrieval timed out");
 			return NULL;
 		}
