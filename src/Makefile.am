@@ -26,6 +26,7 @@ wmaker_SOURCES = 	\
 	colormap.h \
 	config-schema.c \
 	config-schema.h \
+	config-schema-def.h \
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
