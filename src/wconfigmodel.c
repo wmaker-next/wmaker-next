@@ -1246,8 +1246,21 @@ void wConfigPrepareRuntimeDefaults(WMPropList *new_dict,
 	for (i = 0; i < count; i++) {
 		WMPropList *new_value;
 
-		if (!(schema[i].flags & WCFG_RUNTIME_RELOAD))
+		if (!(schema[i].flags & WCFG_RUNTIME_RELOAD)) {
+			/* Startup-only key, freeze it for the session by
+			 * carrying the previously adopted (and possibly
+			 * sanity-clamped) value forward, regardless of what
+			 * the reloaded file now says, so readers that go
+			 * straight to w_global.config never see a mid-session
+			 * change to IconSize, FocusMode, NewStyle, etc. */
+			if (old_config) {
+				destroy_entry_value(new_config, &schema[i]);
+				copy_entry_value(new_config, old_config, &schema[i]);
+				changes->changed[WCFG_CHANGE_WORD(schema[i].config_key)] &=
+				    ~WCFG_CHANGE_BIT(schema[i].config_key);
+			}
 			continue;
+		}
 
 		new_value = dict_get_entry(new_dict, &schema[i]);
 		if (!new_value && old_config) {

@@ -1700,6 +1700,40 @@ out:
 	wConfigClearWindowMaker();
 }
 
+static void test_startup_only_frozen_across_reload(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	/* simulate StartUp(): adopt the boot-time parse and clamp it */
+	old_dict = dict_from_desc("{ IconSize = 96; FocusMode = sloppy; "
+				  "NewStyle = next; SwitchPanelIconSize = 48; "
+				  "DisableMiniwindows = YES; "
+				  "EnableWorkspacePager = YES; }");
+	if (!old_dict)
+		return;
+	wConfigCacheWindowMaker(old_dict);
+	CHECK(w_global.config->icon_size == 96);
+
+	/* runtime reload with IconSize edited below the clamp and the
+	 * other startup-only keys removed, none of this may leak through */
+	new_dict = dict_from_desc("{ IconSize = 8; }");
+	if (!new_dict)
+		goto out;
+	wConfigApplyRuntimeDefaults(NULL, new_dict);
+	CHECK(w_global.config->icon_size == 96);
+	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
+	CHECK(w_global.config->new_style == TS_NEXT);
+	CHECK(w_global.config->switch_panel_icon_size == 48);
+	CHECK(w_global.config->disable_miniwindows == 1);
+	CHECK(w_global.config->enable_workspace_pager == 1);
+
+	WMReleasePropList(new_dict);
+out:
+	WMReleasePropList(old_dict);
+	wConfigClearWindowMaker();
+}
+
 
 static void test_runtime_apply_phase7(void)
 {
@@ -1874,6 +1908,7 @@ int main(void)
 	test_runtime_apply_phase5();
 	test_runtime_apply_phase7();
 	test_runtime_apply_uses_cached_old_config();
+	test_startup_only_frozen_across_reload();
 	test_deleted_key_keeps_current();
 
 	if (failures) {
