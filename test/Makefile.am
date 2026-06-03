@@ -2,18 +2,17 @@
 
 AUTOMAKE_OPTIONS = no-dependencies
 
-EXTRA_DIST = notest.c asan-drive.sh lsan-suppressions.txt
+# wm_fsm_test.c needs GTK3 which is outside the project's dependency
+# policy and is not probed at configure time, ship the source for
+# reference but do not wire it into the build
+EXTRA_DIST = notest.c wm_fsm_test.c asan-drive.sh lsan-suppressions.txt
 
-noinst_PROGRAMS = wtest wm_fsm_test
+# wmlib smoke test, built on demand only (this directory is not in
+# SUBDIRS, only DIST_SUBDIRS)
+EXTRA_PROGRAMS = wtest
 
 wtest_SOURCES = wtest.c
 
 wtest_LDADD = $(top_builddir)/wmlib/libWMaker.la @XLFLAGS@ @XLIBS@
 
 AM_CPPFLAGS = -g -D_BSD_SOURCE @XCFLAGS@ -I$(top_srcdir)/wmlib
-
-wm_fsm_test_SOURCES = wm_fsm_test.c
-
-wm_fsm_test_CPPFLAGS = $(shell pkg-config --cflags gtk+-3.0)
-
-wm_fsm_test_LDFLAGS = $(shell pkg-config --libs gtk+-3.0) -lX11
