@@ -33,6 +33,7 @@
 #include "properties.h"
 #include "stacking.h"
 #include "workspace.h"
+#include "hotcorner.h"
 
 
 static void notifyStackChange(WCoreWindow * frame, char *detail)
@@ -126,6 +127,7 @@ void CommitStacking(WScreen * scr)
 	}
 	XRestackWindows(dpy, windows, i);
 	wfree(windows);
+	wHotCornersRaise(scr);
 	WMPostNotificationName(WMNResetStacking, scr, NULL);
 }
 
@@ -184,6 +186,7 @@ void CommitStackingForWindow(WCoreWindow * frame)
 		} else {
 			/* no window above us */
 			XRaiseWindow(dpy, frame->window);
+			wHotCornersRaise(frame->screen_ptr);
 		}
 	} else {
 		moveFrameToUnder(frame->stacking->above, frame);
@@ -262,6 +265,7 @@ void wRaiseFrame(WCoreWindow * frame)
 			/* no window above us */
 			above = NULL;
 			XRaiseWindow(dpy, frame->window);
+			wHotCornersRaise(frame->screen_ptr);
 		}
 	} else {
 		moveFrameToUnder(frame->stacking->above, frame);
@@ -499,6 +503,7 @@ void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
 		}
 		if (above == NULL) {
 			XRaiseWindow(dpy, frame->window);
+			wHotCornersRaise(frame->screen_ptr);
 		} else {
 			moveFrameToUnder(above, frame);
 		}

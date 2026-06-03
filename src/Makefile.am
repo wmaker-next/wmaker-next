@@ -45,6 +45,8 @@ wmaker_SOURCES = 	\
 	framewin.h \
 	geomview.c \
 	geomview.h \
+	hotcorner.c \
+	hotcorner.h \
 	osdep.h \
 	icon.c \
 	icon.h \

@@ -36,6 +36,7 @@
 #include "cycling.h"
 #include "xinerama.h"
 #include "switchpanel.h"
+#include "hotcorner.h"
 
 
 static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
@@ -52,6 +53,7 @@ static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 			XRestackWindows(dpy, win, 2);
 		} else
 			XRaiseWindow(dpy, wwin->frame->core->window);
+		wHotCornersRaise(wwin->screen_ptr);
 	}
 }
 

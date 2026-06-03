@@ -33,6 +33,7 @@
 #include "dock.h"
 #include "workspace.h"
 #include "actions.h"
+#include "hotcorner.h"
 
 #define RANDR_MAX_OUTPUTS     32
 #define RANDR_DEBOUNCE_DELAY  100   /* milliseconds */
@@ -537,6 +538,8 @@ static void wRandR_Update(WScreen *scr)
     /* Apply new geometry to the Xinerama head layer */
     i = scr->xine_info.primary_head;
     wRandR_ApplyToXinerama(scr, state);
+
+    wHotCornersUpdate(scr);
 
     /* Move the dock if needed */
     if (scr->dock &&

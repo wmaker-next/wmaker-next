@@ -309,6 +309,8 @@ typedef struct _WScreen {
                                         * raised */
     /* for hot-corners delay */
     WMHandlerID *hot_corner_timer;
+    Window *hot_corner_win;            /* 4 per head, InputOnly, topmost */
+    int hot_corner_win_count;
 
 #ifdef USE_RANDR
     WMHandlerID *randr_debounce_timer;

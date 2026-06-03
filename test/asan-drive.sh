@@ -274,6 +274,31 @@ note "dock click"
 xdo mousemove 1250 30; sleep 0.1
 xdo click 3; sleep 0.3; xdo key Escape; sleep 0.2
 
+# --- hot corners (hotcorner.c InputOnly windows + stacking hooks) -----------
+note "hot corners over root and over a covering window"
+HC_MARK=$(mktemp -d /tmp/asan-drive-hc.XXXXXX)
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$ROOT/util/.libs/wdwrite" WindowMaker HotCorners YES
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerDelay 100
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerEdge 10
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerActions \
+    "(\"touch $HC_MARK/tl\", None, None, None)"
+sleep 1.2   # wait for the defaults reload to apply
+xdo mousemove 640 400; sleep 0.1
+xdo mousemove 1 1; sleep 0.3
+[ -f "$HC_MARK/tl" ] || printf '  -> hot corner over root did not fire\n' | tee -a "$LOG"
+rm -f "$HC_MARK/tl"
+DISPLAY=$DPY xterm -geometry 200x60+0+0 -e 'sleep 60' >/dev/null 2>&1 &
+HC_XT=$!; echo "$HC_XT" >> "$PIDFILE"; sleep 0.5
+xdo mousemove 640 400; sleep 0.1
+xdo mousemove 1 1; sleep 0.3
+[ -f "$HC_MARK/tl" ] || printf '  -> hot corner over window did not fire\n' | tee -a "$LOG"
+kill "$HC_XT" 2>/dev/null; sleep 0.3
+rm -rf "$HC_MARK"
+
 # --- util/ tools under ASan -------------------------------------------------
 # These do not carry the built-in __lsan_default_suppressions(), so pass
 # the file-based suppressions for third-party noise.

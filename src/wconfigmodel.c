@@ -20,6 +20,7 @@
 #include "workspace.h"
 #include "config-schema.h"
 #include "wconfigmodel.h"
+#include "hotcorner.h"
 
 void wKeyTreeRebuild(WScreen *scr);
 
@@ -1027,6 +1028,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 {
 	Bool update_usable_area = False;
 	Bool update_root_mask = False;
+	Bool update_hot_corners = False;
 	Bool arrange_all_icons = False;
 	Bool sticky_icons_changed = False;
 	Bool keybindings_changed = False;
@@ -1064,8 +1066,12 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		update_usable_area = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_ICONS))
 		update_usable_area = True;
-	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNERS))
+	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNERS)) {
 		update_root_mask = True;
+		update_hot_corners = True;
+	}
+	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_EDGE))
+		update_hot_corners = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER))
 		update_usable_area = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER_SIZE))
@@ -1193,6 +1199,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 	if (scr && update_root_mask)
 		wScreenUpdateRootEventMask(scr);
+	if (scr && update_hot_corners)
+		wHotCornersUpdate(scr);
 
 	return refresh;
 }

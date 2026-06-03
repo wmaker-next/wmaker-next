@@ -824,14 +824,14 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 /*
  * Re-select the root window event mask with PointerMotionMask added
  * only when a feature that consumes root MotionNotify is enabled.
- * Called once from wReadDefaults() after the preference values are
- * known and again whenever HotCorners or ScrollableMenus changes.
+ * Hot corners are now driven by EnterNotify on dedicated InputOnly
+ * windows so only ScrollableMenus still needs root motion events.
  */
 void wScreenUpdateRootEventMask(WScreen *scr)
 {
 	long mask = EVENT_MASK;
 
-	if (w_global.config->hot_corners || w_global.config->scrollable_menus)
+	if (w_global.config->scrollable_menus)
 		mask |= PointerMotionMask;
 
 	XSelectInput(dpy, scr->root_win, mask);
