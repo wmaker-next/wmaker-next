@@ -87,17 +87,15 @@ int main(int argc, char **argv)
 {
 	struct stat st;
 	int i;
-	int *previousDepth;
+	/* assemblePLMenuFunc passes this around by pointer, no need to
+	 * heap-allocate it */
+	int previousDepth = -1;
 
 	prog_name = argv[0];
 	plMenuNodes = WMCreateArray(8); /* grows on demand */
 	menu = (WMTreeNode *)NULL;
 	parse = NULL;
 	validateFilename = NULL;
-
-	/* assemblePLMenuFunc passes this around */
-	previousDepth = (int *)wmalloc(sizeof(int));
-	*previousDepth = -1;
 
 	/* currently this is used only by the xdg parser, but it might be useful
 	 * in the future localizing other menus, so it won't hurt to have it here.
@@ -177,7 +175,7 @@ int main(int argc, char **argv)
 	}
 
 	WMSortTree(menu, menuSortFunc);
-	WMTreeWalk(menu, assemblePLMenuFunc, previousDepth, True);
+	WMTreeWalk(menu, assemblePLMenuFunc, &previousDepth, True);
 
 	i = WMGetArrayItemCount(plMenuNodes);
 	if (i > 2) { /* more than one submenu unprocessed is almost certainly an error */
