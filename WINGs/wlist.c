@@ -1192,7 +1192,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		WMScreen *scr = lPtr->view->screen;
 		XWindowAttributes wattr;
 
-		if (event->xkey.state & (ControlMask | Mod1Mask))
+		if (event->xkey.state & (ControlMask | scr->altModifierMask))
 			break;
 
 		if (!(XGetWindowAttributes(scr->display, lPtr->view->window, &wattr) && wattr.map_state == IsViewable))
