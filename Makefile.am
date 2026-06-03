@@ -211,4 +211,30 @@ configure-documentation:
 		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
 		--ignore-prg 'with-x # no use, it would not work without X'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig
+.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check
+
+# Regenerate every derived file the build knows about, then fail if any
+# tracked file changed (a generated file was committed, or its .in/.texi
+# source drifted without regeneration) or if the build left an
+# untracked, un-ignored artefact under a subdirectory (a .gitignore
+# gap). Run from a clean working tree before tagging a release.
+maintainer-check:
+	@$(MAKE) $(AM_MAKEFLAGS) all
+	$(AM_V_at)if test ! -d "$(top_srcdir)/.git" ; then \
+		echo "maintainer-check: not a git checkout, skipping" ; \
+		exit 0 ; \
+	fi ; \
+	if ! git -C "$(top_srcdir)" diff --quiet ; then \
+		echo "error: regeneration changed tracked files:" >&2 ; \
+		git -C "$(top_srcdir)" diff --name-only >&2 ; \
+		exit 1 ; \
+	fi ; \
+	u=$$(git -C "$(top_srcdir)" ls-files --others --exclude-standard \
+		| grep '/' || true) ; \
+	if test -n "$$u" ; then \
+		echo "error: build left untracked, un-ignored artefacts:" >&2 ; \
+		echo "$$u" >&2 ; \
+		echo "(add to .gitignore or CLEANFILES)" >&2 ; \
+		exit 1 ; \
+	fi ; \
+	echo "maintainer-check: ok"
