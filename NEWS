@@ -67,6 +67,16 @@ WindowMaker/Defaults/WindowMaker now lists every recognised key with
 its built-in default and is kept in sync with the schema by make check.
 
 
+WMWindowAttributes keys are case-sensitive
+------------------------------------------
+
+The WMWindowAttributes domain is now read with case-sensitive keys, so
+an entry for the instance "xterm" and another for the class "XTerm" are
+kept distinct instead of one silently overwriting the other when the
+file is loaded. WM_CLASS strings have always been case-sensitive in
+X11, only the file load and global/user merge collapsed them.
+
+
 xcb is now a required dependency
 --------------------------------
 
