@@ -243,7 +243,7 @@ void wWindowDestroy(WWindow *wwin)
 	if (wwin->icon) {
 		RemoveFromStackList(wwin->icon->core);
 		wIconDestroy(wwin->icon);
-		if (wPreferences.auto_arrange_icons)
+		if (w_global.config->auto_arrange_icons)
 			wArrangeIcons(wwin->screen_ptr, True);
 	}
 	if (wwin->net_icon_image)
@@ -443,7 +443,7 @@ void wWindowSetupInitialAttributes(WWindow *wwin, WManageCookies *ck, int *level
 
 		wNETWMRcvClientHints(wwin, &ck->netwm, &tmp_level, &tmp_workspace);
 
-		if (wPreferences.ignore_gtk_decoration_hints)
+		if (w_global.config->ignore_gtk_decoration_hints)
 			discard_hints_from_gtk(wwin, ck->gtk);
 
 		/* window levels are between INT_MIN+1 and INT_MAX, so if we still
@@ -1231,7 +1231,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (w >= 0 && w < scr->workspace_count && !(IS_OMNIPRESENT(wwin))) {
 			workspace = w;
 		} else {
-			if (wPreferences.open_transients_with_parent && transientOwner)
+			if (w_global.config->open_transients_with_parent && transientOwner)
 				workspace = transientOwner->frame->workspace;
 			else
 				workspace = scr->current_workspace;
@@ -1275,7 +1275,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 				wScreenBringInside(scr, &x, &y, width, height);
 			}
-		} else if ((wwin->transient_for == None || wPreferences.window_placement != WPM_MANUAL)
+		} else if ((wwin->transient_for == None || w_global.config->window_placement != WPM_MANUAL)
 			   && !scr->flags.startup
 			   && !wwin->flags.miniaturized
 			   && !wwin->flags.maximized && !(wwin->normal_hints->flags & (USPosition | PPosition))) {
@@ -1313,7 +1313,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 				PlaceWindow(wwin, &x, &y, width, height);
 			}
 
-			if (wPreferences.window_placement == WPM_MANUAL)
+			if (w_global.config->window_placement == WPM_MANUAL)
 				dontBring = True;
 
 		} else if (scr->xine_info.count && (wwin->normal_hints->flags & PPosition)) {
@@ -1388,7 +1388,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	/* Create frame, borders and do reparenting */
 	foo = WFF_LEFT_BUTTON | WFF_RIGHT_BUTTON;
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
 #endif
 	if (HAS_TITLEBAR(wwin))
@@ -1402,16 +1402,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wwin->frame = wFrameWindowCreate(scr, window_level,
 					 x, y, width, height,
-					 &wPreferences.window_title_clearance,
-					 &wPreferences.window_title_min_height,
-					 &wPreferences.window_title_max_height,
+					 &w_global.config->window_title_clearance,
+					 &w_global.config->window_title_min_height,
+					 &w_global.config->window_title_max_height,
 					 foo,
 					 scr->window_title_texture,
 					 scr->resizebar_texture, scr->window_title_color, &scr->title_font,
 					 wattribs.depth, wattribs.visual, wattribs.colormap);
 
 	wwin->frame->flags.is_client_window_frame = 1;
-	wwin->frame->flags.justification = wPreferences.title_justification;
+	wwin->frame->flags.justification = w_global.config->title_justification;
 
 	wNETWMCheckInitialFrameStateCk(wwin, ck.netwm_initial.opacity);
 
@@ -1444,7 +1444,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->frame->on_click_left = windowIconifyClick;
 
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		wwin->frame->on_click_language = windowLanguageClick;
 #endif
 
@@ -1534,7 +1534,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		else
 			wClientSetState(wwin, NormalState, None);
 
-		if (wPreferences.superfluous && !wPreferences.no_animations && !scr->flags.startup &&
+		if (w_global.config->superfluous && !w_global.config->no_animations && !scr->flags.startup &&
 		    (wwin->transient_for == None || wwin->transient_for == scr->root_win) &&
 		    /*
 		     * The brain damaged idiotic non-click to focus modes will
@@ -1552,7 +1552,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		     * and when it is processed, the client that owns that window
 		     * will reject the XSetInputFocus() for it.
 		     */
-		    (wPreferences.focus_mode == WKF_CLICK || wPreferences.auto_focus))
+		    (w_global.config->focus_mode == WKF_CLICK || w_global.config->auto_focus))
 			DoWindowBirth(wwin);
 
 		wWindowMap(wwin);
@@ -1599,7 +1599,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	if (!wwin->flags.miniaturized && workspace == scr->current_workspace && !wwin->flags.hidden) {
 		if (((transientOwner && transientOwner->flags.focused)
-		     || wPreferences.auto_focus) && !WFLAGP(wwin, no_focusable)) {
+		     || w_global.config->auto_focus) && !WFLAGP(wwin, no_focusable)) {
 
 			/* only auto_focus if the pointer is on the same X screen,
 			 * and optionally on the same Xinerama head, as the new
@@ -1613,7 +1613,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			if (XQueryPointer(dpy, scr->root_win, &dummy, &dummy,
 					  &px, &py, &foo, &foo, &bar) != False) {
 				same_screen = 1;
-				if (!wPreferences.auto_focus_across_heads && scr->xine_info.count > 1)
+				if (!w_global.config->auto_focus_across_heads && scr->xine_info.count > 1)
 					same_head = (wGetHeadForPoint(scr, wmkpoint(px, py))
 						     == wGetHeadForWindow(wwin));
 			}
@@ -1684,16 +1684,16 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	foo = WFF_RIGHT_BUTTON | WFF_BORDER;
 	foo |= WFF_TITLEBAR;
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
 #endif
 
 	wwin->frame = wFrameWindowCreate(scr, WMFloatingLevel,
 					 wwin->frame_x, wwin->frame_y,
 					 width, height,
-					 &wPreferences.window_title_clearance,
-					 &wPreferences.window_title_min_height,
-					 &wPreferences.window_title_max_height,
+					 &w_global.config->window_title_clearance,
+					 &w_global.config->window_title_min_height,
+					 &w_global.config->window_title_max_height,
 					 foo,
 					 scr->window_title_texture,
 					 scr->resizebar_texture, scr->window_title_color, &scr->title_font,
@@ -1702,7 +1702,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	XSaveContext(dpy, window, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
 
 	wwin->frame->flags.is_client_window_frame = 1;
-	wwin->frame->flags.justification = wPreferences.title_justification;
+	wwin->frame->flags.justification = w_global.config->title_justification;
 
 	wFrameWindowChangeTitle(wwin->frame, title);
 
@@ -1716,7 +1716,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	wwin->frame->workspace = wwin->screen_ptr->current_workspace;
 
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		wwin->frame->on_click_language = windowLanguageClick;
 #endif
 
@@ -1767,7 +1767,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	if (wwin->flags.is_gnustep == 0)
 		wFrameWindowChangeState(wwin->frame, WS_UNFOCUSED);
 
-	/*    if (wPreferences.auto_focus) */
+	/*    if (w_global.config->auto_focus) */
 	wSetFocusTo(scr, wwin);
 	wWindowResetMouseGrabs(wwin);
 	wWindowSetKeyGrabs(wwin);
@@ -1843,7 +1843,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 
 	/* remove all pending events on window */
 	/* I think this only matters for autoraise */
-	if (wPreferences.raise_delay)
+	if (w_global.config->raise_delay)
 		WMDeleteTimerWithClientData(wwin->frame->core);
 
 	XFlush(dpy);
@@ -1882,13 +1882,13 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 			scr->focused_window->next = NULL;
 		}
 
-		if (wPreferences.focus_mode == WKF_CLICK) {
+		if (w_global.config->focus_mode == WKF_CLICK) {
 
 			/* if in click to focus mode and the window
 			 * was a transient, focus the owner window
 			 */
 			tmp = NULL;
-			if (wPreferences.focus_mode == WKF_CLICK) {
+			if (w_global.config->focus_mode == WKF_CLICK) {
 				tmp = wWindowFor(wwin->transient_for);
 				if (tmp && (!tmp->flags.mapped || WFLAGP(tmp, no_focusable))) {
 					tmp = NULL;
@@ -1916,7 +1916,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 
 			newFocusedWindow = tmp;
 
-		} else if (wPreferences.focus_mode == WKF_SLOPPY) {
+		} else if (w_global.config->focus_mode == WKF_SLOPPY) {
 			unsigned int mask;
 			int foo;
 			Window bar, win;
@@ -1951,7 +1951,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	WApplication *napp = scr->focused_window ? wApplicationOf(scr->focused_window->main_window) : NULL;
 	if (oapp && oapp != napp) {
 		wAppMenuUnmap(oapp->menu);
-		if (wPreferences.highlight_active_app)
+		if (w_global.config->highlight_active_app)
 			wApplicationDeactivate(oapp);
 	}
 
@@ -2046,7 +2046,7 @@ void wWindowFocus(WWindow *wwin, WWindow *owin)
 	WWindow *oowner;
 
 #ifdef KEEP_XKB_LOCK_STATUS
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		XkbLockGroup(dpy, XkbUseCoreKbd, wwin->frame->languagemode);
 #endif /* KEEP_XKB_LOCK_STATUS */
 
@@ -2210,8 +2210,8 @@ void wWindowConstrainSize(WWindow *wwin, unsigned int *nwidth, unsigned int *nhe
 		height = width * 3 / 4;
 	else if(width > maxW && height > maxH) {
 		/* if both are over the top, set size to almost fullscreen */
-		height = wwin->screen_ptr->scr_height - 2 * wPreferences.icon_size;
-		width = wwin->screen_ptr->scr_width - 2 * wPreferences.icon_size;
+		height = wwin->screen_ptr->scr_height - 2 * w_global.config->icon_size;
+		width = wwin->screen_ptr->scr_width - 2 * w_global.config->icon_size;
 	}
 
 	/* aspect ratio code borrowed from olwm */
@@ -2303,7 +2303,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	if (workspace != scr->current_workspace) {
 		/* Sent to other workspace. Unmap window */
 		if ((wwin->flags.mapped
-		     || wwin->flags.shaded || (wwin->flags.miniaturized && !wPreferences.sticky_icons))
+		     || wwin->flags.shaded || (wwin->flags.miniaturized && !w_global.config->sticky_icons))
 		    && !IS_OMNIPRESENT(wwin) && !wwin->flags.changing_workspace) {
 
 			wapp = wApplicationOf(wwin->main_window);
@@ -2322,7 +2322,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 		}
 	} else {
 		/* brought to current workspace. Map window */
-		if (wwin->flags.miniaturized && !wPreferences.sticky_icons) {
+		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 			if (wwin->icon) {
 				XMapWindow(dpy, wwin->icon->core->window);
 				wwin->icon->mapped = 1;
@@ -2349,17 +2349,17 @@ void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount)
 	if (amount < 0) {
 		if (w >= 0) {
 			wWindowChangeWorkspace(wwin, w);
-		} else if (wPreferences.ws_cycle) {
+		} else if (w_global.config->ws_cycle) {
 			wWindowChangeWorkspace(wwin, scr->workspace_count + w);
 		}
 	} else if (amount > 0) {
 		if (w < scr->workspace_count) {
 			wWindowChangeWorkspace(wwin, w);
-		} else if (wPreferences.ws_advance) {
+		} else if (w_global.config->ws_advance) {
 			int workspace = WMIN(w, MAX_WORKSPACES - 1);
 			wWorkspaceMake(scr, workspace);
 			wWindowChangeWorkspace(wwin, workspace);
-		} else if (wPreferences.ws_cycle) {
+		} else if (w_global.config->ws_cycle) {
 			wWindowChangeWorkspace(wwin, w % scr->workspace_count);
 		}
 	}
@@ -2655,7 +2655,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 		flags = WFF_LEFT_BUTTON | WFF_RIGHT_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.modelock)
+	if (w_global.config->modelock)
 		flags |= WFF_LANGUAGE_BUTTON;
 #endif
 
@@ -2962,7 +2962,7 @@ void wWindowResetMouseGrabs(WWindow * wwin)
 		 * but we only grab it for Button4 and Button 5 since a lot of apps
 		 * use CTRL+Button1-3 for app related functionality
 		 */
-		if (wPreferences.resize_increment > 0) {
+		if (w_global.config->resize_increment > 0) {
 			wHackedGrabButton(Button4, ControlMask, wwin->client_win,
 							  True, ButtonPressMask | ButtonReleaseMask,
 							  GrabModeSync, GrabModeAsync, None, None);
@@ -2982,7 +2982,7 @@ void wWindowResetMouseGrabs(WWindow * wwin)
 	if (!wwin->flags.focused && !WFLAGP(wwin, no_focusable)
 	    && !wwin->flags.is_gnustep) {
 		/* the passive grabs to focus the window */
-		/* if (wPreferences.focus_mode == WKF_CLICK) */
+		/* if (w_global.config->focus_mode == WKF_CLICK) */
 		XGrabButton(dpy, AnyButton, AnyModifier, wwin->client_win,
 			    True, ButtonPressMask | ButtonReleaseMask, GrabModeSync, GrabModeAsync, None, None);
 	}
@@ -3177,7 +3177,7 @@ static void resizebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 
 	CloseWindowMenu(wwin->screen_ptr);
 
-	if (wPreferences.focus_mode == WKF_CLICK && !(event->xbutton.state & ControlMask)
+	if (w_global.config->focus_mode == WKF_CLICK && !(event->xbutton.state & ControlMask)
 	    && !WFLAGP(wwin, no_focusable)) {
 		wSetFocusTo(wwin->screen_ptr, wwin);
 	}
@@ -3214,7 +3214,7 @@ static void titlebarDblClick(WCoreWindow *sender, void *data, XEvent *event)
 
 	if (event->xbutton.button == Button1 ) {
 		if (event->xbutton.state == 0 ) {
-			if (!WFLAGP(wwin, no_shadeable) & !wPreferences.double_click_fullscreen) {
+			if (!WFLAGP(wwin, no_shadeable) & !w_global.config->double_click_fullscreen) {
 				/* shade window */
 				if (wwin->flags.shaded)
 					wUnshadeWindow(wwin);
@@ -3223,7 +3223,7 @@ static void titlebarDblClick(WCoreWindow *sender, void *data, XEvent *event)
 			} 
 		}
 		
-		if (wPreferences.double_click_fullscreen) {
+		if (w_global.config->double_click_fullscreen) {
 			int dir = 0;
 
 			if (event->xbutton.state == 0) {
@@ -3278,21 +3278,21 @@ static void frameMouseDown(WObjDescriptor *desc, XEvent *event)
 	unsigned int resize_height_increment = 0;
 
 	if (wwin->normal_hints) {
-		w_scale = (wPreferences.resize_increment + wwin->normal_hints->width_inc - 1) / wwin->normal_hints->width_inc;
-		h_scale = (wPreferences.resize_increment + wwin->normal_hints->height_inc - 1) / wwin->normal_hints->height_inc;
+		w_scale = (w_global.config->resize_increment + wwin->normal_hints->width_inc - 1) / wwin->normal_hints->width_inc;
+		h_scale = (w_global.config->resize_increment + wwin->normal_hints->height_inc - 1) / wwin->normal_hints->height_inc;
 		resize_width_increment = wwin->normal_hints->width_inc * w_scale;
 		resize_height_increment = wwin->normal_hints->height_inc * h_scale;
 	}
 	if (resize_width_increment <= 1 && resize_height_increment <= 1) {
-		resize_width_increment = wPreferences.resize_increment;
-		resize_height_increment = wPreferences.resize_increment;
+		resize_width_increment = w_global.config->resize_increment;
+		resize_height_increment = w_global.config->resize_increment;
 	}
 
 	event->xbutton.state &= w_global.shortcut.modifiers_mask;
 
 	CloseWindowMenu(wwin->screen_ptr);
 
-	if ((wPreferences.mouse_wheel_focus || (event->xbutton.button != Button4 && event->xbutton.button != Button5)) && !(event->xbutton.state & ControlMask) && !WFLAGP(wwin, no_focusable))
+	if ((w_global.config->mouse_wheel_focus || (event->xbutton.button != Button4 && event->xbutton.button != Button5)) && !(event->xbutton.state & ControlMask) && !WFLAGP(wwin, no_focusable))
 		wSetFocusTo(wwin->screen_ptr, wwin);
 
 	if (event->xbutton.button == Button1)
@@ -3351,7 +3351,7 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 
 	CloseWindowMenu(wwin->screen_ptr);
 
-	if (wPreferences.focus_mode == WKF_CLICK && !(event->xbutton.state & ControlMask)
+	if (w_global.config->focus_mode == WKF_CLICK && !(event->xbutton.state & ControlMask)
 	    && !WFLAGP(wwin, no_focusable))
 		wSetFocusTo(wwin->screen_ptr, wwin);
 

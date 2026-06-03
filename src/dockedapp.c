@@ -89,7 +89,7 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 	else {
 		char *path;
 
-		path = FindImage(wPreferences.icon_path, file);
+		path = FindImage(w_global.config->icon_path, file);
 		if (!path) {
 			wwarning(_("could not find icon %s, used in a docked application"), file);
 			wfree(file);
@@ -103,7 +103,7 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 			color.green = 0xaa;
 			color.blue = 0xae;
 			color.alpha = 0;
-			size = wPreferences.icon_size;
+			size = w_global.config->icon_size;
 			pixmap = WMCreateScaledBlendedPixmapFromFile(WMWidgetScreen(panel->win), path, &color, size, size);
 			if (!pixmap) {
 				WMSetLabelImage(panel->iconLabel, NULL);
@@ -233,7 +233,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
 
 	/* calculate the required width and height for the panel */
-	iconSize = wPreferences.icon_size;
+	iconSize = w_global.config->icon_size;
 	pwidth = WMScaleX(300);
 	pheight = WMScaleY(10)                  /* upper margin */
 		+ iconSize                      /* icon and its label */

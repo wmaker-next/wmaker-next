@@ -269,7 +269,7 @@ static void showWorkspaceName(WScreen * scr, int workspace)
 	int xx, yy;
 #endif
 
-	if (wPreferences.workspace_name_display_position == WD_NONE || scr->workspace_count < 2)
+	if (w_global.config->workspace_name_display_position == WD_NONE || scr->workspace_count < 2)
 		return;
 
 	if (scr->workspace_name_timer) {
@@ -304,7 +304,7 @@ static void showWorkspaceName(WScreen * scr, int workspace)
 	}
 #endif
 
-	switch (wPreferences.workspace_name_display_position) {
+	switch (w_global.config->workspace_name_display_position) {
 	case WD_TOP:
 #ifdef USE_XINERAMA
 		px = xx;
@@ -458,15 +458,15 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
 	if (amount < 0) {
 		if (w >= 0) {
 			wWorkspaceChange(scr, w);
-		} else if (wPreferences.ws_cycle) {
+		} else if (w_global.config->ws_cycle) {
 			wWorkspaceChange(scr, scr->workspace_count + w);
 		}
 	} else if (amount > 0) {
 		if (w < scr->workspace_count) {
 			wWorkspaceChange(scr, w);
-		} else if (wPreferences.ws_advance) {
+		} else if (w_global.config->ws_advance) {
 			wWorkspaceChange(scr, WMIN(w, MAX_WORKSPACES - 1));
-		} else if (wPreferences.ws_cycle) {
+		} else if (w_global.config->ws_cycle) {
 			wWorkspaceChange(scr, w % scr->workspace_count);
 		}
 	}
@@ -479,7 +479,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	if (workspace >= MAX_WORKSPACES || workspace < 0)
 		return;
 
-	if (wPreferences.enable_workspace_pager && !w_global.process_workspacemap_event)
+	if (w_global.config->enable_workspace_pager && !w_global.process_workspacemap_event)
 		wWorkspaceMapUpdate(scr);
 
 	SendHelperMessage(scr, 'C', workspace + 1, NULL);
@@ -526,7 +526,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 					toUnmap[toUnmapCount++] = tmp;
 				}
 				/* also unmap miniwindows not on this workspace */
-				if (!wPreferences.sticky_icons && tmp->flags.miniaturized &&
+				if (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
 				    tmp->icon && !IS_OMNIPRESENT(tmp)) {
 					XUnmapWindow(dpy, tmp->icon->core->window);
 					tmp->icon->mapped = 0;
@@ -561,7 +561,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 							}
 						}
 						/* Also map miniwindow if not omnipresent */
-						if (!wPreferences.sticky_icons &&
+						if (!w_global.config->sticky_icons &&
 						    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 							tmp->icon->mapped = 1;
 							XMapWindow(dpy, tmp->icon->core->window);
@@ -614,7 +614,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		if (scr->focused_window->flags.mapped && !foc) {
 			foc = scr->focused_window;
 		}
-		if (wPreferences.focus_mode == WKF_CLICK) {
+		if (w_global.config->focus_mode == WKF_CLICK) {
 			wSetFocusTo(scr, foc);
 		} else {
 			unsigned int mask;
@@ -632,7 +632,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 			 * certainly not focused). Otherwise focus last
 			 * focused, or the root (depending on sloppiness)
 			 */
-			if (!tmp && wPreferences.focus_mode == WKF_SLOPPY) {
+			if (!tmp && w_global.config->focus_mode == WKF_SLOPPY) {
 				wSetFocusTo(scr, foc);
 			} else {
 				wSetFocusTo(scr, tmp);
@@ -645,7 +645,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	 * can be superposed.
 	 * This can be avoided if appicons are also workspace specific.
 	 */
-	if (!wPreferences.sticky_icons)
+	if (!w_global.config->sticky_icons)
 		wArrangeIcons(scr, False);
 
 	if (scr->dock)

@@ -68,7 +68,7 @@
 #define CLIP_FORWARD      2
 
 #define MOD_MASK wPreferences.modifier_mask
-#define ICON_SIZE wPreferences.icon_size
+#define ICON_SIZE w_global.config->icon_size
 
 /***** Local variables ****/
 
@@ -244,7 +244,7 @@ static void killCallback(WMenu *menu, WMenuEntry *entry)
 			fPtr = NULL;
 	}
 
-	if (wPreferences.dont_confirm_kill
+	if (w_global.config->dont_confirm_kill
 	    || wMessageDialog(menu->frame->screen_ptr, _("Kill Application"),
 			      buffer, _("Yes"), _("No"), NULL) == WAPRDefault) {
 		if (fPtr != NULL) {
@@ -378,8 +378,8 @@ RImage *wClipMakeTile(RImage *normalTile)
 	int pt, tp;
 	int as;
 
-	pt = CLIP_BUTTON_SIZE * wPreferences.icon_size / 64;
-	tp = wPreferences.icon_size - 1 - pt;
+	pt = CLIP_BUTTON_SIZE * w_global.config->icon_size / 64;
+	tp = w_global.config->icon_size - 1 - pt;
 	as = pt - 15;
 
 	black.alpha = 255;
@@ -392,9 +392,9 @@ RImage *wClipMakeTile(RImage *normalTile)
 	light.red = light.green = light.blue = 80;
 
 	/* top right */
-	ROperateLine(tile, RSubtractOperation, tp, 0, wPreferences.icon_size - 2, pt - 1, &dark);
-	RDrawLine(tile, tp - 1, 0, wPreferences.icon_size - 1, pt + 1, &black);
-	ROperateLine(tile, RAddOperation, tp, 2, wPreferences.icon_size - 3, pt, &light);
+	ROperateLine(tile, RSubtractOperation, tp, 0, w_global.config->icon_size - 2, pt - 1, &dark);
+	RDrawLine(tile, tp - 1, 0, w_global.config->icon_size - 1, pt + 1, &black);
+	ROperateLine(tile, RAddOperation, tp, 2, w_global.config->icon_size - 3, pt, &light);
 
 	/* arrow bevel */
 	ROperateLine(tile, RSubtractOperation, ICON_SIZE - 7 - as, 4, ICON_SIZE - 5, 4, &dark);
@@ -402,9 +402,9 @@ RImage *wClipMakeTile(RImage *normalTile)
 	ROperateLine(tile, RAddOperation, ICON_SIZE - 5, 4, ICON_SIZE - 5, 6 + as, &light);
 
 	/* bottom left */
-	ROperateLine(tile, RAddOperation, 2, tp + 2, pt - 2, wPreferences.icon_size - 3, &dark);
-	RDrawLine(tile, 0, tp - 1, pt + 1, wPreferences.icon_size - 1, &black);
-	ROperateLine(tile, RSubtractOperation, 0, tp - 2, pt + 1, wPreferences.icon_size - 2, &light);
+	ROperateLine(tile, RAddOperation, 2, tp + 2, pt - 2, w_global.config->icon_size - 3, &dark);
+	RDrawLine(tile, 0, tp - 1, pt + 1, w_global.config->icon_size - 1, &black);
+	ROperateLine(tile, RSubtractOperation, 0, tp - 2, pt + 1, w_global.config->icon_size - 2, &light);
 
 	/* arrow bevel */
 	ROperateLine(tile, RSubtractOperation, 4, ICON_SIZE - 7 - as, 4, ICON_SIZE - 5, &dark);
@@ -480,7 +480,7 @@ static void removeIcons(WMArray *icons, WDock *dock)
 	}
 	WMFreeArray(icons);
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(dock->screen_ptr, True);
 }
 
@@ -818,7 +818,7 @@ static int getDockXPosition(WScreen *scr, Bool on_right_side)
 {
 	int x;
 
-	if (wPreferences.keep_dock_on_primary_head) {
+	if (w_global.config->keep_dock_on_primary_head) {
 		WMRect rect;
 
 		rect = wGetRectForHead(scr, scr->xine_info.primary_head);
@@ -1333,11 +1333,11 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 		dock->max_icons = DOCK_MAX_ICONS;
 		break;
 	case WM_DRAWER:
-		dock->max_icons = scr->scr_width / wPreferences.icon_size;
+		dock->max_icons = scr->scr_width / w_global.config->icon_size;
 		break;
 	case WM_DOCK:
 	default:
-		dock->max_icons = scr->scr_height / wPreferences.icon_size;
+		dock->max_icons = scr->scr_height / w_global.config->icon_size;
 	}
 
 	dock->icon_array = wmalloc(sizeof(WAppIcon *) * dock->max_icons);
@@ -1397,7 +1397,7 @@ void wDockDestroy(WDock *dock)
 			}
 		}
 	}
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(dock->screen_ptr, True);
 	wfree(dock->icon_array);
 	if (dock->menu && dock->type != WM_CLIP)
@@ -1434,7 +1434,7 @@ void wClipIconPaint(WAppIcon *aicon)
 
 	tx = CLIP_BUTTON_SIZE * ICON_SIZE / 64;
 
-	if(wPreferences.show_clip_title)
+	if(w_global.config->show_clip_title)
 		WMDrawString(scr->wmscreen, win, color, scr->clip_title_font, tx, ty, ws_name, length);
 
 	tx = (ICON_SIZE / 2 - WMWidthOfString(scr->clip_title_font, ws_number, nlength)) / 2;
@@ -1445,7 +1445,7 @@ void wClipIconPaint(WAppIcon *aicon)
 
 	if (aicon->launching)
 		XFillRectangle(dpy, aicon->icon->core->window, scr->stipple_gc,
-			       0, 0, wPreferences.icon_size, wPreferences.icon_size);
+			       0, 0, w_global.config->icon_size, w_global.config->icon_size);
 
 	paintClipButtons(aicon, aicon->dock->lclip_button_pushed, aicon->dock->rclip_button_pushed);
 }
@@ -2249,7 +2249,7 @@ Bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, Bool update_icon
 	/* Save it */
 	save_appicon(icon);
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(dock->screen_ptr, True);
 
 #ifdef USE_DOCK_XDND
@@ -2480,7 +2480,7 @@ void wDockDetach(WDock *dock, WAppIcon *icon)
 		/* Paint it */
 		wAppIconPaint(icon);
 
-		if (wPreferences.auto_arrange_icons)
+		if (w_global.config->auto_arrange_icons)
 			wArrangeIcons(dock->screen_ptr, True);
 	}
 
@@ -3307,7 +3307,7 @@ void wDockTrackWindowLaunch(WDock *dock, Window window)
 					icon->main_window = window;
 			}
 			found = True;
-			if (!wPreferences.no_animations && !icon->launching &&
+			if (!w_global.config->no_animations && !icon->launching &&
 			    !dock->screen_ptr->flags.startup && !dock->collapsed) {
 				WAppIcon *aicon;
 				int x0, y0;
@@ -3729,7 +3729,7 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, XEvent *event)
 	XEvent ev;
 	int grabbed = 0, done, previously_on_right, now_on_right, previous_x_pos, i;
 	Pixmap ghost = None;
-	int superfluous = wPreferences.superfluous;	/* we catch it to avoid problems */
+	int superfluous = w_global.config->superfluous;	/* we catch it to avoid problems */
 
 	if (XGrabPointer(dpy, aicon->icon->core->window, True, ButtonMotionMask
 			 | ButtonReleaseMask | ButtonPressMask, GrabModeAsync,
@@ -3874,8 +3874,8 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, XEvent *event)
 				y = ev.xmotion.y_root - ofs_y;
 				snapped = wDockSnapIcon(real_dock, aicon, x, y, &ix, &iy, True);
 				if (snapped) {
-					shad_x = real_dock->x_pos + ix * wPreferences.icon_size;
-					shad_y = real_dock->y_pos + iy * wPreferences.icon_size;
+					shad_x = real_dock->x_pos + ix * w_global.config->icon_size;
+					shad_y = real_dock->y_pos + iy * w_global.config->icon_size;
 					XMoveWindow(dpy, scr->dock_shadow, shad_x, shad_y);
 				}
 				moveDock(dock, x, y);
@@ -3991,19 +3991,19 @@ static void handleClipChangeWorkspace(WScreen *scr, XEvent *event)
 	clip->lclip_button_pushed = 0;
 	clip->rclip_button_pushed = 0;
 
-	new_ws = wPreferences.ws_advance || (event->xbutton.state & ControlMask);
+	new_ws = w_global.config->ws_advance || (event->xbutton.state & ControlMask);
 
 	if (direction == CLIP_FORWARD) {
 		if (scr->current_workspace < scr->workspace_count - 1)
 			wWorkspaceChange(scr, scr->current_workspace + 1);
 		else if (new_ws && scr->current_workspace < MAX_WORKSPACES - 1)
 			wWorkspaceChange(scr, scr->current_workspace + 1);
-		else if (wPreferences.ws_cycle)
+		else if (w_global.config->ws_cycle)
 			wWorkspaceChange(scr, 0);
 	} else if (direction == CLIP_REWIND) {
 		if (scr->current_workspace > 0)
 			wWorkspaceChange(scr, scr->current_workspace - 1);
-		else if (scr->current_workspace == 0 && wPreferences.ws_cycle)
+		else if (scr->current_workspace == 0 && w_global.config->ws_cycle)
 			wWorkspaceChange(scr, scr->workspace_count - 1);
 	}
 
@@ -4052,7 +4052,7 @@ static void iconMouseDown(WObjDescriptor *desc, XEvent *event)
 				handleDockMove(dock, aicon, event);
 		} else {
 			Bool hasMoved = wHandleAppIconMove(aicon, event);
-			if (wPreferences.single_click && !hasMoved)
+			if (w_global.config->single_click && !hasMoved)
 				iconDblClick(desc, event);
 		}
 	} else if (event->xbutton.button == Button2 && aicon == scr->clip_icon) {
@@ -4129,7 +4129,7 @@ static void clipEnterNotify(WObjDescriptor *desc, XEvent *event)
 		tmp->auto_lower_magic = NULL;
 	}
 	if (tmp->auto_raise_lower && !tmp->auto_raise_magic)
-		tmp->auto_raise_magic = WMAddTimerHandler(wPreferences.clip_auto_raise_delay, clipAutoRaise, (void *) tmp);
+		tmp->auto_raise_magic = WMAddTimerHandler(w_global.config->clip_auto_raise_delay, clipAutoRaise, (void *) tmp);
 
 	if (dock->type != WM_CLIP && dock->type != WM_DRAWER)
 		return;
@@ -4140,7 +4140,7 @@ static void clipEnterNotify(WObjDescriptor *desc, XEvent *event)
 		dock->auto_collapse_magic = NULL;
 	}
 	if (dock->auto_collapse && !dock->auto_expand_magic)
-		dock->auto_expand_magic = WMAddTimerHandler(wPreferences.clip_auto_expand_delay, clipAutoExpand, (void *)dock);
+		dock->auto_expand_magic = WMAddTimerHandler(w_global.config->clip_auto_expand_delay, clipAutoExpand, (void *)dock);
 }
 
 static void clipLeave(WDock *dock)
@@ -4174,7 +4174,7 @@ static void clipLeave(WDock *dock)
 		tmp->auto_raise_magic = NULL;
 	}
 	if (tmp->auto_raise_lower && !tmp->auto_lower_magic)
-		tmp->auto_lower_magic = WMAddTimerHandler(wPreferences.clip_auto_lower_delay, clipAutoLower, (void *)tmp);
+		tmp->auto_lower_magic = WMAddTimerHandler(w_global.config->clip_auto_lower_delay, clipAutoLower, (void *)tmp);
 
 	if (dock->type != WM_CLIP && dock->type != WM_DRAWER)
 		return;
@@ -4184,7 +4184,7 @@ static void clipLeave(WDock *dock)
 		dock->auto_expand_magic = NULL;
 	}
 	if (dock->auto_collapse && !dock->auto_collapse_magic)
-		dock->auto_collapse_magic = WMAddTimerHandler(wPreferences.clip_auto_collapse_delay, clipAutoCollapse, (void *)dock);
+		dock->auto_collapse_magic = WMAddTimerHandler(w_global.config->clip_auto_collapse_delay, clipAutoCollapse, (void *)dock);
 }
 
 static void clipLeaveNotify(WObjDescriptor *desc, XEvent *event)

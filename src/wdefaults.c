@@ -387,7 +387,7 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 
 	/* Check if the file really exists in the disk */
 	if (file_name)
-		file_path = FindImage(wPreferences.icon_path, file_name);
+		file_path = FindImage(w_global.config->icon_path, file_name);
 	else
 		file_path = NULL;
 
@@ -397,7 +397,7 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 		wApplicationExtractDirPackIcon(command, winstance, wclass);
 		file_name = wDefaultGetIconFile(winstance, wclass, False);
 		if (file_name)
-			file_path = FindImage(wPreferences.icon_path, file_name);
+			file_path = FindImage(w_global.config->icon_path, file_name);
 	}
 
 	/*
@@ -450,7 +450,7 @@ char *get_default_image_path(void)
 	/* Get the default icon */
 	file = wDefaultGetIconFile(NULL, NULL, True);
 	if (file)
-		path = FindImage(wPreferences.icon_path, file);
+		path = FindImage(w_global.config->icon_path, file);
 
 	return path;
 }
@@ -467,15 +467,15 @@ RImage *get_default_image(WScreen *scr)
 		return NULL;
 
 	/* Get the default icon */
-	image = get_rimage_from_file(scr, path, wPreferences.icon_size);
+	image = get_rimage_from_file(scr, path, w_global.config->icon_size);
 	if (!image)
 		wwarning(_("could not find default icon \"%s\""), path);
 
 	wfree(path);
 
-	/* Resize the icon to the wPreferences.icon_size size
+	/* Resize the icon to the w_global.config->icon_size size
 	 * usually this function will return early, because size is right */
-	image = wIconValidateIconSize(image, wPreferences.icon_size);
+	image = wIconValidateIconSize(image, w_global.config->icon_size);
 
 	return image;
 }

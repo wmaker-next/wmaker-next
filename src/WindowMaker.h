@@ -26,6 +26,7 @@
 #include <limits.h>
 #include <WINGs/WINGs.h>
 #include "keytree.h"
+#include "wconfigmodel.h"
 
 
 /* class codes */
@@ -316,178 +317,31 @@ typedef struct WCoord {
 	int x, y;
 } WCoord;
 
+/*
+ * Runtime state and realised X resources that are not direct configuration
+ * values. Plain configuration is read from w_global.config (struct WConfig),
+ * the remaining fields here either combine config with command-line/runtime
+ * state (flags), are derived from a config value (modifier_mask,
+ * window_place_origin), or hold realised X-side objects whose lifetime is
+ * tied to the screen rather than to a parsed value.
+ */
 extern struct WPreferences {
-	char *pixmap_path;                 /* : separated list of paths to find pixmaps */
-	char *icon_path;                   /* : separated list of paths to find icons */
 	WMArray *fallbackWMs;              /* fallback window manager list */
-	char *logger_shell;                /* shell to log child stdi/o */
-	RImage *button_images;             /* titlebar button images */
-	char smooth_workspace_back;
-	signed char size_display;          /* display type for resize geometry */
-	signed char move_display;          /* display type for move geometry */
-	signed char window_placement;      /* window placement mode */
-	signed char colormap_mode;         /* colormap focus mode */
-	signed char focus_mode;            /* window focusing mode */
 
-	char opaque_move;                  /* update window position during move */
-	char opaque_resize;                /* update window position during resize */
-	char opaque_move_resize_keyboard;  /* update window position during move,resize with keyboard */
-	char wrap_menus;                   /* wrap menus at edge of screen */
-	char scrollable_menus;             /* let them be scrolled */
-	char vi_key_menus;                 /* use h/j/k/l to select */
-	char align_menus;                  /* align menu with their parents */
-	char use_saveunders;               /* turn on SaveUnders for menus, icons etc. */
-	char no_window_over_dock;
-	char no_window_over_icons;
-	WCoord window_place_origin;        /* Offset for windows placed on screen */
+	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to scr_width/height */
 
-	char constrain_window_size;        /* don't let windows get bigger than screen */
-	char windows_cycling;              /* windoze cycling */
-	char circ_raise;                   /* raise window after Alt-tabbing */
-	char ignore_focus_click;
-	char open_transients_with_parent;  /* open transient window in same workspace as parent */
-	signed char title_justification;   /* titlebar text alignment */
-	int window_title_clearance;
-	int window_title_min_height;
-	int window_title_max_height;
-	int menu_title_clearance;
-	int menu_title_min_height;
-	int menu_title_max_height;
-	int menu_text_clearance;
-	char multi_byte_text;
-#ifdef KEEP_XKB_LOCK_STATUS
-	char modelock;
-#endif
-	char no_dithering;                 /* use dithering or not */
-	char no_animations;                /* enable/disable animations */
-	char no_autowrap;                  /* wrap workspace when window is moved to the edge */
-	char window_snapping;              /* enable window snapping */
-	int snap_edge_detect;              /* how far from edge to begin snap */
-	int snap_corner_detect;            /* how far from corner to begin snap */
-	char snap_to_top_maximizes_fullscreen;
-	char drag_maximized_window;        /* behavior when a maximized window is dragged */
-	char move_half_max_between_heads;  /* move half maximized window between available heads */
-	char alt_half_maximize;            /* alternative half-maximize feature behavior */
-	char pointer_with_half_max_windows;
-
-	char highlight_active_app;         /* show the focused app by highlighting its icon */
-	char auto_arrange_icons;           /* automagically arrange icons */
-	char icon_box_position;            /* position to place icons */
-	signed char iconification_style;   /* position to place icons */
-	char disable_root_mouse;           /* disable button events in root window */
-	char auto_focus;                   /* focus window when it's mapped */
-	char auto_focus_across_heads;      /* let auto_focus steal focus across Xinerama heads */
-	char *icon_back_file;              /* background image for icons */
-	char enforce_icon_margin;          /* auto-shrink icon images */
-	char mouse_wheel_focus;            /* allow focus window with mouse wheel */
-
-	WCoord *root_menu_pos;             /* initial position of the root menu*/
-	WCoord *app_menu_pos;
-	WCoord *win_menu_pos;
-
-	signed char icon_yard;             /* aka iconbox */
-
-	int raise_delay;                   /* delay for autoraise. 0 is disabled */
-	int cmap_size;                     /* size of dithering colormap in colors per channel */
-
-	int icon_size;                     /* size of the icon */
-	signed char menu_style;            /* menu decoration style */
-	signed char workspace_name_display_position;
 	unsigned int modifier_mask;        /* mask to use as kbd modifier */
 	char *modifier_labels[7];          /* Names of the modifiers */
 	char *modifier_short_labels[9];    /* Short names of the modifiers */
 
 	unsigned int supports_tiff;        /* Use tiff files */
 
-	char ws_advance;                   /* Create new workspace and advance */
-	char ws_cycle;                     /* Cycle existing workspaces */
-	char save_session_on_exit;         /* automatically save session on exit */
-	char sticky_icons;                 /* If miniwindows will be onmipresent */
-	char dont_confirm_kill;            /* do not confirm Kill application */
-	char disable_miniwindows;
-	char enable_workspace_pager;
-	char ignore_gtk_decoration_hints;
-
-	char dont_blink;                   /* do not blink icon selection */
-	char keep_dock_on_primary_head;    /* keep dock on primary head */
-#ifdef USE_RANDR
-	char hotplug_monitor;              /* auto-(de)activate monitors */
-#endif
-
-	/* Appearance options */
-	char new_style;                    /* Use newstyle buttons */
-	char superfluous;                  /* Use superfluous things */
-
-	/* root window mouse bindings */
-	signed char mouse_button1;         /* action for left mouse button */
-	signed char mouse_button2;         /* action for middle mouse button */
-	signed char mouse_button3;         /* action for right mouse button */
-	signed char mouse_button8;         /* action for 4th button aka backward mouse button */
-	signed char mouse_button9;         /* action for 5th button aka forward mouse button */
-	signed char mouse_wheel_scroll;    /* action for mouse wheel scroll */
-	signed char mouse_wheel_tilt;      /* action for mouse wheel tilt */
-
-	/* balloon text */
-	char window_balloon;
-	char miniwin_title_balloon;
-	char miniwin_preview_balloon;
-	char appicon_balloon;
-	char help_balloon;
-
-	/* some constants */
-	int dblclick_time;                 /* double click delay time in ms */
-
-	/* animate menus */
-	signed char menu_scroll_speed;     /* how fast menus are scrolled */
-
-	/* animate icon sliding */
-	signed char icon_slide_speed;      /* icon slide animation speed */
-
-	/* shading animation */
-	signed char shade_speed;
-
-	/* bouncing animation */
-	char bounce_appicons_when_urgent;
-	char raise_appicons_when_bouncing;
-	char do_not_make_appicons_bounce;
-
-	int edge_resistance;
-	int resize_increment;
-	char attract;
-
-	unsigned int workspace_border_size; /* Size in pixels of the workspace border */
-	char workspace_border_position;     /* Where to leave a workspace border */
-	char single_click;                  /* single click to lauch applications */
-	int history_lines;                  /* history of "Run..." dialog */
-	char cycle_active_head_only;        /* Cycle only windows on the active head */
-	char cycle_all_workspaces;          /* Cycle all windows from all workspaces */
-	char cycle_ignore_minimized;        /* Ignore minimized windows when cycling */
-	char double_click_fullscreen;       /* Double click on titlebar maximize a window to full screen*/
-	char close_rootmenu_left_right_click;/* Close application menu when mouse (left or right) is clicked outside focus */
-	char strict_windoze_cycle;          /* don't close switch panel when shift is released */
-	char panel_only_open;               /* Only open the switch panel; don't switch */
-	int minipreview_size;               /* Size of Mini-Previews in pixels */
-
-	/* All delays here are in ms. 0 means instant auto-action. */
-	int clip_auto_raise_delay;          /* Delay after which the clip will be raised when entered */
-	int clip_auto_lower_delay;          /* Delay after which the clip will be lowered when leaved */
-	int clip_auto_expand_delay;         /* Delay after which the clip will expand when entered */
-	int clip_auto_collapse_delay;       /* Delay after which the clip will collapse when leaved */
-
-	int keychain_timeout_delay;         /* Delay after which a keychain is reset, 0 means disabled */
-
 	RImage *swtileImage;
 	RImage *swbackImage[9];
 
 	union WTexture *wsmbackTexture;
 
-	char show_clip_title;
-
-	char hot_corners;                  /* let corners execute actions */
-	int hot_corner_delay;		   /* Delay after which the hot corner is triggered */
-	int hot_corner_edge;		   /* Hot corner edge size */
-	char *hot_corner_actions[4];	   /* Action of each corner */
-	char window_list_app_icons;        /* Show app icons in window list */
+	char *hot_corner_actions[4];       /* Action of each corner */
 
 	struct {
 #ifdef USE_ICCCM_WMREPLACE
@@ -506,9 +360,6 @@ extern struct WPreferences {
 
 	/* Map table between w_cursor and actual X id */
 	Cursor cursor[WCUR_LAST];
-
-    int switch_panel_icon_size;               /* icon size in switch panel */
-    char *screenshot_filename_template;       /* strftime format for screenshot filenames */
 
 } wPreferences;
 

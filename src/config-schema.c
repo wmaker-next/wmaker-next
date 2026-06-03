@@ -147,7 +147,7 @@ static const WConfigEnum drag_maximized_windows[] = {
 	{NULL, 0, 0}
 };
 
-#define WCFG_SCHEMA_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh, bridge, pref) \
+#define WCFG_SCHEMA_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	{ name, WCFG_KEY_##K, WCFG_##T, def, FIELD(field), etable, lo, hi, fl, refresh },
 #define WCFG_SCHEMA_KB_ROW(K, name, def, wkbd) \
 	{ name, WCFG_KEY_##K, WCFG_KEY_BINDING, def, FIELD(key_bindings[wkbd]), \

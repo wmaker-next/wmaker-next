@@ -177,7 +177,7 @@ static void shutdownCommand(WMenu * menu, WMenuEntry * entry)
 	else {
 		int r, oldSaveSessionFlag;
 
-		oldSaveSessionFlag = wPreferences.save_session_on_exit;
+		oldSaveSessionFlag = w_global.config->save_session_on_exit;
 
 		r = wExitDialog(menu->frame->screen_ptr,
 				_("Kill X session"),
@@ -188,7 +188,7 @@ static void shutdownCommand(WMenu * menu, WMenuEntry * entry)
 		} else if (r == WAPRAlternate) {
 			/* Don't modify the "save session on exit" flag if the
 			 * user canceled the operation. */
-			wPreferences.save_session_on_exit = oldSaveSessionFlag;
+			w_global.config->save_session_on_exit = oldSaveSessionFlag;
 		}
 	}
 
@@ -249,7 +249,7 @@ static void saveSessionCommand(WMenu * menu, WMenuEntry * entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) entry;
 
-	if (!wPreferences.save_session_on_exit)
+	if (!w_global.config->save_session_on_exit)
 		wSessionSaveState(menu->frame->screen_ptr);
 
 	wScreenSaveState(menu->frame->screen_ptr);

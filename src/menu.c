@@ -47,8 +47,8 @@
 
 #define MOD_MASK wPreferences.modifier_mask
 
-#define MENU_SCROLL_STEP  menuScrollParameters[(int)wPreferences.menu_scroll_speed].steps
-#define MENU_SCROLL_DELAY menuScrollParameters[(int)wPreferences.menu_scroll_speed].delay
+#define MENU_SCROLL_STEP  menuScrollParameters[(int)w_global.config->menu_scroll_speed].steps
+#define MENU_SCROLL_DELAY menuScrollParameters[(int)w_global.config->menu_scroll_speed].delay
 
 #define MENUW(m)	((m)->frame->core->width+2*(m)->frame->screen_ptr->frame_border_width)
 #define MENUH(m)	((m)->frame->core->height+2*(m)->frame->screen_ptr->frame_border_width)
@@ -148,9 +148,9 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 		menu->flags.titled = 1;
 	}
 	menu->frame =
-	    wFrameWindowCreate(screen, tmp, 8, 2, 1, 1, &wPreferences.menu_title_clearance,
-			       &wPreferences.menu_title_min_height,
-			       &wPreferences.menu_title_max_height,
+	    wFrameWindowCreate(screen, tmp, 8, 2, 1, 1, &w_global.config->menu_title_clearance,
+			       &w_global.config->menu_title_min_height,
+			       &w_global.config->menu_title_max_height,
 			       flags,
 			       screen->menu_title_texture, NULL,
 			       screen->menu_title_color, &screen->menu_title_font,
@@ -442,7 +442,7 @@ static Pixmap renderTexture(WMenu * menu)
 	WScreen *scr = menu->menu->screen_ptr;
 	WTexture *texture = scr->menu_item_texture;
 
-	if (wPreferences.menu_style == MS_NORMAL) {
+	if (w_global.config->menu_style == MS_NORMAL) {
 		img = wTextureRenderImage(texture, menu->menu->width, menu->entry_height, WREL_MENUENTRY);
 	} else {
 		img = wTextureRenderImage(texture, menu->menu->width, menu->menu->height + 1, WREL_MENUENTRY);
@@ -453,7 +453,7 @@ static Pixmap renderTexture(WMenu * menu)
 		return None;
 	}
 
-	if (wPreferences.menu_style == MS_SINGLE_TEXTURE) {
+	if (w_global.config->menu_style == MS_SINGLE_TEXTURE) {
 		light.alpha = 0;
 		light.red = light.green = light.blue = 80;
 
@@ -491,7 +491,7 @@ static void updateTexture(WMenu * menu)
 		if (!menu->flags.brother) {
 			release_menu_texture(menu);
 
-			if (wPreferences.menu_style == MS_NORMAL) {
+			if (w_global.config->menu_style == MS_NORMAL) {
 				WTexture *tex = scr->menu_item_texture;
 				int w = menu->menu->width;
 				int h = menu->entry_height;
@@ -552,12 +552,12 @@ void wMenuRealize(WMenu * menu)
 	if (menu->flags.titled) {
 		twidth = WMWidthOfString(scr->menu_title_font, menu->frame->title, strlen(menu->frame->title));
 		theight = menu->frame->top_width;
-		twidth += theight + (wPreferences.new_style == TS_NEW ? 16 : 8);
+		twidth += theight + (w_global.config->new_style == TS_NEW ? 16 : 8);
 	} else {
 		twidth = 0;
 		theight = 0;
 	}
-	eheight = WMFontHeight(scr->menu_entry_font) + 6 + wPreferences.menu_text_clearance * 2;
+	eheight = WMFontHeight(scr->menu_entry_font) + 6 + w_global.config->menu_text_clearance * 2;
 	menu->entry_height = eheight;
 	mrwidth = 0;
 	mwidth = 0;
@@ -568,7 +568,7 @@ void wMenuRealize(WMenu * menu)
 		text = menu->entries[i]->text;
 		width = WMWidthOfString(scr->menu_entry_font, text, strlen(text)) + 10;
 
-		if (wPreferences.window_list_app_icons && menu->entries[i]->icon) {
+		if (w_global.config->window_list_app_icons && menu->entries[i]->icon) {
 			width += menu->entries[i]->icon->width + 4;
 		}
 
@@ -746,7 +746,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	dim = scr->menu_item_auxtexture->dim_gc;
 	dark = scr->menu_item_auxtexture->dark_gc;
 
-	if (wPreferences.menu_style == MS_FLAT && menu->entry_no > 1) {
+	if (w_global.config->menu_style == MS_FLAT && menu->entry_no > 1) {
 		if (index == 0)
 			type = F_TOP;
 		else if (index == menu->entry_no - 1)
@@ -787,7 +787,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	if (entry->flags.indicator)
 		x += MENU_INDICATOR_SPACE + 2;
 
-	if (wPreferences.window_list_app_icons && entry->icon && entry->icon->image != None) {
+	if (w_global.config->window_list_app_icons && entry->icon && entry->icon->image != None) {
 		int ix = x;
 		int iy = y + (h - entry->icon->height) / 2;
 
@@ -808,7 +808,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	}
 
 	WMDrawString(scr->wmscreen, win, color, scr->menu_entry_font,
-		     x, 3 + y + wPreferences.menu_text_clearance, entry->text, strlen(entry->text));
+		     x, 3 + y + w_global.config->menu_text_clearance, entry->text, strlen(entry->text));
 
 	if (entry->cascade >= 0) {
 		/* draw the cascade indicator */
@@ -912,7 +912,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		tw = WMWidthOfString(scr->menu_entry_font, entry->rtext, strlen(entry->rtext));
 
 		WMDrawString(scr->wmscreen, win, color, scr->menu_entry_font, w - 6 - tw,
-			     y + 3 + wPreferences.menu_text_clearance, entry->rtext, strlen(entry->rtext));
+			     y + 3 + w_global.config->menu_text_clearance, entry->rtext, strlen(entry->rtext));
 	}
 }
 
@@ -921,7 +921,7 @@ static void move_menus(WMenu * menu, int x, int y)
 	while (menu->parent) {
 		menu = menu->parent;
 		x -= MENUW(menu);
-		if (!wPreferences.align_menus && menu->selected_entry >= 0) {
+		if (!w_global.config->align_menus && menu->selected_entry >= 0) {
 			y -= menu->selected_entry * menu->entry_height;
 		}
 	}
@@ -1021,7 +1021,7 @@ static int keyboardMenu(WMenu * menu)
 		switch (event.type) {
 		case KeyPress:
 			ksym = XLookupKeysym(&event.xkey, 0);
-			if (wPreferences.vi_key_menus) {
+			if (w_global.config->vi_key_menus) {
 				switch (ksym) {
 				case XK_h:
 					ksym = XK_Left;
@@ -1195,7 +1195,7 @@ void wMenuMapAt(WMenu * menu, int x, int y, int keyboard)
 	}
 
 	if (!menu->flags.mapped) {
-		if (wPreferences.wrap_menus) {
+		if (w_global.config->wrap_menus) {
 			WScreen *scr = menu->frame->screen_ptr;
 			WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
 
@@ -1366,7 +1366,7 @@ static void selectEntry(WMenu * menu, int entry_no)
 
 				if (!submenu->flags.realized)
 					wMenuRealize(submenu);
-				if (wPreferences.wrap_menus) {
+				if (w_global.config->wrap_menus) {
 					if (menu->flags.open_to_left)
 						submenu->flags.open_to_left = 1;
 
@@ -1390,7 +1390,7 @@ static void selectEntry(WMenu * menu, int entry_no)
 					x = menu->frame_x + MENUW(menu);
 				}
 
-				if (wPreferences.align_menus) {
+				if (w_global.config->align_menus) {
 					y = menu->frame_y;
 				} else {
 					y = menu->frame_y + menu->entry_height * entry_no;
@@ -1717,12 +1717,12 @@ void wMenuScroll(WMenu *menu)
 	if (omenu->jump_back)
 		WMDeleteTimerWithClientData(omenu->jump_back);
 
-	if (( /*omenu->flags.buttoned && */ !wPreferences.wrap_menus)
+	if (( /*omenu->flags.buttoned && */ !w_global.config->wrap_menus)
 	    || omenu->flags.app_menu) {
 		jump_back = 1;
 	}
 
-	if (!wPreferences.wrap_menus)
+	if (!w_global.config->wrap_menus)
 		raiseMenus(omenu, True);
 	else
 		raiseMenus(menu, False);
@@ -1881,7 +1881,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 	   } */
 	menu->flags.inside_handler = 1;
 
-	if (!wPreferences.wrap_menus) {
+	if (!w_global.config->wrap_menus) {
 		smenu = parentMenu(menu);
 		old_frame_x = smenu->frame_x;
 		old_frame_y = smenu->frame_y;
@@ -1891,7 +1891,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 			delayed_select = 1;
 			d_data.delayed_select = &delayed_select;
 			d_data.menu = menu;
-			d_data.magic = WMAddTimerHandler(wPreferences.dblclick_time, delaySelection, &d_data);
+			d_data.magic = WMAddTimerHandler(w_global.config->double_click_time, delaySelection, &d_data);
 		}
 	}
 
@@ -1966,7 +1966,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 			}
 		}
 
-		if (!wPreferences.wrap_menus && !wPreferences.scrollable_menus) {
+		if (!w_global.config->wrap_menus && !w_global.config->scrollable_menus) {
 			if (!menu->timer)
 				dragScrollMenuCallback(menu);
 		}
@@ -2030,7 +2030,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 					    /* maybe a open submenu */
 					    && menu->selected_entry >= 0
 					    /* moving to the right direction */
-					    && (wPreferences.align_menus || ev.xmotion.y_root >= prevy)) {
+					    && (w_global.config->align_menus || ev.xmotion.y_root >= prevy)) {
 						int index;
 
 						index = menu->entries[menu->selected_entry]->cascade;
@@ -2169,7 +2169,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 	/* close the cascade windows that should not remain opened */
 	closeBrotherCascadesOf(desc->parent);
 
-	if (!wPreferences.wrap_menus)
+	if (!w_global.config->wrap_menus)
 		wMenuMove(parentMenu(desc->parent), old_frame_x, old_frame_y, True);
 
  byebye:
@@ -2204,7 +2204,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 		if (i >= 0 && menu->cascades) {
 			submenu = menu->cascades[i];
 			if (submenu->flags.mapped && !submenu->flags.buttoned) {
-				if (wPreferences.align_menus) {
+				if (w_global.config->align_menus) {
 					wMenuMove(submenu, x + MENUW(menu), y, submenus);
 				} else {
 					wMenuMove(submenu, x + MENUW(menu),
@@ -2214,7 +2214,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 		}
 	}
 	if (submenus < 0 && menu->parent != NULL && menu->parent->flags.mapped && !menu->parent->flags.buttoned) {
-		if (wPreferences.align_menus) {
+		if (w_global.config->align_menus) {
 			wMenuMove(menu->parent, x - MENUW(menu->parent), y, submenus);
 		} else {
 			wMenuMove(menu->parent, x - MENUW(menu->parent), menu->frame_y

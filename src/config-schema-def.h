@@ -2,10 +2,9 @@
  * Typed Window Maker defaults schema, X-macro key list.
  *
  * Each entry describes one configuration key. The list is expanded at
- * four sites: the WConfigKey enum and the WConfig struct (wconfigmodel.h),
- * the config_schema[] table (config-schema.c), and the
- * runtime_preference_copies[] bridge table (wconfigmodel.c). Adding a
- * plain scalar key now means adding one row here.
+ * three sites: the WConfigKey enum and the WConfig struct (wconfigmodel.h),
+ * and the config_schema[] table (config-schema.c). Adding a plain scalar
+ * key now means adding one row here.
  *
  * WCFG_SCHEMA(_) columns:
  *   K       enum suffix, expands to WCFG_KEY_##K
@@ -18,8 +17,6 @@
  *   lo, hi  numeric bounds for scalars, target/count for non-numeric
  *   fl      WCFG_STARTUP_ONLY or WCFG_RUNTIME_RELOAD
  *   refresh refresh mask raised when this key changes at runtime
- *   bridge  BYTES, STRING or NONE, picks the wPreferences bridge copy
- *   pref    wPreferences field name when bridge != NONE
  *
  * WCFG_SCHEMA_KEYBINDINGS(_) columns:
  *   K       enum suffix
@@ -66,454 +63,439 @@
 
 #define WCFG_SCHEMA(_) \
 	_(COLORMAP_SIZE, "ColormapSize", INT, colormap_size, "4", \
-	  NULL, 0, INT_MAX, WCFG_STARTUP_ONLY, 0, NONE, colormap_size) \
+	  NULL, 0, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_DITHERING, "DisableDithering", BOOL, disable_dithering, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, disable_dithering) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(ICON_SIZE, "IconSize", INT, icon_size, "64", \
-	  NULL, 1, INT_MAX, WCFG_STARTUP_ONLY, 0, NONE, icon_size) \
+	  NULL, 1, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(MODIFIER_KEY, "ModifierKey", STRING, modifier_key, "Mod1", \
-	  NULL, 0, 0, WCFG_STARTUP_ONLY, 0, NONE, modifier_key) \
+	  NULL, 0, 0, WCFG_STARTUP_ONLY, 0) \
 	_(FOCUS_MODE, "FocusMode", ENUM, focus_mode, "manual", \
-	  focus_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0, NONE, focus_mode) \
+	  focus_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(NEW_STYLE, "NewStyle", ENUM, new_style, "new", \
-	  titlebar_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0, NONE, new_style) \
+	  titlebar_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_DOCK, "DisableDock", BOOL, disable_dock, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, disable_dock) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_CLIP, "DisableClip", BOOL, disable_clip, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, disable_clip) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_DRAWERS, "DisableDrawers", BOOL, disable_drawers, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, disable_drawers) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(CLIP_MERGED_IN_DOCK, "ClipMergedInDock", BOOL, clip_merged_in_dock, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, clip_merged_in_dock) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_MINIWINDOWS, "DisableMiniwindows", BOOL, disable_miniwindows, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, disable_miniwindows) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(ENABLE_WORKSPACE_PAGER, "EnableWorkspacePager", BOOL, enable_workspace_pager, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0, NONE, enable_workspace_pager) \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \
-	  NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0, NONE, switch_panel_icon_size) \
+	  NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(ICON_POSITION, "IconPosition", ENUM, icon_yard, "blh", \
-	  icon_positions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, icon_yard) \
+	  icon_positions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(PIXMAP_PATH, "PixmapPath", PATH_LIST, pixmap_path, DEF_PIXMAP_PATHS, \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, STRING, pixmap_path) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_PATH, "IconPath", PATH_LIST, icon_path, DEF_ICON_PATHS, \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, STRING, icon_path) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(STICKY_ICONS, "StickyIcons", BOOL, sticky_icons, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, sticky_icons) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WRAP_APPICONS_IN_DOCK, "WrapAppiconsInDock", BOOL, wrap_appicons_in_dock, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, NONE, wrap_appicons_in_dock) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_PLACE_ORIGIN, "WindowPlaceOrigin", COORD, window_place_origin, "(64, 0)", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, NONE, window_place_origin) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEEP_DOCK_ON_PRIMARY_HEAD, "KeepDockOnPrimaryHead", BOOL, keep_dock_on_primary_head, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, keep_dock_on_primary_head) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SCREENSHOT_FILENAME_TEMPLATE, "ScreenshotFilenameTemplate", STRING, \
 	  screenshot_filename_template, DEF_SCREENSHOT_FILENAME_TEMPLATE, \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, STRING, screenshot_filename_template) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_STYLE, "MenuStyle", ENUM, menu_style, "normal", \
 	  menu_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_MENU_TEXTURE, BYTES, menu_style) \
+	  WCFG_REFRESH_MENU_TEXTURE) \
 	_(TITLE_JUSTIFY, "TitleJustify", ENUM, title_justification, "center", \
 	  title_justifications, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_WINDOW_TITLE_COLOR, BYTES, title_justification) \
+	  WCFG_REFRESH_WINDOW_TITLE_COLOR) \
 	_(WINDOW_TITLE_EXTEND_SPACE, "WindowTitleExtendSpace", INT, window_title_clearance, \
 	  DEF_WINDOW_TITLE_EXTEND_SPACE, NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_TITLE_GEOM, BYTES, window_title_clearance) \
+	  WCFG_REFRESH_TITLE_GEOM) \
 	_(WINDOW_TITLE_MIN_HEIGHT, "WindowTitleMinHeight", INT, window_title_min_height, "0", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_TITLE_GEOM, \
-	  BYTES, window_title_min_height) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_TITLE_GEOM) \
 	_(WINDOW_TITLE_MAX_HEIGHT, "WindowTitleMaxHeight", INT, window_title_max_height, \
 	  NUM2STRING(INT_MAX), NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_TITLE_GEOM, BYTES, window_title_max_height) \
+	  WCFG_REFRESH_TITLE_GEOM) \
 	_(MENU_TITLE_EXTEND_SPACE, "MenuTitleExtendSpace", INT, menu_title_clearance, \
 	  DEF_MENU_TITLE_EXTEND_SPACE, NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_TITLE_GEOM, BYTES, menu_title_clearance) \
+	  WCFG_REFRESH_TITLE_GEOM) \
 	_(MENU_TITLE_MIN_HEIGHT, "MenuTitleMinHeight", INT, menu_title_min_height, "0", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_TITLE_GEOM, \
-	  BYTES, menu_title_min_height) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_TITLE_GEOM) \
 	_(MENU_TITLE_MAX_HEIGHT, "MenuTitleMaxHeight", INT, menu_title_max_height, \
 	  NUM2STRING(INT_MAX), NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_TITLE_GEOM, BYTES, menu_title_max_height) \
+	  WCFG_REFRESH_TITLE_GEOM) \
 	_(MENU_TEXT_EXTEND_SPACE, "MenuTextExtendSpace", INT, menu_text_clearance, \
 	  DEF_MENU_TEXT_EXTEND_SPACE, NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
-	  WCFG_REFRESH_TITLE_GEOM, BYTES, menu_text_clearance) \
+	  WCFG_REFRESH_TITLE_GEOM) \
 	_(ICONIFICATION_STYLE, "IconificationStyle", ENUM, iconification_style, "Zoom", \
-	  iconification_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, iconification_style) \
+	  iconification_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ENFORCE_ICON_MARGIN, "EnforceIconMargin", BOOL, enforce_icon_margin, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, enforce_icon_margin) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISABLE_WS_MOUSE_ACTIONS, "DisableWSMouseActions", BOOL, disable_root_mouse, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, disable_root_mouse) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_LEFT_BUTTON_ACTION, "MouseLeftButtonAction", ENUM, mouse_button1, \
 	  "SelectWindows", mouse_button_actions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_button1) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_MIDDLE_BUTTON_ACTION, "MouseMiddleButtonAction", ENUM, mouse_button2, \
 	  "OpenWindowListMenu", mouse_button_actions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_button2) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_RIGHT_BUTTON_ACTION, "MouseRightButtonAction", ENUM, mouse_button3, \
 	  "OpenApplicationsMenu", mouse_button_actions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_button3) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_BACKWARD_BUTTON_ACTION, "MouseBackwardButtonAction", ENUM, mouse_button8, \
 	  "None", mouse_button_actions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_button8) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_FORWARD_BUTTON_ACTION, "MouseForwardButtonAction", ENUM, mouse_button9, \
 	  "None", mouse_button_actions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_button9) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_ACTION, "MouseWheelAction", ENUM, mouse_wheel_scroll, "None", \
-	  mouse_wheel_actions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, mouse_wheel_scroll) \
+	  mouse_wheel_actions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_TILT_ACTION, "MouseWheelTiltAction", ENUM, mouse_wheel_tilt, "None", \
-	  mouse_wheel_actions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, mouse_wheel_tilt) \
+	  mouse_wheel_actions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(DONT_CONFIRM_KILL, "DontConfirmKill", BOOL, dont_confirm_kill, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, dont_confirm_kill) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_TITLE_BALLOONS, "WindowTitleBalloons", BOOL, window_balloon, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, window_balloon) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MINIWINDOW_TITLE_BALLOONS, "MiniwindowTitleBalloons", BOOL, miniwin_title_balloon, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, miniwin_title_balloon) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MINIWINDOW_PREVIEW_BALLOONS, "MiniwindowPreviewBalloons", BOOL, miniwin_preview_balloon, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, miniwin_preview_balloon) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(APPICON_BALLOONS, "AppIconBalloons", BOOL, appicon_balloon, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, appicon_balloon) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(HELP_BALLOONS, "HelpBalloons", BOOL, help_balloon, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, help_balloon) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(EDGE_RESISTANCE, "EdgeResistance", INT, edge_resistance, "30", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, edge_resistance) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZE_INCREMENT, "ResizeIncrement", INT, resize_increment, "0", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, resize_increment) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ATTRACTION, "Attraction", BOOL, attract, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, attract) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISABLE_BLINKING, "DisableBlinking", BOOL, dont_blink, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, dont_blink) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SINGLE_CLICK_LAUNCH, "SingleClickLaunch", BOOL, single_click, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, single_click) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(STRICT_WINDOZE_CYCLE, "StrictWindozeCycle", BOOL, strict_windoze_cycle, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, strict_windoze_cycle) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ONLY_OPEN, "SwitchPanelOnlyOpen", BOOL, panel_only_open, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, panel_only_open) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MINI_PREVIEW_SIZE, "MiniPreviewSize", INT, minipreview_size, "128", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, minipreview_size) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(IGNORE_GTK_HINTS, "IgnoreGtkHints", BOOL, ignore_gtk_decoration_hints, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, ignore_gtk_decoration_hints) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(NO_WINDOW_OVER_DOCK, "NoWindowOverDock", BOOL, no_window_over_dock, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, no_window_over_dock) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(NO_WINDOW_OVER_ICONS, "NoWindowOverIcons", BOOL, no_window_over_icons, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, no_window_over_icons) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZE_DISPLAY, "ResizeDisplay", ENUM, size_display, "center", \
-	  geometry_displays, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, size_display) \
+	  geometry_displays, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOVE_DISPLAY, "MoveDisplay", ENUM, move_display, "floating", \
-	  geometry_displays, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, move_display) \
+	  geometry_displays, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	WCFG_IF_RANDR( \
 	_(HOTPLUG_MONITOR, "HotplugMonitor", BOOL, hotplug_monitor, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, hotplug_monitor) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	) \
 	_(HOT_CORNERS, "HotCorners", BOOL, hot_corners, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, hot_corners) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(HOT_CORNER_DELAY, "HotCornerDelay", INT, hot_corner_delay, "250", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, hot_corner_delay) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(HOT_CORNER_EDGE, "HotCornerEdge", INT, hot_corner_edge, "2", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, hot_corner_edge) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_LIST_APP_ICONS, "WindowListAppIcons", BOOL, window_list_app_icons, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, window_list_app_icons) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_FOCUS, "MouseWheelFocus", BOOL, mouse_wheel_focus, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, mouse_wheel_focus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, keychain_timeout_delay) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SHOW_CLIP_TITLE, "ShowClipTitle", BOOL, show_clip_title, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, show_clip_title) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	WCFG_IF_XKB_LOCK( \
 	_(KBD_MODE_LOCK, "KbdModeLock", BOOL, modelock, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, modelock) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	) \
 	_(DIALOG_HISTORY_LINES, "DialogHistoryLines", INT, history_lines, "500", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, history_lines) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_ACTIVE_HEAD_ONLY, "CycleActiveHeadOnly", BOOL, cycle_active_head_only, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, cycle_active_head_only) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_ALL_WORKSPACES, "CycleAllWorkspaces", BOOL, cycle_all_workspaces, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, cycle_all_workspaces) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_IGNORE_MINIMIZED, "CycleIgnoreMinimized", BOOL, cycle_ignore_minimized, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, cycle_ignore_minimized) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DB_CLICK_FULL_SCREEN, "DbClickFullScreen", BOOL, double_click_fullscreen, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, double_click_fullscreen) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLOSE_ROOT_MENU_BY_LEFT_OR_RIGHT_MOUSE_CLICK, \
 	  "CloseRootMenuByLeftOrRightMouseClick", BOOL, close_rootmenu_left_right_click, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, close_rootmenu_left_right_click) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(COLORMAP_MODE, "ColormapMode", ENUM, colormap_mode, "auto", \
-	  colormap_modes, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, colormap_mode) \
+	  colormap_modes, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(AUTO_FOCUS, "AutoFocus", BOOL, auto_focus, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, auto_focus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(AUTO_FOCUS_ACROSS_HEADS, "AutoFocusAcrossHeads", BOOL, auto_focus_across_heads, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, auto_focus_across_heads) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RAISE_DELAY, "RaiseDelay", INT, raise_delay, "0", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, raise_delay) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CIRCULATE_RAISE, "CirculateRaise", BOOL, circ_raise, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, circ_raise) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SUPERFLUOUS, "Superfluous", BOOL, superfluous, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, superfluous) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(ADVANCE_TO_NEW_WORKSPACE, "AdvanceToNewWorkspace", BOOL, ws_advance, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, ws_advance) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_WORKSPACES, "CycleWorkspaces", BOOL, ws_cycle, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, ws_cycle) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_NAME_DISPLAY_POSITION, "WorkspaceNameDisplayPosition", ENUM, \
 	  workspace_name_display_position, "center", display_positions, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, BYTES, workspace_name_display_position) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_PLACEMENT, "WindowPlacement", ENUM, window_placement, "auto", \
-	  placements, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, window_placement) \
+	  placements, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_BORDER, "WorkspaceBorder", ENUM, workspace_border_position, "None", \
-	  workspace_borders, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, workspace_border_position) \
+	  workspace_borders, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_BORDER_SIZE, "WorkspaceBorderSize", UINT, workspace_border_size, "0", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, workspace_border_size) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WRAP_MENUS, "WrapMenus", BOOL, wrap_menus, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, wrap_menus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SCROLLABLE_MENUS, "ScrollableMenus", BOOL, scrollable_menus, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, scrollable_menus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DOUBLE_CLICK_TIME, "DoubleClickTime", INT, double_click_time, "250", \
-	  NULL, 1, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, dblclick_time) \
+	  NULL, 1, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SAVE_SESSION_ON_EXIT, "SaveSessionOnExit", BOOL, save_session_on_exit, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, save_session_on_exit) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_SCROLL_SPEED, "MenuScrollSpeed", ENUM, menu_scroll_speed, "fast", \
-	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, menu_scroll_speed) \
+	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_SLIDE_SPEED, "IconSlideSpeed", ENUM, icon_slide_speed, "fast", \
-	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, icon_slide_speed) \
+	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SHADE_SPEED, "ShadeSpeed", ENUM, shade_speed, "fast", \
-	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, shade_speed) \
+	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(BOUNCE_APPICONS_WHEN_URGENT, "BounceAppIconsWhenUrgent", BOOL, \
-	  bounce_appicons_when_urgent, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, bounce_appicons_when_urgent) \
+	  bounce_appicons_when_urgent, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RAISE_APPICONS_WHEN_BOUNCING, "RaiseAppIconsWhenBouncing", BOOL, \
-	  raise_appicons_when_bouncing, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, raise_appicons_when_bouncing) \
+	  raise_appicons_when_bouncing, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DO_NOT_MAKE_APPICONS_BOUNCE, "DoNotMakeAppIconsBounce", BOOL, \
-	  do_not_make_appicons_bounce, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, do_not_make_appicons_bounce) \
+	  do_not_make_appicons_bounce, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_AUTORAISE_DELAY, "ClipAutoraiseDelay", INT, clip_auto_raise_delay, "600", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, clip_auto_raise_delay) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_AUTOLOWER_DELAY, "ClipAutolowerDelay", INT, clip_auto_lower_delay, "1000", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, clip_auto_lower_delay) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_AUTOEXPAND_DELAY, "ClipAutoexpandDelay", INT, clip_auto_expand_delay, "600", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, clip_auto_expand_delay) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_AUTOCOLLAPSE_DELAY, "ClipAutocollapseDelay", INT, clip_auto_collapse_delay, "1000", \
-	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, clip_auto_collapse_delay) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ALIGN_SUBMENUS, "AlignSubmenus", BOOL, align_menus, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, align_menus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(VI_KEY_MENUS, "ViKeyMenus", BOOL, vi_key_menus, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, vi_key_menus) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(OPEN_TRANSIENT_ON_OWNER_WORKSPACE, "OpenTransientOnOwnerWorkspace", BOOL, \
-	  open_transients_with_parent, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, open_transients_with_parent) \
+	  open_transients_with_parent, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(IGNORE_FOCUS_CLICK, "IgnoreFocusClick", BOOL, ignore_focus_click, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, ignore_focus_click) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(USE_SAVE_UNDERS, "UseSaveUnders", BOOL, use_saveunders, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, use_saveunders) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(OPAQUE_MOVE, "OpaqueMove", BOOL, opaque_move, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, opaque_move) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(OPAQUE_RESIZE, "OpaqueResize", BOOL, opaque_resize, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, opaque_resize) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(OPAQUE_MOVE_RESIZE_KEYBOARD, "OpaqueMoveResizeKeyboard", BOOL, \
-	  opaque_move_resize_keyboard, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, opaque_move_resize_keyboard) \
+	  opaque_move_resize_keyboard, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISABLE_ANIMATIONS, "DisableAnimations", BOOL, no_animations, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, no_animations) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DONT_LINK_WORKSPACES, "DontLinkWorkspaces", BOOL, no_autowrap, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, no_autowrap) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_SNAPPING, "WindowSnapping", BOOL, window_snapping, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, window_snapping) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_EDGE_DETECT, "SnapEdgeDetect", INT, snap_edge_detect, "1", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, snap_edge_detect) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_CORNER_DETECT, "SnapCornerDetect", INT, snap_corner_detect, "10", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, BYTES, snap_corner_detect) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_TO_TOP_MAXIMIZES_FULLSCREEN, "SnapToTopMaximizesFullscreen", BOOL, \
-	  snap_to_top_maximizes_fullscreen, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, snap_to_top_maximizes_fullscreen) \
+	  snap_to_top_maximizes_fullscreen, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DRAG_MAXIMIZED_WINDOW, "DragMaximizedWindow", ENUM, drag_maximized_window, "Move", \
-	  drag_maximized_windows, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, drag_maximized_window) \
+	  drag_maximized_windows, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOVE_HALF_MAXIMIZED_WINDOWS_BETWEEN_SCREENS, \
 	  "MoveHalfMaximizedWindowsBetweenScreens", BOOL, move_half_max_between_heads, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, move_half_max_between_heads) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(ALTERNATIVE_HALF_MAXIMIZED, "AlternativeHalfMaximized", BOOL, alt_half_maximize, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, alt_half_maximize) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(POINTER_WITH_HALF_MAX_WINDOWS, "PointerWithHalfMaxWindows", BOOL, \
-	  pointer_with_half_max_windows, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, \
-	  BYTES, pointer_with_half_max_windows) \
+	  pointer_with_half_max_windows, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(HIGHLIGHT_ACTIVE_APP, "HighlightActiveApp", BOOL, highlight_active_app, "YES", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, highlight_active_app) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(AUTO_ARRANGE_ICONS, "AutoArrangeIcons", BOOL, auto_arrange_icons, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, BYTES, auto_arrange_icons) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_SPECIFIC_BACK, "WorkspaceSpecificBack", BACKGROUND_SPEC, \
 	  workspace_specific_back, "()", NULL, \
 	  WCFG_BACKGROUND_WORKSPACE_SPECIFIC, WCFG_BACKGROUND_WORKSPACE_SPECIFIC, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, workspace_specific_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_BACK, "WorkspaceBack", BACKGROUND_SPEC, workspace_back, \
 	  "(solid, \"rgb:50/50/75\")", NULL, \
 	  WCFG_BACKGROUND_WORKSPACE, WCFG_BACKGROUND_WORKSPACE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, workspace_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(SMOOTH_WORKSPACE_BACK, "SmoothWorkspaceBack", BOOL, smooth_workspace_back, "NO", \
-	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0, NONE, smooth_workspace_back) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WIDGET_COLOR, "WidgetColor", TEXTURE_SPEC, widget_color, "(solid, gray)", NULL, \
 	  WCFG_TEXTURE_WIDGET_COLOR, WCFG_TEXTURE_WIDGET_COLOR, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, widget_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_BACK, "IconBack", TEXTURE_SPEC, icon_back, \
 	  "(dgradient, \"rgb:a6/a6/b6\", \"rgb:51/55/61\")", NULL, \
 	  WCFG_TEXTURE_ICON_BACK, WCFG_TEXTURE_ICON_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, icon_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_TITLE_FONT, "WindowTitleFont", FONT_SPEC, window_title_font, \
 	  "Sans:bold:pixelsize=12", NULL, WCFG_FONT_WINDOW_TITLE, WCFG_FONT_WINDOW_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, window_title_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TITLE_FONT, "MenuTitleFont", FONT_SPEC, menu_title_font, \
 	  "Sans:bold:pixelsize=12", NULL, WCFG_FONT_MENU_TITLE, WCFG_FONT_MENU_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_title_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TEXT_FONT, "MenuTextFont", FONT_SPEC, menu_text_font, \
 	  "Sans:pixelsize=12", NULL, WCFG_FONT_MENU_TEXT, WCFG_FONT_MENU_TEXT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_text_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_TITLE_FONT, "IconTitleFont", FONT_SPEC, icon_title_font, \
 	  "Sans:pixelsize=9", NULL, WCFG_FONT_ICON_TITLE, WCFG_FONT_ICON_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, icon_title_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_TITLE_FONT, "ClipTitleFont", FONT_SPEC, clip_title_font, \
 	  "Sans:bold:pixelsize=10", NULL, WCFG_FONT_CLIP_TITLE, WCFG_FONT_CLIP_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, clip_title_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(LARGE_DISPLAY_FONT, "LargeDisplayFont", FONT_SPEC, large_display_font, \
 	  "Sans:pixelsize=24", NULL, WCFG_FONT_LARGE_DISPLAY, WCFG_FONT_LARGE_DISPLAY, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, large_display_font) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(HIGHLIGHT_COLOR, "HighlightColor", COLOR_SPEC, highlight_color, "white", NULL, \
 	  WCFG_COLOR_HIGHLIGHT, WCFG_COLOR_HIGHLIGHT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, highlight_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(HIGHLIGHT_TEXT_COLOR, "HighlightTextColor", COLOR_SPEC, highlight_text_color, \
 	  "black", NULL, WCFG_COLOR_HIGHLIGHT_TEXT, WCFG_COLOR_HIGHLIGHT_TEXT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, highlight_text_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIP_TITLE_COLOR, "ClipTitleColor", COLOR_SPEC, clip_title_color, "black", NULL, \
 	  WCFG_COLOR_CLIP_TITLE, WCFG_COLOR_CLIP_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, clip_title_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(CCLIP_TITLE_COLOR, "CClipTitleColor", COLOR_SPEC, cclip_title_color, \
 	  "rgb:61/61/61", NULL, WCFG_COLOR_C_CLIP_TITLE, WCFG_COLOR_C_CLIP_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, cclip_title_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(F_TITLE_COLOR, "FTitleColor", COLOR_SPEC, ftitle_color, "white", NULL, \
 	  WCFG_COLOR_F_TITLE, WCFG_COLOR_F_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, ftitle_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(P_TITLE_COLOR, "PTitleColor", COLOR_SPEC, ptitle_color, "white", NULL, \
 	  WCFG_COLOR_P_TITLE, WCFG_COLOR_P_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, ptitle_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(U_TITLE_COLOR, "UTitleColor", COLOR_SPEC, utitle_color, "black", NULL, \
 	  WCFG_COLOR_U_TITLE, WCFG_COLOR_U_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, utitle_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(F_TITLE_BACK, "FTitleBack", TEXTURE_SPEC, ftitle_back, "(solid, black)", NULL, \
 	  WCFG_TEXTURE_F_TITLE_BACK, WCFG_TEXTURE_F_TITLE_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, ftitle_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(P_TITLE_BACK, "PTitleBack", TEXTURE_SPEC, ptitle_back, "(solid, gray40)", NULL, \
 	  WCFG_TEXTURE_P_TITLE_BACK, WCFG_TEXTURE_P_TITLE_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, ptitle_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(U_TITLE_BACK, "UTitleBack", TEXTURE_SPEC, utitle_back, \
 	  "(solid, \"rgb:aa/aa/aa\")", NULL, \
 	  WCFG_TEXTURE_U_TITLE_BACK, WCFG_TEXTURE_U_TITLE_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, utitle_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZEBAR_BACK, "ResizebarBack", TEXTURE_SPEC, resizebar_back, \
 	  "(solid, \"rgb:aa/aa/aa\")", NULL, \
 	  WCFG_TEXTURE_RESIZEBAR_BACK, WCFG_TEXTURE_RESIZEBAR_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, resizebar_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TITLE_COLOR, "MenuTitleColor", COLOR_SPEC, menu_title_color, "white", NULL, \
 	  WCFG_COLOR_MENU_TITLE, WCFG_COLOR_MENU_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_title_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TEXT_COLOR, "MenuTextColor", COLOR_SPEC, menu_text_color, "black", NULL, \
 	  WCFG_COLOR_MENU_TEXT, WCFG_COLOR_MENU_TEXT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_text_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_DISABLED_COLOR, "MenuDisabledColor", COLOR_SPEC, menu_disabled_color, \
 	  "gray50", NULL, WCFG_COLOR_MENU_DISABLED, WCFG_COLOR_MENU_DISABLED, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_disabled_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TITLE_BACK, "MenuTitleBack", TEXTURE_SPEC, menu_title_back, \
 	  "(solid, black)", NULL, \
 	  WCFG_TEXTURE_MENU_TITLE_BACK, WCFG_TEXTURE_MENU_TITLE_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_title_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_TEXT_BACK, "MenuTextBack", TEXTURE_SPEC, menu_text_back, \
 	  "(solid, \"rgb:aa/aa/aa\")", NULL, \
 	  WCFG_TEXTURE_MENU_TEXT_BACK, WCFG_TEXTURE_MENU_TEXT_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, menu_text_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_TITLE_COLOR, "IconTitleColor", COLOR_SPEC, icon_title_color, "white", NULL, \
 	  WCFG_COLOR_ICON_TITLE, WCFG_COLOR_ICON_TITLE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, icon_title_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_TITLE_BACK, "IconTitleBack", COLOR_SPEC, icon_title_back, "black", NULL, \
 	  WCFG_COLOR_ICON_TITLE_BACK, WCFG_COLOR_ICON_TITLE_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, icon_title_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(FRAME_BORDER_WIDTH, "FrameBorderWidth", INT, frame_border_width, "1", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_FRAME_BORDER, \
-	  NONE, frame_border_width) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_FRAME_BORDER) \
 	_(FRAME_BORDER_COLOR, "FrameBorderColor", COLOR_SPEC, frame_border_color, \
 	  "black", NULL, WCFG_COLOR_FRAME_BORDER, WCFG_COLOR_FRAME_BORDER, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, frame_border_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(FRAME_FOCUSED_BORDER_COLOR, "FrameFocusedBorderColor", COLOR_SPEC, \
 	  frame_focused_border_color, "black", NULL, \
 	  WCFG_COLOR_FRAME_FOCUSED_BORDER, WCFG_COLOR_FRAME_FOCUSED_BORDER, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, frame_focused_border_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(FRAME_SELECTED_BORDER_COLOR, "FrameSelectedBorderColor", COLOR_SPEC, \
 	  frame_selected_border_color, "white", NULL, \
 	  WCFG_COLOR_FRAME_SELECTED_BORDER, WCFG_COLOR_FRAME_SELECTED_BORDER, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, frame_selected_border_color) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_MAP_BACK, "WorkspaceMapBack", TEXTURE_SPEC, workspace_map_back, \
 	  "(solid, black)", NULL, \
 	  WCFG_TEXTURE_WORKSPACE_MAP_BACK, WCFG_TEXTURE_WORKSPACE_MAP_BACK, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, workspace_map_back) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(NORMAL_CURSOR, "NormalCursor", CURSOR_SPEC, normal_cursor, \
 	  "(builtin, left_ptr)", NULL, WCFG_CURSOR_NORMAL, WCFG_CURSOR_NORMAL, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, normal_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(ARROW_CURSOR, "ArrowCursor", CURSOR_SPEC, arrow_cursor, \
 	  "(builtin, top_left_arrow)", NULL, WCFG_CURSOR_ARROW, WCFG_CURSOR_ARROW, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, arrow_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MOVE_CURSOR, "MoveCursor", CURSOR_SPEC, move_cursor, \
 	  "(builtin, fleur)", NULL, WCFG_CURSOR_MOVE, WCFG_CURSOR_MOVE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, move_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZE_CURSOR, "ResizeCursor", CURSOR_SPEC, resize_cursor, \
 	  "(builtin, sizing)", NULL, WCFG_CURSOR_RESIZE, WCFG_CURSOR_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(TOP_LEFT_RESIZE_CURSOR, "TopLeftResizeCursor", CURSOR_SPEC, top_left_resize_cursor, \
 	  "(builtin, top_left_corner)", NULL, \
 	  WCFG_CURSOR_TOP_LEFT_RESIZE, WCFG_CURSOR_TOP_LEFT_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, top_left_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(TOP_RIGHT_RESIZE_CURSOR, "TopRightResizeCursor", CURSOR_SPEC, top_right_resize_cursor, \
 	  "(builtin, top_right_corner)", NULL, \
 	  WCFG_CURSOR_TOP_RIGHT_RESIZE, WCFG_CURSOR_TOP_RIGHT_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, top_right_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(BOTTOM_LEFT_RESIZE_CURSOR, "BottomLeftResizeCursor", CURSOR_SPEC, \
 	  bottom_left_resize_cursor, "(builtin, bottom_left_corner)", NULL, \
 	  WCFG_CURSOR_BOTTOM_LEFT_RESIZE, WCFG_CURSOR_BOTTOM_LEFT_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, bottom_left_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(BOTTOM_RIGHT_RESIZE_CURSOR, "BottomRightResizeCursor", CURSOR_SPEC, \
 	  bottom_right_resize_cursor, "(builtin, bottom_right_corner)", NULL, \
 	  WCFG_CURSOR_BOTTOM_RIGHT_RESIZE, WCFG_CURSOR_BOTTOM_RIGHT_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, bottom_right_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(VERTICAL_RESIZE_CURSOR, "VerticalResizeCursor", CURSOR_SPEC, vertical_resize_cursor, \
 	  "(builtin, sb_v_double_arrow)", NULL, \
 	  WCFG_CURSOR_VERTICAL_RESIZE, WCFG_CURSOR_VERTICAL_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, vertical_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(HORIZONTAL_RESIZE_CURSOR, "HorizontalResizeCursor", CURSOR_SPEC, \
 	  horizontal_resize_cursor, "(builtin, sb_h_double_arrow)", NULL, \
 	  WCFG_CURSOR_HORIZONTAL_RESIZE, WCFG_CURSOR_HORIZONTAL_RESIZE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, horizontal_resize_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(WAIT_CURSOR, "WaitCursor", CURSOR_SPEC, wait_cursor, \
 	  "(builtin, watch)", NULL, WCFG_CURSOR_WAIT, WCFG_CURSOR_WAIT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, wait_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(QUESTION_CURSOR, "QuestionCursor", CURSOR_SPEC, question_cursor, \
 	  "(builtin, question_arrow)", NULL, WCFG_CURSOR_QUESTION, WCFG_CURSOR_QUESTION, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, question_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(TEXT_CURSOR, "TextCursor", CURSOR_SPEC, text_cursor, \
 	  "(builtin, xterm)", NULL, WCFG_CURSOR_TEXT, WCFG_CURSOR_TEXT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, text_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(SELECT_CURSOR, "SelectCursor", CURSOR_SPEC, select_cursor, \
 	  "(builtin, cross)", NULL, WCFG_CURSOR_SELECT, WCFG_CURSOR_SELECT, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, select_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(CAPTURE_CURSOR, "CaptureCursor", CURSOR_SPEC, capture_cursor, \
 	  "(builtin, crosshair)", NULL, WCFG_CURSOR_CAPTURE, WCFG_CURSOR_CAPTURE, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, capture_cursor) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(HOT_CORNER_ACTIONS, "HotCornerActions", STRING_ARRAY, hot_corner_actions, \
 	  "(\"None\", \"None\", \"None\", \"None\")", NULL, 4, 4, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, hot_corner_actions) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_IMAGES, "SwitchPanelImages", SWITCH_PANEL_IMAGES, switch_panel_images, \
 	  "(swtile.png, swback.png, 30, 40)", NULL, INT_MIN, INT_MAX, \
-	  WCFG_RUNTIME_RELOAD, 0, NONE, switch_panel_images) \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MODIFIER_KEY_LABELS, "ModifierKeyLabels", STRING_ARRAY, modifier_key_labels, \
 	  "(\"Shift+\", \"Control+\", \"Mod1+\", \"Mod2+\", \"Mod3+\", \"Mod4+\", \"Mod5+\")", \
-	  NULL, 7, 7, WCFG_RUNTIME_RELOAD, 0, NONE, modifier_key_labels) \
+	  NULL, 7, 7, WCFG_RUNTIME_RELOAD, 0) \
 	_(MODIFIER_KEY_SHORT_LABELS, "ModifierKeyShortLabels", STRING_ARRAY, \
 	  modifier_key_short_labels, \
 	  "(\"Sh+\", \"^\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\", \"M+\", \"A+\")", \
-	  NULL, 9, 9, WCFG_RUNTIME_RELOAD, 0, NONE, modifier_key_short_labels)
+	  NULL, 9, 9, WCFG_RUNTIME_RELOAD, 0)
 
 #define WCFG_SCHEMA_KEYBINDINGS(_) \
 	_(ROOT_MENU_KEY, "RootMenuKey", "F12", WKBD_ROOTMENU) \

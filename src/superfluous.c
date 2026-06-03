@@ -62,25 +62,25 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 	Pixmap tmp;
 
 	XSetClipMask(dpy, scr->copy_gc, None);
-	tmp = XCreatePixmap(dpy, scr->root_win, wPreferences.icon_size, wPreferences.icon_size, scr->depth);
+	tmp = XCreatePixmap(dpy, scr->root_win, w_global.config->icon_size, w_global.config->icon_size, scr->depth);
 	if (scr->w_visual == DefaultVisual(dpy, scr->screen))
-		XCopyArea(dpy, win, tmp, scr->copy_gc, 0, 0, wPreferences.icon_size, wPreferences.icon_size, 0, 0);
+		XCopyArea(dpy, win, tmp, scr->copy_gc, 0, 0, w_global.config->icon_size, w_global.config->icon_size, 0, 0);
 	else {
 		XImage *image;
 
-		image = XGetImage(dpy, win, 0, 0, wPreferences.icon_size,
-				  wPreferences.icon_size, AllPlanes, ZPixmap);
+		image = XGetImage(dpy, win, 0, 0, w_global.config->icon_size,
+				  w_global.config->icon_size, AllPlanes, ZPixmap);
 		if (!image) {
 			XUnmapWindow(dpy, win);
 			return;
 		}
 		XPutImage(dpy, tmp, scr->copy_gc, image, 0, 0, 0, 0,
-			  wPreferences.icon_size, wPreferences.icon_size);
+			  w_global.config->icon_size, w_global.config->icon_size);
 		XDestroyImage(image);
 	}
 
-	for (i = 0, k = 0; i < wPreferences.icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; i++) {
-		for (j = 0; j < wPreferences.icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; j++) {
+	for (i = 0, k = 0; i < w_global.config->icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; i++) {
+		for (j = 0; j < w_global.config->icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; j++) {
 			if (rand() % 2) {
 				ax[k] = i;
 				ay[k] = j;
@@ -116,7 +116,7 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 				py[i] += pvy[i];
 				_px = px[i] >> KAB_PRECISION;
 				pvy[i]++;
-				if (_px < -wPreferences.icon_size || _px > sw || py[i] >= sh) {
+				if (_px < -w_global.config->icon_size || _px > sw || py[i] >= sh) {
 					ax[i] = -1;
 					k--;
 				} else {
@@ -199,7 +199,7 @@ static void doAppBounce(void *arg)
 
 reinit:
 	if (data->wapp->refcount > 1) {
-		if (wPreferences.raise_appicons_when_bouncing)
+		if (w_global.config->raise_appicons_when_bouncing)
 			XRaiseWindow(dpy, aicon->icon->core->window);
 
 		const double ticks = BOUNCE_HZ * BOUNCE_LENGTH;
@@ -318,8 +318,8 @@ static int bounceDirection(WAppIcon *aicon)
 
 void wAppBounce(WApplication *wapp)
 {
-	if (!wPreferences.no_animations && wapp->app_icon && !wapp->flags.bouncing
-		&& !wPreferences.do_not_make_appicons_bounce) {
+	if (!w_global.config->no_animations && wapp->app_icon && !wapp->flags.bouncing
+		&& !w_global.config->do_not_make_appicons_bounce) {
 		++wapp->refcount;
 		wapp->flags.bouncing = 1;
 
@@ -361,7 +361,7 @@ static void doAppUrgentBounce(void *arg)
 	WApplication *wapp = (WApplication *)arg;
 
 	if (appIsUrgent(wapp)) {
-		if(wPreferences.bounce_appicons_when_urgent) wAppBounce(wapp);
+		if(w_global.config->bounce_appicons_when_urgent) wAppBounce(wapp);
 	} else {
 		WMDeleteTimerHandler(wapp->urgent_bounce_timer);
 		wapp->urgent_bounce_timer = NULL;

@@ -79,10 +79,10 @@ static short int label_height;
 
 static int canReceiveFocus(WWindow *wwin)
 {
-	if (!wPreferences.cycle_all_workspaces && wwin->frame->workspace != wwin->screen_ptr->current_workspace)
+	if (!w_global.config->cycle_all_workspaces && wwin->frame->workspace != wwin->screen_ptr->current_workspace)
 		return 0;
 
-	if (wPreferences.cycle_active_head_only &&
+	if (w_global.config->cycle_active_head_only &&
 	    wGetHeadForWindow(wwin) != wGetHeadForPointerLocation(wwin->screen_ptr))
 		return 0;
 
@@ -90,7 +90,7 @@ static int canReceiveFocus(WWindow *wwin)
 		return 0;
 
 	if (!wwin->flags.mapped) {
-		if (!wwin->flags.shaded && !wwin->flags.miniaturized && !wwin->flags.hidden && !wPreferences.cycle_all_workspaces)
+		if (!wwin->flags.shaded && !wwin->flags.miniaturized && !wwin->flags.hidden && !w_global.config->cycle_all_workspaces)
 			return 0;
 		else
 			return -1;
@@ -433,7 +433,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
 	int wmScaleWidth, wmScaleHeight;
 	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
 
-	icon_size = wPreferences.switch_panel_icon_size;
+	icon_size = w_global.config->switch_panel_icon_size;
 	icon_tile_size = (short int)(((float)icon_size * 1.2F) + 0.5F);
 	border_space = WMScaleY(10);
 	label_height = WMScaleY(25);
@@ -640,7 +640,7 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 	if (count == 0)
 		return NULL;
 
-	if (!wPreferences.cycle_ignore_minimized)
+	if (!w_global.config->cycle_ignore_minimized)
 		ignore_minimized = False;
 
 	if (ignore_minimized && canReceiveFocus(WMGetFromArray(panel->windows, (count + panel->current) % count)) < 0)

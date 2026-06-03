@@ -474,7 +474,7 @@ static int showIconFor(WMScreen *scrPtr, InspectorPanel *panel, const char *wm_i
 		WMSetTextFieldText(panel->fileText, file);
 
 	if (file) {
-		path = FindImage(wPreferences.icon_path, file);
+		path = FindImage(w_global.config->icon_path, file);
 
 		if (!path) {
 			char *buf;
@@ -1246,7 +1246,7 @@ void wShowInspectorForWindow(WWindow *wwin)
 	if (wwin->flags.inspector_open)
 		return;
 
-	WMSetBalloonEnabled(wwin->screen_ptr->wmscreen, wPreferences.help_balloon);
+	WMSetBalloonEnabled(wwin->screen_ptr->wmscreen, w_global.config->help_balloon);
 
 	make_keys();
 	wwin->flags.inspector_open = 1;

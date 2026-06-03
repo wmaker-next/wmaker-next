@@ -412,12 +412,12 @@ static RImage *findBestIcon(const uint32_t *data, size_t items)
 	RImage *src_image, *ret_image;
 	double f;
 
-	if (wPreferences.enforce_icon_margin) {
+	if (w_global.config->enforce_icon_margin) {
 
 		/* better use only 75% of icon_size. For 64x64 this means 48x48
 		 * This leaves room around the icon for the miniwindow title and
 		 * results in better overall aesthetics -Dan */
-		wanted = (int)((double)wPreferences.icon_size * 0.75 + 0.5);
+		wanted = (int)((double)w_global.config->icon_size * 0.75 + 0.5);
 
 		/* the size should be a multiple of 4 */
 		wanted = (wanted >> 2) << 2;
@@ -426,7 +426,7 @@ static RImage *findBestIcon(const uint32_t *data, size_t items)
 
 		/* This is the "old" approach, which tries to find the largest
 		 * icon that still fits into icon_size. */
-		wanted = wPreferences.icon_size;
+		wanted = w_global.config->icon_size;
 
 	}
 
@@ -526,7 +526,7 @@ RImage *get_window_image_from_x11(Window window)
 		return NULL;
 
 	/* Resize the image to the correct value */
-	image = wIconValidateIconSize(image, wPreferences.icon_size);
+	image = wIconValidateIconSize(image, w_global.config->icon_size);
 
 	return image;
 }
@@ -1054,7 +1054,7 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 		Atom state[15];	/* nr of defined state atoms */
 		int i = 0;
 
-		if (changedWorkspace || (wPreferences.sticky_icons && !IS_OMNIPRESENT(wwin)))
+		if (changedWorkspace || (w_global.config->sticky_icons && !IS_OMNIPRESENT(wwin)))
 			updateWorkspaceHint(wwin, False, False);
 
 		if (IS_OMNIPRESENT(wwin))
@@ -1073,7 +1073,7 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 			state[i++] = net_wm_state_hidden;
 			state[i++] = net_wm_state_skip_pager;
 
-			if (wwin->flags.miniaturized && wPreferences.sticky_icons) {
+			if (wwin->flags.miniaturized && w_global.config->sticky_icons) {
 				if (!IS_OMNIPRESENT(wwin))
 					updateWorkspaceHint(wwin, True, False);
 				state[i++] = net_wm_state_sticky;

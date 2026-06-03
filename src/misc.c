@@ -56,7 +56,7 @@
 #include "shutdown.h"
 
 
-#define ICON_SIZE wPreferences.icon_size
+#define ICON_SIZE w_global.config->icon_size
 
 /**** Local prototypes *****/
 static void UnescapeWM_CLASS(const char *str, char **name, char **class);
@@ -133,7 +133,7 @@ static void eatExpose(void)
 void move_window(Window win, int from_x, int from_y, int to_x, int to_y)
 {
 #ifdef USE_ANIMATIONS
-	if (wPreferences.no_animations)
+	if (w_global.config->no_animations)
 		XMoveWindow(dpy, win, to_x, to_y);
 	else
 		slide_window(win, from_x, from_y, to_x, to_y);
@@ -171,9 +171,9 @@ void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int t
 		{ICON_SLIDE_DELAY_US, ICON_SLIDE_STEPS_US, ICON_SLIDE_SLOWDOWN_US}
 	};
 
-	slide_slowdown = apars[(int)wPreferences.icon_slide_speed].slowdown;
-	slide_steps = apars[(int)wPreferences.icon_slide_speed].steps;
-	slide_delay = apars[(int)wPreferences.icon_slide_speed].delay;
+	slide_slowdown = apars[(int)w_global.config->icon_slide_speed].slowdown;
+	slide_steps = apars[(int)w_global.config->icon_slide_speed].steps;
+	slide_delay = apars[(int)w_global.config->icon_slide_speed].delay;
 
 	dx_int = to_x - from_x;
 	dy_int = to_y - from_y;
@@ -716,7 +716,7 @@ void ExecuteExitCommand(WScreen *scr, long quickmode)
 	} else {
 		int r, oldSaveSessionFlag;
 
-		oldSaveSessionFlag = wPreferences.save_session_on_exit;
+		oldSaveSessionFlag = w_global.config->save_session_on_exit;
 		r = wExitDialog(scr, _("Exit"),
 				_("Are you sure you want to quit Window Maker?"), _("Exit"), _("Cancel"), NULL);
 
@@ -725,7 +725,7 @@ void ExecuteExitCommand(WScreen *scr, long quickmode)
 		} else if (r == WAPRAlternate) {
 			/* Don't modify the "save session on exit" flag if the
 			 * user canceled the operation. */
-			wPreferences.save_session_on_exit = oldSaveSessionFlag;
+			w_global.config->save_session_on_exit = oldSaveSessionFlag;
 		}
 	}
 	if (result == R_EXIT)
@@ -1054,10 +1054,10 @@ Bool start_bg_helper(WScreen *scr)
 		return False;
 	}
 
-	dither = wPreferences.no_dithering ? "-m" : "-d";
+	dither = w_global.config->disable_dithering ? "-m" : "-d";
 	helper_argv[0] = "wmsetbg";
 	helper_argv[1] = "-helper";
-	if (wPreferences.smooth_workspace_back) {
+	if (w_global.config->smooth_workspace_back) {
 		helper_argv[2] = "-S";
 		helper_argv[3] = (char *)dither;
 		helper_argv[4] = NULL;

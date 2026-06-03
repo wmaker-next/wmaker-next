@@ -137,7 +137,7 @@ static void showPosition(WWindow * wwin, int x, int y)
 {
 	WScreen *scr = wwin->screen_ptr;
 
-	if (wPreferences.move_display == WDIS_NEW) {
+	if (w_global.config->move_display == WDIS_NEW) {
 #if 0
 		int width = wwin->frame->core->width;
 		int height = wwin->frame->core->height;
@@ -161,25 +161,25 @@ static void cyclePositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 	WScreen *scr = wwin->screen_ptr;
 	WMRect rect;
 
-	wPreferences.move_display++;
-	wPreferences.move_display %= NUM_DISPLAYS;
+	w_global.config->move_display++;
+	w_global.config->move_display %= NUM_DISPLAYS;
 
-	if (wPreferences.move_display == WDIS_NEW) {
-		wPreferences.move_display++;
-		wPreferences.move_display %= NUM_DISPLAYS;
+	if (w_global.config->move_display == WDIS_NEW) {
+		w_global.config->move_display++;
+		w_global.config->move_display %= NUM_DISPLAYS;
 	}
 
-	if (wPreferences.move_display == WDIS_NONE) {
+	if (w_global.config->move_display == WDIS_NONE) {
 		WMUnmapWidget(scr->gview);
 	} else {
-		if (wPreferences.move_display == WDIS_CENTER) {
+		if (w_global.config->move_display == WDIS_CENTER) {
 			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 			moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
 						    rect.pos.y + rect.size.height / 2);
-		} else if (wPreferences.move_display == WDIS_TOPLEFT) {
+		} else if (w_global.config->move_display == WDIS_TOPLEFT) {
 			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 			moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-		} else if (wPreferences.move_display == WDIS_FRAME_CENTER) {
+		} else if (w_global.config->move_display == WDIS_FRAME_CENTER) {
 			moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
 		}
 		WMMapWidget(scr->gview);
@@ -191,16 +191,16 @@ static void mapPositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 	WScreen *scr = wwin->screen_ptr;
 	WMRect rect;
 
-	if (wPreferences.move_display == WDIS_NEW || wPreferences.move_display == WDIS_NONE) {
+	if (w_global.config->move_display == WDIS_NEW || w_global.config->move_display == WDIS_NONE) {
 		return;
-	} else if (wPreferences.move_display == WDIS_CENTER) {
+	} else if (w_global.config->move_display == WDIS_CENTER) {
 		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 		moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
 					    rect.pos.y + rect.size.height / 2);
-	} else if (wPreferences.move_display == WDIS_TOPLEFT) {
+	} else if (w_global.config->move_display == WDIS_TOPLEFT) {
 		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 		moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-	} else if (wPreferences.move_display == WDIS_FRAME_CENTER) {
+	} else if (w_global.config->move_display == WDIS_FRAME_CENTER) {
 		moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
 	}
 	WMMapWidget(scr->gview);
@@ -232,7 +232,7 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 	ty = y1 + wwin->frame->top_width;
 	by = y2 - wwin->frame->bottom_width;
 
-	if (wPreferences.size_display == WDIS_NEW) {
+	if (w_global.config->size_display == WDIS_NEW) {
 		fw = XTextWidth(scr->tech_draw_font, "8888", 4);
 		fh = scr->tech_draw_font->ascent + scr->tech_draw_font->descent;
 
@@ -370,20 +370,20 @@ static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int
 	WScreen *scr = wwin->screen_ptr;
 	WMRect rect;
 
-	wPreferences.size_display++;
-	wPreferences.size_display %= NUM_DISPLAYS;
+	w_global.config->size_display++;
+	w_global.config->size_display %= NUM_DISPLAYS;
 
-	if (wPreferences.size_display == WDIS_NEW || wPreferences.size_display == WDIS_NONE) {
+	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE) {
 		WMUnmapWidget(scr->gview);
 	} else {
-		if (wPreferences.size_display == WDIS_CENTER) {
+		if (w_global.config->size_display == WDIS_CENTER) {
 			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 			moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
 						    rect.pos.y + rect.size.height / 2);
-		} else if (wPreferences.size_display == WDIS_TOPLEFT) {
+		} else if (w_global.config->size_display == WDIS_TOPLEFT) {
 			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 			moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-		} else if (wPreferences.size_display == WDIS_FRAME_CENTER) {
+		} else if (w_global.config->size_display == WDIS_FRAME_CENTER) {
 			moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
 		}
 		WMMapWidget(scr->gview);
@@ -396,17 +396,17 @@ static void mapGeometryDisplay(WWindow * wwin, int x, int y, int w, int h)
 	WScreen *scr = wwin->screen_ptr;
 	WMRect rect;
 
-	if (wPreferences.size_display == WDIS_NEW || wPreferences.size_display == WDIS_NONE)
+	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE)
 		return;
 
-	if (wPreferences.size_display == WDIS_CENTER) {
+	if (w_global.config->size_display == WDIS_CENTER) {
 		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 		moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
 					    rect.pos.y + rect.size.height / 2);
-	} else if (wPreferences.size_display == WDIS_TOPLEFT) {
+	} else if (w_global.config->size_display == WDIS_TOPLEFT) {
 		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
 		moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-	} else if (wPreferences.size_display == WDIS_FRAME_CENTER) {
+	} else if (w_global.config->size_display == WDIS_FRAME_CENTER) {
 		moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
 	}
 	WMMapWidget(scr->gview);
@@ -462,14 +462,14 @@ static void drawTransparentFrame(WWindow * wwin, int x, int y, int width, int he
 		fb = wwin->screen_ptr->frame_border_width;
 
 	if (HAS_TITLEBAR(wwin) && !wwin->flags.shaded) {
-		h = WMFontHeight(wwin->screen_ptr->title_font) + (wPreferences.window_title_clearance +
+		h = WMFontHeight(wwin->screen_ptr->title_font) + (w_global.config->window_title_clearance +
 								  TITLEBAR_EXTEND_SPACE) * 2;
 
-		if (h > wPreferences.window_title_max_height)
-			h = wPreferences.window_title_max_height;
+		if (h > w_global.config->window_title_max_height)
+			h = w_global.config->window_title_max_height;
 
-		if (h < wPreferences.window_title_min_height)
-			h = wPreferences.window_title_min_height;
+		if (h < w_global.config->window_title_min_height)
+			h = w_global.config->window_title_min_height;
 	}
 	if (HAS_RESIZEBAR(wwin) && !wwin->flags.shaded) {
 		/* Can't use wwin-frame->bottom_width because, in some cases
@@ -852,21 +852,21 @@ static Bool checkWorkspaceChange(WWindow * wwin, MoveData * data, Bool opaqueMov
 			crossWorkspace(scr, wwin, opaqueMove, scr->current_workspace - 1, True);
 			changed = True;
 			data->rubCount = 0;
-		} else if (scr->current_workspace == 0 && wPreferences.ws_cycle) {
+		} else if (scr->current_workspace == 0 && w_global.config->ws_cycle) {
 			crossWorkspace(scr, wwin, opaqueMove, scr->workspace_count - 1, True);
 			changed = True;
 			data->rubCount = 0;
 		}
 	} else if (data->mouseX >= scr->scr_width - 2) {
 		if (scr->current_workspace == scr->workspace_count - 1) {
-			if (wPreferences.ws_cycle || scr->workspace_count == MAX_WORKSPACES) {
+			if (w_global.config->ws_cycle || scr->workspace_count == MAX_WORKSPACES) {
 				crossWorkspace(scr, wwin, opaqueMove, 0, False);
 				changed = True;
 				data->rubCount = 0;
 			}
 			/* if user insists on trying to go to next workspace even when
 			 * it's already the last, create a new one */
-			else if (data->omouseX == data->mouseX && wPreferences.ws_advance) {
+			else if (data->omouseX == data->mouseX && w_global.config->ws_advance) {
 
 				/* detect user "rubbing" the window against the edge */
 				if (data->rubCount > 0 && data->omouseY - data->mouseY > MOVE_THRESHOLD) {
@@ -938,8 +938,8 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 		int edge_t, edge_b;
 		int resist;
 
-		resist = WIN_RESISTANCE(wPreferences.edge_resistance);
-		attract = wPreferences.attract;
+		resist = WIN_RESISTANCE(w_global.config->edge_resistance);
+		attract = w_global.config->attract;
 		/* horizontal movement: check horizontal edge resistances */
 		if (dx || dy) {
 			WMRect rect;
@@ -965,7 +965,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 					      || (data->realY + data->winHeight) < WTOP(looprw))) {
 						if (attract || ((data->realX < (WRIGHT(looprw) + 2)) && dx < 0)) {
 							l_edge = WRIGHT(looprw) + 1;
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 						}
 						break;
 					}
@@ -977,7 +977,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						if (!(data->realY > WBOTTOM(looprw)
 						      || (data->realY + data->winHeight) < WTOP(looprw))) {
 							r_edge = WRIGHT(looprw) + 1;
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 							break;
 						}
 					}
@@ -995,7 +995,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						    || (((data->realX + data->winWidth) > (WLEFT(looprw) - 1))
 							&& dx > 0)) {
 							edge_r = WLEFT(looprw);
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 						}
 						break;
 					}
@@ -1007,7 +1007,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						if (!(data->realY > WBOTTOM(looprw)
 						      || (data->realY + data->winHeight) < WTOP(looprw))) {
 							edge_l = WLEFT(looprw);
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 							break;
 						}
 					}
@@ -1064,7 +1064,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 					      || (data->realX + data->winWidth) < WLEFT(looprw))) {
 						if (attract || ((data->realY < (WBOTTOM(looprw) + 2)) && dy < 0)) {
 							t_edge = WBOTTOM(looprw) + 1;
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 						}
 						break;
 					}
@@ -1076,7 +1076,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						if (!(data->realX > WRIGHT(looprw)
 						      || (data->realX + data->winWidth) < WLEFT(looprw))) {
 							b_edge = WBOTTOM(looprw) + 1;
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 							break;
 						}
 					}
@@ -1094,7 +1094,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						    || (((data->realY + data->winHeight) > (WTOP(looprw) - 1))
 							&& dy > 0)) {
 							edge_b = WTOP(looprw);
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 						}
 						break;
 					}
@@ -1106,7 +1106,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 						if (!(data->realX > WRIGHT(looprw)
 						      || (data->realX + data->winWidth) < WLEFT(looprw))) {
 							edge_t = WTOP(looprw);
-							resist = WIN_RESISTANCE(wPreferences.edge_resistance);
+							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 							break;
 						}
 					}
@@ -1160,7 +1160,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 
 	if (data->realX != newX || data->realY != newY) {
 
-		if (wPreferences.move_display == WDIS_NEW && !scr->selected_windows) {
+		if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
 			showPosition(wwin, data->realX, data->realY);
 		}
 		if (opaqueMove) {
@@ -1171,7 +1171,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 				   data->realX - wwin->frame_x, data->realY - wwin->frame_y);
 		}
 
-		if (!scr->selected_windows && wPreferences.move_display == WDIS_FRAME_CENTER) {
+		if (!scr->selected_windows && w_global.config->move_display == WDIS_FRAME_CENTER) {
 
 			moveGeometryDisplayCentered(scr, newX + data->winWidth / 2, newY + data->winHeight / 2);
 		}
@@ -1223,7 +1223,7 @@ static void draw_snap_frame(WWindow *wwin, int direction)
 		break;
 
 	case SNAP_TOP:
-		if (!wPreferences.snap_to_top_maximizes_fullscreen)
+		if (!w_global.config->snap_to_top_maximizes_fullscreen)
 			height /= 2;
 		break;
 
@@ -1264,8 +1264,8 @@ static int get_snap_direction(WScreen *scr, int x, int y)
 {
 	int edge, corner;
 
-	edge = wPreferences.snap_edge_detect;
-	corner = wPreferences.snap_corner_detect;
+	edge = w_global.config->snap_edge_detect;
+	corner = w_global.config->snap_corner_detect;
 
 	if (x < corner && y < corner)
 		return SNAP_TOPLEFT;
@@ -1311,7 +1311,7 @@ static void do_snap(WWindow *wwin, MoveData *data, Bool opaqueMove)
 		directions = MAX_VERTICAL | MAX_RIGHTHALF;
 		break;
 	case SNAP_TOP:
-		if (wPreferences.snap_to_top_maximizes_fullscreen)
+		if (w_global.config->snap_to_top_maximizes_fullscreen)
 			directions = MAX_HORIZONTAL | MAX_VERTICAL;
 		else
 			directions = MAX_HORIZONTAL | MAX_TOPHALF;
@@ -1359,13 +1359,13 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	int original_h = h;
 	int done, off_x, off_y, ww, wh;
 	int kspeed = _KS;
-	int opaqueMoveResize = wPreferences.opaque_move_resize_keyboard;
+	int opaqueMoveResize = w_global.config->opaque_move_resize_keyboard;
 	Time lastTime = 0;
 	KeyCode shiftl, shiftr, ctrlmode;
 	KeySym keysym = NoSymbol;
 	int moment = 0;
 	int modes = ((IS_MOVABLE(wwin) ? MOVABLE_BIT : 0) | (IS_RESIZABLE(wwin) ? RESIZABLE_BIT : 0));
-	int head = ((wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1)
+	int head = ((w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 
@@ -1542,7 +1542,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 				wWindowConstrainSize(wwin, (unsigned int *)&ww, (unsigned int *)&wh);
 				wh += vert_border;
 
-				if (wPreferences.ws_cycle) {
+				if (w_global.config->ws_cycle) {
 					if (src_x + off_x + ww < 20) {
 						if (!scr->current_workspace)
 							wWorkspaceChange(scr, scr->workspace_count - 1);
@@ -1677,7 +1677,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 				wSetFocusTo(scr, wwin);
 			}
 
-			if (wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1 &&
+			if (w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1 &&
 			    head != wGetHeadForWindow(wwin)) {
 				wArrangeIcons(scr, True);
 			}
@@ -1719,16 +1719,16 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 	int started = 0;
 	int warped = 0;
 	/* This needs not to change while moving, else bad things can happen */
-	int opaqueMove = wPreferences.opaque_move;
+	int opaqueMove = w_global.config->opaque_move;
 	MoveData moveData;
-	int head = ((wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1)
+	int head = ((w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 
 	if (!IS_MOVABLE(wwin))
 		return False;
 
-	if (wPreferences.opaque_move && !wPreferences.use_saveunders) {
+	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
 		XSetWindowAttributes attr;
 
 		attr.save_under = True;
@@ -1777,14 +1777,14 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 						   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
 				}
 
-				if (wPreferences.move_display == WDIS_NEW && !scr->selected_windows) {
+				if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
 					showPosition(wwin, moveData.realX, moveData.realY);
 					XUngrabServer(dpy);
 				}
 				cyclePositionDisplay(wwin, moveData.realX, moveData.realY,
 						     moveData.winWidth, moveData.winHeight);
 
-				if (wPreferences.move_display == WDIS_NEW && !scr->selected_windows) {
+				if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
 					XGrabServer(dpy);
 					showPosition(wwin, moveData.realX, moveData.realY);
 				}
@@ -1799,12 +1799,12 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 			break;
 
 		case MotionNotify:
-			if (IS_RESIZABLE(wwin) && wPreferences.window_snapping) {
+			if (IS_RESIZABLE(wwin) && w_global.config->window_snapping) {
 				int snap_direction;
 
 				snap_direction = get_snap_direction(scr, moveData.mouseX, moveData.mouseY);
 
-				if (!wPreferences.no_autowrap &&
+				if (!w_global.config->no_autowrap &&
 				    snap_direction != SNAP_TOP &&
 				    snap_direction != SNAP_BOTTOM)
 					snap_direction = SNAP_NONE;
@@ -1827,17 +1827,17 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 
 				updateWindowPosition(wwin, &moveData,
 						     scr->selected_windows == NULL
-						     && wPreferences.edge_resistance > 0,
+						     && w_global.config->edge_resistance > 0,
 						     opaqueMove, event.xmotion.x_root, event.xmotion.y_root);
 
 				/* redraw snap frame */
 				if (moveData.snap)
 					draw_snap_frame(wwin, moveData.snap);
 
-				if (!warped && !wPreferences.no_autowrap) {
+				if (!warped && !w_global.config->no_autowrap) {
 					int oldWorkspace = scr->current_workspace;
 
-					if (wPreferences.move_display == WDIS_NEW && !scr->selected_windows) {
+					if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
 						showPosition(wwin, moveData.realX, moveData.realY);
 						XUngrabServer(dpy);
 					}
@@ -1848,7 +1848,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 					}
 					if (checkWorkspaceChange(wwin, &moveData, opaqueMove)) {
 						if (scr->current_workspace != oldWorkspace
-						    && wPreferences.edge_resistance > 0
+						    && w_global.config->edge_resistance > 0
 						    && scr->selected_windows == NULL)
 							updateMoveData(wwin, &moveData);
 						warped = 1;
@@ -1858,7 +1858,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 							   moveData.realX - wwin->frame_x,
 							   moveData.realY - wwin->frame_y);
 					}
-					if (wPreferences.move_display == WDIS_NEW && !scr->selected_windows) {
+					if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
 						XSync(dpy, False);
 						showPosition(wwin, moveData.realX, moveData.realY);
 						XGrabServer(dpy);
@@ -1870,7 +1870,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 				   || abs(ev->xmotion.y_root - event.xmotion.y_root) >= MOVE_THRESHOLD) {
 
 				if (wwin->flags.maximized) {
-					if (wPreferences.drag_maximized_window == DRAGMAX_RESTORE) {
+					if (w_global.config->drag_maximized_window == DRAGMAX_RESTORE) {
 						float titlebar_ratio;
 						int new_x, new_y;
 
@@ -1883,7 +1883,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 						moveData.realX = moveData.calcX = wwin->frame_x;
 						moveData.realY = moveData.calcY = wwin->frame_y;
 					}
-					if (wPreferences.drag_maximized_window == DRAGMAX_UNMAXIMIZE) {
+					if (w_global.config->drag_maximized_window == DRAGMAX_UNMAXIMIZE) {
 						wwin->flags.maximized = 0;
 						wwin->flags.old_maximized = 0;
 					}
@@ -1902,10 +1902,10 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 				if (started && !opaqueMove)
 					drawFrames(wwin, scr->selected_windows, 0, 0);
 
-				if (!opaqueMove || (wPreferences.move_display == WDIS_NEW
+				if (!opaqueMove || (w_global.config->move_display == WDIS_NEW
 						    && !scr->selected_windows)) {
 					XGrabServer(dpy);
-					if (wPreferences.move_display == WDIS_NEW)
+					if (w_global.config->move_display == WDIS_NEW)
 						showPosition(wwin, moveData.realX, moveData.realY);
 				}
 			}
@@ -1941,7 +1941,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 					wWindowChangeWorkspace(wwin, scr->current_workspace);
 					wSetFocusTo(scr, wwin);
 				}
-				if (wPreferences.move_display == WDIS_NEW)
+				if (w_global.config->move_display == WDIS_NEW)
 					showPosition(wwin, moveData.realX, moveData.realY);
 
 				/* discard all enter/leave events that happened until
@@ -1988,7 +1988,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 		}
 	}
 
-	if (wPreferences.opaque_move && !wPreferences.use_saveunders) {
+	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
 		XSetWindowAttributes attr;
 
 		attr.save_under = False;
@@ -1998,7 +1998,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 
 	freeMoveData(&moveData);
 
-	if (started && wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1 &&
+	if (started && w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1 &&
 	    head != wGetHeadForWindow(wwin)) {
 		wArrangeIcons(scr, True);
 	}
@@ -2093,10 +2093,10 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	int orig_fh = fh;
 	int original_fw = fw;
 	int original_fh = fh;
-	int head = ((wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1)
+	int head = ((w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
-	int opaqueResize = wPreferences.opaque_resize;
+	int opaqueResize = w_global.config->opaque_resize;
 
 	if (!IS_RESIZABLE(wwin))
 		return;
@@ -2271,14 +2271,14 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				if (!opaqueResize)
 					drawTransparentFrame(wwin, orig_fx, orig_fy, orig_fw, orig_fh);
 
-				if (wPreferences.size_display == WDIS_FRAME_CENTER)
+				if (w_global.config->size_display == WDIS_FRAME_CENTER)
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
 
 				if (!opaqueResize)
 					drawTransparentFrame(wwin, fx, fy, fw, fh);
 
 				if (fh != orig_fh || fw != orig_fw) {
-					if (wPreferences.size_display == WDIS_NEW)
+					if (w_global.config->size_display == WDIS_NEW)
 						showGeometry(wwin, orig_fx, orig_fy, orig_fx + orig_fw,
 							     orig_fy + orig_fh, res);
 
@@ -2335,7 +2335,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		}
 	}
 
-	if (wPreferences.auto_arrange_icons && wXineramaHeads(scr) > 1 && head != wGetHeadForWindow(wwin))
+	if (w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1 && head != wGetHeadForWindow(wwin))
 		wArrangeIcons(scr, True);
 }
 
@@ -2463,14 +2463,14 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 		return;
 	}
 	if (HAS_TITLEBAR(wwin)) {
-		h = WMFontHeight(scr->title_font) + (wPreferences.window_title_clearance +
+		h = WMFontHeight(scr->title_font) + (w_global.config->window_title_clearance +
 						     TITLEBAR_EXTEND_SPACE) * 2;
 
-		if (h > wPreferences.window_title_max_height)
-			h = wPreferences.window_title_max_height;
+		if (h > w_global.config->window_title_max_height)
+			h = w_global.config->window_title_max_height;
 
-		if (h < wPreferences.window_title_min_height)
-			h = wPreferences.window_title_min_height;
+		if (h < w_global.config->window_title_min_height)
+			h = w_global.config->window_title_min_height;
 
 		height += h;
 	}
@@ -2507,7 +2507,7 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 			x = event.xmotion.x_root;
 			y = event.xmotion.y_root;
 
-			if (wPreferences.move_display == WDIS_FRAME_CENTER)
+			if (w_global.config->move_display == WDIS_FRAME_CENTER)
 				moveGeometryDisplayCentered(scr, x, y + (height - h) / 2);
 
 			showPosition(wwin, x - width / 2, y - h / 2);

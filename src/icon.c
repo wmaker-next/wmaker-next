@@ -184,8 +184,8 @@ static WIcon *icon_create_core(WScreen *scr, int coord_x, int coord_y)
 	icon->core = wCoreCreateTopLevel(scr,
 					 coord_x,
 					 coord_y,
-					 wPreferences.icon_size,
-					 wPreferences.icon_size,
+					 w_global.config->icon_size,
+					 w_global.config->icon_size,
 					 0, scr->w_depth, scr->w_visual, scr->w_colormap,
 					 scr->white_pixel);
 
@@ -246,11 +246,11 @@ void wIconDestroy(WIcon *icon)
 
 static void drawIconTitleBackground(WScreen *scr, Pixmap pixmap, int height)
 {
-	XFillRectangle(dpy, pixmap, scr->icon_title_texture->normal_gc, 0, 0, wPreferences.icon_size, height + 1);
-	XDrawLine(dpy, pixmap, scr->icon_title_texture->light_gc, 0, 0, wPreferences.icon_size, 0);
+	XFillRectangle(dpy, pixmap, scr->icon_title_texture->normal_gc, 0, 0, w_global.config->icon_size, height + 1);
+	XDrawLine(dpy, pixmap, scr->icon_title_texture->light_gc, 0, 0, w_global.config->icon_size, 0);
 	XDrawLine(dpy, pixmap, scr->icon_title_texture->light_gc, 0, 0, 0, height + 1);
 	XDrawLine(dpy, pixmap, scr->icon_title_texture->dim_gc,
-		  wPreferences.icon_size - 1, 0, wPreferences.icon_size - 1, height + 1);
+		  w_global.config->icon_size - 1, 0, w_global.config->icon_size - 1, height + 1);
 }
 
 static void icon_update_pixmap(WIcon *icon, RImage *image)
@@ -283,17 +283,17 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 	}
 
 	if (image) {
-		w = (image->width > wPreferences.icon_size)
-		    ? wPreferences.icon_size : image->width;
-		x = (wPreferences.icon_size - w) / 2;
+		w = (image->width > w_global.config->icon_size)
+		    ? w_global.config->icon_size : image->width;
+		x = (w_global.config->icon_size - w) / 2;
 		sx = (image->width - w) / 2;
 
 		if (icon->show_title)
 			theight = WMFontHeight(scr->icon_title_font);
 
-		h = (image->height + theight > wPreferences.icon_size
-		     ? wPreferences.icon_size - theight : image->height);
-		y = theight + (wPreferences.icon_size - theight - h) / 2;
+		h = (image->height + theight > w_global.config->icon_size
+		     ? w_global.config->icon_size - theight : image->height);
+		y = theight + (w_global.config->icon_size - theight - h) / 2;
 		sy = (image->height - h) / 2;
 
 		RCombineArea(tile, image, sx, sy, w, h, x, y);
@@ -397,11 +397,11 @@ int wIconChangeImageFile(WIcon *icon, const char *file)
 		return 1;
 
 	/* Find the new image */
-	path = FindImage(wPreferences.icon_path, file);
+	path = FindImage(w_global.config->icon_path, file);
 	if (!path)
 		return 0;
 
-	image = get_rimage_from_file(scr, path, wPreferences.icon_size);
+	image = get_rimage_from_file(scr, path, w_global.config->icon_size);
 	if (!image) {
 		wfree(path);
 		return 0;
@@ -602,7 +602,7 @@ void wIconSelect(WIcon *icon)
 
 	if (icon->selected) {
 		icon->step = 0;
-		if (!wPreferences.dont_blink)
+		if (!w_global.config->dont_blink)
 			icon->handlerID = WMAddTimerHandler(10, cycleColor, icon);
 		else
 			XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
@@ -646,8 +646,8 @@ void set_icon_minipreview(WIcon *icon, RImage *image)
 	RImage *scaled_mini_preview;
 	WScreen *scr = icon->core->screen_ptr;
 
-	scaled_mini_preview = RSmoothScaleImage(image, wPreferences.minipreview_size - 2 * MINIPREVIEW_BORDER,
-	                                  wPreferences.minipreview_size - 2 * MINIPREVIEW_BORDER);
+	scaled_mini_preview = RSmoothScaleImage(image, w_global.config->minipreview_size - 2 * MINIPREVIEW_BORDER,
+	                                  w_global.config->minipreview_size - 2 * MINIPREVIEW_BORDER);
 
 	if (RConvertImage(scr->rcontext, scaled_mini_preview, &tmp)) {
 		if (icon->mini_preview != None)
@@ -784,8 +784,8 @@ static void set_dockapp_in_icon(WIcon *icon)
 
 	/* Put the dock application in the icon */
 	XReparentWindow(dpy, icon->icon_win, icon->core->window,
-			(wPreferences.icon_size - w) / 2,
-			(wPreferences.icon_size - h) / 2);
+			(w_global.config->icon_size - w) / 2,
+			(w_global.config->icon_size - h) / 2);
 
 	/* Show it and save */
 	XMapWindow(dpy, icon->icon_win);
@@ -823,8 +823,8 @@ RImage *get_rimage_icon_from_wm_hints(WIcon *icon)
 	if (!image)
 		return NULL;
 
-	/* Resize the icon to the wPreferences.icon_size size */
-	image = wIconValidateIconSize(image, wPreferences.icon_size);
+	/* Resize the icon to the w_global.config->icon_size size */
+	image = wIconValidateIconSize(image, w_global.config->icon_size);
 
 	return image;
 }
@@ -838,7 +838,7 @@ static void update_icon_title(WIcon *icon)
 
 	/* draw the icon title */
 	if (icon->show_title && icon->icon_name != NULL) {
-		tmp = ShrinkString(scr->icon_title_font, icon->icon_name, wPreferences.icon_size - 4);
+		tmp = ShrinkString(scr->icon_title_font, icon->icon_name, w_global.config->icon_size - 4);
 		w = WMWidthOfString(scr->icon_title_font, tmp, l = strlen(tmp));
 
 		if (w > icon->core->width - 4)
@@ -978,9 +978,9 @@ static void miniwindowMouseDown(WObjDescriptor *desc, XEvent *event)
 			wwin->icon_y = y;
 			XUngrabPointer(dpy, CurrentTime);
 
-			if (wPreferences.auto_arrange_icons)
+			if (w_global.config->auto_arrange_icons)
 				wArrangeIcons(wwin->screen_ptr, True);
-			if (wPreferences.single_click && !hasMoved)
+			if (w_global.config->single_click && !hasMoved)
 				miniwindowDblClick(desc, event);
 			return;
 
@@ -999,7 +999,7 @@ void set_icon_image_from_database(WIcon *icon, const char *wm_instance, const ch
 		 * release those before replacing them */
 		unset_icon_image(icon);
 		icon->file = wstrdup(file);
-		icon->file_image = get_rimage_from_file(icon->core->screen_ptr, icon->file, wPreferences.icon_size);
+		icon->file_image = get_rimage_from_file(icon->core->screen_ptr, icon->file, w_global.config->icon_size);
 		wfree(file);
 	}
 }

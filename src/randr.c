@@ -511,7 +511,7 @@ static void wRandR_Update(WScreen *scr)
     }
 
     /* When HotplugMonitor is enabled, actively manage CRTC lifecycle */
-    if (wPreferences.hotplug_monitor) {
+    if (w_global.config->hotplug_monitor) {
         Bool changed;
 
         changed  = wRandR_AutoDeactivate(scr, state, sr);
@@ -540,7 +540,7 @@ static void wRandR_Update(WScreen *scr)
 
     /* Move the dock if needed */
     if (scr->dock &&
-        ((scr->xine_info.primary_head != i && wPreferences.keep_dock_on_primary_head) ||
+        ((scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
          scr->dock->x_pos < 0 ||
          scr->dock->x_pos >= scr->scr_width))
         wDockSwap(scr->dock);

@@ -242,7 +242,7 @@ static void allocButtonPixmaps(WScreen * scr)
 	WPixmap *pix;
 
 	/* create predefined pixmaps */
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_CLOSE_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_CLOSE_XPM);
@@ -251,7 +251,7 @@ static void allocButtonPixmaps(WScreen * scr)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_CLOSE] = pix;
 
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_BROKEN_CLOSE_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_BROKEN_CLOSE_XPM);
@@ -260,7 +260,7 @@ static void allocButtonPixmaps(WScreen * scr)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_BROKENCLOSE] = pix;
 
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_ICONIFY_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_ICONIFY_XPM);
@@ -269,7 +269,7 @@ static void allocButtonPixmaps(WScreen * scr)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_ICONIFY] = pix;
 #ifdef XKB_BUTTON_HINT
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP1_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP1_XPM);
@@ -277,7 +277,7 @@ static void allocButtonPixmaps(WScreen * scr)
 	if (pix)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_XKBGROUP1] = pix;
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP2_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP2_XPM);
@@ -285,7 +285,7 @@ static void allocButtonPixmaps(WScreen * scr)
 	if (pix)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_XKBGROUP2] = pix;
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP3_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP3_XPM);
@@ -293,7 +293,7 @@ static void allocButtonPixmaps(WScreen * scr)
 	if (pix)
 		pix->shared = 1;
 	scr->b_pixmaps[WBUT_XKBGROUP3] = pix;
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP4_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP4_XPM);
@@ -303,7 +303,7 @@ static void allocButtonPixmaps(WScreen * scr)
 	scr->b_pixmaps[WBUT_XKBGROUP4] = pix;
 #endif
 
-	if (wPreferences.new_style == TS_NEXT) {
+	if (w_global.config->new_style == TS_NEXT) {
 		pix = wPixmapCreateFromXPMData(scr, NEXT_KILL_XPM);
 	} else {
 		pix = wPixmapCreateFromXPMData(scr, PRED_KILL_XPM);
@@ -322,7 +322,7 @@ static int get_dot_mult(void)
      * a certain icon size is reached (1 for 64, 2 for 128,
      * 3 for 192, and so on).
      */
-    dot_mult = wPreferences.icon_size / 64;
+    dot_mult = w_global.config->icon_size / 64;
 
     if (dot_mult < 1)
         dot_mult = 1;
@@ -353,23 +353,23 @@ static WPixmap *make3Dots(WScreen * scr)
 
     dot_mult = get_dot_mult();
 	gc = scr->copy_gc;
-	pix = XCreatePixmap(dpy, scr->w_win, wPreferences.icon_size, wPreferences.icon_size, scr->w_depth);
+	pix = XCreatePixmap(dpy, scr->w_win, w_global.config->icon_size, w_global.config->icon_size, scr->w_depth);
 	XSetForeground(dpy, gc, scr->black_pixel);
-	XFillRectangle(dpy, pix, gc, 0, 0, wPreferences.icon_size, wPreferences.icon_size);
+	XFillRectangle(dpy, pix, gc, 0, 0, w_global.config->icon_size, w_global.config->icon_size);
 	XSetForeground(dpy, gc, scr->white_pixel);
-	draw_dot(scr, pix, 4 * dot_mult, wPreferences.icon_size - (6 * dot_mult), gc);
-	draw_dot(scr, pix, 9 * dot_mult, wPreferences.icon_size - (6 * dot_mult), gc);
-	draw_dot(scr, pix, 14 * dot_mult, wPreferences.icon_size - (6 * dot_mult), gc);
+	draw_dot(scr, pix, 4 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
+	draw_dot(scr, pix, 9 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
+	draw_dot(scr, pix, 14 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
 
-	mask = XCreatePixmap(dpy, scr->w_win, wPreferences.icon_size, wPreferences.icon_size, 1);
+	mask = XCreatePixmap(dpy, scr->w_win, w_global.config->icon_size, w_global.config->icon_size, 1);
 	gcv.foreground = 0;
 	gcv.graphics_exposures = False;
 	gc2 = XCreateGC(dpy, mask, GCForeground | GCGraphicsExposures, &gcv);
-	XFillRectangle(dpy, mask, gc2, 0, 0, wPreferences.icon_size, wPreferences.icon_size);
+	XFillRectangle(dpy, mask, gc2, 0, 0, w_global.config->icon_size, w_global.config->icon_size);
 	XSetForeground(dpy, gc2, 1);
-	XFillRectangle(dpy, mask, gc2, 4 * dot_mult, wPreferences.icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
-	XFillRectangle(dpy, mask, gc2, 9 * dot_mult, wPreferences.icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
-	XFillRectangle(dpy, mask, gc2, 14 * dot_mult, wPreferences.icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
+	XFillRectangle(dpy, mask, gc2, 4 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
+	XFillRectangle(dpy, mask, gc2, 9 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
+	XFillRectangle(dpy, mask, gc2, 14 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
 
 	XFreeGC(dpy, gc2);
 
@@ -569,8 +569,8 @@ static void createInternalWindows(WScreen * scr)
 	vmask |= CWColormap;
 	attribs.colormap = scr->w_colormap;
 	scr->dock_shadow =
-	    XCreateWindow(dpy, scr->root_win, 0, 0, wPreferences.icon_size,
-			  wPreferences.icon_size, 0, scr->w_depth, CopyFromParent, scr->w_visual, vmask, &attribs);
+	    XCreateWindow(dpy, scr->root_win, 0, 0, w_global.config->icon_size,
+			  w_global.config->icon_size, 0, scr->w_depth, CopyFromParent, scr->w_visual, vmask, &attribs);
 
 	/* workspace name */
 	vmask = CWBackPixel | CWSaveUnder | CWOverrideRedirect | CWColormap | CWBorderPixel;
@@ -690,10 +690,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* screen descriptor for raster graphic library */
 	rattr.flags = RC_RenderMode | RC_ColorsPerChannel | RC_StandardColormap;
-	rattr.render_mode = wPreferences.no_dithering ? RBestMatchRendering : RDitheredRendering;
+	rattr.render_mode = w_global.config->disable_dithering ? RBestMatchRendering : RDitheredRendering;
 
 	/* if the std colormap stuff works ok, this will be ignored */
-	rattr.colors_per_channel = wPreferences.cmap_size;
+	rattr.colors_per_channel = w_global.config->colormap_size;
 	if (rattr.colors_per_channel < 2)
 		rattr.colors_per_channel = 2;
 
@@ -754,8 +754,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	/* create GCs with default values */
 	allocGCs(scr);
 
-	/* read defaults for this screen */
-	wReadDefaults(scr, w_global.config, config, changes);
+	/* read defaults for this screen, old_config is NULL because
+	 * wScreenInit() only runs at first startup */
+	wReadDefaults(scr, NULL, config, changes);
 
 	{
 		XColor xcol;
@@ -788,8 +789,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	/* set icon sizes we can accept from clients */
 	icon_size[0].min_width = 8;
 	icon_size[0].min_height = 8;
-	icon_size[0].max_width = wPreferences.icon_size - 4;
-	icon_size[0].max_height = wPreferences.icon_size - 4;
+	icon_size[0].max_width = w_global.config->icon_size - 4;
+	icon_size[0].max_height = w_global.config->icon_size - 4;
 	icon_size[0].width_inc = 1;
 	icon_size[0].height_inc = 1;
 	XSetIconSizes(dpy, scr->root_win, icon_size, 1);
@@ -830,7 +831,7 @@ void wScreenUpdateRootEventMask(WScreen *scr)
 {
 	long mask = EVENT_MASK;
 
-	if (wPreferences.hot_corners || wPreferences.scrollable_menus)
+	if (w_global.config->hot_corners || w_global.config->scrollable_menus)
 		mask |= PointerMotionMask;
 
 	XSelectInput(dpy, scr->root_win, mask);
@@ -847,8 +848,8 @@ void wScreenUpdateUsableArea(WScreen *scr)
 	WArea area;
 	int i;
 	unsigned long tmp_area, best_area = 0;
-	unsigned int size = wPreferences.workspace_border_size;
-	unsigned int position = wPreferences.workspace_border_position;
+	unsigned int size = w_global.config->workspace_border_size;
+	unsigned int position = w_global.config->workspace_border_position;
 
 	for (i = 0; i < wXineramaHeads(scr); ++i) {
 		WMRect rect = wGetRectForHead(scr, i);
@@ -866,17 +867,17 @@ void wScreenUpdateUsableArea(WScreen *scr)
 
 		scr->usableArea[i] = scr->totalUsableArea[i];
 
-		if (wPreferences.no_window_over_icons) {
-			if (wPreferences.icon_yard & IY_VERT) {
-				if (wPreferences.icon_yard & IY_RIGHT)
-					scr->totalUsableArea[i].x2 -= wPreferences.icon_size;
+		if (w_global.config->no_window_over_icons) {
+			if (w_global.config->icon_yard & IY_VERT) {
+				if (w_global.config->icon_yard & IY_RIGHT)
+					scr->totalUsableArea[i].x2 -= w_global.config->icon_size;
 				else
-					scr->totalUsableArea[i].x1 += wPreferences.icon_size;
+					scr->totalUsableArea[i].x1 += w_global.config->icon_size;
 			} else {
-				if (wPreferences.icon_yard & IY_TOP)
-					scr->totalUsableArea[i].y1 += wPreferences.icon_size;
+				if (w_global.config->icon_yard & IY_TOP)
+					scr->totalUsableArea[i].y1 += w_global.config->icon_size;
 				else
-					scr->totalUsableArea[i].y2 -= wPreferences.icon_size;
+					scr->totalUsableArea[i].y2 -= w_global.config->icon_size;
 			}
 		}
 
@@ -910,7 +911,7 @@ void wScreenUpdateUsableArea(WScreen *scr)
 		}
 	}
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(scr, True);
 }
 
@@ -1018,7 +1019,7 @@ void wScreenSaveState(WScreen * scr)
 	}
 
 
-	if (wPreferences.save_session_on_exit) {
+	if (w_global.config->save_session_on_exit) {
 		wSessionSaveState(scr);
 	} else {
 		foo = WMGetFromPLDictionary(old_state, dApplications);
@@ -1296,7 +1297,7 @@ void ScreenCapture(WScreen *scr, int mode)
 
 	s = time(NULL);
 	tm_info = localtime(&s);
-	strftime(filename_date_part, sizeof(filename_date_part), wPreferences.screenshot_filename_template, tm_info);
+	strftime(filename_date_part, sizeof(filename_date_part), w_global.config->screenshot_filename_template, tm_info);
 
 	if (strchr(filename_date_part, '/') != NULL) {
 		wfree(screenshot_dir);

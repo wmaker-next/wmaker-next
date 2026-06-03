@@ -123,7 +123,7 @@ enum {
 	WCFG_REFRESH_FRAME_BORDER = WCFG_REFRESH_MENU_FONT | WCFG_REFRESH_WINDOW_FONT
 };
 
-#define WCFG_ENUM_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh, bridge, pref) \
+#define WCFG_ENUM_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	WCFG_KEY_##K,
 #define WCFG_ENUM_KB_ROW(K, name, def, wkbd) \
 	WCFG_KEY_##K,
@@ -141,7 +141,7 @@ typedef enum {
 #define WCFG_CHANGE_WORD(key) ((unsigned int)(key) / 32u)
 #define WCFG_CHANGE_BIT(key) (1u << ((unsigned int)(key) % 32u))
 
-#define WCFG_STRUCT_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh, bridge, pref) \
+#define WCFG_STRUCT_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	WCFG_CTYPE_##T field;
 
 typedef struct WConfig {
@@ -162,7 +162,6 @@ void wConfigDestroy(WConfig *config);
 Bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
 		 WConfigChanges *changes);
 Bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key);
-Bool wConfigRuntimePreferenceCopiesAreValid(void);
 
 void wConfigApplyStatic(const WConfig *config);
 unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
@@ -210,7 +209,7 @@ unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
 void wConfigApplyStaticDefaults(WMPropList *dict);
 void wConfigPrepareRuntimeDefaults(WMPropList *new_dict,
 				   const WConfig *old_config,
-				   const WConfig *new_config,
+				   WConfig *new_config,
 				   WConfigChanges *changes);
 /* Test convenience wrapper; production reloads prepare one diff and adopt it. */
 unsigned int wConfigApplyRuntimeDefaults(WScreen *scr, WMPropList *new_dict);

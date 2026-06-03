@@ -68,7 +68,7 @@ static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
 	wWindowFocus(newFocused, oldFocused);
 	oldFocused = newFocused;
 
-	if (wPreferences.circ_raise) {
+	if (w_global.config->circ_raise) {
 		CommitStacking(scr);
 
 		if (!esc_cancel)
@@ -127,7 +127,7 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 	oldFocused = wwin;
 
 	if (swpanel) {
-		if (wwin->flags.mapped && !wPreferences.panel_only_open)
+		if (wwin->flags.mapped && !w_global.config->panel_only_open)
 			newFocused = wSwitchPanelSelectNext(swpanel, !next, True, False);
 		else
 			newFocused = wSwitchPanelSelectFirst(swpanel, False);
@@ -197,7 +197,7 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 
 		case KeyRelease:
 			if (ev.xkey.keycode == shiftLKey || ev.xkey.keycode == shiftRKey)
-				if (wPreferences.strict_windoze_cycle)
+				if (w_global.config->strict_windoze_cycle)
 					break;
 
 			if (ev.xkey.keycode == leftKey || ev.xkey.keycode == rightKey)

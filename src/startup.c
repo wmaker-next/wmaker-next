@@ -573,23 +573,25 @@ void StartUp(Bool defaultScreenOnly)
 	if (!w_global.domain.wmaker->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WindowMaker");
 
-	/* parse the WindowMaker domain once, the resulting WConfig is reused
-	 * for the static apply, the per-screen runtime apply, and finally
-	 * adopted as w_global.config after the screen loop */
+	/* parse the WindowMaker domain once and adopt it as w_global.config
+	 * immediately so every reader sees the typed values during screen
+	 * init, the same WConfig is then reused for the per-screen runtime
+	 * apply below */
 	WMPropList *wmaker_dict = w_global.domain.wmaker ?
 	    w_global.domain.wmaker->dictionary : NULL;
 	WConfig *new_config = wConfigReadWindowMaker(wmaker_dict);
 	WConfigChanges changes;
 
-	/* read defaults that don't change until a restart and are
-	 * screen independent */
+	wConfigAdoptWindowMaker(new_config);
+
+	/* derive the few startup-only flags that are not direct config reads */
 	wConfigApplyStatic(new_config);
 
 	/* check sanity of some values */
-	if (wPreferences.icon_size < 16) {
+	if (new_config->icon_size < 16) {
 		wwarning(_("icon size is configured to %i, but it's too small. Using 16 instead"),
-			 wPreferences.icon_size);
-		wPreferences.icon_size = 16;
+			 new_config->icon_size);
+		new_config->icon_size = 16;
 	}
 
 	/* init other domains */
@@ -638,9 +640,9 @@ void StartUp(Bool defaultScreenOnly)
 
 	w_global.xext.xkb.supported = XkbQueryExtension(dpy, NULL, &w_global.xext.xkb.event_base, NULL, NULL, NULL);
 #ifdef KEEP_XKB_LOCK_STATUS
-	if (wPreferences.modelock && !w_global.xext.xkb.supported) {
+	if (w_global.config->modelock && !w_global.xext.xkb.supported) {
 		wwarning(_("XKB is not supported. KbdModeLock is automatically disabled."));
-		wPreferences.modelock = 0;
+		w_global.config->modelock = 0;
 	}
 #else
 	if (!w_global.xext.xkb.supported)
@@ -667,7 +669,9 @@ void StartUp(Bool defaultScreenOnly)
 		}
 	}
 
-	wConfigPrepareRuntimeDefaults(wmaker_dict, w_global.config, new_config, &changes);
+	/* old_config is NULL at startup so every key registers as changed
+	 * and the per-screen apply realises every resource */
+	wConfigPrepareRuntimeDefaults(wmaker_dict, NULL, new_config, &changes);
 
 	/* manage the screens */
 	for (j = 0; j < max; j++) {
@@ -686,7 +690,6 @@ void StartUp(Bool defaultScreenOnly)
 		}
 		w_global.screen_count++;
 	}
-	wConfigAdoptWindowMaker(new_config);
 
 	InitializeSwitchMenu();
 

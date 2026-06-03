@@ -273,7 +273,7 @@ void wAppMenuMap(WMenu * menu, WWindow * wwin)
 	if (!menu->flags.mapped) {
 		wMenuMap(menu);
 	}
-	if (wwin && (wPreferences.focus_mode != WKF_CLICK)) {
+	if (wwin && (w_global.config->focus_mode != WKF_CLICK)) {
 		int x, min;
 
 		min = 20;	/* Keep at least 20 pixels visible */

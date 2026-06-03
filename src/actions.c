@@ -75,8 +75,8 @@ static struct {
 	{ SHADE_STEPS_US, SHADE_DELAY_US }
 };
 
-#define SHADE_STEPS	shadePars[(int)wPreferences.shade_speed].steps
-#define SHADE_DELAY	shadePars[(int)wPreferences.shade_speed].delay
+#define SHADE_STEPS	shadePars[(int)w_global.config->shade_speed].steps
+#define SHADE_DELAY	shadePars[(int)w_global.config->shade_speed].delay
 #endif
 
 #define UNSHADE         0
@@ -164,7 +164,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 		if (oapp) {
 			wAppMenuUnmap(oapp->menu);
-			if (wPreferences.highlight_active_app)
+			if (w_global.config->highlight_active_app)
 				wApplicationDeactivate(oapp);
 		}
 
@@ -184,7 +184,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 	if (wwin->flags.mapped && !WFLAGP(wwin, no_focusable)) {
 		/* install colormap if colormap mode is lock mode */
-		if (wPreferences.colormap_mode == WCM_CLICK)
+		if (w_global.config->colormap_mode == WCM_CLICK)
 			wColormapInstallForWindow(scr, wwin);
 
 		/* set input focus */
@@ -228,7 +228,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 		if (oapp && oapp != napp) {
 			wAppMenuUnmap(oapp->menu);
-			if (wPreferences.highlight_active_app)
+			if (w_global.config->highlight_active_app)
 				wApplicationDeactivate(oapp);
 		}
 
@@ -248,7 +248,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		if (wwin->flags.mapped)
 			wAppMenuMap(napp->menu, wwin);
 	}
-	if (napp && wPreferences.highlight_active_app)
+	if (napp && w_global.config->highlight_active_app)
 		wApplicationActivate(napp);
 
 	XFlush(dpy);
@@ -298,7 +298,7 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 			continue;
 
 		/* ignore fully covered windows if cannot raised them */
-		if (!wPreferences.circ_raise && wWindowIsFullyCovered(candidate))
+		if (!w_global.config->circ_raise && wWindowIsFullyCovered(candidate))
 			continue;
 
 		/* relative centre of candidate */
@@ -343,7 +343,7 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 	}
 
 	if (best) {
-		if (wPreferences.circ_raise)
+		if (w_global.config->circ_raise)
 			wRaiseFrame(best->frame->core);
 		wSetFocusTo(scr, best);
 	}
@@ -488,7 +488,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	if (!HAS_BORDER(wwin))
 		has_border = 0;
 
-	if (wPreferences.drag_maximized_window == DRAGMAX_NOMOVE)
+	if (w_global.config->drag_maximized_window == DRAGMAX_NOMOVE)
 		wwin->client_flags.no_movable = 1;
 
 	/* the size to adjust the geometry */
@@ -643,7 +643,7 @@ void handleMaximize(WWindow *wwin, int directions)
 				!(requested & MAX_MAXIMUS))
 			wMaximizeWindow(wwin, MAX_MAXIMUS | flags, head);
 
-		else if (wPreferences.alt_half_maximize &&
+		else if (w_global.config->alt_half_maximize &&
 				current & MAX_HORIZONTAL && current & MAX_VERTICAL &&
 				requested & MAX_HORIZONTAL && requested & MAX_VERTICAL)
 			wUnmaximizeWindow(wwin);
@@ -651,7 +651,7 @@ void handleMaximize(WWindow *wwin, int directions)
 		/* Apply for window state, which is only horizontally or vertically
 		 * maximized. Quarters cannot be handled here, since there is not clear
 		 * on which direction user intend to move such window. */
-		else if (wPreferences.move_half_max_between_heads &&
+		else if (w_global.config->move_half_max_between_heads &&
 				current & (MAX_VERTICAL | MAX_HORIZONTAL)) {
 			if (requested & MAX_LEFTHALF && current & MAX_LEFTHALF) {
 				dest_head = wGetHeadRelativeToCurrentHead(wwin->screen_ptr,
@@ -696,7 +696,7 @@ void handleMaximize(WWindow *wwin, int directions)
 			 * move_half_max_between_heads feature, not from mouse pointer */
 			wMaximizeWindow(wwin, (effective | flags | MAX_KEYBOARD),
 					dest_head);
-		else if (!wPreferences.alt_half_maximize)
+		else if (!w_global.config->alt_half_maximize)
 			wUnmaximizeWindow(wwin);
 
 		return;
@@ -719,28 +719,28 @@ void handleMaximize(WWindow *wwin, int directions)
 	 * head, even if mouse was used for triggering the action. */
 
 	/* Quarters alternative transition. */
-	else if (wPreferences.alt_half_maximize &&
+	else if (w_global.config->alt_half_maximize &&
 			((requested & MAX_LEFTHALF && requested & MAX_TOPHALF &&
 			  current & MAX_RIGHTHALF && current & MAX_TOPHALF) ||
 			(requested & MAX_RIGHTHALF && requested & MAX_TOPHALF &&
 			  current & MAX_LEFTHALF && current & MAX_TOPHALF)))
 		wMaximizeWindow(wwin, (MAX_TOPHALF | MAX_HORIZONTAL | MAX_KEYBOARD),
 				head);
-	else if (wPreferences.alt_half_maximize &&
+	else if (w_global.config->alt_half_maximize &&
 			((requested & MAX_LEFTHALF && requested & MAX_BOTTOMHALF &&
 			 current & MAX_RIGHTHALF && current & MAX_BOTTOMHALF) ||
 			(requested & MAX_RIGHTHALF && requested & MAX_BOTTOMHALF &&
 			 current & MAX_LEFTHALF && current & MAX_BOTTOMHALF)))
 		wMaximizeWindow(wwin, (MAX_BOTTOMHALF | MAX_HORIZONTAL | MAX_KEYBOARD),
 				head);
-	else if (wPreferences.alt_half_maximize &&
+	else if (w_global.config->alt_half_maximize &&
 			((requested & MAX_LEFTHALF && requested & MAX_BOTTOMHALF &&
 			 current & MAX_LEFTHALF && current & MAX_TOPHALF) ||
 			(requested & MAX_LEFTHALF && requested & MAX_TOPHALF &&
 			 current & MAX_LEFTHALF && current & MAX_BOTTOMHALF)))
 		wMaximizeWindow(wwin, (MAX_LEFTHALF | MAX_VERTICAL| MAX_KEYBOARD),
 				head);
-	else if (wPreferences.alt_half_maximize &&
+	else if (w_global.config->alt_half_maximize &&
 			((requested & MAX_RIGHTHALF && requested & MAX_BOTTOMHALF &&
 			 current & MAX_RIGHTHALF && current & MAX_TOPHALF) ||
 			(requested & MAX_RIGHTHALF && requested & MAX_TOPHALF &&
@@ -749,7 +749,7 @@ void handleMaximize(WWindow *wwin, int directions)
 				head);
 
 	/* Half-maximized alternative transition */
-	else if (wPreferences.alt_half_maximize && (
+	else if (w_global.config->alt_half_maximize && (
 				(requested & MAX_LEFTHALF && requested & MAX_VERTICAL &&
 				 current & MAX_RIGHTHALF && current & MAX_VERTICAL) ||
 				(requested & MAX_RIGHTHALF && requested & MAX_VERTICAL &&
@@ -1042,7 +1042,7 @@ void wUnmaximizeWindow(WWindow *wwin)
 		wUnshadeWindow(wwin);
 	}
 
-	if (wPreferences.drag_maximized_window == DRAGMAX_NOMOVE)
+	if (w_global.config->drag_maximized_window == DRAGMAX_NOMOVE)
 		wwin->client_flags.no_movable = 0;
 
 	/* Use old coordinates if they are set, current values otherwise */
@@ -1356,7 +1356,7 @@ static void animateResizeZoom(WScreen *scr, int x, int y, int w, int h, int fx, 
 
 void animateResize(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int fw, int fh)
 {
-	int style = wPreferences.iconification_style;	/* Catch the value */
+	int style = w_global.config->iconification_style;	/* Catch the value */
 	int steps;
 
 	if (style == WIS_NONE)
@@ -1474,11 +1474,11 @@ static WWindow *recursiveTransientFor(WWindow *wwin)
 #ifdef USE_ANIMATIONS
 static int getAnimationGeometry(WWindow *wwin, int *ix, int *iy, int *iw, int *ih)
 {
-	if (wwin->screen_ptr->flags.startup || wPreferences.no_animations
+	if (wwin->screen_ptr->flags.startup || w_global.config->no_animations
 		|| wwin->flags.skip_next_animation || wwin->icon == NULL)
 		return 0;
 
-	if (!wPreferences.disable_miniwindows && !wwin->flags.net_handle_icon) {
+	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
 		*ix = wwin->icon_x;
 		*iy = wwin->icon_y;
 		*iw = wwin->icon->core->width;
@@ -1528,7 +1528,7 @@ void wIconifyWindow(WWindow *wwin)
 			     GrabModeAsync, None, None, CurrentTime);
 	}
 
-	if (!wPreferences.disable_miniwindows && !wwin->flags.net_handle_icon) {
+	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
 		if (!wwin->flags.icon_moved)
 			PlaceIcon(wwin->screen_ptr, &wwin->icon_x, &wwin->icon_y, wGetHeadForWindow(wwin));
 
@@ -1595,7 +1595,7 @@ void wIconifyWindow(WWindow *wwin)
 		 * something before the animation starts (and the server is grabbed) */
 		XSync(dpy, 0);
 
-		if (wPreferences.disable_miniwindows || wwin->flags.net_handle_icon)
+		if (w_global.config->disable_miniwindows || wwin->flags.net_handle_icon)
 			wClientSetState(wwin, IconicState, None);
 		else
 			wClientSetState(wwin, IconicState, wwin->icon->icon_win);
@@ -1610,9 +1610,9 @@ void wIconifyWindow(WWindow *wwin)
 
 	wwin->flags.skip_next_animation = 0;
 
-	if (!wPreferences.disable_miniwindows && !wwin->flags.net_handle_icon) {
+	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
 		if (wwin->screen_ptr->current_workspace == wwin->frame->workspace ||
-		    IS_OMNIPRESENT(wwin) || wPreferences.sticky_icons)
+		    IS_OMNIPRESENT(wwin) || w_global.config->sticky_icons)
 			XMapWindow(dpy, wwin->icon->core->window);
 
 		AddToStackList(wwin->icon->core);
@@ -1628,7 +1628,7 @@ void wIconifyWindow(WWindow *wwin)
 		 setupIconGrabs(wwin->icon);
 		 */
 		if ((wwin->flags.focused || (owner && wwin->client_win == owner->client_win))
-		    && wPreferences.focus_mode == WKF_CLICK) {
+		    && w_global.config->focus_mode == WKF_CLICK) {
 			WWindow *tmp;
 
 			tmp = wwin->prev;
@@ -1640,7 +1640,7 @@ void wIconifyWindow(WWindow *wwin)
 				tmp = tmp->prev;
 			}
 			wSetFocusTo(wwin->screen_ptr, tmp);
-		} else if (wPreferences.focus_mode != WKF_CLICK) {
+		} else if (w_global.config->focus_mode != WKF_CLICK) {
 			wSetFocusTo(wwin->screen_ptr, NULL);
 		}
 #ifdef USE_ANIMATIONS
@@ -1660,13 +1660,13 @@ void wIconifyWindow(WWindow *wwin)
 	/* maybe we want to do this regardless of net_handle_icon
 	 * it seems to me we might break behaviour this way.
 	 */
-	if (wwin->flags.selected && !wPreferences.disable_miniwindows
+	if (wwin->flags.selected && !w_global.config->disable_miniwindows
 	    && !wwin->flags.net_handle_icon)
 		wIconSelect(wwin->icon);
 
 	WMPostNotificationName(WMNChangedState, wwin, "iconify");
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, True);
 }
 
@@ -1704,11 +1704,11 @@ void wDeiconifyWindow(WWindow *wwin)
 	if (!netwm_hidden && !wwin->flags.shaded)
 		wwin->flags.mapped = 1;
 
-	if (!netwm_hidden || wPreferences.sticky_icons) {
+	if (!netwm_hidden || w_global.config->sticky_icons) {
 		/* maybe we want to do this regardless of net_handle_icon
 		 * it seems to me we might break behaviour this way.
 		 */
-		if (!wPreferences.disable_miniwindows && !wwin->flags.net_handle_icon
+		if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon
 		    && wwin->icon != NULL) {
 			if (wwin->icon->selected)
 				wIconSelect(wwin->icon);
@@ -1742,7 +1742,7 @@ void wDeiconifyWindow(WWindow *wwin)
 		mapTransientsFor(wwin);
 	}
 
-	if (!wPreferences.disable_miniwindows && wwin->icon != NULL
+	if (!w_global.config->disable_miniwindows && wwin->icon != NULL
 	    && !wwin->flags.net_handle_icon) {
 		RemoveFromStackList(wwin->icon->core);
 		wSetFocusTo(wwin->screen_ptr, wwin);
@@ -1771,7 +1771,7 @@ void wDeiconifyWindow(WWindow *wwin)
 #endif
 	}
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, True);
 
 	WMPostNotificationName(WMNChangedState, wwin, "iconify");
@@ -1806,7 +1806,7 @@ static void hideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int a
 	flushExpose();
 
 #ifdef USE_ANIMATIONS
-	if (!wwin->screen_ptr->flags.startup && !wPreferences.no_animations &&
+	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
 	    !wwin->flags.skip_next_animation && animate) {
 		animateResize(wwin->screen_ptr, wwin->frame_x, wwin->frame_y,
 			      wwin->frame->core->width, wwin->frame->core->height,
@@ -1956,7 +1956,7 @@ void wHideApplication(WApplication *wapp)
 	wapp->flags.skip_next_animation = 0;
 
 	if (hadfocus) {
-		if (wPreferences.focus_mode == WKF_CLICK) {
+		if (w_global.config->focus_mode == WKF_CLICK) {
 			wlist = scr->focused_window;
 			while (wlist) {
 				if (!WFLAGP(wlist, no_focusable) && !wlist->flags.hidden
@@ -1972,7 +1972,7 @@ void wHideApplication(WApplication *wapp)
 
 	wapp->flags.hidden = 1;
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(scr, True);
 
 #ifdef HIDDENDOT
@@ -1992,7 +1992,7 @@ static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int
 	wWindowSnapToHead(wwin);
 
 #ifdef USE_ANIMATIONS
-	if (!wwin->screen_ptr->flags.startup && !wPreferences.no_animations && animate) {
+	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations && animate) {
 		animateResize(wwin->screen_ptr, icon_x, icon_y,
 			      icon->core->width, icon->core->height,
 			      wwin->frame_x, wwin->frame_y,
@@ -2050,7 +2050,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				focused = wlist;
 
 			if (wlist->flags.miniaturized) {
-				if ((bringToCurrentWS || wPreferences.sticky_icons ||
+				if ((bringToCurrentWS || w_global.config->sticky_icons ||
 				     wlist->frame->workspace == scr->current_workspace) && wlist->icon) {
 					if (!wlist->icon->mapped) {
 						int x, y;
@@ -2106,7 +2106,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 		wSetFocusTo(scr, focused);
 	}
 	wapp->last_focused = NULL;
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(scr, True);
 
 #ifdef HIDDENDOT
@@ -2177,7 +2177,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 		int xs, ys;
 	} *vars;
 
-	int isize = wPreferences.icon_size;
+	int isize = w_global.config->icon_size;
 
 	vars = (struct HeadVars *)wmalloc(sizeof(struct HeadVars) * heads);
 
@@ -2186,7 +2186,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 		WMRect rect;
 
 		if (scr->dock) {
-			int offset = wPreferences.icon_size + DOCK_EXTRA_SPACE;
+			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
 
 			if (scr->dock->on_right_side)
 				area.x2 -= offset;
@@ -2209,21 +2209,21 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 		vars[head].fullH = (vars[head].sy2 - vars[head].sy1) / isize;
 
 		/* icon yard boundaries */
-		if (wPreferences.icon_yard & IY_VERT) {
+		if (w_global.config->icon_yard & IY_VERT) {
 			vars[head].pf = vars[head].fullH;
 			vars[head].sf = vars[head].fullW;
 		} else {
 			vars[head].pf = vars[head].fullW;
 			vars[head].sf = vars[head].fullH;
 		}
-		if (wPreferences.icon_yard & IY_RIGHT) {
+		if (w_global.config->icon_yard & IY_RIGHT) {
 			vars[head].xo = vars[head].sx2 - isize;
 			vars[head].xs = -1;
 		} else {
 			vars[head].xo = vars[head].sx1;
 			vars[head].xs = 1;
 		}
-		if (wPreferences.icon_yard & IY_TOP) {
+		if (w_global.config->icon_yard & IY_TOP) {
 			vars[head].yo = vars[head].sy1;
 			vars[head].ys = 1;
 		} else {
@@ -2232,11 +2232,11 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 		}
 	}
 
-#define X ((wPreferences.icon_yard & IY_VERT) \
+#define X ((w_global.config->icon_yard & IY_VERT) \
 	? vars[head].xo + vars[head].xs*(vars[head].si*isize) \
 	: vars[head].xo + vars[head].xs*(vars[head].pi*isize))
 
-#define Y ((wPreferences.icon_yard & IY_VERT) \
+#define Y ((w_global.config->icon_yard & IY_VERT) \
 	? vars[head].yo + vars[head].ys*(vars[head].pi*isize) \
 	: vars[head].yo + vars[head].ys*(vars[head].si*isize))
 
@@ -2255,7 +2255,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 
 			if (aicon->x_pos != X || aicon->y_pos != Y) {
 #ifdef USE_ANIMATIONS
-				if (!wPreferences.no_animations)
+				if (!w_global.config->no_animations)
 					slide_window(aicon->icon->core->window, aicon->x_pos, aicon->y_pos, X, Y);
 #endif /* USE_ANIMATIONS */
 			}
@@ -2278,7 +2278,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 	while (wwin) {
 		if (wwin->icon && wwin->flags.miniaturized && !wwin->flags.hidden &&
 		    (wwin->frame->workspace == scr->current_workspace ||
-		     IS_OMNIPRESENT(wwin) || wPreferences.sticky_icons)) {
+		     IS_OMNIPRESENT(wwin) || w_global.config->sticky_icons)) {
 
 			head = wGetHeadForWindow(wwin);
 
@@ -2373,7 +2373,7 @@ void wMakeWindowVisible(WWindow *wwin)
 
 void movePointerToWindowCenter(WWindow *wwin)
 {
-	if (!wPreferences.pointer_with_half_max_windows)
+	if (!w_global.config->pointer_with_half_max_windows)
 		return;
 
 	XSelectInput(dpy, wwin->client_win, wwin->event_mask);
@@ -2393,7 +2393,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 	int y, s, w, h;
 	time_t time0 = time(NULL);
 
-	if (wwin->flags.skip_next_animation || wPreferences.no_animations)
+	if (wwin->flags.skip_next_animation || w_global.config->no_animations)
 		return;
 
 	switch (what) {

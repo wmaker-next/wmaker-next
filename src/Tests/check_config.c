@@ -214,7 +214,7 @@ unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
 			scr->flags.backimage_helper_launched = 1;
 	} else if (target == WCFG_BACKGROUND_WORKSPACE) {
 		workspace_background_updates++;
-		workspace_background_saw_smooth = wPreferences.smooth_workspace_back;
+		workspace_background_saw_smooth = w_global.config->smooth_workspace_back;
 	}
 	return 0;
 }
@@ -355,12 +355,6 @@ static unsigned int apply_runtime_defaults_for_test(WScreen *scr,
 static void reset_preferences(void)
 {
 	wConfigClearWindowMaker();
-	if (wPreferences.pixmap_path)
-		wfree(wPreferences.pixmap_path);
-	if (wPreferences.icon_path)
-		wfree(wPreferences.icon_path);
-	if (wPreferences.screenshot_filename_template)
-		wfree(wPreferences.screenshot_filename_template);
 	for (size_t i = 0; i < 7; i++)
 		if (wPreferences.modifier_labels[i])
 			wfree(wPreferences.modifier_labels[i]);
@@ -621,7 +615,6 @@ static void test_schema_integrity(void)
 
 	for (i = 0; i < WCFG_KEY_COUNT; i++)
 		CHECK(seen[i] == 1);
-	CHECK(wConfigRuntimePreferenceCopiesAreValid());
 }
 
 static void test_unchanged_diff(void)
@@ -1156,13 +1149,14 @@ static void test_static_apply(void)
 	CHECK(wPreferences.flags.nodrawer == 1);
 	CHECK(wPreferences.flags.noclip == 1);
 	CHECK(wPreferences.flags.clip_merged_in_dock == 1);
-	CHECK(wPreferences.disable_miniwindows == 1);
-	CHECK(wPreferences.enable_workspace_pager == 1);
-	CHECK(wPreferences.switch_panel_icon_size == 48);
+	CHECK(w_global.config->disable_miniwindows == 1);
+	CHECK(w_global.config->enable_workspace_pager == 1);
+	CHECK(w_global.config->switch_panel_icon_size == 48);
 	CHECK(modifier_key_updates == 1);
 	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
 	CHECK(wPreferences.modifier_mask == Mod4Mask);
 
+	wConfigClearWindowMaker();
 	WMReleasePropList(dict);
 }
 
@@ -1454,115 +1448,115 @@ static void test_runtime_apply(void)
 		goto out;
 
 	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
-	CHECK(wPreferences.icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
-	CHECK(strcmp(wPreferences.pixmap_path, "/new/pix:/new/bg") == 0);
-	CHECK(strcmp(wPreferences.icon_path, "/new/icons:/new/more") == 0);
-	CHECK(wPreferences.sticky_icons == 1);
+	CHECK(w_global.config->icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
+	CHECK(strcmp(w_global.config->pixmap_path, "/new/pix:/new/bg") == 0);
+	CHECK(strcmp(w_global.config->icon_path, "/new/icons:/new/more") == 0);
+	CHECK(w_global.config->sticky_icons == 1);
 	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
 	CHECK(wPreferences.window_place_origin.x == 300);
 	CHECK(wPreferences.window_place_origin.y == 0);
-	CHECK(wPreferences.keep_dock_on_primary_head == 1);
-	CHECK(strcmp(wPreferences.screenshot_filename_template, "shot_%S") == 0);
-	CHECK(wPreferences.menu_style == MS_FLAT);
-	CHECK(wPreferences.title_justification == WTJ_RIGHT);
-	CHECK(wPreferences.window_title_clearance == 1);
-	CHECK(wPreferences.window_title_min_height == 2);
-	CHECK(wPreferences.window_title_max_height == 30);
-	CHECK(wPreferences.menu_title_clearance == 3);
-	CHECK(wPreferences.menu_title_min_height == 4);
-	CHECK(wPreferences.menu_title_max_height == 40);
-	CHECK(wPreferences.menu_text_clearance == 5);
-	CHECK(wPreferences.iconification_style == WIS_TWIST);
-	CHECK(wPreferences.enforce_icon_margin == 1);
-	CHECK(wPreferences.disable_root_mouse == 1);
-	CHECK(wPreferences.mouse_button1 == WA_MOVE_NEXTWINDOW);
-	CHECK(wPreferences.mouse_button2 == WA_MOVE_PREVWINDOW);
-	CHECK(wPreferences.mouse_button3 == WA_MOVE_NEXTWORKSPACE);
-	CHECK(wPreferences.mouse_button8 == WA_MOVE_PREVWORKSPACE);
-	CHECK(wPreferences.mouse_button9 == WA_OPEN_APPMENU);
-	CHECK(wPreferences.mouse_wheel_scroll == WA_SWITCH_WORKSPACES);
-	CHECK(wPreferences.mouse_wheel_tilt == WA_SWITCH_WINDOWS);
-	CHECK(wPreferences.dont_confirm_kill == 1);
-	CHECK(wPreferences.window_balloon == 0);
-	CHECK(wPreferences.miniwin_title_balloon == 1);
-	CHECK(wPreferences.miniwin_preview_balloon == 1);
-	CHECK(wPreferences.appicon_balloon == 1);
-	CHECK(wPreferences.help_balloon == 1);
-	CHECK(wPreferences.edge_resistance == 45);
-	CHECK(wPreferences.resize_increment == 12);
-	CHECK(wPreferences.attract == 1);
-	CHECK(wPreferences.dont_blink == 1);
-	CHECK(wPreferences.single_click == 1);
-	CHECK(wPreferences.strict_windoze_cycle == 0);
-	CHECK(wPreferences.panel_only_open == 1);
-	CHECK(wPreferences.minipreview_size == 96);
-	CHECK(wPreferences.ignore_gtk_decoration_hints == 1);
-	CHECK(wPreferences.no_window_over_dock == 1);
-	CHECK(wPreferences.no_window_over_icons == 1);
-	CHECK(wPreferences.size_display == WDIS_NEW);
-	CHECK(wPreferences.move_display == WDIS_TOPLEFT);
+	CHECK(w_global.config->keep_dock_on_primary_head == 1);
+	CHECK(strcmp(w_global.config->screenshot_filename_template, "shot_%S") == 0);
+	CHECK(w_global.config->menu_style == MS_FLAT);
+	CHECK(w_global.config->title_justification == WTJ_RIGHT);
+	CHECK(w_global.config->window_title_clearance == 1);
+	CHECK(w_global.config->window_title_min_height == 2);
+	CHECK(w_global.config->window_title_max_height == 30);
+	CHECK(w_global.config->menu_title_clearance == 3);
+	CHECK(w_global.config->menu_title_min_height == 4);
+	CHECK(w_global.config->menu_title_max_height == 40);
+	CHECK(w_global.config->menu_text_clearance == 5);
+	CHECK(w_global.config->iconification_style == WIS_TWIST);
+	CHECK(w_global.config->enforce_icon_margin == 1);
+	CHECK(w_global.config->disable_root_mouse == 1);
+	CHECK(w_global.config->mouse_button1 == WA_MOVE_NEXTWINDOW);
+	CHECK(w_global.config->mouse_button2 == WA_MOVE_PREVWINDOW);
+	CHECK(w_global.config->mouse_button3 == WA_MOVE_NEXTWORKSPACE);
+	CHECK(w_global.config->mouse_button8 == WA_MOVE_PREVWORKSPACE);
+	CHECK(w_global.config->mouse_button9 == WA_OPEN_APPMENU);
+	CHECK(w_global.config->mouse_wheel_scroll == WA_SWITCH_WORKSPACES);
+	CHECK(w_global.config->mouse_wheel_tilt == WA_SWITCH_WINDOWS);
+	CHECK(w_global.config->dont_confirm_kill == 1);
+	CHECK(w_global.config->window_balloon == 0);
+	CHECK(w_global.config->miniwin_title_balloon == 1);
+	CHECK(w_global.config->miniwin_preview_balloon == 1);
+	CHECK(w_global.config->appicon_balloon == 1);
+	CHECK(w_global.config->help_balloon == 1);
+	CHECK(w_global.config->edge_resistance == 45);
+	CHECK(w_global.config->resize_increment == 12);
+	CHECK(w_global.config->attract == 1);
+	CHECK(w_global.config->dont_blink == 1);
+	CHECK(w_global.config->single_click == 1);
+	CHECK(w_global.config->strict_windoze_cycle == 0);
+	CHECK(w_global.config->panel_only_open == 1);
+	CHECK(w_global.config->minipreview_size == 96);
+	CHECK(w_global.config->ignore_gtk_decoration_hints == 1);
+	CHECK(w_global.config->no_window_over_dock == 1);
+	CHECK(w_global.config->no_window_over_icons == 1);
+	CHECK(w_global.config->size_display == WDIS_NEW);
+	CHECK(w_global.config->move_display == WDIS_TOPLEFT);
 #ifdef USE_RANDR
-	CHECK(wPreferences.hotplug_monitor == 1);
+	CHECK(w_global.config->hotplug_monitor == 1);
 #endif
-	CHECK(wPreferences.hot_corners == 1);
-	CHECK(wPreferences.hot_corner_delay == 77);
-	CHECK(wPreferences.hot_corner_edge == 4);
-	CHECK(wPreferences.window_list_app_icons == 1);
-	CHECK(wPreferences.mouse_wheel_focus == 1);
-	CHECK(wPreferences.keychain_timeout_delay == 88);
-	CHECK(wPreferences.show_clip_title == 0);
+	CHECK(w_global.config->hot_corners == 1);
+	CHECK(w_global.config->hot_corner_delay == 77);
+	CHECK(w_global.config->hot_corner_edge == 4);
+	CHECK(w_global.config->window_list_app_icons == 1);
+	CHECK(w_global.config->mouse_wheel_focus == 1);
+	CHECK(w_global.config->keychain_timeout_delay == 88);
+	CHECK(w_global.config->show_clip_title == 0);
 #ifdef KEEP_XKB_LOCK_STATUS
-	CHECK(wPreferences.modelock == 1);
+	CHECK(w_global.config->modelock == 1);
 #endif
-	CHECK(wPreferences.history_lines == 12);
-	CHECK(wPreferences.cycle_active_head_only == 1);
-	CHECK(wPreferences.cycle_all_workspaces == 1);
-	CHECK(wPreferences.cycle_ignore_minimized == 1);
-	CHECK(wPreferences.double_click_fullscreen == 1);
-	CHECK(wPreferences.close_rootmenu_left_right_click == 1);
-	CHECK(wPreferences.colormap_mode == WCM_CLICK);
-	CHECK(wPreferences.auto_focus == 0);
-	CHECK(wPreferences.auto_focus_across_heads == 0);
-	CHECK(wPreferences.raise_delay == 15);
-	CHECK(wPreferences.circ_raise == 1);
-	CHECK(wPreferences.superfluous == 0);
-	CHECK(wPreferences.ws_advance == 1);
-	CHECK(wPreferences.ws_cycle == 1);
-	CHECK(wPreferences.workspace_name_display_position == WD_BOTTOMLEFT);
-	CHECK(wPreferences.workspace_border_size == 4);
-	CHECK(wPreferences.scrollable_menus == 0);
-	CHECK(wPreferences.dblclick_time == 400);
-	CHECK(wPreferences.save_session_on_exit == 1);
-	CHECK(wPreferences.menu_scroll_speed == SPEED_ULTRAFAST);
-	CHECK(wPreferences.icon_slide_speed == SPEED_MEDIUM);
-	CHECK(wPreferences.shade_speed == SPEED_ULTRASLOW);
-	CHECK(wPreferences.bounce_appicons_when_urgent == 0);
-	CHECK(wPreferences.raise_appicons_when_bouncing == 1);
-	CHECK(wPreferences.do_not_make_appicons_bounce == 1);
-	CHECK(wPreferences.clip_auto_raise_delay == 1);
-	CHECK(wPreferences.clip_auto_lower_delay == 2);
-	CHECK(wPreferences.clip_auto_expand_delay == 3);
-	CHECK(wPreferences.clip_auto_collapse_delay == 4);
-	CHECK(wPreferences.align_menus == 1);
-	CHECK(wPreferences.vi_key_menus == 1);
-	CHECK(wPreferences.open_transients_with_parent == 1);
-	CHECK(wPreferences.ignore_focus_click == 1);
-	CHECK(wPreferences.use_saveunders == 1);
-	CHECK(wPreferences.opaque_move == 0);
-	CHECK(wPreferences.opaque_resize == 1);
-	CHECK(wPreferences.opaque_move_resize_keyboard == 1);
-	CHECK(wPreferences.no_animations == 1);
-	CHECK(wPreferences.no_autowrap == 0);
-	CHECK(wPreferences.window_snapping == 1);
-	CHECK(wPreferences.snap_edge_detect == 5);
-	CHECK(wPreferences.snap_corner_detect == 15);
-	CHECK(wPreferences.snap_to_top_maximizes_fullscreen == 1);
-	CHECK(wPreferences.drag_maximized_window == DRAGMAX_NOMOVE);
-	CHECK(wPreferences.move_half_max_between_heads == 1);
-	CHECK(wPreferences.alt_half_maximize == 1);
-	CHECK(wPreferences.pointer_with_half_max_windows == 1);
-	CHECK(wPreferences.highlight_active_app == 0);
-	CHECK(wPreferences.auto_arrange_icons == 1);
+	CHECK(w_global.config->history_lines == 12);
+	CHECK(w_global.config->cycle_active_head_only == 1);
+	CHECK(w_global.config->cycle_all_workspaces == 1);
+	CHECK(w_global.config->cycle_ignore_minimized == 1);
+	CHECK(w_global.config->double_click_fullscreen == 1);
+	CHECK(w_global.config->close_rootmenu_left_right_click == 1);
+	CHECK(w_global.config->colormap_mode == WCM_CLICK);
+	CHECK(w_global.config->auto_focus == 0);
+	CHECK(w_global.config->auto_focus_across_heads == 0);
+	CHECK(w_global.config->raise_delay == 15);
+	CHECK(w_global.config->circ_raise == 1);
+	CHECK(w_global.config->superfluous == 0);
+	CHECK(w_global.config->ws_advance == 1);
+	CHECK(w_global.config->ws_cycle == 1);
+	CHECK(w_global.config->workspace_name_display_position == WD_BOTTOMLEFT);
+	CHECK(w_global.config->workspace_border_size == 4);
+	CHECK(w_global.config->scrollable_menus == 0);
+	CHECK(w_global.config->double_click_time == 400);
+	CHECK(w_global.config->save_session_on_exit == 1);
+	CHECK(w_global.config->menu_scroll_speed == SPEED_ULTRAFAST);
+	CHECK(w_global.config->icon_slide_speed == SPEED_MEDIUM);
+	CHECK(w_global.config->shade_speed == SPEED_ULTRASLOW);
+	CHECK(w_global.config->bounce_appicons_when_urgent == 0);
+	CHECK(w_global.config->raise_appicons_when_bouncing == 1);
+	CHECK(w_global.config->do_not_make_appicons_bounce == 1);
+	CHECK(w_global.config->clip_auto_raise_delay == 1);
+	CHECK(w_global.config->clip_auto_lower_delay == 2);
+	CHECK(w_global.config->clip_auto_expand_delay == 3);
+	CHECK(w_global.config->clip_auto_collapse_delay == 4);
+	CHECK(w_global.config->align_menus == 1);
+	CHECK(w_global.config->vi_key_menus == 1);
+	CHECK(w_global.config->open_transients_with_parent == 1);
+	CHECK(w_global.config->ignore_focus_click == 1);
+	CHECK(w_global.config->use_saveunders == 1);
+	CHECK(w_global.config->opaque_move == 0);
+	CHECK(w_global.config->opaque_resize == 1);
+	CHECK(w_global.config->opaque_move_resize_keyboard == 1);
+	CHECK(w_global.config->no_animations == 1);
+	CHECK(w_global.config->no_autowrap == 0);
+	CHECK(w_global.config->window_snapping == 1);
+	CHECK(w_global.config->snap_edge_detect == 5);
+	CHECK(w_global.config->snap_corner_detect == 15);
+	CHECK(w_global.config->snap_to_top_maximizes_fullscreen == 1);
+	CHECK(w_global.config->drag_maximized_window == DRAGMAX_NOMOVE);
+	CHECK(w_global.config->move_half_max_between_heads == 1);
+	CHECK(w_global.config->alt_half_maximize == 1);
+	CHECK(w_global.config->pointer_with_half_max_windows == 1);
+	CHECK(w_global.config->highlight_active_app == 0);
+	CHECK(w_global.config->auto_arrange_icons == 1);
 	CHECK(double_click_delay == 400);
 	CHECK(usable_area_updates == 1);
 	CHECK(arrange_icons_all == 1);
@@ -1685,7 +1679,6 @@ static void test_runtime_apply_uses_cached_old_config(void)
 	unsigned int refresh;
 
 	reset_preferences();
-	wPreferences.menu_style = MS_FLAT;
 	cache_dict = dict_from_desc("{ MenuStyle = flat; }");
 	old_dict = dict_from_desc("{ MenuStyle = normal; }");
 	new_dict = dict_from_desc("{ MenuStyle = flat; }");
@@ -1695,7 +1688,7 @@ static void test_runtime_apply_uses_cached_old_config(void)
 	wConfigCacheWindowMaker(cache_dict);
 	refresh = wConfigApplyRuntimeDefaults(NULL, new_dict);
 	CHECK(refresh == 0);
-	CHECK(wPreferences.menu_style == MS_FLAT);
+	CHECK(w_global.config->menu_style == MS_FLAT);
 
 out:
 	if (cache_dict)
@@ -1731,8 +1724,10 @@ static void test_runtime_apply_phase7(void)
 	CHECK(workspace_background_updates == 1);
 	CHECK(last_background_target == WCFG_BACKGROUND_WORKSPACE);
 	CHECK(strcmp(last_background_spec, "(solid, blue)") == 0);
-	CHECK(workspace_background_saw_smooth == 0);
-	CHECK(wPreferences.smooth_workspace_back == 1);
+	/* the new config is adopted before side effects run, so the
+	 * background apply already sees the new SmoothWorkspaceBack */
+	CHECK(workspace_background_saw_smooth == 1);
+	CHECK(w_global.config->smooth_workspace_back == 1);
 	CHECK(screen.frame_border_width == 5);
 	CHECK(refresh == WCFG_REFRESH_FRAME_BORDER);
 
@@ -1771,40 +1766,9 @@ static void test_deleted_key_keeps_current(void)
 	unsigned int refresh;
 
 	reset_preferences();
-	wPreferences.auto_focus = 1;
-	wPreferences.wrap_menus = 1;
-	wPreferences.align_menus = 1;
-	wPreferences.clip_auto_raise_delay = 123;
-	wPreferences.use_saveunders = 1;
-	wPreferences.snap_edge_detect = 77;
-	wPreferences.disable_root_mouse = 1;
-	wPreferences.mouse_button1 = WA_MOVE_NEXTWINDOW;
-	wPreferences.dont_confirm_kill = 1;
-	wPreferences.edge_resistance = 66;
-	wPreferences.window_balloon = 0;
-	wPreferences.icon_yard = IY_TOP | IY_RIGHT | IY_VERT;
-	wPreferences.pixmap_path = wstrdup("/keep/pix:/keep/bg");
-	wPreferences.icon_path = wstrdup("/keep/icons");
-	wPreferences.sticky_icons = 1;
 	wPreferences.flags.wrap_appicons_in_dock = 0;
 	wPreferences.window_place_origin.x = 123;
 	wPreferences.window_place_origin.y = 45;
-	wPreferences.keep_dock_on_primary_head = 1;
-	wPreferences.screenshot_filename_template = wstrdup("keep_%S");
-	wPreferences.menu_style = MS_FLAT;
-	wPreferences.title_justification = WTJ_RIGHT;
-	wPreferences.window_title_clearance = 1;
-	wPreferences.window_title_min_height = 2;
-	wPreferences.window_title_max_height = 30;
-	wPreferences.menu_title_clearance = 3;
-	wPreferences.menu_title_min_height = 4;
-	wPreferences.menu_title_max_height = 40;
-	wPreferences.menu_text_clearance = 5;
-	wPreferences.no_window_over_dock = 1;
-	wPreferences.hot_corners = 1;
-	wPreferences.keychain_timeout_delay = 88;
-	wPreferences.history_lines = 12;
-	wPreferences.smooth_workspace_back = 1;
 
 	old_dict = dict_from_desc("{ HotCornerActions = (OpenRootMenu, None, Run, Workspace1); "
 				  "WorkspaceSpecificBack = ((solid, black)); "
@@ -1844,40 +1808,40 @@ static void test_deleted_key_keeps_current(void)
 		goto out;
 
 	refresh = apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
-	CHECK(wPreferences.auto_focus == 1);
-	CHECK(wPreferences.wrap_menus == 1);
-	CHECK(wPreferences.align_menus == 1);
-	CHECK(wPreferences.clip_auto_raise_delay == 123);
-	CHECK(wPreferences.use_saveunders == 1);
-	CHECK(wPreferences.snap_edge_detect == 77);
-	CHECK(wPreferences.disable_root_mouse == 1);
-	CHECK(wPreferences.mouse_button1 == WA_MOVE_NEXTWINDOW);
-	CHECK(wPreferences.dont_confirm_kill == 1);
-	CHECK(wPreferences.edge_resistance == 66);
-	CHECK(wPreferences.window_balloon == 0);
-	CHECK(wPreferences.icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
-	CHECK(strcmp(wPreferences.pixmap_path, "/keep/pix:/keep/bg") == 0);
-	CHECK(strcmp(wPreferences.icon_path, "/keep/icons") == 0);
-	CHECK(wPreferences.sticky_icons == 1);
+	CHECK(w_global.config->auto_focus == 1);
+	CHECK(w_global.config->wrap_menus == 1);
+	CHECK(w_global.config->align_menus == 1);
+	CHECK(w_global.config->clip_auto_raise_delay == 123);
+	CHECK(w_global.config->use_saveunders == 1);
+	CHECK(w_global.config->snap_edge_detect == 77);
+	CHECK(w_global.config->disable_root_mouse == 1);
+	CHECK(w_global.config->mouse_button1 == WA_MOVE_NEXTWINDOW);
+	CHECK(w_global.config->dont_confirm_kill == 1);
+	CHECK(w_global.config->edge_resistance == 66);
+	CHECK(w_global.config->window_balloon == 0);
+	CHECK(w_global.config->icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
+	CHECK(strcmp(w_global.config->pixmap_path, "/keep/pix:/keep/bg") == 0);
+	CHECK(strcmp(w_global.config->icon_path, "/keep/icons") == 0);
+	CHECK(w_global.config->sticky_icons == 1);
 	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
 	CHECK(wPreferences.window_place_origin.x == 123);
 	CHECK(wPreferences.window_place_origin.y == 45);
-	CHECK(wPreferences.keep_dock_on_primary_head == 1);
-	CHECK(strcmp(wPreferences.screenshot_filename_template, "keep_%S") == 0);
-	CHECK(wPreferences.menu_style == MS_FLAT);
-	CHECK(wPreferences.title_justification == WTJ_RIGHT);
-	CHECK(wPreferences.window_title_clearance == 1);
-	CHECK(wPreferences.window_title_min_height == 2);
-	CHECK(wPreferences.window_title_max_height == 30);
-	CHECK(wPreferences.menu_title_clearance == 3);
-	CHECK(wPreferences.menu_title_min_height == 4);
-	CHECK(wPreferences.menu_title_max_height == 40);
-	CHECK(wPreferences.menu_text_clearance == 5);
-	CHECK(wPreferences.no_window_over_dock == 1);
-	CHECK(wPreferences.hot_corners == 1);
-	CHECK(wPreferences.keychain_timeout_delay == 88);
-	CHECK(wPreferences.history_lines == 12);
-	CHECK(wPreferences.smooth_workspace_back == 1);
+	CHECK(w_global.config->keep_dock_on_primary_head == 1);
+	CHECK(strcmp(w_global.config->screenshot_filename_template, "keep_%S") == 0);
+	CHECK(w_global.config->menu_style == MS_FLAT);
+	CHECK(w_global.config->title_justification == WTJ_RIGHT);
+	CHECK(w_global.config->window_title_clearance == 1);
+	CHECK(w_global.config->window_title_min_height == 2);
+	CHECK(w_global.config->window_title_max_height == 30);
+	CHECK(w_global.config->menu_title_clearance == 3);
+	CHECK(w_global.config->menu_title_min_height == 4);
+	CHECK(w_global.config->menu_title_max_height == 40);
+	CHECK(w_global.config->menu_text_clearance == 5);
+	CHECK(w_global.config->no_window_over_dock == 1);
+	CHECK(w_global.config->hot_corners == 1);
+	CHECK(w_global.config->keychain_timeout_delay == 88);
+	CHECK(w_global.config->history_lines == 12);
+	CHECK(w_global.config->smooth_workspace_back == 1);
 	CHECK(hot_corner_updates == 0);
 	CHECK(background_spec_updates == 0);
 	CHECK(texture_spec_updates == 0);

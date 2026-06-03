@@ -375,8 +375,8 @@ WArea wGetUsableAreaForHead(WScreen * scr, int head, WArea * totalAreaPtr, Bool 
 
 	if (noicons) {
 		/* check if user wants dock covered */
-		if (scr->dock && wPreferences.no_window_over_dock && wAppIconTouchesHead(scr->dock->icon_array[0], head)) {
-			int offset = wPreferences.icon_size + DOCK_EXTRA_SPACE;
+		if (scr->dock && w_global.config->no_window_over_dock && wAppIconTouchesHead(scr->dock->icon_array[0], head)) {
+			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
 
 			if (scr->dock->on_right_side)
 				usableArea.x2 -= offset;
@@ -385,13 +385,13 @@ WArea wGetUsableAreaForHead(WScreen * scr, int head, WArea * totalAreaPtr, Bool 
 		}
 
 		/* check if icons are on the same side as dock, and adjust if not done already */
-		if (scr->dock && wPreferences.no_window_over_icons && !wPreferences.no_window_over_dock && (wPreferences.icon_yard & IY_VERT)) {
-			int offset = wPreferences.icon_size + DOCK_EXTRA_SPACE;
+		if (scr->dock && w_global.config->no_window_over_icons && !w_global.config->no_window_over_dock && (w_global.config->icon_yard & IY_VERT)) {
+			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
 
-			if (scr->dock->on_right_side && (wPreferences.icon_yard & IY_RIGHT))
+			if (scr->dock->on_right_side && (w_global.config->icon_yard & IY_RIGHT))
 				usableArea.x2 -= offset;
 			/* can't use IY_LEFT in if, it's 0 ... */
-			if (!scr->dock->on_right_side && !(wPreferences.icon_yard & IY_RIGHT))
+			if (!scr->dock->on_right_side && !(w_global.config->icon_yard & IY_RIGHT))
 				usableArea.x1 += offset;
 		}
 	}

@@ -64,7 +64,7 @@ iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 	} else if (wcore->descriptor.parent_type == WCLASS_MINIWINDOW &&
 		   (((WIcon *) parent)->owner->frame->workspace == workspace
 		    || IS_OMNIPRESENT(((WIcon *) parent)->owner)
-		    || wPreferences.sticky_icons)
+		    || w_global.config->sticky_icons)
 		   && ((WIcon *) parent)->mapped) {
 
 		*retX = ((WIcon *) parent)->owner->icon_x;
@@ -74,7 +74,7 @@ iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 	} else if (wcore->descriptor.parent_type == WCLASS_WINDOW
 		   && ((WWindow *) parent)->flags.icon_moved
 		   && (((WWindow *) parent)->frame->workspace == workspace || IS_OMNIPRESENT((WWindow *) parent)
-		       || wPreferences.sticky_icons)) {
+		       || w_global.config->sticky_icons)) {
 		*retX = ((WWindow *) parent)->icon_x;
 		*retY = ((WWindow *) parent)->icon_y;
 
@@ -83,12 +83,12 @@ iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 
 	/* Check if it is inside the screen */
 	if (ok) {
-		if (*retX < sx1 - wPreferences.icon_size)
+		if (*retX < sx1 - w_global.config->icon_size)
 			ok = 0;
 		else if (*retX > sx2)
 			ok = 0;
 
-		if (*retY < sy1 - wPreferences.icon_size)
+		if (*retY < sy1 - w_global.config->icon_size)
 			ok = 0;
 		else if (*retY > sy2)
 			ok = 0;
@@ -111,14 +111,14 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	int xo, yo;
 	int xs, ys;
 	int x, y;
-	int isize = wPreferences.icon_size;
+	int isize = w_global.config->icon_size;
 	int done = 0;
 	WMBagIterator iter;
 	WArea area = wGetUsableAreaForHead(scr, head, NULL, False);
 
 	/* Do not place icons under the dock. */
 	if (scr->dock) {
-		int offset = wPreferences.icon_size + DOCK_EXTRA_SPACE;
+		int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
 
 		if (scr->dock->on_right_side)
 			area.x2 -= offset;
@@ -142,21 +142,21 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	fullH = (sy2 - sy1) / isize;
 
 	/* icon yard boundaries */
-	if (wPreferences.icon_yard & IY_VERT) {
+	if (w_global.config->icon_yard & IY_VERT) {
 		pf = fullH;
 		sf = fullW;
 	} else {
 		pf = fullW;
 		sf = fullH;
 	}
-	if (wPreferences.icon_yard & IY_RIGHT) {
+	if (w_global.config->icon_yard & IY_RIGHT) {
 		xo = sx2 - isize;
 		xs = -1;
 	} else {
 		xo = sx1;
 		xs = 1;
 	}
-	if (wPreferences.icon_yard & IY_TOP) {
+	if (w_global.config->icon_yard & IY_TOP) {
 		yo = sy1;
 		ys = 1;
 	} else {
@@ -204,7 +204,7 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	/* Look for an empty slot */
 	for (si = 0; si < sf; si++) {
 		for (pi = 0; pi < pf; pi++) {
-			if (wPreferences.icon_yard & IY_VERT) {
+			if (w_global.config->icon_yard & IY_VERT) {
 				x = xo + xs * (si * isize);
 				y = yo + ys * (pi * isize);
 			} else {
@@ -503,18 +503,18 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 {
 	WScreen *scr = wwin->screen_ptr;
 	int h = WMFontHeight(scr->title_font)
-		+ (wPreferences.window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+		+ (w_global.config->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
 
-	if (h > wPreferences.window_title_max_height)
-		h = wPreferences.window_title_max_height;
+	if (h > w_global.config->window_title_max_height)
+		h = w_global.config->window_title_max_height;
 
-	if (h < wPreferences.window_title_min_height)
-		h = wPreferences.window_title_min_height;
+	if (h < w_global.config->window_title_min_height)
+		h = w_global.config->window_title_min_height;
 
 	WArea usableArea = wGetUsableAreaForHead(scr, wGetHeadForPointerLocation(scr),
 						 NULL, True);
 
-	switch (wPreferences.window_placement) {
+	switch (w_global.config->window_placement) {
 	case WPM_MANUAL:
 		InteractivePlaceWindow(wwin, x_ret, y_ret, width, height);
 		break;
@@ -541,12 +541,12 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 		/* Fall through. */
 
 	case WPM_CASCADE:
-		if (wPreferences.window_placement == WPM_AUTO || wPreferences.window_placement == WPM_CENTER)
+		if (w_global.config->window_placement == WPM_AUTO || w_global.config->window_placement == WPM_CENTER)
 			scr->cascade_index++;
 
 		cascadeWindow(scr, wwin, x_ret, y_ret, width, height, h, usableArea);
 
-		if (wPreferences.window_placement == WPM_CASCADE)
+		if (w_global.config->window_placement == WPM_CASCADE)
 			scr->cascade_index++;
 		break;
 

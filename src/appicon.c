@@ -60,7 +60,7 @@
  */
 
 #define MOD_MASK       wPreferences.modifier_mask
-#define ICON_SIZE      wPreferences.icon_size
+#define ICON_SIZE      w_global.config->icon_size
 
 static void iconDblClick(WObjDescriptor * desc, XEvent * event);
 static void iconExpose(WObjDescriptor * desc, XEvent * event);
@@ -197,7 +197,7 @@ void unpaint_app_icon(WApplication *wapp)
 	 * wArrangeIcons() */
 	remove_from_appicon_list(scr, aicon);
 
-	if (wPreferences.auto_arrange_icons && !aicon->attracted)
+	if (w_global.config->auto_arrange_icons && !aicon->attracted)
 		wArrangeIcons(scr, True);
 }
 
@@ -252,7 +252,7 @@ void paint_app_icon(WApplication *wapp)
 	if (!attracting_dock || !wapp->app_icon->attracted || !attracting_dock->collapsed)
 		XMapWindow(dpy, icon->core->window);
 
-	if (wPreferences.auto_arrange_icons && !wapp->app_icon->attracted)
+	if (w_global.config->auto_arrange_icons && !wapp->app_icon->attracted)
 		wArrangeIcons(scr, True);
 }
 
@@ -261,7 +261,7 @@ void removeAppIconFor(WApplication *wapp)
 	if (!wapp->app_icon)
 		return;
 
-	if (wPreferences.highlight_active_app)
+	if (w_global.config->highlight_active_app)
 		wIconSetHighlited(wapp->app_icon->icon, False);
 	if (wapp->app_icon->docked && !wapp->app_icon->attracted) {
 		wapp->app_icon->running = 0;
@@ -294,7 +294,7 @@ void removeAppIconFor(WApplication *wapp)
 
 	wapp->app_icon = NULL;
 
-	if (wPreferences.auto_arrange_icons)
+	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wapp->main_window_desc->screen_ptr, True);
 }
 
@@ -436,7 +436,7 @@ void wAppIconPaint(WAppIcon *aicon)
 	XSetClipMask(dpy, scr->copy_gc, None);
 	if (aicon->launching)
 		XFillRectangle(dpy, aicon->icon->core->window, scr->stipple_gc,
-			       0, 0, wPreferences.icon_size, wPreferences.icon_size);
+			       0, 0, w_global.config->icon_size, w_global.config->icon_size);
 }
 
 /* Save the application icon, if it's a dockapp then use it with dock = True */
@@ -581,7 +581,7 @@ static void killCallback(WMenu * menu, WMenuEntry * entry)
 	fPtr = wapp->main_window_desc->fake_group;
 
 	wretain(wapp->main_window_desc);
-	if (wPreferences.dont_confirm_kill
+	if (w_global.config->dont_confirm_kill
 	    || wMessageDialog(menu->frame->screen_ptr, _("Kill Application"),
 			      buffer, _("Yes"), _("No"), NULL) == WAPRDefault) {
 		if (fPtr != NULL) {
@@ -739,7 +739,7 @@ void appIconMouseDown(WObjDescriptor * desc, XEvent * event)
 	}
 
 	hasMoved = wHandleAppIconMove(aicon, event);
-	if (wPreferences.single_click && !hasMoved && aicon->dock != NULL)
+	if (w_global.config->single_click && !hasMoved && aicon->dock != NULL)
 	{
 		iconDblClick(desc, event);
 	}
@@ -756,7 +756,7 @@ Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event)
 	Bool dockable, ondock;
 	Bool grabbed = False;
 	Bool collapsed = False; /* Stores the collapsed state of lastDock, before the moving appicon entered it */
-	int superfluous = wPreferences.superfluous; /* we cache it to avoid problems */
+	int superfluous = w_global.config->superfluous; /* we cache it to avoid problems */
 	int omnipresent = aicon->omnipresent; /* this must be cached */
 	Bool showed_all_clips = False;
 
@@ -935,8 +935,8 @@ Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event)
 					lastDock = theNewDock;
 				}
 
-				shad_x = lastDock->x_pos + ix*wPreferences.icon_size;
-				shad_y = lastDock->y_pos + iy*wPreferences.icon_size;
+				shad_x = lastDock->x_pos + ix*w_global.config->icon_size;
+				shad_y = lastDock->y_pos + iy*w_global.config->icon_size;
 
 				XMoveWindow(dpy, scr->dock_shadow, shad_x, shad_y);
 
@@ -1046,7 +1046,7 @@ Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event)
 			else {
 				if (originalDock != NULL) { /* Detaching a docked appicon */
 					if (superfluous) {
-						if (!aicon->running && !wPreferences.no_animations) {
+						if (!aicon->running && !w_global.config->no_animations) {
 							/* We need to deselect it, even if is deselected in
 							 * wDockDetach(), because else DoKaboom() will fail.
 							 */
@@ -1087,7 +1087,7 @@ Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event)
 					wDockHideIcons(scr->workspaces[i]->clip);
 				}
 			}
-			if (wPreferences.auto_arrange_icons && !(originalDock != NULL && docked))
+			if (w_global.config->auto_arrange_icons && !(originalDock != NULL && docked))
 				/* Need to rearrange unless moving from dock to dock */
 				wArrangeIcons(scr, True);
 			return hasMoved;

@@ -238,9 +238,9 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		fwin->flags.titlebar = 0;
 	}
 
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		bsize = theight;
-	} else if (wPreferences.new_style == TS_OLD) {
+	} else if (w_global.config->new_style == TS_OLD) {
 		bsize = theight - 7;
 	} else {
 		bsize = theight - 8;
@@ -254,7 +254,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			fwin->flags.need_texture_remake = 1;
 
-			if (wPreferences.new_style == TS_NEW) {
+			if (w_global.config->new_style == TS_NEW) {
 				if (fwin->left_button)
 					wCoreConfigure(fwin->left_button, 0, 0, bsize, bsize);
 #ifdef XKB_BUTTON_HINT
@@ -318,7 +318,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			if (flags & WFF_LEFT_BUTTON) {
 				fwin->flags.left_button = 1;
-				if (wPreferences.new_style == TS_NEW) {
+				if (w_global.config->new_style == TS_NEW) {
 					fwin->left_button = wCoreCreate(fwin->core, 0, 0, bsize, bsize);
 
 					if (width < theight * 4)
@@ -326,7 +326,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 					else
 						XMapRaised(dpy, fwin->left_button->window);
 
-				} else if (wPreferences.new_style == TS_OLD) {
+				} else if (w_global.config->new_style == TS_OLD) {
 					fwin->left_button =
 					    wCoreCreate(fwin->titlebar, 3, (theight - bsize) / 2, bsize, bsize);
 
@@ -356,7 +356,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 #ifdef XKB_BUTTON_HINT
 			if (flags & WFF_LANGUAGE_BUTTON) {
 				fwin->flags.language_button = 1;
-				if (wPreferences.new_style == TS_NEW) {
+				if (w_global.config->new_style == TS_NEW) {
 					fwin->language_button = wCoreCreate(fwin->core, bsize, 0, bsize, bsize);
 
 					if (width < theight * 4)
@@ -381,10 +381,10 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			if (flags & WFF_RIGHT_BUTTON) {
 				fwin->flags.right_button = 1;
-				if (wPreferences.new_style == TS_NEW) {
+				if (w_global.config->new_style == TS_NEW) {
 					fwin->right_button =
 					    wCoreCreate(fwin->core, width - bsize + 1, 0, bsize, bsize);
-				} else if (wPreferences.new_style == TS_OLD) {
+				} else if (w_global.config->new_style == TS_OLD) {
 					fwin->right_button =
 					    wCoreCreate(fwin->titlebar, width - bsize - 3,
 							(theight - bsize) / 2, bsize, bsize);
@@ -404,7 +404,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 					XMapRaised(dpy, fwin->right_button->window);
 			}
 
-			if (wPreferences.new_style == TS_NEW)
+			if (w_global.config->new_style == TS_NEW)
 				updateTitlebar(fwin);
 
 			XMapRaised(dpy, fwin->titlebar->window);
@@ -588,7 +588,7 @@ static void updateTitlebar(WFrameWindow * fwin)
 	x = 0;
 	w = fwin->core->width + 1;
 
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		if (fwin->flags.hide_left_button || !fwin->left_button || fwin->flags.lbutton_dont_fit) {
 			x = 0;
 #ifdef XKB_BUTTON_HINT
@@ -617,7 +617,7 @@ static void updateTitlebar(WFrameWindow * fwin)
 #ifdef XKB_BUTTON_HINT
 	else {
 		int bsize = theight - 7;
-		if (wPreferences.new_style == TS_NEXT)
+		if (w_global.config->new_style == TS_NEXT)
 			bsize -= 1;
 		if (fwin->flags.hide_left_button || !fwin->left_button || fwin->flags.lbutton_dont_fit) {
 			if (fwin->language_button)
@@ -632,12 +632,12 @@ static void updateTitlebar(WFrameWindow * fwin)
 	}
 #endif
 
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		if (!fwin->flags.hide_right_button && fwin->right_button && !fwin->flags.rbutton_dont_fit)
 			w -= fwin->right_button->width;
 	}
 
-	if (wPreferences.new_style == TS_NEW || fwin->titlebar->width != w)
+	if (w_global.config->new_style == TS_NEW || fwin->titlebar->width != w)
 		fwin->flags.need_texture_remake = 1;
 
 	wCoreConfigure(fwin->titlebar, x, 0, w, theight);
@@ -662,7 +662,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 #endif
 
 	if (fwin->titlebar) {
-		if (wPreferences.new_style == TS_NEW) {
+		if (w_global.config->new_style == TS_NEW) {
 			updateTitlebar(fwin);
 		} else {
 #ifdef XKB_BUTTON_HINT
@@ -704,7 +704,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 	}
 
 	if (fwin->titlebar) {
-		if (wPreferences.new_style == TS_NEW) {
+		if (w_global.config->new_style == TS_NEW) {
 			updateTitlebar(fwin);
 		} else {
 			XClearWindow(dpy, fwin->titlebar->window);
@@ -744,7 +744,7 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 		return;
 	}
 
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		if (left)
 			limg = RGetSubImage(img, 0, 0, bwidth, bheight);
 		else
@@ -872,7 +872,7 @@ static void updateTexture(WFrameWindow * fwin)
 	if (fwin->titlebar) {
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
 			XSetWindowBackgroundPixmap(dpy, fwin->titlebar->window, fwin->title_back[i]);
-			if (wPreferences.new_style == TS_NEW) {
+			if (w_global.config->new_style == TS_NEW) {
 				if (fwin->left_button && fwin->lbutton_back[i])
 					XSetWindowBackgroundPixmap(dpy, fwin->left_button->window,
 								   fwin->lbutton_back[i]);
@@ -890,7 +890,7 @@ static void updateTexture(WFrameWindow * fwin)
 		} else {
 			pixel = fwin->title_texture[i]->solid.normal.pixel;
 			XSetWindowBackground(dpy, fwin->titlebar->window, pixel);
-			if (wPreferences.new_style == TS_NEW) {
+			if (w_global.config->new_style == TS_NEW) {
 				if (fwin->left_button)
 					XSetWindowBackground(dpy, fwin->left_button->window, pixel);
 #ifdef XKB_BUTTON_HINT
@@ -946,7 +946,7 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			/* button presence only changes the output in TS_NEW,
 			 * fold it out of the key for the other styles so they
 			 * share more */
-			extra = (wPreferences.new_style == TS_NEW)
+			extra = (w_global.config->new_style == TS_NEW)
 				? ((left ? 1 : 0) | (right ? 2 : 0) | (language ? 4 : 0))
 				: 0;
 
@@ -972,7 +972,7 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			e->refcount++;
 			fwin->title_cache[state] = e;
 			fwin->title_back[state] = e->title;
-			if (wPreferences.new_style == TS_NEW) {
+			if (w_global.config->new_style == TS_NEW) {
 				fwin->lbutton_back[state] = e->lbutton;
 				fwin->rbutton_back[state] = e->rbutton;
 #ifdef XKB_BUTTON_HINT
@@ -1028,7 +1028,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 	state = fwin->flags.state;
 
 	if (fwin->flags.is_client_window_frame)
-		fwin->flags.justification = wPreferences.title_justification;
+		fwin->flags.justification = w_global.config->title_justification;
 
 	if (fwin->flags.need_texture_remake) {
 		int i;
@@ -1051,7 +1051,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			}
 		}
 #ifdef XKB_BUTTON_HINT
-		if (wPreferences.modelock)
+		if (w_global.config->modelock)
 			wFrameWindowUpdateLanguageButton(fwin);
 #endif
 	}
@@ -1107,7 +1107,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 		int titlelen;
 		int allButtons = 1;
 
-		if (wPreferences.new_style != TS_NEW) {
+		if (w_global.config->new_style != TS_NEW) {
 			if (fwin->left_button && !fwin->flags.hide_left_button && !fwin->flags.lbutton_dont_fit)
 				lofs += fwin->left_button->width + 3;
 			else
@@ -1208,7 +1208,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 
 static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height, Bool dontMove)
 {
-	int k = (wPreferences.new_style == TS_NEW ? 4 : 3);
+	int k = (w_global.config->new_style == TS_NEW ? 4 : 3);
 	int resizedHorizontally = 0;
 
 	if (dontMove)
@@ -1271,7 +1271,7 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 			}
 		}
 
-		if (wPreferences.new_style == TS_NEW) {
+		if (w_global.config->new_style == TS_NEW) {
 			if (fwin->right_button)
 				XMoveWindow(dpy, fwin->right_button->window,
 					    width - fwin->right_button->width + 1, 0);
@@ -1399,7 +1399,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	}
 
 	tmp[1] = None;
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		tmp[1] = XCreatePixmap(dpy, button->window, 2*key_width, key_height, scr->w_depth);
 		if (tmp[1] == None) {
 			XFreePixmap(dpy, tmp[0]);
@@ -1416,7 +1416,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	int text_y = (key_height - text_height) / 2;
 
 	/* Fill the color pixmap depending on the style  */
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		for (i = 0; i < 2; i++) {
 			if (fwin->title_texture[i]->any.type != WTEX_SOLID && fwin->title_back[i] != None) {
 				XCopyArea(dpy, fwin->languagebutton_back[i], tmp[i], scr->copy_gc,
@@ -1429,7 +1429,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 			WMDrawString(scr->wmscreen, tmp[i], fwin->title_color[i],
 						 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
 		}
-	} else if (wPreferences.new_style == TS_OLD) {
+	} else if (w_global.config->new_style == TS_OLD) {
 		unsigned long bg_pixel = scr->widget_texture->normal.pixel;
 		XSetForeground(dpy, gc, bg_pixel);
 		XFillRectangle(dpy, tmp[0], gc, 0, 0, key_width, key_height);
@@ -1447,14 +1447,14 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 	/* pushed button next to normal for easy access when painting */
 	text_x = key_width + (key_width - text_width) / 2;
-	if (wPreferences.new_style == TS_NEW) {
+	if (w_global.config->new_style == TS_NEW) {
 		XSetForeground(dpy, gc, scr->white_pixel);
 		for (i = 0; i < 2; i++) {
 			XFillRectangle(dpy, tmp[i], gc, key_width, 0, key_width, key_height);
 			WMDrawString(scr->wmscreen, tmp[i], WMBlackColor(scr->wmscreen),
 						 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
 		}
-	} else if (wPreferences.new_style == TS_OLD) {
+	} else if (w_global.config->new_style == TS_OLD) {
 		XSetForeground(dpy, gc, scr->white_pixel);
 		XFillRectangle(dpy, tmp[0], gc, key_width, 0, key_width, key_height);
 		WMDrawString(scr->wmscreen, tmp[0], WMDarkGrayColor(scr->wmscreen),
@@ -1471,7 +1471,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 	WMReleaseFont(small);
 
-	wFrameWindowSetLanguageButtonImages(fwin, tmp, (wPreferences.new_style == TS_NEW) ? 2 : 1);
+	wFrameWindowSetLanguageButtonImages(fwin, tmp, (w_global.config->new_style == TS_NEW) ? 2 : 1);
 }
 #endif				/* XKB_BUTTON_HINT */
 
@@ -1506,7 +1506,7 @@ static void checkTitleSize(WFrameWindow * fwin)
 		width = fwin->titlebar->width - 6 - 6;
 	}
 
-	if (wPreferences.new_style != TS_NEW) {
+	if (w_global.config->new_style != TS_NEW) {
 		if (fwin->left_button && !fwin->flags.hide_left_button && !fwin->flags.lbutton_dont_fit)
 			width -= fwin->left_button->width + 3;
 
@@ -1546,17 +1546,17 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 			}
 		}
 		XSetClipMask(dpy, copy_gc, None);
-		if (wPreferences.new_style == TS_NEXT)
+		if (w_global.config->new_style == TS_NEXT)
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 		else
 			XSetForeground(dpy, copy_gc, scr->white_pixel);
 
 		d = 1;
-		if (wPreferences.new_style == TS_NEW) {
+		if (w_global.config->new_style == TS_NEW) {
 			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
-		} else if (wPreferences.new_style == TS_OLD) {
+		} else if (w_global.config->new_style == TS_OLD) {
 			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
@@ -1576,7 +1576,7 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 		}
 		d = 0;
 
-		if (wPreferences.new_style == TS_NEW) {
+		if (w_global.config->new_style == TS_NEW) {
 			if (texture->any.type == WTEX_SOLID || pushed)
 				wDrawBevel(button->window, button->width, button->height,
 					   (WTexSolid *) texture, WREL_RAISED);
@@ -1592,7 +1592,7 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 		x = (button->width - width) / 2 + d;
 		y = (button->height - image->height) / 2 + d;
 		XSetClipOrigin(dpy, copy_gc, x - left, y);
-		if (wPreferences.new_style != TS_NEW) {
+		if (w_global.config->new_style != TS_NEW) {
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 			if (!pushed) {
 				if (image->depth == 1)
@@ -1602,7 +1602,7 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 					XCopyArea(dpy, image->image, button->window, copy_gc,
 						  left, 0, width, image->height, x, y);
 			} else {
-				if (wPreferences.new_style == TS_OLD) {
+				if (w_global.config->new_style == TS_OLD) {
 					XSetForeground(dpy, copy_gc, scr->dark_pixel);
 					if (from_xpm)
 						XFillRectangle(dpy, button->window, copy_gc, 0, 0,
@@ -1644,7 +1644,7 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 	if (button == fwin->language_button) {
 		if (!fwin->flags.hide_language_button) {
 			/* map focused and pfocused states to focus language button image */
-			int lb_index = wPreferences.new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
+			int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
 
 			paintButton(button, fwin->title_texture[fwin->flags.state],
 				    WMColorPixel(fwin->title_color[fwin->flags.state]),
@@ -1709,11 +1709,11 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 
 #ifdef XKB_BUTTON_HINT
 	if (button == fwin->language_button) {
-		if (!wPreferences.modelock)
+		if (!w_global.config->modelock)
 			return;
 
 		/* map focused and pfocused states to focus language button image */
-		int lb_index = wPreferences.new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
+		int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
 
 		image = fwin->languagebutton_image[lb_index];
 		from_xpm = False;

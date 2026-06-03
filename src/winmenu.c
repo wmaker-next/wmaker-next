@@ -254,7 +254,7 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 
 	case MC_KILL:
 		wretain(wwin);
-		if (wPreferences.dont_confirm_kill
+		if (w_global.config->dont_confirm_kill
 		    || wMessageDialog(menu->frame->screen_ptr, _("Kill Application"),
 				      _
 				      ("This will kill the application.\nAny unsaved changes will be lost.\nPlease confirm."),

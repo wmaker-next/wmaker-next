@@ -781,6 +781,72 @@ static void destroy_entry_value(WConfig *config, const WConfigEntry *entry)
 	}
 }
 
+static char *string_dup(const char *value)
+{
+	return value ? wstrdup(value) : NULL;
+}
+
+static void string_array_copy(WConfigStringArray *dst,
+			      const WConfigStringArray *src)
+{
+	size_t i;
+
+	dst->count = src->count;
+	dst->items = src->count ? wmalloc(src->count * sizeof(char *)) : NULL;
+	for (i = 0; i < src->count; i++)
+		dst->items[i] = string_dup(src->items[i]);
+}
+
+/* Deep-copy one schema field from src into dst, taking ownership of any
+ * heap allocations so dst can be destroyed independently of src. The
+ * previous dst value must already have been released. */
+static void copy_entry_value(WConfig *dst, const WConfig *src,
+			     const WConfigEntry *entry)
+{
+	char *dst_base = (char *)dst + entry->offset;
+	const char *src_base = (const char *)src + entry->offset;
+	const WConfigSwitchPanelImages *src_sp;
+	WConfigSwitchPanelImages *dst_sp;
+
+	switch (entry->type) {
+	case WCFG_STRING:
+	case WCFG_PATH_LIST:
+		*(char **)dst_base = string_dup(*(char * const *)src_base);
+		break;
+	case WCFG_STRING_ARRAY:
+		string_array_copy((WConfigStringArray *)dst_base,
+				  (const WConfigStringArray *)src_base);
+		break;
+	case WCFG_SWITCH_PANEL_IMAGES:
+		src_sp = (const WConfigSwitchPanelImages *)src_base;
+		dst_sp = (WConfigSwitchPanelImages *)dst_base;
+		dst_sp->tile = string_dup(src_sp->tile);
+		dst_sp->background = string_dup(src_sp->background);
+		dst_sp->center_width = src_sp->center_width;
+		dst_sp->center_height = src_sp->center_height;
+		break;
+	case WCFG_KEY_BINDING:
+		((WConfigKeyBinding *)dst_base)->spec =
+		    string_dup(((const WConfigKeyBinding *)src_base)->spec);
+		break;
+	case WCFG_TEXTURE_SPEC:
+	case WCFG_FONT_SPEC:
+	case WCFG_COLOR_SPEC:
+	case WCFG_CURSOR_SPEC:
+	case WCFG_BACKGROUND_SPEC:
+		((WConfigResourceSpec *)dst_base)->spec =
+		    string_dup(((const WConfigResourceSpec *)src_base)->spec);
+		break;
+	case WCFG_BOOL:
+	case WCFG_INT:
+	case WCFG_UINT:
+	case WCFG_ENUM:
+	case WCFG_COORD:
+		memcpy(dst_base, src_base, entry->size);
+		break;
+	}
+}
+
 void wConfigDestroy(WConfig *config)
 {
 	const WConfigEntry *schema;
@@ -904,121 +970,6 @@ Bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key)
 	return (changes->changed[WCFG_CHANGE_WORD(key)] & WCFG_CHANGE_BIT(key)) != 0;
 }
 
-static void replace_preference_string(char **target, const char *value)
-{
-	if (*target)
-		wfree(*target);
-	*target = value ? wstrdup(value) : NULL;
-}
-
-typedef enum {
-	WCFG_PREF_COPY_BYTES,
-	WCFG_PREF_COPY_STRING
-} WConfigPreferenceCopyType;
-
-typedef struct WConfigPreferenceCopy {
-	WConfigKey key;
-	size_t config_offset;
-	size_t pref_offset;
-	size_t config_size;
-	size_t pref_size;
-	WConfigPreferenceCopyType type;
-} WConfigPreferenceCopy;
-
-#define WCFG_COPY_BYTES(key, config_field, pref_field) \
-	{ key, offsetof(WConfig, config_field), \
-	  offsetof(struct WPreferences, pref_field), \
-	  sizeof(((WConfig *)0)->config_field), \
-	  sizeof(((struct WPreferences *)0)->pref_field), WCFG_PREF_COPY_BYTES }
-#define WCFG_COPY_STRING(key, config_field, pref_field) \
-	{ key, offsetof(WConfig, config_field), \
-	  offsetof(struct WPreferences, pref_field), sizeof(char *), \
-	  sizeof(char *), WCFG_PREF_COPY_STRING }
-
-#define WCFG_BRIDGE_NONE(K, field, pref)
-#define WCFG_BRIDGE_BYTES(K, field, pref) \
-	WCFG_COPY_BYTES(WCFG_KEY_##K, field, pref),
-#define WCFG_BRIDGE_STRING(K, field, pref) \
-	WCFG_COPY_STRING(WCFG_KEY_##K, field, pref),
-#define WCFG_BRIDGE_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh, bridge, pref) \
-	WCFG_BRIDGE_##bridge(K, field, pref)
-
-static const WConfigPreferenceCopy runtime_preference_copies[] = {
-	WCFG_SCHEMA(WCFG_BRIDGE_ROW)
-};
-
-#undef WCFG_BRIDGE_ROW
-#undef WCFG_BRIDGE_NONE
-#undef WCFG_BRIDGE_BYTES
-#undef WCFG_BRIDGE_STRING
-
-static Bool size_range_fits(size_t offset, size_t size, size_t total)
-{
-	return offset <= total && size <= total - offset;
-}
-
-static Bool runtime_preference_copy_is_valid(const WConfigPreferenceCopy *copy)
-{
-	if (copy->key >= WCFG_KEY_COUNT)
-		return False;
-	if (!size_range_fits(copy->config_offset, copy->config_size, sizeof(WConfig)) ||
-	    !size_range_fits(copy->pref_offset, copy->pref_size, sizeof(struct WPreferences)))
-		return False;
-	if (copy->type == WCFG_PREF_COPY_STRING)
-		return copy->config_size == sizeof(char *) &&
-		    copy->pref_size == sizeof(char *);
-
-	return copy->type == WCFG_PREF_COPY_BYTES &&
-	    copy->config_size == copy->pref_size;
-}
-
-Bool wConfigRuntimePreferenceCopiesAreValid(void)
-{
-	size_t i;
-
-	for (i = 0; i < wlengthof(runtime_preference_copies); i++) {
-		if (!runtime_preference_copy_is_valid(&runtime_preference_copies[i]))
-			return False;
-	}
-
-	return True;
-}
-
-static void copy_runtime_preference(const WConfigPreferenceCopy *copy,
-				    const WConfig *config)
-{
-	const char *source = (const char *)config + copy->config_offset;
-	char *target = (char *)&wPreferences + copy->pref_offset;
-	Bool valid;
-
-	valid = runtime_preference_copy_is_valid(copy);
-	assert(valid);
-	if (!valid)
-		return;
-	if (copy->type == WCFG_PREF_COPY_STRING) {
-		replace_preference_string((char **)target, *(char * const *)source);
-		return;
-	}
-
-	memcpy(target, source, copy->config_size);
-}
-
-static void apply_runtime_preference_copies(const WConfig *config,
-					    const WConfigChanges *changes)
-{
-	size_t i;
-
-	for (i = 0; i < wlengthof(runtime_preference_copies); i++) {
-		const WConfigPreferenceCopy *copy = &runtime_preference_copies[i];
-
-		if (wConfigChangesHas(changes, copy->key))
-			copy_runtime_preference(copy, config);
-	}
-}
-
-#undef WCFG_COPY_STRING
-#undef WCFG_COPY_BYTES
-
 static unsigned int config_refresh_mask_for_changes(const WConfigChanges *changes)
 {
 	const WConfigEntry *schema;
@@ -1058,12 +1009,9 @@ void wConfigApplyStatic(const WConfig *config)
 	if (!config)
 		return;
 
-	wPreferences.cmap_size = config->colormap_size;
-	wPreferences.no_dithering = config->disable_dithering;
-	wPreferences.icon_size = config->icon_size;
+	/* Only the derived startup state remains here, plain config values
+	 * are read directly from w_global.config now. */
 	wConfigApplyModifierKey(config->modifier_key, "Mod1");
-	wPreferences.focus_mode = config->focus_mode;
-	wPreferences.new_style = config->new_style;
 	wPreferences.flags.nodock = wPreferences.flags.nodock || config->disable_dock;
 	wPreferences.flags.nodrawer = wPreferences.flags.nodrawer ||
 	    wPreferences.flags.nodock || config->disable_drawers;
@@ -1071,9 +1019,6 @@ void wConfigApplyStatic(const WConfig *config)
 	wPreferences.flags.clip_merged_in_dock = config->clip_merged_in_dock;
 	wPreferences.flags.noclip = wPreferences.flags.noclip ||
 	    config->clip_merged_in_dock;
-	wPreferences.disable_miniwindows = config->disable_miniwindows;
-	wPreferences.enable_workspace_pager = config->enable_workspace_pager;
-	wPreferences.switch_panel_icon_size = config->switch_panel_icon_size;
 }
 
 unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
@@ -1094,7 +1039,6 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		return 0;
 
 	refresh = config_refresh_mask_for_changes(changes);
-	apply_runtime_preference_copies(new_config, changes);
 
 	if (wConfigChangesHas(changes, WCFG_KEY_ICON_POSITION)) {
 		update_usable_area = True;
@@ -1129,7 +1073,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	if (wConfigChangesHas(changes, WCFG_KEY_SCROLLABLE_MENUS))
 		update_root_mask = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_DOUBLE_CLICK_TIME))
-		W_setconf_doubleClickDelay(wPreferences.dblclick_time);
+		W_setconf_doubleClickDelay(new_config->double_click_time);
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH))
 		scr->frame_border_width = new_config->frame_border_width;
 
@@ -1152,8 +1096,6 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		refresh |= wConfigApplyWorkspaceBackgroundSpec(scr, "WorkspaceBack",
 		    WCFG_BACKGROUND_WORKSPACE, &new_config->workspace_back,
 		    "(solid, \"rgb:50/50/75\")");
-	if (wConfigChangesHas(changes, WCFG_KEY_SMOOTH_WORKSPACE_BACK))
-		wPreferences.smooth_workspace_back = new_config->smooth_workspace_back;
 
 	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_ACTIONS))
 		wConfigApplyHotCornerActions(scr, &new_config->hot_corner_actions);
@@ -1277,16 +1219,15 @@ void wConfigClearWindowMaker(void)
 
 void wConfigApplyStaticDefaults(WMPropList *dict)
 {
-	WConfig *config;
-
-	config = wConfigReadWindowMaker(dict);
-	wConfigApplyStatic(config);
-	wConfigDestroy(config);
+	/* Test helper, mirrors the StartUp() ordering so check_config can
+	 * inspect the derived flags and the adopted WConfig together. */
+	wConfigAdoptWindowMaker(wConfigReadWindowMaker(dict));
+	wConfigApplyStatic(w_global.config);
 }
 
 void wConfigPrepareRuntimeDefaults(WMPropList *new_dict,
 				   const WConfig *old_config,
-				   const WConfig *new_config,
+				   WConfig *new_config,
 				   WConfigChanges *changes)
 {
 	const WConfigEntry *schema;
@@ -1310,6 +1251,12 @@ void wConfigPrepareRuntimeDefaults(WMPropList *new_dict,
 
 		new_value = dict_get_entry(new_dict, &schema[i]);
 		if (!new_value && old_config) {
+			/* Key was removed at runtime, keep the value the
+			 * running session already has rather than reverting
+			 * to the schema default, and suppress the change so
+			 * no refresh side effect fires. */
+			destroy_entry_value(new_config, &schema[i]);
+			copy_entry_value(new_config, old_config, &schema[i]);
 			changes->changed[WCFG_CHANGE_WORD(schema[i].config_key)] &=
 			    ~WCFG_CHANGE_BIT(schema[i].config_key);
 		} else if (!new_value && !old_config) {
@@ -1329,16 +1276,20 @@ void wConfigPrepareRuntimeDefaults(WMPropList *new_dict,
 
 unsigned int wConfigApplyRuntimeDefaults(WScreen *scr, WMPropList *new_dict)
 {
-	const WConfig *old_config;
+	WConfig *old_config;
 	WConfig *new_config;
 	WConfigChanges changes;
 	unsigned int refresh;
 
+	/* Test helper, mirrors the runtime-reload ordering in
+	 * wDefaultsCheckDomains() so check_config sees the new values via
+	 * w_global.config while side-effect handlers run. */
 	new_config = wConfigReadWindowMaker(new_dict);
 	old_config = w_global.config;
 	wConfigPrepareRuntimeDefaults(new_dict, old_config, new_config, &changes);
+	w_global.config = new_config;
 	refresh = wConfigApplyRuntime(scr, old_config, new_config, &changes);
-	wConfigDestroy(new_config);
+	wConfigDestroy(old_config);
 
 	return refresh;
 }

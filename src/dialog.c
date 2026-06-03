@@ -114,7 +114,7 @@ static void toggleSaveSession(WMWidget *w, void *data)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) data;
 
-	wPreferences.save_session_on_exit = WMGetButtonSelected((WMButton *) w);
+	w_global.config->save_session_on_exit = WMGetButtonSelected((WMButton *) w);
 }
 
 int wExitDialog(WScreen *scr, const char *title, const char *message, const char *defBtn, const char *altBtn, const char *othBtn)
@@ -136,7 +136,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	WMSetButtonAction(saveSessionBtn, toggleSaveSession, NULL);
 	WMAddBoxSubview(panel->hbox, WMWidgetView(saveSessionBtn), False, True, pwidth / 2, 0, 0);
 	WMSetButtonText(saveSessionBtn, _("Save workspace state"));
-	WMSetButtonSelected(saveSessionBtn, wPreferences.save_session_on_exit);
+	WMSetButtonSelected(saveSessionBtn, w_global.config->save_session_on_exit);
 	WMRealizeWidget(saveSessionBtn);
 	WMMapWidget(saveSessionBtn);
 
@@ -438,7 +438,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	filename = HistoryFileName(name);
 	p = wmalloc(sizeof(WMInputPanelWithHistory));
 	p->panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));
-	p->history = LoadHistory(filename, wPreferences.history_lines);
+	p->history = LoadHistory(filename, w_global.config->history_lines);
 	p->histpos = 0;
 	p->prefix = NULL;
 	p->suffix = NULL;
@@ -711,7 +711,7 @@ static void listIconPaths(WMList * lPtr)
 	char *paths;
 	char *path;
 
-	paths = wstrdup(wPreferences.icon_path);
+	paths = wstrdup(w_global.config->icon_path);
 
 	path = strtok(paths, ":");
 
@@ -1101,7 +1101,7 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 			wfree(*file);
 			*file = NULL;
 		} else {
-			defaultPath = FindImage(wPreferences.icon_path, *file);
+			defaultPath = FindImage(w_global.config->icon_path, *file);
 			wantedPath = WMGetTextFieldText(panel->fileField);
 			if (defaultPath) {
 				/* if the file is not the default, use full path */

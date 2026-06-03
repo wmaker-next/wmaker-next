@@ -294,17 +294,21 @@ void wDefaultsCheckDomains(void* arg)
 				}
 
 				{
-					const WConfig *old_config = w_global.config;
+					WConfig *old_config = w_global.config;
 					WConfig *new_config = wConfigReadWindowMaker(dict);
 					WConfigChanges changes;
 
 					wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
+					/* adopt before applying so handlers reached
+					 * from wReadDefaults() read the new values
+					 * via w_global.config */
+					w_global.config = new_config;
 					for (i = 0; i < w_global.screen_count; i++) {
 						scr = wScreenWithNumber(i);
 						if (scr)
 							wReadDefaults(scr, old_config, new_config, &changes);
 					}
-					wConfigAdoptWindowMaker(new_config);
+					wConfigDestroy(old_config);
 				}
 
 				if (w_global.domain.wmaker->dictionary)
@@ -1181,7 +1185,7 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 			return (status);
 		}
 		val = WMGetFromPLString(elem);
-		bitmap_name = FindImage(wPreferences.pixmap_path, val);
+		bitmap_name = FindImage(w_global.config->pixmap_path, val);
 		if (!bitmap_name) {
 			wwarning(_("could not find cursor bitmap file \"%s\""), val);
 			return (status);
@@ -1192,7 +1196,7 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 			return (status);
 		}
 		val = WMGetFromPLString(elem);
-		mask_name = FindImage(wPreferences.pixmap_path, val);
+		mask_name = FindImage(w_global.config->pixmap_path, val);
 		if (!mask_name) {
 			wfree(bitmap_name);
 			wwarning(_("could not find cursor bitmap file \"%s\""), val);
@@ -1673,8 +1677,8 @@ static int setIconTile(WScreen *scr, void *tdata, void *foo)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
-	img = wTextureRenderImage(*texture, wPreferences.icon_size,
-				  wPreferences.icon_size, ((*texture)->any.type & WREL_BORDER_MASK)
+	img = wTextureRenderImage(*texture, w_global.config->icon_size,
+				  w_global.config->icon_size, ((*texture)->any.type & WREL_BORDER_MASK)
 				  ? WREL_ICON : WREL_FLAT);
 	if (!img) {
 		wwarning(_("could not render texture for icon background"));
@@ -2059,7 +2063,7 @@ static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)
 			return 0;
 		}
 
-		SendHelperMessage(scr, 'P', -1, wPreferences.pixmap_path);
+		SendHelperMessage(scr, 'P', -1, w_global.config->pixmap_path);
 	}
 
 	for (i = 0; i < WMGetPropListItemCount(value); i++) {
@@ -2110,11 +2114,11 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 
 		text = WMGetPropListDescription(value, False);
 		len = strlen(text) + 40;
-		dither = wPreferences.no_dithering ? "-m" : "-d";
+		dither = w_global.config->disable_dithering ? "-m" : "-d";
 		if (!strchr(text, '\'') && !strchr(text, '\\')) {
 			char command[len];
 
-			if (wPreferences.smooth_workspace_back)
+			if (w_global.config->smooth_workspace_back)
 				snprintf(command, len, "wmsetbg %s -S -p '%s' &", dither, text);
 			else
 				snprintf(command, len, "wmsetbg %s -p '%s' &", dither, text);
@@ -2395,7 +2399,7 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		return;
 
 	if (images->background) {
-		path = FindImage(wPreferences.pixmap_path, images->background);
+		path = FindImage(w_global.config->pixmap_path, images->background);
 		if (!path) {
 			wwarning(_("Could not find image \"%s\" for option \"%s\""),
 				 images->background, "SwitchPanelImages");
@@ -2449,7 +2453,7 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		}
 	}
 
-	path = FindImage(wPreferences.pixmap_path, images->tile);
+	path = FindImage(w_global.config->pixmap_path, images->tile);
 	if (!path) {
 		wwarning(_("Could not find image \"%s\" for option \"%s\""),
 			 images->tile, "SwitchPanelImages");

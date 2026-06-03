@@ -56,7 +56,7 @@ WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width, int h
 
 	attribs.colormap = colormap;
 
-	if (wPreferences.use_saveunders) {
+	if (w_global.config->use_saveunders) {
 		vmask |= CWSaveUnder;
 		attribs.save_under = True;
 	}

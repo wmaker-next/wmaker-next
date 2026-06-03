@@ -474,7 +474,7 @@ void ProcessPendingEvents(void)
 Bool IsDoubleClick(WScreen * scr, XEvent * event)
 {
 	if ((scr->last_click_time > 0) &&
-	    (event->xbutton.time - scr->last_click_time <= wPreferences.dblclick_time)
+	    (event->xbutton.time - scr->last_click_time <= w_global.config->double_click_time)
 	    && (event->xbutton.button == scr->last_click_button)
 	    && (event->xbutton.window == scr->last_click_window)) {
 
@@ -603,7 +603,7 @@ static void handleExtensions(XEvent * event)
 		else {
 			/* Listen not only for IndicatorStateNotify but also for StateNotify
 			 * which is commonly emitted on group (layout) changes. */
-			if (wPreferences.modelock && (xkb_type == XkbIndicatorStateNotify || xkb_type == XkbStateNotify)) {
+			if (w_global.config->modelock && (xkb_type == XkbIndicatorStateNotify || xkb_type == XkbStateNotify)) {
 				handleXkbIndicatorStateNotify(xkbevent);
 			}
 		}
@@ -794,7 +794,7 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 	case WA_SELECT_WINDOWS:
 		wUnselectWindows(scr);
 		wSelectWindows(scr, event);
-		if (wPreferences.close_rootmenu_left_right_click){
+		if (w_global.config->close_rootmenu_left_right_click){
 			WMenu *menu = NULL;
 			WMPropList *definition;
 			menu = scr->root_menu;
@@ -855,25 +855,25 @@ static void handleButtonPress(XEvent * event)
 	wBalloonHide(scr);
 #endif
 
-	if (!wPreferences.disable_root_mouse && event->xbutton.window == scr->root_win) {
-		if (event->xbutton.button == Button1 && wPreferences.mouse_button1 != WA_NONE) {
-			executeButtonAction(scr, event, wPreferences.mouse_button1);
-		} else if (event->xbutton.button == Button2 && wPreferences.mouse_button2 != WA_NONE) {
-			executeButtonAction(scr, event, wPreferences.mouse_button2);
-		} else if (event->xbutton.button == Button3 && wPreferences.mouse_button3 != WA_NONE) {
-			executeButtonAction(scr, event, wPreferences.mouse_button3);
-		} else if (event->xbutton.button == Button8 && wPreferences.mouse_button8 != WA_NONE) {
-			executeButtonAction(scr, event, wPreferences.mouse_button8);
-		}else if (event->xbutton.button == Button9 && wPreferences.mouse_button9 != WA_NONE) {
-			executeButtonAction(scr, event, wPreferences.mouse_button9);
-		} else if (event->xbutton.button == Button4 && wPreferences.mouse_wheel_scroll != WA_NONE) {
-			executeWheelAction(scr, event, wPreferences.mouse_wheel_scroll);
-		} else if (event->xbutton.button == Button5 && wPreferences.mouse_wheel_scroll != WA_NONE) {
-			executeWheelAction(scr, event, wPreferences.mouse_wheel_scroll);
-		} else if (event->xbutton.button == Button6 && wPreferences.mouse_wheel_tilt != WA_NONE) {
-			executeWheelAction(scr, event, wPreferences.mouse_wheel_tilt);
-		} else if (event->xbutton.button == Button7 && wPreferences.mouse_wheel_tilt != WA_NONE) {
-			executeWheelAction(scr, event, wPreferences.mouse_wheel_tilt);
+	if (!w_global.config->disable_root_mouse && event->xbutton.window == scr->root_win) {
+		if (event->xbutton.button == Button1 && w_global.config->mouse_button1 != WA_NONE) {
+			executeButtonAction(scr, event, w_global.config->mouse_button1);
+		} else if (event->xbutton.button == Button2 && w_global.config->mouse_button2 != WA_NONE) {
+			executeButtonAction(scr, event, w_global.config->mouse_button2);
+		} else if (event->xbutton.button == Button3 && w_global.config->mouse_button3 != WA_NONE) {
+			executeButtonAction(scr, event, w_global.config->mouse_button3);
+		} else if (event->xbutton.button == Button8 && w_global.config->mouse_button8 != WA_NONE) {
+			executeButtonAction(scr, event, w_global.config->mouse_button8);
+		}else if (event->xbutton.button == Button9 && w_global.config->mouse_button9 != WA_NONE) {
+			executeButtonAction(scr, event, w_global.config->mouse_button9);
+		} else if (event->xbutton.button == Button4 && w_global.config->mouse_wheel_scroll != WA_NONE) {
+			executeWheelAction(scr, event, w_global.config->mouse_wheel_scroll);
+		} else if (event->xbutton.button == Button5 && w_global.config->mouse_wheel_scroll != WA_NONE) {
+			executeWheelAction(scr, event, w_global.config->mouse_wheel_scroll);
+		} else if (event->xbutton.button == Button6 && w_global.config->mouse_wheel_tilt != WA_NONE) {
+			executeWheelAction(scr, event, w_global.config->mouse_wheel_tilt);
+		} else if (event->xbutton.button == Button7 && w_global.config->mouse_wheel_tilt != WA_NONE) {
+			executeWheelAction(scr, event, w_global.config->mouse_wheel_tilt);
 		}
 	}
 
@@ -890,8 +890,8 @@ static void handleButtonPress(XEvent * event)
 		if (event->xbutton.state & ( MOD_MASK | ControlMask )) {
 			XAllowEvents(dpy, AsyncPointer, CurrentTime);
 		} else {
-			/*      if (wPreferences.focus_mode == WKF_CLICK) { */
-			if (wPreferences.ignore_focus_click) {
+			/*      if (w_global.config->focus_mode == WKF_CLICK) { */
+			if (w_global.config->ignore_focus_click) {
 				XAllowEvents(dpy, AsyncPointer, CurrentTime);
 			}
 			XAllowEvents(dpy, ReplayPointer, CurrentTime);
@@ -1203,7 +1203,7 @@ static void handleEnterNotify(XEvent * event)
 	/* enter to window */
 	wwin = wWindowFor(event->xcrossing.window);
 	if (!wwin) {
-		if (wPreferences.colormap_mode == WCM_POINTER) {
+		if (w_global.config->colormap_mode == WCM_POINTER) {
 			wColormapInstallForWindow(scr, NULL);
 		}
 		if (scr->autoRaiseTimer && event->xcrossing.root == event->xcrossing.window) {
@@ -1218,7 +1218,7 @@ static void handleEnterNotify(XEvent * event)
 		 *
 		 * set focus if in focus-follows-mouse mode and the event
 		 * is for the frame window and window doesn't have focus yet */
-		if (wPreferences.focus_mode == WKF_SLOPPY
+		if (w_global.config->focus_mode == WKF_SLOPPY
 		    && wwin->frame->core->window == event->xcrossing.window && !scr->flags.doing_alt_tab) {
 
 			if (!wwin->flags.focused && !WFLAGP(wwin, no_focusable))
@@ -1228,15 +1228,15 @@ static void handleEnterNotify(XEvent * event)
 				WMDeleteTimerHandler(scr->autoRaiseTimer);
 			scr->autoRaiseTimer = NULL;
 
-			if (wPreferences.raise_delay && !WFLAGP(wwin, no_focusable)) {
+			if (w_global.config->raise_delay && !WFLAGP(wwin, no_focusable)) {
 				scr->autoRaiseWindow = wwin->frame->core->window;
 				scr->autoRaiseTimer
-				    = WMAddTimerHandler(wPreferences.raise_delay, (WMCallback *) raiseWindow, scr);
+				    = WMAddTimerHandler(w_global.config->raise_delay, (WMCallback *) raiseWindow, scr);
 			}
 		}
 		/* Install colormap for window, if the colormap installation mode
 		 * is colormap_follows_mouse */
-		if (wPreferences.colormap_mode == WCM_POINTER) {
+		if (w_global.config->colormap_mode == WCM_POINTER) {
 			if (wwin->client_win == event->xcrossing.window)
 				wColormapInstallForWindow(scr, wwin);
 			else
@@ -1246,7 +1246,7 @@ static void handleEnterNotify(XEvent * event)
 
 	if (event->xcrossing.window == event->xcrossing.root
 	    && event->xcrossing.detail == NotifyNormal
-	    && event->xcrossing.detail != NotifyInferior && wPreferences.focus_mode != WKF_CLICK) {
+	    && event->xcrossing.detail != NotifyInferior && w_global.config->focus_mode != WKF_CLICK) {
 
 		wSetFocusTo(scr, scr->focused_window);
 	}
@@ -1430,7 +1430,7 @@ static int CheckFullScreenWindowFocused(WScreen * scr)
 /* ------------------------------------------------------------------ *
  * Key-chain timeout support                                          *
  *                                                                    *
- * wPreferences.keychain_timeout_delay in milliseconds after a chain  *
+ * w_global.config->keychain_timeout_delay in milliseconds after a chain  *
  * leader is pressed, the chain is automatically cancelled so the     *
  * user is not stuck in a half-entered sequence. Set to 0 to disable. *
  * ------------------------------------------------------------------ */
@@ -1448,11 +1448,11 @@ static void chainTimeoutCallback(void *data)
 /* Start (or restart) the chain inactivity timer */
 static void wStartChainTimer(void)
 {
-	if (wPreferences.keychain_timeout_delay > 0) {
+	if (w_global.config->keychain_timeout_delay > 0) {
 		if (w_global.shortcut.chain_timeout_handler)
 			WMDeleteTimerHandler(w_global.shortcut.chain_timeout_handler);
 		w_global.shortcut.chain_timeout_handler =
-			WMAddTimerHandler(wPreferences.keychain_timeout_delay, chainTimeoutCallback, NULL);
+			WMAddTimerHandler(w_global.config->keychain_timeout_delay, chainTimeoutCallback, NULL);
 	}
 }
 
@@ -1717,7 +1717,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_WORKSPACEMAP:
-		if (wPreferences.enable_workspace_pager)
+		if (w_global.config->enable_workspace_pager)
 			StartWorkspaceMap(scr);
 		break;
 
@@ -1756,7 +1756,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_WORKSPACE1 ... WKBD_WORKSPACE10:
 		widx = command - WKBD_WORKSPACE1;
 		i = (scr->current_workspace / 10) * 10 + widx;
-		if (wPreferences.ws_advance || i < scr->workspace_count)
+		if (w_global.config->ws_advance || i < scr->workspace_count)
 			wWorkspaceChange(scr, i);
 		break;
 
@@ -1773,7 +1773,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_MOVE_WORKSPACE1 ... WKBD_MOVE_WORKSPACE10:
 		widx = command - WKBD_MOVE_WORKSPACE1;
 		i = (scr->current_workspace / 10) * 10 + widx;
-		if (wwin && (wPreferences.ws_advance || i < scr->workspace_count))
+		if (wwin && (w_global.config->ws_advance || i < scr->workspace_count))
 			wWindowChangeWorkspace(wwin, i);
 		break;
 
@@ -1976,7 +1976,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 #ifdef KEEP_XKB_LOCK_STATUS
 	case WKBD_TOGGLE:
-		if (wPreferences.modelock) {
+		if (w_global.config->modelock) {
 			/*toggle */
 			wwin = scr->focused_window;
 
@@ -2266,7 +2266,7 @@ static void handleKeyPress(XEvent * event)
 
 static inline int get_corner(WMRect rect, WMPoint p)
 {
-	const int edge = wPreferences.hot_corner_edge;
+	const int edge = w_global.config->hot_corner_edge;
 	const int left_edge = rect.pos.x + edge;
 	const int right_edge = rect.pos.x + rect.size.width - edge;
 	const int top_edge = rect.pos.y + edge;
@@ -2303,38 +2303,38 @@ static void hotCornerDelay(void *data)
 
 static void handleMotionNotify(XEvent *event)
 {
-	if (wPreferences.scrollable_menus || wPreferences.hot_corners) {
+	if (w_global.config->scrollable_menus || w_global.config->hot_corners) {
 		WScreen *scr = wScreenForRootWindow(event->xmotion.root);
 		WMPoint p = wmkpoint(event->xmotion.x_root, event->xmotion.y_root);
 		WMRect rect = wGetRectForHead(scr, wGetHeadForPoint(scr, p));
 
-		if (wPreferences.hot_corners) {
+		if (w_global.config->hot_corners) {
 			if (!scr->flags.in_hot_corner) {
 				scr->flags.in_hot_corner = get_corner(rect, p);
 				if (scr->flags.in_hot_corner && !scr->hot_corner_timer)
-					scr->hot_corner_timer = WMAddTimerHandler(wPreferences.hot_corner_delay, hotCornerDelay, scr);
+					scr->hot_corner_timer = WMAddTimerHandler(w_global.config->hot_corner_delay, hotCornerDelay, scr);
 			} else {
 				int out_hot_corner = 0;
 
 				switch (scr->flags.in_hot_corner) {
 					case CORNER_TOPLEFT:
-						if ((p.x > (rect.pos.x + wPreferences.hot_corner_edge)) ||
-						    (p.y > (rect.pos.y + wPreferences.hot_corner_edge)))
+						if ((p.x > (rect.pos.x + w_global.config->hot_corner_edge)) ||
+						    (p.y > (rect.pos.y + w_global.config->hot_corner_edge)))
 							out_hot_corner = 1;
 						break;
 					case CORNER_TOPRIGHT:
-						if ((p.x < (rect.pos.x + rect.size.width - wPreferences.hot_corner_edge)) ||
-						    (p.y > (rect.pos.y + wPreferences.hot_corner_edge)))
+						if ((p.x < (rect.pos.x + rect.size.width - w_global.config->hot_corner_edge)) ||
+						    (p.y > (rect.pos.y + w_global.config->hot_corner_edge)))
 							out_hot_corner = 1;
 						break;
 					case CORNER_BOTTOMLEFT:
-						if ((p.x > (rect.pos.x + wPreferences.hot_corner_edge)) ||
-						    (p.y < (rect.pos.y + rect.size.height - wPreferences.hot_corner_edge)))
+						if ((p.x > (rect.pos.x + w_global.config->hot_corner_edge)) ||
+						    (p.y < (rect.pos.y + rect.size.height - w_global.config->hot_corner_edge)))
 							out_hot_corner = 1;
 						break;
 					case CORNER_BOTTOMRIGHT:
-						if ((p.x < (rect.pos.x + rect.size.width - wPreferences.hot_corner_edge)) ||
-						    (p.y < (rect.pos.y + rect.size.height - wPreferences.hot_corner_edge)))
+						if ((p.x < (rect.pos.x + rect.size.width - w_global.config->hot_corner_edge)) ||
+						    (p.y < (rect.pos.y + rect.size.height - w_global.config->hot_corner_edge)))
 							out_hot_corner = 1;
 						break;
 
@@ -2350,7 +2350,7 @@ static void handleMotionNotify(XEvent *event)
 			}
 		}
 
-		if (wPreferences.scrollable_menus) {
+		if (w_global.config->scrollable_menus) {
 			if (scr->flags.jump_back_pending ||
 			    p.x <= (rect.pos.x + 1) ||
 			    p.x >= (rect.pos.x + rect.size.width - 2) ||

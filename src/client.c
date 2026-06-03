@@ -609,7 +609,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 					if (wapp) {
 						wapp->menu = wAppMenuGet(scr, wwin->main_window);
 					}
-					if (wPreferences.auto_arrange_icons) {
+					if (w_global.config->auto_arrange_icons) {
 						wArrangeIcons(wwin->screen_ptr, True);
 					}
 				} else {

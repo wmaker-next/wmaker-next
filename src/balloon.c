@@ -381,10 +381,10 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	if (scr->balloon->contents)
 		XFreePixmap(dpy, scr->balloon->contents);
 
-	width  = wPreferences.minipreview_size;
-	height = wPreferences.minipreview_size;
+	width  = w_global.config->minipreview_size;
+	height = w_global.config->minipreview_size;
 
-	if (wPreferences.miniwin_title_balloon) {
+	if (w_global.config->miniwin_title_balloon) {
 		shortenTitle = ShrinkString(font, title, width - MINIPREVIEW_BORDER * 2);
 		titleHeight = countLines(shortenTitle) * WMFontHeight(font) + 4;
 		height += titleHeight;
@@ -399,7 +399,7 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 		x = scr->scr_width - width - 1;
 
 	if (y - height - 2 < 0) {
-		y += wPreferences.icon_size;
+		y += w_global.config->icon_size;
 		if (y < 0)
 			y = 0;
 	} else {
@@ -421,8 +421,8 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	}
 
 	XCopyArea(dpy, mini_preview, pixmap, scr->draw_gc,
-	          0, 0, (wPreferences.minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
-	          (wPreferences.minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
+	          0, 0, (w_global.config->minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
+	          (w_global.config->minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
 	          MINIPREVIEW_BORDER, MINIPREVIEW_BORDER + titleHeight);
 
 #ifdef SHAPED_BALLOON
@@ -456,7 +456,7 @@ static void showBalloon(WScreen *scr)
 		return;
 	}
 
-	if (wPreferences.miniwin_preview_balloon && scr->balloon->mini_preview != None)
+	if (w_global.config->miniwin_preview_balloon && scr->balloon->mini_preview != None)
 		/* used to display either the mini-preview alone or the mini-preview with the title */
 		show_minipreview(scr, x, y, scr->balloon->text, scr->balloon->mini_preview);
 	else
@@ -627,19 +627,19 @@ void wBalloonEnteredObject(WScreen *scr, WObjDescriptor *object)
 
 	switch (object->parent_type) {
 	case WCLASS_FRAME:
-		if (wPreferences.window_balloon)
+		if (w_global.config->window_balloon)
 			frameBalloon(object);
 		break;
 	case WCLASS_DOCK_ICON:
-		if (wPreferences.appicon_balloon)
+		if (w_global.config->appicon_balloon)
 			appiconBalloon(object);
 		break;
 	case WCLASS_MINIWINDOW:
-		if (wPreferences.miniwin_title_balloon || wPreferences.miniwin_preview_balloon)
+		if (w_global.config->miniwin_title_balloon || w_global.config->miniwin_preview_balloon)
 			miniwindowBalloon(object);
 		break;
 	case WCLASS_APPICON:
-		if (wPreferences.appicon_balloon)
+		if (w_global.config->appicon_balloon)
 			appiconBalloon(object);
 		break;
 	default:
