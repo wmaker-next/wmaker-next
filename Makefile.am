@@ -48,6 +48,7 @@ EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
 	README COPYING.WTFPL autogen.sh \
 	email-clients.txt checkpatch.pl update-changelog.pl \
 	script/check-cmdline-options-doc.sh \
+	script/check-manifest.sh \
 	script/check-translation-sources.sh \
 	script/generate-html-from-man.sh \
 	script/generate-mapfile-from-header.sh \
@@ -183,7 +184,17 @@ am__v_CHKOPTS_  = $(am__v_CHKOPTS_$(AM_DEFAULT_VERBOSITY))
 am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
-check-local: configure-documentation
+check-local: configure-documentation check-manifest check-pkgconfig
+
+check-manifest:
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-manifest.sh $(top_srcdir)
+
+check-pkgconfig: wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
+	$(AM_V_CHKOPTS)ok=true ; \
+	for pc in $^ ; do \
+		$(PKG_CONFIG) --validate "$$pc" || ok=false ; \
+	done ; \
+	$$ok
 
 configure-documentation:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
@@ -200,4 +211,4 @@ configure-documentation:
 		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
 		--ignore-prg 'with-x # no use, it would not work without X'
 
-.PHONY: configure-documentation
+.PHONY: configure-documentation check-manifest check-pkgconfig
