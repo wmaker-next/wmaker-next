@@ -69,6 +69,8 @@ static Atom net_showing_desktop;
 static Atom net_close_window;
 static Atom net_moveresize_window;
 static Atom net_wm_moveresize;
+static Atom net_restack_window;
+static Atom net_request_frame_extents;
 
 /* Application Window Properties */
 static Atom net_wm_name;
@@ -157,6 +159,8 @@ static atomitem_t atomNames[] = {
 	{"_NET_CLOSE_WINDOW", &net_close_window},
 	{"_NET_MOVERESIZE_WINDOW", &net_moveresize_window},
 	{"_NET_WM_MOVERESIZE", &net_wm_moveresize},
+	{"_NET_RESTACK_WINDOW", &net_restack_window},
+	{"_NET_REQUEST_FRAME_EXTENTS", &net_request_frame_extents},
 
 	{"_NET_WM_NAME", &net_wm_name},
 	{"_NET_WM_VISIBLE_NAME", &net_wm_visible_name},
@@ -261,6 +265,9 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_showing_desktop;
 	atom[i++] = net_moveresize_window;
 	atom[i++] = net_wm_moveresize;
+	atom[i++] = net_restack_window;
+	atom[i++] = net_request_frame_extents;
+	atom[i++] = net_close_window;
 	atom[i++] = net_wm_desktop;
 #ifdef USE_XINERAMA
 	atom[i++] = net_wm_fullscreen_monitors;
@@ -676,6 +683,7 @@ void wNETWMInitStuff(WScreen *scr)
 	WMAddNotificationObserver(observer, data, WMNChangedStacking, NULL);
 	WMAddNotificationObserver(observer, data, WMNChangedName, NULL);
 
+	WMAddNotificationObserver(wsobserver, data, WMNResetStacking, NULL);
 	WMAddNotificationObserver(wsobserver, data, WMNWorkspaceCreated, NULL);
 	WMAddNotificationObserver(wsobserver, data, WMNWorkspaceDestroyed, NULL);
 	WMAddNotificationObserver(wsobserver, data, WMNWorkspaceChanged, NULL);
@@ -1825,6 +1833,37 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		}
 	}
 
+	/* _NET_REQUEST_FRAME_EXTENTS is sent for a window that is not yet
+	 * mapped or managed, so handle it before requiring a WWindow. The
+	 * spec only asks for an estimate, reply with the extents a normally
+	 * decorated window would get under the current theme, which is what
+	 * clients use this for (placing themselves so the framed window
+	 * lands where they expect). If the window turns out to be a splash
+	 * or borderless type the real extents replace this on map. */
+	if (event->message_type == net_request_frame_extents) {
+		const WConfig *cfg = w_global.config;
+		uint32_t extents[4];
+		int top;
+
+		if (!scr)
+			scr = wScreenForWindow(event->window);
+		if (!scr)
+			return True;
+		top = WMFontHeight(scr->title_font)
+		      + (cfg->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+		if (top > cfg->window_title_max_height)
+			top = cfg->window_title_max_height;
+		if (top < cfg->window_title_min_height)
+			top = cfg->window_title_min_height;
+		extents[0] = scr->frame_border_width;
+		extents[1] = scr->frame_border_width;
+		extents[2] = top + scr->frame_border_width;
+		extents[3] = RESIZEBAR_HEIGHT + scr->frame_border_width;
+		WXSetCardinalN(dpy, event->window, net_frame_extents, extents, 4);
+		XFlush(dpy);
+		return True;
+	}
+
 	/* window specific client messages */
 
 	wwin = wWindowFor(event->window);
@@ -1881,6 +1920,35 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 			wwin->normal_hints->win_gravity = gravity;
 		wClientConfigure(wwin, &xcre);
 		wwin->normal_hints->win_gravity = saved_gravity;
+		return True;
+
+	} else if (event->message_type == net_restack_window) {
+		XConfigureRequestEvent xcre;
+		long detail = event->data.l[2];
+		WWindow *sib;
+
+		/* data.l[0] = source indication, l[1] = sibling, l[2] = stack
+		 * mode (Above..Opposite). Route through the ConfigureRequest
+		 * path so the sibling is translated to its frame and the
+		 * managed stacking list is rebuilt in one place. Refuse a
+		 * detail outside the X11 range, and only honour the sibling
+		 * when it resolves to a managed client whose frame is a real
+		 * sibling of ours under root, otherwise wClientConfigure()
+		 * forwards the raw id to XConfigureWindow() and a hostile
+		 * non-sibling triggers BadMatch. */
+		if (detail < Above || detail > Opposite)
+			return True;
+		memset(&xcre, 0, sizeof(xcre));
+		xcre.window = event->window;
+		xcre.value_mask = CWStackMode;
+		xcre.detail = detail;
+		sib = (event->data.l[1] != None) ? wWindowFor((Window)event->data.l[1]) : NULL;
+		if (sib && sib != wwin && sib->screen_ptr == wwin->screen_ptr) {
+			xcre.value_mask |= CWSibling;
+			xcre.above = sib->client_win;
+		}
+		xcre.border_width = wwin->old_border_width;
+		wClientConfigure(wwin, &xcre);
 		return True;
 
 	} else if (event->message_type == net_wm_state) {
@@ -2130,9 +2198,6 @@ static void observer(void *self, WMNotification *notif)
 
 		updateStrut(wwin->screen_ptr, wwin->client_win, False);
 		wScreenUpdateUsableArea(wwin->screen_ptr);
-	} else if (strcmp(name, WMNResetStacking) == 0 && wwin) {
-		updateClientListStacking(wwin->screen_ptr, NULL);
-		updateStateHint(wwin, False, False);
 	} else if (strcmp(name, WMNChangedStacking) == 0 && wwin) {
 		updateClientListStacking(wwin->screen_ptr, NULL);
 		updateStateHint(wwin, False, False);
@@ -2167,6 +2232,12 @@ static void wsobserver(void *self, WMNotification *notif)
 		updateCurrentWorkspace(scr);
 	} else if (strcmp(name, WMNWorkspaceNameChanged) == 0) {
 		updateWorkspaceNames(scr);
+	} else if (strcmp(name, WMNResetStacking) == 0) {
+		/* CommitStacking() posts this with the WScreen as object,
+		 * the old arm in observer() mis-cast it to WWindow * and
+		 * was never subscribed, so _NET_CLIENT_LIST_STACKING went
+		 * stale after every ConfigureRequest restack */
+		updateClientListStacking(scr, NULL);
 	}
 }
 
