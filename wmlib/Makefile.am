@@ -23,11 +23,4 @@ pkgconfig_DATA = wmlib.pc
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-wmlib.pc: Makefile
-	@echo "Generating $@"
-	@echo 'Name: wmlib' > $@
-	@echo 'Description: Window Maker interface definitions' >> $@
-	@echo 'Version: $(VERSION)' >> $@
-	@echo 'Requires: x11' >> $@
-	@echo 'Libs: $(lib_search_path) -lWMaker' >> $@
-	@echo 'Cflags: $(inc_search_path)' >> $@
+EXTRA_DIST = wmlib.pc.in

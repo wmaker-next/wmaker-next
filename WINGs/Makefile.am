@@ -91,7 +91,7 @@ libWUtil_la_SOURCES = 	\
 	wutil.c
 
 
-AM_CFLAGS = @PANGO_CFLAGS@
+AM_CFLAGS = @PANGO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
 AM_CPPFLAGS = -DRESOURCE_PATH=\"$(datadir)/WINGs\" \
 	 -I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs \
@@ -103,21 +103,4 @@ pkgconfig_DATA = WINGs.pc WUtil.pc
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-WINGs.pc: Makefile
-	@echo "Generating $@"
-	@echo 'Name: WINGs' > $@
-	@echo 'Description: Small widget set with the NeXTStep(TM) look and feel' >> $@
-	@echo 'Version: $(VERSION)' >> $@
-	@echo 'Requires: wrlib WUtil' >> $@
-	@echo 'Libs: $(lib_search_path) -lWINGs' >> $@
-	@echo 'Libs.private: $(XCB_LIBS) $(XFT_LIBS) $(PANGOLIBS) $(XLIBS) -lm $(INTLIBS)' >> $@
-	@echo 'Cflags: $(inc_search_path) @PANGO_CFLAGS@' >> $@
-
-WUtil.pc: Makefile
-	@echo "Generating $@"
-	@echo 'Name: WUtil' > $@
-	@echo 'Description: Utility library for WINGs' >> $@
-	@echo 'Version: $(VERSION)' >> $@
-	@echo 'Libs: -L$(libdir) -lWUtil' >> $@
-	@echo 'Libs.private: $(LIBBSD) $(LIBEV_LIBS) $(INTLIBS)' >> $@
-	@echo 'Cflags: -I$(includedir)' >> $@
+EXTRA_DIST += WINGs.pc.in WUtil.pc.in

@@ -5,7 +5,7 @@ DIST_SUBDIRS = $(SUBDIRS)
 
 AUTOMAKE_OPTIONS =
 
-EXTRA_DIST = tests
+EXTRA_DIST =
 
 lib_LTLIBRARIES = libwraster.la
 
@@ -95,14 +95,7 @@ pkgconfig_DATA = wrlib.pc
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-wrlib.pc: Makefile
-	@echo "Generating $@"
-	@echo 'Name: wrlib' > $@
-	@echo 'Description: Image manipulation and conversion library' >> $@
-	@echo 'Version: $(VERSION)' >> $@
-	@echo 'Libs: $(lib_search_path) -lwraster' >> $@
-	@echo 'Libs.private: $(GFXLIBS) $(MAGICKLIBS) $(XLIBS) -lm' >> $@
-	@echo 'Cflags: $(inc_search_path)' >> $@
+EXTRA_DIST += wrlib.pc.in
 
 wraster.h: wraster.h.in $(top_builddir)/config.h
 	$(AM_V_GEN)$(top_srcdir)/script/replace-ac-keywords.sh \

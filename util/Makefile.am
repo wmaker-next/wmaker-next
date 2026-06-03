@@ -70,7 +70,7 @@ wmmenugen_SOURCES = wmmenugen.c wmmenugen.h wmmenugen_misc.c \
 	wmmenugen_parse_wmconfig.c \
 	wmmenugen_parse_xdg.c
 
-wmiv_CFLAGS = @PANGO_CFLAGS@ @PTHREAD_CFLAGS@
+wmiv_CFLAGS = @PANGO_CFLAGS@ @PTHREAD_CFLAGS@ @LIBARCHIVE_CFLAGS@
 
 wmiv_LDADD = \
 	$(top_builddir)/wrlib/libwraster.la \
@@ -80,7 +80,7 @@ wmiv_LDADD = \
 	@PANGO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@ @LIBXRANDR@
 
-wmiv_SOURCES = wmiv.c wmiv.hi
+wmiv_SOURCES = wmiv.c wmiv.h
 
 CLEANFILES = wmaker.inst
 

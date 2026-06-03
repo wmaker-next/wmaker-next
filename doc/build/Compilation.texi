@@ -492,6 +492,10 @@ Disable JPEG support in @emph{WRaster} library; when enabled use @file{libjpeg}.
 @item --disable-jxl
 Disable JPEG-XL support in @emph{WRaster} library; when enabled use @file{libjxl}.
 
+@item --without-libarchive
+Disable archive (@file{.tar}, @file{.zip}, @file{.cbz}, ...) support in @emph{wmiv};
+when enabled use @file{libarchive}.
+
 @item --without-libbsd
 Refuse use of the @file{libbsd} compatibility library in @emph{WINGs} utility library,
 even if your system provides it.

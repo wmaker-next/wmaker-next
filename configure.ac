@@ -710,14 +710,12 @@ WM_CHECK_LIBM
 
 dnl FontConfig
 dnl ==========
-dnl libWINGS uses FcPatternDel from libfontconfig
-AC_MSG_CHECKING([for fontconfig library])
-FCLIBS=`$PKG_CONFIG fontconfig --libs`
-if test "x$FCLIBS" = "x" ; then
-        AC_MSG_RESULT([not found])
-else
-        AC_MSG_RESULT([found])
-fi
+dnl libWINGS uses FcPatternDel from libfontconfig, this is mandatory for
+dnl every libWINGs consumer (wmaker, WPrefs, util/) so fail at configure
+dnl with a clear message rather than logging "not found" and building anyway
+PKG_CHECK_MODULES([FONTCONFIG], [fontconfig], [],
+    [AC_MSG_ERROR([fontconfig is required -- $FONTCONFIG_PKG_ERRORS])])
+FCLIBS=$FONTCONFIG_LIBS
 AC_SUBST(FCLIBS)
 
 
@@ -922,18 +920,24 @@ AM_CONDITIONAL([ICON_EXT_TIFF], [test "x$ICONEXT" = "xtiff"])
 
 dnl Archive Support for wmiv
 dnl =================================
-dnl Check for libarchive (comprehensive archive support)
-AC_CHECK_LIB([archive], [archive_read_new], [
-    AC_CHECK_HEADER([archive.h], [
-        AC_DEFINE([HAVE_LIBARCHIVE], [1], [Define if libarchive is available])
-        LIBARCHIVE_LIBS="-larchive"
-    ], [
-        AC_MSG_WARN([libarchive header not found, archive support disabled])
-    ])
-], [
-    AC_MSG_WARN([libarchive not found, archive support disabled])
-])
+dnl libarchive ships a .pc, use PKG_CHECK_MODULES so transitive private
+dnl dependencies (lzma, zstd, lz4, bz2, zlib, ...) reach a static link
+AC_ARG_WITH([libarchive],
+    [AS_HELP_STRING([--without-libarchive],
+        [disable archive (.tar/.zip/.cbz/...) support in wmiv])],
+    [], [with_libarchive=auto])
+LIBARCHIVE_LIBS=
+LIBARCHIVE_CFLAGS=
+AS_IF([test "x$with_libarchive" != "xno"],
+    [PKG_CHECK_MODULES([LIBARCHIVE], [libarchive],
+        [AC_DEFINE([HAVE_LIBARCHIVE], [1], [Define if libarchive is available])
+         supported_gfx="$supported_gfx libarchive"],
+        [AS_IF([test "x$with_libarchive" = "xyes"],
+            [AC_MSG_ERROR([--with-libarchive given but $LIBARCHIVE_PKG_ERRORS])])
+         unsupported="$unsupported libarchive"])],
+    [unsupported="$unsupported libarchive"])
 AC_SUBST([LIBARCHIVE_LIBS])
+AC_SUBST([LIBARCHIVE_CFLAGS])
 
 
 dnl ==============================================
@@ -1080,6 +1084,9 @@ AC_CONFIG_FILES(
     dnl Misceleanous stuff
     wmlib/Makefile
     test/Makefile
+
+    dnl pkg-config metadata
+    wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
 )
 
 AC_OUTPUT
