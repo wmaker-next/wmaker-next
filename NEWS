@@ -3,6 +3,18 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Hot corners fire under client windows
+--------------------------------------
+
+Hot corners are now driven by small InputOnly windows kept above all
+clients instead of root-window motion events, so a corner fires even
+when a maximised or fullscreen window covers it. With ScrollableMenus
+disabled wmaker no longer wakes for every pixel of pointer movement
+over the desktop. The trade-off is that the HotCornerEdge-sized square
+in each corner does not pass button clicks through to the client
+visually underneath while HotCorners is on.
+
+
 wxpaste -s reads the named selection again
 ------------------------------------------
 
