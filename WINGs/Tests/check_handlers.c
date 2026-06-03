@@ -184,15 +184,18 @@ static void test_timer_delete_other(void)
 	int b_hits = 0;
 
 	a.other_hits = &b_hits;
-	/* both due on the same poll, A's callback deletes B, B must not
-	 * fire and the registry walk must not touch freed memory */
+	/* both due in the same ev_run() round, A's callback deletes B,
+	 * libev's heap order decides which fires first so B may or may not
+	 * have run already, the assertion is that A fires exactly once and
+	 * deleting B (whether pending or already self-marked) is safe, ASan
+	 * is the real check here */
 	a.other = WMAddTimerHandler(1, inc_int, &b_hits);
 	a.self  = WMAddTimerHandler(1, timer_delete_other, &a);
 
 	pump_until(&a.hits, 1, 2.0);
 	WHandleEvents();
 	CHECK(a.hits == 1);
-	CHECK(b_hits == 0);
+	CHECK(b_hits <= 1);
 }
 
 static void test_timer_delete_by_clientdata(void)
@@ -258,12 +261,13 @@ static void test_idle_delete_other(void)
 	int b_hits = 0;
 
 	a.other_hits = &b_hits;
+	/* same dispatch-order caveat as test_timer_delete_other */
 	a.other = WMAddIdleHandler(inc_int, &b_hits);
 	a.self  = WMAddIdleHandler(idle_delete_other, &a);
 
 	WHandleEvents();
 	CHECK(a.hits == 1);
-	CHECK(b_hits == 0);
+	CHECK(b_hits <= 1);
 }
 
 /* ---- input ----------------------------------------------------------- */
@@ -468,6 +472,60 @@ static void test_notification_asap_idle(void)
 	WMRemoveNotificationObserver(&idle_hits);
 }
 
+/* ---- idle queued mid-iteration -------------------------------------- */
+
+struct chain {
+	int self_hits;
+	int idle_hits;
+};
+
+static void queue_idle_cb(void *data)
+{
+	struct chain *c = data;
+
+	c->self_hits++;
+	WMAddIdleHandler(inc_int, &c->idle_hits);
+}
+
+static void test_timer_queues_idle(void)
+{
+	struct chain c = { 0, 0 };
+
+	/* a zero-delay timer fires after the idle phase of its ev_run()
+	 * iteration, the idle it queues must still drain before
+	 * WHandleEvents() returns (the old ladder guaranteed this) */
+	WMAddTimerHandler(0, queue_idle_cb, &c);
+	WHandleEvents();
+	CHECK(c.self_hits == 1);
+	CHECK(c.idle_hits == 1);
+}
+
+static void notif_queues_idle(void *observerData, WMNotification *notif)
+{
+	(void)notif;
+	queue_idle_cb(observerData);
+}
+
+static void test_idle_notification_queues_idle(void)
+{
+	struct chain c = { 0, 0 };
+	WMNotificationQueue *q;
+
+	WMAddNotificationObserver(notif_queues_idle, &c, "check.chain", NULL);
+	q = WMGetDefaultNotificationQueue();
+	WMEnqueueNotification(q, WMCreateNotification("check.chain", NULL, NULL),
+			      WMPostWhenIdle);
+
+	/* the WhenIdle flush runs from the ev_check watcher after the idle
+	 * phase, the idle the observer queues must still drain before
+	 * WHandleEvents() returns */
+	WHandleEvents();
+	CHECK(c.self_hits == 1);
+	CHECK(c.idle_hits == 1);
+
+	WMRemoveNotificationObserver(&c);
+}
+
 /* ---- ordering -------------------------------------------------------- */
 
 static void test_zero_timer_and_idle(void)
@@ -501,6 +559,8 @@ int main(int argc, char **argv)
 	test_timer_reentrant();
 	test_idle_reentrant();
 	test_notification_asap_idle();
+	test_timer_queues_idle();
+	test_idle_notification_queues_idle();
 	test_zero_timer_and_idle();
 	/* last, it leaves the static X-fd watcher pointing at a closed fd
 	 * until W_EventLoopShutdown() stops it */
