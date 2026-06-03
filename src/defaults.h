@@ -27,14 +27,18 @@ typedef struct WDDomain {
 	time_t timestamp;
 } WDDomain;
 
+struct WConfig;
+struct WConfigChanges;
+
 WDDomain * wDefaultsInitDomain(const char *domain, Bool requireDictionary);
 
 void wDefaultsMergeGlobalMenus(WDDomain *menuDomain);
 
-void wReadDefaults(WScreen *scr, WMPropList *new_dict);
+void wReadDefaults(WScreen *scr, const struct WConfig *old_config,
+                   const struct WConfig *new_config,
+                   const struct WConfigChanges *changes);
 void wReadKeybindings(WScreen *scr, WMPropList *dict);
 void wDefaultUpdateIcons(WScreen *scr);
-void wReadStaticDefaults(WMPropList *dict);
 void wDefaultsCheckDomains(void *arg);
 void wDefaultFillAttributes(const char *instance, const char *class,
                             WWindowAttributes *attr, WWindowAttributes *mask,

@@ -601,7 +601,8 @@ static void createInternalWindows(WScreen * scr)
  *	The program can be aborted if some fatal error occurs.
  *----------------------------------------------------------------------
  */
-WScreen *wScreenInit(int screen_number)
+WScreen *wScreenInit(int screen_number, const struct WConfig *config,
+		     const struct WConfigChanges *changes)
 {
 	WScreen *scr;
 	XIconSize icon_size[1];
@@ -754,7 +755,7 @@ WScreen *wScreenInit(int screen_number)
 	allocGCs(scr);
 
 	/* read defaults for this screen */
-	wReadDefaults(scr, w_global.domain.wmaker->dictionary);
+	wReadDefaults(scr, w_global.config, config, changes);
 
 	{
 		XColor xcol;

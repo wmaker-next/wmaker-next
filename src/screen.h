@@ -349,8 +349,11 @@ typedef struct _WScreen {
 } WScreen;
 
 
+struct WConfig;
+struct WConfigChanges;
 
-WScreen *wScreenInit(int screen_number);
+WScreen *wScreenInit(int screen_number, const struct WConfig *config,
+                     const struct WConfigChanges *changes);
 void wScreenSaveState(WScreen *scr);
 void wScreenRestoreState(WScreen *scr);
 

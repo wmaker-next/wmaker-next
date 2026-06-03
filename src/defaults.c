@@ -103,10 +103,6 @@ static WConfigUpdateCallback setClipTitleColor;
 
 static WConfigUpdateCallback setCursor;
 
-static void wApplyDefaultsChanges(WScreen *scr, const WConfig *old_config,
-				  const WConfig *new_config,
-				  const WConfigChanges *changes);
-
 #define REFRESH_WINDOW_TEXTURES WCFG_REFRESH_WINDOW_TEXTURES
 #define REFRESH_MENU_TEXTURE WCFG_REFRESH_MENU_TEXTURE
 #define REFRESH_MENU_FONT WCFG_REFRESH_MENU_FONT
@@ -263,11 +259,6 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 	return db;
 }
 
-void wReadStaticDefaults(WMPropList * dict)
-{
-	wConfigApplyStaticDefaults(dict);
-}
-
 void wDefaultsCheckDomains(void* arg)
 {
 	WScreen *scr;
@@ -311,7 +302,7 @@ void wDefaultsCheckDomains(void* arg)
 					for (i = 0; i < w_global.screen_count; i++) {
 						scr = wScreenWithNumber(i);
 						if (scr)
-							wApplyDefaultsChanges(scr, old_config, new_config, &changes);
+							wReadDefaults(scr, old_config, new_config, &changes);
 					}
 					wConfigAdoptWindowMaker(new_config);
 				}
@@ -407,9 +398,8 @@ void wDefaultsCheckDomains(void* arg)
 #endif
 }
 
-static void wApplyDefaultsChanges(WScreen *scr, const WConfig *old_config,
-				  const WConfig *new_config,
-				  const WConfigChanges *changes)
+void wReadDefaults(WScreen *scr, const WConfig *old_config,
+		   const WConfig *new_config, const WConfigChanges *changes)
 {
 	unsigned int needs_refresh;
 
@@ -475,18 +465,6 @@ static void wApplyDefaultsChanges(WScreen *scr, const WConfig *old_config,
 				scr->clip_submenu->flags.realized = 0;
 		}
 	}
-}
-
-void wReadDefaults(WScreen *scr, WMPropList *new_dict)
-{
-	const WConfig *old_config = w_global.config;
-	WConfig *new_config;
-	WConfigChanges changes;
-
-	new_config = wConfigReadWindowMaker(new_dict);
-	wConfigPrepareRuntimeDefaults(new_dict, old_config, new_config, &changes);
-	wApplyDefaultsChanges(scr, old_config, new_config, &changes);
-	wConfigDestroy(new_config);
 }
 
 void wReadKeybindings(WScreen *scr, WMPropList *dict)

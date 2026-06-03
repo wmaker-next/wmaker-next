@@ -573,9 +573,17 @@ void StartUp(Bool defaultScreenOnly)
 	if (!w_global.domain.wmaker->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WindowMaker");
 
+	/* parse the WindowMaker domain once, the resulting WConfig is reused
+	 * for the static apply, the per-screen runtime apply, and finally
+	 * adopted as w_global.config after the screen loop */
+	WMPropList *wmaker_dict = w_global.domain.wmaker ?
+	    w_global.domain.wmaker->dictionary : NULL;
+	WConfig *new_config = wConfigReadWindowMaker(wmaker_dict);
+	WConfigChanges changes;
+
 	/* read defaults that don't change until a restart and are
 	 * screen independent */
-	wReadStaticDefaults(w_global.domain.wmaker ? w_global.domain.wmaker->dictionary : NULL);
+	wConfigApplyStatic(new_config);
 
 	/* check sanity of some values */
 	if (wPreferences.icon_size < 16) {
@@ -653,16 +661,18 @@ void StartUp(Bool defaultScreenOnly)
 		}
 	}
 
+	wConfigPrepareRuntimeDefaults(wmaker_dict, w_global.config, new_config, &changes);
+
 	/* manage the screens */
 	for (j = 0; j < max; j++) {
 		if (defaultScreenOnly || max == 1) {
-			wScreen[w_global.screen_count] = wScreenInit(DefaultScreen(dpy));
+			wScreen[w_global.screen_count] = wScreenInit(DefaultScreen(dpy), new_config, &changes);
 			if (!wScreen[w_global.screen_count]) {
 				wfatal(_("it seems that there is already a window manager running"));
 				Exit(1);
 			}
 		} else {
-			wScreen[w_global.screen_count] = wScreenInit(j);
+			wScreen[w_global.screen_count] = wScreenInit(j, new_config, &changes);
 			if (!wScreen[w_global.screen_count]) {
 				wwarning(_("could not manage screen %i"), j);
 				continue;
@@ -670,8 +680,7 @@ void StartUp(Bool defaultScreenOnly)
 		}
 		w_global.screen_count++;
 	}
-	wConfigCacheWindowMaker(w_global.domain.wmaker ?
-	                        w_global.domain.wmaker->dictionary : NULL);
+	wConfigAdoptWindowMaker(new_config);
 
 	InitializeSwitchMenu();
 
