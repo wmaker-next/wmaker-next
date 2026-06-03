@@ -16,6 +16,12 @@ auto-collapse and defaults-reload timers early or stall them. The
 libev development package must be present at build time, there is no
 configure switch to disable this.
 
+For libWUtil consumers: WHandleEvents() now blocks until the next
+timer is due when only timers are registered, instead of returning
+immediately. With nothing registered it still returns at once. The
+internal W_CheckTimerHandlers()/W_CheckIdleHandlers() entry points are
+gone from WINGsP.h.
+
 
 EWMH coverage
 -------------
