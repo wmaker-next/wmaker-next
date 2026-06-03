@@ -8,6 +8,20 @@
  * and util/ are not aware of the backend. libev picks epoll on Linux
  * and kqueue on the BSDs at runtime, with poll/select as last resort,
  * so there is one code path here for every supported platform.
+ *
+ * Dispatch is purely ev_run()-driven: WMNextEvent/WMMaskEvent/WHandleEvents
+ * call W_HandleInputEvents() which wraps one ev_run() iteration, libev
+ * fires due timers, runs idle watchers when nothing else is pending, and
+ * delivers fd readiness in the same pass. The ev_prepare watcher flushes
+ * the ASAP notification queue just before each poll, the ev_check watcher
+ * flushes the WhenIdle notification queue just after.
+ *
+ * Deferred destruction: handler structs are never freed inside ev_run().
+ * Trampolines and WMDelete*Handler() mark a handler deleted while
+ * `dispatching > 0`, and the sweep after ev_run() unlinks and frees every
+ * marked entry. This makes self-delete, cross-delete and "delete a
+ * one-shot whose handle the caller still holds after it already fired"
+ * all safe regardless of libev's heap dispatch order.
  */
 
 #include "wconfig.h"
@@ -31,9 +45,6 @@ typedef struct TimerHandler {
 	WMCallback *callback;
 	void *clientData;
 	struct TimerHandler *next;	/* unsorted registry, for WMDeleteTimerWithClientData */
-	ev_tstamp due;		/* monotonic deadline, mirrors the libev schedule
-				 * so the compat runner can test it without
-				 * peeking at watcher internals */
 	unsigned persistent:1;
 	unsigned firing:1;
 	unsigned deleted:1;
@@ -50,21 +61,22 @@ typedef struct IdleHandler {
 
 static struct ev_loop *w_loop;
 static ev_prepare w_prepare;
+static ev_check w_check;
 
-/* unsorted registries, kept only so the WMDelete* helpers and the
- * type-specific compatibility runners can walk live handlers */
+/* unsorted registries, kept so WMDeleteTimerWithClientData can search by
+ * clientData, the post-dispatch sweep can free deferred-deleted entries,
+ * and W_EventLoopShutdown can stop and free everything */
 static TimerHandler *timerHandler;
 static IdleHandler *idleHandler;
 static InputHandler *inputHandler;
 
-static int idle_handler_count;
-static int input_handler_count;
-
-/* set while the compat runners walk a registry, so WMDelete*Handler defers
- * the unlink+free of any non-firing entry instead of invalidating the
- * walker's saved next pointer */
-static int timer_walking;
-static int idle_walking;
+/* nesting depth of ev_run() on the stack, while non-zero every delete
+ * path defers the unlink+free to the sweep that runs when it drops to
+ * zero, so a callback can delete any handler (its own, another due in
+ * the same ev_run() round, or a one-shot that already fired and
+ * self-marked) without invalidating a pointer libev or another callback
+ * still holds */
+static int dispatching;
 
 /* lazily-started watcher on ConnectionNumber(dpy), see W_HandleInputEvents */
 static ev_io w_xfd_watcher;
@@ -84,6 +96,19 @@ static void prepareTrampoline(struct ev_loop *loop, ev_prepare *w, int revents)
 	W_FlushASAPNotificationQueue();
 }
 
+static void checkTrampoline(struct ev_loop *loop, ev_check *w, int revents)
+{
+	(void)loop;
+	(void)w;
+	(void)revents;
+
+	/* runs once per ev_run() iteration after dispatch, this is where
+	 * the old W_CheckIdleHandlers() flushed the WMPostWhenIdle queue,
+	 * including the case where no idle handler had been registered
+	 * before the post */
+	W_FlushIdleNotificationQueue();
+}
+
 static struct ev_loop *W_EventLoop(void)
 {
 	if (!w_loop) {
@@ -92,13 +117,60 @@ static struct ev_loop *W_EventLoop(void)
 		 * overwrite the buryChild handler wmaker sets in StartUp(),
 		 * silently breaking every wAddDeathHandler callback */
 		w_loop = ev_loop_new(EVFLAG_AUTO);
+
 		ev_prepare_init(&w_prepare, prepareTrampoline);
 		ev_prepare_start(w_loop, &w_prepare);
-		/* the prepare watcher must not keep ev_run() from returning
-		 * when nothing else is pending */
+		ev_unref(w_loop);
+
+		ev_check_init(&w_check, checkTrampoline);
+		ev_check_start(w_loop, &w_check);
+		/* prepare and check are bookkeeping, they must not keep
+		 * ev_run() from returning when nothing else is pending */
 		ev_unref(w_loop);
 	}
 	return w_loop;
+}
+
+/* ---- deferred-free sweep -------------------------------------------- */
+
+static void sweepDeleted(void)
+{
+	{
+		TimerHandler **pp = &timerHandler;
+		while (*pp) {
+			TimerHandler *h = *pp;
+			if (h->deleted && !h->firing) {
+				*pp = h->next;
+				wfree(h);
+			} else {
+				pp = &h->next;
+			}
+		}
+	}
+	{
+		IdleHandler **pp = &idleHandler;
+		while (*pp) {
+			IdleHandler *h = *pp;
+			if (h->deleted && !h->firing) {
+				*pp = h->next;
+				wfree(h);
+			} else {
+				pp = &h->next;
+			}
+		}
+	}
+	{
+		InputHandler **pp = &inputHandler;
+		while (*pp) {
+			InputHandler *h = *pp;
+			if (h->deleted && !h->firing) {
+				*pp = h->next;
+				wfree(h);
+			} else {
+				pp = &h->next;
+			}
+		}
+	}
 }
 
 /* ---- timers ---------------------------------------------------------- */
@@ -122,10 +194,10 @@ static void timerTrampoline(struct ev_loop *loop, ev_timer *w, int revents)
 
 	(void)revents;
 
-	if (h->firing)
-		/* a compat-runner frame or an outer trampoline already owns
-		 * this handler, libev has rearmed a persistent watcher past
-		 * its own callback duration, do not recurse */
+	if (h->firing || h->deleted)
+		/* an outer trampoline already owns this handler (a persistent
+		 * timer whose callback ran past its own repeat interval and
+		 * re-entered ev_run()), do not recurse */
 		return;
 
 	h->firing = 1;
@@ -134,24 +206,15 @@ static void timerTrampoline(struct ev_loop *loop, ev_timer *w, int revents)
 	h->firing = 0;
 
 	if (h->deleted || !h->persistent) {
-		/* one-shot timers self-destruct after firing, matching the old
-		 * behaviour where W_CheckTimerHandlers() freed them, callers
-		 * must not touch the WMHandlerID after the callback ran */
+		/* one-shot timers self-destruct after firing, callers must not
+		 * touch the WMHandlerID after the callback ran, but another
+		 * callback in the same ev_run() round may still hold it, so
+		 * defer the free to the post-dispatch sweep */
 		ev_timer_stop(loop, &h->watcher);
-		if (timer_walking) {
-			/* a compat-runner walk is on the stack above this
-			 * ev_run() frame and may still hold h or h->next,
-			 * defer the free to its sweep */
-			h->deleted = 1;
-		} else {
-			unlinkTimer(h);
-			wfree(h);
-		}
-	} else {
-		/* libev already rearmed the repeating watcher before invoking
-		 * us, mirror the new deadline for the compat runner */
-		h->due = ev_now(loop) + h->watcher.repeat;
+		h->deleted = 1;
 	}
+	/* persistent and survived: libev already rearmed the repeating
+	 * watcher before invoking us, nothing to do */
 }
 
 static WMHandlerID addTimer(int milliseconds, WMCallback *callback, void *cdata, Bool persistent)
@@ -167,8 +230,12 @@ static WMHandlerID addTimer(int milliseconds, WMCallback *callback, void *cdata,
 
 	ev_now_update(loop);
 	ev_timer_init(&h->watcher, timerTrampoline, after, persistent ? after : 0.0);
+	/* timers below the default priority so a due timer does not gate
+	 * ev_idle dispatch, the old loop ran idle handlers whenever no
+	 * input was pending regardless of timers, input and idle stay at
+	 * the default so pending input still suppresses idle */
+	ev_set_priority(&h->watcher, EV_MINPRI);
 	ev_timer_start(loop, &h->watcher);
-	h->due = ev_now(loop) + after;
 
 	h->next = timerHandler;
 	timerHandler = h;
@@ -196,10 +263,10 @@ void WMDeleteTimerHandler(WMHandlerID handlerID)
 	ev_timer_stop(W_EventLoop(), &h->watcher);
 	h->persistent = 0;
 
-	if (h->firing || timer_walking) {
+	if (h->firing || dispatching) {
 		/* called from inside its own callback, or from another
-		 * callback while the compat runner is walking the registry,
-		 * the dispatch path owns the final unlink and free */
+		 * callback while ev_run() is on the stack, the post-dispatch
+		 * sweep owns the final unlink and free */
 		h->deleted = 1;
 		return;
 	}
@@ -216,8 +283,9 @@ void WMDeleteTimerWithClientData(void *cdata)
 		return;
 
 	for (h = timerHandler; h; h = h->next) {
-		if (h->clientData == cdata) {
-			/* first match only, same as the original implementation */
+		if (!h->deleted && h->clientData == cdata) {
+			/* first live match only, same as the original
+			 * implementation */
 			WMDeleteTimerHandler(h);
 			return;
 		}
@@ -245,13 +313,12 @@ static void idleTrampoline(struct ev_loop *loop, ev_idle *w, int revents)
 
 	(void)revents;
 
-	if (h->firing)
+	if (h->firing || h->deleted)
 		return;
 
-	/* idle handlers are one-shot, the old W_CheckIdleHandlers() removed
-	 * them after firing, ev_idle is level-triggered so stop before the
-	 * callback or a re-entrant ev_run() would re-dispatch this watcher
-	 * unboundedly */
+	/* idle handlers are one-shot, ev_idle is level-triggered so stop
+	 * before the callback or a re-entrant ev_run() would re-dispatch
+	 * this watcher unboundedly */
 	ev_idle_stop(loop, &h->watcher);
 
 	h->firing = 1;
@@ -259,13 +326,8 @@ static void idleTrampoline(struct ev_loop *loop, ev_idle *w, int revents)
 		(*h->callback)(h->clientData);
 	h->firing = 0;
 
-	if (idle_walking) {
-		h->deleted = 1;
-	} else {
-		unlinkIdle(h);
-		idle_handler_count--;
-		wfree(h);
-	}
+	/* swept after ev_run() returns */
+	h->deleted = 1;
 }
 
 WMHandlerID WMAddIdleHandler(WMCallback *callback, void *cdata)
@@ -281,7 +343,6 @@ WMHandlerID WMAddIdleHandler(WMCallback *callback, void *cdata)
 
 	h->next = idleHandler;
 	idleHandler = h;
-	idle_handler_count++;
 
 	return h;
 }
@@ -295,13 +356,12 @@ void WMDeleteIdleHandler(WMHandlerID handlerID)
 
 	ev_idle_stop(W_EventLoop(), &h->watcher);
 
-	if (h->firing || idle_walking) {
+	if (h->firing || dispatching) {
 		h->deleted = 1;
 		return;
 	}
 
 	unlinkIdle(h);
-	idle_handler_count--;
 	wfree(h);
 }
 
@@ -327,6 +387,9 @@ static void inputTrampoline(struct ev_loop *loop, ev_io *w, int revents)
 
 	(void)loop;
 
+	if (h->firing || h->deleted)
+		return;
+
 	if (revents & EV_READ) {
 		if (h->mask & WIReadMask)
 			mask |= WIReadMask;
@@ -345,13 +408,8 @@ static void inputTrampoline(struct ev_loop *loop, ev_io *w, int revents)
 		h->firing = 1;
 		(*h->callback)(w->fd, mask, h->clientData);
 		h->firing = 0;
-
-		if (h->deleted) {
-			unlinkInput(h);
-			input_handler_count--;
-			wfree(h);
-		}
 	}
+	/* h->deleted set by a self- or cross-delete is swept after ev_run() */
 }
 
 WMHandlerID WMAddInputHandler(int fd, int condition, WMInputProc *proc, void *clientData)
@@ -374,7 +432,6 @@ WMHandlerID WMAddInputHandler(int fd, int condition, WMInputProc *proc, void *cl
 
 	h->next = inputHandler;
 	inputHandler = h;
-	input_handler_count++;
 
 	return h;
 }
@@ -383,154 +440,18 @@ void WMDeleteInputHandler(WMHandlerID handlerID)
 {
 	InputHandler *h = (InputHandler *)handlerID;
 
-	if (!h)
+	if (!h || h->deleted)
 		return;
 
 	ev_io_stop(W_EventLoop(), &h->watcher);
 
-	if (h->firing) {
+	if (h->firing || dispatching) {
 		h->deleted = 1;
 		return;
 	}
 
 	unlinkInput(h);
-	input_handler_count--;
 	wfree(h);
-}
-
-/* ---- compatibility runners ------------------------------------------ */
-
-/*
- * W_CheckTimerHandlers and W_CheckIdleHandlers are the legacy entry points
- * still called from WINGs/wevent.c, WINGs/wutil.c and src/misc.c. They are
- * type-specific on purpose: a bare ev_run(EVRUN_NOWAIT) would let a timer
- * check dispatch input callbacks and an idle check fire timers, which would
- * change the ordering documented around WMNextEvent(). Walk only the
- * matching registry instead. These shims retire once the wevent.c ladder
- * is collapsed onto ev_run() directly (PLAN-wings-libev.md step 4).
- */
-
-static void sweepDeletedTimers(void)
-{
-	TimerHandler **pp = &timerHandler;
-
-	while (*pp) {
-		TimerHandler *h = *pp;
-		if (h->deleted && !h->firing) {
-			*pp = h->next;
-			wfree(h);
-		} else {
-			pp = &h->next;
-		}
-	}
-}
-
-void W_CheckTimerHandlers(void)
-{
-	struct ev_loop *loop = W_EventLoop();
-	TimerHandler *h;
-	ev_tstamp now;
-
-	if (!timerHandler) {
-		W_FlushASAPNotificationQueue();
-		return;
-	}
-
-	ev_now_update(loop);
-	now = ev_now(loop);
-
-	/* deletions during dispatch (self or other) only mark deleted=1,
-	 * the sweep below frees them, so h->next stays valid for the walk */
-	timer_walking++;
-	for (h = timerHandler; h; h = h->next) {
-		if (h->firing || h->deleted || h->due > now)
-			continue;
-
-		/* take the watcher out of libev's heap before running the
-		 * callback so a re-entrant ev_run() from inside it (modal
-		 * WMNextEvent loop, nested WHandleEvents) cannot re-dispatch
-		 * the same due timer through timerTrampoline() */
-		ev_timer_stop(loop, &h->watcher);
-
-		h->firing = 1;
-		if (h->callback)
-			(*h->callback)(h->clientData);
-		h->firing = 0;
-
-		if (h->deleted || !h->persistent) {
-			h->deleted = 1;
-		} else {
-			/* persistent and survived, rearm at now + repeat in
-			 * both libev's heap and our mirror so the next compat
-			 * poll honours the interval instead of re-firing
-			 * immediately, ev_timer_again() on a stopped watcher
-			 * starts it with after = repeat */
-			ev_timer_again(loop, &h->watcher);
-			h->due = ev_now(loop) + h->watcher.repeat;
-		}
-	}
-	timer_walking--;
-
-	if (!timer_walking)
-		sweepDeletedTimers();
-
-	W_FlushASAPNotificationQueue();
-}
-
-static void sweepDeletedIdles(void)
-{
-	IdleHandler **pp = &idleHandler;
-
-	while (*pp) {
-		IdleHandler *h = *pp;
-		if (h->deleted && !h->firing) {
-			*pp = h->next;
-			idle_handler_count--;
-			wfree(h);
-		} else {
-			pp = &h->next;
-		}
-	}
-}
-
-Bool W_CheckIdleHandlers(void)
-{
-	struct ev_loop *loop = W_EventLoop();
-	IdleHandler *h;
-
-	if (idle_handler_count == 0) {
-		W_FlushIdleNotificationQueue();
-		/* an observer in the idle queue may have added an idle handler */
-		return idle_handler_count > 0;
-	}
-
-	idle_walking++;
-	for (h = idleHandler; h; h = h->next) {
-		if (h->firing || h->deleted)
-			continue;
-
-		/* same ownership rule as timers, stop before manual dispatch
-		 * so a re-entrant ev_run() cannot fire idleTrampoline() on
-		 * this watcher while we still own h */
-		ev_idle_stop(loop, &h->watcher);
-
-		h->firing = 1;
-		if (h->callback)
-			(*h->callback)(h->clientData);
-		h->firing = 0;
-
-		/* idle handlers are one-shot */
-		h->deleted = 1;
-	}
-	idle_walking--;
-
-	if (!idle_walking)
-		sweepDeletedIdles();
-
-	W_FlushIdleNotificationQueue();
-
-	/* not necessarily False, a callback can re-add itself */
-	return idle_handler_count > 0;
 }
 
 /* ---- loop driver ----------------------------------------------------- */
@@ -562,16 +483,34 @@ Bool W_HandleInputEvents(Bool waitForInput, int inputfd)
 		w_xfd = inputfd;
 	}
 
-	if (inputfd < 0 && input_handler_count == 0) {
-		/* preserve the old X-less shim behaviour, do not block on
-		 * timers only when no input handlers are registered, the
-		 * direct ev_run path may revisit this intentionally */
-		W_FlushASAPNotificationQueue();
-		return False;
-	}
-
+	/* ev_run() handles every case directly: with no referenced
+	 * watchers it returns at once, with only timers it blocks until the
+	 * next one is due, with idles it runs them and returns, with input
+	 * or the X fd it polls, the prepare/check watchers flush the ASAP
+	 * and WhenIdle notification queues either side of the poll */
 	input_fired = False;
+
+	dispatching++;
 	ev_run(loop, waitForInput ? EVRUN_ONCE : EVRUN_NOWAIT);
+
+	/* a timer callback or a WMPostWhenIdle observer flushed from the
+	 * ev_check watcher may have queued new idle work after the idle
+	 * phase of this iteration, the old WHandleEvents() ladder drained
+	 * that by looping W_CheckIdleHandlers() while no input was pending,
+	 * preserve that contract here, input_fired gates it so X data or a
+	 * ready WINGs input handler still returns control immediately */
+	while (!input_fired) {
+		IdleHandler *ih;
+		for (ih = idleHandler; ih && ih->deleted; ih = ih->next)
+			;
+		if (!ih)
+			break;
+		ev_run(loop, EVRUN_NOWAIT);
+	}
+	dispatching--;
+
+	if (!dispatching)
+		sweepDeleted();
 
 	W_FlushASAPNotificationQueue();
 
@@ -597,14 +536,12 @@ void W_EventLoopShutdown(void)
 		idleHandler = h->next;
 		wfree(h);
 	}
-	idle_handler_count = 0;
 	while (inputHandler) {
 		InputHandler *h = inputHandler;
 		ev_io_stop(w_loop, &h->watcher);
 		inputHandler = h->next;
 		wfree(h);
 	}
-	input_handler_count = 0;
 
 	if (w_xfd >= 0) {
 		ev_io_stop(w_loop, &w_xfd_watcher);
@@ -613,6 +550,8 @@ void W_EventLoopShutdown(void)
 
 	ev_ref(w_loop);
 	ev_prepare_stop(w_loop, &w_prepare);
+	ev_ref(w_loop);
+	ev_check_stop(w_loop, &w_check);
 
 	ev_loop_destroy(w_loop);
 	w_loop = NULL;

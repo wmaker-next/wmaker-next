@@ -342,59 +342,24 @@ int WMIsDoubleClick(XEvent * event)
 }
 
 /*
- * Check for X and input events. If X events are present input events will
- * not be checked.
- *
- * Return value: True if a X event is available or any input event was
- *               processed, false otherwise (including return because of
- *               some timer handler expired).
- *
- *  If waitForInput is False, it will just peek for available input and return
- * without processing. Return vaue will be True if input is available.
- *
- *  If waitForInput is True, it will wait until an input event arrives on the
- * registered input handlers and ConnectionNumber(dpy), or will return when
- * a timer handler expires if no input event arrived until then.
+ * One blocking ev_run() iteration via W_HandleInputEvents() dispatches
+ * everything the old peek-idle-peek-block ladder did in one pass: due
+ * timers, idle handlers when nothing else is pending, registered input
+ * handlers, and the X connection fd. The X-fd watcher ev_break()s so
+ * control returns here to drain Xlib's internal queue. The ASAP and
+ * WhenIdle notification queues flush from the loop's prepare and check
+ * watchers, so there is no separate timer/idle pump.
  */
-static Bool waitForEvent(Display * dpy, unsigned long xeventmask, Bool waitForInput)
-{
-	XSync(dpy, False);
-	if (xeventmask == 0) {
-		if (XPending(dpy))
-			return True;
-	} else {
-		XEvent ev;
-		if (XCheckMaskEvent(dpy, xeventmask, &ev)) {
-			XPutBackEvent(dpy, &ev);
-			return True;
-		}
-	}
-
-	return W_HandleInputEvents(waitForInput, ConnectionNumber(dpy));
-}
 
 void WMNextEvent(Display * dpy, XEvent * event)
 {
-	/* Check any expired timers */
-	W_CheckTimerHandlers();
-
 	while (XPending(dpy) == 0) {
-		/* Do idle and timer stuff while there are no input or X events */
-		while (!waitForEvent(dpy, 0, False) && W_CheckIdleHandlers()) {
-			/* dispatch timer events */
-			W_CheckTimerHandlers();
-		}
-
-		/*
-		 * Make sure that new events did not arrive while we were doing
-		 * timer/idle stuff. Or we might block forever waiting for
-		 * an event that already arrived.
-		 */
-		/* wait for something to happen or a timer to expire */
-		waitForEvent(dpy, 0, True);
-
-		/* Check any expired timers */
-		W_CheckTimerHandlers();
+		/* flush requests so the server can answer, then block on the
+		 * X fd alongside timers, idles and any WINGs input handlers */
+		XSync(dpy, False);
+		if (XPending(dpy))
+			break;
+		W_HandleInputEvents(True, ConnectionNumber(dpy));
 	}
 
 	XNextEvent(dpy, event);
@@ -402,23 +367,14 @@ void WMNextEvent(Display * dpy, XEvent * event)
 
 void WMMaskEvent(Display * dpy, long mask, XEvent * event)
 {
-	/* Check any expired timers */
-	W_CheckTimerHandlers();
-
 	while (!XCheckMaskEvent(dpy, mask, event)) {
-		/* Do idle and timer stuff while there are no input or X events */
-		while (!waitForEvent(dpy, mask, False) && W_CheckIdleHandlers()) {
-			W_CheckTimerHandlers();
-		}
-
+		XSync(dpy, False);
 		if (XCheckMaskEvent(dpy, mask, event))
 			return;
-
-		/* Wait for input on the X connection socket or another input handler */
-		waitForEvent(dpy, mask, True);
-
-		/* Check any expired timers */
-		W_CheckTimerHandlers();
+		/* XCheckMaskEvent buffered everything readable into Xlib's
+		 * queue, so the X fd is drained and ev_run() blocks until
+		 * fresh data, a timer or another input handler wakes it */
+		W_HandleInputEvents(True, ConnectionNumber(dpy));
 	}
 }
 

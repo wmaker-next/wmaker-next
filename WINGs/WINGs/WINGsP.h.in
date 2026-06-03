@@ -369,10 +369,6 @@ void W_FreeViewXdndPart(WMView *view);
 
 /* ---[ handlers.c ]------------------------------------------------------ */
 
-Bool W_CheckIdleHandlers(void);
-
-void W_CheckTimerHandlers(void);
-
 Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
 
 void W_EventLoopShutdown(void);
