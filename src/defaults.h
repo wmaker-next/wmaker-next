@@ -43,6 +43,10 @@ void wDefaultsCheckDomains(void *arg);
 void wDefaultFillAttributes(const char *instance, const char *class,
                             WWindowAttributes *attr, WWindowAttributes *mask,
                             Bool useGlobalDefault);
+/* Reparse w_global.domain.window_attr->dictionary into the lookup cache.
+ * Call after the domain is loaded, after a runtime reload, and after any
+ * in-process mutation of the dictionary. */
+void wWindowAttrsReload(void);
 
 char *get_default_image_path(void);
 RImage *get_default_image(WScreen *scr);

@@ -1131,8 +1131,11 @@ static void wApplicationSaveIconPathFor(const char *iconPath, const char *wm_ins
 	WMReleasePropList(key);
 	WMReleasePropList(iconk);
 
-	if (val && !wPreferences.flags.noupdates)
-		UpdateDomainFile(w_global.domain.window_attr);
+	if (val) {
+		if (!wPreferences.flags.noupdates)
+			UpdateDomainFile(w_global.domain.window_attr);
+		wWindowAttrsReload();
+	}
 }
 
 static WAppIcon *findDockIconFor(WDock *dock, Window main_window)

@@ -92,6 +92,7 @@ WINGs/Tests/check_wutil
 WINGs/Tests/check_proplist
 WINGs/Tests/check_handlers
 src/Tests/check_config
+src/Tests/check_wdefaults
 
 WPrefs.app/WPrefs
 

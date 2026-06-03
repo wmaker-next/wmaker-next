@@ -690,6 +690,7 @@ static void saveSettings(WMWidget *button, void *client_data)
 	WMReleasePropList(winDic);
 
 	UpdateDomainFile(db);
+	wWindowAttrsReload();
 
 	/* clean up */
 	WMPLSetCaseSensitive(False);

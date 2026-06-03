@@ -344,6 +344,7 @@ void wDefaultsCheckDomains(void* arg)
 					WMReleasePropList(w_global.domain.window_attr->dictionary);
 
 				w_global.domain.window_attr->dictionary = dict;
+				wWindowAttrsReload();
 				for (i = 0; i < w_global.screen_count; i++) {
 					scr = wScreenWithNumber(i);
 					if (scr) {

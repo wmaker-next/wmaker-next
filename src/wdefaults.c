@@ -40,152 +40,209 @@
 #include "screen.h"
 #include "workspace.h"
 #include "defaults.h"
+#include "wdefaults.h"
 #include "icon.h"
 #include "misc.h"
 
-#define APPLY_VAL(value, flag, attrib) \
-	if (value) {attr->flag = WMPLGetBool(value); \
-	if (mask) mask->flag = 1;}
+_Static_assert(WATTR_BOOL_COUNT <= 32,
+	       "WWindowAttrs bitset is uint32_t, raise the field width");
 
-/* Local stuff */
+/*
+ * Cache of parsed WMWindowAttributes entries, keyed by the proplist
+ * dictionary key string ("instance.class", "instance", "class" or "*").
+ * The proplist dictionary remains the source of truth for writes,
+ * wWindowAttrsReload() rebuilds this cache from it.
+ */
+static WMHashTable *attrs_cache;
+/* every boolean defaults to No, set covers all bits so merge_attrs()
+ * writes every flag when useGlobalDefault is in effect */
+static const WWindowAttrs attrs_global_default = { 0, ~(uint32_t)0, NULL, NULL };
 
-/* type converters */
-static char *getString(WMPropList *, WMPropList *);
-static WMPropList *ANoTitlebar = NULL;
-static WMPropList *ANoResizebar;
-static WMPropList *ANoMiniaturizeButton;
-static WMPropList *ANoMiniaturizable;
-static WMPropList *ANoCloseButton;
-static WMPropList *ANoBorder;
-static WMPropList *ANoHideOthers;
-static WMPropList *ANoMouseBindings;
-static WMPropList *ANoKeyBindings;
-static WMPropList *ANoAppIcon;	/* app */
-static WMPropList *AKeepOnTop;
-static WMPropList *AKeepOnBottom;
-static WMPropList *AOmnipresent;
-static WMPropList *ASkipWindowList;
-static WMPropList *ASkipSwitchPanel;
-static WMPropList *AKeepInsideScreen;
-static WMPropList *AUnfocusable;
-static WMPropList *AAlwaysUserIcon;
-static WMPropList *AStartMiniaturized;
-static WMPropList *AStartMaximized;
-static WMPropList *AStartHidden;	/* app */
-static WMPropList *ADontSaveSession;	/* app */
-static WMPropList *AEmulateAppIcon;
-static WMPropList *AFocusAcrossWorkspace;
-static WMPropList *AFullMaximize;
-static WMPropList *ASwallowChild;
-static WMPropList *ASharedAppIcon;	/* app */
-#ifdef XKB_BUTTON_HINT
-static WMPropList *ANoLanguageButton;
-#endif
-static WMPropList *AStartWorkspace;
-static WMPropList *AIgnoreDecorationChanges;
+/* proplist key atoms used by the write/maintenance helpers */
 static WMPropList *AIcon;
 static WMPropList *AnyWindow;
-static WMPropList *No;
+
+#define WATTR_NAME_ROW(K, name, flag) name,
+static const char * const attr_bool_names[WATTR_BOOL_COUNT] = {
+	WATTR_BOOLS(WATTR_NAME_ROW)
+};
+#undef WATTR_NAME_ROW
 
 static void init_wdefaults(void)
 {
+	if (AIcon)
+		return;
 	AIcon = WMCreatePLString("Icon");
-
-	ANoTitlebar = WMCreatePLString("NoTitlebar");
-	ANoResizebar = WMCreatePLString("NoResizebar");
-	ANoMiniaturizeButton = WMCreatePLString("NoMiniaturizeButton");
-	ANoMiniaturizable = WMCreatePLString("NoMiniaturizable");
-	ANoCloseButton = WMCreatePLString("NoCloseButton");
-	ANoBorder = WMCreatePLString("NoBorder");
-	ANoHideOthers = WMCreatePLString("NoHideOthers");
-	ANoMouseBindings = WMCreatePLString("NoMouseBindings");
-	ANoKeyBindings = WMCreatePLString("NoKeyBindings");
-	ANoAppIcon = WMCreatePLString("NoAppIcon");
-	AKeepOnTop = WMCreatePLString("KeepOnTop");
-	AKeepOnBottom = WMCreatePLString("KeepOnBottom");
-	AOmnipresent = WMCreatePLString("Omnipresent");
-	ASkipWindowList = WMCreatePLString("SkipWindowList");
-	ASkipSwitchPanel = WMCreatePLString("SkipSwitchPanel");
-	AKeepInsideScreen = WMCreatePLString("KeepInsideScreen");
-	AUnfocusable = WMCreatePLString("Unfocusable");
-	AAlwaysUserIcon = WMCreatePLString("AlwaysUserIcon");
-	AStartMiniaturized = WMCreatePLString("StartMiniaturized");
-	AStartHidden = WMCreatePLString("StartHidden");
-	AStartMaximized = WMCreatePLString("StartMaximized");
-	ADontSaveSession = WMCreatePLString("DontSaveSession");
-	AEmulateAppIcon = WMCreatePLString("EmulateAppIcon");
-	AFocusAcrossWorkspace = WMCreatePLString("FocusAcrossWorkspace");
-	AFullMaximize = WMCreatePLString("FullMaximize");
-	ASwallowChild = WMCreatePLString("SwallowChild");
-	ASharedAppIcon = WMCreatePLString("SharedAppIcon");
-#ifdef XKB_BUTTON_HINT
-	ANoLanguageButton = WMCreatePLString("NoLanguageButton");
-#endif
-
-	AStartWorkspace = WMCreatePLString("StartWorkspace");
-	AIgnoreDecorationChanges = WMCreatePLString("IgnoreDecorationChanges");
-
 	AnyWindow = WMCreatePLString("*");
-	No = WMCreatePLString("No");
 }
 
-/* Returns the correct WMPropList, using instance+class or instance, or class, or default */
-static WMPropList *get_value(WMPropList * dict_win, WMPropList * dict_class, WMPropList * dict_name,
-			     WMPropList * dict_any, WMPropList * option, WMPropList * default_value,
-			     Bool useGlobalDefault)
+static char *get_entry_string(WMPropList *entry, const char *key)
 {
-	WMPropList *value;
+	WMPropList *plkey, *value;
 
-	if (dict_win) {
-		value = WMGetFromPLDictionary(dict_win, option);
-		if (value)
-			return value;
-	}
-
-	if (dict_name) {
-		value = WMGetFromPLDictionary(dict_name, option);
-		if (value)
-			return value;
-	}
-
-	if (dict_class) {
-		value = WMGetFromPLDictionary(dict_class, option);
-		if (value)
-			return value;
-	}
-
-	if (!useGlobalDefault)
-		return NULL;
-
-	if (dict_any) {
-		value = WMGetFromPLDictionary(dict_any, option);
-		if (value)
-			return value;
-	}
-
-	return default_value;
-}
-
-static WMPropList *get_value_from_instanceclass(const char *value)
-{
-	WMPropList *key, *val = NULL;
+	plkey = WMCreatePLString(key);
+	value = WMGetFromPLDictionary(entry, plkey);
+	WMReleasePropList(plkey);
 
 	if (!value)
 		return NULL;
+	if (!WMIsPLString(value)) {
+		wwarning(_("Wrong option format for key \"%s\". Should be %s."),
+			 key, "String");
+		return NULL;
+	}
+	return WMGetFromPLString(value);
+}
 
-	key = WMCreatePLString(value);
+static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
+{
+	WWindowAttrs *attrs;
+	const char *str;
+	int i;
 
+	attrs = wmalloc(sizeof(*attrs));
+
+	for (i = 0; i < WATTR_BOOL_COUNT; i++) {
+		WMPropList *plkey, *value;
+
+		plkey = WMCreatePLString(attr_bool_names[i]);
+		value = WMGetFromPLDictionary(entry, plkey);
+		WMReleasePropList(plkey);
+		if (!value)
+			continue;
+		attrs->set |= (uint32_t)1 << i;
+		if (WMPLGetBool(value))
+			attrs->value |= (uint32_t)1 << i;
+	}
+
+	str = get_entry_string(entry, "Icon");
+	if (str)
+		attrs->icon = wstrdup(str);
+	str = get_entry_string(entry, "StartWorkspace");
+	if (str)
+		attrs->start_workspace = wstrdup(str);
+
+	return attrs;
+}
+
+static void free_attrs_entry(WWindowAttrs *attrs)
+{
+	if (!attrs)
+		return;
+	if (attrs->icon)
+		wfree(attrs->icon);
+	if (attrs->start_workspace)
+		wfree(attrs->start_workspace);
+	wfree(attrs);
+}
+
+static void free_attrs_cache(void)
+{
+	WMHashEnumerator e;
+	WWindowAttrs *attrs;
+
+	if (!attrs_cache)
+		return;
+	e = WMEnumerateHashTable(attrs_cache);
+	while ((attrs = WMNextHashEnumeratorItem(&e)) != NULL)
+		free_attrs_entry(attrs);
+	WMFreeHashTable(attrs_cache);
+	attrs_cache = NULL;
+}
+
+void wWindowAttrsReload(void)
+{
+	WMPropList *dict, *keys;
+	int i, count;
+
+	init_wdefaults();
+	free_attrs_cache();
+	attrs_cache = WMCreateHashTable(WMStringHashCallbacks);
+
+	if (!w_global.domain.window_attr)
+		return;
+	dict = w_global.domain.window_attr->dictionary;
+	if (!dict || !WMIsPLDictionary(dict))
+		return;
+
+	/* both the outer instance.class key and the inner attribute keys
+	 * are matched case-sensitively, same as the original per-call
+	 * proplist walk */
 	WMPLSetCaseSensitive(True);
 
-	if (w_global.domain.window_attr->dictionary)
-		val = key ? WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, key) : NULL;
+	keys = WMGetPLDictionaryKeys(dict);
+	count = keys ? WMGetPropListItemCount(keys) : 0;
+	for (i = 0; i < count; i++) {
+		WMPropList *plkey = WMGetFromPLArray(keys, i);
+		WMPropList *entry;
+		const char *key;
 
-	if (key)
-		WMReleasePropList(key);
+		if (!plkey || !WMIsPLString(plkey))
+			continue;
+		key = WMGetFromPLString(plkey);
+		entry = WMGetFromPLDictionary(dict, plkey);
+		if (!entry || !WMIsPLDictionary(entry))
+			continue;
+		WMHashInsert(attrs_cache, key, parse_attrs_entry(entry));
+	}
+	if (keys)
+		WMReleasePropList(keys);
 
 	WMPLSetCaseSensitive(False);
+}
 
-	return val;
+static const WWindowAttrs *attrs_lookup(const char *key)
+{
+	if (!attrs_cache)
+		wWindowAttrsReload();
+	if (!key)
+		return NULL;
+	return WMHashGet(attrs_cache, key);
+}
+
+/* Look up the parsed entries for instance.class/instance/class/"*" in
+ * precedence order. Returns the number of levels filled (up to 4),
+ * level[0] is the highest-precedence match. */
+static int attrs_lookup_levels(const char *instance, const char *class,
+			       Bool useGlobalDefault, const WWindowAttrs *level[4])
+{
+	int n = 0;
+
+	if (instance && class) {
+		char *both = StrConcatDot(instance, class);
+		level[n] = attrs_lookup(both);
+		wfree(both);
+		if (level[n])
+			n++;
+	}
+	if (instance) {
+		level[n] = attrs_lookup(instance);
+		if (level[n])
+			n++;
+	}
+	if (class) {
+		level[n] = attrs_lookup(class);
+		if (level[n])
+			n++;
+	}
+	if (useGlobalDefault) {
+		level[n] = attrs_lookup("*");
+		if (level[n])
+			n++;
+	}
+	return n;
+}
+
+static void merge_attrs(WWindowAttributes *attr, WWindowAttributes *mask,
+			const WWindowAttrs *src)
+{
+#define WATTR_MERGE_ROW(K, name, flag) \
+	if (src->set & ((uint32_t)1 << WATTR_##K)) { \
+		attr->flag = (src->value >> WATTR_##K) & 1u; \
+		if (mask) mask->flag = 1; \
+	}
+	WATTR_BOOLS(WATTR_MERGE_ROW)
+#undef WATTR_MERGE_ROW
 }
 
 /*
@@ -203,181 +260,18 @@ void wDefaultFillAttributes(const char *instance, const char *class,
 			    WWindowAttributes *attr, WWindowAttributes *mask,
 			    Bool useGlobalDefault)
 {
-	WMPropList *value, *dw, *dc, *dn, *da;
-	char *buffer;
+	const WWindowAttrs *level[4];
+	int n, i;
 
-	dw = dc = dn = da = NULL;
+	n = attrs_lookup_levels(instance, class, useGlobalDefault, level);
 
-	if (!ANoTitlebar)
-		init_wdefaults();
-
-	if (class && instance) {
-		buffer = StrConcatDot(instance, class);
-		dw = get_value_from_instanceclass(buffer);
-		wfree(buffer);
-	}
-
-	dn = get_value_from_instanceclass(instance);
-	dc = get_value_from_instanceclass(class);
-
-	WMPLSetCaseSensitive(True);
-
-	if ((w_global.domain.window_attr->dictionary) && (useGlobalDefault))
-		da = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, AnyWindow);
-
-	/* get the data */
-	value = get_value(dw, dc, dn, da, ANoTitlebar, No, useGlobalDefault);
-	APPLY_VAL(value, no_titlebar, ANoTitlebar);
-
-	value = get_value(dw, dc, dn, da, ANoResizebar, No, useGlobalDefault);
-	APPLY_VAL(value, no_resizebar, ANoResizebar);
-
-	value = get_value(dw, dc, dn, da, ANoMiniaturizeButton, No, useGlobalDefault);
-	APPLY_VAL(value, no_miniaturize_button, ANoMiniaturizeButton);
-
-	value = get_value(dw, dc, dn, da, ANoMiniaturizable, No, useGlobalDefault);
-	APPLY_VAL(value, no_miniaturizable, ANoMiniaturizable);
-
-	value = get_value(dw, dc, dn, da, ANoCloseButton, No, useGlobalDefault);
-	APPLY_VAL(value, no_close_button, ANoCloseButton);
-
-	value = get_value(dw, dc, dn, da, ANoBorder, No, useGlobalDefault);
-	APPLY_VAL(value, no_border, ANoBorder);
-
-	value = get_value(dw, dc, dn, da, ANoHideOthers, No, useGlobalDefault);
-	APPLY_VAL(value, no_hide_others, ANoHideOthers);
-
-	value = get_value(dw, dc, dn, da, ANoMouseBindings, No, useGlobalDefault);
-	APPLY_VAL(value, no_bind_mouse, ANoMouseBindings);
-
-	value = get_value(dw, dc, dn, da, ANoKeyBindings, No, useGlobalDefault);
-	APPLY_VAL(value, no_bind_keys, ANoKeyBindings);
-
-	value = get_value(dw, dc, dn, da, ANoAppIcon, No, useGlobalDefault);
-	APPLY_VAL(value, no_appicon, ANoAppIcon);
-
-	value = get_value(dw, dc, dn, da, ASharedAppIcon, No, useGlobalDefault);
-	APPLY_VAL(value, shared_appicon, ASharedAppIcon);
-
-	value = get_value(dw, dc, dn, da, AKeepOnTop, No, useGlobalDefault);
-	APPLY_VAL(value, floating, AKeepOnTop);
-
-	value = get_value(dw, dc, dn, da, AKeepOnBottom, No, useGlobalDefault);
-	APPLY_VAL(value, sunken, AKeepOnBottom);
-
-	value = get_value(dw, dc, dn, da, AOmnipresent, No, useGlobalDefault);
-	APPLY_VAL(value, omnipresent, AOmnipresent);
-
-	value = get_value(dw, dc, dn, da, ASkipWindowList, No, useGlobalDefault);
-	APPLY_VAL(value, skip_window_list, ASkipWindowList);
-
-	value = get_value(dw, dc, dn, da, ASkipSwitchPanel, No, useGlobalDefault);
-	APPLY_VAL(value, skip_switchpanel, ASkipSwitchPanel);
-
-	value = get_value(dw, dc, dn, da, AKeepInsideScreen, No, useGlobalDefault);
-	APPLY_VAL(value, dont_move_off, AKeepInsideScreen);
-
-	value = get_value(dw, dc, dn, da, AUnfocusable, No, useGlobalDefault);
-	APPLY_VAL(value, no_focusable, AUnfocusable);
-
-	value = get_value(dw, dc, dn, da, AAlwaysUserIcon, No, useGlobalDefault);
-	APPLY_VAL(value, always_user_icon, AAlwaysUserIcon);
-
-	value = get_value(dw, dc, dn, da, AStartMiniaturized, No, useGlobalDefault);
-	APPLY_VAL(value, start_miniaturized, AStartMiniaturized);
-
-	value = get_value(dw, dc, dn, da, AStartHidden, No, useGlobalDefault);
-	APPLY_VAL(value, start_hidden, AStartHidden);
-
-	value = get_value(dw, dc, dn, da, AStartMaximized, No, useGlobalDefault);
-	APPLY_VAL(value, start_maximized, AStartMaximized);
-
-	value = get_value(dw, dc, dn, da, ADontSaveSession, No, useGlobalDefault);
-	APPLY_VAL(value, dont_save_session, ADontSaveSession);
-
-	value = get_value(dw, dc, dn, da, AEmulateAppIcon, No, useGlobalDefault);
-	APPLY_VAL(value, emulate_appicon, AEmulateAppIcon);
-
-	value = get_value(dw, dc, dn, da, AFocusAcrossWorkspace, No, useGlobalDefault);
-	APPLY_VAL(value, focus_across_wksp, AFocusAcrossWorkspace);
-
-	value = get_value(dw, dc, dn, da, AFullMaximize, No, useGlobalDefault);
-	APPLY_VAL(value, full_maximize, AFullMaximize);
-
-	value = get_value(dw, dc, dn, da, ASwallowChild, No, useGlobalDefault);
-	APPLY_VAL(value, swallow_child, ASwallowChild);
-
-	value = get_value(dw, dc, dn, da, AIgnoreDecorationChanges, No, useGlobalDefault);
-	APPLY_VAL(value, ignore_decoration_changes, AIgnoreDecorationChanges);
-
-#ifdef XKB_BUTTON_HINT
-	value = get_value(dw, dc, dn, da, ANoLanguageButton, No, useGlobalDefault);
-	APPLY_VAL(value, no_language_button, ANoLanguageButton);
-#endif
-
-	/* clean up */
-	WMPLSetCaseSensitive(False);
-}
-
-static WMPropList *get_generic_value(const char *instance, const char *class,
-				     WMPropList *option, Bool default_icon)
-{
-	WMPropList *value, *key, *dict;
-
-	value = NULL;
-
-	WMPLSetCaseSensitive(True);
-
-	/* Search the icon name using class and instance */
-	if (class && instance) {
-		char *buffer;
-
-		buffer = wmalloc(strlen(class) + strlen(instance) + 2);
-		sprintf(buffer, "%s.%s", instance, class);
-		key = WMCreatePLString(buffer);
-		wfree(buffer);
-
-		dict = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, key);
-		WMReleasePropList(key);
-
-		if (dict)
-			value = WMGetFromPLDictionary(dict, option);
-	}
-
-	/* Search the icon name using instance */
-	if (!value && instance) {
-		key = WMCreatePLString(instance);
-
-		dict = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, key);
-		WMReleasePropList(key);
-
-		if (dict)
-			value = WMGetFromPLDictionary(dict, option);
-	}
-
-	/* Search the icon name using class */
-	if (!value && class) {
-		key = WMCreatePLString(class);
-
-		dict = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, key);
-		WMReleasePropList(key);
-
-		if (dict)
-			value = WMGetFromPLDictionary(dict, option);
-	}
-
-	/* Search the default icon name - See default_icon argument! */
-	if (!value && default_icon) {
-		/* AnyWindow is "*" - see wdefaults.c */
-		dict = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, AnyWindow);
-
-		if (dict)
-			value = WMGetFromPLDictionary(dict, option);
-	}
-
-	WMPLSetCaseSensitive(False);
-
-	return value;
+	/* with useGlobalDefault every key falls back to No, so apply the
+	 * all-zero/all-set global default first, then layer the parsed
+	 * entries on top from lowest precedence to highest */
+	if (useGlobalDefault)
+		merge_attrs(attr, mask, &attrs_global_default);
+	for (i = n - 1; i >= 0; i--)
+		merge_attrs(attr, mask, level[i]);
 }
 
 /*
@@ -472,6 +366,8 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 	if (persist && from_user && !wPreferences.flags.noupdates)
 		UpdateDomainFile(db);
 
+	wWindowAttrsReload();
+
 out:
 	for (i = 0; i < nkeys; i++)
 		WMReleasePropList(keys[i]);
@@ -512,14 +408,13 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 	if (file_name && !file_path) {
 		wwarning(_("icon \"%s\" doesn't exist, check your config files"), file_name);
 		drop_stale_icon(winstance, wclass, file_name);
-		/* file_name pointed into the dictionary entry we just removed */
+		/* file_name pointed into the cache entry we just removed */
 		file_name = NULL;
 	}
 
 	/*
-	 * Don't wfree(file_name) because it is a direct pointer inside the icon
-	 * dictionary (w_global.domain.window_attr->dictionary) and not a result
-	 * allocated with wstrdup()
+	 * Don't wfree(file_name), it points into the parsed attrs cache and
+	 * is owned by it, not allocated for the caller.
 	 */
 
 	if (!file_path && default_icon)
@@ -600,52 +495,31 @@ RImage *get_icon_image(WScreen *scr, const char *winstance, const char *wclass, 
 
 int wDefaultGetStartWorkspace(WScreen *scr, const char *instance, const char *class)
 {
-	WMPropList *value;
-	int w;
-	char *tmp;
+	const WWindowAttrs *level[4];
+	int n, i;
 
-	if (!ANoTitlebar)
-		init_wdefaults();
-
-	if (!w_global.domain.window_attr->dictionary)
-		return -1;
-
-	value = get_generic_value(instance, class, AStartWorkspace, True);
-
-	if (!value)
-		return -1;
-
-	tmp = getString(AStartWorkspace, value);
-
-	if (!tmp || strlen(tmp) == 0)
-		return -1;
-
-	/* Get the workspace number for the workspace name */
-	w = wGetWorkspaceNumber(scr, tmp);
-
-	return w;
+	n = attrs_lookup_levels(instance, class, True, level);
+	for (i = 0; i < n; i++) {
+		const char *ws = level[i]->start_workspace;
+		if (ws && ws[0] != '\0')
+			return wGetWorkspaceNumber(scr, ws);
+	}
+	return -1;
 }
 
-/* Get the name of the Icon File. If default_icon is True, then, default value included */
+/* Get the name of the Icon File. If default_icon is True, then, default value included.
+ * The returned pointer is owned by the attrs cache, do not free it and do
+ * not keep it across a domain reload or a wDefaultChangeIcon() call. */
 char *wDefaultGetIconFile(const char *instance, const char *class, Bool default_icon)
 {
-	WMPropList *value;
-	char *tmp;
+	const WWindowAttrs *level[4];
+	int n, i;
 
-	if (!ANoTitlebar)
-		init_wdefaults();
-
-	if (!w_global.domain.window_attr || !w_global.domain.window_attr->dictionary)
-		return NULL;
-
-	value = get_generic_value(instance, class, AIcon, default_icon);
-
-	if (!value)
-		return NULL;
-
-	tmp = getString(AIcon, value);
-
-	return tmp;
+	n = attrs_lookup_levels(instance, class, default_icon, level);
+	for (i = 0; i < n; i++)
+		if (level[i]->icon)
+			return level[i]->icon;
+	return NULL;
 }
 
 void wDefaultChangeIcon(const char *instance, const char *class, const char *file)
@@ -654,6 +528,8 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 	WMPropList *icon_value = NULL, *value, *attr, *key, *def_win, *def_icon = NULL;
 	WMPropList *dict = db->dictionary;
 	int same = 0;
+
+	init_wdefaults();
 
 	if (!dict) {
 		dict = WMCreatePLDictionary(NULL, NULL);
@@ -712,6 +588,8 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 		WMReleasePropList(icon_value);
 
 	WMPLSetCaseSensitive(False);
+
+	wWindowAttrsReload();
 }
 
 void wDefaultPurgeInfo(const char *instance, const char *class)
@@ -719,14 +597,11 @@ void wDefaultPurgeInfo(const char *instance, const char *class)
 	WMPropList *value, *key, *dict;
 	char *buffer;
 
-	if (!AIcon) { /* Unnecessary precaution */
-		init_wdefaults();
-	}
+	init_wdefaults();
 
 	WMPLSetCaseSensitive(True);
 
-	buffer = wmalloc(strlen(class) + strlen(instance) + 2);
-	sprintf(buffer, "%s.%s", instance, class);
+	buffer = StrConcatDot(instance, class);
 	key = WMCreatePLString(buffer);
 
 	dict = WMGetFromPLDictionary(w_global.domain.window_attr->dictionary, key);
@@ -738,20 +613,10 @@ void wDefaultPurgeInfo(const char *instance, const char *class)
 		}
 		WMRemoveFromPLDictionary(w_global.domain.window_attr->dictionary, key);
 		UpdateDomainFile(w_global.domain.window_attr);
+		wWindowAttrsReload();
 	}
 
 	wfree(buffer);
 	WMReleasePropList(key);
 	WMPLSetCaseSensitive(False);
-}
-
-/* WARNING: Do not free the value returned by this function!! */
-static char *getString(WMPropList * key, WMPropList * value)
-{
-	if (!WMIsPLString(value)) {
-		wwarning(_("Wrong option format for key \"%s\". Should be %s."), WMGetFromPLString(key), "String");
-		return NULL;
-	}
-
-	return WMGetFromPLString(value);
 }

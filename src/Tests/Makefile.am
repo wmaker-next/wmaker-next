@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config
+check_PROGRAMS = check_config check_wdefaults
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @PANGO_CFLAGS@
@@ -21,4 +21,14 @@ check_config_SOURCES = \
 
 check_config_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_wdefaults_SOURCES = \
+	check_wdefaults.c \
+	../wdefaults.c \
+	../wdefaults.h
+
+check_wdefaults_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	$(top_builddir)/wrlib/libwraster.la \
 	@INTLIBS@

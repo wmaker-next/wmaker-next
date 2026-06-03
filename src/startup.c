@@ -602,6 +602,7 @@ void StartUp(Bool defaultScreenOnly)
 	w_global.domain.window_attr = wDefaultsInitDomain("WMWindowAttributes", True);
 	if (!w_global.domain.window_attr->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WMWindowAttributes");
+	wWindowAttrsReload();
 
 	XSetErrorHandler((XErrorHandler) catchXError);
 
