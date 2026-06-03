@@ -36,7 +36,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+FAIL=0
 note() { printf '\n=== %s ===\n' "$*" | tee -a "$LOG"; }
+# print a '  -> ...' warning to stdout and the log and mark the run as
+# failed without aborting, so later coverage and the clean-exit LSan
+# report still happen and the final exit status is nonzero
+warn() { printf '  -> %s\n' "$*" | tee -a "$LOG"; FAIL=1; }
 # xdotool's search/activate probes _NET_WM_DESKTOP on every window and
 # whines for override-redirect ones that do not carry it, drop just that
 # (route stderr through a grep -v while leaving stdout untouched, no
@@ -160,8 +165,13 @@ DISPLAY=$DPY xeyes -geometry 150x100+700+400 >/dev/null 2>&1 &
 echo $! >> "$PIDFILE"
 sleep 1
 
-# pick one managed client window to drive
-WID=$(xdo search --class XTerm | head -n 1)
+# pick one managed client window to drive, xdotool search --class can
+# return a dock appicon when the copied user defaults have xterm docked,
+# so take the toplevel via wmctrl (which lists _NET_CLIENT_LIST only)
+WIDX=$(DISPLAY=$DPY wmctrl -lx 2>/dev/null \
+        | awk 'tolower($3) ~ /xterm/ { print $1; exit }')
+WID=$( [ -n "$WIDX" ] && printf '%d' "$WIDX" \
+        || xdo search --onlyvisible --class XTerm | head -n 1 )
 note "driving window $WID"
 shot clients-mapped
 
@@ -193,6 +203,68 @@ DISPLAY=$DPY wmctrl -i -r "$WID" -b add,fullscreen 2>/dev/null; sleep 0.3
 DISPLAY=$DPY wmctrl -i -r "$WID" -b remove,fullscreen 2>/dev/null; sleep 0.3
 DISPLAY=$DPY wmctrl -i -r "$WID" -b add,hidden 2>/dev/null; sleep 0.3
 xdo windowactivate "$WID"; sleep 0.3
+
+# --- _NET_RESTACK_WINDOW / _NET_REQUEST_FRAME_EXTENTS (wmspec.c) ------------
+# wmctrl does not send either message, use python-xlib if present
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import Xlib' 2>/dev/null; then
+    note "EWMH restack + request-frame-extents"
+    DISPLAY=$DPY python3 - <<'PYEOF' >>"$LOG" 2>&1 \
+        || warn "restack/frame-extents check failed"
+import sys, time
+from Xlib import X, Xatom, display
+from Xlib.protocol import event
+d = display.Display(); scr = d.screen(); root = scr.root
+RESTACK = d.intern_atom('_NET_RESTACK_WINDOW')
+REQ_EXT = d.intern_atom('_NET_REQUEST_FRAME_EXTENTS')
+EXTENTS = d.intern_atom('_NET_FRAME_EXTENTS')
+STACK   = d.intern_atom('_NET_CLIENT_LIST_STACKING')
+mask = X.SubstructureRedirectMask | X.SubstructureNotifyMask
+def send(win, atom, data):
+    root.send_event(event.ClientMessage(window=win, client_type=atom,
+                                        data=(32, data)), event_mask=mask)
+    d.flush(); time.sleep(0.2)
+def stacking():
+    p = root.get_full_property(STACK, Xatom.WINDOW)
+    return list(p.value) if p else []
+# pick both windows from the managed-client list, xdotool search --class
+# can return a dock appicon or subwindow that wWindowFor() will not
+# resolve, the topmost two stacking entries are guaranteed real clients
+s = stacking()
+if len(s) < 2:
+    print('SKIP restack: fewer than two managed clients'); sys.exit(0)
+w1, w2 = s[-1], s[-2]
+def w1_above_w2():
+    s = stacking()
+    return s.index(w1) > s.index(w2) if w1 in s and w2 in s else None
+
+# _NET_RESTACK_WINDOW: put w1 below w2, then back above, and verify
+# _NET_CLIENT_LIST_STACKING tracks each step (regression cover for the
+# previously-unsubscribed WMNResetStacking observer)
+fail = 0
+send(w1, RESTACK, [2, w2, 1, 0, 0])      # Below
+if w1_above_w2():
+    print('FAIL restack Below: w1 still above w2'); fail = 1
+send(w1, RESTACK, [2, w2, 0, 0, 0])      # Above
+if not w1_above_w2():
+    print('FAIL restack Above: w1 not above w2'); fail = 1
+send(w1, RESTACK, [2, 0, 99, 0, 0])      # hostile detail, must be refused
+send(w1, RESTACK, [2, w1, 0, 0, 0])      # self as sibling, must be dropped
+send(w1, RESTACK, [2, 0x7fffffff, 0, 0, 0])  # garbage sibling, must be dropped
+send(w1, RESTACK, [2, 0, 0, 0, 0])       # raise without sibling
+
+# _NET_REQUEST_FRAME_EXTENTS on a fresh unmapped window
+uw = root.create_window(0, 0, 50, 50, 0, scr.root_depth,
+                        X.InputOutput, X.CopyFromParent)
+send(uw.id, REQ_EXT, [0, 0, 0, 0, 0])
+ext = uw.get_full_property(EXTENTS, Xatom.CARDINAL)
+if not ext or len(ext.value) != 4 or ext.value[2] == 0:
+    print('FAIL request-frame-extents:', ext and list(ext.value)); fail = 1
+else:
+    print('frame-extents estimate', list(ext.value))
+uw.destroy(); d.flush()
+sys.exit(fail)
+PYEOF
+fi
 
 # --- workspace switching (workspace.c, wsmap.c) -----------------------------
 note "workspace switch"
@@ -317,12 +389,10 @@ hit_corner() {
     xdo mousemove 1 1
     wait_for 10 test -f "$HC_MARK/tl"
 }
-wait_for 15 hit_corner \
-    || printf '  -> hot corner over root did not fire\n' | tee -a "$LOG"
+wait_for 15 hit_corner || warn "hot corner over root did not fire"
 DISPLAY=$DPY xterm -geometry 200x60+0+0 -e 'sleep 60' >/dev/null 2>&1 &
 HC_XT=$!; echo "$HC_XT" >> "$PIDFILE"; sleep 0.5
-hit_corner \
-    || printf '  -> hot corner over window did not fire\n' | tee -a "$LOG"
+hit_corner || warn "hot corner over window did not fire"
 kill "$HC_XT" 2>/dev/null; sleep 0.3
 rm -rf "$HC_MARK"
 
@@ -402,3 +472,4 @@ wait_for 100 pid_gone "$WMAKER_PID"
 kill -0 "$WMAKER_PID" 2>/dev/null && { note "wmaker still up, SIGKILL"; kill -9 "$WMAKER_PID"; }
 
 note "done; log at $LOG"
+exit $FAIL
