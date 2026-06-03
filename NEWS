@@ -3,6 +3,17 @@ NEWS for veteran Window Maker users
 
 -- next
 
+_NET_RESTACK_WINDOW and _NET_REQUEST_FRAME_EXTENTS
+--------------------------------------------------
+
+Clients can now restack a managed window relative to a sibling via the
+_NET_RESTACK_WINDOW message, and ask for an estimate of the frame
+extents a not-yet-mapped window will get via _NET_REQUEST_FRAME_EXTENTS.
+Both are advertised in _NET_SUPPORTED, along with _NET_CLOSE_WINDOW
+which was already handled but not listed. _NET_CLIENT_LIST_STACKING is
+also kept current after a ConfigureRequest restack again.
+
+
 Back-to-back defaults writes are all picked up
 ----------------------------------------------
 
