@@ -599,7 +599,12 @@ void StartUp(Bool defaultScreenOnly)
 
 	wDefaultsMergeGlobalMenus(w_global.domain.root_menu);
 
+	/* WMWindowAttributes outer keys are X11 instance.class strings and
+	 * are case-sensitive ("xterm" != "XTerm"), keep them distinct while
+	 * the user and global domain files are read and merged */
+	WMPLSetCaseSensitive(True);
 	w_global.domain.window_attr = wDefaultsInitDomain("WMWindowAttributes", True);
+	WMPLSetCaseSensitive(False);
 	if (!w_global.domain.window_attr->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WMWindowAttributes");
 	wWindowAttrsReload();

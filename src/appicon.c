@@ -1103,6 +1103,8 @@ static void wApplicationSaveIconPathFor(const char *iconPath, const char *wm_ins
 	WMPropList *val;
 	char *tmp;
 
+	WMPLSetCaseSensitive(True);
+
 	tmp = get_name_for_instance_class(wm_instance, wm_class);
 	key = WMCreatePLString(tmp);
 	wfree(tmp);
@@ -1130,6 +1132,8 @@ static void wApplicationSaveIconPathFor(const char *iconPath, const char *wm_ins
 
 	WMReleasePropList(key);
 	WMReleasePropList(iconk);
+
+	WMPLSetCaseSensitive(False);
 
 	if (val) {
 		if (!wPreferences.flags.noupdates)

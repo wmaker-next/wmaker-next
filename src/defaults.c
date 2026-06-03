@@ -322,6 +322,10 @@ void wDefaultsCheckDomains(void* arg)
 	}
 
 	if (stat(w_global.domain.window_attr->path, &stbuf) >= 0 && w_global.domain.window_attr->timestamp < stbuf.st_mtime) {
+		/* WMWindowAttributes outer keys are X11 instance.class strings
+		 * and are case-sensitive, keep "xterm" and "XTerm" distinct
+		 * while reading and merging the global and user files */
+		WMPLSetCaseSensitive(True);
 		/* global dictionary */
 		shared_dict = readGlobalDomain("WMWindowAttributes", True);
 		/* user dictionary */
@@ -364,6 +368,7 @@ void wDefaultsCheckDomains(void* arg)
 		w_global.domain.window_attr->timestamp = stbuf.st_mtime;
 		if (shared_dict)
 			WMReleasePropList(shared_dict);
+		WMPLSetCaseSensitive(False);
 	}
 
 	if (stat(w_global.domain.root_menu->path, &stbuf) >= 0 && w_global.domain.root_menu->timestamp < stbuf.st_mtime) {
