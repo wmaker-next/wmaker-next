@@ -1,0 +1,149 @@
+/*
+ *  Window Maker window manager
+ *
+ *  Copyright (c) 1997-2003 Alfredo K. Kojima
+ *  Copyright (c) 2014-2026 Window Maker Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
+
+/*
+ * Integer values that an enum-typed key in the WindowMaker defaults
+ * domain can resolve to, lifted out of WindowMaker.h so config-schema.c
+ * and WPrefs can name them without pulling in the rest of that header.
+ * A few non-configurable internal indices (ACTION_*, WS_*, CLIP_*) are
+ * kept here too because they sat in the same contiguous block and have
+ * no dependencies of their own.
+ */
+
+#ifndef WMCONFIG_VALUES_H_
+#define WMCONFIG_VALUES_H_
+
+/* geometry displays */
+#define WDIS_NEW		0	/* new style */
+#define WDIS_CENTER		1	/* center of screen */
+#define WDIS_TOPLEFT		2	/* top left corner of screen */
+#define WDIS_FRAME_CENTER	3	/* center of the frame */
+#define WDIS_NONE		4
+
+/* keyboard input focus mode */
+#define WKF_CLICK	0
+#define WKF_SLOPPY	2
+
+/* colormap change mode */
+#define WCM_CLICK	0
+#define WCM_POINTER	1
+
+/* window placement mode */
+#define WPM_MANUAL	0
+#define WPM_CASCADE	1
+#define WPM_SMART	2
+#define WPM_RANDOM	3
+#define WPM_AUTO        4
+#define WPM_CENTER      5
+
+/* text justification */
+#define WTJ_CENTER	0
+#define WTJ_LEFT	1
+#define WTJ_RIGHT	2
+
+/* iconification styles */
+#define WIS_ZOOM        0
+#define WIS_TWIST       1
+#define WIS_FLIP        2
+#define WIS_NONE        3
+#define WIS_RANDOM	4 /* secret */
+
+/* switchmenu actions */
+#define ACTION_ADD		0
+#define ACTION_REMOVE		1
+#define ACTION_CHANGE		2
+#define ACTION_CHANGE_WORKSPACE	3
+#define ACTION_CHANGE_STATE	4
+
+
+/* speeds */
+#define SPEED_ULTRAFAST 0
+#define SPEED_FAST	1
+#define SPEED_MEDIUM	2
+#define SPEED_SLOW	3
+#define SPEED_ULTRASLOW 4
+
+
+/* window states */
+#define WS_FOCUSED	0
+#define WS_UNFOCUSED	1
+#define WS_PFOCUSED	2
+
+/* clip title colors */
+#define CLIP_NORMAL	0
+#define CLIP_COLLAPSED	1
+
+
+/* icon yard position */
+#define	IY_VERT		1
+#define	IY_HORIZ	0
+#define	IY_TOP		2
+#define	IY_BOTTOM	0
+#define	IY_RIGHT	4
+#define	IY_LEFT		0
+
+
+/* menu styles */
+#define MS_NORMAL		0
+#define MS_SINGLE_TEXTURE	1
+#define MS_FLAT			2
+
+/* workspace actions */
+#define WA_NONE                 0
+#define WA_SELECT_WINDOWS       1
+#define WA_OPEN_APPMENU         2
+#define WA_OPEN_WINLISTMENU     3
+#define WA_SWITCH_WORKSPACES    4
+#define WA_MOVE_PREVWORKSPACE   5
+#define WA_MOVE_NEXTWORKSPACE   6
+#define WA_SWITCH_WINDOWS       7
+#define WA_MOVE_PREVWINDOW      8
+#define WA_MOVE_NEXTWINDOW      9
+
+/* workspace display position */
+#define WD_NONE		0
+#define WD_CENTER	1
+#define WD_TOP		2
+#define WD_BOTTOM	3
+#define WD_TOPLEFT	4
+#define WD_TOPRIGHT	5
+#define WD_BOTTOMLEFT	6
+#define WD_BOTTOMRIGHT	7
+
+/* titlebar style */
+#define TS_NEW		0
+#define TS_OLD		1
+#define TS_NEXT		2
+
+/* workspace border position */
+#define	WB_NONE		0
+#define	WB_LEFTRIGHT	1
+#define	WB_TOPBOTTOM	2
+#define WB_ALLDIRS      (WB_LEFTRIGHT|WB_TOPBOTTOM)
+
+/* drag maximized window behaviors */
+enum {
+	DRAGMAX_MOVE,
+	DRAGMAX_RESTORE,
+	DRAGMAX_UNMAXIMIZE,
+	DRAGMAX_NOMOVE
+};
+
+#endif /* WMCONFIG_VALUES_H_ */
