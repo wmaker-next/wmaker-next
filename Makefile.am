@@ -189,12 +189,15 @@ check-local: configure-documentation check-manifest check-pkgconfig
 check-manifest:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-manifest.sh $(top_srcdir)
 
-check-pkgconfig: wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
+CHECK_PCFILES = wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
+
+check-pkgconfig: $(CHECK_PCFILES)
 	$(AM_V_CHKOPTS)ok=true ; \
 	pc_path="$(abs_top_builddir)/wrlib:$(abs_top_builddir)/WINGs:$(abs_top_builddir)/wmlib$${PKG_CONFIG_PATH:+:$${PKG_CONFIG_PATH}}" ; \
-	for pc in $^ ; do \
-		$(PKG_CONFIG) --validate "$$pc" || ok=false ; \
-		PKG_CONFIG_PATH="$$pc_path" $(PKG_CONFIG) --static --libs "$$pc" >/dev/null || ok=false ; \
+	for pc in $(CHECK_PCFILES) ; do \
+		name=`basename "$$pc" .pc` ; \
+		PKG_CONFIG_PATH="$$pc_path" $(PKG_CONFIG) --validate "$$name" || ok=false ; \
+		PKG_CONFIG_PATH="$$pc_path" $(PKG_CONFIG) --static --libs "$$name" >/dev/null || ok=false ; \
 	done ; \
 	$$ok
 
