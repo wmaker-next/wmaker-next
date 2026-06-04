@@ -94,6 +94,11 @@ void wScreenUpdateRootEventMask(WScreen *scr)
 	root_mask_updates++;
 }
 
+void wHotCornersUpdate(WScreen *scr)
+{
+	(void)scr;
+}
+
 void W_setconf_doubleClickDelay(int value)
 {
 	double_click_delay = value;

@@ -27,6 +27,7 @@ POTFILES  = \
 	$(top_srcdir)/src/event.c \
 	$(top_srcdir)/src/framewin.c \
 	$(top_srcdir)/src/geomview.c \
+	$(top_srcdir)/src/hotcorner.c \
 	$(top_srcdir)/src/icon.c \
 	$(top_srcdir)/src/keytree.c \
 	$(top_srcdir)/src/main.c \
