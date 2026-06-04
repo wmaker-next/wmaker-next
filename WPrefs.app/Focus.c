@@ -58,36 +58,20 @@ typedef struct _Panel {
 
 static void showData(_Panel * panel)
 {
-	char *str;
 	int i;
 	char buffer[32];
 
-	str = GetStringForKey("FocusMode");
-	if (!str)
-		str = "manual";
-	if (strcasecmp(str, "manual") == 0 || strcasecmp(str, "clicktofocus") == 0)
-		WMSetButtonSelected(panel->kfocB[0], 1);
-	else if (strcasecmp(str, "auto") == 0 || strcasecmp(str, "semiauto") == 0
-		 || strcasecmp(str, "sloppy") == 0)
+	if (GetEnumForKey("FocusMode", WKF_CLICK) == WKF_SLOPPY)
 		WMSetButtonSelected(panel->kfocB[1], 1);
-	else {
-		wwarning(_("bad option value %s for option FocusMode. Using default Manual"), str);
+	else
 		WMSetButtonSelected(panel->kfocB[0], 1);
-	}
 
-	 /**/ str = GetStringForKey("ColormapMode");
-	if (!str)
-		str = "auto";
-	if (strcasecmp(str, "manual") == 0 || strcasecmp(str, "clicktofocus") == 0) {
+	if (GetEnumForKey("ColormapMode", WCM_POINTER) == WCM_CLICK)
 		WMPerformButtonClick(panel->manB);
-	} else if (strcasecmp(str, "auto") == 0 || strcasecmp(str, "focusfollowsmouse") == 0) {
+	else
 		WMPerformButtonClick(panel->autB);
-	} else {
-		wwarning(_("bad option value %s for option ColormapMode. Using default Auto"), str);
-		WMPerformButtonClick(panel->manB);
-	}
 
-	 /**/ i = GetIntegerForKey("RaiseDelay");
+	i = GetIntegerForKey("RaiseDelay");
 	sprintf(buffer, "%i", i);
 	WMSetTextFieldText(panel->raisT, buffer);
 
@@ -120,18 +104,8 @@ static void storeData(_Panel * panel)
 	char *str;
 	int i;
 
-	if (WMGetButtonSelected(panel->kfocB[1]))
-		str = "sloppy";
-	else
-		str = "manual";
-
-	SetStringForKey(str, "FocusMode");
-
-	if (WMGetButtonSelected(panel->manB)) {
-		SetStringForKey("manual", "ColormapMode");
-	} else {
-		SetStringForKey("auto", "ColormapMode");
-	}
+	SetEnumForKey(WMGetButtonSelected(panel->kfocB[1]) ? WKF_SLOPPY : WKF_CLICK, "FocusMode");
+	SetEnumForKey(WMGetButtonSelected(panel->manB) ? WCM_CLICK : WCM_POINTER, "ColormapMode");
 
 	str = WMGetTextFieldText(panel->raisT);
 	if (sscanf(str, "%i", &i) != 1)

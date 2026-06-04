@@ -53,40 +53,18 @@ typedef struct _Panel {
 #define ADVANCE_FILE	"advancetonewworkspace"
 #define WSNAME_FILE 	"workspacename"
 
-static char *WSNamePositions[] = {
-	"none",
-	"center",
-	"top",
-	"bottom",
-	"topleft",
-	"topright",
-	"bottomleft",
-	"bottomright"
-};
-
 static void showData(_Panel * panel)
 {
-	int i, idx;
-	char *str;
-
 	WMSetButtonSelected(panel->linkB, !GetBoolForKey("DontLinkWorkspaces"));
 
 	WMSetButtonSelected(panel->cyclB, GetBoolForKey("CycleWorkspaces"));
 
 	WMSetButtonSelected(panel->newB, GetBoolForKey("AdvanceToNewWorkspace"));
 
-	str = GetStringForKey("WorkspaceNameDisplayPosition");
-	if (!str)
-		str = "center";
-
-	idx = 1;		/* center */
-	for (i = 0; i < wlengthof(WSNamePositions); i++) {
-		if (strcasecmp(WSNamePositions[i], str) == 0) {
-			idx = i;
-			break;
-		}
-	}
-	WMSetPopUpButtonSelectedItem(panel->posP, idx);
+	/* popup items are added in WD_NONE..WD_BOTTOMRIGHT order in createPanel(),
+	 * so the schema value is the popup index directly */
+	WMSetPopUpButtonSelectedItem(panel->posP,
+				     GetEnumForKey("WorkspaceNameDisplayPosition", WD_CENTER));
 }
 
 static void createPanel(Panel * p)
@@ -214,7 +192,7 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->cyclB), "CycleWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AdvanceToNewWorkspace");
 
-	SetStringForKey(WSNamePositions[tmp], "WorkspaceNameDisplayPosition");
+	SetEnumForKey(tmp, "WorkspaceNameDisplayPosition");
 }
 
 Panel *InitWorkspace(WMWidget *parent)

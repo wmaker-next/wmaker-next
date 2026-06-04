@@ -162,22 +162,15 @@ static void showData(_Panel * panel)
  found_valid_move_display:
 
 	x = GetIntegerForKey("WorkspaceBorderSize");
+	/* clamp to the slider's range (UI geometry, not schema validation) */
 	x = x < 0 ? 0 : x;
 	x = x > 5 ? 5 : x;
 	WMSetSliderValue(panel->borderS, x);
 	borderCallback(NULL, panel);
 
-	str = GetStringForKey("WorkspaceBorder");
-	if (!str)
-		str = "none";
-	if (strcasecmp(str, "LeftRight") == 0) {
-		WMSetButtonSelected(panel->lrB, True);
-	} else if (strcasecmp(str, "TopBottom") == 0) {
-		WMSetButtonSelected(panel->tbB, True);
-	} else if (strcasecmp(str, "AllDirections") == 0) {
-		WMSetButtonSelected(panel->tbB, True);
-		WMSetButtonSelected(panel->lrB, True);
-	}
+	x = GetEnumForKey("WorkspaceBorder", WB_NONE);
+	WMSetButtonSelected(panel->lrB, (x & WB_LEFTRIGHT) != 0);
+	WMSetButtonSelected(panel->tbB, (x & WB_TOPBOTTOM) != 0);
 
 	for (x = 0; x < wlengthof(appicon_bouncing); x++) {
 		if (GetStringForKey(appicon_bouncing[x].db_key))
@@ -190,7 +183,6 @@ static void showData(_Panel * panel)
 
 static void storeData(_Panel * panel)
 {
-	char *str;
 	Bool lr, tb;
 	int i;
 
@@ -206,15 +198,7 @@ static void storeData(_Panel * panel)
 
 	lr = WMGetButtonSelected(panel->lrB);
 	tb = WMGetButtonSelected(panel->tbB);
-	if (lr && tb)
-		str = "AllDirections";
-	else if (lr)
-		str = "LeftRight";
-	else if (tb)
-		str = "TopBottom";
-	else
-		str = "None";
-	SetStringForKey(str, "WorkspaceBorder");
+	SetEnumForKey((lr ? WB_LEFTRIGHT : 0) | (tb ? WB_TOPBOTTOM : 0), "WorkspaceBorder");
 	SetIntegerForKey(WMGetSliderValue(panel->borderS), "WorkspaceBorderSize");
 
 	for (i = 0; i < wlengthof(appicon_bouncing); i++)
