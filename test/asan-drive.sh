@@ -308,16 +308,21 @@ LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
     "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerActions \
     "(\"touch $HC_MARK/tl\", None, None, None)"
-sleep 1.2   # wait for the defaults reload to apply
-xdo mousemove 640 400; sleep 0.1
-xdo mousemove 1 1; sleep 0.3
-[ -f "$HC_MARK/tl" ] || printf '  -> hot corner over root did not fire\n' | tee -a "$LOG"
-rm -f "$HC_MARK/tl"
+# four wdwrite calls land within one wall-clock second, the inotify
+# reload now compares st_mtim at nanosecond resolution so all four are
+# applied before this poll returns
+hit_corner() {
+    rm -f "$HC_MARK/tl"
+    xdo mousemove 640 400; sleep 0.1
+    xdo mousemove 1 1
+    wait_for 10 test -f "$HC_MARK/tl"
+}
+wait_for 15 hit_corner \
+    || printf '  -> hot corner over root did not fire\n' | tee -a "$LOG"
 DISPLAY=$DPY xterm -geometry 200x60+0+0 -e 'sleep 60' >/dev/null 2>&1 &
 HC_XT=$!; echo "$HC_XT" >> "$PIDFILE"; sleep 0.5
-xdo mousemove 640 400; sleep 0.1
-xdo mousemove 1 1; sleep 0.3
-[ -f "$HC_MARK/tl" ] || printf '  -> hot corner over window did not fire\n' | tee -a "$LOG"
+hit_corner \
+    || printf '  -> hot corner over window did not fire\n' | tee -a "$LOG"
 kill "$HC_XT" 2>/dev/null; sleep 0.3
 rm -rf "$HC_MARK"
 

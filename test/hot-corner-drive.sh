@@ -49,8 +49,9 @@ hit_corner() {
     local x=$1 y=$2 marker=$3 what=$4
     rm -f "$MARK/$marker"
     xdo mousemove $((W/2)) $((H/2)); sleep 0.1
-    xdo mousemove "$x" "$y"; sleep 0.3
-    [ -f "$MARK/$marker" ] || fail "$what: corner action did not fire"
+    xdo mousemove "$x" "$y"
+    wait_for 20 test -f "$MARK/$marker" \
+        || fail "$what: corner action did not fire"
     note "ok: $what"
 }
 
