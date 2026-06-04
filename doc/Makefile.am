@@ -130,11 +130,10 @@ wxpaste-args:
 if WITH_WEB_REPO
 # We convert all man pages except those that are a link to other man page (.so command)
 website: $(MANS) website.menu
-	@local_pages=`echo "$^" | sed -e 's/ [^ ]*\.menu$$// ; s,[^ /]*/,,g' `; \
+	@local_pages=`echo "$(MANS)" | sed -e 's,[^ /]*/,,g' `; \
 	generated_pages=""; \
-	for man in $^; do \
-	  [ "$$man" = "website.menu" ] && continue; \
-	  grep -i '^\.so[ \t]' "$$man" > /dev/null && continue; \
+	for man in $(MANS); do \
+	  grep -i '^\.so[[:blank:]]' "$$man" > /dev/null && continue; \
 	  echo "  MAN2HTML $$man"; \
 	  $(top_srcdir)/script/generate-html-from-man.sh --groff $(GROFF) \
 	        --output $(WEB_REPO_ROOT)/docs/manpages/`echo "$$man" | sed -e 's,[^ /]*/,,g ; s/\.[^.]*$$//' `.html \

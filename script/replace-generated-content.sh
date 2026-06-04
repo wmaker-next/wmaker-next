@@ -130,10 +130,10 @@ if [ -n "$man_pages" ]; then
                  :append_next_line
                    N
                    /\n\./ b end_section_found
-                   s/[ \t]*\n[ \t]*/ /
+                   s/[[:blank:]]*\n[[:blank:]]*/ /
                    b append_next_line
                  :end_section_found
-                   s/[ \t]*\n\..*$//
+                   s/[[:blank:]]*\n\..*$//
                    s/\\f[BIPR]//g
                    p
                 }' $1
@@ -150,8 +150,10 @@ fi
 ###########################################################################
 # Convert the content to the specified format
 ###########################################################################
-for i in `seq 2 $nb_fields`; do
+i=2
+while [ $i -le $nb_fields ]; do
   sed_from="$sed_from\\([^:]*\\):"
+  i=`expr $i + 1`
 done
 sed_from="^$sed_from\\(.*\\)\$"
 

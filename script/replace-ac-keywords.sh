@@ -77,9 +77,10 @@ print_help() {
 # Skip value defined to '0' to consider them as undefine
 extract_vars_from_c_header ()
 {
-  sed -n '/^#[ \t]*define[ \t][ \t]*[A-Za-z][A-Za-z_0-9]*[ \t].*[^\\]$/ {
-            s/^#[ \t]*define[ \t]*//
-            s/[ \t][ \t]*/=/
+  # POSIX sed has no \t escape, use the [:blank:] class for space-or-tab
+  sed -n '/^#[[:blank:]]*define[[:blank:]][[:blank:]]*[A-Za-z][A-Za-z_0-9]*[[:blank:]].*[^\\]$/ {
+            s/^#[[:blank:]]*define[[:blank:]]*//
+            s/[[:blank:]][[:blank:]]*/=/
             /=0$/d
             p
           }' "$1"
@@ -141,7 +142,7 @@ done
 for key in $list_replaces
 do
   # if there are multiple possible values, keep the last
-  value=`echo "$var_defs" | grep "^$key=" | tail -1 `
+  value=`echo "$var_defs" | grep "^$key=" | tail -n 1 `
   [ "x$value" != "x" ] || arg_error "key \"$key\" does not have a value"
   sed_cmd="$sed_cmd
     s#@$key@#`echo "$value" | sed -e 's/^[^=]*=//' `#"

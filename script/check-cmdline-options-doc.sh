@@ -119,7 +119,7 @@ fi
 # with no other text at the beginning of the line
 # If the line contains both a short option followed by a long option, we keep only the long
 # option because it is better to check for it
-prog_options=`$prog_name --help | sed -n '/^[ \t]*-/ { s/^[ \t]*// ; s/^-[^-],[ \t]*--/--/ ; s/[^-A-Z_a-z0-9].*$// ; p }' `
+prog_options=`$prog_name --help | sed -n '/^[[:blank:]]*-/ { s/^[[:blank:]]*// ; s/^-[^-],[[:blank:]]*--/--/ ; s/[^-A-Z_a-z0-9].*$// ; p }' `
 
 [ "x$prog_options" = "x" ] && arg_error "program '$prog_name --help' did not return any option"
 
@@ -139,12 +139,12 @@ if [ -n "$man_page" ]; then
   # In the man page format, the options must be grouped in the section "OPTIONS"
   # The name of the option is on the first line after the '.TP' command
   # The format requires the use of a backslash before the dash ('\-')
-  sed_script='/^\.SH[ \t]*"*OPTIONS"*/,/^\.SH/ {
+  sed_script='/^\.SH[[:blank:]]*"*OPTIONS"*/,/^\.SH/ {
                  /^\.TP/ {
                     n
                     s/^\.[A-Z]*//
-                    s/^[ \t]*//
-                    s/^\([^ \t]*\)[ \t].*$/\1/
+                    s/^[[:blank:]]*//
+                    s/^\([^[:blank:]]*\)[[:blank:]].*$/\1/
                     s/\\-/-/g
                     p
                  }
