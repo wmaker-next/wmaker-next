@@ -23,17 +23,19 @@
 #include "WPrefs.h"
 
 /* This structure containts the list of all the check-buttons to display in the
- * expert tab of the window with the corresponding information for effect
+ * expert tab of the window with the corresponding information for effect.
+ * Defaults for OPTION_WMAKER* keys come from the shared config schema.
+ * OPTION_USERDEF goes to the WPrefs app domain, OPTION_WMGLOBAL_ON writes
+ * to the user's WMGLOBAL and defaults to True when the key is absent.
  */
 static struct expert_option {
 	const char *label;  /* Text displayed to user */
-
-	int def_state;  /* True/False: the default value, if not defined in current config */
 
 	enum {
 		OPTION_WMAKER,
 		OPTION_WMAKER_ARRAY,
 		OPTION_USERDEF,
+		OPTION_WMGLOBAL_ON,
 		OPTION_WMAKER_INT
 	} class;
 
@@ -42,99 +44,104 @@ static struct expert_option {
 } expert_options[] = {
 
 	{ N_("Disable miniwindows (icons for minimized windows). For use with KDE/GNOME."),
-	  /* default: */ False, OPTION_WMAKER, "DisableMiniwindows" },
+	  OPTION_WMAKER, "DisableMiniwindows" },
 
 	{ N_("Ignore decoration hints for GTK applications."),
-	  /* default: */ False, OPTION_WMAKER, "IgnoreGtkHints" },
+	  OPTION_WMAKER, "IgnoreGtkHints" },
 
 	{ N_("Enable workspace pager."),
-	  /* default: */ False, OPTION_WMAKER, "EnableWorkspacePager" },
+	  OPTION_WMAKER, "EnableWorkspacePager" },
 
 	{ N_("Do not set non-WindowMaker specific parameters (do not use xset)."),
-	  /* default: */ False, OPTION_USERDEF, "NoXSetStuff" },
+	  OPTION_USERDEF, "NoXSetStuff" },
 
 	{ N_("Automatically save session when exiting Window Maker."),
-	  /* default: */ False, OPTION_WMAKER, "SaveSessionOnExit" },
+	  OPTION_WMAKER, "SaveSessionOnExit" },
 
 	{ N_("Use SaveUnder in window frames, icons, menus and other objects."),
-	  /* default: */ False, OPTION_WMAKER, "UseSaveUnders" },
+	  OPTION_WMAKER, "UseSaveUnders" },
 
 	{ N_("Disable confirmation panel for the Kill command."),
-	  /* default: */ False, OPTION_WMAKER, "DontConfirmKill" },
+	  OPTION_WMAKER, "DontConfirmKill" },
 
 	{ N_("Disable selection animation for selected icons."),
-	  /* default: */ False, OPTION_WMAKER, "DisableBlinking" },
+	  OPTION_WMAKER, "DisableBlinking" },
 
+	/* AntialiasedText is a WMGLOBAL key read by WINGs/configuration.c,
+	 * not a WindowMaker-domain key, so the previous OPTION_WMAKER
+	 * classification wrote it to a domain nothing reads. WINGs treats
+	 * a missing key as enabled, hence the _ON default. */
 	{ N_("Smooth font edges (needs restart)."),
-	  /* default: */ True, OPTION_WMAKER, "AntialiasedText" },
+	  OPTION_WMGLOBAL_ON, "AntialiasedText" },
 
 	{ N_("Cycle windows only on the active head."),
-	  /* default: */ False, OPTION_WMAKER, "CycleActiveHeadOnly" },
+	  OPTION_WMAKER, "CycleActiveHeadOnly" },
 
 	{ N_("Cycle all windows from all workspaces."),
-	  /* default: */ False, OPTION_WMAKER, "CycleAllWorkspaces" },
+	  OPTION_WMAKER, "CycleAllWorkspaces" },
 
 	{ N_("Ignore minimized windows when cycling."),
-	  /* default: */ False, OPTION_WMAKER, "CycleIgnoreMinimized" },
+	  OPTION_WMAKER, "CycleIgnoreMinimized" },
 
 	{ N_("Show app icons in window list."),
-	  /* default: */ False, OPTION_WMAKER, "WindowListAppIcons" },
+	  OPTION_WMAKER, "WindowListAppIcons" },
 
 	{ N_("Show switch panel when cycling windows."),
-	  /* default: */ True, OPTION_WMAKER_ARRAY, "SwitchPanelImages" },
+	  OPTION_WMAKER_ARRAY, "SwitchPanelImages" },
 
 	{ N_("Show workspace title on Clip."),
-	  /* default: */ True, OPTION_WMAKER, "ShowClipTitle" },
+	  OPTION_WMAKER, "ShowClipTitle" },
 
 	{ N_("Highlight the icon of the application when it has the focus."),
-	  /* default: */ True, OPTION_WMAKER, "HighlightActiveApp" },
+	  OPTION_WMAKER, "HighlightActiveApp" },
 
 #ifdef XKB_MODELOCK
 	{ N_("Enable keyboard language switch button in window titlebars."),
-	  /* default: */ False, OPTION_WMAKER, "KbdModeLock" },
+	  OPTION_WMAKER, "KbdModeLock" },
 #endif /* XKB_MODELOCK */
 
 	{ N_("Snap a window to edge or corner by dragging."),
-	  /* default: */ False, OPTION_WMAKER, "WindowSnapping" },
+	  OPTION_WMAKER, "WindowSnapping" },
 
 	{ N_("Distance from edge to begin window snap."),
-	  /* default: */ 1, OPTION_WMAKER_INT, "SnapEdgeDetect" },
+	  OPTION_WMAKER_INT, "SnapEdgeDetect" },
 
 	{ N_("Distance from corner to begin window snap."),
-	  /* default: */ 10, OPTION_WMAKER_INT, "SnapCornerDetect" },
+	  OPTION_WMAKER_INT, "SnapCornerDetect" },
 
 	{ N_("Snap a window to the top to maximize it to the full screen."),
-	  /* default: */ False, OPTION_WMAKER, "SnapToTopMaximizesFullscreen" },
+	  OPTION_WMAKER, "SnapToTopMaximizesFullscreen" },
 
 	{ N_("Allow move half-maximized windows between multiple screens."),
-	  /* default: */ False, OPTION_WMAKER, "MoveHalfMaximizedWindowsBetweenScreens" },
+	  OPTION_WMAKER, "MoveHalfMaximizedWindowsBetweenScreens" },
 
 	{ N_("Alternative transitions between states for half maximized windows."),
-	  /* default: */ False, OPTION_WMAKER, "AlternativeHalfMaximized" },
+	  OPTION_WMAKER, "AlternativeHalfMaximized" },
 
 	{ N_("Move mouse pointer with half maximized windows."),
-	  /* default: */ False, OPTION_WMAKER, "PointerWithHalfMaxWindows" },
+	  OPTION_WMAKER, "PointerWithHalfMaxWindows" },
 
 	{ N_("Open dialogs in the same workspace as their owners."),
-	  /* default: */ False, OPTION_WMAKER, "OpenTransientOnOwnerWorkspace" },
+	  OPTION_WMAKER, "OpenTransientOnOwnerWorkspace" },
 
 	{ N_("Wrap dock-attached icons around the screen edges."),
-	  /* default: */ True, OPTION_WMAKER, "WrapAppiconsInDock" },
-	  
+	  OPTION_WMAKER, "WrapAppiconsInDock" },
+
 	{ N_("Double click on titlebar maximizes/minimizes a window to/from full screen."),
-	  /* default: */ False, OPTION_WMAKER, "DbClickFullScreen" },
+	  OPTION_WMAKER, "DbClickFullScreen" },
 
 	{ N_("Close rootmenu when mouse (left or right) is clicked outside focus."),
-	  /* default: */ False, OPTION_WMAKER, "CloseRootMenuByLeftOrRightMouseClick" },
+	  OPTION_WMAKER, "CloseRootMenuByLeftOrRightMouseClick" },
+
 	{ N_("Keep dock on primary head."),
-	  /* default: */ False, OPTION_WMAKER, "KeepDockOnPrimaryHead"},
+	  OPTION_WMAKER, "KeepDockOnPrimaryHead"},
 
 	{ N_("Allow windows to take focus using mouse wheel."),
-	  /* default: */ False, OPTION_WMAKER, "MouseWheelFocus"},
+	  OPTION_WMAKER, "MouseWheelFocus"},
 
 #ifdef USE_RANDR
 	{ N_("Automatically (de)activate monitors on hotplug events."),
-	  /* default: */ False, OPTION_WMAKER, "HotplugMonitor"},
+	  OPTION_WMAKER, "HotplugMonitor"},
 #endif
 };
 
@@ -356,19 +363,22 @@ static void createPanel(Panel *p)
 			if (GetStringForKey(expert_options[i].op_name))
 				state = GetBoolForKey(expert_options[i].op_name);
 			else
-				state = expert_options[i].def_state;
+				state = GetDefaultBoolForKey(expert_options[i].op_name);
 			break;
 
 		case OPTION_WMAKER_ARRAY: {
 				char *str = GetStringForKey(expert_options[i].op_name);
-				state = expert_options[i].def_state;
-				if (str && strcasecmp(str, "None") == 0)
-					state = False;
+				/* enabled unless explicitly set to "None" */
+				state = !(str && strcasecmp(str, "None") == 0);
 			}
 			break;
 
 		case OPTION_USERDEF:
 			state = WMGetUDBoolForKey(udb, expert_options[i].op_name);
+			break;
+
+		case OPTION_WMGLOBAL_ON:
+			state = GetWMGlobalBoolForKey(expert_options[i].op_name, True);
 			break;
 
 		case OPTION_WMAKER_INT:
@@ -406,7 +416,7 @@ static void createPanel(Panel *p)
 			if (GetStringForKey(expert_options[i].op_name))
 				state = GetIntegerForKey(expert_options[i].op_name);
 			else
-				state = expert_options[i].def_state;
+				state = GetDefaultIntegerForKey(expert_options[i].op_name);
 
 			sprintf(tmp, "%d", state);
 			WMSetTextFieldText(panel->textfield[i], tmp);
@@ -419,7 +429,7 @@ static void createPanel(Panel *p)
 			wwarning("expert_options[%d].class = %d, this should not happen\n",
 				i, expert_options[i].class);
 #endif
-			state = expert_options[i].def_state;
+			state = False;
 			break;
 		}
 		if (expert_options[i].class != OPTION_WMAKER_INT)
@@ -460,6 +470,10 @@ static void storeDefaults(_Panel *panel)
 
 		case OPTION_USERDEF:
 			WMSetUDBoolForKey(udb, WMGetButtonSelected(panel->swi[i]), expert_options[i].op_name);
+			break;
+
+		case OPTION_WMGLOBAL_ON:
+			SetWMGlobalBoolForKey(WMGetButtonSelected(panel->swi[i]), expert_options[i].op_name);
 			break;
 
 		case OPTION_WMAKER_INT:
