@@ -3,6 +3,16 @@ NEWS for veteran Window Maker users
 
 -- next
 
+WPrefs writes "Smooth font edges" to WMGLOBAL
+---------------------------------------------
+
+The "Smooth font edges" checkbox in the Expert panel now reads and
+writes AntialiasedText in the user's WMGLOBAL, which is where WINGs
+actually looks for it. Previously WPrefs wrote it to the WindowMaker
+defaults domain, so toggling the option had no effect on font
+rendering.
+
+
 Hot corners fire under client windows
 --------------------------------------
 
