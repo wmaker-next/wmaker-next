@@ -27,10 +27,9 @@ wmaker-dev@googlegroups.com Please, USE THIS FORM!!!
 
 
 4. Configure time options you specified:
-[ ]  --enable-kanji
 [ ]  --disable-shape
-[ ]  --enable-single-icon
 [ ]  --enable-modelock
+[ ]  --enable-xinerama / --enable-randr
 [ ]  Others: .......................
 
 
