@@ -3,6 +3,17 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Back-to-back defaults writes are all picked up
+----------------------------------------------
+
+Several wdwrite or setstyle calls issued within the same wall-clock
+second are now each applied. The runtime reload previously compared the
+defaults file's modification time at one-second resolution, so once the
+first write of a burst had been read the rest were treated as unchanged
+until something else touched the file in a later second. The comparison
+now uses the nanosecond-resolution st_mtim.
+
+
 WPrefs writes "Smooth font edges" to WMGLOBAL
 ---------------------------------------------
 
