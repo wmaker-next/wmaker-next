@@ -120,6 +120,27 @@ static WConfigUpdateCallback setCursor;
 #define REFRESH_WORKSPACE_MENU WCFG_REFRESH_WORKSPACE_MENU
 #define REFRESH_FRAME_BORDER WCFG_REFRESH_FRAME_BORDER
 
+/* stat() the user file behind a domain and tell whether it changed since
+ * the last successful read, comparing the POSIX-2008 st_mtim so two
+ * writes inside the same wall-clock second are not coalesced. The
+ * inotify path makes this matter: four wdwrite calls in a row fire
+ * four reload checks, with second-granularity mtime only the first
+ * compared newer and the rest were silently dropped */
+static Bool domain_file_changed(WDDomain *db)
+{
+	struct stat st;
+
+	if (stat(db->path, &st) < 0)
+		return False;
+	if (st.st_mtim.tv_sec < db->timestamp.tv_sec)
+		return False;
+	if (st.st_mtim.tv_sec == db->timestamp.tv_sec &&
+	    st.st_mtim.tv_nsec <= db->timestamp.tv_nsec)
+		return False;
+	db->timestamp = st.st_mtim;
+	return True;
+}
+
 static WMPropList *readGlobalDomain(const char *domainName, Bool requireDictionary)
 {
 	WMPropList *globalDict = NULL;
@@ -209,7 +230,6 @@ void wDefaultsMergeGlobalMenus(WDDomain * menuDomain)
 WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 {
 	WDDomain *db;
-	struct stat stbuf;
 	static int inited = 0;
 	WMPropList *shared_dict = NULL;
 
@@ -222,7 +242,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 	db->domain_name = domain;
 	db->path = wdefaultspathfordomain(domain);
 
-	if (stat(db->path, &stbuf) >= 0) {
+	if (domain_file_changed(db)) {
 		db->dictionary = WMReadPropListFromFile(db->path);
 		if (db->dictionary) {
 			if (requireDictionary && !WMIsPLDictionary(db->dictionary)) {
@@ -230,7 +250,6 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 				db->dictionary = NULL;
 				wwarning(_("Domain %s (%s) of defaults database is corrupted!"), domain, db->path);
 			}
-			db->timestamp = stbuf.st_mtime;
 		} else {
 			wwarning(_("could not load domain %s from user defaults database"), domain);
 		}
@@ -244,12 +263,8 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 		WMMergePLDictionaries(shared_dict, db->dictionary, True);
 		WMReleasePropList(db->dictionary);
 		db->dictionary = shared_dict;
-		if (stbuf.st_mtime > db->timestamp)
-			db->timestamp = stbuf.st_mtime;
 	} else if (!db->dictionary) {
 		db->dictionary = shared_dict;
-		if (stbuf.st_mtime > db->timestamp)
-			db->timestamp = stbuf.st_mtime;
 	} else if (shared_dict) {
 		/* both user and global exist but are not both dictionaries
 		 * (e.g. WMRootMenu arrays), keep the user one */
@@ -262,7 +277,6 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 void wDefaultsCheckDomains(void* arg)
 {
 	WScreen *scr;
-	struct stat stbuf;
 	WMPropList *shared_dict = NULL;
 	WMPropList *dict;
 	int i;
@@ -270,9 +284,7 @@ void wDefaultsCheckDomains(void* arg)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) arg;
 
-	if (stat(w_global.domain.wmaker->path, &stbuf) >= 0 && w_global.domain.wmaker->timestamp < stbuf.st_mtime) {
-		w_global.domain.wmaker->timestamp = stbuf.st_mtime;
-
+	if (domain_file_changed(w_global.domain.wmaker)) {
 		/* Global dictionary */
 		shared_dict = readGlobalDomain("WindowMaker", True);
 
@@ -325,7 +337,7 @@ void wDefaultsCheckDomains(void* arg)
 
 	}
 
-	if (stat(w_global.domain.window_attr->path, &stbuf) >= 0 && w_global.domain.window_attr->timestamp < stbuf.st_mtime) {
+	if (domain_file_changed(w_global.domain.window_attr)) {
 		/* WMWindowAttributes outer keys are X11 instance.class strings
 		 * and are case-sensitive, keep "xterm" and "XTerm" distinct
 		 * while reading and merging the global and user files */
@@ -369,13 +381,12 @@ void wDefaultsCheckDomains(void* arg)
 			wwarning(_("could not load domain %s from user defaults database"), "WMWindowAttributes");
 		}
 
-		w_global.domain.window_attr->timestamp = stbuf.st_mtime;
 		if (shared_dict)
 			WMReleasePropList(shared_dict);
 		WMPLSetCaseSensitive(False);
 	}
 
-	if (stat(w_global.domain.root_menu->path, &stbuf) >= 0 && w_global.domain.root_menu->timestamp < stbuf.st_mtime) {
+	if (domain_file_changed(w_global.domain.root_menu)) {
 		dict = WMReadPropListFromFile(w_global.domain.root_menu->path);
 		if (dict) {
 			if (!WMIsPLArray(dict) && !WMIsPLString(dict)) {
@@ -393,7 +404,6 @@ void wDefaultsCheckDomains(void* arg)
 		} else {
 			wwarning(_("could not load domain %s from user defaults database"), "WMRootMenu");
 		}
-		w_global.domain.root_menu->timestamp = stbuf.st_mtime;
 
 		/* Rebuild the root menu (without mapping) so that shortcuts take effect immediately. */
 		for (i = 0; i < w_global.screen_count; i++) {

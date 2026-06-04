@@ -24,7 +24,11 @@ typedef struct WDDomain {
 	const char *domain_name;
 	WMPropList *dictionary;
 	const char *path;
-	time_t timestamp;
+	/* st_mtim of the user file when last read, compared at nanosecond
+	 * resolution so two writes within the same wall-clock second (e.g.
+	 * back-to-back wdwrite calls) are still picked up by the inotify
+	 * reload, every section-16 target carries POSIX-2008 st_mtim */
+	struct timespec timestamp;
 } WDDomain;
 
 struct WConfig;
