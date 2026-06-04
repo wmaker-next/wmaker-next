@@ -833,6 +833,32 @@ void SetStringForKey(const char *value, const char *defaultName)
 	WMReleasePropList(object);
 }
 
+static WMUserDefaults *wmGlobalDefaults(void)
+{
+	char *path = wdefaultspathfordomain("WMGLOBAL");
+	WMUserDefaults *defaults = WMGetDefaultsFromPath(path);
+
+	wfree(path);
+	return defaults;
+}
+
+Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback)
+{
+	WMUserDefaults *defaults = wmGlobalDefaults();
+
+	if (!WMGetUDObjectForKey(defaults, defaultName))
+		return fallback;
+	return WMGetUDBoolForKey(defaults, defaultName);
+}
+
+void SetWMGlobalBoolForKey(Bool value, const char *defaultName)
+{
+	WMUserDefaults *defaults = wmGlobalDefaults();
+
+	WMSetUDBoolForKey(defaults, value, defaultName);
+	WMSaveUserDefaults(defaults);
+}
+
 void SetBoolForKey(Bool value, const char *defaultName)
 {
 	static WMPropList *yes = NULL, *no = NULL;
@@ -845,56 +871,67 @@ void SetBoolForKey(Bool value, const char *defaultName)
 	SetObjectForKey(value ? yes : no, defaultName);
 }
 
+int GetEnumForKey(const char *defaultName, int fallback)
+{
+	const WConfigEnum *e = wConfigSchemaEnumTable(defaultName);
+	const char *str;
+
+	if (!e)
+		return fallback;
+
+	str = GetStringForKey(defaultName);
+	if (!str)
+		str = wConfigSchemaDefault(defaultName);
+	if (!str)
+		return fallback;
+
+	for (; e->string; e++)
+		if (strcasecmp(e->string, str) == 0)
+			return e->value;
+
+	wwarning(_("bad value \"%s\" for option %s"), str, defaultName);
+	return fallback;
+}
+
+void SetEnumForKey(int value, const char *defaultName)
+{
+	const WConfigEnum *e = wConfigSchemaEnumTable(defaultName);
+
+	if (!e)
+		return;
+
+	for (; e->string; e++)
+		if (e->value == value && !e->is_alias) {
+			SetStringForKey(e->string, defaultName);
+			return;
+		}
+}
+
+Bool GetDefaultBoolForKey(const char *defaultName)
+{
+	const char *def = wConfigSchemaDefault(defaultName);
+
+	return def && (strcasecmp(def, "YES") == 0 || strcasecmp(def, "Y") == 0);
+}
+
+int GetDefaultIntegerForKey(const char *defaultName)
+{
+	const char *def = wConfigSchemaDefault(defaultName);
+	int value;
+
+	if (!def || sscanf(def, "%i", &value) != 1)
+		return 0;
+	return value;
+}
+
+/* Speed sliders run slow→fast (0..4) but SPEED_* runs fast→slow,
+ * keep that inversion local to these two helpers. */
 void SetSpeedForKey(int speed, const char *defaultName)
 {
-	char *str;
-
-	switch (speed) {
-	case 0:
-		str = "ultraslow";
-		break;
-	case 1:
-		str = "slow";
-		break;
-	case 2:
-		str = "medium";
-		break;
-	case 3:
-		str = "fast";
-		break;
-	case 4:
-		str = "ultrafast";
-		break;
-	default:
-		str = NULL;
-	}
-
-	if (str)
-		SetStringForKey(str, defaultName);
+	SetEnumForKey(SPEED_ULTRASLOW - speed, defaultName);
 }
 
 int GetSpeedForKey(const char *defaultName)
 {
-	char *str;
-	int i;
-
-	str = GetStringForKey(defaultName);
-	if (!str)
-		return 2;
-
-	if (strcasecmp(str, "ultraslow") == 0)
-		i = 0;
-	else if (strcasecmp(str, "slow") == 0)
-		i = 1;
-	else if (strcasecmp(str, "medium") == 0)
-		i = 2;
-	else if (strcasecmp(str, "fast") == 0)
-		i = 3;
-	else if (strcasecmp(str, "ultrafast") == 0)
-		i = 4;
-	else {
-		wwarning(_("bad speed value for option %s; using default Medium"), defaultName);
-		i = 2;
-	}
-	return i;
+	return SPEED_ULTRASLOW - GetEnumForKey(defaultName, SPEED_MEDIUM);
 }

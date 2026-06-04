@@ -37,6 +37,11 @@
 /* Needed for HAVE_LIBINTL_H and EXTENDED_WINDOWSHORTCUT */
 #include "../src/wconfig.h"
 
+/* Shared WindowMaker defaults schema, enum-string tables and the
+ * matching value constants (WKF_*, SPEED_*, WB_*, ...). */
+#include "config-schema-public.h"
+#include "config-values.h"
+
 /*
  * The macro 'wlengthof' should be used as much as possible, this macro
  * is reserved for the cases where wlengthof cannot be used because the
@@ -115,6 +120,12 @@ Bool GetBoolForKey(const char *defaultName);
 
 int GetSpeedForKey(const char *defaultName);
 
+int GetEnumForKey(const char *defaultName, int fallback);
+
+Bool GetDefaultBoolForKey(const char *defaultName);
+
+int GetDefaultIntegerForKey(const char *defaultName);
+
 void SetIntegerForKey(int value, const char *defaultName);
 
 void SetStringForKey(const char *value, const char *defaultName);
@@ -122,6 +133,12 @@ void SetStringForKey(const char *value, const char *defaultName);
 void SetBoolForKey(Bool value, const char *defaultName);
 
 void SetSpeedForKey(int speed, const char *defaultName);
+
+void SetEnumForKey(int value, const char *defaultName);
+
+Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback);
+
+void SetWMGlobalBoolForKey(Bool value, const char *defaultName);
 
 
 /* ---[ KeyboardShortcuts.c ] -------------------------------------------- */
