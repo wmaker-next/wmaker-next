@@ -1,8 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 # Drive wmaker under Xephyr with ASan/UBSan/LSan and exercise as many
 # code paths as possible. Tracks every PID it spawns and kills only those.
 #
 # Expects an --enable-asan build. Run from anywhere.
+#
+# Written for POSIX sh + BSD userland: no bash arrays, no process
+# substitution, no GNU-only flags. 'local', fractional 'sleep' and
+# 'mktemp -d' are accepted on every target listed in section 16.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -20,7 +24,7 @@ WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 WMHOME=$(mktemp -d /tmp/asan-drive-wmhome.XXXXXX)
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 if [ -d "$HOME/GNUstep/Defaults" ]; then
-    cp -a "$HOME/GNUstep/Defaults/." "$WMHOME/Defaults/" 2>/dev/null
+    cp -Rp "$HOME/GNUstep/Defaults/." "$WMHOME/Defaults/" 2>/dev/null
 fi
 export WMAKER_USER_ROOT="$WMHOME"
 
@@ -35,7 +39,24 @@ trap cleanup EXIT
 note() { printf '\n=== %s ===\n' "$*" | tee -a "$LOG"; }
 # xdotool's search/activate probes _NET_WM_DESKTOP on every window and
 # whines for override-redirect ones that do not carry it, drop just that
-xdo()  { DISPLAY=$DPY xdotool "$@" 2> >(grep -v '^XGetWindowProperty\[_NET_WM_DESKTOP\] failed' >&2); }
+# (route stderr through a grep -v while leaving stdout untouched, no
+# bash >() needed)
+xdo()  {
+    { DISPLAY=$DPY xdotool "$@" 2>&1 1>&3 \
+        | grep -v '^XGetWindowProperty\[_NET_WM_DESKTOP\] failed' >&2; } 3>&1
+}
+
+# poll until "$@" succeeds or N tenths of a second pass
+wait_for() {
+    local n=$1; shift
+    while [ "$n" -gt 0 ]; do
+        "$@" && return 0
+        sleep 0.1
+        n=$((n - 1))
+    done
+    return 1
+}
+pid_gone() { ! kill -0 "$1" 2>/dev/null; }
 
 # dump the Xephyr root window as a PNG when WMAKER_SHOTS_DIR is set,
 # ad-hoc debugging aid (e.g. `WMAKER_SHOTS_DIR=/tmp/shots ./asan-drive.sh`)
@@ -60,12 +81,13 @@ run_gui() {
     DISPLAY=$DPY "$bin" "$@" >>"$LOG" 2>&1 &
     local gpid=$!
     echo "$gpid" >> "$PIDFILE"
-    local gw=""
-    for i in $(seq 1 40); do
-        gw=$(DISPLAY=$DPY xdotool search --name "$search" 2>/dev/null | head -1)
+    local gw="" n=40
+    while [ "$n" -gt 0 ]; do
+        gw=$(DISPLAY=$DPY xdotool search --name "$search" 2>/dev/null | head -n 1)
         [ -n "$gw" ] && break
         kill -0 "$gpid" 2>/dev/null || break
         sleep 0.1
+        n=$((n - 1))
     done
     sleep 0.5
     GUI_WIN="$gw" GUI_PID="$gpid"
@@ -73,7 +95,7 @@ run_gui() {
 
 close_gui() {
     [ -n "$GUI_WIN" ] && DISPLAY=$DPY wmctrl -i -c "$GUI_WIN" 2>/dev/null
-    for i in $(seq 1 40); do kill -0 "$GUI_PID" 2>/dev/null || break; sleep 0.1; done
+    wait_for 40 pid_gone "$GUI_PID"
     if kill -0 "$GUI_PID" 2>/dev/null; then
         kill -TERM "$GUI_PID" 2>/dev/null; sleep 0.5
         kill -0 "$GUI_PID" 2>/dev/null && kill -9 "$GUI_PID" 2>/dev/null
@@ -94,12 +116,11 @@ note "start Xephyr $DPY"
 Xephyr "$DPY" -screen 1280x800 -ac >/tmp/xephyr93.log 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
-for i in $(seq 1 40); do
+xephyr_ready() {
     kill -0 "$XEPHYR_PID" 2>/dev/null || { echo "Xephyr exited early" >&2; exit 1; }
-    DISPLAY=$DPY xdpyinfo >/dev/null 2>&1 && break
-    sleep 0.1
-done
-DISPLAY=$DPY xdpyinfo >/dev/null 2>&1 || { echo "Xephyr failed to start"; exit 1; }
+    DISPLAY=$DPY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xephyr_ready || { echo "Xephyr failed to start"; exit 1; }
 
 # --- pre-map clients so manageAllWindows / wManageWindow batch path runs ----
 note "pre-map clients before wmaker starts"
@@ -119,10 +140,11 @@ DISPLAY=$DPY \
 "$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
 WMAKER_PID=$!
 echo "$WMAKER_PID" >> "$PIDFILE"
-for i in $(seq 1 60); do
-    DISPLAY=$DPY xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id' && break
-    sleep 0.2
-done
+wm_ready() {
+    DISPLAY=$DPY xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null \
+        | grep 'window id' >/dev/null
+}
+wait_for 120 wm_ready
 note "wmaker pid=$WMAKER_PID, root props:"
 DISPLAY=$DPY xprop -root _NET_SUPPORTING_WM_CHECK _NET_NUMBER_OF_DESKTOPS _NET_DESKTOP_NAMES 2>&1 | tee -a "$LOG"
 
@@ -139,7 +161,7 @@ echo $! >> "$PIDFILE"
 sleep 1
 
 # pick one managed client window to drive
-WID=$(xdo search --class XTerm | head -1)
+WID=$(xdo search --class XTerm | head -n 1)
 note "driving window $WID"
 shot clients-mapped
 
@@ -303,16 +325,19 @@ rm -rf "$HC_MARK"
 # These do not carry the built-in __lsan_default_suppressions(), so pass
 # the file-based suppressions for third-party noise.
 note "util/ tools"
-UTIL_ENV=(env DISPLAY="$DPY"
-          LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:symbolize=1"
-          UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0"
-          LSAN_OPTIONS="suppressions=$ROOT/test/lsan-suppressions.txt:print_suppressions=0")
+util_env() {
+    env DISPLAY="$DPY" \
+        LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:symbolize=1" \
+        UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0" \
+        LSAN_OPTIONS="suppressions=$ROOT/test/lsan-suppressions.txt:print_suppressions=0" \
+        "$@"
+}
 
 run_util() {
     local name=$1; shift
     note "  $name $*"
-    "${UTIL_ENV[@]}" "$ROOT/util/.libs/$name" "$@" >>"$LOG" 2>&1
+    util_env "$ROOT/util/.libs/$name" "$@" >>"$LOG" 2>&1
     local rc=$?
     [ "$rc" -eq 0 ] || printf '  -> exit %d\n' "$rc" | tee -a "$LOG"
     return "$rc"
@@ -349,7 +374,7 @@ run_gui "$ROOT/util/.libs/wmiv" "wmiv" "$ROOT/wrlib/Tests/test.png"
 [ -n "$GUI_WIN" ] && xdo key --window "$GUI_WIN" Right Left plus minus 2>/dev/null
 sleep 0.3
 [ -n "$GUI_WIN" ] && xdo key --window "$GUI_WIN" q 2>/dev/null
-for i in $(seq 1 30); do kill -0 "$GUI_PID" 2>/dev/null || break; sleep 0.1; done
+wait_for 30 pid_gone "$GUI_PID"
 kill -0 "$GUI_PID" 2>/dev/null && close_gui wmiv
 
 run_gui "$ROOT/WPrefs.app/.libs/WPrefs" "Preferences"
@@ -368,10 +393,7 @@ note "request clean exit"
 # SIGTERM goes through handleExitSig -> Shutdown(WSExitMode) -> Exit(),
 # so LSan sees the steady-state heap.
 kill -TERM "$WMAKER_PID"
-for i in $(seq 1 50); do
-    kill -0 "$WMAKER_PID" 2>/dev/null || break
-    sleep 0.2
-done
+wait_for 100 pid_gone "$WMAKER_PID"
 kill -0 "$WMAKER_PID" 2>/dev/null && { note "wmaker still up, SIGKILL"; kill -9 "$WMAKER_PID"; }
 
 note "done; log at $LOG"
