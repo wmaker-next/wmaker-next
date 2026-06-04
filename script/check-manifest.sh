@@ -20,7 +20,7 @@ for mf in $(find "$srcdir" -name Makefile.am); do
 	# backslash continuations, dropping comment-only lines
 	for f in $(awk '
 	    /^[ \t]*#/ { next }
-	    /(_SOURCES|^EXTRA_DIST)[ \t]*\+?=/ {
+	    /(_SOURCES|^EXTRA_DIST)[ \t]*[+]?=/ {
 		grab = 1
 		sub(/^[^=]*=/, "")
 	    }

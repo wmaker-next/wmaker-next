@@ -69,7 +69,7 @@ while [ $# -gt 0 ]; do
 
 	-v)
 	    shift
-	    echo "$1" | grep -q '^[A-Za-z][A-Z_a-z0-9]*$' || arg_error "variable name \"$1\" is not valid (option: -v)"
+	    echo "$1" | grep '^[A-Za-z][A-Z_a-z0-9]*$' > /dev/null || arg_error "variable name \"$1\" is not valid (option: -v)"
 	    src_variables="$src_variables $1"
 	  ;;
 
@@ -139,7 +139,7 @@ function add_source_to_list()
 }'
 for variable in $src_variables ; do
   awk_src_script="$awk_src_script
-/^[ \t]*$variable[ \t]* \+?=/ { add_source_to_list(); }"
+/^[ \t]*$variable[ \t]*[+]?=/ { add_source_to_list(); }"
 done
 # Tell awk to not print anything other than our explicit 'print' commands
 awk_src_script="$awk_src_script
@@ -210,8 +210,8 @@ BEGIN {
 $awk_src_file_list
 $awk_po_file_list
 }
-/^[ \\t]*POTFILES[ \\t]* \\+?=/ { remove_source_from_list(); }
-/^[ \\t]*EXTRA_DIST[ \\t]* \\+?=/ { remove_dist_po_files(); }
+/^[ \\t]*POTFILES[ \\t]*[+]?=/ { remove_source_from_list(); }
+/^[ \\t]*EXTRA_DIST[ \\t]*[+]?=/ { remove_dist_po_files(); }
 END {
   # Make sure there is no un-translated source file
   for (key in srcfile) {
