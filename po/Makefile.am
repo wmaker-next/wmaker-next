@@ -123,4 +123,5 @@ am__v_CHKTRANS_1 =
 # 'make check' will make sure the tranlation sources are in line with the compiled source
 check-local:
 	$(AM_V_CHKTRANS)$(top_srcdir)/script/check-translation-sources.sh \
-		"$(srcdir)" -s "$(top_srcdir)/src/Makefile.am" -v wmaker_SOURCES
+		"$(srcdir)" -s "$(top_srcdir)/src/Makefile.am" \
+		-v wmaker_SOURCES -v libwconfigschema_la_SOURCES

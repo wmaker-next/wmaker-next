@@ -7,6 +7,17 @@ SUBDIRS = Tests
 
 EXTRA_DIST =
 
+# config-schema.c compiles to a self-contained object (sole external
+# reference is strcasecmp), so build it once as a noinst archive that
+# wmaker, WPrefs.app and src/Tests/check_config all link against.
+noinst_LTLIBRARIES = libwconfigschema.la
+libwconfigschema_la_SOURCES = \
+	config-schema.c \
+	config-schema.h \
+	config-schema-def.h \
+	config-schema-public.h \
+	config-values.h
+
 wmaker_SOURCES = 	\
 	GNUstep.h \
 	WindowMaker.h \
@@ -24,9 +35,6 @@ wmaker_SOURCES = 	\
 	client.h \
 	colormap.c \
 	colormap.h \
-	config-schema.c \
-	config-schema.h \
-	config-schema-def.h \
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
@@ -151,6 +159,7 @@ AM_CPPFLAGS = $(DFLAGS) \
 
 
 wmaker_LDADD = \
+	libwconfigschema.la \
 	$(top_builddir)/WINGs/libWINGs.la\
 	$(top_builddir)/WINGs/libWUtil.la\
 	$(top_builddir)/wrlib/libwraster.la\

@@ -9,6 +9,7 @@
 #include <limits.h>
 
 #include "wconfigmodel.h"
+#include "config-schema-public.h"
 
 typedef enum {
 	WCFG_BOOL,
@@ -27,12 +28,6 @@ typedef enum {
 	WCFG_CURSOR_SPEC,
 	WCFG_BACKGROUND_SPEC
 } WConfigType;
-
-typedef struct WConfigEnum {
-	const char *string;
-	int value;
-	char is_alias;
-} WConfigEnum;
 
 typedef struct WConfigEntry {
 	const char *key;

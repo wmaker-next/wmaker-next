@@ -187,3 +187,30 @@ const WConfigEntry *wConfigEntryForKey(const char *key)
 
 	return NULL;
 }
+
+const WConfigEnum *wConfigSchemaEnumTable(const char *key)
+{
+	const WConfigEntry *e = wConfigEntryForKey(key);
+
+	return e ? e->enum_values : NULL;
+}
+
+const char *wConfigSchemaDefault(const char *key)
+{
+	const WConfigEntry *e = wConfigEntryForKey(key);
+
+	return e ? e->default_value : NULL;
+}
+
+int wConfigSchemaClampInt(const char *key, int v)
+{
+	const WConfigEntry *e = wConfigEntryForKey(key);
+
+	if (!e)
+		return v;
+	if (v < e->min_value)
+		return e->min_value;
+	if (v > e->max_value)
+		return e->max_value;
+	return v;
+}

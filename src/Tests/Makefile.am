@@ -14,12 +14,11 @@ AM_CPPFLAGS = $(DFLAGS) \
 
 check_config_SOURCES = \
 	check_config.c \
-	../config-schema.c \
-	../config-schema.h \
 	../wconfigmodel.c \
 	../wconfigmodel.h
 
 check_config_LDADD = \
+	$(top_builddir)/src/libwconfigschema.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
 
