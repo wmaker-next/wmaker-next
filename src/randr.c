@@ -148,6 +148,37 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
         count++;
     }
 
+    /* Some servers (notably Xephyr +xinerama) expose real XINERAMA heads
+     * but only a stub RandR view with no active CRTCs, or with active
+     * outputs that do not span the current root window. If XINERAMA has
+     * already populated more heads than RandR can account for here, RandR
+     * is not the authoritative geometry source, keep the XINERAMA-derived
+     * xine_info instead of replacing it with an incomplete or synthetic
+     * single-head fallback */
+    {
+        int root_w = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
+        int root_h = HeightOfScreen(ScreenOfDisplay(dpy, scr->screen));
+        int max_x = 0, max_y = 0;
+
+        for (i = 0; i < count; i++) {
+            int rx = new_screens[i].pos.x + new_screens[i].size.width;
+            int ry = new_screens[i].pos.y + new_screens[i].size.height;
+            if (rx > max_x)
+                max_x = rx;
+            if (ry > max_y)
+                max_y = ry;
+        }
+        if (scr->xine_info.count > count
+            && (count == 0 || max_x < root_w || max_y < root_h)) {
+            wwarning("RandR reports %d active output(s) covering %dx%d but the "
+                     "root window is %dx%d and XINERAMA reports %d head(s), "
+                     "keeping XINERAMA geometry",
+                     count, max_x, max_y, root_w, root_h,
+                     scr->xine_info.count);
+            return;
+        }
+    }
+
     /* Fallback: if every output disappeared, use the full virtual screen so
      * we never end up with zero heads */
     if (count == 0) {
