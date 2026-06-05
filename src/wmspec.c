@@ -2223,10 +2223,12 @@ static void wsobserver(void *self, WMNotification *notif)
 	if (strcmp(name, WMNWorkspaceCreated) == 0) {
 		updateWorkspaceCount(scr);
 		updateWorkspaceNames(scr);
+		wNETWMUpdateDesktop(scr);
 		wNETWMUpdateWorkarea(scr);
 	} else if (strcmp(name, WMNWorkspaceDestroyed) == 0) {
 		updateWorkspaceCount(scr);
 		updateWorkspaceNames(scr);
+		wNETWMUpdateDesktop(scr);
 		wNETWMUpdateWorkarea(scr);
 	} else if (strcmp(name, WMNWorkspaceChanged) == 0) {
 		updateCurrentWorkspace(scr);
