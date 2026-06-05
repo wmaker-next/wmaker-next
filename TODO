@@ -4,8 +4,6 @@ Open items
   src/screen.c and wrlib/context.c, modern displays are TrueColor 24/32
 - WPrefs menu editor: add a way to revert to / load the shipped default
   root menu
-- decide whether an empty WM_CLASS instance.class pair should be treated
-  the same as a missing one in src/wdefaults.c
 
 Never
 =====

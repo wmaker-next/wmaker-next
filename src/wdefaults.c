@@ -208,6 +208,15 @@ static int attrs_lookup_levels(const char *instance, const char *class,
 {
 	int n = 0;
 
+	/* A client may set WM_CLASS with one or both components empty.
+	 * An empty string identifies nothing, so skip that lookup level
+	 * and fall through to the less specific ones, the same way an
+	 * absent component would. */
+	if (instance && !*instance)
+		instance = NULL;
+	if (class && !*class)
+		class = NULL;
+
 	if (instance && class) {
 		char *both = StrConcatDot(instance, class);
 		level[n] = attrs_lookup(both);
@@ -315,6 +324,12 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 	dict = db->dictionary;
 
 	WMPLSetCaseSensitive(True);
+
+	/* same empty-is-absent rule as attrs_lookup_levels() */
+	if (instance && !*instance)
+		instance = NULL;
+	if (class && !*class)
+		class = NULL;
 
 	if (instance && class) {
 		char *both = StrConcatDot(instance, class);
@@ -540,6 +555,12 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 	}
 
 	WMPLSetCaseSensitive(True);
+
+	/* same empty-is-absent rule as attrs_lookup_levels() */
+	if (instance && !*instance)
+		instance = NULL;
+	if (class && !*class)
+		class = NULL;
 
 	if (instance && class) {
 		char *buffer;

@@ -213,6 +213,46 @@ static void test_change_icon_reloads_cache(void)
 	CHECK(icon == NULL);
 }
 
+static void test_empty_class(void)
+{
+	WWindowAttributes attr;
+	char *icon;
+
+	/* A WM_CLASS with one or both components set to "" must behave
+	 * like that component being absent, the lookup falls through to
+	 * the next less specific level rather than matching a "."/"" key. */
+	set_attr_dict("{"
+		      " \"*\" = { Icon = \"any.png\"; NoTitlebar = YES; };"
+		      " XTerm = { NoTitlebar = NO; KeepOnTop = YES; };"
+		      " \".XTerm\" = { NoBorder = YES; };"
+		      " \"\" = { Omnipresent = YES; };"
+		      " \".\" = { Icon = \"dot.png\"; };"
+		      "}");
+
+	memset(&attr, 0, sizeof(attr));
+	wDefaultFillAttributes("", "XTerm", &attr, NULL, True);
+	CHECK(attr.no_titlebar == 0);     /* class entry, not "*" */
+	CHECK(attr.floating == 1);        /* class entry */
+	CHECK(attr.no_border == 0);       /* ".XTerm" must NOT match */
+	CHECK(attr.omnipresent == 0);     /* "" must NOT match */
+
+	memset(&attr, 0, sizeof(attr));
+	wDefaultFillAttributes("", "", &attr, NULL, True);
+	CHECK(attr.no_titlebar == 1);     /* falls through to "*" */
+	CHECK(attr.omnipresent == 0);     /* "" must NOT match */
+
+	icon = wDefaultGetIconFile("", "", True);
+	CHECK(icon && strcmp(icon, "any.png") == 0);   /* not "dot.png" */
+	icon = wDefaultGetIconFile("", "", False);
+	CHECK(icon == NULL);
+
+	/* writing under ("","") goes to "*", and ("","XTerm") to "XTerm",
+	 * symmetric with the read side */
+	wDefaultChangeIcon("", "XTerm", "class.png");
+	icon = wDefaultGetIconFile(NULL, "XTerm", False);
+	CHECK(icon && strcmp(icon, "class.png") == 0);
+}
+
 static void test_case_sensitivity(void)
 {
 	WWindowAttributes attr;
@@ -243,6 +283,7 @@ int main(void)
 	test_precedence();
 	test_icon_and_workspace();
 	test_change_icon_reloads_cache();
+	test_empty_class();
 	test_case_sensitivity();
 
 	set_attr_dict(NULL);
