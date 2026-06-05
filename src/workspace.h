@@ -41,5 +41,8 @@ void wWorkspaceSaveState(WScreen *scr, WMPropList *old_state);
 void wWorkspaceRestoreState(WScreen *scr);
 void wWorkspaceRename(WScreen *scr, int workspace, const char *name);
 void wWorkspaceRelativeChange(WScreen *scr, int amount);
+Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col);
+int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow);
+void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow);
 
 #endif

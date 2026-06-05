@@ -64,7 +64,7 @@ static Atom net_active_window;
 static Atom net_workarea;
 static Atom net_supporting_wm_check;
 static Atom net_virtual_roots;	/* N/A */
-static Atom net_desktop_layout;	/* XXX */
+static Atom net_desktop_layout;
 static Atom net_showing_desktop;
 
 /* Other Root Window Messages */
@@ -276,6 +276,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_workarea;
 	atom[i++] = net_supporting_wm_check;
 	atom[i++] = net_showing_desktop;
+	atom[i++] = net_desktop_layout;
 	atom[i++] = net_moveresize_window;
 	atom[i++] = net_wm_moveresize;
 	atom[i++] = net_restack_window;
@@ -614,6 +615,55 @@ static void updateWindowOpacity(WWindow *wwin)
 		WXReqFormat32(dpy, wwin->client_win, net_wm_window_opacity, XA_CARDINAL, 1));
 }
 
+/* read and validate _NET_DESKTOP_LAYOUT off the root window. The spec
+ * carries orientation, columns, rows and starting corner, with one of
+ * rows/cols allowed to be 0 meaning "derive from the desktop count". With
+ * no property set we describe a single row so directional Left/Right keys
+ * fall back to Prev/Next. */
+void wNETWMUpdateDesktopLayout(WScreen *scr)
+{
+	uint32_t v[4];
+	int n, cols, rows;
+
+	scr->net_desktop_layout.orientation = 0;
+	scr->net_desktop_layout.corner = 0;
+	scr->net_desktop_layout.cols = WMAX(1, scr->workspace_count);
+	scr->net_desktop_layout.rows = 1;
+
+	if (!WXGetCardinalN(dpy, scr->root_win, net_desktop_layout, v, 4))
+		return;
+
+	/* the property is client-set on root, clamp before any signed
+	 * arithmetic so a hostile pager cannot overflow rows*cols */
+	n = WMAX(1, scr->workspace_count);
+	cols = (v[1] > MAX_WORKSPACES) ? MAX_WORKSPACES : (int)v[1];
+	rows = (v[2] > MAX_WORKSPACES) ? MAX_WORKSPACES : (int)v[2];
+
+	if (cols <= 0 && rows <= 0)
+		return;
+	if (cols <= 0)
+		cols = (n + rows - 1) / rows;
+	else if (rows <= 0)
+		rows = (n + cols - 1) / cols;
+
+	/* a pager that advertises a grid smaller than the desktop count is
+	 * not honoured, fall back to the linear default rather than leave
+	 * later workspaces unreachable through directional keys */
+	if (cols * rows < n)
+		return;
+
+	scr->net_desktop_layout.orientation = (v[0] == 1) ? 1 : 0;
+	scr->net_desktop_layout.cols = cols;
+	scr->net_desktop_layout.rows = rows;
+	scr->net_desktop_layout.corner = (v[3] <= 3) ? (int)v[3] : 0;
+}
+
+void wNETWMCheckRootHintChange(WScreen *scr, XPropertyEvent *event)
+{
+	if (event->atom == net_desktop_layout)
+		wNETWMUpdateDesktopLayout(scr);
+}
+
 static void updateShowDesktop(WScreen *scr, Bool show)
 {
 	WXSetCardinal(dpy, scr->root_win, net_showing_desktop, show == True);
@@ -714,6 +764,7 @@ void wNETWMInitStuff(WScreen *scr)
 	updateWorkspaceCount(scr);
 	updateWorkspaceNames(scr);
 	updateShowDesktop(scr, False);
+	wNETWMUpdateDesktopLayout(scr);
 
 	wScreenUpdateUsableArea(scr);
 }
@@ -2548,11 +2599,13 @@ static void wsobserver(void *self, WMNotification *notif)
 		updateWorkspaceNames(scr);
 		wNETWMUpdateDesktop(scr);
 		wNETWMUpdateWorkarea(scr);
+		wNETWMUpdateDesktopLayout(scr);
 	} else if (strcmp(name, WMNWorkspaceDestroyed) == 0) {
 		updateWorkspaceCount(scr);
 		updateWorkspaceNames(scr);
 		wNETWMUpdateDesktop(scr);
 		wNETWMUpdateWorkarea(scr);
+		wNETWMUpdateDesktopLayout(scr);
 	} else if (strcmp(name, WMNWorkspaceChanged) == 0) {
 		updateCurrentWorkspace(scr);
 	} else if (strcmp(name, WMNWorkspaceNameChanged) == 0) {

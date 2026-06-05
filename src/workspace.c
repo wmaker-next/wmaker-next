@@ -472,6 +472,107 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
 	}
 }
 
+/*
+ * Map a workspace index through the _NET_DESKTOP_LAYOUT grid by (dcol, drow)
+ * cells and return the resulting index, or -1 when stepping off the grid (or
+ * onto a cell past workspace_count) and CycleWorkspaces is off.
+ *
+ * The pager-supplied orientation decides whether consecutive indices run
+ * along columns (HORZ) or rows (VERT), and the starting corner decides which
+ * grid corner index 0 sits in. We translate index -> (row,col) in a top-left
+ * frame, apply the screen-relative delta with the corner's axis flips, then
+ * translate back.
+ */
+/* map a workspace index to its screen-relative (row, col) cell in the
+ * _NET_DESKTOP_LAYOUT grid, with (0,0) always meaning top-left on screen
+ * regardless of the pager's starting corner, return False when the index
+ * is outside the grid */
+Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
+{
+	int rows = scr->net_desktop_layout.rows;
+	int cols = scr->net_desktop_layout.cols;
+	int corner = scr->net_desktop_layout.corner;
+	int r, c;
+
+	if (rows < 1 || cols < 1 || index < 0 || index >= rows * cols)
+		return False;
+
+	if (scr->net_desktop_layout.orientation == 1) {
+		c = index / rows;
+		r = index % rows;
+	} else {
+		r = index / cols;
+		c = index % cols;
+	}
+	if (corner == 1 || corner == 2)
+		c = cols - 1 - c;
+	if (corner == 2 || corner == 3)
+		r = rows - 1 - r;
+
+	*row = r;
+	*col = c;
+	return True;
+}
+
+/* inverse of wWorkspaceLayoutPosition, screen-relative (row, col) back to
+ * a workspace index */
+static int layoutIndex(WScreen *scr, int r, int c)
+{
+	int rows = scr->net_desktop_layout.rows;
+	int cols = scr->net_desktop_layout.cols;
+	int corner = scr->net_desktop_layout.corner;
+
+	if (corner == 1 || corner == 2)
+		c = cols - 1 - c;
+	if (corner == 2 || corner == 3)
+		r = rows - 1 - r;
+
+	if (scr->net_desktop_layout.orientation == 1)
+		return c * rows + r;
+	return r * cols + c;
+}
+
+int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow)
+{
+	int rows = scr->net_desktop_layout.rows;
+	int cols = scr->net_desktop_layout.cols;
+	int n = scr->workspace_count;
+	int r, c, to;
+
+	if (!wWorkspaceLayoutPosition(scr, from, &r, &c))
+		return -1;
+
+	c += dcol;
+	r += drow;
+
+	if (w_global.config->ws_cycle) {
+		c = ((c % cols) + cols) % cols;
+		r = ((r % rows) + rows) % rows;
+	} else if (c < 0 || c >= cols || r < 0 || r >= rows) {
+		return -1;
+	}
+
+	to = layoutIndex(scr, r, c);
+	if (to >= n) {
+		if (!w_global.config->ws_cycle)
+			return -1;
+		to %= n;
+	}
+	return to;
+}
+
+void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow)
+{
+	int to;
+
+	if (w_global.ignore_workspace_change)
+		return;
+
+	to = wWorkspaceNeighbour(scr, scr->current_workspace, dcol, drow);
+	if (to >= 0)
+		wWorkspaceChange(scr, to);
+}
+
 void wWorkspaceForceChange(WScreen * scr, int workspace)
 {
 	WWindow *tmp, *foc = NULL, *foc2 = NULL;

@@ -215,6 +215,10 @@
 	LastWorkspaceKey = None;
 	NextWorkspaceLayerKey = None;
 	PrevWorkspaceLayerKey = None;
+	LeftWorkspaceKey = None;
+	RightWorkspaceKey = None;
+	UpWorkspaceKey = None;
+	DownWorkspaceKey = None;
 	Workspace1Key = "Mod1+1";
 	Workspace2Key = "Mod1+2";
 	Workspace3Key = "Mod1+3";
@@ -240,6 +244,10 @@
 	MoveToLastWorkspaceKey = None;
 	MoveToNextWorkspaceLayerKey = None;
 	MoveToPrevWorkspaceLayerKey = None;
+	MoveToLeftWorkspaceKey = None;
+	MoveToRightWorkspaceKey = None;
+	MoveToUpWorkspaceKey = None;
+	MoveToDownWorkspaceKey = None;
 	WindowShortcut1Key = None;
 	WindowShortcut2Key = None;
 	WindowShortcut3Key = None;

@@ -141,6 +141,17 @@ typedef struct _WScreen {
 					* map with an older user-activity
 					* timestamp */
 
+    /* _NET_DESKTOP_LAYOUT as set by a pager on the root window, used by
+     * the directional WorkspaceLeft/Right/Up/Down keybinds. With no pager
+     * the default is one row of workspace_count columns, so Left/Right
+     * behave like Prev/Next and Up/Down are no-ops. */
+    struct {
+	int orientation;	       /* 0 = horizontal, 1 = vertical */
+	int cols;
+	int rows;
+	int corner;		       /* 0 TL, 1 TR, 2 BR, 3 BL */
+    } net_desktop_layout;
+
 
     WReservedArea *reservedAreas;      /* used to build totalUsableArea */
 

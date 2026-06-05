@@ -1018,6 +1018,11 @@ static void handlePropertyNotify(XEvent * event)
 		}
 		wClientCheckProperty(wwin, &event->xproperty);
 	} else {
+		WScreen *scr = wScreenForRootWindow(event->xproperty.window);
+		if (scr && scr->root_win == event->xproperty.window) {
+			wNETWMCheckRootHintChange(scr, &event->xproperty);
+			return;
+		}
 		/* a client may carry _NET_WM_USER_TIME on a separate
 		 * helper window, route those notifies to the owner */
 		wwin = wNETWMUserTimeWindowFor(event->xproperty.window);
@@ -1795,6 +1800,18 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_LASTWORKSPACE:
 		wWorkspaceChange(scr, scr->last_workspace);
 		break;
+	case WKBD_LEFTWORKSPACE:
+		wWorkspaceDirectionalChange(scr, -1, 0);
+		break;
+	case WKBD_RIGHTWORKSPACE:
+		wWorkspaceDirectionalChange(scr, 1, 0);
+		break;
+	case WKBD_UPWORKSPACE:
+		wWorkspaceDirectionalChange(scr, 0, -1);
+		break;
+	case WKBD_DOWNWORKSPACE:
+		wWorkspaceDirectionalChange(scr, 0, 1);
+		break;
 
 	case WKBD_MOVE_WORKSPACE1 ... WKBD_MOVE_WORKSPACE10:
 		widx = command - WKBD_MOVE_WORKSPACE1;
@@ -1814,6 +1831,25 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_MOVE_LASTWORKSPACE:
 		if (wwin)
 			wWindowChangeWorkspace(wwin, scr->last_workspace);
+		break;
+	case WKBD_MOVE_LEFTWORKSPACE:
+	case WKBD_MOVE_RIGHTWORKSPACE:
+	case WKBD_MOVE_UPWORKSPACE:
+	case WKBD_MOVE_DOWNWORKSPACE:
+		if (wwin) {
+			int dc = 0, dr = 0;
+			if (command == WKBD_MOVE_LEFTWORKSPACE)
+				dc = -1;
+			else if (command == WKBD_MOVE_RIGHTWORKSPACE)
+				dc = 1;
+			else if (command == WKBD_MOVE_UPWORKSPACE)
+				dr = -1;
+			else
+				dr = 1;
+			widx = wWorkspaceNeighbour(scr, scr->current_workspace, dc, dr);
+			if (widx >= 0)
+				wWindowChangeWorkspace(wwin, widx);
+		}
 		break;
 
 	case WKBD_MOVE_NEXTWSLAYER:

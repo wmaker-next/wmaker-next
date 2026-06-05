@@ -74,6 +74,8 @@ WWindow *wNETWMUserTimeWindowFor(Window window);
 void wNETWMUserTimeNotify(WWindow *wwin);
 void wNETWMDetachUserTimeWindow(WWindow *wwin);
 Bool wNETWMShouldStealFocus(WWindow *wwin);
+void wNETWMUpdateDesktopLayout(WScreen *scr);
+void wNETWMCheckRootHintChange(WScreen *scr, XPropertyEvent *event);
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr);
 char *wNETWMGetIconName(Window window);
 char *wNETWMGetWindowName(Window window);
