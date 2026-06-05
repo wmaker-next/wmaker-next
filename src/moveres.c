@@ -2101,6 +2101,12 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	if (!IS_RESIZABLE(wwin))
 		return;
 
+#ifdef USE_XSYNC
+	/* a previous drag may have given up on this client, every new
+	 * interactive resize gets a fresh chance to keep up */
+	wwin->net_sync.disabled = 0;
+#endif
+
 	if (wwin->flags.shaded) {
 		wwarning("internal error: tryein");
 		return;
@@ -2291,7 +2297,13 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 					/* Now, continue drawing */
 					XUngrabServer(dpy);
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
+					/* ask the client to bump its sync
+					 * counter once it has redrawn for
+					 * the new size, then wait for that
+					 * before processing the next motion */
+					wNETWMSyncRequestSend(wwin);
 					wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
+					wNETWMSyncRequestWait(wwin);
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 				};
 			}

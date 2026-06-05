@@ -586,6 +586,10 @@ static void handleExtensions(XEvent * event)
 		handleShapeNotify(event);
 	}
 #endif
+#ifdef USE_XSYNC
+	if (wNETWMSyncRequestHandleAlarm(event))
+		return;
+#endif
 	if (w_global.xext.xkb.supported && event->type >= w_global.xext.xkb.event_base
 		&& event->type <= w_global.xext.xkb.event_base + 255) {
 		XkbEvent *xkbevent = (XkbEvent *) event;

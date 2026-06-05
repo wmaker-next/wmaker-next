@@ -159,6 +159,7 @@ typedef struct {
     unsigned int SAVE_YOURSELF:1;
     /* EWMH */
     unsigned int NET_WM_PING:1;
+    unsigned int NET_WM_SYNC_REQUEST:1;
     /* WindowMaker specific */
     unsigned int MINIATURIZE_WINDOW:1;
 } WProtocols;
@@ -272,6 +273,19 @@ typedef struct WWindow {
 						 * detach so a hostile XID
 						 * cannot make us drop a
 						 * selection we held */
+
+#ifdef USE_XSYNC
+	/* _NET_WM_SYNC_REQUEST: the client-created counter we watch via an
+	 * alarm so opaque resizes are paced to the client's redraw */
+	struct {
+		unsigned long counter;		/* XSyncCounter, 0 = none */
+		unsigned long alarm;		/* XSyncAlarm, 0 = none */
+		uint32_t value_lo;
+		uint32_t value_hi;
+		short waiting;			/* sent a request, no alarm yet */
+		short disabled;			/* client missed a deadline */
+	} net_sync;
+#endif
 
 	FocusMode focus_mode;			/* type of keyboard input focus */
 

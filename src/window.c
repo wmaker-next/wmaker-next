@@ -190,6 +190,7 @@ void wWindowDestroy(WWindow *wwin)
 	WMRemoveNotificationObserver(wwin);
 	wNETWMCancelPing(wwin);
 	wNETWMDetachUserTimeWindow(wwin);
+	wNETWMSyncRequestDestroy(wwin);
 
 	wwin->flags.destroyed = 1;
 

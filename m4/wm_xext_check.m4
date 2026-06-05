@@ -233,6 +233,34 @@ AC_SUBST([LIBXRANDR])dnl
 ]) dnl AC_DEFUN
 
 
+# WM_XEXT_CHECK_XSYNC
+# -------------------
+#
+# Check for the X Synchronization extension, used by _NET_WM_SYNC_REQUEST
+# to pace interactive resizes to the client's redraw.
+# The check depends on variable 'enable_xsync' being either:
+#   yes  - detect, fail if not found
+#   no   - do not detect, disable support
+#   auto - detect, disable if not found
+#
+# When found, append -lXext to XLIBS and define USE_XSYNC.
+AC_DEFUN_ONCE([WM_XEXT_CHECK_XSYNC],
+[WM_LIB_CHECK([XSync], [-lXext], [XSyncInitialize], [$XLIBS],
+    [wm_save_CFLAGS="$CFLAGS"
+     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
+@%:@include <X11/Xlib.h>
+@%:@include <X11/extensions/sync.h>
+], [dnl
+  Display *dpy = (Display *)0;
+  int a, b;
+  XSyncInitialize(dpy, &a, &b);])],
+        [],
+        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XSync header])])
+     CFLAGS="$wm_save_CFLAGS"],
+    [supported_xext], [XLIBS], [enable_xsync], [-])dnl
+]) dnl AC_DEFUN
+
+
 # WM_XEXT_CHECK_XKBFILE
 # ---------------------
 #

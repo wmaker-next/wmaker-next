@@ -90,6 +90,8 @@ void PropRcvProtocols(WXCookie ck, WProtocols *prots)
 			prots->SAVE_YOURSELF = 1;
 		else if (wNETWMIsPingProtocol(protocols[i]))
 			prots->NET_WM_PING = 1;
+		else if (wNETWMIsSyncRequestProtocol(protocols[i]))
+			prots->NET_WM_SYNC_REQUEST = 1;
 		else if (protocols[i] == w_global.atom.gnustep.wm_miniaturize_window)
 			prots->MINIATURIZE_WINDOW = 1;
 	}

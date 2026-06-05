@@ -656,6 +656,20 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_XEXT_CHECK_XSHAPE
 
 
+dnl XSync support (for _NET_WM_SYNC_REQUEST frame-synchronised resize)
+dnl ==================================================================
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([xsync],
+    [AS_HELP_STRING([--disable-xsync], [disable _NET_WM_SYNC_REQUEST frame-synchronised resize])],
+    [AS_CASE(["$enableval"],
+        [yes|no], [],
+        [AC_MSG_ERROR([bad value $enableval for --enable-xsync]) ]) ],
+    [enable_xsync=auto])
+m4_divert_pop([INIT_PREPARE])dnl
+
+WM_XEXT_CHECK_XSYNC
+
+
 dnl MIT-SHM support
 dnl ===============
 m4_divert_push([INIT_PREPARE])dnl

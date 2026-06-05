@@ -45,6 +45,9 @@
 #ifdef USE_RANDR
 #include <X11/extensions/Xrandr.h>
 #endif
+#ifdef USE_XSYNC
+#include <X11/extensions/sync.h>
+#endif
 
 #include "WindowMaker.h"
 #include "GNUstep.h"
@@ -616,6 +619,15 @@ void StartUp(Bool defaultScreenOnly)
 #ifdef USE_XSHAPE
 	/* ignore j */
 	w_global.xext.shape.supported = XShapeQueryExtension(dpy, &w_global.xext.shape.event_base, &j);
+#endif
+
+#ifdef USE_XSYNC
+	{
+		int sync_major, sync_minor;
+		w_global.xext.xsync.supported =
+			XSyncQueryExtension(dpy, &w_global.xext.xsync.event_base, &j)
+			&& XSyncInitialize(dpy, &sync_major, &sync_minor);
+	}
 #endif
 
 #ifdef USE_RANDR

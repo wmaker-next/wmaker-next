@@ -383,6 +383,13 @@ extern struct wmaker_global_variables {
 		} randr;
 #endif
 
+#ifdef USE_XSYNC
+		struct {
+			Bool supported;
+			int event_base;
+		} xsync;
+#endif
+
 		/*
 		 * If no extension were activated, we would end up with an empty
 		 * structure, which old compilers may not appreciate, so let's

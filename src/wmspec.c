@@ -28,9 +28,14 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#ifdef USE_XSYNC
+#include <X11/extensions/sync.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <WINGs/WUtil.h>
@@ -138,6 +143,10 @@ static Atom net_wm_full_placement;
 
 /* Window Manager Protocols */
 static Atom net_wm_ping;
+#ifdef USE_XSYNC
+static Atom net_wm_sync_request;
+static Atom net_wm_sync_request_counter;
+#endif
 
 static Atom utf8_string;
 
@@ -230,6 +239,10 @@ static atomitem_t atomNames[] = {
 	{"_NET_WM_USER_TIME_WINDOW", &net_wm_user_time_window},
 	{"_NET_WM_FULL_PLACEMENT", &net_wm_full_placement},
 	{"_NET_WM_PING", &net_wm_ping},
+#ifdef USE_XSYNC
+	{"_NET_WM_SYNC_REQUEST", &net_wm_sync_request},
+	{"_NET_WM_SYNC_REQUEST_COUNTER", &net_wm_sync_request_counter},
+#endif
 
 	{"UTF8_STRING", &utf8_string},
 };
@@ -331,6 +344,12 @@ static void setSupportedHints(WScreen *scr)
 
 	atom[i++] = net_wm_pid;
 	atom[i++] = net_wm_ping;
+#ifdef USE_XSYNC
+	if (w_global.xext.xsync.supported) {
+		atom[i++] = net_wm_sync_request;
+		atom[i++] = net_wm_sync_request_counter;
+	}
+#endif
 	atom[i++] = net_wm_user_time;
 	atom[i++] = net_wm_user_time_window;
 	atom[i++] = net_wm_full_placement;
@@ -1816,6 +1835,7 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 	readUserTime(wwin);
 
 	cacheLocalPid(wwin);
+	wNETWMSyncRequestSetup(wwin);
 }
 
 void wNETWMCheckInitialClientState(WWindow *wwin)
@@ -2487,6 +2507,235 @@ void wNETWMDetachUserTimeWindow(WWindow *wwin)
 {
 	detachUserTimeWindow(wwin);
 }
+
+/* ---- _NET_WM_SYNC_REQUEST ------------------------------------------- */
+
+Bool wNETWMIsSyncRequestProtocol(Atom protocol)
+{
+#ifdef USE_XSYNC
+	return protocol == net_wm_sync_request;
+#else
+	(void)protocol;
+	return False;
+#endif
+}
+
+#ifdef USE_XSYNC
+
+/* maps an XSyncAlarm XID back to its WWindow so the AlarmNotify handler
+ * can clear the waiting flag without scanning the managed list */
+static XContext sync_alarm_ctx = 0;
+
+/* give up waiting for a client redraw after this many milliseconds and
+ * fall back to unsynchronised resize for the rest of the drag */
+#define NET_WM_SYNC_TIMEOUT 1000
+
+/* the counter XID comes from a client property, treat any X error during
+ * an XSync call on it as "this client lied", swallow it and disable sync
+ * for that window rather than letting it surface as an internal error */
+static int xsync_trap_tripped;
+static XErrorHandler xsync_trap_prev;
+
+static int xsyncErrorTrap(Display *d, XErrorEvent *e)
+{
+	(void)d; (void)e;
+	xsync_trap_tripped = 1;
+	return 0;
+}
+
+static void xsyncTrapPush(void)
+{
+	xsync_trap_tripped = 0;
+	XSync(dpy, False);
+	xsync_trap_prev = XSetErrorHandler(xsyncErrorTrap);
+}
+
+static int xsyncTrapPop(void)
+{
+	XSync(dpy, False);
+	XSetErrorHandler(xsync_trap_prev);
+	return xsync_trap_tripped;
+}
+
+void wNETWMSyncRequestSetup(WWindow *wwin)
+{
+	XSyncAlarmAttributes attr;
+	XSyncValue val;
+	uint32_t counter;
+
+	if (!w_global.xext.xsync.supported || !wwin->protocols.NET_WM_SYNC_REQUEST)
+		return;
+	if (!WXGetCardinal(dpy, wwin->client_win, net_wm_sync_request_counter, &counter)
+	    || counter == 0)
+		return;
+
+	wwin->net_sync.value_lo = 0;
+	wwin->net_sync.value_hi = 0;
+	wwin->net_sync.waiting = 0;
+	wwin->net_sync.disabled = 0;
+
+	xsyncTrapPush();
+
+	XSyncIntToValue(&val, 0);
+	XSyncSetCounter(dpy, (XSyncCounter)counter, val);
+
+	attr.trigger.counter = (XSyncCounter)counter;
+	attr.trigger.value_type = XSyncAbsolute;
+	attr.trigger.test_type = XSyncPositiveComparison;
+	XSyncIntToValue(&attr.trigger.wait_value, 1);
+	XSyncIntToValue(&attr.delta, 1);
+	attr.events = True;
+
+	wwin->net_sync.alarm = XSyncCreateAlarm(dpy,
+		XSyncCACounter | XSyncCAValueType | XSyncCATestType
+		| XSyncCAValue | XSyncCADelta | XSyncCAEvents, &attr);
+
+	if (xsyncTrapPop()) {
+		if (wwin->net_sync.alarm) {
+			xsyncTrapPush();
+			XSyncDestroyAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm);
+			xsyncTrapPop();
+		}
+		wwin->net_sync.alarm = 0;
+		wwin->net_sync.counter = 0;
+		wwin->net_sync.disabled = 1;
+		return;
+	}
+
+	wwin->net_sync.counter = counter;
+
+	if (wwin->net_sync.alarm) {
+		if (!sync_alarm_ctx)
+			sync_alarm_ctx = XUniqueContext();
+		XSaveContext(dpy, wwin->net_sync.alarm, sync_alarm_ctx,
+			     (XPointer)wwin);
+	}
+}
+
+void wNETWMSyncRequestDestroy(WWindow *wwin)
+{
+	if (wwin->net_sync.alarm) {
+		if (sync_alarm_ctx)
+			XDeleteContext(dpy, wwin->net_sync.alarm, sync_alarm_ctx);
+		xsyncTrapPush();
+		XSyncDestroyAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm);
+		xsyncTrapPop();
+		wwin->net_sync.alarm = 0;
+	}
+	wwin->net_sync.counter = 0;
+	wwin->net_sync.waiting = 0;
+}
+
+/* send the protocol message asking the client to bump its counter to the
+ * next value once it has redrawn for the upcoming ConfigureNotify, and
+ * arm the alarm to fire when the counter reaches that value */
+void wNETWMSyncRequestSend(WWindow *wwin)
+{
+	XSyncAlarmAttributes attr;
+	XSyncValue target;
+
+	if (!wwin->net_sync.counter || !wwin->net_sync.alarm
+	    || wwin->net_sync.disabled || wwin->net_sync.waiting)
+		return;
+
+	if (++wwin->net_sync.value_lo == 0)
+		wwin->net_sync.value_hi++;
+
+	WXSendClientMessage(dpy, wwin->client_win, NoEventMask,
+			    wwin->client_win, w_global.atom.wm.protocols,
+			    (long)net_wm_sync_request,
+			    (long)w_global.timestamp.last_event,
+			    (long)wwin->net_sync.value_lo,
+			    (long)wwin->net_sync.value_hi, 0);
+
+	XSyncIntsToValue(&target, wwin->net_sync.value_lo,
+			 (int)wwin->net_sync.value_hi);
+	attr.trigger.wait_value = target;
+
+	xsyncTrapPush();
+	XSyncChangeAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm,
+			 XSyncCAValue, &attr);
+	if (xsyncTrapPop()) {
+		wwin->net_sync.disabled = 1;
+		wwin->net_sync.waiting = 0;
+		return;
+	}
+
+	wwin->net_sync.waiting = 1;
+}
+
+Bool wNETWMSyncRequestHandleAlarm(XEvent *event)
+{
+	XSyncAlarmNotifyEvent *ae;
+	XPointer p;
+
+	if (!w_global.xext.xsync.supported
+	    || event->type != w_global.xext.xsync.event_base + XSyncAlarmNotify)
+		return False;
+
+	ae = (XSyncAlarmNotifyEvent *)event;
+	if (!sync_alarm_ctx
+	    || XFindContext(dpy, ae->alarm, sync_alarm_ctx, &p) != 0)
+		return True;
+
+	((WWindow *)p)->net_sync.waiting = 0;
+	return True;
+}
+
+/* called from the opaque-resize loop after wWindowConfigure(), block on
+ * the alarm event so the next motion is not applied until the client has
+ * caught up, but never for longer than NET_WM_SYNC_TIMEOUT */
+void wNETWMSyncRequestWait(WWindow *wwin)
+{
+	XEvent ev;
+	struct timeval start, now;
+	int fd, elapsed;
+
+	if (!wwin->net_sync.waiting)
+		return;
+
+	XFlush(dpy);
+	fd = ConnectionNumber(dpy);
+	gettimeofday(&start, NULL);
+
+	while (wwin->net_sync.waiting) {
+		if (XCheckTypedEvent(dpy,
+				     w_global.xext.xsync.event_base + XSyncAlarmNotify,
+				     &ev)) {
+			wNETWMSyncRequestHandleAlarm(&ev);
+			continue;
+		}
+
+		gettimeofday(&now, NULL);
+		elapsed = (now.tv_sec - start.tv_sec) * 1000
+			  + (now.tv_usec - start.tv_usec) / 1000;
+		if (elapsed >= NET_WM_SYNC_TIMEOUT) {
+			/* client is too slow, do not let it stall the
+			 * drag, fall back to unsynchronised resize */
+			wwin->net_sync.waiting = 0;
+			wwin->net_sync.disabled = 1;
+			break;
+		}
+
+		fd_set rfds;
+		struct timeval tv;
+		FD_ZERO(&rfds);
+		FD_SET(fd, &rfds);
+		tv.tv_sec = 0;
+		tv.tv_usec = (NET_WM_SYNC_TIMEOUT - elapsed) * 1000;
+		select(fd + 1, &rfds, NULL, NULL, &tv);
+	}
+}
+
+#else /* !USE_XSYNC */
+
+void wNETWMSyncRequestSetup(WWindow *wwin)       { (void)wwin; }
+void wNETWMSyncRequestDestroy(WWindow *wwin)     { (void)wwin; }
+void wNETWMSyncRequestSend(WWindow *wwin)        { (void)wwin; }
+void wNETWMSyncRequestWait(WWindow *wwin)        { (void)wwin; }
+Bool wNETWMSyncRequestHandleAlarm(XEvent *event) { (void)event; return False; }
+
+#endif /* USE_XSYNC */
 
 Bool wNETWMShouldStealFocus(WWindow *wwin)
 {
