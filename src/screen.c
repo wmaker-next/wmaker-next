@@ -913,6 +913,10 @@ void wScreenUpdateUsableArea(WScreen *scr)
 
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(scr, True);
+
+	/* publish the recomputed usable area as _NET_WORKAREA so pagers
+	 * and toolkits see strut changes, not only workspace-count ones */
+	wNETWMUpdateWorkarea(scr);
 }
 
 void wScreenRestoreState(WScreen * scr)
