@@ -31,6 +31,7 @@
 #include "window.h"
 #include "GNUstep.h"
 #include "properties.h"
+#include "wmspec.h"
 
 
 int PropRcvNormalHints(WXCookie ck, WXSizeHints *size_hints, int *pre_iccm)
@@ -87,6 +88,8 @@ void PropRcvProtocols(WXCookie ck, WProtocols *prots)
 			prots->DELETE_WINDOW = 1;
 		else if (protocols[i] == w_global.atom.wm.save_yourself)
 			prots->SAVE_YOURSELF = 1;
+		else if (wNETWMIsPingProtocol(protocols[i]))
+			prots->NET_WM_PING = 1;
 		else if (protocols[i] == w_global.atom.gnustep.wm_miniaturize_window)
 			prots->MINIATURIZE_WINDOW = 1;
 	}

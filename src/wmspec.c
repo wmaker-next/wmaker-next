@@ -28,6 +28,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -47,6 +48,7 @@
 #include "stacking.h"
 #include "xinerama.h"
 #include "properties.h"
+#include "dialog.h"
 
 
 /* Root Window Properties */
@@ -133,7 +135,7 @@ static Atom net_frame_extents;
 static Atom net_wm_full_placement;
 
 /* Window Manager Protocols */
-static Atom net_wm_ping;	/* TODO */
+static Atom net_wm_ping;
 
 static Atom utf8_string;
 
@@ -240,6 +242,7 @@ static void updateClientListStacking(WScreen *scr, WWindow *);
 static void updateWorkspaceNames(WScreen *scr);
 static void updateCurrentWorkspace(WScreen *scr);
 static void updateWorkspaceCount(WScreen *scr);
+static void cacheLocalPid(WWindow *wwin);
 static void wNETWMShowingDesktop(WScreen *scr, Bool show);
 
 typedef struct NetData {
@@ -319,6 +322,8 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_action_change_desktop;
 	atom[i++] = net_wm_action_close;
 
+	atom[i++] = net_wm_pid;
+	atom[i++] = net_wm_ping;
 	atom[i++] = net_wm_full_placement;
 
 	atom[i++] = net_wm_strut;
@@ -1746,6 +1751,8 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 
 	updateNetIconInfoCk(wwin, ck->handled_icons, ck->icon_geom);
 	updateIconImage(wwin);
+
+	cacheLocalPid(wwin);
 }
 
 void wNETWMCheckInitialClientState(WWindow *wwin)
@@ -1853,6 +1860,16 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		} else if (event->message_type == net_desktop_names) {
 			handleDesktopNames(scr);
 			return True;
+
+		} else if (event->message_type == w_global.atom.wm.protocols
+			   && (Atom)event->data.l[0] == net_wm_ping) {
+			/* client echoed our ping back to the root window,
+			 * data.l[2] is the client window per spec */
+			wwin = wWindowFor((Window)event->data.l[2]);
+			if (wwin && wwin->net_ping.timer
+			    && (Time)event->data.l[1] == wwin->net_ping.timestamp)
+				wNETWMCancelPing(wwin);
+			return True;
 		}
 	}
 
@@ -1911,9 +1928,11 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 
 	} else if (event->message_type == net_close_window) {
 		if (!WFLAGP(wwin, no_closable)) {
-			if (wwin->protocols.DELETE_WINDOW)
+			if (wwin->protocols.DELETE_WINDOW) {
 				wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 										  w_global.timestamp.last_event);
+				wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+			}
 		}
 		return True;
 
@@ -2157,6 +2176,125 @@ int wNETWMGetPidForWindow(Window window)
 	if (WXGetCardinal(dpy, window, net_wm_pid, &pid))
 		return (int)pid;
 	return 0;
+}
+
+/* ---- _NET_WM_PING --------------------------------------------------- */
+
+/* how long to wait for the echoed reply before treating the client as
+ * hung and prompting the user, in milliseconds */
+#define NET_WM_PING_TIMEOUT 5000
+
+Bool wNETWMIsPingProtocol(Atom protocol)
+{
+	return protocol == net_wm_ping;
+}
+
+void wNETWMCancelPing(WWindow *wwin)
+{
+	if (wwin->net_ping.timer) {
+		WMDeleteTimerHandler(wwin->net_ping.timer);
+		wwin->net_ping.timer = NULL;
+	}
+	wwin->net_ping.timestamp = 0;
+	wwin->net_ping.term_sent = 0;
+}
+
+/* read _NET_WM_PID and WM_CLIENT_MACHINE once at manage time and cache
+ * the pid only when the client explicitly names this host, so a later
+ * property change cannot redirect Force Quit at an arbitrary process,
+ * and a missing WM_CLIENT_MACHINE is treated as remote */
+static void cacheLocalPid(WWindow *wwin)
+{
+	char host[256], *machine;
+	int pid;
+
+	wwin->net_ping.pid = 0;
+
+	pid = wNETWMGetPidForWindow(wwin->client_win);
+	if (pid <= 0)
+		return;
+
+	machine = WXGetLatin1String(dpy, wwin->client_win, XA_WM_CLIENT_MACHINE, NULL);
+	if (!machine)
+		return;
+
+	if (gethostname(host, sizeof(host)) == 0) {
+		host[sizeof(host) - 1] = '\0';
+		if (strcmp(host, machine) == 0)
+			wwin->net_ping.pid = pid;
+	}
+	wfree(machine);
+}
+
+static void handlePingTimeout(void *cdata)
+{
+	WWindow *wwin = cdata;
+	const char *title;
+	char *msg;
+	int pid, result;
+
+	wwin->net_ping.timer = NULL;
+
+	title = (wwin->frame && wwin->frame->title) ? wwin->frame->title : "";
+	msg = wstrconcat(title,
+			 _(" is not responding.\n\n"
+			   "You can wait for it to continue or force it to quit, "
+			   "losing any unsaved changes."));
+
+	wretain(wwin);
+	result = wMessageDialog(wwin->screen_ptr, _("Application Not Responding"),
+				msg, _("Force Quit"), _("Wait"), NULL);
+	wfree(msg);
+
+	if (wwin->flags.destroyed) {
+		/* client went away while the dialog was up */
+		wrelease(wwin);
+		return;
+	}
+
+	if (result == WAPRDefault) {
+		pid = wwin->net_ping.pid;
+		if (pid > 0) {
+			/* first Force Quit asks nicely, a second one (after
+			 * the next ping also times out) escalates */
+			if (!wwin->net_ping.term_sent) {
+				kill((pid_t)pid, SIGTERM);
+				wwin->net_ping.term_sent = 1;
+				wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+			} else {
+				kill((pid_t)pid, SIGKILL);
+			}
+		} else {
+			wClientKill(wwin);
+		}
+	} else {
+		/* Wait, ping again so a still-hung client re-prompts */
+		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+	}
+	wrelease(wwin);
+}
+
+void wNETWMPingWindow(WWindow *wwin, Time timestamp)
+{
+	if (!wwin->protocols.NET_WM_PING)
+		return;
+	/* one outstanding ping per window, the reply for the earlier close
+	 * attempt is just as good an alive signal */
+	if (wwin->net_ping.timer)
+		return;
+
+	if (timestamp == CurrentTime)
+		timestamp = w_global.timestamp.last_event;
+	wwin->net_ping.timestamp = timestamp;
+
+	WXSendClientMessage(dpy, wwin->client_win, NoEventMask,
+			    wwin->client_win, w_global.atom.wm.protocols,
+			    (long)net_wm_ping, (long)timestamp,
+			    (long)wwin->client_win, 0, 0);
+	XFlush(dpy);
+
+	wwin->net_ping.timer =
+		WMAddTimerHandler(NET_WM_PING_TIMEOUT, handlePingTimeout, wwin);
 }
 
 char *wNETWMGetWindowName(Window window)

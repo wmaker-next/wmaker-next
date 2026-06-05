@@ -157,6 +157,8 @@ typedef struct {
     unsigned int TAKE_FOCUS:1;
     unsigned int DELETE_WINDOW:1;
     unsigned int SAVE_YOURSELF:1;
+    /* EWMH */
+    unsigned int NET_WM_PING:1;
     /* WindowMaker specific */
     unsigned int MINIATURIZE_WINDOW:1;
 } WProtocols;
@@ -246,6 +248,18 @@ typedef struct WWindow {
 
 	/* protocols */
 	WProtocols protocols;			/* accepted WM_PROTOCOLS */
+
+	/* _NET_WM_PING bookkeeping, armed when a close request is sent to a
+	 * client that lists the protocol, disarmed by the echoed reply or by
+	 * wWindowDestroy */
+	struct {
+		void *timer;			/* WMHandlerID, NULL when idle */
+		Time timestamp;			/* cookie carried in data.l[1] */
+		int pid;			/* _NET_WM_PID cached on manage,
+						 * 0 when absent or remote */
+		short term_sent;		/* SIGTERM already sent, next
+						 * Force Quit escalates */
+	} net_ping;
 
 	FocusMode focus_mode;			/* type of keyboard input focus */
 

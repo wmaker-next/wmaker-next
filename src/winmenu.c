@@ -41,6 +41,7 @@
 #include "framewin.h"
 #include "workspace.h"
 #include "winspector.h"
+#include "wmspec.h"
 #include "dialog.h"
 #include "stacking.h"
 #include "icon.h"
@@ -250,6 +251,7 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 		/* send delete message */
 		wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 								  w_global.timestamp.last_event);
+		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
 		break;
 
 	case MC_KILL:

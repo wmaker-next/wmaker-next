@@ -188,6 +188,7 @@ void wWindowDestroy(WWindow *wwin)
 		wwin->screen_ptr->cmap_window = NULL;
 
 	WMRemoveNotificationObserver(wwin);
+	wNETWMCancelPing(wwin);
 
 	wwin->flags.destroyed = 1;
 
@@ -3429,6 +3430,7 @@ static void windowCloseClick(WCoreWindow *sender, void *data, XEvent *event)
 			/* send delete message */
 			wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 									  w_global.timestamp.last_event);
+			wNETWMPingWindow(wwin, w_global.timestamp.last_event);
 		}
 	}
 }
@@ -3446,11 +3448,13 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, XEvent *event)
 		return;
 
 	/* send delete message */
-	if (wwin->protocols.DELETE_WINDOW)
+	if (wwin->protocols.DELETE_WINDOW) {
 		wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 								  w_global.timestamp.last_event);
-	else
+		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+	} else {
 		wClientKill(wwin);
+	}
 }
 
 #ifdef XKB_BUTTON_HINT

@@ -1722,8 +1722,10 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_CLOSE:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && !WFLAGP(wwin, no_closable)) {
 			CloseWindowMenu(scr);
-			if (wwin->protocols.DELETE_WINDOW)
+			if (wwin->protocols.DELETE_WINDOW) {
 				wClientSendProtocol(wwin, w_global.atom.wm.delete_window, event->xkey.time);
+				wNETWMPingWindow(wwin, event->xkey.time);
+			}
 		}
 		break;
 	case WKBD_SELECT:
