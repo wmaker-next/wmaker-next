@@ -129,6 +129,7 @@ static Atom net_wm_handled_icons;
 static Atom net_wm_window_opacity;
 
 static Atom net_frame_extents;
+static Atom net_wm_full_placement;
 
 /* Window Manager Protocols */
 static Atom net_wm_ping;	/* TODO */
@@ -219,6 +220,7 @@ static atomitem_t atomNames[] = {
 
 	{"_NET_FRAME_EXTENTS", &net_frame_extents},
 
+	{"_NET_WM_FULL_PLACEMENT", &net_wm_full_placement},
 	{"_NET_WM_PING", &net_wm_ping},
 
 	{"UTF8_STRING", &utf8_string},
@@ -313,6 +315,8 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_action_fullscreen;
 	atom[i++] = net_wm_action_change_desktop;
 	atom[i++] = net_wm_action_close;
+
+	atom[i++] = net_wm_full_placement;
 
 	atom[i++] = net_wm_strut;
 	atom[i++] = net_wm_strut_partial;
