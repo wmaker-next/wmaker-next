@@ -136,6 +136,11 @@ typedef struct _WScreen {
     int current_workspace;	       /* current workspace number */
     int last_workspace;		       /* last used workspace number */
 
+    Time net_last_user_time;	       /* newest _NET_WM_USER_TIME observed,
+					* used to deny focus to windows that
+					* map with an older user-activity
+					* timestamp */
+
 
     WReservedArea *reservedAreas;      /* used to build totalUsableArea */
 

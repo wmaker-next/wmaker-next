@@ -1017,6 +1017,14 @@ static void handlePropertyNotify(XEvent * event)
 			return;
 		}
 		wClientCheckProperty(wwin, &event->xproperty);
+	} else {
+		/* a client may carry _NET_WM_USER_TIME on a separate
+		 * helper window, route those notifies to the owner */
+		wwin = wNETWMUserTimeWindowFor(event->xproperty.window);
+		if (wwin) {
+			wNETWMUserTimeNotify(wwin);
+			return;
+		}
 	}
 	wapp = wApplicationOf(event->xproperty.window);
 	if (wapp) {

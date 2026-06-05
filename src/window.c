@@ -189,6 +189,7 @@ void wWindowDestroy(WWindow *wwin)
 
 	WMRemoveNotificationObserver(wwin);
 	wNETWMCancelPing(wwin);
+	wNETWMDetachUserTimeWindow(wwin);
 
 	wwin->flags.destroyed = 1;
 
@@ -1619,8 +1620,19 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 						     == wGetHeadForWindow(wwin));
 			}
 
-			if (same_screen == 1 && same_head == 1)
-				wSetFocusTo(scr, wwin);
+			if (same_screen == 1 && same_head == 1) {
+				if (wNETWMShouldStealFocus(wwin)) {
+					wSetFocusTo(scr, wwin);
+				} else {
+					/* the new window's _NET_WM_USER_TIME
+					 * is older than the screen's most
+					 * recent user activity (or 0), do
+					 * not steal focus and flag it so the
+					 * user notices it has mapped */
+					wwin->flags.net_demands_attention = 1;
+					wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+				}
+			}
 		}
 	}
 	wWindowResetMouseGrabs(wwin);

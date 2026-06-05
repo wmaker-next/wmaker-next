@@ -129,6 +129,8 @@ static Atom net_wm_icon_geometry;
 static Atom net_wm_icon;
 static Atom net_wm_pid;
 static Atom net_wm_handled_icons;
+static Atom net_wm_user_time;
+static Atom net_wm_user_time_window;
 static Atom net_wm_window_opacity;
 
 static Atom net_frame_extents;
@@ -224,6 +226,8 @@ static atomitem_t atomNames[] = {
 
 	{"_NET_FRAME_EXTENTS", &net_frame_extents},
 
+	{"_NET_WM_USER_TIME", &net_wm_user_time},
+	{"_NET_WM_USER_TIME_WINDOW", &net_wm_user_time_window},
 	{"_NET_WM_FULL_PLACEMENT", &net_wm_full_placement},
 	{"_NET_WM_PING", &net_wm_ping},
 
@@ -242,6 +246,8 @@ static void updateClientListStacking(WScreen *scr, WWindow *);
 static void updateWorkspaceNames(WScreen *scr);
 static void updateCurrentWorkspace(WScreen *scr);
 static void updateWorkspaceCount(WScreen *scr);
+static void updateUserTimeWindow(WWindow *wwin, WXCookie *ck);
+static void readUserTime(WWindow *wwin);
 static void cacheLocalPid(WWindow *wwin);
 static void wNETWMShowingDesktop(WScreen *scr, Bool show);
 
@@ -324,6 +330,8 @@ static void setSupportedHints(WScreen *scr)
 
 	atom[i++] = net_wm_pid;
 	atom[i++] = net_wm_ping;
+	atom[i++] = net_wm_user_time;
+	atom[i++] = net_wm_user_time_window;
 	atom[i++] = net_wm_full_placement;
 
 	atom[i++] = net_wm_strut;
@@ -1631,6 +1639,7 @@ void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck)
 	ck->handled_icons = WXReqFormat32(dpy, window, net_wm_handled_icons, XA_CARDINAL, 1);
 	ck->icon_geom     = WXReqFormat32(dpy, window, net_wm_icon_geometry, XA_CARDINAL, 4);
 	ck->opacity       = WXReqFormat32(dpy, window, net_wm_window_opacity, XA_CARDINAL, 1);
+	ck->user_time_win = WXReqFormat32(dpy, window, net_wm_user_time_window, XA_WINDOW, 1);
 }
 
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
@@ -1751,6 +1760,9 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 
 	updateNetIconInfoCk(wwin, ck->handled_icons, ck->icon_geom);
 	updateIconImage(wwin);
+
+	updateUserTimeWindow(wwin, &ck->user_time_win);
+	readUserTime(wwin);
 
 	cacheLocalPid(wwin);
 }
@@ -2166,6 +2178,11 @@ void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event)
 		updateIconImage(wwin);
 	} else if (event->atom == net_wm_window_opacity) {
 		updateWindowOpacity(wwin);
+	} else if (event->atom == net_wm_user_time) {
+		readUserTime(wwin);
+	} else if (event->atom == net_wm_user_time_window) {
+		updateUserTimeWindow(wwin, NULL);
+		readUserTime(wwin);
 	}
 }
 
@@ -2295,6 +2312,151 @@ void wNETWMPingWindow(WWindow *wwin, Time timestamp)
 
 	wwin->net_ping.timer =
 		WMAddTimerHandler(NET_WM_PING_TIMEOUT, handlePingTimeout, wwin);
+}
+
+/* ---- _NET_WM_USER_TIME / _NET_WM_USER_TIME_WINDOW ------------------- */
+
+/* maps the indirected user-time carrier window back to its WWindow so
+ * PropertyNotify on the helper can be routed without a linear scan */
+static XContext user_time_ctx = 0;
+
+/* X server timestamps wrap as CARD32, compare with signed difference so
+ * a fresh wrapped value still reads as newer */
+#define USER_TIME_NEWER(a, b) ((int32_t)((uint32_t)(a) - (uint32_t)(b)) > 0)
+
+static void readUserTime(WWindow *wwin)
+{
+	Window src = wwin->net_user_time_win ? wwin->net_user_time_win
+					     : wwin->client_win;
+	uint32_t ts;
+
+	if (!WXGetCardinal(dpy, src, net_wm_user_time, &ts))
+		return;
+
+	wwin->net_user_time = (Time)ts;
+	wwin->net_user_time_set = 1;
+
+	/* track the newest activity timestamp seen on this screen so a
+	 * later map can be compared against it */
+	if (ts != 0 && (wwin->screen_ptr->net_last_user_time == 0
+			|| USER_TIME_NEWER(ts, wwin->screen_ptr->net_last_user_time)))
+		wwin->screen_ptr->net_last_user_time = (Time)ts;
+}
+
+static void detachUserTimeWindow(WWindow *wwin)
+{
+	if (!user_time_ctx || wwin->net_user_time_win == None)
+		return;
+	XDeleteContext(dpy, wwin->net_user_time_win, user_time_ctx);
+	/* restore exactly the mask we held before attaching, never blanket
+	 * NoEventMask, so a malicious XID cannot trick us into dropping
+	 * SubstructureRedirect on root or button grabs on a frame */
+	XSelectInput(dpy, wwin->net_user_time_win, wwin->net_user_time_win_mask);
+	wwin->net_user_time_win = None;
+	wwin->net_user_time_win_mask = 0;
+}
+
+/* the helper XID comes from a client property and is hostile input,
+ * refuse to select on anything we already manage or already hold a mask
+ * on, that covers root, frames, client windows, icons and the supporting
+ * window without having to enumerate them */
+static Bool isSafeUserTimeWindow(WWindow *wwin, Window win, long *prev_mask)
+{
+	XWindowAttributes attr;
+	XPointer p;
+	WScreen *scr;
+	int i;
+
+	if (win == None || win == wwin->client_win)
+		return False;
+	if (XFindContext(dpy, win, w_global.context.client_win, &p) != XCNOENT)
+		return False;
+	if (user_time_ctx
+	    && XFindContext(dpy, win, user_time_ctx, &p) != XCNOENT)
+		return False;
+	for (i = 0; i < w_global.screen_count; i++) {
+		scr = wScreenWithNumber(i);
+		if (win == scr->root_win || win == scr->info_window || win == scr->no_focus_win
+		    || win == scr->dock_shadow || win == scr->workspace_name
+		    || win == scr->mini_screenshot)
+			return False;
+	}
+	if (!XGetWindowAttributes(dpy, win, &attr))
+		return False;
+	if (attr.your_event_mask != 0)
+		return False;
+
+	*prev_mask = attr.your_event_mask;
+	return True;
+}
+
+static void updateUserTimeWindow(WWindow *wwin, WXCookie *ck)
+{
+	Window win = None;
+	long prev_mask = 0;
+
+	if (ck)
+		WXRcvWindow(dpy, *ck, &win);
+	else
+		WXGetWindow(dpy, wwin->client_win, net_wm_user_time_window, &win);
+
+	if (win == wwin->net_user_time_win)
+		return;
+
+	detachUserTimeWindow(wwin);
+
+	if (!isSafeUserTimeWindow(wwin, win, &prev_mask))
+		return;
+
+	if (!user_time_ctx)
+		user_time_ctx = XUniqueContext();
+	wwin->net_user_time_win = win;
+	wwin->net_user_time_win_mask = prev_mask;
+	XSaveContext(dpy, win, user_time_ctx, (XPointer)wwin);
+	XSelectInput(dpy, win, prev_mask | PropertyChangeMask);
+}
+
+WWindow *wNETWMUserTimeWindowFor(Window window)
+{
+	XPointer p;
+
+	if (!user_time_ctx)
+		return NULL;
+	if (XFindContext(dpy, window, user_time_ctx, &p) != 0)
+		return NULL;
+	return (WWindow *)p;
+}
+
+void wNETWMUserTimeNotify(WWindow *wwin)
+{
+	readUserTime(wwin);
+}
+
+void wNETWMDetachUserTimeWindow(WWindow *wwin)
+{
+	detachUserTimeWindow(wwin);
+}
+
+Bool wNETWMShouldStealFocus(WWindow *wwin)
+{
+	WScreen *scr = wwin->screen_ptr;
+
+	/* a client that explicitly stamps user_time = 0 is asking the WM
+	 * not to focus it on initial map */
+	if (wwin->net_user_time_set && wwin->net_user_time == 0)
+		return False;
+
+	/* if no other window has reported activity yet, or this window
+	 * never set a user time, fall through to the existing policy */
+	if (!wwin->net_user_time_set || scr->net_last_user_time == 0)
+		return True;
+
+	/* deny focus when the new window's last user activity is older
+	 * than what we have already seen elsewhere */
+	if (USER_TIME_NEWER(scr->net_last_user_time, wwin->net_user_time))
+		return False;
+
+	return True;
 }
 
 char *wNETWMGetWindowName(Window window)

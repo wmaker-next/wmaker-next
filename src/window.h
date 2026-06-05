@@ -261,6 +261,18 @@ typedef struct WWindow {
 						 * Force Quit escalates */
 	} net_ping;
 
+	/* _NET_WM_USER_TIME, used for focus-stealing prevention on map.
+	 * net_user_time_win is the indirected property carrier when the
+	 * client sets _NET_WM_USER_TIME_WINDOW, or None for the toplevel. */
+	Time net_user_time;
+	short net_user_time_set;
+	Window net_user_time_win;
+	long net_user_time_win_mask;		/* our previous event mask on
+						 * the helper, restored on
+						 * detach so a hostile XID
+						 * cannot make us drop a
+						 * selection we held */
+
 	FocusMode focus_mode;			/* type of keyboard input focus */
 
 	long event_mask;			/* the event mask thats selected */
@@ -384,6 +396,7 @@ typedef struct {
     WXCookie handled_icons; /* _NET_WM_HANDLED_ICONS */
     WXCookie icon_geom;     /* _NET_WM_ICON_GEOMETRY */
     WXCookie opacity;       /* _NET_WM_WINDOW_OPACITY */
+    WXCookie user_time_win; /* _NET_WM_USER_TIME_WINDOW */
 } WNETWMInitialCookies;
 
 typedef struct {
