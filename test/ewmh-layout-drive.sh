@@ -200,6 +200,15 @@ set_desktop_names() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+xinerama_head_count() {
+	run_x xdpyinfo -ext XINERAMA 2>/dev/null | grep -c '^  head #'
+}
+
+window_on_head1() {
+	wox=$(xwininfo_field "$1" 'Absolute upper-left X')
+	[ -n "$wox" ] && [ "$wox" -ge 1024 ]
+}
+
 desktop_name_is() {
 	root_prop _NET_DESKTOP_NAMES \
 		| sed -e 's/^[^=]*= //' -e 's/"//g' \
@@ -476,6 +485,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'WMEOD'
   DownWorkspaceKey = "Control+Down";
   MoveToRightWorkspaceKey = "Control+Shift+Right";
   MoveToDownWorkspaceKey = "Control+Shift+Down";
+  AutoFocusAcrossHeads = NO;
 }
 WMEOD
 export WMAKER_USER_ROOT="$WMHOME"
@@ -486,7 +496,10 @@ if run_x xdpyinfo >/dev/null 2>&1; then
 fi
 
 note "start Xephyr $DPY"
-Xephyr "$DPY" -screen 1024x768 -ac >>"$LOG" 2>&1 &
+# two Xinerama heads side by side so the _NET_ACTIVE_WINDOW same-head
+# gate can be exercised, head 0 is the original 1024x768 at 0,0 so the
+# single-head checks are unaffected
+Xephyr "$DPY" +xinerama -screen 1024x768 -screen 1024x768 -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {
@@ -516,7 +529,7 @@ check "_NET_SUPPORTING_WM_CHECK names WindowMaker" supporting_wm_name
 check "_NET_SUPPORTING_WM_CHECK exposes _NET_WM_PID" supporting_wm_pid
 check "_NET_NUMBER_OF_DESKTOPS follows client request" prop_has_values _NET_NUMBER_OF_DESKTOPS 6
 check "_NET_CURRENT_DESKTOP starts at desktop 0" desktop_is 0
-check "_NET_DESKTOP_GEOMETRY matches Xephyr screen" prop_has_values _NET_DESKTOP_GEOMETRY "1024, 768"
+check "_NET_DESKTOP_GEOMETRY matches Xephyr screen" prop_has_values _NET_DESKTOP_GEOMETRY "2048, 768"
 check "_NET_DESKTOP_VIEWPORT has one origin pair per desktop" wait_for 40 cardinal_count_is _NET_DESKTOP_VIEWPORT 12
 check "_NET_WORKAREA has one rectangle per desktop" wait_for 40 cardinal_count_is _NET_WORKAREA 24
 check "_NET_DESKTOP_NAMES is present" prop_exists _NET_DESKTOP_NAMES
@@ -788,6 +801,37 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 			send_active_window "$CLIENT2_XID" 2 100
 			check "_NET_ACTIVE_WINDOW source 2 ignores stale timestamp" \
 				wait_for 30 active_window_is "$CLIENT2_XID"
+
+			# cross-head gate, AutoFocusAcrossHeads=NO is set in
+			# the test defaults so a non-pager activate of a
+			# window on the other head must be refused
+			if [ "$(xinerama_head_count)" -ge 2 ]; then
+				# wmctrl -a may use source 0, which the policy
+				# refuses cross-head, so setup activations here
+				# go through send_active_window with source 2
+				run_x wmctrl -i -r "$CLIENT2_XID" -e 0,1100,100,320,180 >>"$LOG" 2>&1
+				wait_for 30 window_on_head1 "$CLIENT2_XID" >/dev/null
+				send_active_window "$CLIENT_XID" 2 0
+				wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+
+				send_active_window "$CLIENT2_XID" 1 0
+				check "_NET_ACTIVE_WINDOW source 1 cross-head is refused" \
+					wait_for 30 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+				check "_NET_ACTIVE_WINDOW source 1 cross-head keeps focus" \
+					active_window_is "$CLIENT_XID"
+				send_active_window "$CLIENT2_XID" 2 0
+				wait_for 30 window_atom_lacks "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+				send_active_window "$CLIENT_XID" 2 0
+				wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+
+				send_active_window "$CLIENT2_XID" 2 0
+				check "_NET_ACTIVE_WINDOW source 2 cross-head activates" \
+					wait_for 30 active_window_is "$CLIENT2_XID"
+
+				run_x wmctrl -i -r "$CLIENT2_XID" -e 0,80,80,320,180 >>"$LOG" 2>&1
+			else
+				record_skip "_NET_ACTIVE_WINDOW cross-head: only one Xinerama head"
+			fi
 
 			stop_second_client
 			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
