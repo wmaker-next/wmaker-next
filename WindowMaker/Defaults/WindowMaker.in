@@ -1,6 +1,4 @@
 {
-	ColormapSize = 4;
-	DisableDithering = NO;
 	IconSize = 64;
 	ModifierKey = Mod1;
 	FocusMode = manual;

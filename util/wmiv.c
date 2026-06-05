@@ -2191,9 +2191,7 @@ int main(int argc, char **argv)
 	max_width = DisplayWidth(dpy, screen_num);
 	max_height = DisplayHeight(dpy, screen_num);
 
-	attr.flags = RC_RenderMode | RC_ColorsPerChannel;
-	attr.render_mode = RDitheredRendering;
-	attr.colors_per_channel = 4;
+	attr.flags = 0;
 	ctx = RCreateContext(dpy, screen_num, &attr);
 
 	if (argc < 2) {

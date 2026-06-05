@@ -3,6 +3,23 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Indexed-colour displays are no longer supported
+-----------------------------------------------
+
+The wraster library now requires a TrueColor visual and fails
+RCreateContext() with the new RERR_BADVISUALCLASS code on PseudoColor,
+StaticColor, GrayScale or StaticGray screens. The PseudoColor colour
+cube allocator, the X standard-colormap lookup and the Floyd-Steinberg
+dithering paths have been removed, libwraster no longer links libXmu,
+and its soname moves from 6 to 9. The ColormapSize and DisableDithering
+defaults keys, the corresponding "Dithering colormap for 8bpp" panel in
+WPrefs, and the WRASTER_COLOR_RESOLUTION environment variable are gone.
+wmsetbg still accepts -c, -d and -m for backward compatibility with old
+scripts and themes but they have no effect and are no longer documented.
+15 and 16-bit TrueColor visuals continue to work via the masked
+best-match path, without error diffusion.
+
+
 _NET_WM_PING and a "Not Responding" prompt
 ------------------------------------------
 

@@ -1165,8 +1165,6 @@ static void print_help(void)
 	puts("optionally update Window Maker configuration");
 	puts("");
 	puts(" -display <display>            display to use");
-	puts(" -d, --dither                  dither image");
-	puts(" -m, --match                   match  colors");
 	puts(" -S, --smooth                  smooth scaled image");
 #ifdef USE_XINERAMA
 	puts(" -X, --xinerama                stretch image across Xinerama heads");
@@ -1179,7 +1177,6 @@ static void print_help(void)
 	puts(" -f, --fillscale               scale  image to fill screen and keep aspect ratio");
 	puts(" -u, --update-wmaker           update WindowMaker domain database");
 	puts(" -D, --update-domain <domain>  update <domain> database");
-	puts(" -c, --colors <cpc>            colors per channel to use");
 	puts(" -p, --parse <texture>         proplist style texture specification");
 	puts(" -w, --workspace <workspace>   update background for the specified workspace");
 	puts(" -v, --version                 show version of wmsetbg and exit");
@@ -1240,8 +1237,7 @@ int main(int argc, char **argv)
 	char *back_color = "gray20";
 	char *image_name = NULL;
 	char *domain = "WindowMaker";
-	int update = 0, cpc = 4, obey_user = 0;
-	RRenderingMode render_mode = RDitheredRendering;
+	int update = 0;
 	char *texture = NULL;
 	int workspace = -1;
 
@@ -1279,12 +1275,17 @@ int main(int argc, char **argv)
 			style = "mpixmap";
 		} else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--fillscale") == 0) {
 			style = "fpixmap";
-		} else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--dither") == 0) {
-			render_mode = RDitheredRendering;
-			obey_user++;
-		} else if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--match") == 0) {
-			render_mode = RBestMatchRendering;
-			obey_user++;
+		} else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--dither") == 0 ||
+			   strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--match") == 0) {
+			/* indexed-colour rendering is gone, accept and ignore for
+			 * compatibility with old scripts */
+		} else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--colors") == 0) {
+			/* same, but consume the argument */
+			i++;
+			if (i >= argc) {
+				wfatal("too few arguments for %s", argv[i - 1]);
+				quit(1);
+			}
 		} else if (strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "--smooth") == 0) {
 			smooth = True;
 #ifdef USE_XINERAMA
@@ -1301,16 +1302,6 @@ int main(int argc, char **argv)
 				quit(1);
 			}
 			domain = wstrdup(argv[i]);
-		} else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--colors") == 0) {
-			i++;
-			if (i >= argc) {
-				wfatal("too few arguments for %s", argv[i - 1]);
-				quit(1);
-			}
-			if (sscanf(argv[i], "%i", &cpc) != 1) {
-				wfatal("bad value for colors per channel: \"%s\"", argv[i]);
-				quit(1);
-			}
 		} else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--back-color") == 0) {
 			i++;
 			if (i >= argc) {
@@ -1390,21 +1381,8 @@ int main(int argc, char **argv)
 
 	initXinerama();
 
-	if (!obey_user && DefaultDepth(dpy, scr) <= 8)
-		render_mode = RDitheredRendering;
-
-	rattr.flags = RC_RenderMode | RC_ColorsPerChannel | RC_StandardColormap | RC_DefaultVisual;
-	rattr.render_mode = render_mode;
-	rattr.colors_per_channel = cpc;
-	rattr.standard_colormap_mode = RCreateStdColormap;
-
+	rattr.flags = RC_DefaultVisual;
 	rc = RCreateContext(dpy, scr, &rattr);
-
-	if (!rc) {
-		rattr.standard_colormap_mode = RIgnoreStdColormap;
-		rc = RCreateContext(dpy, scr, &rattr);
-	}
-
 	if (!rc) {
 		wfatal("could not initialize wrlib: %s", RMessageForError(RErrorCode));
 		quit(1);

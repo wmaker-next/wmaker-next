@@ -216,9 +216,6 @@ const char *RMessageForError(int errorCode)
 	case RERR_NOMEMORY:
 		return _("out of memory");
 
-	case RERR_NOCOLOR:
-		return _("out of color cells");
-
 	case RERR_BADIMAGEFILE:
 		return _("invalid or corrupted image file");
 
@@ -231,8 +228,8 @@ const char *RMessageForError(int errorCode)
 	case RERR_BADVISUALID:
 		return _("request for an invalid Visual ID");
 
-	case RERR_STDCMAPFAIL:
-		return _("failed to create X standard colormap");
+	case RERR_BADVISUALCLASS:
+		return _("a TrueColor visual is required");
 
 	case RERR_XERROR:
 		return _("internal X error");

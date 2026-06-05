@@ -7,8 +7,8 @@ wmsetbg \- устанавливает фон дисплея X11.
 [\-display] [\-\-version] [\-\-help] [{\-b|\-\-back\-color} \fIцвет\fP]
 [{\-t|\-\-tile}|{\-e|\-\-center}|{\-s|\-\-scale}|{\-a|\-\-maxscale}
 .
-\fIизображение\fP] [{\-d|\-\-dither}|{\-m|\-\-match}] [\-u|\-\-update\-wmaker]
-[{\-D|\-\-update\-domain} \fIдомен\fP] [{\-c|\-\-colors} \fIцвета\fP]
+\fIизображение\fP] [\-u|\-\-update\-wmaker]
+[{\-D|\-\-update\-domain} \fIдомен\fP]
 [{\-p|\-\-parse} \fIтекстура\fP] [{\-w|\-\-workspace} \fIрабочий стол\fP]
 .SH "ОПИСАНИЕ"
 .B wmsetbg
@@ -41,20 +41,11 @@ Window Maker временно устанавливает фон указанно
 .B \-s|\-\-scale
 Растягивает указанное \fIизображение\fP (по умолчанию).
 .TP
-.B \-d|\-\-dither
-Размывать цвета.
-.TP
-.B \-m|\-\-match
-Соответствовать цветам.
-.TP
 .B \-u|\-\-update\-wmaker
 Обновить базу умолчальных настроек Window Maker.
 .TP
 .B \-D|\-\-update\-domain
 Обновить указанную \fIдоменную\fP базу.
-.TP
-.B \-c|\-\-colors
-Сколько цветов на канал использовать.
 .TP
 .B \-p|\-\-parse
 Обрабатывает указанную \fIтекстуру\fP как \fIтекстуру формата proplist\fP.

@@ -16,9 +16,6 @@ void print_help()
 {
 	printf("usage: %s [-options] color1 [color2 ...]\n", ProgName);
 	puts("options:");
-	puts(" -m 		match  colors");
-	puts(" -d		dither colors (default)");
-	puts(" -c <cpc>	colors per channel to use");
 	puts(" -v <vis-id>	visual id to use");
 }
 
@@ -26,7 +23,7 @@ int main(int argc, char **argv)
 {
 	RContextAttributes attr;
 	RColor **colors = NULL;
-	int i, rmode = RDitheredRendering, ncolors = 0, cpc = 4;
+	int i, ncolors = 0;
 	char **color_name;
 	XColor color;
 	XSetWindowAttributes val;
@@ -46,21 +43,7 @@ int main(int argc, char **argv)
 
 	if (argc > 1) {
 		for (i = 1; i < argc; i++) {
-			if (strcmp(argv[i], "-m") == 0) {
-				rmode = RBestMatchRendering;
-			} else if (strcmp(argv[i], "-d") == 0) {
-				rmode = RDitheredRendering;
-			} else if (strcmp(argv[i], "-c") == 0) {
-				i++;
-				if (i >= argc) {
-					fprintf(stderr, "too few arguments for %s\n", argv[i - 1]);
-					exit(0);
-				}
-				if (sscanf(argv[i], "%i", &cpc) != 1) {
-					fprintf(stderr, "bad value for colors per channel: \"%s\"\n", argv[i]);
-					exit(0);
-				}
-			} else if (strcmp(argv[i], "-v") == 0) {
+			if (strcmp(argv[i], "-v") == 0) {
 				i++;
 				if (i >= argc) {
 					fprintf(stderr, "too few arguments for %s\n", argv[i - 1]);
@@ -89,10 +72,7 @@ int main(int argc, char **argv)
 		puts("can't open display");
 		exit(1);
 	}
-	attr.flags = RC_RenderMode | RC_ColorsPerChannel;
-
-	attr.render_mode = rmode;
-	attr.colors_per_channel = cpc;
+	attr.flags = 0;
 
 	if (visualID >= 0) {
 		attr.flags |= RC_VisualID;

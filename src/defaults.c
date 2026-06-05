@@ -2119,19 +2119,17 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 		}
 	} else if (WMGetPropListItemCount(value) > 0) {
 		char *text;
-		char *dither;
 		int len;
 
 		text = WMGetPropListDescription(value, False);
 		len = strlen(text) + 40;
-		dither = w_global.config->disable_dithering ? "-m" : "-d";
 		if (!strchr(text, '\'') && !strchr(text, '\\')) {
 			char command[len];
 
 			if (w_global.config->smooth_workspace_back)
-				snprintf(command, len, "wmsetbg %s -S -p '%s' &", dither, text);
+				snprintf(command, len, "wmsetbg -S -p '%s' &", text);
 			else
-				snprintf(command, len, "wmsetbg %s -p '%s' &", dither, text);
+				snprintf(command, len, "wmsetbg -p '%s' &", text);
 			ExecuteShellCommand(scr, command);
 		} else
 			wwarning(_("Invalid arguments for background \"%s\""), text);

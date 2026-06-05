@@ -21,8 +21,8 @@
  * Environment variables:
  *
  * WRASTER_GAMMA <rgamma>/<ggamma>/<bgamma>
- * gamma correction value. Must be  greater than 0
- * Only for PseudoColor visuals.
+ * gamma correction value used by loaders that support file gamma metadata.
+ * Must be greater than 0.
  *
  * Default:
  * WRASTER_GAMMA 1/1/1
@@ -93,12 +93,6 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/* RBestMatchRendering or RDitheredRendering */
-#define RC_RenderMode 		(1<<0)
-
-/* number of colors per channel for colormap in PseudoColor mode */
-#define RC_ColorsPerChannel	(1<<1)
-
 /* do gamma correction */
 #define RC_GammaCorrection	(1<<2)
 
@@ -113,25 +107,6 @@ extern "C" {
 
 /* filter type for smoothed scaling */
 #define RC_ScalingFilter	(1<<6)
-
-/* standard colormap usage */
-#define RC_StandardColormap	(1<<7)
-
-
-
-/* image display modes */
-typedef enum {
-	RDitheredRendering = 0,
-	RBestMatchRendering = 1
-} RRenderingMode;
-
-
-/* std colormap usage/creation modes */
-typedef enum {
-	RUseStdColormap,	/* default: fallbacks to RIgnore if there is none defined */
-	RCreateStdColormap,
-	RIgnoreStdColormap
-} RStdColormapMode;
 
 
 /* smoothed scaling filter types */
@@ -148,22 +123,18 @@ typedef enum {
 
 typedef struct RContextAttributes {
     int flags;
-    RRenderingMode render_mode;
-    int colors_per_channel;	       /* for PseudoColor */
     float rgamma;		       /* gamma correction for red, */
     float ggamma;		       /* green, */
     float bgamma;		       /* and blue */
     VisualID visualid;	       /* visual ID to use */
     int use_shared_memory;	       /* True of False */
     RScalingFilter scaling_filter;
-    RStdColormapMode standard_colormap_mode;    /* what to do with std cma */
 } RContextAttributes;
 
 
 /*
- * describes a screen in terms of depth, visual, number of colors
- * we can use, if we should do dithering, and what colors to use for
- * dithering.
+ * describes a screen in terms of depth and visual. Only TrueColor visuals
+ * are supported, indexed-colour displays are no longer handled.
  */
 typedef struct RContext {
     Display *dpy;
@@ -183,18 +154,9 @@ typedef struct RContext {
     unsigned long black;
     unsigned long white;
 
-    int red_offset;		       /* only used in 24bpp */
+    int red_offset;
     int green_offset;
     int blue_offset;
-
-    /* only used for pseudocolor and grayscale */
-
-    XStandardColormap *std_rgb_map;    /* standard RGB colormap */
-    XStandardColormap *std_gray_map;   /* standard grayscale colormap */
-
-    int ncolors;		       /* total number of colors we can use */
-    XColor *colors;		       /* internal colormap */
-    unsigned long *pixels;	       /* RContext->colors[].pixel */
 
     struct {
         unsigned int use_shared_pixmap:1;
@@ -319,13 +281,12 @@ typedef enum {
 #define RERR_READ		2      /* error reading from file */
 #define RERR_WRITE		3      /* error writing to file */
 #define RERR_NOMEMORY		4      /* out of memory */
-#define RERR_NOCOLOR		5      /* out of color cells */
 #define RERR_BADIMAGEFILE	6      /* image file is corrupted or invalid */
 #define RERR_BADFORMAT		7      /* image file format is unknown */
 #define RERR_BADINDEX		8      /* no such image index in file */
 
 #define RERR_BADVISUALID	16     /* invalid visual ID requested for context */
-#define RERR_STDCMAPFAIL	17     /* failed to created std colormap */
+#define RERR_BADVISUALCLASS	17     /* visual is not TrueColor */
 
 #define RERR_XERROR		127    /* internal X error */
 #define RERR_INTERNAL		128    /* should not happen */

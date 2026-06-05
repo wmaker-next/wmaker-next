@@ -1044,8 +1044,7 @@ Bool start_bg_helper(WScreen *scr)
 {
 	pid_t pid;
 	int filedes[2];
-	const char *dither;
-	char *helper_argv[5];
+	char *helper_argv[4];
 	BgHelperSetup setup;
 
 	if (pipe(filedes) < 0) {
@@ -1054,16 +1053,13 @@ Bool start_bg_helper(WScreen *scr)
 		return False;
 	}
 
-	dither = w_global.config->disable_dithering ? "-m" : "-d";
 	helper_argv[0] = "wmsetbg";
 	helper_argv[1] = "-helper";
 	if (w_global.config->smooth_workspace_back) {
 		helper_argv[2] = "-S";
-		helper_argv[3] = (char *)dither;
-		helper_argv[4] = NULL;
-	} else {
-		helper_argv[2] = (char *)dither;
 		helper_argv[3] = NULL;
+	} else {
+		helper_argv[2] = NULL;
 	}
 	setup.scr = scr;
 	setup.read_fd = filedes[0];

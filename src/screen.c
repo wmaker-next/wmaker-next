@@ -422,13 +422,7 @@ static void allocGCs(WScreen * scr)
 	/* frame GC */
 	wGetColor(scr, DEF_FRAME_COLOR, &color);
 	gcv.function = GXxor;
-	/* this will raise the probability of the XORed color being different
-	 * of the original color in PseudoColor when not all color cells are
-	 * initialized */
-	if (DefaultVisual(dpy, scr->screen)->class == PseudoColor)
-		gcv.plane_mask = (1 << (scr->depth - 1)) | 1;
-	else
-		gcv.plane_mask = AllPlanes;
+	gcv.plane_mask = AllPlanes;
 	gcv.foreground = color.pixel;
 	if (gcv.foreground == 0)
 		gcv.foreground = 1;
@@ -689,32 +683,13 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	XDefineCursor(dpy, scr->root_win, wPreferences.cursor[WCUR_ROOT]);
 
 	/* screen descriptor for raster graphic library */
-	rattr.flags = RC_RenderMode | RC_ColorsPerChannel | RC_StandardColormap;
-	rattr.render_mode = w_global.config->disable_dithering ? RBestMatchRendering : RDitheredRendering;
-
-	/* if the std colormap stuff works ok, this will be ignored */
-	rattr.colors_per_channel = w_global.config->colormap_size;
-	if (rattr.colors_per_channel < 2)
-		rattr.colors_per_channel = 2;
-
-	/* Use standard colormap */
-	rattr.standard_colormap_mode = RUseStdColormap;
-
+	rattr.flags = 0;
 	if (getWVisualID(screen_number) >= 0) {
 		rattr.flags |= RC_VisualID;
 		rattr.visualid = getWVisualID(screen_number);
 	}
 
 	scr->rcontext = RCreateContext(dpy, screen_number, &rattr);
-
-	if (!scr->rcontext && RErrorCode == RERR_STDCMAPFAIL) {
-		wwarning("%s", RMessageForError(RErrorCode));
-
-		rattr.flags &= ~RC_StandardColormap;
-		rattr.standard_colormap_mode = RUseStdColormap;
-
-		scr->rcontext = RCreateContext(dpy, screen_number, &rattr);
-	}
 	if (scr->rcontext == NULL) {
 		wfatal(_("can't create Context on screen %d, %s"),
 		       screen_number, RMessageForError(RErrorCode));

@@ -642,8 +642,6 @@ static void test_defaults(void)
 
 	config = wConfigReadWindowMaker(NULL);
 	CHECK(config != NULL);
-	CHECK(config->colormap_size == 4);
-	CHECK(config->disable_dithering == 0);
 	CHECK(config->icon_size == 64);
 	CHECK(strcmp(config->modifier_key, "Mod1") == 0);
 	CHECK(config->focus_mode == WKF_CLICK);
@@ -884,7 +882,7 @@ static void test_valid_parse(void)
 	WMPropList *dict;
 	WConfig *config;
 
-	dict = dict_from_desc("{ IconSize = 48; DisableDithering = YES; "
+	dict = dict_from_desc("{ IconSize = 48; "
 			      "ModifierKey = Mod4; "
 			      "FocusMode = Sloppy; NewStyle = next; "
 			      "DisableDock = YES; DisableClip = YES; "
@@ -985,7 +983,6 @@ static void test_valid_parse(void)
 
 	config = wConfigReadWindowMaker(dict);
 	CHECK(config->icon_size == 48);
-	CHECK(config->disable_dithering == 1);
 	CHECK(strcmp(config->modifier_key, "Mod4") == 0);
 	CHECK(config->focus_mode == WKF_SLOPPY);
 	CHECK(config->new_style == TS_NEXT);

@@ -288,10 +288,6 @@ void SetupEnvironment(WScreen * scr)
 		strcat(tmp, buf);
 		putenv(tmp);
 	}
-	tmp = wmalloc(60);
-	snprintf(tmp, 60, "WRASTER_COLOR_RESOLUTION%i=%i", scr->screen,
-		 scr->rcontext->attribs->colors_per_channel);
-	putenv(tmp);
 }
 
 typedef struct {

@@ -24,413 +24,26 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 
-#ifdef HAVE_LIBXMU
-#include <X11/Xmu/StdCmap.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-
-#include <math.h>
 
 #include "wraster.h"
 #include "scale.h"
 #include "wr_i18n.h"
 
 
-#ifndef HAVE_FLOAT_MATHFUNC
-#define powf(x, y) ((float) pow((double)(x), (double)(y)))
-#endif
-
 static Bool bestContext(Display * dpy, int screen_number, RContext * context);
 
 static const RContextAttributes DEFAULT_CONTEXT_ATTRIBS = {
-	RC_UseSharedMemory | RC_RenderMode | RC_ColorsPerChannel,	/* flags */
-	RDitheredRendering,	/* render_mode */
-	4,			/* colors_per_channel */
+	RC_UseSharedMemory,	/* flags */
 	0,
 	0,
 	0,
 	0,
 	True,			/* use_shared_memory */
-	RMitchellFilter,
-	RUseStdColormap
+	RMitchellFilter
 };
-
-/*
- *
- * Colormap allocation for PseudoColor visuals:
- *
- *
- * switch standardColormap:
- * 	none:
- * 		allocate colors according to colors_per_channel
- *
- * 	best/default:
- * 		if there's a std colormap defined then use it
- *
- * 		else
- * 			create a std colormap and set it
- */
-
-/*
- *----------------------------------------------------------------------
- * allocateStandardPseudoColor
- * 	Creates the internal colormap for PseudoColor, setting the
- * color values according to the supplied standard colormap.
- *
- * Returns: -
- *
- * Side effects: -
- *
- * Notes: -
- *----------------------------------------------------------------------
- */
-static Bool allocateStandardPseudoColor(RContext * ctx, XStandardColormap * stdcmap)
-{
-	int i;
-
-	ctx->ncolors = stdcmap->red_max * stdcmap->red_mult
-	    + stdcmap->green_max * stdcmap->green_mult + stdcmap->blue_max * stdcmap->blue_mult + 1;
-
-	if (ctx->ncolors <= 1) {
-		RErrorCode = RERR_INTERNAL;
-		puts("wraster: bad standard colormap");
-
-		return False;
-	}
-
-	ctx->colors = malloc(sizeof(XColor) * ctx->ncolors);
-	if (!ctx->colors) {
-		RErrorCode = RERR_NOMEMORY;
-
-		return False;
-	}
-
-	ctx->pixels = malloc(sizeof(unsigned long) * ctx->ncolors);
-	if (!ctx->pixels) {
-
-		free(ctx->colors);
-		ctx->colors = NULL;
-
-		RErrorCode = RERR_NOMEMORY;
-
-		return False;
-	}
-
-#define calc(max,mult) (((i / stdcmap->mult) % \
-    (stdcmap->max + 1)) * 65535) / stdcmap->max
-
-	for (i = 0; i < ctx->ncolors; i++) {
-		ctx->colors[i].pixel = i + stdcmap->base_pixel;
-		ctx->colors[i].red = calc(red_max, red_mult);
-		ctx->colors[i].green = calc(green_max, green_mult);
-		ctx->colors[i].blue = calc(blue_max, blue_mult);
-
-		ctx->pixels[i] = ctx->colors[i].pixel;
-	}
-
-#undef calc
-
-	return True;
-}
-
-static Bool setupStandardColormap(RContext * ctx, Atom property)
-{
-#ifdef HAVE_LIBXMU
-	if (!XmuLookupStandardColormap(ctx->dpy, ctx->screen_number,
-				       ctx->visual->visualid, ctx->depth, property, True, True)) {
-		RErrorCode = RERR_STDCMAPFAIL;
-
-		return False;
-	}
-	return True;
-#else
-	(void) ctx;
-	(void) property;
-	RErrorCode = RERR_STDCMAPFAIL;
-	return False;
-#endif
-}
-
-static XColor *allocateColor(RContext *ctx, XColor *colors, int ncolors)
-{
-	XColor avcolors[256];
-	int avncolors;
-	int i, r, g, b;
-	int retries;
-
-	for (i = 0; i < ncolors; i++) {
-#ifdef WRLIB_DEBUG
-		fprintf(stderr, "trying:%x,%x,%x\n", colors[i].red, colors[i].green, colors[i].blue);
-#endif
-		if (!XAllocColor(ctx->dpy, ctx->cmap, &(colors[i]))) {
-			colors[i].flags = 0;	/* failed */
-#ifdef WRLIB_DEBUG
-			fprintf(stderr, "failed:%x,%x,%x\n", colors[i].red, colors[i].green, colors[i].blue);
-#endif
-		} else {
-			colors[i].flags = DoRed | DoGreen | DoBlue;
-#ifdef WRLIB_DEBUG
-			fprintf(stderr, "success:%x,%x,%x\n", colors[i].red, colors[i].green, colors[i].blue);
-#endif
-		}
-	}
-	/* try to allocate close values for the colors that couldn't
-	 * be allocated before */
-	avncolors = (1 << ctx->depth > 256 ? 256 : 1 << ctx->depth);
-	for (i = 0; i < avncolors; i++)
-		avcolors[i].pixel = i;
-
-	XQueryColors(ctx->dpy, ctx->cmap, avcolors, avncolors);
-
-	for (i = 0; i < ncolors; i++) {
-		if (colors[i].flags == 0) {
-			int j;
-			unsigned long cdiff = 0xffffffff, diff;
-			unsigned long closest = 0;
-
-			retries = 2;
-
-			while (retries--) {
-				/* find closest color */
-				for (j = 0; j < avncolors; j++) {
-					r = (colors[i].red - avcolors[i].red) >> 8;
-					g = (colors[i].green - avcolors[i].green) >> 8;
-					b = (colors[i].blue - avcolors[i].blue) >> 8;
-					diff = r * r + g * g + b * b;
-					if (diff < cdiff) {
-						cdiff = diff;
-						closest = j;
-					}
-				}
-				/* allocate closest color found */
-#ifdef WRLIB_DEBUG
-				fprintf(stderr, "best match:%x,%x,%x => %x,%x,%x\n",
-					colors[i].red, colors[i].green, colors[i].blue,
-					avcolors[closest].red, avcolors[closest].green, avcolors[closest].blue);
-#endif
-				colors[i].red = avcolors[closest].red;
-				colors[i].green = avcolors[closest].green;
-				colors[i].blue = avcolors[closest].blue;
-				if (XAllocColor(ctx->dpy, ctx->cmap, &colors[i])) {
-					colors[i].flags = DoRed | DoGreen | DoBlue;
-					break;	/* succeeded, don't need to retry */
-				}
-#ifdef WRLIB_DEBUG
-				fputs("close color allocation failed. Retrying...\n", stderr);
-#endif
-			}
-		}
-	}
-	return colors;
-}
-
-static Bool allocatePseudoColor(RContext *ctx)
-{
-	XColor *colors;
-	int i, ncolors, r, g, b;
-	int cpc = ctx->attribs->colors_per_channel;
-
-	ncolors = cpc * cpc * cpc;
-
-	if (ncolors > (1 << ctx->depth)) {
-		/* reduce colormap size */
-		cpc = ctx->attribs->colors_per_channel = 1 << ((int)ctx->depth / 3);
-		ncolors = cpc * cpc * cpc;
-	}
-
-	assert(cpc >= 2 && ncolors <= (1 << ctx->depth));
-
-	colors = malloc(sizeof(XColor) * ncolors);
-	if (!colors) {
-		RErrorCode = RERR_NOMEMORY;
-		return False;
-	}
-
-	ctx->pixels = malloc(sizeof(unsigned long) * ncolors);
-	if (!ctx->pixels) {
-		free(colors);
-		RErrorCode = RERR_NOMEMORY;
-		return False;
-	}
-
-	i = 0;
-
-	if ((ctx->attribs->flags & RC_GammaCorrection) && ctx->attribs->rgamma > 0
-	    && ctx->attribs->ggamma > 0 && ctx->attribs->bgamma > 0) {
-		float rg, gg, bg;
-		float tmp;
-
-		/* do gamma correction */
-		rg = 1.0F / ctx->attribs->rgamma;
-		gg = 1.0F / ctx->attribs->ggamma;
-		bg = 1.0F / ctx->attribs->bgamma;
-		for (r = 0; r < cpc; r++) {
-			for (g = 0; g < cpc; g++) {
-				for (b = 0; b < cpc; b++) {
-					colors[i].red = (r * 0xffff) / (cpc - 1);
-					colors[i].green = (g * 0xffff) / (cpc - 1);
-					colors[i].blue = (b * 0xffff) / (cpc - 1);
-					colors[i].flags = DoRed | DoGreen | DoBlue;
-
-					tmp = (float) colors[i].red / 65536.0F;
-					colors[i].red = (unsigned short)(65536.0F * powf(tmp, rg));
-
-					tmp = (float) colors[i].green / 65536.0F;
-					colors[i].green = (unsigned short)(65536.0F * powf(tmp, gg));
-
-					tmp = (float) colors[i].blue / 65536.0F;
-					colors[i].blue = (unsigned short)(65536.0F * powf(tmp, bg));
-
-					i++;
-				}
-			}
-		}
-
-	} else {
-		for (r = 0; r < cpc; r++) {
-			for (g = 0; g < cpc; g++) {
-				for (b = 0; b < cpc; b++) {
-					colors[i].red = (r * 0xffff) / (cpc - 1);
-					colors[i].green = (g * 0xffff) / (cpc - 1);
-					colors[i].blue = (b * 0xffff) / (cpc - 1);
-					colors[i].flags = DoRed | DoGreen | DoBlue;
-					i++;
-				}
-			}
-		}
-	}
-	/* try to allocate the colors */
-	ctx->colors = allocateColor(ctx, colors, ncolors);
-	ctx->ncolors = ncolors;
-
-	/* fill the pixels shortcut array */
-	for (i = 0; i < ncolors; i++) {
-		ctx->pixels[i] = ctx->colors[i].pixel;
-	}
-
-	return True;
-}
-
-static XColor *allocateGrayScale(RContext * ctx)
-{
-	XColor *colors;
-	int i, ncolors;
-	int cpc = ctx->attribs->colors_per_channel;
-
-	ncolors = cpc * cpc * cpc;
-
-	if (ctx->vclass == StaticGray) {
-		/* we might as well use all grays */
-		ncolors = 1 << ctx->depth;
-	} else {
-		if (ncolors > (1 << ctx->depth)) {
-			/* reduce colormap size */
-			cpc = ctx->attribs->colors_per_channel = 1 << ((int)ctx->depth / 3);
-			ncolors = cpc * cpc * cpc;
-		}
-
-		assert(cpc >= 2 && ncolors <= (1 << ctx->depth));
-	}
-
-	if (ncolors >= 256 && ctx->vclass == StaticGray) {
-		/* don't need dithering for 256 levels of gray in StaticGray visual */
-		ctx->attribs->render_mode = RBestMatchRendering;
-	}
-
-	colors = malloc(sizeof(XColor) * ncolors);
-	if (!colors) {
-		RErrorCode = RERR_NOMEMORY;
-		return False;
-	}
-	for (i = 0; i < ncolors; i++) {
-		colors[i].red = (i * 0xffff) / (ncolors - 1);
-		colors[i].green = (i * 0xffff) / (ncolors - 1);
-		colors[i].blue = (i * 0xffff) / (ncolors - 1);
-		colors[i].flags = DoRed | DoGreen | DoBlue;
-	}
-
-	/* try to allocate the colors */
-	return allocateColor(ctx, colors, ncolors);
-}
-
-static Bool setupPseudoColorColormap(RContext * context)
-{
-	Atom property = 0;
-
-	if (context->attribs->standard_colormap_mode == RCreateStdColormap) {
-		property = XInternAtom(context->dpy, "RGB_DEFAULT_MAP", False);
-
-		if (!setupStandardColormap(context, property)) {
-			return False;
-		}
-	}
-
-	if (context->attribs->standard_colormap_mode != RIgnoreStdColormap) {
-		XStandardColormap *maps;
-		int count, i;
-
-		if (!property) {
-			property = XInternAtom(context->dpy, "RGB_BEST_MAP", False);
-			if (!XGetRGBColormaps(context->dpy,
-					      DefaultRootWindow(context->dpy), &maps, &count, property)) {
-				maps = NULL;
-			}
-
-			if (!maps) {
-				property = XInternAtom(context->dpy, "RGB_DEFAULT_MAP", False);
-				if (!XGetRGBColormaps(context->dpy,
-						      DefaultRootWindow(context->dpy), &maps, &count, property)) {
-					maps = NULL;
-				}
-			}
-		} else {
-			if (!XGetRGBColormaps(context->dpy,
-					      DefaultRootWindow(context->dpy), &maps, &count, property)) {
-				maps = NULL;
-			}
-		}
-
-		if (maps) {
-			int theMap = -1;
-
-			for (i = 0; i < count; i++) {
-				if (maps[i].visualid == context->visual->visualid) {
-					theMap = i;
-					break;
-				}
-			}
-
-			if (theMap < 0) {
-				fprintf(stderr, _("wrlib: no standard colormap found for visual 0x%lX\n"),
-				        context->visual->visualid);
-			}
-
-			if (theMap >= 0 && allocateStandardPseudoColor(context, &maps[theMap])) {
-
-				context->std_rgb_map = XAllocStandardColormap();
-
-				*context->std_rgb_map = maps[theMap];
-
-				context->cmap = context->std_rgb_map->colormap;
-
-				XFree(maps);
-
-				return True;
-			}
-
-			XFree(maps);
-		}
-	}
-
-	context->attribs->standard_colormap_mode = RIgnoreStdColormap;
-
-	/* RIgnoreStdColormap and fallback */
-	return allocatePseudoColor(context);
-}
 
 static char *mygetenv(const char *var, int scr)
 {
@@ -459,16 +72,6 @@ static void gatherconfig(RContext * context, int screen_n)
 			context->attribs->rgamma = g1;
 			context->attribs->ggamma = g2;
 			context->attribs->bgamma = g3;
-		}
-	}
-	ptr = mygetenv("WRASTER_COLOR_RESOLUTION", screen_n);
-	if (ptr) {
-		int i;
-		if (sscanf(ptr, "%d", &i) != 1 || i < 2 || i > 6) {
-			fprintf(stderr, _("wrlib: invalid value \"%s\" for %s\n"), ptr, "WRASTER_COLOR_RESOLUTION");
-		} else {
-			context->attribs->flags |= RC_ColorsPerChannel;
-			context->attribs->colors_per_channel = i;
 		}
 	}
 }
@@ -546,10 +149,6 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 	else
 		*context->attribs = *attribs;
 
-	if (!(context->attribs->flags & RC_StandardColormap)) {
-		context->attribs->standard_colormap_mode = RUseStdColormap;
-	}
-
 	if (!(context->attribs->flags & RC_ScalingFilter)) {
 		context->attribs->flags |= RC_ScalingFilter;
 		context->attribs->scaling_filter = RCatmullRomFilter;
@@ -607,30 +206,24 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 		}
 	}
 
+	if (context->vclass != TrueColor) {
+		fprintf(stderr,
+			_("wrlib: visual 0x%lX is not TrueColor, indexed-colour visuals are no longer supported\n"),
+			context->visual->visualid);
+		RErrorCode = RERR_BADVISUALCLASS;
+		free(context->attribs);
+		free(context);
+		return NULL;
+	}
+
 	gcv.function = GXcopy;
 	gcv.graphics_exposures = False;
 	context->copy_gc = XCreateGC(dpy, context->drawable, GCFunction | GCGraphicsExposures, &gcv);
 
-	if (context->vclass == PseudoColor || context->vclass == StaticColor) {
-		if (!setupPseudoColorColormap(context)) {
-			free(context);
-			return NULL;
-		}
-	} else if (context->vclass == GrayScale || context->vclass == StaticGray) {
-		context->colors = allocateGrayScale(context);
-		if (!context->colors) {
-			free(context);
-			return NULL;
-		}
-	} else if (context->vclass == TrueColor) {
-		/* calc offsets to create a TrueColor pixel */
-		context->red_offset = count_offset(context->visual->red_mask);
-		context->green_offset = count_offset(context->visual->green_mask);
-		context->blue_offset = count_offset(context->visual->blue_mask);
-		/* disable dithering on 24 bits visuals */
-		if (context->depth >= 24)
-			context->attribs->render_mode = RBestMatchRendering;
-	}
+	/* calc offsets to create a TrueColor pixel */
+	context->red_offset = count_offset(context->visual->red_mask);
+	context->green_offset = count_offset(context->visual->green_mask);
+	context->blue_offset = count_offset(context->visual->blue_mask);
 
 	/* check avaiability of MIT-SHM */
 #ifdef USE_XSHM

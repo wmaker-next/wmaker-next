@@ -62,10 +62,6 @@
 	 WCFG_REFRESH_MENU_TITLE_FONT | WCFG_REFRESH_MENU_FONT)
 
 #define WCFG_SCHEMA(_) \
-	_(COLORMAP_SIZE, "ColormapSize", INT, colormap_size, "4", \
-	  NULL, 0, INT_MAX, WCFG_STARTUP_ONLY, 0) \
-	_(DISABLE_DITHERING, "DisableDithering", BOOL, disable_dithering, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(ICON_SIZE, "IconSize", INT, icon_size, "64", \
 	  NULL, 1, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(MODIFIER_KEY, "ModifierKey", STRING, modifier_key, "Mod1", \

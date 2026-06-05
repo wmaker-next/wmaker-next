@@ -7,5 +7,5 @@ Name: wrlib
 Description: Image manipulation and conversion library
 Version: @VERSION@
 Libs: @lib_search_path@ -lwraster
-Libs.private: @GFXLIBS@ @MAGICKLIBS@ @XLIBS@ @LIBXMU@ -lm
+Libs.private: @GFXLIBS@ @MAGICKLIBS@ @XLIBS@ -lm
 Cflags: @inc_search_path@

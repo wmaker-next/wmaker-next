@@ -1,7 +1,5 @@
 Open items
 ==========
-- drop the PseudoColor colors_per_channel/ColorsPerChannel plumbing from
-  src/screen.c and wrlib/context.c, modern displays are TrueColor 24/32
 - WPrefs menu editor: add a way to revert to / load the shipped default
   root menu
 

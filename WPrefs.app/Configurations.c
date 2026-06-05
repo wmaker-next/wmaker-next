@@ -48,15 +48,6 @@ typedef struct _Panel {
 
 	WMFrame *smoF;
 	WMButton *smoB;
-
-	WMFrame *dithF;
-	WMButton *dithB;
-	WMSlider *dithS;
-	WMLabel *dithL;
-	WMLabel *dith1L;
-	WMLabel *dith2L;
-
-	int cmapSize;
 } _Panel;
 
 #define ICON_FILE	"configs"
@@ -69,8 +60,6 @@ typedef struct _Panel {
 #define SPEED_IMAGE 	"speed%i"
 #define SPEED_IMAGE_S 	"speed%is"
 #define ARQUIVO_XIS	"xis"
-
-static void updateLabel(WMWidget *self, void *data);
 
 static void showData(_Panel *panel)
 {
@@ -91,23 +80,6 @@ static void showData(_Panel *panel)
 	WMSetButtonSelected(panel->animB, !GetBoolForKey("DisableAnimations"));
 	WMSetButtonSelected(panel->supB, GetBoolForKey("Superfluous"));
 	WMSetButtonSelected(panel->smoB, GetBoolForKey("SmoothWorkspaceBack"));
-	WMSetButtonSelected(panel->dithB, GetBoolForKey("DisableDithering"));
-	WMSetSliderValue(panel->dithS, GetIntegerForKey("ColormapSize"));
-	updateLabel(panel->dithS, panel);
-}
-
-static void updateLabel(WMWidget *self, void *data)
-{
-	WMSlider *sPtr = (WMSlider *) self;
-	_Panel *panel = (_Panel *) data;
-	char buffer[64];
-	float fl;
-
-	fl = WMGetSliderValue(sPtr);
-	panel->cmapSize = (int)fl;
-
-	sprintf(buffer, "%i", panel->cmapSize * panel->cmapSize * panel->cmapSize);
-	WMSetLabelText(panel->dithL, buffer);
 }
 
 static void createPanel(Panel *p)
@@ -338,53 +310,6 @@ static void createPanel(Panel *p)
 
 	WMMapSubwidgets(panel->animF);
 
-    /*********** Dithering **********/
-	panel->cmapSize = 4;
-
-	panel->dithF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->dithF, 277, 97);
-	WMMoveWidget(panel->dithF, 237, 120);
-	WMSetFrameTitle(panel->dithF, _("Dithering colormap for 8bpp"));
-
-	WMSetBalloonTextForView(_("Number of colors to reserve for Window Maker\n"
-				  "on displays that support only 8bpp (PseudoColor)."),
-				WMWidgetView(panel->dithF));
-
-	panel->dithB = WMCreateSwitchButton(panel->dithF);
-	WMResizeWidget(panel->dithB, 235, 32);
-	WMMoveWidget(panel->dithB, 15, 15);
-	WMSetButtonText(panel->dithB, _("Disable dithering in any visual/depth"));
-
-	panel->dithL = WMCreateLabel(panel->dithF);
-	WMResizeWidget(panel->dithL, 75, 16);
-	WMMoveWidget(panel->dithL, 98, 50);
-	WMSetLabelTextAlignment(panel->dithL, WACenter);
-	WMSetLabelText(panel->dithL, "64");
-
-	panel->dithS = WMCreateSlider(panel->dithF);
-	WMResizeWidget(panel->dithS, 95, 16);
-	WMMoveWidget(panel->dithS, 90, 65);
-	WMSetSliderMinValue(panel->dithS, 2);
-	WMSetSliderMaxValue(panel->dithS, 6);
-	WMSetSliderContinuous(panel->dithS, True);
-	WMSetSliderAction(panel->dithS, updateLabel, panel);
-
-	panel->dith1L = WMCreateLabel(panel->dithF);
-	WMResizeWidget(panel->dith1L, 80, 35);
-	WMMoveWidget(panel->dith1L, 5, 50);
-	WMSetLabelTextAlignment(panel->dith1L, WACenter);
-	WMSetLabelFont(panel->dith1L, font);
-	WMSetLabelText(panel->dith1L, _("More colors for\napplications"));
-
-	panel->dith2L = WMCreateLabel(panel->dithF);
-	WMResizeWidget(panel->dith2L, 80, 35);
-	WMMoveWidget(panel->dith2L, 190, 50);
-	WMSetLabelTextAlignment(panel->dith2L, WACenter);
-	WMSetLabelFont(panel->dith2L, font);
-	WMSetLabelText(panel->dith2L, _("More colors for\nWindow Maker"));
-
-	WMMapSubwidgets(panel->dithF);
-
 	WMRealizeWidget(panel->box);
 	WMMapSubwidgets(panel->box);
 
@@ -420,8 +345,6 @@ static void storeData(_Panel *panel)
 	SetBoolForKey(!WMGetButtonSelected(panel->animB), "DisableAnimations");
 	SetBoolForKey(WMGetButtonSelected(panel->supB), "Superfluous");
 	SetBoolForKey(WMGetButtonSelected(panel->smoB), "SmoothWorkspaceBack");
-	SetBoolForKey(WMGetButtonSelected(panel->dithB), "DisableDithering");
-	SetIntegerForKey(WMGetSliderValue(panel->dithS), "ColormapSize");
 }
 
 Panel *InitConfigurations(WMWidget *parent)
@@ -431,8 +354,8 @@ Panel *InitConfigurations(WMWidget *parent)
 	panel = wmalloc(sizeof(_Panel));
 
 	panel->sectionName = _("Other Configurations");
-	panel->description = _("Animation speeds, titlebar styles, various option\n"
-			       "toggling and number of colors to reserve for\n" "Window Maker on 8bit displays.");
+	panel->description = _("Animation speeds, titlebar styles and\n"
+			       "various option toggling.");
 
 	panel->parent = parent;
 	panel->callbacks.createWidgets = createPanel;

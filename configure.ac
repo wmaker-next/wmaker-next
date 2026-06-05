@@ -71,9 +71,9 @@ dnl 6. If any interfaces have been removed or changed since the last
 dnl public release, then set age to 0.
 dnl
 dnl libwraster
-WRASTER_CURRENT=8
+WRASTER_CURRENT=9
 WRASTER_REVISION=0
-WRASTER_AGE=2
+WRASTER_AGE=0
 WRASTER_VERSION=$WRASTER_CURRENT:$WRASTER_REVISION:$WRASTER_AGE
 AC_SUBST(WRASTER_VERSION)
 dnl
@@ -681,12 +681,6 @@ AC_ARG_ENABLE([shm],
     [enable_shm=auto])
 m4_divert_pop([INIT_PREPARE])dnl
 WM_XEXT_CHECK_XSHM
-
-
-dnl X Misceleanous Utility
-dnl ======================
-dnl the libXmu is used in WRaster
-WM_EXT_CHECK_XMU
 
 
 dnl XINERAMA support

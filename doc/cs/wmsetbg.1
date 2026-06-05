@@ -6,8 +6,8 @@ wmsetbg \- nastaví pozadí hlavního okna v X11
 .B wmsetbg
 [\-display] [\-\-version] [\-\-help] [{\-b|\-\-back\-color} \fIbarva\fP]
 [{\-t|\-\-tile}|{\-e|\-\-center}|{\-s|\-\-scale}|{\-a|\-\-maxscale} \fIobrázek\fP]
-[{\-d|\-\-dither}|{\-m|\-\-match}] [\-u|\-\-update\-wmaker]
-[{\-D|\-\-update\-domain} \fIdoména\fP] [{\-c|\-\-colors} \fIcpc\fP]
+[\-u|\-\-update\-wmaker]
+[{\-D|\-\-update\-domain} \fIdoména\fP]
 [{\-p|\-\-parse} \fItextura\fP] [{\-w|\-\-workspace} \fIpracovní plocha\fP]
 .SH POPIS
 .B wmsetbg
@@ -30,20 +30,11 @@ vytvoří z \fIobrázku\fP dlaždice
 .B \-s|\-\-scale
 roztáhne daný \fIobrázek\fP (standartně)
 .TP
-.B \-d|\-\-dither
-rezervuje barvy
-.TP
-.B \-m|\-\-match
-shodné barvy
-.TP
 .B \-u|\-\-update\-wmaker
 zapíše změnu do databáze nastavení Window Makera
 .TP
 .B \-D|\-\-update\-domain
 zapíše změnu do databáze \fIdomény\fP
-.TP
-.B \-c|\-\-colors
-použíje určitý počet barev na kanál
 .TP
 .B \-p|\-\-parse
 parsuje danou \fItexturu\fP jako \fIproplist stylu textur\fP

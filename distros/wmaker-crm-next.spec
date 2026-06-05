@@ -30,7 +30,6 @@ BuildRequires:  libXinerama-devel
 BuildRequires:  libXpm-devel
 BuildRequires:  libXrender-devel
 BuildRequires:  xorg-x11-proto-devel
-BuildRequires:  libXmu-devel
 BuildRequires:  libXrandr-devel
 # graphic BR
 BuildRequires:  libpng-devel
