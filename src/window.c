@@ -2056,6 +2056,12 @@ void wWindowFocus(WWindow *wwin, WWindow *owin)
 		wFrameWindowChangeState(wwin->frame, WS_FOCUSED);
 
 	wwin->flags.focused = 1;
+	/* the window now has the user's attention, drop the EWMH demand
+	 * so the bounce stops and pagers clear their highlight */
+	if (wwin->flags.net_demands_attention) {
+		wwin->flags.net_demands_attention = 0;
+		wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+	}
 
 	wWindowResetMouseGrabs(wwin);
 

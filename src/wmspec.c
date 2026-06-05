@@ -109,6 +109,7 @@ static Atom net_wm_state_fullscreen;
 static Atom net_wm_state_above;
 static Atom net_wm_state_below;
 static Atom net_wm_state_focused;
+static Atom net_wm_state_demands_attention;
 static Atom net_wm_allowed_actions;
 static Atom net_wm_action_move;
 static Atom net_wm_action_resize;
@@ -199,6 +200,7 @@ static atomitem_t atomNames[] = {
 	{"_NET_WM_STATE_ABOVE", &net_wm_state_above},
 	{"_NET_WM_STATE_BELOW", &net_wm_state_below},
 	{"_NET_WM_STATE_FOCUSED", &net_wm_state_focused},
+	{"_NET_WM_STATE_DEMANDS_ATTENTION", &net_wm_state_demands_attention},
 	{"_NET_WM_ALLOWED_ACTIONS", &net_wm_allowed_actions},
 	{"_NET_WM_ACTION_MOVE", &net_wm_action_move},
 	{"_NET_WM_ACTION_RESIZE", &net_wm_action_resize},
@@ -303,6 +305,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_state_above;
 	atom[i++] = net_wm_state_below;
 	atom[i++] = net_wm_state_focused;
+	atom[i++] = net_wm_state_demands_attention;
 
 	atom[i++] = net_wm_allowed_actions;
 	atom[i++] = net_wm_action_move;
@@ -1101,6 +1104,8 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 			state[i++] = net_wm_state_focused;
 		if (wwin->flags.net_modal)
 			state[i++] = net_wm_state_modal;
+		if (wwin->flags.net_demands_attention || wwin->flags.urgent)
+			state[i++] = net_wm_state_demands_attention;
 
 		WXSetAtomN(dpy, wwin->client_win, net_wm_state, state, i);
 
@@ -1367,6 +1372,20 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 			wwin->client_flags.sunken = set;
 			ChangeStackingLevel(wwin->frame->core, getWindowLayer(wwin));
 		}
+
+	} else if (state == net_wm_state_demands_attention) {
+		if (set == _NET_WM_STATE_TOGGLE)
+			set = !wwin->flags.net_demands_attention;
+
+		/* an already-focused window does not get to demand attention,
+		 * the spec asks the WM to clear this state once the window
+		 * has the user's attention */
+		if (set && wwin->flags.focused)
+			set = 0;
+
+		wwin->flags.net_demands_attention = set;
+		if (!init)
+			wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
 
 	} else if (state == net_wm_state_modal) {
 		if (set == _NET_WM_STATE_TOGGLE)

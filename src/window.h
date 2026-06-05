@@ -293,6 +293,7 @@ typedef struct WWindow {
 		unsigned int net_show_desktop:1;
 		unsigned int net_has_title:1;	/* use netwm version of WM_NAME */
 		unsigned int net_modal:1;	/* _NET_WM_STATE_MODAL */
+		unsigned int net_demands_attention:1;	/* _NET_WM_STATE_DEMANDS_ATTENTION */
 	} flags;				/* state of the window */
 
 	struct WIcon *icon;			/* Window icon when miminized
