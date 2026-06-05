@@ -3,6 +3,69 @@ NEWS for veteran Window Maker users
 
 -- next
 
+_NET_WM_PING and a "Not Responding" prompt
+------------------------------------------
+
+Closing a window that lists _NET_WM_PING in WM_PROTOCOLS now sends a
+ping alongside WM_DELETE_WINDOW. If the client does not echo it within
+five seconds an "Application Not Responding" dialog offers Force Quit
+(SIGTERM, escalating to SIGKILL if a second prompt is reached, on the
+_NET_WM_PID cached at map time when WM_CLIENT_MACHINE matches the local
+host, otherwise XKillClient) or Wait.
+
+
+Focus-stealing prevention via _NET_WM_USER_TIME
+-----------------------------------------------
+
+A newly mapped window whose _NET_WM_USER_TIME is 0, or older than the
+most recent user activity seen on the screen, is no longer given input
+focus automatically. It is marked _NET_WM_STATE_DEMANDS_ATTENTION
+instead so the appicon bounces and pagers highlight it. The
+_NET_WM_USER_TIME_WINDOW indirection is honoured when the helper is a
+genuine client-owned window.
+
+
+_NET_WM_STATE_DEMANDS_ATTENTION
+-------------------------------
+
+Setting this state on an unfocused window now drives the same urgent
+appicon bounce as the ICCCM UrgencyHint, and the state is reflected in
+_NET_WM_STATE for pagers. Focusing the window clears it.
+
+
+Directional workspace navigation via _NET_DESKTOP_LAYOUT
+--------------------------------------------------------
+
+When a pager sets _NET_DESKTOP_LAYOUT on the root window the new
+LeftWorkspaceKey, RightWorkspaceKey, UpWorkspaceKey and DownWorkspaceKey
+bindings (and their MoveTo... variants) step through that grid, and the
+workspace map overlay lays its thumbnails out and arrow-navigates the
+same way. With no pager the layout defaults to a single row, so
+Left/Right behave like Prev/Next and Up/Down do nothing. All eight
+bindings default to None.
+
+
+Frame-synchronised opaque resize via _NET_WM_SYNC_REQUEST
+---------------------------------------------------------
+
+When the X Synchronization extension is available and a client exposes
+_NET_WM_SYNC_REQUEST_COUNTER, opaque interactive resizes are now paced
+to the client's redraw so the window content keeps up with the frame.
+A client that falls more than a second behind drops back to
+unsynchronised resize for the rest of that drag. Disable with
+--disable-xsync at configure time.
+
+
+_NET_WM_FULL_PLACEMENT and _NET_WORKAREA on strut change
+--------------------------------------------------------
+
+_NET_WM_FULL_PLACEMENT is now advertised so toolkits that honour it let
+the window manager place new windows. _NET_WORKAREA is now rewritten
+whenever a client sets or removes a _NET_WM_STRUT/_NET_WM_STRUT_PARTIAL,
+not only when the workspace count changes, and _NET_DESKTOP_VIEWPORT is
+resized to match the workspace count after a wmctrl -n.
+
+
 _NET_RESTACK_WINDOW and _NET_REQUEST_FRAME_EXTENTS
 --------------------------------------------------
 
