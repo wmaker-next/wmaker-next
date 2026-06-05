@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef USE_XSHAPE
 #include <X11/extensions/shape.h>
@@ -38,14 +39,8 @@
 
 static const int WORKSPACE_MAP_RATIO  = 10;
 static const int WORKSPACE_SEPARATOR_WIDTH = 12;
-static const int mini_workspace_per_line = 5;
+static const int MINI_WORKSPACE_MIN_SIZE = 4;
 
-/*
- * Used to store the index of the tenth displayed mini workspace
- * will be 0 for workspaces number 0 to 9
- * 1 for workspaces number 10 -> 19
- */
-static int wsmap_bulk_index;
 static WMPixmap *frame_bg_focused;
 static WMPixmap *frame_bg_unfocused;
 
@@ -57,12 +52,15 @@ typedef struct {
 	int mini_workspace_width, mini_workspace_height;
 	int edge;
 	int border_width;
+	int grid_cols, grid_rows;
 } WWorkspaceMap;
 
 typedef struct {
 	WMButton *workspace_img_button;
 	WMLabel *workspace_label;
 } W_WorkspaceMap;
+
+static void refresh_mini_workspace(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array);
 
 void wWorkspaceMapUpdate(WScreen *scr)
 {
@@ -202,9 +200,34 @@ static WMPixmap *get_frame_background_color(WWorkspaceMap *wsmap, unsigned int w
 	return pix;
 }
 
+static void configure_workspace_grid(WWorkspaceMap *wsmap)
+{
+	WScreen *scr = wsmap->scr;
+	int font_height = WMFontHeight(scr->info_text_font);
+	int max_w, max_h, base_w, base_h;
+
+	/* wNETWMUpdateDesktopLayout() already validates the grid covers
+	 * every workspace and clamps both dimensions, so just mirror it */
+	wsmap->grid_cols = WMAX(1, scr->net_desktop_layout.cols);
+	wsmap->grid_rows = WMAX(1, scr->net_desktop_layout.rows);
+
+	base_w = WMAX(1, scr->scr_width / WORKSPACE_MAP_RATIO);
+	base_h = WMAX(1, scr->scr_height / WORKSPACE_MAP_RATIO);
+	max_w = (scr->scr_width - (wsmap->grid_cols + 1) * WORKSPACE_SEPARATOR_WIDTH) / wsmap->grid_cols;
+	max_h = (scr->scr_height - wsmap->border_width - WORKSPACE_SEPARATOR_WIDTH
+		 - wsmap->grid_rows * (font_height + WORKSPACE_SEPARATOR_WIDTH)) / wsmap->grid_rows;
+	max_w = WMAX(MINI_WORKSPACE_MIN_SIZE, max_w);
+	max_h = WMAX(MINI_WORKSPACE_MIN_SIZE, max_h);
+
+	wsmap->mini_workspace_width = WMIN(base_w, max_w);
+	wsmap->mini_workspace_height = WMIN(base_h, max_h);
+	wsmap->wswidth = scr->scr_width;
+	wsmap->wsheight = WORKSPACE_SEPARATOR_WIDTH
+		+ wsmap->grid_rows * (font_height + wsmap->mini_workspace_height + WORKSPACE_SEPARATOR_WIDTH);
+}
+
 static void workspace_map_realize(WWorkspaceMap *wsmap, WMFrame *frame_border, W_WorkspaceMap *wsmap_array)
 {
-	int i, mini_workspace_cnt, general_index;
 	WMPixmap *frame_border_pixmap;
 	WMSize label_size;
 
@@ -219,17 +242,7 @@ static void workspace_map_realize(WWorkspaceMap *wsmap, WMFrame *frame_border, W
 	frame_bg_focused = get_frame_background_color(wsmap, label_size.width, label_size.height, WS_FOCUSED);
 	frame_bg_unfocused = get_frame_background_color(wsmap, label_size.width, label_size.height, WS_UNFOCUSED);
 
-	mini_workspace_cnt = (wsmap->scr->workspace_count <= 2 * mini_workspace_per_line) ? wsmap->scr->workspace_count : 2 * mini_workspace_per_line;
-	for (i = 0; i < mini_workspace_cnt; i++) {
-		general_index = i + wsmap_bulk_index * 2 * mini_workspace_per_line;
-		if (general_index == wsmap->scr->current_workspace) {
-			WMSetWidgetBackgroundPixmap(wsmap_array[i].workspace_label, frame_bg_focused);
-			WMSetLabelTextColor(wsmap_array[i].workspace_label, wsmap->scr->window_title_color[WS_FOCUSED]);
-		} else {
-			WMSetWidgetBackgroundPixmap(wsmap_array[i].workspace_label, frame_bg_unfocused);
-			WMSetLabelTextColor(wsmap_array[i].workspace_label, wsmap->scr->window_title_color[WS_UNFOCUSED]);
-		}
-	}
+	refresh_mini_workspace(wsmap, wsmap_array);
 }
 
 static WMPixmap *enlight_workspace(WScreen *scr, RImage *mini_wkspace_map)
@@ -279,48 +292,33 @@ static void show_mini_workspace(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_arra
 	int border_width_adjustement = (wsmap->edge == WD_TOP) ? 0 : wsmap->border_width;
 	int font_height = WMFontHeight(wsmap->scr->info_text_font);
 
-	if (max_mini_workspace > mini_workspace_per_line)
-		space_width = (wsmap->wswidth - mini_workspace_per_line * wsmap->mini_workspace_width) / (mini_workspace_per_line + 1);
-	else
-		space_width = (wsmap->wswidth - max_mini_workspace * wsmap->mini_workspace_width) / (max_mini_workspace + 1);
+	space_width = (wsmap->wswidth - wsmap->grid_cols * wsmap->mini_workspace_width)
+		      / (wsmap->grid_cols + 1);
+	space_width = WMAX(1, space_width);
 
-	for (index = 0; index <  max_mini_workspace; index++) {
-		int i , j;
+	for (index = 0; index < max_mini_workspace; index++) {
+		int row = 0, col = 0, x, y;
 
-		j = index;
+		wWorkspaceLayoutPosition(wsmap->scr, index, &row, &col);
+		x = col * wsmap->mini_workspace_width + (col + 1) * space_width;
+		y = border_width_adjustement + WORKSPACE_SEPARATOR_WIDTH
+		    + row * (font_height + wsmap->mini_workspace_height + WORKSPACE_SEPARATOR_WIDTH);
 
-		if (index >= mini_workspace_per_line) {
-			i = 1;
-			j -= mini_workspace_per_line;
-		} else {
-			i = 0;
-		}
 		if (wsmap_array[index].workspace_img_button) {
-			WMResizeWidget(wsmap_array[index].workspace_img_button, wsmap->mini_workspace_width, wsmap->mini_workspace_height);
-			WMMoveWidget(wsmap_array[index].workspace_img_button, j * wsmap->mini_workspace_width + (j + 1) * space_width,
-			             border_width_adjustement + WORKSPACE_SEPARATOR_WIDTH +
-			             i * (wsmap->mini_workspace_height + 2 * WORKSPACE_SEPARATOR_WIDTH) + font_height);
+			WMResizeWidget(wsmap_array[index].workspace_img_button,
+				       wsmap->mini_workspace_width, wsmap->mini_workspace_height);
+			WMMoveWidget(wsmap_array[index].workspace_img_button, x, y + font_height);
 			WMMapWidget(wsmap_array[index].workspace_img_button);
 		}
 		if (wsmap_array[index].workspace_label) {
 			WMResizeWidget(wsmap_array[index].workspace_label, wsmap->mini_workspace_width, font_height);
-			WMMoveWidget(wsmap_array[index].workspace_label, j * wsmap->mini_workspace_width + (j + 1) * space_width,
-			             border_width_adjustement + WORKSPACE_SEPARATOR_WIDTH +
-			             i * (wsmap->mini_workspace_height + 2 * WORKSPACE_SEPARATOR_WIDTH));
+			WMMoveWidget(wsmap_array[index].workspace_label, x, y);
 			WMMapWidget(wsmap_array[index].workspace_label);
 		}
 	}
 }
 
-static void hide_mini_workspace(W_WorkspaceMap *wsmap_array, int i)
-{
-	if (wsmap_array[i].workspace_img_button)
-		WMUnmapWidget(wsmap_array[i].workspace_img_button);
-	if (wsmap_array[i].workspace_label)
-		WMUnmapWidget(wsmap_array[i].workspace_label);
-}
-
-static  WMPixmap *get_mini_workspace(WWorkspaceMap *wsmap, int index)
+static WMPixmap *get_mini_workspace(WWorkspaceMap *wsmap, int index)
 {
 	if (!wsmap->scr->workspaces[index]->map)
 		return NULL;
@@ -331,39 +329,55 @@ static  WMPixmap *get_mini_workspace(WWorkspaceMap *wsmap, int index)
 	return WMCreatePixmapFromRImage(wsmap->scr->wmscreen, wsmap->scr->workspaces[index]->map, 128);
 }
 
-static void create_mini_workspace(WScreen *scr, WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
+static void refresh_mini_workspace(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 {
-	unsigned short workspace_index;
-	int mini_workspace_cnt;
-	char name[6];
-	WMButton *mini_workspace_btn;
+	int index;
+	char name[16];
 	WMPixmap *icon;
 
-	/* by default display the 10 first mini workspaces */
-	wsmap_bulk_index = 0;
-	mini_workspace_cnt = (scr->workspace_count <= 2 * mini_workspace_per_line) ? scr->workspace_count : 2 * mini_workspace_per_line;
-	for (workspace_index = 0; workspace_index < mini_workspace_cnt; workspace_index++) {
-		mini_workspace_btn = WMCreateButton(wsmap->win, WBTOnOff);
+	for (index = 0; index < wsmap->scr->workspace_count; index++) {
+		WMSetLabelText(wsmap_array[index].workspace_label, wsmap->scr->workspaces[index]->name);
+		snprintf(name, sizeof(name), "%d", index);
+		WMSetButtonText(wsmap_array[index].workspace_img_button, name);
+
+		if (index == wsmap->scr->current_workspace) {
+			WMSetWidgetBackgroundPixmap(wsmap_array[index].workspace_label, frame_bg_focused);
+			WMSetLabelTextColor(wsmap_array[index].workspace_label, wsmap->scr->window_title_color[WS_FOCUSED]);
+		} else {
+			WMSetWidgetBackgroundPixmap(wsmap_array[index].workspace_label, frame_bg_unfocused);
+			WMSetLabelTextColor(wsmap_array[index].workspace_label, wsmap->scr->window_title_color[WS_UNFOCUSED]);
+		}
+
+		icon = get_mini_workspace(wsmap, index);
+		if (icon) {
+			WMSetButtonImage(wsmap_array[index].workspace_img_button, icon);
+			WMReleasePixmap(icon);
+		}
+	}
+}
+
+static void create_mini_workspace(WScreen *scr, WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
+{
+	int workspace_index;
+	char name[16];
+
+	for (workspace_index = 0; workspace_index < scr->workspace_count; workspace_index++) {
+		WMButton *mini_workspace_btn = WMCreateButton(wsmap->win, WBTOnOff);
+		WMLabel *workspace_name_label = WMCreateLabel(wsmap->win);
+
 		WMSetButtonBordered(mini_workspace_btn, 0);
-		WMLabel *workspace_name_label =	WMCreateLabel(wsmap->win);
 		WMSetLabelFont(workspace_name_label, scr->info_text_font);
-		WMSetLabelText(workspace_name_label,  scr->workspaces[workspace_index]->name);
+		WMSetLabelText(workspace_name_label, scr->workspaces[workspace_index]->name);
 
 		wsmap_array[workspace_index].workspace_img_button = mini_workspace_btn;
 		wsmap_array[workspace_index].workspace_label = workspace_name_label;
 
 		WMSetButtonImagePosition(mini_workspace_btn, WIPImageOnly);
-		icon = get_mini_workspace(wsmap, workspace_index);
-		if (icon) {
-			WMSetButtonImage(mini_workspace_btn, icon);
-			WMReleasePixmap(icon);
-		}
-
-		snprintf(name, sizeof(name), "%hu", workspace_index);
+		snprintf(name, sizeof(name), "%d", workspace_index);
 		WMSetButtonText(mini_workspace_btn, name);
 		WMSetButtonAction(mini_workspace_btn, selected_workspace_callback, wsmap);
 	}
-	show_mini_workspace(wsmap, wsmap_array, mini_workspace_cnt);
+	show_mini_workspace(wsmap, wsmap_array, scr->workspace_count);
 }
 
 static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_array, int edge)
@@ -377,14 +391,9 @@ static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_a
 
 	wsmap->border_width = 5;
 	wsmap->edge = edge;
-	wsmap->mini_workspace_width = scr->scr_width / WORKSPACE_MAP_RATIO;
-	wsmap->mini_workspace_height = scr->scr_height / WORKSPACE_MAP_RATIO;
-
 	wsmap->scr = scr;
+	configure_workspace_grid(wsmap);
 	wsmap->win = WMCreateWindow(scr->wmscreen, "wsmap");
-	wsmap->wswidth = WidthOfScreen(DefaultScreenOfDisplay(dpy));
-	wsmap->wsheight = WMFontHeight(scr->info_text_font) + (wsmap->mini_workspace_height + 2 * WORKSPACE_SEPARATOR_WIDTH) *
-								(scr->workspace_count > mini_workspace_per_line ? 2 : 1);
 
 	if (wPreferences.wsmbackTexture->any.type == WTEX_SOLID) {
 		WMColor *tmp = WMCreateRGBColor(scr->wmscreen,
@@ -417,58 +426,6 @@ static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_a
 	return wsmap;
 }
 
-static void update_mini_workspace(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array, int bulk_of_ten)
-{
-	unsigned short local_index, general_index;
-	int mini_workspace_cnt;
-	char name[6];
-	WMPixmap *icon;
-
-	if (bulk_of_ten == wsmap_bulk_index)
-		return;
-
-	if (bulk_of_ten < 0)
-		return;
-
-	if (wsmap->scr->workspace_count <= bulk_of_ten * 2 * mini_workspace_per_line)
-		return;
-
-	wsmap_bulk_index = bulk_of_ten;
-
-	mini_workspace_cnt = wsmap->scr->workspace_count - wsmap_bulk_index * 2 * mini_workspace_per_line;
-	if (mini_workspace_cnt > 2 * mini_workspace_per_line)
-		mini_workspace_cnt = 2 * mini_workspace_per_line;
-
-	for (local_index = 0; local_index <  2 * mini_workspace_per_line; local_index++) {
-		general_index = local_index + wsmap_bulk_index * 2 * mini_workspace_per_line;
-		if (general_index < wsmap->scr->workspace_count) {
-			/* updating label */
-			WMSetLabelText(wsmap_array[local_index].workspace_label, wsmap->scr->workspaces[general_index]->name);
-			snprintf(name, sizeof(name), "%hu", general_index);
-			WMSetButtonText(wsmap_array[local_index].workspace_img_button, name);
-
-			/* updating label background*/
-			if (general_index == wsmap->scr->current_workspace) {
-				WMSetWidgetBackgroundPixmap(wsmap_array[local_index].workspace_label, frame_bg_focused);
-				WMSetLabelTextColor(wsmap_array[local_index].workspace_label, wsmap->scr->window_title_color[WS_FOCUSED]);
-			} else {
-				WMSetWidgetBackgroundPixmap(wsmap_array[local_index].workspace_label, frame_bg_unfocused);
-				WMSetLabelTextColor(wsmap_array[local_index].workspace_label, wsmap->scr->window_title_color[WS_UNFOCUSED]);
-			}
-
-			icon = get_mini_workspace(wsmap, general_index);
-			if (icon) {
-				WMSetButtonImage(wsmap_array[local_index].workspace_img_button, icon);
-				WMReleasePixmap(icon);
-			}
-		} else {
-			if (local_index < wsmap->scr->workspace_count)
-				hide_mini_workspace(wsmap_array, local_index);
-		}
-	}
-	show_mini_workspace(wsmap, wsmap_array, mini_workspace_cnt);
-}
-
 static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 {
 	XEvent ev;
@@ -497,32 +454,31 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 			                                  wKeyBindings[WKBD_WORKSPACEMAP].modifier == modifiers)) {
 				w_global.process_workspacemap_event = False;
 			} else {
+				char key_buf[16];
 				KeySym ks;
-				int bulk_id;
 
-				XLookupString(&ev.xkey, NULL, 16, &ks, NULL);
-
-				bulk_id = -1;
-				if (ks >= 0x30 && ks <= 0x39)
-					bulk_id = ks - 0x30;
-				else
-					if (ks == XK_Left)
-						bulk_id = wsmap_bulk_index - 1;
-					else if (ks == XK_Right)
-							bulk_id = wsmap_bulk_index + 1;
-
-				if (bulk_id >= 0)
-					update_mini_workspace(wsmap, wsmap_array, bulk_id);
+				XLookupString(&ev.xkey, key_buf, sizeof(key_buf), &ks, NULL);
+				if (ks == XK_Left)
+					wWorkspaceDirectionalChange(wsmap->scr, -1, 0);
+				else if (ks == XK_Right)
+					wWorkspaceDirectionalChange(wsmap->scr, 1, 0);
+				else if (ks == XK_Up)
+					wWorkspaceDirectionalChange(wsmap->scr, 0, -1);
+				else if (ks == XK_Down)
+					wWorkspaceDirectionalChange(wsmap->scr, 0, 1);
+				refresh_mini_workspace(wsmap, wsmap_array);
 			}
 			break;
 
 		case ButtonPress:
 			switch (ev.xbutton.button) {
 			case Button6:
-				update_mini_workspace(wsmap, wsmap_array, wsmap_bulk_index - 1);
+				wWorkspaceDirectionalChange(wsmap->scr, -1, 0);
+				refresh_mini_workspace(wsmap, wsmap_array);
 				break;
 			case Button7:
-				update_mini_workspace(wsmap, wsmap_array, wsmap_bulk_index + 1);
+				wWorkspaceDirectionalChange(wsmap->scr, 1, 0);
+				refresh_mini_workspace(wsmap, wsmap_array);
 				break;
 			default:
 				WMHandleEvent(&ev);
@@ -575,7 +531,9 @@ static WWorkspaceMap *init_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_arr
 void StartWorkspaceMap(WScreen *scr)
 {
 	WWorkspaceMap *wsmap;
-	W_WorkspaceMap wsmap_array[2 * mini_workspace_per_line];
+	W_WorkspaceMap wsmap_array[MAX_WORKSPACES];
+
+	memset(wsmap_array, 0, sizeof(wsmap_array));
 
 	/* save the current screen before displaying the workspace map */
 	wWorkspaceMapUpdate(scr);
