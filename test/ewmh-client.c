@@ -1,0 +1,303 @@
+/* Minimal deterministic X11 client for test/ewmh-layout-drive.sh. */
+#define _POSIX_C_SOURCE 200809L
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+static Atom intern_atom(Display *dpy, const char *name)
+{
+	return XInternAtom(dpy, name, False);
+}
+
+static void set_utf8(Display *dpy, Window win, Atom prop, const char *text)
+{
+	Atom utf8 = intern_atom(dpy, "UTF8_STRING");
+
+	XChangeProperty(dpy, win, prop, utf8, 8, PropModeReplace,
+			(const unsigned char *)text, (int)strlen(text));
+}
+
+static void set_cardinal(Display *dpy, Window win, Atom prop, unsigned long value)
+{
+	long data[1];
+
+	data[0] = (long)value;
+	XChangeProperty(dpy, win, prop, XA_CARDINAL, 32, PropModeReplace,
+			(const unsigned char *)data, 1);
+}
+
+static void set_window(Display *dpy, Window win, Atom prop, Window value)
+{
+	long data[1];
+
+	data[0] = (long)value;
+	XChangeProperty(dpy, win, prop, XA_WINDOW, 32, PropModeReplace,
+			(const unsigned char *)data, 1);
+}
+
+static void set_cardinals(Display *dpy, Window win, Atom prop,
+			  const long *data, int n)
+{
+	XChangeProperty(dpy, win, prop, XA_CARDINAL, 32, PropModeReplace,
+			(const unsigned char *)data, n);
+}
+
+static long env_long(const char *name, long fallback)
+{
+	const char *s = getenv(name);
+	char *end;
+	long v;
+
+	if (!s || !*s)
+		return fallback;
+	v = strtol(s, &end, 0);
+	return (*end == '\0') ? v : fallback;
+}
+
+static Window env_window(const char *name, Window fallback)
+{
+	const char *s = getenv(name);
+	char *end;
+	unsigned long v;
+
+	if (!s || !*s)
+		return fallback;
+	v = strtoul(s, &end, 0);
+	return (*end == '\0') ? (Window)v : fallback;
+}
+
+static void send_root_message(Display *dpy, Window win, Atom message,
+			      long d0, long d1, long d2, long d3, long d4)
+{
+	XEvent ev;
+	Window root = DefaultRootWindow(dpy);
+
+	memset(&ev, 0, sizeof(ev));
+	ev.xclient.type = ClientMessage;
+	ev.xclient.window = win;
+	ev.xclient.message_type = message;
+	ev.xclient.format = 32;
+	ev.xclient.data.l[0] = d0;
+	ev.xclient.data.l[1] = d1;
+	ev.xclient.data.l[2] = d2;
+	ev.xclient.data.l[3] = d3;
+	ev.xclient.data.l[4] = d4;
+	XSendEvent(dpy, root, False,
+		   SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+	XFlush(dpy);
+}
+
+static void set_client_machine(Display *dpy, Window win)
+{
+	char hostname[256];
+	char *list[1];
+	XTextProperty text;
+
+	if (gethostname(hostname, sizeof(hostname)) != 0)
+		strncpy(hostname, "localhost", sizeof(hostname));
+	hostname[sizeof(hostname) - 1] = '\0';
+	list[0] = hostname;
+	if (XStringListToTextProperty(list, 1, &text) != 0) {
+		XSetWMClientMachine(dpy, win, &text);
+		XFree(text.value);
+	}
+}
+
+static void send_ping_reply(Display *dpy, XClientMessageEvent *msg)
+{
+	XEvent reply;
+	Window root = DefaultRootWindow(dpy);
+
+	memset(&reply, 0, sizeof(reply));
+	reply.xclient = *msg;
+	reply.xclient.window = root;
+	XSendEvent(dpy, root, False,
+		   SubstructureRedirectMask | SubstructureNotifyMask, &reply);
+	XFlush(dpy);
+}
+
+static int format8_close_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_FORMAT8_CLOSE_TARGET", None);
+	Window root = DefaultRootWindow(dpy);
+	XEvent ev;
+
+	if (target == None)
+		return 1;
+	memset(&ev, 0, sizeof(ev));
+	ev.xclient.type = ClientMessage;
+	ev.xclient.window = target;
+	ev.xclient.message_type = intern_atom(dpy, "_NET_CLOSE_WINDOW");
+	ev.xclient.format = 8;
+	XSendEvent(dpy, root, False,
+		   SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+	XFlush(dpy);
+	return 0;
+}
+
+static int restack_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_RESTACK_TARGET", None);
+	Window sibling = env_window("EWMH_CLIENT_RESTACK_SIBLING", None);
+	long detail = env_long("EWMH_CLIENT_RESTACK_DETAIL", 0);
+
+	if (target == None)
+		return 1;
+	send_root_message(dpy, target, intern_atom(dpy, "_NET_RESTACK_WINDOW"),
+			  2, (long)sibling, detail, 0, 0);
+	return 0;
+}
+
+int main(void)
+{
+	Display *dpy;
+	Window root, win, user_time_helper = None;
+	int screen;
+	XClassHint class_hint;
+	XSizeHints size_hints;
+	Atom wm_protocols, wm_delete_window, net_wm_ping;
+	Atom net_wm_sync_request, net_wm_sync_request_counter;
+	Atom net_wm_name, net_wm_pid, net_wm_user_time, net_wm_user_time_window;
+	Atom net_wm_window_type, net_wm_window_type_normal, net_wm_icon;
+	Atom protocols[3];
+	int nprotocols = 0;
+	Atom window_type[1];
+	const char *name = getenv("EWMH_CLIENT_NAME");
+	long user_time = env_long("EWMH_CLIENT_USER_TIME", -1);
+	long strut_left = env_long("EWMH_CLIENT_STRUT_LEFT", 0);
+	long sync_counter = env_long("EWMH_CLIENT_SYNC_COUNTER", -1);
+	long use_time_helper = env_long("EWMH_CLIENT_USER_TIME_HELPER", 0);
+	long request_frame_extents = env_long("EWMH_CLIENT_REQUEST_FRAME_EXTENTS", 0);
+	long bad_icon = env_long("EWMH_CLIENT_BAD_ICON", 0);
+	long no_ping_reply = env_long("EWMH_CLIENT_NO_PING_REPLY", 0);
+	long ignore_delete = env_long("EWMH_CLIENT_IGNORE_DELETE", 0);
+
+	if (!name)
+		name = "ewmh-drive-client";
+
+	dpy = XOpenDisplay(NULL);
+	if (!dpy) {
+		fprintf(stderr, "could not open display\n");
+		return 2;
+	}
+	if (getenv("EWMH_CLIENT_RESTACK_TARGET")) {
+		int ret = restack_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_FORMAT8_CLOSE_TARGET")) {
+		int ret = format8_close_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+
+	screen = DefaultScreen(dpy);
+	root = RootWindow(dpy, screen);
+	win = XCreateSimpleWindow(dpy, root, 80, 80, 320, 180, 0,
+				  BlackPixel(dpy, screen), WhitePixel(dpy, screen));
+	XSelectInput(dpy, win, StructureNotifyMask | PropertyChangeMask);
+
+	class_hint.res_name = (char *)"ewmh-drive-client";
+	class_hint.res_class = (char *)"EwmhDriveClient";
+	XSetClassHint(dpy, win, &class_hint);
+	XStoreName(dpy, win, name);
+
+	size_hints.flags = PPosition | PSize;
+	size_hints.x = 80;
+	size_hints.y = 80;
+	size_hints.width = 320;
+	size_hints.height = 180;
+	XSetWMNormalHints(dpy, win, &size_hints);
+
+	net_wm_name = intern_atom(dpy, "_NET_WM_NAME");
+	net_wm_pid = intern_atom(dpy, "_NET_WM_PID");
+	net_wm_user_time = intern_atom(dpy, "_NET_WM_USER_TIME");
+	net_wm_user_time_window = intern_atom(dpy, "_NET_WM_USER_TIME_WINDOW");
+	net_wm_window_type = intern_atom(dpy, "_NET_WM_WINDOW_TYPE");
+	net_wm_window_type_normal = intern_atom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL");
+	net_wm_icon = intern_atom(dpy, "_NET_WM_ICON");
+	wm_protocols = intern_atom(dpy, "WM_PROTOCOLS");
+	wm_delete_window = intern_atom(dpy, "WM_DELETE_WINDOW");
+	net_wm_ping = intern_atom(dpy, "_NET_WM_PING");
+	net_wm_sync_request = intern_atom(dpy, "_NET_WM_SYNC_REQUEST");
+	net_wm_sync_request_counter = intern_atom(dpy, "_NET_WM_SYNC_REQUEST_COUNTER");
+
+	set_utf8(dpy, win, net_wm_name, name);
+	set_cardinal(dpy, win, net_wm_pid, (unsigned long)getpid());
+	if (use_time_helper) {
+		user_time_helper = XCreateSimpleWindow(dpy, win, 0, 0, 1, 1, 0,
+						BlackPixel(dpy, screen), WhitePixel(dpy, screen));
+		set_window(dpy, win, net_wm_user_time_window, user_time_helper);
+		if (user_time >= 0)
+			set_cardinal(dpy, user_time_helper, net_wm_user_time,
+				     (unsigned long)user_time);
+	} else if (user_time >= 0) {
+		set_cardinal(dpy, win, net_wm_user_time, (unsigned long)user_time);
+	}
+	if (sync_counter >= 0)
+		set_cardinal(dpy, win, net_wm_sync_request_counter,
+			     (unsigned long)sync_counter);
+	set_client_machine(dpy, win);
+
+	if (strut_left > 0) {
+		long strut[12] = {0};
+		strut[0] = strut_left;
+		strut[5] = (long)DisplayHeight(dpy, screen) - 1;
+		set_cardinals(dpy, win, intern_atom(dpy, "_NET_WM_STRUT_PARTIAL"),
+			      strut, 12);
+		set_cardinals(dpy, win, intern_atom(dpy, "_NET_WM_STRUT"),
+			      strut, 4);
+	}
+	if (bad_icon) {
+		long icon[3] = {2147483647L, 2147483647L, 0};
+		set_cardinals(dpy, win, net_wm_icon, icon, 3);
+	}
+
+	window_type[0] = net_wm_window_type_normal;
+	XChangeProperty(dpy, win, net_wm_window_type, XA_ATOM, 32,
+			PropModeReplace, (const unsigned char *)window_type, 1);
+
+	protocols[nprotocols++] = wm_delete_window;
+	protocols[nprotocols++] = net_wm_ping;
+	if (sync_counter >= 0)
+		protocols[nprotocols++] = net_wm_sync_request;
+	XSetWMProtocols(dpy, win, protocols, nprotocols);
+
+	if (request_frame_extents) {
+		send_root_message(dpy, win, intern_atom(dpy, "_NET_REQUEST_FRAME_EXTENTS"),
+				  0, 0, 0, 0, 0);
+		printf("0x%lx\n", win);
+		fflush(stdout);
+	} else {
+		XMapWindow(dpy, win);
+		XFlush(dpy);
+		printf("0x%lx\n", win);
+		if (user_time_helper != None)
+			printf("0x%lx\n", user_time_helper);
+		fflush(stdout);
+	}
+
+	for (;;) {
+		XEvent ev;
+
+		XNextEvent(dpy, &ev);
+		if (ev.type != ClientMessage)
+			continue;
+		if (ev.xclient.message_type != wm_protocols || ev.xclient.format != 32)
+			continue;
+		if ((Atom)ev.xclient.data.l[0] == net_wm_ping) {
+			if (!no_ping_reply)
+				send_ping_reply(dpy, &ev.xclient);
+		} else if ((Atom)ev.xclient.data.l[0] == wm_delete_window) {
+			if (ignore_delete)
+				continue;
+			XDestroyWindow(dpy, win);
+			XCloseDisplay(dpy);
+			return 0;
+		}
+	}
+}
