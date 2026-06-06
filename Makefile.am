@@ -39,7 +39,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_DISTCHECK_CONFIGURE_FLAGS = --enable-silent-rules LINGUAS='*'
 
 
-SUBDIRS = wrlib WINGs src util po WindowMaker wmlib WPrefs.app doc
+SUBDIRS = wrlib WINGs src util po WindowMaker WPrefs.app doc
 DIST_SUBDIRS = $(SUBDIRS) test
 
 EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
@@ -189,11 +189,11 @@ check-local: configure-documentation check-manifest check-pkgconfig
 check-manifest:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-manifest.sh $(top_srcdir) $(top_builddir)
 
-CHECK_PCFILES = wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
+CHECK_PCFILES = wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc
 
 check-pkgconfig: $(CHECK_PCFILES)
 	$(AM_V_CHKOPTS)ok=true ; \
-	pc_path="$(abs_top_builddir)/wrlib:$(abs_top_builddir)/WINGs:$(abs_top_builddir)/wmlib$${PKG_CONFIG_PATH:+:$${PKG_CONFIG_PATH}}" ; \
+	pc_path="$(abs_top_builddir)/wrlib:$(abs_top_builddir)/WINGs$${PKG_CONFIG_PATH:+:$${PKG_CONFIG_PATH}}" ; \
 	for pc in $(CHECK_PCFILES) ; do \
 		name=`basename "$$pc" .pc` ; \
 		PKG_CONFIG_PATH="$$pc_path" $(PKG_CONFIG) --validate "$$name" || ok=false ; \

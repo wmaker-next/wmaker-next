@@ -57,15 +57,6 @@ most useful and universal window managers available.
 
 This package contains bleeding-edge development version.
 
-%package devel
-Summary:        Development files for WindowMaker
-Group:          System Environment/Libraries
-Requires:       %{name} = %{version}-%{release}
-Requires:       WINGs-next-devel = %{version}-%{release}
-
-%description devel
-Development files for WindowMaker.
-
 %package -n WINGs-next-libs
 Summary:        Widgets and image libraries needed for WindowMaker
 Group:          System Environment/Libraries
@@ -213,7 +204,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/wxcopy
 %{_bindir}/wxpaste
 %{_bindir}/wmiv
-%{_libdir}/libWMaker.so.*
 %{_datadir}/xsessions/WindowMaker.desktop
 %{_datadir}/applications/WindowMaker.desktop
 %dir %{_datadir}/WindowMaker
@@ -288,11 +278,6 @@ rm -rf $RPM_BUILD_ROOT
 %lang(cs) %{_mandir}/cs/man1/*.1*
 %lang(sk) %{_mandir}/sk/man1/*.1*
 %lang(ru) %{_mandir}/ru/man1/*.1*
-
-%files devel
-%defattr(-,root,root,-)
-%{_libdir}/libWMaker.so
-%{_includedir}/WMaker.h
 
 %files -n WINGs-next-libs
 %defattr(-,root,root,-)

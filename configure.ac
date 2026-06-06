@@ -802,9 +802,6 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_IMGFMT_CHECK_XPM
 
 
-# for wmlib
-AC_SUBST(XCFLAGS)
-# for test
 AC_SUBST(XLFLAGS)
 AC_SUBST(XLIBS)
 AC_SUBST(X_EXTRA_LIBS)
@@ -1104,11 +1101,10 @@ AC_CONFIG_FILES(
     util/Makefile util/po/Makefile
 
     dnl Misceleanous stuff
-    wmlib/Makefile
     test/Makefile
 
     dnl pkg-config metadata
-    wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
+    wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc
 )
 
 AC_OUTPUT
