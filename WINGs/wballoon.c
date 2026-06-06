@@ -369,24 +369,21 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 	int side = 0;
 	int ty;
 	int bx, by;
+	const char *ptr, *ptr2;
+	int tw;
 
-	{
-		int w;
-		const char *ptr, *ptr2;
-
-		ptr2 = ptr = text;
-		width = 0;
-		while (ptr && ptr2) {
-			ptr2 = strchr(ptr, '\n');
-			if (ptr2) {
-				w = WMWidthOfString(font, ptr, ptr2 - ptr);
-			} else {
-				w = WMWidthOfString(font, ptr, strlen(ptr));
-			}
-			if (w > width)
-				width = w;
-			ptr = ptr2 + 1;
+	ptr2 = ptr = text;
+	width = 0;
+	while (ptr && ptr2) {
+		ptr2 = strchr(ptr, '\n');
+		if (ptr2) {
+			tw = WMWidthOfString(font, ptr, ptr2 - ptr);
+		} else {
+			tw = WMWidthOfString(font, ptr, strlen(ptr));
 		}
+		if (tw > width)
+			width = tw;
+		ptr = ptr2 + 1;
 	}
 
 	width += 16;

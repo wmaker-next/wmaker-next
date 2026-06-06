@@ -557,6 +557,10 @@ static void handlePush(Scroller * sPtr, int pushX, int pushY, int alternate)
 {
 	WMScrollerPart part;
 	int doAction = 0;
+#ifndef STRICT_NEXT_BEHAVIOUR
+	int length, knobP;
+	int buttonsLen;
+#endif
 
 	part = locatePointInScroller(sPtr, pushX, pushY, alternate);
 
@@ -589,27 +593,22 @@ static void handlePush(Scroller * sPtr, int pushX, int pushY, int alternate)
 		else
 			sPtr->dragPoint = pushY;
 
-		{
-			int length, knobP;
-			int buttonsLen;
+		if (sPtr->flags.arrowsPosition != WSANone)
+			buttonsLen = 2 * (BUTTON_SIZE + 1);
+		else
+			buttonsLen = 0;
 
-			if (sPtr->flags.arrowsPosition != WSANone)
-				buttonsLen = 2 * (BUTTON_SIZE + 1);
-			else
-				buttonsLen = 0;
+		if (sPtr->flags.horizontal)
+			length = sPtr->view->size.width - 4 - buttonsLen;
+		else
+			length = sPtr->view->size.height - 4 - buttonsLen;
 
-			if (sPtr->flags.horizontal)
-				length = sPtr->view->size.width - 4 - buttonsLen;
-			else
-				length = sPtr->view->size.height - 4 - buttonsLen;
+		knobP = (int)(sPtr->floatValue * (float)(length - knobLength(sPtr)));
 
-			knobP = (int)(sPtr->floatValue * (float)(length - knobLength(sPtr)));
-
-			if (sPtr->flags.arrowsPosition == WSAMinEnd)
-				sPtr->dragPoint -= 2 + buttonsLen + knobP;
-			else
-				sPtr->dragPoint -= 2 + knobP;
-		}
+		if (sPtr->flags.arrowsPosition == WSAMinEnd)
+			sPtr->dragPoint -= 2 + buttonsLen + knobP;
+		else
+			sPtr->dragPoint -= 2 + knobP;
 #endif				/* STRICT_NEXT_BEHAVIOUR */
 		/* This does not seem necessary here since we don't know yet if the
 		 * knob will be dragged later. -Dan

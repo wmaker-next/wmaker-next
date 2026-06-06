@@ -42,29 +42,27 @@ WMRunAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 		const char *title, const char *msg, const char *defaultButton, const char *alternateButton, const char *otherButton)
 {
 	WMAlertPanel *panel;
+	WMView *view;
+	int px, py;
 	int tmp;
 
 	panel = WMCreateAlertPanel(scrPtr, owner, title, msg, defaultButton, alternateButton, otherButton);
 
-	{
-		int px, py;
-		WMView *view = WMWidgetView(panel->win);
+	view = WMWidgetView(panel->win);
+	if (owner) {
+		WMView *oview = WMWidgetView(owner);
+		WMPoint pt = WMGetViewScreenPosition(oview);
 
-		if (owner) {
-			WMView *oview = WMWidgetView(owner);
-			WMPoint pt = WMGetViewScreenPosition(oview);
+		px = (W_VIEW_WIDTH(oview) - W_VIEW_WIDTH(view)) / 2;
+		py = (W_VIEW_HEIGHT(oview) - W_VIEW_HEIGHT(view)) / 2;
 
-			px = (W_VIEW_WIDTH(oview) - W_VIEW_WIDTH(view)) / 2;
-			py = (W_VIEW_HEIGHT(oview) - W_VIEW_HEIGHT(view)) / 2;
-
-			px += pt.x;
-			py += pt.y;
-		} else {
-			px = (W_VIEW_WIDTH(scrPtr->rootView) - W_VIEW_WIDTH(view)) / 2;
-			py = (W_VIEW_HEIGHT(scrPtr->rootView) - W_VIEW_HEIGHT(view)) / 2;
-		}
-		WMSetWindowInitialPosition(panel->win, px, py);
+		px += pt.x;
+		py += pt.y;
+	} else {
+		px = (W_VIEW_WIDTH(scrPtr->rootView) - W_VIEW_WIDTH(view)) / 2;
+		py = (W_VIEW_HEIGHT(scrPtr->rootView) - W_VIEW_HEIGHT(view)) / 2;
 	}
+	WMSetWindowInitialPosition(panel->win, px, py);
 
 	WMMapWidget(panel->win);
 
@@ -438,29 +436,27 @@ char *WMRunInputPanel(WMScreen * scrPtr, WMWindow * owner, const char *title,
 		      const char *msg, const char *defaultText, const char *okButton, const char *cancelButton)
 {
 	WMInputPanel *panel;
+	WMView *view;
+	int px, py;
 	char *tmp;
 
 	panel = WMCreateInputPanel(scrPtr, owner, title, msg, defaultText, okButton, cancelButton);
 
-	{
-		int px, py;
-		WMView *view = WMWidgetView(panel->win);
+	view = WMWidgetView(panel->win);
+	if (owner) {
+		WMView *oview = WMWidgetView(owner);
+		WMPoint pt = WMGetViewScreenPosition(oview);
 
-		if (owner) {
-			WMView *oview = WMWidgetView(owner);
-			WMPoint pt = WMGetViewScreenPosition(oview);
+		px = (W_VIEW_WIDTH(oview) - W_VIEW_WIDTH(view)) / 2;
+		py = (W_VIEW_HEIGHT(oview) - W_VIEW_HEIGHT(view)) / 2;
 
-			px = (W_VIEW_WIDTH(oview) - W_VIEW_WIDTH(view)) / 2;
-			py = (W_VIEW_HEIGHT(oview) - W_VIEW_HEIGHT(view)) / 2;
-
-			px += pt.x;
-			py += pt.y;
-		} else {
-			px = (W_VIEW_WIDTH(scrPtr->rootView) - W_VIEW_WIDTH(view)) / 2;
-			py = (W_VIEW_HEIGHT(scrPtr->rootView) - W_VIEW_HEIGHT(view)) / 2;
-		}
-		WMSetWindowInitialPosition(panel->win, px, py);
+		px += pt.x;
+		py += pt.y;
+	} else {
+		px = (W_VIEW_WIDTH(scrPtr->rootView) - W_VIEW_WIDTH(view)) / 2;
+		py = (W_VIEW_HEIGHT(scrPtr->rootView) - W_VIEW_HEIGHT(view)) / 2;
 	}
+	WMSetWindowInitialPosition(panel->win, px, py);
 
 	WMMapWidget(panel->win);
 

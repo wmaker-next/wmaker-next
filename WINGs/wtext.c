@@ -826,6 +826,7 @@ static void mouseOverObject(Text * tPtr, int x, int y)
 {
 	TextBlock *tb;
 	Bool result = False;
+	XSetWindowAttributes attribs;
 
 	x -= tPtr->visible.x;
 	x += tPtr->hpos;
@@ -872,11 +873,8 @@ static void mouseOverObject(Text * tPtr, int x, int y)
 		tPtr->flags.isOverGraphic = 0;
 
 	tPtr->view->attribs.cursor = (result ? tPtr->view->screen->defaultCursor : tPtr->view->screen->textCursor);
-	{
-		XSetWindowAttributes attribs;
-		attribs.cursor = tPtr->view->attribs.cursor;
-		XChangeWindowAttributes(tPtr->view->screen->display, tPtr->view->window, CWCursor, &attribs);
-	}
+	attribs.cursor = tPtr->view->attribs.cursor;
+	XChangeWindowAttributes(tPtr->view->screen->display, tPtr->view->window, CWCursor, &attribs);
 }
 
 #if DO_BLINK
@@ -2964,6 +2962,7 @@ WMText *WMCreateTextForDocumentType(WMWidget * parent, WMAction * parser, WMActi
 	Display *dpy;
 	WMScreen *scr;
 	XGCValues gcv;
+	WMArray *types;
 
 	tPtr = wmalloc(sizeof(Text));
 	tPtr->widgetClass = WC_Text;
@@ -3033,13 +3032,11 @@ WMText *WMCreateTextForDocumentType(WMWidget * parent, WMAction * parser, WMActi
 	WMSetViewDragSourceProcs(tPtr->view, &_DragSourceProcs);
 	WMSetViewDragDestinationProcs(tPtr->view, &_DragDestinationProcs);
 
-	{
-		WMArray *types = WMCreateArray(2);
-		WMAddToArray(types, "application/X-color");
-		WMAddToArray(types, "application/X-image");
-		WMRegisterViewForDraggedTypes(tPtr->view, types);
-		WMFreeArray(types);
-	}
+	types = WMCreateArray(2);
+	WMAddToArray(types, "application/X-color");
+	WMAddToArray(types, "application/X-image");
+	WMRegisterViewForDraggedTypes(tPtr->view, types);
+	WMFreeArray(types);
 
 	/*WMAddNotificationObserver(fontChanged, tPtr,
 	   WMFontPanelDidChangeNotification, tPtr); */

@@ -135,40 +135,35 @@ static struct ev_loop *W_EventLoop(void)
 
 static void sweepDeleted(void)
 {
-	{
-		TimerHandler **pp = &timerHandler;
-		while (*pp) {
-			TimerHandler *h = *pp;
-			if (h->deleted && !h->firing) {
-				*pp = h->next;
-				wfree(h);
-			} else {
-				pp = &h->next;
-			}
+	TimerHandler **tpp = &timerHandler;
+	IdleHandler **ipp = &idleHandler;
+	InputHandler **fpp = &inputHandler;
+
+	while (*tpp) {
+		TimerHandler *h = *tpp;
+		if (h->deleted && !h->firing) {
+			*tpp = h->next;
+			wfree(h);
+		} else {
+			tpp = &h->next;
 		}
 	}
-	{
-		IdleHandler **pp = &idleHandler;
-		while (*pp) {
-			IdleHandler *h = *pp;
-			if (h->deleted && !h->firing) {
-				*pp = h->next;
-				wfree(h);
-			} else {
-				pp = &h->next;
-			}
+	while (*ipp) {
+		IdleHandler *h = *ipp;
+		if (h->deleted && !h->firing) {
+			*ipp = h->next;
+			wfree(h);
+		} else {
+			ipp = &h->next;
 		}
 	}
-	{
-		InputHandler **pp = &inputHandler;
-		while (*pp) {
-			InputHandler *h = *pp;
-			if (h->deleted && !h->firing) {
-				*pp = h->next;
-				wfree(h);
-			} else {
-				pp = &h->next;
-			}
+	while (*fpp) {
+		InputHandler *h = *fpp;
+		if (h->deleted && !h->firing) {
+			*fpp = h->next;
+			wfree(h);
+		} else {
+			fpp = &h->next;
 		}
 	}
 }

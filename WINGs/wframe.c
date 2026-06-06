@@ -74,6 +74,10 @@ static void paintFrame(Frame * fPtr)
 	int tx, ty, tw, th, tlen;
 	int fy, fh;
 	Bool drawTitle;
+	XRectangle rect;
+	Region region, tmp;
+	GC gc[4];
+	int i;
 
 	if (fPtr->caption != NULL) {
 		th = WMFontHeight(font);
@@ -137,45 +141,38 @@ static void paintFrame(Frame * fPtr)
 		drawTitle = False;
 	}
 
-	{
-		XRectangle rect;
-		Region region, tmp;
-		GC gc[4];
-		int i;
+	region = XCreateRegion();
 
-		region = XCreateRegion();
+	rect.x = 0;
+	rect.y = 0;
+	rect.width = view->size.width;
+	rect.height = view->size.height;
+	XUnionRectWithRegion(&rect, region, region);
+	if (drawTitle) {
+		tmp = XCreateRegion();
+		rect.x = tx;
+		rect.y = ty;
+		rect.width = tw;
+		rect.height = th;
+		XUnionRectWithRegion(&rect, tmp, tmp);
+		XSubtractRegion(region, tmp, region);
+		XDestroyRegion(tmp);
+	}
+	gc[0] = WMColorGC(scrPtr->black);
+	gc[1] = WMColorGC(scrPtr->darkGray);
+	gc[2] = WMColorGC(scrPtr->gray);
+	gc[3] = WMColorGC(scrPtr->white);
 
-		rect.x = 0;
-		rect.y = 0;
-		rect.width = view->size.width;
-		rect.height = view->size.height;
-		XUnionRectWithRegion(&rect, region, region);
-		if (drawTitle) {
-			tmp = XCreateRegion();
-			rect.x = tx;
-			rect.y = ty;
-			rect.width = tw;
-			rect.height = th;
-			XUnionRectWithRegion(&rect, tmp, tmp);
-			XSubtractRegion(region, tmp, region);
-			XDestroyRegion(tmp);
-		}
-		gc[0] = WMColorGC(scrPtr->black);
-		gc[1] = WMColorGC(scrPtr->darkGray);
-		gc[2] = WMColorGC(scrPtr->gray);
-		gc[3] = WMColorGC(scrPtr->white);
+	for (i = 0; i < 4; i++) {
+		XSetRegion(display, gc[i], region);
+	}
+	XDestroyRegion(region);
 
-		for (i = 0; i < 4; i++) {
-			XSetRegion(display, gc[i], region);
-		}
-		XDestroyRegion(region);
+	W_DrawReliefWithGC(scrPtr, view->window, 0, fy, view->size.width, fh,
+			   fPtr->flags.relief, gc[0], gc[1], gc[2], gc[3]);
 
-		W_DrawReliefWithGC(scrPtr, view->window, 0, fy, view->size.width, fh,
-				   fPtr->flags.relief, gc[0], gc[1], gc[2], gc[3]);
-
-		for (i = 0; i < 4; i++) {
-			XSetClipMask(display, gc[i], None);
-		}
+	for (i = 0; i < 4; i++) {
+		XSetClipMask(display, gc[i], None);
 	}
 
 	if (drawTitle) {

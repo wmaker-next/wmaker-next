@@ -600,6 +600,20 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	};
 	Atom atoms[wlengthof(atomNames)];
 	int i;
+	Atom *rootWinProps;
+	int exists[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	int count;
+	XModifierKeymap *modmap;
+	KeyCode nlock, slock;
+	KeyCode altl, altr, metal, metar;
+	static int mask_table[8] = {
+		ShiftMask, LockMask, ControlMask, Mod1Mask,
+		Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
+	};
+	unsigned int numLockMask = 0, scrollLockMask = 0;
+	unsigned int altMask = 0, metaMask = 0;
+	XColor bla;
+	Pixmap blank;
 
 	if (!initialized) {
 
@@ -635,104 +649,86 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->xftdraw = XftDrawCreate(scrPtr->display, W_DRAWABLE(scrPtr), scrPtr->visual, scrPtr->colormap);
 
 	/* Create missing CUT_BUFFERs */
-	{
-		Atom *rootWinProps;
-		int exists[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-		int count;
-
-		rootWinProps = XListProperties(display, scrPtr->rootWin, &count);
-		for (i = 0; i < count; i++) {
-			switch (rootWinProps[i]) {
-			case XA_CUT_BUFFER0:
-				exists[0] = 1;
-				break;
-			case XA_CUT_BUFFER1:
-				exists[1] = 1;
-				break;
-			case XA_CUT_BUFFER2:
-				exists[2] = 1;
-				break;
-			case XA_CUT_BUFFER3:
-				exists[3] = 1;
-				break;
-			case XA_CUT_BUFFER4:
-				exists[4] = 1;
-				break;
-			case XA_CUT_BUFFER5:
-				exists[5] = 1;
-				break;
-			case XA_CUT_BUFFER6:
-				exists[6] = 1;
-				break;
-			case XA_CUT_BUFFER7:
-				exists[7] = 1;
-				break;
-			default:
-				break;
-			}
+	rootWinProps = XListProperties(display, scrPtr->rootWin, &count);
+	for (i = 0; i < count; i++) {
+		switch (rootWinProps[i]) {
+		case XA_CUT_BUFFER0:
+			exists[0] = 1;
+			break;
+		case XA_CUT_BUFFER1:
+			exists[1] = 1;
+			break;
+		case XA_CUT_BUFFER2:
+			exists[2] = 1;
+			break;
+		case XA_CUT_BUFFER3:
+			exists[3] = 1;
+			break;
+		case XA_CUT_BUFFER4:
+			exists[4] = 1;
+			break;
+		case XA_CUT_BUFFER5:
+			exists[5] = 1;
+			break;
+		case XA_CUT_BUFFER6:
+			exists[6] = 1;
+			break;
+		case XA_CUT_BUFFER7:
+			exists[7] = 1;
+			break;
+		default:
+			break;
 		}
-		if (rootWinProps) {
-			XFree(rootWinProps);
-		}
-		for (i = 0; i < 8; i++) {
-			if (!exists[i]) {
-				XStoreBuffer(display, "", 0, i);
-			}
+	}
+	if (rootWinProps) {
+		XFree(rootWinProps);
+	}
+	for (i = 0; i < 8; i++) {
+		if (!exists[i]) {
+			XStoreBuffer(display, "", 0, i);
 		}
 	}
 
 	scrPtr->ignoredModifierMask = 0;
 	scrPtr->altModifierMask = 0;
-	{
-		int i;
-		XModifierKeymap *modmap;
-		KeyCode nlock, slock;
-		KeyCode altl, altr, metal, metar;
-		static int mask_table[8] = {
-			ShiftMask, LockMask, ControlMask, Mod1Mask,
-			Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
-		};
-		unsigned int numLockMask = 0, scrollLockMask = 0;
-		unsigned int altMask = 0, metaMask = 0;
 
-		nlock = XKeysymToKeycode(display, XK_Num_Lock);
-		slock = XKeysymToKeycode(display, XK_Scroll_Lock);
-		altl = XKeysymToKeycode(display, XK_Alt_L);
-		altr = XKeysymToKeycode(display, XK_Alt_R);
-		metal = XKeysymToKeycode(display, XK_Meta_L);
-		metar = XKeysymToKeycode(display, XK_Meta_R);
+	nlock = XKeysymToKeycode(display, XK_Num_Lock);
+	slock = XKeysymToKeycode(display, XK_Scroll_Lock);
+	altl = XKeysymToKeycode(display, XK_Alt_L);
+	altr = XKeysymToKeycode(display, XK_Alt_R);
+	metal = XKeysymToKeycode(display, XK_Meta_L);
+	metar = XKeysymToKeycode(display, XK_Meta_R);
 
-		/*
-		 * Find out the masks for the NumLock and ScrollLock modifiers,
-		 * so that we can bind the grabs for when they are enabled too.
-		 * Also resolve which mask the Alt (or, failing that, Meta) keys
-		 * generate so widgets do not have to hard-code Mod1Mask.
-		 */
-		modmap = XGetModifierMapping(display);
+	/*
+	 * Find out the masks for the NumLock and ScrollLock modifiers,
+	 * so that we can bind the grabs for when they are enabled too.
+	 * Also resolve which mask the Alt (or, failing that, Meta) keys
+	 * generate so widgets do not have to hard-code Mod1Mask.
+	 */
+	modmap = XGetModifierMapping(display);
 
-		if (modmap != NULL && modmap->max_keypermod > 0) {
-			for (i = 0; i < 8 * modmap->max_keypermod; i++) {
-				KeyCode kc = modmap->modifiermap[i];
+	if (modmap != NULL && modmap->max_keypermod > 0) {
+		for (i = 0; i < 8 * modmap->max_keypermod; i++) {
+			KeyCode kc = modmap->modifiermap[i];
 
-				if (kc == 0)
-					continue;
-				if (kc == nlock)
-					numLockMask = mask_table[i / modmap->max_keypermod];
-				else if (kc == slock)
-					scrollLockMask = mask_table[i / modmap->max_keypermod];
-				if (kc == altl || kc == altr)
-					altMask |= mask_table[i / modmap->max_keypermod];
-				else if (kc == metal || kc == metar)
-					metaMask |= mask_table[i / modmap->max_keypermod];
-			}
+			if (kc == 0)
+				continue;
+			if (kc == nlock)
+				numLockMask = mask_table[i / modmap->max_keypermod];
+			else if (kc == slock)
+				scrollLockMask = mask_table[i / modmap->max_keypermod];
+			if (kc == altl || kc == altr)
+				altMask |= mask_table[i / modmap->max_keypermod];
+			else if (kc == metal || kc == metar)
+				metaMask |= mask_table[i / modmap->max_keypermod];
 		}
-
-		if (modmap)
-			XFreeModifiermap(modmap);
-
-		scrPtr->ignoredModifierMask = numLockMask | scrollLockMask | LockMask;
-		scrPtr->altModifierMask = altMask ? altMask : (metaMask ? metaMask : Mod1Mask);
 	}
+
+	if (modmap)
+		XFreeModifiermap(modmap);
+
+	scrPtr->ignoredModifierMask = numLockMask | scrollLockMask | LockMask;
+	scrPtr->altModifierMask = altMask ? altMask : (metaMask ? metaMask : Mod1Mask);
 
 	/* initially allocate some colors */
 	WMWhiteColor(scrPtr);
@@ -863,17 +859,12 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 
 	scrPtr->textCursor = XCreateFontCursor(display, XC_xterm);
 
-	{
-		XColor bla;
-		Pixmap blank;
+	blank = XCreatePixmap(display, scrPtr->stipple, 1, 1, 1);
+	XSetForeground(display, scrPtr->monoGC, 0);
+	XFillRectangle(display, blank, scrPtr->monoGC, 0, 0, 1, 1);
 
-		blank = XCreatePixmap(display, scrPtr->stipple, 1, 1, 1);
-		XSetForeground(display, scrPtr->monoGC, 0);
-		XFillRectangle(display, blank, scrPtr->monoGC, 0, 0, 1, 1);
-
-		scrPtr->invisibleCursor = XCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
-		XFreePixmap(display, blank);
-	}
+	scrPtr->invisibleCursor = XCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
+	XFreePixmap(display, blank);
 
 #ifdef HAVE_XINTERNATOMS
 	XInternAtoms(display, atomNames, wlengthof(atomNames), False, atoms);

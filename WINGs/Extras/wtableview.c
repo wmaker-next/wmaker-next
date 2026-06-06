@@ -463,6 +463,7 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 {
 	WMTableView *table = wmalloc(sizeof(WMTableView));
 	WMScreen *scr = WMWidgetScreen(parent);
+	XGCValues gcv;
 
 	memset(table, 0, sizeof(WMTableView));
 
@@ -520,16 +521,12 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 	table->gridColor = WMCreateNamedColor(scr, "#cccccc", False);
 	/*   table->gridColor = WMGrayColor(scr); */
 
-	{
-		XGCValues gcv;
+	table->backColor = WMWhiteColor(scr);
 
-		table->backColor = WMWhiteColor(scr);
-
-		gcv.foreground = WMColorPixel(table->gridColor);
-		gcv.dashes = 1;
-		gcv.line_style = LineOnOffDash;
-		table->gridGC = XCreateGC(WMScreenDisplay(scr), W_DRAWABLE(scr), GCForeground, &gcv);
-	}
+	gcv.foreground = WMColorPixel(table->gridColor);
+	gcv.dashes = 1;
+	gcv.line_style = LineOnOffDash;
+	table->gridGC = XCreateGC(WMScreenDisplay(scr), W_DRAWABLE(scr), GCForeground, &gcv);
 
 	table->editingRow = -1;
 	table->clickedRow = -1;
@@ -569,6 +566,7 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 void WMAddTableViewColumn(WMTableView * table, WMTableColumn * column)
 {
 	WMScreen *scr = WMWidgetScreen(table);
+	WMView *splitter;
 
 	column->table = table;
 
@@ -587,22 +585,20 @@ void WMAddTableViewColumn(WMTableView * table, WMTableColumn * column)
 		WMMapWidget(column->titleW);
 	}
 
-	{
-		WMView *splitter = W_CreateView(WMWidgetView(table->header));
+	splitter = W_CreateView(WMWidgetView(table->header));
 
-		W_SetViewBackgroundColor(splitter, WMWhiteColor(scr));
+	W_SetViewBackgroundColor(splitter, WMWhiteColor(scr));
 
-		if (W_VIEW_REALIZED(table->view))
-			W_RealizeView(splitter);
+	if (W_VIEW_REALIZED(table->view))
+		W_RealizeView(splitter);
 
-		W_ResizeView(splitter, 2, table->headerHeight);
-		W_MapView(splitter);
+	W_ResizeView(splitter, 2, table->headerHeight);
+	W_MapView(splitter);
 
-		W_SetViewCursor(splitter, table->splitterCursor);
-		WMCreateEventHandler(splitter, ButtonPressMask | ButtonReleaseMask, splitterHandler, column);
+	W_SetViewCursor(splitter, table->splitterCursor);
+	WMCreateEventHandler(splitter, ButtonPressMask | ButtonReleaseMask, splitterHandler, column);
 
-		WMAddToArray(table->splitters, splitter);
-	}
+	WMAddToArray(table->splitters, splitter);
 
 	rearrangeHeader(table);
 }
@@ -659,6 +655,7 @@ void WMSetTableViewDataForCell(WMTableView * table, WMTableColumn * column, int 
 WMRect WMTableViewRectForCell(WMTableView * table, WMTableColumn * column, int row)
 {
 	WMRect rect;
+	WMRect r;
 	int i;
 
 	rect.pos.x = 0;
@@ -677,12 +674,9 @@ WMRect WMTableViewRectForCell(WMTableView * table, WMTableColumn * column, int r
 		rect.pos.x += col->width;
 	}
 
-	{
-		WMRect r = getVisibleRect(table);
-
-		rect.pos.y -= r.pos.y;
-		rect.pos.x -= r.pos.x;
-	}
+	r = getVisibleRect(table);
+	rect.pos.y -= r.pos.y;
+	rect.pos.x -= r.pos.x;
 
 	return rect;
 }

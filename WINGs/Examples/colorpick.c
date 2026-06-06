@@ -15,6 +15,7 @@ int main(int argc, char **argv)
 {
 	Display *dpy;
 	WMScreen *scr;
+	WMColorPanel *panel;
 
 	WMInitializeApplication("wmcolorpick", &argc, argv);
 
@@ -26,13 +27,9 @@ int main(int argc, char **argv)
 
 	scr = WMCreateScreen(dpy, DefaultScreen(dpy));
 
-	{
-		WMColorPanel *panel = WMGetColorPanel(scr);
-
-		WMSetColorPanelAction(panel, showSelectedColor, NULL);
-
-		WMShowColorPanel(panel);
-	}
+	panel = WMGetColorPanel(scr);
+	WMSetColorPanelAction(panel, showSelectedColor, NULL);
+	WMShowColorPanel(panel);
 
 	WMScreenMainLoop(scr);
 
