@@ -254,6 +254,11 @@ static atomitem_t atomNames[] = {
 #define _NET_WM_STATE_ADD 1
 #define _NET_WM_STATE_TOGGLE 2
 
+/* wraparound-safe X timestamp comparison, both args read as 32-bit
+ * server time so a-b in 32-bit signed gives the correct ordering across
+ * the 49.7-day wrap */
+#define USER_TIME_NEWER(a, b) ((int32_t)((uint32_t)(a) - (uint32_t)(b)) > 0)
+
 static void observer(void *self, WMNotification *notif);
 static void wsobserver(void *self, WMNotification *notif);
 
@@ -2003,18 +2008,46 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		return False;
 
 	if (event->message_type == net_active_window) {
+		WScreen *scr = wwin->screen_ptr;
+		long source = event->data.l[0];
+		Time ev_time = (Time)event->data.l[1];
+		Bool same_workspace = wwin->frame->workspace == scr->current_workspace;
+		Bool same_head = True;
+		Bool allow;
+
+		if (scr->xine_info.count > 1 && scr->focused_window
+		    && scr->focused_window->flags.mapped)
+			same_head = wGetHeadForWindow(wwin)
+				    == wGetHeadForWindow(scr->focused_window);
+
 		/*
-		 * Satisfy a client's focus request only if
-		 * - request comes from a pager, or
-		 * - it's explicitly allowed in Advanced Options, or
-		 * - giving the client the focus does not cause a change in
-		 *   the active workspace (XXX: or the active head if Xinerama)
+		 * source 2 is a pager or taskbar, the user clicked on it so
+		 * always honour. Everything else, including source 0 (legacy)
+		 * and out-of-range values, is treated as an application
+		 * asking for itself, since any X client can choose data.l[0]
+		 * and a forged 0 must not bypass the policy. Application
+		 * requests may not warp workspace or head unless the
+		 * inspector explicitly allows it for this client, and are
+		 * refused outright when the supplied timestamp is older than
+		 * the last user activity seen on the screen.
 		 */
-		if (wwin->frame->workspace == wwin->screen_ptr->current_workspace /* No workspace change */
-		    || event->data.l[0] == 2 /* Requested by pager */
-		    || WFLAGP(wwin, focus_across_wksp) /* Explicitly allowed */) {
-				wNETWMShowingDesktop(wwin->screen_ptr, False);
-				wMakeWindowVisible(wwin);
+		if (source != 2 && ev_time != 0 && scr->net_last_user_time != 0
+		    && USER_TIME_NEWER(scr->net_last_user_time, ev_time)) {
+			allow = False;
+		} else if (source == 2 || WFLAGP(wwin, focus_across_wksp)) {
+			allow = True;
+		} else {
+			allow = same_workspace
+				&& (same_head || w_global.config->auto_focus_across_heads);
+		}
+
+		if (allow) {
+			wNETWMShowingDesktop(scr, False);
+			wMakeWindowVisible(wwin);
+		} else if (!wwin->flags.focused && !wwin->flags.net_demands_attention) {
+			wwin->flags.net_demands_attention = 1;
+			updateStateHint(wwin, False, False);
+			wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
 		}
 		return True;
 
@@ -2399,10 +2432,6 @@ void wNETWMPingWindow(WWindow *wwin, Time timestamp)
 /* maps the indirected user-time carrier window back to its WWindow so
  * PropertyNotify on the helper can be routed without a linear scan */
 static XContext user_time_ctx = 0;
-
-/* X server timestamps wrap as CARD32, compare with signed difference so
- * a fresh wrapped value still reads as newer */
-#define USER_TIME_NEWER(a, b) ((int32_t)((uint32_t)(a) - (uint32_t)(b)) > 0)
 
 static void readUserTime(WWindow *wwin)
 {
