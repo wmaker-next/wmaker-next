@@ -209,6 +209,20 @@ window_on_head1() {
 	[ -n "$wox" ] && [ "$wox" -ge 1024 ]
 }
 
+window_on_head0() {
+	wox=$(xwininfo_field "$1" 'Absolute upper-left X')
+	[ -n "$wox" ] && [ "$wox" -lt 1024 ]
+}
+
+window_is_viewable() {
+	[ "$(xwininfo_field "$1" 'Map State')" = IsViewable ]
+}
+
+window_not_viewable() {
+	wnv=$(xwininfo_field "$1" 'Map State')
+	[ -n "$wnv" ] && [ "$wnv" != IsViewable ]
+}
+
 desktop_name_is() {
 	root_prop _NET_DESKTOP_NAMES \
 		| sed -e 's/^[^=]*= //' -e 's/"//g' \
@@ -1075,7 +1089,117 @@ fi
 
 check "no internal X errors logged during the run" no_internal_x_errors
 
-kill -TERM "$WMAKER_PID" 2>/dev/null
-wait_for 50 pid_gone "$WMAKER_PID"
+# PerHeadWorkspaces is startup-only, so a second wmaker is brought up on
+# the same Xephyr with a per-head config. Xephyr +xinerama exposes no
+# active RandR outputs at all, so the workspace pin uses the "#N"
+# head-index fallback that WorkspaceOutputs and HeadWorkspaces share.
+if [ "$(xinerama_head_count)" -ge 2 ] && [ -x "$CLIENT_BIN" ]; then
+	note "PerHeadWorkspaces"
+
+	kill -TERM "$WMAKER_PID" 2>/dev/null
+	wait_for 50 pid_gone "$WMAKER_PID"
+
+	cat >"$WMHOME/Defaults/WindowMaker" <<-'WMEOD'
+	{
+	  PerHeadWorkspaces = YES;
+	  AutoFocusAcrossHeads = YES;
+	  WorkspaceOutputs = { "3" = "#0"; };
+	}
+	WMEOD
+	# WorkspaceOutputs is parsed against the workspaces restored from
+	# WMState, before _NET_NUMBER_OF_DESKTOPS would grow them, so the
+	# pinned workspace must already exist there. HeadWorkspaces is
+	# seeded so both heads start on workspace 0 instead of the
+	# pinned-first default a fresh head would otherwise pick.
+	cat >"$WMHOME/Defaults/WMState" <<-'WMEOD'
+	{
+	  Workspaces = ( {Name = "1";}, {Name = "2";}, {Name = "3";}, {Name = "4";} );
+	  HeadWorkspaces = { "#0" = "1"; "#1" = "1"; };
+	}
+	WMEOD
+
+	LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+	DISPLAY=$DPY \
+	"$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
+	WMAKER_PID=$!
+	echo "$WMAKER_PID" >> "$PIDFILE"
+	wm_roundtrip() { wmaker_alive && run_x wmctrl -m >/dev/null 2>&1; }
+	wait_for 120 wm_roundtrip || fatal "wmaker (PerHeadWorkspaces) did not come up"
+	run_x wmctrl -n 4 >>"$LOG" 2>&1
+	wait_for 40 prop_has_values _NET_NUMBER_OF_DESKTOPS 4 >/dev/null
+
+	if start_ewmh_client \
+	   && start_second_client EWMH_CLIENT_NAME=perhead2; then
+		run_x wmctrl -i -r "$CLIENT_XID" -e 0,50,50,320,180 >>"$LOG" 2>&1
+		run_x wmctrl -i -r "$CLIENT2_XID" -e 0,1100,100,320,180 >>"$LOG" 2>&1
+		wait_for 30 window_on_head0 "$CLIENT_XID" >/dev/null
+		wait_for 30 window_on_head1 "$CLIENT2_XID" >/dev/null
+
+		# both clients on workspace 0, both heads on workspace 0,
+		# focus the head-1 client so it becomes the active head
+		send_active_window "$CLIENT2_XID" 2 0
+		wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+		run_x wmctrl -s 1 >>"$LOG" 2>&1
+
+		check "PerHeadWorkspaces: head 1 switch sets _NET_CURRENT_DESKTOP" \
+			wait_for 30 desktop_is 1
+		check "PerHeadWorkspaces: head 1 switch leaves head 0 client mapped" \
+			wait_for 30 window_is_viewable "$CLIENT_XID"
+		check "PerHeadWorkspaces: head 1 client on the old workspace is unmapped" \
+			wait_for 30 window_not_viewable "$CLIENT2_XID"
+
+		run_x wmctrl -i -r "$CLIENT2_XID" -t 1 >>"$LOG" 2>&1
+		check "PerHeadWorkspaces: head 1 client maps on the per-head workspace" \
+			wait_for 30 window_is_viewable "$CLIENT2_XID"
+
+		# focus-only _NET_CURRENT_DESKTOP must track the active head
+		# (the awesome #170 case for chromium DND visibility)
+		send_active_window "$CLIENT_XID" 2 0
+		check "PerHeadWorkspaces: focusing head 0 sets _NET_CURRENT_DESKTOP" \
+			wait_for 30 desktop_is 0
+		check "PerHeadWorkspaces: head 1 client stays mapped across the focus move" \
+			window_is_viewable "$CLIENT2_XID"
+		send_active_window "$CLIENT2_XID" 2 0
+		check "PerHeadWorkspaces: focusing head 1 sets _NET_CURRENT_DESKTOP" \
+			wait_for 30 desktop_is 1
+
+		# WorkspaceOutputs head translation: workspace 2 (1-based "3")
+		# is pinned to "default" = head 0, sending the head-1 client
+		# there must carry the frame across to head 0 instead of
+		# leaving last_head on a head where the workspace can never
+		# be shown
+		run_x wmctrl -i -r "$CLIENT2_XID" -t 2 >>"$LOG" 2>&1
+		check "PerHeadWorkspaces: _NET_WM_DESKTOP to a pinned workspace is honoured" \
+			wait_for 30 window_prop_has_values "$CLIENT2_XID" _NET_WM_DESKTOP 2
+		check "PerHeadWorkspaces: window follows pinned workspace onto head 0" \
+			wait_for 30 window_on_head0 "$CLIENT2_XID"
+
+		stop_second_client
+		close_ewmh_client >/dev/null
+	else
+		record_skip "PerHeadWorkspaces: managed clients failed"
+	fi
+
+	check "PerHeadWorkspaces: no internal X errors" no_internal_x_errors
+
+	# clean shutdown writes WMState, head 1 was switched from the
+	# seeded workspace 0 to workspace 1 above so the saved value for
+	# the "#1" index key must reflect that, proving the per-head save
+	# ran rather than the seeded dictionary surviving untouched
+	kill -TERM "$WMAKER_PID" 2>/dev/null
+	wait_for 50 pid_gone "$WMAKER_PID"
+	headws_saved() {
+		grep -F 'HeadWorkspaces' "$WMHOME/Defaults/WMState" >/dev/null 2>&1 \
+			&& grep -E '"#1"[[:space:]]*=[[:space:]]*"?2"?;' \
+				"$WMHOME/Defaults/WMState" >/dev/null 2>&1
+	}
+	check "PerHeadWorkspaces: HeadWorkspaces saved with the per-head switch" \
+		wait_for 20 headws_saved
+else
+	record_skip "PerHeadWorkspaces: only one Xinerama head or no test client"
+
+	kill -TERM "$WMAKER_PID" 2>/dev/null
+	wait_for 50 pid_gone "$WMAKER_PID"
+fi
 
 finish
