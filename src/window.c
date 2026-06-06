@@ -112,6 +112,7 @@ static void titlebarDblClick(WCoreWindow *sender, void *data, XEvent *event);
 static void resizebarMouseDown(WCoreWindow *sender, void *data, XEvent *event);
 
 static void release_wwindowstate(WWindowState *wstate);
+static void translateWindowToHead(WWindow *wwin, int from_head, int to_head);
 
 /****** Notification Observers ******/
 
@@ -1499,19 +1500,8 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		int target = wHeadShowingWorkspace(scr, workspace);
 
 		if (target != wwin->last_head
-		    && wWorkspaceIsAllowedOnHead(scr, workspace, target)) {
-			WMRect from = wGetRectForHead(scr, wwin->last_head);
-			WMRect to = wGetRectForHead(scr, target);
-
-			x = to.pos.x + (from.size.width > 0
-					? (x - from.pos.x) * to.size.width / from.size.width
-					: 0);
-			y = to.pos.y + (from.size.height > 0
-					? (y - from.pos.y) * to.size.height / from.size.height
-					: 0);
-			wWindowConfigure(wwin, x, y, width, height);
-			wwin->last_head = target;
-		}
+		    && wWorkspaceIsAllowedOnHead(scr, workspace, target))
+			translateWindowToHead(wwin, wwin->last_head, target);
 	}
 
 	/* to make sure the window receives it's new position after reparenting */
@@ -2348,6 +2338,25 @@ void wWindowCropSize(WWindow *wwin, unsigned int maxW, unsigned int maxH,
 		*height = maxH - (maxH - baseH) % hinc;
 }
 
+/* Translate the frame from one head's rectangle into the same relative
+ * position within another head's rectangle. wWindowConfigure() refreshes
+ * wwin->last_head from the new geometry, so the caller does not need to. */
+static void translateWindowToHead(WWindow *wwin, int from_head, int to_head)
+{
+	WScreen *scr = wwin->screen_ptr;
+	WMRect from = wGetRectForHead(scr, from_head);
+	WMRect to = wGetRectForHead(scr, to_head);
+	int x, y;
+
+	x = to.pos.x + (from.size.width > 0
+			? (wwin->frame_x - from.pos.x) * to.size.width / from.size.width
+			: 0);
+	y = to.pos.y + (from.size.height > 0
+			? (wwin->frame_y - from.pos.y) * to.size.height / from.size.height
+			: 0);
+	wWindowConfigure(wwin, x, y, wwin->client.width, wwin->client.height);
+}
+
 void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 {
 	WScreen *scr = wwin->screen_ptr;
@@ -2362,8 +2371,30 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 		Bool was_visible = wWindowIsVisibleOnAnyHead(wwin);
 		Bool now_visible;
 
-		if (!IS_OMNIPRESENT(wwin))
+		if (!IS_OMNIPRESENT(wwin)) {
 			wwin->frame->workspace = workspace;
+
+			/* The absolute, directional, last-workspace and layer
+			 * move-window keybinds, the window-menu Move To
+			 * submenu and a client _NET_WM_DESKTOP request can all
+			 * name a workspace pinned to another output, so the
+			 * window's effective head no longer agrees with where
+			 * that workspace can ever be shown. Carry the frame
+			 * onto the head that is showing or allowed to show it,
+			 * otherwise wWindowIsVisibleOnAnyHead() stays False
+			 * for every per-head switch and the window is lost.
+			 * Skip while changing_workspace is set so an opaque
+			 * edge-scroll drag does not have the frame warped out
+			 * from under the grabbed pointer. */
+			if (!wwin->flags.changing_workspace
+			    && !wWorkspaceIsAllowedOnHead(scr, workspace, wwin->last_head)) {
+				int target = wHeadShowingWorkspace(scr, workspace);
+
+				if (target != wwin->last_head
+				    && wWorkspaceIsAllowedOnHead(scr, workspace, target))
+					translateWindowToHead(wwin, wwin->last_head, target);
+			}
+		}
 		now_visible = wWindowIsVisibleOnAnyHead(wwin);
 
 		if (was_visible && !now_visible
