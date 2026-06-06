@@ -46,7 +46,8 @@ typedef struct PLData {
 
 typedef struct StringBuffer {
 	char *str;
-	int size;
+	size_t size;
+	size_t len;
 } StringBuffer;
 
 static unsigned hashPropList(const void *param);
@@ -408,135 +409,155 @@ static char *stringDescription(WMPropList * plist)
 	return retVal;
 }
 
-static char *description(WMPropList * plist)
+/*
+ * Growable output buffer for the description writers below. The buffer
+ * is doubled on demand so building an N-byte description copies O(N)
+ * bytes in total, replacing the per-element wmalloc+snprintf("%s...%s")
+ * pattern that re-copied the whole accumulated string on every append.
+ */
+static void sbufEnsure(StringBuffer *sb, size_t extra)
+{
+	size_t need;
+
+	need = sb->len + extra + 1;
+	if (need <= sb->size)
+		return;
+	while (sb->size < need)
+		sb->size *= 2;
+	sb->str = wrealloc(sb->str, sb->size);
+}
+
+static void sbufAppend(StringBuffer *sb, const char *s)
+{
+	size_t n;
+
+	n = strlen(s);
+	sbufEnsure(sb, n);
+	memcpy(sb->str + sb->len, s, n);
+	sb->len += n;
+}
+
+static void sbufAppendChar(StringBuffer *sb, char c)
+{
+	sbufEnsure(sb, 1);
+	sb->str[sb->len++] = c;
+}
+
+static void sbufIndent(StringBuffer *sb, int spaces)
+{
+	if (spaces <= 0)
+		return;
+	sbufEnsure(sb, (size_t)spaces);
+	memset(sb->str + sb->len, ' ', (size_t)spaces);
+	sb->len += (size_t)spaces;
+}
+
+static void appendDescription(StringBuffer *sb, WMPropList *plist)
 {
 	WMPropList *key, *val;
-	char *retstr = NULL;
-	char *str, *tmp, *skey, *sval;
 	WMHashEnumerator e;
+	char *str;
 	int i;
 
 	switch (plist->type) {
 	case WPLString:
-		retstr = stringDescription(plist);
+		str = stringDescription(plist);
+		sbufAppend(sb, str);
+		wfree(str);
 		break;
 	case WPLData:
-		retstr = dataDescription(plist);
+		str = dataDescription(plist);
+		sbufAppend(sb, str);
+		wfree(str);
 		break;
 	case WPLArray:
-		retstr = wstrdup("(");
+		sbufAppendChar(sb, '(');
 		for (i = 0; i < WMGetArrayItemCount(plist->d.array); i++) {
-			str = description(WMGetFromArray(plist->d.array, i));
-			if (i == 0) {
-				retstr = wstrappend(retstr, str);
-			} else {
-				tmp = (char *)wmalloc(strlen(retstr) + strlen(str) + 3);
-				snprintf(tmp, strlen(retstr) + strlen(str) + 3, "%s, %s", retstr, str);
-				wfree(retstr);
-				retstr = tmp;
-			}
-			wfree(str);
+			if (i > 0)
+				sbufAppend(sb, ", ");
+			appendDescription(sb, WMGetFromArray(plist->d.array, i));
 		}
-		retstr = wstrappend(retstr, ")");
+		sbufAppendChar(sb, ')');
 		break;
 	case WPLDictionary:
-		retstr = wstrdup("{");
+		sbufAppendChar(sb, '{');
 		e = WMEnumerateHashTable(plist->d.dict);
 		while (WMNextHashEnumeratorItemAndKey(&e, (void **)&val, (void **)&key)) {
-			skey = description(key);
-			sval = description(val);
-			tmp = (char *)wmalloc(strlen(retstr) + strlen(skey) + strlen(sval) + 5);
-			snprintf(tmp, strlen(retstr) + strlen(skey) + strlen(sval) + 5, "%s%s = %s;", retstr, skey, sval);
-			wfree(skey);
-			wfree(sval);
-			wfree(retstr);
-			retstr = tmp;
+			appendDescription(sb, key);
+			sbufAppend(sb, " = ");
+			appendDescription(sb, val);
+			sbufAppendChar(sb, ';');
 		}
-		retstr = wstrappend(retstr, "}");
+		sbufAppendChar(sb, '}');
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertr(False);
 		break;
 	}
-
-	return retstr;
 }
 
-static char *indentedDescription(WMPropList * plist, int level)
+static void appendIndentedDescription(StringBuffer *sb, WMPropList *plist, int level)
 {
 	WMPropList *key, *val;
-	char *retstr = NULL;
-	char *str, *tmp, *skey, *sval;
 	WMHashEnumerator e;
+	char *str;
+	size_t mark;
 	int i;
 
 	if (plist->type == WPLArray /* || plist->type==WPLDictionary */ ) {
-		retstr = description(plist);
-
-		if (retstr && ((2 * (level + 1) + strlen(retstr)) <= 77)) {
-			return retstr;
-		} else if (retstr) {
-			wfree(retstr);
-			retstr = NULL;
-		}
+		/* try the compact one-line form first, keep it if it still
+		 * fits inside 77 columns at this indent level, otherwise
+		 * roll the buffer back and fall through to the multi-line
+		 * layout below */
+		mark = sb->len;
+		appendDescription(sb, plist);
+		if ((size_t)(2 * (level + 1)) + (sb->len - mark) <= 77)
+			return;
+		sb->len = mark;
 	}
 
 	switch (plist->type) {
 	case WPLString:
-		retstr = stringDescription(plist);
+		str = stringDescription(plist);
+		sbufAppend(sb, str);
+		wfree(str);
 		break;
 	case WPLData:
-		retstr = dataDescription(plist);
+		str = dataDescription(plist);
+		sbufAppend(sb, str);
+		wfree(str);
 		break;
 	case WPLArray:
-		retstr = wstrdup("(\n");
+		sbufAppend(sb, "(\n");
 		for (i = 0; i < WMGetArrayItemCount(plist->d.array); i++) {
-			str = indentedDescription(WMGetFromArray(plist->d.array, i), level + 1);
-			if (i == 0) {
-				tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(str) + 1);
-				snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(str) + 1, "%s%*s%s", retstr, 2 * (level + 1), "", str);
-				wfree(retstr);
-				retstr = tmp;
-			} else {
-				tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(str) + 3);
-				snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(str) + 3, "%s,\n%*s%s", retstr, 2 * (level + 1), "", str);
-				wfree(retstr);
-				retstr = tmp;
-			}
-			wfree(str);
+			if (i > 0)
+				sbufAppend(sb, ",\n");
+			sbufIndent(sb, 2 * (level + 1));
+			appendIndentedDescription(sb, WMGetFromArray(plist->d.array, i), level + 1);
 		}
-		tmp = (char *)wmalloc(strlen(retstr) + 2 * level + 3);
-		snprintf(tmp, strlen(retstr) + 2 * level + 3, "%s\n%*s)", retstr, 2 * level, "");
-		wfree(retstr);
-		retstr = tmp;
+		sbufAppendChar(sb, '\n');
+		sbufIndent(sb, 2 * level);
+		sbufAppendChar(sb, ')');
 		break;
 	case WPLDictionary:
-		retstr = wstrdup("{\n");
+		sbufAppend(sb, "{\n");
 		e = WMEnumerateHashTable(plist->d.dict);
 		while (WMNextHashEnumeratorItemAndKey(&e, (void **)&val, (void **)&key)) {
-			skey = indentedDescription(key, level + 1);
-			sval = indentedDescription(val, level + 1);
-			tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(skey)
-					      + strlen(sval) + 6);
-			snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(skey) + strlen(sval) + 6, "%s%*s%s = %s;\n", retstr, 2 * (level + 1), "", skey, sval);
-			wfree(skey);
-			wfree(sval);
-			wfree(retstr);
-			retstr = tmp;
+			sbufIndent(sb, 2 * (level + 1));
+			appendIndentedDescription(sb, key, level + 1);
+			sbufAppend(sb, " = ");
+			appendIndentedDescription(sb, val, level + 1);
+			sbufAppend(sb, ";\n");
 		}
-		tmp = (char *)wmalloc(strlen(retstr) + 2 * level + 2);
-		snprintf(tmp, strlen(retstr) + 2 * level + 2, "%s%*s}", retstr, 2 * level, "");
-		wfree(retstr);
-		retstr = tmp;
+		sbufIndent(sb, 2 * level);
+		sbufAppendChar(sb, '}');
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertr(False);
 		break;
 	}
-
-	return retstr;
 }
 
 static inline int getChar(PLData * pldata)
@@ -1594,7 +1615,19 @@ WMPropList *WMCreatePropListFromDescription(const char *desc)
 
 char *WMGetPropListDescription(WMPropList * plist, Bool indented)
 {
-	return (indented ? indentedDescription(plist, 0) : description(plist));
+	StringBuffer sb;
+
+	sb.size = 256;
+	sb.len = 0;
+	sb.str = wmalloc(sb.size);
+
+	if (indented)
+		appendIndentedDescription(&sb, plist, 0);
+	else
+		appendDescription(&sb, plist);
+
+	sb.str[sb.len] = '\0';
+	return sb.str;
 }
 
 WMPropList *WMReadPropListFromFile(const char *file)
@@ -1757,7 +1790,7 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
 		goto failure;
 	}
 
-	desc = indentedDescription(plist, 0);
+	desc = WMGetPropListDescription(plist, True);
 
 	if (fprintf(theFile, "%s\n", desc) != strlen(desc) + 1) {
 		werror(_("writing to file: %s failed"), thePath);

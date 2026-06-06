@@ -52,6 +52,75 @@ static void test_roundtrip(const char *desc)
 		WMReleasePropList(b);
 }
 
+static void test_indented_roundtrip(const char *desc)
+{
+	WMPropList *a, *b;
+	char *out1, *out2;
+
+	a = WMCreatePropListFromDescription(desc);
+	CHECK(a != NULL);
+	if (!a)
+		return;
+
+	out1 = WMGetPropListDescription(a, True);
+	CHECK(out1 != NULL);
+
+	b = out1 ? WMCreatePropListFromDescription(out1) : NULL;
+	CHECK(b != NULL);
+	CHECK(b && WMIsPropListEqualTo(a, b));
+
+	/* a second indented pass over the re-parsed tree must be
+	 * byte-identical, the writer is idempotent */
+	out2 = b ? WMGetPropListDescription(b, True) : NULL;
+	CHECK(out2 && strcmp(out1, out2) == 0);
+
+	wfree(out1);
+	wfree(out2);
+	WMReleasePropList(a);
+	if (b)
+		WMReleasePropList(b);
+}
+
+static void test_indented_array_layout(void)
+{
+	WMPropList *small, *wide, *elem;
+	char *out;
+	int i;
+
+	/* a short array stays on one line in indented output */
+	small = WMCreatePropListFromDescription("(a, b, c)");
+	out = WMGetPropListDescription(small, True);
+	CHECK(out && strchr(out, '\n') == NULL);
+	CHECK(out && strcmp(out, "(a, b, c)") == 0);
+	wfree(out);
+	WMReleasePropList(small);
+
+	/* an array too wide for one line is broken across lines, this also
+	 * exercises the rollback after the compact-form attempt and the
+	 * append buffer growing well past its initial allocation */
+	wide = WMCreatePLArray(NULL);
+	for (i = 0; i < 200; i++) {
+		elem = WMCreatePLString("entry");
+		WMAddToPLArray(wide, elem);
+		WMReleasePropList(elem);
+	}
+	out = WMGetPropListDescription(wide, True);
+	CHECK(out && out[0] == '(' && out[1] == '\n');
+	CHECK(out && strstr(out, ",\n  entry") != NULL);
+	CHECK(out && out[strlen(out) - 1] == ')');
+	wfree(out);
+
+	/* and the compact form of the same wide array round-trips */
+	out = WMGetPropListDescription(wide, False);
+	CHECK(out && strchr(out, '\n') == NULL);
+	small = WMCreatePropListFromDescription(out);
+	CHECK(small && WMIsPropListEqualTo(wide, small));
+	wfree(out);
+	if (small)
+		WMReleasePropList(small);
+	WMReleasePropList(wide);
+}
+
 static void test_string_escape(void)
 {
 	WMPropList *s, *r;
@@ -256,6 +325,10 @@ int main(void)
 	test_roundtrip("(a, b, c)");
 	test_roundtrip("{ key = value; other = (1, 2, 3); }");
 	test_roundtrip("{ nested = { a = (x, y); }; }");
+
+	test_indented_roundtrip("{ key = value; other = (1, 2, 3); }");
+	test_indented_roundtrip("{ nested = { a = (x, y); b = <0a0b 0c0d>; }; }");
+	test_indented_array_layout();
 
 	test_string_escape();
 	test_utf8_roundtrip();
