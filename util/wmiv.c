@@ -2117,7 +2117,6 @@ int main(int argc, char **argv)
 	char *reading_filename = "";
 	int screen_num, file_i;
 	int quit = 0;
-	WXSizeHints *size_hints;
 	WXWMHints *win_hints;
 	Atom delWindow;
 
@@ -2257,14 +2256,6 @@ int main(int argc, char **argv)
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 10, 10, 0, 0, BlackPixel(dpy, screen_num));
 	XSelectInput(dpy, win, KeyPressMask|StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|FocusChangeMask|PropertyChangeMask);
 
-	size_hints = WXAllocSizeHints();
-	if (!size_hints) {
-		fprintf(stderr, "Error: failed to allocate memory\n");
-		return EXIT_FAILURE;
-	}
-	size_hints->width = img->width;
-	size_hints->height = img->height;
-
 	delWindow = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 	WXSetWMProtocols(dpy, win, &delWindow, 1);
 	change_title(reading_filename);
@@ -2335,11 +2326,9 @@ int main(int argc, char **argv)
 		win_hints->window_group = win;
 		WXSetWMIconName(dpy, win, APPNAME);
 		WXSetCommand(dpy, win, argv, argc);
-		WXSetNormalHints(dpy, win, size_hints);
 		WXSetWMHints(dpy, win, win_hints);
 		WXSetWMClass(dpy, win, APPNAME, "wmiv");
 		wfree(win_hints);
-		wfree(size_hints);
 	}
 	XMapWindow(dpy, win);
 	XFlush(dpy);
