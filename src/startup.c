@@ -69,6 +69,7 @@
 #include "dialog.h"
 #include "wmspec.h"
 #include "event.h"
+#include "hotcorner.h"
 #include "ipc.h"
 #include "switchmenu.h"
 #include "wconfigmodel.h"
@@ -761,6 +762,14 @@ void StartUp(Bool defaultScreenOnly)
 		} else {
 			wSessionRestoreLastWorkspace(wScreen[j]);
 		}
+
+		/* the corner InputOnly windows were created and raised by
+		 * wConfigApplyRuntime() inside wScreenInit, but the dock,
+		 * clip and adopted clients above are mapped with plain
+		 * XMapWindow and end up on top of them, so a corner that
+		 * happens to sit under the clip never receives EnterNotify,
+		 * restack the corner windows once everything is up */
+		wHotCornersRaise(wScreen[j]);
 	}
 
 	for (j = 0; j < w_global.screen_count; j++) {
