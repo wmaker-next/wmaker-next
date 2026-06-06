@@ -557,7 +557,7 @@ void WMenuParserRegisterSimpleMacro(WMenuParser parser, const char *name, const 
 	unsigned char *wr;
 
 	macro = wmalloc(sizeof(*macro));
-	strncpy(macro->name, name, sizeof(macro->name)-1);
+	wstrlcpy(macro->name, name, sizeof(macro->name));
 	macro->arg_count = -1;
 	len = strlen(value);
 	if (len > sizeof(macro->value) - 3) {
@@ -695,7 +695,7 @@ static void w_create_macro(WMenuParser parser, const char *name, WParserMacroFun
 	WParserMacro *macro;
 
 	macro = wmalloc(sizeof(*macro));
-	strncpy(macro->name, name, sizeof(macro->name) - 1);
+	wstrlcpy(macro->name, name, sizeof(macro->name));
 	macro->function = handler;
 	macro->arg_count = -1;
 	macro->next = parser->macros;

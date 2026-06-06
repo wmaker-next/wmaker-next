@@ -301,6 +301,8 @@ static char *menu_parser_isolate_token(WMenuParser parser)
 {
 	char buffer_token[sizeof(parser->line_buffer)];
 	char *token;
+	char *copy;
+	size_t token_len;
 	int limit = MAX_NESTED_MACROS;
 
 	token = buffer_token;
@@ -391,10 +393,11 @@ found_end_squote:
 		}
 
 	*token++ = '\0';
-	token = wmalloc(token - buffer_token);
-	strcpy(token, buffer_token);
+	token_len = token - buffer_token;
+	copy = wmalloc(token_len);
+	memcpy(copy, buffer_token, token_len);
 
-	return token;
+	return copy;
 }
 
 /* Processing of special # directives */
@@ -516,9 +519,8 @@ found_end_define_fname:
 			if (len > sizeof(buffer) - 1)
 				len = sizeof(buffer) - 1;
 
-			strncpy(buffer, parser->file_name, len);
-			strncpy(buffer+len, req_filename, sizeof(buffer) - len - 1);
-			buffer[sizeof(buffer) - 1] = '\0';
+			memcpy(buffer, parser->file_name, len);
+			wstrlcpy(buffer + len, req_filename, sizeof(buffer) - (size_t)len);
 			fullfilename = buffer;
 		}
 	}
@@ -582,7 +584,7 @@ static void menu_parser_condition_ifmacro(WMenuParser parser, Bool check_exists)
 			((!check_exists) && (macro != NULL));
 	}
 
-	strncpy(parser->cond.stack[0].name, cmd_name, sizeof(parser->cond.stack[0].name) - 1);
+	wstrlcpy(parser->cond.stack[0].name, cmd_name, sizeof(parser->cond.stack[0].name));
 	parser->cond.stack[0].line = parser->line_number;
 }
 

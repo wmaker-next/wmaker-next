@@ -183,9 +183,16 @@ char *wtrimspace(const char *s)
 
 char *wstrdup(const char *str)
 {
+	char *copy;
+	size_t len;
+
 	assert(str != NULL);
 
-	return strcpy(wmalloc(strlen(str) + 1), str);
+	len = strlen(str) + 1;
+	copy = wmalloc(len);
+	memcpy(copy, str, len);
+
+	return copy;
 }
 
 char *wstrndup(const char *str, size_t len)
@@ -195,8 +202,9 @@ char *wstrndup(const char *str, size_t len)
 	assert(str != NULL);
 
 	len = WMIN(len, strlen(str));
-	copy = strncpy(wmalloc(len + 1), str, len);
-	copy[len] = 0;
+	copy = wmalloc(len + 1);
+	memcpy(copy, str, len);
+	copy[len] = '\0';
 
 	return copy;
 }
@@ -216,14 +224,15 @@ char *wstrconcat(const char *str1, const char *str2)
 	slen1 = strlen(str1);
 	slen = slen1 + strlen(str2) + 1;
 	str = wmalloc(slen);
-	strcpy(str, str1);
-	strcpy(str + slen1, str2);
+	memcpy(str, str1, slen1);
+	memcpy(str + slen1, str2, slen - slen1);
 
 	return str;
 }
 
 char *wstrappend(char *dst, const char *src)
 {
+	size_t dlen;
 	size_t slen;
 
 	if (!src || *src == 0)
@@ -231,9 +240,10 @@ char *wstrappend(char *dst, const char *src)
 	else if (!dst)
 		return wstrdup(src);
 
-	slen = strlen(dst) + strlen(src) + 1;
-	dst = wrealloc(dst, slen);
-	strcat(dst, src);
+	dlen = strlen(dst);
+	slen = strlen(src) + 1;
+	dst = wrealloc(dst, dlen + slen);
+	memcpy(dst + dlen, src, slen);
 
 	return dst;
 }

@@ -95,25 +95,25 @@ void __wmessage(const char *func, const char *file, int line, int type, const ch
 	fflush(stdout);
 
 	/* message format: <wings_progname>(function(file:line): <type?>: <message>"\n" */
-	strncat(buf, _WINGS_progname ? _WINGS_progname : "WINGs", linemax - 1);
+	wstrlcpy(buf, _WINGS_progname ? _WINGS_progname : "WINGs", linemax);
 	snprintf(buf + strlen(buf), linemax - strlen(buf), "(%s(%s:%d))", func, file, line);
-	strncat(buf, ": ", linemax - 1 - strlen(buf));
+	wstrlcat(buf, ": ", linemax);
 
 	switch (type) {
 		case WMESSAGE_TYPE_FATAL:
-			strncat(buf, _("fatal: "), linemax - 1 - strlen(buf));
+			wstrlcat(buf, _("fatal: "), linemax);
 #ifdef HAVE_SYSLOG
 			syslog_priority = LOG_CRIT;
 #endif
 		break;
 		case WMESSAGE_TYPE_ERROR:
-			strncat(buf, _("error: "), linemax - 1 - strlen(buf));
+			wstrlcat(buf, _("error: "), linemax);
 #ifdef HAVE_SYSLOG
 			syslog_priority = LOG_ERR;
 #endif
 		break;
 		case WMESSAGE_TYPE_WARNING:
-			strncat(buf, _("warning: "), linemax - 1 - strlen(buf));
+			wstrlcat(buf, _("warning: "), linemax);
 #ifdef HAVE_SYSLOG
 			syslog_priority = LOG_WARNING;
 #endif
