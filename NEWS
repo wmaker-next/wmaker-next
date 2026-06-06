@@ -3,154 +3,113 @@ NEWS for veteran Window Maker users
 
 -- next
 
-GNUstep applications drive their own Hide via _GNUSTEP_WM_HIDE_APP
-------------------------------------------------------------------
-
-When a window lists _GNUSTEP_WM_HIDE_APP in WM_PROTOCOLS, the Hide
-action from the titlebar miniaturize button (right click or Ctrl+left
-click), the HideKey binding, the window menu, and the appicon and dock
-menus now sends that protocol message instead of unmapping the
-application's windows from the window-manager side. This lets the
-application post its applicationWillHide and applicationDidHide
-notifications and keep NSApplication.isHidden in step. Applications
-that do not advertise the protocol are unaffected. Right-clicking the
-miniaturize button on a GNUstep window also now hides as documented,
-where previously it sent _GNUSTEP_WM_MINIATURIZE_WINDOW because the
-modifier-state test ran before the button-number test.
-
-
-Indexed-colour displays are no longer supported
------------------------------------------------
-
-The wraster library now requires a TrueColor visual and fails
-RCreateContext() with the new RERR_BADVISUALCLASS code on PseudoColor,
-StaticColor, GrayScale or StaticGray screens. The PseudoColor colour
-cube allocator, the X standard-colormap lookup and the Floyd-Steinberg
-dithering paths have been removed, libwraster no longer links libXmu,
-and its soname moves from 6 to 9. The ColormapSize and DisableDithering
-defaults keys, the corresponding "Dithering colormap for 8bpp" panel in
-WPrefs, and the WRASTER_COLOR_RESOLUTION environment variable are gone.
-wmsetbg still accepts -c, -d and -m for backward compatibility with old
-scripts and themes but they have no effect and are no longer documented.
-15 and 16-bit TrueColor visuals continue to work via the masked
-best-match path, without error diffusion.
-
-
-_NET_WM_PING and a "Not Responding" prompt
-------------------------------------------
-
-Closing a window that lists _NET_WM_PING in WM_PROTOCOLS now sends a
-ping alongside WM_DELETE_WINDOW. If the client does not echo it within
-five seconds an "Application Not Responding" dialog offers Force Quit
-(SIGTERM, escalating to SIGKILL if a second prompt is reached, on the
-_NET_WM_PID cached at map time when WM_CLIENT_MACHINE matches the local
-host, otherwise XKillClient) or Wait.
-
-
-Focus-stealing prevention via _NET_WM_USER_TIME
------------------------------------------------
-
-A newly mapped window whose _NET_WM_USER_TIME is 0, or older than the
-most recent user activity seen on the screen, is no longer given input
-focus automatically. It is marked _NET_WM_STATE_DEMANDS_ATTENTION
-instead so the appicon bounces and pagers highlight it. The
-_NET_WM_USER_TIME_WINDOW indirection is honoured when the helper is a
-genuine client-owned window.
-
-
-_NET_WM_STATE_DEMANDS_ATTENTION
+Per-head independent workspaces
 -------------------------------
 
-Setting this state on an unfocused window now drives the same urgent
-appicon bounce as the ICCCM UrgencyHint, and the state is reflected in
-_NET_WM_STATE for pagers. Focusing the window clears it.
+Setting "PerHeadWorkspaces = YES" in ~/GNUstep/Defaults/WindowMaker
+lets each monitor keep its own current workspace. The workspace
+namespace stays global, but each head independently chooses which
+workspace from that set is visible, so switching workspace on one
+monitor leaves windows on the others where they are.
+_NET_CURRENT_DESKTOP follows the focused head, so toolkits that gate
+drag-and-drop visibility on it (notably Chromium-based browsers) see
+the workspace under the pointer regardless of which monitor it is on.
+
+The optional "WorkspaceOutputs" dictionary pins workspaces to RandR
+output names. List connected outputs with "xrandr --listmonitors" and
+key by 1-based workspace number (or workspace name) with a single
+output name or an array:
+
+    PerHeadWorkspaces = YES;
+    WorkspaceOutputs = {
+      "1" = "DP-1";
+      "2" = "DP-2";
+      "3" = ("DP-2", "HDMI-1");
+    };
+
+Unpinned workspaces are allowed on every head, a workspace whose pinned
+outputs are all absent is allowed on no head until one reappears, and
+on a setup where heads have no RandR output name a "#N" head-index key
+can be used instead. Next/Prev workspace and the move-window-to-next/
+prev keybindings step only through workspaces allowed on the active
+head, and sending a window to a workspace pinned to another monitor
+carries the window there. Per-head state is saved to WMState by output
+name (with a "#N" index fallback for unnamed heads) and remapped on
+RandR hotplug, so a monitor keeps its workspace across reconnects and
+head reorders. A toggle for the option is in WPrefs, the
+WorkspaceOutputs dictionary is text-only for now, and the option is
+applied at startup only. The workspace map overlay does not yet show
+per-head state. The default is NO.
+
+Separately, the new "AutoFocusAcrossHeads" option (default YES,
+matching previous behaviour) restricts auto-focus of a newly mapped
+window to the head the pointer is on when set to NO, and a non-pager
+_NET_ACTIVE_WINDOW request for a window on another head is then
+refused with _NET_WM_STATE_DEMANDS_ATTENTION instead of stealing
+focus across monitors.
 
 
-Directional workspace navigation via _NET_DESKTOP_LAYOUT
---------------------------------------------------------
-
-When a pager sets _NET_DESKTOP_LAYOUT on the root window the new
-LeftWorkspaceKey, RightWorkspaceKey, UpWorkspaceKey and DownWorkspaceKey
-bindings (and their MoveTo... variants) step through that grid, and the
-workspace map overlay lays its thumbnails out and arrow-navigates the
-same way. With no pager the layout defaults to a single row, so
-Left/Right behave like Prev/Next and Up/Down do nothing. All eight
-bindings default to None.
-
-
-Frame-synchronised opaque resize via _NET_WM_SYNC_REQUEST
----------------------------------------------------------
-
-When the X Synchronization extension is available and a client exposes
-_NET_WM_SYNC_REQUEST_COUNTER, opaque interactive resizes are now paced
-to the client's redraw so the window content keeps up with the frame.
-A client that falls more than a second behind drops back to
-unsynchronised resize for the rest of that drag. Disable with
---disable-xsync at configure time.
-
-
-_NET_WM_FULL_PLACEMENT and _NET_WORKAREA on strut change
---------------------------------------------------------
-
-_NET_WM_FULL_PLACEMENT is now advertised so toolkits that honour it let
-the window manager place new windows. _NET_WORKAREA is now rewritten
-whenever a client sets or removes a _NET_WM_STRUT/_NET_WM_STRUT_PARTIAL,
-not only when the workspace count changes, and _NET_DESKTOP_VIEWPORT is
-resized to match the workspace count after a wmctrl -n.
-
-
-_NET_RESTACK_WINDOW and _NET_REQUEST_FRAME_EXTENTS
---------------------------------------------------
-
-Clients can now restack a managed window relative to a sibling via the
-_NET_RESTACK_WINDOW message, and ask for an estimate of the frame
-extents a not-yet-mapped window will get via _NET_REQUEST_FRAME_EXTENTS.
-Both are advertised in _NET_SUPPORTED, along with _NET_CLOSE_WINDOW
-which was already handled but not listed. _NET_CLIENT_LIST_STACKING is
-also kept current after a ConfigureRequest restack again.
-
-
-Back-to-back defaults writes are all picked up
-----------------------------------------------
-
-Several wdwrite or setstyle calls issued within the same wall-clock
-second are now each applied. The runtime reload previously compared the
-defaults file's modification time at one-second resolution, so once the
-first write of a burst had been read the rest were treated as unchanged
-until something else touched the file in a later second. The comparison
-now uses the nanosecond-resolution st_mtim.
-
-
-WPrefs writes "Smooth font edges" to WMGLOBAL
+Extended Window Manager Hints (EWMH) coverage
 ---------------------------------------------
 
-The "Smooth font edges" checkbox in the Expert panel now reads and
-writes AntialiasedText in the user's WMGLOBAL, which is where WINGs
-actually looks for it. Previously WPrefs wrote it to the WindowMaker
-defaults domain, so toggling the option had no effect on font
-rendering.
+Every window-manager hint in the EWMH 1.5 specification that is not
+compositor-specific is now handled, and everything advertised in
+_NET_SUPPORTED is exercised by an automated conformance test under a
+two-head nested X server. New since the last release:
+
+- _NET_WM_PING: closing a window now sends a ping alongside
+  WM_DELETE_WINDOW. If the client does not echo it within five seconds
+  an "Application Not Responding" dialog offers Force Quit (SIGTERM,
+  escalating to SIGKILL, on the _NET_WM_PID cached at map time when
+  WM_CLIENT_MACHINE matches the local host, otherwise XKillClient) or
+  Wait.
+- _NET_WM_USER_TIME / _NET_WM_USER_TIME_WINDOW focus-stealing
+  prevention. A newly mapped window whose user time is 0 or older than
+  the most recent user activity is not focused automatically and is
+  marked _NET_WM_STATE_DEMANDS_ATTENTION instead. _NET_ACTIVE_WINDOW
+  requests from applications are refused on the same basis.
+- _NET_WM_STATE_DEMANDS_ATTENTION drives the same urgent appicon
+  bounce as the ICCCM UrgencyHint and is reflected in _NET_WM_STATE
+  for pagers, and _NET_WM_STATE_MODAL on a transient redirects focus
+  to the dialog when its parent is clicked or selected in the switch
+  panel.
+- _NET_DESKTOP_LAYOUT: the new LeftWorkspaceKey, RightWorkspaceKey,
+  UpWorkspaceKey and DownWorkspaceKey bindings (and their MoveTo...
+  variants) and the workspace map overlay step through whatever grid a
+  pager has set. With no pager the layout defaults to a single row.
+  All eight bindings default to None.
+- _NET_WM_SYNC_REQUEST: opaque interactive resizes are paced to the
+  client's redraw when the X Synchronization extension is available
+  and the client exposes _NET_WM_SYNC_REQUEST_COUNTER. Disable with
+  --disable-xsync at configure time.
+- _NET_MOVERESIZE_WINDOW (so wmctrl -e and pager-driven moves work),
+  _NET_RESTACK_WINDOW, _NET_REQUEST_FRAME_EXTENTS,
+  _NET_WM_VISIBLE_NAME and _NET_WM_VISIBLE_ICON_NAME, and
+  _NET_WM_FULL_PLACEMENT is advertised so toolkits that honour it let
+  the window manager place new windows. _NET_WM_ACTION_ABOVE/_BELOW
+  are listed in _NET_WM_ALLOWED_ACTIONS, and _NET_CLOSE_WINDOW is
+  listed in _NET_SUPPORTED.
+- _NET_WM_STRUT_PARTIAL start/end fields are honoured per head so a
+  panel reserving only part of one monitor edge no longer shrinks the
+  usable area on every other monitor, _NET_WORKAREA is rewritten
+  whenever a strut changes, _NET_DESKTOP_VIEWPORT and
+  _NET_CLIENT_LIST_STACKING are kept current, _NET_DESKTOP_NAMES
+  applies to the first workspace as well as the rest, and a
+  _NET_WM_ICON change after the window has mapped is reflected in the
+  application icon and the switch panel.
 
 
-Hot corners fire under client windows
---------------------------------------
+xcb is now a required dependency
+--------------------------------
 
-Hot corners are now driven by small InputOnly windows kept above all
-clients instead of root-window motion events, so a corner fires even
-when a maximised or fullscreen window covers it. With ScrollableMenus
-disabled wmaker no longer wakes for every pixel of pointer movement
-over the desktop. The trade-off is that the HotCornerEdge-sized square
-in each corner does not pass button clicks through to the client
-visually underneath while HotCorners is on.
-
-
-wxpaste -s reads the named selection again
-------------------------------------------
-
-wxpaste -s NAME requested the conversion but never waited for the
-owner to reply, so it always fell back to the cut buffer. It now
-waits up to one second for the SelectionNotify and writes exactly
-the number of bytes the owner returned rather than relying on a
-NUL terminator.
+libWINGs now issues all window-property and ICCCM hint requests over
+xcb, sharing the existing X connection via x11-xcb. The pkg-config
+modules xcb, xcb-icccm and x11-xcb must be present at build time, and
+there is no configure switch to disable this. Per-window property
+reads at startup and when adopting a new client are batched into a
+single server round-trip on top of this, so starting Window Maker (or
+taking over with --replace) with many existing clients is noticeably
+quicker, especially over a remote or high-latency display.
 
 
 libev is now a required dependency
@@ -173,27 +132,21 @@ internal W_CheckTimerHandlers()/W_CheckIdleHandlers() entry points are
 gone from WINGsP.h.
 
 
-EWMH coverage
--------------
+Indexed-colour displays are no longer supported
+-----------------------------------------------
 
-_NET_MOVERESIZE_WINDOW is now handled, so wmctrl -e and pagers that
-reposition or resize windows through EWMH work. _NET_WM_STRUT_PARTIAL
-start/end fields are honoured per head, so a panel reserving only part
-of one monitor edge no longer shrinks the usable area on every other
-monitor, and the property is advertised in _NET_SUPPORTED.
-_NET_WM_VISIBLE_NAME and _NET_WM_VISIBLE_ICON_NAME are set on the
-client window whenever Window Maker displays a title that differs from
-the one the client supplied.
-
-
-UTF-8 in saved property lists
------------------------------
-
-Strings written by WMGetPropListDescription() (and therefore every
-saved defaults domain, theme and style file) now keep valid UTF-8
-characters as-is instead of expanding each byte into a \nnn octal
-escape. Invalid byte sequences are still escaped, and existing files
-with octal escapes continue to load unchanged.
+The wraster library now requires a TrueColor visual and fails
+RCreateContext() with the new RERR_BADVISUALCLASS code on PseudoColor,
+StaticColor, GrayScale or StaticGray screens. The PseudoColor colour
+cube allocator, the X standard-colormap lookup and the Floyd-Steinberg
+dithering paths have been removed, libwraster no longer links libXmu,
+and its soname moves from 6 to 9. The ColormapSize and DisableDithering
+defaults keys, the corresponding "Dithering colormap for 8bpp" panel in
+WPrefs, and the WRASTER_COLOR_RESOLUTION environment variable are gone.
+wmsetbg still accepts -c, -d and -m for backward compatibility with old
+scripts and themes but they have no effect and are no longer documented.
+15 and 16-bit TrueColor visuals continue to work via the masked
+best-match path, without error diffusion.
 
 
 Typed configuration parsing
@@ -217,35 +170,20 @@ WindowMaker/Defaults/WindowMaker now lists every recognised key with
 its built-in default and is kept in sync with the schema by make check.
 
 
-WMWindowAttributes keys are case-sensitive
-------------------------------------------
+Hot corners fire under client windows, fewer idle wake-ups
+----------------------------------------------------------
 
-The WMWindowAttributes domain is now read with case-sensitive keys, so
-an entry for the instance "xterm" and another for the class "XTerm" are
-kept distinct instead of one silently overwriting the other when the
-file is loaded. WM_CLASS strings have always been case-sensitive in
-X11, only the file load and global/user merge collapsed them.
-
-
-xcb is now a required dependency
---------------------------------
-
-libWINGs now issues all window-property and ICCCM hint requests over
-xcb, sharing the existing X connection via x11-xcb. The pkg-config
-modules xcb, xcb-icccm and x11-xcb must be present at build time.
-There is no configure switch to disable this.
-
-
-Support for _NET_WM_STATE_MODAL
--------------------------------
-
-Window Maker now honours the _NET_WM_STATE_MODAL hint set by modal
-dialog windows. When focus is requested on a window that has a mapped
-modal transient, the dialog is raised and focused instead, so clicking
-the parent of a modal dialog brings the dialog forward rather than
-burying it. Modal transients are also omitted from the Alt-Tab switch
-panel when their parent is already listed, since selecting the parent
-reaches them anyway.
+Hot corners are now driven by small InputOnly windows kept above all
+clients instead of root-window motion events, so a corner fires even
+when a maximised or fullscreen window covers it. The trade-off is that
+the HotCornerEdge-sized square in each corner does not pass button
+clicks through to the client visually underneath while HotCorners is
+on. Separately, root-window pointer motion is no longer tracked at all
+unless ScrollableMenus is enabled, so with both options off the event
+loop stays asleep while the pointer crosses an empty desktop. Changes
+written to the defaults files are also now noticed within about 100 ms
+even when there is no X activity, where previously they could wait
+until the next X event arrived.
 
 
 Swallow child window attribute
@@ -264,17 +202,30 @@ default). Children started in the background (in a separate process
 group) are never swallowed.
 
 
-Reduced idle wake-ups
----------------------
+GNUstep applications drive their own Hide via _GNUSTEP_WM_HIDE_APP
+------------------------------------------------------------------
 
-Window Maker no longer wakes for every pixel of pointer movement over
-the root window unless a feature that consumes it is enabled
-("HotCorners" or "ScrollableMenus"). With both options turned off the
-event loop stays asleep while the pointer crosses an empty desktop.
+When a window lists _GNUSTEP_WM_HIDE_APP in WM_PROTOCOLS, the Hide
+action from the titlebar miniaturize button (right click or Ctrl+left
+click), the HideKey binding, the window menu, and the appicon and dock
+menus now sends that protocol message instead of unmapping the
+application's windows from the window-manager side. This lets the
+application post its applicationWillHide and applicationDidHide
+notifications and keep NSApplication.isHidden in step. Applications
+that do not advertise the protocol are unaffected. Right-clicking the
+miniaturize button on a GNUstep window also now hides as documented,
+where previously it sent _GNUSTEP_WM_MINIATURIZE_WINDOW because the
+modifier-state test ran before the button-number test.
 
-Changes written to the defaults files are now also noticed within
-about 100 ms even when there is no X activity, where previously they
-could wait until the next X event arrived.
+
+WMWindowAttributes keys are case-sensitive
+------------------------------------------
+
+The WMWindowAttributes domain is now read with case-sensitive keys, so
+an entry for the instance "xterm" and another for the class "XTerm" are
+kept distinct instead of one silently overwriting the other when the
+file is loaded. WM_CLASS strings have always been case-sensitive in
+X11, only the file load and global/user merge collapsed them.
 
 
 Lower X server pixmap usage
@@ -287,33 +238,45 @@ this roughly halves the pixmap memory Window Maker holds on the
 server.
 
 
-Faster startup with many open windows
--------------------------------------
+UTF-8 in saved property lists
+-----------------------------
 
-Per-window property reads at startup and when adopting a new client
-are now batched into a single server round-trip, so starting Window
-Maker (or taking over with --replace) with many existing clients is
-noticeably quicker, especially over a remote or high-latency display.
-
-
-AutoFocusAcrossHeads option
----------------------------
-
-When "AutoFocus" is enabled on a multi-head setup, a newly mapped
-window has always received focus regardless of which head the pointer
-is on. Setting the new "AutoFocusAcrossHeads" option to NO in
-~/GNUstep/Defaults/WindowMaker restricts auto-focus to windows that
-appear on the same head as the pointer. The default is YES, matching
-previous behaviour.
+Strings written by WMGetPropListDescription() (and therefore every
+saved defaults domain, theme and style file) now keep valid UTF-8
+characters as-is instead of expanding each byte into a \nnn octal
+escape. Invalid byte sequences are still escaped, and existing files
+with octal escapes continue to load unchanged.
 
 
-Application icon updates after mapping
---------------------------------------
+Back-to-back defaults writes are all picked up
+----------------------------------------------
 
-Applications that set or change their _NET_WM_ICON property only after
-the window has been mapped now have the new icon reflected in the
-application icon and the Alt-Tab switch panel, instead of keeping the
-default icon.
+Several wdwrite or setstyle calls issued within the same wall-clock
+second are now each applied. The runtime reload previously compared the
+defaults file's modification time at one-second resolution, so once the
+first write of a burst had been read the rest were treated as unchanged
+until something else touched the file in a later second. The comparison
+now uses the nanosecond-resolution st_mtim.
+
+
+WPrefs writes "Smooth font edges" to WMGLOBAL
+---------------------------------------------
+
+The "Smooth font edges" checkbox in the Expert panel now reads and
+writes AntialiasedText in the user's WMGLOBAL, which is where WINGs
+actually looks for it. Previously WPrefs wrote it to the WindowMaker
+defaults domain, so toggling the option had no effect on font
+rendering.
+
+
+wxpaste -s reads the named selection again
+------------------------------------------
+
+wxpaste -s NAME requested the conversion but never waited for the
+owner to reply, so it always fell back to the cut buffer. It now
+waits up to one second for the SelectionNotify and writes exactly
+the number of bytes the owner returned rather than relying on a
+NUL terminator.
 
 
 -- 0.97.0
