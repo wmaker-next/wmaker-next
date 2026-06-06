@@ -280,6 +280,9 @@ AC_DEFUN_ONCE([WM_FUNC_OPEN_NOFOLLOW],
 @%:@include <sys/types.h>
 @%:@include <sys/stat.h>
 @%:@include <fcntl.h>], [dnl
+@%:@if !defined(O_NOFOLLOW) || O_NOFOLLOW == 0
+@%:@error O_NOFOLLOW is unavailable
+@%:@endif
   int fd;
 
   fd = open("/dev/null", O_RDONLY | O_NOFOLLOW);
@@ -290,10 +293,8 @@ AC_DEFUN_ONCE([WM_FUNC_OPEN_NOFOLLOW],
      done
      CPPFLAGS="$wm_save_CPPFLAGS"])
 AS_CASE([$wm_cv_func_open_nofollow],
-    [yes], [],
-    [no],  [AC_DEFINE([O_NOFOLLOW], [0],
-                [defined by configure if the attribute is not defined on your platform])
-            AC_MSG_WARN([flag O_NOFOLLOW is not defined on your platform])],
+    [yes], [:],
+    [no],  [AC_MSG_ERROR([O_NOFOLLOW is required for safe file copy operations])],
     [CPPFLAGS="$CPPFLAGS $wm_cv_func_open_nofollow"])
 ])
 
