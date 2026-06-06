@@ -3,6 +3,22 @@ NEWS for veteran Window Maker users
 
 -- next
 
+GNUstep applications drive their own Hide via _GNUSTEP_WM_HIDE_APP
+------------------------------------------------------------------
+
+When a window lists _GNUSTEP_WM_HIDE_APP in WM_PROTOCOLS, the Hide
+action from the titlebar miniaturize button (right click or Ctrl+left
+click), the HideKey binding, the window menu, and the appicon and dock
+menus now sends that protocol message instead of unmapping the
+application's windows from the window-manager side. This lets the
+application post its applicationWillHide and applicationDidHide
+notifications and keep NSApplication.isHidden in step. Applications
+that do not advertise the protocol are unaffected. Right-clicking the
+miniaturize button on a GNUstep window also now hides as documented,
+where previously it sent _GNUSTEP_WM_MINIATURIZE_WINDOW because the
+modifier-state test ran before the button-number test.
+
+
 Indexed-colour displays are no longer supported
 -----------------------------------------------
 
