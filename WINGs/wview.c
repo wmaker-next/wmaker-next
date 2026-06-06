@@ -561,17 +561,24 @@ void W_SetFocusOfTopLevel(W_View * toplevel, W_View * view)
 		info->next = scr->focusInfo;
 		scr->focusInfo = info;
 	} else {
-		event.xfocus.mode = NotifyNormal;
-		event.xfocus.detail = NotifyDetailNone;
-		if (info->focused) {
-			/* simulate FocusOut event */
-			event.xfocus.type = FocusOut;
-			W_DispatchMessage(info->focused, &event);
-		}
+		W_View *old = info->focused;
+
+		/* update before dispatching FocusOut, a handler reached
+		 * from there can destroy the toplevel and free this
+		 * focus-info node, so info must not be written through
+		 * after the callback */
 		info->focused = view;
+		if (old) {
+			event.xfocus.mode = NotifyNormal;
+			event.xfocus.detail = NotifyDetailNone;
+			event.xfocus.type = FocusOut;
+			W_DispatchMessage(old, &event);
+		}
 	}
 	if (view) {
 		/* simulate FocusIn event */
+		event.xfocus.mode = NotifyNormal;
+		event.xfocus.detail = NotifyDetailNone;
 		event.xfocus.type = FocusIn;
 		W_DispatchMessage(view, &event);
 	}
