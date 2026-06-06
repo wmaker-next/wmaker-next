@@ -128,6 +128,8 @@ static Atom net_wm_action_maximize_vert;
 static Atom net_wm_action_fullscreen;
 static Atom net_wm_action_change_desktop;
 static Atom net_wm_action_close;
+static Atom net_wm_action_above;
+static Atom net_wm_action_below;
 static Atom net_wm_strut;
 static Atom net_wm_strut_partial;
 static Atom net_wm_icon_geometry;
@@ -225,6 +227,8 @@ static atomitem_t atomNames[] = {
 	{"_NET_WM_ACTION_FULLSCREEN", &net_wm_action_fullscreen},
 	{"_NET_WM_ACTION_CHANGE_DESKTOP", &net_wm_action_change_desktop},
 	{"_NET_WM_ACTION_CLOSE", &net_wm_action_close},
+	{"_NET_WM_ACTION_ABOVE", &net_wm_action_above},
+	{"_NET_WM_ACTION_BELOW", &net_wm_action_below},
 	{"_NET_WM_STRUT", &net_wm_strut},
 	{"_NET_WM_STRUT_PARTIAL", &net_wm_strut_partial},
 	{"_NET_WM_ICON_GEOMETRY", &net_wm_icon_geometry},
@@ -341,6 +345,8 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_action_fullscreen;
 	atom[i++] = net_wm_action_change_desktop;
 	atom[i++] = net_wm_action_close;
+	atom[i++] = net_wm_action_above;
+	atom[i++] = net_wm_action_below;
 
 	atom[i++] = net_wm_pid;
 	atom[i++] = net_wm_ping;
@@ -798,7 +804,7 @@ void wNETWMCleanup(WScreen *scr)
 
 void wNETWMUpdateActions(WWindow *wwin, Bool del)
 {
-	Atom action[10];	/* nr of actions atoms defined */
+	Atom action[12];	/* nr of actions atoms defined */
 	int i = 0;
 
 	if (del) {
@@ -837,6 +843,9 @@ void wNETWMUpdateActions(WWindow *wwin, Bool del)
 
 	if (!WFLAGP(wwin, no_closable))
 		action[i++] = net_wm_action_close;
+
+	action[i++] = net_wm_action_above;
+	action[i++] = net_wm_action_below;
 
 	WXSetAtomN(dpy, wwin->client_win, net_wm_allowed_actions, action, i);
 }
