@@ -372,37 +372,45 @@ WScreen *wScreenForWindow(Window window)
 	return NULL;
 }
 
+/*
+ * Core atoms interned at startup. Each row is the field path under
+ * w_global.atom and the X atom name. The list is expanded twice, once
+ * into atomNames[] for the batched XInternAtoms() call and once into the
+ * assignment sequence, so the name array and the field stores cannot
+ * drift out of step. To add an atom, add one row here and the matching
+ * Atom field in WindowMaker.h, no index renumbering.
+ */
+#define WGLOBAL_ATOMS(_) \
+	_(wm.state,                     "WM_STATE") \
+	_(wm.change_state,              "WM_CHANGE_STATE") \
+	_(wm.protocols,                 "WM_PROTOCOLS") \
+	_(wm.take_focus,                "WM_TAKE_FOCUS") \
+	_(wm.delete_window,             "WM_DELETE_WINDOW") \
+	_(wm.save_yourself,             "WM_SAVE_YOURSELF") \
+	_(wm.client_leader,             "WM_CLIENT_LEADER") \
+	_(wm.colormap_windows,          "WM_COLORMAP_WINDOWS") \
+	_(wm.colormap_notify,           "WM_COLORMAP_NOTIFY") \
+	_(wm.ignore_focus_events,       "WM_IGNORE_FOCUS_EVENTS") \
+	_(wmaker.menu,                  "_WINDOWMAKER_MENU") \
+	_(wmaker.state,                 "_WINDOWMAKER_STATE") \
+	_(wmaker.wm_protocols,          "_WINDOWMAKER_WM_PROTOCOLS") \
+	_(wmaker.wm_function,           "_WINDOWMAKER_WM_FUNCTION") \
+	_(wmaker.noticeboard,           "_WINDOWMAKER_NOTICEBOARD") \
+	_(wmaker.command,               "_WINDOWMAKER_COMMAND") \
+	_(wmaker.icon_size,             "_WINDOWMAKER_ICON_SIZE") \
+	_(wmaker.icon_tile,             "_WINDOWMAKER_ICON_TILE") \
+	_(wmaker.mark_key,              "_WINDOWMAKER_MARK_KEY") \
+	_(gnustep.wm_attr,              GNUSTEP_WM_ATTR_NAME) \
+	_(gnustep.wm_miniaturize_window, GNUSTEP_WM_MINIATURIZE_WINDOW) \
+	_(gnustep.wm_hide_app,          GNUSTEP_WM_HIDE_APP) \
+	_(gnustep.titlebar_state,       GNUSTEP_TITLEBAR_STATE) \
+	_(desktop.gtk_object_path,      "_GTK_APPLICATION_OBJECT_PATH")
+
+#define WATOM_NAME(field, name)		name,
 static char *atomNames[] = {
-	"WM_STATE",
-	"WM_CHANGE_STATE",
-	"WM_PROTOCOLS",
-	"WM_TAKE_FOCUS",
-	"WM_DELETE_WINDOW",
-	"WM_SAVE_YOURSELF",
-	"WM_CLIENT_LEADER",
-	"WM_COLORMAP_WINDOWS",
-	"WM_COLORMAP_NOTIFY",
-
-	"_WINDOWMAKER_MENU",
-	"_WINDOWMAKER_STATE",
-	"_WINDOWMAKER_WM_PROTOCOLS",
-	"_WINDOWMAKER_WM_FUNCTION",
-	"_WINDOWMAKER_NOTICEBOARD",
-	"_WINDOWMAKER_COMMAND",
-	"_WINDOWMAKER_ICON_SIZE",
-	"_WINDOWMAKER_ICON_TILE",
-
-	GNUSTEP_WM_ATTR_NAME,
-	GNUSTEP_WM_MINIATURIZE_WINDOW,
-	GNUSTEP_TITLEBAR_STATE,
-
-	"_GTK_APPLICATION_OBJECT_PATH",
-
-	"WM_IGNORE_FOCUS_EVENTS",
-
-	"_WINDOWMAKER_MARK_KEY",
-	GNUSTEP_WM_HIDE_APP
+	WGLOBAL_ATOMS(WATOM_NAME)
 };
+#undef WATOM_NAME
 
 /*
  *----------------------------------------------------------
@@ -455,34 +463,12 @@ void StartUp(Bool defaultScreenOnly)
 	}
 #endif
 
-	w_global.atom.wm.state = atom[0];
-	w_global.atom.wm.change_state = atom[1];
-	w_global.atom.wm.protocols = atom[2];
-	w_global.atom.wm.take_focus = atom[3];
-	w_global.atom.wm.delete_window = atom[4];
-	w_global.atom.wm.save_yourself = atom[5];
-	w_global.atom.wm.client_leader = atom[6];
-	w_global.atom.wm.colormap_windows = atom[7];
-	w_global.atom.wm.colormap_notify = atom[8];
-
-	w_global.atom.wmaker.menu = atom[9];
-	w_global.atom.wmaker.state = atom[10];
-	w_global.atom.wmaker.wm_protocols = atom[11];
-	w_global.atom.wmaker.wm_function = atom[12];
-	w_global.atom.wmaker.noticeboard = atom[13];
-	w_global.atom.wmaker.command = atom[14];
-	w_global.atom.wmaker.icon_size = atom[15];
-	w_global.atom.wmaker.icon_tile = atom[16];
-
-	w_global.atom.gnustep.wm_attr = atom[17];
-	w_global.atom.gnustep.wm_miniaturize_window = atom[18];
-	w_global.atom.gnustep.titlebar_state = atom[19];
-
-	w_global.atom.desktop.gtk_object_path = atom[20];
-
-	w_global.atom.wm.ignore_focus_events = atom[21];
-	w_global.atom.wmaker.mark_key  = atom[22];
-	w_global.atom.gnustep.wm_hide_app = atom[23];
+	{
+		int idx = 0;
+#define WATOM_ASSIGN(field, name)	w_global.atom.field = atom[idx++];
+		WGLOBAL_ATOMS(WATOM_ASSIGN)
+#undef WATOM_ASSIGN
+	}
 
 #ifdef USE_DOCK_XDND
 	wXDNDInitializeAtoms();
