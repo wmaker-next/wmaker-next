@@ -362,6 +362,11 @@ typedef struct _WScreen {
     int helper_fd;
     pid_t helper_pid;
 
+    int ipc_fd;                        /* listening AF_UNIX socket, -1 if disabled */
+    char *ipc_path;                    /* bound path, unlinked at shutdown */
+    WMHandlerID ipc_listen;            /* accept-ready input handler */
+    struct WIPCClient *ipc_clients;    /* head of per-screen client list */
+
     struct {
         unsigned int startup:1;	       /* during window manager startup */
         unsigned int regenerate_icon_textures:1;

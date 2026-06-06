@@ -69,6 +69,7 @@
 #include "dialog.h"
 #include "wmspec.h"
 #include "event.h"
+#include "ipc.h"
 #include "switchmenu.h"
 #include "wconfigmodel.h"
 #ifdef USE_DOCK_XDND
@@ -219,7 +220,8 @@ static RETSIGTYPE buryChild(int foo)
 	 * signals to know exactly how many kids have exited. -Dan
 	 */
 	while ((pid = waitpid(-1, &status, WNOHANG)) > 0 || (pid < 0 && errno == EINTR)) {
-		NotifyDeadProcess(pid, WEXITSTATUS(status));
+		if (pid > 0)
+			NotifyDeadProcess(pid, status);
 	}
 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
@@ -688,6 +690,11 @@ void StartUp(Bool defaultScreenOnly)
 		}
 		w_global.screen_count++;
 	}
+
+	/* bind the per-screen IPC sockets before session restore and dock
+	 * auto-launch so spawned children inherit a live WMAKER_IPC_SOCKET */
+	for (j = 0; j < w_global.screen_count; j++)
+		wIPCServerStart(wScreen[j]);
 
 	InitializeSwitchMenu();
 

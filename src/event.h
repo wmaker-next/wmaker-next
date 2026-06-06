@@ -38,7 +38,7 @@ void wInotifyCleanup(void);
 #endif
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
 
-/* called from the signal handler */
-void NotifyDeadProcess(pid_t pid, unsigned char status);
+/* called from the signal handler, status is the raw waitpid() value */
+void NotifyDeadProcess(pid_t pid, int wait_status);
 
 #endif /* WMEVENT_H */

@@ -61,6 +61,7 @@
 #include "framewin.h"
 #include "window.h"
 #include "actions.h"
+#include "ipc.h"
 #include "xinerama.h"
 
 
@@ -77,6 +78,8 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 	int result;
 	WMPoint center;
 	int pwidth, pheight;
+
+	wIPCEmitDialog(scr, "message", title, message);
 
 	panel = WMCreateScaledAlertPanel(scr->wmscreen, NULL, title, message, defBtn, altBtn, othBtn);
 	pwidth = WMWidgetWidth(panel->win);
@@ -499,6 +502,8 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	WMInputPanel *panel;
 	char *result;
 	WMPoint center;
+
+	wIPCEmitDialog(scr, "input", title, message);
 	int pwidth, pheight;
 
 	panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));

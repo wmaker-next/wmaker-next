@@ -72,6 +72,9 @@
 #include "shutdown.h"
 #include "misc.h"
 #include "event.h"
+#include "ipc.h"
+
+#include <sys/wait.h>
 #include "winmenu.h"
 #include "switchmenu.h"
 #include "wsmap.h"
@@ -121,7 +124,7 @@ static void handleDeadProcess(void);
 
 typedef struct DeadProcesses {
 	pid_t pid;
-	unsigned char exit_status;
+	int wait_status;
 } DeadProcesses;
 
 /* stack of dead processes */
@@ -488,7 +491,7 @@ Bool IsDoubleClick(WScreen * scr, XEvent * event)
 	return False;
 }
 
-void NotifyDeadProcess(pid_t pid, unsigned char status)
+void NotifyDeadProcess(pid_t pid, int wait_status)
 {
 	if (deadProcessPtr >= MAX_DEAD_PROCESSES - 1) {
 		wwarning("stack overflow: too many dead processes");
@@ -497,27 +500,35 @@ void NotifyDeadProcess(pid_t pid, unsigned char status)
 	/* stack the process to be handled later,
 	 * as this is called from the signal handler */
 	deadProcesses[deadProcessPtr].pid = pid;
-	deadProcesses[deadProcessPtr].exit_status = status;
+	deadProcesses[deadProcessPtr].wait_status = wait_status;
 	deadProcessPtr++;
 }
 
 static void handleDeadProcess(void)
 {
 	DeathHandler *tmp;
-	int i;
+	int i, ws;
+	unsigned int es;
 
 	for (i = 0; i < deadProcessPtr; i++) {
 		wWindowDeleteSavedStatesForPID(deadProcesses[i].pid);
 	}
 
-	if (!deathHandlers) {
-		deadProcessPtr = 0;
-		return;
-	}
-
 	/* get the pids on the queue and call handlers */
 	while (deadProcessPtr > 0) {
 		deadProcessPtr--;
+		ws = deadProcesses[deadProcessPtr].wait_status;
+		es = WIFEXITED(ws) ? WEXITSTATUS(ws) : 0;
+
+		/* IPC subscribers see the raw wait status before any
+		 * registered death handler runs, so a test driver can
+		 * assert that the failure dialog the handler raises
+		 * arrives strictly after the child_exit event */
+		wIPCEmitChildExit(deadProcesses[deadProcessPtr].pid, ws,
+				  "unknown", -1);
+
+		if (!deathHandlers)
+			continue;
 
 		for (i = WMGetArrayItemCount(deathHandlers) - 1; i >= 0; i--) {
 			tmp = WMGetFromArray(deathHandlers, i);
@@ -525,8 +536,7 @@ static void handleDeadProcess(void)
 				continue;
 
 			if (tmp->pid == deadProcesses[deadProcessPtr].pid) {
-				(*tmp->callback) (tmp->pid,
-						  deadProcesses[deadProcessPtr].exit_status, tmp->client_data);
+				(*tmp->callback) (tmp->pid, es, tmp->client_data);
 				wdelete_death_handler(tmp);
 			}
 		}

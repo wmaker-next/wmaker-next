@@ -72,6 +72,7 @@ const char *__lsan_default_suppressions(void)
 #include "window.h"
 #include "defaults.h"
 #include "event.h"
+#include "ipc.h"
 #include "startup.h"
 #include "menu.h"
 #include "keybind.h"
@@ -289,6 +290,12 @@ void SetupEnvironment(WScreen * scr)
 			wwarning(_("the display name is too long: \"%s\""), XDisplayName(DisplayName));
 		putenv(tmp);
 	}
+
+	/* the IPC socket exists on single-head too, so this export is
+	 * unconditional, children launched from the dock or root menu
+	 * inherit the socket for the screen that launched them */
+	if (scr->ipc_path)
+		setenv("WMAKER_IPC_SOCKET", scr->ipc_path, 1);
 }
 
 typedef struct {
@@ -599,7 +606,12 @@ int main(int argc, char **argv)
 	i_am_the_monitor = 1;
 
 	for (i = 1; i < argc; i++) {
-		if (strncmp(argv[i], "--for-real", strlen("--for-real")) == 0) {
+		if (strcmp(argv[i], "--get-socketpath") == 0) {
+			char *p = wIPCSocketPath(DisplayName);
+			printf("%s\n", p);
+			wfree(p);
+			exit(0);
+		} else if (strncmp(argv[i], "--for-real", strlen("--for-real")) == 0) {
 			i_am_the_monitor = 0;
 			break;
 		} else if (strcmp(argv[i], "-display") == 0 || strcmp(argv[i], "--display") == 0) {

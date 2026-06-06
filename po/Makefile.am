@@ -29,6 +29,7 @@ POTFILES  = \
 	$(top_srcdir)/src/geomview.c \
 	$(top_srcdir)/src/hotcorner.c \
 	$(top_srcdir)/src/icon.c \
+	$(top_srcdir)/src/ipc.c \
 	$(top_srcdir)/src/keytree.c \
 	$(top_srcdir)/src/main.c \
 	$(top_srcdir)/src/menu.c \

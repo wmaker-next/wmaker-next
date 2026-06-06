@@ -38,6 +38,7 @@
 #include "event.h"
 #include "screen.h"
 #include "shutdown.h"
+#include "ipc.h"
 
 
 static void wipeDesktop(WScreen * scr);
@@ -70,6 +71,8 @@ void Shutdown(WShutdownMode mode)
 
 			scr = wScreenWithNumber(i);
 			if (scr) {
+				wIPCServerStop(scr, "exit");
+
 				if (scr->helper_pid)
 					kill(scr->helper_pid, SIGKILL);
 
@@ -95,6 +98,8 @@ void Shutdown(WShutdownMode mode)
 #endif
 			scr = wScreenWithNumber(i);
 			if (scr) {
+				wIPCServerStop(scr, "restart");
+
 				if (scr->helper_pid)
 					kill(scr->helper_pid, SIGKILL);
 				wScreenSaveState(scr);
