@@ -797,7 +797,7 @@ static void hideCallback(WMenu *menu, WMenuEntry *entry)
 		wWorkspaceChange(btn->icon->core->screen_ptr, wapp->last_workspace);
 		wUnhideApplication(wapp, False, False);
 	} else {
-		wHideApplication(wapp);
+		wRequestHideApplication(wapp, btn->icon->owner);
 	}
 }
 

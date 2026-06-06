@@ -1555,12 +1555,8 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 	case WKBD_HIDE:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
-			WApplication *wapp = wApplicationOf(wwin->main_window);
 			CloseWindowMenu(scr);
-
-			if (wapp && !WFLAGP(wapp->main_window_desc, no_appicon)) {
-				wHideApplication(wapp);
-			}
+			wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
 		}
 		break;
 	case WKBD_HIDE_OTHERS:

@@ -94,6 +94,8 @@ void PropRcvProtocols(WXCookie ck, WProtocols *prots)
 			prots->NET_WM_SYNC_REQUEST = 1;
 		else if (protocols[i] == w_global.atom.gnustep.wm_miniaturize_window)
 			prots->MINIATURIZE_WINDOW = 1;
+		else if (protocols[i] == w_global.atom.gnustep.wm_hide_app)
+			prots->HIDE_APP = 1;
 	}
 	wfree(protocols);
 }

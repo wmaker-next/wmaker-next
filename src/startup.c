@@ -400,7 +400,8 @@ static char *atomNames[] = {
 
 	"WM_IGNORE_FOCUS_EVENTS",
 
-	"_WINDOWMAKER_MARK_KEY"
+	"_WINDOWMAKER_MARK_KEY",
+	GNUSTEP_WM_HIDE_APP
 };
 
 /*
@@ -481,6 +482,7 @@ void StartUp(Bool defaultScreenOnly)
 
 	w_global.atom.wm.ignore_focus_events = atom[21];
 	w_global.atom.wmaker.mark_key  = atom[22];
+	w_global.atom.gnustep.wm_hide_app = atom[23];
 
 #ifdef USE_DOCK_XDND
 	wXDNDInitializeAtoms();

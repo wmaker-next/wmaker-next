@@ -3575,18 +3575,13 @@ static void windowIconifyClick(WCoreWindow *sender, void *data, XEvent *event)
 	if (event->xbutton.button < Button1 || event->xbutton.button > Button3)
 		return;
 
-	if (wwin->protocols.MINIATURIZE_WINDOW && event->xbutton.state == 0) {
-		wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window,
-								  w_global.timestamp.last_event);
-	} else {
-		WApplication *wapp;
-		if ((event->xbutton.state & ControlMask) || (event->xbutton.button == Button3)) {
-
-			wapp = wApplicationOf(wwin->main_window);
-			if (wapp && !WFLAGP(wwin, no_appicon))
-				wHideApplication(wapp);
-		} else if (event->xbutton.state == 0) {
+	if ((event->xbutton.state & ControlMask) || (event->xbutton.button == Button3)) {
+		wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
+	} else if (event->xbutton.state == 0) {
+		if (wwin->protocols.MINIATURIZE_WINDOW)
+			wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window,
+					    w_global.timestamp.last_event);
+		else
 			wIconifyWindow(wwin);
-		}
 	}
 }

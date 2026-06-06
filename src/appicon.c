@@ -504,7 +504,7 @@ static void hideCallback(WMenu * menu, WMenuEntry * entry)
 		wWorkspaceChange(menu->menu->screen_ptr, wapp->last_workspace);
 		wUnhideApplication(wapp, False, False);
 	} else {
-		wHideApplication(wapp);
+		wRequestHideApplication(wapp, NULL);
 	}
 }
 

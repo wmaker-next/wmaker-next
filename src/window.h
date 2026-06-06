@@ -162,6 +162,7 @@ typedef struct {
     unsigned int NET_WM_SYNC_REQUEST:1;
     /* WindowMaker specific */
     unsigned int MINIATURIZE_WINDOW:1;
+    unsigned int HIDE_APP:1;
 } WProtocols;
 
 

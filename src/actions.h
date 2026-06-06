@@ -67,6 +67,7 @@ void wHideOtherApplications(WWindow *wwin);
 void wShowAllWindows(WScreen *scr);
 
 void wHideApplication(WApplication *wapp);
+void wRequestHideApplication(WApplication *wapp, WWindow *via);
 void wUnhideApplication(WApplication *wapp, Bool miniwindows,
                         Bool bringToCurrentWS);
 

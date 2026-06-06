@@ -1912,6 +1912,45 @@ void wHideOtherApplications(WWindow *awin)
 	 */
 }
 
+/*
+ * User-gesture entry point for "hide this application". When any managed
+ * window of the app advertises _GNUSTEP_WM_HIDE_APP in WM_PROTOCOLS, send
+ * the protocol message there so the app drives its own hide and its
+ * NSApplication delegate hooks fire, otherwise fall back to hiding from
+ * the WM side via wHideApplication(). Callers that already hold the
+ * window the user interacted with pass it as via, callers that only hold
+ * the WApplication (app-icon / dock menu) pass NULL and a suitable window
+ * is looked up. Do not call this from the _WINDOWMAKER_WM_FUNCTION
+ * receiver or state-restore paths, those must use wHideApplication()
+ * directly to avoid a request loop with the GNUstep backend.
+ */
+void wRequestHideApplication(WApplication *wapp, WWindow *via)
+{
+	if (!via || !via->protocols.HIDE_APP) {
+		WWindow *wlist;
+
+		via = NULL;
+		if (wapp && wapp->main_window_desc) {
+			wlist = wapp->main_window_desc->screen_ptr->focused_window;
+			for (; wlist; wlist = wlist->prev) {
+				if (wlist->main_window == wapp->main_window
+				    && wlist->protocols.HIDE_APP) {
+					via = wlist;
+					break;
+				}
+			}
+		}
+	}
+	if (via) {
+		wClientSendProtocol(via, w_global.atom.gnustep.wm_hide_app,
+				    w_global.timestamp.last_event);
+		return;
+	}
+	if (wapp && wapp->main_window_desc
+	    && !WFLAGP(wapp->main_window_desc, no_appicon))
+		wHideApplication(wapp);
+}
+
 void wHideApplication(WApplication *wapp)
 {
 	WScreen *scr;

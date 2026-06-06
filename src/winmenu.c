@@ -242,7 +242,6 @@ static void updateUnmaximizeShortcut(WMenuEntry * entry, int flags)
 static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 {
 	WWindow *wwin = (WWindow *) entry->clientdata;
-	WApplication *wapp;
 
 	CloseWindowMenu(menu->frame->screen_ptr);
 
@@ -315,8 +314,7 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 		break;
 
 	case MC_HIDE:
-		wapp = wApplicationOf(wwin->main_window);
-		wHideApplication(wapp);
+		wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
 		break;
 	}
 }
@@ -635,7 +633,8 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 
 	updateMakeShortcutMenu(menu, wwin);
 
-	wMenuSetEnabled(menu, MC_HIDE, wapp != NULL && !WFLAGP(wapp->main_window_desc, no_appicon));
+	wMenuSetEnabled(menu, MC_HIDE, wwin->protocols.HIDE_APP
+			|| (wapp != NULL && !WFLAGP(wapp->main_window_desc, no_appicon)));
 
 	wMenuSetEnabled(menu, MC_CLOSE, (wwin->protocols.DELETE_WINDOW && !WFLAGP(wwin, no_closable)));
 
