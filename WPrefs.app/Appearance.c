@@ -1133,6 +1133,7 @@ static void changePage(WMWidget * w, void *data)
 	int section = 0;
 	WMScreen *scr = WMWidgetScreen(panel->box);
 	RContext *rc = WMScreenRContext(scr);
+	GC gc;
 
 	if (w) {
 		section = WMGetPopUpButtonSelectedItem(panel->secP);
@@ -1143,14 +1144,12 @@ static void changePage(WMWidget * w, void *data)
 
 		WMSetListPosition(panel->texLs, panel->textureIndex[section] - 2);
 	}
-	{
-		GC gc;
 
-		gc = XCreateGC(rc->dpy, WMWidgetXID(panel->parent), 0, NULL);
-		XCopyArea(rc->dpy, panel->previewBack, panel->preview, gc,
-		          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y, 22, 22,
-		          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
-	}
+	gc = XCreateGC(rc->dpy, WMWidgetXID(panel->parent), 0, NULL);
+	XCopyArea(rc->dpy, panel->previewBack, panel->preview, gc,
+	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y, 22, 22,
+	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
+
 	if (w) {
 		panel->oldsection = section;
 		WMDrawPixmap(panel->hand, panel->preview, textureOptions[section].hand.x, textureOptions[section].hand.y);

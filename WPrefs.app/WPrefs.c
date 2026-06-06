@@ -206,6 +206,8 @@ static void createMainWindow(WMScreen * scr)
 	WMScroller *scroller;
 	WMFont *font;
 	char buffer[128];
+	WMUserDefaults *udb;
+	Bool flag;
 
 	WPrefs.win = WMCreateWindow(scr, "wprefs");
 	WMResizeWidget(WPrefs.win, 520, 390);
@@ -258,13 +260,11 @@ static void createMainWindow(WMScreen * scr)
 	WMMoveWidget(WPrefs.balloonBtn, 15, 350);
 	WMSetButtonText(WPrefs.balloonBtn, _("Balloon Help"));
 	WMSetButtonAction(WPrefs.balloonBtn, toggleBalloons, NULL);
-	{
-		WMUserDefaults *udb = WMGetStandardUserDefaults();
-		Bool flag = WMGetUDBoolForKey(udb, "BalloonHelp");
 
-		WMSetButtonSelected(WPrefs.balloonBtn, flag);
-		WMSetBalloonEnabled(scr, flag);
-	}
+	udb = WMGetStandardUserDefaults();
+	flag = WMGetUDBoolForKey(udb, "BalloonHelp");
+	WMSetButtonSelected(WPrefs.balloonBtn, flag);
+	WMSetBalloonEnabled(scr, flag);
 
 	/* banner */
 	WPrefs.banner = WMCreateFrame(WPrefs.win);
@@ -609,6 +609,9 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 	char buffer[1024];
 	char mbuf[1069]; /* Size of buffer and extra characters for the sprintfs */
 	int v1, v2, v3;
+	char *argv[3];
+	char *out;
+	char *ptr;
 
 	path = wdefaultspathfordomain("WindowMaker");
 	WindowMakerDBPath = path;
@@ -629,23 +632,23 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 	path = getenv("WMAKER_BIN_NAME");
 	if (!path || !*path)
 		path = "wmaker";
-	{
-		char *argv[] = { path, "--version", NULL };
-		char *out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
 
-		if (out)
-			wstrlcpy(buffer, out, sizeof(buffer));
-		wfree(out);
-		if (!out || buffer[0] == '\0') {
-			werror(_("could not extract version information from Window Maker"));
-			wfatal(_("Make sure wmaker is in your search path."));
+	argv[0] = path;
+	argv[1] = "--version";
+	argv[2] = NULL;
+	out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
+	if (out)
+		wstrlcpy(buffer, out, sizeof(buffer));
+	wfree(out);
+	if (!out || buffer[0] == '\0') {
+		werror(_("could not extract version information from Window Maker"));
+		wfatal(_("Make sure wmaker is in your search path."));
 
-			WMRunAlertPanel(scr, mainw, _("Error"),
-					_
-					("Could not extract version from Window Maker. Make sure it is correctly installed and is in your PATH environment variable."),
-					_("OK"), NULL, NULL);
-			exit(1);
-		}
+		WMRunAlertPanel(scr, mainw, _("Error"),
+				_
+				("Could not extract version from Window Maker. Make sure it is correctly installed and is in your PATH environment variable."),
+				_("OK"), NULL, NULL);
+		exit(1);
 	}
 
 	if (sscanf(buffer, "Window Maker %i.%i.%i", &v1, &v2, &v3) != 3
@@ -672,25 +675,21 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 		WMRunAlertPanel(scr, mainw, _("Warning"), mbuf, _("OK"), NULL, NULL);
 	}
 
-	{
-		char *argv[] = { path, "--global_defaults_path", NULL };
-		char *out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
-		char *ptr;
-
-		if (!out || out[0] == '\0') {
-			wfree(out);
-			werror(_("could not run \"%s --global_defaults_path\"."), path);
-			exit(1);
-		}
-		wstrlcpy(buffer, out, sizeof(buffer));
+	argv[1] = "--global_defaults_path";
+	out = wspawnvp_capture(argv, sizeof(buffer) - 1, NULL);
+	if (!out || out[0] == '\0') {
 		wfree(out);
-		ptr = strchr(buffer, '\n');
-		if (ptr)
-			*ptr = 0;
-		if (wstrlcat(buffer, "/WindowMaker", sizeof(buffer)) >= sizeof(buffer)) {
-			werror(_("global defaults path is too long"));
-			exit(1);
-		}
+		werror(_("could not run \"%s --global_defaults_path\"."), path);
+		exit(1);
+	}
+	wstrlcpy(buffer, out, sizeof(buffer));
+	wfree(out);
+	ptr = strchr(buffer, '\n');
+	if (ptr)
+		*ptr = 0;
+	if (wstrlcat(buffer, "/WindowMaker", sizeof(buffer)) >= sizeof(buffer)) {
+		werror(_("global defaults path is too long"));
+		exit(1);
 	}
 
 	gdb = WMReadPropListFromFile(buffer);

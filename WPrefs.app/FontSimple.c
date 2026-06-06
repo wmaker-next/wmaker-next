@@ -359,6 +359,10 @@ static void selectedFamily(WMWidget * w, void *data)
 	if (item) {
 		FontFamily *family = (FontFamily *) item->clientData;
 		int i, oldi = 0, oldscore = 0;
+		int index;
+		WMMenuItem *mitem;
+		FcChar8 *ofont;
+		char *nfont;
 
 		WMClearList(panel->styleL);
 		for (i = 0; i < family->stylen; i++) {
@@ -407,18 +411,14 @@ static void selectedFamily(WMWidget * w, void *data)
 		}
 		WMSelectListItem(panel->styleL, oldi);
 
-		{
-			int index = WMGetPopUpButtonSelectedItem(panel->optionP);
-			WMMenuItem *item = WMGetPopUpButtonMenuItem(panel->optionP, index);
-			FcChar8 *ofont;
-			char *nfont;
+		index = WMGetPopUpButtonSelectedItem(panel->optionP);
+		mitem = WMGetPopUpButtonMenuItem(panel->optionP, index);
+		ofont = (FcChar8 *) WMGetMenuItemRepresentedObject(mitem);
+		nfont = getSelectedFont(panel, ofont);
+		if (ofont)
+			wfree(ofont);
+		WMSetMenuItemRepresentedObject(mitem, nfont);
 
-			ofont = (FcChar8 *) WMGetMenuItemRepresentedObject(item);
-			nfont = getSelectedFont(panel, ofont);
-			if (ofont)
-				wfree(ofont);
-			WMSetMenuItemRepresentedObject(item, nfont);
-		}
 		updateSampleFont(panel);
 	}
 }
@@ -632,7 +632,7 @@ static void createPanel(Panel * p)
 	_Panel *panel = (_Panel *) p;
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMLabel *label;
-	WMBox *hbox, *vbox;
+	WMBox *hbox, *vbox, *box;
 	int i;
 
 	lookup_available_fonts(panel);
@@ -695,32 +695,30 @@ static void createPanel(Panel * p)
 	WMSetBoxHorizontal(vbox, False);
 	WMAddBoxSubview(hbox, WMWidgetView(vbox), True, True, 10, 0, 0);
 
-	{
-		WMBox *box = WMCreateBox(vbox);
-		WMSetBoxHorizontal(box, True);
-		WMAddBoxSubview(vbox, WMWidgetView(box), False, True, 20, 0, 2);
+	box = WMCreateBox(vbox);
+	WMSetBoxHorizontal(box, True);
+	WMAddBoxSubview(vbox, WMWidgetView(box), False, True, 20, 0, 2);
 
-		label = createListLabel(scr, box, _("Style"));
-		WMAddBoxSubview(box, WMWidgetView(label), True, True, 20, 0, 4);
+	label = createListLabel(scr, box, _("Style"));
+	WMAddBoxSubview(box, WMWidgetView(label), True, True, 20, 0, 4);
 
-		label = createListLabel(scr, box, _("Size"));
-		WMAddBoxSubview(box, WMWidgetView(label), False, True, 60, 0, 0);
+	label = createListLabel(scr, box, _("Size"));
+	WMAddBoxSubview(box, WMWidgetView(label), False, True, 60, 0, 0);
 
-		box = WMCreateBox(vbox);
-		WMSetBoxHorizontal(box, True);
-		WMAddBoxSubview(vbox, WMWidgetView(box), True, True, 20, 0, 0);
+	box = WMCreateBox(vbox);
+	WMSetBoxHorizontal(box, True);
+	WMAddBoxSubview(vbox, WMWidgetView(box), True, True, 20, 0, 0);
 
-		panel->styleL = WMCreateList(box);
-		WMAddBoxSubview(box, WMWidgetView(panel->styleL), True, True, 0, 0, 4);
-		WMSetListAction(panel->styleL, selected, panel);
+	panel->styleL = WMCreateList(box);
+	WMAddBoxSubview(box, WMWidgetView(panel->styleL), True, True, 0, 0, 4);
+	WMSetListAction(panel->styleL, selected, panel);
 
-		panel->sizeL = WMCreateList(box);
-		WMAddBoxSubview(box, WMWidgetView(panel->sizeL), False, True, 60, 0, 0);
-		for (i = 0; standardSizes[i]; i++) {
-			WMAddListItem(panel->sizeL, standardSizes[i]);
-		}
-		WMSetListAction(panel->sizeL, selected, panel);
+	panel->sizeL = WMCreateList(box);
+	WMAddBoxSubview(box, WMWidgetView(panel->sizeL), False, True, 60, 0, 0);
+	for (i = 0; standardSizes[i]; i++) {
+		WMAddListItem(panel->sizeL, standardSizes[i]);
 	}
+	WMSetListAction(panel->sizeL, selected, panel);
 
 	WMMapSubwidgets(panel->box);
 	WMMapWidget(panel->box);

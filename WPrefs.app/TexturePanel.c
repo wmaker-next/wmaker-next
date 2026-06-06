@@ -1140,6 +1140,9 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 {
 	TexturePanel *panel;
 	WMScreen *scr = WMWidgetScreen(keyWindow);
+	WMPixmap *pixmap;
+	Pixmap p;
+	WMColor *color;
 
 	panel = wmalloc(sizeof(TexturePanel));
 
@@ -1342,27 +1345,21 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 
 	WMMapSubwidgets(panel->topaF);
 
-	{
-		WMPixmap *pixmap;
-		Pixmap p;
-		WMColor *color;
+	pixmap = WMCreatePixmap(scr, 155, 18, WMScreenDepth(scr), False);
+	p = WMGetPixmapXID(pixmap);
 
-		pixmap = WMCreatePixmap(scr, 155, 18, WMScreenDepth(scr), False);
-		p = WMGetPixmapXID(pixmap);
+	color = WMDarkGrayColor(scr);
+	XFillRectangle(WMScreenDisplay(scr), p, WMColorGC(color), 0, 0, 155, 18);
+	WMReleaseColor(color);
 
-		color = WMDarkGrayColor(scr);
-		XFillRectangle(WMScreenDisplay(scr), p, WMColorGC(color), 0, 0, 155, 18);
-		WMReleaseColor(color);
+	color = WMWhiteColor(scr);
+	WMDrawString(scr, p, color, panel->listFont, 2, 1, "0%", 2);
+	WMDrawString(scr, p, color, panel->listFont,
+		     153 - WMWidthOfString(panel->listFont, "100%", 4), 1, "100%", 4);
+	WMReleaseColor(color);
 
-		color = WMWhiteColor(scr);
-		WMDrawString(scr, p, color, panel->listFont, 2, 1, "0%", 2);
-		WMDrawString(scr, p, color, panel->listFont,
-			     153 - WMWidthOfString(panel->listFont, "100%", 4), 1, "100%", 4);
-		WMReleaseColor(color);
-
-		WMSetSliderImage(panel->topaS, pixmap);
-		WMReleasePixmap(pixmap);
-	}
+	WMSetSliderImage(panel->topaS, pixmap);
+	WMReleasePixmap(pixmap);
 
 	WMMapSubwidgets(panel->tcolF);
 

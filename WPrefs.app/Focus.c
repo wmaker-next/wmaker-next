@@ -161,6 +161,7 @@ static void createPanel(Panel * p)
 	WMPixmap *icon;
 	WMColor *color;
 	WMFont *font;
+	WMBox *box;
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
@@ -171,25 +172,23 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->kfocF, 15, 10);
 	WMSetFrameTitle(panel->kfocF, _("Input Focus Mode"));
 
-	{
-		WMBox *box = WMCreateBox(panel->kfocF);
-		WMSetViewExpandsToParent(WMWidgetView(box), 10, 15, 10, 10);
-		WMSetBoxHorizontal(box, False);
+	box = WMCreateBox(panel->kfocF);
+	WMSetViewExpandsToParent(WMWidgetView(box), 10, 15, 10, 10);
+	WMSetBoxHorizontal(box, False);
 
-		panel->kfocB[0] = WMCreateRadioButton(box);
-		WMSetButtonText(panel->kfocB[0], _("Manual:  Click on the window to set "
-		                                   "keyboard input focus"));
-		WMAddBoxSubview(box, WMWidgetView(panel->kfocB[0]), True, True, 20, 0, 0);
+	panel->kfocB[0] = WMCreateRadioButton(box);
+	WMSetButtonText(panel->kfocB[0], _("Manual:  Click on the window to set "
+	                                   "keyboard input focus"));
+	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[0]), True, True, 20, 0, 0);
 
-		panel->kfocB[1] = WMCreateRadioButton(box);
-		WMGroupButtons(panel->kfocB[0], panel->kfocB[1]);
-		WMSetButtonText(panel->kfocB[1], _("Auto:  Set keyboard input focus to "
-		                                   "the window under the mouse pointer"));
-		WMAddBoxSubview(box, WMWidgetView(panel->kfocB[1]), True, True, 20, 0, 0);
+	panel->kfocB[1] = WMCreateRadioButton(box);
+	WMGroupButtons(panel->kfocB[0], panel->kfocB[1]);
+	WMSetButtonText(panel->kfocB[1], _("Auto:  Set keyboard input focus to "
+	                                   "the window under the mouse pointer"));
+	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[1]), True, True, 20, 0, 0);
 
-		WMMapSubwidgets(box);
-		WMMapWidget(box);
-	}
+	WMMapSubwidgets(box);
+	WMMapWidget(box);
 
     /***************** Colormap Installation Mode ****************/
 

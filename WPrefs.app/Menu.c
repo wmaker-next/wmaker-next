@@ -355,6 +355,15 @@ static void createPanel(_Panel * p)
 	WMFont *font = WMSystemFontOfSize(scr, 12);
 	WMLabel *label;
 	int width;
+	Display *dpy = WMScreenDisplay(scr);
+	Pixmap pix;
+	GC gc;
+	WMPixmap *pixm;
+	WEditMenu *pad, *smenu;
+	ItemData *data;
+	WMScrollView *sview;
+	WMPoint pos;
+	int i;
 
 	menuDelegate.data = panel;
 
@@ -365,44 +374,37 @@ static void createPanel(_Panel * p)
 	panel->white = white;
 	panel->gray = gray;
 
-	{
-		Pixmap pix;
-		Display *dpy = WMScreenDisplay(scr);
-		GC gc;
-		WMPixmap *pixm;
+	pixm = WMCreatePixmap(scr, 7, 7, WMScreenDepth(scr), True);
 
-		pixm = WMCreatePixmap(scr, 7, 7, WMScreenDepth(scr), True);
+	pix = WMGetPixmapXID(pixm);
 
-		pix = WMGetPixmapXID(pixm);
+	XDrawLine(dpy, pix, WMColorGC(black), 0, 3, 6, 3);
+	XDrawLine(dpy, pix, WMColorGC(black), 3, 0, 3, 6);
+	/*
+	   XDrawLine(dpy, pix, WMColorGC(black), 1, 0, 3, 3);
+	   XDrawLine(dpy, pix, WMColorGC(black), 1, 6, 3, 3);
+	   XDrawLine(dpy, pix, WMColorGC(black), 0, 0, 0, 6);
+	 */
 
-		XDrawLine(dpy, pix, WMColorGC(black), 0, 3, 6, 3);
-		XDrawLine(dpy, pix, WMColorGC(black), 3, 0, 3, 6);
-		/*
-		   XDrawLine(dpy, pix, WMColorGC(black), 1, 0, 3, 3);
-		   XDrawLine(dpy, pix, WMColorGC(black), 1, 6, 3, 3);
-		   XDrawLine(dpy, pix, WMColorGC(black), 0, 0, 0, 6);
-		 */
+	pix = WMGetPixmapMaskXID(pixm);
 
-		pix = WMGetPixmapMaskXID(pixm);
+	gc = XCreateGC(dpy, pix, 0, NULL);
 
-		gc = XCreateGC(dpy, pix, 0, NULL);
+	XSetForeground(dpy, gc, 0);
+	XFillRectangle(dpy, pix, gc, 0, 0, 7, 7);
 
-		XSetForeground(dpy, gc, 0);
-		XFillRectangle(dpy, pix, gc, 0, 0, 7, 7);
+	XSetForeground(dpy, gc, 1);
+	XDrawLine(dpy, pix, gc, 0, 3, 6, 3);
+	XDrawLine(dpy, pix, gc, 3, 0, 3, 6);
 
-		XSetForeground(dpy, gc, 1);
-		XDrawLine(dpy, pix, gc, 0, 3, 6, 3);
-		XDrawLine(dpy, pix, gc, 3, 0, 3, 6);
+	panel->markerPix[ExternalInfo] = pixm;
+	panel->markerPix[PipeInfo] = pixm;
+	panel->markerPix[PLPipeInfo] = pixm;
+	panel->markerPix[DirectoryInfo] = pixm;
+	panel->markerPix[WSMenuInfo] = pixm;
+	panel->markerPix[WWindowListInfo] = pixm;
 
-		panel->markerPix[ExternalInfo] = pixm;
-		panel->markerPix[PipeInfo] = pixm;
-		panel->markerPix[PLPipeInfo] = pixm;
-		panel->markerPix[DirectoryInfo] = pixm;
-		panel->markerPix[WSMenuInfo] = pixm;
-		panel->markerPix[WWindowListInfo] = pixm;
-
-		XFreeGC(dpy, gc);
-	}
+	XFreeGC(dpy, gc);
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
@@ -419,157 +421,141 @@ static void createPanel(_Panel * p)
 
 	WMSetPopUpButtonSelectedItem(panel->typeP, 0);
 
-	{
-		WEditMenu *pad;
+	pad = makeFactoryMenu(panel->box, 150);
+	WMMoveWidget(pad, 10, 40);
 
-		pad = makeFactoryMenu(panel->box, 150);
-		WMMoveWidget(pad, 10, 40);
+	putNewItem(panel, pad, ExecInfo, _("Run Program"));
+	putNewItem(panel, pad, CommandInfo, _("Internal Command"));
+	putNewSubmenu(pad, _("Submenu"));
+	putNewItem(panel, pad, ExternalInfo, _("External Submenu"));
+	putNewItem(panel, pad, PipeInfo, _("Generated Submenu"));
+	putNewItem(panel, pad, PLPipeInfo, _("Generated PL Menu"));
+	putNewItem(panel, pad, DirectoryInfo, _("Directory Contents"));
+	putNewItem(panel, pad, WSMenuInfo, _("Workspace Menu"));
+	putNewItem(panel, pad, WWindowListInfo, _("Window List Menu"));
 
-		putNewItem(panel, pad, ExecInfo, _("Run Program"));
-		putNewItem(panel, pad, CommandInfo, _("Internal Command"));
-		putNewSubmenu(pad, _("Submenu"));
-		putNewItem(panel, pad, ExternalInfo, _("External Submenu"));
-		putNewItem(panel, pad, PipeInfo, _("Generated Submenu"));
-		putNewItem(panel, pad, PLPipeInfo, _("Generated PL Menu"));
-		putNewItem(panel, pad, DirectoryInfo, _("Directory Contents"));
-		putNewItem(panel, pad, WSMenuInfo, _("Workspace Menu"));
-		putNewItem(panel, pad, WWindowListInfo, _("Window List Menu"));
+	panel->itemPad[0] = pad;
 
-		panel->itemPad[0] = pad;
-	}
+	sview = WMCreateScrollView(panel->box);
+	WMResizeWidget(sview, 150, 180);
+	WMMoveWidget(sview, 10, 40);
+	WMSetScrollViewHasVerticalScroller(sview, True);
 
-	{
-		WEditMenu *pad;
-		ItemData *data;
-		WMScrollView *sview;
+	pad = makeFactoryMenu(panel->box, 130);
 
-		sview = WMCreateScrollView(panel->box);
-		WMResizeWidget(sview, 150, 180);
-		WMMoveWidget(sview, 10, 40);
-		WMSetScrollViewHasVerticalScroller(sview, True);
+	WMSetScrollViewContentView(sview, WMWidgetView(pad));
 
-		pad = makeFactoryMenu(panel->box, 130);
+	data = putNewItem(panel, pad, ExecInfo, _("XTerm"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white";
 
-		WMSetScrollViewContentView(sview, WMWidgetView(pad));
+	data = putNewItem(panel, pad, ExecInfo, _("rxvt"));
+	data->param.exec.command = "rxvt";
 
-		data = putNewItem(panel, pad, ExecInfo, _("XTerm"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white";
+	data = putNewItem(panel, pad, ExecInfo, _("ETerm"));
+	data->param.exec.command = "eterm";
 
-		data = putNewItem(panel, pad, ExecInfo, _("rxvt"));
-		data->param.exec.command = "rxvt";
+	data = putNewItem(panel, pad, ExecInfo, _("Run..."));
+	data->param.exec.command = _("%A(Run,Type command to run)");
 
-		data = putNewItem(panel, pad, ExecInfo, _("ETerm"));
-		data->param.exec.command = "eterm";
+	data = putNewItem(panel, pad, ExecInfo, _("Firefox"));
+	data->param.exec.command = "firefox";
 
-		data = putNewItem(panel, pad, ExecInfo, _("Run..."));
-		data->param.exec.command = _("%A(Run,Type command to run)");
+	data = putNewItem(panel, pad, ExecInfo, _("gimp"));
+	data->param.exec.command = "gimp";
 
-		data = putNewItem(panel, pad, ExecInfo, _("Firefox"));
-		data->param.exec.command = "firefox";
+	data = putNewItem(panel, pad, ExecInfo, _("epic"));
+	data->param.exec.command = "xterm -e epic";
 
-		data = putNewItem(panel, pad, ExecInfo, _("gimp"));
-		data->param.exec.command = "gimp";
+	data = putNewItem(panel, pad, ExecInfo, _("ee"));
+	data->param.exec.command = "ee";
 
-		data = putNewItem(panel, pad, ExecInfo, _("epic"));
-		data->param.exec.command = "xterm -e epic";
+	data = putNewItem(panel, pad, ExecInfo, _("xv"));
+	data->param.exec.command = "xv";
 
-		data = putNewItem(panel, pad, ExecInfo, _("ee"));
-		data->param.exec.command = "ee";
+	data = putNewItem(panel, pad, ExecInfo, _("Evince"));
+	data->param.exec.command = "evince";
 
-		data = putNewItem(panel, pad, ExecInfo, _("xv"));
-		data->param.exec.command = "xv";
+	data = putNewItem(panel, pad, ExecInfo, _("ghostview"));
+	data->param.exec.command = "gv";
 
-		data = putNewItem(panel, pad, ExecInfo, _("Evince"));
-		data->param.exec.command = "evince";
+	data = putNewItem(panel, pad, CommandInfo, _("Exit Window Maker"));
+	data->param.command.command = 3;
 
-		data = putNewItem(panel, pad, ExecInfo, _("ghostview"));
-		data->param.exec.command = "gv";
+	WMMapWidget(pad);
 
-		data = putNewItem(panel, pad, CommandInfo, _("Exit Window Maker"));
-		data->param.command.command = 3;
+	panel->itemPad[1] = sview;
 
-		WMMapWidget(pad);
+	sview = WMCreateScrollView(panel->box);
+	WMResizeWidget(sview, 150, 180);
+	WMMoveWidget(sview, 10, 40);
+	WMSetScrollViewHasVerticalScroller(sview, True);
 
-		panel->itemPad[1] = sview;
-	}
+	pad = makeFactoryMenu(panel->box, 130);
 
-	{
-		WEditMenu *pad, *smenu;
-		ItemData *data;
-		WMScrollView *sview;
+	WMSetScrollViewContentView(sview, WMWidgetView(pad));
 
-		sview = WMCreateScrollView(panel->box);
-		WMResizeWidget(sview, 150, 180);
-		WMMoveWidget(sview, 10, 40);
-		WMSetScrollViewHasVerticalScroller(sview, True);
+	data = putNewItem(panel, pad, ExternalInfo, _("Debian Menu"));
+	data->param.pipe.command = "/etc/" GSUSER_SUBDIR "/" DEFAULTS_SUBDIR "/menu.hook";
 
-		pad = makeFactoryMenu(panel->box, 130);
+	data = putNewItem(panel, pad, PipeInfo, _("RedHat Menu"));
+	data->param.pipe.command = "wmconfig --output wmaker";
 
-		WMSetScrollViewContentView(sview, WMWidgetView(pad));
+	data = putNewItem(panel, pad, PipeInfo, _("Menu Conectiva"));
+	data->param.pipe.command = "wmconfig --output wmaker";
 
-		data = putNewItem(panel, pad, ExternalInfo, _("Debian Menu"));
-		data->param.pipe.command = "/etc/" GSUSER_SUBDIR "/" DEFAULTS_SUBDIR "/menu.hook";
+	data = putNewItem(panel, pad, DirectoryInfo, _("Themes"));
+	data->param.directory.command = "setstyle";
+	data->param.directory.directory =
+	    "/usr/share/" PACKAGE_TARNAME "/Themes"
+	    " /usr/local/share/" PACKAGE_TARNAME "/Themes"
+	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
+	data->param.directory.stripExt = 1;
 
-		data = putNewItem(panel, pad, PipeInfo, _("RedHat Menu"));
-		data->param.pipe.command = "wmconfig --output wmaker";
+	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (scale)"));
+	data->param.directory.command = "wmsetbg -u -s";
+	data->param.directory.directory =
+	    "/opt/kde2/share/wallpapers"
+	    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
+	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+	data->param.directory.stripExt = 1;
 
-		data = putNewItem(panel, pad, PipeInfo, _("Menu Conectiva"));
-		data->param.pipe.command = "wmconfig --output wmaker";
+	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (tile)"));
+	data->param.directory.command = "wmsetbg -u -t";
+	data->param.directory.directory =
+	    "/opt/kde2/share/wallpapers"
+	    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
+	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+	data->param.directory.stripExt = 1;
 
-		data = putNewItem(panel, pad, DirectoryInfo, _("Themes"));
-		data->param.directory.command = "setstyle";
-		data->param.directory.directory =
-		    "/usr/share/" PACKAGE_TARNAME "/Themes"
-		    " /usr/local/share/" PACKAGE_TARNAME "/Themes"
-		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
-		data->param.directory.stripExt = 1;
+	smenu = putNewSubmenu(pad, _("Assorted XTerms"));
 
-		data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (scale)"));
-		data->param.directory.command = "wmsetbg -u -s";
-		data->param.directory.directory =
-		    "/opt/kde2/share/wallpapers"
-		    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
-		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
-		data->param.directory.stripExt = 1;
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm Yellow on Blue"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg midnightblue -fg yellow";
 
-		data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (tile)"));
-		data->param.directory.command = "wmsetbg -u -t";
-		data->param.directory.directory =
-		    "/opt/kde2/share/wallpapers"
-		    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
-		    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
-		data->param.directory.stripExt = 1;
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Black"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white";
 
-		smenu = putNewSubmenu(pad, _("Assorted XTerms"));
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm Black on White"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg white -fg black";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm Yellow on Blue"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg midnightblue -fg yellow";
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm Black on Beige"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg '#bbbb99' -fg black";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Black"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white";
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Green"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg '#228822' -fg white";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm Black on White"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg white -fg black";
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Olive"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg '#335533' -fg white";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm Black on Beige"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg '#bbbb99' -fg black";
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm Blue on Blue"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg '#112244' -fg '#88aabb'";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Green"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg '#228822' -fg white";
+	data = putNewItem(panel, smenu, ExecInfo, _("XTerm BIG FONTS"));
+	data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white -fn 10x20";
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm White on Olive"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg '#335533' -fg white";
+	WMMapWidget(pad);
 
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm Blue on Blue"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg '#112244' -fg '#88aabb'";
-
-		data = putNewItem(panel, smenu, ExecInfo, _("XTerm BIG FONTS"));
-		data->param.exec.command = "xterm -sb -sl 2000 -bg black -fg white -fn 10x20";
-
-		WMMapWidget(pad);
-
-		panel->itemPad[2] = sview;
-	}
+	panel->itemPad[2] = sview;
 
 	width = FRAME_WIDTH - 20 - 150 - 10 - 2;
 
@@ -810,11 +796,8 @@ static void createPanel(_Panel * p)
 	WMMapSubwidgets(panel->box);
 	WMMapWidget(panel->box);
 
-	{
-		int i;
-		for (i = 0; i < wlengthof(panel->itemPad); i++)
-			WMUnmapWidget(panel->itemPad[i]);
-	}
+	for (i = 0; i < wlengthof(panel->itemPad); i++)
+		WMUnmapWidget(panel->itemPad[i]);
 	changedItemPad(panel->typeP, panel);
 
 	panel->sections[NoInfo][0] = label;
@@ -838,22 +821,18 @@ static void createPanel(_Panel * p)
 
 	showData(panel);
 
-	{
-		WMPoint pos;
+	pos = WMGetViewScreenPosition(WMWidgetView(panel->box));
 
-		pos = WMGetViewScreenPosition(WMWidgetView(panel->box));
-
-		if (pos.x < 200) {
-			pos.x += FRAME_WIDTH + 20;
-		} else {
-			pos.x = 10;
-		}
-
-		pos.y = WMAX(pos.y - 100, 0);
-
-		if (panel->menu)
-			WEditMenuShowAt(panel->menu, pos.x, pos.y);
+	if (pos.x < 200) {
+		pos.x += FRAME_WIDTH + 20;
+	} else {
+		pos.x = 10;
 	}
+
+	pos.y = WMAX(pos.y - 100, 0);
+
+	if (panel->menu)
+		WEditMenuShowAt(panel->menu, pos.x, pos.y);
 }
 
 static void freeItemData(ItemData * data)

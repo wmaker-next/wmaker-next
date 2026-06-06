@@ -439,6 +439,8 @@ static void createPanel(Panel * p)
 	int i;
 	RColor color;
 	char *path;
+	WMFont *font;
+	WMColor *gray;
 
 	color.red = 0xae;
 	color.green = 0xaa;
@@ -577,17 +579,14 @@ static void createPanel(Panel * p)
 	panel->ddelaL = WMCreateLabel(panel->ddelaF);
 	WMResizeWidget(panel->ddelaL, 40, 16);
 	WMMoveWidget(panel->ddelaL, 173, 54);
-	{
-		WMFont *font;
-		WMColor *color;
 
-		font = WMSystemFontOfSize(scr, 10);
-		color = WMDarkGrayColor(scr);
-		WMSetLabelTextColor(panel->ddelaL, color);
-		WMSetLabelFont(panel->ddelaL, font);
-		WMReleaseFont(font);
-		WMReleaseColor(color);
-	}
+	font = WMSystemFontOfSize(scr, 10);
+	gray = WMDarkGrayColor(scr);
+	WMSetLabelTextColor(panel->ddelaL, gray);
+	WMSetLabelFont(panel->ddelaL, font);
+	WMReleaseFont(font);
+	WMReleaseColor(gray);
+
 	WMSetLabelText(panel->ddelaL, _("ms"));
 
 	WMMapSubwidgets(panel->ddelaF);
