@@ -52,6 +52,10 @@
 
 #define WIPC_DRAIN_TIMEOUT_MS  10000
 #define WIPC_FINAL_DRAIN_MS    300
+/* per-client queued-output cap, a stalled subscriber that exceeds this is
+ * dropped immediately rather than waiting out the drain timer while the
+ * window manager keeps reallocating its buffer */
+#define WIPC_MAX_OUT_QUEUE     (4u << 20)
 
 struct WIPCClient {
 	int fd;
@@ -71,6 +75,7 @@ struct WIPCClient {
 
 	WMHandlerID rd, wr, drain_timer;
 	unsigned int dead:1;
+	unsigned int busy:1;        /* inside ipc_read_cb dispatch, defer free */
 
 	struct WIPCClient *next;
 };
@@ -114,6 +119,7 @@ static char *ipc_server_path(WScreen *scr)
 {
 	const char *dpyname, *runtime, *colon;
 	char raw[256], dir[256], *p;
+	struct stat st;
 	char *path;
 	size_t len;
 
@@ -147,7 +153,16 @@ static char *ipc_server_path(WScreen *scr)
 		wwarning("cannot create IPC socket directory %s: %s", dir, strerror(errno));
 		return NULL;
 	}
-	chmod(dir, 0700);
+	/* the /tmp fallback parent has a predictable name in a sticky
+	 * world-writable directory, refuse it if another user got there
+	 * first or replaced it with a symlink, and apply the same check
+	 * to the XDG_RUNTIME_DIR case so a misconfigured runtime dir is
+	 * caught the same way */
+	if (lstat(dir, &st) < 0 || !S_ISDIR(st.st_mode) ||
+	    st.st_uid != getuid() || (st.st_mode & 077) != 0) {
+		wwarning("IPC socket directory %s has wrong owner or mode, not binding", dir);
+		return NULL;
+	}
 
 	len = strlen(dir) + strlen(raw) + 6;
 	path = wmalloc(len);
@@ -228,6 +243,11 @@ static void ipc_queue(struct WIPCClient *c, uint32_t type,
 		return;
 
 	need = c->out_len + WIPC_HEADER_LEN + len;
+	if (need < c->out_len || need > WIPC_MAX_OUT_QUEUE) {
+		wwarning("IPC client on fd %d output queue overflow, dropping", c->fd);
+		ipc_drop(c);
+		return;
+	}
 	c->out = wrealloc(c->out, need);
 	p = c->out + c->out_len;
 	memcpy(p, WIPC_MAGIC, 8);
@@ -282,7 +302,13 @@ static void ipc_drop(struct WIPCClient *c)
 
 	wfree(c->in);
 	wfree(c->out);
-	wfree(c);
+	c->in = NULL;
+	c->out = NULL;
+	/* when the drop is reached from inside this client's own request
+	 * dispatch the read callback still holds c on its stack, let it
+	 * do the free on the way out instead */
+	if (!c->busy)
+		wfree(c);
 }
 
 /* ---- broadcast ------------------------------------------------------- */
@@ -841,9 +867,9 @@ static void ipc_read_cb(int fd, int mask, void *data)
 {
 	struct WIPCClient *c = data;
 	ssize_t n;
-	uint32_t i;
+	uint32_t i, btype, blen;
 	int mode;
-	char *wm;
+	char *body, *wm;
 
 	(void)mask;
 
@@ -899,15 +925,26 @@ static void ipc_read_cb(int fd, int mask, void *data)
 			}
 		}
 
-		ipc_dispatch(c, c->in_type, c->in_len ? c->in : NULL, c->in_len);
-
-		wfree(c->in);
+		/* detach the assembled frame from the client before dispatch
+		 * so a drop reached from inside the handler (write error on
+		 * the reply, output-queue overflow) cannot double-free it,
+		 * and mark the client busy so the drop defers wfree(c) */
+		body = c->in;
+		btype = c->in_type;
+		blen = c->in_len;
 		c->in = NULL;
 		c->in_len = c->in_got = 0;
 		c->hdr_got = 0;
 
-		if (c->dead)
+		c->busy = 1;
+		ipc_dispatch(c, btype, blen ? body : NULL, blen);
+		c->busy = 0;
+		wfree(body);
+
+		if (c->dead) {
+			wfree(c);
 			return;
+		}
 
 		if (pending_shutdown_mode >= 0) {
 			mode = pending_shutdown_mode;
