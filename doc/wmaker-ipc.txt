@@ -64,6 +64,7 @@ Command verbs (request type 0)
     exit
     kill-session
     workspace next|prev|last|N
+    dock-launch SLOT
     show-all
     arrange-icons
     hide-application XID

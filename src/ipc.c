@@ -43,8 +43,10 @@
 #include "window.h"
 #include "framewin.h"
 #include "actions.h"
+#include "appicon.h"
 #include "application.h"
 #include "defaults.h"
+#include "dock.h"
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
@@ -495,6 +497,55 @@ static verb_rc verb_workspace(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_dock_launch(WScreen *scr, WMPropList *args,
+				char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	WAppIcon *btn;
+	long slot;
+	char *end;
+	int i;
+
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 2) {
+		*err = wstrdup("dock-launch: missing slot index");
+		return VERB_FAIL;
+	}
+	a = WMGetFromPLArray(args, 1);
+	if (!a || !WMIsPLString(a)) {
+		*err = wstrdup("dock-launch: slot must be a string");
+		return VERB_FAIL;
+	}
+	slot = strtol(WMGetFromPLString(a), &end, 10);
+	if (*end) {
+		*err = wstrdup("dock-launch: invalid slot index");
+		return VERB_FAIL;
+	}
+	if (!scr->dock) {
+		*err = wstrdup("dock-launch: no dock on this screen");
+		return VERB_FAIL;
+	}
+
+	btn = NULL;
+	for (i = 0; i < scr->dock->max_icons; i++) {
+		if (scr->dock->icon_array[i] &&
+		    scr->dock->icon_array[i]->yindex == slot) {
+			btn = scr->dock->icon_array[i];
+			break;
+		}
+	}
+	if (!btn || !btn->command) {
+		*err = wstrdup("dock-launch: no docked command at that slot");
+		return VERB_FAIL;
+	}
+
+	/* same path a double-click or auto-launch takes, so the death
+	 * handler is registered with source=dock and slot=yindex */
+	wDockLaunchWithState(btn, NULL);
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
 static verb_rc verb_show_all(WScreen *scr, WMPropList *args,
 			     char **err, WMPropList **reply)
 {
@@ -611,6 +662,7 @@ static const struct {
 	{ "exit",             verb_exit },
 	{ "kill-session",     verb_kill_session },
 	{ "workspace",        verb_workspace },
+	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },
 	{ "arrange-icons",    verb_arrange_icons },
 	{ "hide-application", verb_hide_app },

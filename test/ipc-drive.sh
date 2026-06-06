@@ -234,41 +234,40 @@ msg -q workspace 0 >>"$LOG" 2>&1
 note "child_exit before dialog"
 start_monitor child_exit dialog tick || fatal "monitor did not see first tick"
 
-# launch the docked /nonexistent via the dock auto-launch path is awkward
-# to trigger over IPC alone, so spawn it through the WM's environment by
-# asking the WM to reconfigure with the docked entry present, then poke
-# the dock directly with xdotool would reintroduce X tool deps, instead
-# the docked entry above has AutoLaunch=NO and we drive the failure the
-# same way the dock does, via the WM's child-reaper, by having the WM
-# itself fork it through a COMMAND, until that verb exists this row
-# checks ordering of any child the WM reaps, here SIGCHLD from a dock
-# auto-launch toggled at runtime
-#
-# For now: emit a child_exit by flipping AutoLaunch and reconfiguring,
-# the death-handler that posts the dialog runs after the IPC emit
-sed -i 's/AutoLaunch = NO/AutoLaunch = YES/' "$WMHOME/Defaults/WMState"
-msg -q reconfigure >>"$LOG" 2>&1
+# the seeded WMState docks /nonexistent at yindex 1, dock-launch takes
+# the same execCommand path a double-click does so the death handler
+# is registered with source=dock/slot=1 and the failure dialog is
+# raised by that handler after the child_exit event has been emitted
+msg -q dock-launch 1 >>"$LOG" 2>&1
+check "dock-launch 1 accepted" [ $? -eq 0 ]
 
-if wait_tick "child-done"; then
-	CE_LINE=$(evlog_line 'status = 127')
-	DLG_LINE=$(evlog_line 'kind = message')
-	T_LINE=$(evlog_line 'payload = "child-done"')
-	if [ -n "$CE_LINE" ]; then
-		record_pass "child_exit {status=127} delivered"
-		if [ -n "$DLG_LINE" ]; then
-			check "child_exit precedes dialog" [ "$CE_LINE" -lt "$DLG_LINE" ]
-			check "dialog precedes tick fence" [ "$DLG_LINE" -lt "$T_LINE" ]
-		else
-			record_skip "no failure dialog raised, ordering check skipped"
-		fi
-	else
-		record_skip "dock auto-launch did not fire on reconfigure"
-	fi
+# the verb reply arrives as soon as the child is forked, the SIGCHLD
+# and the dialog the death handler raises are asynchronous to that, so
+# gate on the dialog event before fencing, the failure dialog is modal
+# but its event loop still drives the IPC input handler so send_tick
+# is answered while the dialog is up
+wait_for 50 evlog_has 'kind = message' \
+	|| record_fail "no dialog event within 5s of dock-launch"
+wait_tick "child-done" || record_fail "child_exit fence tick never arrived"
+
+CE_LINE=$(evlog_line 'status = 127')
+DLG_LINE=$(evlog_line 'kind = message')
+T_LINE=$(evlog_line 'payload = "child-done"')
+
+check "child_exit {status=127} delivered" [ -n "$CE_LINE" ]
+check "child_exit reports source=dock" evlog_has 'source = dock'
+check "child_exit reports slot=1" evlog_has 'slot = 1'
+if [ -n "$DLG_LINE" ]; then
+	check "child_exit precedes dialog" \
+		sh -c "[ -n '$CE_LINE' ] && [ '$CE_LINE' -lt '$DLG_LINE' ]"
+	check "dialog precedes tick fence" \
+		sh -c "[ -n '$T_LINE' ] && [ '$DLG_LINE' -lt '$T_LINE' ]"
 else
-	record_fail "child_exit fence tick never arrived"
+	record_skip "no failure dialog raised, ordering check skipped"
 fi
 stop_monitor
-sed -i 's/AutoLaunch = YES/AutoLaunch = NO/' "$WMHOME/Defaults/WMState"
+# the failure dialog is still mapped, the next row's restart tears it
+# down with everything else so no explicit dismiss is needed
 
 # ---- row 2: shutdown observability and restart re-bind -------------------
 
