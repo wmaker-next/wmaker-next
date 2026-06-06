@@ -466,7 +466,7 @@ AC_SEARCH_LIBS([strlcat],[$with_libbsd],
   []
 )
 AC_SEARCH_LIBS([strlcpy],[$with_libbsd],
-  [AC_DEFINE(HAVE_STRLCAT, 1, [Define if strlcpy is available])],
+  [AC_DEFINE(HAVE_STRLCPY, 1, [Define if strlcpy is available])],
   [],
   []
 )
