@@ -120,7 +120,7 @@ static void sliderCallback(WMWidget * w, void *data)
 	ry = y * (WMWidgetHeight(panel->porigF) - 3) / sheight + 2;
 	WMMoveWidget(panel->porigW, rx, ry);
 
-	sprintf(buffer, "(%i,%i)", x, y);
+	snprintf(buffer, sizeof(buffer), "(%i,%i)", x, y);
 	WMSetLabelText(panel->porigvL, buffer);
 }
 
@@ -138,7 +138,7 @@ static void resistanceCallback(WMWidget * w, void *data)
 	if (i == 0)
 		WMSetLabelText(panel->resL, _("OFF"));
 	else {
-		sprintf(buffer, "%i", i);
+		snprintf(buffer, sizeof(buffer), "%i", i);
 		WMSetLabelText(panel->resL, buffer);
 	}
 }
@@ -157,7 +157,7 @@ static void resizeCallback(WMWidget * w, void *data)
 	if (i == 0)
 		WMSetLabelText(panel->resizeL, _("OFF"));
 	else {
-		sprintf(buffer, "%i", i);
+		snprintf(buffer, sizeof(buffer), "%i", i);
 		WMSetLabelText(panel->resizeL, buffer);
 	}
 }
@@ -261,9 +261,9 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->opaqkeybB), "OpaqueMoveResizeKeyboard");
 
 	SetStringForKey(window_placements[WMGetPopUpButtonSelectedItem(panel->placP)].db_value, "WindowPlacement");
-	sprintf(buf, "%i", WMGetSliderValue(panel->hsli));
+	snprintf(buf, sizeof(buf), "%i", WMGetSliderValue(panel->hsli));
 	x = WMCreatePLString(buf);
-	sprintf(buf, "%i", WMGetSliderValue(panel->vsli));
+	snprintf(buf, sizeof(buf), "%i", WMGetSliderValue(panel->vsli));
 	y = WMCreatePLString(buf);
 	arr = WMCreatePLArray(x, y, NULL);
 	WMReleasePropList(x);

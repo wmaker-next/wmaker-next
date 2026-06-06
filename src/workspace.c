@@ -1518,9 +1518,8 @@ void wWorkspaceRename(WScreen *scr, int workspace, const char *name)
 	if (strlen(tmp) == 0) {
 		snprintf(buf, sizeof(buf), _("Workspace %i"), workspace + 1);
 	} else {
-		strncpy(buf, tmp, MAX_WORKSPACENAME_WIDTH);
+		wstrlcpy(buf, tmp, sizeof(buf));
 	}
-	buf[MAX_WORKSPACENAME_WIDTH] = 0;
 	wfree(tmp);
 
 	/* update workspace */

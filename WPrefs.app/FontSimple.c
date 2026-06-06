@@ -381,10 +381,10 @@ static void selectedFamily(WMWidget * w, void *data)
 					slant = fontSlants[j].name;
 					break;
 				}
-			sprintf(buffer, "%s%s%s%s%s",
+			snprintf(buffer, sizeof(buffer), "%s%s%s%s%s",
 				weight, *weight ? " " : "", slant, (*slant || *weight) ? " " : "", width);
 			if (!buffer[0])
-				strcpy(buffer, "Roman");
+				wstrlcpy(buffer, "Roman", sizeof(buffer));
 
 			item = WMAddListItem(panel->styleL, buffer);
 			item->clientData = family->styles + i;

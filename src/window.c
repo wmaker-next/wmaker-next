@@ -3616,9 +3616,13 @@ void wWindowGetLanguageLabel(int group_index, char *label)
 		}
 
 		if (tok) {
+			size_t label_len = strlen(tok);
+
 			/* Copy exactly the first two bytes, then format: first uppercase, second lowercase */
-			strncpy(label, tok, 2);
-			label[2] = '\0';
+			if (label_len > 2)
+				label_len = 2;
+			memcpy(label, tok, label_len);
+			label[label_len] = '\0';
 			if (label[0])
 				label[0] = (char) toupper((unsigned char) label[0]);
 			if (label[1])

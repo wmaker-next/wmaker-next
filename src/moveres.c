@@ -144,7 +144,7 @@ static void showPosition(WWindow * wwin, int x, int y)
 
 		GC lgc = scr->line_gc;
 		XSetForeground(dpy, lgc, scr->line_pixel);
-		sprintf(num, "%i", x);
+		snprintf(num, sizeof(num), "%i", x);
 
 		XDrawLine(dpy, scr->root_win, lgc, 0, y - 1, scr->scr_width, y - 1);
 		XDrawLine(dpy, scr->root_win, lgc, 0, y + height + 2, scr->scr_width, y + height + 2);

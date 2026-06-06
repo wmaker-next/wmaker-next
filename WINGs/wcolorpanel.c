@@ -2304,7 +2304,7 @@ static void grayBrightnessSliderCallback(WMWidget * w, void *data)
 
 	value = WMGetSliderValue(panel->grayBrightnessS);
 
-	sprintf(tmp, "%d", value);
+	snprintf(tmp, sizeof(tmp), "%d", value);
 
 	WMSetTextFieldText(panel->grayBrightnessT, tmp);
 	cpColor.rgb.red = cpColor.rgb.green = cpColor.rgb.blue = rint(2.55 * value);
@@ -2329,7 +2329,7 @@ static void grayPresetButtonCallback(WMWidget * w, void *data)
 	}
 
 	value = rint((100.0 * i) / 6.0);
-	sprintf(tmp, "%d", value);
+	snprintf(tmp, sizeof(tmp), "%d", value);
 
 	WMSetTextFieldText(panel->grayBrightnessT, tmp);
 	cpColor.rgb.red = cpColor.rgb.green = cpColor.rgb.blue = rint((255.0 * i) / 6.0);
@@ -2357,7 +2357,7 @@ static void grayBrightnessTextFieldCallback(void *observerData, WMNotification *
 	if (value < 0)
 		value = 0;
 
-	sprintf(tmp, "%d", value);
+	snprintf(tmp, sizeof(tmp), "%d", value);
 	WMSetTextFieldText(panel->grayBrightnessT, tmp);
 	WMSetSliderValue(panel->grayBrightnessS, value);
 
@@ -2386,11 +2386,11 @@ void rgbIntToChar(W_ColorPanel *panel, int *value)
 		format = "";
 	}
 
-	sprintf(tmp, format, value[0]);
+	snprintf(tmp, sizeof(tmp), format, value[0]);
 	WMSetTextFieldText(panel->rgbRedT, tmp);
-	sprintf(tmp, format, value[1]);
+	snprintf(tmp, sizeof(tmp), format, value[1]);
 	WMSetTextFieldText(panel->rgbGreenT, tmp);
-	sprintf(tmp, format, value[2]);
+	snprintf(tmp, sizeof(tmp), format, value[2]);
 	WMSetTextFieldText(panel->rgbBlueT, tmp);
 }
 
@@ -2530,13 +2530,13 @@ static void cmykSliderCallback(WMWidget * w, void *data)
 	value[2] = WMGetSliderValue(panel->cmykYellowS);
 	value[3] = WMGetSliderValue(panel->cmykBlackS);
 
-	sprintf(tmp, "%d", value[0]);
+	snprintf(tmp, sizeof(tmp), "%d", value[0]);
 	WMSetTextFieldText(panel->cmykCyanT, tmp);
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->cmykMagentaT, tmp);
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->cmykYellowT, tmp);
-	sprintf(tmp, "%d", value[3]);
+	snprintf(tmp, sizeof(tmp), "%d", value[3]);
 	WMSetTextFieldText(panel->cmykBlackT, tmp);
 
 	scale = 2.55 * (1.0 - (value[3] / 100.0));
@@ -2573,16 +2573,16 @@ static void cmykTextFieldCallback(void *observerData, WMNotification * notificat
 			value[n] = 0;
 	}
 
-	sprintf(tmp, "%d", value[0]);
+	snprintf(tmp, sizeof(tmp), "%d", value[0]);
 	WMSetTextFieldText(panel->cmykCyanT, tmp);
 
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->cmykMagentaT, tmp);
 
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->cmykYellowT, tmp);
 
-	sprintf(tmp, "%d", value[3]);
+	snprintf(tmp, sizeof(tmp), "%d", value[3]);
 	WMSetTextFieldText(panel->cmykBlackT, tmp);
 
 	WMSetSliderValue(panel->cmykCyanS, value[0]);
@@ -2613,11 +2613,11 @@ static void hsbSliderCallback(WMWidget * w, void *data)
 	value[1] = WMGetSliderValue(panel->hsbSaturationS);
 	value[2] = WMGetSliderValue(panel->hsbBrightnessS);
 
-	sprintf(tmp, "%d", value[0]);
+	snprintf(tmp, sizeof(tmp), "%d", value[0]);
 	WMSetTextFieldText(panel->hsbHueT, tmp);
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->hsbSaturationT, tmp);
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->hsbBrightnessT, tmp);
 
 	cpColor.hsv.hue = value[0];
@@ -2665,11 +2665,11 @@ static void hsbTextFieldCallback(void *observerData, WMNotification * notificati
 			value[n] = 0;
 	}
 
-	sprintf(tmp, "%d", value[0]);
+	snprintf(tmp, sizeof(tmp), "%d", value[0]);
 	WMSetTextFieldText(panel->hsbHueT, tmp);
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->hsbSaturationT, tmp);
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->hsbBrightnessT, tmp);
 
 	WMSetSliderValue(panel->hsbHueS, value[0]);
@@ -3017,7 +3017,7 @@ static void customPaletteMenuNewFromFile(W_ColorPanel * panel)
 		if (panel->lastBrowseDir)
 			wfree(panel->lastBrowseDir);
 		panel->lastBrowseDir = wmalloc((i + 1) * sizeof(char));
-		strncpy(panel->lastBrowseDir, filepath, i);
+		memcpy(panel->lastBrowseDir, filepath, i);
 		panel->lastBrowseDir[i] = '\0';
 
 		/* Get filename from path */
@@ -3372,7 +3372,7 @@ static void grayInit(W_ColorPanel * panel)
 	value = rint(panel->color.hsv.value / 2.55);
 	WMSetSliderValue(panel->grayBrightnessS, value);
 
-	sprintf(tmp, "%d", value);
+	snprintf(tmp, sizeof(tmp), "%d", value);
 	WMSetTextFieldText(panel->grayBrightnessT, tmp);
 }
 
@@ -3400,11 +3400,11 @@ static void rgbInit(W_ColorPanel * panel)
 		format = "";
 	}
 
-	sprintf(tmp, format, panel->color.rgb.red);
+	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.red);
 	WMSetTextFieldText(panel->rgbRedT, tmp);
-	sprintf(tmp, format, panel->color.rgb.green);
+	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.green);
 	WMSetTextFieldText(panel->rgbGreenT, tmp);
-	sprintf(tmp, format, panel->color.rgb.blue);
+	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.blue);
 	WMSetTextFieldText(panel->rgbBlueT, tmp);
 }
 
@@ -3425,11 +3425,11 @@ static void cmykInit(W_ColorPanel * panel)
 	WMSetSliderValue(panel->cmykYellowS, value[2]);
 	WMSetSliderValue(panel->cmykBlackS, 0);
 
-	sprintf(tmp, "%d", value[0]);
+	snprintf(tmp, sizeof(tmp), "%d", value[0]);
 	WMSetTextFieldText(panel->cmykCyanT, tmp);
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->cmykMagentaT, tmp);
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->cmykYellowT, tmp);
 	WMSetTextFieldText(panel->cmykBlackT, "0");
 }
@@ -3450,11 +3450,11 @@ static void hsbInit(W_ColorPanel * panel)
 	WMSetSliderValue(panel->hsbSaturationS, value[1]);
 	WMSetSliderValue(panel->hsbBrightnessS, value[2]);
 
-	sprintf(tmp, "%hu", value[0]);
+	snprintf(tmp, sizeof(tmp), "%hu", value[0]);
 	WMSetTextFieldText(panel->hsbHueT, tmp);
-	sprintf(tmp, "%d", value[1]);
+	snprintf(tmp, sizeof(tmp), "%d", value[1]);
 	WMSetTextFieldText(panel->hsbSaturationT, tmp);
-	sprintf(tmp, "%d", value[2]);
+	snprintf(tmp, sizeof(tmp), "%d", value[2]);
 	WMSetTextFieldText(panel->hsbBrightnessT, tmp);
 
 	hsbUpdateBrightnessGradient(panel);

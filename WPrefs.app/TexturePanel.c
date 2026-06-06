@@ -392,7 +392,8 @@ static void sliderChangeCallback(WMWidget *w, void *data)
 
 		RHSVtoRGB(&hsv, rgb);
 
-		sprintf(item->text, "%02x,%02x,%02x", rgb->red, rgb->green, rgb->blue);
+		snprintf(item->text, sizeof("rr,gg,bb"), "%02x,%02x,%02x",
+		         rgb->red, rgb->green, rgb->blue);
 	}
 
 	if (w == panel->ghueS) {
@@ -919,7 +920,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			rgb->red = xcolor.red >> 8;
 			rgb->green = xcolor.green >> 8;
 			rgb->blue = xcolor.blue >> 8;
-			sprintf(buffer, "%02x,%02x,%02x", rgb->red, rgb->green, rgb->blue);
+			snprintf(buffer, sizeof(buffer), "%02x,%02x,%02x", rgb->red, rgb->green, rgb->blue);
 
 			item = WMAddListItem(panel->gcolL, buffer);
 			item->clientData = rgb;
@@ -1056,7 +1057,7 @@ WMPropList *GetTexturePanelTexture(TexturePanel *panel)
 		color = WMGetColorWellColor(panel->tcol2W);
 		str2 = WMGetColorRGBDescription(color);
 
-		sprintf(buff, "%i", WMGetSliderValue(panel->topaS));
+		snprintf(buff, sizeof(buff), "%i", WMGetSliderValue(panel->topaS));
 
 		if (WMGetButtonSelected(panel->dirdB)) {
 			prop = WMCreatePLArray(WMCreatePLString("tdgradient"),
@@ -1119,7 +1120,7 @@ WMPropList *GetTexturePanelTexture(TexturePanel *panel)
 
 			rgb = (RColor *) item->clientData;
 
-			sprintf(buff, "#%02x%02x%02x", rgb->red, rgb->green, rgb->blue);
+			snprintf(buff, sizeof(buff), "#%02x%02x%02x", rgb->red, rgb->green, rgb->blue);
 
 			WMAddToPLArray(prop, WMCreatePLString(buff));
 		}

@@ -116,15 +116,15 @@ static void borderCallback(WMWidget * w, void *data)
 	i = WMGetSliderValue(panel->borderS);
 
 	if (i == 0)
-		sprintf(buffer, _("OFF"));
+		snprintf(buffer, sizeof(buffer), _("OFF"));
 	else if (i == 1)
-		sprintf(buffer, _("1 pixel"));
+		snprintf(buffer, sizeof(buffer), _("1 pixel"));
 	else if (i <= 4)
 		/* 2-4 */
-		sprintf(buffer, _("%i pixels"), i);
+		snprintf(buffer, sizeof(buffer), _("%i pixels"), i);
 	else
 		/* >4 */
-		sprintf(buffer, _("%i pixels "), i);	/* note space! */
+		snprintf(buffer, sizeof(buffer), _("%i pixels "), i);	/* note space! */
 	WMSetLabelText(panel->borderL, buffer);
 }
 

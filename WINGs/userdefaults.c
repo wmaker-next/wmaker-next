@@ -150,9 +150,7 @@ char *wdefaultspathfordomain(const char *domain)
 	slen = strlen(gspath) + strlen("/" DEFAULTS_SUBDIR "/") + strlen(domain) + 1;
 	path = wmalloc(slen);
 
-	strcpy(path, gspath);
-	strcat(path, "/" DEFAULTS_SUBDIR "/");
-	strcat(path, domain);
+	snprintf(path, slen, "%s/" DEFAULTS_SUBDIR "/%s", gspath, domain);
 
 	return path;
 }
@@ -618,7 +616,7 @@ void WMSetUDIntegerForKey(WMUserDefaults * database, int value, const char *defa
 	WMPropList *object;
 	char buffer[128];
 
-	sprintf(buffer, "%i", value);
+	snprintf(buffer, sizeof(buffer), "%i", value);
 	object = WMCreatePLString(buffer);
 
 	WMSetUDObjectForKey(database, object, defaultName);
@@ -640,7 +638,7 @@ void WMSetUDFloatForKey(WMUserDefaults * database, float value, const char *defa
 	WMPropList *object;
 	char buffer[128];
 
-	sprintf(buffer, "%f", (double)value);
+	snprintf(buffer, sizeof(buffer), "%f", (double)value);
 	object = WMCreatePLString(buffer);
 
 	WMSetUDObjectForKey(database, object, defaultName);

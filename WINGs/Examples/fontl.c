@@ -36,7 +36,8 @@ void show(WMWidget * self, void *data)
 	void *d;
 	WMLabel *l = (WMLabel *) data;
 	d = WMGetHangedData(self);
-	sprintf(buf, "%"PRIiPTR" -  0x%"PRIxPTR" - 0%"PRIoPTR, (intptr_t) d, (intptr_t) d, (intptr_t) d);
+	snprintf(buf, sizeof(buf), "%"PRIiPTR" -  0x%"PRIxPTR" - 0%"PRIoPTR,
+	         (intptr_t) d, (intptr_t) d, (intptr_t) d);
 	WMSetLabelText(l, buf);
 }
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
 			lab = WMCreateCustomButton(win, WBBStateLightMask);
 			WMResizeWidget(lab, 20, 20);
 			WMMoveWidget(lab, 10 + x * 20, 30 + y * 20);
-			sprintf(buf, "%c", c);
+			snprintf(buf, sizeof(buf), "%c", c);
 			WMSetButtonText(lab, buf);
 			WMSetButtonAction(lab, show, pos);
 			WMHangData(lab, (void *)(uintptr_t) c);

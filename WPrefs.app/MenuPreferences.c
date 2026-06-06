@@ -114,8 +114,8 @@ static void createPanel(Panel * p)
 		if (i > 0) {
 			WMGroupButtons(panel->scrB[0], panel->scrB[i]);
 		}
-		sprintf(buf1, SPEED_IMAGE, i);
-		sprintf(buf2, SPEED_IMAGE_S, i);
+		snprintf(buf1, strlen(SPEED_IMAGE) + 1, SPEED_IMAGE, i);
+		snprintf(buf2, strlen(SPEED_IMAGE_S) + 1, SPEED_IMAGE_S, i);
 		path = LocateImage(buf1);
 		if (path) {
 			icon = WMCreatePixmapFromFile(scr, path);

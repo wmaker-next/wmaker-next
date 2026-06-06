@@ -72,7 +72,7 @@ static void showData(_Panel * panel)
 		WMPerformButtonClick(panel->autB);
 
 	i = GetIntegerForKey("RaiseDelay");
-	sprintf(buffer, "%i", i);
+	snprintf(buffer, sizeof(buffer), "%i", i);
 	WMSetTextFieldText(panel->raisT, buffer);
 
 	switch (i) {
@@ -240,8 +240,8 @@ static void createPanel(Panel * p)
 		WMSetButtonAction(panel->raisB[i], pushDelayButton, panel);
 		if (i > 0)
 			WMGroupButtons(panel->raisB[0], panel->raisB[i]);
-		sprintf(buf1, DELAY_ICON, i);
-		sprintf(buf2, DELAY_ICON_S, i);
+		snprintf(buf1, strlen(DELAY_ICON) + 1, DELAY_ICON, i);
+		snprintf(buf2, strlen(DELAY_ICON_S) + 1, DELAY_ICON_S, i);
 		path = LocateImage(buf1);
 		if (path) {
 			icon = WMCreatePixmapFromFile(scr, path);

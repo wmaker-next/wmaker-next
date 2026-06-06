@@ -931,7 +931,8 @@ static char *makeFileName(const char *prefix)
 		char buf[30];
 
 		wfree(fname);
-		sprintf(buf, "%08lx.cache", time(NULL));
+		snprintf(buf, sizeof(buf), "%08llx.cache",
+			 (unsigned long long)time(NULL));
 		fname = wstrconcat(prefix, buf);
 	}
 

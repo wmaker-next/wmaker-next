@@ -44,6 +44,19 @@ typedef struct RCachedImage {
 	time_t last_use;	/* last time image was used */
 } RCachedImage;
 
+static char *copy_cache_filename(const char *file)
+{
+	size_t len;
+	char *copy;
+
+	len = strlen(file) + 1;
+	copy = malloc(len);
+	if (!copy)
+		return NULL;
+	memcpy(copy, file, len);
+	return copy;
+}
+
 /*
  * Number of image to keep in the cache
  */
@@ -266,8 +279,9 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 
 		for (i = 0; i < RImageCacheSize; i++) {
 			if (!RImageCache[i].file) {
-				RImageCache[i].file = malloc(strlen(file) + 1);
-				strcpy(RImageCache[i].file, file);
+				RImageCache[i].file = copy_cache_filename(file);
+				if (!RImageCache[i].file)
+					break;
 				RImageCache[i].image = RCloneImage(image);
 				RImageCache[i].last_modif = st.st_mtime;
 				RImageCache[i].last_use = time(NULL);
@@ -283,10 +297,13 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 
 		/* if no slot available, dump least recently used one */
 		if (!done) {
+			char *cache_file = copy_cache_filename(file);
+
+			if (!cache_file)
+				return image;
 			free(RImageCache[oldest_idx].file);
 			RReleaseImage(RImageCache[oldest_idx].image);
-			RImageCache[oldest_idx].file = malloc(strlen(file) + 1);
-			strcpy(RImageCache[oldest_idx].file, file);
+			RImageCache[oldest_idx].file = cache_file;
 			RImageCache[oldest_idx].image = RCloneImage(image);
 			RImageCache[oldest_idx].last_modif = st.st_mtime;
 			RImageCache[oldest_idx].last_use = time(NULL);

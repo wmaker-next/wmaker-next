@@ -138,7 +138,7 @@ void buttonClick(WMWidget * w, void *ptr)
 		MoveCount++;
 
 		if (CheckWin()) {
-			sprintf(buffer, "You finished the game in %i moves.", MoveCount);
+			snprintf(buffer, sizeof(buffer), "You finished the game in %i moves.", MoveCount);
 
 			if (WMRunAlertPanel(WMWidgetScreen(w), win, "You Won!", buffer,
 					    "Wee!", "Gah! Lemme retry!", NULL) == WAPRDefault) {
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 			WMSetButtonAction(Button[i], buttonClick, (void *)(uintptr_t) i);
 			WMResizeWidget(Button[i], WinSize / Size, WinSize / Size);
 			WMMoveWidget(Button[i], x * (WinSize / Size), y * (WinSize / Size));
-			sprintf(buf, "%i", i + 1);
+			snprintf(buf, sizeof(buf), "%i", i + 1);
 			WMSetButtonText(Button[i], buf);
 			WMSetButtonTextAlignment(Button[i], WACenter);
 			i++;

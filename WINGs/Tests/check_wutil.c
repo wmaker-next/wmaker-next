@@ -73,7 +73,7 @@ static void test_intern(void)
 
 	a = wintern("XTerm");
 	/* equal content from a different buffer must yield the same pointer */
-	strcpy(buf, "XTerm");
+	wstrlcpy(buf, "XTerm", sizeof(buf));
 	b = wintern(buf);
 	CHECK(a == b);
 	CHECK(strcmp(a, "XTerm") == 0);

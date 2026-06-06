@@ -1075,8 +1075,8 @@ static void handleClientMessage(XEvent * event)
 		if (event->xclient.format != 8)
 			return;
 
-		strncpy(command, event->xclient.data.b, sizeof(command) - 1);
-		command[sizeof(command) - 1] = '\0';
+		memcpy(command, event->xclient.data.b, sizeof(event->xclient.data.b));
+		command[sizeof(event->xclient.data.b)] = '\0';
 
 		if (strncmp(command, "Reconfigure", sizeof("Reconfigure")) == 0) {
 			wwarning(_("Got Reconfigure command"));

@@ -475,7 +475,7 @@ static char *replace_all_text(const char *text, const char *needle,
 		out += replacement_len;
 		text = scan + needle_len;
 	}
-	strcpy(out, text);
+	memcpy(out, text, strlen(text) + 1);
 	return result;
 }
 

@@ -70,15 +70,15 @@ static void edgeCallback(WMWidget * w, void *data)
 	i = WMGetSliderValue(panel->hceS);
 
 	if (i == 0)
-		sprintf(buffer, _("OFF"));
+		snprintf(buffer, sizeof(buffer), _("OFF"));
 	else if (i == 1)
-		sprintf(buffer, _("1 pixel"));
+		snprintf(buffer, sizeof(buffer), _("1 pixel"));
 	else if (i <= 4)
 		/* 2-4 */
-		sprintf(buffer, _("%i pixels"), i);
+		snprintf(buffer, sizeof(buffer), _("%i pixels"), i);
 	else
 		/* >4 */
-		sprintf(buffer, _("%i pixels "), i);	/* note space! */
+		snprintf(buffer, sizeof(buffer), _("%i pixels "), i);	/* note space! */
 	WMSetLabelText(panel->hceL, buffer);
 }
 
@@ -92,7 +92,7 @@ static void showData(_Panel * panel)
 		i = 250;
 	else
 		i = GetIntegerForKey("HotCornerDelay");
-	sprintf(buffer, "%i", i);
+	snprintf(buffer, sizeof(buffer), "%i", i);
 	WMSetTextFieldText(panel->hcdelayT, buffer);
 
 	switch (i) {
@@ -285,8 +285,8 @@ static void createPanel(Panel * p)
 		WMSetButtonAction(panel->hcdelayB[i], pushDelayButton, panel);
 		if (i > 0)
 			WMGroupButtons(panel->hcdelayB[0], panel->hcdelayB[i]);
-		sprintf(buf1, DELAY_ICON, i);
-		sprintf(buf2, DELAY_ICON_S, i);
+		snprintf(buf1, strlen(DELAY_ICON) + 1, DELAY_ICON, i);
+		snprintf(buf2, strlen(DELAY_ICON_S) + 1, DELAY_ICON_S, i);
 		path = LocateImage(buf1);
 		if (path) {
 			panel->icon = WMCreatePixmapFromFile(scr, path);

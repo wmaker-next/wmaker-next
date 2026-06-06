@@ -91,7 +91,7 @@ static void newwin(int item)
 	prots[0] = delete_win;
 	prots[1] = miniaturize_win;
 	XSetWMProtocols(dpy, win, prots, 2);
-	sprintf(title, "Test Window %i", wincount);
+	snprintf(title, sizeof(title), "Test Window %i", wincount);
 	XStoreName(dpy, win, title);
 
 	/* set class hint */

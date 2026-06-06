@@ -331,19 +331,19 @@ static void build_key_combo(unsigned int xkstate, const char *keyname,
                              unsigned int numlock_mask, char keybuf[64])
 {
 	if (xkstate & ControlMask)
-		strcat(keybuf, "Control+");
+		wstrlcat(keybuf, "Control+", 64);
 	if (xkstate & ShiftMask)
-		strcat(keybuf, "Shift+");
+		wstrlcat(keybuf, "Shift+", 64);
 	if ((numlock_mask != Mod1Mask) && (xkstate & Mod1Mask))
-		strcat(keybuf, "Mod1+");
+		wstrlcat(keybuf, "Mod1+", 64);
 	if ((numlock_mask != Mod2Mask) && (xkstate & Mod2Mask))
-		strcat(keybuf, "Mod2+");
+		wstrlcat(keybuf, "Mod2+", 64);
 	if ((numlock_mask != Mod3Mask) && (xkstate & Mod3Mask))
-		strcat(keybuf, "Mod3+");
+		wstrlcat(keybuf, "Mod3+", 64);
 	if ((numlock_mask != Mod4Mask) && (xkstate & Mod4Mask))
-		strcat(keybuf, "Mod4+");
+		wstrlcat(keybuf, "Mod4+", 64);
 	if ((numlock_mask != Mod5Mask) && (xkstate & Mod5Mask))
-		strcat(keybuf, "Mod5+");
+		wstrlcat(keybuf, "Mod5+", 64);
 	wstrlcat(keybuf, keyname, 64);
 }
 

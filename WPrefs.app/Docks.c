@@ -202,7 +202,7 @@ static void createPanel(Panel *p)
 				WMSetButtonAction(panel->autoDelayB[i + k * 2][j], pushAutoDelayButton, panel);
 				if (j > 0)
 					WMGroupButtons(panel->autoDelayB[i + k * 2][0], panel->autoDelayB[i + k * 2][j]);
-				sprintf(buf1, DELAY_ICON, j);
+				snprintf(buf1, strlen(DELAY_ICON) + 1, DELAY_ICON, j);
 				CreateImages(scr, rc, NULL, buf1, &icon1, NULL);
 				if (icon1) {
 					WMSetButtonImage(panel->autoDelayB[i + k * 2][j], icon1);
@@ -210,7 +210,7 @@ static void createPanel(Panel *p)
 				} else {
 					wwarning(_("could not load icon file %s"), buf1);
 				}
-				sprintf(buf2, DELAY_ICON_S, j);
+				snprintf(buf2, strlen(DELAY_ICON_S) + 1, DELAY_ICON_S, j);
 				CreateImages(scr, rc, NULL, buf2, &icon2, NULL);
 				if (icon2) {
 					WMSetButtonAltImage(panel->autoDelayB[i + k * 2][j], icon2);

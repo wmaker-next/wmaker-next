@@ -372,14 +372,12 @@ static void updateWorkspaceMenu(WMenu * menu)
 			entry = menu->entries[i];
 			if (strcmp(entry->text, scr->workspaces[i]->name) != 0) {
 				wfree(entry->text);
-				strncpy(title, scr->workspaces[i]->name, MAX_WORKSPACENAME_WIDTH);
-				title[MAX_WORKSPACENAME_WIDTH] = 0;
+				wstrlcpy(title, scr->workspaces[i]->name, sizeof(title));
 				menu->entries[i]->text = wstrdup(title);
 				menu->flags.realized = 0;
 			}
 		} else {
-			strncpy(title, scr->workspaces[i]->name, MAX_WORKSPACENAME_WIDTH);
-			title[MAX_WORKSPACENAME_WIDTH] = 0;
+			wstrlcpy(title, scr->workspaces[i]->name, sizeof(title));
 
 			entry = wMenuAddCallback(menu, title, switchWSCommand, NULL);
 			menu->flags.realized = 0;

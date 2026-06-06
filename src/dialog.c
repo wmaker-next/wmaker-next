@@ -695,10 +695,8 @@ static void listCallback(void *self, void *data)
 		iconFile = item->text;
 
 		tmp = wexpandpath(path);
-		path = wmalloc(strlen(tmp) + strlen(iconFile) + 4);
-		strcpy(path, tmp);
-		strcat(path, "/");
-		strcat(path, iconFile);
+		path = wmalloc(strlen(tmp) + strlen(iconFile) + 2);
+		snprintf(path, strlen(tmp) + strlen(iconFile) + 2, "%s/%s", tmp, iconFile);
 		wfree(tmp);
 		WMSetTextFieldText(panel->fileField, path);
 		setViewedImage(panel, path);
@@ -1057,18 +1055,11 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 			+ 1;	// final NUL
 
 		title = wmalloc(len);
-		strcpy(title, prefix);
-
-		if (instance || class) {
-			strcat(title, " [");
-			if (instance != NULL)
-				strcat(title, instance);
-			if (instance && class)
-				strcat(title, ".");
-			if (class != NULL)
-				strcat(title, class);
-			strcat(title, "]");
-		}
+		if (instance || class)
+			snprintf(title, len, "%s [%s%s%s]", prefix,
+			         instance ? instance : "", instance && class ? "." : "", class ? class : "");
+		else
+			snprintf(title, len, "%s", prefix);
 
 		center = getCenter(scr, pwidth, pheight);
 
@@ -1215,8 +1206,7 @@ char *getPrettyOSName(void)
 							*dst++ = c;
 					}
 					*dst = '\0';
-					posn = wmalloc(strlen(token) + 1);
-					strcpy(posn, token);
+					posn = wstrdup(token);
 				}
 			}
 			break;

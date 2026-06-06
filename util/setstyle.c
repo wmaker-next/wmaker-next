@@ -234,7 +234,7 @@ static WMPropList *getColor(WMPropList * texture)
 		if (!dpy) {
 			if (sscanf(WMGetFromPLString(c1), "#%2x%2x%2x", &r1, &g1, &b1) == 3
 			    && sscanf(WMGetFromPLString(c2), "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
-				sprintf(buffer, "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
+				snprintf(buffer, sizeof(buffer), "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
 				return WMCreatePLString(buffer);
 			} else {
 				value = c1;
@@ -246,7 +246,7 @@ static WMPropList *getColor(WMPropList * texture)
 			XParseColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), WMGetFromPLString(c1), &color1);
 			XParseColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), WMGetFromPLString(c2), &color2);
 
-			sprintf(buffer, "#%02x%02x%02x",
+			snprintf(buffer, sizeof(buffer), "#%02x%02x%02x",
 				(color1.red + color2.red) >> 9,
 				(color1.green + color2.green) >> 9, (color1.blue + color2.blue) >> 9);
 			return WMCreatePLString(buffer);
@@ -468,7 +468,10 @@ int main(int argc, char **argv)
 			perror(file);
 			goto fail;
 		}
-		strncat(buf, "/style", sizeof(buf) - strlen(buf) - 1);
+		if (wstrlcat(buf, "/style", sizeof(buf)) >= sizeof(buf)) {
+			printf("%s: %s: path too long\n", prog_name, file);
+			goto fail;
+		}
 
 		if (stat(buf, &st) != 0 || !S_ISREG(st.st_mode)) {	/* maybe symlink too? */
 			printf("%s: %s: style file not found or not a file\n", prog_name, buf);
@@ -540,7 +543,7 @@ int main(int argc, char **argv)
 		ev.xclient.message_type = XInternAtom(dpy, "_WINDOWMAKER_COMMAND", False);
 		ev.xclient.window = DefaultRootWindow(dpy);
 		ev.xclient.format = 8;
-		strncpy(ev.xclient.data.b, "Reconfigure", sizeof(ev.xclient.data.b));
+		wstrlcpy(ev.xclient.data.b, "Reconfigure", sizeof(ev.xclient.data.b));
 
 		XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureRedirectMask, &ev);
 		XFlush(dpy);

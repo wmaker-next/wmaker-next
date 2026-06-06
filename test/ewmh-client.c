@@ -98,7 +98,7 @@ static void set_client_machine(Display *dpy, Window win)
 	XTextProperty text;
 
 	if (gethostname(hostname, sizeof(hostname)) != 0)
-		strncpy(hostname, "localhost", sizeof(hostname));
+		snprintf(hostname, sizeof(hostname), "localhost");
 	hostname[sizeof(hostname) - 1] = '\0';
 	list[0] = hostname;
 	if (XStringListToTextProperty(list, 1, &text) != 0) {

@@ -285,7 +285,8 @@ void SetupEnvironment(WScreen * scr)
 				*ptr = 0;
 		}
 		snprintf(buf, sizeof(buf), ".%i", scr->screen);
-		strcat(tmp, buf);
+		if (wstrlcat(tmp, buf, len) >= (size_t)len)
+			wwarning(_("the display name is too long: \"%s\""), XDisplayName(DisplayName));
 		putenv(tmp);
 	}
 }

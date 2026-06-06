@@ -23,6 +23,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
 #include <string.h>
@@ -77,20 +78,20 @@ void wApplicationExtractDirPackIcon(const char *path, const char *wm_instance, c
 {
 	char *iconPath = NULL;
 	char *tmp = NULL;
+	size_t tmp_len;
 
 	if (strstr(path, ".app")) {
-		tmp = wmalloc(strlen(path) + 16);
+		tmp_len = strlen(path) + strlen(".tiff") + 1;
+		tmp = wmalloc(tmp_len);
 
 		if (wPreferences.supports_tiff) {
-			strcpy(tmp, path);
-			strcat(tmp, ".tiff");
+			snprintf(tmp, tmp_len, "%s.tiff", path);
 			if (access(tmp, R_OK) == 0)
 				iconPath = tmp;
 		}
 
 		if (!iconPath) {
-			strcpy(tmp, path);
-			strcat(tmp, ".xpm");
+			snprintf(tmp, tmp_len, "%s.xpm", path);
 			if (access(tmp, R_OK) == 0)
 				iconPath = tmp;
 		}

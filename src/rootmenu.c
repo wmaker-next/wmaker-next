@@ -1305,7 +1305,8 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 	char *buffer;
 	WMArray *dirs = NULL, *files = NULL;
 	WMArrayIterator iter;
-	int length, i;
+	size_t length;
+	int i, r;
 	dir_data *data;
 	int stripExtension = 0;
 
@@ -1334,15 +1335,18 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 			if (dentry->d_name[0] == '.')
 				continue;
 
-			buffer = malloc(strlen(path[i]) + strlen(dentry->d_name) + 4);
+			length = strlen(path[i]) + strlen(dentry->d_name) + 2;
+			buffer = malloc(length);
 			if (!buffer) {
 				werror(_("out of memory while constructing directory menu %s"), path[i]);
 				break;
 			}
-
-			strcpy(buffer, path[i]);
-			strcat(buffer, "/");
-			strcat(buffer, dentry->d_name);
+			r = snprintf(buffer, length, "%s/%s", path[i], dentry->d_name);
+			if (r < 0 || (size_t)r >= length) {
+				wwarning("ignoring too long directory menu path: %s/%s", path[i], dentry->d_name);
+				free(buffer);
+				continue;
+			}
 
 			if (stat(buffer, &stat_buf) != 0) {
 				werror(_("%s:could not stat file \"%s\" in menu directory"),
@@ -1425,18 +1429,17 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 			continue;
 		}
 
-		buffer[0] = '\0';
-		if (stripExtension)
-			strcat(buffer, "-noext ");
-
-		strcat(buffer, "\"");
-		strcat(buffer, path[data->index]);
-		strcat(buffer, "/");
-		strcat(buffer, data->name);
-		strcat(buffer, "\"");
-		if (command) {
-			strcat(buffer, " WITH ");
-			strcat(buffer, command);
+		r = snprintf(buffer, length, "%s\"%s/%s\"%s%s",
+		             stripExtension ? "-noext " : "",
+		             path[data->index], data->name,
+		             command ? " WITH " : "", command ? command : "");
+		if (r < 0 || (size_t)r >= length) {
+			wwarning("ignoring too long directory menu entry: %s/%s",
+			         path[data->index], data->name);
+			wfree(buffer);
+			wfree(data->name);
+			wfree(data);
+			continue;
 		}
 
 		addMenuEntry(menu, M_(data->name), NULL, "OPEN_MENU", buffer, path[data->index]);
@@ -1457,7 +1460,12 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 			werror(_("out of memory while constructing directory menu %s"), path[data->index]);
 			break;
 		}
-		snprintf(fullpath, length, "%s/%s", path[data->index], data->name);
+		r = snprintf(fullpath, length, "%s/%s", path[data->index], data->name);
+		if (r < 0 || (size_t)r >= length) {
+			wfree(fullpath);
+			wwarning("ignoring too long directory menu path: %s/%s", path[data->index], data->name);
+			break;
+		}
 		quoted = wshellquote(fullpath);
 		free(fullpath);
 		if (!quoted) {
@@ -1476,10 +1484,16 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 			break;
 		}
 
-		if (command != NULL) {
-			snprintf(buffer, length, "%s %s", command, quoted);
-		} else {
-			snprintf(buffer, length, "%s", quoted);
+		if (command != NULL)
+			r = snprintf(buffer, length, "%s %s", command, quoted);
+		else
+			r = snprintf(buffer, length, "%s", quoted);
+		if (r < 0 || (size_t)r >= length) {
+			wfree(quoted);
+			wfree(buffer);
+			wwarning("ignoring too long directory menu command for %s/%s",
+			         path[data->index], data->name);
+			break;
 		}
 		wfree(quoted);
 

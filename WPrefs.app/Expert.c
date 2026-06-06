@@ -178,7 +178,7 @@ static void changeIntTextfield(void *data, int delta)
 	value = atoi(text);
 	wfree(text);
 	value += delta;
-	sprintf(buffer, "%d", value);
+	snprintf(buffer, sizeof(buffer), "%d", value);
 	WMSetTextFieldText(textfield, buffer);
 }
 
@@ -418,7 +418,7 @@ static void createPanel(Panel *p)
 			else
 				state = GetDefaultIntegerForKey(expert_options[i].op_name);
 
-			sprintf(tmp, "%d", state);
+			snprintf(tmp, sizeof(tmp), "%d", state);
 			WMSetTextFieldText(panel->textfield[i], tmp);
 
 			break;

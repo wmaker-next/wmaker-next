@@ -588,8 +588,14 @@ static void showError(WMScreen * scr, WMWindow * owner, const char *s, const cha
 	char *errStr;
 
 	if (file) {
-		errStr = wmalloc(strlen(file) + strlen(s) + 1);
-		sprintf(errStr, s, file);
+		int len = snprintf(NULL, 0, s, file);
+
+		if (len < 0)
+			errStr = wstrdup(s);
+		else {
+			errStr = wmalloc((size_t)len + 1);
+			snprintf(errStr, (size_t)len + 1, s, file);
+		}
 	} else {
 		errStr = wstrdup(s);
 	}
@@ -826,9 +832,9 @@ static char *getCurrentFileName(WMFilePanel * panel)
 	ret = wmalloc(slen);
 
 	if (file[0] != '/')
-		strcpy(ret, path);
-
-	strcat(ret, file);
+		snprintf(ret, slen, "%s%s", path, file);
+	else
+		snprintf(ret, slen, "%s", file);
 
 	wfree(file);
 	wfree(path);

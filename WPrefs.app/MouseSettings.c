@@ -163,7 +163,7 @@ static void speedChange(WMWidget * w, void *data)
 
 		panel->acceleration = 0.25 + (i * 0.25);
 
-		sprintf(buffer, "%.2f", 0.25 + (i * 0.25));
+		snprintf(buffer, sizeof(buffer), "%.2f", 0.25 + (i * 0.25));
 		WMSetTextFieldText(panel->acceT, buffer);
 	}
 
@@ -217,7 +217,7 @@ static void doubleClick(WMWidget * w, void *data)
 	}
 	WINGsConfiguration.doubleClickDelay = DELAY(i);
 
-	sprintf(buffer, "%i", DELAY(i));
+	snprintf(buffer, sizeof(buffer), "%i", DELAY(i));
 	WMSetTextFieldText(panel->ddelaT, buffer);
 }
 
@@ -294,13 +294,13 @@ static void showData(_Panel * panel)
 	if (a > panel->maxThreshold) {
 		panel->maxThreshold = a;
 	}
-	sprintf(buffer, "%i", a);
+	snprintf(buffer, sizeof(buffer), "%i", a);
 	WMSetTextFieldText(panel->threT, buffer);
 
 	WMSetSliderValue(panel->speedS, (accel - 0.25F) / 0.25F);
 
 	panel->acceleration = accel;
-	sprintf(buffer, "%.2f", (double)accel);
+	snprintf(buffer, sizeof(buffer), "%.2f", (double)accel);
 	WMSetTextFieldText(panel->acceT, buffer);
 
 	 /**/ b = GetIntegerForKey("DoubleClickTime");
@@ -312,7 +312,7 @@ static void showData(_Panel * panel)
 	}
 	if (a >= 0)
 		WMPerformButtonClick(panel->ddelaB[a]);
-	sprintf(buffer, "%i", b);
+	snprintf(buffer, sizeof(buffer), "%i", b);
 	WMSetTextFieldText(panel->ddelaT, buffer);
 
 	 /**/ str = GetStringForKey("ModifierKey");
@@ -405,8 +405,8 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 			ptr = strstr(tmp, "_R");
 			if (ptr)
 				*ptr = 0;
-			sprintf(buffer, "%s (%s)", modifierNames[j], tmp);
-			/*sprintf(buffer, "%s", tmp); */
+			snprintf(buffer, sizeof(buffer), "%s (%s)", modifierNames[j], tmp);
+			/*snprintf(buffer, sizeof(buffer), "%s", tmp); */
 			WMAddPopUpButtonItem(pop, buffer);
 			for (i = k + 1; i < a; i++) {
 				if (array[i] == NULL)
@@ -538,8 +538,8 @@ static void createPanel(Panel * p)
 		if (i > 0) {
 			WMGroupButtons(panel->ddelaB[0], panel->ddelaB[i]);
 		}
-		sprintf(buf1, DELAY_ICON, i + 1);
-		sprintf(buf2, DELAY_ICON_S, i + 1);
+		snprintf(buf1, strlen(DELAY_ICON) + 2, DELAY_ICON, i + 1);
+		snprintf(buf2, strlen(DELAY_ICON_S) + 2, DELAY_ICON_S, i + 1);
 		path = LocateImage(buf1);
 		if (path) {
 			icon = WMCreatePixmapFromFile(scr, path);
@@ -729,7 +729,7 @@ static void storeData(_Panel * panel)
 			tmp = wstrdup("4");
 		}
 
-		sprintf(buffer, XSET " m %i/%i %s\n", (int)(panel->acceleration * 10), 10, tmp);
+		snprintf(buffer, sizeof(buffer), XSET " m %i/%i %s\n", (int)(panel->acceleration * 10), 10, tmp);
 		storeCommandInScript(XSET " m", buffer);
 
 		wfree(tmp);

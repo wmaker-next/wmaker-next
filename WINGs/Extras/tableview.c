@@ -35,7 +35,7 @@ void *valueForCell(WMTableViewDelegate * self, WMTableColumn * column, int row)
 		for (i = 0; i < 20; i++) {
 			char buf[128];
 
-			sprintf(buf, "Test row %i", i);
+			snprintf(buf, sizeof(buf), "Test row %i", i);
 
 			col1[i] = wstrdup(buf);
 			col2[i] = 0;

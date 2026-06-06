@@ -92,8 +92,8 @@ static int strToInt(str * token)
 	    token->len >= sizeof(buf))
 		return -1;
 
-	memset(buf, 0, sizeof(buf));
-	strncpy(buf, token->str, token->len);
+	memcpy(buf, token->str, token->len);
+	buf[token->len] = '\0';
 
 	/* the code using this will gracefully handle overflows */
 	return (int)strtol(buf, NULL, 10);

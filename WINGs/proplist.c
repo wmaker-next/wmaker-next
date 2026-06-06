@@ -431,7 +431,7 @@ static char *description(WMPropList * plist)
 				retstr = wstrappend(retstr, str);
 			} else {
 				tmp = (char *)wmalloc(strlen(retstr) + strlen(str) + 3);
-				sprintf(tmp, "%s, %s", retstr, str);
+				snprintf(tmp, strlen(retstr) + strlen(str) + 3, "%s, %s", retstr, str);
 				wfree(retstr);
 				retstr = tmp;
 			}
@@ -446,7 +446,7 @@ static char *description(WMPropList * plist)
 			skey = description(key);
 			sval = description(val);
 			tmp = (char *)wmalloc(strlen(retstr) + strlen(skey) + strlen(sval) + 5);
-			sprintf(tmp, "%s%s = %s;", retstr, skey, sval);
+			snprintf(tmp, strlen(retstr) + strlen(skey) + strlen(sval) + 5, "%s%s = %s;", retstr, skey, sval);
 			wfree(skey);
 			wfree(sval);
 			wfree(retstr);
@@ -495,19 +495,19 @@ static char *indentedDescription(WMPropList * plist, int level)
 			str = indentedDescription(WMGetFromArray(plist->d.array, i), level + 1);
 			if (i == 0) {
 				tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(str) + 1);
-				sprintf(tmp, "%s%*s%s", retstr, 2 * (level + 1), "", str);
+				snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(str) + 1, "%s%*s%s", retstr, 2 * (level + 1), "", str);
 				wfree(retstr);
 				retstr = tmp;
 			} else {
 				tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(str) + 3);
-				sprintf(tmp, "%s,\n%*s%s", retstr, 2 * (level + 1), "", str);
+				snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(str) + 3, "%s,\n%*s%s", retstr, 2 * (level + 1), "", str);
 				wfree(retstr);
 				retstr = tmp;
 			}
 			wfree(str);
 		}
 		tmp = (char *)wmalloc(strlen(retstr) + 2 * level + 3);
-		sprintf(tmp, "%s\n%*s)", retstr, 2 * level, "");
+		snprintf(tmp, strlen(retstr) + 2 * level + 3, "%s\n%*s)", retstr, 2 * level, "");
 		wfree(retstr);
 		retstr = tmp;
 		break;
@@ -519,14 +519,14 @@ static char *indentedDescription(WMPropList * plist, int level)
 			sval = indentedDescription(val, level + 1);
 			tmp = (char *)wmalloc(2 * (level + 1) + strlen(retstr) + strlen(skey)
 					      + strlen(sval) + 6);
-			sprintf(tmp, "%s%*s%s = %s;\n", retstr, 2 * (level + 1), "", skey, sval);
+			snprintf(tmp, 2 * (level + 1) + strlen(retstr) + strlen(skey) + strlen(sval) + 6, "%s%*s%s = %s;\n", retstr, 2 * (level + 1), "", skey, sval);
 			wfree(skey);
 			wfree(sval);
 			wfree(retstr);
 			retstr = tmp;
 		}
 		tmp = (char *)wmalloc(strlen(retstr) + 2 * level + 2);
-		sprintf(tmp, "%s%*s}", retstr, 2 * level, "");
+		snprintf(tmp, strlen(retstr) + 2 * level + 2, "%s%*s}", retstr, 2 * level, "");
 		wfree(retstr);
 		retstr = tmp;
 		break;
@@ -1858,8 +1858,7 @@ int wmkdirhier(const char *path)
 		}
 	}
 
-	memset(buf, 0, sizeof(buf));
-	strncpy(buf, t, sizeof(buf) - 1);
+	wstrlcpy(buf, t, sizeof(buf));
 	p = strlen(buf);
 	plen = strlen(thePath);
 
@@ -1884,7 +1883,8 @@ int wmkdirhier(const char *path)
 		while (p++ < plen && thePath[p] != '/')
 			;
 
-		strncpy(buf, thePath, p);
+		memcpy(buf, thePath, p);
+		buf[p] = '\0';
 		if (mkdir(buf, 0777) == -1
 		    && (errno != EEXIST
 			|| (stat(buf, &st) == 0 && !S_ISDIR(st.st_mode)))) {

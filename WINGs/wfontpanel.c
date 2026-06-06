@@ -701,7 +701,7 @@ static void typefaceClick(WMWidget * w, void *data)
 		if (size != NULL) {
 			int size_int = (intptr_t) size;
 
-			sprintf(buffer, "%i", size_int);
+			snprintf(buffer, sizeof(buffer), "%i", size_int);
 
 			WMAddListItem(panel->sizLs, buffer);
 		}
@@ -803,7 +803,7 @@ static void setFontPanelFontName(FontPanel * panel, const char *family, const ch
 		if (vsize != NULL) {
 			int size_int = (intptr_t) vsize;
 
-			sprintf(buffer, "%i", size_int);
+			snprintf(buffer, sizeof(buffer), "%i", size_int);
 
 			WMAddListItem(panel->sizLs, buffer);
 		}

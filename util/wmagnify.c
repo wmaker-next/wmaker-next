@@ -328,9 +328,9 @@ static void keyHandler(XEvent * event, void *d)
 			if (data->frozen) {
 				data->x = event->xkey.x_root;
 				data->y = event->xkey.y_root;
-				sprintf(buf, "[Magnify %ix]", data->magfactor);
+				snprintf(buf, sizeof(buf), "[Magnify %ix]", data->magfactor);
 			} else {
-				sprintf(buf, "Magnify %ix", data->magfactor);
+				snprintf(buf, sizeof(buf), "Magnify %ix", data->magfactor);
 			}
 			WMSetWindowTitle(data->win, buf);
 			break;
@@ -345,9 +345,9 @@ static void keyHandler(XEvent * event, void *d)
 		case '9':
 			resizeBufferData(data, size.width, size.height, buf[0] - '0');
 			if (data->frozen) {
-				sprintf(buf, "[Magnify %ix]", data->magfactor);
+				snprintf(buf, sizeof(buf), "[Magnify %ix]", data->magfactor);
 			} else {
-				sprintf(buf, "Magnify %ix", data->magfactor);
+				snprintf(buf, sizeof(buf), "Magnify %ix", data->magfactor);
 			}
 			WMSetWindowTitle(data->win, buf);
 			break;
@@ -366,7 +366,7 @@ static BufferData *newWindow(int magfactor)
 
 	win = WMCreateWindow(scr, "magnify");
 	WMResizeWidget(win, 300, 200);
-	sprintf(buf, "Magnify %ix", magfactor);
+	snprintf(buf, sizeof(buf), "Magnify %ix", magfactor);
 	WMSetWindowTitle(win, buf);
 	WMSetViewNotifySizeChanges(WMWidgetView(win), True);
 

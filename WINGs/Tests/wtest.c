@@ -182,7 +182,7 @@ static void listSelectionObserver(void *observer, WMNotification * notification)
 	WMList *lPtr = (WMList *) WMGetNotificationObject(notification);
 	char buf[255];
 
-	sprintf(buf, "Selected items: %d", WMGetArrayItemCount(WMGetListSelectedItems(lPtr)));
+	snprintf(buf, sizeof(buf), "Selected items: %d", WMGetArrayItemCount(WMGetListSelectedItems(lPtr)));
 	WMSetLabelText(label, buf);
 }
 
@@ -221,7 +221,7 @@ void testList(WMScreen * scr)
 	/*WMSetListAllowEmptySelection(list, True); */
 	WMMoveWidget(list, 10, 40);
 	for (i = 0; i < 105; i++) {
-		sprintf(text, "Item %i", i);
+		snprintf(text, sizeof(text), "Item %i", i);
 		WMAddListItem(list, text);
 	}
 	mlist = WMCreateList(win);
@@ -229,7 +229,7 @@ void testList(WMScreen * scr)
 	/*WMSetListAllowEmptySelection(mlist, True); */
 	WMMoveWidget(mlist, 210, 40);
 	for (i = 0; i < 135; i++) {
-		sprintf(text, "Item %i", i);
+		snprintf(text, sizeof(text), "Item %i", i);
 		WMAddListItem(mlist, text);
 	}
 
@@ -422,7 +422,7 @@ void testScrollView(WMScreen * scr)
 		l = WMCreateLabel(f);
 		WMResizeWidget(l, 50, 18);
 		WMMoveWidget(l, 10, 20 * i);
-		sprintf(buffer, "Label %i", i);
+		snprintf(buffer, sizeof(buffer), "Label %i", i);
 		WMSetLabelText(l, buffer);
 		WMSetLabelRelief(l, WRSimple);
 	}
@@ -799,7 +799,7 @@ void appendSubviewButtonAction(WMWidget * self, void *data)
 	char buf[64];
 	WMLabel *label = WMCreateLabel(sPtr);
 
-	sprintf(buf, "Subview %d", WMGetSplitViewSubviewsCount(sPtr) + 1);
+	snprintf(buf, sizeof(buf), "Subview %d", WMGetSplitViewSubviewsCount(sPtr) + 1);
 	WMSetLabelText(label, buf);
 	WMSetLabelRelief(label, WRSunken);
 	WMAddSplitViewSubview(sPtr, WMWidgetView(label));
@@ -925,7 +925,7 @@ void testUD(void)
 
 	defs = WMGetStandardUserDefaults();
 
-	sprintf(str, "TEST DATA");
+	snprintf(str, sizeof(str), "TEST DATA");
 	puts(str);
 	WMSetUDStringForKey(defs, str, "testKey");
 	puts(str);

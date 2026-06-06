@@ -163,7 +163,7 @@ char *WMPathForResourceOfType(const char *resource, const char *ext)
 		if (ptr_slash != NULL) {
 			char tmp[ptr_slash - WMApplication.argv[0] + 1];
 
-			strncpy(tmp, WMApplication.argv[0], sizeof(tmp)-1);
+			memcpy(tmp, WMApplication.argv[0], sizeof(tmp) - 1);
 			tmp[sizeof(tmp) - 1] = '\0';
 
 			path = checkFile(tmp, NULL, ext, resource);

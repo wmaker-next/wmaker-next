@@ -407,9 +407,8 @@ int main(int argc, char **argv)
 
 		makeThemePack(style, style_file);
 
-		path = wmalloc(strlen(ThemePath) + 32);
-		strcpy(path, ThemePath);
-		strcat(path, "/style");
+		path = wmalloc(strlen(ThemePath) + strlen("/style") + 1);
+		snprintf(path, strlen(ThemePath) + strlen("/style") + 1, "%s/style", ThemePath);
 		if (!WMWritePropListToFile(style, path)) {
 			werror("could not write style to %s", path);
 			wfree(path);

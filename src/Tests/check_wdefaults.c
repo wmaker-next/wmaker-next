@@ -45,7 +45,7 @@ char *StrConcatDot(const char *a, const char *b)
 {
 	char *buf = wmalloc(strlen(a) + strlen(b) + 2);
 
-	sprintf(buf, "%s.%s", a, b);
+	snprintf(buf, strlen(a) + strlen(b) + 2, "%s.%s", a, b);
 	return buf;
 }
 

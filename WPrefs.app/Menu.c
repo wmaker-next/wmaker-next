@@ -1486,10 +1486,16 @@ static WMPropList *getDefaultMenu(_Panel * panel)
 	menu = WMReadPropListFromFile(menuPath);
 	if (!menu) {
 		char *buffer, *msg;
+		int len;
 
 		msg = _("Could not open default menu from '%s'");
-		buffer = wmalloc(strlen(msg) + strlen(menuPath) + 10);
-		sprintf(buffer, msg, menuPath);
+		len = snprintf(NULL, 0, msg, menuPath);
+		if (len < 0) {
+			buffer = wstrdup(msg);
+		} else {
+			buffer = wmalloc((size_t)len + 1);
+			snprintf(buffer, (size_t)len + 1, msg, menuPath);
+		}
 		WMRunAlertPanel(WMWidgetScreen(panel->parent), panel->parent,
 				_("Error"), buffer, _("OK"), NULL, NULL);
 		wfree(buffer);
@@ -1701,9 +1707,9 @@ static WMPropList *processData(const char *title, ItemData * data)
 			WMAddToPLArray(item, pomenu);
 
 			tmp = wmalloc(l);
-			sprintf(tmp, "%s%s WITH %s",
-				data->param.directory.stripExt ? "-noext " : "",
-				data->param.directory.directory, data->param.directory.command);
+			snprintf(tmp, l, "%s%s WITH %s",
+			         data->param.directory.stripExt ? "-noext " : "",
+			         data->param.directory.directory, data->param.directory.command);
 
 			WMAddToPLArray(item, WMCreatePLString(tmp));
 			wfree(tmp);

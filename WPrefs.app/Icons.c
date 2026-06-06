@@ -157,9 +157,9 @@ static void minipreview_slider_changed(WMWidget *w, void *data)
 	value &= ~7;
 
 	if (value <= minipreview_minimum_size)
-		sprintf(buffer, _("OFF"));
+		snprintf(buffer, sizeof(buffer), _("OFF"));
 	else
-		sprintf(buffer, "%i", value);
+		snprintf(buffer, sizeof(buffer), "%i", value);
 
 	WMSetLabelText(panel->minipreview.label, buffer);
 }
@@ -339,7 +339,7 @@ static void createPanel(Panel * p)
 	WMResizeWidget(panel->sizeP, 80, 20);
 	WMMoveWidget(panel->sizeP, 10, 19);
 	for (i = 24; i <= 256; i += 8) {
-		sprintf(buf, "%ix%i", i, i);
+		snprintf(buf, sizeof(buf), "%ix%i", i, i);
 		WMAddPopUpButtonItem(panel->sizeP, buf);
 	}
 

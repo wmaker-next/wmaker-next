@@ -426,8 +426,7 @@ static void find_and_write(const char *group, char *list[][2], int this_is_termi
 			} else {
 				char comm[PATH_MAX - 9], *ptr;
 
-				strncpy(comm, list[i][1], sizeof(comm) - 1);
-				comm[sizeof(comm) - 1] = '\0';
+				wstrlcpy(comm, list[i][1], sizeof(comm));
 
 				/* delete character " !" from the command */
 				ptr = strchr(comm, '!');

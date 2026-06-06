@@ -263,12 +263,14 @@ char *ShrinkString(WMFont *font, const char *string, int width)
 	int p;
 	char *pos;
 	char *text;
+	size_t text_size;
 	int p1, p2, t, utf8_safe_pos;
 
 	p = strlen(string);
 	w = WMWidthOfString(font, string, p);
-	text = wmalloc(strlen(string) + 8);
-	strcpy(text, string);
+	text_size = strlen(string) + 8;
+	text = wmalloc(text_size);
+	wstrlcpy(text, string, text_size);
 	if (w <= width)
 		return text;
 
@@ -294,7 +296,7 @@ char *ShrinkString(WMFont *font, const char *string, int width)
 	} else {
 		*text = 0;
 	}
-	strcat(text, "...");
+	wstrlcat(text, "...", text_size);
 	width -= WMWidthOfString(font, "...", 3);
 
 	p1 = 0;
@@ -327,7 +329,7 @@ char *ShrinkString(WMFont *font, const char *string, int width)
 
 	/* ensure final cut is at UTF-8 character boundary */
 	utf8_safe_pos = utf8_find_char_start(string, p - p1);
-	strcat(text, &string[utf8_safe_pos]);
+	wstrlcat(text, &string[utf8_safe_pos], text_size);
 
 	return text;
 }
@@ -465,7 +467,7 @@ parseuserinputpart(const char *line, int *ptr, const char *endchars)
 			--depth;
 		} else if(depth == 0 && strchr(endchars, line[*ptr]) != NULL) {
 			value = wmalloc(*ptr - begin + 1);
-			strncpy(value, line + begin, *ptr - begin);
+			memcpy(value, line + begin, *ptr - begin);
 			value[*ptr - begin] = '\0';
 			break;
 		}
@@ -594,7 +596,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 						goto error;
 					}
 					out = nout;
-					strcat(out, tmpbuf);
+					memcpy(out + optr, tmpbuf, slen);
 					optr += slen;
 				} else {
 					out[optr++] = ' ';
@@ -611,7 +613,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 					goto error;
 				}
 				out = nout;
-				strcat(out, tmpbuf);
+				memcpy(out + optr, tmpbuf, slen);
 				optr += slen;
 				break;
 
@@ -628,7 +630,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 						goto error;
 					}
 					out = nout;
-					strcat(out, user_input);
+					memcpy(out + optr, user_input, slen);
 					optr += slen;
 				} else {
 					/* Not an error, but user has Canceled the dialog box.
@@ -651,7 +653,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 					goto error;
 				}
 				out = nout;
-				strcat(out, scr->xdestring);
+				memcpy(out + optr, scr->xdestring, slen);
 				optr += slen;
 				break;
 #endif	/* USE_DOCK_XDND */
@@ -672,7 +674,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 					goto error;
 				}
 				out = nout;
-				strcat(out, selection);
+				memcpy(out + optr, selection, slen);
 				optr += slen;
 				break;
 
@@ -1091,17 +1093,23 @@ Bool start_bg_helper(WScreen *scr)
 void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
 {
 	char *buffer;
-	int len;
-	int i;
+	size_t len;
+	size_t i;
+	size_t msg_len;
 	char buf[16];
 
 	if (!scr->flags.backimage_helper_launched) {
 		return;
 	}
 
-	len = (msg ? strlen(msg) : 0) + (workspace >= 0 ? 4 : 0) + 1;
+	msg_len = msg ? strlen(msg) : 0;
+	len = msg_len + (workspace >= 0 ? 4 : 0) + 1;
+	if (len > 9999) {
+		wwarning(_("background image helper message is too long"));
+		return;
+	}
 	buffer = wmalloc(len + 5);
-	snprintf(buf, sizeof(buf), "%4i", len);
+	snprintf(buf, sizeof(buf), "%4zu", len);
 	memcpy(buffer, buf, 4);
 	buffer[4] = type;
 	i = 5;
@@ -1112,7 +1120,7 @@ void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
 		buffer[i] = 0;
 	}
 	if (msg)
-		strcpy(&buffer[i], msg);
+		memcpy(&buffer[i], msg, msg_len + 1);
 
 	if (write(scr->helper_fd, buffer, len + 4) < 0) {
 		werror(_("could not send message to background image helper"));

@@ -2474,8 +2474,9 @@ static Bool getMenuPath(WMenu * menu, char *buffer, int bufSize)
 			return False;
 	}
 
-	strcat(buffer, "\\");
-	strcat(buffer, menu->frame->title);
+	if (wstrlcat(buffer, "\\", bufSize) >= (size_t)bufSize ||
+	    wstrlcat(buffer, menu->frame->title, bufSize) >= (size_t)bufSize)
+		return False;
 
 	return True;
 }

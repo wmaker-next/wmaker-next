@@ -42,7 +42,7 @@ static void newwin(void *foo, int item, Time time)
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 200, 100, 0, 0, 0);
 	prots[0] = delete_win;
 	XSetWMProtocols(dpy, win, prots, 1);
-	sprintf(title, "Notify Test Window");
+	snprintf(title, sizeof(title), "Notify Test Window");
 	XStoreName(dpy, win, title);
 
 	/* set class hint */
