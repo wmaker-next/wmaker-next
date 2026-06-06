@@ -469,11 +469,19 @@ void WMPerformButtonClick(WMButton * bPtr)
 		WMPostNotificationName(WMPushedRadioNotification, bPtr, NULL);
 	}
 
+	/* the action callback receives the button itself and may destroy
+	 * it, keep the view alive across the call so the repaint below
+	 * does not touch freed memory, the eventual release runs the
+	 * destructor which deletes any timer and frees the button */
+	W_RetainView(bPtr->view);
+
 	if (bPtr->action)
 		(*bPtr->action) (bPtr, bPtr->clientData);
 
 	if (bPtr->view->flags.mapped)
 		paintButton(bPtr);
+
+	W_ReleaseView(bPtr->view);
 }
 
 void WMSetButtonAction(WMButton * bPtr, WMAction * action, void *clientData)
@@ -636,10 +644,17 @@ static void autoRepeat(void *data)
 {
 	Button *bPtr = (Button *) data;
 
+	/* the action may destroy the button, keep the view alive so the
+	 * timer re-arm writes to a live struct, destroyButton deletes the
+	 * re-armed timer when the release below runs the destructor */
+	W_RetainView(bPtr->view);
+
 	if (bPtr->action && bPtr->flags.pushed)
 		(*bPtr->action) (bPtr, bPtr->clientData);
 
 	bPtr->timer = WMAddTimerHandler((int)(bPtr->periodicInterval * 1000), autoRepeat, bPtr);
+
+	W_ReleaseView(bPtr->view);
 }
 
 static void handleActionEvents(XEvent * event, void *data)

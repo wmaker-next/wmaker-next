@@ -223,6 +223,14 @@ int WMHandleEvent(XEvent * event)
 
 	toplevel = W_TopLevelOfView(view);
 
+	/* every callback path below (selection handlers, balloon, the
+	 * eventHandlers loop, DND) can destroy the widget that received
+	 * the event, retain both the toplevel and the view now so the
+	 * pointers stay valid through to the matching releases at the
+	 * end of this function */
+	W_RetainView(toplevel);
+	W_RetainView(view);
+
 	if (event->type == SelectionNotify || event->type == SelectionClear || event->type == SelectionRequest) {
 		/* handle selection related events */
 		W_HandleSelectionEvent(event);
@@ -234,7 +242,9 @@ int WMHandleEvent(XEvent * event)
 		W_View *focused = W_FocusedViewOfToplevel(toplevel);
 
 		if (focused) {
+			W_ReleaseView(view);
 			view = focused;
+			W_RetainView(view);
 		}
 	}
 
@@ -262,6 +272,8 @@ int WMHandleEvent(XEvent * event)
 		if (event->type == KeyPress || event->type == KeyRelease
 		    || event->type == MotionNotify || event->type == ButtonPress
 		    || event->type == ButtonRelease || event->type == FocusIn || event->type == FocusOut) {
+			W_ReleaseView(view);
+			W_ReleaseView(toplevel);
 			return True;
 		}
 	}
@@ -271,11 +283,6 @@ int WMHandleEvent(XEvent * event)
 		W_BalloonHandleEnterView(view);
 	else if (event->type == LeaveNotify)
 		W_BalloonHandleLeaveView(view);
-
-	/* This is a hack. It will make the panel be secure while
-	 * the event handlers are handled, as some event handler
-	 * might destroy the widget. */
-	W_RetainView(toplevel);
 
 	WM_ITERATE_ARRAY(view->eventHandlers, hPtr, iter) {
 		if ((hPtr->eventMask & mask)) {
@@ -306,6 +313,8 @@ int WMHandleEvent(XEvent * event)
 			view->screen->lastClickTime = event->xbutton.time;
 		}
 	}
+
+	W_ReleaseView(view);
 
 	if (event->type == ClientMessage) {
 		/* must be handled at the end, for such message can destroy the view */
