@@ -246,7 +246,9 @@ WMPropList *wIPCCommand(const char *display, const char *cmd)
 
 	verb = WMCreatePLString(cmd);
 	inner = WMCreatePLArray(verb, NULL);
+	WMReleasePropList(verb);
 	outer = WMCreatePLArray(inner, NULL);
+	WMReleasePropList(inner);
 	body = WMGetPropListDescription(outer, False);
 	WMReleasePropList(outer);
 
