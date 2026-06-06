@@ -52,6 +52,17 @@ typedef struct {
     int n_outputs;
 } WRandRState;
 
+/* XRROutputInfo.name is not NUL-terminated, copy nameLen bytes and terminate */
+static void wRandR_CopyOutputName(WRandROutput *o, const XRROutputInfo *oi)
+{
+    size_t name_len = (size_t)oi->nameLen;
+
+    if (name_len >= sizeof(o->name))
+        name_len = sizeof(o->name) - 1;
+    memcpy(o->name, oi->name, name_len);
+    o->name[name_len] = '\0';
+}
+
 /* Initial output scan to populate state from scratch */
 static void wRandR_Scan(WScreen *scr, WRandRState *state)
 {
@@ -77,7 +88,7 @@ static void wRandR_Scan(WScreen *scr, WRandRState *state)
         o->xid = sr->outputs[i];
         o->connected = (oi->connection == RR_Connected);
         o->crtc = oi->crtc;
-        strncpy(o->name, oi->name, sizeof(o->name) - 1);
+        wRandR_CopyOutputName(o, oi);
 
         if (oi->crtc != None) {
             XRRCrtcInfo *ci = XRRGetCrtcInfo(dpy, sr, oi->crtc);
@@ -120,6 +131,8 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
     const char *new_names[WM_MAX_HEADS];   /* parallel: output name of each head */
     int count = 0;
     int old_count;
+    int root_w, root_h;
+    int max_x, max_y;
     int i;
 
     for (i = 0; i < state->n_outputs && count < WM_MAX_HEADS; i++) {
@@ -156,42 +169,40 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
      * is not the authoritative geometry source, keep the XINERAMA-derived
      * xine_info instead of replacing it with an incomplete or synthetic
      * single-head fallback */
-    {
-        int root_w = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
-        int root_h = HeightOfScreen(ScreenOfDisplay(dpy, scr->screen));
-        int max_x = 0, max_y = 0;
-
+    root_w = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
+    root_h = HeightOfScreen(ScreenOfDisplay(dpy, scr->screen));
+    max_x = 0;
+    max_y = 0;
+    for (i = 0; i < count; i++) {
+        int rx = new_screens[i].pos.x + new_screens[i].size.width;
+        int ry = new_screens[i].pos.y + new_screens[i].size.height;
+        if (rx > max_x)
+            max_x = rx;
+        if (ry > max_y)
+            max_y = ry;
+    }
+    if (scr->xine_info.count > count
+        && (count == 0 || max_x < root_w || max_y < root_h)) {
+        wwarning("RandR reports %d active output(s) covering %dx%d but the "
+                 "root window is %dx%d and XINERAMA reports %d head(s), "
+                 "keeping XINERAMA geometry",
+                 count, max_x, max_y, root_w, root_h,
+                 scr->xine_info.count);
+        /* Annotate names onto the matching XINERAMA heads where
+         * geometry agrees, leave the rest NULL, but never let RandR
+         * shrink the XINERAMA-derived head count. */
         for (i = 0; i < count; i++) {
-            int rx = new_screens[i].pos.x + new_screens[i].size.width;
-            int ry = new_screens[i].pos.y + new_screens[i].size.height;
-            if (rx > max_x)
-                max_x = rx;
-            if (ry > max_y)
-                max_y = ry;
-        }
-        if (scr->xine_info.count > count
-            && (count == 0 || max_x < root_w || max_y < root_h)) {
-            wwarning("RandR reports %d active output(s) covering %dx%d but the "
-                     "root window is %dx%d and XINERAMA reports %d head(s), "
-                     "keeping XINERAMA geometry",
-                     count, max_x, max_y, root_w, root_h,
-                     scr->xine_info.count);
-            /* Annotate names onto the matching XINERAMA heads where
-             * geometry agrees, leave the rest NULL, but never let RandR
-             * shrink the XINERAMA-derived head count. */
-            for (i = 0; i < count; i++) {
-                int h;
-                for (h = 0; h < wHeadCount(scr); h++) {
-                    if (scr->xine_info.screens[h].pos.x == new_screens[i].pos.x
-                        && scr->xine_info.screens[h].pos.y == new_screens[i].pos.y
-                        && !scr->head_output_name[h]) {
-                        scr->head_output_name[h] = wstrdup(new_names[i]);
-                        break;
-                    }
+            int h;
+            for (h = 0; h < wHeadCount(scr); h++) {
+                if (scr->xine_info.screens[h].pos.x == new_screens[i].pos.x
+                    && scr->xine_info.screens[h].pos.y == new_screens[i].pos.y
+                    && !scr->head_output_name[h]) {
+                    scr->head_output_name[h] = wstrdup(new_names[i]);
+                    break;
                 }
             }
-            return;
         }
+        return;
     }
 
     /* Fallback: if every output disappeared, use the full virtual screen so
@@ -504,7 +515,10 @@ static void wRandR_Update(WScreen *scr)
 {
     WRandRState *state = (WRandRState *)scr->randr_state;
     XRRScreenResources *sr;
-    int i, j;
+    char *old_name[WM_MAX_HEADS];
+    int old_ws[WM_MAX_HEADS];
+    int old_heads;
+    int i, j, h, k;
 
     /* Assume all outputs removed until server confirms */
     for (i = 0; i < state->n_outputs; i++)
@@ -538,7 +552,7 @@ static void wRandR_Update(WScreen *scr)
             found = &state->outputs[state->n_outputs++];
             memset(found, 0, sizeof(*found));
             found->xid = sr->outputs[i];
-            strncpy(found->name, oi->name, sizeof(found->name) - 1);
+            wRandR_CopyOutputName(found, oi);
         }
 
         if (found) {
@@ -592,54 +606,48 @@ static void wRandR_Update(WScreen *scr)
     /* Snapshot per-head workspace by output name before head indices
      * are reordered, so each monitor keeps its workspace after the
      * geometry rebuild. */
-    {
-        char *old_name[WM_MAX_HEADS];
-        int old_ws[WM_MAX_HEADS];
-        int old_heads = wHeadCount(scr);
-        int h, k;
+    old_heads = wHeadCount(scr);
+    for (h = 0; h < old_heads; h++) {
+        old_name[h] = scr->head_output_name[h]
+            ? wstrdup(scr->head_output_name[h]) : NULL;
+        old_ws[h] = scr->head_workspace[h];
+    }
 
-        for (h = 0; h < old_heads; h++) {
-            old_name[h] = scr->head_output_name[h]
-                ? wstrdup(scr->head_output_name[h]) : NULL;
-            old_ws[h] = scr->head_workspace[h];
-        }
+    /* Apply new geometry to the Xinerama head layer */
+    i = scr->xine_info.primary_head;
+    wRandR_ApplyToXinerama(scr, state);
 
-        /* Apply new geometry to the Xinerama head layer */
-        i = scr->xine_info.primary_head;
-        wRandR_ApplyToXinerama(scr, state);
+    if (w_global.config->per_head_workspaces) {
+        int new_ws[WM_MAX_HEADS];
 
-        if (w_global.config->per_head_workspaces) {
-            int new_ws[WM_MAX_HEADS];
-
-            for (h = 0; h < wHeadCount(scr); h++) {
-                new_ws[h] = -1;
-                if (scr->head_output_name[h]) {
-                    for (k = 0; k < old_heads; k++) {
-                        if (old_name[k]
-                            && strcmp(old_name[k], scr->head_output_name[h]) == 0) {
-                            new_ws[h] = old_ws[k];
-                            break;
-                        }
+        for (h = 0; h < wHeadCount(scr); h++) {
+            new_ws[h] = -1;
+            if (scr->head_output_name[h]) {
+                for (k = 0; k < old_heads; k++) {
+                    if (old_name[k]
+                        && strcmp(old_name[k], scr->head_output_name[h]) == 0) {
+                        new_ws[h] = old_ws[k];
+                        break;
                     }
                 }
             }
-            for (h = 0; h < wHeadCount(scr); h++)
-                scr->head_workspace[h] = new_ws[h];
-            for (h = 0; h < wHeadCount(scr); h++) {
-                if (scr->head_workspace[h] < 0
-                    || scr->head_workspace[h] >= scr->workspace_count
-                    || !wWorkspaceIsAllowedOnHead(scr, scr->head_workspace[h], h))
-                    scr->head_workspace[h] = wWorkspaceDefaultForHead(scr, h);
-            }
-            if (scr->last_active_head >= wHeadCount(scr))
-                scr->last_active_head = scr->xine_info.primary_head;
-            scr->current_workspace = scr->head_workspace[scr->last_active_head];
         }
-
-        for (h = 0; h < old_heads; h++)
-            if (old_name[h])
-                wfree(old_name[h]);
+        for (h = 0; h < wHeadCount(scr); h++)
+            scr->head_workspace[h] = new_ws[h];
+        for (h = 0; h < wHeadCount(scr); h++) {
+            if (scr->head_workspace[h] < 0
+                || scr->head_workspace[h] >= scr->workspace_count
+                || !wWorkspaceIsAllowedOnHead(scr, scr->head_workspace[h], h))
+                scr->head_workspace[h] = wWorkspaceDefaultForHead(scr, h);
+        }
+        if (scr->last_active_head >= wHeadCount(scr))
+            scr->last_active_head = scr->xine_info.primary_head;
+        scr->current_workspace = scr->head_workspace[scr->last_active_head];
     }
+
+    for (h = 0; h < old_heads; h++)
+        if (old_name[h])
+            wfree(old_name[h]);
 
     wHotCornersUpdate(scr);
 
@@ -653,8 +661,6 @@ static void wRandR_Update(WScreen *scr)
     /* Snap each workspace clip back onto a visible head if it ended up
      * outside the (now smaller or rearranged) virtual framebuffer */
     if (!wPreferences.flags.noclip) {
-        int k;
-
         for (k = 0; k < scr->workspace_count; k++) {
             WDock *clip = scr->workspaces[k]->clip;
 
