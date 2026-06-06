@@ -1088,11 +1088,15 @@ static void handleClientMessage(XEvent * event)
 		memcpy(command, event->xclient.data.b, sizeof(event->xclient.data.b));
 		command[sizeof(event->xclient.data.b)] = '\0';
 
+		/* the X-property control channel is deprecated, the in-tree
+		 * senders use the Unix-socket IPC and only fall back here
+		 * when connect() fails, anything else should switch to
+		 * `wmakermsg reconfigure` */
 		if (strncmp(command, "Reconfigure", sizeof("Reconfigure")) == 0) {
-			wwarning(_("Got Reconfigure command"));
+			wwarning(_("Got Reconfigure command over the deprecated X channel, use wmakermsg"));
 			wDefaultsCheckDomains(NULL);
 		} else {
-			wwarning(_("Got unknown command %s"), command);
+			wwarning(_("Got unknown command %s over the deprecated X channel"), command);
 		}
 
 	} else if (event->xclient.message_type == w_global.atom.wmaker.wm_function) {
