@@ -56,8 +56,8 @@ WMMenu *WMMenuCreate(WMAppContext * app, char *title)
 		free(menu);
 		return NULL;
 	}
-	sprintf(menu->entryline, "%i %i %s", wmBeginMenu, menu->code, title);
-	sprintf(menu->entryline2, "%i %i", wmEndMenu, menu->code);
+	snprintf(menu->entryline, strlen(title) + 32, "%i %i %s", wmBeginMenu, menu->code, title);
+	snprintf(menu->entryline2, 32, "%i %i", wmEndMenu, menu->code);
 	return menu;
 }
 
@@ -66,6 +66,7 @@ WMMenuAddItem(WMMenu * menu, char *text, WMMenuAction action,
 	      void *clientData, WMFreeFunction freedata, char *rtext)
 {
 	wmMenuEntry *entry;
+	size_t entryline_size;
 
 	/* max size of right side text */
 	if (rtext && strlen(rtext) > 4)
@@ -79,7 +80,8 @@ WMMenuAddItem(WMMenu * menu, char *text, WMMenuAction action,
 	if (!entry)
 		return -1;
 
-	entry->entryline = malloc(strlen(text) + 100);
+	entryline_size = strlen(text) + (rtext ? strlen(rtext) : 0) + 100;
+	entry->entryline = malloc(entryline_size);
 	if (!entry->entryline) {
 		free(entry);
 		return -1;
@@ -108,9 +110,9 @@ WMMenuAddItem(WMMenu * menu, char *text, WMMenuAction action,
 	entry->enabled = True;
 
 	if (!rtext)
-		sprintf(entry->entryline, "%i %i %i %i %s", wmNormalItem, menu->code, entry->tag, True, text);
+		snprintf(entry->entryline, entryline_size, "%i %i %i %i %s", wmNormalItem, menu->code, entry->tag, True, text);
 	else
-		sprintf(entry->entryline, "%i %i %i %i %s %s", wmDoubleItem,
+		snprintf(entry->entryline, entryline_size, "%i %i %i %i %s %s", wmDoubleItem,
 			menu->code, entry->tag, True, rtext, text);
 	return entry->tag;
 }
@@ -118,6 +120,7 @@ WMMenuAddItem(WMMenu * menu, char *text, WMMenuAction action,
 int WMMenuAddSubmenu(WMMenu * menu, char *text, WMMenu * submenu)
 {
 	wmMenuEntry *entry;
+	size_t entryline_size;
 
 	/* max size of menu text */
 	if (strlen(text) > 255)
@@ -127,7 +130,8 @@ int WMMenuAddSubmenu(WMMenu * menu, char *text, WMMenu * submenu)
 	if (!entry)
 		return -1;
 
-	entry->entryline = malloc(strlen(text) + 100);
+	entryline_size = strlen(text) + 100;
+	entry->entryline = malloc(entryline_size);
 	if (!entry->entryline) {
 		free(entry);
 		return -1;
@@ -153,7 +157,7 @@ int WMMenuAddSubmenu(WMMenu * menu, char *text, WMMenu * submenu)
 	entry->cascade = submenu;
 	entry->enabled = True;
 
-	sprintf(entry->entryline, "%i %i %i %i %i %s", wmSubmenuItem,
+	snprintf(entry->entryline, entryline_size, "%i %i %i %i %i %s", wmSubmenuItem,
 		menu->code, entry->tag, True, submenu->code, text);
 	return entry->tag;
 }
