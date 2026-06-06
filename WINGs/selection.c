@@ -328,6 +328,36 @@ static void handleNotifyEvent(XEvent * event)
 	WMFreeArray(copy);
 }
 
+/*
+ * Drop every pending selection-owner record and request callback that
+ * still points at this view. Called from destroyView() so a delayed
+ * or forged SelectionNotify cannot reach a freed widget. Entries that
+ * are in-flight (done_pending set, the callback for this very view is
+ * on the stack) are left for the post-callback sweep, which keys on
+ * the handler struct itself and so does not need the view to be live.
+ */
+void W_ClearSelectionsForView(WMView *view)
+{
+	SelectionHandler *h;
+	SelectionCallback *cb;
+	int i;
+
+	if (selHandlers) {
+		for (i = WMGetArrayItemCount(selHandlers) - 1; i >= 0; i--) {
+			h = WMGetFromArray(selHandlers, i);
+			if (h && h->view == view && !h->flags.done_pending)
+				WMDeleteFromArray(selHandlers, i);
+		}
+	}
+	if (selCallbacks) {
+		for (i = WMGetArrayItemCount(selCallbacks) - 1; i >= 0; i--) {
+			cb = WMGetFromArray(selCallbacks, i);
+			if (cb && cb->view == view && !cb->flags.done_pending)
+				WMDeleteFromArray(selCallbacks, i);
+		}
+	}
+}
+
 void W_HandleSelectionEvent(XEvent * event)
 {
 	/*//printf("%d received selection ", event->xany.window); */

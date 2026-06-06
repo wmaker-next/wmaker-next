@@ -389,6 +389,8 @@ void W_FlushIdleNotificationQueue(void);
 
 void W_HandleSelectionEvent(XEvent *event);
 
+void W_ClearSelectionsForView(WMView *view);
+
 
 /* ---[ wapplication.c ]-------------------------------------------------- */
 

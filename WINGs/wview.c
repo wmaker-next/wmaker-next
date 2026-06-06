@@ -396,6 +396,11 @@ static void destroyView(W_View * view)
 
 	WMRemoveNotificationObserver(view);
 
+	/* drop pending selection-owner and request-callback records that
+	 * still point at this view, so a SelectionNotify that arrives
+	 * after the view is freed cannot dereference it */
+	W_ClearSelectionsForView(view);
+
 	W_FreeViewXdndPart(view);
 
 	if (view->backColor)
