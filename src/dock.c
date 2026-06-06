@@ -1812,8 +1812,10 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	WDock *dock;
 	WMPropList *apps;
 	WMPropList *value;
+	WMPropList *tmp;
 	WAppIcon *aicon, *old_top;
 	int count, i;
+	char buffer[64];
 
 	dock = wDockCreate(scr, type, NULL);
 
@@ -1927,27 +1929,22 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 
 	/* application list */
 
-	{
-		WMPropList *tmp;
-		char buffer[64];
+	/*
+	 * When saving, it saves the dock state in
+	 * Applications and Applicationsnnn
+	 *
+	 * When loading, it will first try Applicationsnnn.
+	 * If it does not exist, use Applications as default.
+	 */
 
-		/*
-		 * When saving, it saves the dock state in
-		 * Applications and Applicationsnnn
-		 *
-		 * When loading, it will first try Applicationsnnn.
-		 * If it does not exist, use Applications as default.
-		 */
+	snprintf(buffer, sizeof(buffer), "Applications%i", scr->scr_height);
 
-		snprintf(buffer, sizeof(buffer), "Applications%i", scr->scr_height);
+	tmp = WMCreatePLString(buffer);
+	apps = WMGetFromPLDictionary(dock_state, tmp);
+	WMReleasePropList(tmp);
 
-		tmp = WMCreatePLString(buffer);
-		apps = WMGetFromPLDictionary(dock_state, tmp);
-		WMReleasePropList(tmp);
-
-		if (!apps)
-			apps = WMGetFromPLDictionary(dock_state, dApplications);
-	}
+	if (!apps)
+		apps = WMGetFromPLDictionary(dock_state, dApplications);
 
 	if (!apps)
 		goto finish;

@@ -427,8 +427,16 @@ void StartUp(Bool defaultScreenOnly)
 {
 	struct sigaction sig_action;
 	int i, j, max;
+	int idx;
 	char **formats;
 	Atom atom[wlengthof(atomNames)];
+#ifdef USE_XSYNC
+	int sync_major, sync_minor;
+#endif
+#ifdef USE_RANDR
+	int rr_major = 0, rr_minor = 0;
+	Bool rr_ext, rr_ver;
+#endif
 
 	/*
 	 * Ignore CapsLock in modifiers
@@ -456,20 +464,14 @@ void StartUp(Bool defaultScreenOnly)
 #ifdef HAVE_XINTERNATOMS
 	XInternAtoms(dpy, atomNames, wlengthof(atomNames), False, atom);
 #else
-
-	{
-		int i;
-		for (i = 0; i < wlengthof(atomNames); i++)
-			atom[i] = XInternAtom(dpy, atomNames[i], False);
-	}
+	for (i = 0; i < wlengthof(atomNames); i++)
+		atom[i] = XInternAtom(dpy, atomNames[i], False);
 #endif
 
-	{
-		int idx = 0;
+	idx = 0;
 #define WATOM_ASSIGN(field, name)	w_global.atom.field = atom[idx++];
-		WGLOBAL_ATOMS(WATOM_ASSIGN)
+	WGLOBAL_ATOMS(WATOM_ASSIGN)
 #undef WATOM_ASSIGN
-	}
 
 #ifdef USE_DOCK_XDND
 	wXDNDInitializeAtoms();
@@ -612,31 +614,25 @@ void StartUp(Bool defaultScreenOnly)
 #endif
 
 #ifdef USE_XSYNC
-	{
-		int sync_major, sync_minor;
-		w_global.xext.xsync.supported =
-			XSyncQueryExtension(dpy, &w_global.xext.xsync.event_base, &j)
-			&& XSyncInitialize(dpy, &sync_major, &sync_minor);
-	}
+	w_global.xext.xsync.supported =
+		XSyncQueryExtension(dpy, &w_global.xext.xsync.event_base, &j)
+		&& XSyncInitialize(dpy, &sync_major, &sync_minor);
 #endif
 
 #ifdef USE_RANDR
-	{
-		int rr_major = 0, rr_minor = 0;
-		Bool rr_ext = XRRQueryExtension(dpy, &w_global.xext.randr.event_base, &j);
-		Bool rr_ver = rr_ext && XRRQueryVersion(dpy, &rr_major, &rr_minor);
+	rr_ext = XRRQueryExtension(dpy, &w_global.xext.randr.event_base, &j);
+	rr_ver = rr_ext && XRRQueryVersion(dpy, &rr_major, &rr_minor);
 
-		if (rr_ver && (rr_major > 1 || (rr_major == 1 && rr_minor >= 3))) {
-			w_global.xext.randr.supported = 1;
-		} else {
-			w_global.xext.randr.supported = 0;
-			if (!rr_ext)
-				wwarning(_("RandR extension is not available"));
-			else if (!rr_ver)
-				wwarning(_("RandR version check failed, RandR disabled"));
-			else
-				wwarning(_("RandR version %d.%d found but RandR version >=1.3 required"), rr_major, rr_minor);
-		}
+	if (rr_ver && (rr_major > 1 || (rr_major == 1 && rr_minor >= 3))) {
+		w_global.xext.randr.supported = 1;
+	} else {
+		w_global.xext.randr.supported = 0;
+		if (!rr_ext)
+			wwarning(_("RandR extension is not available"));
+		else if (!rr_ver)
+			wwarning(_("RandR version check failed, RandR disabled"));
+		else
+			wwarning(_("RandR version %d.%d found but RandR version >=1.3 required"), rr_major, rr_minor);
 	}
 #endif
 

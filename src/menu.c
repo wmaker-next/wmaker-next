@@ -410,18 +410,16 @@ static void release_menu_texture(WMenu *menu)
 {
 	if (menu->menu_texture_cache) {
 		struct WMenuTexCache *e = menu->menu_texture_cache;
+		struct WMenuTexCache **pp;
 
 		menu->menu_texture_cache = NULL;
 		menu->menu_texture_data = None;
 		if (--e->refcount > 0)
 			return;
-		{
-			struct WMenuTexCache **pp;
-			for (pp = &menu_tex_cache; *pp; pp = &(*pp)->next) {
-				if (*pp == e) {
-					*pp = e->next;
-					break;
-				}
+		for (pp = &menu_tex_cache; *pp; pp = &(*pp)->next) {
+			if (*pp == e) {
+				*pp = e->next;
+				break;
 			}
 		}
 		FREE_PIXMAP(e->pixmap);

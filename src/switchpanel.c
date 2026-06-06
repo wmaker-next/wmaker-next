@@ -444,6 +444,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
 	WMFrame *viewport;
 	int i, width, height, iconsThatFitCount, count;
 	WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
+	WMPoint center;
 
 	panel->scr = scr;
 	panel->windows = makeWindowListArray(scr, wPreferences.swtileImage != NULL, class_only);
@@ -556,12 +557,9 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
 			XFreePixmap(dpy, mask);
 	}
 
-	{
-		WMPoint center;
-		center = wGetPointToCenterRectInHead(scr, wGetHeadForPointerLocation(scr),
-						     width + 2 * border_space, height + 2 * border_space);
-		WMMoveWidget(panel->win, center.x, center.y);
-	}
+	center = wGetPointToCenterRectInHead(scr, wGetHeadForPointerLocation(scr),
+					     width + 2 * border_space, height + 2 * border_space);
+	WMMoveWidget(panel->win, center.x, center.y);
 
 	panel->current = WMGetFirstInArray(panel->windows, curwin);
 	if (panel->current >= 0)

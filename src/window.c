@@ -582,28 +582,26 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 static pid_t getWindowPid(Window win)
 {
 #ifdef USE_XRES
-	{
-		pid_t xres_pid = -1;
-		XResClientIdSpec spec;
-		long i, num_ids = 0;
-		XResClientIdValue *client_ids = NULL;
+	pid_t xres_pid = -1;
+	XResClientIdSpec spec;
+	long i, num_ids = 0;
+	XResClientIdValue *client_ids = NULL;
 
-		spec.client = win;
-		spec.mask = XRES_CLIENT_ID_PID_MASK;
+	spec.client = win;
+	spec.mask = XRES_CLIENT_ID_PID_MASK;
 
-		if (XResQueryClientIds(dpy, 1, &spec, &num_ids, &client_ids) == Success) {
-			for (i = 0; i < num_ids; i++) {
-				if (client_ids[i].spec.mask == XRES_CLIENT_ID_PID_MASK) {
-					xres_pid = XResGetClientPid(&client_ids[i]);
-					break;
-				}
+	if (XResQueryClientIds(dpy, 1, &spec, &num_ids, &client_ids) == Success) {
+		for (i = 0; i < num_ids; i++) {
+			if (client_ids[i].spec.mask == XRES_CLIENT_ID_PID_MASK) {
+				xres_pid = XResGetClientPid(&client_ids[i]);
+				break;
 			}
-			XResClientIdsDestroy(num_ids, client_ids);
 		}
-
-		if (xres_pid > 0)
-			return xres_pid;
+		XResClientIdsDestroy(num_ids, client_ids);
 	}
+
+	if (xres_pid > 0)
+		return xres_pid;
 #endif
 	return wNETWMGetPidForWindow(win);
 }
@@ -858,7 +856,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	char *title;
 	Bool withdraw = False;
 	Bool raise = False;
+	Bool dontBring = False;
 	WManageCookies ck;
+	WSavedState *wstate;
+	int gx, gy;
 
 	/* mutex. */
 	XGrabServer(dpy);
@@ -1159,61 +1160,57 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	/* if we're restarting, restore saved state (from hints).
 	 * This will overwrite previous */
-	{
-		WSavedState *wstate;
-
-		if (getSavedStateCk(window, ck.saved_state, ck.mark_key, &wstate)) {
-			wwin->flags.shaded = wstate->shaded;
-			wwin->flags.hidden = wstate->hidden;
-			wwin->flags.miniaturized = wstate->miniaturized;
-			wwin->flags.maximized = wstate->maximized;
-			if (wwin->flags.maximized) {
-				wwin->old_geometry.x = wstate->x;
-				wwin->old_geometry.y = wstate->y;
-				wwin->old_geometry.width = wstate->w;
-				wwin->old_geometry.height = wstate->h;
-			}
-
-			workspace = wstate->workspace;
-		} else {
-			wstate = NULL;
+	if (getSavedStateCk(window, ck.saved_state, ck.mark_key, &wstate)) {
+		wwin->flags.shaded = wstate->shaded;
+		wwin->flags.hidden = wstate->hidden;
+		wwin->flags.miniaturized = wstate->miniaturized;
+		wwin->flags.maximized = wstate->maximized;
+		if (wwin->flags.maximized) {
+			wwin->old_geometry.x = wstate->x;
+			wwin->old_geometry.y = wstate->y;
+			wwin->old_geometry.width = wstate->w;
+			wwin->old_geometry.height = wstate->h;
 		}
 
-		/* restore window shortcut */
-		if (wstate != NULL || win_state != NULL) {
-			unsigned mask = 0;
+		workspace = wstate->workspace;
+	} else {
+		wstate = NULL;
+	}
 
-			if (win_state != NULL)
-				mask = win_state->state->window_shortcuts;
+	/* restore window shortcut */
+	if (wstate != NULL || win_state != NULL) {
+		unsigned mask = 0;
 
-			if (wstate != NULL && mask == 0)
-				mask = wstate->window_shortcuts;
+		if (win_state != NULL)
+			mask = win_state->state->window_shortcuts;
 
-			if (mask > 0) {
-				int i;
+		if (wstate != NULL && mask == 0)
+			mask = wstate->window_shortcuts;
 
-				for (i = 0; i < MAX_WINDOW_SHORTCUTS; i++) {
-					if (mask & (1 << i)) {
-						if (!scr->shortcutWindows[i])
-							scr->shortcutWindows[i] = WMCreateArray(4);
+		if (mask > 0) {
+			int i;
 
-						WMAddToArray(scr->shortcutWindows[i], wwin);
-					}
+			for (i = 0; i < MAX_WINDOW_SHORTCUTS; i++) {
+				if (mask & (1 << i)) {
+					if (!scr->shortcutWindows[i])
+						scr->shortcutWindows[i] = WMCreateArray(4);
+
+					WMAddToArray(scr->shortcutWindows[i], wwin);
 				}
 			}
 		}
+	}
 
-		/* restore mark: prefer session state, fall back to warm-restart hint */
-		if (win_state != NULL && win_state->state->mark_key != NULL)
-			wWindowSetMark(wwin, win_state->state->mark_key);
-		else if (wstate != NULL && wstate->mark_key != NULL)
-			wWindowSetMark(wwin, wstate->mark_key);
+	/* restore mark: prefer session state, fall back to warm-restart hint */
+	if (win_state != NULL && win_state->state->mark_key != NULL)
+		wWindowSetMark(wwin, win_state->state->mark_key);
+	else if (wstate != NULL && wstate->mark_key != NULL)
+		wWindowSetMark(wwin, wstate->mark_key);
 
-		if (wstate != NULL) {
-			if (wstate->mark_key != NULL)
-				wfree(wstate->mark_key);
-			wfree(wstate);
-		}
+	if (wstate != NULL) {
+		if (wstate->mark_key != NULL)
+			wfree(wstate->mark_key);
+		wfree(wstate);
 	}
 
 	/* don't let transients start miniaturized if their owners are not */
@@ -1258,134 +1255,129 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	/* do not ask for window placement if the window is
 	 * transient, during startup, or if the window wants
 	 * to start iconic.  If geometry was saved, restore it. */
-	{
-		Bool dontBring = False;
+	if (win_state && win_state->state->w > 0) {
+		WMRect rect;
+		int head, flags;
 
-		if (win_state && win_state->state->w > 0) {
+		x = win_state->state->x;
+		y = win_state->state->y;
+
+		/* If the saved position falls in dead space (for example a monitor that no longer
+		* exists), clamp the window to the nearest active head. */
+		rect.pos.x = x;
+		rect.pos.y = y;
+		rect.size.width = width;
+		rect.size.height = height;
+
+		head = wGetRectPlacementInfo(scr, rect, &flags);
+		if (flags & XFLAG_DEAD) {
+			rect = wGetRectForHead(scr, head);
+
+			x = rect.pos.x + (x * rect.size.width) / scr->scr_width;
+			y = rect.pos.y + (y * rect.size.height) / scr->scr_height;
+
+			wScreenBringInside(scr, &x, &y, width, height);
+		}
+	} else if ((wwin->transient_for == None || w_global.config->window_placement != WPM_MANUAL)
+		   && !scr->flags.startup
+		   && !wwin->flags.miniaturized
+		   && !wwin->flags.maximized && !(wwin->normal_hints->flags & (USPosition | PPosition))) {
+
+		if (transientOwner && transientOwner->flags.mapped) {
+			int offs = WMAX(20, 2 * transientOwner->frame->top_width);
 			WMRect rect;
-			int head, flags;
+			int head;
 
-			x = win_state->state->x;
-			y = win_state->state->y;
+			x = transientOwner->frame_x +
+				abs(((int)transientOwner->frame->core->width - (int)width) / 2) + offs;
+			y = transientOwner->frame_y +
+				abs(((int)transientOwner->frame->core->height - (int)height) / 3) + offs;
 
-			/* If the saved position falls in dead space (for example a monitor that no longer
-			* exists), clamp the window to the nearest active head. */
-			rect.pos.x = x;
-			rect.pos.y = y;
-			rect.size.width = width;
-			rect.size.height = height;
+			/* limit transient windows to be inside their parent's head */
+			rect.pos.x = transientOwner->frame_x;
+			rect.pos.y = transientOwner->frame_y;
+			rect.size.width = transientOwner->frame->core->width;
+			rect.size.height = transientOwner->frame->core->height;
 
-			head = wGetRectPlacementInfo(scr, rect, &flags);
-			if (flags & XFLAG_DEAD) {
-				rect = wGetRectForHead(scr, head);
+			head = wGetHeadForRect(scr, rect);
+			rect = wGetRectForHead(scr, head);
 
-				x = rect.pos.x + (x * rect.size.width) / scr->scr_width;
-				y = rect.pos.y + (y * rect.size.height) / scr->scr_height;
+			if (x < rect.pos.x)
+				x = rect.pos.x;
+			else if (x + width > rect.pos.x + rect.size.width)
+				x = rect.pos.x + rect.size.width - width;
 
-				wScreenBringInside(scr, &x, &y, width, height);
-			}
-		} else if ((wwin->transient_for == None || w_global.config->window_placement != WPM_MANUAL)
-			   && !scr->flags.startup
-			   && !wwin->flags.miniaturized
-			   && !wwin->flags.maximized && !(wwin->normal_hints->flags & (USPosition | PPosition))) {
+			if (y < rect.pos.y)
+				y = rect.pos.y;
+			else if (y + height > rect.pos.y + rect.size.height)
+				y = rect.pos.y + rect.size.height - height;
 
-			if (transientOwner && transientOwner->flags.mapped) {
-				int offs = WMAX(20, 2 * transientOwner->frame->top_width);
-				WMRect rect;
-				int head;
-
-				x = transientOwner->frame_x +
-					abs(((int)transientOwner->frame->core->width - (int)width) / 2) + offs;
-				y = transientOwner->frame_y +
-					abs(((int)transientOwner->frame->core->height - (int)height) / 3) + offs;
-
-				/* limit transient windows to be inside their parent's head */
-				rect.pos.x = transientOwner->frame_x;
-				rect.pos.y = transientOwner->frame_y;
-				rect.size.width = transientOwner->frame->core->width;
-				rect.size.height = transientOwner->frame->core->height;
-
-				head = wGetHeadForRect(scr, rect);
-				rect = wGetRectForHead(scr, head);
-
-				if (x < rect.pos.x)
-					x = rect.pos.x;
-				else if (x + width > rect.pos.x + rect.size.width)
-					x = rect.pos.x + rect.size.width - width;
-
-				if (y < rect.pos.y)
-					y = rect.pos.y;
-				else if (y + height > rect.pos.y + rect.size.height)
-					y = rect.pos.y + rect.size.height - height;
-
-			} else {
-				PlaceWindow(wwin, &x, &y, width, height);
-			}
-
-			if (w_global.config->window_placement == WPM_MANUAL)
-				dontBring = True;
-
-		} else if (scr->xine_info.count && (wwin->normal_hints->flags & PPosition)) {
-			int head, flags;
-			WMRect rect;
-			int reposition = 0;
-
-			/* Make spash screens come out in the center of a head
-			 * trouble is that most splashies never get here
-			 * they are managed trough atoms but god knows where.
-			 * Dan, do you know ? -peter
-			 *
-			 * Most of them are not managed, they have set
-			 * OverrideRedirect, which means we can't do anything about
-			 * them. -alfredo */
-			{
-				/* xinerama checks for: across head and dead space */
-				rect.pos.x = x;
-				rect.pos.y = y;
-				rect.size.width = width;
-				rect.size.height = height;
-
-				head = wGetRectPlacementInfo(scr, rect, &flags);
-
-				if (flags & XFLAG_DEAD)
-					reposition = 1;
-
-				if (flags & XFLAG_MULTIPLE)
-					reposition = 2;
-			}
-
-			switch (reposition) {
-			case 1:
-				head = wGetHeadForPointerLocation(scr);
-				rect = wGetRectForHead(scr, head);
-
-				x = rect.pos.x + (x * rect.size.width) / scr->scr_width;
-				y = rect.pos.y + (y * rect.size.height) / scr->scr_height;
-				break;
-
-			case 2:
-				rect = wGetRectForHead(scr, head);
-
-				if (x < rect.pos.x)
-					x = rect.pos.x;
-				else if (x + width > rect.pos.x + rect.size.width)
-					x = rect.pos.x + rect.size.width - width;
-
-				if (y < rect.pos.y)
-					y = rect.pos.y;
-				else if (y + height > rect.pos.y + rect.size.height)
-					y = rect.pos.y + rect.size.height - height;
-
-				break;
-
-			default:
-				break;
-			}
+		} else {
+			PlaceWindow(wwin, &x, &y, width, height);
 		}
 
-		if (WFLAGP(wwin, dont_move_off) && dontBring)
-			wScreenBringInside(scr, &x, &y, width, height);
+		if (w_global.config->window_placement == WPM_MANUAL)
+			dontBring = True;
+
+	} else if (scr->xine_info.count && (wwin->normal_hints->flags & PPosition)) {
+		int head, flags;
+		WMRect rect;
+		int reposition = 0;
+
+		/* Make spash screens come out in the center of a head
+		 * trouble is that most splashies never get here
+		 * they are managed trough atoms but god knows where.
+		 * Dan, do you know ? -peter
+		 *
+		 * Most of them are not managed, they have set
+		 * OverrideRedirect, which means we can't do anything about
+		 * them. -alfredo */
+
+		/* xinerama checks for: across head and dead space */
+		rect.pos.x = x;
+		rect.pos.y = y;
+		rect.size.width = width;
+		rect.size.height = height;
+
+		head = wGetRectPlacementInfo(scr, rect, &flags);
+
+		if (flags & XFLAG_DEAD)
+			reposition = 1;
+
+		if (flags & XFLAG_MULTIPLE)
+			reposition = 2;
+
+		switch (reposition) {
+		case 1:
+			head = wGetHeadForPointerLocation(scr);
+			rect = wGetRectForHead(scr, head);
+
+			x = rect.pos.x + (x * rect.size.width) / scr->scr_width;
+			y = rect.pos.y + (y * rect.size.height) / scr->scr_height;
+			break;
+
+		case 2:
+			rect = wGetRectForHead(scr, head);
+
+			if (x < rect.pos.x)
+				x = rect.pos.x;
+			else if (x + width > rect.pos.x + rect.size.width)
+				x = rect.pos.x + rect.size.width - width;
+
+			if (y < rect.pos.y)
+				y = rect.pos.y;
+			else if (y + height > rect.pos.y + rect.size.height)
+				y = rect.pos.y + rect.size.height - height;
+
+			break;
+
+		default:
+			break;
+		}
 	}
+
+	if (WFLAGP(wwin, dont_move_off) && dontBring)
+		wScreenBringInside(scr, &x, &y, width, height);
 
 	wNETWMPositionSplash(wwin, &x, &y, width, height);
 
@@ -1467,15 +1459,11 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	XReparentWindow(dpy, wwin->client_win, wwin->frame->core->window, 0, wwin->frame->top_width);
 	XSelectInput(dpy, wwin->client_win, wwin->event_mask);
 
-	{
-		int gx, gy;
+	wClientGetGravityOffsets(wwin, &gx, &gy);
 
-		wClientGetGravityOffsets(wwin, &gx, &gy);
-
-		/* if gravity is to the south, account for the border sizes */
-		if (gy > 0)
-			y -= wwin->frame->top_width + wwin->frame->bottom_width;
-	}
+	/* if gravity is to the south, account for the border sizes */
+	if (gy > 0)
+		y -= wwin->frame->top_width + wwin->frame->bottom_width;
 
 	/*
 	 * wWindowConfigure() will init the client window's size

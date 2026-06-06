@@ -225,6 +225,8 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMFont *font;
 	int x, y;
 	WMBox *vbox;
+	WMBox *hbox;
+	WMRect rect;
 	int wmScaleWidth, wmScaleHeight;
 	int pwidth, pheight;
 	int iconSize;
@@ -353,25 +355,21 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMSetButtonText(panel->browseBtn, _("Browse..."));
 	WMSetButtonAction(panel->browseBtn, chooseIconCallback, panel);
 
-	{
-		WMBox *hbox;
+	hbox = WMCreateBox(vbox);
+	WMSetBoxHorizontal(hbox, True);
+	WMAddBoxSubview(vbox, WMWidgetView(hbox), False, True, WMScaleY(24), WMScaleY(24), 0);
 
-		hbox = WMCreateBox(vbox);
-		WMSetBoxHorizontal(hbox, True);
-		WMAddBoxSubview(vbox, WMWidgetView(hbox), False, True, WMScaleY(24), WMScaleY(24), 0);
+	panel->okBtn = WMCreateCommandButton(hbox);
+	WMSetButtonText(panel->okBtn, _("OK"));
+	WMSetButtonAction(panel->okBtn, panelBtnCallback, panel);
+	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->okBtn), False, True, WMScaleX(80), WMScaleX(80), 0);
 
-		panel->okBtn = WMCreateCommandButton(hbox);
-		WMSetButtonText(panel->okBtn, _("OK"));
-		WMSetButtonAction(panel->okBtn, panelBtnCallback, panel);
-		WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->okBtn), False, True, WMScaleX(80), WMScaleX(80), 0);
+	panel->cancelBtn = WMCreateCommandButton(hbox);
+	WMSetButtonText(panel->cancelBtn, _("Cancel"));
+	WMSetButtonAction(panel->cancelBtn, panelBtnCallback, panel);
+	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->cancelBtn), False, True, WMScaleX(80), WMScaleX(80), 5);
 
-		panel->cancelBtn = WMCreateCommandButton(hbox);
-		WMSetButtonText(panel->cancelBtn, _("Cancel"));
-		WMSetButtonAction(panel->cancelBtn, panelBtnCallback, panel);
-		WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->cancelBtn), False, True, WMScaleX(80), WMScaleX(80), 5);
-
-		WMMapSubwidgets(hbox);
-	}
+	WMMapSubwidgets(hbox);
 
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
@@ -388,23 +386,21 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	/*
 	 * make things relative to head
 	 */
-	{
-		WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
+	rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
 
-		y = aicon->y_pos;
-		if (y < 0)
-			y = 0;
-		else if (y + pheight > rect.pos.y + rect.size.height)
-			y = rect.pos.y + rect.size.height - pheight - 3 * WMScaleY(10);
+	y = aicon->y_pos;
+	if (y < 0)
+		y = 0;
+	else if (y + pheight > rect.pos.y + rect.size.height)
+		y = rect.pos.y + rect.size.height - pheight - 3 * WMScaleY(10);
 
-		if (aicon->dock && aicon->dock->type == WM_DOCK) {
-			if (aicon->dock->on_right_side)
-				x = rect.pos.x + rect.size.width / 2;
-			else
-				x = rect.pos.x + rect.size.width / 2 - pwidth - WMScaleX(2);
-		} else {
-			x = rect.pos.x + (rect.size.width - pwidth) / 2;
-		}
+	if (aicon->dock && aicon->dock->type == WM_DOCK) {
+		if (aicon->dock->on_right_side)
+			x = rect.pos.x + rect.size.width / 2;
+		else
+			x = rect.pos.x + rect.size.width / 2 - pwidth - WMScaleX(2);
+	} else {
+		x = rect.pos.x + (rect.size.width - pwidth) / 2;
 	}
 
 	panel->wwin = wManageInternalWindow(scr, parent, None,

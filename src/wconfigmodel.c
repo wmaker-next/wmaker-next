@@ -1036,6 +1036,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	Bool workspace_back_requested;
 	Bool workspace_back_actual;
 	unsigned int refresh;
+	const WConfigEntry *schema;
+	size_t i, count;
 
 	if (!new_config)
 		return 0;
@@ -1114,76 +1116,69 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 						&new_config->modifier_key_short_labels);
 
 
-	{
-		const WConfigEntry *schema = wConfigSchema();
-		size_t i, count = wConfigSchemaCount();
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
 
-		for (i = 0; i < count; i++) {
-			const WConfigResourceSpec *spec;
+	for (i = 0; i < count; i++) {
+		const WConfigResourceSpec *spec;
 
-			if (!wConfigChangesHas(changes, schema[i].config_key))
-				continue;
+		if (!wConfigChangesHas(changes, schema[i].config_key))
+			continue;
 
-			spec = (const WConfigResourceSpec *)
-			    ((const char *)new_config + schema[i].offset);
-			switch (schema[i].type) {
-			case WCFG_TEXTURE_SPEC:
-				refresh |= wConfigApplyTextureSpec(scr, schema[i].key,
-								  schema[i].min_value, spec,
-								  schema[i].default_value);
-				break;
-			case WCFG_FONT_SPEC:
-				refresh |= wConfigApplyFontSpec(scr, schema[i].key,
-							       schema[i].min_value, spec,
-							       schema[i].default_value);
-				break;
-			case WCFG_COLOR_SPEC:
-				refresh |= wConfigApplyColorSpec(scr, schema[i].key,
-								schema[i].min_value, spec,
-								schema[i].default_value);
-				break;
-			case WCFG_CURSOR_SPEC:
-				refresh |= wConfigApplyCursorSpec(scr, schema[i].key,
-								 schema[i].min_value, spec,
-								 schema[i].default_value);
-				break;
-			case WCFG_BACKGROUND_SPEC:
-				break;
-			case WCFG_BOOL:
-			case WCFG_INT:
-			case WCFG_UINT:
-			case WCFG_ENUM:
-			case WCFG_STRING:
-			case WCFG_PATH_LIST:
-			case WCFG_COORD:
-			case WCFG_STRING_ARRAY:
-			case WCFG_SWITCH_PANEL_IMAGES:
-			case WCFG_KEY_BINDING:
-				break;
-			}
+		spec = (const WConfigResourceSpec *)
+		    ((const char *)new_config + schema[i].offset);
+		switch (schema[i].type) {
+		case WCFG_TEXTURE_SPEC:
+			refresh |= wConfigApplyTextureSpec(scr, schema[i].key,
+							  schema[i].min_value, spec,
+							  schema[i].default_value);
+			break;
+		case WCFG_FONT_SPEC:
+			refresh |= wConfigApplyFontSpec(scr, schema[i].key,
+						       schema[i].min_value, spec,
+						       schema[i].default_value);
+			break;
+		case WCFG_COLOR_SPEC:
+			refresh |= wConfigApplyColorSpec(scr, schema[i].key,
+							schema[i].min_value, spec,
+							schema[i].default_value);
+			break;
+		case WCFG_CURSOR_SPEC:
+			refresh |= wConfigApplyCursorSpec(scr, schema[i].key,
+							 schema[i].min_value, spec,
+							 schema[i].default_value);
+			break;
+		case WCFG_BACKGROUND_SPEC:
+			break;
+		case WCFG_BOOL:
+		case WCFG_INT:
+		case WCFG_UINT:
+		case WCFG_ENUM:
+		case WCFG_STRING:
+		case WCFG_PATH_LIST:
+		case WCFG_COORD:
+		case WCFG_STRING_ARRAY:
+		case WCFG_SWITCH_PANEL_IMAGES:
+		case WCFG_KEY_BINDING:
+			break;
 		}
 	}
 
-	{
-		const WConfigEntry *schema = wConfigSchema();
-		size_t i, count = wConfigSchemaCount();
+	for (i = 0; i < count; i++) {
+		const WConfigKeyBinding *binding;
+		Bool binding_changed = False;
 
-		for (i = 0; i < count; i++) {
-			const WConfigKeyBinding *binding;
-			Bool binding_changed = False;
+		if (schema[i].type != WCFG_KEY_BINDING ||
+		    !wConfigChangesHas(changes, schema[i].config_key))
+			continue;
 
-			if (schema[i].type != WCFG_KEY_BINDING ||
-			    !wConfigChangesHas(changes, schema[i].config_key))
-				continue;
-
-			binding = (const WConfigKeyBinding *)
-			    ((const char *)new_config + schema[i].offset);
-			refresh |= wConfigApplyKeyBinding(scr, schema[i].key,
-							  schema[i].min_value, binding->spec,
-							  schema[i].default_value,
-							  &binding_changed);
-			keybindings_changed = keybindings_changed || binding_changed;
-		}
+		binding = (const WConfigKeyBinding *)
+		    ((const char *)new_config + schema[i].offset);
+		refresh |= wConfigApplyKeyBinding(scr, schema[i].key,
+						  schema[i].min_value, binding->spec,
+						  schema[i].default_value,
+						  &binding_changed);
+		keybindings_changed = keybindings_changed || binding_changed;
 	}
 
 	if (scr && keybindings_changed)

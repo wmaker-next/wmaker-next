@@ -209,6 +209,10 @@ pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
 		char *end;
 		long cand_long;
 		pid_t cand;
+		char cmdline[1024];
+		size_t namelen;
+		size_t r;
+		char *base;
 
 		if (!isdigit((unsigned char)entry->d_name[0]))
 			continue;
@@ -221,33 +225,29 @@ pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
 		if ((long)cand != cand_long)
 			continue;
 
-		{
-			char cmdline[1024];
-			size_t namelen = strlen(entry->d_name);
-			/* ensure /proc/<pid>/cmdline + NUL fits into path */
-			if (namelen + 15 > sizeof(path))
-				continue;
-			snprintf(path, sizeof(path), "/proc/%s/cmdline", entry->d_name);
-			f = fopen(path, "r");
-			if (!f)
-				continue;
-			size_t r = fread(cmdline, 1, sizeof(cmdline) - 1, f);
-			fclose(f);
-			if (r > 0) {
-				cmdline[r] = '\0';
-				/* cmdline is NUL-separated; extract basename of first token */
-				char *base = strrchr(cmdline, '/');
+		namelen = strlen(entry->d_name);
+		/* ensure /proc/<pid>/cmdline + NUL fits into path */
+		if (namelen + 15 > sizeof(path))
+			continue;
+		snprintf(path, sizeof(path), "/proc/%s/cmdline", entry->d_name);
+		f = fopen(path, "r");
+		if (!f)
+			continue;
+		r = fread(cmdline, 1, sizeof(cmdline) - 1, f);
+		fclose(f);
+		if (r > 0) {
+			cmdline[r] = '\0';
+			/* cmdline is NUL-separated, extract basename of first token */
+			base = strrchr(cmdline, '/');
+			if (base)
+				base++;
+			else
+				base = cmdline;
 
-				if (base)
-					base++;
-				else
-					base = cmdline;
-
-				if (strcasecmp(base, cmd_base) == 0) {
-					if (IsProcessAncestor(parent, cand)) {
-						pid = cand;
-						break;
-					}
+			if (strcasecmp(base, cmd_base) == 0) {
+				if (IsProcessAncestor(parent, cand)) {
+					pid = cand;
+					break;
 				}
 			}
 		}

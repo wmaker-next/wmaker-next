@@ -740,6 +740,9 @@ static void drawIconProc(WMList * lPtr, int index, Drawable d, char *text, int s
 	WMScreen *wmscr = WMWidgetScreen(panel->win);
 	RColor color;
 	int x, y, width, height, len;
+	int i, j;
+	int fheight, tlen, twidth;
+	int ofx, ofy;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) index;
@@ -787,23 +790,18 @@ static void drawIconProc(WMList * lPtr, int index, Drawable d, char *text, int s
 		  size.width > 100 ? 100 : size.width, size.height > 64 ? 64 : size.height,
 		  x + (width - size.width) / 2, y + 2);
 
-	{
-		int i, j;
-		int fheight = WMFontHeight(panel->normalfont);
-		int tlen = strlen(text);
-		int twidth = WMWidthOfString(panel->normalfont, text, tlen);
-		int ofx, ofy;
+	fheight = WMFontHeight(panel->normalfont);
+	tlen = strlen(text);
+	twidth = WMWidthOfString(panel->normalfont, text, tlen);
+	ofx = x + (width - twidth) / 2;
+	ofy = y + 64 - fheight;
 
-		ofx = x + (width - twidth) / 2;
-		ofy = y + 64 - fheight;
+	for (i = -1; i < 2; i++)
+		for (j = -1; j < 2; j++)
+			WMDrawString(wmscr, d, scr->white, panel->normalfont,
+				     ofx + i, ofy + j, text, tlen);
 
-		for (i = -1; i < 2; i++)
-			for (j = -1; j < 2; j++)
-				WMDrawString(wmscr, d, scr->white, panel->normalfont,
-					     ofx + i, ofy + j, text, tlen);
-
-		WMDrawString(wmscr, d, scr->black, panel->normalfont, ofx, ofy, text, tlen);
-	}
+	WMDrawString(wmscr, d, scr->black, panel->normalfont, ofx, ofy, text, tlen);
 
 	WMReleasePixmap(pixmap);
 	/* I hope it is better to do not use cache / on my box it is fast nuff */
@@ -929,6 +927,10 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	Bool result;
 	int wmScaleWidth, wmScaleHeight;
 	int pwidth, pheight;
+	static const char *prefix = NULL;
+	char *title;
+	int len;
+	WMPoint center;
 
 	panel = wmalloc(sizeof(IconPanel));
 
@@ -1037,35 +1039,28 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
 
-	{
-		static const char *prefix = NULL;
-		char *title;
-		int len;
-		WMPoint center;
+	if (prefix == NULL)
+		prefix = _("Icon Chooser");
 
-		if (prefix == NULL)
-			prefix = _("Icon Chooser");
+	len = strlen(prefix)
+		+ 2	// " ["
+		+ (instance ? strlen(instance) : 0)
+		+ 1	// "."
+		+ (class ? strlen(class) : 0)
+		+ 1	// "]"
+		+ 1;	// final NUL
 
-		len = strlen(prefix)
-			+ 2	// " ["
-			+ (instance ? strlen(instance) : 0)
-			+ 1	// "."
-			+ (class ? strlen(class) : 0)
-			+ 1	// "]"
-			+ 1;	// final NUL
+	title = wmalloc(len);
+	if (instance || class)
+		snprintf(title, len, "%s [%s%s%s]", prefix,
+		         instance ? instance : "", instance && class ? "." : "", class ? class : "");
+	else
+		snprintf(title, len, "%s", prefix);
 
-		title = wmalloc(len);
-		if (instance || class)
-			snprintf(title, len, "%s [%s%s%s]", prefix,
-			         instance ? instance : "", instance && class ? "." : "", class ? class : "");
-		else
-			snprintf(title, len, "%s", prefix);
+	center = getCenter(scr, pwidth, pheight);
 
-		center = getCenter(scr, pwidth, pheight);
-
-		wwin = wManageInternalWindow(scr, parent, None, title, center.x, center.y, pwidth, pheight);
-		wfree(title);
-	}
+	wwin = wManageInternalWindow(scr, parent, None, title, center.x, center.y, pwidth, pheight);
+	wfree(title);
 
 	/* put icon paths in the list */
 	listIconPaths(panel->dirList);
@@ -1443,11 +1438,8 @@ void wShowInfoPanel(WScreen *scr)
 	strbuf = wstrappend(strbuf, _("Solaris "));
 #endif
 	strbuf = wstrappend(strbuf, _("Xinerama: "));
-	{
-		char tmp[128];
-		snprintf(tmp, sizeof(tmp) - 1, scr->xine_info.count > 1 ? _("%d head(s) found") : _("%d head found"), scr->xine_info.count);
-		strbuf = wstrappend(strbuf, tmp);
-	}
+	snprintf(buffer, sizeof(buffer), scr->xine_info.count > 1 ? _("%d head(s) found") : _("%d head found"), scr->xine_info.count);
+	strbuf = wstrappend(strbuf, buffer);
 #endif
 
 #ifdef USE_RANDR

@@ -298,6 +298,10 @@ void wDefaultsCheckDomains(void* arg)
 				wwarning(_("Domain %s (%s) of defaults database is corrupted!"),
 					 "WindowMaker", w_global.domain.wmaker->path);
 			} else {
+				WConfig *old_config;
+				WConfig *new_config;
+				WConfigChanges changes;
+
 				if (shared_dict) {
 					WMMergePLDictionaries(shared_dict, dict, True);
 					WMReleasePropList(dict);
@@ -305,23 +309,20 @@ void wDefaultsCheckDomains(void* arg)
 					shared_dict = NULL;
 				}
 
-				{
-					WConfig *old_config = w_global.config;
-					WConfig *new_config = wConfigReadWindowMaker(dict);
-					WConfigChanges changes;
+				old_config = w_global.config;
+				new_config = wConfigReadWindowMaker(dict);
 
-					wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
-					/* adopt before applying so handlers reached
-					 * from wReadDefaults() read the new values
-					 * via w_global.config */
-					w_global.config = new_config;
-					for (i = 0; i < w_global.screen_count; i++) {
-						scr = wScreenWithNumber(i);
-						if (scr)
-							wReadDefaults(scr, old_config, new_config, &changes);
-					}
-					wConfigDestroy(old_config);
+				wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
+				/* adopt before applying so handlers reached
+				 * from wReadDefaults() read the new values
+				 * via w_global.config */
+				w_global.config = new_config;
+				for (i = 0; i < w_global.screen_count; i++) {
+					scr = wScreenWithNumber(i);
+					if (scr)
+						wReadDefaults(scr, old_config, new_config, &changes);
 				}
+				wConfigDestroy(old_config);
 
 				if (w_global.domain.wmaker->dictionary)
 					WMReleasePropList(w_global.domain.wmaker->dictionary);
@@ -1296,6 +1297,7 @@ unsigned int wConfigApplyTextureSpec(WScreen *scr, const char *key,
 	WConfigUpdateCallback *update;
 	const char *candidate;
 	WTexture *texture = NULL;
+	WMPropList *pl;
 	int used_default;
 
 	if (!scr)
@@ -1308,20 +1310,16 @@ again:
 	if (!candidate)
 		return 0;
 
-	{
-		WMPropList *pl;
-
-		pl = resource_spec_array(key, candidate, "Texture");
-		if (pl) {
-			if (target == WCFG_TEXTURE_WIDGET_COLOR &&
-			    !resource_array_first_is(pl, "solid")) {
-				wwarning(_("Wrong option format for key \"%s\". Should be %s."),
-					 key, "Solid Texture");
-			} else {
-				texture = parse_texture(scr, pl);
-			}
-			WMReleasePropList(pl);
+	pl = resource_spec_array(key, candidate, "Texture");
+	if (pl) {
+		if (target == WCFG_TEXTURE_WIDGET_COLOR &&
+		    !resource_array_first_is(pl, "solid")) {
+			wwarning(_("Wrong option format for key \"%s\". Should be %s."),
+				 key, "Solid Texture");
+		} else {
+			texture = parse_texture(scr, pl);
 		}
+		WMReleasePropList(pl);
 	}
 
 	if (!texture) {
@@ -1541,6 +1539,7 @@ unsigned int wConfigApplyCursorSpec(WScreen *scr, const char *key,
 {
 	const char *candidate;
 	Cursor cursor;
+	WMPropList *pl;
 	int cursor_index;
 	int used_default;
 	int status = 0;
@@ -1559,14 +1558,10 @@ again:
 	if (!candidate)
 		return 0;
 
-	{
-		WMPropList *pl;
-
-		pl = resource_spec_array(key, candidate, "cursor specification");
-		if (pl) {
-			status = parse_cursor(scr, pl, &cursor);
-			WMReleasePropList(pl);
-		}
+	pl = resource_spec_array(key, candidate, "cursor specification");
+	if (pl) {
+		status = parse_cursor(scr, pl, &cursor);
+		WMReleasePropList(pl);
 	}
 
 	if (!status) {

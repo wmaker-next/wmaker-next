@@ -80,18 +80,16 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	Window main_window = wwin->main_window;
 	WApplication *wapp;
 	WWindow *leader;
+	Window root;
+	int foo;
+	unsigned int bar;
 
 	if (main_window == None || main_window == scr->root_win)
 		return NULL;
 
-	{
-		Window root;
-		int foo;
-		unsigned int bar;
-		/* check if the window is valid */
-		if (!XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
-			return NULL;
-	}
+	/* check if the window is valid */
+	if (!XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
+		return NULL;
 
 	wapp = wApplicationOf(main_window);
 	if (wapp) {

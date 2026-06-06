@@ -604,6 +604,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	long event_mask;
 	XErrorHandler oldHandler;
 	int i;
+	XColor xcol;
+	char *desc;
 
 	scr = wmalloc(sizeof(WScreen));
 
@@ -733,23 +735,19 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	 * wScreenInit() only runs at first startup */
 	wReadDefaults(scr, NULL, config, changes);
 
-	{
-		XColor xcol;
-		char *desc;
-		/* frame boder color */
-		desc = WMGetColorRGBDescription(scr->frame_border_color);
-		wGetColor(scr, desc, &xcol);
-		scr->frame_border_pixel = xcol.pixel;
-		wfree(desc);
-		desc = WMGetColorRGBDescription(scr->frame_focused_border_color);
-		wGetColor(scr, desc, &xcol);
-		scr->frame_focused_border_pixel = xcol.pixel;
-		wfree(desc);
-		desc = WMGetColorRGBDescription(scr->frame_selected_border_color);
-		wGetColor(scr, desc, &xcol);
-		scr->frame_selected_border_pixel = xcol.pixel;
-		wfree(desc);
-	}
+	/* frame boder color */
+	desc = WMGetColorRGBDescription(scr->frame_border_color);
+	wGetColor(scr, desc, &xcol);
+	scr->frame_border_pixel = xcol.pixel;
+	wfree(desc);
+	desc = WMGetColorRGBDescription(scr->frame_focused_border_color);
+	wGetColor(scr, desc, &xcol);
+	scr->frame_focused_border_pixel = xcol.pixel;
+	wfree(desc);
+	desc = WMGetColorRGBDescription(scr->frame_selected_border_color);
+	wGetColor(scr, desc, &xcol);
+	scr->frame_selected_border_pixel = xcol.pixel;
+	wfree(desc);
 
 	createInternalWindows(scr);
 

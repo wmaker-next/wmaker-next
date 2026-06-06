@@ -1333,10 +1333,11 @@ void wWorkspaceLoadOutputPins(WScreen *scr, WMPropList *wmaker_dict)
  * the head never ends up showing one its WorkspaceOutputs forbid. */
 int wWorkspaceDefaultForHead(WScreen *scr, int head)
 {
+	WWorkspace *ws;
 	int i, h, busy;
 
 	for (i = 0; i < scr->workspace_count; i++) {
-		WWorkspace *ws = scr->workspaces[i];
+		ws = scr->workspaces[i];
 		if (ws->head_name_count > 0 && wWorkspaceIsAllowedOnHead(scr, i, head))
 			return i;
 	}
@@ -1370,21 +1371,17 @@ int wWorkspaceDefaultForHead(WScreen *scr, int head)
 	 * this head, so the config is unsatisfiable as written. Drop the pin
 	 * on workspace 0 so the returned value is genuinely allowed and the
 	 * caller never forces a disallowed workspace onto the head. */
-	{
-		WWorkspace *ws = scr->workspaces[0];
-		int k;
-
-		for (k = 0; k < ws->head_name_count; k++)
-			wfree(ws->head_names[k]);
-		if (ws->head_names)
-			wfree(ws->head_names);
-		ws->head_names = NULL;
-		ws->head_name_count = 0;
-		wwarning(_("no workspace allowed on output \"%s\" and at MAX_WORKSPACES, "
-			   "dropping WorkspaceOutputs pin on \"%s\""),
-			 wOutputNameForHead(scr, head) ? wOutputNameForHead(scr, head) : "?",
-			 ws->name);
-	}
+	ws = scr->workspaces[0];
+	for (i = 0; i < ws->head_name_count; i++)
+		wfree(ws->head_names[i]);
+	if (ws->head_names)
+		wfree(ws->head_names);
+	ws->head_names = NULL;
+	ws->head_name_count = 0;
+	wwarning(_("no workspace allowed on output \"%s\" and at MAX_WORKSPACES, "
+		   "dropping WorkspaceOutputs pin on \"%s\""),
+		 wOutputNameForHead(scr, head) ? wOutputNameForHead(scr, head) : "?",
+		 ws->name);
 	return 0;
 }
 

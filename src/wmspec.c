@@ -743,24 +743,22 @@ void wNETWMInitStuff(WScreen *scr)
 {
 	NetData *data;
 	int i;
+#ifdef HAVE_XINTERNATOMS
+	Atom atoms[wlengthof(atomNames)];
+	char *names[wlengthof(atomNames)];
+#endif
 
 #ifdef DEBUG_WMSPEC
 	wmessage("wNETWMInitStuff");
 #endif
 
 #ifdef HAVE_XINTERNATOMS
-	{
-		Atom atoms[wlengthof(atomNames)];
-		char *names[wlengthof(atomNames)];
+	for (i = 0; i < wlengthof(atomNames); ++i)
+		names[i] = atomNames[i].name;
 
-		for (i = 0; i < wlengthof(atomNames); ++i)
-			names[i] = atomNames[i].name;
-
-		XInternAtoms(dpy, &names[0], wlengthof(atomNames), False, atoms);
-		for (i = 0; i < wlengthof(atomNames); ++i)
-			*atomNames[i].atom = atoms[i];
-
-	}
+	XInternAtoms(dpy, &names[0], wlengthof(atomNames), False, atoms);
+	for (i = 0; i < wlengthof(atomNames); ++i)
+		*atomNames[i].atom = atoms[i];
 #else
 	for (i = 0; i < wlengthof(atomNames); i++)
 		*atomNames[i].atom = XInternAtom(dpy, atomNames[i].name, False);
@@ -859,6 +857,8 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 {
 	WArea total_usable;
 	int nb_workspace;
+	uint32_t *property_value;
+	int i;
 
 	if (!scr->netdata) {
 		/* If the _NET_xxx were not initialised, it not necessary to do anything */
@@ -873,8 +873,6 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 		total_usable.y2 = scr->scr_height;
 
 	} else {
-		int i;
-
 		/*
 		 * the _NET_WORKAREA is supposed to contain the total area of the screen that
 		 * is usable, so we merge the areas from all xrandr sub-screens
@@ -904,19 +902,16 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 	else
 		nb_workspace = scr->workspace_count;
 
-	{
-		uint32_t property_value[nb_workspace * 4];
-		int i;
-
-		for (i = 0; i < nb_workspace; i++) {
-			property_value[4 * i + 0] = total_usable.x1;
-			property_value[4 * i + 1] = total_usable.y1;
-			property_value[4 * i + 2] = total_usable.x2 - total_usable.x1;
-			property_value[4 * i + 3] = total_usable.y2 - total_usable.y1;
-		}
-
-		WXSetCardinalN(dpy, scr->root_win, net_workarea, property_value, nb_workspace * 4);
+	property_value = wmalloc(sizeof(uint32_t) * nb_workspace * 4);
+	for (i = 0; i < nb_workspace; i++) {
+		property_value[4 * i + 0] = total_usable.x1;
+		property_value[4 * i + 1] = total_usable.y1;
+		property_value[4 * i + 2] = total_usable.x2 - total_usable.x1;
+		property_value[4 * i + 3] = total_usable.y2 - total_usable.y1;
 	}
+
+	WXSetCardinalN(dpy, scr->root_win, net_workarea, property_value, nb_workspace * 4);
+	wfree(property_value);
 }
 
 static inline int clampi(int v, int lo, int hi)
