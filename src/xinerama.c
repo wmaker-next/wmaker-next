@@ -17,6 +17,7 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -297,6 +298,14 @@ int wHeadForOutputName(WScreen *scr, const char *name)
 		    && strcmp(scr->head_output_name[i], name) == 0)
 			return i;
 	}
+	/* "#N" addresses an active head by index only when that head has no
+	 * RandR output name, mirroring the HeadWorkspaces save/restore key.
+	 * This keeps WorkspaceOutputs usable under bare Xinerama (and Xephyr
+	 * +xinerama, which exposes 0 active RandR outputs) without letting an
+	 * index pin shadow a real connector name on hardware. */
+	if (name[0] == '#' && sscanf(name + 1, "%d", &i) == 1
+	    && i >= 0 && i < wHeadCount(scr) && !scr->head_output_name[i])
+		return i;
 	return -1;
 }
 

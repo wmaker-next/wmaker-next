@@ -108,13 +108,13 @@ int wHeadShowingWorkspace(WScreen *scr, int workspace)
 }
 
 /* A workspace is allowed on a head when it is unpinned, or when one of
- * its WorkspaceOutputs names matches that head's active RandR output
- * name. A workspace pinned only to outputs that are currently absent is
- * allowed on no head. */
+ * its WorkspaceOutputs names resolves to that head through
+ * wHeadForOutputName() (RandR connector name, or "#N" head index when
+ * the head has no RandR name). A workspace pinned only to outputs that
+ * are currently absent is allowed on no head. */
 Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head)
 {
 	WWorkspace *ws;
-	const char *out;
 	int i;
 
 	if (workspace < 0 || workspace >= scr->workspace_count)
@@ -123,11 +123,8 @@ Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head)
 	if (ws->head_name_count == 0)
 		return True;
 
-	out = wOutputNameForHead(scr, head);
-	if (!out)
-		return False;
 	for (i = 0; i < ws->head_name_count; i++) {
-		if (strcmp(ws->head_names[i], out) == 0)
+		if (wHeadForOutputName(scr, ws->head_names[i]) == head)
 			return True;
 	}
 	return False;
