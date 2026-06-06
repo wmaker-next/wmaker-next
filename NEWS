@@ -279,6 +279,26 @@ the number of bytes the owner returned rather than relying on a
 NUL terminator.
 
 
+Build and configure changes
+---------------------------
+
+--with-libs-from and --with-incs-from now also reach the configure-time
+feature probes (previously they only affected the substituted build
+flags), so optional libraries installed under a non-default prefix are
+detected when those options are passed.
+
+configure now requires a working O_NOFOLLOW (POSIX.1-2008) instead of
+silently defining it to 0; the safe-copy path in libWUtil depends on it.
+
+--with-libarchive accepts and validates auto|yes|no, and
+--with-menu-textdomain rejects values containing characters outside
+[A-Za-z0-9_.-].
+
+Unbounded sprintf/strcpy/strcat/strncpy/strncat call sites across the
+tree have been replaced with snprintf, wstrlcpy/wstrlcat or length-known
+memcpy; no user-visible behaviour change is intended.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory
