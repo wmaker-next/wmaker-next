@@ -845,6 +845,8 @@ static void setPixmapProperty(Pixmap pixmap)
 
 static void changeTexture(BackgroundTexture * texture)
 {
+	Pixmap pixmap;
+
 	if (!texture) {
 		return;
 	}
@@ -858,13 +860,8 @@ static void changeTexture(BackgroundTexture * texture)
 
 	XSync(dpy, False);
 
-	{
-		Pixmap pixmap;
-
-		pixmap = duplicatePixmap(texture->pixmap, texture->width, texture->height);
-
-		setPixmapProperty(pixmap);
-	}
+	pixmap = duplicatePixmap(texture->pixmap, texture->width, texture->height);
+	setPixmapProperty(pixmap);
 }
 
 static int readmsg(int fd, char *buffer, int size)
