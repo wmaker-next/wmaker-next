@@ -40,6 +40,7 @@
 #endif
 
 #include <WINGs/WUtil.h>
+#include <WINGs/WIPC.h>
 
 #include "../src/wconfig.h"
 
@@ -393,7 +394,7 @@ static noreturn void print_help(int print_usage, int exitval)
 
 int main(int argc, char **argv)
 {
-	WMPropList *prop, *style;
+	WMPropList *prop, *style, *reply;
 	char *path;
 	char *file = NULL;
 	struct stat st;
@@ -535,6 +536,14 @@ int main(int argc, char **argv)
 	WMReleasePropList(prop);
 	wfree(path);
 
+	reply = wIPCCommand(NULL, "reconfigure");
+	if (reply) {
+		WMReleasePropList(reply);
+		return 0;
+	}
+
+	/* fall back to the legacy X ClientMessage when no IPC socket is
+	 * reachable, e.g. talking to an older Window Maker */
 	dpy = XOpenDisplay("");
 	if (dpy) {
 		memset(&ev, 0, sizeof(XEvent));

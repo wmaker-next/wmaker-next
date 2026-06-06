@@ -91,6 +91,7 @@ static void save(WMWidget * w, void *data)
 	WMPropList *p1, *p2;
 	WMPropList *keyList;
 	WMPropList *key;
+	WMPropList *reply;
 	XEvent ev;
 
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -128,6 +129,14 @@ static void save(WMWidget * w, void *data)
 
 	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
 
+	reply = wIPCCommand(NULL, "reconfigure");
+	if (reply) {
+		WMReleasePropList(reply);
+		return;
+	}
+
+	/* fall back to the legacy X ClientMessage when no IPC socket is
+	 * reachable, e.g. talking to an older Window Maker */
 	memset(&ev, 0, sizeof(XEvent));
 
 	ev.xclient.type = ClientMessage;

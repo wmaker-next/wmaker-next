@@ -33,6 +33,7 @@
 
 #include <WINGs/WINGs.h>
 #include <WINGs/WINGsP.h>
+#include <WINGs/WIPC.h>
 
 /* Needed for HAVE_LIBINTL_H and EXTENDED_WINDOWSHORTCUT */
 #include "../src/wconfig.h"
