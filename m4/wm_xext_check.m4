@@ -134,7 +134,7 @@ sed -e 's,^[[^%]]*% *,,' | sed -e 's, *%.*$,,' `" dnl
          done
          LIBS="$wm_save_LIBS"
          AS_IF([test "x$wm_cv_xext_xinerama" = "xno"],
-             [AS_IF([test "x$enable_xinerama" = "xyesno"],
+             [AS_IF([test "x$enable_xinerama" = "xyes"],
                  [AC_MSG_ERROR([explicit Xinerama support requested but no library found])])],
              [dnl
               dnl A library was found, check if header is available and compiles

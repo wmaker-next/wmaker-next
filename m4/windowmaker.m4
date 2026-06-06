@@ -45,7 +45,7 @@ AC_DEFUN([WM_CHECK_XFT_VERSION],
                        [\1 * 10000 + \2 * 100 + \3]) ) )dnl
  AC_CACHE_CHECK([whether libXft is at least version $1], [ac_cv_lib_xft_version_ok],
     [CPPFLAGS_save="$CPPFLAGS"
-     CPPFLAGS="$CPPFLAGS $XFT_CFLAGS $inc_search_path"
+     CPPFLAGS="$CPPFLAGS $XFT_CFLAGS"
      AC_LINK_IFELSE(
 [AC_LANG_PROGRAM([
 #include <X11/Xlib.h>
@@ -73,7 +73,7 @@ AC_DEFUN([WM_CHECK_LIBPANGO],
         [AC_DEFINE([USE_PANGO], [1], [defined when the pango library is used in WINGs])
          pango="yes"],
         [pango="no"])
-     AS_IF([test "x$enable_pango$pango" == "xyesno"],
+     AS_IF([test "x$enable_pango$pango" = "xyesno"],
         [AC_MSG_ERROR([Pango library was not found - $PANGO_PKG_ERRORS])])
     ],
     [pango="no"])

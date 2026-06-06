@@ -269,7 +269,7 @@ AS_IF([test "x$enable_xpm" = "xno"],
          dnl We check first if one of the known libraries is available
          wm_save_LIBS="$LIBS"
          AS_IF([wm_fn_lib_try_link "XpmCreatePixmapFromData" "$XLFLAGS $XLIBS -lXpm"],
-           [wm_cv_imgfmt_xpm="-lXpm" ; break])
+           [wm_cv_imgfmt_xpm="-lXpm"])
          LIBS="$wm_save_LIBS"
          AS_IF([test "x$enable_xpm$wm_cv_imgfmt_xpm" = "xyesno"],
            [AC_MSG_ERROR([explicit libXpm support requested but no library found])])
