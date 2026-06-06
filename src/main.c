@@ -473,6 +473,7 @@ static void print_help(void)
 	puts(_(" --no-polling		do not periodically check for configuration updates"));
 #endif
 	puts(_(" --global_defaults_path	print the path for default config and exit"));
+	puts(_(" --get-socketpath	print the IPC socket path for $DISPLAY and exit"));
 	puts(_(" --version		print version and exit"));
 	puts(_(" --help			show this message"));
 }

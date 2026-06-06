@@ -26,6 +26,16 @@ wmaker -display :0.1
 .B \-\-dont\-restore
 do not restore the saved session
 .TP
+.B \-\-get\-socketpath
+print the path of the Unix-domain control socket for the screen named by
+.B DISPLAY
+and exit, without opening an X connection. Programs launched from the dock
+or the root menu inherit this path in the
+.B WMAKER_IPC_SOCKET
+environment variable, and
+.BR wmakermsg (1)
+resolves it the same way.
+.TP
 .B \-\-global_defaults_path
 print the path where the files for the default configuration are installed and exit
 .TP

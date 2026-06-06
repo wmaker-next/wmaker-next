@@ -27,11 +27,13 @@ and
 .BR DISPLAY .
 .SH OPTIONS
 .TP
-.BI \-s " SOCKET"
-Connect to the given socket path instead of resolving one.
+.B \-\-get\-socketpath
+Print the resolved socket path for the current
+.B DISPLAY
+and exit without connecting.
 .TP
-.B \-q
-Suppress the reply body, exit status alone reflects success.
+.B \-\-help
+Print a short usage summary and exit.
 .TP
 .B \-m
 Monitor mode. Subscribe to the named event types and print one event per
@@ -39,10 +41,11 @@ line until the connection closes or the process is terminated. Output is
 flushed after every event so it can be consumed with
 .BR "while read -r" .
 .TP
-.B \-\-get\-socketpath
-Print the resolved socket path for the current
-.B DISPLAY
-and exit without connecting.
+.B \-q
+Suppress the reply body, exit status alone reflects success.
+.TP
+.BI \-s " SOCKET"
+Connect to the given socket path instead of resolving one.
 .SH COMMAND VERBS
 .BR reconfigure ,
 .BR "restart [WM]" ,
