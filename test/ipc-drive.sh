@@ -101,8 +101,8 @@ start_monitor() {
 		"$WMAKERMSG" -s "$SOCKET" -m "$@" > "$EVLOG" 2>>"$LOG" &
 	MON_PID=$!
 	echo "$MON_PID" >> "$PIDFILE"
-	# the SUBSCRIBE reply is the first line, the first=YES tick is
-	# the second when "tick" is in the subscription, gate on that
+	# monitor mode prints events only, the SUBSCRIBE reply is
+	# swallowed, gate on the first=YES tick that follows it
 	wait_for 50 evlog_has "first = YES"
 }
 

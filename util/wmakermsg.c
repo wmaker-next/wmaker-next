@@ -34,6 +34,13 @@ static void usage(FILE *out)
 		"       %s [-s SOCKET] -m EVENT [EVENT...]\n"
 		"       %s --get-socketpath\n",
 		prog, prog, prog, prog, prog);
+	fputs("Options:\n"
+	      "  -s SOCKET          connect to SOCKET instead of the resolved path\n"
+	      "  -q                 suppress the reply body, exit status reflects success\n"
+	      "  -m                 subscribe to the named EVENT types and stream to stdout\n"
+	      "  --get-socketpath   print the resolved socket path and exit\n"
+	      "  --help             show this message\n",
+	      out);
 }
 
 static int reply_is_success(const char *body)
@@ -83,15 +90,14 @@ static int do_monitor(int fd, int argc, char **argv, int quiet)
 	}
 
 	/* one event per line, flushed, so a `| while read -r` consumer
-	 * never stalls on stdio buffering when stdout is a pipe */
+	 * never stalls on stdio buffering when stdout is a pipe, the
+	 * SUBSCRIBE reply and any other non-event frame is dropped so
+	 * the documented "events only" output shape holds */
 	for (;;) {
 		if (wIPCRecv(fd, &type, &body, &len) < 0)
 			return errno == ECONNRESET ? 0 : 1;
-		if (!quiet) {
-			if (type & WIPC_EVENT_BIT)
-				printf("%s\n", body);
-			else
-				printf("%s\n", body);
+		if (!quiet && (type & WIPC_EVENT_BIT)) {
+			printf("%s\n", body);
 			fflush(stdout);
 		}
 		wfree(body);
