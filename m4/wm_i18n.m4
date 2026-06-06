@@ -154,7 +154,11 @@ AC_DEFUN_ONCE([WM_I18N_MENUTEXTDOMAIN],
     [AS_CASE([$withval],
         [yes], [AC_MSG_ERROR([you are supposed to give a domain name for '--with-menu-textdomain'])],
         [no],  [menutextdomain=""],
-        [menutextdomain="$withval"])],
+        [menutextdomain="$withval"
+         AS_IF([test "x$menutextdomain" != "x"],
+             [AS_CASE([$menutextdomain],
+                 [*[[!A-Za-z0-9_.-]]*],
+                 [AC_MSG_ERROR([bad value '$menutextdomain' for --with-menu-textdomain, expected a gettext domain name])])])])],
     [menutextdomain=""])
 m4_divert_pop([INIT_PREPARE])dnl
 AS_IF([test "x$menutextdomain" != "x"],

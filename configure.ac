@@ -942,9 +942,12 @@ dnl =================================
 dnl libarchive ships a .pc, use PKG_CHECK_MODULES so transitive private
 dnl dependencies (lzma, zstd, lz4, bz2, zlib, ...) reach a static link
 AC_ARG_WITH([libarchive],
-    [AS_HELP_STRING([--without-libarchive],
-        [disable archive (.tar/.zip/.cbz/...) support in wmiv])],
-    [], [with_libarchive=auto])
+    [AS_HELP_STRING([--with-libarchive@<:@=auto|yes|no@:>@],
+        [enable archive (.tar/.zip/.cbz/...) support in wmiv @<:@default=auto@:>@])],
+    [AS_CASE([$withval],
+        [yes|no|auto], [with_libarchive="$withval"],
+        [AC_MSG_ERROR([bad value '$withval' for --with-libarchive, expected yes, no or auto])])],
+    [with_libarchive=auto])
 LIBARCHIVE_LIBS=
 LIBARCHIVE_CFLAGS=
 AS_IF([test "x$with_libarchive" != "xno"],
