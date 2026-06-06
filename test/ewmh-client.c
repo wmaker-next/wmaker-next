@@ -139,6 +139,19 @@ static int format8_close_mode(Display *dpy)
 	return 0;
 }
 
+static int activate_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_ACTIVATE_TARGET", None);
+	long source = env_long("EWMH_CLIENT_ACTIVATE_SOURCE", 1);
+	long ts = env_long("EWMH_CLIENT_ACTIVATE_TIME", 0);
+
+	if (target == None)
+		return 1;
+	send_root_message(dpy, target, intern_atom(dpy, "_NET_ACTIVE_WINDOW"),
+			  source, ts, 0, 0, 0);
+	return 0;
+}
+
 static int restack_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_RESTACK_TARGET", None);
@@ -186,6 +199,11 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_RESTACK_TARGET")) {
 		int ret = restack_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_ACTIVATE_TARGET")) {
+		int ret = activate_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}

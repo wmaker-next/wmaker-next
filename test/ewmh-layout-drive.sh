@@ -183,6 +183,16 @@ send_restack_message() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+# send_active_window TARGET SOURCE TIMESTAMP : raw _NET_ACTIVE_WINDOW
+# message with an arbitrary source indication, since wmctrl/xdotool always
+# use source 2 (pager)
+send_active_window() {
+	DISPLAY=$DPY env EWMH_CLIENT_ACTIVATE_TARGET="$1" \
+		EWMH_CLIENT_ACTIVATE_SOURCE="$2" \
+		EWMH_CLIENT_ACTIVATE_TIME="$3" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
 send_format8_close() {
 	DISPLAY=$DPY env EWMH_CLIENT_FORMAT8_CLOSE_TARGET="$1" \
 		"$CLIENT_BIN" >>"$LOG" 2>&1
@@ -672,6 +682,76 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 					| grep -iF '$CLIENT_XID' >/dev/null && exit 0
 				sleep 0.1; i=\$((i-1))
 			done; exit 1"
+
+		# _NET_ACTIVE_WINDOW source-indication policy. Spawn a second
+		# client with a high _NET_WM_USER_TIME so the screen baseline
+		# (net_last_user_time) sits above the stale timestamps below.
+		if start_second_client EWMH_CLIENT_NAME=aw-policy \
+				       EWMH_CLIENT_USER_TIME=50000; then
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			# cross-workspace target, source != 2 -> deny + DA
+			move_client_to_desktop 1 >/dev/null
+			set_desktop 0 >/dev/null
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			send_active_window "$CLIENT_XID" 0 0
+			check "_NET_ACTIVE_WINDOW source 0 cross-workspace is refused" \
+				wait_for 30 window_atom_has "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			check "_NET_ACTIVE_WINDOW source 0 cross-workspace stays put" desktop_is 0
+			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+			wait_for 30 window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+			set_desktop 0 >/dev/null
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			send_active_window "$CLIENT_XID" 99 0
+			check "_NET_ACTIVE_WINDOW invalid source cross-workspace is refused" \
+				wait_for 30 window_atom_has "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			check "_NET_ACTIVE_WINDOW invalid source cross-workspace stays put" desktop_is 0
+			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+			wait_for 30 window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+			set_desktop 0 >/dev/null
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			send_active_window "$CLIENT_XID" 2 0
+			check "_NET_ACTIVE_WINDOW source 2 cross-workspace switches" \
+				wait_for 30 desktop_is 1
+			check "_NET_ACTIVE_WINDOW source 2 cross-workspace activates target" \
+				wait_for 30 active_window_is "$CLIENT_XID"
+
+			# same-workspace target, stale vs fresh timestamp
+			move_client_to_desktop 0 >/dev/null
+			set_desktop 0 >/dev/null
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			send_active_window "$CLIENT_XID" 1 100
+			check "_NET_ACTIVE_WINDOW source 1 stale timestamp is refused" \
+				wait_for 30 window_atom_has "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			check "_NET_ACTIVE_WINDOW source 1 stale timestamp keeps focus" \
+				active_window_is "$CLIENT2_XID"
+			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+			wait_for 30 window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT2_XID" >/dev/null
+
+			send_active_window "$CLIENT_XID" 1 90000
+			check "_NET_ACTIVE_WINDOW source 1 fresh timestamp activates" \
+				wait_for 30 active_window_is "$CLIENT_XID"
+
+			send_active_window "$CLIENT2_XID" 2 100
+			check "_NET_ACTIVE_WINDOW source 2 ignores stale timestamp" \
+				wait_for 30 active_window_is "$CLIENT2_XID"
+
+			stop_second_client
+			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		else
+			record_skip "_NET_ACTIVE_WINDOW source policy: second client failed"
+		fi
 
 		# DEMANDS_ATTENTION is refused on a focused window (per spec
 		# the WM clears it once the window has the user's attention),
