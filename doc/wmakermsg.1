@@ -1,0 +1,77 @@
+.TH WMAKERMSG 1 "2026" "Window Maker"
+.SH NAME
+wmakermsg \- send commands to and receive events from Window Maker
+.SH SYNOPSIS
+.B wmakermsg
+[\fB\-s\fR \fISOCKET\fR] [\fB\-q\fR] \fIVERB\fR [\fIARG\fR...]
+.br
+.B wmakermsg
+[\fB\-s\fR \fISOCKET\fR] \fBget_version\fR|\fBget_workspaces\fR|\fBget_windows\fR
+.br
+.B wmakermsg
+[\fB\-s\fR \fISOCKET\fR] \fBsend_tick\fR \fIPAYLOAD\fR
+.br
+.B wmakermsg
+[\fB\-s\fR \fISOCKET\fR] \fB\-m\fR \fIEVENT\fR [\fIEVENT\fR...]
+.br
+.B wmakermsg
+\fB\-\-get\-socketpath\fR
+.SH DESCRIPTION
+.B wmakermsg
+talks to a running Window Maker instance over its Unix-socket control
+channel. The socket is located via the
+.B WMAKER_IPC_SOCKET
+environment variable when set, otherwise derived from
+.B XDG_RUNTIME_DIR
+and
+.BR DISPLAY .
+.SH OPTIONS
+.TP
+.BI \-s " SOCKET"
+Connect to the given socket path instead of resolving one.
+.TP
+.B \-q
+Suppress the reply body, exit status alone reflects success.
+.TP
+.B \-m
+Monitor mode. Subscribe to the named event types and print one event per
+line until the connection closes or the process is terminated. Output is
+flushed after every event so it can be consumed with
+.BR "while read -r" .
+.TP
+.B \-\-get\-socketpath
+Print the resolved socket path for the current
+.B DISPLAY
+and exit without connecting.
+.SH COMMAND VERBS
+.BR reconfigure ,
+.BR "restart [WM]" ,
+.BR exit ,
+.BR kill\-session ,
+.BR "workspace next|prev|last|N" ,
+.BR show\-all ,
+.BR arrange\-icons ,
+.BR "hide\-application XID" ,
+.BR "hide\-others XID" ,
+.BR info .
+.SH EVENT TYPES
+.BR workspace ,
+.BR window ,
+.BR shutdown ,
+.BR child_exit ,
+.BR dialog ,
+.BR tick .
+.SH EXIT STATUS
+.B 0
+success,
+.B 1
+transport failure (could not connect, read, write, or protocol error),
+.B 2
+the server replied
+.I success = NO
+to a command verb.
+.SH SEE ALSO
+.BR wmaker (1),
+.BR wdread (1),
+.B doc/wmaker-ipc.txt
+in the source distribution.

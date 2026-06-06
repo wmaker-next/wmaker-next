@@ -1,0 +1,74 @@
+Window Maker IPC protocol
+=========================
+
+Transport: AF_UNIX SOCK_STREAM, one listening socket per managed X
+screen, path $XDG_RUNTIME_DIR/wmaker/ipc.<display-key> (or
+/tmp/wmaker-<uid>/ipc.<display-key> when XDG_RUNTIME_DIR is unset).
+<display-key> is the X display name with a screen suffix appended if
+absent and every byte outside [A-Za-z0-9] mapped to '_', so :0 and
+:0.0 both resolve to "_0_0". Clients may override the path with the
+WMAKER_IPC_SOCKET environment variable, the server ignores that
+variable when choosing where to bind.
+
+Wire header (16 bytes, native byte order):
+
+    offset 0   uint8_t  magic[8] = "wmaker0\n"
+    offset 8   uint32_t length     payload bytes following the header
+    offset 12  uint32_t type       request/reply id, or (1u<<31)|n for events
+
+The server caps length at 1 MiB and drops the connection on a frame
+that exceeds it or whose magic does not match.
+
+Every non-empty payload is a textual property-list description as
+produced by WMGetPropListDescription() and accepted by
+WMCreatePropListFromDescription(). Receivers append a NUL after the
+length-prefixed payload before parsing and reject embedded NUL bytes.
+
+Request types
+-------------
+    0  COMMAND         payload: ((verb, arg, ...), ...)
+                       reply:   {success=YES|NO; error="...";}
+                                or an array of these when more than one
+                                command was sent
+    1  SUBSCRIBE       payload: ("workspace", "tick", ...)
+                       reply:   {success=YES;}
+                                followed immediately by a tick event
+                                with first=YES when "tick" was named
+    2  GET_WORKSPACES  reply:   ({name="..."; index=N; current=YES|NO;}, ...)
+    3  GET_WINDOWS     reply:   ({id="0x..."; class="..."; instance="...";
+                                  title="..."; workspace=N;}, ...)
+    4  GET_VERSION     reply:   {version="..."; display="..."; screen=N;
+                                 pid=N; socket="...";}
+    5  SEND_TICK       payload: a single proplist string
+                       reply:   {success=YES;}
+                                a tick event with first=NO carrying the
+                                decoded string is broadcast first
+
+Event types (type field = (1u<<31) | id)
+----------------------------------------
+    0  workspace   {change="focus"|"create"|"destroy"|"rename";
+                    index=N; name="...";}
+    1  window      {change="manage"|"unmanage"|"focus"|"title"; id="0x...";}
+    2  shutdown    {change="exit"|"restart";}
+    3  child_exit  {pid=N; status=N; signal=N; wait_status=N;
+                    source="dock"|"menu"|"helper"|"unknown"; slot=N;}
+    4  dialog      {kind="message"|"input"|"crash"; title="..."; text="...";}
+    5  tick        {first=YES|NO; payload="...";}
+
+workspace and window are screen-scoped, the rest are process-scoped.
+
+Command verbs (request type 0)
+------------------------------
+    reconfigure
+    restart [WM]
+    exit
+    kill-session
+    workspace next|prev|last|N
+    show-all
+    arrange-icons
+    hide-application XID
+    hide-others XID
+    info
+
+An unknown verb yields {success=NO; error="unknown command '...'";}
+and the connection stays open.

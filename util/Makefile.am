@@ -5,7 +5,7 @@ AUTOMAKE_OPTIONS =
 pkgdatadir  = $(datadir)/@PACKAGE@
 
 bin_PROGRAMS = wxcopy wxpaste wdwrite wdread getstyle setstyle convertfonts \
-	seticons geticonset wmsetbg wmagnify wmgenmenu wmmenugen wmiv
+	seticons geticonset wmsetbg wmagnify wmgenmenu wmmenugen wmiv wmakermsg
 
 bin_SCRIPTS = wmaker.inst wm-oldmenu2new wkdemenu.pl
 
@@ -21,6 +21,8 @@ liblist= @LIBRARY_SEARCH_PATH@ @INTLIBS@
 wdwrite_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 wdread_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
+
+wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 wxcopy_LDADD = @XLFLAGS@ @XLIBS@
 

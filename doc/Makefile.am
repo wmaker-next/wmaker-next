@@ -12,6 +12,7 @@ dist_man_MANS = \
 	wdwrite.1 \
 	WindowMaker.1 \
 	wmagnify.1 \
+	wmakermsg.1 \
 	wmgenmenu.1 \
 	wmiv.1 \
 	wmmenugen.1 \
@@ -25,7 +26,7 @@ man_MANS = \
 
 MOSTLYCLEANFILES = wmaker.1 wmsetbg.1
 
-EXTRA_DIST = wmaker.in wmsetbg.in
+EXTRA_DIST = wmaker.in wmsetbg.in wmaker-ipc.txt
 
 
 ################################################################################

@@ -171,7 +171,7 @@ chmod 644 util/wmiv.{c,h}
 
 # remove rpath
 for f in wmaker wdwrite wdread getstyle setstyle convertfonts seticons \
-geticonset wmsetbg wmagnify wmgenmenu wmmenugen WPrefs ; do
+geticonset wmsetbg wmagnify wmgenmenu wmmenugen wmakermsg WPrefs ; do
 chrpath --delete %{buildroot}%{_bindir}/$f
 done
 
@@ -190,7 +190,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files -f '\(WPrefs\|WindowMaker\|WINGs\|wmgenmenu\)'.lang
 %defattr(-,root,root,-)
-%doc AUTHORS ChangeLog NEWS FAQ* README* COPYING*
+%doc AUTHORS ChangeLog NEWS FAQ* README* COPYING* doc/wmaker-ipc.txt
 %dir %{_sysconfdir}/WindowMaker
 %config(noreplace) %{_sysconfdir}/WindowMaker/*
 %{_bindir}/wmaker
@@ -205,6 +205,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/wmagnify
 %{_bindir}/wmgenmenu
 %{_bindir}/wmmenugen
+%{_bindir}/wmakermsg
 %{_bindir}/WPrefs
 %{_bindir}/wkdemenu.pl
 %{_bindir}/wm-oldmenu2new
