@@ -1793,7 +1793,16 @@ static void wmiv_xdnd_send_finished(Bool ok)
 static Bool wmiv_xdnd_is_selnotify(Display *d, XEvent *ev, XPointer arg)
 {
 	(void)d; (void)arg;
-	return ev->type == SelectionNotify && ev->xselection.selection == atom_XdndSelection;
+	/* bind the reply to the conversion we issued, a stale or forged
+	 * SelectionNotify naming a different requestor, target or
+	 * property must not steer which window property we then read as
+	 * the dropped URI list */
+	return ev->type == SelectionNotify
+		&& ev->xselection.selection == atom_XdndSelection
+		&& ev->xselection.requestor == win
+		&& ev->xselection.target == xdnd_target.want_type
+		&& (ev->xselection.property == atom_XdndSelection
+		    || ev->xselection.property == None);
 }
 
 /* bounded wait for the XdndSelection SelectionNotify so a hostile or
