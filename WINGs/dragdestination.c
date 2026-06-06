@@ -87,13 +87,20 @@ static WMArray *createDropDataArray(WMArray * requiredTypes)
 		return WMCreateArray(0);
 }
 
+/* XdndTypeList is owned by the drag source and every entry costs a
+ * synchronous XGetAtomName round-trip in safeGetAtomName(), so bound the
+ * read like the action list, real applications offer well under a dozen
+ * MIME types */
+#define XDND_MAX_TYPES 32
+
 static WMArray *getTypesFromTypeList(WMScreen * scr, Window sourceWin)
 {
 	Atom *typeAtomList;
 	WMArray *typeList;
 	size_t i, count;
 
-	typeAtomList = WXGetAtomList(scr->display, sourceWin, scr->xdndTypeListAtom, 0x8000000L, &count);
+	typeAtomList = WXGetAtomList(scr->display, sourceWin, scr->xdndTypeListAtom,
+				     XDND_MAX_TYPES, &count);
 	if (typeAtomList == NULL)
 		return createSourceTypeArray(0);
 
