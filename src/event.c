@@ -174,7 +174,7 @@ void DispatchEvent(XEvent * event)
 
 	if (WCHECK_STATE(WSTATE_NEED_EXIT)) {
 		WCHANGE_STATE(WSTATE_EXITING);
-		/* received SIGTERM */
+		/* received SIGTERM, SIGINT or SIGHUP */
 		/*
 		 * WMHandleEvent() can't be called from anything
 		 * executed inside here, or we can get in a infinite
@@ -186,7 +186,7 @@ void DispatchEvent(XEvent * event)
 		WCHANGE_STATE(WSTATE_RESTARTING);
 
 		Shutdown(WSRestartPreparationMode);
-		/* received SIGHUP */
+		/* received SIGUSR1 */
 		Restart(NULL, True);
 	} else if (WCHECK_STATE(WSTATE_NEED_REREAD)) {
 		WCHANGE_STATE(WSTATE_NORMAL);
