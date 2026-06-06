@@ -3,6 +3,51 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Unix-socket control channel and the new wmakermsg tool
+-------------------------------------------------------
+
+Window Maker now listens on a per-screen Unix-domain socket and
+exposes a small request/reply protocol with an event subscription
+stream. The socket is created under $XDG_RUNTIME_DIR/wmaker (or a
+per-user directory under /tmp when XDG_RUNTIME_DIR is unset), its
+path is exported to every program launched from the dock or root
+menu as WMAKER_IPC_SOCKET, and "wmaker --get-socketpath" prints it
+for scripts that are not children. The socket directory is created
+mode 0700, the socket itself mode 0600, and the directory's owner
+and mode are verified before binding so a pre-planted /tmp entry of
+the same name is refused.
+
+The new "wmakermsg" tool is the command-line client. The verbs cover
+what the root menu and the existing signal handlers already do
+(reconfigure, restart, exit, kill-session, workspace next/prev/last/N,
+hide-application, hide-others, show-all, arrange-icons, info), plus
+typed get_version/get_workspaces/get_windows queries and a send_tick
+synchronisation primitive for test drivers. "wmakermsg -m EVENT..."
+subscribes and prints one event per line for workspace, window,
+shutdown, child_exit, dialog and tick events. Exit status follows
+the usual convention: 0 success, 1 transport failure, 2 command
+rejected. The wire format is documented in doc/wmaker-ipc.txt and
+the client-side helpers are in the installed <WINGs/WIPC.h>.
+
+WPrefs and setstyle now use this socket to ask Window Maker to
+re-read its configuration, falling back to the old root-window
+ClientMessage only when the socket is unreachable. The old
+_WINDOWMAKER_COMMAND ClientMessage receiver is kept for one release
+with a deprecation warning and will be removed in the release after.
+
+The wmlib client library (libWMaker, WMaker.h, wmlib.pc) has been
+removed. Its only command transport was the deprecated root-window
+ClientMessage, the menu and per-window attribute hints it wrapped
+are plain X properties that GNUstep and other toolkits set directly
+without it, and the format-32 attribute writer in it had the same
+LP64 unit-size hazard as the property reads that were tightened in
+the previous release. Programs that used wmlib for "Reconfigure"
+should call "wmakermsg reconfigure" or wIPCCommand() instead, and
+programs that used WMSetWindowAttributes() or the WMMenu* functions
+should set the _GNUSTEP_WM_ATTR or _WINDOWMAKER_MENU property on
+their own toplevel directly.
+
+
 Per-head independent workspaces
 -------------------------------
 
