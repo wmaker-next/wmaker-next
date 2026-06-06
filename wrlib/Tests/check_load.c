@@ -20,7 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../config.h"
+#include <config.h>
 #include <wraster.h>
 
 static int failures;

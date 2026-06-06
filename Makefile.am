@@ -187,7 +187,7 @@ am__v_CHKOPTS_1 =
 check-local: configure-documentation check-manifest check-pkgconfig
 
 check-manifest:
-	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-manifest.sh $(top_srcdir)
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-manifest.sh $(top_srcdir) $(top_builddir)
 
 CHECK_PCFILES = wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
 

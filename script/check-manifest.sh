@@ -12,10 +12,14 @@
 set -u
 
 srcdir=${1:-.}
+builddir=${2:-.}
 fail=0
 
 for mf in $(find "$srcdir" -name Makefile.am); do
 	dir=$(dirname "$mf")
+	# same subdirectory under the build tree, for BUILT_SOURCES that
+	# only exist there in a VPATH build (distcheck)
+	bdir="$builddir${dir#"$srcdir"}"
 	# pull the RHS of *_SOURCES / EXTRA_DIST assignments, joining
 	# backslash continuations, dropping comment-only lines
 	for f in $(awk '
@@ -37,7 +41,7 @@ for mf in $(find "$srcdir" -name Makefile.am); do
 		    *'$'*|*'@'*|*'('*|*')'*|*,*|/*)
 			continue ;;
 		esac
-		if [ ! -e "$dir/$f" ] && [ ! -e "$srcdir/$f" ]; then
+		if [ ! -e "$dir/$f" ] && [ ! -e "$bdir/$f" ] && [ ! -e "$srcdir/$f" ]; then
 			echo "missing: $mf references '$f'" >&2
 			fail=1
 		fi

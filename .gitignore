@@ -64,6 +64,7 @@ util/wdread
 util/wdwrite
 util/wmagnify
 util/wmaker.inst
+util/wmakermsg
 util/wmgenmenu
 util/wmiv
 util/wmmenugen
@@ -91,6 +92,7 @@ WINGs/Tests/wtest
 WINGs/Tests/check_wutil
 WINGs/Tests/check_proplist
 WINGs/Tests/check_handlers
+WINGs/Tests/check_ipc
 src/Tests/check_config
 src/Tests/check_wdefaults
 
