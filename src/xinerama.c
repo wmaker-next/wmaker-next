@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "wconfig.h"
 
@@ -235,6 +236,87 @@ int wGetHeadForWindow(WWindow * wwin)
 	rect.size.height = wwin->frame->core->height;
 
 	return wGetHeadForRect(wwin->screen_ptr, rect);
+}
+
+/* Effective head for per-head workspace visibility. For mapped windows
+ * this is wGetHeadForWindow(), but for unmapped/hidden/off-screen
+ * windows wGetHeadForRect() falls back to the pointer head, which would
+ * make a hidden window flip heads as the mouse moves. Use the cached
+ * last_head instead, clamped to the current head count. */
+int wWindowEffectiveHead(WWindow *wwin)
+{
+	int heads;
+
+	if (wwin == NULL)
+		return 0;
+
+	heads = wHeadCount(wwin->screen_ptr);
+	if (wwin->frame != NULL && (wwin->flags.mapped || wwin->flags.shaded)) {
+		int h = wGetHeadForWindow(wwin);
+		if (h >= 0 && h < heads) {
+			wwin->last_head = h;
+			return h;
+		}
+	}
+	if (wwin->last_head >= 0 && wwin->last_head < heads)
+		return wwin->last_head;
+	return wwin->screen_ptr->xine_info.primary_head;
+}
+
+/* Head currently considered "active" for workspace keybindings, the
+ * compatibility current_workspace mirror, and _NET_CURRENT_DESKTOP.
+ * Prefer the focused window's head, then the last head we recorded from
+ * focus or pointer activity, then the live pointer, then primary. */
+int wGetActiveHead(WScreen *scr)
+{
+	int heads = wHeadCount(scr);
+	int h;
+
+	if (scr->focused_window && scr->focused_window->flags.focused
+	    && (scr->focused_window->flags.mapped || scr->focused_window->flags.shaded)) {
+		h = wWindowEffectiveHead(scr->focused_window);
+		if (h >= 0 && h < heads)
+			return h;
+	}
+	if (scr->last_active_head >= 0 && scr->last_active_head < heads)
+		return scr->last_active_head;
+	h = wGetHeadForPointerLocation(scr);
+	if (h >= 0 && h < heads)
+		return h;
+	return scr->xine_info.primary_head;
+}
+
+int wHeadForOutputName(WScreen *scr, const char *name)
+{
+	int i;
+
+	if (!name)
+		return -1;
+	for (i = 0; i < wHeadCount(scr); i++) {
+		if (scr->head_output_name[i]
+		    && strcmp(scr->head_output_name[i], name) == 0)
+			return i;
+	}
+	return -1;
+}
+
+const char *wOutputNameForHead(WScreen *scr, int head)
+{
+	if (head < 0 || head >= WM_MAX_HEADS)
+		return NULL;
+	return scr->head_output_name[head];
+}
+
+void wClearHeadOutputNames(WScreen *scr)
+{
+	int i;
+
+	for (i = 0; i < WM_MAX_HEADS; i++) {
+		if (scr->head_output_name[i]) {
+			wfree(scr->head_output_name[i]);
+			scr->head_output_name[i] = NULL;
+		}
+	}
 }
 
 /* Find head on left, right, up or down direction relative to current

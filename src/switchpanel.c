@@ -33,6 +33,7 @@
 #include "switchpanel.h"
 #include "misc.h"
 #include "xinerama.h"
+#include "workspace.h"
 
 #include <WINGs/WXProp.h>
 
@@ -79,7 +80,7 @@ static short int label_height;
 
 static int canReceiveFocus(WWindow *wwin)
 {
-	if (!w_global.config->cycle_all_workspaces && wwin->frame->workspace != wwin->screen_ptr->current_workspace)
+	if (!w_global.config->cycle_all_workspaces && !wWindowIsVisibleOnAnyHead(wwin))
 		return 0;
 
 	if (w_global.config->cycle_active_head_only &&

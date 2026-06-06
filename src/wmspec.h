@@ -65,6 +65,7 @@ WXCookie wNETWMReqWindowName(Window window);
 void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event);
 void wNETWMUpdateActions(WWindow *wwin, Bool del);
 void wNETWMUpdateDesktop(WScreen *scr);
+void wNETWMUpdateCurrentDesktop(WScreen *scr);
 void wNETWMPositionSplash(WWindow *wwin, int *x, int *y, int width, int height);
 int wNETWMGetPidForWindow(Window window);
 Bool wNETWMIsPingProtocol(Atom protocol);

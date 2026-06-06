@@ -240,6 +240,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_WORKSPACES, "CycleWorkspaces", BOOL, ws_cycle, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(PER_HEAD_WORKSPACES, "PerHeadWorkspaces", BOOL, per_head_workspaces, "NO", \
+	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(WORKSPACE_NAME_DISPLAY_POSITION, "WorkspaceNameDisplayPosition", ENUM, \
 	  workspace_name_display_position, "center", display_positions, INT_MIN, INT_MAX, \
 	  WCFG_RUNTIME_RELOAD, 0) \

@@ -545,7 +545,7 @@ Bool wWindowIsFullyCovered(WWindow *wwin)
 			continue;
 		if (!w->flags.mapped)
 			continue;
-		if (!w->frame || w->frame->workspace != scr->current_workspace)
+		if (!w->frame || !wWindowIsVisibleOnAnyHead(w))
 			continue;
 		if (w->frame_x <= cx &&
 		    w->frame_y <= cy &&
@@ -702,7 +702,7 @@ static void wWindowUnswallow(WWindow *wwin)
 	 * which would unhide the whole application */
 	parent->flags.hidden = 0;
 	parent->flags.skip_next_animation = 1;
-	if (parent->screen_ptr->current_workspace == parent->frame->workspace) {
+	if (wWindowIsVisibleOnAnyHead(parent)) {
 		XMapWindow(dpy, parent->client_win);
 		XMapWindow(dpy, parent->frame->core->window);
 		wClientSetState(parent, NormalState, None);
@@ -1241,6 +1241,11 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		}
 	}
 
+	/* Provisional per-head placement target: a head already showing
+	 * this workspace (or allowed to), so PlaceWindow constrains the
+	 * frame there and the visibility test after configure agrees. */
+	wwin->last_head = wHeadShowingWorkspace(scr, workspace);
+
 	/* setup window geometry */
 	if (win_state && win_state->state->w > 0) {
 		width = win_state->state->w;
@@ -1477,6 +1482,38 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	 * related variables (frame_x,frame_y) */
 	wWindowConfigure(wwin, x, y, width, height);
 
+	/* Finalize the per-head workspace head from the placed frame
+	 * rectangle so visibility checks for an immediately-unmapped
+	 * window do not fall back to the pointer head. */
+	wwin->last_head = wGetHeadForWindow(wwin);
+
+	/* A re-managed window can keep a pre-restart or client-supplied
+	 * position on a head where its workspace is not allowed (startup
+	 * skips PlaceWindow, USPosition/PPosition skip it too). Translate
+	 * the frame onto the head that is showing or allowed to show the
+	 * workspace, keeping its relative position within the head, so the
+	 * geometry-derived last_head and the workspace pin agree and the
+	 * window does not become permanently invisible. */
+	if (w_global.config->per_head_workspaces && !IS_OMNIPRESENT(wwin)
+	    && !wWorkspaceIsAllowedOnHead(scr, workspace, wwin->last_head)) {
+		int target = wHeadShowingWorkspace(scr, workspace);
+
+		if (target != wwin->last_head
+		    && wWorkspaceIsAllowedOnHead(scr, workspace, target)) {
+			WMRect from = wGetRectForHead(scr, wwin->last_head);
+			WMRect to = wGetRectForHead(scr, target);
+
+			x = to.pos.x + (from.size.width > 0
+					? (x - from.pos.x) * to.size.width / from.size.width
+					: 0);
+			y = to.pos.y + (from.size.height > 0
+					? (y - from.pos.y) * to.size.height / from.size.height
+					: 0);
+			wWindowConfigure(wwin, x, y, width, height);
+			wwin->last_head = target;
+		}
+	}
+
 	/* to make sure the window receives it's new position after reparenting */
 	wWindowSynthConfigureNotify(wwin);
 
@@ -1526,7 +1563,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	XLowerWindow(dpy, window);
 
 	/* if window is in this workspace and should be mapped, then  map it */
-	if (!wwin->flags.miniaturized && (workspace == scr->current_workspace || IS_OMNIPRESENT(wwin))
+	if (!wwin->flags.miniaturized && wWindowIsVisibleOnAnyHead(wwin)
 	    && !wwin->flags.hidden && !withdraw) {
 
 		/* The following "if" is to avoid crashing of clients that expect
@@ -1600,7 +1637,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	/* Final preparations before window is ready to go */
 	wFrameWindowChangeState(wwin->frame, WS_UNFOCUSED);
 
-	if (!wwin->flags.miniaturized && workspace == scr->current_workspace && !wwin->flags.hidden) {
+	if (!wwin->flags.miniaturized && wWindowIsVisibleOnAnyHead(wwin) && !wwin->flags.hidden) {
 		if (((transientOwner && transientOwner->flags.focused)
 		     || w_global.config->auto_focus) && !WFLAGP(wwin, no_focusable)) {
 
@@ -2320,6 +2357,46 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	if (workspace >= scr->workspace_count || workspace < 0 || workspace == wwin->frame->workspace)
 		return;
 
+	if (w_global.config->per_head_workspaces) {
+		int oldWorkspace = wwin->frame->workspace;
+		Bool was_visible = wWindowIsVisibleOnAnyHead(wwin);
+		Bool now_visible;
+
+		if (!IS_OMNIPRESENT(wwin))
+			wwin->frame->workspace = workspace;
+		now_visible = wWindowIsVisibleOnAnyHead(wwin);
+
+		if (was_visible && !now_visible
+		    && !IS_OMNIPRESENT(wwin) && !wwin->flags.changing_workspace) {
+			wapp = wApplicationOf(wwin->main_window);
+			if (wapp)
+				wapp->last_workspace = workspace;
+			if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
+				if (wwin->icon) {
+					XUnmapWindow(dpy, wwin->icon->core->window);
+					wwin->icon->mapped = 0;
+				}
+			} else if (wwin->flags.mapped || wwin->flags.shaded) {
+				wSetFocusTo(scr, NULL);
+				wWindowUnmap(wwin);
+			}
+		} else if (!was_visible && now_visible) {
+			if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
+				if (wwin->icon) {
+					XMapWindow(dpy, wwin->icon->core->window);
+					wwin->icon->mapped = 1;
+				}
+			} else if (!wwin->flags.mapped
+				   && !(wwin->flags.miniaturized || wwin->flags.hidden)) {
+				wWindowMap(wwin);
+			}
+		}
+		if (!IS_OMNIPRESENT(wwin))
+			WMPostNotificationName(WMNChangedWorkspace, wwin,
+					       (void *)(uintptr_t) oldWorkspace);
+		return;
+	}
+
 	if (workspace != scr->current_workspace) {
 		/* Sent to other workspace. Unmap window */
 		if ((wwin->flags.mapped
@@ -2364,7 +2441,24 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount)
 {
 	WScreen *scr = wwin->screen_ptr;
-	int w = scr->current_workspace + amount;
+	int w;
+
+	if (w_global.config->per_head_workspaces) {
+		int head = wWindowEffectiveHead(wwin);
+
+		/* Step through the same allowed-on-this-head sequence as
+		 * wWorkspaceRelativeChange so the window never lands on a
+		 * workspace pinned to another output and vanishes. */
+		w = wWorkspaceRelativeHeadTarget(scr, head, amount);
+		if (w < 0)
+			return;
+		if (w >= scr->workspace_count)
+			wWorkspaceMake(scr, w - scr->workspace_count + 1);
+		wWindowChangeWorkspace(wwin, w);
+		return;
+	}
+
+	w = scr->current_workspace + amount;
 
 	if (amount < 0) {
 		if (w >= 0) {
@@ -2510,6 +2604,8 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		wWindowSynthConfigureNotify(wwin);
 
 	wNETFrameExtents(wwin);
+
+	wwin->last_head = wGetHeadForWindow(wwin);
 
 	XFlush(dpy);
 }

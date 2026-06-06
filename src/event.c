@@ -963,7 +963,7 @@ static void handleUnmapNotify(XEvent * event)
 		return;
 
 	if (!wwin->flags.mapped && !withdraw
-	    && wwin->frame->workspace == wwin->screen_ptr->current_workspace
+	    && wWindowIsVisibleOnAnyHead(wwin)
 	    && !wwin->flags.miniaturized && !wwin->flags.hidden)
 		return;
 

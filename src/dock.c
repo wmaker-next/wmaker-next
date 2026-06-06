@@ -3385,6 +3385,50 @@ void wClipUpdateForWorkspaceChange(WScreen *scr, int workspace)
 	}
 }
 
+/* Mirror-only clip update for per-head focus moves: when focus crosses
+ * to a head showing a different workspace we want the single visible
+ * clip icon to follow that head's workspace, but without migrating
+ * omnipresent icons through scr->global_icons (that should only happen
+ * on a real workspace switch). Just hide/show the two clips and
+ * repoint scr->clip_icon->dock. */
+void wClipRepointForActiveHead(WScreen *scr, int old_workspace, int new_workspace)
+{
+	WDock *old_clip, *new_clip;
+
+	if (wPreferences.flags.noclip || !scr->clip_icon)
+		return;
+	if (old_workspace == new_workspace)
+		return;
+	if (new_workspace < 0 || new_workspace >= scr->workspace_count)
+		return;
+
+	new_clip = scr->workspaces[new_workspace]->clip;
+	scr->clip_icon->dock = new_clip;
+
+	if (old_workspace >= 0 && old_workspace < scr->workspace_count) {
+		old_clip = scr->workspaces[old_workspace]->clip;
+		if (old_clip && old_clip != new_clip) {
+			wDockHideIcons(old_clip);
+			if (old_clip->auto_raise_lower) {
+				if (old_clip->auto_raise_magic) {
+					WMDeleteTimerHandler(old_clip->auto_raise_magic);
+					old_clip->auto_raise_magic = NULL;
+				}
+				wDockLower(old_clip);
+			}
+			if (old_clip->auto_collapse) {
+				if (old_clip->auto_expand_magic) {
+					WMDeleteTimerHandler(old_clip->auto_expand_magic);
+					old_clip->auto_expand_magic = NULL;
+				}
+				old_clip->collapsed = 1;
+			}
+		}
+	}
+	if (new_clip)
+		wDockShowIcons(new_clip);
+}
+
 static void trackDeadProcess(pid_t pid, unsigned int status, void *cdata)
 {
 	WDock *dock = cdata;

@@ -27,6 +27,11 @@ typedef struct WWorkspace {
     char *name;
     struct WDock *clip;
     RImage *map;
+    /* WorkspaceOutputs pin: RandR output names this workspace is bound
+     * to, owned strings. 0 entries means unpinned (allowed on every
+     * head). */
+    char **head_names;
+    int head_name_count;
 } WWorkspace;
 
 void wWorkspaceMake(WScreen *scr, int count);
@@ -44,5 +49,21 @@ void wWorkspaceRelativeChange(WScreen *scr, int amount);
 Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col);
 int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow);
 void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow);
+
+/* Per-head independent workspace support */
+int wWorkspaceForHead(WScreen *scr, int head);
+int wWorkspaceRelativeHeadTarget(WScreen *scr, int head, int amount);
+int wHeadShowingWorkspace(WScreen *scr, int workspace);
+int wWorkspaceDefaultForHead(WScreen *scr, int head);
+Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head);
+Bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head);
+Bool wWindowIsVisibleOnAnyHead(struct WWindow *wwin);
+void wWorkspaceSetCurrentHead(WScreen *scr, int head);
+void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head);
+void wWorkspaceLoadOutputPins(WScreen *scr, WMPropList *wmaker_dict);
+void wWorkspaceClearOutputPins(WScreen *scr);
+void wWorkspaceSaveHeadState(WScreen *scr);
+void wWorkspaceRestoreHeadState(WScreen *scr);
+void wWorkspaceReconcileHeads(WScreen *scr);
 
 #endif

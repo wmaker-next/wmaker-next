@@ -48,6 +48,7 @@
 	Superfluous = YES;
 	AdvanceToNewWorkspace = NO;
 	CycleWorkspaces = NO;
+	PerHeadWorkspaces = NO;
 	WorkspaceNameDisplayPosition = center;
 	WorkspaceBorder = None;
 	WorkspaceBorderSize = 0;

@@ -59,7 +59,7 @@
 #define WORKSPACE_NAME_DISPLAY_PADDING 32
 
 static WMPropList *dWorkspaces = NULL;
-static WMPropList *dClip, *dName;
+static WMPropList *dClip, *dName, *dHeadWorkspaces;
 
 static void make_keys(void)
 {
@@ -69,6 +69,140 @@ static void make_keys(void)
 	dWorkspaces = WMCreatePLString("Workspaces");
 	dName = WMCreatePLString("Name");
 	dClip = WMCreatePLString("Clip");
+	dHeadWorkspaces = WMCreatePLString("HeadWorkspaces");
+}
+
+/* ---------- per-head workspace helpers ---------- */
+
+int wWorkspaceForHead(WScreen *scr, int head)
+{
+	if (!w_global.config->per_head_workspaces || head < 0 || head >= WM_MAX_HEADS)
+		return scr->current_workspace;
+	return scr->head_workspace[head];
+}
+
+/* Head currently showing the given workspace, preferring the active
+ * head, then any head where it is visible, then any head where it is
+ * merely allowed by WorkspaceOutputs. Used to seed wwin->last_head
+ * before automatic placement so a window targeting a workspace shown on
+ * another monitor lands and maps there instead of under the pointer. */
+int wHeadShowingWorkspace(WScreen *scr, int workspace)
+{
+	int active, h;
+
+	if (!w_global.config->per_head_workspaces)
+		return wGetActiveHead(scr);
+
+	active = wGetActiveHead(scr);
+	if (scr->head_workspace[active] == workspace)
+		return active;
+	for (h = 0; h < wHeadCount(scr); h++) {
+		if (scr->head_workspace[h] == workspace)
+			return h;
+	}
+	for (h = 0; h < wHeadCount(scr); h++) {
+		if (wWorkspaceIsAllowedOnHead(scr, workspace, h))
+			return h;
+	}
+	return active;
+}
+
+/* A workspace is allowed on a head when it is unpinned, or when one of
+ * its WorkspaceOutputs names matches that head's active RandR output
+ * name. A workspace pinned only to outputs that are currently absent is
+ * allowed on no head. */
+Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head)
+{
+	WWorkspace *ws;
+	const char *out;
+	int i;
+
+	if (workspace < 0 || workspace >= scr->workspace_count)
+		return False;
+	ws = scr->workspaces[workspace];
+	if (ws->head_name_count == 0)
+		return True;
+
+	out = wOutputNameForHead(scr, head);
+	if (!out)
+		return False;
+	for (i = 0; i < ws->head_name_count; i++) {
+		if (strcmp(ws->head_names[i], out) == 0)
+			return True;
+	}
+	return False;
+}
+
+Bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head)
+{
+	if (!w_global.config->per_head_workspaces)
+		return workspace == scr->current_workspace;
+	if (head < 0 || head >= wHeadCount(scr))
+		return False;
+	return scr->head_workspace[head] == workspace;
+}
+
+/* The single visibility predicate in per-head mode: a window is visible
+ * when omnipresent, or when its workspace is the active workspace on
+ * the window's effective head. When the same workspace is active on
+ * several heads the window still maps only on its own head. */
+Bool wWindowIsVisibleOnAnyHead(WWindow *wwin)
+{
+	WScreen *scr;
+	int head;
+
+	if (!wwin || !wwin->frame)
+		return False;
+	if (IS_OMNIPRESENT(wwin))
+		return True;
+
+	scr = wwin->screen_ptr;
+	if (!w_global.config->per_head_workspaces)
+		return wwin->frame->workspace == scr->current_workspace;
+
+	head = wWindowEffectiveHead(wwin);
+	if (head >= 0 && head < wHeadCount(scr)
+	    && scr->head_workspace[head] == wwin->frame->workspace)
+		return True;
+	return False;
+}
+
+/* Update last_active_head, mirror current_workspace, and republish
+ * _NET_CURRENT_DESKTOP. Called on focus changes between heads and after
+ * a per-head workspace switch so legacy code that still reads
+ * scr->current_workspace keeps seeing the focused head's workspace. */
+void wWorkspaceSetCurrentHead(WScreen *scr, int head)
+{
+	int ws, old;
+
+	if (!w_global.config->per_head_workspaces)
+		return;
+	if (head < 0 || head >= wHeadCount(scr))
+		return;
+
+	scr->last_active_head = head;
+	ws = scr->head_workspace[head];
+	if (ws < 0 || ws >= scr->workspace_count)
+		return;
+
+	old = scr->current_workspace;
+	if (old == ws) {
+		wNETWMUpdateCurrentDesktop(scr);
+		return;
+	}
+
+	/* Mirror-only update: repoint the visible clip to the focused
+	 * head's workspace without shuttling omnipresent icons. */
+	wClipRepointForActiveHead(scr, old, ws);
+	scr->current_workspace = ws;
+
+	wWorkspaceMenuUpdate(scr, scr->workspace_menu);
+	wWorkspaceMenuUpdate(scr, scr->clip_ws_menu);
+	if (scr->clip_icon)
+		wClipIconPaint(scr->clip_icon);
+	wNETWMUpdateCurrentDesktop(scr);
+
+	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) ws);
 }
 
 void wWorkspaceMake(WScreen * scr, int count)
@@ -90,6 +224,8 @@ int wWorkspaceNew(WScreen *scr)
 		wspace = wmalloc(sizeof(WWorkspace));
 		wspace->name = NULL;
 		wspace->clip = NULL;
+		wspace->head_names = NULL;
+		wspace->head_name_count = 0;
 
 		if (!wspace->name) {
 			static const char *new_name = NULL;
@@ -162,10 +298,15 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 		if (i != workspace) {
 			list[j++] = scr->workspaces[i];
 		} else {
+			int k;
 			if (scr->workspaces[i]->name)
 				wfree(scr->workspaces[i]->name);
 			if (scr->workspaces[i]->map)
 				RReleaseImage(scr->workspaces[i]->map);
+			for (k = 0; k < scr->workspaces[i]->head_name_count; k++)
+				wfree(scr->workspaces[i]->head_names[k]);
+			if (scr->workspaces[i]->head_names)
+				wfree(scr->workspaces[i]->head_names);
 			wfree(scr->workspaces[i]);
 		}
 	}
@@ -204,6 +345,21 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 		wWorkspaceChange(scr, scr->workspace_count - 1);
 	if (scr->last_workspace >= scr->workspace_count)
 		scr->last_workspace = 0;
+
+	if (w_global.config->per_head_workspaces) {
+		int h;
+		for (h = 0; h < wHeadCount(scr); h++) {
+			if (scr->head_workspace[h] >= scr->workspace_count) {
+				int to = scr->workspace_count - 1;
+				if (!wWorkspaceIsAllowedOnHead(scr, to, h))
+					to = wWorkspaceDefaultForHead(scr, h);
+				wWorkspaceForceChangeOnHead(scr, to, h);
+			}
+			if (scr->last_head_workspace[h] >= scr->workspace_count)
+				scr->last_head_workspace[h] = 0;
+		}
+		wWorkspaceSetCurrentHead(scr, wGetActiveHead(scr));
+	}
 
 	return True;
 }
@@ -438,8 +594,57 @@ void wWorkspaceChange(WScreen *scr, int workspace)
 	if (scr->flags.startup || scr->flags.startup2 || scr->flags.ignore_focus_events)
 		return;
 
+	if (w_global.config->per_head_workspaces) {
+		int head = wGetActiveHead(scr);
+
+		if (workspace > scr->workspace_count - 1
+		    && workspace < MAX_WORKSPACES && w_global.config->ws_advance)
+			wWorkspaceMake(scr, workspace - scr->workspace_count + 1);
+		if (!wWorkspaceIsAllowedOnHead(scr, workspace, head))
+			return;
+		if (workspace != scr->head_workspace[head])
+			wWorkspaceForceChangeOnHead(scr, workspace, head);
+		return;
+	}
+
 	if (workspace != scr->current_workspace)
 		wWorkspaceForceChange(scr, workspace);
+}
+
+/* Advance one head's workspace by amount, skipping workspaces pinned to
+ * other outputs so Next/Prev never lands on a workspace that cannot be
+ * shown on the active head. */
+int wWorkspaceRelativeHeadTarget(WScreen *scr, int head, int amount)
+{
+	int n = scr->workspace_count;
+	int dir = (amount > 0) ? 1 : -1;
+	int w = scr->head_workspace[head];
+	int steps;
+
+	if (amount == 0 || n <= 0)
+		return -1;
+
+	for (steps = 0; steps < n + 1; steps++) {
+		w += dir;
+		if (w < 0) {
+			if (!w_global.config->ws_cycle)
+				return -1;
+			w = n - 1;
+		} else if (w >= n) {
+			if (w_global.config->ws_advance)
+				return WMIN(scr->head_workspace[head] + amount,
+					    MAX_WORKSPACES - 1);
+			if (!w_global.config->ws_cycle)
+				return -1;
+			w = 0;
+		}
+		if (wWorkspaceIsAllowedOnHead(scr, w, head)) {
+			amount -= dir;
+			if (amount == 0)
+				return w;
+		}
+	}
+	return -1;
 }
 
 void wWorkspaceRelativeChange(WScreen * scr, int amount)
@@ -452,6 +657,15 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
 	 * the window will land in the new workspace */
 	if (w_global.ignore_workspace_change)
 		return;
+
+	if (w_global.config->per_head_workspaces) {
+		int head = wGetActiveHead(scr);
+
+		w = wWorkspaceRelativeHeadTarget(scr, head, amount);
+		if (w >= 0)
+			wWorkspaceChange(scr, w);
+		return;
+	}
 
 	w = scr->current_workspace + amount;
 
@@ -563,10 +777,32 @@ int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow)
 
 void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow)
 {
-	int to;
+	int from, to;
 
 	if (w_global.ignore_workspace_change)
 		return;
+
+	if (w_global.config->per_head_workspaces) {
+		int head = wGetActiveHead(scr);
+		int steps;
+
+		from = scr->head_workspace[head];
+		/* Walk the layout in the requested direction until we land
+		 * on a workspace allowed on the active head, so a workspace
+		 * pinned to another output is skipped instead of swallowing
+		 * the keystroke. */
+		for (steps = 0; steps < scr->workspace_count; steps++) {
+			to = wWorkspaceNeighbour(scr, from, dcol, drow);
+			if (to < 0 || to == scr->head_workspace[head])
+				return;
+			if (wWorkspaceIsAllowedOnHead(scr, to, head)) {
+				wWorkspaceForceChangeOnHead(scr, to, head);
+				return;
+			}
+			from = to;
+		}
+		return;
+	}
 
 	to = wWorkspaceNeighbour(scr, scr->current_workspace, dcol, drow);
 	if (to >= 0)
@@ -768,6 +1004,472 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 
 	/*   XSync(dpy, False); */
+}
+
+/* If the target workspace is pinned to several outputs, switching it on
+ * one head should switch it on every listed active head together so the
+ * workspace spans those monitors atomically. Fill switch_head[] with
+ * the heads to update, always including the initiating head. */
+static int collectHeadsToSwitch(WScreen *scr, int workspace, int head, int *switch_head)
+{
+	WWorkspace *ws = scr->workspaces[workspace];
+	int n = 0, i, j, h;
+
+	switch_head[n++] = head;
+	if (ws->head_name_count <= 1)
+		return n;
+	for (i = 0; i < ws->head_name_count && n < WM_MAX_HEADS; i++) {
+		int dup = 0;
+
+		h = wHeadForOutputName(scr, ws->head_names[i]);
+		if (h < 0 || h >= WM_MAX_HEADS)
+			continue;
+		for (j = 0; j < n; j++) {
+			if (switch_head[j] == h) {
+				dup = 1;
+				break;
+			}
+		}
+		if (!dup)
+			switch_head[n++] = h;
+	}
+	return n;
+}
+
+/* Per-head equivalent of wWorkspaceForceChange. Updates head_workspace[]
+ * for the requested head (and any sibling heads listed in a multi-output
+ * WorkspaceOutputs pin), then runs one map/unmap pass over every managed
+ * window using wWindowIsVisibleOnAnyHead() instead of comparing against
+ * a single workspace index. */
+void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
+{
+	WWindow *tmp, *foc = NULL, *foc2 = NULL;
+	int switch_head[WM_MAX_HEADS];
+	int n_switch, i;
+	int old_mirror;
+
+	if (workspace >= MAX_WORKSPACES || workspace < 0)
+		return;
+	if (head < 0 || head >= wHeadCount(scr))
+		return;
+
+	if (w_global.config->enable_workspace_pager && !w_global.process_workspacemap_event)
+		wWorkspaceMapUpdate(scr);
+
+	SendHelperMessage(scr, 'C', workspace + 1, NULL);
+
+	if (workspace > scr->workspace_count - 1)
+		wWorkspaceMake(scr, workspace - scr->workspace_count + 1);
+
+	n_switch = collectHeadsToSwitch(scr, workspace, head, switch_head);
+	for (i = 0; i < n_switch; i++) {
+		int h = switch_head[i];
+		scr->last_head_workspace[h] = scr->head_workspace[h];
+		scr->head_workspace[h] = workspace;
+	}
+
+	/* Update the compatibility mirror through the real clip path so
+	 * omnipresent clip icons migrate exactly once for this switch. */
+	old_mirror = scr->current_workspace;
+	scr->last_active_head = head;
+	wClipUpdateForWorkspaceChange(scr, workspace);
+	scr->last_workspace = old_mirror;
+	scr->current_workspace = workspace;
+
+	wWorkspaceMenuUpdate(scr, scr->workspace_menu);
+	wWorkspaceMenuUpdate(scr, scr->clip_ws_menu);
+
+	tmp = scr->focused_window;
+	if (tmp != NULL) {
+		WWindow **toUnmap;
+		int toUnmapSize, toUnmapCount;
+
+		if ((IS_OMNIPRESENT(tmp) && (tmp->flags.mapped || tmp->flags.shaded) &&
+		     !WFLAGP(tmp, no_focusable)) || tmp->flags.changing_workspace)
+			foc = tmp;
+
+		toUnmapSize = 16;
+		toUnmapCount = 0;
+		toUnmap = wmalloc(toUnmapSize * sizeof(WWindow *));
+
+		while (tmp) {
+			Bool visible = wWindowIsVisibleOnAnyHead(tmp);
+
+			if (!visible && !tmp->flags.selected) {
+				if ((tmp->flags.mapped || tmp->flags.shaded) &&
+				    !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) {
+					if (toUnmapCount == toUnmapSize) {
+						toUnmapSize *= 2;
+						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
+					}
+					toUnmap[toUnmapCount++] = tmp;
+				}
+				if (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
+				    tmp->icon && !IS_OMNIPRESENT(tmp)) {
+					XUnmapWindow(dpy, tmp->icon->core->window);
+					tmp->icon->mapped = 0;
+				}
+				if (IS_OMNIPRESENT(tmp)) {
+					WApplication *wapp = wApplicationOf(tmp->main_window);
+					tmp->frame->workspace = workspace;
+					if (wapp)
+						wapp->last_workspace = workspace;
+					if (!foc2 && (tmp->flags.mapped || tmp->flags.shaded))
+						foc2 = tmp;
+				}
+			} else {
+				if (tmp->flags.selected) {
+					wWindowChangeWorkspace(tmp, workspace);
+					if (!tmp->flags.miniaturized && !foc)
+						foc = tmp;
+				} else if (!tmp->flags.hidden) {
+					if (!(tmp->flags.mapped || tmp->flags.miniaturized)) {
+						wWindowMap(tmp);
+						if (!foc && !WFLAGP(tmp, no_focusable)
+						    && wWindowEffectiveHead(tmp) == head)
+							foc = tmp;
+					}
+					if (!w_global.config->sticky_icons &&
+					    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
+						tmp->icon->mapped = 1;
+						XMapWindow(dpy, tmp->icon->core->window);
+					}
+				}
+				/* Prefer a focus candidate on the initiating head */
+				if (!foc && (tmp->flags.mapped || tmp->flags.shaded)
+				    && !WFLAGP(tmp, no_focusable)
+				    && wWindowEffectiveHead(tmp) == head)
+					foc = tmp;
+			}
+			tmp = tmp->prev;
+		}
+
+		while (toUnmapCount > 0)
+			wWindowUnmap(toUnmap[--toUnmapCount]);
+		wfree(toUnmap);
+
+		scr->flags.ignore_focus_events = 1;
+		ProcessPendingEvents();
+		scr->flags.ignore_focus_events = 0;
+
+		if (!foc)
+			foc = foc2;
+
+		if (foc != NULL) {
+			WWindow *parse;
+			Bool found = False;
+			for (parse = scr->focused_window; parse != NULL; parse = parse->prev) {
+				if (parse == foc) {
+					found = True;
+					break;
+				}
+			}
+			if (!found)
+				foc = NULL;
+		}
+
+		if (scr->focused_window->flags.mapped && !foc)
+			foc = scr->focused_window;
+		if (w_global.config->focus_mode == WKF_CLICK) {
+			wSetFocusTo(scr, foc);
+		} else {
+			unsigned int mask;
+			int foo;
+			Window bar, win;
+			WWindow *ptmp = NULL;
+
+			if (XQueryPointer(dpy, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+				ptmp = wWindowFor(win);
+			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY)
+				wSetFocusTo(scr, foc);
+			else
+				wSetFocusTo(scr, ptmp);
+		}
+	}
+
+	if (!w_global.config->sticky_icons)
+		wArrangeIcons(scr, False);
+
+	if (scr->dock)
+		wAppIconPaint(scr->dock->icon_array[0]);
+
+	if (!wPreferences.flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
+						scr->workspaces[workspace]->clip->auto_raise_lower)) {
+		XUnmapWindow(dpy, scr->clip_icon->icon->core->window);
+		XMapWindow(dpy, scr->clip_icon->icon->core->window);
+	} else if (scr->clip_icon != NULL) {
+		wClipIconPaint(scr->clip_icon);
+	}
+	wScreenUpdateUsableArea(scr);
+	wNETWMUpdateDesktop(scr);
+	wNETWMUpdateCurrentDesktop(scr);
+	showWorkspaceName(scr, workspace);
+
+	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
+}
+
+/* One full map/unmap reconciliation over every window using the per-head
+ * visibility predicate, with no focus change. Used at startup after
+ * head_workspace[] has been restored and after RandR hotplug remap. */
+void wWorkspaceReconcileHeads(WScreen *scr)
+{
+	WWindow *tmp;
+
+	if (!w_global.config->per_head_workspaces)
+		return;
+
+	for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
+		Bool visible = wWindowIsVisibleOnAnyHead(tmp);
+
+		if (tmp->flags.hidden)
+			continue;
+		if (visible) {
+			if (!(tmp->flags.mapped || tmp->flags.miniaturized || tmp->flags.shaded))
+				wWindowMap(tmp);
+			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
+			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
+				tmp->icon->mapped = 1;
+				XMapWindow(dpy, tmp->icon->core->window);
+			}
+		} else {
+			if ((tmp->flags.mapped || tmp->flags.shaded)
+			    && !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace)
+				wWindowUnmap(tmp);
+			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
+			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
+				XUnmapWindow(dpy, tmp->icon->core->window);
+				tmp->icon->mapped = 0;
+			}
+		}
+	}
+}
+
+void wWorkspaceClearOutputPins(WScreen *scr)
+{
+	int i, k;
+
+	for (i = 0; i < scr->workspace_count; i++) {
+		WWorkspace *ws = scr->workspaces[i];
+		for (k = 0; k < ws->head_name_count; k++)
+			wfree(ws->head_names[k]);
+		if (ws->head_names)
+			wfree(ws->head_names);
+		ws->head_names = NULL;
+		ws->head_name_count = 0;
+	}
+}
+
+static void addPinName(WWorkspace *ws, const char *name)
+{
+	int i;
+
+	if (!name || ws->head_name_count >= WM_MAX_HEADS)
+		return;
+	for (i = 0; i < ws->head_name_count; i++) {
+		if (strcmp(ws->head_names[i], name) == 0)
+			return;
+	}
+	ws->head_names = wrealloc(ws->head_names,
+				  sizeof(char *) * (ws->head_name_count + 1));
+	ws->head_names[ws->head_name_count++] = wstrdup(name);
+}
+
+/* Parse the WorkspaceOutputs dictionary from the WindowMaker defaults
+ * domain. Keys are 1-based workspace numbers (or names, resolved at
+ * parse time), values are an output-name string or an array of strings.
+ * Unknown workspaces are warned and skipped, unknown output names are
+ * accepted so a pin survives the output being unplugged. */
+void wWorkspaceLoadOutputPins(WScreen *scr, WMPropList *wmaker_dict)
+{
+	WMPropList *key, *pins, *keys, *k, *v;
+	int i, n;
+
+	wWorkspaceClearOutputPins(scr);
+
+	if (!wmaker_dict || !WMIsPLDictionary(wmaker_dict))
+		return;
+
+	key = WMCreatePLString("WorkspaceOutputs");
+	pins = WMGetFromPLDictionary(wmaker_dict, key);
+	WMReleasePropList(key);
+	if (!pins || !WMIsPLDictionary(pins))
+		return;
+
+	keys = WMGetPLDictionaryKeys(pins);
+	if (!keys)
+		return;
+	n = WMGetPropListItemCount(keys);
+	for (i = 0; i < n; i++) {
+		int w;
+
+		k = WMGetFromPLArray(keys, i);
+		if (!k || !WMIsPLString(k))
+			continue;
+		w = wGetWorkspaceNumber(scr, WMGetFromPLString(k));
+		if (w < 0 || w >= scr->workspace_count) {
+			wwarning(_("WorkspaceOutputs: unknown workspace \"%s\""),
+				 WMGetFromPLString(k));
+			continue;
+		}
+		v = WMGetFromPLDictionary(pins, k);
+		if (!v)
+			continue;
+		if (WMIsPLString(v)) {
+			addPinName(scr->workspaces[w], WMGetFromPLString(v));
+		} else if (WMIsPLArray(v)) {
+			int j, m = WMGetPropListItemCount(v);
+			for (j = 0; j < m; j++) {
+				WMPropList *e = WMGetFromPLArray(v, j);
+				if (e && WMIsPLString(e))
+					addPinName(scr->workspaces[w], WMGetFromPLString(e));
+			}
+		}
+	}
+	WMReleasePropList(keys);
+}
+
+/* Pick a workspace for a head that has no restored value: prefer one
+ * pinned to that head's output, then the first allowed workspace not
+ * currently shown on any other head, then any allowed workspace even if
+ * already shown elsewhere. If every existing workspace is pinned to
+ * outputs other than this head's, create a fresh unpinned workspace so
+ * the head never ends up showing one its WorkspaceOutputs forbid. */
+int wWorkspaceDefaultForHead(WScreen *scr, int head)
+{
+	int i, h, busy;
+
+	for (i = 0; i < scr->workspace_count; i++) {
+		WWorkspace *ws = scr->workspaces[i];
+		if (ws->head_name_count > 0 && wWorkspaceIsAllowedOnHead(scr, i, head))
+			return i;
+	}
+	for (i = 0; i < scr->workspace_count; i++) {
+		if (!wWorkspaceIsAllowedOnHead(scr, i, head))
+			continue;
+		busy = 0;
+		for (h = 0; h < wHeadCount(scr); h++) {
+			if (h != head && scr->head_workspace[h] == i) {
+				busy = 1;
+				break;
+			}
+		}
+		if (!busy)
+			return i;
+	}
+	for (i = 0; i < scr->workspace_count; i++) {
+		if (wWorkspaceIsAllowedOnHead(scr, i, head))
+			return i;
+	}
+
+	i = wWorkspaceNew(scr);
+	if (i >= 0) {
+		wwarning(_("no workspace allowed on output \"%s\", created \"%s\""),
+			 wOutputNameForHead(scr, head) ? wOutputNameForHead(scr, head) : "?",
+			 scr->workspaces[i]->name);
+		return i;
+	}
+
+	/* MAX_WORKSPACES reached and every one of them is pinned away from
+	 * this head, so the config is unsatisfiable as written. Drop the pin
+	 * on workspace 0 so the returned value is genuinely allowed and the
+	 * caller never forces a disallowed workspace onto the head. */
+	{
+		WWorkspace *ws = scr->workspaces[0];
+		int k;
+
+		for (k = 0; k < ws->head_name_count; k++)
+			wfree(ws->head_names[k]);
+		if (ws->head_names)
+			wfree(ws->head_names);
+		ws->head_names = NULL;
+		ws->head_name_count = 0;
+		wwarning(_("no workspace allowed on output \"%s\" and at MAX_WORKSPACES, "
+			   "dropping WorkspaceOutputs pin on \"%s\""),
+			 wOutputNameForHead(scr, head) ? wOutputNameForHead(scr, head) : "?",
+			 ws->name);
+	}
+	return 0;
+}
+
+/* Persist per-head workspaces by RandR output name so a monitor keeps
+ * its workspace across reconnects and head index reorders, with a "#N"
+ * index fallback for unnamed (non-RandR) heads. Stored in WMState next
+ * to the existing workspace session keys. Values are 1-based strings. */
+void wWorkspaceSaveHeadState(WScreen *scr)
+{
+	WMPropList *dict, *k, *v;
+	char buf[64];
+	int h;
+
+	if (!w_global.config->per_head_workspaces || !scr->session_state)
+		return;
+
+	make_keys();
+	dict = WMCreatePLDictionary(NULL, NULL);
+	for (h = 0; h < wHeadCount(scr); h++) {
+		const char *out = wOutputNameForHead(scr, h);
+		if (out)
+			k = WMCreatePLString(out);
+		else {
+			snprintf(buf, sizeof(buf), "#%d", h);
+			k = WMCreatePLString(buf);
+		}
+		snprintf(buf, sizeof(buf), "%d", scr->head_workspace[h] + 1);
+		v = WMCreatePLString(buf);
+		WMPutInPLDictionary(dict, k, v);
+		WMReleasePropList(k);
+		WMReleasePropList(v);
+	}
+	WMPutInPLDictionary(scr->session_state, dHeadWorkspaces, dict);
+	WMReleasePropList(dict);
+}
+
+void wWorkspaceRestoreHeadState(WScreen *scr)
+{
+	WMPropList *dict, *k, *v;
+	char buf[64];
+	int h, w;
+
+	if (!w_global.config->per_head_workspaces)
+		return;
+
+	make_keys();
+	for (h = 0; h < WM_MAX_HEADS; h++) {
+		scr->head_workspace[h] = -1;
+		scr->last_head_workspace[h] = 0;
+	}
+
+	dict = scr->session_state
+		? WMGetFromPLDictionary(scr->session_state, dHeadWorkspaces) : NULL;
+	if (dict && WMIsPLDictionary(dict)) {
+		for (h = 0; h < wHeadCount(scr); h++) {
+			const char *out = wOutputNameForHead(scr, h);
+			v = NULL;
+			if (out) {
+				k = WMCreatePLString(out);
+				v = WMGetFromPLDictionary(dict, k);
+				WMReleasePropList(k);
+			}
+			if (!v) {
+				snprintf(buf, sizeof(buf), "#%d", h);
+				k = WMCreatePLString(buf);
+				v = WMGetFromPLDictionary(dict, k);
+				WMReleasePropList(k);
+			}
+			if (v && WMIsPLString(v)
+			    && sscanf(WMGetFromPLString(v), "%d", &w) == 1
+			    && w - 1 >= 0 && w - 1 < scr->workspace_count
+			    && wWorkspaceIsAllowedOnHead(scr, w - 1, h))
+				scr->head_workspace[h] = w - 1;
+		}
+	}
+
+	for (h = 0; h < wHeadCount(scr); h++) {
+		if (scr->head_workspace[h] < 0)
+			scr->head_workspace[h] = wWorkspaceDefaultForHead(scr, h);
+	}
+	scr->last_active_head = scr->xine_info.primary_head;
+	scr->current_workspace = scr->head_workspace[scr->last_active_head];
 }
 
 static void switchWSCommand(WMenu * menu, WMenuEntry * entry)

@@ -251,6 +251,14 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (napp && w_global.config->highlight_active_app)
 		wApplicationActivate(napp);
 
+	/* In per-head mode the EWMH _NET_CURRENT_DESKTOP must follow the
+	 * focused head, so Chromium/Electron see the right desktop when
+	 * comparing it against _NET_WM_DESKTOP of windows on a secondary
+	 * monitor. wWorkspaceSetCurrentHead also updates the
+	 * compatibility scr->current_workspace mirror and clip label. */
+	if (w_global.config->per_head_workspaces)
+		wWorkspaceSetCurrentHead(scr, wWindowEffectiveHead(wwin));
+
 	XFlush(dpy);
 	old_scr = scr;
 }
@@ -294,7 +302,7 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 			continue;
 		if (WFLAGP(candidate, no_focusable))
 			continue;
-		if (!candidate->frame || candidate->frame->workspace != scr->current_workspace)
+		if (!candidate->frame || !wWindowIsVisibleOnAnyHead(candidate))
 			continue;
 
 		/* ignore fully covered windows if cannot raised them */
@@ -969,7 +977,7 @@ static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, i
 	/* The focused window is always the last in the list */
 	while (tmp->prev) {
 		/* ignore windows in other workspaces etc */
-		if (tmp->prev->frame->workspace != wwin->screen_ptr->current_workspace
+		if (!wWindowIsVisibleOnAnyHead(tmp->prev)
 		    || tmp->prev->flags.miniaturized || tmp->prev->flags.hidden) {
 			tmp = tmp->prev;
 			continue;
@@ -996,7 +1004,7 @@ static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, i
 
 	tmp = wwin;
 	while (tmp->prev) {
-		if (tmp->prev->frame->workspace != wwin->screen_ptr->current_workspace
+		if (!wWindowIsVisibleOnAnyHead(tmp->prev)
 		    || tmp->prev->flags.miniaturized || tmp->prev->flags.hidden) {
 			tmp = tmp->prev;
 			continue;
@@ -1518,7 +1526,7 @@ void wIconifyWindow(WWindow *wwin)
 			return;
 	}
 
-	present = wwin->frame->workspace == wwin->screen_ptr->current_workspace;
+	present = wWindowIsVisibleOnAnyHead(wwin);
 
 	/* if the window is in another workspace, simplify process */
 	if (present) {
@@ -1611,8 +1619,7 @@ void wIconifyWindow(WWindow *wwin)
 	wwin->flags.skip_next_animation = 0;
 
 	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
-		if (wwin->screen_ptr->current_workspace == wwin->frame->workspace ||
-		    IS_OMNIPRESENT(wwin) || w_global.config->sticky_icons)
+		if (wWindowIsVisibleOnAnyHead(wwin) || w_global.config->sticky_icons)
 			XMapWindow(dpy, wwin->icon->core->window);
 
 		AddToStackList(wwin->icon->core);
@@ -2385,8 +2392,23 @@ void wSelectWindow(WWindow *wwin, Bool flag)
 
 void wMakeWindowVisible(WWindow *wwin)
 {
-	if (wwin->frame->workspace != wwin->screen_ptr->current_workspace)
-		wWorkspaceChange(wwin->screen_ptr, wwin->frame->workspace);
+	if (!wWindowIsVisibleOnAnyHead(wwin)) {
+		if (w_global.config->per_head_workspaces) {
+			WScreen *scr = wwin->screen_ptr;
+			int ws = wwin->frame->workspace;
+			int head = wWindowEffectiveHead(wwin);
+
+			/* Prefer the window's own head, but never push a
+			 * pinned workspace onto a head that WorkspaceOutputs
+			 * forbids, fall back to a head that may show it. */
+			if (!wWorkspaceIsAllowedOnHead(scr, ws, head))
+				head = wHeadShowingWorkspace(scr, ws);
+			if (wWorkspaceIsAllowedOnHead(scr, ws, head))
+				wWorkspaceForceChangeOnHead(scr, ws, head);
+		} else {
+			wWorkspaceChange(wwin->screen_ptr, wwin->frame->workspace);
+		}
+	}
 
 	if (wwin->flags.shaded)
 		wUnshadeWindow(wwin);

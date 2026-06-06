@@ -36,6 +36,7 @@
 #include "application.h"
 #include "dock.h"
 #include "xinerama.h"
+#include "workspace.h"
 #include "placement.h"
 
 
@@ -278,7 +279,7 @@ static int calcSumOfCoveredAreas(WWindow *wwin, int x, int y, int w, int h)
 		ty = test_window->frame_y;
 
 		if (test_window->flags.mapped || (test_window->flags.shaded &&
-		     test_window->frame->workspace == wwin->screen_ptr->current_workspace &&
+		     wWindowIsVisibleOnAnyHead(test_window) &&
 		     !(test_window->flags.miniaturized || test_window->flags.hidden))) {
 			sum_isect += calcIntersectionArea(tx, ty, tw, th, x, y, w, h);
 		}
@@ -322,7 +323,7 @@ window_overlaps(WWindow *win, int x, int y, int w, int h, Bool ignore_sunken)
 	    (ty < (y + h)) && ((ty + th) > y) &&
 	    (win->flags.mapped ||
 	     (win->flags.shaded &&
-	      win->frame->workspace == win->screen_ptr->current_workspace &&
+	      wWindowIsVisibleOnAnyHead(win) &&
 	      !(win->flags.miniaturized || win->flags.hidden)))) {
 		return True;
 	}
@@ -502,6 +503,7 @@ static void randomPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret,
 void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned height)
 {
 	WScreen *scr = wwin->screen_ptr;
+	int head;
 	int h = WMFontHeight(scr->title_font)
 		+ (w_global.config->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
 
@@ -511,8 +513,17 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 	if (h < w_global.config->window_title_min_height)
 		h = w_global.config->window_title_min_height;
 
-	WArea usableArea = wGetUsableAreaForHead(scr, wGetHeadForPointerLocation(scr),
-						 NULL, True);
+	/* In per-head mode the manage path seeds wwin->last_head with the
+	 * head already showing the target workspace, so place there
+	 * rather than under the pointer (which may be on a head where
+	 * the target workspace is not visible). */
+	if (w_global.config->per_head_workspaces
+	    && wwin->last_head >= 0 && wwin->last_head < wHeadCount(scr))
+		head = wwin->last_head;
+	else
+		head = wGetHeadForPointerLocation(scr);
+
+	WArea usableArea = wGetUsableAreaForHead(scr, head, NULL, True);
 
 	switch (w_global.config->window_placement) {
 	case WPM_MANUAL:

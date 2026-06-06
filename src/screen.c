@@ -945,6 +945,13 @@ void wScreenRestoreState(WScreen * scr)
 	}
 
 	wWorkspaceRestoreState(scr);
+
+	if (w_global.config->per_head_workspaces) {
+		wWorkspaceLoadOutputPins(scr,
+			w_global.domain.wmaker ? w_global.domain.wmaker->dictionary : NULL);
+		wWorkspaceRestoreHeadState(scr);
+	}
+
 	wScreenUpdateUsableArea(scr);
 }
 
@@ -988,6 +995,7 @@ void wScreenSaveState(WScreen * scr)
 	}
 
 	wWorkspaceSaveState(scr, old_state);
+	wWorkspaceSaveHeadState(scr);
 
 	if (!wPreferences.flags.nodrawer) {
 		wDrawersSaveState(scr);

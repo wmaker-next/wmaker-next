@@ -1110,6 +1110,15 @@ static void updateCurrentWorkspace(WScreen *scr)
 	WXSetCardinal(dpy, scr->root_win, net_current_desktop, scr->current_workspace);
 }
 
+/* Public wrapper so per-head focus changes can republish
+ * _NET_CURRENT_DESKTOP without going through the WMNWorkspaceChanged
+ * observer, since in per-head mode the EWMH current desktop must follow
+ * the focused head even when no workspace switch happened. */
+void wNETWMUpdateCurrentDesktop(WScreen *scr)
+{
+	updateCurrentWorkspace(scr);
+}
+
 static void updateWorkspaceNames(WScreen *scr)
 {
 	char buf[MAX_WORKSPACES * (MAX_WORKSPACENAME_WIDTH + 1)], *pos;
@@ -2018,7 +2027,13 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		Bool same_head = True;
 		Bool allow;
 
-		if (scr->xine_info.count > 1 && scr->focused_window
+		if (w_global.config->per_head_workspaces) {
+			/* In per-head mode the target may be visible on a
+			 * head whose workspace differs from the mirror,
+			 * collapse both gates into one visibility check. */
+			same_workspace = wWindowIsVisibleOnAnyHead(wwin);
+			same_head = True;
+		} else if (scr->xine_info.count > 1 && scr->focused_window
 		    && scr->focused_window->flags.mapped)
 			same_head = wGetHeadForWindow(wwin)
 				    == wGetHeadForWindow(scr->focused_window);

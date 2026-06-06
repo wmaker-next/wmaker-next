@@ -108,6 +108,7 @@ void wDrawersRestoreState(WScreen *scr);
 int wIsADrawer(WAppIcon *aicon);
 
 void wClipUpdateForWorkspaceChange(WScreen *scr, int workspace);
+void wClipRepointForActiveHead(WScreen *scr, int old_workspace, int new_workspace);
 
 RImage *wClipMakeTile(RImage *normalTile);
 RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile);

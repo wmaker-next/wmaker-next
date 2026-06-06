@@ -60,6 +60,7 @@
 #include "startup.h"
 #include "dock.h"
 #include "workspace.h"
+#include "xinerama.h"
 #include "keybind.h"
 #include "framewin.h"
 #include "session.h"
@@ -742,10 +743,21 @@ void StartUp(Bool defaultScreenOnly)
 		}
 
 		/* go to workspace where we were before restart */
-		if (lastDesktop >= 0)
+		if (w_global.config->per_head_workspaces) {
+			/* head_workspace[] was already restored from
+			 * HeadWorkspaces by wScreenRestoreState, just bring
+			 * each head to its workspace and set the mirror. */
+			int h;
+			for (h = 0; h < wHeadCount(wScreen[j]); h++)
+				wWorkspaceForceChangeOnHead(wScreen[j],
+					wScreen[j]->head_workspace[h], h);
+			wWorkspaceSetCurrentHead(wScreen[j],
+				wScreen[j]->xine_info.primary_head);
+		} else if (lastDesktop >= 0) {
 			wWorkspaceForceChange(wScreen[j], lastDesktop);
-		else
+		} else {
 			wSessionRestoreLastWorkspace(wScreen[j]);
+		}
 	}
 
 	for (j = 0; j < w_global.screen_count; j++) {
@@ -967,7 +979,14 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 		WMHandleEvent(&ev);
 	}
 	scr->last_workspace = 0;
-	wWorkspaceForceChange(scr, 0);
+	if (w_global.config->per_head_workspaces) {
+		wWorkspaceReconcileHeads(scr);
+		wWorkspaceForceChangeOnHead(scr,
+			scr->head_workspace[scr->xine_info.primary_head],
+			scr->xine_info.primary_head);
+	} else {
+		wWorkspaceForceChange(scr, 0);
+	}
 	if (!wPreferences.flags.noclip)
 		wDockShowIcons(scr->workspaces[scr->current_workspace]->clip);
 	scr->flags.startup2 = 0;

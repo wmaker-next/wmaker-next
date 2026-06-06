@@ -652,6 +652,7 @@ static void test_defaults(void)
 	CHECK(config->clip_merged_in_dock == 0);
 	CHECK(config->disable_miniwindows == 0);
 	CHECK(config->enable_workspace_pager == 0);
+	CHECK(config->per_head_workspaces == 0);
 	CHECK(config->switch_panel_icon_size == 64);
 	CHECK(config->icon_yard == (IY_BOTTOM | IY_LEFT | IY_HORIZ));
 	CHECK(strcmp(config->pixmap_path, EXPECTED_PIXMAP_PATH) == 0);
@@ -888,6 +889,7 @@ static void test_valid_parse(void)
 			      "DisableDock = YES; DisableClip = YES; "
 			      "DisableDrawers = YES; ClipMergedInDock = YES; "
 			      "DisableMiniwindows = YES; EnableWorkspacePager = YES; "
+			      "PerHeadWorkspaces = YES; "
 			      "SwitchPanelIconSize = 40; IconPosition = trv; "
 			      "PixmapPath = (\"/tmp/pix\", \"/tmp/bg\"); "
 			      "IconPath = (\"/tmp/icons\"); StickyIcons = YES; "
@@ -992,6 +994,7 @@ static void test_valid_parse(void)
 	CHECK(config->clip_merged_in_dock == 1);
 	CHECK(config->disable_miniwindows == 1);
 	CHECK(config->enable_workspace_pager == 1);
+	CHECK(config->per_head_workspaces == 1);
 	CHECK(config->switch_panel_icon_size == 40);
 	CHECK(config->icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
 	CHECK(strcmp(config->pixmap_path, "/tmp/pix:/tmp/bg") == 0);

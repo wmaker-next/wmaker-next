@@ -27,7 +27,13 @@
 
 void wInitXinerama(WScreen *scr);
 
+/* Shared upper bound on Xinerama/RandR heads, used to size fixed
+ * per-head arrays in WScreen and as the RandR output cap. Loops over
+ * per-head state must still clamp to wXineramaHeads(scr). */
+#define WM_MAX_HEADS 32
+
 #define wXineramaHeads(scr) ((scr)->xine_info.count ? (scr)->xine_info.count : 1)
+#define wHeadCount(scr)      WMIN(wXineramaHeads(scr), WM_MAX_HEADS)
 
 #define XFLAG_NONE	0x00
 #define XFLAG_DEAD	0x01
@@ -63,6 +69,13 @@ void wGetRectUnion(const WMRect *rect1, const WMRect *rect2, WMRect *dest);
 
 Bool wWindowTouchesHead(WWindow *wwin, int head);
 Bool wAppIconTouchesHead(WAppIcon *aicon, int head);
+
+/* Per-head workspace support */
+int wGetActiveHead(WScreen *scr);
+int wWindowEffectiveHead(WWindow *wwin);
+int wHeadForOutputName(WScreen *scr, const char *name);
+const char *wOutputNameForHead(WScreen *scr, int head);
+void wClearHeadOutputNames(WScreen *scr);
 
 #endif
 

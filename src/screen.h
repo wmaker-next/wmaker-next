@@ -30,6 +30,13 @@
 #define PRINT_WINDOW 2
 #define PRINT_PARTIAL 3
 
+/* Shared upper bound on Xinerama/RandR heads, see xinerama.h. Kept here
+ * because WScreen embeds fixed per-head arrays and screen.h must not
+ * include xinerama.h. */
+#ifndef WM_MAX_HEADS
+#define WM_MAX_HEADS 32
+#endif
+
 typedef struct {
     WMRect *screens;
     int count;                 /* screen count, 0 = inactive */
@@ -135,6 +142,16 @@ typedef struct _WScreen {
 
     int current_workspace;	       /* current workspace number */
     int last_workspace;		       /* last used workspace number */
+
+    /* Per-head independent workspace state. With PerHeadWorkspaces off
+     * these stay zeroed and current_workspace is the only source of
+     * truth. With it on, current_workspace becomes a compatibility
+     * mirror of head_workspace[last_active_head] for legacy UI/EWMH
+     * paths, while visibility decisions use head_workspace[] directly. */
+    int head_workspace[WM_MAX_HEADS];      /* active workspace per head */
+    int last_head_workspace[WM_MAX_HEADS]; /* previous active workspace per head */
+    int last_active_head;                  /* head of last focused/pointer event */
+    char *head_output_name[WM_MAX_HEADS];  /* RandR output name per active head, or NULL */
 
     Time net_last_user_time;	       /* newest _NET_WM_USER_TIME observed,
 					* used to deny focus to windows that

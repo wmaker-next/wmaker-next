@@ -751,7 +751,7 @@ static void updateMoveData(WWindow * wwin, MoveData * data)
 	data->count = 0;
 	tmp = scr->focused_window;
 	while (tmp) {
-		if (tmp != wwin && scr->current_workspace == tmp->frame->workspace
+		if (tmp != wwin && wWindowIsVisibleOnAnyHead(tmp)
 		    && !tmp->flags.miniaturized
 		    && !tmp->flags.hidden && !tmp->flags.obscured && !WFLAGP(tmp, sunken)) {
 			data->topList[data->count] = tmp;
@@ -1673,7 +1673,9 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 					wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww, wh - vert_border);
 					wWindowSynthConfigureNotify(wwin);
 				}
-				wWindowChangeWorkspace(wwin, scr->current_workspace);
+				wwin->last_head = wGetHeadForWindow(wwin);
+				wWindowChangeWorkspace(wwin,
+					wWorkspaceForHead(scr, wwin->last_head));
 				wSetFocusTo(scr, wwin);
 			}
 
@@ -1937,8 +1939,16 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 #endif
 				XUngrabKeyboard(dpy, CurrentTime);
 				XUngrabServer(dpy);
+				wwin->last_head = wGetHeadForWindow(wwin);
 				if (!opaqueMove) {
-					wWindowChangeWorkspace(wwin, scr->current_workspace);
+					wWindowChangeWorkspace(wwin,
+						wWorkspaceForHead(scr, wwin->last_head));
+					wSetFocusTo(scr, wwin);
+				} else if (w_global.config->per_head_workspaces) {
+					/* opaque drag across a head boundary
+					 * adopts that head's workspace */
+					wWindowChangeWorkspace(wwin,
+						wWorkspaceForHead(scr, wwin->last_head));
 					wSetFocusTo(scr, wwin);
 				}
 				if (w_global.config->move_display == WDIS_NEW)
@@ -2384,7 +2394,7 @@ static void selectWindowsInside(WScreen * scr, int x1, int y1, int x2, int y2)
 	tmpw = scr->focused_window;
 	while (tmpw != NULL) {
 		if (!(tmpw->flags.miniaturized || tmpw->flags.hidden)) {
-			if ((tmpw->frame->workspace == scr->current_workspace || IS_OMNIPRESENT(tmpw))
+			if (wWindowIsVisibleOnAnyHead(tmpw)
 			    && (tmpw->frame_x >= x1) && (tmpw->frame_y >= y1)
 			    && (tmpw->frame->core->width + tmpw->frame_x <= x2)
 			    && (tmpw->frame->core->height + tmpw->frame_y <= y2)) {

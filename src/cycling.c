@@ -35,6 +35,7 @@
 #include "stacking.h"
 #include "cycling.h"
 #include "xinerama.h"
+#include "workspace.h"
 #include "switchpanel.h"
 #include "hotcorner.h"
 
@@ -136,7 +137,7 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 
 		oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
 	} else {
-		if (wwin->frame->workspace == scr->current_workspace)
+		if (wWindowIsVisibleOnAnyHead(wwin))
 			newFocused = wwin;
 		else
 			newFocused = NULL;

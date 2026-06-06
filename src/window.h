@@ -242,6 +242,10 @@ typedef struct WWindow {
 	int cmap_window_no;
 	Window *cmap_windows;
 
+	int last_head;				/* last reliable Xinerama head, used for
+						 * per-head workspace visibility when the
+						 * window is unmapped or off-screen */
+
 	/* move/resize state for _NET_WM_MOVERESIZE support */
 	struct {
 		int active;			/* 1 if move/resize is in progress */

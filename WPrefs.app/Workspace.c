@@ -36,6 +36,7 @@ typedef struct _Panel {
 	WMButton *linkB;
 	WMButton *cyclB;
 	WMButton *newB;
+	WMButton *perheadB;
 	WMLabel *linkL;
 	WMLabel *cyclL;
 	WMLabel *newL;
@@ -60,6 +61,8 @@ static void showData(_Panel * panel)
 	WMSetButtonSelected(panel->cyclB, GetBoolForKey("CycleWorkspaces"));
 
 	WMSetButtonSelected(panel->newB, GetBoolForKey("AdvanceToNewWorkspace"));
+
+	WMSetButtonSelected(panel->perheadB, GetBoolForKey("PerHeadWorkspaces"));
 
 	/* popup items are added in WD_NONE..WD_BOTTOMRIGHT order in createPanel(),
 	 * so the schema value is the popup index directly */
@@ -90,18 +93,18 @@ static void createPanel(Panel * p)
 
     /***************** Workspace Navigation *****************/
 	panel->navF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->navF, 490, 210);
-	WMMoveWidget(panel->navF, 15, 8);
+	WMResizeWidget(panel->navF, 490, 200);
+	WMMoveWidget(panel->navF, 15, 6);
 	WMSetFrameTitle(panel->navF, _("Workspace Navigation"));
 
 	panel->cyclB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->cyclB, 410, 34);
-	WMMoveWidget(panel->cyclB, 75, 26);
+	WMMoveWidget(panel->cyclB, 75, 18);
 	WMSetButtonText(panel->cyclB, _("Wrap to the first workspace from the last workspace"));
 
 	panel->cyclL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->cyclL, 60, 60);
-	WMMoveWidget(panel->cyclL, 10, 12);
+	WMMoveWidget(panel->cyclL, 10, 6);
 	WMSetLabelImagePosition(panel->cyclL, WIPImageOnly);
 	CreateImages(scr, rc, xis, CYCLE_FILE, &icon1, NULL);
 	if (icon1)
@@ -112,12 +115,12 @@ static void createPanel(Panel * p)
 
 	/**/ panel->linkB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->linkB, 410, 34);
-	WMMoveWidget(panel->linkB, 75, 73);
+	WMMoveWidget(panel->linkB, 75, 64);
 	WMSetButtonText(panel->linkB, _("Switch workspaces while dragging windows"));
 
 	panel->linkL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->linkL, 60, 40);
-	WMMoveWidget(panel->linkL, 10, 77);
+	WMMoveWidget(panel->linkL, 10, 68);
 	WMSetLabelImagePosition(panel->linkL, WIPImageOnly);
 	CreateImages(scr, rc, xis, DONT_LINK_FILE, &icon1, NULL);
 	if (icon1)
@@ -128,12 +131,12 @@ static void createPanel(Panel * p)
 
 	/**/ panel->newB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->newB, 410, 34);
-	WMMoveWidget(panel->newB, 75, 115);
+	WMMoveWidget(panel->newB, 75, 108);
 	WMSetButtonText(panel->newB, _("Automatically create new workspaces"));
 
 	panel->newL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->newL, 60, 20);
-	WMMoveWidget(panel->newL, 10, 123);
+	WMMoveWidget(panel->newL, 10, 116);
 	WMSetLabelImagePosition(panel->newL, WIPImageOnly);
 	CreateImages(scr, rc, xis, ADVANCE_FILE, &icon1, NULL);
 	if (icon1)
@@ -144,13 +147,13 @@ static void createPanel(Panel * p)
 
 	/**/ panel->posL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->posL, 275, 30);
-	WMMoveWidget(panel->posL, 75, 161);
+	WMMoveWidget(panel->posL, 75, 154);
 	// WMSetLabelTextAlignment(panel->posL, WARight);
 	WMSetLabelText(panel->posL, _("Position of workspace name display"));
 
 	panel->posiL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->posiL, 60, 40);
-	WMMoveWidget(panel->posiL, 10, 156);
+	WMMoveWidget(panel->posiL, 10, 149);
 	WMSetLabelImagePosition(panel->posiL, WIPImageOnly);
 	CreateImages(scr, rc, xis, WSNAME_FILE, &icon1, NULL);
 	if (icon1)
@@ -161,7 +164,7 @@ static void createPanel(Panel * p)
 
 	panel->posP = WMCreatePopUpButton(panel->navF);
 	WMResizeWidget(panel->posP, 125, 20);
-	WMMoveWidget(panel->posP, 350, 166);
+	WMMoveWidget(panel->posP, 350, 159);
 	WMAddPopUpButtonItem(panel->posP, _("Disable"));
 	WMAddPopUpButtonItem(panel->posP, _("Center"));
 	WMAddPopUpButtonItem(panel->posP, _("Top"));
@@ -172,6 +175,16 @@ static void createPanel(Panel * p)
 	WMAddPopUpButtonItem(panel->posP, _("Bottom/Right"));
 
 	WMMapSubwidgets(panel->navF);
+
+	panel->perheadB = WMCreateSwitchButton(panel->box);
+	WMResizeWidget(panel->perheadB, 490, 20);
+	WMMoveWidget(panel->perheadB, 15, 210);
+	WMSetButtonText(panel->perheadB,
+		_("Each monitor keeps its own active workspace (requires restart)"));
+	WMSetBalloonTextForView(
+		_("PerHeadWorkspaces is read once at startup. The workspace pager\n"
+		  "and per-head clip UI are not yet per-head aware in this mode."),
+		WMWidgetView(panel->perheadB));
 
 	if (xis)
 		RReleaseImage(xis);
@@ -191,6 +204,7 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(!WMGetButtonSelected(panel->linkB), "DontLinkWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->cyclB), "CycleWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AdvanceToNewWorkspace");
+	SetBoolForKey(WMGetButtonSelected(panel->perheadB), "PerHeadWorkspaces");
 
 	SetEnumForKey(tmp, "WorkspaceNameDisplayPosition");
 }
