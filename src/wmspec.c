@@ -1878,7 +1878,7 @@ void wNETWMCheckInitialFrameState(WWindow *wwin)
 
 static void handleDesktopNames(WScreen *scr)
 {
-	char *data, *names[32];
+	char *data, *name;
 	size_t i, len;
 	int n;
 
@@ -1886,17 +1886,20 @@ static void handleDesktopNames(WScreen *scr)
 	if (data == NULL)
 		return;
 
+	/* the property is a sequence of NUL-terminated UTF-8 strings, one per
+	 * workspace from index 0, walk it and rename each workspace as its
+	 * terminator is reached, WXGetUTF8String guarantees data[len] == '\0'
+	 * so an unterminated trailing name is still applied */
 	n = 0;
-	names[n] = data;
-	for (i = 0; i < len; i++) {
+	name = data;
+	for (i = 0; i <= len; i++) {
 		if (data[i] == 0) {
+			if (*name != 0)
+				wWorkspaceRename(scr, n, name);
 			n++;
-			if (n >= (int)wlengthof(names))
+			if (n >= MAX_WORKSPACES)
 				break;
-			names[n] = &data[i];
-		} else if (*names[n] == 0) {
-			names[n] = &data[i];
-			wWorkspaceRename(scr, n, names[n]);
+			name = &data[i + 1];
 		}
 	}
 	wfree(data);
