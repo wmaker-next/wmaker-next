@@ -1084,7 +1084,7 @@ Bool start_bg_helper(WScreen *scr)
 		scr->helper_pid = pid;
 		scr->flags.backimage_helper_launched = 1;
 
-		wAddDeathHandler(pid, track_bg_helper_death, scr);
+		wAddDeathHandler(pid, track_bg_helper_death, scr, "helper", -1);
 
 		return True;
 	}

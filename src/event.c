@@ -135,11 +135,17 @@ typedef struct DeathHandler {
 	WDeathHandler *callback;
 	pid_t pid;
 	void *client_data;
+	/* tags carried into the IPC child_exit event so subscribers
+	 * can tell which subsystem launched the process, source is a
+	 * string literal so only the pointer is stored */
+	const char *source;
+	int slot;
 } DeathHandler;
 
 static WMArray *deathHandlers = NULL;
 
-WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler * callback, void *cdata)
+WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
+			      const char *source, int slot)
 {
 	DeathHandler *handler;
 
@@ -150,6 +156,8 @@ WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler * callback, void *cdata)
 	handler->pid = pid;
 	handler->callback = callback;
 	handler->client_data = cdata;
+	handler->source = source ? source : "unknown";
+	handler->slot = slot;
 
 	if (!deathHandlers)
 		deathHandlers = WMCreateArrayWithDestructor(8, free);
@@ -507,7 +515,9 @@ void NotifyDeadProcess(pid_t pid, int wait_status)
 static void handleDeadProcess(void)
 {
 	DeathHandler *tmp;
-	int i, ws;
+	const char *source;
+	pid_t dead_pid;
+	int i, ws, slot;
 	unsigned int es;
 
 	for (i = 0; i < deadProcessPtr; i++) {
@@ -517,15 +527,28 @@ static void handleDeadProcess(void)
 	/* get the pids on the queue and call handlers */
 	while (deadProcessPtr > 0) {
 		deadProcessPtr--;
+		dead_pid = deadProcesses[deadProcessPtr].pid;
 		ws = deadProcesses[deadProcessPtr].wait_status;
 		es = WIFEXITED(ws) ? WEXITSTATUS(ws) : 0;
 
-		/* IPC subscribers see the raw wait status before any
-		 * registered death handler runs, so a test driver can
-		 * assert that the failure dialog the handler raises
-		 * arrives strictly after the child_exit event */
-		wIPCEmitChildExit(deadProcesses[deadProcessPtr].pid, ws,
-				  "unknown", -1);
+		/* peek at the registered handler (without calling it) so
+		 * the IPC event can carry which subsystem launched the
+		 * child, then emit before the handler runs so a test
+		 * driver sees child_exit strictly before any dialog the
+		 * handler raises */
+		source = "unknown";
+		slot = -1;
+		if (deathHandlers) {
+			for (i = WMGetArrayItemCount(deathHandlers) - 1; i >= 0; i--) {
+				tmp = WMGetFromArray(deathHandlers, i);
+				if (tmp && tmp->pid == dead_pid) {
+					source = tmp->source;
+					slot = tmp->slot;
+					break;
+				}
+			}
+		}
+		wIPCEmitChildExit(dead_pid, ws, source, slot);
 
 		if (!deathHandlers)
 			continue;
@@ -535,7 +558,7 @@ static void handleDeadProcess(void)
 			if (!tmp)
 				continue;
 
-			if (tmp->pid == deadProcesses[deadProcessPtr].pid) {
+			if (tmp->pid == dead_pid) {
 				(*tmp->callback) (tmp->pid, es, tmp->client_data);
 				wdelete_death_handler(tmp);
 			}

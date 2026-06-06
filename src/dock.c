@@ -3140,7 +3140,7 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 				state->workspace = scr->current_workspace;
 		}
 		wWindowAddSavedState(btn->wm_instance, btn->wm_class, cmdline, pid, state);
-		wAddDeathHandler(pid, trackDeadProcess, btn->dock);
+		wAddDeathHandler(pid, trackDeadProcess, btn->dock, "dock", btn->yindex);
 	} else if (state) {
 		wfree(state);
 	}

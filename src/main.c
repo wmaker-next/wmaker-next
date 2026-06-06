@@ -362,7 +362,7 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 		data->scr = scr;
 		data->command = wstrdup(command);
 
-		wAddDeathHandler(pid, shellCommandHandler, data);
+		wAddDeathHandler(pid, shellCommandHandler, data, "menu", -1);
 	}
 }
 
@@ -418,7 +418,7 @@ Bool RelaunchWindow(WWindow *wwin)
 		data->command = command;
 
 		/* not actually a shell command */
-		wAddDeathHandler(pid, shellCommandHandler, data);
+		wAddDeathHandler(pid, shellCommandHandler, data, "menu", -1);
 
 		wtokenfree(argv, argc);
 	}

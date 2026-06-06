@@ -32,7 +32,8 @@ typedef void (WDeathHandler)(pid_t pid, unsigned int status, void *cdata);
 noreturn void EventLoop(void);
 void DispatchEvent(XEvent *event);
 void ProcessPendingEvents(void);
-WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata);
+WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
+			      const char *source, int slot);
 #ifdef HAVE_INOTIFY
 void wInotifyCleanup(void);
 #endif
