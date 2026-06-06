@@ -1061,6 +1061,24 @@ dnl ======================================================
 gl_LD_VERSION_SCRIPT
 
 
+dnl Optional tools used by the integration test drivers under test/
+dnl ===============================================================
+dnl These are not required for the build or for `make check`, only for
+dnl the explicit `make check-drive` target which starts a private X
+dnl server and runs the just-built window manager inside it.
+AC_PATH_PROG([XVFB], [Xvfb])
+AC_PATH_PROG([XEPHYR], [Xephyr])
+AC_PATH_PROG([XDOTOOL], [xdotool])
+AC_PATH_PROG([WMCTRL], [wmctrl])
+AM_CONDITIONAL([HAVE_XVFB], [test -n "$XVFB"])
+
+drive_tools=""
+for t in Xvfb:$XVFB Xephyr:$XEPHYR xdotool:$XDOTOOL wmctrl:$WMCTRL ; do
+    AS_CASE([$t], [*:], [], [drive_tools="$drive_tools ${t%%:*}"])
+done
+test -n "$drive_tools" || drive_tools=" none"
+
+
 dnl Add the post-poned compilation options
 dnl ======================================
 WM_CFLAGS_GCC_OPTION_POSTPONED
@@ -1124,6 +1142,7 @@ echo "Supported X extensions:             :$supported_xext"
 echo "Supported graphic format libraries  :$supported_gfx"
 echo "Unsupported features                :$unsupported"
 echo "Pango text layout support in WINGs  : $pango"
+echo "Integration-test tools found        :$drive_tools"
 echo "Translated languages to support     :$supported_locales"
 AS_IF([test "x$native" = "xyes"],
     [AS_ECHO(["Target architecture                 : native"]) ],

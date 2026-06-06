@@ -216,7 +216,31 @@ configure-documentation:
 		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
 		--ignore-prg 'with-x # no use, it would not work without X'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check
+.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive
+
+# Integration drivers under test/ start a private X server and run the
+# just-built window manager inside it. They are deliberately not part
+# of `make check` (which stays X-free and fast), this target runs them
+# on demand. Each driver still does its own per-tool `command -v` check
+# and exits 77 (SKIP) when something it needs is missing, the
+# AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
+DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh
+
+check-drive:
+if HAVE_XVFB
+	@fail=0; for t in $(DRIVE_TESTS); do \
+	  echo "=== $$t ==="; \
+	  "$(top_srcdir)/$$t"; rc=$$?; \
+	  case $$rc in \
+	    0)  echo "PASS  $$t" ;; \
+	    77) echo "SKIP  $$t" ;; \
+	    *)  echo "FAIL  $$t (rc=$$rc)"; fail=1 ;; \
+	  esac; \
+	done; exit $$fail
+else
+	@echo "Xvfb was not found at configure time, install it and re-run configure"
+	@echo "to use the integration drivers under test/"
+endif
 
 # Regenerate every derived file the build knows about, then fail if any
 # tracked file changed (a generated file was committed, or its .in/.texi
