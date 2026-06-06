@@ -338,10 +338,21 @@ dnl ===============================================
 dnl Specify paths to look for libraries and headers
 dnl ===============================================
 AC_ARG_WITH(libs-from, AS_HELP_STRING([--with-libs-from], [pass compiler flags to look for libraries]),
-	[lib_search_path="$withval"], [lib_search_path='-L${libdir}'])
+	[lib_search_path="$withval"
+	 wm_config_lib_search_path="$withval"],
+	[lib_search_path='-L${libdir}'
+	 wm_config_lib_search_path=""])
 
 AC_ARG_WITH(incs-from, AS_HELP_STRING([--with-incs-from], [pass compiler flags to look for header files]),
-	[inc_search_path="$withval"], [inc_search_path='-I${includedir}'])
+	[inc_search_path="$withval"
+	 wm_config_inc_search_path="$withval"],
+	[inc_search_path='-I${includedir}'
+	 wm_config_inc_search_path=""])
+
+AS_IF([test "x$wm_config_lib_search_path" != "x"],
+    [LDFLAGS="$LDFLAGS $wm_config_lib_search_path"])
+AS_IF([test "x$wm_config_inc_search_path" != "x"],
+    [CPPFLAGS="$CPPFLAGS $wm_config_inc_search_path"])
 
 
 dnl Features Configuration
