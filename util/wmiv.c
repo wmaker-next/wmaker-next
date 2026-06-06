@@ -429,20 +429,24 @@ static void cleanup_temp_dir(void)
 	Check if file has archive extension
 	Returns True if it is an archive, False otherwise
 */
+static Bool has_suffix_ci(const char *s, const char *suffix)
+{
+	size_t sl = strlen(s), xl = strlen(suffix);
+	return sl >= xl && strcasecmp(s + sl - xl, suffix) == 0;
+}
+
 static Bool is_archive_file(const char *filename)
 {
-	const char *ext = strrchr(filename, '.');
+	static const char *exts[] = {
+		".cbz", ".zip", ".cbr", ".rar", ".cbt", ".cb7", ".7z",
+		".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz"
+	};
+	size_t i;
 
-	return (ext && (strcasecmp(ext, ".cbz") == 0 ||
-					strcasecmp(ext, ".zip") == 0 ||
-					strcasecmp(ext, ".cbr") == 0 ||
-					strcasecmp(ext, ".rar") == 0 ||
-					strcasecmp(ext, ".cbt") == 0 ||
-					strcasecmp(ext, ".cb7") == 0 ||
-					strcasecmp(ext, ".tar") == 0 ||
-					strcasecmp(ext, ".7z") == 0 ||
-					strcasecmp(ext, ".tar.gz") == 0 ||
-					strcasecmp(ext, ".tar.bz2") == 0));
+	for (i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
+		if (has_suffix_ci(filename, exts[i]))
+			return True;
+	return False;
 }
 
 #ifdef HAVE_LIBARCHIVE
