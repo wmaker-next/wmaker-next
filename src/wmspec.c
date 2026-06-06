@@ -2045,6 +2045,14 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		}
 
 		if (allow) {
+			/* an honoured non-pager request carries a user-activity
+			 * timestamp, advance the focus-stealing baseline so a
+			 * later request with an older stamp is recognised as
+			 * stale even if no _NET_WM_USER_TIME write intervenes */
+			if (source != 2 && ev_time != 0
+			    && (scr->net_last_user_time == 0
+				|| USER_TIME_NEWER(ev_time, scr->net_last_user_time)))
+				scr->net_last_user_time = ev_time;
 			wNETWMShowingDesktop(scr, False);
 			wMakeWindowVisible(wwin);
 		} else if (!wwin->flags.focused && !wwin->flags.net_demands_attention) {
