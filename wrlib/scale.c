@@ -485,20 +485,16 @@ RImage *RSmoothScaleImage(RImage * src, unsigned new_width, unsigned new_height)
 
 	for (k = 0; k < new_width; ++k) {
 		CONTRIB *pp;
+		unsigned char *s, *d;
 
 		p = dst->data + k * 3;
 
 		/* copy a column into a row */
-		{
-			int i;
-			unsigned char *p, *d;
-
-			d = sp;
-			for (i = tmp->height, p = tmp->data + k * 3; i-- > 0; p += tmp->width * 3) {
-				*d++ = *p;
-				*d++ = *(p + 1);
-				*d++ = *(p + 2);
-			}
+		d = sp;
+		for (i = tmp->height, s = tmp->data + k * 3; i-- > 0; s += tmp->width * 3) {
+			*d++ = *s;
+			*d++ = *(s + 1);
+			*d++ = *(s + 2);
 		}
 		for (i = 0; i < new_height; ++i) {
 			rweight = gweight = bweight = 0.0;

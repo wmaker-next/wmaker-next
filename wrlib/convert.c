@@ -90,6 +90,10 @@ static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 	unsigned short roffs, goffs, boffs;
 	unsigned short *rtable, *gtable, *btable;
 	int channels = (HAS_ALPHA(image) ? 4 : 3);
+	unsigned char *ptr = image->data;
+	unsigned long r, g, b;
+	unsigned long pixel;
+	int ofs, x, y;
 
 	ximg = RCreateXImage(ctx, ctx->depth, image->width, image->height);
 	if (!ximg) {
@@ -114,34 +118,26 @@ static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 		return NULL;
 	}
 
-	{
-		int ofs;
-		unsigned long r, g, b;
-		int x, y;
-		unsigned long pixel;
-		unsigned char *ptr = image->data;
-
-		if (rmask == 0xff && gmask == 0xff && bmask == 0xff) {
-			for (y = 0; y < image->height; y++) {
-				for (x = 0; x < image->width; x++, ptr += channels) {
-					/* reduce pixel */
-					r = ptr[0];
-					g = ptr[1];
-					b = ptr[2];
-					pixel = (r << roffs) | (g << goffs) | (b << boffs);
-					XPutPixel(ximg->image, x, y, pixel);
-				}
+	if (rmask == 0xff && gmask == 0xff && bmask == 0xff) {
+		for (y = 0; y < image->height; y++) {
+			for (x = 0; x < image->width; x++, ptr += channels) {
+				/* reduce pixel */
+				r = ptr[0];
+				g = ptr[1];
+				b = ptr[2];
+				pixel = (r << roffs) | (g << goffs) | (b << boffs);
+				XPutPixel(ximg->image, x, y, pixel);
 			}
-		} else {
-			for (y = 0, ofs = 0; y < image->height; y++) {
-				for (x = 0; x < image->width; x++, ofs += channels - 3) {
-					/* reduce pixel */
-					r = rtable[ptr[ofs++]];
-					g = gtable[ptr[ofs++]];
-					b = btable[ptr[ofs++]];
-					pixel = (r << roffs) | (g << goffs) | (b << boffs);
-					XPutPixel(ximg->image, x, y, pixel);
-				}
+		}
+	} else {
+		for (y = 0, ofs = 0; y < image->height; y++) {
+			for (x = 0; x < image->width; x++, ofs += channels - 3) {
+				/* reduce pixel */
+				r = rtable[ptr[ofs++]];
+				g = gtable[ptr[ofs++]];
+				b = btable[ptr[ofs++]];
+				pixel = (r << roffs) | (g << goffs) | (b << boffs);
+				XPutPixel(ximg->image, x, y, pixel);
 			}
 		}
 	}
