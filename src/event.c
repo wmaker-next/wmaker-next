@@ -1124,34 +1124,26 @@ static void handleClientMessage(XEvent * event)
 
 	} else if (event->xclient.message_type == w_global.atom.wmaker.wm_function) {
 		WApplication *wapp;
-		int done = 0;
+
+		/* the sender may target either the group leader (then
+		 * wApplicationOf finds it directly) or any managed window
+		 * of the application, both arms used to be open-coded
+		 * with the same switch, resolve once and hand each
+		 * function the pointer it needs */
 		wapp = wApplicationOf(event->xclient.window);
-		if (wapp) {
-			switch (event->xclient.data.l[0]) {
-			case WMFHideOtherApplications:
-				wHideOtherApplications(wapp->main_window_desc);
-				done = 1;
-				break;
+		wwin = wapp ? wapp->main_window_desc : wWindowFor(event->xclient.window);
+		if (!wapp && wwin)
+			wapp = wApplicationOf(wwin->main_window);
 
-			case WMFHideApplication:
+		switch (event->xclient.data.l[0]) {
+		case WMFHideOtherApplications:
+			if (wwin)
+				wHideOtherApplications(wwin);
+			break;
+		case WMFHideApplication:
+			if (wapp)
 				wHideApplication(wapp);
-				done = 1;
-				break;
-			}
-		}
-		if (!done) {
-			wwin = wWindowFor(event->xclient.window);
-			if (wwin) {
-				switch (event->xclient.data.l[0]) {
-				case WMFHideOtherApplications:
-					wHideOtherApplications(wwin);
-					break;
-
-				case WMFHideApplication:
-					wHideApplication(wApplicationOf(wwin->main_window));
-					break;
-				}
-			}
+			break;
 		}
 	} else if (event->xclient.message_type == w_global.atom.gnustep.wm_attr) {
 		wwin = wWindowFor(event->xclient.window);
