@@ -472,6 +472,45 @@ static void test_notification_asap_idle(void)
 	WMRemoveNotificationObserver(&idle_hits);
 }
 
+/* ---- observer removed by a peer during the same post ----------------- */
+
+static int peer_target_hits;
+
+static void notif_remove_peer(void *observerData, WMNotification *notif)
+{
+	(void)notif;
+	(*(int *)observerData)++;
+	/* observers are prepended, so this one (registered last) fires
+	 * first and removes the one registered first, which the post loop
+	 * has already saved as its next pointer, the deferred-free path
+	 * must keep that record alive and the dead flag must skip it */
+	WMRemoveNotificationObserver(&peer_target_hits);
+}
+
+static void test_notification_remove_peer(void)
+{
+	int remover_hits = 0;
+
+	peer_target_hits = 0;
+	WMAddNotificationObserver(notif_observer, &peer_target_hits, "check.peer", NULL);
+	WMAddNotificationObserver(notif_remove_peer, &remover_hits, "check.peer", NULL);
+
+	WMPostNotificationName("check.peer", NULL, NULL);
+
+	CHECK(remover_hits == 1);
+	/* the target was removed before the post loop reached it */
+	CHECK(peer_target_hits == 0);
+
+	/* posting again must not reach either, the remover is still
+	 * registered but its callback removes a now-absent observer
+	 * which is a no-op */
+	WMPostNotificationName("check.peer", NULL, NULL);
+	CHECK(remover_hits == 2);
+	CHECK(peer_target_hits == 0);
+
+	WMRemoveNotificationObserver(&remover_hits);
+}
+
 /* ---- idle queued mid-iteration -------------------------------------- */
 
 struct chain {
@@ -559,6 +598,7 @@ int main(int argc, char **argv)
 	test_timer_reentrant();
 	test_idle_reentrant();
 	test_notification_asap_idle();
+	test_notification_remove_peer();
 	test_timer_queues_idle();
 	test_idle_notification_queues_idle();
 	test_zero_timer_and_idle();

@@ -72,6 +72,15 @@ typedef struct NotificationObserver {
 	struct NotificationObserver *prev;	/* for tables */
 	struct NotificationObserver *next;
 	struct NotificationObserver *nextAction;	/* for observerTable */
+
+	/* a callback reached from WMPostNotification can remove an
+	 * observer whose record the post loop has already saved as its
+	 * next pointer, so freeing it there would let the loop step into
+	 * released memory, when posting_depth > 0 the remove paths set
+	 * dead and chain the record onto dead_list instead of freeing,
+	 * and the outermost post sweeps the chain on return */
+	struct NotificationObserver *nextDead;
+	unsigned dead:1;
 } NotificationObserver;
 
 typedef struct W_NotificationCenter {
@@ -84,6 +93,21 @@ typedef struct W_NotificationCenter {
 
 /* default (and only) center */
 static NotificationCenter *notificationCenter = NULL;
+
+/* see the comment on NotificationObserver.dead */
+static int posting_depth;
+static NotificationObserver *dead_list;
+
+static void release_observer(NotificationObserver *orec)
+{
+	if (posting_depth > 0) {
+		orec->dead = 1;
+		orec->nextDead = dead_list;
+		dead_list = orec;
+	} else {
+		wfree(orec);
+	}
+}
 
 void W_InitNotificationCenter(void)
 {
@@ -178,6 +202,7 @@ void WMPostNotification(WMNotification * notification)
 	NotificationObserver *orec, *tmp;
 
 	WMRetainNotification(notification);
+	posting_depth++;
 
 	/* tell the observers that want to know about a particular message */
 	orec = (NotificationObserver *) WMHashGet(notificationCenter->nameTable, notification->name);
@@ -185,7 +210,8 @@ void WMPostNotification(WMNotification * notification)
 	while (orec) {
 		tmp = orec->next;
 
-		if (!orec->object || !notification->object || orec->object == notification->object) {
+		if (!orec->dead &&
+		    (!orec->object || !notification->object || orec->object == notification->object)) {
 			/* tell the observer */
 			if (orec->observerAction) {
 				(*orec->observerAction) (orec->observer, notification);
@@ -202,9 +228,8 @@ void WMPostNotification(WMNotification * notification)
 		tmp = orec->next;
 
 		/* tell the observer */
-		if (orec->observerAction) {
+		if (!orec->dead && orec->observerAction)
 			(*orec->observerAction) (orec->observer, notification);
-		}
 		orec = tmp;
 	}
 
@@ -214,10 +239,18 @@ void WMPostNotification(WMNotification * notification)
 		tmp = orec->next;
 
 		/* tell the observer */
-		if (orec->observerAction) {
+		if (!orec->dead && orec->observerAction)
 			(*orec->observerAction) (orec->observer, notification);
-		}
 		orec = tmp;
+	}
+
+	posting_depth--;
+	if (posting_depth == 0) {
+		while (dead_list) {
+			orec = dead_list;
+			dead_list = orec->nextDead;
+			wfree(orec);
+		}
 	}
 
 	WMReleaseNotification(notification);
@@ -272,7 +305,7 @@ void WMRemoveNotificationObserver(void *observer)
 		if (orec->next)
 			orec->next->prev = orec->prev;
 
-		wfree(orec);
+		release_observer(orec);
 
 		orec = tmp;
 	}
@@ -331,7 +364,7 @@ void WMRemoveNotificationObserverWithName(void *observer, const char *name, void
 				orec->prev->next = orec->next;
 			if (orec->next)
 				orec->next->prev = orec->prev;
-			wfree(orec);
+			release_observer(orec);
 		} else {
 			/* append this action in the new action list */
 			orec->nextAction = NULL;
