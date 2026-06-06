@@ -1084,7 +1084,8 @@ static char *getPixmapPath(const char *domain)
 {
 	WMPropList *val;
 	char *ptr, *data;
-	int len, i, count;
+	size_t len;
+	int i, count;
 
 	val = getValueForKey(domain, "PixmapPath");
 
@@ -1111,20 +1112,22 @@ static char *getPixmapPath(const char *domain)
 
 	for (i = 0; i < count; i++) {
 		WMPropList *v;
+		const char *item;
+		size_t item_len;
 
 		v = WMGetFromPLArray(val, i);
 		if (!v || !WMIsPLString(v)) {
 			continue;
 		}
-		strcpy(ptr, WMGetFromPLString(v));
-
-		ptr += strlen(WMGetFromPLString(v));
-		*ptr = ':';
-		ptr++;
+		item = WMGetFromPLString(v);
+		item_len = strlen(item);
+		memcpy(ptr, item, item_len);
+		ptr += item_len;
+		*ptr++ = ':';
 	}
-	if (i > 0)
+	if (ptr > data)
 		ptr--;
-	*(ptr--) = 0;
+	*ptr = '\0';
 
 	WMReleasePropList(val);
 
