@@ -110,8 +110,6 @@ typedef struct W_HashTable WMHashTable;
 typedef struct W_UserDefaults WMUserDefaults;
 typedef struct W_Notification WMNotification;
 typedef struct W_NotificationQueue WMNotificationQueue;
-typedef struct W_Host WMHost;
-typedef struct W_Connection WMConnection;
 typedef struct W_PropList WMPropList;
 
 

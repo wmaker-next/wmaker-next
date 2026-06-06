@@ -87,6 +87,7 @@ libWUtil_la_SOURCES = 	\
 	userdefaults.h \
 	usleep.c \
 	wapplication.c \
+	wipc.c \
 	wconfig.h \
 	wutil.c
 

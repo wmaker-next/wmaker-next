@@ -432,7 +432,7 @@ AC_FUNC_MEMCMP
 AC_FUNC_VPRINTF
 WM_FUNC_SECURE_GETENV
 AC_CHECK_FUNCS(gethostname strcasecmp strncasecmp \
-	       setsid mallinfo2 mkstemp sysconf fmemopen)
+	       setsid mallinfo2 mkstemp sysconf fmemopen accept4)
 AC_SEARCH_LIBS([strerror], [cposix])
 
 dnl libev drives the WINGs event loop (timer, idle and input handlers).
