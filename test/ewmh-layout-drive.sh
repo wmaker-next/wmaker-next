@@ -193,6 +193,22 @@ send_active_window() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+# set_desktop_names a,b,c : write NUL-separated _NET_DESKTOP_NAMES on root
+# and send the ClientMessage wmaker reacts to
+set_desktop_names() {
+	DISPLAY=$DPY env EWMH_CLIENT_SET_DESKTOP_NAMES="$1" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
+desktop_name_is() {
+	root_prop _NET_DESKTOP_NAMES \
+		| sed -e 's/^[^=]*= //' -e 's/"//g' \
+		| tr ',' '\n' \
+		| sed -n "$(($1 + 1))p" \
+		| sed 's/^[[:space:]]*//' \
+		| grep -Fx "$2" >/dev/null
+}
+
 send_format8_close() {
 	DISPLAY=$DPY env EWMH_CLIENT_FORMAT8_CLOSE_TARGET="$1" \
 		"$CLIENT_BIN" >>"$LOG" 2>&1
@@ -575,6 +591,8 @@ for atom in \
 	_NET_WM_ACTION_FULLSCREEN \
 	_NET_WM_ACTION_CHANGE_DESKTOP \
 	_NET_WM_ACTION_CLOSE \
+	_NET_WM_ACTION_ABOVE \
+	_NET_WM_ACTION_BELOW \
 	_NET_WM_PID \
 	_NET_WM_PING \
 	_NET_WM_USER_TIME \
@@ -613,6 +631,17 @@ if build_ewmh_client; then
 	CLIENT_BUILT=1
 fi
 
+note "_NET_DESKTOP_NAMES inbound"
+if [ "$CLIENT_BUILT" -eq 1 ]; then
+	set_desktop_names "EWMH-Web,EWMH-Mail"
+	check "_NET_DESKTOP_NAMES renames workspace 0" \
+		wait_for 40 desktop_name_is 0 "EWMH-Web"
+	check "_NET_DESKTOP_NAMES renames workspace 1" \
+		wait_for 40 desktop_name_is 1 "EWMH-Mail"
+else
+	record_skip "EWMH client unavailable; _NET_DESKTOP_NAMES checks skipped"
+fi
+
 note "_NET_REQUEST_FRAME_EXTENTS pre-map"
 if [ "$CLIENT_BUILT" -eq 1 ] \
    && start_second_client EWMH_CLIENT_NAME=frame-extents EWMH_CLIENT_REQUEST_FRAME_EXTENTS=1; then
@@ -648,7 +677,9 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 			_NET_WM_ACTION_MAXIMIZE_VERT \
 			_NET_WM_ACTION_FULLSCREEN \
 			_NET_WM_ACTION_CHANGE_DESKTOP \
-			_NET_WM_ACTION_CLOSE
+			_NET_WM_ACTION_CLOSE \
+			_NET_WM_ACTION_ABOVE \
+			_NET_WM_ACTION_BELOW
 		do
 			check "WM allowed-actions includes $action" wait_for 40 window_atom_has "$CLIENT_XID" _NET_WM_ALLOWED_ACTIONS "$action"
 		done
@@ -741,6 +772,18 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 			send_active_window "$CLIENT_XID" 1 90000
 			check "_NET_ACTIVE_WINDOW source 1 fresh timestamp activates" \
 				wait_for 30 active_window_is "$CLIENT_XID"
+
+			# the 90000 above should have advanced the baseline,
+			# 60000 is now stale even though it beats 50000
+			send_active_window "$CLIENT2_XID" 1 60000
+			check "_NET_ACTIVE_WINDOW honoured timestamp advances baseline" \
+				wait_for 30 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			check "_NET_ACTIVE_WINDOW now-stale request keeps focus" \
+				active_window_is "$CLIENT_XID"
+			run_x wmctrl -i -a "$CLIENT2_XID" >>"$LOG" 2>&1
+			wait_for 30 window_atom_lacks "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+			run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+			wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
 
 			send_active_window "$CLIENT2_XID" 2 100
 			check "_NET_ACTIVE_WINDOW source 2 ignores stale timestamp" \

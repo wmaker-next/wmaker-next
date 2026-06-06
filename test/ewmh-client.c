@@ -139,6 +139,31 @@ static int format8_close_mode(Display *dpy)
 	return 0;
 }
 
+/* set _NET_DESKTOP_NAMES on root to the comma-separated list in
+ * EWMH_CLIENT_SET_DESKTOP_NAMES, encoded as the spec's NUL-separated
+ * UTF8_STRING, then send the ClientMessage wmaker reacts to so the
+ * read is triggered without depending on a root PropertyNotify watch */
+static int set_desktop_names_mode(Display *dpy)
+{
+	const char *src = getenv("EWMH_CLIENT_SET_DESKTOP_NAMES");
+	Window root = DefaultRootWindow(dpy);
+	Atom prop = intern_atom(dpy, "_NET_DESKTOP_NAMES");
+	Atom utf8 = intern_atom(dpy, "UTF8_STRING");
+	char buf[1024];
+	size_t i, n;
+
+	if (!src)
+		return 1;
+	for (i = 0, n = 0; src[i] && n + 1 < sizeof(buf); i++)
+		buf[n++] = (src[i] == ',') ? '\0' : src[i];
+	buf[n++] = '\0';
+	XChangeProperty(dpy, root, prop, utf8, 8, PropModeReplace,
+			(unsigned char *)buf, (int)n);
+	send_root_message(dpy, root, prop, 0, 0, 0, 0, 0);
+	XFlush(dpy);
+	return 0;
+}
+
 static int activate_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_ACTIVATE_TARGET", None);
@@ -204,6 +229,11 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_ACTIVATE_TARGET")) {
 		int ret = activate_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_SET_DESKTOP_NAMES")) {
+		int ret = set_desktop_names_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}
