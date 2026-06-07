@@ -35,3 +35,6 @@ wmagnify- a program to magnify the area near the mouse pointer,
 wkdemenu.pl- convert a KDE menu into a wmaker menu (for pipe)
 
 wmiv- quick image viewer using wrlib
+
+wmclipd- X11 clipboard daemon, can also subscribe to Window Maker screenshot
+	IPC events and publish saved screenshots to CLIPBOARD

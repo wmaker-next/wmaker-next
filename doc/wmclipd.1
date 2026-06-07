@@ -1,0 +1,91 @@
+.TH WMCLIPD 1 "2026" "Window Maker"
+.SH NAME
+wmclipd \- X11 clipboard daemon for Window Maker
+.SH SYNOPSIS
+.B wmclipd
+[\fB\-\-clipboard\fR] [\fB\-\-screenshots\fR] [\fB\-\-debug\fR]
+.br
+.B wmclipd
+\fB\-\-help\fR|\fB\-h\fR
+.br
+.B wmclipd
+\fB\-\-version\fR|\fB\-v\fR
+.SH DESCRIPTION
+.B wmclipd
+runs as a user-started X11 clipboard helper. In clipboard mode it monitors
+the CLIPBOARD and PRIMARY selections and preserves supported text and image
+payloads after the original owner exits. In screenshot mode it subscribes to
+Window Maker screenshot IPC events and publishes each saved screenshot to the
+CLIPBOARD selection.
+.PP
+Screenshot payloads are offered as
+.B image/png
+or
+.B image/jpeg
+when the saved file uses one of those formats, and also as
+.B text/uri-list
+and text path targets.
+.SH OPTIONS
+.TP
+.B \-\-clipboard
+Run as an X11 clipboard manager for CLIPBOARD and PRIMARY.
+.TP
+.B \-\-debug
+Print runtime diagnostics to standard error.
+.TP
+.B \-\-help
+Print a short usage summary and exit. The short
+.B \-h
+alias is also accepted.
+.TP
+.B \-\-screenshots
+Subscribe to Window Maker screenshot IPC events and publish saved screenshots
+to CLIPBOARD.
+The singular
+.B \-\-screenshot
+is accepted as an alias.
+.TP
+.B \-\-version
+Print version information and exit. The short
+.B \-v
+alias is also accepted.
+.SH EXAMPLES
+.TP
+.B wmclipd --clipboard
+Run only the clipboard manager.
+.TP
+.B wmclipd --screenshots
+Copy Window Maker screenshots to CLIPBOARD without monitoring normal clipboard
+changes.
+.TP
+.B wmclipd --clipboard --screenshots
+Run the clipboard manager and replace CLIPBOARD with each new Window Maker
+screenshot.
+.PP
+To start it with Window Maker, add a command such as:
+.EX
+wmclipd --clipboard --screenshots &
+.EE
+to
+.BR ~/GNUstep/Library/WindowMaker/autostart .
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+X display used for the clipboard owner window and for resolving the Window
+Maker IPC socket.
+.TP
+.B WMAKER_IPC_SOCKET
+Overrides the Window Maker IPC socket path used by
+.B \-\-screenshots .
+.SH EXIT STATUS
+.B 0
+success,
+.B 1
+runtime failure,
+.B 2
+invalid command line.
+.SH SEE ALSO
+.BR wmaker (1),
+.BR wmakermsg (1),
+.BR wxcopy (1),
+.BR wxpaste (1)

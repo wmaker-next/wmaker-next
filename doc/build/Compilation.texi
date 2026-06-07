@@ -582,6 +582,10 @@ Disables use of the @emph{X Synchronization} extension for the @code{_NET_WM_SYN
 protocol, which paces opaque interactive resizes to the client's redraw so the window content
 keeps up with the frame.
 
+@item --without-xfixes
+Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
+whose clipboard-manager mode depends on XFixes selection owner notifications.
+
 @item --enable-xinerama
 The @emph{Xinerama} extension provides information about the different screens connected when
 running a multi-head setting (if you plug more than one monitor).

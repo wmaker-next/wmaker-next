@@ -1,4 +1,4 @@
-SUBDIRS = po
+SUBDIRS = po Tests
 
 AUTOMAKE_OPTIONS =
 
@@ -23,6 +23,14 @@ wdwrite_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 wdread_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
+
+if HAVE_XFIXES
+bin_PROGRAMS += wmclipd
+wmclipd_CFLAGS = @XFIXES_CFLAGS@
+wmclipd_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@XLFLAGS@ @XLIBS@ @XFIXES_LIBS@ $(liblist)
+endif
 
 wxcopy_LDADD = @XLFLAGS@ @XLIBS@
 

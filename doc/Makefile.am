@@ -12,6 +12,7 @@ dist_man_MANS = \
 	wdwrite.1 \
 	WindowMaker.1 \
 	wmagnify.1 \
+	wmclipd.1 \
 	wmakermsg.1 \
 	wmgenmenu.1 \
 	wmiv.1 \
@@ -58,7 +59,7 @@ am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
 check-local: wmaker-args WPrefs-args wmagnify-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 wmaker-args:
@@ -97,6 +98,14 @@ wdwrite-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wdwrite" --man-page "$(top_srcdir)/doc/wdwrite.1"
 
+wmclipd-args:
+if HAVE_XFIXES
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
+		--program "$(top_builddir)/util/wmclipd" --man-page "$(top_srcdir)/doc/wmclipd.1"
+else
+	@echo "  SKIP     wmclipd-args (built without XFixes)"
+endif
+
 wmakermsg-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmakermsg" --man-page "$(top_srcdir)/doc/wmakermsg.1"
@@ -126,7 +135,7 @@ wxpaste-args:
 		--program "$(top_builddir)/util/wxpaste" --man-page "$(top_srcdir)/doc/wxpaste.1"
 
 .PHONY: wmaker-args WPrefs-args wmagnify-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 

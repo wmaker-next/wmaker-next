@@ -225,6 +225,7 @@ configure-documentation:
 # and exits 77 (SKIP) when something it needs is missing, the
 # AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
 DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh
+DRIVE_SUBDIRS = util/Tests
 
 check-drive:
 if HAVE_XVFB
@@ -235,6 +236,14 @@ if HAVE_XVFB
 	    0)  echo "PASS  $$t" ;; \
 	    77) echo "SKIP  $$t" ;; \
 	    *)  echo "FAIL  $$t (rc=$$rc)"; fail=1 ;; \
+	  esac; \
+	done; \
+	for d in $(DRIVE_SUBDIRS); do \
+	  echo "=== $$d/check-drive ==="; \
+	  $(MAKE) -C "$$d" check-drive; rc=$$?; \
+	  case $$rc in \
+	    0)  echo "PASS  $$d/check-drive" ;; \
+	    *)  echo "FAIL  $$d/check-drive (rc=$$rc)"; fail=1 ;; \
 	  esac; \
 	done; exit $$fail
 else

@@ -1,0 +1,39 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
+check_PROGRAMS = wmclipd_cliptest
+TESTS =
+DRIVE_TESTS = wmclipd-clipboard.sh
+
+AM_CPPFLAGS = $(DFLAGS) @HEADER_SEARCH_PATH@
+
+wmclipd_cliptest_LDADD = @XLFLAGS@ @XLIBS@
+
+EXTRA_DIST = wmclipd-clipboard.sh
+
+TESTS_ENVIRONMENT = \
+	top_builddir='$(top_builddir)'; export top_builddir; \
+	top_srcdir='$(top_srcdir)'; export top_srcdir; \
+	builddir='$(builddir)'; export builddir; \
+	srcdir='$(srcdir)'; export srcdir;
+
+.PHONY: check-drive
+
+check-drive: $(check_PROGRAMS)
+if HAVE_XVFB
+	@fail=0; for t in $(DRIVE_TESTS); do \
+	  echo "=== util/Tests/$$t ==="; \
+	  top_builddir='$(top_builddir)'; export top_builddir; \
+	  top_srcdir='$(top_srcdir)'; export top_srcdir; \
+	  builddir='$(builddir)'; export builddir; \
+	  srcdir='$(srcdir)'; export srcdir; \
+	  "$(srcdir)/$$t"; rc=$$?; \
+	  case $$rc in \
+	    0)  echo "PASS  util/Tests/$$t" ;; \
+	    77) echo "SKIP  util/Tests/$$t" ;; \
+	    *)  echo "FAIL  util/Tests/$$t (rc=$$rc)"; fail=1 ;; \
+	  esac; \
+	done; exit $$fail
+else
+	@echo "Xvfb was not found at configure time, install it and re-run configure"
+	@echo "to use the utility integration drivers under util/Tests/"
+endif

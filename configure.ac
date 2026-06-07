@@ -771,6 +771,29 @@ AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
 
 
+dnl XFixes selection notifications, used by wmclipd clipboard-manager mode
+dnl =====================================================================
+AC_ARG_WITH([xfixes],
+    [AS_HELP_STRING([--without-xfixes], [disable XFixes support and wmclipd])],
+    [],
+    [with_xfixes=auto])
+AS_IF([test "x$with_xfixes" != xno],
+    [PKG_CHECK_MODULES([XFIXES], [xfixes],
+        [have_xfixes=yes
+         supported_xext="$supported_xext XFixes"],
+        [AS_IF([test "x$with_xfixes" = xyes],
+            [AC_MSG_ERROR([libXfixes is required for wmclipd -- $XFIXES_PKG_ERRORS])],
+            [have_xfixes=no
+             XFIXES_CFLAGS=
+             XFIXES_LIBS=])])],
+    [have_xfixes=no
+     XFIXES_CFLAGS=
+     XFIXES_LIBS=])
+AC_SUBST(XFIXES_CFLAGS)
+AC_SUBST(XFIXES_LIBS)
+AM_CONDITIONAL([HAVE_XFIXES], [test "x$have_xfixes" = xyes])
+
+
 dnl PANGO support
 dnl =============
 dnl The libray can be used by WINGs to get better support on UTF-8 for i18n
@@ -1116,7 +1139,7 @@ AC_CONFIG_FILES(
     WPrefs.app/tiff/Makefile WPrefs.app/xpm/Makefile
 
     dnl Command-line utilities
-    util/Makefile util/po/Makefile
+    util/Makefile util/po/Makefile util/Tests/Makefile
 
     dnl Misceleanous stuff
     test/Makefile

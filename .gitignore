@@ -65,6 +65,8 @@ util/wdwrite
 util/wmagnify
 util/wmaker.inst
 util/wmakermsg
+util/wmclipd
+util/Tests/wmclipd_cliptest
 util/wmgenmenu
 util/wmiv
 util/wmmenugen
