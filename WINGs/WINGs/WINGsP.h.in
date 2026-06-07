@@ -686,8 +686,6 @@ void W_SetFocusOfTopLevel(W_View *toplevel, W_View *view);
 
 W_View *W_FocusedViewOfToplevel(W_View *view);
 
-void W_BroadcastMessage(W_View *targetParent, XEvent *event);
-
 void W_DispatchMessage(W_View *target, XEvent *event);
 
 /* ---[ UTF-8 helpers ]--------------------------------------------------- */

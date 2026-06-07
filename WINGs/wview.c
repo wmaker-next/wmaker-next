@@ -584,18 +584,6 @@ void W_SetFocusOfTopLevel(W_View * toplevel, W_View * view)
 	}
 }
 
-void W_BroadcastMessage(W_View * targetParent, XEvent * event)
-{
-	W_View *target;
-
-	target = targetParent->childrenList;
-	while (target != NULL) {
-		W_DispatchMessage(target, event);
-
-		target = target->nextSister;
-	}
-}
-
 void W_DispatchMessage(W_View * target, XEvent * event)
 {
 	if (target->window == None)
