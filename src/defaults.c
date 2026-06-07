@@ -2089,6 +2089,11 @@ static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)
 	return 0;
 }
 
+static void background_child_env(void *data)
+{
+	SetupEnvironment(data);
+}
+
 static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 {
 	WMPropList *value = tdata;
@@ -2114,21 +2119,20 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 		}
 	} else if (WMGetPropListItemCount(value) > 0) {
 		char *text;
-		int len;
+		pid_t pid;
 
 		text = WMGetPropListDescription(value, False);
-		len = strlen(text) + 40;
-		if (!strchr(text, '\'') && !strchr(text, '\\')) {
-			char command[len];
-
+		if (text) {
 			if (w_global.config->smooth_workspace_back)
-				snprintf(command, len, "wmsetbg -S -p '%s' &", text);
+				pid = wspawnvp_setup((char *[]){ "wmsetbg", "-S", "-p", text, NULL },
+						     background_child_env, scr);
 			else
-				snprintf(command, len, "wmsetbg -p '%s' &", text);
-			ExecuteShellCommand(scr, command);
-		} else
-			wwarning(_("Invalid arguments for background \"%s\""), text);
-		wfree(text);
+				pid = wspawnvp_setup((char *[]){ "wmsetbg", "-p", text, NULL },
+						     background_child_env, scr);
+			if (pid < 0)
+				werror(_("could not execute wmsetbg"));
+			wfree(text);
+		}
 	}
 	WMReleasePropList(value);
 
