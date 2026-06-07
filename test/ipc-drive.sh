@@ -294,6 +294,23 @@ check "same socket path re-binds after restart" ipc_ready
 WMAKER_PID=$(msg get_version 2>/dev/null | sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
 [ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
 
+# ---- row 4: SIGUSR1 reaches the same restart path as the IPC verb -------
+
+note "SIGUSR1 -> restart"
+start_monitor shutdown tick || record_fail "could not re-subscribe for SIGUSR1"
+kill -USR1 "$WMAKER_PID"
+wait_for 50 evlog_has 'change = restart'
+check "SIGUSR1 delivers shutdown {change=restart}" evlog_has 'change = restart'
+wait_for 50 pid_gone "$MON_PID"
+check "monitor sees EOF after SIGUSR1 restart" pid_gone "$MON_PID"
+MON_PID=
+
+wait_for 80 ipc_ready
+check "socket re-binds after SIGUSR1 restart" ipc_ready
+
+WMAKER_PID=$(msg get_version 2>/dev/null | sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
+[ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
+
 start_monitor shutdown tick || record_fail "could not re-subscribe after restart"
 msg -q exit >>"$LOG" 2>&1
 wait_for 50 evlog_has 'change = exit'
@@ -304,6 +321,19 @@ MON_PID=
 
 wait_for 50 pid_gone "$WMAKER_PID"
 check "wmaker process exits on IPC exit" pid_gone "$WMAKER_PID"
+
+# ---- row 5: SIGTERM reaches the same orderly-exit path as the IPC verb --
+
+note "SIGTERM -> orderly exit"
+start_wmaker || fatal "could not relaunch wmaker for SIGTERM row"
+start_monitor shutdown tick || record_fail "could not subscribe for SIGTERM"
+kill -TERM "$WMAKER_PID"
+wait_for 50 evlog_has 'change = exit'
+check "SIGTERM delivers shutdown {change=exit}" evlog_has 'change = exit'
+wait_for 50 pid_gone "$MON_PID"
+MON_PID=
+wait_for 50 pid_gone "$WMAKER_PID"
+check "wmaker process exits on SIGTERM" pid_gone "$WMAKER_PID"
 
 # ----------------------------------------------------------------------
 
