@@ -54,8 +54,10 @@ Event types (type field = (1u<<31) | id)
                     source="dock"|"menu"|"helper"|"unknown"; slot=N;}
     4  dialog      {kind="message"|"input"|"crash"; title="..."; text="...";}
     5  tick        {first=YES|NO; payload="...";}
+    6  screenshot  {path="..."; mode="screen"|"window"|"partial";
+                    screen=N; workspace=N;}
 
-workspace and window are screen-scoped, the rest are process-scoped.
+workspace, window and screenshot are screen-scoped, the rest are process-scoped.
 
 Command verbs (request type 0)
 ------------------------------

@@ -56,6 +56,7 @@
 #include "wmspec.h"
 #include "rootmenu.h"
 #include "misc.h"
+#include "ipc.h"
 
 #include "xinerama.h"
 
@@ -1365,6 +1366,7 @@ void ScreenCapture(WScreen *scr, int mode)
 
 	if (img) {
 		if (RSaveTitledImage(img, filepath, (char *)(filetype + 1), "Screenshot from Window Maker")) {
+			wIPCEmitScreenshot(scr, filepath, mode);
 			scale_img = RSmoothScaleImage(img, scr->scr_width / 10, scr->scr_height / 10);
 			showMiniScreenshot(scr, scale_img);
 			RReleaseImage(scale_img);

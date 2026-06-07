@@ -83,7 +83,8 @@ struct WIPCClient {
 };
 
 static const char *event_names[WIPC_EV_COUNT] = {
-	"workspace", "window", "shutdown", "child_exit", "dialog", "tick"
+	"workspace", "window", "shutdown", "child_exit", "dialog", "tick",
+	"screenshot"
 };
 
 /* set on first wIPCServerStart() so notification observers register once */
@@ -1218,6 +1219,32 @@ void wIPCEmitDialog(WScreen *scr, const char *kind,
 	/* process-scoped, a dialog is not tied to the screen that
 	 * happened to raise it */
 	wIPCBroadcast(NULL, WIPC_EV_DIALOG, d);
+	WMReleasePropList(d);
+}
+
+static const char *screenshot_mode_name(int mode)
+{
+	switch (mode) {
+	case PRINT_WINDOW:
+		return "window";
+	case PRINT_PARTIAL:
+		return "partial";
+	case PRINT_SCREEN:
+	default:
+		return "screen";
+	}
+}
+
+void wIPCEmitScreenshot(WScreen *scr, const char *path, int mode)
+{
+	WMPropList *d;
+
+	d = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(d, "path", pl_string(path));
+	pl_dict_put(d, "mode", pl_string(screenshot_mode_name(mode)));
+	pl_dict_put(d, "screen", pl_int(scr->screen));
+	pl_dict_put(d, "workspace", pl_int(scr->current_workspace));
+	wIPCBroadcast(scr, WIPC_EV_SCREENSHOT, d);
 	WMReleasePropList(d);
 }
 
