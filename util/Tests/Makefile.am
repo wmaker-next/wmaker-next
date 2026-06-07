@@ -2,13 +2,13 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 check_PROGRAMS = wmclipd_cliptest
 TESTS =
-DRIVE_TESTS = wmclipd-clipboard.sh
+DRIVE_TESTS = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
 
 AM_CPPFLAGS = $(DFLAGS) @HEADER_SEARCH_PATH@
 
 wmclipd_cliptest_LDADD = @XLFLAGS@ @XLIBS@
 
-EXTRA_DIST = wmclipd-clipboard.sh
+EXTRA_DIST = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
 
 TESTS_ENVIRONMENT = \
 	top_builddir='$(top_builddir)'; export top_builddir; \

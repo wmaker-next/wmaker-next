@@ -79,6 +79,8 @@ extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixma
 
 /* CHUNK size for INCR (bytes). Tune if desired. */
 #define CHUNK_SIZE 65536
+#define CLIPBOARD_PASTE_MAX_BYTES ((size_t)256 * 1024 * 1024)
+#define CLIPBOARD_PASTE_TIMEOUT_MS 5000
 
 Display *dpy;
 Window win;
@@ -118,6 +120,7 @@ int max_height = 0;
 
 /* Archive support */
 static char *temp_dir = NULL;
+static char *paste_temp_dir = NULL;
 static Bool is_archive = False;
 
 Bool fullscreen_flag = False;
@@ -423,6 +426,17 @@ static void cleanup_temp_dir(void)
 		temp_dir = NULL;
 	}
 	is_archive = False;
+}
+
+static void cleanup_paste_temp_dir(void)
+{
+	if (paste_temp_dir) {
+		if (WMIV_DEBUG)
+			fprintf(stderr, "Cleaning up pasted clipboard directory: %s\n", paste_temp_dir);
+		nftw(paste_temp_dir, remove_temp_file, 64, FTW_DEPTH | FTW_PHYS);
+		free(paste_temp_dir);
+		paste_temp_dir = NULL;
+	}
 }
 
 /*
@@ -1030,6 +1044,543 @@ static void handle_selection_clear(void)
 	}
 }
 
+static void reset_incr_transfer(void)
+{
+	incr.active = False;
+	incr.offset = 0;
+	incr.total_size = 0;
+	incr.requestor = None;
+	incr.property = None;
+	incr.target = None;
+	incr.data = NULL;
+}
+
+static void handle_outgoing_incr_property_notify(XPropertyEvent *pe)
+{
+	if (!incr.active ||
+	    pe->window != incr.requestor ||
+	    pe->atom != incr.property ||
+	    pe->state != PropertyDelete) {
+		return;
+	}
+
+	if (WMIV_DEBUG)
+		fprintf(stderr, "INCR: property delete observed, sending next chunk\n");
+
+	if (incr.offset >= incr.total_size) {
+		XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8,
+				PropModeReplace, NULL, 0);
+		XFlush(dpy);
+		XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
+		reset_incr_transfer();
+		if (WMIV_DEBUG)
+			fprintf(stderr, "INCR: transfer complete\n");
+		return;
+	}
+
+	send_next_incr_chunk();
+}
+
+typedef struct {
+	Atom selection;
+	Atom target;
+	Atom property;
+} ClipboardSelectionWait;
+
+typedef struct {
+	Atom property;
+} ClipboardPropertyWait;
+
+static Bool clipboard_selection_notify_matches(Display *display, XEvent *event, XPointer arg)
+{
+	ClipboardSelectionWait *wait = (ClipboardSelectionWait *)arg;
+
+	(void)display;
+	return event->type == SelectionNotify &&
+		event->xselection.selection == wait->selection &&
+		event->xselection.requestor == win &&
+		event->xselection.target == wait->target &&
+		(event->xselection.property == wait->property ||
+		 event->xselection.property == None);
+}
+
+static Bool clipboard_property_new_value_matches(Display *display, XEvent *event, XPointer arg)
+{
+	ClipboardPropertyWait *wait = (ClipboardPropertyWait *)arg;
+
+	(void)display;
+	return event->type == PropertyNotify &&
+		event->xproperty.window == win &&
+		event->xproperty.atom == wait->property &&
+		event->xproperty.state == PropertyNewValue;
+}
+
+static Bool clipboard_service_event_matches(Display *display, XEvent *event, XPointer arg)
+{
+	(void)display;
+	(void)arg;
+
+	return event->type == SelectionRequest ||
+		event->type == SelectionClear ||
+		(event->type == PropertyNotify &&
+		 incr.active &&
+		 event->xproperty.window == incr.requestor &&
+		 event->xproperty.atom == incr.property &&
+		 event->xproperty.state == PropertyDelete);
+}
+
+static void dispatch_clipboard_service_event(XEvent *event)
+{
+	if (event->type == SelectionRequest) {
+		handle_selection_request(&event->xselectionrequest);
+	} else if (event->type == SelectionClear) {
+		handle_selection_clear();
+	} else if (event->type == PropertyNotify) {
+		handle_outgoing_incr_property_notify(&event->xproperty);
+	}
+}
+
+static int defer_clipboard_event(XEvent **events, size_t *count,
+		size_t *capacity, XEvent *event)
+{
+	XEvent *new_events;
+	size_t new_capacity;
+
+	if (*count == *capacity) {
+		new_capacity = *capacity ? *capacity * 2 : 8;
+		new_events = realloc(*events, new_capacity * sizeof(**events));
+		if (!new_events)
+			return 0;
+		*events = new_events;
+		*capacity = new_capacity;
+	}
+
+	(*events)[(*count)++] = *event;
+	return 1;
+}
+
+static void restore_clipboard_events(XEvent *events, size_t count)
+{
+	while (count > 0)
+		XPutBackEvent(dpy, &events[--count]);
+	free(events);
+}
+
+static Bool wait_for_clipboard_event(Bool (*predicate)(Display *, XEvent *, XPointer),
+		XPointer arg, XEvent *out, int timeout_ms)
+{
+	struct timespec deadline;
+	XEvent service;
+	XEvent ignored;
+	XEvent *deferred = NULL;
+	size_t deferred_count = 0;
+	size_t deferred_capacity = 0;
+	int ready;
+
+	wmiv_set_deadline(&deadline, timeout_ms);
+	for (;;) {
+		if (XCheckIfEvent(dpy, out, predicate, arg)) {
+			restore_clipboard_events(deferred, deferred_count);
+			return True;
+		}
+
+		while (XCheckIfEvent(dpy, &service, clipboard_service_event_matches, NULL))
+			dispatch_clipboard_service_event(&service);
+
+		if (XCheckIfEvent(dpy, out, predicate, arg)) {
+			restore_clipboard_events(deferred, deferred_count);
+			return True;
+		}
+
+		if (XPending(dpy)) {
+			XNextEvent(dpy, &ignored);
+			if (clipboard_service_event_matches(dpy, &ignored, NULL)) {
+				dispatch_clipboard_service_event(&ignored);
+			} else if (!defer_clipboard_event(&deferred, &deferred_count,
+					&deferred_capacity, &ignored)) {
+				XPutBackEvent(dpy, &ignored);
+				restore_clipboard_events(deferred, deferred_count);
+				return False;
+			}
+			continue;
+		}
+
+		ready = wmiv_wait_x_until(dpy, &deadline);
+		if (ready <= 0) {
+			restore_clipboard_events(deferred, deferred_count);
+			return False;
+		}
+	}
+}
+
+static Bool request_clipboard_selection(Atom selection, Atom target, Atom property,
+		Time timestamp, XSelectionEvent *out)
+{
+	ClipboardSelectionWait wait;
+	XEvent event;
+
+	wait.selection = selection;
+	wait.target = target;
+	wait.property = property;
+
+	XDeleteProperty(dpy, win, property);
+	XConvertSelection(dpy, selection, target, property, win, timestamp);
+	XFlush(dpy);
+
+	if (!wait_for_clipboard_event(clipboard_selection_notify_matches,
+			(XPointer)&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
+		return False;
+	}
+
+	*out = event.xselection;
+	return out->property != None;
+}
+
+static int clipboard_candidate_targets(Atom *targets)
+{
+	int count = 0;
+
+#ifdef USE_PNG
+	targets[count++] = png_atom;
+#endif
+#ifdef USE_JPEG
+	targets[count++] = jpeg_atom;
+#endif
+	return count;
+}
+
+static const char *clipboard_target_name(Atom target)
+{
+	if (target == png_atom)
+		return "image/png";
+	if (target == jpeg_atom)
+		return "image/jpeg";
+	return "unknown";
+}
+
+static Atom choose_clipboard_target(void)
+{
+	XSelectionEvent selection;
+	Atom type;
+	int format;
+	unsigned long nitems;
+	unsigned long bytes_after;
+	unsigned char *prop = NULL;
+	Atom candidates[2];
+	Atom *targets;
+	int candidate_count;
+	int i;
+	unsigned long j;
+	Atom result = None;
+
+	if (!request_clipboard_selection(clipboard_atom, targets_atom, property_atom,
+			CurrentTime, &selection)) {
+		return None;
+	}
+
+	if (XGetWindowProperty(dpy, win, property_atom, 0, 128, False,
+			XA_ATOM, &type, &format, &nitems, &bytes_after,
+			&prop) != Success) {
+		return None;
+	}
+	XDeleteProperty(dpy, win, property_atom);
+
+	if (type != XA_ATOM || format != 32 || nitems == 0 || !prop) {
+		if (prop)
+			XFree(prop);
+		return None;
+	}
+
+	candidate_count = clipboard_candidate_targets(candidates);
+	targets = (Atom *)prop;
+	for (i = 0; i < candidate_count && result == None; i++) {
+		for (j = 0; j < nitems; j++) {
+			if (targets[j] == candidates[i]) {
+				result = candidates[i];
+				break;
+			}
+		}
+	}
+
+	XFree(prop);
+	return result;
+}
+
+static int read_clipboard_property_chunk(Atom property, Atom *type_out,
+		unsigned char **data_out, size_t *len_out)
+{
+	Atom type, type2;
+	int format, format2;
+	unsigned long nitems, nitems2;
+	unsigned long bytes_after, bytes_after2;
+	unsigned char *prop = NULL, *prop2 = NULL;
+	long length;
+
+	*type_out = None;
+	*data_out = NULL;
+	*len_out = 0;
+
+	if (XGetWindowProperty(dpy, win, property, 0, 0, False,
+			AnyPropertyType, &type, &format, &nitems,
+			&bytes_after, &prop) != Success) {
+		return -1;
+	}
+	if (prop)
+		XFree(prop);
+	if (type == None)
+		return 0;
+	if (format != 8 || bytes_after > CLIPBOARD_PASTE_MAX_BYTES)
+		return -1;
+
+	length = (long)((bytes_after + 3) / 4);
+	if (length == 0)
+		length = 1;
+
+	if (XGetWindowProperty(dpy, win, property, 0, length, True,
+			AnyPropertyType, &type2, &format2, &nitems2,
+			&bytes_after2, &prop2) != Success) {
+		return -1;
+	}
+	if (format2 != 8 || bytes_after2 != 0 || nitems2 > CLIPBOARD_PASTE_MAX_BYTES) {
+		if (prop2)
+			XFree(prop2);
+		return -1;
+	}
+
+	*type_out = type2;
+	*data_out = prop2;
+	*len_out = (size_t)nitems2;
+	return 1;
+}
+
+static int receive_clipboard_incr_data(Atom property, Atom target,
+		Atom *type_out, unsigned char **data_out, size_t *len_out)
+{
+	ClipboardPropertyWait wait;
+	XEvent event;
+	unsigned char *data;
+	size_t size = 0;
+	Atom actual_type = None;
+
+	data = malloc(1);
+	if (!data)
+		return 0;
+
+	wait.property = property;
+	XDeleteProperty(dpy, win, property);
+	XFlush(dpy);
+
+	for (;;) {
+		Atom chunk_type;
+		unsigned char *chunk = NULL;
+		unsigned char *new_data;
+		size_t chunk_len = 0;
+		int chunk_status;
+
+		if (!wait_for_clipboard_event(clipboard_property_new_value_matches,
+				(XPointer)&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
+			free(data);
+			return 0;
+		}
+
+		chunk_status = read_clipboard_property_chunk(property, &chunk_type, &chunk, &chunk_len);
+		if (chunk_status < 0) {
+			free(data);
+			return 0;
+		}
+		if (chunk_status == 0)
+			continue;
+
+		if (chunk_len == 0) {
+			if (chunk)
+				XFree(chunk);
+			if (size == 0) {
+				free(data);
+				return 0;
+			}
+			*type_out = actual_type == None ? target : actual_type;
+			*data_out = data;
+			*len_out = size;
+			return 1;
+		}
+
+		if (chunk_type != target ||
+		    chunk_len > CLIPBOARD_PASTE_MAX_BYTES ||
+		    size > CLIPBOARD_PASTE_MAX_BYTES - chunk_len) {
+			XFree(chunk);
+			free(data);
+			return 0;
+		}
+
+		new_data = realloc(data, size + chunk_len);
+		if (!new_data) {
+			XFree(chunk);
+			free(data);
+			return 0;
+		}
+		data = new_data;
+		memcpy(data + size, chunk, chunk_len);
+		size += chunk_len;
+		if (actual_type == None)
+			actual_type = chunk_type;
+		XFree(chunk);
+	}
+}
+
+static int retrieve_clipboard_property(Atom property, Atom target,
+		Atom *type_out, unsigned char **data_out, size_t *len_out)
+{
+	Atom type, type2;
+	int format, format2;
+	unsigned long nitems, nitems2;
+	unsigned long bytes_after, bytes_after2;
+	unsigned char *prop = NULL, *prop2 = NULL;
+	unsigned char *copy;
+	long length;
+
+	*type_out = None;
+	*data_out = NULL;
+	*len_out = 0;
+
+	if (XGetWindowProperty(dpy, win, property, 0, 0, False,
+			AnyPropertyType, &type, &format, &nitems,
+			&bytes_after, &prop) != Success) {
+		return 0;
+	}
+	if (prop)
+		XFree(prop);
+
+	if (type == None)
+		return 0;
+	if (type == incr_atom)
+		return receive_clipboard_incr_data(property, target, type_out, data_out, len_out);
+	if (type != target || format != 8 || bytes_after == 0 ||
+	    bytes_after > CLIPBOARD_PASTE_MAX_BYTES) {
+		return 0;
+	}
+
+	length = (long)((bytes_after + 3) / 4);
+	if (length == 0)
+		length = 1;
+
+	if (XGetWindowProperty(dpy, win, property, 0, length, True,
+			AnyPropertyType, &type2, &format2, &nitems2,
+			&bytes_after2, &prop2) != Success) {
+		return 0;
+	}
+	if (type2 != target || format2 != 8 || bytes_after2 != 0 ||
+	    nitems2 == 0 || nitems2 > CLIPBOARD_PASTE_MAX_BYTES) {
+		if (prop2)
+			XFree(prop2);
+		return 0;
+	}
+
+	copy = malloc((size_t)nitems2);
+	if (!copy) {
+		XFree(prop2);
+		return 0;
+	}
+	memcpy(copy, prop2, (size_t)nitems2);
+	XFree(prop2);
+
+	*type_out = type2;
+	*data_out = copy;
+	*len_out = (size_t)nitems2;
+	return 1;
+}
+
+static int request_clipboard_data(Atom target, Atom *type_out,
+		unsigned char **data_out, size_t *len_out)
+{
+	XSelectionEvent selection;
+
+	if (!request_clipboard_selection(clipboard_atom, target, property_atom,
+			CurrentTime, &selection)) {
+		return 0;
+	}
+
+	return retrieve_clipboard_property(property_atom, target, type_out, data_out, len_out);
+}
+
+static char *ensure_paste_temp_dir(void)
+{
+	char *temp_template;
+
+	if (paste_temp_dir)
+		return paste_temp_dir;
+
+	if (asprintf(&temp_template, "/tmp/wmiv_paste_XXXXXX") == -1)
+		return NULL;
+
+	paste_temp_dir = mkdtemp(temp_template);
+	if (!paste_temp_dir) {
+		perror("mkdtemp");
+		free(temp_template);
+		return NULL;
+	}
+	return paste_temp_dir;
+}
+
+static int write_full(int fd, const unsigned char *data, size_t size)
+{
+	size_t offset = 0;
+
+	while (offset < size) {
+		size_t remaining = size - offset;
+		ssize_t written;
+
+		if (remaining > (size_t)SSIZE_MAX)
+			remaining = (size_t)SSIZE_MAX;
+		written = write(fd, data + offset, remaining);
+		if (written < 0) {
+			if (errno == EINTR)
+				continue;
+			return -1;
+		}
+		if (written == 0)
+			return -1;
+		offset += (size_t)written;
+	}
+	return 0;
+}
+
+static char *write_clipboard_image_temp_file(const unsigned char *data, size_t size)
+{
+	char *dir;
+	char *path;
+	int fd;
+	int failed = 0;
+
+	dir = ensure_paste_temp_dir();
+	if (!dir)
+		return NULL;
+
+	if (asprintf(&path, "%s/clipboard-XXXXXX", dir) == -1)
+		return NULL;
+
+	fd = mkstemp(path);
+	if (fd < 0) {
+		perror("mkstemp");
+		free(path);
+		return NULL;
+	}
+
+	if (write_full(fd, data, size) != 0) {
+		perror("write");
+		failed = 1;
+	}
+	if (close(fd) != 0) {
+		perror("close");
+		failed = 1;
+	}
+	if (failed) {
+		unlink(path);
+		free(path);
+		return NULL;
+	}
+	return path;
+}
+
 /*
 	Load an image and optionally get its orientation if libexif is available
 	Returns the image on success, NULL on failure
@@ -1402,6 +1953,109 @@ int linked_list_add(linked_list_t *list, const void *data)
 		list->last = link;
 	}
 	list->count++;
+	return EXIT_SUCCESS;
+}
+
+static int show_pasted_image(char *path)
+{
+	RImage *new_img;
+
+	new_img = load_oriented_image(ctx, path, 0);
+	if (!new_img) {
+		fprintf(stderr, "Error: clipboard image %s\n", RMessageForError(RErrorCode));
+		return EXIT_FAILURE;
+	}
+
+	merge_with_background(new_img);
+	if (linked_list_add(&list, path) != EXIT_SUCCESS) {
+		RReleaseImage(new_img);
+		return EXIT_FAILURE;
+	}
+
+	current_link = list.last;
+	max_index = (unsigned)list.count;
+	current_index = max_index;
+	zoom_factor = 0;
+
+	if (img)
+		RReleaseImage(img);
+	img = new_img;
+
+	if (rescale_image() != EXIT_SUCCESS && WMIV_DEBUG)
+		fprintf(stderr, "Warning: failed to rescale pasted clipboard image\n");
+
+	change_title((char *)current_link->data);
+	if (win) {
+		if (!fullscreen_flag) {
+			XResizeWindow(dpy, win, img->width, img->height);
+			XClearWindow(dpy, win);
+			XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+				img->width, img->height, 0, 0);
+		} else {
+			XClearWindow(dpy, win);
+			XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+				img->width, img->height,
+				max_width / 2 - img->width / 2,
+				max_height / 2 - img->height / 2);
+		}
+		XSync(dpy, False);
+	}
+	return EXIT_SUCCESS;
+}
+
+static int paste_clipboard_image(void)
+{
+	Atom candidates[2];
+	Atom target;
+	Atom actual_type = None;
+	unsigned char *data = NULL;
+	size_t size = 0;
+	char *path;
+	int candidate_count;
+	int i;
+
+	if (XGetSelectionOwner(dpy, clipboard_atom) == None) {
+		fprintf(stderr, "Error: clipboard is empty\n");
+		return EXIT_FAILURE;
+	}
+
+	candidate_count = clipboard_candidate_targets(candidates);
+	if (candidate_count == 0) {
+		fprintf(stderr, "Error: this wmiv build cannot load PNG or JPEG clipboard data\n");
+		return EXIT_FAILURE;
+	}
+
+	target = choose_clipboard_target();
+	if (target != None && request_clipboard_data(target, &actual_type, &data, &size)) {
+		/* data filled */
+	} else {
+		for (i = 0; i < candidate_count; i++) {
+			if (candidates[i] == target)
+				continue;
+			if (request_clipboard_data(candidates[i], &actual_type, &data, &size))
+				break;
+		}
+	}
+
+	if (!data || size == 0) {
+		fprintf(stderr, "Error: clipboard does not contain a supported image\n");
+		return EXIT_FAILURE;
+	}
+
+	if (WMIV_DEBUG)
+		fprintf(stderr, "Pasting clipboard image: %zu bytes as %s\n",
+			size, clipboard_target_name(actual_type));
+
+	path = write_clipboard_image_temp_file(data, size);
+	free(data);
+	if (!path)
+		return EXIT_FAILURE;
+
+	if (show_pasted_image(path) != EXIT_SUCCESS) {
+		unlink(path);
+		free(path);
+		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -2157,6 +2811,7 @@ int main(int argc, char **argv)
 			"  [▴]            first image\n"
 			"  [▾]            last image\n"
 			"  [Ctrl+C]       copy image to clipboard\n"
+			"  [Ctrl+V]       paste image from clipboard\n"
 #ifdef HAVE_PTHREAD
 			"  [D]            start slideshow\n"
 #endif
@@ -2179,6 +2834,7 @@ int main(int argc, char **argv)
 	}
 
 	linked_list_init(&list);
+	atexit(cleanup_paste_temp_dir);
 
 #ifdef HAVE_LIBARCHIVE
 	/* Register cleanup function for temporary directory */
@@ -2414,32 +3070,15 @@ int main(int argc, char **argv)
 		}
 		if (e.type == PropertyNotify) {
 			XPropertyEvent *pe = &e.xproperty;
+
 			if (incr.active &&
-				(pe->window == incr.requestor) &&
-				(pe->atom == incr.property) &&
-				(pe->state == PropertyDelete)) {
-
-				if (WMIV_DEBUG)
-					fprintf(stderr, "INCR: property delete observed, sending next chunk\n");
-
-				/* Check if we've already sent all data */
-				if (incr.offset >= incr.total_size) {
-					/* Send zero-length termination to signal end of transfer */
-					XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8, PropModeReplace, NULL, 0);
-					XFlush(dpy);
-					/* Restore the requestor's previous event mask */
-					XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
-					incr.active = False;
-					if (WMIV_DEBUG)
-						fprintf(stderr, "INCR: transfer complete\n");
-				} else {
-					/* Send next data chunk */
-					send_next_incr_chunk();
-				}
+			    pe->window == incr.requestor &&
+			    pe->atom == incr.property &&
+			    pe->state == PropertyDelete) {
+				handle_outgoing_incr_property_notify(pe);
 			} else if (pe->window == win) {
-				if (WMIV_DEBUG && incr.active) {
+				if (WMIV_DEBUG && incr.active)
 					fprintf(stderr, "Ignoring PropertyNotify on main window during INCR\n");
-				}
 			}
 			continue;
 		}
@@ -2568,6 +3207,10 @@ int main(int argc, char **argv)
 			/* Detect Ctrl+C: state contains ControlMask */
 			if ((e.xkey.state & ControlMask) && (keysym == XK_c || keysym == XK_C)) {
 				copy_current_image_to_clipboard();
+				continue;
+			}
+			if ((e.xkey.state & ControlMask) && (keysym == XK_v || keysym == XK_V)) {
+				paste_clipboard_image();
 				continue;
 			}
 
