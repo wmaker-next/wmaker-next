@@ -402,6 +402,20 @@ start_user_time_helper_client() {
 		&& kill -0 "$CLIENT_PID" 2>/dev/null
 }
 
+start_gnustep_hide_client() {
+	: >"$CLIENT_XID_FILE"
+	DISPLAY=$DPY env EWMH_CLIENT_NAME=gnustep-hide \
+		EWMH_CLIENT_USER_TIME=1 EWMH_CLIENT_GNUSTEP_HIDE=1 \
+		"$CLIENT_BIN" >"$CLIENT_XID_FILE" 2>>"$LOG" &
+	CLIENT_PID=$!
+	echo "$CLIENT_PID" >>"$PIDFILE"
+	wait_for 50 client_xid_ready && kill -0 "$CLIENT_PID" 2>/dev/null
+}
+
+client_xid_file_has() {
+	grep -q "^$1\$" "$CLIENT_XID_FILE"
+}
+
 client2_xid_ready() {
 	[ -s "$CLIENT2_XID_FILE" ] || return 1
 	CLIENT2_XID=$(sed -n "1p" "$CLIENT2_XID_FILE")
@@ -1021,6 +1035,23 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 	else
 		record_skip "could not launch client for sync-counter regression"
 	fi
+fi
+
+note "_GNUSTEP_WM_HIDE_APP protocol"
+if set_desktop 0 && start_gnustep_hide_client; then
+	check "client advertises _GNUSTEP_WM_HIDE_APP in WM_PROTOCOLS" \
+		wait_for 30 window_atom_has "$CLIENT_XID" WM_PROTOCOLS _GNUSTEP_WM_HIDE_APP
+	run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+	wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+	press_key alt+h
+	check "delivers _GNUSTEP_WM_HIDE_APP on the user-gesture hide path" \
+		wait_for 40 client_xid_file_has HIDE_APP
+	sleep 0.2
+	check "lets the client drive its own hide (not WM-hidden)" \
+		window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_HIDDEN
+	close_ewmh_client >/dev/null
+else
+	record_fail "could not launch _GNUSTEP_WM_HIDE_APP client"
 fi
 
 note "_NET_SHOWING_DESKTOP toggle"

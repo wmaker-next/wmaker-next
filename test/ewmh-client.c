@@ -201,7 +201,8 @@ int main(void)
 	Atom net_wm_sync_request, net_wm_sync_request_counter;
 	Atom net_wm_name, net_wm_pid, net_wm_user_time, net_wm_user_time_window;
 	Atom net_wm_window_type, net_wm_window_type_normal, net_wm_icon;
-	Atom protocols[3];
+	Atom gnustep_hide_app = None;
+	Atom protocols[4];
 	int nprotocols = 0;
 	Atom window_type[1];
 	const char *name = getenv("EWMH_CLIENT_NAME");
@@ -213,6 +214,7 @@ int main(void)
 	long bad_icon = env_long("EWMH_CLIENT_BAD_ICON", 0);
 	long no_ping_reply = env_long("EWMH_CLIENT_NO_PING_REPLY", 0);
 	long ignore_delete = env_long("EWMH_CLIENT_IGNORE_DELETE", 0);
+	long want_gnustep_hide = env_long("EWMH_CLIENT_GNUSTEP_HIDE", 0);
 
 	if (!name)
 		name = "ewmh-drive-client";
@@ -313,6 +315,10 @@ int main(void)
 	protocols[nprotocols++] = net_wm_ping;
 	if (sync_counter >= 0)
 		protocols[nprotocols++] = net_wm_sync_request;
+	if (want_gnustep_hide) {
+		gnustep_hide_app = intern_atom(dpy, "_GNUSTEP_WM_HIDE_APP");
+		protocols[nprotocols++] = gnustep_hide_app;
+	}
 	XSetWMProtocols(dpy, win, protocols, nprotocols);
 
 	if (request_frame_extents) {
@@ -340,6 +346,10 @@ int main(void)
 		if ((Atom)ev.xclient.data.l[0] == net_wm_ping) {
 			if (!no_ping_reply)
 				send_ping_reply(dpy, &ev.xclient);
+		} else if (gnustep_hide_app != None
+			   && (Atom)ev.xclient.data.l[0] == gnustep_hide_app) {
+			printf("HIDE_APP\n");
+			fflush(stdout);
 		} else if ((Atom)ev.xclient.data.l[0] == wm_delete_window) {
 			if (ignore_delete)
 				continue;
