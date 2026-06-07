@@ -48,6 +48,26 @@ should set the _GNUSTEP_WM_ATTR or _WINDOWMAKER_MENU property on
 their own toplevel directly.
 
 
+wmclipd clipboard daemon
+------------------------
+
+The new "wmclipd" utility runs as a small X11 clipboard helper.  With
+--clipboard it monitors the CLIPBOARD and PRIMARY selections via the
+XFixes extension and re-owns them when the original application exits,
+so a Ctrl+C copy from a closed window can still be pasted, and image
+data placed only on PRIMARY is mirrored to CLIPBOARD when no clipboard
+owner exists.  With --screenshots it subscribes to the new IPC
+"screenshot" event and offers each saved screenshot on CLIPBOARD as
+image/png (or image/jpeg), text/uri-list and the file path, so a
+screenshot taken with the ScreenshotKey can be pasted straight into
+another application.  Either or both modes can be enabled, see
+wmclipd(1).  XFixes is now an auto-detected build dependency,
+--without-xfixes disables it and skips building wmclipd.
+
+wmiv gains Ctrl+V to paste an image/png or image/jpeg from CLIPBOARD,
+appending it to the image list as a temporary file.
+
+
 Per-head independent workspaces
 -------------------------------
 
