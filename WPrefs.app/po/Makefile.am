@@ -29,6 +29,7 @@ POTFILES  = \
 	$(top_srcdir)/WPrefs.app/Workspace.c \
 	$(top_srcdir)/WPrefs.app/double.c \
 	$(top_srcdir)/WPrefs.app/editmenu.c \
+	$(top_srcdir)/WPrefs.app/enumchoices.h \
 	$(top_srcdir)/WPrefs.app/main.c \
 	$(top_srcdir)/WPrefs.app/xmodifier.c
 
@@ -90,4 +91,5 @@ am__v_CHKTRANS_1 =
 # 'make check' will make sure the tranlation sources are in line with the compiled source
 check-local:
 	$(AM_V_CHKTRANS)$(top_srcdir)/script/check-translation-sources.sh \
-		"$(srcdir)" -s "$(top_srcdir)/WPrefs.app/Makefile.am"
+		"$(srcdir)" -s "$(top_srcdir)/WPrefs.app/Makefile.am" \
+		-v WPrefs_SOURCES -v WPrefs_TRANSLATABLE_FILES

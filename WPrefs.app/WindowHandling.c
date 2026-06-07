@@ -19,6 +19,7 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
 
 typedef struct _Panel {
 	WMBox *box;
@@ -84,22 +85,18 @@ static const struct {
 	const char *db_value;
 	const char *label;
 } window_placements[] = {
-	{ "auto",     N_("Automatic") },
-	{ "random",   N_("Random")    },
-	{ "manual",   N_("Manual")    },
-	{ "cascade",  N_("Cascade")   },
-	{ "smart",    N_("Smart")     },
-	{ "center",   N_("Center")    }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_window_placements(R)
+#undef R
 };
 
 static const struct {
 	const char *db_value;
 	const char *label;
 } drag_maximized_window_options[] = {
-	{ "Move",            N_("...changes its position (normal behavior)") },
-	{ "RestoreGeometry", N_("...restores its unmaximized geometry")      },
-	{ "Unmaximize",      N_("...considers the window now unmaximized")   },
-	{ "NoMove",          N_("...does not move the window")               }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_drag_maximized_window(R)
+#undef R
 };
 
 static void sliderCallback(WMWidget * w, void *data)

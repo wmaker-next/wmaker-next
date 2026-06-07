@@ -19,16 +19,16 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
 
 
 static const struct {
 	const char *db_value;
 	const char *label;
 } icon_animation[] = {
-	{ "zoom",  N_("Shrinking/Zooming") },
-	{ "twist", N_("Spinning/Twisting") },
-	{ "flip",  N_("3D-flipping") },
-	{ "none",  N_("None") }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_icon_animation(R)
+#undef R
 };
 
 /*

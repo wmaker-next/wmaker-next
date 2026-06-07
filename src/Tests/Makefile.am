@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @PANGO_CFLAGS@
@@ -30,4 +30,13 @@ check_wdefaults_SOURCES = \
 check_wdefaults_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
+	@INTLIBS@
+
+check_wprefs_schema_SOURCES = \
+	check_wprefs_schema.c \
+	$(top_srcdir)/WPrefs.app/enumchoices.h
+
+check_wprefs_schema_LDADD = \
+	$(top_builddir)/src/libwconfigschema.la \
+	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@

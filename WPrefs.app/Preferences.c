@@ -19,6 +19,7 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
 
 
 /* Possible choices to display window information during a resize */
@@ -26,11 +27,9 @@ static const struct {
 	const char *db_value;
 	const char *label;
 } resize_display[] = {
-	{ "corner",   N_("Corner of screen") },
-	{ "center",   N_("Center of screen") },
-	{ "floating", N_("Center of resized window") },
-	{ "line",     N_("Technical drawing-like") },
-	{ "none",     N_("Disabled") }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_resize_display(R)
+#undef R
 };
 
 /* Possible choices to display window information while a window is being moved */
@@ -38,10 +37,9 @@ static const struct {
 	const char *db_value;
 	const char *label;
 } move_display[] = {
-	{ "corner",   N_("Corner of screen") },
-	{ "center",   N_("Center of screen") },
-	{ "floating", N_("Center of resized window") },
-	{ "none",     N_("Disabled") }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_move_display(R)
+#undef R
 };
 
 /* All the places where a balloon can be used to display more stuff to user */

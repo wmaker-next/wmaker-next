@@ -19,6 +19,7 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
 
 #include <unistd.h>
 #include <errno.h>
@@ -96,9 +97,9 @@ static const struct {
 	const char *db_value;
 	const char *file_name;
 } menu_style[] = {
-	[MSTYLE_NORMAL] = { "normal",        "msty1" },
-	[MSTYLE_SINGLE] = { "singletexture", "msty2" },
-	[MSTYLE_FLAT]   = { "flat",          "msty3" }
+#define R(i, v, f) [i] = { v, f },
+	WPREFS_TABLE_menu_style(R)
+#undef R
 };
 
 /********************************************************************/
@@ -106,9 +107,9 @@ static const struct {
 	const char *label;
 	const char *db_value;
 } wintitle_align[] = {
-	[WALeft]   = { N_("Left"),   "left"   },
-	[WACenter] = { N_("Center"), "center" },
-	[WARight]  = { N_("Right"),  "right"  }
+#define R(i, v, l) [i] = { l, v },
+	WPREFS_TABLE_wintitle_align(R)
+#undef R
 };
 
 /********************************************************************/

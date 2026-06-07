@@ -20,6 +20,7 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
 
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
@@ -52,23 +53,18 @@ static const struct {
 	const char *db_value;
 	const char *label;
 } button_actions[] = {
-	{ "None",                  N_("None") },
-	{ "OpenApplicationsMenu",  N_("Applications Menu") },
-	{ "OpenWindowListMenu",    N_("Window List Menu") },
-	{ "SelectWindows",         N_("Select Windows") },
-	{ "MoveToPrevWorkspace",   N_("Previous Workspace") },
-	{ "MoveToNextWorkspace",   N_("Next Workspace") },
-	{ "MoveToPrevWindow",      N_("Previous Window") },
-	{ "MoveToNextWindow",      N_("Next Window") }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_button_actions(R)
+#undef R
 };
 
 static const struct {
 	const char *db_value;
 	const char *label;
 } wheel_actions[] = {
-	{ "None",              N_("None") },
-	{ "SwitchWorkspaces",  N_("Switch Workspaces") },
-	{ "SwitchWindows",     N_("Switch Windows") }
+#define R(v, l) { v, l },
+	WPREFS_TABLE_wheel_actions(R)
+#undef R
 };
 
 typedef struct _Panel {

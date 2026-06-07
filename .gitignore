@@ -97,6 +97,7 @@ WINGs/Tests/check_handlers
 WINGs/Tests/check_ipc
 src/Tests/check_config
 src/Tests/check_wdefaults
+src/Tests/check_wprefs_schema
 
 WPrefs.app/WPrefs
 

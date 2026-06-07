@@ -29,6 +29,7 @@ WPrefs_SOURCES = \
 	main.c \
 	WPrefs.c \
 	WPrefs.h \
+	enumchoices.h \
 	Appearance.c \
 	Configurations.c \
 	Docks.c \
@@ -51,6 +52,9 @@ WPrefs_SOURCES = \
 	editmenu.c \
 	editmenu.h \
 	xmodifier.c
+
+WPrefs_TRANSLATABLE_FILES = \
+	enumchoices.h
 
 # not_yet_fully_implemented
 #WPrefs_SOURCES += \

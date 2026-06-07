@@ -129,17 +129,22 @@ function add_source_to_list()
   # Generate awk command to add the file(s) to the list
   split($0, list_src);
   for (key in list_src) {
-    # We filter headers because it is very bad practice to include translatable strings
-    # in a header. This script does not check this validity but assumes the code is ok
-    if (list_src[key] !~ /\.h$/) {
+    # Headers are normally filtered because translatable strings in headers
+    # are discouraged. A source makefile may opt in explicit translation-only
+    # file variables named *_TRANSLATABLE_FILES.
+    if (allow_headers || list_src[key] !~ /\.h$/) {
       print "  srcfile[\"" list_src[key] "\"] = 1;";
     }
     delete list_src[key];
   }
 }'
 for variable in $src_variables ; do
+  case $variable in
+    *_TRANSLATABLE_FILES) allow_headers=1 ;;
+    *) allow_headers=0 ;;
+  esac
   awk_src_script="$awk_src_script
-/^[ \t]*$variable[ \t]*[+]?=/ { add_source_to_list(); }"
+/^[ \t]*$variable[ \t]*[+]?=/ { allow_headers=$allow_headers; add_source_to_list(); }"
 done
 # Tell awk to not print anything other than our explicit 'print' commands
 awk_src_script="$awk_src_script
