@@ -23,11 +23,18 @@
 #include <limits.h>
 
 #ifdef USE_MAGICK
+/* MagickCore/pixel-accessor.h compares Quantum (float on the HDRI build)
+ * with == and implicitly widens it to MagickRealType (double), neither
+ * of which we can fix in a third-party header */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
 #if USE_MAGICK < 7
 #include <wand/magick_wand.h>
 #else
 #include <MagickWand/MagickWand.h>
 #endif
+#pragma GCC diagnostic pop
 #endif
 
 #include "wraster.h"
