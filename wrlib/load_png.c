@@ -135,7 +135,9 @@ RImage *RLoadPNG(RContext *context, const char *file)
 	/* set gamma correction */
 	if ((context->attribs->flags & RC_GammaCorrection)
 	    && context->depth != 8) {
-		sgamma = (context->attribs->rgamma + context->attribs->ggamma + context->attribs->bgamma) / 3;
+		sgamma = ((double)context->attribs->rgamma
+			  + (double)context->attribs->ggamma
+			  + (double)context->attribs->bgamma) / 3.0;
 	} else if ((tmp = getenv("DISPLAY_GAMMA")) != NULL) {
 		sgamma = atof(tmp);
 		if (sgamma < 1.0E-3)

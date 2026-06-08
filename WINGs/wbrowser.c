@@ -561,7 +561,7 @@ static void scrollCallback(WMWidget * scroller, void *self)
 			double floatValue;
 			double value = bPtr->columnCount - bPtr->maxVisibleColumns;
 
-			floatValue = WMGetScrollerValue(bPtr->scroller);
+			floatValue = (double)WMGetScrollerValue(bPtr->scroller);
 
 			floatValue = (floatValue * value) / value;
 
