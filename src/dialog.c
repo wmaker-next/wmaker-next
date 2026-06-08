@@ -1223,7 +1223,10 @@ void wShowInfoPanel(WScreen *scr)
 	WMFont *font;
 	char *strbuf = NULL;
 	const char *separator;
-	char buffer[256];
+	/* sized for two utsname fields (SYS_NMLN is 256 on FreeBSD) plus
+	 * the surrounding format text, so gcc -Wformat-truncation does not
+	 * flag the "Running on: %s (%s)" line below */
+	char buffer[640];
 	Window parent;
 	WWindow *wwin;
 	WMPoint center;
