@@ -539,6 +539,15 @@ through a standard protocol request (for those applications without
 decorations: VS Code, Google Chrome, Steam and Discord, ...).
 
 
+Resize cursors on the resizebar
+-------------------------------
+
+The bottom resizebar now shows the bottom-left, vertical and
+bottom-right resize cursors when the pointer hovers over its three
+drag regions, so the resize direction is visible before the drag
+starts instead of only once it has begun.
+
+
 Cycle windows across all workspaces
 -----------------------------------
 

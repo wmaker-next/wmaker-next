@@ -65,6 +65,7 @@ typedef struct WFrameWindow {
     short resizebar_corner_width;
 
     WCoreWindow *resizebar;	       /* bottom resizebar */
+    Window resizebar_cursor[3];	       /* InputOnly per-region hover cursors */
 
     Pixmap title_back[3];	       /* focused, unfocused, pfocused */
     Pixmap resizebar_back[3];	       /* any, None, None */

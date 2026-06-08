@@ -127,6 +127,52 @@ static void release_resizebar_set(WFrameWindow *fwin)
 	fwin->resizebar_back[0] = None;
 }
 
+/*
+ * Three InputOnly children of the resizebar, one per drag region, each
+ * carrying only a cursor attribute so the X server switches the pointer
+ * shape as it crosses regions with no event traffic. They select no
+ * events so ButtonPress propagates to the resizebar parent and reaches
+ * resizebarMouseDown() unchanged.
+ */
+static void updateResizebarCursors(WFrameWindow *fwin)
+{
+	static const int rcursor[3] = {
+		WCUR_BOTTOMLEFTRESIZE, WCUR_VERTICALRESIZE, WCUR_BOTTOMRIGHTRESIZE
+	};
+	XSetWindowAttributes attr;
+	int cw, w, h, geom[3][2], i;
+
+	if (!fwin->resizebar) {
+		/* children went with the parent on XDestroyWindow */
+		for (i = 0; i < 3; i++)
+			fwin->resizebar_cursor[i] = None;
+		return;
+	}
+
+	cw = fwin->resizebar_corner_width;
+	w = fwin->resizebar->width;
+	h = fwin->resizebar->height;
+	geom[0][0] = 0;       geom[0][1] = cw;
+	geom[1][0] = cw;      geom[1][1] = w - 2 * cw;
+	geom[2][0] = w - cw;  geom[2][1] = cw;
+
+	for (i = 0; i < 3; i++) {
+		if (fwin->resizebar_cursor[i] == None) {
+			attr.cursor = wPreferences.cursor[rcursor[i]];
+			fwin->resizebar_cursor[i] =
+				XCreateWindow(dpy, fwin->resizebar->window, 0, 0, 1, h, 0,
+					      0, InputOnly, CopyFromParent, CWCursor, &attr);
+		}
+		if (geom[i][1] > 0) {
+			XMoveResizeWindow(dpy, fwin->resizebar_cursor[i],
+					  geom[i][0], 0, geom[i][1], h);
+			XMapWindow(dpy, fwin->resizebar_cursor[i]);
+		} else {
+			XUnmapWindow(dpy, fwin->resizebar_cursor[i]);
+		}
+	}
+}
+
 static void handleExpose(WObjDescriptor * desc, XEvent * event);
 static void handleButtonExpose(WObjDescriptor * desc, XEvent * event);
 
@@ -449,6 +495,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			XMapWindow(dpy, fwin->resizebar->window);
 			XLowerWindow(dpy, fwin->resizebar->window);
+			updateResizebarCursors(fwin);
 
 			fwin->flags.need_texture_remake = 1;
 		} else {
@@ -464,6 +511,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			release_resizebar_set(fwin);
 			wCoreDestroy(fwin->resizebar);
 			fwin->resizebar = NULL;
+			updateResizebarCursors(fwin);
 		}
 	}
 
@@ -1305,6 +1353,8 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 	}
 
 	if (fwin->resizebar) {
+		int prev_width = fwin->resizebar->width;
+
 		wCoreConfigure(fwin->resizebar, 0,
 			       fwin->core->height - fwin->resizebar->height,
 			       fwin->core->width, fwin->resizebar->height);
@@ -1312,6 +1362,13 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 		fwin->resizebar_corner_width = RESIZEBAR_CORNER_WIDTH;
 		if (fwin->core->width < RESIZEBAR_CORNER_WIDTH * 2 + RESIZEBAR_MIN_WIDTH)
 			fwin->resizebar_corner_width = fwin->core->width / 2;
+
+		/* opaque resize calls reconfigure() per motion step, the
+		 * cursor regions only depend on bar width so skip the
+		 * three XMoveResizeWindow round-trips when only height
+		 * is changing */
+		if (fwin->resizebar->width != prev_width)
+			updateResizebarCursors(fwin);
 	}
 }
 
