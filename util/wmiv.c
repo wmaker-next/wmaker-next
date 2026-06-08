@@ -17,10 +17,6 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE
-#endif
-
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <WINGs/WINGsP.h>

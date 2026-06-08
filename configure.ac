@@ -304,7 +304,7 @@ supported_gfx=""
 dnl Platform-specific Makefile setup
 dnl ================================
 AS_CASE(["$host"],
-    [*-*-linux*|*-*-cygwin*|*-gnu*], [WM_OSDEP="linux" ; CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=700"],
+    [*-*-linux*|*-*-cygwin*|*-gnu*], [WM_OSDEP="linux" ; CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=700 -D_GNU_SOURCE"],
     dnl _XOPEN_SOURCE on FreeBSD clears __BSD_VISIBLE and so hides accept4,
     dnl SOCK_CLOEXEC, SOCK_NONBLOCK, asprintf and other BSD extensions, all
     dnl of which are visible by default when no feature-test macro is set

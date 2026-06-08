@@ -13,11 +13,6 @@
  *  the protocol description.
  */
 
-/* for accept4 / SOCK_CLOEXEC / SOCK_NONBLOCK on glibc */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include "wconfig.h"
 
 #include <ctype.h>
