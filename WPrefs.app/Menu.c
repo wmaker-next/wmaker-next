@@ -506,24 +506,21 @@ static void createPanel(_Panel * p)
 	data = putNewItem(panel, pad, DirectoryInfo, _("Themes"));
 	data->param.directory.command = "setstyle";
 	data->param.directory.directory =
-	    "/usr/share/" PACKAGE_TARNAME "/Themes"
-	    " /usr/local/share/" PACKAGE_TARNAME "/Themes"
+	    WMAKER_RESOURCE_PATH "/Themes"
 	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
 	data->param.directory.stripExt = 1;
 
 	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (scale)"));
 	data->param.directory.command = "wmsetbg -u -s";
 	data->param.directory.directory =
-	    "/opt/kde2/share/wallpapers"
-	    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
+	    WMAKER_RESOURCE_PATH "/Backgrounds"
 	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
 	data->param.directory.stripExt = 1;
 
 	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (tile)"));
 	data->param.directory.command = "wmsetbg -u -t";
 	data->param.directory.directory =
-	    "/opt/kde2/share/wallpapers"
-	    " /usr/share/" PACKAGE_TARNAME "/Backgrounds"
+	    WMAKER_RESOURCE_PATH "/Backgrounds"
 	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
 	data->param.directory.stripExt = 1;
 

@@ -80,10 +80,8 @@ static void showData(_Panel * panel)
 		p = wstrconcat(wuserdatapath(), "/Icons");
 		addPathToList(panel->icoL, -1, p);
 		wfree(p);
-		addPathToList(panel->icoL, -1, "/usr/include/X11/pixmaps");
-		addPathToList(panel->icoL, -1, "/usr/local/share/" PACKAGE_TARNAME "/Icons");
-		addPathToList(panel->icoL, -1, "/usr/local/share/" PACKAGE_TARNAME "/Pixmaps");
-		addPathToList(panel->icoL, -1, "/usr/share/" PACKAGE_TARNAME "/Icons");
+		addPathToList(panel->icoL, -1, WMAKER_RESOURCE_PATH "/Icons");
+		addPathToList(panel->icoL, -1, WMAKER_RESOURCE_PATH "/Pixmaps");
 	} else {
 		for (i = 0; i < WMGetPropListItemCount(array); i++) {
 			val = WMGetFromPLArray(array, i);
@@ -99,7 +97,7 @@ static void showData(_Panel * panel)
 		p = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME "/Pixmaps");
 		addPathToList(panel->pixL, -1, p);
 		wfree(p);
-		addPathToList(panel->pixL, -1, "/usr/local/share/" PACKAGE_TARNAME "/Pixmaps");
+		addPathToList(panel->pixL, -1, WMAKER_RESOURCE_PATH "/Pixmaps");
 	} else {
 		for (i = 0; i < WMGetPropListItemCount(array); i++) {
 			val = WMGetFromPLArray(array, i);
