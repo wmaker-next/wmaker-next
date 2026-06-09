@@ -2642,7 +2642,7 @@ static XContext sync_alarm_ctx = 0;
 
 /* give up waiting for a client redraw after this many milliseconds and
  * fall back to unsynchronised resize for the rest of the drag */
-#define NET_WM_SYNC_TIMEOUT 1000
+#define NET_WM_SYNC_TIMEOUT 500
 
 /* the counter XID comes from a client property, treat any X error during
  * an XSync call on it as "this client lied", swallow it and disable sync
@@ -2775,6 +2775,7 @@ void wNETWMSyncRequestSend(WWindow *wwin)
 		return;
 	}
 
+	gettimeofday(&wwin->net_sync.wait_start, NULL);
 	wwin->net_sync.waiting = 1;
 }
 
@@ -2796,49 +2797,39 @@ Bool wNETWMSyncRequestHandleAlarm(XEvent *event)
 	return True;
 }
 
-/* called from the opaque-resize loop after wWindowConfigure(), block on
- * the alarm event so the next motion is not applied until the client has
- * caught up, but never for longer than NET_WM_SYNC_TIMEOUT */
-void wNETWMSyncRequestWait(WWindow *wwin)
+/* called from the opaque-resize loop before issuing the next configure,
+ * drain any AlarmNotify already in the Xlib queue so a client that has
+ * caught up clears its waiting flag, and if the request has been
+ * outstanding for longer than NET_WM_SYNC_TIMEOUT fall back to
+ * unsynchronised resize for the rest of the drag, never blocks so
+ * ButtonRelease and Expose for other clients are serviced immediately */
+Bool wNETWMSyncRequestPending(WWindow *wwin)
 {
 	XEvent ev;
-	struct timeval start, now;
-	int fd, elapsed;
+	struct timeval now;
+	long elapsed;
 
 	if (!wwin->net_sync.waiting)
-		return;
+		return False;
 
-	XFlush(dpy);
-	fd = ConnectionNumber(dpy);
-	gettimeofday(&start, NULL);
+	while (XCheckTypedEvent(dpy,
+				w_global.xext.xsync.event_base + XSyncAlarmNotify,
+				&ev))
+		wNETWMSyncRequestHandleAlarm(&ev);
 
-	while (wwin->net_sync.waiting) {
-		if (XCheckTypedEvent(dpy,
-				     w_global.xext.xsync.event_base + XSyncAlarmNotify,
-				     &ev)) {
-			wNETWMSyncRequestHandleAlarm(&ev);
-			continue;
-		}
+	if (!wwin->net_sync.waiting)
+		return False;
 
-		gettimeofday(&now, NULL);
-		elapsed = (now.tv_sec - start.tv_sec) * 1000
-			  + (now.tv_usec - start.tv_usec) / 1000;
-		if (elapsed >= NET_WM_SYNC_TIMEOUT) {
-			/* client is too slow, do not let it stall the
-			 * drag, fall back to unsynchronised resize */
-			wwin->net_sync.waiting = 0;
-			wwin->net_sync.disabled = 1;
-			break;
-		}
-
-		fd_set rfds;
-		struct timeval tv;
-		FD_ZERO(&rfds);
-		FD_SET(fd, &rfds);
-		tv.tv_sec = 0;
-		tv.tv_usec = (NET_WM_SYNC_TIMEOUT - elapsed) * 1000;
-		select(fd + 1, &rfds, NULL, NULL, &tv);
+	gettimeofday(&now, NULL);
+	elapsed = (now.tv_sec - wwin->net_sync.wait_start.tv_sec) * 1000
+		  + (now.tv_usec - wwin->net_sync.wait_start.tv_usec) / 1000;
+	if (elapsed >= NET_WM_SYNC_TIMEOUT) {
+		wwin->net_sync.waiting = 0;
+		wwin->net_sync.disabled = 1;
+		return False;
 	}
+
+	return True;
 }
 
 #else /* !USE_XSYNC */
@@ -2846,7 +2837,7 @@ void wNETWMSyncRequestWait(WWindow *wwin)
 void wNETWMSyncRequestSetup(WWindow *wwin)       { (void)wwin; }
 void wNETWMSyncRequestDestroy(WWindow *wwin)     { (void)wwin; }
 void wNETWMSyncRequestSend(WWindow *wwin)        { (void)wwin; }
-void wNETWMSyncRequestWait(WWindow *wwin)        { (void)wwin; }
+Bool wNETWMSyncRequestPending(WWindow *wwin)     { (void)wwin; return False; }
 Bool wNETWMSyncRequestHandleAlarm(XEvent *event) { (void)event; return False; }
 
 #endif /* USE_XSYNC */

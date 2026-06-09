@@ -81,7 +81,7 @@ Bool wNETWMIsSyncRequestProtocol(Atom protocol);
 void wNETWMSyncRequestSetup(WWindow *wwin);
 void wNETWMSyncRequestDestroy(WWindow *wwin);
 void wNETWMSyncRequestSend(WWindow *wwin);
-void wNETWMSyncRequestWait(WWindow *wwin);
+Bool wNETWMSyncRequestPending(WWindow *wwin);
 Bool wNETWMSyncRequestHandleAlarm(XEvent *event);
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr);
 char *wNETWMGetIconName(Window window);

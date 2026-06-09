@@ -20,6 +20,8 @@
 #ifndef WMWINDOW_H_
 #define WMWINDOW_H_
 
+#include <sys/time.h>
+
 #include <wraster.h>
 #include <WINGs/WXHints.h>
 
@@ -294,6 +296,7 @@ typedef struct WWindow {
 		unsigned long alarm;		/* XSyncAlarm, 0 = none */
 		uint32_t value_lo;
 		uint32_t value_hi;
+		struct timeval wait_start;	/* stamped by Send, deadline check */
 		short waiting;			/* sent a request, no alarm yet */
 		short disabled;			/* client missed a deadline */
 	} net_sync;

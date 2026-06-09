@@ -2128,8 +2128,11 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 #ifdef USE_XSYNC
 	/* a previous drag may have given up on this client, every new
-	 * interactive resize gets a fresh chance to keep up */
+	 * interactive resize gets a fresh chance to keep up, and the last
+	 * request from that drag may have been acked through the main
+	 * loop after the resize loop returned so do not carry the flag */
 	wwin->net_sync.disabled = 0;
+	wwin->net_sync.waiting = 0;
 #endif
 
 	if (wwin->flags.shaded) {
@@ -2179,8 +2182,18 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	while (1) {
 		WMMaskEvent(dpy, KeyPressMask | ButtonMotionMask
 			    | ButtonReleaseMask | PointerMotionHintMask | ButtonPressMask | ExposureMask, &event);
-		if (!checkMouseSamplingRate(&event))
-			continue;
+
+		if (event.type == MotionNotify) {
+			/* the opaque path skips the configure while a
+			 * _NET_WM_SYNC_REQUEST is outstanding, during which
+			 * motion events queue, drain to the latest position
+			 * the same way the move loop does so the next
+			 * configure applies the current pointer position */
+			while (XCheckMaskEvent(dpy, ButtonMotionMask, &event))
+				;
+			if (!checkMouseSamplingRate(&event))
+				continue;
+		}
 
 		switch (event.type) {
 		case KeyPress:
@@ -2198,8 +2211,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 		case MotionNotify:
 			if (started) {
-				while (XCheckMaskEvent(dpy, ButtonMotionMask, &event)) ;
-
 				dw = 0;
 				dh = 0;
 
@@ -2322,13 +2333,19 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 					/* Now, continue drawing */
 					XUngrabServer(dpy);
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
-					/* ask the client to bump its sync
-					 * counter once it has redrawn for
-					 * the new size, then wait for that
-					 * before processing the next motion */
-					wNETWMSyncRequestSend(wwin);
-					wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
-					wNETWMSyncRequestWait(wwin);
+					/* pace to the client's redraw without
+					 * blocking, if the previous
+					 * _NET_WM_SYNC_REQUEST is still
+					 * outstanding skip this configure and
+					 * apply the latest geometry once the
+					 * alarm arrives, the geometry view and
+					 * fw/fh have already advanced so the
+					 * next pass or ButtonRelease catches
+					 * the client up */
+					if (!wNETWMSyncRequestPending(wwin)) {
+						wNETWMSyncRequestSend(wwin);
+						wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
+					}
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 				};
 			}
