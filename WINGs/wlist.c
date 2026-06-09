@@ -1026,9 +1026,15 @@ static void typeaheadTimeout(void *data)
 static void handleActionEvents(XEvent * event, void *data)
 {
 	List *lPtr = (List *) data;
+	WMScreen *scr = lPtr->view->screen;
 	int tmp, height;
 	int topItem = lPtr->topItem;
 	static int lastClicked = -1, prevItem = -1;
+	char buffer[16];
+	KeySym ksym;
+	Status status;
+	int len;
+	XWindowAttributes wattr;
 
 	CHECK_CLASS(data, WC_List);
 
@@ -1185,13 +1191,6 @@ static void handleActionEvents(XEvent * event, void *data)
 		break;
 
 	case KeyPress:
-		char buffer[16];
-		KeySym ksym;
-		Status status;
-		int len;
-		WMScreen *scr = lPtr->view->screen;
-		XWindowAttributes wattr;
-
 		if (event->xkey.state & (ControlMask | scr->altModifierMask))
 			break;
 
