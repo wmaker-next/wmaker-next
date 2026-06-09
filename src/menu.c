@@ -77,6 +77,25 @@ static int restoreMenuRecurs(WScreen *scr, WMPropList *menus, WMenu *menu, const
 static void selectEntry(WMenu * menu, int entry_no);
 static void closeCascade(WMenu * menu);
 
+/*
+ * Track how many menus are mapped on the screen so the root window
+ * PointerMotionMask for ScrollableMenus is selected only while a menu
+ * exists for it to scroll, an idle desktop with no menu mapped then
+ * receives no root MotionNotify even with ScrollableMenus on.
+ */
+static void menuTrackMapped(WMenu *menu, int delta)
+{
+	WScreen *scr = menu->frame->screen_ptr;
+	int prev = scr->mapped_menu_count;
+
+	scr->mapped_menu_count += delta;
+	if (scr->mapped_menu_count < 0)
+		scr->mapped_menu_count = 0;
+
+	if ((prev == 0) != (scr->mapped_menu_count == 0))
+		wScreenUpdateRootEventMask(scr);
+}
+
 /****** Notification Observers ******/
 
 static void appearanceObserver(void *self, WMNotification * notif)
@@ -610,6 +629,9 @@ void wMenuRealize(WMenu * menu)
 void wMenuDestroy(WMenu * menu, int recurse)
 {
 	int i;
+
+	if (menu->flags.mapped)
+		menuTrackMapped(menu, -1);
 
 	WMRemoveNotificationObserver(menu);
 
@@ -1210,6 +1232,7 @@ void wMenuMapAt(WMenu * menu, int x, int y, int keyboard)
 		XMapWindow(dpy, menu->frame->core->window);
 		wRaiseFrame(menu->frame->core);
 		menu->flags.mapped = 1;
+		menuTrackMapped(menu, +1);
 	} else {
 		selectEntry(menu, 0);
 	}
@@ -1231,7 +1254,10 @@ void wMenuMap(WMenu * menu)
 	}
 	XMapWindow(dpy, menu->frame->core->window);
 	wRaiseFrame(menu->frame->core);
-	menu->flags.mapped = 1;
+	if (!menu->flags.mapped) {
+		menu->flags.mapped = 1;
+		menuTrackMapped(menu, +1);
+	}
 }
 
 void wMenuUnmap(WMenu * menu)
@@ -1242,6 +1268,8 @@ void wMenuUnmap(WMenu * menu)
 	if (menu->flags.titled && menu->flags.buttoned) {
 		wFrameWindowHideButton(menu->frame, WFF_RIGHT_BUTTON);
 	}
+	if (menu->flags.mapped)
+		menuTrackMapped(menu, -1);
 	menu->flags.buttoned = 0;
 	menu->flags.mapped = 0;
 	menu->flags.open_to_left = 0;

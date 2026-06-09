@@ -1,7 +1,9 @@
 #!/bin/sh
 # Verify hot corners fire even when a client (windowed or fullscreen)
-# covers the corner. Runs wmaker under Xephyr on an isolated display
-# and WMAKER_USER_ROOT, tracks every PID it spawns and kills only those.
+# covers the corner, and that the root-window PointerMotionMask for
+# ScrollableMenus is selected only while a menu is actually mapped.
+# Runs wmaker under Xephyr on an isolated display and WMAKER_USER_ROOT,
+# tracks every PID it spawns and kills only those.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -125,9 +127,44 @@ hit_corner 1 1 tl "top-left over fullscreen client"
 # --- 4. second corner under fullscreen --------------------------------------
 hit_corner $((W-2)) $((H-2)) br "bottom-right over fullscreen client"
 
-# --- teardown ---------------------------------------------------------------
 DISPLAY=$DPY wmctrl -i -c "$XTW" 2>/dev/null
 wait_for 30 pid_gone "$XTPID"
+
+# --- 5. root PointerMotionMask gated on mapped menus ------------------------
+# ScrollableMenus is at its YES default (not in the WindowMaker domain
+# above), so an idle desktop must not select PointerMotion on root, it
+# only appears while a menu is mapped and goes again on close.
+# ButtonMotion must always be selected so the implicit grab from a
+# root-window button press carries motion to menuMouseDown(), without
+# it the root menu opened by that press shows no entry highlight.
+root_mask() {
+    DISPLAY=$DPY xwininfo -root -all 2>/dev/null \
+        | sed -n '/Someone wants/,/Do not propagate/p'
+}
+root_has_motion() { root_mask | grep PointerMotion >/dev/null; }
+no_root_motion() { ! root_has_motion; }
+
+xdo mousemove $((W/2)) $((H/2)); sleep 0.2
+note "root motion mask: idle desktop"
+root_has_motion && fail "root has PointerMotion with no menu mapped"
+note "ok: no root PointerMotion with no menu mapped"
+root_mask | grep ButtonMotion >/dev/null \
+    || fail "root lacks ButtonMotion, root-menu hover highlight will not work"
+note "ok: root ButtonMotion always selected"
+
+note "root motion mask: menu open"
+xdo key F12
+wait_for 30 root_has_motion \
+    || fail "root has no PointerMotion with a menu mapped"
+note "ok: root PointerMotion with menu mapped"
+
+note "root motion mask: menu closed"
+xdo key Escape
+wait_for 30 no_root_motion \
+    || fail "root still has PointerMotion after menu unmapped"
+note "ok: no root PointerMotion after menu unmapped"
+
+# --- teardown ---------------------------------------------------------------
 kill -TERM "$WMAKER_PID" 2>/dev/null
 wait_for 50 pid_gone "$WMAKER_PID"
 

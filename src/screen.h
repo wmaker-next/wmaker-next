@@ -349,6 +349,10 @@ typedef struct _WScreen {
     Window *hot_corner_win;            /* 4 per head, InputOnly, topmost */
     int hot_corner_win_count;
 
+    int mapped_menu_count;             /* WMenu with flags.mapped set, gates
+                                        * PointerMotionMask on the root window
+                                        * for ScrollableMenus */
+
 #ifdef USE_RANDR
     WMHandlerID *randr_debounce_timer;
     void *randr_state;

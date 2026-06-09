@@ -67,13 +67,20 @@
 #include "defaults.h"
 
 /* PointerMotionMask is added on demand by wScreenUpdateRootEventMask()
- * below, only when HotCorners or ScrollableMenus actually needs it,
- * so an idle desktop with both off receives no root MotionNotify at
- * all instead of one per pointer pixel */
+ * below, only while ScrollableMenus is on and a menu is actually
+ * mapped, so an idle desktop receives no root MotionNotify at all
+ * instead of one per pointer pixel.
+ *
+ * ButtonMotionMask is always selected, it generates nothing while no
+ * button is held so the idle case is unchanged, but a button press on
+ * the root window starts an implicit grab whose event mask is frozen
+ * at this selection, and menuMouseDown() relies on that grab carrying
+ * motion to highlight entries as the pointer moves over the root menu
+ * opened from that press */
 #define EVENT_MASK (LeaveWindowMask|EnterWindowMask|PropertyChangeMask\
     |SubstructureNotifyMask \
     |SubstructureRedirectMask|ButtonPressMask|ButtonReleaseMask\
-    |KeyPressMask|KeyReleaseMask)
+    |ButtonMotionMask|KeyPressMask|KeyReleaseMask)
 
 #ifdef USE_ICCCM_WMREPLACE
 #define REPLACE_WM_TIMEOUT 15
@@ -653,10 +660,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	event_mask = EVENT_MASK;
 	XSelectInput(dpy, scr->root_win, event_mask);
-	/* defaults are read after this point, so the conditional motion mask
-	 * is applied again from wReadDefaults() once the preference values
-	 * are known, and again whenever HotCorners or ScrollableMenus
-	 * changes at runtime */
+	/* the conditional PointerMotionMask is re-applied later from
+	 * wScreenUpdateRootEventMask() whenever ScrollableMenus changes
+	 * at runtime or a menu is mapped or unmapped */
 
 #ifdef KEEP_XKB_LOCK_STATUS
 	if (w_global.xext.xkb.supported)
@@ -800,14 +806,17 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 /*
  * Re-select the root window event mask with PointerMotionMask added
  * only when a feature that consumes root MotionNotify is enabled.
- * Hot corners are now driven by EnterNotify on dedicated InputOnly
- * windows so only ScrollableMenus still needs root motion events.
+ * Hot corners are driven by EnterNotify on dedicated InputOnly windows,
+ * so only ScrollableMenus still needs root motion events, and only
+ * while a menu is actually mapped, transient menus run a pointer grab
+ * so motion reaches them regardless of the root mask, this term covers
+ * torn-off menus that sit open between grabs.
  */
 void wScreenUpdateRootEventMask(WScreen *scr)
 {
 	long mask = EVENT_MASK;
 
-	if (w_global.config->scrollable_menus)
+	if (w_global.config->scrollable_menus && scr->mapped_menu_count > 0)
 		mask |= PointerMotionMask;
 
 	XSelectInput(dpy, scr->root_win, mask);
