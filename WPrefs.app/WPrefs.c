@@ -22,6 +22,7 @@
 
 #include "WPrefs.h"
 #include <assert.h>
+#include <unistd.h>
 #include <X11/Xatom.h>
 
 #ifdef HAVE_STDNORETURN

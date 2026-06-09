@@ -28,6 +28,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xresource.h>
 #ifdef USE_XSYNC
 #include <X11/extensions/sync.h>
 #endif

@@ -20,6 +20,8 @@
 #ifndef WMDEFAULTS_H_
 #define WMDEFAULTS_H_
 
+#include <time.h>
+
 typedef struct WDDomain {
 	const char *domain_name;
 	WMPropList *dictionary;

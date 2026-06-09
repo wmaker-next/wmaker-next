@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <strings.h>
 
 #include "wraster.h"
 #include "imgformat.h"
