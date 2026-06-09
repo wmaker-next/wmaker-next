@@ -45,7 +45,7 @@ void wStartupNotifyUpdateCursor(struct _WScreen *scr);
 
 Bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
 			       const char *wm_class, const char *wm_instance,
-			       Time *launch_time_out, int *workspace_out);
+			       pid_t pid, Time *launch_time_out, int *workspace_out);
 
 WStartupLaunch *wStartupLaunchBegin(struct _WScreen *scr, const char *bin,
 				    const char *name, const char *wmclass,
@@ -67,9 +67,9 @@ static inline void wStartupNotifyUpdateCursor(struct _WScreen *scr) { (void)scr;
 
 static inline Bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
 					     const char *wm_class, const char *wm_instance,
-					     Time *launch_time_out, int *workspace_out)
+					     pid_t pid, Time *launch_time_out, int *workspace_out)
 {
-	(void)scr; (void)startup_id; (void)wm_class; (void)wm_instance;
+	(void)scr; (void)startup_id; (void)wm_class; (void)wm_instance; (void)pid;
 	(void)launch_time_out; (void)workspace_out;
 	return False;
 }

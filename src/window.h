@@ -507,6 +507,8 @@ void wWindowMap(WWindow *wwin);
 
 void wWindowUnmap(WWindow *wwin);
 
+pid_t wGetWindowPid(Window win);
+
 void wWindowDeleteSavedStatesForPID(pid_t pid);
 
 WMagicNumber wWindowAddSavedState(const char *instance, const char *class, const char *command,

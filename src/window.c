@@ -579,8 +579,9 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 	return True;
 }
 
-/* Get the corresponding Process Identification Number of the active window */
-static pid_t getWindowPid(Window win)
+/* Get the owning client PID for an X window, preferring server-side
+ * XResQueryClientIds over the client-supplied _NET_WM_PID property */
+pid_t wGetWindowPid(Window win)
 {
 #ifdef USE_XRES
 	pid_t xres_pid = -1;
@@ -620,7 +621,7 @@ static void wWindowTrySwallow(WWindow *wwin)
 	WWindow *parent;
 	pid_t child_pid;
 
-	child_pid = getWindowPid(wwin->client_win);
+	child_pid = wGetWindowPid(wwin->client_win);
 
 	for (parent = scr->focused_window; parent; parent = parent->prev) {
 		pid_t parent_pid;
@@ -632,7 +633,7 @@ static void wWindowTrySwallow(WWindow *wwin)
 		if (parent->swallowed)		/* already swallowing something */
 			continue;
 
-		parent_pid = getWindowPid(parent->client_win);
+		parent_pid = wGetWindowPid(parent->client_win);
 		if (parent_pid <= 0)
 			continue;
 
@@ -722,7 +723,7 @@ static void fixLeaderProperties(WWindow *wwin)
 	Bool haveCommand;
 
 	clientHints = WXGetWMHints(dpy, wwin->client_win);
-	pid = getWindowPid(wwin->client_win);
+	pid = wGetWindowPid(wwin->client_win);
 	if (pid > 0)
 		haveCommand = GetCommandForPid(pid, &argv, &argc);
 	else

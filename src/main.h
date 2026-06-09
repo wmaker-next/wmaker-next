@@ -27,9 +27,21 @@
 #include <stdnoreturn.h>
 #endif
 
+struct WPendingLaunch;
+
+/* wspawnvp_setup() pre_exec context for launches that may carry a
+ * startup-notification sequence, the dock and the root menu share the
+ * same setup callback so the SetupEnvironment() and setsid() body is
+ * defined once in main.c */
+struct LaunchSetup {
+    WScreen *scr;
+    struct WPendingLaunch *sn;
+};
+
 noreturn void Exit(int status);
 void Restart(char *manager, Bool abortOnFailure);
 void SetupEnvironment(WScreen *scr);
+void LaunchChildSetup(void *data);
 void ExecuteShellCommand(WScreen *scr, const char *command);
 Bool RelaunchWindow(WWindow *wwin);
 noreturn void wAbort(Bool dumpCore);

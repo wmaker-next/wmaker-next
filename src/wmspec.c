@@ -1836,14 +1836,25 @@ static void matchStartupNotification(WWindow *wwin, WNETWMInitialCookies *ck)
 	char *sid;
 	Time launch_ts = 0;
 	int sn_ws = -1;
+	pid_t pid;
 
 	sid = WXRcvString(dpy, ck->startup_id, NULL);
 	if (!sid && wwin->main_window != None && wwin->main_window != wwin->client_win)
 		sid = WXGetUTF8String(dpy, wwin->main_window, net_startup_id, NULL);
 
+	pid = wGetWindowPid(wwin->client_win);
+
 	if (wStartupNotifyMatchWindow(wwin->screen_ptr, sid,
 				      wwin->wm_class, wwin->wm_instance,
-				      &launch_ts, &sn_ws)) {
+				      pid, &launch_ts, &sn_ws)) {
+		/* a leaderless toplevel that we know we launched should
+		 * still get a WApplication and an appicon so the dock tile
+		 * can attach to it and clear when the window goes away,
+		 * treat it as if EmulateAppIcon was set for this map only */
+		if (wwin->main_window == None && wwin->transient_for == None
+		    && !wwin->flags.is_dockapp)
+			wwin->main_window = wwin->client_win;
+
 		/* keep an explicit _NET_WM_USER_TIME = 0 authoritative,
 		 * the existing focus policy treats it as "do not focus me"
 		 * regardless of how the window was launched */

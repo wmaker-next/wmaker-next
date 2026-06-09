@@ -46,6 +46,7 @@
 #include "menu.h"
 #include "framewin.h"
 #include "dialog.h"
+#include "startup_notify.h"
 #include "xinerama.h"
 #include "client.h"
 #include "placement.h"
@@ -336,6 +337,7 @@ void wAppIconDestroy(WAppIcon * aicon)
 {
 	WScreen *scr = aicon->icon->core->screen_ptr;
 
+	wStartupNotifyForgetIcon(aicon);
 	RemoveFromStackList(aicon->icon->core);
 	wIconDestroy(aicon->icon);
 	if (aicon->command)

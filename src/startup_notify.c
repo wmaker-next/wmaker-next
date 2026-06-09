@@ -315,7 +315,7 @@ static void sn_fallback_timeout_cb(void *data)
 
 Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 			       const char *wm_class, const char *wm_instance,
-			       Time *launch_time_out, int *workspace_out)
+			       pid_t pid, Time *launch_time_out, int *workspace_out)
 {
 	WPendingLaunch *pl;
 	WPendingLaunch *hit = NULL;
@@ -347,6 +347,20 @@ Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 				continue;
 			if ((wm_class && strcmp(seq_class, wm_class) == 0)
 			    || (wm_instance && strcmp(seq_class, wm_instance) == 0)) {
+				hit = pl;
+				break;
+			}
+		}
+	}
+
+	/* pass 3, pid fallback for launches we initiated ourselves, so an
+	 * app that neither speaks startup-notification nor maps with the
+	 * WMCLASS we guessed (a .desktop without StartupWMClass=, or a
+	 * toolkit that sets a generic class) still drops the busy cursor
+	 * as soon as its first window appears */
+	if (!hit && pid > 0) {
+		WM_ITERATE_ARRAY(scr->sn->pending, pl, it) {
+			if (pl->pid == pid) {
 				hit = pl;
 				break;
 			}

@@ -83,6 +83,8 @@ const char *__lsan_default_suppressions(void)
 #include "main.h"
 #include "monitor.h"
 #include "misc.h"
+#include "framewin.h"
+#include "startup_notify.h"
 
 #include <WINGs/WUtil.h>
 
@@ -307,8 +309,7 @@ static void shellCommandHandler(pid_t pid, unsigned int status, void *client_dat
 {
 	_tuple *data = (_tuple *) client_data;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) pid;
+	wStartupLaunchChildExited(data->scr, pid);
 
 	if (status == 127) {
 		char *buffer;
@@ -327,17 +328,21 @@ static void shellCommandHandler(pid_t pid, unsigned int status, void *client_dat
 	wfree(data);
 }
 
-static void child_env_session(void *data)
+void LaunchChildSetup(void *data)
 {
-	SetupEnvironment(data);
+	struct LaunchSetup *s = data;
+
+	SetupEnvironment(s->scr);
 #ifdef HAVE_SETSID
 	setsid();
 #endif
+	wStartupLaunchSetupChild(s->sn);
 }
 
 void ExecuteShellCommand(WScreen *scr, const char *command)
 {
 	static char *shell = NULL;
+	struct LaunchSetup ls;
 	pid_t pid;
 
 	/*
@@ -352,10 +357,16 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 	 */
 	shell = "/bin/sh";
 
-	pid = wspawnvp_setup((char *[]){ shell, "-c", (char *)command, NULL }, child_env_session, scr);
+	ls.scr = scr;
+	ls.sn = wStartupLaunchBegin(scr, command, command, NULL,
+				    scr->current_workspace, NULL);
+
+	pid = wspawnvp_setup((char *[]){ shell, "-c", (char *)command, NULL },
+			     LaunchChildSetup, &ls);
 
 	if (pid < 0) {
 		werror("cannot fork a new process");
+		wStartupLaunchAbort(ls.sn);
 	} else {
 		_tuple *data = wmalloc(sizeof(_tuple));
 
@@ -363,6 +374,7 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 		data->command = wstrdup(command);
 
 		wAddDeathHandler(pid, shellCommandHandler, data, "menu", -1);
+		wStartupLaunchSpawned(ls.sn, pid);
 	}
 }
 
@@ -403,10 +415,18 @@ Bool RelaunchWindow(WWindow *wwin)
 	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
 	argv[argc] = NULL;
 
-	pid_t pid = wspawnvp_setup(argv, child_env_session, wwin->screen_ptr);
+	struct LaunchSetup ls;
+	ls.scr = wwin->screen_ptr;
+	ls.sn = wStartupLaunchBegin(wwin->screen_ptr, argv[0], argv[0], wwin->wm_class,
+				    wwin->frame ? wwin->frame->workspace
+						: wwin->screen_ptr->current_workspace,
+				    NULL);
+
+	pid_t pid = wspawnvp_setup(argv, LaunchChildSetup, &ls);
 
 	if (pid < 0) {
 		werror("cannot fork a new process");
+		wStartupLaunchAbort(ls.sn);
 
 		wtokenfree(argv, argc);
 		wfree(command);
@@ -416,6 +436,7 @@ Bool RelaunchWindow(WWindow *wwin)
 
 		data->scr = wwin->screen_ptr;
 		data->command = command;
+		wStartupLaunchSpawned(ls.sn, pid);
 
 		/* not actually a shell command */
 		wAddDeathHandler(pid, shellCommandHandler, data, "menu", -1);

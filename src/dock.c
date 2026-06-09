@@ -61,6 +61,7 @@
 #include "placement.h"
 #include "misc.h"
 #include "event.h"
+#include "startup_notify.h"
 
 /**** Local variables ****/
 #define CLIP_REWIND       1
@@ -3086,20 +3087,14 @@ void wClipSnapToHead(WDock *clip)
 	moveDock(clip, x, y);
 }
 
-static void dock_child_env_session(void *data)
-{
-	SetupEnvironment(data);
-#ifdef HAVE_SETSID
-	setsid();
-#endif
-}
-
 static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 {
 	WScreen *scr = btn->icon->core->screen_ptr;
+	struct LaunchSetup ls;
 	pid_t pid;
 	char **argv = NULL;
 	int argc;
+	int sn_ws;
 	char *cmdline;
 
 	cmdline = ExpandOptions(scr, command);
@@ -3125,10 +3120,23 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
 	argv[argc] = NULL;
 
-	pid = wspawnvp_setup(argv, dock_child_env_session, scr);
+	if (state && state->workspace >= 0)
+		sn_ws = state->workspace;
+	else if (btn->dock && btn->dock != scr->dock && btn->dock->type != WM_DRAWER && !btn->omnipresent)
+		sn_ws = scr->current_workspace;
+	else
+		sn_ws = scr->current_workspace;
+
+	ls.scr = scr;
+	ls.sn = wStartupLaunchBegin(scr, argv[0],
+				    btn->wm_instance ? btn->wm_instance : argv[0],
+				    btn->wm_class, sn_ws, btn);
+
+	pid = wspawnvp_setup(argv, LaunchChildSetup, &ls);
 	wtokenfree(argv, argc);
 
 	if (pid > 0) {
+		wStartupLaunchSpawned(ls.sn, pid);
 		if (!state) {
 			state = wmalloc(sizeof(WSavedState));
 			state->hidden = -1;
@@ -3141,8 +3149,10 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 		}
 		wWindowAddSavedState(btn->wm_instance, btn->wm_class, cmdline, pid, state);
 		wAddDeathHandler(pid, trackDeadProcess, btn->dock, "dock", btn->yindex);
-	} else if (state) {
-		wfree(state);
+	} else {
+		wStartupLaunchAbort(ls.sn);
+		if (state)
+			wfree(state);
 	}
 	wfree(cmdline);
 	return pid;
@@ -3432,17 +3442,23 @@ static void trackDeadProcess(pid_t pid, unsigned int status, void *cdata)
 	WAppIcon *icon;
 	int i;
 
+	wStartupLaunchChildExited(dock->screen_ptr, pid);
+
 	for (i = 0; i < dock->max_icons; i++) {
 		icon = dock->icon_array[i];
 		if (!icon)
 			continue;
 
-		if (icon->launching && icon->pid == pid) {
-			if (!icon->relaunching) {
+		if (icon->pid == pid) {
+			/* the startup-notification timeout may already have
+			 * cleared launching for a window we never managed to
+			 * attach by class or pid, only reset running when no
+			 * main_window was recorded so a forking launcher whose
+			 * spawned process exits does not detach a live app */
+			if (!icon->relaunching && icon->main_window == None)
 				icon->running = 0;
-				icon->main_window = None;
-			}
-			wDockFinishLaunch(icon);
+			if (icon->launching)
+				wDockFinishLaunch(icon);
 			icon->pid = 0;
 			if (status == 127) {
 				char msg[PATH_MAX];
