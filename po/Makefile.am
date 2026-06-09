@@ -64,6 +64,7 @@ POTFILES  = \
 	$(top_srcdir)/src/window.c \
 	$(top_srcdir)/src/winmenu.c \
 	$(top_srcdir)/src/winspector.c \
+	$(top_srcdir)/src/wireframe.c \
 	$(top_srcdir)/src/wmspec.c \
 	$(top_srcdir)/src/workspace.c \
 	$(top_srcdir)/src/wsmap.c \

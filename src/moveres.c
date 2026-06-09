@@ -40,6 +40,7 @@
 
 #include "geomview.h"
 #include "screen.h"
+#include "wireframe.h"
 #include "xinerama.h"
 
 #include <WINGs/WINGsP.h>
@@ -450,10 +451,8 @@ static void doWindowMove(WWindow * wwin, WMArray * array, int dx, int dy)
 	}
 }
 
-static void drawTransparentFrame(WWindow * wwin, int x, int y, int width, int height)
+static void addWindowOutline(WWindow * wwin, int x, int y, int width, int height)
 {
-	Window root = wwin->screen_ptr->root_win;
-	GC gc = wwin->screen_ptr->frame_gc;
 	int h = 0;
 	int bottom = 0;
 	int fb = 0;
@@ -476,17 +475,11 @@ static void drawTransparentFrame(WWindow * wwin, int x, int y, int width, int he
 		   (e.g. interactive placement), frame does not point to anything. */
 		bottom = RESIZEBAR_HEIGHT;
 	}
-	XDrawRectangle(dpy, root, gc, x, y, width - 1 + 2 * fb, height - 1 + 2 * fb);
 
-	if (h > 0) {
-		XDrawLine(dpy, root, gc, x, y + fb + h - 1, x + 2 * fb + width, y + fb + h - 1);
-	}
-	if (bottom > 0) {
-		XDrawLine(dpy, root, gc, x, y + fb + height - bottom, x + 2 * fb + width, y + fb + height - bottom);
-	}
+	wWireframeAddOutline(wwin->screen_ptr, x, y, width, height, h, bottom, fb);
 }
 
-static void drawFrames(WWindow * wwin, WMArray * array, int dx, int dy)
+static void addFrameOutlines(WWindow * wwin, WMArray * array, int dx, int dy)
 {
 	WWindow *tmpw;
 	int scr_width = wwin->screen_ptr->scr_width;
@@ -498,7 +491,7 @@ static void drawFrames(WWindow * wwin, WMArray * array, int dx, int dy)
 		x = wwin->frame_x + dx;
 		y = wwin->frame_y + dy;
 
-		drawTransparentFrame(wwin, x, y, wwin->frame->core->width, wwin->frame->core->height);
+		addWindowOutline(wwin, x, y, wwin->frame->core->width, wwin->frame->core->height);
 
 	} else {
 		WMArrayIterator iter;
@@ -524,7 +517,7 @@ static void drawFrames(WWindow * wwin, WMArray * array, int dx, int dy)
 					   (int)tmpw->frame->core->width, (int)tmpw->frame->core->height);
 #endif
 
-			drawTransparentFrame(tmpw, x, y, tmpw->frame->core->width, tmpw->frame->core->height);
+			addWindowOutline(tmpw, x, y, tmpw->frame->core->width, tmpw->frame->core->height);
 		}
 	}
 }
@@ -1159,46 +1152,16 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 		newY = data->calcY;
 
 	if (data->realX != newX || data->realY != newY) {
-
-		if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
-			showPosition(wwin, data->realX, data->realY);
-		}
-		if (opaqueMove) {
+		if (opaqueMove)
 			doWindowMove(wwin, scr->selected_windows, newX - wwin->frame_x, newY - wwin->frame_y);
-		} else {
-			/* erase frames */
-			drawFrames(wwin, scr->selected_windows,
-				   data->realX - wwin->frame_x, data->realY - wwin->frame_y);
-		}
 
-		if (!scr->selected_windows && w_global.config->move_display == WDIS_FRAME_CENTER) {
-			/* The XOR frame is erased at this point, so the server
-			 * can be released for one round-trip without corrupting
-			 * it. Moving the geometry window leaves an exposed
-			 * rectangle on whichever client it was covering, that
-			 * client's repaint requests are blocked by the grab so
-			 * a blue trail accumulates, this brief release lets the
-			 * server drain the repaints queued by the previous step
-			 * so the trail cannot grow. The geometry window also
-			 * requests save_under which makes this moot on servers
-			 * that honour it. */
-			if (!opaqueMove)
-				XUngrabServer(dpy);
+		/* the wireframe outline is refreshed by the caller once the
+		 * final position for this step is known */
+		if (!scr->selected_windows && w_global.config->move_display == WDIS_FRAME_CENTER)
 			moveGeometryDisplayCentered(scr, newX + data->winWidth / 2, newY + data->winHeight / 2);
-			if (!opaqueMove) {
-				XSync(dpy, False);
-				XGrabServer(dpy);
-			}
-		}
 
-		if (!opaqueMove) {
-			/* draw frames */
-			drawFrames(wwin, scr->selected_windows, newX - wwin->frame_x, newY - wwin->frame_y);
-		}
-
-		if (!scr->selected_windows) {
+		if (!scr->selected_windows)
 			showPosition(wwin, newX, newY);
-		}
 	}
 
 	/* recalc relative window position */
@@ -1210,7 +1173,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 	data->realY = newY;
 }
 
-static void draw_snap_frame(WWindow *wwin, int direction)
+static void addSnapOutline(WWindow *wwin, int direction)
 {
 	WScreen *scr;
 	int head, x, y, fb;
@@ -1272,7 +1235,33 @@ static void draw_snap_frame(WWindow *wwin, int direction)
 		break;
 	}
 
-	drawTransparentFrame(wwin, x, y, width - fb, height - fb);
+	addWindowOutline(wwin, x, y, width - fb, height - fb);
+}
+
+/*
+ * Refresh the wireframe to the current move state, the dragged frame(s)
+ * while the move is non-opaque plus the snap-target preview when armed.
+ * The wireframe is a real window, so there is no erase/redraw pairing,
+ * each call simply replaces whatever was shown before.
+ */
+static void showMoveWireframe(WWindow *wwin, MoveData *data, Bool opaqueMove)
+{
+	WScreen *scr = wwin->screen_ptr;
+
+	wWireframeBegin(scr);
+	if (!opaqueMove)
+		addFrameOutlines(wwin, scr->selected_windows,
+				 data->realX - wwin->frame_x, data->realY - wwin->frame_y);
+	if (data->snap)
+		addSnapOutline(wwin, data->snap);
+	wWireframeCommit(scr);
+}
+
+static void showResizeWireframe(WWindow *wwin, int x, int y, int w, int h)
+{
+	wWireframeBegin(wwin->screen_ptr);
+	addWindowOutline(wwin, x, y, w, h);
+	wWireframeCommit(wwin->screen_ptr);
 }
 
 static int get_snap_direction(WScreen *scr, int x, int y)
@@ -1303,18 +1292,11 @@ static int get_snap_direction(WScreen *scr, int x, int y)
 	return SNAP_NONE;
 }
 
-static void do_snap(WWindow *wwin, MoveData *data, Bool opaqueMove)
+static void do_snap(WWindow *wwin, MoveData *data)
 {
 	int directions;
-	WScreen *scr;
 
 	directions = 0;
-	scr = wwin->screen_ptr;
-
-	/* erase frames */
-	if (!opaqueMove)
-		drawFrames(wwin, scr->selected_windows, data->realX - wwin->frame_x, data->realY - wwin->frame_y);
-	draw_snap_frame(wwin, data->snap);
 
 	switch (data->snap) {
 	case SNAP_NONE:
@@ -1407,14 +1389,12 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 
 
 	if (!opaqueMoveResize) {
-		if (wwin->flags.shaded || scr->selected_windows) {
-			if (scr->selected_windows)
-				drawFrames(wwin, scr->selected_windows, off_x, off_y);
-			else
-				drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, w, h);
-		} else {
-			drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, w, h);
-		}
+		wWireframeBegin(scr);
+		if (scr->selected_windows)
+			addFrameOutlines(wwin, scr->selected_windows, off_x, off_y);
+		else
+			addWindowOutline(wwin, src_x + off_x, src_y + off_y, w, h);
+		wWireframeCommit(scr);
 	}
 	if ((wwin->flags.shaded || scr->selected_windows) && (!scr->selected_windows)) {
 		mapPositionDisplay(wwin, src_x, src_y, w, h);
@@ -1434,18 +1414,6 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 				WMHandleEvent(&event);
 			}
 		} while (event.type == Expose);
-
-		if (!opaqueMoveResize) {
-			if (wwin->flags.shaded || scr->selected_windows) {
-				if (scr->selected_windows)
-					drawFrames(wwin, scr->selected_windows, off_x, off_y);
-				else
-					drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, w, h);
-			/*** I HATE EDGE RESISTANCE - ]d ***/
-			} else {
-				drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, ww, wh);
-			}
-		}
 
 		if (ctrlmode)
 			showGeometry(wwin, src_x + off_x, src_y + off_y, src_x + off_x + ww, src_y + off_y + wh,
@@ -1619,14 +1587,14 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		}
 
 		if (!opaqueMoveResize) {
-			if (wwin->flags.shaded || scr->selected_windows) {
-				if (scr->selected_windows)
-					drawFrames(wwin, scr->selected_windows, off_x, off_y);
-				else
-					drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, w, h);
-			} else {
-				drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, ww, wh);
-			}
+			wWireframeBegin(scr);
+			if (scr->selected_windows)
+				addFrameOutlines(wwin, scr->selected_windows, off_x, off_y);
+			else if (wwin->flags.shaded)
+				addWindowOutline(wwin, src_x + off_x, src_y + off_y, w, h);
+			else
+				addWindowOutline(wwin, src_x + off_x, src_y + off_y, ww, wh);
+			wWireframeCommit(scr);
 		}
 
 		if (ctrlmode) {
@@ -1641,16 +1609,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 				};
 
 		if (done) {
-			if (!opaqueMoveResize) {	/* ctrlmode => resize */
-				if (wwin->flags.shaded || scr->selected_windows) {
-					if (scr->selected_windows)
-						drawFrames(wwin, scr->selected_windows, off_x, off_y);
-					else
-						drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, w, h);
-				} else {
-					drawTransparentFrame(wwin, src_x + off_x, src_y + off_y, ww, wh);
-				}
-			}
+			wWireframeHide(scr);
 
 			if (ctrlmode) {
 				showGeometry(wwin, src_x + off_x, src_y + off_y, src_x + off_x + ww,
@@ -1788,35 +1747,13 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 		case KeyPress:
 			if ((event.xkey.keycode == shiftl || event.xkey.keycode == shiftr)
 			    && started && !scr->selected_windows) {
-
-				if (!opaqueMove) {
-					drawFrames(wwin, scr->selected_windows,
-						   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
-				}
-
-				if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
-					showPosition(wwin, moveData.realX, moveData.realY);
-					XUngrabServer(dpy);
-				}
 				cyclePositionDisplay(wwin, moveData.realX, moveData.realY,
 						     moveData.winWidth, moveData.winHeight);
-
-				if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
-					XGrabServer(dpy);
-					showPosition(wwin, moveData.realX, moveData.realY);
-				}
-
-				if (!opaqueMove) {
-					drawFrames(wwin, scr->selected_windows,
-						   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
-				}
-				/*} else {
-				   WMHandleEvent(&event); this causes problems needs fixing */
 			}
 			break;
 
 		case MotionNotify:
-			if (IS_RESIZABLE(wwin) && w_global.config->window_snapping) {
+			if (started && IS_RESIZABLE(wwin) && w_global.config->window_snapping) {
 				int snap_direction;
 
 				snap_direction = get_snap_direction(scr, moveData.mouseX, moveData.mouseY);
@@ -1826,43 +1763,22 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 				    snap_direction != SNAP_BOTTOM)
 					snap_direction = SNAP_NONE;
 
-				if (moveData.snap != snap_direction) {
-					/* erase old frame */
-					if (moveData.snap)
-						draw_snap_frame(wwin, moveData.snap);
-					/* draw new frame */
-					if (snap_direction)
-						draw_snap_frame(wwin, snap_direction);
-					moveData.snap = snap_direction;
-				}
+				/* moveData.mouseX/Y only advance once
+				 * updateWindowPosition() runs, which is itself
+				 * gated on started, so testing earlier just
+				 * keys off the press position */
+				moveData.snap = snap_direction;
 			}
 
 			if (started) {
-				/* erase snap frame */
-				if (moveData.snap)
-					draw_snap_frame(wwin, moveData.snap);
-
 				updateWindowPosition(wwin, &moveData,
 						     scr->selected_windows == NULL
 						     && w_global.config->edge_resistance > 0,
 						     opaqueMove, event.xmotion.x_root, event.xmotion.y_root);
 
-				/* redraw snap frame */
-				if (moveData.snap)
-					draw_snap_frame(wwin, moveData.snap);
-
 				if (!warped && !w_global.config->no_autowrap) {
 					int oldWorkspace = scr->current_workspace;
 
-					if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
-						showPosition(wwin, moveData.realX, moveData.realY);
-						XUngrabServer(dpy);
-					}
-					if (!opaqueMove) {
-						drawFrames(wwin, scr->selected_windows,
-							   moveData.realX - wwin->frame_x,
-							   moveData.realY - wwin->frame_y);
-					}
 					if (checkWorkspaceChange(wwin, &moveData, opaqueMove)) {
 						if (scr->current_workspace != oldWorkspace
 						    && w_global.config->edge_resistance > 0
@@ -1870,19 +1786,11 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 							updateMoveData(wwin, &moveData);
 						warped = 1;
 					}
-					if (!opaqueMove) {
-						drawFrames(wwin, scr->selected_windows,
-							   moveData.realX - wwin->frame_x,
-							   moveData.realY - wwin->frame_y);
-					}
-					if (w_global.config->move_display == WDIS_NEW && !scr->selected_windows) {
-						XSync(dpy, False);
-						showPosition(wwin, moveData.realX, moveData.realY);
-						XGrabServer(dpy);
-					}
 				} else {
 					warped = 0;
 				}
+
+				showMoveWireframe(wwin, &moveData, opaqueMove);
 			} else if (abs(ev->xmotion.x_root - event.xmotion.x_root) >= MOVE_THRESHOLD
 				   || abs(ev->xmotion.y_root - event.xmotion.y_root) >= MOVE_THRESHOLD) {
 
@@ -1916,15 +1824,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 					mapPositionDisplay(wwin, moveData.realX, moveData.realY,
 							   moveData.winWidth, moveData.winHeight);
 
-				if (started && !opaqueMove)
-					drawFrames(wwin, scr->selected_windows, 0, 0);
-
-				if (!opaqueMove || (w_global.config->move_display == WDIS_NEW
-						    && !scr->selected_windows)) {
-					XGrabServer(dpy);
-					if (w_global.config->move_display == WDIS_NEW)
-						showPosition(wwin, moveData.realX, moveData.realY);
-				}
+				showMoveWireframe(wwin, &moveData, opaqueMove);
 			}
 
 			break;
@@ -1936,24 +1836,21 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 			if (!wwin->moveresize.active && (event.xbutton.button != ev->xbutton.button))
 				break;
 
+			wWireframeHide(scr);
+
 			if (started) {
 				XEvent e;
 
 				if (moveData.snap)
-					do_snap(wwin, &moveData, opaqueMove);
-				else if (!opaqueMove) {
-					drawFrames(wwin, scr->selected_windows,
-						   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
-					XSync(dpy, 0);
+					do_snap(wwin, &moveData);
+				else if (!opaqueMove)
 					doWindowMove(wwin, scr->selected_windows,
 						     moveData.realX - wwin->frame_x,
 						     moveData.realY - wwin->frame_y);
-				}
 #ifndef CONFIGURE_WINDOW_WHILE_MOVING
 				wWindowSynthConfigureNotify(wwin);
 #endif
 				XUngrabKeyboard(dpy, CurrentTime);
-				XUngrabServer(dpy);
 				wwin->last_head = wGetHeadForWindow(wwin);
 				if (!opaqueMove) {
 					wWindowChangeWorkspace(wwin,
@@ -1997,18 +1894,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 			break;
 
 		default:
-			if (started && !opaqueMove) {
-				drawFrames(wwin, scr->selected_windows,
-					   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
-				XUngrabServer(dpy);
-				WMHandleEvent(&event);
-				XSync(dpy, False);
-				XGrabServer(dpy);
-				drawFrames(wwin, scr->selected_windows,
-					   moveData.realX - wwin->frame_x, moveData.realY - wwin->frame_y);
-			} else {
-				WMHandleEvent(&event);
-			}
+			WMHandleEvent(&event);
 			break;
 		}
 	}
@@ -2122,6 +2008,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 	int opaqueResize = w_global.config->opaque_resize;
+	Bool server_grabbed = False;
 
 	if (!IS_RESIZABLE(wwin))
 		return;
@@ -2198,14 +2085,20 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		switch (event.type) {
 		case KeyPress:
 			showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
-			if (!opaqueResize) {
-				if ((event.xkey.keycode == shiftl || event.xkey.keycode == shiftr)
-					&& started) {
-					drawTransparentFrame(wwin, fx, fy, fw, fh);
-					cycleGeometryDisplay(wwin, fx, fy, fw, fh, res);
-					drawTransparentFrame(wwin, fx, fy, fw, fh);
+			if (!opaqueResize && started
+			    && (event.xkey.keycode == shiftl || event.xkey.keycode == shiftr)) {
+				cycleGeometryDisplay(wwin, fx, fy, fw, fh, res);
+				/* the tech-draw style XORs on the root window
+				 * and needs the display frozen between its
+				 * draw and erase, the other styles do not */
+				if (server_grabbed && w_global.config->size_display != WDIS_NEW) {
+					XUngrabServer(dpy);
+					server_grabbed = False;
+				} else if (!server_grabbed && w_global.config->size_display == WDIS_NEW) {
+					XGrabServer(dpy);
+					server_grabbed = True;
 				}
-			};
+			}
 			showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 			break;
 
@@ -2297,27 +2190,28 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 				XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 
-				XGrabServer(dpy);
+				if (!opaqueResize && w_global.config->size_display == WDIS_NEW) {
+					/* see the KeyPress case */
+					XGrabServer(dpy);
+					server_grabbed = True;
+				}
 
 				/* Draw the resize frame for the first time. */
 				mapGeometryDisplay(wwin, fx, fy, fw, fh);
 
 				if (!opaqueResize)
-					drawTransparentFrame(wwin, fx, fy, fw, fh);
+					showResizeWireframe(wwin, fx, fy, fw, fh);
 
 				showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 
 				started = 1;
 			}
 			if (started) {
-				if (!opaqueResize)
-					drawTransparentFrame(wwin, orig_fx, orig_fy, orig_fw, orig_fh);
-
 				if (w_global.config->size_display == WDIS_FRAME_CENTER)
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
 
 				if (!opaqueResize)
-					drawTransparentFrame(wwin, fx, fy, fw, fh);
+					showResizeWireframe(wwin, fx, fy, fw, fh);
 
 				if (fh != orig_fh || fw != orig_fw) {
 					if (w_global.config->size_display == WDIS_NEW)
@@ -2331,7 +2225,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 					/* Fist clean the geometry line */
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 					/* Now, continue drawing */
-					XUngrabServer(dpy);
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
 					/* pace to the client's redraw without
 					 * blocking, if the previous
@@ -2361,12 +2254,12 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 			if (started) {
 				showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 
-				if (!opaqueResize)
-					drawTransparentFrame(wwin, fx, fy, fw, fh);
+				wWireframeHide(scr);
 
 				XUngrabKeyboard(dpy, CurrentTime);
 				WMUnmapWidget(scr->gview);
-				XUngrabServer(dpy);
+				if (server_grabbed)
+					XUngrabServer(dpy);
 
 				if (fw != original_fw)
 					wwin->flags.maximized &= ~(MAX_HORIZONTAL | MAX_TOPHALF | MAX_BOTTOMHALF | MAX_MAXIMUS | MAX_CENTRAL);
@@ -2535,7 +2428,7 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 	XQueryPointer(dpy, root, &junkw, &junkw, &x, &y, &junk, &junk, (unsigned *)&junk);
 	mapPositionDisplay(wwin, x - width / 2, y - h / 2, width, height);
 
-	drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
+	showResizeWireframe(wwin, x - width / 2, y - h / 2, width, height);
 
 	shiftl = XKeysymToKeycode(dpy, XK_Shift_L);
 	shiftr = XKeysymToKeycode(dpy, XK_Shift_R);
@@ -2549,15 +2442,11 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 		case KeyPress:
 			if ((event.xkey.keycode == shiftl)
 			    || (event.xkey.keycode == shiftr)) {
-				drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
 				cyclePositionDisplay(wwin, x - width / 2, y - h / 2, width, height);
-				drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
 			}
 			break;
 
 		case MotionNotify:
-			drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
-
 			x = event.xmotion.x_root;
 			y = event.xmotion.y_root;
 
@@ -2566,13 +2455,12 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 
 			showPosition(wwin, x - width / 2, y - h / 2);
 
-			drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
+			showResizeWireframe(wwin, x - width / 2, y - h / 2, width, height);
 
 			break;
 
 		case ButtonPress:
-			drawTransparentFrame(wwin, x - width / 2, y - h / 2, width, height);
-			XSync(dpy, 0);
+			wWireframeHide(scr);
 			*x_ret = x - width / 2;
 			*y_ret = y - h / 2;
 			XUngrabPointer(dpy, CurrentTime);

@@ -317,6 +317,8 @@ typedef struct _WScreen {
 
     struct W_GeometryView *gview;      /* size/position view */
 
+    struct WWireframe *wireframe;      /* move/resize outline window */
+
     /* state and other informations */
     short cascade_index;	       /* for cascade window placement */
 

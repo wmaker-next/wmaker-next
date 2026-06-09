@@ -126,6 +126,8 @@ wmaker_SOURCES = 	\
 	winmenu.h \
 	winspector.h \
 	winspector.c \
+	wireframe.c \
+	wireframe.h \
 	wmspec.h \
 	wmspec.c \
 	workspace.c \
