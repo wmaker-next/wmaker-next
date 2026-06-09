@@ -33,6 +33,7 @@ wtest_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
 
 EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 
-AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_srcdir)/wrlib -I$(top_srcdir)/src \
+AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
+	-I$(top_builddir)/wrlib -I$(top_srcdir)/src \
 	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XFT_CFLAGS@ @HEADER_SEARCH_PATH@ \
 	@PANGO_CFLAGS@

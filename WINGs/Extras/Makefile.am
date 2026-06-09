@@ -20,7 +20,8 @@ libExtraWINGs_la_SOURCES = 	\
 	wtableview.h \
 	wtabledelegates.h
 
-AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(top_srcdir)/WINGs \
+AM_CPPFLAGS = -I$(top_builddir)/wrlib -I$(top_srcdir)/WINGs \
+	-I$(top_builddir)/WINGs \
 	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @HEADER_SEARCH_PATH@
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
