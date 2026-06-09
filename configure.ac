@@ -794,6 +794,33 @@ AC_SUBST(XFIXES_LIBS)
 AM_CONDITIONAL([HAVE_XFIXES], [test "x$have_xfixes" = xyes])
 
 
+dnl Startup notification - launcher and monitor support
+dnl ====================================================
+AC_ARG_WITH([startup-notification],
+    [AS_HELP_STRING([--without-startup-notification],
+                    [disable startup-notification launcher and monitor support])],
+    [],
+    [with_startup_notification=auto])
+AS_IF([test "x$with_startup_notification" != xno],
+    [PKG_CHECK_MODULES([STARTUP_NOTIFICATION], [libstartup-notification-1.0],
+        [have_startup_notification=yes
+         supported_xext="$supported_xext StartupNotification"
+         AC_DEFINE([HAVE_STARTUP_NOTIFICATION], [1],
+                   [defined when libstartup-notification is available so the dock and root
+                    menu can broadcast launches and the monitor can match _NET_STARTUP_ID])],
+        [AS_IF([test "x$with_startup_notification" = xyes],
+            [AC_MSG_ERROR([libstartup-notification-1.0 was requested but not found -- $STARTUP_NOTIFICATION_PKG_ERRORS])],
+            [have_startup_notification=no
+             STARTUP_NOTIFICATION_CFLAGS=
+             STARTUP_NOTIFICATION_LIBS=])])],
+    [have_startup_notification=no
+     STARTUP_NOTIFICATION_CFLAGS=
+     STARTUP_NOTIFICATION_LIBS=])
+AC_SUBST(STARTUP_NOTIFICATION_CFLAGS)
+AC_SUBST(STARTUP_NOTIFICATION_LIBS)
+AM_CONDITIONAL([HAVE_STARTUP_NOTIFICATION], [test "x$have_startup_notification" = xyes])
+
+
 dnl PANGO support
 dnl =============
 dnl The libray can be used by WINGs to get better support on UTF-8 for i18n

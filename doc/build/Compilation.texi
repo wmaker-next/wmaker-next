@@ -586,6 +586,14 @@ keeps up with the frame.
 Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
 whose clipboard-manager mode depends on XFixes selection owner notifications.
 
+@item --without-startup-notification
+Do not link against @emph{libstartup-notification}. With the library present Window Maker
+broadcasts a startup-notification sequence for each dock and root-menu launch (showing a busy
+root cursor and exporting @env{DESKTOP_STARTUP_ID} to the child) and monitors
+@code{_NET_STARTUP_ID} on newly mapped windows so that a slow-starting application launched
+while you kept typing elsewhere does not steal focus and lands on the workspace it was
+launched from.
+
 @item --enable-xinerama
 The @emph{Xinerama} extension provides information about the different screens connected when
 running a multi-head setting (if you plug more than one monitor).
