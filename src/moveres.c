@@ -1172,8 +1172,23 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 		}
 
 		if (!scr->selected_windows && w_global.config->move_display == WDIS_FRAME_CENTER) {
-
+			/* The XOR frame is erased at this point, so the server
+			 * can be released for one round-trip without corrupting
+			 * it. Moving the geometry window leaves an exposed
+			 * rectangle on whichever client it was covering, that
+			 * client's repaint requests are blocked by the grab so
+			 * a blue trail accumulates, this brief release lets the
+			 * server drain the repaints queued by the previous step
+			 * so the trail cannot grow. The geometry window also
+			 * requests save_under which makes this moot on servers
+			 * that honour it. */
+			if (!opaqueMove)
+				XUngrabServer(dpy);
 			moveGeometryDisplayCentered(scr, newX + data->winWidth / 2, newY + data->winHeight / 2);
+			if (!opaqueMove) {
+				XSync(dpy, False);
+				XGrabServer(dpy);
+			}
 		}
 
 		if (!opaqueMove) {

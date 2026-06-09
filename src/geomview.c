@@ -56,6 +56,17 @@ WGeometryView *WCreateGeometryView(WMScreen * scr)
 	}
 	gview->view->self = gview;
 
+	/* The Floating MoveDisplay/ResizeDisplay mode XMoveWindow()s this
+	 * window on every motion step while the non-opaque move/resize loop
+	 * holds XGrabServer(), so client repaints for the area it vacates are
+	 * blocked and a blue trail accumulates over any window the pointer
+	 * crosses. With save_under the X server restores the obscured pixels
+	 * itself on each move so no client repaint is needed under the grab,
+	 * the window is small and never resized so the saved pixmap cost is
+	 * negligible, and under a compositor save_under is a no-op. */
+	gview->view->attribFlags |= CWSaveUnder;
+	gview->view->attribs.save_under = True;
+
 	gview->font = WMSystemFontOfSize(scr, 12);
 	if (!gview->font) {
 		W_DestroyView(gview->view);
