@@ -1920,6 +1920,134 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 	return started;
 }
 
+/*
+ * Adjust the proposed frame width and height so the moving edge of an
+ * interactive resize lands on the closest snap target within
+ * EdgeResistance pixels. The usable-area boundary on the head under
+ * the pointer is always a resistance target, so a window growing
+ * outward sticks at it the same way the move path resists dragging
+ * past the screen edge. When Attraction is enabled the boundary
+ * becomes magnetic both ways and both edges of every visible
+ * neighbour that overlaps the window on the perpendicular axis are
+ * added as targets, the facing edge for abutment and the same-side
+ * edge for alignment. The raw rw and rh accumulators in the caller
+ * keep tracking the pointer so the snap releases once the drag passes
+ * the resistance zone, and wWindowConstrainSize runs after this so
+ * size-hint increments still round the result.
+ */
+static void snapResizeGeometry(WWindow *wwin, int res, int rx1, int ry1,
+			       int rx2, int ry2, int dw, int dh,
+			       int *fw, int *fh)
+{
+	WScreen *scr = wwin->screen_ptr;
+	int resist = WIN_RESISTANCE(w_global.config->edge_resistance);
+	Bool attract = w_global.config->attract;
+	int fb2 = HAS_BORDER_WITH_SELECT(wwin) ? 2 * scr->frame_border_width : 0;
+	int span_l = WLEFT(wwin), span_r = WRIGHT(wwin);
+	int span_t = WTOP(wwin), span_b = WBOTTOM(wwin);
+	int cand_x = 0, cand_y = 0;
+	int best_x = 0, best_y = 0;
+	int dist_x, dist_y;
+	int head, scr_lo, scr_hi, e, d, nfw, nfh;
+	WMRect rect;
+	WWindow *tmp;
+
+	if (resist <= 0)
+		return;
+
+	dist_x = dist_y = resist + 1;
+
+	/* moving-edge candidate, frame-border inclusive: the left and top
+	 * edges are the frame origin, the right and bottom edges are one
+	 * past the last pixel so they compare directly against WLEFT and
+	 * WRIGHT+1 of a neighbour */
+	if (res & LEFT)
+		cand_x = rx2 + 1 - *fw;
+	else if (res & RIGHT)
+		cand_x = rx1 + *fw + fb2;
+	if (res & UP)
+		cand_y = ry2 + 1 - *fh;
+	else if (res & DOWN)
+		cand_y = ry1 + *fh + fb2;
+
+	head = wGetHeadForPointerLocation(scr);
+	rect = wGetRectForHead(scr, head);
+
+	if (res & (LEFT | RIGHT)) {
+		scr_lo = WMAX(scr->totalUsableArea[head].x1, rect.pos.x);
+		scr_hi = WMIN(scr->totalUsableArea[head].x2, rect.pos.x + rect.size.width);
+		e = (res & LEFT) ? scr_lo : scr_hi;
+		d = abs(cand_x - e);
+		if (d < dist_x
+		    && (attract || (dw > 0 && ((res & LEFT) ? cand_x <= e : cand_x >= e)))) {
+			best_x = e;
+			dist_x = d;
+		}
+	}
+	if (res & (UP | DOWN)) {
+		scr_lo = WMAX(scr->totalUsableArea[head].y1, rect.pos.y);
+		scr_hi = WMIN(scr->totalUsableArea[head].y2, rect.pos.y + rect.size.height);
+		e = (res & UP) ? scr_lo : scr_hi;
+		d = abs(cand_y - e);
+		if (d < dist_y
+		    && (attract || (dh > 0 && ((res & UP) ? cand_y <= e : cand_y >= e)))) {
+			best_y = e;
+			dist_y = d;
+		}
+	}
+
+	if (attract) {
+		for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
+			if (tmp == wwin || !wWindowIsVisibleOnAnyHead(tmp)
+			    || tmp->flags.miniaturized || tmp->flags.hidden
+			    || tmp->flags.obscured || WFLAGP(tmp, sunken))
+				continue;
+
+			if ((res & (LEFT | RIGHT))
+			    && span_t <= WBOTTOM(tmp) && span_b >= WTOP(tmp)) {
+				e = (res & LEFT) ? WRIGHT(tmp) + 1 : WLEFT(tmp);
+				d = abs(cand_x - e);
+				if (d < dist_x) {
+					best_x = e;
+					dist_x = d;
+				}
+				e = (res & LEFT) ? WLEFT(tmp) : WRIGHT(tmp) + 1;
+				d = abs(cand_x - e);
+				if (d < dist_x) {
+					best_x = e;
+					dist_x = d;
+				}
+			}
+			if ((res & (UP | DOWN))
+			    && span_l <= WRIGHT(tmp) && span_r >= WLEFT(tmp)) {
+				e = (res & UP) ? WBOTTOM(tmp) + 1 : WTOP(tmp);
+				d = abs(cand_y - e);
+				if (d < dist_y) {
+					best_y = e;
+					dist_y = d;
+				}
+				e = (res & UP) ? WTOP(tmp) : WBOTTOM(tmp) + 1;
+				d = abs(cand_y - e);
+				if (d < dist_y) {
+					best_y = e;
+					dist_y = d;
+				}
+			}
+		}
+	}
+
+	if (dist_x <= resist) {
+		nfw = (res & LEFT) ? rx2 + 1 - best_x : best_x - rx1 - fb2;
+		if (nfw > 0)
+			*fw = nfw;
+	}
+	if (dist_y <= resist) {
+		nfh = (res & UP) ? ry2 + 1 - best_y : best_y - ry1 - fb2;
+		if (nfh > 0)
+			*fh = nfh;
+	}
+}
+
 #define RESIZEBAR	1
 #define HCONSTRAIN	2
 
@@ -2127,7 +2255,9 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				rw += dw;
 				rh += dh;
 				fw = rw;
-				fh = rh - vert_border;
+				fh = rh;
+				snapResizeGeometry(wwin, res, rx1, ry1, rx2, ry2, dw, dh, &fw, &fh);
+				fh -= vert_border;
 				wWindowConstrainSize(wwin, (unsigned int *)&fw, (unsigned int *)&fh);
 				fh += vert_border;
 				if (res & LEFT)
