@@ -278,6 +278,13 @@ typedef struct WWindow {
 						 * detach so a hostile XID
 						 * cannot make us drop a
 						 * selection we held */
+	int sn_workspace;			/* DESKTOP= from a matched
+						 * startup-notification
+						 * sequence, kept as int and
+						 * range-checked at use because
+						 * it comes from an untrusted
+						 * root ClientMessage, -1 when
+						 * unset */
 
 #ifdef USE_XSYNC
 	/* _NET_WM_SYNC_REQUEST: the client-created counter we watch via an
@@ -416,6 +423,7 @@ typedef struct {
     WXCookie icon_geom;     /* _NET_WM_ICON_GEOMETRY */
     WXCookie opacity;       /* _NET_WM_WINDOW_OPACITY */
     WXCookie user_time_win; /* _NET_WM_USER_TIME_WINDOW */
+    WXCookie startup_id;    /* _NET_STARTUP_ID */
 } WNETWMInitialCookies;
 
 typedef struct {

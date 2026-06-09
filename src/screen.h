@@ -158,6 +158,10 @@ typedef struct _WScreen {
 					* map with an older user-activity
 					* timestamp */
 
+    struct WStartupNotify *sn;	       /* startup-notification monitor and
+					* pending-launch table, opaque,
+					* defined in startup_notify.c */
+
     /* _NET_DESKTOP_LAYOUT as set by a pager on the root window, used by
      * the directional WorkspaceLeft/Right/Up/Down keybinds. With no pager
      * the default is one row of workspace_count columns, so Left/Right

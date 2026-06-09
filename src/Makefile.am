@@ -96,6 +96,8 @@ wmaker_SOURCES = 	\
 	stacking.h \
 	startup.c \
 	startup.h \
+	startup_notify.c \
+	startup_notify.h \
 	superfluous.c \
 	superfluous.h \
 	switchmenu.c \
@@ -157,6 +159,7 @@ AM_CFLAGS = @PANGO_CFLAGS@
 AM_CPPFLAGS = $(DFLAGS) \
 	-I$(top_builddir)/wrlib \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
+	@STARTUP_NOTIFICATION_CFLAGS@ \
 	@HEADER_SEARCH_PATH@
 
 
@@ -169,6 +172,7 @@ wmaker_LDADD = \
 	@LIBXRANDR@ \
 	@LIBXINERAMA@ \
 	@LIBXKBFILE@ \
+	@STARTUP_NOTIFICATION_LIBS@ \
 	@XLIBS@ \
 	@LIBM@ \
 	@INTLIBS@

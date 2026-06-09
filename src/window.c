@@ -177,6 +177,7 @@ WWindow *wWindowCreate(void)
 	wwin->client_descriptor.parent = wwin;
 	wwin->client_descriptor.self = wwin;
 	wwin->client_descriptor.parent_type = WCLASS_WINDOW;
+	wwin->sn_workspace = -1;
 
 	return wwin;
 }
@@ -1234,6 +1235,8 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		} else {
 			if (w_global.config->open_transients_with_parent && transientOwner)
 				workspace = transientOwner->frame->workspace;
+			else if (wwin->sn_workspace >= 0 && wwin->sn_workspace < scr->workspace_count)
+				workspace = wwin->sn_workspace;
 			else
 				workspace = scr->current_workspace;
 		}

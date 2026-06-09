@@ -52,6 +52,7 @@ POTFILES  = \
 	$(top_srcdir)/src/shutdown.c \
 	$(top_srcdir)/src/stacking.c \
 	$(top_srcdir)/src/startup.c \
+	$(top_srcdir)/src/startup_notify.c \
 	$(top_srcdir)/src/superfluous.c \
 	$(top_srcdir)/src/switchpanel.c \
 	$(top_srcdir)/src/switchmenu.c \

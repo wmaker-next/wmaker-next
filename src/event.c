@@ -79,6 +79,7 @@
 #include "switchmenu.h"
 #include "wsmap.h"
 #include "hotcorner.h"
+#include "startup_notify.h"
 
 
 #define MOD_MASK wPreferences.modifier_mask
@@ -1180,6 +1181,8 @@ static void handleClientMessage(XEvent * event)
 		if (!scr)
 			return;
 		scr->flags.ignore_focus_events = event->xclient.data.l[0] ? 1 : 0;
+	} else if (wStartupNotifyProcessEvent(event)) {
+		/* _NET_STARTUP_INFO{,_BEGIN}, consumed by libsn */
 	} else if (wNETWMProcessClientMessage(&event->xclient)) {
 		/* do nothing */
 #ifdef USE_DOCK_XDND

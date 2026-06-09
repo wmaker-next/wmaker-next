@@ -54,6 +54,7 @@
 #include "xinerama.h"
 #include "properties.h"
 #include "dialog.h"
+#include "startup_notify.h"
 
 
 /* Root Window Properties */
@@ -151,6 +152,7 @@ static Atom net_wm_sync_request_counter;
 #endif
 
 static Atom utf8_string;
+static Atom net_startup_id;
 
 typedef struct {
 	char *name;
@@ -249,6 +251,8 @@ static atomitem_t atomNames[] = {
 #endif
 
 	{"UTF8_STRING", &utf8_string},
+
+	{"_NET_STARTUP_ID", &net_startup_id},
 };
 
 #define _NET_WM_STATE_ADD 1
@@ -364,6 +368,9 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_user_time;
 	atom[i++] = net_wm_user_time_window;
 	atom[i++] = net_wm_full_placement;
+#ifdef HAVE_STARTUP_NOTIFICATION
+	atom[i++] = net_startup_id;
+#endif
 
 	atom[i++] = net_wm_strut;
 	atom[i++] = net_wm_strut_partial;
@@ -1728,6 +1735,7 @@ void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck)
 	ck->icon_geom     = WXReqFormat32(dpy, window, net_wm_icon_geometry, XA_CARDINAL, 4);
 	ck->opacity       = WXReqFormat32(dpy, window, net_wm_window_opacity, XA_CARDINAL, 1);
 	ck->user_time_win = WXReqFormat32(dpy, window, net_wm_user_time_window, XA_WINDOW, 1);
+	ck->startup_id    = WXReqString8(dpy, window, net_startup_id, utf8_string);
 }
 
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
@@ -1823,6 +1831,40 @@ static Bool updateNetIconInfo(WWindow *wwin)
 		WXReqFormat32(dpy, wwin->client_win, net_wm_icon_geometry, XA_CARDINAL, 4));
 }
 
+static void matchStartupNotification(WWindow *wwin, WNETWMInitialCookies *ck)
+{
+	char *sid;
+	Time launch_ts = 0;
+	int sn_ws = -1;
+
+	sid = WXRcvString(dpy, ck->startup_id, NULL);
+	if (!sid && wwin->main_window != None && wwin->main_window != wwin->client_win)
+		sid = WXGetUTF8String(dpy, wwin->main_window, net_startup_id, NULL);
+
+	if (wStartupNotifyMatchWindow(wwin->screen_ptr, sid,
+				      wwin->wm_class, wwin->wm_instance,
+				      &launch_ts, &sn_ws)) {
+		/* keep an explicit _NET_WM_USER_TIME = 0 authoritative,
+		 * the existing focus policy treats it as "do not focus me"
+		 * regardless of how the window was launched */
+		if (launch_ts && (!wwin->net_user_time_set
+				  || (wwin->net_user_time != 0
+				      && USER_TIME_NEWER(launch_ts, wwin->net_user_time)))) {
+			wwin->net_user_time = launch_ts;
+			wwin->net_user_time_set = 1;
+			/* advance the screen baseline the same way
+			 * readUserTime() does so a later window with an
+			 * older timestamp cannot steal focus from this one */
+			if (wwin->screen_ptr->net_last_user_time == 0
+			    || USER_TIME_NEWER(launch_ts, wwin->screen_ptr->net_last_user_time))
+				wwin->screen_ptr->net_last_user_time = launch_ts;
+		}
+		if (sn_ws >= 0)
+			wwin->sn_workspace = sn_ws;
+	}
+	wfree(sid);
+}
+
 void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 {
 #ifdef DEBUG_WMSPEC
@@ -1851,6 +1893,7 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 
 	updateUserTimeWindow(wwin, &ck->user_time_win);
 	readUserTime(wwin);
+	matchStartupNotification(wwin, ck);
 
 	cacheLocalPid(wwin);
 	wNETWMSyncRequestSetup(wwin);

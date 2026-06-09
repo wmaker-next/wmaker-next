@@ -57,6 +57,7 @@
 #include "rootmenu.h"
 #include "misc.h"
 #include "ipc.h"
+#include "startup_notify.h"
 
 #include "xinerama.h"
 
@@ -753,6 +754,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	createInternalWindows(scr);
 
 	wNETWMInitStuff(scr);
+	wStartupNotifyInit(scr);
 
 	/* create initial workspace */
 	wWorkspaceNew(scr);
@@ -1382,6 +1384,7 @@ void ScreenCapture(WScreen *scr, int mode)
 
 void wScreenDestroy(WScreen *scr)
 {
+	wStartupNotifyShutdown(scr);
 #ifdef USE_RANDR
 	wRandRTeardown(scr);
 #else
