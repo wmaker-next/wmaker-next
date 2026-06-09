@@ -52,6 +52,8 @@ print_help() {
     echo "valid options are:"
     echo "  --ignore-prg arg  : ignore option '--arg' from program's output"
     echo "                (syntax: 'arg1,arg2,... # reason', args without leading '--')"
+    echo "  --ignore-prg-optional arg : like --ignore-prg, but no warning if the option"
+    echo "                is not present in the program's output (forward-compat)"
     echo "  --man-page file   : program's documentation file, in man format"
     echo "  --program name    : name of the program to run with '--help'"
     echo "  --text-doc file   : program's documentation file, in plain text format"
@@ -67,6 +69,16 @@ while [ $# -gt 0 ]; do
             for arg in `echo "$1" | sed -e 's/#.*$// ; s/,/ /g' `
             do
                 ignore_arg_program="$ignore_arg_program
+--$arg"
+            done
+          ;;
+
+        --ignore-prg-optional)
+            shift
+            echo "$1" | grep '#' > /dev/null || echo "Warning: no reason provided for --ignore-prg-optional on \"$1\"" >&2
+            for arg in `echo "$1" | sed -e 's/#.*$// ; s/,/ /g' `
+            do
+                ignore_arg_program_optional="$ignore_arg_program_optional
 --$arg"
             done
           ;;
@@ -119,7 +131,7 @@ fi
 # with no other text at the beginning of the line
 # If the line contains both a short option followed by a long option, we keep only the long
 # option because it is better to check for it
-prog_options=`$prog_name --help | sed -n '/^[[:blank:]]*-/ { s/^[[:blank:]]*// ; s/^-[^-],[[:blank:]]*--/--/ ; s/[^-A-Z_a-z0-9].*$// ; p }' `
+prog_options=`$prog_name --help | sed -n '/^[[:blank:]]*-/ { s/^[[:blank:]]*// ; s/^-[^-],[[:blank:]]*--/--/ ; s/[^-A-Z_a-z0-9].*$// ; p ; }' `
 
 [ "x$prog_options" = "x" ] && arg_error "program '$prog_name --help' did not return any option"
 
@@ -131,6 +143,16 @@ do
     prog_options=`echo "$prog_options" | grep -v "^$filter\$" `
   else
     echo "Warning: program's option does not contain \"$filter\", specified in \"--ignore-prg\""
+  fi
+done
+
+# The optional variant filters the same way but stays silent when the option
+# is not present, for forward-compatibility entries an option a newer toolchain
+# may add that the current one does not emit yet
+for filter in $ignore_arg_program_optional
+do
+  if echo "$prog_options" | grep "^$filter\$" > /dev/null ; then
+    prog_options=`echo "$prog_options" | grep -v "^$filter\$" `
   fi
 done
 
