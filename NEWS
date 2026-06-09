@@ -262,11 +262,12 @@ when a maximised or fullscreen window covers it. The trade-off is that
 the HotCornerEdge-sized square in each corner does not pass button
 clicks through to the client visually underneath while HotCorners is
 on. Separately, root-window pointer motion is no longer tracked at all
-unless ScrollableMenus is enabled, so with both options off the event
-loop stays asleep while the pointer crosses an empty desktop. Changes
-written to the defaults files are also now noticed within about 100 ms
-even when there is no X activity, where previously they could wait
-until the next X event arrived.
+unless ScrollableMenus is enabled and a menu is actually mapped, so
+with the default configuration the event loop stays asleep while the
+pointer crosses an empty desktop. Changes written to the defaults
+files are also now noticed within about 100 ms even when there is no
+X activity, where previously they could wait until the next X event
+arrived.
 
 
 Swallow child window attribute
