@@ -335,6 +335,85 @@ MON_PID=
 wait_for 50 pid_gone "$WMAKER_PID"
 check "wmaker process exits on SIGTERM" pid_gone "$WMAKER_PID"
 
+# ---- rows 6-7: source=menu and source=helper death handlers ------------
+# These need a wmaker instance with HotCorners (to reach
+# ExecuteShellCommand without driving a menu) and WorkspaceSpecificBack
+# (to spawn the wmsetbg -helper child with a registered death handler),
+# done on a fresh instance so the earlier rows are unaffected by the
+# extra child processes and the sleep(1) in setWorkspaceSpecificBack().
+
+note "death handlers: source=menu and source=helper"
+cat > "$WMHOME/Defaults/WindowMaker" <<'WMEOD'
+{
+  HotCorners = YES;
+  HotCornerDelay = 50;
+  HotCornerEdge = 8;
+  HotCornerActions = ("/nonexistent-ipc-menu", None, None, None);
+  WorkspaceSpecificBack = ((solid, "#202020"));
+}
+WMEOD
+
+PATH="$ROOT/util/.libs:$PATH" start_wmaker \
+	|| fatal "could not relaunch wmaker for death-handler rows"
+start_monitor child_exit dialog tick \
+	|| record_fail "could not subscribe for death-handler rows"
+
+xdo() { DISPLAY=$DPY xdotool "$@"; }
+# handleDeadProcess() runs at the top of DispatchEvent(), so after a
+# SIGCHLD has been recorded the child_exit emission waits for the next
+# X event, root MotionNotify is gated on a mapped menu so generate a
+# PropertyNotify instead which is always selected on root
+pump_x() {
+	DISPLAY=$DPY xprop -root -f _IPC_DRIVE_PUMP 8s \
+		-set _IPC_DRIVE_PUMP x 2>/dev/null
+}
+
+if command -v xdotool >/dev/null 2>&1; then
+	# move into the top-left corner, wait past HotCornerDelay so the
+	# action fires, then move away again so the LeaveNotify pumps
+	# DispatchEvent() and handleDeadProcess() sees the SIGCHLD record
+	xdo mousemove 500 400; sleep 0.1
+	xdo mousemove 0 0; sleep 0.4
+	xdo mousemove 500 400
+	wait_for 50 evlog_has 'source = menu'
+	check "child_exit {source=menu} delivered" evlog_has 'source = menu'
+	wait_for 50 evlog_has 'kind = message'
+	M_LINE=$(evlog_line 'source = menu')
+	M_DLG=$(evlog_line 'kind = message')
+	check "shellCommandHandler raises a dialog" [ -n "$M_DLG" ]
+	if [ -n "$M_LINE" ] && [ -n "$M_DLG" ]; then
+		check "child_exit {source=menu} precedes its dialog" \
+			[ "$M_LINE" -lt "$M_DLG" ]
+	else
+		record_skip "menu child_exit/dialog ordering"
+	fi
+	# dismiss the failure dialog so the helper death handler runs
+	# from the main loop rather than nested inside this modal
+	xdo key Return; sleep 0.3
+else
+	record_skip "child_exit {source=menu}: xdotool not installed"
+fi
+
+HELPER_PID=$(pgrep -P "$WMAKER_PID" -f 'wmsetbg' 2>/dev/null | head -n 1)
+if [ -n "$HELPER_PID" ]; then
+	kill -TERM "$HELPER_PID"
+	wait_for 30 pid_gone "$HELPER_PID"
+	pump_x
+	wait_for 50 evlog_has 'source = helper'
+	check "child_exit {source=helper} delivered" evlog_has 'source = helper'
+	helper_signalled() {
+		grep -F 'source = helper' "$EVLOG" 2>/dev/null \
+			| grep -q 'signal = 15'
+	}
+	check "child_exit {source=helper} reports SIGTERM" helper_signalled
+else
+	record_skip "child_exit {source=helper}: wmsetbg helper not running"
+fi
+
+stop_monitor
+msg -q exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID"
+
 # ----------------------------------------------------------------------
 
 finish
