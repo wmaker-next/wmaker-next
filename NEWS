@@ -383,6 +383,29 @@ tree have been replaced with snprintf, wstrlcpy/wstrlcat or length-known
 memcpy; no user-visible behaviour change is intended.
 
 
+Non-opaque move and resize outline, EdgeResistance during resize
+-----------------------------------------------------------------
+
+The frame outline shown during a non-opaque move or resize and the
+half-screen snap target preview are now drawn with a shaped
+override-redirect window instead of an XOR rubber-band on the root.
+The display is no longer frozen while the outline is up, so other
+clients keep repainting under it, the floating geometry box no
+longer leaves a trail, and other applications stay responsive
+through a long drag. The outline is a 1-pixel white line between
+1-pixel black edges so it reads on both light and dark content.
+
+EdgeResistance and Attraction now also apply to interactive resize.
+Growing a window past the screen or strut edge sticks at the
+boundary the same way moving past it does, and with Attraction
+enabled the dragged edge snaps to the nearest edge of any visible
+neighbour it overlaps, both abutting the facing edge and aligning
+with the same-side edge. The raw size keeps tracking the pointer so
+the snap releases once the drag passes the resistance distance, and
+the client's size-hint increments are applied after the snap so a
+terminal still rounds to whole character cells.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory
