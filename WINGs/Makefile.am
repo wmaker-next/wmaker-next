@@ -13,7 +13,7 @@ lib_LTLIBRARIES = libWUtil.la libWINGs.la
 
 LDADD= libWUtil.la libWINGs.la $(top_builddir)/wrlib/libwraster.la @INTLIBS@
 libWINGs_la_LIBADD = libWUtil.la $(top_builddir)/wrlib/libwraster.la @XLIBS@ @XCB_LIBS@ @XFT_LIBS@ @FCLIBS@ @LIBM@ @PANGO_LIBS@
-libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@
+libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@ @INTLIBS@
 
 EXTRA_DIST = BUGS make-rgb Examples Extras Tests
 

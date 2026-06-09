@@ -88,7 +88,7 @@ endif
 AM_CFLAGS = @MAGICKFLAGS@
 AM_CPPFLAGS = $(DFLAGS) @HEADER_SEARCH_PATH@
 
-libwraster_la_LIBADD = @LIBRARY_SEARCH_PATH@ @GFXLIBS@ @MAGICKLIBS@ @XLIBS@ -lm
+libwraster_la_LIBADD = @LIBRARY_SEARCH_PATH@ @GFXLIBS@ @MAGICKLIBS@ @XLIBS@ @INTLIBS@ -lm
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = wrlib.pc
