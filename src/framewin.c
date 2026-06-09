@@ -162,9 +162,30 @@ static void allocFrameBorderPixel(WFrameWindow *fwin, WMColor *color, unsigned l
 	wfree(desc);
 }
 
+/* WindowTitle{ExtendSpace,Min/MaxHeight} vs MenuTitle{ExtendSpace,Min/MaxHeight}
+ * read live from w_global.config so the address stays valid across the
+ * swap-and-destroy reload in wDefaultsCheckDomains, the previous int *
+ * fields pointed into the freed old WConfig after a reload */
+static inline int frame_title_clearance(const WFrameWindow *fwin)
+{
+	return fwin->flags.is_menu ? w_global.config->menu_title_clearance
+				   : w_global.config->window_title_clearance;
+}
+
+static inline int frame_title_min_height(const WFrameWindow *fwin)
+{
+	return fwin->flags.is_menu ? w_global.config->menu_title_min_height
+				   : w_global.config->window_title_min_height;
+}
+
+static inline int frame_title_max_height(const WFrameWindow *fwin)
+{
+	return fwin->flags.is_menu ? w_global.config->menu_title_max_height
+				   : w_global.config->window_title_max_height;
+}
+
 WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
-				 int width, int height, int *clearance,
-				 int *title_min, int *title_max, int flags,
+				 int width, int height, int flags,
 				 WTexture ** title_texture, WTexture ** resize_texture,
 				 WMColor ** color, WMFont ** font,
 				 int depth, Visual *visual, Colormap colormap)
@@ -176,13 +197,11 @@ WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 	fwin->screen_ptr = scr;
 
 	fwin->flags.single_texture = (flags & WFF_SINGLE_STATE) ? 1 : 0;
+	fwin->flags.is_menu = (flags & WFF_IS_MENU) ? 1 : 0;
 
 	fwin->title_texture = title_texture;
 	fwin->resizebar_texture = resize_texture;
 	fwin->title_color = color;
-	fwin->title_clearance = clearance;
-	fwin->title_min_height = title_min;
-	fwin->title_max_height = title_max;
 	fwin->font = font;
 #ifdef KEEP_XKB_LOCK_STATUS
 	fwin->languagemode = XkbGroup1Index;
@@ -226,13 +245,13 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		height = fwin->core->height - fwin->top_width - fwin->bottom_width;
 
 	if (flags & WFF_TITLEBAR) {
-		theight = WMFontHeight(*fwin->font) + (*fwin->title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+		theight = WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2;
 
-		if (theight > *fwin->title_max_height)
-			theight = *fwin->title_max_height;
+		if (theight > frame_title_max_height(fwin))
+			theight = frame_title_max_height(fwin);
 
-		if (theight < *fwin->title_min_height)
-			theight = *fwin->title_min_height;
+		if (theight < frame_title_min_height(fwin))
+			theight = frame_title_min_height(fwin);
 	} else {
 		theight = 0;
 		fwin->flags.titlebar = 0;
@@ -577,13 +596,13 @@ static void updateTitlebar(WFrameWindow * fwin)
 	int x, w;
 	int theight;
 
-	theight = WMFontHeight(*fwin->font) + (*fwin->title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+	theight = WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2;
 
-	if (theight > *fwin->title_max_height)
-		theight = *fwin->title_max_height;
+	if (theight > frame_title_max_height(fwin))
+		theight = frame_title_max_height(fwin);
 
-	if (theight < *fwin->title_min_height)
-		theight = *fwin->title_min_height;
+	if (theight < frame_title_min_height(fwin))
+		theight = frame_title_min_height(fwin);
 
 	x = 0;
 	w = fwin->core->width + 1;
@@ -1156,14 +1175,14 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 				break;
 			}
 
-			y = *fwin->title_clearance + TITLEBAR_EXTEND_SPACE;
+			y = frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE;
 			h = WMFontHeight(*fwin->font);
 
-			if (y*2 + h > *fwin->title_max_height)
-				y = (*fwin->title_max_height - h) / 2;
+			if (y*2 + h > frame_title_max_height(fwin))
+				y = (frame_title_max_height(fwin) - h) / 2;
 
-			if (y*2 + h < *fwin->title_min_height)
-				y = (*fwin->title_min_height - h) / 2;
+			if (y*2 + h < frame_title_min_height(fwin))
+				y = (frame_title_min_height(fwin) - h) / 2;
 
 			/* We use a w+2 buffer to have an extra pixel on the left and
 			 * another one on the right. This is because for some odd reason,

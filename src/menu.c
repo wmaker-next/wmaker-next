@@ -148,10 +148,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 		menu->flags.titled = 1;
 	}
 	menu->frame =
-	    wFrameWindowCreate(screen, tmp, 8, 2, 1, 1, &w_global.config->menu_title_clearance,
-			       &w_global.config->menu_title_min_height,
-			       &w_global.config->menu_title_max_height,
-			       flags,
+	    wFrameWindowCreate(screen, tmp, 8, 2, 1, 1, flags | WFF_IS_MENU,
 			       screen->menu_title_texture, NULL,
 			       screen->menu_title_color, &screen->menu_title_font,
 			       screen->w_depth, screen->w_visual, screen->w_colormap);

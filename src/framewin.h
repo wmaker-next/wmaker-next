@@ -43,6 +43,7 @@
 
 
 #define WFF_IS_SHADED	(1<<16)
+#define WFF_IS_MENU	(1<<17)
 
 typedef struct WFrameWindow {
     WScreen *screen_ptr;	       /* pointer to the screen structure */
@@ -59,9 +60,6 @@ typedef struct WFrameWindow {
     short workspace;		       /* workspace that the window occupies */
 
     short top_width;
-    int *title_clearance;
-    int *title_min_height;
-    int *title_max_height;
     short bottom_width;
 
     short resizebar_corner_width;
@@ -150,6 +148,10 @@ typedef struct WFrameWindow {
         unsigned int repaint_only_resizebar:1;
 
         unsigned int is_client_window_frame:1;
+        /* selects the menu_title_* triple from w_global.config instead of
+         * window_title_*, replacing the three int * fields that pointed
+         * into the swap-and-destroy WConfig and went stale on reload */
+        unsigned int is_menu:1;
 
         unsigned int incomplete_title:1;
     } flags;
@@ -164,8 +166,7 @@ typedef struct WFrameWindow {
 
 WFrameWindow*
 wFrameWindowCreate(WScreen *scr, int wlevel, int x, int y,
-                   int width, int height, int *clearance,
-                   int *title_min, int *title_max, int flags,
+                   int width, int height, int flags,
                    union WTexture **title_texture,
                    union WTexture **resize_texture,
                    WMColor **color, WMFont **font,
