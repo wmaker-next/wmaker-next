@@ -165,6 +165,34 @@ else {
 # Print to STDOUT, default is YES, a filename is specified
 $stdout = 1;
 
+sub menu_quote {
+  my ($s) = @_;
+  $s = "" unless defined $s;
+  $s =~ s/[\r\n\t]+/ /g;
+  # the tokenizer's double-quote branch maps \\ to \ and \" to "
+  $s =~ s/\\/\\\\/g;
+  $s =~ s/"/\\"/g;
+  return $s;
+}
+
+# one double-quoted menu token: the tokenizer hands its content to the
+# shell verbatim instead of re-lexing quotes, backslashes and // out
+sub params_quote {
+  my ($s) = @_;
+  $s = "" unless defined $s;
+  $s =~ s/[\r\n]+/ /g;
+  $s =~ s/\\/\\\\/g;
+  $s =~ s/"/\\"/g;
+  return $s;
+}
+
+sub shell_quote {
+  my ($s) = @_;
+  $s = "" unless defined $s;
+  $s =~ s/'/'\\''/g;
+  return "'".$s."'";
+}
+
 # KDE Locale Support
 
 # Support for KDE internationalisation so that menu entries appear
@@ -178,8 +206,8 @@ $kde1cf="$ENV{'HOME'}/.kderc";
 $kdeLanguage = "";
 
 # Open the file, if it exists, otherwise provide a default language.
-unless(open KDERC, $kde2cf) {
-  unless(open KDERC, $kde1cf) {
+unless(open KDERC, '<', $kde2cf) {
+  unless(open KDERC, '<', $kde1cf) {
     $kdeLanguage = "C";
   }
 }
@@ -241,7 +269,7 @@ if(-d $basedir) {
       print STDERR "\tFound $menufile, renaming\n\n";
       rename $menufile, "$menufile.old";
     }
-    open(MENUFILE,"> $menufile");
+    open(MENUFILE, ">", $menufile) || die("Cannot write $menufile: $!\n");
   }
 
   # Start the main menu entry
@@ -300,9 +328,10 @@ sub process_dir {
 
   # Print out directory names first and then process the directories.
   foreach $item(@tld) {
-    print $OUT "\"$item\" MENU\n";
+    my $menu_item = menu_quote($item);
+    print $OUT "\"$menu_item\" MENU\n";
     process_dir($OUT, "$path/$item");
-    print $OUT "\"$item\" END\n";
+    print $OUT "\"$menu_item\" END\n";
   }
 
   # Process the applnk files in the current directory.
@@ -316,13 +345,13 @@ sub process_dir {
     # Process the contents of the applnk file to generate a menu
     # entry for the application.
 
-    open(SUB,"$path/$item");
+    open(SUB, "<", "$path/$item") || next;
 
     # Set a default application warning to run in case there is no
     # Exec= line in the application definition. This will be
     # useful for debugging exceptions.
-    $pname="$item";
-    $pargs="echo \"Could not extract executable information from:\\n\\n$path/$item.\"|".$xmsg;
+    $pname = $item;
+    $pargs="printf '%s\\n' ".shell_quote("Could not extract executable information from:\\n\\n$path/$item.")."|".$xmsg;
 
     # Search through the contents of the file. Exit the loop at the
     # EOF or if we have processed the [Desktop Entry Section] of the
@@ -350,13 +379,11 @@ sub process_dir {
 	       && (!$gotDef || !gotLang)) {
 	  $pname = $line;
 	  $pname =~ s/^Name\[?\]?=//s;
-	  $pname =~ s/\"/\'\'/g;
 	  $gotDef = 1;
 	}
-	elsif ($line =~ /^Name\[$kdeLanguage\]=/ && !$gotLang) {
+	elsif ($line =~ /^Name\[\Q$kdeLanguage\E\]=/ && !$gotLang) {
 	  $pname = $line;
-	  $pname =~ s/^Name\[$kdeLanguage\]=//s;
-	  $pname =~ s/\"/\'\'/g;
+	  $pname =~ s/^\QName[$kdeLanguage]=\E//s;
 	  $gotLang = 1;
 	}
 	# Grab the command
@@ -370,6 +397,7 @@ sub process_dir {
 	      && $pargs !~ /^\/bin\/bash/
 	      && $pargs !~ /^kdesu/){
 	    ($pargs) = split(/\s/, $pargs);
+	    $pargs = shell_quote($pargs);
 	  }
 	  else {
 	    # A double check to remove any dubious characters from
@@ -394,9 +422,10 @@ sub process_dir {
     close(SUB);
 
     if ($inTerm) {
-      $pargs = "$term -T \"$pname\" -e $pargs";
+      $pargs = "$term -T ".shell_quote($pname)." -e ".$pargs;
     }
-    @klist = (@klist, "\t\"$pname\" EXEC $pargs\n");
+    my $menu_name = menu_quote($pname);
+    @klist = (@klist, "\t\"$menu_name\" EXEC \"".params_quote($pargs)."\"\n");
   }
 
   @klist = sort(@klist);
