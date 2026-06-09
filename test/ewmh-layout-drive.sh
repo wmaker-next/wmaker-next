@@ -962,6 +962,108 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		record_skip "could not launch helper user-time client"
 	fi
 
+	note "_NET_STARTUP_ID feeds the user-time focus decision"
+	if ! config_defines HAVE_STARTUP_NOTIFICATION; then
+		record_skip "_NET_STARTUP_ID monitor (built --without-startup-notification)"
+	elif set_desktop 0 && start_ewmh_client; then
+		# timestamps here sit above any earlier _NET_ACTIVE_WINDOW
+		# checks so this block owns scr->net_last_user_time
+
+		# 1 - stale launch denied: announce a sequence at T=200000 then
+		#     advance the focused window to T=200500 before the new
+		#     client maps with the matching startup id, focus stays put
+		run_x xprop -id "$CLIENT_XID" -f _NET_WM_USER_TIME 32c \
+			-set _NET_WM_USER_TIME 200000 >>"$LOG" 2>&1
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		DISPLAY=$DPY EWMH_CLIENT_SN_BROADCAST="ewmh-drive/sn1_TIME200000 200000 0" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		run_x xprop -id "$CLIENT_XID" -f _NET_WM_USER_TIME 32c \
+			-set _NET_WM_USER_TIME 200500 >>"$LOG" 2>&1
+		sleep 0.2
+		if start_second_client EWMH_CLIENT_NAME=sn-stale \
+				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn1_TIME200000"; then
+			check "_NET_STARTUP_ID client managed" wait_for 40 root_window_list_has _NET_CLIENT_LIST "$CLIENT2_XID"
+			check "stale-launch _NET_STARTUP_ID does not steal focus" wait_for 30 active_window_is "$CLIENT_XID"
+			check "stale-launch _NET_STARTUP_ID gets _NET_WM_STATE_DEMANDS_ATTENTION" \
+				wait_for 40 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			stop_second_client
+		else
+			record_fail "could not launch sn-stale client"
+		fi
+
+		# 2 - fresh launch granted: announce at T=201000, no further
+		#     interaction, the new client should take focus because
+		#     its launch time is the freshest activity on screen
+		DISPLAY=$DPY EWMH_CLIENT_SN_BROADCAST="ewmh-drive/sn2_TIME201000 201000 0" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		sleep 0.2
+		if start_second_client EWMH_CLIENT_NAME=sn-fresh \
+				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn2_TIME201000"; then
+			check "fresh-launch _NET_STARTUP_ID takes focus" wait_for 40 active_window_is "$CLIENT2_XID"
+			stop_second_client
+		else
+			record_fail "could not launch sn-fresh client"
+		fi
+
+		# 3 - workspace placement: announce on workspace 0, switch to
+		#     workspace 1, then map, the client should land on 0
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		DISPLAY=$DPY EWMH_CLIENT_SN_BROADCAST="ewmh-drive/sn3_TIME202000 202000 0" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		set_desktop 1
+		if start_second_client EWMH_CLIENT_NAME=sn-ws \
+				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn3_TIME202000"; then
+			check "_NET_STARTUP_ID DESKTOP places on launch workspace" \
+				wait_for 40 window_prop_has_values "$CLIENT2_XID" _NET_WM_DESKTOP 0
+			stop_second_client
+		else
+			record_fail "could not launch sn-ws client"
+		fi
+		set_desktop 0
+
+		# 4 - abandoned-sequence cleanup proxy, broadcast a sequence
+		#     that never maps, send remove: (same pending_remove()
+		#     teardown the 20 s timeout ends in), then confirm a
+		#     fresh sequence still matches and grants focus, also
+		#     covers that the orphan id is no longer matchable
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		DISPLAY=$DPY EWMH_CLIENT_SN_BROADCAST="ewmh-drive/sn-orphan_TIME203000 203000 2" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		sleep 0.2
+		DISPLAY=$DPY EWMH_CLIENT_SN_REMOVE="ewmh-drive/sn-orphan_TIME203000" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		sleep 0.2
+		DISPLAY=$DPY EWMH_CLIENT_SN_BROADCAST="ewmh-drive/sn-after_TIME204000 204000 0" \
+			"$CLIENT_BIN" >>"$LOG" 2>&1
+		sleep 0.2
+		if start_second_client EWMH_CLIENT_NAME=sn-orphan-late \
+				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn-orphan_TIME203000"; then
+			# orphan said DESKTOP=2, if the removed sequence were
+			# still matchable this client would land on workspace 2,
+			# landing on the current workspace 0 proves the entry
+			# was torn down by the COMPLETED path
+			check "removed sequence is no longer matchable" \
+				wait_for 40 window_prop_has_values "$CLIENT2_XID" _NET_WM_DESKTOP 0
+			stop_second_client
+		else
+			record_fail "could not launch sn-orphan-late client"
+		fi
+		if start_second_client EWMH_CLIENT_NAME=sn-after \
+				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn-after_TIME204000"; then
+			check "fresh sequence after abandoned-cleanup still grants focus" \
+				wait_for 40 active_window_is "$CLIENT2_XID"
+			stop_second_client
+		else
+			record_fail "could not launch sn-after client"
+		fi
+		close_ewmh_client >/dev/null
+	else
+		record_skip "could not relaunch client for _NET_STARTUP_ID test"
+	fi
+
 	note "_NET_WM_STRUT_PARTIAL updates _NET_WORKAREA"
 	if set_desktop 0 \
 	   && start_second_client EWMH_CLIENT_NAME=strut EWMH_CLIENT_STRUT_LEFT=50; then

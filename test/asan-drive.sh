@@ -379,7 +379,7 @@ LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
     "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerEdge 10
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
     "$ROOT/util/.libs/wdwrite" WindowMaker HotCornerActions \
-    "(\"touch $HC_MARK/tl\", None, None, None)"
+    "(\"printf %s \\\"\\\$DESKTOP_STARTUP_ID\\\" > $HC_MARK/sn-id; touch $HC_MARK/tl\", None, None, None)"
 # four wdwrite calls land within one wall-clock second, the inotify
 # reload now compares st_mtim at nanosecond resolution so all four are
 # applied before this poll returns
@@ -394,6 +394,20 @@ DISPLAY=$DPY xterm -geometry 200x60+0+0 -e 'sleep 60' >/dev/null 2>&1 &
 HC_XT=$!; echo "$HC_XT" >> "$PIDFILE"; sleep 0.5
 hit_corner || warn "hot corner over window did not fire"
 kill "$HC_XT" 2>/dev/null; sleep 0.3
+# launcher half of startup-notification, ExecuteShellCommand() is the
+# hot-corner action path so the child must inherit DESKTOP_STARTUP_ID,
+# only meaningful when the action above actually ran
+if [ -f "$HC_MARK/tl" ] \
+   && grep -q '^#define HAVE_STARTUP_NOTIFICATION 1' "$ROOT/config.h" 2>/dev/null; then
+    if [ -s "$HC_MARK/sn-id" ]; then
+        case "$(cat "$HC_MARK/sn-id")" in
+            wmaker/*_TIME*) note "startup-notification: launcher exported DESKTOP_STARTUP_ID" ;;
+            *) warn "startup-notification: DESKTOP_STARTUP_ID present but malformed: $(cat "$HC_MARK/sn-id")" ;;
+        esac
+    else
+        warn "startup-notification: launcher did not export DESKTOP_STARTUP_ID"
+    fi
+fi
 rm -rf "$HC_MARK"
 
 # --- util/ tools under ASan -------------------------------------------------

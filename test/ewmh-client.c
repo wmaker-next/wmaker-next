@@ -120,6 +120,98 @@ static void send_ping_reply(Display *dpy, XClientMessageEvent *msg)
 	XFlush(dpy);
 }
 
+/* Broadcast a startup-notification message to the root window the way
+ * libstartup-notification does, the spec sends the key=value text 20 bytes
+ * at a time in xclient.data.b, the first packet uses _NET_STARTUP_INFO_BEGIN
+ * and continuations use _NET_STARTUP_INFO. The trailing NUL must be inside
+ * a packet for libsn to see end of message. */
+static void sn_send_packets(Display *dpy, Window root, Window src,
+			    Atom begin_atom, Atom info_atom, const char *msg)
+{
+	XEvent ev;
+	Atom type = begin_atom;
+	const char *p = msg;
+	const char *end = msg + strlen(msg) + 1;
+	int i;
+
+	while (p < end) {
+		memset(&ev, 0, sizeof(ev));
+		ev.xclient.type = ClientMessage;
+		ev.xclient.display = dpy;
+		ev.xclient.window = src;
+		ev.xclient.message_type = type;
+		ev.xclient.format = 8;
+		for (i = 0; i < 20 && p < end; i++)
+			ev.xclient.data.b[i] = *p++;
+		XSendEvent(dpy, root, False, PropertyChangeMask, &ev);
+		type = info_atom;
+	}
+}
+
+/* one-shot broadcast of a "new:" startup-notification sequence so the
+ * monitor path inside wmaker can be exercised without wmaker being the
+ * launcher, EWMH_CLIENT_SN_BROADCAST="<id> <ts> <ws>" */
+static int sn_broadcast_mode(Display *dpy)
+{
+	const char *spec = getenv("EWMH_CLIENT_SN_BROADCAST");
+	Window root = DefaultRootWindow(dpy);
+	Window src;
+	Atom begin_atom, info_atom;
+	char id[128];
+	long ts = 0, ws = -1;
+	char msg[256];
+
+	if (!spec || sscanf(spec, "%127s %ld %ld", id, &ts, &ws) < 1)
+		return 1;
+
+	begin_atom = intern_atom(dpy, "_NET_STARTUP_INFO_BEGIN");
+	info_atom = intern_atom(dpy, "_NET_STARTUP_INFO");
+
+	/* libsn keys reassembly on the sending window, so we need a real
+	 * window for xclient.window, root is rejected */
+	src = XCreateSimpleWindow(dpy, root, -1, -1, 1, 1, 0, 0, 0);
+
+	if (ws >= 0)
+		snprintf(msg, sizeof(msg),
+			 "new: ID=%s SCREEN=0 NAME=ewmh-drive TIMESTAMP=%ld DESKTOP=%ld",
+			 id, ts, ws);
+	else
+		snprintf(msg, sizeof(msg),
+			 "new: ID=%s SCREEN=0 NAME=ewmh-drive TIMESTAMP=%ld", id, ts);
+
+	sn_send_packets(dpy, root, src, begin_atom, info_atom, msg);
+	XFlush(dpy);
+	XDestroyWindow(dpy, src);
+	XFlush(dpy);
+	return 0;
+}
+
+/* one-shot "remove:" for a previously broadcast sequence so the test
+ * driver can exercise the COMPLETED teardown without waiting for the
+ * 20 s timeout, EWMH_CLIENT_SN_REMOVE="<id>" */
+static int sn_remove_mode(Display *dpy)
+{
+	const char *id = getenv("EWMH_CLIENT_SN_REMOVE");
+	Window root = DefaultRootWindow(dpy);
+	Window src;
+	Atom begin_atom, info_atom;
+	char msg[192];
+
+	if (!id || !*id)
+		return 1;
+
+	begin_atom = intern_atom(dpy, "_NET_STARTUP_INFO_BEGIN");
+	info_atom = intern_atom(dpy, "_NET_STARTUP_INFO");
+	src = XCreateSimpleWindow(dpy, root, -1, -1, 1, 1, 0, 0, 0);
+
+	snprintf(msg, sizeof(msg), "remove: ID=%s", id);
+	sn_send_packets(dpy, root, src, begin_atom, info_atom, msg);
+	XFlush(dpy);
+	XDestroyWindow(dpy, src);
+	XFlush(dpy);
+	return 0;
+}
+
 static int format8_close_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_FORMAT8_CLOSE_TARGET", None);
@@ -215,6 +307,7 @@ int main(void)
 	long no_ping_reply = env_long("EWMH_CLIENT_NO_PING_REPLY", 0);
 	long ignore_delete = env_long("EWMH_CLIENT_IGNORE_DELETE", 0);
 	long want_gnustep_hide = env_long("EWMH_CLIENT_GNUSTEP_HIDE", 0);
+	const char *startup_id = getenv("EWMH_CLIENT_STARTUP_ID");
 
 	if (!name)
 		name = "ewmh-drive-client";
@@ -241,6 +334,16 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_FORMAT8_CLOSE_TARGET")) {
 		int ret = format8_close_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_SN_BROADCAST")) {
+		int ret = sn_broadcast_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_SN_REMOVE")) {
+		int ret = sn_remove_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}
@@ -288,6 +391,8 @@ int main(void)
 	} else if (user_time >= 0) {
 		set_cardinal(dpy, win, net_wm_user_time, (unsigned long)user_time);
 	}
+	if (startup_id)
+		set_utf8(dpy, win, intern_atom(dpy, "_NET_STARTUP_ID"), startup_id);
 	if (sync_counter >= 0)
 		set_cardinal(dpy, win, net_wm_sync_request_counter,
 			     (unsigned long)sync_counter);
