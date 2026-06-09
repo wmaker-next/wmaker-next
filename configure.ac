@@ -305,7 +305,10 @@ dnl Platform-specific Makefile setup
 dnl ================================
 AS_CASE(["$host"],
     [*-*-linux*|*-*-cygwin*|*-gnu*], [WM_OSDEP="linux" ; CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=700"],
-    [*-*-freebsd*|*-k*bsd-gnu*],     [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=700 -DFREEBSD"],
+    dnl _XOPEN_SOURCE on FreeBSD clears __BSD_VISIBLE and so hides accept4,
+    dnl SOCK_CLOEXEC, SOCK_NONBLOCK, asprintf and other BSD extensions, all
+    dnl of which are visible by default when no feature-test macro is set
+    [*-*-freebsd*|*-k*bsd-gnu*],     [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DFREEBSD"],
     [*-*-netbsd*],                   [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DNETBSD"],
     [*-*-openbsd*],                  [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DOPENBSD"],
     [*-*-dragonfly*],                [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DDRAGONFLYBSD"],
