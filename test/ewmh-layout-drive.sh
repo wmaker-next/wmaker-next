@@ -943,6 +943,62 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		record_skip "could not relaunch client for user-time test"
 	fi
 
+	note "_NET_WM_USER_TIME focus-stealing exemptions"
+	if set_desktop 0 && start_ewmh_client; then
+		# baseline is already >= 90000 from the _NET_ACTIVE_WINDOW
+		# checks above so 100 is a deliberately stale stamp, the
+		# transient and the higher-layer window must take focus
+		# anyway and the unrelated normal-layer window must not
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+
+		if start_second_client EWMH_CLIENT_NAME=transient-stale \
+				EWMH_CLIENT_CLASS=EwmhDriveTransient \
+				EWMH_CLIENT_TRANSIENT_FOR="$CLIENT_XID" \
+				EWMH_CLIENT_USER_TIME=100; then
+			check "stale-stamped transient of focused window still takes focus" \
+				wait_for 40 active_window_is "$CLIENT2_XID"
+			check "transient bypass does not flag _NET_WM_STATE_DEMANDS_ATTENTION" \
+				wait_for 20 window_atom_lacks "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			stop_second_client
+		else
+			record_fail "could not launch transient-stale client"
+		fi
+
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		if start_second_client EWMH_CLIENT_NAME=above-stale \
+				EWMH_CLIENT_CLASS=EwmhDriveAbove \
+				EWMH_CLIENT_STATE_ABOVE=1 \
+				EWMH_CLIENT_USER_TIME=100; then
+			check "stale-stamped _NET_WM_STATE_ABOVE window still takes focus" \
+				wait_for 40 active_window_is "$CLIENT2_XID"
+			stop_second_client
+		else
+			record_fail "could not launch above-stale client"
+		fi
+
+		# negative control, an unrelated normal-layer window with the
+		# same stale stamp is still denied so the exemptions above
+		# are the reason the previous two passed
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		if start_second_client EWMH_CLIENT_NAME=unrelated-stale \
+				EWMH_CLIENT_CLASS=EwmhDriveUnrelated \
+				EWMH_CLIENT_USER_TIME=100; then
+			check "stale-stamped unrelated window is still denied" \
+				wait_for 30 active_window_is "$CLIENT_XID"
+			check "unrelated denied window gets _NET_WM_STATE_DEMANDS_ATTENTION" \
+				wait_for 40 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			stop_second_client
+		else
+			record_fail "could not launch unrelated-stale client"
+		fi
+		close_ewmh_client >/dev/null
+	else
+		record_skip "could not relaunch client for focus-stealing exemption test"
+	fi
+
 	note "accepted _NET_WM_USER_TIME_WINDOW helper"
 	if set_desktop 0 && start_user_time_helper_client; then
 		check "client advertises safe _NET_WM_USER_TIME_WINDOW helper" wait_for 40 window_refers_to "$CLIENT_XID" _NET_WM_USER_TIME_WINDOW "$CLIENT_HELPER_XID"

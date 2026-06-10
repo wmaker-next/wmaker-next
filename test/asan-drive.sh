@@ -63,6 +63,37 @@ wait_for() {
 }
 pid_gone() { ! kill -0 "$1" 2>/dev/null; }
 
+# set TBX/TBY to a point on the titlebar of the given client window in
+# root coordinates: xdotool getwindowgeometry --shell double-counts the
+# frame offset for a reparented client, so take the absolute client
+# origin from xwininfo and step half the _NET_FRAME_EXTENTS top into
+# the titlebar
+titlebar_of() {
+    local w cx cy ft
+    w=$1
+    set -- $(DISPLAY=$DPY xwininfo -id "$w" \
+        | awk '/Absolute upper-left X/{x=$NF} /Absolute upper-left Y/{y=$NF} END{print x,y}')
+    cx=${1:-0}; cy=${2:-0}
+    ft=$(DISPLAY=$DPY xprop -id "$w" _NET_FRAME_EXTENTS \
+        | awk -F', *' '{print $3}')
+    TBX=$((cx+60)); TBY=$((cy - ${ft:-20}/2 - 1))
+}
+
+# set RBX/RBY to a point on the middle resizebar segment of the given
+# client window in root coordinates, same xwininfo + _NET_FRAME_EXTENTS
+# approach as titlebar_of so the click lands inside the bottom extent
+resizebar_of() {
+    local w cx cy cw ch fb
+    w=$1
+    set -- $(DISPLAY=$DPY xwininfo -id "$w" | awk \
+        '/Absolute upper-left X/{x=$NF} /Absolute upper-left Y/{y=$NF}
+         /Width:/{w=$NF} /Height:/{h=$NF} END{print x,y,w,h}')
+    cx=${1:-0}; cy=${2:-0}; cw=${3:-0}; ch=${4:-0}
+    fb=$(DISPLAY=$DPY xprop -id "$w" _NET_FRAME_EXTENTS \
+        | awk -F', *' '{print $4}')
+    RBX=$((cx + cw/2)); RBY=$((cy + ch + ${fb:-8}/2))
+}
+
 # dump the Xephyr root window as a PNG when WMAKER_SHOTS_DIR is set,
 # ad-hoc debugging aid (e.g. `WMAKER_SHOTS_DIR=/tmp/shots ./asan-drive.sh`)
 shot() {
@@ -185,13 +216,111 @@ xdo windowsize "$WID" 700 450; sleep 0.2
 xdo windowsize "$WID" 400 300; sleep 0.2
 shot xterm-focused
 
+# --- move/resize bumps the focus-stealing baseline (wNETWMBumpUserTime) -----
+# wMouseMoveWindow()/wMouseResizeWindow() advance scr->net_last_user_time to
+# the terminating ButtonRelease timestamp so a window that maps while the
+# user is dragging cannot steal focus once the loop exits. The check lives
+# here because it needs a real server timestamp on both sides of the
+# comparison and this driver pushes no synthetic _NET_WM_USER_TIME values
+# above the server clock, see ewmh-layout-drive.sh for the timestamp-faked
+# exemption checks.
+EWMH_CLIENT="$WMHOME/ewmh-client"
+if ${CC:-cc} -std=c99 "$ROOT/test/ewmh-client.c" -o "$EWMH_CLIENT" -lX11 \
+        >>"$LOG" 2>&1; then
+    note "move/resize ButtonRelease bumps net_last_user_time"
+    active_is() {
+        DISPLAY=$DPY xprop -root _NET_ACTIVE_WINDOW 2>/dev/null \
+            | grep -iF "$1" >/dev/null
+    }
+    has_demands_attention() {
+        DISPLAY=$DPY xprop -id "$1" _NET_WM_STATE 2>/dev/null \
+            | grep -F _NET_WM_STATE_DEMANDS_ATTENTION >/dev/null
+    }
+    map_baseline_client() {
+        : >"$WMHOME/baseline.xid"
+        DISPLAY=$DPY env EWMH_CLIENT_NAME="$1" EWMH_CLIENT_CLASS="$2" \
+            EWMH_CLIENT_USER_TIME="$3" "$EWMH_CLIENT" \
+            >"$WMHOME/baseline.xid" 2>>"$LOG" &
+        BL_PID=$!; echo "$BL_PID" >> "$PIDFILE"
+        wait_for 30 test -s "$WMHOME/baseline.xid" || return 1
+        BL_XID=$(head -n 1 "$WMHOME/baseline.xid")
+        case "$BL_XID" in 0x[0-9a-fA-F]*) return 0 ;; *) return 1 ;; esac
+    }
+    close_baseline_client() {
+        DISPLAY=$DPY wmctrl -i -c "$BL_XID" 2>/dev/null
+        wait_for 30 pid_gone "$BL_PID" || kill "$BL_PID" 2>/dev/null
+    }
+    titlebar_of "$WID"
+    # capture the server clock now: every prior baseline source in this
+    # driver is a real (past) server stamp so net_last_user_time <= this,
+    # the same value becomes stale only once the drag below releases
+    STALE_TS=$(DISPLAY=$DPY EWMH_CLIENT_PRINT_SERVER_TIME=1 "$EWMH_CLIENT" 2>>"$LOG")
+    case "$STALE_TS" in
+    [0-9]*)
+        # positive control: stamped at the captured time the client is
+        # fresh and must take focus, otherwise the denial below cannot
+        # be attributed to the bump
+        if map_baseline_client baseline-fresh AsanBaselineFresh "$STALE_TS"; then
+            wait_for 20 active_is "$BL_XID" \
+                || warn "baseline control: fresh-stamped client did not take focus"
+            close_baseline_client
+        fi
+        # titlebar drag of $WID: ButtonRelease at the end of
+        # wMouseMoveWindow() bumps the screen baseline strictly past
+        # STALE_TS, two motion steps because the first only arms
+        # started=1 and updateWindowPosition() runs from the second,
+        # so the started branch is exercised as well as the bump
+        xdo mousemove "$TBX" "$TBY"; sleep 0.1
+        xdo mousedown 1; sleep 0.1
+        xdo mousemove $((TBX+40)) $((TBY+20)); sleep 0.1
+        xdo mousemove $((TBX+80)) $((TBY+40)); sleep 0.1
+        xdo mouseup 1; sleep 0.2
+        # same stamp is now stale: a distinct-class client carrying it
+        # must be denied and flagged DEMANDS_ATTENTION (distinct class
+        # so SharedAppIcon grouping cannot leak the same-app exemption)
+        if map_baseline_client baseline-move-stale AsanBaselineMove "$STALE_TS"; then
+            wait_for 20 has_demands_attention "$BL_XID" \
+                || warn "move bump: denied client lacks _NET_WM_STATE_DEMANDS_ATTENTION"
+            active_is "$BL_XID" \
+                && warn "move bump: stale-stamped client stole focus after drag"
+            close_baseline_client
+        fi
+        # second round for wMouseResizeWindow(): the move release just
+        # advanced the baseline past STALE_TS so capture a fresh server
+        # timestamp, drag the resizebar, and assert again
+        STALE_TS=$(DISPLAY=$DPY EWMH_CLIENT_PRINT_SERVER_TIME=1 "$EWMH_CLIENT" 2>>"$LOG")
+        resizebar_of "$WID"
+        xdo mousemove "$RBX" "$RBY"; sleep 0.1
+        xdo mousedown 1; sleep 0.1
+        xdo mousemove "$RBX" $((RBY+20)); sleep 0.1
+        xdo mousemove "$RBX" $((RBY+40)); sleep 0.1
+        xdo mouseup 1; sleep 0.2
+        if map_baseline_client baseline-resize-stale AsanBaselineResize "$STALE_TS"; then
+            wait_for 20 has_demands_attention "$BL_XID" \
+                || warn "resize bump: denied client lacks _NET_WM_STATE_DEMANDS_ATTENTION"
+            active_is "$BL_XID" \
+                && warn "resize bump: stale-stamped client stole focus after drag"
+            close_baseline_client
+        fi
+        # restore $WID for the blocks below
+        xdo windowmove "$WID" 100 100; sleep 0.2
+        xdo windowsize "$WID" 400 300; sleep 0.2
+        ;;
+    *)
+        warn "could not read server timestamp for baseline-bump check"
+        ;;
+    esac
+fi
+
 # --- titlebar interaction (framewin.c, actions.c) ---------------------------
-note "titlebar double-click (shade), drag, button menu"
-# move pointer onto titlebar of WID (frame y is window y - titlebar height)
-eval "$(xdo getwindowgeometry --shell "$WID")"
-xdo mousemove $((X+40)) $((Y-10)); sleep 0.1
-xdo click 1; sleep 0.05; xdo click 1; sleep 0.3          # shade
-xdo click 1; sleep 0.05; xdo click 1; sleep 0.3          # unshade
+note "titlebar double-click (shade), window menu"
+titlebar_of "$WID"
+xdo mousemove "$TBX" "$TBY"; sleep 0.1
+xdo click --repeat 2 --delay 50 1; sleep 0.3             # shade
+DISPLAY=$DPY xprop -id "$WID" _NET_WM_STATE 2>/dev/null \
+    | grep -q _NET_WM_STATE_SHADED \
+    || warn "titlebar double-click did not shade $WID"
+xdo click --repeat 2 --delay 50 1; sleep 0.3             # unshade
 xdo click 3; sleep 0.3; xdo key Escape; sleep 0.2        # window menu
 
 # --- maximise / minimise via EWMH (wmspec.c handlers) ----------------------

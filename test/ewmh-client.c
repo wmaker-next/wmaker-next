@@ -212,6 +212,31 @@ static int sn_remove_mode(Display *dpy)
 	return 0;
 }
 
+/* one-shot read of the X server clock: change a property on a private
+ * window and print the resulting PropertyNotify timestamp, used by the
+ * asan driver so a focus-stealing check can stamp a client with a real
+ * server time captured just before an interactive drag */
+static int print_server_time_mode(Display *dpy)
+{
+	Window root = DefaultRootWindow(dpy);
+	Window w = XCreateSimpleWindow(dpy, root, -1, -1, 1, 1, 0, 0, 0);
+	XEvent ev;
+
+	XSelectInput(dpy, w, PropertyChangeMask);
+	XChangeProperty(dpy, w, XA_WM_NAME, XA_STRING, 8, PropModeReplace,
+			(const unsigned char *)"t", 1);
+	for (;;) {
+		XNextEvent(dpy, &ev);
+		if (ev.type == PropertyNotify && ev.xproperty.window == w) {
+			printf("%lu\n", (unsigned long)ev.xproperty.time);
+			break;
+		}
+	}
+	XDestroyWindow(dpy, w);
+	XFlush(dpy);
+	return 0;
+}
+
 static int format8_close_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_FORMAT8_CLOSE_TARGET", None);
@@ -307,7 +332,10 @@ int main(void)
 	long no_ping_reply = env_long("EWMH_CLIENT_NO_PING_REPLY", 0);
 	long ignore_delete = env_long("EWMH_CLIENT_IGNORE_DELETE", 0);
 	long want_gnustep_hide = env_long("EWMH_CLIENT_GNUSTEP_HIDE", 0);
+	long transient_for = env_long("EWMH_CLIENT_TRANSIENT_FOR", 0);
+	long state_above = env_long("EWMH_CLIENT_STATE_ABOVE", 0);
 	const char *startup_id = getenv("EWMH_CLIENT_STARTUP_ID");
+	const char *res_class = getenv("EWMH_CLIENT_CLASS");
 
 	if (!name)
 		name = "ewmh-drive-client";
@@ -316,6 +344,11 @@ int main(void)
 	if (!dpy) {
 		fprintf(stderr, "could not open display\n");
 		return 2;
+	}
+	if (getenv("EWMH_CLIENT_PRINT_SERVER_TIME")) {
+		int ret = print_server_time_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
 	}
 	if (getenv("EWMH_CLIENT_RESTACK_TARGET")) {
 		int ret = restack_mode(dpy);
@@ -355,7 +388,7 @@ int main(void)
 	XSelectInput(dpy, win, StructureNotifyMask | PropertyChangeMask);
 
 	class_hint.res_name = (char *)"ewmh-drive-client";
-	class_hint.res_class = (char *)"EwmhDriveClient";
+	class_hint.res_class = (char *)(res_class ? res_class : "EwmhDriveClient");
 	XSetClassHint(dpy, win, &class_hint);
 	XStoreName(dpy, win, name);
 
@@ -410,6 +443,16 @@ int main(void)
 	if (bad_icon) {
 		long icon[3] = {2147483647L, 2147483647L, 0};
 		set_cardinals(dpy, win, net_wm_icon, icon, 3);
+	}
+	if (transient_for != 0)
+		XSetTransientForHint(dpy, win, (Window)transient_for);
+	if (state_above) {
+		long st[1];
+
+		st[0] = (long)intern_atom(dpy, "_NET_WM_STATE_ABOVE");
+		XChangeProperty(dpy, win, intern_atom(dpy, "_NET_WM_STATE"),
+				XA_ATOM, 32, PropModeReplace,
+				(const unsigned char *)st, 1);
 	}
 
 	window_type[0] = net_wm_window_type_normal;
