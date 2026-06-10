@@ -150,7 +150,13 @@ two-head nested X server. New since the last release:
   prevention. A newly mapped window whose user time is 0 or older than
   the most recent user activity is not focused automatically and is
   marked _NET_WM_STATE_DEMANDS_ATTENTION instead. _NET_ACTIVE_WINDOW
-  requests from applications are refused on the same basis.
+  requests from applications are refused on the same basis. A
+  transient or _NET_WM_STATE_MODAL dialog of the focused window's
+  application, and any window mapping into a higher stacking layer
+  than the current focus, are exempt from the timestamp check, and
+  finishing an interactive move or resize counts as user activity so
+  a window mapping right after does not take focus from the window
+  just dropped.
 - _NET_WM_STATE_DEMANDS_ATTENTION drives the same urgent appicon
   bounce as the ICCCM UrgencyHint and is reflected in _NET_WM_STATE
   for pagers, and _NET_WM_STATE_MODAL on a transient redirects focus
