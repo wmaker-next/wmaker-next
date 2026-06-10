@@ -305,9 +305,10 @@ dnl Platform-specific Makefile setup
 dnl ================================
 AS_CASE(["$host"],
     [*-*-linux*|*-*-cygwin*|*-gnu*], [WM_OSDEP="linux" ; CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=700 -D_GNU_SOURCE"],
-    dnl _XOPEN_SOURCE on FreeBSD clears __BSD_VISIBLE and so hides accept4,
+    dnl _XOPEN_SOURCE on the BSDs clears __BSD_VISIBLE and so hides accept4,
     dnl SOCK_CLOEXEC, SOCK_NONBLOCK, asprintf and other BSD extensions, all
-    dnl of which are visible by default when no feature-test macro is set
+    dnl of which are visible by default when no feature-test macro is set,
+    dnl so none of the BSD arms below set it
     [*-*-freebsd*|*-k*bsd-gnu*],     [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DFREEBSD"],
     [*-*-netbsd*],                   [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DNETBSD"],
     [*-*-openbsd*],                  [WM_OSDEP="bsd"   ; CPPFLAGS="$CPPFLAGS -DOPENBSD"],
@@ -563,6 +564,14 @@ XCFLAGS="$X_CFLAGS"
 XLFLAGS="$X_LIBS"
 XLIBS="-lX11 $X_EXTRA_LIBS"
 
+dnl On systems where X11 lives outside the default compiler search path
+dnl (OpenBSD /usr/X11R6, NetBSD /usr/X11R7) the WM_XEXT_CHECK_* and
+dnl WM_IMGFMT_CHECK_* probes need the AC_PATH_XTRA result in CPPFLAGS and
+dnl LDFLAGS to find X headers and libraries, on Linux and FreeBSD both are
+dnl empty so this is a no-op there
+CPPFLAGS="$CPPFLAGS $XCFLAGS"
+LDFLAGS="$LDFLAGS $XLFLAGS"
+
 lib_search_path="$lib_search_path $XLFLAGS"
 inc_search_path="$inc_search_path $XCFLAGS"
 
@@ -770,6 +779,14 @@ dnl rather than failing the build (NetBSD base X11R7 still ships 0.3.6,
 dnl install pkgsrc xcb-util-wm and put /usr/pkg/lib/pkgconfig first)
 PKG_CHECK_MODULES([XCB], [xcb xcb-icccm >= 0.3.8 x11-xcb], [],
     [AC_MSG_ERROR([libxcb, xcb-icccm >= 0.3.8 and x11-xcb are required -- $XCB_PKG_ERRORS])])
+dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
+dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so
+dnl ask pkg-config where the >= 0.3.8 module actually lives and search that
+dnl directory ahead of XLFLAGS, on Linux/FreeBSD/OpenBSD libdir is the same
+dnl as the base X dir and the prepend is a no-op
+wm_xcb_icccm_libdir=`$PKG_CONFIG --variable=libdir 'xcb-icccm >= 0.3.8' 2>/dev/null`
+AS_IF([test -n "$wm_xcb_icccm_libdir"],
+    [LDFLAGS="-L$wm_xcb_icccm_libdir $LDFLAGS"])
 AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
 
