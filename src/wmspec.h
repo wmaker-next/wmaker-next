@@ -75,6 +75,7 @@ WWindow *wNETWMUserTimeWindowFor(Window window);
 void wNETWMUserTimeNotify(WWindow *wwin);
 void wNETWMDetachUserTimeWindow(WWindow *wwin);
 Bool wNETWMShouldStealFocus(WWindow *wwin);
+void wNETWMBumpUserTime(WScreen *scr, Time ts);
 void wNETWMUpdateDesktopLayout(WScreen *scr);
 void wNETWMCheckRootHintChange(WScreen *scr, XPropertyEvent *event);
 Bool wNETWMIsSyncRequestProtocol(Atom protocol);

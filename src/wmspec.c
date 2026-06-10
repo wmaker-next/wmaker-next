@@ -2842,14 +2842,56 @@ Bool wNETWMSyncRequestHandleAlarm(XEvent *event) { (void)event; return False; }
 
 #endif /* USE_XSYNC */
 
+/*
+ * Advance the screen's user-activity baseline from a WM-side interaction
+ * (titlebar drag, resize, keyboard move) so a window that maps right after
+ * with a timestamp older than the interaction does not steal focus.
+ */
+void wNETWMBumpUserTime(WScreen *scr, Time ts)
+{
+	if (ts != 0 && (scr->net_last_user_time == 0
+			|| USER_TIME_NEWER(ts, scr->net_last_user_time)))
+		scr->net_last_user_time = ts;
+}
+
 Bool wNETWMShouldStealFocus(WWindow *wwin)
 {
 	WScreen *scr = wwin->screen_ptr;
+	WWindow *focused;
 
 	/* a client that explicitly stamps user_time = 0 is asking the WM
 	 * not to focus it on initial map */
 	if (wwin->net_user_time_set && wwin->net_user_time == 0)
 		return False;
+
+	focused = scr->focused_window;
+	if (focused && focused != wwin) {
+		/* a transient of the current focus holder, or of its
+		 * application leader, is part of what the user is already
+		 * working in, do not let a stale or missing timestamp keep
+		 * a Save dialog from taking input */
+		if (wwin->transient_for != None
+		    && wwin->transient_for != scr->root_win
+		    && (wwin->transient_for == focused->client_win
+			|| wwin->transient_for == focused->main_window))
+			return True;
+
+		/* same for a _NET_WM_STATE_MODAL window of the focused
+		 * application, which a toolkit may map as group-transient
+		 * rather than transient for a specific window */
+		if (wwin->flags.net_modal
+		    && wwin->main_window != None
+		    && wwin->main_window == focused->main_window)
+			return True;
+
+		/* a window mapping into a higher stacking layer than the
+		 * current focus is going to obscure it regardless, denying
+		 * focus would leave keyboard input going to a window the
+		 * user can no longer see */
+		if (wwin->frame && focused->frame
+		    && WINDOW_LEVEL(wwin) > WINDOW_LEVEL(focused))
+			return True;
+	}
 
 	/* if no other window has reported activity yet, or this window
 	 * never set a user time, fall through to the existing policy */

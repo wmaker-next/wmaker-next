@@ -1622,6 +1622,10 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			XUngrabPointer(dpy, CurrentTime);
 			XUngrabServer(dpy);
 
+			/* XKeyEvent and XButtonEvent share layout up to .time
+			 * so this reads correctly whichever ended the loop */
+			wNETWMBumpUserTime(scr, event.xbutton.time);
+
 			if (done == 2) {
 				if (wwin->flags.shaded || scr->selected_windows) {
 					if (!scr->selected_windows) {
@@ -1890,6 +1894,11 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 				XUngrabPointer(dpy, CurrentTime);
 				wwin->moveresize.active = 0;
 			}
+			/* the drag loop is modal so any MapRequest that arrived
+			 * during the move was queued, advance the screen
+			 * baseline to the release timestamp so a stale-stamped
+			 * window processed next does not steal focus */
+			wNETWMBumpUserTime(scr, event.xbutton.time);
 			done = True;
 			break;
 
@@ -2404,6 +2413,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				XUngrabPointer(dpy, CurrentTime);
 				wwin->moveresize.active = 0;
 			}
+			wNETWMBumpUserTime(scr, event.xbutton.time);
 
 			return;
 
