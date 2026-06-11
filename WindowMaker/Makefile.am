@@ -73,6 +73,7 @@ dist_prefsdata_DATA =\
 	background.menu.sr\
 	exitscript.sh\
 	README\
+	README.definable-cursor\
 	README.themes\
 	$(NONGENERATED_MENUS)
 

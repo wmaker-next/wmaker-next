@@ -43,7 +43,7 @@ SUBDIRS = wrlib WINGs src util po WindowMaker WPrefs.app doc
 DIST_SUBDIRS = $(SUBDIRS) test
 
 EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
-	INSTALL-WMAKER README.i18n README.definable-cursor \
+	INSTALL-WMAKER README.i18n \
 	README COPYING.WTFPL autogen.sh \
 	script/checkpatch.pl script/update-changelog.pl \
 	script/check-cmdline-options-doc.sh \
