@@ -53,6 +53,8 @@ wmaker_SOURCES = 	\
 	framewin.h \
 	geomview.c \
 	geomview.h \
+	osdview.c \
+	osdview.h \
 	hotcorner.c \
 	hotcorner.h \
 	osdep.h \

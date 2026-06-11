@@ -19,8 +19,11 @@
 #ifndef GEOMVIEW_H
 #define GEOMVIEW_H
 
-typedef struct W_GeometryView WGeometryView;
+#include "osdview.h"
 
+/* The move/resize geometry popup is a fixed-size WOSDView, see
+ * WCreateGeometryView(). */
+typedef WOSDView WGeometryView;
 
 WGeometryView *WCreateGeometryView(WMScreen *scr);
 

@@ -315,7 +315,7 @@ typedef struct _WScreen {
 
     struct WDialogData *dialog_data;
 
-    struct W_GeometryView *gview;      /* size/position view */
+    struct W_OSDView *gview;           /* size/position view */
 
     struct WWireframe *wireframe;      /* move/resize outline window */
 
