@@ -1,0 +1,54 @@
+.TH convertfonts 1 "June 2026"
+.SH NAME
+convertfonts \- convert XLFD font names in a Window Maker style file to fontconfig format
+.SH SYNOPSIS
+.B convertfonts
+.RI [ options ]
+.I stylefile
+.SH DESCRIPTION
+.B convertfonts
+reads the property-list style file
+.I stylefile
+and rewrites it in place, converting any X Logical Font Description (XLFD)
+font names found in the standard font keys
+.RI ( IconTitleFont ", " ClipTitleFont ", " LargeDisplayFont ,
+.IR MenuTextFont ", " MenuTitleFont ", " WindowTitleFont ,
+.IR SystemFont ", " BoldSystemFont )
+into the fontconfig pattern syntax used by current Window Maker.
+Keys that are already in fontconfig format are left unchanged.
+.SH OPTIONS
+.TP
+.B \-\-help
+print a help message with the list of options.
+.TP
+.B \-\-keep\-xlfd
+preserve the original XLFD by appending an
+.B :xlfd=\fI<xlfd>\fR
+hint to the converted font name.
+This property is not used by the fontconfig matching engine to find the
+font, but it is useful as a hint about what the original font was, to
+allow hand-tuning the result or restoring the XLFD.
+The default is to omit it, as it results in long and confusing names.
+.TP
+.B \-\-version
+print the version of Window Maker from which the program comes.
+.SH EXIT STATUS
+.TP
+.B 0
+when
+.I stylefile
+was successfully read, converted and written back.
+.TP
+.B 1
+if
+.I stylefile
+does not exist, is not a regular file, is not a well-formed style
+property list, or could not be written, or if the program was not
+invoked properly.
+.SH SEE ALSO
+.BR getstyle (1),
+.BR setstyle (1),
+.BR wmaker (1)
+.SH AUTHOR
+Window Maker was written by Alfredo K. Kojima <kojima@windowmaker.info>.
+convertfonts is part of Window Maker.

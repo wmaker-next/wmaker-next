@@ -4,6 +4,7 @@ SUBDIRS = build @MANLANGDIRS@
 DIST_SUBDIRS = build cs ru sk
 
 dist_man_MANS = \
+	convertfonts.1 \
 	geticonset.1 \
 	getstyle.1 \
 	seticons.1 \
@@ -58,7 +59,7 @@ am__v_CHKOPTS_  = $(am__v_CHKOPTS_$(AM_DEFAULT_VERBOSITY))
 am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
-check-local: wmaker-args WPrefs-args wmagnify-args geticonset-args getstyle-args seticons-args setstyle-args \
+check-local: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
 	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
@@ -73,6 +74,10 @@ WPrefs-args:
 wmagnify-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmagnify" --man-page "$(top_srcdir)/doc/wmagnify.1"
+
+convertfonts-args:
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
+		--program "$(top_builddir)/util/convertfonts" --man-page "$(top_srcdir)/doc/convertfonts.1"
 
 geticonset-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
@@ -134,7 +139,7 @@ wxpaste-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wxpaste" --man-page "$(top_srcdir)/doc/wxpaste.1"
 
-.PHONY: wmaker-args WPrefs-args wmagnify-args geticonset-args getstyle-args seticons-args setstyle-args \
+.PHONY: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
 	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
