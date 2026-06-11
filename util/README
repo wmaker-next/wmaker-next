@@ -1,40 +1,53 @@
-wm-oldmenu2new - converts between the plain text file menu format to the
- 	 property list menu format.
+bughint- gathers some information for bug reporting. Shipped in the
+	tarball but not installed.
 
-bughint- gathers some information for bug reporting
+convertfonts- converts XLFD font names in a style file to fontconfig
+	format.
 
 geticonset- outputs the current set of icon assignments. Good for making
 	themes.
-
-setstyle- load style settings from a style file and setup WindowMaker
 
 getstyle - gets current style settings and save into a file or create
 	a theme pack.
 
 seticons- merges icon definitions into WMWindowAttributes file
 
+setstyle- load style settings from a style file and setup WindowMaker
+
+wdread- read simple data from defaults database (for use in scripts for
+	example)
+
+wdwrite- write data into the defaults database (configuration files).
+
+wkdemenu.pl- convert a KDE menu into a wmaker menu (for pipe)
+
+wm-oldmenu2new - converts between the plain text file menu format to the
+	property list menu format.
+
+wmagnify- a program to magnify the area near the mouse pointer,
+	with real-time update
 
 wmaker.inst- quick and dirty script to install necessary files from
 	global configuration to user's directory. Look in the script to
 	adapt it to your site.
 
-wxcopy- copy input file or stdin into X cutbuffer
-
-wxpaste- copy content of X cutbuffer into stdout
-
-wmsetbg- set the workspace background into a image and make it persist between
-	sessions.
-
-wdwrite- write data into the defaults database (configuration files).
-
-wdread- read Simple data from defaults database (for use in scripts for example)
-
-wmagnify- a program to magnify the area near the mouse pointer,
-	with real-time update
-
-wkdemenu.pl- convert a KDE menu into a wmaker menu (for pipe)
-
-wmiv- quick image viewer using wrlib
+wmakermsg- send commands to and receive events from a running Window
+	Maker over its Unix-socket IPC.
 
 wmclipd- X11 clipboard daemon, can also subscribe to Window Maker screenshot
 	IPC events and publish saved screenshots to CLIPBOARD
+
+wmgenmenu- generate a Window Maker root menu by probing for installed
+	applications.
+
+wmiv- quick image viewer using wrlib
+
+wmmenugen- generate a Window Maker proplist root menu from XDG .desktop
+	files or wmconfig entries.
+
+wmsetbg- set the workspace background to an image and make it persist
+	between sessions.
+
+wxcopy- copy input file or stdin into X cutbuffer
+
+wxpaste- copy content of X cutbuffer into stdout
