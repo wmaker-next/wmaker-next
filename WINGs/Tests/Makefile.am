@@ -3,7 +3,7 @@
 AUTOMAKE_OPTIONS =
 
 # interactive demo programs, built on demand only (e.g. `make wtest`)
-EXTRA_PROGRAMS = wtest wmquery wmfile testmywidget
+EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
 # automated unit tests, run by `make check`
 check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc
@@ -27,6 +27,9 @@ LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 
 
 testmywidget_SOURCES = testmywidget.c mywidget.c mywidget.h
+
+fonttest_SOURCES = fonttest.c
+fonttest_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
 
 wtest_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
 
