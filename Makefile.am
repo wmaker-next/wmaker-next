@@ -44,9 +44,8 @@ DIST_SUBDIRS = $(SUBDIRS) test
 
 EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
 	INSTALL-WMAKER README.i18n README.definable-cursor \
-	The-perfect-Window-Maker-patch.txt \
 	README COPYING.WTFPL autogen.sh \
-	email-clients.txt checkpatch.pl update-changelog.pl \
+	script/checkpatch.pl script/update-changelog.pl \
 	script/check-cmdline-options-doc.sh \
 	script/check-manifest.sh \
 	script/check-translation-sources.sh \
@@ -94,24 +93,24 @@ CHECKPATCH_IGNORE = NEW_TYPEDEFS,SPDX_LICENSE_TAG,COMPLEX_MACRO,PREFER_KERNEL_TY
 SPELLING_URL = https://raw.githubusercontent.com/torvalds/linux/master/scripts/spelling.txt
 
 checkpatch:
-	@if test ! -f "$(top_srcdir)/spelling.txt" ; then \
+	@if test ! -f "$(top_srcdir)/script/spelling.txt" ; then \
 	  echo "Fetching spelling.txt (one-time)" ; \
 	  if command -v curl > /dev/null 2>&1 ; then \
-	    curl -sfL "$(SPELLING_URL)" -o "$(top_srcdir)/spelling.txt" ; \
+	    curl -sfL "$(SPELLING_URL)" -o "$(top_srcdir)/script/spelling.txt" ; \
 	  elif command -v wget > /dev/null 2>&1 ; then \
-	    wget -qO "$(top_srcdir)/spelling.txt" "$(SPELLING_URL)" ; \
+	    wget -qO "$(top_srcdir)/script/spelling.txt" "$(SPELLING_URL)" ; \
 	  fi ; \
-	  test -s "$(top_srcdir)/spelling.txt" || \
+	  test -s "$(top_srcdir)/script/spelling.txt" || \
 	    echo "Could not fetch spelling.txt, continuing without typo checks" ; \
 	fi
-	@test -f "$(top_srcdir)/const_structs.checkpatch" || \
-	  : > "$(top_srcdir)/const_structs.checkpatch"
+	@test -f "$(top_srcdir)/script/const_structs.checkpatch" || \
+	  : > "$(top_srcdir)/script/const_structs.checkpatch"
 	@range='$(RANGE)' ; \
 	if test -z "$$range" ; then \
 	  if test -n "`git -C '$(top_srcdir)' diff HEAD`" ; then \
 	    echo "checkpatch: working tree changes" ; \
 	    git -C "$(top_srcdir)" diff HEAD | \
-	      "$(top_srcdir)/checkpatch.pl" --no-tree --show-types \
+	      "$(top_srcdir)/script/checkpatch.pl" --no-tree --show-types \
 	        --ignore $(CHECKPATCH_IGNORE) - ; \
 	    exit $$? ; \
 	  fi ; \
@@ -122,7 +121,7 @@ checkpatch:
 	  s=`git -C "$(top_srcdir)" log -1 --format='%h %s' "$$c"` ; \
 	  echo "=== checkpatch: $$s" ; \
 	  git -C "$(top_srcdir)" format-patch -1 --stdout "$$c" | \
-	    "$(top_srcdir)/checkpatch.pl" --no-tree --show-types \
+	    "$(top_srcdir)/script/checkpatch.pl" --no-tree --show-types \
 	      --ignore $(CHECKPATCH_IGNORE) - || rc=1 ; \
 	done ; \
  	exit $$rc

@@ -110,8 +110,8 @@ doc/wmaker.1
 doc/wmsetbg.1
 
 # Fetched or cached by 'make checkpatch'
-/spelling.txt
-/const_structs.checkpatch
+/script/spelling.txt
+/script/const_structs.checkpatch
 /.checkpatch-camelcase.*
 
 wrlib/libwraster.map
