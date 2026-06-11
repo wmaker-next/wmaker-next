@@ -50,6 +50,7 @@
 #include "window.h"
 #include "texture.h"
 #include "screen.h"
+#include "event.h"
 #include "resources.h"
 #include "defaults.h"
 #include "config-schema.h"
@@ -555,6 +556,15 @@ void wDefaultUpdateIcons(WScreen *scr)
 void wKeyTreeRebuild(WScreen *scr)
 {
 	int i;
+
+	/* w_global.shortcut.curpos points into the old trie, so an active
+	 * chain must be torn down before wKeyTreeDestroy() frees the nodes
+	 * it references. wCancelKeyChain() also hides any visible prefix
+	 * OSD and ungrab the keyboard. */
+	if (w_global.shortcut.curpos != NULL) {
+		for (i = 0; i < w_global.screen_count; i++)
+			wCancelKeyChain(wScreenWithNumber(i));
+	}
 
 	/* Parameter not used */
 	(void)scr;

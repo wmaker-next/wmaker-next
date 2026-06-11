@@ -1503,21 +1503,22 @@ static int CheckFullScreenWindowFocused(WScreen * scr)
 /* Cancels the chain on inactivity */
 static void chainTimeoutCallback(void *data)
 {
-	(void)data;
+	WScreen *scr = (WScreen *)data;
 
+	(void)scr;
+	w_global.shortcut.chain_timeout_handler = NULL;
 	XUngrabKeyboard(dpy, CurrentTime);
 	w_global.shortcut.curpos = NULL;
-	w_global.shortcut.chain_timeout_handler = NULL;
 }
 
 /* Start (or restart) the chain inactivity timer */
-static void wStartChainTimer(void)
+static void wStartChainTimer(WScreen *scr)
 {
 	if (w_global.config->keychain_timeout_delay > 0) {
 		if (w_global.shortcut.chain_timeout_handler)
 			WMDeleteTimerHandler(w_global.shortcut.chain_timeout_handler);
 		w_global.shortcut.chain_timeout_handler =
-			WMAddTimerHandler(w_global.config->keychain_timeout_delay, chainTimeoutCallback, NULL);
+			WMAddTimerHandler(w_global.config->keychain_timeout_delay, chainTimeoutCallback, scr);
 	}
 }
 
@@ -1528,6 +1529,14 @@ static void wCancelChainTimer(void)
 		WMDeleteTimerHandler(w_global.shortcut.chain_timeout_handler);
 		w_global.shortcut.chain_timeout_handler = NULL;
 	}
+}
+
+void wCancelKeyChain(WScreen *scr)
+{
+	(void)scr;
+	wCancelChainTimer();
+	XUngrabKeyboard(dpy, CurrentTime);
+	w_global.shortcut.curpos = NULL;
 }
 
 #define ISMAPPED(w) ((w) && !(w)->flags.miniaturized && ((w)->flags.mapped || (w)->flags.shaded))
@@ -2251,9 +2260,7 @@ static void handleKeyPress(XEvent * event)
 		/*  Inside a chain: look for the next key among children */
 		if (event->xkey.keycode == wKeyBindings[WKBD_KEYCHAIN_CANCEL].keycode &&
 			modifiers == wKeyBindings[WKBD_KEYCHAIN_CANCEL].modifier) {
-			wCancelChainTimer();
-			XUngrabKeyboard(dpy, CurrentTime);
-			w_global.shortcut.curpos = NULL;
+			wCancelKeyChain(scr);
 			return;
 		}
 
@@ -2263,15 +2270,13 @@ static void handleKeyPress(XEvent * event)
 		if (match != NULL && match->first_child != NULL) {
 			/* Internal node: advance and keep waiting */
 			w_global.shortcut.curpos = match;
-			wStartChainTimer();
+			wStartChainTimer(scr);
 			return;
 		}
 
 		if (match == NULL) {
 			/* Unrecognized key inside chain: exit chain mode */
-			wCancelChainTimer();
-			XUngrabKeyboard(dpy, CurrentTime);
-			w_global.shortcut.curpos = NULL;
+			wCancelKeyChain(scr);
 			return;
 		}
 
@@ -2291,18 +2296,14 @@ static void handleKeyPress(XEvent * event)
 			if (nchildren > 1) {
 				/* Multi-branch parent: stay in chain mode at this level */
 				w_global.shortcut.curpos = parent;
-				wStartChainTimer();
+				wStartChainTimer(scr);
 			} else {
 				/* Single-branch parent: nothing left to wait for, exit chain */
-				wCancelChainTimer();
-				XUngrabKeyboard(dpy, CurrentTime);
-				w_global.shortcut.curpos = NULL;
+				wCancelKeyChain(scr);
 			}
 		} else {
 			/* No cancel key configured: always exit chain after a leaf */
-			wCancelChainTimer();
-			XUngrabKeyboard(dpy, CurrentTime);
-			w_global.shortcut.curpos = NULL;
+			wCancelKeyChain(scr);
 		}
 	} else {
 		/* Idle: look for a root-level match */
@@ -2332,7 +2333,7 @@ static void handleKeyPress(XEvent * event)
 			w_global.shortcut.curpos = match;
 			XGrabKeyboard(dpy, scr->root_win, False,
 							GrabModeAsync, GrabModeAsync, CurrentTime);
-			wStartChainTimer();
+			wStartChainTimer(scr);
 
 			return;
 		}

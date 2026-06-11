@@ -39,6 +39,11 @@ void wInotifyCleanup(void);
 #endif
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
 
+/* Tear down any active key-chain state on scr: cancel the inactivity
+ * timer, ungrab the keyboard, and clear curpos. Safe to call when no
+ * chain is active. */
+void wCancelKeyChain(WScreen *scr);
+
 /* called from the signal handler, status is the raw waitpid() value */
 void NotifyDeadProcess(pid_t pid, int wait_status);
 
