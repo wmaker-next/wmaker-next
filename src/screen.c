@@ -987,6 +987,13 @@ void wScreenSaveState(WScreen * scr)
 		return;
 
 	old_state = scr->session_state;
+	if (!old_state) {
+		/* wScreenRestoreState() has not run, or was interrupted before
+		 * it loaded WMState and created scr->dock and scr->clip_icon.
+		 * SIGTERM during the OpenRootMenu() error dialog at startup
+		 * lands here, every save below would dereference NULL */
+		return;
+	}
 	scr->session_state = WMCreatePLDictionary(NULL, NULL);
 
 	WMPLSetCaseSensitive(True);
