@@ -72,6 +72,7 @@
 #include "shutdown.h"
 #include "misc.h"
 #include "event.h"
+#include "osdview.h"
 #include "ipc.h"
 
 #include <sys/wait.h>
@@ -1500,13 +1501,15 @@ static int CheckFullScreenWindowFocused(WScreen * scr)
  * user is not stuck in a half-entered sequence. Set to 0 to disable. *
  * ------------------------------------------------------------------ */
 
+static void hideChainOSD(WScreen *scr);
+
 /* Cancels the chain on inactivity */
 static void chainTimeoutCallback(void *data)
 {
 	WScreen *scr = (WScreen *)data;
 
-	(void)scr;
 	w_global.shortcut.chain_timeout_handler = NULL;
+	hideChainOSD(scr);
 	XUngrabKeyboard(dpy, CurrentTime);
 	w_global.shortcut.curpos = NULL;
 }
@@ -1533,10 +1536,131 @@ static void wCancelChainTimer(void)
 
 void wCancelKeyChain(WScreen *scr)
 {
-	(void)scr;
 	wCancelChainTimer();
+	hideChainOSD(scr);
 	XUngrabKeyboard(dpy, CurrentTime);
 	w_global.shortcut.curpos = NULL;
+}
+
+/* ------------------------------------------------------------------ *
+ * Key-chain prefix OSD                                               *
+ *                                                                    *
+ * When KeychainDisplayPosition is not "none", entering or advancing *
+ * a multi-stroke key chain pops up scr->keychain_osd showing the     *
+ * keys typed so far, e.g. "Mod4+W" then "Mod4+W M". The popup is     *
+ * hidden again on leaf execution, cancel, unrecognized key, or       *
+ * inactivity timeout.                                                *
+ * ------------------------------------------------------------------ */
+
+#define CHAIN_OSD_PAD 8
+/* The shortcut parser only caps the source string at MAX_SHORTCUT_LENGTH
+ * with no explicit step limit, so MAX_SHORTCUT_LENGTH/2 single-character
+ * steps is the hard upper bound on chain depth. */
+#define CHAIN_OSD_MAX_STEPS (MAX_SHORTCUT_LENGTH / 2)
+
+static void formatChainPosition(WKeyNode *pos, char *buf, size_t bufsz)
+{
+	WKeyNode *path[CHAIN_OSD_MAX_STEPS];
+	WKeyNode *node;
+	int depth, i;
+	Bool truncated = False;
+
+	depth = 0;
+	for (node = pos; node != NULL; node = node->parent) {
+		if (depth == CHAIN_OSD_MAX_STEPS) {
+			truncated = True;
+			break;
+		}
+		path[depth++] = node;
+	}
+
+	buf[0] = '\0';
+	if (truncated)
+		wstrlcat(buf, "... ", bufsz);
+
+	for (i = depth - 1; i >= 0; i--) {
+		char *seg;
+
+		seg = GetShortcutLabelForKeycode(path[i]->modifier, path[i]->keycode);
+		if (!seg)
+			continue;
+
+		if (buf[0] != '\0')
+			wstrlcat(buf, " ", bufsz);
+		wstrlcat(buf, seg, bufsz);
+		wfree(seg);
+	}
+}
+
+static void hideChainOSD(WScreen *scr)
+{
+	if (scr && scr->keychain_osd)
+		WMUnmapWidget(scr->keychain_osd);
+}
+
+static void showChainOSD(WScreen *scr)
+{
+	char label[MAX_SHORTCUT_LENGTH * 2];
+	WMRect rect;
+	int head, w, h, px, py;
+
+	if (!scr || !scr->keychain_osd)
+		return;
+
+	if (w_global.config->keychain_display_position == WD_NONE ||
+	    w_global.shortcut.curpos == NULL) {
+		hideChainOSD(scr);
+		return;
+	}
+
+	formatChainPosition(w_global.shortcut.curpos, label, sizeof(label));
+	WSetOSDViewText(scr->keychain_osd, label);
+
+	head = wGetHeadForPointerLocation(scr);
+	rect = wGetRectForHead(scr, head);
+	w = WMWidgetWidth(scr->keychain_osd);
+	h = WMWidgetHeight(scr->keychain_osd);
+
+	switch (w_global.config->keychain_display_position) {
+	case WD_TOP:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + CHAIN_OSD_PAD;
+		break;
+	case WD_BOTTOM:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
+		break;
+	case WD_TOPLEFT:
+		px = rect.pos.x + CHAIN_OSD_PAD;
+		py = rect.pos.y + CHAIN_OSD_PAD;
+		break;
+	case WD_TOPRIGHT:
+		px = rect.pos.x + rect.size.width - w - CHAIN_OSD_PAD;
+		py = rect.pos.y + CHAIN_OSD_PAD;
+		break;
+	case WD_BOTTOMLEFT:
+		px = rect.pos.x + CHAIN_OSD_PAD;
+		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
+		break;
+	case WD_BOTTOMRIGHT:
+		px = rect.pos.x + rect.size.width - w - CHAIN_OSD_PAD;
+		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
+		break;
+	case WD_CENTER:
+	default:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + (rect.size.height - h) / 2;
+		break;
+	}
+
+	WMMoveWidget(scr->keychain_osd, px, py);
+	WMMapWidget(scr->keychain_osd);
+	XRaiseWindow(dpy, WMWidgetXID(scr->keychain_osd));
+}
+
+void wRefreshKeyChainOSD(WScreen *scr)
+{
+	showChainOSD(scr);
 }
 
 #define ISMAPPED(w) ((w) && !(w)->flags.miniaturized && ((w)->flags.mapped || (w)->flags.shaded))
@@ -2271,6 +2395,7 @@ static void handleKeyPress(XEvent * event)
 			/* Internal node: advance and keep waiting */
 			w_global.shortcut.curpos = match;
 			wStartChainTimer(scr);
+			showChainOSD(scr);
 			return;
 		}
 
@@ -2297,6 +2422,7 @@ static void handleKeyPress(XEvent * event)
 				/* Multi-branch parent: stay in chain mode at this level */
 				w_global.shortcut.curpos = parent;
 				wStartChainTimer(scr);
+				showChainOSD(scr);
 			} else {
 				/* Single-branch parent: nothing left to wait for, exit chain */
 				wCancelKeyChain(scr);
@@ -2334,6 +2460,7 @@ static void handleKeyPress(XEvent * event)
 			XGrabKeyboard(dpy, scr->root_win, False,
 							GrabModeAsync, GrabModeAsync, CurrentTime);
 			wStartChainTimer(scr);
+			showChainOSD(scr);
 
 			return;
 		}

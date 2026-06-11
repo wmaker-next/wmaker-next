@@ -861,6 +861,17 @@ char *GetShortcutString(const char *shortcut)
 	return buffer;
 }
 
+char *GetShortcutLabelForKeycode(unsigned int modifiers, KeyCode keycode)
+{
+	char buf[MAX_SHORTCUT_LENGTH];
+
+	if (!GetCanonicalShortcutLabel(modifiers, W_KeycodeToKeysym(dpy, keycode, 0),
+				       buf, sizeof(buf)))
+		return NULL;
+
+	return GetShortcutString(buf);
+}
+
 char *GetShortcutKey(WShortKey key)
 {
 	char buf[MAX_SHORTCUT_LENGTH];

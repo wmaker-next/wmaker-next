@@ -119,6 +119,7 @@
 	IgnoreGtkHints = NO;
 	KeepDockOnPrimaryHead = NO;
 	KeychainTimeoutDelay = 500;
+	KeychainDisplayPosition = none;
 	MenuStyle = normal;
 	WidgetColor = (solid, gray);
 	WorkspaceSpecificBack = ();

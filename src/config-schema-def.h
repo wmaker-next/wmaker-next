@@ -205,6 +205,9 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(KEYCHAIN_DISPLAY_POSITION, "KeychainDisplayPosition", ENUM, \
+	  keychain_display_position, "none", display_positions, INT_MIN, INT_MAX, \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(SHOW_CLIP_TITLE, "ShowClipTitle", BOOL, show_clip_title, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	WCFG_IF_XKB_LOCK( \

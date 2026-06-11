@@ -17,6 +17,7 @@
 #include "actions.h"
 #include "dock.h"
 #include "screen.h"
+#include "event.h"
 #include "workspace.h"
 #include "config-schema.h"
 #include "wconfigmodel.h"
@@ -1080,6 +1081,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		update_usable_area = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_SCROLLABLE_MENUS))
 		update_root_mask = True;
+	if (wConfigChangesHas(changes, WCFG_KEY_KEYCHAIN_DISPLAY_POSITION) && scr)
+		wRefreshKeyChainOSD(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_DOUBLE_CLICK_TIME))
 		W_setconf_doubleClickDelay(new_config->double_click_time);
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH))

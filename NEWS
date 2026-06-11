@@ -494,6 +494,15 @@ New options in ~/GNUstep/Defaults/WindowMaker:
    "KeychainCancelKey" sets a key to explicitly cancel an active chain.
    (disabled by default).
 
+   "KeychainDisplayPosition" places a small popup on screen while a
+   chain is active showing the keys typed so far, e.g. "Mod4+W" after
+   the leader and "Mod4+W M" after a further prefix step. Accepts the
+   same values as WorkspaceNameDisplayPosition (none, center, top,
+   bottom, topleft, topright, bottomleft, bottomright). Default is
+   "none" (disabled). The popup uses the same blue box style as the
+   move/resize geometry display, which is now backed by a shared OSD
+   widget so future overlays can reuse it.
+
 
 Configurable modifier key labels
 ---------------------------------

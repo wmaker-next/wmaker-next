@@ -308,6 +308,11 @@ void wKeyTreeRebuild(WScreen *scr)
 	key_tree_rebuilds++;
 }
 
+void wRefreshKeyChainOSD(WScreen *scr)
+{
+	(void)scr;
+}
+
 static void reset_phase4_counters(void)
 {
 	switch_panel_updates = 0;
@@ -711,6 +716,7 @@ static void test_defaults(void)
 	CHECK(config->window_list_app_icons == 0);
 	CHECK(config->mouse_wheel_focus == 0);
 	CHECK(config->keychain_timeout_delay == 500);
+	CHECK(config->keychain_display_position == WD_NONE);
 	CHECK(config->show_clip_title == 1);
 #ifdef KEEP_XKB_LOCK_STATUS
 	CHECK(config->modelock == 0);
@@ -931,6 +937,7 @@ static void test_valid_parse(void)
 			      "HotCorners = YES; HotCornerDelay = 77; "
 			      "HotCornerEdge = 4; WindowListAppIcons = YES; "
 			      "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
+			      "KeychainDisplayPosition = topleft; "
 			      "ShowClipTitle = NO; "
 #ifdef KEEP_XKB_LOCK_STATUS
 			      "KbdModeLock = YES; "
@@ -1052,6 +1059,7 @@ static void test_valid_parse(void)
 	CHECK(config->window_list_app_icons == 1);
 	CHECK(config->mouse_wheel_focus == 1);
 	CHECK(config->keychain_timeout_delay == 88);
+	CHECK(config->keychain_display_position == WD_TOPLEFT);
 	CHECK(config->show_clip_title == 0);
 #ifdef KEEP_XKB_LOCK_STATUS
 	CHECK(config->modelock == 1);
@@ -1340,6 +1348,7 @@ static void test_runtime_apply(void)
 				  "HotCorners = NO; HotCornerDelay = 250; "
 				  "HotCornerEdge = 2; WindowListAppIcons = NO; "
 				  "MouseWheelFocus = NO; KeychainTimeoutDelay = 500; "
+				  "KeychainDisplayPosition = none; "
 				  "ShowClipTitle = YES; "
 #ifdef KEEP_XKB_LOCK_STATUS
 				  "KbdModeLock = NO; "
@@ -1415,6 +1424,7 @@ static void test_runtime_apply(void)
 				  "HotCorners = YES; HotCornerDelay = 77; "
 				  "HotCornerEdge = 4; WindowListAppIcons = YES; "
 				  "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
+				  "KeychainDisplayPosition = topleft; "
 				  "ShowClipTitle = NO; "
 #ifdef KEEP_XKB_LOCK_STATUS
 				  "KbdModeLock = YES; "
@@ -1509,6 +1519,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->window_list_app_icons == 1);
 	CHECK(w_global.config->mouse_wheel_focus == 1);
 	CHECK(w_global.config->keychain_timeout_delay == 88);
+	CHECK(w_global.config->keychain_display_position == WD_TOPLEFT);
 	CHECK(w_global.config->show_clip_title == 0);
 #ifdef KEEP_XKB_LOCK_STATUS
 	CHECK(w_global.config->modelock == 1);
@@ -1838,6 +1849,7 @@ static void test_deleted_key_keeps_current(void)
 				  "DontConfirmKill = YES; EdgeResistance = 66; "
 				  "WindowTitleBalloons = NO; NoWindowOverDock = YES; "
 				  "HotCorners = YES; KeychainTimeoutDelay = 88; "
+				  "KeychainDisplayPosition = topleft; "
 				  "DialogHistoryLines = 12; "
 				  "AutoFocus = YES; WrapMenus = YES; "
 				  "AlignSubmenus = YES; ClipAutoraiseDelay = 123; "
@@ -1879,6 +1891,7 @@ static void test_deleted_key_keeps_current(void)
 	CHECK(w_global.config->no_window_over_dock == 1);
 	CHECK(w_global.config->hot_corners == 1);
 	CHECK(w_global.config->keychain_timeout_delay == 88);
+	CHECK(w_global.config->keychain_display_position == WD_TOPLEFT);
 	CHECK(w_global.config->history_lines == 12);
 	CHECK(w_global.config->smooth_workspace_back == 1);
 	CHECK(hot_corner_updates == 0);

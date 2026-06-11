@@ -316,6 +316,7 @@ typedef struct _WScreen {
     struct WDialogData *dialog_data;
 
     struct W_OSDView *gview;           /* size/position view */
+    struct W_OSDView *keychain_osd;    /* key-chain prefix popup */
 
     struct WWireframe *wireframe;      /* move/resize outline window */
 

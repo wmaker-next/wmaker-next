@@ -40,9 +40,16 @@ void wInotifyCleanup(void);
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
 
 /* Tear down any active key-chain state on scr: cancel the inactivity
- * timer, ungrab the keyboard, and clear curpos. Safe to call when no
- * chain is active. */
+ * timer, hide the prefix OSD, ungrab the keyboard, and clear curpos.
+ * Safe to call when no chain is active. */
 void wCancelKeyChain(WScreen *scr);
+
+/* Re-evaluate the key-chain prefix OSD on scr against the current
+ * KeychainDisplayPosition setting and curpos: hide it for "none" or
+ * idle, otherwise rebuild the label and move/map at the configured
+ * position. Used by wConfigApplyRuntime() so a live position change
+ * takes effect without waiting for the next key press. */
+void wRefreshKeyChainOSD(WScreen *scr);
 
 /* called from the signal handler, status is the raw waitpid() value */
 void NotifyDeadProcess(pid_t pid, int wait_status);

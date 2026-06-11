@@ -798,6 +798,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	scr->gview = WCreateGeometryView(scr->wmscreen);
 	WMRealizeWidget(scr->gview);
 
+	scr->keychain_osd = WCreateOSDView(scr->wmscreen);
+	WMRealizeWidget(scr->keychain_osd);
+
 	wScreenUpdateUsableArea(scr);
 
 	return scr;
