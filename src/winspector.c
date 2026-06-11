@@ -36,6 +36,7 @@
 #include "window.h"
 #include "workspace.h"
 #include "defaults.h"
+#include "wdefaults.h"
 #include "dialog.h"
 #include "icon.h"
 #include "stacking.h"
@@ -65,128 +66,147 @@
 #define IS_BOOLEAN		2
 
 
+/*
+ * Generated from WATTR_BOOLS() in wdefaults.h: maps each WWindowAttrKey
+ * to its proplist key string and the matching one-bit WWindowAttributes
+ * mask, so the inspector cannot drift from the WMWindowAttributes schema.
+ * The per-panel tables below carry only the page assignment and the
+ * translatable label/balloon text, key_name and flag are looked up via
+ * wattr_spec[tbl[i].attr].
+ */
 static const struct {
 	const char *key_name;
 	WWindowAttributes flag;
+} wattr_spec[WATTR_BOOL_COUNT] = {
+#define WATTR_SPEC_ROW(K, name, fld) { name, { .fld = 1 } },
+	WATTR_BOOLS(WATTR_SPEC_ROW)
+#undef WATTR_SPEC_ROW
+};
+
+_Static_assert(WATTR_BOOL_COUNT <= 32,
+	       "make_keys() coverage bitmask needs widening past uint32_t");
+
+static const struct InspectorAttr {
+	WWindowAttrKey attr;
 	const char *caption;
 	const char *description;
 } window_attribute[] = {
-	{ "NoTitlebar", { .no_titlebar = 1 }, N_("Disable titlebar"),
+	{ WATTR_NO_TITLEBAR, N_("Disable titlebar"),
 	  N_("Remove the titlebar of this window.\n"
 	     "To access the window commands menu of a window\n"
 	     "without its titlebar, press Control+Esc (or the\n"
 	     "equivalent shortcut, if you changed the default\n"
 	     "settings).") },
 
-	{ "NoResizebar", { .no_resizebar = 1 }, N_("Disable resizebar"),
+	{ WATTR_NO_RESIZEBAR, N_("Disable resizebar"),
 	  N_("Remove the resizebar of this window.") },
 
-	{ "NoCloseButton", { .no_close_button = 1 }, N_("Disable close button"),
+	{ WATTR_NO_CLOSE_BUTTON, N_("Disable close button"),
 	  N_("Remove the `close window' button of this window.") },
 
-	{ "NoMiniaturizeButton", { .no_miniaturize_button = 1 }, N_("Disable miniaturize button"),
+	{ WATTR_NO_MINIATURIZE_BUTTON, N_("Disable miniaturize button"),
 	  N_("Remove the `miniaturize window' button of the window.") },
 
-	{ "NoBorder", { .no_border = 1 }, N_("Disable border"),
+	{ WATTR_NO_BORDER, N_("Disable border"),
 	  N_("Remove the 1 pixel black border around the window.") },
 
-	{ "KeepOnTop", { .floating = 1 }, N_("Keep on top (floating)"),
+	{ WATTR_KEEP_ON_TOP, N_("Keep on top (floating)"),
 	  N_("Keep the window over other windows, not allowing\n"
 	     "them to cover it.") },
 
-	{ "KeepOnBottom", { .sunken = 1 }, N_("Keep at bottom (sunken)"),
+	{ WATTR_KEEP_ON_BOTTOM, N_("Keep at bottom (sunken)"),
 	  N_("Keep the window under all other windows.") },
 
-	{ "Omnipresent", { .omnipresent = 1 }, N_("Omnipresent"),
+	{ WATTR_OMNIPRESENT, N_("Omnipresent"),
 	  N_("Make window present in all workspaces.") },
 
-	{ "StartMiniaturized", { .start_miniaturized = 1 }, N_("Start miniaturized"),
+	{ WATTR_START_MINIATURIZED, N_("Start miniaturized"),
 	  N_("Make the window be automatically miniaturized when it's\n"
 	     "first shown.") },
 
-	{ "StartMaximized", { .start_maximized = 1 }, N_("Start maximized"),
+	{ WATTR_START_MAXIMIZED, N_("Start maximized"),
 	  N_("Make the window be automatically maximized when it's\n"
 	     "first shown.") },
 
-	{ "FullMaximize", { .full_maximize = 1 }, N_("Full screen maximization"),
+	{ WATTR_FULL_MAXIMIZE, N_("Full screen maximization"),
 	  N_("Make the window use the whole screen space when it's\n"
-				  "maximized. The titlebar and resizebar will be moved\n"
-				  "to outside the screen.") },
+	     "maximized. The titlebar and resizebar will be moved\n"
+	     "to outside the screen.") },
 
-	{ "SwallowChild", { .swallow_child = 1 }, N_("Swallow child window"),
+	{ WATTR_SWALLOW_CHILD, N_("Swallow child window"),
 	  N_("When a child process of this window maps its own window,\n"
 	     "hide this one and place the child where it was. When the\n"
 	     "child closes, this window reappears.") }
 
 }, advanced_option[] = {
-	{ "NoKeyBindings", { .no_bind_keys = 1 }, N_("Do not bind keyboard shortcuts"),
+	{ WATTR_NO_KEY_BINDINGS, N_("Do not bind keyboard shortcuts"),
 	  N_("Do not bind keyboard shortcuts from Window Maker\n"
 	     "when this window is focused. This will allow the\n"
 	     "window to receive all key combinations regardless\n"
 	     "of your shortcut configuration.") },
 
-	{ "NoMouseBindings", { .no_bind_mouse = 1 }, N_("Do not bind mouse clicks"),
+	{ WATTR_NO_MOUSE_BINDINGS, N_("Do not bind mouse clicks"),
 	  N_("Do not bind mouse actions, such as `Alt'+drag\n"
 	     "in the window (when Alt is the modifier you have\n"
 	     "configured).") },
 
-	{ "SkipWindowList", { .skip_window_list = 1 }, N_("Do not show in the window list"),
+	{ WATTR_SKIP_WINDOW_LIST, N_("Do not show in the window list"),
 	  N_("Do not list the window in the window list menu.") },
 
-	{ "SkipSwitchPanel", { .skip_switchpanel = 1 }, N_("Do not show in the switch panel"),
+	{ WATTR_SKIP_SWITCH_PANEL, N_("Do not show in the switch panel"),
 	  N_("Do not include in switch panel while cycling windows.") },
 
-	{ "Unfocusable", { .no_focusable = 1 }, N_("Do not let it take focus"),
+	{ WATTR_UNFOCUSABLE, N_("Do not let it take focus"),
 	  N_("Do not let the window take keyboard focus when you\n"
 	     "click on it.") },
 
-	{ "KeepInsideScreen", { .dont_move_off = 1 }, N_("Keep inside screen"),
+	{ WATTR_KEEP_INSIDE_SCREEN, N_("Keep inside screen"),
 	  N_("Do not allow the window to move itself completely\n"
 	     "outside the screen. For bug compatibility.\n") },
 
-	{ "NoHideOthers", { .no_hide_others = 1 }, N_("Ignore 'Hide Others'"),
+	{ WATTR_NO_HIDE_OTHERS, N_("Ignore 'Hide Others'"),
 	  N_("Do not hide the window when issuing the\n"
 	     "`HideOthers' command.") },
 
-	{ "DontSaveSession", { .dont_save_session = 1 }, N_("Ignore 'Save Session'"),
+	{ WATTR_DONT_SAVE_SESSION, N_("Ignore 'Save Session'"),
 	  N_("Do not save the associated application in the\n"
 	     "session's state, so that it won't be restarted\n"
 	     "together with other applications when Window Maker\n"
 	     "starts.") },
 
-	{ "EmulateAppIcon", { .emulate_appicon = 1 }, N_("Emulate application icon"),
+	{ WATTR_EMULATE_APP_ICON, N_("Emulate application icon"),
 	  N_("Make this window act as an application that provides\n"
 	     "enough information to Window Maker for a dockable\n"
 	     "application icon to be created.") },
 
-	{ "FocusAcrossWorkspace", { .focus_across_wksp = 1 }, N_("Focus across workspaces"),
+	{ WATTR_FOCUS_ACROSS_WORKSPACE, N_("Focus across workspaces"),
 	  N_("Allow Window Maker to switch workspace to satisfy\n"
 	     "a focus request (annoying).") },
 
-	{ "NoMiniaturizable", { .no_miniaturizable = 1 }, N_("Do not let it be minimized"),
+	{ WATTR_NO_MINIATURIZABLE, N_("Do not let it be minimized"),
 	  N_("Do not let the window of this application be\n"
 	     "minimized.\n") },
 
-	{ "IgnoreDecorationChanges", { .ignore_decoration_changes = 1 }, N_("Ignore decoration changes"),
+	{ WATTR_IGNORE_DECORATION_CHANGES, N_("Ignore decoration changes"),
 	  N_("Ignore any request from the application to change\n"
-	     "window decorations (like hiding the titlebar).\n") }
+	     "window decorations (like hiding the titlebar).\n") },
 
 #ifdef XKB_BUTTON_HINT
-	,{ "NoLanguageButton", { .no_language_button = 1 }, N_("Disable language button"),
-	   N_("Remove the `toggle language' button of the window.") }
+	{ WATTR_NO_LANGUAGE_BUTTON, N_("Disable language button"),
+	  N_("Remove the `toggle language' button of the window.") },
 #endif
 
 }, application_attr[] = {
-	{ "StartHidden", { .start_hidden = 1 }, N_("Start hidden"),
+	{ WATTR_START_HIDDEN, N_("Start hidden"),
 	  N_("Automatically hide application when it's started.") },
 
-	{ "NoAppIcon", { .no_appicon = 1 }, N_("No application icon"),
+	{ WATTR_NO_APP_ICON, N_("No application icon"),
 	  N_("Disable the application icon for the application.\n"
 	     "Note that you won't be able to dock it anymore,\n"
 	     "and any icons that are already docked will stop\n"
 	     "working correctly.") },
 
-	{ "SharedAppIcon", { .shared_appicon = 1 }, N_("Shared application icon"),
+	{ WATTR_SHARED_APP_ICON, N_("Shared application icon"),
 	  N_("Use a single shared application icon for all of\n"
 	     "the instances of this application.\n") }
 };
@@ -244,17 +264,13 @@ typedef struct InspectorPanel {
 static InspectorPanel *panelList = NULL;
 
 /*
- * We are supposed to use the 'key_name' from the the 'window_attribute' structure when we want to
- * save the user choice to the database, but as we will need to convert that name into a Property
- * List, we use here a Cache of Property Lists, generated only once, which can be reused. It will
- * also save on memory because of the re-use of the same storage space instead of allocating a new
- * one every time.
+ * Property List cache for the WMWindowAttributes key strings, indexed by
+ * WWindowAttrKey, generated once on first use so the per-panel save loops
+ * can write pl_wattr[tbl[i].attr] without allocating a fresh PLString
+ * every time.
  */
-static WMPropList *pl_attribute[sizeof(window_attribute) / sizeof(window_attribute[0])] = { [0] = NULL };
-static WMPropList *pl_advoptions[sizeof(advanced_option) / sizeof(advanced_option[0])];
-static WMPropList *pl_appattrib[sizeof(application_attr) / sizeof(application_attr[0])];
+static WMPropList *pl_wattr[WATTR_BOOL_COUNT] = { [0] = NULL };
 
-static WMPropList *AAlwaysUserIcon;
 static WMPropList *AStartWorkspace;
 static WMPropList *AIcon;
 
@@ -274,46 +290,38 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel);
 static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int frame_width);
 
 /*
- * These 3 functions sets/clear/read a bit inside a bit-field in a generic manner;
- * they uses binary operators to be as effiscient as possible, also counting on compiler's
- * optimisations because the bit-field structure will fit in only 1 or 2 int but it is
- * depending on the processor architecture.
+ * These 3 functions sets/clear/read the bit in a WWindowAttributes that
+ * corresponds to a WWindowAttrKey. The one-bit mask comes from
+ * wattr_spec[key].flag, the byte-loop OR/AND keeps working regardless of
+ * which underlying word the compiler packs the bitfield into.
  */
-static inline void set_attr_flag(WWindowAttributes *target, const WWindowAttributes *flag)
+static inline void set_attr_flag(WWindowAttributes *target, WWindowAttrKey key)
 {
-	int i;
-	const unsigned char *src;
-	unsigned char *dst;
+	size_t i;
+	const unsigned char *src = (const unsigned char *) &wattr_spec[key].flag;
+	unsigned char *dst = (unsigned char *) target;
 
-	src = (const unsigned char *) flag;
-	dst = (unsigned char *) target;
-
-	for (i = 0; i < sizeof(*flag); i++)
+	for (i = 0; i < sizeof(*target); i++)
 		dst[i] |= src[i];
 }
 
-static inline void clear_attr_flag(WWindowAttributes *target, const WWindowAttributes *flag)
+static inline void clear_attr_flag(WWindowAttributes *target, WWindowAttrKey key)
 {
-	int i;
-	const unsigned char *src;
-	unsigned char *dst;
+	size_t i;
+	const unsigned char *src = (const unsigned char *) &wattr_spec[key].flag;
+	unsigned char *dst = (unsigned char *) target;
 
-	src = (const unsigned char *) flag;
-	dst = (unsigned char *) target;
-
-	for (i = 0; i < sizeof(*flag); i++)
+	for (i = 0; i < sizeof(*target); i++)
 		dst[i] &= ~src[i];
 }
 
-static inline int get_attr_flag(const WWindowAttributes *from, const WWindowAttributes *flag)
+static inline int get_attr_flag(const WWindowAttributes *from, WWindowAttrKey key)
 {
-	int i;
-	const unsigned char *xpect, *field;
+	size_t i;
+	const unsigned char *field = (const unsigned char *) from;
+	const unsigned char *xpect = (const unsigned char *) &wattr_spec[key].flag;
 
-	field = (const unsigned char *) from;
-	xpect = (const unsigned char *) flag;
-
-	for (i = 0; i < sizeof(*flag); i++)
+	for (i = 0; i < sizeof(*from); i++)
 		if (field[i] & xpect[i])
 			return 1;
 
@@ -326,22 +334,28 @@ static inline int get_attr_flag(const WWindowAttributes *from, const WWindowAttr
 static void make_keys(void)
 {
 	int i;
+	uint32_t covered;
 
-	if (pl_attribute[0] != NULL)
+	if (pl_wattr[0] != NULL)
 		return;
 
+	for (i = 0; i < WATTR_BOOL_COUNT; i++)
+		pl_wattr[i] = WMCreatePLString(wattr_spec[i].key_name);
+
+	/* every WATTR_BOOLS row must appear on exactly one inspector page,
+	 * AlwaysUserIcon is the page-4 ignore-icon checkbox so it is the
+	 * one expected gap in the three per-panel tables */
+	covered = (uint32_t)1 << WATTR_ALWAYS_USER_ICON;
 	for (i = 0; i < wlengthof(window_attribute); i++)
-		pl_attribute[i] = WMCreatePLString(window_attribute[i].key_name);
-
+		covered |= (uint32_t)1 << window_attribute[i].attr;
 	for (i = 0; i < wlengthof(advanced_option); i++)
-		pl_advoptions[i] = WMCreatePLString(advanced_option[i].key_name);
-
+		covered |= (uint32_t)1 << advanced_option[i].attr;
 	for (i = 0; i < wlengthof(application_attr); i++)
-		pl_appattrib[i] = WMCreatePLString(application_attr[i].key_name);
+		covered |= (uint32_t)1 << application_attr[i].attr;
+	if (covered != (uint32_t)(~(uint32_t)0 >> (32 - WATTR_BOOL_COUNT)))
+		wwarning("inspector attribute tables out of sync with WATTR_BOOLS");
 
 	AIcon = WMCreatePLString("Icon");
-	AAlwaysUserIcon = WMCreatePLString("AlwaysUserIcon");
-
 	AStartWorkspace = WMCreatePLString("StartWorkspace");
 
 	AnyWindow = WMCreatePLString("*");
@@ -601,7 +615,7 @@ static void saveSettings(WMWidget *button, void *client_data)
 	buf1 = wmalloc(4);
 	snprintf(buf1, 4, "%s", (WMGetButtonSelected(panel->alwChk) != 0) ? "Yes" : "No");
 	value1 = WMCreatePLString(buf1);
-	different |= insertAttribute(dict, winDic, AAlwaysUserIcon, value1, flags);
+	different |= insertAttribute(dict, winDic, pl_wattr[WATTR_ALWAYS_USER_ICON], value1, flags);
 	WMReleasePropList(value1);
 	wfree(buf1);
 
@@ -629,20 +643,20 @@ static void saveSettings(WMWidget *button, void *client_data)
 	/* Attributes... --> Window Attributes */
 	for (i = 0; i < wlengthof(window_attribute); i++) {
 		value = (WMGetButtonSelected(panel->attrChk[i]) != 0) ? Yes : No;
-		different |= insertAttribute(dict, winDic, pl_attribute[i], value, flags);
+		different |= insertAttribute(dict, winDic, pl_wattr[window_attribute[i].attr], value, flags);
 	}
 
 	/* Attributes... --> Advanced Options */
 	for (i = 0; i < wlengthof(advanced_option); i++) {
 		value = (WMGetButtonSelected(panel->moreChk[i]) != 0) ? Yes : No;
-		different |= insertAttribute(dict, winDic, pl_advoptions[i], value, flags);
+		different |= insertAttribute(dict, winDic, pl_wattr[advanced_option[i].attr], value, flags);
 	}
 
 	/* Attributes... --> Application Specific */
 	if (wwin->main_window != None && wApplicationOf(wwin->main_window) != NULL) {
 		for (i = 0; i < wlengthof(application_attr); i++) {
 			value = (WMGetButtonSelected(panel->appChk[i]) != 0) ? Yes : No;
-			different2 |= insertAttribute(dict, appDic, pl_appattrib[i], value, flags);
+			different2 |= insertAttribute(dict, appDic, pl_wattr[application_attr[i].attr], value, flags);
 		}
 	}
 
@@ -714,21 +728,21 @@ static void applySettings(WMWidget *button, void *client_data)
 	/* Attributes... --> Window Attributes */
 	for (i = 0; i < wlengthof(window_attribute); i++) {
 		if (WMGetButtonSelected(panel->attrChk[i]))
-			set_attr_flag(&wwin->user_flags, &window_attribute[i].flag);
+			set_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 		else
-			clear_attr_flag(&wwin->user_flags, &window_attribute[i].flag);
+			clear_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 
-		set_attr_flag(&wwin->defined_user_flags, &window_attribute[i].flag);
+		set_attr_flag(&wwin->defined_user_flags, window_attribute[i].attr);
 	}
 
 	/* Attributes... --> Advanced Options */
 	for (i = 0; i < wlengthof(advanced_option); i++) {
 		if (WMGetButtonSelected(panel->moreChk[i]))
-			set_attr_flag(&wwin->user_flags, &advanced_option[i].flag);
+			set_attr_flag(&wwin->user_flags, advanced_option[i].attr);
 		else
-			clear_attr_flag(&wwin->user_flags, &advanced_option[i].flag);
+			clear_attr_flag(&wwin->user_flags, advanced_option[i].attr);
 
-		set_attr_flag(&wwin->defined_user_flags, &advanced_option[i].flag);
+		set_attr_flag(&wwin->defined_user_flags, advanced_option[i].attr);
 	}
 
 	WSETUFLAG(wwin, always_user_icon, WMGetButtonSelected(panel->alwChk));
@@ -778,11 +792,11 @@ static void applySettings(WMWidget *button, void *client_data)
 		/* do application wide stuff */
 		for (i = 0; i < wlengthof(application_attr); i++) {
 			if (WMGetButtonSelected(panel->appChk[i]))
-				set_attr_flag(&wapp->main_window_desc->user_flags, &application_attr[i].flag);
+				set_attr_flag(&wapp->main_window_desc->user_flags, application_attr[i].attr);
 			else
-				clear_attr_flag(&wapp->main_window_desc->user_flags, &application_attr[i].flag);
+				clear_attr_flag(&wapp->main_window_desc->user_flags, application_attr[i].attr);
 
-			set_attr_flag(&wapp->main_window_desc->defined_user_flags, &application_attr[i].flag);
+			set_attr_flag(&wapp->main_window_desc->defined_user_flags, application_attr[i].attr);
 		}
 
 		if (WFLAGP(wapp->main_window_desc, no_appicon))
@@ -887,11 +901,11 @@ static void revertSettings(WMWidget *button, void *client_data)
 	for (i = 0; i < wlengthof(window_attribute); i++) {
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, &window_attribute[i].flag);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[i].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, &window_attribute[i].flag);
+			flag = get_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, &window_attribute[i].flag);
+			flag = get_attr_flag(&wwin->client_flags, window_attribute[i].attr);
 
 		WMSetButtonSelected(panel->attrChk[i], flag);
 	}
@@ -900,11 +914,11 @@ static void revertSettings(WMWidget *button, void *client_data)
 	for (i = 0; i < wlengthof(advanced_option); i++) {
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, &advanced_option[i].flag);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, advanced_option[i].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, &advanced_option[i].flag);
+			flag = get_attr_flag(&wwin->user_flags, advanced_option[i].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, &advanced_option[i].flag);
+			flag = get_attr_flag(&wwin->client_flags, advanced_option[i].attr);
 
 		WMSetButtonSelected(panel->moreChk[i], flag);
 	}
@@ -914,11 +928,11 @@ static void revertSettings(WMWidget *button, void *client_data)
 		for (i = 0; i < wlengthof(application_attr); i++) {
 			int is_userdef, flag = 0;
 
-			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, &application_attr[i].flag);
+			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, application_attr[i].attr);
 			if (is_userdef)
-				flag = get_attr_flag(&wapp->main_window_desc->user_flags, &application_attr[i].flag);
+				flag = get_attr_flag(&wapp->main_window_desc->user_flags, application_attr[i].attr);
 			else
-				flag = get_attr_flag(&wapp->main_window_desc->client_flags, &application_attr[i].flag);
+				flag = get_attr_flag(&wapp->main_window_desc->client_flags, application_attr[i].attr);
 
 			WMSetButtonSelected(panel->appChk[i], flag);
 		}
@@ -1302,11 +1316,11 @@ static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, i
 	for (i = 0; i < wlengthof(window_attribute); i++) {
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, &window_attribute[i].flag);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[i].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, &window_attribute[i].flag);
+			flag = get_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, &window_attribute[i].flag);
+			flag = get_attr_flag(&wwin->client_flags, window_attribute[i].attr);
 
 		panel->attrChk[i] = WMCreateSwitchButton(panel->attrFrm);
 		WMMoveWidget(panel->attrChk[i], 10, 20 * (i + 1));
@@ -1334,11 +1348,11 @@ static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int
 	for (i = 0; i < wlengthof(advanced_option); i++) {
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, &advanced_option[i].flag);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, advanced_option[i].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, &advanced_option[i].flag);
+			flag = get_attr_flag(&wwin->user_flags, advanced_option[i].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, &advanced_option[i].flag);
+			flag = get_attr_flag(&wwin->client_flags, advanced_option[i].attr);
 
 		panel->moreChk[i] = WMCreateSwitchButton(panel->moreFrm);
 		WMMoveWidget(panel->moreChk[i], 10, 20 * (i + 1) - 4);
@@ -1431,11 +1445,11 @@ static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int fr
 		for (i = 0; i < wlengthof(application_attr); i++) {
 			int is_userdef, flag;
 
-			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, &application_attr[i].flag);
+			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, application_attr[i].attr);
 			if (is_userdef)
-				flag = get_attr_flag(&wapp->main_window_desc->user_flags, &application_attr[i].flag);
+				flag = get_attr_flag(&wapp->main_window_desc->user_flags, application_attr[i].attr);
 			else
-				flag = get_attr_flag(&wapp->main_window_desc->client_flags, &application_attr[i].flag);
+				flag = get_attr_flag(&wapp->main_window_desc->client_flags, application_attr[i].attr);
 
 			panel->appChk[i] = WMCreateSwitchButton(panel->appFrm);
 			WMMoveWidget(panel->appChk[i], 10, 20 * (i + 1));
