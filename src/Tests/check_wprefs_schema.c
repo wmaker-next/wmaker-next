@@ -190,6 +190,11 @@ int main(void)
 {
 	CHECK(wprefs_choice_count > 0);
 
+	/* keyOptions[] is a static table inside WPrefs.app, not
+	 * reachable from here, this only proves the key exists in the
+	 * public schema header */
+	CHECK(wConfigSchemaDefault("ToggleFullscreenKey") != NULL);
+
 	test_wprefs_values_in_schema();
 	test_schema_values_in_wprefs();
 

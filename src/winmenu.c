@@ -63,6 +63,7 @@ static WMenu *makeMaximizeMenu(WScreen *scr);
 enum
 {
 	MC_MAXIMIZE,
+	MC_FULLSCREEN,
 	MC_OTHERMAX,
 	MC_MINIATURIZE,
 	MC_SHADE,
@@ -82,6 +83,7 @@ static const struct {
 	WMenu *(*generate_submenu)(WScreen *scr);
 } window_menu_entries[] = {
 	[MC_MAXIMIZE]    = { N_("Maximize"), NULL },
+	[MC_FULLSCREEN]  = { N_("Fullscreen"), NULL },
 	[MC_OTHERMAX]    = { N_("Other maximization"), makeMaximizeMenu },
 	[MC_MINIATURIZE] = { N_("Miniaturize"), NULL },
 	[MC_SHADE]       = { N_("Shade"), NULL },
@@ -285,6 +287,13 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 		else
 			wMaximizeWindow(wwin, MAX_VERTICAL | MAX_HORIZONTAL,
 					wGetHeadForWindow(wwin));
+		break;
+
+	case MC_FULLSCREEN:
+		if (wwin->flags.fullscreen)
+			wUnfullscreenWindow(wwin);
+		else
+			wFullscreenWindow(wwin);
 		break;
 
 	case MC_SHADE:
@@ -669,6 +678,23 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	}
 	wMenuSetEnabled(menu, MC_MAXIMIZE, IS_RESIZABLE(wwin));
 
+	if (wwin->flags.fullscreen) {
+		static char *text = NULL;
+		if (!text)
+			text = _("Exit Fullscreen");
+
+		menu->entries[MC_FULLSCREEN]->text = text;
+	} else {
+		static char *text = NULL;
+		if (!text)
+			text = _("Fullscreen");
+
+		menu->entries[MC_FULLSCREEN]->text = text;
+	}
+	wMenuEntrySetShortcutText(menu->entries[MC_FULLSCREEN],
+				  GetShortcutKey(wKeyBindings[WKBD_FULLSCREEN]));
+	wMenuSetEnabled(menu, MC_FULLSCREEN, wwin->flags.fullscreen || IS_RESIZABLE(wwin));
+
 	wMenuSetEnabled(menu, MC_MOVERESIZE, IS_RESIZABLE(wwin)
 			&& !wwin->flags.miniaturized);
 
@@ -752,6 +778,7 @@ static WMenu *open_window_menu_core(WWindow *wwin)
 		/* hack to save some memory allocation/deallocation */
 		wfree(scr->window_menu->entries[MC_MINIATURIZE]->text);
 		wfree(scr->window_menu->entries[MC_MAXIMIZE]->text);
+		wfree(scr->window_menu->entries[MC_FULLSCREEN]->text);
 		wfree(scr->window_menu->entries[MC_SHADE]->text);
 		wfree(scr->window_menu->entries[MC_SELECT]->text);
 	} else {
@@ -847,6 +874,7 @@ void DestroyWindowMenu(WScreen *scr)
 	if (scr->window_menu) {
 		scr->window_menu->entries[MC_MINIATURIZE]->text = NULL;
 		scr->window_menu->entries[MC_MAXIMIZE]->text = NULL;
+		scr->window_menu->entries[MC_FULLSCREEN]->text = NULL;
 		scr->window_menu->entries[MC_SHADE]->text = NULL;
 		scr->window_menu->entries[MC_SELECT]->text = NULL;
 		wMenuDestroy(scr->window_menu, True);

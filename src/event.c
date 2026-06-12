@@ -1738,6 +1738,16 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			handleMaximize(wwin, MAX_VERTICAL | MAX_HORIZONTAL | MAX_KEYBOARD);
 		}
 		break;
+	case WKBD_FULLSCREEN:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin)
+		    && (wwin->flags.fullscreen || IS_RESIZABLE(wwin))) {
+			CloseWindowMenu(scr);
+			if (wwin->flags.fullscreen)
+				wUnfullscreenWindow(wwin);
+			else
+				wFullscreenWindow(wwin);
+		}
+		break;
 	case WKBD_VMAXIMIZE:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
 			CloseWindowMenu(scr);

@@ -18,6 +18,14 @@ clamped to the free span between the left and right offsets, this
 also fixes the existing modelock case where a long title overlapped
 the language button.
 
+Fullscreen window menu entry and key binding
+---------------------------------------------
+
+The window menu now has a Fullscreen / Exit Fullscreen entry, and a
+new ToggleFullscreenKey binding (default "None") does the same from
+the keyboard. This gives a way back out of fullscreen for clients
+that do not speak _NET_WM_STATE themselves once the titlebar is gone.
+
 Unix-socket control channel and the new wmakermsg tool
 -------------------------------------------------------
 

@@ -193,6 +193,7 @@
 	BLCMaximizeKey = None;
 	BRCMaximizeKey = None;
 	MaximusKey = None;
+	ToggleFullscreenKey = None;
 	CenterKey = None;
 	KeepOnTopKey = None;
 	KeepAtBottomKey = None;

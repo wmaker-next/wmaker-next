@@ -527,6 +527,7 @@
 	_(BLC_MAXIMIZE_KEY, "BLCMaximizeKey", "None", WKBD_LBCMAXIMIZE) \
 	_(BRC_MAXIMIZE_KEY, "BRCMaximizeKey", "None", WKBD_RBCMAXIMIZE) \
 	_(MAXIMUS_KEY, "MaximusKey", "None", WKBD_MAXIMUS) \
+	_(TOGGLE_FULLSCREEN_KEY, "ToggleFullscreenKey", "None", WKBD_FULLSCREEN) \
 	_(CENTER_KEY, "CenterKey", "None", WKBD_CENTRAL) \
 	_(KEEP_ON_TOP_KEY, "KeepOnTopKey", "None", WKBD_KEEP_ON_TOP) \
 	_(KEEP_AT_BOTTOM_KEY, "KeepAtBottomKey", "None", WKBD_KEEP_AT_BOTTOM) \
