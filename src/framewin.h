@@ -41,6 +41,7 @@
 #endif
 #define WFF_SELECTED		(1<<7)
 #define WFF_MAXIMIZE_BUTTON	(1<<8)
+#define WFF_ICON_SLOT		(1<<9)
 
 
 #define WFF_IS_SHADED	(1<<16)
@@ -80,6 +81,13 @@ typedef struct WFrameWindow {
 #ifdef XKB_BUTTON_HINT
     WPixmap *languagebutton_image[2];    /* focused, unfocused */
 #endif
+
+    /* Icon role draws on the titlebar surface instead of owning a
+     * button core, the scaled pixmap and its 1-bit clip mask are
+     * cached here and refreshed by wFrameWindowSetIcon() */
+    Pixmap titlebar_icon;
+    Pixmap titlebar_icon_mask;
+    short titlebar_icon_size;
 
     union WTexture **title_texture;
     union WTexture **resizebar_texture;
@@ -168,6 +176,8 @@ void wFrameWindowShowButton(WFrameWindow *fwin, int flags);
 void wFrameWindowHideButton(WFrameWindow *fwin, int flags);
 
 int wFrameWindowChangeTitle(WFrameWindow *fwin, const char *new_title);
+
+void wFrameWindowSetIcon(WFrameWindow *fwin, struct RImage *image);
 
 #ifdef XKB_BUTTON_HINT
 void wFrameWindowUpdateLanguageButton(WFrameWindow *fwin);

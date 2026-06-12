@@ -606,6 +606,9 @@ static void updateIconImage(WWindow *wwin)
 	/* Save the icon in the X11 icon */
 	wwin->net_icon_image = get_window_image_from_x11(wwin->client_win);
 
+	if (wwin->frame)
+		wWindowRefreshTitlebarIcon(wwin);
+
 	/* Refresh the Window Icon */
 	if (wwin->icon)
 		wIconUpdate(wwin->icon);

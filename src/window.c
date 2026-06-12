@@ -1394,7 +1394,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	}
 
 	/* Create frame, borders and do reparenting */
-	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON;
+	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON | WFF_ICON_SLOT;
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
@@ -1478,6 +1478,8 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	 * (wwin->client.{width,height}) and all other geometry
 	 * related variables (frame_x,frame_y) */
 	wWindowConfigure(wwin, x, y, width, height);
+
+	wWindowRefreshTitlebarIcon(wwin);
 
 	/* Finalize the per-head workspace head from the placed frame
 	 * rectangle so visibility checks for an immediately-unmapped
@@ -2800,7 +2802,8 @@ void wWindowConfigureBorders(WWindow *wwin)
 		int flags;
 		int newy, oldh;
 
-		flags = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON;
+		flags = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON
+			| WFF_MAXIMIZE_BUTTON | WFF_ICON_SLOT;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -2831,9 +2834,11 @@ void wWindowConfigureBorders(WWindow *wwin)
 			 * _NET_WM_STATE_MAXIMIZED_* change that arrives
 			 * while fullscreen leaves the Maximize glyph
 			 * stale until this branch runs on titlebar
-			 * recreation */
+			 * recreation. Same for the icon scaled to the
+			 * old top_width */
 			if (HAS_TITLEBAR(wwin))
 				wWindowUpdateButtonImages(wwin);
+			wWindowRefreshTitlebarIcon(wwin);
 		}
 
 		flags = 0;
@@ -3735,6 +3740,28 @@ static void windowMaximizeClick(WCoreWindow *sender, void *data, XEvent *event)
 	} else if (event->xbutton.state == 0) {
 		handleMaximize(wwin, MAX_HORIZONTAL | MAX_VERTICAL);
 	}
+}
+
+void wWindowRefreshTitlebarIcon(WWindow *wwin)
+{
+	RImage *img;
+
+	if (!wwin->frame
+	    || wwin->screen_ptr->titlebar_layout.side[WTB_ICON] == WTB_SIDE_NONE)
+		return;
+
+	if (!wwin->frame->titlebar || wwin->frame->top_width <= 4) {
+		/* nothing to decode either way, when !titlebar the
+		 * setter frees+hides and returns without redraw, when
+		 * top_width <= 4 with a live titlebar it redraws */
+		wFrameWindowSetIcon(wwin->frame, NULL);
+		return;
+	}
+
+	img = wWindowGetIconImage(wwin);
+	wFrameWindowSetIcon(wwin->frame, img);
+	if (img)
+		RReleaseImage(img);
 }
 
 static void windowIconifyClick(WCoreWindow *sender, void *data, XEvent *event)

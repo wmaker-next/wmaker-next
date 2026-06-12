@@ -33,6 +33,7 @@ static const char *const wtb_role_name[WTB_ROLE_COUNT] = {
 	[WTB_MINIATURIZE] = "Miniaturize",
 	[WTB_CLOSE]       = "Close",
 	[WTB_MAXIMIZE]    = "Maximize",
+	[WTB_ICON]        = "Icon",
 #ifdef XKB_BUTTON_HINT
 	[WTB_LANGUAGE]    = "Language",
 #endif

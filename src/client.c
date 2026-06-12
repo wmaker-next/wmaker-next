@@ -417,6 +417,9 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 
 		wwin->wm_hints = new_hints;
 
+		if (wwin->frame)
+			wWindowRefreshTitlebarIcon(wwin);
+
 		/* do action according to state transition */
 		switch (i) {
 			/* 3 - change leader to value of CLIENT_LEADER */

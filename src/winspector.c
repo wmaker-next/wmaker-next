@@ -868,6 +868,11 @@ static void applySettings(WMWidget *button, void *client_data)
 			wfree(file);
 	}
 
+	/* always_user_icon may have flipped above (and may have been
+	 * reverted again by the empty-filename correction), refresh
+	 * the titlebar icon from the settled flag value */
+	wWindowRefreshTitlebarIcon(wwin);
+
 	wNETFrameExtents(wwin);
 }
 

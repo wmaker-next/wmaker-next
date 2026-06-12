@@ -88,6 +88,7 @@ static const struct {
 	[WTB_MINIATURIZE] = { 1, 4, 3, True,  False },
 	[WTB_CLOSE]       = { 2, 2, 2, True,  False },
 	[WTB_MAXIMIZE]    = { 8, 4, 3, True,  False },
+	[WTB_ICON]        = { 9, 0, 0, False, True  },
 #ifdef XKB_BUTTON_HINT
 	[WTB_LANGUAGE]    = { 6, 4, 3, False, False },
 #endif
@@ -97,6 +98,7 @@ const int wtb_role_flag_shift[WTB_ROLE_COUNT] = {
 	[WTB_MINIATURIZE] = 1,
 	[WTB_CLOSE]       = 2,
 	[WTB_MAXIMIZE]    = 8,
+	[WTB_ICON]        = 9,
 #ifdef XKB_BUTTON_HINT
 	[WTB_LANGUAGE]    = 6,
 #endif
@@ -131,7 +133,44 @@ static inline int dontFit(const WFrameWindow *fwin, int role)
 
 static int buttonVisible(const WFrameWindow *fwin, int role)
 {
+	if (wtb_role_info[role].is_drawn)
+		return hasButton(fwin, role) && !hideButton(fwin, role) && !dontFit(fwin, role);
 	return fwin->buttons[role] && !hideButton(fwin, role) && !dontFit(fwin, role);
+}
+
+/* Icon dont-fit is computed from the surface left after the real
+ * button cores have settled, the frame-width multiplier used for
+ * the other roles is wrong here because in TS_NEW the titlebar core
+ * is shrunk by (nleft+nright)*bsize and a 4-button layout can leave
+ * the surface ~0 px wide while width >= 4*top_width still says
+ * "fits". Called from reconfigure() on horizontal resize and from
+ * wFrameWindowSetIcon() so a freshly installed titlebar_icon_size
+ * does not draw into a surface narrower than icon_size+top_width.
+ * Returns 1 when the dont-fit bit flipped. */
+static int updateIconFit(WFrameWindow *fwin, int width)
+{
+	int r, occupied, surface, bsize, fits;
+
+	if (!hasButton(fwin, WTB_ICON))
+		return 0;
+
+	occupied = 0;
+	bsize = (w_global.config->new_style == TS_NEW)
+		? fwin->top_width : fwin->top_width - 7;
+	if (w_global.config->new_style == TS_NEXT)
+		bsize -= 1;
+	for (r = 0; r < WTB_ROLE_COUNT; r++) {
+		if (wtb_role_info[r].is_drawn || !buttonVisible(fwin, r))
+			continue;
+		occupied += (w_global.config->new_style == TS_NEW)
+				? bsize : bsize + 3;
+	}
+	surface = width - occupied;
+	fits = (surface >= (int)fwin->titlebar_icon_size + (int)fwin->top_width);
+	if (fits != dontFit(fwin, WTB_ICON))
+		return 0;
+	setRoleBit(fwin->flags.button_dont_fit, WTB_ICON, !fits);
+	return 1;
 }
 
 /*
@@ -480,6 +519,13 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				if (!(flags & WFF_ROLE_BIT(r)) || layout->side[r] == WTB_SIDE_NONE)
 					continue;
 				setRoleBit(fwin->flags.has_button, r, 1);
+				if (wtb_role_info[r].is_drawn) {
+					/* drawn roles own no button core, the
+					 * slot is hidden until SetIcon()
+					 * installs a pixmap and clears it */
+					setRoleBit(fwin->flags.hide_button, r, 1);
+					continue;
+				}
 				fwin->buttons[r] = wCoreCreate(parent, 0, 0, bsize, bsize);
 				if (w_global.config->new_style == TS_OLD)
 					XSetWindowBackground(dpy, fwin->buttons[r]->window,
@@ -606,6 +652,11 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 		if (fwin->buttons[i])
 			wCoreDestroy(fwin->buttons[i]);
 
+	if (fwin->titlebar_icon != None)
+		XFreePixmap(dpy, fwin->titlebar_icon);
+	if (fwin->titlebar_icon_mask != None)
+		XFreePixmap(dpy, fwin->titlebar_icon_mask);
+
 	if (fwin->resizebar)
 		wCoreDestroy(fwin->resizebar);
 
@@ -688,18 +739,42 @@ static void updateTitlebar(WFrameWindow * fwin)
 	wCoreConfigure(fwin->titlebar, x, 0, w, theight);
 }
 
+/* a bare wFrameWindowPaint() does not clear the titlebar surface, so
+ * hiding a drawn role (icon) or shrinking offsets would leave stale
+ * pixels behind. checkTitleSize() must run before paint so the
+ * incomplete-title flag reflects the new lofs/rofs */
+static void redrawTitlebar(WFrameWindow *fwin)
+{
+	if (!fwin->titlebar)
+		return;
+	XClearWindow(dpy, fwin->titlebar->window);
+	checkTitleSize(fwin);
+	wFrameWindowPaint(fwin);
+}
+
 void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 {
-	int r;
+	int r, drawn_changed = 0;
 
 	for (r = 0; r < WTB_ROLE_COUNT; r++) {
 		if (!(flags & WFF_ROLE_BIT(r)) || !hasButton(fwin, r))
 			continue;
+		if (wtb_role_info[r].is_drawn) {
+			if (!hideButton(fwin, r))
+				drawn_changed = 1;
+			setRoleBit(fwin->flags.hide_button, r, 1);
+			continue;
+		}
 		if (fwin->buttons[r])
 			XUnmapWindow(dpy, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 1);
 	}
 
+	/* hiding a non-drawn core grows the available surface, the
+	 * Icon dont-fit bit was derived from the old occupied count */
+	if (updateIconFit(fwin, fwin->core->width))
+		drawn_changed = 1;
+
 	if (fwin->titlebar) {
 		if (w_global.config->new_style == TS_NEW) {
 			updateTitlebar(fwin);
@@ -709,20 +784,32 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
+		if (drawn_changed)
+			redrawTitlebar(fwin);
 	}
 }
 
 void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 {
-	int r;
+	int r, drawn_changed = 0;
 
 	for (r = 0; r < WTB_ROLE_COUNT; r++) {
 		if (!(flags & WFF_ROLE_BIT(r)) || !hasButton(fwin, r) || !hideButton(fwin, r))
 			continue;
+		if (wtb_role_info[r].is_drawn) {
+			drawn_changed = 1;
+			setRoleBit(fwin->flags.hide_button, r, 0);
+			continue;
+		}
 		if (fwin->buttons[r] && !dontFit(fwin, r))
 			XMapWindow(dpy, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 0);
 	}
+
+	/* showing a non-drawn core shrinks the available surface, the
+	 * Icon dont-fit bit was derived from the old occupied count */
+	if (updateIconFit(fwin, fwin->core->width))
+		drawn_changed = 1;
 
 	if (fwin->titlebar) {
 		if (w_global.config->new_style == TS_NEW) {
@@ -733,7 +820,70 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
+		if (drawn_changed)
+			redrawTitlebar(fwin);
 	}
+}
+
+void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
+{
+	WScreen *scr = fwin->screen_ptr;
+	RImage *scaled;
+	Pixmap pix = None, mask = None;
+	int sz;
+
+	if (fwin->titlebar_icon != None)
+		XFreePixmap(dpy, fwin->titlebar_icon);
+	if (fwin->titlebar_icon_mask != None)
+		XFreePixmap(dpy, fwin->titlebar_icon_mask);
+	fwin->titlebar_icon = None;
+	fwin->titlebar_icon_mask = None;
+	fwin->titlebar_icon_size = 0;
+
+	if (!fwin->titlebar) {
+		/* no surface to redraw, fullscreen/NoTitlebar */
+		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
+		return;
+	}
+
+	if (fwin->top_width <= 4 || image == NULL) {
+		/* RScaleImage(...,-ve,-ve) guard, reachable with a live
+		 * titlebar via WindowTitleMaxHeight <= 4, must clear
+		 * stale icon pixels */
+		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
+		redrawTitlebar(fwin);
+		return;
+	}
+
+	sz = fwin->top_width - 4;
+	scaled = RScaleImage(image, sz, sz);
+	if (!scaled) {
+		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
+		redrawTitlebar(fwin);
+		return;
+	}
+
+	if (!RConvertImageMask(scr->rcontext, scaled, &pix, &mask, 128)) {
+		/* RConvertImageMask() can fail before writing *pixmap, or
+		 * after writing *pixmap but before *mask, both locals
+		 * started at None so the conditional frees are safe */
+		if (pix != None)
+			XFreePixmap(dpy, pix);
+		if (mask != None)
+			XFreePixmap(dpy, mask);
+		RReleaseImage(scaled);
+		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
+		redrawTitlebar(fwin);
+		return;
+	}
+	RReleaseImage(scaled);
+
+	fwin->titlebar_icon = pix;
+	fwin->titlebar_icon_mask = mask;
+	fwin->titlebar_icon_size = sz;
+	updateIconFit(fwin, fwin->core->width);
+	setRoleBit(fwin->flags.hide_button, WTB_ICON, 0);
+	redrawTitlebar(fwin);
 }
 
 static void
@@ -1068,9 +1218,11 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 		int lofs = 6, rofs = 6;
 		int titlelen;
 		int r, all_visible = 1;
+		int icon_visible = buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != None;
+		int icon_x = 0;
 
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
-			if (!hasButton(fwin, r))
+			if (!hasButton(fwin, r) || wtb_role_info[r].is_drawn)
 				continue;
 			if (!buttonVisible(fwin, r)) {
 				all_visible = 0;
@@ -1083,10 +1235,33 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 					rofs += fwin->buttons[r]->width + 3;
 			}
 		}
+		/* Icon lives on the titlebar surface in every style, in
+		 * TS_NEW the surface is already shrunk between the button
+		 * cores so the icon always renders adjacent to the title
+		 * text on whichever side's array contains it */
+		if (icon_visible) {
+			if (layout->side[WTB_ICON] == WTB_SIDE_RIGHT) {
+				icon_x = fwin->titlebar->width - rofs + 3 - fwin->titlebar_icon_size;
+				rofs += fwin->titlebar_icon_size + 3;
+			} else {
+				icon_x = lofs - 3;
+				lofs += fwin->titlebar_icon_size + 3;
+			}
+		}
 #ifdef XKB_BUTTON_HINT
 		if (hasButton(fwin, WTB_LANGUAGE) && !fwin->languagebutton_image[0])
 			wFrameWindowUpdateLanguageButton(fwin);
 #endif
+
+		if (icon_visible) {
+			int iy = (fwin->titlebar->height - fwin->titlebar_icon_size) / 2;
+			XSetClipMask(dpy, scr->copy_gc, fwin->titlebar_icon_mask);
+			XSetClipOrigin(dpy, scr->copy_gc, icon_x, iy);
+			XCopyArea(dpy, fwin->titlebar_icon, fwin->titlebar->window, scr->copy_gc,
+				  0, 0, fwin->titlebar_icon_size, fwin->titlebar_icon_size,
+				  icon_x, iy);
+			XSetClipMask(dpy, scr->copy_gc, None);
+		}
 
 		if (fwin->title) {
 			Drawable buf;
@@ -1184,7 +1359,7 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 	fwin->core->height = height;
 
 	if (fwin->titlebar && resizedHorizontally) {
-		int r, k, fits;
+		int r, k, fits, drawn_role_changed;
 
 		/* Check if the titlebar is wide enough to hold the buttons.
 		 * Temporarily remove them if can't
@@ -1207,8 +1382,17 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 			}
 		}
 
+		/* Icon dont-fit is surface-based, see updateIconFit() */
+		drawn_role_changed = updateIconFit(fwin, width);
+
 		updateTitlebar(fwin);
 		checkTitleSize(fwin);
+		/* child button cores get an Expose from map/unmap, the
+		 * drawn icon does not so force a repaint when it flips */
+		if (drawn_role_changed) {
+			XClearWindow(dpy, fwin->titlebar->window);
+			wFrameWindowPaint(fwin);
+		}
 	}
 
 	if (fwin->resizebar) {
@@ -1257,12 +1441,7 @@ int wFrameWindowChangeTitle(WFrameWindow *fwin, const char *new_title)
 
 	fwin->title = wstrdup(new_title);
 
-	if (fwin->titlebar) {
-		XClearWindow(dpy, fwin->titlebar->window);
-
-		wFrameWindowPaint(fwin);
-	}
-	checkTitleSize(fwin);
+	redrawTitlebar(fwin);
 
 	return 1;
 }
@@ -1443,9 +1622,11 @@ static void checkTitleSize(WFrameWindow * fwin)
 
 	if (w_global.config->new_style != TS_NEW) {
 		for (r = 0; r < WTB_ROLE_COUNT; r++)
-			if (buttonVisible(fwin, r))
+			if (!wtb_role_info[r].is_drawn && buttonVisible(fwin, r))
 				width -= fwin->buttons[r]->width + 3;
 	}
+	if (buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != None)
+		width -= fwin->titlebar_icon_size + 3;
 
 	if (WMWidthOfString(*fwin->font, fwin->title, strlen(fwin->title)) > width)
 		fwin->flags.incomplete_title = 1;

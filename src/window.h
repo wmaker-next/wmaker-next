@@ -490,6 +490,8 @@ void wWindowConfigureBorders(WWindow *wwin);
 
 void wWindowUpdateButtonImages(WWindow *wwin);
 
+void wWindowRefreshTitlebarIcon(WWindow *wwin);
+
 void wWindowSaveState(WWindow *wwin);
 
 void wWindowChangeWorkspace(WWindow *wwin, int workspace);

@@ -470,18 +470,37 @@ static char *get_icon_cache_path(void)
 	return NULL;
 }
 
-static RImage *get_wwindow_image_from_wmhints(WWindow *wwin, WIcon *icon)
+static RImage *get_wwindow_image_from_wmhints(WWindow *wwin)
 {
 	RImage *image = NULL;
 	WXWMHints *hints = wwin->wm_hints;
 
 	if (hints && (hints->flags & IconPixmapHint) && hints->icon_pixmap != None)
-		image = RCreateImageFromDrawable(icon->core->screen_ptr->rcontext,
+		image = RCreateImageFromDrawable(wwin->screen_ptr->rcontext,
 						 hints->icon_pixmap,
 						 (hints->flags & IconMaskHint)
 						 ? hints->icon_mask : None);
 
 	return image;
+}
+
+/*
+ * Best client-supplied icon for the titlebar slot, mirroring the
+ * wIconUpdate() source order. Returns a new reference the caller must
+ * RReleaseImage(), or NULL when the client supplied nothing usable.
+ * IconWindowHint-only clients are skipped (snapshotting an unmapped
+ * icon window is unreliable) and the class/instance DB fallback is
+ * left to a follow-up.
+ */
+RImage *wWindowGetIconImage(WWindow *wwin)
+{
+	if (WFLAGP(wwin, always_user_icon))
+		return NULL;
+	if (wwin->net_icon_image)
+		return RRetainImage(wwin->net_icon_image);
+	if (wwin->wm_hints && (wwin->wm_hints->flags & IconPixmapHint))
+		return get_wwindow_image_from_wmhints(wwin);
+	return NULL;
 }
 
 /*
@@ -534,7 +553,9 @@ char *wIconStore(WIcon *icon)
 	if (wwin->net_icon_image)
 		image = RRetainImage(wwin->net_icon_image);
 	else
-		image = get_wwindow_image_from_wmhints(wwin, icon);
+		image = get_wwindow_image_from_wmhints(wwin);
+
+	(void) icon;
 
 	if (!image) {
 		wfree(path);
@@ -819,7 +840,7 @@ RImage *get_rimage_icon_from_wm_hints(WIcon *icon)
 		return NULL;
 	}
 
-	image = get_wwindow_image_from_wmhints(wwin, icon);
+	image = get_wwindow_image_from_wmhints(wwin);
 	if (!image)
 		return NULL;
 
