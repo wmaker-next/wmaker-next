@@ -1391,7 +1391,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	}
 
 	/* Create frame, borders and do reparenting */
-	foo = WFF_LEFT_BUTTON | WFF_RIGHT_BUTTON;
+	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON;
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
@@ -1429,10 +1429,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	/* hide unused buttons */
 	foo = 0;
 	if (WFLAGP(wwin, no_close_button))
-		foo |= WFF_RIGHT_BUTTON;
+		foo |= WFF_CLOSE_BUTTON;
 
 	if (WFLAGP(wwin, no_miniaturize_button))
-		foo |= WFF_LEFT_BUTTON;
+		foo |= WFF_MINIATURIZE_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
 	if (WFLAGP(wwin, no_language_button) || WFLAGP(wwin, no_focusable))
@@ -1443,15 +1443,15 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = workspace;
-	wwin->frame->on_click_left = windowIconifyClick;
+	wwin->frame->on_click_button[WTB_MINIATURIZE] = windowIconifyClick;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
-		wwin->frame->on_click_language = windowLanguageClick;
+		wwin->frame->on_click_button[WTB_LANGUAGE] = windowLanguageClick;
 #endif
 
-	wwin->frame->on_click_right = windowCloseClick;
-	wwin->frame->on_dblclick_right = windowCloseDblClick;
+	wwin->frame->on_click_button[WTB_CLOSE] = windowCloseClick;
+	wwin->frame->on_dblclick_button[WTB_CLOSE] = windowCloseDblClick;
 	wwin->frame->on_mousedown_titlebar = titlebarMouseDown;
 	wwin->frame->on_dblclick_titlebar = titlebarDblClick;
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
@@ -1711,7 +1711,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	wwin->frame_x = wwin->client.x;
 	wwin->frame_y = wwin->client.y;
 
-	foo = WFF_RIGHT_BUTTON | WFF_BORDER;
+	foo = WFF_CLOSE_BUTTON | WFF_BORDER;
 	foo |= WFF_TITLEBAR;
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -1737,17 +1737,17 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	wWindowUpdateButtonImages(wwin);
 
 	/* hide buttons */
-	wFrameWindowHideButton(wwin->frame, WFF_RIGHT_BUTTON);
+	wFrameWindowHideButton(wwin->frame, WFF_CLOSE_BUTTON);
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = wwin->screen_ptr->current_workspace;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
-		wwin->frame->on_click_language = windowLanguageClick;
+		wwin->frame->on_click_button[WTB_LANGUAGE] = windowLanguageClick;
 #endif
 
-	wwin->frame->on_click_right = windowCloseClick;
+	wwin->frame->on_click_button[WTB_CLOSE] = windowCloseClick;
 	wwin->frame->on_mousedown_titlebar = titlebarMouseDown;
 	wwin->frame->on_dblclick_titlebar = titlebarDblClick;
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
@@ -2702,22 +2702,23 @@ void wWindowUpdateButtonImages(WWindow *wwin)
 			else
 				mask = None;
 
-			if (fwin->lbutton_image
-			    && (fwin->lbutton_image->image != pixmap || fwin->lbutton_image->mask != mask)) {
-				wPixmapDestroy(fwin->lbutton_image);
-				fwin->lbutton_image = NULL;
+			if (fwin->button_image[WTB_MINIATURIZE]
+			    && (fwin->button_image[WTB_MINIATURIZE]->image != pixmap
+				|| fwin->button_image[WTB_MINIATURIZE]->mask != mask)) {
+				wPixmapDestroy(fwin->button_image[WTB_MINIATURIZE]);
+				fwin->button_image[WTB_MINIATURIZE] = NULL;
 			}
 
-			if (!fwin->lbutton_image) {
-				fwin->lbutton_image = wPixmapCreate(pixmap, mask);
-				fwin->lbutton_image->client_owned = 1;
-				fwin->lbutton_image->client_owned_mask = 1;
+			if (!fwin->button_image[WTB_MINIATURIZE]) {
+				fwin->button_image[WTB_MINIATURIZE] = wPixmapCreate(pixmap, mask);
+				fwin->button_image[WTB_MINIATURIZE]->client_owned = 1;
+				fwin->button_image[WTB_MINIATURIZE]->client_owned_mask = 1;
 			}
 		} else {
-			if (fwin->lbutton_image && !fwin->lbutton_image->shared)
-				wPixmapDestroy(fwin->lbutton_image);
+			if (fwin->button_image[WTB_MINIATURIZE] && !fwin->button_image[WTB_MINIATURIZE]->shared)
+				wPixmapDestroy(fwin->button_image[WTB_MINIATURIZE]);
 
-			fwin->lbutton_image = scr->b_pixmaps[WBUT_ICONIFY];
+			fwin->button_image[WTB_MINIATURIZE] = scr->b_pixmaps[WBUT_ICONIFY];
 		}
 	}
 
@@ -2735,35 +2736,36 @@ void wWindowUpdateButtonImages(WWindow *wwin)
 			else
 				mask = None;
 
-			if (fwin->rbutton_image && (fwin->rbutton_image->image != pixmap
-						    || fwin->rbutton_image->mask != mask)) {
-				wPixmapDestroy(fwin->rbutton_image);
-				fwin->rbutton_image = NULL;
+			if (fwin->button_image[WTB_CLOSE]
+			    && (fwin->button_image[WTB_CLOSE]->image != pixmap
+				|| fwin->button_image[WTB_CLOSE]->mask != mask)) {
+				wPixmapDestroy(fwin->button_image[WTB_CLOSE]);
+				fwin->button_image[WTB_CLOSE] = NULL;
 			}
 
-			if (!fwin->rbutton_image) {
-				fwin->rbutton_image = wPixmapCreate(pixmap, mask);
-				fwin->rbutton_image->client_owned = 1;
-				fwin->rbutton_image->client_owned_mask = 1;
+			if (!fwin->button_image[WTB_CLOSE]) {
+				fwin->button_image[WTB_CLOSE] = wPixmapCreate(pixmap, mask);
+				fwin->button_image[WTB_CLOSE]->client_owned = 1;
+				fwin->button_image[WTB_CLOSE]->client_owned_mask = 1;
 			}
 
 		} else if (WFLAGP(wwin, kill_close)) {
-			if (fwin->rbutton_image && !fwin->rbutton_image->shared)
-				wPixmapDestroy(fwin->rbutton_image);
+			if (fwin->button_image[WTB_CLOSE] && !fwin->button_image[WTB_CLOSE]->shared)
+				wPixmapDestroy(fwin->button_image[WTB_CLOSE]);
 
-			fwin->rbutton_image = scr->b_pixmaps[WBUT_KILL];
+			fwin->button_image[WTB_CLOSE] = scr->b_pixmaps[WBUT_KILL];
 
 		} else if (MGFLAGP(wwin, broken_close)) {
-			if (fwin->rbutton_image && !fwin->rbutton_image->shared)
-				wPixmapDestroy(fwin->rbutton_image);
+			if (fwin->button_image[WTB_CLOSE] && !fwin->button_image[WTB_CLOSE]->shared)
+				wPixmapDestroy(fwin->button_image[WTB_CLOSE]);
 
-			fwin->rbutton_image = scr->b_pixmaps[WBUT_BROKENCLOSE];
+			fwin->button_image[WTB_CLOSE] = scr->b_pixmaps[WBUT_BROKENCLOSE];
 
 		} else {
-			if (fwin->rbutton_image && !fwin->rbutton_image->shared)
-				wPixmapDestroy(fwin->rbutton_image);
+			if (fwin->button_image[WTB_CLOSE] && !fwin->button_image[WTB_CLOSE]->shared)
+				wPixmapDestroy(fwin->button_image[WTB_CLOSE]);
 
-			fwin->rbutton_image = scr->b_pixmaps[WBUT_CLOSE];
+			fwin->button_image[WTB_CLOSE] = scr->b_pixmaps[WBUT_CLOSE];
 		}
 	}
 
@@ -2785,7 +2787,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 		int flags;
 		int newy, oldh;
 
-		flags = WFF_LEFT_BUTTON | WFF_RIGHT_BUTTON;
+		flags = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -2814,18 +2816,18 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 		flags = 0;
 		if (!WFLAGP(wwin, no_miniaturize_button)
-		    && wwin->frame->flags.hide_left_button)
-			flags |= WFF_LEFT_BUTTON;
+		    && (wwin->frame->flags.hide_button & (1 << WTB_MINIATURIZE)))
+			flags |= WFF_MINIATURIZE_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
 		if (!WFLAGP(wwin, no_language_button)
-		    && wwin->frame->flags.hide_language_button)
+		    && (wwin->frame->flags.hide_button & (1 << WTB_LANGUAGE)))
 			flags |= WFF_LANGUAGE_BUTTON;
 #endif
 
 		if (!WFLAGP(wwin, no_close_button)
-		    && wwin->frame->flags.hide_right_button)
-			flags |= WFF_RIGHT_BUTTON;
+		    && (wwin->frame->flags.hide_button & (1 << WTB_CLOSE)))
+			flags |= WFF_CLOSE_BUTTON;
 
 		if (flags != 0) {
 			wWindowUpdateButtonImages(wwin);
@@ -2834,18 +2836,18 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 		flags = 0;
 		if (WFLAGP(wwin, no_miniaturize_button)
-		    && !wwin->frame->flags.hide_left_button)
-			flags |= WFF_LEFT_BUTTON;
+		    && !(wwin->frame->flags.hide_button & (1 << WTB_MINIATURIZE)))
+			flags |= WFF_MINIATURIZE_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
 		if (WFLAGP(wwin, no_language_button)
-		    && !wwin->frame->flags.hide_language_button)
+		    && !(wwin->frame->flags.hide_button & (1 << WTB_LANGUAGE)))
 			flags |= WFF_LANGUAGE_BUTTON;
 #endif
 
 		if (WFLAGP(wwin, no_close_button)
-		    && !wwin->frame->flags.hide_right_button)
-			flags |= WFF_RIGHT_BUTTON;
+		    && !(wwin->frame->flags.hide_button & (1 << WTB_CLOSE)))
+			flags |= WFF_CLOSE_BUTTON;
 
 		if (flags != 0)
 			wFrameWindowHideButton(wwin->frame, flags);

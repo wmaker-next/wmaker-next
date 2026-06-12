@@ -1245,8 +1245,8 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	panel->frame->client_flags.no_closable = 0;
 	panel->frame->client_flags.no_close_button = 0;
 	wWindowUpdateButtonImages(panel->frame);
-	wFrameWindowShowButton(panel->frame->frame, WFF_RIGHT_BUTTON);
-	panel->frame->frame->on_click_right = destroyInspector;
+	wFrameWindowShowButton(panel->frame->frame, WFF_CLOSE_BUTTON);
+	panel->frame->frame->on_click_button[WTB_CLOSE] = destroyInspector;
 
 	wWindowMap(panel->frame);
 
@@ -1301,7 +1301,7 @@ void wCloseInspectorForWindow(WWindow *wwin)
 {
 	WWindow *pwin = wwin->inspector->frame;	/* the inspector window */
 
-	(*pwin->frame->on_click_right) (NULL, pwin, NULL);
+	(*pwin->frame->on_click_button[WTB_CLOSE]) (NULL, pwin, NULL);
 }
 
 static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, int frame_width)

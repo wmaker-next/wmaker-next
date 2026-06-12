@@ -30,20 +30,23 @@
 #define BORDER_ALL	(1|2|4|8)
 
 
-#define WFF_TITLEBAR	(1<<0)
-#define WFF_LEFT_BUTTON	(1<<1)
-#define WFF_RIGHT_BUTTON (1<<2)
-#define WFF_RESIZEBAR	(1<<3)
-#define WFF_BORDER	(1<<4)
-#define WFF_SINGLE_STATE (1<<5)
+#define WFF_TITLEBAR		(1<<0)
+#define WFF_MINIATURIZE_BUTTON	(1<<1)
+#define WFF_CLOSE_BUTTON	(1<<2)
+#define WFF_RESIZEBAR		(1<<3)
+#define WFF_BORDER		(1<<4)
+#define WFF_SINGLE_STATE	(1<<5)
 #ifdef XKB_BUTTON_HINT
 #define WFF_LANGUAGE_BUTTON	(1<<6)
 #endif
-#define WFF_SELECTED	(1<<7)
+#define WFF_SELECTED		(1<<7)
 
 
 #define WFF_IS_SHADED	(1<<16)
 #define WFF_IS_MENU	(1<<17)
+
+extern const int wtb_role_flag_shift[WTB_ROLE_COUNT];
+#define WFF_ROLE_BIT(r)		(1 << wtb_role_flag_shift[(r)])
 
 typedef struct WFrameWindow {
     WScreen *screen_ptr;	       /* pointer to the screen structure */
@@ -51,11 +54,7 @@ typedef struct WFrameWindow {
     WCoreWindow *core;
 
     WCoreWindow *titlebar;	       /* the titlebar */
-    WCoreWindow *left_button;	       /* miniaturize button */
-#ifdef XKB_BUTTON_HINT
-    WCoreWindow *language_button;
-#endif
-    WCoreWindow *right_button;	       /* close button */
+    WCoreWindow *buttons[WTB_ROLE_COUNT];
 
     short workspace;		       /* workspace that the window occupies */
 
@@ -69,19 +68,14 @@ typedef struct WFrameWindow {
 
     Pixmap title_back[3];	       /* focused, unfocused, pfocused */
     Pixmap resizebar_back[3];	       /* any, None, None */
-    Pixmap lbutton_back[3];
-    Pixmap rbutton_back[3];
-#ifdef XKB_BUTTON_HINT
-    Pixmap languagebutton_back[3];
-#endif
+    Pixmap button_back[WTB_ROLE_COUNT][3];
     /* cache entries the Pixmaps above are borrowed from, the Pixmaps are
      * not owned by this frame and must be released through the cache,
      * never via XFreePixmap directly */
     struct WFrameTexCache *title_cache[3];
     struct WFrameTexCache *resizebar_cache;
 
-    WPixmap *lbutton_image;
-    WPixmap *rbutton_image;
+    WPixmap *button_image[WTB_ROLE_COUNT];
 #ifdef XKB_BUTTON_HINT
     WPixmap *languagebutton_image[2];    /* focused, unfocused */
 #endif
@@ -103,13 +97,8 @@ typedef struct WFrameWindow {
     void *child;
 
     /* callbacks */
-    void (*on_click_left)(WCoreWindow *sender, void *data, XEvent *event);
-#ifdef XKB_BUTTON_HINT
-    void (*on_click_language)(WCoreWindow *sender, void *data, XEvent *event);
-#endif
-
-    void (*on_click_right)(WCoreWindow *sender, void *data, XEvent *event);
-    void (*on_dblclick_right)(WCoreWindow *sender, void *data, XEvent *event);
+    void (*on_click_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, XEvent *event);
+    void (*on_dblclick_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, XEvent *event);
 
     void (*on_mousedown_titlebar)(WCoreWindow *sender, void *data, XEvent *event);
     void (*on_dblclick_titlebar)(WCoreWindow *sender, void *data, XEvent *event);
@@ -121,29 +110,17 @@ typedef struct WFrameWindow {
         unsigned int justification:2;
         unsigned int titlebar:1;
         unsigned int resizebar:1;
-        unsigned int left_button:1;
-        unsigned int right_button:1;
-#ifdef XKB_BUTTON_HINT
-        unsigned int language_button:1;
-#endif
+
+        /* per-role bits, indexed by WTitlebarRole */
+        unsigned int has_button:WTB_ROLE_COUNT;
+        unsigned int hide_button:WTB_ROLE_COUNT;
+        unsigned int button_dont_fit:WTB_ROLE_COUNT;
 
         unsigned int need_texture_remake:1;
 
         unsigned int single_texture:1;
 
-        unsigned int hide_left_button:1;
-        unsigned int hide_right_button:1;
-#ifdef XKB_BUTTON_HINT
-        unsigned int hide_language_button:1;
-#endif
-
         unsigned int need_texture_change:1;
-
-        unsigned int lbutton_dont_fit:1;
-        unsigned int rbutton_dont_fit:1;
-#ifdef XKB_BUTTON_HINT
-        unsigned int languagebutton_dont_fit:1;
-#endif
 
         unsigned int repaint_only_titlebar:1;
         unsigned int repaint_only_resizebar:1;

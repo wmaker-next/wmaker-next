@@ -61,16 +61,161 @@ struct WFrameTexCache {
 	/* key */
 	WTexture *texture;
 	int width, height;
-	int extra;                /* title: packed left|right|lang, resizebar: cwidth */
+	int extra;                /* title: (nleft<<4)|nright, resizebar: cwidth */
 	/* value */
 	Pixmap title;
-	Pixmap lbutton, rbutton;
-#ifdef XKB_BUTTON_HINT
-	Pixmap langbutton;
-#endif
+	Pixmap buttons[WTB_ROLE_COUNT];   /* positional: [0..nleft-1] then [nleft..nleft+nright-1] */
+	int nbuttons;
 	int refcount;
 	struct WFrameTexCache *next;
 };
+
+/*
+ * Per-role static metadata. The dontfit_k_* multipliers reproduce the
+ * thresholds the per-slot code used (Miniaturize/Language dropped at
+ * width < 4*top_width under TS_NEW or 3*top_width otherwise, Close at
+ * 2*top_width). is_drawn roles paint directly on the titlebar surface
+ * instead of owning a button core and so contribute neither to nleft/
+ * nright nor to the texture-slice cache.
+ */
+static const struct {
+	const char *name;
+	int flag_shift;
+	short dontfit_k_new;
+	short dontfit_k_old;
+	Bool from_xpm;
+	Bool is_drawn;
+} wtb_role_info[WTB_ROLE_COUNT] = {
+	[WTB_MINIATURIZE] = { "Miniaturize", 1, 4, 3, True,  False },
+	[WTB_CLOSE]       = { "Close",       2, 2, 2, True,  False },
+#ifdef XKB_BUTTON_HINT
+	[WTB_LANGUAGE]    = { "Language",    6, 4, 3, False, False },
+#endif
+};
+
+const int wtb_role_flag_shift[WTB_ROLE_COUNT] = {
+	[WTB_MINIATURIZE] = 1,
+	[WTB_CLOSE]       = 2,
+#ifdef XKB_BUTTON_HINT
+	[WTB_LANGUAGE]    = 6,
+#endif
+};
+
+static const WTitlebarLayout default_layout = {
+	.side = {
+		[WTB_MINIATURIZE] = WTB_SIDE_LEFT,
+		[WTB_CLOSE]       = WTB_SIDE_RIGHT,
+#ifdef XKB_BUTTON_HINT
+		[WTB_LANGUAGE]    = WTB_SIDE_LEFT,
+#endif
+	},
+	.order = {
+		[WTB_MINIATURIZE] = 0,
+		[WTB_CLOSE]       = 0,
+#ifdef XKB_BUTTON_HINT
+		[WTB_LANGUAGE]    = 1,
+#endif
+	},
+};
+
+static inline const WTitlebarLayout *frameLayout(const WFrameWindow *fwin)
+{
+	(void) fwin;
+	return &default_layout;
+}
+
+static inline int hasButton(const WFrameWindow *fwin, int role)
+{
+	return (fwin->flags.has_button >> role) & 1;
+}
+
+static inline int hideButton(const WFrameWindow *fwin, int role)
+{
+	return (fwin->flags.hide_button >> role) & 1;
+}
+
+static inline int dontFit(const WFrameWindow *fwin, int role)
+{
+	return (fwin->flags.button_dont_fit >> role) & 1;
+}
+
+#define setRoleBit(bits, role, val) do {		\
+		if (val)				\
+			(bits) |= (1u << (role));	\
+		else					\
+			(bits) &= ~(1u << (role));	\
+	} while (0)
+
+static int buttonVisible(const WFrameWindow *fwin, int role)
+{
+	return fwin->buttons[role] && !hideButton(fwin, role) && !dontFit(fwin, role);
+}
+
+/*
+ * Walk the layout per side and fill rolepos[role] with the
+ * left-to-right slot index among visible non-drawn roles on that
+ * side. Returns the per-side counts in *nleft / *nright.
+ */
+static void countLayoutSlots(const WFrameWindow *fwin, int *nleft, int *nright,
+			     short rolepos[WTB_ROLE_COUNT])
+{
+	const WTitlebarLayout *layout = frameLayout(fwin);
+	int side, ord, r, n;
+
+	*nleft = 0;
+	*nright = 0;
+	for (r = 0; r < WTB_ROLE_COUNT; r++)
+		rolepos[r] = -1;
+
+	for (side = WTB_SIDE_LEFT; side <= WTB_SIDE_RIGHT; side++) {
+		n = 0;
+		for (ord = 0; ord < WTB_ROLE_COUNT; ord++) {
+			for (r = 0; r < WTB_ROLE_COUNT; r++) {
+				if (layout->side[r] != side || layout->order[r] != ord)
+					continue;
+				if (wtb_role_info[r].is_drawn || !buttonVisible(fwin, r))
+					continue;
+				rolepos[r] = n++;
+			}
+		}
+		if (side == WTB_SIDE_LEFT)
+			*nleft = n;
+		else
+			*nright = n;
+	}
+}
+
+/*
+ * Single source of x-math for every visible button core. width is the
+ * full frame width, bsize the button edge, theight the titlebar height.
+ */
+static void layoutButtonGeometry(WFrameWindow *fwin, int width, int bsize, int theight)
+{
+	const WTitlebarLayout *layout = frameLayout(fwin);
+	short rolepos[WTB_ROLE_COUNT];
+	int nleft, nright, r, x, y;
+
+	countLayoutSlots(fwin, &nleft, &nright, rolepos);
+
+	for (r = 0; r < WTB_ROLE_COUNT; r++) {
+		if (!fwin->buttons[r] || rolepos[r] < 0)
+			continue;
+		if (w_global.config->new_style == TS_NEW) {
+			y = 0;
+			if (layout->side[r] == WTB_SIDE_LEFT)
+				x = rolepos[r] * bsize;
+			else
+				x = width - (nright - rolepos[r]) * bsize + 1;
+		} else {
+			y = (theight - bsize) / 2;
+			if (layout->side[r] == WTB_SIDE_LEFT)
+				x = 3 + rolepos[r] * (bsize + 3);
+			else
+				x = width - (nright - rolepos[r]) * (bsize + 3);
+		}
+		wCoreConfigure(fwin->buttons[r], x, y, bsize, bsize);
+	}
+}
 
 static struct WFrameTexCache *title_tex_cache;
 static struct WFrameTexCache *resize_tex_cache;
@@ -89,6 +234,7 @@ static struct WFrameTexCache *texcache_find(struct WFrameTexCache *head, WTextur
 static void texcache_release(struct WFrameTexCache **head, struct WFrameTexCache *e)
 {
 	struct WFrameTexCache **pp;
+	int i;
 
 	if (!e || --e->refcount > 0)
 		return;
@@ -100,24 +246,20 @@ static void texcache_release(struct WFrameTexCache **head, struct WFrameTexCache
 		}
 	}
 	FREE_PIXMAP(e->title);
-	FREE_PIXMAP(e->lbutton);
-	FREE_PIXMAP(e->rbutton);
-#ifdef XKB_BUTTON_HINT
-	FREE_PIXMAP(e->langbutton);
-#endif
+	for (i = 0; i < e->nbuttons; i++)
+		FREE_PIXMAP(e->buttons[i]);
 	wfree(e);
 }
 
 static void release_title_set(WFrameWindow *fwin, int state)
 {
+	int r;
+
 	texcache_release(&title_tex_cache, fwin->title_cache[state]);
 	fwin->title_cache[state] = NULL;
 	fwin->title_back[state] = None;
-	fwin->lbutton_back[state] = None;
-	fwin->rbutton_back[state] = None;
-#ifdef XKB_BUTTON_HINT
-	fwin->languagebutton_back[state] = None;
-#endif
+	for (r = 0; r < WTB_ROLE_COUNT; r++)
+		fwin->button_back[r][state] = None;
 }
 
 static void release_resizebar_set(WFrameWindow *fwin)
@@ -319,53 +461,17 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			fwin->flags.need_texture_remake = 1;
 
-			if (w_global.config->new_style == TS_NEW) {
-				if (fwin->left_button)
-					wCoreConfigure(fwin->left_button, 0, 0, bsize, bsize);
-#ifdef XKB_BUTTON_HINT
-				if (fwin->language_button) {
-					if (fwin->flags.hide_left_button || !fwin->left_button
-					    || fwin->flags.lbutton_dont_fit)
-						wCoreConfigure(fwin->language_button, 0, 0, bsize, bsize);
-					else
-						wCoreConfigure(fwin->language_button, bsize, 0, bsize, bsize);
-				}
-#endif
-
-				if (fwin->right_button)
-					wCoreConfigure(fwin->right_button, width - bsize + 1, 0, bsize, bsize);
-
-			} else {	/* !new_style */
-				if (fwin->left_button)
-					wCoreConfigure(fwin->left_button, 3, (theight - bsize) / 2, bsize, bsize);
-#ifdef XKB_BUTTON_HINT
-				if (fwin->language_button)
-					wCoreConfigure(fwin->language_button, 6 + bsize, (theight - bsize) / 2,
-						       bsize, bsize);
-#endif
-
-				if (fwin->right_button)
-					wCoreConfigure(fwin->right_button, width - bsize - 3,
-						       (theight - bsize) / 2, bsize, bsize);
-			}
+			layoutButtonGeometry(fwin, width, bsize, theight);
 			updateTitlebar(fwin);
 		} else {
 			/* we had a titlebar, but now we don't need it anymore */
 			for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
 				release_title_set(fwin, i);
-			if (fwin->left_button)
-				wCoreDestroy(fwin->left_button);
-			fwin->left_button = NULL;
-
-#ifdef XKB_BUTTON_HINT
-			if (fwin->language_button)
-				wCoreDestroy(fwin->language_button);
-			fwin->language_button = NULL;
-#endif
-
-			if (fwin->right_button)
-				wCoreDestroy(fwin->right_button);
-			fwin->right_button = NULL;
+			for (i = 0; i < WTB_ROLE_COUNT; i++) {
+				if (fwin->buttons[i])
+					wCoreDestroy(fwin->buttons[i]);
+				fwin->buttons[i] = NULL;
+			}
 
 			wCoreDestroy(fwin->titlebar);
 			fwin->titlebar = NULL;
@@ -376,98 +482,38 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		/* if we didn't have a titlebar and are being requested for
 		 * one, create it */
 		if (flags & WFF_TITLEBAR) {
+			WCoreWindow *parent;
+			int r, k;
+
 			fwin->top_width = theight;
 
 			fwin->flags.titlebar = 1;
 			fwin->titlebar = wCoreCreate(fwin->core, 0, 0, width + 1, theight);
 
-			if (flags & WFF_LEFT_BUTTON) {
-				fwin->flags.left_button = 1;
-				if (w_global.config->new_style == TS_NEW) {
-					fwin->left_button = wCoreCreate(fwin->core, 0, 0, bsize, bsize);
+			parent = (w_global.config->new_style == TS_NEW) ? fwin->core : fwin->titlebar;
 
-					if (width < theight * 4)
-						fwin->flags.lbutton_dont_fit = 1;
-					else
-						XMapRaised(dpy, fwin->left_button->window);
-
-				} else if (w_global.config->new_style == TS_OLD) {
-					fwin->left_button =
-					    wCoreCreate(fwin->titlebar, 3, (theight - bsize) / 2, bsize, bsize);
-
-					XSetWindowBackground(dpy, fwin->left_button->window,
+			for (r = 0; r < WTB_ROLE_COUNT; r++) {
+				if (!(flags & WFF_ROLE_BIT(r)))
+					continue;
+				setRoleBit(fwin->flags.has_button, r, 1);
+				fwin->buttons[r] = wCoreCreate(parent, 0, 0, bsize, bsize);
+				if (w_global.config->new_style == TS_OLD)
+					XSetWindowBackground(dpy, fwin->buttons[r]->window,
 							     scr->widget_texture->normal.pixel);
-
-					if (width < theight * 3)
-						fwin->flags.lbutton_dont_fit = 1;
-					else
-						XMapRaised(dpy, fwin->left_button->window);
-
-				} else {
-					fwin->left_button =
-					    wCoreCreate(fwin->titlebar, 3, (theight-bsize)/2,
-								    bsize, bsize);
-
-					XSetWindowBackground(dpy, fwin->left_button->window,
+				else if (w_global.config->new_style == TS_NEXT)
+					XSetWindowBackground(dpy, fwin->buttons[r]->window,
 							     scr->widget_texture->dark.pixel);
 
-					if (width < theight * 3)
-						fwin->flags.lbutton_dont_fit = 1;
-					else
-						XMapRaised(dpy, fwin->left_button->window);
-
-				}
-			}
-#ifdef XKB_BUTTON_HINT
-			if (flags & WFF_LANGUAGE_BUTTON) {
-				fwin->flags.language_button = 1;
-				if (w_global.config->new_style == TS_NEW) {
-					fwin->language_button = wCoreCreate(fwin->core, bsize, 0, bsize, bsize);
-
-					if (width < theight * 4)
-						fwin->flags.languagebutton_dont_fit = 1;
-					else
-						XMapRaised(dpy, fwin->language_button->window);
-				} else {
-					fwin->language_button =
-					    wCoreCreate(fwin->titlebar, bsize + 6, (theight - bsize) / 2,
-							bsize, bsize);
-
-					XSetWindowBackground(dpy, fwin->language_button->window,
-							     scr->widget_texture->normal.pixel);
-
-					if (width < theight * 3)
-						fwin->flags.languagebutton_dont_fit = 1;
-					else
-						XMapRaised(dpy, fwin->language_button->window);
-				}
-			}
-#endif
-
-			if (flags & WFF_RIGHT_BUTTON) {
-				fwin->flags.right_button = 1;
-				if (w_global.config->new_style == TS_NEW) {
-					fwin->right_button =
-					    wCoreCreate(fwin->core, width - bsize + 1, 0, bsize, bsize);
-				} else if (w_global.config->new_style == TS_OLD) {
-					fwin->right_button =
-					    wCoreCreate(fwin->titlebar, width - bsize - 3,
-							(theight - bsize) / 2, bsize, bsize);
-					XSetWindowBackground(dpy, fwin->right_button->window,
-							     scr->widget_texture->normal.pixel);
-				} else {
-					fwin->right_button =
-					    wCoreCreate(fwin->titlebar, width-bsize-3,
-							(theight-bsize)/2, bsize, bsize);
-					XSetWindowBackground(dpy, fwin->right_button->window,
-							     scr->widget_texture->dark.pixel);
-				}
-
-				if (width < theight * 2)
-					fwin->flags.rbutton_dont_fit = 1;
+				k = (w_global.config->new_style == TS_NEW)
+					? wtb_role_info[r].dontfit_k_new
+					: wtb_role_info[r].dontfit_k_old;
+				if (width < theight * k)
+					setRoleBit(fwin->flags.button_dont_fit, r, 1);
 				else
-					XMapRaised(dpy, fwin->right_button->window);
+					XMapRaised(dpy, fwin->buttons[r]->window);
 			}
+
+			layoutButtonGeometry(fwin, width, bsize, theight);
 
 			if (w_global.config->new_style == TS_NEW)
 				updateTitlebar(fwin);
@@ -538,27 +584,13 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		fwin->resizebar->descriptor.handle_mousedown = resizebarMouseDown;
 	}
 
-	if (fwin->left_button) {
-		fwin->left_button->descriptor.handle_expose = handleButtonExpose;
-		fwin->left_button->descriptor.parent = fwin;
-		fwin->left_button->descriptor.parent_type = WCLASS_FRAME;
-		fwin->left_button->descriptor.handle_mousedown = buttonMouseDown;
-	}
-
-#ifdef XKB_BUTTON_HINT
-	if (fwin->language_button) {
-		fwin->language_button->descriptor.handle_expose = handleButtonExpose;
-		fwin->language_button->descriptor.parent = fwin;
-		fwin->language_button->descriptor.parent_type = WCLASS_FRAME;
-		fwin->language_button->descriptor.handle_mousedown = buttonMouseDown;
-	}
-#endif
-
-	if (fwin->right_button) {
-		fwin->right_button->descriptor.parent = fwin;
-		fwin->right_button->descriptor.parent_type = WCLASS_FRAME;
-		fwin->right_button->descriptor.handle_expose = handleButtonExpose;
-		fwin->right_button->descriptor.handle_mousedown = buttonMouseDown;
+	for (i = 0; i < WTB_ROLE_COUNT; i++) {
+		if (!fwin->buttons[i])
+			continue;
+		fwin->buttons[i]->descriptor.handle_expose = handleButtonExpose;
+		fwin->buttons[i]->descriptor.parent = fwin;
+		fwin->buttons[i]->descriptor.parent_type = WCLASS_FRAME;
+		fwin->buttons[i]->descriptor.handle_mousedown = buttonMouseDown;
 	}
 
 	checkTitleSize(fwin);
@@ -586,16 +618,9 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 {
 	int i;
 
-	if (fwin->left_button)
-		wCoreDestroy(fwin->left_button);
-
-#ifdef XKB_BUTTON_HINT
-	if (fwin->language_button)
-		wCoreDestroy(fwin->language_button);
-#endif
-
-	if (fwin->right_button)
-		wCoreDestroy(fwin->right_button);
+	for (i = 0; i < WTB_ROLE_COUNT; i++)
+		if (fwin->buttons[i])
+			wCoreDestroy(fwin->buttons[i]);
 
 	if (fwin->resizebar)
 		wCoreDestroy(fwin->resizebar);
@@ -641,8 +666,9 @@ void wFrameWindowChangeState(WFrameWindow * fwin, int state)
 
 static void updateTitlebar(WFrameWindow * fwin)
 {
-	int x, w;
-	int theight;
+	short rolepos[WTB_ROLE_COUNT];
+	int x, w, nleft, nright;
+	int theight, bsize;
 
 	theight = WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2;
 
@@ -652,56 +678,24 @@ static void updateTitlebar(WFrameWindow * fwin)
 	if (theight < frame_title_min_height(fwin))
 		theight = frame_title_min_height(fwin);
 
+	if (w_global.config->new_style == TS_NEW)
+		bsize = theight;
+	else if (w_global.config->new_style == TS_OLD)
+		bsize = theight - 7;
+	else
+		bsize = theight - 8;
+
 	x = 0;
 	w = fwin->core->width + 1;
 
-	if (w_global.config->new_style == TS_NEW) {
-		if (fwin->flags.hide_left_button || !fwin->left_button || fwin->flags.lbutton_dont_fit) {
-			x = 0;
-#ifdef XKB_BUTTON_HINT
-			if (fwin->language_button)
-				wCoreConfigure(fwin->language_button, 0, 0,
-					       fwin->language_button->width, fwin->language_button->width);
-#endif
-		} else {
-#ifdef XKB_BUTTON_HINT
-			if (fwin->language_button)
-				wCoreConfigure(fwin->language_button, fwin->left_button->width, 0,
-					       fwin->language_button->width, fwin->language_button->width);
-#endif
-			x = fwin->left_button->width;
-			w -= fwin->left_button->width;
-		}
-#ifdef XKB_BUTTON_HINT
-		if (fwin->flags.hide_language_button || !fwin->language_button
-		    || fwin->flags.languagebutton_dont_fit) {
-		} else {
-			x += fwin->language_button->width;
-			w -= fwin->language_button->width;
-		}
-#endif
-	}
-#ifdef XKB_BUTTON_HINT
-	else {
-		int bsize = theight - 7;
-		if (w_global.config->new_style == TS_NEXT)
-			bsize -= 1;
-		if (fwin->flags.hide_left_button || !fwin->left_button || fwin->flags.lbutton_dont_fit) {
-			if (fwin->language_button)
-				wCoreConfigure(fwin->language_button, 3, (theight - bsize) / 2,
-					       fwin->language_button->width, fwin->language_button->width);
-		} else {
-			if (fwin->language_button)
-				wCoreConfigure(fwin->language_button,
-					       6 + fwin->left_button->width, (theight - bsize) / 2,
-					       fwin->language_button->width, fwin->language_button->width);
-		}
-	}
-#endif
+	countLayoutSlots(fwin, &nleft, &nright, rolepos);
+	/* hiding/showing one role can shift the others on the same
+	 * side, redo the geometry walk every time */
+	layoutButtonGeometry(fwin, fwin->core->width, bsize, theight);
 
 	if (w_global.config->new_style == TS_NEW) {
-		if (!fwin->flags.hide_right_button && fwin->right_button && !fwin->flags.rbutton_dont_fit)
-			w -= fwin->right_button->width;
+		x = nleft * bsize;
+		w -= (nleft + nright) * bsize;
 	}
 
 	if (w_global.config->new_style == TS_NEW || fwin->titlebar->width != w)
@@ -712,32 +706,23 @@ static void updateTitlebar(WFrameWindow * fwin)
 
 void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 {
-	if ((flags & WFF_RIGHT_BUTTON) && fwin->right_button) {
-		XUnmapWindow(dpy, fwin->right_button->window);
-		fwin->flags.hide_right_button = 1;
-	}
+	int r;
 
-	if ((flags & WFF_LEFT_BUTTON) && fwin->left_button) {
-		XUnmapWindow(dpy, fwin->left_button->window);
-		fwin->flags.hide_left_button = 1;
+	for (r = 0; r < WTB_ROLE_COUNT; r++) {
+		if (!(flags & WFF_ROLE_BIT(r)) || !hasButton(fwin, r))
+			continue;
+		if (fwin->buttons[r])
+			XUnmapWindow(dpy, fwin->buttons[r]->window);
+		setRoleBit(fwin->flags.hide_button, r, 1);
 	}
-#ifdef XKB_BUTTON_HINT
-	if ((flags & WFF_LANGUAGE_BUTTON) && fwin->language_button) {
-		XUnmapWindow(dpy, fwin->language_button->window);
-		fwin->flags.hide_language_button = 1;
-	}
-#endif
 
 	if (fwin->titlebar) {
 		if (w_global.config->new_style == TS_NEW) {
 			updateTitlebar(fwin);
 		} else {
-#ifdef XKB_BUTTON_HINT
 			updateTitlebar(fwin);
-#else
 			XClearWindow(dpy, fwin->titlebar->window);
 			wFrameWindowPaint(fwin);
-#endif
 		}
 		checkTitleSize(fwin);
 	}
@@ -745,35 +730,21 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 
 void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 {
-	if ((flags & WFF_RIGHT_BUTTON) && fwin->right_button && fwin->flags.hide_right_button) {
+	int r;
 
-		if (!fwin->flags.rbutton_dont_fit)
-			XMapWindow(dpy, fwin->right_button->window);
-
-		fwin->flags.hide_right_button = 0;
-	}
-#ifdef XKB_BUTTON_HINT
-	if ((flags & WFF_LANGUAGE_BUTTON) && fwin->language_button && fwin->flags.hide_language_button) {
-
-		if (!fwin->flags.languagebutton_dont_fit)
-			XMapWindow(dpy, fwin->language_button->window);
-
-		fwin->flags.hide_language_button = 0;
-	}
-#endif
-
-	if ((flags & WFF_LEFT_BUTTON) && fwin->left_button && fwin->flags.hide_left_button) {
-
-		if (!fwin->flags.lbutton_dont_fit)
-			XMapWindow(dpy, fwin->left_button->window);
-
-		fwin->flags.hide_left_button = 0;
+	for (r = 0; r < WTB_ROLE_COUNT; r++) {
+		if (!(flags & WFF_ROLE_BIT(r)) || !hasButton(fwin, r) || !hideButton(fwin, r))
+			continue;
+		if (fwin->buttons[r] && !dontFit(fwin, r))
+			XMapWindow(dpy, fwin->buttons[r]->window);
+		setRoleBit(fwin->flags.hide_button, r, 0);
 	}
 
 	if (fwin->titlebar) {
 		if (w_global.config->new_style == TS_NEW) {
 			updateTitlebar(fwin);
 		} else {
+			updateTitlebar(fwin);
 			XClearWindow(dpy, fwin->titlebar->window);
 			wFrameWindowPaint(fwin);
 		}
@@ -782,28 +753,16 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 }
 
 static void
-#ifdef XKB_BUTTON_HINT
 renderTexture(WScreen * scr, WTexture * texture, int width, int height,
-	      int bwidth, int bheight, int left, int language, int right,
-	      Pixmap * title, Pixmap * lbutton, Pixmap * languagebutton, Pixmap * rbutton)
-#else
-renderTexture(WScreen * scr, WTexture * texture, int width, int height,
-	      int bwidth, int bheight, int left, int right, Pixmap * title, Pixmap * lbutton, Pixmap * rbutton)
-#endif
+	      int bwidth, int bheight, int nleft, int nright,
+	      Pixmap * title, Pixmap slices[])
 {
-	RImage *img;
-	RImage *limg, *rimg, *mimg;
-#ifdef XKB_BUTTON_HINT
-	RImage *timg;
-#endif
-	int x, w;
+	RImage *img, *sub, *mimg;
+	int x, w, i;
 
 	*title = None;
-	*lbutton = None;
-	*rbutton = None;
-#ifdef XKB_BUTTON_HINT
-	*languagebutton = None;
-#endif
+	for (i = 0; i < nleft + nright; i++)
+		slices[i] = None;
 
 	img = wTextureRenderImage(texture, width, height, WREL_FLAT);
 	if (!img) {
@@ -812,54 +771,29 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	}
 
 	if (w_global.config->new_style == TS_NEW) {
-		if (left)
-			limg = RGetSubImage(img, 0, 0, bwidth, bheight);
-		else
-			limg = NULL;
-
 		x = 0;
 		w = img->width;
 
-#ifdef XKB_BUTTON_HINT
-		if (language)
-			timg = RGetSubImage(img, bwidth * left, 0, bwidth, bheight);
-		else
-			timg = NULL;
-#endif
-
-		if (limg) {
-			RBevelImage(limg, RBEV_RAISED2);
-			if (!RConvertImage(scr->rcontext, limg, lbutton))
-				wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
-
-			x += limg->width;
-			w -= limg->width;
-			RReleaseImage(limg);
+		for (i = 0; i < nleft; i++) {
+			sub = RGetSubImage(img, i * bwidth, 0, bwidth, bheight);
+			if (sub) {
+				RBevelImage(sub, RBEV_RAISED2);
+				if (!RConvertImage(scr->rcontext, sub, &slices[i]))
+					wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
+				x += sub->width;
+				w -= sub->width;
+				RReleaseImage(sub);
+			}
 		}
-#ifdef XKB_BUTTON_HINT
-		if (timg) {
-			RBevelImage(timg, RBEV_RAISED2);
-			if (!RConvertImage(scr->rcontext, timg, languagebutton))
-				wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
-
-			x += timg->width;
-			w -= timg->width;
-			RReleaseImage(timg);
-		}
-#endif
-
-		if (right)
-			rimg = RGetSubImage(img, width - bwidth, 0, bwidth, bheight);
-		else
-			rimg = NULL;
-
-		if (rimg) {
-			RBevelImage(rimg, RBEV_RAISED2);
-			if (!RConvertImage(scr->rcontext, rimg, rbutton))
-				wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
-
-			w -= rimg->width;
-			RReleaseImage(rimg);
+		for (i = 0; i < nright; i++) {
+			sub = RGetSubImage(img, width - (i + 1) * bwidth, 0, bwidth, bheight);
+			if (sub) {
+				RBevelImage(sub, RBEV_RAISED2);
+				if (!RConvertImage(scr->rcontext, sub, &slices[nleft + i]))
+					wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
+				w -= sub->width;
+				RReleaseImage(sub);
+			}
 		}
 
 		if (w != width) {
@@ -932,7 +866,7 @@ renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height,
 
 static void updateTexture(WFrameWindow * fwin)
 {
-	int i;
+	int i, r;
 	unsigned long pixel;
 
 	i = fwin->flags.state;
@@ -940,49 +874,27 @@ static void updateTexture(WFrameWindow * fwin)
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
 			XSetWindowBackgroundPixmap(dpy, fwin->titlebar->window, fwin->title_back[i]);
 			if (w_global.config->new_style == TS_NEW) {
-				if (fwin->left_button && fwin->lbutton_back[i])
-					XSetWindowBackgroundPixmap(dpy, fwin->left_button->window,
-								   fwin->lbutton_back[i]);
-
-#ifdef XKB_BUTTON_HINT
-				if (fwin->language_button && fwin->languagebutton_back[i])
-					XSetWindowBackgroundPixmap(dpy, fwin->language_button->window,
-								   fwin->languagebutton_back[i]);
-#endif
-
-				if (fwin->right_button && fwin->rbutton_back[i])
-					XSetWindowBackgroundPixmap(dpy, fwin->right_button->window,
-								   fwin->rbutton_back[i]);
+				for (r = 0; r < WTB_ROLE_COUNT; r++)
+					if (fwin->buttons[r] && fwin->button_back[r][i])
+						XSetWindowBackgroundPixmap(dpy, fwin->buttons[r]->window,
+									   fwin->button_back[r][i]);
 			}
 		} else {
 			pixel = fwin->title_texture[i]->solid.normal.pixel;
 			XSetWindowBackground(dpy, fwin->titlebar->window, pixel);
 			if (w_global.config->new_style == TS_NEW) {
-				if (fwin->left_button)
-					XSetWindowBackground(dpy, fwin->left_button->window, pixel);
-#ifdef XKB_BUTTON_HINT
-				if (fwin->language_button)
-					XSetWindowBackground(dpy, fwin->language_button->window, pixel);
-#endif
-				if (fwin->right_button)
-					XSetWindowBackground(dpy, fwin->right_button->window, pixel);
+				for (r = 0; r < WTB_ROLE_COUNT; r++)
+					if (fwin->buttons[r])
+						XSetWindowBackground(dpy, fwin->buttons[r]->window, pixel);
 			}
 		}
 		XClearWindow(dpy, fwin->titlebar->window);
 
-		if (fwin->left_button) {
-			XClearWindow(dpy, fwin->left_button->window);
-			handleButtonExpose(&fwin->left_button->descriptor, NULL);
-		}
-#ifdef XKB_BUTTON_HINT
-		if (fwin->language_button) {
-			XClearWindow(dpy, fwin->language_button->window);
-			handleButtonExpose(&fwin->language_button->descriptor, NULL);
-		}
-#endif
-		if (fwin->right_button) {
-			XClearWindow(dpy, fwin->right_button->window);
-			handleButtonExpose(&fwin->right_button->descriptor, NULL);
+		for (r = 0; r < WTB_ROLE_COUNT; r++) {
+			if (!fwin->buttons[r])
+				continue;
+			XClearWindow(dpy, fwin->buttons[r]->window);
+			handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
 		}
 	}
 }
@@ -995,18 +907,13 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 		release_title_set(fwin, state);
 
 		if (fwin->title_texture[state]->any.type != WTEX_SOLID) {
+			const WTitlebarLayout *layout = frameLayout(fwin);
 			WTexture *tex = fwin->title_texture[state];
-			int left, right, language = 0;
+			short rolepos[WTB_ROLE_COUNT];
+			int nleft, nright, r, pos;
 			int width, height, extra;
 
-			left = fwin->left_button && !fwin->flags.hide_left_button
-			    && !fwin->flags.lbutton_dont_fit;
-#ifdef XKB_BUTTON_HINT
-			language = fwin->language_button && !fwin->flags.hide_language_button
-			    && !fwin->flags.languagebutton_dont_fit;
-#endif
-			right = fwin->right_button && !fwin->flags.hide_right_button
-			    && !fwin->flags.rbutton_dont_fit;
+			countLayoutSlots(fwin, &nleft, &nright, rolepos);
 
 			width = fwin->core->width + 1;
 			height = fwin->titlebar->height;
@@ -1014,7 +921,7 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			 * fold it out of the key for the other styles so they
 			 * share more */
 			extra = (w_global.config->new_style == TS_NEW)
-				? ((left ? 1 : 0) | (right ? 2 : 0) | (language ? 4 : 0))
+				? ((nleft << 4) | nright)
 				: 0;
 
 			e = texcache_find(title_tex_cache, tex, width, height, extra);
@@ -1024,15 +931,10 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 				e->width = width;
 				e->height = height;
 				e->extra = extra;
-#ifdef XKB_BUTTON_HINT
+				e->nbuttons = nleft + nright;
 				renderTexture(fwin->screen_ptr, tex, width, height,
-					      height, height, left, language, right,
-					      &e->title, &e->lbutton, &e->langbutton, &e->rbutton);
-#else
-				renderTexture(fwin->screen_ptr, tex, width, height,
-					      height, height, left, right,
-					      &e->title, &e->lbutton, &e->rbutton);
-#endif
+					      height, height, nleft, nright,
+					      &e->title, e->buttons);
 				e->next = title_tex_cache;
 				title_tex_cache = e;
 			}
@@ -1040,11 +942,19 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			fwin->title_cache[state] = e;
 			fwin->title_back[state] = e->title;
 			if (w_global.config->new_style == TS_NEW) {
-				fwin->lbutton_back[state] = e->lbutton;
-				fwin->rbutton_back[state] = e->rbutton;
-#ifdef XKB_BUTTON_HINT
-				fwin->languagebutton_back[state] = e->langbutton;
-#endif
+				/* map positional cache slices back to roles,
+				 * right-side slices were carved from the far
+				 * edge inward so the last slot in the array
+				 * is the leftmost right-side button */
+				for (r = 0; r < WTB_ROLE_COUNT; r++) {
+					if (rolepos[r] < 0)
+						continue;
+					if (layout->side[r] == WTB_SIDE_LEFT)
+						pos = rolepos[r];
+					else
+						pos = nleft + (nright - 1 - rolepos[r]);
+					fwin->button_back[r][state] = e->buttons[pos];
+				}
 			}
 		}
 	}
@@ -1169,32 +1079,28 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 	}
 
 	if (fwin->titlebar && !fwin->flags.repaint_only_resizebar) {
+		const WTitlebarLayout *layout = frameLayout(fwin);
 		int x, y, w, h;
 		int lofs = 6, rofs = 6;
 		int titlelen;
-		int allButtons = 1;
+		int r, all_visible = 1;
 
-		if (w_global.config->new_style != TS_NEW) {
-			if (fwin->left_button && !fwin->flags.hide_left_button && !fwin->flags.lbutton_dont_fit)
-				lofs += fwin->left_button->width + 3;
-			else
-				allButtons = 0;
-
-#ifdef XKB_BUTTON_HINT
-			if (fwin->language_button && !fwin->flags.hide_language_button
-			    && !fwin->flags.languagebutton_dont_fit)
-				lofs += fwin->language_button->width;
-			else
-				allButtons = 0;
-#endif
-
-			if (fwin->right_button && !fwin->flags.hide_right_button && !fwin->flags.rbutton_dont_fit)
-				rofs += fwin->right_button->width + 3;
-			else
-				allButtons = 0;
+		for (r = 0; r < WTB_ROLE_COUNT; r++) {
+			if (!hasButton(fwin, r))
+				continue;
+			if (!buttonVisible(fwin, r)) {
+				all_visible = 0;
+				continue;
+			}
+			if (w_global.config->new_style != TS_NEW) {
+				if (layout->side[r] == WTB_SIDE_LEFT)
+					lofs += fwin->buttons[r]->width + 3;
+				else
+					rofs += fwin->buttons[r]->width + 3;
+			}
 		}
 #ifdef XKB_BUTTON_HINT
-		if (fwin->flags.language_button && !fwin->languagebutton_image[0])
+		if (hasButton(fwin, WTB_LANGUAGE) && !fwin->languagebutton_image[0])
 			wFrameWindowUpdateLanguageButton(fwin);
 #endif
 
@@ -1216,7 +1122,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 				break;
 
 			default:
-				if (!allButtons)
+				if (!all_visible)
 					x = lofs + (fwin->titlebar->width - w - lofs - rofs) / 2;
 				else
 					x = (fwin->titlebar->width - w) / 2;
@@ -1262,20 +1168,14 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			wfree(title);
 		}
 
-		if (fwin->left_button)
-			handleButtonExpose(&fwin->left_button->descriptor, NULL);
-		if (fwin->right_button)
-			handleButtonExpose(&fwin->right_button->descriptor, NULL);
-#ifdef XKB_BUTTON_HINT
-		if (fwin->language_button)
-			handleButtonExpose(&fwin->language_button->descriptor, NULL);
-#endif
+		for (r = 0; r < WTB_ROLE_COUNT; r++)
+			if (fwin->buttons[r])
+				handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
 	}
 }
 
 static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height, Bool dontMove)
 {
-	int k = (w_global.config->new_style == TS_NEW ? 4 : 3);
 	int resizedHorizontally = 0;
 
 	if (dontMove)
@@ -1292,62 +1192,29 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 	fwin->core->height = height;
 
 	if (fwin->titlebar && resizedHorizontally) {
+		int r, k, fits;
+
 		/* Check if the titlebar is wide enough to hold the buttons.
 		 * Temporarily remove them if can't
 		 */
-		if (fwin->left_button) {
-			if (width < fwin->top_width * k && !fwin->flags.lbutton_dont_fit) {
-				if (!fwin->flags.hide_left_button)
-					XUnmapWindow(dpy, fwin->left_button->window);
-
-				fwin->flags.lbutton_dont_fit = 1;
-			} else if (width >= fwin->top_width * k && fwin->flags.lbutton_dont_fit) {
-				if (!fwin->flags.hide_left_button)
-					XMapWindow(dpy, fwin->left_button->window);
-
-				fwin->flags.lbutton_dont_fit = 0;
-			}
-		}
-#ifdef XKB_BUTTON_HINT
-		if (fwin->language_button) {
-			if (width < fwin->top_width * k && !fwin->flags.languagebutton_dont_fit) {
-				if (!fwin->flags.hide_language_button)
-					XUnmapWindow(dpy, fwin->language_button->window);
-
-				fwin->flags.languagebutton_dont_fit = 1;
-			} else if (width >= fwin->top_width * k && fwin->flags.languagebutton_dont_fit) {
-				if (!fwin->flags.hide_language_button)
-					XMapWindow(dpy, fwin->language_button->window);
-
-				fwin->flags.languagebutton_dont_fit = 0;
-			}
-		}
-#endif
-
-		if (fwin->right_button) {
-			if (width < fwin->top_width * 2 && !fwin->flags.rbutton_dont_fit) {
-				if (!fwin->flags.hide_right_button)
-					XUnmapWindow(dpy, fwin->right_button->window);
-
-				fwin->flags.rbutton_dont_fit = 1;
-			} else if (width >= fwin->top_width * 2 && fwin->flags.rbutton_dont_fit) {
-				if (!fwin->flags.hide_right_button)
-					XMapWindow(dpy, fwin->right_button->window);
-
-				fwin->flags.rbutton_dont_fit = 0;
+		for (r = 0; r < WTB_ROLE_COUNT; r++) {
+			if (!fwin->buttons[r])
+				continue;
+			k = (w_global.config->new_style == TS_NEW)
+				? wtb_role_info[r].dontfit_k_new
+				: wtb_role_info[r].dontfit_k_old;
+			fits = (width >= fwin->top_width * k);
+			if (!fits && !dontFit(fwin, r)) {
+				if (!hideButton(fwin, r))
+					XUnmapWindow(dpy, fwin->buttons[r]->window);
+				setRoleBit(fwin->flags.button_dont_fit, r, 1);
+			} else if (fits && dontFit(fwin, r)) {
+				if (!hideButton(fwin, r))
+					XMapWindow(dpy, fwin->buttons[r]->window);
+				setRoleBit(fwin->flags.button_dont_fit, r, 0);
 			}
 		}
 
-		if (w_global.config->new_style == TS_NEW) {
-			if (fwin->right_button)
-				XMoveWindow(dpy, fwin->right_button->window,
-					    width - fwin->right_button->width + 1, 0);
-		} else {
-			if (fwin->right_button)
-				XMoveWindow(dpy, fwin->right_button->window,
-					    width - fwin->right_button->width - 3,
-					    (fwin->titlebar->height - fwin->right_button->height) / 2);
-		}
 		updateTitlebar(fwin);
 		checkTitleSize(fwin);
 	}
@@ -1434,7 +1301,7 @@ static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, Pixmap *pixma
 void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 {
 	WScreen *scr = fwin->screen_ptr;
-	WCoreWindow *button = fwin->language_button;
+	WCoreWindow *button = fwin->buttons[WTB_LANGUAGE];
 	GC gc = scr->copy_gc;
 	int i, text_width, text_height;
 	int border_thickness = 3;
@@ -1495,7 +1362,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	if (w_global.config->new_style == TS_NEW) {
 		for (i = 0; i < 2; i++) {
 			if (fwin->title_texture[i]->any.type != WTEX_SOLID && fwin->title_back[i] != None) {
-				XCopyArea(dpy, fwin->languagebutton_back[i], tmp[i], scr->copy_gc,
+				XCopyArea(dpy, fwin->button_back[WTB_LANGUAGE][i], tmp[i], scr->copy_gc,
 						  0, 0, button->width, button->height, -1, -1);
 			} else {
 				unsigned long bg_pixel = fwin->title_texture[i]->solid.normal.pixel;
@@ -1568,7 +1435,7 @@ static void handleExpose(WObjDescriptor * desc, XEvent * event)
 
 static void checkTitleSize(WFrameWindow * fwin)
 {
-	int width;
+	int width, r;
 
 	if (!fwin->title) {
 		fwin->flags.incomplete_title = 0;
@@ -1583,17 +1450,9 @@ static void checkTitleSize(WFrameWindow * fwin)
 	}
 
 	if (w_global.config->new_style != TS_NEW) {
-		if (fwin->left_button && !fwin->flags.hide_left_button && !fwin->flags.lbutton_dont_fit)
-			width -= fwin->left_button->width + 3;
-
-#ifdef XKB_BUTTON_HINT
-		if (fwin->language_button && !fwin->flags.hide_language_button
-		    && !fwin->flags.languagebutton_dont_fit)
-			width -= fwin->language_button->width + 3;
-#endif
-
-		if (fwin->right_button && !fwin->flags.hide_right_button && !fwin->flags.rbutton_dont_fit)
-			width -= fwin->right_button->width + 3;
+		for (r = 0; r < WTB_ROLE_COUNT; r++)
+			if (buttonVisible(fwin, r))
+				width -= fwin->buttons[r]->width + 3;
 	}
 
 	if (WMWidthOfString(*fwin->font, fwin->title, strlen(fwin->title)) > width)
@@ -1712,13 +1571,20 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 {
 	WFrameWindow *fwin = (WFrameWindow *) desc->parent;
 	WCoreWindow *button = (WCoreWindow *) desc->self;
+	int r;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) event;
 
+	for (r = 0; r < WTB_ROLE_COUNT; r++)
+		if (button == fwin->buttons[r])
+			break;
+	if (r >= WTB_ROLE_COUNT)
+		return;
+
 #ifdef XKB_BUTTON_HINT
-	if (button == fwin->language_button) {
-		if (!fwin->flags.hide_language_button) {
+	if (r == WTB_LANGUAGE) {
+		if (!hideButton(fwin, WTB_LANGUAGE)) {
 			/* map focused and pfocused states to focus language button image */
 			int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
 
@@ -1727,14 +1593,12 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 				    fwin->languagebutton_image[lb_index],
 				    False, False);
 		}
-	} else
+		return;
+	}
 #endif
-	if (button == fwin->left_button)
-		paintButton(button, fwin->title_texture[fwin->flags.state],
-			    WMColorPixel(fwin->title_color[fwin->flags.state]), fwin->lbutton_image, False, True);
-	else
-		paintButton(button, fwin->title_texture[fwin->flags.state],
-			    WMColorPixel(fwin->title_color[fwin->flags.state]), fwin->rbutton_image, False, True);
+	paintButton(button, fwin->title_texture[fwin->flags.state],
+		    WMColorPixel(fwin->title_color[fwin->flags.state]),
+		    fwin->button_image[r], False, wtb_role_info[r].from_xpm);
 }
 
 static void titlebarMouseDown(WObjDescriptor * desc, XEvent * event)
@@ -1766,25 +1630,29 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 	WCoreWindow *button = desc->self;
 	WPixmap *image;
 	XEvent ev;
-	int done = 0, execute = 1, from_xpm = True;
+	int r, done = 0, execute = 1, from_xpm;
 	WTexture *texture;
 	unsigned long pixel;
 	int clickButton = event->xbutton.button;
 
+	for (r = 0; r < WTB_ROLE_COUNT; r++)
+		if (button == fwin->buttons[r])
+			break;
+	if (r >= WTB_ROLE_COUNT)
+		return;
+
 	if (IsDoubleClick(fwin->core->screen_ptr, event)) {
-		if (button == fwin->right_button && fwin->on_dblclick_right)
-			(*fwin->on_dblclick_right) (button, fwin->child, event);
+		if (fwin->on_dblclick_button[r])
+			(*fwin->on_dblclick_button[r]) (button, fwin->child, event);
 
 		return;
 	}
 
-	if (button == fwin->left_button)
-		image = fwin->lbutton_image;
-	else
-		image = fwin->rbutton_image;
+	image = fwin->button_image[r];
+	from_xpm = wtb_role_info[r].from_xpm;
 
 #ifdef XKB_BUTTON_HINT
-	if (button == fwin->language_button) {
+	if (r == WTB_LANGUAGE) {
 		if (!w_global.config->modelock)
 			return;
 
@@ -1792,7 +1660,6 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 		int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
 
 		image = fwin->languagebutton_image[lb_index];
-		from_xpm = False;
 	}
 #endif
 
@@ -1828,20 +1695,6 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 	}
 	paintButton(button, texture, pixel, image, False, from_xpm);
 
-	if (execute) {
-		if (button == fwin->left_button) {
-			if (fwin->on_click_left)
-				(*fwin->on_click_left) (button, fwin->child, &ev);
-		} else if (button == fwin->right_button) {
-			if (fwin->on_click_right)
-				(*fwin->on_click_right) (button, fwin->child, &ev);
-		}
-#ifdef XKB_BUTTON_HINT
-		else if (button == fwin->language_button) {
-			if (fwin->on_click_language)
-				(*fwin->on_click_language) (button, fwin->child, &ev);
-		}
-#endif
-
-	}
+	if (execute && fwin->on_click_button[r])
+		(*fwin->on_click_button[r]) (button, fwin->child, &ev);
 }

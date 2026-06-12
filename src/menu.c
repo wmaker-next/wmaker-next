@@ -163,7 +163,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 
 	flags = WFF_SINGLE_STATE | WFF_BORDER;
 	if (title) {
-		flags |= WFF_TITLEBAR | WFF_RIGHT_BUTTON;
+		flags |= WFF_TITLEBAR | WFF_CLOSE_BUTTON;
 		menu->flags.titled = 1;
 	}
 	menu->frame =
@@ -176,7 +176,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 	menu->frame->core->descriptor.parent_type = WCLASS_MENU;
 	menu->frame->core->descriptor.handle_mousedown = menuMouseDown;
 
-	wFrameWindowHideButton(menu->frame, WFF_RIGHT_BUTTON);
+	wFrameWindowHideButton(menu->frame, WFF_CLOSE_BUTTON);
 
 	if (title) {
 		menu->frame->title = wstrdup(title);
@@ -184,7 +184,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 
 	menu->frame->flags.justification = WTJ_LEFT;
 
-	menu->frame->rbutton_image = screen->b_pixmaps[WBUT_CLOSE];
+	menu->frame->button_image[WTB_CLOSE] = screen->b_pixmaps[WBUT_CLOSE];
 
 	menu->entry_no = 0;
 	menu->alloced_entries = 0;
@@ -206,7 +206,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 		menu->frame->on_dblclick_titlebar = menuTitleDoubleClick;
 	}
 
-	menu->frame->on_click_right = menuCloseClick;
+	menu->frame->on_click_button[WTB_CLOSE] = menuCloseClick;
 
 	menu->menu = wCoreCreate(menu->frame->core, 0, menu->frame->top_width, menu->frame->core->width, 10);
 
@@ -559,7 +559,7 @@ void wMenuRealize(WMenu * menu)
 
 	flags = WFF_SINGLE_STATE | WFF_BORDER;
 	if (menu->flags.titled)
-		flags |= WFF_TITLEBAR | WFF_RIGHT_BUTTON;
+		flags |= WFF_TITLEBAR | WFF_CLOSE_BUTTON;
 
 	wFrameWindowUpdateBorders(menu->frame, flags);
 
@@ -1266,7 +1266,7 @@ void wMenuUnmap(WMenu * menu)
 
 	XUnmapWindow(dpy, menu->frame->core->window);
 	if (menu->flags.titled && menu->flags.buttoned) {
-		wFrameWindowHideButton(menu->frame, WFF_RIGHT_BUTTON);
+		wFrameWindowHideButton(menu->frame, WFF_CLOSE_BUTTON);
 	}
 	if (menu->flags.mapped)
 		menuTrackMapped(menu, -1);
@@ -2342,7 +2342,7 @@ static void menuTitleMouseDown(WCoreWindow * sender, void *data, XEvent * event)
 	   application menu */
 	if (!menu->flags.buttoned && !menu->flags.brother && (!menu->flags.app_menu || menu->parent != NULL)) {
 		menu->flags.buttoned = 1;
-		wFrameWindowShowButton(menu->frame, WFF_RIGHT_BUTTON);
+		wFrameWindowShowButton(menu->frame, WFF_CLOSE_BUTTON);
 		if (menu->parent) {
 			/* turn off selected menu entry in parent menu */
 			selectEntry(menu->parent, -1);
@@ -2602,7 +2602,7 @@ static int restoreMenu(WScreen *scr, WMPropList *menu)
 
 		wMenuMove(pmenu, x, y, True);
 		pmenu->flags.buttoned = 1;
-		wFrameWindowShowButton(pmenu->frame, WFF_RIGHT_BUTTON);
+		wFrameWindowShowButton(pmenu->frame, WFF_CLOSE_BUTTON);
 		return True;
 	}
 	return False;
@@ -2656,7 +2656,7 @@ static int restoreMenuRecurs(WScreen *scr, WMPropList *menus, WMenu *menu, const
 
 			wMenuMove(menu, x, y, True);
 			menu->flags.buttoned = 1;
-			wFrameWindowShowButton(menu->frame, WFF_RIGHT_BUTTON);
+			wFrameWindowShowButton(menu->frame, WFF_CLOSE_BUTTON);
 			res = True;
 		}
 	}

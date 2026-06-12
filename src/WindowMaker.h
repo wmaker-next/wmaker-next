@@ -104,6 +104,32 @@ typedef struct WObjDescriptor {
 #define PRED_BPIXMAPS		4 /* count of WBUT icons */
 #endif /* XKB_BUTTON_HINT */
 
+/*
+ * Titlebar button roles, decoupled from the side they sit on. These
+ * types live here, not in framewin.h, because screen.h needs
+ * WTitlebarLayout and config-schema-def.h is reached via
+ * wconfigmodel.h before any frame header.
+ */
+typedef enum {
+	WTB_MINIATURIZE,
+	WTB_CLOSE,
+#ifdef XKB_BUTTON_HINT
+	WTB_LANGUAGE,
+#endif
+	WTB_ROLE_COUNT
+} WTitlebarRole;
+
+typedef enum {
+	WTB_SIDE_NONE,
+	WTB_SIDE_LEFT,
+	WTB_SIDE_RIGHT
+} WTitlebarSide;
+
+typedef struct WTitlebarLayout {
+	WTitlebarSide side[WTB_ROLE_COUNT];
+	short order[WTB_ROLE_COUNT];
+} WTitlebarLayout;
+
 /* Mouse cursors */
 typedef enum {
 	WCUR_NORMAL,

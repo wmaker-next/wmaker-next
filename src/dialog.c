@@ -1493,8 +1493,8 @@ void wShowInfoPanel(WScreen *scr)
 	wFrameWindowHideButton(wwin->frame, WFF_LANGUAGE_BUTTON);
 #endif
 	wWindowUpdateButtonImages(wwin);
-	wFrameWindowShowButton(wwin->frame, WFF_RIGHT_BUTTON);
-	wwin->frame->on_click_right = destroyInfoPanel;
+	wFrameWindowShowButton(wwin->frame, WFF_CLOSE_BUTTON);
+	wwin->frame->on_click_button[WTB_CLOSE] = destroyInfoPanel;
 
 	wWindowMap(wwin);
 
@@ -1591,11 +1591,11 @@ void wShowLegalPanel(WScreen *scr)
 	WSETUFLAG(wwin, no_closable, 0);
 	WSETUFLAG(wwin, no_close_button, 0);
 	wWindowUpdateButtonImages(wwin);
-	wFrameWindowShowButton(wwin->frame, WFF_RIGHT_BUTTON);
+	wFrameWindowShowButton(wwin->frame, WFF_CLOSE_BUTTON);
 #ifdef XKB_BUTTON_HINT
 	wFrameWindowHideButton(wwin->frame, WFF_LANGUAGE_BUTTON);
 #endif
-	wwin->frame->on_click_right = destroyLegalPanel;
+	wwin->frame->on_click_button[WTB_CLOSE] = destroyLegalPanel;
 	panel->wwin = wwin;
 
 	WMMapWidget(panel->win);
