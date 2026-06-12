@@ -552,6 +552,18 @@ static WMPropList *schema_default_plist(const WConfigEntry *entry)
 	return NULL;
 }
 
+/* WindowMaker.in is shared between builds, but a few schema defaults
+ * are build-conditional. The .in file omits those keys so the
+ * per-build schema default applies at runtime, and this test accepts
+ * their absence rather than requiring one build's value. */
+static Bool schema_default_is_build_conditional(const WConfigEntry *entry)
+{
+	/* DEF_TITLEBAR_LEFT depends on XKB_BUTTON_HINT */
+	if (strcmp(entry->key, "TitlebarLeft") == 0)
+		return True;
+	return False;
+}
+
 static Bool is_non_schema_defaults_key(const char *key)
 {
 	(void)key;
@@ -828,6 +840,8 @@ static void test_defaults_file_matches_schema(void)
 
 		value = dict_get_key(dict, schema[i].key);
 		if (!value) {
+			if (schema_default_is_build_conditional(&schema[i]))
+				continue;
 			fprintf(stderr, "missing WindowMaker.in default for schema key %s\n",
 				schema[i].key);
 			CHECK(value != NULL);
@@ -1910,6 +1924,194 @@ out:
 		WMReleasePropList(new_dict);
 }
 
+/* parse_string_array_plist() now treats min_value != max_value as a
+ * range, the existing fixed-length callers (HotCornerActions etc) keep
+ * min == max and still reject under/over */
+static void test_string_array_range(void)
+{
+	const WConfigEntry *left = wConfigEntryForKey("TitlebarLeft");
+	const WConfigEntry *hot = wConfigEntryForKey("HotCornerActions");
+	WMPropList *dict;
+	WConfig *config;
+
+	CHECK(left != NULL && left->min_value == 0 && left->max_value == 8);
+	CHECK(hot != NULL && hot->min_value == 4 && hot->max_value == 4);
+
+	/* () accepted */
+	dict = dict_from_desc("{ TitlebarLeft = (); }");
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->titlebar_left.count == 0);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+
+	/* one entry accepted */
+	dict = dict_from_desc("{ TitlebarLeft = (A); }");
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->titlebar_left.count == 1);
+	CHECK(strcmp(config->titlebar_left.items[0], "A") == 0);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+
+	/* eight entries accepted */
+	dict = dict_from_desc("{ TitlebarLeft = (A,B,C,D,E,F,G,H); }");
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->titlebar_left.count == 8);
+	CHECK(strcmp(config->titlebar_left.items[7], "H") == 0);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+
+	/* nine entries rejected, falls back to default */
+	dict = dict_from_desc("{ TitlebarLeft = (A,B,C,D,E,F,G,H,I); }");
+	config = wConfigReadWindowMaker(dict);
+#ifdef XKB_BUTTON_HINT
+	CHECK(config->titlebar_left.count == 2);
+#else
+	CHECK(config->titlebar_left.count == 1);
+#endif
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+
+	/* fixed-length caller still rejects under/over */
+	dict = dict_from_desc("{ HotCornerActions = (A, B, C); }");
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->hot_corner_actions.count == 4);
+	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+
+	dict = dict_from_desc("{ HotCornerActions = (A, B, C, D, E); }");
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config->hot_corner_actions.count == 4);
+	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+}
+
+static WConfigStringArray make_array(const char *const *items, size_t count)
+{
+	WConfigStringArray a;
+
+	a.count = count;
+	a.items = (char **)(void *)items;
+	return a;
+}
+
+static void test_titlebar_layout_build(void)
+{
+	struct case_t {
+		const char *name;
+		const char *left[8];
+		size_t nleft;
+		const char *right[8];
+		size_t nright;
+		WTitlebarSide side[WTB_ROLE_COUNT];
+		short order[WTB_ROLE_COUNT];
+		int expect_warning;
+	};
+	static const struct case_t cases[] = {
+		{ "default",
+		  { "Miniaturize" }, 1, { "Close" }, 1,
+		  { [WTB_MINIATURIZE] = WTB_SIDE_LEFT, [WTB_CLOSE] = WTB_SIDE_RIGHT },
+		  { [WTB_MINIATURIZE] = 0, [WTB_CLOSE] = 0 },
+		  0 },
+		{ "swapped",
+		  { "Close" }, 1, { "Miniaturize" }, 1,
+		  { [WTB_MINIATURIZE] = WTB_SIDE_RIGHT, [WTB_CLOSE] = WTB_SIDE_LEFT },
+		  { [WTB_MINIATURIZE] = 0, [WTB_CLOSE] = 0 },
+		  0 },
+		{ "empty",
+		  { NULL }, 0, { NULL }, 0,
+		  { 0 },
+		  { 0 },
+		  0 },
+		{ "case-insensitive",
+		  { "miniaturize" }, 1, { NULL }, 0,
+		  { [WTB_MINIATURIZE] = WTB_SIDE_LEFT },
+		  { [WTB_MINIATURIZE] = 0 },
+		  0 },
+		{ "unknown",
+		  { "Foo" }, 1, { NULL }, 0,
+		  { 0 },
+		  { 0 },
+		  1 },
+		{ "duplicate-same-array",
+		  { "Close", "Close" }, 2, { NULL }, 0,
+		  { [WTB_CLOSE] = WTB_SIDE_LEFT },
+		  { [WTB_CLOSE] = 0 },
+		  1 },
+		{ "duplicate-across-arrays",
+		  { "Close" }, 1, { "Close" }, 1,
+		  { [WTB_CLOSE] = WTB_SIDE_LEFT },
+		  { [WTB_CLOSE] = 0 },
+		  1 },
+#ifdef XKB_BUTTON_HINT
+		{ "modelock-left",
+		  { "Miniaturize", "Language" }, 2, { NULL }, 0,
+		  { [WTB_MINIATURIZE] = WTB_SIDE_LEFT, [WTB_LANGUAGE] = WTB_SIDE_LEFT },
+		  { [WTB_MINIATURIZE] = 0, [WTB_LANGUAGE] = 1 },
+		  0 },
+		{ "modelock-right",
+		  { "Miniaturize" }, 1, { "Language", "Close" }, 2,
+		  { [WTB_MINIATURIZE] = WTB_SIDE_LEFT, [WTB_LANGUAGE] = WTB_SIDE_RIGHT,
+		    [WTB_CLOSE] = WTB_SIDE_RIGHT },
+		  { [WTB_MINIATURIZE] = 0, [WTB_LANGUAGE] = 0, [WTB_CLOSE] = 1 },
+		  0 },
+#endif
+	};
+	WTitlebarLayout layout;
+	WConfigStringArray left, right;
+	size_t i;
+	int r, warned;
+	WMPropList *pl;
+	const char *items[8];
+	WConfigStringArray def;
+	int n;
+
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		left = make_array(cases[i].left, cases[i].nleft);
+		right = make_array(cases[i].right, cases[i].nright);
+		warned = wTitlebarLayoutBuild(&layout, &left, &right);
+		if (warned != cases[i].expect_warning) {
+			fprintf(stderr, "FAIL titlebar_layout case '%s': warned=%d expected=%d\n",
+				cases[i].name, warned, cases[i].expect_warning);
+			failures++;
+		}
+		for (r = 0; r < WTB_ROLE_COUNT; r++) {
+			if (layout.side[r] != cases[i].side[r]) {
+				fprintf(stderr,
+					"FAIL titlebar_layout case '%s': role %d side=%d expected=%d\n",
+					cases[i].name, r, layout.side[r], cases[i].side[r]);
+				failures++;
+			}
+			if (layout.side[r] != WTB_SIDE_NONE
+			    && layout.order[r] != cases[i].order[r]) {
+				fprintf(stderr,
+					"FAIL titlebar_layout case '%s': role %d order=%d expected=%d\n",
+					cases[i].name, r, layout.order[r], cases[i].order[r]);
+				failures++;
+			}
+		}
+	}
+
+	/* DEF_TITLEBAR_LEFT parses to the historical default */
+	pl = WMCreatePropListFromDescription(DEF_TITLEBAR_LEFT);
+	CHECK(pl != NULL && WMIsPLArray(pl));
+	n = WMGetPropListItemCount(pl);
+	for (r = 0; r < n; r++)
+		items[r] = WMGetFromPLString(WMGetFromPLArray(pl, r));
+	def = make_array(items, (size_t)n);
+	right = make_array(NULL, 0);
+	warned = wTitlebarLayoutBuild(&layout, &def, &right);
+	CHECK(warned == 0);
+	CHECK(layout.side[WTB_MINIATURIZE] == WTB_SIDE_LEFT);
+	CHECK(layout.order[WTB_MINIATURIZE] == 0);
+#ifdef XKB_BUTTON_HINT
+	CHECK(layout.side[WTB_LANGUAGE] == WTB_SIDE_LEFT);
+	CHECK(layout.order[WTB_LANGUAGE] == 1);
+#endif
+	WMReleasePropList(pl);
+}
+
 int main(void)
 {
 	WMPLSetCaseSensitive(False);
@@ -1928,6 +2130,8 @@ int main(void)
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
 	test_deleted_key_keeps_current();
+	test_string_array_range();
+	test_titlebar_layout_build();
 
 	if (failures) {
 		fprintf(stderr, "%d check(s) failed\n", failures);

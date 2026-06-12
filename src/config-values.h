@@ -132,6 +132,13 @@
 #define TS_OLD		1
 #define TS_NEXT		2
 
+/* default titlebar button layout, left side */
+#ifdef XKB_BUTTON_HINT
+#define DEF_TITLEBAR_LEFT	"(Miniaturize, Language)"
+#else
+#define DEF_TITLEBAR_LEFT	"(Miniaturize)"
+#endif
+
 /* workspace border position */
 #define	WB_NONE		0
 #define	WB_LEFTRIGHT	1

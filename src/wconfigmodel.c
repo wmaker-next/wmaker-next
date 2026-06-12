@@ -430,12 +430,12 @@ static Bool parse_string_array_plist(const WConfigEntry *entry, WMPropList *valu
 		return False;
 	}
 
-	if (entry->min_value < 0 || entry->min_value != entry->max_value)
+	if (entry->min_value < 0 || entry->min_value > entry->max_value)
 		return False;
 
 	expected = (size_t)entry->min_value;
 	count = (size_t)WMGetPropListItemCount(value);
-	if (count != expected) {
+	if (count < expected || count > (size_t)entry->max_value) {
 		wwarning(_("Incorrect number of elements in array for key \"%s\"."),
 			 entry->key);
 		return False;

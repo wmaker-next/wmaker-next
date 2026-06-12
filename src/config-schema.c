@@ -29,6 +29,59 @@ static const WConfigEnum titlebar_modes[] = {
 	{NULL, 0, 0}
 };
 
+static const char *const wtb_role_name[WTB_ROLE_COUNT] = {
+	[WTB_MINIATURIZE] = "Miniaturize",
+	[WTB_CLOSE]       = "Close",
+#ifdef XKB_BUTTON_HINT
+	[WTB_LANGUAGE]    = "Language",
+#endif
+};
+
+int wTitlebarLayoutBuild(struct WTitlebarLayout *out,
+			 const WConfigStringArray *left,
+			 const WConfigStringArray *right)
+{
+	const WConfigStringArray *side_array[2];
+	int s, r, warned = 0;
+	size_t i;
+	short ord;
+
+	for (r = 0; r < WTB_ROLE_COUNT; r++) {
+		out->side[r] = WTB_SIDE_NONE;
+		out->order[r] = 0;
+	}
+
+	side_array[0] = left;
+	side_array[1] = right;
+
+	for (s = 0; s < 2; s++) {
+		ord = 0;
+		if (!side_array[s])
+			continue;
+		for (i = 0; i < side_array[s]->count; i++) {
+			const char *name = side_array[s]->items[i];
+
+			for (r = 0; r < WTB_ROLE_COUNT; r++)
+				if (strcasecmp(name, wtb_role_name[r]) == 0)
+					break;
+			if (r >= WTB_ROLE_COUNT) {
+				wwarning(_("unknown titlebar button role \"%s\""), name);
+				warned++;
+				continue;
+			}
+			if (out->side[r] != WTB_SIDE_NONE) {
+				wwarning(_("duplicate titlebar button role \"%s\""), name);
+				warned++;
+				continue;
+			}
+			out->side[r] = (s == 0) ? WTB_SIDE_LEFT : WTB_SIDE_RIGHT;
+			out->order[r] = ord++;
+		}
+	}
+
+	return warned;
+}
+
 static const WConfigEnum icon_positions[] = {
 	{"blv", IY_BOTTOM | IY_LEFT | IY_VERT, 0},
 	{"blh", IY_BOTTOM | IY_LEFT | IY_HORIZ, 0},

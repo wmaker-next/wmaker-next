@@ -40,6 +40,7 @@
 #include "WindowMaker.h"
 #include "def_pixmaps.h"
 #include "screen.h"
+#include "config-schema.h"
 #include "texture.h"
 #include "pixmap.h"
 #include "menu.h"
@@ -767,6 +768,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* create shared pixmaps */
 	createPixmaps(scr);
+
+	wTitlebarLayoutBuild(&scr->titlebar_layout,
+			     &w_global.config->titlebar_left,
+			     &w_global.config->titlebar_right);
 
 	/* set icon sizes we can accept from clients */
 	icon_size[0].min_width = 8;

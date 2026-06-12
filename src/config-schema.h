@@ -53,4 +53,9 @@ const WConfigEntry *wConfigSchema(void);
 size_t wConfigSchemaCount(void);
 const WConfigEntry *wConfigEntryForKey(const char *key);
 
+struct WTitlebarLayout;
+int wTitlebarLayoutBuild(struct WTitlebarLayout *out,
+			 const WConfigStringArray *left,
+			 const WConfigStringArray *right);
+
 #endif

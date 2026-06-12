@@ -105,10 +105,13 @@ typedef struct WObjDescriptor {
 #endif /* XKB_BUTTON_HINT */
 
 /*
- * Titlebar button roles, decoupled from the side they sit on. These
- * types live here, not in framewin.h, because screen.h needs
- * WTitlebarLayout and config-schema-def.h is reached via
- * wconfigmodel.h before any frame header.
+ * Titlebar button roles, decoupled from the side they sit on. The
+ * positional layout (left/right cluster, order within a cluster) is
+ * read from the TitlebarLeft/TitlebarRight defaults at startup and
+ * stored in WScreen.titlebar_layout. These types live here, not in
+ * framewin.h, because screen.h embeds WTitlebarLayout and
+ * config-schema-def.h is reached via wconfigmodel.h before any frame
+ * header.
  */
 typedef enum {
 	WTB_MINIATURIZE,

@@ -79,17 +79,16 @@ struct WFrameTexCache {
  * nright nor to the texture-slice cache.
  */
 static const struct {
-	const char *name;
 	int flag_shift;
 	short dontfit_k_new;
 	short dontfit_k_old;
 	Bool from_xpm;
 	Bool is_drawn;
 } wtb_role_info[WTB_ROLE_COUNT] = {
-	[WTB_MINIATURIZE] = { "Miniaturize", 1, 4, 3, True,  False },
-	[WTB_CLOSE]       = { "Close",       2, 2, 2, True,  False },
+	[WTB_MINIATURIZE] = { 1, 4, 3, True,  False },
+	[WTB_CLOSE]       = { 2, 2, 2, True,  False },
 #ifdef XKB_BUTTON_HINT
-	[WTB_LANGUAGE]    = { "Language",    6, 4, 3, False, False },
+	[WTB_LANGUAGE]    = { 6, 4, 3, False, False },
 #endif
 };
 
@@ -101,27 +100,9 @@ const int wtb_role_flag_shift[WTB_ROLE_COUNT] = {
 #endif
 };
 
-static const WTitlebarLayout default_layout = {
-	.side = {
-		[WTB_MINIATURIZE] = WTB_SIDE_LEFT,
-		[WTB_CLOSE]       = WTB_SIDE_RIGHT,
-#ifdef XKB_BUTTON_HINT
-		[WTB_LANGUAGE]    = WTB_SIDE_LEFT,
-#endif
-	},
-	.order = {
-		[WTB_MINIATURIZE] = 0,
-		[WTB_CLOSE]       = 0,
-#ifdef XKB_BUTTON_HINT
-		[WTB_LANGUAGE]    = 1,
-#endif
-	},
-};
-
 static inline const WTitlebarLayout *frameLayout(const WFrameWindow *fwin)
 {
-	(void) fwin;
-	return &default_layout;
+	return &fwin->screen_ptr->titlebar_layout;
 }
 
 static inline int hasButton(const WFrameWindow *fwin, int role)
@@ -482,6 +463,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		/* if we didn't have a titlebar and are being requested for
 		 * one, create it */
 		if (flags & WFF_TITLEBAR) {
+			const WTitlebarLayout *layout = frameLayout(fwin);
 			WCoreWindow *parent;
 			int r, k;
 
@@ -493,7 +475,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			parent = (w_global.config->new_style == TS_NEW) ? fwin->core : fwin->titlebar;
 
 			for (r = 0; r < WTB_ROLE_COUNT; r++) {
-				if (!(flags & WFF_ROLE_BIT(r)))
+				if (!(flags & WFF_ROLE_BIT(r)) || layout->side[r] == WTB_SIDE_NONE)
 					continue;
 				setRoleBit(fwin->flags.has_button, r, 1);
 				fwin->buttons[r] = wCoreCreate(parent, 0, 0, bsize, bsize);
@@ -1126,6 +1108,14 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 					x = lofs + (fwin->titlebar->width - w - lofs - rofs) / 2;
 				else
 					x = (fwin->titlebar->width - w) / 2;
+				/* one-sided user layouts (and the existing
+				 * modelock two-left/one-right case) can put
+				 * a long centred title under the cluster,
+				 * clamp it into the free span */
+				if (x + w > fwin->titlebar->width - rofs)
+					x = fwin->titlebar->width - rofs - w;
+				if (x < lofs)
+					x = lofs;
 				break;
 			}
 

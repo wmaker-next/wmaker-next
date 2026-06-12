@@ -257,6 +257,7 @@ typedef struct _WScreen {
     GC mono_gc;			       /* gc for 1 bit drawables */
 
     struct WPixmap *b_pixmaps[PRED_BPIXMAPS]; /* internal pixmaps for buttons*/
+    WTitlebarLayout titlebar_layout;          /* parsed TitlebarLeft/Right */
     struct WPixmap *menu_radio_indicator;/* left menu indicator */
     struct WPixmap *menu_check_indicator;/* left menu indicator for checkmark */
     struct WPixmap *menu_mini_indicator;   /* for miniwindow */

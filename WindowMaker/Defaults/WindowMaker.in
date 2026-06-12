@@ -3,6 +3,7 @@
 	ModifierKey = Mod1;
 	FocusMode = manual;
 	NewStyle = new;
+	TitlebarRight = (Close);
 	DisableDock = NO;
 	DisableClip = NO;
 	DisableDrawers = NO;

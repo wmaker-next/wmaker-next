@@ -70,6 +70,10 @@
 	  focus_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(NEW_STYLE, "NewStyle", ENUM, new_style, "new", \
 	  titlebar_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(TITLEBAR_LEFT, "TitlebarLeft", STRING_ARRAY, titlebar_left, \
+	  DEF_TITLEBAR_LEFT, NULL, 0, 8, WCFG_STARTUP_ONLY, 0) \
+	_(TITLEBAR_RIGHT, "TitlebarRight", STRING_ARRAY, titlebar_right, \
+	  "(Close)", NULL, 0, 8, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_DOCK, "DisableDock", BOOL, disable_dock, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_CLIP, "DisableClip", BOOL, disable_clip, "NO", \
