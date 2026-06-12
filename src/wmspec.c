@@ -1410,8 +1410,14 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !(wwin->flags.maximized & MAX_VERTICAL);
 
-		if (init) {
-			wwin->flags.maximized |= (set ? MAX_VERTICAL : 0);
+		if (init || wwin->flags.fullscreen) {
+			/* IS_RESIZABLE() is false while fullscreen so
+			 * wMaximizeWindow() would drop the request, record
+			 * the bit and let wUnfullscreenWindow() apply it */
+			if (set)
+				wwin->flags.maximized |= MAX_VERTICAL;
+			else
+				wwin->flags.maximized &= ~MAX_VERTICAL;
 		} else {
 			if (set)
 				wMaximizeWindow(wwin, wwin->flags.maximized | MAX_VERTICAL,
@@ -1424,8 +1430,11 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !(wwin->flags.maximized & MAX_HORIZONTAL);
 
-		if (init) {
-			wwin->flags.maximized |= (set ? MAX_HORIZONTAL : 0);
+		if (init || wwin->flags.fullscreen) {
+			if (set)
+				wwin->flags.maximized |= MAX_HORIZONTAL;
+			else
+				wwin->flags.maximized &= ~MAX_HORIZONTAL;
 		} else {
 			if (set)
 				wMaximizeWindow(wwin, wwin->flags.maximized | MAX_HORIZONTAL,
@@ -2207,7 +2216,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		if (event->data.l[2])
 			doStateAtom(wwin, (Atom) event->data.l[2], set, False);
 
-		if (wwin->flags.maximized != maximized) {
+		if (wwin->flags.maximized != maximized && !wwin->flags.fullscreen) {
 			if (!wwin->flags.maximized) {
 				wwin->flags.maximized = maximized;
 				wUnmaximizeWindow(wwin);

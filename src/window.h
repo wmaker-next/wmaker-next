@@ -207,6 +207,7 @@ typedef struct WWindow {
 		int x, y;
 		unsigned int width, height;	/* original geometry of the window */
 	} bfs_geometry;				/* (before fullscreen) */
+	int bfs_maximized;			/* flags.maximized at fullscreen entry */
 
 	int maximus_x;				/* size after Maximusizing */
 	int maximus_y;

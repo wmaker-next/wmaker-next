@@ -9,14 +9,23 @@ Configurable titlebar button layout
 The titlebar buttons are no longer fixed to "miniaturize on the left,
 close on the right". Two new array-typed defaults, TitlebarLeft and
 TitlebarRight, list which buttons appear in each cluster and in what
-order. Recognised role names are Miniaturize, Close, and (when built
-with --enable-modelock) Language. The default "(Miniaturize) /
-(Close)" keeps the historical look unchanged. The keys are read once
-at startup. With the new layout freedom a long centred title could
+order. Recognised role names are Miniaturize, Close, Maximize, and
+(when built with --enable-modelock) Language. The default
+"(Miniaturize) / (Close)" keeps the historical look unchanged. A
+macOS-style "(Close, Miniaturize, Maximize) / ()" cluster on the left
+is now possible. The keys are read once at startup. With the new
+layout freedom a long centred title could
 overlap a one-sided button cluster, so centred titles are now
 clamped to the free span between the left and right offsets, this
 also fixes the existing modelock case where a long title overlapped
 the language button.
+
+Maximize is a new button role: a plain click toggles full
+horizontal+vertical maximization, a Control-click toggles
+fullscreen (same modifier convention as Control-click on Close to
+kill and on Miniaturize to hide the application). The button glyph
+flips to a "restore" form while the window is maximized. The button
+is hidden on non-resizable windows.
 
 Fullscreen window menu entry and key binding
 ---------------------------------------------

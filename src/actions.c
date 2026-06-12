@@ -624,6 +624,8 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	if ((wwin->flags.old_maximized & MAX_MAXIMUS) && !wwin->flags.maximized)
 		wwin->flags.maximized = MAX_MAXIMUS;
 
+	wWindowUpdateButtonImages(wwin);
+
 	wWindowConstrainSize(wwin, &new_width, &new_height);
 
 	wWindowCropSize(wwin, usableArea.x2 - usableArea.x1,
@@ -1064,6 +1066,7 @@ void wUnmaximizeWindow(WWindow *wwin)
 
 	wwin->flags.maximized = 0;
 	wwin->flags.old_maximized = 0;
+	wWindowUpdateButtonImages(wwin);
 	wWindowConfigure(wwin, x, y, w, h);
 	wWindowSynthConfigureNotify(wwin);
 
@@ -1099,6 +1102,7 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 	wwin->bfs_geometry.y = wwin->frame_y;
 	wwin->bfs_geometry.width = wwin->frame->core->width;
 	wwin->bfs_geometry.height = wwin->frame->core->height;
+	wwin->bfs_maximized = wwin->flags.maximized;
 
 	i = 0;
 	monitor = wwin->flags.fullscreen_monitors[i];
@@ -1136,6 +1140,7 @@ void wFullscreenWindow(WWindow *wwin)
 	wwin->bfs_geometry.y = wwin->frame_y;
 	wwin->bfs_geometry.width = wwin->frame->core->width;
 	wwin->bfs_geometry.height = wwin->frame->core->height;
+	wwin->bfs_maximized = wwin->flags.maximized;
 
 	head = wGetHeadForWindow(wwin);
 	rect = wGetRectForHead(wwin->screen_ptr, head);
@@ -1149,6 +1154,8 @@ void wFullscreenWindow(WWindow *wwin)
 
 void wUnfullscreenWindow(WWindow *wwin)
 {
+	int target_max;
+
 	if (!wwin->flags.fullscreen)
 		return;
 
@@ -1164,10 +1171,26 @@ void wUnfullscreenWindow(WWindow *wwin)
 		}
 	}
 
+	/* restore exactly the pre-fullscreen state first, including the
+	 * maximize flag, so old_geometry and the borders rebuild see the
+	 * geometry that was current at wFullscreenWindow time */
+	target_max = wwin->flags.maximized;
+	wwin->flags.maximized = wwin->bfs_maximized;
 	wWindowConfigure(wwin, wwin->bfs_geometry.x, wwin->bfs_geometry.y,
 			 wwin->bfs_geometry.width, wwin->bfs_geometry.height);
 
 	wWindowConfigureBorders(wwin);
+
+	/* _NET_WM_STATE MAXIMIZED can change while fullscreen but
+	 * IS_RESIZABLE() makes wMaximizeWindow() a no-op there, so the
+	 * request is recorded in flags.maximized and applied now from
+	 * the restored pre-fullscreen geometry */
+	if (target_max != wwin->bfs_maximized) {
+		if (target_max)
+			wMaximizeWindow(wwin, target_max, wGetHeadForWindow(wwin));
+		else
+			wUnmaximizeWindow(wwin);
+	}
 	/*
 	   // seems unnecessary, but also harmless (doesn't generate flicker) -Dan
 	   wFrameWindowPaint(wwin->frame);

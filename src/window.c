@@ -103,6 +103,9 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, XEvent *event);
 /* iconify button */
 static void windowIconifyClick(WCoreWindow *sender, void *data, XEvent *event);
 
+/* maximize button */
+static void windowMaximizeClick(WCoreWindow *sender, void *data, XEvent *event);
+
 #ifdef XKB_BUTTON_HINT
 static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event);
 #endif
@@ -1391,7 +1394,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	}
 
 	/* Create frame, borders and do reparenting */
-	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON;
+	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON;
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
@@ -1434,6 +1437,9 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	if (WFLAGP(wwin, no_miniaturize_button))
 		foo |= WFF_MINIATURIZE_BUTTON;
 
+	if (!IS_RESIZABLE(wwin))
+		foo |= WFF_MAXIMIZE_BUTTON;
+
 #ifdef XKB_BUTTON_HINT
 	if (WFLAGP(wwin, no_language_button) || WFLAGP(wwin, no_focusable))
 		foo |= WFF_LANGUAGE_BUTTON;
@@ -1452,6 +1458,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wwin->frame->on_click_button[WTB_CLOSE] = windowCloseClick;
 	wwin->frame->on_dblclick_button[WTB_CLOSE] = windowCloseDblClick;
+	wwin->frame->on_click_button[WTB_MAXIMIZE] = windowMaximizeClick;
 	wwin->frame->on_mousedown_titlebar = titlebarMouseDown;
 	wwin->frame->on_dblclick_titlebar = titlebarDblClick;
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
@@ -2722,6 +2729,12 @@ void wWindowUpdateButtonImages(WWindow *wwin)
 		}
 	}
 
+	/* maximize button */
+	if (fwin->button_image[WTB_MAXIMIZE] && !fwin->button_image[WTB_MAXIMIZE]->shared)
+		wPixmapDestroy(fwin->button_image[WTB_MAXIMIZE]);
+	fwin->button_image[WTB_MAXIMIZE] =
+		scr->b_pixmaps[wwin->flags.maximized ? WBUT_RESTORE : WBUT_MAXIMIZE];
+
 	/* close button */
 
 	/* redefine WFLAGP to MGFLAGP to allow broken close operation */
@@ -2787,7 +2800,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 		int flags;
 		int newy, oldh;
 
-		flags = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON;
+		flags = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -2812,6 +2825,15 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 			XMoveWindow(dpy, wwin->client_win, 0, wwin->frame->top_width);
 			wWindowConfigure(wwin, wwin->frame_x, newy, wwin->client.width, wwin->client.height);
+			/* the existing call below only fires when a hide
+			 * flag toggles, wWindowUpdateButtonImages itself
+			 * early-returns when !HAS_TITLEBAR, so a
+			 * _NET_WM_STATE_MAXIMIZED_* change that arrives
+			 * while fullscreen leaves the Maximize glyph
+			 * stale until this branch runs on titlebar
+			 * recreation */
+			if (HAS_TITLEBAR(wwin))
+				wWindowUpdateButtonImages(wwin);
 		}
 
 		flags = 0;
@@ -2828,6 +2850,10 @@ void wWindowConfigureBorders(WWindow *wwin)
 		if (!WFLAGP(wwin, no_close_button)
 		    && (wwin->frame->flags.hide_button & (1 << WTB_CLOSE)))
 			flags |= WFF_CLOSE_BUTTON;
+
+		if (IS_RESIZABLE(wwin)
+		    && (wwin->frame->flags.hide_button & (1 << WTB_MAXIMIZE)))
+			flags |= WFF_MAXIMIZE_BUTTON;
 
 		if (flags != 0) {
 			wWindowUpdateButtonImages(wwin);
@@ -2848,6 +2874,10 @@ void wWindowConfigureBorders(WWindow *wwin)
 		if (WFLAGP(wwin, no_close_button)
 		    && !(wwin->frame->flags.hide_button & (1 << WTB_CLOSE)))
 			flags |= WFF_CLOSE_BUTTON;
+
+		if (!IS_RESIZABLE(wwin)
+		    && !(wwin->frame->flags.hide_button & (1 << WTB_MAXIMIZE)))
+			flags |= WFF_MAXIMIZE_BUTTON;
 
 		if (flags != 0)
 			wFrameWindowHideButton(wwin->frame, flags);
@@ -3679,6 +3709,33 @@ static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event)
 	wRaiseFrame(fwin->core);
 }
 #endif
+
+static void windowMaximizeClick(WCoreWindow *sender, void *data, XEvent *event)
+{
+	WWindow *wwin = data;
+
+	(void) sender;
+
+	event->xbutton.state &= w_global.shortcut.modifiers_mask;
+
+	CloseWindowMenu(wwin->screen_ptr);
+
+	if (event->xbutton.button != Button1)
+		return;
+
+	if (event->xbutton.state & ControlMask) {
+		/* control-click is the stronger action, same convention as
+		 * close (kill) and miniaturize (hide app), fullscreen strips
+		 * the titlebar so the way back is the keybinding or the
+		 * window menu */
+		if (wwin->flags.fullscreen)
+			wUnfullscreenWindow(wwin);
+		else
+			wFullscreenWindow(wwin);
+	} else if (event->xbutton.state == 0) {
+		handleMaximize(wwin, MAX_HORIZONTAL | MAX_VERTICAL);
+	}
+}
 
 static void windowIconifyClick(WCoreWindow *sender, void *data, XEvent *event)
 {

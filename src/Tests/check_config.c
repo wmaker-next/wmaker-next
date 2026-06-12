@@ -2044,6 +2044,12 @@ static void test_titlebar_layout_build(void)
 		  { [WTB_CLOSE] = WTB_SIDE_LEFT },
 		  { [WTB_CLOSE] = 0 },
 		  1 },
+		{ "macos-cluster",
+		  { "Close", "Miniaturize", "Maximize" }, 3, { NULL }, 0,
+		  { [WTB_CLOSE] = WTB_SIDE_LEFT, [WTB_MINIATURIZE] = WTB_SIDE_LEFT,
+		    [WTB_MAXIMIZE] = WTB_SIDE_LEFT },
+		  { [WTB_CLOSE] = 0, [WTB_MINIATURIZE] = 1, [WTB_MAXIMIZE] = 2 },
+		  0 },
 #ifdef XKB_BUTTON_HINT
 		{ "modelock-left",
 		  { "Miniaturize", "Language" }, 2, { NULL }, 0,

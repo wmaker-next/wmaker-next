@@ -87,6 +87,7 @@ static const struct {
 } wtb_role_info[WTB_ROLE_COUNT] = {
 	[WTB_MINIATURIZE] = { 1, 4, 3, True,  False },
 	[WTB_CLOSE]       = { 2, 2, 2, True,  False },
+	[WTB_MAXIMIZE]    = { 8, 4, 3, True,  False },
 #ifdef XKB_BUTTON_HINT
 	[WTB_LANGUAGE]    = { 6, 4, 3, False, False },
 #endif
@@ -95,6 +96,7 @@ static const struct {
 const int wtb_role_flag_shift[WTB_ROLE_COUNT] = {
 	[WTB_MINIATURIZE] = 1,
 	[WTB_CLOSE]       = 2,
+	[WTB_MAXIMIZE]    = 8,
 #ifdef XKB_BUTTON_HINT
 	[WTB_LANGUAGE]    = 6,
 #endif

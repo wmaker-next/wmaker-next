@@ -307,6 +307,41 @@ static int restack_mode(Display *dpy)
 	return 0;
 }
 
+static int wm_state_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_STATE_TARGET", None);
+	long action = env_long("EWMH_CLIENT_STATE_ACTION", 1);
+	const char *a1 = getenv("EWMH_CLIENT_STATE_ATOM1");
+	const char *a2 = getenv("EWMH_CLIENT_STATE_ATOM2");
+	long atom1, atom2;
+
+	if (target == None || !a1)
+		return 1;
+	atom1 = (long)intern_atom(dpy, a1);
+	atom2 = a2 ? (long)intern_atom(dpy, a2) : 0;
+	send_root_message(dpy, target, intern_atom(dpy, "_NET_WM_STATE"),
+			  action, atom1, atom2, 2, 0);
+	return 0;
+}
+
+static int seticon_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_SETICON_TARGET", None);
+	long icon[2 + 16 * 16];
+	int i;
+
+	if (target == None)
+		return 1;
+	icon[0] = 16;
+	icon[1] = 16;
+	for (i = 0; i < 16 * 16; i++)
+		icon[2 + i] = 0xFFFF0000L;
+	set_cardinals(dpy, target, intern_atom(dpy, "_NET_WM_ICON"),
+		      icon, 2 + 16 * 16);
+	XFlush(dpy);
+	return 0;
+}
+
 int main(void)
 {
 	Display *dpy;
@@ -352,6 +387,16 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_RESTACK_TARGET")) {
 		int ret = restack_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_SETICON_TARGET")) {
+		int ret = seticon_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_STATE_TARGET")) {
+		int ret = wm_state_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}
