@@ -72,6 +72,7 @@
 #include "hotcorner.h"
 #include "ipc.h"
 #include "switchmenu.h"
+#include "tabgroup.h"
 #include "wconfigmodel.h"
 #ifdef USE_DOCK_XDND
 #include "xdnd.h"
@@ -404,6 +405,7 @@ WScreen *wScreenForWindow(Window window)
 	_(wmaker.icon_size,             "_WINDOWMAKER_ICON_SIZE") \
 	_(wmaker.icon_tile,             "_WINDOWMAKER_ICON_TILE") \
 	_(wmaker.mark_key,              "_WINDOWMAKER_MARK_KEY") \
+	_(wmaker.tab_group,             "_WINDOWMAKER_TABGROUP") \
 	_(gnustep.wm_attr,              GNUSTEP_WM_ATTR_NAME) \
 	_(gnustep.wm_miniaturize_window, GNUSTEP_WM_MINIATURIZE_WINDOW) \
 	_(gnustep.wm_hide_app,          GNUSTEP_WM_HIDE_APP) \
@@ -959,6 +961,11 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 					    wwin->frame_y - border -
 					    (wwin->frame->titlebar ? wwin->frame->titlebar->height : 0));
 			}
+			/* tab-group membership from _WINDOWMAKER_TABGROUP is
+			 * applied after the deferred shade and iconify so an
+			 * iconified group is rebuilt from members that each
+			 * already own a miniwindow */
+			wGroupRestoreMember(wwin);
 		}
 	}
 	wfree(attr_ck);

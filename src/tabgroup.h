@@ -102,4 +102,23 @@ void wGroupReorder(WWindowGroup *grp, WWindow *payload, int to_idx);
  */
 Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev);
 
+/*
+ * Session and warm-restart persistence.  wGroupSessionId() returns a
+ * non-zero per-screen group identifier stable for the lifetime of grp,
+ * or 0 when grp is NULL or no longer linked.  wGroupRestoreMember() is
+ * called once for every newly managed window from the MapRequest and
+ * manageAllWindows() paths after the deferred shade, iconify and hide
+ * steps so each member is in its final state before it is attached.
+ * The saved (gid, idx, active) triple is read from wwin->restore_tab_*
+ * which wManageWindow() sets from either WSavedState source.  Members
+ * arrive asynchronously, so the first member of a gid is held as a
+ * normal window and the group is created lazily when its second member
+ * appears.  Later arrivals are attached and reordered to their saved
+ * position.  wGroupRestoreForget() drops wwin from any pending restore
+ * slot and is safe to call for windows that were never registered.
+ */
+unsigned wGroupSessionId(WScreen *scr, WWindowGroup *grp);
+void wGroupRestoreMember(WWindow *wwin);
+void wGroupRestoreForget(WWindow *wwin);
+
 #endif /* TABGROUP_H_ */

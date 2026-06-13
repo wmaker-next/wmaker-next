@@ -734,6 +734,10 @@ static void handleMapRequest(XEvent * ev)
 				wHideApplication(wapp);
 			}
 		}
+		/* tab-group membership saved in the session is applied after
+		 * the deferred shade and iconify so an iconified group is
+		 * rebuilt from members that already own a miniwindow */
+		wGroupRestoreMember(wwin);
 	}
 }
 

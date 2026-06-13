@@ -81,6 +81,7 @@
 #include "appicon.h"
 #include "dock.h"
 #include "misc.h"
+#include "tabgroup.h"
 
 #include <WINGs/WUtil.h>
 
@@ -96,6 +97,7 @@ static WMPropList *sHidden;
 static WMPropList *sGeometry;
 static WMPropList *sShortcutMask;
 static WMPropList *sMarkKey;
+static WMPropList *sTabGroup;
 
 static WMPropList *sDock;
 static WMPropList *sYes, *sNo;
@@ -117,6 +119,7 @@ static void make_keys(void)
 	sDock = WMCreatePLString("Dock");
 	sShortcutMask = WMCreatePLString("ShortcutMask");
 	sMarkKey = WMCreatePLString("MarkKey");
+	sTabGroup = WMCreatePLString("WMTabGroup");
 
 	sYes = WMCreatePLString("Yes");
 	sNo = WMCreatePLString("No");
@@ -231,6 +234,28 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 		if (mark_key_pl) {
 			WMPutInPLDictionary(win_state, sMarkKey, mark_key_pl);
 			WMReleasePropList(mark_key_pl);
+		}
+
+		if (wwin->tab_group) {
+			WMPropList *tab_pl, *e;
+
+			tab_pl = WMCreatePLArray(NULL);
+			snprintf(buffer, sizeof(buffer), "%u",
+				 wGroupSessionId(scr, wwin->tab_group));
+			e = WMCreatePLString(buffer);
+			WMAddToPLArray(tab_pl, e);
+			WMReleasePropList(e);
+			snprintf(buffer, sizeof(buffer), "%d", wwin->tab_group_index);
+			e = WMCreatePLString(buffer);
+			WMAddToPLArray(tab_pl, e);
+			WMReleasePropList(e);
+			snprintf(buffer, sizeof(buffer), "%d",
+				 wwin->tab_group->active_index);
+			e = WMCreatePLString(buffer);
+			WMAddToPLArray(tab_pl, e);
+			WMReleasePropList(e);
+			WMPutInPLDictionary(win_state, sTabGroup, tab_pl);
+			WMReleasePropList(tab_pl);
 		}
 
 		WMReleasePropList(name);
@@ -422,6 +447,13 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 		char *s = WMGetFromPLString(value);
 		if (s && *s)
 			state->mark_key = wstrdup(s);
+	}
+
+	value = WMGetFromPLDictionary(win_state, sTabGroup);
+	if (value && WMIsPLArray(value) && WMGetPropListItemCount(value) >= 3) {
+		state->tab_group_gid = getInt(WMGetFromPLArray(value, 0));
+		state->tab_group_idx = (int)getInt(WMGetFromPLArray(value, 1));
+		state->tab_group_active = (int)getInt(WMGetFromPLArray(value, 2));
 	}
 
 	value = WMGetFromPLDictionary(win_state, sGeometry);

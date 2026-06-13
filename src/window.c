@@ -91,7 +91,7 @@
 static WWindowState *windowState = NULL;
 static FocusMode getFocusMode(WWindow *wwin);
 static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
-			   WSavedState **state);
+			   WXCookie tab_ck, WSavedState **state);
 static void setupGNUstepHints(WWindow *wwin, GNUstepWMAttributes *gs_hints);
 
 /* frame window (during window grabs) */
@@ -346,6 +346,8 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
 					w_global.atom.wmaker.state, 10);
 	ck->mark_key  = WXReqString8(dpy, window, w_global.atom.wmaker.mark_key, XA_STRING);
+	ck->tab_group = WXReqFormat32(dpy, window, w_global.atom.wmaker.tab_group,
+				      w_global.atom.wmaker.tab_group, 3);
 	wNETWMReqClientHints(window, &ck->netwm);
 	wNETWMReqInitialStateCookies(window, &ck->netwm_initial);
 }
@@ -1173,7 +1175,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	/* if we're restarting, restore saved state (from hints).
 	 * This will overwrite previous */
-	if (getSavedStateCk(window, ck.saved_state, ck.mark_key, &wstate)) {
+	if (getSavedStateCk(window, ck.saved_state, ck.mark_key, ck.tab_group, &wstate)) {
 		wwin->flags.shaded = wstate->shaded;
 		wwin->flags.hidden = wstate->hidden;
 		wwin->flags.miniaturized = wstate->miniaturized;
@@ -1219,6 +1221,22 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wWindowSetMark(wwin, win_state->state->mark_key);
 	else if (wstate != NULL && wstate->mark_key != NULL)
 		wWindowSetMark(wwin, wstate->mark_key);
+
+	/* restore tab group: warm-restart hint takes precedence because it
+	 * is per-client-window, the session entry is matched by class and
+	 * may be shared by several windows of the same launched command.
+	 * The triple is stashed on wwin and applied by the caller after
+	 * the deferred shade and iconify steps so an iconified group is
+	 * rebuilt from members that already own their miniwindow. */
+	if (wstate != NULL && wstate->tab_group_gid != 0) {
+		wwin->restore_tab_gid = wstate->tab_group_gid;
+		wwin->restore_tab_idx = wstate->tab_group_idx;
+		wwin->restore_tab_active = wstate->tab_group_active;
+	} else if (win_state != NULL && win_state->state->tab_group_gid != 0) {
+		wwin->restore_tab_gid = win_state->state->tab_group_gid;
+		wwin->restore_tab_idx = win_state->state->tab_group_idx;
+		wwin->restore_tab_active = win_state->state->tab_group_active;
+	}
 
 	if (wstate != NULL) {
 		if (wstate->mark_key != NULL)
@@ -1867,6 +1885,9 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	 * the leaving window itself is never reconfigured or remapped */
 	if (wwin->tab_group)
 		wGroupUnmanageMember(wwin, destroyed);
+	/* drop from any pending session-restore slot so a late-arriving
+	 * peer is not attached to a freed WWindow */
+	wGroupRestoreForget(wwin);
 	/* the pointer-pick attach may be waiting on the user with this
 	 * window as its payload, clear the latch so the pick cancels
 	 * cleanly instead of attaching a dead client */
@@ -2991,6 +3012,18 @@ void wWindowSaveState(WWindow *wwin)
 	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wmaker.state,
 		       w_global.atom.wmaker.state, data, 10);
 
+	if (wwin->tab_group != NULL) {
+		uint32_t tab[3];
+
+		tab[0] = wGroupSessionId(wwin->screen_ptr, wwin->tab_group);
+		tab[1] = (uint32_t)wwin->tab_group_index;
+		tab[2] = (uint32_t)wwin->tab_group->active_index;
+		WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wmaker.tab_group,
+			       w_global.atom.wmaker.tab_group, tab, 3);
+	} else {
+		WXDeleteProperty(dpy, wwin->client_win, w_global.atom.wmaker.tab_group);
+	}
+
 	if (wwin->mark_key_label != NULL)
 		WXSetLatin1String(dpy, wwin->client_win, w_global.atom.wmaker.mark_key,
 				  wwin->mark_key_label, strlen(wwin->mark_key_label));
@@ -2999,13 +3032,15 @@ void wWindowSaveState(WWindow *wwin)
 }
 
 static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
-			   WSavedState **state)
+			   WXCookie tab_ck, WSavedState **state)
 {
 	uint32_t data[10];
+	uint32_t tab[3];
 	size_t len;
 
 	if (!WXRcvFormat32N(dpy, state_ck, data, 10)) {
 		WXDiscard(dpy, mark_ck);
+		WXDiscard(dpy, tab_ck);
 		return 0;
 	}
 
@@ -3027,6 +3062,13 @@ static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 	(*state)->mark_key = WXRcvString(dpy, mark_ck, &len);
 	if ((*state)->mark_key)
 		WXDeleteProperty(dpy, window, w_global.atom.wmaker.mark_key);
+
+	if (WXRcvFormat32N(dpy, tab_ck, tab, 3)) {
+		(*state)->tab_group_gid = tab[0];
+		(*state)->tab_group_idx = (int)tab[1];
+		(*state)->tab_group_active = (int)tab[2];
+		WXDeleteProperty(dpy, window, w_global.atom.wmaker.tab_group);
+	}
 
 	return 1;
 }

@@ -48,6 +48,28 @@ static void wGroupDestroy(WWindowGroup *grp, WScreen *scr);
  */
 static int syncing_peers = 0;
 
+/*
+ * Pending session-restore state.  Members of a saved group arrive
+ * asynchronously as their commands map a window, or all at once during a
+ * warm restart, so each gid keeps an insertion-sorted list of arrived
+ * members alongside the live group once two of them exist.  Slots are
+ * never freed, the list is short and only consulted from
+ * wGroupRestoreMember() during startup.
+ */
+typedef struct WGroupRestore {
+	WScreen *scr;
+	unsigned gid;
+	int active_idx;
+	WWindowGroup *grp;
+	int count;
+	int cap;
+	WWindow **win;
+	int *saved_idx;
+	struct WGroupRestore *next;
+} WGroupRestore;
+
+static WGroupRestore *restore_slots = NULL;
+
 
 /* --------------------------------------------------------------------
  * Predicates
@@ -227,11 +249,18 @@ static void wGroupPlaceDetached(WWindow *wwin, WWindow *anchor)
 static void wGroupDestroy(WWindowGroup *grp, WScreen *scr)
 {
 	WWindowGroup **p;
+	WGroupRestore *rs;
 
 	for (p = &scr->window_groups; *p && *p != grp; p = &(*p)->next)
 		;
 	if (*p)
 		*p = grp->next;
+
+	/* a pending restore slot may still point at this group when its
+	 * members are closed before every saved peer has arrived */
+	for (rs = restore_slots; rs; rs = rs->next)
+		if (rs->grp == grp)
+			rs->grp = NULL;
 
 	wfree(grp->members);
 	wfree(grp);
@@ -295,6 +324,14 @@ void wGroupAttach(WWindowGroup *grp, WWindow *wwin)
 		 * and pagers do not see FOCUSED on a HIDDEN client */
 		if (wwin->flags.focused)
 			wSetFocusTo(wwin->screen_ptr, active);
+		/* only the active member may own a miniwindow, a session
+		 * restore of an iconified group manages and iconifies each
+		 * member independently before reattaching them */
+		if (wwin->icon) {
+			RemoveFromStackList(wwin->icon->core);
+			wIconDestroy(wwin->icon);
+			wwin->icon = NULL;
+		}
 		XUnmapWindow(dpy, wwin->frame->core->window);
 		wwin->flags.mapped = 0;
 		wGroupNotifyState(wwin);
@@ -1274,4 +1311,143 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 	/* No valid target: tear the payload off at the outline position. */
 	wGroupTearOffAt(scr, payload, rx - outline_w / 2, ry - title_h / 2);
 	return True;
+}
+
+/* --------------------------------------------------------------------
+ * Session and warm-restart persistence
+ * -------------------------------------------------------------------- */
+
+unsigned wGroupSessionId(WScreen *scr, WWindowGroup *grp)
+{
+	WWindowGroup *p;
+	unsigned id;
+
+	if (!scr || !grp)
+		return 0;
+
+	id = 1;
+	for (p = scr->window_groups; p; p = p->next, id++)
+		if (p == grp)
+			return id;
+	return 0;
+}
+
+static WGroupRestore *wGroupRestoreSlot(WScreen *scr, unsigned gid)
+{
+	WGroupRestore *rs;
+
+	for (rs = restore_slots; rs; rs = rs->next)
+		if (rs->scr == scr && rs->gid == gid)
+			return rs;
+
+	rs = wmalloc(sizeof(*rs));
+	rs->scr = scr;
+	rs->gid = gid;
+	rs->active_idx = -1;
+	rs->grp = NULL;
+	rs->count = 0;
+	rs->cap = 4;
+	rs->win = wmalloc(sizeof(WWindow *) * (size_t)rs->cap);
+	rs->saved_idx = wmalloc(sizeof(int) * (size_t)rs->cap);
+	rs->next = restore_slots;
+	restore_slots = rs;
+	return rs;
+}
+
+void wGroupRestoreMember(WWindow *wwin)
+{
+	WGroupRestore *rs;
+	WScreen *scr;
+	unsigned gid;
+	int idx, pos, i, k;
+
+	if (!wwin || wwin->restore_tab_gid == 0 || wwin->tab_group)
+		return;
+
+	gid = wwin->restore_tab_gid;
+	idx = wwin->restore_tab_idx;
+	wwin->restore_tab_gid = 0;
+
+	/* the saved member must still satisfy the structural part of the
+	 * tabable predicate, a class change or a no_titlebar attribute
+	 * applied since the session was saved disqualifies it.  The
+	 * miniaturized flag is allowed because every member of a group
+	 * iconified at save time carries it and the post-manage iconify
+	 * step has already given each one its own miniwindow, which
+	 * wGroupAttach() discards for members that join as inactive. */
+	if (!wwin->frame
+	    || !HAS_TITLEBAR(wwin) || !IS_MOVABLE(wwin) || !IS_RESIZABLE(wwin)
+	    || WINDOW_LEVEL(wwin) != WMNormalLevel
+	    || wwin->flags.hidden || wwin->flags.fullscreen
+	    || wwin->flags.internal_window)
+		return;
+
+	scr = wwin->screen_ptr;
+	rs = wGroupRestoreSlot(scr, gid);
+	if (rs->active_idx < 0)
+		rs->active_idx = wwin->restore_tab_active;
+
+	if (rs->count >= rs->cap) {
+		rs->cap *= 2;
+		rs->win = wrealloc(rs->win, sizeof(WWindow *) * (size_t)rs->cap);
+		rs->saved_idx = wrealloc(rs->saved_idx, sizeof(int) * (size_t)rs->cap);
+	}
+
+	/* keep arrived members sorted by their saved index so the rebuilt
+	 * members[] array matches the original tab order, ties go to
+	 * arrival order */
+	pos = rs->count;
+	while (pos > 0 && rs->saved_idx[pos - 1] > idx)
+		pos--;
+	for (i = rs->count; i > pos; i--) {
+		rs->win[i] = rs->win[i - 1];
+		rs->saved_idx[i] = rs->saved_idx[i - 1];
+	}
+	rs->win[pos] = wwin;
+	rs->saved_idx[pos] = idx;
+	rs->count++;
+
+	if (rs->count < 2)
+		return;
+
+	if (!rs->grp) {
+		rs->grp = wGroupCreate(scr);
+		wGroupAttach(rs->grp, rs->win[0]);
+		wGroupAttach(rs->grp, rs->win[1]);
+	} else {
+		wGroupAttach(rs->grp, wwin);
+		wGroupReorder(rs->grp, wwin, pos);
+	}
+
+	/* the saved active member may already have arrived, switch to it
+	 * now so later arrivals do not steal visibility */
+	for (k = 0; k < rs->count; k++) {
+		if (rs->saved_idx[k] == rs->active_idx) {
+			if (rs->grp->active_index != k)
+				wGroupSetActive(rs->grp, k);
+			break;
+		}
+	}
+}
+
+void wGroupRestoreForget(WWindow *wwin)
+{
+	WGroupRestore *rs;
+	int i, k;
+
+	if (!wwin || !restore_slots)
+		return;
+
+	for (rs = restore_slots; rs; rs = rs->next) {
+		for (i = 0; i < rs->count; i++) {
+			if (rs->win[i] != wwin)
+				continue;
+			for (k = i; k < rs->count - 1; k++) {
+				rs->win[k] = rs->win[k + 1];
+				rs->saved_idx[k] = rs->saved_idx[k + 1];
+			}
+			rs->count--;
+			return;
+		}
+	}
 }

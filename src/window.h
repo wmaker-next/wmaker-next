@@ -381,6 +381,11 @@ typedef struct WWindow {
 
 	WWindowGroup *tab_group;	/* tab group this window belongs to, or NULL */
 	int tab_group_index;		/* index within tab_group->members[] */
+	unsigned restore_tab_gid;	/* saved tab-group identifier carried from
+					 * wManageWindow() to wGroupRestoreMember(),
+					 * zero when no membership was saved */
+	int restore_tab_idx;
+	int restore_tab_active;
 } WWindow;
 
 #define HAS_TITLEBAR(w)		(!(WFLAGP((w), no_titlebar) || (w)->flags.fullscreen))
@@ -406,6 +411,9 @@ typedef struct WSavedState {
     unsigned int h;
     unsigned window_shortcuts; /* mask like 1<<shortcut_number */
 	char *mark_key;	/* serialised mark key label */
+    unsigned tab_group_gid;    /* non-zero when this window was a tab member */
+    int tab_group_idx;         /* position within the saved group */
+    int tab_group_active;      /* saved active_index of the group */
 } WSavedState;
 
 typedef struct WWindowState {
@@ -461,6 +469,7 @@ typedef struct {
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
     WXCookie saved_state;   /* _WINDOWMAKER_STATE */
     WXCookie mark_key;      /* _WINDOWMAKER_MARK_KEY */
+    WXCookie tab_group;     /* _WINDOWMAKER_TABGROUP */
     WNETWMHintCookies netwm;
     WNETWMInitialCookies netwm_initial;
 } WManageCookies;
