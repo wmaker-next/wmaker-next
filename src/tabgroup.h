@@ -84,4 +84,22 @@ void wGroupTabDetach(WScreen *scr);
  */
 void wGroupPickAndAttach(WScreen *scr, WWindow *payload);
 
+/*
+ * Move payload to position to_idx within its own group.  Used by the
+ * titlebar segment drag when the drop lands on the same group.
+ */
+void wGroupReorder(WWindowGroup *grp, WWindow *payload, int to_idx);
+
+/*
+ * Titlebar drag-to-group gesture.  ev is the ButtonPress that started
+ * the drag, source is the visible frame owner whose titlebar was pressed
+ * and payload is the group member being dragged out.  Runs a local event
+ * loop with the move cursor and a wireframe outline, on release the drop
+ * point is resolved through wWindowFor() and the payload is attached,
+ * detached at the drop position, or reordered within the same group.
+ * Returns True when the drag actually started past MOVE_THRESHOLD so the
+ * caller can suppress its click action.
+ */
+Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev);
+
 #endif /* TABGROUP_H_ */

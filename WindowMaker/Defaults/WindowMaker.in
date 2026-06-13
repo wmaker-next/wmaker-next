@@ -303,4 +303,6 @@
 	WindowListAppIcons = NO;
 	ShowAllTabsInSwitchPanel = YES;
 	TabsInTitlebar = YES;
+	TabAttachArea = Titlebar;
+	TabDragModifier = None;
 }

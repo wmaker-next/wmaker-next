@@ -211,6 +211,10 @@
 	  show_all_tabs_in_switch_panel, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(TABS_IN_TITLEBAR, "TabsInTitlebar", BOOL, tabs_in_titlebar, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_WINDOW_TITLE_COLOR) \
+	_(TAB_ATTACH_AREA, "TabAttachArea", ENUM, tab_attach_area, "Titlebar", \
+	  tab_attach_areas, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(TAB_DRAG_MODIFIER, "TabDragModifier", STRING, tab_drag_modifier, "None", \
+	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_FOCUS, "MouseWheelFocus", BOOL, mouse_wheel_focus, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \

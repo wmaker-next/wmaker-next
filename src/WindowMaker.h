@@ -250,6 +250,7 @@ extern struct WPreferences {
 	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to scr_width/height */
 
 	unsigned int modifier_mask;        /* mask to use as kbd modifier */
+	unsigned int tab_drag_modifier_mask; /* TabDragModifier parsed, 0 = disabled */
 	char *modifier_labels[7];          /* Names of the modifiers */
 	char *modifier_short_labels[9];    /* Short names of the modifiers */
 

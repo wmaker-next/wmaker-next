@@ -153,4 +153,10 @@ enum {
 	DRAGMAX_NOMOVE
 };
 
+/* tab-group drag drop area */
+enum {
+	WTAB_ATTACH_TITLEBAR,
+	WTAB_ATTACH_WINDOW
+};
+
 #endif /* WMCONFIG_VALUES_H_ */

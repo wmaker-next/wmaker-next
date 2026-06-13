@@ -202,6 +202,14 @@ void wConfigApplyModifierKey(const char *spec, const char *default_spec)
 		wPreferences.modifier_mask = Mod1Mask;
 }
 
+void wConfigApplyTabDragModifier(const char *spec)
+{
+	if (!spec || spec[0] == '\0' || strcmp(spec, "None") == 0)
+		wPreferences.tab_drag_modifier_mask = 0;
+	else if (strcmp(spec, "Shift") == 0)
+		wPreferences.tab_drag_modifier_mask = ShiftMask;
+}
+
 unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
 						 int target,
 						 const WConfigResourceSpec *spec,

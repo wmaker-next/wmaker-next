@@ -29,6 +29,7 @@
 #include "stacking.h"
 #include "event.h"
 #include "icon.h"
+#include "wireframe.h"
 #include "tabgroup.h"
 
 
@@ -898,4 +899,379 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 		wGroupAttach(grp, target);
 	}
 	wGroupAttach(grp, payload);
+}
+
+/* --------------------------------------------------------------------
+ * Reorder within a group
+ * -------------------------------------------------------------------- */
+
+void wGroupReorder(WWindowGroup *grp, WWindow *payload, int to_idx)
+{
+	WWindow *active;
+	int from, i;
+
+	if (!grp || !payload || payload->tab_group != grp)
+		return;
+	if (to_idx < 0)
+		to_idx = 0;
+	if (to_idx >= grp->member_count)
+		to_idx = grp->member_count - 1;
+
+	from = payload->tab_group_index;
+	if (from < 0 || from >= grp->member_count || from == to_idx)
+		return;
+
+	active = NULL;
+	if (grp->active_index >= 0 && grp->active_index < grp->member_count)
+		active = grp->members[grp->active_index];
+
+	if (from < to_idx) {
+		for (i = from; i < to_idx; i++)
+			grp->members[i] = grp->members[i + 1];
+	} else {
+		for (i = from; i > to_idx; i--)
+			grp->members[i] = grp->members[i - 1];
+	}
+	grp->members[to_idx] = payload;
+
+	for (i = 0; i < grp->member_count; i++) {
+		grp->members[i]->tab_group_index = i;
+		if (grp->members[i] == active)
+			grp->active_index = i;
+	}
+
+	wGroupRefreshTitles(grp);
+}
+
+/* --------------------------------------------------------------------
+ * Titlebar drag-to-group
+ * -------------------------------------------------------------------- */
+
+/*
+ * Validate target as a drop destination for payload.  This is the
+ * tabability predicate plus the extra restrictions a drag drop needs:
+ * same screen, currently visible on the active workspace, and not the
+ * payload itself or already its peer.
+ */
+static Bool wGroupIsDropTarget(WScreen *scr, WWindow *target, WWindow *payload)
+{
+	if (!target || target == payload)
+		return False;
+	if (target->screen_ptr != scr)
+		return False;
+	if (!wGroupIsTabable(target))
+		return False;
+	if (target->frame->workspace != scr->current_workspace
+	    && !IS_OMNIPRESENT(target))
+		return False;
+	if (wGroupIsInactiveMember(target))
+		return False;
+	return True;
+}
+
+/*
+ * Resolve the topmost managed window under root coordinates (rx, ry).
+ * Avoids XTranslateCoordinates() against the source frame so the source
+ * itself is not always returned, instead it walks the toplevel children
+ * of the root from top to bottom and returns the first one whose frame
+ * rectangle contains the point.
+ */
+static WWindow *wGroupWindowUnder(WScreen *scr, WWindow *source, int rx, int ry)
+{
+	Window junk_root, junk_parent, *children;
+	WWindow *cand;
+	unsigned int n, i;
+	int fx, fy, fw, fh;
+
+	children = NULL;
+	if (!XQueryTree(dpy, scr->root_win, &junk_root, &junk_parent,
+	                &children, &n))
+		return NULL;
+
+	cand = NULL;
+	/* children[] is bottom-to-top, walk from the top */
+	for (i = n; i-- > 0;) {
+		cand = wWindowFor(children[i]);
+		if (!cand || !cand->frame || cand == source)
+			continue;
+		if (!cand->flags.mapped && !cand->flags.shaded)
+			continue;
+		fx = cand->frame_x;
+		fy = cand->frame_y;
+		fw = (int)cand->frame->core->width;
+		fh = (int)cand->frame->core->height;
+		if (rx >= fx && rx < fx + fw && ry >= fy && ry < fy + fh)
+			break;
+		cand = NULL;
+	}
+
+	if (children)
+		XFree(children);
+	return cand;
+}
+
+/*
+ * Resolve and validate the attach target under root (rx, ry), honouring
+ * TabAttachArea so the hover feedback in the drag loop and the release
+ * outcome agree on where a drop is accepted.
+ */
+static WWindow *wGroupDropTargetAt(WScreen *scr, WWindow *source,
+				   WWindow *payload, int rx, int ry)
+{
+	WWindow *target;
+
+	target = wGroupWindowUnder(scr, source, rx, ry);
+	if (!target || !wGroupIsDropTarget(scr, target, payload))
+		return NULL;
+	if (w_global.config->tab_attach_area == WTAB_ATTACH_TITLEBAR
+	    && ry >= target->frame_y + (int)target->frame->top_width)
+		return NULL;
+	return target;
+}
+
+/*
+ * Detach payload at frame position (rx, ry) instead of the default
+ * titlebar offset, used when a tab is torn off and dropped on the root.
+ */
+static void wGroupTearOffAt(WScreen *scr, WWindow *payload, int rx, int ry)
+{
+	WWindowGroup *grp;
+	int idx, i;
+	Bool was_active;
+
+	grp = payload->tab_group;
+	if (!grp) {
+		wWindowMove(payload, rx, ry);
+		return;
+	}
+
+	idx = payload->tab_group_index;
+	was_active = (idx == grp->active_index);
+
+	for (i = idx; i < grp->member_count - 1; i++) {
+		grp->members[i] = grp->members[i + 1];
+		grp->members[i]->tab_group_index = i;
+	}
+	grp->member_count--;
+
+	payload->tab_group = NULL;
+	payload->tab_group_index = -1;
+
+	if (grp->member_count <= 1) {
+		WWindow *survivor = grp->member_count == 1 ? grp->members[0] : NULL;
+
+		if (survivor) {
+			survivor->tab_group = NULL;
+			survivor->tab_group_index = -1;
+			if (was_active)
+				wGroupRevealMember(scr, survivor, False);
+			wGroupUpdateTitlebar(survivor);
+			wGroupNotifyState(survivor);
+		}
+		wGroupDestroy(grp, scr);
+	} else {
+		if (was_active) {
+			if (grp->active_index >= grp->member_count)
+				grp->active_index = grp->member_count - 1;
+			wGroupRevealMember(scr, grp->members[grp->active_index], False);
+		} else if (idx < grp->active_index) {
+			grp->active_index--;
+		}
+		wGroupRefreshTitles(grp);
+	}
+
+	wGroupUpdateTitlebar(payload);
+	wWindowMove(payload, rx, ry);
+	wGroupRevealMember(scr, payload, True);
+	wRaiseFrame(payload->frame->core);
+}
+
+Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
+{
+	WScreen *scr;
+	WWindow *target, *hover;
+	WWindowGroup *src_grp, *dst_grp;
+	XEvent event;
+	KeySym ks;
+	int orig_rx, orig_ry, rx, ry;
+	int outline_w, outline_h, title_h;
+	int drop_seg;
+	Bool started, done, cancelled, over_target;
+
+	if (!source || !payload || !source->frame || !payload->frame)
+		return False;
+
+	scr = source->screen_ptr;
+	src_grp = payload->tab_group;
+
+	orig_rx = ev->xbutton.x_root;
+	orig_ry = ev->xbutton.y_root;
+	rx = orig_rx;
+	ry = orig_ry;
+
+	/* The dragged outline tracks the source frame size so attaching to
+	 * a target gives the user a sense of the resulting frame footprint
+	 * and tearing off lands the payload exactly where the outline was. */
+	outline_w = (int)source->frame->core->width;
+	outline_h = (int)source->frame->core->height;
+	title_h = (int)source->frame->top_width;
+
+	if (XGrabPointer(dpy, scr->root_win, False,
+	                 ButtonMotionMask | PointerMotionMask | ButtonReleaseMask
+	                 | ButtonPressMask,
+	                 GrabModeAsync, GrabModeAsync, scr->root_win,
+	                 wPreferences.cursor[WCUR_MOVE], CurrentTime) != GrabSuccess)
+		return False;
+	XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync,
+	              CurrentTime);
+
+	scr->tab_drag_payload = payload;
+	scr->tab_drag_source = source;
+	started = False;
+	done = False;
+	cancelled = False;
+	over_target = False;
+
+	while (!done) {
+		WMMaskEvent(dpy, ButtonMotionMask | PointerMotionMask
+		            | ButtonReleaseMask | ButtonPressMask | KeyPressMask
+		            | ExposureMask, &event);
+
+		/* the payload or the source frame may have been unmanaged
+		 * while the modal loop was waiting on the next event,
+		 * wUnmanageWindow() clears the matching latch in that case */
+		if (scr->tab_drag_payload != payload
+		    || scr->tab_drag_source != source) {
+			cancelled = True;
+			break;
+		}
+
+		switch (event.type) {
+		case MotionNotify:
+			while (XCheckMaskEvent(dpy, ButtonMotionMask
+			                       | PointerMotionMask, &event))
+				;
+			rx = event.xmotion.x_root;
+			ry = event.xmotion.y_root;
+			if (!started) {
+				if (abs(rx - orig_rx) < MOVE_THRESHOLD
+				    && abs(ry - orig_ry) < MOVE_THRESHOLD)
+					break;
+				started = True;
+			}
+			/* Hover feedback: when the pointer enters a valid
+			 * attach area the wireframe snaps onto that frame and
+			 * the grab cursor switches to the same WCUR_SELECT
+			 * glyph the pointer-pick attach uses, leaving the
+			 * area restores the free outline and move cursor. */
+			hover = wGroupDropTargetAt(scr, source, payload, rx, ry);
+			if ((hover != NULL) != over_target) {
+				over_target = (hover != NULL);
+				XChangeActivePointerGrab(dpy, ButtonMotionMask
+				        | PointerMotionMask | ButtonReleaseMask
+				        | ButtonPressMask,
+				        wPreferences.cursor[over_target
+				                ? WCUR_SELECT : WCUR_MOVE],
+				        CurrentTime);
+			}
+			wWireframeBegin(scr);
+			if (hover)
+				wWireframeAddOutline(scr, hover->frame_x,
+				        hover->frame_y,
+				        (int)hover->frame->core->width,
+				        (int)hover->frame->core->height,
+				        (int)hover->frame->top_width, 0, 1);
+			else
+				wWireframeAddOutline(scr, rx - outline_w / 2,
+				        ry - title_h / 2,
+				        outline_w, outline_h, title_h, 0, 1);
+			wWireframeCommit(scr);
+			break;
+
+		case ButtonPress:
+			break;
+
+		case ButtonRelease:
+			if (event.xbutton.button != ev->xbutton.button)
+				break;
+			rx = event.xbutton.x_root;
+			ry = event.xbutton.y_root;
+			done = True;
+			break;
+
+		case KeyPress:
+			ks = XLookupKeysym(&event.xkey, 0);
+			if (ks == XK_Escape) {
+				cancelled = True;
+				done = True;
+			}
+			break;
+
+		case Expose:
+			WMHandleEvent(&event);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	wWireframeHide(scr);
+	XUngrabKeyboard(dpy, CurrentTime);
+	XUngrabPointer(dpy, CurrentTime);
+	XSync(dpy, False);
+
+	/* Clear the latch before any attach/detach/reorder so a callee that
+	 * happens to dissolve the source group does not see a stale payload
+	 * pointer on the screen. */
+	scr->tab_drag_payload = NULL;
+	scr->tab_drag_source = NULL;
+
+	if (cancelled || !started)
+		return started;
+
+	/* The payload may have lost its group while the loop ran. */
+	if (src_grp && payload->tab_group != src_grp)
+		src_grp = payload->tab_group;
+
+	target = wGroupDropTargetAt(scr, source, payload, rx, ry);
+
+	/* Drop on the source frame: reorder within the same group when the
+	 * release point lies on a different segment, otherwise no-op. */
+	if (!target && src_grp && source->tab_group == src_grp
+	    && source->frame->tab_seg_count > 0
+	    && rx >= source->frame_x && rx < source->frame_x + outline_w
+	    && ry >= source->frame_y && ry < source->frame_y + title_h) {
+		drop_seg = wFrameWindowTabSegmentAt(source->frame,
+		                                    rx - source->frame_x);
+		if (drop_seg >= 0 && drop_seg != payload->tab_group_index)
+			wGroupReorder(src_grp, payload, drop_seg);
+		return True;
+	}
+
+	if (target) {
+		if (src_grp && target->tab_group == src_grp) {
+			drop_seg = -1;
+			if (target->frame->tab_seg_count > 0)
+				drop_seg = wFrameWindowTabSegmentAt(target->frame,
+				                rx - target->frame_x);
+			if (drop_seg >= 0)
+				wGroupReorder(src_grp, payload, drop_seg);
+			return True;
+		}
+		dst_grp = target->tab_group;
+		if (!dst_grp) {
+			dst_grp = wGroupCreate(scr);
+			wGroupAttach(dst_grp, target);
+		}
+		/* wGroupAttach() detaches payload from src_grp first when
+		 * needed, src_grp may dissolve as a side effect. */
+		wGroupAttach(dst_grp, payload);
+		wGroupSetActive(dst_grp, payload->tab_group_index);
+		return True;
+	}
+
+	/* No valid target: tear the payload off at the outline position. */
+	wGroupTearOffAt(scr, payload, rx - outline_w / 2, ry - title_h / 2);
+	return True;
 }

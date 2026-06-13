@@ -1606,6 +1606,26 @@ void wConfigApplyModifierKey(const char *spec, const char *default_spec)
 	wPreferences.modifier_mask = mask;
 }
 
+void wConfigApplyTabDragModifier(const char *spec)
+{
+	int mask;
+
+	if (!spec || spec[0] == '\0' || strcasecmp(spec, "None") == 0) {
+		wPreferences.tab_drag_modifier_mask = 0;
+		return;
+	}
+
+	mask = wXModifierFromKey(spec);
+	if (mask < 0) {
+		wwarning(_("%s: modifier key %s is not valid"),
+			 "TabDragModifier", spec);
+		wPreferences.tab_drag_modifier_mask = 0;
+		return;
+	}
+
+	wPreferences.tab_drag_modifier_mask = (unsigned int)mask;
+}
+
 static Bool workspace_background_spec_valid(const char *key, int target,
 					    WMPropList *value)
 {

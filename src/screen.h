@@ -131,6 +131,11 @@ typedef struct _WScreen {
      * wUnmanageWindow() can abort the pick cleanly if its client exits
      * while the pointer-pick loop is waiting on the user */
     struct WWindow *tab_pick_payload;
+    /* wGroupDragTab() latches the payload being dragged and the visible
+     * source frame here so wUnmanageWindow() can abort the drag cleanly
+     * if either client exits while the modal loop is running */
+    struct WWindow *tab_drag_payload;
+    struct WWindow *tab_drag_source;
 
     WMBag *stacking_list;	       /* bag of lists of windows
                                         * in stacking order.

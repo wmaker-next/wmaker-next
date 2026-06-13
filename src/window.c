@@ -1872,6 +1872,13 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	 * cleanly instead of attaching a dead client */
 	if (scr->tab_pick_payload == wwin)
 		scr->tab_pick_payload = NULL;
+	/* a tab drag may be in progress with this window as either the
+	 * payload being dragged or the source frame the drag started from,
+	 * clear the latch so the drag loop aborts cleanly */
+	if (scr->tab_drag_payload == wwin)
+		scr->tab_drag_payload = NULL;
+	if (scr->tab_drag_source == wwin)
+		scr->tab_drag_source = NULL;
 
 	if (!destroyed) {
 		if (!wwin->flags.internal_window)
@@ -3609,17 +3616,47 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 		return;
 	}
 
+	/* Button2 on a segment starts a tab drag with that member as the
+	 * payload, on a non-segmented titlebar Button2 still drags the
+	 * whole window so a singleton can be dropped onto another frame */
+	if (event->xbutton.button == Button2
+	    && !(event->xbutton.state & (MOD_MASK | ShiftMask | ControlMask))
+	    && wGroupIsTabable(wwin)) {
+		WWindow *payload = wwin;
+
+		if (seg >= 0 && seg < wwin->tab_group->member_count)
+			payload = wwin->tab_group->members[seg];
+		wGroupDragTab(wwin, payload, event);
+		return;
+	}
+
 	if (seg >= 0 && event->xbutton.button == Button1) {
+		unsigned int tdm = wPreferences.tab_drag_modifier_mask;
+
 		if (event->xbutton.state & ControlMask) {
 			/* close this member only, do not activate it first */
 			wGroupCloseMember(wwin->tab_group, seg);
 			return;
 		}
+		/* TabDragModifier + Button1 on any segment, including the
+		 * active one, starts a tab drag.  Tested before the active
+		 * segment fall-through so it wins over whole-window move. */
+		if (tdm != 0 && (event->xbutton.state & tdm) == tdm
+		    && seg < wwin->tab_group->member_count) {
+			wGroupDragTab(wwin, wwin->tab_group->members[seg], event);
+			return;
+		}
 		if (seg != wwin->tab_group->active_index
 		    && !(event->xbutton.state & (MOD_MASK | ShiftMask))) {
-			/* clicking an inactive segment switches to it and the
-			 * incoming frame is raised since this is a titlebar
-			 * click in click-to-focus terms */
+			/* Button1 on an inactive segment: run the drag loop
+			 * with that member as payload.  When the press is
+			 * released without crossing MOVE_THRESHOLD the loop
+			 * returns False and we treat it as a plain click,
+			 * activating the segment and raising the frame. */
+			if (wGroupDragTab(wwin, wwin->tab_group->members[seg], event))
+				return;
+			if (!wwin->tab_group || seg >= wwin->tab_group->member_count)
+				return;
 			wGroupSetActive(wwin->tab_group, seg);
 			if (wwin->tab_group
 			    && wwin->tab_group->members[wwin->tab_group->active_index]->frame)

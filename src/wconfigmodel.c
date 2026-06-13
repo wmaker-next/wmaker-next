@@ -1014,6 +1014,7 @@ void wConfigApplyStatic(const WConfig *config)
 	/* Only the derived startup state remains here, plain config values
 	 * are read directly from w_global.config now. */
 	wConfigApplyModifierKey(config->modifier_key, "Mod1");
+	wConfigApplyTabDragModifier(config->tab_drag_modifier);
 	wPreferences.flags.nodock = wPreferences.flags.nodock || config->disable_dock;
 	wPreferences.flags.nodrawer = wPreferences.flags.nodrawer ||
 	    wPreferences.flags.nodock || config->disable_drawers;
@@ -1112,6 +1113,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wConfigApplyHotCornerActions(scr, &new_config->hot_corner_actions);
 	if (wConfigChangesHas(changes, WCFG_KEY_SWITCH_PANEL_IMAGES))
 		wConfigApplySwitchPanelImages(scr, &new_config->switch_panel_images);
+	if (wConfigChangesHas(changes, WCFG_KEY_TAB_DRAG_MODIFIER))
+		wConfigApplyTabDragModifier(new_config->tab_drag_modifier);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_LABELS))
 		wConfigApplyModifierKeyLabels(scr, &new_config->modifier_key_labels);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_SHORT_LABELS))

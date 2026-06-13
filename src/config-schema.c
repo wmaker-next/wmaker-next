@@ -202,6 +202,12 @@ static const WConfigEnum drag_maximized_windows[] = {
 	{NULL, 0, 0}
 };
 
+static const WConfigEnum tab_attach_areas[] = {
+	{"Titlebar", WTAB_ATTACH_TITLEBAR, 0},
+	{"Window", WTAB_ATTACH_WINDOW, 0},
+	{NULL, 0, 0}
+};
+
 #define WCFG_SCHEMA_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	{ name, WCFG_KEY_##K, WCFG_##T, def, FIELD(field), etable, lo, hi, fl, refresh },
 #define WCFG_SCHEMA_KB_ROW(K, name, def, wkbd) \

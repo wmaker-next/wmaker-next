@@ -181,6 +181,7 @@ void wConfigApplyModifierKeyShortLabels(WScreen *scr,
 void wConfigApplyHotCornerActions(WScreen *scr,
 				  const WConfigStringArray *actions);
 void wConfigApplyModifierKey(const char *spec, const char *default_spec);
+void wConfigApplyTabDragModifier(const char *spec);
 unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 				    int binding_index, const char *spec,
 				    const char *default_spec,
