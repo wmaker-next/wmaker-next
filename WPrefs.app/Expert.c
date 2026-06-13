@@ -27,6 +27,8 @@
  * Defaults for OPTION_WMAKER* keys come from the shared config schema.
  * OPTION_USERDEF goes to the WPrefs app domain, OPTION_WMGLOBAL_ON writes
  * to the user's WMGLOBAL and defaults to True when the key is absent.
+ * OPTION_WMAKER_ALT maps a checkbox onto a two-value enum key, the schema
+ * default is written when unchecked and the other enum value when checked.
  */
 static struct expert_option {
 	const char *label;  /* Text displayed to user */
@@ -34,6 +36,7 @@ static struct expert_option {
 	enum {
 		OPTION_WMAKER,
 		OPTION_WMAKER_ARRAY,
+		OPTION_WMAKER_ALT,
 		OPTION_USERDEF,
 		OPTION_WMGLOBAL_ON,
 		OPTION_WMAKER_INT
@@ -88,6 +91,15 @@ static struct expert_option {
 
 	{ N_("Show switch panel when cycling windows."),
 	  OPTION_WMAKER_ARRAY, "SwitchPanelImages" },
+
+	{ N_("Show every tab-group member in the window switch panel."),
+	  OPTION_WMAKER, "ShowAllTabsInSwitchPanel" },
+
+	{ N_("Draw tab groups as titlebar segments instead of a [N/M] prefix."),
+	  OPTION_WMAKER, "TabsInTitlebar" },
+
+	{ N_("Accept tab drops anywhere on the target window, not just its titlebar."),
+	  OPTION_WMAKER_ALT, "TabAttachArea" },
 
 	{ N_("Show workspace title on Clip."),
 	  OPTION_WMAKER, "ShowClipTitle" },
@@ -166,6 +178,32 @@ typedef struct _Panel {
 } _Panel;
 
 #define ICON_FILE	"expert"
+
+/* Resolve the {unchecked, checked} string pair for an OPTION_WMAKER_ALT
+ * key from the schema enum table, with the schema default as the
+ * unchecked value.  Works only for exactly-two-value enums, which is
+ * all this row class is meant for. */
+static Bool altPairForKey(const char *key, const char *pair[2])
+{
+	const WConfigEnum *e = wConfigSchemaEnumTable(key);
+	const char *def = wConfigSchemaDefault(key);
+	int n = 0;
+
+	pair[0] = pair[1] = NULL;
+	if (!e || !def)
+		return False;
+
+	for (; e->string; e++) {
+		if (e->is_alias)
+			continue;
+		if (strcasecmp(e->string, def) == 0)
+			pair[0] = e->string;
+		else
+			pair[1] = e->string;
+		n++;
+	}
+	return n == 2 && pair[0] && pair[1];
+}
 
 static void changeIntTextfield(void *data, int delta)
 {
@@ -373,6 +411,14 @@ static void createPanel(Panel *p)
 			}
 			break;
 
+		case OPTION_WMAKER_ALT: {
+				const char *pair[2];
+				const char *str = GetStringForKey(expert_options[i].op_name);
+				state = altPairForKey(expert_options[i].op_name, pair) &&
+					str && strcasecmp(str, pair[1]) == 0;
+			}
+			break;
+
 		case OPTION_USERDEF:
 			state = WMGetUDBoolForKey(udb, expert_options[i].op_name);
 			break;
@@ -466,6 +512,14 @@ static void storeDefaults(_Panel *panel)
 			}
 			else
 				SetStringForKey("None", expert_options[i].op_name);
+			break;
+
+		case OPTION_WMAKER_ALT: {
+				const char *pair[2];
+				if (altPairForKey(expert_options[i].op_name, pair))
+					SetStringForKey(pair[WMGetButtonSelected(panel->swi[i]) ? 1 : 0],
+							expert_options[i].op_name);
+			}
 			break;
 
 		case OPTION_USERDEF:

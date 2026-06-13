@@ -80,6 +80,14 @@
 	R("smart",   N_("Smart")) \
 	R("center",  N_("Center"))
 
+/* Expert.c, key "TabAttachArea".  Surfaced as an OPTION_WMAKER_ALT
+ * checkbox that reads the value pair from the schema directly, this
+ * table is here only so check_wprefs_schema asserts the enum stays
+ * two-valued. */
+#define WPREFS_TABLE_tab_attach_area(R) \
+	R("Titlebar", N_("Titlebar")) \
+	R("Window",   N_("Window"))
+
 /* WindowHandling.c, key "DragMaximizedWindow" */
 #define WPREFS_TABLE_drag_maximized_window(R) \
 	R("Move",            N_("...changes its position (normal behavior)")) \

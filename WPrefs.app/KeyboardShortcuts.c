@@ -109,6 +109,12 @@ static struct keyOption {
 	{ "GroupNextKey",   N_("Focus next group window") },
 	{ "GroupPrevKey",   N_("Focus previous group window") },
 
+	/* Titlebar tab grouping */
+	{ "GroupTabNextKey",   N_("Switch to next tab in group") },
+	{ "GroupTabPrevKey",   N_("Switch to previous tab in group") },
+	{ "GroupTabAttachKey", N_("Attach window as tab") },
+	{ "GroupTabDetachKey", N_("Detach tab from group") },
+
 	/* Vim-like Window Marking */
 	{ "MarkSetKey",   N_("Mark window: set mark") },
 	{ "MarkUnsetKey", N_("Mark window: unset mark") },

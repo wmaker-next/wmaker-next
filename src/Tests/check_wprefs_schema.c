@@ -73,6 +73,9 @@ static const struct choice wprefs_choices[] = {
 #define CUR_KEY "DragMaximizedWindow"
 	WPREFS_TABLE_drag_maximized_window(R2)
 #undef CUR_KEY
+#define CUR_KEY "TabAttachArea"
+	WPREFS_TABLE_tab_attach_area(R2)
+#undef CUR_KEY
 #define CUR_KEY "ResizeDisplay"
 	WPREFS_TABLE_resize_display(R2)
 #undef CUR_KEY
