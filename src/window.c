@@ -2439,13 +2439,16 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 					wwin->icon->mapped = 1;
 				}
 			} else if (!wwin->flags.mapped
-				   && !(wwin->flags.miniaturized || wwin->flags.hidden)) {
+				   && !(wwin->flags.miniaturized || wwin->flags.hidden)
+				   && !wGroupIsInactiveMember(wwin)) {
 				wWindowMap(wwin);
 			}
 		}
 		if (!IS_OMNIPRESENT(wwin))
 			WMPostNotificationName(WMNChangedWorkspace, wwin,
 					       (void *)(uintptr_t) oldWorkspace);
+		if (wwin->tab_group)
+			wGroupSyncWorkspace(wwin);
 		return;
 	}
 
@@ -2476,7 +2479,8 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 				XMapWindow(dpy, wwin->icon->core->window);
 				wwin->icon->mapped = 1;
 			}
-		} else if (!wwin->flags.mapped && !(wwin->flags.miniaturized || wwin->flags.hidden)) {
+		} else if (!wwin->flags.mapped && !(wwin->flags.miniaturized || wwin->flags.hidden)
+			   && !wGroupIsInactiveMember(wwin)) {
 			wWindowMap(wwin);
 		}
 	}
@@ -2488,6 +2492,9 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 
 	if (unmap)
 		wWindowUnmap(wwin);
+
+	if (wwin->tab_group)
+		wGroupSyncWorkspace(wwin);
 }
 
 void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount)
@@ -2695,6 +2702,9 @@ void wWindowMove(WWindow *wwin, int req_x, int req_y)
 
 	wwin->frame_x = req_x;
 	wwin->frame_y = req_y;
+
+	if (wwin->tab_group)
+		wGroupSyncPosition(wwin);
 
 #ifdef CONFIGURE_WINDOW_WHILE_MOVING
 	if (synth_notify)

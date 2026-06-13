@@ -49,6 +49,7 @@
 #include "placement.h"
 #include "misc.h"
 #include "event.h"
+#include "tabgroup.h"
 
 
 #ifndef HAVE_FLOAT_MATHFUNC
@@ -386,6 +387,9 @@ void wShadeWindow(WWindow *wwin)
 
 	WMPostNotificationName(WMNChangedState, wwin, "shade");
 
+	if (wwin->tab_group)
+		wGroupSyncShade(wwin);
+
 #ifdef USE_ANIMATIONS
 	if (!wwin->screen_ptr->flags.startup) {
 		/* Catch up with events not processed while animation was running */
@@ -419,6 +423,9 @@ void wUnshadeWindow(WWindow *wwin)
 		wSetFocusTo(wwin->screen_ptr, wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "shade");
+
+	if (wwin->tab_group)
+		wGroupSyncShade(wwin);
 }
 
 /* Set the old coordinates using the current values */
@@ -635,6 +642,9 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	wWindowSynthConfigureNotify(wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
+
+	if (wwin->tab_group)
+		wGroupSyncMaximize(wwin);
 }
 
 /* generic (un)maximizer */
@@ -1071,6 +1081,9 @@ void wUnmaximizeWindow(WWindow *wwin)
 	wWindowSynthConfigureNotify(wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
+
+	if (wwin->tab_group)
+		wGroupSyncMaximize(wwin);
 }
 
 #ifdef USE_XINERAMA
@@ -1536,6 +1549,13 @@ void wIconifyWindow(WWindow *wwin)
 	XWindowAttributes attribs;
 	int present;
 
+	/* a tab group is one user-visible unit, only the active member
+	 * owns a miniwindow, redirect any iconify request on an inactive
+	 * member to the active one and let wGroupSyncMiniaturize() mark
+	 * the peers afterwards */
+	if (wGroupIsInactiveMember(wwin))
+		wwin = wwin->tab_group->members[wwin->tab_group->active_index];
+
 	if (!XGetWindowAttributes(dpy, wwin->client_win, &attribs))
 		return; /* the window doesn't exist anymore */
 
@@ -1696,12 +1716,21 @@ void wIconifyWindow(WWindow *wwin)
 
 	WMPostNotificationName(WMNChangedState, wwin, "iconify");
 
+	if (wwin->tab_group)
+		wGroupSyncMiniaturize(wwin);
+
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, True);
 }
 
 void wDeiconifyWindow(WWindow *wwin)
 {
+	/* deiconify always targets the active tab so it finds the
+	 * miniwindow and maps the right frame, wWindowSingleFocus()
+	 * has already promoted any explicitly requested member */
+	if (wGroupIsInactiveMember(wwin))
+		wwin = wwin->tab_group->members[wwin->tab_group->active_index];
+
 	/* Let's avoid changing workspace while deiconifying */
 	w_global.ignore_workspace_change = True;
 
@@ -1806,6 +1835,9 @@ void wDeiconifyWindow(WWindow *wwin)
 
 	WMPostNotificationName(WMNChangedState, wwin, "iconify");
 
+	if (wwin->tab_group)
+		wGroupSyncMiniaturize(wwin);
+
 	/* In case we were shaded and iconified, also unshade */
 	if (!netwm_hidden)
 		wUnshadeWindow(wwin);
@@ -1891,6 +1923,7 @@ void wHideAll(WScreen *scr)
 		if (wwin->frame->workspace == scr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
+		    && !wGroupIsInactiveMember(wwin)
 		    && !WFLAGP(wwin, no_miniaturizable)
 		   ) {
 			wwin->flags.skip_next_animation = 1;
@@ -2075,7 +2108,8 @@ static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int
 	(void) animate;
 #endif
 	wwin->flags.skip_next_animation = 0;
-	if (wwin->screen_ptr->current_workspace == wwin->frame->workspace) {
+	if (wwin->screen_ptr->current_workspace == wwin->frame->workspace
+	    && !wGroupIsInactiveMember(wwin)) {
 		XMapWindow(dpy, wwin->client_win);
 		XMapWindow(dpy, wwin->frame->core->window);
 		wClientSetState(wwin, NormalState, None);
@@ -2144,8 +2178,9 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				if (bringToCurrentWS)
 					wWindowChangeWorkspace(wlist, scr->current_workspace);
 				wlist->flags.hidden = 0;
-				wRaiseFrame(wlist->frame->core);
-				if (wlist->frame->workspace == scr->current_workspace) {
+				if (wlist->frame->workspace == scr->current_workspace
+				    && !wGroupIsInactiveMember(wlist)) {
+					wRaiseFrame(wlist->frame->core);
 					XMapWindow(dpy, wlist->frame->core->window);
 					if (miniwindows)
 						wUnshadeWindow(wlist);

@@ -237,6 +237,65 @@ wait_for 40 pid_gone "$termCPID" || fail "termC did not exit on Shift+close"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died on Shift+close"
 ok "Shift+close closed every group member"
 
+# --- 7. state propagation: move, workspace, iconify -----------------------
+note "state: re-group two terms"
+spawn_term termD 80x24+100+100
+spawn_term termE 80x24+450+250
+for t in termD termE; do
+    wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^$t\$' 2>/dev/null | grep -q ." \
+        || fail "$t did not map"
+done
+TD=$(find_client termD)
+TE=$(find_client termE)
+sleep 0.3
+xdo windowactivate "$TE"; sleep 0.3
+xdo key --clearmodifiers ctrl+shift+a
+wait_for 30 not_viewable "$TE" || fail "termE was not hidden after attach"
+
+note "state: move active, switch tab"
+DISPLAY=$DPY wmctrl -i -r "$TD" -e 0,600,400,-1,-1
+wait_for 30 sh -c "[ \"\$(DISPLAY=$DPY xwininfo -id $TD 2>/dev/null \
+    | sed -n 's/^ *Absolute upper-left X: *\\([0-9-]*\\).*/\\1/p')\" -ge 590 ]" \
+    || fail "termD did not move"
+NX=$(abs_x "$TD"); NY=$(abs_y "$TD")
+xdo windowactivate "$TD"; sleep 0.2
+xdo key --clearmodifiers ctrl+shift+n
+wait_for 30 is_viewable "$TE" || fail "next did not reveal termE"
+[ "$(abs_x "$TE")" = "$NX" ] && [ "$(abs_y "$TE")" = "$NY" ] \
+    || fail "termE at $(abs_x "$TE"),$(abs_y "$TE"), expected $NX,$NY"
+ok "peer position follows active member ($NX,$NY)"
+
+note "state: send group to workspace 2 and back"
+DISPLAY=$DPY wmctrl -n 2
+wait_for 20 sh -c "DISPLAY=$DPY wmctrl -d 2>/dev/null | wc -l | grep -q '^2\$'" \
+    || fail "could not create second workspace"
+DISPLAY=$DPY wmctrl -i -r "$TE" -t 1
+wait_for 30 not_viewable "$TE" || fail "termE still visible after workspace move"
+DISPLAY=$DPY wmctrl -i -r "$TE" -t 0
+wait_for 30 is_viewable "$TE" || fail "termE not visible after returning to ws 0"
+not_viewable "$TD" \
+    || fail "inactive termD became visible after workspace round-trip"
+ok "workspace round-trip keeps inactive member hidden"
+
+note "state: iconify group, deiconify"
+xdo windowactivate "$TE"; sleep 0.2
+DISPLAY=$DPY xdotool windowminimize "$TE"
+wait_for 30 not_viewable "$TE" || fail "termE still visible after iconify"
+wait_for 20 has_state "$TE" _NET_WM_STATE_HIDDEN \
+    || fail "termE missing HIDDEN after iconify"
+wait_for 20 has_state "$TD" _NET_WM_STATE_HIDDEN \
+    || fail "inactive termD missing HIDDEN after group iconify"
+xdo windowactivate "$TE"
+wait_for 30 is_viewable "$TE" || fail "termE not visible after deiconify"
+not_viewable "$TD" \
+    || fail "inactive termD became visible after deiconify"
+ok "iconify+deiconify keeps one member visible"
+
+DISPLAY=$DPY wmctrl -i -c "$TE"; DISPLAY=$DPY wmctrl -i -c "$TD"
+wait_for 40 pid_gone "$termDPID"
+wait_for 40 pid_gone "$termEPID"
+kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during state propagation"
+
 # --- teardown --------------------------------------------------------------
 kill -TERM "$WMAKER_PID" 2>/dev/null
 wait_for 50 pid_gone "$WMAKER_PID"

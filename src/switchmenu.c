@@ -37,6 +37,7 @@
 #include "workspace.h"
 #include "framewin.h"
 #include "switchmenu.h"
+#include "tabgroup.h"
 
 #define IS_GNUSTEP_MENU(w) ((w)->wm_gnustep_attr && \
 	((w)->wm_gnustep_attr->flags & GSWindowLevelAttr) && \
@@ -283,6 +284,16 @@ void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
 		if (wwin->flags.internal_window || WFLAGP(wwin, skip_window_list) || IS_GNUSTEP_MENU(wwin)) {
 			return;
 		}
+		if (!w_global.config->show_all_tabs_in_switch_panel
+		    && wGroupIsInactiveMember(wwin))
+			return;
+
+		/* a tab-group state change can promote a member that was
+		 * filtered out earlier, do not insert a duplicate when the
+		 * entry already exists */
+		for (i = 0; i < switchmenu->entry_no; i++)
+			if (switchmenu->entries[i]->clientdata == wwin)
+				return;
 
 		switchMenuTitle(wwin, title, len);
 		t = ShrinkString(scr->menu_entry_font, title, MAX_WINDOWLIST_WIDTH);
@@ -462,6 +473,14 @@ static void observer(void *self, WMNotification * notif)
 	else if (strcmp(name, WMNChangedState) == 0) {
 		if (strcmp((char *)data, "omnipresent") == 0) {
 			UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE_WORKSPACE);
+		} else if (strcmp((char *)data, "tabgroup") == 0
+			   && !w_global.config->show_all_tabs_in_switch_panel) {
+			/* tab membership changed, collapse each group to its
+			 * active member by adding or removing this entry */
+			if (wGroupIsInactiveMember(wwin))
+				UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_REMOVE);
+			else
+				UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_ADD);
 		} else {
 			UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE_STATE);
 		}

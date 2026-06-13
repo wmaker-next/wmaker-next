@@ -50,6 +50,7 @@
 #include "event.h"
 #include "wsmap.h"
 #include "dialog.h"
+#include "tabgroup.h"
 
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
@@ -887,7 +888,8 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 					}
 				} else {
 					if (!tmp->flags.hidden) {
-						if (!(tmp->flags.mapped || tmp->flags.miniaturized)) {
+						if (!(tmp->flags.mapped || tmp->flags.miniaturized)
+						    && !wGroupIsInactiveMember(tmp)) {
 							/* remap windows that are on this workspace */
 							wWindowMap(tmp);
 							if (!foc && !WFLAGP(tmp, no_focusable)) {
@@ -1120,7 +1122,8 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 					if (!tmp->flags.miniaturized && !foc)
 						foc = tmp;
 				} else if (!tmp->flags.hidden) {
-					if (!(tmp->flags.mapped || tmp->flags.miniaturized)) {
+					if (!(tmp->flags.mapped || tmp->flags.miniaturized)
+					    && !wGroupIsInactiveMember(tmp)) {
 						wWindowMap(tmp);
 						if (!foc && !WFLAGP(tmp, no_focusable)
 						    && wWindowEffectiveHead(tmp) == head)
@@ -1221,7 +1224,8 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 		if (tmp->flags.hidden)
 			continue;
 		if (visible) {
-			if (!(tmp->flags.mapped || tmp->flags.miniaturized || tmp->flags.shaded))
+			if (!(tmp->flags.mapped || tmp->flags.miniaturized || tmp->flags.shaded)
+			    && !wGroupIsInactiveMember(tmp))
 				wWindowMap(tmp);
 			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
 			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {

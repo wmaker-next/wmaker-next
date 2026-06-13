@@ -31,8 +31,18 @@ void wGroupSetActive(WWindowGroup *grp, int idx);
  */
 void wGroupUnmanageMember(WWindow *wwin, Bool destroyed);
 
-/* propagate a real resize on source to all other members, reentry safe */
+/*
+ * Peer state propagation.  Each helper is called from the active member's
+ * normal action path and mirrors the relevant state onto every inactive
+ * member of the same group.  All of them share one reentry guard so a
+ * peer update never recurses back through the originating action.
+ */
 void wGroupSyncSize(WWindow *source);
+void wGroupSyncPosition(WWindow *source);
+void wGroupSyncWorkspace(WWindow *source);
+void wGroupSyncShade(WWindow *source);
+void wGroupSyncMiniaturize(WWindow *source);
+void wGroupSyncMaximize(WWindow *source);
 
 /* refresh the [N/M] title prefix for every member of grp */
 void wGroupRefreshTitles(WWindowGroup *grp);

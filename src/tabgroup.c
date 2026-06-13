@@ -28,6 +28,7 @@
 #include "misc.h"
 #include "stacking.h"
 #include "event.h"
+#include "icon.h"
 #include "tabgroup.h"
 
 
@@ -39,8 +40,12 @@ static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging);
 static void wGroupDestroy(WWindowGroup *grp, WScreen *scr);
 
 
-/* reentry guard for wGroupSyncSize() */
-static int syncing_size = 0;
+/*
+ * Shared reentry guard for every wGroupSync*() helper.  The propagators
+ * call back into wWindowConfigure(), wWindowMove() and friends which in
+ * turn call back into the same propagators, the guard breaks that cycle.
+ */
+static int syncing_peers = 0;
 
 
 /* --------------------------------------------------------------------
@@ -159,12 +164,18 @@ static void wGroupRevealMember(WScreen *scr, WWindow *wwin, Bool focus)
 {
 	if (!wwin->frame)
 		return;
-	XMapWindow(dpy, wwin->frame->core->window);
-	if (!wwin->flags.shaded)
-		XMapWindow(dpy, wwin->client_win);
-	wwin->flags.mapped = 1;
-	if (focus)
-		wSetFocusTo(scr, wwin);
+	/* the whole group may be miniaturized or hidden, in that case the
+	 * newly active member stays unmapped and only the membership state
+	 * is published, the existing miniwindow or app icon brings it back */
+	if (!wwin->flags.miniaturized && !wwin->flags.hidden) {
+		XMapWindow(dpy, wwin->frame->core->window);
+		if (!wwin->flags.shaded) {
+			XMapWindow(dpy, wwin->client_win);
+			wwin->flags.mapped = 1;
+		}
+		if (focus)
+			wSetFocusTo(scr, wwin);
+	}
 	wGroupNotifyState(wwin);
 }
 
@@ -245,14 +256,14 @@ void wGroupAttach(WWindowGroup *grp, WWindow *wwin)
 		grp->active_index = 0;
 	} else {
 		active = grp->members[grp->active_index];
-		syncing_size = 1;
+		syncing_peers = 1;
 		if (IS_RESIZABLE(wwin))
 			wWindowConfigure(wwin, active->frame_x, active->frame_y,
 			                 (int)active->client.width,
 			                 (int)active->client.height);
 		else
 			wWindowMove(wwin, active->frame_x, active->frame_y);
-		syncing_size = 0;
+		syncing_peers = 0;
 		/* hand focus to the visible member before hiding the
 		 * joining window so X does not revert focus to the root
 		 * and pagers do not see FOCUSED on a HIDDEN client */
@@ -385,6 +396,29 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 	x = cur->frame_x;
 	y = cur->frame_y;
 
+	/*
+	 * The whole group may be miniaturized or hidden by an application
+	 * hide.  Both members are already unmapped in that case, so only
+	 * the active index moves and the miniwindow, if any, is handed to
+	 * the new active member so a later wDeiconifyWindow() finds it.
+	 */
+	if (cur->flags.miniaturized || cur->flags.hidden) {
+		grp->active_index = idx;
+		if (cur->icon && !nxt->icon) {
+			nxt->icon = cur->icon;
+			nxt->icon->owner = nxt;
+			nxt->icon_x = cur->icon_x;
+			nxt->icon_y = cur->icon_y;
+			nxt->flags.icon_moved = cur->flags.icon_moved;
+			cur->icon = NULL;
+			wIconChangeTitle(nxt->icon, nxt);
+			wIconPaint(nxt->icon);
+		}
+		wGroupNotifyState(cur);
+		wGroupNotifyState(nxt);
+		return;
+	}
+
 	XGrabServer(dpy);
 
 	/*
@@ -424,26 +458,200 @@ void wGroupSyncSize(WWindow *source)
 {
 	WWindowGroup *grp;
 	WWindow *peer;
-	int width, height, i;
+	int width, height, x, y, i;
 
 	grp = source->tab_group;
-	if (!grp || syncing_size)
+	if (!grp || syncing_peers)
 		return;
 
 	width = (int)source->client.width;
 	height = (int)source->client.height;
+	x = source->frame_x;
+	y = source->frame_y;
 
-	syncing_size = 1;
+	syncing_peers = 1;
 	for (i = 0; i < grp->member_count; i++) {
 		peer = grp->members[i];
 		if (peer == source)
 			continue;
 		if (!IS_RESIZABLE(peer))
 			continue;
-		if ((int)peer->client.width != width || (int)peer->client.height != height)
-			wWindowConfigure(peer, peer->frame_x, peer->frame_y, width, height);
+		if ((int)peer->client.width != width || (int)peer->client.height != height
+		    || peer->frame_x != x || peer->frame_y != y)
+			wWindowConfigure(peer, x, y, width, height);
 	}
-	syncing_size = 0;
+	syncing_peers = 0;
+}
+
+void wGroupSyncPosition(WWindow *source)
+{
+	WWindowGroup *grp;
+	WWindow *peer;
+	int x, y, i;
+
+	grp = source->tab_group;
+	if (!grp || syncing_peers)
+		return;
+
+	x = source->frame_x;
+	y = source->frame_y;
+
+	syncing_peers = 1;
+	for (i = 0; i < grp->member_count; i++) {
+		peer = grp->members[i];
+		if (peer == source)
+			continue;
+		if (peer->frame_x != x || peer->frame_y != y)
+			wWindowMove(peer, x, y);
+	}
+	syncing_peers = 0;
+}
+
+void wGroupSyncWorkspace(WWindow *source)
+{
+	WWindowGroup *grp;
+	WWindow *peer;
+	int workspace, old, i;
+
+	grp = source->tab_group;
+	if (!grp || syncing_peers || !source->frame)
+		return;
+
+	workspace = source->frame->workspace;
+
+	syncing_peers = 1;
+	for (i = 0; i < grp->member_count; i++) {
+		peer = grp->members[i];
+		if (peer == source || !peer->frame)
+			continue;
+		if (peer->frame->workspace == workspace)
+			continue;
+		old = peer->frame->workspace;
+		peer->frame->workspace = workspace;
+		peer->last_head = source->last_head;
+		WMPostNotificationName(WMNChangedWorkspace, peer,
+		                       (void *)(uintptr_t)old);
+	}
+	syncing_peers = 0;
+}
+
+/*
+ * Mirror the active member's shaded state onto every inactive peer.
+ * The peer frame and client are physically resized and unmapped so a
+ * later wGroupSetActive() shows a correctly rolled-up titlebar rather
+ * than a full frame whose flag merely says shaded.
+ */
+void wGroupSyncShade(WWindow *source)
+{
+	WWindowGroup *grp;
+	WWindow *peer;
+	int i;
+	Bool shaded;
+
+	grp = source->tab_group;
+	if (!grp || syncing_peers)
+		return;
+
+	shaded = source->flags.shaded;
+
+	syncing_peers = 1;
+	for (i = 0; i < grp->member_count; i++) {
+		peer = grp->members[i];
+		if (peer == source || !peer->frame)
+			continue;
+		if (peer->flags.shaded == shaded)
+			continue;
+
+		peer->flags.shaded = shaded;
+		if (shaded) {
+			peer->flags.mapped = 0;
+			XSelectInput(dpy, peer->client_win,
+			             peer->event_mask & ~StructureNotifyMask);
+			XUnmapWindow(dpy, peer->client_win);
+			XSelectInput(dpy, peer->client_win, peer->event_mask);
+			wFrameWindowResize(peer->frame, peer->frame->core->width,
+			                   peer->frame->top_width - 1);
+			peer->client.y = peer->frame_y - (int)peer->client.height
+			                 + (int)peer->frame->top_width;
+		} else {
+			wFrameWindowResize(peer->frame, peer->frame->core->width,
+			                   peer->frame->top_width
+			                   + (int)peer->client.height
+			                   + peer->frame->bottom_width);
+			peer->client.y = peer->frame_y + (int)peer->frame->top_width;
+			XMapWindow(dpy, peer->client_win);
+		}
+		wWindowSynthConfigureNotify(peer);
+		WMPostNotificationName(WMNChangedState, peer, "shade");
+	}
+	syncing_peers = 0;
+}
+
+/*
+ * Mirror miniaturized state.  Only the active member ever creates or
+ * owns a WIcon, peers just follow flags.miniaturized and WM_STATE so
+ * pagers and the switch menu show one minimized unit.
+ */
+void wGroupSyncMiniaturize(WWindow *source)
+{
+	WWindowGroup *grp;
+	WWindow *peer;
+	int i;
+	Bool mini;
+
+	grp = source->tab_group;
+	if (!grp || syncing_peers)
+		return;
+
+	mini = source->flags.miniaturized;
+
+	syncing_peers = 1;
+	for (i = 0; i < grp->member_count; i++) {
+		peer = grp->members[i];
+		if (peer == source)
+			continue;
+		if (peer->flags.miniaturized == mini)
+			continue;
+
+		peer->flags.miniaturized = mini;
+		peer->flags.mapped = 0;
+		wClientSetState(peer, mini ? IconicState : NormalState, None);
+		WMPostNotificationName(WMNChangedState, peer, "iconify");
+	}
+	syncing_peers = 0;
+}
+
+/*
+ * Mirror maximize bookkeeping.  Geometry itself is already propagated
+ * through wWindowConfigure() into wGroupSyncSize(), this only copies
+ * the maximize direction bitmask and the saved pre-maximize geometry
+ * so a later unmaximize on any member restores to the same place.
+ */
+void wGroupSyncMaximize(WWindow *source)
+{
+	WWindowGroup *grp;
+	WWindow *peer;
+	int i;
+
+	grp = source->tab_group;
+	if (!grp || syncing_peers)
+		return;
+
+	syncing_peers = 1;
+	for (i = 0; i < grp->member_count; i++) {
+		peer = grp->members[i];
+		if (peer == source)
+			continue;
+		peer->flags.maximized = source->flags.maximized;
+		peer->flags.old_maximized = source->flags.old_maximized;
+		peer->old_geometry = source->old_geometry;
+		peer->maximus_x = source->maximus_x;
+		peer->maximus_y = source->maximus_y;
+		if (peer->frame)
+			wWindowUpdateButtonImages(peer);
+		WMPostNotificationName(WMNChangedState, peer, "maximize");
+	}
+	syncing_peers = 0;
 }
 
 /* --------------------------------------------------------------------
