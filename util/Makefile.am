@@ -32,6 +32,21 @@ wmclipd_LDADD = \
 	@XLFLAGS@ @XLIBS@ @XFIXES_LIBS@ $(liblist)
 endif
 
+if BUILD_WMLOCK
+bin_PROGRAMS += wmlock
+wmlock_SOURCES = wmlock.c
+wmlock_LDADD = \
+	$(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	$(top_builddir)/wrlib/libwraster.la \
+	@XLFLAGS@ @XLIBS@ @LIBXRANDR@ @PAM_LIBS@ $(liblist)
+if HAVE_PAM
+pamconfdir = $(sysconfdir)/pam.d
+dist_pamconf_DATA = pam.d/wmlock
+endif
+endif
+EXTRA_DIST += pam.d/wmlock
+
 wxcopy_LDADD = @XLFLAGS@ @XLIBS@
 
 wxpaste_LDADD = @XLFLAGS@ @XLIBS@

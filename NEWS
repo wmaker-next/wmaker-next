@@ -39,6 +39,26 @@ new ToggleFullscreenKey binding (default "None") does the same from
 the keyboard. This gives a way back out of fullscreen for clients
 that do not speak _NET_WM_STATE themselves once the titlebar is gone.
 
+wmlock screen locker
+--------------------
+
+A native screen locker is now installed as wmlock. It covers every
+X screen with a grayscaled, stack-blurred snapshot of the desktop
+and shows a WINGs password prompt reparented inside that cover.
+The keyboard and pointer grabs are taken on the cover and held for
+the entire lifetime of the lock, the prompt is keyboard only, so
+no other client can receive input or steal focus while it is up.
+Authentication uses the "wmlock" PAM service (a one-line file
+including the login auth stack is installed to /etc/pam.d so
+fingerprint or token modules can be added without touching the
+system login configuration), or auth_userokay(3) on OpenBSD. On
+Linux it makes a best-effort attempt to lower its OOM score, mlock
+the password buffer, and lock VT switching, all of which fail
+harmlessly without the matching capability. wmlock leaves DPMS
+alone, pair it with xset or xss-lock if blanking is wanted. The
+build is enabled automatically when PAM or bsd_auth headers are
+found, override with --disable-wmlock.
+
 Unix-socket control channel and the new wmakermsg tool
 -------------------------------------------------------
 

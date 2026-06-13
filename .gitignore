@@ -69,6 +69,7 @@ util/wmclipd
 util/Tests/wmclipd_cliptest
 util/wmgenmenu
 util/wmiv
+util/wmlock
 util/wmmenugen
 util/wmsetbg
 util/wmsetup

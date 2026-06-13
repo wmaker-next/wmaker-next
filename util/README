@@ -42,6 +42,9 @@ wmgenmenu- generate a Window Maker root menu by probing for installed
 
 wmiv- quick image viewer using wrlib
 
+wmlock- X11 screen locker for Window Maker, authenticates via PAM or
+	bsd_auth.
+
 wmmenugen- generate a Window Maker proplist root menu from XDG .desktop
 	files or wmconfig entries.
 

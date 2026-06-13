@@ -1,0 +1,106 @@
+.TH WMLOCK 1 "2026" "Window Maker"
+.SH NAME
+wmlock \- X11 screen locker for Window Maker
+.SH SYNOPSIS
+.B wmlock
+[\fB\-\-verbose\fR]
+.br
+.B wmlock
+\fB\-\-help\fR|\fB\-\-version\fR
+.SH DESCRIPTION
+.B wmlock
+locks every X screen on the current display behind a fullscreen cover
+window showing a grayscaled, blurred snapshot of the desktop. The
+keyboard and pointer are grabbed for the entire lifetime of the lock and
+key events are forwarded to a WINGs password prompt that lives inside
+the cover, so user input is not delivered to other clients while the
+lock holds. The pointer is hidden and ignored, the prompt is keyboard
+only.
+.PP
+The lock releases when the invoking user's password is accepted.
+Return submits, Backspace edits, Escape clears the field.
+.PP
+On builds with PAM, authentication uses the
+.B wmlock
+PAM service installed at
+.IR /etc/pam.d/wmlock ,
+which by default includes the
+.B login
+auth stack. Replace it to enable fingerprint or token modules without
+touching the system login stack. On OpenBSD authentication uses
+.BR auth_userokay (3)
+with style
+.BR auth-wmlock .
+.PP
+.B wmlock
+does not alter DPMS timeouts. Pair it with
+.BR xset (1)
+or
+.BR xss-lock (1)
+if blanking is wanted.
+.SH OPTIONS
+.TP
+.B \-\-help
+Print a short usage summary and exit. The short
+.B \-h
+alias is also accepted.
+.TP
+.B \-\-verbose
+Print best-effort diagnostics (OOM score, mlock, VT switch lock, PAM
+failures) to standard error. The short
+.B \-v
+alias is also accepted.
+.TP
+.B \-\-version
+Print the Window Maker version and exit.
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+X display to lock and the value passed as
+.B PAM_TTY
+to PAM modules.
+.SH FILES
+.TP
+.I /etc/pam.d/wmlock
+PAM service configuration used on PAM builds.
+.SH NOTES
+On Linux
+.B wmlock
+attempts to lower its OOM score, mlock the password buffer, and lock VT
+switching. These are best effort and require additional capabilities
+(typically the binary being installed setgid shadow or run from a
+session with
+.BR CAP_SYS_TTY_CONFIG ),
+failure is reported only with
+.BR \-\-verbose .
+.SH SECURITY
+.B wmlock
+relies on X keyboard and pointer grabs and on an override-redirect
+cover window, all of which are resources of an ordinary X client. Any
+other client connected to the same X display can locate the cover via
+.BR XQueryTree (3)
+and issue
+.BR XKillClient (3)
+on it, which closes the
+.B wmlock
+connection, destroys the cover, and releases both grabs without
+authentication. This is inherent to the X11 protocol and is shared by
+every in-server X11 screen locker.
+.PP
+.B wmlock
+therefore protects an unattended session only against access through
+the physical keyboard and pointer. It does not place a security
+boundary between X clients on the same display, and it should not be
+relied on in environments where untrusted programs may hold an X
+connection while the screen is locked.
+.SH EXIT STATUS
+.B 0
+unlocked normally,
+.B 1
+could not establish the lock (display, grab, or PAM start failure),
+.B 2
+invalid command line.
+.SH SEE ALSO
+.BR wmaker (1),
+.BR xset (1),
+.BR xss-lock (1)

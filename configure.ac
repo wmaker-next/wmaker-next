@@ -814,6 +814,41 @@ AC_SUBST(XFIXES_LIBS)
 AM_CONDITIONAL([HAVE_XFIXES], [test "x$have_xfixes" = xyes])
 
 
+dnl wmlock screen locker, needs PAM (Linux/FreeBSD/NetBSD) or bsd_auth (OpenBSD)
+dnl ============================================================================
+AC_ARG_ENABLE([wmlock],
+    [AS_HELP_STRING([--disable-wmlock], [do not build the wmlock screen locker])],
+    [],
+    [enable_wmlock=auto])
+have_pam=no
+have_bsd_auth=no
+PAM_LIBS=
+AS_IF([test "x$enable_wmlock" != xno],
+    [AC_CHECK_HEADER([security/pam_appl.h],
+        [AC_CHECK_LIB([pam], [pam_start],
+            [have_pam=yes
+             PAM_LIBS="-lpam"
+             AC_DEFINE([HAVE_PAM], [1],
+                       [defined when PAM is available so wmlock authenticates via pam_start])])])
+     AC_CHECK_HEADER([bsd_auth.h],
+        [AC_DEFINE([HAVE_BSD_AUTH], [1],
+                   [defined when OpenBSD bsd_auth is available so wmlock authenticates via auth_userokay])
+         have_bsd_auth=yes])
+     AS_IF([test "x$have_pam" != xyes && test "x$have_bsd_auth" != xyes],
+        [AS_IF([test "x$enable_wmlock" = xyes],
+            [AC_MSG_ERROR([wmlock needs PAM or bsd_auth and neither was found])],
+            [enable_wmlock=no])],
+        [enable_wmlock=yes
+         AC_DEFINE_UNQUOTED([WMLOCK_PAM_SERVICE], ["wmlock"],
+                            [PAM service name used by wmlock when HAVE_PAM is set])])
+     dnl wmlock scrubs the password buffer, glibc/musl/FreeBSD/OpenBSD have
+     dnl explicit_bzero, NetBSD only has explicit_memset
+     AC_CHECK_FUNCS([explicit_bzero explicit_memset])])
+AC_SUBST(PAM_LIBS)
+AM_CONDITIONAL([HAVE_PAM], [test "x$have_pam" = xyes])
+AM_CONDITIONAL([BUILD_WMLOCK], [test "x$enable_wmlock" = xyes])
+
+
 dnl Startup notification - launcher and monitor support
 dnl ====================================================
 AC_ARG_WITH([startup-notification],

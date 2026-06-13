@@ -586,6 +586,11 @@ keeps up with the frame.
 Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
 whose clipboard-manager mode depends on XFixes selection owner notifications.
 
+@item --disable-wmlock
+Do not build the @command{wmlock} screen locker. By default it is built when either PAM
+(@file{security/pam_appl.h} and @code{-lpam}) or OpenBSD @code{bsd_auth} is found, and
+skipped otherwise.
+
 @item --without-startup-notification
 Do not link against @emph{libstartup-notification}. With the library present Window Maker
 broadcasts a startup-notification sequence for each dock and root-menu launch (showing a busy

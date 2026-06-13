@@ -17,6 +17,7 @@ dist_man_MANS = \
 	wmakermsg.1 \
 	wmgenmenu.1 \
 	wmiv.1 \
+	wmlock.1 \
 	wmmenugen.1 \
 	WPrefs.1 \
 	wxcopy.1 \
@@ -60,7 +61,7 @@ am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
 check-local: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmiv-args wmlock-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 wmaker-args:
@@ -122,6 +123,14 @@ wmgenmenu-args:
 wmiv-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmiv" --man-page "$(top_srcdir)/doc/wmiv.1"
+
+wmlock-args:
+if BUILD_WMLOCK
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
+		--program "$(top_builddir)/util/wmlock" --man-page "$(top_srcdir)/doc/wmlock.1"
+else
+	@echo "  SKIP     wmlock-args (built without PAM/bsd_auth)"
+endif
 
 wmmenugen-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
