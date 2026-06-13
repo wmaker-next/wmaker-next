@@ -346,6 +346,8 @@ static void resizebarMouseDown(WObjDescriptor * desc, XEvent * event);
 
 static void checkTitleSize(WFrameWindow * fwin);
 
+static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h);
+
 static void paintButton(WCoreWindow * button, WTexture * texture,
 			unsigned long color, WPixmap * image, int pushed, int from_xpm);
 
@@ -669,6 +671,8 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 
 	if (fwin->title)
 		wfree(fwin->title);
+
+	wfree(fwin->tab_seg_x);
 
 	for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
 		release_title_set(fwin, i);
@@ -1235,6 +1239,26 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 					rofs += fwin->buttons[r]->width + 3;
 			}
 		}
+
+		y = frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE;
+		h = WMFontHeight(*fwin->font);
+		if (y * 2 + h > frame_title_max_height(fwin))
+			y = (frame_title_max_height(fwin) - h) / 2;
+		if (y * 2 + h < frame_title_min_height(fwin))
+			y = (frame_title_min_height(fwin) - h) / 2;
+
+		/* tab-group segmented titlebar branches before the
+		 * single-title icon and text path, each segment owns its
+		 * own icon slot so the WTB_ICON adjustment below is skipped
+		 * when paintTabSegments() handles the surface */
+		fwin->tab_seg_count = 0;
+		if (paintTabSegments(fwin, state, lofs, rofs, y, h)) {
+			for (r = 0; r < WTB_ROLE_COUNT; r++)
+				if (fwin->buttons[r])
+					handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
+			return;
+		}
+
 		/* Icon lives on the titlebar surface in every style, in
 		 * TS_NEW the surface is already shrunk between the button
 		 * cores so the icon always renders adjacent to the title
@@ -1296,15 +1320,6 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 				break;
 			}
 
-			y = frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE;
-			h = WMFontHeight(*fwin->font);
-
-			if (y*2 + h > frame_title_max_height(fwin))
-				y = (frame_title_max_height(fwin) - h) / 2;
-
-			if (y*2 + h < frame_title_min_height(fwin))
-				y = (frame_title_min_height(fwin) - h) / 2;
-
 			/* We use a w+2 buffer to have an extra pixel on the left and
 			 * another one on the right. This is because for some odd reason,
 			 * sometimes when using AA fonts (when libfreetype2 is compiled
@@ -1339,6 +1354,232 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			if (fwin->buttons[r])
 				handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
 	}
+}
+
+/*
+ * Tab-group segmented titlebar renderer.
+ *
+ * lofs and rofs delimit the free title span between button cores in
+ * titlebar-core coordinates, the same span the single-title path uses.
+ * The span is split into n equal segments with a 1-pixel separator
+ * between each, the active segment keeps the titlebar's own background
+ * and the inactive ones are overlaid with the alternate-state pixmap so
+ * they read as unfocused tabs.
+ *
+ * Segment edges are stored in fwin->tab_seg_x[0..n] for the click
+ * hit-test in window.c.  Returns 1 when segments were drawn, 0 when the
+ * frame is not the active member of a multi-member group or
+ * TabsInTitlebar is off so the caller continues into the single-title
+ * renderer.
+ */
+static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h)
+{
+	WScreen *scr = fwin->screen_ptr;
+	WWindow *owner, *member;
+	WWindowGroup *grp;
+	WFrameWindow *mframe;
+	WTexture *seg_tex;
+	Drawable buf;
+	const char *base;
+	char *txt;
+	int span, avail, tab_w, rem, sep_w;
+	int n, i, sx, sw, tx, tw, len;
+	int seg_state, th, iy, isz;
+	int show_icon;
+
+	if (!w_global.config->tabs_in_titlebar || !fwin->flags.is_client_window_frame)
+		return 0;
+
+	owner = (WWindow *) fwin->child;
+	if (!owner || !owner->tab_group)
+		return 0;
+	grp = owner->tab_group;
+	n = grp->member_count;
+	if (n < 2 || grp->active_index != owner->tab_group_index)
+		return 0;
+
+	span = (int)fwin->titlebar->width - lofs - rofs;
+	if (span <= n)
+		return 0;
+
+	sep_w = 1;
+	avail = span - (n - 1) * sep_w;
+	tab_w = avail / n;
+	rem = avail % n;
+
+	if (fwin->tab_seg_x == NULL || fwin->tab_seg_count != n)
+		fwin->tab_seg_x = wrealloc(fwin->tab_seg_x, sizeof(int) * (size_t)(n + 1));
+	fwin->tab_seg_count = n;
+
+	sx = lofs;
+	for (i = 0; i <= n; i++) {
+		fwin->tab_seg_x[i] = sx;
+		if (i < n)
+			sx += tab_w + (i < rem ? 1 : 0) + (i < n - 1 ? sep_w : 0);
+	}
+	/* lofs and rofs both carry the single-title 6-px text padding on
+	 * top of any button extent, that padding leaks the frame's own
+	 * background colour between the outer segments and the buttons,
+	 * widen the first and last segment to absorb it so the segment
+	 * background runs flush to the button edge */
+	fwin->tab_seg_x[0] = (lofs > 6) ? lofs - 6 : 0;
+	fwin->tab_seg_x[n] = (int)fwin->titlebar->width - ((rofs > 6) ? rofs - 6 : 0);
+
+	th = (int)fwin->titlebar->height;
+	show_icon = buttonVisible(fwin, WTB_ICON);
+
+	XSetClipMask(dpy, scr->copy_gc, None);
+
+	for (i = 0; i < n; i++) {
+		sx = fwin->tab_seg_x[i];
+		sw = fwin->tab_seg_x[i + 1] - sx - (i < n - 1 ? sep_w : 0);
+		if (sw <= 0)
+			continue;
+
+		member = grp->members[i];
+		mframe = member ? member->frame : NULL;
+
+		/* the active segment uses WS_FOCUSED on a focused frame
+		 * and WS_PFOCUSED on an unfocused one so it always stands
+		 * out, inactive segments borrow WS_PFOCUSED on a focused
+		 * frame and WS_UNFOCUSED otherwise, the overlay is drawn
+		 * whenever seg_state differs from the titlebar background */
+		if (i == grp->active_index)
+			seg_state = (state == WS_UNFOCUSED) ? WS_PFOCUSED : state;
+		else
+			seg_state = (state == WS_FOCUSED) ? WS_PFOCUSED : WS_UNFOCUSED;
+
+		if (seg_state != state) {
+			seg_tex = fwin->title_texture[seg_state];
+			if (seg_tex->any.type != WTEX_SOLID
+			    && fwin->title_back[seg_state] != None) {
+				XCopyArea(dpy, fwin->title_back[seg_state],
+					  fwin->titlebar->window, scr->copy_gc,
+					  sx, 0, sw, th, sx, 0);
+			} else {
+				XSetForeground(dpy, scr->copy_gc,
+					       seg_tex->solid.normal.pixel);
+				XFillRectangle(dpy, fwin->titlebar->window,
+					       scr->copy_gc, sx, 0, sw, th);
+				/* restore the top/bottom relief lines the
+				 * fill just overpainted, interior side
+				 * edges are the separator lines drawn
+				 * below, the outermost segments redraw
+				 * the titlebar's own left/right bevel */
+				XDrawLine(dpy, fwin->titlebar->window,
+					  seg_tex->solid.light_gc,
+					  sx, 0, sx + sw - 1, 0);
+				XDrawLine(dpy, fwin->titlebar->window,
+					  seg_tex->solid.dim_gc,
+					  sx, th - 2, sx + sw - 1, th - 2);
+				XDrawLine(dpy, fwin->titlebar->window,
+					  seg_tex->solid.dark_gc,
+					  sx, th - 1, sx + sw - 1, th - 1);
+				if (sx == 0)
+					XDrawLine(dpy, fwin->titlebar->window,
+						  seg_tex->solid.light_gc,
+						  0, 0, 0, th - 2);
+				if (sx + sw >= (int)fwin->titlebar->width) {
+					XDrawLine(dpy, fwin->titlebar->window,
+						  seg_tex->solid.dim_gc,
+						  sx + sw - 2, 1,
+						  sx + sw - 2, th - 2);
+					XDrawLine(dpy, fwin->titlebar->window,
+						  seg_tex->solid.dark_gc,
+						  sx + sw - 1, 0,
+						  sx + sw - 1, th - 1);
+				}
+			}
+		}
+
+		tx = sx + 3;
+		tw = sw - 6;
+
+		isz = mframe ? (int)mframe->titlebar_icon_size : 0;
+		if (show_icon && mframe && mframe->titlebar_icon != None
+		    && isz > 0 && sw >= isz * 2) {
+			iy = (th - isz) / 2;
+			XSetClipMask(dpy, scr->copy_gc, mframe->titlebar_icon_mask);
+			XSetClipOrigin(dpy, scr->copy_gc, tx, iy);
+			XCopyArea(dpy, mframe->titlebar_icon, fwin->titlebar->window,
+				  scr->copy_gc, 0, 0, isz, isz, tx, iy);
+			XSetClipMask(dpy, scr->copy_gc, None);
+			tx += isz + 3;
+			tw -= isz + 3;
+		}
+
+		if (tw <= 0)
+			continue;
+
+		base = (mframe && mframe->title) ? mframe->title : DEF_WINDOW_TITLE;
+		txt = ShrinkString(*fwin->font, base, tw);
+		len = strlen(txt);
+		tw = WMWidthOfString(*fwin->font, txt, len);
+		if (tw <= 0) {
+			wfree(txt);
+			continue;
+		}
+
+		/* same w+2 AA-overdraw buffer the single-title path uses,
+		 * background slice is taken from the segment state pixmap */
+		buf = XCreatePixmap(dpy, fwin->titlebar->window, tw + 2, h,
+				    scr->w_depth);
+		seg_tex = fwin->title_texture[seg_state];
+		if (seg_tex->any.type != WTEX_SOLID
+		    && fwin->title_back[seg_state] != None) {
+			XCopyArea(dpy, fwin->title_back[seg_state], buf,
+				  scr->copy_gc, tx - 1, y, tw + 2, h, 0, 0);
+		} else {
+			XSetForeground(dpy, scr->copy_gc,
+				       seg_tex->solid.normal.pixel);
+			XFillRectangle(dpy, buf, scr->copy_gc, 0, 0, tw + 2, h);
+		}
+		WMDrawString(scr->wmscreen, buf, fwin->title_color[seg_state],
+			     *fwin->font, 1, 0, txt, len);
+		XCopyArea(dpy, buf, fwin->titlebar->window, scr->copy_gc,
+			  0, 0, tw + 2, h, tx - 1, y);
+		XFreePixmap(dpy, buf);
+		wfree(txt);
+	}
+
+	/* 1-pixel relief separator between segments, dark/light pair so it
+	 * reads on both gradient and solid backgrounds, skipped when the
+	 * inactive-segment background already differs from the active one */
+	for (i = 1; i < n; i++) {
+		sx = fwin->tab_seg_x[i];
+		XSetForeground(dpy, scr->copy_gc, scr->dark_pixel);
+		XDrawLine(dpy, fwin->titlebar->window, scr->copy_gc,
+			  sx - 1, 1, sx - 1, th - 2);
+		XSetForeground(dpy, scr->copy_gc, scr->light_pixel);
+		XDrawLine(dpy, fwin->titlebar->window, scr->copy_gc,
+			  sx, 1, sx, th - 2);
+	}
+
+	return 1;
+}
+
+/*
+ * Return the segment index under titlebar-relative x, or -1 when this
+ * frame has no segments or x is outside the segmented span.
+ */
+int wFrameWindowTabSegmentAt(WFrameWindow *fwin, int x)
+{
+	int i;
+
+	if (!fwin || fwin->tab_seg_count <= 0 || !fwin->tab_seg_x)
+		return -1;
+	if (x < fwin->tab_seg_x[0] || x >= fwin->tab_seg_x[fwin->tab_seg_count])
+		return -1;
+	for (i = 0; i < fwin->tab_seg_count; i++) {
+		if (x < fwin->tab_seg_x[i + 1])
+			return i;
+	}
+	return -1;
+}
+
+void wFrameWindowRepaintTitle(WFrameWindow *fwin)
+{
+	redrawTitlebar(fwin);
 }
 
 static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height, Bool dontMove)

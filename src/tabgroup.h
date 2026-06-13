@@ -44,8 +44,19 @@ void wGroupSyncShade(WWindow *source);
 void wGroupSyncMiniaturize(WWindow *source);
 void wGroupSyncMaximize(WWindow *source);
 
-/* refresh the [N/M] title prefix for every member of grp */
+/*
+ * Refresh every member's frame title and repaint the active member's
+ * titlebar.  When TabsInTitlebar is on the segmented renderer reads
+ * each member's plain frame->title, otherwise the [N/M] prefix is
+ * applied.
+ */
 void wGroupRefreshTitles(WWindowGroup *grp);
+
+/*
+ * Send WM_DELETE_WINDOW (or kill) to one member by index without first
+ * switching the active tab.  Used by Ctrl+Button1 on a titlebar segment.
+ */
+void wGroupCloseMember(WWindowGroup *grp, int idx);
 
 /*
  * Send WM_DELETE_WINDOW (or kill when the protocol is unsupported) to

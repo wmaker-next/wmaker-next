@@ -302,4 +302,5 @@
 	CycleIgnoreMinimized = NO;
 	WindowListAppIcons = NO;
 	ShowAllTabsInSwitchPanel = YES;
+	TabsInTitlebar = YES;
 }

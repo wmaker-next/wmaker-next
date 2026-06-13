@@ -209,6 +209,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SHOW_ALL_TABS_IN_SWITCH_PANEL, "ShowAllTabsInSwitchPanel", BOOL, \
 	  show_all_tabs_in_switch_panel, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(TABS_IN_TITLEBAR, "TabsInTitlebar", BOOL, tabs_in_titlebar, "YES", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_WINDOW_TITLE_COLOR) \
 	_(MOUSE_WHEEL_FOCUS, "MouseWheelFocus", BOOL, mouse_wheel_focus, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \

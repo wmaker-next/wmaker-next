@@ -802,13 +802,6 @@ static WMenu *open_window_menu_core(WWindow *wwin)
 
 	if (!scr->window_menu) {
 		scr->window_menu = createWindowMenu(scr);
-
-		/* hack to save some memory allocation/deallocation */
-		wfree(scr->window_menu->entries[MC_MINIATURIZE]->text);
-		wfree(scr->window_menu->entries[MC_MAXIMIZE]->text);
-		wfree(scr->window_menu->entries[MC_FULLSCREEN]->text);
-		wfree(scr->window_menu->entries[MC_SHADE]->text);
-		wfree(scr->window_menu->entries[MC_SELECT]->text);
 	} else {
 		updateWorkspaceMenu(scr->workspace_submenu);
 	}

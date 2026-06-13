@@ -96,6 +96,15 @@ typedef struct WFrameWindow {
 
     char *title;		       /* window name (title) */
 
+    /* Tab-group segmented titlebar.  tab_seg_x holds tab_seg_count + 1
+     * x-edges in titlebar-core coordinates, so segment i covers
+     * [tab_seg_x[i], tab_seg_x[i+1]).  Filled by wFrameWindowPaint()
+     * when this frame's owner is the active member of a tab group and
+     * TabsInTitlebar is on, cleared to tab_seg_count = 0 otherwise so
+     * the hit-test helper returns -1. */
+    int *tab_seg_x;
+    int tab_seg_count;
+
 #ifdef KEEP_XKB_LOCK_STATUS
     int languagemode;
     int last_languagemode;
@@ -176,6 +185,10 @@ void wFrameWindowShowButton(WFrameWindow *fwin, int flags);
 void wFrameWindowHideButton(WFrameWindow *fwin, int flags);
 
 int wFrameWindowChangeTitle(WFrameWindow *fwin, const char *new_title);
+
+void wFrameWindowRepaintTitle(WFrameWindow *fwin);
+
+int wFrameWindowTabSegmentAt(WFrameWindow *fwin, int x);
 
 void wFrameWindowSetIcon(WFrameWindow *fwin, struct RImage *image);
 

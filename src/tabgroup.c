@@ -127,13 +127,24 @@ static void wGroupUpdateTitlebar(WWindow *wwin)
 	else
 		base = xname;
 
-	if (wwin->tab_group && wwin->tab_group->member_count > 1) {
+	/*
+	 * The segmented renderer reads each member's plain frame->title and
+	 * draws them side by side, so the [N/M] prefix is only applied when
+	 * TabsInTitlebar is off.
+	 */
+	if (wwin->tab_group && wwin->tab_group->member_count > 1
+	    && !w_global.config->tabs_in_titlebar) {
 		snprintf(buf, sizeof(buf), "[%d/%d] %s",
 		         wwin->tab_group_index + 1,
 		         wwin->tab_group->member_count, base);
 		wFrameWindowChangeTitle(wwin->frame, buf);
-	} else {
-		wFrameWindowChangeTitle(wwin->frame, base);
+	} else if (!wFrameWindowChangeTitle(wwin->frame, base)
+	           && wwin->frame->tab_seg_count > 0) {
+		/* segmented mode keeps frame->title at the plain X title,
+		 * so on detach or dissolve ChangeTitle short-circuits on
+		 * the unchanged string and the inactive-segment overlay
+		 * stays on the surface, force the clear+repaint here */
+		wFrameWindowRepaintTitle(wwin->frame);
 	}
 
 	if (xname)
@@ -142,12 +153,26 @@ static void wGroupUpdateTitlebar(WWindow *wwin)
 
 void wGroupRefreshTitles(WWindowGroup *grp)
 {
+	WWindow *active;
 	int i;
 
 	if (!grp)
 		return;
 	for (i = 0; i < grp->member_count; i++)
 		wGroupUpdateTitlebar(grp->members[i]);
+
+	/*
+	 * Each member's wFrameWindowChangeTitle() repainted its own frame,
+	 * but only the active member is mapped and its segmented titlebar
+	 * shows every member's title.  An inactive member whose title did
+	 * not change short-circuits without repainting, so do it once
+	 * explicitly here.
+	 */
+	if (grp->active_index >= 0 && grp->active_index < grp->member_count) {
+		active = grp->members[grp->active_index];
+		if (active && active->frame)
+			wFrameWindowRepaintTitle(active->frame);
+	}
 }
 
 /* --------------------------------------------------------------------
@@ -688,6 +713,22 @@ void wGroupCloseAll(WWindowGroup *grp)
 	}
 
 	wfree(snap);
+}
+
+void wGroupCloseMember(WWindowGroup *grp, int idx)
+{
+	WWindow *w;
+
+	if (!grp || idx < 0 || idx >= grp->member_count)
+		return;
+	w = grp->members[idx];
+	if (!w)
+		return;
+	if (w->protocols.DELETE_WINDOW)
+		wClientSendProtocol(w, w_global.atom.wm.delete_window,
+				    w_global.timestamp.last_event);
+	else
+		wClientKill(w);
 }
 
 /* --------------------------------------------------------------------

@@ -140,6 +140,13 @@ static void appearanceObserver(void *self, WMNotification * notif)
 		wwin->frame->flags.need_texture_remake = 1;
 
 	if (flags & (WTextureSettings | WColorSettings)) {
+		/* TabsInTitlebar raises this mask too, regenerate group
+		 * member frame titles so the [N/M] prefix is added or
+		 * removed before the repaint, only the active member
+		 * triggers the walk so a group of N does not refresh N*N */
+		if (wwin->tab_group && !wGroupIsInactiveMember(wwin))
+			wGroupRefreshTitles(wwin->tab_group);
+
 		if (wwin->frame->titlebar)
 			XClearWindow(dpy, wwin->frame->titlebar->window);
 
@@ -2189,6 +2196,7 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 {
 	const char *title;
 	char buf[512];
+	WWindow *act;
 
 	if (!wwin->frame)
 		return;
@@ -2198,8 +2206,10 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 	else
 		title = newTitle;
 
-	/* Re-apply [N/M] prefix when this window is part of a tab group */
-	if (wwin->tab_group && wwin->tab_group->member_count > 1) {
+	/* Re-apply [N/M] prefix when this window is part of a tab group and
+	 * the segmented titlebar renderer is off */
+	if (wwin->tab_group && wwin->tab_group->member_count > 1
+	    && !w_global.config->tabs_in_titlebar) {
 		snprintf(buf, sizeof(buf), "[%d/%d] %s",
 		         wwin->tab_group_index + 1, wwin->tab_group->member_count, title);
 		title = buf;
@@ -2211,6 +2221,14 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 
 	if (wFrameWindowChangeTitle(wwin->frame, title))
 		WMPostNotificationName(WMNChangedName, wwin, NULL);
+
+	/* the visible segmented titlebar is the active member's frame, an
+	 * inactive member's title change has to repaint that one too */
+	if (wGroupIsInactiveMember(wwin)) {
+		act = wwin->tab_group->members[wwin->tab_group->active_index];
+		if (act && act->frame)
+			wFrameWindowRepaintTitle(act->frame);
+	}
 }
 
 /*
@@ -3473,9 +3491,15 @@ static void titlebarDblClick(WCoreWindow *sender, void *data, XEvent *event)
 	} else if (event->xbutton.button == Button2) {
 		wSelectWindow(wwin, !wwin->flags.selected);
 	} else if (event->xbutton.button == W_getconf_mouseWheelUp()) {
-		wShadeWindow(wwin);
+		if (wwin->tab_group)
+			wGroupTabPrev(wwin->screen_ptr);
+		else
+			wShadeWindow(wwin);
 	} else if (event->xbutton.button == W_getconf_mouseWheelDown()) {
-		wUnshadeWindow(wwin);
+		if (wwin->tab_group)
+			wGroupTabNext(wwin->screen_ptr);
+		else
+			wUnshadeWindow(wwin);
 	}
 }
 
@@ -3548,6 +3572,8 @@ static void frameMouseDown(WObjDescriptor *desc, XEvent *event)
 static void titlebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 {
 	WWindow *wwin = (WWindow *) data;
+	WWindow *menu_for = wwin;
+	int seg = -1;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) sender;
@@ -3560,6 +3586,49 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 	event->xbutton.state &= w_global.shortcut.modifiers_mask;
 
 	CloseWindowMenu(wwin->screen_ptr);
+
+	/*
+	 * Tab-group segmented titlebar hit-test.  tab_seg_count is non-zero
+	 * only when wFrameWindowPaint() drew segments for this frame, so a
+	 * stale array on an unmapped peer or a TabsInTitlebar = NO frame
+	 * is never consulted.
+	 */
+	if (wwin->tab_group && wwin->frame->tab_seg_count > 0
+	    && event->xbutton.window == wwin->frame->titlebar->window)
+		seg = wFrameWindowTabSegmentAt(wwin->frame, event->xbutton.x);
+
+	/* wheel over a grouped titlebar cycles tabs, ungrouped windows
+	 * keep the existing shade/unshade behaviour in the dblclick path */
+	if (wwin->tab_group
+	    && (event->xbutton.button == W_getconf_mouseWheelUp()
+		|| event->xbutton.button == W_getconf_mouseWheelDown())) {
+		if (event->xbutton.button == W_getconf_mouseWheelUp())
+			wGroupTabPrev(wwin->screen_ptr);
+		else
+			wGroupTabNext(wwin->screen_ptr);
+		return;
+	}
+
+	if (seg >= 0 && event->xbutton.button == Button1) {
+		if (event->xbutton.state & ControlMask) {
+			/* close this member only, do not activate it first */
+			wGroupCloseMember(wwin->tab_group, seg);
+			return;
+		}
+		if (seg != wwin->tab_group->active_index
+		    && !(event->xbutton.state & (MOD_MASK | ShiftMask))) {
+			/* clicking an inactive segment switches to it and the
+			 * incoming frame is raised since this is a titlebar
+			 * click in click-to-focus terms */
+			wGroupSetActive(wwin->tab_group, seg);
+			if (wwin->tab_group
+			    && wwin->tab_group->members[wwin->tab_group->active_index]->frame)
+				wRaiseFrame(wwin->tab_group->members[wwin->tab_group->active_index]->frame->core);
+			return;
+		}
+		/* active segment, or modifier held, continue to the
+		 * existing move/raise/select path below */
+	}
 
 	if (w_global.config->focus_mode == WKF_CLICK && !(event->xbutton.state & ControlMask)
 	    && !WFLAGP(wwin, no_focusable))
@@ -3600,9 +3669,19 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, XEvent *event)
 			return;
 		}
 
-		OpenWindowMenu(wwin, event->xbutton.x_root, wwin->frame_y + wwin->frame->top_width, False);
+		/* Button3 on a segment opens the window menu for that
+		 * member rather than the active one so per-tab Close,
+		 * Kill and Detach are reachable without switching first */
+		if (seg >= 0 && seg < wwin->tab_group->member_count)
+			menu_for = wwin->tab_group->members[seg];
+
+		OpenWindowMenu(menu_for, event->xbutton.x_root, wwin->frame_y + wwin->frame->top_width, False);
 
 		/* allow drag select */
+		if (!wwin->screen_ptr->window_menu || !wwin->screen_ptr->window_menu->menu) {
+			XUngrabPointer(dpy, CurrentTime);
+			return;
+		}
 		desc = &wwin->screen_ptr->window_menu->menu->descriptor;
 		event->xany.send_event = True;
 		(*desc->handle_mousedown) (desc, event);
