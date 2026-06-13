@@ -535,6 +535,12 @@ const char *RMessageForError(int errorCode)
 int RBlurImage(RImage *image)
 	__wrlib_nonnull(1);
 
+int RStackBlurImage(RImage *image, unsigned radius)
+	__wrlib_nonnull(1);
+
+void RGrayscaleImage(RImage *image)
+	__wrlib_nonnull(1);
+
 /****** Global Variables *******/
 
 extern int RErrorCode;

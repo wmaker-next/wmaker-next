@@ -168,6 +168,25 @@ static inline unsigned char clip(int c)
 	return (unsigned char)c;
 }
 
+/*
+ * In-place desaturation using the ITU-R BT.601 luma weights, computed
+ * in integer arithmetic. Alpha is preserved for RRGBAFormat images.
+ */
+void RGrayscaleImage(RImage *image)
+{
+	unsigned char *d = image->data;
+	unsigned char *dd;
+	int s, lum;
+
+	s = (image->format == RRGBAFormat) ? 4 : 3;
+	dd = d + s * image->width * image->height;
+
+	for (; d < dd; d += s) {
+		lum = (77 * d[0] + 150 * d[1] + 29 * d[2]) >> 8;
+		d[0] = d[1] = d[2] = (unsigned char)lum;
+	}
+}
+
 void RLightImage(RImage *image, const RColor *color)
 {
 	unsigned char *d = image->data;

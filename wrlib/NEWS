@@ -2,6 +2,13 @@
 ----------------------------------------------------
 Since wmaker 0.96.0
 
+RStackBlurImage: Added
+In-place approximate Gaussian blur with a radius parameter, constant
+per-pixel cost regardless of radius.
+
+RGrayscaleImage: Added
+In-place desaturation using BT.601 luma weights, alpha is preserved.
+
 Sat 25 Feb 2023
 
 RSaveImage: Improved

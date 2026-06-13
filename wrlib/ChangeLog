@@ -1,3 +1,5 @@
+- added RStackBlurImage() and RGrayscaleImage()
+
 - added RSaveRawImage()
 
 - added RSaveTitledImage()
