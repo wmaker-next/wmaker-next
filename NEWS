@@ -3,6 +3,51 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Window tab grouping
+-------------------
+
+Several managed windows can now share one on-screen frame slot. Only
+the active member of a group is mapped, the others stay managed but
+unmapped (and publish _NET_WM_STATE_HIDDEN so a taskbar can still list
+them and clicking one switches to that tab). All members are kept the
+same size and follow the active member through move, resize, maximize,
+shade, miniaturize, workspace change and application hide as one unit.
+
+Four new keybindings drive it: GroupTabAttachKey attaches the focused
+window to the previous suitable window on the workspace,
+GroupTabDetachKey peels it off again at a small offset, and
+GroupTabNextKey / GroupTabPrevKey cycle the visible member without
+changing the group's stacking position. The window menu gains
+"Attach as Tab..." (a pointer-pick mode, click the target window or
+Escape to cancel), "Detach Tab" and "Close Group". Shift+click on the
+close button closes every member of the group, a plain click closes
+only the active one and reveals the next tab. A window is only
+accepted into a group when it has a titlebar, is movable and
+resizable, is normal-level, and is not fullscreen, miniaturized or
+hidden.
+
+By default a grouped titlebar is drawn as one segment per member, each
+with its own title and (when ShowIconInTitlebar is on) mini-icon.
+Button1 on an inactive segment switches to that tab, Ctrl+Button1
+closes that member, Button3 opens the window menu for that member, and
+the wheel cycles tabs. Button2 on any segment, or Button1-dragging an
+inactive segment past the move threshold, picks that member up as a
+draggable outline that can be dropped on another titlebar to attach,
+on its own group to reorder, or anywhere else to tear it off. Tab
+groups survive a Window Maker restart and are reconstructed from a
+saved session with the same order and active member.
+
+New defaults: TabsInTitlebar (YES) selects the segmented titlebar
+renderer, NO falls back to a plain "[N/M] title" prefix.
+ShowAllTabsInSwitchPanel (YES) lists every member individually in
+Alt-Tab and the Windows menu, NO collapses each group to its active
+member. TabAttachArea (Titlebar) limits drag-to-group drops to the
+target's titlebar, Window accepts the whole frame. TabDragModifier
+(None) names a modifier that, held with Button1 on any segment
+including the active one, starts a tab drag for mice without a
+middle button. The keybindings, the two boolean defaults and
+TabAttachArea are exposed in WPrefs.
+
 Configurable titlebar button layout
 ------------------------------------
 
