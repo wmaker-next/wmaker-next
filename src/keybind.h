@@ -184,6 +184,11 @@ enum {
 #ifdef KEEP_XKB_LOCK_STATUS
 	WKBD_TOGGLE,
 #endif
+	/* tab-group cycling and management */
+	WKBD_GROUPTAB_NEXT,
+	WKBD_GROUPTAB_PREV,
+	WKBD_GROUPTAB_ATTACH,
+	WKBD_GROUPTAB_DETACH,
 	/* keep this last */
 	WKBD_LAST
 };

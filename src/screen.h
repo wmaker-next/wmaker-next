@@ -126,6 +126,12 @@ typedef struct _WScreen {
 
     struct WApplication *wapp_list;    /* list of all applications */
 
+    struct WWindowGroup *window_groups; /* linked list of tab groups on this screen */
+    /* wGroupPickAndAttach() latches the window being attached here so
+     * wUnmanageWindow() can abort the pick cleanly if its client exits
+     * while the pointer-pick loop is waiting on the user */
+    struct WWindow *tab_pick_payload;
+
     WMBag *stacking_list;	       /* bag of lists of windows
                                         * in stacking order.
                                         * Indexed by window level

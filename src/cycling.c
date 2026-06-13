@@ -34,6 +34,7 @@
 #include "actions.h"
 #include "stacking.h"
 #include "cycling.h"
+#include "tabgroup.h"
 #include "xinerama.h"
 #include "workspace.h"
 #include "switchpanel.h"
@@ -249,6 +250,9 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 		wSwitchPanelDestroy(swpanel);
 
 	if (newFocused && !esc_cancel) {
+		if (newFocused->tab_group && newFocused->tab_group_index != newFocused->tab_group->active_index)
+			wGroupSetActive(newFocused->tab_group, newFocused->tab_group_index);
+
 		wRaiseFrame(newFocused->frame->core);
 		CommitStacking(scr);
 		if (!newFocused->flags.mapped)

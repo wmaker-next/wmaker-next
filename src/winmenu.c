@@ -47,6 +47,7 @@
 #include "icon.h"
 #include "xinerama.h"
 #include "winmenu.h"
+#include "tabgroup.h"
 
 
 static WMenu *makeWorkspaceMenu(WScreen *scr);
@@ -73,6 +74,9 @@ enum
 	MC_CHANGEWKSPC,
 	MC_PROPERTIES,
 	MC_OPTIONS,
+	MC_GROUPTAB_ATTACH,
+	MC_GROUPTAB_DETACH,
+	MC_GROUPTAB_CLOSEALL,
 	MC_RELAUNCH,
 	MC_CLOSE,
 	MC_KILL
@@ -93,6 +97,9 @@ static const struct {
 	[MC_CHANGEWKSPC] = { N_("Move To"), makeWorkspaceMenu },
 	[MC_PROPERTIES]  = { N_("Attributes..."), NULL },
 	[MC_OPTIONS]     = { N_("Options"), makeOptionsMenu },
+	[MC_GROUPTAB_ATTACH]   = { N_("Attach as Tab..."), NULL },
+	[MC_GROUPTAB_DETACH]   = { N_("Detach Tab"), NULL },
+	[MC_GROUPTAB_CLOSEALL] = { N_("Close Tab Group"), NULL },
 	[MC_RELAUNCH]    = { N_("Launch"), NULL },
 	[MC_CLOSE]       = { N_("Close"), NULL },
 	[MC_KILL]        = { N_("Kill"), NULL }
@@ -324,6 +331,20 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 
 	case MC_HIDE:
 		wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
+		break;
+
+	case MC_GROUPTAB_ATTACH:
+		wGroupPickAndAttach(wwin->screen_ptr, wwin);
+		break;
+
+	case MC_GROUPTAB_DETACH:
+		if (wwin->tab_group)
+			wGroupDetach(wwin);
+		break;
+
+	case MC_GROUPTAB_CLOSEALL:
+		if (wwin->tab_group)
+			wGroupCloseAll(wwin->tab_group);
 		break;
 	}
 }
@@ -747,6 +768,13 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	wMenuEntrySetShortcutText(menu->entries[MC_SELECT], GetShortcutKey(wKeyBindings[WKBD_SELECT]));
 	wMenuEntrySetShortcutText(menu->entries[MC_RELAUNCH], GetShortcutKey(wKeyBindings[WKBD_RELAUNCH]));
 	wMenuEntrySetShortcutText(menu->entries[MC_CLOSE], GetShortcutKey(wKeyBindings[WKBD_CLOSE]));
+
+	/* tab group entries */
+	wMenuSetEnabled(menu, MC_GROUPTAB_ATTACH, wGroupIsTabable(wwin));
+	wMenuSetEnabled(menu, MC_GROUPTAB_DETACH, wwin->tab_group != NULL);
+	wMenuSetEnabled(menu, MC_GROUPTAB_CLOSEALL, wwin->tab_group != NULL);
+	wMenuEntrySetShortcutText(menu->entries[MC_GROUPTAB_ATTACH], GetShortcutKey(wKeyBindings[WKBD_GROUPTAB_ATTACH]));
+	wMenuEntrySetShortcutText(menu->entries[MC_GROUPTAB_DETACH], GetShortcutKey(wKeyBindings[WKBD_GROUPTAB_DETACH]));
 
 	/* set the client data of the entries to the window */
 	for (i = 0; i < menu->entry_no; i++) {

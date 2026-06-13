@@ -57,6 +57,7 @@ POTFILES  = \
 	$(top_srcdir)/src/superfluous.c \
 	$(top_srcdir)/src/switchpanel.c \
 	$(top_srcdir)/src/switchmenu.c \
+	$(top_srcdir)/src/tabgroup.c \
 	$(top_srcdir)/src/texture.c \
 	$(top_srcdir)/src/usermenu.c \
 	$(top_srcdir)/src/wconfigmodel.c \

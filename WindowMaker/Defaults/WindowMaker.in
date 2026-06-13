@@ -213,6 +213,10 @@
 	FocusWindowDownKey = None;
 	GroupNextKey = None;
 	GroupPrevKey = None;
+	GroupTabNextKey = None;
+	GroupTabPrevKey = None;
+	GroupTabAttachKey = None;
+	GroupTabDetachKey = None;
 	NextWorkspaceKey = "Mod1+Control+Right";
 	PrevWorkspaceKey = "Mod1+Control+Left";
 	LastWorkspaceKey = None;
@@ -297,4 +301,5 @@
 	CycleAllWorkspaces = NO;
 	CycleIgnoreMinimized = NO;
 	WindowListAppIcons = NO;
+	ShowAllTabsInSwitchPanel = YES;
 }

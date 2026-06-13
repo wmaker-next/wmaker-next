@@ -207,6 +207,8 @@
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_LIST_APP_ICONS, "WindowListAppIcons", BOOL, window_list_app_icons, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(SHOW_ALL_TABS_IN_SWITCH_PANEL, "ShowAllTabsInSwitchPanel", BOOL, \
+	  show_all_tabs_in_switch_panel, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_FOCUS, "MouseWheelFocus", BOOL, mouse_wheel_focus, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \
@@ -548,6 +550,10 @@
 	_(FOCUS_WINDOW_DOWN_KEY, "FocusWindowDownKey", "None", WKBD_FOCUSDOWN) \
 	_(GROUP_NEXT_KEY, "GroupNextKey", "None", WKBD_GROUPNEXT) \
 	_(GROUP_PREV_KEY, "GroupPrevKey", "None", WKBD_GROUPPREV) \
+	_(GROUP_TAB_NEXT_KEY, "GroupTabNextKey", "None", WKBD_GROUPTAB_NEXT) \
+	_(GROUP_TAB_PREV_KEY, "GroupTabPrevKey", "None", WKBD_GROUPTAB_PREV) \
+	_(GROUP_TAB_ATTACH_KEY, "GroupTabAttachKey", "None", WKBD_GROUPTAB_ATTACH) \
+	_(GROUP_TAB_DETACH_KEY, "GroupTabDetachKey", "None", WKBD_GROUPTAB_DETACH) \
 	_(NEXT_WORKSPACE_KEY, "NextWorkspaceKey", "Mod1+Control+Right", WKBD_NEXTWORKSPACE) \
 	_(PREV_WORKSPACE_KEY, "PrevWorkspaceKey", "Mod1+Control+Left", WKBD_PREVWORKSPACE) \
 	_(LAST_WORKSPACE_KEY, "LastWorkspaceKey", "None", WKBD_LASTWORKSPACE) \

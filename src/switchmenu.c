@@ -236,6 +236,24 @@ static void fillRtext(char *buf, size_t bufsz, WWindow *wwin, WScreen *scr)
 }
 
 /*
+ * Copy a window's display title into buf for the switch menu, stripping the
+ * "[N/M] " prefix that tab-grouping adds to wwin->frame->title so the window
+ * list shows the plain application title.
+ */
+static void switchMenuTitle(WWindow *wwin, char *buf, size_t bufsz)
+{
+	const char *src;
+	char *xname = NULL;
+
+	src = wwin->frame->title ? wwin->frame->title : DEF_WINDOW_TITLE;
+	if (wwin->tab_group && wFetchName(dpy, wwin->client_win, &xname) && xname)
+		src = xname;
+	snprintf(buf, bufsz, "%s", src);
+	if (xname)
+		XFree(xname);
+}
+
+/*
  * Update switch menu
  */
 void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
@@ -266,10 +284,7 @@ void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
 			return;
 		}
 
-		if (wwin->frame->title)
-			snprintf(title, len, "%s", wwin->frame->title);
-		else
-			snprintf(title, len, "%s", DEF_WINDOW_TITLE);
+		switchMenuTitle(wwin, title, len);
 		t = ShrinkString(scr->menu_entry_font, title, MAX_WINDOWLIST_WIDTH);
 
 		if (IS_OMNIPRESENT(wwin))
@@ -320,10 +335,7 @@ void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
 					if (entry->text)
 						wfree(entry->text);
 
-					if (wwin->frame->title)
-						snprintf(title, MAX_MENU_TEXT_LENGTH, "%s", wwin->frame->title);
-					else
-						snprintf(title, MAX_MENU_TEXT_LENGTH, "%s", DEF_WINDOW_TITLE);
+					switchMenuTitle(wwin, title, MAX_MENU_TEXT_LENGTH);
 
 					t = ShrinkString(scr->menu_entry_font, title, MAX_WINDOWLIST_WIDTH);
 					entry->text = t;

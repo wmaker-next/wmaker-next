@@ -180,6 +180,19 @@ typedef struct WFakeGroupLeader {
 
 
 /*
+ * Tab-grouping: multiple windows share one on-screen slot, only the active
+ * member's frame is visible at a time.  Members share the same position.
+ */
+typedef struct WWindowGroup {
+    struct WWindow **members;   /* heap array of WWindow* */
+    int member_count;
+    int capacity;
+    int active_index;           /* index of the currently visible member */
+    struct WWindowGroup *next;  /* linked list anchored at WScreen.window_groups */
+} WWindowGroup;
+
+
+/*
  * Stores client window information. Each client window has its
  * structure created when it's being first mapped.
  */
@@ -365,6 +378,9 @@ typedef struct WWindow {
 	 * exits */
 	struct WWindow *swallowed;	/* child window this terminal is swallowing */
 	struct WWindow *swallower;	/* terminal that swallowed this window */
+
+	WWindowGroup *tab_group;	/* tab group this window belongs to, or NULL */
+	int tab_group_index;		/* index within tab_group->members[] */
 } WWindow;
 
 #define HAS_TITLEBAR(w)		(!(WFLAGP((w), no_titlebar) || (w)->flags.fullscreen))

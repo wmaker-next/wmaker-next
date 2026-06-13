@@ -31,6 +31,7 @@
 #include "window.h"
 #include "defaults.h"
 #include "switchpanel.h"
+#include "tabgroup.h"
 #include "misc.h"
 #include "xinerama.h"
 #include "workspace.h"
@@ -91,6 +92,8 @@ static int canReceiveFocus(WWindow *wwin)
 		return 0;
 
 	if (!wwin->flags.mapped) {
+		if (wGroupIsInactiveMember(wwin))
+			return -1;
 		if (!wwin->flags.shaded && !wwin->flags.miniaturized && !wwin->flags.hidden && !w_global.config->cycle_all_workspaces)
 			return 0;
 		else
@@ -407,6 +410,11 @@ static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, Bool cla
 					wwin = wwin->prev;
 					continue;
 				}
+			if (!w_global.config->show_all_tabs_in_switch_panel
+			    && wGroupIsInactiveMember(wwin)) {
+				wwin = wwin->prev;
+				continue;
+			}
 			/* A direct modal transient is redundant only when its
 			 * parent would be listed and can redirect focus to it. */
 			if (!WFLAGP(wwin, skip_switchpanel) &&

@@ -55,6 +55,7 @@
 #include "client.h"
 #include "main.h"
 #include "cycling.h"
+#include "tabgroup.h"
 #include "keybind.h"
 #include "application.h"
 #include "stacking.h"
@@ -1957,6 +1958,22 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 
 	case WKBD_GROUPPREV:
 		StartWindozeCycle(wwin, event, False, True);
+		break;
+
+	case WKBD_GROUPTAB_NEXT:
+		wGroupTabNext(scr);
+		break;
+
+	case WKBD_GROUPTAB_PREV:
+		wGroupTabPrev(scr);
+		break;
+
+	case WKBD_GROUPTAB_ATTACH:
+		wGroupTabAttach(scr);
+		break;
+
+	case WKBD_GROUPTAB_DETACH:
+		wGroupTabDetach(scr);
 		break;
 
 	case WKBD_WORKSPACE1 ... WKBD_WORKSPACE10:

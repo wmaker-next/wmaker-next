@@ -52,6 +52,7 @@
 #include "wmspec.h"
 #include "icon.h"
 #include "stacking.h"
+#include "tabgroup.h"
 #include "xinerama.h"
 #include "properties.h"
 #include "dialog.h"
@@ -1196,7 +1197,9 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 			state[i++] = net_wm_state_skip_taskbar;
 		if (wwin->flags.net_skip_pager)
 			state[i++] = net_wm_state_skip_pager;
-		if ((wwin->flags.hidden || wwin->flags.miniaturized) && !wwin->flags.net_show_desktop) {
+		if (wGroupIsInactiveMember(wwin))
+			state[i++] = net_wm_state_hidden;
+		else if ((wwin->flags.hidden || wwin->flags.miniaturized) && !wwin->flags.net_show_desktop) {
 			state[i++] = net_wm_state_hidden;
 			state[i++] = net_wm_state_skip_pager;
 

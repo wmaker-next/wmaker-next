@@ -74,6 +74,7 @@
 #include "placement.h"
 #include "misc.h"
 #include "startup.h"
+#include "tabgroup.h"
 #include "winmenu.h"
 #include "osdep.h"
 #include "switchmenu.h"
@@ -1855,6 +1856,16 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	if (scr->bfs_focused_window == wwin)
 		scr->bfs_focused_window = NULL;
 
+	/* remove from tab group so the group can reveal its next member,
+	 * the leaving window itself is never reconfigured or remapped */
+	if (wwin->tab_group)
+		wGroupUnmanageMember(wwin, destroyed);
+	/* the pointer-pick attach may be waiting on the user with this
+	 * window as its payload, clear the latch so the pick cancels
+	 * cleanly instead of attaching a dead client */
+	if (scr->tab_pick_payload == wwin)
+		scr->tab_pick_payload = NULL;
+
 	if (!destroyed) {
 		if (!wwin->flags.internal_window)
 			XRemoveFromSaveSet(dpy, wwin->client_win);
@@ -2030,6 +2041,13 @@ void wWindowSingleFocus(WWindow *wwin)
 	if (!wwin)
 		return;
 
+	/*
+	 * If the requested window is a non-active member of a tab group, switch
+	 * to its tab first so that the frame is mapped before we try to focus it.
+	 */
+	if (wwin->tab_group && wwin->tab_group_index != wwin->tab_group->active_index)
+		wGroupSetActive(wwin->tab_group, wwin->tab_group_index);
+
 	scr = wwin->screen_ptr;
 	wMakeWindowVisible(wwin);
 
@@ -2170,6 +2188,7 @@ void wWindowUnfocus(WWindow *wwin)
 void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 {
 	const char *title;
+	char buf[512];
 
 	if (!wwin->frame)
 		return;
@@ -2178,6 +2197,13 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 		title = DEF_WINDOW_TITLE; /* the hint was removed */
 	else
 		title = newTitle;
+
+	/* Re-apply [N/M] prefix when this window is part of a tab group */
+	if (wwin->tab_group && wwin->tab_group->member_count > 1) {
+		snprintf(buf, sizeof(buf), "[%d/%d] %s",
+		         wwin->tab_group_index + 1, wwin->tab_group->member_count, title);
+		title = buf;
+	}
 
 	/* publish _NET_WM_VISIBLE_NAME when we substitute a title that
 	 * differs from what the client supplied, remove it when they match */
@@ -2630,6 +2656,10 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		wWindowSynthConfigureNotify(wwin);
 
 	wNETFrameExtents(wwin);
+
+	/* Propagate resize to all other members of the same tab group */
+	if (resize && wwin->tab_group)
+		wGroupSyncSize(wwin);
 
 	wwin->last_head = wGetHeadForWindow(wwin);
 
@@ -3584,6 +3614,12 @@ static void windowCloseClick(WCoreWindow *sender, void *data, XEvent *event)
 
 	if (event->xbutton.button < Button1 || event->xbutton.button > Button3)
 		return;
+
+	/* shift-click on a tab-grouped window closes every member */
+	if ((event->xbutton.state & ShiftMask) && wwin->tab_group) {
+		wGroupCloseAll(wwin->tab_group);
+		return;
+	}
 
 	/* if control-click, kill the client */
 	if (event->xbutton.state & ControlMask) {
