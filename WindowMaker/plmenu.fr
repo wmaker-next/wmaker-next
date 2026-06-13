@@ -61,7 +61,7 @@
    ("Montrer toutes les fenêtres", SHOW_ALL),
    ("Arranger les icônes", ARRANGE_ICONS),
    ("Retracer l'écran", REFRESH),
-   ("Vérrouiller", EXEC, "xlock -allowroot -usefirst"),
+   ("Vérrouiller", EXEC, "wmlock"),
    ("Sauver la session", SAVE_SESSION),
    ("Effacer la session", CLEAR_SESSION)
   ),

@@ -169,7 +169,7 @@
                 "Ensenyar Totes" SHOW_ALL
                 "Alinear Icones" ARRANGE_ICONS
                 "Refrescar" REFRESH
-                "Bloquejar" EXEC xlock -allowroot -usefirst
+                "Bloquejar" EXEC wmlock
                 "Guardar Sessió" SAVE_SESSION
                 "Borrar Sessió Guardada" CLEAR_SESSION
         "Escriptori" END

@@ -98,7 +98,7 @@
     )
    )
   ),
- ("화면잠금", SHORTCUT, "SHIFT+META+L", EXEC, "xlock -allowroot -usefirst"),
+ ("화면잠금", SHORTCUT, "SHIFT+META+L", EXEC, "wmlock"),
  ("종    료",
   ("재 시 작", RESTART),
   ("재 시 작",

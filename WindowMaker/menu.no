@@ -157,7 +157,7 @@
 		"Vise alle" SHOW_ALL
 		"Ordne ikoner" ARRANGE_ICONS
 		"Tegn opp igjen" REFRESH
-		"Låse Arbeidsområde" EXEC xlock -allowroot -usefirst
+		"Låse Arbeidsområde" EXEC wmlock
 		"Lagre Arbeidsområder" SAVE_SESSION
 		"Fjern lagret Arbeidsområde" CLEAR_SESSION
 	"Arbeidsområder" END

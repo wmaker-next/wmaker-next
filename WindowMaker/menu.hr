@@ -158,7 +158,7 @@
 		"Pokaži sve" SHOW_ALL
 		"Pospremi ikone" ARRANGE_ICONS
 		"Osvježi" REFRESH
-		"Zaključaj" EXEC xlock -allowroot -usefirst
+		"Zaključaj" EXEC wmlock
 		"Snimi session" SAVE_SESSION
 		"Obriši snimljeni session" CLEAR_SESSION
 	"Radni prostor" END

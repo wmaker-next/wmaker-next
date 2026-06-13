@@ -165,7 +165,7 @@
 		"全部顯示" SHOW_ALL
 		"排列圖示" ARRANGE_ICONS
 		"更新畫面" REFRESH
-		"鎖定" EXEC xlock -allowroot -usefirst
+		"鎖定" EXEC wmlock
 		"儲存階段狀態" SAVE_SESSION
 		"清除階段狀態" CLEAR_SESSION
 	"工作區" END

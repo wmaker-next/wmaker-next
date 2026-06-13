@@ -164,7 +164,7 @@
                 "Vis alle" SHOW_ALL
                 "Arranger ikoner" ARRANGE_ICONS
                 "Genindlæs" REFRESH
-                "Lås" EXEC xlock -allowroot -usefirst
+                "Lås" EXEC wmlock
                 "Gem miljø" SAVE_SESSION
                 "Slet gemt miljø" CLEAR_SESSION
         "Arbejdsbord" END

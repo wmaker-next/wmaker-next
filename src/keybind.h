@@ -178,6 +178,9 @@ enum {
 	/* partial print */
 	WKBD_PRINTP,
 
+	/* run LockScreenCommand */
+	WKBD_LOCKSCREEN,
+
 #ifdef KEEP_XKB_LOCK_STATUS
 	WKBD_TOGGLE,
 #endif

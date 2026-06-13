@@ -94,6 +94,7 @@
 	NoWindowOverIcons = NO;
 	WindowPlaceOrigin = (64, 0);
 	ScreenshotFilenameTemplate = "screenshot_%Y-%m-%d_at_%H:%M:%S";
+	LockScreenCommand = wmlock;
 	ResizeDisplay = center;
 	MoveDisplay = floating;
 	HotplugMonitor = NO;
@@ -269,6 +270,7 @@
 	ScreenCaptureKey = None;
 	WindowCaptureKey = None;
 	PartialCaptureKey = None;
+	LockScreenKey = None;
 	MarkSetKey = None;
 	MarkUnsetKey = None;
 	MarkBringKey = None;

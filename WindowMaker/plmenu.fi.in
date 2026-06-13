@@ -228,7 +228,7 @@
 		(
 		"Lukitse näyttö",
 		EXEC,
-		"xlock -allowroot -usefirst"
+		"wmlock"
 		),
 		("Tallenna istunto", SAVE_SESSION),
 		("Tyhjennä istunto", CLEAR_SESSION)

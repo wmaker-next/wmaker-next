@@ -62,7 +62,7 @@
   ("Alles toane", SHOW_ALL),
   ("Ikoanen skikke", ARRANGE_ICONS),
   ("Fernije", REFRESH),
-  ("Beskoattelje", EXEC, "xlock -allowroot -usefirst")
+  ("Beskoattelje", EXEC, "wmlock")
  ),
  ("Uterlik", OPEN_MENU, "appearance.menu.fy"),
    ("Sesje",

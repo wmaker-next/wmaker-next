@@ -151,7 +151,7 @@
 		"Hepsini Göster" SHOW_ALL
 		"Simgeleri Dğzenle" ARRANGE_ICONS
 		"Tazele" REFRESH
-		"Kilitle" EXEC xlock -allowroot -usefirst
+		"Kilitle" EXEC wmlock
 		"Oturumu Sakla" SAVE_SESSION
 		"Saklanmış Oturumu Sil" CLEAR_SESSION
 	"Çalışma Alanı" END

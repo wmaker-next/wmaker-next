@@ -180,7 +180,7 @@
 		"Show All" SHOW_ALL
 		"Arrange Icons" ARRANGE_ICONS
 		"Refresh" REFRESH
-		"Lock" EXEC xlock -allowroot -usefirst
+		"Lock" EXEC wmlock
 	"Commands" END
 
 	"Appearance" OPEN_MENU "appearance.menu"

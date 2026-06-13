@@ -130,7 +130,7 @@
 		"Ukaž všechny" SHOW_ALL
 		"Srovnej ikony" ARRANGE_ICONS
 		"Obnov" REFRESH
-		"Zámek" EXEC xlock -allowroot -usefirst
+		"Zámek" EXEC wmlock
 		"Ulož vzhled" EXEC SAVE_WORKSPACE
 	"Pracovní plocha" END
 	"Konec"	MENU

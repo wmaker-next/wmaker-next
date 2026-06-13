@@ -105,6 +105,8 @@
 	_(SCREENSHOT_FILENAME_TEMPLATE, "ScreenshotFilenameTemplate", STRING, \
 	  screenshot_filename_template, DEF_SCREENSHOT_FILENAME_TEMPLATE, \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(LOCK_SCREEN_COMMAND, "LockScreenCommand", STRING, lock_screen_command, \
+	  "wmlock", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_STYLE, "MenuStyle", ENUM, menu_style, "normal", \
 	  menu_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
 	  WCFG_REFRESH_MENU_TEXTURE) \
@@ -603,6 +605,7 @@
 	_(SCREEN_CAPTURE_KEY, "ScreenCaptureKey", "None", WKBD_PRINTS) \
 	_(WINDOW_CAPTURE_KEY, "WindowCaptureKey", "None", WKBD_PRINTW) \
 	_(PARTIAL_CAPTURE_KEY, "PartialCaptureKey", "None", WKBD_PRINTP) \
+	_(LOCK_SCREEN_KEY, "LockScreenKey", "None", WKBD_LOCKSCREEN) \
 	_(MARK_SET_KEY, "MarkSetKey", "None", WKBD_MARK_SET) \
 	_(MARK_UNSET_KEY, "MarkUnsetKey", "None", WKBD_MARK_UNSET) \
 	_(MARK_BRING_KEY, "MarkBringKey", "None", WKBD_MARK_BRING) \

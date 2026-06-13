@@ -125,7 +125,7 @@
 		("Pokaż wszystko",          SHOW_ALL),
 		("Uporządkowanie icon",     ARRANGE_ICONS),
 		("Odswież",                 REFRESH),
-		("Zablokuj",                EXEC, "xlock -allowroot -usefirst"),
+		("Zablokuj",                EXEC, "wmlock"),
 		("Zachowaj Sesje",          SAVE_SESSION),
 		("Wyczyść zachowaną sesje", CLEAR_SESSION)
 	),

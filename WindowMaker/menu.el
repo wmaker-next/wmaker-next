@@ -179,7 +179,7 @@
 		"Εμφάνιση Όλων" SHOW_ALL
 		"Τακτοποίηση Εικονιδίων" ARRANGE_ICONS
 		"Ανανέωση Προβολής" REFRESH
-		"Κλείδωμα" EXEC xlock -allowroot -usefirst
+		"Κλείδωμα" EXEC wmlock
 		"Σώσιμο Session" SAVE_SESSION
 		"Διαγραφή σωσμένου Session" CLEAR_SESSION
 	"Επιφάνεια" END

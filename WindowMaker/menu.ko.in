@@ -202,7 +202,7 @@
 #endif
 		"배경화면" END
 	"작업환경" END
-	"화면잠금" SHORTCUT SHIFT+META+L EXEC xlock -allowroot -usefirst -nice +20
+	"화면잠금" SHORTCUT SHIFT+META+L EXEC wmlock -nice +20
 	"종    료" MENU
 		"재 시 작" RESTART
 		"재 시 작" MENU

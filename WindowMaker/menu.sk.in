@@ -182,7 +182,7 @@
 		"Zobraziť všetky" SHOW_ALL
 		"Vyrovnať ikony" ARRANGE_ICONS
 		"Obnoviť obrazovku" REFRESH
-		"Uzamknúť" EXEC xlock -allowroot -usefirst
+		"Uzamknúť" EXEC wmlock
 		"Uložiť sedenie" SAVE_SESSION
 		"Zmazať sedenie" CLEAR_SESSION
 	"Pracovná plocha" END

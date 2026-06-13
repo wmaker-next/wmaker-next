@@ -118,7 +118,7 @@
 		"Mostrar todas" SHOW_ALL
 		"Alinear iconos" ARRANGE_ICONS
 		"Refrescar" REFRESH
-		"Salvapantallas" EXEC xlock -allowroot -usefirst
+		"Salvapantallas" EXEC wmlock
 		"Grabar Area de trabajo" EXEC SAVE_WORKSPACE
 	"Configurar Area de Trabajo ..." END
 

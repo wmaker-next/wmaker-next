@@ -169,7 +169,7 @@ p' -file -
 		"显示所有" SHOW_ALL
 		"排列图标" ARRANGE_ICONS
 		"刷新" REFRESH
-		"锁住屏幕" EXEC xlock -allowroot -usefirst
+		"锁住屏幕" EXEC wmlock
 		"保存会话" SAVE_SESSION
 		"清除保存的会话" CLEAR_SESSION
 	"工作空间" END

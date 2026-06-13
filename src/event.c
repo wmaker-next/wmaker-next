@@ -2186,6 +2186,12 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 	}
 
+	case WKBD_LOCKSCREEN:
+		if (w_global.config->lock_screen_command &&
+		    w_global.config->lock_screen_command[0])
+			ExecuteShellCommand(scr, w_global.config->lock_screen_command);
+		break;
+
 	case WKBD_NEXTWSLAYER:
 	case WKBD_PREVWSLAYER:
 		{

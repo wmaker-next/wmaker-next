@@ -114,7 +114,7 @@
 		"Показать все" SHOW_ALL
 		"Упорядочить значки" ARRANGE_ICONS
 		"Обновить" REFRESH
-		"Запереть" EXEC xlock -allowroot -usefirst
+		"Запереть" EXEC wmlock
 		"Сохранить Рабочее место" EXEC SAVE_WORKSPACE
 	"Рабочее место" END
 

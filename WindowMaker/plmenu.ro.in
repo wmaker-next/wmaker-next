@@ -61,7 +61,7 @@
   ("Arată celelalte", SHOW_ALL),
   ("Aranjează Iconiţele", ARRANGE_ICONS),
   ("Reîmprospătează", REFRESH),
-  ("Blochează", EXEC, "xlock -allowroot -usefirst"),
+  ("Blochează", EXEC, "wmlock"),
   ("Salvează Sesiunea", SAVE_SESSION),
   ("Şterge Setările de Sesiune", CLEAR_SESSION)
   ),

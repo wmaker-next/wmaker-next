@@ -163,7 +163,7 @@
 		"全て表示" SHOW_ALL
 		"アイコンの再配置" ARRANGE_ICONS
 		"画面の再描画" REFRESH
-		"ロック" EXEC xlock -allowroot -usefirst
+		"ロック" EXEC wmlock
 		"セッションをセーブ" SAVE_SESSION
 		"セッションをクリア" CLEAR_SESSION
 	"ワークスペース" END

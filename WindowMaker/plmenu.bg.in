@@ -61,7 +61,7 @@
   ("Покажи всички", SHOW_ALL),
   ("Подреди иконките", ARRANGE_ICONS),
   ("Опресни", REFRESH),
-  ("Заключи", EXEC, "xlock -allowroot -usefirst"),
+  ("Заключи", EXEC, "wmlock"),
   ("Запази сесията", SAVE_SESSION),
   ("Изчисти запазената сесия", CLEAR_SESSION)
   ),

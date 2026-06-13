@@ -113,7 +113,7 @@
 		"Mostrar todas" SHOW_ALL
 		"Aliñar iconos" ARRANGE_ICONS
 		"Refrescar" REFRESH
-		"Fechar" EXEC xlock -allowroot -usefirst
+		"Fechar" EXEC wmlock
 		"Grabar Area de traballo" EXEC SAVE_WORKSPACE
 	"Area Traballo" END
 

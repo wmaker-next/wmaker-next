@@ -59,6 +59,11 @@ alone, pair it with xset or xss-lock if blanking is wanted. The
 build is enabled automatically when PAM or bsd_auth headers are
 found, override with --disable-wmlock.
 
+A new LockScreenCommand string default (default "wmlock") names the
+locker to run, and a new LockScreenKey binding (default "None")
+runs it. The shipped root menu templates now use wmlock for their
+Lock entry instead of the long-unmaintained xlock.
+
 Unix-socket control channel and the new wmakermsg tool
 -------------------------------------------------------
 

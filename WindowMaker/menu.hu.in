@@ -172,7 +172,7 @@
 		"Mindent mutat" SHOW_ALL
 		"Ikonok elrendezése" ARRANGE_ICONS
 		"Frissítés" REFRESH
-		"Zárolás" EXEC xlock -allowroot -usefirst
+		"Zárolás" EXEC wmlock
 		"Session mentése" SAVE_SESSION
 		"Elmentett Session törlése" CLEAR_SESSION
 	"Munkafelület" END

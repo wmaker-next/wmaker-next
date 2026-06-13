@@ -62,7 +62,7 @@
   ("Прикажи све", SHOW_ALL),
   ("Поређај иконе", ARRANGE_ICONS),
   ("Освежи", REFRESH),
-  ("Закључај", EXEC, "xlock -allowroot -usefirst")
+  ("Закључај", EXEC, "wmlock")
  ),
  ("Изглед", OPEN_MENU, "appearance.menu"),
    ("Сесија",

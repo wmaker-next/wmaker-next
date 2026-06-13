@@ -168,7 +168,7 @@
 		"Näytä kaikki ikkunat" SHOW_ALL
 		"Järjestä kuvakkeet" ARRANGE_ICONS
 		"Virkistä ruutu" REFRESH
-		"Lukitse näyttö" EXEC xlock -allowroot -usefirst
+		"Lukitse näyttö" EXEC wmlock
 		"Tallenna istunto" SAVE_SESSION
 		"Tyhjennä istunto" CLEAR_SESSION
 	"Työtila" END

@@ -201,7 +201,7 @@
                 (
                 "Lås",
                 EXEC,
-                "xlock -allowroot -usefirst"
+                "wmlock"
                 ),
                 ("Gem session", SAVE_SESSION),
                 ("Slet gemt session", CLEAR_SESSION)

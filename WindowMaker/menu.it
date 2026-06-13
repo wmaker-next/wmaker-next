@@ -102,7 +102,7 @@
 		"Mostra Tutti" SHOW_ALL
 		"Riordina Icone" ARRANGE_ICONS
 		"Refresh" REFRESH
-		"Lock" EXEC xlock -allowroot -usefirst
+		"Lock" EXEC wmlock
 		"Sfondo" MENU
 			"Nessuno" EXEC CLEARROOT
 			"Nero" WS_BACK '(solid, black)'

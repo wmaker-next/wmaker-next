@@ -62,7 +62,7 @@
   ("Alles tonen", SHOW_ALL),
   ("Iconen schikken", ARRANGE_ICONS),
   ("Vernieuwen", REFRESH),
-  ("Vergrendelen", EXEC, "xlock -allowroot -usefirst")
+  ("Vergrendelen", EXEC, "wmlock")
  ),
  ("Uiterlijk", OPEN_MENU, "appearance.menu.nl"),
    ("Sessie",

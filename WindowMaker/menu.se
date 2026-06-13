@@ -166,7 +166,7 @@
 		"Visa alla" SHOW_ALL
 		"Rada upp ikoner" ARRANGE_ICONS
 		"Uppdatera skärmen" REFRESH
-		"Lås" EXEC xlock -allowroot -usefirst
+		"Lås" EXEC wmlock
 		"Spara arbetsbord" SAVE_SESSION
 		"Rensa sparat arbetsbord" CLEAR_SESSION
 	"Arbetsbord" END

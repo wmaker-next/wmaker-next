@@ -156,7 +156,7 @@
 		"םלוכ הארה" SHOW_ALL
 		"םינוקייא רדס" ARRANGE_ICONS
 		"ןנער" REFRESH
-		"לענ" EXEC xlock -allowroot -usefirst
+		"לענ" EXEC wmlock
 		"Save Session" SAVE_SESSION
 		"Clear Saved Session" CLEAR_SESSION
 	"הדובע בחרמ" END

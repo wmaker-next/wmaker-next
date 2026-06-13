@@ -61,7 +61,7 @@
   ("Mostra Tutti", SHOW_ALL),
   ("Riordina Icone", ARRANGE_ICONS),
   ("Refresh", REFRESH),
-  ("Lock", EXEC, "xlock -allowroot -usefirst"),
+  ("Lock", EXEC, "wmlock"),
   ("Salva Sessione", SAVE_SESSION),
   ("Cancella Sessione salvata", CLEAR_SESSION)
   ),

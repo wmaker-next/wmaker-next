@@ -98,7 +98,7 @@
                 "Alle anzeigen" SHOW_ALL
                 "Icons anordnen" ARRANGE_ICONS
                 "Neuzeichnen" REFRESH
-                "Sperren" EXEC xlock -allowroot -usefirst
+                "Sperren" EXEC wmlock
 		"Hintergrund" MENU
 			"None" EXEC CLEARROOT
 			"Schwarz" WS_BACK '(solid, black)'

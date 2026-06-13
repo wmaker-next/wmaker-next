@@ -61,7 +61,7 @@
   ("Mostrar todos", SHOW_ALL),
   ("Arreglar iconos", ARRANGE_ICONS),
   ("Refrescar", REFRESH),
-  ("Protector de pantalla", EXEC, "xlock -allowroot -usefirst"),
+  ("Protector de pantalla", EXEC, "wmlock"),
   ("Guardar sesion", SAVE_SESSION),
   ("Borrar sesion", CLEAR_SESSION)
   ),

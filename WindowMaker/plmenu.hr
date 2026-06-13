@@ -79,7 +79,7 @@
     ("Poka\276i sve", SHOW_ALL),
     ("Pospremi ikone", ARRANGE_ICONS),
     ("Osvje\276i", REFRESH),
-    ("Zaklju\350aj", EXEC, "xlock -allowroot -usefirst"),
+    ("Zaklju\350aj", EXEC, "wmlock"),
     ("Snimi session", SAVE_SESSION),
     ("O\350isti snimljeni session", CLEAR_SESSION)
   ),

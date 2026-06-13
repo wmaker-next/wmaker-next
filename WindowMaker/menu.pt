@@ -166,7 +166,7 @@
 		"Mostrar Todos" SHOW_ALL
 		"Arrumar Ícones" ARRANGE_ICONS
 		"Refresh" REFRESH
-		"Lock" EXEC xlock -allowroot -usefirst
+		"Lock" EXEC wmlock
 		"Salvar Sessão" SAVE_SESSION
 		"Apagar Sessão Salvada" CLEAR_SESSION
 	"Área de Trabalho" END
