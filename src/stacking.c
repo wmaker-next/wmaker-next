@@ -488,28 +488,14 @@ void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
 	if (tmpw == next)
 		WMSetInBag(scr->stacking_list, index, frame);
 
-	/* try to optimize things a little */
-	if (frame->stacking->above == NULL) {
-		WCoreWindow *above = NULL;
-		WMBagIterator iter;
-
-		for (above = WMBagIteratorAtIndex(scr->stacking_list, index + 1, &iter);
-		     above != NULL; above = WMBagNext(scr->stacking_list, &iter)) {
-
-			/* can't optimize */
-			while (above->stacking->under)
-				above = above->stacking->under;
-			break;
-		}
-		if (above == NULL) {
-			XRaiseWindow(dpy, frame->window);
-			wHotCornersRaise(frame->screen_ptr);
-		} else {
-			moveFrameToUnder(above, frame);
-		}
-	} else {
-		moveFrameToUnder(frame->stacking->above, frame);
-	}
+	/*
+	 * The internal list is now correct, hand the X-side restack to the
+	 * shared helper.  The old open-coded path used WMBagIteratorAtIndex()
+	 * to find a higher-level anchor, but that does an exact-index lookup
+	 * so a gap above this level fell through to XRaiseWindow() and pushed
+	 * frame above the dock and every later wRaiseFrame() anchor.
+	 */
+	CommitStackingForWindow(frame);
 
 	WMPostNotificationName(WMNResetStacking, scr, NULL);
 }
