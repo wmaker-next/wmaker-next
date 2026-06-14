@@ -629,7 +629,6 @@ static void saveSettings(WMWidget *button, void *client_data)
 		if (icon_file[0] != '\0') {
 			value = WMCreatePLString(icon_file);
 			different |= insertAttribute(dict, winDic, AIcon, value, flags);
-			different2 |= insertAttribute(dict, appDic, AIcon, value, flags);
 			WMReleasePropList(value);
 		}
 		wfree(icon_file);
@@ -664,17 +663,9 @@ static void saveSettings(WMWidget *button, void *client_data)
 		}
 	}
 
+	key2 = NULL;
 	if (wwin->fake_group) {
 		key2 = WMCreatePLString(wwin->fake_group->identifier);
-		if (WMIsPropListEqualTo(key, key2)) {
-			WMMergePLDictionaries(winDic, appDic, True);
-			different |= different2;
-		} else {
-			WMRemoveFromPLDictionary(dict, key2);
-			if (different2)
-				WMPutInPLDictionary(dict, key2, appDic);
-		}
-		WMReleasePropList(key2);
 	} else if (wwin->main_window != wwin->client_win) {
 		WApplication *wapp = wApplicationOf(wwin->main_window);
 
@@ -683,21 +674,33 @@ static void saveSettings(WMWidget *button, void *client_data)
 					      wapp->main_window_desc->wm_class);
 			key2 = WMCreatePLString(buf2);
 			wfree(buf2);
+		}
+	}
 
-			if (WMIsPropListEqualTo(key, key2)) {
-				WMMergePLDictionaries(winDic, appDic, True);
-				different |= different2;
-			} else {
+	if (key2 && !WMIsPropListEqualTo(key, key2)) {
+		/* The application leader has its own WMWindowAttributes entry,
+		 * shared by every window in the group. Only refresh the
+		 * Application Specific booleans there, leaving Icon and any
+		 * other keys untouched, so saving from a secondary window
+		 * cannot clobber settings written from a sibling. */
+		WMPropList *prev = WMGetFromPLDictionary(dict, key2);
+
+		if (prev && WMIsPLDictionary(prev)) {
+			for (i = 0; i < wlengthof(application_attr); i++)
+				WMRemoveFromPLDictionary(prev, pl_wattr[application_attr[i].attr]);
+			if (different2)
+				WMMergePLDictionaries(prev, appDic, True);
+			if (WMGetPropListItemCount(prev) == 0)
 				WMRemoveFromPLDictionary(dict, key2);
-				if (different2)
-					WMPutInPLDictionary(dict, key2, appDic);
-			}
-			WMReleasePropList(key2);
+		} else if (different2) {
+			WMPutInPLDictionary(dict, key2, appDic);
 		}
 	} else {
 		WMMergePLDictionaries(winDic, appDic, True);
 		different |= different2;
 	}
+	if (key2)
+		WMReleasePropList(key2);
 	WMReleasePropList(appDic);
 
 	WMRemoveFromPLDictionary(dict, key);
