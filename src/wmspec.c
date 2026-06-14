@@ -736,15 +736,11 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 		scr->netdata->show_desktop = wins;
 		updateShowDesktop(scr, True);
 	} else if (scr->netdata->show_desktop != NULL) {
-		/* FIXME: get rid of workspace flashing ! */
-		int ws = scr->current_workspace;
 		WWindow **tmp;
 		for (tmp = scr->netdata->show_desktop; *tmp; ++tmp) {
 			wDeiconifyWindow(*tmp);
 			(*tmp)->flags.net_show_desktop = 0;
 		}
-		if (ws != scr->current_workspace)
-			wWorkspaceChange(scr, ws);
 		wfree(scr->netdata->show_desktop);
 		scr->netdata->show_desktop = NULL;
 		updateShowDesktop(scr, False);
