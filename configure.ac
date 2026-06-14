@@ -706,19 +706,6 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_XEXT_CHECK_XSHM
 
 
-dnl XINERAMA support
-dnl ================
-m4_divert_push([INIT_PREPARE])dnl
-AC_ARG_ENABLE([xinerama],
-    [AS_HELP_STRING([--enable-xinerama], [enable Xinerama extension support])],
-    [AS_CASE(["$enableval"],
-        [yes|no], [],
-        [AC_MSG_ERROR([bad value $enableval for --enable-xinerama]) ]) ],
-    [enable_xinerama=auto])
-m4_divert_pop([INIT_PREPARE])dnl
-WM_XEXT_CHECK_XINERAMA
-
-
 dnl RandR support
 dnl =============
 m4_divert_push([INIT_PREPARE])dnl

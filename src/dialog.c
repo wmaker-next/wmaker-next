@@ -1440,24 +1440,10 @@ void wShowInfoPanel(WScreen *scr)
 	strbuf = wstrappend(strbuf, ", ImageMagick");
 #endif
 
-#ifdef USE_XINERAMA
-	strbuf = wstrappend(strbuf, _("\n"));
-#ifdef SOLARIS_XINERAMA
-	strbuf = wstrappend(strbuf, _("Solaris "));
-#endif
-	strbuf = wstrappend(strbuf, _("Xinerama: "));
-	snprintf(buffer, sizeof(buffer), scr->xine_info.count > 1 ? _("%d head(s) found") : _("%d head found"), scr->xine_info.count);
-	strbuf = wstrappend(strbuf, buffer);
-#endif
-
-#ifdef USE_RANDR
 	strbuf = wstrappend(strbuf, _("\n"));
 	strbuf = wstrappend(strbuf, "RandR: ");
-	if (w_global.xext.randr.supported)
-		strbuf = wstrappend(strbuf, _("supported"));
-	else
-		strbuf = wstrappend(strbuf, _("unsupported"));
-#endif
+	snprintf(buffer, sizeof(buffer), scr->xine_info.count > 1 ? _("%d head(s) found") : _("%d head found"), scr->xine_info.count);
+	strbuf = wstrappend(strbuf, buffer);
 
 	panel->infoL = WMCreateLabel(panel->win);
 #if defined(HAVE_MALLOC_H) && defined(HAVE_MALLINFO2) && defined(DEBUG)

@@ -19,17 +19,17 @@ dist_man_MANS = \
 	wmiv.1 \
 	wmlock.1 \
 	wmmenugen.1 \
+	wmsetbg.1 \
 	WPrefs.1 \
 	wxcopy.1 \
 	wxpaste.1
 
 man_MANS = \
-	wmaker.1 \
-	wmsetbg.1
+	wmaker.1
 
-MOSTLYCLEANFILES = wmaker.1 wmsetbg.1
+MOSTLYCLEANFILES = wmaker.1
 
-EXTRA_DIST = wmaker.in wmsetbg.in wmaker-ipc.txt
+EXTRA_DIST = wmaker.in wmaker-ipc.txt
 
 
 ################################################################################
@@ -43,11 +43,6 @@ wmaker.1: wmaker.in Makefile $(top_builddir)/config.h
 		-D"pkgdatadir=$(pkgdatadir)" --replace "pkgdatadir" \
 		-D"pkgconfdir=$(pkgconfdir)" --replace "pkgconfdir" \
 		-o "wmaker.1"  "$(srcdir)/wmaker.in"
-
-wmsetbg.1: wmsetbg.in Makefile $(top_builddir)/config.h
-	$(AM_V_GEN)$(top_srcdir)/script/replace-ac-keywords.sh \
-		--header "$(top_builddir)/config.h" --filter "USE_XINERAMA" \
-		-o "wmsetbg.1"  "$(srcdir)/wmsetbg.in"
 
 
 ################################################################################
@@ -138,7 +133,7 @@ wmmenugen-args:
 
 wmsetbg-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
-		--program "$(top_builddir)/util/wmsetbg" --man-page "wmsetbg.1"
+		--program "$(top_builddir)/util/wmsetbg" --man-page "$(top_srcdir)/doc/wmsetbg.1"
 
 wxcopy-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \

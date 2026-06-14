@@ -88,9 +88,7 @@ static Atom net_wm_visible_name;
 static Atom net_wm_icon_name;
 static Atom net_wm_visible_icon_name;
 static Atom net_wm_desktop;
-#ifdef USE_XINERAMA
 static Atom net_wm_fullscreen_monitors;
-#endif
 static Atom net_wm_window_type;
 static Atom net_wm_window_type_desktop;
 static Atom net_wm_window_type_dock;
@@ -188,9 +186,7 @@ static atomitem_t atomNames[] = {
 	{"_NET_WM_ICON_NAME", &net_wm_icon_name},
 	{"_NET_WM_VISIBLE_ICON_NAME", &net_wm_visible_icon_name},
 	{"_NET_WM_DESKTOP", &net_wm_desktop},
-#ifdef USE_XINERAMA
 	{"_NET_WM_FULLSCREEN_MONITORS", &net_wm_fullscreen_monitors},
-#endif
 	{"_NET_WM_WINDOW_TYPE", &net_wm_window_type},
 	{"_NET_WM_WINDOW_TYPE_DESKTOP", &net_wm_window_type_desktop},
 	{"_NET_WM_WINDOW_TYPE_DOCK", &net_wm_window_type_dock},
@@ -311,9 +307,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_request_frame_extents;
 	atom[i++] = net_close_window;
 	atom[i++] = net_wm_desktop;
-#ifdef USE_XINERAMA
 	atom[i++] = net_wm_fullscreen_monitors;
-#endif
 	atom[i++] = net_wm_window_type;
 	atom[i++] = net_wm_window_type_desktop;
 	atom[i++] = net_wm_window_type_dock;
@@ -1171,9 +1165,7 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 {				/* changeable */
 	if (del) {
 		WXDeleteProperty(dpy, wwin->client_win, net_wm_state);
-#ifdef USE_XINERAMA
 		WXDeleteProperty(dpy, wwin->client_win, net_wm_fullscreen_monitors);
-#endif
 	} else {
 		Atom state[15];	/* nr of defined state atoms */
 		int i = 0;
@@ -1220,7 +1212,6 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 
 		WXSetAtomN(dpy, wwin->client_win, net_wm_state, state, i);
 
-#ifdef USE_XINERAMA
 		if (wwin->flags.fullscreen && (wwin->flags.fullscreen_monitors[0] != -1)) {
 			uint32_t data[4];
 
@@ -1231,7 +1222,6 @@ static void updateStateHint(WWindow *wwin, Bool changedWorkspace, Bool del)
 
 			WXSetCardinalN(dpy, wwin->client_win, net_wm_fullscreen_monitors, data, 4);
 		}
-#endif
 	}
 }
 
@@ -2324,7 +2314,6 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 
 		return True;
 
-#ifdef USE_XINERAMA
 	} else if (event->message_type == net_wm_fullscreen_monitors) {
 		unsigned long top, bottom, left, right, src_indication;
 
@@ -2340,9 +2329,6 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		wFullscreenMonitorsWindow(wwin, top, bottom, left, right);
 		return True;
 	}
-#else
-	}
-#endif
 
 #ifdef DEBUG_WMSPEC
 	wmessage("processClientMessage unsupported type %s", XGetAtomName(dpy, event->message_type));

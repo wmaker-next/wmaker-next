@@ -1086,7 +1086,6 @@ void wUnmaximizeWindow(WWindow *wwin)
 		wGroupSyncMaximize(wwin);
 }
 
-#ifdef USE_XINERAMA
 void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long bottom,
 					unsigned long left, unsigned long right)
 {
@@ -1133,7 +1132,6 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 
 	WMPostNotificationName(WMNChangedState, wwin, "fullscreen");
 }
-#endif
 
 void wFullscreenWindow(WWindow *wwin)
 {

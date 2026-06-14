@@ -654,11 +654,7 @@ do
 	check "advertises $atom" supported_atom "$atom"
 done
 
-if config_defines USE_XINERAMA; then
-	check "advertises _NET_WM_FULLSCREEN_MONITORS when Xinerama is built" supported_atom _NET_WM_FULLSCREEN_MONITORS
-else
-	record_skip "Xinerama support not built; fullscreen-monitor atom not expected"
-fi
+check "advertises _NET_WM_FULLSCREEN_MONITORS" supported_atom _NET_WM_FULLSCREEN_MONITORS
 
 if config_defines USE_XSYNC && xsync_available; then
 	check "advertises _NET_WM_SYNC_REQUEST when XSync is built and available" supported_atom _NET_WM_SYNC_REQUEST

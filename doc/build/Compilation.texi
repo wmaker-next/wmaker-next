@@ -599,10 +599,6 @@ root cursor and exporting @env{DESKTOP_STARTUP_ID} to the child) and monitors
 while you kept typing elsewhere does not steal focus and lands on the workspace it was
 launched from.
 
-@item --enable-xinerama
-The @emph{Xinerama} extension provides information about the different screens connected when
-running a multi-head setting (if you plug more than one monitor).
-
 @item --enable-randr
 The @emph{RandR} extension provides feedback when changing the multiple-monitor configuration in X11
 and allows to re-configure how screens are organised.

@@ -17,11 +17,19 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "wconfig.h"
+
+/* Xlibint.h must precede any project header that pulls in Xlib.h, and it
+ * leaks lowercase min/max macros which collide with WINGs, so undef them
+ * immediately after the protocol header. */
+#include <X11/Xlibint.h>
+#include <X11/extensions/panoramiXproto.h>
+#undef min
+#undef max
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "wconfig.h"
 
 #include "xinerama.h"
 
@@ -31,59 +39,89 @@
 #include "placement.h"
 #include "dock.h"
 
-#ifdef USE_XINERAMA
-# ifdef SOLARIS_XINERAMA	/* sucks */
-#  include <X11/extensions/xinerama.h>
-# else
-#  include <X11/extensions/Xinerama.h>
-# endif
-#endif
+/* Minor opcodes for the post-1.0 XINERAMA requests, these live in
+ * libXinerama's private headers rather than panoramiXproto.h. */
+#define X_XineramaIsActive      4
+#define X_XineramaQueryScreens  5
+
+/* Speak the XINERAMA wire protocol directly so we do not link libXinerama.
+ * RandR is the authoritative head source on real hardware and overwrites
+ * xine_info via wRandRInit(), but nested servers such as Xephyr +xinerama
+ * expose a multi-head root that RandR cannot describe, so this query still
+ * seeds the head list for the randr.c "keeping XINERAMA geometry" fallback
+ * and for builds without RandR. */
+static int queryXineramaHeads(WMRect *out, int max_out)
+{
+	xXineramaIsActiveReq *areq;
+	xXineramaIsActiveReply arep;
+	xXineramaQueryScreensReq *sreq;
+	xXineramaQueryScreensReply srep;
+	int major_opcode, first_event, first_error;
+	int count = 0;
+
+	if (!XQueryExtension(dpy, PANORAMIX_PROTOCOL_NAME,
+			     &major_opcode, &first_event, &first_error))
+		return 0;
+
+	LockDisplay(dpy);
+	GetReq(XineramaIsActive, areq);
+	areq->reqType = major_opcode;
+	areq->panoramiXReqType = X_XineramaIsActive;
+	if (!_XReply(dpy, (xReply *)&arep, 0, xTrue))
+		arep.state = 0;
+	UnlockDisplay(dpy);
+	SyncHandle();
+
+	if (!arep.state)
+		return 0;
+
+	LockDisplay(dpy);
+	GetReq(XineramaQueryScreens, sreq);
+	sreq->reqType = major_opcode;
+	sreq->panoramiXReqType = X_XineramaQueryScreens;
+	if (!_XReply(dpy, (xReply *)&srep, 0, xFalse)) {
+		UnlockDisplay(dpy);
+		SyncHandle();
+		return 0;
+	}
+	if (srep.number <= (CARD32)max_out
+	    && srep.length == srep.number * (sz_XineramaScreenInfo / 4)) {
+		CARD32 i;
+
+		for (i = 0; i < srep.number; i++) {
+			xXineramaScreenInfo si;
+
+			_XRead(dpy, (char *)&si, sz_XineramaScreenInfo);
+			out[i].pos.x = si.x_org;
+			out[i].pos.y = si.y_org;
+			out[i].size.width = si.width;
+			out[i].size.height = si.height;
+		}
+		count = (int)srep.number;
+	} else {
+		_XEatDataWords(dpy, srep.length);
+	}
+	UnlockDisplay(dpy);
+	SyncHandle();
+
+	return count;
+}
 
 void wInitXinerama(WScreen * scr)
 {
+	WMRect heads[WM_MAX_HEADS];
+	int n;
+
 	scr->xine_info.primary_head = 0;
 	scr->xine_info.screens = NULL;
 	scr->xine_info.count = 0;
-#ifdef USE_XINERAMA
-# ifdef SOLARIS_XINERAMA
-	if (XineramaGetState(dpy, scr->screen)) {
-		WXineramaInfo *info = &scr->xine_info;
-		XRectangle head[MAXFRAMEBUFFERS];
-		unsigned char hints[MAXFRAMEBUFFERS];
-		int i;
 
-		if (XineramaGetInfo(dpy, scr->screen, head, hints, &info->count)) {
-
-			info->screens = wmalloc(sizeof(WMRect) * (info->count + 1));
-
-			for (i = 0; i < info->count; i++) {
-				info->screens[i].pos.x = head[i].x;
-				info->screens[i].pos.y = head[i].y;
-				info->screens[i].size.width = head[i].width;
-				info->screens[i].size.height = head[i].height;
-			}
-		}
+	n = queryXineramaHeads(heads, WM_MAX_HEADS);
+	if (n > 0) {
+		scr->xine_info.screens = wmalloc(sizeof(WMRect) * (n + 1));
+		memcpy(scr->xine_info.screens, heads, sizeof(WMRect) * n);
+		scr->xine_info.count = n;
 	}
-# else				/* !SOLARIS_XINERAMA */
-	if (XineramaIsActive(dpy)) {
-		XineramaScreenInfo *xine_screens;
-		WXineramaInfo *info = &scr->xine_info;
-		int i;
-
-		xine_screens = XineramaQueryScreens(dpy, &info->count);
-
-		info->screens = wmalloc(sizeof(WMRect) * (info->count + 1));
-
-		for (i = 0; i < info->count; i++) {
-			info->screens[i].pos.x = xine_screens[i].x_org;
-			info->screens[i].pos.y = xine_screens[i].y_org;
-			info->screens[i].size.width = xine_screens[i].width;
-			info->screens[i].size.height = xine_screens[i].height;
-		}
-		XFree(xine_screens);
-	}
-# endif				/* !SOLARIS_XINERAMA */
-#endif				/* USE_XINERAMA */
 }
 
 int wGetRectPlacementInfo(WScreen * scr, WMRect rect, int *flags)

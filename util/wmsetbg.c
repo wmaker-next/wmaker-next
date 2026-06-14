@@ -40,13 +40,12 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
-#ifdef USE_XINERAMA
-# ifdef SOLARIS_XINERAMA	/* sucks */
-#  include <X11/extensions/xinerama.h>
-# else
-#  include <X11/extensions/Xinerama.h>
-# endif
-#endif
+/* Xlibint.h must precede any other Xlib consumer and leaks lowercase
+ * min/max macros, so undef them immediately after the protocol header. */
+#include <X11/Xlibint.h>
+#include <X11/extensions/panoramiXproto.h>
+#undef min
+#undef max
 
 #ifdef HAVE_STDNORETURN
 #include <stdnoreturn.h>
@@ -76,9 +75,7 @@ int scrX, scrY;
 WXineramaInfo xineInfo;
 
 Bool smooth = False;
-#ifdef USE_XINERAMA
 Bool xineStretch = False;
-#endif
 
 Pixmap CurrentPixmap = None;
 char *PixmapPath = NULL;
@@ -104,48 +101,73 @@ static noreturn void quit(int rcode)
 	exit(rcode);
 }
 
+/* Minor opcodes for the post-1.0 XINERAMA requests, these live in
+ * libXinerama's private headers rather than panoramiXproto.h. */
+#define X_XineramaIsActive      4
+#define X_XineramaQueryScreens  5
+
+#define WMSETBG_MAX_HEADS       32
+
+/* Speak the XINERAMA wire protocol directly so we do not link libXinerama.
+ * On hardware the X server synthesises this list from RandR, and on nested
+ * servers such as Xephyr +xinerama it is the only multi-head view, so a
+ * single query covers both without a separate RandR path. */
 static void initXinerama(void)
 {
+	xXineramaIsActiveReq *areq;
+	xXineramaIsActiveReply arep;
+	xXineramaQueryScreensReq *sreq;
+	xXineramaQueryScreensReply srep;
+	int major_opcode, first_event, first_error;
+
 	xineInfo.screens = NULL;
 	xineInfo.count = 0;
-#ifdef USE_XINERAMA
-# ifdef SOLARIS_XINERAMA
-	if (XineramaGetState(dpy, scr)) {
-		XRectangle head[MAXFRAMEBUFFERS];
-		unsigned char hints[MAXFRAMEBUFFERS];
-		int i;
 
-		if (XineramaGetInfo(dpy, scr, head, hints, &xineInfo.count)) {
+	if (!XQueryExtension(dpy, PANORAMIX_PROTOCOL_NAME,
+			     &major_opcode, &first_event, &first_error))
+		return;
 
-			xineInfo.screens = wmalloc(sizeof(WMRect) * (xineInfo.count + 1));
+	LockDisplay(dpy);
+	GetReq(XineramaIsActive, areq);
+	areq->reqType = major_opcode;
+	areq->panoramiXReqType = X_XineramaIsActive;
+	if (!_XReply(dpy, (xReply *)&arep, 0, xTrue))
+		arep.state = 0;
+	UnlockDisplay(dpy);
+	SyncHandle();
 
-			for (i = 0; i < xineInfo.count; i++) {
-				xineInfo.screens[i].pos.x = head[i].x;
-				xineInfo.screens[i].pos.y = head[i].y;
-				xineInfo.screens[i].size.width = head[i].width;
-				xineInfo.screens[i].size.height = head[i].height;
-			}
-		}
+	if (!arep.state)
+		return;
+
+	LockDisplay(dpy);
+	GetReq(XineramaQueryScreens, sreq);
+	sreq->reqType = major_opcode;
+	sreq->panoramiXReqType = X_XineramaQueryScreens;
+	if (!_XReply(dpy, (xReply *)&srep, 0, xFalse)) {
+		UnlockDisplay(dpy);
+		SyncHandle();
+		return;
 	}
-# else				/* !SOLARIS_XINERAMA */
-	if (XineramaIsActive(dpy)) {
-		XineramaScreenInfo *xine_screens;
-		int i;
+	if (srep.number > 0 && srep.number <= WMSETBG_MAX_HEADS
+	    && srep.length == srep.number * (sz_XineramaScreenInfo / 4)) {
+		CARD32 i;
 
-		xine_screens = XineramaQueryScreens(dpy, &xineInfo.count);
+		xineInfo.screens = wmalloc(sizeof(WMRect) * (srep.number + 1));
+		for (i = 0; i < srep.number; i++) {
+			xXineramaScreenInfo si;
 
-		xineInfo.screens = wmalloc(sizeof(WMRect) * (xineInfo.count + 1));
-
-		for (i = 0; i < xineInfo.count; i++) {
-			xineInfo.screens[i].pos.x = xine_screens[i].x_org;
-			xineInfo.screens[i].pos.y = xine_screens[i].y_org;
-			xineInfo.screens[i].size.width = xine_screens[i].width;
-			xineInfo.screens[i].size.height = xine_screens[i].height;
+			_XRead(dpy, (char *)&si, sz_XineramaScreenInfo);
+			xineInfo.screens[i].pos.x = si.x_org;
+			xineInfo.screens[i].pos.y = si.y_org;
+			xineInfo.screens[i].size.width = si.width;
+			xineInfo.screens[i].size.height = si.height;
 		}
-		XFree(xine_screens);
+		xineInfo.count = (int)srep.number;
+	} else {
+		_XEatDataWords(dpy, srep.length);
 	}
-# endif				/* !SOLARIS_XINERAMA */
-#endif				/* USE_XINERAMA */
+	UnlockDisplay(dpy);
+	SyncHandle();
 }
 
 static RImage *loadImage(RContext * rc, const char *file)
@@ -566,7 +588,6 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 				if (!image)
 					break;
 
-#ifdef USE_XINERAMA
 				if (xineInfo.count && ! xineStretch) {
 					int i;
 					for (i = 0; i < xineInfo.count; ++i) {
@@ -578,9 +599,6 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 				} else {
 					applyImage(rc, texture, image, type[0], 0, 0, scrWidth, scrHeight);
 				}
-#else				/* !USE_XINERAMA */
-				applyImage(rc, texture, image, type[0], 0, 0, scrWidth, scrHeight);
-#endif				/* !USE_XINERAMA */
 			}
 			break;
 		}
@@ -1166,9 +1184,7 @@ static void print_help(void)
 	puts("");
 	puts(" -display <display>            display to use");
 	puts(" -S, --smooth                  smooth scaled image");
-#ifdef USE_XINERAMA
 	puts(" -X, --xinerama                stretch image across Xinerama heads");
-#endif
 	puts(" -b, --back-color <color>      background color");
 	puts(" -t, --tile                    tile   image");
 	puts(" -e, --center                  center image");
@@ -1288,10 +1304,8 @@ int main(int argc, char **argv)
 			}
 		} else if (strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "--smooth") == 0) {
 			smooth = True;
-#ifdef USE_XINERAMA
 		} else if (strcmp(argv[i], "-X") == 0 || strcmp(argv[i], "--xinerama") == 0) {
 			xineStretch = True;
-#endif
 		} else if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--update-wmaker") == 0) {
 			update++;
 		} else if (strcmp(argv[i], "-D") == 0 || strcmp(argv[i], "--update-domain") == 0) {

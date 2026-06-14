@@ -97,7 +97,6 @@ export LINGUAS
     --disable-static \
     --enable-modelock \
     --enable-randr \
-    --enable-xinerama \
     --enable-usermenu \
     --enable-wmreplace \
     --enable-pango \
