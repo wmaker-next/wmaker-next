@@ -26,6 +26,7 @@
 #include <X11/Xlib.h>
 
 #include "wraster.h"
+#include "imgformat.h"
 #include "wr_i18n.h"
 
 #include <assert.h>
@@ -36,16 +37,11 @@ int RErrorCode = RERR_NONE;
 
 #define HAS_ALPHA(I)	((I)->format == RRGBAFormat)
 
-#define MAX_WIDTH 20000
-#define MAX_HEIGHT 20000
-/* 20000^2*4 < 2G */
-
 RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 {
 	RImage *image = NULL;
 
-	if (width < 1 || height < 1 ||
-	    width > MAX_WIDTH || height > MAX_HEIGHT) {
+	if (!RImageDimensionsWithinLimits(width, height)) {
 		/* dimensions may come from untrusted image headers */
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;

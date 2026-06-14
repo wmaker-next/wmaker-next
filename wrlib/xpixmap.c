@@ -28,6 +28,7 @@
 #include <assert.h>
 
 #include "wraster.h"
+#include "imgformat.h"
 #include "wr_i18n.h"
 
 
@@ -148,7 +149,7 @@ RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap m
 {
 	RImage *image;
 	XImage *pimg, *mimg;
-	unsigned int w, h, bar;
+	unsigned int w, h, mask_w, mask_h, bar;
 	int foo;
 	Window baz;
 
@@ -156,6 +157,10 @@ RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap m
 
 	if (!XGetGeometry(context->dpy, drawable, &baz, &foo, &foo, &w, &h, &bar, &bar)) {
 		fprintf(stderr, _("wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"));
+		return NULL;
+	}
+	if (!RImageDimensionsWithinLimits(w, h)) {
+		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
 	pimg = XGetImage(context->dpy, drawable, 0, 0, w, h, AllPlanes, ZPixmap);
@@ -166,8 +171,13 @@ RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap m
 	}
 	mimg = NULL;
 	if (mask) {
-		if (XGetGeometry(context->dpy, mask, &baz, &foo, &foo, &w, &h, &bar, &bar)) {
-			mimg = XGetImage(context->dpy, mask, 0, 0, w, h, AllPlanes, ZPixmap);
+		if (XGetGeometry(context->dpy, mask, &baz, &foo, &foo, &mask_w, &mask_h, &bar, &bar)) {
+			if (mask_w > w)
+				mask_w = w;
+			if (mask_h > h)
+				mask_h = h;
+			if (mask_w > 0 && mask_h > 0)
+				mimg = XGetImage(context->dpy, mask, 0, 0, mask_w, mask_h, AllPlanes, ZPixmap);
 		}
 	}
 

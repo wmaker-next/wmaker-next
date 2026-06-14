@@ -27,6 +27,21 @@
 #ifndef IMGFORMAT_INTERNAL_H
 #define IMGFORMAT_INTERNAL_H
 
+#include <stdint.h>
+
+#define R_IMAGE_MAX_WIDTH 20000U
+#define R_IMAGE_MAX_HEIGHT 20000U
+/* 20000^2*4 < 2G */
+#define R_IMAGE_MAX_PIXELS (UINT64_C(0x80000000) / 4U)
+
+static inline int RImageDimensionsWithinLimits(uint64_t width, uint64_t height)
+{
+	return width >= 1 && height >= 1 &&
+	       width <= R_IMAGE_MAX_WIDTH &&
+	       height <= R_IMAGE_MAX_HEIGHT &&
+	       width <= R_IMAGE_MAX_PIXELS / height;
+}
+
 typedef enum {
 	IM_ERROR   = -1,
 	IM_UNKNOWN =  0,

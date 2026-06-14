@@ -45,7 +45,7 @@ RImage *RLoadTIFF(const char *file, int index)
 	uint32 width, height;
 	uint32 *data, *ptr;
 #else
-	uint16_t alpha, amode, extrasamples;;
+	uint16_t alpha, amode, extrasamples;
 	uint16_t *sampleinfo;
 	uint32_t width, height;
 	uint32_t *data, *ptr;
@@ -80,11 +80,10 @@ RImage *RLoadTIFF(const char *file, int index)
 		 ((sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA) || (sampleinfo[0] == EXTRASAMPLE_UNASSALPHA)));
 	amode = (extrasamples == 1 && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA);
 
-	/* match the per-dimension cap RCreateImage() applies (20000) so an
-	 * extreme aspect ratio that survives the product check cannot force
-	 * a multi-gigabyte _TIFFmalloc() before RCreateImage() rejects it */
-	if (width < 1 || height < 1 || width > 20000 || height > 20000 ||
-	    (uint64_t)width * height > (uint64_t)0x80000000U / 4) {
+	/* match the cap RCreateImage() applies so an oversized header
+	 * cannot force a multi-gigabyte _TIFFmalloc() before RCreateImage()
+	 * rejects it */
+	if (!RImageDimensionsWithinLimits(width, height)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		TIFFClose(tif);
 		return NULL;

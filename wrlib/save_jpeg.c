@@ -85,7 +85,8 @@ static void jpeg_term_mem_destination(j_compress_ptr cinfo)
 Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out_size)
 {
 	int x, y;
-	char *buffer;
+	unsigned char *buffer;
+	size_t row_stride, buffer_size;
 	RColor pixel;
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -96,8 +97,17 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 	*out_buf = NULL;
 	*out_size = 0;
 
+	if (!RImageDimensionsWithinLimits(img->width, img->height) ||
+	    (size_t)img->width > SIZE_MAX / 3 ||
+	    (size_t)img->height > SIZE_MAX / ((size_t)img->width * 3)) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		return False;
+	}
+
 	/* collect separate RGB values to a buffer */
-	buffer = malloc(sizeof(char) * 3 * img->width * img->height);
+	row_stride = (size_t)img->width * 3;
+	buffer_size = row_stride * (size_t)img->height;
+	buffer = malloc(buffer_size);
 	if (!buffer) {
 		RErrorCode = RERR_NOMEMORY;
 		return False;
@@ -105,17 +115,19 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 
 	for (y = 0; y < img->height; y++) {
 		for (x = 0; x < img->width; x++) {
+			size_t offset = (size_t)y * row_stride + (size_t)x * 3;
+
 			RGetPixel(img, x, y, &pixel);
 			/* Handle transparent pixels by converting them to white
 			 * since JPEG doesn't support transparency */
 			if (pixel.alpha == 0) {
-				buffer[y*img->width*3+x*3+0] = (char)255; /* white red */
-				buffer[y*img->width*3+x*3+1] = (char)255; /* white green */
-				buffer[y*img->width*3+x*3+2] = (char)255; /* white blue */
+				buffer[offset + 0] = 255; /* white red */
+				buffer[offset + 1] = 255; /* white green */
+				buffer[offset + 2] = 255; /* white blue */
 			} else {
-				buffer[y*img->width*3+x*3+0] = (char)(pixel.red);
-				buffer[y*img->width*3+x*3+1] = (char)(pixel.green);
-				buffer[y*img->width*3+x*3+2] = (char)(pixel.blue);
+				buffer[offset + 0] = pixel.red;
+				buffer[offset + 1] = pixel.green;
+				buffer[offset + 2] = pixel.blue;
 			}
 		}
 	}
@@ -151,7 +163,7 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 		jpeg_write_marker(&cinfo, JPEG_COM, (const JOCTET*)title, strlen(title));
 
 	while (cinfo.next_scanline < cinfo.image_height) {
-		row_pointer = (JSAMPROW) &buffer[cinfo.next_scanline * 3 * img->width];
+		row_pointer = (JSAMPROW) &buffer[(size_t)cinfo.next_scanline * row_stride];
 		jpeg_write_scanlines(&cinfo, &row_pointer, 1);
 	}
 

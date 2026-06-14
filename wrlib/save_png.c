@@ -42,13 +42,22 @@ struct png_mem_data {
 static void png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length)
 {
 	struct png_mem_data *p = (struct png_mem_data *)png_get_io_ptr(png_ptr);
-	size_t new_size = p->size + length;
+	size_t new_size;
+
+	if (length > SIZE_MAX - p->size)
+		png_error(png_ptr, "Out of memory");
+	new_size = p->size + length;
 
 	/* Expand buffer if necessary */
 	if (new_size > p->capacity) {
-		size_t new_capacity = p->capacity ? p->capacity * 2 : 8192;
-		while (new_capacity < new_size)
+		size_t new_capacity = p->capacity ? p->capacity : 8192;
+		while (new_capacity < new_size) {
+			if (new_capacity > SIZE_MAX / 2) {
+				new_capacity = new_size;
+				break;
+			}
 			new_capacity *= 2;
+		}
 
 		unsigned char *new_buffer = realloc(p->buffer, new_capacity);
 		if (!new_buffer) {
@@ -81,12 +90,21 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	png_bytep png_row;
 	RColor pixel;
 	int x, y;
-	int width = img->width;
-	int height = img->height;
+	int width, height;
+	size_t row_size;
 	struct png_mem_data png_data = {NULL, 0, 0};
 
 	*out_buf = NULL;
 	*out_size = 0;
+
+	if (!RImageDimensionsWithinLimits(img->width, img->height) ||
+	    (size_t)img->width > SIZE_MAX / (3 * sizeof(png_byte))) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		return False;
+	}
+	width = (int)img->width;
+	height = (int)img->height;
+	row_size = (size_t)width * 3 * sizeof(png_byte);
 
 	/* Initialize write structure */
 	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -132,7 +150,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	png_write_info(png_ptr, png_info_ptr);
 
 	/* Allocate memory for one row (3 bytes per pixel - RGB) */
-	png_row = (png_bytep) malloc(3 * width * sizeof(png_byte));
+	png_row = (png_bytep) malloc(row_size);
 	if (!png_row) {
 		if (png_data.buffer)
 			free(png_data.buffer);
