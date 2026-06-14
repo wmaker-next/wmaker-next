@@ -15,3 +15,8 @@
 # This file must be executable.
 #
 
+# Uncomment to run the clipboard daemon, which keeps CLIPBOARD contents
+# alive after the owning application exits and (with --screenshots) puts
+# Window Maker screenshots on the clipboard. See wmclipd(1).
+# The pgrep guard stops a second copy starting when Window Maker restarts.
+#pgrep -u "$(id -u)" -x wmclipd >/dev/null 2>&1 || wmclipd --clipboard --screenshots &
