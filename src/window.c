@@ -3491,20 +3491,20 @@ static void titlebarDblClick(WCoreWindow *sender, void *data, XEvent *event)
 
 	if (event->xbutton.button == Button1 ) {
 		if (event->xbutton.state == 0 ) {
-			if (!WFLAGP(wwin, no_shadeable) & !w_global.config->double_click_fullscreen) {
+			if (!WFLAGP(wwin, no_shadeable) && !w_global.config->double_click_maximize) {
 				/* shade window */
 				if (wwin->flags.shaded)
 					wUnshadeWindow(wwin);
 				else
 					wShadeWindow(wwin);
-			} 
+			}
 		}
-		
-		if (w_global.config->double_click_fullscreen) {
+
+		if (w_global.config->double_click_maximize) {
 			int dir = 0;
 
 			if (event->xbutton.state == 0) {
-				/* maximize window full screen*/
+				/* maximize window in both directions */
 				dir |= (MAX_VERTICAL|MAX_HORIZONTAL);
 				int ndir = dir ^ wwin->flags.maximized;
 				if (ndir != 0)

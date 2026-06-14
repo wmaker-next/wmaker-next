@@ -236,7 +236,7 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_IGNORE_MINIMIZED, "CycleIgnoreMinimized", BOOL, cycle_ignore_minimized, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
-	_(DB_CLICK_FULL_SCREEN, "DbClickFullScreen", BOOL, double_click_fullscreen, "NO", \
+	_(DB_CLICK_MAXIMIZE, "DbClickMaximize", BOOL, double_click_maximize, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLOSE_ROOT_MENU_BY_LEFT_OR_RIGHT_MOUSE_CLICK, \
 	  "CloseRootMenuByLeftOrRightMouseClick", BOOL, close_rootmenu_left_right_click, "NO", \

@@ -114,7 +114,7 @@
 	DisableBlinking = NO;
 	SingleClickLaunch = NO;
 	StrictWindozeCycle = YES;
-	DbClickFullScreen = NO;
+	DbClickMaximize = NO;
 	CloseRootMenuByLeftOrRightMouseClick = NO;
 	SwitchPanelOnlyOpen = NO;
 	MiniPreviewSize = 128;

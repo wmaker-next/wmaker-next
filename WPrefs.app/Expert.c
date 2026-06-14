@@ -139,8 +139,8 @@ static struct expert_option {
 	{ N_("Wrap dock-attached icons around the screen edges."),
 	  OPTION_WMAKER, "WrapAppiconsInDock" },
 
-	{ N_("Double click on titlebar maximizes/minimizes a window to/from full screen."),
-	  OPTION_WMAKER, "DbClickFullScreen" },
+	{ N_("Double click on titlebar maximizes a window instead of shading it."),
+	  OPTION_WMAKER, "DbClickMaximize" },
 
 	{ N_("Close rootmenu when mouse (left or right) is clicked outside focus."),
 	  OPTION_WMAKER, "CloseRootMenuByLeftOrRightMouseClick" },

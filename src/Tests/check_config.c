@@ -745,7 +745,7 @@ static void test_defaults(void)
 	CHECK(config->cycle_active_head_only == 0);
 	CHECK(config->cycle_all_workspaces == 0);
 	CHECK(config->cycle_ignore_minimized == 0);
-	CHECK(config->double_click_fullscreen == 0);
+	CHECK(config->double_click_maximize == 0);
 	CHECK(config->close_rootmenu_left_right_click == 0);
 	CHECK(config->colormap_mode == WCM_POINTER);
 	CHECK(config->auto_focus == 1);
@@ -966,7 +966,7 @@ static void test_valid_parse(void)
 #endif
 			      "DialogHistoryLines = 12; CycleActiveHeadOnly = YES; "
 			      "CycleAllWorkspaces = YES; CycleIgnoreMinimized = YES; "
-			      "DbClickFullScreen = YES; "
+			      "DbClickMaximize = YES; "
 			      "CloseRootMenuByLeftOrRightMouseClick = YES; "
 			      "ColormapMode = Manual; AutoFocus = NO; "
 			      "AutoFocusAcrossHeads = NO; RaiseDelay = 12; "
@@ -1090,7 +1090,7 @@ static void test_valid_parse(void)
 	CHECK(config->cycle_active_head_only == 1);
 	CHECK(config->cycle_all_workspaces == 1);
 	CHECK(config->cycle_ignore_minimized == 1);
-	CHECK(config->double_click_fullscreen == 1);
+	CHECK(config->double_click_maximize == 1);
 	CHECK(config->close_rootmenu_left_right_click == 1);
 	CHECK(config->colormap_mode == WCM_CLICK);
 	CHECK(config->auto_focus == 0);
@@ -1377,7 +1377,7 @@ static void test_runtime_apply(void)
 #endif
 				  "DialogHistoryLines = 500; CycleActiveHeadOnly = NO; "
 				  "CycleAllWorkspaces = NO; CycleIgnoreMinimized = NO; "
-				  "DbClickFullScreen = NO; "
+				  "DbClickMaximize = NO; "
 				  "CloseRootMenuByLeftOrRightMouseClick = NO; "
 				  "ColormapMode = Auto; AutoFocus = YES; "
 				  "AutoFocusAcrossHeads = YES; RaiseDelay = 0; "
@@ -1453,7 +1453,7 @@ static void test_runtime_apply(void)
 #endif
 				  "DialogHistoryLines = 12; CycleActiveHeadOnly = YES; "
 				  "CycleAllWorkspaces = YES; CycleIgnoreMinimized = YES; "
-				  "DbClickFullScreen = YES; "
+				  "DbClickMaximize = YES; "
 				  "CloseRootMenuByLeftOrRightMouseClick = YES; "
 				  "ColormapMode = Manual; AutoFocus = NO; "
 				  "AutoFocusAcrossHeads = NO; RaiseDelay = 15; "
@@ -1550,7 +1550,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->cycle_active_head_only == 1);
 	CHECK(w_global.config->cycle_all_workspaces == 1);
 	CHECK(w_global.config->cycle_ignore_minimized == 1);
-	CHECK(w_global.config->double_click_fullscreen == 1);
+	CHECK(w_global.config->double_click_maximize == 1);
 	CHECK(w_global.config->close_rootmenu_left_right_click == 1);
 	CHECK(w_global.config->colormap_mode == WCM_CLICK);
 	CHECK(w_global.config->auto_focus == 0);

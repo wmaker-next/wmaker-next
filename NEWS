@@ -84,6 +84,10 @@ new ToggleFullscreenKey binding (default "None") does the same from
 the keyboard. This gives a way back out of fullscreen for clients
 that do not speak _NET_WM_STATE themselves once the titlebar is gone.
 
+The unrelated DbClickFullScreen option, which despite its name made a
+titlebar double-click maximize the window rather than shade it, has
+been renamed to DbClickMaximize. The old key name is not read.
+
 wmlock screen locker
 --------------------
 
