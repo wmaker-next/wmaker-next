@@ -147,6 +147,8 @@ typedef struct {
     unsigned int emulate_appicon:1;
     /* Ignore any changes to the decoration elements (titlebar, etc) */
     unsigned int ignore_decoration_changes:1;
+    /* refuse this window as either payload or target of a tab group */
+    unsigned int no_tabbing:1;
 
 } WWindowAttributes;
 

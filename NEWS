@@ -46,7 +46,9 @@ target's titlebar, Window accepts the whole frame. TabDragModifier
 (None) names a modifier that, held with Button1 on any segment
 including the active one, starts a tab drag for mice without a
 middle button. The keybindings, the two boolean defaults and
-TabAttachArea are exposed in WPrefs.
+TabAttachArea are exposed in WPrefs. A NoTabbing per-window attribute
+(Inspector > Advanced) refuses a window as either the dragged tab or
+the drop target.
 
 Configurable titlebar button layout
 ------------------------------------

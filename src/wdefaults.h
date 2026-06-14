@@ -68,6 +68,7 @@
 	_(FULL_MAXIMIZE,         "FullMaximize",         full_maximize) \
 	_(SWALLOW_CHILD,         "SwallowChild",         swallow_child) \
 	_(IGNORE_DECORATION_CHANGES, "IgnoreDecorationChanges", ignore_decoration_changes) \
+	_(NO_TABBING,            "NoTabbing",            no_tabbing) \
 	WATTR_IF_XKB_BUTTON( \
 	_(NO_LANGUAGE_BUTTON,    "NoLanguageButton",     no_language_button) \
 	)

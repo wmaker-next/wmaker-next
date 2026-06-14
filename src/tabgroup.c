@@ -100,6 +100,8 @@ Bool wGroupIsTabable(WWindow *wwin)
 		return False;
 	if (wwin->flags.internal_window)
 		return False;
+	if (WFLAGP(wwin, no_tabbing))
+		return False;
 	return True;
 }
 
