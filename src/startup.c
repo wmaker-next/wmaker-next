@@ -628,7 +628,7 @@ void StartUp(Bool defaultScreenOnly)
 	rr_ext = XRRQueryExtension(dpy, &w_global.xext.randr.event_base, &j);
 	rr_ver = rr_ext && XRRQueryVersion(dpy, &rr_major, &rr_minor);
 
-	if (rr_ver && (rr_major > 1 || (rr_major == 1 && rr_minor >= 3))) {
+	if (rr_ver && (rr_major > 1 || (rr_major == 1 && rr_minor >= 5))) {
 		w_global.xext.randr.supported = 1;
 	} else {
 		w_global.xext.randr.supported = 0;
@@ -637,7 +637,7 @@ void StartUp(Bool defaultScreenOnly)
 		else if (!rr_ver)
 			wwarning(_("RandR version check failed, RandR disabled"));
 		else
-			wwarning(_("RandR version %d.%d found but RandR version >=1.3 required"), rr_major, rr_minor);
+			wwarning(_("RandR version %d.%d found but RandR version >=1.5 required"), rr_major, rr_minor);
 	}
 #endif
 

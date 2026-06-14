@@ -300,6 +300,19 @@ two-head nested X server. New since the last release:
   application icon and the switch panel.
 
 
+RandR support now requires version 1.5
+--------------------------------------
+
+The multi-monitor head list is now read via the RandR 1.5 GetMonitors
+request, which returns each logical monitor's name, geometry and
+primary flag in one round trip and coalesces mirrored outputs
+server-side. The runtime check and the libXrandr configure probe both
+require RandR 1.5 (xorg-server 1.18 / libXrandr 1.5.0, both 2015).
+The per-output/per-CRTC resources walk is now confined to the
+HotplugMonitor "xrandr --auto" path, so head detection at startup and
+on a passive layout change no longer issues a request per output.
+
+
 xcb is now a required dependency
 --------------------------------
 

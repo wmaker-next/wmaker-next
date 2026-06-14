@@ -63,114 +63,79 @@ static void wRandR_CopyOutputName(WRandROutput *o, const XRROutputInfo *oi)
     o->name[name_len] = '\0';
 }
 
-/* Initial output scan to populate state from scratch */
-static void wRandR_Scan(WScreen *scr, WRandRState *state)
-{
-    XRRScreenResources *sr;
-    int i;
-
-    state->n_outputs = 0;
-
-    sr = XRRGetScreenResourcesCurrent(dpy, scr->root_win);
-    if (!sr)
-        return;
-
-    for (i = 0; i < sr->noutput && state->n_outputs < WM_MAX_HEADS; i++) {
-        XRROutputInfo *oi;
-        WRandROutput *o;
-
-        oi = XRRGetOutputInfo(dpy, sr, sr->outputs[i]);
-        if (!oi)
-            continue;
-
-        o = &state->outputs[state->n_outputs++];
-        memset(o, 0, sizeof(*o));
-        o->xid = sr->outputs[i];
-        o->connected = (oi->connection == RR_Connected);
-        o->crtc = oi->crtc;
-        wRandR_CopyOutputName(o, oi);
-
-        if (oi->crtc != None) {
-            XRRCrtcInfo *ci = XRRGetCrtcInfo(dpy, sr, oi->crtc);
-            if (ci) {
-                o->x = ci->x;
-                o->y = ci->y;
-                o->w = ci->width;
-                o->h = ci->height;
-                o->rotation = ci->rotation;
-                XRRFreeCrtcInfo(ci);
-            }
-        }
-
-        XRRFreeOutputInfo(oi);
-    }
-
-    XRRFreeScreenResources(sr);
-}
-
-/* Primary head detection */
-static int wRandR_PrimaryHeadIndex(Window root, const RROutput *xids, int count)
-{
-    RROutput primary_xid = XRRGetOutputPrimary(dpy, root);
-    int i;
-
-    if (primary_xid != None) {
-        for (i = 0; i < count; i++) {
-            if (xids[i] == primary_xid)
-                return i;
-        }
-    }
-    return 0;
-}
-
-/* Push RandR geometry into the Xinerama head layer */
-static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
+/* Push RandR geometry into the Xinerama head layer
+ *
+ * RandR 1.5 GetMonitors returns one entry per logical monitor with name,
+ * geometry and the primary flag in a single round trip, mirrored outputs
+ * sharing a CRTC are already coalesced server-side so no client-side
+ * dedup or per-output/per-CRTC walk is needed for the head list.
+ *
+ * Returns True when the RandR view was adopted into xine_info, False when
+ * the stub-RandR fallback kept the existing XINERAMA-derived head list. */
+static Bool wRandR_ApplyToXinerama(WScreen *scr)
 {
     WMRect new_screens[WM_MAX_HEADS];
-    RROutput new_xids[WM_MAX_HEADS];   /* parallel: XID of each head */
-    const char *new_names[WM_MAX_HEADS];   /* parallel: output name of each head */
+    char name_buf[WM_MAX_HEADS][64];
+    const char *new_names[WM_MAX_HEADS];   /* parallel: monitor name of each head */
+    XRRMonitorInfo *mi;
+    Window dummy_w;
+    unsigned int root_uw, root_uh, dummy_u;
+    int nmon = 0;
     int count = 0;
+    int primary = 0;
     int old_count;
-    int root_w, root_h;
+    int root_w, root_h, dummy_i;
     int max_x, max_y;
     int i;
 
-    for (i = 0; i < state->n_outputs && count < WM_MAX_HEADS; i++) {
-        WRandROutput *o = &state->outputs[i];
-        int j, dup = 0;
+    mi = XRRGetMonitors(dpy, scr->root_win, True, &nmon);
 
-        /* Collect outputs that are truly active */
-        if (o->crtc == None || o->w == 0 || o->h == 0)
+    for (i = 0; mi && i < nmon && count < WM_MAX_HEADS; i++) {
+        char *aname;
+
+        if (mi[i].width <= 0 || mi[i].height <= 0)
             continue;
 
-        /* Deduplicate mirrored outputs that share the same CRTC origin */
-        for (j = 0; j < count; j++) {
-            if (new_screens[j].pos.x == o->x && new_screens[j].pos.y == o->y) {
-                dup = 1;
-                break;
-            }
+        new_screens[count].pos.x = mi[i].x;
+        new_screens[count].pos.y = mi[i].y;
+        new_screens[count].size.width = mi[i].width;
+        new_screens[count].size.height = mi[i].height;
+
+        name_buf[count][0] = '\0';
+        aname = mi[i].name != None ? XGetAtomName(dpy, mi[i].name) : NULL;
+        if (aname) {
+            strncpy(name_buf[count], aname, sizeof(name_buf[count]) - 1);
+            name_buf[count][sizeof(name_buf[count]) - 1] = '\0';
+            XFree(aname);
         }
-        if (dup)
-            continue;
+        new_names[count] = name_buf[count][0] ? name_buf[count] : NULL;
 
-        new_screens[count].pos.x = o->x;
-        new_screens[count].pos.y = o->y;
-        new_screens[count].size.width = o->w;
-        new_screens[count].size.height = o->h;
-        new_xids[count] = o->xid;
-        new_names[count] = o->name;
+        if (mi[i].primary)
+            primary = count;
+
         count++;
     }
 
+    if (mi)
+        XRRFreeMonitors(mi);
+
     /* Some servers (notably Xephyr +xinerama) expose real XINERAMA heads
-     * but only a stub RandR view with no active CRTCs, or with active
-     * outputs that do not span the current root window. If XINERAMA has
-     * already populated more heads than RandR can account for here, RandR
-     * is not the authoritative geometry source, keep the XINERAMA-derived
-     * xine_info instead of replacing it with an incomplete or synthetic
-     * single-head fallback */
-    root_w = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
-    root_h = HeightOfScreen(ScreenOfDisplay(dpy, scr->screen));
+     * but only a stub RandR view, GetMonitors there returns one synthetic
+     * monitor that covers only part of the real root window, and the stub
+     * RRScreenChangeNotify it emits makes XRRUpdateConfiguration() shrink
+     * Xlib's cached WidthOfScreen() to match that partial view, so query
+     * the actual root window geometry here rather than trusting the cache.
+     * If XINERAMA has already populated more heads than RandR can account
+     * for and the RandR view does not span the real root, RandR is not the
+     * authoritative geometry source, keep the XINERAMA-derived xine_info
+     * instead of replacing it with an incomplete single-head fallback. */
+    root_w = scr->scr_width;
+    root_h = scr->scr_height;
+    if (XGetGeometry(dpy, scr->root_win, &dummy_w, &dummy_i, &dummy_i,
+                     &root_uw, &root_uh, &dummy_u, &dummy_u)) {
+        root_w = (int)root_uw;
+        root_h = (int)root_uh;
+    }
     max_x = 0;
     max_y = 0;
     for (i = 0; i < count; i++) {
@@ -188,21 +153,11 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
                  "keeping XINERAMA geometry",
                  count, max_x, max_y, root_w, root_h,
                  scr->xine_info.count);
-        /* Annotate names onto the matching XINERAMA heads where
-         * geometry agrees, leave the rest NULL, but never let RandR
-         * shrink the XINERAMA-derived head count. */
-        for (i = 0; i < count; i++) {
-            int h;
-            for (h = 0; h < wHeadCount(scr); h++) {
-                if (scr->xine_info.screens[h].pos.x == new_screens[i].pos.x
-                    && scr->xine_info.screens[h].pos.y == new_screens[i].pos.y
-                    && !scr->head_output_name[h]) {
-                    scr->head_output_name[h] = wstrdup(new_names[i]);
-                    break;
-                }
-            }
-        }
-        return;
+        /* Leave head_output_name[] unset so the "#N" index keys in
+         * HeadWorkspaces and WorkspaceOutputs keep addressing these
+         * heads, the stub view's synthetic monitor name carries no
+         * connector identity worth pinning to. */
+        return False;
     }
 
     /* Fallback: if every output disappeared, use the full virtual screen so
@@ -212,7 +167,6 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
         new_screens[0].pos.y = 0;
         new_screens[0].size.width = scr->scr_width;
         new_screens[0].size.height = scr->scr_height;
-        new_xids[0] = None;
         new_names[0] = NULL;
         count = 1;
     }
@@ -234,7 +188,7 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
     memcpy(scr->xine_info.screens, new_screens, sizeof(WMRect) * count);
     scr->xine_info.count = count;
 
-    scr->xine_info.primary_head = wRandR_PrimaryHeadIndex(scr->root_win, new_xids, count);
+    scr->xine_info.primary_head = primary;
 
     /* Refresh cached screen dimensions (updated by XRRUpdateConfiguration) */
     scr->scr_width = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
@@ -257,6 +211,8 @@ static void wRandR_ApplyToXinerama(WScreen *scr, WRandRState *state)
         scr->usableArea[i].x2 = scr->totalUsableArea[i].x2 = r->pos.x + r->size.width;
         scr->usableArea[i].y2 = scr->totalUsableArea[i].y2 = r->pos.y + r->size.height;
     }
+
+    return True;
 }
 
 /* Bring any off-screen windows in */
@@ -514,94 +470,98 @@ static Bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, XRRScreenResou
 static void wRandR_Update(WScreen *scr)
 {
     WRandRState *state = (WRandRState *)scr->randr_state;
-    XRRScreenResources *sr;
     char *old_name[WM_MAX_HEADS];
     int old_ws[WM_MAX_HEADS];
     int old_heads;
-    int i, j, h, k;
+    int i, h, k;
 
-    /* Assume all outputs removed until server confirms */
-    for (i = 0; i < state->n_outputs; i++)
-        state->outputs[i].stale = True;
+    /* When HotplugMonitor is enabled, actively manage CRTC lifecycle.
+     * This needs the full per-output/per-CRTC view (connection state,
+     * CRTC binding, mode list) that GetMonitors does not expose, so
+     * the resources walk is confined to this branch. */
+    if (w_global.config->hotplug_monitor) {
+        XRRScreenResources *sr;
+        Bool changed;
+        int j;
 
-    /* Re-query server, update or add outputs */
-    sr = XRRGetScreenResourcesCurrent(dpy, scr->root_win);
-    if (!sr) {
-        wwarning("wRandR_Update: XRRGetScreenResourcesCurrent failed");
-        return;
-    }
+        /* Assume all outputs removed until server confirms */
+        for (i = 0; i < state->n_outputs; i++)
+            state->outputs[i].stale = True;
 
-    for (i = 0; i < sr->noutput; i++) {
-        XRROutputInfo *oi;
-        WRandROutput *found = NULL;
-
-        oi = XRRGetOutputInfo(dpy, sr, sr->outputs[i]);
-        if (!oi)
-            continue;
-
-        /* Match by XID (stable across reconfigures) */
-        for (j = 0; j < state->n_outputs; j++) {
-            if (state->outputs[j].xid == sr->outputs[i]) {
-                found = &state->outputs[j];
-                break;
-            }
+        sr = XRRGetScreenResourcesCurrent(dpy, scr->root_win);
+        if (!sr) {
+            wwarning("wRandR_Update: XRRGetScreenResourcesCurrent failed");
+            return;
         }
 
-        /* Append new output not seen before */
-        if (!found && state->n_outputs < WM_MAX_HEADS) {
-            found = &state->outputs[state->n_outputs++];
-            memset(found, 0, sizeof(*found));
-            found->xid = sr->outputs[i];
-            wRandR_CopyOutputName(found, oi);
-        }
+        for (i = 0; i < sr->noutput; i++) {
+            XRROutputInfo *oi;
+            WRandROutput *found = NULL;
 
-        if (found) {
-            found->stale = False;
-            found->connected = (oi->connection == RR_Connected);
-            found->crtc = oi->crtc;
-            found->w = 0;
-            found->h = 0;
-            found->rotation = RR_Rotate_0;
+            oi = XRRGetOutputInfo(dpy, sr, sr->outputs[i]);
+            if (!oi)
+                continue;
 
-            if (oi->crtc != None) {
-                XRRCrtcInfo *ci = XRRGetCrtcInfo(dpy, sr, oi->crtc);
-                if (ci) {
-                    found->x = ci->x;
-                    found->y = ci->y;
-                    found->w = ci->width;
-                    found->h = ci->height;
-                    found->rotation = ci->rotation;
-                    XRRFreeCrtcInfo(ci);
+            /* Match by XID (stable across reconfigures) */
+            for (j = 0; j < state->n_outputs; j++) {
+                if (state->outputs[j].xid == sr->outputs[i]) {
+                    found = &state->outputs[j];
+                    break;
                 }
             }
+
+            /* Append new output not seen before */
+            if (!found && state->n_outputs < WM_MAX_HEADS) {
+                found = &state->outputs[state->n_outputs++];
+                memset(found, 0, sizeof(*found));
+                found->xid = sr->outputs[i];
+                wRandR_CopyOutputName(found, oi);
+            }
+
+            if (found) {
+                found->stale = False;
+                found->connected = (oi->connection == RR_Connected);
+                found->crtc = oi->crtc;
+                found->w = 0;
+                found->h = 0;
+                found->rotation = RR_Rotate_0;
+
+                if (oi->crtc != None) {
+                    XRRCrtcInfo *ci = XRRGetCrtcInfo(dpy, sr, oi->crtc);
+                    if (ci) {
+                        found->x = ci->x;
+                        found->y = ci->y;
+                        found->w = ci->width;
+                        found->h = ci->height;
+                        found->rotation = ci->rotation;
+                        XRRFreeCrtcInfo(ci);
+                    }
+                }
+            }
+
+            XRRFreeOutputInfo(oi);
         }
-
-        XRRFreeOutputInfo(oi);
-    }
-
-    /* When HotplugMonitor is enabled, actively manage CRTC lifecycle */
-    if (w_global.config->hotplug_monitor) {
-        Bool changed;
 
         changed  = wRandR_AutoDeactivate(scr, state, sr);
         changed |= wRandR_AutoActivate(scr, state, sr);
-        if (changed) {
-            XRRFreeScreenResources(sr);
+
+        XRRFreeScreenResources(sr);
+
+        /* Remove outputs not reported by server at all */
+        for (i = 0, j = 0; i < state->n_outputs; i++) {
+            if (!state->outputs[i].stale) {
+                if (j != i)
+                    state->outputs[j] = state->outputs[i];
+                j++;
+            }
+        }
+        state->n_outputs = j;
+
+        /* Our SetCrtcConfig calls generate a fresh RandR event burst,
+         * the debounced re-entry will rebuild the head list then */
+        if (changed)
             return;
-        }
     }
-
-    XRRFreeScreenResources(sr);
-
-    /* Remove outputs not reported by server at all */
-    for (i = 0, j = 0; i < state->n_outputs; i++) {
-        if (!state->outputs[i].stale) {
-            if (j != i)
-                state->outputs[j] = state->outputs[i];
-            j++;
-        }
-    }
-    state->n_outputs = j;
 
     /* Snapshot per-head workspace by output name before head indices
      * are reordered, so each monitor keeps its workspace after the
@@ -615,7 +575,16 @@ static void wRandR_Update(WScreen *scr)
 
     /* Apply new geometry to the Xinerama head layer */
     i = scr->xine_info.primary_head;
-    wRandR_ApplyToXinerama(scr, state);
+    if (!wRandR_ApplyToXinerama(scr)) {
+        /* Stub-RandR fallback kept the XINERAMA head list, nothing
+         * actually moved, GetMonitors on such servers also makes them
+         * emit spurious change events so do not let those churn the
+         * per-head workspace map or rearrange icons. */
+        for (h = 0; h < old_heads; h++)
+            if (old_name[h])
+                wfree(old_name[h]);
+        return;
+    }
 
     if (w_global.config->per_head_workspaces) {
         int new_ws[WM_MAX_HEADS];
@@ -711,8 +680,7 @@ void wRandRInit(WScreen *scr)
     memset(state, 0, sizeof(*state));
     scr->randr_state = state;
 
-    wRandR_Scan(scr, state);
-    wRandR_ApplyToXinerama(scr, state);
+    wRandR_ApplyToXinerama(scr);
 }
 
 void wRandRTeardown(WScreen *scr)
