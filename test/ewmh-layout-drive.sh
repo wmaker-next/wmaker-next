@@ -204,6 +204,18 @@ xinerama_head_count() {
 	run_x xdpyinfo -ext XINERAMA 2>/dev/null | grep -c '^  head #'
 }
 
+# send_fsmonitors TARGET TOP BOTTOM LEFT RIGHT : raw _NET_WM_FULLSCREEN_MONITORS
+send_fsmonitors() {
+	DISPLAY=$DPY env EWMH_CLIENT_FSMONITORS_TARGET="$1" \
+		EWMH_CLIENT_FSMONITORS="$2 $3 $4 $5" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
+window_at() {
+	[ "$(xwininfo_field "$1" 'Absolute upper-left X')" = "$2" ] \
+		&& [ "$(xwininfo_field "$1" 'Absolute upper-left Y')" = "$3" ]
+}
+
 window_on_head1() {
 	wox=$(xwininfo_field "$1" 'Absolute upper-left X')
 	[ -n "$wox" ] && [ "$wox" -ge 1024 ]
@@ -729,6 +741,73 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		check "honors _NET_WM_STATE_SKIP_TASKBAR remove request" clear_client_state remove skip_taskbar _NET_WM_STATE_SKIP_TASKBAR
 		check "honors _NET_WM_STATE_FULLSCREEN add request" set_client_state add fullscreen _NET_WM_STATE_FULLSCREEN
 		check "honors _NET_WM_STATE_FULLSCREEN remove request" clear_client_state remove fullscreen _NET_WM_STATE_FULLSCREEN
+
+		# _NET_WM_FULLSCREEN_MONITORS cycle on a plain client, the WM
+		# alone must restore the original 320x180 from bfs_geometry
+		# after the cycle, retargeting must not clobber it
+		if [ "$(xinerama_head_count)" -ge 2 ] \
+		   && start_second_client EWMH_CLIENT_NAME=fsm-cycle; then
+			run_x wmctrl -i -r "$CLIENT2_XID" -b add,fullscreen >>"$LOG" 2>&1
+			wait_for 30 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_FULLSCREEN >/dev/null
+
+			send_fsmonitors "$CLIENT2_XID" 0 0 0 1
+			check "_NET_WM_FULLSCREEN_MONITORS span 0-1: width covers both heads" \
+				wait_for 30 window_geom_is "$CLIENT2_XID" 2048 768
+			check "_NET_WM_FULLSCREEN_MONITORS span 0-1: at root origin" \
+				window_at "$CLIENT2_XID" 0 0
+			check "_NET_WM_FULLSCREEN_MONITORS span 0-1: property echoed" \
+				wait_for 30 window_prop_has_values "$CLIENT2_XID" _NET_WM_FULLSCREEN_MONITORS "0, 0, 0, 1"
+
+			send_fsmonitors "$CLIENT2_XID" 0 0 0 0
+			check "_NET_WM_FULLSCREEN_MONITORS head 0 only: head-sized" \
+				wait_for 30 window_geom_is "$CLIENT2_XID" 1024 768
+			check "_NET_WM_FULLSCREEN_MONITORS head 0 only: at head 0 origin" \
+				window_at "$CLIENT2_XID" 0 0
+
+			send_fsmonitors "$CLIENT2_XID" 1 1 1 1
+			check "_NET_WM_FULLSCREEN_MONITORS head 1 only: head-sized" \
+				wait_for 30 window_geom_is "$CLIENT2_XID" 1024 768
+			check "_NET_WM_FULLSCREEN_MONITORS head 1 only: at head 1 origin" \
+				window_at "$CLIENT2_XID" 1024 0
+
+			send_fsmonitors "$CLIENT2_XID" 0 0 0 1
+			check "_NET_WM_FULLSCREEN_MONITORS span again: width covers both heads" \
+				wait_for 30 window_geom_is "$CLIENT2_XID" 2048 768
+
+			run_x wmctrl -i -r "$CLIENT2_XID" -b remove,fullscreen >>"$LOG" 2>&1
+			check "unfullscreen after monitor cycle drops _NET_WM_STATE_FULLSCREEN" \
+				wait_for 30 window_atom_lacks "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_FULLSCREEN
+			check "unfullscreen after monitor cycle restores pre-fullscreen size" \
+				wait_for 30 window_geom_is "$CLIENT2_XID" 320 180
+			check "unfullscreen after monitor cycle restores onto head 0" \
+				window_on_head0 "$CLIENT2_XID"
+
+			stop_second_client
+
+			# second pass with a client that forces its own
+			# distinct geometry on the FULLSCREEN falling edge,
+			# the WM must honour the racing ConfigureRequest
+			if start_second_client EWMH_CLIENT_NAME=fsm-restore \
+					       EWMH_CLIENT_RESTORE_ON_UNFULLSCREEN="400 240"; then
+				run_x wmctrl -i -r "$CLIENT2_XID" -b add,fullscreen >>"$LOG" 2>&1
+				wait_for 30 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_FULLSCREEN >/dev/null
+				send_fsmonitors "$CLIENT2_XID" 0 0 0 1
+				wait_for 30 window_geom_is "$CLIENT2_XID" 2048 768 >/dev/null
+
+				run_x wmctrl -i -r "$CLIENT2_XID" -b remove,fullscreen >>"$LOG" 2>&1
+				check "client resize on unfullscreen overrides the WM restore" \
+					wait_for 30 window_geom_is "$CLIENT2_XID" 400 240
+				check "client resize on unfullscreen is reported back" \
+					wait_for 30 sh -c "grep -q '^RESTORED 400x240\$' '$CLIENT2_XID_FILE'"
+
+				stop_second_client
+			else
+				record_skip "client-forced unfullscreen resize: second client failed"
+			fi
+		else
+			record_skip "_NET_WM_FULLSCREEN_MONITORS cycle: only one head or no second client"
+		fi
+
 		check "honors _NET_WM_STATE_MAXIMIZED_VERT add request" set_client_state add maximized_vert _NET_WM_STATE_MAXIMIZED_VERT
 		check "honors _NET_WM_STATE_MAXIMIZED_HORZ add request" set_client_state add maximized_horz _NET_WM_STATE_MAXIMIZED_HORZ
 		check "honors _NET_WM_STATE_MAXIMIZED_VERT remove request" clear_client_state remove maximized_vert,maximized_horz _NET_WM_STATE_MAXIMIZED_VERT

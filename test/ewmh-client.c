@@ -307,6 +307,47 @@ static int restack_mode(Display *dpy)
 	return 0;
 }
 
+static int fsmonitors_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_FSMONITORS_TARGET", None);
+	const char *spec = getenv("EWMH_CLIENT_FSMONITORS");
+	long m[4];
+
+	if (target == None || !spec
+	    || sscanf(spec, "%ld %ld %ld %ld", &m[0], &m[1], &m[2], &m[3]) != 4)
+		return 1;
+	send_root_message(dpy, target,
+			  intern_atom(dpy, "_NET_WM_FULLSCREEN_MONITORS"),
+			  m[0], m[1], m[2], m[3], 1);
+	return 0;
+}
+
+static int state_has_atom(Display *dpy, Window win, Atom prop, Atom needle)
+{
+	Atom type;
+	int format;
+	unsigned long n, after, i;
+	unsigned char *data = NULL;
+	int found = 0;
+
+	if (XGetWindowProperty(dpy, win, prop, 0, 64, False, XA_ATOM,
+			       &type, &format, &n, &after, &data) != Success)
+		return 0;
+	if (type == XA_ATOM && format == 32 && data) {
+		long *atoms = (long *)data;
+
+		for (i = 0; i < n; i++) {
+			if ((Atom)atoms[i] == needle) {
+				found = 1;
+				break;
+			}
+		}
+	}
+	if (data)
+		XFree(data);
+	return found;
+}
+
 static int wm_state_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_STATE_TARGET", None);
@@ -369,6 +410,10 @@ int main(void)
 	long want_gnustep_hide = env_long("EWMH_CLIENT_GNUSTEP_HIDE", 0);
 	long transient_for = env_long("EWMH_CLIENT_TRANSIENT_FOR", 0);
 	long state_above = env_long("EWMH_CLIENT_STATE_ABOVE", 0);
+	const char *restore_on_unfullscreen = getenv("EWMH_CLIENT_RESTORE_ON_UNFULLSCREEN");
+	int restore_w = 0, restore_h = 0;
+	Atom net_wm_state = None, net_wm_state_fullscreen = None;
+	int was_fullscreen = 0, want_restored_print = 0;
 	const char *startup_id = getenv("EWMH_CLIENT_STARTUP_ID");
 	const char *res_class = getenv("EWMH_CLIENT_CLASS");
 
@@ -397,6 +442,11 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_STATE_TARGET")) {
 		int ret = wm_state_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_FSMONITORS_TARGET")) {
+		int ret = fsmonitors_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}
@@ -500,6 +550,14 @@ int main(void)
 				(const unsigned char *)st, 1);
 	}
 
+	if (restore_on_unfullscreen
+	    && sscanf(restore_on_unfullscreen, "%d %d", &restore_w, &restore_h) == 2) {
+		net_wm_state = intern_atom(dpy, "_NET_WM_STATE");
+		net_wm_state_fullscreen = intern_atom(dpy, "_NET_WM_STATE_FULLSCREEN");
+	} else {
+		restore_on_unfullscreen = NULL;
+	}
+
 	window_type[0] = net_wm_window_type_normal;
 	XChangeProperty(dpy, win, net_wm_window_type, XA_ATOM, 32,
 			PropModeReplace, (const unsigned char *)window_type, 1);
@@ -532,6 +590,32 @@ int main(void)
 		XEvent ev;
 
 		XNextEvent(dpy, &ev);
+		if (restore_on_unfullscreen && ev.type == PropertyNotify
+		    && ev.xproperty.atom == net_wm_state) {
+			int now_fs = state_has_atom(dpy, win, net_wm_state,
+						    net_wm_state_fullscreen);
+
+			/* mirror what GTK apps do on the FULLSCREEN bit
+			 * dropping out of _NET_WM_STATE, immediately force
+			 * a client-chosen geometry so the WM has to honour
+			 * a ConfigureRequest racing its own restore */
+			if (was_fullscreen && !now_fs) {
+				XMoveResizeWindow(dpy, win, 0, 0,
+						  restore_w, restore_h);
+				XFlush(dpy);
+				want_restored_print = 1;
+			}
+			was_fullscreen = now_fs;
+			continue;
+		}
+		if (want_restored_print && ev.type == ConfigureNotify
+		    && ev.xconfigure.window == win) {
+			printf("RESTORED %dx%d\n",
+			       ev.xconfigure.width, ev.xconfigure.height);
+			fflush(stdout);
+			want_restored_print = 0;
+			continue;
+		}
 		if (ev.type != ClientMessage)
 			continue;
 		if (ev.xclient.message_type != wm_protocols || ev.xclient.format != 32)
