@@ -80,6 +80,9 @@ static struct expert_option {
 	{ N_("Cycle windows only on the active head."),
 	  OPTION_WMAKER, "CycleActiveHeadOnly" },
 
+	{ N_("Let a new window on another head take focus automatically."),
+	  OPTION_WMAKER, "AutoFocusAcrossHeads" },
+
 	{ N_("Cycle all windows from all workspaces."),
 	  OPTION_WMAKER, "CycleAllWorkspaces" },
 
