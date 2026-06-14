@@ -485,22 +485,37 @@ static RImage *get_wwindow_image_from_wmhints(WWindow *wwin)
 }
 
 /*
- * Best client-supplied icon for the titlebar slot, mirroring the
- * wIconUpdate() source order. Returns a new reference the caller must
- * RReleaseImage(), or NULL when the client supplied nothing usable.
- * IconWindowHint-only clients are skipped (snapshotting an unmapped
- * icon window is unreliable) and the class/instance DB fallback is
- * left to a follow-up.
+ * Best icon for the titlebar slot, mirroring the wIconUpdate() source
+ * order. Returns a new reference the caller must RReleaseImage(), or
+ * NULL when nothing usable is found. IconWindowHint-only clients are
+ * skipped (snapshotting an unmapped icon window is unreliable). When
+ * the client supplies nothing, or always_user_icon is set, falls back
+ * to the class/instance DB so the titlebar matches the miniwindow and
+ * switch panel. The global default icon is not used here, a blank
+ * titlebar slot is preferable to the generic placeholder at ~14 px.
  */
 RImage *wWindowGetIconImage(WWindow *wwin)
 {
-	if (WFLAGP(wwin, always_user_icon))
-		return NULL;
-	if (wwin->net_icon_image)
-		return RRetainImage(wwin->net_icon_image);
-	if (wwin->wm_hints && (wwin->wm_hints->flags & IconPixmapHint))
-		return get_wwindow_image_from_wmhints(wwin);
-	return NULL;
+	RImage *image = NULL;
+	char *file;
+
+	if (!WFLAGP(wwin, always_user_icon)) {
+		if (wwin->net_icon_image)
+			return RRetainImage(wwin->net_icon_image);
+		if (wwin->wm_hints && (wwin->wm_hints->flags & IconPixmapHint)) {
+			image = get_wwindow_image_from_wmhints(wwin);
+			if (image)
+				return image;
+		}
+	}
+
+	file = get_icon_filename(wwin->wm_instance, wwin->wm_class, NULL, False);
+	if (file) {
+		image = get_rimage_from_file(wwin->screen_ptr, file,
+					     w_global.config->icon_size);
+		wfree(file);
+	}
+	return image;
 }
 
 /*
