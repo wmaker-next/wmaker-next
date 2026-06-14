@@ -2473,8 +2473,6 @@ static void selectWindowsInside(WScreen * scr, int x1, int y1, int x2, int y2)
 void wSelectWindows(WScreen * scr, XEvent * ev)
 {
 	XEvent event;
-	Window root = scr->root_win;
-	GC gc = scr->frame_gc;
 	int xp = ev->xbutton.x_root;
 	int yp = ev->xbutton.y_root;
 	int w = 0, h = 0;
@@ -2485,17 +2483,15 @@ void wSelectWindows(WScreen * scr, XEvent * ev)
 			 GrabModeAsync, None, wPreferences.cursor[WCUR_NORMAL], CurrentTime) != Success) {
 		return;
 	}
-	XGrabServer(dpy);
 
 	wUnselectWindows(scr);
 
-	XDrawRectangle(dpy, root, gc, xp, yp, w, h);
 	while (1) {
-		WMMaskEvent(dpy, ButtonReleaseMask | PointerMotionMask | ButtonPressMask, &event);
+		WMMaskEvent(dpy, ButtonReleaseMask | PointerMotionMask | ButtonPressMask
+			    | ExposureMask, &event);
 
 		switch (event.type) {
 		case MotionNotify:
-			XDrawRectangle(dpy, root, gc, x, y, w, h);
 			x = event.xmotion.x_root;
 			if (x < xp) {
 				w = xp - x;
@@ -2510,7 +2506,9 @@ void wSelectWindows(WScreen * scr, XEvent * ev)
 				h = y - yp;
 				y = yp;
 			}
-			XDrawRectangle(dpy, root, gc, x, y, w, h);
+			wWireframeBegin(scr);
+			wWireframeAddOutline(scr, x, y, w, h, 0, 0, 0);
+			wWireframeCommit(scr);
 			break;
 
 		case ButtonPress:
@@ -2520,13 +2518,16 @@ void wSelectWindows(WScreen * scr, XEvent * ev)
 			if (event.xbutton.button != ev->xbutton.button)
 				break;
 
-			XDrawRectangle(dpy, root, gc, x, y, w, h);
-			XUngrabServer(dpy);
+			wWireframeHide(scr);
 			XUngrabPointer(dpy, CurrentTime);
 			selectWindowsInside(scr, x, y, x + w, y + h);
 			return;
 
 		default:
+			/* the wireframe band is a real window now, so the
+			 * server sends Expose to whatever it just uncovered,
+			 * dispatch them so titlebars and dock tiles repaint
+			 * during the drag instead of after release */
 			WMHandleEvent(&event);
 			break;
 		}

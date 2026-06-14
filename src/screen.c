@@ -54,6 +54,7 @@
 #include "session.h"
 #include "balloon.h"
 #include "geomview.h"
+#include "wireframe.h"
 #include "wmspec.h"
 #include "rootmenu.h"
 #include "misc.h"
@@ -1196,10 +1197,9 @@ static XImage *imageCaptureArea(WScreen *scr)
 	}
 	XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 
-	XGrabServer(dpy);
-
 	while (!quit) {
-		WMMaskEvent(dpy, ButtonReleaseMask | PointerMotionMask | ButtonPressMask | KeyPressMask, &event);
+		WMMaskEvent(dpy, ButtonReleaseMask | PointerMotionMask | ButtonPressMask
+			    | KeyPressMask | ExposureMask, &event);
 
 		switch (event.type) {
 		case ButtonPress:
@@ -1212,8 +1212,16 @@ static XImage *imageCaptureArea(WScreen *scr)
 			if (event.xbutton.button == Button1) {
 				quit = 1;
 				if (w > 0 && h > 0) {
-					XDrawRectangle(dpy, scr->root_win, scr->frame_gc, x, y, w, h);
-					XUngrabServer(dpy);
+					/* save_under is only a hint, when the server
+					 * ignores it the unmap clears the band areas
+					 * to background and queues Expose, drain and
+					 * dispatch those before GetImage so the
+					 * capture border is repainted content not a
+					 * cleared 3 px strip */
+					wWireframeHide(scr);
+					XSync(dpy, False);
+					while (XCheckMaskEvent(dpy, ExposureMask, &event))
+						WMHandleEvent(&event);
 					XUngrabKeyboard(dpy, CurrentTime);
 					XUngrabPointer(dpy, CurrentTime);
 					return XGetImage(dpy, scr->root_win, x, y, w, h, AllPlanes, ZPixmap);
@@ -1225,29 +1233,27 @@ static XImage *imageCaptureArea(WScreen *scr)
 			 * the grab, otherwise the rectangle anchors at (-1,-1) */
 			if (xp < 0)
 				break;
-			XDrawRectangle(dpy, scr->root_win, scr->frame_gc, x, y, w, h);
 			x = event.xmotion.x_root;
-                        if (x < xp) {
-                                w = xp - x;
-                        } else {
-                                w = x - xp;
-                                x = xp;
-                        }
-                        y = event.xmotion.y_root;
-                        if (y < yp) {
-                                h = yp - y;
-                        } else {
-                                h = y - yp;
-                                y = yp;
-                        }
-			XDrawRectangle(dpy, scr->root_win, scr->frame_gc, x, y, w, h);
+			if (x < xp) {
+				w = xp - x;
+			} else {
+				w = x - xp;
+				x = xp;
+			}
+			y = event.xmotion.y_root;
+			if (y < yp) {
+				h = yp - y;
+			} else {
+				h = y - yp;
+				y = yp;
+			}
+			wWireframeBegin(scr);
+			wWireframeAddOutline(scr, x, y, w, h, 0, 0, 0);
+			wWireframeCommit(scr);
 			break;
 		case KeyPress:
-			if (W_KeycodeToKeysym(dpy, event.xkey.keycode, 0) == XK_Escape) {
-				if (w > 0 && h > 0)
-					XDrawRectangle(dpy, scr->root_win, scr->frame_gc, x, y, w, h);
+			if (W_KeycodeToKeysym(dpy, event.xkey.keycode, 0) == XK_Escape)
 				quit = 1;
-			}
 			break;
 		default:
 			WMHandleEvent(&event);
@@ -1255,7 +1261,7 @@ static XImage *imageCaptureArea(WScreen *scr)
 		}
 	}
 
-	XUngrabServer(dpy);
+	wWireframeHide(scr);
 	XUngrabKeyboard(dpy, CurrentTime);
 	XUngrabPointer(dpy, CurrentTime);
 	return NULL;
