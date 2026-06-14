@@ -193,7 +193,7 @@ static void shutdownCommand(WMenu * menu, WMenuEntry * entry)
 	}
 
 	if (result != R_CANCEL) {
-		Shutdown(WSKillMode);
+		Shutdown(WSKillMode, False);
 	}
 #undef R_CLOSE
 #undef R_CANCEL
@@ -207,7 +207,7 @@ static void restartCommand(WMenu * menu, WMenuEntry * entry)
 	(void) menu;
 	(void) entry;
 
-	Shutdown(WSRestartPreparationMode);
+	Shutdown(WSRestartPreparationMode, False);
 	Restart((char *)entry->clientdata, False);
 	Restart(NULL, True);
 }
@@ -252,7 +252,7 @@ static void saveSessionCommand(WMenu * menu, WMenuEntry * entry)
 	if (!w_global.config->save_session_on_exit)
 		wSessionSaveState(menu->frame->screen_ptr);
 
-	wScreenSaveState(menu->frame->screen_ptr);
+	wScreenSaveState(menu->frame->screen_ptr, False);
 }
 
 static void clearSessionCommand(WMenu * menu, WMenuEntry * entry)
@@ -261,7 +261,7 @@ static void clearSessionCommand(WMenu * menu, WMenuEntry * entry)
 	(void) entry;
 
 	wSessionClearState(menu->frame->screen_ptr);
-	wScreenSaveState(menu->frame->screen_ptr);
+	wScreenSaveState(menu->frame->screen_ptr, False);
 }
 
 static void infoPanelCommand(WMenu * menu, WMenuEntry * entry)

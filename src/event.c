@@ -194,12 +194,12 @@ void DispatchEvent(XEvent * event)
 		 * executed inside here, or we can get in a infinite
 		 * recursive loop.
 		 */
-		Shutdown(WSExitMode);
+		Shutdown(WSExitMode, True);
 
 	} else if (WCHECK_STATE(WSTATE_NEED_RESTART)) {
 		WCHANGE_STATE(WSTATE_RESTARTING);
 
-		Shutdown(WSRestartPreparationMode);
+		Shutdown(WSRestartPreparationMode, False);
 		/* received SIGUSR1 */
 		Restart(NULL, True);
 	} else if (WCHECK_STATE(WSTATE_NEED_REREAD)) {
@@ -2632,7 +2632,7 @@ static void handle_selection_clear(XSelectionClearEvent *event)
 		return;
 
 	wmessage(_("another window manager is replacing us!"));
-	Shutdown(WSExitMode);
+	Shutdown(WSExitMode, True);
 #else
 	/*
 	 * If the support for ICCCM window manager replacement was not enabled, we should not receive

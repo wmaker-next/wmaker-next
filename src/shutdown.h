@@ -29,7 +29,7 @@ typedef enum {
     WSRestartPreparationMode
 } WShutdownMode;
 
-void Shutdown(WShutdownMode mode);
+void Shutdown(WShutdownMode mode, Bool external);
 void RestoreDesktop(WScreen *scr);
 
 #endif  /* SHUTDOWN_H */

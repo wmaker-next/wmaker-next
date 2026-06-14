@@ -51,9 +51,18 @@ static void wipeDesktop(WScreen * scr);
  * no session manager is running or by asking a shutdown to
  * it if its present.
  *
+ * external is True when the exit was triggered from outside the
+ * user interface (SIGTERM/SIGINT/SIGHUP, or another WM taking
+ * the WM_Sn selection). On a system reboot or DM logout the
+ * clients receive SIGTERM at the same time we do, so by the
+ * time we run here the managed-window list is partial or empty,
+ * re-snapshotting it into WMState would silently overwrite a
+ * previously saved session with Applications = (). Pass external
+ * through so wScreenSaveState() carries the existing
+ * Applications/Workspace forward instead of regenerating them.
  *----------------------------------------------------------------------
  */
-void Shutdown(WShutdownMode mode)
+void Shutdown(WShutdownMode mode, Bool external)
 {
 	int i;
 
@@ -76,7 +85,7 @@ void Shutdown(WShutdownMode mode)
 				if (scr->helper_pid)
 					kill(scr->helper_pid, SIGKILL);
 
-				wScreenSaveState(scr);
+				wScreenSaveState(scr, external);
 
 				if (mode == WSKillMode)
 					wipeDesktop(scr);
@@ -102,7 +111,9 @@ void Shutdown(WShutdownMode mode)
 
 				if (scr->helper_pid)
 					kill(scr->helper_pid, SIGKILL);
-				wScreenSaveState(scr);
+				/* restart re-execs wmaker only, clients stay
+				 * mapped, so the window list is trustworthy */
+				wScreenSaveState(scr, False);
 				RestoreDesktop(scr);
 				wScreenDestroy(scr);
 			}

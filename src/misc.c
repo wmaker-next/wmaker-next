@@ -731,7 +731,7 @@ void ExecuteExitCommand(WScreen *scr, long quickmode)
 		}
 	}
 	if (result == R_EXIT)
-		Shutdown(WSExitMode);
+		Shutdown(WSExitMode, False);
 
 #undef R_EXIT
 #undef R_CANCEL

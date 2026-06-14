@@ -1002,7 +1002,7 @@ static void ipc_read_cb(int fd, int mask, void *data)
 			/* wIPCServerStop() runs from Shutdown() and does the
 			 * final drain, so the success reply queued above is
 			 * delivered there */
-			Shutdown(mode);
+			Shutdown(mode, False);
 			if (mode == WSRestartPreparationMode)
 				Restart(wm, False);
 			wfree(wm);

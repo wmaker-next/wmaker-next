@@ -375,6 +375,31 @@ static void child_env(void *data)
 	SetupEnvironment(data);
 }
 
+/* Match a saved app against an already-managed top-level window.
+ * On a cold start after an exit that preserved clients (RestoreDesktop
+ * reparents them to root), the previous instance is still alive and
+ * has been adopted by manageAllWindows(). Spawning a second copy would
+ * duplicate the app. The per-window _WINDOWMAKER_STATE hint already
+ * restored workspace/shade/iconify/maximize state.
+ */
+static WWindow *findManagedWindow(WScreen *scr, const char *instance,
+				  const char *class, const char *command)
+{
+	WWindow *wwin = scr->focused_window;
+
+	while (wwin) {
+		if (!wwin->flags.internal_window &&
+		    (wwin->transient_for == None ||
+		     wwin->transient_for == wwin->screen_ptr->root_win) &&
+		    WMStrEqual(instance, wwin->wm_instance) &&
+		    WMStrEqual(class, wwin->wm_class) &&
+		    WMStrEqual(command, wwin->wm_command))
+			return wwin;
+		wwin = wwin->prev;
+	}
+	return NULL;
+}
+
 static pid_t execCommand(WScreen *scr, char *command)
 {
 	pid_t pid;
@@ -566,6 +591,12 @@ void wSessionRestoreState(WScreen *scr)
 
 		if (found) {
 			wDockLaunchWithState(btn, state);
+		} else if (findManagedWindow(scr, instance, class, command)) {
+			/* Already running, state was restored from
+			 * _WINDOWMAKER_STATE by manageAllWindows */
+			if (state->mark_key)
+				wfree(state->mark_key);
+			wfree(state);
 		} else if ((pid = execCommand(scr, command)) > 0) {
 			wWindowAddSavedState(instance, class, command, pid, state);
 		} else {

@@ -992,7 +992,7 @@ void wScreenRestoreState(WScreen * scr)
 	wScreenUpdateUsableArea(scr);
 }
 
-void wScreenSaveState(WScreen * scr)
+void wScreenSaveState(WScreen *scr, Bool preserve_session)
 {
 	WWindow *wwin;
 	char *str;
@@ -1050,7 +1050,7 @@ void wScreenSaveState(WScreen * scr)
 	}
 
 
-	if (w_global.config->save_session_on_exit) {
+	if (w_global.config->save_session_on_exit && !preserve_session) {
 		wSessionSaveState(scr);
 	} else {
 		foo = WMGetFromPLDictionary(old_state, dApplications);

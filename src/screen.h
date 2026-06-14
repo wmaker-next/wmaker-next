@@ -417,7 +417,7 @@ struct WConfigChanges;
 
 WScreen *wScreenInit(int screen_number, const struct WConfig *config,
                      const struct WConfigChanges *changes);
-void wScreenSaveState(WScreen *scr);
+void wScreenSaveState(WScreen *scr, Bool preserve_session);
 void wScreenRestoreState(WScreen *scr);
 
 int wScreenBringInside(WScreen *scr, int *x, int *y, int width, int height);
