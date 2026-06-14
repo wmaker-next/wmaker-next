@@ -1090,6 +1090,7 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 					unsigned long left, unsigned long right)
 {
 	int i;
+	int was_fullscreen = wwin->flags.fullscreen;
 	long monitor;
 	WMRect rect1, rect2;
 
@@ -1110,11 +1111,17 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 	wWindowConfigureBorders(wwin);
 	ChangeStackingLevel(wwin->frame->core, WMFullscreenLevel);
 
-	wwin->bfs_geometry.x = wwin->frame_x;
-	wwin->bfs_geometry.y = wwin->frame_y;
-	wwin->bfs_geometry.width = wwin->frame->core->width;
-	wwin->bfs_geometry.height = wwin->frame->core->height;
-	wwin->bfs_maximized = wwin->flags.maximized;
+	/* _NET_WM_FULLSCREEN_MONITORS may retarget an already-fullscreen
+	 * window between heads, only snapshot the restore geometry on the
+	 * transition into fullscreen so wUnfullscreenWindow() returns to
+	 * the original size rather than the previous spanned head rect */
+	if (!was_fullscreen) {
+		wwin->bfs_geometry.x = wwin->frame_x;
+		wwin->bfs_geometry.y = wwin->frame_y;
+		wwin->bfs_geometry.width = wwin->frame->core->width;
+		wwin->bfs_geometry.height = wwin->frame->core->height;
+		wwin->bfs_maximized = wwin->flags.maximized;
+	}
 
 	i = 0;
 	monitor = wwin->flags.fullscreen_monitors[i];
