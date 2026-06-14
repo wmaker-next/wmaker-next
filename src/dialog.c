@@ -184,13 +184,30 @@ typedef struct _WMInputPanelWithHistory {
 
 static char *HistoryFileName(const char *name)
 {
+	const char *state;
+	char *base = NULL;
 	char *filename = NULL;
 
-	filename = getenv("XDG_STATE_HOME");
-	if (filename)
-		filename = wstrappend(wexpandpath(filename), "/" PACKAGE_TARNAME "/History");
-	else
-		filename = wstrconcat(wusergnusteppath(), "/.AppInfo/" PACKAGE_TARNAME "/History");
+	/* XDG basedir spec requires the value to be absolute, otherwise it
+	 * is ignored and we fall back to the legacy .AppInfo location */
+	state = getenv("XDG_STATE_HOME");
+	if (state && state[0] == '/')
+		base = wexpandpath(state);
+
+	if (base) {
+		filename = wstrconcat(base, "/" PACKAGE_TARNAME);
+		/* this tree lives outside wusergnusteppath() so the
+		 * wmkdirhier() call inside WMWritePropListToFile() will not
+		 * create it, the spec says the application creates the
+		 * missing directories itself with mode 0700 */
+		mkdir(base, 0700);
+		mkdir(filename, 0700);
+		wfree(base);
+		filename = wstrappend(filename, "/History");
+	} else {
+		filename = wstrconcat(wusergnusteppath(),
+				      "/.AppInfo/" PACKAGE_TARNAME "/History");
+	}
 
 	if (name && strlen(name)) {
 		filename = wstrappend(filename, ".");
