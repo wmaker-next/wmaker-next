@@ -346,6 +346,8 @@ void wAppIconDestroy(WAppIcon * aicon)
 	if (aicon->dnd_command)
 		wfree(aicon->dnd_command);
 #endif
+	if (aicon->paste_command)
+		wfree(aicon->paste_command);
 	if (aicon->display_name)
 		wfree(aicon->display_name);
 	if (aicon->comment)
