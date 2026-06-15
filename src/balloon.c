@@ -517,11 +517,11 @@ static void appiconBalloon(WObjDescriptor *object)
 			wBalloonHide(scr);
 			return;
 		}
-	} else if (aicon->command && aicon->wm_class) {
+	} else if (aicon->display_name || (aicon->command && aicon->wm_class)) {
 		int len;
 		WApplication *app;
 		unsigned int app_win_cnt = 0;
-		const char *display_name;
+		const char *title, *detail;
 
 		if (object->parent_type == WCLASS_DOCK_ICON) {
 			if (aicon->main_window) {
@@ -532,25 +532,36 @@ static void appiconBalloon(WObjDescriptor *object)
 		}
 
 		/*
-		 * Check to see if it is a GNUstep app, because in this case we use the instance
-		 * instead of the class, otherwise the user will not be able to distinguish what
-		 * is being referred.
+		 * Title prefers the user-set or .desktop-derived display name,
+		 * else falls back to wm_class (or wm_instance for GNUstep apps
+		 * where every class is "GNUstep"). Detail prefers the comment
+		 * description, else the launch command.
 		 */
-		if (strcmp(aicon->wm_class, "GNUstep") == 0)
-			display_name = aicon->wm_instance;
+		if (aicon->display_name)
+			title = aicon->display_name;
+		else if (aicon->wm_class && strcmp(aicon->wm_class, "GNUstep") == 0)
+			title = aicon->wm_instance;
 		else
-			display_name = aicon->wm_class;
+			title = aicon->wm_class;
+		detail = aicon->comment ? aicon->comment : aicon->command;
 
-		len = strlen(aicon->command) + strlen(display_name) + 8;
-
+		len = (title ? strlen(title) : 0) + (detail ? strlen(detail) : 0) + 8;
 		if (app_win_cnt > 0)
 			len += 1 + snprintf(NULL, 0, "%u", app_win_cnt);
 
 		tmp = wmalloc(len);
-		if (app_win_cnt > 0)
-			snprintf(tmp, len, "%u %s\n(%s)", app_win_cnt, display_name, aicon->command);
+		if (app_win_cnt > 0 && detail)
+			snprintf(tmp, len, "%u %s\n%s%s%s", app_win_cnt, title,
+				 aicon->comment ? "" : "(", detail,
+				 aicon->comment ? "" : ")");
+		else if (app_win_cnt > 0)
+			snprintf(tmp, len, "%u %s", app_win_cnt, title);
+		else if (detail)
+			snprintf(tmp, len, "%s\n%s%s%s", title,
+				 aicon->comment ? "" : "(", detail,
+				 aicon->comment ? "" : ")");
 		else
-			snprintf(tmp, len, "%s\n(%s)", aicon->wm_instance, aicon->command);
+			snprintf(tmp, len, "%s", title);
 		scr->balloon->text = tmp;
 
 	} else if (aicon->command) {

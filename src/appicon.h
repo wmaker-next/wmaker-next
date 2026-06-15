@@ -42,6 +42,11 @@ typedef struct WAppIcon {
 #endif
 	char *paste_command;		/* command to run when
 					 * something is pasted */
+	char *display_name;		/* human-readable label, seeds the
+					 * settings panel header and balloon,
+					 * falls back to wm_class when NULL */
+	char *comment;			/* one-line description shown under
+					 * display_name in the balloon */
 	char *wm_class;
 	char *wm_instance;
 	pid_t pid;			 /* for apps launched from the dock */

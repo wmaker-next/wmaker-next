@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <limits.h>
+#include <locale.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include <WINGs/WUtil.h>
@@ -81,6 +83,7 @@ static WMPropList *dDropCommand = NULL;
 #endif
 static WMPropList *dAutoLaunch, *dLock;
 static WMPropList *dName, *dForced, *dBuggyApplication, *dYes, *dNo;
+static WMPropList *dDisplayName, *dComment;
 static WMPropList *dDock, *dClip;
 static WMPropList *dAutoAttractIcons;
 
@@ -145,6 +148,8 @@ static void make_keys(void)
 	dLock = WMRetainPropList(WMCreatePLString("Lock"));
 	dAutoLaunch = WMRetainPropList(WMCreatePLString("AutoLaunch"));
 	dName = WMRetainPropList(WMCreatePLString("Name"));
+	dDisplayName = WMRetainPropList(WMCreatePLString("DisplayName"));
+	dComment = WMRetainPropList(WMCreatePLString("Comment"));
 	dForced = WMRetainPropList(WMCreatePLString("Forced"));
 	dBuggyApplication = WMRetainPropList(WMCreatePLString("BuggyApplication"));
 	dYes = WMRetainPropList(WMCreatePLString("Yes"));
@@ -1533,6 +1538,18 @@ static WMPropList *make_icon_state(WAppIcon *btn)
 			WMPutInPLDictionary(node, dPasteCommand, command);
 			WMReleasePropList(command);
 		}
+
+		if (btn->display_name) {
+			command = WMCreatePLString(btn->display_name);
+			WMPutInPLDictionary(node, dDisplayName, command);
+			WMReleasePropList(command);
+		}
+
+		if (btn->comment) {
+			command = WMCreatePLString(btn->comment);
+			WMPutInPLDictionary(node, dComment, command);
+			WMReleasePropList(command);
+		}
 	}
 
 	return node;
@@ -1716,6 +1733,14 @@ static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type, in
 	cmd = WMGetFromPLDictionary(info, dPasteCommand);
 	if (cmd)
 		aicon->paste_command = wstrdup(WMGetFromPLString(cmd));
+
+	cmd = WMGetFromPLDictionary(info, dDisplayName);
+	if (cmd && WMIsPLString(cmd))
+		aicon->display_name = wstrdup(WMGetFromPLString(cmd));
+
+	cmd = WMGetFromPLDictionary(info, dComment);
+	if (cmd && WMIsPLString(cmd))
+		aicon->comment = wstrdup(WMGetFromPLString(cmd));
 
 	/* check auto launch */
 	value = WMGetFromPLDictionary(info, dAutoLaunch);
@@ -2089,6 +2114,158 @@ static char *launcherExecBasename(const char *exec)
 	return out;
 }
 
+/*
+ * Resolve a freedesktop icon theme name (Icon=firefox) to an absolute
+ * file. We only walk the spec-mandated hicolor fallback theme and the
+ * legacy pixmaps directory, so no index.theme parsing or Inherits
+ * chasing is needed. Sizes nearest to the dock tile win, preferring
+ * the next-larger raster over an upscale, and PNG over XPM. SVG is
+ * skipped because wrlib has no loader for it.
+ */
+static void launcherProbeThemeIcon(const char *dir, const char *name,
+				   int base_score, char **best, int *score)
+{
+	static const char * const ext[] = { "png", "xpm" };
+	char path[PATH_MAX];
+	int e, sc;
+
+	for (e = 0; e < (int)wlengthof(ext); e++) {
+		snprintf(path, sizeof(path), "%s/%s.%s", dir, name, ext[e]);
+		if (access(path, R_OK) != 0)
+			continue;
+		sc = base_score + e;	/* PNG wins ties over XPM */
+		if (sc < *score) {
+			wfree(*best);
+			*best = wstrdup(path);
+			*score = sc;
+		}
+		return;
+	}
+}
+
+static void launcherScanHicolor(const char *base, const char *name,
+				int want, char **best, int *score)
+{
+	char dir[PATH_MAX];
+	DIR *dp;
+	struct dirent *de;
+	int w, h, delta, sc;
+
+	snprintf(dir, sizeof(dir), "%s/hicolor", base);
+	dp = opendir(dir);
+	if (!dp)
+		return;
+	while ((de = readdir(dp))) {
+		if (sscanf(de->d_name, "%dx%d", &w, &h) != 2 || w != h)
+			continue;
+		/* prefer the smallest raster at or above the tile size,
+		 * else the largest below it, lower score wins */
+		delta = w - want;
+		sc = (delta >= 0) ? 2 * delta : 4096 - 2 * delta;
+		snprintf(dir, sizeof(dir), "%s/hicolor/%s/apps", base, de->d_name);
+		launcherProbeThemeIcon(dir, name, sc, best, score);
+	}
+	closedir(dp);
+}
+
+static char *launcherFindThemeIcon(const char *name)
+{
+	const char *home, *dirs;
+	char base[PATH_MAX], *best = NULL;
+	const char *p, *q;
+	int score = INT_MAX, want = ICON_SIZE;
+	size_t n;
+
+	home = getenv("XDG_DATA_HOME");
+	if (home && home[0]) {
+		snprintf(base, sizeof(base), "%s/icons", home);
+	} else {
+		home = getenv("HOME");
+		snprintf(base, sizeof(base), "%s/.local/share/icons", home ? home : "");
+	}
+	if (home)
+		launcherScanHicolor(base, name, want, &best, &score);
+
+	dirs = getenv("XDG_DATA_DIRS");
+	if (!dirs || !dirs[0])
+		dirs = "/usr/local/share:/usr/share";
+	for (p = dirs; *p; p = *q ? q + 1 : q) {
+		q = strchr(p, ':');
+		if (!q)
+			q = p + strlen(p);
+		n = (size_t)(q - p);
+		while (n > 1 && p[n - 1] == '/')
+			n--;
+		if (n == 0 || n + sizeof("/pixmaps") > sizeof(base))
+			continue;
+		memcpy(base, p, n);
+		strcpy(base + n, "/icons");
+		launcherScanHicolor(base, name, want, &best, &score);
+		/* legacy pixmaps directory, no size encoded so rank below
+		 * any sized hicolor hit but above nothing */
+		strcpy(base + n, "/pixmaps");
+		launcherProbeThemeIcon(base, name, 1 << 16, &best, &score);
+	}
+
+	return best;
+}
+
+/*
+ * Rank a .desktop key line against the LC_MESSAGES locale. Returns a
+ * pointer to the value when the line is "<key>=", "<key>[ll]=" or
+ * "<key>[ll_CC]=" with rank 0/1/2 written to *rank, NULL otherwise.
+ * Modifier and encoding suffixes on the locale are ignored.
+ */
+static const char *launcherMatchLocaleKey(const char *line, const char *key,
+					  size_t klen, int *rank)
+{
+	static int have_loc = -1;
+	static char ll[3], ll_cc[6];
+	const char *p, *end;
+	size_t n;
+
+	if (have_loc < 0) {
+		const char *loc = setlocale(LC_MESSAGES, NULL);
+
+		if (!loc)
+			loc = getenv("LANG");
+		have_loc = 0;
+		if (loc && loc[0] && loc[1] &&
+		    strcmp(loc, "C") != 0 && strcmp(loc, "POSIX") != 0) {
+			ll[0] = loc[0]; ll[1] = loc[1]; ll[2] = 0;
+			have_loc = 1;
+			if (loc[2] == '_' && loc[3] && loc[4]) {
+				memcpy(ll_cc, loc, 5); ll_cc[5] = 0;
+				have_loc = 2;
+			}
+		}
+	}
+
+	if (strncmp(line, key, klen) != 0)
+		return NULL;
+	p = line + klen;
+	if (*p == '=') {
+		*rank = 0;
+		return p + 1;
+	}
+	if (*p != '[' || !have_loc)
+		return NULL;
+	p++;
+	end = strchr(p, ']');
+	if (!end || end[1] != '=')
+		return NULL;
+	n = (size_t)(end - p);
+	if (have_loc >= 2 && n == 5 && memcmp(p, ll_cc, 5) == 0) {
+		*rank = 2;
+		return end + 2;
+	}
+	if (n == 2 && memcmp(p, ll, 2) == 0) {
+		*rank = 1;
+		return end + 2;
+	}
+	return NULL;
+}
+
 static void launcherStripDesktopExec(char *exec)
 {
 	char *src = exec, *dst = exec;
@@ -2109,12 +2286,15 @@ static void launcherStripDesktopExec(char *exec)
 }
 
 static Bool launcherReadDesktopFile(const char *path, char **command,
-				    char **instance, char **class, char **icon)
+				    char **instance, char **class, char **icon,
+				    char **display_name, char **comment)
 {
 	FILE *fp;
 	char line[4096];
 	char *exec = NULL, *icon_val = NULL, *wmclass = NULL;
-	int in_section = 0;
+	char *name_val = NULL, *comment_val = NULL;
+	int in_section = 0, name_rank = -1, comment_rank = -1, rank;
+	const char *v;
 
 	fp = fopen(path, "r");
 	if (!fp)
@@ -2135,12 +2315,33 @@ static Bool launcherReadDesktopFile(const char *path, char **command,
 		}
 		if (!in_section)
 			continue;
-		if (!exec && strncmp(line, "Exec=", 5) == 0)
+		if (!exec && strncmp(line, "Exec=", 5) == 0) {
 			exec = wstrdup(line + 5);
-		else if (!icon_val && strncmp(line, "Icon=", 5) == 0)
+			continue;
+		}
+		if (!icon_val && strncmp(line, "Icon=", 5) == 0) {
 			icon_val = wstrdup(line + 5);
-		else if (!wmclass && strncmp(line, "StartupWMClass=", 15) == 0)
+			continue;
+		}
+		if (!wmclass && strncmp(line, "StartupWMClass=", 15) == 0) {
 			wmclass = wstrdup(line + 15);
+			continue;
+		}
+		v = launcherMatchLocaleKey(line, "Name", 4, &rank);
+		if (v) {
+			if (rank > name_rank) {
+				wfree(name_val);
+				name_val = wstrdup(v);
+				name_rank = rank;
+			}
+			continue;
+		}
+		v = launcherMatchLocaleKey(line, "Comment", 7, &rank);
+		if (v && rank > comment_rank) {
+			wfree(comment_val);
+			comment_val = wstrdup(v);
+			comment_rank = rank;
+		}
 	}
 	fclose(fp);
 
@@ -2148,6 +2349,8 @@ static Bool launcherReadDesktopFile(const char *path, char **command,
 		wfree(exec);
 		wfree(icon_val);
 		wfree(wmclass);
+		wfree(name_val);
+		wfree(comment_val);
 		return False;
 	}
 
@@ -2157,14 +2360,21 @@ static Bool launcherReadDesktopFile(const char *path, char **command,
 	*class = wmclass;
 	if (!*class && *instance)
 		*class = wstrdup(*instance);
+	*display_name = name_val;
+	*comment = comment_val;
 	*icon = NULL;
 	if (icon_val) {
-		/* only keep absolute icon paths, theme-name lookups would
-		 * pull in the freedesktop icon spec which we do not carry */
-		if (icon_val[0] == '/' && access(icon_val, R_OK) == 0)
-			*icon = icon_val;
-		else
+		if (icon_val[0] == '/') {
+			if (access(icon_val, R_OK) == 0)
+				*icon = icon_val;
+			else
+				wfree(icon_val);
+		} else {
+			/* a bare theme name, resolve through the hicolor
+			 * fallback theme and the legacy pixmaps directory */
+			*icon = launcherFindThemeIcon(icon_val);
 			wfree(icon_val);
+		}
 	}
 	return True;
 }
@@ -2184,7 +2394,8 @@ static char *launcherPlistString(WMPropList *plist, const char *key)
 
 static Bool launcherReadAppBundle(const char *path, const char *base,
 				  char **command, char **instance,
-				  char **class, char **icon)
+				  char **class, char **icon,
+				  char **display_name, char **comment)
 {
 	char buf[PATH_MAX];
 	WMPropList *plist;
@@ -2196,6 +2407,8 @@ static Bool launcherReadAppBundle(const char *path, const char *base,
 	if (plist && WMIsPLDictionary(plist)) {
 		executable = launcherPlistString(plist, "NSExecutable");
 		icon_name = launcherPlistString(plist, "NSIcon");
+		*display_name = launcherPlistString(plist, "ApplicationName");
+		*comment = launcherPlistString(plist, "ApplicationDescription");
 	}
 	if (plist)
 		WMReleasePropList(plist);
@@ -2214,6 +2427,9 @@ static Bool launcherReadAppBundle(const char *path, const char *base,
 	if (access(buf, X_OK) != 0) {
 		wfree(executable);
 		wfree(icon_name);
+		wfree(*display_name);
+		wfree(*comment);
+		*display_name = *comment = NULL;
 		return False;
 	}
 
@@ -2261,6 +2477,7 @@ static Bool dockLauncherFromDrop(WDock *dock, const char *path)
 	struct stat st;
 	const char *base;
 	char *command = NULL, *instance = NULL, *class = NULL, *icon = NULL;
+	char *display_name = NULL, *comment = NULL;
 	size_t blen;
 	int x = 0, y = 0;
 	Bool got = False;
@@ -2276,9 +2493,11 @@ static Bool dockLauncherFromDrop(WDock *dock, const char *path)
 	blen = strlen(base);
 
 	if (S_ISDIR(st.st_mode) && blen > 4 && strcmp(base + blen - 4, ".app") == 0) {
-		got = launcherReadAppBundle(path, base, &command, &instance, &class, &icon);
+		got = launcherReadAppBundle(path, base, &command, &instance,
+					    &class, &icon, &display_name, &comment);
 	} else if (S_ISREG(st.st_mode) && blen > 8 && strcmp(base + blen - 8, ".desktop") == 0) {
-		got = launcherReadDesktopFile(path, &command, &instance, &class, &icon);
+		got = launcherReadDesktopFile(path, &command, &instance,
+					      &class, &icon, &display_name, &comment);
 	} else if (S_ISREG(st.st_mode) && access(path, X_OK) == 0) {
 		command = wshellquote(path);
 		instance = wstrdup(base);
@@ -2302,6 +2521,8 @@ static Bool dockLauncherFromDrop(WDock *dock, const char *path)
 		wfree(instance);
 		wfree(class);
 		wfree(icon);
+		wfree(display_name);
+		wfree(comment);
 		return False;
 	}
 
@@ -2311,6 +2532,8 @@ static Bool dockLauncherFromDrop(WDock *dock, const char *path)
 		wDefaultChangeIcon(instance, class, icon);
 
 	aicon = wAppIconCreateForDock(scr, command, instance, class, TILE_NORMAL);
+	aicon->display_name = display_name;
+	aicon->comment = comment;
 	wDockAttachIcon(dock, aicon, x, y, True);
 	aicon->running = 0;
 	XMapWindow(dpy, aicon->icon->core->window);

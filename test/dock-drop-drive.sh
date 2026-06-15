@@ -84,19 +84,35 @@ mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 # overwriting WMState with the stock template
 printf '{\n}\n' > "$WMHOME/Defaults/WindowMaker"
 
-# the .desktop fixture, %F must be stripped from the resulting Command
+# minimal hicolor tree so launcherFindThemeIcon resolves a bare
+# Icon= name without depending on the host's icon theme, the 48x48
+# raster must lose to the 64x64 one
+XDG_DATA_HOME="$RUNTIME/share"
+ICON48="$XDG_DATA_HOME/icons/hicolor/48x48/apps"
+ICON64="$XDG_DATA_HOME/icons/hicolor/64x64/apps"
+mkdir -p "$ICON48" "$ICON64"
+cp "$ROOT/wrlib/Tests/test.png" "$ICON48/scratch-term.png"
+cp "$ROOT/wrlib/Tests/test.png" "$ICON64/scratch-term.png"
+
+# the .desktop fixture, %F must be stripped from the resulting Command,
+# the localized Name must win over the bare one
 cat > "$RUNTIME/scratch.desktop" <<'EOD'
 [Desktop Entry]
 Type=Application
 Name=Scratch Term
+Name[en]=Scratch Terminal
+Comment=A throwaway terminal for the test
 Exec=/usr/bin/xterm -class ScratchTerm %F
-Icon=utilities-terminal
+Icon=scratch-term
 StartupWMClass=ScratchTerm
 EOD
 
 export XDG_RUNTIME_DIR="$RUNTIME"
+export XDG_DATA_HOME
 export WMAKER_USER_ROOT="$WMHOME"
+export LANG=en_US.UTF-8
 unset WMAKER_IPC_SOCKET
+unset XDG_DATA_DIRS
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set DOCKDROP_DRIVE_DISPLAY to a free one" >&2
@@ -170,12 +186,33 @@ WMSTATE="$WMHOME/Defaults/WMState"
 [ -f "$WMSTATE" ] || fatal "WMState was not written"
 
 state_has() { grep -qF "$1" "$WMSTATE"; }
+attrs_has() { grep -qF "$1" "$WMHOME/Defaults/WMWindowAttributes"; }
 check "Command stripped of %F field code" \
 	state_has 'Command = "/usr/bin/xterm -class ScratchTerm";'
 check "Name derived from Exec basename and StartupWMClass" \
 	state_has "Name = xterm.ScratchTerm;"
+check "DisplayName picked the localized Name[en] over Name" \
+	state_has 'DisplayName = "Scratch Terminal";'
+check "Comment carried through" \
+	state_has 'Comment = "A throwaway terminal for the test";'
 check "launcher placed at the first free slot" \
 	state_has 'Position = "0,1";'
+check "bare Icon name resolved to the 64x64 hicolor raster" \
+	attrs_has "$ICON64/scratch-term.png"
+
+note "restart wmaker, DisplayName/Comment must survive a load/save cycle"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+DISPLAY=$DPY \
+"$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
+WMAKER_PID=$!
+echo "$WMAKER_PID" >> "$PIDFILE"
+wait_for 80 ipc_ready || fatal "wmaker did not answer get_version on restart"
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID"
+check "DisplayName survives a restore/save cycle" \
+	state_has 'DisplayName = "Scratch Terminal";'
+check "Comment survives a restore/save cycle" \
+	state_has 'Comment = "A throwaway terminal for the test";'
 
 note "restart wmaker, launch a class-mismatched tile via PID fallback"
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \

@@ -11,12 +11,28 @@ main dock tile (or the clip tile) now creates a docked launcher in the
 next free slot, the application does not need to be running first.
 Three kinds of drop are recognised: a GNUstep .app bundle directory
 (the bundle's Info-gnustep.plist supplies the executable, the
-WM_CLASS instance and the icon), a freedesktop .desktop file (Exec,
-StartupWMClass and an absolute Icon path are read, %f/%U-style field
-codes are stripped from the command), and a plain executable file
-(the file path becomes the command, its basename the WM_CLASS).
-Anything else is ignored. The existing per-tile DropCommand behaviour
-on the other dock slots is unchanged.
+WM_CLASS instance, the icon, ApplicationName and
+ApplicationDescription), a freedesktop .desktop file (Exec,
+StartupWMClass, Name, Comment and Icon are read, %f/%U-style field
+codes are stripped from the command, and a bare Icon name is resolved
+through the hicolor fallback theme), and a plain executable file (the
+file path becomes the command, its basename the WM_CLASS).  Anything
+else is ignored.  The existing per-tile DropCommand behaviour on the
+other dock slots is unchanged.
+
+Docked Application Settings panel: name and description
+--------------------------------------------------------
+
+The Settings panel for a docked launcher (right-click -> Settings) now
+shows the application name in bold beside the icon preview, with the
+description in a smaller font underneath.  Both come from a dropped
+.desktop or .app bundle and feed the balloon help shown when the
+pointer hovers over the dock tile, so a docked Firefox reads "Firefox
+Web Browser / Browse the World Wide Web" instead of "firefox /
+(firefox %u)".  The icon preview itself is now a click target for the
+icon chooser, the existing Icon Image field and Browse button are kept
+for keyboard-only use.  The name and description are saved per
+launcher in WMState as DisplayName and Comment.
 
 Window tab grouping
 -------------------

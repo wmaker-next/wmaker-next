@@ -28,8 +28,9 @@ typedef struct _AppSettingsPanel {
 
 	WWindow *wwin;
 
-	WMLabel *iconLabel;
+	WMButton *iconBtn;
 	WMLabel *nameLabel;
+	WMLabel *commentLabel;
 
 	WMFrame *commandFrame;
 	WMTextField *commandField;

@@ -84,8 +84,15 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 	int size;
 
 	file = WMGetTextFieldText(panel->iconField);
+	if (!file || file[0] == 0) {
+		/* nothing configured, preview the global default app icon
+		 * so the borderless button is not an invisible click area */
+		wfree(file);
+		file = wDefaultGetIconFile(NULL, NULL, True);
+		file = file ? wstrdup(file) : NULL;
+	}
 	if (!file)
-		WMSetLabelImage(panel->iconLabel, NULL);
+		WMSetButtonImage(panel->iconBtn, NULL);
 	else {
 		char *path;
 
@@ -93,7 +100,7 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 		if (!path) {
 			wwarning(_("could not find icon %s, used in a docked application"), file);
 			wfree(file);
-			WMSetLabelImage(panel->iconLabel, NULL);
+			WMSetButtonImage(panel->iconBtn, NULL);
 			return;
 		} else {
 			WMPixmap *pixmap;
@@ -106,9 +113,9 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 			size = w_global.config->icon_size;
 			pixmap = WMCreateScaledBlendedPixmapFromFile(WMWidgetScreen(panel->win), path, &color, size, size);
 			if (!pixmap) {
-				WMSetLabelImage(panel->iconLabel, NULL);
+				WMSetButtonImage(panel->iconBtn, NULL);
 			} else {
-				WMSetLabelImage(panel->iconLabel, pixmap);
+				WMSetButtonImage(panel->iconBtn, pixmap);
 				WMReleasePixmap(pixmap);
 			}
 		}
@@ -129,6 +136,7 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 	panel->choosingIcon = 1;
 
 	WMSetButtonEnabled(panel->browseBtn, False);
+	WMSetButtonEnabled(panel->iconBtn, False);
 
 	result = wIconChooserDialog(panel->wwin->screen_ptr, &file,
 				    panel->editedIcon->wm_instance, panel->editedIcon->wm_class);
@@ -141,6 +149,7 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 		}
 
 		WMSetButtonEnabled(panel->browseBtn, True);
+		WMSetButtonEnabled(panel->iconBtn, True);
 	} else {
 		/* kluge for the case, the user asked to close the panel before
 		 * the icon chooser */
@@ -227,18 +236,29 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMBox *vbox;
 	WMBox *hbox;
 	WMRect rect;
+	WMColor *grey;
 	int wmScaleWidth, wmScaleHeight;
 	int pwidth, pheight;
-	int iconSize;
+	int iconSize, headerH, headerX, textW, nameH, nameY, commentH;
+	const char *fallback;
 
 	/* get the width and height values of the system font for use with the WMScaleX/WMScaleY macros */
 	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
 
-	/* calculate the required width and height for the panel */
+	/* the header band beside the icon holds the bold name over an
+	 * optional two-line description, both centered as a block so
+	 * the name lines up with an icon image that is itself centered
+	 * inside the icon_size button when smaller than icon_size */
 	iconSize = w_global.config->icon_size;
+	nameH = WMScaleY(18);
+	commentH = WMScaleY(28);
+	headerH = nameH + commentH;
+	if (headerH < iconSize)
+		headerH = iconSize;
+
 	pwidth = WMScaleX(300);
 	pheight = WMScaleY(10)                  /* upper margin */
-		+ iconSize                      /* icon and its label */
+		+ headerH                       /* icon, name and description */
 		+ WMScaleY(10)                  /* padding */
 		+ WMScaleY(20) + WMScaleY(2)    /* start option */
 		+ WMScaleY(20) + WMScaleY(5)    /* lock option */
@@ -259,26 +279,62 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	panel->win = WMCreateWindow(scr->wmscreen, "applicationSettings");
 	WMResizeWidget(panel->win, pwidth, pheight);
 
-	panel->iconLabel = WMCreateLabel(panel->win);
-	WMResizeWidget(panel->iconLabel, iconSize, iconSize);
-	WMMoveWidget(panel->iconLabel, WMScaleX(10), WMScaleY(10));
-	WMSetLabelImagePosition(panel->iconLabel, WIPImageOnly);
+	/* clickable icon preview, also reachable from the Browse button so
+	 * keyboard-only users keep a path to the chooser */
+	panel->iconBtn = WMCreateCustomButton(panel->win, WBBSpringLoadedMask);
+	WMResizeWidget(panel->iconBtn, iconSize, iconSize);
+	WMMoveWidget(panel->iconBtn, WMScaleX(10), WMScaleY(10) + (headerH - iconSize) / 2);
+	WMSetButtonImagePosition(panel->iconBtn, WIPImageOnly);
+	WMSetButtonBordered(panel->iconBtn, False);
+	WMSetButtonAction(panel->iconBtn, chooseIconCallback, panel);
+	WMSetBalloonTextForView(_("Click to choose an icon"), WMWidgetView(panel->iconBtn));
+
+	headerX = 2 * WMScaleX(10) + iconSize;
+	textW = pwidth - headerX - WMScaleX(10);
+
+	if (aicon->wm_class && strcmp(aicon->wm_class, "DockApp") == 0)
+		fallback = aicon->wm_instance;
+	else if (aicon->wm_class && strcmp(aicon->wm_class, "GNUstep") == 0)
+		fallback = aicon->wm_instance;
+	else
+		fallback = aicon->wm_class;
+
+	/* with a description the name+description block centers in the
+	 * band, without one the name alone centers like the pre-0.97
+	 * panel */
+	if (aicon->comment)
+		nameY = WMScaleY(10) + (headerH - nameH - commentH) / 2;
+	else
+		nameY = WMScaleY(10) + (headerH - nameH) / 2;
 
 	panel->nameLabel = WMCreateLabel(panel->win);
 	font = WMBoldSystemFontOfSize(scr->wmscreen, WMScaleY(14));
-	WMResizeWidget(panel->nameLabel, WMScaleX(190), WMScaleY(18));
-	WMMoveWidget(panel->nameLabel, 2 * WMScaleX(10) + iconSize, WMScaleY(10) + ((iconSize - WMFontHeight(font)) / 2));
+	WMResizeWidget(panel->nameLabel, textW, nameH);
+	WMMoveWidget(panel->nameLabel, headerX, nameY);
 	WMSetLabelTextAlignment(panel->nameLabel, WALeft);
 	WMSetLabelFont(panel->nameLabel, font);
 	WMReleaseFont(font);
-	if (aicon->wm_class && strcmp(aicon->wm_class, "DockApp") == 0)
-		WMSetLabelText(panel->nameLabel, aicon->wm_instance);
-	else
-		WMSetLabelText(panel->nameLabel, aicon->wm_class);
+	WMSetLabelText(panel->nameLabel,
+		       aicon->display_name ? aicon->display_name : fallback);
+
+	if (aicon->comment) {
+		panel->commentLabel = WMCreateLabel(panel->win);
+		font = WMSystemFontOfSize(scr->wmscreen, WMScaleY(11));
+		grey = WMDarkGrayColor(scr->wmscreen);
+		WMResizeWidget(panel->commentLabel, textW, commentH);
+		WMMoveWidget(panel->commentLabel, headerX, nameY + nameH);
+		WMSetLabelTextAlignment(panel->commentLabel, WALeft);
+		WMSetLabelFont(panel->commentLabel, font);
+		WMSetLabelTextColor(panel->commentLabel, grey);
+		WMSetLabelWraps(panel->commentLabel, True);
+		WMSetLabelText(panel->commentLabel, aicon->comment);
+		WMReleaseFont(font);
+		WMReleaseColor(grey);
+	}
 
 	vbox = WMCreateBox(panel->win);
-	WMResizeWidget(vbox, pwidth - 2 * WMScaleX(10), pheight - iconSize - 3 * WMScaleY(10));
-	WMMoveWidget(vbox, WMScaleX(10), iconSize + 2 * WMScaleY(10));
+	WMResizeWidget(vbox, pwidth - 2 * WMScaleX(10), pheight - headerH - 3 * WMScaleY(10));
+	WMMoveWidget(vbox, WMScaleX(10), headerH + 2 * WMScaleY(10));
 
 	panel->autoLaunchBtn = WMCreateSwitchButton(vbox);
 	WMAddBoxSubview(vbox, WMWidgetView(panel->autoLaunchBtn), False, True, WMScaleY(20), WMScaleY(20), WMScaleY(2));
