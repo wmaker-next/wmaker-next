@@ -762,8 +762,12 @@ dnl xcb-icccm 0.3.8 renamed every public symbol from xcb_* to xcb_icccm_*,
 dnl wxhints.c uses the new names so reject the older API at configure time
 dnl rather than failing the build (NetBSD base X11R7 still ships 0.3.6,
 dnl install pkgsrc xcb-util-wm and put /usr/pkg/lib/pkgconfig first)
-PKG_CHECK_MODULES([XCB], [xcb xcb-icccm >= 0.3.8 x11-xcb], [],
-    [AC_MSG_ERROR([libxcb, xcb-icccm >= 0.3.8 and x11-xcb are required -- $XCB_PKG_ERRORS])])
+dnl xcb-randr/shape/sync/xkb provide the typed extension event structs that
+dnl src/event.c and src/wmspec.c read after the WINGs queue flips to xcb,
+dnl all four ship in the libxcb tarball so the version floor is shared
+PKG_CHECK_MODULES([XCB],
+    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb], [],
+    [AC_MSG_ERROR([libxcb, x11-xcb, xcb-icccm >= 0.3.8 and xcb-randr/shape/sync/xkb are required -- $XCB_PKG_ERRORS])])
 dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
 dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so
 dnl ask pkg-config where the >= 0.3.8 module actually lives and search that

@@ -38,15 +38,20 @@
 #include <X11/cursorfont.h>
 #include <X11/Xproto.h>
 #include <X11/keysym.h>
+#include <X11/Xlib-xcb.h>
 #ifdef USE_XSHAPE
 #include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 #include <X11/XKBlib.h>
+#include <xcb/xkb.h>
 #ifdef USE_RANDR
 #include <X11/extensions/Xrandr.h>
+#include <xcb/randr.h>
 #endif
 #ifdef USE_XSYNC
 #include <X11/extensions/sync.h>
+#include <xcb/sync.h>
 #endif
 
 #include "WindowMaker.h"
@@ -455,12 +460,15 @@ void StartUp(Bool defaultScreenOnly)
 	int idx;
 	char **formats;
 	Atom atom[wlengthof(atomNames)];
+	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	const xcb_query_extension_reply_t *xer;
+	xcb_xkb_use_extension_reply_t *xkbr;
 #ifdef USE_XSYNC
-	int sync_major, sync_minor;
+	xcb_sync_initialize_reply_t *syncr;
 #endif
 #ifdef USE_RANDR
-	int rr_major = 0, rr_minor = 0;
-	Bool rr_ext, rr_ver;
+	xcb_randr_query_version_reply_t *rrr = NULL;
+	uint32_t rr_major = 0, rr_minor = 0;
 #endif
 
 	/*
@@ -634,35 +642,82 @@ void StartUp(Bool defaultScreenOnly)
 	XSetErrorHandler((XErrorHandler) catchXError);
 	WXEvqSetErrorHook(wHandleXcbError);
 
+	/* prefetch all four QueryExtension probes so they fly in one
+	 * round-trip, then collect first_event from the cached replies and
+	 * negotiate versions, the cached reply is owned by xcb so do not
+	 * free xer */
 #ifdef USE_XSHAPE
-	/* ignore j */
-	w_global.xext.shape.supported = XShapeQueryExtension(dpy, &w_global.xext.shape.event_base, &j);
+	xcb_prefetch_extension_data(xc, &xcb_shape_id);
 #endif
-
 #ifdef USE_XSYNC
-	w_global.xext.xsync.supported =
-		XSyncQueryExtension(dpy, &w_global.xext.xsync.event_base, &j)
-		&& XSyncInitialize(dpy, &sync_major, &sync_minor);
+	xcb_prefetch_extension_data(xc, &xcb_sync_id);
 #endif
-
 #ifdef USE_RANDR
-	rr_ext = XRRQueryExtension(dpy, &w_global.xext.randr.event_base, &j);
-	rr_ver = rr_ext && XRRQueryVersion(dpy, &rr_major, &rr_minor);
+	xcb_prefetch_extension_data(xc, &xcb_randr_id);
+#endif
+	xcb_prefetch_extension_data(xc, &xcb_xkb_id);
 
-	if (rr_ver && (rr_major > 1 || (rr_major == 1 && rr_minor >= 5))) {
-		w_global.xext.randr.supported = 1;
-	} else {
-		w_global.xext.randr.supported = 0;
-		if (!rr_ext)
-			wwarning(_("RandR extension is not available"));
-		else if (!rr_ver)
-			wwarning(_("RandR version check failed, RandR disabled"));
-		else
-			wwarning(_("RandR version %d.%d found but RandR version >=1.5 required"), rr_major, rr_minor);
+#ifdef USE_XSHAPE
+	xer = xcb_get_extension_data(xc, &xcb_shape_id);
+	w_global.xext.shape.supported = xer && xer->present;
+	if (w_global.xext.shape.supported) {
+		w_global.xext.shape.event_base = xer->first_event;
+		free(xcb_shape_query_version_reply(xc, xcb_shape_query_version(xc), NULL));
 	}
 #endif
 
-	w_global.xext.xkb.supported = XkbQueryExtension(dpy, NULL, &w_global.xext.xkb.event_base, NULL, NULL, NULL);
+#ifdef USE_XSYNC
+	xer = xcb_get_extension_data(xc, &xcb_sync_id);
+	w_global.xext.xsync.supported = 0;
+	if (xer && xer->present) {
+		w_global.xext.xsync.event_base = xer->first_event;
+		syncr = xcb_sync_initialize_reply(xc,
+				xcb_sync_initialize(xc, XCB_SYNC_MAJOR_VERSION,
+						    XCB_SYNC_MINOR_VERSION), NULL);
+		w_global.xext.xsync.supported = syncr != NULL;
+		free(syncr);
+	}
+#endif
+
+#ifdef USE_RANDR
+	xer = xcb_get_extension_data(xc, &xcb_randr_id);
+	if (xer && xer->present) {
+		w_global.xext.randr.event_base = xer->first_event;
+		rrr = xcb_randr_query_version_reply(xc,
+				xcb_randr_query_version(xc, XCB_RANDR_MAJOR_VERSION,
+							XCB_RANDR_MINOR_VERSION), NULL);
+		if (rrr) {
+			rr_major = rrr->major_version;
+			rr_minor = rrr->minor_version;
+		}
+	}
+	if (rrr && (rr_major > 1 || (rr_major == 1 && rr_minor >= 5))) {
+		w_global.xext.randr.supported = 1;
+	} else {
+		w_global.xext.randr.supported = 0;
+		if (!xer || !xer->present)
+			wwarning(_("RandR extension is not available"));
+		else if (!rrr)
+			wwarning(_("RandR version check failed, RandR disabled"));
+		else
+			wwarning(_("RandR version %u.%u found but RandR version >=1.5 required"),
+				 rr_major, rr_minor);
+	}
+	free(rrr);
+#endif
+
+	xer = xcb_get_extension_data(xc, &xcb_xkb_id);
+	w_global.xext.xkb.supported = 0;
+	if (xer && xer->present) {
+		w_global.xext.xkb.event_base = xer->first_event;
+		/* UseExtension is mandatory before any other XKB request,
+		 * server may downgrade but every shipping Xorg answers 1.0 */
+		xkbr = xcb_xkb_use_extension_reply(xc,
+				xcb_xkb_use_extension(xc, XCB_XKB_MAJOR_VERSION,
+						      XCB_XKB_MINOR_VERSION), NULL);
+		w_global.xext.xkb.supported = xkbr && xkbr->supported;
+		free(xkbr);
+	}
 #ifdef KEEP_XKB_LOCK_STATUS
 	if (w_global.config->modelock && !w_global.xext.xkb.supported) {
 		wwarning(_("XKB is not supported. KbdModeLock is automatically disabled."));

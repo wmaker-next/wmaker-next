@@ -333,8 +333,9 @@ xcb is now a required dependency
 
 libWINGs now issues all window-property and ICCCM hint requests over
 xcb, sharing the existing X connection via x11-xcb. The pkg-config
-modules xcb, xcb-icccm and x11-xcb must be present at build time, and
-there is no configure switch to disable this. Per-window property
+modules xcb, xcb-icccm, x11-xcb, xcb-randr, xcb-shape, xcb-sync and
+xcb-xkb must be present at build time, and there is no configure
+switch to disable this. Per-window property
 reads at startup and when adopting a new client are batched into a
 single server round-trip on top of this, so starting Window Maker (or
 taking over with --replace) with many existing clients is noticeably

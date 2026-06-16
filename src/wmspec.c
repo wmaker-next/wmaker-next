@@ -31,6 +31,7 @@
 #include <X11/Xresource.h>
 #ifdef USE_XSYNC
 #include <X11/extensions/sync.h>
+#include <xcb/sync.h>
 #endif
 #include <signal.h>
 #include <stdio.h>
@@ -2778,18 +2779,16 @@ void wNETWMSyncRequestSend(WWindow *wwin)
 
 Bool wNETWMSyncRequestHandleAlarm(XEvent *event)
 {
-	uint32_t alarm;
+	xcb_sync_alarm_notify_event_t *ae;
 	XPointer p;
 
 	if (!w_global.xext.xsync.supported
-	    || event->type != w_global.xext.xsync.event_base + XSyncAlarmNotify)
+	    || event->type != w_global.xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY)
 		return False;
 
-	/* xcb_sync_alarm_notify_event_t carries the alarm id at wire
-	 * offset 4, the cooker stashed the 32 wire bytes for us */
-	memcpy(&alarm, ((WXWireEvent *)event)->wire + 4, sizeof(alarm));
+	ae = (xcb_sync_alarm_notify_event_t *)((WXWireEvent *)event)->wire;
 	if (!sync_alarm_ctx
-	    || XFindContext(dpy, alarm, sync_alarm_ctx, &p) != 0)
+	    || XFindContext(dpy, ae->alarm, sync_alarm_ctx, &p) != 0)
 		return True;
 
 	((WWindow *)p)->net_sync.waiting = 0;
@@ -2812,7 +2811,7 @@ Bool wNETWMSyncRequestPending(WWindow *wwin)
 		return False;
 
 	while (WXEvqTakeTyped(dpy,
-			      w_global.xext.xsync.event_base + XSyncAlarmNotify,
+			      w_global.xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY,
 			      None, &ev))
 		wNETWMSyncRequestHandleAlarm(&ev);
 

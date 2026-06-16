@@ -38,16 +38,19 @@
 #include <X11/Xatom.h>
 #ifdef USE_XSHAPE
 # include <X11/extensions/shape.h>
+# include <xcb/shape.h>
 #endif
 #ifdef USE_DOCK_XDND
 #include "xdnd.h"
 #endif
 
 #ifdef USE_RANDR
+#include <xcb/randr.h>
 #include "randr.h"
 #endif
 
 #include <X11/XKBlib.h>
+#include <xcb/xkb.h>
 
 #include "WindowMaker.h"
 #include "window.h"
@@ -616,7 +619,8 @@ static int matchWindow(const void *item, const void *cdata)
 static void handleExtensions(XEvent * event)
 {
 #ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported && event->type == (w_global.xext.shape.event_base + ShapeNotify)) {
+	if (w_global.xext.shape.supported
+	    && event->type == w_global.xext.shape.event_base + XCB_SHAPE_NOTIFY) {
 		handleShapeNotify(event);
 	}
 #endif
@@ -625,13 +629,14 @@ static void handleExtensions(XEvent * event)
 		return;
 #endif
 	if (w_global.xext.xkb.supported && event->type == w_global.xext.xkb.event_base) {
-		/* XKB has a single event opcode with the sub-type in
-		 * wire byte 1 (xkbType), the cooker leaves the 32 wire
-		 * bytes in WXWireEvent so read it directly until the
-		 * typed xcb-xkb structs land */
-		int xkb_type = ((WXWireEvent *)event)->wire[1];
+		/* XKB has a single event opcode and every sub-type shares the
+		 * same {response_type, xkbType, sequence, time, deviceID}
+		 * prefix, so any of the typed structs reads xkbType */
+		xcb_xkb_new_keyboard_notify_event_t *xe =
+			(xcb_xkb_new_keyboard_notify_event_t *)((WXWireEvent *)event)->wire;
+		int xkb_type = xe->xkbType;
 
-		if (xkb_type == XkbNewKeyboardNotify) {
+		if (xkb_type == XCB_XKB_NEW_KEYBOARD_NOTIFY) {
 			int j;
 			WScreen *scr;
 
@@ -644,31 +649,39 @@ static void handleExtensions(XEvent * event)
 		else {
 			/* Listen not only for IndicatorStateNotify but also for StateNotify
 			 * which is commonly emitted on group (layout) changes. */
-			if (w_global.config->modelock && (xkb_type == XkbIndicatorStateNotify || xkb_type == XkbStateNotify)) {
+			if (w_global.config->modelock
+			    && (xkb_type == XCB_XKB_INDICATOR_STATE_NOTIFY
+				|| xkb_type == XCB_XKB_STATE_NOTIFY)) {
 				handleXkbIndicatorStateNotify(event);
 			}
 		}
 #endif /*KEEP_XKB_LOCK_STATUS */
 	}
 #ifdef USE_RANDR
-	if (w_global.xext.randr.supported &&
-	    (event->type == (w_global.xext.randr.event_base + RRScreenChangeNotify) ||
-	     event->type == (w_global.xext.randr.event_base + RRNotify))) {
-		/* root sits at wire offset 12 for ScreenChangeNotify and
-		 * for RRNotify(OutputChange), at offset 8 for
-		 * RRNotify(CrtcChange) keyed on the subCode in wire[1],
-		 * everything else just rearms the per-screen debounce */
-		const unsigned char *wire = ((WXWireEvent *)event)->wire;
+	if (w_global.xext.randr.supported
+	    && event->type == w_global.xext.randr.event_base + XCB_RANDR_SCREEN_CHANGE_NOTIFY) {
+		xcb_randr_screen_change_notify_event_t *re =
+			(xcb_randr_screen_change_notify_event_t *)((WXWireEvent *)event)->wire;
+		WScreen *randr_scr = wScreenForRootWindow(re->root);
+		if (randr_scr)
+			wRandRHandleNotify(randr_scr);
+	}
+	if (w_global.xext.randr.supported
+	    && event->type == w_global.xext.randr.event_base + XCB_RANDR_NOTIFY) {
+		/* only CrtcChange and OutputChange carry the root that
+		 * registered with RRSelectInput, every other subCode just
+		 * rearms the per-screen debounce on screen 0 */
+		xcb_randr_notify_event_t *re =
+			(xcb_randr_notify_event_t *)((WXWireEvent *)event)->wire;
 		WScreen *randr_scr;
-		uint32_t root;
-		int off;
+		Window root;
 
-		if (event->type == w_global.xext.randr.event_base + RRNotify
-		    && wire[1] == RRNotify_CrtcChange)
-			off = 8;
+		if (re->subCode == XCB_RANDR_NOTIFY_CRTC_CHANGE)
+			root = re->u.cc.window;
+		else if (re->subCode == XCB_RANDR_NOTIFY_OUTPUT_CHANGE)
+			root = re->u.oc.window;
 		else
-			off = 12;
-		memcpy(&root, wire + off, sizeof(root));
+			root = wScreenWithNumber(0)->root_win;
 		randr_scr = wScreenForRootWindow(root);
 		if (randr_scr)
 			wRandRHandleNotify(randr_scr);
@@ -1354,23 +1367,23 @@ static void handleLeaveNotify(XEvent * event)
 #ifdef USE_XSHAPE
 static void handleShapeNotify(XEvent * event)
 {
-	/* xcb_shape_notify_event_t: shape_kind at wire[1],
-	 * affected_window at wire[4..7] (which the cooker also wrote
-	 * to xany.window so the WXEvqTakeTyped window match works),
-	 * shaped at wire[20], read those three directly until the
-	 * typed xcb-shape struct lands */
-	WXWireEvent *we = (WXWireEvent *)event;
-	int kind = we->wire[1];
-	int shaped = we->wire[20];
+	/* affected_window sits at wire offset 4 so the cooker already
+	 * wrote it to xany.window and the WXEvqTakeTyped window match
+	 * keeps working */
+	xcb_shape_notify_event_t *se =
+		(xcb_shape_notify_event_t *)((WXWireEvent *)event)->wire;
+	int kind = se->shape_kind;
+	int shaped = se->shaped;
 	WWindow *wwin;
 	XEvent ev;
 
-	while (WXEvqTakeTyped(dpy, event->type, we->window, &ev)) {
-		WXWireEvent *nwe = (WXWireEvent *)&ev;
-		if (nwe->wire[1] == ShapeBounding) {
-			if (nwe->wire[20] == shaped) {
-				kind = nwe->wire[1];
-				shaped = nwe->wire[20];
+	while (WXEvqTakeTyped(dpy, event->type, se->affected_window, &ev)) {
+		xcb_shape_notify_event_t *ne =
+			(xcb_shape_notify_event_t *)((WXWireEvent *)&ev)->wire;
+		if (ne->shape_kind == XCB_SHAPE_SK_BOUNDING) {
+			if (ne->shaped == shaped) {
+				kind = ne->shape_kind;
+				shaped = ne->shaped;
 			} else {
 				WXEvqPutBack(&ev);
 				break;
@@ -1378,8 +1391,8 @@ static void handleShapeNotify(XEvent * event)
 		}
 	}
 
-	wwin = wWindowFor(we->window);
-	if (!wwin || kind != ShapeBounding)
+	wwin = wWindowFor(se->affected_window);
+	if (!wwin || kind != XCB_SHAPE_SK_BOUNDING)
 		return;
 
 	if (!shaped && wwin->flags.shaped) {
@@ -1401,7 +1414,7 @@ static void handleXkbIndicatorStateNotify(XEvent *event)
 {
 	WWindow *wwin;
 	WScreen *scr;
-	XkbStateRec staterec;
+	int group;
 	int i;
 	(void) event;
 
@@ -1409,10 +1422,10 @@ static void handleXkbIndicatorStateNotify(XEvent *event)
 		scr = wScreenWithNumber(i);
 		wwin = scr->focused_window;
 		if (wwin && wwin->flags.focused) {
-			XkbGetState(dpy, XkbUseCoreKbd, &staterec);
-			if (wwin->frame->languagemode != staterec.group) {
+			group = wXkbGetGroup();
+			if (group >= 0 && wwin->frame->languagemode != group) {
 				wwin->frame->last_languagemode = wwin->frame->languagemode;
-				wwin->frame->languagemode = staterec.group;
+				wwin->frame->languagemode = group;
 				wWindowGetLanguageLabel(wwin->frame->languagemode, wwin->frame->language_label);
 				wFrameWindowUpdateLanguageButton(wwin->frame);
 			}
@@ -1703,7 +1716,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	short widx;
 	int i;
 #ifdef KEEP_XKB_LOCK_STATUS
-	XkbStateRec staterec;
+	int xkbgroup;
 #endif				/*KEEP_XKB_LOCK_STATUS */
 
 	switch (command) {
@@ -2268,11 +2281,12 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			if (wwin && wwin->flags.mapped
 			    && wwin->frame->workspace == wwin->screen_ptr->current_workspace
 			    && !wwin->flags.miniaturized && !wwin->flags.hidden) {
-				XkbGetState(dpy, XkbUseCoreKbd, &staterec);
+				xkbgroup = wXkbGetGroup();
 
 				wwin->frame->languagemode = wwin->frame->last_languagemode;
-				wwin->frame->last_languagemode = staterec.group;
-				XkbLockGroup(dpy, XkbUseCoreKbd, wwin->frame->languagemode);
+				if (xkbgroup >= 0)
+					wwin->frame->last_languagemode = xkbgroup;
+				wXkbLockGroup(wwin->frame->languagemode);
 				/* Update the language label text */
 				wWindowGetLanguageLabel(wwin->frame->languagemode, wwin->frame->language_label);
 			}

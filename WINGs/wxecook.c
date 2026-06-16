@@ -10,9 +10,8 @@
  *  same fields, the work is renaming and widening.  Extension events
  *  are not decoded, the xany prefix is filled so dispatch and the
  *  WXEvqTake* matchers keep working and the 32 wire bytes are stashed
- *  in WXWireEvent.wire for the handful of consumers in src/event.c
- *  and src/wmspec.c to read directly until they move onto the typed
- *  xcb_*_event_t structs.
+ *  in WXWireEvent.wire for src/event.c and src/wmspec.c to cast to the
+ *  matching xcb_*_event_t struct.
  *
  *  Errors (response_type 0) are not cooked, wxevq.c routes them to
  *  the WXEvqErrorHook before this is called.

@@ -560,6 +560,11 @@ void wWindowSetOmnipresent(WWindow *wwin, Bool flag);
 void wWindowSetMark(WWindow *wwin, const char *label);
 void wWindowUnsetMark(WWindow *wwin);
 
+#ifdef KEEP_XKB_LOCK_STATUS
+void wXkbLockGroup(int group);
+int wXkbGetGroup(void);
+#endif
+
 #ifdef XKB_BUTTON_HINT
 void wWindowGetLanguageLabel(int group_index, char *label);
 #endif

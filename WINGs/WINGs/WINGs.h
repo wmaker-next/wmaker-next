@@ -731,9 +731,11 @@ void WMSetViewNextResponder(WMView *view, WMView *responder);
 
 /* For extension events the cooker fills the xany prefix so dispatch on
  * type, serial and window keeps working, and copies the 32 wire bytes
- * here so the handful of extension consumers can read them directly
- * until they move onto the typed xcb_*_event_t structs.  This struct
- * overlays XEvent (long pad[24]) and shares the XAnyEvent prefix. */
+ * here so the handful of extension consumers can cast .wire to the
+ * matching xcb_*_event_t struct.  This struct overlays XEvent (long
+ * pad[24]) and shares the XAnyEvent prefix, .wire follows an
+ * unsigned long so it is 8-byte aligned on LP64 and the cast is
+ * alignment-safe for every 32-byte xcb event struct. */
 typedef struct {
     int type;
     unsigned long serial;

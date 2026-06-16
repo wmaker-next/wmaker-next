@@ -29,6 +29,8 @@
 #endif
 #ifdef KEEP_XKB_LOCK_STATUS
 #include <X11/XKBlib.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/xkb.h>
 #endif	  /* KEEP_XKB_LOCK_STATUS */
 #ifdef USE_XRES
 #include <X11/extensions/XRes.h>
@@ -2131,7 +2133,7 @@ void wWindowFocus(WWindow *wwin, WWindow *owin)
 
 #ifdef KEEP_XKB_LOCK_STATUS
 	if (w_global.config->modelock)
-		XkbLockGroup(dpy, XkbUseCoreKbd, wwin->frame->languagemode);
+		wXkbLockGroup(wwin->frame->languagemode);
 #endif /* KEEP_XKB_LOCK_STATUS */
 
 	wwin->flags.semi_focused = 0;
@@ -3819,6 +3821,36 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, XEvent *event)
 	}
 }
 
+#ifdef KEEP_XKB_LOCK_STATUS
+/* lock the effective keyboard group, equivalent to XkbLockGroup with
+ * lockGroup=1 and every other LatchLockState field cleared, the request
+ * has no reply so any error surfaces through the WXEvqErrorHook */
+void wXkbLockGroup(int group)
+{
+	xcb_connection_t *xc = XGetXCBConnection(dpy);
+
+	xcb_xkb_latch_lock_state(xc, XCB_XKB_ID_USE_CORE_KBD,
+				 0, 0, 1, group, 0, 0, 0);
+	xcb_flush(xc);
+}
+
+/* current effective keyboard group, -1 if the round-trip failed */
+int wXkbGetGroup(void)
+{
+	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_xkb_get_state_reply_t *r;
+	int group;
+
+	r = xcb_xkb_get_state_reply(xc,
+			xcb_xkb_get_state(xc, XCB_XKB_ID_USE_CORE_KBD), NULL);
+	if (!r)
+		return -1;
+	group = r->group;
+	free(r);
+	return group;
+}
+#endif /* KEEP_XKB_LOCK_STATUS */
+
 #ifdef XKB_BUTTON_HINT
 /* Helper function to extract the 2-letter language code for a given XKB group index */
 void wWindowGetLanguageLabel(int group_index, char *label)
@@ -3903,13 +3935,13 @@ static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event)
 	if (newgroup >= 0) {
 		wwin->frame->last_languagemode = tl;
 		wwin->frame->languagemode = newgroup;
-		XkbLockGroup(dpy, XkbUseCoreKbd, wwin->frame->languagemode);
+		wXkbLockGroup(wwin->frame->languagemode);
 	} else {
 		/* fallback to previous toggle behaviour for setups with only two
 		 * groups or when group info is not available */
 		wwin->frame->languagemode = wwin->frame->last_languagemode;
 		wwin->frame->last_languagemode = tl;
-		XkbLockGroup(dpy, XkbUseCoreKbd, wwin->frame->languagemode);
+		wXkbLockGroup(wwin->frame->languagemode);
 	}
 	/* Update label */
 	wWindowGetLanguageLabel(wwin->frame->languagemode, wwin->frame->language_label);
