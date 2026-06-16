@@ -721,10 +721,37 @@ void WMSetViewNextResponder(WMView *view, WMView *responder);
 
 /* ---[ WINGs/wxevq.c ]--------------------------------------------------- */
 
-/* internal pending-event queue ahead of dispatch, today fed by
- * XNextEvent so the WXEvqTake* operations are exact stand-ins for the
- * XCheck* family on the WINGs queue, after the xcb queue flip the
- * drain step changes and nothing else does */
+/* internal pending-event queue ahead of dispatch.  Until the caller
+ * flips ownership the queue is fed by XNextEvent so the WXEvqTake*
+ * operations are exact stand-ins for the XCheck* family on the WINGs
+ * queue.  WXEvqFlipToXcb() sets XCBOwnsEventQueue and the drain step
+ * becomes xcb_poll_for_event() plus W_CookXcbEvent(), nothing else
+ * changes.  Processes that want to keep protocol XIM (WPrefs) simply
+ * never call the flip. */
+
+/* For extension events the cooker fills the xany prefix so dispatch on
+ * type, serial and window keeps working, and copies the 32 wire bytes
+ * here so the handful of extension consumers can read them directly
+ * until they move onto the typed xcb_*_event_t structs.  This struct
+ * overlays XEvent (long pad[24]) and shares the XAnyEvent prefix. */
+typedef struct {
+    int type;
+    unsigned long serial;
+    Bool send_event;
+    Display *display;
+    Window window;
+    unsigned char wire[32];
+} WXWireEvent;
+
+typedef void WXEvqErrorHook(Display *dpy, unsigned int error_code,
+                            unsigned int major_opcode, unsigned int minor_opcode,
+                            unsigned long resource_id, unsigned long serial);
+
+void WXEvqFlipToXcb(Display *dpy);
+
+Bool WXEvqXcbOwned(void);
+
+void WXEvqSetErrorHook(WXEvqErrorHook *hook);
 
 Bool WXEvqPending(Display *dpy);
 

@@ -119,7 +119,7 @@ static void handleShapeNotify(XEvent *event);
 #endif
 
 #ifdef KEEP_XKB_LOCK_STATUS
-static void handleXkbIndicatorStateNotify(XkbEvent *event);
+static void handleXkbIndicatorStateNotify(XEvent *event);
 #endif
 
 /* real dead process handler */
@@ -624,10 +624,12 @@ static void handleExtensions(XEvent * event)
 	if (wNETWMSyncRequestHandleAlarm(event))
 		return;
 #endif
-	if (w_global.xext.xkb.supported && event->type >= w_global.xext.xkb.event_base
-		&& event->type <= w_global.xext.xkb.event_base + 255) {
-		XkbEvent *xkbevent = (XkbEvent *) event;
-		int xkb_type = xkbevent->any.xkb_type;
+	if (w_global.xext.xkb.supported && event->type == w_global.xext.xkb.event_base) {
+		/* XKB has a single event opcode with the sub-type in
+		 * wire byte 1 (xkbType), the cooker leaves the 32 wire
+		 * bytes in WXWireEvent so read it directly until the
+		 * typed xcb-xkb structs land */
+		int xkb_type = ((WXWireEvent *)event)->wire[1];
 
 		if (xkb_type == XkbNewKeyboardNotify) {
 			int j;
@@ -643,7 +645,7 @@ static void handleExtensions(XEvent * event)
 			/* Listen not only for IndicatorStateNotify but also for StateNotify
 			 * which is commonly emitted on group (layout) changes. */
 			if (w_global.config->modelock && (xkb_type == XkbIndicatorStateNotify || xkb_type == XkbStateNotify)) {
-				handleXkbIndicatorStateNotify(xkbevent);
+				handleXkbIndicatorStateNotify(event);
 			}
 		}
 #endif /*KEEP_XKB_LOCK_STATUS */
@@ -652,11 +654,24 @@ static void handleExtensions(XEvent * event)
 	if (w_global.xext.randr.supported &&
 	    (event->type == (w_global.xext.randr.event_base + RRScreenChangeNotify) ||
 	     event->type == (w_global.xext.randr.event_base + RRNotify))) {
+		/* root sits at wire offset 12 for ScreenChangeNotify and
+		 * for RRNotify(OutputChange), at offset 8 for
+		 * RRNotify(CrtcChange) keyed on the subCode in wire[1],
+		 * everything else just rearms the per-screen debounce */
+		const unsigned char *wire = ((WXWireEvent *)event)->wire;
 		WScreen *randr_scr;
+		uint32_t root;
+		int off;
 
-		randr_scr = wScreenForRootWindow(event->xany.window);
+		if (event->type == w_global.xext.randr.event_base + RRNotify
+		    && wire[1] == RRNotify_CrtcChange)
+			off = 8;
+		else
+			off = 12;
+		memcpy(&root, wire + off, sizeof(root));
+		randr_scr = wScreenForRootWindow(root);
 		if (randr_scr)
-			wRandRHandleNotify(randr_scr, event);
+			wRandRHandleNotify(randr_scr);
 	}
 #endif
 }
@@ -1337,34 +1352,40 @@ static void handleLeaveNotify(XEvent * event)
 #ifdef USE_XSHAPE
 static void handleShapeNotify(XEvent * event)
 {
-	XShapeEvent *shev = (XShapeEvent *) event;
+	/* xcb_shape_notify_event_t: shape_kind at wire[1],
+	 * affected_window at wire[4..7] (which the cooker also wrote
+	 * to xany.window so the WXEvqTakeTyped window match works),
+	 * shaped at wire[20], read those three directly until the
+	 * typed xcb-shape struct lands */
+	WXWireEvent *we = (WXWireEvent *)event;
+	int kind = we->wire[1];
+	int shaped = we->wire[20];
 	WWindow *wwin;
-	union {
-		XEvent xevent;
-		XShapeEvent xshape;
-	} ev;
+	XEvent ev;
 
-	while (WXEvqTakeTyped(dpy, event->type, shev->window, &ev.xevent)) {
-		if (ev.xshape.kind == ShapeBounding) {
-			if (ev.xshape.shaped == shev->shaped) {
-				*shev = ev.xshape;
+	while (WXEvqTakeTyped(dpy, event->type, we->window, &ev)) {
+		WXWireEvent *nwe = (WXWireEvent *)&ev;
+		if (nwe->wire[1] == ShapeBounding) {
+			if (nwe->wire[20] == shaped) {
+				kind = nwe->wire[1];
+				shaped = nwe->wire[20];
 			} else {
-				WXEvqPutBack(&ev.xevent);
+				WXEvqPutBack(&ev);
 				break;
 			}
 		}
 	}
 
-	wwin = wWindowFor(shev->window);
-	if (!wwin || shev->kind != ShapeBounding)
+	wwin = wWindowFor(we->window);
+	if (!wwin || kind != ShapeBounding)
 		return;
 
-	if (!shev->shaped && wwin->flags.shaped) {
+	if (!shaped && wwin->flags.shaped) {
 
 		wwin->flags.shaped = 0;
 		wWindowClearShape(wwin);
 
-	} else if (shev->shaped) {
+	} else if (shaped) {
 
 		wwin->flags.shaped = 1;
 		wWindowSetShape(wwin);
@@ -1374,7 +1395,7 @@ static void handleShapeNotify(XEvent * event)
 
 #ifdef KEEP_XKB_LOCK_STATUS
 /* please help ]d if you know what to do */
-static void handleXkbIndicatorStateNotify(XkbEvent *event)
+static void handleXkbIndicatorStateNotify(XEvent *event)
 {
 	WWindow *wwin;
 	WScreen *scr;

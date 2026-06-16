@@ -2778,16 +2778,18 @@ void wNETWMSyncRequestSend(WWindow *wwin)
 
 Bool wNETWMSyncRequestHandleAlarm(XEvent *event)
 {
-	XSyncAlarmNotifyEvent *ae;
+	uint32_t alarm;
 	XPointer p;
 
 	if (!w_global.xext.xsync.supported
 	    || event->type != w_global.xext.xsync.event_base + XSyncAlarmNotify)
 		return False;
 
-	ae = (XSyncAlarmNotifyEvent *)event;
+	/* xcb_sync_alarm_notify_event_t carries the alarm id at wire
+	 * offset 4, the cooker stashed the 32 wire bytes for us */
+	memcpy(&alarm, ((WXWireEvent *)event)->wire + 4, sizeof(alarm));
 	if (!sync_alarm_ctx
-	    || XFindContext(dpy, ae->alarm, sync_alarm_ctx, &p) != 0)
+	    || XFindContext(dpy, alarm, sync_alarm_ctx, &p) != 0)
 		return True;
 
 	((WWindow *)p)->net_sync.waiting = 0;

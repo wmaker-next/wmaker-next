@@ -379,6 +379,13 @@ void W_EventLoopShutdown(void);
 unsigned long W_MaskForEventType(int type);
 
 
+/* ---[ wxecook.c ]------------------------------------------------------- */
+
+/* xcb_generic_event_t * passed as void * so this header does not pull
+ * xcb.h into every WINGs source */
+void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out);
+
+
 /* ---[ notification.c ]-------------------------------------------------- */
 
 void W_InitNotificationCenter(void);

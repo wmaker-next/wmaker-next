@@ -121,10 +121,8 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 
     /* Some servers (notably Xephyr +xinerama) expose real XINERAMA heads
      * but only a stub RandR view, GetMonitors there returns one synthetic
-     * monitor that covers only part of the real root window, and the stub
-     * RRScreenChangeNotify it emits makes XRRUpdateConfiguration() shrink
-     * Xlib's cached WidthOfScreen() to match that partial view, so query
-     * the actual root window geometry here rather than trusting the cache.
+     * monitor that covers only part of the real root window, so query the
+     * actual root window geometry here rather than trusting the cache.
      * If XINERAMA has already populated more heads than RandR can account
      * for and the RandR view does not span the real root, RandR is not the
      * authoritative geometry source, keep the XINERAMA-derived xine_info
@@ -190,9 +188,11 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 
     scr->xine_info.primary_head = primary;
 
-    /* Refresh cached screen dimensions (updated by XRRUpdateConfiguration) */
-    scr->scr_width = WidthOfScreen(ScreenOfDisplay(dpy, scr->screen));
-    scr->scr_height = HeightOfScreen(ScreenOfDisplay(dpy, scr->screen));
+    /* XRRUpdateConfiguration() is gone since the cooked event no longer
+     * exists, and Xlib's cached WidthOfScreen() never updates under
+     * XCBOwnsEventQueue, so use the GetGeometry result above */
+    scr->scr_width = root_w;
+    scr->scr_height = root_h;
 
     /* Reallocate per-head usable area arrays if the head count changed */
     if (old_count != count) {
@@ -698,13 +698,16 @@ void wRandRTeardown(WScreen *scr)
     scr->randr_state = NULL;
 }
 
-void wRandRHandleNotify(WScreen *scr, XEvent *event)
+void wRandRHandleNotify(WScreen *scr)
 {
     if (!scr || !scr->randr_state)
         return;
 
-    if (event->type == (w_global.xext.randr.event_base + RRScreenChangeNotify))
-        XRRUpdateConfiguration(event);
+    /* XRRUpdateConfiguration() only mutated libX11's cached Screen
+     * width/height which wRandR_Update() never reads (it queries
+     * monitors directly) and which is unreliable under nested servers
+     * anyway, so the wire event has no useful payload here and the
+     * notify only rearms the debounce */
 
     /* Debounce: cancel any pending timer, then restart it */
     if (scr->randr_debounce_timer) {

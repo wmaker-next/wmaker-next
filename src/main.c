@@ -827,6 +827,11 @@ static int real_main(int argc, char **argv)
 		exit(1);
 	}
 
+	/* hand event-queue ownership to xcb so the WINGs event queue
+	 * reads xcb_poll_for_event(), Xlib keeps issuing requests on
+	 * the same socket and _XReply still collects errors for them
+	 * via pending_requests so the existing trap brackets work */
+	WXEvqFlipToXcb(dpy);
 
 	if (getWVisualID(0) < 0) {
 		/*

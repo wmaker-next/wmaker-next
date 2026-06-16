@@ -125,6 +125,26 @@ static int catchXError(Display * dpy, XErrorEvent * error)
 	return -1;
 }
 
+/* in-stream errors from xcb-issued reply-less requests reach the
+ * WINGs event queue as response_type 0, route them through the same
+ * filter and formatter as Xlib-delivered errors so the warning text
+ * and the BadWindow-on-a-vanished-client suppression are identical */
+static void wHandleXcbError(Display *d, unsigned int error_code,
+			    unsigned int major_opcode, unsigned int minor_opcode,
+			    unsigned long resource_id, unsigned long serial)
+{
+	XErrorEvent xerr;
+
+	memset(&xerr, 0, sizeof(xerr));
+	xerr.display = d;
+	xerr.resourceid = resource_id;
+	xerr.serial = serial;
+	xerr.error_code = error_code;
+	xerr.request_code = major_opcode;
+	xerr.minor_code = minor_opcode;
+	catchXError(d, &xerr);
+}
+
 /*
  *----------------------------------------------------------------------
  * handleXIO-
@@ -612,6 +632,7 @@ void StartUp(Bool defaultScreenOnly)
 	wWindowAttrsReload();
 
 	XSetErrorHandler((XErrorHandler) catchXError);
+	WXEvqSetErrorHook(wHandleXcbError);
 
 #ifdef USE_XSHAPE
 	/* ignore j */

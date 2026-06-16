@@ -49,6 +49,16 @@ void W_InitIM(W_Screen * scr)
 	if (scr->imctx)
 		return;
 
+	/* the protocol-XIM transport (XMODIFIERS=@im=fcitx/ibus) does
+	 * blocking XIfEvent reads on Xlib's queue inside XOpenIM,
+	 * XCreateIC, XSetICValues and the sync forward path, which under
+	 * XCBOwnsEventQueue spins forever because _XReadEvents returns
+	 * immediately, so when the queue has been flipped pin the local
+	 * compose-table IM which is a pure in-process state machine with
+	 * no transport, full IME comes back over xcb-imdkit later */
+	if (WXEvqXcbOwned())
+		XSetLocaleModifiers("@im=local");
+
 	xim = XOpenIM(scr->display, NULL, NULL, NULL);
 
 	if (xim) {

@@ -28,7 +28,7 @@
 
 void wRandRInit(WScreen *scr);
 void wRandRTeardown(WScreen *scr);
-void wRandRHandleNotify(WScreen *scr, XEvent *event);
+void wRandRHandleNotify(WScreen *scr);
 
 #endif /* USE_RANDR */
 

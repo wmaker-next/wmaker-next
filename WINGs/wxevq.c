@@ -4,12 +4,17 @@
  *
  *  Sits between the X connection and dispatch so WMNextEvent /
  *  WMMaskEvent and the modal loops in src/ can take, peek and put back
- *  without depending on Xlib's own queue. Today the queue is filled by
- *  XNextEvent so the WXEvq* operations are exact behavioural stand-ins
- *  for XCheckMaskEvent / XCheckTypedEvent / XCheckTypedWindowEvent /
- *  XCheckWindowEvent / XPeekEvent / XPutBackEvent, after the xcb queue
- *  flip the drain step becomes xcb_poll_for_event() plus the
- *  wire-to-XEvent cooker and nothing else in this file changes.
+ *  without depending on Xlib's own queue.  Until WXEvqFlipToXcb() is
+ *  called the queue is filled by XNextEvent so the WXEvq* operations
+ *  are exact behavioural stand-ins for XCheckMaskEvent /
+ *  XCheckTypedEvent / XCheckTypedWindowEvent / XCheckWindowEvent /
+ *  XPeekEvent / XPutBackEvent.  After the flip, drain() reads
+ *  xcb_poll_for_event() and W_CookXcbEvent() field-copies each wire
+ *  event into an XEvent so every consumer keeps its existing
+ *  signature, errors (response_type 0) go to the registered
+ *  WXEvqErrorHook instead of being enqueued.  Processes that want to
+ *  keep libX11's protocol-XIM transport (WPrefs) never call the flip
+ *  and stay on the XNextEvent path.
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -19,7 +24,16 @@
  *  version 2 of the License, or (at your option) any later version.
  */
 
+#include <stdlib.h>
+
+#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
+
 #include "WINGsP.h"
+
+/* set by WXEvqFlipToXcb(), NULL while Xlib owns the event queue */
+static xcb_connection_t *evq_conn;
+static WXEvqErrorHook *evq_error_hook;
 
 typedef struct WXEvqNode {
 	XEvent ev;
@@ -100,19 +114,85 @@ static void appendNode(WXEvqNode *n)
 	evq_tail = n;
 }
 
+void WXEvqFlipToXcb(Display *dpy)
+{
+	if (evq_conn)
+		return;
+	evq_conn = XGetXCBConnection(dpy);
+	/* from here on Xlib's _XReadEvents and _XEventsQueued return
+	 * immediately, _XReply still picks up errors for Xlib-issued
+	 * requests because xcb_io.c require_socket() passes
+	 * XCB_REQUEST_CHECKED and _XSend() tracks every sequence, so
+	 * the existing XSetErrorHandler trap brackets keep working and
+	 * Xlib never enqueues a server event behind our back */
+	XSetEventQueueOwner(dpy, XCBOwnsEventQueue);
+}
+
+Bool WXEvqXcbOwned(void)
+{
+	return evq_conn != NULL;
+}
+
+void WXEvqSetErrorHook(WXEvqErrorHook *hook)
+{
+	evq_error_hook = hook;
+}
+
 /* pull every event currently readable on the connection into the
- * internal queue, XPending flushes the output buffer and reads the
- * socket so this matches what XCheckMaskEvent and friends would have
- * buffered, the dpy==NULL case lets the unit test exercise the queue
- * operations on synthetic events with no X server */
+ * internal queue, the dpy==NULL case lets the unit test exercise the
+ * queue operations on synthetic events with no X server */
 static void drain(Display *dpy)
 {
 	WXEvqNode *n;
+	xcb_generic_event_t *xe;
 
 	if (!dpy)
 		return;
 
-	while (XPending(dpy)) {
+	if (!evq_conn) {
+		/* queue not flipped, XPending flushes the output buffer
+		 * and reads the socket so this matches what XCheckMaskEvent
+		 * and friends would have buffered */
+		while (XPending(dpy)) {
+			n = allocNode();
+			XNextEvent(dpy, &n->ev);
+			appendNode(n);
+		}
+		return;
+	}
+
+	/* flush Xlib's outgoing buffer the same way XCheckMaskEvent
+	 * would have, Xlib routes the write through the shared xcb
+	 * socket so request ordering against xcb-issued requests holds */
+	XFlush(dpy);
+
+	while ((xe = xcb_poll_for_event(evq_conn)) != NULL) {
+		if ((xe->response_type & 0x7f) == 0) {
+			/* in-stream error from an xcb-issued reply-less
+			 * request, Xlib-issued errors are still collected
+			 * by _XReply via the pending_requests list so
+			 * never reach here */
+			xcb_generic_error_t *err = (xcb_generic_error_t *)xe;
+			if (evq_error_hook)
+				(*evq_error_hook)(dpy, err->error_code,
+						  err->major_code, err->minor_code,
+						  err->resource_id, xe->full_sequence);
+			free(xe);
+			continue;
+		}
+		n = allocNode();
+		W_CookXcbEvent(dpy, xe, &n->ev);
+		appendNode(n);
+		free(xe);
+	}
+
+	/* recover anything libX11 internals XPutBackEvent()ed onto
+	 * Xlib's own queue, the @im=local compose-abort replay being
+	 * the one known producer, those are already-cooked XEvents so
+	 * append them as-is, XQLength reads dpy->qlen directly so sees
+	 * them where XPending would return 0 under XCBOwnsEventQueue,
+	 * and XNextEvent dequeues without a socket read while qlen>0 */
+	while (XQLength(dpy)) {
 		n = allocNode();
 		XNextEvent(dpy, &n->ev);
 		appendNode(n);

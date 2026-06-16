@@ -19,7 +19,11 @@
 #include <string.h>
 
 #include <X11/Xlib.h>
+#include <xcb/xcb.h>
+#include <xcb/xproto.h>
 #include <WINGs/WINGs.h>
+
+extern void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out);
 
 static int failures;
 
@@ -247,6 +251,113 @@ static void test_drop_range(void)
 	CHECK(!WXEvqPending(NULL));
 }
 
+/* ---- xcb wire-to-XEvent cooker --------------------------------------- */
+
+/* hand-roll a 36-byte xcb event (32 wire bytes + full_sequence) and
+ * verify W_CookXcbEvent fills the matching XEvent fields, this is the
+ * code path drain() takes after WXEvqFlipToXcb so getting it wrong
+ * would mis-route every event in the window manager */
+static void test_cook(void)
+{
+	xcb_generic_event_t raw;
+	XEvent o;
+
+	/* ButtonPress with the send_event bit set: detail/state/window
+	 * map to button/state/window, root/child swap to root/subwindow,
+	 * event_x/y to x/y and root_x/y to x_root/y_root */
+	xcb_button_press_event_t *bp = (xcb_button_press_event_t *)&raw;
+	memset(&raw, 0, sizeof(raw));
+	bp->response_type = XCB_BUTTON_PRESS | 0x80;
+	bp->detail = 3;
+	bp->time = 0x12345678;
+	bp->root = 0x111; bp->event = 0x222; bp->child = 0x333;
+	bp->root_x = -5; bp->root_y = 7;
+	bp->event_x = 10; bp->event_y = 20;
+	bp->state = 0x0104;
+	bp->same_screen = 1;
+	raw.full_sequence = 0xabcd1234;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.type == ButtonPress);
+	CHECK(o.xany.send_event == True);
+	CHECK(o.xany.serial == 0xabcd1234);
+	CHECK(o.xbutton.window == 0x222 && o.xany.window == 0x222);
+	CHECK(o.xbutton.root == 0x111 && o.xbutton.subwindow == 0x333);
+	CHECK(o.xbutton.x == 10 && o.xbutton.y == 20);
+	CHECK(o.xbutton.x_root == -5 && o.xbutton.y_root == 7);
+	CHECK(o.xbutton.button == 3 && o.xbutton.state == 0x0104);
+	CHECK(o.xbutton.time == 0x12345678 && o.xbutton.same_screen == True);
+
+	/* EnterNotify: same_screen and focus share one wire byte */
+	xcb_enter_notify_event_t *en = (xcb_enter_notify_event_t *)&raw;
+	memset(&raw, 0, sizeof(raw));
+	en->response_type = XCB_ENTER_NOTIFY;
+	en->detail = XCB_NOTIFY_DETAIL_INFERIOR;
+	en->mode = XCB_NOTIFY_MODE_GRAB;
+	en->event = 0x444;
+	en->same_screen_focus = 0x03;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.type == EnterNotify && !o.xany.send_event);
+	CHECK(o.xcrossing.window == 0x444);
+	CHECK(o.xcrossing.detail == NotifyInferior);
+	CHECK(o.xcrossing.mode == NotifyGrab);
+	CHECK(o.xcrossing.same_screen == True && o.xcrossing.focus == True);
+	en->same_screen_focus = 0x02;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.xcrossing.same_screen == True && o.xcrossing.focus == False);
+
+	/* ConfigureRequest: stack_mode is in the detail byte not a body
+	 * field, sibling renames to above, value_mask widens to long */
+	xcb_configure_request_event_t *cr = (xcb_configure_request_event_t *)&raw;
+	memset(&raw, 0, sizeof(raw));
+	cr->response_type = XCB_CONFIGURE_REQUEST;
+	cr->stack_mode = XCB_STACK_MODE_BELOW;
+	cr->parent = 0x10; cr->window = 0x20; cr->sibling = 0x30;
+	cr->x = -1; cr->y = -2; cr->width = 640; cr->height = 480;
+	cr->border_width = 2;
+	cr->value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_STACK_MODE;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.type == ConfigureRequest);
+	CHECK(o.xconfigurerequest.parent == 0x10 && o.xany.window == 0x10);
+	CHECK(o.xconfigurerequest.window == 0x20);
+	CHECK(o.xconfigurerequest.above == 0x30);
+	CHECK(o.xconfigurerequest.detail == Below);
+	CHECK(o.xconfigurerequest.x == -1 && o.xconfigurerequest.height == 480);
+	CHECK(o.xconfigurerequest.value_mask == (CWX | CWStackMode));
+
+	/* ClientMessage format 32: data32 is uint32_t[5], data.l is
+	 * long[5], element-wise widening must preserve all five */
+	xcb_client_message_event_t *cm = (xcb_client_message_event_t *)&raw;
+	memset(&raw, 0, sizeof(raw));
+	cm->response_type = XCB_CLIENT_MESSAGE;
+	cm->format = 32;
+	cm->window = 0x55; cm->type = 0x66;
+	cm->data.data32[0] = 0xdeadbeef;
+	cm->data.data32[4] = 0x7fffffff;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.type == ClientMessage && o.xclient.format == 32);
+	CHECK(o.xclient.window == 0x55 && o.xclient.message_type == 0x66);
+	CHECK((unsigned long)o.xclient.data.l[0] == 0xdeadbeef);
+	CHECK(o.xclient.data.l[4] == 0x7fffffff);
+
+	/* extension event: type past LASTEvent falls through to the
+	 * WXWireEvent overlay, xany.window is whatever sits at wire
+	 * offset 4 and the 32 wire bytes are copied verbatim */
+	memset(&raw, 0, sizeof(raw));
+	raw.response_type = 64;
+	raw.full_sequence = 999;
+	((unsigned char *)&raw)[1]  = 0xab;
+	((unsigned char *)&raw)[4]  = 0x21;
+	((unsigned char *)&raw)[5]  = 0x43;
+	((unsigned char *)&raw)[6]  = 0x65;
+	((unsigned char *)&raw)[7]  = 0x87;
+	((unsigned char *)&raw)[20] = 0x01;
+	W_CookXcbEvent(NULL, &raw, &o);
+	CHECK(o.type == 64 && o.xany.serial == 999);
+	CHECK(o.xany.window == 0x87654321);
+	CHECK(((WXWireEvent *)&o)->wire[1]  == 0xab);
+	CHECK(((WXWireEvent *)&o)->wire[20] == 0x01);
+}
+
 int main(void)
 {
 	test_fifo_order();
@@ -255,6 +366,7 @@ int main(void)
 	test_take_typed();
 	test_take_mask();
 	test_drop_range();
+	test_cook();
 
 	WXEvqClear();
 
