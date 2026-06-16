@@ -297,6 +297,79 @@ static void check_escaped_roundtrip(const char *label, const char *input)
 	wfree(desc);
 }
 
+static void test_merge_subtract(void)
+{
+	WMPropList *dest, *src, *want, *kc, *kn, *nest;
+
+	dest = WMCreatePropListFromDescription(
+		"{ a = 1; b = old; nest = { x = 1; y = 2; }; }");
+	src = WMCreatePropListFromDescription(
+		"{ b = new; c = 3; nest = { y = 22; z = 9; }; }");
+	CHECK(dest && src);
+	if (!dest || !src)
+		return;
+
+	CHECK(WMMergePLDictionaries(dest, src, True) == dest);
+
+	want = WMCreatePropListFromDescription(
+		"{ a = 1; b = new; c = 3; nest = { x = 1; y = 22; z = 9; }; }");
+	CHECK(want && WMIsPropListEqualTo(dest, want));
+	WMReleasePropList(want);
+
+	/* subtract removes only keys whose values match, recursing into
+	 * nested dictionaries */
+	WMSubtractPLDictionaries(dest, src, True);
+
+	kc = WMCreatePLString("c");
+	CHECK(WMGetFromPLDictionary(dest, kc) == NULL);
+
+	kn = WMCreatePLString("nest");
+	nest = WMGetFromPLDictionary(dest, kn);
+	CHECK(nest && WMGetPropListItemCount(nest) == 1);
+
+	WMReleasePropList(kc);
+	WMReleasePropList(kn);
+	WMReleasePropList(src);
+
+	/* subtracting a dictionary from itself empties it */
+	WMSubtractPLDictionaries(dest, dest, False);
+	CHECK(WMGetPropListItemCount(dest) == 0);
+
+	WMReleasePropList(dest);
+}
+
+static void test_copy_depth(void)
+{
+	WMPropList *orig, *shallow, *deep, *extra;
+
+	orig = WMCreatePropListFromDescription("(a, (b, c))");
+	CHECK(orig && WMIsPLArray(orig));
+	if (!orig)
+		return;
+
+	shallow = WMShallowCopyPropList(orig);
+	deep = WMDeepCopyPropList(orig);
+	CHECK(shallow && WMIsPropListEqualTo(orig, shallow));
+	CHECK(deep && WMIsPropListEqualTo(orig, deep));
+
+	/* shallow copy shares the inner array, deep copy does not */
+	CHECK(WMGetFromPLArray(shallow, 1) == WMGetFromPLArray(orig, 1));
+	CHECK(WMGetFromPLArray(deep, 1) != WMGetFromPLArray(orig, 1));
+
+	/* mutating the original's inner array is visible through the
+	 * shallow copy and invisible through the deep one */
+	extra = WMCreatePLString("d");
+	WMAddToPLArray(WMGetFromPLArray(orig, 1), extra);
+	WMReleasePropList(extra);
+
+	CHECK(WMGetPropListItemCount(WMGetFromPLArray(shallow, 1)) == 3);
+	CHECK(WMGetPropListItemCount(WMGetFromPLArray(deep, 1)) == 2);
+
+	WMReleasePropList(shallow);
+	WMReleasePropList(deep);
+	WMReleasePropList(orig);
+}
+
 static void test_invalid_high_byte(void)
 {
 	check_escaped_roundtrip("lone-latin1", "caf\351");
@@ -330,6 +403,8 @@ int main(void)
 	test_indented_roundtrip("{ nested = { a = (x, y); b = <0a0b 0c0d>; }; }");
 	test_indented_array_layout();
 
+	test_merge_subtract();
+	test_copy_depth();
 	test_string_escape();
 	test_utf8_roundtrip();
 	test_invalid_high_byte();
