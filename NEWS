@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Drag a file onto the dock to create a launcher
+-----------------------------------------------
+
+Dropping a single file from any XDND-capable file manager onto the
+main dock tile (or the clip tile) now creates a docked launcher in the
+next free slot, the application does not need to be running first.
+Three kinds of drop are recognised: a GNUstep .app bundle directory
+(the bundle's Info-gnustep.plist supplies the executable, the
+WM_CLASS instance and the icon), a freedesktop .desktop file (Exec,
+StartupWMClass and an absolute Icon path are read, %f/%U-style field
+codes are stripped from the command), and a plain executable file
+(the file path becomes the command, its basename the WM_CLASS).
+Anything else is ignored. The existing per-tile DropCommand behaviour
+on the other dock slots is unchanged.
+
 Window tab grouping
 -------------------
 
@@ -324,6 +339,15 @@ reads at startup and when adopting a new client are batched into a
 single server round-trip on top of this, so starting Window Maker (or
 taking over with --replace) with many existing clients is noticeably
 quicker, especially over a remote or high-latency display.
+
+The Window Maker process now also reads the X event stream over xcb
+instead of through Xlib. As a side effect, text fields owned by the
+window manager itself (the window-inspector specification fields,
+the icon-chooser file path, the workspace-rename and crash-dialog
+inputs) temporarily fall back to the local compose input method, so
+dead keys and Compose work but a running fcitx5 or ibus server is
+not consulted there. WPrefs.app, wmagnify and wmiv are separate
+processes and keep full input-method support unchanged.
 
 
 libev is now a required dependency

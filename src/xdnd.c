@@ -153,10 +153,11 @@ Bool wXDNDProcessSelection(XEvent *event)
 	if (delme) {
 		WMArray *items;
 		WMArrayIterator iter;
-		int length;
+		int length, file_count = 0;
 		size_t total_size = 0;
 		char *tmp;
 		char *out;
+		char *single_path = NULL;
 
 		scr->xdestring = delme;
 		items = WMCreateArray(4);
@@ -201,13 +202,27 @@ Bool wXDNDProcessSelection(XEvent *event)
 			/* only supporting file: URI objects */
 			if (!strncmp(tmp, "file://", 7)) {
 				wXDNDAppendQuoted(&out, &tmp[7]);
+				file_count++;
+				if (file_count == 1)
+					single_path = wstrdup(&tmp[7]);
 			}
 			wfree(tmp);
 		}
 		WMFreeArray(items);
+		/* a lone file:// path is offered to the main dock/clip tile
+		 * as a candidate launcher, multi-file drops keep going through
+		 * the per-tile DropCommand only */
+		if (file_count == 1)
+			scr->xdndpath = single_path;
+		else
+			wfree(single_path);
 		if (scr->xdestring[0])
 			wDockReceiveDNDDrop(scr, event);
 		wfree(scr->xdestring);	/* this xdestring is not from Xlib (no XFree) */
+		if (scr->xdndpath) {
+			wfree(scr->xdndpath);
+			scr->xdndpath = NULL;
+		}
 	}
 
 	return True;
@@ -253,6 +268,11 @@ static Bool acceptXDND(Window window)
 	}
 	if (icon_pos < 0)
 		return False;
+
+	/* the main dock/clip tile accepts a single dropped path so a
+	 * launcher can be created in the next free slot */
+	if (icon_pos == 0)
+		return dock->icon_count < dock->max_icons;
 
 	if (isAwareXDND(dock->icon_array[icon_pos]->icon->icon_win))
 		return False;

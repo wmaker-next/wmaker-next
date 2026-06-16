@@ -378,6 +378,7 @@ typedef struct _WScreen {
 
 #ifdef USE_DOCK_XDND
     char *xdestring;
+    char *xdndpath;                    /* single decoded file:// path for drop-to-dock */
 #endif
 
     struct NetData *netdata;

@@ -1145,13 +1145,13 @@ static void wApplicationSaveIconPathFor(const char *iconPath, const char *wm_ins
 	}
 }
 
-static WAppIcon *findDockIconFor(WDock *dock, Window main_window)
+static WAppIcon *findDockIconFor(WDock *dock, Window main_window, pid_t client_pid)
 {
 	WAppIcon *aicon = NULL;
 
 	aicon = wDockFindIconForWindow(dock, main_window);
 	if (!aicon) {
-		wDockTrackWindowLaunch(dock, main_window);
+		wDockTrackWindowLaunch(dock, main_window, client_pid);
 		aicon = wDockFindIconForWindow(dock, main_window);
 	}
 	return aicon;
@@ -1160,14 +1160,20 @@ static WAppIcon *findDockIconFor(WDock *dock, Window main_window)
 static void create_appicon_from_dock(WWindow *wwin, WApplication *wapp, Window main_window)
 {
 	WScreen *scr = wwin->screen_ptr;
+	pid_t client_pid;
+
 	wapp->app_icon = NULL;
 
+	/* main_window may be a shared_appicon fake leader owned by wmaker,
+	 * so resolve the spawning process from the actual client window */
+	client_pid = wGetWindowPid(wwin->client_win);
+
 	if (scr->last_dock)
-		wapp->app_icon = findDockIconFor(scr->last_dock, main_window);
+		wapp->app_icon = findDockIconFor(scr->last_dock, main_window, client_pid);
 
 	/* check main dock if we did not find it in last dock */
 	if (!wapp->app_icon && scr->dock)
-		wapp->app_icon = findDockIconFor(scr->dock, main_window);
+		wapp->app_icon = findDockIconFor(scr->dock, main_window, client_pid);
 
 	/* check clips */
 	if (!wapp->app_icon) {
@@ -1176,7 +1182,7 @@ static void create_appicon_from_dock(WWindow *wwin, WApplication *wapp, Window m
 			WDock *dock = scr->workspaces[i]->clip;
 
 			if (dock)
-				wapp->app_icon = findDockIconFor(dock, main_window);
+				wapp->app_icon = findDockIconFor(dock, main_window, client_pid);
 
 			if (wapp->app_icon)
 				break;
@@ -1187,7 +1193,7 @@ static void create_appicon_from_dock(WWindow *wwin, WApplication *wapp, Window m
 	if (!wapp->app_icon) {
 		WDrawerChain *dc;
 		for (dc = scr->drawers; dc != NULL; dc = dc->next) {
-			wapp->app_icon = findDockIconFor(dc->adrawer, main_window);
+			wapp->app_icon = findDockIconFor(dc->adrawer, main_window, client_pid);
 			if (wapp->app_icon)
 				break;
 		}

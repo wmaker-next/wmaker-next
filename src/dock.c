@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include <WINGs/WUtil.h>
 
@@ -2063,6 +2064,265 @@ void wDockDoAutoLaunch(WDock *dock, int workspace)
 }
 
 #ifdef USE_DOCK_XDND
+static char *launcherExecBasename(const char *exec)
+{
+	const char *p = exec;
+	const char *start, *end, *slash;
+	char *out;
+
+	while (*p == ' ' || *p == '\t')
+		p++;
+	start = p;
+	while (*p && *p != ' ' && *p != '\t')
+		p++;
+	end = p;
+	if (start == end)
+		return NULL;
+	slash = end;
+	while (slash > start && slash[-1] != '/')
+		slash--;
+	if (slash == end)
+		return NULL;
+	out = wmalloc(end - slash + 1);
+	memcpy(out, slash, end - slash);
+	out[end - slash] = 0;
+	return out;
+}
+
+static void launcherStripDesktopExec(char *exec)
+{
+	char *src = exec, *dst = exec;
+
+	/* drop freedesktop %f/%F/%u/%U/%i/%c/%k field codes, keep %% as % */
+	while (*src) {
+		if (*src == '%' && src[1]) {
+			if (src[1] == '%')
+				*dst++ = '%';
+			src += 2;
+			continue;
+		}
+		*dst++ = *src++;
+	}
+	*dst = 0;
+	while (dst > exec && (dst[-1] == ' ' || dst[-1] == '\t'))
+		*--dst = 0;
+}
+
+static Bool launcherReadDesktopFile(const char *path, char **command,
+				    char **instance, char **class, char **icon)
+{
+	FILE *fp;
+	char line[4096];
+	char *exec = NULL, *icon_val = NULL, *wmclass = NULL;
+	int in_section = 0;
+
+	fp = fopen(path, "r");
+	if (!fp)
+		return False;
+
+	while (fgets(line, sizeof(line), fp)) {
+		char *eol = strpbrk(line, "\r\n");
+		if (eol)
+			*eol = 0;
+		if (line[0] == '#' || line[0] == 0)
+			continue;
+		if (line[0] == '[') {
+			if (in_section)
+				break;
+			if (strcmp(line, "[Desktop Entry]") == 0)
+				in_section = 1;
+			continue;
+		}
+		if (!in_section)
+			continue;
+		if (!exec && strncmp(line, "Exec=", 5) == 0)
+			exec = wstrdup(line + 5);
+		else if (!icon_val && strncmp(line, "Icon=", 5) == 0)
+			icon_val = wstrdup(line + 5);
+		else if (!wmclass && strncmp(line, "StartupWMClass=", 15) == 0)
+			wmclass = wstrdup(line + 15);
+	}
+	fclose(fp);
+
+	if (!exec || !exec[0]) {
+		wfree(exec);
+		wfree(icon_val);
+		wfree(wmclass);
+		return False;
+	}
+
+	launcherStripDesktopExec(exec);
+	*command = exec;
+	*instance = launcherExecBasename(exec);
+	*class = wmclass;
+	if (!*class && *instance)
+		*class = wstrdup(*instance);
+	*icon = NULL;
+	if (icon_val) {
+		/* only keep absolute icon paths, theme-name lookups would
+		 * pull in the freedesktop icon spec which we do not carry */
+		if (icon_val[0] == '/' && access(icon_val, R_OK) == 0)
+			*icon = icon_val;
+		else
+			wfree(icon_val);
+	}
+	return True;
+}
+
+static char *launcherPlistString(WMPropList *plist, const char *key)
+{
+	WMPropList *pkey, *value;
+	char *out = NULL;
+
+	pkey = WMCreatePLString(key);
+	value = WMGetFromPLDictionary(plist, pkey);
+	WMReleasePropList(pkey);
+	if (value && WMIsPLString(value))
+		out = wstrdup(WMGetFromPLString(value));
+	return out;
+}
+
+static Bool launcherReadAppBundle(const char *path, const char *base,
+				  char **command, char **instance,
+				  char **class, char **icon)
+{
+	char buf[PATH_MAX];
+	WMPropList *plist;
+	char *executable = NULL, *icon_name = NULL;
+	size_t len;
+
+	snprintf(buf, sizeof(buf), "%s/Resources/Info-gnustep.plist", path);
+	plist = WMReadPropListFromFile(buf);
+	if (plist && WMIsPLDictionary(plist)) {
+		executable = launcherPlistString(plist, "NSExecutable");
+		icon_name = launcherPlistString(plist, "NSIcon");
+	}
+	if (plist)
+		WMReleasePropList(plist);
+
+	if (!executable) {
+		/* fall back to the bundle name without the .app suffix */
+		len = strlen(base);
+		if (len > 4)
+			len -= 4;
+		executable = wmalloc(len + 1);
+		memcpy(executable, base, len);
+		executable[len] = 0;
+	}
+
+	snprintf(buf, sizeof(buf), "%s/%s", path, executable);
+	if (access(buf, X_OK) != 0) {
+		wfree(executable);
+		wfree(icon_name);
+		return False;
+	}
+
+	*command = wshellquote(buf);
+	*instance = executable;
+	*class = wstrdup("GNUstep");
+	*icon = NULL;
+	if (icon_name) {
+		snprintf(buf, sizeof(buf), "%s/Resources/%s", path, icon_name);
+		if (access(buf, R_OK) == 0)
+			*icon = wstrdup(buf);
+		wfree(icon_name);
+	}
+	return True;
+}
+
+static Bool dockFindFreeYSlot(WDock *dock, int *y_pos)
+{
+	WScreen *scr = dock->screen_ptr;
+	int d, i, y, sign;
+
+	for (d = 1; d < dock->max_icons; d++) {
+		for (sign = 1; sign >= -1; sign -= 2) {
+			y = sign * d;
+			for (i = 0; i < dock->max_icons; i++) {
+				if (dock->icon_array[i] &&
+				    dock->icon_array[i]->yindex == y)
+					break;
+			}
+			if (i < dock->max_icons)
+				continue;
+			if (!onScreen(scr, dock->x_pos, dock->y_pos + y * ICON_SIZE))
+				continue;
+			*y_pos = y;
+			return True;
+		}
+	}
+	return False;
+}
+
+static Bool dockLauncherFromDrop(WDock *dock, const char *path)
+{
+	WScreen *scr = dock->screen_ptr;
+	WAppIcon *aicon;
+	struct stat st;
+	const char *base;
+	char *command = NULL, *instance = NULL, *class = NULL, *icon = NULL;
+	size_t blen;
+	int x = 0, y = 0;
+	Bool got = False;
+
+	if (dock->icon_count >= dock->max_icons)
+		return False;
+
+	if (stat(path, &st) != 0)
+		return False;
+
+	base = strrchr(path, '/');
+	base = base ? base + 1 : path;
+	blen = strlen(base);
+
+	if (S_ISDIR(st.st_mode) && blen > 4 && strcmp(base + blen - 4, ".app") == 0) {
+		got = launcherReadAppBundle(path, base, &command, &instance, &class, &icon);
+	} else if (S_ISREG(st.st_mode) && blen > 8 && strcmp(base + blen - 8, ".desktop") == 0) {
+		got = launcherReadDesktopFile(path, &command, &instance, &class, &icon);
+	} else if (S_ISREG(st.st_mode) && access(path, X_OK) == 0) {
+		command = wshellquote(path);
+		instance = wstrdup(base);
+		class = wstrdup(base);
+		got = True;
+	}
+
+	if (!got || !command)
+		return False;
+
+	if (dock->type == WM_DOCK) {
+		if (!dockFindFreeYSlot(dock, &y))
+			got = False;
+	} else {
+		if (!wDockFindFreeSlot(dock, &x, &y))
+			got = False;
+	}
+
+	if (!got) {
+		wfree(command);
+		wfree(instance);
+		wfree(class);
+		wfree(icon);
+		return False;
+	}
+
+	/* register the icon before creating the appicon so the dock tile
+	 * picks it up from WMWindowAttributes on first paint */
+	if (icon && (instance || class))
+		wDefaultChangeIcon(instance, class, icon);
+
+	aicon = wAppIconCreateForDock(scr, command, instance, class, TILE_NORMAL);
+	wDockAttachIcon(dock, aicon, x, y, True);
+	aicon->running = 0;
+	XMapWindow(dpy, aicon->icon->core->window);
+	wAppIconPaint(aicon);
+
+	wfree(command);
+	wfree(instance);
+	wfree(class);
+	wfree(icon);
+	return True;
+}
+
 static WDock *findDock(WScreen *scr, XEvent *event, int *icon_pos)
 {
 	WDock *dock;
@@ -2103,6 +2363,15 @@ int wDockReceiveDNDDrop(WScreen *scr, XEvent *event)
 	dock = findDock(scr, event, &icon_pos);
 	if (!dock)
 		return False;
+
+	/* a single file dropped on the main dock or clip tile is treated
+	 * as a request to dock that application, the path is classified
+	 * as a .app bundle, a .desktop entry or a plain executable */
+	if (icon_pos == 0) {
+		if (scr->xdndpath)
+			dockLauncherFromDrop(dock, scr->xdndpath);
+		return False;
+	}
 
 	/*
 	 * Return True if the drop was on an application icon window.
@@ -3259,9 +3528,10 @@ WAppIcon *wDockFindIconForWindow(WDock *dock, Window window)
 	return NULL;
 }
 
-void wDockTrackWindowLaunch(WDock *dock, Window window)
+void wDockTrackWindowLaunch(WDock *dock, Window window, pid_t client_pid)
 {
 	WAppIcon *icon;
+	WApplication *wapp;
 	char *wm_class, *wm_instance;
 	int i;
 	Bool firstPass = True;
@@ -3300,8 +3570,6 @@ void wDockTrackWindowLaunch(WDock *dock, Window window)
 				continue;
 
 			if (!icon->relaunching) {
-				WApplication *wapp;
-
 				/* Possibly an application that was docked with dockit,
 				 * but the user did not update WMState to indicate that
 				 * it was docked by force */
@@ -3344,6 +3612,33 @@ void wDockTrackWindowLaunch(WDock *dock, Window window)
 	if (firstPass && !found) {
 		firstPass = False;
 		goto retry;
+	}
+
+	/* pid fallback for tiles whose recorded class cannot match the
+	 * window, typically launchers created from a .desktop drop without
+	 * StartupWMClass= where the class was synthesized from the Exec
+	 * basename, only consider tiles we just launched ourselves so a
+	 * generic toolkit class cannot capture an unrelated tile, the pid
+	 * must come from the mapped client because window may be a
+	 * shared_appicon fake group leader owned by wmaker itself */
+	for (i = 0; !found && client_pid > 0 && i < dock->max_icons; i++) {
+		icon = dock->icon_array[i];
+		if (!icon || !icon->launching || icon->pid <= 0)
+			continue;
+		if (icon->pid != client_pid)
+			continue;
+		if (!icon->relaunching) {
+			wapp = wApplicationOf(window);
+			if (!wapp) {
+				icon->forced_dock = 1;
+				icon->running = 0;
+			}
+			if (!icon->forced_dock)
+				icon->main_window = window;
+		}
+		found = True;
+		wDockFinishLaunch(icon);
+		break;
 	}
 
 	if (command)

@@ -712,10 +712,12 @@ static void handleMapRequest(XEvent * ev)
 	 * apps that were forcedly docked (like with dockit).
 	 */
 	if (scr->last_dock) {
+		pid_t client_pid = wGetWindowPid(wwin ? wwin->client_win : window);
+
 		if (wwin && wwin->main_window != None && wwin->main_window != window)
-			wDockTrackWindowLaunch(scr->last_dock, wwin->main_window);
+			wDockTrackWindowLaunch(scr->last_dock, wwin->main_window, client_pid);
 		else
-			wDockTrackWindowLaunch(scr->last_dock, window);
+			wDockTrackWindowLaunch(scr->last_dock, window, client_pid);
 	}
 
 	if (wwin) {
