@@ -56,7 +56,7 @@
 #include "config-schema.h"
 #include "wconfigmodel.h"
 #include "keybind.h"
-#include "xmodifier.h"
+#include "wxkb.h"
 #include "icon.h"
 #include "main.h"
 #include "actions.h"
@@ -964,13 +964,13 @@ static Bool parseOneKey(const char *key, const char *token,
 		b = k + 1;
 	}
 
-	ksym = XStringToKeysym(b);
+	ksym = wXkbKeysymFromName(b);
 	if (ksym == NoSymbol) {
 		wwarning(_("%s: invalid kbd shortcut specification \"%s\""), key, token);
 		return False;
 	}
 
-	*out_code = XKeysymToKeycode(dpy, ksym);
+	*out_code = wXkbKeysymToKeycode(ksym);
 	if (*out_code == 0) {
 		wwarning(_("%s: invalid key in shortcut \"%s\""), key, token);
 		return False;

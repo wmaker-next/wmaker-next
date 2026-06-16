@@ -31,6 +31,7 @@
 #include "screen.h"
 #include "window.h"
 #include "misc.h"
+#include "wxkb.h"
 #include "workspace.h"
 #include "wsmap.h"
 
@@ -430,7 +431,7 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 {
 	XEvent ev;
 	int modifiers;
-	KeyCode escKey = XKeysymToKeycode(dpy, XK_Escape);
+	KeyCode escKey = wXkbKeysymToKeycode(XK_Escape);
 
 	XGrabKeyboard(dpy, WMWidgetXID(wsmap->win), False, GrabModeAsync, GrabModeAsync, CurrentTime);
 	XGrabPointer(dpy, WMWidgetXID(wsmap->win), True,
@@ -454,10 +455,8 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 			                                  wKeyBindings[WKBD_WORKSPACEMAP].modifier == modifiers)) {
 				w_global.process_workspacemap_event = False;
 			} else {
-				char key_buf[16];
-				KeySym ks;
+				KeySym ks = wXkbKeycodeToKeysym(ev.xkey.keycode, 0);
 
-				XLookupString(&ev.xkey, key_buf, sizeof(key_buf), &ks, NULL);
 				if (ks == XK_Left)
 					wWorkspaceDirectionalChange(wsmap->scr, -1, 0);
 				else if (ks == XK_Right)

@@ -27,11 +27,6 @@
 #ifdef USE_XSHAPE
 #include <X11/extensions/shape.h>
 #endif
-#ifdef KEEP_XKB_LOCK_STATUS
-#include <X11/XKBlib.h>
-#include <X11/Xlib-xcb.h>
-#include <xcb/xkb.h>
-#endif	  /* KEEP_XKB_LOCK_STATUS */
 #ifdef USE_XRES
 #include <X11/extensions/XRes.h>
 #endif
@@ -71,6 +66,7 @@
 #include "placement.h"
 #include "misc.h"
 #include "startup.h"
+#include "wxkb.h"
 #include "tabgroup.h"
 #include "winmenu.h"
 #include "osdep.h"
@@ -3821,36 +3817,6 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, XEvent *event)
 	}
 }
 
-#ifdef KEEP_XKB_LOCK_STATUS
-/* lock the effective keyboard group, equivalent to XkbLockGroup with
- * lockGroup=1 and every other LatchLockState field cleared, the request
- * has no reply so any error surfaces through the WXEvqErrorHook */
-void wXkbLockGroup(int group)
-{
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
-
-	xcb_xkb_latch_lock_state(xc, XCB_XKB_ID_USE_CORE_KBD,
-				 0, 0, 1, group, 0, 0, 0);
-	xcb_flush(xc);
-}
-
-/* current effective keyboard group, -1 if the round-trip failed */
-int wXkbGetGroup(void)
-{
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
-	xcb_xkb_get_state_reply_t *r;
-	int group;
-
-	r = xcb_xkb_get_state_reply(xc,
-			xcb_xkb_get_state(xc, XCB_XKB_ID_USE_CORE_KBD), NULL);
-	if (!r)
-		return -1;
-	group = r->group;
-	free(r);
-	return group;
-}
-#endif /* KEEP_XKB_LOCK_STATUS */
-
 #ifdef XKB_BUTTON_HINT
 /* Helper function to extract the 2-letter language code for a given XKB group index */
 void wWindowGetLanguageLabel(int group_index, char *label)
@@ -3909,25 +3875,18 @@ static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event)
 		return;
 	tl = wwin->frame->languagemode;
 
-	/* Try to advance to the next available XKB group */
-	XkbDescPtr desc = XkbGetKeyboard(dpy, XkbAllComponentsMask, XkbUseCoreKbd);
+	/* advance to the next configured XKB layout, the keymap loaded by
+	 * wXkbInit() already knows how many groups exist and their names
+	 * so this is a local lookup with no round-trip */
+	int n = wXkbNumLayouts();
 	int newgroup = -1;
-	if (desc && desc->names) {
+	if (n > 1) {
 		int i;
-		const int MAX_GROUPS = 4; /* typical XKB max groups */
-		for (i = 1; i <= MAX_GROUPS; i++) {
-			int cand = (tl + i) % MAX_GROUPS;
-			Atom a = desc->names->groups[cand];
-			if (a != None) {
-				/* Use XGetAtomName to ensure the atom actually has a name */
-				char *nm = XGetAtomName(dpy, a);
-				if (nm && nm[0] != '\0') {
-					newgroup = cand;
-					XFree(nm);
-					break;
-				}
-				if (nm)
-					XFree(nm);
+		for (i = 1; i <= n; i++) {
+			int cand = (tl + i) % n;
+			if (wXkbLayoutName(cand)) {
+				newgroup = cand;
+				break;
 			}
 		}
 	}
@@ -3937,8 +3896,8 @@ static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event)
 		wwin->frame->languagemode = newgroup;
 		wXkbLockGroup(wwin->frame->languagemode);
 	} else {
-		/* fallback to previous toggle behaviour for setups with only two
-		 * groups or when group info is not available */
+		/* fallback to previous toggle behaviour for setups with only
+		 * one group or when group info is not available */
 		wwin->frame->languagemode = wwin->frame->last_languagemode;
 		wwin->frame->last_languagemode = tl;
 		wXkbLockGroup(wwin->frame->languagemode);

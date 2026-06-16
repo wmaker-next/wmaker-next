@@ -328,14 +328,17 @@ HotplugMonitor "xrandr --auto" path, so head detection at startup and
 on a passive layout change no longer issues a request per output.
 
 
-xcb is now a required dependency
---------------------------------
+xcb and xkbcommon are now required dependencies
+------------------------------------------------
 
 libWINGs now issues all window-property and ICCCM hint requests over
-xcb, sharing the existing X connection via x11-xcb. The pkg-config
-modules xcb, xcb-icccm, x11-xcb, xcb-randr, xcb-shape, xcb-sync and
-xcb-xkb must be present at build time, and there is no configure
-switch to disable this. Per-window property
+xcb, sharing the existing X connection via x11-xcb, and the window
+manager loads the keyboard map through libxkbcommon so it tracks
+layout, level and modifier changes from XKB events instead of the
+libX11 cache. The pkg-config modules xcb, xcb-icccm, x11-xcb,
+xcb-randr, xcb-shape, xcb-sync, xcb-xkb, xkbcommon and xkbcommon-x11
+must be present at build time, and there is no configure switch to
+disable this. Per-window property
 reads at startup and when adopting a new client are batched into a
 single server round-trip on top of this, so starting Window Maker (or
 taking over with --replace) with many existing clients is noticeably

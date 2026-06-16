@@ -32,6 +32,7 @@
 #include "framewin.h"
 #include "keybind.h"
 #include "actions.h"
+#include "wxkb.h"
 #include "stacking.h"
 #include "cycling.h"
 #include "tabgroup.h"
@@ -88,14 +89,14 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 	WShortKey binding;
 	WSwitchPanel    *swpanel       = NULL;
 	WScreen         *scr           = wScreenForRootWindow(event->xkey.root);
-	KeyCode         leftKey        = XKeysymToKeycode(dpy, XK_Left);
-	KeyCode         rightKey       = XKeysymToKeycode(dpy, XK_Right);
-	KeyCode         homeKey        = XKeysymToKeycode(dpy, XK_Home);
-	KeyCode         endKey         = XKeysymToKeycode(dpy, XK_End);
-	KeyCode         shiftLKey      = XKeysymToKeycode(dpy, XK_Shift_L);
-	KeyCode         shiftRKey      = XKeysymToKeycode(dpy, XK_Shift_R);
-	KeyCode         escapeKey      = XKeysymToKeycode(dpy, XK_Escape);
-	KeyCode         returnKey      = XKeysymToKeycode(dpy, XK_Return);
+	KeyCode         leftKey        = wXkbKeysymToKeycode(XK_Left);
+	KeyCode         rightKey       = wXkbKeysymToKeycode(XK_Right);
+	KeyCode         homeKey        = wXkbKeysymToKeycode(XK_Home);
+	KeyCode         endKey         = wXkbKeysymToKeycode(XK_End);
+	KeyCode         shiftLKey      = wXkbKeysymToKeycode(XK_Shift_L);
+	KeyCode         shiftRKey      = wXkbKeysymToKeycode(XK_Shift_R);
+	KeyCode         escapeKey      = wXkbKeysymToKeycode(XK_Escape);
+	KeyCode         returnKey      = wXkbKeysymToKeycode(XK_Return);
 	Bool            esc_cancel     = False;
 	Bool            somethingElse  = False;
 	Bool            done           = False;

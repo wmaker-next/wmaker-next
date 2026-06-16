@@ -21,9 +21,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#ifdef KEEP_XKB_LOCK_STATUS
-#include <X11/XKBlib.h>
-#endif				/* KEEP_XKB_LOCK_STATUS */
 
 #include <stdlib.h>
 #include <string.h>
@@ -416,8 +413,8 @@ WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 	fwin->title_color = color;
 	fwin->font = font;
 #ifdef KEEP_XKB_LOCK_STATUS
-	fwin->languagemode = XkbGroup1Index;
-	fwin->last_languagemode = XkbGroup2Index;
+	fwin->languagemode = 0;
+	fwin->last_languagemode = 1;
 	wWindowGetLanguageLabel(fwin->languagemode, fwin->language_label);
 #endif
 

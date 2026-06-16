@@ -72,7 +72,7 @@
 #include "menu.h"
 #include "actions.h"
 #include "keybind.h"
-#include "xmodifier.h"
+#include "wxkb.h"
 #include "misc.h"
 
 #include "framewin.h"
@@ -169,11 +169,11 @@ static WUserMenuData *convertShortcuts(WScreen *scr, WMPropList *shortcut)
 			b = k + 1;
 		}
 
-		ksym = XStringToKeysym(b);
+		ksym = wXkbKeysymFromName(b);
 		if (ksym == NoSymbol)
 			continue;
 
-		data->key[j].keycode = XKeysymToKeycode(dpy, ksym);
+		data->key[j].keycode = wXkbKeysymToKeycode(ksym);
 		if (data->key[j].keycode)
 			j++;
 	}

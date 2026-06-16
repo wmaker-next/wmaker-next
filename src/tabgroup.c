@@ -26,6 +26,7 @@
 #include "client.h"
 #include "main.h"
 #include "misc.h"
+#include "wxkb.h"
 #include "stacking.h"
 #include "event.h"
 #include "icon.h"
@@ -898,7 +899,7 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 			done = True;
 			break;
 		case KeyPress:
-			ks = XLookupKeysym(&ev.xkey, 0);
+			ks = wXkbKeycodeToKeysym(ev.xkey.keycode, 0);
 			if (ks == XK_Escape) {
 				cancelled = True;
 				done = True;
@@ -1239,7 +1240,7 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 			break;
 
 		case KeyPress:
-			ks = XLookupKeysym(&event.xkey, 0);
+			ks = wXkbKeycodeToKeysym(event.xkey.keycode, 0);
 			if (ks == XK_Escape) {
 				cancelled = True;
 				done = True;

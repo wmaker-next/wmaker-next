@@ -34,8 +34,6 @@
 #include <time.h>
 #include <errno.h>
 
-#include <X11/XKBlib.h>
-
 #include <WINGs/WUtil.h>
 #include <WINGs/WINGsP.h>
 #include <wraster.h>
@@ -50,7 +48,7 @@
 #include "framewin.h"
 #include "dialog.h"
 #include "xutil.h"
-#include "xmodifier.h"
+#include "wxkb.h"
 #include "main.h"
 #include "event.h"
 #include "shutdown.h"
@@ -776,31 +774,6 @@ void ParseWindowName(WMPropList *value, char **winstance, char **wclass, const c
 	UnescapeWM_CLASS(name, winstance, wclass);
 }
 
-#if 0
-static char *keysymToString(KeySym keysym, unsigned int state)
-{
-	XKeyEvent kev;
-	char *buf = wmalloc(20);
-	int count;
-
-	kev.display = dpy;
-	kev.type = KeyPress;
-	kev.send_event = False;
-	kev.window = DefaultRootWindow(dpy);
-	kev.root = DefaultRootWindow(dpy);
-	kev.same_screen = True;
-	kev.subwindow = kev.root;
-	kev.serial = 0x12344321;
-	kev.time = CurrentTime;
-	kev.state = state;
-	kev.keycode = XKeysymToKeycode(dpy, keysym);
-	count = XLookupString(&kev, buf, 19, NULL, NULL);
-	buf[count] = 0;
-
-	return buf;
-}
-#endif
-
 Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, size_t bufsz)
 {
 	static const struct { unsigned int mask; const char *name; } mt[] = {
@@ -813,10 +786,10 @@ Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, s
 		{ Mod5Mask,    "Mod5+"    },
 		{ 0, NULL }
 	};
-	const char *kname = XKeysymToString(ksym);
+	char kname[64];
 	size_t i;
 
-	if (!kname)
+	if (wXkbKeysymName(ksym, kname, sizeof(kname)) < 0)
 		return False;
 
 	buf[0] = '\0';
@@ -865,7 +838,7 @@ char *GetShortcutLabelForKeycode(unsigned int modifiers, KeyCode keycode)
 {
 	char buf[MAX_SHORTCUT_LENGTH];
 
-	if (!GetCanonicalShortcutLabel(modifiers, W_KeycodeToKeysym(dpy, keycode, 0),
+	if (!GetCanonicalShortcutLabel(modifiers, wXkbKeycodeToKeysym(keycode, 0),
 				       buf, sizeof(buf)))
 		return NULL;
 
@@ -879,7 +852,7 @@ char *GetShortcutKey(WShortKey key)
 	int step;
 
 	if (!GetCanonicalShortcutLabel(key.modifier,
-				       W_KeycodeToKeysym(dpy, key.keycode, 0),
+				       wXkbKeycodeToKeysym(key.keycode, 0),
 				       buf, sizeof(buf)))
 		return NULL;
 
@@ -894,7 +867,7 @@ char *GetShortcutKey(WShortKey key)
 			break;
 
 		if (!GetCanonicalShortcutLabel(key.chain_modifiers[step],
-					       W_KeycodeToKeysym(dpy, key.chain_keycodes[step], 0),
+					       wXkbKeycodeToKeysym(key.chain_keycodes[step], 0),
 					       buf, sizeof(buf)))
 			break;
 

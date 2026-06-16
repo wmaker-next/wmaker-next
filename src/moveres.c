@@ -35,6 +35,7 @@
 #include "icon.h"
 #include "dock.h"
 #include "actions.h"
+#include "wxkb.h"
 #include "workspace.h"
 #include "placement.h"
 
@@ -1366,8 +1367,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 
-	shiftl = XKeysymToKeycode(dpy, XK_Shift_L);
-	shiftr = XKeysymToKeycode(dpy, XK_Shift_R);
+	shiftl = wXkbKeysymToKeycode(XK_Shift_L);
+	shiftr = wXkbKeysymToKeycode(XK_Shift_R);
 	ctrlmode = done = off_x = off_y = 0;
 
 	if (modes == RESIZABLE_BIT) {
@@ -1450,7 +1451,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 					cyclePositionDisplay(wwin, src_x + off_x, src_y + off_y, ww, wh);
 			} else {
 
-				keysym = XLookupKeysym(&event.xkey, 0);
+				keysym = wXkbKeycodeToKeysym(event.xkey.keycode, 0);
 				switch (keysym) {
 				case XK_Return:
 #ifdef XK_KP_Enter
@@ -1724,8 +1725,8 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 		/* this window is not selected, unselect others and move only wwin */
 		wUnselectWindows(scr);
 	}
-	shiftl = XKeysymToKeycode(dpy, XK_Shift_L);
-	shiftr = XKeysymToKeycode(dpy, XK_Shift_R);
+	shiftl = wXkbKeysymToKeycode(XK_Shift_L);
+	shiftr = wXkbKeysymToKeycode(XK_Shift_R);
 	while (!done) {
 		if (warped) {
 			int junk;
@@ -2177,8 +2178,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	rx2 = fx + fw - 1;
 	ry1 = fy;
 	ry2 = fy + fh - 1;
-	shiftl = XKeysymToKeycode(dpy, XK_Shift_L);
-	shiftr = XKeysymToKeycode(dpy, XK_Shift_R);
+	shiftl = wXkbKeysymToKeycode(XK_Shift_L);
+	shiftr = wXkbKeysymToKeycode(XK_Shift_R);
 
 	if (wwin->moveresize.active) {
 		int direction = wwin->moveresize.resize_edge;
@@ -2571,8 +2572,8 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 
 	showResizeWireframe(wwin, x - width / 2, y - h / 2, width, height);
 
-	shiftl = XKeysymToKeycode(dpy, XK_Shift_L);
-	shiftr = XKeysymToKeycode(dpy, XK_Shift_R);
+	shiftl = wXkbKeysymToKeycode(XK_Shift_L);
+	shiftr = wXkbKeysymToKeycode(XK_Shift_R);
 	while (1) {
 		WMMaskEvent(dpy, PointerMotionMask | ButtonPressMask | ExposureMask | KeyPressMask, &event);
 

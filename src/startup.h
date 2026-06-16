@@ -23,15 +23,4 @@
 
 void StartUp(Bool defaultScreenOnly);
 
-void wHackedGrabButton(unsigned int button, unsigned int modifiers,
-		       Window grab_window, Bool owner_events,
-		       unsigned int event_mask, int pointer_mode,
-		       int keyboard_mode, Window confine_to, Cursor cursor);
-
-#ifdef NUMLOCK_HACK
-void wHackedGrabKey(int keycode, unsigned int modifiers,
-		    Window grab_window, Bool owner_events, int pointer_mode,
-		    int keyboard_mode);
-#endif
-
 #endif /* WMSTARTUP_H */

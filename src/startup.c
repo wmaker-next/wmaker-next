@@ -37,14 +37,11 @@
 #include <WINGs/WXHints.h>
 #include <X11/cursorfont.h>
 #include <X11/Xproto.h>
-#include <X11/keysym.h>
 #include <X11/Xlib-xcb.h>
 #ifdef USE_XSHAPE
 #include <X11/extensions/shape.h>
 #include <xcb/shape.h>
 #endif
-#include <X11/XKBlib.h>
-#include <xcb/xkb.h>
 #ifdef USE_RANDR
 #include <X11/extensions/Xrandr.h>
 #include <xcb/randr.h>
@@ -76,6 +73,7 @@
 #include "event.h"
 #include "hotcorner.h"
 #include "ipc.h"
+#include "wxkb.h"
 #include "switchmenu.h"
 #include "tabgroup.h"
 #include "wconfigmodel.h"
@@ -97,8 +95,6 @@
 
 /***** Local *****/
 static WScreen **wScreen = NULL;
-static unsigned int _NumLockMask = 0;
-static unsigned int _ScrollLockMask = 0;
 static void manageAllWindows(WScreen * scr, int crashed);
 
 static int catchXError(Display * dpy, XErrorEvent * error)
@@ -256,115 +252,6 @@ static RETSIGTYPE buryChild(int foo)
 	errno = save_errno;
 }
 
-static void getOffendingModifiers(void)
-{
-	int i;
-	XModifierKeymap *modmap;
-	KeyCode nlock, slock;
-	static int mask_table[8] = {
-		ShiftMask, LockMask, ControlMask, Mod1Mask,
-		Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
-	};
-
-	nlock = XKeysymToKeycode(dpy, XK_Num_Lock);
-	slock = XKeysymToKeycode(dpy, XK_Scroll_Lock);
-
-	/*
-	 * Find out the masks for the NumLock and ScrollLock modifiers,
-	 * so that we can bind the grabs for when they are enabled too.
-	 */
-	modmap = XGetModifierMapping(dpy);
-
-	if (modmap != NULL && modmap->max_keypermod > 0) {
-		for (i = 0; i < 8 * modmap->max_keypermod; i++) {
-			if (modmap->modifiermap[i] == nlock && nlock != 0)
-				_NumLockMask = mask_table[i / modmap->max_keypermod];
-			else if (modmap->modifiermap[i] == slock && slock != 0)
-				_ScrollLockMask = mask_table[i / modmap->max_keypermod];
-		}
-	}
-
-	if (modmap)
-		XFreeModifiermap(modmap);
-}
-
-#ifdef NUMLOCK_HACK
-void
-wHackedGrabKey(int keycode, unsigned int modifiers,
-	       Window grab_window, Bool owner_events, int pointer_mode, int keyboard_mode)
-{
-	if (modifiers == AnyModifier)
-		return;
-
-	/* grab all combinations of the modifier with CapsLock, NumLock and
-	 * ScrollLock. How much memory/CPU does such a monstrosity consume
-	 * in the server?
-	 */
-	if (_NumLockMask)
-		XGrabKey(dpy, keycode, modifiers | _NumLockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	if (_ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | _ScrollLockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	if (_NumLockMask && _ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | _NumLockMask | _ScrollLockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	if (_NumLockMask)
-		XGrabKey(dpy, keycode, modifiers | _NumLockMask | LockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	if (_ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | _ScrollLockMask | LockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	if (_NumLockMask && _ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | _NumLockMask | _ScrollLockMask | LockMask,
-			 grab_window, owner_events, pointer_mode, keyboard_mode);
-	/* phew, I guess that's all, right? */
-}
-#endif
-
-void
-wHackedGrabButton(unsigned int button, unsigned int modifiers,
-		  Window grab_window, Bool owner_events,
-		  unsigned int event_mask, int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor)
-{
-	XGrabButton(dpy, button, modifiers, grab_window, owner_events,
-		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
-
-	if (modifiers == AnyModifier)
-		return;
-
-	XGrabButton(dpy, button, modifiers | LockMask, grab_window, owner_events,
-		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
-
-#ifdef NUMLOCK_HACK
-	/* same as above, but for mouse buttons */
-	if (_NumLockMask)
-		XGrabButton(dpy, button, modifiers | _NumLockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-	if (_ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | _ScrollLockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-	if (_NumLockMask && _ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | _ScrollLockMask | _NumLockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-	if (_NumLockMask)
-		XGrabButton(dpy, button, modifiers | _NumLockMask | LockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-	if (_ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | _ScrollLockMask | LockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-	if (_NumLockMask && _ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | _ScrollLockMask | _NumLockMask | LockMask,
-			    grab_window, owner_events, event_mask, pointer_mode,
-			    keyboard_mode, confine_to, cursor);
-#endif				/* NUMLOCK_HACK */
-}
-
 WScreen *wScreenWithNumber(int i)
 {
 	assert(i < w_global.screen_count);
@@ -462,7 +349,6 @@ void StartUp(Bool defaultScreenOnly)
 	Atom atom[wlengthof(atomNames)];
 	xcb_connection_t *xc = XGetXCBConnection(dpy);
 	const xcb_query_extension_reply_t *xer;
-	xcb_xkb_use_extension_reply_t *xkbr;
 #ifdef USE_XSYNC
 	xcb_sync_initialize_reply_t *syncr;
 #endif
@@ -470,17 +356,6 @@ void StartUp(Bool defaultScreenOnly)
 	xcb_randr_query_version_reply_t *rrr = NULL;
 	uint32_t rr_major = 0, rr_minor = 0;
 #endif
-
-	/*
-	 * Ignore CapsLock in modifiers
-	 */
-	w_global.shortcut.modifiers_mask = 0xff & ~LockMask;
-
-	getOffendingModifiers();
-	/*
-	 * Ignore NumLock and ScrollLock too
-	 */
-	w_global.shortcut.modifiers_mask &= ~(_NumLockMask | _ScrollLockMask);
 
 	/* No active key chain at startup */
 	w_global.shortcut.curpos = NULL;
@@ -642,10 +517,10 @@ void StartUp(Bool defaultScreenOnly)
 	XSetErrorHandler((XErrorHandler) catchXError);
 	WXEvqSetErrorHook(wHandleXcbError);
 
-	/* prefetch all four QueryExtension probes so they fly in one
-	 * round-trip, then collect first_event from the cached replies and
-	 * negotiate versions, the cached reply is owned by xcb so do not
-	 * free xer */
+	/* prefetch the QueryExtension probes so they fly in one round-trip,
+	 * then collect first_event from the cached replies and negotiate
+	 * versions, the cached reply is owned by xcb so do not free xer */
+	(void) xer;
 #ifdef USE_XSHAPE
 	xcb_prefetch_extension_data(xc, &xcb_shape_id);
 #endif
@@ -655,7 +530,6 @@ void StartUp(Bool defaultScreenOnly)
 #ifdef USE_RANDR
 	xcb_prefetch_extension_data(xc, &xcb_randr_id);
 #endif
-	xcb_prefetch_extension_data(xc, &xcb_xkb_id);
 
 #ifdef USE_XSHAPE
 	xer = xcb_get_extension_data(xc, &xcb_shape_id);
@@ -706,26 +580,19 @@ void StartUp(Bool defaultScreenOnly)
 	free(rrr);
 #endif
 
-	xer = xcb_get_extension_data(xc, &xcb_xkb_id);
-	w_global.xext.xkb.supported = 0;
-	if (xer && xer->present) {
-		w_global.xext.xkb.event_base = xer->first_event;
-		/* UseExtension is mandatory before any other XKB request,
-		 * server may downgrade but every shipping Xorg answers 1.0 */
-		xkbr = xcb_xkb_use_extension_reply(xc,
-				xcb_xkb_use_extension(xc, XCB_XKB_MAJOR_VERSION,
-						      XCB_XKB_MINOR_VERSION), NULL);
-		w_global.xext.xkb.supported = xkbr && xkbr->supported;
-		free(xkbr);
-	}
+	/* wXkbInit() negotiates XkbUseExtension, loads the keymap and state,
+	 * selects per-device events, derives the named-modifier and lock
+	 * masks, and writes w_global.xext.xkb and shortcut.modifiers_mask.
+	 * It runs before wScreenInit so wConfigApplyModifierKey and the
+	 * keybinding parser see the resolved Alt/Meta/Super masks, and
+	 * before wWindowSetKeyGrabs so the lock-mask grab fan-out is
+	 * correct on the first manage. */
+	wXkbInit();
 #ifdef KEEP_XKB_LOCK_STATUS
 	if (w_global.config->modelock && !w_global.xext.xkb.supported) {
 		wwarning(_("XKB is not supported. KbdModeLock is automatically disabled."));
 		w_global.config->modelock = 0;
 	}
-#else
-	if (!w_global.xext.xkb.supported)
-		wwarning(_("XKB is not supported."));
 #endif
 
 	if (defaultScreenOnly)

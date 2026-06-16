@@ -57,6 +57,7 @@
 #include "window.h"
 #include "dialog.h"
 #include "misc.h"
+#include "wxkb.h"
 #include "stacking.h"
 #include "framewin.h"
 #include "window.h"
@@ -380,7 +381,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
 	KeySym ksym;
 
-	ksym = XLookupKeysym(&event->xkey, 0);
+	ksym = wXkbKeycodeToKeysym(event->xkey.keycode, 0);
 
 	switch (ksym) {
 	case XK_Up:
@@ -882,7 +883,8 @@ static void keyPressHandler(XEvent * event, void *data)
 		return;
 
 	buffer[0] = 0;
-	XLookupString(&event->xkey, buffer, sizeof(buffer), &ksym, NULL);
+	wXkbStateUtf8(event->xkey.keycode, buffer, sizeof(buffer));
+	ksym = wXkbKeycodeToKeysym(event->xkey.keycode, 0);
 
 	iidx = WMGetListSelectedItemRow(panel->iconList);
 	didx = WMGetListSelectedItemRow(panel->dirList);

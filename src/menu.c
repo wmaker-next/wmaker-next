@@ -36,6 +36,7 @@
 #include "framewin.h"
 #include "menu.h"
 #include "actions.h"
+#include "wxkb.h"
 #include "winmenu.h"
 #include "stacking.h"
 #include "xinerama.h"
@@ -983,10 +984,10 @@ static int check_key(WMenu * menu, XKeyEvent * event)
 	int i, ch, s;
 	char buffer[32];
 
-	if (XLookupString(event, buffer, 32, NULL, NULL) < 1)
+	if (wXkbStateUtf8(event->keycode, buffer, sizeof(buffer)) < 1)
 		return -1;
 
-	ch = toupper(buffer[0]);
+	ch = toupper((unsigned char) buffer[0]);
 
 	s = (menu->selected_entry >= 0 ? menu->selected_entry + 1 : 0);
 
@@ -1037,7 +1038,7 @@ static int keyboardMenu(WMenu * menu)
 
 		switch (event.type) {
 		case KeyPress:
-			ksym = XLookupKeysym(&event.xkey, 0);
+			ksym = wXkbKeycodeToKeysym(event.xkey.keycode, 0);
 			if (w_global.config->vi_key_menus) {
 				switch (ksym) {
 				case XK_h:

@@ -44,6 +44,7 @@
 #include "wmspec.h"
 #include "misc.h"
 #include "startup.h"
+#include "wxkb.h"
 #include "event.h"
 #include "winmenu.h"
 

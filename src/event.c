@@ -49,9 +49,6 @@
 #include "randr.h"
 #endif
 
-#include <X11/XKBlib.h>
-#include <xcb/xkb.h>
-
 #include "WindowMaker.h"
 #include "window.h"
 #include "actions.h"
@@ -77,6 +74,7 @@
 #include "misc.h"
 #include "event.h"
 #include "osdview.h"
+#include "wxkb.h"
 #include "ipc.h"
 
 #include <sys/wait.h>
@@ -104,6 +102,7 @@ static void handlePropertyNotify(XEvent *event);
 static void handleEnterNotify(XEvent *event);
 static void handleLeaveNotify(XEvent *event);
 static void handleExtensions(XEvent *event);
+static void refreshKeybindings(void);
 static void handleClientMessage(XEvent *event);
 static void handleKeyPress(XEvent *event);
 static void handleFocusIn(XEvent *event);
@@ -275,7 +274,7 @@ void DispatchEvent(XEvent * event)
 
 	case MappingNotify:
 		if (event->xmapping.request == MappingKeyboard || event->xmapping.request == MappingModifier)
-			XRefreshKeyboardMapping(&event->xmapping);
+			refreshKeybindings();
 		break;
 
 	case FocusIn:
@@ -616,6 +615,22 @@ static int matchWindow(const void *item, const void *cdata)
 	return (((WFakeGroupLeader *) item)->origLeader == (Window) cdata);
 }
 
+/* keysym -> keycode resolution and the named-modifier masks may have
+ * shifted, so re-derive every WShortKey from its config string and
+ * regrab on every managed window, the trie rebuild inside drops the
+ * old grabs first */
+static void refreshKeybindings(void)
+{
+	int j;
+
+	wXkbRefresh();
+	for (j = 0; j < w_global.screen_count; j++) {
+		WScreen *scr = wScreenWithNumber(j);
+		if (scr)
+			wReadKeybindings(scr, w_global.domain.wmaker->dictionary);
+	}
+}
+
 static void handleExtensions(XEvent * event)
 {
 #ifdef USE_XSHAPE
@@ -636,24 +651,20 @@ static void handleExtensions(XEvent * event)
 			(xcb_xkb_new_keyboard_notify_event_t *)((WXWireEvent *)event)->wire;
 		int xkb_type = xe->xkbType;
 
-		if (xkb_type == XCB_XKB_NEW_KEYBOARD_NOTIFY) {
-			int j;
-			WScreen *scr;
+		if (xkb_type == XCB_XKB_STATE_NOTIFY)
+			wXkbUpdateState((xcb_xkb_state_notify_event_t *)xe);
 
-			for (j = 0; j < w_global.screen_count; j++) {
-				scr = wScreenWithNumber(j);
-				wReadKeybindings(scr, w_global.domain.wmaker->dictionary);
-			}
+		if (xkb_type == XCB_XKB_NEW_KEYBOARD_NOTIFY
+		    || xkb_type == XCB_XKB_MAP_NOTIFY) {
+			refreshKeybindings();
 		}
 #ifdef KEEP_XKB_LOCK_STATUS
-		else {
-			/* Listen not only for IndicatorStateNotify but also for StateNotify
-			 * which is commonly emitted on group (layout) changes. */
-			if (w_global.config->modelock
-			    && (xkb_type == XCB_XKB_INDICATOR_STATE_NOTIFY
-				|| xkb_type == XCB_XKB_STATE_NOTIFY)) {
-				handleXkbIndicatorStateNotify(event);
-			}
+		else if (w_global.config->modelock
+			 && (xkb_type == XCB_XKB_INDICATOR_STATE_NOTIFY
+			     || xkb_type == XCB_XKB_STATE_NOTIFY)) {
+			/* StateNotify is the common signal on group (layout)
+			 * changes, IndicatorStateNotify on lock-LED toggles */
+			handleXkbIndicatorStateNotify(event);
 		}
 #endif /*KEEP_XKB_LOCK_STATUS */
 	}
@@ -2343,7 +2354,7 @@ static void handleKeyPress(XEvent * event)
 		char label[MAX_SHORTCUT_LENGTH];
 
 		/* Skip modifier-only keypresses */
-		cap_ksym = XLookupKeysym(&event->xkey, 0);
+		cap_ksym = wXkbKeycodeToKeysym(event->xkey.keycode, 0);
 		if (cap_ksym == NoSymbol || IsModifierKey(cap_ksym))
 			return;
 

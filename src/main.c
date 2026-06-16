@@ -76,7 +76,7 @@ const char *__lsan_default_suppressions(void)
 #include "startup.h"
 #include "menu.h"
 #include "keybind.h"
-#include "xmodifier.h"
+#include "wxkb.h"
 #include "session.h"
 #include "shutdown.h"
 #include "dialog.h"
@@ -857,7 +857,6 @@ static int real_main(int argc, char **argv)
 	DisplayName = XDisplayName(DisplayName);
 	setenv("DISPLAY", DisplayName, 1);
 
-	wXModifierInitialize();
 	StartUp(!multiHead);
 
 	if (w_global.screen_count == 1)

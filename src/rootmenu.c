@@ -52,7 +52,7 @@
 #include "framewin.h"
 #include "session.h"
 #include "shutdown.h"
-#include "xmodifier.h"
+#include "wxkb.h"
 #include "rootmenu.h"
 #include "startup.h"
 #include "switchmenu.h"
@@ -465,7 +465,7 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 			b = k + 1;
 		}
 
-		ksym = XStringToKeysym(b);
+		ksym = wXkbKeysymFromName(b);
 		if (ksym == NoSymbol) {
 			wwarning(_("%s: invalid kbd shortcut specification \"%s\" for entry %s"),
 					 file, shortcutDefinition, entry->text);
@@ -473,7 +473,7 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 			return False;
 		}
 
-		kcode = XKeysymToKeycode(dpy, ksym);
+		kcode = wXkbKeysymToKeycode(ksym);
 		if (kcode == 0) {
 			wwarning(_("%s: invalid key in shortcut \"%s\" for entry %s"),
 					 file, shortcutDefinition, entry->text);

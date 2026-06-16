@@ -31,7 +31,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
-#include <X11/XKBlib.h>
 #ifdef USE_RANDR
 #include "randr.h"
 #endif
@@ -57,6 +56,7 @@
 #include "wireframe.h"
 #include "wmspec.h"
 #include "rootmenu.h"
+#include "wxkb.h"
 #include "misc.h"
 #include "ipc.h"
 #include "startup_notify.h"
@@ -682,17 +682,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	XSelectInput(dpy, scr->root_win, event_mask);
 	/* the conditional PointerMotionMask is re-applied later from
 	 * wScreenUpdateRootEventMask() whenever ScrollableMenus changes
-	 * at runtime or a menu is mapped or unmapped */
-
-#ifdef KEEP_XKB_LOCK_STATUS
-	if (w_global.xext.xkb.supported)
-		XkbSelectEvents(dpy, XkbUseCoreKbd,
-						XkbIndicatorStateNotifyMask | XkbStateNotifyMask | XkbNewKeyboardNotifyMask,
-						XkbIndicatorStateNotifyMask | XkbStateNotifyMask | XkbNewKeyboardNotifyMask);
-#else
-	if (w_global.xext.xkb.supported)
-		XkbSelectEvents(dpy, XkbUseCoreKbd, XkbNewKeyboardNotifyMask, XkbNewKeyboardNotifyMask);
-#endif				/* KEEP_XKB_LOCK_STATUS */
+	 * at runtime or a menu is mapped or unmapped, and XKB event
+	 * selection is per-device so wXkbInit() has already done it */
 
 #ifdef USE_RANDR
 	if (w_global.xext.randr.supported)
@@ -1252,7 +1243,7 @@ static XImage *imageCaptureArea(WScreen *scr)
 			wWireframeCommit(scr);
 			break;
 		case KeyPress:
-			if (W_KeycodeToKeysym(dpy, event.xkey.keycode, 0) == XK_Escape)
+			if (wXkbKeycodeToKeysym(event.xkey.keycode, 0) == XK_Escape)
 				quit = 1;
 			break;
 		default:

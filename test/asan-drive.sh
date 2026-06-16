@@ -424,6 +424,17 @@ xdo key Tab; sleep 0.2; xdo key Tab; sleep 0.2; xdo key Tab; sleep 0.2
 shot switchpanel
 xdo keyup alt; sleep 0.3
 
+# --- keymap reload (wXkbRefresh -> wReadKeybindings) ------------------------
+# setxkbmap on the test display pushes XCB_XKB_MAP_NOTIFY plus a core
+# MappingNotify, both routes land in refreshKeybindings() which reloads
+# the xkbcommon keymap, re-derives the modifier masks and re-resolves
+# every WShortKey, then Alt+Tab proves the regrabbed binding still fires
+note "keymap reload"
+DISPLAY=$DPY setxkbmap us 2>/dev/null; sleep 0.4
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.3
+
 # --- iconify / deiconify (icon.c) -------------------------------------------
 note "iconify / deiconify"
 xdo windowminimize "$WID"; sleep 0.4

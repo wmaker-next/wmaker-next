@@ -113,8 +113,8 @@ wmaker_SOURCES = 	\
 	xdnd.h \
 	xinerama.h \
 	xinerama.c \
-	xmodifier.c \
-	xmodifier.h \
+	wxkb.c \
+	wxkb.h \
 	xutil.c \
 	xutil.h \
 	wconfig.h \
