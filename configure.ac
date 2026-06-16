@@ -613,9 +613,7 @@ AC_ARG_ENABLE([modelock],
 m4_divert_pop([INIT_PREPARE])dnl
 
 AS_IF([test "x$enable_modelock" = "xyes"],
-    [WM_XEXT_CHECK_XKBFILE
-     AS_IF([test "x$enable_modelock" = "xyes"],
-         [AC_DEFINE([XKB_MODELOCK], [1], [whether XKB language MODELOCK should be enabled])])])
+    [AC_DEFINE([XKB_MODELOCK], [1], [whether XKB language MODELOCK should be enabled])])
 
 
 dnl XDND Drag-nd-Drop support

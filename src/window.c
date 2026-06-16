@@ -40,11 +40,6 @@
 #include <math.h>
 #include <ctype.h>
 
-#ifdef XKB_BUTTON_HINT
-#include <X11/extensions/XKBfile.h>  // Required for XkbRF_VarDefsRec
-#include <X11/extensions/XKBrules.h> // Required for XkbRF_GetNamesProp
-#endif
-
 /* For getting mouse wheel mappings from WINGs */
 #include <WINGs/WINGs.h>
 #include <WINGs/WXProp.h>
@@ -3828,36 +3823,44 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, XEvent *event)
 /* Helper function to extract the 2-letter language code for a given XKB group index */
 void wWindowGetLanguageLabel(int group_index, char *label)
 {
-	XkbRF_VarDefsRec vd;
+	static Atom xkb_rules_names;
+	char *prop, *end, *layout, *tok;
+	size_t len, f;
+	int g;
+
 	/* Default to empty - will fallback to pixmap if we can't get the label */
 	label[0] = '\0';
 
-	if (XkbRF_GetNamesProp(dpy, NULL, &vd) && vd.layout) {
-		int i;
-		char *layout_list = strdup(vd.layout);
-		char *tok = strtok(layout_list, ",");
+	if (xkb_rules_names == None)
+		xkb_rules_names = XInternAtom(dpy, "_XKB_RULES_NAMES", False);
 
-		/* Iterate to the requested group index */
-		for (i = 0; i < group_index && tok != NULL; i++) {
-			tok = strtok(NULL, ",");
+	/* _XKB_RULES_NAMES on the default root is a STRING property holding
+	 * five NUL-separated fields, rules\0model\0layout\0variant\0options,
+	 * walk to the third field then take the group_index-th comma token */
+	prop = WXGetLatin1String(dpy, DefaultRootWindow(dpy), xkb_rules_names, &len);
+	if (!prop)
+		return;
+	end = prop + len;
+
+	layout = prop;
+	for (f = 0; f < 2 && layout < end; f++)
+		layout += strlen(layout) + 1;
+
+	if (layout < end && *layout) {
+		tok = layout;
+		for (g = 0; g < group_index && tok; g++) {
+			tok = strchr(tok, ',');
+			if (tok)
+				tok++;
 		}
-
-		if (tok) {
-			size_t label_len = strlen(tok);
-
-			/* Copy exactly the first two bytes, then format: first uppercase, second lowercase */
-			if (label_len > 2)
-				label_len = 2;
-			memcpy(label, tok, label_len);
-			label[label_len] = '\0';
-			if (label[0])
-				label[0] = (char) toupper((unsigned char) label[0]);
-			if (label[1])
-				label[1] = (char) tolower((unsigned char) label[1]);
+		if (tok && *tok && *tok != ',') {
+			label[0] = (char) toupper((unsigned char) tok[0]);
+			label[1] = (tok[1] && tok[1] != ',')
+				   ? (char) tolower((unsigned char) tok[1]) : '\0';
+			label[2] = '\0';
 		}
-
-		free(layout_list);
 	}
+	wfree(prop);
 }
 
 static void windowLanguageClick(WCoreWindow *sender, void *data, XEvent *event)
