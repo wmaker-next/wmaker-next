@@ -835,26 +835,40 @@ static int dummyErrorHandler(Display * dpy, XErrorEvent * err)
 static void setPixmapProperty(Pixmap pixmap)
 {
 	static Atom prop = 0;
-	uint32_t old_pixmap;
+	static Atom eprop = 0;
+	uint32_t old_root, old_eset;
+	Bool have_root, have_eset;
 
 	if (!prop) {
 		prop = XInternAtom(dpy, "_XROOTPMAP_ID", False);
+		eprop = XInternAtom(dpy, "ESETROOT_PMAP_ID", False);
 	}
 
 	XGrabServer(dpy);
 
-	/* Clear out the old pixmap */
-	if (WXGetFormat32N(dpy, root, prop, XA_PIXMAP, &old_pixmap, 1)) {
+	/* Free the previous background pixmap only when both _XROOTPMAP_ID
+	 * and ESETROOT_PMAP_ID hold the same XID, that pairing marks a
+	 * RetainPermanent zombie left by a compliant root setter so
+	 * XKillClient on it cannot hit a live connection.  A bare
+	 * _XROOTPMAP_ID may come from a tool that closed in Destroy mode,
+	 * in which case the client bits of the stored XID can already be
+	 * recycled to a live client, including our own dpy, and killing
+	 * it produces "X connection broken". */
+	have_root = WXGetFormat32N(dpy, root, prop, XA_PIXMAP, &old_root, 1);
+	have_eset = WXGetFormat32N(dpy, root, eprop, XA_PIXMAP, &old_eset, 1);
+	if (have_root && have_eset && old_root == old_eset && old_eset != None) {
 		XSetErrorHandler(dummyErrorHandler);
-		XKillClient(dpy, (XID)old_pixmap);
+		XKillClient(dpy, (XID)old_eset);
 		XSync(dpy, False);
 		XSetErrorHandler(NULL);
 	}
 	if (pixmap) {
 		uint32_t v = (uint32_t)pixmap;
 		WXSetFormat32N(dpy, root, prop, XA_PIXMAP, &v, 1);
+		WXSetFormat32N(dpy, root, eprop, XA_PIXMAP, &v, 1);
 	} else {
 		WXDeleteProperty(dpy, root, prop);
+		WXDeleteProperty(dpy, root, eprop);
 	}
 
 	XUngrabServer(dpy);
