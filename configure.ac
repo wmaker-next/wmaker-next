@@ -585,14 +585,6 @@ WM_I18N_XLOCALE
 
 
 
-dnl Check whether XInternAtoms() exist
-dnl ==================================
-AC_CHECK_LIB([X11], [XInternAtoms],
-    [AC_DEFINE([HAVE_XINTERNATOMS], [1],
-        [define if your X server has XInternAtoms() (set by configure)])],
-    [], [$XLFLAGS $XLIBS])
-
-
 dnl Check whether XConvertCase() exist
 dnl ==================================
 AC_CHECK_LIB([X11], [XConvertCase],

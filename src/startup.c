@@ -369,12 +369,7 @@ void StartUp(Bool defaultScreenOnly)
 
 	/*    _XA_VERSION = XInternAtom(dpy, "VERSION", False); */
 
-#ifdef HAVE_XINTERNATOMS
 	XInternAtoms(dpy, atomNames, wlengthof(atomNames), False, atom);
-#else
-	for (i = 0; i < wlengthof(atomNames); i++)
-		atom[i] = XInternAtom(dpy, atomNames[i], False);
-#endif
 
 	idx = 0;
 #define WATOM_ASSIGN(field, name)	w_global.atom.field = atom[idx++];

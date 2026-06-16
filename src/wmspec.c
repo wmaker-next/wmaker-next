@@ -746,26 +746,19 @@ void wNETWMInitStuff(WScreen *scr)
 {
 	NetData *data;
 	int i;
-#ifdef HAVE_XINTERNATOMS
 	Atom atoms[wlengthof(atomNames)];
 	char *names[wlengthof(atomNames)];
-#endif
 
 #ifdef DEBUG_WMSPEC
 	wmessage("wNETWMInitStuff");
 #endif
 
-#ifdef HAVE_XINTERNATOMS
 	for (i = 0; i < wlengthof(atomNames); ++i)
 		names[i] = atomNames[i].name;
 
 	XInternAtoms(dpy, &names[0], wlengthof(atomNames), False, atoms);
 	for (i = 0; i < wlengthof(atomNames); ++i)
 		*atomNames[i].atom = atoms[i];
-#else
-	for (i = 0; i < wlengthof(atomNames); i++)
-		*atomNames[i].atom = XInternAtom(dpy, atomNames[i].name, False);
-#endif
 
 	data = wmalloc(sizeof(NetData));
 	data->scr = scr;

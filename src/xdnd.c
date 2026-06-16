@@ -37,36 +37,51 @@
 #include "workspace.h"
 
 
-static Atom _XA_XdndAware;
-static Atom _XA_XdndEnter;
-static Atom _XA_XdndLeave;
-static Atom _XA_XdndDrop;
-static Atom _XA_XdndPosition;
-static Atom _XA_XdndStatus;
-static Atom _XA_XdndActionCopy;
-static Atom _XA_XdndSelection;
-static Atom _XA_XdndFinished;
-static Atom _XA_XdndTypeList;
-static Atom _XA_WINDOWMAKER_XDNDEXCHANGE;
-static Atom supported_typelist;
+/*
+ * Each row is the file-static Atom variable and its X atom name. The
+ * list is expanded twice, once into the static Atom declarations and
+ * once into the name/target table for the batched XInternAtoms() call,
+ * so the two cannot drift out of step.
+ */
+#define XDND_ATOMS(_) \
+	_(_XA_XdndAware,                 "XdndAware") \
+	_(_XA_XdndEnter,                 "XdndEnter") \
+	_(_XA_XdndLeave,                 "XdndLeave") \
+	_(_XA_XdndDrop,                  "XdndDrop") \
+	_(_XA_XdndPosition,              "XdndPosition") \
+	_(_XA_XdndStatus,                "XdndStatus") \
+	_(_XA_XdndActionCopy,            "XdndActionCopy") \
+	_(_XA_XdndSelection,             "XdndSelection") \
+	_(_XA_XdndFinished,              "XdndFinished") \
+	_(_XA_XdndTypeList,              "XdndTypeList") \
+	_(_XA_WINDOWMAKER_XDNDEXCHANGE,  "_WINDOWMAKER_XDNDEXCHANGE") \
+	_(supported_typelist,            "text/uri-list")
+
+#define XDND_ATOM_DECL(var, name)	static Atom var;
+XDND_ATOMS(XDND_ATOM_DECL)
+#undef XDND_ATOM_DECL
+
 static Atom selected_typelist;
 static Window xdnd_requestor = None;
 
 void wXDNDInitializeAtoms(void)
 {
-	_XA_XdndAware = XInternAtom(dpy, "XdndAware", False);
-	_XA_XdndEnter = XInternAtom(dpy, "XdndEnter", False);
-	_XA_XdndLeave = XInternAtom(dpy, "XdndLeave", False);
-	_XA_XdndDrop = XInternAtom(dpy, "XdndDrop", False);
-	_XA_XdndPosition = XInternAtom(dpy, "XdndPosition", False);
-	_XA_XdndStatus = XInternAtom(dpy, "XdndStatus", False);
-	_XA_XdndActionCopy = XInternAtom(dpy, "XdndActionCopy", False);
-	_XA_XdndSelection = XInternAtom(dpy, "XdndSelection", False);
-	_XA_XdndFinished = XInternAtom(dpy, "XdndFinished", False);
-	_XA_XdndTypeList = XInternAtom(dpy, "XdndTypeList", False);
-	_XA_WINDOWMAKER_XDNDEXCHANGE = XInternAtom(dpy, "_WINDOWMAKER_XDNDEXCHANGE", False);
+#define XDND_ATOM_ROW(var, name)	{ name, &var },
+	static const struct { char *name; Atom *atom; } table[] = {
+		XDND_ATOMS(XDND_ATOM_ROW)
+	};
+#undef XDND_ATOM_ROW
+	char *names[wlengthof(table)];
+	Atom atoms[wlengthof(table)];
+	int i;
 
-	supported_typelist = XInternAtom(dpy, "text/uri-list", False);
+	for (i = 0; i < wlengthof(table); ++i)
+		names[i] = table[i].name;
+
+	XInternAtoms(dpy, names, wlengthof(table), False, atoms);
+
+	for (i = 0; i < wlengthof(table); ++i)
+		*table[i].atom = atoms[i];
 }
 
 void wXDNDMakeAwareness(Window window)

@@ -866,13 +866,7 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->invisibleCursor = XCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
 	XFreePixmap(display, blank);
 
-#ifdef HAVE_XINTERNATOMS
 	XInternAtoms(display, atomNames, wlengthof(atomNames), False, atoms);
-#else
-	for (i = 0; i < wlengthof(atomNames); i++) {
-		atoms[i] = XInternAtom(display, atomNames[i], False);
-	}
-#endif
 
 	i = 0;
 	scrPtr->attribsAtom = atoms[i++];
