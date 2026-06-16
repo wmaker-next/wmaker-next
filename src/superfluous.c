@@ -101,8 +101,8 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 	while (k > 0) {
 		XEvent foo;
 
-		if (XCheckTypedEvent(dpy, ButtonPress, &foo)) {
-			XPutBackEvent(dpy, &foo);
+		if (WXEvqTakeTyped(dpy, ButtonPress, None, &foo)) {
+			WXEvqPutBack(&foo);
 			XClearWindow(dpy, scr->root_win);
 			break;
 		}

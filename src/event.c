@@ -472,18 +472,16 @@ noreturn void EventLoop(void)
 void ProcessPendingEvents(void)
 {
 	XEvent event;
-	int count;
 
+	/* drain everything currently readable, then dispatch only that
+	 * snapshot so a handler that round-trips and generates more
+	 * traffic cannot turn this into an unbounded loop, the NULL dpy
+	 * makes WXEvqNext pop without re-draining */
 	XSync(dpy, False);
+	WXEvqPending(dpy);
 
-	/* Take a snapshot of the event count in the queue */
-	count = XPending(dpy);
-
-	while (count > 0 && XPending(dpy)) {
-		WMNextEvent(dpy, &event);
+	while (WXEvqNext(NULL, &event))
 		WMHandleEvent(&event);
-		count--;
-	}
 }
 
 Bool IsDoubleClick(WScreen * scr, XEvent * event)
@@ -792,7 +790,7 @@ static void handleExpose(XEvent * event)
 	WObjDescriptor *desc;
 	XEvent ev;
 
-	while (XCheckTypedWindowEvent(dpy, event->xexpose.window, Expose, &ev)) ;
+	while (WXEvqTakeTyped(dpy, Expose, event->xexpose.window, &ev)) ;
 
 	if (XFindContext(dpy, event->xexpose.window, w_global.context.client_win, (XPointer *) & desc) == XCNOENT) {
 		return;
@@ -1012,12 +1010,12 @@ static void handleUnmapNotify(XEvent * event)
 	wwin->flags.mapped = 0;
 	XSync(dpy, 0);
 	/* check if the window was destroyed */
-	if (XCheckTypedWindowEvent(dpy, wwin->client_win, DestroyNotify, &ev)) {
+	if (WXEvqTakeTyped(dpy, DestroyNotify, wwin->client_win, &ev)) {
 		DispatchEvent(&ev);
 	} else {
 		Bool reparented = False;
 
-		if (XCheckTypedWindowEvent(dpy, wwin->client_win, ReparentNotify, &ev))
+		if (WXEvqTakeTyped(dpy, ReparentNotify, wwin->client_win, &ev))
 			reparented = True;
 
 		/* withdraw window */
@@ -1243,7 +1241,7 @@ static void handleEnterNotify(XEvent * event)
 	XEvent ev;
 	WScreen *scr = wScreenForRootWindow(event->xcrossing.root);
 
-	if (XCheckTypedWindowEvent(dpy, event->xcrossing.window, LeaveNotify, &ev)) {
+	if (WXEvqTakeTyped(dpy, LeaveNotify, event->xcrossing.window, &ev)) {
 		/* already left the window... */
 		saveTimestamp(&ev);
 		if (ev.xcrossing.mode == event->xcrossing.mode && ev.xcrossing.detail == event->xcrossing.detail) {
@@ -1346,12 +1344,12 @@ static void handleShapeNotify(XEvent * event)
 		XShapeEvent xshape;
 	} ev;
 
-	while (XCheckTypedWindowEvent(dpy, shev->window, event->type, &ev.xevent)) {
+	while (WXEvqTakeTyped(dpy, event->type, shev->window, &ev.xevent)) {
 		if (ev.xshape.kind == ShapeBounding) {
 			if (ev.xshape.shaped == shev->shaped) {
 				*shev = ev.xshape;
 			} else {
-				XPutBackEvent(dpy, &ev.xevent);
+				WXEvqPutBack(&ev.xevent);
 				break;
 			}
 		}
@@ -1443,7 +1441,7 @@ static void handleColormapNotify(XEvent * event)
 				reinstall = False;
 			}
 		}
-	} while (XCheckTypedEvent(dpy, ColormapNotify, event)
+	} while (WXEvqTakeTyped(dpy, ColormapNotify, None, event)
 		 && ((wwin = wWindowFor(event->xcolormap.window)) || 1));
 
 	if (reinstall && scr->current_colormap != None) {
@@ -1459,7 +1457,7 @@ static void handleFocusIn(XEvent * event)
 	/*
 	 * For applications that like stealing the focus.
 	 */
-	while (XCheckTypedEvent(dpy, FocusIn, event)) ;
+	while (WXEvqTakeTyped(dpy, FocusIn, None, event)) ;
 	saveTimestamp(event);
 	if (event->xfocus.mode == NotifyUngrab
 	    || event->xfocus.mode == NotifyGrab || event->xfocus.detail > NotifyNonlinearVirtual) {

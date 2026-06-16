@@ -119,7 +119,7 @@ void ResetGame(void)
 
 			SWAP(MAP(ox, oy), MAP(x, y));
 
-			while (XPending(WMScreenDisplay(WMWidgetScreen(win)))) {
+			while (WXEvqPending(WMScreenDisplay(WMWidgetScreen(win)))) {
 				XEvent ev;
 				WMNextEvent(WMScreenDisplay(WMWidgetScreen(win)), &ev);
 				WMHandleEvent(&ev);

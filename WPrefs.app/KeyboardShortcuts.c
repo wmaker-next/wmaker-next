@@ -366,7 +366,7 @@ static Bool waitForKeychainEvent(Display *dpy, int timeout_ms)
 	WMHandlerID timer;
 
 	timer = WMAddTimerHandler(timeout_ms, keychainTimeout, &fired);
-	while (!fired && !XPending(dpy)) {
+	while (!fired && !WXEvqPending(dpy)) {
 		XFlush(dpy);
 		W_HandleInputEvents(True, ConnectionNumber(dpy));
 	}
@@ -374,7 +374,7 @@ static Bool waitForKeychainEvent(Display *dpy, int timeout_ms)
 	if (!fired)
 		WMDeleteTimerHandler(timer);
 
-	return XPending(dpy) > 0;
+	return WXEvqPending(dpy);
 }
 
 /*
@@ -433,7 +433,7 @@ char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case)
 	/* ---- Phase 2: collect additional chain keys with timeout ---- */
 	chain_mode = (timeout_ms > 0);
 	while (*capturing && chain_mode) {
-		if (!XPending(dpy) && !waitForKeychainEvent(dpy, timeout_ms))
+		if (!WXEvqPending(dpy) && !waitForKeychainEvent(dpy, timeout_ms))
 			break;  /* timeout: the chain is complete */
 
 		XAllowEvents(dpy, AsyncKeyboard, CurrentTime);

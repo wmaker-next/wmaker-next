@@ -5,56 +5,6 @@
 
 #include "WINGsP.h"
 
-/* table to map event types to event masks */
-static const unsigned long eventMasks[] = {
-	0,
-	0,
-	KeyPressMask,		/* KeyPress */
-	KeyReleaseMask,		/* KeyRelease */
-	ButtonPressMask,	/* ButtonPress */
-	ButtonReleaseMask,	/* ButtonRelease */
-	PointerMotionMask | PointerMotionHintMask | ButtonMotionMask
-	    | Button1MotionMask | Button2MotionMask | Button3MotionMask | Button4MotionMask | Button5MotionMask,
-	/* MotionNotify */
-	EnterWindowMask,	/* EnterNotify */
-	LeaveWindowMask,	/* LeaveNotify */
-	FocusChangeMask,	/* FocusIn */
-	FocusChangeMask,	/* FocusOut */
-	KeymapStateMask,	/* KeymapNotify */
-	ExposureMask,		/* Expose */
-	ExposureMask,		/* GraphicsExpose */
-	ExposureMask,		/* NoExpose */
-	VisibilityChangeMask,	/* VisibilityNotify */
-	SubstructureNotifyMask,	/* CreateNotify */
-	StructureNotifyMask,	/* DestroyNotify */
-	StructureNotifyMask,	/* UnmapNotify */
-	StructureNotifyMask,	/* MapNotify */
-	SubstructureRedirectMask,	/* MapRequest */
-	StructureNotifyMask,	/* ReparentNotify */
-	StructureNotifyMask,	/* ConfigureNotify */
-	SubstructureRedirectMask,	/* ConfigureRequest */
-	StructureNotifyMask,	/* GravityNotify */
-	ResizeRedirectMask,	/* ResizeRequest */
-	StructureNotifyMask,	/* CirculateNotify */
-	SubstructureRedirectMask,	/* CirculateRequest */
-	PropertyChangeMask,	/* PropertyNotify */
-	0,			/* SelectionClear */
-	0,			/* SelectionRequest */
-	0,			/* SelectionNotify */
-	ColormapChangeMask,	/* ColormapNotify */
-	ClientMessageMask,	/* ClientMessage */
-	0,			/* Mapping Notify */
-};
-
-/* extension events (XKB, RandR, Shape, XI2, ...) carry types past LASTEvent,
- * they have no corresponding select mask in the core table */
-static inline unsigned long maskForEventType(int type)
-{
-	if (type < 0 || (size_t)type >= wlengthof(eventMasks))
-		return 0;
-	return eventMasks[type];
-}
-
 /* hook for other toolkits or wmaker process their events */
 static WMEventHook *extraEventHandler = NULL;
 
@@ -167,7 +117,7 @@ void WMSetViewNextResponder(WMView * view, WMView * responder)
 
 void WMRelayToNextResponder(WMView * view, XEvent * event)
 {
-	unsigned long mask = maskForEventType(event->xany.type);
+	unsigned long mask = W_MaskForEventType(event->xany.type);
 
 	if (view->nextResponder) {
 		WMView *next = view->nextResponder;
@@ -199,7 +149,7 @@ int WMHandleEvent(XEvent * event)
 		return False;
 	}
 
-	mask = maskForEventType(event->xany.type);
+	mask = W_MaskForEventType(event->xany.type);
 
 	window = event->xany.window;
 
@@ -250,14 +200,13 @@ int WMHandleEvent(XEvent * event)
 
 	/* compress Motion events */
 	if (event->type == MotionNotify && !view->flags.dontCompressMotion) {
-		while (XPending(event->xmotion.display)) {
-			XEvent ev;
-			XPeekEvent(event->xmotion.display, &ev);
+		XEvent ev;
+		while (WXEvqPeek(event->xmotion.display, &ev)) {
 			if (ev.type == MotionNotify
 			    && event->xmotion.window == ev.xmotion.window
 			    && event->xmotion.subwindow == ev.xmotion.subwindow) {
 				/* replace events */
-				XNextEvent(event->xmotion.display, event);
+				WXEvqNext(event->xmotion.display, event);
 			} else
 				break;
 		}
@@ -265,7 +214,7 @@ int WMHandleEvent(XEvent * event)
 
 	/* compress expose events */
 	if (event->type == Expose && !view->flags.dontCompressExpose) {
-		while (XCheckTypedWindowEvent(event->xexpose.display, view->window, Expose, event)) ;
+		while (WXEvqTakeTyped(event->xexpose.display, Expose, view->window, event)) ;
 	}
 
 	if (view->screen->modalLoop && toplevel != view->screen->modalView && !toplevel->flags.worksWhenModal) {
@@ -355,44 +304,45 @@ int WMIsDoubleClick(XEvent * event)
  * everything the old peek-idle-peek-block ladder did in one pass: due
  * timers, idle handlers when nothing else is pending, registered input
  * handlers, and the X connection fd. The X-fd watcher ev_break()s so
- * control returns here to drain Xlib's internal queue. The ASAP and
- * WhenIdle notification queues flush from the loop's prepare and check
- * watchers, so there is no separate timer/idle pump.
+ * control returns here to drain the connection into the WINGs internal
+ * event queue. The ASAP and WhenIdle notification queues flush from the
+ * loop's prepare and check watchers, so there is no separate timer/idle
+ * pump.
  */
 
 void WMNextEvent(Display * dpy, XEvent * event)
 {
-	while (XPending(dpy) == 0) {
+	while (!WXEvqPending(dpy)) {
 		/* flush requests so the server can answer, then block on the
 		 * X fd alongside timers, idles and any WINGs input handlers */
 		XSync(dpy, False);
-		if (XPending(dpy))
+		if (WXEvqPending(dpy))
 			break;
 		W_HandleInputEvents(True, ConnectionNumber(dpy));
 	}
 
-	XNextEvent(dpy, event);
+	WXEvqNext(dpy, event);
 }
 
 void WMMaskEvent(Display * dpy, long mask, XEvent * event)
 {
-	while (!XCheckMaskEvent(dpy, mask, event)) {
+	while (!WXEvqTakeMask(dpy, mask, None, event)) {
 		XSync(dpy, False);
-		if (XCheckMaskEvent(dpy, mask, event))
+		if (WXEvqTakeMask(dpy, mask, None, event))
 			return;
-		/* XCheckMaskEvent buffered everything readable into Xlib's
-		 * queue, so the X fd is drained and ev_run() blocks until
-		 * fresh data, a timer or another input handler wakes it */
+		/* WXEvqTakeMask drained everything readable into the internal
+		 * queue, so the X fd is dry and ev_run() blocks until fresh
+		 * data, a timer or another input handler wakes it, the
+		 * non-matching events stay queued in arrival order for the
+		 * next WMNextEvent or the modal loop's WMHandleEvent default
+		 * arm to dispatch */
 		W_HandleInputEvents(True, ConnectionNumber(dpy));
 	}
 }
 
 Bool WMScreenPending(WMScreen * scr)
 {
-	if (XPending(scr->display))
-		return True;
-	else
-		return False;
+	return WXEvqPending(scr->display);
 }
 
 WMEventHook *WMHookEventHandler(WMEventHook * handler)

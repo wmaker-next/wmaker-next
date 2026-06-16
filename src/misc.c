@@ -119,14 +119,14 @@ static void eatExpose(void)
 
 	/* compress all expose events into a single one */
 
-	if (XCheckMaskEvent(dpy, ExposureMask, &event)) {
+	if (WXEvqTakeMask(dpy, ExposureMask, None, &event)) {
 		/* ignore other exposure events for this window */
-		while (XCheckWindowEvent(dpy, event.xexpose.window, ExposureMask, &foo)) ;
+		while (WXEvqTakeMask(dpy, ExposureMask, event.xexpose.window, &foo)) ;
 		/* eat exposes for other windows */
 		eatExpose();
 
 		event.xexpose.count = 0;
-		XPutBackEvent(dpy, &event);
+		WXEvqPutBack(&event);
 	}
 }
 
@@ -413,7 +413,7 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 		clock_gettime(CLOCK_MONOTONIC, &deadline);
 		deadline.tv_sec += 1;
 
-		while (!XCheckTypedWindowEvent(dpy, screen->info_window, SelectionNotify, &ev)) {
+		while (!WXEvqTakeTyped(dpy, SelectionNotify, screen->info_window, &ev)) {
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (now.tv_sec > deadline.tv_sec ||
 			    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {

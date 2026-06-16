@@ -719,6 +719,31 @@ void WMMaskEvent(Display *dpy, long mask, XEvent *event);
 
 void WMSetViewNextResponder(WMView *view, WMView *responder);
 
+/* ---[ WINGs/wxevq.c ]--------------------------------------------------- */
+
+/* internal pending-event queue ahead of dispatch, today fed by
+ * XNextEvent so the WXEvqTake* operations are exact stand-ins for the
+ * XCheck* family on the WINGs queue, after the xcb queue flip the
+ * drain step changes and nothing else does */
+
+Bool WXEvqPending(Display *dpy);
+
+Bool WXEvqNext(Display *dpy, XEvent *event_ret);
+
+Bool WXEvqPeek(Display *dpy, XEvent *event_ret);
+
+void WXEvqPutBack(const XEvent *event);
+
+Bool WXEvqTakeMask(Display *dpy, long mask, Window window, XEvent *event_ret);
+
+Bool WXEvqTakeTyped(Display *dpy, int type, Window window, XEvent *event_ret);
+
+int WXEvqDropRange(Display *dpy, unsigned long begin, unsigned long end,
+                   long mask);
+
+void WXEvqClear(void);
+
+
 void WMRelayToNextResponder(WMView *view, XEvent *event);
 
 

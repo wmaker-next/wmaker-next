@@ -992,7 +992,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	scr->flags.startup = 0;
 	scr->flags.startup2 = 1;
 
-	while (XPending(dpy)) {
+	while (WXEvqPending(dpy)) {
 		XEvent ev;
 		WMNextEvent(dpy, &ev);
 		WMHandleEvent(&ev);

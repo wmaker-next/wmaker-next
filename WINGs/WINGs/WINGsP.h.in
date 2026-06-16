@@ -374,6 +374,11 @@ Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
 void W_EventLoopShutdown(void);
 
 
+/* ---[ wxevq.c ]--------------------------------------------------------- */
+
+unsigned long W_MaskForEventType(int type);
+
+
 /* ---[ notification.c ]-------------------------------------------------- */
 
 void W_InitNotificationCenter(void);

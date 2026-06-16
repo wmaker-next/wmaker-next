@@ -181,7 +181,7 @@ static Bool replace_existing_wm(WScreen *scr)
 			if (!(wait % 1000000))
 				wmessage(_("waiting %lus for other window manager to exit"), (timeout - wait) / 1000000L);
 
-			if (XCheckWindowEvent(dpy, wm, StructureNotifyMask, &event))
+			if (WXEvqTakeMask(dpy, StructureNotifyMask, wm, &event))
 				if (event.type == DestroyNotify)
 					break;
 
@@ -1220,7 +1220,7 @@ static XImage *imageCaptureArea(WScreen *scr)
 					 * cleared 3 px strip */
 					wWireframeHide(scr);
 					XSync(dpy, False);
-					while (XCheckMaskEvent(dpy, ExposureMask, &event))
+					while (WXEvqTakeMask(dpy, ExposureMask, None, &event))
 						WMHandleEvent(&event);
 					XUngrabKeyboard(dpy, CurrentTime);
 					XUngrabPointer(dpy, CurrentTime);

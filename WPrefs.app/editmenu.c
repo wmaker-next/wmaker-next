@@ -1083,7 +1083,7 @@ static void dragMenu(WEditMenu * menu)
 			break;
 
 		case MotionNotify:
-			while (XCheckMaskEvent(scr->display, ButtonMotionMask, &ev)) ;
+			while (WXEvqTakeMask(scr->display, ButtonMotionMask, None, &ev)) ;
 
 			WMMoveWidget(menu, ev.xmotion.x_root - dx, ev.xmotion.y_root - dy);
 			break;
@@ -1213,7 +1213,7 @@ static void dragItem(WEditMenu * menu, WEditMenuItem * item, Bool copy)
 
 		switch (ev.type) {
 		case MotionNotify:
-			while (XCheckMaskEvent(dpy, ButtonMotionMask, &ev)) ;
+			while (WXEvqTakeMask(dpy, ButtonMotionMask, None, &ev)) ;
 
 			XQueryPointer(dpy, win, &blaw, &blaw, &blai, &blai, &x, &y, &blau);
 

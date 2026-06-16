@@ -2176,7 +2176,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 			 * be executed twice, which is not good for things like
 			 * the root menu. So, ignore any clicks that were generated
 			 * while the entry was being executed */
-			while (XCheckTypedWindowEvent(dpy, menu->menu->window, ButtonPress, &ev)) ;
+			while (WXEvqTakeTyped(dpy, ButtonPress, menu->menu->window, &ev)) ;
 		} else if (entry->callback != NULL && entry->cascade < 0) {
 			selectEntry(menu, -1);
 		} else {

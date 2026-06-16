@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc
+check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -20,6 +20,12 @@ check_handlers_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 check_ipc_SOURCES = check_ipc.c
 check_ipc_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+# links libWINGs for the WXEvq* symbols and the X client libraries for
+# the XEvent type, but never opens a Display so make check stays X-free
+check_evq_SOURCES = check_evq.c
+check_evq_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @XLIBS@ @INTLIBS@
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \

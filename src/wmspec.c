@@ -2809,9 +2809,9 @@ Bool wNETWMSyncRequestPending(WWindow *wwin)
 	if (!wwin->net_sync.waiting)
 		return False;
 
-	while (XCheckTypedEvent(dpy,
-				w_global.xext.xsync.event_base + XSyncAlarmNotify,
-				&ev))
+	while (WXEvqTakeTyped(dpy,
+			      w_global.xext.xsync.event_base + XSyncAlarmNotify,
+			      None, &ev))
 		wNETWMSyncRequestHandleAlarm(&ev);
 
 	if (!wwin->net_sync.waiting)

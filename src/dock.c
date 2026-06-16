@@ -4209,17 +4209,17 @@ static void clipLeave(WDock *dock)
 	if (dock == NULL)
 		return;
 
-	if (XCheckTypedEvent(dpy, EnterNotify, &event) != False) {
+	if (WXEvqTakeTyped(dpy, EnterNotify, None, &event) != False) {
 		if (XFindContext(dpy, event.xcrossing.window, w_global.context.client_win,
 				 (XPointer *) & desc) != XCNOENT
 		    && desc && desc->parent_type == WCLASS_DOCK_ICON
 		    && ((WAppIcon *) desc->parent)->dock == dock) {
 			/* We haven't left the dock/clip/drawer yet */
-			XPutBackEvent(dpy, &event);
+			WXEvqPutBack(&event);
 			return;
 		}
 
-		XPutBackEvent(dpy, &event);
+		WXEvqPutBack(&event);
 	} else {
 		/* We entered a withdrawn window, so we're still in Clip */
 		return;

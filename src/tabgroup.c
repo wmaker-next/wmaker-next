@@ -1187,8 +1187,8 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 
 		switch (event.type) {
 		case MotionNotify:
-			while (XCheckMaskEvent(dpy, ButtonMotionMask
-			                       | PointerMotionMask, &event))
+			while (WXEvqTakeMask(dpy, ButtonMotionMask
+			                       | PointerMotionMask, None, &event))
 				;
 			rx = event.xmotion.x_root;
 			ry = event.xmotion.y_root;

@@ -1439,7 +1439,7 @@ static void flushExpose(void)
 {
 	XEvent tmpev;
 
-	while (XCheckTypedEvent(dpy, Expose, &tmpev))
+	while (WXEvqTakeTyped(dpy, Expose, None, &tmpev))
 		WMHandleEvent(&tmpev);
 	XSync(dpy, 0);
 }

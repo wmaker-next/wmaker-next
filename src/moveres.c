@@ -527,7 +527,7 @@ static void flushMotion(void)
 	XEvent ev;
 
 	XSync(dpy, False);
-	while (XCheckMaskEvent(dpy, ButtonMotionMask, &ev)) ;
+	while (WXEvqTakeMask(dpy, ButtonMotionMask, None, &ev)) ;
 }
 
 static void crossWorkspace(WScreen * scr, WWindow * wwin, int opaque_move, int new_workspace, int rewind)
@@ -1561,7 +1561,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			break;
 		case Expose:
 			WMHandleEvent(&event);
-			while (XCheckTypedEvent(dpy, Expose, &event)) {
+			while (WXEvqTakeTyped(dpy, Expose, None, &event)) {
 				WMHandleEvent(&event);
 			}
 			break;
@@ -1742,7 +1742,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 
 			if (event.type == MotionNotify) {
 				/* compress MotionNotify events */
-				while (XCheckMaskEvent(dpy, ButtonMotionMask, &event)) ;
+				while (WXEvqTakeMask(dpy, ButtonMotionMask, None, &event)) ;
 				if (!checkMouseSamplingRate(&event))
 					continue;
 			}
@@ -1872,15 +1872,15 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 
 				/* discard all enter/leave events that happened until
 				 * the time the button was released */
-				while (XCheckTypedEvent(dpy, EnterNotify, &e)) {
+				while (WXEvqTakeTyped(dpy, EnterNotify, None, &e)) {
 					if (e.xcrossing.time > event.xbutton.time) {
-						XPutBackEvent(dpy, &e);
+						WXEvqPutBack(&e);
 						break;
 					}
 				}
-				while (XCheckTypedEvent(dpy, LeaveNotify, &e)) {
+				while (WXEvqTakeTyped(dpy, LeaveNotify, None, &e)) {
 					if (e.xcrossing.time > event.xbutton.time) {
-						XPutBackEvent(dpy, &e);
+						WXEvqPutBack(&e);
 						break;
 					}
 				}
@@ -2213,7 +2213,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 			 * motion events queue, drain to the latest position
 			 * the same way the move loop does so the next
 			 * configure applies the current pointer position */
-			while (XCheckMaskEvent(dpy, ButtonMotionMask, &event))
+			while (WXEvqTakeMask(dpy, ButtonMotionMask, None, &event))
 				;
 			if (!checkMouseSamplingRate(&event))
 				continue;

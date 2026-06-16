@@ -37,6 +37,7 @@ libWINGs_la_SOURCES = 	\
 	wcolorpanel.c \
 	wcolorwell.c \
 	wconfig.h \
+	wxevq.c \
 	wevent.c \
 	wfilepanel.c \
 	wframe.c \

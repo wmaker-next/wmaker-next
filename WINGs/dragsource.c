@@ -835,7 +835,12 @@ void WMDragImageFromView(WMView * view, XEvent * event)
 		if (event->xbutton.button == Button1) {
 			XEvent nextEvent;
 
-			XPeekEvent(event->xbutton.display, &nextEvent);
+			/* XPeekEvent blocked until the next event was readable
+			 * and left it at the head of the queue, do the same on
+			 * the WINGs queue so a slow drag start (button down,
+			 * no motion buffered yet) is still recognised */
+			WMNextEvent(event->xbutton.display, &nextEvent);
+			WXEvqPutBack(&nextEvent);
 
 			/* Initialize only if a drag really begins (avoid clicks) */
 			if (nextEvent.type == MotionNotify) {

@@ -1695,7 +1695,7 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	Cursor magCursor;
 	Pixmap pixmap;
-	XEvent event;
+	XEvent event, ev;
 	WMPoint initialPosition;
 
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -1727,7 +1727,7 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 		WMNextEvent(scr->display, &event);
 
 		/* Pack motion events */
-		while (XCheckTypedEvent(scr->display, MotionNotify, &event)) {
+		while (WXEvqTakeTyped(scr->display, MotionNotify, None, &event)) {
 		}
 
 		switch (event.type) {
@@ -1767,11 +1767,9 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 			break;
 
 		case MotionNotify:
-			while (XPending(event.xmotion.display)) {
-				XEvent ev;
-				XPeekEvent(event.xmotion.display, &ev);
+			while (WXEvqPeek(event.xmotion.display, &ev)) {
 				if (ev.type == MotionNotify)
-					XNextEvent(event.xmotion.display, &event);
+					WXEvqNext(event.xmotion.display, &event);
 				else
 					break;
 			}
