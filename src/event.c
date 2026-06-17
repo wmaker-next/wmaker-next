@@ -1090,15 +1090,9 @@ static void handlePropertyNotify(XEvent * event)
 {
 	WWindow *wwin;
 	WApplication *wapp;
-	Window jr;
-	int ji;
-	unsigned int ju;
 
 	wwin = wWindowFor(event->xproperty.window);
 	if (wwin) {
-		if (!XGetGeometry(dpy, wwin->client_win, &jr, &ji, &ji, &ju, &ju, &ju, &ju)) {
-			return;
-		}
 		wClientCheckProperty(wwin, &event->xproperty);
 	} else {
 		WScreen *scr = wScreenForRootWindow(event->xproperty.window);
