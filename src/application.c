@@ -51,17 +51,28 @@ static WWindow *makeMainWindow(WScreen *scr, Window window, WWindow *src)
 	wwin->main_window = window;
 
 	if (src) {
-		/* the main window is the just-managed client window, copy
-		 * what wManageWindow already decoded instead of re-reading
-		 * WM_HINTS and WM_CLASS, and skip XSelectInput since
-		 * CLIENT_EVENTS already covers PropertyChange and
-		 * StructureNotify */
+		/* the main window is either the just-managed client window
+		 * or the fake group leader wmaker created for it, copy what
+		 * wManageWindow already decoded instead of re-reading
+		 * WM_HINTS and WM_CLASS */
 		if (src->wm_hints) {
 			wwin->wm_hints = WXAllocWMHints();
 			*wwin->wm_hints = *src->wm_hints;
+			if (window != src->client_win) {
+				/* fake leader, createFakeWindowGroupLeader
+				 * pointed window_group at itself */
+				wwin->wm_hints->window_group = window;
+				wwin->wm_hints->flags |= WindowGroupHint;
+			}
 		}
 		wwin->wm_instance = (char *)wintern(src->wm_instance);
 		wwin->wm_class = (char *)wintern(src->wm_class);
+		/* the just-managed client already has CLIENT_EVENTS selected
+		 * which covers PropertyChange and StructureNotify, the fake
+		 * leader is fresh so select here */
+		if (window != src->client_win)
+			XSelectInput(dpy, window,
+				     PropertyChangeMask | StructureNotifyMask);
 	} else {
 		if (!XGetWindowAttributes(dpy, window, &attr)) {
 			wWindowDestroy(wwin);
@@ -104,16 +115,6 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	if (main_window == None || main_window == scr->root_win)
 		return NULL;
 
-	/* when the main window is the just-managed client window
-	 * everything makeMainWindow needs is already on wwin and the
-	 * window is known to exist, so skip the GetGeometry round-trip
-	 * and thread the decoded hints through */
-	src = (main_window == wwin->client_win) ? wwin : NULL;
-
-	/* check if the window is valid */
-	if (!src && !XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
-		return NULL;
-
 	wapp = wApplicationOf(main_window);
 	if (wapp) {
 		wapp->refcount++;
@@ -123,6 +124,22 @@ WApplication *wApplicationCreate(WWindow * wwin)
 
 		return wapp;
 	}
+
+	/* when the main window is the just-managed client or the fake
+	 * group leader wmaker created for it, everything makeMainWindow
+	 * needs is already on wwin and the window is known to exist, so
+	 * skip the GetGeometry round-trip and thread the decoded hints
+	 * through */
+	if (main_window == wwin->client_win)
+		src = wwin;
+	else if (wwin->fake_group && wwin->fake_group->leader == main_window)
+		src = wwin;
+	else
+		src = NULL;
+
+	/* check if the window is valid */
+	if (!src && !XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
+		return NULL;
 
 	wapp = wmalloc(sizeof(WApplication));
 
@@ -146,7 +163,12 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	if (leader)
 		leader->main_window = main_window;
 
-	wapp->menu = wAppMenuGet(scr, main_window);
+	/* createFakeWindowGroupLeader never sets _WINDOWMAKER_MENU on the
+	 * fake leader, so skip the read */
+	if (wwin->fake_group && wwin->fake_group->leader == main_window)
+		wapp->menu = NULL;
+	else
+		wapp->menu = wAppMenuGet(scr, main_window);
 #ifdef USER_MENU
 	if (!wapp->menu)
 		wapp->menu = wUserMenuGet(scr, wapp->main_window_desc);
