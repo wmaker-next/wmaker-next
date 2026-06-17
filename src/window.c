@@ -242,7 +242,7 @@ void wWindowDestroy(WWindow *wwin)
 		wfree(wwin->wm_gnustep_attr);
 
 	if (wwin->cmap_windows)
-		XFree(wwin->cmap_windows);
+		wfree(wwin->cmap_windows);
 
 	XDeleteContext(dpy, wwin->client_win, w_global.context.client_win);
 
@@ -335,6 +335,7 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 #else
 	ck->motif.seq = 0;
 #endif
+	ck->cmap_windows = wClientReqColormapWindows(window);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
 					w_global.atom.wmaker.state, 10);
@@ -1019,7 +1020,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	}
 
 	/* get colormap windows */
-	GetColormapWindows(wwin);
+	wClientRcvColormapWindows(wwin, ck.cmap_windows);
 
 	/*
 	 * Setup the decoration/window attributes and

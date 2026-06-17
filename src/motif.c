@@ -66,8 +66,6 @@ typedef struct {
 	long status;
 } MWMHints;
 
-static Atom _XA_MOTIF_WM_HINTS;
-
 static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 {
 	/*
@@ -160,16 +158,10 @@ static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 	}
 }
 
-static Atom mwm_atom(void)
-{
-	if (!_XA_MOTIF_WM_HINTS)
-		_XA_MOTIF_WM_HINTS = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-	return _XA_MOTIF_WM_HINTS;
-}
-
 WXCookie wMWMReqClientHints(Window window)
 {
-	return WXReqFormat32(dpy, window, mwm_atom(), mwm_atom(), 5);
+	return WXReqFormat32(dpy, window, w_global.atom.wm.motif_wm_hints,
+			     w_global.atom.wm.motif_wm_hints, 5);
 }
 
 static int rcvMWMHints(WXCookie ck, MWMHints *mwmhints)

@@ -34,6 +34,8 @@ void wClientGetNormalHints(WWindow *wwin, XWindowAttributes *wattribs,
                            Bool geometry, WXCookie normal_ck,
                            int *x, int *y, unsigned *width,
                            unsigned *height);
+WXCookie wClientReqColormapWindows(Window window);
+void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck);
 void GetColormapWindows(WWindow *wwin);
 
 #endif

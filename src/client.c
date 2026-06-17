@@ -741,20 +741,27 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 	}
 }
 
-void GetColormapWindows(WWindow * wwin)
+WXCookie wClientReqColormapWindows(Window window)
 {
-#ifndef NO_CRASHES
-	if (wwin->cmap_windows) {
-		XFree(wwin->cmap_windows);
-	}
+	/* Xlib's XGetWMColormapWindows() interns WM_COLORMAP_WINDOWS on
+	 * every call, the atom is in the cold-boot batch so read the
+	 * property directly and let wManagePrefetch() pipeline it */
+	return WXReqFormat32(dpy, window, w_global.atom.wm.colormap_windows,
+			     XA_WINDOW, 64);
+}
 
-	wwin->cmap_windows = NULL;
-	wwin->cmap_window_no = 0;
+void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck)
+{
+	size_t count = 0;
 
-	if (!XGetWMColormapWindows(dpy, wwin->client_win, &(wwin->cmap_windows), &(wwin->cmap_window_no))
-	    || !wwin->cmap_windows) {
-		wwin->cmap_window_no = 0;
-		wwin->cmap_windows = NULL;
-	}
-#endif
+	if (wwin->cmap_windows)
+		wfree(wwin->cmap_windows);
+
+	wwin->cmap_windows = WXRcvWindowList(dpy, ck, &count);
+	wwin->cmap_window_no = wwin->cmap_windows ? (int)count : 0;
+}
+
+void GetColormapWindows(WWindow *wwin)
+{
+	wClientRcvColormapWindows(wwin, wClientReqColormapWindows(wwin->client_win));
 }

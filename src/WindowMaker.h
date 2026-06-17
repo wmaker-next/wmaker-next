@@ -356,6 +356,7 @@ extern struct wmaker_global_variables {
 			Atom client_leader;
 			Atom colormap_windows;
 			Atom colormap_notify;
+			Atom motif_wm_hints;
 			Atom ignore_focus_events;
 		} wm;
 

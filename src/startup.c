@@ -307,6 +307,7 @@ WScreen *wScreenForWindow(Window window)
 	_(wm.client_leader,             "WM_CLIENT_LEADER") \
 	_(wm.colormap_windows,          "WM_COLORMAP_WINDOWS") \
 	_(wm.colormap_notify,           "WM_COLORMAP_NOTIFY") \
+	_(wm.motif_wm_hints,            "_MOTIF_WM_HINTS") \
 	_(wm.ignore_focus_events,       "WM_IGNORE_FOCUS_EVENTS") \
 	_(wmaker.menu,                  "_WINDOWMAKER_MENU") \
 	_(wmaker.state,                 "_WINDOWMAKER_STATE") \

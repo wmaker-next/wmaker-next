@@ -468,6 +468,7 @@ typedef struct {
     WXCookie transient;     /* WM_TRANSIENT_FOR */
     WXCookie normal;        /* WM_NORMAL_HINTS */
     WXCookie motif;         /* _MOTIF_WM_HINTS */
+    WXCookie cmap_windows;  /* WM_COLORMAP_WINDOWS */
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
     WXCookie saved_state;   /* _WINDOWMAKER_STATE */
     WXCookie mark_key;      /* _WINDOWMAKER_MARK_KEY */
