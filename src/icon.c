@@ -840,7 +840,6 @@ static void set_dockapp_in_icon(WIcon *icon)
 RImage *get_rimage_icon_from_wm_hints(WIcon *icon)
 {
 	RImage *image = NULL;
-	unsigned int w, h, d;
 	WWindow *wwin;
 
 	if ((!icon) || (!icon->owner))
@@ -851,14 +850,13 @@ RImage *get_rimage_icon_from_wm_hints(WIcon *icon)
 	if (!wwin->wm_hints)
 		return NULL;
 
-	if (!getSize(wwin->wm_hints->icon_pixmap, &w, &h, &d)) {
-		icon->owner->wm_hints->flags &= ~IconPixmapHint;
+	image = get_wwindow_image_from_wmhints(wwin);
+	if (!image) {
+		/* RCreateImageFromDrawable already issued a GetGeometry on
+		 * the pixmap, a NULL here means it was bad or empty */
+		wwin->wm_hints->flags &= ~IconPixmapHint;
 		return NULL;
 	}
-
-	image = get_wwindow_image_from_wmhints(wwin);
-	if (!image)
-		return NULL;
 
 	/* Resize the icon to the w_global.config->icon_size size */
 	image = wIconValidateIconSize(image, w_global.config->icon_size);

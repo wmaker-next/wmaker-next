@@ -595,7 +595,11 @@ RImage *get_window_image_from_x11(Window window)
 
 static void updateIconImage(WWindow *wwin)
 {
+	WApplication *app;
+	Bool had_image;
+
 	/* Remove the icon image from X11 */
+	had_image = (wwin->net_icon_image != NULL);
 	if (wwin->net_icon_image)
 		RReleaseImage(wwin->net_icon_image);
 
@@ -613,8 +617,15 @@ static void updateIconImage(WWindow *wwin)
 	 * main_window_desc, whose net_icon_image was copied once at
 	 * wApplicationCreate time, so propagate the new image there too
 	 * or wIconUpdate below will not see it (clients that set
-	 * _NET_WM_ICON only after mapping otherwise keep the default). */
-	WApplication *app = wApplicationOf(wwin->main_window);
+	 * _NET_WM_ICON only after mapping otherwise keep the default).
+	 * When this window neither had nor has a _NET_WM_ICON there is
+	 * nothing to propagate and the app icon's source (wm_hints
+	 * icon_pixmap or the user database) has not changed, so skip the
+	 * re-derive instead of round-tripping for the same RImage. */
+	if (!had_image && !wwin->net_icon_image)
+		return;
+
+	app = wApplicationOf(wwin->main_window);
 	if (app) {
 		if (app->main_window_desc && app->main_window_desc != wwin) {
 			if (app->main_window_desc->net_icon_image)
