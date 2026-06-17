@@ -54,6 +54,86 @@ static int errorHandler(Display * dpy, XErrorEvent * err)
 	return 0;
 }
 
+static void releaseSharedSegment(RContext *context)
+{
+	if (context->shm_size == 0)
+		return;
+
+	XShmDetach(context->dpy, &context->shm_seg);
+	/* The detach must reach the server before we drop our own
+	 * attachment and IPC_RMID the segment, otherwise nattch can hit
+	 * zero and the kernel frees it before the server reads from it. */
+	XSync(context->dpy, False);
+	if (shmdt(context->shm_seg.shmaddr) < 0)
+		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
+			"shmdt", strerror(errno));
+	if (shmctl(context->shm_seg.shmid, IPC_RMID, NULL) < 0)
+		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
+			"shmctl", strerror(errno));
+	context->shm_size = 0;
+}
+
+/*
+ * Ensure the per-context shared segment is at least `needed` bytes,
+ * creating and attaching one if none exists. Growth doubles the previous
+ * size so a typical session converges in two or three steps. Returns the
+ * usable size or zero on failure, in which case use_shared_memory is
+ * cleared so the caller falls back to plain XPutImage.
+ */
+static size_t ensureSharedSegment(RContext *context, size_t needed)
+{
+	size_t alloc;
+
+	if (context->shm_size >= needed)
+		return context->shm_size;
+
+	alloc = context->shm_size ? context->shm_size : 64 * 1024;
+	while (alloc < needed)
+		alloc *= 2;
+
+	releaseSharedSegment(context);
+
+	context->shm_seg.readOnly = False;
+	context->shm_seg.shmid = shmget(IPC_PRIVATE, alloc, IPC_CREAT | 0600);
+	if (context->shm_seg.shmid < 0) {
+		fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"),
+			"shmget", strerror(errno));
+		context->attribs->use_shared_memory = 0;
+		return 0;
+	}
+	context->shm_seg.shmaddr = shmat(context->shm_seg.shmid, NULL, 0);
+	if (context->shm_seg.shmaddr == (void *)-1) {
+		fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"),
+			"shmat", strerror(errno));
+		shmctl(context->shm_seg.shmid, IPC_RMID, NULL);
+		context->attribs->use_shared_memory = 0;
+		return 0;
+	}
+
+	shmError = 0;
+	XSync(context->dpy, False);
+	oldErrorHandler = XSetErrorHandler(errorHandler);
+	XShmAttach(context->dpy, &context->shm_seg);
+	XSync(context->dpy, False);
+	XSetErrorHandler(oldErrorHandler);
+
+	if (shmError) {
+		fprintf(stderr, _("wrlib: could not attach shared memory segment to XImage\n"));
+		shmdt(context->shm_seg.shmaddr);
+		shmctl(context->shm_seg.shmid, IPC_RMID, NULL);
+		context->attribs->use_shared_memory = 0;
+		return 0;
+	}
+
+	context->shm_size = alloc;
+	return alloc;
+}
+
+void RReleaseSharedSegment(RContext *context)
+{
+	releaseSharedSegment(context);
+}
+
 #endif
 
 RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned height)
@@ -100,51 +180,18 @@ RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned h
 			return NULL;
 		}
 	} else {
-		rximg->is_shared = 1;
-
-		rximg->info.readOnly = False;
-
 		rximg->image = XShmCreateImage(context->dpy, visual, depth,
 					       ZPixmap, NULL, &rximg->info, width, height);
 
-		rximg->info.shmid = shmget(IPC_PRIVATE, rximg->image->bytes_per_line * height, IPC_CREAT | 0777);
-		if (rximg->info.shmid < 0) {
-			context->attribs->use_shared_memory = 0;
-			fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"), "shmget", strerror(errno));
+		if (!ensureSharedSegment(context,
+					 (size_t)rximg->image->bytes_per_line * height)) {
 			XDestroyImage(rximg->image);
 			goto retry_without_shm;
 		}
 
-		rximg->info.shmaddr = shmat(rximg->info.shmid, 0, 0);
-		if (rximg->info.shmaddr == (void *)-1) {
-			fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"), "shmat", strerror(errno));
-			context->attribs->use_shared_memory = 0;
-			if (shmctl(rximg->info.shmid, IPC_RMID, 0) < 0)
-				fprintf(stderr, _("wrlib: error occurred while aborting %s, %s\n"), "shmctl", strerror(errno));
-			XDestroyImage(rximg->image);
-			goto retry_without_shm;
-		}
-
-		shmError = 0;
-		XSync(context->dpy, False);
-		oldErrorHandler = XSetErrorHandler(errorHandler);
-		XShmAttach(context->dpy, &rximg->info);
-		XSync(context->dpy, False);
-		XSetErrorHandler(oldErrorHandler);
-
+		rximg->is_shared = 1;
+		rximg->info = context->shm_seg;
 		rximg->image->data = rximg->info.shmaddr;
-		/*      rximg->image->obdata = &(rximg->info); */
-
-		if (shmError) {
-			fprintf(stderr, _("wrlib: could not attach shared memory segment to XImage\n"));
-			context->attribs->use_shared_memory = 0;
-			XDestroyImage(rximg->image);
-			if (shmdt(rximg->info.shmaddr) < 0)
-				fprintf(stderr, _("wrlib: error occurred while aborting %s, %s\n"), "shmdt", strerror(errno));
-			if (shmctl(rximg->info.shmid, IPC_RMID, 0) < 0)
-				fprintf(stderr, _("wrlib: error occurred while aborting %s, %s\n"), "shmctl", strerror(errno));
-			goto retry_without_shm;
-		}
 	}
 #endif				/* USE_XSHM */
 
@@ -160,16 +207,15 @@ void RDestroyXImage(RContext * context, RXImage * rximage)
 	XDestroyImage(rximage->image);
 #else				/* USE_XSHM */
 	if (rximage->is_shared) {
+		/* The data pointer belongs to the persistent context segment,
+		 * clear it so XDestroyImage frees only the XImage header.
+		 * The XSync is the reuse barrier, the server must have read
+		 * the queued ShmPutImage or shm-pixmap CopyArea out of this
+		 * segment before the next RCreateXImage caller overwrites it. */
+		rximage->image->data = NULL;
 		XSync(context->dpy, False);
-		XShmDetach(context->dpy, &rximage->info);
-		XDestroyImage(rximage->image);
-		if (shmdt(rximage->info.shmaddr) < 0)
-			fprintf(stderr, _("wrlib: error occurred while releasing XImage, %s: %s\n"), "shmdt", strerror(errno));
-		if (shmctl(rximage->info.shmid, IPC_RMID, 0) < 0)
-			fprintf(stderr, _("wrlib: error occurred while releasing XImage, %s: %s\n"), "shmctl", strerror(errno));
-	} else {
-		XDestroyImage(rximage->image);
 	}
+	XDestroyImage(rximage->image);
 #endif
 	free(rximage);
 }

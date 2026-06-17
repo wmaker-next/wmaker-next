@@ -164,6 +164,12 @@ typedef struct RContext {
             __wrlib_deprecated("Flag optimize_for_speed in RContext is not used anymore "
                                "and will be removed in future version, please do not use");
     } flags;
+
+@USE_XSHM@    /* Private: persistent MIT-SHM segment reused across RCreateXImage
+@USE_XSHM@     * calls so each conversion does not pay an attach/XSync/detach cycle.
+@USE_XSHM@     * shm_size is the segment byte size, zero means no segment cached. */
+@USE_XSHM@    XShmSegmentInfo shm_seg;
+@USE_XSHM@    size_t shm_size;
 } RContext;
 
 

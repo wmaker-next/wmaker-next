@@ -23,6 +23,7 @@
 
 #ifdef USE_XSHM
 Pixmap R_CreateXImageMappedPixmap(RContext *context, RXImage *ximage);
+void RReleaseSharedSegment(RContext *context);
 #endif
 
 
