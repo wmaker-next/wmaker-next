@@ -25,6 +25,10 @@ POTFILES  = \
 	$(top_srcdir)/src/dock.c \
 	$(top_srcdir)/src/dockedapp.c \
 	$(top_srcdir)/src/event.c \
+	$(top_srcdir)/src/event_client.c \
+	$(top_srcdir)/src/event_input.c \
+	$(top_srcdir)/src/event_root.c \
+	$(top_srcdir)/src/event_ext.c \
 	$(top_srcdir)/src/framewin.c \
 	$(top_srcdir)/src/geomview.c \
 	$(top_srcdir)/src/osdview.c \

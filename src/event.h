@@ -27,6 +27,8 @@
 #include <stdnoreturn.h>
 #endif
 
+#include <xcb/xcb.h>
+
 typedef void (WDeathHandler)(pid_t pid, unsigned int status, void *cdata);
 
 noreturn void EventLoop(void);
@@ -38,6 +40,40 @@ WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
 void wInotifyCleanup(void);
 #endif
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
+
+/* per-protocol handlers in event_client.c, event_input.c, event_root.c
+ * and event_ext.c are dispatched from a table indexed by
+ * response_type & 0x7f.  Each handler reads the typed xcb struct via
+ * xe for its own logic and passes the cooked ev through to the legacy
+ * XEvent* callback surface (WObjDescriptor, wClientConfigure,
+ * wNETWMProcessClientMessage, WMHandleEvent) until those signatures
+ * move onto xcb in a later commit.  The wire bytes travel inside ev
+ * via WXWireEvent.wire so a handler reached from a modal loop's
+ * WMHandleEvent default arm has them too. */
+typedef void (*WEventHandler)(const xcb_generic_event_t *xe, XEvent *ev);
+
+void wEventRegisterHandler(unsigned int response_type, WEventHandler h);
+void wEventInitDispatch(void);
+
+/* per-module registration, called once from wEventInitDispatch() after
+ * the extension probes have filled w_global.xext.*.event_base */
+void wEventClientRegister(void);
+void wEventInputRegister(void);
+void wEventRootRegister(void);
+void wEventExtRegister(void);
+
+/* update w_global.timestamp.last_event from any timestamp-bearing
+ * event, the dock XDND selection-completion side-effect that lived in
+ * the old saveTimestamp() switch is now a proper SelectionNotify
+ * handler in event_root.c */
+void wSaveTimestamp(const xcb_generic_event_t *xe);
+
+/* the keysym-to-keycode resolution and named-modifier masks may have
+ * shifted, re-derive every WShortKey from its config string and
+ * regrab on every managed window, both the core MappingNotify
+ * (event_input.c) and XKB NewKeyboardNotify/MapNotify (event_ext.c)
+ * land here */
+void wRefreshKeybindings(void);
 
 /* Tear down any active key-chain state on scr: cancel the inactivity
  * timer, hide the prefix OSD, ungrab the keyboard, and clear curpos.

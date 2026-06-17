@@ -729,19 +729,23 @@ void WMSetViewNextResponder(WMView *view, WMView *responder);
  * changes.  Processes that want to keep protocol XIM (WPrefs) simply
  * never call the flip. */
 
-/* For extension events the cooker fills the xany prefix so dispatch on
- * type, serial and window keeps working, and copies the 32 wire bytes
- * here so the handful of extension consumers can cast .wire to the
- * matching xcb_*_event_t struct.  This struct overlays XEvent (long
- * pad[24]) and shares the XAnyEvent prefix, .wire follows an
- * unsigned long so it is 8-byte aligned on LP64 and the cast is
- * alignment-safe for every 32-byte xcb event struct. */
+/* The cooker fills the variant struct for core events and the xany
+ * prefix for extension events so dispatch on type, serial and window
+ * keeps working, then copies the 32 wire bytes into .wire so any
+ * consumer can cast it to the matching xcb_*_event_t struct.  This
+ * struct overlays XEvent (long pad[24]) and shares the XAnyEvent
+ * prefix, .wire sits in the pad slack past every variant (the
+ * largest, XCrossingEvent, is 104 bytes on LP64 well below the
+ * sizeof(XEvent)-32 = 160 byte offset, asserted in wxecook.c) so the
+ * cooked fields and the raw bytes coexist.  .wire is 8-byte aligned
+ * on LP64 so the cast is alignment-safe for every xcb event struct. */
 typedef struct {
     int type;
     unsigned long serial;
     Bool send_event;
     Display *display;
     Window window;
+    unsigned char wirepad_[sizeof(XEvent) - sizeof(XAnyEvent) - 32];
     unsigned char wire[32];
 } WXWireEvent;
 

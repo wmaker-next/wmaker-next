@@ -224,7 +224,7 @@ configure-documentation:
 # on demand. Each driver still does its own per-tool `command -v` check
 # and exits 77 (SKIP) when something it needs is missing, the
 # AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
-DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/dock-drop-drive.sh
+DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/dock-drop-drive.sh
 DRIVE_SUBDIRS = util/Tests
 
 check-drive:

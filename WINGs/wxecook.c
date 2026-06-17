@@ -33,8 +33,21 @@
 
 #include "WINGsP.h"
 
-_Static_assert(sizeof(WXWireEvent) <= sizeof(XEvent),
-	       "WXWireEvent must overlay XEvent");
+_Static_assert(sizeof(WXWireEvent) == sizeof(XEvent),
+	       "WXWireEvent must overlay XEvent exactly");
+_Static_assert(offsetof(WXWireEvent, type) == offsetof(XAnyEvent, type)
+	       && offsetof(WXWireEvent, window) == offsetof(XAnyEvent, window),
+	       "WXWireEvent prefix must alias XAnyEvent");
+/* the wire bytes sit in the pad[24] slack past every cooked variant,
+ * XCrossingEvent is the largest at 104 bytes on LP64, an explicit
+ * assert here so a future Xlib that grows a variant fails the build
+ * instead of silently overwriting the raw bytes */
+_Static_assert(sizeof(XCrossingEvent) <= offsetof(WXWireEvent, wire),
+	       "WXWireEvent.wire would alias a cooked variant");
+_Static_assert(sizeof(XConfigureRequestEvent) <= offsetof(WXWireEvent, wire),
+	       "WXWireEvent.wire would alias a cooked variant");
+_Static_assert(sizeof(XClientMessageEvent) <= offsetof(WXWireEvent, wire),
+	       "WXWireEvent.wire would alias a cooked variant");
 
 /* every core event sets out->xany.{type,serial,send_event,display} from
  * the generic header, then the per-type arm fills the variant struct,
@@ -351,8 +364,7 @@ void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out)
 	}
 	default: {
 		/* extension event or XGE GenericEvent, fill the xany prefix
-		 * so dispatch on type and serial works and stash the 32 wire
-		 * bytes for the consumer to read directly, xany.window is set
+		 * so dispatch on type and serial works, xany.window is set
 		 * to whatever sits at wire offset 4 which is the affected
 		 * window for Shape and the alarm id for XSync, callers that
 		 * need a different field read it from .wire themselves */
@@ -360,8 +372,13 @@ void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out)
 		uint32_t at4;
 		memcpy(&at4, (unsigned char *)xe + 4, sizeof(at4));
 		we->window = at4;
-		memcpy(we->wire, xe, sizeof(we->wire));
 		break;
 	}
 	}
+
+	/* always stash the 32 wire bytes at the tail of the XEvent so the
+	 * src/ dispatch table can hand the raw xcb struct to per-protocol
+	 * handlers regardless of how the cooked event reached it (main
+	 * loop, modal-loop default arm, WXEvqTakeTyped lookahead) */
+	memcpy(((WXWireEvent *)out)->wire, xe, sizeof(((WXWireEvent *)out)->wire));
 }

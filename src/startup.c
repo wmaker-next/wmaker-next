@@ -591,6 +591,12 @@ void StartUp(Bool defaultScreenOnly)
 	}
 #endif
 
+	/* extension probes have filled w_global.xext.*.event_base, so the
+	 * per-protocol handler tables can register their slots now,
+	 * DispatchEvent() was hooked above as the WINGs extra event
+	 * handler so events on non-view windows reach the table */
+	wEventInitDispatch();
+
 	if (defaultScreenOnly)
 		max = 1;
 	else

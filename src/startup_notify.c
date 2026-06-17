@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 
 #define SN_API_NOT_YET_FROZEN 1
 #include <libsn/sn.h>
@@ -132,7 +133,14 @@ void wStartupNotifyInit(WScreen *scr)
 	struct WStartupNotify *sn;
 
 	if (!sn_dpy) {
-		sn_dpy = sn_display_new(dpy, NULL, NULL);
+		/* the Xlib-signature sn_display_new()/_process_event() are
+		 * thin shims over the xcb code path (libsn imports a single
+		 * Xlib symbol, XGetXCBConnection), going through
+		 * sn_xcb_display_new() lets event_root.c hand over the raw
+		 * xcb_client_message_event_t and drops the cooked-event
+		 * dependency from the only ClientMessage consumer that does
+		 * not need it */
+		sn_dpy = sn_xcb_display_new(XGetXCBConnection(dpy), NULL, NULL);
 		if (!sn_dpy)
 			return;
 	}
@@ -178,11 +186,13 @@ void wStartupNotifyShutdown(WScreen *scr)
 	}
 }
 
-Bool wStartupNotifyProcessEvent(XEvent *ev)
+Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe)
 {
 	if (!sn_dpy)
 		return False;
-	return sn_display_process_event(sn_dpy, ev) ? True : False;
+	/* libsn never modifies the event it is handed and the parameter
+	 * is only non-const for historical reasons, the cast is safe */
+	return sn_xcb_display_process_event(sn_dpy, (xcb_generic_event_t *)xe) ? True : False;
 }
 
 /* tear down a pending entry without removing it from the array, callers

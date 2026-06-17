@@ -22,6 +22,7 @@
 #define WMSTARTUP_NOTIFY_H_
 
 #include <X11/Xlib.h>
+#include <xcb/xcb.h>
 #include <sys/types.h>
 
 struct _WScreen;
@@ -39,7 +40,7 @@ typedef WPendingLaunch WStartupLaunch;
 
 void wStartupNotifyInit(struct _WScreen *scr);
 void wStartupNotifyShutdown(struct _WScreen *scr);
-Bool wStartupNotifyProcessEvent(XEvent *ev);
+Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe);
 Bool wStartupNotifyAppStarting(struct _WScreen *scr);
 void wStartupNotifyUpdateCursor(struct _WScreen *scr);
 
@@ -61,7 +62,7 @@ void wStartupNotifyForgetIcon(struct WAppIcon *btn);
 
 static inline void wStartupNotifyInit(struct _WScreen *scr) { (void)scr; }
 static inline void wStartupNotifyShutdown(struct _WScreen *scr) { (void)scr; }
-static inline Bool wStartupNotifyProcessEvent(XEvent *ev) { (void)ev; return False; }
+static inline Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe) { (void)xe; return False; }
 static inline Bool wStartupNotifyAppStarting(struct _WScreen *scr) { (void)scr; return False; }
 static inline void wStartupNotifyUpdateCursor(struct _WScreen *scr) { (void)scr; }
 

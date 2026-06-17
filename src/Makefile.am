@@ -48,6 +48,10 @@ wmaker_SOURCES = 	\
 	dock.h \
 	event.c \
 	event.h \
+	event_client.c \
+	event_input.c \
+	event_root.c \
+	event_ext.c \
 	extend_pixmaps.h \
 	framewin.c \
 	framewin.h \
