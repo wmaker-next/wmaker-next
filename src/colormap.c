@@ -91,7 +91,7 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 				XInstallColormap(dpy, attributes.colormap);
 		}
 	}
-	XSync(dpy, False);
+	XFlush(dpy);
 }
 
 void wColormapAllowClientInstallation(WScreen * scr, Bool starting)
@@ -104,6 +104,6 @@ void wColormapAllowClientInstallation(WScreen * scr, Bool starting)
 	 */
 	if (!starting) {
 		XInstallColormap(dpy, scr->current_colormap);
-		XSync(dpy, False);
+		XFlush(dpy);
 	}
 }

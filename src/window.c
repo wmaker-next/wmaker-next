@@ -871,11 +871,12 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	/* mutex. */
 	XGrabServer(dpy);
-	XSync(dpy, False);
 
 	/* make sure the window is still there. manageAllWindows() supplies
 	 * attributes it already batched across every child, the MapRequest
-	 * path passes NULL and we fetch here. */
+	 * path passes NULL and we fetch here, the GetWindowAttributes
+	 * round-trip itself orders the grab and its return value is the
+	 * existence check, so no XSync between the two. */
 	if (prefetched_attrs) {
 		wattribs = *prefetched_attrs;
 	} else if (!XGetWindowAttributes(dpy, window, &wattribs)) {

@@ -274,7 +274,7 @@ void wClientSendProtocol(WWindow * wwin, Atom protocol, Time time)
 	WXSendClientMessage(dpy, wwin->client_win, NoEventMask,
 			    wwin->client_win, w_global.atom.wm.protocols,
 			    (long)protocol, (long)time, 0, 0, 0);
-	XSync(dpy, False);
+	XFlush(dpy);
 }
 
 void wClientKill(WWindow * wwin)

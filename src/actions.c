@@ -201,11 +201,10 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 			break;
 		}
 
-		XFlush(dpy);
 		if (wwin->protocols.TAKE_FOCUS)
 			wClientSendProtocol(wwin, w_global.atom.wm.take_focus, timestamp);
 
-		XSync(dpy, False);
+		XFlush(dpy);
 	} else {
 		XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
 	}
