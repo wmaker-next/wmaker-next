@@ -234,53 +234,19 @@ void RDestroyXImage(RContext * context, RXImage * rximage)
 	free(rximage);
 }
 
-static unsigned getDepth(Display * dpy, Drawable d)
-{
-	Window w;
-	int foo;
-	unsigned bar;
-	unsigned depth;
-
-	XGetGeometry(dpy, d, &w, &foo, &foo, &bar, &bar, &bar, &depth);
-
-	return depth;
-}
-
 RXImage *RGetXImage(RContext * context, Drawable d, int x, int y, unsigned width, unsigned height)
 {
-	RXImage *ximg = NULL;
+	RXImage *ximg;
 
-#ifdef USE_XSHM
-	if (context->attribs->use_shared_memory && 0) {
-		ximg = RCreateXImage(context, getDepth(context->dpy, d), width, height);
-
-		if (ximg && !ximg->is_shared) {
-			RDestroyXImage(context, ximg);
-			ximg = NULL;
-		}
-		if (ximg) {
-			XShmGetImage(context->dpy, d, ximg->image, x, y, AllPlanes);
-		}
-	}
-	if (!ximg) {
-		ximg = malloc(sizeof(RXImage));
-		if (!ximg) {
-			RErrorCode = RERR_NOMEMORY;
-			return NULL;
-		}
-		ximg->is_shared = 0;
-		ximg->image = XGetImage(context->dpy, d, x, y, width, height, AllPlanes, ZPixmap);
-	}
-#else				/* !USE_XSHM */
 	ximg = malloc(sizeof(RXImage));
 	if (!ximg) {
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
-
+#ifdef USE_XSHM
+	ximg->is_shared = 0;
+#endif
 	ximg->image = XGetImage(context->dpy, d, x, y, width, height, AllPlanes, ZPixmap);
-#endif				/* !USE_XSHM */
-
 	if (ximg->image == NULL) {
 		free(ximg);
 		return NULL;
