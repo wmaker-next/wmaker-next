@@ -1459,12 +1459,11 @@ static void handleColormapNotify(XEvent * event)
 	do {
 		if (wwin) {
 			if (event->xcolormap.new) {
-				XWindowAttributes attr;
-
-				XGetWindowAttributes(dpy, wwin->client_win, &attr);
+				if (event->xcolormap.window == wwin->client_win)
+					wwin->colormap = event->xcolormap.colormap;
 
 				if (wwin == scr->cmap_window && wwin->cmap_window_no == 0)
-					scr->current_colormap = attr.colormap;
+					scr->current_colormap = event->xcolormap.colormap;
 
 				reinstall = True;
 			} else if (event->xcolormap.state == ColormapUninstalled &&

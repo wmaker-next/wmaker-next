@@ -257,6 +257,8 @@ typedef struct WWindow {
 	Window orig_main_window;		/* original main window of application.
 						 * used for the shared appicon thing */
 
+	Colormap colormap;			/* client colormap, kept in sync
+						 * by ColormapNotify */
 	int cmap_window_no;
 	Window *cmap_windows;
 

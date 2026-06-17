@@ -941,6 +941,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->client_win = window;
 	wwin->screen_ptr = scr;
 	wwin->old_border_width = wattribs.border_width;
+	wwin->colormap = wattribs.colormap;
 	wwin->event_mask = CLIENT_EVENTS;
 	attribs.event_mask = CLIENT_EVENTS;
 	attribs.do_not_propagate_mask = ButtonPressMask | ButtonReleaseMask;

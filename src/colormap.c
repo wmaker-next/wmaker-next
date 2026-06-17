@@ -36,14 +36,8 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 {
 	int i;
 	XWindowAttributes attributes;
+	Colormap cmap;
 	int done = 0;
-	Window xwin = None;
-
-	if (wwin) {
-		xwin = wwin->client_win;
-	} else {
-		xwin = scr->root_win;
-	}
 
 	scr->cmap_window = wwin;
 
@@ -79,16 +73,19 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 	}
 
 	if (!done) {
-		attributes.colormap = None;
-		if (xwin != None)
-			XGetWindowAttributes(dpy, xwin, &attributes);
-		if (attributes.colormap == None)
-			attributes.colormap = scr->colormap;
+		/* the client's own colormap was captured from the
+		 * GetWindowAttributes reply at manage time and is kept
+		 * in sync by ColormapNotify, and the root colormap is
+		 * the screen default by definition, so neither needs a
+		 * round-trip here */
+		cmap = wwin ? wwin->colormap : scr->colormap;
+		if (cmap == None)
+			cmap = scr->colormap;
 
-		if (scr->current_colormap != attributes.colormap) {
-			scr->current_colormap = attributes.colormap;
+		if (scr->current_colormap != cmap) {
+			scr->current_colormap = cmap;
 			if (!scr->flags.colormap_stuff_blocked)
-				XInstallColormap(dpy, attributes.colormap);
+				XInstallColormap(dpy, cmap);
 		}
 	}
 	XFlush(dpy);
