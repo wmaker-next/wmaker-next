@@ -71,6 +71,7 @@ static void releaseSharedSegment(RContext *context)
 		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
 			"shmctl", strerror(errno));
 	context->shm_size = 0;
+	context->shm_used = 0;
 }
 
 /*
@@ -87,7 +88,7 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 	if (context->shm_size >= needed)
 		return context->shm_size;
 
-	alloc = context->shm_size ? context->shm_size : 64 * 1024;
+	alloc = context->shm_size ? context->shm_size : 256 * 1024;
 	while (alloc < needed)
 		alloc *= 2;
 
@@ -126,6 +127,7 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 	}
 
 	context->shm_size = alloc;
+	context->shm_used = 0;
 	return alloc;
 }
 
@@ -180,18 +182,34 @@ RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned h
 			return NULL;
 		}
 	} else {
+		size_t need;
+
 		rximg->image = XShmCreateImage(context->dpy, visual, depth,
 					       ZPixmap, NULL, &rximg->info, width, height);
 
-		if (!ensureSharedSegment(context,
-					 (size_t)rximg->image->bytes_per_line * height)) {
+		need = (size_t)rximg->image->bytes_per_line * height;
+		need = (need + 7u) & ~(size_t)7u;
+
+		if (!ensureSharedSegment(context, need)) {
 			XDestroyImage(rximg->image);
 			goto retry_without_shm;
 		}
 
+		if (context->shm_used + need > context->shm_size) {
+			/* Bump allocator wrapped, the server must have read
+			 * every queued ShmPutImage out of the earlier slots
+			 * before this caller overwrites offset 0. The attach
+			 * and release brackets in ensureSharedSegment keep
+			 * their own XSyncs, this is the only per-image one
+			 * left and it fires once every shm_size bytes. */
+			XSync(context->dpy, False);
+			context->shm_used = 0;
+		}
+
 		rximg->is_shared = 1;
 		rximg->info = context->shm_seg;
-		rximg->image->data = rximg->info.shmaddr;
+		rximg->image->data = context->shm_seg.shmaddr + context->shm_used;
+		context->shm_used += need;
 	}
 #endif				/* USE_XSHM */
 
@@ -200,20 +218,16 @@ RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned h
 
 void RDestroyXImage(RContext * context, RXImage * rximage)
 {
-#ifndef USE_XSHM
-	/* Argument is not used in this case, tell the compiler it is ok */
 	(void) context;
-
+#ifndef USE_XSHM
 	XDestroyImage(rximage->image);
 #else				/* USE_XSHM */
 	if (rximage->is_shared) {
-		/* The data pointer belongs to the persistent context segment,
-		 * clear it so XDestroyImage frees only the XImage header.
-		 * The XSync is the reuse barrier, the server must have read
-		 * the queued ShmPutImage or shm-pixmap CopyArea out of this
-		 * segment before the next RCreateXImage caller overwrites it. */
+		/* The data pointer is an offset into the persistent context
+		 * segment, clear it so XDestroyImage frees only the XImage
+		 * header. The reuse barrier is the wrap XSync in
+		 * RCreateXImage, not here. */
 		rximage->image->data = NULL;
-		XSync(context->dpy, False);
 	}
 	XDestroyImage(rximage->image);
 #endif
@@ -292,16 +306,3 @@ RPutXImage(RContext * context, Drawable d, GC gc, RXImage * ximage, int src_x,
 #endif				/* USE_XSHM */
 }
 
-#ifdef USE_XSHM
-Pixmap R_CreateXImageMappedPixmap(RContext * context, RXImage * rximage)
-{
-	Pixmap pix;
-
-	pix = XShmCreatePixmap(context->dpy, context->drawable,
-			       rximage->image->data, &rximage->info,
-			       rximage->image->width, rximage->image->height, rximage->image->depth);
-
-	return pix;
-}
-
-#endif				/* USE_XSHM */

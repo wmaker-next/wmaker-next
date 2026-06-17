@@ -233,18 +233,13 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 		context->attribs->use_shared_memory = True;
 	}
 
+	context->flags.use_shared_pixmap = 0;
 	if (context->attribs->use_shared_memory) {
 		int major, minor;
 		Bool sharedPixmaps;
 
-		context->flags.use_shared_pixmap = 0;
-
-		if (!XShmQueryVersion(context->dpy, &major, &minor, &sharedPixmaps)) {
+		if (!XShmQueryVersion(context->dpy, &major, &minor, &sharedPixmaps))
 			context->attribs->use_shared_memory = False;
-		} else {
-			if (XShmPixmapFormat(context->dpy) == ZPixmap)
-				context->flags.use_shared_pixmap = sharedPixmaps;
-		}
 	}
 #endif
 

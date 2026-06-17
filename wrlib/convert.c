@@ -170,9 +170,6 @@ static RXImage *image2Bitmap(RContext * ctx, RImage * image, int threshold)
 int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 {
 	RXImage *ximg = NULL;
-#ifdef USE_XSHM
-	Pixmap tmp;
-#endif
 
 	assert(context != NULL);
 	assert(image != NULL);
@@ -184,32 +181,7 @@ int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 	}
 
 	*pixmap = XCreatePixmap(context->dpy, context->drawable, image->width, image->height, context->depth);
-
-#ifdef USE_XSHM
-	if (context->flags.use_shared_pixmap && ximg->is_shared)
-		tmp = R_CreateXImageMappedPixmap(context, ximg);
-	else
-		tmp = None;
-	if (tmp) {
-		/*
-		 * We have to copy the shm Pixmap into a normal Pixmap because
-		 * otherwise, we would have to control when Pixmaps are freed so
-		 * that we can detach their shm segments. This is a problem if the
-		 * program crash, leaving stale shared memory segments in the
-		 * system (lots of them). But with some work, we can optimize
-		 * things and remove this XCopyArea. This will require
-		 * explicitly freeing all pixmaps when exiting or restarting
-		 * wmaker.
-		 */
-		XCopyArea(context->dpy, tmp, *pixmap, context->copy_gc, 0, 0, image->width, image->height, 0, 0);
-		XFreePixmap(context->dpy, tmp);
-	} else {
-		RPutXImage(context, *pixmap, context->copy_gc, ximg, 0, 0, 0, 0, image->width, image->height);
-	}
-#else				/* !USE_XSHM */
 	RPutXImage(context, *pixmap, context->copy_gc, ximg, 0, 0, 0, 0, image->width, image->height);
-#endif				/* !USE_XSHM */
-
 	RDestroyXImage(context, ximg);
 
 	return True;

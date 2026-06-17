@@ -167,9 +167,11 @@ typedef struct RContext {
 
 @USE_XSHM@    /* Private: persistent MIT-SHM segment reused across RCreateXImage
 @USE_XSHM@     * calls so each conversion does not pay an attach/XSync/detach cycle.
-@USE_XSHM@     * shm_size is the segment byte size, zero means no segment cached. */
+@USE_XSHM@     * shm_size is the segment byte size, shm_used is the next free
+@USE_XSHM@     * offset inside it for the bump allocator in RCreateXImage. */
 @USE_XSHM@    XShmSegmentInfo shm_seg;
 @USE_XSHM@    size_t shm_size;
+@USE_XSHM@    size_t shm_used;
 } RContext;
 
 
