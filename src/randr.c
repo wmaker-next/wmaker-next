@@ -22,8 +22,10 @@
 
 #ifdef USE_RANDR
 
+#include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 
 #include "randr.h"
 #include "window.h"
@@ -77,9 +79,14 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
     WMRect new_screens[WM_MAX_HEADS];
     char name_buf[WM_MAX_HEADS][64];
     const char *new_names[WM_MAX_HEADS];   /* parallel: monitor name of each head */
+    Atom name_atom[WM_MAX_HEADS];
+    xcb_get_atom_name_cookie_t name_ck[WM_MAX_HEADS];
+    xcb_get_atom_name_reply_t *name_rep;
+    xcb_connection_t *xc = XGetXCBConnection(dpy);
     XRRMonitorInfo *mi;
     Window dummy_w;
     unsigned int root_uw, root_uh, dummy_u;
+    size_t nlen;
     int nmon = 0;
     int count = 0;
     int primary = 0;
@@ -91,8 +98,6 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
     mi = XRRGetMonitors(dpy, scr->root_win, True, &nmon);
 
     for (i = 0; mi && i < nmon && count < WM_MAX_HEADS; i++) {
-        char *aname;
-
         if (mi[i].width <= 0 || mi[i].height <= 0)
             continue;
 
@@ -100,15 +105,7 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
         new_screens[count].pos.y = mi[i].y;
         new_screens[count].size.width = mi[i].width;
         new_screens[count].size.height = mi[i].height;
-
-        name_buf[count][0] = '\0';
-        aname = mi[i].name != None ? XGetAtomName(dpy, mi[i].name) : NULL;
-        if (aname) {
-            strncpy(name_buf[count], aname, sizeof(name_buf[count]) - 1);
-            name_buf[count][sizeof(name_buf[count]) - 1] = '\0';
-            XFree(aname);
-        }
-        new_names[count] = name_buf[count][0] ? name_buf[count] : NULL;
+        name_atom[count] = mi[i].name;
 
         if (mi[i].primary)
             primary = count;
@@ -118,6 +115,29 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 
     if (mi)
         XRRFreeMonitors(mi);
+
+    /* Resolve every monitor-name atom in one round-trip rather than one
+     * XGetAtomName per head. */
+    for (i = 0; i < count; i++) {
+        name_ck[i].sequence = 0;
+        if (name_atom[i] != None)
+            name_ck[i] = xcb_get_atom_name(xc, (xcb_atom_t)name_atom[i]);
+    }
+    xcb_flush(xc);
+    for (i = 0; i < count; i++) {
+        name_buf[i][0] = '\0';
+        name_rep = name_ck[i].sequence
+                 ? xcb_get_atom_name_reply(xc, name_ck[i], NULL) : NULL;
+        if (name_rep) {
+            nlen = xcb_get_atom_name_name_length(name_rep);
+            if (nlen >= sizeof(name_buf[i]))
+                nlen = sizeof(name_buf[i]) - 1;
+            memcpy(name_buf[i], xcb_get_atom_name_name(name_rep), nlen);
+            name_buf[i][nlen] = '\0';
+            free(name_rep);
+        }
+        new_names[i] = name_buf[i][0] ? name_buf[i] : NULL;
+    }
 
     /* Some servers (notably Xephyr +xinerama) expose real XINERAMA heads
      * but only a stub RandR view, GetMonitors there returns one synthetic

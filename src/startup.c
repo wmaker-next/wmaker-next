@@ -784,11 +784,25 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	unsigned int i, j;
 	WWindow *wwin;
 	WXCookie *hints_ck, *attr_ck, *geom_ck;
+	const xcb_setup_t *setup = xcb_get_setup(XGetXCBConnection(dpy));
+	uint32_t own_base = setup->resource_id_base;
+	uint32_t own_mask = setup->resource_id_mask;
 
 	XGrabServer(dpy);
 	XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
+
+	/* Windows in this connection's XID range are wmaker's own helper
+	 * windows (dock tiles, balloon, geometry view, hot-corner sentinels),
+	 * all override-redirect and never candidates for management, so drop
+	 * them in place before spending three requests apiece asking the
+	 * server about them. */
+	for (i = 0, j = 0; i < nchildren; i++) {
+		if (((uint32_t)children[i] & ~own_mask) != own_base)
+			children[j++] = children[i];
+	}
+	nchildren = j;
 
 	/* Issue WM_HINTS, GetWindowAttributes and GetGeometry for every
 	 * child up front so the icon-window and override-redirect filters,

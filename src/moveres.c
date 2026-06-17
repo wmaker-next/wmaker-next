@@ -214,6 +214,7 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 	WScreen *scr = wwin->screen_ptr;
 	Window root = scr->root_win;
 	GC gc = scr->line_gc;
+	XFontStruct *tdfont;
 	int ty, by, my, x, y, mx, s;
 	char num[16];
 	XSegment segment[4];
@@ -235,8 +236,9 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 	by = y2 - wwin->frame->bottom_width;
 
 	if (w_global.config->size_display == WDIS_NEW) {
-		fw = XTextWidth(scr->tech_draw_font, "8888", 4);
-		fh = scr->tech_draw_font->ascent + scr->tech_draw_font->descent;
+		tdfont = wScreenGetTechDrawFont(scr);
+		fw = XTextWidth(tdfont, "8888", 4);
+		fh = tdfont->ascent + tdfont->descent;
 
 		XSetForeground(dpy, gc, scr->line_pixel);
 
@@ -294,11 +296,11 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 
 		snprintf(num, sizeof(num), "%i", (by - ty - wwin->normal_hints->base_height) /
 			 wwin->normal_hints->height_inc);
-		fw = XTextWidth(scr->tech_draw_font, num, strlen(num));
+		fw = XTextWidth(tdfont, num, strlen(num));
 
 		/* Display the height. */
-		XSetFont(dpy, gc, scr->tech_draw_font->fid);
-		XDrawString(dpy, root, gc, x - s + 3 - fw / 2, my + scr->tech_draw_font->ascent - fh / 2 + 1, num,
+		XSetFont(dpy, gc, tdfont->fid);
+		XDrawString(dpy, root, gc, x - s + 3 - fw / 2, my + tdfont->ascent - fh / 2 + 1, num,
 			    strlen(num));
 
 		/* horizontal geometry */
@@ -312,7 +314,7 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 		mx = x1 + (x2 - x1) / 2;
 		snprintf(num, sizeof(num), "%i", (x2 - x1 - wwin->normal_hints->base_width) /
 			 wwin->normal_hints->width_inc);
-		fw = XTextWidth(scr->tech_draw_font, num, strlen(num));
+		fw = XTextWidth(tdfont, num, strlen(num));
 
 		/* left arrow & end bar */
 		segment[0].x1 = x1;
@@ -357,7 +359,7 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 		XDrawSegments(dpy, root, gc, segment, 4);
 
 		/* Display the width. */
-		XDrawString(dpy, root, gc, mx - fw / 2 + 1, y - s + scr->tech_draw_font->ascent - fh / 2 + 1, num,
+		XDrawString(dpy, root, gc, mx - fw / 2 + 1, y - s + tdfont->ascent - fh / 2 + 1, num,
 			    strlen(num));
 	} else {
 		WSetGeometryViewShownSize(scr->gview, (x2 - x1 - wwin->normal_hints->base_width)

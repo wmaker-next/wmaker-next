@@ -806,9 +806,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	scr->info_text_font = WMBoldSystemFontOfSize(scr->wmscreen, 12);
 
-	scr->tech_draw_font = XLoadQueryFont(dpy, "-adobe-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
-	if (!scr->tech_draw_font)
-		scr->tech_draw_font = XLoadQueryFont(dpy, "fixed");
+	/* tech_draw_font is loaded lazily by wScreenGetTechDrawFont() so the
+	 * core-font QueryFont round-trip is paid only when ResizeDisplay or
+	 * MoveDisplay is set to "techwindowmaker". */
+	scr->tech_draw_font = NULL;
 
 	scr->gview = WCreateGeometryView(scr->wmscreen);
 	WMRealizeWidget(scr->gview);
@@ -819,6 +820,16 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	wScreenUpdateUsableArea(scr);
 
 	return scr;
+}
+
+XFontStruct *wScreenGetTechDrawFont(WScreen *scr)
+{
+	if (!scr->tech_draw_font) {
+		scr->tech_draw_font = XLoadQueryFont(dpy, "-adobe-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
+		if (!scr->tech_draw_font)
+			scr->tech_draw_font = XLoadQueryFont(dpy, "fixed");
+	}
+	return scr->tech_draw_font;
 }
 
 /*

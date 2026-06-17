@@ -433,6 +433,7 @@ WScreen *wScreenForWindow(Window window);   /* slower than above functions */
 void wScreenDestroy(WScreen *scr);
 void wScreenUpdateUsableArea(WScreen *scr);
 void wScreenUpdateRootEventMask(WScreen *scr);
+XFontStruct *wScreenGetTechDrawFont(WScreen *scr);
 
 void create_logo_image(WScreen *scr);
 #endif
