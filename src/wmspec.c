@@ -1387,6 +1387,7 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 			set = !wwin->client_flags.skip_window_list;
 
 		wwin->client_flags.skip_window_list = set;
+		wwin->client_flags.skip_switchpanel = set;
 	} else if (state == net_wm_state_skip_pager) {
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !wwin->flags.net_skip_pager;
