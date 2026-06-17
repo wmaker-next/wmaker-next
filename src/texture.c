@@ -32,6 +32,8 @@
 #include "texture.h"
 #include "window.h"
 #include "misc.h"
+#include "screen.h"
+#include "resources.h"
 
 
 static void bevelImage(RImage * image, int relief);
@@ -48,7 +50,7 @@ WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
 	texture->type = WTEX_SOLID;
 	texture->subtype = 0;
 
-	XAllocColor(dpy, scr->w_colormap, color);
+	wAllocColor(scr, scr->w_colormap, color);
 	texture->normal = *color;
 	if (color->red == 0 && color->blue == 0 && color->green == 0) {
 		texture->light.red = 0xb6da;
@@ -85,9 +87,9 @@ WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
 	texture->dark.red = 0;
 	texture->dark.green = 0;
 	texture->dark.blue = 0;
-	XAllocColor(dpy, scr->w_colormap, &texture->light);
-	XAllocColor(dpy, scr->w_colormap, &texture->dim);
-	XAllocColor(dpy, scr->w_colormap, &texture->dark);
+	wAllocColor(scr, scr->w_colormap, &texture->light);
+	wAllocColor(scr, scr->w_colormap, &texture->dim);
+	wAllocColor(scr, scr->w_colormap, &texture->dark);
 
 	gcm = GCForeground | GCBackground | GCGraphicsExposures;
 	gcv.graphics_exposures = False;
@@ -161,7 +163,7 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 
 	if (CANFREE(texture->any.color.pixel))
 		colors[count++] = texture->any.color.pixel;
-	if (count > 0) {
+	if (count > 0 && scr->w_visual->class != TrueColor) {
 		XErrorHandler oldhandler;
 
 		/* ignore error from buggy servers that don't know how
@@ -193,7 +195,7 @@ WTexGradient *wTextureMakeGradient(WScreen *scr, int style, const RColor *from, 
 	texture->normal.green = (from->green + to->green) << 7;
 	texture->normal.blue = (from->blue + to->blue) << 7;
 
-	XAllocColor(dpy, scr->w_colormap, &texture->normal);
+	wAllocColor(scr, scr->w_colormap, &texture->normal);
 	gcv.background = gcv.foreground = texture->normal.pixel;
 	gcv.graphics_exposures = False;
 	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
@@ -225,7 +227,7 @@ WTexIGradient *wTextureMakeIGradient(WScreen *scr, int thickness1, const RColor 
 		texture->normal.green = (colors2[0].green + colors2[1].green) << 7;
 		texture->normal.blue = (colors2[0].blue + colors2[1].blue) << 7;
 	}
-	XAllocColor(dpy, scr->w_colormap, &texture->normal);
+	wAllocColor(scr, scr->w_colormap, &texture->normal);
 	gcv.background = gcv.foreground = texture->normal.pixel;
 	gcv.graphics_exposures = False;
 	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
@@ -253,7 +255,7 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 
 	texture->colors = colors;
 
-	XAllocColor(dpy, scr->w_colormap, &texture->normal);
+	wAllocColor(scr, scr->w_colormap, &texture->normal);
 	gcv.background = gcv.foreground = texture->normal.pixel;
 	gcv.graphics_exposures = False;
 	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
@@ -277,7 +279,7 @@ WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file,
 
 	texture->normal = *color;
 
-	XAllocColor(dpy, scr->w_colormap, &texture->normal);
+	wAllocColor(scr, scr->w_colormap, &texture->normal);
 	gcv.background = gcv.foreground = texture->normal.pixel;
 	gcv.graphics_exposures = False;
 	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
@@ -310,7 +312,7 @@ WTexTGradient *wTextureMakeTGradient(WScreen *scr, int style, const RColor *from
 	texture->normal.green = (from->green + to->green) << 7;
 	texture->normal.blue = (from->blue + to->blue) << 7;
 
-	XAllocColor(dpy, scr->w_colormap, &texture->normal);
+	wAllocColor(scr, scr->w_colormap, &texture->normal);
 	gcv.background = gcv.foreground = texture->normal.pixel;
 	gcv.graphics_exposures = False;
 	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);

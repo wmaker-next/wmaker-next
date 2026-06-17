@@ -27,6 +27,24 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red,
  * or in the other colors allocated by WINGs.
  */
 
+static int allocPixel(WMScreen *scr, XColor *xcolor)
+{
+	RColor rcolor;
+
+	if (scr->rcontext->vclass == TrueColor) {
+		/* AllocColor on a TrueColor colormap is a server round-trip
+		 * that returns the value RGetClosestXColor computes locally
+		 * from the visual masks, so derive the pixel here. */
+		rcolor.red = xcolor->red >> 8;
+		rcolor.green = xcolor->green >> 8;
+		rcolor.blue = xcolor->blue >> 8;
+		rcolor.alpha = 0;
+		return RGetClosestXColor(scr->rcontext, &rcolor, xcolor);
+	}
+
+	return XAllocColor(scr->display, scr->colormap, xcolor);
+}
+
 static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned short green,
 			       unsigned short blue, unsigned short alpha)
 {
@@ -42,7 +60,8 @@ static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned shor
 	if (!RGetClosestXColor(scr->rcontext, &rcolor, &xcolor))
 		return NULL;
 
-	if (!XAllocColor(scr->display, scr->colormap, &xcolor))
+	if (scr->rcontext->vclass != TrueColor &&
+	    !XAllocColor(scr->display, scr->colormap, &xcolor))
 		return NULL;
 
 	color = wmalloc(sizeof(WMColor));
@@ -67,7 +86,7 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red, unsigned sho
 	xcolor.green = green;
 	xcolor.blue = blue;
 	xcolor.flags = DoRed | DoGreen | DoBlue;
-	if (!XAllocColor(scr->display, scr->colormap, &xcolor))
+	if (!allocPixel(scr, &xcolor))
 		return NULL;
 
 	color = wmalloc(sizeof(WMColor));
@@ -153,7 +172,8 @@ void WMReleaseColor(WMColor * color)
 	color->refCount--;
 
 	if (color->refCount < 1) {
-		XFreeColors(color->screen->display, color->screen->colormap, &(color->color.pixel), 1, 0);
+		if (color->screen->rcontext->vclass != TrueColor)
+			XFreeColors(color->screen->display, color->screen->colormap, &(color->color.pixel), 1, 0);
 		if (color->gc)
 			XFreeGC(color->screen->display, color->gc);
 		wfree(color);

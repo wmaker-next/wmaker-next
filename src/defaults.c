@@ -661,7 +661,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &color)) {
+		if (!wParseColor(scr->w_colormap, val, &color)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}
@@ -691,7 +691,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}
@@ -707,7 +707,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		}
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}
@@ -736,7 +736,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 				return NULL;
 			val = WMGetFromPLString(elem);
 
-			if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+			if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 				wwarning(_("\"%s\" is not a valid color name"), val);
 				return NULL;
 			}
@@ -758,7 +758,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 				return NULL;
 			val = WMGetFromPLString(elem);
 
-			if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+			if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 				wwarning(_("\"%s\" is not a valid color name"), val);
 				return NULL;
 			}
@@ -809,7 +809,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			}
 			val = WMGetFromPLString(elem);
 
-			if (!XParseColor(dpy, scr->w_colormap, val, &color)) {
+			if (!wParseColor(scr->w_colormap, val, &color)) {
 				wwarning(_("\"%s\" is not a valid color name"), val);
 				for (--i; i >= 0; --i) {
 					wfree(colors[i]);
@@ -848,7 +848,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		}
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &color)) {
+		if (!wParseColor(scr->w_colormap, val, &color)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}
@@ -885,7 +885,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}
@@ -901,7 +901,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		}
 		val = WMGetFromPLString(elem);
 
-		if (!XParseColor(dpy, scr->w_colormap, val, &xcolor)) {
+		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
 			wwarning(_("\"%s\" is not a valid color name"), val);
 			return NULL;
 		}

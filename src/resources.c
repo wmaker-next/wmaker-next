@@ -54,22 +54,68 @@ static unsigned long scale_color_component(unsigned short value, unsigned long m
 	return ((unsigned long)(value >> (16 - bits)) & ((1UL << bits) - 1)) << shift;
 }
 
-int wGetColorForColormap(WScreen *scr, Colormap colormap, const char *color_name, XColor *color)
+/*
+ * XParseColor parses #rrggbb and rgb:rr/gg/bb client-side, but any other
+ * spelling is sent to the server as a LookupColor request and blocks for the
+ * reply. The shipped defaults, schema fallbacks and most themes only use the
+ * handful of X11 names below, so resolve those locally and let everything
+ * else fall through.
+ */
+static const struct {
+	const char *name;
+	unsigned short r, g, b;
+} builtin_color_names[] = {
+	{ "black",    0x0000, 0x0000, 0x0000 },
+	{ "white",    0xffff, 0xffff, 0xffff },
+	{ "gray",     0xbebe, 0xbebe, 0xbebe },
+	{ "grey",     0xbebe, 0xbebe, 0xbebe },
+	{ "gray40",   0x6666, 0x6666, 0x6666 },
+	{ "gray50",   0x7f7f, 0x7f7f, 0x7f7f },
+	{ "red",      0xffff, 0x0000, 0x0000 },
+	{ "green",    0x0000, 0xffff, 0x0000 },
+	{ "blue",     0x0000, 0x0000, 0xffff },
+};
+
+int wParseColor(Colormap colormap, const char *spec, XColor *color)
 {
-	if (!XParseColor(dpy, colormap, color_name, color)) {
-		wwarning(_("could not parse color \"%s\""), color_name);
-		return False;
+	size_t i;
+
+	for (i = 0; i < wlengthof(builtin_color_names); i++) {
+		if (strcasecmp(spec, builtin_color_names[i].name) == 0) {
+			color->red = builtin_color_names[i].r;
+			color->green = builtin_color_names[i].g;
+			color->blue = builtin_color_names[i].b;
+			color->flags = DoRed | DoGreen | DoBlue;
+			return True;
+		}
 	}
 
+	return XParseColor(dpy, colormap, spec, color);
+}
+
+int wAllocColor(WScreen *scr, Colormap colormap, XColor *color)
+{
 	if (scr->w_visual->class == TrueColor) {
-		/* Compute pixel directly from RGB components using the visual's channel masks */
+		/* Compute pixel directly from RGB components using the visual's
+		 * channel masks, an AllocColor request on a TrueColor colormap
+		 * is a server round-trip that returns exactly this value. */
 		color->pixel = scale_color_component(color->red,   scr->w_visual->red_mask)
 		             | scale_color_component(color->green, scr->w_visual->green_mask)
 		             | scale_color_component(color->blue,  scr->w_visual->blue_mask);
 		return True;
 	}
 
-	if (!XAllocColor(dpy, colormap, color)) {
+	return XAllocColor(dpy, colormap, color);
+}
+
+int wGetColorForColormap(WScreen *scr, Colormap colormap, const char *color_name, XColor *color)
+{
+	if (!wParseColor(colormap, color_name, color)) {
+		wwarning(_("could not parse color \"%s\""), color_name);
+		return False;
+	}
+
+	if (!wAllocColor(scr, colormap, color)) {
 		wwarning(_("could not allocate color \"%s\""), color_name);
 		return False;
 	}
