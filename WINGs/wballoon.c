@@ -3,7 +3,8 @@
 #include "WINGsP.h"
 
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/shape.h>
 #endif
 
 typedef struct W_Balloon {
@@ -431,7 +432,8 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 	XFreePixmap(dpy, pixmap);
 
 #ifdef USE_XSHAPE
-	XShapeCombineMask(dpy, bPtr->view->window, ShapeBounding, 0, 0, mask, ShapeSet);
+	xcb_shape_mask(XGetXCBConnection(dpy), XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		       bPtr->view->window, 0, 0, mask);
 #endif
 	XFreePixmap(dpy, mask);
 

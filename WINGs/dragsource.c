@@ -5,7 +5,8 @@
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/shape.h>
 #endif
 
 #define XDND_DESTINATION_RESPONSE_MAX_DELAY 10000
@@ -201,7 +202,8 @@ static Window makeDragIcon(WMScreen * scr, WMPixmap * pixmap)
 
 #ifdef USE_XSHAPE
 	if (pixmap->mask) {
-		XShapeCombineMask(scr->display, window, ShapeBounding, 0, 0, pixmap->mask, ShapeSet);
+		xcb_shape_mask(XGetXCBConnection(scr->display), XCB_SHAPE_SO_SET,
+			       XCB_SHAPE_SK_BOUNDING, window, 0, 0, pixmap->mask);
 	}
 #endif
 

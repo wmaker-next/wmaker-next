@@ -41,7 +41,8 @@
 /* Whithout shape extension the magnified image is completely broken -Dan */
 
 #ifdef USE_XSHAPE
-# include <X11/extensions/shape.h>
+# include <X11/Xlib-xcb.h>
+# include <xcb/shape.h>
 #endif
 
 const char *WMColorPanelColorChangedNotification = "WMColorPanelColorChangedNotification";
@@ -1661,8 +1662,9 @@ static WMPoint magnifyInitialize(W_ColorPanel * panel)
 
 	/* Clipmask to make magnified view-contents circular */
 #ifdef USE_XSHAPE
-	XShapeCombineMask(scr->display, WMViewXID(panel->magnifyGlass->view),
-			  ShapeBounding, 0, 0, clip_mask, ShapeSet);
+	xcb_shape_mask(XGetXCBConnection(scr->display), XCB_SHAPE_SO_SET,
+		       XCB_SHAPE_SK_BOUNDING, WMViewXID(panel->magnifyGlass->view),
+		       0, 0, clip_mask);
 #else
 	/* Clip circle in glass cursor */
 	XSetClipMask(scr->display, scr->clipGC, clip_mask);
