@@ -722,14 +722,14 @@ static void wWindowUnswallow(WWindow *wwin)
 
 static void fixLeaderProperties(WWindow *wwin)
 {
-	WXWMHints *hints, *clientHints;
+	WXWMHints *hints;
+	WXWMHints clientHints;
 	XWindowAttributes attr;
 	Window leaders[2], window;
 	char **argv, *command;
 	int argc, i, pid;
 	Bool haveCommand;
 
-	clientHints = WXGetWMHints(dpy, wwin->client_win);
 	pid = wGetWindowPid(wwin->client_win);
 	if (pid > 0)
 		haveCommand = GetCommandForPid(pid, &argv, &argc);
@@ -748,41 +748,48 @@ static void fixLeaderProperties(WWindow *wwin)
 	}
 
 	for (i = 0; i < 2; i++) {
+		char *inst, *cls;
+
 		window = leaders[i];
-		if (window) {
-			char *inst, *cls;
-			if (WXGetWMClass(dpy, window, &inst, &cls)) {
-				wfree(inst);
-				wfree(cls);
-			} else {
-				WXSetWMClass(dpy, window, wwin->wm_instance, wwin->wm_class);
-			}
-			hints = WXGetWMHints(dpy, window);
-			if (hints) {
-				wfree(hints);
-			} else if (clientHints) {
-				/* set window group leader to self */
-				clientHints->window_group = window;
-				clientHints->flags |= WindowGroupHint;
-				WXSetWMHints(dpy, window, clientHints);
-			}
+		/* the client window already carries everything this loop
+		 * would back-fill (wm_class, wm_hints, WM_COMMAND from the
+		 * block above) and CLIENT_EVENTS already covers the
+		 * SelectInput mask, so skip it as a leader to avoid
+		 * re-reading what wManagePrefetch just batched */
+		if (!window || window == wwin->client_win)
+			continue;
 
-			if (haveCommand) {
-				command = GetCommandForWindow(window);
-				if (command)
-					wfree(command); /* command already set. nothing to do. */
-				else
-					WXSetCommand(dpy, window, argv, argc);
-			}
-
-			/* Make sure we get notification when this window is destroyed */
-			if (XGetWindowAttributes(dpy, window, &attr))
-				XSelectInput(dpy, window, attr.your_event_mask | StructureNotifyMask | PropertyChangeMask);
+		if (WXGetWMClass(dpy, window, &inst, &cls)) {
+			wfree(inst);
+			wfree(cls);
+		} else {
+			WXSetWMClass(dpy, window, wwin->wm_instance, wwin->wm_class);
 		}
+		hints = WXGetWMHints(dpy, window);
+		if (hints) {
+			wfree(hints);
+		} else if (wwin->wm_hints) {
+			/* set window group leader to self, work on a stack
+			 * copy so wwin->wm_hints stays unchanged */
+			clientHints = *wwin->wm_hints;
+			clientHints.window_group = window;
+			clientHints.flags |= WindowGroupHint;
+			WXSetWMHints(dpy, window, &clientHints);
+		}
+
+		if (haveCommand) {
+			command = GetCommandForWindow(window);
+			if (command)
+				wfree(command); /* command already set. nothing to do. */
+			else
+				WXSetCommand(dpy, window, argv, argc);
+		}
+
+		/* Make sure we get notification when this window is destroyed */
+		if (XGetWindowAttributes(dpy, window, &attr))
+			XSelectInput(dpy, window, attr.your_event_mask | StructureNotifyMask | PropertyChangeMask);
 	}
 
-	if (clientHints)
-		wfree(clientHints);
 	if (haveCommand)
 		wfree(argv);
 }

@@ -40,26 +40,42 @@
 
 /******** Local variables ********/
 
-static WWindow *makeMainWindow(WScreen * scr, Window window)
+static WWindow *makeMainWindow(WScreen *scr, Window window, WWindow *src)
 {
 	WWindow *wwin;
 	XWindowAttributes attr;
-
-	if (!XGetWindowAttributes(dpy, window, &attr))
-		return NULL;
 
 	wwin = wWindowCreate();
 	wwin->screen_ptr = scr;
 	wwin->client_win = window;
 	wwin->main_window = window;
-	wwin->wm_hints = WXGetWMHints(dpy, window);
 
-	PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
+	if (src) {
+		/* the main window is the just-managed client window, copy
+		 * what wManageWindow already decoded instead of re-reading
+		 * WM_HINTS and WM_CLASS, and skip XSelectInput since
+		 * CLIENT_EVENTS already covers PropertyChange and
+		 * StructureNotify */
+		if (src->wm_hints) {
+			wwin->wm_hints = WXAllocWMHints();
+			*wwin->wm_hints = *src->wm_hints;
+		}
+		wwin->wm_instance = (char *)wintern(src->wm_instance);
+		wwin->wm_class = (char *)wintern(src->wm_class);
+	} else {
+		if (!XGetWindowAttributes(dpy, window, &attr)) {
+			wWindowDestroy(wwin);
+			return NULL;
+		}
+		wwin->wm_hints = WXGetWMHints(dpy, window);
+		PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
+		XSelectInput(dpy, window,
+			     attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
+	}
 
 	wDefaultFillAttributes(wwin->wm_instance, wwin->wm_class, &wwin->user_flags,
 			       &wwin->defined_user_flags, True);
 
-	XSelectInput(dpy, window, attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
 	return wwin;
 }
 
@@ -80,6 +96,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	Window main_window = wwin->main_window;
 	WApplication *wapp;
 	WWindow *leader;
+	WWindow *src;
 	Window root;
 	int foo;
 	unsigned int bar;
@@ -87,8 +104,14 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	if (main_window == None || main_window == scr->root_win)
 		return NULL;
 
+	/* when the main window is the just-managed client window
+	 * everything makeMainWindow needs is already on wwin and the
+	 * window is known to exist, so skip the GetGeometry round-trip
+	 * and thread the decoded hints through */
+	src = (main_window == wwin->client_win) ? wwin : NULL;
+
 	/* check if the window is valid */
-	if (!XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
+	if (!src && !XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
 		return NULL;
 
 	wapp = wApplicationOf(main_window);
@@ -110,7 +133,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	wapp->last_workspace = 0;
 
 	wapp->main_window = main_window;
-	wapp->main_window_desc = makeMainWindow(scr, main_window);
+	wapp->main_window_desc = makeMainWindow(scr, main_window, src);
 	if (!wapp->main_window_desc) {
 		wfree(wapp);
 		return NULL;
