@@ -158,6 +158,15 @@ static void drain(Display *dpy)
 			XNextEvent(dpy, &n->ev);
 			appendNode(n);
 		}
+		/* WMNextEvent and WMMaskEvent no longer XSync before
+		 * blocking, and XPending on a dead connection returns 0
+		 * without tripping the IO-error handler while the X fd
+		 * stays readable on EOF, so the caller would spin, route
+		 * through _XReply via one XSync so the registered
+		 * XIOErrorHandler fires and the process exits the way it
+		 * always has, _XIOError never returns */
+		if (xcb_connection_has_error(XGetXCBConnection(dpy)))
+			XSync(dpy, False);
 		return;
 	}
 
@@ -197,6 +206,12 @@ static void drain(Display *dpy)
 		XNextEvent(dpy, &n->ev);
 		appendNode(n);
 	}
+
+	/* same dead-connection guard as the Xlib branch above,
+	 * xcb_poll_for_event returns NULL on a closed socket without
+	 * raising anything */
+	if (xcb_connection_has_error(evq_conn))
+		XSync(dpy, False);
 }
 
 Bool WXEvqPending(Display *dpy)

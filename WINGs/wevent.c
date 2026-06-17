@@ -308,36 +308,33 @@ int WMIsDoubleClick(XEvent * event)
  * event queue. The ASAP and WhenIdle notification queues flush from the
  * loop's prepare and check watchers, so there is no separate timer/idle
  * pump.
+ *
+ * No XSync before blocking: WXEvqPending and WXEvqTakeMask both flush
+ * the output buffer (XPending == QueuedAfterFlush on the Xlib path,
+ * explicit XFlush on the xcb path) and read the socket dry, so when
+ * they return False there is nothing more to ask the server and
+ * ev_run() can sleep on the X fd. drain() carries an
+ * xcb_connection_has_error() check so a dead connection still reaches
+ * the XIOErrorHandler instead of spinning on a permanently-readable
+ * EOF fd.
  */
 
 void WMNextEvent(Display * dpy, XEvent * event)
 {
-	while (!WXEvqPending(dpy)) {
-		/* flush requests so the server can answer, then block on the
-		 * X fd alongside timers, idles and any WINGs input handlers */
-		XSync(dpy, False);
-		if (WXEvqPending(dpy))
-			break;
+	while (!WXEvqPending(dpy))
 		W_HandleInputEvents(True, ConnectionNumber(dpy));
-	}
 
 	WXEvqNext(dpy, event);
 }
 
 void WMMaskEvent(Display * dpy, long mask, XEvent * event)
 {
-	while (!WXEvqTakeMask(dpy, mask, None, event)) {
-		XSync(dpy, False);
-		if (WXEvqTakeMask(dpy, mask, None, event))
-			return;
-		/* WXEvqTakeMask drained everything readable into the internal
-		 * queue, so the X fd is dry and ev_run() blocks until fresh
-		 * data, a timer or another input handler wakes it, the
-		 * non-matching events stay queued in arrival order for the
-		 * next WMNextEvent or the modal loop's WMHandleEvent default
-		 * arm to dispatch */
+	/* WXEvqTakeMask drains everything readable into the internal
+	 * queue and returns the first match, the non-matching events
+	 * stay queued in arrival order for the next WMNextEvent or the
+	 * modal loop's WMHandleEvent default arm to dispatch */
+	while (!WXEvqTakeMask(dpy, mask, None, event))
 		W_HandleInputEvents(True, ConnectionNumber(dpy));
-	}
 }
 
 Bool WMScreenPending(WMScreen * scr)
