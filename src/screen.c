@@ -687,10 +687,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 #ifdef USE_RANDR
 	if (w_global.xext.randr.supported)
-		XRRSelectInput(dpy, scr->root_win,
-		               RRScreenChangeNotifyMask |
-		               RRCrtcChangeNotifyMask   |
-		               RROutputChangeNotifyMask);
+		xcb_randr_select_input(xconn, scr->root_win,
+				       XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE
+				       | XCB_RANDR_NOTIFY_MASK_CRTC_CHANGE
+				       | XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
 #endif
 
 	XSync(dpy, False);

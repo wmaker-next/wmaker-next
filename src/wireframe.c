@@ -24,7 +24,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 #include "WindowMaker.h"
@@ -109,8 +109,10 @@ static WWireframe *getWireframe(WScreen *scr)
 
 			/* never take input, the band must not generate
 			 * crossing events or swallow clicks while it is up */
-			XShapeCombineRectangles(dpy, wf->window, ShapeInput, 0, 0,
-						NULL, 0, ShapeSet, Unsorted);
+			xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET,
+					     XCB_SHAPE_SK_INPUT,
+					     XCB_CLIP_ORDERING_UNSORTED,
+					     wf->window, 0, 0, 0, NULL);
 
 			gcv.foreground = scr->white_pixel;
 			gcv.line_width = 1;
@@ -251,8 +253,11 @@ void wWireframeCommit(WScreen *scr)
 
 #ifdef USE_XSHAPE
 	if (wf->use_shape) {
-		XShapeCombineRectangles(dpy, wf->window, ShapeBounding, 0, 0,
-					rects, n, ShapeSet, Unsorted);
+		xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET,
+				     XCB_SHAPE_SK_BOUNDING,
+				     XCB_CLIP_ORDERING_UNSORTED,
+				     wf->window, 0, 0, n,
+				     (xcb_rectangle_t *)rects);
 		if (wf->mapped) {
 			/* a workspace switch during the drag maps client
 			 * frames on top of the stack, stay above them */

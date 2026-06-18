@@ -22,7 +22,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 #include <stdlib.h>
@@ -170,14 +170,13 @@ void wClientConfigure(WWindow * wwin, XConfigureRequestEvent * xcre)
 	}
 #ifdef USE_XSHAPE
 	if (w_global.xext.shape.supported) {
-		int junk;
-		unsigned int ujunk;
-		int b_shaped;
+		xcb_shape_query_extents_reply_t *sr;
 
-		XShapeSelectInput(dpy, wwin->client_win, ShapeNotifyMask);
-		XShapeQueryExtents(dpy, wwin->client_win, &b_shaped, &junk, &junk,
-				   &ujunk, &ujunk, &junk, &junk, &junk, &ujunk, &ujunk);
-		wwin->flags.shaped = b_shaped;
+		xcb_shape_select_input(xconn, wwin->client_win, 1);
+		sr = xcb_shape_query_extents_reply(xconn,
+				xcb_shape_query_extents(xconn, wwin->client_win), NULL);
+		wwin->flags.shaped = sr ? sr->bounding_shaped : 0;
+		free(sr);
 	}
 #endif
 	if (xcre->value_mask & CWStackMode) {

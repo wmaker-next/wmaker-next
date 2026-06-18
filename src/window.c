@@ -25,7 +25,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 #ifdef USE_XRES
 #include <X11/extensions/XRes.h>
@@ -923,14 +923,13 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 #ifdef USE_XSHAPE
 	if (w_global.xext.shape.supported) {
-		int junk;
-		unsigned int ujunk;
-		int b_shaped;
+		xcb_shape_query_extents_reply_t *sr;
 
-		XShapeSelectInput(dpy, window, ShapeNotifyMask);
-		XShapeQueryExtents(dpy, window, &b_shaped, &junk, &junk, &ujunk,
-				   &ujunk, &junk, &junk, &junk, &ujunk, &ujunk);
-		wwin->flags.shaped = b_shaped;
+		xcb_shape_select_input(xconn, window, 1);
+		sr = xcb_shape_query_extents_reply(xconn,
+				xcb_shape_query_extents(xconn, window), NULL);
+		wwin->flags.shaped = sr ? sr->bounding_shaped : 0;
+		free(sr);
 	}
 #endif
 
@@ -3077,40 +3076,52 @@ static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 }
 
 #ifdef USE_XSHAPE
+/* xcb_rectangle_t and XRectangle are both {int16 x,y; uint16 w,h} so a
+ * pointer cast is layout-safe, asserted here once for every Shape user
+ * in this file and in wireframe.c */
+_Static_assert(sizeof(xcb_rectangle_t) == sizeof(XRectangle),
+	       "xcb_rectangle_t must match XRectangle");
+
 void wWindowClearShape(WWindow * wwin)
 {
-	XShapeCombineMask(dpy, wwin->frame->core->window, ShapeBounding,
-			  0, wwin->frame->top_width, None, ShapeSet);
+	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		       wwin->frame->core->window, 0, wwin->frame->top_width,
+		       XCB_PIXMAP_NONE);
 	XFlush(dpy);
 }
 
 void wWindowSetShape(WWindow * wwin)
 {
-	XRectangle rect[2];
+	xcb_rectangle_t rect[2];
 	int count;
 #ifdef OPTIMIZE_SHAPE
-	XRectangle *rects;
-	XRectangle *urec;
-	int ordering;
+	xcb_shape_get_rectangles_reply_t *gr;
+	xcb_rectangle_t *rects;
+	xcb_rectangle_t *urec;
 
 	/* only shape is the client's */
 	if (!HAS_TITLEBAR(wwin) && !HAS_RESIZEBAR(wwin))
 		goto alt_code;
 
 	/* Get array of rectangles describing the shape mask */
-	rects = XShapeGetRectangles(dpy, wwin->client_win, ShapeBounding, &count, &ordering);
-	if (!rects)
+	gr = xcb_shape_get_rectangles_reply(xconn,
+			xcb_shape_get_rectangles(xconn, wwin->client_win,
+						 XCB_SHAPE_SK_BOUNDING), NULL);
+	if (!gr)
 		goto alt_code;
 
-	urec = malloc(sizeof(XRectangle) * (count + 2));
+	count = xcb_shape_get_rectangles_rectangles_length(gr);
+	rects = xcb_shape_get_rectangles_rectangles(gr);
+
+	urec = malloc(sizeof(xcb_rectangle_t) * (count + 2));
 	if (!urec) {
-		XFree(rects);
+		free(gr);
 		goto alt_code;
 	}
 
 	/* insert our decoration rectangles in the rect list */
-	memcpy(urec, rects, sizeof(XRectangle) * count);
-	XFree(rects);
+	memcpy(urec, rects, sizeof(xcb_rectangle_t) * count);
+	free(gr);
 
 	if (HAS_TITLEBAR(wwin)) {
 		urec[count].x = -1;
@@ -3128,8 +3139,9 @@ void wWindowSetShape(WWindow * wwin)
 	}
 
 	/* shape our frame window */
-	XShapeCombineRectangles(dpy, wwin->frame->core->window, ShapeBounding,
-				0, wwin->frame->top_width, urec, count, ShapeSet, Unsorted);
+	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+			     XCB_CLIP_ORDERING_UNSORTED, wwin->frame->core->window,
+			     0, wwin->frame->top_width, count, urec);
 	XFlush(dpy);
 	wfree(urec);
 	return;
@@ -3152,12 +3164,14 @@ void wWindowSetShape(WWindow * wwin)
 		count++;
 	}
 	if (count > 0) {
-		XShapeCombineRectangles(dpy, wwin->frame->core->window, ShapeBounding,
-					0, 0, rect, count, ShapeSet, Unsorted);
+		xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+				     XCB_CLIP_ORDERING_UNSORTED,
+				     wwin->frame->core->window, 0, 0, count, rect);
 	}
-	XShapeCombineShape(dpy, wwin->frame->core->window, ShapeBounding,
-			   0, wwin->frame->top_width, wwin->client_win,
-			   ShapeBounding, (count > 0 ? ShapeUnion : ShapeSet));
+	xcb_shape_combine(xconn, count > 0 ? XCB_SHAPE_SO_UNION : XCB_SHAPE_SO_SET,
+			  XCB_SHAPE_SK_BOUNDING, XCB_SHAPE_SK_BOUNDING,
+			  wwin->frame->core->window, 0, wwin->frame->top_width,
+			  wwin->client_win);
 	XFlush(dpy);
 }
 #endif				/* USE_XSHAPE */

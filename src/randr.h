@@ -23,7 +23,7 @@
 
 #ifdef USE_RANDR
 
-#include <X11/extensions/Xrandr.h>
+#include <xcb/randr.h>
 #include "screen.h"
 
 void wRandRInit(WScreen *scr);

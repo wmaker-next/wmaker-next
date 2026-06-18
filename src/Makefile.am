@@ -180,7 +180,6 @@ wmaker_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la\
 	$(top_builddir)/wrlib/libwraster.la\
 	@XLFLAGS@ \
-	@LIBXRANDR@ \
 	@STARTUP_NOTIFICATION_LIBS@ \
 	@XCB_LIBS@ \
 	@XLIBS@ \

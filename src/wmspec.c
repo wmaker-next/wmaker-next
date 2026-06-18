@@ -30,10 +30,10 @@
 #include <X11/Xatom.h>
 #include <X11/Xresource.h>
 #ifdef USE_XSYNC
-#include <X11/extensions/sync.h>
 #include <xcb/sync.h>
 #endif
 #include <signal.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/select.h>
@@ -2647,37 +2647,26 @@ static XContext sync_alarm_ctx = 0;
  * fall back to unsynchronised resize for the rest of the drag */
 #define NET_WM_SYNC_TIMEOUT 500
 
-/* the counter XID comes from a client property, treat any X error during
- * an XSync call on it as "this client lied", swallow it and disable sync
- * for that window rather than letting it surface as an internal error */
-static int xsync_trap_tripped;
-static XErrorHandler xsync_trap_prev;
-
-static int xsyncErrorTrap(Display *d, XErrorEvent *e)
+/* the counter XID comes from a client property so every request on it
+ * is checked, an error means "this client lied" so disable sync for
+ * that window rather than letting it surface as an internal error,
+ * one xcb_request_check() round-trip per call replaces the global
+ * XSetErrorHandler trap bracket and the XSync that flanked it */
+static Bool xsyncRequestFailed(xcb_void_cookie_t ck)
 {
-	(void)d; (void)e;
-	xsync_trap_tripped = 1;
-	return 0;
-}
+	xcb_generic_error_t *err = xcb_request_check(xconn, ck);
 
-static void xsyncTrapPush(void)
-{
-	xsync_trap_tripped = 0;
-	XSync(dpy, False);
-	xsync_trap_prev = XSetErrorHandler(xsyncErrorTrap);
-}
-
-static int xsyncTrapPop(void)
-{
-	XSync(dpy, False);
-	XSetErrorHandler(xsync_trap_prev);
-	return xsync_trap_tripped;
+	if (!err)
+		return False;
+	free(err);
+	return True;
 }
 
 void wNETWMSyncRequestSetup(WWindow *wwin)
 {
-	XSyncAlarmAttributes attr;
-	XSyncValue val;
+	xcb_sync_create_alarm_value_list_t v;
+	xcb_sync_int64_t zero = { 0, 0 };
+	xcb_sync_alarm_t alarm;
 	uint32_t counter;
 
 	if (!w_global.xext.xsync.supported || !wwin->protocols.NET_WM_SYNC_REQUEST)
@@ -2691,42 +2680,35 @@ void wNETWMSyncRequestSetup(WWindow *wwin)
 	wwin->net_sync.waiting = 0;
 	wwin->net_sync.disabled = 0;
 
-	xsyncTrapPush();
+	v.counter   = counter;
+	v.valueType = XCB_SYNC_VALUETYPE_ABSOLUTE;
+	v.value.hi  = 0;
+	v.value.lo  = 1;
+	v.testType  = XCB_SYNC_TESTTYPE_POSITIVE_COMPARISON;
+	v.delta.hi  = 0;
+	v.delta.lo  = 1;
+	v.events    = 1;
 
-	XSyncIntToValue(&val, 0);
-	XSyncSetCounter(dpy, (XSyncCounter)counter, val);
+	alarm = xcb_generate_id(xconn);
 
-	attr.trigger.counter = (XSyncCounter)counter;
-	attr.trigger.value_type = XSyncAbsolute;
-	attr.trigger.test_type = XSyncPositiveComparison;
-	XSyncIntToValue(&attr.trigger.wait_value, 1);
-	XSyncIntToValue(&attr.delta, 1);
-	attr.events = True;
-
-	wwin->net_sync.alarm = XSyncCreateAlarm(dpy,
-		XSyncCACounter | XSyncCAValueType | XSyncCATestType
-		| XSyncCAValue | XSyncCADelta | XSyncCAEvents, &attr);
-
-	if (xsyncTrapPop()) {
-		if (wwin->net_sync.alarm) {
-			xsyncTrapPush();
-			XSyncDestroyAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm);
-			xsyncTrapPop();
-		}
+	if (xsyncRequestFailed(xcb_sync_set_counter_checked(xconn, counter, zero))
+	    || xsyncRequestFailed(xcb_sync_create_alarm_aux_checked(xconn, alarm,
+			XCB_SYNC_CA_COUNTER | XCB_SYNC_CA_VALUE_TYPE
+			| XCB_SYNC_CA_VALUE | XCB_SYNC_CA_TEST_TYPE
+			| XCB_SYNC_CA_DELTA | XCB_SYNC_CA_EVENTS, &v))) {
+		/* the alarm id was never accepted so nothing to destroy */
 		wwin->net_sync.alarm = 0;
 		wwin->net_sync.counter = 0;
 		wwin->net_sync.disabled = 1;
 		return;
 	}
 
+	wwin->net_sync.alarm = alarm;
 	wwin->net_sync.counter = counter;
 
-	if (wwin->net_sync.alarm) {
-		if (!sync_alarm_ctx)
-			sync_alarm_ctx = XUniqueContext();
-		XSaveContext(dpy, wwin->net_sync.alarm, sync_alarm_ctx,
-			     (XPointer)wwin);
-	}
+	if (!sync_alarm_ctx)
+		sync_alarm_ctx = XUniqueContext();
+	XSaveContext(dpy, wwin->net_sync.alarm, sync_alarm_ctx, (XPointer)wwin);
 }
 
 void wNETWMSyncRequestDestroy(WWindow *wwin)
@@ -2734,9 +2716,10 @@ void wNETWMSyncRequestDestroy(WWindow *wwin)
 	if (wwin->net_sync.alarm) {
 		if (sync_alarm_ctx)
 			XDeleteContext(dpy, wwin->net_sync.alarm, sync_alarm_ctx);
-		xsyncTrapPush();
-		XSyncDestroyAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm);
-		xsyncTrapPop();
+		/* the alarm is wmaker-owned so the only failure is a race
+		 * with the server discarding it, ignore */
+		free(xcb_request_check(xconn,
+			xcb_sync_destroy_alarm_checked(xconn, wwin->net_sync.alarm)));
 		wwin->net_sync.alarm = 0;
 	}
 	wwin->net_sync.counter = 0;
@@ -2748,8 +2731,7 @@ void wNETWMSyncRequestDestroy(WWindow *wwin)
  * arm the alarm to fire when the counter reaches that value */
 void wNETWMSyncRequestSend(WWindow *wwin)
 {
-	XSyncAlarmAttributes attr;
-	XSyncValue target;
+	xcb_sync_change_alarm_value_list_t v;
 
 	if (!wwin->net_sync.counter || !wwin->net_sync.alarm
 	    || wwin->net_sync.disabled || wwin->net_sync.waiting)
@@ -2765,14 +2747,11 @@ void wNETWMSyncRequestSend(WWindow *wwin)
 			    (long)wwin->net_sync.value_lo,
 			    (long)wwin->net_sync.value_hi, 0);
 
-	XSyncIntsToValue(&target, wwin->net_sync.value_lo,
-			 (int)wwin->net_sync.value_hi);
-	attr.trigger.wait_value = target;
+	v.value.hi = (int32_t)wwin->net_sync.value_hi;
+	v.value.lo = wwin->net_sync.value_lo;
 
-	xsyncTrapPush();
-	XSyncChangeAlarm(dpy, (XSyncAlarm)wwin->net_sync.alarm,
-			 XSyncCAValue, &attr);
-	if (xsyncTrapPop()) {
+	if (xsyncRequestFailed(xcb_sync_change_alarm_aux_checked(xconn,
+			wwin->net_sync.alarm, XCB_SYNC_CA_VALUE, &v))) {
 		wwin->net_sync.disabled = 1;
 		wwin->net_sync.waiting = 0;
 		return;

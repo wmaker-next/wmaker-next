@@ -22,7 +22,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 #include <stdlib.h>
@@ -508,7 +508,8 @@ static void showWorkspaceName(WScreen * scr, int workspace)
 
 #ifdef USE_XSHAPE
 	if (w_global.xext.shape.supported)
-		XShapeCombineMask(dpy, scr->workspace_name, ShapeBounding, 0, 0, mask, ShapeSet);
+		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+			       scr->workspace_name, 0, 0, mask);
 #endif
 	XSetWindowBackgroundPixmap(dpy, scr->workspace_name, text);
 	XClearWindow(dpy, scr->workspace_name);

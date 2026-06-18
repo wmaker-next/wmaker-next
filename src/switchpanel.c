@@ -39,7 +39,7 @@
 #include <WINGs/WXProp.h>
 
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 struct SwitchPanel {
@@ -556,7 +556,8 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
 
 #ifdef USE_XSHAPE
 		if (mask && w_global.xext.shape.supported)
-			XShapeCombineMask(dpy, WMWidgetXID(panel->win), ShapeBounding, 0, 0, mask, ShapeSet);
+			xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+				       WMWidgetXID(panel->win), 0, 0, mask);
 #endif
 		if (pixmap)
 			XFreePixmap(dpy, pixmap);

@@ -26,7 +26,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #ifdef SHAPED_BALLOON
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 #include <stdlib.h>
@@ -311,7 +311,8 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	scr->balloon->contents = pixmap;
 
 	XResizeWindow(dpy, scr->balloon->window, width, height + SPACE);
-	XShapeCombineMask(dpy, scr->balloon->window, ShapeBounding, 0, 0, mask, ShapeSet);
+	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		       scr->balloon->window, 0, 0, mask);
 	XFreePixmap(dpy, mask);
 	XMoveWindow(dpy, scr->balloon->window, bx, by);
 	XMapRaised(dpy, scr->balloon->window);
@@ -426,7 +427,8 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	          MINIPREVIEW_BORDER, MINIPREVIEW_BORDER + titleHeight);
 
 #ifdef SHAPED_BALLOON
-	XShapeCombineMask(dpy, scr->balloon->window, ShapeBounding, 0, 0, None, ShapeSet);
+	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		       scr->balloon->window, 0, 0, XCB_PIXMAP_NONE);
 #endif
 	XResizeWindow(dpy, scr->balloon->window, width, height);
 	XMoveWindow(dpy, scr->balloon->window, x, y);

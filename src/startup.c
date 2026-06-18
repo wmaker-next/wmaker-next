@@ -39,15 +39,15 @@
 #include <X11/Xproto.h>
 #include <X11/Xlib-xcb.h>
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #include <xcb/shape.h>
 #endif
 #ifdef USE_RANDR
-#include <X11/extensions/Xrandr.h>
+#include <xcb/randr.h>
 #include <xcb/randr.h>
 #endif
 #ifdef USE_XSYNC
-#include <X11/extensions/sync.h>
+#include <xcb/sync.h>
 #include <xcb/sync.h>
 #endif
 

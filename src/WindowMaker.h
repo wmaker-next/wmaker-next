@@ -24,6 +24,7 @@
 #include "wconfig.h"
 #include <assert.h>
 #include <limits.h>
+#include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
 #include "keytree.h"
 #include "wconfigmodel.h"
@@ -285,6 +286,10 @@ extern struct WPreferences {
 
 /****** Global Variables  ******/
 extern Display	*dpy;
+/* the shared xcb connection underneath dpy, set once in real_main()
+ * via XGetXCBConnection() so per-protocol modules issuing xcb-shape,
+ * xcb-randr and xcb-sync requests do not each re-derive it */
+extern xcb_connection_t	*xconn;
 
 extern struct wmaker_global_variables {
 	/* Tracking of the state of the program */

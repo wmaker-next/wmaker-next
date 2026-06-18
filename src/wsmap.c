@@ -25,7 +25,7 @@
 #include <string.h>
 
 #ifdef USE_XSHAPE
-#include <X11/extensions/shape.h>
+#include <xcb/shape.h>
 #endif
 
 #include "screen.h"
@@ -166,7 +166,8 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 
 #ifdef USE_XSHAPE
 		if (mask && w_global.xext.shape.supported)
-			XShapeCombineMask(dpy, WMWidgetXID(wsmap->win), ShapeBounding, 0, 0, mask, ShapeSet);
+			xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+				       WMWidgetXID(wsmap->win), 0, 0, mask);
 #endif
 
 		if (pixmap)

@@ -32,6 +32,7 @@
 #include <fcntl.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 #include <X11/Xutil.h>
 
 /* Xlocale.h and locale.h are the same if X_LOCALE is undefind in wconfig.h,
@@ -94,6 +95,7 @@ struct wmaker_global_variables w_global;
 /* general info */
 
 Display *dpy;
+xcb_connection_t *xconn;
 
 char *ProgName;
 
@@ -826,6 +828,8 @@ static int real_main(int argc, char **argv)
 		werror("error setting close-on-exec flag for X connection");
 		exit(1);
 	}
+
+	xconn = XGetXCBConnection(dpy);
 
 	/* hand event-queue ownership to xcb so the WINGs event queue
 	 * reads xcb_poll_for_event(), Xlib keeps issuing requests on
