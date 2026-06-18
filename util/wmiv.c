@@ -55,9 +55,8 @@
 #include <archive_entry.h>
 #endif
 
-#ifdef USE_RANDR
-#include <X11/extensions/Xrandr.h>
-#endif
+#include <X11/Xlib-xcb.h>
+#include <xcb/randr.h>
 
 #ifdef USE_XPM
 extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixmap *, void *);
@@ -2331,33 +2330,41 @@ link_t *connect_dir(char *dirpath, linked_list_t *list)
 	return list->first;
 }
 
-#ifdef USE_RANDR
 /*
-	Retrieve the monitor resolution where the window is located
+	Retrieve the monitor resolution where the window is located.
+	xcb-randr is a hard configure dependency, on a server without
+	RandR 1.5 the GetMonitors reply is NULL and the caller keeps
+	the DisplayWidth/DisplayHeight fallback it already seeded.
 */
 void get_monitor_dimensions(Display *dpy, int screen_num, Window win, int *width, int *height)
 {
-	int monitor_count, abs_x, abs_y;
-	Window child;
+	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_randr_get_monitors_reply_t *mr;
+	xcb_randr_monitor_info_iterator_t mi;
 	Window root_window = RootWindow(dpy, screen_num);
 	XWindowAttributes attrs;
+	Window child;
+	int abs_x, abs_y;
+
 	XGetWindowAttributes(dpy, win, &attrs);
 	XTranslateCoordinates(dpy, win, attrs.root, 0, 0, &abs_x, &abs_y, &child);
 
-	XRRMonitorInfo *monitors = XRRGetMonitors(dpy, root_window, True, &monitor_count);
-	if (monitors && monitor_count > 0) {
-		for (int i = 0; i < monitor_count; i++) {
-			if (abs_x >= monitors[i].x && abs_x < (monitors[i].x + monitors[i].width) &&
-				abs_y >= monitors[i].y && abs_y < (monitors[i].y + monitors[i].height)) {
-					*width = monitors[i].width;
-					*height = monitors[i].height;
-					break;
-				}
+	mr = xcb_randr_get_monitors_reply(xc,
+			xcb_randr_get_monitors(xc, root_window, 1), NULL);
+	if (!mr)
+		return;
+	for (mi = xcb_randr_get_monitors_monitors_iterator(mr);
+		 mi.rem;
+		 xcb_randr_monitor_info_next(&mi)) {
+		if (abs_x >= mi.data->x && abs_x < mi.data->x + mi.data->width &&
+			abs_y >= mi.data->y && abs_y < mi.data->y + mi.data->height) {
+			*width = mi.data->width;
+			*height = mi.data->height;
+			break;
 		}
-		XRRFreeMonitors(monitors);
 	}
+	free(mr);
 }
-#endif
 
 /*
 	Transform the given URI to UTF-8 string
@@ -2993,9 +3000,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Warning: Window manager did not set _NET_FRAME_EXTENTS property within timeout\n");
 	}
 
-#ifdef USE_RANDR
 	get_monitor_dimensions(dpy, screen_num, win, &max_width, &max_height);
-#endif
 
 	if (WMIV_DEBUG)
 		fprintf(stderr, "Display size: %dx%d\n", max_width, max_height);

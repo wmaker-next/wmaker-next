@@ -97,21 +97,17 @@ AC_DEFUN_ONCE([WM_XEXT_CHECK_XSHM],
 # WM_XEXT_CHECK_XRANDR
 # --------------------
 #
-# Check for the X RandR (Resize-and-Rotate) extension.  src/randr.c
-# uses xcb-randr which is a hard PKG_CHECK_MODULES([XCB], ...) dep so
-# the wmaker binary needs no probe, but util/wmlock and util/wmiv keep
-# their own Xlib RandR (own process, own queue) and link @LIBXRANDR@,
-# so the libXrandr 1.5 link/header probe stays for them and USE_RANDR
-# stays gated on it so the util/ #ifdef and the link line agree.
+# Gate the X RandR live-reconfigure feature in src/ and the WPrefs
+# HotplugMonitor checkbox on the user's --disable-randr, no library
+# probe: every in-tree RandR consumer goes through xcb-randr which is a
+# hard PKG_CHECK_MODULES([XCB], ...) dependency, so there is no library
+# to detect.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XRANDR],
-[WM_LIB_CHECK([RandR], [-lXrandr], [XRRGetMonitors], [$XLIBS],
-    [wm_save_CFLAGS="$CFLAGS"
-     AS_IF([wm_fn_lib_try_compile "X11/extensions/Xrandr.h" "Display *dpy; int n;" "XRRGetMonitors(dpy, 0, 1, &n)" ""],
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XRandR 1.5 header])])
-     CFLAGS="$wm_save_CFLAGS"],
-    [supported_xext], [LIBXRANDR], [], [-])dnl
-AC_SUBST([LIBXRANDR])dnl
+[AS_IF([test "x$enable_randr" = "xno"],
+    [unsupported="$unsupported RandR"],
+    [AC_DEFINE([USE_RANDR], [1],
+        [defined when RandR multi-monitor live reconfiguration is built])
+     supported_xext="$supported_xext RandR"]) dnl
 ]) dnl AC_DEFUN
 
 

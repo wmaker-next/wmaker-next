@@ -39,7 +39,7 @@ wmlock_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @LIBXRANDR@ @PAM_LIBS@ $(liblist)
+	@XLFLAGS@ @XLIBS@ @PAM_LIBS@ $(liblist)
 if HAVE_PAM
 pamconfdir = $(sysconfdir)/pam.d
 dist_pamconf_DATA = pam.d/wmlock
@@ -95,15 +95,15 @@ wmmenugen_SOURCES = wmmenugen.c wmmenugen.h wmmenugen_misc.c \
 	wmmenugen_parse_wmconfig.c \
 	wmmenugen_parse_xdg.c
 
-wmiv_CFLAGS = @PANGO_CFLAGS@ @PTHREAD_CFLAGS@ @LIBARCHIVE_CFLAGS@
+wmiv_CFLAGS = @XCB_CFLAGS@ @PANGO_CFLAGS@ @PTHREAD_CFLAGS@ @LIBARCHIVE_CFLAGS@
 
 wmiv_LDADD = \
 	$(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@XLFLAGS@ @XLIBS@ @GFXLIBS@ \
+	@XLFLAGS@ @XLIBS@ @XCB_LIBS@ @GFXLIBS@ \
 	@PANGO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
-	@LIBARCHIVE_LIBS@ @LIBM@ @LIBXRANDR@
+	@LIBARCHIVE_LIBS@ @LIBM@
 
 wmiv_SOURCES = wmiv.c wmiv.h
 

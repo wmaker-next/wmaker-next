@@ -36,10 +36,6 @@
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 
-#ifdef USE_RANDR
-#include <X11/extensions/Xrandr.h>
-#endif
-
 #ifdef HAVE_PAM
 #include <security/pam_appl.h>
 #endif
@@ -94,10 +90,6 @@ static int verbose;
 static Display *dpy;
 static int nscreens;
 static struct cover *covers;
-
-#ifdef USE_RANDR
-static int randr_evbase;
-#endif
 
 static Window focus_save_win;
 static int focus_save_revert;
@@ -320,10 +312,13 @@ static int create_covers(WMScreen *scr)
 		XFreePixmap(dpy, bit);
 		XFreeCursor(dpy, invisible);
 
-		XSelectInput(dpy, covers[i].root, SubstructureNotifyMask);
-#ifdef USE_RANDR
-		XRRSelectInput(dpy, covers[i].win, RRScreenChangeNotifyMask);
-#endif
+		/* StructureNotify on the root delivers the ConfigureNotify
+		 * RandR emits on every screen-size change, so the cover can
+		 * be resized without linking libXrandr or registering an
+		 * extension wire-to-event converter, SubstructureNotify is
+		 * for the raise_covers() restack watch */
+		XSelectInput(dpy, covers[i].root,
+			     StructureNotifyMask | SubstructureNotifyMask);
 	}
 	return 1;
 }
@@ -408,30 +403,33 @@ static void run_lock(WMScreen *scr, const char *user)
 	fails = 0;
 
 	for (;;) {
-		XNextEvent(dpy, &ev);
+		/* WMHandleEvent drains the Xlib queue into the WINGs
+		 * internal pending list during Expose compression, so a
+		 * bare XNextEvent here would lose any event queued behind
+		 * a panel Expose, go through WMNextEvent which reads that
+		 * list first */
+		WMNextEvent(dpy, &ev);
 
-#ifdef USE_RANDR
-		if (ev.type == randr_evbase + RRScreenChangeNotify) {
-			XRRScreenChangeNotifyEvent *re = (XRRScreenChangeNotifyEvent *)&ev;
+		if (ev.type == ConfigureNotify) {
 			int i;
 
 			for (i = 0; i < nscreens; i++) {
-				if (covers[i].win != re->window)
+				if (covers[i].root != ev.xconfigure.window)
 					continue;
-				if (re->rotation == RR_Rotate_90 || re->rotation == RR_Rotate_270)
-					XResizeWindow(dpy, covers[i].win,
-						      (unsigned)re->height, (unsigned)re->width);
-				else
-					XResizeWindow(dpy, covers[i].win,
-						      (unsigned)re->width, (unsigned)re->height);
+				XResizeWindow(dpy, covers[i].win,
+					      (unsigned)ev.xconfigure.width,
+					      (unsigned)ev.xconfigure.height);
 				XClearWindow(dpy, covers[i].win);
 				if (i == 0)
 					XMoveWindow(dpy, pwin,
-						    (re->width - pw) / 2, (re->height - ph) / 2);
+						    (ev.xconfigure.width - pw) / 2,
+						    (ev.xconfigure.height - ph) / 2);
+				raise_covers();
 			}
-			continue;
+			/* fall through, child-of-root and cover-window
+			 * ConfigureNotify is the raise_covers() trigger and
+			 * the WINGs panel needs its own */
 		}
-#endif
 
 		if (ev.type == KeyPress || ev.type == KeyRelease) {
 			/* the keyboard grab delivers everything to the
@@ -576,9 +574,6 @@ int main(int argc, char **argv)
 	struct pam_conv conv;
 	int rc;
 #endif
-#ifdef USE_RANDR
-	int randr_errbase;
-#endif
 
 	prog = argv[0];
 
@@ -626,11 +621,6 @@ int main(int argc, char **argv)
 		fatal("cannot open display");
 	dpy = WMScreenDisplay(scr);
 	nscreens = ScreenCount(dpy);
-
-#ifdef USE_RANDR
-	if (!XRRQueryExtension(dpy, &randr_evbase, &randr_errbase))
-		randr_evbase = -1;
-#endif
 
 	XGetInputFocus(dpy, &focus_save_win, &focus_save_revert);
 
