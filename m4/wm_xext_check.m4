@@ -45,23 +45,16 @@ AC_DEFUN_ONCE([WM_XEXT_CHECK_XRES],
 # WM_XEXT_CHECK_XSHAPE
 # --------------------
 #
-# Check for the X Shaped Window extension
-# The check depends on variable 'enable_xshape' being either:
-#   yes  - detect, fail if not found
-#   no   - do not detect, disable support
-#   auto - detect, disable if not found
-#
-# When found, append appropriate stuff in XLIBS, and append info to
-# the variable 'supported_xext'
-# When not found, append info to variable 'unsupported'
+# Gate the X Shaped Window extension feature in src/ on the user's
+# --disable-shape, no library probe: the only consumer is src/ via
+# xcb-shape which is a hard PKG_CHECK_MODULES([XCB], ...) dependency,
+# so there is no library to detect.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XSHAPE],
-[WM_LIB_CHECK([XShape], [-lXext], [XShapeSelectInput], [$XLIBS],
-    [wm_save_CFLAGS="$CFLAGS"
-     AS_IF([wm_fn_lib_try_compile "X11/extensions/shape.h" "Window win;" "XShapeSelectInput(NULL, win, 0)" ""],
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XShape header])])
-     CFLAGS="$wm_save_CFLAGS"],
-    [supported_xext], [XLIBS], [enable_shape], [-])dnl
+[AS_IF([test "x$enable_shape" = "xno"],
+    [unsupported="$unsupported XShape"],
+    [AC_DEFINE([USE_XSHAPE], [1],
+        [defined when shaped frame and wireframe support is built])
+     supported_xext="$supported_xext XShape"]) dnl
 ]) dnl AC_DEFUN
 
 
@@ -104,15 +97,12 @@ AC_DEFUN_ONCE([WM_XEXT_CHECK_XSHM],
 # WM_XEXT_CHECK_XRANDR
 # --------------------
 #
-# Check for the X RandR (Resize-and-Rotate) extension
-# The check depends on variable 'enable_randr' being either:
-#   yes  - detect, fail if not found
-#   no   - do not detect, disable support
-#   auto - detect, disable if not found
-#
-# When found, append appropriate stuff in LIBXRANDR, and append info to
-# the variable 'supported_xext'
-# When not found, append info to variable 'unsupported'
+# Check for the X RandR (Resize-and-Rotate) extension.  src/randr.c
+# uses xcb-randr which is a hard PKG_CHECK_MODULES([XCB], ...) dep so
+# the wmaker binary needs no probe, but util/wmlock and util/wmiv keep
+# their own Xlib RandR (own process, own queue) and link @LIBXRANDR@,
+# so the libXrandr 1.5 link/header probe stays for them and USE_RANDR
+# stays gated on it so the util/ #ifdef and the link line agree.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XRANDR],
 [WM_LIB_CHECK([RandR], [-lXrandr], [XRRGetMonitors], [$XLIBS],
     [wm_save_CFLAGS="$CFLAGS"
@@ -128,28 +118,15 @@ AC_SUBST([LIBXRANDR])dnl
 # WM_XEXT_CHECK_XSYNC
 # -------------------
 #
-# Check for the X Synchronization extension, used by _NET_WM_SYNC_REQUEST
-# to pace interactive resizes to the client's redraw.
-# The check depends on variable 'enable_xsync' being either:
-#   yes  - detect, fail if not found
-#   no   - do not detect, disable support
-#   auto - detect, disable if not found
-#
-# When found, append -lXext to XLIBS and define USE_XSYNC.
+# Gate _NET_WM_SYNC_REQUEST frame-synchronised resize on the user's
+# --disable-xsync, no library probe: the only consumer is src/wmspec.c
+# via xcb-sync which is a hard PKG_CHECK_MODULES([XCB], ...) dependency.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XSYNC],
-[WM_LIB_CHECK([XSync], [-lXext], [XSyncInitialize], [$XLIBS],
-    [wm_save_CFLAGS="$CFLAGS"
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
-@%:@include <X11/Xlib.h>
-@%:@include <X11/extensions/sync.h>
-], [dnl
-  Display *dpy = (Display *)0;
-  int a, b;
-  XSyncInitialize(dpy, &a, &b);])],
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XSync header])])
-     CFLAGS="$wm_save_CFLAGS"],
-    [supported_xext], [XLIBS], [enable_xsync], [-])dnl
+[AS_IF([test "x$enable_xsync" = "xno"],
+    [unsupported="$unsupported XSync"],
+    [AC_DEFINE([USE_XSYNC], [1],
+        [defined when _NET_WM_SYNC_REQUEST resize pacing is built])
+     supported_xext="$supported_xext XSync"]) dnl
 ]) dnl AC_DEFUN
 
 
