@@ -92,8 +92,6 @@
 #define STIPPLE_HEIGHT 2
 static char STIPPLE_DATA[] = { 0x02, 0x01 };
 
-static int CantManageScreen = 0;
-
 static WMPropList *dApplications = NULL;
 static WMPropList *dWorkspace;
 static WMPropList *dDock;
@@ -130,8 +128,9 @@ static Bool replace_existing_wm(WScreen *scr)
 {
 #ifdef USE_ICCCM_WMREPLACE
 	char atomName[16];
+	xcb_generic_error_t *err;
 	Window wm;
-	XSetWindowAttributes attribs;
+	uint32_t mask;
 	unsigned long current_time;
 	int ret;
 
@@ -155,9 +154,18 @@ static Bool replace_existing_wm(WScreen *scr)
 			return False;
 		}
 
-		attribs.event_mask = StructureNotifyMask;
-		if (!XChangeWindowAttributes(dpy, wm, CWEventMask, &attribs))
+		/* watch for the outgoing WM's selection-owner window to
+		 * be destroyed, it may already have exited between
+		 * GetSelectionOwner and here so a BadWindow means there
+		 * is nothing to wait for */
+		mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+		err = xcb_request_check(xconn,
+			xcb_change_window_attributes_checked(xconn, wm,
+				XCB_CW_EVENT_MASK, &mask));
+		if (err) {
+			free(err);
 			wm = None;
+		}
 	}
 #endif
 
@@ -212,29 +220,6 @@ static Bool replace_existing_wm(WScreen *scr)
 /*
  *----------------------------------------------------------------------
  * alreadyRunningError--
- * 	X error handler used to catch errors when trying to do
- * XSelectInput() on the root window. These errors probably mean that
- * there already is some other window manager running.
- *
- * Returns:
- * 	Nothing, unless something really evil happens...
- *
- * Side effects:
- * 	CantManageScreen is set to 1;
- *----------------------------------------------------------------------
- */
-static int alreadyRunningError(Display * dpy, XErrorEvent * error)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) dpy;
-	(void) error;
-
-	CantManageScreen = 1;
-	return -1;
-}
-
-/*
- *----------------------------------------------------------------------
  * allocButtonPixmaps--
  * 	Allocate pixmaps used on window operation buttons (those in the
  * titlebar). The pixmaps are linked to the program. If XPM is supported
@@ -630,8 +615,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	WScreen *scr;
 	XIconSize icon_size[1];
 	RContextAttributes rattr = {};
-	long event_mask;
-	XErrorHandler oldHandler;
+	xcb_generic_error_t *xerr;
+	uint32_t event_mask;
 	int i;
 	XColor xcol;
 	char *desc;
@@ -668,9 +653,6 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	scr->fakeGroupLeaders = WMCreateArray(16);
 
-	CantManageScreen = 0;
-	oldHandler = XSetErrorHandler(alreadyRunningError);
-
 	/* Do we need to replace an existing window manager? */
 	if (!replace_existing_wm(scr)) {
 		XDestroyWindow(dpy, scr->info_window);
@@ -678,12 +660,26 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		return NULL;
 	}
 
+	/* selecting SubstructureRedirectMask on the root window is the
+	 * canonical "is another WM running" probe, only one client may
+	 * hold it at a time so a BadAccess here means we lost the race,
+	 * a checked xcb call gives that answer locally and synchronously
+	 * without the global XSetErrorHandler trap bracket and the
+	 * flanking XSync, the conditional PointerMotionMask is re-applied
+	 * later from wScreenUpdateRootEventMask() whenever
+	 * ScrollableMenus changes at runtime or a menu is mapped or
+	 * unmapped, and XKB event selection is per-device so wXkbInit()
+	 * has already done it */
 	event_mask = EVENT_MASK;
-	XSelectInput(dpy, scr->root_win, event_mask);
-	/* the conditional PointerMotionMask is re-applied later from
-	 * wScreenUpdateRootEventMask() whenever ScrollableMenus changes
-	 * at runtime or a menu is mapped or unmapped, and XKB event
-	 * selection is per-device so wXkbInit() has already done it */
+	xerr = xcb_request_check(xconn,
+		xcb_change_window_attributes_checked(xconn, scr->root_win,
+						      XCB_CW_EVENT_MASK,
+						      &event_mask));
+	if (xerr) {
+		free(xerr);
+		wfree(scr);
+		return NULL;
+	}
 
 #ifdef USE_RANDR
 	if (w_global.xext.randr.supported)
@@ -692,14 +688,6 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 				       | XCB_RANDR_NOTIFY_MASK_CRTC_CHANGE
 				       | XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
 #endif
-
-	XSync(dpy, False);
-	XSetErrorHandler(oldHandler);
-
-	if (CantManageScreen) {
-		wfree(scr);
-		return NULL;
-	}
 
 	XDefineCursor(dpy, scr->root_win, wPreferences.cursor[WCUR_ROOT]);
 

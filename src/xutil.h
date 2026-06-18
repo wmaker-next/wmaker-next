@@ -19,6 +19,8 @@
 #ifndef _WM_XUTIL_H_
 #define _WM_XUTIL_H_
 
-void FormatXError(Display *dpy, XErrorEvent *error, char *buffer, int size);
+void FormatXError(Display *dpy, unsigned int error_code, unsigned int major,
+		  unsigned int minor, unsigned long resource_id,
+		  unsigned long serial, char *buffer, int size);
 
 #endif

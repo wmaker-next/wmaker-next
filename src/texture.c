@@ -109,15 +109,6 @@ WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
 	return texture;
 }
 
-static int dummyErrorHandler(Display * foo, XErrorEvent * bar)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) foo;
-	(void) bar;
-
-	return 0;
-}
-
 void wTextureDestroy(WScreen * scr, WTexture * texture)
 {
 	int i;
@@ -164,15 +155,19 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 	if (CANFREE(texture->any.color.pixel))
 		colors[count++] = texture->any.color.pixel;
 	if (count > 0 && scr->w_visual->class != TrueColor) {
-		XErrorHandler oldhandler;
+		uint32_t pixels[wlengthof(colors)];
 
 		/* ignore error from buggy servers that don't know how
-		 * to do reference counting for colors. */
-		XSync(dpy, 0);
-		oldhandler = XSetErrorHandler(dummyErrorHandler);
-		XFreeColors(dpy, scr->w_colormap, colors, count, 0);
-		XSync(dpy, 0);
-		XSetErrorHandler(oldhandler);
+		 * to do reference counting for colors, this branch is
+		 * dead on every TrueColor display so the round-trip to
+		 * collect and discard the error is acceptable, the
+		 * narrowing copy is because XColor.pixel is long but
+		 * the wire is 32-bit */
+		for (i = 0; i < count; i++)
+			pixels[i] = (uint32_t)colors[i];
+		free(xcb_request_check(xconn,
+			xcb_free_colors_checked(xconn, scr->w_colormap, 0,
+						count, pixels)));
 	}
 	XFreeGC(dpy, texture->any.gc);
 	wfree(texture);

@@ -97,53 +97,41 @@
 static WScreen **wScreen = NULL;
 static void manageAllWindows(WScreen * scr, int crashed);
 
-static int catchXError(Display * dpy, XErrorEvent * error)
-{
-	char buffer[MAXLINE];
-
-	/* ignore some errors */
-	if (error->resourceid != None
-	    && ((error->error_code == BadDrawable && error->request_code == X_GetGeometry)
-		|| (error->error_code == BadMatch && (error->request_code == X_SetInputFocus))
-		|| (error->error_code == BadWindow)
-		/*
-		   && (error->request_code == X_GetWindowAttributes
-		   || error->request_code == X_SetInputFocus
-		   || error->request_code == X_ChangeWindowAttributes
-		   || error->request_code == X_GetProperty
-		   || error->request_code == X_ChangeProperty
-		   || error->request_code == X_QueryTree
-		   || error->request_code == X_GrabButton
-		   || error->request_code == X_UngrabButton
-		   || error->request_code == X_SendEvent
-		   || error->request_code == X_ConfigureWindow))
-		 */
-		|| (error->request_code == X_InstallColormap))) {
-		return 0;
-	}
-	FormatXError(dpy, error, buffer, MAXLINE);
-	wwarning(_("internal X error: %s"), buffer);
-	return -1;
-}
-
-/* in-stream errors from xcb-issued reply-less requests reach the
- * WINGs event queue as response_type 0, route them through the same
- * filter and formatter as Xlib-delivered errors so the warning text
- * and the BadWindow-on-a-vanished-client suppression are identical */
+/* primary error path, in-stream errors from xcb-issued reply-less
+ * requests reach the WINGs event queue as response_type 0 and land
+ * here via WXEvqSetErrorHook(), Xlib-issued errors arrive via the
+ * catchXError shim below so the warning text and the
+ * BadWindow-on-a-vanished-client suppression are identical for both
+ * sources, FormatXError() takes the unpacked fields so neither path
+ * needs a synthetic XErrorEvent */
 static void wHandleXcbError(Display *d, unsigned int error_code,
 			    unsigned int major_opcode, unsigned int minor_opcode,
 			    unsigned long resource_id, unsigned long serial)
 {
-	XErrorEvent xerr;
+	char buffer[MAXLINE];
 
-	memset(&xerr, 0, sizeof(xerr));
-	xerr.display = d;
-	xerr.resourceid = resource_id;
-	xerr.serial = serial;
-	xerr.error_code = error_code;
-	xerr.request_code = major_opcode;
-	xerr.minor_code = minor_opcode;
-	catchXError(d, &xerr);
+	/* ignore the benign races, a managed client can vanish between
+	 * any two requests so BadWindow on a client-owned XID is normal */
+	if (resource_id != None
+	    && ((error_code == BadDrawable && major_opcode == X_GetGeometry)
+		|| (error_code == BadMatch && major_opcode == X_SetInputFocus)
+		|| error_code == BadWindow
+		|| major_opcode == X_InstallColormap)) {
+		return;
+	}
+	FormatXError(d, error_code, major_opcode, minor_opcode, resource_id,
+		     serial, buffer, MAXLINE);
+	wwarning(_("internal X error: %s"), buffer);
+}
+
+/* the residual Xlib request surface (grabs, reparent, core drawing
+ * until Cairo) still routes through the global Xlib error handler,
+ * unpack the XErrorEvent and forward to the same body */
+static int catchXError(Display *d, XErrorEvent *error)
+{
+	wHandleXcbError(d, error->error_code, error->request_code,
+			error->minor_code, error->resourceid, error->serial);
+	return 0;
 }
 
 /*
