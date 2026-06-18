@@ -120,5 +120,6 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev);
 unsigned wGroupSessionId(WScreen *scr, WWindowGroup *grp);
 void wGroupRestoreMember(WWindow *wwin);
 void wGroupRestoreForget(WWindow *wwin);
+void wGroupAutoAttach(WWindow *wwin);
 
 #endif /* TABGROUP_H_ */

@@ -69,6 +69,7 @@
 	_(SWALLOW_CHILD,         "SwallowChild",         swallow_child) \
 	_(IGNORE_DECORATION_CHANGES, "IgnoreDecorationChanges", ignore_decoration_changes) \
 	_(NO_TABBING,            "NoTabbing",            no_tabbing) \
+	_(AUTO_TAB_GROUP,        "AutoTabGroup",         auto_tab_group) \
 	WATTR_IF_XKB_BUTTON( \
 	_(NO_LANGUAGE_BUTTON,    "NoLanguageButton",     no_language_button) \
 	)

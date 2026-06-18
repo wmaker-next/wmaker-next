@@ -149,6 +149,8 @@ typedef struct {
     unsigned int ignore_decoration_changes:1;
     /* refuse this window as either payload or target of a tab group */
     unsigned int no_tabbing:1;
+    /* auto-join an existing tab group whose members share the same WM_CLASS */
+    unsigned int auto_tab_group:1;
 
 } WWindowAttributes;
 

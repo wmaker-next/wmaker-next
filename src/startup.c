@@ -913,6 +913,9 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 			 * iconified group is rebuilt from members that each
 			 * already own a miniwindow */
 			wGroupRestoreMember(wwin);
+			/* auto-group by WM_CLASS when no session group was restored */
+			if (!wwin->tab_group)
+				wGroupAutoAttach(wwin);
 		}
 	}
 	wfree(attr_ck);

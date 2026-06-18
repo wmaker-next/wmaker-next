@@ -129,6 +129,9 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 		 * the deferred shade and iconify so an iconified group is
 		 * rebuilt from members that already own a miniwindow */
 		wGroupRestoreMember(wwin);
+		/* auto-group by WM_CLASS when no session group was restored */
+		if (!wwin->tab_group)
+			wGroupAutoAttach(wwin);
 	}
 }
 

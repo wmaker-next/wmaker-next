@@ -1454,3 +1454,51 @@ void wGroupRestoreForget(WWindow *wwin)
 		}
 	}
 }
+
+/*
+ * When the AutoTabGroup attribute is set for a window's class, attach the
+ * new window to the first visible tab group on its workspace that already
+ * contains a member with the same wm_class string.  Session restore takes
+ * priority: if wwin arrived with a restore_tab_gid we leave it for
+ * wGroupRestoreMember() and do nothing here.
+ */
+void wGroupAutoAttach(WWindow *wwin)
+{
+	WWindowGroup *grp;
+	int i;
+
+	if (!wwin)
+		return;
+	if (!WFLAGP(wwin, auto_tab_group))
+		return;
+	if (!wGroupIsTabable(wwin))
+		return;
+	/* session restore has already placed this window in a group */
+	if (wwin->tab_group)
+		return;
+
+	if (!wwin->wm_class)
+		return;
+
+	for (grp = wwin->screen_ptr->window_groups; grp; grp = grp->next) {
+		for (i = 0; i < grp->member_count; i++) {
+			WWindow *m = grp->members[i];
+
+			if (!m || m == wwin)
+				continue;
+			if (m->screen_ptr != wwin->screen_ptr)
+				continue;
+			if (!m->wm_class || strcmp(m->wm_class, wwin->wm_class) != 0)
+				continue;
+			/* group must be on the same workspace or omnipresent */
+			if (m->frame &&
+			    m->frame->workspace != wwin->screen_ptr->current_workspace
+			    && !IS_OMNIPRESENT(m))
+				continue;
+			if (!wGroupIsTabable(m))
+				continue;
+			wGroupAttach(grp, wwin);
+			return;
+		}
+	}
+}
