@@ -252,6 +252,9 @@ typedef struct InspectorPanel {
 	WMLabel *fileLbl;
 	WMTextField *fileText;
 	WMButton *alwChk;
+
+	/* page 0 standalone: auto-group all windows of this class */
+	WMButton *autoTabGrpChk;
 	WMButton *browseIconBtn;
 	WMFrame *wsFrm;
 	WMPopUpButton *wsP;
@@ -348,8 +351,11 @@ static void make_keys(void)
 
 	/* every WATTR_BOOLS row must appear on exactly one inspector page,
 	 * AlwaysUserIcon is the page-4 ignore-icon checkbox so it is the
-	 * one expected gap in the three per-panel tables */
-	covered = (uint32_t)1 << WATTR_ALWAYS_USER_ICON;
+	 * one expected gap in the three per-panel tables; AutoTabGroup is
+	 * the page-0 Window Specification checkbox and is likewise handled
+	 * as a standalone button outside the table-driven pages */
+	covered = ((uint32_t)1 << WATTR_ALWAYS_USER_ICON) |
+	          ((uint32_t)1 << WATTR_AUTO_TAB_GROUP);
 	for (i = 0; i < wlengthof(window_attribute); i++)
 		covered |= (uint32_t)1 << window_attribute[i].attr;
 	for (i = 0; i < wlengthof(advanced_option); i++)
@@ -438,6 +444,7 @@ static void changePage(WMWidget *bPtr, void *client_data)
 
 	if (page == 0) {
 		WMMapWidget(panel->specFrm);
+		WMMapWidget(panel->autoTabGrpChk);
 		WMMapWidget(panel->specLbl);
 	} else if (page == 1) {
 		WMMapWidget(panel->attrFrm);
@@ -452,6 +459,7 @@ static void changePage(WMWidget *bPtr, void *client_data)
 
 	if (page != 0) {
 		WMUnmapWidget(panel->specFrm);
+		WMUnmapWidget(panel->autoTabGrpChk);
 		WMUnmapWidget(panel->specLbl);
 	}
 	if (page != 1)
@@ -623,6 +631,11 @@ static void saveSettings(WMWidget *button, void *client_data)
 	WMReleasePropList(value1);
 	wfree(buf1);
 
+	/* Auto tab group by class (page 0 standalone checkbox) */
+	value = WMCreatePLString((WMGetButtonSelected(panel->autoTabGrpChk) != 0) ? "Yes" : "No");
+	different |= insertAttribute(dict, winDic, pl_wattr[WATTR_AUTO_TAB_GROUP], value, flags | IS_BOOLEAN);
+	WMReleasePropList(value);
+
 	/* The icon filename (if exists) */
 	icon_file = WMGetTextFieldText(panel->fileText);
 	if (icon_file != NULL) {
@@ -753,6 +766,7 @@ static void applySettings(WMWidget *button, void *client_data)
 	}
 
 	WSETUFLAG(wwin, always_user_icon, WMGetButtonSelected(panel->alwChk));
+	WSETUFLAG(wwin, auto_tab_group, WMGetButtonSelected(panel->autoTabGrpChk));
 
 	if (WFLAGP(wwin, no_titlebar) && wwin->flags.shaded)
 		wUnshadeWindow(wwin);
@@ -950,6 +964,7 @@ static void revertSettings(WMWidget *button, void *client_data)
 		}
 	}
 	WMSetButtonSelected(panel->alwChk, WFLAGP(wwin, always_user_icon));
+	WMSetButtonSelected(panel->autoTabGrpChk, WFLAGP(wwin, auto_tab_group));
 
 	showIconFor(WMWidgetScreen(panel->alwChk), panel, wm_instance, wm_class, REVERT_TO_DEFAULT);
 
@@ -1120,7 +1135,7 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 
 	panel->specFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->specFrm, _("Window Specification"));
-	WMMoveWidget(panel->specFrm, 15, 65);
+	WMMoveWidget(panel->specFrm, 15, 50);
 	WMResizeWidget(panel->specFrm, frame_width, 145);
 
 	panel->defaultRb = WMCreateRadioButton(panel->specFrm);
@@ -1180,9 +1195,21 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	WMSetButtonText(panel->selWinB, _("Select window"));
 	WMSetButtonAction(panel->selWinB, selectWindow, panel);
 
+	/* Checkbox sits between specFrm (bottom y=210) and specLbl, as a
+	 * direct child of the inspector window so it is not framed. */
+	panel->autoTabGrpChk = WMCreateSwitchButton(panel->win);
+	WMMoveWidget(panel->autoTabGrpChk, 15, 207);
+	WMResizeWidget(panel->autoTabGrpChk, frame_width, 20);
+	WMSetButtonText(panel->autoTabGrpChk, _("Auto tab group by class"));
+	WMSetButtonSelected(panel->autoTabGrpChk, WFLAGP(wwin, auto_tab_group));
+	WMSetBalloonTextForView(_("When a new window of this class is opened and a tab group\n"
+				  "on the current workspace already contains a member of the\n"
+				  "same class, attach the new window to that group automatically."),
+				WMWidgetView(panel->autoTabGrpChk));
+
 	panel->specLbl = WMCreateLabel(panel->win);
-	WMMoveWidget(panel->specLbl, 15, 210);
-	WMResizeWidget(panel->specLbl, frame_width, 100);
+	WMMoveWidget(panel->specLbl, 15, 240);
+	WMResizeWidget(panel->specLbl, frame_width, 85);
 	WMSetLabelText(panel->specLbl, spec_text);
 	WMSetLabelWraps(panel->specLbl, True);
 
@@ -1386,7 +1413,7 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel)
 	panel->iconFrm = WMCreateFrame(panel->win);
 	WMMoveWidget(panel->iconFrm, 15, 50);
 	WMResizeWidget(panel->iconFrm, PWIDTH - (2 * 15), 170);
-	WMSetFrameTitle(panel->iconFrm, _("Miniwindow Image"));
+	WMSetFrameTitle(panel->iconFrm, _("Application Icon"));
 
 	panel->iconLbl = WMCreateLabel(panel->iconFrm);
 	WMMoveWidget(panel->iconLbl, PWIDTH - (2 * 15) - 22 - 64, 20);
