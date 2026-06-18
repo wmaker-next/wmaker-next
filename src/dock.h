@@ -86,7 +86,8 @@ void wSlideAppicons(WAppIcon **appicons, int n, int to_the_left);
 void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, Bool redocking);
 
 void wDockFinishLaunch(WAppIcon *icon);
-void wDockTrackWindowLaunch(WDock *dock, Window window, pid_t client_pid);
+void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
+			    const char *wm_class, pid_t client_pid);
 WAppIcon *wDockFindIconForWindow(WDock *dock, Window window);
 void wDockDoAutoLaunch(WDock *dock, int workspace);
 void wDockLaunchWithState(WAppIcon *btn, WSavedState *state);

@@ -1847,10 +1847,14 @@ static void matchStartupNotification(WWindow *wwin, WNETWMInitialCookies *ck)
 	pid_t pid;
 
 	sid = WXRcvString(dpy, ck->startup_id, NULL);
-	if (!sid && wwin->main_window != None && wwin->main_window != wwin->client_win)
+	if (!sid && wwin->main_window != None && wwin->main_window != wwin->client_win
+	    && !wwin->fake_group)
+		/* a real client-set group leader may carry the id when
+		 * the toplevel does not, but a wmaker-created fake leader
+		 * never does so skip that round-trip */
 		sid = WXGetUTF8String(dpy, wwin->main_window, net_startup_id, NULL);
 
-	pid = wGetWindowPid(wwin->client_win);
+	pid = wwin->client_pid;
 
 	if (wStartupNotifyMatchWindow(wwin->screen_ptr, sid,
 				      wwin->wm_class, wwin->wm_instance,

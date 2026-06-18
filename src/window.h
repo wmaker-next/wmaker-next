@@ -275,6 +275,12 @@ typedef struct WWindow {
 	/* protocols */
 	WProtocols protocols;			/* accepted WM_PROTOCOLS */
 
+	/* the owning client process for client_win, resolved once at
+	 * manage time via wGetWindowPid() (XRes QueryClientIds with
+	 * the property fallback) and read everywhere else, 0 when XRes
+	 * and _NET_WM_PID are both absent or the client is remote */
+	pid_t client_pid;
+
 	/* _NET_WM_PING bookkeeping, armed when a close request is sent to a
 	 * client that lists the protocol, disarmed by the echoed reply or by
 	 * wWindowDestroy */

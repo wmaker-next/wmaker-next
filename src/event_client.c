@@ -82,12 +82,18 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 	 * apps that were forcedly docked (like with dockit).
 	 */
 	if (scr->last_dock) {
-		pid_t client_pid = wGetWindowPid(wwin ? wwin->client_win : e->window);
+		pid_t client_pid = wwin ? wwin->client_pid : wGetWindowPid(e->window);
+		Window track = (wwin && wwin->main_window != None
+				&& wwin->main_window != e->window)
+			       ? wwin->main_window : e->window;
 
-		if (wwin && wwin->main_window != None && wwin->main_window != e->window)
-			wDockTrackWindowLaunch(scr->last_dock, wwin->main_window, client_pid);
-		else
-			wDockTrackWindowLaunch(scr->last_dock, e->window, client_pid);
+		/* the fake group leader carries copies of the same
+		 * class strings wmaker set from wwin, so hand them
+		 * through rather than reading them back per window */
+		wDockTrackWindowLaunch(scr->last_dock, track,
+				       wwin ? wwin->wm_instance : NULL,
+				       wwin ? wwin->wm_class : NULL,
+				       client_pid);
 	}
 
 	if (wwin) {

@@ -3751,20 +3751,29 @@ WAppIcon *wDockFindIconForWindow(WDock *dock, Window window)
 	return NULL;
 }
 
-void wDockTrackWindowLaunch(WDock *dock, Window window, pid_t client_pid)
+void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
+			    const char *wm_class, pid_t client_pid)
 {
 	WAppIcon *icon;
 	WApplication *wapp;
-	char *wm_class, *wm_instance;
 	int i;
 	Bool firstPass = True;
 	Bool found = False;
+	Bool own_class = False;
 	char *command = NULL;
 
-	if (!PropGetWMClass(window, &wm_class, &wm_instance)) {
-		wunintern(wm_class);
-		wunintern(wm_instance);
-		return;
+	/* every caller that holds a managed WWindow already has the
+	 * interned class strings from the wManagePrefetch batch and the
+	 * fake group leader carries copies of them, only re-read when
+	 * the caller could not supply either (a window that
+	 * wManageWindow refused) */
+	if (!wm_instance && !wm_class) {
+		if (!PropGetWMClass(window, (char **)&wm_class, (char **)&wm_instance)) {
+			wunintern(wm_class);
+			wunintern(wm_instance);
+			return;
+		}
+		own_class = True;
 	}
 
 	command = GetCommandForWindow(window);
@@ -3867,10 +3876,10 @@ void wDockTrackWindowLaunch(WDock *dock, Window window, pid_t client_pid)
 	if (command)
 		wfree(command);
 
-	if (wm_class)
+	if (own_class) {
 		wunintern(wm_class);
-	if (wm_instance)
 		wunintern(wm_instance);
+	}
 }
 
 void wClipUpdateForWorkspaceChange(WScreen *scr, int workspace)

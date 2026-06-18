@@ -628,7 +628,7 @@ static void wWindowTrySwallow(WWindow *wwin)
 	WWindow *parent;
 	pid_t child_pid;
 
-	child_pid = wGetWindowPid(wwin->client_win);
+	child_pid = wwin->client_pid;
 
 	for (parent = scr->focused_window; parent; parent = parent->prev) {
 		pid_t parent_pid;
@@ -640,7 +640,7 @@ static void wWindowTrySwallow(WWindow *wwin)
 		if (parent->swallowed)		/* already swallowing something */
 			continue;
 
-		parent_pid = wGetWindowPid(parent->client_win);
+		parent_pid = parent->client_pid;
 		if (parent_pid <= 0)
 			continue;
 
@@ -730,7 +730,7 @@ static void fixLeaderProperties(WWindow *wwin)
 	int argc, i, pid;
 	Bool haveCommand;
 
-	pid = wGetWindowPid(wwin->client_win);
+	pid = wwin->client_pid;
 	if (pid > 0)
 		haveCommand = GetCommandForPid(pid, &argv, &argc);
 	else
@@ -941,6 +941,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->screen_ptr = scr;
 	wwin->old_border_width = wattribs.border_width;
 	wwin->colormap = wattribs.colormap;
+	/* one XRes round-trip per managed window, read everywhere else
+	 * via wwin->client_pid, the wManagePrefetch batch is in flight
+	 * so this stacks behind it rather than serialising */
+	wwin->client_pid = wGetWindowPid(window);
 	wwin->event_mask = CLIENT_EVENTS;
 	attribs.event_mask = CLIENT_EVENTS;
 	attribs.do_not_propagate_mask = ButtonPressMask | ButtonReleaseMask;
@@ -1067,8 +1071,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 #define ADEQUATE(x) ((x)!=None && (x)!=wwin->client_win && (x)!=fPtr->leader)
 
-		/* // only enter here if PropGetWMClass() succeeds */
-		PropGetWMClass(wwin->main_window, &class, &instance);
+		/* main_window is usually the just-managed client itself
+		 * (clients without a group leader hint), in which case
+		 * the class strings are already on wwin from the
+		 * wManagePrefetch batch */
+		if (wwin->main_window == wwin->client_win) {
+			instance = wwin->wm_instance ? (char *)wintern(wwin->wm_instance) : NULL;
+			class    = wwin->wm_class    ? (char *)wintern(wwin->wm_class)    : NULL;
+		} else {
+			PropGetWMClass(wwin->main_window, &class, &instance);
+		}
 		if (!class || class[0] == '\0') {
 			wunintern(class);
 			if (wwin->wm_class && wwin->wm_class[0] != '\0')
