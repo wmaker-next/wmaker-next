@@ -22,6 +22,156 @@
 
 #define DEFAULT_SIZE WINGsConfiguration.defaultFontSize
 
+#ifndef USE_PANGO
+/*
+ * Per-character Xft font fallback.
+ *
+ * XftDrawStringUtf8 uses a single XftFont and shows a "notdef" box for any
+ * code point not present in that font.  When the primary font is missing a
+ * glyph (common for Unicode modifier symbols configured via
+ * ModifierKeyShortLabels, or CJK in window titles), ask fontconfig for any
+ * installed font carrying that code point at the primary font's pixel size
+ * and weight, and use it for the missing run.
+ *
+ * The cache is keyed on the primary XftFont pointer so size/weight/slant
+ * carry over from its resolved pattern, and the same fallback is reused
+ * for every code point it covers before another lookup is made.
+ */
+#define FONT_FALLBACK_CACHE_SIZE 16
+
+static struct {
+	XftFont *primary;
+	XftFont *fallback;
+} fb_cache[FONT_FALLBACK_CACHE_SIZE];
+static int fb_cache_n;
+
+static XftFont *open_fallback_for_cp(Display *dpy, int screen, XftFont *primary, FcChar32 cp)
+{
+	FcPattern *pat, *match;
+	FcCharSet *cs;
+	FcResult result;
+	XftFont *f = NULL;
+
+	pat = FcPatternDuplicate(primary->pattern);
+	if (!pat)
+		return NULL;
+
+	/* drop the resolved family/file/charset so fontconfig is free to pick
+	 * a different face, keep pixelsize/weight/slant/dpi from the primary */
+	FcPatternDel(pat, FC_FAMILY);
+	FcPatternDel(pat, FC_FAMILYLANG);
+	FcPatternDel(pat, FC_STYLE);
+	FcPatternDel(pat, FC_FILE);
+	FcPatternDel(pat, FC_INDEX);
+	FcPatternDel(pat, FC_CHARSET);
+	FcPatternDel(pat, FC_LANG);
+	FcPatternDel(pat, FC_FULLNAME);
+	FcPatternDel(pat, FC_POSTSCRIPT_NAME);
+
+	cs = FcCharSetCreate();
+	if (cs) {
+		FcCharSetAddChar(cs, cp);
+		FcPatternAddCharSet(pat, FC_CHARSET, cs);
+		FcCharSetDestroy(cs);
+	}
+	FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
+
+	match = XftFontMatch(dpy, screen, pat, &result);
+	FcPatternDestroy(pat);
+	if (match) {
+		f = XftFontOpenPattern(dpy, match);
+		if (!f)
+			FcPatternDestroy(match);
+	}
+	return f;
+}
+
+/* Return the XftFont that can render code point 'cp': primary if it has the
+ * glyph, otherwise a cached or freshly matched fallback that does. Returns
+ * primary if no installed font covers 'cp'. */
+static XftFont *pick_font_for_cp(Display *dpy, int screen, XftFont *primary, FcChar32 cp)
+{
+	XftFont *f;
+	int i;
+
+	if (XftCharExists(dpy, primary, cp))
+		return primary;
+
+	/* try every fallback already opened for this primary */
+	for (i = 0; i < fb_cache_n; i++) {
+		if (fb_cache[i].primary == primary &&
+		    XftCharExists(dpy, fb_cache[i].fallback, cp))
+			return fb_cache[i].fallback;
+	}
+
+	f = open_fallback_for_cp(dpy, screen, primary, cp);
+	if (!f || !XftCharExists(dpy, f, cp)) {
+		if (f)
+			XftFontClose(dpy, f);
+		return primary;
+	}
+
+	if (fb_cache_n < FONT_FALLBACK_CACHE_SIZE) {
+		fb_cache[fb_cache_n].primary  = primary;
+		fb_cache[fb_cache_n].fallback = f;
+		fb_cache_n++;
+	}
+	return f;
+}
+
+/* Walk text[0..length) once, splitting at font changes, and either draw
+ * each run (when 'draw' is non-NULL) or only measure.  Returns the total
+ * advance width.  Pure-ASCII strings short-circuit to a single Xft call. */
+static int walk_runs(Display *dpy, int screen, XftDraw *draw, XftColor *color,
+                     XftFont *primary, int x, int y, const char *text, int length)
+{
+	const FcChar8 *p = (const FcChar8 *)text;
+	const FcChar8 *end = p + length;
+	const FcChar8 *run;
+	XftFont *use;
+	XGlyphInfo ext;
+	FcChar32 cp;
+	int n, total = 0;
+	Bool ascii = True;
+
+	for (n = 0; n < length; n++) {
+		if ((unsigned char)text[n] > 0x7F) {
+			ascii = False;
+			break;
+		}
+	}
+	if (ascii) {
+		if (draw)
+			XftDrawStringUtf8(draw, color, primary, x, y, p, length);
+		XftTextExtentsUtf8(dpy, primary, p, length, &ext);
+		return ext.xOff;
+	}
+
+	while (p < end) {
+		n = FcUtf8ToUcs4(p, &cp, (int)(end - p));
+		if (n <= 0)
+			break;
+		use = pick_font_for_cp(dpy, screen, primary, cp);
+
+		/* extend the run while the chosen font stays the same */
+		run = p;
+		p += n;
+		while (p < end) {
+			n = FcUtf8ToUcs4(p, &cp, (int)(end - p));
+			if (n <= 0 || pick_font_for_cp(dpy, screen, primary, cp) != use)
+				break;
+			p += n;
+		}
+
+		if (draw)
+			XftDrawStringUtf8(draw, color, use, x + total, y, run, (int)(p - run));
+		XftTextExtentsUtf8(dpy, use, run, (int)(p - run), &ext);
+		total += ext.xOff;
+	}
+	return total;
+}
+#endif /* !USE_PANGO */
+
 static FcPattern *xlfdToFcPattern(const char *xlfd)
 {
 	FcPattern *pattern;
@@ -302,8 +452,6 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 #ifdef USE_PANGO
 	const char *previous_text;
 	int width;
-#else
-	XGlyphInfo extents;
 #endif
 
 	wassertrv(font != NULL && text != NULL, 0);
@@ -315,9 +463,8 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 
 	return width;
 #else
-	XftTextExtentsUtf8(font->screen->display, font->font, (XftChar8 *) text, length, &extents);
-
-	return extents.xOff;	/* don't ask :P */
+	return walk_runs(font->screen->display, font->screen->screen, NULL, NULL,
+	                 font->font, 0, 0, text, length);
 #endif
 }
 
@@ -344,7 +491,8 @@ void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, in
 		pango_layout_set_text(font->layout, text, length);
 	pango_xft_render_layout(scr->xftdraw, &xftcolor, font->layout, x * PANGO_SCALE, y * PANGO_SCALE);
 #else
-	XftDrawStringUtf8(scr->xftdraw, &xftcolor, font->font, x, y + font->y, (XftChar8 *) text, length);
+	walk_runs(scr->display, scr->screen, scr->xftdraw, &xftcolor,
+	          font->font, x, y + font->y, text, length);
 #endif
 }
 
@@ -382,7 +530,8 @@ WMDrawImageString(WMScreen * scr, Drawable d, WMColor * color, WMColor * backgro
 		pango_layout_set_text(font->layout, text, length);
 	pango_xft_render_layout(scr->xftdraw, &textColor, font->layout, x * PANGO_SCALE, y * PANGO_SCALE);
 #else
-	XftDrawStringUtf8(scr->xftdraw, &textColor, font->font, x, y + font->y, (XftChar8 *) text, length);
+	walk_runs(scr->display, scr->screen, scr->xftdraw, &textColor,
+	          font->font, x, y + font->y, text, length);
 #endif
 }
 
