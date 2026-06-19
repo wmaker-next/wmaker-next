@@ -777,6 +777,32 @@ AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
 
 
+dnl xcb-imdkit: optional XIM protocol IM client for WINGs text fields
+dnl Restores fcitx5/ibus input after the xcb event-queue flip, without it
+dnl xkb_compose_state still handles dead-key / Compose sequences.
+dnl =====================================================================
+AC_ARG_WITH([xcb-imdkit],
+    [AS_HELP_STRING([--without-xcb-imdkit],
+                    [disable xcb-imdkit IM support in WINGs (compose/dead-keys still work)])],
+    [], [with_xcb_imdkit=auto])
+AS_IF([test "x$with_xcb_imdkit" != xno],
+    [PKG_CHECK_MODULES([XCB_IMDKIT], [xcb-imdkit >= 1.0.3],
+        [have_xcb_imdkit=yes
+         AC_DEFINE([HAVE_XCB_IMDKIT], [1],
+                   [defined when xcb-imdkit >= 1.0.3 is available for WINGs IM support])],
+        [AS_IF([test "x$with_xcb_imdkit" = xyes],
+            [AC_MSG_ERROR([xcb-imdkit >= 1.0.3 is required -- $XCB_IMDKIT_PKG_ERRORS])],
+            [have_xcb_imdkit=no
+             XCB_IMDKIT_CFLAGS=
+             XCB_IMDKIT_LIBS=])])],
+    [have_xcb_imdkit=no
+     XCB_IMDKIT_CFLAGS=
+     XCB_IMDKIT_LIBS=])
+AC_SUBST(XCB_IMDKIT_CFLAGS)
+AC_SUBST(XCB_IMDKIT_LIBS)
+AM_CONDITIONAL([HAVE_XCB_IMDKIT], [test "x$have_xcb_imdkit" = xyes])
+
+
 dnl XFixes selection notifications, used by wmclipd clipboard-manager mode
 dnl =====================================================================
 AC_ARG_WITH([xfixes],

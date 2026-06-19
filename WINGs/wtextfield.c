@@ -923,6 +923,12 @@ static void handleTextFieldKeyPress(TextField * tPtr, XEvent * event)
 	Bool shifted, controled, modified;
 	Bool relay = True;
 
+	/* xcb path: forward printable keys / dead keys to the protocol IM.
+	 * Text committed by the IM arrives via commit_string -> WMInsertTextFieldText,
+	 * navigation keysyms (arrows, BackSpace, Return, Escape, ...) bypass the IM. */
+	if (W_IMForwardKey(tPtr->view, event))
+		return;
+
 	/*printf("(%d,%d) -> ", tPtr->selection.position, tPtr->selection.count); */
 	if (((XKeyEvent *) event)->state & WM_EMACSKEYMASK)
 		control_pressed = 1;

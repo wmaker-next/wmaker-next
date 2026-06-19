@@ -145,8 +145,15 @@ int WMHandleEvent(XEvent * event)
 		return True;
 	}
 
-	if (XFilterEvent(event, None) == True) {
-		return False;
+	if (WXEvqXcbOwned()) {
+		/* xcb path: route XIM protocol ClientMessages / PropertyNotify /
+		 * DestroyNotify through xcb-imdkit.  Key events are NOT filtered
+		 * here, they reach wtextfield via W_IMForwardKey instead. */
+		if (W_IMFilterEventGlobal(event->xany.display, event))
+			return False;
+	} else {
+		if (XFilterEvent(event, None) == True)
+			return False;
 	}
 
 	mask = W_MaskForEventType(event->xany.type);

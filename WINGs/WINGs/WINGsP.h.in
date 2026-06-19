@@ -280,6 +280,10 @@ typedef struct W_Screen {
     W_Pixmap *tristateButtonImageOff;
     W_Pixmap *tristateButtonImageTri;
 
+    /* xcb event-queue path: xcb-imdkit handle and xkb compose fallback */
+    void *xcbim;          /* xcb_xim_t *, non-NULL when WXEvqXcbOwned() and xcb-imdkit built */
+    void *compose_state;  /* xkb_compose_state *, dead-key fallback when xcbxic == 0 */
+
 } W_Screen;
 
 #define W_DRAWABLE(scr)		(scr)->rcontext->drawable
@@ -512,6 +516,12 @@ int W_LookupString(W_View *view, XKeyPressedEvent *event, char *buffer,
 
 KeySym W_KeycodeToKeysym(Display *display, KeyCode keycode, int index);
 
+/* xcb-path helpers: called from wevent.c and wtextfield.c */
+Bool W_IMFilterEventGlobal(Display *dpy, XEvent *event);
+Bool W_IMForwardKey(W_View *view, XEvent *event);
+/* compose helper exposed for unit tests */
+int W_IMComposeKey(void *compose_state, KeySym ksym, char *buf, int buflen, KeySym *sym_out);
+
 
 /* ---[ wmisc.c ]--------------------------------------------------------- */
 
@@ -607,7 +617,9 @@ struct W_View {
     WMPixmap *dragImage;
     int helpContext;
 
-    XIC xic;
+    XIC xic;          /* Xlib input context (non-xcb path) */
+    uint16_t xcbxic;  /* xcb_xic_t when WXEvqXcbOwned(); 0 = not created */
+    uint32_t xcbxic_fwd_mask; /* forward_event_mask from xcb-imdkit set_event_mask */
 
     struct {
         unsigned int realized:1;

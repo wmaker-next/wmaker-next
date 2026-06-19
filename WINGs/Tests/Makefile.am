@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq
+check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -27,6 +27,16 @@ check_evq_SOURCES = check_evq.c
 check_evq_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la @XLIBS@ @INTLIBS@
 
+# unit tests for xcb-path IM: compose fallback and W_IMForwardKey logic,
+# never opens a Display or IM connection
+check_im_SOURCES = check_im.c
+check_im_CPPFLAGS = $(AM_CPPFLAGS) \
+	-I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs \
+	-I$(top_srcdir)/src
+check_im_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ @XLIBS@ @INTLIBS@
+
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@XFT_LIBS@ @INTLIBS@ @XLIBS@
@@ -44,5 +54,5 @@ EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 
 AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_builddir)/wrlib -I$(top_srcdir)/src \
-	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XFT_CFLAGS@ @HEADER_SEARCH_PATH@ \
+	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XFT_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @HEADER_SEARCH_PATH@ \
 	@PANGO_CFLAGS@
