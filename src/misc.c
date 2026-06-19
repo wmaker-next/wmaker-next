@@ -802,10 +802,40 @@ Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, s
 	return True;
 }
 
+/* Convert a canonical keysym name (as produced by wXkbKeysymName, e.g.
+ * "odiaeresis", "plus", "0x010000e0") to its printable UTF-8 glyph for
+ * display purposes.  Returns 'name' unchanged when there is no printable
+ * form (function keys, dead keys, control characters, space, ...).
+ * 'buf' must be at least 8 bytes. */
+static const char *keysym_name_to_display(const char *name, char *buf, size_t bufsz)
+{
+	xkb_keysym_t ks;
+	unsigned char c0;
+	int n;
+
+	ks = wXkbKeysymFromName(name);
+	if (ks == XKB_KEY_NoSymbol)
+		return name;
+
+	n = xkb_keysym_to_utf8(ks, buf, bufsz);
+	/* n includes the terminating NUL, n > 1 means at least one real byte */
+	if (n <= 1)
+		return name;
+
+	/* Skip C0 controls (U+0001-U+001F), space (U+0020), DEL (U+007F),
+	 * and C1 controls (U+0080-U+009F encoded as 0xC2 0x80-0x9F). */
+	c0 = (unsigned char)buf[0];
+	if (c0 >= 0x21 && c0 != 0x7F &&
+	    !(c0 == 0xC2 && (unsigned char)buf[1] <= 0x9F))
+		return buf;
+	return name;
+}
+
 char *GetShortcutString(const char *shortcut)
 {
 	char *buffer = NULL;
 	char *k, *tmp, *text;
+	char disp_buf[8];
 
 	tmp = text = wstrdup(shortcut);
 
@@ -828,7 +858,9 @@ char *GetShortcutString(const char *shortcut)
 		text = k + 1;
 	}
 
-	buffer = wstrappend(buffer, text);
+	/* Convert the canonical key name to its printable glyph where possible,
+	 * "odiaeresis" -> U+00F6, "plus" -> "+", "0x010000e0" -> U+00E0, etc. */
+	buffer = wstrappend(buffer, keysym_name_to_display(text, disp_buf, sizeof(disp_buf)));
 	wfree(tmp);
 
 	return buffer;
