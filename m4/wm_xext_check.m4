@@ -18,27 +18,30 @@
 # WM_XEXT_CHECK_XRES
 # --------------------
 #
-# Check for the X Resource Window extension
-# The check depends on variable 'enable_xshape' being either:
+# Check for the X Resource Window extension (via xcb-res)
+# The check depends on variable 'enable_res' being either:
 #   yes  - detect, fail if not found
 #   no   - do not detect, disable support
 #   auto - detect, disable if not found
 #
-# When found, append appropriate stuff in XLIBS, and append info to
-# the variable 'supported_xext'
-# When not found, append info to variable 'unsupported'
+# When found, USE_XRES is defined, xcb-res is appended to XLIBS, and
+# info is appended to 'supported_xext'.
+# When not found, info is appended to 'unsupported'.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XRES],
-[WM_LIB_CHECK([XRes], [-lXRes], [XResQueryClientIds], [$XLIBS],
-    [wm_save_CFLAGS="$CFLAGS"
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
-@%:@include <X11/extensions/XRes.h>
-], [dnl
-
-  XResQueryClientIds(NULL, 0, NULL, NULL, NULL);])]
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XRes header])])
-     CFLAGS="$wm_save_CFLAGS"],
-    [supported_xext], [XLIBS], [enable_res], [-])dnl
+[AS_IF([test "x$enable_res" = "xno"],
+    [unsupported="$unsupported XRes"],
+    [PKG_CHECK_MODULES([XRES], [xcb-res],
+        [AC_DEFINE([USE_XRES], [1],
+                   [defined when xcb-res is available for server-side PID query])
+         supported_xext="$supported_xext XRes"
+         XLIBS="$XLIBS $XRES_LIBS"
+         AC_SUBST([XRES_CFLAGS])],
+        [AS_IF([test "x$enable_res" = "xyes"],
+            [AC_MSG_ERROR([xcb-res is required (use --disable-res to skip): $XRES_PKG_ERRORS])],
+            [unsupported="$unsupported XRes"
+             XRES_CFLAGS=
+             AC_SUBST([XRES_CFLAGS])])])
+    ])
 ]) dnl AC_DEFUN
 
 

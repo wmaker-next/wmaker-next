@@ -28,7 +28,8 @@
 #include <xcb/shape.h>
 #endif
 #ifdef USE_XRES
-#include <X11/extensions/XRes.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/res.h>
 #endif
 #include <stdlib.h>
 #include <stdio.h>
@@ -586,31 +587,37 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 	return True;
 }
 
-/* Get the owning client PID for an X window, preferring server-side
- * XResQueryClientIds over the client-supplied _NET_WM_PID property */
+/* Get the owning client PID for an X window, preferring the server-side
+ * X-Resource extension over the client-supplied _NET_WM_PID property */
 pid_t wGetWindowPid(Window win)
 {
 #ifdef USE_XRES
-	pid_t xres_pid = -1;
-	XResClientIdSpec spec;
-	long i, num_ids = 0;
-	XResClientIdValue *client_ids = NULL;
+	xcb_connection_t *conn = XGetXCBConnection(dpy);
+	xcb_res_client_id_spec_t spec;
+	xcb_res_query_client_ids_reply_t *reply;
+	xcb_res_client_id_value_iterator_t it;
+	pid_t pid = -1;
 
-	spec.client = win;
-	spec.mask = XRES_CLIENT_ID_PID_MASK;
+	if (conn) {
+		spec.client = (uint32_t)win;
+		spec.mask   = XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID;
 
-	if (XResQueryClientIds(dpy, 1, &spec, &num_ids, &client_ids) == Success) {
-		for (i = 0; i < num_ids; i++) {
-			if (client_ids[i].spec.mask == XRES_CLIENT_ID_PID_MASK) {
-				xres_pid = XResGetClientPid(&client_ids[i]);
-				break;
+		reply = xcb_res_query_client_ids_reply(conn,
+		            xcb_res_query_client_ids(conn, 1, &spec), NULL);
+		if (reply) {
+			for (it = xcb_res_query_client_ids_ids_iterator(reply);
+			     it.rem; xcb_res_client_id_value_next(&it)) {
+				if (it.data->spec.mask == XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID &&
+				    xcb_res_client_id_value_value_length(it.data) > 0) {
+					pid = (pid_t)xcb_res_client_id_value_value(it.data)[0];
+					break;
+				}
 			}
+			free(reply);
 		}
-		XResClientIdsDestroy(num_ids, client_ids);
 	}
-
-	if (xres_pid > 0)
-		return xres_pid;
+	if (pid > 0)
+		return pid;
 #endif
 	return wNETWMGetPidForWindow(win);
 }
