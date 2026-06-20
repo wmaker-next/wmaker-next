@@ -599,13 +599,18 @@ root cursor and exporting @env{DESKTOP_STARTUP_ID} to the child) and monitors
 while you kept typing elsewhere does not steal focus and lands on the workspace it was
 launched from.
 
-@item --enable-randr
-The @emph{RandR} extension provides feedback when changing the multiple-monitor configuration in X11
-and allows to re-configure how screens are organised.
+@item --without-xcb-imdkit
+Do not link against @emph{xcb-imdkit}. With the library present @sc{Window Maker}'s own text
+fields (the run dialog, the icon chooser, the window inspector) talk to fcitx5/ibus over the
+xcb connection so CJK and other input methods work; without it those fields fall back to the
+xkbcommon compose table, so dead keys and the Compose key still work but no input-method
+server is consulted.
 
-At current time, it is not enabled by default because it is NOT recommended (buggy);
-@sc{Window Maker} only restart itself when the configuration change, to take into account the new
-screen size.
+@item --disable-randr
+Disable use of the @emph{RandR} extension for live multi-monitor reconfiguration. With RandR
+enabled (the default) @sc{Window Maker} reads the per-output geometry from the server and
+reacts to monitor hot-plug, resolution and rotation changes without a restart; with it
+disabled the head layout is read once at startup from the static @emph{Xinerama} information.
 
 @end table
 
