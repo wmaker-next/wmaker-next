@@ -1315,6 +1315,12 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	XEvent peek;
 	WScreen *scr = wScreenForRootWindow(e->root);
 
+	/* xany.serial carries full_sequence (set by the cooker), the
+	 * 32-byte wire copy at xe does not reach offset 32 so
+	 * xe->full_sequence cannot be read here */
+	if (wEventCrossingIgnored(ev->xany.serial))
+		return;
+
 	if (WXEvqTakeTyped(dpy, LeaveNotify, e->event, &peek)) {
 		/* already left the window... */
 		wSaveTimestamp((const xcb_generic_event_t *)((WXWireEvent *)&peek)->wire);
@@ -1396,6 +1402,9 @@ static void handleLeaveNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	const xcb_leave_notify_event_t *e = (const xcb_leave_notify_event_t *)xe;
 	WObjDescriptor *desc = NULL;
 	WScreen *scr = wScreenForRootWindow(e->root);
+
+	if (wEventCrossingIgnored(ev->xany.serial))
+		return;
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL &&
 	    wHotCornerForWindow(scr, e->event)) {

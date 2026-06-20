@@ -68,6 +68,17 @@ void wEventExtRegister(void);
  * handler in event_root.c */
 void wSaveTimestamp(const xcb_generic_event_t *xe);
 
+/* Bracket a request burst whose generated Enter/Leave events must not
+ * reach the crossing handlers.  Begin() returns the sequence of an
+ * xcb_no_operation issued now; End() issues a closing no-op, records
+ * the [begin,end) pair in the w_global.ignore_crossing ring for
+ * dispatch-time filtering, and sweeps anything already drained into
+ * the WINGs queue via WXEvqDropRange().  Ignored() is the
+ * dispatch-time predicate. */
+unsigned long wEventIgnoreCrossingBegin(void);
+void wEventIgnoreCrossingEnd(unsigned long begin);
+Bool wEventCrossingIgnored(unsigned long sequence);
+
 /* the keysym-to-keycode resolution and named-modifier masks may have
  * shifted, re-derive every WShortKey from its config string and
  * regrab on every managed window, both the core MappingNotify

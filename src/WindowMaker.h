@@ -311,6 +311,22 @@ extern struct wmaker_global_variables {
 
 	} timestamp;
 
+	/* Sequence-range Enter/Leave suppression: a small ring of
+	 * [begin,end) request-sequence brackets recorded around request
+	 * bursts that move/map/unmap windows (interactive drag, snap,
+	 * workspace settle).  handleEnterNotify/handleLeaveNotify drop
+	 * any crossing whose serial falls inside a recorded range, so
+	 * the spurious crossings those requests generate cannot drive
+	 * focus-follows-mouse, auto-raise or the dock/clip enter
+	 * handlers.  Slots start zeroed so [0,0) matches nothing. */
+	struct {
+		struct {
+			unsigned long begin;
+			unsigned long end;
+		} range[4];
+		unsigned int head;
+	} ignore_crossing;
+
 	/* Global Domains, for storing dictionaries */
 	struct {
 		/* Note: you must #include <defaults.h> if you want to use them */

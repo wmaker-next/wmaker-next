@@ -247,6 +247,58 @@ void wSaveTimestamp(const xcb_generic_event_t *xe)
 		w_global.timestamp.last_event = t;
 }
 
+/* ------------------------------------------------------------------ *
+ * sequence-range Enter/Leave suppression                             *
+ *                                                                    *
+ * The opaque-move loop issues an XMoveWindow per MotionNotify and    *
+ * each one generates Enter/Leave on whatever the frame edge sweeps   *
+ * over.  Rather than draining the queue by event type after the      *
+ * ButtonRelease (which can swallow a legitimate crossing that        *
+ * arrived in the same read), the caller brackets the burst with a    *
+ * pair of xcb_no_operation()s, the [begin,end) sequence range is     *
+ * recorded in a small ring, and the crossing handlers drop any       *
+ * event whose serial falls inside it.  xcb_no_operation() forces     *
+ * the socket back from Xlib so the returned sequence is correct      *
+ * regardless of whether the bracketed requests went via Xlib or      *
+ * xcb.  This is awesome's client_ignore_enterleave_events()          *
+ * pattern without the server grab, which is fine for the move loop   *
+ * since the active pointer grab already prevents user-driven         *
+ * crossings on other windows.                                        *
+ * ------------------------------------------------------------------ */
+
+unsigned long wEventIgnoreCrossingBegin(void)
+{
+	return xcb_no_operation(xconn).sequence;
+}
+
+void wEventIgnoreCrossingEnd(unsigned long begin)
+{
+	unsigned long end = xcb_no_operation(xconn).sequence;
+	unsigned int i = w_global.ignore_crossing.head;
+
+	w_global.ignore_crossing.range[i].begin = begin;
+	w_global.ignore_crossing.range[i].end = end;
+	w_global.ignore_crossing.head =
+		(i + 1) % wlengthof(w_global.ignore_crossing.range);
+
+	/* anything already drained into the WINGs queue can go now,
+	 * late arrivals are caught by wEventCrossingIgnored() at
+	 * dispatch time so no XSync is needed */
+	WXEvqDropRange(dpy, begin, end, EnterWindowMask | LeaveWindowMask);
+}
+
+Bool wEventCrossingIgnored(unsigned long sequence)
+{
+	unsigned int i;
+
+	for (i = 0; i < wlengthof(w_global.ignore_crossing.range); i++) {
+		if (sequence >= w_global.ignore_crossing.range[i].begin &&
+		    sequence <  w_global.ignore_crossing.range[i].end)
+			return True;
+	}
+	return False;
+}
+
 void wRefreshKeybindings(void)
 {
 	int j;

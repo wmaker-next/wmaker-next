@@ -43,6 +43,7 @@
 #include "screen.h"
 #include "wireframe.h"
 #include "xinerama.h"
+#include "event.h"
 
 #include <WINGs/WINGsP.h>
 
@@ -1703,6 +1704,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 	int warped = 0;
 	/* This needs not to change while moving, else bad things can happen */
 	int opaqueMove = w_global.config->opaque_move;
+	unsigned long crossing_begin = 0;
 	MoveData moveData;
 	int head = ((w_global.config->auto_arrange_icons && wXineramaHeads(scr) > 1)
 		    ? wGetHeadForWindow(wwin)
@@ -1801,6 +1803,14 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 			} else if (abs(ev->xmotion.x_root - event.xmotion.x_root) >= MOVE_THRESHOLD
 				   || abs(ev->xmotion.y_root - event.xmotion.y_root) >= MOVE_THRESHOLD) {
 
+				/* open the Enter/Leave suppression bracket
+				 * before the first frame-moving request
+				 * (DRAGMAX_RESTORE wUnmaximizeWindow runs
+				 * just below), every crossing generated
+				 * until the ButtonRelease settle is then
+				 * dropped by sequence at dispatch time */
+				crossing_begin = wEventIgnoreCrossingBegin();
+
 				if (wwin->flags.maximized) {
 					if (w_global.config->drag_maximized_window == DRAGMAX_RESTORE) {
 						float titlebar_ratio;
@@ -1846,8 +1856,6 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 			wWireframeHide(scr);
 
 			if (started) {
-				XEvent e;
-
 				if (moveData.snap)
 					do_snap(wwin, &moveData);
 				else if (!opaqueMove)
@@ -1873,20 +1881,13 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 				if (w_global.config->move_display == WDIS_NEW)
 					showPosition(wwin, moveData.realX, moveData.realY);
 
-				/* discard all enter/leave events that happened until
-				 * the time the button was released */
-				while (WXEvqTakeTyped(dpy, EnterNotify, None, &e)) {
-					if (e.xcrossing.time > event.xbutton.time) {
-						WXEvqPutBack(&e);
-						break;
-					}
-				}
-				while (WXEvqTakeTyped(dpy, LeaveNotify, None, &e)) {
-					if (e.xcrossing.time > event.xbutton.time) {
-						WXEvqPutBack(&e);
-						break;
-					}
-				}
+				/* close the suppression bracket after the
+				 * last frame-moving request, the
+				 * NotifyUngrab crossing from the later
+				 * XUngrabPointer falls outside the range
+				 * so focus-follows-mouse still sees where
+				 * the pointer landed */
+				wEventIgnoreCrossingEnd(crossing_begin);
 
 				if (!scr->selected_windows) {
 					/* get rid of the geometry window */
