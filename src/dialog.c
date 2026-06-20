@@ -324,7 +324,8 @@ static WMArray *GenerateVariants(const char *complete)
 {
 	Bool firstWord = True;
 	WMArray *variants = NULL;
-	char *pos = NULL, *path = NULL, *tmp = NULL, *dir = NULL, *prefix = NULL;
+	const char *pos = NULL, *path = NULL;
+	char *tmp = NULL, *dir = NULL, *prefix = NULL;
 
 	variants = WMCreateArrayWithDestructor(0, wfree);
 
@@ -339,7 +340,7 @@ static WMArray *GenerateVariants(const char *complete)
 
 	pos = strrchr(complete, '/');
 	if (pos != NULL) {
-		tmp = wstrndup((char *)complete, pos - complete + 1);
+		tmp = wstrndup(complete, pos - complete + 1);
 		if (*tmp == '~' && *(tmp + 1) == '/' && getenv("HOME")) {
 			dir = wstrdup(getenv("HOME"));
 			dir = wstrappend(dir, tmp + 1);

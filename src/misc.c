@@ -334,15 +334,16 @@ char *ShrinkString(WMFont *font, const char *string, int width)
 
 char *FindImage(const char *paths, const char *file)
 {
-	char *tmp, *path = NULL;
+	const char *colon;
+	char *base, *path = NULL;
 
-	tmp = strrchr(file, ':');
-	if (tmp) {
-		*tmp = 0;
-		path = wfindfile(paths, file);
-		*tmp = ':';
+	colon = strrchr(file, ':');
+	if (colon) {
+		base = wstrndup(file, colon - file);
+		path = wfindfile(paths, base);
+		wfree(base);
 	}
-	if (!tmp || !path)
+	if (!colon || !path)
 		path = wfindfile(paths, file);
 
 	return path;

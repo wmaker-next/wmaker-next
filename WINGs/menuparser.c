@@ -453,7 +453,8 @@ static void menu_parser_get_directive(WMenuParser parser)
 static Bool menu_parser_include_file(WMenuParser parser)
 {
 	char buffer[MAXLINE];
-	char *req_filename, *fullfilename, *p;
+	char *req_filename, *fullfilename;
+	const char *p;
 	char eot;
 	FILE *fh;
 

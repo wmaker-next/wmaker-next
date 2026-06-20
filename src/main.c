@@ -809,12 +809,15 @@ static int real_main(int argc, char **argv)
 #endif
 
 	if (w_global.locale) {
-		char *ptr;
+		char *locale, *ptr;
 
-		w_global.locale = wstrdup(w_global.locale);
-		ptr = strchr(w_global.locale, '.');
+		/* w_global.locale is const-typed, truncate at the
+		 * codeset suffix on a writable copy and adopt that */
+		locale = wstrdup(w_global.locale);
+		ptr = strchr(locale, '.');
 		if (ptr)
 			*ptr = 0;
+		w_global.locale = locale;
 	}
 
 	/* open display */
