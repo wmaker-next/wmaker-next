@@ -36,6 +36,8 @@ typedef struct W_FontPanel {
 	WMButton *revertB;
 	WMButton *setB;
 
+	char *revertFontName;
+
 	WMPropList *fdb;
 } FontPanel;
 
@@ -156,14 +158,41 @@ static void setClickedAction(WMWidget * w, void *data)
 		(*panel->action) (panel, panel->data);
 }
 
+static void selectFontByName(FontPanel * panel, const char *fontName)
+{
+	int fname_len;
+	FcPattern *pattern;
+	FcChar8 *family, *style;
+	double size;
+
+	if (!isXLFD(fontName, &fname_len)) {
+		/* maybe its proper fontconfig and we can parse it */
+		pattern = FcNameParse((const FcChar8 *) fontName);
+	} else {
+		/* maybe its proper xlfd and we can convert it to an FcPattern */
+		pattern = XftXlfdParse(fontName, False, False);
+	}
+
+	if (!pattern)
+		return;
+
+	if (FcPatternGetString(pattern, FC_FAMILY, 0, &family) == FcResultMatch)
+		if (FcPatternGetString(pattern, FC_STYLE, 0, &style) == FcResultMatch)
+			if (FcPatternGetDouble(pattern, "pixelsize", 0, &size) == FcResultMatch)
+				setFontPanelFontName(panel, (char *)family, (char *)style, size);
+
+	FcPatternDestroy(pattern);
+}
+
 static void revertClickedAction(WMWidget * w, void *data)
 {
+	FontPanel *panel = (FontPanel *) data;
+
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) w;
-	(void) data;
 
-	/*FontPanel *panel = (FontPanel*)data; */
-	/* XXX TODO */
+	if (panel->revertFontName)
+		selectFontByName(panel, panel->revertFontName);
 }
 
 WMFontPanel *WMGetFontPanel(WMScreen * scr)
@@ -279,7 +308,8 @@ WMFontPanel *WMGetFontPanel(WMScreen * scr)
 	WMMapSubwidgets(panel->split);
 	WMMapSubwidgets(panel->win);
 
-	WMUnmapWidget(panel->revertB);
+	/* nothing to revert to until WMSetFontPanelFont() supplies a baseline */
+	WMSetButtonEnabled(panel->revertB, False);
 
 	arrangeLowerFrame(panel);
 
@@ -306,6 +336,8 @@ void WMFreeFontPanel(WMFontPanel * panel)
 	WMRemoveNotificationObserver(panel);
 	WMUnmapWidget(panel->win);
 	WMDestroyWidget(panel->win);
+	if (panel->revertFontName)
+		wfree(panel->revertFontName);
 	wfree(panel);
 }
 
@@ -326,29 +358,15 @@ WMFont *WMGetFontPanelFont(WMFontPanel * panel)
 
 void WMSetFontPanelFont(WMFontPanel * panel, const char *fontName)
 {
-	int fname_len;
-	FcPattern *pattern;
-	FcChar8 *family, *style;
-	double size;
-
-	if (!isXLFD(fontName, &fname_len)) {
-		/* maybe its proper fontconfig and we can parse it */
-		pattern = FcNameParse((const FcChar8 *) fontName);
-	} else {
-		/* maybe its proper xlfd and we can convert it to an FcPattern */
-		pattern = XftXlfdParse(fontName, False, False);
-		/*//FcPatternPrint(pattern); */
-	}
-
-	if (!pattern)
+	if (!fontName)
 		return;
 
-	if (FcPatternGetString(pattern, FC_FAMILY, 0, &family) == FcResultMatch)
-		if (FcPatternGetString(pattern, FC_STYLE, 0, &style) == FcResultMatch)
-			if (FcPatternGetDouble(pattern, "pixelsize", 0, &size) == FcResultMatch)
-				setFontPanelFontName(panel, (char *)family, (char *)style, size);
+	if (panel->revertFontName)
+		wfree(panel->revertFontName);
+	panel->revertFontName = wstrdup(fontName);
+	WMSetButtonEnabled(panel->revertB, True);
 
-	FcPatternDestroy(pattern);
+	selectFontByName(panel, fontName);
 }
 
 void WMSetFontPanelAction(WMFontPanel * panel, WMAction2 * action, void *data)
