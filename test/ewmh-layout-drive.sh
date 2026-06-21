@@ -183,6 +183,19 @@ send_restack_message() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+# send_wm_state TARGET ACTION ATOM : raw _NET_WM_STATE message via the
+# in-tree client. wmctrl 1.07's -b validates against a fixed property
+# list (modal, sticky, maximized_*, shaded, skip_*, hidden, fullscreen,
+# above, below) and on builds that fall through it interns the bare
+# token, so e.g. demands_attention never reaches the WM as
+# _NET_WM_STATE_DEMANDS_ATTENTION. ACTION is 0=remove 1=add 2=toggle.
+send_wm_state() {
+	DISPLAY=$DPY env EWMH_CLIENT_STATE_TARGET="$1" \
+		EWMH_CLIENT_STATE_ACTION="$2" \
+		EWMH_CLIENT_STATE_ATOM1="$3" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
 # send_active_window TARGET SOURCE TIMESTAMP : raw _NET_ACTIVE_WINDOW
 # message with an arbitrary source indication, since wmctrl/xdotool always
 # use source 2 (pager)
@@ -946,10 +959,14 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		# DEMANDS_ATTENTION is refused on a focused window (per spec
 		# the WM clears it once the window has the user's attention),
 		# so move it off-screen first, set the demand, then activate
-		# and verify it is cleared
+		# and verify it is cleared. wmctrl -b does not know
+		# demands_attention (see send_wm_state), use the in-tree
+		# client to send the request by atom name.
 		move_client_to_desktop 1 >/dev/null
 		set_desktop 0 >/dev/null
-		check "honors _NET_WM_STATE_DEMANDS_ATTENTION add on unfocused window" set_client_state add demands_attention _NET_WM_STATE_DEMANDS_ATTENTION
+		send_wm_state "$CLIENT_XID" 1 _NET_WM_STATE_DEMANDS_ATTENTION
+		check "honors _NET_WM_STATE_DEMANDS_ATTENTION add on unfocused window" \
+			wait_for 40 window_atom_has "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
 		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
 		check "clears _NET_WM_STATE_DEMANDS_ATTENTION on focus" wait_for 40 window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
 		move_client_to_desktop 0 >/dev/null
