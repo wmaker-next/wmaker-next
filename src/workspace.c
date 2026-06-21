@@ -828,21 +828,20 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		 */
 		while (tmp) {
 			if (tmp->frame->workspace != workspace && !tmp->flags.selected) {
-				/* unmap windows not on this workspace */
-				if ((tmp->flags.mapped || tmp->flags.shaded) &&
-				    !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) {
+				/* defer unmap of windows (and per-workspace miniwindow
+				 * icons) not on this workspace until after the
+				 * destination workspace's windows have been mapped, so
+				 * the root background is never exposed mid-switch */
+				if (((tmp->flags.mapped || tmp->flags.shaded) &&
+				     !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) ||
+				    (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
+				     tmp->icon && !IS_OMNIPRESENT(tmp))) {
 					if (toUnmapCount == toUnmapSize)
 					{
 						toUnmapSize *= 2;
 						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
 					}
 					toUnmap[toUnmapCount++] = tmp;
-				}
-				/* also unmap miniwindows not on this workspace */
-				if (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
-				    tmp->icon && !IS_OMNIPRESENT(tmp)) {
-					XUnmapWindow(dpy, tmp->icon->core->window);
-					tmp->icon->mapped = 0;
 				}
 				/* update current workspace of omnipresent windows */
 				if (IS_OMNIPRESENT(tmp)) {
@@ -888,7 +887,13 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 
 		while (toUnmapCount > 0)
 		{
-			wWindowUnmap(toUnmap[--toUnmapCount]);
+			tmp = toUnmap[--toUnmapCount];
+			if (tmp->flags.miniaturized) {
+				XUnmapWindow(dpy, tmp->icon->core->window);
+				tmp->icon->mapped = 0;
+			} else {
+				wWindowUnmap(tmp);
+			}
 		}
 		wfree(toUnmap);
 
@@ -1073,18 +1078,15 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 			Bool visible = wWindowIsVisibleOnAnyHead(tmp);
 
 			if (!visible && !tmp->flags.selected) {
-				if ((tmp->flags.mapped || tmp->flags.shaded) &&
-				    !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) {
+				if (((tmp->flags.mapped || tmp->flags.shaded) &&
+				     !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) ||
+				    (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
+				     tmp->icon && !IS_OMNIPRESENT(tmp))) {
 					if (toUnmapCount == toUnmapSize) {
 						toUnmapSize *= 2;
 						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
 					}
 					toUnmap[toUnmapCount++] = tmp;
-				}
-				if (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
-				    tmp->icon && !IS_OMNIPRESENT(tmp)) {
-					XUnmapWindow(dpy, tmp->icon->core->window);
-					tmp->icon->mapped = 0;
 				}
 				if (IS_OMNIPRESENT(tmp)) {
 					WApplication *wapp = wApplicationOf(tmp->main_window);
@@ -1122,8 +1124,15 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 			tmp = tmp->prev;
 		}
 
-		while (toUnmapCount > 0)
-			wWindowUnmap(toUnmap[--toUnmapCount]);
+		while (toUnmapCount > 0) {
+			tmp = toUnmap[--toUnmapCount];
+			if (tmp->flags.miniaturized) {
+				XUnmapWindow(dpy, tmp->icon->core->window);
+				tmp->icon->mapped = 0;
+			} else {
+				wWindowUnmap(tmp);
+			}
+		}
 		wfree(toUnmap);
 
 		scr->flags.ignore_focus_events = 1;
