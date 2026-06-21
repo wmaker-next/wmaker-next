@@ -1273,16 +1273,16 @@ echo
 AS_IF([test "x$supported_locales" = "x"],
     [AC_MSG_WARN([[No language from \$LINGUAS are supported]])])
 
-AS_IF([test "x$enable_jpeg" = xno], [dnl
+AS_IF([test "x$enable_png" = xno], [dnl
     AS_ECHO(["WARNING   WARNING   WARNING   WARNING   WARNING   WARNING   WARNING"])
     AS_ECHO([])
-    AS_ECHO(["JPEG support will not be included because the JPEG library is"])
+    AS_ECHO(["PNG support will not be included because the PNG library is"])
     AS_ECHO(["not installed correctly or was not found. Background images"])
-    AS_ECHO(["from themes will not display as they usually are JPEG files."])
+    AS_ECHO(["from themes will not display as they usually are PNG files."])
     AS_ECHO([])
-    AS_ECHO(["To fix, download and install the jpeg library and/or make sure you"])
-    AS_ECHO(["installed all jpeg related packages, SPECIALLY the development packages"])
-    AS_ECHO(["like jpeg-dev (if you use some prepackaged version of libjpeg)."])
+    AS_ECHO(["To fix, download and install the png library and/or make sure you"])
+    AS_ECHO(["installed all png related packages, SPECIALLY the development packages"])
+    AS_ECHO(["like libpng-dev (if you use some prepackaged version of libpng)."])
     AS_ECHO([])
     AS_ECHO(["WARNING   WARNING   WARNING   WARNING   WARNING   WARNING   WARNING"])dnl
 ])

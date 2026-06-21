@@ -2443,7 +2443,7 @@ ranging from 0 to 255.
 
 Example:
 
-(thgradient, "BlueImage.jpeg", 120, white, black)
+(thgradient, "BlueImage.png", 120, white, black)
 
 The BlackTexture style and Checker theme are examples.
 
