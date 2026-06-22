@@ -442,11 +442,12 @@ enum {
 };
 
 
-static void str2rcolor(RContext * rc, const char *name, RColor * color)
+static void str2rcolor(WMScreen *scr, const char *name, RColor *color)
 {
+	RContext *rc = WMScreenRContext(scr);
 	XColor xcolor;
 
-	if (XParseColor(rc->dpy, rc->cmap, name, &xcolor) != 0) {
+	if (XParseColor(WMScreenDisplay(scr), rc->cmap, name, &xcolor) != 0) {
 		color->alpha = 255;
 		color->red = xcolor.red >> 8;
 		color->green = xcolor.green >> 8;
@@ -581,7 +582,7 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 1));
 
-		str2rcolor(rc, str, &rcolor);
+		str2rcolor(scr,str, &rcolor);
 
 		image = RCreateImage(width, height, False);
 		RClearImage(image, &rcolor);
@@ -590,16 +591,16 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 		RColor c1[2], c2[2];
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 1));
-		str2rcolor(rc, str, &c1[0]);
+		str2rcolor(scr,str, &c1[0]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
-		str2rcolor(rc, str, &c1[1]);
+		str2rcolor(scr,str, &c1[1]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 3));
 		t1 = atoi(str);
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 4));
-		str2rcolor(rc, str, &c2[0]);
+		str2rcolor(scr,str, &c2[0]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 5));
-		str2rcolor(rc, str, &c2[1]);
+		str2rcolor(scr,str, &c2[1]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 6));
 		t2 = atoi(str);
 
@@ -624,9 +625,9 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 		}
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 1));
-		str2rcolor(rc, str, &rcolor);
+		str2rcolor(scr,str, &rcolor);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
-		str2rcolor(rc, str, &rcolor2);
+		str2rcolor(scr,str, &rcolor2);
 
 		image = RRenderGradient(width, height, &rcolor, &rcolor2, style);
 	} else if (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T') {
@@ -651,9 +652,9 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 		}
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 3));
-		str2rcolor(rc, str, &rcolor);
+		str2rcolor(scr,str, &rcolor);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 4));
-		str2rcolor(rc, str, &rcolor2);
+		str2rcolor(scr,str, &rcolor2);
 
 		grad = RRenderGradient(width, height, &rcolor, &rcolor2, style);
 
@@ -693,7 +694,7 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 			for (i = 2; i < j; i++) {
 				str = WMGetFromPLString(WMGetFromPLArray(texture, i));
 				colors[i - 2] = wmalloc(sizeof(RColor));
-				str2rcolor(rc, str, colors[i - 2]);
+				str2rcolor(scr,str, colors[i - 2]);
 			}
 			colors[i - 2] = NULL;
 
@@ -707,7 +708,7 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 		RColor color;
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
-		str2rcolor(rc, str, &color);
+		str2rcolor(scr,str, &color);
 
 		switch (toupper(type[0])) {
 		case 'T':
@@ -1133,7 +1134,7 @@ static void changePage(WMWidget * w, void *data)
 	_Panel *panel = (_Panel *) data;
 	int section = 0;
 	WMScreen *scr = WMWidgetScreen(panel->box);
-	RContext *rc = WMScreenRContext(scr);
+	Display *dpy = WMScreenDisplay(scr);
 	GC gc;
 
 	if (w) {
@@ -1146,8 +1147,8 @@ static void changePage(WMWidget * w, void *data)
 		WMSetListPosition(panel->texLs, panel->textureIndex[section] - 2);
 	}
 
-	gc = XCreateGC(rc->dpy, WMWidgetXID(panel->parent), 0, NULL);
-	XCopyArea(rc->dpy, panel->previewBack, panel->preview, gc,
+	gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
+	XCopyArea(dpy, panel->previewBack, panel->preview, gc,
 	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y, 22, 22,
 	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
 
@@ -1430,7 +1431,7 @@ static void changeColorPage(WMWidget * w, void *data)
 	_Panel *panel = (_Panel *) data;
 	int section;
 	WMScreen *scr = WMWidgetScreen(panel->box);
-	RContext *rc = WMScreenRContext(scr);
+	Display *dpy = WMScreenDisplay(scr);
 
 	section = WMGetPopUpButtonSelectedItem(panel->colP);
 	if (section < 0)
@@ -1439,8 +1440,8 @@ static void changeColorPage(WMWidget * w, void *data)
 	if (panel->preview) {
 		GC gc;
 
-		gc = XCreateGC(rc->dpy, WMWidgetXID(panel->parent), 0, NULL);
-		XCopyArea(rc->dpy, panel->previewBack, panel->preview, gc,
+		gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
+		XCopyArea(dpy, panel->previewBack, panel->preview, gc,
 			  colorOptions[panel->oldcsection].hand.x,
 			  colorOptions[panel->oldcsection].hand.y, 22, 22 ,
 			  colorOptions[panel->oldcsection].hand.x,

@@ -1479,6 +1479,7 @@ void testOKButton(WMWidget *self, void *data)
 	Window win;
 	Pixmap pix;
 	RImage *image;
+	GC gc;
 
 	TexturePanel *panel = (TexturePanel *) data;
 	/* test = GetTexturePanelTextureString(panel); */
@@ -1494,8 +1495,9 @@ void testOKButton(WMWidget *self, void *data)
 
 	RConvertImage(WMScreenRContext(WMWidgetScreen(panel->okB)), image, &pix);
 
-	XCopyArea(dpy, pix, win, (WMScreenRContext(WMWidgetScreen(panel->okB)))->copy_gc, 0, 0, image->width,
-		  image->height, 0, 0);
+	gc = XCreateGC(dpy, win, 0, NULL);
+	XCopyArea(dpy, pix, win, gc, 0, 0, image->width, image->height, 0, 0);
+	XFreeGC(dpy, gc);
 
 	wfree(test);
 

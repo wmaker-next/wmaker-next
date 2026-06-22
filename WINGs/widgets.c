@@ -568,7 +568,9 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 {
 	W_Screen *scrPtr;
 	XGCValues gcv;
+	XVisualInfo vtempl, *vinfo;
 	Pixmap stipple;
+	int nret;
 	static int initialized = 0;
 	static char *atomNames[] = {
 		"_GNUSTEP_WM_ATTR",
@@ -636,11 +638,15 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->rcontext = context;
 
 	scrPtr->depth = context->depth;
-
-	scrPtr->visual = context->visual;
 	scrPtr->lastEventTime = 0;
-
 	scrPtr->colormap = context->cmap;
+	/* wraster only exposes the xcb visualtype now, so resolve the
+	 * libX11 Visual* WINGs hands to Xft and XCreateWindow here */
+	vtempl.visualid = context->xvisual->visual_id;
+	vinfo = XGetVisualInfo(display, VisualIDMask, &vtempl, &nret);
+	scrPtr->visual = vinfo ? vinfo[0].visual : DefaultVisual(display, screen);
+	if (vinfo)
+		XFree(vinfo);
 
 	scrPtr->rootWin = RootWindow(display, screen);
 

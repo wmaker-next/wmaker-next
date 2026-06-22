@@ -82,6 +82,7 @@ Window win;
 RContext *ctx;
 RImage *img;
 Pixmap pix;
+GC copy_gc;
 
 /* XDND drag-out support */
 static Bool button1_pressed = False;
@@ -1745,7 +1746,7 @@ int rescale_image(void)
 int maximize_image(void)
 {
 	rescale_image();
-	XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+	XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 		img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
 	return EXIT_SUCCESS;
 }
@@ -1806,10 +1807,10 @@ int rotate_image(float angle)
 
 	rescale_image();
 	if (!fullscreen_flag) {
-		XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0, img->width, img->height, 0, 0);
+		XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
 	} else {
 		XClearWindow(dpy, win);
-		XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+		XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 			img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
 	}
 
@@ -1984,11 +1985,11 @@ static int show_pasted_image(char *path)
 		if (!fullscreen_flag) {
 			XResizeWindow(dpy, win, img->width, img->height);
 			XClearWindow(dpy, win);
-			XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+			XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 				img->width, img->height, 0, 0);
 		} else {
 			XClearWindow(dpy, win);
-			XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+			XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 				img->width, img->height,
 				max_width / 2 - img->width / 2,
 				max_height / 2 - img->height / 2);
@@ -2243,11 +2244,11 @@ int change_image(int way)
 				if ((old_img_width != img->width) || (old_img_height != img->height))
 					XResizeWindow(dpy, win, img->width, img->height);
 				else
-					XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0, img->width, img->height, 0, 0);
+					XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
 				change_title((char *)current_link->data);
 			} else {
 				XClearWindow(dpy, win);
-				XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+				XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 					img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
 			}
 		}
@@ -2770,6 +2771,7 @@ int main(int argc, char **argv)
 	int option = -1;
 	RContextAttributes attr = {};
 	XEvent e;
+	XGCValues gcv;
 	KeySym keysym;
 	char *reading_filename = "";
 	int screen_num, file_i;
@@ -2913,6 +2915,9 @@ int main(int argc, char **argv)
 	merge_with_background(img);
 
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 10, 10, 0, 0, BlackPixel(dpy, screen_num));
+	gcv.function = GXcopy;
+	gcv.graphics_exposures = False;
+	copy_gc = XCreateGC(dpy, win, GCFunction | GCGraphicsExposures, &gcv);
 	XSelectInput(dpy, win, KeyPressMask|StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|FocusChangeMask|PropertyChangeMask);
 
 	delWindow = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -3006,7 +3011,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Display size: %dx%d\n", max_width, max_height);
 
 	rescale_image();
-	XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0, img->width, img->height, 0, 0);
+	XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
 	XResizeWindow(dpy, win, img->width, img->height);
 	XSync(dpy, True);
 
@@ -3094,7 +3099,7 @@ int main(int argc, char **argv)
 		if (!fullscreen_flag && (e.type == Expose)) {
 			XExposeEvent xev = e.xexpose;
 			if (xev.count == 0)
-				XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0, img->width, img->height, 0, 0);
+				XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
 			continue;
 		}
 		if (!fullscreen_flag && e.type == ConfigureNotify) {
@@ -3134,7 +3139,7 @@ int main(int argc, char **argv)
 						XSync(dpy, True);
 						rescale_image();
 						XResizeWindow(dpy, win, img->width, img->height);
-						XCopyArea(dpy, pix, win, ctx->copy_gc, 0, 0,
+						XCopyArea(dpy, pix, win, copy_gc, 0, 0,
 							img->width, img->height, 0, 0);
 
 					}

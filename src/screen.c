@@ -617,8 +617,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	RContextAttributes rattr = {};
 	xcb_generic_error_t *xerr;
 	uint32_t event_mask;
-	int i;
+	int i, nret;
 	XColor xcol;
+	XVisualInfo vtempl, *vinfo;
 	char *desc;
 
 	scr = wmalloc(sizeof(WScreen));
@@ -706,9 +707,16 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	}
 
 	scr->w_win = scr->rcontext->drawable;
-	scr->w_visual = scr->rcontext->visual;
 	scr->w_depth = scr->rcontext->depth;
 	scr->w_colormap = scr->rcontext->cmap;
+	/* wraster picked the visual on the xcb side, so resolve the
+	 * matching libX11 Visual* here for the Xlib drawing that still
+	 * runs in src/ until the cairo-xcb rewrite lands */
+	vtempl.visualid = scr->rcontext->xvisual->visual_id;
+	vinfo = XGetVisualInfo(dpy, VisualIDMask, &vtempl, &nret);
+	scr->w_visual = vinfo ? vinfo[0].visual : DefaultVisual(dpy, screen_number);
+	if (vinfo)
+		XFree(vinfo);
 
 	/* create screen descriptor for WINGs */
 	scr->wmscreen = WMCreateScreenWithRContext(dpy, screen_number, scr->rcontext);
@@ -1290,7 +1298,7 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 	}
 	RConvertImage(scr->rcontext, img, &pix);
 	XMapWindow(dpy, scr->mini_screenshot);
-	XCopyArea(dpy, pix, scr->mini_screenshot, scr->rcontext->copy_gc, 0, 0, img->width, img->height, 0, 0);
+	XCopyArea(dpy, pix, scr->mini_screenshot, scr->copy_gc, 0, 0, img->width, img->height, 0, 0);
 	XFlush(dpy);
 
 	scr->mini_screenshot_timeout = time(NULL) + 2;
