@@ -1,4 +1,4 @@
-/* xutil.c - utility functions for X
+/* xutil.c - put/get RImages to/from the X server
  *
  * Raster graphics library
  *
@@ -20,56 +20,50 @@
 
 #include <config.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
-#include <assert.h>
+#include <xcb/xcb.h>
+#include <xcb/shm.h>
+#include <xcb/xcb_image.h>
 
 #ifdef USE_XSHM
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#endif				/* USE_XSHM */
+#endif
 
 #include "wraster.h"
 #include "xutil.h"
 #include "wr_i18n.h"
 
 
-#ifdef USE_XSHM
-
-static int shmError;
-
-static int (*oldErrorHandler)(Display *dpy, XErrorEvent *err);
-
-static int errorHandler(Display * dpy, XErrorEvent * err)
+static void wrxcb_sync(xcb_connection_t *xc)
 {
-	shmError = 1;
-	if (err->error_code != BadAccess)
-		(*oldErrorHandler) (dpy, err);
-
-	return 0;
+	free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
 }
+
+#ifdef USE_XSHM
 
 static void releaseSharedSegment(RContext *context)
 {
 	if (context->shm_size == 0)
 		return;
 
-	XShmDetach(context->dpy, &context->shm_seg);
+	xcb_shm_detach(context->xc, context->shm_xseg);
 	/* The detach must reach the server before we drop our own
 	 * attachment and IPC_RMID the segment, otherwise nattch can hit
 	 * zero and the kernel frees it before the server reads from it. */
-	XSync(context->dpy, False);
-	if (shmdt(context->shm_seg.shmaddr) < 0)
+	wrxcb_sync(context->xc);
+	if (shmdt(context->shm_addr) < 0)
 		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
 			"shmdt", strerror(errno));
-	if (shmctl(context->shm_seg.shmid, IPC_RMID, NULL) < 0)
+	if (shmctl(context->shm_id, IPC_RMID, NULL) < 0)
 		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
 			"shmctl", strerror(errno));
+	context->shm_xseg = 0;
+	context->shm_addr = NULL;
 	context->shm_size = 0;
 	context->shm_used = 0;
 }
@@ -79,10 +73,12 @@ static void releaseSharedSegment(RContext *context)
  * creating and attaching one if none exists. Growth doubles the previous
  * size so a typical session converges in two or three steps. Returns the
  * usable size or zero on failure, in which case use_shared_memory is
- * cleared so the caller falls back to plain XPutImage.
+ * cleared so the caller falls back to plain xcb_image_put.
  */
 static size_t ensureSharedSegment(RContext *context, size_t needed)
 {
+	xcb_generic_error_t *err;
+	xcb_void_cookie_t ck;
 	size_t alloc;
 
 	if (context->shm_size >= needed)
@@ -94,34 +90,34 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 
 	releaseSharedSegment(context);
 
-	context->shm_seg.readOnly = False;
-	context->shm_seg.shmid = shmget(IPC_PRIVATE, alloc, IPC_CREAT | 0600);
-	if (context->shm_seg.shmid < 0) {
+	context->shm_id = shmget(IPC_PRIVATE, alloc, IPC_CREAT | 0600);
+	if (context->shm_id < 0) {
 		fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"),
 			"shmget", strerror(errno));
 		context->attribs->use_shared_memory = 0;
 		return 0;
 	}
-	context->shm_seg.shmaddr = shmat(context->shm_seg.shmid, NULL, 0);
-	if (context->shm_seg.shmaddr == (void *)-1) {
+	context->shm_addr = shmat(context->shm_id, NULL, 0);
+	if (context->shm_addr == (void *)-1) {
 		fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"),
 			"shmat", strerror(errno));
-		shmctl(context->shm_seg.shmid, IPC_RMID, NULL);
+		shmctl(context->shm_id, IPC_RMID, NULL);
+		context->shm_addr = NULL;
 		context->attribs->use_shared_memory = 0;
 		return 0;
 	}
 
-	shmError = 0;
-	XSync(context->dpy, False);
-	oldErrorHandler = XSetErrorHandler(errorHandler);
-	XShmAttach(context->dpy, &context->shm_seg);
-	XSync(context->dpy, False);
-	XSetErrorHandler(oldErrorHandler);
-
-	if (shmError) {
-		fprintf(stderr, _("wrlib: could not attach shared memory segment to XImage\n"));
-		shmdt(context->shm_seg.shmaddr);
-		shmctl(context->shm_seg.shmid, IPC_RMID, NULL);
+	context->shm_xseg = xcb_generate_id(context->xc);
+	ck = xcb_shm_attach_checked(context->xc, context->shm_xseg, context->shm_id, 0);
+	err = xcb_request_check(context->xc, ck);
+	if (err) {
+		fprintf(stderr, _("wrlib: could not attach shared memory segment to server (error %d)\n"),
+			err->error_code);
+		free(err);
+		shmdt(context->shm_addr);
+		shmctl(context->shm_id, IPC_RMID, NULL);
+		context->shm_addr = NULL;
+		context->shm_xseg = 0;
 		context->attribs->use_shared_memory = 0;
 		return 0;
 	}
@@ -131,106 +127,90 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 	return alloc;
 }
 
+#endif
+
 void RReleaseSharedSegment(RContext *context)
 {
+#ifdef USE_XSHM
 	releaseSharedSegment(context);
-}
-
+#else
+	(void)context;
 #endif
+}
 
 RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned height)
 {
 	RXImage *rximg;
-	Visual *visual = context->visual;
+#ifdef USE_XSHM
+	size_t need;
+#endif
 
 	rximg = calloc(1, sizeof(RXImage));
 	if (!rximg) {
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
-#ifndef USE_XSHM
-	rximg->image = XCreateImage(context->dpy, visual, depth, ZPixmap, 0, NULL, width, height, 8, 0);
-	if (!rximg->image) {
+	rximg->ximg = xcb_image_create_native(context->xc, width, height,
+					      XCB_IMAGE_FORMAT_Z_PIXMAP,
+					      depth, NULL, 0, NULL);
+	if (!rximg->ximg) {
 		free(rximg);
 		RErrorCode = RERR_XERROR;
 		return NULL;
 	}
-	rximg->image->data = malloc(rximg->image->bytes_per_line * height);
-	if (!rximg->image->data) {
-		XDestroyImage(rximg->image);
-		free(rximg);
-		RErrorCode = RERR_NOMEMORY;
-		return NULL;
-	}
-#else				/* USE_XSHM */
-	if (!context->attribs->use_shared_memory) {
- retry_without_shm:
 
-		context->attribs->use_shared_memory = 0;
-		rximg->is_shared = 0;
-		rximg->image = XCreateImage(context->dpy, visual, depth, ZPixmap, 0, NULL, width, height, 8, 0);
-		if (!rximg->image) {
-			free(rximg);
-			RErrorCode = RERR_XERROR;
-			return NULL;
-		}
-		rximg->image->data = malloc(rximg->image->bytes_per_line * height);
-		if (!rximg->image->data) {
-			XDestroyImage(rximg->image);
-			free(rximg);
-			RErrorCode = RERR_NOMEMORY;
-			return NULL;
-		}
-	} else {
-		size_t need;
-
-		rximg->image = XShmCreateImage(context->dpy, visual, depth,
-					       ZPixmap, NULL, &rximg->info, width, height);
-
-		need = (size_t)rximg->image->bytes_per_line * height;
+#ifdef USE_XSHM
+	if (context->attribs->use_shared_memory) {
+		need = rximg->ximg->size;
 		need = (need + 7u) & ~(size_t)7u;
 
-		if (!ensureSharedSegment(context, need)) {
-			XDestroyImage(rximg->image);
-			goto retry_without_shm;
-		}
+		if (!ensureSharedSegment(context, need))
+			goto without_shm;
 
 		if (context->shm_used + need > context->shm_size) {
 			/* Bump allocator wrapped, the server must have read
 			 * every queued ShmPutImage out of the earlier slots
 			 * before this caller overwrites offset 0. The attach
-			 * and release brackets in ensureSharedSegment keep
-			 * their own XSyncs, this is the only per-image one
-			 * left and it fires once every shm_size bytes. */
-			XSync(context->dpy, False);
+			 * bracket in ensureSharedSegment is its own
+			 * round-trip, this is the only per-image one left
+			 * and it fires once every shm_size bytes. */
+			wrxcb_sync(context->xc);
 			context->shm_used = 0;
 		}
 
 		rximg->is_shared = 1;
-		rximg->info = context->shm_seg;
-		rximg->image->data = context->shm_seg.shmaddr + context->shm_used;
+		rximg->shm_offset = context->shm_used;
+		rximg->ximg->data = context->shm_addr + context->shm_used;
 		context->shm_used += need;
+		return rximg;
 	}
-#endif				/* USE_XSHM */
-
+without_shm:
+#endif
+	rximg->ximg->data = malloc(rximg->ximg->size);
+	if (!rximg->ximg->data) {
+		xcb_image_destroy(rximg->ximg);
+		free(rximg);
+		RErrorCode = RERR_NOMEMORY;
+		return NULL;
+	}
+	rximg->ximg->base = rximg->ximg->data;
 	return rximg;
 }
 
 void RDestroyXImage(RContext * context, RXImage * rximage)
 {
 	(void) context;
-#ifndef USE_XSHM
-	XDestroyImage(rximage->image);
-#else				/* USE_XSHM */
-	if (rximage->is_shared) {
-		/* The data pointer is an offset into the persistent context
-		 * segment, clear it so XDestroyImage frees only the XImage
-		 * header. The reuse barrier is the wrap XSync in
-		 * RCreateXImage, not here. */
-		rximage->image->data = NULL;
+	if (rximage->ximg) {
+		if (rximage->is_shared) {
+			/* The data pointer is an offset into the persistent
+			 * context segment, clear base so xcb_image_destroy
+			 * frees only the header. The reuse barrier is the
+			 * wrap sync in RCreateXImage, not here. */
+			rximage->ximg->base = NULL;
+			rximage->ximg->data = NULL;
+		}
+		xcb_image_destroy(rximage->ximg);
 	}
-	XDestroyImage(rximage->image);
-#endif
 	free(rximage);
 }
 
@@ -243,32 +223,52 @@ RXImage *RGetXImage(RContext * context, Drawable d, int x, int y, unsigned width
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
-#ifdef USE_XSHM
-	ximg->is_shared = 0;
-#endif
-	ximg->image = XGetImage(context->dpy, d, x, y, width, height, AllPlanes, ZPixmap);
-	if (ximg->image == NULL) {
+	ximg->ximg = xcb_image_get(context->xc, d, x, y, width, height,
+				   ~(uint32_t)0, XCB_IMAGE_FORMAT_Z_PIXMAP);
+	if (ximg->ximg == NULL) {
 		free(ximg);
 		return NULL;
 	}
-
 	return ximg;
+}
+
+void r_put_ximage(RContext *context, xcb_drawable_t d, xcb_gcontext_t gc, RXImage *rximg,
+		  int src_x, int src_y, int dest_x, int dest_y,
+		  unsigned int width, unsigned int height)
+{
+	xcb_image_t *xi = rximg->ximg;
+
+#ifdef USE_XSHM
+	if (rximg->is_shared) {
+		xcb_shm_put_image(context->xc, d, gc, xi->width, xi->height,
+				  src_x, src_y, width, height, dest_x, dest_y,
+				  xi->depth, xi->format, 0,
+				  context->shm_xseg, rximg->shm_offset);
+		xcb_flush(context->xc);
+		return;
+	}
+#endif
+	if (src_x == 0 && src_y == 0 && width == xi->width && height == xi->height) {
+		xcb_image_put(context->xc, d, gc, xi, dest_x, dest_y, 0);
+	} else {
+		xcb_image_t *sub;
+
+		/* xcb_image_put has no source-rectangle parameters, the only
+		 * non-full-image caller in the tree is the SHM branch so this
+		 * copy is the cold path */
+		sub = xcb_image_subimage(xi, src_x, src_y, width, height, NULL, 0, NULL);
+		if (sub) {
+			xcb_image_put(context->xc, d, gc, sub, dest_x, dest_y, 0);
+			xcb_image_destroy(sub);
+		}
+	}
+	xcb_flush(context->xc);
 }
 
 void
 RPutXImage(RContext * context, Drawable d, GC gc, RXImage * ximage, int src_x,
 	   int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
 {
-#ifndef USE_XSHM
-	XPutImage(context->dpy, d, gc, ximage->image, src_x, src_y, dest_x, dest_y, width, height);
-#else
-	if (ximage->is_shared) {
-		XShmPutImage(context->dpy, d, gc, ximage->image, src_x, src_y,
-			     dest_x, dest_y, width, height, False);
-	} else {
-		XPutImage(context->dpy, d, gc, ximage->image, src_x, src_y, dest_x, dest_y, width, height);
-	}
-	XFlush(context->dpy);
-#endif				/* USE_XSHM */
+	r_put_ximage(context, d, (xcb_gcontext_t)XGContextFromGC(gc), ximage,
+		     src_x, src_y, dest_x, dest_y, width, height);
 }
-

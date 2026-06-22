@@ -9,7 +9,7 @@ AM_CPPFLAGS = $(DFLAGS) \
 	-DWMAKER_DEFAULTS_TEMPLATE=\"$(top_srcdir)/WindowMaker/Defaults/WindowMaker.in\" \
 	-I$(top_srcdir)/src -I$(top_builddir)/src \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
-	-I$(top_builddir)/wrlib \
+	-I$(top_srcdir)/wrlib \
 	@HEADER_SEARCH_PATH@
 
 check_config_SOURCES = \

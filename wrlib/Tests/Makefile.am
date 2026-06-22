@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = testdraw testgrad testrot view
 
 # automated decoder tests, run by `make check`
-check_PROGRAMS = check_load check_convolve check_image
+check_PROGRAMS = check_load check_convolve check_image check_xside
 TESTS = $(check_PROGRAMS)
 AM_TESTS_ENVIRONMENT = srcdir='$(srcdir)'; export srcdir;
 
@@ -19,11 +19,16 @@ check_convolve_LDADD = $(top_builddir)/wrlib/libwraster.la
 check_image_SOURCES = check_image.c
 check_image_LDADD = $(top_builddir)/wrlib/libwraster.la
 
+# round-trips RImage -> Pixmap -> RImage so it needs a server, exits 77
+# (SKIP) without one so make check stays X-free
+check_xside_SOURCES = check_xside.c
+check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @XLIBS@
+
 EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
 	pnm-p4.pbm pnm-p5.pgm pnm-p6.ppm
 
-AM_CPPFLAGS = -I$(top_builddir)/wrlib -I$(srcdir)/.. $(DFLAGS) @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. $(DFLAGS) @HEADER_SEARCH_PATH@
 
 LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@
 

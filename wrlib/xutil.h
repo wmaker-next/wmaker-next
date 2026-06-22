@@ -21,9 +21,13 @@
 #define WRASTER_XUTIL_H
 
 
-#ifdef USE_XSHM
 void RReleaseSharedSegment(RContext *context);
-#endif
+
+void r_put_ximage(RContext *context, xcb_drawable_t d, xcb_gcontext_t gc,
+		  RXImage *rximg, int src_x, int src_y, int dest_x, int dest_y,
+		  unsigned int width, unsigned int height);
+
+RImage *r_unpack_ximage(RContext *context, xcb_image_t *ximg, xcb_image_t *mask);
 
 
 #endif

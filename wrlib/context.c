@@ -296,9 +296,7 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 void RDestroyContext(RContext *context)
 {
 	if (context) {
-#ifdef USE_XSHM
 		RReleaseSharedSegment(context);
-#endif
 		if (context->copy_gc)
 			XFreeGC(context->dpy, context->copy_gc);
 		if (context->attribs) {

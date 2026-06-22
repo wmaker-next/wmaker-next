@@ -20,15 +20,16 @@
 
 #include <config.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
+#include <xcb/xcb_image.h>
+
 #include "wraster.h"
 #include "imgformat.h"
+#include "xutil.h"
 #include "wr_i18n.h"
 
 
@@ -50,48 +51,49 @@ static int get_shifts(unsigned long mask)
 #define NORMALIZE_BLUE(pixel)	((bshift>0) ? ((pixel) & bmask) >> bshift \
     : ((pixel) & bmask) << -bshift)
 
-RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask)
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
+/*
+ * Shared body for the XImage- and xcb_image_t-backed entry points: takes a
+ * generic per-pixel reader so the same TrueColor reverse-pack and mask
+ * overlay run against either storage. xcb_image_get returns plane_mask but
+ * not the visual masks (same as XGetImage on a pixmap), so the context's
+ * visual is used whenever the depths match, which is every in-tree caller.
+ */
+static RImage *unpack_generic(RContext *context, void *image, void *mask,
+			      uint32_t (*gp)(void *, int, int),
+			      int width, int height, int depth,
+			      int mwidth, int mheight)
 {
 	RImage *img;
-	int x, y;
-	unsigned long pixel;
 	unsigned char *data;
+	uint32_t pixel;
+	int x, y;
 	int rshift, gshift, bshift;
-	int rmask, gmask, bmask;
+	uint32_t rmask, gmask, bmask;
 
-	assert(image != NULL);
-	assert(image->format == ZPixmap);
-	assert(!mask || mask->format == ZPixmap);
-
-	img = RCreateImage(image->width, image->height, mask != NULL);
-	if (!img) {
+	img = RCreateImage(width, height, mask != NULL);
+	if (!img)
 		return NULL;
-	}
 
-	/* I don't know why, but XGetImage() for pixmaps don't set the
-	 * {red,green,blue}_mask values correctly.
-	 */
-	if (context->depth == image->depth) {
-		rmask = context->visual->red_mask;
-		gmask = context->visual->green_mask;
-		bmask = context->visual->blue_mask;
+	if (context->depth == depth) {
+		rmask = context->xvisual->red_mask;
+		gmask = context->xvisual->green_mask;
+		bmask = context->xvisual->blue_mask;
 	} else {
-		rmask = image->red_mask;
-		gmask = image->green_mask;
-		bmask = image->blue_mask;
+		rmask = gmask = bmask = 0;
 	}
 
-	/* how many bits to shift to normalize the color into 8bpp */
 	rshift = get_shifts(rmask) - 8;
 	gshift = get_shifts(gmask) - 8;
 	bshift = get_shifts(bmask) - 8;
 
 	data = img->data;
 
-	if (image->depth == 1) {
-		for (y = 0; y < image->height; y++) {
-			for (x = 0; x < image->width; x++) {
-				pixel = XGetPixel(image, x, y);
+	if (depth == 1) {
+		for (y = 0; y < height; y++) {
+			for (x = 0; x < width; x++) {
+				pixel = gp(image, x, y);
 				if (pixel) {
 					*data++ = 0;
 					*data++ = 0;
@@ -106,9 +108,9 @@ RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask
 			}
 		}
 	} else {
-		for (y = 0; y < image->height; y++) {
-			for (x = 0; x < image->width; x++) {
-				pixel = XGetPixel(image, x, y);
+		for (y = 0; y < height; y++) {
+			for (x = 0; x < width; x++) {
+				pixel = gp(image, x, y);
 				*(data++) = NORMALIZE_RED(pixel);
 				*(data++) = NORMALIZE_GREEN(pixel);
 				*(data++) = NORMALIZE_BLUE(pixel);
@@ -118,25 +120,24 @@ RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask
 		}
 	}
 
-#define MIN(a,b) ((a)<(b)?(a):(b))
 	if (mask) {
-		data = img->data + 3;	/* Skip R, G & B */
-		for (y = 0; y < MIN(mask->height, image->height); y++) {
-			for (x = 0; x < MIN(mask->width, image->width); x++) {
-				if (mask->width <= image->width && XGetPixel(mask, x, y)) {
+		data = img->data + 3;
+		for (y = 0; y < MIN(mheight, height); y++) {
+			for (x = 0; x < MIN(mwidth, width); x++) {
+				if (mwidth <= width && gp(mask, x, y)) {
 					*data = 0xff;
 				} else {
 					*data = 0;
 				}
 				data += 4;
 			}
-			for (; x < image->width; x++) {
+			for (; x < width; x++) {
 				*data = 0;
 				data += 4;
 			}
 		}
-		for (; y < image->height; y++) {
-			for (x = 0; x < image->width; x++) {
+		for (; y < height; y++) {
+			for (x = 0; x < width; x++) {
 				*data = 0;
 				data += 4;
 			}
@@ -145,47 +146,96 @@ RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask
 	return img;
 }
 
+static uint32_t gp_ximage(void *im, int x, int y)
+{
+	return XGetPixel((XImage *)im, x, y);
+}
+
+static uint32_t gp_xcb(void *im, int x, int y)
+{
+	return xcb_image_get_pixel((xcb_image_t *)im, x, y);
+}
+
+RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask)
+{
+	assert(image != NULL);
+	assert(image->format == ZPixmap);
+	assert(!mask || mask->format == ZPixmap);
+
+	return unpack_generic(context, image, mask, gp_ximage,
+			      image->width, image->height, image->depth,
+			      mask ? mask->width : 0, mask ? mask->height : 0);
+}
+
+RImage *r_unpack_ximage(RContext *context, xcb_image_t *image, xcb_image_t *mask)
+{
+	return unpack_generic(context, image, mask, gp_xcb,
+			      image->width, image->height, image->depth,
+			      mask ? mask->width : 0, mask ? mask->height : 0);
+}
+
+RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask)
+{
+	assert(image != NULL && image->ximg != NULL);
+
+	return r_unpack_ximage(context, image->ximg, mask ? mask->ximg : NULL);
+}
+
 RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap mask)
 {
 	RImage *image;
-	XImage *pimg, *mimg;
-	unsigned int w, h, mask_w, mask_h, bar;
-	int foo;
-	Window baz;
+	xcb_image_t *pimg, *mimg;
+	xcb_get_geometry_cookie_t dck, mck;
+	xcb_get_geometry_reply_t *dgeom, *mgeom = NULL;
+	unsigned int w, h, mask_w, mask_h;
 
 	assert(drawable != None);
 
-	if (!XGetGeometry(context->dpy, drawable, &baz, &foo, &foo, &w, &h, &bar, &bar)) {
+	dck = xcb_get_geometry(context->xc, drawable);
+	if (mask)
+		mck = xcb_get_geometry(context->xc, mask);
+	dgeom = xcb_get_geometry_reply(context->xc, dck, NULL);
+	if (!dgeom) {
+		if (mask)
+			free(xcb_get_geometry_reply(context->xc, mck, NULL));
 		fprintf(stderr, _("wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"));
 		return NULL;
 	}
+	w = dgeom->width;
+	h = dgeom->height;
+	free(dgeom);
 	if (!RImageDimensionsWithinLimits(w, h)) {
+		if (mask)
+			free(xcb_get_geometry_reply(context->xc, mck, NULL));
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
-	pimg = XGetImage(context->dpy, drawable, 0, 0, w, h, AllPlanes, ZPixmap);
-
+	pimg = xcb_image_get(context->xc, drawable, 0, 0, w, h,
+			     ~(uint32_t)0, XCB_IMAGE_FORMAT_Z_PIXMAP);
 	if (!pimg) {
+		if (mask)
+			free(xcb_get_geometry_reply(context->xc, mck, NULL));
 		RErrorCode = RERR_XERROR;
 		return NULL;
 	}
 	mimg = NULL;
 	if (mask) {
-		if (XGetGeometry(context->dpy, mask, &baz, &foo, &foo, &mask_w, &mask_h, &bar, &bar)) {
-			if (mask_w > w)
-				mask_w = w;
-			if (mask_h > h)
-				mask_h = h;
+		mgeom = xcb_get_geometry_reply(context->xc, mck, NULL);
+		if (mgeom) {
+			mask_w = mgeom->width > w ? w : mgeom->width;
+			mask_h = mgeom->height > h ? h : mgeom->height;
+			free(mgeom);
 			if (mask_w > 0 && mask_h > 0)
-				mimg = XGetImage(context->dpy, mask, 0, 0, mask_w, mask_h, AllPlanes, ZPixmap);
+				mimg = xcb_image_get(context->xc, mask, 0, 0, mask_w, mask_h,
+						     ~(uint32_t)0, XCB_IMAGE_FORMAT_Z_PIXMAP);
 		}
 	}
 
-	image = RCreateImageFromXImage(context, pimg, mimg);
+	image = r_unpack_ximage(context, pimg, mimg);
 
-	XDestroyImage(pimg);
+	xcb_image_destroy(pimg);
 	if (mimg)
-		XDestroyImage(mimg);
+		xcb_image_destroy(mimg);
 
 	return image;
 }

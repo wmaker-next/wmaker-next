@@ -167,7 +167,7 @@ endif
 AM_CFLAGS = @PANGO_CFLAGS@
 
 AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
-	-I$(top_builddir)/wrlib \
+	-I$(top_srcdir)/wrlib \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	@XCB_CFLAGS@ \
 	@STARTUP_NOTIFICATION_CFLAGS@ \

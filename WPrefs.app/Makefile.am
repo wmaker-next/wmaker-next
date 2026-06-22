@@ -65,7 +65,7 @@ AM_CFLAGS = @PANGO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
 AM_CPPFLAGS = -DRESOURCE_PATH=\"$(wpdatadir)\" -DWMAKER_RESOURCE_PATH=\"$(pkgdatadir)\" \
 	 -I$(top_srcdir)/src -I$(top_builddir)/src \
-	 -I$(top_builddir)/wrlib -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
+	 -I$(top_srcdir)/wrlib -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	 @HEADER_SEARCH_PATH@
 
 WPrefs_DEPENDENCIES = \

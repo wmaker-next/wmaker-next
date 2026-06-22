@@ -19,12 +19,12 @@
  */
 
 #include <config.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+
+#include <xcb/xcb_image.h>
 
 #include "wraster.h"
 #include "convert.h"
@@ -86,58 +86,64 @@ static unsigned short *computeTable(unsigned short mask)
 static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 {
 	RXImage *ximg;
+	xcb_image_t *xi;
 	unsigned short rmask, gmask, bmask;
 	unsigned short roffs, goffs, boffs;
 	unsigned short *rtable, *gtable, *btable;
 	int channels = (HAS_ALPHA(image) ? 4 : 3);
 	unsigned char *ptr = image->data;
-	unsigned long r, g, b;
-	unsigned long pixel;
-	int ofs, x, y;
+	uint32_t r, g, b, pixel;
+	uint8_t *row;
+	int x, y;
 
 	ximg = RCreateXImage(ctx, ctx->depth, image->width, image->height);
 	if (!ximg) {
 		return NULL;
 	}
+	xi = ximg->ximg;
 
 	roffs = ctx->red_offset;
 	goffs = ctx->green_offset;
 	boffs = ctx->blue_offset;
 
-	rmask = ctx->visual->red_mask >> roffs;
-	gmask = ctx->visual->green_mask >> goffs;
-	bmask = ctx->visual->blue_mask >> boffs;
+	rmask = ctx->xvisual->red_mask >> roffs;
+	gmask = ctx->xvisual->green_mask >> goffs;
+	bmask = ctx->xvisual->blue_mask >> boffs;
 
-	rtable = computeTable(rmask);
-	gtable = computeTable(gmask);
-	btable = computeTable(bmask);
-
-	if (rtable == NULL || gtable == NULL || btable == NULL) {
-		RErrorCode = RERR_NOMEMORY;
-		RDestroyXImage(ctx, ximg);
-		return NULL;
-	}
-
-	if (rmask == 0xff && gmask == 0xff && bmask == 0xff) {
+	/* The 24-bit TrueColor / 32 bpp native ZPixmap case is what every
+	 * current server reports, so it gets a direct stride packer that
+	 * writes one uint32_t per pixel into xi->data. xcb_image_create_native
+	 * picked the server's byte order so a host-order store is correct on
+	 * a local connection and xcb_image_put converts on a remote one. The
+	 * generic arm covers 15/16 bpp visuals via xcb_image_put_pixel which
+	 * handles unit/byte/bit order for any native format. */
+	if (rmask == 0xff && gmask == 0xff && bmask == 0xff && xi->bpp == 32) {
 		for (y = 0; y < image->height; y++) {
+			row = xi->data + (size_t)y * xi->stride;
 			for (x = 0; x < image->width; x++, ptr += channels) {
-				/* reduce pixel */
-				r = ptr[0];
-				g = ptr[1];
-				b = ptr[2];
-				pixel = (r << roffs) | (g << goffs) | (b << boffs);
-				XPutPixel(ximg->image, x, y, pixel);
+				pixel = ((uint32_t)ptr[0] << roffs)
+				      | ((uint32_t)ptr[1] << goffs)
+				      | ((uint32_t)ptr[2] << boffs);
+				((uint32_t *)row)[x] = pixel;
 			}
 		}
 	} else {
-		for (y = 0, ofs = 0; y < image->height; y++) {
-			for (x = 0; x < image->width; x++, ofs += channels - 3) {
-				/* reduce pixel */
-				r = rtable[ptr[ofs++]];
-				g = gtable[ptr[ofs++]];
-				b = btable[ptr[ofs++]];
+		rtable = computeTable(rmask);
+		gtable = computeTable(gmask);
+		btable = computeTable(bmask);
+
+		if (rtable == NULL || gtable == NULL || btable == NULL) {
+			RErrorCode = RERR_NOMEMORY;
+			RDestroyXImage(ctx, ximg);
+			return NULL;
+		}
+		for (y = 0; y < image->height; y++) {
+			for (x = 0; x < image->width; x++, ptr += channels) {
+				r = rtable[ptr[0]];
+				g = gtable[ptr[1]];
+				b = btable[ptr[2]];
 				pixel = (r << roffs) | (g << goffs) | (b << boffs);
-				XPutPixel(ximg->image, x, y, pixel);
+				xcb_image_put_pixel(xi, x, y, pixel);
 			}
 		}
 	}
@@ -159,7 +165,7 @@ static RXImage *image2Bitmap(RContext * ctx, RImage * image, int threshold)
 
 	for (y = 0; y < image->height; y++) {
 		for (x = 0; x < image->width; x++) {
-			XPutPixel(ximg->image, x, y, (*alpha <= threshold ? 0 : 1));
+			xcb_image_put_pixel(ximg->ximg, x, y, (*alpha <= threshold ? 0 : 1));
 			alpha += 4;
 		}
 	}
@@ -180,20 +186,19 @@ int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 		return False;
 	}
 
-	*pixmap = XCreatePixmap(context->dpy, context->drawable, image->width, image->height, context->depth);
-	RPutXImage(context, *pixmap, context->copy_gc, ximg, 0, 0, 0, 0, image->width, image->height);
+	*pixmap = xcb_generate_id(context->xc);
+	xcb_create_pixmap(context->xc, context->depth, *pixmap, context->drawable,
+			  image->width, image->height);
+	r_put_ximage(context, *pixmap, context->copy_xgc, ximg, 0, 0, 0, 0, image->width, image->height);
 	RDestroyXImage(context, ximg);
 
 	return True;
 }
 
-/* make the gc permanent (create with context creation).
- * GC creation is very expensive. altering its properties is not. -Dan
- */
 int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixmap * mask, int threshold)
 {
-	GC gc;
-	XGCValues gcv;
+	xcb_gcontext_t gc;
+	uint32_t gcvals[3];
 	RXImage *ximg = NULL;
 
 	assert(context != NULL);
@@ -214,14 +219,18 @@ int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixma
 	if (!ximg) {
 		return False;
 	}
-	*mask = XCreatePixmap(context->dpy, context->drawable, image->width, image->height, 1);
-	gcv.foreground = context->black;
-	gcv.background = context->white;
-	gcv.graphics_exposures = False;
-	gc = XCreateGC(context->dpy, *mask, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
-	RPutXImage(context, *mask, gc, ximg, 0, 0, 0, 0, image->width, image->height);
+	*mask = xcb_generate_id(context->xc);
+	xcb_create_pixmap(context->xc, 1, *mask, context->drawable,
+			  image->width, image->height);
+	gcvals[0] = context->black;
+	gcvals[1] = context->white;
+	gcvals[2] = 0;
+	gc = xcb_generate_id(context->xc);
+	xcb_create_gc(context->xc, gc, *mask,
+		      XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_GRAPHICS_EXPOSURES, gcvals);
+	r_put_ximage(context, *mask, gc, ximg, 0, 0, 0, 0, image->width, image->height);
 	RDestroyXImage(context, ximg);
-	XFreeGC(context->dpy, gc);
+	xcb_free_gc(context->xc, gc);
 
 	return True;
 }
@@ -236,9 +245,9 @@ Bool RGetClosestXColor(RContext * context, const RColor * color, XColor * retCol
 	goffs = context->green_offset;
 	boffs = context->blue_offset;
 
-	rmask = context->visual->red_mask >> roffs;
-	gmask = context->visual->green_mask >> goffs;
-	bmask = context->visual->blue_mask >> boffs;
+	rmask = context->xvisual->red_mask >> roffs;
+	gmask = context->xvisual->green_mask >> goffs;
+	bmask = context->xvisual->blue_mask >> boffs;
 
 	rtable = computeTable(rmask);
 	gtable = computeTable(gmask);

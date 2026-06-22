@@ -98,7 +98,7 @@ AM_CFLAGS = @PANGO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
 AM_CPPFLAGS = -DRESOURCE_PATH=\"$(datadir)/WINGs\" \
 	 -I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs \
-	 -I$(top_builddir)/wrlib -I$(top_srcdir)/src \
+	 -I$(top_srcdir)/wrlib -I$(top_srcdir)/src \
 	@XCB_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @XFT_CFLAGS@ @HEADER_SEARCH_PATH@
 
 pkgconfigdir = $(libdir)/pkgconfig

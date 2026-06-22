@@ -45,7 +45,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <xcb/xcb.h>
-@USE_XSHM@#include <X11/extensions/XShm.h>
 
 /* forward-declared so this header does not pull in <xcb/xcb_image.h> */
 typedef struct xcb_image_t xcb_image_t;
@@ -181,13 +180,15 @@ typedef struct RContext {
                                "and will be removed in future version, please do not use");
     } flags;
 
-@USE_XSHM@    /* Private: persistent MIT-SHM segment reused across RCreateXImage
-@USE_XSHM@     * calls so each conversion does not pay an attach/XSync/detach cycle.
-@USE_XSHM@     * shm_size is the segment byte size, shm_used is the next free
-@USE_XSHM@     * offset inside it for the bump allocator in RCreateXImage. */
-@USE_XSHM@    XShmSegmentInfo shm_seg;
-@USE_XSHM@    size_t shm_size;
-@USE_XSHM@    size_t shm_used;
+    /* Private: persistent MIT-SHM segment reused across RCreateXImage
+     * calls so each conversion does not pay an attach/sync/detach cycle.
+     * shm_size is the segment byte size, shm_used is the next free
+     * offset inside it for the bump allocator in RCreateXImage. */
+    uint32_t shm_xseg;             /* xcb_shm_seg_t, 0 when unattached */
+    int shm_id;
+    uint8_t *shm_addr;
+    size_t shm_size;
+    size_t shm_used;
 } RContext;
 
 
@@ -238,15 +239,17 @@ typedef struct RImage {
 
 
 /*
- * internal wrapper for the wire image. Used for shm abstraction
+ * internal wrapper for the wire image. Used for shm abstraction.
+ * ximg owns the pixel storage; image is left NULL on the xcb path and
+ * exists only for legacy callers of RCreateImageFromXImage().
  */
 typedef struct RXImage {
     XImage *image;
     xcb_image_t *ximg;
 
-@USE_XSHM@    /* Private data. Do not access */
-@USE_XSHM@    XShmSegmentInfo info;
-@USE_XSHM@    char is_shared;
+    /* Private data. Do not access */
+    size_t shm_offset;
+    char is_shared;
 } RXImage;
 
 
@@ -353,6 +356,9 @@ RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 	__wrlib_useresult __wrlib_nonalias;
 
 RImage *RCreateImageFromXImage(RContext *context, XImage *image, XImage *mask)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
+
+RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
 RImage *RCreateImageFromDrawable(RContext *context, Drawable drawable,

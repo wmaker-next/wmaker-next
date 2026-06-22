@@ -533,7 +533,7 @@ static void showWorkspaceName(WScreen * scr, int workspace)
 	XMapRaised(dpy, scr->workspace_name);
 	XFlush(dpy);
 
-	data->back = RCreateImageFromXImage(scr->rcontext, ximg->image, NULL);
+	data->back = RCreateImageFromRXImage(scr->rcontext, ximg, NULL);
 	RDestroyXImage(scr->rcontext, ximg);
 
 	if (!data->back) {

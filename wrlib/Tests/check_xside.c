@@ -1,0 +1,155 @@
+/*
+ * check_xside.c - round-trip RImage -> Pixmap -> RImage against a live
+ * X server. RConvertImage packs into the visual's native ZPixmap and
+ * uploads it (SHM when available), RCreateImageFromDrawable reads the
+ * same pixmap back via xcb_image_get and reverse-packs it, so a pixel
+ * mismatch in either direction is caught here. Exits 77 (automake SKIP)
+ * when no display is reachable so make check stays X-free.
+ *
+ * Covered: RCreateContext, RConvertImage, RConvertImageMask,
+ * RCreateImageFromDrawable, RGetXImage + RCreateImageFromRXImage.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <X11/Xlib.h>
+
+#include "wraster.h"
+
+static int failures;
+
+static void check_pixel(RImage *img, int x, int y, int er, int eg, int eb, const char *what)
+{
+	RColor c;
+
+	if (!RGetPixel(img, x, y, &c)) {
+		fprintf(stderr, "FAIL %s: RGetPixel(%d,%d) out of range\n", what, x, y);
+		failures++;
+		return;
+	}
+	if (c.red != er || c.green != eg || c.blue != eb) {
+		fprintf(stderr, "FAIL %s: (%d,%d) got %02x/%02x/%02x want %02x/%02x/%02x\n",
+			what, x, y, c.red, c.green, c.blue, er, eg, eb);
+		failures++;
+	}
+}
+
+int main(void)
+{
+	Display *dpy;
+	RContext *ctx;
+	RImage *src, *back, *back2;
+	RXImage *rx;
+	Pixmap pix, mask;
+	RColor red = { 0xff, 0x00, 0x00, 0xff };
+	RColor grn = { 0x00, 0xff, 0x00, 0xff };
+	RColor blu = { 0x00, 0x00, 0xff, 0xff };
+	RColor wht = { 0xff, 0xff, 0xff, 0xff };
+	unsigned char *p;
+	int x, y;
+
+	dpy = XOpenDisplay(NULL);
+	if (!dpy) {
+		fprintf(stderr, "SKIP: no display\n");
+		return 77;
+	}
+	ctx = RCreateContext(dpy, DefaultScreen(dpy), NULL);
+	if (!ctx) {
+		fprintf(stderr, "SKIP: RCreateContext failed (%s)\n", RMessageForError(RErrorCode));
+		return 77;
+	}
+
+	printf("# context: depth=%d bpp visual=0x%x shm=%s\n",
+	       ctx->depth, ctx->xvisual->visual_id,
+	       ctx->attribs->use_shared_memory ? "yes" : "no");
+
+	/* 17x13 so the stride padding is exercised, four corners get
+	 * distinct primaries and the centre a mid-grey */
+	src = RCreateImage(17, 13, True);
+	RFillImage(src, &wht);
+	for (y = 0; y < 6; y++)
+		for (x = 0; x < 8; x++)
+			RPutPixel(src, x, y, &red);
+	for (y = 0; y < 6; y++)
+		for (x = 9; x < 17; x++)
+			RPutPixel(src, x, y, &grn);
+	for (y = 7; y < 13; y++)
+		for (x = 0; x < 8; x++)
+			RPutPixel(src, x, y, &blu);
+	/* RPutPixel blends when alpha != 255, write the alpha-0 sample raw */
+	p = src->data + (6 * 17 + 8) * 4;
+	p[0] = 0x12; p[1] = 0x34; p[2] = 0x56; p[3] = 0x00;
+
+	if (!RConvertImage(ctx, src, &pix)) {
+		fprintf(stderr, "FAIL: RConvertImage (%s)\n", RMessageForError(RErrorCode));
+		return 1;
+	}
+	XSync(dpy, False);
+
+	back = RCreateImageFromDrawable(ctx, pix, None);
+	if (!back) {
+		fprintf(stderr, "FAIL: RCreateImageFromDrawable (%s)\n", RMessageForError(RErrorCode));
+		return 1;
+	}
+	if (back->width != 17 || back->height != 13) {
+		fprintf(stderr, "FAIL: round-trip size %dx%d\n", back->width, back->height);
+		failures++;
+	}
+	check_pixel(back, 0, 0, 0xff, 0x00, 0x00, "convert/tl");
+	check_pixel(back, 16, 0, 0x00, 0xff, 0x00, "convert/tr");
+	check_pixel(back, 0, 12, 0x00, 0x00, 0xff, "convert/bl");
+	check_pixel(back, 16, 12, 0xff, 0xff, 0xff, "convert/br");
+	check_pixel(back, 8, 6, 0x12, 0x34, 0x56, "convert/mid");
+
+	/* RGetXImage on a sub-rectangle then unpack via the RXImage path,
+	 * mirrors the workspace.c name-fade reader */
+	rx = RGetXImage(ctx, pix, 9, 0, 8, 6);
+	if (!rx) {
+		fprintf(stderr, "FAIL: RGetXImage\n");
+		return 1;
+	}
+	back2 = RCreateImageFromRXImage(ctx, rx, NULL);
+	RDestroyXImage(ctx, rx);
+	if (!back2) {
+		fprintf(stderr, "FAIL: RCreateImageFromRXImage\n");
+		return 1;
+	}
+	check_pixel(back2, 0, 0, 0x00, 0xff, 0x00, "subrect/tl");
+	check_pixel(back2, 7, 5, 0x00, 0xff, 0x00, "subrect/br");
+	RReleaseImage(back2);
+
+	/* mask: the alpha-0 centre pixel must read 0, every opaque
+	 * corner must read 1 */
+	if (!RConvertImageMask(ctx, src, &pix, &mask, 128)) {
+		fprintf(stderr, "FAIL: RConvertImageMask (%s)\n", RMessageForError(RErrorCode));
+		return 1;
+	}
+	XSync(dpy, False);
+	back2 = RCreateImageFromDrawable(ctx, pix, mask);
+	if (!back2 || back2->format != RRGBAFormat) {
+		fprintf(stderr, "FAIL: RCreateImageFromDrawable+mask\n");
+		return 1;
+	}
+	if (back2->data[(6 * 17 + 8) * 4 + 3] != 0) {
+		fprintf(stderr, "FAIL mask: centre alpha %u != 0\n",
+			back2->data[(6 * 17 + 8) * 4 + 3]);
+		failures++;
+	}
+	if (back2->data[3] != 0xff) {
+		fprintf(stderr, "FAIL mask: corner alpha %u != 0xff\n", back2->data[3]);
+		failures++;
+	}
+
+	RReleaseImage(src);
+	RReleaseImage(back);
+	RReleaseImage(back2);
+	RDestroyContext(ctx);
+	XCloseDisplay(dpy);
+
+	if (failures) {
+		fprintf(stderr, "%d failure(s)\n", failures);
+		return 1;
+	}
+	printf("ok\n");
+	return 0;
+}

@@ -18,5 +18,5 @@ puzzle_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
-	-I$(top_builddir)/wrlib -I$(top_srcdir)/src \
+	-I$(top_srcdir)/wrlib -I$(top_srcdir)/src \
 	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @HEADER_SEARCH_PATH@

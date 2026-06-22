@@ -64,36 +64,24 @@ AC_DEFUN_ONCE([WM_XEXT_CHECK_XSHAPE],
 # WM_XEXT_CHECK_XSHM
 # ------------------
 #
-# Check for the MIT-SHM extension for Shared Memory support
-# The check depends on variable 'enable_shm' being either:
-#   yes  - detect, fail if not found
-#   no   - do not detect, disable support
-#   auto - detect, disable if not found
-#
-# When found, append appropriate stuff in XLIBS, and append info to
-# the variable 'supported_xext'
-# When not found, append info to variable 'unsupported'
+# Gate the MIT-SHM put-image path in wrlib on the user's --disable-shm,
+# no library probe: the only consumer is wrlib via xcb-shm which is a
+# hard PKG_CHECK_MODULES([WRASTER_XCB], ...) dependency, so there is no
+# library to detect, only the SysV shmget()/shmat() interface.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XSHM],
-[WM_LIB_CHECK([XShm], [-lXext], [XShmAttach], [$XLIBS],
-    [wm_save_CFLAGS="$CFLAGS"
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
-@%:@include <X11/Xlib.h>
-@%:@include <X11/extensions/XShm.h>
-], [dnl
-  XShmSegmentInfo si;
-
-  XShmAttach(NULL, &si);])],
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using XShm header])])
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
+[AS_IF([test "x$enable_shm" = "xno"],
+    [unsupported="$unsupported XShm"],
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([dnl
 @%:@include <sys/ipc.h>
 @%:@include <sys/shm.h>
 ], [dnl
   shmget(IPC_PRIVATE, 1024, IPC_CREAT);])],
-        [],
-        [AC_MSG_ERROR([found $CACHEVAR but cannot compile using ipc/shm headers])])
-     CFLAGS="$wm_save_CFLAGS"],
-    [supported_xext], [XLIBS], [enable_shm], [-])dnl
+        [AC_DEFINE([USE_XSHM], [1],
+            [defined when the MIT-SHM put-image path in wrlib is built])
+         supported_xext="$supported_xext XShm"],
+        [AS_IF([test "x$enable_shm" = "xyes"],
+            [AC_MSG_ERROR([cannot compile using SysV ipc/shm headers])],
+            [unsupported="$unsupported XShm"]) ]) ]) dnl
 ]) dnl AC_DEFUN
 
 
