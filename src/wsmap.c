@@ -65,29 +65,20 @@ static void refresh_mini_workspace(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_a
 
 void wWorkspaceMapUpdate(WScreen *scr)
 {
-	XImage *pimg;
+	RImage *mini_preview;
 
-	pimg = XGetImage(dpy, scr->root_win, 0, 0,
-	                 scr->scr_width, scr->scr_height,
-	                 AllPlanes, ZPixmap);
-	if (pimg) {
-		RImage *mini_preview;
+	mini_preview = RCreateImageFromDrawable(scr->rcontext, scr->root_win, None);
+	if (mini_preview) {
+		RImage *tmp = scr->workspaces[scr->current_workspace]->map;
 
-		mini_preview = RCreateImageFromXImage(scr->rcontext, pimg, NULL);
-		XDestroyImage(pimg);
+		if (tmp)
+			RReleaseImage(tmp);
 
-		if (mini_preview) {
-			RImage *tmp = scr->workspaces[scr->current_workspace]->map;
-
-			if (tmp)
-				RReleaseImage(tmp);
-
-			scr->workspaces[scr->current_workspace]->map =
-				RSmoothScaleImage(mini_preview,
-				                  scr->scr_width / WORKSPACE_MAP_RATIO,
-				                  scr->scr_height / WORKSPACE_MAP_RATIO);
-			RReleaseImage(mini_preview);
-		}
+		scr->workspaces[scr->current_workspace]->map =
+			RSmoothScaleImage(mini_preview,
+			                  scr->scr_width / WORKSPACE_MAP_RATIO,
+			                  scr->scr_height / WORKSPACE_MAP_RATIO);
+		RReleaseImage(mini_preview);
 	}
 }
 

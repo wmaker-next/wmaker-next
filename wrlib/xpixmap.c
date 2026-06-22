@@ -27,13 +27,6 @@
 
 #include <xcb/xcb_image.h>
 
-/* RCreateImageFromXImage() reads a libX11 XImage via the XGetPixel macro
- * from Xutil.h, which dispatches through the image's f.get_pixel function
- * table set up by the caller's libX11 - this file does not call into
- * libX11 itself */
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
 #include "wraster.h"
 #include "imgformat.h"
 #include "xutil.h"
@@ -61,14 +54,12 @@ static int get_shifts(unsigned long mask)
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
 /*
- * Shared body for the XImage- and xcb_image_t-backed entry points: takes a
- * generic per-pixel reader so the same TrueColor reverse-pack and mask
- * overlay run against either storage. xcb_image_get returns plane_mask but
- * not the visual masks (same as XGetImage on a pixmap), so the context's
- * visual is used whenever the depths match, which is every in-tree caller.
+ * TrueColor reverse-pack and mask overlay against an xcb_image_t.
+ * xcb_image_get returns plane_mask but not the visual masks (same as
+ * XGetImage on a pixmap), so the context's visual is used whenever the
+ * depths match, which is every in-tree caller.
  */
-static RImage *unpack_generic(RContext *context, void *image, void *mask,
-			      uint32_t (*gp)(void *, int, int),
+static RImage *unpack_generic(RContext *context, xcb_image_t *image, xcb_image_t *mask,
 			      int width, int height, int depth,
 			      int mwidth, int mheight)
 {
@@ -100,7 +91,7 @@ static RImage *unpack_generic(RContext *context, void *image, void *mask,
 	if (depth == 1) {
 		for (y = 0; y < height; y++) {
 			for (x = 0; x < width; x++) {
-				pixel = gp(image, x, y);
+				pixel = xcb_image_get_pixel(image, x, y);
 				if (pixel) {
 					*data++ = 0;
 					*data++ = 0;
@@ -117,7 +108,7 @@ static RImage *unpack_generic(RContext *context, void *image, void *mask,
 	} else {
 		for (y = 0; y < height; y++) {
 			for (x = 0; x < width; x++) {
-				pixel = gp(image, x, y);
+				pixel = xcb_image_get_pixel(image, x, y);
 				*(data++) = NORMALIZE_RED(pixel);
 				*(data++) = NORMALIZE_GREEN(pixel);
 				*(data++) = NORMALIZE_BLUE(pixel);
@@ -131,7 +122,7 @@ static RImage *unpack_generic(RContext *context, void *image, void *mask,
 		data = img->data + 3;
 		for (y = 0; y < MIN(mheight, height); y++) {
 			for (x = 0; x < MIN(mwidth, width); x++) {
-				if (mwidth <= width && gp(mask, x, y)) {
+				if (mwidth <= width && xcb_image_get_pixel(mask, x, y)) {
 					*data = 0xff;
 				} else {
 					*data = 0;
@@ -153,30 +144,9 @@ static RImage *unpack_generic(RContext *context, void *image, void *mask,
 	return img;
 }
 
-static uint32_t gp_ximage(void *im, int x, int y)
-{
-	return XGetPixel((XImage *)im, x, y);
-}
-
-static uint32_t gp_xcb(void *im, int x, int y)
-{
-	return xcb_image_get_pixel((xcb_image_t *)im, x, y);
-}
-
-RImage *RCreateImageFromXImage(RContext * context, XImage * image, XImage * mask)
-{
-	assert(image != NULL);
-	assert(image->format == ZPixmap);
-	assert(!mask || mask->format == ZPixmap);
-
-	return unpack_generic(context, image, mask, gp_ximage,
-			      image->width, image->height, image->depth,
-			      mask ? mask->width : 0, mask ? mask->height : 0);
-}
-
 RImage *r_unpack_ximage(RContext *context, xcb_image_t *image, xcb_image_t *mask)
 {
-	return unpack_generic(context, image, mask, gp_xcb,
+	return unpack_generic(context, image, mask,
 			      image->width, image->height, image->depth,
 			      mask ? mask->width : 0, mask ? mask->height : 0);
 }

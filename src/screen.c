@@ -1179,9 +1179,11 @@ int wScreenKeepInside(WScreen * scr, int *x, int *y, int width, int height)
 	return moved;
 }
 
-static XImage *imageCaptureArea(WScreen *scr)
+static RImage *imageCaptureArea(WScreen *scr)
 {
 	XEvent event;
+	RXImage *ximg;
+	RImage *img;
 	int quit = 0;
 	int xp = -1;
 	int yp = -1;
@@ -1222,7 +1224,12 @@ static XImage *imageCaptureArea(WScreen *scr)
 						WMHandleEvent(&event);
 					XUngrabKeyboard(dpy, CurrentTime);
 					XUngrabPointer(dpy, CurrentTime);
-					return XGetImage(dpy, scr->root_win, x, y, w, h, AllPlanes, ZPixmap);
+					ximg = RGetXImage(scr->rcontext, scr->root_win, x, y, w, h);
+					if (!ximg)
+						return NULL;
+					img = RCreateImageFromRXImage(scr->rcontext, ximg, NULL);
+					RDestroyXImage(scr->rcontext, ximg);
+					return img;
 				}
 			}
 			break;
@@ -1369,7 +1376,7 @@ void ScreenCapture(WScreen *scr, int mode)
 
 	switch (mode) {
 		WWindow *wwin;
-		XImage *pimg;
+		RXImage *pimg;
 
 		case PRINT_WINDOW:
 			wwin = scr->focused_window;
@@ -1398,24 +1405,19 @@ void ScreenCapture(WScreen *scr, int mode)
 					if (wwin->client.y + wwin->client.height > scr->scr_height)
 						h_crop = scr->scr_height - wwin->client.y;
 
-					pimg = XGetImage(dpy, scr->root_win, x_crop, y_crop,
+					pimg = RGetXImage(scr->rcontext, scr->root_win, x_crop, y_crop,
 							(wwin->client.x > 0)?w_crop:w_crop + wwin->client.x,
-							(wwin->client.y > 0)?h_crop:h_crop + wwin->client.y,
-							AllPlanes, ZPixmap);
+							(wwin->client.y > 0)?h_crop:h_crop + wwin->client.y);
 
 					if (pimg) {
-						img = RCreateImageFromXImage(scr->rcontext, pimg, None);
-						XDestroyImage(pimg);
+						img = RCreateImageFromRXImage(scr->rcontext, pimg, NULL);
+						RDestroyXImage(scr->rcontext, pimg);
 					}
 				}
 			}
 			break;
 		case PRINT_PARTIAL:
-			pimg = imageCaptureArea(scr);
-			if (pimg) {
-				img = RCreateImageFromXImage(scr->rcontext, pimg, None);
-				XDestroyImage(pimg);
-			}
+			img = imageCaptureArea(scr);
 			break;
 		default:
 			/* PRINT_SCREEN*/

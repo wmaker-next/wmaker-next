@@ -48,12 +48,6 @@
 /* forward-declared so this header does not pull in <xcb/xcb_image.h> */
 typedef struct xcb_image_t xcb_image_t;
 
-/* RCreateImageFromXImage() takes a libX11 XImage* for the few callers in
- * src/ that still XGetImage() themselves, the entry point reads it via the
- * struct's f.get_pixel function table so the library does not link libX11.
- * Forward-declare so the public header does not pull in <X11/Xlib.h>. */
-struct _XImage;
-
 
 /*
  * Define some macro to provide attributes for the compiler
@@ -351,9 +345,6 @@ int RGetClosestXColor(RContext *context, const RColor *color, unsigned long *pix
  */
 RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 	__wrlib_useresult __wrlib_nonalias;
-
-RImage *RCreateImageFromXImage(RContext *context, struct _XImage *image, struct _XImage *mask)
-	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
 RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
