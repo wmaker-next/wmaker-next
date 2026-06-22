@@ -30,6 +30,9 @@
 #include <xcb/xcb_image.h>
 
 #ifdef USE_XSHM
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #endif
@@ -46,22 +49,59 @@ static void wrxcb_sync(xcb_connection_t *xc)
 
 #ifdef USE_XSHM
 
+/*
+ * Anonymous shared mapping for the AttachFd path. memfd_create on Linux
+ * gives a file with no filesystem footprint that the server can mmap from
+ * the passed descriptor, FreeBSD's SHM_ANON and OpenBSD's shm_mkstemp
+ * cover the BSDs, and the SysV shmget path stays as the portable fallback
+ * (NetBSD base Xorg, remote display, MIT-SHM < 1.2).
+ */
+static int alloc_shm_fd(size_t size)
+{
+	int fd = -1;
+
+#if defined(HAVE_MEMFD_CREATE)
+	fd = memfd_create("wraster-shm", MFD_CLOEXEC);
+#elif defined(HAVE_DECL_SHM_ANON) && HAVE_DECL_SHM_ANON
+	fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
+#elif defined(HAVE_SHM_MKSTEMP)
+	char tmpl[] = "/wraster-shm-XXXXXXXX";
+	fd = shm_mkstemp(tmpl);
+	if (fd >= 0)
+		shm_unlink(tmpl);
+#endif
+	if (fd < 0)
+		return -1;
+	if (ftruncate(fd, size) < 0) {
+		close(fd);
+		return -1;
+	}
+	return fd;
+}
+
 static void releaseSharedSegment(RContext *context)
 {
 	if (context->shm_size == 0)
 		return;
 
 	xcb_shm_detach(context->xc, context->shm_xseg);
-	/* The detach must reach the server before we drop our own
-	 * attachment and IPC_RMID the segment, otherwise nattch can hit
-	 * zero and the kernel frees it before the server reads from it. */
-	wrxcb_sync(context->xc);
-	if (shmdt(context->shm_addr) < 0)
-		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
-			"shmdt", strerror(errno));
-	if (shmctl(context->shm_id, IPC_RMID, NULL) < 0)
-		fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
-			"shmctl", strerror(errno));
+	if (context->shm_id >= 0) {
+		/* SysV path: the detach must reach the server before we
+		 * drop our own attachment and IPC_RMID the segment,
+		 * otherwise nattch can hit zero and the kernel frees it
+		 * before the server reads from it. */
+		wrxcb_sync(context->xc);
+		if (shmdt(context->shm_addr) < 0)
+			fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
+				"shmdt", strerror(errno));
+		if (shmctl(context->shm_id, IPC_RMID, NULL) < 0)
+			fprintf(stderr, _("wrlib: error occurred while releasing shared segment, %s: %s\n"),
+				"shmctl", strerror(errno));
+	} else {
+		/* fd path: server holds its own mmap of the same inode so
+		 * unmapping here cannot strand it, no ordering barrier */
+		munmap(context->shm_addr, context->shm_size);
+	}
 	context->shm_xseg = 0;
 	context->shm_addr = NULL;
 	context->shm_size = 0;
@@ -80,6 +120,7 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 	xcb_generic_error_t *err;
 	xcb_void_cookie_t ck;
 	size_t alloc;
+	int fd;
 
 	if (context->shm_size >= needed)
 		return context->shm_size;
@@ -90,6 +131,39 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 
 	releaseSharedSegment(context);
 
+	context->shm_id = -1;
+	context->shm_xseg = xcb_generate_id(context->xc);
+
+	fd = alloc_shm_fd(alloc);
+	if (fd >= 0) {
+		context->shm_addr = mmap(NULL, alloc, PROT_READ | PROT_WRITE,
+					 MAP_SHARED, fd, 0);
+		if (context->shm_addr == MAP_FAILED) {
+			close(fd);
+			context->shm_addr = NULL;
+			goto sysv;
+		}
+		/* xcb_shm_attach_fd consumes fd (passes it to the server via
+		 * SCM_RIGHTS and closes the local copy), so no close here */
+		ck = xcb_shm_attach_fd_checked(context->xc, context->shm_xseg, fd, 0);
+		err = xcb_request_check(context->xc, ck);
+		if (err) {
+			/* MIT-SHM < 1.2 (no AttachFd) or a server that
+			 * refused the fd, fall through to the SysV path.
+			 * The failed request consumed shm_xseg so take a
+			 * fresh one for the retry. */
+			free(err);
+			munmap(context->shm_addr, alloc);
+			context->shm_addr = NULL;
+			context->shm_xseg = xcb_generate_id(context->xc);
+			goto sysv;
+		}
+		context->shm_size = alloc;
+		context->shm_used = 0;
+		return alloc;
+	}
+
+sysv:
 	context->shm_id = shmget(IPC_PRIVATE, alloc, IPC_CREAT | 0600);
 	if (context->shm_id < 0) {
 		fprintf(stderr, _("wrlib: could not allocate shared memory segment, %s: %s\n"),
@@ -107,7 +181,6 @@ static size_t ensureSharedSegment(RContext *context, size_t needed)
 		return 0;
 	}
 
-	context->shm_xseg = xcb_generate_id(context->xc);
 	ck = xcb_shm_attach_checked(context->xc, context->shm_xseg, context->shm_id, 0);
 	err = xcb_request_check(context->xc, ck);
 	if (err) {
