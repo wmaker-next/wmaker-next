@@ -143,7 +143,7 @@ RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned h
 	RXImage *rximg;
 	Visual *visual = context->visual;
 
-	rximg = malloc(sizeof(RXImage));
+	rximg = calloc(1, sizeof(RXImage));
 	if (!rximg) {
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
@@ -238,7 +238,7 @@ RXImage *RGetXImage(RContext * context, Drawable d, int x, int y, unsigned width
 {
 	RXImage *ximg;
 
-	ximg = malloc(sizeof(RXImage));
+	ximg = calloc(1, sizeof(RXImage));
 	if (!ximg) {
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;

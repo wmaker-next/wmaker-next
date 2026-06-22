@@ -777,6 +777,19 @@ AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
 
 
+dnl xcb subset for libwraster: the X-side of wrlib (RContext, RConvertImage,
+dnl RCreateImageFromDrawable) talks to the server via xcb so the shared object
+dnl can be linked without libX11/libXext, x11-xcb supplies XGetXCBConnection
+dnl for the RCreateContext(Display*) constructor that back-fills the legacy
+dnl Xlib-typed fields, xcb-image gives the native ZPixmap packing/stride and
+dnl pulls in xcb-shm for the persistent put-image segment
+dnl =====================================================================
+PKG_CHECK_MODULES([WRASTER_XCB], [xcb xcb-shm xcb-image x11-xcb], [],
+    [AC_MSG_ERROR([libwraster requires xcb, xcb-shm and xcb-image -- $WRASTER_XCB_PKG_ERRORS])])
+AC_SUBST(WRASTER_XCB_CFLAGS)
+AC_SUBST(WRASTER_XCB_LIBS)
+
+
 dnl xcb-imdkit: optional XIM protocol IM client for WINGs text fields
 dnl Restores fcitx5/ibus input after the xcb event-queue flip, without it
 dnl xkb_compose_state still handles dead-key / Compose sequences.

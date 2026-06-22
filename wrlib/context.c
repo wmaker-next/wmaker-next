@@ -23,6 +23,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/shm.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +125,41 @@ static int count_offset(unsigned long mask)
 	return i;
 }
 
+static xcb_screen_t *find_xcb_screen(xcb_connection_t *xc, int screen_number)
+{
+	xcb_screen_iterator_t it;
+
+	it = xcb_setup_roots_iterator(xcb_get_setup(xc));
+	for (; it.rem; xcb_screen_next(&it), screen_number--) {
+		if (screen_number == 0)
+			return it.data;
+	}
+	return NULL;
+}
+
+/*
+ * Walk the per-screen depth list for visualid and hand back both the
+ * visualtype and the depth it lives under, the equivalent xcb-util helper
+ * (xcb_aux_get_visualtype) takes a depth as input rather than reporting it
+ * so this avoids that dependency for one iterator walk.
+ */
+static xcb_visualtype_t *find_xcb_visual(xcb_screen_t *s, xcb_visualid_t visualid, uint8_t *depth_ret)
+{
+	xcb_depth_iterator_t di;
+	xcb_visualtype_iterator_t vi;
+
+	for (di = xcb_screen_allowed_depths_iterator(s); di.rem; xcb_depth_next(&di)) {
+		for (vi = xcb_depth_visuals_iterator(di.data); vi.rem; xcb_visualtype_next(&vi)) {
+			if (vi.data->visual_id == visualid) {
+				if (depth_ret)
+					*depth_ret = di.data->depth;
+				return vi.data;
+			}
+		}
+	}
+	return NULL;
+}
+
 RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttributes * attribs)
 {
 	RContext *context;
@@ -221,13 +258,22 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 	gcv.graphics_exposures = False;
 	context->copy_gc = XCreateGC(dpy, context->drawable, GCFunction | GCGraphicsExposures, &gcv);
 
+	/* xcb view of the same connection. The screen and visual lookups walk
+	 * the connection setup so they cannot fail once the visualid passed
+	 * the TrueColor check above, copy_xgc is the same server-side XID as
+	 * copy_gc so internal puts and external XCopyArea share one GC. */
+	context->xc = XGetXCBConnection(dpy);
+	context->xscreen = find_xcb_screen(context->xc, screen_number);
+	context->xvisual = find_xcb_visual(context->xscreen,
+					   XVisualIDFromVisual(context->visual), &context->xdepth);
+	context->copy_xgc = (xcb_gcontext_t)XGContextFromGC(context->copy_gc);
+
 	/* calc offsets to create a TrueColor pixel */
-	context->red_offset = count_offset(context->visual->red_mask);
-	context->green_offset = count_offset(context->visual->green_mask);
-	context->blue_offset = count_offset(context->visual->blue_mask);
+	context->red_offset = count_offset(context->xvisual->red_mask);
+	context->green_offset = count_offset(context->xvisual->green_mask);
+	context->blue_offset = count_offset(context->xvisual->blue_mask);
 
 	/* check avaiability of MIT-SHM */
-#ifdef USE_XSHM
 	if (!(context->attribs->flags & RC_UseSharedMemory)) {
 		context->attribs->flags |= RC_UseSharedMemory;
 		context->attribs->use_shared_memory = True;
@@ -235,13 +281,14 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 
 	context->flags.use_shared_pixmap = 0;
 	if (context->attribs->use_shared_memory) {
-		int major, minor;
-		Bool sharedPixmaps;
+		xcb_shm_query_version_reply_t *r;
 
-		if (!XShmQueryVersion(context->dpy, &major, &minor, &sharedPixmaps))
+		r = xcb_shm_query_version_reply(context->xc,
+						xcb_shm_query_version(context->xc), NULL);
+		if (!r)
 			context->attribs->use_shared_memory = False;
+		free(r);
 	}
-#endif
 
 	return context;
 }

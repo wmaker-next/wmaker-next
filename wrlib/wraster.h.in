@@ -44,7 +44,11 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <xcb/xcb.h>
 @USE_XSHM@#include <X11/extensions/XShm.h>
+
+/* forward-declared so this header does not pull in <xcb/xcb_image.h> */
+typedef struct xcb_image_t xcb_image_t;
 
 
 /*
@@ -135,6 +139,11 @@ typedef struct RContextAttributes {
 /*
  * describes a screen in terms of depth and visual. Only TrueColor visuals
  * are supported, indexed-colour displays are no longer handled.
+ *
+ * The Xlib-typed fields (dpy, visual, copy_gc) are populated only when the
+ * context was constructed from a Display* via RCreateContext() and exist for
+ * callers that still issue their own Xlib drawing against the same visual.
+ * The library itself reads the xcb handles only.
  */
 typedef struct RContext {
     Display *dpy;
@@ -157,6 +166,13 @@ typedef struct RContext {
     int red_offset;
     int green_offset;
     int blue_offset;
+
+    /* xcb view of the same connection/screen/visual, always populated */
+    xcb_connection_t *xc;
+    xcb_screen_t *xscreen;
+    xcb_visualtype_t *xvisual;
+    xcb_gcontext_t copy_xgc;       /* same XID as copy_gc when dpy is set */
+    uint8_t xdepth;
 
     struct {
         unsigned int use_shared_pixmap:1;
@@ -222,10 +238,11 @@ typedef struct RImage {
 
 
 /*
- * internal wrapper for XImage. Used for shm abstraction
+ * internal wrapper for the wire image. Used for shm abstraction
  */
 typedef struct RXImage {
     XImage *image;
+    xcb_image_t *ximg;
 
 @USE_XSHM@    /* Private data. Do not access */
 @USE_XSHM@    XShmSegmentInfo info;
