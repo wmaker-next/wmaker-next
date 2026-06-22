@@ -973,17 +973,9 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_IMGFMT_CHECK_JXL
 
 
-dnl GIF Support
-dnl ============
-m4_divert_push([INIT_PREPARE])dnl
-AC_ARG_ENABLE(gif,
-    [AS_HELP_STRING([--disable-gif], [disable GIF support through libgif or libungif])],
-    [AS_CASE(["$enableval"],
-        [yes|no], [],
-        [AC_MSG_ERROR([bad value $enableval for --enable-gif])] )],
-    [enable_gif=auto])
-m4_divert_pop([INIT_PREPARE])dnl
-WM_IMGFMT_CHECK_GIF
+dnl GIF, BMP, TGA, PSD and PIC are decoded by the vendored stb_image.h
+dnl in wrlib/load_stb.c, no external library or configure switch.
+supported_gfx="$supported_gfx GIF(builtin) BMP(builtin) TGA(builtin)"
 
 
 dnl TIFF Support

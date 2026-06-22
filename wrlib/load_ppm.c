@@ -45,7 +45,7 @@
  * implied warranty.
  */
 
-char pm_getc(FILE *const fileP, const char *filename)
+static char pm_getc(FILE *const fileP, const char *filename)
 {
 	int ich;
 	char ch;
@@ -68,7 +68,7 @@ char pm_getc(FILE *const fileP, const char *filename)
 	return ch;
 }
 
-unsigned char pm_getrawbyte(FILE *const file, const char *filename)
+static unsigned char pm_getrawbyte(FILE *const file, const char *filename)
 {
 	int iby;
 
@@ -78,7 +78,7 @@ unsigned char pm_getrawbyte(FILE *const file, const char *filename)
 	return (unsigned char)iby;
 }
 
-int pm_getuint(FILE *const ifP, const char *filename)
+static int pm_getuint(FILE *const ifP, const char *filename)
 {
 	char ch;
 	unsigned int i;
@@ -118,87 +118,15 @@ int pm_getuint(FILE *const ifP, const char *filename)
 /* end of fileio.c re-used code */
 /******************************************************************************************/
 
-/* PGM: support for portable graymap ascii and binary encoding */
-static RImage *load_graymap(FILE *file, int w, int h, int max, int raw, const char *filename)
+/* P2/P3 ASCII graymap and pixmap. The binary P5/P6 variants are routed
+ * to stb_image from RLoadPPM() so only the plain encoding is handled
+ * here. */
+static RImage *load_ascii_pnm(FILE *file, int w, int h, int max, int channels,
+			      const char *filename)
 {
 	RImage *image;
 	unsigned char *ptr;
-	int x, y;
-
-	if (raw != '2' && raw != '5') {
-		RErrorCode = RERR_BADFORMAT;
-		return NULL;
-	}
-
-	image = RCreateImage(w, h, 0);
-	if (!image) {
-		RErrorCode = RERR_NOMEMORY;
-		return NULL;
-	}
-
-	if (max < 256) {
-		ptr = image->data;
-		if (raw == '2') {
-			int val;
-
-			for (y = 0; y < h; y++) {
-				for (x = 0; x < w; x++) {
-					val = pm_getuint(file, filename);
-
-					if (val > max || val < 0) {
-						RErrorCode = RERR_BADIMAGEFILE;
-						RReleaseImage(image);
-						return NULL;
-					}
-
-					val = val * 255 / max;
-					*(ptr++) = val;
-					*(ptr++) = val;
-					*(ptr++) = val;
-				}
-			}
-		} else {
-			if (raw == '5') {
-				char *buf;
-
-				buf = malloc(w + 1);
-				if (!buf) {
-					RErrorCode = RERR_NOMEMORY;
-					RReleaseImage(image);
-					return NULL;
-				}
-				for (y = 0; y < h; y++) {
-					if (!fread(buf, w, 1, file)) {
-						free(buf);
-						RErrorCode = RERR_BADIMAGEFILE;
-						RReleaseImage(image);
-						return NULL;
-					}
-
-					for (x = 0; x < w; x++) {
-						*(ptr++) = buf[x];
-						*(ptr++) = buf[x];
-						*(ptr++) = buf[x];
-					}
-				}
-				free(buf);
-			}
-		}
-	}
-	return image;
-}
-
-/* PPM: support for portable pixmap ascii and binary encoding */
-static RImage *load_pixmap(FILE *file, int w, int h, int max, int raw, const char *filename)
-{
-	RImage *image;
-	int i;
-	unsigned char *ptr;
-
-	if (raw != '3' && raw != '6') {
-		RErrorCode = RERR_BADFORMAT;
-		return NULL;
-	}
+	int x, y, c, val;
 
 	image = RCreateImage(w, h, 0);
 	if (!image) {
@@ -207,41 +135,21 @@ static RImage *load_pixmap(FILE *file, int w, int h, int max, int raw, const cha
 	}
 
 	ptr = image->data;
-	if (max < 256) {
-		if (raw == '3') {
-			int x, y, val;
-
-			for (y = 0; y < h; y++) {
-				for (x = 0; x < w; x++) {
-					for (i = 0; i < 3; i++) {
-						val = pm_getuint(file, filename);
-
-						if (val > max || val < 0) {
-							RErrorCode = RERR_BADIMAGEFILE;
-							RReleaseImage(image);
-							return NULL;
-						}
-
-						val = val * 255 / max;
-						*(ptr++) = val;
-					}
-				}
-			}
-		} else if (raw == '6') {
-			char buf[3];
-
-			i = 0;
-			while (i < w * h) {
-				if (fread(buf, 1, 3, file) != 3) {
+	for (y = 0; y < h; y++) {
+		for (x = 0; x < w; x++) {
+			for (c = 0; c < channels; c++) {
+				val = pm_getuint(file, filename);
+				if (val > max || val < 0) {
 					RErrorCode = RERR_BADIMAGEFILE;
 					RReleaseImage(image);
 					return NULL;
 				}
-
-				*(ptr++) = buf[0];
-				*(ptr++) = buf[1];
-				*(ptr++) = buf[2];
-				i++;
+				val = val * 255 / max;
+				*(ptr++) = val;
+				if (channels == 1) {
+					*(ptr++) = val;
+					*(ptr++) = val;
+				}
 			}
 		}
 	}
@@ -341,6 +249,16 @@ RImage *RLoadPPM(const char *file_name)
 
 	type = buffer[1];
 
+	/* Binary graymap/pixmap (P5/P6) go through stb_image, which reads
+	 * the pixel block in one fread instead of byte-at-a-time and is
+	 * the reference PNM reader for the project. ASCII PNM (P1/P2/P3)
+	 * and binary PBM (P4) are not supported by stb so the
+	 * Netpbm-derived parser below handles those. */
+	if (type == '5' || type == '6') {
+		fclose(file);
+		return RLoadStb(file_name);
+	}
+
 	/* skip comments */
 	while (1) {
 		if (!fgets(buffer, 255, file)) {
@@ -363,7 +281,7 @@ RImage *RLoadPPM(const char *file_name)
 		return NULL;
 	}
 
-	if (type != '1' && type != '4') {
+	if (type == '2' || type == '3') {
 		if (!fgets(buffer, 255, file)) {
 			RErrorCode = RERR_BADIMAGEFILE;
 			fclose(file);
@@ -382,12 +300,10 @@ RImage *RLoadPPM(const char *file_name)
 	if (type == '1' || type == '4') {
 		/* Portable Bit Map: P1 is for 'plain' (ascii, rare), P4 for 'regular' (binary) */
 		image = load_bitmap(file, w, h, m, type, file_name);
-	} else if (type == '2' || type == '5') {
-		/* Portable Gray Map: P2 is for 'plain' (ascii, rare), P5 for 'regular' (binary) */
-		image = load_graymap(file, w, h, m, type, file_name);
-	} else if (type == '3' || type == '6') {
-		/* Portable Pix Map: P3 is for 'plain' (ascii, rare), P6 for 'regular' (binary) */
-		image = load_pixmap(file, w, h, m, type, file_name);
+	} else if (type == '2') {
+		image = load_ascii_pnm(file, w, h, m, 1, file_name);
+	} else if (type == '3') {
+		image = load_ascii_pnm(file, w, h, m, 3, file_name);
 	}
 
 	fclose(file);

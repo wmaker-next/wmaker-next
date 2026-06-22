@@ -82,7 +82,10 @@ static WRImgFormat identFile(const char *path);
 
 char **RSupportedFileFormats(void)
 {
-	static char *tmp[IM_TYPES + 2];
+	/* built-in entries plus PNM/PPM aliasing plus the optional
+	 * libraries plus the NULL terminator can exceed IM_TYPES, so
+	 * size the static array explicitly */
+	static char *tmp[16];
 	int i = 0;
 
 	/* built-in */
@@ -95,6 +98,10 @@ char **RSupportedFileFormats(void)
 	 * not the new PNM type
 	 */
 	tmp[i++] = "PPM";
+	/* via vendored stb_image */
+	tmp[i++] = "BMP";
+	tmp[i++] = "TGA";
+	tmp[i++] = "GIF";
 #ifdef USE_TIFF
 	tmp[i++] = "TIFF";
 #endif
@@ -106,9 +113,6 @@ char **RSupportedFileFormats(void)
 #endif
 #ifdef USE_JXL
 	tmp[i++] = "JXL";
-#endif
-#ifdef USE_GIF
-	tmp[i++] = "GIF";
 #endif
 #ifdef USE_WEBP
 	tmp[i++] = "WEBP";
@@ -173,11 +177,6 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 
 	assert(file != NULL);
 
-	/* just to suppress the compilation warning as index is only used with TIFF and GIF */
-#if !defined(USE_TIFF) && !defined(USE_GIF)
-	(void)index;
-#endif
-
 	if (RImageCacheSize < 0)
 		init_cache();
 
@@ -205,16 +204,23 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 		return NULL;
 
 	case IM_UNKNOWN:
+		/* TGA, PSD and PIC have no usable magic for identFile(),
+		 * stb_image probes the structure itself. ImageMagick stays
+		 * as the last resort for SVG, PCX, PICT etc. */
+		image = RLoadStb(file);
 #ifdef USE_MAGICK
-		/* generic file format support using ImageMagick
-		 * BMP, PCX, PICT, SVG, ...
-		 */
-		image = RLoadMagick(file);
-		break;
-#else
-		RErrorCode = RERR_BADFORMAT;
-		return NULL;
+		if (!image)
+			image = RLoadMagick(file);
 #endif
+		break;
+
+	case IM_BMP:
+		image = RLoadStb(file);
+		break;
+
+	case IM_GIF:
+		image = RLoadStbGIF(file, index);
+		break;
 
 	case IM_XPM:
 		image = RLoadXPM(context, file);
@@ -243,12 +249,6 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 		image = RLoadJXL(file);
 		break;
 #endif				/* USE_JXL */
-
-#ifdef USE_GIF
-	case IM_GIF:
-		image = RLoadGIF(file, index);
-		break;
-#endif				/* USE_GIF */
 
 #ifdef USE_WEBP
 	case IM_WEBP:
@@ -339,10 +339,11 @@ char *RGetImageFileFormat(const char *file)
 		return "JXL";
 #endif				/* USE_JXL */
 
-#ifdef USE_GIF
 	case IM_GIF:
 		return "GIF";
-#endif				/* USE_GIF */
+
+	case IM_BMP:
+		return "BMP";
 
 #ifdef USE_WEBP
 	case IM_WEBP:
@@ -427,6 +428,10 @@ static WRImgFormat identFile(const char *path)
 	if (buffer[0] == 'G' && buffer[1] == 'I' && buffer[2] == 'F' && buffer[3] == '8' &&
 	    (buffer[4] == '7' ||  buffer[4] == '9') && buffer[5] == 'a')
 		return IM_GIF;
+
+	/* check for BMP (DIB, OS/2 v1/v2, Windows v3+) */
+	if (buffer[0] == 'B' && buffer[1] == 'M')
+		return IM_BMP;
 
 	/* check for WEBP */
 	if (buffer[0]  == 'R' && buffer[1]  == 'I' && buffer[2]  == 'F' && buffer[3]  == 'F' &&

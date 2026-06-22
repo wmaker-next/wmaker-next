@@ -216,11 +216,6 @@ so you probably want this format supported.
 For @emph{JXL} image support,
 @uref{https://github.com/libjxl/libjxl}
 
-@item @emph{libgif} 2.2 or @emph{libungif}
-
-For @emph{GIF} image support,
-@uref{http://giflib.sourceforge.net/}
-
 @item @emph{WebP} 0.4.1 or newer
 
 The reference library from @emph{Google} for their image format,
@@ -410,9 +405,9 @@ language support is described in the dedicated
 These options can be passed to the configure script to enable/disable
 some @sc{Window Maker} features. Example:
 @example
-./configure --enable-modelock --disable-gif
+./configure --enable-modelock --disable-tiff
 @end example
-will configure @sc{Window Maker} with @emph{modelock} supported and disable @emph{gif} support.
+will configure @sc{Window Maker} with @emph{modelock} supported and disable @emph{tiff} support.
 Normally, you won't need any of them.
 
 To get the list of all options, run @command{./configure --help}
@@ -482,9 +477,6 @@ You can find more information about the libraries in the
 @table @option
 @item --enable-boehm-gc
 Never enabled by default, use Boehm GC instead of the default @emph{libc} @command{malloc()}
-
-@item --disable-gif
-Disable GIF support in @emph{WRaster} library; when enabled use @file{libgif} or @file{libungif}.
 
 @item --disable-jpeg
 Disable JPEG support in @emph{WRaster} library; when enabled use @file{libjpeg}.

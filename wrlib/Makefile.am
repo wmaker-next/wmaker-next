@@ -5,7 +5,7 @@ DIST_SUBDIRS = $(SUBDIRS)
 
 AUTOMAKE_OPTIONS =
 
-EXTRA_DIST =
+EXTRA_DIST = stb_image.h stb_image_resize2.h
 
 lib_LTLIBRARIES = libwraster.la
 
@@ -47,11 +47,8 @@ libwraster_la_SOURCES = 	\
 	wr_i18n.h	\
 	xutil.c		\
 	xutil.h		\
-	load_ppm.c
-
-if USE_GIF
-libwraster_la_SOURCES += load_gif.c
-endif
+	load_ppm.c	\
+	load_stb.c
 
 if USE_JPEG
 libwraster_la_SOURCES += load_jpeg.c

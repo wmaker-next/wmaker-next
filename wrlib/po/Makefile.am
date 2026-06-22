@@ -27,7 +27,7 @@ POTFILES  = \
 	$(top_srcdir)/wrlib/save_xpm.c	\
 	$(top_srcdir)/wrlib/xutil.c	\
 	$(top_srcdir)/wrlib/load_ppm.c	\
-	$(top_srcdir)/wrlib/load_gif.c	\
+	$(top_srcdir)/wrlib/load_stb.c	\
 	$(top_srcdir)/wrlib/load_jpeg.c	\
 	$(top_srcdir)/wrlib/load_jxl.c	\
 	$(top_srcdir)/wrlib/load_png.c	\

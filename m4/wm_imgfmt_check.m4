@@ -16,69 +16,6 @@
 # with this program; if not, see <https://www.gnu.org/licenses/>.
 
 
-# WM_IMGFMT_CHECK_GIF
-# -------------------
-#
-# Check for GIF file support through 'libgif', 'libungif' or 'giflib v5'
-# The check depends on variable 'enable_gif' being either:
-#   yes  - detect, fail if not found
-#   no   - do not detect, disable support
-#   auto - detect, disable if not found
-#
-# When found, append appropriate stuff in GFXLIBS, and append info to
-# the variable 'supported_gfx'
-# When not found, append info to variable 'unsupported'
-AC_DEFUN_ONCE([WM_IMGFMT_CHECK_GIF],
-[AC_REQUIRE([_WM_LIB_CHECK_FUNCTS])
-AS_IF([test "x$enable_gif" = "xno"],
-    [unsupported="$unsupported GIF"],
-    [AC_CACHE_CHECK([for GIF support library], [wm_cv_imgfmt_gif],
-        [wm_cv_imgfmt_gif=no
-         wm_save_LIBS="$LIBS"
-         dnl
-         dnl We check first if one of the known libraries is available
-         for wm_arg in "-lgif" "-lungif" ; do
-           AS_IF([wm_fn_lib_try_link "DGifOpenFileName" "$XLFLAGS $XLIBS $wm_arg"],
-             [wm_cv_imgfmt_gif="$wm_arg" ; break])
-         done
-         LIBS="$wm_save_LIBS"
-         AS_IF([test "x$enable_gif$wm_cv_imgfmt_gif" = "xyesno"],
-           [AC_MSG_ERROR([explicit GIF support requested but no library found])])
-         AS_IF([test "x$wm_cv_imgfmt_gif" != "xno"],
-           [dnl
-            dnl A library was found, now check for the appropriate header
-            wm_save_CFLAGS="$CFLAGS"
-            AS_IF([wm_fn_lib_try_compile "gif_lib.h" "" "return 0" ""],
-              [],
-              [AC_MSG_ERROR([found $wm_cv_imgfmt_gif but could not find appropriate header - are you missing libgif-dev package?])])
-            AS_IF([wm_fn_lib_try_compile "gif_lib.h" 'const char *filename = "dummy";' "DGifOpenFileName(filename)" ""],
-              [wm_cv_imgfmt_gif="$wm_cv_imgfmt_gif version:4"],
-              [AC_COMPILE_IFELSE(
-                [AC_LANG_PROGRAM(
-                  [@%:@include <gif_lib.h>
-
-const char *filename = "dummy";],
-                  [  int error_code;
-  DGifOpenFileName(filename, &error_code);] )],
-                [wm_cv_imgfmt_gif="$wm_cv_imgfmt_gif version:5"],
-                [AC_MSG_ERROR([found $wm_cv_imgfmt_gif and header, but cannot compile - unsupported version?])])dnl
-              ]
-            )
-            CFLAGS="$wm_save_CFLAGS"])
-         ])
-    AS_IF([test "x$wm_cv_imgfmt_gif" = "xno"],
-        [unsupported="$unsupported GIF"
-         enable_gif="no"],
-        [supported_gfx="$supported_gfx GIF"
-         WM_APPEND_ONCE([`echo "$wm_cv_imgfmt_gif" | sed -e 's, *version:.*,,' `], [GFXLIBS])
-         AC_DEFINE_UNQUOTED([USE_GIF],
-           [`echo "$wm_cv_imgfmt_gif" | sed -e 's,.*version:,,' `],
-           [defined when valid GIF library with header was found])])
-    ])
-AM_CONDITIONAL([USE_GIF], [test "x$enable_gif" != "xno"])dnl
-]) dnl AC_DEFUN
-
-
 # WM_IMGFMT_CHECK_JPEG
 # --------------------
 #

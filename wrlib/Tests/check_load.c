@@ -143,6 +143,74 @@ static void test_pnm(void)
 	expect_image("P6", load_noctx(p), 1, 1, 10, 20, 30);
 }
 
+/* Formats wrlib has no native loader for, decoded via the vendored
+ * stb_image. BMP and TGA store BGR on disk so the writer swaps R/B,
+ * the loader must swap back. GIF carries a transparent index so the
+ * test asserts that alpha is decoded (the previous libgif loader
+ * dropped it). */
+static void test_stb_formats(void)
+{
+	RImage *img;
+	char *p;
+
+	/* 2x1 24-bit BMP, no compression, bottom-up rows. Pixel (0,0) is
+	 * (10,20,30), pixel (1,0) is (40,50,60). Two pad bytes round the
+	 * 6-byte row to 8. */
+	static const unsigned char bmp[] = {
+		'B','M', 62,0,0,0, 0,0,0,0, 54,0,0,0,
+		40,0,0,0, 2,0,0,0, 1,0,0,0, 1,0, 24,0,
+		0,0,0,0, 8,0,0,0, 0,0,0,0, 0,0,0,0,
+		0,0,0,0, 0,0,0,0,
+		30,20,10, 60,50,40, 0,0
+	};
+	p = write_sample("a.bmp", bmp, sizeof(bmp));
+	expect_image("BMP", load_noctx(p), 2, 1, 10, 20, 30);
+
+	/* 2x1 24-bit TGA, type 2 uncompressed, top-left origin */
+	static const unsigned char tga[] = {
+		0,0,2, 0,0,0,0,0, 0,0,0,0, 2,0,1,0, 24,0x20,
+		30,20,10, 60,50,40
+	};
+	p = write_sample("a.tga", tga, sizeof(tga));
+	expect_image("TGA", load_noctx(p), 2, 1, 10, 20, 30);
+
+	/* 2x1 GIF89a with a graphic-control extension marking palette
+	 * index 0 as transparent. Two-entry palette: 0=red, 1=green.
+	 * LZW-coded pixels are [0,1] so pixel 0 is transparent and
+	 * pixel 1 opaque green. */
+	static const unsigned char gif[] = {
+		'G','I','F','8','9','a',
+		2,0, 1,0,                          /* logical screen 2x1 */
+		0xf0, 0, 0,                        /* GCT present, 2 entries */
+		255,0,0,  0,255,0,                 /* palette: red, green */
+		0x21,0xf9, 4, 0x01,0,0, 0, 0,      /* GCE: transparent index 0 */
+		0x2c, 0,0,0,0, 2,0,1,0, 0,         /* image descriptor 2x1 */
+		2, 2, 0x44,0x0a, 0,                /* LZW min=2, [clear,0,1,eoi] */
+		0x3b
+	};
+	p = write_sample("a.gif", gif, sizeof(gif));
+	img = load_noctx(p);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF: RLoadImage NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		failures++;
+	} else {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->format == RRGBAFormat);
+		CHECK(img->data[3] == 0);                  /* transparent */
+		CHECK(img->data[4] == 0 &&
+		      img->data[5] == 255 &&
+		      img->data[6] == 0);                  /* green */
+		CHECK(img->data[7] == 255);                /* opaque */
+		RReleaseImage(img);
+	}
+
+	/* unrecognised content with no ImageMagick falls through to a
+	 * format error rather than crashing the stb fallback */
+	p = write_sample("junk.dat", "not an image format\n", 20);
+	CHECK(load_noctx(p) == NULL);
+}
+
 static void expect_golden(const char *what, RImage *img, int w, int h,
 			  int fr, int fg, int fb, int lr, int lg, int lb)
 {
@@ -224,9 +292,22 @@ static void test_pnm_reject(void)
 	img = load_noctx(p);
 	CHECK(img == NULL);
 
-	/* maxval > 255 must be rejected */
+	/* 16-bit P6 is accepted via stb_image and downconverted to 8-bit
+	 * (the previous bespoke loader rejected maxval > 255). Six 0x78
+	 * bytes are three big-endian 0x7878 samples, 0x7878>>8 == 0x78. */
 	s = "P6\n1 1\n65535\nxxxxxx";
 	p = write_sample("wide.ppm", s, strlen(s));
+	img = load_noctx(p);
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 1 && img->height == 1);
+		CHECK(img->data[0] == 0x78);
+		RReleaseImage(img);
+	}
+
+	/* truncated P6 pixel block must still be rejected */
+	s = "P6\n2 2\n255\nrgb";
+	p = write_sample("short.ppm", s, strlen(s));
 	img = load_noctx(p);
 	CHECK(img == NULL);
 }
@@ -290,6 +371,7 @@ int main(void)
 	test_pnm();
 	test_pnm_golden();
 	test_pnm_reject();
+	test_stb_formats();
 	test_xpm_transparent();
 
 	/* best-effort cleanup */
