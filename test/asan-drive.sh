@@ -19,13 +19,17 @@ WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 : > "$PIDFILE"
 : > "$LOG"
 
-# isolate everything we run from the real ~/GNUstep so the driver never
+# isolate everything we run from the real config root so the driver never
 # touches the user's defaults, dock state, session or cached pixmaps
 WMHOME=$(mktemp -d /tmp/asan-drive-wmhome.XXXXXX)
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
-if [ -d "$HOME/GNUstep/Defaults" ]; then
-    cp -Rp "$HOME/GNUstep/Defaults/." "$WMHOME/Defaults/" 2>/dev/null
-fi
+for seed in "$HOME/GNUstep/Defaults" \
+            "${XDG_CONFIG_HOME:-$HOME/.config}/WindowMaker/Defaults"; do
+    if [ -d "$seed" ]; then
+        cp -Rp "$seed/." "$WMHOME/Defaults/" 2>/dev/null
+        break
+    fi
+done
 export WMAKER_USER_ROOT="$WMHOME"
 
 cleanup() {

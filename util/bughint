@@ -26,7 +26,13 @@ cat ../config.cache ../Version >> sysinfo.txt 2> /dev/null
 cat config.cache Version >> sysinfo.txt 2> /dev/null
 
 echo "=============== configuration dir ===========" >> sysinfo.txt
-WDIR=$HOME/GNUstep/Defaults
+if test "x$WMAKER_USER_ROOT" != "x"; then
+	WDIR="$WMAKER_USER_ROOT/Defaults"
+elif [ -d "$HOME/GNUstep/Defaults" ]; then
+	WDIR="$HOME/GNUstep/Defaults"
+else
+	WDIR="${XDG_CONFIG_HOME:-$HOME/.config}/WindowMaker/Defaults"
+fi
 if [ -d $WDIR ]; then
 	for i in WMGLOBAL WMRootMenu WMState WMWindowAttributes WindowMaker; do
 		if [ -f $WDIR/$i ]; then

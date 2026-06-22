@@ -173,7 +173,7 @@ char *WMPathForResourceOfType(const char *resource, const char *ext)
 	}
 
 	snprintf(buffer, sizeof(buffer), "Applications/%s.app", WMApplication.applicationName);
-	path = checkFile(GETENV("WMAKER_USER_ROOT"), buffer, ext, resource);
+	path = checkFile(wusergnusteppath(), buffer, ext, resource);
 	if (path)
 		goto out;
 

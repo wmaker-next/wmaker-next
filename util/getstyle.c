@@ -140,7 +140,7 @@ static noreturn void print_help(int print_usage, int exitval)
 	printf("Usage: %s [-t] [-p] [-h] [-v] [file]\n", prog_name);
 	if (print_usage) {
 		puts("Retrieves style/theme configuration and outputs to "
-		     "~/" GSUSER_SUBDIR "/" USERDATA_SUBDIR THEME_SUBPATH "file" THEME_EXTDIR "style"
+		     "$WMAKER_USER_ROOT/" USERDATA_SUBDIR THEME_SUBPATH "file" THEME_EXTDIR "style"
 		     " or to stdout");
 		puts("");
 		puts("  -h, --help           display this help and exit");

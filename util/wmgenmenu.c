@@ -44,9 +44,9 @@ int main(int argc, char *argv[])
 	char *tmp, *theme_paths, *style_paths, *icon_paths;
 
 	tmp = wstrconcat("-noext ", PKGDATADIR);
-	theme_paths = wstrconcat(tmp, "/Themes $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes WITH setstyle");
-	style_paths = wstrconcat(tmp, "/Styles $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Styles WITH setstyle");
-	icon_paths = wstrconcat(tmp, "/IconSets $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/IconSets WITH seticons");
+	theme_paths = wstrconcat(tmp, "/Themes $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes WITH setstyle");
+	style_paths = wstrconcat(tmp, "/Styles $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Styles WITH setstyle");
+	icon_paths = wstrconcat(tmp, "/IconSets $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/IconSets WITH seticons");
 
 	struct option longopts[] = {
 		{ "version",		no_argument,	NULL,	'v' },
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 	L3Menu = WMCreatePLArray(
 		WMCreatePLString(_("Images")),
 		WMCreatePLString("OPEN_MENU"),
-		WMCreatePLString("-noext $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds WITH wmsetbg -u -t"),
+		WMCreatePLString("-noext $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds WITH wmsetbg -u -t"),
 		NULL
 	);
 	WMAddToPLArray(L2Menu, L3Menu);
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 	L2Menu = WMCreatePLArray(
 		WMCreatePLString(_("Save IconSet")),
 		WMCreatePLString("SHEXEC"),
-		WMCreatePLString("geticonset $HOME/" GSUSER_SUBDIR "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/IconSets/"
+		WMCreatePLString("geticonset $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/IconSets/"
 			"\"%a(IconSet name,Name to save icon set as)\""),
 		NULL
 	);
@@ -509,7 +509,7 @@ noreturn void print_help(int print_usage, int exitval)
 {
 	printf("Usage: %s [-h] [-v]\n", prog_name);
 	if (print_usage) {
-		puts("Writes a menu structure usable as ~/" GSUSER_SUBDIR "/" DEFAULTS_SUBDIR "/WMRootMenu to stdout");
+		puts("Writes a menu structure usable as $WMAKER_USER_ROOT/" DEFAULTS_SUBDIR "/WMRootMenu to stdout");
 		puts("");
 		puts("  -h, --help           display this help and exit");
 		puts("  -v, --version        output version information and exit");
