@@ -83,7 +83,7 @@ static void png_flush_memory(png_structp png_ptr)
 /*
  * Save RImage to PNG data in memory
  */
-Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_size)
+int RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_size)
 {
 	png_structp png_ptr;
 	png_infop png_info_ptr;
@@ -100,7 +100,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	if (!RImageDimensionsWithinLimits(img->width, img->height) ||
 	    (size_t)img->width > SIZE_MAX / (3 * sizeof(png_byte))) {
 		RErrorCode = RERR_BADIMAGEFILE;
-		return False;
+		return 0;
 	}
 	width = (int)img->width;
 	height = (int)img->height;
@@ -110,7 +110,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if (png_ptr == NULL) {
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
 	/* Initialize info structure */
@@ -118,7 +118,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	if (png_info_ptr == NULL) {
 		png_destroy_write_struct(&png_ptr, NULL);
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
 	/* Setup Exception handling */
@@ -127,7 +127,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 			free(png_data.buffer);
 		png_destroy_write_struct(&png_ptr, &png_info_ptr);
 		RErrorCode = RERR_INTERNAL;
-		return False;
+		return 0;
 	}
 
 	/* Set up memory I/O */
@@ -156,7 +156,7 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 			free(png_data.buffer);
 		png_destroy_write_struct(&png_ptr, &png_info_ptr);
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
 	/* Write image data */
@@ -188,13 +188,13 @@ Bool RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_
 	*out_buf = png_data.buffer;
 	*out_size = png_data.size;
 
-	return True;
+	return 1;
 }
 
 /*
  * Save RImage to PNG image
  */
-Bool RSavePNG(RImage *img, const char *filename, char *title)
+int RSavePNG(RImage *img, const char *filename, char *title)
 {
 	FILE *file;
 	unsigned char *png_data = NULL;
@@ -203,13 +203,13 @@ Bool RSavePNG(RImage *img, const char *filename, char *title)
 
 	if (!img || !filename) {
 		RErrorCode = RERR_BADIMAGEFILE;
-		return False;
+		return 0;
 	}
 
 	/* Use RSaveRawPNG to generate PNG data in memory */
 	if (!RSaveRawPNG(img, title, &png_data, &png_size)) {
 		/* Error code already set by RSaveRawPNG */
-		return False;
+		return 0;
 	}
 
 	/* Open file for writing */
@@ -217,7 +217,7 @@ Bool RSavePNG(RImage *img, const char *filename, char *title)
 	if (file == NULL) {
 		free(png_data);
 		RErrorCode = RERR_OPEN;
-		return False;
+		return 0;
 	}
 
 	/* Write PNG data to file */
@@ -228,10 +228,10 @@ Bool RSavePNG(RImage *img, const char *filename, char *title)
 	if (written != png_size) {
 		free(png_data);
 		RErrorCode = RERR_WRITE;
-		return False;
+		return 0;
 	}
 
 	/* Clean up */
 	free(png_data);
-	return True;
+	return 1;
 }

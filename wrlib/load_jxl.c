@@ -149,7 +149,7 @@ RImage *RLoadJXL(const char *file)
 
 		} else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
 			/* Allocate image with or without alpha */
-			image = RCreateImage(width, height, has_alpha ? True : False);
+			image = RCreateImage(width, height, has_alpha ? 1 : 0);
 			if (!image) {
 				RErrorCode = RERR_NOMEMORY;
 				goto error;

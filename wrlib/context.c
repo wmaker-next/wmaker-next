@@ -24,9 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/shm.h>
 
@@ -42,7 +39,7 @@ static const RContextAttributes DEFAULT_CONTEXT_ATTRIBS = {
 	0,
 	0,
 	0,
-	True,			/* use_shared_memory */
+	1,			/* use_shared_memory */
 	RMitchellFilter
 };
 
@@ -126,10 +123,10 @@ static xcb_visualtype_t *find_xcb_visual(xcb_screen_t *s, xcb_visualid_t visuali
 
 /*
  * Pick the deepest TrueColor visual on the screen, preferring exactly 24
- * over 30/32 so the common 8/8/8 packer applies. Returns False when the
+ * over 30/32 so the common 8/8/8 packer applies. Returns 0 when the
  * screen has no TrueColor visual at all (RCreateContextXCB then refuses).
  */
-static Bool bestContext(RContext *context)
+static int bestContext(RContext *context)
 {
 	xcb_depth_iterator_t di;
 	xcb_visualtype_iterator_t vi;
@@ -156,11 +153,11 @@ static Bool bestContext(RContext *context)
 		}
 	}
 	if (!best)
-		return False;
+		return 0;
 
 	context->xvisual = best;
 	context->xdepth = bestdepth;
-	return True;
+	return 1;
 }
 
 static uint32_t pixel_for(RContext *ctx, uint32_t r, uint32_t g, uint32_t b)
@@ -299,7 +296,7 @@ RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number, const RCont
 
 	if (!(context->attribs->flags & RC_UseSharedMemory)) {
 		context->attribs->flags |= RC_UseSharedMemory;
-		context->attribs->use_shared_memory = True;
+		context->attribs->use_shared_memory = 1;
 	}
 
 	context->flags.use_shared_pixmap = 0;
@@ -308,49 +305,9 @@ RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number, const RCont
 
 		r = xcb_shm_query_version_reply(xc, xcb_shm_query_version(xc), NULL);
 		if (!r)
-			context->attribs->use_shared_memory = False;
+			context->attribs->use_shared_memory = 0;
 		free(r);
 	}
-
-	return context;
-}
-
-/*
- * Xlib-facing constructor: callers in src/, WINGs and util/ still hold a
- * Display* and read context->visual / context->copy_gc / context->cmap for
- * their own XCreateWindow / XCopyArea calls, so build the context via the
- * xcb body above and then back-fill those fields from libX11's view of the
- * same connection. copy_gc is a fresh Xlib GC whose XID replaces the
- * xcb-created one so internals and externals share one server-side
- * resource. This wrapper and RPutXImage are the only libX11-referencing
- * functions left in the library and drop once every consumer reads the
- * xcb fields instead.
- */
-RContext *RCreateContext(Display *dpy, int screen_number, const RContextAttributes *attribs)
-{
-	RContext *context;
-	XVisualInfo templ, *vinfo;
-	XGCValues gcv;
-	int nret;
-
-	context = RCreateContextXCB(XGetXCBConnection(dpy), screen_number, attribs);
-	if (!context)
-		return NULL;
-
-	context->dpy = dpy;
-
-	templ.visualid = context->xvisual->visual_id;
-	vinfo = XGetVisualInfo(dpy, VisualIDMask, &templ, &nret);
-	if (vinfo) {
-		context->visual = vinfo[0].visual;
-		XFree(vinfo);
-	}
-
-	xcb_free_gc(context->xc, context->copy_xgc);
-	gcv.function = GXcopy;
-	gcv.graphics_exposures = False;
-	context->copy_gc = XCreateGC(dpy, context->drawable, GCFunction | GCGraphicsExposures, &gcv);
-	context->copy_xgc = (xcb_gcontext_t)XGContextFromGC(context->copy_gc);
 
 	return context;
 }
@@ -359,12 +316,6 @@ void RDestroyContext(RContext *context)
 {
 	if (context) {
 		RReleaseSharedSegment(context);
-		/* When the context was built via RCreateContext(Display*)
-		 * copy_xgc aliases copy_gc's server-side XID, so this frees
-		 * the server resource for both paths. The client-side _XGC
-		 * struct behind copy_gc is then orphaned, which is one small
-		 * allocation at process teardown and the price of keeping
-		 * this destructor free of libX11 calls. */
 		if (context->copy_xgc)
 			xcb_free_gc(context->xc, context->copy_xgc);
 		if (context->drawable && context->xscreen

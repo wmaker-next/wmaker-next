@@ -39,7 +39,7 @@ static int allocPixel(WMScreen *scr, XColor *xcolor)
 		rcolor.green = xcolor->green >> 8;
 		rcolor.blue = xcolor->blue >> 8;
 		rcolor.alpha = 0;
-		return RGetClosestXColor(scr->rcontext, &rcolor, xcolor);
+		return RGetClosestXColor(scr->rcontext, &rcolor, &xcolor->pixel);
 	}
 
 	return XAllocColor(scr->display, scr->colormap, xcolor);
@@ -57,7 +57,11 @@ static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned shor
 	rcolor.blue = blue >> 8;
 	rcolor.alpha = alpha >> 8;
 
-	if (!RGetClosestXColor(scr->rcontext, &rcolor, &xcolor))
+	xcolor.red = red;
+	xcolor.green = green;
+	xcolor.blue = blue;
+	xcolor.flags = DoRed | DoGreen | DoBlue;
+	if (!RGetClosestXColor(scr->rcontext, &rcolor, &xcolor.pixel))
 		return NULL;
 
 	if (scr->rcontext->vclass != TrueColor &&

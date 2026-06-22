@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <X11/Xlib.h>
 
 #include "wraster.h"
 #include "imgformat.h"
@@ -289,10 +288,10 @@ static int calculateCombineArea(RImage *des, int *sx, int *sy, unsigned int *swi
 	if (height > 0 && width > 0) {
 		*swidth = width;
 		*sheight = height;
-		return True;
+		return 1;
 	}
 
-	return False;
+	return 0;
 }
 
 void RCombineArea(RImage * image, RImage * src, int sx, int sy, unsigned width, unsigned height, int dx, int dy)

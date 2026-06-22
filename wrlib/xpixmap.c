@@ -27,6 +27,13 @@
 
 #include <xcb/xcb_image.h>
 
+/* RCreateImageFromXImage() reads a libX11 XImage via the XGetPixel macro
+ * from Xutil.h, which dispatches through the image's f.get_pixel function
+ * table set up by the caller's libX11 - this file does not call into
+ * libX11 itself */
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 #include "wraster.h"
 #include "imgformat.h"
 #include "xutil.h"

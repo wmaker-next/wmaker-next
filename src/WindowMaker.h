@@ -24,6 +24,7 @@
 #include "wconfig.h"
 #include <assert.h>
 #include <limits.h>
+#include <X11/Xutil.h>
 #include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
 #include "keytree.h"

@@ -1,5 +1,6 @@
 
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 #include "wraster.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -583,7 +584,7 @@ int main(int argc, char **argv)
 		attr.visualid = visualID;
 	}
 
-	ctx = RCreateContext(dpy, DefaultScreen(dpy), &attr);
+	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), &attr);
 
 	if (!ctx) {
 		printf("could not initialize graphics library context: %s\n", RMessageForError(RErrorCode));

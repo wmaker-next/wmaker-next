@@ -35,13 +35,13 @@
 /*
  * Returns the color of the pixel at coordinates (x, y) in "color".
  */
-Bool RGetPixel(RImage * image, int x, int y, RColor * color)
+int RGetPixel(RImage * image, int x, int y, RColor * color)
 {
 	int ofs;
 
 	assert(image != NULL);
 	if (x < 0 || x >= image->width || y < 0 || y >= image->height)
-		return False;
+		return 0;
 
 	if (image->format == RRGBAFormat) {
 		ofs = (y * image->width + x) * 4;
@@ -58,7 +58,7 @@ Bool RGetPixel(RImage * image, int x, int y, RColor * color)
 		color->alpha = 255;
 	}
 
-	return True;
+	return 1;
 }
 
 void RPutPixel(RImage *image, int x, int y, const RColor *color)
@@ -229,7 +229,7 @@ void ROperatePixels(RImage *image, RPixelOperation operation,
 	}
 }
 
-static Bool clipLineInRectangle(int xmin, int ymin, int xmax, int ymax, int *x1, int *y1, int *x2, int *y2)
+static int clipLineInRectangle(int xmin, int ymin, int xmax, int ymax, int *x1, int *y1, int *x2, int *y2)
 {
 #define TOP	(1<<0)
 #define BOT	(1<<1)
@@ -298,7 +298,7 @@ static int genericLine(RImage *image, int x0, int y0, int x1, int y1, const RCol
 	assert(image != NULL);
 
 	if (!clipLineInRectangle(0, 0, image->width - 1, image->height - 1, &x0, &y0, &x1, &y1))
-		return True;
+		return 1;
 
 	if (x0 < x1) {
 		du = x1 - x0;
@@ -378,17 +378,17 @@ static int genericLine(RImage *image, int x0, int y0, int x1, int y1, const RCol
 		}
 	}
 
-	return True;
+	return 1;
 }
 
 int RDrawLine(RImage * image, int x0, int y0, int x1, int y1, const RColor * color)
 {
-	return genericLine(image, x0, y0, x1, y1, color, RNormalOperation, False);
+	return genericLine(image, x0, y0, x1, y1, color, RNormalOperation, 0);
 }
 
 int ROperateLine(RImage *image, RPixelOperation operation, int x0, int y0, int x1, int y1, const RColor *color)
 {
-	return genericLine(image, x0, y0, x1, y1, color, operation, False);
+	return genericLine(image, x0, y0, x1, y1, color, operation, 0);
 }
 
 void RDrawLines(RImage *image, const RPoint *points, int npoints, RCoordinatesMode mode, const RColor *color)
@@ -413,7 +413,7 @@ void RDrawLines(RImage *image, const RPoint *points, int npoints, RCoordinatesMo
 			y2 += points[i - 1].y;
 		}
 		/* Don't draw pixels at junction points twice */
-		genericLine(image, x1, y1, x2, y2, color, RNormalOperation, True);
+		genericLine(image, x1, y1, x2, y2, color, RNormalOperation, 1);
 		x1 = x2;
 		y1 = y2;
 	}
@@ -453,7 +453,7 @@ void ROperateLines(RImage *image, RPixelOperation operation,
 			y2 += points[i - 1].y;
 		}
 		/* Don't draw pixels at junction points twice */
-		genericLine(image, x1, y1, x2, y2, color, operation, True);
+		genericLine(image, x1, y1, x2, y2, color, operation, 1);
 		x1 = x2;
 		y1 = y2;
 	}
@@ -474,7 +474,7 @@ void ROperateRectangle(RImage *image, RPixelOperation operation, int x0, int y0,
 	int y;
 
 	for (y = y0; y <= y1; y++) {
-		genericLine(image, x0, y, x1, y, color, operation, False);
+		genericLine(image, x0, y, x1, y, color, operation, 0);
 	}
 }
 
@@ -485,7 +485,7 @@ void RDrawSegments(RImage *image, const RSegment *segs, int nsegs, const RColor 
 	assert(segs != NULL);
 
 	for (i = 0; i < nsegs; i++) {
-		genericLine(image, segs->x1, segs->y1, segs->x2, segs->y2, color, RNormalOperation, False);
+		genericLine(image, segs->x1, segs->y1, segs->x2, segs->y2, color, RNormalOperation, 0);
 		segs++;
 	}
 }
@@ -497,7 +497,7 @@ void ROperateSegments(RImage *image, RPixelOperation operation, const RSegment *
 	assert(segs != NULL);
 
 	for (i = 0; i < nsegs; i++) {
-		genericLine(image, segs->x1, segs->y1, segs->x2, segs->y2, color, operation, False);
+		genericLine(image, segs->x1, segs->y1, segs->x2, segs->y2, color, operation, 0);
 		segs++;
 	}
 }

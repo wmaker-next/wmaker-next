@@ -132,7 +132,7 @@ static RImage *do_read_jpeg_file(struct jpeg_decompress_struct *cinfo, const cha
 	cinfo->do_fancy_upsampling = FALSE;
 	cinfo->do_block_smoothing = FALSE;
 	jpeg_calc_output_dimensions(cinfo);
-	image = RCreateImage(cinfo->image_width, cinfo->image_height, False);
+	image = RCreateImage(cinfo->image_width, cinfo->image_height, 0);
 	if (!image) {
 		RErrorCode = RERR_NOMEMORY;
 		goto abort_and_release_resources;

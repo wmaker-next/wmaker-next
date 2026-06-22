@@ -104,7 +104,7 @@ RImage *RLoadPNG(RContext *context, const char *file)
 
 	/* check for an alpha channel */
 	if (png_get_valid(png, pinfo, PNG_INFO_tRNS))
-		alpha = True;
+		alpha = 1;
 	else
 		alpha = (color_type & PNG_COLOR_MASK_ALPHA);
 

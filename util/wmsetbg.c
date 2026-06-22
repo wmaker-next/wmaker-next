@@ -31,6 +31,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xlib-xcb.h>
 #include <WINGs/WXProp.h>
 #include <string.h>
 #include <strings.h>
@@ -547,7 +548,7 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 			rcolor.red = color.red >> 8;
 			rcolor.green = color.green >> 8;
 			rcolor.blue = color.blue >> 8;
-			RGetClosestXColor(rc, &rcolor, &color);
+			RGetClosestXColor(rc, &rcolor, &color.pixel);
 		} else {
 			rcolor.red = 0;
 			rcolor.green = 0;
@@ -1410,7 +1411,7 @@ int main(int argc, char **argv)
 	initXinerama();
 
 	rattr.flags = RC_DefaultVisual;
-	rc = RCreateContext(dpy, scr, &rattr);
+	rc = RCreateContextXCB(XGetXCBConnection(dpy), scr, &rattr);
 	if (!rc) {
 		wfatal("could not initialize wrlib: %s", RMessageForError(RErrorCode));
 		quit(1);

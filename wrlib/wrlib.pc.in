@@ -9,5 +9,5 @@ Version: @VERSION@
 Requires: xcb
 Requires.private: xcb-shm xcb-image
 Libs: @lib_search_path@ -lwraster
-Libs.private: @GFXLIBS@ @MAGICKLIBS@ @XLIBS@ -lm
+Libs.private: @GFXLIBS@ @MAGICKLIBS@ -lm
 Cflags: @inc_search_path@

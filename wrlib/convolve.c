@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <X11/Xlib.h>
 
 #include "wraster.h"
 #include "wr_i18n.h"
@@ -47,7 +46,7 @@ int RBlurImage(RImage * image)
 	pptr = malloc(image->width * ch);
 	if (!pptr) {
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 #define MASK(prev, cur, next, ch)\
     (*(prev-ch) + *prev + *(prev+ch)\
@@ -138,7 +137,7 @@ int RBlurImage(RImage * image)
 
 	free(tmpp);
 
-	return True;
+	return 1;
 }
 
 /*
@@ -156,7 +155,7 @@ int RBlurImage(RImage * image)
  *	Both RRGBFormat and RRGBAFormat are handled, the alpha channel is
  *	blurred along with the colour channels.
  *
- *	Returns True on success, sets RErrorCode and returns False on
+ *	Returns 1 on success, sets RErrorCode and returns 0 on
  *	allocation failure.
  *----------------------------------------------------------------------
  */
@@ -169,7 +168,7 @@ int RStackBlurImage(RImage *image, unsigned radius)
 	int x, y, c, i, p, sp, ss, rbs, stride;
 
 	if (radius < 1)
-		return True;
+		return 1;
 	if (radius > 255)
 		radius = 255;
 
@@ -179,7 +178,7 @@ int RStackBlurImage(RImage *image, unsigned radius)
 	stride = w * ch;
 
 	if (w < 2 || h < 2)
-		return True;
+		return 1;
 
 	div = 2 * (int)radius + 1;
 	r1 = (int)radius + 1;
@@ -194,7 +193,7 @@ int RStackBlurImage(RImage *image, unsigned radius)
 		free(stack);
 		free(vmin);
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
 	/* horizontal pass: image->data -> tmp */
@@ -307,6 +306,6 @@ int RStackBlurImage(RImage *image, unsigned radius)
 	free(stack);
 	free(vmin);
 
-	return True;
+	return 1;
 }
 

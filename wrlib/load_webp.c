@@ -136,7 +136,7 @@ RImage *RLoadWEBP(const char *file_name)
 	}
 
 	if (features.has_alpha) {
-		image = RCreateImage(features.width, features.height, True);
+		image = RCreateImage(features.width, features.height, 1);
 		if (!image) {
 			RErrorCode = RERR_NOMEMORY;
 			free(raw_data);
@@ -146,7 +146,7 @@ RImage *RLoadWEBP(const char *file_name)
 		                         features.width * features.height * 4,
 		                         features.width * 4);
 	} else {
-		image = RCreateImage(features.width, features.height, False);
+		image = RCreateImage(features.width, features.height, 0);
 		if (!image) {
 			RErrorCode = RERR_NOMEMORY;
 			free(raw_data);

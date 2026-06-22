@@ -33,7 +33,7 @@ static void test_grayscale_rgb(void)
 	RImage *img;
 	unsigned char *d;
 
-	img = RCreateImage(2, 1, False);
+	img = RCreateImage(2, 1, 0);
 	CHECK(img != NULL);
 	if (!img)
 		return;
@@ -59,7 +59,7 @@ static void test_grayscale_rgba(void)
 	RImage *img;
 	unsigned char *d;
 
-	img = RCreateImage(1, 1, True);
+	img = RCreateImage(1, 1, 1);
 	CHECK(img != NULL);
 	if (!img)
 		return;
@@ -98,7 +98,7 @@ static void test_blur_flat(void)
 				return;
 			RFillImage(img, &fill);
 
-			CHECK(RStackBlurImage(img, r) == True);
+			CHECK(RStackBlurImage(img, r) == 1);
 
 			d = img->data;
 			n = img->width * img->height;
@@ -128,7 +128,7 @@ static void test_blur_impulse(void)
 
 	w = 31; h = 31; cx = w / 2; cy = h / 2;
 
-	img = RCreateImage(w, h, False);
+	img = RCreateImage(w, h, 0);
 	CHECK(img != NULL);
 	if (!img)
 		return;
@@ -139,7 +139,7 @@ static void test_blur_impulse(void)
 	off = (cy * w + cx) * ch;
 	d[off] = d[off + 1] = d[off + 2] = 255;
 
-	CHECK(RStackBlurImage(img, 5) == True);
+	CHECK(RStackBlurImage(img, 5) == 1);
 
 	c = d[off];
 	l = d[(cy * w + cx - 3) * ch];
@@ -164,17 +164,17 @@ static void test_blur_noop(void)
 {
 	RImage *img;
 
-	img = RCreateImage(4, 4, False);
+	img = RCreateImage(4, 4, 0);
 	CHECK(img != NULL);
 	if (!img)
 		return;
 
 	/* radius 0 and tiny images must succeed without touching data */
-	CHECK(RStackBlurImage(img, 0) == True);
+	CHECK(RStackBlurImage(img, 0) == 1);
 	RReleaseImage(img);
 
-	img = RCreateImage(1, 1, True);
-	CHECK(RStackBlurImage(img, 10) == True);
+	img = RCreateImage(1, 1, 1);
+	CHECK(RStackBlurImage(img, 10) == 1);
 	RReleaseImage(img);
 }
 

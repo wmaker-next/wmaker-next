@@ -39,15 +39,20 @@
 
 
 /* version of the header for the library */
-#define WRASTER_HEADER_VERSION	25
+#define WRASTER_HEADER_VERSION	26
 
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+#include <X11/X.h>
 #include <xcb/xcb.h>
 
 /* forward-declared so this header does not pull in <xcb/xcb_image.h> */
 typedef struct xcb_image_t xcb_image_t;
+
+/* RCreateImageFromXImage() takes a libX11 XImage* for the few callers in
+ * src/ that still XGetImage() themselves, the entry point reads it via the
+ * struct's f.get_pixel function table so the library does not link libX11.
+ * Forward-declare so the public header does not pull in <X11/Xlib.h>. */
+struct _XImage;
 
 
 /*
@@ -139,21 +144,16 @@ typedef struct RContextAttributes {
  * describes a screen in terms of depth and visual. Only TrueColor visuals
  * are supported, indexed-colour displays are no longer handled.
  *
- * The Xlib-typed fields (dpy, visual, copy_gc) are populated only when the
- * context was constructed from a Display* via RCreateContext() and exist for
- * callers that still issue their own Xlib drawing against the same visual.
- * The library itself reads the xcb handles only.
+ * cmap/drawable are XIDs and read fine from either side, the libX11 Visual*
+ * for the chosen visual is no longer carried here so an Xlib caller that
+ * needs one resolves it itself from xvisual->visual_id.
  */
 typedef struct RContext {
-    Display *dpy;
     int screen_number;
     Colormap cmap;
 
     RContextAttributes *attribs;
 
-    GC copy_gc;
-
-    Visual *visual;
     int depth;
     Window drawable;               /* window to pass for XCreatePixmap().*/
     /* generally = root */
@@ -166,11 +166,10 @@ typedef struct RContext {
     int green_offset;
     int blue_offset;
 
-    /* xcb view of the same connection/screen/visual, always populated */
     xcb_connection_t *xc;
     xcb_screen_t *xscreen;
     xcb_visualtype_t *xvisual;
-    xcb_gcontext_t copy_xgc;       /* same XID as copy_gc when dpy is set */
+    xcb_gcontext_t copy_xgc;
     uint8_t xdepth;
 
     struct {
@@ -240,11 +239,8 @@ typedef struct RImage {
 
 /*
  * internal wrapper for the wire image. Used for shm abstraction.
- * ximg owns the pixel storage; image is left NULL on the xcb path and
- * exists only for legacy callers of RCreateImageFromXImage().
  */
 typedef struct RXImage {
-    XImage *image;
     xcb_image_t *ximg;
 
     /* Private data. Do not access */
@@ -338,16 +334,8 @@ char *RGetImageFileFormat(const char *file)
 	__wrlib_useresult __wrlib_nonnull(1);
 
 /*
- * Xlib contexts
- */
-RContext *RCreateContext(Display *dpy, int screen_number,
-                         const RContextAttributes *attribs)
-	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
-
-/*
- * pure-xcb constructor; the Xlib-typed fields (dpy, visual, copy_gc) are
- * left NULL so a caller using this entry point must read xc/xvisual/
- * copy_xgc instead
+ * Context. A caller holding only a libX11 Display* passes
+ * XGetXCBConnection(dpy) here, the library does not link libX11.
  */
 RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number,
                             const RContextAttributes *attribs)
@@ -355,7 +343,7 @@ RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number,
 
 void RDestroyContext(RContext *context);
 
-Bool RGetClosestXColor(RContext *context, const RColor *color, XColor *retColor)
+int RGetClosestXColor(RContext *context, const RColor *color, unsigned long *pixel)
 	__wrlib_nonnull(1, 2, 3);
 
 /*
@@ -364,7 +352,7 @@ Bool RGetClosestXColor(RContext *context, const RColor *color, XColor *retColor)
 RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 	__wrlib_useresult __wrlib_nonalias;
 
-RImage *RCreateImageFromXImage(RContext *context, XImage *image, XImage *mask)
+RImage *RCreateImageFromXImage(RContext *context, struct _XImage *image, struct _XImage *mask)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
 RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask)
@@ -388,13 +376,13 @@ RImage *RGetImageFromXPMData(RContext *context, char **xpmData)
 /*
  * RImage storing
  */
-Bool RSaveImage(RImage *image, const char *filename, const char *format)
+int RSaveImage(RImage *image, const char *filename, const char *format)
 	__wrlib_nonnull(1, 2, 3);
 
-Bool RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
+int RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
 	__wrlib_nonnull(1, 2, 3, 4);
 
-Bool RSaveTitledImage(RImage *image, const char *filename, const char *format, char *title)
+int RSaveTitledImage(RImage *image, const char *filename, const char *format, char *title)
 	__wrlib_nonnull(1, 2, 3);
 
 /*
@@ -456,7 +444,7 @@ RImage* RMakeCenteredImage(RImage *image, unsigned width, unsigned height,
 /*
  * Drawing
  */
-Bool RGetPixel(RImage *image, int x, int y, RColor *color)
+int RGetPixel(RImage *image, int x, int y, RColor *color)
 	__wrlib_nonnull(1, 4);
 
 void RPutPixel(RImage *image, int x, int y, const RColor *color)
@@ -563,10 +551,10 @@ RXImage *RGetXImage(RContext *context, Drawable d, int x, int y,
 void RDestroyXImage(RContext *context, RXImage *ximage)
 	__wrlib_nonnull(1, 2);
 
-void RPutXImage(RContext *context, Drawable d, GC gc, RXImage *ximage,
+void RPutXImage(RContext *context, Drawable d, xcb_gcontext_t gc, RXImage *ximage,
                 int src_x, int src_y, int dest_x, int dest_y,
                 unsigned width, unsigned height)
-	__wrlib_nonnull(1, 3);
+	__wrlib_nonnull(1);
 
 /* do not free the returned string! */
 const char *RMessageForError(int errorCode)

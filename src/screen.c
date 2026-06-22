@@ -699,7 +699,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		rattr.visualid = getWVisualID(screen_number);
 	}
 
-	scr->rcontext = RCreateContext(dpy, screen_number, &rattr);
+	scr->rcontext = RCreateContextXCB(xconn, screen_number, &rattr);
 	if (scr->rcontext == NULL) {
 		wfatal(_("can't create Context on screen %d, %s"),
 		       screen_number, RMessageForError(RErrorCode));

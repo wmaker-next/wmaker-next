@@ -78,9 +78,9 @@ static XPMColor *lookfor(XPMColor * list, int index)
  *
  * list is a binary search list. The unbalancing problem is just ignored.
  *
- * Returns False on error
+ * Returns 0 on error
  */
-static Bool addcolor(XPMColor ** list, unsigned r, unsigned g, unsigned b, int *colors)
+static int addcolor(XPMColor ** list, unsigned r, unsigned g, unsigned b, int *colors)
 {
 	XPMColor *tmpc;
 	XPMColor *newc;
@@ -91,7 +91,7 @@ static Bool addcolor(XPMColor ** list, unsigned r, unsigned g, unsigned b, int *
 	tmpc = lookfor(*list, index);
 
 	if (tmpc)
-		return True;
+		return 1;
 
 	newc = malloc(sizeof(XPMColor));
 
@@ -99,7 +99,7 @@ static Bool addcolor(XPMColor ** list, unsigned r, unsigned g, unsigned b, int *
 
 		RErrorCode = RERR_NOMEMORY;
 
-		return False;
+		return 0;
 	}
 
 	newc->red = r;
@@ -110,7 +110,7 @@ static Bool addcolor(XPMColor ** list, unsigned r, unsigned g, unsigned b, int *
 
 	(*colors)++;
 
-	return True;
+	return 1;
 }
 
 static char *index2str(char *buffer, int index, int charsPerPixel)
@@ -153,7 +153,7 @@ static void freecolormap(XPMColor * colormap)
 }
 
 /* save routine is common to internal support and library support */
-Bool RSaveXPM(RImage * image, const char *filename)
+int RSaveXPM(RImage * image, const char *filename)
 {
 	FILE *file;
 	int x, y;
@@ -170,7 +170,7 @@ Bool RSaveXPM(RImage * image, const char *filename)
 	file = fopen(filename, "wb+");
 	if (!file) {
 		RErrorCode = RERR_OPEN;
-		return False;
+		return 0;
 	}
 
 	fprintf(file, "/* XPM */\n");
@@ -277,5 +277,5 @@ Bool RSaveXPM(RImage * image, const char *filename)
 
 	freecolormap(colormap);
 
-	return ok ? True : False;
+	return ok ? 1 : 0;
 }

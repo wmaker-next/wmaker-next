@@ -104,7 +104,7 @@ static RImage *renderHGradient(unsigned width, unsigned height, int r0, int g0, 
 	RImage *image;
 	unsigned char *ptr;
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -194,7 +194,7 @@ static RImage *renderVGradient(unsigned width, unsigned height, int r0, int g0, 
 	RImage *image;
 	unsigned char *ptr;
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -243,7 +243,7 @@ static RImage *renderDGradient(unsigned width, unsigned height, int r0, int g0, 
 	else if (height == 1)
 		return renderHGradient(width, height, r0, g0, b0, rf, gf, bf);
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -280,7 +280,7 @@ static RImage *renderMHGradient(unsigned width, unsigned height, RColor ** color
 
 	assert(count > 2);
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -342,7 +342,7 @@ static RImage *renderMVGradient(unsigned width, unsigned height, RColor ** color
 
 	assert(count > 2);
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -405,7 +405,7 @@ static RImage *renderMDGradient(unsigned width, unsigned height, RColor ** color
 	else if (height == 1)
 		return renderMHGradient(width, height, colors, count);
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}
@@ -449,7 +449,7 @@ RImage *RRenderInterwovenGradient(unsigned width, unsigned height,
 	RImage *image;
 	unsigned char *ptr;
 
-	image = RCreateImage(width, height, False);
+	image = RCreateImage(width, height, 0);
 	if (!image) {
 		return NULL;
 	}

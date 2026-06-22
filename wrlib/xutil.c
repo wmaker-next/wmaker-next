@@ -339,9 +339,9 @@ void r_put_ximage(RContext *context, xcb_drawable_t d, xcb_gcontext_t gc, RXImag
 }
 
 void
-RPutXImage(RContext * context, Drawable d, GC gc, RXImage * ximage, int src_x,
+RPutXImage(RContext * context, Drawable d, xcb_gcontext_t gc, RXImage * ximage, int src_x,
 	   int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
 {
-	r_put_ximage(context, d, (xcb_gcontext_t)XGContextFromGC(gc), ximage,
+	r_put_ximage(context, d, gc, ximage,
 		     src_x, src_y, dest_x, dest_y, width, height);
 }

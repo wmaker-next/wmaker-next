@@ -100,16 +100,16 @@ void RReleaseMagick(void);
 /*
  * Function for Saving in a specific format
  */
-Bool RSaveXPM(RImage *image, const char *filename);
+int RSaveXPM(RImage *image, const char *filename);
 
 #ifdef USE_PNG
-Bool RSavePNG(RImage *image, const char *filename, char *title);
-Bool RSaveRawPNG(RImage *image, char *title, unsigned char **out_buf, size_t *out_size);
+int RSavePNG(RImage *image, const char *filename, char *title);
+int RSaveRawPNG(RImage *image, char *title, unsigned char **out_buf, size_t *out_size);
 #endif
 
 #ifdef USE_JPEG
-Bool RSaveJPEG(RImage *image, const char *filename, char *title);
-Bool RSaveRawJPEG(RImage *image, char *title, unsigned char **out_buf, size_t *out_size);
+int RSaveJPEG(RImage *image, const char *filename, char *title);
+int RSaveRawJPEG(RImage *image, char *title, unsigned char **out_buf, size_t *out_size);
 #endif
 
 /*

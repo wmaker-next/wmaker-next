@@ -6,6 +6,7 @@
 
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xlib-xcb.h>
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
 
@@ -561,7 +562,8 @@ WMScreen *WMCreateSimpleApplicationScreen(Display * display)
 
 WMScreen *WMCreateScreen(Display * display, int screen)
 {
-	return WMCreateScreenWithRContext(display, screen, RCreateContext(display, screen, NULL));
+	return WMCreateScreenWithRContext(display, screen,
+			RCreateContextXCB(XGetXCBConnection(display), screen, NULL));
 }
 
 WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * context)

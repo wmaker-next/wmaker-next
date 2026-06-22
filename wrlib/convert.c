@@ -183,7 +183,7 @@ int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 
 	ximg = image2TrueColor(context, image);
 	if (!ximg) {
-		return False;
+		return 0;
 	}
 
 	*pixmap = xcb_generate_id(context->xc);
@@ -192,7 +192,7 @@ int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 	r_put_ximage(context, *pixmap, context->copy_xgc, ximg, 0, 0, 0, 0, image->width, image->height);
 	RDestroyXImage(context, ximg);
 
-	return True;
+	return 1;
 }
 
 int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixmap * mask, int threshold)
@@ -207,17 +207,17 @@ int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixma
 	assert(mask != NULL);
 
 	if (!RConvertImage(context, image, pixmap))
-		return False;
+		return 0;
 
 	if (image->format == RRGBFormat) {
 		*mask = None;
-		return True;
+		return 1;
 	}
 
 	ximg = image2Bitmap(context, image, threshold);
 
 	if (!ximg) {
-		return False;
+		return 0;
 	}
 	*mask = xcb_generate_id(context->xc);
 	xcb_create_pixmap(context->xc, 1, *mask, context->drawable,
@@ -232,10 +232,10 @@ int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixma
 	RDestroyXImage(context, ximg);
 	xcb_free_gc(context->xc, gc);
 
-	return True;
+	return 1;
 }
 
-Bool RGetClosestXColor(RContext * context, const RColor * color, XColor * retColor)
+int RGetClosestXColor(RContext * context, const RColor * color, unsigned long *pixel)
 {
 	unsigned short rmask, gmask, bmask;
 	unsigned short roffs, goffs, boffs;
@@ -255,17 +255,12 @@ Bool RGetClosestXColor(RContext * context, const RColor * color, XColor * retCol
 
 	if (rtable == NULL || gtable == NULL || btable == NULL) {
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
-	retColor->pixel = (((unsigned long) rtable[color->red])   << roffs)
-		       |  (((unsigned long) gtable[color->green]) << goffs)
-		       |  (((unsigned long) btable[color->blue])  << boffs);
+	*pixel = (((unsigned long) rtable[color->red])   << roffs)
+	       | (((unsigned long) gtable[color->green]) << goffs)
+	       | (((unsigned long) btable[color->blue])  << boffs);
 
-	retColor->red = color->red << 8;
-	retColor->green = color->green << 8;
-	retColor->blue = color->blue << 8;
-	retColor->flags = DoRed | DoGreen | DoBlue;
-
-	return True;
+	return 1;
 }

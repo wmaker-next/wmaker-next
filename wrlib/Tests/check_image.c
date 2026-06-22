@@ -48,7 +48,7 @@ static void put_rgb(RImage *img, int x, int y, int r, int g, int b)
  * permutation is detectable: (0,0)=10 (1,0)=20 (0,1)=30 (1,1)=40 */
 static RImage *make_marker_image(void)
 {
-	RImage *img = RCreateImage(2, 2, False);
+	RImage *img = RCreateImage(2, 2, 0);
 
 	put_rgb(img, 0, 0, 10, 0, 0);
 	put_rgb(img, 1, 0, 20, 0, 0);
@@ -62,14 +62,14 @@ static void test_create_limits(void)
 	RImage *img;
 
 	RErrorCode = RERR_NONE;
-	CHECK(RCreateImage(0, 4, False) == NULL);
+	CHECK(RCreateImage(0, 4, 0) == NULL);
 	CHECK(RErrorCode == RERR_NOMEMORY);
 
-	CHECK(RCreateImage(4, 0, False) == NULL);
-	CHECK(RCreateImage(20001, 1, False) == NULL);
-	CHECK(RCreateImage(1, 20001, True) == NULL);
+	CHECK(RCreateImage(4, 0, 0) == NULL);
+	CHECK(RCreateImage(20001, 1, 0) == NULL);
+	CHECK(RCreateImage(1, 20001, 1) == NULL);
 
-	img = RCreateImage(20000, 1, False);
+	img = RCreateImage(20000, 1, 0);
 	CHECK(img != NULL);
 	if (img)
 		RReleaseImage(img);
@@ -109,7 +109,7 @@ static void test_subimage(void)
 	RImage *src, *sub;
 	int x, y;
 
-	src = RCreateImage(8, 8, True);
+	src = RCreateImage(8, 8, 1);
 	for (y = 0; y < 8; y++)
 		for (x = 0; x < 8; x++) {
 			unsigned char *p = pixel(src, x, y);
@@ -137,7 +137,7 @@ static void test_scale(void)
 {
 	RImage *src, *out;
 
-	src = RCreateImage(2, 2, True);
+	src = RCreateImage(2, 2, 1);
 	pixel(src, 0, 0)[0] = 50;  pixel(src, 0, 0)[3] = 200;
 	pixel(src, 1, 0)[0] = 60;  pixel(src, 1, 0)[3] = 200;
 	pixel(src, 0, 1)[0] = 70;  pixel(src, 0, 1)[3] = 200;
@@ -173,7 +173,7 @@ static void test_scale(void)
 	/* a flat-colour source upscales to the same flat colour at every
 	 * pixel regardless of filter (no overshoot, no edge bleed) */
 	RReleaseImage(src);
-	src = RCreateImage(4, 4, False);
+	src = RCreateImage(4, 4, 0);
 	memset(src->data, 90, 4 * 4 * 3);
 	out = RSmoothScaleImage(src, 13, 7);
 	CHECK(out && out->format == RRGBFormat);
@@ -237,7 +237,7 @@ static void test_rotate(void)
 	RReleaseImage(src);
 
 	/* non-square source, 90 degrees swaps width and height */
-	src = RCreateImage(3, 1, False);
+	src = RCreateImage(3, 1, 0);
 	put_rgb(src, 0, 0, 1, 0, 0);
 	put_rgb(src, 1, 0, 2, 0, 0);
 	put_rgb(src, 2, 0, 3, 0, 0);
@@ -323,7 +323,7 @@ static void test_combine_color(void)
 	bg.red = 100; bg.green = 100; bg.blue = 100; bg.alpha = 255;
 
 	/* RGB images have no alpha to flatten, so the call is a no-op */
-	img = RCreateImage(1, 1, False);
+	img = RCreateImage(1, 1, 0);
 	put_rgb(img, 0, 0, 50, 60, 70);
 	RCombineImageWithColor(img, &bg);
 	CHECK(pixel(img, 0, 0)[0] == 50);
@@ -331,7 +331,7 @@ static void test_combine_color(void)
 	CHECK(pixel(img, 0, 0)[2] == 70);
 	RReleaseImage(img);
 
-	img = RCreateImage(1, 2, True);
+	img = RCreateImage(1, 2, 1);
 	p = pixel(img, 0, 0);
 	p[0] = 200; p[1] = 0; p[2] = 0; p[3] = 255;
 	p = pixel(img, 0, 1);
@@ -360,7 +360,7 @@ static void test_blend_endpoints(void)
 	/* RPutPixel: alpha 0 must leave the destination untouched, alpha 255
 	 * must replace it exactly. The /256 divisor that used to be here gave
 	 * 0xfe for both 0xff*255/256 and 0x12*255/256+0xff*0/256. */
-	dst = RCreateImage(2, 1, True);
+	dst = RCreateImage(2, 1, 1);
 	RFillImage(dst, &white);
 	RPutPixel(dst, 0, 0, &over0);
 	RPutPixel(dst, 1, 0, &over1);
@@ -372,7 +372,7 @@ static void test_blend_endpoints(void)
 
 	/* ROperatePixel(RNormalOperation) on an RGB image must not write past
 	 * the blue byte into the next pixel's red */
-	dst = RCreateImage(2, 1, False);
+	dst = RCreateImage(2, 1, 0);
 	put_rgb(dst, 0, 0, 0xff, 0xff, 0xff);
 	put_rgb(dst, 1, 0, 0x77, 0x88, 0x99);
 	ROperatePixel(dst, RNormalOperation, 0, 0, &over0);
@@ -382,10 +382,10 @@ static void test_blend_endpoints(void)
 
 	/* RCombineImages: alpha-255 src over RGB dst must copy exactly,
 	 * alpha-0 src must leave dst untouched */
-	dst = RCreateImage(2, 1, False);
+	dst = RCreateImage(2, 1, 0);
 	put_rgb(dst, 0, 0, 0xff, 0xff, 0xff);
 	put_rgb(dst, 1, 0, 0xff, 0xff, 0xff);
-	src = RCreateImage(2, 1, True);
+	src = RCreateImage(2, 1, 1);
 	p = pixel(src, 0, 0);
 	p[0] = 0x33; p[1] = 0x66; p[2] = 0x99; p[3] = 0xff;
 	p = pixel(src, 1, 0);

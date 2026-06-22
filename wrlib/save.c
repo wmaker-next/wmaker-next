@@ -21,7 +21,6 @@
 
 #include <config.h>
 
-#include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -34,12 +33,12 @@
 #include "imgformat.h"
 #include "wr_i18n.h"
 
-Bool RSaveImage(RImage *image, const char *filename, const char *format)
+int RSaveImage(RImage *image, const char *filename, const char *format)
 {
 	return RSaveTitledImage(image, filename, format, NULL);
 }
 
-Bool RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
+int RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
 {
 #ifdef USE_PNG
 	if (strcasecmp(format, "PNG") == 0)
@@ -55,10 +54,10 @@ Bool RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, s
 #endif
 
 	RErrorCode = RERR_BADFORMAT;
-	return False;
+	return 0;
 }
 
-Bool RSaveTitledImage(RImage *image, const char *filename, const char *format, char *title)
+int RSaveTitledImage(RImage *image, const char *filename, const char *format, char *title)
 {
 #ifdef USE_PNG
 	if (strcasecmp(format, "PNG") == 0)
@@ -75,5 +74,5 @@ Bool RSaveTitledImage(RImage *image, const char *filename, const char *format, c
 		return RSaveXPM(image, filename);
 
 	RErrorCode = RERR_BADFORMAT;
-	return False;
+	return 0;
 }

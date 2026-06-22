@@ -1,5 +1,6 @@
 
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 #include "wraster.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +26,7 @@ int main(int argc, char **argv)
 	}
 
 	attr.flags = 0;
-	ctx = RCreateContext(dpy, DefaultScreen(dpy), &attr);
+	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), &attr);
 
 	if (argc < 2)
 		img = RGetImageFromXPMData(ctx, image_name);

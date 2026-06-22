@@ -82,7 +82,7 @@ static void jpeg_term_mem_destination(j_compress_ptr cinfo)
  *  Save RImage to JPEG data in memory
  */
 
-Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out_size)
+int RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out_size)
 {
 	int x, y;
 	unsigned char *buffer;
@@ -101,7 +101,7 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 	    (size_t)img->width > SIZE_MAX / 3 ||
 	    (size_t)img->height > SIZE_MAX / ((size_t)img->width * 3)) {
 		RErrorCode = RERR_BADIMAGEFILE;
-		return False;
+		return 0;
 	}
 
 	/* collect separate RGB values to a buffer */
@@ -110,7 +110,7 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 	buffer = malloc(buffer_size);
 	if (!buffer) {
 		RErrorCode = RERR_NOMEMORY;
-		return False;
+		return 0;
 	}
 
 	for (y = 0; y < img->height; y++) {
@@ -173,14 +173,14 @@ Bool RSaveRawJPEG(RImage *img, char *title, unsigned char **out_buf, size_t *out
 	/* Clean */
 	free(buffer);
 
-	return True;
+	return 1;
 }
 
 /*
  *  Save RImage to JPEG file
  */
 
-Bool RSaveJPEG(RImage *img, const char *filename, char *title)
+int RSaveJPEG(RImage *img, const char *filename, char *title)
 {
 	FILE *file;
 	unsigned char *jpeg_data;
@@ -189,7 +189,7 @@ Bool RSaveJPEG(RImage *img, const char *filename, char *title)
 
 	/* Generate JPEG data in memory */
 	if (!RSaveRawJPEG(img, title, &jpeg_data, &jpeg_size)) {
-		return False;
+		return 0;
 	}
 
 	/* Write to file */
@@ -197,7 +197,7 @@ Bool RSaveJPEG(RImage *img, const char *filename, char *title)
 	if (!file) {
 		free(jpeg_data);
 		RErrorCode = RERR_OPEN;
-		return False;
+		return 0;
 	}
 
 	written = fwrite(jpeg_data, 1, jpeg_size, file);
@@ -206,8 +206,8 @@ Bool RSaveJPEG(RImage *img, const char *filename, char *title)
 
 	if (written != jpeg_size) {
 		RErrorCode = RERR_WRITE;
-		return False;
+		return 0;
 	}
 
-	return True;
+	return 1;
 }

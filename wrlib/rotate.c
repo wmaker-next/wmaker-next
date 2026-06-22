@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
 
 #include "wraster.h"
 #include "rotate.h"
@@ -351,7 +350,7 @@ static RImage *rotate_image_any(RImage *source, float angle)
 	nheight = ceil(abs(sin(angle) * image->height))
 	    + ceil(abs(cos(WM_PI / 2 - angle) * image->height));
 
-	img = RCreateImage(nwidth, nheight, True);
+	img = RCreateImage(nwidth, nheight, 1);
 	if (!img)
 		return NULL;
 

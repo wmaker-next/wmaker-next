@@ -21,10 +21,10 @@
 
 #include <config.h>
 
-#include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <X11/xpm.h>
 
 #include "wraster.h"
@@ -32,10 +32,52 @@
 #include "wr_i18n.h"
 
 
+/*
+ * Parse the #rgb / #rrggbb / #rrrrggggbbbb forms locally, those cover the
+ * vast majority of libXpm colour entries.  Anything else (named colours)
+ * goes to the server via xcb_lookup_color so the colortable still resolves
+ * "white"/"black"/etc without a libX11 Display*.
+ */
+static int xpm_parse_color(RContext *context, const char *spec,
+			   unsigned char *r, unsigned char *g, unsigned char *b)
+{
+	xcb_lookup_color_reply_t *reply;
+	size_t len;
+
+	if (spec[0] == '#') {
+		unsigned int v[12], n;
+
+		for (n = 0; n < 12 && isxdigit((unsigned char)spec[n + 1]); n++)
+			v[n] = isdigit((unsigned char)spec[n + 1]) ? spec[n + 1] - '0'
+				: (tolower((unsigned char)spec[n + 1]) - 'a' + 10);
+		if (n == 3) {
+			*r = v[0] * 0x11; *g = v[1] * 0x11; *b = v[2] * 0x11;
+			return 1;
+		}
+		if (n == 6 || n == 9 || n == 12) {
+			n /= 3;
+			*r = (v[0] << 4) | v[1];
+			*g = (v[n] << 4) | v[n + 1];
+			*b = (v[2 * n] << 4) | v[2 * n + 1];
+			return 1;
+		}
+		return 0;
+	}
+
+	len = strlen(spec);
+	reply = xcb_lookup_color_reply(context->xc,
+			xcb_lookup_color(context->xc, context->cmap, len, spec), NULL);
+	if (!reply)
+		return 0;
+	*r = reply->exact_red >> 8;
+	*g = reply->exact_green >> 8;
+	*b = reply->exact_blue >> 8;
+	free(reply);
+	return 1;
+}
+
 static RImage *create_rimage_from_xpm(RContext *context, XpmImage xpm)
 {
-	Display *dpy = context->dpy;
-	Colormap cmap = context->cmap;
 	RImage *image;
 	unsigned char *color_table[4];
 	unsigned char *data;
@@ -51,7 +93,7 @@ static RImage *create_rimage_from_xpm(RContext *context, XpmImage xpm)
 		RErrorCode = RERR_BADIMAGEFILE;
 		return NULL;
 	}
-	image = RCreateImage(xpm.width, xpm.height, True);
+	image = RCreateImage(xpm.width, xpm.height, 1);
 	if (!image)
 		return NULL;
 
@@ -70,7 +112,7 @@ static RImage *create_rimage_from_xpm(RContext *context, XpmImage xpm)
 	}
 
 	for (i = 0; i < xpm.ncolors; i++) {
-		XColor xcolor;
+		unsigned char cr, cg, cb;
 		char *color = NULL;
 
 		if (xpm.colorTable[i].c_color)
@@ -99,10 +141,10 @@ static RImage *create_rimage_from_xpm(RContext *context, XpmImage xpm)
 			color_table[3][i] = 0;
 			continue;
 		}
-		if (XParseColor(dpy, cmap, color, &xcolor)) {
-			color_table[0][i] = xcolor.red >> 8;
-			color_table[1][i] = xcolor.green >> 8;
-			color_table[2][i] = xcolor.blue >> 8;
+		if (xpm_parse_color(context, color, &cr, &cg, &cb)) {
+			color_table[0][i] = cr;
+			color_table[1][i] = cg;
+			color_table[2][i] = cb;
 			color_table[3][i] = 0xff;
 		} else {
 			color_table[0][i] = 0xbe;

@@ -8,6 +8,7 @@
 #include <config.h>
 
 #include <X11/Xproto.h>
+#include <X11/Xutil.h>
 
 #include <WINGs/WINGs.h>
 #include <stdlib.h>

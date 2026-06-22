@@ -2865,7 +2865,7 @@ int main(int argc, char **argv)
 	max_height = DisplayHeight(dpy, screen_num);
 
 	attr.flags = 0;
-	ctx = RCreateContext(dpy, screen_num, &attr);
+	ctx = RCreateContextXCB(XGetXCBConnection(dpy), screen_num, &attr);
 
 	if (argc < 2) {
 		argv[1] = ".";

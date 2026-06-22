@@ -22,7 +22,7 @@ check_image_LDADD = $(top_builddir)/wrlib/libwraster.la
 # round-trips RImage -> Pixmap -> RImage so it needs a server, exits 77
 # (SKIP) without one so make check stays X-free
 check_xside_SOURCES = check_xside.c
-check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@ @XLIBS@
+check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@ @XLIBS@ -lX11-xcb
 
 EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
@@ -30,7 +30,7 @@ EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 
 AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. $(DFLAGS) @HEADER_SEARCH_PATH@
 
-LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@
+LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@ -lX11-xcb
 
 testdraw_SOURCES = testdraw.c
 testdraw_LDADD = $(LIBLIST)

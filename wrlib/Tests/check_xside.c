@@ -56,7 +56,7 @@ int main(void)
 		fprintf(stderr, "SKIP: no display\n");
 		return 77;
 	}
-	ctx = RCreateContext(dpy, DefaultScreen(dpy), NULL);
+	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), NULL);
 	if (!ctx) {
 		fprintf(stderr, "SKIP: RCreateContext failed (%s)\n", RMessageForError(RErrorCode));
 		return 77;
@@ -68,7 +68,7 @@ int main(void)
 
 	/* 17x13 so the stride padding is exercised, four corners get
 	 * distinct primaries and the centre a mid-grey */
-	src = RCreateImage(17, 13, True);
+	src = RCreateImage(17, 13, 1);
 	RFillImage(src, &wht);
 	for (y = 0; y < 6; y++)
 		for (x = 0; x < 8; x++)
@@ -87,7 +87,7 @@ int main(void)
 		fprintf(stderr, "FAIL: RConvertImage (%s)\n", RMessageForError(RErrorCode));
 		return 1;
 	}
-	XSync(dpy, False);
+	XSync(dpy, 0);
 
 	back = RCreateImageFromDrawable(ctx, pix, None);
 	if (!back) {
@@ -127,7 +127,7 @@ int main(void)
 		fprintf(stderr, "FAIL: RConvertImageMask (%s)\n", RMessageForError(RErrorCode));
 		return 1;
 	}
-	XSync(dpy, False);
+	XSync(dpy, 0);
 	back2 = RCreateImageFromDrawable(ctx, pix, mask);
 	if (!back2 || back2->format != RRGBAFormat) {
 		fprintf(stderr, "FAIL: RCreateImageFromDrawable+mask\n");
@@ -147,17 +147,12 @@ int main(void)
 	RReleaseImage(back2);
 	RDestroyContext(ctx);
 
-	/* RCreateContextXCB on the same connection: dpy/visual/copy_gc must
-	 * stay NULL, the round-trip must still work */
+	/* second RCreateContextXCB on the same connection still round-trips */
 	xc = XGetXCBConnection(dpy);
 	xctx = RCreateContextXCB(xc, DefaultScreen(dpy), NULL);
 	if (!xctx) {
 		fprintf(stderr, "FAIL: RCreateContextXCB\n");
 		return 1;
-	}
-	if (xctx->dpy || xctx->visual || xctx->copy_gc) {
-		fprintf(stderr, "FAIL: RCreateContextXCB back-filled an Xlib field\n");
-		failures++;
 	}
 	RFillImage(src, &grn);
 	if (!RConvertImage(xctx, src, &pix)) {

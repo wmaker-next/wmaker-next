@@ -22,7 +22,6 @@
 #include <config.h>
 
 #include <errno.h>
-#include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
