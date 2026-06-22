@@ -1,4 +1,4 @@
-/* context.c - X context management
+/* context.c - X context management (xcb)
  *
  * Raster graphics library
  *
@@ -20,23 +20,21 @@
 
 #include <config.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib-xcb.h>
-#include <xcb/shm.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
+#include <xcb/shm.h>
 
 #include "wraster.h"
 #include "scale.h"
 #include "xutil.h"
 #include "wr_i18n.h"
 
-
-static Bool bestContext(Display * dpy, int screen_number, RContext * context);
 
 static const RContextAttributes DEFAULT_CONTEXT_ATTRIBS = {
 	RC_UseSharedMemory,	/* flags */
@@ -77,40 +75,6 @@ static void gatherconfig(RContext * context, int screen_n)
 			context->attribs->bgamma = g3;
 		}
 	}
-}
-
-static void getColormap(RContext * context, int screen_number)
-{
-	Colormap cmap = None;
-	XStandardColormap *cmaps;
-	int ncmaps, i;
-
-	if (XGetRGBColormaps(context->dpy,
-			     RootWindow(context->dpy, screen_number), &cmaps, &ncmaps, XA_RGB_DEFAULT_MAP)) {
-		for (i = 0; i < ncmaps; ++i) {
-			if (cmaps[i].visualid == context->visual->visualid) {
-				cmap = cmaps[i].colormap;
-				break;
-			}
-		}
-		XFree(cmaps);
-	}
-	if (cmap == None) {
-		XColor color;
-
-		cmap = XCreateColormap(context->dpy,
-				       RootWindow(context->dpy, screen_number), context->visual, AllocNone);
-
-		color.red = color.green = color.blue = 0;
-		XAllocColor(context->dpy, cmap, &color);
-		context->black = color.pixel;
-
-		color.red = color.green = color.blue = 0xffff;
-		XAllocColor(context->dpy, cmap, &color);
-		context->white = color.pixel;
-
-	}
-	context->cmap = cmap;
 }
 
 static int count_offset(unsigned long mask)
@@ -160,21 +124,104 @@ static xcb_visualtype_t *find_xcb_visual(xcb_screen_t *s, xcb_visualid_t visuali
 	return NULL;
 }
 
-RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttributes * attribs)
+/*
+ * Pick the deepest TrueColor visual on the screen, preferring exactly 24
+ * over 30/32 so the common 8/8/8 packer applies. Returns False when the
+ * screen has no TrueColor visual at all (RCreateContextXCB then refuses).
+ */
+static Bool bestContext(RContext *context)
+{
+	xcb_depth_iterator_t di;
+	xcb_visualtype_iterator_t vi;
+	xcb_visualtype_t *best = NULL;
+	uint8_t bestdepth = 0;
+
+	for (di = xcb_screen_allowed_depths_iterator(context->xscreen); di.rem; xcb_depth_next(&di)) {
+		for (vi = xcb_depth_visuals_iterator(di.data); vi.rem; xcb_visualtype_next(&vi)) {
+			if (vi.data->_class != XCB_VISUAL_CLASS_TRUE_COLOR)
+				continue;
+			/* first depth-24 in setup order wins, matching the
+			 * original XGetVisualInfo numvis-1..0 walk so the
+			 * chosen visual does not change across the rewrite */
+			if (di.data->depth == 24 && bestdepth != 24) {
+				best = vi.data;
+				bestdepth = 24;
+			} else if (di.data->depth > 24 && !best) {
+				best = vi.data;
+				bestdepth = di.data->depth;
+			} else if (!best) {
+				best = vi.data;
+				bestdepth = di.data->depth;
+			}
+		}
+	}
+	if (!best)
+		return False;
+
+	context->xvisual = best;
+	context->xdepth = bestdepth;
+	return True;
+}
+
+static uint32_t pixel_for(RContext *ctx, uint32_t r, uint32_t g, uint32_t b)
+{
+	uint32_t rmask = ctx->xvisual->red_mask >> ctx->red_offset;
+	uint32_t gmask = ctx->xvisual->green_mask >> ctx->green_offset;
+	uint32_t bmask = ctx->xvisual->blue_mask >> ctx->blue_offset;
+
+	return ((r * rmask / 0xff) << ctx->red_offset)
+	     | ((g * gmask / 0xff) << ctx->green_offset)
+	     | ((b * bmask / 0xff) << ctx->blue_offset);
+}
+
+/*
+ * The chosen visual is not the screen default so pixmaps need a 1x1
+ * override-redirect window of the right depth/visual to anchor against,
+ * and a private colormap so a future RGetClosestXColor caller passing the
+ * result to a server-side AllocColor on a non-default visual works. The
+ * RGB_DEFAULT_MAP property lookup the Xlib path used to do is dropped,
+ * nothing in tree consumed the resulting cmap and modern servers do not
+ * publish one anyway.
+ */
+static void makePrivateDrawable(RContext *context)
+{
+	uint32_t cwvals[4];
+
+	context->cmap = xcb_generate_id(context->xc);
+	xcb_create_colormap(context->xc, XCB_COLORMAP_ALLOC_NONE, context->cmap,
+			    context->xscreen->root, context->xvisual->visual_id);
+
+	cwvals[0] = 0;				/* back_pixel */
+	cwvals[1] = 0;				/* border_pixel */
+	cwvals[2] = 1;				/* override_redirect */
+	cwvals[3] = context->cmap;
+	context->drawable = xcb_generate_id(context->xc);
+	xcb_create_window(context->xc, context->xdepth, context->drawable,
+			  context->xscreen->root, 1, 1, 1, 1, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, context->xvisual->visual_id,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+			  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP, cwvals);
+}
+
+RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number, const RContextAttributes *attribs)
 {
 	RContext *context;
-	XGCValues gcv;
+	uint32_t gcvals[2];
 
-	context = malloc(sizeof(RContext));
+	context = calloc(1, sizeof(RContext));
 	if (!context) {
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;
 	}
-	memset(context, 0, sizeof(RContext));
 
-	context->dpy = dpy;
-
+	context->xc = xc;
 	context->screen_number = screen_number;
+	context->xscreen = find_xcb_screen(xc, screen_number);
+	if (!context->xscreen) {
+		free(context);
+		RErrorCode = RERR_BADVISUALID;
+		return NULL;
+	}
 
 	context->attribs = malloc(sizeof(RContextAttributes));
 	if (!context->attribs) {
@@ -192,88 +239,64 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 		context->attribs->scaling_filter = RCatmullRomFilter;
 	}
 
-	/* get configuration from environment variables */
 	gatherconfig(context, screen_number);
 	wraster_change_filter(context->attribs->scaling_filter);
-	if ((context->attribs->flags & RC_VisualID)) {
-		XVisualInfo *vinfo, templ;
-		int nret;
 
-		templ.screen = screen_number;
-		templ.visualid = context->attribs->visualid;
-		vinfo = XGetVisualInfo(context->dpy, VisualIDMask | VisualScreenMask, &templ, &nret);
-		if (!vinfo || nret == 0) {
+	if ((context->attribs->flags & RC_VisualID)) {
+		context->xvisual = find_xcb_visual(context->xscreen,
+						   context->attribs->visualid, &context->xdepth);
+		if (!context->xvisual) {
+			free(context->attribs);
 			free(context);
 			RErrorCode = RERR_BADVISUALID;
 			return NULL;
 		}
-
-		if (vinfo[0].visual == DefaultVisual(dpy, screen_number)) {
+		if (context->xvisual->visual_id == context->xscreen->root_visual)
 			context->attribs->flags |= RC_DefaultVisual;
-		} else {
-			XSetWindowAttributes attr;
-			unsigned long mask;
-
-			context->visual = vinfo[0].visual;
-			context->depth = vinfo[0].depth;
-			context->vclass = vinfo[0].class;
-			getColormap(context, screen_number);
-			attr.colormap = context->cmap;
-			attr.override_redirect = True;
-			attr.border_pixel = 0;
-			attr.background_pixel = 0;
-			mask = CWBorderPixel | CWColormap | CWOverrideRedirect | CWBackPixel;
-			context->drawable =
-			    XCreateWindow(dpy, RootWindow(dpy, screen_number), 1, 1,
-					  1, 1, 0, context->depth, CopyFromParent, context->visual, mask, &attr);
-		}
-		XFree(vinfo);
 	}
 
-	/* use default */
-	if (!context->visual) {
-		if ((context->attribs->flags & RC_DefaultVisual)
-		    || !bestContext(dpy, screen_number, context)) {
-			context->visual = DefaultVisual(dpy, screen_number);
-			context->depth = DefaultDepth(dpy, screen_number);
-			context->cmap = DefaultColormap(dpy, screen_number);
-			context->drawable = RootWindow(dpy, screen_number);
-			context->black = BlackPixel(dpy, screen_number);
-			context->white = WhitePixel(dpy, screen_number);
-			context->vclass = context->visual->class;
+	if (!context->xvisual) {
+		if ((context->attribs->flags & RC_DefaultVisual) || !bestContext(context)) {
+			context->xvisual = find_xcb_visual(context->xscreen,
+							   context->xscreen->root_visual,
+							   &context->xdepth);
+			context->attribs->flags |= RC_DefaultVisual;
 		}
 	}
 
-	if (context->vclass != TrueColor) {
+	context->vclass = context->xvisual->_class;
+	if (context->vclass != XCB_VISUAL_CLASS_TRUE_COLOR) {
 		fprintf(stderr,
-			_("wrlib: visual 0x%lX is not TrueColor, indexed-colour visuals are no longer supported\n"),
-			context->visual->visualid);
+			_("wrlib: visual 0x%X is not TrueColor, indexed-colour visuals are no longer supported\n"),
+			context->xvisual->visual_id);
 		RErrorCode = RERR_BADVISUALCLASS;
 		free(context->attribs);
 		free(context);
 		return NULL;
 	}
 
-	gcv.function = GXcopy;
-	gcv.graphics_exposures = False;
-	context->copy_gc = XCreateGC(dpy, context->drawable, GCFunction | GCGraphicsExposures, &gcv);
-
-	/* xcb view of the same connection. The screen and visual lookups walk
-	 * the connection setup so they cannot fail once the visualid passed
-	 * the TrueColor check above, copy_xgc is the same server-side XID as
-	 * copy_gc so internal puts and external XCopyArea share one GC. */
-	context->xc = XGetXCBConnection(dpy);
-	context->xscreen = find_xcb_screen(context->xc, screen_number);
-	context->xvisual = find_xcb_visual(context->xscreen,
-					   XVisualIDFromVisual(context->visual), &context->xdepth);
-	context->copy_xgc = (xcb_gcontext_t)XGContextFromGC(context->copy_gc);
-
-	/* calc offsets to create a TrueColor pixel */
+	context->depth = context->xdepth;
 	context->red_offset = count_offset(context->xvisual->red_mask);
 	context->green_offset = count_offset(context->xvisual->green_mask);
 	context->blue_offset = count_offset(context->xvisual->blue_mask);
 
-	/* check avaiability of MIT-SHM */
+	if (context->xvisual->visual_id == context->xscreen->root_visual) {
+		context->cmap = context->xscreen->default_colormap;
+		context->drawable = context->xscreen->root;
+		context->black = context->xscreen->black_pixel;
+		context->white = context->xscreen->white_pixel;
+	} else {
+		makePrivateDrawable(context);
+		context->black = pixel_for(context, 0, 0, 0);
+		context->white = pixel_for(context, 0xff, 0xff, 0xff);
+	}
+
+	gcvals[0] = XCB_GX_COPY;
+	gcvals[1] = 0;
+	context->copy_xgc = xcb_generate_id(xc);
+	xcb_create_gc(xc, context->copy_xgc, context->drawable,
+		      XCB_GC_FUNCTION | XCB_GC_GRAPHICS_EXPOSURES, gcvals);
+
 	if (!(context->attribs->flags & RC_UseSharedMemory)) {
 		context->attribs->flags |= RC_UseSharedMemory;
 		context->attribs->use_shared_memory = True;
@@ -283,8 +306,7 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 	if (context->attribs->use_shared_memory) {
 		xcb_shm_query_version_reply_t *r;
 
-		r = xcb_shm_query_version_reply(context->xc,
-						xcb_shm_query_version(context->xc), NULL);
+		r = xcb_shm_query_version_reply(xc, xcb_shm_query_version(xc), NULL);
 		if (!r)
 			context->attribs->use_shared_memory = False;
 		free(r);
@@ -293,61 +315,64 @@ RContext *RCreateContext(Display * dpy, int screen_number, const RContextAttribu
 	return context;
 }
 
+/*
+ * Xlib-facing constructor: callers in src/, WINGs and util/ still hold a
+ * Display* and read context->visual / context->copy_gc / context->cmap for
+ * their own XCreateWindow / XCopyArea calls, so build the context via the
+ * xcb body above and then back-fill those fields from libX11's view of the
+ * same connection. copy_gc is a fresh Xlib GC whose XID replaces the
+ * xcb-created one so internals and externals share one server-side
+ * resource. This wrapper and RPutXImage are the only libX11-referencing
+ * functions left in the library and drop once every consumer reads the
+ * xcb fields instead.
+ */
+RContext *RCreateContext(Display *dpy, int screen_number, const RContextAttributes *attribs)
+{
+	RContext *context;
+	XVisualInfo templ, *vinfo;
+	XGCValues gcv;
+	int nret;
+
+	context = RCreateContextXCB(XGetXCBConnection(dpy), screen_number, attribs);
+	if (!context)
+		return NULL;
+
+	context->dpy = dpy;
+
+	templ.visualid = context->xvisual->visual_id;
+	vinfo = XGetVisualInfo(dpy, VisualIDMask, &templ, &nret);
+	if (vinfo) {
+		context->visual = vinfo[0].visual;
+		XFree(vinfo);
+	}
+
+	xcb_free_gc(context->xc, context->copy_xgc);
+	gcv.function = GXcopy;
+	gcv.graphics_exposures = False;
+	context->copy_gc = XCreateGC(dpy, context->drawable, GCFunction | GCGraphicsExposures, &gcv);
+	context->copy_xgc = (xcb_gcontext_t)XGContextFromGC(context->copy_gc);
+
+	return context;
+}
+
 void RDestroyContext(RContext *context)
 {
 	if (context) {
 		RReleaseSharedSegment(context);
-		if (context->copy_gc)
-			XFreeGC(context->dpy, context->copy_gc);
-		if (context->attribs) {
-			if ((context->attribs->flags & RC_VisualID) &&
-			    !(context->attribs->flags & RC_DefaultVisual))
-				XDestroyWindow(context->dpy, context->drawable);
-			free(context->attribs);
+		/* When the context was built via RCreateContext(Display*)
+		 * copy_xgc aliases copy_gc's server-side XID, so this frees
+		 * the server resource for both paths. The client-side _XGC
+		 * struct behind copy_gc is then orphaned, which is one small
+		 * allocation at process teardown and the price of keeping
+		 * this destructor free of libX11 calls. */
+		if (context->copy_xgc)
+			xcb_free_gc(context->xc, context->copy_xgc);
+		if (context->drawable && context->xscreen
+		    && context->drawable != context->xscreen->root) {
+			xcb_destroy_window(context->xc, context->drawable);
+			xcb_free_colormap(context->xc, context->cmap);
 		}
+		free(context->attribs);
 		free(context);
 	}
-}
-
-static Bool bestContext(Display * dpy, int screen_number, RContext * context)
-{
-	XVisualInfo *vinfo = NULL, rvinfo;
-	int best = -1, numvis, i;
-	long flags;
-	XSetWindowAttributes attr;
-
-	rvinfo.class = TrueColor;
-	rvinfo.screen = screen_number;
-	flags = VisualClassMask | VisualScreenMask;
-
-	vinfo = XGetVisualInfo(dpy, flags, &rvinfo, &numvis);
-	if (vinfo) {		/* look for a TrueColor, 24-bit or more (pref 24) */
-		for (i = numvis - 1, best = -1; i >= 0; i--) {
-			if (vinfo[i].depth == 24)
-				best = i;
-			else if (vinfo[i].depth > 24 && best < 0)
-				best = i;
-		}
-	}
-	if (best > -1) {
-		context->visual = vinfo[best].visual;
-		context->depth = vinfo[best].depth;
-		context->vclass = vinfo[best].class;
-		getColormap(context, screen_number);
-		attr.colormap = context->cmap;
-		attr.override_redirect = True;
-		attr.border_pixel = 0;
-		context->drawable =
-		    XCreateWindow(dpy, RootWindow(dpy, screen_number),
-				  1, 1, 1, 1, 0, context->depth,
-				  CopyFromParent, context->visual,
-				  CWBorderPixel | CWColormap | CWOverrideRedirect, &attr);
-	}
-	if (vinfo)
-		XFree((char *)vinfo);
-
-	if (best < 0)
-		return False;
-	else
-		return True;
 }

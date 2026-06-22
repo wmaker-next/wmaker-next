@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 
 #include "wraster.h"
 
@@ -47,6 +48,8 @@ int main(void)
 	RColor wht = { 0xff, 0xff, 0xff, 0xff };
 	unsigned char *p;
 	int x, y;
+	xcb_connection_t *xc;
+	RContext *xctx;
 
 	dpy = XOpenDisplay(NULL);
 	if (!dpy) {
@@ -140,10 +143,39 @@ int main(void)
 		failures++;
 	}
 
-	RReleaseImage(src);
 	RReleaseImage(back);
 	RReleaseImage(back2);
 	RDestroyContext(ctx);
+
+	/* RCreateContextXCB on the same connection: dpy/visual/copy_gc must
+	 * stay NULL, the round-trip must still work */
+	xc = XGetXCBConnection(dpy);
+	xctx = RCreateContextXCB(xc, DefaultScreen(dpy), NULL);
+	if (!xctx) {
+		fprintf(stderr, "FAIL: RCreateContextXCB\n");
+		return 1;
+	}
+	if (xctx->dpy || xctx->visual || xctx->copy_gc) {
+		fprintf(stderr, "FAIL: RCreateContextXCB back-filled an Xlib field\n");
+		failures++;
+	}
+	RFillImage(src, &grn);
+	if (!RConvertImage(xctx, src, &pix)) {
+		fprintf(stderr, "FAIL: xcb-ctx RConvertImage\n");
+		failures++;
+	} else {
+		xcb_flush(xc);
+		back = RCreateImageFromDrawable(xctx, pix, None);
+		if (back) {
+			check_pixel(back, 8, 6, 0x00, 0xff, 0x00, "xcb-ctx");
+			RReleaseImage(back);
+		} else {
+			failures++;
+		}
+	}
+	RReleaseImage(src);
+	RDestroyContext(xctx);
+
 	XCloseDisplay(dpy);
 
 	if (failures) {

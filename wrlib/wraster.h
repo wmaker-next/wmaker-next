@@ -344,6 +344,15 @@ RContext *RCreateContext(Display *dpy, int screen_number,
                          const RContextAttributes *attribs)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
 
+/*
+ * pure-xcb constructor; the Xlib-typed fields (dpy, visual, copy_gc) are
+ * left NULL so a caller using this entry point must read xc/xvisual/
+ * copy_xgc instead
+ */
+RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number,
+                            const RContextAttributes *attribs)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
+
 void RDestroyContext(RContext *context);
 
 Bool RGetClosestXColor(RContext *context, const RColor *color, XColor *retColor)
