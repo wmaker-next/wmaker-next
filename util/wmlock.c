@@ -235,19 +235,13 @@ static int authenticate(const char *user)
 #endif
 }
 
-static Pixmap make_background(RContext *rc, Window root, int w, int h)
+static Pixmap make_background(RContext *rc, Window root)
 {
-	XImage *xim;
 	RImage *rim;
 	Pixmap pix;
 
 	pix = None;
-	xim = XGetImage(dpy, root, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap);
-	if (!xim)
-		return None;
-
-	rim = RCreateImageFromXImage(rc, xim, NULL);
-	XDestroyImage(xim);
+	rim = RCreateImageFromDrawable(rc, root, None);
 	if (!rim)
 		return None;
 
@@ -299,7 +293,7 @@ static int create_covers(WMScreen *scr)
 		 * use the wrlib pipeline for the blurred snapshot, the rest
 		 * stay solid black */
 		if (i == 0) {
-			covers[i].bg = make_background(rc, covers[i].root, w, h);
+			covers[i].bg = make_background(rc, covers[i].root);
 			if (covers[i].bg != None)
 				XSetWindowBackgroundPixmap(dpy, covers[i].win, covers[i].bg);
 		}
