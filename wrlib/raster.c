@@ -185,13 +185,13 @@ void RCombineImages(RImage * image, RImage * src)
 			for (i = 0; i < image->height * image->width; i++) {
 				alpha = *(s + 3);
 				calpha = 255 - alpha;
-				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+				*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 				d++;
 				s++;
 				s++;
@@ -223,13 +223,13 @@ void RCombineImagesWithOpaqueness(RImage * image, RImage * src, int opaqueness)
 	if (!HAS_ALPHA(src)) {
 		if (!HAS_ALPHA(image)) {
 			for (i = 0; i < image->width * image->height; i++) {
-				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+				*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 				d++;
 				s++;
 			}
@@ -241,14 +241,14 @@ void RCombineImagesWithOpaqueness(RImage * image, RImage * src, int opaqueness)
 
 		if (!HAS_ALPHA(image)) {
 			for (i = 0; i < image->width * image->height; i++) {
-				tmp = (*(s + 3) * opaqueness) / 256;
-				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+				tmp = (*(s + 3) * opaqueness) / 255;
+				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 				d++;
 				s++;
-				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+				*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 				d++;
 				s++;
 				s++;
@@ -354,13 +354,13 @@ void RCombineArea(RImage * image, RImage * src, int sx, int sy, unsigned width, 
 				for (x = 0; x < width; x++) {
 					alpha = *(s + 3);
 					calpha = 255 - alpha;
-					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 					s++;
 					d++;
-					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 					s++;
 					d++;
-					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 256;
+					*d = (((int)*d * calpha) + ((int)*s * alpha)) / 255;
 					s++;
 					d++;
 					s++;
@@ -477,13 +477,13 @@ RCombineAreaWithOpaqueness(RImage * image, RImage * src, int sx, int sy,
 		if (!dalpha) {
 			for (y = 0; y < height; y++) {
 				for (x = 0; x < width; x++) {
-					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 					s++;
 					d++;
-					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 					s++;
 					d++;
-					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 256;
+					*d = (((int)*d * (int)COP) + ((int)*s * (int)OP)) / 255;
 					s++;
 					d++;
 				}
@@ -502,14 +502,14 @@ RCombineAreaWithOpaqueness(RImage * image, RImage * src, int sx, int sy,
 		if (!dalpha) {
 			for (y = 0; y < height; y++) {
 				for (x = 0; x < width; x++) {
-					tmp = (*(s + 3) * opaqueness) / 256;
-					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+					tmp = (*(s + 3) * opaqueness) / 255;
+					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 					d++;
 					s++;
-					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 					d++;
 					s++;
-					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 256;
+					*d = (((int)*d * (255 - tmp)) + ((int)*s * tmp)) / 255;
 					d++;
 					s++;
 					s++;
@@ -546,11 +546,11 @@ void RCombineImageWithColor(RImage * image, const RColor * color)
 		alpha = *(d + 3);
 		nalpha = 255 - alpha;
 
-		*d = (((int)*d * alpha) + (r * nalpha)) / 256;
+		*d = (((int)*d * alpha) + (r * nalpha)) / 255;
 		d++;
-		*d = (((int)*d * alpha) + (g * nalpha)) / 256;
+		*d = (((int)*d * alpha) + (g * nalpha)) / 255;
 		d++;
-		*d = (((int)*d * alpha) + (b * nalpha)) / 256;
+		*d = (((int)*d * alpha) + (b * nalpha)) / 255;
 		d++;
 		d++;
 	}

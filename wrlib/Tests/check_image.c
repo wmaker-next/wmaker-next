@@ -339,16 +339,64 @@ static void test_combine_color(void)
 
 	RCombineImageWithColor(img, &bg);
 
-	/* fully opaque pixel keeps its own colour */
+	/* fully opaque pixel keeps its own colour exactly */
 	p = pixel(img, 0, 0);
-	CHECK(p[0] >= 199 && p[1] == 0 && p[2] == 0);
-	/* fully transparent pixel becomes the background */
+	CHECK(p[0] == 200 && p[1] == 0 && p[2] == 0);
+	/* fully transparent pixel becomes the background exactly */
 	p = pixel(img, 0, 1);
-	CHECK(p[0] >= 99 && p[0] <= 100);
-	CHECK(p[1] >= 99 && p[1] <= 100);
-	CHECK(p[2] >= 99 && p[2] <= 100);
+	CHECK(p[0] == 100 && p[1] == 100 && p[2] == 100);
 
 	RReleaseImage(img);
+}
+
+static void test_blend_endpoints(void)
+{
+	RImage *dst, *src;
+	RColor over0 = { 0x12, 0x34, 0x56, 0 };
+	RColor over1 = { 0x12, 0x34, 0x56, 255 };
+	RColor white = { 0xff, 0xff, 0xff, 0xff };
+	unsigned char *p;
+
+	/* RPutPixel: alpha 0 must leave the destination untouched, alpha 255
+	 * must replace it exactly. The /256 divisor that used to be here gave
+	 * 0xfe for both 0xff*255/256 and 0x12*255/256+0xff*0/256. */
+	dst = RCreateImage(2, 1, True);
+	RFillImage(dst, &white);
+	RPutPixel(dst, 0, 0, &over0);
+	RPutPixel(dst, 1, 0, &over1);
+	p = pixel(dst, 0, 0);
+	CHECK(p[0] == 0xff && p[1] == 0xff && p[2] == 0xff && p[3] == 0xff);
+	p = pixel(dst, 1, 0);
+	CHECK(p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56);
+	RReleaseImage(dst);
+
+	/* ROperatePixel(RNormalOperation) on an RGB image must not write past
+	 * the blue byte into the next pixel's red */
+	dst = RCreateImage(2, 1, False);
+	put_rgb(dst, 0, 0, 0xff, 0xff, 0xff);
+	put_rgb(dst, 1, 0, 0x77, 0x88, 0x99);
+	ROperatePixel(dst, RNormalOperation, 0, 0, &over0);
+	p = pixel(dst, 1, 0);
+	CHECK(p[0] == 0x77 && p[1] == 0x88 && p[2] == 0x99);
+	RReleaseImage(dst);
+
+	/* RCombineImages: alpha-255 src over RGB dst must copy exactly,
+	 * alpha-0 src must leave dst untouched */
+	dst = RCreateImage(2, 1, False);
+	put_rgb(dst, 0, 0, 0xff, 0xff, 0xff);
+	put_rgb(dst, 1, 0, 0xff, 0xff, 0xff);
+	src = RCreateImage(2, 1, True);
+	p = pixel(src, 0, 0);
+	p[0] = 0x33; p[1] = 0x66; p[2] = 0x99; p[3] = 0xff;
+	p = pixel(src, 1, 0);
+	p[0] = 0x33; p[1] = 0x66; p[2] = 0x99; p[3] = 0x00;
+	RCombineImages(dst, src);
+	p = pixel(dst, 0, 0);
+	CHECK(p[0] == 0x33 && p[1] == 0x66 && p[2] == 0x99);
+	p = pixel(dst, 1, 0);
+	CHECK(p[0] == 0xff && p[1] == 0xff && p[2] == 0xff);
+	RReleaseImage(src);
+	RReleaseImage(dst);
 }
 
 int main(void)
@@ -363,6 +411,7 @@ int main(void)
 	test_center();
 	test_hsv();
 	test_combine_color();
+	test_blend_endpoints();
 
 	if (failures) {
 		fprintf(stderr, "%d check(s) failed\n", failures);

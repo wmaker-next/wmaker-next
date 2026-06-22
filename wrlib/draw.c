@@ -92,14 +92,14 @@ void RPutPixel(RImage *image, int x, int y, const RColor *color)
 		alpha = color->alpha;
 		nalpha = 255 - alpha;
 
-		*ptr = (((int)*ptr * nalpha) + (r * alpha)) / 256;
+		*ptr = (((int)*ptr * nalpha) + (r * alpha)) / 255;
 		ptr++;
-		*ptr = (((int)*ptr * nalpha) + (g * alpha)) / 256;
+		*ptr = (((int)*ptr * nalpha) + (g * alpha)) / 255;
 		ptr++;
-		*ptr = (((int)*ptr * nalpha) + (b * alpha)) / 256;
+		*ptr = (((int)*ptr * nalpha) + (b * alpha)) / 255;
 		ptr++;
 		if (image->format == RRGBAFormat) {
-			*ptr = alpha + ((int)*ptr * nalpha) / 256;
+			*ptr = alpha + ((int)*ptr * nalpha) / 255;
 		}
 	}
 }
@@ -141,10 +141,11 @@ static void operatePixel(RImage *image, int ofs, RPixelOperation operation, cons
 			if (hasAlpha)
 				*sa = 255;
 		} else {
-			*sr = (((int)*sr * nalpha) + ((int)color->red * alpha)) / 256;
-			*sg = (((int)*sg * nalpha) + ((int)color->green * alpha)) / 256;
-			*sb = (((int)*sb * nalpha) + ((int)color->blue * alpha)) / 256;
-			*sa = alpha + ((int)*sa * nalpha) / 256;
+			*sr = (((int)*sr * nalpha) + ((int)color->red * alpha)) / 255;
+			*sg = (((int)*sg * nalpha) + ((int)color->green * alpha)) / 255;
+			*sb = (((int)*sb * nalpha) + ((int)color->blue * alpha)) / 255;
+			if (hasAlpha)
+				*sa = alpha + ((int)*sa * nalpha) / 255;
 		}
 		break;
 	case RAddOperation:

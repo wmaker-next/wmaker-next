@@ -154,9 +154,9 @@ void RClearImage(RImage * image, const RColor * color)
 		s = (image->format == RRGBAFormat) ? 4 : 3;
 
 		for (i = 0; i < bytes; i++, d += s) {
-			d[0] = (((int)d[0] * nalpha) + r)/256;
-			d[1] = (((int)d[1] * nalpha) + g)/256;
-			d[2] = (((int)d[2] * nalpha) + b)/256;
+			d[0] = (((int)d[0] * nalpha) + r)/255;
+			d[1] = (((int)d[1] * nalpha) + g)/255;
+			d[2] = (((int)d[2] * nalpha) + b)/255;
 		}
 	}
 }
