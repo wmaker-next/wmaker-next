@@ -161,9 +161,23 @@ static void test_scale(void)
 	CHECK(pixel(out, 3, 3)[3] == 200);
 	RReleaseImage(out);
 
-	/* RSmoothScaleImage always emits RGB regardless of source alpha */
+	/* RSmoothScaleImage preserves the source format and the alpha
+	 * channel, which the previous Graphics Gems implementation
+	 * dropped. */
 	out = RSmoothScaleImage(src, 4, 4);
+	CHECK(out && out->format == RRGBAFormat);
+	CHECK(pixel(out, 0, 0)[3] == 200);
+	CHECK(pixel(out, 3, 3)[3] == 200);
+	RReleaseImage(out);
+
+	/* a flat-colour source upscales to the same flat colour at every
+	 * pixel regardless of filter (no overshoot, no edge bleed) */
+	RReleaseImage(src);
+	src = RCreateImage(4, 4, False);
+	memset(src->data, 90, 4 * 4 * 3);
+	out = RSmoothScaleImage(src, 13, 7);
 	CHECK(out && out->format == RRGBFormat);
+	CHECK(pixel(out, 0, 0)[0] == 90 && pixel(out, 12, 6)[1] == 90);
 	RReleaseImage(out);
 
 	RReleaseImage(src);
