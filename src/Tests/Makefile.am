@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @PANGO_CFLAGS@
@@ -11,6 +11,17 @@ AM_CPPFLAGS = $(DFLAGS) \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_srcdir)/wrlib \
 	@HEADER_SEARCH_PATH@
+
+AM_TESTS_ENVIRONMENT = \
+	CHECK_DESKTOPFILE_SRCDIR='$(srcdir)'; export CHECK_DESKTOPFILE_SRCDIR;
+
+EXTRA_DIST = \
+	xdg/share/mime/globs2 \
+	xdg/share/applications/viewer.desktop \
+	xdg/share/applications/editor.desktop \
+	xdg/share/applications/multi.desktop \
+	xdg/share/applications/mimeinfo.cache \
+	xdg/config/mimeapps.list
 
 check_config_SOURCES = \
 	check_config.c \
@@ -38,5 +49,14 @@ check_wprefs_schema_SOURCES = \
 
 check_wprefs_schema_LDADD = \
 	$(top_builddir)/src/libwconfigschema.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_desktopfile_SOURCES = \
+	check_desktopfile.c \
+	../desktopfile.c \
+	../desktopfile.h
+
+check_desktopfile_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@

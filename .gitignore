@@ -101,6 +101,7 @@ WINGs/Tests/check_ipc
 src/Tests/check_config
 src/Tests/check_wdefaults
 src/Tests/check_wprefs_schema
+src/Tests/check_desktopfile
 
 WPrefs.app/WPrefs
 

@@ -338,6 +338,7 @@ static void appCacheAdd(const char *path, const char *id)
 	a->name_fold = asciiFold(de.name);
 	a->exec_raw = de.exec_raw;
 	a->comment = de.comment;
+	a->terminal = de.terminal;
 	if (de.terminal) {
 		term = getenv("WMAKER_TERM");
 		if (!term || !term[0])
@@ -485,4 +486,407 @@ void wXDGAppListInvalidate(void)
 		app_dir_path[i] = NULL;
 	}
 	app_dir_count = 0;
+}
+
+
+/* ---- MIME type and default handler resolver ---------------------- */
+
+/* same shape as wXDGForEachDataDir but over the XDG_CONFIG_HOME and
+ * XDG_CONFIG_DIRS base directories */
+static void forEachConfigDir(const char *suffix, WXDGDirFn fn, void *ctx)
+{
+	const char *home, *dirs, *p, *q;
+	char dir[PATH_MAX];
+	size_t n, slen;
+
+	slen = strlen(suffix);
+
+	home = getenv("XDG_CONFIG_HOME");
+	if (home && home[0] == '/') {
+		snprintf(dir, sizeof(dir), "%s/%s", home, suffix);
+	} else {
+		home = getenv("HOME");
+		snprintf(dir, sizeof(dir), "%s/.config/%s",
+			 home ? home : "", suffix);
+	}
+	if (!fn(dir, ctx))
+		return;
+
+	dirs = getenv("XDG_CONFIG_DIRS");
+	if (!dirs || !dirs[0])
+		dirs = "/etc/xdg";
+	for (p = dirs; *p; p = *q ? q + 1 : q) {
+		q = strchr(p, ':');
+		if (!q)
+			q = p + strlen(p);
+		n = (size_t)(q - p);
+		while (n > 1 && p[n - 1] == '/')
+			n--;
+		if (n == 0 || n + 1 + slen + 1 > sizeof(dir))
+			continue;
+		memcpy(dir, p, n);
+		dir[n] = '/';
+		memcpy(dir + n + 1, suffix, slen + 1);
+		if (!fn(dir, ctx))
+			return;
+	}
+}
+
+struct mimeGlob {
+	char *type;
+	char *ext;	/* original-case extension when cs is set */
+	int weight;
+	int cs;		/* case-sensitive flag */
+};
+
+static WMHashTable *mime_by_ext;	/* lower-cased ext -> struct mimeGlob* */
+static WMHashTable *mime_default;	/* mimetype -> desktop-file-id */
+static int mime_globs_loaded;
+
+static void mimeGlobAdd(const char *ext, const char *type, int weight, int cs)
+{
+	struct mimeGlob *g;
+	char *key, *p;
+
+	key = wstrdup(ext);
+	for (p = key; *p; p++)
+		*p = tolower((unsigned char)*p);
+	g = WMHashGet(mime_by_ext, key);
+	if (g) {
+		/* earlier directories (XDG_DATA_HOME) win on equal weight */
+		if (weight <= g->weight) {
+			wfree(key);
+			return;
+		}
+		wfree(g->type);
+		wfree(g->ext);
+	} else {
+		g = wmalloc(sizeof(*g));
+		/* WMStringHashCallbacks dups the key on insert */
+		WMHashInsert(mime_by_ext, key, g);
+	}
+	g->type = wstrdup(type);
+	g->ext = cs ? wstrdup(ext) : NULL;
+	g->weight = weight;
+	g->cs = cs;
+	wfree(key);
+}
+
+static Bool loadMimeGlobs(const char *dir, void *ctx)
+{
+	FILE *fp;
+	char path[PATH_MAX], line[512];
+	char *type, *glob, *flags, *p;
+	int weight, cs;
+
+	(void)ctx;
+
+	snprintf(path, sizeof(path), "%s/globs2", dir);
+	fp = fopen(path, "r");
+	if (!fp)
+		return True;
+	while (fgets(line, sizeof(line), fp)) {
+		p = strpbrk(line, "\r\n");
+		if (p)
+			*p = 0;
+		if (line[0] == '#' || line[0] == 0)
+			continue;
+		/* weight:type:glob[:flags] */
+		type = strchr(line, ':');
+		if (!type)
+			continue;
+		*type++ = 0;
+		weight = atoi(line);
+		glob = strchr(type, ':');
+		if (!glob)
+			continue;
+		*glob++ = 0;
+		flags = strchr(glob, ':');
+		if (flags)
+			*flags++ = 0;
+		cs = flags && strstr(flags, "cs") != NULL;
+		/* only literal-suffix globs *.ext, no [], ?, or extra * */
+		if (glob[0] != '*' || glob[1] != '.' || glob[2] == 0)
+			continue;
+		if (strpbrk(glob + 1, "*?["))
+			continue;
+		mimeGlobAdd(glob + 2, type, weight, cs);
+	}
+	fclose(fp);
+	return True;
+}
+
+const char *wXDGMimeTypeForPath(const char *path)
+{
+	const char *base, *p, *best;
+	struct mimeGlob *g, *hit;
+	char fold[256];
+	size_t n, i;
+	int blen;
+
+	if (!mime_globs_loaded) {
+		mime_by_ext = WMCreateHashTable(WMStringHashCallbacks);
+		wXDGForEachDataDir("mime", loadMimeGlobs, NULL);
+		mime_globs_loaded = 1;
+	}
+
+	base = strrchr(path, '/');
+	base = base ? base + 1 : path;
+	n = strlen(base);
+	if (n == 0 || n >= sizeof(fold))
+		return NULL;
+	for (i = 0; i < n; i++)
+		fold[i] = tolower((unsigned char)base[i]);
+	fold[n] = 0;
+
+	/* longest matching suffix wins, walk every dot in the basename
+	 * from the leftmost so .tar.gz beats .gz when both exist with
+	 * equal weight, but a higher-weight shorter match still wins */
+	best = NULL;
+	hit = NULL;
+	blen = -1;
+	for (p = fold; (p = strchr(p, '.')) != NULL; p++) {
+		g = WMHashGet(mime_by_ext, p + 1);
+		if (!g)
+			continue;
+		if (g->cs && strcmp(g->ext, base + (p + 1 - fold)) != 0)
+			continue;
+		if (!hit || g->weight > hit->weight ||
+		    (g->weight == hit->weight &&
+		     (int)strlen(p + 1) > blen)) {
+			hit = g;
+			best = g->type;
+			blen = (int)strlen(p + 1);
+		}
+	}
+	return best;
+}
+
+/* split a semicolon-separated desktop-id list and return the first
+ * id whose application is present in the visible cache, or NULL */
+static const char *firstAvailableId(char *list)
+{
+	char *p, *q;
+
+	for (p = list; p && *p; p = q) {
+		q = strchr(p, ';');
+		if (q)
+			*q++ = 0;
+		if (*p && wXDGAppById(p))
+			return p;
+	}
+	return NULL;
+}
+
+enum { ASSOC_DEFAULT, ASSOC_ADDED, ASSOC_CACHE };
+
+static void loadAssocFile(const char *path, int kind)
+{
+	FILE *fp;
+	char line[1024];
+	char *eq, *p;
+	const char *id;
+	int section = -1;
+
+	fp = fopen(path, "r");
+	if (!fp)
+		return;
+	while (fgets(line, sizeof(line), fp)) {
+		p = strpbrk(line, "\r\n");
+		if (p)
+			*p = 0;
+		if (line[0] == '#' || line[0] == 0)
+			continue;
+		if (line[0] == '[') {
+			if (strcmp(line, "[Default Applications]") == 0)
+				section = ASSOC_DEFAULT;
+			else if (strcmp(line, "[Added Associations]") == 0)
+				section = ASSOC_ADDED;
+			else if (strcmp(line, "[MIME Cache]") == 0)
+				section = ASSOC_CACHE;
+			else
+				section = -1;
+			continue;
+		}
+		if (section != kind)
+			continue;
+		eq = strchr(line, '=');
+		if (!eq || eq == line)
+			continue;
+		*eq++ = 0;
+		if (WMHashGet(mime_default, line))
+			continue;
+		id = firstAvailableId(eq);
+		if (id)
+			WMHashInsert(mime_default, line, wstrdup(id));
+	}
+	fclose(fp);
+}
+
+static Bool loadConfigAssoc(const char *path, void *ctx)
+{
+	loadAssocFile(path, *(int *)ctx);
+	return True;
+}
+
+static Bool loadDataAssoc(const char *dir, void *ctx)
+{
+	char path[PATH_MAX];
+
+	snprintf(path, sizeof(path), "%s/mimeapps.list", dir);
+	loadAssocFile(path, *(int *)ctx);
+	return True;
+}
+
+static Bool loadMimeCache(const char *dir, void *ctx)
+{
+	char path[PATH_MAX];
+
+	(void)ctx;
+	snprintf(path, sizeof(path), "%s/mimeinfo.cache", dir);
+	loadAssocFile(path, ASSOC_CACHE);
+	return True;
+}
+
+const char *wXDGDefaultAppFor(const char *mimetype)
+{
+	static WMArray *built_against;
+	WMHashEnumerator e;
+	void *val, *key;
+	int kind;
+
+	if (!mimetype)
+		return NULL;
+	/* the association files reference desktop ids so the
+	 * application cache must be populated first, and the
+	 * default-handler table is only valid against the cache it
+	 * was built from, drop it when the app list has been rebuilt */
+	wXDGAppList();
+	if (mime_default && built_against != app_cache) {
+		e = WMEnumerateHashTable(mime_default);
+		while (WMNextHashEnumeratorItemAndKey(&e, &val, &key))
+			wfree(val);
+		WMFreeHashTable(mime_default);
+		mime_default = NULL;
+	}
+	if (!mime_default) {
+		built_against = app_cache;
+		mime_default = WMCreateHashTable(WMStringHashCallbacks);
+		/* precedence per the mime-apps spec, defaults before
+		 * added associations, config dirs before data dirs,
+		 * mimeinfo.cache last */
+		kind = ASSOC_DEFAULT;
+		forEachConfigDir("mimeapps.list", loadConfigAssoc, &kind);
+		wXDGForEachDataDir("applications", loadDataAssoc, &kind);
+		kind = ASSOC_ADDED;
+		forEachConfigDir("mimeapps.list", loadConfigAssoc, &kind);
+		wXDGForEachDataDir("applications", loadDataAssoc, &kind);
+		wXDGForEachDataDir("applications", loadMimeCache, NULL);
+	}
+	return WMHashGet(mime_default, mimetype);
+}
+
+static char *substituteExecPath(const char *exec_raw, const char *path,
+				const char *name)
+{
+	const char *src, *run;
+	char *out, *qpath, *qname, *seg;
+	int saw_file = 0;
+
+	qpath = wshellquote(path);
+	qname = name ? wshellquote(name) : NULL;
+	out = wstrdup("");
+	src = exec_raw;
+	while (*src) {
+		run = src;
+		while (*src && !(*src == '%' && src[1]))
+			src++;
+		if (src != run) {
+			seg = wstrndup(run, src - run);
+			out = wstrappend(out, seg);
+			wfree(seg);
+		}
+		if (!*src)
+			break;
+		switch (src[1]) {
+		case 'f': case 'F': case 'u': case 'U':
+			out = wstrappend(out, qpath);
+			saw_file = 1;
+			break;
+		case 'c':
+			if (qname)
+				out = wstrappend(out, qname);
+			break;
+		case '%':
+			out = wstrappend(out, "%");
+			break;
+		default:
+			/* %i %k and unknown codes drop */
+			break;
+		}
+		src += 2;
+	}
+	if (!saw_file) {
+		out = wstrappend(out, " ");
+		out = wstrappend(out, qpath);
+	}
+	wfree(qpath);
+	wfree(qname);
+	return out;
+}
+
+char *wXDGOpenCommandFor(const char *path)
+{
+	const char *type, *id, *term;
+	WXDGApp *app;
+	char *cmd, *qpath, *wrapped;
+
+	type = wXDGMimeTypeForPath(path);
+	id = type ? wXDGDefaultAppFor(type) : NULL;
+	app = id ? wXDGAppById(id) : NULL;
+
+	if (!app || !app->exec_raw) {
+		qpath = wshellquote(path);
+		cmd = wstrconcat("xdg-open ", qpath);
+		wfree(qpath);
+		return cmd;
+	}
+
+	cmd = substituteExecPath(app->exec_raw, path, app->name);
+	if (app->terminal) {
+		term = getenv("WMAKER_TERM");
+		if (!term || !term[0])
+			term = "xterm -e ";
+		wrapped = wstrconcat(term, cmd);
+		wfree(cmd);
+		cmd = wrapped;
+	}
+	return cmd;
+}
+
+void wXDGMimeInvalidate(void)
+{
+	WMHashEnumerator e;
+	struct mimeGlob *g;
+	void *val, *key;
+
+	if (mime_by_ext) {
+		e = WMEnumerateHashTable(mime_by_ext);
+		while (WMNextHashEnumeratorItemAndKey(&e, &val, &key)) {
+			g = val;
+			wfree(g->type);
+			wfree(g->ext);
+			wfree(g);
+		}
+		WMFreeHashTable(mime_by_ext);
+		mime_by_ext = NULL;
+	}
+	if (mime_default) {
+		e = WMEnumerateHashTable(mime_default);
+		while (WMNextHashEnumeratorItemAndKey(&e, &val, &key))
+			wfree(val);
+		WMFreeHashTable(mime_default);
+		mime_default = NULL;
+	}
+	mime_globs_loaded = 0;
 }

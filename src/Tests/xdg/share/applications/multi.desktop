@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=Fixture Multi
+Exec=multi %f and %F then %u also %U done

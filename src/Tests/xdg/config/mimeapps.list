@@ -1,0 +1,5 @@
+[Default Applications]
+application/pdf=viewer.desktop
+
+[Added Associations]
+application/pdf=editor.desktop;

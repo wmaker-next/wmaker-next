@@ -230,6 +230,7 @@ noreturn void Exit(int status)
 		XCloseDisplay(dpy);
 
 	wXDGAppListInvalidate();
+	wXDGMimeInvalidate();
 	RShutdown(); /* wrlib clean exit */
 	wutil_shutdown();  /* WUtil clean-up */
 

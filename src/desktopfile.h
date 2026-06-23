@@ -69,6 +69,7 @@ typedef struct WXDGApp {
 	char *exec;		/* shell-ready command, terminal-wrapped */
 	char *exec_raw;		/* original Exec= for %f/%u substitution */
 	char *comment;		/* may be NULL */
+	unsigned terminal:1;	/* Terminal=true, exec is wrapped */
 } WXDGApp;
 
 /* lazily built list of visible Type=Application entries from every
@@ -83,5 +84,24 @@ WXDGApp *wXDGAppById(const char *desktop_id);
 
 /* free the cached list, called from Exit() so leak checks stay quiet */
 void wXDGAppListInvalidate(void);
+
+
+/* MIME type by extension via the shared-mime-info globs2 database,
+ * longest literal *.ext suffix wins, return is owned by the cache */
+const char *wXDGMimeTypeForPath(const char *path);
+
+/* desktop-file-id of the default handler for mimetype from the
+ * mimeapps.list and mimeinfo.cache association files, return is
+ * owned by the cache, NULL when no association is found */
+const char *wXDGDefaultAppFor(const char *mimetype);
+
+/* malloc'd shell command that opens path with its default handler,
+ * the file's %f or %u Exec field code is substituted with the
+ * shell-quoted path, falls back to "xdg-open '<path>'" when the
+ * type or handler cannot be resolved */
+char *wXDGOpenCommandFor(const char *path);
+
+/* free the globs2 and mimeapps caches, called from Exit() */
+void wXDGMimeInvalidate(void);
 
 #endif /* WMDESKTOPFILE_H_ */
