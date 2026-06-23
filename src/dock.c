@@ -32,7 +32,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <limits.h>
-#include <locale.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -49,6 +48,7 @@
 #include "appicon.h"
 #include "actions.h"
 #include "stacking.h"
+#include "desktopfile.h"
 #include "dock.h"
 #include "dockedapp.h"
 #include "dialog.h"
@@ -2168,214 +2168,77 @@ static void launcherScanHicolor(const char *base, const char *name,
 	closedir(dp);
 }
 
+struct iconScanState {
+	const char *name;
+	int want;
+	char *best;
+	int score;
+};
+
+static Bool launcherScanIconDir(const char *base, void *ctx)
+{
+	struct iconScanState *st = ctx;
+
+	launcherScanHicolor(base, st->name, st->want, &st->best, &st->score);
+	return True;
+}
+
+static Bool launcherScanPixmapDir(const char *base, void *ctx)
+{
+	struct iconScanState *st = ctx;
+
+	/* legacy pixmaps directory, no size encoded so rank below any
+	 * sized hicolor hit but above nothing */
+	launcherProbeThemeIcon(base, st->name, 1 << 16, &st->best, &st->score);
+	return True;
+}
+
 static char *launcherFindThemeIcon(const char *name)
 {
-	const char *home, *dirs;
-	char base[PATH_MAX], *best = NULL;
-	const char *p, *q;
-	int score = INT_MAX, want = ICON_SIZE;
-	size_t n;
+	struct iconScanState st;
 
-	home = getenv("XDG_DATA_HOME");
-	if (home && home[0]) {
-		snprintf(base, sizeof(base), "%s/icons", home);
-	} else {
-		home = getenv("HOME");
-		snprintf(base, sizeof(base), "%s/.local/share/icons", home ? home : "");
-	}
-	if (home)
-		launcherScanHicolor(base, name, want, &best, &score);
+	st.name = name;
+	st.want = ICON_SIZE;
+	st.best = NULL;
+	st.score = INT_MAX;
 
-	dirs = getenv("XDG_DATA_DIRS");
-	if (!dirs || !dirs[0])
-		dirs = "/usr/local/share:/usr/share";
-	for (p = dirs; *p; p = *q ? q + 1 : q) {
-		q = strchr(p, ':');
-		if (!q)
-			q = p + strlen(p);
-		n = (size_t)(q - p);
-		while (n > 1 && p[n - 1] == '/')
-			n--;
-		if (n == 0 || n + sizeof("/pixmaps") > sizeof(base))
-			continue;
-		memcpy(base, p, n);
-		strcpy(base + n, "/icons");
-		launcherScanHicolor(base, name, want, &best, &score);
-		/* legacy pixmaps directory, no size encoded so rank below
-		 * any sized hicolor hit but above nothing */
-		strcpy(base + n, "/pixmaps");
-		launcherProbeThemeIcon(base, name, 1 << 16, &best, &score);
-	}
+	wXDGForEachDataDir("icons", launcherScanIconDir, &st);
+	wXDGForEachDataDir("pixmaps", launcherScanPixmapDir, &st);
 
-	return best;
-}
-
-/*
- * Rank a .desktop key line against the LC_MESSAGES locale. Returns a
- * pointer to the value when the line is "<key>=", "<key>[ll]=" or
- * "<key>[ll_CC]=" with rank 0/1/2 written to *rank, NULL otherwise.
- * Modifier and encoding suffixes on the locale are ignored.
- */
-static const char *launcherMatchLocaleKey(const char *line, const char *key,
-					  size_t klen, int *rank)
-{
-	static int have_loc = -1;
-	static char ll[3], ll_cc[6];
-	const char *p, *end;
-	size_t n;
-
-	if (have_loc < 0) {
-		const char *loc = setlocale(LC_MESSAGES, NULL);
-
-		if (!loc)
-			loc = getenv("LANG");
-		have_loc = 0;
-		if (loc && loc[0] && loc[1] &&
-		    strcmp(loc, "C") != 0 && strcmp(loc, "POSIX") != 0) {
-			ll[0] = loc[0]; ll[1] = loc[1]; ll[2] = 0;
-			have_loc = 1;
-			if (loc[2] == '_' && loc[3] && loc[4]) {
-				memcpy(ll_cc, loc, 5); ll_cc[5] = 0;
-				have_loc = 2;
-			}
-		}
-	}
-
-	if (strncmp(line, key, klen) != 0)
-		return NULL;
-	p = line + klen;
-	if (*p == '=') {
-		*rank = 0;
-		return p + 1;
-	}
-	if (*p != '[' || !have_loc)
-		return NULL;
-	p++;
-	end = strchr(p, ']');
-	if (!end || end[1] != '=')
-		return NULL;
-	n = (size_t)(end - p);
-	if (have_loc >= 2 && n == 5 && memcmp(p, ll_cc, 5) == 0) {
-		*rank = 2;
-		return end + 2;
-	}
-	if (n == 2 && memcmp(p, ll, 2) == 0) {
-		*rank = 1;
-		return end + 2;
-	}
-	return NULL;
-}
-
-static void launcherStripDesktopExec(char *exec)
-{
-	char *src = exec, *dst = exec;
-
-	/* drop freedesktop %f/%F/%u/%U/%i/%c/%k field codes, keep %% as % */
-	while (*src) {
-		if (*src == '%' && src[1]) {
-			if (src[1] == '%')
-				*dst++ = '%';
-			src += 2;
-			continue;
-		}
-		*dst++ = *src++;
-	}
-	*dst = 0;
-	while (dst > exec && (dst[-1] == ' ' || dst[-1] == '\t'))
-		*--dst = 0;
+	return st.best;
 }
 
 static Bool launcherReadDesktopFile(const char *path, char **command,
 				    char **instance, char **class, char **icon,
 				    char **display_name, char **comment)
 {
-	FILE *fp;
-	char line[4096];
-	char *exec = NULL, *icon_val = NULL, *wmclass = NULL;
-	char *name_val = NULL, *comment_val = NULL;
-	int in_section = 0, name_rank = -1, comment_rank = -1, rank;
-	const char *v;
+	WDesktopEntry de;
 
-	fp = fopen(path, "r");
-	if (!fp)
+	if (!wDesktopEntryRead(path, &de))
 		return False;
 
-	while (fgets(line, sizeof(line), fp)) {
-		char *eol = strpbrk(line, "\r\n");
-		if (eol)
-			*eol = 0;
-		if (line[0] == '#' || line[0] == 0)
-			continue;
-		if (line[0] == '[') {
-			if (in_section)
-				break;
-			if (strcmp(line, "[Desktop Entry]") == 0)
-				in_section = 1;
-			continue;
-		}
-		if (!in_section)
-			continue;
-		if (!exec && strncmp(line, "Exec=", 5) == 0) {
-			exec = wstrdup(line + 5);
-			continue;
-		}
-		if (!icon_val && strncmp(line, "Icon=", 5) == 0) {
-			icon_val = wstrdup(line + 5);
-			continue;
-		}
-		if (!wmclass && strncmp(line, "StartupWMClass=", 15) == 0) {
-			wmclass = wstrdup(line + 15);
-			continue;
-		}
-		v = launcherMatchLocaleKey(line, "Name", 4, &rank);
-		if (v) {
-			if (rank > name_rank) {
-				wfree(name_val);
-				name_val = wstrdup(v);
-				name_rank = rank;
-			}
-			continue;
-		}
-		v = launcherMatchLocaleKey(line, "Comment", 7, &rank);
-		if (v && rank > comment_rank) {
-			wfree(comment_val);
-			comment_val = wstrdup(v);
-			comment_rank = rank;
-		}
-	}
-	fclose(fp);
-
-	if (!exec || !exec[0]) {
-		wfree(exec);
-		wfree(icon_val);
-		wfree(wmclass);
-		wfree(name_val);
-		wfree(comment_val);
-		return False;
-	}
-
-	launcherStripDesktopExec(exec);
-	*command = exec;
-	*instance = launcherExecBasename(exec);
-	*class = wmclass;
+	*command = de.exec;
+	*instance = launcherExecBasename(de.exec);
+	*class = de.wmclass;
 	if (!*class && *instance)
 		*class = wstrdup(*instance);
-	*display_name = name_val;
-	*comment = comment_val;
+	*display_name = de.name;
+	*comment = de.comment;
 	*icon = NULL;
-	if (icon_val) {
-		if (icon_val[0] == '/') {
-			if (access(icon_val, R_OK) == 0)
-				*icon = icon_val;
+	if (de.icon) {
+		if (de.icon[0] == '/') {
+			if (access(de.icon, R_OK) == 0)
+				*icon = de.icon;
 			else
-				wfree(icon_val);
+				wfree(de.icon);
 		} else {
 			/* a bare theme name, resolve through the hicolor
 			 * fallback theme and the legacy pixmaps directory */
-			*icon = launcherFindThemeIcon(icon_val);
-			wfree(icon_val);
+			*icon = launcherFindThemeIcon(de.icon);
+			wfree(de.icon);
 		}
 	}
+	wfree(de.try_exec);
 	return True;
 }
 

@@ -21,6 +21,7 @@ POTFILES  = \
 	$(top_srcdir)/src/config-schema.c \
 	$(top_srcdir)/src/cycling.c \
 	$(top_srcdir)/src/defaults.c \
+	$(top_srcdir)/src/desktopfile.c \
 	$(top_srcdir)/src/dialog.c \
 	$(top_srcdir)/src/dock.c \
 	$(top_srcdir)/src/dockedapp.c \

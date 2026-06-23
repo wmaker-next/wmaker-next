@@ -40,6 +40,8 @@ wmaker_SOURCES = 	\
 	def_pixmaps.h \
 	defaults.c \
 	defaults.h \
+	desktopfile.c \
+	desktopfile.h \
 	dialog.c \
 	dialog.h \
 	dock.c \
