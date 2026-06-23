@@ -20,6 +20,17 @@ first use and refreshed automatically when an applications directory
 changes, so a freshly installed package is picked up without
 restarting the window manager.
 
+When the typed word matches no application or executable the same
+dialog now searches documents under the XDG Documents, Downloads
+and Desktop directories and any extra roots listed in the new
+RunDialogDocumentPaths array, picking a match inserts the file's
+default MIME handler with the quoted path as argument (or xdg-open
+when no handler is known). A leading ? forces document mode
+regardless, so ?repo<Tab> finds Annual report.pdf even if a repo
+binary exists. RunDialogDocumentSearch = NO disables this,
+RunDialogDocumentDepth (default 3) and RunDialogDocumentMax
+(default 5000) bound the index walk.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

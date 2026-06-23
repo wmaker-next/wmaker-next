@@ -298,6 +298,10 @@
 	CaptureCursor = (builtin, crosshair);
 	DialogHistoryLines = 500;
 	RunDialogXDGCompletion = YES;
+	RunDialogDocumentSearch = YES;
+	RunDialogDocumentPaths = ("~/Documents", "~/Downloads", "~/Desktop");
+	RunDialogDocumentDepth = 3;
+	RunDialogDocumentMax = 5000;
 	CycleActiveHeadOnly = NO;
 	CycleAllWorkspaces = NO;
 	CycleIgnoreMinimized = NO;

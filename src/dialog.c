@@ -178,8 +178,18 @@ typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
 	int rank;	/* sort band, lower first */
+	time_t mtime;	/* recency tiebreak within the document band */
 	Bool replace;	/* True: text replaces the current word */
 } RunVariant;
+
+/* rank bands, lower sorts first */
+enum {
+	RUN_RANK_APP_PREFIX = 0,
+	RUN_RANK_APP_SUBSTR = 1,
+	RUN_RANK_PATH = 2,
+	RUN_RANK_DOC_PREFIX = 10,
+	RUN_RANK_DOC_SUBSTR = 11
+};
 
 typedef struct _WMInputPanelWithHistory {
 	WMInputPanel *panel;
@@ -319,6 +329,9 @@ static int compareVariants(const void *a, const void *b)
 
 	if (va->rank != vb->rank)
 		return va->rank - vb->rank;
+	/* within the document band newer files come first */
+	if (va->mtime != vb->mtime)
+		return va->mtime > vb->mtime ? -1 : 1;
 	ka = va->label ? va->label : va->text;
 	kb = vb->label ? vb->label : vb->text;
 	return strcasecmp(ka, kb);
@@ -358,7 +371,8 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 					suffix = wstrdup(de->d_name + prefixlen);
 					if (sb.st_mode & S_IFDIR)
 						suffix = wstrappend(suffix, "/");
-					WMAddToArray(result, makeVariant(suffix, NULL, 2, False));
+					WMAddToArray(result, makeVariant(suffix, NULL,
+									 RUN_RANK_PATH, False));
 				}
 				wfree(fullfilename);
 			}
@@ -441,11 +455,75 @@ static void matchXDGApps(const char *word, WMArray *result)
 		hit = strstr(a->name_fold, fold);
 		if (!hit && !matchExecName(fold, a->exec_raw, &rank))
 			continue;
-		if (hit)
-			rank = (hit == a->name_fold) ? 0 : 1;
+		rank = (hit == a->name_fold) ? RUN_RANK_APP_PREFIX
+					     : RUN_RANK_APP_SUBSTR;
 		WMAddToArray(result,
 			     makeVariant(wstrdup(a->exec), makeAppLabel(a),
 					 rank, True));
+	}
+}
+
+static char *prettyDir(const char *path)
+{
+	const char *home, *slash;
+	char *dir;
+	size_t hlen;
+
+	slash = strrchr(path, '/');
+	dir = slash && slash != path ? wstrndup(path, slash - path)
+				     : wstrdup("/");
+	home = getenv("HOME");
+	hlen = home ? strlen(home) : 0;
+	if (hlen && strncmp(dir, home, hlen) == 0 &&
+	    (dir[hlen] == '/' || dir[hlen] == 0)) {
+		char *tilde = wstrconcat("~", dir + hlen);
+		wfree(dir);
+		dir = tilde;
+	}
+	return dir;
+}
+
+static void matchDocuments(const char *word, WMArray *result)
+{
+	WMArray *docs;
+	WXDGDoc *d;
+	RunVariant *v;
+	char fold[256], *cmd, *dir, *label;
+	const char *hit;
+	size_t i, n;
+
+	n = strlen(word);
+	if (n == 0 || n >= sizeof(fold))
+		return;
+	for (i = 0; i < n; i++)
+		fold[i] = tolower((unsigned char)word[i]);
+	fold[n] = 0;
+
+	docs = wXDGDocList(w_global.config->run_doc_paths.items,
+			   (int)w_global.config->run_doc_paths.count,
+			   w_global.config->run_doc_depth,
+			   w_global.config->run_doc_max);
+	for (i = 0; i < (size_t)WMGetArrayItemCount(docs); i++) {
+		d = WMGetFromArray(docs, i);
+		hit = strstr(d->base_fold, fold);
+		if (!hit)
+			continue;
+		cmd = wXDGOpenCommandFor(d->path);
+		dir = prettyDir(d->path);
+		if (strncmp(cmd, "xdg-open ", 9) == 0) {
+			label = wstrconcat(d->base,
+					   " \xe2\x80\x94 open with default handler");
+		} else {
+			label = wstrconcat(d->base, " \xe2\x80\x94 ");
+			label = wstrappend(label, dir);
+		}
+		wfree(dir);
+		v = makeVariant(cmd, label,
+				hit == d->base_fold ? RUN_RANK_DOC_PREFIX
+						    : RUN_RANK_DOC_SUBSTR,
+				True);
+		v->mtime = d->mtime;
+		WMAddToArray(result, v);
 	}
 }
 
@@ -484,7 +562,11 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		wfree(dir);
 		wfree(prefix);
 	} else if (*complete == '~') {
-		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL, 2, False));
+		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL,
+						   RUN_RANK_PATH, False));
+	} else if (firstWord && *complete == '?') {
+		if (w_global.config->run_doc_search)
+			matchDocuments(complete + 1, variants);
 	} else if (firstWord) {
 		if (w_global.config->run_xdg_completion)
 			matchXDGApps(complete, variants);
@@ -502,6 +584,12 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 			ScanFiles(tmp, complete, S_IXOTH | S_IXGRP | S_IXUSR, S_IFDIR, variants);
 			wfree(tmp);
 		}
+		/* documents only when the command interpretation came
+		 * up empty so fir<Tab> does not have to wade through
+		 * firmware-notes.txt before reaching Firefox */
+		if (w_global.config->run_doc_search &&
+		    WMGetArrayItemCount(variants) == 0)
+			matchDocuments(complete, variants);
 	}
 
 	WMSortArray(variants, compareVariants);

@@ -88,10 +88,13 @@
  *			and Tab completion. On the first word Tab completes
  *			from $PATH and from XDG .desktop application Name
  *			entries by case-insensitive substring, picking an
- *			application inserts its Exec command. The optional
- *			name selects a separate history file. Application
- *			completion can be disabled with the
- *			RunDialogXDGCompletion = NO default.
+ *			application inserts its Exec command. A leading ?
+ *			searches documents under the XDG user directories
+ *			instead and inserts the file's default MIME
+ *			handler. The optional name selects a separate
+ *			history file. Application completion can be
+ *			disabled with RunDialogXDGCompletion = NO and
+ *			document search with RunDialogDocumentSearch = NO.
  * %w - substitute with XID for the current focused window
  * %W - substitute with the number of the current workspace
  *
