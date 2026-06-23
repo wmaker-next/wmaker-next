@@ -178,6 +178,7 @@ typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
 	int rank;	/* sort band, lower first */
+	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
 	Bool replace;	/* True: text replaces the current word */
 } RunVariant;
@@ -329,6 +330,8 @@ static int compareVariants(const void *a, const void *b)
 
 	if (va->rank != vb->rank)
 		return va->rank - vb->rank;
+	if (va->score != vb->score)
+		return vb->score - va->score;
 	/* within the document band newer files come first */
 	if (va->mtime != vb->mtime)
 		return va->mtime > vb->mtime ? -1 : 1;
@@ -344,8 +347,7 @@ static int matchVariantText(const void *item, const void *cdata)
 	return strcmp(v->text, cdata) == 0;
 }
 
-static void
-ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned declinemask, WMArray * result)
+static void ScanFiles(const char *dir, const char *prefix, WMArray *result)
 {
 	int prefixlen;
 	DIR *d;
@@ -364,8 +366,6 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 				fullfilename = wstrappend(fullfilename, de->d_name);
 
 				if (stat(fullfilename, &sb) == 0 &&
-				    (sb.st_mode & acceptmask) &&
-				    !(sb.st_mode & declinemask) &&
 				    WMFindInArray(result, matchVariantText,
 						  de->d_name + prefixlen) == WANotFound) {
 					suffix = wstrdup(de->d_name + prefixlen);
@@ -381,10 +381,43 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 	}
 }
 
-static Bool matchExecName(const char *needle, const char *exec, int *rank)
+/* match needle against a candidate according to RunDialogMatching,
+ * returns False on no match, else writes the rank-band offset (0
+ * for a prefix hit, 1 otherwise) and a higher-is-better score */
+static Bool matchName(const char *needle, const char *hay_fold,
+		      const char *hay_orig, int *band, int *score)
+{
+	const char *hit;
+
+	switch (w_global.config->run_matching) {
+	case RUN_MATCH_PREFIX:
+		if (strncmp(hay_fold, needle, strlen(needle)) != 0)
+			return False;
+		*band = 0;
+		*score = 0;
+		return True;
+	case RUN_MATCH_FUZZY:
+		*score = wFuzzyScore(needle, hay_fold, hay_orig);
+		if (*score < 0)
+			return False;
+		*band = strncmp(hay_fold, needle, strlen(needle)) == 0 ? 0 : 1;
+		return True;
+	case RUN_MATCH_SUBSTRING:
+	default:
+		hit = strstr(hay_fold, needle);
+		if (!hit)
+			return False;
+		*band = (hit == hay_fold) ? 0 : 1;
+		*score = (hit == hay_fold) ? 1 : 0;
+		return True;
+	}
+}
+
+static Bool matchExecName(const char *needle, const char *exec,
+			  int *band, int *score)
 {
 	char name[256], fold[256];
-	const char *start, *base, *hit;
+	const char *start, *base;
 	size_t i, n;
 
 	if (!exec)
@@ -413,14 +446,14 @@ static Bool matchExecName(const char *needle, const char *exec, int *rank)
 		base++;
 	else
 		base = name;
-	for (i = 0; base[i]; i++)
-		fold[i] = tolower((unsigned char)base[i]);
-	fold[i] = 0;
-	hit = strstr(fold, needle);
-	if (!hit)
+	n = strlen(base);
+	if (n == 0)
 		return False;
-	*rank = (hit == fold) ? 0 : 1;
-	return True;
+	for (i = 0; i < n; i++)
+		fold[i] = tolower((unsigned char)base[i]);
+	fold[n] = 0;
+
+	return matchName(needle, fold, base, band, score);
 }
 
 static char *makeAppLabel(const WXDGApp *a)
@@ -437,10 +470,10 @@ static void matchXDGApps(const char *word, WMArray *result)
 {
 	WMArray *apps;
 	WXDGApp *a;
+	RunVariant *v;
 	char fold[256];
-	const char *hit;
 	size_t i, n;
-	int rank;
+	int band, score;
 
 	n = strlen(word);
 	if (n == 0 || n >= sizeof(fold))
@@ -452,15 +485,80 @@ static void matchXDGApps(const char *word, WMArray *result)
 	apps = wXDGAppList();
 	for (i = 0; i < (size_t)WMGetArrayItemCount(apps); i++) {
 		a = WMGetFromArray(apps, i);
-		hit = strstr(a->name_fold, fold);
-		if (!hit && !matchExecName(fold, a->exec_raw, &rank))
+		if (matchName(fold, a->name_fold, a->name, &band, &score)) {
+			/* Name= is preferred because it is shown in the candidate label. */
+		} else if (!matchExecName(fold, a->exec_raw, &band, &score)) {
 			continue;
-		rank = (hit == a->name_fold) ? RUN_RANK_APP_PREFIX
-					     : RUN_RANK_APP_SUBSTR;
-		WMAddToArray(result,
-			     makeVariant(wstrdup(a->exec), makeAppLabel(a),
-					 rank, True));
+		}
+		v = makeVariant(wstrdup(a->exec), makeAppLabel(a),
+				RUN_RANK_APP_PREFIX + band, True);
+		v->score = score;
+		WMAddToArray(result, v);
 	}
+}
+
+static void matchPathDir(const char *dir, const char *word,
+			 const char *fold, WMHashTable *seen,
+			 WMArray *result)
+{
+	DIR *dp;
+	struct dirent *de;
+	struct stat sb;
+	RunVariant *v;
+	char namefold[256], *full;
+	size_t k, dlen;
+	int band, score;
+
+	dp = opendir(dir);
+	if (!dp)
+		return;
+	while ((de = readdir(dp)) != NULL) {
+		dlen = strlen(de->d_name);
+		if (dlen == 0 || dlen >= sizeof(namefold))
+			continue;
+		for (k = 0; k <= dlen; k++)
+			namefold[k] = tolower((unsigned char)de->d_name[k]);
+		if (!matchName(fold, namefold, de->d_name, &band, &score))
+			continue;
+		/* the suffix variant only works when the case the
+		 * user typed matches the binary on disk, otherwise
+		 * the rebuilt field would not run, so fall through
+		 * to a replacing variant carrying the real name */
+		if (band == 0 && strncmp(de->d_name, word, strlen(word)) != 0)
+			band = 1;
+		full = wstrconcat(dir, "/");
+		full = wstrappend(full, de->d_name);
+		if (stat(full, &sb) != 0 ||
+		    !(sb.st_mode & (S_IXOTH | S_IXGRP | S_IXUSR)) ||
+		    (sb.st_mode & S_IFDIR)) {
+			wfree(full);
+			continue;
+		}
+		wfree(full);
+		/* dedup across $PATH directories on the binary name
+		 * itself, not the variant text, so an XDG app whose
+		 * Exec= happens to equal a suffix cannot mask a hit */
+		if (WMHashGet(seen, de->d_name))
+			continue;
+		WMHashInsert(seen, de->d_name, seen);
+		/* a prefix hit stays a non-replacing suffix so the
+		 * pre-series Tab feel is preserved in every mode. An
+		 * exact name match completes to itself, which is the
+		 * no-op Tab already performs at varpos 0, so skip it
+		 * rather than show an empty row in the popup */
+		if (band == 0) {
+			if (de->d_name[strlen(word)] == '\0')
+				continue;
+			v = makeVariant(wstrdup(de->d_name + strlen(word)),
+					NULL, RUN_RANK_PATH, False);
+		} else {
+			v = makeVariant(wstrdup(de->d_name), NULL,
+					RUN_RANK_PATH + 1, True);
+		}
+		v->score = score;
+		WMAddToArray(result, v);
+	}
+	closedir(dp);
 }
 
 static char *prettyDir(const char *path)
@@ -489,8 +587,8 @@ static void matchDocuments(const char *word, WMArray *result)
 	WXDGDoc *d;
 	RunVariant *v;
 	char fold[256], *cmd, *dir, *label;
-	const char *hit;
 	size_t i, n;
+	int band, score;
 
 	n = strlen(word);
 	if (n == 0 || n >= sizeof(fold))
@@ -505,8 +603,7 @@ static void matchDocuments(const char *word, WMArray *result)
 			   w_global.config->run_doc_max);
 	for (i = 0; i < (size_t)WMGetArrayItemCount(docs); i++) {
 		d = WMGetFromArray(docs, i);
-		hit = strstr(d->base_fold, fold);
-		if (!hit)
+		if (!matchName(fold, d->base_fold, d->base, &band, &score))
 			continue;
 		cmd = wXDGOpenCommandFor(d->path);
 		dir = prettyDir(d->path);
@@ -518,10 +615,8 @@ static void matchDocuments(const char *word, WMArray *result)
 			label = wstrappend(label, dir);
 		}
 		wfree(dir);
-		v = makeVariant(cmd, label,
-				hit == d->base_fold ? RUN_RANK_DOC_PREFIX
-						    : RUN_RANK_DOC_SUBSTR,
-				True);
+		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX + band, True);
+		v->score = score;
 		v->mtime = d->mtime;
 		WMAddToArray(result, v);
 	}
@@ -533,6 +628,9 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	WMArray *variants = NULL;
 	const char *start, *pos = NULL, *path = NULL;
 	char *tmp = NULL, *dir = NULL, *prefix = NULL;
+	char fold[256];
+	size_t i, flen;
+	WMHashTable *seen;
 
 	variants = WMCreateArrayWithDestructor(0, freeVariant);
 
@@ -558,7 +656,7 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 			dir = tmp;
 		}
 		prefix = wstrdup(pos + 1);
-		ScanFiles(dir, prefix, (unsigned)-1, 0, variants);
+		ScanFiles(dir, prefix, variants);
 		wfree(dir);
 		wfree(prefix);
 	} else if (*complete == '~') {
@@ -568,9 +666,16 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		if (w_global.config->run_doc_search)
 			matchDocuments(complete + 1, variants);
 	} else if (firstWord) {
+		flen = strlen(complete);
+		if (flen >= sizeof(fold))
+			flen = sizeof(fold) - 1;
+		for (i = 0; i < flen; i++)
+			fold[i] = tolower((unsigned char)complete[i]);
+		fold[flen] = 0;
 		if (w_global.config->run_xdg_completion)
 			matchXDGApps(complete, variants);
-		path = getenv("PATH");
+		seen = WMCreateHashTable(WMStringHashCallbacks);
+		path = flen ? getenv("PATH") : NULL;
 		while (path) {
 			pos = strchr(path, ':');
 			if (pos) {
@@ -581,9 +686,10 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 				path = NULL;
 			} else
 				break;
-			ScanFiles(tmp, complete, S_IXOTH | S_IXGRP | S_IXUSR, S_IFDIR, variants);
+			matchPathDir(tmp, complete, fold, seen, variants);
 			wfree(tmp);
 		}
+		WMFreeHashTable(seen);
 		/* documents only when the command interpretation came
 		 * up empty so fir<Tab> does not have to wade through
 		 * firmware-notes.txt before reaching Firefox */

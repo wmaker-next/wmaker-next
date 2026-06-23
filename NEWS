@@ -31,6 +31,14 @@ binary exists. RunDialogDocumentSearch = NO disables this,
 RunDialogDocumentDepth (default 3) and RunDialogDocumentMax
 (default 5000) bound the index walk.
 
+The RunDialogMatching default selects the matching algorithm for
+application, executable and document names. The default substring
+is the case-insensitive contains match described above, fuzzy is a
+greedy subsequence matcher with positional bonuses so loff<Tab>
+finds LibreOffice, and prefix restores the pre-series anchored
+match for users who dislike the new ranking. Filesystem path
+completion after a / stays prefix-only in every mode.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

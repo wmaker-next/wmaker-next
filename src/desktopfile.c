@@ -864,6 +864,66 @@ char *wXDGOpenCommandFor(const char *path)
 	return cmd;
 }
 
+/* ---- fuzzy matcher ----------------------------------------------- */
+
+static int isWordStart(const char *orig, int i)
+{
+	unsigned char prev, cur;
+
+	if (i == 0)
+		return 1;
+	prev = (unsigned char)orig[i - 1];
+	cur = (unsigned char)orig[i];
+	if (prev == ' ' || prev == '-' || prev == '_' ||
+	    prev == '.' || prev == '/')
+		return 1;
+	/* lower -> upper CamelCase hump */
+	if (islower(prev) && isupper(cur))
+		return 1;
+	return 0;
+}
+
+int wFuzzyScore(const char *needle_fold, const char *hay_fold,
+		const char *hay_orig)
+{
+	int i, h, prev, gap_total, run, score;
+
+	if (!needle_fold[0])
+		return -1;
+
+	score = 100;
+	gap_total = 0;
+	prev = -2;
+	run = 0;
+	h = 0;
+	for (i = 0; needle_fold[i]; i++) {
+		while (hay_fold[h] && hay_fold[h] != needle_fold[i])
+			h++;
+		if (!hay_fold[h])
+			return -1;
+		if (i == 0 && h == 0)
+			score += 15;
+		if (isWordStart(hay_orig, h))
+			score += 8;
+		if (h == prev + 1) {
+			run++;
+			if (run == 1)
+				score += 4;
+		} else {
+			if (i > 0)
+				gap_total += h - prev - 1;
+			run = 0;
+		}
+		prev = h;
+		h++;
+	}
+	/* cap the gap penalty so very long names do not underflow */
+	if (gap_total > 80)
+		gap_total = 80;
+	return score - gap_total;
+}
+
+
 /* ---- document index ---------------------------------------------- */
 
 #define XDG_MAX_DOC_ROOTS 32

@@ -208,6 +208,13 @@ static const WConfigEnum tab_attach_areas[] = {
 	{NULL, 0, 0}
 };
 
+static const WConfigEnum run_matching_modes[] = {
+	{"prefix", RUN_MATCH_PREFIX, 0},
+	{"substring", RUN_MATCH_SUBSTRING, 0},
+	{"fuzzy", RUN_MATCH_FUZZY, 0},
+	{NULL, 0, 0}
+};
+
 #define WCFG_SCHEMA_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	{ name, WCFG_KEY_##K, WCFG_##T, def, FIELD(field), etable, lo, hi, fl, refresh },
 #define WCFG_SCHEMA_KB_ROW(K, name, def, wkbd) \

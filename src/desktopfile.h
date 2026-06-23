@@ -125,4 +125,12 @@ WMArray *wXDGDocList(char **extra_roots, int n_extra,
 
 void wXDGDocListInvalidate(void);
 
+
+/* greedy fzf-v1 / rofi-style subsequence matcher with positional
+ * bonuses, returns <0 when needle is not a subsequence of hay_fold,
+ * otherwise a higher-is-better score, hay_orig is the original-case
+ * haystack used to spot word boundaries and CamelCase humps */
+int wFuzzyScore(const char *needle_fold, const char *hay_fold,
+		const char *hay_orig);
+
 #endif /* WMDESKTOPFILE_H_ */

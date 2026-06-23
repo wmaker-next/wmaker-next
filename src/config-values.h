@@ -159,4 +159,11 @@ enum {
 	WTAB_ATTACH_WINDOW
 };
 
+/* run-dialog completion matching mode */
+enum {
+	RUN_MATCH_PREFIX,
+	RUN_MATCH_SUBSTRING,
+	RUN_MATCH_FUZZY
+};
+
 #endif /* WMCONFIG_VALUES_H_ */

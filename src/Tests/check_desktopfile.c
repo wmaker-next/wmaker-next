@@ -184,6 +184,37 @@ static void test_doc_list(void)
 		perror("rm");
 }
 
+static void test_fuzzy_score(void)
+{
+	/* subsequence required, order matters */
+	CHECK(wFuzzyScore("abc", "axbxc", "axbxc") >= 0);
+	CHECK(wFuzzyScore("abc", "acb", "acb") < 0);
+	CHECK(wFuzzyScore("fxo", "firefox", "firefox") < 0);
+	/* empty needle never matches, the call site already
+	 * short-circuits empty input but the function stays total */
+	CHECK(wFuzzyScore("", "anything", "anything") < 0);
+
+	/* tighter packing beats a spread-out match */
+	CHECK(wFuzzyScore("abc", "abc", "abc") >
+	      wFuzzyScore("abc", "axbxc", "axbxc"));
+	CHECK(wFuzzyScore("ffx", "firefox", "firefox") >
+	      wFuzzyScore("ffx", "fortifyzx", "fortifyzx"));
+
+	/* word-start bonus on the capital F lifts FireFox over a
+	 * mid-word ff in stuff */
+	CHECK(wFuzzyScore("ff", "firefox", "FireFox") >
+	      wFuzzyScore("ff", "stuff", "stuff"));
+
+	/* anchored prefix beats a later occurrence */
+	CHECK(wFuzzyScore("fir", "firefox", "firefox") >
+	      wFuzzyScore("fir", "campfire", "campfire"));
+
+	/* word-start bonus on the L of LibreOffice for the lboff
+	 * style abbreviation */
+	CHECK(wFuzzyScore("loff", "libreoffice", "LibreOffice") >
+	      wFuzzyScore("loff", "killoffender", "killoffender"));
+}
+
 int main(void)
 {
 	const char *src;
@@ -213,6 +244,7 @@ int main(void)
 	test_default_app();
 	test_open_command();
 	test_doc_list();
+	test_fuzzy_score();
 
 	wXDGMimeInvalidate();
 	wXDGAppListInvalidate();
