@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <limits.h>
 #include <errno.h>
@@ -55,6 +56,7 @@
 #include "GNUstep.h"
 #include "screen.h"
 #include "window.h"
+#include "desktopfile.h"
 #include "dialog.h"
 #include "misc.h"
 #include "wxkb.h"
@@ -175,6 +177,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
+	int rank;	/* sort band, lower first */
 	Bool replace;	/* True: text replaces the current word */
 } RunVariant;
 
@@ -191,13 +194,14 @@ typedef struct _WMInputPanelWithHistory {
 	int varpos;
 } WMInputPanelWithHistory;
 
-static RunVariant *makeVariant(char *text, char *label, Bool replace)
+static RunVariant *makeVariant(char *text, char *label, int rank, Bool replace)
 {
 	RunVariant *v;
 
 	v = wmalloc(sizeof(*v));
 	v->text = text;
 	v->label = label;
+	v->rank = rank;
 	v->replace = replace;
 	return v;
 }
@@ -311,8 +315,13 @@ static int compareVariants(const void *a, const void *b)
 {
 	const RunVariant *va = *(const RunVariant * const *)a;
 	const RunVariant *vb = *(const RunVariant * const *)b;
+	const char *ka, *kb;
 
-	return strcmp(va->text, vb->text);
+	if (va->rank != vb->rank)
+		return va->rank - vb->rank;
+	ka = va->label ? va->label : va->text;
+	kb = vb->label ? vb->label : vb->text;
+	return strcasecmp(ka, kb);
 }
 
 static int matchVariantText(const void *item, const void *cdata)
@@ -349,12 +358,94 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 					suffix = wstrdup(de->d_name + prefixlen);
 					if (sb.st_mode & S_IFDIR)
 						suffix = wstrappend(suffix, "/");
-					WMAddToArray(result, makeVariant(suffix, NULL, False));
+					WMAddToArray(result, makeVariant(suffix, NULL, 2, False));
 				}
 				wfree(fullfilename);
 			}
 		}
 		closedir(d);
+	}
+}
+
+static Bool matchExecName(const char *needle, const char *exec, int *rank)
+{
+	char name[256], fold[256];
+	const char *start, *base, *hit;
+	size_t i, n;
+
+	if (!exec)
+		return False;
+	while (*exec == ' ' || *exec == '\t')
+		exec++;
+	start = exec;
+	if (*exec == '\'' || *exec == '"') {
+		char quote = *exec++;
+
+		start = exec;
+		while (*exec && *exec != quote)
+			exec++;
+	} else {
+		while (*exec && *exec != ' ' && *exec != '\t')
+			exec++;
+	}
+
+	n = (size_t)(exec - start);
+	if (n == 0 || n >= sizeof(name))
+		return False;
+	memcpy(name, start, n);
+	name[n] = 0;
+	base = strrchr(name, '/');
+	if (base)
+		base++;
+	else
+		base = name;
+	for (i = 0; base[i]; i++)
+		fold[i] = tolower((unsigned char)base[i]);
+	fold[i] = 0;
+	hit = strstr(fold, needle);
+	if (!hit)
+		return False;
+	*rank = (hit == fold) ? 0 : 1;
+	return True;
+}
+
+static char *makeAppLabel(const WXDGApp *a)
+{
+	char *label;
+
+	if (!a->comment || !a->comment[0])
+		return wstrdup(a->name);
+	label = wstrconcat(a->name, " \xe2\x80\x94 ");
+	return wstrappend(label, a->comment);
+}
+
+static void matchXDGApps(const char *word, WMArray *result)
+{
+	WMArray *apps;
+	WXDGApp *a;
+	char fold[256];
+	const char *hit;
+	size_t i, n;
+	int rank;
+
+	n = strlen(word);
+	if (n == 0 || n >= sizeof(fold))
+		return;
+	for (i = 0; i < n; i++)
+		fold[i] = tolower((unsigned char)word[i]);
+	fold[n] = 0;
+
+	apps = wXDGAppList();
+	for (i = 0; i < (size_t)WMGetArrayItemCount(apps); i++) {
+		a = WMGetFromArray(apps, i);
+		hit = strstr(a->name_fold, fold);
+		if (!hit && !matchExecName(fold, a->exec_raw, &rank))
+			continue;
+		if (hit)
+			rank = (hit == a->name_fold) ? 0 : 1;
+		WMAddToArray(result,
+			     makeVariant(wstrdup(a->exec), makeAppLabel(a),
+					 rank, True));
 	}
 }
 
@@ -393,8 +484,9 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		wfree(dir);
 		wfree(prefix);
 	} else if (*complete == '~') {
-		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL, False));
+		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL, 2, False));
 	} else if (firstWord) {
+		matchXDGApps(complete, variants);
 		path = getenv("PATH");
 		while (path) {
 			pos = strchr(path, ':');
