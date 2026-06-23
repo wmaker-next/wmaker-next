@@ -172,6 +172,12 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	return result;
 }
 
+typedef struct RunVariant {
+	char *text;	/* suffix to append, or full word when replace */
+	char *label;	/* shown in mLbl while selected, may be NULL */
+	Bool replace;	/* True: text replaces the current word */
+} RunVariant;
+
 typedef struct _WMInputPanelWithHistory {
 	WMInputPanel *panel;
 	WMArray *history;
@@ -179,9 +185,31 @@ typedef struct _WMInputPanelWithHistory {
 	char *prefix;
 	char *suffix;
 	char *rest;
+	int word_off;		/* byte offset of current word in prefix */
+	char *saved_msg;	/* original mLbl text, restored on reset */
 	WMArray *variants;
 	int varpos;
 } WMInputPanelWithHistory;
+
+static RunVariant *makeVariant(char *text, char *label, Bool replace)
+{
+	RunVariant *v;
+
+	v = wmalloc(sizeof(*v));
+	v->text = text;
+	v->label = label;
+	v->replace = replace;
+	return v;
+}
+
+static void freeVariant(void *item)
+{
+	RunVariant *v = item;
+
+	wfree(v->text);
+	wfree(v->label);
+	wfree(v);
+}
 
 static char *HistoryFileName(const char *name)
 {
@@ -279,9 +307,19 @@ static void SaveHistory(WMArray * history, const char *filename)
 	WMReleasePropList(plhistory);
 }
 
-static int pstrcmp(const char **str1, const char **str2)
+static int compareVariants(const void *a, const void *b)
 {
-	return strcmp(*str1, *str2);
+	const RunVariant *va = *(const RunVariant * const *)a;
+	const RunVariant *vb = *(const RunVariant * const *)b;
+
+	return strcmp(va->text, vb->text);
+}
+
+static int matchVariantText(const void *item, const void *cdata)
+{
+	const RunVariant *v = item;
+
+	return strcmp(v->text, cdata) == 0;
 }
 
 static void
@@ -306,12 +344,12 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 				if (stat(fullfilename, &sb) == 0 &&
 				    (sb.st_mode & acceptmask) &&
 				    !(sb.st_mode & declinemask) &&
-				    WMFindInArray(result, (WMMatchDataProc *) strmatch,
+				    WMFindInArray(result, matchVariantText,
 						  de->d_name + prefixlen) == WANotFound) {
 					suffix = wstrdup(de->d_name + prefixlen);
 					if (sb.st_mode & S_IFDIR)
 						suffix = wstrappend(suffix, "/");
-					WMAddToArray(result, suffix);
+					WMAddToArray(result, makeVariant(suffix, NULL, False));
 				}
 				wfree(fullfilename);
 			}
@@ -320,15 +358,16 @@ ScanFiles(const char *dir, const char *prefix, unsigned acceptmask, unsigned dec
 	}
 }
 
-static WMArray *GenerateVariants(const char *complete)
+static WMArray *GenerateVariants(const char *complete, int *word_off)
 {
 	Bool firstWord = True;
 	WMArray *variants = NULL;
-	const char *pos = NULL, *path = NULL;
+	const char *start, *pos = NULL, *path = NULL;
 	char *tmp = NULL, *dir = NULL, *prefix = NULL;
 
-	variants = WMCreateArrayWithDestructor(0, wfree);
+	variants = WMCreateArrayWithDestructor(0, freeVariant);
 
+	start = complete;
 	while (*complete == ' ')
 		++complete;
 
@@ -337,6 +376,7 @@ static WMArray *GenerateVariants(const char *complete)
 		complete = pos + 1;
 		firstWord = False;
 	}
+	*word_off = complete - start;
 
 	pos = strrchr(complete, '/');
 	if (pos != NULL) {
@@ -353,7 +393,7 @@ static WMArray *GenerateVariants(const char *complete)
 		wfree(dir);
 		wfree(prefix);
 	} else if (*complete == '~') {
-		WMAddToArray(variants, wstrdup("/"));
+		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL, False));
 	} else if (firstWord) {
 		path = getenv("PATH");
 		while (path) {
@@ -371,14 +411,63 @@ static WMArray *GenerateVariants(const char *complete)
 		}
 	}
 
-	WMSortArray(variants, (WMCompareDataProc *) pstrcmp);
+	WMSortArray(variants, compareVariants);
 	return variants;
+}
+
+static void setVariantLabel(WMInputPanelWithHistory *p, RunVariant *v, int n)
+{
+	char buf[256];
+	const char *label;
+
+	if (!p->panel->mLbl)
+		return;
+	if (!p->saved_msg)
+		p->saved_msg = wstrdup(WMGetLabelText(p->panel->mLbl));
+	if (!v) {
+		WMSetLabelText(p->panel->mLbl, p->saved_msg);
+		return;
+	}
+	label = v->label;
+	if (!label && n <= 1)
+		return;
+	if (!label)
+		label = p->saved_msg;
+	if (n > 1)
+		snprintf(buf, sizeof(buf), "[%d/%d] %s", p->varpos, n, label);
+	else
+		snprintf(buf, sizeof(buf), "%s", label);
+	WMSetLabelText(p->panel->mLbl, buf);
+}
+
+static void resetVariants(WMInputPanelWithHistory *p)
+{
+	if (p->prefix) {
+		wfree(p->prefix);
+		p->prefix = NULL;
+	}
+	if (p->suffix) {
+		wfree(p->suffix);
+		p->suffix = NULL;
+	}
+	if (p->variants) {
+		WMFreeArray(p->variants);
+		p->variants = NULL;
+	}
+	if (p->saved_msg) {
+		if (p->panel->mLbl)
+			WMSetLabelText(p->panel->mLbl, p->saved_msg);
+		wfree(p->saved_msg);
+		p->saved_msg = NULL;
+	}
 }
 
 static void handleHistoryKeyPress(XEvent * event, void *clientData)
 {
 	char *text;
 	unsigned pos;
+	int n;
+	RunVariant *v;
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
 	KeySym ksym;
 
@@ -406,23 +495,27 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			p->prefix = wstrndup(text, pos);
 			p->suffix = wstrdup(text + pos);
 			wfree(text);
-			p->variants = GenerateVariants(p->prefix);
+			p->variants = GenerateVariants(p->prefix, &p->word_off);
 			p->varpos = 0;
-			if (!p->variants) {
-				wfree(p->prefix);
-				wfree(p->suffix);
-				p->prefix = NULL;
-				p->suffix = NULL;
-			}
 		}
 		if (p->variants && p->prefix && p->suffix) {
+			n = WMGetArrayItemCount(p->variants);
 			p->varpos++;
-			if (p->varpos > WMGetArrayItemCount(p->variants))
+			if (p->varpos > n)
 				p->varpos = 0;
-			if (p->varpos > 0)
-				text = wstrconcat(p->prefix, WMGetFromArray(p->variants, p->varpos - 1));
-			else
+			if (p->varpos > 0) {
+				v = WMGetFromArray(p->variants, p->varpos - 1);
+				if (v->replace) {
+					text = wstrndup(p->prefix, p->word_off);
+					text = wstrappend(text, v->text);
+				} else {
+					text = wstrconcat(p->prefix, v->text);
+				}
+				setVariantLabel(p, v, n);
+			} else {
 				text = wstrdup(p->prefix);
+				setVariantLabel(p, NULL, n);
+			}
 			pos = strlen(text);
 			text = wstrappend(text, p->suffix);
 			WMSetTextFieldText(p->panel->text, text);
@@ -431,20 +524,8 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		}
 		break;
 	}
-	if (ksym != XK_Tab) {
-		if (p->prefix) {
-			wfree(p->prefix);
-			p->prefix = NULL;
-		}
-		if (p->suffix) {
-			wfree(p->suffix);
-			p->suffix = NULL;
-		}
-		if (p->variants) {
-			WMFreeArray(p->variants);
-			p->variants = NULL;
-		}
-	}
+	if (ksym != XK_Tab)
+		resetVariants(p);
 }
 
 int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, const char *name, char **text)
@@ -465,6 +546,8 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	p->prefix = NULL;
 	p->suffix = NULL;
 	p->rest = NULL;
+	p->word_off = 0;
+	p->saved_msg = NULL;
 	p->variants = NULL;
 	p->varpos = 0;
 	WMCreateEventHandler(WMWidgetView(p->panel->text), KeyPressMask, handleHistoryKeyPress, p);
@@ -496,6 +579,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 
 	wUnmanageWindow(wwin, False, False);
 
+	resetVariants(p);
 	WMDestroyInputPanel(p->panel);
 	WMFreeArray(p->history);
 	wfree(p);
