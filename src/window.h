@@ -398,6 +398,11 @@ typedef struct WWindow {
 					 * zero when no membership was saved */
 	int restore_tab_idx;
 	int restore_tab_active;
+
+	/* invoked from wWindowMove()/wWindowConfigure() after geometry is
+	 * final, so an attached overlay can track the window */
+	void (*on_geometry_change)(struct WWindow *wwin, void *data);
+	void *geometry_data;
 } WWindow;
 
 #define HAS_TITLEBAR(w)		(!(WFLAGP((w), no_titlebar) || (w)->flags.fullscreen))

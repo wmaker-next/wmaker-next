@@ -39,6 +39,16 @@ finds LibreOffice, and prefix restores the pre-series anchored
 match for users who dislike the new ranking. Filesystem path
 completion after a / stays prefix-only in every mode.
 
+When Tab finds two or more candidates a borderless list pops up
+flush under the dialog showing each match's name and the command
+that would be inserted. Up/Down or Tab/Shift+Tab move through it
+and the text field tracks the selection, typing narrows the list
+live, a single click applies a row and a double click runs it,
+Escape dismisses the popup and restores the typed text without
+closing the dialog. RunDialogPopupList = NO falls back to the
+[i/N] label cycle only and RunDialogPopupRows (default 8, range
+3 to 20) caps the visible height.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

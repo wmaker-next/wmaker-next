@@ -1587,7 +1587,7 @@ static void didResizeList(W_ViewDelegate * self, WMView * view)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 
-	WMResizeWidget(lPtr->vScroller, 1, view->size.height - 2);
+	WMResizeWidget(lPtr->vScroller, SCROLLER_WIDTH - 1, view->size.height - 2);
 
 	updateDoubleBufferPixmap(lPtr);
 

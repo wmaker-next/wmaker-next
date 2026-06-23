@@ -2737,6 +2737,9 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 
 	wwin->last_head = wGetHeadForWindow(wwin);
 
+	if (wwin->on_geometry_change)
+		wwin->on_geometry_change(wwin, wwin->geometry_data);
+
 	XFlush(dpy);
 }
 
@@ -2777,6 +2780,9 @@ void wWindowMove(WWindow *wwin, int req_x, int req_y)
 	if (synth_notify)
 		wWindowSynthConfigureNotify(wwin);
 #endif
+
+	if (wwin->on_geometry_change)
+		wwin->on_geometry_change(wwin, wwin->geometry_data);
 }
 
 /* Move the window to the nearest on-screen position if its stored

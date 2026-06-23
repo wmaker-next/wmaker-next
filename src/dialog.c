@@ -203,6 +203,17 @@ typedef struct _WMInputPanelWithHistory {
 	char *saved_msg;	/* original mLbl text, restored on reset */
 	WMArray *variants;
 	int varpos;
+	WScreen *scr;
+	WWindow *wwin;		/* the managed dialog window */
+	WMWindow *dropWin;	/* override-redirect candidate popup */
+	WMList *dropList;
+	WMFont *dropBold;
+	WMFont *dropNorm;
+	WMColor *dropDim;
+	int dropItemH;
+	Bool dropMapped;
+	Bool filtering;		/* regenerate variants on every edit */
+	Bool rerun;		/* re-enter the modal loop after Escape */
 } WMInputPanelWithHistory;
 
 static RunVariant *makeVariant(char *text, char *label, int rank, Bool replace)
@@ -727,6 +738,285 @@ static void setVariantLabel(WMInputPanelWithHistory *p, RunVariant *v, int n)
 	WMSetLabelText(p->panel->mLbl, buf);
 }
 
+static void applyVariant(WMInputPanelWithHistory *p)
+{
+	RunVariant *v;
+	char *text;
+	unsigned pos;
+	int n;
+
+	n = WMGetArrayItemCount(p->variants);
+	if (p->varpos > 0) {
+		v = WMGetFromArray(p->variants, p->varpos - 1);
+		if (v->replace) {
+			text = wstrndup(p->prefix, p->word_off);
+			text = wstrappend(text, v->text);
+		} else {
+			text = wstrconcat(p->prefix, v->text);
+		}
+		setVariantLabel(p, v, n);
+	} else {
+		text = wstrdup(p->prefix);
+		setVariantLabel(p, NULL, n);
+	}
+	pos = strlen(text);
+	text = wstrappend(text, p->suffix);
+	WMSetTextFieldText(p->panel->text, text);
+	WMSetTextFieldCursorPosition(p->panel->text, pos);
+	wfree(text);
+}
+
+static void drawCandidate(WMList *lPtr, int index, Drawable d,
+			  char *text, int state, WMRect *rect)
+{
+	WMInputPanelWithHistory *p = WMGetHangedData(lPtr);
+	WMScreen *wscr = p->scr->wmscreen;
+	RunVariant *v;
+	WMColor *back;
+	const char *line1, *line2;
+	int fh;
+
+	(void)index;
+
+	v = WMGetListItem(lPtr, index)->clientData;
+	back = (state & WLDSSelected) ? p->scr->white : p->scr->gray;
+	XFillRectangle(dpy, d, WMColorGC(back),
+		       rect->pos.x, rect->pos.y,
+		       rect->size.width, rect->size.height);
+
+	line1 = v->label ? v->label : text;
+	line2 = v->label ? v->text : NULL;
+	fh = WMFontHeight(p->dropBold);
+	WMDrawString(wscr, d, p->scr->black, p->dropBold,
+		     rect->pos.x + 6, rect->pos.y + 2,
+		     line1, strlen(line1));
+	if (line2)
+		WMDrawString(wscr, d, p->dropDim, p->dropNorm,
+			     rect->pos.x + 6, rect->pos.y + 2 + fh,
+			     line2, strlen(line2));
+}
+
+static void hideDropList(WMInputPanelWithHistory *p);
+static void resetVariants(WMInputPanelWithHistory *p);
+
+static void candidateClicked(WMWidget *w, void *cdata)
+{
+	WMInputPanelWithHistory *p = cdata;
+	int row;
+
+	row = WMGetListSelectedItemRow((WMList *)w);
+	if (row < 0 || !p->variants)
+		return;
+	p->varpos = row + 1;
+	applyVariant(p);
+	WMSetFocusToWidget(p->panel->text);
+}
+
+static void candidateActivate(WMWidget *w, void *cdata)
+{
+	WMInputPanelWithHistory *p = cdata;
+
+	candidateClicked(w, cdata);
+	hideDropList(p);
+	if (p->panel->defBtn)
+		WMPerformButtonClick(p->panel->defBtn);
+}
+
+static void createDropList(WMInputPanelWithHistory *p)
+{
+	WMScreen *wscr = p->scr->wmscreen;
+	XSetWindowAttributes attr;
+	int wmScaleWidth, wmScaleHeight;
+
+	WMGetScaleBaseFromSystemFont(wscr, &wmScaleWidth, &wmScaleHeight);
+	(void)wmScaleWidth;
+	p->dropBold = WMBoldSystemFontOfSize(wscr, WMScaleY(12));
+	p->dropNorm = WMSystemFontOfSize(wscr, WMScaleY(11));
+	p->dropDim = WMDarkGrayColor(wscr);
+	p->dropItemH = WMFontHeight(p->dropBold) +
+		       WMFontHeight(p->dropNorm) + 6;
+
+	p->dropWin = WMCreateWindowWithStyle(wscr, "runDrop",
+					     WMBorderlessWindowMask);
+	WMSetWindowLevel(p->dropWin, WMPopUpMenuWindowLevel);
+	WMResizeWidget(p->dropWin, 100, p->dropItemH);
+
+	p->dropList = WMCreateList(p->dropWin);
+	WMHangData(p->dropList, p);
+	WMSetListAllowEmptySelection(p->dropList, False);
+	WMSetListUserDrawItemHeight(p->dropList, p->dropItemH);
+	WMSetListUserDrawProc(p->dropList, drawCandidate);
+	WMSetListAction(p->dropList, candidateClicked, p);
+	WMSetListDoubleAction(p->dropList, candidateActivate, p);
+	WMMoveWidget(p->dropList, 0, 0);
+
+	WMMapSubwidgets(p->dropWin);
+	WMRealizeWidget(p->dropWin);
+
+	WMWidgetView(p->dropWin)->flags.worksWhenModal = 1;
+
+	/* override-redirect so wmaker does not try to manage it,
+	 * and save-under so the area below repaints cheaply */
+	attr.override_redirect = True;
+	attr.save_under = True;
+	XChangeWindowAttributes(dpy, WMWidgetXID(p->dropWin),
+				CWOverrideRedirect | CWSaveUnder, &attr);
+}
+
+static void placeDropList(WMInputPanelWithHistory *p, int rows)
+{
+	WArea ua;
+	int x, y, w, h, head, max_rows, fh, fy, bw, ow;
+	unsigned long *bpixel;
+
+	max_rows = w_global.config->run_popup_rows;
+	if (max_rows < 3)
+		max_rows = 3;
+	if (max_rows > 20)
+		max_rows = 20;
+	if (rows > max_rows)
+		rows = max_rows;
+
+	/* Replicate the dialog's outer border on the popup, matching the
+	 * frame's focused/unfocused pixel. The popup interior is sized to
+	 * core->width and placed at frame_x so border and content align. */
+	bw = 0;
+	bpixel = NULL;
+	if (p->wwin->frame) {
+		bw = HAS_BORDER(p->wwin) ? wFrameBorderWidth(p->wwin) : 0;
+		fh = p->wwin->frame->core->height;
+		bpixel = (p->wwin->frame->flags.state == WS_FOCUSED)
+				? p->wwin->frame->focused_border_pixel
+				: p->wwin->frame->border_pixel;
+	} else {
+		fh = WMWidgetHeight(p->panel->win);
+	}
+	fy = p->wwin->frame_y;
+
+	w = p->wwin->frame ? p->wwin->frame->core->width
+			   : WMWidgetWidth(p->panel->win);
+	ow = w + 2 * bw;
+
+	if (bw > 0) {
+		XSetWindowBorderWidth(dpy, WMWidgetXID(p->dropWin), bw);
+		if (bpixel)
+			XSetWindowBorder(dpy, WMWidgetXID(p->dropWin), *bpixel);
+	} else {
+		XSetWindowBorderWidth(dpy, WMWidgetXID(p->dropWin), 0);
+	}
+
+	h = rows * p->dropItemH + 4;
+	x = p->wwin->frame_x;
+	y = fy + fh + 8;
+
+	head = wGetHeadForWindow(p->wwin);
+	ua = wGetUsableAreaForHead(p->scr, head, NULL, True);
+	if (y + h > ua.y2 && fy - h - 8 >= ua.y1)
+		y = fy - h - 8;
+	else if (y + h > ua.y2)
+		h = ua.y2 - y - 8 > p->dropItemH + 4 ? ua.y2 - y - 8 : h;
+	if (x + ow > ua.x2)
+		x = ua.x2 - ow;
+	if (x < ua.x1)
+		x = ua.x1;
+
+	WMResizeWidget(p->dropWin, w, h);
+	WMResizeWidget(p->dropList, w, h);
+	WMMoveWidget(p->dropWin, x, y);
+}
+
+static void refreshDropList(WMInputPanelWithHistory *p)
+{
+	RunVariant *v;
+	WMListItem *it;
+	int i, n;
+
+	if (!w_global.config->run_popup_list || !p->wwin)
+		return;
+	n = p->variants ? WMGetArrayItemCount(p->variants) : 0;
+	if (n < 2) {
+		hideDropList(p);
+		resetVariants(p);
+		return;
+	}
+	if (!p->dropWin)
+		createDropList(p);
+
+	WMClearList(p->dropList);
+	for (i = 0; i < n; i++) {
+		v = WMGetFromArray(p->variants, i);
+		it = WMInsertListItem(p->dropList, -1,
+				      v->label ? v->label : v->text);
+		it->clientData = v;
+	}
+	placeDropList(p, n);
+	if (p->varpos > 0) {
+		WMSelectListItem(p->dropList, p->varpos - 1);
+		WMSetListPosition(p->dropList, p->varpos - 1);
+	}
+	if (!p->dropMapped) {
+		WMMapWidget(p->dropWin);
+		XRaiseWindow(dpy, WMWidgetXID(p->dropWin));
+		p->dropMapped = True;
+	}
+	p->filtering = True;
+}
+
+static void hideDropList(WMInputPanelWithHistory *p)
+{
+	if (p->dropMapped) {
+		WMUnmapWidget(p->dropWin);
+		p->dropMapped = False;
+	}
+	p->filtering = False;
+}
+
+/* Keep the completion popup glued to the dialog on move/resize. */
+static void dropListFollowDialog(WWindow *wwin, void *data)
+{
+	WMInputPanelWithHistory *p = data;
+	int n;
+
+	(void)wwin;
+	if (!p->dropMapped || !p->dropWin || !p->variants)
+		return;
+	n = WMGetArrayItemCount(p->variants);
+	if (n < 2)
+		return;
+	placeDropList(p, n);
+}
+
+/* Recolour the popup border when the dialog focus changes. */
+static void dropListFocusObserver(void *self, WMNotification *notification)
+{
+	WMInputPanelWithHistory *p = self;
+	int n;
+
+	(void)notification;
+	if (!p->dropMapped || !p->dropWin || !p->variants)
+		return;
+	n = WMGetArrayItemCount(p->variants);
+	if (n < 2)
+		return;
+	placeDropList(p, n);
+}
+
+static void destroyDropList(WMInputPanelWithHistory *p)
+{
+	hideDropList(p);
+	if (p->dropWin) {
+		WMDestroyWidget(p->dropWin);
+		p->dropWin = NULL;
+		p->dropList = NULL;
+	}
+	if (p->dropBold)
+		WMReleaseFont(p->dropBold);
+	if (p->dropNorm)
+		WMReleaseFont(p->dropNorm);
+	if (p->dropDim)
+		WMReleaseColor(p->dropDim);
+}
+
 static void resetVariants(WMInputPanelWithHistory *p)
 {
 	if (p->prefix) {
@@ -749,19 +1039,45 @@ static void resetVariants(WMInputPanelWithHistory *p)
 	}
 }
 
+static void stepVariant(WMInputPanelWithHistory *p, int dir)
+{
+	int n;
+
+	n = WMGetArrayItemCount(p->variants);
+	p->varpos += dir;
+	if (p->varpos > n)
+		p->varpos = 0;
+	if (p->varpos < 0)
+		p->varpos = n;
+	applyVariant(p);
+	if (p->dropMapped && p->varpos > 0) {
+		WMSelectListItem(p->dropList, p->varpos - 1);
+		WMSetListPosition(p->dropList, p->varpos - 1);
+	}
+}
+
 static void handleHistoryKeyPress(XEvent * event, void *clientData)
 {
 	char *text;
 	unsigned pos;
-	int n;
-	RunVariant *v;
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
 	KeySym ksym;
+	Bool wasFiltering;
 
 	ksym = wXkbKeycodeToKeysym(event->xkey.keycode, 0);
 
 	switch (ksym) {
+	case XK_Shift_L:
+	case XK_Shift_R:
+	case XK_Control_L:
+	case XK_Control_R:
+		/* bare modifier presses neither cycle nor reset */
+		return;
 	case XK_Up:
+		if (p->dropMapped) {
+			stepVariant(p, -1);
+			return;
+		}
 		if (p->histpos < WMGetArrayItemCount(p->history) - 1) {
 			if (p->histpos == 0)
 				wfree(WMReplaceInArray(p->history, 0, WMGetTextFieldText(p->panel->text)));
@@ -770,9 +1086,44 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		}
 		break;
 	case XK_Down:
+		if (p->dropMapped) {
+			stepVariant(p, 1);
+			return;
+		}
 		if (p->histpos > 0) {
 			p->histpos--;
 			WMSetTextFieldText(p->panel->text, WMGetFromArray(p->history, p->histpos));
+		}
+		break;
+	case XK_Escape:
+		if (p->dropMapped || p->filtering) {
+			/* the text field has already processed Escape
+			 * and broken the modal loop by the time this
+			 * handler runs, the wAdvancedInputDialog caller
+			 * re-enters it when rerun is set so the first
+			 * Escape only dismisses the popup and restores
+			 * the pre-Tab text, the second one closes */
+			if (p->variants && p->prefix) {
+				p->varpos = 0;
+				applyVariant(p);
+			}
+			hideDropList(p);
+			resetVariants(p);
+			p->rerun = True;
+			return;
+		}
+		break;
+	case XK_Return:
+	case XK_KP_Enter:
+		/* the field already holds the applied command, the
+		 * text field has clicked defBtn for us, just let the
+		 * modal loop exit and clean up afterwards */
+		hideDropList(p);
+		break;
+	case XK_ISO_Left_Tab:
+		if (p->variants) {
+			stepVariant(p, -1);
+			return;
 		}
 		break;
 	case XK_Tab:
@@ -784,35 +1135,84 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			wfree(text);
 			p->variants = GenerateVariants(p->prefix, &p->word_off);
 			p->varpos = 0;
+			stepVariant(p, 1);
+			refreshDropList(p);
+		} else if (event->xkey.state & ShiftMask) {
+			stepVariant(p, -1);
+		} else {
+			stepVariant(p, 1);
 		}
-		if (p->variants && p->prefix && p->suffix) {
-			n = WMGetArrayItemCount(p->variants);
-			p->varpos++;
-			if (p->varpos > n)
-				p->varpos = 0;
-			if (p->varpos > 0) {
-				v = WMGetFromArray(p->variants, p->varpos - 1);
-				if (v->replace) {
-					text = wstrndup(p->prefix, p->word_off);
-					text = wstrappend(text, v->text);
-				} else {
-					text = wstrconcat(p->prefix, v->text);
-				}
-				setVariantLabel(p, v, n);
-			} else {
-				text = wstrdup(p->prefix);
-				setVariantLabel(p, NULL, n);
-			}
-			pos = strlen(text);
-			text = wstrappend(text, p->suffix);
-			WMSetTextFieldText(p->panel->text, text);
-			WMSetTextFieldCursorPosition(p->panel->text, pos);
-			wfree(text);
-		}
-		break;
+		return;
 	}
-	if (ksym != XK_Tab)
-		resetVariants(p);
+
+	wasFiltering = p->filtering;
+	hideDropList(p);
+	resetVariants(p);
+
+	/* live filtering once the popup has been opened, regenerate
+	 * the variant set from the edited text and keep the popup
+	 * tracking it, this is the rofi narrow-as-you-type behaviour
+	 * and is cheap because the source caches do no I/O */
+	if (wasFiltering && ksym != XK_Escape && ksym != XK_Return &&
+	    ksym != XK_KP_Enter && ksym != XK_Up && ksym != XK_Down) {
+		text = WMGetTextFieldText(p->panel->text);
+		pos = WMGetTextFieldCursorPosition(p->panel->text);
+		p->prefix = wstrndup(text, pos);
+		p->suffix = wstrdup(text + pos);
+		wfree(text);
+		p->variants = GenerateVariants(p->prefix, &p->word_off);
+		p->varpos = 0;
+		refreshDropList(p);
+	}
+}
+
+static int widenInputDialog(WScreen *scr, WMInputPanel *panel)
+{
+	int wmScaleWidth, wmScaleHeight;
+	int head, nat_w, target_w, max_w, margin, gap, right_edge, w, x;
+	WArea ua;
+
+	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
+
+	nat_w = WMWidgetWidth(panel->win);
+	max_w = WMScaleX(400);
+	if (max_w < nat_w)
+		max_w = nat_w;
+
+	head = wGetHeadForPointerLocation(scr);
+	ua = wGetUsableAreaForHead(scr, head, NULL, True);
+	target_w = (ua.x2 - ua.x1) * 40 / 100;
+	if (target_w < nat_w)
+		target_w = nat_w;
+	if (target_w > max_w)
+		target_w = max_w;
+	if (target_w <= nat_w)
+		return nat_w;
+
+	margin = WMScaleX(20);
+	gap = WMScaleX(10);
+
+	WMResizeWidget(panel->win, target_w, WMWidgetHeight(panel->win));
+	if (panel->tLbl)
+		WMResizeWidget(panel->tLbl, target_w - 2 * margin, WMWidgetHeight(panel->tLbl));
+	if (panel->mLbl)
+		WMResizeWidget(panel->mLbl, target_w - 2 * margin, WMWidgetHeight(panel->mLbl));
+	if (panel->text)
+		WMResizeWidget(panel->text, target_w - 2 * margin, WMWidgetHeight(panel->text));
+
+	right_edge = target_w - margin;
+	if (panel->defBtn) {
+		w = WMWidgetWidth(panel->defBtn);
+		x = right_edge - w;
+		WMMoveWidget(panel->defBtn, x, WMWidgetView(panel->defBtn)->pos.y);
+		right_edge = x - gap;
+	}
+	if (panel->altBtn) {
+		w = WMWidgetWidth(panel->altBtn);
+		x = right_edge - w;
+		WMMoveWidget(panel->altBtn, x, WMWidgetView(panel->altBtn)->pos.y);
+	}
+	return target_w;
 }
 
 int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, const char *name, char **text)
@@ -829,15 +1229,9 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	p = wmalloc(sizeof(WMInputPanelWithHistory));
 	p->panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));
 	p->history = LoadHistory(filename, w_global.config->history_lines);
-	p->histpos = 0;
-	p->prefix = NULL;
-	p->suffix = NULL;
-	p->rest = NULL;
-	p->word_off = 0;
-	p->saved_msg = NULL;
-	p->variants = NULL;
-	p->varpos = 0;
+	p->scr = scr;
 	WMCreateEventHandler(WMWidgetView(p->panel->text), KeyPressMask, handleHistoryKeyPress, p);
+	widenInputDialog(scr, p->panel);
 	pwidth = WMWidgetWidth(p->panel->win);
 	pheight = WMWidgetHeight(p->panel->win);
 
@@ -850,12 +1244,32 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	wwin = wManageInternalWindow(scr, parent, None, NULL, center.x, center.y, pwidth, pheight);
 
 	wwin->client_leader = WMWidgetXID(p->panel->win);
+	p->wwin = wwin;
+	wwin->on_geometry_change = dropListFollowDialog;
+	wwin->geometry_data = p;
+	WMAddNotificationObserver(dropListFocusObserver, p, WMNChangedFocus, wwin);
 
 	WMMapWidget(p->panel->win);
 
 	wWindowMap(wwin);
 
-	WMRunModalLoop(WMWidgetScreen(p->panel->win), WMWidgetView(p->panel->win));
+	do {
+		p->rerun = False;
+		WMRunModalLoop(WMWidgetScreen(p->panel->win),
+			       WMWidgetView(p->panel->win));
+		/* the panel's own Escape handler clicked the Cancel
+		 * button before our key handler asked for a rerun,
+		 * undo the result and put focus back in the field */
+		if (p->rerun) {
+			p->panel->result = -1;
+			WMSetFocusToWidget(p->panel->text);
+		}
+	} while (p->rerun);
+
+	/* detach hooks before teardown */
+	wwin->on_geometry_change = NULL;
+	wwin->geometry_data = NULL;
+	WMRemoveNotificationObserverWithName(p, WMNChangedFocus, wwin);
 
 	if (p->panel->result == WAPRDefault) {
 		result = WMGetTextFieldText(p->panel->text);
@@ -866,6 +1280,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 
 	wUnmanageWindow(wwin, False, False);
 
+	destroyDropList(p);
 	resetVariants(p);
 	WMDestroyInputPanel(p->panel);
 	WMFreeArray(p->history);

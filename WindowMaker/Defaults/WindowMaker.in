@@ -299,6 +299,8 @@
 	DialogHistoryLines = 500;
 	RunDialogXDGCompletion = YES;
 	RunDialogMatching = substring;
+	RunDialogPopupList = YES;
+	RunDialogPopupRows = 8;
 	RunDialogDocumentSearch = YES;
 	RunDialogDocumentPaths = ("~/Documents", "~/Downloads", "~/Desktop");
 	RunDialogDocumentDepth = 3;
