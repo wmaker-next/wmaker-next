@@ -30,6 +30,7 @@ typedef struct WDesktopEntry {
 	char *name;		/* locale-ranked Name= */
 	char *comment;		/* locale-ranked Comment=, may be NULL */
 	char *exec;		/* Exec= with %fFuUick field codes stripped */
+	char *exec_raw;		/* Exec= verbatim, for %f/%u substitution */
 	char *try_exec;		/* TryExec=, may be NULL */
 	char *wmclass;		/* StartupWMClass=, may be NULL */
 	char *icon;		/* raw Icon= value, theme name or path, may be NULL */
@@ -59,5 +60,28 @@ typedef Bool (*WXDGDirFn)(const char *dir, void *ctx);
  * then each $XDG_DATA_DIRS element + /suffix in order (fallback
  * /usr/local/share:/usr/share) */
 void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx);
+
+
+typedef struct WXDGApp {
+	char *id;		/* desktop-file-id with .desktop suffix */
+	char *name;		/* locale-ranked display name */
+	char *name_fold;	/* name lower-cased for ASCII matching */
+	char *exec;		/* shell-ready command, terminal-wrapped */
+	char *exec_raw;		/* original Exec= for %f/%u substitution */
+	char *comment;		/* may be NULL */
+} WXDGApp;
+
+/* lazily built list of visible Type=Application entries from every
+ * XDG_DATA_HOME and XDG_DATA_DIRS applications directory, deduplicated
+ * by desktop-file-id with the user directory winning, revalidated
+ * against the source directory mtimes on each call, the array and its
+ * elements are owned by the cache and live until invalidation */
+WMArray *wXDGAppList(void);
+
+/* lookup by desktop-file-id in the cached list, does not rebuild */
+WXDGApp *wXDGAppById(const char *desktop_id);
+
+/* free the cached list, called from Exit() so leak checks stay quiet */
+void wXDGAppListInvalidate(void);
 
 #endif /* WMDESKTOPFILE_H_ */

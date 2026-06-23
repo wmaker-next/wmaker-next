@@ -80,6 +80,7 @@ const char *__lsan_default_suppressions(void)
 #include "wxkb.h"
 #include "session.h"
 #include "shutdown.h"
+#include "desktopfile.h"
 #include "dialog.h"
 #include "main.h"
 #include "monitor.h"
@@ -228,6 +229,7 @@ noreturn void Exit(int status)
 	if (dpy)
 		XCloseDisplay(dpy);
 
+	wXDGAppListInvalidate();
 	RShutdown(); /* wrlib clean exit */
 	wutil_shutdown();  /* WUtil clean-up */
 

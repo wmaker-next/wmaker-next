@@ -2238,6 +2238,7 @@ static Bool launcherReadDesktopFile(const char *path, char **command,
 			wfree(de.icon);
 		}
 	}
+	wfree(de.exec_raw);
 	wfree(de.try_exec);
 	return True;
 }

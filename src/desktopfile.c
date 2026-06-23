@@ -23,8 +23,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <limits.h>
 #include <locale.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <WINGs/WUtil.h>
 
@@ -146,6 +151,7 @@ Bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
 			continue;
 		if (!out->exec && strncmp(line, "Exec=", 5) == 0) {
 			out->exec = wstrdup(line + 5);
+			out->exec_raw = wstrdup(line + 5);
 			continue;
 		}
 		if (!out->try_exec && strncmp(line, "TryExec=", 8) == 0) {
@@ -212,6 +218,7 @@ void wDesktopEntryFree(WDesktopEntry *e)
 	wfree(e->name);
 	wfree(e->comment);
 	wfree(e->exec);
+	wfree(e->exec_raw);
 	wfree(e->try_exec);
 	wfree(e->wmclass);
 	wfree(e->icon);
@@ -255,4 +262,227 @@ void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx)
 		if (!fn(dir, ctx))
 			return;
 	}
+}
+
+
+/* ---- XDG application cache --------------------------------------- */
+
+#define XDG_MAX_APP_DIRS 16
+
+static WMArray *app_cache;
+static WMHashTable *app_by_id;
+static char *app_dir_path[XDG_MAX_APP_DIRS];
+static time_t app_dir_mtime[XDG_MAX_APP_DIRS];
+static int app_dir_count;
+
+static void freeXDGApp(void *item)
+{
+	WXDGApp *a = item;
+
+	wfree(a->id);
+	wfree(a->name);
+	wfree(a->name_fold);
+	wfree(a->exec);
+	wfree(a->exec_raw);
+	wfree(a->comment);
+	wfree(a);
+}
+
+static char *asciiFold(const char *s)
+{
+	char *out, *p;
+
+	out = wstrdup(s);
+	for (p = out; *p; p++)
+		*p = tolower((unsigned char)*p);
+	return out;
+}
+
+static Bool tryExecAvailable(const char *try_exec)
+{
+	char *found;
+
+	if (!try_exec || !try_exec[0])
+		return True;
+	if (try_exec[0] == '/')
+		return access(try_exec, X_OK) == 0;
+	found = wfindfile(getenv("PATH"), try_exec);
+	if (found) {
+		wfree(found);
+		return True;
+	}
+	return False;
+}
+
+static void appCacheAdd(const char *path, const char *id)
+{
+	WDesktopEntry de;
+	WXDGApp *a;
+	const char *term;
+
+	if (WMHashGet(app_by_id, id))
+		return;
+
+	if (!wDesktopEntryRead(path, &de))
+		return;
+
+	if (!de.is_application || de.hidden || de.no_display ||
+	    !de.name || !de.name[0] || !tryExecAvailable(de.try_exec)) {
+		wDesktopEntryFree(&de);
+		return;
+	}
+
+	a = wmalloc(sizeof(*a));
+	a->id = wstrdup(id);
+	a->name = de.name;
+	a->name_fold = asciiFold(de.name);
+	a->exec_raw = de.exec_raw;
+	a->comment = de.comment;
+	if (de.terminal) {
+		term = getenv("WMAKER_TERM");
+		if (!term || !term[0])
+			term = "xterm -e ";
+		a->exec = wstrconcat(term, de.exec);
+		wfree(de.exec);
+	} else {
+		a->exec = de.exec;
+	}
+	wfree(de.try_exec);
+	wfree(de.wmclass);
+	wfree(de.icon);
+
+	WMAddToArray(app_cache, a);
+	WMHashInsert(app_by_id, a->id, a);
+}
+
+static void scanAppDir(const char *dir, const char *idprefix)
+{
+	DIR *dp;
+	struct dirent *ent;
+	struct stat st;
+	char path[PATH_MAX], id[PATH_MAX];
+	size_t nlen;
+
+	dp = opendir(dir);
+	if (!dp)
+		return;
+	while ((ent = readdir(dp)) != NULL) {
+		if (ent->d_name[0] == '.')
+			continue;
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s",
+				     dir, ent->d_name) >= sizeof(path))
+			continue;
+		nlen = strlen(ent->d_name);
+		if (nlen > 8 && strcmp(ent->d_name + nlen - 8, ".desktop") == 0) {
+			snprintf(id, sizeof(id), "%s%s", idprefix, ent->d_name);
+			appCacheAdd(path, id);
+		} else if (!idprefix[0] && stat(path, &st) == 0 &&
+			   S_ISDIR(st.st_mode)) {
+			/* one level of recursion for kde4/, wine/, flatpak
+			 * exports, the spec encodes the subdirectory in the
+			 * desktop-file-id with '/' folded to '-' */
+			snprintf(id, sizeof(id), "%s-", ent->d_name);
+			scanAppDir(path, id);
+		}
+	}
+	closedir(dp);
+}
+
+static Bool scanAppRoot(const char *dir, void *ctx)
+{
+	struct stat st;
+
+	(void)ctx;
+
+	if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
+		return True;
+	if (app_dir_count < XDG_MAX_APP_DIRS) {
+		app_dir_path[app_dir_count] = wstrdup(dir);
+		app_dir_mtime[app_dir_count] = st.st_mtime;
+		app_dir_count++;
+	}
+	scanAppDir(dir, "");
+	return True;
+}
+
+struct mtimeCheck {
+	int idx;
+	Bool stale;
+};
+
+static Bool checkAppRoot(const char *dir, void *ctx)
+{
+	struct mtimeCheck *mc = ctx;
+	struct stat st;
+
+	if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
+		return True;
+	/* an existing applications directory must line up with what
+	 * the previous scan recorded, in the same order, with the same
+	 * mtime, otherwise the cache is stale */
+	if (mc->idx >= app_dir_count ||
+	    strcmp(dir, app_dir_path[mc->idx]) != 0 ||
+	    st.st_mtime != app_dir_mtime[mc->idx]) {
+		mc->stale = True;
+		return False;
+	}
+	mc->idx++;
+	return True;
+}
+
+static int compareXDGApp(const void *a, const void *b)
+{
+	const WXDGApp *aa = *(const WXDGApp * const *)a;
+	const WXDGApp *bb = *(const WXDGApp * const *)b;
+
+	return strcmp(aa->name_fold, bb->name_fold);
+}
+
+WMArray *wXDGAppList(void)
+{
+	struct mtimeCheck mc;
+
+	if (app_cache) {
+		mc.idx = 0;
+		mc.stale = False;
+		wXDGForEachDataDir("applications", checkAppRoot, &mc);
+		if (mc.idx != app_dir_count)
+			mc.stale = True;
+		if (!mc.stale)
+			return app_cache;
+		wXDGAppListInvalidate();
+	}
+
+	app_cache = WMCreateArrayWithDestructor(64, freeXDGApp);
+	app_by_id = WMCreateHashTable(WMStringPointerHashCallbacks);
+	app_dir_count = 0;
+	wXDGForEachDataDir("applications", scanAppRoot, NULL);
+	WMSortArray(app_cache, compareXDGApp);
+	return app_cache;
+}
+
+WXDGApp *wXDGAppById(const char *desktop_id)
+{
+	if (!app_by_id)
+		return NULL;
+	return WMHashGet(app_by_id, desktop_id);
+}
+
+void wXDGAppListInvalidate(void)
+{
+	int i;
+
+	if (app_by_id) {
+		WMFreeHashTable(app_by_id);
+		app_by_id = NULL;
+	}
+	if (app_cache) {
+		WMFreeArray(app_cache);
+		app_cache = NULL;
+	}
+	for (i = 0; i < app_dir_count; i++) {
+		wfree(app_dir_path[i]);
+		app_dir_path[i] = NULL;
+	}
+	app_dir_count = 0;
 }
