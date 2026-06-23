@@ -864,6 +864,173 @@ char *wXDGOpenCommandFor(const char *path)
 	return cmd;
 }
 
+/* ---- document index ---------------------------------------------- */
+
+#define XDG_MAX_DOC_ROOTS 32
+
+static WMArray *doc_cache;
+static char *doc_root_path[XDG_MAX_DOC_ROOTS];
+static time_t doc_root_mtime[XDG_MAX_DOC_ROOTS];
+static int doc_root_count;
+static int doc_depth_cached, doc_max_cached;
+static char *doc_extra_cached;
+
+static void freeXDGDoc(void *item)
+{
+	WXDGDoc *d = item;
+
+	wfree(d->path);
+	wfree(d->base_fold);
+	wfree(d);
+}
+
+static void scanDocDir(const char *dir, int depth, int max_files)
+{
+	DIR *dp;
+	struct dirent *ent;
+	struct stat st;
+	WXDGDoc *d;
+	char path[PATH_MAX];
+	const char *base;
+
+	if (WMGetArrayItemCount(doc_cache) >= max_files)
+		return;
+	dp = opendir(dir);
+	if (!dp)
+		return;
+	/* skip whole subtrees that carry a no-index marker */
+	snprintf(path, sizeof(path), "%s/.nomedia", dir);
+	if (access(path, F_OK) == 0) {
+		closedir(dp);
+		return;
+	}
+	snprintf(path, sizeof(path), "%s/.git", dir);
+	if (access(path, F_OK) == 0) {
+		closedir(dp);
+		return;
+	}
+	while ((ent = readdir(dp)) != NULL) {
+		if (ent->d_name[0] == '.')
+			continue;
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s",
+				     dir, ent->d_name) >= sizeof(path))
+			continue;
+		if (stat(path, &st) != 0)
+			continue;
+		if (S_ISDIR(st.st_mode)) {
+			if (depth > 1)
+				scanDocDir(path, depth - 1, max_files);
+			continue;
+		}
+		if (!S_ISREG(st.st_mode))
+			continue;
+		if (WMGetArrayItemCount(doc_cache) >= max_files)
+			break;
+		d = wmalloc(sizeof(*d));
+		d->path = wstrdup(path);
+		base = strrchr(d->path, '/');
+		d->base = base ? base + 1 : d->path;
+		d->base_fold = asciiFold(d->base);
+		d->mtime = st.st_mtime;
+		WMAddToArray(doc_cache, d);
+	}
+	closedir(dp);
+}
+
+static void addDocRoot(char *root, int depth, int max_files)
+{
+	struct stat st;
+	int i;
+
+	if (!root)
+		return;
+	for (i = 0; i < doc_root_count; i++) {
+		if (strcmp(root, doc_root_path[i]) == 0) {
+			wfree(root);
+			return;
+		}
+	}
+	if (stat(root, &st) != 0 || !S_ISDIR(st.st_mode)) {
+		wfree(root);
+		return;
+	}
+	if (doc_root_count < XDG_MAX_DOC_ROOTS) {
+		doc_root_path[doc_root_count] = root;
+		doc_root_mtime[doc_root_count] = st.st_mtime;
+		doc_root_count++;
+	} else {
+		wfree(root);
+		return;
+	}
+	scanDocDir(doc_root_path[doc_root_count - 1], depth, max_files);
+}
+
+WMArray *wXDGDocList(char **extra_roots, int n_extra,
+		     int depth, int max_files)
+{
+	struct stat st;
+	char *extra_key;
+	int i, stale;
+
+	if (depth < 1)
+		depth = 1;
+	if (max_files < 1)
+		max_files = 1;
+
+	/* fold the caller-supplied extra roots into a single key so a
+	 * RunDialogDocumentPaths edit invalidates the cache without
+	 * waiting for an mtime bump */
+	extra_key = wstrdup("");
+	for (i = 0; i < n_extra; i++) {
+		extra_key = wstrappend(extra_key, extra_roots[i]);
+		extra_key = wstrappend(extra_key, ":");
+	}
+
+	if (doc_cache) {
+		stale = depth != doc_depth_cached ||
+			max_files != doc_max_cached ||
+			strcmp(extra_key, doc_extra_cached) != 0;
+		for (i = 0; !stale && i < doc_root_count; i++) {
+			if (stat(doc_root_path[i], &st) != 0 ||
+			    st.st_mtime != doc_root_mtime[i])
+				stale = 1;
+		}
+		if (!stale) {
+			wfree(extra_key);
+			return doc_cache;
+		}
+		wXDGDocListInvalidate();
+	}
+
+	doc_cache = WMCreateArrayWithDestructor(64, freeXDGDoc);
+	doc_root_count = 0;
+	doc_depth_cached = depth;
+	doc_max_cached = max_files;
+	doc_extra_cached = extra_key;
+
+	for (i = 0; i < n_extra; i++)
+		addDocRoot(wexpandpath(extra_roots[i]), depth, max_files);
+
+	return doc_cache;
+}
+
+void wXDGDocListInvalidate(void)
+{
+	int i;
+
+	if (doc_cache) {
+		WMFreeArray(doc_cache);
+		doc_cache = NULL;
+	}
+	for (i = 0; i < doc_root_count; i++) {
+		wfree(doc_root_path[i]);
+		doc_root_path[i] = NULL;
+	}
+	doc_root_count = 0;
+	wfree(doc_extra_cached);
+	doc_extra_cached = NULL;
+}
+
 void wXDGMimeInvalidate(void)
 {
 	WMHashEnumerator e;

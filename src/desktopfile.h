@@ -104,4 +104,25 @@ char *wXDGOpenCommandFor(const char *path);
 /* free the globs2 and mimeapps caches, called from Exit() */
 void wXDGMimeInvalidate(void);
 
+
+typedef struct WXDGDoc {
+	char *path;		/* absolute path */
+	const char *base;	/* basename, points into path */
+	char *base_fold;	/* lower-cased basename for matching */
+	time_t mtime;		/* file mtime for recency ranking */
+} WXDGDoc;
+
+/* lazily built list of regular files under XDG_DOCUMENTS_DIR,
+ * XDG_DOWNLOAD_DIR and XDG_DESKTOP_DIR (read from user-dirs.dirs
+ * with the usual fallbacks) plus each of extra_roots, walked at
+ * most depth levels deep skipping dot-directories and any tree
+ * containing a .git or .nomedia marker, capped at max_files,
+ * the array and its elements are owned by the cache and live until
+ * invalidation, parameters are remembered so a changed depth, cap
+ * or root mtime triggers a rebuild on the next call */
+WMArray *wXDGDocList(char **extra_roots, int n_extra,
+		     int depth, int max_files);
+
+void wXDGDocListInvalidate(void);
+
 #endif /* WMDESKTOPFILE_H_ */

@@ -231,6 +231,7 @@ noreturn void Exit(int status)
 
 	wXDGAppListInvalidate();
 	wXDGMimeInvalidate();
+	wXDGDocListInvalidate();
 	RShutdown(); /* wrlib clean exit */
 	wutil_shutdown();  /* WUtil clean-up */
 

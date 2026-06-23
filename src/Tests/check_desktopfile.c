@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <WINGs/WUtil.h>
 
@@ -91,6 +93,97 @@ static void test_open_command(void)
 	wfree(cmd);
 }
 
+static void touch(const char *dir, const char *name)
+{
+	char path[PATH_MAX + 64];
+	FILE *f;
+
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	f = fopen(path, "w");
+	if (f)
+		fclose(f);
+}
+
+static int docFind(WMArray *docs, const char *base)
+{
+	WXDGDoc *d;
+	int i;
+
+	for (i = 0; i < WMGetArrayItemCount(docs); i++) {
+		d = WMGetFromArray(docs, i);
+		if (strcmp(d->base, base) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+static void test_doc_list(void)
+{
+	WMArray *docs;
+	char tmpl[] = "/tmp/wmaker-docidx-XXXXXX";
+	char *root, *roots[1];
+	char sub[PATH_MAX + 32], deep[PATH_MAX + 48];
+	char dot[PATH_MAX + 32], gitdir[PATH_MAX + 32];
+
+	root = mkdtemp(tmpl);
+	if (!root) {
+		perror("mkdtemp");
+		failures++;
+		return;
+	}
+	snprintf(sub, sizeof(sub), "%s/sub", root);
+	snprintf(deep, sizeof(deep), "%s/sub/deep", root);
+	snprintf(dot, sizeof(dot), "%s/.hidden", root);
+	snprintf(gitdir, sizeof(gitdir), "%s/repo", root);
+	mkdir(sub, 0700);
+	mkdir(deep, 0700);
+	mkdir(dot, 0700);
+	mkdir(gitdir, 0700);
+	touch(root, "Report.pdf");
+	touch(root, ".dotfile");
+	touch(sub, "notes.txt");
+	touch(deep, "buried.txt");
+	touch(dot, "secret.txt");
+	touch(gitdir, ".git");
+	touch(gitdir, "tracked.c");
+
+	roots[0] = root;
+	docs = wXDGDocList(roots, 1, 2, 100);
+
+	CHECK(docFind(docs, "Report.pdf"));
+	CHECK(docFind(docs, "notes.txt"));
+	/* depth cap of 2 excludes sub/deep */
+	CHECK(!docFind(docs, "buried.txt"));
+	/* dot-directories and dot-files are skipped */
+	CHECK(!docFind(docs, "secret.txt"));
+	CHECK(!docFind(docs, ".dotfile"));
+	/* a .git marker prunes its directory */
+	CHECK(!docFind(docs, "tracked.c"));
+
+	/* depth 3 reaches the deep file, the parameter change must
+	 * trigger a rebuild without explicit invalidation */
+	docs = wXDGDocList(roots, 1, 3, 100);
+	CHECK(docFind(docs, "buried.txt"));
+
+	/* hard cap */
+	docs = wXDGDocList(roots, 1, 3, 1);
+	CHECK(WMGetArrayItemCount(docs) == 1);
+
+	/* a changed extra-roots set rebuilds without an mtime bump */
+	roots[0] = sub;
+	snprintf(sub, sizeof(sub), "%s/sub", root);
+	docs = wXDGDocList(roots, 1, 1, 100);
+	CHECK(docFind(docs, "notes.txt"));
+	CHECK(!docFind(docs, "Report.pdf"));
+
+	wXDGDocListInvalidate();
+
+	/* best-effort cleanup of the fixture tree */
+	snprintf(sub, sizeof(sub), "rm -rf '%s'", root);
+	if (system(sub) != 0)
+		perror("rm");
+}
+
 int main(void)
 {
 	const char *src;
@@ -111,9 +204,15 @@ int main(void)
 	setenv("XDG_CONFIG_HOME", conf, 1);
 	setenv("XDG_CONFIG_DIRS", "/nonexistent", 1);
 
+	/* the standard XDG user dirs likely do not exist under a
+	 * build sandbox, point HOME away so only the explicit extra
+	 * root passed by test_doc_list is scanned */
+	setenv("HOME", "/nonexistent", 1);
+
 	test_mime_for_path();
 	test_default_app();
 	test_open_command();
+	test_doc_list();
 
 	wXDGMimeInvalidate();
 	wXDGAppListInvalidate();
