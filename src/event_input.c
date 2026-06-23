@@ -763,7 +763,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_RUN:
-		ExecuteInputCommand(scr, _("exec %A(Run, Type command:)"));
+		ExecuteInputCommand(scr, _("exec %A(Find)"));
 		break;
 
 	case WKBD_EXIT:

@@ -143,11 +143,11 @@ int main(int argc, char *argv[])
 
 	WMAddToPLArray(RMenu, L1Menu);
 
-	/* Root -> `Run' dialog */
+	/* Root -> `Find' dialog */
 	L1Menu = WMCreatePLArray(
-		WMCreatePLString(_("Run...")),
+		WMCreatePLString(_("Find...")),
 		WMCreatePLString("SHEXEC"),
-		WMCreatePLString(_("%A(Run, Type command:)")),
+		WMCreatePLString(_("%A(Find)")),
 		NULL
 	);
 	WMAddToPLArray(RMenu, L1Menu);

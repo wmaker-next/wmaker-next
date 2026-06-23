@@ -454,8 +454,8 @@ static void createPanel(_Panel * p)
 	data = putNewItem(panel, pad, ExecInfo, _("ETerm"));
 	data->param.exec.command = "eterm";
 
-	data = putNewItem(panel, pad, ExecInfo, _("Run..."));
-	data->param.exec.command = _("%A(Run,Type command to run)");
+	data = putNewItem(panel, pad, ExecInfo, _("Find..."));
+	data->param.exec.command = _("%A(Find)");
 
 	data = putNewItem(panel, pad, ExecInfo, _("Firefox"));
 	data->param.exec.command = "firefox";

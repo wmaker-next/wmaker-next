@@ -163,7 +163,7 @@ enum {
 	/* screen */
 	WKBD_SWITCH_SCREEN,
 
-	/* open "run" dialog */
+	/* open the "find" dialog */
 	WKBD_RUN,
 
 	/* open "exit" dialog */

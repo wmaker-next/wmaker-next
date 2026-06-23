@@ -7,7 +7,7 @@
   ("Process List", EXEC, "xterm -e top"),
   ("Manual Browser", EXEC, "xman")
  ),
- ("Run...", SHEXEC, "%a(Run,Type command to run:)"),
+ ("Find...", SHEXEC, "%a(Find)"),
  ("XTerm", EXEC, "xterm -sb"),
  ("Mozilla Firefox", EXEC, "firefox"),
  ("Workspaces", WORKSPACE_MENU),

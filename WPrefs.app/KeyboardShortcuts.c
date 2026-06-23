@@ -182,7 +182,7 @@ static struct keyOption {
 	/* Misc. */
 	{ "WindowRelaunchKey", N_("Launch new instance of application") },
 	{ "ScreenSwitchKey",   N_("Switch to next screen/monitor") },
-	{ "RunKey",            N_("Run application") },
+	{ "RunKey",            N_("Find application") },
 	{ "ExitKey",            N_("Exit Window Maker") },
 	{ "DockRaiseLowerKey", N_("Raise/Lower Dock") },
 	{ "ClipRaiseLowerKey", N_("Raise/Lower Clip") },

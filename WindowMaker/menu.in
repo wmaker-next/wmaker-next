@@ -84,6 +84,14 @@
  * %s - substitute with current selection
  * %a(title[,prompt]) - opens an input box with the specified title and the
  *			optional prompt	and do substitution with what you typed
+ * %A(title[,prompt[,name]]) - same as %a but with Up/Down command history
+ *			and Tab completion. On the first word Tab completes
+ *			from $PATH and from XDG .desktop application Name
+ *			entries by case-insensitive substring, picking an
+ *			application inserts its Exec command. The optional
+ *			name selects a separate history file. Application
+ *			completion can be disabled with the
+ *			RunDialogXDGCompletion = NO default.
  * %w - substitute with XID for the current focused window
  * %W - substitute with the number of the current workspace
  *
@@ -120,7 +128,7 @@
 		"Process List" EXEC xterm -e top
 		"Manual Browser" EXEC xman
 	"Info" END
-	"Run..." SHEXEC %a(Run,Type command to run:)
+	"Find..." SHEXEC %a(Find)
 	"XTerm" EXEC xterm -sb
 	"Mozilla Firefox" EXEC firefox
 	"Workspaces" WORKSPACE_MENU

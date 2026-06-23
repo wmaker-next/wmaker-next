@@ -230,6 +230,8 @@
 	) \
 	_(DIALOG_HISTORY_LINES, "DialogHistoryLines", INT, history_lines, "500", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(RUN_DIALOG_XDG_COMPLETION, "RunDialogXDGCompletion", BOOL, run_xdg_completion, "YES", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_ACTIVE_HEAD_ONLY, "CycleActiveHeadOnly", BOOL, cycle_active_head_only, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_ALL_WORKSPACES, "CycleAllWorkspaces", BOOL, cycle_all_workspaces, "NO", \

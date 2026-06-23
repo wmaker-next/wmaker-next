@@ -479,30 +479,36 @@ parseuserinputpart(const char *line, int *ptr, const char *endchars)
 static char*
 getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced)
 {
-    char *ret = NULL, *title = NULL, *prompt = NULL, *name = NULL;
-    int rv;
+	char *ret = NULL, *title = NULL, *prompt = NULL, *name = NULL;
+	char *dTitle, *dMsg;
+	int rv;
 
-    if(line[*ptr] == '(')
-	title = parseuserinputpart(line, ptr, ",)");
-    if(title != NULL && line[*ptr] == ',')
-	prompt = parseuserinputpart(line, ptr, ",)");
-    if(prompt != NULL && line[*ptr] == ',')
-	name = parseuserinputpart(line, ptr, ")");
+	if (line[*ptr] == '(')
+		title = parseuserinputpart(line, ptr, ",)");
+	if (title != NULL && line[*ptr] == ',')
+		prompt = parseuserinputpart(line, ptr, ",)");
+	if (prompt != NULL && line[*ptr] == ',')
+		name = parseuserinputpart(line, ptr, ")");
 
-    if(advanced)
-        rv = wAdvancedInputDialog(scr,
-		title ? _(title):_("Program Arguments"),
-		prompt ? _(prompt):_("Enter command arguments:"),
-		name, &ret);
-    else
-        rv = wInputDialog(scr,
-		title ? _(title):_("Program Arguments"),
-		prompt ? _(prompt):_("Enter command arguments:"),
-		&ret);
+	dTitle = title ? _(title) : _("Program Arguments");
+	if (prompt)
+		dMsg = _(prompt);
+	else if (title)
+		dMsg = NULL;
+	else
+		dMsg = _("Enter command arguments:");
 
-    if(title) wfree(title);
-    if(prompt) wfree(prompt);
-    if(name) wfree(name);
+	if (advanced)
+		rv = wAdvancedInputDialog(scr, dTitle, dMsg, name, &ret);
+	else
+		rv = wInputDialog(scr, dTitle, dMsg, &ret);
+
+	if (title)
+		wfree(title);
+	if (prompt)
+		wfree(prompt);
+	if (name)
+		wfree(name);
 
     return rv ? ret : NULL;
 }

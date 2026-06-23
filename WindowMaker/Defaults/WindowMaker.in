@@ -297,6 +297,7 @@
 	SelectCursor = (builtin, cross);
 	CaptureCursor = (builtin, crosshair);
 	DialogHistoryLines = 500;
+	RunDialogXDGCompletion = YES;
 	CycleActiveHeadOnly = NO;
 	CycleAllWorkspaces = NO;
 	CycleIgnoreMinimized = NO;

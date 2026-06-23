@@ -486,7 +486,8 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	} else if (*complete == '~') {
 		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL, 2, False));
 	} else if (firstWord) {
-		matchXDGApps(complete, variants);
+		if (w_global.config->run_xdg_completion)
+			matchXDGApps(complete, variants);
 		path = getenv("PATH");
 		while (path) {
 			pos = strchr(path, ':');

@@ -3,6 +3,23 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Run dialog completes against XDG application names
+---------------------------------------------------
+
+The %A() input dialog used by the "Run..." root-menu entry (now
+relabeled "Find...") now also matches the first word against the
+Name= of every visible .desktop entry in the XDG_DATA_HOME and
+XDG_DATA_DIRS applications directories, in addition to the existing $PATH executable and
+filesystem completion. Matching is a case-insensitive substring, so
+typing fox<Tab> finds Firefox and cycling with Tab inserts the
+application's Exec= line with %f/%U field codes stripped. While
+cycling the message line shows [i/N] and the matched application's
+Name and Comment. Set RunDialogXDGCompletion = NO to keep the
+previous $PATH-only completion. The application list is built on
+first use and refreshed automatically when an applications directory
+changes, so a freshly installed package is picked up without
+restarting the window manager.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

@@ -507,7 +507,8 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 {
 	WMInputPanel *panel;
 	WMFont *defaultFont;
-	int x, dw = 0, aw = 0, w;
+	WMFont *largeFont = NULL;
+	int x, dw = 0, aw = 0, w, panel_w;
 
 	defaultFont = WMSystemFontOfSize(scrPtr, 12);
 	panel = wmalloc(sizeof(WMInputPanel));
@@ -518,16 +519,28 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 		panel->win = WMCreateWindowWithStyle(scrPtr, "inputPanel", WMTitledWindowMask);
 	WMSetWindowTitle(panel->win, "");
 
-	WMResizeWidget(panel->win, 320, 160);
-
+	/* widen the panel so the non-wrapping title fits, capped at 400 */
+	panel_w = 320;
 	if (title) {
-		WMFont *largeFont;
+		int tw;
 
 		largeFont = WMBoldSystemFontOfSize(scrPtr, 24);
+		if (largeFont) {
+			tw = WMWidthOfString(largeFont, title, strlen(title));
+			if (tw + 48 > panel_w)
+				panel_w = tw + 48 > 400 ? 400 : tw + 48;
+		}
+	}
+	WMResizeWidget(panel->win, panel_w, msg ? 160 : 110);
+
+	if (title) {
+		int th;
+
+		th = WMFontHeight(largeFont) + 4;
 
 		panel->tLbl = WMCreateLabel(panel->win);
-		WMMoveWidget(panel->tLbl, 20, 16);
-		WMResizeWidget(panel->tLbl, 320 - 40, WMFontHeight(largeFont) + 4);
+		WMMoveWidget(panel->tLbl, 20, msg ? 16 : (54 - th) / 2);
+		WMResizeWidget(panel->tLbl, panel_w - 40, th);
 		WMSetLabelText(panel->tLbl, title);
 		WMSetLabelTextAlignment(panel->tLbl, WALeft);
 		WMSetLabelFont(panel->tLbl, largeFont);
@@ -538,15 +551,15 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 	if (msg) {
 		panel->mLbl = WMCreateLabel(panel->win);
 		WMMoveWidget(panel->mLbl, 20, 50);
-		WMResizeWidget(panel->mLbl, 320 - 40, WMFontHeight(scrPtr->normalFont) * 2);
+		WMResizeWidget(panel->mLbl, panel_w - 40, WMFontHeight(scrPtr->normalFont) * 2);
 		WMSetLabelText(panel->mLbl, msg);
 		WMSetLabelTextAlignment(panel->mLbl, WALeft);
 		WMSetLabelFont(panel->mLbl, defaultFont);
 	}
 
 	panel->text = WMCreateTextField(panel->win);
-	WMMoveWidget(panel->text, 20, 85);
-	WMResizeWidget(panel->text, 320 - 40, WMWidgetHeight(panel->text));
+	WMMoveWidget(panel->text, 20, msg ? 85 : 54);
+	WMResizeWidget(panel->text, panel_w - 40, WMWidgetHeight(panel->text));
 	WMSetTextFieldText(panel->text, defaultText);
 	WMSetTextFieldFont(panel->text, defaultFont);
 
@@ -564,7 +577,7 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 		w = aw;
 
 	w += 30;
-	x = 310;
+	x = panel_w - 10;
 
 	if (okButton) {
 		x -= w + 10;
@@ -572,7 +585,7 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 		panel->defBtn = WMCreateCustomButton(panel->win, WBBPushInMask
 						     | WBBPushChangeMask | WBBPushLightMask);
 		WMSetButtonAction(panel->defBtn, inputBoxOnClick, panel);
-		WMMoveWidget(panel->defBtn, x, 124);
+		WMMoveWidget(panel->defBtn, x, msg ? 124 : 80);
 		WMResizeWidget(panel->defBtn, w, 24);
 		WMSetButtonText(panel->defBtn, okButton);
 		WMSetButtonImage(panel->defBtn, scrPtr->buttonArrow);
@@ -585,7 +598,7 @@ WMInputPanel *WMCreateInputPanel(WMScreen * scrPtr, WMWindow * owner, const char
 
 		panel->altBtn = WMCreateCommandButton(panel->win);
 		WMSetButtonAction(panel->altBtn, inputBoxOnClick, panel);
-		WMMoveWidget(panel->altBtn, x, 124);
+		WMMoveWidget(panel->altBtn, x, msg ? 124 : 80);
 		WMResizeWidget(panel->altBtn, w, 24);
 		WMSetButtonText(panel->altBtn, cancelButton);
 		WMSetButtonFont(panel->altBtn, defaultFont);
@@ -607,7 +620,8 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 				       const char *defaultText, const char *okButton, const char *cancelButton)
 {
 	WMInputPanel *panel;
-	int x, dw = 0, aw = 0, w;
+	WMFont *largeFont = NULL;
+	int x, dw = 0, aw = 0, w, panel_w;
 	int wmScaleWidth, wmScaleHeight;
 
 	panel = wmalloc(sizeof(WMInputPanel));
@@ -619,16 +633,29 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 	WMSetWindowTitle(panel->win, "");
 
 	WMGetScaleBaseFromSystemFont(scrPtr, &wmScaleWidth, &wmScaleHeight);
-	WMResizeWidget(panel->win, WMScaleX(320), WMScaleY(160));
-
+	/* widen the panel so the non-wrapping title fits, capped at 400 */
+	panel_w = WMScaleX(320);
 	if (title) {
-		WMFont *largeFont;
+		int tw;
 
 		largeFont = WMBoldSystemFontOfSize(scrPtr, WMScaleY(24));
+		if (largeFont) {
+			tw = WMWidthOfString(largeFont, title, strlen(title));
+			if (tw + 2 * WMScaleX(20) + 8 > panel_w)
+				panel_w = tw + 2 * WMScaleX(20) + 8 > WMScaleX(400)
+					? WMScaleX(400) : tw + 2 * WMScaleX(20) + 8;
+		}
+	}
+	WMResizeWidget(panel->win, panel_w, WMScaleY((msg ? 160 : 110)));
+
+	if (title) {
+		int th;
+
+		th = WMFontHeight(largeFont) + WMScaleY(4);
 
 		panel->tLbl = WMCreateLabel(panel->win);
-		WMMoveWidget(panel->tLbl, WMScaleX(20), WMScaleY(16));
-		WMResizeWidget(panel->tLbl, WMScaleX(320) - 2 * WMScaleX(20), WMFontHeight(largeFont) + WMScaleY(4));
+		WMMoveWidget(panel->tLbl, WMScaleX(20), msg ? WMScaleY(16) : (WMScaleY(54) - th) / 2);
+		WMResizeWidget(panel->tLbl, panel_w - 2 * WMScaleX(20), th);
 		WMSetLabelText(panel->tLbl, title);
 		WMSetLabelTextAlignment(panel->tLbl, WALeft);
 		WMSetLabelFont(panel->tLbl, largeFont);
@@ -639,14 +666,14 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 	if (msg) {
 		panel->mLbl = WMCreateLabel(panel->win);
 		WMMoveWidget(panel->mLbl, WMScaleX(20), WMScaleY(50));
-		WMResizeWidget(panel->mLbl, WMScaleX(320) - 2 * WMScaleX(20), WMFontHeight(scrPtr->normalFont) * 2);
+		WMResizeWidget(panel->mLbl, panel_w - 2 * WMScaleX(20), WMFontHeight(scrPtr->normalFont) * 2);
 		WMSetLabelText(panel->mLbl, msg);
 		WMSetLabelTextAlignment(panel->mLbl, WALeft);
 	}
 
 	panel->text = WMCreateTextField(panel->win);
-	WMMoveWidget(panel->text, WMScaleX(20), WMScaleY(85));
-	WMResizeWidget(panel->text, WMScaleX(320) - 2 * WMScaleX(20), WMScaleY(20));
+	WMMoveWidget(panel->text, WMScaleX(20), WMScaleY((msg ? 85 : 54)));
+	WMResizeWidget(panel->text, panel_w - 2 * WMScaleX(20), WMScaleY(20));
 	WMSetTextFieldText(panel->text, defaultText);
 
 	WMAddNotificationObserver(endedEditingObserver, panel, WMTextDidEndEditingNotification, panel->text);
@@ -663,7 +690,7 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 		w = aw;
 
 	w += WMScaleX(30);
-	x = WMScaleX(310);
+	x = panel_w - WMScaleX(10);
 
 	if (okButton) {
 		x -= w + WMScaleX(10);
@@ -671,7 +698,7 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 		panel->defBtn = WMCreateCustomButton(panel->win, WBBPushInMask
 						     | WBBPushChangeMask | WBBPushLightMask);
 		WMSetButtonAction(panel->defBtn, inputBoxOnClick, panel);
-		WMMoveWidget(panel->defBtn, x, WMScaleY(124));
+		WMMoveWidget(panel->defBtn, x, WMScaleY((msg ? 124 : 80)));
 		WMResizeWidget(panel->defBtn, w, WMScaleY(24));
 		WMSetButtonText(panel->defBtn, okButton);
 		WMSetButtonImage(panel->defBtn, scrPtr->buttonArrow);
@@ -683,7 +710,7 @@ WMInputPanel *WMCreateScaledInputPanel(WMScreen * scrPtr, WMWindow * owner, cons
 
 		panel->altBtn = WMCreateCommandButton(panel->win);
 		WMSetButtonAction(panel->altBtn, inputBoxOnClick, panel);
-		WMMoveWidget(panel->altBtn, x, WMScaleY(124));
+		WMMoveWidget(panel->altBtn, x, WMScaleY((msg ? 124 : 80)));
 		WMResizeWidget(panel->altBtn, w, WMScaleY(24));
 		WMSetButtonText(panel->altBtn, cancelButton);
 	}
