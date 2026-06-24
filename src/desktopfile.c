@@ -167,6 +167,10 @@ Bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
 			out->wmclass = wstrdup(line + 15);
 			continue;
 		}
+		if (!out->mimetypes && strncmp(line, "MimeType=", 9) == 0) {
+			out->mimetypes = wstrdup(line + 9);
+			continue;
+		}
 		if (strncmp(line, "Type=", 5) == 0) {
 			saw_type = 1;
 			out->is_application = strcmp(line + 5, "Application") == 0;
@@ -223,6 +227,7 @@ void wDesktopEntryFree(WDesktopEntry *e)
 	wfree(e->try_exec);
 	wfree(e->wmclass);
 	wfree(e->icon);
+	wfree(e->mimetypes);
 	memset(e, 0, sizeof(*e));
 }
 
@@ -358,6 +363,8 @@ char *wXDGFindThemeIcon(const char *name, const char *context,
 
 static WMArray *app_cache;
 static WMHashTable *app_by_id;
+static WMHashTable *apps_for_mime;	/* type -> WMArray of WXDGApp* */
+static WMArray *apps_for_mime_empty;
 static char *app_dir_path[XDG_MAX_APP_DIRS];
 static time_t app_dir_mtime[XDG_MAX_APP_DIRS];
 static int app_dir_count;
@@ -402,6 +409,30 @@ static Bool tryExecAvailable(const char *try_exec)
 	return False;
 }
 
+static void appCacheIndexMime(WXDGApp *a, char *mimetypes)
+{
+	WMArray *list;
+	char *p, *q;
+
+	if (!mimetypes)
+		return;
+	for (p = mimetypes; *p; p = q) {
+		q = strchr(p, ';');
+		if (q)
+			*q++ = 0;
+		else
+			q = p + strlen(p);
+		if (!*p)
+			continue;
+		list = WMHashGet(apps_for_mime, p);
+		if (!list) {
+			list = WMCreateArray(2);
+			WMHashInsert(apps_for_mime, p, list);
+		}
+		WMAddToArray(list, a);
+	}
+}
+
 static void appCacheAdd(const char *path, const char *id)
 {
 	WDesktopEntry de;
@@ -442,6 +473,8 @@ static void appCacheAdd(const char *path, const char *id)
 
 	WMAddToArray(app_cache, a);
 	WMHashInsert(app_by_id, a->id, a);
+	appCacheIndexMime(a, de.mimetypes);
+	wfree(de.mimetypes);
 }
 
 static void scanAppDir(const char *dir, const char *idprefix)
@@ -544,6 +577,7 @@ WMArray *wXDGAppList(void)
 
 	app_cache = WMCreateArrayWithDestructor(64, freeXDGApp);
 	app_by_id = WMCreateHashTable(WMStringPointerHashCallbacks);
+	apps_for_mime = WMCreateHashTable(WMStringHashCallbacks);
 	app_dir_count = 0;
 	wXDGForEachDataDir("applications", scanAppRoot, NULL);
 	WMSortArray(app_cache, compareXDGApp);
@@ -557,13 +591,39 @@ WXDGApp *wXDGAppById(const char *desktop_id)
 	return WMHashGet(app_by_id, desktop_id);
 }
 
+WMArray *wXDGAppsForMime(const char *type)
+{
+	WMArray *list;
+
+	wXDGAppList();
+	list = type ? WMHashGet(apps_for_mime, type) : NULL;
+	if (list)
+		return list;
+	if (!apps_for_mime_empty)
+		apps_for_mime_empty = WMCreateArray(0);
+	return apps_for_mime_empty;
+}
+
 void wXDGAppListInvalidate(void)
 {
+	WMHashEnumerator e;
+	void *val, *key;
 	int i;
 
 	if (app_by_id) {
 		WMFreeHashTable(app_by_id);
 		app_by_id = NULL;
+	}
+	if (apps_for_mime) {
+		e = WMEnumerateHashTable(apps_for_mime);
+		while (WMNextHashEnumeratorItemAndKey(&e, &val, &key))
+			WMFreeArray(val);
+		WMFreeHashTable(apps_for_mime);
+		apps_for_mime = NULL;
+	}
+	if (apps_for_mime_empty) {
+		WMFreeArray(apps_for_mime_empty);
+		apps_for_mime_empty = NULL;
 	}
 	if (app_cache) {
 		WMFreeArray(app_cache);
@@ -1082,22 +1142,10 @@ static char *substituteExecPath(const char *exec_raw, const char *path,
 	return out;
 }
 
-char *wXDGOpenCommandFor(const char *path)
+char *wXDGAppOpenCommand(const WXDGApp *app, const char *path)
 {
-	const char *type, *id, *term;
-	WXDGApp *app;
-	char *cmd, *qpath, *wrapped;
-
-	type = wXDGMimeTypeForPath(path);
-	id = type ? wXDGDefaultAppFor(type) : NULL;
-	app = id ? wXDGAppById(id) : NULL;
-
-	if (!app || !app->exec_raw) {
-		qpath = wshellquote(path);
-		cmd = wstrconcat("xdg-open ", qpath);
-		wfree(qpath);
-		return cmd;
-	}
+	const char *term;
+	char *cmd, *wrapped;
 
 	cmd = substituteExecPath(app->exec_raw, path, app->name);
 	if (app->terminal) {
@@ -1109,6 +1157,25 @@ char *wXDGOpenCommandFor(const char *path)
 		cmd = wrapped;
 	}
 	return cmd;
+}
+
+char *wXDGOpenCommandFor(const char *path)
+{
+	const char *type, *id;
+	WXDGApp *app;
+	char *cmd, *qpath;
+
+	type = wXDGMimeTypeForPath(path);
+	id = type ? wXDGDefaultAppFor(type) : NULL;
+	app = id ? wXDGAppById(id) : NULL;
+
+	if (!app || !app->exec_raw) {
+		qpath = wshellquote(path);
+		cmd = wstrconcat("xdg-open ", qpath);
+		wfree(qpath);
+		return cmd;
+	}
+	return wXDGAppOpenCommand(app, path);
 }
 
 /* ---- fuzzy matcher ----------------------------------------------- */

@@ -101,6 +101,20 @@ static void test_mime_magic(void)
 		perror("rm");
 }
 
+static void test_apps_for_mime(void)
+{
+	WMArray *list;
+
+	list = wXDGAppsForMime("application/pdf");
+	CHECK(WMGetArrayItemCount(list) == 2);
+	list = wXDGAppsForMime("image/png");
+	CHECK(WMGetArrayItemCount(list) == 1);
+	CHECK_STR(((WXDGApp *)WMGetFromArray(list, 0))->id, "viewer.desktop");
+	list = wXDGAppsForMime("no/such");
+	CHECK(WMGetArrayItemCount(list) == 0);
+	CHECK(WMGetArrayItemCount(wXDGAppsForMime(NULL)) == 0);
+}
+
 static void test_default_app(void)
 {
 	/* default from [Default Applications] in mimeapps.list */
@@ -306,6 +320,7 @@ int main(void)
 
 	test_mime_for_path();
 	test_mime_magic();
+	test_apps_for_mime();
 	test_default_app();
 	test_open_command();
 	test_doc_list();

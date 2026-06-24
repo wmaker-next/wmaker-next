@@ -179,6 +179,8 @@ typedef struct RunVariant {
 	char *label;	/* shown in mLbl while selected, may be NULL */
 	char *icon_hint;/* "/abs/path", "apps:name" or "mimetypes:name" */
 	const char *frec_key;	/* desktop-id or doc path, source-owned */
+	const char *doc_path;	/* WXDGDoc.path for document rows */
+	const char *doc_mime;	/* its MIME type, both source-owned */
 	int rank;	/* sort band, lower first */
 	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
@@ -219,6 +221,8 @@ typedef struct _WMInputPanelWithHistory {
 	Bool filtering;		/* regenerate variants on every edit */
 	Bool rerun;		/* re-enter the modal loop after Escape */
 	char *accepted_key;	/* frec_key of the variant Return picked */
+	WMArray *outer_variants;/* saved during an open-with sub-cycle */
+	int outer_varpos;
 } WMInputPanelWithHistory;
 
 static RunVariant *makeVariant(char *text, char *label, int rank, Bool replace)
@@ -771,7 +775,9 @@ static void matchDocuments(const char *word, WMArray *result)
 		v->frec_key = d->path;
 		v->score = score + frecencyBonus(d->path);
 		v->mtime = d->mtime;
+		v->doc_path = d->path;
 		mt = wXDGMimeTypeForPath(d->path);
+		v->doc_mime = mt;
 		if (mt) {
 			snprintf(hint, sizeof(hint), "mimetypes:%s", mt);
 			for (hp = hint; *hp; hp++)
@@ -1262,6 +1268,10 @@ static void resetVariants(WMInputPanelWithHistory *p)
 		WMFreeArray(p->variants);
 		p->variants = NULL;
 	}
+	if (p->outer_variants) {
+		WMFreeArray(p->outer_variants);
+		p->outer_variants = NULL;
+	}
 	if (p->saved_msg) {
 		if (p->panel->mLbl)
 			WMSetLabelText(p->panel->mLbl, p->saved_msg);
@@ -1285,6 +1295,63 @@ static void stepVariant(WMInputPanelWithHistory *p, int dir)
 		WMSelectListItem(p->dropList, p->varpos - 1);
 		WMSetListPosition(p->dropList, p->varpos - 1);
 	}
+}
+
+static Bool enterOpenWith(WMInputPanelWithHistory *p)
+{
+	RunVariant *cur, *v;
+	WMArray *handlers, *sub;
+	WXDGApp *a;
+	const char *base;
+	char *label;
+	int i, n;
+
+	if (p->outer_variants || !p->variants || p->varpos <= 0)
+		return False;
+	cur = WMGetFromArray(p->variants, p->varpos - 1);
+	if (!cur->doc_path || !cur->doc_mime)
+		return False;
+	handlers = wXDGAppsForMime(cur->doc_mime);
+	n = WMGetArrayItemCount(handlers);
+	if (n < 2)
+		return False;
+
+	base = strrchr(cur->doc_path, '/');
+	base = base ? base + 1 : cur->doc_path;
+	sub = WMCreateArrayWithDestructor(n, freeVariant);
+	for (i = 0; i < n; i++) {
+		a = WMGetFromArray(handlers, i);
+		label = wstrconcat(base, " \xe2\x80\x94 ");
+		label = wstrappend(label, a->name);
+		v = makeVariant(wXDGAppOpenCommand(a, cur->doc_path),
+				label, RUN_RANK_DOC_PREFIX, True);
+		v->frec_key = cur->doc_path;
+		if (a->icon)
+			v->icon_hint = a->icon[0] == '/'
+				     ? wstrdup(a->icon)
+				     : wstrconcat("apps:", a->icon);
+		WMAddToArray(sub, v);
+	}
+	p->outer_variants = p->variants;
+	p->outer_varpos = p->varpos;
+	p->variants = sub;
+	p->varpos = 0;
+	stepVariant(p, 1);
+	refreshDropList(p);
+	return True;
+}
+
+static Bool leaveOpenWith(WMInputPanelWithHistory *p)
+{
+	if (!p->outer_variants)
+		return False;
+	WMFreeArray(p->variants);
+	p->variants = p->outer_variants;
+	p->varpos = p->outer_varpos;
+	p->outer_variants = NULL;
+	applyVariant(p);
+	refreshDropList(p);
+	return True;
 }
 
 static void handleHistoryKeyPress(XEvent * event, void *clientData)
@@ -1325,6 +1392,23 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		if (p->histpos > 0) {
 			p->histpos--;
 			WMSetTextFieldText(p->panel->text, WMGetFromArray(p->history, p->histpos));
+		}
+		break;
+	case XK_Right:
+		/* the text field has already moved the cursor by the
+		 * time this handler runs, applyVariant() will rewrite
+		 * the field and cursor so that does not matter, when
+		 * the popup is mapped Right and Left only drill in and
+		 * out of the open-with handler list and never reset */
+		if (p->dropMapped) {
+			enterOpenWith(p);
+			return;
+		}
+		break;
+	case XK_Left:
+		if (p->dropMapped) {
+			leaveOpenWith(p);
+			return;
 		}
 		break;
 	case XK_Escape:

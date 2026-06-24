@@ -34,6 +34,7 @@ typedef struct WDesktopEntry {
 	char *try_exec;		/* TryExec=, may be NULL */
 	char *wmclass;		/* StartupWMClass=, may be NULL */
 	char *icon;		/* raw Icon= value, theme name or path, may be NULL */
+	char *mimetypes;	/* raw MimeType= ;-separated list, may be NULL */
 	unsigned no_display:1;
 	unsigned hidden:1;
 	unsigned terminal:1;
@@ -93,6 +94,11 @@ WMArray *wXDGAppList(void);
 /* lookup by desktop-file-id in the cached list, does not rebuild */
 WXDGApp *wXDGAppById(const char *desktop_id);
 
+/* visible applications whose MimeType= list contains type, the
+ * array and its WXDGApp* elements are owned by the cache, never
+ * NULL but may be empty */
+WMArray *wXDGAppsForMime(const char *type);
+
 /* free the cached list, called from Exit() so leak checks stay quiet */
 void wXDGAppListInvalidate(void);
 
@@ -111,6 +117,10 @@ const char *wXDGDefaultAppFor(const char *mimetype);
  * shell-quoted path, falls back to "xdg-open '<path>'" when the
  * type or handler cannot be resolved */
 char *wXDGOpenCommandFor(const char *path);
+
+/* malloc'd shell command that opens path with the given application,
+ * same field-code substitution and terminal wrap as above */
+char *wXDGAppOpenCommand(const WXDGApp *app, const char *path);
 
 /* free the globs2 and mimeapps caches, called from Exit() */
 void wXDGMimeInvalidate(void);

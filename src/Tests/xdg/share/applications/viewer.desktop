@@ -2,3 +2,4 @@
 Type=Application
 Name=Fixture PDF Viewer
 Exec=viewpdf %f
+MimeType=application/pdf;image/png;

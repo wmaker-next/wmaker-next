@@ -60,6 +60,13 @@ bonus is folded into the match score so frequently-used entries
 rise to the top of their rank band over time. One-hit entries
 older than 90 days are pruned on write so the file stays small.
 
+When the popup selection is on a document and at least two
+visible applications declare its MIME type in their MimeType=
+list, the Right arrow drills into an open-with sub-list of those
+handlers (each row showing the document name and the application
+it would open with) and Left or Escape returns to the outer
+document list at the same row.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

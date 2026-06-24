@@ -2,3 +2,4 @@
 Type=Application
 Name=Fixture Editor
 Exec=edit --new
+MimeType=text/plain;application/pdf;
