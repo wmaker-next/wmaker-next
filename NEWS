@@ -54,6 +54,12 @@ documents and the generic application-x-executable for $PATH
 binaries. Icons are loaded lazily on first draw and cached for
 the lifetime of the dialog so scrolling stays cheap.
 
+Applications and documents launched from the popup are recorded
+in $XDG_STATE_HOME/WindowMaker/RunFrecency and a hits-decayed-by-age
+bonus is folded into the match score so frequently-used entries
+rise to the top of their rank band over time. One-hit entries
+older than 90 days are pruned on write so the file stays small.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

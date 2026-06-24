@@ -144,4 +144,8 @@ void wXDGDocListInvalidate(void);
 int wFuzzyScore(const char *needle_fold, const char *hay_fold,
 		const char *hay_orig);
 
+/* hits decayed by age in days, capped at 100 so a frequently-used
+ * entry can lift itself within a rank band but not jump bands */
+int wFrecencyScore(int hits, time_t last, time_t now);
+
 #endif /* WMDESKTOPFILE_H_ */

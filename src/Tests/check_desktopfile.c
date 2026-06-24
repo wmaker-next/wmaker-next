@@ -215,6 +215,24 @@ static void test_fuzzy_score(void)
 	      wFuzzyScore("loff", "killoffender", "killoffender"));
 }
 
+static void test_frecency_score(void)
+{
+	time_t now = 1000000000, day = 86400;
+
+	CHECK(wFrecencyScore(0, now, now) == 0);
+	/* same hits, fresher wins */
+	CHECK(wFrecencyScore(27, now, now) >
+	      wFrecencyScore(27, now - 60 * day, now));
+	/* more hits beats fewer at equal age */
+	CHECK(wFrecencyScore(27, now - 60 * day, now) >
+	      wFrecencyScore(3, now - 60 * day, now));
+	/* a few recent hits beat one stale hit */
+	CHECK(wFrecencyScore(3, now, now) >
+	      wFrecencyScore(1, now - 90 * day, now));
+	/* capped at 100 */
+	CHECK(wFrecencyScore(10000, now, now) == 100);
+}
+
 int main(void)
 {
 	const char *src;
@@ -245,6 +263,7 @@ int main(void)
 	test_open_command();
 	test_doc_list();
 	test_fuzzy_score();
+	test_frecency_score();
 
 	wXDGMimeInvalidate();
 	wXDGAppListInvalidate();

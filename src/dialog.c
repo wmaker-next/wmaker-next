@@ -178,6 +178,7 @@ typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
 	char *icon_hint;/* "/abs/path", "apps:name" or "mimetypes:name" */
+	const char *frec_key;	/* desktop-id or doc path, source-owned */
 	int rank;	/* sort band, lower first */
 	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
@@ -217,6 +218,7 @@ typedef struct _WMInputPanelWithHistory {
 	Bool dropMapped;
 	Bool filtering;		/* regenerate variants on every edit */
 	Bool rerun;		/* re-enter the modal loop after Escape */
+	char *accepted_key;	/* frec_key of the variant Return picked */
 } WMInputPanelWithHistory;
 
 static RunVariant *makeVariant(char *text, char *label, int rank, Bool replace)
@@ -239,6 +241,134 @@ static void freeVariant(void *item)
 	wfree(v->label);
 	wfree(v->icon_hint);
 	wfree(v);
+}
+
+/* ---- frecency store ----------------------------------------------
+ *
+ * One proplist dictionary under $XDG_STATE_HOME/WindowMaker keyed
+ * on desktop-file-id or absolute document path, each value is
+ * { hits = N; last = epoch; }. Loaded lazily on the first match,
+ * written when the dialog accepts a frecency-tracked variant.
+ */
+
+static WMPropList *frec_db;
+static WMPropList *frec_hk, *frec_lk;
+static time_t frec_now;
+
+static char *frecencyFileName(void)
+{
+	const char *state, *home;
+	char *path;
+
+	state = getenv("XDG_STATE_HOME");
+	if (state && state[0] == '/') {
+		path = wstrconcat(state, "/" PACKAGE_TARNAME);
+		mkdir(state, 0700);
+	} else {
+		home = getenv("HOME");
+		path = wstrconcat(home ? home : "",
+				  "/.local/state/" PACKAGE_TARNAME);
+	}
+	mkdir(path, 0700);
+	return wstrappend(path, "/RunFrecency");
+}
+
+static void frecencyLoad(void)
+{
+	char *file;
+
+	if (frec_db)
+		return;
+	file = frecencyFileName();
+	frec_db = WMReadPropListFromFile(file);
+	wfree(file);
+	if (!frec_db || !WMIsPLDictionary(frec_db)) {
+		if (frec_db)
+			WMReleasePropList(frec_db);
+		frec_db = WMCreatePLDictionary(NULL, NULL);
+	}
+	if (!frec_hk) {
+		frec_hk = WMCreatePLString("hits");
+		frec_lk = WMCreatePLString("last");
+	}
+	frec_now = time(NULL);
+}
+
+static int frecencyBonus(const char *key)
+{
+	WMPropList *e, *k, *h, *l;
+	int hits;
+	time_t last;
+
+	if (!key)
+		return 0;
+	frecencyLoad();
+	k = WMCreatePLString(key);
+	e = WMGetFromPLDictionary(frec_db, k);
+	WMReleasePropList(k);
+	if (!e || !WMIsPLDictionary(e))
+		return 0;
+	h = WMGetFromPLDictionary(e, frec_hk);
+	l = WMGetFromPLDictionary(e, frec_lk);
+	hits = h && WMIsPLString(h) ? atoi(WMGetFromPLString(h)) : 0;
+	last = l && WMIsPLString(l) ? (time_t)atol(WMGetFromPLString(l)) : 0;
+	return wFrecencyScore(hits, last, frec_now);
+}
+
+static void frecencyRecord(const char *key)
+{
+	WMPropList *e, *k, *h, *v;
+	WMPropList *keys, *ek, *ev;
+	char buf[32], *file;
+	int hits, i, ehits;
+	time_t elast;
+
+	if (!key)
+		return;
+	frecencyLoad();
+	k = WMCreatePLString(key);
+	e = WMGetFromPLDictionary(frec_db, k);
+	hits = 0;
+	if (e && WMIsPLDictionary(e)) {
+		h = WMGetFromPLDictionary(e, frec_hk);
+		if (h && WMIsPLString(h))
+			hits = atoi(WMGetFromPLString(h));
+	}
+	hits++;
+	e = WMCreatePLDictionary(NULL, NULL);
+	snprintf(buf, sizeof(buf), "%d", hits);
+	v = WMCreatePLString(buf);
+	WMPutInPLDictionary(e, frec_hk, v);
+	WMReleasePropList(v);
+	snprintf(buf, sizeof(buf), "%ld", (long)time(NULL));
+	v = WMCreatePLString(buf);
+	WMPutInPLDictionary(e, frec_lk, v);
+	WMReleasePropList(v);
+	WMPutInPLDictionary(frec_db, k, e);
+	WMReleasePropList(k);
+	WMReleasePropList(e);
+
+	/* prune one-hit entries older than 90 days so the file does
+	 * not grow without bound */
+	keys = WMGetPLDictionaryKeys(frec_db);
+	for (i = WMGetPropListItemCount(keys) - 1; i >= 0; i--) {
+		ek = WMGetFromPLArray(keys, i);
+		ev = WMGetFromPLDictionary(frec_db, ek);
+		if (!ev || !WMIsPLDictionary(ev))
+			continue;
+		h = WMGetFromPLDictionary(ev, frec_hk);
+		ehits = h && WMIsPLString(h) ? atoi(WMGetFromPLString(h)) : 0;
+		h = WMGetFromPLDictionary(ev, frec_lk);
+		elast = h && WMIsPLString(h)
+		      ? (time_t)atol(WMGetFromPLString(h)) : 0;
+		if (ehits <= 1 && frec_now - elast > 90 * 86400)
+			WMRemoveFromPLDictionary(frec_db, ek);
+	}
+	WMReleasePropList(keys);
+
+	file = frecencyFileName();
+	WMWritePropListToFile(frec_db, file);
+	wfree(file);
 }
 
 static char *HistoryFileName(const char *name)
@@ -507,7 +637,8 @@ static void matchXDGApps(const char *word, WMArray *result)
 		}
 		v = makeVariant(wstrdup(a->exec), makeAppLabel(a),
 				RUN_RANK_APP_PREFIX + band, True);
-		v->score = score;
+		v->frec_key = a->id;
+		v->score = score + frecencyBonus(a->id);
 		if (a->icon)
 			v->icon_hint = a->icon[0] == '/'
 				     ? wstrdup(a->icon)
@@ -637,7 +768,8 @@ static void matchDocuments(const char *word, WMArray *result)
 		}
 		wfree(dir);
 		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX + band, True);
-		v->score = score;
+		v->frec_key = d->path;
+		v->score = score + frecencyBonus(d->path);
 		v->mtime = d->mtime;
 		mt = wXDGMimeTypeForPath(d->path);
 		if (mt) {
@@ -893,8 +1025,16 @@ static void candidateClicked(WMWidget *w, void *cdata)
 static void candidateActivate(WMWidget *w, void *cdata)
 {
 	WMInputPanelWithHistory *p = cdata;
+	RunVariant *v;
 
 	candidateClicked(w, cdata);
+	if (p->variants && p->varpos > 0) {
+		v = WMGetFromArray(p->variants, p->varpos - 1);
+		if (v->frec_key) {
+			wfree(p->accepted_key);
+			p->accepted_key = wstrdup(v->frec_key);
+		}
+	}
 	hideDropList(p);
 	if (p->panel->defBtn)
 		WMPerformButtonClick(p->panel->defBtn);
@@ -1152,6 +1292,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 	char *text;
 	unsigned pos;
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
+	RunVariant *av;
 	KeySym ksym;
 	Bool wasFiltering;
 
@@ -1209,6 +1350,13 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		/* the field already holds the applied command, the
 		 * text field has clicked defBtn for us, just let the
 		 * modal loop exit and clean up afterwards */
+		if (p->variants && p->varpos > 0) {
+			av = WMGetFromArray(p->variants, p->varpos - 1);
+			if (av->frec_key) {
+				wfree(p->accepted_key);
+				p->accepted_key = wstrdup(av->frec_key);
+			}
+		}
 		hideDropList(p);
 		break;
 	case XK_ISO_Left_Tab:
@@ -1366,8 +1514,11 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 		result = WMGetTextFieldText(p->panel->text);
 		wfree(WMReplaceInArray(p->history, 0, wstrdup(result)));
 		SaveHistory(p->history, filename);
+		if (p->accepted_key)
+			frecencyRecord(p->accepted_key);
 	} else
 		result = NULL;
+	wfree(p->accepted_key);
 
 	wUnmanageWindow(wwin, False, False);
 

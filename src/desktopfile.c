@@ -1010,6 +1010,19 @@ int wFuzzyScore(const char *needle_fold, const char *hay_fold,
 	return score - gap_total;
 }
 
+int wFrecencyScore(int hits, time_t last, time_t now)
+{
+	double age_days, s;
+
+	if (hits <= 0)
+		return 0;
+	age_days = (double)(now > last ? now - last : 0) / 86400.0;
+	s = (double)hits / (1.0 + age_days / 30.0);
+	if (s > 100.0)
+		s = 100.0;
+	return (int)(s + 0.5);
+}
+
 
 /* ---- document index ---------------------------------------------- */
 
