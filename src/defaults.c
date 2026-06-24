@@ -87,6 +87,7 @@ static WConfigUpdateCallback setWTitleColor;
 static WConfigUpdateCallback setFTitleBack;
 static WConfigUpdateCallback setPTitleBack;
 static WConfigUpdateCallback setUTitleBack;
+static WConfigUpdateCallback setTabInactiveTitleBack;
 static WConfigUpdateCallback setResizebarBack;
 static WConfigUpdateCallback setWorkspaceBack;
 static WConfigUpdateCallback setWorkspaceSpecificBack;
@@ -1286,6 +1287,8 @@ static WConfigUpdateCallback *texture_update_for_target(int target)
 		return setPTitleBack;
 	case WCFG_TEXTURE_U_TITLE_BACK:
 		return setUTitleBack;
+	case WCFG_TEXTURE_TAB_INACTIVE_TITLE_BACK:
+		return setTabInactiveTitleBack;
 	case WCFG_TEXTURE_RESIZEBAR_BACK:
 		return setResizebarBack;
 	case WCFG_TEXTURE_MENU_TITLE_BACK:
@@ -1319,6 +1322,16 @@ unsigned int wConfigApplyTextureSpec(WScreen *scr, const char *key,
 again:
 	if (!candidate)
 		return 0;
+	/* the tab-inactive slot is allowed to stay empty so the
+	 * renderer falls back to PTitleBack at draw time, dispatch
+	 * a NULL through the setter so a runtime reload that clears
+	 * the key drops a previously-set texture, every other target
+	 * keeps the parse-or-warn behaviour */
+	if (target == WCFG_TEXTURE_TAB_INACTIVE_TITLE_BACK &&
+	    strcmp(candidate, "()") == 0) {
+		texture = NULL;
+		return setTabInactiveTitleBack(scr, &texture, NULL);
+	}
 
 	pl = resource_spec_array(key, candidate, "Texture");
 	if (pl) {
@@ -1442,6 +1455,9 @@ static WConfigUpdateCallback *color_update_for_target(int target, void **extra_d
 	case WCFG_COLOR_U_TITLE:
 		*extra_data = (void *)WS_UNFOCUSED;
 		return setWTitleColor;
+	case WCFG_COLOR_TAB_INACTIVE_TITLE:
+		*extra_data = (void *)WS_TABINACTIVE;
+		return setWTitleColor;
 	case WCFG_COLOR_MENU_TITLE:
 		return setMenuTitleColor;
 	case WCFG_COLOR_MENU_TEXT:
@@ -1483,6 +1499,12 @@ unsigned int wConfigApplyColorSpec(WScreen *scr, const char *key,
 again:
 	if (!candidate)
 		return 0;
+	/* the tab-inactive slot is allowed to stay empty so the
+	 * renderer falls back to PTitleColor at draw time */
+	if (!candidate[0] && target == WCFG_COLOR_TAB_INACTIVE_TITLE) {
+		extra_data = (void *)WS_TABINACTIVE;
+		return setWTitleColor(scr, NULL, extra_data);
+	}
 
 	if (!wGetColor(scr, candidate, &color)) {
 		wwarning(_("could not get color for key \"%s\""), key);
@@ -1914,10 +1936,15 @@ static int setWTitleColor(WScreen *scr, void *tdata, void *extra_data)
 	XColor *color = tdata;
 	long widx = (long) extra_data;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-
 	if (scr->window_title_color[widx])
 		WMReleaseColor(scr->window_title_color[widx]);
+
+	if (!color) {
+		/* the tab-inactive slot is left NULL when the key is
+		 * empty so the renderer falls back to PTitleColor */
+		scr->window_title_color[widx] = NULL;
+		return REFRESH_WINDOW_TITLE_COLOR;
+	}
 
 	scr->window_title_color[widx] =
 	    WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
@@ -2225,6 +2252,21 @@ static int setUTitleBack(WScreen *scr, void *tdata, void *foo)
 		wTextureDestroy(scr, scr->window_title_texture[WS_UNFOCUSED]);
 	}
 	scr->window_title_texture[WS_UNFOCUSED] = *texture;
+
+	return REFRESH_WINDOW_TEXTURES;
+}
+
+static int setTabInactiveTitleBack(WScreen *scr, void *tdata, void *foo)
+{
+	WTexture **texture = tdata;
+
+	(void) foo;
+
+	if (scr->window_title_texture[WS_TABINACTIVE])
+		wTextureDestroy(scr, scr->window_title_texture[WS_TABINACTIVE]);
+	/* may be NULL when the key is empty, the segment renderer
+	 * then falls back to the PTitleBack slot */
+	scr->window_title_texture[WS_TABINACTIVE] = *texture;
 
 	return REFRESH_WINDOW_TEXTURES;
 }

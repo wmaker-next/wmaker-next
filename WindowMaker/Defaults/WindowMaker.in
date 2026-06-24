@@ -151,9 +151,11 @@
 	FTitleColor = white;
 	PTitleColor = white;
 	UTitleColor = black;
+	TabInactiveTitleColor = "";
 	FTitleBack = (solid, black);
 	PTitleBack = (solid, gray40);
 	UTitleBack = (solid, "rgb:aa/aa/aa");
+	TabInactiveTitleBack = ();
 	ResizebarBack = (solid, "rgb:aa/aa/aa");
 	MenuTitleColor = white;
 	MenuTextColor = black;

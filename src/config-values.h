@@ -85,6 +85,13 @@
 #define WS_FOCUSED	0
 #define WS_UNFOCUSED	1
 #define WS_PFOCUSED	2
+/* extra slot for inactive tab-group segments, never used as a
+ * frame state, only as an index into the title texture and
+ * colour arrays so themes can style inactive tabs distinctly,
+ * left NULL when TabInactiveTitleBack/Color are unset and the
+ * renderer falls back to WS_PFOCUSED */
+#define WS_TABINACTIVE	3
+#define WS_STATE_COUNT	4
 
 /* clip title colors */
 #define CLIP_NORMAL	0

@@ -224,7 +224,7 @@ typedef struct _WScreen {
     WMColor *select_color;
     WMColor *select_text_color;
     /* foreground colors */
-    WMColor *window_title_color[3];    /* window titlebar text (foc, unfoc, pfoc)*/
+    WMColor *window_title_color[4];    /* window titlebar text (foc, unfoc, pfoc, tab-inactive)*/
     WMColor *menu_title_color[3];      /* menu titlebar text */
     WMColor *clip_title_color[2];      /* clip title text */
     WMColor *mtext_color;	       /* menu item text */
@@ -242,7 +242,7 @@ typedef struct _WScreen {
 
 
     union WTexture *menu_title_texture[3];/* menu titlebar texture (tex, -, -) */
-    union WTexture *window_title_texture[3];  /* win textures (foc, unfoc, pfoc) */
+    union WTexture *window_title_texture[4];  /* win textures (foc, unfoc, pfoc, tab-inactive) */
     union WTexture *resizebar_texture[3];/* window resizebar texture (tex, -, -) */
 
     union WTexture *menu_item_texture; /* menu item texture */

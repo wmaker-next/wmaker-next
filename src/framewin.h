@@ -68,13 +68,13 @@ typedef struct WFrameWindow {
     WCoreWindow *resizebar;	       /* bottom resizebar */
     Window resizebar_cursor[3];	       /* InputOnly per-region hover cursors */
 
-    Pixmap title_back[3];	       /* focused, unfocused, pfocused */
+    Pixmap title_back[4];	       /* focused, unfocused, pfocused, tab-inactive */
     Pixmap resizebar_back[3];	       /* any, None, None */
-    Pixmap button_back[WTB_ROLE_COUNT][3];
+    Pixmap button_back[WTB_ROLE_COUNT][4];
     /* cache entries the Pixmaps above are borrowed from, the Pixmaps are
      * not owned by this frame and must be released through the cache,
      * never via XFreePixmap directly */
-    struct WFrameTexCache *title_cache[3];
+    struct WFrameTexCache *title_cache[4];
     struct WFrameTexCache *resizebar_cache;
 
     WPixmap *button_image[WTB_ROLE_COUNT];

@@ -486,7 +486,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			/* we had a titlebar, but now we don't need it anymore */
-			for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
+			for (i = 0; i < (fwin->flags.single_texture ? 1 : WS_STATE_COUNT); i++)
 				release_title_set(fwin, i);
 			for (i = 0; i < WTB_ROLE_COUNT; i++) {
 				if (fwin->buttons[i])
@@ -671,7 +671,7 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 
 	wfree(fwin->tab_seg_x);
 
-	for (i = 0; i < (fwin->flags.single_texture ? 1 : 3); i++)
+	for (i = 0; i < (fwin->flags.single_texture ? 1 : WS_STATE_COUNT); i++)
 		release_title_set(fwin, i);
 	release_resizebar_set(fwin);
 
@@ -1157,7 +1157,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			/* ... and paint it */
 			updateTexture(fwin);
 
-			for (i = 0; i < 3; i++) {
+			for (i = 0; i < WS_STATE_COUNT; i++) {
 				if (i != state)
 					remakeTexture(fwin, i);
 			}
@@ -1381,8 +1381,8 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 	char *txt;
 	int span, avail, tab_w, rem, sep_w;
 	int n, i, sx, sw, tx, tw, len;
-	int seg_state, th, iy, isz;
-	int show_icon;
+	int seg_state, col_state, th, iy, isz;
+	int itex_slot, icol_slot, show_icon;
 
 	if (!w_global.config->tabs_in_titlebar || !fwin->flags.is_client_window_frame)
 		return 0;
@@ -1425,6 +1425,14 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 	th = (int)fwin->titlebar->height;
 	show_icon = buttonVisible(fwin, WTB_ICON);
 
+	/* themes that set TabInactiveTitleBack/Color get a dedicated
+	 * slot for inactive segments, otherwise borrow PTitleBack and
+	 * PTitleColor exactly as before */
+	itex_slot = fwin->title_texture[WS_TABINACTIVE]
+		  ? WS_TABINACTIVE : WS_PFOCUSED;
+	icol_slot = fwin->title_color[WS_TABINACTIVE]
+		  ? WS_TABINACTIVE : WS_PFOCUSED;
+
 	XSetClipMask(dpy, scr->copy_gc, None);
 
 	for (i = 0; i < n; i++) {
@@ -1438,13 +1446,19 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 
 		/* the active segment uses WS_FOCUSED on a focused frame
 		 * and WS_PFOCUSED on an unfocused one so it always stands
-		 * out, inactive segments borrow WS_PFOCUSED on a focused
-		 * frame and WS_UNFOCUSED otherwise, the overlay is drawn
-		 * whenever seg_state differs from the titlebar background */
-		if (i == grp->active_index)
+		 * out, inactive segments use the dedicated tab slot (or
+		 * its PFOCUSED fallback) on a focused frame and
+		 * WS_UNFOCUSED otherwise, the overlay is drawn whenever
+		 * seg_state differs from the titlebar background */
+		if (i == grp->active_index) {
 			seg_state = (state == WS_UNFOCUSED) ? WS_PFOCUSED : state;
-		else
-			seg_state = (state == WS_FOCUSED) ? WS_PFOCUSED : WS_UNFOCUSED;
+			col_state = seg_state;
+		} else {
+			seg_state = (state == WS_FOCUSED) ? itex_slot
+							  : WS_UNFOCUSED;
+			col_state = (state == WS_FOCUSED) ? icol_slot
+							  : WS_UNFOCUSED;
+		}
 
 		if (seg_state != state) {
 			seg_tex = fwin->title_texture[seg_state];
@@ -1531,7 +1545,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 				       seg_tex->solid.normal.pixel);
 			XFillRectangle(dpy, buf, scr->copy_gc, 0, 0, tw + 2, h);
 		}
-		WMDrawString(scr->wmscreen, buf, fwin->title_color[seg_state],
+		WMDrawString(scr->wmscreen, buf, fwin->title_color[col_state],
 			     *fwin->font, 1, 0, txt, len);
 		XCopyArea(dpy, buf, fwin->titlebar->window, scr->copy_gc,
 			  0, 0, tw + 2, h, tx - 1, y);

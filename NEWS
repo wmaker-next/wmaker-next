@@ -145,6 +145,12 @@ TabAttachArea are exposed in WPrefs. A NoTabbing per-window attribute
 (Inspector > Advanced) refuses a window as either the dragged tab or
 the drop target.
 
+Themes can style inactive tab segments distinctly with
+TabInactiveTitleBack (texture) and TabInactiveTitleColor (text
+colour). When left at their empty defaults the renderer borrows
+PTitleBack and PTitleColor exactly as before so existing themes
+are unchanged.
+
 Configurable titlebar button layout
 ------------------------------------
 

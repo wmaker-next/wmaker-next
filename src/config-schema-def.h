@@ -409,6 +409,10 @@
 	_(U_TITLE_COLOR, "UTitleColor", COLOR_SPEC, utitle_color, "black", NULL, \
 	  WCFG_COLOR_U_TITLE, WCFG_COLOR_U_TITLE, \
 	  WCFG_RUNTIME_RELOAD, 0) \
+	_(TAB_INACTIVE_TITLE_COLOR, "TabInactiveTitleColor", COLOR_SPEC, \
+	  tab_inactive_title_color, "", NULL, \
+	  WCFG_COLOR_TAB_INACTIVE_TITLE, WCFG_COLOR_TAB_INACTIVE_TITLE, \
+	  WCFG_RUNTIME_RELOAD, 0) \
 	_(F_TITLE_BACK, "FTitleBack", TEXTURE_SPEC, ftitle_back, "(solid, black)", NULL, \
 	  WCFG_TEXTURE_F_TITLE_BACK, WCFG_TEXTURE_F_TITLE_BACK, \
 	  WCFG_RUNTIME_RELOAD, 0) \
@@ -419,6 +423,10 @@
 	  "(solid, \"rgb:aa/aa/aa\")", NULL, \
 	  WCFG_TEXTURE_U_TITLE_BACK, WCFG_TEXTURE_U_TITLE_BACK, \
 	  WCFG_RUNTIME_RELOAD, 0) \
+	_(TAB_INACTIVE_TITLE_BACK, "TabInactiveTitleBack", TEXTURE_SPEC, \
+	  tab_inactive_title_back, "()", NULL, \
+	  WCFG_TEXTURE_TAB_INACTIVE_TITLE_BACK, \
+	  WCFG_TEXTURE_TAB_INACTIVE_TITLE_BACK, WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZEBAR_BACK, "ResizebarBack", TEXTURE_SPEC, resizebar_back, \
 	  "(solid, \"rgb:aa/aa/aa\")", NULL, \
 	  WCFG_TEXTURE_RESIZEBAR_BACK, WCFG_TEXTURE_RESIZEBAR_BACK, \
