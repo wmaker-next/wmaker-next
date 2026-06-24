@@ -367,6 +367,46 @@ void DispatchEvent(XEvent *event)
  * ------------------------------------------------------------------ */
 
 #ifdef HAVE_INOTIFY
+
+#define WINOTIFY_MAX_EXTRA 64
+
+static struct {
+	int wd;
+	void (*cb)(void);
+} inotify_extra[WINOTIFY_MAX_EXTRA];
+static int inotify_extra_count;
+
+int wInotifyAddWatch(const char *path, unsigned mask, void (*cb)(void))
+{
+	int wd;
+
+	if (w_global.inotify.fd_event_queue < 0 ||
+	    inotify_extra_count >= WINOTIFY_MAX_EXTRA)
+		return -1;
+	wd = inotify_add_watch(w_global.inotify.fd_event_queue, path, mask);
+	if (wd < 0)
+		return -1;
+	inotify_extra[inotify_extra_count].wd = wd;
+	inotify_extra[inotify_extra_count].cb = cb;
+	inotify_extra_count++;
+	return wd;
+}
+
+void wInotifyRemoveWatch(int wd)
+{
+	int i;
+
+	if (wd < 0 || w_global.inotify.fd_event_queue < 0)
+		return;
+	inotify_rm_watch(w_global.inotify.fd_event_queue, wd);
+	for (i = 0; i < inotify_extra_count; i++) {
+		if (inotify_extra[i].wd == wd) {
+			inotify_extra[i] = inotify_extra[--inotify_extra_count];
+			return;
+		}
+	}
+}
+
 static void handle_inotify_events(void)
 {
 	ssize_t eventQLength;
@@ -375,6 +415,8 @@ static void handle_inotify_events(void)
 	char buff[ (sizeof(struct inotify_event) + NAME_MAX + 1) * 5 ];
 	/* Check config only once per read of the event queue */
 	int oneShotFlag = 0;
+	int j, fire_n, fired[WINOTIFY_MAX_EXTRA] = {0};
+	void (*fire_cb[WINOTIFY_MAX_EXTRA])(void);
 
 	/*
 	 * Read off the queued events
@@ -392,9 +434,19 @@ static void handle_inotify_events(void)
 	}
 
 	/* check what events occurred */
-	/* Should really check wd here too, but for now we only have one watch! */
 	while (i < eventQLength) {
 		struct inotify_event *pevent = (struct inotify_event *)&buff[i];
+
+		/* extra watches registered through wInotifyAddWatch are
+		 * dispatched by wd, the defaults watch keeps its
+		 * special-case handling below */
+		if (pevent->wd != w_global.inotify.wd_defaults) {
+			for (j = 0; j < inotify_extra_count; j++)
+				if (inotify_extra[j].wd == pevent->wd)
+					fired[j] = 1;
+			i += sizeof(struct inotify_event) + pevent->len;
+			continue;
+		}
 
 		/*
 		 * see inotify.h for event types.
@@ -439,6 +491,16 @@ static void handle_inotify_events(void)
 		i += sizeof(struct inotify_event) + pevent->len;
 	}
 
+	/* fire each extra callback at most once per read batch,
+	 * snapshotted first so a callback that removes its own
+	 * watch does not shuffle the table under the iterator */
+	for (j = 0; j < inotify_extra_count; j++)
+		fire_cb[j] = fired[j] ? inotify_extra[j].cb : NULL;
+	fire_n = inotify_extra_count;
+	for (j = 0; j < fire_n; j++)
+		if (fire_cb[j])
+			(*fire_cb[j])();
+
 	for (i = 0; i < w_global.screen_count; i++) {
 		WScreen *scr = wScreenWithNumber(i);
 		if (scr)
@@ -458,6 +520,7 @@ void wInotifyCleanup(void)
 
 	w_global.inotify.fd_event_queue = -1;
 	w_global.inotify.wd_defaults = -1;
+	inotify_extra_count = 0;
 }
 
 static void inotify_input(int fd, int mask, void *clientData)
@@ -469,6 +532,17 @@ static void inotify_input(int fd, int mask, void *clientData)
 		return;
 
 	handle_inotify_events();
+}
+#else /* !HAVE_INOTIFY */
+int wInotifyAddWatch(const char *path, unsigned mask, void (*cb)(void))
+{
+	(void)path; (void)mask; (void)cb;
+	return -1;
+}
+
+void wInotifyRemoveWatch(int wd)
+{
+	(void)wd;
 }
 #endif /* HAVE_INOTIFY */
 

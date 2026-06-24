@@ -555,6 +555,12 @@ static void inotifyWatchConfig(void)
 		}
 	}
 	wfree(watchPath);
+	/* the run-dialog document index registers a watch per root
+	 * through these hooks so a deep create or delete invalidates
+	 * the cache without the root-mtime heuristic, the hooks stay
+	 * NULL on platforms without inotify and the index falls back
+	 * to the mtime check */
+	wXDGSetDocWatchHooks(wInotifyAddWatch, wInotifyRemoveWatch);
 }
 #endif /* HAVE_INOTIFY */
 

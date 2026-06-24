@@ -1254,13 +1254,38 @@ int wFrecencyScore(int hits, time_t last, time_t now)
 /* ---- document index ---------------------------------------------- */
 
 #define XDG_MAX_DOC_ROOTS 32
+/* IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO, expanded
+ * here so this file does not need <sys/inotify.h> on platforms
+ * that lack it, the watch hook is a no-op there anyway */
+#define XDG_DOC_WATCH_MASK (0x100u | 0x200u | 0x40u | 0x80u)
 
 static WMArray *doc_cache;
 static char *doc_root_path[XDG_MAX_DOC_ROOTS];
 static time_t doc_root_mtime[XDG_MAX_DOC_ROOTS];
+static int doc_root_wd[XDG_MAX_DOC_ROOTS];
 static int doc_root_count;
 static int doc_depth_cached, doc_max_cached;
 static char *doc_extra_cached;
+static Bool doc_watch_dirty;
+
+static int (*doc_watch_add)(const char *, unsigned, void (*)(void));
+static void (*doc_watch_remove)(int);
+
+void wXDGSetDocWatchHooks(int (*add)(const char *, unsigned,
+				     void (*)(void)),
+			  void (*remove)(int))
+{
+	doc_watch_add = add;
+	doc_watch_remove = remove;
+}
+
+static void docWatchFired(void)
+{
+	/* defer the rebuild to the next wXDGDocList() call so a
+	 * burst of moves only rescans once and the scan happens on
+	 * the dialog path rather than inside the inotify handler */
+	doc_watch_dirty = True;
+}
 
 static void freeXDGDoc(void *item)
 {
@@ -1344,6 +1369,10 @@ static void addDocRoot(char *root, int depth, int max_files)
 	if (doc_root_count < XDG_MAX_DOC_ROOTS) {
 		doc_root_path[doc_root_count] = root;
 		doc_root_mtime[doc_root_count] = st.st_mtime;
+		doc_root_wd[doc_root_count] = doc_watch_add
+			? (*doc_watch_add)(root, XDG_DOC_WATCH_MASK,
+					   docWatchFired)
+			: -1;
 		doc_root_count++;
 	} else {
 		wfree(root);
@@ -1374,7 +1403,8 @@ WMArray *wXDGDocList(char **extra_roots, int n_extra,
 	}
 
 	if (doc_cache) {
-		stale = depth != doc_depth_cached ||
+		stale = doc_watch_dirty ||
+			depth != doc_depth_cached ||
 			max_files != doc_max_cached ||
 			strcmp(extra_key, doc_extra_cached) != 0;
 		for (i = 0; !stale && i < doc_root_count; i++) {
@@ -1391,6 +1421,7 @@ WMArray *wXDGDocList(char **extra_roots, int n_extra,
 
 	doc_cache = WMCreateArrayWithDestructor(64, freeXDGDoc);
 	doc_root_count = 0;
+	doc_watch_dirty = False;
 	doc_depth_cached = depth;
 	doc_max_cached = max_files;
 	doc_extra_cached = extra_key;
@@ -1410,6 +1441,9 @@ void wXDGDocListInvalidate(void)
 		doc_cache = NULL;
 	}
 	for (i = 0; i < doc_root_count; i++) {
+		if (doc_watch_remove && doc_root_wd[i] >= 0)
+			(*doc_watch_remove)(doc_root_wd[i]);
+		doc_root_wd[i] = -1;
 		wfree(doc_root_path[i]);
 		doc_root_path[i] = NULL;
 	}

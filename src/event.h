@@ -39,6 +39,13 @@ WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
 #ifdef HAVE_INOTIFY
 void wInotifyCleanup(void);
 #endif
+
+/* register an additional watch on the shared inotify fd, the
+ * callback fires once per read batch that contained at least one
+ * event for this wd, returns the watch descriptor or -1 when
+ * inotify is unavailable, no-op stubs when !HAVE_INOTIFY */
+int wInotifyAddWatch(const char *path, unsigned mask, void (*cb)(void));
+void wInotifyRemoveWatch(int wd);
 Bool IsDoubleClick(WScreen *scr, XEvent *event);
 
 /* per-protocol handlers in event_client.c, event_input.c, event_root.c

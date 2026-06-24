@@ -146,6 +146,14 @@ WMArray *wXDGDocList(char **extra_roots, int n_extra,
 
 void wXDGDocListInvalidate(void);
 
+/* install file-watch hooks the document index uses to invalidate
+ * itself when a root changes, NULL hooks (the default) fall back
+ * to the per-call root-mtime check so the unit test and any
+ * non-inotify build keep working */
+void wXDGSetDocWatchHooks(int (*add)(const char *, unsigned,
+				     void (*)(void)),
+			  void (*remove)(int));
+
 
 /* greedy fzf-v1 / rofi-style subsequence matcher with positional
  * bonuses, returns <0 when needle is not a subsequence of hay_fold,
