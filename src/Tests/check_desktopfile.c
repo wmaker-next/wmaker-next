@@ -52,7 +52,53 @@ static void test_mime_for_path(void)
 	/* case-sensitive glob does not match a lower-cased name */
 	CHECK_STR(wXDGMimeTypeForPath("/tmp/x.C"), "text/x-c++src");
 	CHECK(wXDGMimeTypeForPath("/tmp/x.c") == NULL);
+	/* nonexistent file with no extension and nothing to sniff */
 	CHECK(wXDGMimeTypeForPath("/tmp/noext") == NULL);
+}
+
+static void test_mime_magic(void)
+{
+	char tmpl[] = "/tmp/wmaker-sniff-XXXXXX";
+	char *dir, file[PATH_MAX + 64];
+	FILE *f;
+
+	/* the magic fixture lives alongside globs2, write a few
+	 * extensionless probe files the sniffer can read */
+	dir = mkdtemp(tmpl);
+	if (!dir) {
+		perror("mkdtemp");
+		failures++;
+		return;
+	}
+
+	snprintf(file, sizeof(file), "%s/probe-pdf", dir);
+	f = fopen(file, "wb");
+	fputs("%PDF-1.5\nrest", f);
+	fclose(f);
+	CHECK_STR(wXDGMimeTypeForPath(file), "application/pdf");
+
+	snprintf(file, sizeof(file), "%s/probe-script", dir);
+	f = fopen(file, "wb");
+	fputs("#!/bin/sh\necho hi\n", f);
+	fclose(f);
+	CHECK_STR(wXDGMimeTypeForPath(file), "text/x-shellscript");
+
+	snprintf(file, sizeof(file), "%s/probe-misc", dir);
+	f = fopen(file, "wb");
+	fputs("plain text without a signature\n", f);
+	fclose(f);
+	CHECK(wXDGMimeTypeForPath(file) == NULL);
+
+	/* extension match takes precedence over content */
+	snprintf(file, sizeof(file), "%s/probe.txt", dir);
+	f = fopen(file, "wb");
+	fputs("%PDF-1.5\n", f);
+	fclose(f);
+	CHECK_STR(wXDGMimeTypeForPath(file), "text/plain");
+
+	snprintf(file, sizeof(file), "rm -rf '%s'", dir);
+	if (system(file) != 0)
+		perror("rm");
 }
 
 static void test_default_app(void)
@@ -259,6 +305,7 @@ int main(void)
 	setenv("HOME", "/nonexistent", 1);
 
 	test_mime_for_path();
+	test_mime_magic();
 	test_default_app();
 	test_open_command();
 	test_doc_list();

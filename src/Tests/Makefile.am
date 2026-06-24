@@ -17,6 +17,7 @@ AM_TESTS_ENVIRONMENT = \
 
 EXTRA_DIST = \
 	xdg/share/mime/globs2 \
+	xdg/share/mime/magic \
 	xdg/share/applications/viewer.desktop \
 	xdg/share/applications/editor.desktop \
 	xdg/share/applications/multi.desktop \

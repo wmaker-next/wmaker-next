@@ -27,6 +27,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -626,8 +627,16 @@ struct mimeGlob {
 	int cs;		/* case-sensitive flag */
 };
 
+struct mimeMagic {
+	char *type;
+	unsigned char *bytes;
+	int len;
+	int priority;
+};
+
 static WMHashTable *mime_by_ext;	/* lower-cased ext -> struct mimeGlob* */
 static WMHashTable *mime_default;	/* mimetype -> desktop-file-id */
+static WMArray *mime_magic;		/* struct mimeMagic*, prio desc */
 static int mime_globs_loaded;
 
 static void mimeGlobAdd(const char *ext, const char *type, int weight, int cs)
@@ -657,6 +666,147 @@ static void mimeGlobAdd(const char *ext, const char *type, int weight, int cs)
 	g->weight = weight;
 	g->cs = cs;
 	wfree(key);
+}
+
+static void freeMimeMagic(void *item)
+{
+	struct mimeMagic *m = item;
+
+	wfree(m->type);
+	wfree(m->bytes);
+	wfree(m);
+}
+
+static int compareMimeMagic(const void *a, const void *b)
+{
+	const struct mimeMagic *ma = *(const struct mimeMagic * const *)a;
+	const struct mimeMagic *mb = *(const struct mimeMagic * const *)b;
+
+	if (ma->priority != mb->priority)
+		return mb->priority - ma->priority;
+	/* longer signatures first at equal priority so a 4-byte
+	 * match is not shadowed by a 1-byte one */
+	return mb->len - ma->len;
+}
+
+/* shared-mime-info magic file: "MIME-Magic\0\n" then a sequence of
+ * "[prio:type]\n" section headers each followed by one or more
+ * match lines "<indent>'>'<offset>'='<2-byte BE len><len bytes>
+ * ['&'<len bytes mask>]['~'<digits>]['+'<digits>]'\n'", values are
+ * length-prefixed binary so the parser reads byte-by-byte rather
+ * than by line, only top-level zero-offset unmasked entries are
+ * kept which covers PDF, PNG, ELF, gzip, zip, JPEG, '#!' and the
+ * other common signatures without implementing the nested-rule
+ * tree */
+static Bool loadMimeMagic(const char *dir, void *ctx)
+{
+	FILE *fp;
+	char path[PATH_MAX], type[256], hdr[16];
+	struct mimeMagic *m;
+	int c, prio, indent, offset, len, keep, i;
+	unsigned char *val;
+
+	(void)ctx;
+
+	snprintf(path, sizeof(path), "%s/magic", dir);
+	fp = fopen(path, "rb");
+	if (!fp)
+		return True;
+	if (fread(hdr, 1, 12, fp) != 12 ||
+	    memcmp(hdr, "MIME-Magic\0\n", 12) != 0) {
+		fclose(fp);
+		return True;
+	}
+	c = getc(fp);
+	while (c == '[') {
+		prio = 0;
+		while ((c = getc(fp)) != EOF && isdigit(c))
+			prio = prio * 10 + (c - '0');
+		i = 0;
+		if (c == ':')
+			while ((c = getc(fp)) != EOF && c != ']' &&
+			       i < (int)sizeof(type) - 1)
+				type[i++] = (char)c;
+		type[i] = 0;
+		if (c != ']' || getc(fp) != '\n')
+			break;
+		c = getc(fp);
+		while (c != '[' && c != EOF) {
+			indent = 0;
+			while (isdigit(c)) {
+				indent = indent * 10 + (c - '0');
+				c = getc(fp);
+			}
+			if (c != '>')
+				goto out;
+			offset = 0;
+			while ((c = getc(fp)) != EOF && isdigit(c))
+				offset = offset * 10 + (c - '0');
+			if (c != '=')
+				goto out;
+			len = getc(fp) << 8;
+			len |= getc(fp);
+			if (len < 0 || len > 4096)
+				goto out;
+			val = wmalloc(len ? len : 1);
+			if ((int)fread(val, 1, len, fp) != len) {
+				wfree(val);
+				goto out;
+			}
+			keep = indent == 0 && offset == 0;
+			c = getc(fp);
+			if (c == '&') {
+				keep = 0;
+				for (i = 0; i < len; i++)
+					getc(fp);
+				c = getc(fp);
+			}
+			while (c == '~' || c == '+') {
+				keep = 0;
+				while ((c = getc(fp)) != EOF && isdigit(c))
+					;
+			}
+			if (c != '\n') {
+				wfree(val);
+				goto out;
+			}
+			if (keep && type[0] && len > 0) {
+				m = wmalloc(sizeof(*m));
+				m->type = wstrdup(type);
+				m->bytes = val;
+				m->len = len;
+				m->priority = prio;
+				WMAddToArray(mime_magic, m);
+			} else {
+				wfree(val);
+			}
+			c = getc(fp);
+		}
+	}
+out:
+	fclose(fp);
+	return True;
+}
+
+static const char *mimeMagicSniff(const char *path)
+{
+	struct mimeMagic *m;
+	unsigned char head[512];
+	int fd, n, i;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+	n = (int)read(fd, head, sizeof(head));
+	close(fd);
+	if (n <= 0)
+		return NULL;
+	for (i = 0; i < WMGetArrayItemCount(mime_magic); i++) {
+		m = WMGetFromArray(mime_magic, i);
+		if (m->len <= n && memcmp(head, m->bytes, m->len) == 0)
+			return m->type;
+	}
+	return NULL;
 }
 
 static Bool loadMimeGlobs(const char *dir, void *ctx)
@@ -713,15 +863,20 @@ const char *wXDGMimeTypeForPath(const char *path)
 
 	if (!mime_globs_loaded) {
 		mime_by_ext = WMCreateHashTable(WMStringHashCallbacks);
+		mime_magic = WMCreateArrayWithDestructor(64, freeMimeMagic);
 		wXDGForEachDataDir("mime", loadMimeGlobs, NULL);
+		wXDGForEachDataDir("mime", loadMimeMagic, NULL);
+		WMSortArray(mime_magic, compareMimeMagic);
 		mime_globs_loaded = 1;
 	}
 
 	base = strrchr(path, '/');
 	base = base ? base + 1 : path;
 	n = strlen(base);
-	if (n == 0 || n >= sizeof(fold))
+	if (n == 0)
 		return NULL;
+	if (n >= sizeof(fold))
+		return mimeMagicSniff(path);
 	for (i = 0; i < n; i++)
 		fold[i] = tolower((unsigned char)base[i]);
 	fold[n] = 0;
@@ -746,6 +901,11 @@ const char *wXDGMimeTypeForPath(const char *path)
 			blen = (int)strlen(p + 1);
 		}
 	}
+	/* fall back to a bounded content sniff for extensionless
+	 * files (README, downloaded blobs) so the document search
+	 * can still pick a handler */
+	if (!best)
+		best = mimeMagicSniff(path);
 	return best;
 }
 
@@ -1207,6 +1367,10 @@ void wXDGMimeInvalidate(void)
 		}
 		WMFreeHashTable(mime_by_ext);
 		mime_by_ext = NULL;
+	}
+	if (mime_magic) {
+		WMFreeArray(mime_magic);
+		mime_magic = NULL;
 	}
 	if (mime_default) {
 		e = WMEnumerateHashTable(mime_default);
