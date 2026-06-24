@@ -177,6 +177,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
+	char *icon_hint;/* "/abs/path", "apps:name" or "mimetypes:name" */
 	int rank;	/* sort band, lower first */
 	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
@@ -210,7 +211,9 @@ typedef struct _WMInputPanelWithHistory {
 	WMFont *dropBold;
 	WMFont *dropNorm;
 	WMColor *dropDim;
+	WMHashTable *dropIcons;	/* icon_hint -> WMPixmap*, panel-owned */
 	int dropItemH;
+	int dropIconSize;
 	Bool dropMapped;
 	Bool filtering;		/* regenerate variants on every edit */
 	Bool rerun;		/* re-enter the modal loop after Escape */
@@ -234,6 +237,7 @@ static void freeVariant(void *item)
 
 	wfree(v->text);
 	wfree(v->label);
+	wfree(v->icon_hint);
 	wfree(v);
 }
 
@@ -504,6 +508,10 @@ static void matchXDGApps(const char *word, WMArray *result)
 		v = makeVariant(wstrdup(a->exec), makeAppLabel(a),
 				RUN_RANK_APP_PREFIX + band, True);
 		v->score = score;
+		if (a->icon)
+			v->icon_hint = a->icon[0] == '/'
+				     ? wstrdup(a->icon)
+				     : wstrconcat("apps:", a->icon);
 		WMAddToArray(result, v);
 	}
 }
@@ -567,6 +575,7 @@ static void matchPathDir(const char *dir, const char *word,
 					RUN_RANK_PATH + 1, True);
 		}
 		v->score = score;
+		v->icon_hint = wstrdup("mimetypes:application-x-executable");
 		WMAddToArray(result, v);
 	}
 	closedir(dp);
@@ -597,7 +606,8 @@ static void matchDocuments(const char *word, WMArray *result)
 	WMArray *docs;
 	WXDGDoc *d;
 	RunVariant *v;
-	char fold[256], *cmd, *dir, *label;
+	const char *mt;
+	char fold[256], hint[128], *cmd, *dir, *label, *hp;
 	size_t i, n;
 	int band, score;
 
@@ -629,6 +639,16 @@ static void matchDocuments(const char *word, WMArray *result)
 		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX + band, True);
 		v->score = score;
 		v->mtime = d->mtime;
+		mt = wXDGMimeTypeForPath(d->path);
+		if (mt) {
+			snprintf(hint, sizeof(hint), "mimetypes:%s", mt);
+			for (hp = hint; *hp; hp++)
+				if (*hp == '/')
+					*hp = '-';
+			v->icon_hint = wstrdup(hint);
+		} else {
+			v->icon_hint = wstrdup("mimetypes:text-x-generic");
+		}
 		WMAddToArray(result, v);
 	}
 }
@@ -766,6 +786,53 @@ static void applyVariant(WMInputPanelWithHistory *p)
 	wfree(text);
 }
 
+/* sentinel stored under hints whose theme lookup failed so the walk
+ * is not redone on every repaint, never released */
+static int dropIconMiss;
+
+static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
+			     WMColor *back)
+{
+	WMPixmap *pix;
+	RColor color;
+	const char *colon;
+	char ctx[32], *path;
+
+	if (!hint || !hint[0])
+		return NULL;
+	pix = WMHashGet(p->dropIcons, hint);
+	if (pix)
+		return pix == (WMPixmap *)&dropIconMiss ? NULL : pix;
+
+	if (hint[0] == '/') {
+		path = wstrdup(hint);
+	} else {
+		colon = strchr(hint, ':');
+		if (!colon || (size_t)(colon - hint) >= sizeof(ctx))
+			return NULL;
+		memcpy(ctx, hint, colon - hint);
+		ctx[colon - hint] = 0;
+		path = wXDGFindThemeIcon(colon + 1, ctx, p->dropIconSize);
+	}
+	if (path) {
+		color.red = WMRedComponentOfColor(back) >> 8;
+		color.green = WMGreenComponentOfColor(back) >> 8;
+		color.blue = WMBlueComponentOfColor(back) >> 8;
+		color.alpha = WMGetColorAlpha(back) >> 8;
+		pix = WMCreateScaledBlendedPixmapFromFile(p->scr->wmscreen,
+							  path, &color,
+							  p->dropIconSize,
+							  p->dropIconSize);
+		wfree(path);
+	}
+	if (!pix) {
+		WMHashInsert(p->dropIcons, hint, &dropIconMiss);
+		return NULL;
+	}
+	WMHashInsert(p->dropIcons, hint, pix);
+	return pix;
+}
+
 static void drawCandidate(WMList *lPtr, int index, Drawable d,
 			  char *text, int state, WMRect *rect)
 {
@@ -773,8 +840,10 @@ static void drawCandidate(WMList *lPtr, int index, Drawable d,
 	WMScreen *wscr = p->scr->wmscreen;
 	RunVariant *v;
 	WMColor *back;
+	WMPixmap *icon;
+	WMSize isz;
 	const char *line1, *line2;
-	int fh;
+	int fh, tx, iy;
 
 	(void)index;
 
@@ -784,15 +853,24 @@ static void drawCandidate(WMList *lPtr, int index, Drawable d,
 		       rect->pos.x, rect->pos.y,
 		       rect->size.width, rect->size.height);
 
+	tx = rect->pos.x + p->dropItemH + 4;
+	icon = loadRowIcon(p, v->icon_hint, p->scr->gray);
+	if (icon) {
+		isz = WMGetPixmapSize(icon);
+		iy = rect->pos.y + (p->dropItemH - isz.height) / 2;
+		WMDrawPixmap(icon, d,
+			     rect->pos.x + 2 +
+			     (p->dropIconSize - isz.width) / 2, iy);
+	}
+
 	line1 = v->label ? v->label : text;
 	line2 = v->label ? v->text : NULL;
 	fh = WMFontHeight(p->dropBold);
 	WMDrawString(wscr, d, p->scr->black, p->dropBold,
-		     rect->pos.x + 6, rect->pos.y + 2,
-		     line1, strlen(line1));
+		     tx, rect->pos.y + 2, line1, strlen(line1));
 	if (line2)
 		WMDrawString(wscr, d, p->dropDim, p->dropNorm,
-			     rect->pos.x + 6, rect->pos.y + 2 + fh,
+			     tx, rect->pos.y + 2 + fh,
 			     line2, strlen(line2));
 }
 
@@ -835,6 +913,8 @@ static void createDropList(WMInputPanelWithHistory *p)
 	p->dropDim = WMDarkGrayColor(wscr);
 	p->dropItemH = WMFontHeight(p->dropBold) +
 		       WMFontHeight(p->dropNorm) + 6;
+	p->dropIconSize = p->dropItemH - 4;
+	p->dropIcons = WMCreateHashTable(WMStringHashCallbacks);
 
 	p->dropWin = WMCreateWindowWithStyle(wscr, "runDrop",
 					     WMBorderlessWindowMask);
@@ -1003,11 +1083,22 @@ static void dropListFocusObserver(void *self, WMNotification *notification)
 
 static void destroyDropList(WMInputPanelWithHistory *p)
 {
+	WMHashEnumerator e;
+	void *val, *key;
+
 	hideDropList(p);
 	if (p->dropWin) {
 		WMDestroyWidget(p->dropWin);
 		p->dropWin = NULL;
 		p->dropList = NULL;
+	}
+	if (p->dropIcons) {
+		e = WMEnumerateHashTable(p->dropIcons);
+		while (WMNextHashEnumeratorItemAndKey(&e, &val, &key))
+			if (val != &dropIconMiss)
+				WMReleasePixmap(val);
+		WMFreeHashTable(p->dropIcons);
+		p->dropIcons = NULL;
 	}
 	if (p->dropBold)
 		WMReleaseFont(p->dropBold);

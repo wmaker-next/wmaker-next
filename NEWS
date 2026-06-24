@@ -47,7 +47,12 @@ live, a single click applies a row and a double click runs it,
 Escape dismisses the popup and restores the typed text without
 closing the dialog. RunDialogPopupList = NO falls back to the
 [i/N] label cycle only and RunDialogPopupRows (default 8, range
-3 to 20) caps the visible height.
+3 to 20) caps the visible height. Each row carries an icon in a
+left gutter, the application's Icon= resolved through the hicolor
+fallback theme for XDG entries, the file's MIME-type icon for
+documents and the generic application-x-executable for $PATH
+binaries. Icons are loaded lazily on first draw and cached for
+the lifetime of the dialog so scrolling stays cheap.
 
 Drag a file onto the dock to create a launcher
 -----------------------------------------------

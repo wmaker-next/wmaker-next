@@ -2114,100 +2114,6 @@ static char *launcherExecBasename(const char *exec)
 	return out;
 }
 
-/*
- * Resolve a freedesktop icon theme name (Icon=firefox) to an absolute
- * file. We only walk the spec-mandated hicolor fallback theme and the
- * legacy pixmaps directory, so no index.theme parsing or Inherits
- * chasing is needed. Sizes nearest to the dock tile win, preferring
- * the next-larger raster over an upscale, and PNG over XPM. SVG is
- * skipped because wrlib has no loader for it.
- */
-static void launcherProbeThemeIcon(const char *dir, const char *name,
-				   int base_score, char **best, int *score)
-{
-	static const char * const ext[] = { "png", "xpm" };
-	char path[PATH_MAX];
-	int e, sc;
-
-	for (e = 0; e < (int)wlengthof(ext); e++) {
-		snprintf(path, sizeof(path), "%s/%s.%s", dir, name, ext[e]);
-		if (access(path, R_OK) != 0)
-			continue;
-		sc = base_score + e;	/* PNG wins ties over XPM */
-		if (sc < *score) {
-			wfree(*best);
-			*best = wstrdup(path);
-			*score = sc;
-		}
-		return;
-	}
-}
-
-static void launcherScanHicolor(const char *base, const char *name,
-				int want, char **best, int *score)
-{
-	char dir[PATH_MAX];
-	DIR *dp;
-	struct dirent *de;
-	int w, h, delta, sc;
-
-	snprintf(dir, sizeof(dir), "%s/hicolor", base);
-	dp = opendir(dir);
-	if (!dp)
-		return;
-	while ((de = readdir(dp))) {
-		if (sscanf(de->d_name, "%dx%d", &w, &h) != 2 || w != h)
-			continue;
-		/* prefer the smallest raster at or above the tile size,
-		 * else the largest below it, lower score wins */
-		delta = w - want;
-		sc = (delta >= 0) ? 2 * delta : 4096 - 2 * delta;
-		snprintf(dir, sizeof(dir), "%s/hicolor/%s/apps", base, de->d_name);
-		launcherProbeThemeIcon(dir, name, sc, best, score);
-	}
-	closedir(dp);
-}
-
-struct iconScanState {
-	const char *name;
-	int want;
-	char *best;
-	int score;
-};
-
-static Bool launcherScanIconDir(const char *base, void *ctx)
-{
-	struct iconScanState *st = ctx;
-
-	launcherScanHicolor(base, st->name, st->want, &st->best, &st->score);
-	return True;
-}
-
-static Bool launcherScanPixmapDir(const char *base, void *ctx)
-{
-	struct iconScanState *st = ctx;
-
-	/* legacy pixmaps directory, no size encoded so rank below any
-	 * sized hicolor hit but above nothing */
-	launcherProbeThemeIcon(base, st->name, 1 << 16, &st->best, &st->score);
-	return True;
-}
-
-static char *launcherFindThemeIcon(const char *name)
-{
-	struct iconScanState st;
-
-	st.name = name;
-	st.want = ICON_SIZE;
-	st.best = NULL;
-	st.score = INT_MAX;
-
-	wXDGForEachDataDir("icons", launcherScanIconDir, &st);
-	wXDGForEachDataDir("pixmaps", launcherScanPixmapDir, &st);
-
-	return st.best;
-}
-
 static Bool launcherReadDesktopFile(const char *path, char **command,
 				    char **instance, char **class, char **icon,
 				    char **display_name, char **comment)
@@ -2234,7 +2140,7 @@ static Bool launcherReadDesktopFile(const char *path, char **command,
 		} else {
 			/* a bare theme name, resolve through the hicolor
 			 * fallback theme and the legacy pixmaps directory */
-			*icon = launcherFindThemeIcon(de.icon);
+			*icon = wXDGFindThemeIcon(de.icon, "apps", ICON_SIZE);
 			wfree(de.icon);
 		}
 	}

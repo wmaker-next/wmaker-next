@@ -61,6 +61,16 @@ typedef Bool (*WXDGDirFn)(const char *dir, void *ctx);
  * /usr/local/share:/usr/share) */
 void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx);
 
+/* resolve a freedesktop icon-theme name to an absolute file by
+ * walking the spec-mandated hicolor fallback theme and the legacy
+ * pixmaps directory, context is the hicolor subdirectory ("apps",
+ * "mimetypes", ...), sizes nearest want_size win preferring the
+ * next-larger raster over an upscale and PNG over XPM, SVG is
+ * skipped because wrlib has no loader for it, returns a malloc'd
+ * path or NULL */
+char *wXDGFindThemeIcon(const char *name, const char *context,
+			int want_size);
+
 
 typedef struct WXDGApp {
 	char *id;		/* desktop-file-id with .desktop suffix */
@@ -69,6 +79,7 @@ typedef struct WXDGApp {
 	char *exec;		/* shell-ready command, terminal-wrapped */
 	char *exec_raw;		/* original Exec= for %f/%u substitution */
 	char *comment;		/* may be NULL */
+	char *icon;		/* raw Icon= value, theme name or path */
 	unsigned terminal:1;	/* Terminal=true, exec is wrapped */
 } WXDGApp;
 

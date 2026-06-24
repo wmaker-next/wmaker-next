@@ -265,6 +265,92 @@ void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx)
 }
 
 
+/* ---- hicolor icon-theme resolver --------------------------------- */
+
+static void probeThemeIcon(const char *dir, const char *name,
+			   int base_score, char **best, int *score)
+{
+	static const char * const ext[] = { "png", "xpm" };
+	char path[PATH_MAX];
+	int e, sc;
+
+	for (e = 0; e < (int)(sizeof(ext) / sizeof(ext[0])); e++) {
+		snprintf(path, sizeof(path), "%s/%s.%s", dir, name, ext[e]);
+		if (access(path, R_OK) != 0)
+			continue;
+		sc = base_score + e;	/* PNG wins ties over XPM */
+		if (sc < *score) {
+			wfree(*best);
+			*best = wstrdup(path);
+			*score = sc;
+		}
+		return;
+	}
+}
+
+struct iconScanState {
+	const char *name;
+	const char *context;
+	int want;
+	char *best;
+	int score;
+};
+
+static Bool scanHicolorDir(const char *base, void *ctx)
+{
+	struct iconScanState *st = ctx;
+	char dir[PATH_MAX];
+	DIR *dp;
+	struct dirent *de;
+	int w, h, delta, sc;
+
+	snprintf(dir, sizeof(dir), "%s/hicolor", base);
+	dp = opendir(dir);
+	if (!dp)
+		return True;
+	while ((de = readdir(dp))) {
+		if (sscanf(de->d_name, "%dx%d", &w, &h) != 2 || w != h)
+			continue;
+		/* prefer the smallest raster at or above the target,
+		 * else the largest below it, lower score wins */
+		delta = w - st->want;
+		sc = (delta >= 0) ? 2 * delta : 4096 - 2 * delta;
+		snprintf(dir, sizeof(dir), "%s/hicolor/%s/%s",
+			 base, de->d_name, st->context);
+		probeThemeIcon(dir, st->name, sc, &st->best, &st->score);
+	}
+	closedir(dp);
+	return True;
+}
+
+static Bool scanPixmapDir(const char *base, void *ctx)
+{
+	struct iconScanState *st = ctx;
+
+	/* legacy pixmaps directory, no size encoded so rank below any
+	 * sized hicolor hit but above nothing */
+	probeThemeIcon(base, st->name, 1 << 16, &st->best, &st->score);
+	return True;
+}
+
+char *wXDGFindThemeIcon(const char *name, const char *context,
+			int want_size)
+{
+	struct iconScanState st;
+
+	st.name = name;
+	st.context = context;
+	st.want = want_size;
+	st.best = NULL;
+	st.score = INT_MAX;
+
+	wXDGForEachDataDir("icons", scanHicolorDir, &st);
+	wXDGForEachDataDir("pixmaps", scanPixmapDir, &st);
+
+	return st.best;
+}
+
+
 /* ---- XDG application cache --------------------------------------- */
 
 #define XDG_MAX_APP_DIRS 16
@@ -285,6 +371,7 @@ static void freeXDGApp(void *item)
 	wfree(a->exec);
 	wfree(a->exec_raw);
 	wfree(a->comment);
+	wfree(a->icon);
 	wfree(a);
 }
 
@@ -338,6 +425,7 @@ static void appCacheAdd(const char *path, const char *id)
 	a->name_fold = asciiFold(de.name);
 	a->exec_raw = de.exec_raw;
 	a->comment = de.comment;
+	a->icon = de.icon;
 	a->terminal = de.terminal;
 	if (de.terminal) {
 		term = getenv("WMAKER_TERM");
@@ -350,7 +438,6 @@ static void appCacheAdd(const char *path, const char *id)
 	}
 	wfree(de.try_exec);
 	wfree(de.wmclass);
-	wfree(de.icon);
 
 	WMAddToArray(app_cache, a);
 	WMHashInsert(app_by_id, a->id, a);
