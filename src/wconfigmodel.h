@@ -170,6 +170,20 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 				 const WConfig *new_config,
 				 const WConfigChanges *changes);
 
+/* Re-issue the passive button grabs that depend on wPreferences.modifier_mask
+ * for every managed window, after a live ModifierKey change. Key grabs use
+ * the per-shortcut modifier and need no re-grab here. */
+void wRegrabWindowMouseGrabs(WScreen *scr);
+
+/* Re-apply every FONT_SPEC entry; used after a WINGs font-cache detach so
+ * WM-side font pointers re-open under the current antialias flag. */
+unsigned int wConfigForceReapplyFonts(WScreen *scr);
+
+/* AntialiasedText (WMGLOBAL) live-apply: re-read via WMReloadConfiguration
+ * from wDefaultsCheckDomains, and on a change detach the WINGs font cache
+ * and re-open WM-side fonts. Returns the font refresh mask. */
+unsigned int wConfigApplyAntialiasedText(WScreen *scr);
+
 void wConfigCacheWindowMaker(WMPropList *dict);
 void wConfigAdoptWindowMaker(WConfig *config);
 void wConfigClearWindowMaker(void);

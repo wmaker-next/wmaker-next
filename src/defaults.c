@@ -415,6 +415,26 @@ void wDefaultsCheckDomains(void* arg)
 				wRootMenuReparse(s);
 		}
 	}
+
+	if (w_global.domain.wmglobal && domain_file_changed(w_global.domain.wmglobal)) {
+		/* WMGLOBAL holds WINGs-global options (AntialiasedText, ...).
+		 * Re-read them, then run the per-screen apply with an empty
+		 * change set: wConfigApplyRuntime no-ops for WindowMaker keys
+		 * but its unconditional wConfigApplyAntialiasedText() detects
+		 * the AA change, detaches the WINGs font cache and re-opens the
+		 * WM-side fonts, returning the font refresh mask that
+		 * wReadDefaults posts as appearance notifications. */
+		WMReloadConfiguration();
+		for (i = 0; i < w_global.screen_count; i++) {
+			scr = wScreenWithNumber(i);
+			if (scr) {
+				WConfigChanges no_changes;
+
+				memset(&no_changes, 0, sizeof(no_changes));
+				wReadDefaults(scr, w_global.config, w_global.config, &no_changes);
+			}
+		}
+	}
 #ifndef HAVE_INOTIFY
 	if (!arg)
 		WMAddTimerHandler(DEFAULTS_CHECK_INTERVAL, wDefaultsCheckDomains, arg);
@@ -2376,6 +2396,24 @@ static void regrab_focused_window_keys(WScreen *scr)
 		XUngrabKey(dpy, AnyKey, AnyModifier, wwin->frame->core->window);
 		if (!WFLAGP(wwin, no_bind_keys))
 			wWindowSetKeyGrabs(wwin);
+		wwin = wwin->prev;
+	}
+}
+
+void wRegrabWindowMouseGrabs(WScreen *scr)
+{
+	WWindow *wwin;
+
+	if (!scr)
+		return;
+
+	/* scr->focused_window heads the full managed-window list. wWindow-
+	 * ResetMouseGrabs starts by XUngrabButton(AnyButton, AnyModifier) on
+	 * the client window so it self-clears before re-issuing the
+	 * modifier-bound button grabs that depend on MOD_MASK. */
+	wwin = scr->focused_window;
+	while (wwin != NULL) {
+		wWindowResetMouseGrabs(wwin);
 		wwin = wwin->prev;
 	}
 }

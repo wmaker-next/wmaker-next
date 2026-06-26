@@ -221,6 +221,11 @@ typedef struct _WScreen {
 
     WMFont *workspace_name_font;
 
+	/* AntialiasedText (WMGLOBAL) value the screen's fonts were last opened
+	 * under; wConfigApplyAntialiasedText() compares it against the current
+	 * WINGsConfiguration.antialiasedText to detect a live change. */
+	Bool antialiased_text_applied;
+
     WMColor *select_color;
     WMColor *select_text_color;
     /* foreground colors */

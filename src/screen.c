@@ -801,6 +801,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 #endif
 
 	scr->info_text_font = WMBoldSystemFontOfSize(scr->wmscreen, 12);
+	/* record the AA flag the screen's fonts are opened under so a later
+	 * wConfigApplyAntialiasedText() can detect a live WMGLOBAL change */
+	scr->antialiased_text_applied = WMGetAntialiasedText();
 
 	/* tech_draw_font is loaded lazily by wScreenGetTechDrawFont() so the
 	 * core-font QueryFont round-trip is paid only when ResizeDisplay or

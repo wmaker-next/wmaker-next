@@ -65,9 +65,9 @@
 	_(ICON_SIZE, "IconSize", INT, icon_size, "64", \
 	  NULL, 1, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(MODIFIER_KEY, "ModifierKey", STRING, modifier_key, "Mod1", \
-	  NULL, 0, 0, WCFG_STARTUP_ONLY, 0) \
+	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
 	_(FOCUS_MODE, "FocusMode", ENUM, focus_mode, "manual", \
-	  focus_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	  focus_modes, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(NEW_STYLE, "NewStyle", ENUM, new_style, "new", \
 	  titlebar_modes, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(TITLEBAR_LEFT, "TitlebarLeft", STRING_ARRAY, titlebar_left, \
@@ -85,7 +85,7 @@
 	_(DISABLE_MINIWINDOWS, "DisableMiniwindows", BOOL, disable_miniwindows, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(ENABLE_WORKSPACE_PAGER, "EnableWorkspacePager", BOOL, enable_workspace_pager, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \
 	  NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(ICON_POSITION, "IconPosition", ENUM, icon_yard, "blh", \

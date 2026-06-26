@@ -334,6 +334,7 @@ extern struct wmaker_global_variables {
 		struct WDDomain *wmaker;
 		struct WDDomain *window_attr;
 		struct WDDomain *root_menu;
+		struct WDDomain *wmglobal;
 	} domain;
 
 	/* Parsed WindowMaker domain currently applied to wPreferences. */

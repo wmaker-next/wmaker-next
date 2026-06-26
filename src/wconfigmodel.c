@@ -1012,8 +1012,10 @@ void wConfigApplyStatic(const WConfig *config)
 		return;
 
 	/* Only the derived startup state remains here, plain config values
-	 * are read directly from w_global.config now. */
-	wConfigApplyModifierKey(config->modifier_key, "Mod1");
+	 * are read directly from w_global.config now. ModifierKey is resolved
+	 * on the runtime path (WCFG_KEY_MODIFIER_KEY) so it runs after
+	 * wXkbInit() during the first per-screen apply and can re-grab on a
+	 * live change. */
 	wConfigApplyTabDragModifier(config->tab_drag_modifier);
 	wPreferences.flags.nodock = wPreferences.flags.nodock || config->disable_dock;
 	wPreferences.flags.nodrawer = wPreferences.flags.nodrawer ||
@@ -1115,6 +1117,15 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wConfigApplySwitchPanelImages(scr, &new_config->switch_panel_images);
 	if (wConfigChangesHas(changes, WCFG_KEY_TAB_DRAG_MODIFIER))
 		wConfigApplyTabDragModifier(new_config->tab_drag_modifier);
+	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY)) {
+		/* Re-resolve the named modifier to a mask and re-issue the
+		 * passive button grabs that depend on it. Key grabs use the
+		 * per-shortcut modifier resolved from the binding spec, not
+		 * wPreferences.modifier_mask, so they need no re-grab here. */
+		wConfigApplyModifierKey(new_config->modifier_key, "Mod1");
+		if (scr)
+			wRegrabWindowMouseGrabs(scr);
+	}
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_LABELS))
 		wConfigApplyModifierKeyLabels(scr, &new_config->modifier_key_labels);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_SHORT_LABELS))
@@ -1189,6 +1200,12 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	if (scr && keybindings_changed)
 		wKeyTreeRebuild(scr);
+
+	/* AntialiasedText lives in the WMGLOBAL domain (not a WCFG_SCHEMA
+	 * key), so it has no change bit; re-read it on every reload and, if
+	 * it actually changed, detach the WINGs font cache so fonts re-open
+	 * under the new flag and re-apply the WM-side font pointers. */
+	refresh |= wConfigApplyAntialiasedText(scr);
 
 	if (scr && update_usable_area)
 		wScreenUpdateUsableArea(scr);
@@ -1312,6 +1329,79 @@ unsigned int wConfigApplyRuntimeDefaults(WScreen *scr, WMPropList *new_dict)
 	w_global.config = new_config;
 	refresh = wConfigApplyRuntime(scr, old_config, new_config, &changes);
 	wConfigDestroy(old_config);
+
+	return refresh;
+}
+
+/* Re-apply every FONT_SPEC entry from the adopted config, returning the
+ * combined refresh mask. Used after the WINGs font cache is detached so
+ * each WM-side font pointer is re-opened under the current antialias flag;
+ * the per-font set*Font callbacks release the previously detached handle
+ * through normal refcounting and store the new one. */
+unsigned int wConfigForceReapplyFonts(WScreen *scr)
+{
+	const WConfigEntry *schema;
+	const WConfig *config;
+	const char *base;
+	size_t i, count;
+	unsigned int refresh = 0;
+
+	if (!scr)
+		return 0;
+	config = w_global.config;
+	if (!config)
+		return 0;
+
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	base = (const char *)config;
+	for (i = 0; i < count; i++) {
+		const WConfigResourceSpec *spec;
+
+		if (schema[i].type != WCFG_FONT_SPEC)
+			continue;
+		spec = (const WConfigResourceSpec *)(base + schema[i].offset);
+		refresh |= wConfigApplyFontSpec(scr, schema[i].key,
+						schema[i].min_value, spec,
+						schema[i].default_value);
+	}
+	return refresh;
+}
+
+/* AntialiasedText is a WMGLOBAL-domain bool (not a WCFG_SCHEMA key), read
+ * once by WINGs at font open time and baked into the cache key. WMReload-
+ * Configuration() re-reads it when the WMGLOBAL file changes; here we
+ * detect a change against the value this screen's fonts were last opened
+ * under, and if it differs, detach the WINGs font cache and re-open the
+ * WM-side fonts so the new flag takes effect without a restart. */
+unsigned int wConfigApplyAntialiasedText(WScreen *scr)
+{
+	Bool current;
+	unsigned int refresh;
+
+	if (!scr || !scr->wmscreen)
+		return 0;
+
+	current = WMGetAntialiasedText();
+	if (scr->antialiased_text_applied == current)
+		return 0;
+	scr->antialiased_text_applied = current;
+
+	/* Detach the cache (holders keep valid references and release them via
+	 * refcounting; the empty cache forces the next WMCreateFont to re-open
+	 * under the new flag) and re-acquire the per-screen system fonts. */
+	WMFlushFontCache(scr->wmscreen);
+
+	/* Re-open the WM-side config fonts under the new flag. */
+	refresh = wConfigForceReapplyFonts(scr);
+
+	/* info_text_font is a WINGs system font (no FONT_SPEC), so re-open it
+	 * explicitly; the old handle was detached above. */
+	if (scr->info_text_font) {
+		WMReleaseFont(scr->info_text_font);
+		scr->info_text_font = NULL;
+	}
+	scr->info_text_font = WMBoldSystemFontOfSize(scr->wmscreen, 12);
 
 	return refresh;
 }

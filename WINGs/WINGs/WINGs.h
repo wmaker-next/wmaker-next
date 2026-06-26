@@ -875,6 +875,16 @@ void WMDrawImageString(WMScreen *scr, Drawable d, WMColor *color,
 
 int WMWidthOfString(WMFont *font, const char *text, int length);
 
+/* Detach every cached WMFont for this screen so the next WMCreateFont re-opens
+ * under the current antialiasedText flag. Holders keep valid references. */
+void WMFlushFontCache(WMScreen *scr);
+
+/* Re-read the WMGLOBAL domain (SystemFont, AntialiasedText, ...). */
+void WMReloadConfiguration(void);
+
+/* Current antialiasedText flag (re-read by WMReloadConfiguration). */
+Bool WMGetAntialiasedText(void);
+
 /* ---[ WINGs/wpixmap.c ]------------------------------------------------- */
 
 WMPixmap* WMRetainPixmap(WMPixmap *pixmap);

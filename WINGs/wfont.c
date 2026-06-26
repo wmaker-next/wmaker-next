@@ -119,6 +119,22 @@ static XftFont *pick_font_for_cp(Display *dpy, int screen, XftFont *primary, FcC
 	return f;
 }
 
+/* Drop every cached fallback font so a re-read of AntialiasedText does not
+ * keep stale XftFont handles keyed on primary pointers that have since been
+ * re-opened. The primaries themselves are owned by the WMFont cache. */
+static void fb_cache_reset(Display *dpy)
+{
+	int i;
+
+	for (i = 0; i < fb_cache_n; i++) {
+		if (fb_cache[i].fallback)
+			XftFontClose(dpy, fb_cache[i].fallback);
+		fb_cache[i].primary = NULL;
+		fb_cache[i].fallback = NULL;
+	}
+	fb_cache_n = 0;
+}
+
 /* Walk text[0..length) once, splitting at font changes, and either draw
  * each run (when 'draw' is non-NULL) or only measure.  Returns the total
  * advance width.  Pure-ASCII strings short-circuit to a single Xft call. */
@@ -577,4 +593,46 @@ WMFont *WMCopyFontWithStyle(WMScreen * scrPtr, WMFont * font, WMFontStyle style)
 	wfree(name);
 
 	return copy;
+}
+
+void WMFlushFontCache(WMScreen *scr)
+{
+	WMFont *old_normal, *old_bold;
+
+	if (!scr || !scr->fontCache)
+		return;
+
+	/* Detach every cached font without freeing it. The hash callbacks
+	 * (WMStringPointerHashCallbacks) own neither key nor data, so
+	 * WMResetHashTable only releases its internal nodes. Each holder
+	 * (WScreen font fields, retained widget fonts) keeps a valid
+	 * reference and releases it through WMReleaseFont's refcounting,
+	 * while the now-empty cache forces the next WMCreateFont to re-open
+	 * under the current WINGsConfiguration.antialiasedText flag. */
+	WMResetHashTable(scr->fontCache);
+
+	/* The per-screen system fonts are detached above; release the old
+	 * (orphaned) handles and re-open them so WMDefaultSystemFont and
+	 * WMDefaultBoldSystemFont return AA-current fonts. boldFont may alias
+	 * normalFont (the widgets.c init falls back to normalFont when the
+	 * bold face fails to load) without an extra retain, so release the
+	 * distinct pointer only. */
+	old_normal = scr->normalFont;
+	old_bold = scr->boldFont;
+	scr->normalFont = NULL;
+	scr->boldFont = NULL;
+	if (old_normal)
+		WMReleaseFont(old_normal);
+	if (old_bold && old_bold != old_normal)
+		WMReleaseFont(old_bold);
+	scr->normalFont = WMSystemFontOfSize(scr, 0);
+	scr->boldFont = WMBoldSystemFontOfSize(scr, 0);
+	if (!scr->boldFont)
+		scr->boldFont = scr->normalFont;
+
+#ifndef USE_PANGO
+	/* Stale per-character fallbacks were keyed on primary XftFont handles
+	 * that the detach above orphaned; drop them so they are re-matched. */
+	fb_cache_reset(scr->display);
+#endif
 }

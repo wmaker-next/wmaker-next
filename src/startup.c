@@ -498,6 +498,11 @@ void StartUp(Bool defaultScreenOnly)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WMWindowAttributes");
 	wWindowAttrsReload();
 
+	/* WMGLOBAL holds WINGs-global options (AntialiasedText, SystemFont, ...);
+	 * the WM only tracks it for live-reload change detection, WINGs reads
+	 * the values itself via WMGetStandardUserDefaults/WMReloadConfiguration. */
+	w_global.domain.wmglobal = wDefaultsInitDomain("WMGLOBAL", False);
+
 	XSetErrorHandler((XErrorHandler) catchXError);
 	WXEvqSetErrorHook(wHandleXcbError);
 

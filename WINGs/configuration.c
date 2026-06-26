@@ -44,13 +44,15 @@ void W_ReadConfigurations(void)
 	defaults = WMGetStandardUserDefaults();
 
 	if (defaults) {
-		char *buttonName;
+		char *buttonName, *str;
 		WMPropList *val;
 		unsigned button;
 
-		WINGsConfiguration.systemFont = WMGetUDStringForKey(defaults, "SystemFont");
+		str = WMGetUDStringForKey(defaults, "SystemFont");
+		WINGsConfiguration.systemFont = str ? wstrdup(str) : NULL;
 
-		WINGsConfiguration.boldSystemFont = WMGetUDStringForKey(defaults, "BoldSystemFont");
+		str = WMGetUDStringForKey(defaults, "BoldSystemFont");
+		WINGsConfiguration.boldSystemFont = str ? wstrdup(str) : NULL;
 
 		val = WMGetUDObjectForKey(defaults, "AntialiasedText");
 		if (val && WMIsPLString(val) && WMGetFromPLString(val)) {
@@ -61,12 +63,12 @@ void W_ReadConfigurations(void)
 
 		WINGsConfiguration.doubleClickDelay = WMGetUDIntegerForKey(defaults, "DoubleClickTime");
 
-		WINGsConfiguration.floppyPath = WMGetUDStringForKey(defaults, "FloppyPath");
+		str = WMGetUDStringForKey(defaults, "FloppyPath");
+		WINGsConfiguration.floppyPath = str ? wstrdup(str) : NULL;
 
 		buttonName = WMGetUDStringForKey(defaults, "MouseWheelUp");
 		if (buttonName) {
 			button = getButtonWithName(buttonName, Button4);
-			wfree(buttonName);
 		} else {
 			button = Button4;
 		}
@@ -75,7 +77,6 @@ void W_ReadConfigurations(void)
 		buttonName = WMGetUDStringForKey(defaults, "MouseWheelDown");
 		if (buttonName) {
 			button = getButtonWithName(buttonName, Button5);
-			wfree(buttonName);
 		} else {
 			button = Button5;
 		}
@@ -90,10 +91,10 @@ void W_ReadConfigurations(void)
 	}
 
 	if (!WINGsConfiguration.systemFont) {
-		WINGsConfiguration.systemFont = SYSTEM_FONT;
+		WINGsConfiguration.systemFont = wstrdup(SYSTEM_FONT);
 	}
 	if (!WINGsConfiguration.boldSystemFont) {
-		WINGsConfiguration.boldSystemFont = BOLD_SYSTEM_FONT;
+		WINGsConfiguration.boldSystemFont = wstrdup(BOLD_SYSTEM_FONT);
 	}
 	if (WINGsConfiguration.defaultFontSize == 0) {
 		WINGsConfiguration.defaultFontSize = DEFAULT_FONT_SIZE;
@@ -102,7 +103,7 @@ void W_ReadConfigurations(void)
 		WINGsConfiguration.antialiasedText = True;
 	}
 	if (!WINGsConfiguration.floppyPath) {
-		WINGsConfiguration.floppyPath = FLOPPY_PATH;
+		WINGsConfiguration.floppyPath = wstrdup(FLOPPY_PATH);
 	}
 	if (WINGsConfiguration.doubleClickDelay == 0) {
 		WINGsConfiguration.doubleClickDelay = 250;
@@ -129,4 +130,30 @@ unsigned W_getconf_mouseWheelDown(void)
 void W_setconf_doubleClickDelay(int value)
 {
 	WINGsConfiguration.doubleClickDelay = value;
+}
+
+Bool WMGetAntialiasedText(void)
+{
+	return WINGsConfiguration.antialiasedText;
+}
+
+void WMReloadConfiguration(void)
+{
+	/* W_ReadConfigurations() memsets WINGsConfiguration, so release the
+	 * heap strings it owns first to avoid leaking them on every reload
+	 * (AntialiasedText, DefaultFontSize and the numeric fields are not
+	 * heap-allocated). */
+	if (WINGsConfiguration.systemFont) {
+		wfree(WINGsConfiguration.systemFont);
+		WINGsConfiguration.systemFont = NULL;
+	}
+	if (WINGsConfiguration.boldSystemFont) {
+		wfree(WINGsConfiguration.boldSystemFont);
+		WINGsConfiguration.boldSystemFont = NULL;
+	}
+	if (WINGsConfiguration.floppyPath) {
+		wfree(WINGsConfiguration.floppyPath);
+		WINGsConfiguration.floppyPath = NULL;
+	}
+	W_ReadConfigurations();
 }

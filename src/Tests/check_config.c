@@ -45,6 +45,9 @@ static int key_binding_seen[WKBD_LAST];
 static char *last_key_binding_spec;
 static int last_key_binding_index;
 static int key_tree_rebuilds;
+static int regrab_mouse_grabs;
+static int aa_flush_count;
+static Bool aa_current;
 static int texture_spec_updates;
 static int font_spec_updates;
 static int color_spec_updates;
@@ -316,6 +319,35 @@ void wKeyTreeRebuild(WScreen *scr)
 	key_tree_rebuilds++;
 }
 
+void wRegrabWindowMouseGrabs(WScreen *scr)
+{
+	(void)scr;
+	regrab_mouse_grabs++;
+}
+
+Bool WMGetAntialiasedText(void)
+{
+	return aa_current;
+}
+
+void WMFlushFontCache(WMScreen *scr)
+{
+	(void)scr;
+	aa_flush_count++;
+}
+
+void WMReleaseFont(WMFont *font)
+{
+	(void)font;
+}
+
+WMFont *WMBoldSystemFontOfSize(WMScreen *scr, int size)
+{
+	(void)scr;
+	(void)size;
+	return NULL;
+}
+
 void wRefreshKeyChainOSD(WScreen *scr)
 {
 	(void)scr;
@@ -335,6 +367,9 @@ static void reset_phase4_counters(void)
 	key_binding_updates = 0;
 	key_binding_changed_updates = 0;
 	key_tree_rebuilds = 0;
+	regrab_mouse_grabs = 0;
+	aa_flush_count = 0;
+	aa_current = 0;
 	texture_spec_updates = 0;
 	font_spec_updates = 0;
 	color_spec_updates = 0;
@@ -1187,9 +1222,10 @@ static void test_static_apply(void)
 	CHECK(w_global.config->disable_miniwindows == 1);
 	CHECK(w_global.config->enable_workspace_pager == 1);
 	CHECK(w_global.config->switch_panel_icon_size == 48);
-	CHECK(modifier_key_updates == 1);
-	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
-	CHECK(wPreferences.modifier_mask == Mod4Mask);
+	/* ModifierKey is now resolved on the runtime path (after wXkbInit),
+	 * so wConfigApplyStatic no longer touches the modifier mask. */
+	CHECK(modifier_key_updates == 0);
+	CHECK(wPreferences.modifier_mask == 0);
 
 	wConfigClearWindowMaker();
 	WMReleasePropList(dict);
@@ -1743,11 +1779,14 @@ static void test_startup_only_frozen_across_reload(void)
 	WMPropList *old_dict, *new_dict;
 
 	reset_preferences();
-	/* simulate StartUp(): adopt the boot-time parse and clamp it */
-	old_dict = dict_from_desc("{ IconSize = 96; FocusMode = sloppy; "
+	/* simulate StartUp(): adopt the boot-time parse and clamp it.
+	 * FocusMode and EnableWorkspacePager used to be in this set but are
+	 * now WCFG_RUNTIME_RELOAD (see test_focus_mode_live_apply and
+	 * test_enable_workspace_pager_live_apply); the keys still frozen are
+	 * IconSize, NewStyle, SwitchPanelIconSize and DisableMiniwindows. */
+	old_dict = dict_from_desc("{ IconSize = 96; "
 				  "NewStyle = next; SwitchPanelIconSize = 48; "
-				  "DisableMiniwindows = YES; "
-				  "EnableWorkspacePager = YES; }");
+				  "DisableMiniwindows = YES; }");
 	if (!old_dict)
 		return;
 	wConfigCacheWindowMaker(old_dict);
@@ -1760,15 +1799,148 @@ static void test_startup_only_frozen_across_reload(void)
 		goto out;
 	wConfigApplyRuntimeDefaults(NULL, new_dict);
 	CHECK(w_global.config->icon_size == 96);
-	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
 	CHECK(w_global.config->new_style == TS_NEXT);
 	CHECK(w_global.config->switch_panel_icon_size == 48);
 	CHECK(w_global.config->disable_miniwindows == 1);
-	CHECK(w_global.config->enable_workspace_pager == 1);
 
 	WMReleasePropList(new_dict);
 out:
 	WMReleasePropList(old_dict);
+	wConfigClearWindowMaker();
+}
+
+/* FocusMode is read per-event with no cached derivative, so unfreezing it
+ * is enough: a runtime change must propagate to w_global.config. */
+static void test_focus_mode_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ FocusMode = manual; }");
+	new_dict = dict_from_desc("{ FocusMode = sloppy; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* EnableWorkspacePager is read per-event; no NETWM hint depends on it, so
+ * unfreezing suffices and the new value propagates on reload. */
+static void test_enable_workspace_pager_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ EnableWorkspacePager = NO; }");
+	new_dict = dict_from_desc("{ EnableWorkspacePager = YES; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->enable_workspace_pager == 1);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* ModifierKey now resolves on the runtime path: the mask updates and the
+ * modifier-bound button grabs are re-issued for every managed window. Key
+ * grabs use the per-shortcut modifier and are not re-grabbed here. */
+static void test_modifier_key_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ ModifierKey = Mod1; }");
+	new_dict = dict_from_desc("{ ModifierKey = Mod4; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(modifier_key_updates == 1);
+	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
+	CHECK(wPreferences.modifier_mask == Mod4Mask);
+	CHECK(regrab_mouse_grabs == 1);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* wConfigForceReapplyFonts re-applies every FONT_SPEC entry (used after a
+ * WINGs font-cache detach so WM-side fonts re-open under the new AA flag). */
+static void test_force_reapply_fonts(void)
+{
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	wConfigCacheWindowMaker(NULL);
+	font_spec_updates = 0;
+	refresh = wConfigForceReapplyFonts(&screen);
+	CHECK(font_spec_updates == 6);
+	CHECK(refresh != 0);
+
+	wConfigClearWindowMaker();
+}
+
+/* AntialiasedText (WMGLOBAL) live-apply: wConfigApplyAntialiasedText detects
+ * a change against the screen's last-applied value and, on a change, flushes
+ * the WINGs font cache and re-applies the WM-side fonts; a no-op otherwise. */
+static void test_antialiased_text_live_apply(void)
+{
+	WScreen screen;
+	unsigned int refresh;
+	static char wmscreen_dummy;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	screen.wmscreen = (WMScreen *)&wmscreen_dummy;
+	wConfigCacheWindowMaker(NULL);
+
+	/* applied == current (both False after reset) -> no flush */
+	screen.antialiased_text_applied = aa_current;
+	font_spec_updates = 0;
+	aa_flush_count = 0;
+	refresh = wConfigApplyAntialiasedText(&screen);
+	CHECK(refresh == 0);
+	CHECK(aa_flush_count == 0);
+	CHECK(font_spec_updates == 0);
+	CHECK(screen.antialiased_text_applied == aa_current);
+
+	/* WMGLOBAL AntialiasedText flipped on -> flush + re-apply fonts */
+	aa_current = True;
+	font_spec_updates = 0;
+	aa_flush_count = 0;
+	refresh = wConfigApplyAntialiasedText(&screen);
+	CHECK(aa_flush_count == 1);
+	CHECK(font_spec_updates == 6);
+	CHECK(screen.antialiased_text_applied == True);
+	CHECK(refresh != 0);
+
+	/* second call with no further change -> no-op */
+	font_spec_updates = 0;
+	aa_flush_count = 0;
+	refresh = wConfigApplyAntialiasedText(&screen);
+	CHECK(refresh == 0);
+	CHECK(aa_flush_count == 0);
+	CHECK(font_spec_updates == 0);
+
 	wConfigClearWindowMaker();
 }
 
@@ -2154,6 +2326,11 @@ int main(void)
 	test_runtime_apply_phase7();
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
+	test_focus_mode_live_apply();
+	test_enable_workspace_pager_live_apply();
+	test_modifier_key_live_apply();
+	test_force_reapply_fonts();
+	test_antialiased_text_live_apply();
 	test_deleted_key_keeps_current();
 	test_string_array_range();
 	test_titlebar_layout_build();
