@@ -1321,9 +1321,14 @@ static void pasteText(WMView * view, Atom selection, Atom target, Time timestamp
 		str = XFetchBuffer(tPtr->view->screen->display, &n, 0);
 
 		if (str != NULL) {
-			str[n] = 0;
-			WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
+			char *tmp = wmalloc(n + 1);
+			memcpy(tmp, str, n);
+			tmp[n] = 0;
 			XFree(str);
+			str = tmp;
+
+			WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
+			wfree(str);
 			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
 		}
 	}
@@ -1484,9 +1489,14 @@ static void handleTextFieldActionEvents(XEvent * event, void *data)
 				text = XFetchBuffer(tPtr->view->screen->display, &n, 0);
 
 				if (text) {
-					text[n] = 0;
-					WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
+					char *tmp = wmalloc(n + 1);
+					memcpy(tmp, text, n);
+					tmp[n] = 0;
 					XFree(text);
+					text = tmp;
+
+					WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
+					wfree(text);
 					NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
 							(void *)WMInsertTextEvent);
 				}

@@ -2344,7 +2344,12 @@ static void pasteText(WMView * view, Atom selection, Atom target, Time timestamp
 		text = XFetchBuffer(tPtr->view->screen->display, &n, 0);
 
 		if (text) {
-			text[n] = 0;
+			char *tmp = wmalloc(n + 1);
+			memcpy(tmp, text, n);
+			tmp[n] = 0;
+			XFree(text);
+			text = tmp;
+
 			if (tPtr->parser) {
 				(tPtr->parser) (tPtr, (void *)text);
 				layOutDocument(tPtr);
@@ -2353,7 +2358,7 @@ static void pasteText(WMView * view, Atom selection, Atom target, Time timestamp
 			updateCursorPosition(tPtr);
 			paintText(tPtr);
 
-			XFree(text);
+			wfree(text);
 		}
 	}
 
@@ -2508,7 +2513,11 @@ static void handleActionEvents(XEvent * event, void *data)
 				tPtr->flags.waitingForSelection = 0;
 
 				if (text) {
-					text[n] = 0;
+					char *tmp = wmalloc(n + 1);
+					memcpy(tmp, text, n);
+					tmp[n] = 0;
+					XFree(text);
+					text = tmp;
 
 					if (tPtr->parser) {
 						(tPtr->parser) (tPtr, (void *)text);
@@ -2516,7 +2525,7 @@ static void handleActionEvents(XEvent * event, void *data)
 					} else
 						insertTextInteractively(tPtr, text, n);
 
-					XFree(text);
+					wfree(text);
 #if 0
 					NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
 					       (void *)WMInsertTextEvent);
