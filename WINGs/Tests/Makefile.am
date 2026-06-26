@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im
+check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im check_menuparser
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -36,6 +36,10 @@ check_im_CPPFLAGS = $(AM_CPPFLAGS) \
 check_im_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ @XLIBS@ @INTLIBS@
+
+check_menuparser_SOURCES = check_menuparser.c
+check_menuparser_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @XLIBS@ @INTLIBS@
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
