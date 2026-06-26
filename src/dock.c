@@ -954,8 +954,15 @@ static void launchDockedApplication(WAppIcon *btn, Bool withSelection)
 		}
 		btn->drop_launch = 0;
 		btn->paste_launch = withSelection;
+#ifdef USE_DOCK_XDND
+		scr->xdest_is_gnustep =
+			(withSelection && btn->wm_class && strcmp(btn->wm_class, "GNUstep") == 0);
+#endif
 		scr->last_dock = btn->dock;
 		btn->pid = execCommand(btn, (withSelection ? btn->paste_command : btn->command), NULL);
+#ifdef USE_DOCK_XDND
+		scr->xdest_is_gnustep = 0;
+#endif
 		if (btn->pid > 0) {
 			if (btn->buggy_app) {
 				/* give feedback that the app was launched */
@@ -2397,8 +2404,11 @@ int wDockReceiveDNDDrop(WScreen *scr, XEvent *event)
 
 		btn->paste_launch = 0;
 		btn->drop_launch = 1;
+		scr->xdest_is_gnustep =
+			(btn->wm_class && strcmp(btn->wm_class, "GNUstep") == 0);
 		scr->last_dock = dock;
 		btn->pid = execCommand(btn, btn->dnd_command, NULL);
+		scr->xdest_is_gnustep = 0;
 		if (btn->pid > 0) {
 			dockIconPaint(btn);
 		} else {

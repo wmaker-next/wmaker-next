@@ -17,6 +17,7 @@ POTFILES  = \
 	$(top_srcdir)/src/appmenu.c \
 	$(top_srcdir)/src/balloon.c \
 	$(top_srcdir)/src/client.c \
+	$(top_srcdir)/src/cmdexpand.c \
 	$(top_srcdir)/src/colormap.c \
 	$(top_srcdir)/src/config-schema.c \
 	$(top_srcdir)/src/cycling.c \

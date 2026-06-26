@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @PANGO_CFLAGS@
@@ -59,5 +59,13 @@ check_desktopfile_SOURCES = \
 	../desktopfile.h
 
 check_desktopfile_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_cmdexpand_SOURCES = \
+	check_cmdexpand.c \
+	../cmdexpand.c
+
+check_cmdexpand_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@

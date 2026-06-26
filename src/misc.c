@@ -442,7 +442,7 @@ static char *getTextSelection(WScreen * screen, Atom selection)
 	}
 }
 
-static char *getselection(WScreen * scr)
+char *getselection(WScreen * scr)
 {
 	char *tmp;
 
@@ -476,7 +476,7 @@ parseuserinputpart(const char *line, int *ptr, const char *endchars)
 	return value;
 }
 
-static char*
+char*
 getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced)
 {
 	char *ret = NULL, *title = NULL, *prompt = NULL, *name = NULL;
@@ -511,196 +511,6 @@ getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced)
 		wfree(name);
 
     return rv ? ret : NULL;
-}
-
-#define S_NORMAL 0
-#define S_ESCAPE 1
-#define S_OPTION 2
-
-/*
- * state    	input   new-state	output
- * NORMAL	%	OPTION		<nil>
- * NORMAL	\	ESCAPE		<nil>
- * NORMAL	etc.	NORMAL		<input>
- * ESCAPE	any	NORMAL		<input>
- * OPTION	s	NORMAL		<selection buffer>
- * OPTION	w	NORMAL		<selected window id>
- * OPTION	a	NORMAL		<input text>
- * OPTION	d	NORMAL		<OffiX DND selection object>
- * OPTION	W	NORMAL		<current workspace>
- * OPTION	etc.	NORMAL		%<input>
- */
-#define TMPBUFSIZE 64
-char *ExpandOptions(WScreen *scr, const char *cmdline)
-{
-	int ptr, optr, state, len, olen;
-	char *out, *nout;
-	char *selection = NULL;
-	char *user_input = NULL;
-	char tmpbuf[TMPBUFSIZE];
-	int slen;
-
-	len = strlen(cmdline);
-	olen = len + 1;
-	out = malloc(olen);
-	if (!out) {
-		wwarning(_("out of memory during expansion of \"%s\""), cmdline);
-		return NULL;
-	}
-	*out = 0;
-	ptr = 0;		/* input line pointer */
-	optr = 0;		/* output line pointer */
-	state = S_NORMAL;
-	while (ptr < len) {
-		switch (state) {
-		case S_NORMAL:
-			switch (cmdline[ptr]) {
-			case '\\':
-				state = S_ESCAPE;
-				break;
-			case '%':
-				state = S_OPTION;
-				break;
-			default:
-				state = S_NORMAL;
-				out[optr++] = cmdline[ptr];
-				break;
-			}
-			break;
-		case S_ESCAPE:
-			switch (cmdline[ptr]) {
-			case 'n':
-				out[optr++] = 10;
-				break;
-
-			case 'r':
-				out[optr++] = 13;
-				break;
-
-			case 't':
-				out[optr++] = 9;
-				break;
-
-			default:
-				out[optr++] = cmdline[ptr];
-			}
-			state = S_NORMAL;
-			break;
-		case S_OPTION:
-			state = S_NORMAL;
-			switch (cmdline[ptr]) {
-			case 'w':
-				if (scr->focused_window && scr->focused_window->flags.focused) {
-					snprintf(tmpbuf, sizeof(tmpbuf), "0x%x",
-						 (unsigned int)scr->focused_window->client_win);
-					slen = strlen(tmpbuf);
-					olen += slen;
-					nout = realloc(out, olen);
-					if (!nout) {
-						wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%w", cmdline);
-						goto error;
-					}
-					out = nout;
-					memcpy(out + optr, tmpbuf, slen);
-					optr += slen;
-				} else {
-					out[optr++] = ' ';
-				}
-				break;
-
-			case 'W':
-				snprintf(tmpbuf, sizeof(tmpbuf), "0x%x", (unsigned int)scr->current_workspace + 1);
-				slen = strlen(tmpbuf);
-				olen += slen;
-				nout = realloc(out, olen);
-				if (!nout) {
-					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%W", cmdline);
-					goto error;
-				}
-				out = nout;
-				memcpy(out + optr, tmpbuf, slen);
-				optr += slen;
-				break;
-
-			case 'a':
-			case 'A':
-				ptr++;
-				user_input = getuserinput(scr, cmdline, &ptr, cmdline[ptr-1] == 'A');
-				if (user_input) {
-					slen = strlen(user_input);
-					olen += slen;
-					nout = realloc(out, olen);
-					if (!nout) {
-						wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%a", cmdline);
-						goto error;
-					}
-					out = nout;
-					memcpy(out + optr, user_input, slen);
-					optr += slen;
-				} else {
-					/* Not an error, but user has Canceled the dialog box.
-					 * This will make the command to not be performed. */
-					goto error;
-				}
-				break;
-
-#ifdef USE_DOCK_XDND
-			case 'd':
-				if (!scr->xdestring) {
-					scr->flags.dnd_data_convertion_status = 1;
-					goto error;
-				}
-				slen = strlen(scr->xdestring);
-				olen += slen;
-				nout = realloc(out, olen);
-				if (!nout) {
-					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%d", cmdline);
-					goto error;
-				}
-				out = nout;
-				memcpy(out + optr, scr->xdestring, slen);
-				optr += slen;
-				break;
-#endif	/* USE_DOCK_XDND */
-
-			case 's':
-				if (!selection) {
-					selection = getselection(scr);
-				}
-				if (!selection) {
-					wwarning(_("selection not available"));
-					goto error;
-				}
-				slen = strlen(selection);
-				olen += slen;
-				nout = realloc(out, olen);
-				if (!nout) {
-					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%s", cmdline);
-					goto error;
-				}
-				out = nout;
-				memcpy(out + optr, selection, slen);
-				optr += slen;
-				break;
-
-			default:
-				out[optr++] = '%';
-				out[optr++] = cmdline[ptr];
-			}
-			break;
-		}
-		out[optr] = 0;
-		ptr++;
-	}
-	if (selection)
-		wfree(selection);
-	return out;
-
- error:
-	wfree(out);
-	if (selection)
-		wfree(selection);
-	return NULL;
 }
 
 void ExecuteExitCommand(WScreen *scr, long quickmode)

@@ -151,6 +151,21 @@ colour). When left at their empty defaults the renderer borrows
 PTitleBack and PTitleColor exactly as before so existing themes
 are unchanged.
 
+Dropping a file on a GNUstep dock icon passes it as a file
+-----------------------------------------------------------
+
+When a file is dragged from a file manager and dropped on a docked
+application whose WM_CLASS is "GNUstep", the dropped path(s) are now
+prefixed with a single -GSFilePath flag before the expanded %d
+(drag-drop) or %s (paste/selection) command token, so GNUstep's
+NSApplication parses them as files to open. The existing quoted
+file list produced by the XDND selection transfer is reused
+unchanged, so multiple drops expand to
+app -GSFilePath "path1" "path2" and a non-GNUstep target still gets
+the bare quoted list with no prefix. The flag is set per-drop from the
+target icon's WM_CLASS and cleared right after execCommand returns,
+so it never leaks into a subsequent unrelated launch.
+
 Configurable titlebar button layout
 ------------------------------------
 

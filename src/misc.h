@@ -46,6 +46,8 @@ void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg);
 char *ShrinkString(WMFont *font, const char *string, int width);
 char *FindImage(const char *paths, const char *file);
 char *ExpandOptions(WScreen * scr, const char *cmdline);
+char *getselection(WScreen *scr);
+char *getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced);
 void ExecuteInputCommand(WScreen *scr, const char *cmdline);
 void ExecuteExitCommand(WScreen *scr, long quickmode);
 char *GetShortcutString(const char *text);
