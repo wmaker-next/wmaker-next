@@ -624,9 +624,17 @@ static void handlePush(Scroller * sPtr, int pushX, int pushY, int alternate)
 	}
 
 	if (doAction && sPtr->action) {
+		/* the action callback may destroy the scroller (e.g. close
+		 * the containing window), keep the view alive across the call
+		 * and the notification so the caller does not touch freed
+		 * memory, mirroring the wbutton.c:476-484 pattern */
+		W_RetainView(sPtr->view);
+
 		(*sPtr->action) (sPtr, sPtr->clientData);
 
 		WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
+
+		W_ReleaseView(sPtr->view);
 	}
 }
 
@@ -696,8 +704,10 @@ static void handleMotion(Scroller * sPtr, int mouseX, int mouseY)
 		newFloatValue = floatValueForPoint(sPtr, point);
 		WMSetScrollerParameters(sPtr, newFloatValue, sPtr->knobProportion);
 		if (sPtr->action) {
+			W_RetainView(sPtr->view);
 			(*sPtr->action) (sPtr, sPtr->clientData);
 			WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
+			W_ReleaseView(sPtr->view);
 		}
 	} else {
 		int part;
@@ -722,12 +732,16 @@ static void handleMotion(Scroller * sPtr, int mouseX, int mouseY)
 static void autoScroll(void *clientData)
 {
 	Scroller *sPtr = (Scroller *) clientData;
+	W_View *view = sPtr->view;
 
+	W_RetainView(view);
 	if (sPtr->action) {
 		(*sPtr->action) (sPtr, sPtr->clientData);
 		WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
 	}
-	sPtr->timerID = WMAddTimerHandler(AUTOSCROLL_DELAY, autoScroll, clientData);
+	if (!view->flags.alreadyDead)
+		sPtr->timerID = WMAddTimerHandler(AUTOSCROLL_DELAY, autoScroll, clientData);
+	W_ReleaseView(view);
 }
 
 static void handleActionEvents(XEvent * event, void *data)
@@ -777,8 +791,10 @@ static void handleActionEvents(XEvent * event, void *data)
 				sPtr->flags.hitPart = WSDecrementWheel;
 			}
 			if (sPtr->action) {
+				W_RetainView(sPtr->view);
 				(*sPtr->action) (sPtr, sPtr->clientData);
 				WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
+				W_ReleaseView(sPtr->view);
 			}
 		} else if (event->xbutton.button == wheelIncrement) {
 			if (event->xbutton.state & ControlMask) {
@@ -789,8 +805,10 @@ static void handleActionEvents(XEvent * event, void *data)
 				sPtr->flags.hitPart = WSIncrementWheel;
 			}
 			if (sPtr->action) {
+				W_RetainView(sPtr->view);
 				(*sPtr->action) (sPtr, sPtr->clientData);
 				WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
+				W_ReleaseView(sPtr->view);
 			}
 		} else {
 			handlePush(sPtr, event->xbutton.x, event->xbutton.y,
@@ -806,8 +824,10 @@ static void handleActionEvents(XEvent * event, void *data)
 	case ButtonRelease:
 		if (sPtr->flags.draggingKnob) {
 			if (sPtr->action) {
+				W_RetainView(sPtr->view);
 				(*sPtr->action) (sPtr, sPtr->clientData);
 				WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
+				W_ReleaseView(sPtr->view);
 			}
 		}
 		if (sPtr->timerID) {
