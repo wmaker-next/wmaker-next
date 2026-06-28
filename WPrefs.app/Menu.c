@@ -1485,6 +1485,7 @@ static void showData(_Panel * panel)
 	char *menuPath, *labelText;
 	char buf[1024];
 	WMPropList *pmenu;
+	int depth = 0;
 
 	menuPath = wdefaultspathfordomain("WMRootMenu");
 
@@ -1494,6 +1495,13 @@ static void showData(_Panel * panel)
 	   if that file is in proplist format */
 	while (WMIsPLString(pmenu)) {
 		char *path = NULL;
+
+		if (++depth > 16) {
+			wwarning(_("WMRootMenu reference chain too deep, possible loop"));
+			WMReleasePropList(pmenu);
+			pmenu = NULL;
+			break;
+		}
 
 		path = wexpandpath(WMGetFromPLString(pmenu));
 
@@ -1522,10 +1530,15 @@ static void showData(_Panel * panel)
 					_("OK"), NULL, NULL);
 			panel->dontSave = True;
 			wfree(path);
+			wfree(menuPath);
+			menuPath = NULL;
+			WMReleasePropList(pmenu);
 			return;
 		}
 
+		WMReleasePropList(pmenu);
 		pmenu = WMReadPropListFromFile(path);
+		wfree(menuPath);
 		menuPath = path;
 	}
 
