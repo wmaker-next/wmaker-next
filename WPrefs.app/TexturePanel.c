@@ -833,12 +833,17 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 
 		gradient = type[1];
 
-		WMSetTextFieldText(panel->imageT, WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		p = WMGetFromPLArray(texture, 1);
+		str = p ? WMGetFromPLString(p) : "";
+		WMSetTextFieldText(panel->imageT, str);
 		if (panel->imageFile)
 			wfree(panel->imageFile);
-		panel->imageFile = wstrdup(WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		panel->imageFile = wstrdup(str);
 
-		if (sscanf(WMGetFromPLString(WMGetFromPLArray(texture, 2)), "%i", &i) != 1)
+		p = WMGetFromPLArray(texture, 2);
+		if (p && sscanf(WMGetFromPLString(p), "%i", &i) != 1)
+			i = 180;
+		else if (!p)
 			i = 180;
 		WMSetSliderValue(panel->topaS, i);
 
@@ -864,12 +869,13 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 
 		WMReleaseColor(color);
 
-		WMSetTextFieldText(panel->imageT, WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		p = WMGetFromPLArray(texture, 1);
+		str = p ? WMGetFromPLString(p) : "";
+		WMSetTextFieldText(panel->imageT, str);
 
 		if (panel->imageFile)
 			wfree(panel->imageFile);
-		panel->imageFile = wfindfileinarray(panel->pathList,
-						    WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		panel->imageFile = wfindfileinarray(panel->pathList, str);
 		if (panel->imageFile != NULL) {
 
 			panel->image = RLoadImage(WMScreenRContext(scr), panel->imageFile, 0);
@@ -877,7 +883,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 
 			updateSGradButtons(panel);
 		} else
-			wwarning(_("could not load file '%s': %s"), panel->imageFile,
+			wwarning(_("could not load file '%s': %s"), str,
 				 RMessageForError(RErrorCode));
 
 		/*............................................... */
@@ -955,14 +961,17 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			break;
 		}
 
-		WMSetTextFieldText(panel->imageT, WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		p = WMGetFromPLArray(texture, 1);
+		str = p ? WMGetFromPLString(p) : "";
+		WMSetTextFieldText(panel->imageT, str);
 
 		if (panel->imageFile)
 			wfree(panel->imageFile);
-		panel->imageFile = wfindfileinarray(panel->pathList,
-						    WMGetFromPLString(WMGetFromPLArray(texture, 1)));
+		panel->imageFile = wfindfileinarray(panel->pathList, str);
 
-		color = WMCreateNamedColor(scr, WMGetFromPLString(WMGetFromPLArray(texture, 2)), False);
+		p = WMGetFromPLArray(texture, 2);
+		str = p ? WMGetFromPLString(p) : "black";
+		color = WMCreateNamedColor(scr, str, False);
 		WMSetColorWellColor(panel->defcW, color);
 		WMReleaseColor(color);
 
