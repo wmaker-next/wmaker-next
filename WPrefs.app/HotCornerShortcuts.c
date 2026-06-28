@@ -154,11 +154,14 @@ static void storeData(_Panel * panel)
 
 	list = WMCreatePLArray(NULL, NULL);
 	for (i = 0; i < sizeof(panel->hcactionsT) / sizeof(WMTextField *); i++) {
+		const char *val;
+
 		str = WMGetTextFieldText(panel->hcactionsT[i]);
-		if (strlen(str) == 0)
-			str = "None";
-		tmp = WMCreatePLString(str);
+		val = (str && str[0] != '\0') ? str : "None";
+		tmp = WMCreatePLString(val);
 		WMAddToPLArray(list, tmp);
+		WMReleasePropList(tmp);
+		wfree(str);
 	}
 	SetObjectForKey(list, "HotCornerActions");
 }
