@@ -508,6 +508,13 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 
 	getMinMaxDividerCoord(sPtr, divider, &minCoord, &maxCoord);
 
+	/* the modal WMMaskEvent loop dispatches non-motion/release events
+	 * via WMHandleEvent; an Expose or other handler may destroy the
+	 * split view during the loop, keep the view alive across the loop
+	 * so the post-loop resize accesses below do not touch freed memory,
+	 * the eventual release runs the destructor which frees the widget */
+	W_RetainView(sPtr->view);
+
 	done = 0;
 	dragging = 0;
 	while (!done) {
@@ -541,6 +548,14 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 		}
 	}
 
+	/* the view was retained above, so even if a handler marked it
+	 * alreadyDead it is still allocated; bail out before touching the
+	 * subview array if a destroy is pending */
+	if (sPtr->view->flags.alreadyDead) {
+		W_ReleaseView(sPtr->view);
+		return;
+	}
+
 	if (dragging) {
 		W_SplitViewSubview *p1, *p2;
 		int totSize;
@@ -559,6 +574,8 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 		resizeView(sPtr, p2->view, p2->size);
 		sPtr->flags.subviewsWereManuallyMoved = 1;
 	}
+
+	W_ReleaseView(sPtr->view);
 }
 
 static void handleEvents(XEvent * event, void *data)
