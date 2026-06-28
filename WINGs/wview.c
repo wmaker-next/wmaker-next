@@ -505,17 +505,20 @@ void W_SetViewBackgroundColor(W_View * view, WMColor * color)
 
 void W_SetViewBackgroundPixmap(W_View *view, WMPixmap *pix)
 {
-       if (view->backImage)
-               WMReleasePixmap(view->backImage);
-       view->backImage = WMRetainPixmap(pix);
+	if (!pix)
+		return;
 
-       view->attribFlags |= CWBackPixmap;
-       view->attribFlags &= ~CWBackPixel;
-       view->attribs.background_pixmap = pix->pixmap;
-       if (view->flags.realized) {
-               XSetWindowBackgroundPixmap(view->screen->display, view->window, pix->pixmap);
-               XClearWindow(view->screen->display, view->window);
-       }
+	if (view->backImage)
+		WMReleasePixmap(view->backImage);
+	view->backImage = WMRetainPixmap(pix);
+
+	view->attribFlags |= CWBackPixmap;
+	view->attribFlags &= ~CWBackPixel;
+	view->attribs.background_pixmap = pix->pixmap;
+	if (view->flags.realized) {
+		XSetWindowBackgroundPixmap(view->screen->display, view->window, pix->pixmap);
+		XClearWindow(view->screen->display, view->window);
+	}
 }
 
 void W_SetViewCursor(W_View * view, Cursor cursor)
