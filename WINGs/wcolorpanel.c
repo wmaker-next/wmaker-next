@@ -2991,6 +2991,7 @@ static void customPaletteMenuNewFromFile(W_ColorPanel * panel)
 	char *filename = NULL;
 	char *spath;
 	char *tmp;
+	char *slash;
 	int i;
 	RImage *tmpImg = NULL;
 
@@ -3007,9 +3008,15 @@ static void customPaletteMenuNewFromFile(W_ColorPanel * panel)
 	if (WMRunModalFilePanelForDirectory(browseP, panel->win, spath,
 					    _("Open Palette"), RSupportedFileFormats())) {
 		filepath = WMGetFilePanelFileName(browseP);
+		if (filepath == NULL) {
+			WMFreeFilePanel(browseP);
+			wfree(spath);
+			return;
+		}
 
 		/* Get seperation position between path and filename */
-		i = strrchr(filepath, '/') - filepath + 1;
+		slash = strrchr(filepath, '/');
+		i = slash ? (slash - filepath + 1) : 0;
 		if (i > strlen(filepath))
 			i = strlen(filepath);
 
