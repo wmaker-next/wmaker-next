@@ -111,7 +111,8 @@ static RImage *do_read_jpeg_file(struct jpeg_decompress_struct *cinfo, const cha
 	jpeg_stdio_src(cinfo, file);
 	jpeg_read_header(cinfo, TRUE);
 
-	if (cinfo->image_width < 1 || cinfo->image_height < 1) {
+	if (cinfo->image_width < 1 || cinfo->image_height < 1
+	    || !RImageDimensionsWithinLimits(cinfo->image_width, cinfo->image_height)) {
 		buffer[0] = NULL;	/* Initialize pointer to avoid spurious free in cleanup code */
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto abort_and_release_resources;
