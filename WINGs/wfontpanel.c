@@ -640,15 +640,19 @@ static void familyClick(WMWidget * w, void *data)
 	int facei = -1;
 	int sizei = -1;
 
+	item = WMGetListSelectedItem(lPtr);
+	if (!item)
+		return;
+	family = (Family *) item->clientData;
+	if (!family)
+		return;
+
 	/* must try to keep the same typeface and size for the new family */
 	item = WMGetListSelectedItem(panel->typLs);
 	if (item)
 		oface = wstrdup(item->text);
 
 	osize = WMGetTextFieldText(panel->sizT);
-
-	item = WMGetListSelectedItem(lPtr);
-	family = (Family *) item->clientData;
 
 	WMClearList(panel->typLs);
 
@@ -708,10 +712,14 @@ static void typefaceClick(WMWidget * w, void *data)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) w;
 
-	osize = WMGetTextFieldText(panel->sizT);
-
 	item = WMGetListSelectedItem(panel->typLs);
+	if (!item)
+		return;
 	face = (Typeface *) item->clientData;
+	if (!face)
+		return;
+
+	osize = WMGetTextFieldText(panel->sizT);
 
 	WMClearList(panel->sizLs);
 
@@ -753,6 +761,8 @@ static void sizeClick(WMWidget * w, void *data)
 	(void) w;
 
 	item = WMGetListSelectedItem(panel->sizLs);
+	if (!item)
+		return;
 	WMSetTextFieldText(panel->sizT, item->text);
 
 	WMSelectTextFieldRange(panel->sizT, wmkrange(0, strlen(item->text)));
