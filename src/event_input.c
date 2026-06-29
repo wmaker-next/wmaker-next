@@ -865,11 +865,15 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 {
 	const xcb_key_press_event_t *e = (const xcb_key_press_event_t *)xe;
 	WScreen *scr = wScreenForRootWindow(e->root);
-	WWindow *wwin = scr->focused_window;
+	WWindow *wwin;
 	WKeyNode  *siblings;
 	WKeyNode  *match;
 	WKeyAction *act;
 	int modifiers;
+
+	if (!scr)
+		return;
+	wwin = scr->focused_window;
 
 	/* ignore CapsLock */
 	modifiers = e->state & w_global.shortcut.modifiers_mask;
@@ -1189,6 +1193,8 @@ static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
 	WScreen *scr;
 
 	scr = wScreenForRootWindow(e->root);
+	if (!scr)
+		return;
 
 #ifdef BALLOON_TEXT
 	wBalloonHide(scr);
@@ -1270,8 +1276,13 @@ static void handleMotionNotify(const xcb_generic_event_t *xe, XEvent *ev)
 
 	if (w_global.config->scrollable_menus) {
 		WScreen *scr = wScreenForRootWindow(e->root);
-		WMPoint p = wmkpoint(e->root_x, e->root_y);
-		WMRect rect = wGetRectForHead(scr, wGetHeadForPoint(scr, p));
+		WMPoint p;
+		WMRect rect;
+
+		if (!scr)
+			return;
+		p = wmkpoint(e->root_x, e->root_y);
+		rect = wGetRectForHead(scr, wGetHeadForPoint(scr, p));
 
 		if (scr->flags.jump_back_pending ||
 		    p.x <= (rect.pos.x + 1) ||
