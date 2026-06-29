@@ -211,6 +211,8 @@ static void showData(_Panel * panel)
 		} else {
 			i = minipreview_minimum_size;
 		}
+	} else {
+		i = minipreview_minimum_size;
 	}
 	WMSetSliderValue(panel->minipreview.slider, i);
 	minipreview_slider_changed(panel->minipreview.slider, panel);
