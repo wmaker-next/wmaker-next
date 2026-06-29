@@ -666,50 +666,32 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	wMenuSetEnabled(menu, MC_CLOSE, (wwin->protocols.DELETE_WINDOW && !WFLAGP(wwin, no_closable)));
 
 	if (wwin->flags.miniaturized) {
-		static char *text = NULL;
-		if (!text)
-			text = _("Deminiaturize");
-
-		menu->entries[MC_MINIATURIZE]->text = text;
+		wfree(menu->entries[MC_MINIATURIZE]->text);
+		menu->entries[MC_MINIATURIZE]->text = wstrdup(_("Deminiaturize"));
 	} else {
-		static char *text = NULL;
-		if (!text)
-			text = _("Miniaturize");
-
-		menu->entries[MC_MINIATURIZE]->text = text;
+		wfree(menu->entries[MC_MINIATURIZE]->text);
+		menu->entries[MC_MINIATURIZE]->text = wstrdup(_("Miniaturize"));
 	}
 
 	wMenuSetEnabled(menu, MC_MINIATURIZE, !WFLAGP(wwin, no_miniaturizable));
 
 	if (wwin->flags.maximized) {
-		static char *text = NULL;
-		if (!text)
-			text = _("Unmaximize");
-
-		menu->entries[MC_MAXIMIZE]->text = text;
+		wfree(menu->entries[MC_MAXIMIZE]->text);
+		menu->entries[MC_MAXIMIZE]->text = wstrdup(_("Unmaximize"));
 		updateUnmaximizeShortcut(menu->entries[MC_MAXIMIZE], wwin->flags.maximized);
 	} else {
-		static char *text = NULL;
-		if (!text)
-			text = _("Maximize");
-
-		menu->entries[MC_MAXIMIZE]->text = text;
+		wfree(menu->entries[MC_MAXIMIZE]->text);
+		menu->entries[MC_MAXIMIZE]->text = wstrdup(_("Maximize"));
 		wMenuEntrySetShortcutText(menu->entries[MC_MAXIMIZE], GetShortcutKey(wKeyBindings[WKBD_MAXIMIZE]));
 	}
 	wMenuSetEnabled(menu, MC_MAXIMIZE, IS_RESIZABLE(wwin));
 
 	if (wwin->flags.fullscreen) {
-		static char *text = NULL;
-		if (!text)
-			text = _("Exit Fullscreen");
-
-		menu->entries[MC_FULLSCREEN]->text = text;
+		wfree(menu->entries[MC_FULLSCREEN]->text);
+		menu->entries[MC_FULLSCREEN]->text = wstrdup(_("Exit Fullscreen"));
 	} else {
-		static char *text = NULL;
-		if (!text)
-			text = _("Fullscreen");
-
-		menu->entries[MC_FULLSCREEN]->text = text;
+		wfree(menu->entries[MC_FULLSCREEN]->text);
+		menu->entries[MC_FULLSCREEN]->text = wstrdup(_("Fullscreen"));
 	}
 	wMenuEntrySetShortcutText(menu->entries[MC_FULLSCREEN],
 				  GetShortcutKey(wKeyBindings[WKBD_FULLSCREEN]));
@@ -719,34 +701,22 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 			&& !wwin->flags.miniaturized);
 
 	if (wwin->flags.shaded) {
-		static char *text = NULL;
-		if (!text)
-			text = _("Unshade");
-
-		menu->entries[MC_SHADE]->text = text;
+		wfree(menu->entries[MC_SHADE]->text);
+		menu->entries[MC_SHADE]->text = wstrdup(_("Unshade"));
 	} else {
-		static char *text = NULL;
-		if (!text)
-			text = _("Shade");
-
-		menu->entries[MC_SHADE]->text = text;
+		wfree(menu->entries[MC_SHADE]->text);
+		menu->entries[MC_SHADE]->text = wstrdup(_("Shade"));
 	}
 
 	wMenuSetEnabled(menu, MC_SHADE, !WFLAGP(wwin, no_shadeable)
 			&& !wwin->flags.miniaturized);
 
 	if (wwin->flags.selected) {
-		static char *text = NULL;
-		if (!text)
-			text = _("Deselect");
-
-		menu->entries[MC_SELECT]->text = text;
+		wfree(menu->entries[MC_SELECT]->text);
+		menu->entries[MC_SELECT]->text = wstrdup(_("Deselect"));
 	} else {
-		static char *text = NULL;
-		if (!text)
-			text = _("Select");
-
-		menu->entries[MC_SELECT]->text = text;
+		wfree(menu->entries[MC_SELECT]->text);
+		menu->entries[MC_SELECT]->text = wstrdup(_("Select"));
 	}
 
 	wMenuSetEnabled(menu, MC_CHANGEWKSPC, !IS_OMNIPRESENT(wwin));
@@ -892,11 +862,6 @@ void OpenMiniwindowMenu(WWindow * wwin, int x, int y)
 void DestroyWindowMenu(WScreen *scr)
 {
 	if (scr->window_menu) {
-		scr->window_menu->entries[MC_MINIATURIZE]->text = NULL;
-		scr->window_menu->entries[MC_MAXIMIZE]->text = NULL;
-		scr->window_menu->entries[MC_FULLSCREEN]->text = NULL;
-		scr->window_menu->entries[MC_SHADE]->text = NULL;
-		scr->window_menu->entries[MC_SELECT]->text = NULL;
 		wMenuDestroy(scr->window_menu, True);
 		scr->window_menu = NULL;
 	}
