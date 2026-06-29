@@ -29,8 +29,8 @@
 #define XDND_NO_POS_ZONE(dragInfo) dragInfo->sourceInfo->noPositionMessageZone
 #define XDND_TIMESTAMP(dragInfo) dragInfo->timestamp
 #define XDND_3_TYPES(dragInfo) dragInfo->sourceInfo->firstThreeTypes
-#define XDND_SOURCE_VIEW_STORED(dragInfo) dragInfo->sourceInfo != NULL \
-    && dragInfo->sourceInfo->sourceView != NULL
+#define XDND_SOURCE_VIEW_STORED(dragInfo) ((dragInfo)->sourceInfo != NULL \
+    && (dragInfo)->sourceInfo->sourceView != NULL)
 
 static WMHandlerID dndSourceTimer = NULL;
 
@@ -756,7 +756,12 @@ static void initMotionProcess(WMView * view, WMDraggingInfo * info, XEvent * eve
 
 static void processMotion(WMDraggingInfo * info, WMPoint * mousePos)
 {
-	Window newDestination = findDestination(info, mousePos);
+	Window newDestination;
+
+	if (!XDND_SOURCE_VIEW_STORED(info))
+		return;
+
+	newDestination = findDestination(info, mousePos);
 
 	W_DragSourceStopTimer();
 
