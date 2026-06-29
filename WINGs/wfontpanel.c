@@ -417,6 +417,7 @@ static void arrangeLowerFrame(FontPanel * panel)
 
 static int isXLFD(const char *font, int *length_ret)
 {
+	const char *start = font;
 	int c = 0;
 
 	*length_ret = 0;
@@ -426,7 +427,7 @@ static int isXLFD(const char *font, int *length_ret)
 			c++;
 	}
 
-	return c == NUM_FIELDS;
+	return c >= NUM_FIELDS && *start == '-';
 }
 
 typedef struct {
