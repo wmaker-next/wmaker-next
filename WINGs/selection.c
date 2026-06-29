@@ -5,7 +5,7 @@
 
 #include "WINGsP.h"
 
-#define MAX_PROPERTY_SIZE 8*1024
+#define MAX_PROPERTY_SIZE (8*1024)
 
 const char *WMSelectionOwnerDidChangeNotification = "WMSelectionOwnerDidChange";
 
