@@ -341,6 +341,11 @@ void WMDeleteTimerWithClientData(void *cdata);
 
 void WMDeleteTimerHandler(WMHandlerID handlerID);
 
+/* Delete the timer pointed to by *handlerID and clear the pointer.
+ * Safe to call when *handlerID is NULL. Removes the if-set/delete/NULL
+ * idiom and the chance of leaving a stale handle behind. */
+void WMDeleteTimerHandlerPtr(WMHandlerID *handlerID);
+
 WMHandlerID WMAddIdleHandler(WMCallback *callback, void *cdata);
 
 void WMDeleteIdleHandler(WMHandlerID handlerID);

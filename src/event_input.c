@@ -98,10 +98,7 @@ static void wStartChainTimer(WScreen *scr)
 /* Cancel the chain inactivity timer, if armed */
 static void wCancelChainTimer(void)
 {
-	if (w_global.shortcut.chain_timeout_handler) {
-		WMDeleteTimerHandler(w_global.shortcut.chain_timeout_handler);
-		w_global.shortcut.chain_timeout_handler = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&w_global.shortcut.chain_timeout_handler);
 }
 
 void wCancelKeyChain(WScreen *scr)
@@ -1377,9 +1374,7 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			if (!wwin->flags.focused && !WFLAGP(wwin, no_focusable))
 				wSetFocusTo(scr, wwin);
 
-			if (scr->autoRaiseTimer)
-				WMDeleteTimerHandler(scr->autoRaiseTimer);
-			scr->autoRaiseTimer = NULL;
+			WMDeleteTimerHandlerPtr(&scr->autoRaiseTimer);
 
 			if (w_global.config->raise_delay && !WFLAGP(wwin, no_focusable)) {
 				scr->autoRaiseWindow = wwin->frame->core->window;

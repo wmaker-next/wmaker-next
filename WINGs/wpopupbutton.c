@@ -652,9 +652,8 @@ static void handleActionEvents(XEvent * event, void *data)
 				bPtr->scrollStartY = event->xmotion.y_root;
 				if (!bPtr->timer)
 					autoScroll(bPtr);
-			} else if (bPtr->timer) {
-				WMDeleteTimerHandler(bPtr->timer);
-				bPtr->timer = NULL;
+			} else {
+				WMDeleteTimerHandlerPtr(&bPtr->timer);
 			}
 		}
 		break;
@@ -697,10 +696,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		if (!bPtr->flags.pullsDown)
 			popDownMenu(bPtr);
 
-		if (bPtr->timer) {
-			WMDeleteTimerHandler(bPtr->timer);
-			bPtr->timer = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&bPtr->timer);
 
 		if (bPtr->flags.insideMenu && bPtr->highlightedItem >= 0) {
 			WMMenuItem *item;

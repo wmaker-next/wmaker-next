@@ -36,8 +36,7 @@ static void hotCornerDelay(void *data)
 
 	if (scr->flags.in_hot_corner && wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1])
 		ExecuteShellCommand(scr, wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1]);
-	WMDeleteTimerHandler(scr->hot_corner_timer);
-	scr->hot_corner_timer = NULL;
+	WMDeleteTimerHandlerPtr(&scr->hot_corner_timer);
 }
 
 static void destroy_windows(WScreen *scr)
@@ -156,8 +155,5 @@ void wHotCornersEnter(WScreen *scr, int corner)
 void wHotCornersLeave(WScreen *scr)
 {
 	scr->flags.in_hot_corner = CORNER_NONE;
-	if (scr->hot_corner_timer) {
-		WMDeleteTimerHandler(scr->hot_corner_timer);
-		scr->hot_corner_timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&scr->hot_corner_timer);
 }

@@ -902,9 +902,7 @@ static void handleEvents(XEvent * event, void *data)
 		W_UnFocusIC(tPtr->view);
 		tPtr->flags.focused = 0;
 
-		if (tPtr->timerID)
-			WMDeleteTimerHandler(tPtr->timerID);
-		tPtr->timerID = NULL;
+		WMDeleteTimerHandlerPtr(&tPtr->timerID);
 
 		paintTextField(tPtr);
 		if (!tPtr->flags.notIllegalMovement) {

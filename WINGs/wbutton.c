@@ -31,7 +31,7 @@ typedef struct W_Button {
 	float periodicDelay;
 	float periodicInterval;
 
-	WMHandlerID *timer;	/* for continuous mode */
+	WMHandlerID timer;	/* for continuous mode */
 
 	struct {
 		WMButtonType type:4;
@@ -531,10 +531,7 @@ void WMGroupButtons(WMButton * bPtr, WMButton * newMember)
 void WMSetButtonContinuous(WMButton * bPtr, Bool flag)
 {
 	bPtr->flags.continuous = ((flag == 0) ? 0 : 1);
-	if (bPtr->timer) {
-		WMDeleteTimerHandler(bPtr->timer);
-		bPtr->timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&bPtr->timer);
 }
 
 void WMSetButtonPeriodicDelay(WMButton * bPtr, float delay, float interval)
@@ -726,10 +723,7 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			bPtr->flags.pushed = 0;
 		}
-		if (bPtr->timer) {
-			WMDeleteTimerHandler(bPtr->timer);
-			bPtr->timer = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&bPtr->timer);
 		break;
 	}
 

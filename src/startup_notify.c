@@ -202,10 +202,8 @@ static void pending_dispose(WPendingLaunch *pl, Bool clear_btn)
 	if (!pl)
 		return;
 
-	WMDeleteTimerHandler(pl->timeout);
-	pl->timeout = NULL;
-	WMDeleteTimerHandler(pl->fallback_timeout);
-	pl->fallback_timeout = NULL;
+	WMDeleteTimerHandlerPtr(&pl->timeout);
+	WMDeleteTimerHandlerPtr(&pl->fallback_timeout);
 
 	if (clear_btn && pl->btn) {
 		pl->btn->launching = 0;
@@ -260,8 +258,7 @@ static void sn_event_cb(SnMonitorEvent *ev, void *data)
 			sn_startup_sequence_ref(seq);
 			pl->seq = seq;
 		}
-		WMDeleteTimerHandler(pl->fallback_timeout);
-		pl->fallback_timeout = NULL;
+		WMDeleteTimerHandlerPtr(&pl->fallback_timeout);
 		if (seq) {
 			Time seq_ts = sn_startup_sequence_get_timestamp(seq);
 			int seq_ws = sn_startup_sequence_get_workspace(seq);

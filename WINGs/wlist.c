@@ -26,10 +26,10 @@ typedef struct W_List {
 
 	WMListDrawProc *draw;
 
-	WMHandlerID *idleID;	/* for updating the scroller after adding elements */
+	WMHandlerID idleID;	/* for updating the scroller after adding elements */
 
-	WMHandlerID *selectID;	/* for selecting items in list while scrolling */
-	WMHandlerID *typeaheadID;	/* for clearing typeahead buffer */
+	WMHandlerID selectID;	/* for selecting items in list while scrolling */
+	WMHandlerID typeaheadID;	/* for clearing typeahead buffer */
 
 	WMScroller *vScroller;
 
@@ -297,14 +297,8 @@ void WMClearList(WMList * lPtr)
 		WMDeleteIdleHandler(lPtr->idleID);
 		lPtr->idleID = NULL;
 	}
-	if (lPtr->selectID) {
-		WMDeleteTimerHandler(lPtr->selectID);
-		lPtr->selectID = NULL;
-	}
-	if (lPtr->typeaheadID) {
-		WMDeleteTimerHandler(lPtr->typeaheadID);
-		lPtr->typeaheadID = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&lPtr->selectID);
+	WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
 	if (lPtr->typeahead) {
 		lPtr->typeahead[0] = '\0';
 		lPtr->typeaheadLen = 0;
@@ -1047,10 +1041,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 
 		lPtr->flags.buttonPressed = 0;
-		if (lPtr->selectID) {
-			WMDeleteTimerHandler(lPtr->selectID);
-			lPtr->selectID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&lPtr->selectID);
 		tmp = getItemIndexAt(lPtr, event->xbutton.y);
 
 		if (tmp >= 0) {
@@ -1064,10 +1055,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		break;
 
 	case EnterNotify:
-		if (lPtr->selectID) {
-			WMDeleteTimerHandler(lPtr->selectID);
-			lPtr->selectID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&lPtr->selectID);
 		WMSetFocusToWidget(lPtr);
 		break;
 
@@ -1519,10 +1507,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		buffer[len] = '\0';
 
 		if (ksym == XK_Escape) {
-			if (lPtr->typeaheadID) {
-				WMDeleteTimerHandler(lPtr->typeaheadID);
-				lPtr->typeaheadID = NULL;
-			}
+			WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
 			if (lPtr->typeahead) {
 				lPtr->typeahead[0] = '\0';
 				lPtr->typeaheadLen = 0;
@@ -1551,10 +1536,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		if (lPtr->typeaheadLen > 0)
 			jumpToFirstItemWithPrefix(lPtr, lPtr->typeahead, lPtr->typeaheadLen);
 
-		if (lPtr->typeaheadID) {
-			WMDeleteTimerHandler(lPtr->typeaheadID);
-			lPtr->typeaheadID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
 		if (lPtr->typeaheadLen > 0)
 			lPtr->typeaheadID = WMAddTimerHandler(TYPEAHEAD_CLEAR_DELAY, typeaheadTimeout, lPtr);
 		break;
@@ -1602,13 +1584,9 @@ static void destroyList(List * lPtr)
 		WMDeleteIdleHandler(lPtr->idleID);
 	lPtr->idleID = NULL;
 
-	if (lPtr->selectID)
-		WMDeleteTimerHandler(lPtr->selectID);
-	lPtr->selectID = NULL;
+	WMDeleteTimerHandlerPtr(&lPtr->selectID);
 
-	if (lPtr->typeaheadID)
-		WMDeleteTimerHandler(lPtr->typeaheadID);
-	lPtr->typeaheadID = NULL;
+	WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
 
 	if (lPtr->selectedItems)
 		WMFreeArray(lPtr->selectedItems);

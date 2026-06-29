@@ -215,10 +215,7 @@ static void ipc_try_write(struct WIPCClient *c)
 			WMDeleteInputHandler(c->wr);
 			c->wr = NULL;
 		}
-		if (c->drain_timer) {
-			WMDeleteTimerHandler(c->drain_timer);
-			c->drain_timer = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&c->drain_timer);
 		return;
 	}
 

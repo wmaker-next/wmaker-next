@@ -1061,10 +1061,7 @@ static void dragSourceResponseTimeOut(void *source)
 
 void W_DragSourceStopTimer(void)
 {
-	if (dndSourceTimer != NULL) {
-		WMDeleteTimerHandler(dndSourceTimer);
-		dndSourceTimer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&dndSourceTimer);
 }
 
 void W_DragSourceStartTimer(WMDraggingInfo * info)

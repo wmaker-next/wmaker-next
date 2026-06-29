@@ -2616,10 +2616,7 @@ static void handleEvents(XEvent * event, void *data)
 		tPtr->flags.focused = False;
 		paintText(tPtr);
 #if DO_BLINK
-		if (tPtr->timerID) {
-			WMDeleteTimerHandler(tPtr->timerID);
-			tPtr->timerID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&tPtr->timerID);
 #endif
 		break;
 

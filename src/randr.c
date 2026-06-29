@@ -772,10 +772,7 @@ void wRandRTeardown(WScreen *scr)
 	if (!scr->randr_state)
 		return;
 
-	if (scr->randr_debounce_timer) {
-		WMDeleteTimerHandler(scr->randr_debounce_timer);
-		scr->randr_debounce_timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&scr->randr_debounce_timer);
 
 	wClearHeadOutputNames(scr);
 	wfree(scr->randr_state);
@@ -790,10 +787,7 @@ void wRandRHandleNotify(WScreen *scr)
 	/* the wire event has no payload wRandR_Update() needs (it queries
 	 * monitors directly) and nested servers fire spurious notifies, so
 	 * the notify only rearms the debounce */
-	if (scr->randr_debounce_timer) {
-		WMDeleteTimerHandler(scr->randr_debounce_timer);
-		scr->randr_debounce_timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&scr->randr_debounce_timer);
 	scr->randr_debounce_timer =
 		WMAddTimerHandler(RANDR_DEBOUNCE_DELAY, wRandRDebounceTimerFired, scr);
 }

@@ -151,10 +151,7 @@ void W_BalloonHandleLeaveView(WMView * view)
 			W_UnmapView(bPtr->view);
 			bPtr->noDelayTimer = WMAddTimerHandler(NO_DELAY_DELAY, clearNoDelay, bPtr);
 		}
-		if (bPtr->timer)
-			WMDeleteTimerHandler(bPtr->timer);
-
-		bPtr->timer = NULL;
+		WMDeleteTimerHandlerPtr(&bPtr->timer);
 
 		bPtr->forWindow = None;
 	}
@@ -206,13 +203,9 @@ void W_BalloonHandleEnterView(WMView * view)
 		return;
 	}
 
-	if (bPtr->timer)
-		WMDeleteTimerHandler(bPtr->timer);
-	bPtr->timer = NULL;
+	WMDeleteTimerHandlerPtr(&bPtr->timer);
 
-	if (bPtr->noDelayTimer)
-		WMDeleteTimerHandler(bPtr->noDelayTimer);
-	bPtr->noDelayTimer = NULL;
+	WMDeleteTimerHandlerPtr(&bPtr->noDelayTimer);
 
 	bPtr->forWindow = view->window;
 

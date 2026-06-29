@@ -668,9 +668,8 @@ void wBalloonHide(WScreen *scr)
 		if (scr->balloon->mapped) {
 			XUnmapWindow(dpy, scr->balloon->window);
 			scr->balloon->mapped = 0;
-		} else if (scr->balloon->timer) {
-			WMDeleteTimerHandler(scr->balloon->timer);
-			scr->balloon->timer = NULL;
+		} else {
+			WMDeleteTimerHandlerPtr(&scr->balloon->timer);
 		}
 		scr->balloon->prevType = 0;
 	}

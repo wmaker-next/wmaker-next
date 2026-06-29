@@ -352,20 +352,20 @@ typedef struct _WScreen {
 
     /* workspace name data */
     Window workspace_name;
-    WMHandlerID *workspace_name_timer;
+    WMHandlerID workspace_name_timer;
     struct WorkspaceNameData *workspace_name_data;
 
     /* mini screenshot data */
     Window mini_screenshot;
     time_t mini_screenshot_timeout;
-    WMHandlerID *mini_screenshot_timer;
+    WMHandlerID mini_screenshot_timer;
 
     /* for raise-delay */
-    WMHandlerID *autoRaiseTimer;
+    WMHandlerID autoRaiseTimer;
     Window autoRaiseWindow;	       /* window that is scheduled to be
                                         * raised */
     /* for hot-corners delay */
-    WMHandlerID *hot_corner_timer;
+    WMHandlerID hot_corner_timer;
     Window *hot_corner_win;            /* 4 per head, InputOnly, topmost */
     int hot_corner_win_count;
 
@@ -374,7 +374,7 @@ typedef struct _WScreen {
                                         * for ScrollableMenus */
 
 #ifdef USE_RANDR
-    WMHandlerID *randr_debounce_timer;
+    WMHandlerID randr_debounce_timer;
     void *randr_state;
 #endif
 

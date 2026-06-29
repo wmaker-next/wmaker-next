@@ -2436,10 +2436,7 @@ Bool wNETWMIsPingProtocol(Atom protocol)
 
 void wNETWMCancelPing(WWindow *wwin)
 {
-	if (wwin->net_ping.timer) {
-		WMDeleteTimerHandler(wwin->net_ping.timer);
-		wwin->net_ping.timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&wwin->net_ping.timer);
 	wwin->net_ping.timestamp = 0;
 	wwin->net_ping.term_sent = 0;
 }

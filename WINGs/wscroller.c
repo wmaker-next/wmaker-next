@@ -762,10 +762,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		break;
 
 	case LeaveNotify:
-		if (sPtr->timerID) {
-			WMDeleteTimerHandler(sPtr->timerID);
-			sPtr->timerID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&sPtr->timerID);
 		sPtr->flags.incrDown = 0;
 		sPtr->flags.decrDown = 0;
 		break;
@@ -830,10 +827,7 @@ static void handleActionEvents(XEvent * event, void *data)
 				W_ReleaseView(sPtr->view);
 			}
 		}
-		if (sPtr->timerID) {
-			WMDeleteTimerHandler(sPtr->timerID);
-			sPtr->timerID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&sPtr->timerID);
 		sPtr->flags.incrDown = 0;
 		sPtr->flags.decrDown = 0;
 		sPtr->flags.draggingKnob = 0;

@@ -186,7 +186,7 @@ typedef struct AppBouncerData {
 	int count;
 	int pow;
 	int dir;
-	WMHandlerID *timer;
+	WMHandlerID timer;
 } AppBouncerData;
 
 static void doAppBounce(void *arg)
@@ -363,8 +363,7 @@ static void doAppUrgentBounce(void *arg)
 	if (appIsUrgent(wapp)) {
 		if(w_global.config->bounce_appicons_when_urgent) wAppBounce(wapp);
 	} else {
-		WMDeleteTimerHandler(wapp->urgent_bounce_timer);
-		wapp->urgent_bounce_timer = NULL;
+		WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
 	}
 }
 
@@ -377,9 +376,6 @@ void wAppBounceWhileUrgent(WApplication *wapp)
 			doAppUrgentBounce(wapp);
 		}
 	} else {
-		if (wapp->urgent_bounce_timer) {
-			WMDeleteTimerHandler(wapp->urgent_bounce_timer);
-			wapp->urgent_bounce_timer = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
 	}
 }

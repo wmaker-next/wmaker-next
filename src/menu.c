@@ -637,9 +637,7 @@ void wMenuDestroy(WMenu * menu, int recurse)
 	WMRemoveNotificationObserver(menu);
 
 	/* remove any pending timers */
-	if (menu->timer)
-		WMDeleteTimerHandler(menu->timer);
-	menu->timer = NULL;
+	WMDeleteTimerHandlerPtr(&menu->timer);
 
 	/* call destroy handler */
 	if (menu->on_destroy)
@@ -1823,10 +1821,7 @@ void wMenuScroll(WMenu *menu)
 		}
 	}
 
-	if (menu->timer) {
-		WMDeleteTimerHandler(menu->timer);
-		menu->timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&menu->timer);
 
 	if (jump_back) {
 		_delay *delayer;
@@ -2070,10 +2065,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 					}
 
 					if (menu != smenu) {
-						if (d_data.magic) {
-							WMDeleteTimerHandler(d_data.magic);
-							d_data.magic = NULL;
-						}
+						WMDeleteTimerHandlerPtr(&d_data.magic);
 					} else if (moved_to_submenu) {
 						/* while we are moving, postpone the selection */
 						if (d_data.magic) {
@@ -2087,10 +2079,7 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 						prevy = ev.xmotion.y_root;
 						break;
 					} else {
-						if (d_data.magic) {
-							WMDeleteTimerHandler(d_data.magic);
-							d_data.magic = NULL;
-						}
+						WMDeleteTimerHandlerPtr(&d_data.magic);
 					}
 				}
 			}
@@ -2098,10 +2087,8 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 			prevy = ev.xmotion.y_root;
 			if (menu != smenu) {
 				/* pointer crossed menus */
-				if (menu && menu->timer) {
-					WMDeleteTimerHandler(menu->timer);
-					menu->timer = NULL;
-				}
+				if (menu)
+					WMDeleteTimerHandlerPtr(&menu->timer);
 				if (smenu)
 					dragScrollMenuCallback(smenu);
 			}
@@ -2139,14 +2126,9 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 		}
 	}
 
-	if (menu && menu->timer) {
-		WMDeleteTimerHandler(menu->timer);
-		menu->timer = NULL;
-	}
-	if (d_data.magic != NULL) {
-		WMDeleteTimerHandler(d_data.magic);
-		d_data.magic = NULL;
-	}
+	if (menu)
+		WMDeleteTimerHandlerPtr(&menu->timer);
+	WMDeleteTimerHandlerPtr(&d_data.magic);
 
 	if (menu && menu->selected_entry >= 0) {
 		entry = menu->entries[menu->selected_entry];
@@ -2198,14 +2180,9 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 
  byebye:
 	/* Just to be sure in case we skip the 2 above because of a goto byebye */
-	if (menu && menu->timer) {
-		WMDeleteTimerHandler(menu->timer);
-		menu->timer = NULL;
-	}
-	if (d_data.magic != NULL) {
-		WMDeleteTimerHandler(d_data.magic);
-		d_data.magic = NULL;
-	}
+	if (menu)
+		WMDeleteTimerHandlerPtr(&menu->timer);
+	WMDeleteTimerHandlerPtr(&d_data.magic);
 
 	((WMenu *) desc->parent)->flags.inside_handler = 0;
 }

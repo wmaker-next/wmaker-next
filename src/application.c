@@ -209,10 +209,7 @@ void wApplicationDestroy(WApplication *wapp)
 	if (wapp->refcount > 0)
 		return;
 
-	if (wapp->urgent_bounce_timer) {
-		WMDeleteTimerHandler(wapp->urgent_bounce_timer);
-		wapp->urgent_bounce_timer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
 	if (wapp->flags.bouncing) {
 		/* event.c:handleDestroyNotify forced this destroy
 		   and thereby overlooked the bounce callback */

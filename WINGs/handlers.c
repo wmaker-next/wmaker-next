@@ -270,6 +270,14 @@ void WMDeleteTimerHandler(WMHandlerID handlerID)
 	wfree(h);
 }
 
+void WMDeleteTimerHandlerPtr(WMHandlerID *handlerID)
+{
+	if (!handlerID)
+		return;
+	WMDeleteTimerHandler(*handlerID);
+	*handlerID = NULL;
+}
+
 void WMDeleteTimerWithClientData(void *cdata)
 {
 	TimerHandler *h;

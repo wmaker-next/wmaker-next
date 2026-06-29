@@ -618,10 +618,7 @@ static void dragSourceResponseTimeOut(void *destView)
 
 void W_DragDestinationStopTimer(void)
 {
-	if (dndDestinationTimer != NULL) {
-		WMDeleteTimerHandler(dndDestinationTimer);
-		dndDestinationTimer = NULL;
-	}
+	WMDeleteTimerHandlerPtr(&dndDestinationTimer);
 }
 
 void W_DragDestinationStartTimer(WMDraggingInfo * info)

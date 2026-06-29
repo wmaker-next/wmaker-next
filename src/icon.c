@@ -665,10 +665,7 @@ void wIconSelect(WIcon *icon)
 			XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
 				       icon->core->width - 1, icon->core->height - 1);
 	} else {
-		if (icon->handlerID) {
-			WMDeleteTimerHandler(icon->handlerID);
-			icon->handlerID = NULL;
-		}
+		WMDeleteTimerHandlerPtr(&icon->handlerID);
 		XClearArea(dpy, icon->core->window, 0, 0, icon->core->width, icon->core->height, True);
 	}
 }
