@@ -493,7 +493,14 @@ static Bool archive_entry_path_is_safe(const char *path)
 	Recursively find directory containing image files
 	Returns path to directory with images, or NULL if not found
 */
+static char *find_image_directory_depth(const char *start_dir, int depth);
+
 static char *find_image_directory(const char *start_dir)
+{
+	return find_image_directory_depth(start_dir, 0);
+}
+
+static char *find_image_directory_depth(const char *start_dir, int depth)
 {
 	DIR *dir;
 	struct dirent *entry;
@@ -501,6 +508,9 @@ static char *find_image_directory(const char *start_dir)
 	char full_path[PATH_MAX];
 	int image_count = 0;
 	char *result = NULL;
+
+	if (depth >= 32)
+		return NULL;
 
 	dir = opendir(start_dir);
 	if (!dir)
@@ -534,7 +544,7 @@ static char *find_image_directory(const char *start_dir)
 
 		snprintf(full_path, sizeof(full_path), "%s/%s", start_dir, entry->d_name);
 		if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode)) {
-			result = find_image_directory(full_path);
+			result = find_image_directory_depth(full_path, depth + 1);
 			if (result)
 				break;
 		}
@@ -2943,7 +2953,10 @@ int main(int argc, char **argv)
 			Atom net_wm_icon = XInternAtom(dpy, "_NET_WM_ICON", False);
 			if (net_wm_icon != None) {
 				int icon_width, icon_height;
-				if (sscanf(wmiv_xpm[0], "%d %d", &icon_width, &icon_height) == 2) {
+				if (sscanf(wmiv_xpm[0], "%d %d", &icon_width, &icon_height) == 2
+				    && icon_width > 0 && icon_height > 0
+				    && icon_width <= 20000 && icon_height <= 20000
+				    && (unsigned long)icon_width * (unsigned long)icon_height <= 0x80000000UL / 4UL) {
 					/* Convert XPM pixmap to ARGB32 format */
 					XImage *icon_image = XGetImage(dpy, icon_pixmap, 0, 0, icon_width, icon_height, AllPlanes, ZPixmap);
 					if (icon_image) {
