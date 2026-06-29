@@ -67,7 +67,7 @@ endif
 if USE_XPM
 libwraster_la_SOURCES += load_xpm.c
 else
-libwraster_la_SOURCES += load_xpm_normalized.c
+libwraster_la_SOURCES += load_xpm_builtin.c
 endif
 
 if USE_WEBP

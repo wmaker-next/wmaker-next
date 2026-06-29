@@ -33,7 +33,7 @@ POTFILES  = \
 	$(top_srcdir)/wrlib/load_png.c	\
 	$(top_srcdir)/wrlib/load_tiff.c	\
 	$(top_srcdir)/wrlib/load_xpm.c	\
-	$(top_srcdir)/wrlib/load_xpm_normalized.c	\
+	$(top_srcdir)/wrlib/load_xpm_builtin.c	\
 	$(top_srcdir)/wrlib/load_webp.c	\
 	$(top_srcdir)/wrlib/load_magick.c
 
