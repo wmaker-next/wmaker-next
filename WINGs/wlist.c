@@ -946,7 +946,7 @@ static void toggleItemSelection(WMList * lPtr, int index)
 
 static int findItemWithPrefix(List * lPtr, const char *prefix, int prefixLen)
 {
-	if (prefixLen <= 0)
+	if (prefixLen <= 0 || !prefix)
 		return -1;
 
 	int i, itemCount;
