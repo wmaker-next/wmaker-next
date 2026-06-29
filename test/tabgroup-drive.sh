@@ -60,6 +60,17 @@ wait_for() {
     return 1
 }
 pid_gone() { ! kill -0 "$1" 2>/dev/null; }
+all_gone() { for p in "$@"; do kill -0 "$p" 2>/dev/null && return 1; done; return 0; }
+
+# Inter-section teardown: a polite wmctrl -c on a hidden tab-group member
+# is not guaranteed to reach the client, so the per-PID wait_for 40 that
+# followed it could spin its full 4s for nothing. The next section uses
+# distinct term names so we only need the PIDs gone, kill them directly
+# and wait once for the lot.
+reap_terms() {
+    kill "$@" 2>/dev/null
+    wait_for 20 all_gone "$@"
+}
 
 is_viewable() {
     DISPLAY=$DPY xwininfo -id "$1" 2>/dev/null | grep -q 'Map State: IsViewable'
@@ -449,9 +460,7 @@ wait_for 20 no_state "$TD" _NET_WM_STATE_MAXIMIZED_HORZ \
     || fail "inactive termD still MAXIMIZED_HORZ after group unmaximize"
 ok "maximize flags and size mirror across peers"
 
-DISPLAY=$DPY wmctrl -i -c "$TE"; DISPLAY=$DPY wmctrl -i -c "$TD"
-wait_for 40 pid_gone "$termDPID"
-wait_for 40 pid_gone "$termEPID"
+reap_terms "$termDPID" "$termEPID"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during state propagation"
 
 # --- 8. segmented titlebar: click, wheel, ctrl+click ----------------------
@@ -506,9 +515,7 @@ is_viewable "$TG" || fail "active termG lost visibility on ctrl+segment close"
 kill -0 "$termFPID" 2>/dev/null || fail "termF was closed by ctrl+segment click"
 ok "Ctrl+Button1 on segment closes only that member"
 
-DISPLAY=$DPY wmctrl -i -c "$TF"; DISPLAY=$DPY wmctrl -i -c "$TG"
-wait_for 40 pid_gone "$termFPID"
-wait_for 40 pid_gone "$termGPID"
+reap_terms "$termFPID" "$termGPID"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during segment block"
 
 # --- 9. drag-to-group: attach, tear-off, reorder --------------------------
@@ -579,11 +586,7 @@ LX=$(abs_x "$TL"); JX=$(abs_x "$TJ")
 [ "$LX" != "$JX" ] || fail "torn-off termL still at group x=$JX"
 ok "Button2 drag onto root tears member off at drop point"
 
-DISPLAY=$DPY wmctrl -i -c "$TJ"; DISPLAY=$DPY wmctrl -i -c "$TK"
-DISPLAY=$DPY wmctrl -i -c "$TL"
-wait_for 40 pid_gone "$termJPID"
-wait_for 40 pid_gone "$termKPID"
-wait_for 40 pid_gone "$termLPID"
+reap_terms "$termJPID" "$termKPID" "$termLPID"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during drag block"
 
 # --- 10. warm restart: mapped and iconified ------------------------------
@@ -658,11 +661,7 @@ not_viewable "$TP" || fail "termP visible after deiconify"
 not_viewable "$TR" || fail "termR visible after deiconify"
 ok "deiconify after restart reveals only the saved active member"
 
-DISPLAY=$DPY wmctrl -i -c "$TP"; DISPLAY=$DPY wmctrl -i -c "$TQ"
-DISPLAY=$DPY wmctrl -i -c "$TR"
-wait_for 40 pid_gone "$termPPID"
-wait_for 40 pid_gone "$termQPID"
-wait_for 40 pid_gone "$termRPID"
+reap_terms "$termPPID" "$termQPID" "$termRPID"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during restart block"
 
 # --- 14. bystander raise after tab switch ---------------------------------
@@ -715,11 +714,7 @@ wait_for 30 x_above "$FU" "$FS" \
     || fail "bystander frame did not raise above the group after click"
 ok "bystander raises above the group after a tab switch"
 
-DISPLAY=$DPY wmctrl -i -c "$TS"; DISPLAY=$DPY wmctrl -i -c "$TT"
-DISPLAY=$DPY wmctrl -i -c "$TU"
-wait_for 40 pid_gone "$termSPID"
-wait_for 40 pid_gone "$termTPID"
-wait_for 40 pid_gone "$termUPID"
+reap_terms "$termSPID" "$termTPID" "$termUPID"
 kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during bystander block"
 
 # --- teardown --------------------------------------------------------------
