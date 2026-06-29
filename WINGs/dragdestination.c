@@ -331,6 +331,8 @@ void W_DragDestinationStoreEnterMsgInfo(WMDraggingInfo * info, WMView * toplevel
     else
         XDND_SOURCE_TYPES(info) = getTypesFromThreeTypes(scr, event);
 #endif
+	if (XDND_SOURCE_TYPES(info))
+		WMFreeArray(XDND_SOURCE_TYPES(info));
 	XDND_SOURCE_TYPES(info) = getTypesFromThreeTypes(scr, event);
 
 	/* to use if the 3 types are not enough */
