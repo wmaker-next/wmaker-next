@@ -256,6 +256,49 @@ static int format8_close_mode(Display *dpy)
 	return 0;
 }
 
+/* Send _NET_WM_MOVERESIZE with an arbitrary direction value to exercise
+ * the direction-range validation. EWMH_CLIENT_MOVERESIZE_TARGET=<xid>
+ * EWMH_CLIENT_MOVERESIZE_DIRECTION=<n> */
+static int moveresize_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_MOVERESIZE_TARGET", None);
+	long direction = env_long("EWMH_CLIENT_MOVERESIZE_DIRECTION", 8);
+	long x_root = env_long("EWMH_CLIENT_MOVERESIZE_X", 0);
+	long y_root = env_long("EWMH_CLIENT_MOVERESIZE_Y", 0);
+	long button = env_long("EWMH_CLIENT_MOVERESIZE_BUTTON", 0);
+
+	if (target == None)
+		return 1;
+	send_root_message(dpy, target, intern_atom(dpy, "_NET_WM_MOVERESIZE"),
+			  x_root, y_root, direction, button, 1);
+	return 0;
+}
+
+/* Send a format-8 ClientMessage to a GNUstep/wmaker atom on a managed
+ * window to verify the handler rejects non-32-format messages.
+ * EWMH_CLIENT_FORMAT8_GNUSTEP_TARGET=<xid>
+ * EWMH_CLIENT_FORMAT8_GNUSTEP_ATOM=<atom-name> */
+static int format8_gnustep_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_FORMAT8_GNUSTEP_TARGET", None);
+	const char *atom_name = getenv("EWMH_CLIENT_FORMAT8_GNUSTEP_ATOM");
+	Window root = DefaultRootWindow(dpy);
+	XEvent ev;
+
+	if (target == None || !atom_name)
+		return 1;
+	memset(&ev, 0, sizeof(ev));
+	ev.xclient.type = ClientMessage;
+	ev.xclient.window = target;
+	ev.xclient.message_type = intern_atom(dpy, atom_name);
+	ev.xclient.format = 8;
+	ev.xclient.data.b[0] = 1;
+	XSendEvent(dpy, root, False,
+		   SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+	XFlush(dpy);
+	return 0;
+}
+
 /* set _NET_DESKTOP_NAMES on root to the comma-separated list in
  * EWMH_CLIENT_SET_DESKTOP_NAMES, encoded as the spec's NUL-separated
  * UTF8_STRING, then send the ClientMessage wmaker reacts to so the
@@ -462,6 +505,16 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_FORMAT8_CLOSE_TARGET")) {
 		int ret = format8_close_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_MOVERESIZE_TARGET")) {
+		int ret = moveresize_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_FORMAT8_GNUSTEP_TARGET")) {
+		int ret = format8_gnustep_mode(dpy);
 		XCloseDisplay(dpy);
 		return ret;
 	}
