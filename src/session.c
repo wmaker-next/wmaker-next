@@ -176,7 +176,7 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 
 	command = GetCommandForWindow(win);
 	if (!command) {
-		if (wapp->app_icon && wapp->app_icon->command) {
+		if (wapp && wapp->app_icon && wapp->app_icon->command) {
 			command = wstrdup(wapp->app_icon->command);
 		} else
 			return NULL;

@@ -116,6 +116,8 @@ void CommitStacking(WScreen * scr)
 	WMBagIterator iter;
 
 	nwindows = scr->window_count;
+	if (nwindows == 0)
+		return;
 	windows = wmalloc(sizeof(Window) * nwindows);
 
 	i = 0;

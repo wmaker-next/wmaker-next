@@ -156,7 +156,7 @@ static void setWVisualID(int screen, int val)
 		/* no array at all, alloc space for screen + 1 entries
 		 * and init with default value */
 		wVisualID_len = screen + 1;
-		wVisualID = (int *)malloc(wVisualID_len * sizeof(int));
+		wVisualID = (int *)wmalloc(wVisualID_len * sizeof(int));
 		for (i = 0; i < wVisualID_len; i++) {
 			wVisualID[i] = -1;
 		}

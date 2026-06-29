@@ -427,8 +427,10 @@ static verb_rc verb_restart(WScreen *scr, WMPropList *args,
 	pending_shutdown_mode = WSRestartPreparationMode;
 	if (args && WMGetPropListItemCount(args) > 1) {
 		a = WMGetFromPLArray(args, 1);
-		if (a && WMIsPLString(a))
+		if (a && WMIsPLString(a)) {
+			wfree(pending_restart_wm);
 			pending_restart_wm = wstrdup(WMGetFromPLString(a));
+		}
 	}
 	return VERB_FINAL;
 }

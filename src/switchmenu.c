@@ -471,9 +471,9 @@ static void observer(void *self, WMNotification * notif)
 	else if (strcmp(name, WMNChangedName) == 0)
 		UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE);
 	else if (strcmp(name, WMNChangedState) == 0) {
-		if (strcmp((char *)data, "omnipresent") == 0) {
+		if (data && strcmp((char *)data, "omnipresent") == 0) {
 			UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE_WORKSPACE);
-		} else if (strcmp((char *)data, "tabgroup") == 0
+		} else if (data && strcmp((char *)data, "tabgroup") == 0
 			   && !w_global.config->show_all_tabs_in_switch_panel) {
 			/* tab membership changed, collapse each group to its
 			 * active member by adding or removing this entry */
