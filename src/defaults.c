@@ -771,6 +771,8 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		val = WMGetFromPLString(elem);
 		th1 = atoi(val);
+		if (th1 < 0)
+			th1 = 0;
 
 		/* get from color */
 		for (i = 0; i < 2; i++) {
@@ -793,6 +795,8 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		val = WMGetFromPLString(elem);
 		th2 = atoi(val);
+		if (th2 < 0)
+			th2 = 0;
 
 		texture = (WTexture *) wTextureMakeIGradient(scr, th1, colors1, th2, colors2);
 
@@ -933,9 +937,10 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 
 		/* get opacity */
 		elem = WMGetFromPLArray(pl, 2);
-		if (!elem || !WMIsPLString(elem))
+		if (!elem || !WMIsPLString(elem)) {
 			opacity = 128;
-		else
+			val = NULL;
+		} else
 			val = WMGetFromPLString(elem);
 
 		if (!val || (opacity = atoi(val)) < 0 || opacity > 255) {
