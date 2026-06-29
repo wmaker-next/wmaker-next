@@ -63,8 +63,8 @@ int main(int argc, char **argv)
 	FILE *file = stdin;
 	char *buf = NULL;
 	char *display_name = "";
-	int l = 0;
-	int buf_len = 0;
+	size_t l = 0;
+	size_t buf_len = 0;
 	int limit_check = 1;
 	int clear_selection = 0;
 
@@ -185,13 +185,14 @@ int main(int argc, char **argv)
 	while (!feof(file)) {
 		char *nbuf;
 		char tmp[LINESIZE + 2];
-		int nl = 0;
+		size_t nl = 0;
 
 		/*
 		 * Use read() instead of fgets() to preserve NULLs, since
 		 * especially since there's no reason to read one line at a time.
 		 */
-		if ((nl = fread(tmp, 1, LINESIZE, file)) <= 0) {
+		nl = fread(tmp, 1, LINESIZE, file);
+		if (nl == 0) {
 			break;
 		}
 		if (buf_len == 0) {
@@ -236,7 +237,7 @@ int main(int argc, char **argv)
 		XSetSelectionOwner(dpy, XA_PRIMARY, None, CurrentTime);
 	}
 	if (buf) {
-		XStoreBuffer(dpy, buf, l, buffer);
+		XStoreBuffer(dpy, buf, (int)l, buffer);
 	}
 	XFlush(dpy);
 	XCloseDisplay(dpy);
