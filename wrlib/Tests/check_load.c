@@ -39,6 +39,13 @@ static RImage *load_noctx(const char *path)
 {
 	return RLoadImage(NULL, path, 0);
 }
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("nonnull-attribute")))
+#endif
+static RImage *xpmdata_noctx(char **data)
+{
+	return RGetImageFromXPMData(NULL, data);
+}
 #pragma GCC diagnostic pop
 
 static char tmpdir[] = "/tmp/wrlib-check-XXXXXX";
@@ -323,7 +330,7 @@ static void test_xpm_transparent(void)
 	};
 	RImage *img;
 
-	img = RGetImageFromXPMData(NULL, xpm);
+	img = xpmdata_noctx(xpm);
 	if (!img) {
 		fprintf(stderr, "FAIL xpm: RGetImageFromXPMData NULL (%s)\n",
 			RMessageForError(RErrorCode));
