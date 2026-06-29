@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
 	wfree(icon_paths);
 
 	tmp = WMGetPropListDescription(RMenu, True);
-	printf("%s\n", tmp);
+	printf("%s\n", tmp ? tmp : "");
 	wfree(tmp);
 
 	return 0;

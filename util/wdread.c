@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	}
 
 	dpath = WMGetPropListDescription(value, True);
-	printf("%s\n", dpath);
+	printf("%s\n", dpath ? dpath : "");
 	wfree(dpath);
 	WMReleasePropList(dict);
 	return 0;

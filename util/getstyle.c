@@ -436,7 +436,7 @@ int main(int argc, char **argv)
 			}
 		} else {
 			char *desc = WMGetPropListDescription(style, True);
-			puts(desc);
+			puts(desc ? desc : "");
 			wfree(desc);
 		}
 	}
