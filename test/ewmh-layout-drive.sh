@@ -262,6 +262,26 @@ send_format8_close() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+# send_moveresize TARGET DIRECTION [X_ROOT Y_ROOT BUTTON] : raw
+# _NET_WM_MOVERESIZE with an arbitrary direction value, used to test
+# the direction-range validation (direction < 0 or > 11 must be rejected)
+send_moveresize() {
+	DISPLAY=$DPY env EWMH_CLIENT_MOVERESIZE_TARGET="$1" \
+		EWMH_CLIENT_MOVERESIZE_DIRECTION="$2" \
+		EWMH_CLIENT_MOVERESIZE_X="${3:-0}" \
+		EWMH_CLIENT_MOVERESIZE_Y="${4:-0}" \
+		EWMH_CLIENT_MOVERESIZE_BUTTON="${5:-0}" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
+# send_format8_gnustep TARGET ATOM : send a format-8 ClientMessage to a
+# GNUstep/wmaker atom to verify the handler rejects non-32-format messages
+send_format8_gnustep() {
+	DISPLAY=$DPY env EWMH_CLIENT_FORMAT8_GNUSTEP_TARGET="$1" \
+		EWMH_CLIENT_FORMAT8_GNUSTEP_ATOM="$2" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
 prop_values() {
 	root_prop "$1" | sed -e 's/^[^=]*= //' -e 's/^[^:]*: //'
 }
@@ -1008,6 +1028,39 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		sleep 0.3
 		check "ignores format-8 _NET_CLOSE_WINDOW (client survives)" kill -0 "$CLIENT_PID"
 		check "ignores format-8 _NET_CLOSE_WINDOW (still in client list)" root_window_list_has _NET_CLIENT_LIST "$CLIENT_XID"
+
+		# format-32 enforcement on GNUstep/wmaker ClientMessage handlers:
+		# a format-8 message to each atom must be ignored without crash
+		send_format8_gnustep "$CLIENT_XID" "_GNUSTEP_WM_ATTR"
+		sleep 0.2
+		check "ignores format-8 _GNUSTEP_WM_ATTR (client survives)" kill -0 "$CLIENT_PID"
+		send_format8_gnustep "$CLIENT_XID" "_GNUSTEP_WM_TITLEBAR_STATE"
+		sleep 0.2
+		check "ignores format-8 _GNUSTEP_WM_TITLEBAR_STATE (client survives)" kill -0 "$CLIENT_PID"
+		send_format8_gnustep "$CLIENT_XID" "_WINDOWMAKER_WM_FUNCTION"
+		sleep 0.2
+		check "ignores format-8 _WINDOWMAKER_WM_FUNCTION (client survives)" kill -0 "$CLIENT_PID"
+		send_format8_gnustep "$CLIENT_XID" "_WM_IGNORE_FOCUS_EVENTS"
+		sleep 0.2
+		check "ignores format-8 _WM_IGNORE_FOCUS_EVENTS (client survives)" kill -0 "$CLIENT_PID"
+		check "all format-8 GNUstep messages: still in client list" root_window_list_has _NET_CLIENT_LIST "$CLIENT_XID"
+
+		# _NET_WM_MOVERESIZE direction validation: a negative direction
+		# must be rejected, no pointer grab should stick the user in a
+		# resize loop. The client stays managed and a subsequent valid
+		# _NET_MOVERESIZE_WINDOW still works.
+		send_moveresize "$CLIENT_XID" -1
+		sleep 0.3
+		check "ignores negative _NET_WM_MOVERESIZE direction (client survives)" kill -0 "$CLIENT_PID"
+		check "ignores negative _NET_WM_MOVERESIZE direction (still in client list)" root_window_list_has _NET_CLIENT_LIST "$CLIENT_XID"
+		# direction 99 is out of range, must also be rejected
+		send_moveresize "$CLIENT_XID" 99
+		sleep 0.3
+		check "ignores out-of-range _NET_WM_MOVERESIZE direction (client survives)" kill -0 "$CLIENT_PID"
+		# a valid geometry change via _NET_MOVERESIZE_WINDOW still works
+		# after the bad directions, proving the WM isn't stuck
+		run_x wmctrl -i -r "$CLIENT_XID" -e 0,100,100,300,200 >>"$LOG" 2>&1
+		check "WM not stuck after bad _NET_WM_MOVERESIZE directions" wait_for 30 window_geom_is "$CLIENT_XID" 300 200
 
 		check "delivers close request to managed client" close_ewmh_client
 	else
