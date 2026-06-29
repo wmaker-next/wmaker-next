@@ -653,6 +653,36 @@ void wKeyTreeRebuild(WScreen *scr)
  * (function <lib> <function> ...)
  */
 
+static Bool pl_array_xcolor(WScreen *scr, WMPropList *pl, int idx, XColor *out)
+{
+	WMPropList *elem;
+	const char *val;
+
+	elem = WMGetFromPLArray(pl, idx);
+	if (!elem || !WMIsPLString(elem))
+		return False;
+	val = WMGetFromPLString(elem);
+
+	if (!wParseColor(scr->w_colormap, val, out)) {
+		wwarning(_("\"%s\" is not a valid color name"), val);
+		return False;
+	}
+	return True;
+}
+
+static Bool pl_array_rcolor(WScreen *scr, WMPropList *pl, int idx, RColor *out)
+{
+	XColor xcolor;
+
+	if (!pl_array_xcolor(scr, pl, idx, &xcolor))
+		return False;
+	out->alpha = 255;
+	out->red = xcolor.red >> 8;
+	out->green = xcolor.green >> 8;
+	out->blue = xcolor.blue >> 8;
+	return True;
+}
+
 static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 {
 	WMPropList *elem;
@@ -675,23 +705,13 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		if (nelem != 2)
 			return NULL;
 
-		/* get color */
-
-		elem = WMGetFromPLArray(pl, 1);
-		if (!elem || !WMIsPLString(elem))
+		if (!pl_array_xcolor(scr, pl, 1, &color))
 			return NULL;
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &color)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
 
 		texture = (WTexture *) wTextureMakeSolid(scr, &color);
 	} else if (strcasecmp(val, "dgradient") == 0
 		   || strcasecmp(val, "vgradient") == 0 || strcasecmp(val, "hgradient") == 0) {
 		RColor color1, color2;
-		XColor xcolor;
 		int type;
 
 		if (nelem != 3) {
@@ -706,43 +726,15 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		else
 			type = WTEX_VGRADIENT;
 
-		/* get from color */
-		elem = WMGetFromPLArray(pl, 1);
-		if (!elem || !WMIsPLString(elem))
+		if (!pl_array_rcolor(scr, pl, 1, &color1) ||
+		    !pl_array_rcolor(scr, pl, 2, &color2))
 			return NULL;
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
-		color1.alpha = 255;
-		color1.red = xcolor.red >> 8;
-		color1.green = xcolor.green >> 8;
-		color1.blue = xcolor.blue >> 8;
-
-		/* get to color */
-		elem = WMGetFromPLArray(pl, 2);
-		if (!elem || !WMIsPLString(elem)) {
-			return NULL;
-		}
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
-		color2.alpha = 255;
-		color2.red = xcolor.red >> 8;
-		color2.green = xcolor.green >> 8;
-		color2.blue = xcolor.blue >> 8;
 
 		texture = (WTexture *) wTextureMakeGradient(scr, type, &color1, &color2);
 
 	} else if (strcasecmp(val, "igradient") == 0) {
 		RColor colors1[2], colors2[2];
 		int th1, th2;
-		XColor xcolor;
 		int i;
 
 		if (nelem != 7) {
@@ -750,21 +742,9 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		}
 
-		/* get from color */
 		for (i = 0; i < 2; i++) {
-			elem = WMGetFromPLArray(pl, 1 + i);
-			if (!elem || !WMIsPLString(elem))
+			if (!pl_array_rcolor(scr, pl, 1 + i, &colors1[i]))
 				return NULL;
-			val = WMGetFromPLString(elem);
-
-			if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-				wwarning(_("\"%s\" is not a valid color name"), val);
-				return NULL;
-			}
-			colors1[i].alpha = 255;
-			colors1[i].red = xcolor.red >> 8;
-			colors1[i].green = xcolor.green >> 8;
-			colors1[i].blue = xcolor.blue >> 8;
 		}
 		elem = WMGetFromPLArray(pl, 3);
 		if (!elem || !WMIsPLString(elem))
@@ -774,21 +754,9 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		if (th1 < 0)
 			th1 = 0;
 
-		/* get from color */
 		for (i = 0; i < 2; i++) {
-			elem = WMGetFromPLArray(pl, 4 + i);
-			if (!elem || !WMIsPLString(elem))
+			if (!pl_array_rcolor(scr, pl, 4 + i, &colors2[i]))
 				return NULL;
-			val = WMGetFromPLString(elem);
-
-			if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-				wwarning(_("\"%s\" is not a valid color name"), val);
-				return NULL;
-			}
-			colors2[i].alpha = 255;
-			colors2[i].red = xcolor.red >> 8;
-			colors2[i].green = xcolor.green >> 8;
-			colors2[i].blue = xcolor.blue >> 8;
 		}
 		elem = WMGetFromPLArray(pl, 6);
 		if (!elem || !WMIsPLString(elem))
@@ -824,29 +792,16 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		colors = wmalloc(sizeof(RColor *) * (count + 1));
 
 		for (i = 0; i < count; i++) {
-			elem = WMGetFromPLArray(pl, i + 1);
-			if (!elem || !WMIsPLString(elem)) {
-				for (--i; i >= 0; --i) {
+			if (!pl_array_xcolor(scr, pl, i + 1, &color)) {
+				for (--i; i >= 0; --i)
 					wfree(colors[i]);
-				}
 				wfree(colors);
 				return NULL;
 			}
-			val = WMGetFromPLString(elem);
-
-			if (!wParseColor(scr->w_colormap, val, &color)) {
-				wwarning(_("\"%s\" is not a valid color name"), val);
-				for (--i; i >= 0; --i) {
-					wfree(colors[i]);
-				}
-				wfree(colors);
-				return NULL;
-			} else {
-				colors[i] = wmalloc(sizeof(RColor));
-				colors[i]->red = color.red >> 8;
-				colors[i]->green = color.green >> 8;
-				colors[i]->blue = color.blue >> 8;
-			}
+			colors[i] = wmalloc(sizeof(RColor));
+			colors[i]->red = color.red >> 8;
+			colors[i]->green = color.green >> 8;
+			colors[i]->blue = color.blue >> 8;
 		}
 		colors[i] = NULL;
 
@@ -866,17 +821,8 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		else
 			type = WTP_TILE;
 
-		/* get color */
-		elem = WMGetFromPLArray(pl, 2);
-		if (!elem || !WMIsPLString(elem)) {
+		if (!pl_array_xcolor(scr, pl, 2, &color))
 			return NULL;
-		}
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &color)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
 
 		/* file name */
 		elem = WMGetFromPLArray(pl, 1);
@@ -888,7 +834,6 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 	} else if (strcasecmp(val, "thgradient") == 0
 		   || strcasecmp(val, "tvgradient") == 0 || strcasecmp(val, "tdgradient") == 0) {
 		RColor color1, color2;
-		XColor xcolor;
 		int opacity;
 		int style;
 
@@ -904,36 +849,9 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 			return NULL;
 		}
 
-		/* get from color */
-		elem = WMGetFromPLArray(pl, 3);
-		if (!elem || !WMIsPLString(elem))
+		if (!pl_array_rcolor(scr, pl, 3, &color1) ||
+		    !pl_array_rcolor(scr, pl, 4, &color2))
 			return NULL;
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
-		color1.alpha = 255;
-		color1.red = xcolor.red >> 8;
-		color1.green = xcolor.green >> 8;
-		color1.blue = xcolor.blue >> 8;
-
-		/* get to color */
-		elem = WMGetFromPLArray(pl, 4);
-		if (!elem || !WMIsPLString(elem)) {
-			return NULL;
-		}
-		val = WMGetFromPLString(elem);
-
-		if (!wParseColor(scr->w_colormap, val, &xcolor)) {
-			wwarning(_("\"%s\" is not a valid color name"), val);
-			return NULL;
-		}
-		color2.alpha = 255;
-		color2.red = xcolor.red >> 8;
-		color2.green = xcolor.green >> 8;
-		color2.blue = xcolor.blue >> 8;
 
 		/* get opacity */
 		elem = WMGetFromPLArray(pl, 2);
