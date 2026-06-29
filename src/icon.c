@@ -427,6 +427,13 @@ char *get_name_for_instance_class(const char *wm_instance, const char *wm_class)
 	char *suffix;
 	int len;
 
+	/* Reject path separators in WM_CLASS/WM_INSTANCE to prevent
+	 * path traversal via the icon cache filename */
+	if (wm_class && strchr(wm_class, '/'))
+		wm_class = NULL;
+	if (wm_instance && strchr(wm_instance, '/'))
+		wm_instance = NULL;
+
 	if (wm_class && wm_instance) {
 		len = strlen(wm_class) + strlen(wm_instance) + 2;
 		suffix = wmalloc(len);

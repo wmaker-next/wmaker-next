@@ -1089,7 +1089,6 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 					unsigned long left, unsigned long right)
 {
 	int i;
-	int was_fullscreen = wwin->flags.fullscreen;
 	long monitor;
 	WMRect rect1, rect2;
 
@@ -1106,21 +1105,11 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 		return;
 	}
 
-	wwin->flags.fullscreen = True;
-	wWindowConfigureBorders(wwin);
-	ChangeStackingLevel(wwin->frame->core, WMFullscreenLevel);
-
-	/* _NET_WM_FULLSCREEN_MONITORS may retarget an already-fullscreen
-	 * window between heads, only snapshot the restore geometry on the
-	 * transition into fullscreen so wUnfullscreenWindow() returns to
-	 * the original size rather than the previous spanned head rect */
-	if (!was_fullscreen) {
-		wwin->bfs_geometry.x = wwin->frame_x;
-		wwin->bfs_geometry.y = wwin->frame_y;
-		wwin->bfs_geometry.width = wwin->frame->core->width;
-		wwin->bfs_geometry.height = wwin->frame->core->height;
-		wwin->bfs_maximized = wwin->flags.maximized;
-	}
+	/* Per the EWMH spec, _NET_WM_FULLSCREEN_MONITORS must not change
+	 * the window state, only update which monitors a fullscreen window
+	 * spans. Only reconfigure if the window is already fullscreen. */
+	if (!wwin->flags.fullscreen)
+		return;
 
 	i = 0;
 	monitor = wwin->flags.fullscreen_monitors[i];
@@ -1133,10 +1122,10 @@ void wFullscreenMonitorsWindow(WWindow *wwin, unsigned long top, unsigned long b
 	}
 	wWindowConfigure(wwin, rect1.pos.x, rect1.pos.y, rect1.size.width, rect1.size.height);
 
-	wwin->screen_ptr->bfs_focused_window = wwin->screen_ptr->focused_window;
-	wSetFocusTo(wwin->screen_ptr, wwin);
-
-	WMPostNotificationName(WMNChangedState, wwin, "fullscreen");
+	/* echo the indices back as the _NET_WM_FULLSCREEN_MONITORS property
+	 * via updateStateHint, which writes it when flags.fullscreen and
+	 * fullscreen_monitors[0] != -1 */
+	WMPostNotificationName(WMNChangedState, wwin, "fullscreen-monitors");
 }
 
 void wFullscreenWindow(WWindow *wwin)
