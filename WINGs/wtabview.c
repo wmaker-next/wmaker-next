@@ -417,6 +417,8 @@ void WMSelectPreviousTabViewItem(WMTabView * tPtr)
 
 WMTabViewItem *WMGetSelectedTabViewItem(WMTabView * tPtr)
 {
+	if (tPtr->selectedItem < 0 || tPtr->selectedItem >= tPtr->itemCount)
+		return NULL;
 	return tPtr->items[tPtr->selectedItem];
 }
 
@@ -436,16 +438,22 @@ void WMSelectTabViewItemAtIndex(WMTabView * tPtr, int index)
 {
 	WMTabViewItem *item;
 
-	if (index == tPtr->selectedItem) {
+	if (tPtr->itemCount <= 0)
 		return;
-	}
 
 	if (index < 0)
 		index = 0;
 	else if (index >= tPtr->itemCount)
 		index = tPtr->itemCount - 1;
 
-	item = tPtr->items[tPtr->selectedItem];
+	if (index == tPtr->selectedItem) {
+		return;
+	}
+
+	if (tPtr->selectedItem < 0 || tPtr->selectedItem >= tPtr->itemCount)
+		item = NULL;
+	else
+		item = tPtr->items[tPtr->selectedItem];
 
 	if (tPtr->delegate && tPtr->delegate->shouldSelectItem)
 		if (!(*tPtr->delegate->shouldSelectItem) (tPtr->delegate, tPtr, tPtr->items[index]))
@@ -454,7 +462,8 @@ void WMSelectTabViewItemAtIndex(WMTabView * tPtr, int index)
 	if (tPtr->delegate && tPtr->delegate->willSelectItem)
 		(*tPtr->delegate->willSelectItem) (tPtr->delegate, tPtr, tPtr->items[index]);
 
-	W_UnmapTabViewItem(item);
+	if (item != NULL)
+		W_UnmapTabViewItem(item);
 
 	item = tPtr->items[index];
 
