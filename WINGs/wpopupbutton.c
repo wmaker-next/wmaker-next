@@ -18,6 +18,8 @@ typedef struct W_PopUpButton {
 
 	WMView *menuView;	/* override redirect popup menu */
 
+	Pixmap menuPixmap;	/* background pixmap for menuView, freed on popdown/destroy */
+
 	WMHandlerID timer;	/* for autoscroll */
 
 	 /**/ int scrollStartY;	/* for autoscroll */
@@ -499,7 +501,10 @@ static void popUpMenu(PopUpButton * bPtr)
 	}
 	W_MoveView(bPtr->menuView, x, y);
 
-	XSetWindowBackgroundPixmap(scr->display, bPtr->menuView->window, makeMenuPixmap(bPtr));
+	if (bPtr->menuPixmap != None)
+		XFreePixmap(scr->display, bPtr->menuPixmap);
+	bPtr->menuPixmap = makeMenuPixmap(bPtr);
+	XSetWindowBackgroundPixmap(scr->display, bPtr->menuView->window, bPtr->menuPixmap);
 	XClearWindow(scr->display, bPtr->menuView->window);
 
 	if (W_VIEW_WIDTH(bPtr->menuView) != W_VIEW_WIDTH(bPtr->view))
@@ -738,6 +743,9 @@ static void destroyPopUpButton(PopUpButton * bPtr)
 
 	if (bPtr->caption)
 		wfree(bPtr->caption);
+
+	if (bPtr->menuPixmap != None)
+		XFreePixmap(bPtr->view->screen->display, bPtr->menuPixmap);
 
 	/* have to destroy explicitly because the popup is a toplevel */
 	W_DestroyView(bPtr->menuView);
