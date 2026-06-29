@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
 #ifdef __FreeBSD__
@@ -150,32 +151,59 @@ static int handleXIO(Display * xio_dpy)
 	return 0;
 }
 
+/* self-pipe written by signal handlers to wake the main event loop */
+static int sig_pipe[2] = { -1, -1 };
+
+static void handleSigPipeInput(int fd, int mask, void *cdata)
+{
+	char buf[32];
+
+	(void) mask;
+	(void) cdata;
+
+	/* drain the wake-up bytes */
+	while (read(fd, buf, sizeof(buf)) > 0)
+		;
+
+	if (WCHECK_STATE(WSTATE_NEED_RESTART))
+		wwarning("got signal - restarting");
+	else if (WCHECK_STATE(WSTATE_NEED_REREAD))
+		wwarning("got signal - rereading defaults");
+	else if (WCHECK_STATE(WSTATE_NEED_EXIT))
+		wwarning("got signal - exiting...");
+
+	/* act on the state flags from main-thread context */
+	DispatchEvent(NULL);
+}
+
 /*
  *----------------------------------------------------------------------
  * handleExitSig--
  * 	User generated exit signal handler.
+ *
+ * 	Only async-signal-safe calls here: set the state flag and write
+ * 	one byte to the self-pipe so the main event loop wakes up and
+ * 	runs DispatchEvent(NULL) from handleSigPipeInput.
  *----------------------------------------------------------------------
  */
 static RETSIGTYPE handleExitSig(int sig)
 {
-	sigset_t sigs;
-
-	sigfillset(&sigs);
-	sigprocmask(SIG_BLOCK, &sigs, NULL);
+	int save_errno = errno;
 
 	if (sig == SIGUSR1) {
-		wwarning("got signal %i - restarting", sig);
 		SIG_WCHANGE_STATE(WSTATE_NEED_RESTART);
 	} else if (sig == SIGUSR2) {
-		wwarning("got signal %i - rereading defaults", sig);
 		SIG_WCHANGE_STATE(WSTATE_NEED_REREAD);
 	} else if (sig == SIGTERM || sig == SIGINT || sig == SIGHUP) {
-		wwarning("got signal %i - exiting...", sig);
 		SIG_WCHANGE_STATE(WSTATE_NEED_EXIT);
 	}
 
-	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
-	DispatchEvent(NULL);	/* Dispatch events immediately. */
+	if (sig_pipe[1] >= 0) {
+		ssize_t r = write(sig_pipe[1], "x", 1);
+		(void) r;
+	}
+
+	errno = save_errno;
 }
 
 /* Dummy signal handler */
@@ -193,7 +221,10 @@ static void dummyHandler(int sig)
  */
 static RETSIGTYPE handleSig(int sig)
 {
-	wfatal("got signal %i", sig);
+	static const char msg[] = "wmaker: got fatal signal\n";
+	ssize_t r = write(STDERR_FILENO, msg, sizeof(msg) - 1);
+
+	(void) r;
 
 	/* Setting the signal behaviour back to default and then reraising the
 	 * signal is a cleaner way to make program exit and core dump than calling
@@ -236,6 +267,11 @@ static RETSIGTYPE buryChild(int foo)
 	}
 
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+
+	if (sig_pipe[1] >= 0) {
+		ssize_t r = write(sig_pipe[1], "x", 1);
+		(void) r;
+	}
 
 	errno = save_errno;
 }
@@ -396,6 +432,19 @@ void StartUp(Bool defaultScreenOnly)
 	XFreeGC(dpy, gc);
 	wPreferences.cursor[WCUR_EMPTY] = XCreatePixmapCursor(dpy, cur, cur, &black, &black, 0, 0);
 	XFreePixmap(dpy, cur);
+
+	/* self-pipe so signal handlers can wake the main loop without
+	 * calling async-signal-unsafe functions from handler context */
+	if (pipe(sig_pipe) == 0) {
+		fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+		fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
+		fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+		fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+		WMAddInputHandler(sig_pipe[0], WIReadMask, handleSigPipeInput, NULL);
+	} else {
+		werror("could not create signal wake-up pipe");
+		sig_pipe[0] = sig_pipe[1] = -1;
+	}
 
 	/* emergency exit... */
 	sig_action.sa_handler = handleSig;

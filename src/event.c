@@ -140,10 +140,10 @@ static void wdelete_death_handler(WMagicNumber id)
 
 void NotifyDeadProcess(pid_t pid, int wait_status)
 {
-	if (deadProcessPtr >= MAX_DEAD_PROCESSES - 1) {
-		wwarning("stack overflow: too many dead processes");
+	/* called from the SIGCHLD handler, so only async-signal-safe
+	 * operations here: silently drop overflow rather than wwarning */
+	if (deadProcessPtr >= MAX_DEAD_PROCESSES - 1)
 		return;
-	}
 	/* stack the process to be handled later,
 	 * as this is called from the signal handler */
 	deadProcesses[deadProcessPtr].pid = pid;
