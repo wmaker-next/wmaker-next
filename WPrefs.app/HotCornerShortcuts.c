@@ -202,7 +202,7 @@ static void createPanel(Panel * p)
 {
 	_Panel *panel = (_Panel *) p;
 	int i;
-	char *buf1, *buf2;
+	char buf[64];
 	WMColor *color;
 	WMFont *font;
 	char *path;
@@ -274,12 +274,7 @@ static void createPanel(Panel * p)
 
 	WMSetFrameTitle(panel->hcdelayF, _("Hot Corner Delay"));
 
-	buf1 = wmalloc(strlen(DELAY_ICON) + 1);
-	buf2 = wmalloc(strlen(DELAY_ICON_S) + 1);
-
 	for (i = 0; i < 5; i++) {
-		char *path;
-
 		panel->hcdelayB[i] = WMCreateCustomButton(panel->hcdelayF, WBBStateChangeMask);
 		WMResizeWidget(panel->hcdelayB[i], 25, 25);
 		WMMoveWidget(panel->hcdelayB[i], 12 + (30 * i), 25);
@@ -288,33 +283,11 @@ static void createPanel(Panel * p)
 		WMSetButtonAction(panel->hcdelayB[i], pushDelayButton, panel);
 		if (i > 0)
 			WMGroupButtons(panel->hcdelayB[0], panel->hcdelayB[i]);
-		snprintf(buf1, strlen(DELAY_ICON) + 1, DELAY_ICON, i);
-		snprintf(buf2, strlen(DELAY_ICON_S) + 1, DELAY_ICON_S, i);
-		path = LocateImage(buf1);
-		if (path) {
-			panel->icon = WMCreatePixmapFromFile(scr, path);
-			if (panel->icon) {
-				WMSetButtonImage(panel->hcdelayB[i], panel->icon);
-				WMReleasePixmap(panel->icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
-		path = LocateImage(buf2);
-		if (path) {
-			panel->icon = WMCreatePixmapFromFile(scr, path);
-			if (panel->icon) {
-				WMSetButtonAltImage(panel->hcdelayB[i], panel->icon);
-				WMReleasePixmap(panel->icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
+		snprintf(buf, sizeof(buf), DELAY_ICON, i);
+		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, False);
+		snprintf(buf, sizeof(buf), DELAY_ICON_S, i);
+		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, True);
 	}
-	wfree(buf1);
-	wfree(buf2);
 
 	panel->hcdelayT = WMCreateTextField(panel->hcdelayF);
 

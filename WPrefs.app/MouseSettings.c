@@ -432,7 +432,7 @@ static void createPanel(Panel * p)
 	_Panel *panel = (_Panel *) p;
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMPixmap *icon;
-	char *buf1, *buf2;
+	char buf[64];
 	int i;
 	RColor color;
 	char *path;
@@ -524,9 +524,6 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->ddelaF, 9, 142);
 	WMSetFrameTitle(panel->ddelaF, _("Double-Click Delay"));
 
-	buf1 = wmalloc(strlen(DELAY_ICON) + 2);
-	buf2 = wmalloc(strlen(DELAY_ICON_S) + 2);
-
 	for (i = 0; i < wlengthof(panel->ddelaB); i++) {
 		panel->ddelaB[i] = WMCreateCustomButton(panel->ddelaF, WBBStateChangeMask);
 		WMResizeWidget(panel->ddelaB[i], 25, 25);
@@ -537,33 +534,11 @@ static void createPanel(Panel * p)
 		if (i > 0) {
 			WMGroupButtons(panel->ddelaB[0], panel->ddelaB[i]);
 		}
-		snprintf(buf1, strlen(DELAY_ICON) + 2, DELAY_ICON, i + 1);
-		snprintf(buf2, strlen(DELAY_ICON_S) + 2, DELAY_ICON_S, i + 1);
-		path = LocateImage(buf1);
-		if (path) {
-			icon = WMCreatePixmapFromFile(scr, path);
-			if (icon) {
-				WMSetButtonImage(panel->ddelaB[i], icon);
-				WMReleasePixmap(icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
-		path = LocateImage(buf2);
-		if (path) {
-			icon = WMCreatePixmapFromFile(scr, path);
-			if (icon) {
-				WMSetButtonAltImage(panel->ddelaB[i], icon);
-				WMReleasePixmap(icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
+		snprintf(buf, sizeof(buf), DELAY_ICON, i + 1);
+		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, False);
+		snprintf(buf, sizeof(buf), DELAY_ICON_S, i + 1);
+		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, True);
 	}
-	wfree(buf1);
-	wfree(buf2);
 
 	panel->tester = CreateDoubleTest(panel->ddelaF, _("Test"));
 	WMResizeWidget(panel->tester, 84, 24);

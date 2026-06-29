@@ -441,6 +441,29 @@ void CreateImages(WMScreen *scr, RContext *rc, RImage *xis, const char *file,
 }
 
 
+void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, Bool alt)
+{
+	WMPixmap *icon;
+	char *path;
+
+	path = LocateImage(file);
+	if (!path)
+		return;
+
+	icon = WMCreatePixmapFromFile(scr, path);
+	if (icon) {
+		if (alt)
+			WMSetButtonAltImage(btn, icon);
+		else
+			WMSetButtonImage(btn, icon);
+		WMReleasePixmap(icon);
+	} else {
+		wwarning(_("could not load icon file %s"), path);
+	}
+	wfree(path);
+}
+
+
 void SetButtonAlphaImage(WMScreen *scr, WMButton *bPtr, const char *file)
 {
 	WMPixmap *icon;

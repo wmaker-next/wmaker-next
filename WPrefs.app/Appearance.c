@@ -2053,25 +2053,12 @@ static void createPanel(Panel * p)
 	WMSetFrameTitle(panel->mstyF, _("Menu Style"));
 
 	for (i = 0; i < wlengthof(menu_style); i++) {
-		WMPixmap *icon;
-		char *path;
-
 		panel->mstyB[i] = WMCreateButton(panel->mstyF, WBTOnOff);
 		WMResizeWidget(panel->mstyB[i], 54, 54);
 		WMMoveWidget(panel->mstyB[i], 15 + i * 65, 20);
 		WMSetButtonImagePosition(panel->mstyB[i], WIPImageOnly);
 		WMSetButtonAction(panel->mstyB[i], menuStyleCallback, panel);
-		path = LocateImage(menu_style[i].file_name);
-		if (path) {
-			icon = WMCreatePixmapFromFile(scr, path);
-			if (icon) {
-				WMSetButtonImage(panel->mstyB[i], icon);
-				WMReleasePixmap(icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
+		SetButtonImageFromFile(scr, panel->mstyB[i], menu_style[i].file_name, False);
 	}
 	WMGroupButtons(panel->mstyB[0], panel->mstyB[1]);
 	WMGroupButtons(panel->mstyB[0], panel->mstyB[2]);

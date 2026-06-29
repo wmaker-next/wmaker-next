@@ -96,6 +96,8 @@ char *LocateImage(const char *name);
 
 void SetButtonAlphaImage(WMScreen *scr, WMButton *bPtr, const char *file);
 
+void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, Bool alt);
+
 /* Loads `file' into `icon_normal'. If `icon_greyed' is not NULL,
  * combine `icon_normal' with some grey and then optionally with image
  * `xis', and store it in `icon_greyed' (typically to produce a

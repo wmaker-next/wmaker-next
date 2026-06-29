@@ -89,10 +89,8 @@ static void createPanel(Panel * p)
 {
 	_Panel *panel = (_Panel *) p;
 	WMScreen *scr = WMWidgetScreen(panel->parent);
-	WMPixmap *icon;
 	int i;
-	char *buf1, *buf2;
-	char *path;
+	char buf[64];
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
@@ -103,8 +101,6 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->scrF, 25, 20);
 	WMSetFrameTitle(panel->scrF, _("Menu Scrolling Speed"));
 
-	buf1 = wmalloc(strlen(SPEED_IMAGE) + 1);
-	buf2 = wmalloc(strlen(SPEED_IMAGE_S) + 1);
 	for (i = 0; i < wlengthof(panel->scrB); i++) {
 		panel->scrB[i] = WMCreateCustomButton(panel->scrF, WBBStateChangeMask);
 		WMResizeWidget(panel->scrB[i], 40, 40);
@@ -114,33 +110,11 @@ static void createPanel(Panel * p)
 		if (i > 0) {
 			WMGroupButtons(panel->scrB[0], panel->scrB[i]);
 		}
-		snprintf(buf1, strlen(SPEED_IMAGE) + 1, SPEED_IMAGE, i);
-		snprintf(buf2, strlen(SPEED_IMAGE_S) + 1, SPEED_IMAGE_S, i);
-		path = LocateImage(buf1);
-		if (path) {
-			icon = WMCreatePixmapFromFile(scr, path);
-			if (icon) {
-				WMSetButtonImage(panel->scrB[i], icon);
-				WMReleasePixmap(icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
-		path = LocateImage(buf2);
-		if (path) {
-			icon = WMCreatePixmapFromFile(scr, path);
-			if (icon) {
-				WMSetButtonAltImage(panel->scrB[i], icon);
-				WMReleasePixmap(icon);
-			} else {
-				wwarning(_("could not load icon file %s"), path);
-			}
-			wfree(path);
-		}
+		snprintf(buf, sizeof(buf), SPEED_IMAGE, i);
+		SetButtonImageFromFile(scr, panel->scrB[i], buf, False);
+		snprintf(buf, sizeof(buf), SPEED_IMAGE_S, i);
+		SetButtonImageFromFile(scr, panel->scrB[i], buf, True);
 	}
-	wfree(buf1);
-	wfree(buf2);
 
 	WMMapSubwidgets(panel->scrF);
 
@@ -155,32 +129,12 @@ static void createPanel(Panel * p)
 	WMResizeWidget(panel->alinB, 48, 48);
 	WMMoveWidget(panel->alinB, 56, 25);
 	WMSetButtonImagePosition(panel->alinB, WIPImageOnly);
-	path = LocateImage(MENU_ALIGN1);
-	if (path) {
-		icon = WMCreatePixmapFromFile(scr, path);
-		if (icon) {
-			WMSetButtonImage(panel->alinB, icon);
-			WMReleasePixmap(icon);
-		} else {
-			wwarning(_("could not load icon file %s"), path);
-		}
-		wfree(path);
-	}
+	SetButtonImageFromFile(scr, panel->alinB, MENU_ALIGN1, False);
 	panel->aliyB = WMCreateButton(panel->aliF, WBTOnOff);
 	WMResizeWidget(panel->aliyB, 48, 48);
 	WMMoveWidget(panel->aliyB, 120, 25);
 	WMSetButtonImagePosition(panel->aliyB, WIPImageOnly);
-	path = LocateImage(MENU_ALIGN2);
-	if (path) {
-		icon = WMCreatePixmapFromFile(scr, path);
-		if (icon) {
-			WMSetButtonImage(panel->aliyB, icon);
-			WMReleasePixmap(icon);
-		} else {
-			wwarning(_("could not load icon file %s"), path);
-		}
-		wfree(path);
-	}
+	SetButtonImageFromFile(scr, panel->aliyB, MENU_ALIGN2, False);
 	WMGroupButtons(panel->alinB, panel->aliyB);
 
 	WMMapSubwidgets(panel->aliF);
