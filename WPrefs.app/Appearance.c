@@ -488,7 +488,7 @@ static int isPixmap(WMPropList * prop)
 
 	p = WMGetFromPLArray(prop, 0);
 	s = WMGetFromPLString(p);
-	if (strcasecmp(&s[1], "pixmap") == 0)
+	if (s && strcasecmp(&s[1], "pixmap") == 0)
 		return 1;
 	else
 		return 0;
@@ -557,6 +557,8 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 
 	type = WMGetFromPLString(WMGetFromPLArray(texture, 0));
 
+	if (!type)
+		return None;
 	if (strcasecmp(&type[1], "pixmap") == 0 ||
 	    (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T')) {
 		char *path;
