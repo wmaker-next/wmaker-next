@@ -17,6 +17,8 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 
+#include <WINGs/WXProp.h>
+
 #define CHUNK_SIZE 32768
 /* same cap the production daemon uses, the test peer is local-trusted but
  * keeping the bound here means the harness exercises the same limits */
@@ -43,18 +45,7 @@ static struct {
 
 static void send_notify(XSelectionRequestEvent *req, Atom property)
 {
-	XEvent ev;
-
-	memset(&ev, 0, sizeof(ev));
-	ev.xselection.type = SelectionNotify;
-	ev.xselection.display = req->display;
-	ev.xselection.requestor = req->requestor;
-	ev.xselection.selection = req->selection;
-	ev.xselection.target = req->target;
-	ev.xselection.time = req->time;
-	ev.xselection.property = property;
-	XSendEvent(dpy, req->requestor, False, 0, &ev);
-	XFlush(dpy);
+	WXSendSelectionNotify(dpy, req, property);
 }
 
 static void serve_request(XSelectionRequestEvent *req, int use_incr)

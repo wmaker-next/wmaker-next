@@ -32,6 +32,7 @@
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
+#include <WINGs/WXProp.h>
 
 #include "config.h"
 
@@ -871,18 +872,7 @@ static int start_incr(ClipBuffer *source, XSelectionRequestEvent *req,
 
 static void send_selection_notify(XSelectionRequestEvent *req, Atom property)
 {
-	XEvent ev;
-
-	memset(&ev, 0, sizeof(ev));
-	ev.xselection.type = SelectionNotify;
-	ev.xselection.display = req->display;
-	ev.xselection.requestor = req->requestor;
-	ev.xselection.selection = req->selection;
-	ev.xselection.target = req->target;
-	ev.xselection.time = req->time;
-	ev.xselection.property = property;
-	XSendEvent(dpy, req->requestor, False, 0, &ev);
-	XFlush(dpy);
+	WXSendSelectionNotify(dpy, req, property);
 }
 
 static void handle_selection_request(XSelectionRequestEvent *req)

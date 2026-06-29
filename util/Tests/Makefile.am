@@ -4,7 +4,7 @@ check_PROGRAMS = wmclipd_cliptest
 TESTS =
 DRIVE_TESTS = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
 
-AM_CPPFLAGS = $(DFLAGS) @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs @HEADER_SEARCH_PATH@
 
 wmclipd_cliptest_LDADD = @XLFLAGS@ @XLIBS@
 

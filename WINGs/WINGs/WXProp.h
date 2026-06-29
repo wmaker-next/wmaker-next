@@ -24,6 +24,7 @@
 #include <X11/Xlib.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -155,6 +156,31 @@ void WXDeleteProperty (Display *dpy, Window w, Atom prop);
 void WXSendClientMessage(Display *dpy, Window dest, long event_mask,
                          Window about, Atom message_type,
                          long l0, long l1, long l2, long l3, long l4);
+
+/* --- Selection -------------------------------------------------------- */
+
+/* Reply to a SelectionRequest with a SelectionNotify carrying the given
+ * property (None to refuse). Inline so selection owners that link only
+ * Xlib can use it without pulling in libWINGs. */
+static inline void WXSendSelectionNotify(Display *dpy,
+                                         const XSelectionRequestEvent *req,
+                                         Atom property)
+{
+	XEvent ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.xselection.type = SelectionNotify;
+	ev.xselection.serial = 0;
+	ev.xselection.send_event = True;
+	ev.xselection.display = req->display;
+	ev.xselection.requestor = req->requestor;
+	ev.xselection.selection = req->selection;
+	ev.xselection.target = req->target;
+	ev.xselection.property = property;
+	ev.xselection.time = req->time;
+	XSendEvent(dpy, req->requestor, False, 0, &ev);
+	XFlush(dpy);
+}
 
 #ifdef __cplusplus
 }

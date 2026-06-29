@@ -5,6 +5,7 @@
 #include <X11/Xatom.h>
 
 #include "WINGsP.h"
+#include "WINGs/WXProp.h"
 
 /* Maximum total selection payload accepted, both for a single direct
  * property read and for the accumulated INCR transfer. Large enough for
@@ -151,22 +152,7 @@ static Bool writeSelection(Display * dpy, Window requestor, Atom property, Atom 
 
 static void notifySelection(XEvent * event, Atom prop)
 {
-	XEvent ev;
-
-	/* printf("event to %x\n", event->xselectionrequest.requestor); */
-
-	ev.xselection.type = SelectionNotify;
-	ev.xselection.serial = 0;
-	ev.xselection.send_event = True;
-	ev.xselection.display = event->xselectionrequest.display;
-	ev.xselection.requestor = event->xselectionrequest.requestor;
-	ev.xselection.target = event->xselectionrequest.target;
-	ev.xselection.selection = event->xselectionrequest.selection;
-	ev.xselection.property = prop;
-	ev.xselection.time = event->xselectionrequest.time;
-
-	XSendEvent(event->xany.display, event->xselectionrequest.requestor, False, 0, &ev);
-	XFlush(event->xany.display);
+	WXSendSelectionNotify(event->xany.display, &event->xselectionrequest, prop);
 }
 
 static void handleRequestEvent(XEvent * event)
