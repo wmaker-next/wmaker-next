@@ -1200,6 +1200,8 @@ static void handleActionEvents(XEvent * event, void *data)
 		len = W_LookupString(lPtr->view, &event->xkey, buffer, (int)sizeof(buffer) - 1, &ksym, &status);
 		if (len < 0)
 			break;
+		if (len > (int)sizeof(buffer) - 1)
+			len = (int)sizeof(buffer) - 1;
 		if (len > 0)
 			buffer[len] = '\0';
 

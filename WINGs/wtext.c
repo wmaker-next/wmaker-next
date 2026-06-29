@@ -2191,11 +2191,17 @@ static void handleTextKeyPress(Text * tPtr, XEvent * event)
 	char buffer[64];
 	KeySym ksym;
 	int control_pressed = False;
+	int n;
 	TextBlock *tb = NULL;
 
 	if (((XKeyEvent *) event)->state & ControlMask)
 		control_pressed = True;
-	buffer[XLookupString(&event->xkey, buffer, 63, &ksym, NULL)] = 0;
+	n = XLookupString(&event->xkey, buffer, (int)sizeof(buffer) - 1, &ksym, NULL);
+	if (n < 0)
+		n = 0;
+	else if (n > (int)sizeof(buffer) - 1)
+		n = (int)sizeof(buffer) - 1;
+	buffer[n] = 0;
 
 	switch (ksym) {
 
