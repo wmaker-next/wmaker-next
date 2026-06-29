@@ -821,7 +821,7 @@ static char *getCurrentFileName(WMFilePanel * panel)
 
 	path = WMGetBrowserPath(panel->browser);
 
-	if (!path)
+	if (!path || !*path)
 		return NULL;
 
 	if (path[strlen(path) -1] != '/')
