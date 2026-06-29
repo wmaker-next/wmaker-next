@@ -144,8 +144,7 @@ Bool fileInPath(const char *file)
 	/* if it has a directory separator at random places,
 	 * we might know better.
 	 */
-	p = strchr(file, '/');
-	if (p)
+	if (strchr(file, '/'))
 		return False;
 
 	if (!path) {
