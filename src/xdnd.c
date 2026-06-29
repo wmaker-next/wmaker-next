@@ -142,6 +142,9 @@ Bool wXDNDProcessSelection(XEvent *event)
 	char *delme = NULL;
 	Window selowner = XGetSelectionOwner(dpy, _XA_XdndSelection);
 
+	if (!scr)
+		return False;
+
 	/* only act on the conversion we requested in the XdndDrop handler,
 	 * a forged SelectionNotify must match every field we passed to
 	 * XConvertSelection() including the requestor window we own */
@@ -257,6 +260,9 @@ static Bool acceptXDND(Window window)
 	WScreen *scr = wScreenForWindow(window);
 	WDock *dock;
 	int icon_pos, i;
+
+	if (!scr)
+		return False;
 
 	icon_pos = -1;
 	dock = scr->dock;
