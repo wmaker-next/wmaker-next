@@ -384,7 +384,10 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 		}
 		if (tw > width)
 			width = tw;
-		ptr = ptr2 + 1;
+		if (ptr2)
+			ptr = ptr2 + 1;
+		else
+			break;
 	}
 
 	width += 16;
