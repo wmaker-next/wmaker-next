@@ -41,6 +41,7 @@
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
+#include <WINGs/WXProp.h>
 
 #include "../src/wconfig.h"
 
@@ -401,7 +402,6 @@ int main(int argc, char **argv)
 	int i, ch, ignflag = 0;
 	int ignoreCount = 0;
 	char *ignoreList[MAX_OPTIONS];
-	XEvent ev;
 
 	struct option longopts[] = {
 		{ "version",	no_argument,		NULL,			'v' },
@@ -546,16 +546,7 @@ int main(int argc, char **argv)
 	 * reachable, e.g. talking to an older Window Maker */
 	dpy = XOpenDisplay("");
 	if (dpy) {
-		memset(&ev, 0, sizeof(XEvent));
-
-		ev.xclient.type = ClientMessage;
-		ev.xclient.message_type = XInternAtom(dpy, "_WINDOWMAKER_COMMAND", False);
-		ev.xclient.window = DefaultRootWindow(dpy);
-		ev.xclient.format = 8;
-		wstrlcpy(ev.xclient.data.b, "Reconfigure", sizeof(ev.xclient.data.b));
-
-		XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureRedirectMask, &ev);
-		XFlush(dpy);
+		WXSendWmakerCommand(dpy, "Reconfigure");
 		XCloseDisplay(dpy);
 	}
 

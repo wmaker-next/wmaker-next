@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <X11/Xatom.h>
+#include <WINGs/WXProp.h>
 
 #ifdef HAVE_STDNORETURN
 #include <stdnoreturn.h>
@@ -93,7 +94,6 @@ static void save(WMWidget * w, void *data)
 	WMPropList *keyList;
 	WMPropList *key;
 	WMPropList *reply;
-	XEvent ev;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) data;
@@ -138,17 +138,7 @@ static void save(WMWidget * w, void *data)
 
 	/* fall back to the legacy X ClientMessage when no IPC socket is
 	 * reachable, e.g. talking to an older Window Maker */
-	memset(&ev, 0, sizeof(XEvent));
-
-	ev.xclient.type = ClientMessage;
-	ev.xclient.message_type = XInternAtom(WMScreenDisplay(WMWidgetScreen(w)), "_WINDOWMAKER_COMMAND", False);
-	ev.xclient.window = DefaultRootWindow(WMScreenDisplay(WMWidgetScreen(w)));
-	ev.xclient.format = 8;
-	wstrlcpy(ev.xclient.data.b, "Reconfigure", sizeof(ev.xclient.data.b));
-
-	XSendEvent(WMScreenDisplay(WMWidgetScreen(w)),
-		   DefaultRootWindow(WMScreenDisplay(WMWidgetScreen(w))), False, SubstructureRedirectMask, &ev);
-	XFlush(WMScreenDisplay(WMWidgetScreen(w)));
+	WXSendWmakerCommand(WMScreenDisplay(WMWidgetScreen(w)), "Reconfigure");
 }
 
 static void undo(WMWidget * w, void *data)

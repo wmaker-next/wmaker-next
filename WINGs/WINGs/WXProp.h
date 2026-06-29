@@ -182,6 +182,27 @@ static inline void WXSendSelectionNotify(Display *dpy,
 	XFlush(dpy);
 }
 
+/* --- Legacy WM command ------------------------------------------------ */
+
+/* Send a format-8 _WINDOWMAKER_COMMAND ClientMessage to the root window.
+ * Kept inline so callers that link only Xlib + libWUtil (setstyle) can
+ * use it without pulling in libWINGs. This is the legacy fallback for
+ * tools that should normally talk to the IPC socket via wIPCCommand(),
+ * retained so they still work against an older window manager. */
+static inline void WXSendWmakerCommand(Display *dpy, const char *cmd)
+{
+	XEvent ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.xclient.type = ClientMessage;
+	ev.xclient.message_type = XInternAtom(dpy, "_WINDOWMAKER_COMMAND", False);
+	ev.xclient.window = DefaultRootWindow(dpy);
+	ev.xclient.format = 8;
+	strncpy(ev.xclient.data.b, cmd, sizeof(ev.xclient.data.b));
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureRedirectMask, &ev);
+	XFlush(dpy);
+}
+
 #ifdef __cplusplus
 }
 #endif
