@@ -96,9 +96,7 @@ static void test_mime_magic(void)
 	fclose(f);
 	CHECK_STR(wXDGMimeTypeForPath(file), "text/plain");
 
-	snprintf(file, sizeof(file), "rm -rf '%s'", dir);
-	if (system(file) != 0)
-		perror("rm");
+	(void)wspawnvp_wait((char *[]){"rm", "-rf", dir, NULL});
 }
 
 static void test_apps_for_mime(void)
@@ -239,9 +237,7 @@ static void test_doc_list(void)
 	wXDGDocListInvalidate();
 
 	/* best-effort cleanup of the fixture tree */
-	snprintf(sub, sizeof(sub), "rm -rf '%s'", root);
-	if (system(sub) != 0)
-		perror("rm");
+	(void)wspawnvp_wait((char *[]){"rm", "-rf", root, NULL});
 }
 
 static void test_fuzzy_score(void)
