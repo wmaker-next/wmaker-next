@@ -435,14 +435,15 @@ int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
 
 static RImage *makeRImageFromARGBData(const uint32_t *data)
 {
-	int size, width, height, i;
+	size_t size;
+	int width, height, i;
 	RImage *image;
 	unsigned char *imgdata;
 	uint32_t pixel;
 
 	width = data[0];
 	height = data[1];
-	size = width * height;
+	size = (size_t)width * (size_t)height;
 
 	if (size == 0)
 		return NULL;
@@ -451,7 +452,7 @@ static RImage *makeRImageFromARGBData(const uint32_t *data)
 	if (!image)
 		return NULL;
 
-	for (imgdata = image->data, i = 2; i < size + 2; i++, imgdata += 4) {
+	for (imgdata = image->data, i = 2; (size_t)i < size + 2; i++, imgdata += 4) {
 		pixel = data[i];
 		imgdata[3] = (pixel >> 24) & 0xff;	/* A */
 		imgdata[0] = (pixel >> 16) & 0xff;	/* R */
@@ -752,6 +753,26 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 		updateShowDesktop(scr, False);
 	}
 }
+
+#ifdef DEBUG_WMSPEC
+/* XGetAtomName returns a malloc'd string that must be XFree'd, and
+ * returns NULL for an invalid atom; both are UB for %s. Return a
+ * static buffer instead, freeing the Xlib allocation. */
+static const char *atom_name(Atom atom)
+{
+	static char buf[2][64];
+	static int slot;
+	char *name = XGetAtomName(dpy, atom);
+	char *out = buf[slot ^= 1];
+
+	if (name) {
+		snprintf(out, sizeof(buf[0]), "%s", name);
+		XFree(name);
+		return out;
+	}
+	return "<bad-atom>";
+}
+#endif
 
 void wNETWMInitStuff(WScreen *scr)
 {
@@ -1510,7 +1531,7 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 
 	} else {
 #ifdef DEBUG_WMSPEC
-		wmessage("doStateAtom unknown atom %s set %d", XGetAtomName(dpy, state), set);
+		wmessage("doStateAtom unknown atom %s set %d", atom_name(state), set);
 #endif
 	}
 }
@@ -1975,7 +1996,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	WWindow *wwin;
 
 #ifdef DEBUG_WMSPEC
-	wmessage("processClientMessage type %s", XGetAtomName(dpy, event->message_type));
+	wmessage("processClientMessage type %s", atom_name(event->message_type));
 #endif
 
 	/* every NETWM client message carries 32-bit data fields, refuse
@@ -2213,11 +2234,11 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 
 #ifdef DEBUG_WMSPEC
 		wmessage("net_wm_state set %ld a1 %s a2 %s", set,
-		       XGetAtomName(dpy, event->data.l[1]), XGetAtomName(dpy, event->data.l[2]));
+		       atom_name(event->data.l[1]), atom_name(event->data.l[2]));
 #endif
 
 		doStateAtom(wwin, (Atom) event->data.l[1], set, False);
-		if (event->data.l[2])
+		if (event->data.l[2] && event->data.l[2] != event->data.l[1])
 			doStateAtom(wwin, (Atom) event->data.l[2], set, False);
 
 		if (wwin->flags.maximized != maximized && !wwin->flags.fullscreen) {
@@ -2343,7 +2364,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	}
 
 #ifdef DEBUG_WMSPEC
-	wmessage("processClientMessage unsupported type %s", XGetAtomName(dpy, event->message_type));
+	wmessage("processClientMessage unsupported type %s", atom_name(event->message_type));
 #endif
 	return False;
 }
@@ -2351,7 +2372,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event)
 {
 #ifdef DEBUG_WMSPEC
-	wmessage("clientHintChange type %s", XGetAtomName(dpy, event->atom));
+	wmessage("clientHintChange type %s", atom_name(event->atom));
 #endif
 
 	if (event->atom == net_wm_strut || event->atom == net_wm_strut_partial) {
@@ -2450,13 +2471,14 @@ static void handlePingTimeout(void *cdata)
 
 	wwin->net_ping.timer = NULL;
 
+	wretain(wwin);
+
 	title = (wwin->frame && wwin->frame->title) ? wwin->frame->title : "";
 	msg = wstrconcat(title,
 			 _(" is not responding.\n\n"
 			   "You can wait for it to continue or force it to quit, "
 			   "losing any unsaved changes."));
 
-	wretain(wwin);
 	result = wMessageDialog(wwin->screen_ptr, _("Application Not Responding"),
 				msg, _("Force Quit"), _("Wait"), NULL);
 	wfree(msg);
