@@ -174,9 +174,13 @@ static int incrToFit(TextField * tPtr)
 {
 	int vp = tPtr->viewPosition;
 
-	while (TEXT_WIDTH(tPtr, tPtr->viewPosition) > tPtr->usableWidth) {
-		tPtr->viewPosition += oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
-							 tPtr->textLen - tPtr->viewPosition);
+	while (tPtr->usableWidth > 0
+	       && TEXT_WIDTH(tPtr, tPtr->viewPosition) > tPtr->usableWidth) {
+		int adv = oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
+					     tPtr->textLen - tPtr->viewPosition);
+		if (adv <= 0)
+			break;
+		tPtr->viewPosition += adv;
 	}
 	return vp != tPtr->viewPosition;
 }
@@ -185,10 +189,15 @@ static int incrToFit2(TextField * tPtr)
 {
 	int vp = tPtr->viewPosition;
 
-	while (TEXT_WIDTH2(tPtr, tPtr->viewPosition, tPtr->cursorPosition)
-	       >= tPtr->usableWidth)
-		tPtr->viewPosition += oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
-							 tPtr->cursorPosition - tPtr->viewPosition);
+	while (tPtr->usableWidth > 0
+	       && TEXT_WIDTH2(tPtr, tPtr->viewPosition, tPtr->cursorPosition)
+		  >= tPtr->usableWidth) {
+		int adv = oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
+					     tPtr->cursorPosition - tPtr->viewPosition);
+		if (adv <= 0)
+			break;
+		tPtr->viewPosition += adv;
+	}
 	return vp != tPtr->viewPosition;
 }
 
@@ -196,8 +205,13 @@ static void decrToFit(TextField * tPtr)
 {
 	int vp = tPtr->viewPosition;
 
-	while (vp > 0 && (vp += oneUTF8CharBackward(&tPtr->text[vp], vp),
-			  TEXT_WIDTH(tPtr, vp)) < tPtr->usableWidth) {
+	while (tPtr->usableWidth > 0 && vp > 0) {
+		int adv = oneUTF8CharBackward(&tPtr->text[vp], vp);
+		if (adv == 0)
+			break;
+		vp += adv;
+		if (TEXT_WIDTH(tPtr, vp) >= tPtr->usableWidth)
+			break;
 		tPtr->viewPosition = vp;
 	}
 }
@@ -939,6 +953,10 @@ static void handleTextFieldKeyPress(TextField * tPtr, XEvent * event)
 
 	count = W_LookupString(tPtr->view, &event->xkey, buffer, 63, &ksym, NULL);
 	//count = XLookupString(&event->xkey, buffer, 63, &ksym, NULL);
+	if (count < 0)
+		count = 0;
+	else if (count > 63)
+		count = 63;
 	buffer[count] = '\0';
 
 	switch (ksym) {
