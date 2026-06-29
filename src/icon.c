@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <ctype.h>
 #include <wraster.h>
 #include <sys/stat.h>
@@ -600,6 +601,8 @@ char *wIconStore(WIcon *icon)
 void remove_cache_icon(char *filename)
 {
 	char *cachepath;
+	char real_cache[PATH_MAX];
+	char real_file[PATH_MAX];
 
 	if (!filename)
 		return;
@@ -608,9 +611,19 @@ void remove_cache_icon(char *filename)
 	if (!cachepath)
 		return;
 
-	/* Filename check/parse could be here */
-	if (!strncmp(filename, cachepath, strlen(cachepath)))
-		unlink(filename);
+	/* Resolve both paths so a filename containing '..' cannot escape
+	 * the cache directory via a prefix-only strncmp check */
+	if (!realpath(cachepath, real_cache) || !realpath(filename, real_file)) {
+		wfree(cachepath);
+		return;
+	}
+
+	if (strncmp(real_file, real_cache, strlen(real_cache)) == 0) {
+		/* ensure the match is at a path boundary */
+		size_t clen = strlen(real_cache);
+		if (real_cache[clen - 1] == '/' || real_file[clen] == '/' || real_file[clen] == '\0')
+			unlink(filename);
+	}
 
 	wfree(cachepath);
 }
