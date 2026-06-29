@@ -74,6 +74,8 @@ static void setFontPanelFontName(FontPanel * panel, const char *family, const ch
 
 static int isXLFD(const char *font, int *length_ret);
 
+static void freeFamily(void *item);
+
 static void arrangeLowerFrame(FontPanel * panel);
 
 static void familyClick(WMWidget *, void *);
@@ -330,11 +332,21 @@ WMFontPanel *WMGetFontPanel(WMScreen * scr)
 
 void WMFreeFontPanel(WMFontPanel * panel)
 {
+	int row, rows;
+
 	if (panel == WMWidgetScreen(panel->win)->sharedFontPanel) {
 		WMWidgetScreen(panel->win)->sharedFontPanel = NULL;
 	}
 	WMRemoveNotificationObserver(panel);
 	WMUnmapWidget(panel->win);
+
+	/* the Family/Typeface graph is held only as clientData on the
+	 * family-list rows so it has to be released before the list
+	 * widget is destroyed, the list itself only frees item->text */
+	rows = WMGetListNumberOfRows(panel->famLs);
+	for (row = 0; row < rows; row++)
+		freeFamily(WMGetListItem(panel->famLs, row)->clientData);
+
 	WMDestroyWidget(panel->win);
 	if (panel->revertFontName)
 		wfree(panel->revertFontName);
@@ -440,6 +452,27 @@ typedef struct {
 	WMArray *typefaces;
 } Family;
 
+static void freeTypeface(void *item)
+{
+	Typeface *face = item;
+
+	wfree(face->typeface);
+	WMFreeArray(face->sizes);
+	wfree(face);
+}
+
+static void freeFamily(void *item)
+{
+	Family *fam = item;
+
+	if (!fam)
+		return;
+	wfree(fam->name);
+	if (fam->typefaces)
+		WMFreeArray(fam->typefaces);
+	wfree(fam);
+}
+
 static int compare_int(const void *a, const void *b)
 {
 	int i1 = *(int *)a;
@@ -487,7 +520,7 @@ static void addTypefaceToXftFamily(Family * fam, const char *style)
 			return;
 		}
 	} else {
-		fam->typefaces = WMCreateArray(4);
+		fam->typefaces = WMCreateArrayWithDestructor(4, freeTypeface);
 	}
 
 	face = wmalloc(sizeof(Typeface));
