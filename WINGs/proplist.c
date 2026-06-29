@@ -1590,6 +1590,15 @@ WMPropList *WMCreatePropListFromDescription(const char *desc)
 	WMPropList *plist = NULL;
 	PLData *pldata;
 
+	if (desc == NULL)
+		return NULL;
+
+	if (strnlen(desc, MAX_PROPLIST_INPUT + 1) > MAX_PROPLIST_INPUT) {
+		wwarning(_("property list description larger than %d bytes, rejected"),
+			 MAX_PROPLIST_INPUT);
+		return NULL;
+	}
+
 	pldata = (PLData *) wmalloc(sizeof(PLData));
 	pldata->ptr = desc;
 	pldata->lineNumber = 1;

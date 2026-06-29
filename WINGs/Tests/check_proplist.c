@@ -162,6 +162,44 @@ static void test_recursion_limit(void)
 	wfree(deep);
 }
 
+static void test_description_cap(void)
+{
+	WMPropList *p;
+	char *big;
+	size_t cap = 4u * 1024u * 1024u;
+	size_t n = cap + 1;
+	size_t i;
+
+	/* a string literal larger than the 4 MiB description cap is
+	 * rejected without being parsed */
+	big = wmalloc(n + 1);
+	big[0] = '(';
+	for (i = 1; i < n - 1; i++)
+		big[i] = 'a';
+	big[n - 1] = ')';
+	big[n] = '\0';
+	p = WMCreatePropListFromDescription(big);
+	CHECK(p == NULL);
+	wfree(big);
+
+	/* NULL description returns NULL */
+	p = WMCreatePropListFromDescription(NULL);
+	CHECK(p == NULL);
+
+	/* a description just under the cap still parses */
+	big = wmalloc(cap);
+	big[0] = '(';
+	for (i = 1; i < cap - 2; i++)
+		big[i] = 'a';
+	big[cap - 2] = ')';
+	big[cap - 1] = '\0';
+	p = WMCreatePropListFromDescription(big);
+	CHECK(p != NULL);
+	if (p)
+		WMReleasePropList(p);
+	wfree(big);
+}
+
 static void test_pipe_cap(void)
 {
 	WMPropList *p;
@@ -409,6 +447,7 @@ int main(void)
 	test_utf8_roundtrip();
 	test_invalid_high_byte();
 	test_recursion_limit();
+	test_description_cap();
 	test_pipe_cap();
 	test_file_cap();
 	test_wmkdirhier_confinement(root);
