@@ -1,11 +1,19 @@
 
 #include <stdlib.h>
+#include <poll.h>
 
 #include <X11/Xatom.h>
 
 #include "WINGsP.h"
 
-#define MAX_PROPERTY_SIZE (8*1024)
+/* Maximum total selection payload accepted, both for a single direct
+ * property read and for the accumulated INCR transfer. Large enough for
+ * realistic text and small image pastes while still bounding what an
+ * untrusted owner can make us allocate. */
+#define MAX_SELECTION_SIZE ((size_t)4 * 1024 * 1024)
+
+/* How long to wait for the next INCR chunk before giving up. */
+#define INCR_CHUNK_TIMEOUT_MS 5000
 
 const char *WMSelectionOwnerDidChangeNotification = "WMSelectionOwnerDidChange";
 
@@ -249,6 +257,120 @@ static void handleRequestEvent(XEvent * event)
 	WMFreeArray(copy);
 }
 
+static Atom incrAtom(Display *dpy)
+{
+	static Atom atom;
+
+	if (atom == None)
+		atom = XInternAtom(dpy, "INCR", False);
+	return atom;
+}
+
+static Bool waitPropertyNewValue(Display *dpy, Window win, Atom where)
+{
+	struct pollfd pfd;
+	XEvent ev;
+	int waited = 0;
+
+	pfd.fd = ConnectionNumber(dpy);
+	pfd.events = POLLIN;
+
+	for (;;) {
+		while (XCheckTypedWindowEvent(dpy, win, PropertyNotify, &ev)) {
+			if (ev.xproperty.atom == where &&
+			    ev.xproperty.state == PropertyNewValue)
+				return True;
+		}
+		if (waited >= INCR_CHUNK_TIMEOUT_MS)
+			return False;
+		XFlush(dpy);
+		if (poll(&pfd, 1, 100) > 0) {
+			/* pull whatever arrived into Xlib's queue so the
+			 * XCheckTypedWindowEvent above can see it, anything
+			 * that is not our PropertyNotify stays queued for
+			 * the normal WINGs dispatch after we return */
+			XEventsQueued(dpy, QueuedAfterReading);
+		}
+		waited += 100;
+	}
+}
+
+static WMData *readIncrSelection(Display *dpy, Window win, Atom where)
+{
+	XWindowAttributes attr;
+	WMData *wdata = NULL;
+	unsigned char *chunk;
+	Atom rtype;
+	int bits, chunk_bits = 0;
+	unsigned long len, bytes;
+	long old_mask;
+	size_t total = 0;
+	Bool failed = False;
+
+	/* the requestor window is a WINGs view that may not have asked
+	 * for PropertyNotify, add it for the duration of the transfer
+	 * and restore the previous mask afterwards so the view's normal
+	 * event handling is unaffected */
+	if (!XGetWindowAttributes(dpy, win, &attr))
+		return NULL;
+	old_mask = attr.your_event_mask;
+	XSelectInput(dpy, win, old_mask | PropertyChangeMask);
+
+	/* deleting the INCR property tells the owner we are ready for
+	 * the first chunk */
+	XDeleteProperty(dpy, win, where);
+
+	wdata = WMCreateDataWithCapacity(0);
+
+	while (!failed) {
+		if (!waitPropertyNewValue(dpy, win, where)) {
+			failed = True;
+			break;
+		}
+		chunk = NULL;
+		if (XGetWindowProperty(dpy, win, where, 0,
+				       (long)(MAX_SELECTION_SIZE / 4), True,
+				       AnyPropertyType, &rtype, &bits, &len,
+				       &bytes, &chunk) != Success) {
+			failed = True;
+			break;
+		}
+		if (rtype == None || (bits != 8 && bits != 16 && bits != 32) ||
+		    bytes != 0) {
+			if (chunk)
+				XFree(chunk);
+			failed = True;
+			break;
+		}
+		if (len == 0) {
+			/* zero-length chunk terminates the transfer */
+			if (chunk)
+				XFree(chunk);
+			break;
+		}
+		/* Xlib stores format-32 items as longs, not 4 bytes */
+		len *= (bits == 32) ? sizeof(long) : (size_t)(bits / 8);
+		if (len > MAX_SELECTION_SIZE || total > MAX_SELECTION_SIZE - len) {
+			XFree(chunk);
+			failed = True;
+			break;
+		}
+		WMAppendDataBytes(wdata, chunk, (unsigned)len);
+		total += len;
+		chunk_bits = bits;
+		XFree(chunk);
+	}
+
+	XSelectInput(dpy, win, old_mask);
+
+	if (failed || total == 0) {
+		WMReleaseData(wdata);
+		return NULL;
+	}
+	WMSetDataFormat(wdata, chunk_bits);
+	return wdata;
+}
+
 static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expected_type)
 {
 	WMData *wdata;
@@ -256,9 +378,35 @@ static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expec
 	Atom rtype;
 	int bits, bpi;
 	unsigned long len, bytes;
+	long want;
 
-	if (XGetWindowProperty(dpy, win, where, 0, MAX_PROPERTY_SIZE,
-			       False, expected_type, &rtype, &bits, &len, &bytes, &data) != Success) {
+	/* probe the property first so an INCR placeholder or an oversized
+	 * direct value can be handled before committing to a fixed-length
+	 * read */
+	if (XGetWindowProperty(dpy, win, where, 0, 0, False, AnyPropertyType,
+			       &rtype, &bits, &len, &bytes, &data) != Success) {
+		return NULL;
+	}
+	if (data)
+		XFree(data);
+
+	if (rtype == None)
+		return NULL;
+
+	if (rtype == incrAtom(dpy))
+		return readIncrSelection(dpy, win, where);
+
+	if (bytes > MAX_SELECTION_SIZE) {
+		XDeleteProperty(dpy, win, where);
+		return NULL;
+	}
+
+	want = (long)((bytes + 3) / 4);
+	if (want == 0)
+		want = 1;
+
+	if (XGetWindowProperty(dpy, win, where, 0, want, True, expected_type,
+			       &rtype, &bits, &len, &bytes, &data) != Success) {
 		return NULL;
 	}
 
