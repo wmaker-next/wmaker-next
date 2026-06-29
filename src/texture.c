@@ -243,6 +243,11 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 	i = 0;
 	while (colors[i] != NULL)
 		i++;
+	if (i == 0) {
+		wwarning("gradient texture has no colors");
+		wfree(texture);
+		return NULL;
+	}
 	i--;
 	texture->normal.red = (colors[0]->red << 8);
 	texture->normal.green = (colors[0]->green << 8);
