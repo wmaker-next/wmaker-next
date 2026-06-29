@@ -511,12 +511,12 @@ void W_InitIM(W_Screen * scr)
 
 	cb.callback = destroyIM_cb;
 	cb.client_data = (XPointer) scr;
-	if (XSetIMValues(scr->imctx->xim, XNDestroyCallback, &cb, NULL))
+	if (XSetIMValues(scr->imctx->xim, XNDestroyCallback, &cb, (void *)0))
 		wwarning(_("could not add destroy callback for XIM input method"));
 	XUnregisterIMInstantiateCallback(scr->display, NULL, NULL, NULL,
 	                                 instantiateIM_cb, (XPointer) scr);
 	/* Get available input style */
-	XGetIMValues(scr->imctx->xim, XNQueryInputStyle, &im_styles, NULL);
+	XGetIMValues(scr->imctx->xim, XNQueryInputStyle, &im_styles, (void *)0);
 
 	scr->imctx->ximstyle = 0;
 
@@ -584,19 +584,19 @@ void W_CreateIC(WMView * view)
 		/* this really needs to be changed, but I don't know how yet -Dan
 		 * it used to be like this with fontsets, but no longer applies to xft */
 		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot,
-						   XNArea, &rect, XNFontInfo, scr->normalFont->font, NULL);
+						   XNArea, &rect, XNFontInfo, scr->normalFont->font, (void *)0);
 	}
 
 	view->xic = XCreateIC(scr->imctx->xim, XNInputStyle, scr->imctx->ximstyle,
 			      XNClientWindow, view->window,
-			      preedit_attr ? XNPreeditAttributes : NULL, preedit_attr, NULL);
+			      preedit_attr ? XNPreeditAttributes : NULL, preedit_attr, (void *)0);
 
 	if (preedit_attr)
 		XFree(preedit_attr);
 
 	if (view->xic) {
 		fevent = 0;
-		XGetICValues(view->xic, XNFilterEvents, &fevent, NULL);
+		XGetICValues(view->xic, XNFilterEvents, &fevent, (void *)0);
 		XSelectInput(scr->display, view->window,
 			     ButtonPressMask | ButtonReleaseMask | ExposureMask |
 			     KeyPressMask | FocusChangeMask | ButtonMotionMask | fevent);
@@ -648,8 +648,8 @@ static void setPreeditArea(W_View * view)
 		rect.height = WMFontHeight(scr->normalFont);
 		rect.width = view->size.width - ofs * 2;
 
-		preedit_attr = XVaCreateNestedList(0, XNArea, &rect, NULL);
-		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, NULL);
+		preedit_attr = XVaCreateNestedList(0, XNArea, &rect, (void *)0);
+		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, (void *)0);
 
 		if (preedit_attr)
 			XFree(preedit_attr);
@@ -674,7 +674,7 @@ void W_FocusIC(WMView * view)
 
 	if (view->xic) {
 		XSetICFocus(view->xic);
-		XSetICValues(view->xic, XNFocusWindow, view->window, NULL);
+		XSetICValues(view->xic, XNFocusWindow, view->window, (void *)0);
 
 		if (scr->imctx->ximstyle & XIMPreeditPosition)
 			setPreeditArea(view);
@@ -725,8 +725,8 @@ void W_SetPreeditPositon(W_View * view, int x, int y)
 		ofs = (view->size.height - WMFontHeight(scr->normalFont)) / 2;
 		spot.x = x;
 		spot.y = y + view->size.height - ofs - 3;
-		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot, NULL);
-		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, NULL);
+		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot, (void *)0);
+		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, (void *)0);
 		if (preedit_attr)
 			XFree(preedit_attr);
 	}
