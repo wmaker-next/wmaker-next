@@ -74,6 +74,7 @@ RImage *RGetImageFromXPMData(RContext * context, char **data)
 	unsigned char *color_table[4] = { NULL, NULL, NULL, NULL };
 	unsigned short *symbol_table = NULL;
 	unsigned char *r, *g, *b, *a;
+	const char *row;
 	int i, j, k, line = 0;
 	int transp;
 	unsigned short color;
@@ -171,9 +172,12 @@ RImage *RGetImageFromXPMData(RContext * context, char **data)
 		a = NULL;
 
 	for (i = 0; i < h; i++) {
+		row = data[line];
 		if (csize == 1) {
 			for (j = 0; j < w; j++) {
-				color = data[line][j];
+				color = *row;
+				if (color != '\0')
+					row++;
 
 				for (k = 0; k < ccount; k++) {
 					if (symbol_table[k] == color)
@@ -198,9 +202,13 @@ RImage *RGetImageFromXPMData(RContext * context, char **data)
 				}
 			}
 		} else {
-			for (j = 0; j < w * 2; j++) {
-				color = data[line][j++];
-				color |= data[line][j];
+			for (j = 0; j < w; j++) {
+				if (row[0] != '\0' && row[1] != '\0') {
+					color = row[0] | row[1];
+					row += 2;
+				} else {
+					color = 0;
+				}
 
 				for (k = 0; k < ccount; k++) {
 					if (symbol_table[k] == color)

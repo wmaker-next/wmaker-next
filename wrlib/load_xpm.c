@@ -157,6 +157,8 @@ static RImage *create_rimage_from_xpm(RContext *context, XpmImage xpm)
 	p = (int *)xpm.data;
 	data = image->data;
 	for (i = 0; i < xpm.width * xpm.height; i++, p++) {
+		if ((unsigned)*p >= (unsigned)xpm.ncolors)
+			*p = 0;
 		*(data++) = color_table[0][*p];
 		*(data++) = color_table[1][*p];
 		*(data++) = color_table[2][*p];
