@@ -33,42 +33,6 @@
 #include "imgformat.h"
 #include "wr_i18n.h"
 
-static unsigned char *do_read_file(const char *filename, size_t *size)
-{
-	FILE *file;
-	struct stat st;
-	unsigned char *data;
-
-	if (stat(filename, &st) != 0) {
-		RErrorCode = RERR_OPEN;
-		return NULL;
-	}
-
-	file = fopen(filename, "rb");
-	if (!file) {
-		RErrorCode = RERR_OPEN;
-		return NULL;
-	}
-
-	*size = st.st_size;
-	data = malloc(*size);
-	if (!data) {
-		RErrorCode = RERR_NOMEMORY;
-		fclose(file);
-		return NULL;
-	}
-
-	if (fread(data, 1, *size, file) != *size) {
-		RErrorCode = RERR_READ;
-		free(data);
-		fclose(file);
-		return NULL;
-	}
-
-	fclose(file);
-	return data;
-}
-
 RImage *RLoadJXL(const char *file)
 {
 	RImage *image = NULL;
@@ -83,7 +47,7 @@ RImage *RLoadJXL(const char *file)
 	int has_alpha = 0;
 
 	/* Load file data */
-	data = do_read_file(file, &size);
+	data = RReadWholeFile(file, &size);
 	if (!data)
 		return NULL;
 

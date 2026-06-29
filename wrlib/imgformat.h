@@ -98,6 +98,14 @@ void RReleaseMagick(void);
 #endif
 
 /*
+ * Read an entire file into a freshly malloc'd buffer for in-memory
+ * decoders. Sets RErrorCode and returns NULL on open/seek/read/alloc
+ * failure or when the file exceeds the internal size cap. The caller
+ * frees the buffer with free().
+ */
+unsigned char *RReadWholeFile(const char *path, size_t *out_size);
+
+/*
  * Function for Saving in a specific format
  */
 int RSaveXPM(RImage *image, const char *filename);

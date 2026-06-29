@@ -153,35 +153,16 @@ RImage *RLoadStb(const char *file)
 RImage *RLoadStbGIF(const char *file, int index)
 {
 	unsigned char *raw, *frames, *one;
-	long flen;
+	size_t flen;
 	int w, h, z, n;
 	int *delays = NULL;
-	FILE *f;
 
 	if (index <= 0)
 		return RLoadStb(file);
 
-	f = fopen(file, "rb");
-	if (!f) {
-		RErrorCode = RERR_OPEN;
+	raw = RReadWholeFile(file, &flen);
+	if (!raw)
 		return NULL;
-	}
-	fseek(f, 0, SEEK_END);
-	flen = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	if (flen <= 0 || flen > (1L << 28) ||
-	    !(raw = malloc((size_t)flen))) {
-		fclose(f);
-		RErrorCode = RERR_NOMEMORY;
-		return NULL;
-	}
-	if (fread(raw, 1, (size_t)flen, f) != (size_t)flen) {
-		free(raw);
-		fclose(f);
-		RErrorCode = RERR_READ;
-		return NULL;
-	}
-	fclose(f);
 
 	frames = stbi_load_gif_from_memory(raw, (int)flen, &delays,
 					   &w, &h, &z, &n, 4);

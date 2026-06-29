@@ -35,6 +35,53 @@
 #include "imgformat.h"
 #include "wr_i18n.h"
 
+/* upper bound on a file slurped into memory by the in-memory decoders,
+ * matches the most restrictive existing caller */
+#define RREAD_FILE_MAX ((size_t)1 << 28)
+
+unsigned char *RReadWholeFile(const char *path, size_t *out_size)
+{
+	FILE *f;
+	long len;
+	unsigned char *buf;
+
+	*out_size = 0;
+
+	f = fopen(path, "rb");
+	if (!f) {
+		RErrorCode = RERR_OPEN;
+		return NULL;
+	}
+
+	if (fseek(f, 0, SEEK_END) != 0 || (len = ftell(f)) < 0 ||
+	    fseek(f, 0, SEEK_SET) != 0) {
+		RErrorCode = RERR_READ;
+		fclose(f);
+		return NULL;
+	}
+	if (len == 0 || (size_t)len > RREAD_FILE_MAX) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		fclose(f);
+		return NULL;
+	}
+
+	buf = malloc((size_t)len);
+	if (!buf) {
+		RErrorCode = RERR_NOMEMORY;
+		fclose(f);
+		return NULL;
+	}
+	if (fread(buf, 1, (size_t)len, f) != (size_t)len) {
+		RErrorCode = RERR_READ;
+		free(buf);
+		fclose(f);
+		return NULL;
+	}
+	fclose(f);
+
+	*out_size = (size_t)len;
+	return buf;
+}
 
 typedef struct RCachedImage {
 	RImage *image;

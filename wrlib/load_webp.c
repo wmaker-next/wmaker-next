@@ -62,66 +62,27 @@ static const char *webp_message_from_status(VP8StatusCode status)
 
 RImage *RLoadWEBP(const char *file_name)
 {
-	FILE *file;
 	RImage *image = NULL;
-	char buffer[20];
-	int raw_data_size;
-	int r;
+	size_t raw_data_size;
 	uint8_t *raw_data;
 	VP8StatusCode status;
 	WebPBitstreamFeatures features;
 	uint8_t *ret = NULL;
 
-	file = fopen(file_name, "rb");
-	if (!file) {
-		RErrorCode = RERR_OPEN;
+	raw_data = RReadWholeFile(file_name, &raw_data_size);
+	if (!raw_data)
 		return NULL;
-	}
 
-	if (!fread(buffer, sizeof(buffer), 1, file)) {
-		RErrorCode = RERR_BADIMAGEFILE;
-		fclose(file);
-		return NULL;
-	}
-
-	if (!(buffer[ 0] == 'R' && buffer[ 1] == 'I' && buffer[ 2] == 'F' && buffer[ 3] == 'F' &&
-	      buffer[ 8] == 'W' && buffer[ 9] == 'E' && buffer[10] == 'B' && buffer[11] == 'P' &&
-	      buffer[12] == 'V' && buffer[13] == 'P' && buffer[14] == '8' &&
+	if (raw_data_size < 16 ||
+	    !(raw_data[ 0] == 'R' && raw_data[ 1] == 'I' && raw_data[ 2] == 'F' && raw_data[ 3] == 'F' &&
+	      raw_data[ 8] == 'W' && raw_data[ 9] == 'E' && raw_data[10] == 'B' && raw_data[11] == 'P' &&
+	      raw_data[12] == 'V' && raw_data[13] == 'P' && raw_data[14] == '8' &&
 #if WEBP_DECODER_ABI_VERSION < 0x0003	/* old versions don't support WEBPVP8X and WEBPVP8L */
-	      buffer[15] == ' ')) {
+	      raw_data[15] == ' ')) {
 #else
-	      (buffer[15] == ' ' || buffer[15] == 'X' || buffer[15] == 'L'))) {
+	      (raw_data[15] == ' ' || raw_data[15] == 'X' || raw_data[15] == 'L'))) {
 #endif
 		RErrorCode = RERR_BADFORMAT;
-		fclose(file);
-		return NULL;
-	}
-
-	fseek(file, 0L, SEEK_END);
-	raw_data_size = ftell(file);
-
-	if (raw_data_size <= 0) {
-		fprintf(stderr, _("wrlib: could not get size of WebP file \"%s\", %s\n"),
-		        file_name, strerror(errno));
-		RErrorCode = RERR_BADIMAGEFILE;
-		fclose(file);
-		return NULL;
-	}
-
-	raw_data = (uint8_t *) malloc(raw_data_size);
-
-	if (!raw_data) {
-		RErrorCode = RERR_NOMEMORY;
-		fclose(file);
-		return NULL;
-	}
-
-	fseek(file, 0L, SEEK_SET);
-	r = fread(raw_data, 1, raw_data_size, file);
-	fclose(file);
-
-	if (r != raw_data_size) {
-		RErrorCode = RERR_READ;
 		free(raw_data);
 		return NULL;
 	}
