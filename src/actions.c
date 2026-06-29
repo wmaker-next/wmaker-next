@@ -222,7 +222,8 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 			wwin->next->prev = wwin->prev;
 
 		wwin->prev = focused;
-		focused->next = wwin;
+		if (focused)
+			focused->next = wwin;
 		wwin->next = NULL;
 		scr->focused_window = wwin;
 
@@ -484,7 +485,7 @@ void update_saved_geometry(WWindow *wwin)
 
 void wMaximizeWindow(WWindow *wwin, int directions, int head)
 {
-	unsigned int new_width, new_height, half_scr_width, half_scr_height;
+	unsigned int new_width = 0, new_height = 0, half_scr_width, half_scr_height;
 	int new_x = 0;
 	int new_y = 0;
 	int maximus_x = 0;
