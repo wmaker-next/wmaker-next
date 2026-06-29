@@ -928,15 +928,19 @@ static void cancelNewTexture(void *data)
 static char *makeFileName(const char *prefix)
 {
 	char *fname;
+	char buf[48];
+	unsigned int seq = 0;
+	unsigned long long base;
 
 	fname = wstrdup(prefix);
+	base = (unsigned long long)time(NULL);
 
+	/* time() has 1-second resolution so two textures saved in the
+	 * same second would otherwise spin until the clock advances,
+	 * mix in a per-call counter so each retry yields a fresh name */
 	while (access(fname, F_OK) == 0) {
-		char buf[30];
-
 		wfree(fname);
-		snprintf(buf, sizeof(buf), "%08llx.cache",
-			 (unsigned long long)time(NULL));
+		snprintf(buf, sizeof(buf), "%08llx-%04x.cache", base, seq++);
 		fname = wstrconcat(prefix, buf);
 	}
 
