@@ -2305,7 +2305,7 @@ link_t *connect_dir(char *dirpath, linked_list_t *list)
 	int dv, idx;
 	char path[PATH_MAX] = "";
 
-	if (!dirpath)
+	if (!dirpath || !*dirpath)
 		return NULL;
 
 	dv = scandir(dirpath, &dir, 0, alphasort);
@@ -2373,6 +2373,9 @@ void get_monitor_dimensions(Display *dpy, int screen_num, Window win, int *width
 void decode_uri(char *uri)
 {
 	char *last = uri + strlen(uri);
+
+	if (strlen(uri) < 2)
+		return;
 
 	while (uri < last-2) {
 			if (*uri == '%') {

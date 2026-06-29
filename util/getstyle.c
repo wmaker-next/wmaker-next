@@ -409,6 +409,13 @@ int main(int argc, char **argv)
 
 		makeThemePack(style, style_file);
 
+		if (ThemePath == NULL) {
+			werror("could not determine theme path");
+			WMReleasePropList(style);
+			WMReleasePropList(prop);
+			return 1;
+		}
+
 		path = wmalloc(strlen(ThemePath) + strlen("/style") + 1);
 		snprintf(path, strlen(ThemePath) + strlen("/style") + 1, "%s/style", ThemePath);
 		if (!WMWritePropListToFile(style, path)) {

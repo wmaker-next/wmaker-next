@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 			const char *name;
 
 			if (argv[i][7] == '\0') {
-				if (++i > argc) {
+				if (++i >= argc) {
 					fprintf(stderr, "%s: Missing parser name after \"-parser\"\n", prog_name);
 					return 2;
 				}
