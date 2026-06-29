@@ -206,7 +206,7 @@ static void lookup_available_fonts(_Panel * panel)
 
 		panel->fonts = wmalloc(sizeof(FontList));
 		panel->fonts->familyn = 0;
-		panel->fonts->families = wmalloc(sizeof(FontFamily) * fonts->nfont);
+		panel->fonts->families = wmalloc(sizeof(FontFamily) * (fonts->nfont + 2));
 
 		for (i = 0; i < fonts->nfont; i++) {
 			char *name;

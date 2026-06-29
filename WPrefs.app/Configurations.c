@@ -187,6 +187,9 @@ static void createPanel(Panel *p)
 		image = RLoadImage(WMScreenRContext(scr), path, 0);
 		wfree(path);
 
+		if (!image)
+			goto skip_smooth_preview;
+
 		scaled = RScaleImage(image, 61, 61);
 		icon = WMCreatePixmapFromRImage(scr, scaled, 128);
 		RReleaseImage(scaled);
@@ -205,6 +208,7 @@ static void createPanel(Panel *p)
 
 		RReleaseImage(image);
 	}
+ skip_smooth_preview:
 	WMSetBalloonTextForView(_("Smooth scaled background images, neutralizing\n"
 				  "the `pixelization' effect. This will slow\n"
 				  "down loading of background images considerably."), WMWidgetView(panel->smoB));
