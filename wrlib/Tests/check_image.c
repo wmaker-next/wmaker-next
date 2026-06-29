@@ -21,14 +21,7 @@
 #include <config.h>
 #include <wraster.h>
 
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-	    fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-	    failures++;                                                    \
-	}                                                                  \
-    } while (0)
+#include "check_common.h"
 
 static unsigned char *pixel(RImage *img, int x, int y)
 {
@@ -413,10 +406,5 @@ int main(void)
 	test_combine_color();
 	test_blend_endpoints();
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		return 1;
-	}
-	printf("ok - check_image\n");
-	return 0;
+	return check_report("check_image");
 }

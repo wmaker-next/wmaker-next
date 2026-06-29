@@ -19,14 +19,7 @@
 #endif
 #include "../../WPrefs.app/enumchoices.h"
 
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-		if (!(cond)) {                                                     \
-			fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-			failures++;                                                    \
-		}                                                                  \
-	} while (0)
+#include "check_common.h"
 
 struct choice {
 	const char *key;
@@ -144,13 +137,13 @@ static void test_wprefs_values_in_schema(void)
 		if (!table) {
 			fprintf(stderr, "FAIL: WPrefs key \"%s\" is not an enum-typed schema key\n",
 				wprefs_choices[i].key);
-			failures++;
+			check_failures++;
 			continue;
 		}
 		if (!schema_accepts(table, wprefs_choices[i].db_value)) {
 			fprintf(stderr, "FAIL: WPrefs offers %s = \"%s\" but the schema rejects it\n",
 				wprefs_choices[i].key, wprefs_choices[i].db_value);
-			failures++;
+			check_failures++;
 		}
 	}
 }
@@ -183,7 +176,7 @@ static void test_schema_values_in_wprefs(void)
 				fprintf(stderr,
 					"FAIL: schema accepts %s = \"%s\" but WPrefs does not offer it\n",
 					prev_key, e->string);
-				failures++;
+				check_failures++;
 			}
 		}
 	}
@@ -201,11 +194,5 @@ int main(void)
 	test_wprefs_values_in_schema();
 	test_schema_values_in_wprefs();
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		return 1;
-	}
-
-	printf("ok - check_wprefs_schema (%zu choices)\n", wprefs_choice_count);
-	return 0;
+	return check_report("check_wprefs_schema");
 }

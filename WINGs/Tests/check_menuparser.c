@@ -13,14 +13,7 @@
 
 #include <WINGs/WUtil.h>
 
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-	    fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-	    failures++;                                                    \
-	}                                                                  \
-    } while (0)
+#include "check_common.h"
 
 static char tmp_path[] = "/tmp/wmaker-check-menuparser-XXXXXX";
 
@@ -145,10 +138,5 @@ int main(void)
 	/* cleanup */
 	unlink(tmp_path);
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		return 1;
-	}
-	printf("ok - check_menuparser\n");
-	return 0;
+	return check_report("check_menuparser");
 }

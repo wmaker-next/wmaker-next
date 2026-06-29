@@ -14,16 +14,10 @@
 #include "defaults.h"
 #include "wdefaults.h"
 
+#include "check_common.h"
+
 struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-		fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-		failures++;                                                \
-	}                                                                  \
-} while (0)
 
 /* --- stubs for wdefaults.c externs not exercised here --- */
 
@@ -288,9 +282,5 @@ int main(void)
 
 	set_attr_dict(NULL);
 
-	if (failures) {
-		fprintf(stderr, "%d failure(s)\n", failures);
-		return 1;
-	}
-	return 0;
+	return check_report("check_wdefaults");
 }

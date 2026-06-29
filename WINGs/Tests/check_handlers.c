@@ -36,14 +36,7 @@ extern void WMReleaseApplication(void);
  * X-fd-style watcher actually keeps ev_run(EVRUN_ONCE) blocking */
 extern Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
 
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-	    fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-	    failures++;                                                    \
-	}                                                                  \
-    } while (0)
+#include "check_common.h"
 
 static double mono_now(void)
 {
@@ -609,10 +602,5 @@ int main(int argc, char **argv)
 	WMReleaseApplication();
 	wutil_shutdown();
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		return 1;
-	}
-	printf("ok - check_handlers\n");
-	return 0;
+	return check_report("check_handlers");
 }

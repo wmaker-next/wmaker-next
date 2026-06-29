@@ -23,15 +23,7 @@
  */
 #include "WINGsP.h"
 
-static int failures;
-
-#define CHECK(cond) \
-	do { \
-		if (!(cond)) { \
-			fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-			failures++; \
-		} \
-	} while (0)
+#include "check_common.h"
 
 /* -----------------------------------------------------------------------
  * Compose state helpers
@@ -216,10 +208,5 @@ int main(void)
 	test_forward_no_xcbim();
 	test_im_filter_global_no_xcbim();
 
-	if (failures) {
-		fprintf(stderr, "%d test(s) FAILED\n", failures);
-		return 1;
-	}
-	printf("PASS (7)\n");
-	return 0;
+	return check_report("check_im");
 }

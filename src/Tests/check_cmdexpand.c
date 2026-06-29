@@ -16,14 +16,7 @@
 #include "window.h"
 #include "misc.h"
 
-static int failures;
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-		fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-		failures++;                                                \
-	}                                                                  \
-} while (0)
+#include "check_common.h"
 
 /* --- stubs for cmdexpand.c externs not exercised here --- */
 
@@ -188,9 +181,5 @@ int main(void)
 	test_escaped_percent();
 	test_workspace();
 
-	if (failures) {
-		fprintf(stderr, "%d failure(s)\n", failures);
-		return 1;
-	}
-	return 0;
+	return check_report("check_cmdexpand");
 }

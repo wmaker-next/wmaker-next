@@ -10,6 +10,7 @@ AM_CPPFLAGS = $(DFLAGS) \
 	-I$(top_srcdir)/src -I$(top_builddir)/src \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_srcdir)/wrlib \
+	-I$(top_srcdir)/test \
 	@HEADER_SEARCH_PATH@
 
 AM_TESTS_ENVIRONMENT = \

@@ -24,7 +24,7 @@
 #include <wraster.h>
 #include <WINGs/WUtil.h>
 
-static int failures;
+#include "check_common.h"
 
 /* RLoadImage is annotated nonnull(context) but the PNM and normalized-XPM
  * dispatches never touch it, and these tests must run without a Display.
@@ -40,13 +40,6 @@ static RImage *load_noctx(const char *path)
 	return RLoadImage(NULL, path, 0);
 }
 #pragma GCC diagnostic pop
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-	    fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-	    failures++;                                                    \
-	}                                                                  \
-    } while (0)
 
 static char tmpdir[] = "/tmp/wrlib-check-XXXXXX";
 static const char *srcdir;
@@ -83,7 +76,7 @@ static void expect_image(const char *what, RImage *img, int w, int h,
 	if (!img) {
 		fprintf(stderr, "FAIL %s: RLoadImage returned NULL (%s)\n",
 			what, RMessageForError(RErrorCode));
-		failures++;
+		check_failures++;
 		return;
 	}
 	CHECK(img->width == w);
@@ -194,7 +187,7 @@ static void test_stb_formats(void)
 	if (!img) {
 		fprintf(stderr, "FAIL GIF: RLoadImage NULL (%s)\n",
 			RMessageForError(RErrorCode));
-		failures++;
+		check_failures++;
 	} else {
 		CHECK(img->width == 2 && img->height == 1);
 		CHECK(img->format == RRGBAFormat);
@@ -220,7 +213,7 @@ static void expect_golden(const char *what, RImage *img, int w, int h,
 	if (!img) {
 		fprintf(stderr, "FAIL %s: RLoadImage returned NULL (%s)\n",
 			what, RMessageForError(RErrorCode));
-		failures++;
+		check_failures++;
 		return;
 	}
 	CHECK(img->width == w);
@@ -334,7 +327,7 @@ static void test_xpm_transparent(void)
 	if (!img) {
 		fprintf(stderr, "FAIL xpm: RGetImageFromXPMData NULL (%s)\n",
 			RMessageForError(RErrorCode));
-		failures++;
+		check_failures++;
 		return;
 	}
 	CHECK(img->width == 2 && img->height == 1);
@@ -376,10 +369,5 @@ int main(void)
 	/* best-effort cleanup */
 	(void)wspawnvp_wait((char *[]){"rm", "-rf", tmpdir, NULL});
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		return 1;
-	}
-	printf("ok - check_load\n");
-	return 0;
+	return check_report("check_load");
 }

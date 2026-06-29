@@ -20,24 +20,7 @@
 
 #include "desktopfile.h"
 
-static int failures;
-
-#define CHECK(cond) do { \
-		if (!(cond)) { \
-			fprintf(stderr, "FAIL %s:%d: %s\n", \
-				__FILE__, __LINE__, #cond); \
-			failures++; \
-		} \
-	} while (0)
-
-#define CHECK_STR(got, want) do { \
-		const char *g_ = (got), *w_ = (want); \
-		if (!g_ || strcmp(g_, w_) != 0) { \
-			fprintf(stderr, "FAIL %s:%d: got \"%s\" want \"%s\"\n", \
-				__FILE__, __LINE__, g_ ? g_ : "(null)", w_); \
-			failures++; \
-		} \
-	} while (0)
+#include "check_common.h"
 
 static void test_mime_for_path(void)
 {
@@ -67,7 +50,7 @@ static void test_mime_magic(void)
 	dir = mkdtemp(tmpl);
 	if (!dir) {
 		perror("mkdtemp");
-		failures++;
+		check_failures++;
 		return;
 	}
 
@@ -186,7 +169,7 @@ static void test_doc_list(void)
 	root = mkdtemp(tmpl);
 	if (!root) {
 		perror("mkdtemp");
-		failures++;
+		check_failures++;
 		return;
 	}
 	snprintf(sub, sizeof(sub), "%s/sub", root);
@@ -326,10 +309,5 @@ int main(void)
 	wXDGMimeInvalidate();
 	wXDGAppListInvalidate();
 
-	if (failures) {
-		fprintf(stderr, "%d failure(s)\n", failures);
-		return 1;
-	}
-	puts("ok");
-	return 0;
+	return check_report("check_desktopfile");
 }

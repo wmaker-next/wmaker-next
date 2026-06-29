@@ -29,7 +29,7 @@ EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
 	pnm-p4.pbm pnm-p5.pgm pnm-p6.ppm
 
-AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. $(DFLAGS) @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. -I$(top_srcdir)/test $(DFLAGS) @HEADER_SEARCH_PATH@
 
 LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@ -lX11-xcb
 

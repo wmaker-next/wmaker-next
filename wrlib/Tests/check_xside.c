@@ -17,7 +17,7 @@
 
 #include "wraster.h"
 
-static int failures;
+#include "check_common.h"
 
 static void check_pixel(RImage *img, int x, int y, int er, int eg, int eb, const char *what)
 {
@@ -25,13 +25,13 @@ static void check_pixel(RImage *img, int x, int y, int er, int eg, int eb, const
 
 	if (!RGetPixel(img, x, y, &c)) {
 		fprintf(stderr, "FAIL %s: RGetPixel(%d,%d) out of range\n", what, x, y);
-		failures++;
+		check_failures++;
 		return;
 	}
 	if (c.red != er || c.green != eg || c.blue != eb) {
 		fprintf(stderr, "FAIL %s: (%d,%d) got %02x/%02x/%02x want %02x/%02x/%02x\n",
 			what, x, y, c.red, c.green, c.blue, er, eg, eb);
-		failures++;
+		check_failures++;
 	}
 }
 
@@ -96,7 +96,7 @@ int main(void)
 	}
 	if (back->width != 17 || back->height != 13) {
 		fprintf(stderr, "FAIL: round-trip size %dx%d\n", back->width, back->height);
-		failures++;
+		check_failures++;
 	}
 	check_pixel(back, 0, 0, 0xff, 0x00, 0x00, "convert/tl");
 	check_pixel(back, 16, 0, 0x00, 0xff, 0x00, "convert/tr");
@@ -136,11 +136,11 @@ int main(void)
 	if (back2->data[(6 * 17 + 8) * 4 + 3] != 0) {
 		fprintf(stderr, "FAIL mask: centre alpha %u != 0\n",
 			back2->data[(6 * 17 + 8) * 4 + 3]);
-		failures++;
+		check_failures++;
 	}
 	if (back2->data[3] != 0xff) {
 		fprintf(stderr, "FAIL mask: corner alpha %u != 0xff\n", back2->data[3]);
-		failures++;
+		check_failures++;
 	}
 
 	RReleaseImage(back);
@@ -157,7 +157,7 @@ int main(void)
 	RFillImage(src, &grn);
 	if (!RConvertImage(xctx, src, &pix)) {
 		fprintf(stderr, "FAIL: xcb-ctx RConvertImage\n");
-		failures++;
+		check_failures++;
 	} else {
 		xcb_flush(xc);
 		back = RCreateImageFromDrawable(xctx, pix, None);
@@ -165,7 +165,7 @@ int main(void)
 			check_pixel(back, 8, 6, 0x00, 0xff, 0x00, "xcb-ctx");
 			RReleaseImage(back);
 		} else {
-			failures++;
+			check_failures++;
 		}
 	}
 	RReleaseImage(src);
@@ -173,10 +173,5 @@ int main(void)
 
 	XCloseDisplay(dpy);
 
-	if (failures) {
-		fprintf(stderr, "%d failure(s)\n", failures);
-		return 1;
-	}
-	printf("ok\n");
-	return 0;
+	return check_report("check_xside");
 }

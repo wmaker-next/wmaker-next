@@ -15,9 +15,10 @@
 #include "config-schema.h"
 #include "wconfigmodel.h"
 
+#include "check_common.h"
+
 struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
-static int failures;
 static int usable_area_updates;
 static int root_mask_updates;
 static int double_click_delay;
@@ -77,13 +78,6 @@ static char *last_background_spec;
 	"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps:" \
 	"~/pixmaps:" PKGDATADIR "/Icons:" PKGDATADIR "/Pixmaps:" \
 	PIXMAPDIR
-
-#define CHECK(cond) do {                                                   \
-	if (!(cond)) {                                                     \
-		fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);\
-		failures++;                                                \
-	}                                                                  \
-} while (0)
 
 void wScreenUpdateUsableArea(WScreen *scr)
 {
@@ -2266,21 +2260,21 @@ static void test_titlebar_layout_build(void)
 		if (warned != cases[i].expect_warning) {
 			fprintf(stderr, "FAIL titlebar_layout case '%s': warned=%d expected=%d\n",
 				cases[i].name, warned, cases[i].expect_warning);
-			failures++;
+			check_failures++;
 		}
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
 			if (layout.side[r] != cases[i].side[r]) {
 				fprintf(stderr,
 					"FAIL titlebar_layout case '%s': role %d side=%d expected=%d\n",
 					cases[i].name, r, layout.side[r], cases[i].side[r]);
-				failures++;
+				check_failures++;
 			}
 			if (layout.side[r] != WTB_SIDE_NONE
 			    && layout.order[r] != cases[i].order[r]) {
 				fprintf(stderr,
 					"FAIL titlebar_layout case '%s': role %d order=%d expected=%d\n",
 					cases[i].name, r, layout.order[r], cases[i].order[r]);
-				failures++;
+				check_failures++;
 			}
 		}
 	}
@@ -2330,13 +2324,6 @@ int main(void)
 	test_string_array_range();
 	test_titlebar_layout_build();
 
-	if (failures) {
-		fprintf(stderr, "%d check(s) failed\n", failures);
-		reset_preferences();
-		return 1;
-	}
-
-	printf("ok - check_config\n");
 	reset_preferences();
-	return 0;
+	return check_report("check_config");
 }
