@@ -174,10 +174,10 @@ static void panelBtnCallback(WMWidget * self, void *data)
 
 		if (!wIconChangeImageFile(panel->editedIcon->icon, text)) {
 			char *buf;
-			int len = strlen(text) + 64;
+			int len = (text ? strlen(text) : 0) + 64;
 
 			buf = wmalloc(len);
-			snprintf(buf, len, _("Could not open specified icon file: %s"), text);
+			snprintf(buf, len, _("Could not open specified icon file: %s"), text ? text : "(none)");
 			if (wMessageDialog(panel->wwin->screen_ptr, _("Error"), buf,
 					   _("OK"), _("Ignore"), NULL) == WAPRDefault) {
 				wfree(text);
