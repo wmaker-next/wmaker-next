@@ -102,6 +102,7 @@ char *wexpandpath(const char *path)
 	int i;
 
 	memset(buffer, 0, PATH_MAX + 2);
+	memset(buffer2, 0, PATH_MAX + 2);
 
 	if (*path == '~') {
 		const char *home;
