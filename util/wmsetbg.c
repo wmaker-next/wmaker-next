@@ -905,9 +905,12 @@ static int readmsg(int fd, char *buffer, int size)
 		count = read(fd, buffer, size);
 		if (count < 0)
 			return -1;
+		if (count == 0)
+			return -1;
 		size -= count;
 		buffer += count;
-		*buffer = 0;
+		if (size > 0)
+			*buffer = 0;
 	}
 
 	return size;
@@ -949,7 +952,7 @@ static noreturn void helperLoop(RContext * rc)
 		memcpy(buf, buffer, 4);
 		buf[4] = 0;
 		size = atoi(buf);
-		if (size < 0 || size > sizeof(buffer)) {
+		if (size < 0 || size >= sizeof(buffer)) {
 			wfatal("received invalid size %d for message from WindowMaker", size);
 			quit(1);
 		}

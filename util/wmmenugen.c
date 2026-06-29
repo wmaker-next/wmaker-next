@@ -301,11 +301,13 @@ static void assemblePLMenuFunc(WMTreeNode *aNode, void *data)
 			memset(buf, 0, sizeof(buf));
 			if (wm->Flags & F_TERMINAL) {
 				/* the result is a SHEXEC entry that goes through
-				 * /bin/sh -c, so the desktop entry's Exec value must
-				 * be quoted as a single shell word */
-				char *quoted = wshellquote(wm->CmdLine);
-				snprintf(buf, sizeof(buf), "%s -e %s", terminal, quoted);
-				wfree(quoted);
+				 * /bin/sh -c, so both the terminal and the desktop
+				 * entry's Exec value must be quoted as shell words */
+				char *quoted_cmd = wshellquote(wm->CmdLine);
+				char *quoted_term = wshellquote(terminal);
+				snprintf(buf, sizeof(buf), "%s -e %s", quoted_term, quoted_cmd);
+				wfree(quoted_cmd);
+				wfree(quoted_term);
 			} else {
 				snprintf(buf, sizeof(buf), "%s", wm->CmdLine);
 			}

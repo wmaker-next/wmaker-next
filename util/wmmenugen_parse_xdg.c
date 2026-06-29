@@ -266,6 +266,8 @@ static char *parse_xdg_exec(char *exec)
 				quoted = True;
 			else if (*src == '%') {
 				src++;
+				if (*src == '\0')
+					break;
 				if (*src == '%')
 					*dst++ = *src;
 				else if (strchr ("fFuUdDnNickvm", *src))
