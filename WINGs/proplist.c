@@ -230,10 +230,10 @@ static char *dataDescription(WMPropList * plist)
 {
 	const unsigned char *data;
 	char *retVal;
-	int i, j, length;
+	size_t i, j, length;
 
 	data = WMDataBytes(plist->d.data);
-	length = WMGetDataLength(plist->d.data);
+	length = (size_t)WMGetDataLength(plist->d.data);
 
 	retVal = (char *)wmalloc(2 * length + length / 4 + 3);
 
