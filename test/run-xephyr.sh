@@ -65,11 +65,11 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-XEPHYRPID=$(
-	DISPLAY=${DISPLAY:-:0} "$XEPHYR" "$DPY" -screen "$GEOM" -ac \
-		-title "Window Maker (build tree)" 2>"$STATE/xephyr.log" &
-	echo $!
-)
+T0=$(date +%s%N)
+
+DISPLAY=${DISPLAY:-:0} "$XEPHYR" "$DPY" -screen "$GEOM" -ac \
+	-title "Window Maker (build tree)" 2>"$STATE/xephyr.log" &
+XEPHYRPID=$!
 echo "$XEPHYRPID" > "$STATE/pids"
 
 # wait for the X server to come up before launching wmaker
@@ -82,6 +82,8 @@ done
 if [ "$i" -ge 50 ]; then
 	die "Xephyr did not start, see $STATE/xephyr.log"
 fi
+T1=$(date +%s%N)
+printf 'Xephyr ready: %dms\n' $(( (T1 - T0) / 1000000 )) >&2
 
 cat >&2 <<EOF
 Window Maker is starting on $DPY (Xephyr window).
@@ -99,16 +101,20 @@ WMPID=$!
 
 # auto-spawn an xterm (or a custom client list) once wmaker is up so the
 # session is not empty on first view. RUN_CLIENTS=no disables this.
+# wmaker initializes in ~10ms, so just wait for its IPC socket to appear
+# rather than polling a root property (which needs a full xprop round-trip).
 CLIENTS=${RUN_CLIENTS:-xterm}
 if [ "$CLIENTS" != "no" ]; then
-	# wait briefly for wmaker to take over the display so the xterm
-	# gets managed instead of dying on an unmapped root
 	i=0
 	while [ "$i" -lt 30 ]; do
-		DISPLAY=$DPY xprop -root _NET_SUPPORTING_WM_CHECK >/dev/null 2>&1 && break
+		LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+			DISPLAY=$DPY XDG_RUNTIME_DIR="$RUNTIME" \
+			"$ROOT/util/.libs/wmakermsg" --get-socketpath >/dev/null 2>&1 && break
 		sleep 0.1
 		i=$((i + 1))
 	done
+	T2=$(date +%s%N)
+	printf 'wmaker ready: %dms\n' $(( (T2 - T1) / 1000000 )) >&2
 	for c in $CLIENTS; do
 		if command -v "$c" >/dev/null 2>&1; then
 			DISPLAY=$DPY "$c" >>"$STATE/wmaker.log" 2>&1 &
