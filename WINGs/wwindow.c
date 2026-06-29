@@ -163,6 +163,9 @@ static void setMiniwindowTitle(WMWindow * win, const char *title)
 {
 	WMScreen *scr = win->view->screen;
 
+	if (!title)
+		return;
+
 	WXSetWMIconName(scr->display, win->view->window, title);
 
 	WXSetUTF8String(scr->display, win->view->window, scr->netwmIconName,
