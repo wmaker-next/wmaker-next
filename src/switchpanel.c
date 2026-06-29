@@ -192,7 +192,7 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, Bool dim,
 			RFillImage(back, &color);
 		}
 
-		if (selected) {
+		if (selected && panel->tile) {
 			tile = panel->tile;
 			RCombineArea(back, tile, 0, 0, tile->width, tile->height,
 				     (back->width - tile->width) / 2, (back->height - tile->height) / 2);
