@@ -167,12 +167,14 @@ int main(int argc, char **argv)
 			int i;
 
 			for (i = 0; i < MAX_DEATHS; i++) {
-				if (DeadChildren[i] == DeadHandlers[i].pid) {
+				if (DeadChildren[i] != 0 && DeadChildren[i] == DeadHandlers[i].pid) {
 					(*DeadHandlers[i].handler) (DeadHandlers[i].data);
 					DeadHandlers[i].pid = 0;
+					DeadChildren[i] = 0;
 				}
 			}
 		}
+		DeadChildrenCount = 0;
 
 		WMHandleEvent(&event);
 	}
