@@ -1176,6 +1176,10 @@ static char *getFullPixmapPath(const char *file)
 		char *path = wmalloc(bsize);
 
 		while (!getcwd(path, bsize)) {
+			if (errno != ERANGE) {
+				wfree(path);
+				return NULL;
+			}
 			bsize += bsize / 2;
 			path = wrealloc(path, bsize);
 		}
