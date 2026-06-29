@@ -18,6 +18,9 @@
 #include <X11/keysym.h>
 
 #define CHUNK_SIZE 32768
+/* same cap the production daemon uses, the test peer is local-trusted but
+ * keeping the bound here means the harness exercises the same limits */
+#define MAX_CLIP_BYTES ((size_t)256 * 1024 * 1024)
 
 static Display *dpy;
 static Window win;
@@ -264,6 +267,9 @@ static int read_property_chunk(Atom property, Atom *type_out,
 	if (prop)
 		XFree(prop);
 
+	if (format != 8 || bytes_after > MAX_CLIP_BYTES)
+		return 0;
+
 	length = (long)((bytes_after + 3) / 4);
 	if (length == 0)
 		length = 1;
@@ -373,6 +379,12 @@ static int read_clipboard(void)
 				XFree(chunk);
 				break;
 			}
+			if (chunk_len > MAX_CLIP_BYTES ||
+			    data_len > MAX_CLIP_BYTES - chunk_len) {
+				XFree(chunk);
+				free(data);
+				return 8;
+			}
 			data = realloc(data, data_len + chunk_len);
 			if (!data) {
 				perror("realloc");
@@ -384,6 +396,8 @@ static int read_clipboard(void)
 			XFree(chunk);
 		}
 	} else {
+		if (bytes_after > MAX_CLIP_BYTES)
+			return 9;
 		length = (long)((bytes_after + 3) / 4);
 		if (length == 0)
 			length = 1;
