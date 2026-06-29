@@ -1399,8 +1399,12 @@ static int layOutLine(Text * tPtr, myLineItems * items, int nitems, int x, int y
 			tb->sections[tb->nsections - 1].end = items[i].end;
 			n = tb->nsections - 1;
 		} else {
-			tb->sections = wrealloc(tb->sections, (++tb->nsections) * sizeof(Section));
-			n = tb->nsections - 1;
+			if (tb->nsections < 255) {
+				tb->sections = wrealloc(tb->sections, (++tb->nsections) * sizeof(Section));
+				n = tb->nsections - 1;
+			} else {
+				n = tb->nsections - 1;
+			}
 			tb->sections[n]._y = y + max_d;
 			tb->sections[n].max_d = max_d;
 			tb->sections[n].x = x + j;

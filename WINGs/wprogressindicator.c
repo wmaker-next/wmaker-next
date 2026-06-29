@@ -172,7 +172,7 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 	XFillRectangle(scr->display, buffer, lgc, 0, 0, size.width, size.height);
 
 	/* Calculate size of Progress to draw and paint ticks */
-	perc = (pPtr->value - pPtr->minValue) * 100 / (pPtr->maxValue - pPtr->minValue);
+	perc = (pPtr->maxValue != pPtr->minValue) ? (pPtr->value - pPtr->minValue) * 100 / (pPtr->maxValue - pPtr->minValue) : 0;
 
 	w = (int)((double)(perc * unit));
 	h = size.height - 2;

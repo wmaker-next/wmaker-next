@@ -300,6 +300,7 @@ found_end_of_comment:
 static char *menu_parser_isolate_token(WMenuParser parser)
 {
 	char buffer_token[sizeof(parser->line_buffer)];
+	char *buffer_end = buffer_token + sizeof(buffer_token) - 1;
 	char *token;
 	char *copy;
 	size_t token_len;
@@ -322,7 +323,9 @@ restart_token_split:
 				break;
 
 			parser->rd++;
-			*token++ = *parser->rd++;
+			if (token < buffer_end)
+				*token++ = *parser->rd;
+			parser->rd++;
 
 		} else if (*parser->rd == '"' ) {
 			char ch;
@@ -335,11 +338,15 @@ restart_token_split:
 				if (ch == '\\') {
 					if ((*parser->rd == '\0') || (*parser->rd == '\n'))
 						break;
-					*token++ = *parser->rd++;
+					if (token < buffer_end)
+						*token++ = *parser->rd;
+					parser->rd++;
 				} else if (ch == '"')
 					goto found_end_dquote;
-				else
-					*token++ = ch;
+				else {
+					if (token < buffer_end)
+						*token++ = ch;
+				}
 			}
 
 			WMenuParserError(parser, _("missing closing double-quote before end-of-line") );
@@ -352,10 +359,14 @@ found_end_dquote:
 
 			/* Simple-quoted string deserve special processing because we keep their content
 				as-is, including the quotes and the \-escaped text */
-			*token++ = *parser->rd++;
+			if (token < buffer_end)
+				*token++ = *parser->rd++;
+			else
+				parser->rd++;
 			while ((*parser->rd != '\0') && (*parser->rd != '\n')) {
 				ch = *parser->rd++;
-				*token++ = ch;
+				if (token < buffer_end)
+					*token++ = ch;
 				if (ch == '\'')
 					goto found_end_squote;
 			}
@@ -385,11 +396,16 @@ found_end_squote:
 
 				break;
 			} else {
-				while (isnamechr(*parser->rd))
-					*token++ = *parser->rd++;
+				while (isnamechr(*parser->rd)) {
+					if (token < buffer_end)
+						*token++ = *parser->rd;
+					parser->rd++;
+				}
 			}
 		} else {
-			*token++ = *parser->rd++;
+			if (token < buffer_end)
+				*token++ = *parser->rd;
+			parser->rd++;
 		}
 
 	*token++ = '\0';

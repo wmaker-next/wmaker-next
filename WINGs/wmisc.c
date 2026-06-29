@@ -155,6 +155,9 @@ int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 	while (length > 0) {
 		count = fitText(ptr, font, width, wrap);
 
+		if (count == 0)
+			break;
+
 		h += fheight;
 
 		if (isspace(ptr[count]))
@@ -197,6 +200,9 @@ W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
 			y += fheight;
 			count++;
 		}
+
+		if (count == 0)
+			break;
 
 		ptr += count;
 		length -= count;

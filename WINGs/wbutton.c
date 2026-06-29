@@ -221,7 +221,7 @@ static void updateDisabledMask(WMButton * bPtr)
 	WMScreen *scr = WMWidgetScreen(bPtr);
 	Display *dpy = scr->display;
 
-	if (bPtr->image) {
+	if (bPtr->image && bPtr->dimage) {
 		XGCValues gcv;
 
 		if (bPtr->dimage->mask) {

@@ -310,12 +310,12 @@ static void paintSlider(Slider * sPtr)
 	}
 
 	if (sPtr->flags.vertical) {
-		pos = (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1;
+		pos = (MAXV != MINV) ? (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		/* draw knob */
 		XCopyArea(scr->display, sPtr->knobPixmap, buffer,
 			  scr->copyGC, 0, 0, size.width - 2, sPtr->knobThickness, 1, pos);
 	} else {
-		pos = (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1;
+		pos = (MAXV != MINV) ? (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		/* draw knob */
 		XCopyArea(scr->display, sPtr->knobPixmap, buffer,
 			  scr->copyGC, 0, 0, sPtr->knobThickness, size.height, pos, 1);
@@ -363,7 +363,7 @@ static int getSliderPart(Slider * sPtr, int x, int y)
 
 	if (sPtr->flags.vertical) {
 		p = y;
-		pos = (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV);
+		pos = (MAXV != MINV) ? (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) : 0;
 		if (p < pos)
 			return INCR_PART;
 		if (p > pos + sPtr->knobThickness)
@@ -371,7 +371,7 @@ static int getSliderPart(Slider * sPtr, int x, int y)
 		return KNOB_PART;
 	} else {
 		p = x;
-		pos = (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV);
+		pos = (MAXV != MINV) ? (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) : 0;
 		if (p < pos)
 			return DECR_PART;
 		if (p > pos + sPtr->knobThickness)
