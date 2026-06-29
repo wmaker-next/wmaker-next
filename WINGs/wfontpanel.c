@@ -513,9 +513,10 @@ static void addFontToXftFamily(WMHashTable * families, const char *name, const c
 	array = WMHashGet(families, name);
 	if (array) {
 		WM_ITERATE_ARRAY(array, fam, i) {
-			if (strcmp(fam->name, name) == 0)
+			if (strcmp(fam->name, name) == 0) {
 				addTypefaceToXftFamily(fam, style);
-			return;
+				return;
+			}
 		}
 	}
 
