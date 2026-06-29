@@ -234,6 +234,11 @@ static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	XSync(dpy, 0);
 	/* check if the window was destroyed */
 	if (WXEvqTakeTyped(dpy, DestroyNotify, wwin->client_win, &peek)) {
+		/* DispatchEvent reaches wUnmanageWindow and the
+		 * WMNUnmanaged observers, which issue several X
+		 * round-trips; release the server grab first so other
+		 * clients are not stalled while we tear the window down */
+		XUngrabServer(dpy);
 		DispatchEvent(&peek);
 	} else {
 		Bool reparented = False;
@@ -246,11 +251,11 @@ static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 		if (!reparented)
 			wClientSetState(wwin, WithdrawnState, None);
 
+		XUngrabServer(dpy);
 		/* if the window was reparented, do not reparent it back to the
 		 * root window */
 		wUnmanageWindow(wwin, !reparented, False);
 	}
-	XUngrabServer(dpy);
 }
 
 static void handleConfigureRequest(const xcb_generic_event_t *xe, XEvent *ev)
