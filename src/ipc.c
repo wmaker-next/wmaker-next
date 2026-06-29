@@ -240,6 +240,15 @@ static void ipc_queue(struct WIPCClient *c, uint32_t type,
 	if (c->dead)
 		return;
 
+	/* independent cap on len before the addition so an overflow
+	 * in WIPC_HEADER_LEN + len cannot wrap to a small value */
+	if (len > WIPC_MAX_PAYLOAD) {
+		wwarning("IPC client on fd %d payload exceeds %u bytes, dropping", c->fd,
+			 WIPC_MAX_PAYLOAD);
+		ipc_drop(c);
+		return;
+	}
+
 	need = c->out_len + WIPC_HEADER_LEN + len;
 	if (need < c->out_len || need > WIPC_MAX_OUT_QUEUE) {
 		wwarning("IPC client on fd %d output queue overflow, dropping", c->fd);
@@ -476,6 +485,10 @@ static verb_rc verb_workspace(WScreen *scr, WMPropList *args,
 		return VERB_FAIL;
 	}
 	which = WMGetFromPLString(a);
+	if (!*which) {
+		*err = wstrdup("workspace: invalid index");
+		return VERB_FAIL;
+	}
 
 	if (strcmp(which, "next") == 0) {
 		wWorkspaceRelativeChange(scr, 1);
