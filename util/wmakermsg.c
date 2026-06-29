@@ -96,7 +96,7 @@ static int do_monitor(int fd, int argc, char **argv, int quiet)
 	for (;;) {
 		if (wIPCRecv(fd, &type, &body, &len) < 0)
 			return errno == ECONNRESET ? 0 : 1;
-		if (!quiet && (type & WIPC_EVENT_BIT)) {
+		if (!quiet && (type & WIPC_EVENT_BIT) && body) {
 			printf("%s\n", body);
 			fflush(stdout);
 		}
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 	for (i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--get-socketpath") == 0) {
 			path = wIPCSocketPath(NULL);
-			printf("%s\n", path);
+			printf("%s\n", path ? path : "");
 			wfree(path);
 			return 0;
 		}
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 	fd = wIPCConnect(path);
 	if (fd < 0) {
 		fprintf(stderr, "%s: cannot connect to %s: %s\n",
-			prog, path, strerror(errno));
+			prog, path ? path : "(null)", strerror(errno));
 		wfree(path);
 		return 1;
 	}
