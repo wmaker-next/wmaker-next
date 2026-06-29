@@ -1202,11 +1202,13 @@ AC_PATH_PROG([XVFB], [Xvfb])
 AC_PATH_PROG([XEPHYR], [Xephyr])
 AC_PATH_PROG([XDOTOOL], [xdotool])
 AC_PATH_PROG([WMCTRL], [wmctrl])
+AC_PATH_PROG([XTRACE], [xtrace])
+AC_PATH_PROG([STRACE], [strace])
 AM_CONDITIONAL([HAVE_XVFB], [test -n "$XVFB"])
 AM_CONDITIONAL([HAVE_XEPHYR], [test -n "$XEPHYR"])
 
 drive_tools=""
-for t in Xvfb:$XVFB Xephyr:$XEPHYR xdotool:$XDOTOOL wmctrl:$WMCTRL ; do
+for t in Xvfb:$XVFB Xephyr:$XEPHYR xdotool:$XDOTOOL wmctrl:$WMCTRL xtrace:$XTRACE strace:$STRACE ; do
     AS_CASE([$t], [*:], [], [drive_tools="$drive_tools ${t%%:*}"])
 done
 test -n "$drive_tools" || drive_tools=" none"

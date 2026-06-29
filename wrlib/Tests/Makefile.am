@@ -3,7 +3,7 @@
 AUTOMAKE_OPTIONS =
 
 # interactive demo programs, built on demand only (e.g. `make testdraw`)
-EXTRA_PROGRAMS = testdraw testgrad testrot view
+EXTRA_PROGRAMS = testdraw testgrad testrot view bench_image
 
 # automated decoder tests, run by `make check`
 check_PROGRAMS = check_load check_convolve check_image check_xside
@@ -44,3 +44,13 @@ testrot_LDADD = $(LIBLIST)
 
 view_SOURCES= view.c
 view_LDADD = $(LIBLIST)
+
+# pixel-loop micro-benchmark, run by `make bench` from the top level,
+# never by `make check` so the test suite stays fast and deterministic
+bench_image_SOURCES = bench_image.c
+bench_image_LDADD = $(top_builddir)/wrlib/libwraster.la
+
+bench: bench_image
+	@BENCH_SIZES=$(BENCH_SIZES) ./bench_image
+
+.PHONY: bench

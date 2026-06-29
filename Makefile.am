@@ -216,7 +216,7 @@ configure-documentation:
 		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
 		--ignore-prg 'with-x # no use, it would not work without X'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive run
+.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive run bench
 
 # Integration drivers under test/ start a private X server and run the
 # just-built window manager inside it. They are deliberately not part
@@ -224,7 +224,7 @@ configure-documentation:
 # on demand. Each driver still does its own per-tool `command -v` check
 # and exits 77 (SKIP) when something it needs is missing, the
 # AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
-DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/dock-drop-drive.sh
+DRIVE_TESTS = test/ipc-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/dock-drop-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh
 DRIVE_SUBDIRS = util/Tests
 
 check-drive:
@@ -250,6 +250,21 @@ else
 	@echo "Xvfb was not found at configure time, install it and re-run configure"
 	@echo "to use the integration drivers under test/"
 endif
+
+# Print the wrlib pixel-loop micro-benchmark, the cold-boot reply
+# count and per-managed-window cost from xtrace, and the idle and
+# pointer-motion event-loop wakeup rates. Informational only, the
+# pass/fail thresholds on the same scripts run under check-drive.
+# BENCH_SIZES=small skips the 1080p row.
+bench:
+	@echo '################ wrlib pixel ops ################'
+	@$(MAKE) -C wrlib/Tests bench
+	@echo
+	@echo '################ cold-boot round-trips ################'
+	@BENCH=1 "$(top_srcdir)/test/roundtrip-drive.sh" || true
+	@echo
+	@echo '################ idle wakeups ################'
+	@BENCH=1 "$(top_srcdir)/test/idle-wakeups-drive.sh" || true
 
 # Launch the just-built Window Maker inside a Xephyr window for visual
 # inspection. Passes RUN_DISPLAY, RUN_GEOMETRY, and RUN_CLIENTS through
