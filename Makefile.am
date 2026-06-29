@@ -216,7 +216,7 @@ configure-documentation:
 		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
 		--ignore-prg 'with-x # no use, it would not work without X'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive
+.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive run
 
 # Integration drivers under test/ start a private X server and run the
 # just-built window manager inside it. They are deliberately not part
@@ -249,6 +249,18 @@ if HAVE_XVFB
 else
 	@echo "Xvfb was not found at configure time, install it and re-run configure"
 	@echo "to use the integration drivers under test/"
+endif
+
+# Launch the just-built Window Maker inside a Xephyr window for visual
+# inspection. Passes RUN_DISPLAY, RUN_GEOMETRY, and RUN_CLIENTS through
+# to the launch script. Ctrl-C (or closing the Xephyr window) stops the
+# session and cleans up the isolated runtime directory.
+run:
+if HAVE_XEPHYR
+	@"$(top_srcdir)/test/run-xephyr.sh"
+else
+	@echo "Xephyr was not found at configure time, install xserver-xephyr"
+	@echo "and re-run configure to use 'make run'"
 endif
 
 # Regenerate every derived file the build knows about, then fail if any

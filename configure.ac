@@ -1193,6 +1193,7 @@ AC_PATH_PROG([XEPHYR], [Xephyr])
 AC_PATH_PROG([XDOTOOL], [xdotool])
 AC_PATH_PROG([WMCTRL], [wmctrl])
 AM_CONDITIONAL([HAVE_XVFB], [test -n "$XVFB"])
+AM_CONDITIONAL([HAVE_XEPHYR], [test -n "$XEPHYR"])
 
 drive_tools=""
 for t in Xvfb:$XVFB Xephyr:$XEPHYR xdotool:$XDOTOOL wmctrl:$WMCTRL ; do
