@@ -1471,23 +1471,17 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !(wwin->client_flags.floating);
 
-		if (init) {
-			wwin->client_flags.floating = set;
-		} else {
-			wwin->client_flags.floating = set;
+		wwin->client_flags.floating = set;
+		if (!init && wwin->frame)
 			ChangeStackingLevel(wwin->frame->core, getWindowLayer(wwin));
-		}
 
 	} else if (state == net_wm_state_below) {
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !(wwin->client_flags.sunken);
 
-		if (init) {
-			wwin->client_flags.sunken = set;
-		} else {
-			wwin->client_flags.sunken = set;
+		wwin->client_flags.sunken = set;
+		if (!init && wwin->frame)
 			ChangeStackingLevel(wwin->frame->core, getWindowLayer(wwin));
-		}
 
 	} else if (state == net_wm_state_demands_attention) {
 		if (set == _NET_WM_STATE_TOGGLE)
@@ -2084,9 +2078,17 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		WScreen *scr = wwin->screen_ptr;
 		long source = event->data.l[0];
 		Time ev_time = (Time)event->data.l[1];
-		Bool same_workspace = wwin->frame->workspace == scr->current_workspace;
+		Bool same_workspace;
 		Bool same_head = True;
 		Bool allow;
+
+		/* a managed window without a frame is mid-teardown,
+		 * activating it would dereference frame in the
+		 * workspace/wMakeWindowVisible paths below */
+		if (!wwin->frame)
+			return True;
+
+		same_workspace = wwin->frame->workspace == scr->current_workspace;
 
 		if (w_global.config->per_head_workspaces) {
 			/* In per-head mode the target may be visible on a
@@ -2294,7 +2296,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		if (direction == _NET_WM_MOVERESIZE_MOVE) {
 			if (WFLAGP(wwin, no_movable))
 				return True;
-		} else if (direction <= _NET_WM_MOVERESIZE_SIZE_LEFT) {
+		} else if (direction >= 0 && direction <= _NET_WM_MOVERESIZE_SIZE_LEFT) {
 			if (WFLAGP(wwin, no_resizable))
 				return True;
 		} else {
