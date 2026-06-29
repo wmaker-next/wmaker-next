@@ -102,6 +102,9 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 		if (!lastlabel && label)
 			lastlabel = wstrdup(label);
 
+		if (!lastlabel || !label)
+			continue;
+
 		if (strcmp(lastlabel, label) != 0) {
 			if (wmc_to_wm(&wmc, &wm)) {
 				(*addWMMenuEntryCallback)(wm);
