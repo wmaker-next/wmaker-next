@@ -2692,7 +2692,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		 * with non-NorthWest gravity inside the frame to compensate (visible as
 		 * a GravityNotify with xev), leaving it at the wrong offset.
 		 */
-		if (wwin->normal_hints->win_gravity != NorthWestGravity)
+		if (wwin->normal_hints && wwin->normal_hints->win_gravity != NorthWestGravity)
 			XMoveWindow(dpy, wwin->client_win, 0, wwin->frame->top_width);
 
 		if (!(req_height > wwin->frame->core->height || req_width > wwin->frame->core->width))
