@@ -128,7 +128,6 @@ static WMenu *parseMenuCommandWithDepth(WScreen *scr, Window win, char **slist,
 						 slist[*index], win);
 					return NULL;
 				}
-				wstrlcpy(title, &slist[*index][pos], sizeof(title));
 				rtext[0] = 0;
 			} else {
 				if (sscanf(slist[*index], "%i %i %i %i %299s %n",
@@ -138,7 +137,11 @@ static WMenu *parseMenuCommandWithDepth(WScreen *scr, Window win, char **slist,
 						 slist[*index], win);
 					return NULL;
 				}
-				wstrlcpy(title, &slist[*index][pos], sizeof(title));
+			}
+			if (wstrlcpy(title, &slist[*index][pos], sizeof(title)) >= sizeof(title)) {
+				wMenuDestroy(menu, True);
+				wwarning(_("appmenu: menu command size exceeded in window %lx"), win);
+				return NULL;
 			}
 			data = malloc(sizeof(WAppMenuData));
 			if (data == NULL) {
@@ -175,7 +178,11 @@ static WMenu *parseMenuCommandWithDepth(WScreen *scr, Window win, char **slist,
 
 				return NULL;
 			}
-			wstrlcpy(title, &slist[*index][pos], sizeof(title));
+			if (wstrlcpy(title, &slist[*index][pos], sizeof(title)) >= sizeof(title)) {
+				wMenuDestroy(menu, True);
+				wwarning(_("appmenu: menu command size exceeded in window %lx"), win);
+				return NULL;
+			}
 			*index += 1;
 
 			submenu = parseMenuCommandWithDepth(scr, win, slist, count, index, depth + 1);
