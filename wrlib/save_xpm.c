@@ -167,6 +167,11 @@ int RSaveXPM(RImage * image, const char *filename)
 	char transp[16];
 	char buf[128];
 
+	if (!image || !image->data) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		return 0;
+	}
+
 	file = fopen(filename, "wb+");
 	if (!file) {
 		RErrorCode = RERR_OPEN;
