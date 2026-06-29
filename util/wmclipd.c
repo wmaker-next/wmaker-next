@@ -512,7 +512,7 @@ static int query_targets(Atom selection, Time timestamp, Atom **targets_out,
 		return 0;
 	}
 
-	if (type != XA_ATOM || format != 32 || nitems == 0) {
+	if (type != XA_ATOM || format != 32 || nitems == 0 || bytes_after != 0) {
 		if (prop)
 			XFree(prop);
 		return 0;

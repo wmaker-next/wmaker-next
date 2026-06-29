@@ -377,7 +377,7 @@ static int state_has_atom(Display *dpy, Window win, Atom prop, Atom needle)
 	if (XGetWindowProperty(dpy, win, prop, 0, 64, False, XA_ATOM,
 			       &type, &format, &n, &after, &data) != Success)
 		return 0;
-	if (type == XA_ATOM && format == 32 && data) {
+	if (type == XA_ATOM && format == 32 && after == 0 && data) {
 		long *atoms = (long *)data;
 
 		for (i = 0; i < n; i++) {

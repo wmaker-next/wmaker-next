@@ -191,7 +191,7 @@ static char *fetchSelection(Display *dpy, const char *selection, int *length)
 
 		if (XGetWindowProperty(dpy, win, ev.xselection.property, 0, MAXDATA / 4, False,
 				       XA_STRING, &rtype, &bits, &len, &bytes, &data) == Success &&
-		    rtype == XA_STRING && bits == 8 && len <= INT_MAX) {
+		    rtype == XA_STRING && bits == 8 && bytes == 0 && len <= INT_MAX) {
 			*length = (int)len;
 			result = (char *)data;
 		} else if (data) {

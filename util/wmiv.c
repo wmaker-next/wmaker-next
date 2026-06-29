@@ -1284,14 +1284,14 @@ static Atom choose_clipboard_target(void)
 		return None;
 	}
 
-	if (XGetWindowProperty(dpy, win, property_atom, 0, 128, False,
+	if (XGetWindowProperty(dpy, win, property_atom, 0, 1024, False,
 			XA_ATOM, &type, &format, &nitems, &bytes_after,
 			&prop) != Success) {
 		return None;
 	}
 	XDeleteProperty(dpy, win, property_atom);
 
-	if (type != XA_ATOM || format != 32 || nitems == 0 || !prop) {
+	if (type != XA_ATOM || format != 32 || nitems == 0 || bytes_after != 0 || !prop) {
 		if (prop)
 			XFree(prop);
 		return None;
