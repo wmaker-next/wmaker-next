@@ -1021,9 +1021,16 @@ static void freeline(char *title, char *command, char *parameter, char *shortcut
 	wfree(shortcut);
 }
 
-static WMenu *parseCascade(WScreen * scr, WMenu * menu, WMenuParser parser)
+#define MAX_ROOTMENU_DEPTH 64
+
+static WMenu *parseCascade(WScreen * scr, WMenu * menu, WMenuParser parser, int depth)
 {
 	char *command, *params, *shortcut, *title;
+
+	if (depth > MAX_ROOTMENU_DEPTH) {
+		WMenuParserError(parser, _("maximum menu nesting depth exceeded") );
+		return NULL;
+	}
 
 	while (WMenuParserGetLine(parser, &title, &command, &params, &shortcut)) {
 
@@ -1040,7 +1047,7 @@ static WMenu *parseCascade(WScreen * scr, WMenu * menu, WMenuParser parser)
 
 			cascade = wMenuCreate(scr, M_(title), False);
 			cascade->on_destroy = removeShortcutsForMenu;
-			if (!parseCascade(scr, cascade, parser)) {
+			if (!parseCascade(scr, cascade, parser, depth + 1)) {
 				wMenuDestroy(cascade, True);
 			} else {
 				wMenuEntrySetCascade(menu, wMenuAddCallback(menu, M_(title), NULL, NULL), cascade);
@@ -1081,7 +1088,7 @@ static WMenu *readMenu(WScreen *scr, const char *flat_file, FILE *file)
 		if (strcasecmp(command, "MENU") == 0) {
 			menu = wMenuCreate(scr, M_(title), True);
 			menu->on_destroy = removeShortcutsForMenu;
-			if (!parseCascade(scr, menu, parser)) {
+			if (!parseCascade(scr, menu, parser, 0)) {
 				wMenuDestroy(menu, True);
 				menu = NULL;
 			}
@@ -1536,13 +1543,21 @@ static WMenu *makeDefaultMenu(WScreen * scr)
  *
  *----------------------------------------------------------------------
  */
-WMenu *configureMenu(WScreen *scr, WMPropList *definition)
+static WMenu *configureMenuAtDepth(WScreen *scr, WMPropList *definition, int depth)
 {
 	WMenu *menu = NULL;
 	WMPropList *elem;
 	int i, count;
 	WMPropList *title, *command, *params;
 	char *tmp, *mtitle;
+
+	/* the proplist parser already bounds nesting via MAX_PROPLIST_DEPTH
+	 * but a string entry can chain to another file or proplist, so keep
+	 * an explicit cap that does not depend on that constant */
+	if (depth > MAX_ROOTMENU_DEPTH) {
+		wwarning(_("%s:maximum menu nesting depth exceeded"), "WMRootMenu");
+		return NULL;
+	}
 
 	if (WMIsPLString(definition)) {
 		struct stat stat_buf;
@@ -1591,7 +1606,7 @@ WMenu *configureMenu(WScreen *scr, WMPropList *definition)
 			if (menu_from_file == NULL) { /* old style menu */
 				menu = readMenuFile(scr, path);
 			} else {
-				menu = configureMenu(scr, menu_from_file);
+				menu = configureMenuAtDepth(scr, menu_from_file, depth + 1);
 				WMReleasePropList(menu_from_file);
 			}
 
@@ -1640,7 +1655,7 @@ WMenu *configureMenu(WScreen *scr, WMPropList *definition)
 			WMenuEntry *mentry;
 
 			/* submenu */
-			submenu = configureMenu(scr, elem);
+			submenu = configureMenuAtDepth(scr, elem, depth + 1);
 			if (submenu) {
 				mentry = wMenuAddCallback(menu, submenu->frame->title, NULL, NULL);
 				wMenuEntrySetCascade(menu, mentry, submenu);
@@ -1678,6 +1693,11 @@ WMenu *configureMenu(WScreen *scr, WMPropList *definition)
 	}
 
 	return menu;
+}
+
+WMenu *configureMenu(WScreen *scr, WMPropList *definition)
+{
+	return configureMenuAtDepth(scr, definition, 0);
 }
 
 /*

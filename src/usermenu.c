@@ -192,7 +192,9 @@ static WUserMenuData *convertShortcuts(WScreen *scr, WMPropList *shortcut)
 	return data;
 }
 
-static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum)
+#define MAX_USERMENU_DEPTH 64
+
+static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum, int depth)
 {
 	char *mtitle;
 	WMenu *menu = NULL;
@@ -203,7 +205,7 @@ static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum)
 	if (!plum)
 		return NULL;
 
-	if (!WMIsPLArray(plum))
+	if (!WMIsPLArray(plum) || depth > MAX_USERMENU_DEPTH)
 		return NULL;
 
 	count = WMGetPropListItemCount(plum);
@@ -223,7 +225,7 @@ static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum)
 			WMenu *submenu;
 			WMenuEntry *mentry = NULL;
 
-			submenu = configureUserMenu(scr, elem);
+			submenu = configureUserMenu(scr, elem, depth + 1);
 			if (submenu)
 				mentry = wMenuAddCallback(menu, submenu->frame->title, NULL, NULL);
 
@@ -321,7 +323,7 @@ static WMenu *readUserMenuFile(WScreen *scr, const char *file_name)
 
 	plum = WMReadPropListFromFile(file_name);
 	if (plum) {
-		menu = configureUserMenu(scr, plum);
+		menu = configureUserMenu(scr, plum, 0);
 		WMReleasePropList(plum);
 	}
 
