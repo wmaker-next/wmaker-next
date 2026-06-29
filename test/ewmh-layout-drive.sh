@@ -177,9 +177,11 @@ stacking_above() {
 }
 
 send_restack_message() {
+	# send_restack_message TARGET SIBLING DETAIL [SOURCE]
 	DISPLAY=$DPY env EWMH_CLIENT_RESTACK_TARGET="$1" \
 		EWMH_CLIENT_RESTACK_SIBLING="$2" \
 		EWMH_CLIENT_RESTACK_DETAIL="$3" \
+		EWMH_CLIENT_RESTACK_SOURCE="${4:-2}" \
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
@@ -1289,6 +1291,18 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 			| sed -n 's/^xwininfo: Window id: \(0x[0-9a-fA-F]*\).*/\1/p')
 		send_restack_message "$CLIENT_XID" "$ROOT_XID" 0
 		check "ignores invalid _NET_RESTACK_WINDOW sibling without X errors" no_internal_x_errors
+		# source indication: source 1 (app) must not restack relative to a
+		# sibling that isn't itself, only source 2 (pager) may reorder
+		# other clients' windows. Re-establish CLIENT2 above CLIENT first
+		# so the assertion checks that source 1 did not reorder them.
+		send_restack_message "$CLIENT_XID" "$CLIENT2_XID" 1
+		wait_for 40 stacking_above "$CLIENT2_XID" "$CLIENT_XID" >/dev/null
+		send_restack_message "$CLIENT_XID" "$CLIENT2_XID" 0 1
+		sleep 0.3
+		check "refuses _NET_RESTACK_WINDOW source 1 with sibling" stacking_above "$CLIENT2_XID" "$CLIENT_XID"
+		# source 2 (pager) can still restack relative to a sibling
+		send_restack_message "$CLIENT_XID" "$CLIENT2_XID" 0 2
+		check "honors _NET_RESTACK_WINDOW source 2 with sibling" wait_for 40 stacking_above "$CLIENT_XID" "$CLIENT2_XID"
 		stop_second_client
 		close_ewmh_client >/dev/null
 	else

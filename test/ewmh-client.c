@@ -342,11 +342,12 @@ static int restack_mode(Display *dpy)
 	Window target = env_window("EWMH_CLIENT_RESTACK_TARGET", None);
 	Window sibling = env_window("EWMH_CLIENT_RESTACK_SIBLING", None);
 	long detail = env_long("EWMH_CLIENT_RESTACK_DETAIL", 0);
+	long source = env_long("EWMH_CLIENT_RESTACK_SOURCE", 2);
 
 	if (target == None)
 		return 1;
 	send_root_message(dpy, target, intern_atom(dpy, "_NET_RESTACK_WINDOW"),
-			  2, (long)sibling, detail, 0, 0);
+			  source, (long)sibling, detail, 0, 0);
 	return 0;
 }
 

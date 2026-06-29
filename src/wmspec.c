@@ -2201,19 +2201,28 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 
 	} else if (event->message_type == net_restack_window) {
 		XConfigureRequestEvent xcre;
+		long source = event->data.l[0];
 		long detail = event->data.l[2];
 		WWindow *sib;
 
-		/* data.l[0] = source indication, l[1] = sibling, l[2] = stack
-		 * mode (Above..Opposite). Route through the ConfigureRequest
-		 * path so the sibling is translated to its frame and the
-		 * managed stacking list is rebuilt in one place. Refuse a
-		 * detail outside the X11 range, and only honour the sibling
-		 * when it resolves to a managed client whose frame is a real
-		 * sibling of ours under root, otherwise wClientConfigure()
-		 * forwards the raw id to XConfigureWindow() and a hostile
-		 * non-sibling triggers BadMatch. */
+		/* data.l[0] = source indication (1=app, 2=pager), l[1] =
+		 * sibling, l[2] = stack mode (Above..Opposite). Route through
+		 * the ConfigureRequest path so the sibling is translated to
+		 * its frame and the managed stacking list is rebuilt in one
+		 * place. Refuse a detail outside the X11 range, and only
+		 * honour the sibling when it resolves to a managed client
+		 * whose frame is a real sibling of ours under root, otherwise
+		 * wClientConfigure() forwards the raw id to XConfigureWindow()
+		 * and a hostile non-sibling triggers BadMatch.
+		 *
+		 * Source indication: only source 2 (pager) may restack a
+		 * window relative to an arbitrary sibling. Source 1 (app)
+		 * and source 0 (legacy) may only restack the window itself
+		 * (no sibling), matching the EWMH policy that an application
+		 * must not reorder other clients' windows. */
 		if (detail < Above || detail > Opposite)
+			return True;
+		if (source != 2 && event->data.l[1] != None)
 			return True;
 		memset(&xcre, 0, sizeof(xcre));
 		xcre.window = event->window;
