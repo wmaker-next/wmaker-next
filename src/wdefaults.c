@@ -78,12 +78,9 @@ static void init_wdefaults(void)
 
 static char *get_entry_string(WMPropList *entry, const char *key)
 {
-	WMPropList *plkey, *value;
+	WMPropList *value;
 
-	plkey = WMCreatePLString(key);
-	value = WMGetFromPLDictionary(entry, plkey);
-	WMReleasePropList(plkey);
-
+	value = WMGetFromPLDictionaryByName(entry, key);
 	if (!value)
 		return NULL;
 	if (!WMIsPLString(value)) {
@@ -103,11 +100,9 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	attrs = wmalloc(sizeof(*attrs));
 
 	for (i = 0; i < WATTR_BOOL_COUNT; i++) {
-		WMPropList *plkey, *value;
+		WMPropList *value;
 
-		plkey = WMCreatePLString(attr_bool_names[i]);
-		value = WMGetFromPLDictionary(entry, plkey);
-		WMReleasePropList(plkey);
+		value = WMGetFromPLDictionaryByName(entry, attr_bool_names[i]);
 		if (!value)
 			continue;
 		attrs->set |= (uint32_t)1 << i;

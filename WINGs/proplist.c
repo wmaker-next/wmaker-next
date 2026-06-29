@@ -1478,6 +1478,20 @@ WMPropList *WMGetFromPLDictionary(WMPropList * plist, WMPropList * key)
 	return WMHashGet(plist->d.dict, key);
 }
 
+WMPropList *WMGetFromPLDictionaryByName(WMPropList * plist, const char *key)
+{
+	WMPropList *plkey, *value;
+
+	if (!plist)
+		return NULL;
+
+	plkey = WMCreatePLString(key);
+	value = WMGetFromPLDictionary(plist, plkey);
+	WMReleasePropList(plkey);
+
+	return value;
+}
+
 WMPropList *WMGetPLDictionaryKeys(WMPropList * plist)
 {
 	WMPropList *array, *key;

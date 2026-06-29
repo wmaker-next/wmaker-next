@@ -447,12 +447,7 @@ static void dict_put_string(WMPropList *dict, const char *key, const char *value
 
 static WMPropList *dict_get_key(WMPropList *dict, const char *key)
 {
-	WMPropList *plkey, *value;
-
-	plkey = WMCreatePLString(key);
-	value = WMGetFromPLDictionary(dict, plkey);
-	WMReleasePropList(plkey);
-	return value;
+	return WMGetFromPLDictionaryByName(dict, key);
 }
 
 static char *read_text_file(const char *path)

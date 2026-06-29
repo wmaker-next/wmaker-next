@@ -27,16 +27,7 @@ void wKeyTreeRebuild(WScreen *scr);
 
 static WMPropList *dict_get(WMPropList *dict, const char *key)
 {
-	WMPropList *plkey, *value;
-
-	if (!dict)
-		return NULL;
-
-	plkey = WMCreatePLString(key);
-	value = WMGetFromPLDictionary(dict, plkey);
-	WMReleasePropList(plkey);
-
-	return value;
+	return WMGetFromPLDictionaryByName(dict, key);
 }
 
 static WMPropList *schema_plkey(const WConfigEntry *entry)

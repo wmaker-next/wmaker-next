@@ -856,6 +856,11 @@ WMPropList* WMGetFromPLArray(WMPropList *plist, int index);
 /* Returns a reference. */
 WMPropList* WMGetFromPLDictionary(WMPropList *plist, WMPropList *key);
 
+/* As WMGetFromPLDictionary but takes a C string key, building and
+ * releasing the temporary PLString internally. Returns NULL when plist
+ * is NULL so callers do not need a separate guard. */
+WMPropList* WMGetFromPLDictionaryByName(WMPropList *plist, const char *key);
+
 /* Returns a PropList array with all the dictionary keys. Release it when
  * you're done. Keys in array are retained from the original dictionary
  * not copied and need NOT to be released individually. */
