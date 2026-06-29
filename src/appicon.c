@@ -1159,7 +1159,8 @@ static WAppIcon *findDockIconFor(WDock *dock, WWindow *wwin, Window main_window,
 	aicon = wDockFindIconForWindow(dock, main_window);
 	if (!aicon) {
 		wDockTrackWindowLaunch(dock, main_window, wwin->wm_instance,
-				       wwin->wm_class, client_pid);
+				       wwin->wm_class, wwin->wm_command,
+				       client_pid);
 		aicon = wDockFindIconForWindow(dock, main_window);
 	}
 	return aicon;

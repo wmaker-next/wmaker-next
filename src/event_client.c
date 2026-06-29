@@ -88,11 +88,13 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 			       ? wwin->main_window : e->window;
 
 		/* the fake group leader carries copies of the same
-		 * class strings wmaker set from wwin, so hand them
-		 * through rather than reading them back per window */
+		 * class strings and WM_COMMAND wmaker set from wwin,
+		 * so hand them through rather than reading them back
+		 * per window */
 		wDockTrackWindowLaunch(scr->last_dock, track,
 				       wwin ? wwin->wm_instance : NULL,
 				       wwin ? wwin->wm_class : NULL,
+				       wwin ? wwin->wm_command : NULL,
 				       client_pid);
 	}
 

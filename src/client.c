@@ -324,6 +324,9 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 		break;
 
 	case XA_WM_COMMAND:
+		if (wwin->wm_command)
+			wfree(wwin->wm_command);
+		wwin->wm_command = GetCommandForWindow(wwin->client_win);
 		if (wwin->main_window != None) {
 			WApplication *wapp = wApplicationOf(wwin->main_window);
 			char *command;

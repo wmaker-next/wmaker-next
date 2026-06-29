@@ -239,6 +239,9 @@ void wWindowDestroy(WWindow *wwin)
 	if (wwin->wm_class)
 		wunintern(wwin->wm_class);
 
+	if (wwin->wm_command)
+		wfree(wwin->wm_command);
+
 	if (wwin->wm_gnustep_attr)
 		wfree(wwin->wm_gnustep_attr);
 
@@ -337,6 +340,7 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 	ck->motif.seq = 0;
 #endif
 	ck->cmap_windows = wClientReqColormapWindows(window);
+	ck->command   = WXReqCommand(dpy, window);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
 					w_global.atom.wmaker.state, 10);
@@ -654,16 +658,12 @@ static void wWindowTrySwallow(WWindow *wwin)
 		/* When the new window does not expose _NET_WM_PID, fall back
 		 * to scanning the parent's process subtree for a process
 		 * whose name matches WM_COMMAND or WM_CLASS */
-		if (child_pid <= 0) {
-			char *cmd = GetCommandForWindow(wwin->client_win);
-			if (cmd) {
-				char *tok = wstrdup(cmd);
-				char *first = strtok(tok, " \t");
-				if (first)
-					child_pid = FindDescendantPidByCmdName(parent_pid, first);
-				wfree(tok);
-				wfree(cmd);
-			}
+		if (child_pid <= 0 && wwin->wm_command) {
+			char *tok = wstrdup(wwin->wm_command);
+			char *first = strtok(tok, " \t");
+			if (first)
+				child_pid = FindDescendantPidByCmdName(parent_pid, first);
+			wfree(tok);
 		}
 		if (child_pid <= 0 && wwin->wm_instance)
 			child_pid = FindDescendantPidByCmdName(parent_pid, wwin->wm_instance);
@@ -746,12 +746,9 @@ static void fixLeaderProperties(WWindow *wwin)
 	leaders[0] = wwin->client_leader;
 	leaders[1] = wwin->group_id;
 
-	if (haveCommand) {
-		command = GetCommandForWindow(wwin->client_win);
-		if (command)
-			wfree(command); /* command already set. nothing to do. */
-		else
-			WXSetCommand(dpy, wwin->client_win, argv, argc);
+	if (haveCommand && !wwin->wm_command) {
+		WXSetCommand(dpy, wwin->client_win, argv, argc);
+		wwin->wm_command = wtokenjoin(argv, argc);
 	}
 
 	for (i = 0; i < 2; i++) {
@@ -882,6 +879,8 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	Bool dontBring = False;
 	WManageCookies ck;
 	WSavedState *wstate;
+	char **cmd_argv;
+	int cmd_argc;
 	int gx, gy;
 
 	/* mutex. */
@@ -942,6 +941,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	/* Get hints and other information in properties */
 	PropRcvWMClass(ck.wclass, &wwin->wm_class, &wwin->wm_instance);
+
+	if (WXRcvCommand(dpy, ck.command, &cmd_argv, &cmd_argc)) {
+		if (cmd_argc > 0)
+			wwin->wm_command = wtokenjoin(cmd_argv, cmd_argc);
+		WXFreeStringList(cmd_argv, cmd_argc);
+	}
+	if (wwin->wm_command && wwin->wm_command[0] == '\0') {
+		wfree(wwin->wm_command);
+		wwin->wm_command = NULL;
+	}
 
 	/* setup descriptor */
 	wwin->client_win = window;

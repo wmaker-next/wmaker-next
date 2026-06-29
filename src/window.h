@@ -243,6 +243,7 @@ typedef struct WWindow {
 	WXWMHints *wm_hints;			/* WM_HINTS (optional) */
 	char *wm_instance;			/* instance of WM_CLASS */
 	char *wm_class;				/* class of WM_CLASS */
+	char *wm_command;			/* WM_COMMAND argv joined with wtokenjoin */
 	GNUstepWMAttributes *wm_gnustep_attr;	/* GNUstep window attributes */
 
 	int state;				/* state as in ICCCM */
@@ -484,6 +485,7 @@ typedef struct {
     WXCookie normal;        /* WM_NORMAL_HINTS */
     WXCookie motif;         /* _MOTIF_WM_HINTS */
     WXCookie cmap_windows;  /* WM_COLORMAP_WINDOWS */
+    WXCookie command;       /* WM_COMMAND */
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
     WXCookie saved_state;   /* _WINDOWMAKER_STATE */
     WXCookie mark_key;      /* _WINDOWMAKER_MARK_KEY */

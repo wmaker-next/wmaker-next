@@ -3555,7 +3555,8 @@ WAppIcon *wDockFindIconForWindow(WDock *dock, Window window)
 }
 
 void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
-			    const char *wm_class, pid_t client_pid)
+			    const char *wm_class, const char *command,
+			    pid_t client_pid)
 {
 	WAppIcon *icon;
 	WApplication *wapp;
@@ -3563,13 +3564,13 @@ void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
 	Bool firstPass = True;
 	Bool found = False;
 	Bool own_class = False;
-	char *command = NULL;
+	char *own_command = NULL;
 
 	/* every caller that holds a managed WWindow already has the
-	 * interned class strings from the wManagePrefetch batch and the
-	 * fake group leader carries copies of them, only re-read when
-	 * the caller could not supply either (a window that
-	 * wManageWindow refused) */
+	 * interned class strings and the joined WM_COMMAND from the
+	 * wManagePrefetch batch, the fake group leader carries copies of
+	 * the same values, only re-read when the caller could not supply
+	 * either (a window that wManageWindow refused) */
 	if (!wm_instance && !wm_class) {
 		if (!PropGetWMClass(window, (char **)&wm_class, (char **)&wm_instance)) {
 			wunintern(wm_class);
@@ -3577,9 +3578,10 @@ void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
 			return;
 		}
 		own_class = True;
+		own_command = GetCommandForWindow(window);
+		command = own_command;
 	}
 
-	command = GetCommandForWindow(window);
  retry:
 	for (i = 0; i < dock->max_icons; i++) {
 		icon = dock->icon_array[i];
@@ -3675,8 +3677,8 @@ void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
 		break;
 	}
 
-	if (command)
-		wfree(command);
+	if (own_command)
+		wfree(own_command);
 
 	if (own_class) {
 		wunintern(wm_class);
