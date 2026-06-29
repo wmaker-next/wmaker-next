@@ -22,6 +22,7 @@
 
 #include <config.h>
 #include <wraster.h>
+#include <WINGs/WUtil.h>
 
 static int failures;
 
@@ -357,8 +358,6 @@ static void test_xpm_transparent(void)
 
 int main(void)
 {
-	char cmd[300];
-
 	srcdir = getenv("srcdir");
 	if (!srcdir)
 		srcdir = ".";
@@ -375,8 +374,7 @@ int main(void)
 	test_xpm_transparent();
 
 	/* best-effort cleanup */
-	snprintf(cmd, sizeof(cmd), "rm -rf %s", tmpdir);
-	if (system(cmd)) { /* ignore */ }
+	(void)wspawnvp_wait((char *[]){"rm", "-rf", tmpdir, NULL});
 
 	if (failures) {
 		fprintf(stderr, "%d check(s) failed\n", failures);
