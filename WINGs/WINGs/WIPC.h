@@ -72,7 +72,7 @@ int wIPCConnect(const char *path);
 
 /* Frame and write one message. payload may be NULL when len is 0.
  * Returns 0 on success, -1 with errno set on short write or error. */
-int wIPCSend(int fd, uint32_t type, const char *payload, uint32_t len);
+int wIPCSend(int fd, uint32_t type, const char *payload, size_t len);
 
 /* Blocking receive of one complete frame. *payload is wmalloc'd with a
  * trailing NUL appended (so *len bytes of wire data, (*payload)[*len]

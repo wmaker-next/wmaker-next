@@ -232,24 +232,26 @@ static void ipc_try_write(struct WIPCClient *c)
 
 /* append a fully framed message to c's output buffer and kick a write */
 static void ipc_queue(struct WIPCClient *c, uint32_t type,
-		      const char *body, uint32_t len)
+		      const char *body, size_t len)
 {
-	uint32_t need;
+	uint32_t need, len32;
 	char *p;
 
 	if (c->dead)
 		return;
 
-	/* independent cap on len before the addition so an overflow
-	 * in WIPC_HEADER_LEN + len cannot wrap to a small value */
+	/* independent cap on the size_t len before narrowing or adding so
+	 * a >4 GiB body on LP64 is rejected rather than silently truncated
+	 * and so WIPC_HEADER_LEN + len cannot wrap to a small value */
 	if (len > WIPC_MAX_PAYLOAD) {
 		wwarning("IPC client on fd %d payload exceeds %u bytes, dropping", c->fd,
 			 WIPC_MAX_PAYLOAD);
 		ipc_drop(c);
 		return;
 	}
+	len32 = (uint32_t)len;
 
-	need = c->out_len + WIPC_HEADER_LEN + len;
+	need = c->out_len + WIPC_HEADER_LEN + len32;
 	if (need < c->out_len || need > WIPC_MAX_OUT_QUEUE) {
 		wwarning("IPC client on fd %d output queue overflow, dropping", c->fd);
 		ipc_drop(c);
@@ -258,10 +260,10 @@ static void ipc_queue(struct WIPCClient *c, uint32_t type,
 	c->out = wrealloc(c->out, need);
 	p = c->out + c->out_len;
 	memcpy(p, WIPC_MAGIC, 8);
-	memcpy(p + 8, &len, 4);
+	memcpy(p + 8, &len32, 4);
 	memcpy(p + 12, &type, 4);
-	if (len)
-		memcpy(p + WIPC_HEADER_LEN, body, len);
+	if (len32)
+		memcpy(p + WIPC_HEADER_LEN, body, len32);
 	c->out_len = need;
 
 	ipc_try_write(c);
@@ -270,11 +272,11 @@ static void ipc_queue(struct WIPCClient *c, uint32_t type,
 static void ipc_reply(struct WIPCClient *c, uint32_t type, WMPropList *pl)
 {
 	char *body = NULL;
-	uint32_t len = 0;
+	size_t len = 0;
 
 	if (pl) {
 		body = WMGetPropListDescription(pl, False);
-		len = (uint32_t)strlen(body);
+		len = strlen(body);
 	}
 	ipc_queue(c, type, body, len);
 	if (body)
@@ -321,7 +323,7 @@ static void ipc_drop(struct WIPCClient *c)
 /* ---- broadcast ------------------------------------------------------- */
 
 static void ipc_broadcast_buf(WScreen *only, uint32_t ev,
-			      const char *body, uint32_t len)
+			      const char *body, size_t len)
 {
 	uint32_t type = WIPC_EVENT_BIT | ev;
 	uint32_t bit = 1u << ev;
@@ -344,13 +346,13 @@ static void ipc_broadcast_buf(WScreen *only, uint32_t ev,
 void wIPCBroadcast(WScreen *scr, uint32_t ev, WMPropList *pl)
 {
 	char *body = NULL;
-	uint32_t len = 0;
+	size_t len = 0;
 
 	if (ev >= WIPC_EV_COUNT)
 		return;
 	if (pl) {
 		body = WMGetPropListDescription(pl, False);
-		len = (uint32_t)strlen(body);
+		len = strlen(body);
 	}
 	ipc_broadcast_buf(scr, ev, body, len);
 	if (body)
@@ -801,7 +803,7 @@ static void handle_subscribe(struct WIPCClient *c, const char *body)
 		pl_dict_put(tick, "payload", pl_string(""));
 		tbody = WMGetPropListDescription(tick, False);
 		ipc_queue(c, WIPC_EVENT_BIT | WIPC_EV_TICK,
-			  tbody, (uint32_t)strlen(tbody));
+			  tbody, strlen(tbody));
 		wfree(tbody);
 		WMReleasePropList(tick);
 	}
@@ -1052,6 +1054,11 @@ static void ipc_accept_cb(int fd, int mask, void *data)
 	c->fd = cfd;
 	c->scr = scr;
 	c->rd = WMAddInputHandler(cfd, WIReadMask, ipc_read_cb, c);
+	if (!c->rd) {
+		close(cfd);
+		wfree(c);
+		return;
+	}
 
 	c->next = scr->ipc_clients;
 	scr->ipc_clients = c;

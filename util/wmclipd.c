@@ -1228,7 +1228,7 @@ static int subscribe_screenshots(int fd)
 	body = WMGetPropListDescription(arr, False);
 	WMReleasePropList(arr);
 
-	rc = wIPCSend(fd, WIPC_SUBSCRIBE, body, (uint32_t)strlen(body));
+	rc = wIPCSend(fd, WIPC_SUBSCRIBE, body, strlen(body));
 	wfree(body);
 	return rc == 0;
 }

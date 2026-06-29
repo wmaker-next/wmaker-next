@@ -164,22 +164,26 @@ static int readall(int fd, void *buf, size_t len)
 	return 0;
 }
 
-int wIPCSend(int fd, uint32_t type, const char *payload, uint32_t len)
+int wIPCSend(int fd, uint32_t type, const char *payload, size_t len)
 {
 	char hdr[WIPC_HEADER_LEN];
+	uint32_t len32;
 
+	/* check the size_t value before narrowing so a >4 GiB body on
+	 * LP64 is rejected rather than silently truncated by the cast */
 	if (len > WIPC_MAX_PAYLOAD) {
 		errno = EMSGSIZE;
 		return -1;
 	}
+	len32 = (uint32_t)len;
 
 	memcpy(hdr, WIPC_MAGIC, 8);
-	memcpy(hdr + 8, &len, 4);
+	memcpy(hdr + 8, &len32, 4);
 	memcpy(hdr + 12, &type, 4);
 
 	if (writeall(fd, hdr, sizeof(hdr)) < 0)
 		return -1;
-	if (len > 0 && writeall(fd, payload, len) < 0)
+	if (len32 > 0 && writeall(fd, payload, len32) < 0)
 		return -1;
 	return 0;
 }
@@ -252,7 +256,7 @@ WMPropList *wIPCCommand(const char *display, const char *cmd)
 	body = WMGetPropListDescription(outer, False);
 	WMReleasePropList(outer);
 
-	ok = (wIPCSend(fd, WIPC_COMMAND, body, (uint32_t)strlen(body)) == 0);
+	ok = (wIPCSend(fd, WIPC_COMMAND, body, strlen(body)) == 0);
 	wfree(body);
 
 	if (ok && wIPCRecv(fd, &rtype, &rbuf, &rlen) == 0) {

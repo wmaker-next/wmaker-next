@@ -82,7 +82,7 @@ static int do_monitor(int fd, int argc, char **argv, int quiet)
 	sub = WMGetPropListDescription(arr, False);
 	WMReleasePropList(arr);
 
-	rc = wIPCSend(fd, WIPC_SUBSCRIBE, sub, (uint32_t)strlen(sub));
+	rc = wIPCSend(fd, WIPC_SUBSCRIBE, sub, strlen(sub));
 	wfree(sub);
 	if (rc < 0) {
 		fprintf(stderr, "%s: subscribe send: %s\n", prog, strerror(errno));
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 		WMReleasePropList(outer);
 	}
 
-	rc = wIPCSend(fd, req_type, body, (uint32_t)strlen(body));
+	rc = wIPCSend(fd, req_type, body, strlen(body));
 	wfree(body);
 	if (rc < 0) {
 		fprintf(stderr, "%s: send: %s\n", prog, strerror(errno));
