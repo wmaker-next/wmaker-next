@@ -1019,8 +1019,10 @@ static WMenu *makeWorkspaceMenu(WScreen *scr)
 	WMenu *menu;
 
 	menu = wMenuCreate(scr, NULL, False);
-	if (!menu)
+	if (!menu) {
 		wwarning(_("could not create workspace submenu for Clip menu"));
+		return NULL;
+	}
 
 	wMenuAddCallback(menu, "", switchWSCommand, (void *)scr->clip_icon);
 
@@ -2036,6 +2038,9 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 
 	/* if the first icon is not defined, use the default */
 	if (dock->icon_array[0] == NULL) {
+		if (old_top == NULL)
+			/* no icon was loaded and no default tile is available */
+			goto finish;
 		/* update default icon */
 		old_top->x_pos = dock->x_pos;
 		old_top->y_pos = dock->y_pos;
@@ -3666,7 +3671,6 @@ void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
 			if (!icon->forced_dock)
 				icon->main_window = window;
 		}
-		found = True;
 		wDockFinishLaunch(icon);
 		break;
 	}
@@ -4137,7 +4141,7 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, XEvent *event)
 		XMapWindow(dpy, scr->dock_shadow);
 	}
 
-	previously_on_right = now_on_right = dock->on_right_side;
+	previously_on_right = dock->on_right_side;
 	previous_x_pos = dock->x_pos;
 	done = 0;
 	while (!done) {
@@ -5178,7 +5182,8 @@ void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, Bool redocking)
 	}
 	if (j != drawer->icon_count - abs(index_of_hole) - (redocking ? 1 : 0))
 		wwarning("Removing aicon at index %d from %s: j=%d but should be %d",
-			index_of_hole, drawer->icon_array[0]->wm_instance,
+			index_of_hole,
+			drawer->icon_array[0] ? drawer->icon_array[0]->wm_instance : "(no main tile)",
 			j, drawer->icon_count - abs(index_of_hole) - (redocking ? 1 : 0));
 	wSlideAppicons(aicons_to_shift, j, !drawer->on_right_side);
 }
