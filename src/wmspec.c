@@ -1912,18 +1912,18 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 	wNETWMShowingDesktop(wwin->screen_ptr, False);
 
 	/* wNETWMRcvClientHints() already consumed _NET_WM_WINDOW_TYPE and
-	 * stored the matched atom in wwin->type, so reapply the derived
-	 * client flags from that instead of fetching the property again.
-	 * The GNUstep branch in wWindowSetupInitialAttributes() skips
-	 * wNETWMRcvClientHints(), so for those windows wwin->type is still
-	 * None and we fall back to the synchronous fetch the old code path
-	 * used. The frame does not exist yet here so the frame-update tail
-	 * of updateWindowType() is a no-op either way. */
-	if (wwin->type != None) {
+	 * stored the matched atom (or left wwin->type as None when the
+	 * property was absent) so reapply the derived client flags from
+	 * that instead of fetching the property again. Only the GNUstep
+	 * branch in wWindowSetupInitialAttributes() skips
+	 * wNETWMRcvClientHints(), so re-read for those windows only. The
+	 * frame does not exist yet here so the frame-update tail of
+	 * updateWindowType() is a no-op either way. */
+	if (wwin->wm_gnustep_attr) {
+		updateWindowType(wwin);
+	} else if (wwin->type != None) {
 		int layer;
 		handleWindowType(wwin, wwin->type, &layer);
-	} else {
-		updateWindowType(wwin);
 	}
 
 	updateNetIconInfoCk(wwin, ck->handled_icons, ck->icon_geom);
@@ -2441,10 +2441,13 @@ void wNETWMCancelPing(WWindow *wwin)
 	wwin->net_ping.term_sent = 0;
 }
 
-/* read _NET_WM_PID and WM_CLIENT_MACHINE once at manage time and cache
- * the pid only when the client explicitly names this host, so a later
- * property change cannot redirect Force Quit at an arbitrary process,
- * and a missing WM_CLIENT_MACHINE is treated as remote */
+/* cache the manage-time pid for Force Quit only when the client
+ * explicitly names this host so a later property change cannot redirect
+ * the kill at an arbitrary process, and a missing WM_CLIENT_MACHINE is
+ * treated as remote. wwin->client_pid was already populated by
+ * wGetWindowPid() (XRes preferred, falling back to _NET_WM_PID), so
+ * use that instead of reading the property again, an XRes-supplied
+ * value is local by construction so the hostname check still passes. */
 static void cacheLocalPid(WWindow *wwin)
 {
 	char host[256], *machine;
@@ -2452,7 +2455,7 @@ static void cacheLocalPid(WWindow *wwin)
 
 	wwin->net_ping.pid = 0;
 
-	pid = wNETWMGetPidForWindow(wwin->client_win);
+	pid = (int)wwin->client_pid;
 	if (pid <= 0)
 		return;
 
@@ -2970,9 +2973,17 @@ static void observer(void *self, WMNotification *notif)
 		updateClientListStacking(wwin->screen_ptr, NULL);
 		updateStateHint(wwin, True, False);
 
-		updateStrut(wwin->screen_ptr, wwin->client_win, False);
-		updateStrut(wwin->screen_ptr, wwin->client_win, True);
-		wScreenUpdateUsableArea(wwin->screen_ptr);
+		/* wNETWMRcvClientHints() already decoded _NET_WM_STRUT(_PARTIAL)
+		 * from the prefetch batch via addStrutCk() and called
+		 * wScreenUpdateUsableArea(), and the PropertyNotify handler
+		 * covers later changes, only the GNUstep-attr branch in
+		 * wWindowSetupInitialAttributes() skipped that call so read
+		 * for those windows here. */
+		if (wwin->wm_gnustep_attr) {
+			updateStrut(wwin->screen_ptr, wwin->client_win, False);
+			updateStrut(wwin->screen_ptr, wwin->client_win, True);
+			wScreenUpdateUsableArea(wwin->screen_ptr);
+		}
 	} else if (strcmp(name, WMNUnmanaged) == 0 && wwin) {
 		updateClientList(wwin->screen_ptr);
 		updateClientListStacking(wwin->screen_ptr, wwin);

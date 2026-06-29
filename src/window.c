@@ -798,9 +798,10 @@ static void fixLeaderProperties(WWindow *wwin)
 		wfree(argv);
 }
 
-static Window createFakeWindowGroupLeader(WScreen *scr, Window win, char *instance, char *class)
+static Window createFakeWindowGroupLeader(WScreen *scr, WWindow *wwin, Window win,
+					  char *instance, char *class)
 {
-	WXWMHints *hints;
+	WXWMHints *hints, copy;
 	Window leader;
 	int argc;
 	char **argv;
@@ -809,8 +810,16 @@ static Window createFakeWindowGroupLeader(WScreen *scr, Window win, char *instan
 	/* set class hint */
 	WXSetWMClass(dpy, leader, instance, class);
 
-	/* inherit these from the original leader if available */
-	hints = WXGetWMHints(dpy, win);
+	/* inherit these from the original leader if available, when the
+	 * leader is the just-managed client window the values are already
+	 * on wwin from the wManagePrefetch batch so use those instead of
+	 * reading them back */
+	if (win == wwin->client_win && wwin->wm_hints) {
+		copy = *wwin->wm_hints;
+		hints = &copy;
+	} else {
+		hints = WXGetWMHints(dpy, win);
+	}
 	if (!hints) {
 		hints = WXAllocWMHints();
 		hints->flags = 0;
@@ -819,9 +828,17 @@ static Window createFakeWindowGroupLeader(WScreen *scr, Window win, char *instan
 	hints->window_group = leader;
 	hints->flags |= WindowGroupHint;
 	WXSetWMHints(dpy, leader, hints);
-	wfree(hints);
+	if (hints != &copy)
+		wfree(hints);
 
-	if (WXGetCommand(dpy, win, &argv, &argc) && argc > 0) {
+	if (win == wwin->client_win) {
+		if (wwin->wm_command) {
+			wtokensplit(wwin->wm_command, &argv, &argc);
+			if (argc > 0)
+				WXSetCommand(dpy, leader, argv, argc);
+			wtokenfree(argv, argc);
+		}
+	} else if (WXGetCommand(dpy, win, &argv, &argc) && argc > 0) {
 		WXSetCommand(dpy, leader, argv, argc);
 		WXFreeStringList(argv, argc);
 	}
@@ -1110,7 +1127,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (index != WANotFound) {
 			fPtr = WMGetFromArray(scr->fakeGroupLeaders, index);
 			if (fPtr->retainCount == 0)
-				fPtr->leader = createFakeWindowGroupLeader(scr, wwin->main_window,
+				fPtr->leader = createFakeWindowGroupLeader(scr, wwin, wwin->main_window,
 									   instance, class);
 
 			fPtr->retainCount++;
@@ -1127,7 +1144,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			fPtr = (WFakeGroupLeader *) wmalloc(sizeof(WFakeGroupLeader));
 
 			fPtr->identifier = buffer;
-			fPtr->leader = createFakeWindowGroupLeader(scr, wwin->main_window, instance, class);
+			fPtr->leader = createFakeWindowGroupLeader(scr, wwin, wwin->main_window, instance, class);
 			fPtr->origLeader = None;
 			fPtr->retainCount = 1;
 
