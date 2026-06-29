@@ -714,7 +714,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			wSelectWindow(wwin, !wwin->flags.selected);
 			XFlush(dpy);
 
-		} else if (scr->selected_windows && WMGetArrayItemCount(scr->selected_windows)) {
+		} else if (wwin && scr->selected_windows && WMGetArrayItemCount(scr->selected_windows)) {
 
 			if (wwin->flags.selected && scr->selected_windows) {
 				if (scr->shortcutWindows[widx]) {
