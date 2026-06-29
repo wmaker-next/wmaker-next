@@ -1354,6 +1354,11 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 		dock->max_icons = scr->scr_height / w_global.config->icon_size;
 	}
 
+	/* a tiny screen or a large icon_size can yield 0, which
+	 * wmalloc(sizeof(*) * 0) trips assert(size > 0) on */
+	if (dock->max_icons < 1)
+		dock->max_icons = 1;
+
 	dock->icon_array = wmalloc(sizeof(WAppIcon *) * dock->max_icons);
 
 	btn = mainIconCreate(scr, type, name);
@@ -4104,7 +4109,7 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, XEvent *event)
 	int x = aicon->x_pos, y = aicon->y_pos;;
 	int shad_x = x, shad_y = y;
 	XEvent ev;
-	int grabbed = 0, done, previously_on_right, now_on_right, previous_x_pos, i;
+	int grabbed = 0, done, previously_on_right, now_on_right, previous_x_pos, i, idx;
 	Pixmap ghost = None;
 	int superfluous = w_global.config->superfluous;	/* we catch it to avoid problems */
 
@@ -4287,7 +4292,13 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, XEvent *event)
 					tmpaicon = dock->icon_array[i];
 					if (tmpaicon == NULL)
 						continue;
-					wins[tmpaicon->xindex + offset_index] = tmpaicon->icon->core->window;
+					idx = tmpaicon->xindex + offset_index;
+					if (idx < 0 || idx >= dock->icon_count) {
+						wwarning("handleDockMove: xindex %d out of range [0..%d]",
+							 idx, dock->icon_count - 1);
+						continue;
+					}
+					wins[idx] = tmpaicon->icon->core->window;
 				}
 				slide_windows(wins, dock->icon_count,
 					(dock->on_right_side ? x - (dock->icon_count - 1) * ICON_SIZE : x),
@@ -4679,6 +4690,10 @@ int wClipMakeIconOmnipresent(WAppIcon *aicon, int omnipresent)
 		}
 	} else {
 		aicon->omnipresent = 0;
+		if (!scr->global_icons) {
+			wwarning("wClipMakeIconOmnipresent: global_icons is NULL");
+			return WO_FAILED;
+		}
 		if (aicon == scr->global_icons->aicon) {
 			tmp = scr->global_icons->next;
 			wfree(scr->global_icons);
@@ -4796,8 +4811,11 @@ static int addADrawer(WScreen *scr)
 		can_be_here[y + dock->max_icons - 1] = True;
 	}
 	for (i = 0; i < dock->max_icons; i++) {
-		if (dock->icon_array[i] != NULL)
-			can_be_here[dock->icon_array[i]->yindex + dock->max_icons - 1] = False;
+		if (dock->icon_array[i] != NULL) {
+			int idx = dock->icon_array[i]->yindex + dock->max_icons - 1;
+			if (idx >= 0 && idx < 2 * dock->max_icons - 1)
+				can_be_here[idx] = False;
+		}
 	}
 	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
 		y = (int) ((dc->adrawer->y_pos - dock->y_pos) / ICON_SIZE);
@@ -4880,10 +4898,14 @@ static void drawerDestroy(WDock *drawer)
 				break;
 		}
 
-		wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
-					0, (drawer->y_pos - scr->dock->y_pos) / ICON_SIZE);
-		XMoveWindow(dpy, aicon->icon->core->window, drawer->x_pos, drawer->y_pos);
-		XMapWindow(dpy, aicon->icon->core->window);
+		if (!aicon) {
+			wwarning("drawerDestroy: icon_count==2 but no appicon found");
+		} else {
+			wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
+						0, (drawer->y_pos - scr->dock->y_pos) / ICON_SIZE);
+			XMoveWindow(dpy, aicon->icon->core->window, drawer->x_pos, drawer->y_pos);
+			XMapWindow(dpy, aicon->icon->core->window);
+		}
 	} else if (drawer->icon_count > 2) {
 		icons = WMCreateArray(drawer->icon_count - 1);
 		for (i = 1; i < drawer->max_icons; i++) {
