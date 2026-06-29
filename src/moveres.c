@@ -159,10 +159,27 @@ static void showPosition(WWindow * wwin, int x, int y)
 	}
 }
 
-static void cyclePositionDisplay(WWindow * wwin, int x, int y, int w, int h)
+static void placeGeometryDisplay(WWindow *wwin, int mode, int x, int y, int w, int h)
 {
 	WScreen *scr = wwin->screen_ptr;
 	WMRect rect;
+
+	if (mode == WDIS_CENTER) {
+		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
+		moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
+					    rect.pos.y + rect.size.height / 2);
+	} else if (mode == WDIS_TOPLEFT) {
+		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
+		moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
+	} else if (mode == WDIS_FRAME_CENTER) {
+		moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
+	}
+	WMMapWidget(scr->gview);
+}
+
+static void cyclePositionDisplay(WWindow * wwin, int x, int y, int w, int h)
+{
+	WScreen *scr = wwin->screen_ptr;
 
 	w_global.config->move_display++;
 	w_global.config->move_display %= NUM_DISPLAYS;
@@ -172,41 +189,20 @@ static void cyclePositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 		w_global.config->move_display %= NUM_DISPLAYS;
 	}
 
-	if (w_global.config->move_display == WDIS_NONE) {
+	if (w_global.config->move_display == WDIS_NONE)
 		WMUnmapWidget(scr->gview);
-	} else {
-		if (w_global.config->move_display == WDIS_CENTER) {
-			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-			moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
-						    rect.pos.y + rect.size.height / 2);
-		} else if (w_global.config->move_display == WDIS_TOPLEFT) {
-			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-			moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-		} else if (w_global.config->move_display == WDIS_FRAME_CENTER) {
-			moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
-		}
-		WMMapWidget(scr->gview);
-	}
+	else
+		placeGeometryDisplay(wwin, w_global.config->move_display, x, y, w, h);
 }
 
 static void mapPositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 {
 	WScreen *scr = wwin->screen_ptr;
-	WMRect rect;
 
-	if (w_global.config->move_display == WDIS_NEW || w_global.config->move_display == WDIS_NONE) {
+	if (w_global.config->move_display == WDIS_NEW || w_global.config->move_display == WDIS_NONE)
 		return;
-	} else if (w_global.config->move_display == WDIS_CENTER) {
-		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-		moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
-					    rect.pos.y + rect.size.height / 2);
-	} else if (w_global.config->move_display == WDIS_TOPLEFT) {
-		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-		moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-	} else if (w_global.config->move_display == WDIS_FRAME_CENTER) {
-		moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
-	}
-	WMMapWidget(scr->gview);
+
+	placeGeometryDisplay(wwin, w_global.config->move_display, x, y, w, h);
 	WSetGeometryViewShownPosition(scr->gview, x, y);
 }
 
@@ -373,7 +369,6 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int dir)
 {
 	WScreen *scr = wwin->screen_ptr;
-	WMRect rect;
 
 	w_global.config->size_display++;
 	w_global.config->size_display %= NUM_DISPLAYS;
@@ -381,40 +376,17 @@ static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int
 	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE) {
 		WMUnmapWidget(scr->gview);
 	} else {
-		if (w_global.config->size_display == WDIS_CENTER) {
-			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-			moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
-						    rect.pos.y + rect.size.height / 2);
-		} else if (w_global.config->size_display == WDIS_TOPLEFT) {
-			rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-			moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-		} else if (w_global.config->size_display == WDIS_FRAME_CENTER) {
-			moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
-		}
-		WMMapWidget(scr->gview);
+		placeGeometryDisplay(wwin, w_global.config->size_display, x, y, w, h);
 		showGeometry(wwin, x, y, x + w, y + h, dir);
 	}
 }
 
 static void mapGeometryDisplay(WWindow * wwin, int x, int y, int w, int h)
 {
-	WScreen *scr = wwin->screen_ptr;
-	WMRect rect;
-
 	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE)
 		return;
 
-	if (w_global.config->size_display == WDIS_CENTER) {
-		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-		moveGeometryDisplayCentered(scr, rect.pos.x + rect.size.width / 2,
-					    rect.pos.y + rect.size.height / 2);
-	} else if (w_global.config->size_display == WDIS_TOPLEFT) {
-		rect = wGetRectForHead(scr, wGetHeadForWindow(wwin));
-		moveGeometryDisplayCentered(scr, rect.pos.x + 1, rect.pos.y + 1);
-	} else if (w_global.config->size_display == WDIS_FRAME_CENTER) {
-		moveGeometryDisplayCentered(scr, x + w / 2, y + h / 2);
-	}
-	WMMapWidget(scr->gview);
+	placeGeometryDisplay(wwin, w_global.config->size_display, x, y, w, h);
 	showGeometry(wwin, x, y, x + w, y + h, 0);
 }
 
