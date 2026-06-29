@@ -1217,20 +1217,9 @@ static char *screenshot_path_from_event(const char *body)
 
 static int subscribe_screenshots(int fd)
 {
-	WMPropList *arr, *s;
-	char *body;
-	int rc;
+	const char *events[] = { "screenshot" };
 
-	arr = WMCreatePLArray(NULL);
-	s = WMCreatePLString("screenshot");
-	WMAddToPLArray(arr, s);
-	WMReleasePropList(s);
-	body = WMGetPropListDescription(arr, False);
-	WMReleasePropList(arr);
-
-	rc = wIPCSend(fd, WIPC_SUBSCRIBE, body, strlen(body));
-	wfree(body);
-	return rc == 0;
+	return wIPCSendStringArray(fd, WIPC_SUBSCRIBE, events, 1) == 0;
 }
 
 static int connect_ipc(void)

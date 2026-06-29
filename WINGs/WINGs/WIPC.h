@@ -74,6 +74,12 @@ int wIPCConnect(const char *path);
  * Returns 0 on success, -1 with errno set on short write or error. */
 int wIPCSend(int fd, uint32_t type, const char *payload, size_t len);
 
+/* Build a flat proplist array of count strings, serialise it and send
+ * it as a single frame of the given type. Convenience for SUBSCRIBE
+ * and similar string-list messages so callers do not open-code the
+ * create/append/describe/release/send/free sequence. */
+int wIPCSendStringArray(int fd, uint32_t type, const char *const *items, int count);
+
 /* Blocking receive of one complete frame. *payload is wmalloc'd with a
  * trailing NUL appended (so *len bytes of wire data, (*payload)[*len]
  * == '\0'). Returns 0 on success, -1 on read error or protocol

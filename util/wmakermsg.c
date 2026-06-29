@@ -68,22 +68,11 @@ static int reply_is_success(const char *body)
 
 static int do_monitor(int fd, int argc, char **argv, int quiet)
 {
-	WMPropList *arr, *s;
 	uint32_t type, len;
-	char *body, *sub;
-	int i, rc;
+	char *body;
+	int rc;
 
-	arr = WMCreatePLArray(NULL);
-	for (i = 0; i < argc; i++) {
-		s = WMCreatePLString(argv[i]);
-		WMAddToPLArray(arr, s);
-		WMReleasePropList(s);
-	}
-	sub = WMGetPropListDescription(arr, False);
-	WMReleasePropList(arr);
-
-	rc = wIPCSend(fd, WIPC_SUBSCRIBE, sub, strlen(sub));
-	wfree(sub);
+	rc = wIPCSendStringArray(fd, WIPC_SUBSCRIBE, (const char *const *)argv, argc);
 	if (rc < 0) {
 		fprintf(stderr, "%s: subscribe send: %s\n", prog, strerror(errno));
 		return 1;

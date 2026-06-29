@@ -188,6 +188,26 @@ int wIPCSend(int fd, uint32_t type, const char *payload, size_t len)
 	return 0;
 }
 
+int wIPCSendStringArray(int fd, uint32_t type, const char *const *items, int count)
+{
+	WMPropList *arr, *s;
+	char *body;
+	int i, rc;
+
+	arr = WMCreatePLArray(NULL);
+	for (i = 0; i < count; i++) {
+		s = WMCreatePLString(items[i]);
+		WMAddToPLArray(arr, s);
+		WMReleasePropList(s);
+	}
+	body = WMGetPropListDescription(arr, False);
+	WMReleasePropList(arr);
+
+	rc = wIPCSend(fd, type, body, strlen(body));
+	wfree(body);
+	return rc;
+}
+
 int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 {
 	char hdr[WIPC_HEADER_LEN];
