@@ -293,7 +293,7 @@ void WMClearList(WMList * lPtr)
 
 	lPtr->topItem = 0;
 
-	if (!lPtr->idleID) {
+	if (lPtr->idleID) {
 		WMDeleteIdleHandler(lPtr->idleID);
 		lPtr->idleID = NULL;
 	}
