@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <math.h>
 
 
@@ -645,6 +646,10 @@ static void storeCommandInScript(const char *cmd, const char *line)
 
 	f = fopen(path, "rb");
 	if (!f) {
+		if (errno != ENOENT) {
+			werror(_("cannot open existing %s: %s"), path, strerror(errno));
+			goto end;
+		}
 		f = fopen(path, "wb");
 		if (!f) {
 			werror(_("could not create %s"), path);
@@ -696,6 +701,7 @@ static void storeCommandInScript(const char *cmd, const char *line)
 
 		if (rename(tmppath, path) != 0) {
 			werror(_("could not rename file %s to %s"), tmppath, path);
+			unlink(tmppath);
 		}
 		wfree(tmppath);
 	}
