@@ -2446,8 +2446,14 @@ Bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, Bool update_icon
 			/* icon->forced_dock = 1; */
 			if (dock->type != WM_CLIP || !icon->attracted) {
 				icon->editing = 1;
+				wretain(icon);
 				if (wInputDialog(dock->screen_ptr, _("Dock Icon"),
 						 _("Type the command used to launch the application"), &command)) {
+					if (icon->destroyed) {
+						wfree(command);
+						wrelease(icon);
+						return False;
+					}
 					if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
 						wfree(command);
 						command = NULL;
@@ -2458,6 +2464,10 @@ Bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, Bool update_icon
 					icon->editing = 0;
 					if (command)
 						wfree(command);
+					if (icon->destroyed) {
+						wrelease(icon);
+						return False;
+					}
 					/* If the target is the dock, reject the icon. If
 					 * the target is the clip, make it an attracted icon
 					 */
@@ -2468,9 +2478,11 @@ Bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, Bool update_icon
 							lupdate_icon = True;
 						}
 					} else {
+						wrelease(icon);
 						return False;
 					}
 				}
+				wrelease(icon);
 			}
 		}
 	}
