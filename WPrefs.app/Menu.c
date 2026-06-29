@@ -1569,9 +1569,10 @@ static void showData(_Panel * panel)
 static Bool notblank(const char *s)
 {
 	if (s) {
-		while (*s++) {
+		while (*s) {
 			if (!isspace(*s))
 				return True;
+			s++;
 		}
 	}
 	return False;
