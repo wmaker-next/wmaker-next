@@ -302,6 +302,8 @@ static void doScrolling(WMWidget * self, void *data)
 	}
 	if (vpsize <= 0)
 		vpsize = 1;
+	if (size <= 0)
+		size = 1;
 
 	switch (WMGetScrollerHitPart(self)) {
 	case WSDecrementLine:
