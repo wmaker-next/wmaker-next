@@ -22,6 +22,7 @@
 
 #include "wconfig.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -102,7 +103,7 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 			wwarning(_("Got unknown command %s over the deprecated X channel"), command);
 		}
 
-	} else if (e->type == w_global.atom.wmaker.wm_function) {
+	} else if (e->type == w_global.atom.wmaker.wm_function && e->format == 32) {
 		WApplication *wapp;
 
 		/* the sender may target either the group leader (then
@@ -125,24 +126,25 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 				wHideApplication(wapp);
 			break;
 		}
-	} else if (e->type == w_global.atom.gnustep.wm_attr) {
+	} else if (e->type == w_global.atom.gnustep.wm_attr && e->format == 32) {
 		wwin = wWindowFor(e->window);
-		if (!wwin)
+		if (!wwin || !wwin->frame)
 			return;
 		switch (e->data.data32[0]) {
 		case GSWindowLevelAttr:
 			{
 				int level = (int)e->data.data32[1];
 
-				if (WINDOW_LEVEL(wwin) != level) {
+				/* INT_MIN is the only illegal window level,
+				 * matching wWindowGetInitialLevel */
+				if (level != INT_MIN && WINDOW_LEVEL(wwin) != level)
 					ChangeStackingLevel(wwin->frame->core, level);
-				}
 			}
 			break;
 		}
-	} else if (e->type == w_global.atom.gnustep.titlebar_state) {
+	} else if (e->type == w_global.atom.gnustep.titlebar_state && e->format == 32) {
 		wwin = wWindowFor(e->window);
-		if (!wwin)
+		if (!wwin || !wwin->frame)
 			return;
 		switch (e->data.data32[0]) {
 		case WMTitleBarNormal:
@@ -155,7 +157,7 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 			wFrameWindowChangeState(wwin->frame, WS_FOCUSED);
 			break;
 		}
-	} else if (e->type == w_global.atom.wm.ignore_focus_events) {
+	} else if (e->type == w_global.atom.wm.ignore_focus_events && e->format == 32) {
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (!scr)
 			return;
