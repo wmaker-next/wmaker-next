@@ -276,10 +276,40 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 	return db;
 }
 
+/* Read the user file for a dictionary domain, merge the global copy on
+ * top if present, validate the type and emit the standard warnings.
+ * Returns the merged dictionary (owned by the caller) or NULL when the
+ * file is missing or not a dictionary. */
+static WMPropList *reload_domain_dict(WDDomain *domain, const char *name)
+{
+	WMPropList *shared = readGlobalDomain(name, True);
+	WMPropList *dict = WMReadPropListFromFile(domain->path);
+
+	if (!dict) {
+		wwarning(_("could not load domain %s from user defaults database"), name);
+		if (shared)
+			WMReleasePropList(shared);
+		return NULL;
+	}
+	if (!WMIsPLDictionary(dict)) {
+		wwarning(_("Domain %s (%s) of defaults database is corrupted!"),
+			 name, domain->path);
+		WMReleasePropList(dict);
+		if (shared)
+			WMReleasePropList(shared);
+		return NULL;
+	}
+	if (shared) {
+		WMMergePLDictionaries(shared, dict, True);
+		WMReleasePropList(dict);
+		dict = shared;
+	}
+	return dict;
+}
+
 void wDefaultsCheckDomains(void* arg)
 {
 	WScreen *scr;
-	WMPropList *shared_dict = NULL;
 	WMPropList *dict;
 	int i;
 
@@ -287,57 +317,32 @@ void wDefaultsCheckDomains(void* arg)
 	(void) arg;
 
 	if (domain_file_changed(w_global.domain.wmaker)) {
-		/* Global dictionary */
-		shared_dict = readGlobalDomain("WindowMaker", True);
-
-		/* User dictionary */
-		dict = WMReadPropListFromFile(w_global.domain.wmaker->path);
-
+		dict = reload_domain_dict(w_global.domain.wmaker, "WindowMaker");
 		if (dict) {
-			if (!WMIsPLDictionary(dict)) {
-				WMReleasePropList(dict);
-				dict = NULL;
-				wwarning(_("Domain %s (%s) of defaults database is corrupted!"),
-					 "WindowMaker", w_global.domain.wmaker->path);
-			} else {
-				WConfig *old_config;
-				WConfig *new_config;
-				WConfigChanges changes;
+			WConfig *old_config;
+			WConfig *new_config;
+			WConfigChanges changes;
 
-				if (shared_dict) {
-					WMMergePLDictionaries(shared_dict, dict, True);
-					WMReleasePropList(dict);
-					dict = shared_dict;
-					shared_dict = NULL;
-				}
+			old_config = w_global.config;
+			new_config = wConfigReadWindowMaker(dict);
 
-				old_config = w_global.config;
-				new_config = wConfigReadWindowMaker(dict);
-
-				wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
-				/* adopt before applying so handlers reached
-				 * from wReadDefaults() read the new values
-				 * via w_global.config */
-				w_global.config = new_config;
-				for (i = 0; i < w_global.screen_count; i++) {
-					scr = wScreenWithNumber(i);
-					if (scr)
-						wReadDefaults(scr, old_config, new_config, &changes);
-				}
-				wConfigDestroy(old_config);
-
-				if (w_global.domain.wmaker->dictionary)
-					WMReleasePropList(w_global.domain.wmaker->dictionary);
-
-				w_global.domain.wmaker->dictionary = dict;
+			wConfigPrepareRuntimeDefaults(dict, old_config, new_config, &changes);
+			/* adopt before applying so handlers reached
+			 * from wReadDefaults() read the new values
+			 * via w_global.config */
+			w_global.config = new_config;
+			for (i = 0; i < w_global.screen_count; i++) {
+				scr = wScreenWithNumber(i);
+				if (scr)
+					wReadDefaults(scr, old_config, new_config, &changes);
 			}
-		} else {
-			wwarning(_("could not load domain %s from user defaults database"), "WindowMaker");
+			wConfigDestroy(old_config);
+
+			if (w_global.domain.wmaker->dictionary)
+				WMReleasePropList(w_global.domain.wmaker->dictionary);
+
+			w_global.domain.wmaker->dictionary = dict;
 		}
-
-		if (shared_dict)
-			WMReleasePropList(shared_dict);
-
 	}
 
 	if (domain_file_changed(w_global.domain.window_attr)) {
@@ -345,47 +350,25 @@ void wDefaultsCheckDomains(void* arg)
 		 * and are case-sensitive, keep "xterm" and "XTerm" distinct
 		 * while reading and merging the global and user files */
 		WMPLSetCaseSensitive(True);
-		/* global dictionary */
-		shared_dict = readGlobalDomain("WMWindowAttributes", True);
-		/* user dictionary */
-		dict = WMReadPropListFromFile(w_global.domain.window_attr->path);
+		dict = reload_domain_dict(w_global.domain.window_attr, "WMWindowAttributes");
 		if (dict) {
-			if (!WMIsPLDictionary(dict)) {
-				WMReleasePropList(dict);
-				dict = NULL;
-				wwarning(_("Domain %s (%s) of defaults database is corrupted!"),
-					 "WMWindowAttributes", w_global.domain.window_attr->path);
-			} else {
-				if (shared_dict) {
-					WMMergePLDictionaries(shared_dict, dict, True);
-					WMReleasePropList(dict);
-					dict = shared_dict;
-					shared_dict = NULL;
-				}
+			if (w_global.domain.window_attr->dictionary)
+				WMReleasePropList(w_global.domain.window_attr->dictionary);
 
-				if (w_global.domain.window_attr->dictionary)
-					WMReleasePropList(w_global.domain.window_attr->dictionary);
+			w_global.domain.window_attr->dictionary = dict;
+			wWindowAttrsReload();
+			for (i = 0; i < w_global.screen_count; i++) {
+				scr = wScreenWithNumber(i);
+				if (scr) {
+					wDefaultUpdateIcons(scr);
 
-				w_global.domain.window_attr->dictionary = dict;
-				wWindowAttrsReload();
-				for (i = 0; i < w_global.screen_count; i++) {
-					scr = wScreenWithNumber(i);
-					if (scr) {
-						wDefaultUpdateIcons(scr);
-
-						/* Update the panel image if changed */
-						/* Don't worry. If the image is the same these
-						 * functions will have no performance impact. */
-						create_logo_image(scr);
-					}
+					/* Update the panel image if changed */
+					/* Don't worry. If the image is the same these
+					 * functions will have no performance impact. */
+					create_logo_image(scr);
 				}
 			}
-		} else {
-			wwarning(_("could not load domain %s from user defaults database"), "WMWindowAttributes");
 		}
-
-		if (shared_dict)
-			WMReleasePropList(shared_dict);
 		WMPLSetCaseSensitive(False);
 	}
 
