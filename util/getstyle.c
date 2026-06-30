@@ -124,6 +124,30 @@ static char *theme_options[] = {
 	NULL
 };
 
+/* style options whose value is a single pixmap filename rather than a
+ * texture array, so makeThemePack() copies the file into the .themed
+ * directory and rewrites the value to a bare basename the same way it
+ * does for the (tpixmap, file, ...) form */
+static const char * const pixmap_string_options[] = {
+	"CloseButtonPixmap",
+	"BrokenCloseButtonPixmap",
+	"KillButtonPixmap",
+	"MiniaturizeButtonPixmap",
+	"MaximizeButtonPixmap",
+	"RestoreButtonPixmap",
+	NULL
+};
+
+static Bool isPixmapStringOption(const char *option)
+{
+	int i;
+
+	for (i = 0; pixmap_string_options[i] != NULL; i++)
+		if (strcasecmp(option, pixmap_string_options[i]) == 0)
+			return True;
+	return False;
+}
+
 /* table of style related fonts */
 
 static char *font_options[] = {
@@ -218,6 +242,25 @@ static void makeThemePack(WMPropList * style, const char *themeName)
 		key = WMGetFromPLArray(keys, i);
 
 		value = WMGetFromPLDictionary(style, key);
+		if (value && WMIsPLString(value) &&
+		    isPixmapStringOption(WMGetFromPLString(key))) {
+			const char *file = WMGetFromPLString(value);
+			const char *p;
+			char *base;
+
+			if (!file || !*file)
+				continue;
+			p = strrchr(file, '/');
+			if (p) {
+				base = wstrdup(p + 1);
+				wcopy_file(themeDir, file, base);
+				WMPutInPLDictionary(style, key, WMCreatePLString(base));
+				wfree(base);
+			} else {
+				findCopyFile(themeDir, file);
+			}
+			continue;
+		}
 		if (value && WMIsPLArray(value) && WMGetPropListItemCount(value) > 2) {
 			WMPropList *type;
 			char *t;

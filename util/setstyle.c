@@ -112,6 +112,29 @@ static Bool isFontOption(const char *option)
 
 /* prepend prefix and a separator to the string at arr[idx], leaving the
  * entry untouched if it is missing or not a string */
+/* style options whose value is a single pixmap filename rather than a
+ * texture array, prefixed the same way hackPathInTexture() prefixes
+ * the file element of a (tpixmap, file, ...) form */
+static const char * const pixmap_string_options[] = {
+	"CloseButtonPixmap",
+	"BrokenCloseButtonPixmap",
+	"KillButtonPixmap",
+	"MiniaturizeButtonPixmap",
+	"MaximizeButtonPixmap",
+	"RestoreButtonPixmap",
+	NULL
+};
+
+static Bool isPixmapStringOption(const char *option)
+{
+	int i;
+
+	for (i = 0; pixmap_string_options[i] != NULL; i++)
+		if (strcasecmp(option, pixmap_string_options[i]) == 0)
+			return True;
+	return False;
+}
+
 static void prefixPathInArray(WMPropList *arr, int idx, const char *prefix)
 {
 	WMPropList *file = WMGetFromPLArray(arr, idx);
@@ -180,6 +203,21 @@ static void hackPaths(WMPropList * style, const char *prefix)
 		value = WMGetFromPLDictionary(style, key);
 		if (!value)
 			continue;
+
+		if (WMIsPLString(value) &&
+		    isPixmapStringOption(WMGetFromPLString(key))) {
+			const char *name = WMGetFromPLString(value);
+			char *dir, *full;
+
+			if (!name || !*name)
+				continue;
+			dir = wstrconcat(prefix, "/");
+			full = wstrconcat(dir, name);
+			wfree(dir);
+			WMPutInPLDictionary(style, key, WMCreatePLString(full));
+			wfree(full);
+			continue;
+		}
 
 		if (strcasecmp(WMGetFromPLString(key), "WorkspaceSpecificBack") == 0) {
 			if (WMIsPLArray(value)) {
