@@ -19,9 +19,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -35,10 +35,8 @@
 #include <WINGs/WXProp.h>
 
 #include "config.h"
+#include "clip-common.h"
 
-#define DIRECT_LIMIT       (64 * 1024)
-#define INCR_CHUNK_SIZE    (64 * 1024)
-#define MAX_CLIP_BYTES     ((size_t)256 * 1024 * 1024)
 #define IPC_RECONNECT_MS   1000
 #define SELECTION_WAIT_MS  1000
 #define INCR_WAIT_MS       5000
@@ -59,18 +57,6 @@ typedef struct {
 	Time timestamp;
 	int owns;
 } ClipBuffer;
-
-typedef struct {
-	int active;
-	ClipBuffer *source;
-	Window requestor;
-	Atom property;
-	Atom target;
-	const unsigned char *data;
-	size_t size;
-	size_t offset;
-	long saved_event_mask;
-} IncrTransfer;
 
 static const char *prog;
 static Display *dpy;
@@ -97,13 +83,13 @@ static Atom atom_wmclipd_property;
 
 static ClipBuffer clipboard_buffer;
 static ClipBuffer primary_buffer;
-static IncrTransfer incr;
+static ClipIncrSend incr;
+static ClipBuffer *incr_source;
 
 static void handle_selection_request(XSelectionRequestEvent *req);
 static void handle_selection_clear(XSelectionClearEvent *ev);
 static void handle_property_notify(XPropertyEvent *ev);
 static void handle_destroy_notify(XDestroyWindowEvent *ev);
-static void cancel_incr(void);
 
 static void usage(FILE *out)
 {
@@ -207,8 +193,10 @@ static int selection_type_matches_target(Atom target, Atom actual)
 
 static void clear_buffer(ClipBuffer *buf)
 {
-	if (incr.active && incr.source == buf)
-		cancel_incr();
+	if (incr.active && incr_source == buf) {
+		clip_incr_send_cancel(dpy, &incr);
+		incr_source = NULL;
+	}
 
 	wfree(buf->data);
 	wfree(buf->path);
@@ -216,43 +204,9 @@ static void clear_buffer(ClipBuffer *buf)
 	memset(buf, 0, sizeof(*buf));
 }
 
-static long long monotonic_ms(void)
+static void dispatch_during_capture(XEvent *ev, void *udata)
 {
-	struct timespec ts;
-
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
-
-static int wait_next_x_event(XEvent *ev, int timeout_ms)
-{
-	struct pollfd pfd;
-	int rc;
-
-	while (running && !XPending(dpy)) {
-		pfd.fd = ConnectionNumber(dpy);
-		pfd.events = POLLIN;
-		pfd.revents = 0;
-		rc = poll(&pfd, 1, timeout_ms);
-		if (rc < 0) {
-			if (errno == EINTR)
-				continue;
-			return 0;
-		}
-		if (rc == 0)
-			return 0;
-		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
-			return 0;
-	}
-
-	if (!running)
-		return 0;
-	XNextEvent(dpy, ev);
-	return 1;
-}
-
-static void dispatch_during_capture(XEvent *ev)
-{
+	(void)udata;
 	if (ev->type == SelectionRequest)
 		handle_selection_request(&ev->xselectionrequest);
 	else if (ev->type == SelectionClear)
@@ -266,14 +220,14 @@ static void dispatch_during_capture(XEvent *ev)
 static int wait_selection_notify(Atom selection, Atom property, XSelectionEvent *out)
 {
 	XEvent ev;
-	long long deadline = monotonic_ms() + SELECTION_WAIT_MS;
+	long long deadline = clip_monotonic_ms() + SELECTION_WAIT_MS;
 	int wait_ms;
 
 	while (running) {
-		wait_ms = (int)(deadline - monotonic_ms());
+		wait_ms = (int)(deadline - clip_monotonic_ms());
 		if (wait_ms <= 0)
 			return 0;
-		if (!wait_next_x_event(&ev, wait_ms))
+		if (!clip_wait_event(dpy, &ev, wait_ms))
 			return 0;
 		if (ev.type == SelectionNotify &&
 		    ev.xselection.selection == selection &&
@@ -281,208 +235,9 @@ static int wait_selection_notify(Atom selection, Atom property, XSelectionEvent 
 			*out = ev.xselection;
 			return 1;
 		}
-		dispatch_during_capture(&ev);
+		dispatch_during_capture(&ev, NULL);
 	}
 	return 0;
-}
-
-static int wait_incr_property_event(Atom property)
-{
-	XEvent ev;
-
-	while (running) {
-		if (!wait_next_x_event(&ev, INCR_WAIT_MS))
-			return 0;
-		if (ev.type == PropertyNotify &&
-		    ev.xproperty.window == owner_window &&
-		    ev.xproperty.atom == property &&
-		    ev.xproperty.state == PropertyNewValue) {
-			return 1;
-		}
-		dispatch_during_capture(&ev);
-	}
-	return 0;
-}
-
-static int read_property_chunk(Atom property, Atom *type_out,
-			       unsigned char **data_out, size_t *len_out)
-{
-	Atom type, type2;
-	int format, format2;
-	unsigned long nitems, bytes_after, nitems2, bytes_after2;
-	unsigned char *prop = NULL, *prop2 = NULL, *copy;
-	long length;
-
-	*data_out = NULL;
-	*len_out = 0;
-	*type_out = None;
-
-	if (XGetWindowProperty(dpy, owner_window, property, 0, 0, False,
-			       AnyPropertyType, &type, &format, &nitems,
-			       &bytes_after, &prop) != Success) {
-		return 0;
-	}
-	if (prop)
-		XFree(prop);
-
-	if (type == None)
-		return 0;
-	if (format != 8 || bytes_after > MAX_CLIP_BYTES)
-		return 0;
-
-	length = (long)((bytes_after + 3) / 4);
-	if (length == 0)
-		length = 1;
-
-	if (XGetWindowProperty(dpy, owner_window, property, 0, length, True,
-			       AnyPropertyType, &type2, &format2, &nitems2,
-			       &bytes_after2, &prop2) != Success) {
-		return 0;
-	}
-
-	if (type2 == None || format2 != 8 || bytes_after2 != 0 || nitems2 > MAX_CLIP_BYTES) {
-		if (prop2)
-			XFree(prop2);
-		return 0;
-	}
-
-	copy = wmalloc((size_t)nitems2 + 1);
-	if (nitems2 > 0)
-		memcpy(copy, prop2, (size_t)nitems2);
-	copy[nitems2] = '\0';
-	if (prop2)
-		XFree(prop2);
-
-	*type_out = type2;
-	*data_out = copy;
-	*len_out = (size_t)nitems2;
-	return 1;
-}
-
-static int receive_incr_data(Atom property, Atom target, Atom *type_out,
-			     unsigned char **data_out, size_t *len_out)
-{
-	unsigned char *data, *chunk;
-	size_t size, chunk_len;
-	Atom chunk_type, actual_type;
-	char *target_name;
-
-	if (verbose) {
-		target_name = debug_atom_name(target);
-		debug_log("receiving INCR data for %s", target_name);
-		wfree(target_name);
-	}
-
-	data = wmalloc(1);
-	size = 0;
-	actual_type = None;
-
-	XDeleteProperty(dpy, owner_window, property);
-	XFlush(dpy);
-
-	while (running) {
-		if (!wait_incr_property_event(property)) {
-			wfree(data);
-			return 0;
-		}
-
-		if (!read_property_chunk(property, &chunk_type, &chunk, &chunk_len)) {
-			wfree(data);
-			return 0;
-		}
-
-		if (chunk_len == 0) {
-			wfree(chunk);
-			*type_out = actual_type == None ? target : actual_type;
-			*data_out = data;
-			*len_out = size;
-			debug_log("received INCR data: %zu bytes", size);
-			return 1;
-		}
-
-		if (!selection_type_matches_target(target, chunk_type)) {
-			wfree(chunk);
-			wfree(data);
-			return 0;
-		}
-
-		if (chunk_len > MAX_CLIP_BYTES || size > MAX_CLIP_BYTES - chunk_len) {
-			wfree(chunk);
-			wfree(data);
-			return 0;
-		}
-
-		data = wrealloc(data, size + chunk_len + 1);
-		memcpy(data + size, chunk, chunk_len);
-		size += chunk_len;
-		data[size] = '\0';
-		if (actual_type == None)
-			actual_type = chunk_type;
-		wfree(chunk);
-	}
-
-	wfree(data);
-	return 0;
-}
-
-static int retrieve_selection_property(Atom property, Atom target,
-				       Atom *type_out, unsigned char **data_out,
-				       size_t *len_out)
-{
-	Atom type, type2;
-	int format, format2;
-	unsigned long nitems, bytes_after, nitems2, bytes_after2;
-	unsigned char *prop = NULL, *prop2 = NULL, *copy;
-	long length;
-
-	*data_out = NULL;
-	*len_out = 0;
-	*type_out = None;
-
-	if (XGetWindowProperty(dpy, owner_window, property, 0, 0, False,
-			       AnyPropertyType, &type, &format, &nitems,
-			       &bytes_after, &prop) != Success) {
-		return 0;
-	}
-	if (prop)
-		XFree(prop);
-
-	if (type == None)
-		return 0;
-	if (type == atom_incr)
-		return receive_incr_data(property, target, type_out, data_out, len_out);
-	if (!selection_type_matches_target(target, type) ||
-	    format != 8 || bytes_after > MAX_CLIP_BYTES)
-		return 0;
-
-	length = (long)((bytes_after + 3) / 4);
-	if (length == 0)
-		length = 1;
-
-	if (XGetWindowProperty(dpy, owner_window, property, 0, length, True,
-			       AnyPropertyType, &type2, &format2, &nitems2,
-			       &bytes_after2, &prop2) != Success) {
-		return 0;
-	}
-
-	if (!selection_type_matches_target(target, type2) ||
-	    format2 != 8 || bytes_after2 != 0 || nitems2 > MAX_CLIP_BYTES) {
-		if (prop2)
-			XFree(prop2);
-		return 0;
-	}
-
-	copy = wmalloc((size_t)nitems2 + 1);
-	if (nitems2 > 0)
-		memcpy(copy, prop2, (size_t)nitems2);
-	copy[nitems2] = '\0';
-	if (prop2)
-		XFree(prop2);
-
-	*type_out = type2;
-	*data_out = copy;
-	*len_out = (size_t)nitems2;
-	return 1;
 }
 
 static int query_targets(Atom selection, Time timestamp, Atom **targets_out,
@@ -563,6 +318,13 @@ static int request_selection_data(Atom selection, Atom target, Time timestamp,
 				  size_t *len_out)
 {
 	XSelectionEvent sev;
+	unsigned char *data;
+	Atom type;
+	size_t len;
+
+	*data_out = NULL;
+	*len_out = 0;
+	*type_out = None;
 
 	XDeleteProperty(dpy, owner_window, atom_wmclipd_property);
 	XConvertSelection(dpy, selection, target, atom_wmclipd_property,
@@ -574,8 +336,21 @@ static int request_selection_data(Atom selection, Atom target, Time timestamp,
 		return 0;
 	}
 
-	return retrieve_selection_property(atom_wmclipd_property, target,
-					   type_out, data_out, len_out);
+	data = clip_retrieve_property(dpy, owner_window, atom_wmclipd_property,
+					 atom_incr, CLIP_DEFAULT_MAX_BYTES,
+					 INCR_WAIT_MS, dispatch_during_capture,
+					 NULL, &type, &len);
+	if (!data)
+		return 0;
+	if (!selection_type_matches_target(target, type)) {
+		free(data);
+		return 0;
+	}
+
+	*type_out = type == None ? target : type;
+	*data_out = data;
+	*len_out = len;
+	return 1;
 }
 
 static int claim_selection(Atom selection, ClipBuffer *buf, Time timestamp)
@@ -793,83 +568,6 @@ static int payload_for_request(ClipBuffer *buf, Atom target,
 	return 0;
 }
 
-static void reset_incr_state(void)
-{
-	memset(&incr, 0, sizeof(incr));
-}
-
-static void cancel_incr(void)
-{
-	if (!incr.active)
-		return;
-	if (incr.requestor != None)
-		XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
-	reset_incr_state();
-}
-
-static void send_next_incr_chunk(void)
-{
-	size_t remaining, to_send;
-
-	if (!incr.active)
-		return;
-
-	if (incr.offset >= incr.size) {
-		XChangeProperty(dpy, incr.requestor, incr.property, incr.target,
-				8, PropModeReplace, NULL, 0);
-		XFlush(dpy);
-		debug_log("completed INCR transfer to 0x%lx", (unsigned long)incr.requestor);
-		cancel_incr();
-		return;
-	}
-
-	remaining = incr.size - incr.offset;
-	to_send = remaining > INCR_CHUNK_SIZE ? INCR_CHUNK_SIZE : remaining;
-
-	XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8,
-			PropModeReplace, incr.data + incr.offset, (int)to_send);
-	XFlush(dpy);
-	incr.offset += to_send;
-	debug_log("sent INCR chunk to 0x%lx: %zu/%zu bytes",
-		  (unsigned long)incr.requestor, incr.offset, incr.size);
-}
-
-static int start_incr(ClipBuffer *source, XSelectionRequestEvent *req,
-		      const unsigned char *data, size_t size, Atom type)
-{
-	XWindowAttributes attr;
-	unsigned long size32;
-
-	if (verbose) {
-		char *type_name = debug_atom_name(type);
-		debug_log("starting INCR transfer to 0x%lx: %zu bytes as %s",
-			  (unsigned long)req->requestor, size, type_name);
-		wfree(type_name);
-	}
-
-	if (incr.active)
-		return 0;
-	if (!XGetWindowAttributes(dpy, req->requestor, &attr))
-		return 0;
-
-	incr.active = 1;
-	incr.source = source;
-	incr.requestor = req->requestor;
-	incr.property = req->property == None ? req->target : req->property;
-	incr.target = type;
-	incr.data = data;
-	incr.size = size;
-	incr.offset = 0;
-	incr.saved_event_mask = attr.your_event_mask;
-
-	size32 = (unsigned long)size;
-	XChangeProperty(dpy, req->requestor, incr.property, atom_incr, 32,
-			PropModeReplace, (unsigned char *)&size32, 1);
-	XSelectInput(dpy, req->requestor,
-		     attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
-	return 1;
-}
-
 static void send_selection_notify(XSelectionRequestEvent *req, Atom property)
 {
 	WXSendSelectionNotify(dpy, req, property);
@@ -915,11 +613,15 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 		return;
 	}
 
-	if (size > DIRECT_LIMIT) {
-		if (!start_incr(buf, req, data, size, type)) {
+	if (size > CLIP_DEFAULT_DIRECT_LIMIT) {
+		if (!clip_incr_send_start(dpy, &incr, req, atom_incr, type,
+					   data, size, CLIP_DEFAULT_CHUNK_SIZE)) {
 			send_selection_notify(req, None);
 			return;
 		}
+		incr_source = buf;
+		debug_log("starting INCR transfer to 0x%lx: %zu bytes",
+			  (unsigned long)req->requestor, size);
 		send_selection_notify(req, property);
 		return;
 	}
@@ -948,24 +650,22 @@ static void handle_selection_clear(XSelectionClearEvent *ev)
 
 static void handle_property_notify(XPropertyEvent *ev)
 {
-	if (!incr.active ||
-	    ev->window != incr.requestor ||
-	    ev->atom != incr.property ||
-	    ev->state != PropertyDelete) {
-		return;
+	if (clip_incr_send_property_notify(dpy, &incr, ev)) {
+		if (incr.active)
+			debug_log("sent INCR chunk to 0x%lx: %zu/%zu bytes",
+				  (unsigned long)incr.requestor, incr.offset, incr.size);
+		else
+			incr_source = NULL;
 	}
-
-	send_next_incr_chunk();
 }
 
 static void handle_destroy_notify(XDestroyWindowEvent *ev)
 {
-	if (!incr.active || ev->window != incr.requestor)
-		return;
-
-	debug_log("cancelled INCR transfer: requestor 0x%lx was destroyed",
-		  (unsigned long)ev->window);
-	cancel_incr();
+	if (clip_incr_send_destroy_notify(dpy, &incr, ev)) {
+		debug_log("cancelled INCR transfer: requestor 0x%lx was destroyed",
+			  (unsigned long)ev->window);
+		incr_source = NULL;
+	}
 }
 
 static void handle_selection_change(XFixesSelectionNotifyEvent *ev)
@@ -1088,7 +788,7 @@ static int read_file_bounded(const char *path, unsigned char **data_out,
 
 	if (stat(path, &st) < 0 || !S_ISREG(st.st_mode) || st.st_size < 0)
 		return 0;
-	if ((uintmax_t)st.st_size > (uintmax_t)MAX_CLIP_BYTES)
+	if ((uintmax_t)st.st_size > (uintmax_t)CLIP_DEFAULT_MAX_BYTES)
 		return 0;
 
 	size = (size_t)st.st_size;
@@ -1413,7 +1113,7 @@ int main(int argc, char **argv)
 			handle_x_event(&ev);
 		}
 
-		now = monotonic_ms();
+		now = clip_monotonic_ms();
 		if (run_screenshots && ipc_fd < 0 && now >= next_ipc_connect) {
 			ipc_fd = connect_ipc();
 			if (ipc_fd < 0)
@@ -1438,7 +1138,7 @@ int main(int argc, char **argv)
 
 		timeout = -1;
 		if (run_screenshots && ipc_fd < 0) {
-			now = monotonic_ms();
+			now = clip_monotonic_ms();
 			timeout = next_ipc_connect > now ? (int)(next_ipc_connect - now) : 0;
 		}
 
@@ -1462,13 +1162,13 @@ int main(int argc, char **argv)
 					debug_log("IPC disconnected; will reconnect");
 					close(ipc_fd);
 					ipc_fd = -1;
-					next_ipc_connect = monotonic_ms() + IPC_RECONNECT_MS;
+					next_ipc_connect = clip_monotonic_ms() + IPC_RECONNECT_MS;
 				}
 			} else if (fds[ipc_index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				debug_log("IPC poll error; will reconnect");
 				close(ipc_fd);
 				ipc_fd = -1;
-				next_ipc_connect = monotonic_ms() + IPC_RECONNECT_MS;
+				next_ipc_connect = clip_monotonic_ms() + IPC_RECONNECT_MS;
 			}
 		}
 	}
@@ -1476,7 +1176,7 @@ int main(int argc, char **argv)
 	debug_log("stopping");
 	if (ipc_fd >= 0)
 		close(ipc_fd);
-	cancel_incr();
+	clip_incr_send_cancel(dpy, &incr);
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
 	if (dpy)

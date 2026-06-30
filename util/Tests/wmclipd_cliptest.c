@@ -5,8 +5,6 @@
  * back from CLIPBOARD, including INCR transfers in both directions.
  */
 
-#include <errno.h>
-#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,10 +17,9 @@
 
 #include <WINGs/WXProp.h>
 
+#include "clip-common.h"
+
 #define CHUNK_SIZE 32768
-/* same cap the production daemon uses, the test peer is local-trusted but
- * keeping the bound here means the harness exercises the same limits */
-#define MAX_CLIP_BYTES ((size_t)256 * 1024 * 1024)
 
 static Display *dpy;
 static Window win;
@@ -36,79 +33,40 @@ static Atom atom_property;
 static unsigned char *payload;
 static size_t payload_len;
 
-static struct {
-	int active;
-	Window requestor;
-	Atom property;
-	size_t offset;
-} transfer;
-
-static void send_notify(XSelectionRequestEvent *req, Atom property)
-{
-	WXSendSelectionNotify(dpy, req, property);
-}
+static ClipIncrSend transfer;
 
 static void serve_request(XSelectionRequestEvent *req, int use_incr)
 {
 	Atom property = req->property == None ? req->target : req->property;
+	Atom targets[2];
 
 	if (req->target == atom_targets) {
-		Atom targets[2];
-
 		targets[0] = atom_targets;
 		targets[1] = atom_png;
 		XChangeProperty(dpy, req->requestor, property, XA_ATOM, 32,
 				PropModeReplace, (unsigned char *)targets, 2);
-		send_notify(req, property);
+		WXSendSelectionNotify(dpy, req, property);
 		return;
 	}
 
 	if (req->target != atom_png) {
-		send_notify(req, None);
+		WXSendSelectionNotify(dpy, req, None);
 		return;
 	}
 
 	if (use_incr) {
-		unsigned long size = payload_len;
-
-		transfer.active = 1;
-		transfer.requestor = req->requestor;
-		transfer.property = property;
-		transfer.offset = 0;
-		XSelectInput(dpy, req->requestor, PropertyChangeMask);
-		XChangeProperty(dpy, req->requestor, property, atom_incr, 32,
-				PropModeReplace, (unsigned char *)&size, 1);
-		send_notify(req, property);
+		if (!clip_incr_send_start(dpy, &transfer, req, atom_incr,
+					   atom_png, payload, payload_len,
+					   CHUNK_SIZE)) {
+			WXSendSelectionNotify(dpy, req, None);
+			return;
+		}
+		WXSendSelectionNotify(dpy, req, property);
 	} else {
 		XChangeProperty(dpy, req->requestor, property, atom_png, 8,
 				PropModeReplace, payload, (int)payload_len);
-		send_notify(req, property);
+		WXSendSelectionNotify(dpy, req, property);
 	}
-}
-
-static void send_next_chunk(void)
-{
-	size_t count;
-
-	if (!transfer.active)
-		return;
-
-	if (transfer.offset >= payload_len) {
-		XChangeProperty(dpy, transfer.requestor, transfer.property,
-				atom_png, 8, PropModeReplace, NULL, 0);
-		XFlush(dpy);
-		transfer.active = 0;
-		return;
-	}
-
-	count = payload_len - transfer.offset;
-	if (count > CHUNK_SIZE)
-		count = CHUNK_SIZE;
-
-	XChangeProperty(dpy, transfer.requestor, transfer.property, atom_png, 8,
-			PropModeReplace, payload + transfer.offset, (int)count);
-	XFlush(dpy);
-	transfer.offset += count;
 }
 
 static int serve_selection(Atom selection, int use_incr)
@@ -124,15 +82,12 @@ static int serve_selection(Atom selection, int use_incr)
 
 	for (;;) {
 		XNextEvent(dpy, &ev);
-		if (ev.type == SelectionRequest) {
+		if (ev.type == SelectionRequest)
 			serve_request(&ev.xselectionrequest, use_incr);
-		} else if (ev.type == PropertyNotify &&
-			   transfer.active &&
-			   ev.xproperty.window == transfer.requestor &&
-			   ev.xproperty.atom == transfer.property &&
-			   ev.xproperty.state == PropertyDelete) {
-			send_next_chunk();
-		}
+		else if (ev.type == PropertyNotify)
+			clip_incr_send_property_notify(dpy, &transfer, &ev.xproperty);
+		else if (ev.type == DestroyNotify)
+			clip_incr_send_destroy_notify(dpy, &transfer, &ev.xdestroywindow);
 	}
 }
 
@@ -200,89 +155,6 @@ static int serve_clipboard_file(const char *path, int use_incr)
 	return serve_selection(atom_clipboard, use_incr);
 }
 
-static int wait_for_event(XEvent *ev, int timeout_ms)
-{
-	struct pollfd pfd;
-	int rc;
-
-	while (!XPending(dpy)) {
-		pfd.fd = ConnectionNumber(dpy);
-		pfd.events = POLLIN;
-		pfd.revents = 0;
-		rc = poll(&pfd, 1, timeout_ms);
-		if (rc < 0) {
-			if (errno == EINTR)
-				continue;
-			return 0;
-		}
-		if (rc == 0)
-			return 0;
-		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
-			return 0;
-	}
-
-	XNextEvent(dpy, ev);
-	return 1;
-}
-
-static int wait_for_selection_notify(XEvent *ev)
-{
-	for (;;) {
-		if (!wait_for_event(ev, 3000))
-			return 0;
-		if (ev->type == SelectionNotify)
-			return 1;
-	}
-}
-
-static int read_property_chunk(Atom property, Atom *type_out,
-			       unsigned char **data_out, size_t *len_out)
-{
-	Atom type;
-	Atom type2;
-	int format;
-	int format2;
-	unsigned long nitems;
-	unsigned long nitems2;
-	unsigned long bytes_after;
-	unsigned long bytes_after2;
-	unsigned char *prop = NULL;
-	unsigned char *prop2 = NULL;
-	long length;
-
-	if (XGetWindowProperty(dpy, win, property, 0, 0, False,
-			       AnyPropertyType, &type, &format, &nitems,
-			       &bytes_after, &prop) != Success) {
-		return 0;
-	}
-	if (prop)
-		XFree(prop);
-
-	if (format != 8 || bytes_after > MAX_CLIP_BYTES)
-		return 0;
-
-	length = (long)((bytes_after + 3) / 4);
-	if (length == 0)
-		length = 1;
-
-	if (XGetWindowProperty(dpy, win, property, 0, length, True,
-			       AnyPropertyType, &type2, &format2, &nitems2,
-			       &bytes_after2, &prop2) != Success) {
-		return 0;
-	}
-
-	if (format2 != 8 || bytes_after2 != 0) {
-		if (prop2)
-			XFree(prop2);
-		return 0;
-	}
-
-	*type_out = type2;
-	*data_out = prop2;
-	*len_out = (size_t)nitems2;
-	return 1;
-}
-
 static int send_ctrl_v(const char *window_id)
 {
 	XKeyEvent ev;
@@ -319,101 +191,43 @@ static int read_clipboard(void)
 {
 	XEvent ev;
 	Atom type;
-	int format;
-	unsigned long nitems;
-	unsigned long bytes_after;
-	unsigned char *prop = NULL;
-	unsigned char *data = NULL;
-	unsigned char *chunk = NULL;
-	int data_from_x = 0;
-	size_t data_len = 0;
-	size_t chunk_len;
+	unsigned char *data;
+	size_t data_len, i;
 	unsigned long checksum = 0;
-	long length;
-	size_t i;
+	long long deadline;
 
 	XDeleteProperty(dpy, win, atom_property);
 	XConvertSelection(dpy, atom_clipboard, atom_png, atom_property, win,
 			  CurrentTime);
 	XFlush(dpy);
 
-	if (!wait_for_selection_notify(&ev) || ev.xselection.property == None) {
+	deadline = clip_monotonic_ms() + 3000;
+	for (;;) {
+		if (!clip_wait_event(dpy, &ev, (int)(deadline - clip_monotonic_ms()))) {
+			fprintf(stderr, "timed out waiting for SelectionNotify\n");
+			return 4;
+		}
+		if (ev.type == SelectionNotify)
+			break;
+	}
+	if (ev.xselection.property == None) {
 		fprintf(stderr, "selection denied\n");
 		return 4;
 	}
 
-	if (XGetWindowProperty(dpy, win, atom_property, 0, 0, False,
-			       AnyPropertyType, &type, &format, &nitems,
-			       &bytes_after, &prop) != Success) {
+	data = clip_retrieve_property(dpy, win, atom_property, atom_incr,
+					CLIP_DEFAULT_MAX_BYTES, 3000,
+					NULL, NULL, &type, &data_len);
+	if (!data) {
+		fprintf(stderr, "failed to read selection property\n");
 		return 5;
-	}
-	if (prop)
-		XFree(prop);
-
-	if (type == atom_incr) {
-		XDeleteProperty(dpy, win, atom_property);
-		XFlush(dpy);
-
-		for (;;) {
-			if (!wait_for_event(&ev, 3000))
-				return 6;
-			if (ev.type != PropertyNotify ||
-			    ev.xproperty.atom != atom_property ||
-			    ev.xproperty.state != PropertyNewValue) {
-				continue;
-			}
-			if (!read_property_chunk(atom_property, &type, &chunk,
-						 &chunk_len)) {
-				return 7;
-			}
-			if (chunk_len == 0) {
-				XFree(chunk);
-				break;
-			}
-			if (chunk_len > MAX_CLIP_BYTES ||
-			    data_len > MAX_CLIP_BYTES - chunk_len) {
-				XFree(chunk);
-				free(data);
-				return 8;
-			}
-			data = realloc(data, data_len + chunk_len);
-			if (!data) {
-				perror("realloc");
-				XFree(chunk);
-				return 8;
-			}
-			memcpy(data + data_len, chunk, chunk_len);
-			data_len += chunk_len;
-			XFree(chunk);
-		}
-	} else {
-		if (bytes_after > MAX_CLIP_BYTES)
-			return 9;
-		length = (long)((bytes_after + 3) / 4);
-		if (length == 0)
-			length = 1;
-		if (XGetWindowProperty(dpy, win, atom_property, 0, length,
-				       True, AnyPropertyType, &type, &format,
-				       &nitems, &bytes_after, &data) != Success) {
-			return 9;
-		}
-		if (format != 8 || bytes_after != 0) {
-			if (data)
-				XFree(data);
-			return 10;
-		}
-		data_from_x = 1;
-		data_len = (size_t)nitems;
 	}
 
 	for (i = 0; i < data_len; i++)
 		checksum = (checksum + data[i]) & 0xffffffffUL;
 	printf("%zu %lu\n", data_len, checksum);
 
-	if (data && data_from_x)
-		XFree(data);
-	else
-		free(data);
+	free(data);
 	return 0;
 }
 

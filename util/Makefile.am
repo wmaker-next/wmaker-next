@@ -27,6 +27,7 @@ wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 if HAVE_XFIXES
 bin_PROGRAMS += wmclipd
 wmclipd_CFLAGS = @XFIXES_CFLAGS@
+wmclipd_SOURCES = wmclipd.c clip-common.c clip-common.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@XLFLAGS@ @XLIBS@ @XFIXES_LIBS@ $(liblist)
@@ -105,7 +106,7 @@ wmiv_LDADD = \
 	@PANGO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@
 
-wmiv_SOURCES = wmiv.c wmiv.h
+wmiv_SOURCES = wmiv.c wmiv.h clip-common.c clip-common.h
 
 CLEANFILES = wmaker.inst
 

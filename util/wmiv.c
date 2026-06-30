@@ -73,8 +73,8 @@ extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixma
 #define FILE_SEPARATOR '/'
 
 /* CHUNK size for INCR (bytes). Tune if desired. */
-#define CHUNK_SIZE 65536
-#define CLIPBOARD_PASTE_MAX_BYTES ((size_t)256 * 1024 * 1024)
+#include "clip-common.h"
+
 #define CLIPBOARD_PASTE_TIMEOUT_MS 5000
 
 Display *dpy;
@@ -177,20 +177,7 @@ static unsigned char *clipboard_jpeg_data = NULL;
 static size_t clipboard_jpeg_size = 0;
 static Bool we_own_clipboard = False;
 
-/* INCR transfer state */
-typedef struct {
-	Bool active;
-	Window requestor;
-	Atom property;      /* property name the requestor asked for (req->property) */
-	Atom target;        /* requested target (png_atom or jpeg_atom) */
-	size_t total_size;
-	size_t offset;
-	size_t chunk_size;
-	long saved_event_mask; /* to restore previous event mask on requestor window */
-	unsigned char *data; /* pointer to either PNG or JPEG data */
-} incr_transfer_t;
-
-static incr_transfer_t incr = { .active = False };
+static ClipIncrSend incr;
 
 /* End clipboard globals */
 
@@ -781,10 +768,13 @@ static int convert_image_to_format(RImage *image, const char *format, unsigned c
 }
 
 /*
-	Free current clipboard data (both PNG and JPEG)
+	Free current clipboard data (both PNG and JPEG).
+	Cancels any in-progress INCR transfer first, since xfer->data
+	points into one of these buffers.
 */
 static void free_clipboard_data(void)
 {
+	clip_incr_send_cancel(xc, &incr);
 	if (clipboard_png_data) {
 		free(clipboard_png_data);
 		clipboard_png_data = NULL;
@@ -795,99 +785,6 @@ static void free_clipboard_data(void)
 		clipboard_jpeg_data = NULL;
 	}
 	clipboard_jpeg_size = 0;
-}
-
-/*
-	Begin an INCR transfer for the given request.
-	Selects PropertyChangeMask on the requestor before sending SelectionNotify so
-	a fast client cannot delete the INCR property before we are listening.
-	Returns True if the INCR handshake was started (caller must not send a second
-	SelectionNotify), False if an INCR is already in flight and this request must
-	be refused.
-*/
-static Bool start_incr_transfer(XSelectionRequestEvent *req, XEvent *notify,
-				unsigned char *data, size_t size)
-{
-	XWindowAttributes attr;
-	unsigned long size32;
-
-	if (incr.active) {
-		/* single-slot sender, do not clobber the running transfer */
-		if (WMIV_DEBUG)
-			fprintf(stderr, "INCR: refusing concurrent transfer to 0x%lx (one already active)\n",
-				(unsigned long)req->requestor);
-		return False;
-	}
-
-	incr.active = True;
-	incr.requestor = req->requestor;
-	incr.property = req->property;
-	incr.target = req->target;
-	incr.total_size = size;
-	incr.offset = 0;
-	incr.chunk_size = CHUNK_SIZE;
-	incr.data = data;
-	incr.saved_event_mask = 0;
-
-	/* Listen for property deletions before announcing INCR, otherwise a fast
-	   requestor can delete the property before our SelectInput reaches the
-	   server and the first chunk is never sent */
-	if (XGetWindowAttributes(dpy, req->requestor, &attr))
-		incr.saved_event_mask = attr.your_event_mask;
-	XSelectInput(dpy, req->requestor, incr.saved_event_mask | PropertyChangeMask);
-
-	size32 = (unsigned long)size;
-	XChangeProperty(dpy, req->requestor, req->property, incr_atom, 32,
-			PropModeReplace, (unsigned char *)&size32, 1);
-	notify->xselection.property = req->property;
-	XSendEvent(dpy, req->requestor, False, 0, notify);
-	XFlush(dpy);
-
-	if (WMIV_DEBUG)
-		fprintf(stderr, "Starting INCR for %s %zu bytes\n",
-			req->target == png_atom ? "PNG" : "JPEG", size);
-	return True;
-}
-
-/*
-	Send the next chunk for INCR transfer (called when requestor deletes the property)
-*/
-static void send_next_incr_chunk(void)
-{
-	size_t remaining, to_send;
-
-	if (!incr.active)
-		return;
-
-	if (!incr.data || incr.total_size == 0) {
-		/* Nothing to send: finish with zero-length property */
-		XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8, PropModeReplace, NULL, 0);
-		/* Restore the requestor's previous event mask */
-		XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
-		incr.active = False;
-		return;
-	}
-
-	remaining = incr.total_size - incr.offset;
-	to_send = remaining;
-
-	if (to_send > incr.chunk_size)
-		to_send = incr.chunk_size;
-
-	XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8, PropModeReplace,
-				incr.data + incr.offset, (int)to_send);
-	XFlush(dpy);
-
-	incr.offset += to_send;
-
-	if (incr.offset >= incr.total_size) {
-		/* finished: next deletion by client -> we'll send zero-length and finish */
-		if (WMIV_DEBUG)
-			fprintf(stderr, "INCR: all data sent (%zu bytes), awaiting final property deletion\n", incr.total_size);
-	} else {
-		if (WMIV_DEBUG)
-			fprintf(stderr, "INCR: sent chunk %zu/%zu\n", incr.offset, incr.total_size);
-	}
 }
 
 /*
@@ -941,6 +838,12 @@ static void copy_current_image_to_clipboard(void)
 */
 static void handle_selection_request(XSelectionRequestEvent *req)
 {
+	Atom property = req->property == None ? req->target : req->property;
+	Atom types[3];
+	int ntypes = 0;
+	unsigned char *data = NULL;
+	size_t size = 0;
+
 	if (WMIV_DEBUG) {
 		char *target_name = XGetAtomName(req->display, req->target);
 		char *selection_name = XGetAtomName(req->display, req->selection);
@@ -954,34 +857,22 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 			XFree(selection_name);
 	}
 
-	XEvent ev;
-	memset(&ev, 0, sizeof(ev));
-	ev.xselection.type = SelectionNotify;
-	ev.xselection.display = req->display;
-	ev.xselection.requestor = req->requestor;
-	ev.xselection.selection = req->selection;
-	ev.xselection.target = req->target;
-	ev.xselection.time = req->time;
-	ev.xselection.property = None;
-
 	if (req->selection == atom_XdndSelection) {
 		/* serve the file:// URI prepared by initiate_file_drag() */
 		if (xdnd_drag_uri &&
 		    (req->target == atom_uri_list || req->target == atom_text_plain)) {
-			XChangeProperty(dpy, req->requestor, req->property, req->target, 8,
+			XChangeProperty(dpy, req->requestor, property, req->target, 8,
 					PropModeReplace, (unsigned char *)xdnd_drag_uri,
 					(int)strlen(xdnd_drag_uri));
-			ev.xselection.property = req->property;
+			WXSendSelectionNotify(dpy, req, property);
+		} else {
+			WXSendSelectionNotify(dpy, req, None);
 		}
-		XSendEvent(dpy, req->requestor, False, 0, &ev);
-		XFlush(dpy);
 		return;
 	}
 
 	if (req->target == targets_atom) {
 		/* advertise supported targets, ICCCM requires TARGETS to list itself */
-		Atom types[3];
-		int ntypes = 0;
 		types[ntypes++] = targets_atom;
 #ifdef USE_PNG
 		types[ntypes++] = png_atom;
@@ -989,41 +880,44 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 #ifdef USE_JPEG
 		types[ntypes++] = jpeg_atom;
 #endif
-		XChangeProperty(dpy, req->requestor, req->property, XA_ATOM, 32, PropModeReplace,
+		XChangeProperty(dpy, req->requestor, property, XA_ATOM, 32, PropModeReplace,
 				(unsigned char *)types, ntypes);
-		ev.xselection.property = req->property;
-	}
-	else if (req->target == png_atom) {
-		if (!clipboard_png_data || clipboard_png_size == 0) {
-			ev.xselection.property = None;
-		} else if (clipboard_png_size > CHUNK_SIZE) {
-			if (start_incr_transfer(req, &ev, clipboard_png_data, clipboard_png_size))
-				return; /* SelectionNotify already sent */
-			ev.xselection.property = None;
-		} else {
-			XChangeProperty(dpy, req->requestor, req->property, png_atom, 8, PropModeReplace,
-					clipboard_png_data, (int)clipboard_png_size);
-			ev.xselection.property = req->property;
-		}
-	}
-	else if (req->target == jpeg_atom) {
-		if (!clipboard_jpeg_data || clipboard_jpeg_size == 0) {
-			ev.xselection.property = None;
-		} else if (clipboard_jpeg_size > CHUNK_SIZE) {
-			if (start_incr_transfer(req, &ev, clipboard_jpeg_data, clipboard_jpeg_size))
-				return; /* SelectionNotify already sent */
-			ev.xselection.property = None;
-		} else {
-			XChangeProperty(dpy, req->requestor, req->property, jpeg_atom, 8, PropModeReplace,
-					clipboard_jpeg_data, (int)clipboard_jpeg_size);
-			ev.xselection.property = req->property;
-		}
-	} else {
-		ev.xselection.property = None;
+		WXSendSelectionNotify(dpy, req, property);
+		return;
 	}
 
-	XSendEvent(dpy, req->requestor, False, 0, &ev);
-	XFlush(dpy);
+	if (req->target == png_atom && clipboard_png_data && clipboard_png_size > 0) {
+		data = clipboard_png_data;
+		size = clipboard_png_size;
+	} else if (req->target == jpeg_atom && clipboard_jpeg_data && clipboard_jpeg_size > 0) {
+		data = clipboard_jpeg_data;
+		size = clipboard_jpeg_size;
+	}
+
+	if (!data) {
+		WXSendSelectionNotify(dpy, req, None);
+		return;
+	}
+
+	if (size > CLIP_DEFAULT_DIRECT_LIMIT) {
+		if (!clip_incr_send_start(dpy, &incr, req, incr_atom, req->target,
+					   data, size, CLIP_DEFAULT_CHUNK_SIZE)) {
+			if (WMIV_DEBUG)
+				fprintf(stderr, "INCR: refusing concurrent transfer to 0x%lx\n",
+					(unsigned long)req->requestor);
+			WXSendSelectionNotify(dpy, req, None);
+			return;
+		}
+		if (WMIV_DEBUG)
+			fprintf(stderr, "Starting INCR for %s %zu bytes\n",
+				req->target == png_atom ? "PNG" : "JPEG", size);
+		WXSendSelectionNotify(dpy, req, property);
+		return;
+	}
+
+	XChangeProperty(dpy, req->requestor, property, req->target, 8, PropModeReplace,
+			data, (int)size);
+	WXSendSelectionNotify(dpy, req, property);
 }
 
 /*
@@ -1031,60 +925,11 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 */
 static void handle_selection_clear(void)
 {
+	clip_incr_send_cancel(dpy, &incr);
 	if (we_own_clipboard) {
 		we_own_clipboard = False;
 		free_clipboard_data();
 	}
-	if (incr.active) {
-		/* Cancel any active INCR transfer and clean up */
-		if (incr.requestor != None) {
-			/* Restore the requestor's previous event mask */
-			XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
-		}
-		incr.active = False;
-		incr.offset = 0;
-		incr.total_size = 0;
-		incr.requestor = None;
-		incr.property = None;
-		incr.target = None;
-	}
-}
-
-static void reset_incr_transfer(void)
-{
-	incr.active = False;
-	incr.offset = 0;
-	incr.total_size = 0;
-	incr.requestor = None;
-	incr.property = None;
-	incr.target = None;
-	incr.data = NULL;
-}
-
-static void handle_outgoing_incr_property_notify(XPropertyEvent *pe)
-{
-	if (!incr.active ||
-	    pe->window != incr.requestor ||
-	    pe->atom != incr.property ||
-	    pe->state != PropertyDelete) {
-		return;
-	}
-
-	if (WMIV_DEBUG)
-		fprintf(stderr, "INCR: property delete observed, sending next chunk\n");
-
-	if (incr.offset >= incr.total_size) {
-		XChangeProperty(dpy, incr.requestor, incr.property, incr.target, 8,
-				PropModeReplace, NULL, 0);
-		XFlush(dpy);
-		XSelectInput(dpy, incr.requestor, incr.saved_event_mask);
-		reset_incr_transfer();
-		if (WMIV_DEBUG)
-			fprintf(stderr, "INCR: transfer complete\n");
-		return;
-	}
-
-	send_next_incr_chunk();
 }
 
 typedef struct {
@@ -1092,10 +937,6 @@ typedef struct {
 	Atom target;
 	Atom property;
 } ClipboardSelectionWait;
-
-typedef struct {
-	Atom property;
-} ClipboardPropertyWait;
 
 static Bool clipboard_selection_notify_matches(Display *display, XEvent *event, XPointer arg)
 {
@@ -1108,17 +949,6 @@ static Bool clipboard_selection_notify_matches(Display *display, XEvent *event, 
 		event->xselection.target == wait->target &&
 		(event->xselection.property == wait->property ||
 		 event->xselection.property == None);
-}
-
-static Bool clipboard_property_new_value_matches(Display *display, XEvent *event, XPointer arg)
-{
-	ClipboardPropertyWait *wait = (ClipboardPropertyWait *)arg;
-
-	(void)display;
-	return event->type == PropertyNotify &&
-		event->xproperty.window == win &&
-		event->xproperty.atom == wait->property &&
-		event->xproperty.state == PropertyNewValue;
 }
 
 static Bool clipboard_service_event_matches(Display *display, XEvent *event, XPointer arg)
@@ -1142,7 +972,7 @@ static void dispatch_clipboard_service_event(XEvent *event)
 	} else if (event->type == SelectionClear) {
 		handle_selection_clear();
 	} else if (event->type == PropertyNotify) {
-		handle_outgoing_incr_property_notify(&event->xproperty);
+		clip_incr_send_property_notify(dpy, &incr, &event->xproperty);
 	}
 }
 
@@ -1312,200 +1142,60 @@ static Atom choose_clipboard_target(void)
 	return result;
 }
 
-static int read_clipboard_property_chunk(Atom property, Atom *type_out,
-		unsigned char **data_out, size_t *len_out)
+static XEvent *paste_deferred;
+static size_t paste_deferred_count, paste_deferred_capacity;
+
+/* During an INCR receive the helper hands us every event that is not
+ * the awaited PropertyNotify. Service selection events so we keep
+ * answering requestors, and stash everything else so the main loop
+ * sees it once the paste is done. */
+static void paste_dispatch(XEvent *event, void *udata)
 {
-	Atom type, type2;
-	int format, format2;
-	unsigned long nitems, nitems2;
-	unsigned long bytes_after, bytes_after2;
-	unsigned char *prop = NULL, *prop2 = NULL;
-	long length;
-
-	*type_out = None;
-	*data_out = NULL;
-	*len_out = 0;
-
-	if (XGetWindowProperty(dpy, win, property, 0, 0, False,
-			AnyPropertyType, &type, &format, &nitems,
-			&bytes_after, &prop) != Success) {
-		return -1;
-	}
-	if (prop)
-		XFree(prop);
-	if (type == None)
-		return 0;
-	if (format != 8 || bytes_after > CLIPBOARD_PASTE_MAX_BYTES)
-		return -1;
-
-	length = (long)((bytes_after + 3) / 4);
-	if (length == 0)
-		length = 1;
-
-	if (XGetWindowProperty(dpy, win, property, 0, length, True,
-			AnyPropertyType, &type2, &format2, &nitems2,
-			&bytes_after2, &prop2) != Success) {
-		return -1;
-	}
-	if (format2 != 8 || bytes_after2 != 0 || nitems2 > CLIPBOARD_PASTE_MAX_BYTES) {
-		if (prop2)
-			XFree(prop2);
-		return -1;
-	}
-
-	*type_out = type2;
-	*data_out = prop2;
-	*len_out = (size_t)nitems2;
-	return 1;
-}
-
-static int receive_clipboard_incr_data(Atom property, Atom target,
-		Atom *type_out, unsigned char **data_out, size_t *len_out)
-{
-	ClipboardPropertyWait wait;
-	XEvent event;
-	unsigned char *data;
-	size_t size = 0;
-	Atom actual_type = None;
-
-	data = malloc(1);
-	if (!data)
-		return 0;
-
-	wait.property = property;
-	XDeleteProperty(dpy, win, property);
-	XFlush(dpy);
-
-	for (;;) {
-		Atom chunk_type;
-		unsigned char *chunk = NULL;
-		unsigned char *new_data;
-		size_t chunk_len = 0;
-		int chunk_status;
-
-		if (!wait_for_clipboard_event(clipboard_property_new_value_matches,
-				(XPointer)&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
-			free(data);
-			return 0;
-		}
-
-		chunk_status = read_clipboard_property_chunk(property, &chunk_type, &chunk, &chunk_len);
-		if (chunk_status < 0) {
-			free(data);
-			return 0;
-		}
-		if (chunk_status == 0)
-			continue;
-
-		if (chunk_len == 0) {
-			if (chunk)
-				XFree(chunk);
-			if (size == 0) {
-				free(data);
-				return 0;
-			}
-			*type_out = actual_type == None ? target : actual_type;
-			*data_out = data;
-			*len_out = size;
-			return 1;
-		}
-
-		if (chunk_type != target ||
-		    chunk_len > CLIPBOARD_PASTE_MAX_BYTES ||
-		    size > CLIPBOARD_PASTE_MAX_BYTES - chunk_len) {
-			XFree(chunk);
-			free(data);
-			return 0;
-		}
-
-		new_data = realloc(data, size + chunk_len);
-		if (!new_data) {
-			XFree(chunk);
-			free(data);
-			return 0;
-		}
-		data = new_data;
-		memcpy(data + size, chunk, chunk_len);
-		size += chunk_len;
-		if (actual_type == None)
-			actual_type = chunk_type;
-		XFree(chunk);
-	}
-}
-
-static int retrieve_clipboard_property(Atom property, Atom target,
-		Atom *type_out, unsigned char **data_out, size_t *len_out)
-{
-	Atom type, type2;
-	int format, format2;
-	unsigned long nitems, nitems2;
-	unsigned long bytes_after, bytes_after2;
-	unsigned char *prop = NULL, *prop2 = NULL;
-	unsigned char *copy;
-	long length;
-
-	*type_out = None;
-	*data_out = NULL;
-	*len_out = 0;
-
-	if (XGetWindowProperty(dpy, win, property, 0, 0, False,
-			AnyPropertyType, &type, &format, &nitems,
-			&bytes_after, &prop) != Success) {
-		return 0;
-	}
-	if (prop)
-		XFree(prop);
-
-	if (type == None)
-		return 0;
-	if (type == incr_atom)
-		return receive_clipboard_incr_data(property, target, type_out, data_out, len_out);
-	if (type != target || format != 8 || bytes_after == 0 ||
-	    bytes_after > CLIPBOARD_PASTE_MAX_BYTES) {
-		return 0;
-	}
-
-	length = (long)((bytes_after + 3) / 4);
-	if (length == 0)
-		length = 1;
-
-	if (XGetWindowProperty(dpy, win, property, 0, length, True,
-			AnyPropertyType, &type2, &format2, &nitems2,
-			&bytes_after2, &prop2) != Success) {
-		return 0;
-	}
-	if (type2 != target || format2 != 8 || bytes_after2 != 0 ||
-	    nitems2 == 0 || nitems2 > CLIPBOARD_PASTE_MAX_BYTES) {
-		if (prop2)
-			XFree(prop2);
-		return 0;
-	}
-
-	copy = malloc((size_t)nitems2);
-	if (!copy) {
-		XFree(prop2);
-		return 0;
-	}
-	memcpy(copy, prop2, (size_t)nitems2);
-	XFree(prop2);
-
-	*type_out = type2;
-	*data_out = copy;
-	*len_out = (size_t)nitems2;
-	return 1;
+	(void)udata;
+	if (clipboard_service_event_matches(dpy, event, NULL))
+		dispatch_clipboard_service_event(event);
+	else
+		defer_clipboard_event(&paste_deferred, &paste_deferred_count,
+				      &paste_deferred_capacity, event);
 }
 
 static int request_clipboard_data(Atom target, Atom *type_out,
 		unsigned char **data_out, size_t *len_out)
 {
 	XSelectionEvent selection;
+	unsigned char *data;
+	Atom type;
+	size_t len;
+
+	*type_out = None;
+	*data_out = NULL;
+	*len_out = 0;
 
 	if (!request_clipboard_selection(clipboard_atom, target, property_atom,
 			CurrentTime, &selection)) {
 		return 0;
 	}
 
-	return retrieve_clipboard_property(property_atom, target, type_out, data_out, len_out);
+	data = clip_retrieve_property(dpy, win, property_atom, incr_atom,
+					CLIP_DEFAULT_MAX_BYTES,
+					CLIPBOARD_PASTE_TIMEOUT_MS,
+					paste_dispatch, NULL, &type, &len);
+
+	restore_clipboard_events(paste_deferred, paste_deferred_count);
+	paste_deferred = NULL;
+	paste_deferred_count = paste_deferred_capacity = 0;
+
+	if (!data)
+		return 0;
+	if (len == 0 || type != target) {
+		free(data);
+		return 0;
+	}
+
+	*type_out = type;
+	*data_out = data;
+	*len_out = len;
+	return 1;
 }
 
 static char *ensure_paste_temp_dir(void)
@@ -3091,17 +2781,16 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (e.type == PropertyNotify) {
-			XPropertyEvent *pe = &e.xproperty;
-
-			if (incr.active &&
-			    pe->window == incr.requestor &&
-			    pe->atom == incr.property &&
-			    pe->state == PropertyDelete) {
-				handle_outgoing_incr_property_notify(pe);
-			} else if (pe->window == win) {
-				if (WMIV_DEBUG && incr.active)
-					fprintf(stderr, "Ignoring PropertyNotify on main window during INCR\n");
+			if (clip_incr_send_property_notify(dpy, &incr, &e.xproperty)) {
+				if (WMIV_DEBUG)
+					fprintf(stderr, "INCR: sent chunk %zu/%zu%s\n",
+						incr.offset, incr.size,
+						incr.active ? "" : " (complete)");
 			}
+			continue;
+		}
+		if (e.type == DestroyNotify) {
+			clip_incr_send_destroy_notify(dpy, &incr, &e.xdestroywindow);
 			continue;
 		}
 		if (e.type == FocusIn) {
