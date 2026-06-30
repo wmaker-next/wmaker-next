@@ -78,6 +78,11 @@ ipc_ready() {
 	msg -q get_version >/dev/null 2>&1
 }
 
+config_defines() {
+	[ -f "$ROOT/config.h" ] || return 1
+	grep -E "^#define[ \t]+$1([ \t]+|$)" "$ROOT/config.h" >/dev/null
+}
+
 # evlog_line PATTERN : print 1-based line number of first match in $EVLOG
 evlog_line() {
 	grep -n -m1 -F "$1" "$EVLOG" 2>/dev/null | cut -d: -f1
@@ -143,8 +148,12 @@ mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 # a Defaults/WindowMaker file must exist or check_defaults() runs the
 # first-run installer, which overwrites WMState with the stock template
 # and discards the Workspaces and Dock entries seeded below
-cat > "$WMHOME/Defaults/WindowMaker" <<'WMEOD'
+DPOFF_WITNESS="$RUNTIME/display-off-ran"
+DPON_WITNESS="$RUNTIME/display-on-ran"
+cat > "$WMHOME/Defaults/WindowMaker" <<WMEOD
 {
+	DisplayOffCommand = "touch '$DPOFF_WITNESS'";
+	DisplayOnCommand = "touch '$DPON_WITNESS'";
 }
 WMEOD
 cat > "$WMHOME/Defaults/WMState" <<'WMEOD'
@@ -207,7 +216,7 @@ check "transport failure exits 1" [ $? -eq 1 ]
 msg get_version 2>/dev/null | grep -q "pid = $WMAKER_PID;"
 check "GET_VERSION reports wmaker pid" [ $? -eq 0 ]
 
-# ---- display-power verb and MIT-SCREEN-SAVER notify ---------------------
+# ---- display-power verb, display_power event, DisplayOff/OnCommand ------
 
 note "display-power"
 
@@ -215,13 +224,20 @@ info_display_off() {
 	msg info 2>/dev/null | grep -q "display_off = $1;"
 }
 
+evlog_count() {
+	grep -cF "$1" "$EVLOG" 2>/dev/null
+}
+
 check "info reports display_off = NO at boot" info_display_off NO
+
+start_monitor display_power tick || fatal "display_power monitor did not see first tick"
 
 msg -q display-power off >/dev/null 2>&1
 check "display-power off exits 0" [ $? -eq 0 ]
 check "info reflects display_off = YES" info_display_off YES
 
-# idempotent, a second off must succeed and stay YES
+# idempotent, a second off must succeed and stay YES, and must not
+# emit a second event
 msg -q display-power off >/dev/null 2>&1
 check "display-power off is idempotent" info_display_off YES
 
@@ -237,24 +253,57 @@ check "display-power missing-arg exits 2" [ $? -eq 2 ]
 
 check "bad arg did not flip the flag" info_display_off NO
 
+wait_tick "dp-ipc-fence" || record_fail "tick fence after IPC display-power"
+check "display_power {state=off,source=ipc} emitted" \
+	evlog_has 'source = ipc;state = off;'
+check "display_power {state=on,source=ipc} emitted" \
+	evlog_has 'source = ipc;state = on;'
+check "no-op transition emits no event" \
+	[ "$(evlog_count 'source = ipc;state = off;')" -eq 1 ]
+
+# the IPC source must not run the configured shell hook
+check "DisplayOffCommand not run for source=ipc" [ ! -e "$DPOFF_WITNESS" ]
+check "DisplayOnCommand not run for source=ipc" [ ! -e "$DPON_WITNESS" ]
+
 # native detection: Xvfb exposes MIT-SCREEN-SAVER, so xset s
 # activate / reset should round-trip through the notify handler.
 # the IPC connect drives a poll cycle so by the time `info` returns
 # the notify event has been dispatched, but probe with wait_for so a
 # slow server does not flake
-if DISPLAY=$DPY xdpyinfo 2>/dev/null | grep -q MIT-SCREEN-SAVER \
-   && command -v xset >/dev/null 2>&1; then
+if config_defines USE_XCB_SCREENSAVER \
+	&& DISPLAY=$DPY xdpyinfo 2>/dev/null | grep -q MIT-SCREEN-SAVER \
+	&& command -v xset >/dev/null 2>&1; then
 	DISPLAY=$DPY xset s 1 1 >/dev/null 2>&1
 	DISPLAY=$DPY xset s activate >/dev/null 2>&1
 	wait_for 30 info_display_off YES
 	check "ScreenSaverNotify ON sets display_off" info_display_off YES
+
+	wait_tick "dp-ss-off-fence" || record_fail "tick fence after xset s activate"
+	check "display_power {state=off,source=screensaver} emitted" \
+		evlog_has 'source = screensaver;state = off;'
+	wait_for 30 test -e "$DPOFF_WITNESS"
+	check "DisplayOffCommand runs for source=screensaver" \
+		[ -e "$DPOFF_WITNESS" ]
+	check "DisplayOnCommand not yet run" [ ! -e "$DPON_WITNESS" ]
+
 	DISPLAY=$DPY xset s reset >/dev/null 2>&1
 	wait_for 30 info_display_off NO
 	check "ScreenSaverNotify OFF clears display_off" info_display_off NO
+
+	wait_tick "dp-ss-on-fence" || record_fail "tick fence after xset s reset"
+	check "display_power {state=on,source=screensaver} emitted" \
+		evlog_has 'source = screensaver;state = on;'
+	wait_for 30 test -e "$DPON_WITNESS"
+	check "DisplayOnCommand runs for source=screensaver" \
+		[ -e "$DPON_WITNESS" ]
+
 	DISPLAY=$DPY xset s off >/dev/null 2>&1
 else
 	record_skip "ScreenSaverNotify ON/OFF: MIT-SCREEN-SAVER or xset unavailable"
 fi
+
+stop_monitor
+rm -f "$DPOFF_WITNESS" "$DPON_WITNESS"
 
 # ---- row 3: workspace event scope ----------------------------------------
 
