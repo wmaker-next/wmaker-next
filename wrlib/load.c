@@ -125,44 +125,50 @@ static RCachedImage *RImageCache;
 
 static WRImgFormat identFile(const char *path);
 
+/*
+ * Single source of truth for the format-name strings returned by
+ * RSupportedFileFormats() and RGetImageFileFormat(). Entries with
+ * fmt == IM_UNKNOWN are listed in RSupportedFileFormats() but never
+ * returned by RGetImageFileFormat(): PNM is an alias for the PPM
+ * loader kept for legacy callers, and TGA has no magic-byte signature
+ * so identFile() cannot detect it (it is handled by the stb fallback
+ * in RLoadImage's IM_UNKNOWN path).
+ */
+static const struct {
+	WRImgFormat fmt;
+	const char *name;
+} wr_format_names[] = {
+	{ IM_XPM,     "XPM"  },
+	{ IM_UNKNOWN, "PNM"  },
+	{ IM_PPM,     "PPM"  },
+	{ IM_BMP,     "BMP"  },
+	{ IM_UNKNOWN, "TGA"  },
+	{ IM_GIF,     "GIF"  },
+#ifdef USE_TIFF
+	{ IM_TIFF,    "TIFF" },
+#endif
+#ifdef USE_PNG
+	{ IM_PNG,     "PNG"  },
+#endif
+#ifdef USE_JPEG
+	{ IM_JPEG,    "JPEG" },
+#endif
+#ifdef USE_JXL
+	{ IM_JXL,     "JXL"  },
+#endif
+#ifdef USE_WEBP
+	{ IM_WEBP,    "WEBP" },
+#endif
+};
+#define WR_FORMAT_NAME_COUNT (sizeof(wr_format_names) / sizeof(wr_format_names[0]))
 
 char **RSupportedFileFormats(void)
 {
-	/* built-in entries plus PNM/PPM aliasing plus the optional
-	 * libraries plus the NULL terminator can exceed IM_TYPES, so
-	 * size the static array explicitly */
-	static char *tmp[16];
-	int i = 0;
+	static char *tmp[WR_FORMAT_NAME_COUNT + 1];
+	size_t i;
 
-	/* built-in */
-	tmp[i++] = "XPM";
-	/* built-in PNM here refers to anymap format: PPM, PGM, PBM */
-	tmp[i++] = "PNM";
-	/*
-	 * PPM is a just a sub-type of PNM, but it has to be in the list
-	 * for compatibility with legacy programs that may expect it but
-	 * not the new PNM type
-	 */
-	tmp[i++] = "PPM";
-	/* via vendored stb_image */
-	tmp[i++] = "BMP";
-	tmp[i++] = "TGA";
-	tmp[i++] = "GIF";
-#ifdef USE_TIFF
-	tmp[i++] = "TIFF";
-#endif
-#ifdef USE_PNG
-	tmp[i++] = "PNG";
-#endif
-#ifdef USE_JPEG
-	tmp[i++] = "JPEG";
-#endif
-#ifdef USE_JXL
-	tmp[i++] = "JXL";
-#endif
-#ifdef USE_WEBP
-	tmp[i++] = "WEBP";
-#endif
+	for (i = 0; i < WR_FORMAT_NAME_COUNT; i++)
+		tmp[i] = (char *)wr_format_names[i].name;
 	tmp[i] = NULL;
 
 	return tmp;
@@ -361,47 +367,18 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 
 char *RGetImageFileFormat(const char *file)
 {
-	switch (identFile(file)) {
-	case IM_XPM:
-		return "XPM";
+	WRImgFormat fmt;
+	size_t i;
 
-#ifdef USE_TIFF
-	case IM_TIFF:
-		return "TIFF";
-#endif				/* USE_TIFF */
-
-#ifdef USE_PNG
-	case IM_PNG:
-		return "PNG";
-#endif				/* USE_PNG */
-
-#ifdef USE_JPEG
-	case IM_JPEG:
-		return "JPEG";
-#endif				/* USE_JPEG */
-
-#ifdef USE_JXL
-	case IM_JXL:
-		return "JXL";
-#endif				/* USE_JXL */
-
-	case IM_GIF:
-		return "GIF";
-
-	case IM_BMP:
-		return "BMP";
-
-#ifdef USE_WEBP
-	case IM_WEBP:
-		return "WEBP";
-#endif				/* USE_WEBP */
-
-	case IM_PPM:
-		return "PPM";
-
-	default:
+	fmt = identFile(file);
+	if (fmt == IM_ERROR || fmt == IM_UNKNOWN)
 		return NULL;
-	}
+
+	for (i = 0; i < WR_FORMAT_NAME_COUNT; i++)
+		if (wr_format_names[i].fmt == fmt)
+			return (char *)wr_format_names[i].name;
+
+	return NULL;
 }
 
 static WRImgFormat identFile(const char *path)
