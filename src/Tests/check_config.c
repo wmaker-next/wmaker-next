@@ -1769,12 +1769,12 @@ static void test_startup_only_frozen_across_reload(void)
 
 	reset_preferences();
 	/* simulate StartUp(): adopt the boot-time parse and clamp it.
-	 * FocusMode and EnableWorkspacePager used to be in this set but are
-	 * now WCFG_RUNTIME_RELOAD (see test_focus_mode_live_apply and
-	 * test_enable_workspace_pager_live_apply); the keys still frozen are
-	 * IconSize, NewStyle, SwitchPanelIconSize and DisableMiniwindows. */
+	 * FocusMode, EnableWorkspacePager and SwitchPanelIconSize used to
+	 * be in this set but are now WCFG_RUNTIME_RELOAD (see the matching
+	 * test_*_live_apply cases); the keys still frozen are IconSize,
+	 * NewStyle and DisableMiniwindows. */
 	old_dict = dict_from_desc("{ IconSize = 96; "
-				  "NewStyle = next; SwitchPanelIconSize = 48; "
+				  "NewStyle = next; "
 				  "DisableMiniwindows = YES; }");
 	if (!old_dict)
 		return;
@@ -1789,7 +1789,6 @@ static void test_startup_only_frozen_across_reload(void)
 	wConfigApplyRuntimeDefaults(NULL, new_dict);
 	CHECK(w_global.config->icon_size == 96);
 	CHECK(w_global.config->new_style == TS_NEXT);
-	CHECK(w_global.config->switch_panel_icon_size == 48);
 	CHECK(w_global.config->disable_miniwindows == 1);
 
 	WMReleasePropList(new_dict);
@@ -1811,6 +1810,30 @@ static void test_focus_mode_live_apply(void)
 		goto out;
 	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
 	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* SwitchPanelIconSize is re-read by wInitSwitchPanel() on every Alt-Tab
+ * and the cached SwitchPanelImages tile is stored at source resolution
+ * and scaled per construction, so unfreezing alone makes the next panel
+ * pick up the new size. */
+static void test_switch_panel_icon_size_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ SwitchPanelIconSize = 64; }");
+	new_dict = dict_from_desc("{ SwitchPanelIconSize = 40; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->switch_panel_icon_size == 40);
 
 out:
 	if (old_dict)
@@ -2317,6 +2340,7 @@ int main(void)
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();
 	test_enable_workspace_pager_live_apply();
+	test_switch_panel_icon_size_live_apply();
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();
 	test_antialiased_text_live_apply();

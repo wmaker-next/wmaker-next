@@ -99,7 +99,7 @@
 	_(ENABLE_WORKSPACE_PAGER, "EnableWorkspacePager", BOOL, enable_workspace_pager, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \
-	  NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_POSITION, "IconPosition", ENUM, icon_yard, "blh", \
 	  icon_positions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(PIXMAP_PATH, "PixmapPath", PATH_LIST, pixmap_path, DEF_PIXMAP_PATHS, \
