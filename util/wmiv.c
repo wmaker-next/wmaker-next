@@ -2067,29 +2067,6 @@ void get_monitor_dimensions(Display *dpy, int screen_num, Window win, int *width
 	free(mr);
 }
 
-/*
-	Transform the given URI to UTF-8 string
-*/
-void decode_uri(char *uri)
-{
-	char *last = uri + strlen(uri);
-
-	if (strlen(uri) < 2)
-		return;
-
-	while (uri < last-2) {
-			if (*uri == '%') {
-					int h;
-					if (sscanf(uri+1, "%2X", &h) != 1)
-							break;
-					*uri = h;
-					memmove(uri+1, uri+3, last - (uri+2));
-					last -= 2;
-			}
-			uri++;
-	}
-}
-
 /* ----- XDND ---------------------------------------------------------- *
  *
  * Minimal XDND v5 source and target implementation, replacing the
@@ -2100,18 +2077,26 @@ void decode_uri(char *uri)
 
 static void wmiv_xdnd_init_atoms(void)
 {
-	atom_XdndAware      = XInternAtom(dpy, "XdndAware", False);
-	atom_XdndEnter      = XInternAtom(dpy, "XdndEnter", False);
-	atom_XdndPosition   = XInternAtom(dpy, "XdndPosition", False);
-	atom_XdndStatus     = XInternAtom(dpy, "XdndStatus", False);
-	atom_XdndLeave      = XInternAtom(dpy, "XdndLeave", False);
-	atom_XdndDrop       = XInternAtom(dpy, "XdndDrop", False);
-	atom_XdndFinished   = XInternAtom(dpy, "XdndFinished", False);
-	atom_XdndSelection  = XInternAtom(dpy, "XdndSelection", False);
-	atom_XdndTypeList   = XInternAtom(dpy, "XdndTypeList", False);
-	atom_XdndActionCopy = XInternAtom(dpy, "XdndActionCopy", False);
-	atom_uri_list       = XInternAtom(dpy, "text/uri-list", False);
-	atom_text_plain     = XInternAtom(dpy, "text/plain", False);
+	static char *names[] = {
+		"XdndAware", "XdndEnter", "XdndPosition", "XdndStatus",
+		"XdndLeave", "XdndDrop", "XdndFinished", "XdndSelection",
+		"XdndTypeList", "XdndActionCopy", "text/uri-list", "text/plain"
+	};
+	Atom out[12];
+
+	XInternAtoms(dpy, names, 12, False, out);
+	atom_XdndAware      = out[0];
+	atom_XdndEnter      = out[1];
+	atom_XdndPosition   = out[2];
+	atom_XdndStatus     = out[3];
+	atom_XdndLeave      = out[4];
+	atom_XdndDrop       = out[5];
+	atom_XdndFinished   = out[6];
+	atom_XdndSelection  = out[7];
+	atom_XdndTypeList   = out[8];
+	atom_XdndActionCopy = out[9];
+	atom_uri_list       = out[10];
+	atom_text_plain     = out[11];
 }
 
 /* ----- XDND drop target ---------------------------------------------- */
@@ -2748,7 +2733,7 @@ int main(int argc, char **argv)
 						tmp_file = ptr + strlen(handled_uri_header);
 
 						/* drag-and-drop file name format as per the spec is encoded as an URI */
-						decode_uri(tmp_file);
+						WXDndDecodeURI(tmp_file);
 						if (connect_dir(tmp_file, &list))
 							find_one_file = True;
 					}

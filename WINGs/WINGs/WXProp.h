@@ -182,6 +182,46 @@ static inline void WXSendSelectionNotify(Display *dpy,
 	XFlush(dpy);
 }
 
+/* --- XDND --------------------------------------------------------------
+ *
+ * In-place percent-decode of a file:// URI path as delivered over an
+ * XDND text/uri-list transfer. Inline so the dock target in src/, the
+ * standalone wmiv source/target, and any future caller share one copy
+ * without a link dependency. */
+static inline int WXDndHexNibble(unsigned char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return -1;
+}
+
+static inline void WXDndDecodeURI(char *uri)
+{
+	char *last;
+	int hi, lo;
+
+	if (uri[0] == '\0' || uri[1] == '\0')
+		return;
+
+	last = uri + strlen(uri);
+	while (uri < last - 2) {
+		if (*uri == '%') {
+			hi = WXDndHexNibble((unsigned char)uri[1]);
+			lo = WXDndHexNibble((unsigned char)uri[2]);
+			if (hi < 0 || lo < 0)
+				break;
+			*uri = (char)((hi << 4) | lo);
+			memmove(uri + 1, uri + 3, last - (uri + 2));
+			last -= 2;
+		}
+		uri++;
+	}
+}
+
 /* --- Legacy WM command ------------------------------------------------ */
 
 /* Send a format-8 _WINDOWMAKER_COMMAND ClientMessage to the root window.

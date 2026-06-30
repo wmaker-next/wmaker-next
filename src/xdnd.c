@@ -89,22 +89,6 @@ void wXDNDMakeAwareness(Window window)
 	WXSetAtom(dpy, window, _XA_XdndAware, (Atom)XDND_VERSION);
 }
 
-static void wXDNDDecodeURI(char *uri)
-{
-	char *last = uri + strlen(uri);
-	while (uri < last-2) {
-		if (*uri == '%') {
-			int h;
-			if (sscanf(uri+1, "%2X", &h) != 1)
-				break;
-			*uri = h;
-			memmove(uri+1, uri+3, last - (uri+2));
-			last -= 2;
-		}
-		uri++;
-	}
-}
-
 static size_t wXDNDQuotedLength(const char *string)
 {
 	size_t length = 3;
@@ -193,7 +177,7 @@ Bool wXDNDProcessSelection(XEvent *event)
 				if (retain[length + 1] != '\0') {
 					tmp = wstrdup(&retain[length + 1]);
 					if (!strncmp(tmp, "file://", 7)) {
-						wXDNDDecodeURI(&tmp[7]);
+						WXDndDecodeURI(&tmp[7]);
 						total_size += wXDNDQuotedLength(&tmp[7]);
 					}
 					WMAddToArray(items, tmp);
@@ -206,7 +190,7 @@ Bool wXDNDProcessSelection(XEvent *event)
 		/* final one */
 		tmp = wstrdup(retain);
 		if (!strncmp(tmp, "file://", 7)) {
-			wXDNDDecodeURI(&tmp[7]);
+			WXDndDecodeURI(&tmp[7]);
 			total_size += wXDNDQuotedLength(&tmp[7]);
 		}
 		WMAddToArray(items, tmp);
