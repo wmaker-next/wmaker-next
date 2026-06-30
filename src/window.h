@@ -383,6 +383,7 @@ typedef struct WWindow {
 	int icon_x, icon_y;			/* position of the icon */
 	int icon_w, icon_h;
 	RImage *net_icon_image;			/* Window Image */
+	RImage *wm_hints_icon_image;		/* lazy decode of WM_HINTS icon_pixmap */
 	Atom type;
 	char *mark_key_label;		/* Vim-like Window Marking */
 

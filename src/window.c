@@ -261,6 +261,8 @@ void wWindowDestroy(WWindow *wwin)
 	}
 	if (wwin->net_icon_image)
 		RReleaseImage(wwin->net_icon_image);
+	if (wwin->wm_hints_icon_image)
+		RReleaseImage(wwin->wm_hints_icon_image);
 
 	wrelease(wwin);
 }

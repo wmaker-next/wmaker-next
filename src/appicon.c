@@ -156,9 +156,12 @@ void create_appicon_for_application(WApplication *wapp, WWindow *wwin)
 
 	/* If app_icon was not found, create it */
 	if (!wapp->app_icon) {
-		/* Create the icon */
+		/* Create the icon, icon_create_for_wwindow inside
+		 * wAppIconCreate already runs wIconUpdate so the second
+		 * call that used to follow here just re-read the
+		 * wm_hints icon pixmap from the server for the same
+		 * result */
 		wapp->app_icon = wAppIconCreate(wapp->main_window_desc);
-		wIconUpdate(wapp->app_icon->icon);
 
 		/* Now, paint the icon */
 		if (!WFLAGP(wapp->main_window_desc, no_appicon))
@@ -328,7 +331,13 @@ static WAppIcon *wAppIconCreate(WWindow *leader_win)
 	aicon->icon->core->descriptor.parent_type = WCLASS_APPICON;
 	aicon->icon->core->descriptor.parent = aicon;
 	AddToStackList(aicon->icon->core);
+	/* icon_create_for_wwindow composited the pixmap with the
+	 * miniwindow default show_title=1, so the appicon tile already
+	 * carries an empty title strip. Clear the flag and re-render so
+	 * the strip is gone; the wm_hints icon decode is cached on the
+	 * owner WWindow, so this does not round-trip to the server */
 	aicon->icon->show_title = 0;
+	wIconUpdate(aicon->icon);
 
 	return aicon;
 }

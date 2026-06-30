@@ -492,16 +492,24 @@ static char *get_icon_cache_path(void)
 
 static RImage *get_wwindow_image_from_wmhints(WWindow *wwin)
 {
-	RImage *image = NULL;
 	WXWMHints *hints = wwin->wm_hints;
 
-	if (hints && (hints->flags & IconPixmapHint) && hints->icon_pixmap != None)
-		image = RCreateImageFromDrawable(wwin->screen_ptr->rcontext,
+	if (!hints || !(hints->flags & IconPixmapHint) || hints->icon_pixmap == None)
+		return NULL;
+
+	/* the pixmap and mask XIDs come from a manage-time property and
+	 * the WM_HINTS PropertyNotify handler drops this cache when the
+	 * client changes them, so the decoded image is stable between
+	 * those points and the appicon, miniwindow, titlebar icon and
+	 * wIconStore can all share one server read */
+	if (!wwin->wm_hints_icon_image)
+		wwin->wm_hints_icon_image =
+			RCreateImageFromDrawable(wwin->screen_ptr->rcontext,
 						 hints->icon_pixmap,
 						 (hints->flags & IconMaskHint)
 						 ? hints->icon_mask : None);
 
-	return image;
+	return RRetainImage(wwin->wm_hints_icon_image);
 }
 
 /*

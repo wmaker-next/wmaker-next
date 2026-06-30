@@ -419,6 +419,13 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 
 		wwin->wm_hints = new_hints;
 
+		/* drop the decoded icon_pixmap cache so the wIconUpdate
+		 * and titlebar refresh below re-read the new pixmap */
+		if (wwin->wm_hints_icon_image) {
+			RReleaseImage(wwin->wm_hints_icon_image);
+			wwin->wm_hints_icon_image = NULL;
+		}
+
 		if (wwin->frame)
 			wWindowRefreshTitlebarIcon(wwin);
 
