@@ -63,6 +63,7 @@ void set_icon_image_from_database(WIcon *icon, const char *wm_instance, const ch
 void wIconDestroy(WIcon *icon);
 void wIconPaint(WIcon *icon);
 void wIconUpdate(WIcon *icon);
+void wIconResizeAll(WScreen *scr);
 void wIconSelect(WIcon *icon);
 void wIconChangeTitle(WIcon *icon, WWindow *wwin);
 void update_icon_pixmap(WIcon *icon);

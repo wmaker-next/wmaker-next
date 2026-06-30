@@ -16,6 +16,7 @@
 #include "WindowMaker.h"
 #include "actions.h"
 #include "dock.h"
+#include "icon.h"
 #include "screen.h"
 #include "event.h"
 #include "workspace.h"
@@ -1117,6 +1118,23 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		if (scr)
 			wRegrabWindowMouseGrabs(scr);
 	}
+	if (scr && scr->icon_tile
+	    && wConfigChangesHas(changes, WCFG_KEY_ICON_SIZE)) {
+		/* re-derive every cached IconSize derivative: per-screen
+		 * windows and pixmaps first, then the icon/clip/drawer tile
+		 * (so wIconResizeAll() composites onto the new tile), then
+		 * every icon core and image, then the dock and clip slot
+		 * positions. wScreenUpdateUsableArea() and wArrangeIcons()
+		 * run from the tail of this function. scr->icon_tile gates
+		 * out the cold-boot pass where the texture loop below sets
+		 * it for the first time. */
+		wScreenApplyIconSize(scr);
+		refresh |= wConfigForceReapplyIconBack(scr);
+		wIconResizeAll(scr);
+		wDockApplyIconSize(scr);
+		update_usable_area = True;
+		arrange_all_icons = True;
+	}
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_DISABLE_MINIWINDOWS))
 		wRefreshMiniwindows(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_LABELS))
@@ -1331,6 +1349,31 @@ unsigned int wConfigApplyRuntimeDefaults(WScreen *scr, WMPropList *new_dict)
  * each WM-side font pointer is re-opened under the current antialias flag;
  * the per-font set*Font callbacks release the previously detached handle
  * through normal refcounting and store the new one. */
+unsigned int wConfigForceReapplyIconBack(WScreen *scr)
+{
+	const WConfigEntry *schema;
+	const WConfig *config;
+	size_t i, count;
+
+	if (!scr)
+		return 0;
+	config = w_global.config;
+	if (!config)
+		return 0;
+
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (i = 0; i < count; i++) {
+		if (schema[i].config_key != WCFG_KEY_ICON_BACK)
+			continue;
+		return wConfigApplyTextureSpec(scr, schema[i].key,
+					       schema[i].min_value,
+					       &config->icon_back,
+					       schema[i].default_value);
+	}
+	return 0;
+}
+
 unsigned int wConfigForceReapplyFonts(WScreen *scr)
 {
 	const WConfigEntry *schema;

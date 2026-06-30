@@ -3324,6 +3324,31 @@ static void moveDock(WDock *dock, int new_x, int new_y)
 	}
 }
 
+/* Re-derive every dock, drawer and clip slot pixel position from
+ * xindex/yindex against the current IconSize and re-anchor the dock
+ * column against its screen edge. moveDock() already recurses into
+ * every drawer when called on the dock and recomputes both axes, so
+ * the only extra step is to re-derive the right-side anchor (which
+ * was scr_width - ICON_SIZE) and walk the per-workspace clips.
+ * dock->max_icons and the icon_array allocation are left untouched,
+ * matching the existing RandR resize behaviour. */
+void wDockApplyIconSize(WScreen *scr)
+{
+	int i;
+
+	if (scr->dock)
+		moveDock(scr->dock,
+			 getDockXPosition(scr, scr->dock->on_right_side),
+			 scr->dock->y_pos);
+
+	if (!wPreferences.flags.noclip && scr->workspaces)
+		for (i = 0; i < scr->workspace_count; i++)
+			if (scr->workspaces[i] && scr->workspaces[i]->clip)
+				moveDock(scr->workspaces[i]->clip,
+					 scr->workspaces[i]->clip->x_pos,
+					 scr->workspaces[i]->clip->y_pos);
+}
+
 void wDockSwap(WDock *dock)
 {
 	WScreen *scr = dock->screen_ptr;

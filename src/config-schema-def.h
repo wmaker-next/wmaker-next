@@ -63,7 +63,7 @@
 
 #define WCFG_SCHEMA(_) \
 	_(ICON_SIZE, "IconSize", INT, icon_size, "64", \
-	  NULL, 1, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	  NULL, 1, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MODIFIER_KEY, "ModifierKey", STRING, modifier_key, "Mod1", \
 	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
 	_(FOCUS_MODE, "FocusMode", ENUM, focus_mode, "manual", \

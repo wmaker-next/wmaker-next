@@ -702,6 +702,55 @@ static void unset_icon_image(WIcon *icon)
 	}
 }
 
+/* Resize one icon's top-level window and reload its image at the
+ * current IconSize. The position is left untouched, the dock relayout
+ * and wArrangeIcons() that follow a runtime IconSize change reposition
+ * everything once every icon is at the new size. The cached
+ * file_image is dropped first because get_rimage_icon_from_user_icon()
+ * is otherwise a no-op when an image is already loaded, so it would
+ * keep the old-size scale. */
+static void resize_icon(WIcon *icon, const char *wm_instance,
+			const char *wm_class, const char *command)
+{
+	int isize;
+
+	if (!icon || !icon->core)
+		return;
+
+	isize = w_global.config->icon_size;
+	XResizeWindow(dpy, icon->core->window, isize, isize);
+	icon->core->width = isize;
+	icon->core->height = isize;
+	WMScreenNoteDrawableSize(icon->core->screen_ptr->wmscreen,
+				 icon->core->window, isize, isize);
+
+	unset_icon_image(icon);
+	set_icon_image_from_database(icon, wm_instance, wm_class, command);
+	wIconUpdate(icon);
+}
+
+void wIconResizeAll(WScreen *scr)
+{
+	WAppIcon *aicon;
+	WWindow *wwin;
+
+	aicon = scr->app_icon_list;
+	while (aicon) {
+		resize_icon(aicon->icon, aicon->wm_instance,
+			    aicon->wm_class, aicon->command);
+		wAppIconPaint(aicon);
+		aicon = aicon->next;
+	}
+
+	wwin = scr->focused_window;
+	while (wwin) {
+		if (wwin->icon && wwin->flags.miniaturized)
+			resize_icon(wwin->icon, wwin->wm_instance,
+				    wwin->wm_class, NULL);
+		wwin = wwin->prev;
+	}
+}
+
 void set_icon_image_from_image(WIcon *icon, RImage *image)
 {
 	if (!icon)

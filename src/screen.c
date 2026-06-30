@@ -521,6 +521,43 @@ static void createPixmaps(WScreen * scr)
 	allocButtonPixmaps(scr);
 }
 
+static void publishIconSizes(WScreen *scr)
+{
+	XIconSize icon_size[1];
+
+	icon_size[0].min_width = 8;
+	icon_size[0].min_height = 8;
+	icon_size[0].max_width = w_global.config->icon_size - 4;
+	icon_size[0].max_height = w_global.config->icon_size - 4;
+	icon_size[0].width_inc = 1;
+	icon_size[0].height_inc = 1;
+	XSetIconSizes(dpy, scr->root_win, icon_size, 1);
+}
+
+/* Re-derive every per-screen object whose geometry was baked from
+ * IconSize at wScreenInit() time. The icon tile and per-icon refresh
+ * are handled separately by the IconBack force-reapply and
+ * wIconResizeAll(), this covers what neither of those reach. */
+void wScreenApplyIconSize(WScreen *scr)
+{
+	int isize;
+
+	isize = w_global.config->icon_size;
+	publishIconSizes(scr);
+
+	/* dock_shadow is XMoveResizeWindow()'d to the current icon size at
+	 * the start of every drag so it self-heals, but resize it now so
+	 * the stale size never shows up before the first drag */
+	XResizeWindow(dpy, scr->dock_shadow, isize, isize);
+
+	/* the running-app dot indicator pixmap and its shape mask are
+	 * sized icon_size x icon_size with the dots positioned by
+	 * isize/64, so it must be rebuilt rather than scaled */
+	if (scr->dock_dots)
+		wPixmapDestroy(scr->dock_dots);
+	scr->dock_dots = make3Dots(scr);
+}
+
 void create_logo_image(WScreen *scr)
 {
 	RImage *image = get_icon_image(scr, "Logo", "WMPanel", 128);
@@ -611,7 +648,6 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		     const struct WConfigChanges *changes)
 {
 	WScreen *scr;
-	XIconSize icon_size[1];
 	RContextAttributes rattr = {};
 	xcb_generic_error_t *xerr;
 	uint32_t event_mask;
@@ -778,13 +814,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 			     &w_global.config->titlebar_right);
 
 	/* set icon sizes we can accept from clients */
-	icon_size[0].min_width = 8;
-	icon_size[0].min_height = 8;
-	icon_size[0].max_width = w_global.config->icon_size - 4;
-	icon_size[0].max_height = w_global.config->icon_size - 4;
-	icon_size[0].width_inc = 1;
-	icon_size[0].height_inc = 1;
-	XSetIconSizes(dpy, scr->root_win, icon_size, 1);
+	publishIconSizes(scr);
 
 	/* setup WindowMaker protocols property in the root window */
 	PropSetWMakerProtocols(scr->root_win);

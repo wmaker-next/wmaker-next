@@ -48,6 +48,9 @@ static int last_key_binding_index;
 static int key_tree_rebuilds;
 static int regrab_mouse_grabs;
 static int refresh_miniwindows;
+static int screen_apply_icon_size;
+static int icon_resize_all;
+static int dock_apply_icon_size;
 static int aa_flush_count;
 static Bool aa_current;
 static int texture_spec_updates;
@@ -115,6 +118,24 @@ void wRefreshMiniwindows(WScreen *scr)
 {
 	(void)scr;
 	refresh_miniwindows++;
+}
+
+void wScreenApplyIconSize(WScreen *scr)
+{
+	(void)scr;
+	screen_apply_icon_size++;
+}
+
+void wIconResizeAll(WScreen *scr)
+{
+	(void)scr;
+	icon_resize_all++;
+}
+
+void wDockApplyIconSize(WScreen *scr)
+{
+	(void)scr;
+	dock_apply_icon_size++;
 }
 
 void wWorkspaceForceChange(WScreen *scr, int workspace)
@@ -370,6 +391,9 @@ static void reset_phase4_counters(void)
 	key_tree_rebuilds = 0;
 	regrab_mouse_grabs = 0;
 	refresh_miniwindows = 0;
+	screen_apply_icon_size = 0;
+	icon_resize_all = 0;
+	dock_apply_icon_size = 0;
 	aa_flush_count = 0;
 	aa_current = 0;
 	texture_spec_updates = 0;
@@ -1777,25 +1801,25 @@ static void test_startup_only_frozen_across_reload(void)
 
 	reset_preferences();
 	/* simulate StartUp(): adopt the boot-time parse and clamp it.
-	 * FocusMode, EnableWorkspacePager, SwitchPanelIconSize and
-	 * DisableMiniwindows used to be in this set but are now
-	 * WCFG_RUNTIME_RELOAD (see the matching test_*_live_apply cases);
-	 * the keys still frozen are IconSize and NewStyle. */
-	old_dict = dict_from_desc("{ IconSize = 96; "
+	 * FocusMode, EnableWorkspacePager, SwitchPanelIconSize,
+	 * DisableMiniwindows and IconSize used to be in this set but are
+	 * now WCFG_RUNTIME_RELOAD (see the matching test_*_live_apply
+	 * cases); NewStyle and the dock-presence flags are still frozen. */
+	old_dict = dict_from_desc("{ DisableDock = YES; "
 				  "NewStyle = next; }");
 	if (!old_dict)
 		return;
 	wConfigCacheWindowMaker(old_dict);
-	CHECK(w_global.config->icon_size == 96);
+	CHECK(w_global.config->new_style == TS_NEXT);
 
-	/* runtime reload with IconSize edited below the clamp and the
-	 * other startup-only keys removed, none of this may leak through */
-	new_dict = dict_from_desc("{ IconSize = 8; }");
+	/* runtime reload with the startup-only keys edited or removed,
+	 * none of this may leak through */
+	new_dict = dict_from_desc("{ NewStyle = old; }");
 	if (!new_dict)
 		goto out;
 	wConfigApplyRuntimeDefaults(NULL, new_dict);
-	CHECK(w_global.config->icon_size == 96);
 	CHECK(w_global.config->new_style == TS_NEXT);
+	CHECK(w_global.config->disable_dock == 1);
 
 	WMReleasePropList(new_dict);
 out:
@@ -1816,6 +1840,54 @@ static void test_focus_mode_live_apply(void)
 		goto out;
 	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
 	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* IconSize: a runtime change re-derives every cached derivative via
+ * wScreenApplyIconSize, a forced IconBack reapply, wIconResizeAll and
+ * wDockApplyIconSize, then refreshes the usable area and rearranges
+ * icons. The cold-boot pass is gated out by scr->icon_tile so the
+ * first IconBack apply in the texture loop is not duplicated. */
+static void test_icon_size_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	int dummy_tile;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ IconSize = 64; }");
+	new_dict = dict_from_desc("{ IconSize = 48; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	/* cold-boot pass: icon_tile is NULL so the apply block is skipped
+	 * and the value is just adopted */
+	apply_runtime_defaults_for_test(&screen, old_dict, NULL);
+	CHECK(w_global.config->icon_size == 64);
+	CHECK(screen_apply_icon_size == 0);
+	CHECK(icon_resize_all == 0);
+
+	/* runtime change with icon_tile set: every helper fires */
+	screen.icon_tile = (void *)&dummy_tile;
+	usable_area_updates = 0;
+	arrange_icons_all = 0;
+	texture_spec_updates = 0;
+	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->icon_size == 48);
+	CHECK(screen_apply_icon_size == 1);
+	CHECK(icon_resize_all == 1);
+	CHECK(dock_apply_icon_size == 1);
+	CHECK(usable_area_updates == 1);
+	CHECK(arrange_icons_all == 1);
+	CHECK(texture_spec_updates == 1);
+	CHECK(last_texture_target == WCFG_TEXTURE_ICON_BACK);
 
 out:
 	if (old_dict)
@@ -2374,6 +2446,7 @@ int main(void)
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
 	test_disable_miniwindows_live_apply();
+	test_icon_size_live_apply();
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();
 	test_antialiased_text_live_apply();

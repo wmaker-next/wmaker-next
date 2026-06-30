@@ -179,6 +179,11 @@ void wRegrabWindowMouseGrabs(WScreen *scr);
  * WM-side font pointers re-open under the current antialias flag. */
 unsigned int wConfigForceReapplyFonts(WScreen *scr);
 
+/* Re-apply the IconBack texture so setIconTile() re-renders the icon,
+ * clip and drawer tiles at the current IconSize even when IconBack
+ * itself did not change. Returns the icon-tile refresh bit. */
+unsigned int wConfigForceReapplyIconBack(WScreen *scr);
+
 /* AntialiasedText (WMGLOBAL) live-apply: re-read via WMReloadConfiguration
  * from wDefaultsCheckDomains, and on a change detach the WINGs font cache
  * and re-open WM-side fonts. Returns the font refresh mask. */
