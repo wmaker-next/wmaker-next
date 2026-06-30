@@ -70,8 +70,16 @@ xvfb_ready()
 
 find_wmiv_window()
 {
-	WMIV_WIN=$(DISPLAY=$DPY xdotool search --class wmiv 2>/dev/null | head -n 1)
+	# the previous run's wmiv window can outlive its PID briefly, so
+	# take the most recently created match rather than the first one
+	WMIV_WIN=$(DISPLAY=$DPY xdotool search --class wmiv 2>/dev/null | tail -n 1)
 	[ -n "$WMIV_WIN" ]
+}
+
+wmiv_window_gone()
+{
+	[ -z "$WMIV_WIN" ] && return 0
+	! DISPLAY=$DPY xdotool search --class wmiv 2>/dev/null | grep -qx "$WMIV_WIN"
 }
 
 title_has_paste_path()
@@ -122,12 +130,21 @@ run_case()
 	wait_for 60 find_wmiv_window || fail "$mode: wmiv window did not appear"
 	sleep 1.2
 
-	DISPLAY=$DPY "$CLIPTEST" send-ctrl-v "$WMIV_WIN" >>"$LOG" 2>&1 ||
-		fail "$mode: failed to send Ctrl+V"
-	wait_for 60 title_has_paste_path || fail "$mode: wmiv did not switch to pasted clipboard image"
+	# the wmiv window can be found by xdotool before it has selected
+	# KeyPressMask, and a synthetic KeyPress sent in that gap is
+	# silently dropped, so re-send Ctrl+V while polling the title
+	tries=6
+	while [ "$tries" -gt 0 ]; do
+		DISPLAY=$DPY "$CLIPTEST" send-ctrl-v "$WMIV_WIN" >>"$LOG" 2>&1 ||
+			fail "$mode: failed to send Ctrl+V"
+		wait_for 10 title_has_paste_path && break
+		tries=$((tries - 1))
+	done
+	[ "$tries" -gt 0 ] || fail "$mode: wmiv did not switch to pasted clipboard image"
 
 	kill "$WMIV_PID" 2>/dev/null || true
 	wait_for 30 pid_gone "$WMIV_PID" || true
+	wait_for 30 wmiv_window_gone || true
 	kill "$SOURCE_PID" 2>/dev/null || true
 	wait_for 30 pid_gone "$SOURCE_PID" || true
 	printf 'PASS: wmiv pasted image/png from CLIPBOARD via %s\n' "$mode"
