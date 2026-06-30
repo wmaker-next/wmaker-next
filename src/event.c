@@ -301,9 +301,11 @@ Bool wEventCrossingIgnored(unsigned long sequence)
 	return False;
 }
 
-void wDisplaySetOff(Bool off)
+void wDisplaySetOff(Bool off, WDisplayPowerSource source)
 {
+	static const char *src_name[] = { "ipc", "randr", "screensaver" };
 	WApplication *wapp;
+	const char *cmd;
 	WScreen *scr;
 	int j;
 
@@ -315,19 +317,37 @@ void wDisplaySetOff(Bool off)
 	 * down on their next fire when display_off is set, so going
 	 * dark needs no walk, only the resume path has to re-arm
 	 * whatever is still selected or still urgent */
-	if (off)
+	if (!off) {
+		for (j = 0; j < w_global.screen_count; j++) {
+			scr = wScreenWithNumber(j);
+			if (!scr)
+				continue;
+			wIconResumeBlink(scr);
+			wapp = scr->wapp_list;
+			while (wapp) {
+				wAppBounceWhileUrgent(wapp);
+				wapp = wapp->next;
+			}
+		}
+	}
+
+	wIPCEmitDisplayPower(off, src_name[source]);
+
+	/* DisplayOffCommand and DisplayOnCommand fire only on detected
+	 * transitions (RandR output loss, ScreenSaverNotify) so a
+	 * scripted `wmakermsg display-power off' does not recursively
+	 * launch the locker the script is coordinating with, the
+	 * display_power IPC event above is emitted for every source so
+	 * a monitor consumer still sees the IPC-driven change */
+	if (source == WDisplayPowerSourceIPC)
 		return;
 
-	for (j = 0; j < w_global.screen_count; j++) {
-		scr = wScreenWithNumber(j);
-		if (!scr)
-			continue;
-		wIconResumeBlink(scr);
-		wapp = scr->wapp_list;
-		while (wapp) {
-			wAppBounceWhileUrgent(wapp);
-			wapp = wapp->next;
-		}
+	cmd = off ? w_global.config->display_off_command
+		  : w_global.config->display_on_command;
+	if (cmd && cmd[0]) {
+		scr = wScreenWithNumber(0);
+		if (scr)
+			ExecuteShellCommand(scr, cmd);
 	}
 }
 

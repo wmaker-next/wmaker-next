@@ -47,5 +47,6 @@ void wIPCEmitChildExit(int pid, int wait_status, const char *source, int slot);
 void wIPCEmitDialog(struct _WScreen *scr, const char *kind,
 		    const char *title, const char *text);
 void wIPCEmitScreenshot(struct _WScreen *scr, const char *path, int mode);
+void wIPCEmitDisplayPower(int off, const char *source);
 
 #endif /* _WM_IPC_H_ */

@@ -684,7 +684,8 @@ static void wRandR_Update(WScreen *scr)
 	 * usually takes the stub branch (xine_info still remembers the
 	 * pre-disconnect head). */
 	if (state->active_monitors >= 0)
-		wDisplaySetOff(state->active_monitors == 0);
+		wDisplaySetOff(state->active_monitors == 0,
+			       WDisplayPowerSourceRandR);
 
 	if (!applied) {
 		/* Stub-RandR fallback kept the XINERAMA head list, nothing

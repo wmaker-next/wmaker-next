@@ -119,6 +119,10 @@
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(LOCK_SCREEN_COMMAND, "LockScreenCommand", STRING, lock_screen_command, \
 	  "wmlock", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(DISPLAY_OFF_COMMAND, "DisplayOffCommand", STRING, display_off_command, \
+	  "", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(DISPLAY_ON_COMMAND, "DisplayOnCommand", STRING, display_on_command, \
+	  "", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_STYLE, "MenuStyle", ENUM, menu_style, "normal", \
 	  menu_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, \
 	  WCFG_REFRESH_MENU_TEXTURE) \

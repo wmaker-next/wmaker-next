@@ -194,9 +194,9 @@ static void handleScreenSaverNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	 * mask which is not selected here, treat anything else as no
 	 * change so a stray STATE_DISABLED never latches display_off */
 	if (se->state == XCB_SCREENSAVER_STATE_ON)
-		wDisplaySetOff(True);
+		wDisplaySetOff(True, WDisplayPowerSourceScreenSaver);
 	else if (se->state == XCB_SCREENSAVER_STATE_OFF)
-		wDisplaySetOff(False);
+		wDisplaySetOff(False, WDisplayPowerSourceScreenSaver);
 }
 #endif	/* USE_XCB_SCREENSAVER */
 

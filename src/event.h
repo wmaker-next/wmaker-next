@@ -105,11 +105,24 @@ void wCancelKeyChain(WScreen *scr);
  * takes effect without waiting for the next key press. */
 void wRefreshKeyChainOSD(WScreen *scr);
 
+/* who is driving wDisplaySetOff(), carried into the display_power
+ * IPC event payload and used to skip the DisplayOff/OnCommand
+ * spawn for IPC-driven changes so `wmakermsg display-power off'
+ * from a script does not recursively launch the locker the script
+ * is coordinating with */
+typedef enum {
+	WDisplayPowerSourceIPC,
+	WDisplayPowerSourceRandR,
+	WDisplayPowerSourceScreenSaver
+} WDisplayPowerSource;
+
 /* set or clear the display-off state and resume any decorative
  * timers (selected-icon ants, urgent-icon bounce) that disarmed
- * themselves while the display was off, called from the IPC
+ * themselves while the display was off, emit the display_power
+ * IPC event, and for non-IPC sources spawn the configured
+ * DisplayOffCommand or DisplayOnCommand, called from the IPC
  * `display-power' verb and from RandR / MIT-SCREEN-SAVER notify */
-void wDisplaySetOff(Bool off);
+void wDisplaySetOff(Bool off, WDisplayPowerSource source);
 
 /* called from the signal handler, status is the raw waitpid() value */
 void NotifyDeadProcess(pid_t pid, int wait_status);

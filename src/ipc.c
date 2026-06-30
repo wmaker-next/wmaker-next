@@ -80,7 +80,7 @@ struct WIPCClient {
 
 static const char *event_names[WIPC_EV_COUNT] = {
 	"workspace", "window", "shutdown", "child_exit", "dialog", "tick",
-	"screenshot"
+	"screenshot", "display_power"
 };
 
 /* set on first wIPCServerStart() so notification observers register once */
@@ -661,9 +661,9 @@ static verb_rc verb_display_power(WScreen *scr, WMPropList *args,
 	}
 	arg = WMGetFromPLString(a);
 	if (strcasecmp(arg, "on") == 0) {
-		wDisplaySetOff(False);
+		wDisplaySetOff(False, WDisplayPowerSourceIPC);
 	} else if (strcasecmp(arg, "off") == 0) {
-		wDisplaySetOff(True);
+		wDisplaySetOff(True, WDisplayPowerSourceIPC);
 	} else {
 		*err = wstrdup("display-power: argument must be on|off");
 		return VERB_FAIL;
@@ -1279,6 +1279,18 @@ static const char *screenshot_mode_name(int mode)
 	default:
 		return "screen";
 	}
+}
+
+void wIPCEmitDisplayPower(int off, const char *source)
+{
+	WMPropList *d;
+
+	d = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(d, "state", pl_string(off ? "off" : "on"));
+	pl_dict_put(d, "source", pl_string(source));
+	/* process-scoped, w_global.display_off is not per-screen */
+	wIPCBroadcast(NULL, WIPC_EV_DISPLAY_POWER, d);
+	WMReleasePropList(d);
 }
 
 void wIPCEmitScreenshot(WScreen *scr, const char *path, int mode)

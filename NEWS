@@ -3,6 +3,30 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Decorative work pauses while the display is off
+-----------------------------------------------
+
+Window Maker now tracks whether any output is actually showing the
+framebuffer. While the display is off the urgent-icon bounce and
+selection-ants timers disarm and every miniaturize, shade, slide and
+workspace-name animation takes the instant path so an idle laptop
+reaches zero scheduled wakeups even when a background client raises
+the urgency hint. The state is detected natively from RandR (lid
+close disconnects the internal output) and from MIT-SCREEN-SAVER
+notify (DPMS blank, idle timeout) when the build found
+xcb-screensaver, and can be driven by a lid or screensaver hook with
+`wmakermsg display-power off|on`.
+
+Two new shell-command hooks fire on the detected transitions:
+DisplayOffCommand runs when the display goes dark and
+DisplayOnCommand when it comes back, set DisplayOffCommand =
+"wmlock" to lock the moment the lid closes. The hooks do not fire
+for the IPC verb so a script that itself drives display-power does
+not recursively launch the configured locker. A `display_power` IPC
+event with state and source is emitted on every transition for
+consumers that prefer `wmakermsg -m display_power` over the shell
+hook.
+
 Run dialog completes against XDG application names
 ---------------------------------------------------
 

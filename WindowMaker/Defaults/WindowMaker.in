@@ -101,6 +101,8 @@
 	WindowPlaceOrigin = (64, 0);
 	ScreenshotFilenameTemplate = "screenshot_%Y-%m-%d_at_%H:%M:%S";
 	LockScreenCommand = wmlock;
+	DisplayOffCommand = "";
+	DisplayOnCommand = "";
 	ResizeDisplay = center;
 	MoveDisplay = floating;
 	HotplugMonitor = NO;

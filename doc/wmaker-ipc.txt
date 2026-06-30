@@ -56,8 +56,16 @@ Event types (type field = (1u<<31) | id)
     5  tick        {first=YES|NO; payload="...";}
     6  screenshot  {path="..."; mode="screen"|"window"|"partial";
                     screen=N; workspace=N;}
+    7  display_power
+                   {state="on"|"off"; source="ipc"|"randr"|"screensaver";}
 
 workspace, window and screenshot are screen-scoped, the rest are process-scoped.
+
+display_power is emitted on every actual transition of the global
+display_off flag regardless of source. The DisplayOffCommand and
+DisplayOnCommand defaults hooks fire only for the randr and
+screensaver sources so a scripted `display-power off` does not
+recursively launch the configured locker.
 
 Command verbs (request type 0)
 ------------------------------
