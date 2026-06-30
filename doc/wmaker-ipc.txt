@@ -71,6 +71,7 @@ Command verbs (request type 0)
     arrange-icons
     hide-application XID
     hide-others XID
+    display-power on|off
     info
 
 An unknown verb yields {success=NO; error="unknown command '...'";}

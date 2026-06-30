@@ -1513,6 +1513,7 @@ static WWindow *recursiveTransientFor(WWindow *wwin)
 static int getAnimationGeometry(WWindow *wwin, int *ix, int *iy, int *iw, int *ih)
 {
 	if (wwin->screen_ptr->flags.startup || w_global.config->no_animations
+		|| w_global.display_off
 		|| wwin->flags.skip_next_animation || wwin->icon == NULL)
 		return 0;
 
@@ -1899,7 +1900,7 @@ static void hideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int a
 
 #ifdef USE_ANIMATIONS
 	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
-	    !wwin->flags.skip_next_animation && animate) {
+	    !w_global.display_off && !wwin->flags.skip_next_animation && animate) {
 		animateResize(wwin->screen_ptr, wwin->frame_x, wwin->frame_y,
 			      wwin->frame->core->width, wwin->frame->core->height,
 			      icon_x, icon_y, icon->core->width, icon->core->height);
@@ -2124,7 +2125,8 @@ static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int
 	wWindowSnapToHead(wwin);
 
 #ifdef USE_ANIMATIONS
-	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations && animate) {
+	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
+	    !w_global.display_off && animate) {
 		animateResize(wwin->screen_ptr, icon_x, icon_y,
 			      icon->core->width, icon->core->height,
 			      wwin->frame_x, wwin->frame_y,
@@ -2389,7 +2391,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 
 			if (aicon->x_pos != X || aicon->y_pos != Y) {
 #ifdef USE_ANIMATIONS
-				if (!w_global.config->no_animations)
+				if (!w_global.config->no_animations && !w_global.display_off)
 					slide_window(aicon->icon->core->window, aicon->x_pos, aicon->y_pos, X, Y);
 #endif /* USE_ANIMATIONS */
 			}
@@ -2542,7 +2544,8 @@ static void shade_animate(WWindow *wwin, Bool what)
 	int y, s, w, h;
 	time_t time0 = time(NULL);
 
-	if (wwin->flags.skip_next_animation || w_global.config->no_animations)
+	if (wwin->flags.skip_next_animation || w_global.config->no_animations
+	    || w_global.display_off)
 		return;
 
 	switch (what) {

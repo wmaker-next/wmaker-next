@@ -105,6 +105,12 @@ void wCancelKeyChain(WScreen *scr);
  * takes effect without waiting for the next key press. */
 void wRefreshKeyChainOSD(WScreen *scr);
 
+/* set or clear the display-off state and resume any decorative
+ * timers (selected-icon ants, urgent-icon bounce) that disarmed
+ * themselves while the display was off, called from the IPC
+ * `display-power' verb and from RandR / MIT-SCREEN-SAVER notify */
+void wDisplaySetOff(Bool off);
+
 /* called from the signal handler, status is the raw waitpid() value */
 void NotifyDeadProcess(pid_t pid, int wait_status);
 

@@ -421,7 +421,8 @@ static void showWorkspaceName(WScreen * scr, int workspace)
 	WMRect rect;
 	int xx, yy;
 
-	if (w_global.config->workspace_name_display_position == WD_NONE || scr->workspace_count < 2)
+	if (w_global.config->workspace_name_display_position == WD_NONE || scr->workspace_count < 2
+	    || w_global.display_off)
 		return;
 
 	if (scr->workspace_name_timer) {

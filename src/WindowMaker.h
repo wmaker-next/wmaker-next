@@ -357,6 +357,17 @@ extern struct wmaker_global_variables {
 	 */
 	Bool process_workspacemap_event;
 
+	/*
+	 * Display power state:
+	 * set when no output is showing the framebuffer (lid closed,
+	 * DPMS Off, screensaver active). Animation entry points and
+	 * recurring decorative timers short-circuit while this is set so
+	 * an idle session reaches zero wakeups. Toggled by the
+	 * `display-power' IPC verb, RandR all-outputs-off detection and
+	 * the MIT-SCREEN-SAVER notify event, see wDisplaySetOff().
+	 */
+	Bool display_off;
+
 #ifdef HAVE_INOTIFY
 	struct {
 		int fd_event_queue;   /* Inotify's queue file descriptor */

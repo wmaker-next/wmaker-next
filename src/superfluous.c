@@ -318,7 +318,8 @@ static int bounceDirection(WAppIcon *aicon)
 
 void wAppBounce(WApplication *wapp)
 {
-	if (!w_global.config->no_animations && wapp->app_icon && !wapp->flags.bouncing
+	if (!w_global.config->no_animations && !w_global.display_off
+		&& wapp->app_icon && !wapp->flags.bouncing
 		&& !w_global.config->do_not_make_appicons_bounce) {
 		++wapp->refcount;
 		wapp->flags.bouncing = 1;
@@ -359,6 +360,14 @@ static int appIsUrgent(WApplication *wapp)
 static void doAppUrgentBounce(void *arg)
 {
 	WApplication *wapp = (WApplication *)arg;
+
+	/* do not keep waking every URGENT_BOUNCE_DELAY into a dark
+	 * panel, wDisplaySetOff(False) re-arms via
+	 * wAppBounceWhileUrgent() when the output comes back */
+	if (w_global.display_off) {
+		WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
+		return;
+	}
 
 	if (appIsUrgent(wapp)) {
 		if(w_global.config->bounce_appicons_when_urgent) wAppBounce(wapp);

@@ -42,6 +42,7 @@
 #include "application.h"
 #include "defaults.h"
 #include "dock.h"
+#include "event.h"
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
@@ -641,6 +642,35 @@ static verb_rc verb_hide_others(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_display_power(WScreen *scr, WMPropList *args,
+				   char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	const char *arg;
+
+	(void)scr;
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 2) {
+		*err = wstrdup("display-power: missing argument (on|off)");
+		return VERB_FAIL;
+	}
+	a = WMGetFromPLArray(args, 1);
+	if (!a || !WMIsPLString(a)) {
+		*err = wstrdup("display-power: argument must be a string");
+		return VERB_FAIL;
+	}
+	arg = WMGetFromPLString(a);
+	if (strcasecmp(arg, "on") == 0) {
+		wDisplaySetOff(False);
+	} else if (strcasecmp(arg, "off") == 0) {
+		wDisplaySetOff(True);
+	} else {
+		*err = wstrdup("display-power: argument must be on|off");
+		return VERB_FAIL;
+	}
+	return VERB_OK;
+}
+
 static WMPropList *build_version(WScreen *scr)
 {
 	WMPropList *d = WMCreatePLDictionary(NULL, NULL);
@@ -650,6 +680,7 @@ static WMPropList *build_version(WScreen *scr)
 	pl_dict_put(d, "screen", pl_int(scr->screen));
 	pl_dict_put(d, "pid", pl_int(getpid()));
 	pl_dict_put(d, "socket", pl_string(scr->ipc_path));
+	pl_dict_put(d, "display_off", pl_bool(w_global.display_off));
 	return d;
 }
 
@@ -677,6 +708,7 @@ static const struct {
 	{ "arrange-icons",    verb_arrange_icons },
 	{ "hide-application", verb_hide_app },
 	{ "hide-others",      verb_hide_others },
+	{ "display-power",    verb_display_power },
 	{ "info",             verb_info },
 	{ NULL, NULL }
 };

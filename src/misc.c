@@ -131,7 +131,7 @@ static void eatExpose(void)
 void move_window(Window win, int from_x, int from_y, int to_x, int to_y)
 {
 #ifdef USE_ANIMATIONS
-	if (w_global.config->no_animations)
+	if (w_global.config->no_animations || w_global.display_off)
 		XMoveWindow(dpy, win, to_x, to_y);
 	else
 		slide_window(win, from_x, from_y, to_x, to_y);

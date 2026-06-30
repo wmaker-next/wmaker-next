@@ -57,7 +57,19 @@ Connect to the given socket path instead of resolving one.
 .BR arrange\-icons ,
 .BR "hide\-application XID" ,
 .BR "hide\-others XID" ,
+.BR "display\-power on|off" ,
 .BR info .
+.PP
+The
+.B display\-power
+verb tells the window manager that no output is showing the
+framebuffer. While
+.I off
+all decorative animations are skipped and the urgent\-icon bounce and
+selection\-ants timers disarm so an idle session reaches zero wakeups.
+Intended to be driven from a lid\-switch or screensaver hook, the
+window manager also flips this state itself on RandR output loss and
+on MIT\-SCREEN\-SAVER notify when those extensions are available.
 .SH EVENT TYPES
 .BR workspace ,
 .BR window ,

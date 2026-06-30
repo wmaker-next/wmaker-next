@@ -659,7 +659,42 @@ static void cycleColor(void *data)
 
 	XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
 		       icon->core->width - 1, icon->core->height - 1);
+
+	/* the static rectangle is enough to mark the icon selected
+	 * while no output is powered, stop re-arming so an idle
+	 * session can reach zero wakeups, wIconResumeBlink() restarts
+	 * the cycle when the display comes back */
+	if (w_global.display_off) {
+		icon->handlerID = NULL;
+		return;
+	}
 	icon->handlerID = WMAddTimerHandler(COLOR_CYCLE_DELAY, cycleColor, icon);
+}
+
+static void resume_icon_blink(WIcon *icon)
+{
+	if (icon && icon->selected && !icon->handlerID
+	    && !w_global.config->dont_blink)
+		icon->handlerID = WMAddTimerHandler(10, cycleColor, icon);
+}
+
+void wIconResumeBlink(WScreen *scr)
+{
+	WAppIcon *aicon;
+	WWindow *wwin;
+
+	aicon = scr->app_icon_list;
+	while (aicon) {
+		resume_icon_blink(aicon->icon);
+		aicon = aicon->next;
+	}
+
+	wwin = scr->focused_window;
+	while (wwin) {
+		if (wwin->flags.miniaturized)
+			resume_icon_blink(wwin->icon);
+		wwin = wwin->prev;
+	}
 }
 
 void wIconSetHighlited(WIcon *icon, Bool flag)

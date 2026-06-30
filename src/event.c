@@ -40,7 +40,9 @@
 #include "window.h"
 #include "main.h"
 #include "keybind.h"
+#include "application.h"
 #include "defaults.h"
+#include "icon.h"
 #include "screen.h"
 #include "shutdown.h"
 #include "event.h"
@@ -297,6 +299,36 @@ Bool wEventCrossingIgnored(unsigned long sequence)
 			return True;
 	}
 	return False;
+}
+
+void wDisplaySetOff(Bool off)
+{
+	WApplication *wapp;
+	WScreen *scr;
+	int j;
+
+	if (w_global.display_off == off)
+		return;
+	w_global.display_off = off;
+
+	/* the marching-ants and urgent-bounce timers tear themselves
+	 * down on their next fire when display_off is set, so going
+	 * dark needs no walk, only the resume path has to re-arm
+	 * whatever is still selected or still urgent */
+	if (off)
+		return;
+
+	for (j = 0; j < w_global.screen_count; j++) {
+		scr = wScreenWithNumber(j);
+		if (!scr)
+			continue;
+		wIconResumeBlink(scr);
+		wapp = scr->wapp_list;
+		while (wapp) {
+			wAppBounceWhileUrgent(wapp);
+			wapp = wapp->next;
+		}
+	}
 }
 
 void wRefreshKeybindings(void)
