@@ -122,6 +122,14 @@ void wCoreDestroy(WCoreWindow * core)
 	if (core->stacking)
 		wfree(core->stacking);
 
+	/* WMDrawString() retargets a per-screen XftDraw to whatever
+	 * drawable was last drawn on. If that is this core window the
+	 * next XftDrawChange() would try to free a Render Picture the
+	 * server already auto-freed when we destroy the window below,
+	 * so move the cache off this drawable first. */
+	if (core->screen_ptr && core->screen_ptr->wmscreen)
+		WMScreenAbandonXftDrawable(core->screen_ptr->wmscreen, core->window);
+
 	XDeleteContext(dpy, core->window, w_global.context.client_win);
 	XDestroyWindow(dpy, core->window);
 	wfree(core);

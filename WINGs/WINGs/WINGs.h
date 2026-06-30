@@ -875,6 +875,11 @@ void WMDrawImageString(WMScreen *scr, Drawable d, WMColor *color,
 
 int WMWidthOfString(WMFont *font, const char *text, int length);
 
+/* Retarget the per-screen shared XftDraw away from d before the caller
+ * destroys d, so the next WMDrawString does not try to free a Render
+ * Picture the server already auto-freed with the drawable. */
+void WMScreenAbandonXftDrawable(WMScreen *scr, Drawable d);
+
 /* Detach every cached WMFont for this screen so the next WMCreateFont re-opens
  * under the current antialiasedText flag. Holders keep valid references. */
 void WMFlushFontCache(WMScreen *scr);
