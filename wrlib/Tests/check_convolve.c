@@ -140,6 +140,15 @@ static void test_blur_impulse(void)
 	t = d[((cy - 3) * w + cx) * ch];
 	b = d[((cy + 3) * w + cx) * ch];
 
+	/* exact reference values for r=5 (r1=6, divsum=36): after the
+	 * horizontal pass the centre is 255*6/36 = 42 and offset 3 is
+	 * 255*3/36 = 21, after the vertical pass centre = 42*6/36 = 7
+	 * and offset 3 = 42*3/36 = 3. Pinned so a change to the divide
+	 * (multiply-by-reciprocal, float rounding mode) cannot drift
+	 * silently while still satisfying the relational checks below. */
+	CHECK(c == 7);
+	CHECK(l == 3);
+
 	/* centre brightest */
 	CHECK(c >= l && c >= r && c >= t && c >= b);
 	/* horizontal and vertical symmetry */

@@ -23,6 +23,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+
 #include "wraster.h"
 #include "wr_i18n.h"
 
@@ -140,6 +144,108 @@ int RBlurImage(RImage * image)
 	return 1;
 }
 
+#ifdef __SSE2__
+/* one pass of the stack blur along an arbitrary stride, four channels
+ * processed in lockstep as 32-bit lanes. RGB images run with the
+ * fourth lane carrying whatever byte follows the pixel (RCreateImage
+ * over-allocates by four bytes so the trailing read is safe) and the
+ * store truncates to ch bytes. The integer divide is replaced by a
+ * float divide and truncate, both operands fit a float mantissa
+ * exactly so for a flat input where sum == k*divsum the quotient is
+ * exactly k and the test_blur_flat fixed-point property holds. */
+static int stack_blur_pass_sse2(const unsigned char *in, unsigned char *out,
+				int len, int lines, int pstride, int lstride,
+				int ch, int radius)
+{
+	const __m128i zero = _mm_setzero_si128();
+	const __m128 vdiv = _mm_set1_ps((float)((radius + 1) * (radius + 1)));
+	__m128i *stack;
+	__m128i sum, insum, outsum, px, q;
+	const unsigned char *src, *sp;
+	unsigned char *dst;
+	int div, r1, line, i, k, head, tail;
+	unsigned int packed;
+
+	div = 2 * radius + 1;
+	r1 = radius + 1;
+
+	stack = malloc((size_t)div * sizeof(__m128i));
+	if (!stack)
+		return 0;
+
+	for (line = 0; line < lines; line++) {
+		src = in + (size_t)line * lstride;
+		dst = out + (size_t)line * lstride;
+
+		sum = insum = outsum = zero;
+
+		for (i = -radius; i <= radius; i++) {
+			k = (i < 0) ? 0 : ((i >= len) ? len - 1 : i);
+			memcpy(&packed, src + (size_t)k * pstride, 4);
+			px = _mm_cvtsi32_si128((int)packed);
+			px = _mm_unpacklo_epi8(px, zero);
+			px = _mm_unpacklo_epi16(px, zero);
+			stack[i + radius] = px;
+			sum = _mm_add_epi32(sum,
+				_mm_mullo_epi16(px, _mm_set1_epi32(r1 - abs(i))));
+			if (i > 0)
+				insum = _mm_add_epi32(insum, px);
+			else
+				outsum = _mm_add_epi32(outsum, px);
+		}
+
+		head = radius;
+		for (i = 0; i < len; i++) {
+			unsigned char *dp = dst + (size_t)i * pstride;
+
+			q = _mm_cvttps_epi32(
+				_mm_div_ps(_mm_cvtepi32_ps(sum), vdiv));
+			q = _mm_packs_epi32(q, zero);
+			q = _mm_packus_epi16(q, zero);
+			packed = (unsigned int)_mm_cvtsi128_si32(q);
+			/* a four-byte store on the vertical RGB pass would
+			 * clobber the already-written first byte of the next
+			 * column on the last column, so honour ch exactly */
+			if (ch == 4)
+				memcpy(dp, &packed, 4);
+			else {
+				dp[0] = (unsigned char)packed;
+				dp[1] = (unsigned char)(packed >> 8);
+				dp[2] = (unsigned char)(packed >> 16);
+			}
+
+			sum = _mm_sub_epi32(sum, outsum);
+
+			tail = head + r1;
+			if (tail >= div)
+				tail -= div;
+			outsum = _mm_sub_epi32(outsum, stack[tail]);
+
+			k = i + r1;
+			if (k >= len)
+				k = len - 1;
+			sp = src + (size_t)k * pstride;
+			memcpy(&packed, sp, 4);
+			px = _mm_cvtsi32_si128((int)packed);
+			px = _mm_unpacklo_epi8(px, zero);
+			px = _mm_unpacklo_epi16(px, zero);
+			stack[tail] = px;
+			insum = _mm_add_epi32(insum, px);
+			sum = _mm_add_epi32(sum, insum);
+
+			head++;
+			if (head >= div)
+				head = 0;
+			outsum = _mm_add_epi32(outsum, stack[head]);
+			insum = _mm_sub_epi32(insum, stack[head]);
+		}
+	}
+
+	free(stack);
+	return 1;
+}
+#endif /* __SSE2__ */
+
 /*
  *----------------------------------------------------------------------
  * RStackBlurImage--
@@ -184,7 +290,9 @@ int RStackBlurImage(RImage *image, unsigned radius)
 	r1 = (int)radius + 1;
 	divsum = r1 * r1;
 
-	tmp = malloc((size_t)stride * h);
+	/* +4 so the SSE2 path can read four bytes at the last RGB pixel
+	 * of tmp the same way RCreateImage's +4 covers image->data */
+	tmp = malloc((size_t)stride * h + 4);
 	stack = malloc((size_t)div * ch * sizeof(int));
 	vmin = malloc((size_t)((w > h) ? w : h) * sizeof(int));
 
@@ -195,6 +303,20 @@ int RStackBlurImage(RImage *image, unsigned radius)
 		RErrorCode = RERR_NOMEMORY;
 		return 0;
 	}
+
+#ifdef __SSE2__
+	if (stack_blur_pass_sse2(image->data, tmp, w, h, ch, stride,
+				 ch, (int)radius)
+	    && stack_blur_pass_sse2(tmp, image->data, h, w, stride, ch,
+				    ch, (int)radius)) {
+		free(tmp);
+		free(stack);
+		free(vmin);
+		return 1;
+	}
+	/* fall through to the scalar path on allocation failure inside
+	 * the SSE2 helper */
+#endif
 
 	/* horizontal pass: image->data -> tmp */
 	for (x = 0; x < w; x++)
