@@ -207,6 +207,55 @@ check "transport failure exits 1" [ $? -eq 1 ]
 msg get_version 2>/dev/null | grep -q "pid = $WMAKER_PID;"
 check "GET_VERSION reports wmaker pid" [ $? -eq 0 ]
 
+# ---- display-power verb and MIT-SCREEN-SAVER notify ---------------------
+
+note "display-power"
+
+info_display_off() {
+	msg info 2>/dev/null | grep -q "display_off = $1;"
+}
+
+check "info reports display_off = NO at boot" info_display_off NO
+
+msg -q display-power off >/dev/null 2>&1
+check "display-power off exits 0" [ $? -eq 0 ]
+check "info reflects display_off = YES" info_display_off YES
+
+# idempotent, a second off must succeed and stay YES
+msg -q display-power off >/dev/null 2>&1
+check "display-power off is idempotent" info_display_off YES
+
+msg -q display-power on >/dev/null 2>&1
+check "display-power on exits 0" [ $? -eq 0 ]
+check "info reflects display_off = NO" info_display_off NO
+
+msg -q display-power maybe >/dev/null 2>&1
+check "display-power bad-arg exits 2" [ $? -eq 2 ]
+
+msg -q display-power >/dev/null 2>&1
+check "display-power missing-arg exits 2" [ $? -eq 2 ]
+
+check "bad arg did not flip the flag" info_display_off NO
+
+# native detection: Xvfb exposes MIT-SCREEN-SAVER, so xset s
+# activate / reset should round-trip through the notify handler.
+# the IPC connect drives a poll cycle so by the time `info` returns
+# the notify event has been dispatched, but probe with wait_for so a
+# slow server does not flake
+if DISPLAY=$DPY xdpyinfo 2>/dev/null | grep -q MIT-SCREEN-SAVER \
+   && command -v xset >/dev/null 2>&1; then
+	DISPLAY=$DPY xset s 1 1 >/dev/null 2>&1
+	DISPLAY=$DPY xset s activate >/dev/null 2>&1
+	wait_for 30 info_display_off YES
+	check "ScreenSaverNotify ON sets display_off" info_display_off YES
+	DISPLAY=$DPY xset s reset >/dev/null 2>&1
+	wait_for 30 info_display_off NO
+	check "ScreenSaverNotify OFF clears display_off" info_display_off NO
+	DISPLAY=$DPY xset s off >/dev/null 2>&1
+else
+	record_skip "ScreenSaverNotify ON/OFF: MIT-SCREEN-SAVER or xset unavailable"
+fi
+
 # ---- row 3: workspace event scope ----------------------------------------
 
 note "workspace event"
