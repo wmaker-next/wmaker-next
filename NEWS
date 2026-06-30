@@ -187,6 +187,16 @@ clamped to the free span between the left and right offsets, this
 also fixes the existing modelock case where a long title overlapped
 the language button.
 
+NewStyle = flat is a fourth titlebar style that uses the same
+geometry as NewStyle = new (button cores are full-height children of
+the frame and the title surface is shrunk between them) but draws no
+relief: the per-button raised bevel and the titlebar bevel are
+skipped so the title texture runs unbroken across the button cluster
+and a theme can ship round button pixmaps that sit flush on it. With
+the default monochrome glyphs the press feedback is the glyph
+darkening and a one-pixel offset, the white pressed-button box that
+NewStyle = new draws is not used.
+
 Maximize is a new button role: a plain click toggles full
 horizontal+vertical maximization, a Control-click toggles
 fullscreen (same modifier convention as Control-click on Close to

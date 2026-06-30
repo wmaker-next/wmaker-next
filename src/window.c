@@ -2908,7 +2908,8 @@ void wWindowUpdateButtonImages(WWindow *wwin)
 	if (fwin->button_image[WTB_MAXIMIZE] && !fwin->button_image[WTB_MAXIMIZE]->shared)
 		wPixmapDestroy(fwin->button_image[WTB_MAXIMIZE]);
 	fwin->button_image[WTB_MAXIMIZE] =
-		scr->b_pixmaps[wwin->flags.maximized ? WBUT_RESTORE : WBUT_MAXIMIZE];
+		scr->b_pixmaps[(wwin->flags.maximized && w_global.config->new_style != TS_FLAT)
+			       ? WBUT_RESTORE : WBUT_MAXIMIZE];
 
 	/* close button */
 

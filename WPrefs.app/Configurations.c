@@ -40,6 +40,7 @@ typedef struct _Panel {
 	WMButton *oldsB;
 	WMButton *newsB;
 	WMButton *nextB;
+	int loadedFlat;
 
 	WMFrame *animF;
 	WMButton *animB;
@@ -69,11 +70,16 @@ static void showData(_Panel *panel)
 	WMPerformButtonClick(panel->shaB[GetSpeedForKey("ShadeSpeed")]);
 
 	str = GetStringForKey("NewStyle");
+	panel->loadedFlat = (str && strcasecmp(str, "flat") == 0);
 	if (str && strcasecmp(str, "next") == 0) {
 		WMPerformButtonClick(panel->nextB);
 	} else if (str && strcasecmp(str, "old") == 0) {
 		WMPerformButtonClick(panel->oldsB);
 	} else {
+		/* "new" and "flat" share geometry so map both onto the
+		 * newsB radio until the panel grows a fourth preview,
+		 * loadedFlat lets storeData() round-trip "flat" instead
+		 * of silently downgrading it to "new" on save */
 		WMPerformButtonClick(panel->newsB);
 	}
 
@@ -340,7 +346,7 @@ static void storeData(_Panel *panel)
 	SetSpeedForKey(i, "ShadeSpeed");
 
 	if (WMGetButtonSelected(panel->newsB)) {
-		SetStringForKey("new", "NewStyle");
+		SetStringForKey(panel->loadedFlat ? "flat" : "new", "NewStyle");
 	} else if (WMGetButtonSelected(panel->oldsB)) {
 		SetStringForKey("old", "NewStyle");
 	} else {

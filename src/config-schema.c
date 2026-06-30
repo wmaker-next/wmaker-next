@@ -26,6 +26,7 @@ static const WConfigEnum titlebar_modes[] = {
 	{"new", TS_NEW, 0},
 	{"old", TS_OLD, 0},
 	{"next", TS_NEXT, 0},
+	{"flat", TS_FLAT, 0},
 	{NULL, 0, 0}
 };
 

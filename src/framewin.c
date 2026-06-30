@@ -152,14 +152,14 @@ static int updateIconFit(WFrameWindow *fwin, int width)
 		return 0;
 
 	occupied = 0;
-	bsize = (w_global.config->new_style == TS_NEW)
+	bsize = TS_NEW_GEOM(w_global.config->new_style)
 		? fwin->top_width : fwin->top_width - 7;
 	if (w_global.config->new_style == TS_NEXT)
 		bsize -= 1;
 	for (r = 0; r < WTB_ROLE_COUNT; r++) {
 		if (wtb_role_info[r].is_drawn || !buttonVisible(fwin, r))
 			continue;
-		occupied += (w_global.config->new_style == TS_NEW)
+		occupied += TS_NEW_GEOM(w_global.config->new_style)
 				? bsize : bsize + 3;
 	}
 	surface = width - occupied;
@@ -219,7 +219,7 @@ static void layoutButtonGeometry(WFrameWindow *fwin, int width, int bsize, int t
 	for (r = 0; r < WTB_ROLE_COUNT; r++) {
 		if (!fwin->buttons[r] || rolepos[r] < 0)
 			continue;
-		if (w_global.config->new_style == TS_NEW) {
+		if (TS_NEW_GEOM(w_global.config->new_style)) {
 			y = 0;
 			if (layout->side[r] == WTB_SIDE_LEFT)
 				x = rolepos[r] * bsize;
@@ -466,7 +466,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		fwin->flags.titlebar = 0;
 	}
 
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
 		bsize = theight;
 	} else if (w_global.config->new_style == TS_OLD) {
 		bsize = theight - 7;
@@ -512,7 +512,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			fwin->flags.titlebar = 1;
 			fwin->titlebar = wCoreCreate(fwin->core, 0, 0, width + 1, theight);
 
-			parent = (w_global.config->new_style == TS_NEW) ? fwin->core : fwin->titlebar;
+			parent = TS_NEW_GEOM(w_global.config->new_style) ? fwin->core : fwin->titlebar;
 
 			for (r = 0; r < WTB_ROLE_COUNT; r++) {
 				if (!(flags & WFF_ROLE_BIT(r)) || layout->side[r] == WTB_SIDE_NONE)
@@ -533,7 +533,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 					XSetWindowBackground(dpy, fwin->buttons[r]->window,
 							     scr->widget_texture->dark.pixel);
 
-				k = (w_global.config->new_style == TS_NEW)
+				k = TS_NEW_GEOM(w_global.config->new_style)
 					? wtb_role_info[r].dontfit_k_new
 					: wtb_role_info[r].dontfit_k_old;
 				if (width < theight * k)
@@ -544,7 +544,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			layoutButtonGeometry(fwin, width, bsize, theight);
 
-			if (w_global.config->new_style == TS_NEW)
+			if (TS_NEW_GEOM(w_global.config->new_style))
 				updateTitlebar(fwin);
 
 			XMapRaised(dpy, fwin->titlebar->window);
@@ -714,7 +714,7 @@ static void updateTitlebar(WFrameWindow * fwin)
 	if (theight < frame_title_min_height(fwin))
 		theight = frame_title_min_height(fwin);
 
-	if (w_global.config->new_style == TS_NEW)
+	if (TS_NEW_GEOM(w_global.config->new_style))
 		bsize = theight;
 	else if (w_global.config->new_style == TS_OLD)
 		bsize = theight - 7;
@@ -729,12 +729,12 @@ static void updateTitlebar(WFrameWindow * fwin)
 	 * side, redo the geometry walk every time */
 	layoutButtonGeometry(fwin, fwin->core->width, bsize, theight);
 
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
 		x = nleft * bsize;
 		w -= (nleft + nright) * bsize;
 	}
 
-	if (w_global.config->new_style == TS_NEW || fwin->titlebar->width != w)
+	if (TS_NEW_GEOM(w_global.config->new_style) || fwin->titlebar->width != w)
 		fwin->flags.need_texture_remake = 1;
 
 	wCoreConfigure(fwin->titlebar, x, 0, w, theight);
@@ -777,7 +777,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 		drawn_changed = 1;
 
 	if (fwin->titlebar) {
-		if (w_global.config->new_style == TS_NEW) {
+		if (TS_NEW_GEOM(w_global.config->new_style)) {
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
@@ -813,7 +813,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 		drawn_changed = 1;
 
 	if (fwin->titlebar) {
-		if (w_global.config->new_style == TS_NEW) {
+		if (TS_NEW_GEOM(w_global.config->new_style)) {
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
@@ -893,7 +893,7 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	      Pixmap * title, Pixmap slices[])
 {
 	RImage *img, *sub, *mimg;
-	int x, w, i;
+	int x, w, i, bevel;
 
 	*title = None;
 	for (i = 0; i < nleft + nright; i++)
@@ -905,14 +905,20 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 		return;
 	}
 
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
+		/* TS_FLAT carves the same per-core slices but skips the
+		 * per-slice raised bevel so the gradient runs unbroken
+		 * across the button group and the title core, the seam
+		 * that TS_NEW shows is exactly the RBevelImage edge */
+		bevel = (w_global.config->new_style == TS_NEW);
 		x = 0;
 		w = img->width;
 
 		for (i = 0; i < nleft; i++) {
 			sub = RGetSubImage(img, i * bwidth, 0, bwidth, bheight);
 			if (sub) {
-				RBevelImage(sub, RBEV_RAISED2);
+				if (bevel)
+					RBevelImage(sub, RBEV_RAISED2);
 				if (!RConvertImage(scr->rcontext, sub, &slices[i]))
 					wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
 				x += sub->width;
@@ -923,7 +929,8 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 		for (i = 0; i < nright; i++) {
 			sub = RGetSubImage(img, width - (i + 1) * bwidth, 0, bwidth, bheight);
 			if (sub) {
-				RBevelImage(sub, RBEV_RAISED2);
+				if (bevel)
+					RBevelImage(sub, RBEV_RAISED2);
 				if (!RConvertImage(scr->rcontext, sub, &slices[nleft + i]))
 					wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
 				w -= sub->width;
@@ -933,14 +940,16 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 
 		if (w != width) {
 			mimg = RGetSubImage(img, x, 0, w, img->height);
-			RBevelImage(mimg, RBEV_RAISED2);
+			if (bevel)
+				RBevelImage(mimg, RBEV_RAISED2);
 
 			if (!RConvertImage(scr->rcontext, mimg, title))
 				wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
 
 			RReleaseImage(mimg);
 		} else {
-			RBevelImage(img, RBEV_RAISED2);
+			if (bevel)
+				RBevelImage(img, RBEV_RAISED2);
 
 			if (!RConvertImage(scr->rcontext, img, title))
 				wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
@@ -1008,7 +1017,7 @@ static void updateTexture(WFrameWindow * fwin)
 	if (fwin->titlebar) {
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
 			XSetWindowBackgroundPixmap(dpy, fwin->titlebar->window, fwin->title_back[i]);
-			if (w_global.config->new_style == TS_NEW) {
+			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r] && fwin->button_back[r][i])
 						XSetWindowBackgroundPixmap(dpy, fwin->buttons[r]->window,
@@ -1017,7 +1026,7 @@ static void updateTexture(WFrameWindow * fwin)
 		} else {
 			pixel = fwin->title_texture[i]->solid.normal.pixel;
 			XSetWindowBackground(dpy, fwin->titlebar->window, pixel);
-			if (w_global.config->new_style == TS_NEW) {
+			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r])
 						XSetWindowBackground(dpy, fwin->buttons[r]->window, pixel);
@@ -1055,7 +1064,7 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			/* button presence only changes the output in TS_NEW,
 			 * fold it out of the key for the other styles so they
 			 * share more */
-			extra = (w_global.config->new_style == TS_NEW)
+			extra = TS_NEW_GEOM(w_global.config->new_style)
 				? ((nleft << 4) | nright)
 				: 0;
 
@@ -1076,7 +1085,7 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 			e->refcount++;
 			fwin->title_cache[state] = e;
 			fwin->title_back[state] = e->title;
-			if (w_global.config->new_style == TS_NEW) {
+			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				/* map positional cache slices back to roles,
 				 * right-side slices were carved from the far
 				 * edge inward so the last slot in the array
@@ -1175,7 +1184,8 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 	}
 
 	if (fwin->titlebar && !fwin->flags.repaint_only_resizebar
-	    && fwin->title_texture[state]->any.type == WTEX_SOLID) {
+	    && fwin->title_texture[state]->any.type == WTEX_SOLID
+	    && w_global.config->new_style != TS_FLAT) {
 		wDrawBevel(fwin->titlebar->window, fwin->titlebar->width,
 			   fwin->titlebar->height, (WTexSolid *) fwin->title_texture[state], WREL_RAISED);
 	}
@@ -1229,7 +1239,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 				all_visible = 0;
 				continue;
 			}
-			if (w_global.config->new_style != TS_NEW) {
+			if (!TS_NEW_GEOM(w_global.config->new_style)) {
 				if (layout->side[r] == WTB_SIDE_LEFT)
 					lofs += fwin->buttons[r]->width + 3;
 				else
@@ -1619,7 +1629,7 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
 			if (!fwin->buttons[r])
 				continue;
-			k = (w_global.config->new_style == TS_NEW)
+			k = TS_NEW_GEOM(w_global.config->new_style)
 				? wtb_role_info[r].dontfit_k_new
 				: wtb_role_info[r].dontfit_k_old;
 			fits = (width >= fwin->top_width * k);
@@ -1765,7 +1775,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	}
 
 	tmp[1] = None;
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
 		tmp[1] = XCreatePixmap(dpy, button->window, 2*key_width, key_height, scr->w_depth);
 		if (tmp[1] == None) {
 			XFreePixmap(dpy, tmp[0]);
@@ -1782,7 +1792,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	int text_y = (key_height - text_height) / 2;
 
 	/* Fill the color pixmap depending on the style  */
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
 		for (i = 0; i < 2; i++) {
 			if (fwin->title_texture[i]->any.type != WTEX_SOLID && fwin->title_back[i] != None) {
 				XCopyArea(dpy, fwin->button_back[WTB_LANGUAGE][i], tmp[i], scr->copy_gc,
@@ -1813,7 +1823,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 	/* pushed button next to normal for easy access when painting */
 	text_x = key_width + (key_width - text_width) / 2;
-	if (w_global.config->new_style == TS_NEW) {
+	if (TS_NEW_GEOM(w_global.config->new_style)) {
 		XSetForeground(dpy, gc, scr->white_pixel);
 		for (i = 0; i < 2; i++) {
 			XFillRectangle(dpy, tmp[i], gc, key_width, 0, key_width, key_height);
@@ -1837,7 +1847,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 	WMReleaseFont(small);
 
-	wFrameWindowSetLanguageButtonImages(fwin, tmp, (w_global.config->new_style == TS_NEW) ? 2 : 1);
+	wFrameWindowSetLanguageButtonImages(fwin, tmp, TS_NEW_GEOM(w_global.config->new_style) ? 2 : 1);
 }
 #endif				/* XKB_BUTTON_HINT */
 
@@ -1872,7 +1882,7 @@ static void checkTitleSize(WFrameWindow * fwin)
 		width = fwin->titlebar->width - 6 - 6;
 	}
 
-	if (w_global.config->new_style != TS_NEW) {
+	if (!TS_NEW_GEOM(w_global.config->new_style)) {
 		for (r = 0; r < WTB_ROLE_COUNT; r++)
 			if (!wtb_role_info[r].is_drawn && buttonVisible(fwin, r))
 				width -= fwin->buttons[r]->width + 3;
@@ -1916,6 +1926,11 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
+		} else if (w_global.config->new_style == TS_FLAT) {
+			/* keep the texture slice as the pushed background so a
+			 * round pixmap stays flush, the press feedback is the
+			 * darkened image and the 1 px offset only */
+			XClearWindow(dpy, button->window);
 		} else if (w_global.config->new_style == TS_OLD) {
 			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
@@ -1940,7 +1955,7 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 			if (texture->any.type == WTEX_SOLID || pushed)
 				wDrawBevel(button->window, button->width, button->height,
 					   (WTexSolid *) texture, WREL_RAISED);
-		} else {
+		} else if (w_global.config->new_style != TS_FLAT) {
 			wDrawBevel(button->window, button->width, button->height,
 				   scr->widget_texture, WREL_RAISED);
 		}
@@ -1952,7 +1967,7 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 		x = (button->width - width) / 2 + d;
 		y = (button->height - image->height) / 2 + d;
 		XSetClipOrigin(dpy, copy_gc, x - left, y);
-		if (w_global.config->new_style != TS_NEW) {
+		if (!TS_NEW_GEOM(w_global.config->new_style)) {
 			XSetForeground(dpy, copy_gc, scr->black_pixel);
 			if (!pushed) {
 				if (image->depth == 1)
@@ -2011,7 +2026,7 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 	if (r == WTB_LANGUAGE) {
 		if (!hideButton(fwin, WTB_LANGUAGE)) {
 			/* map focused and pfocused states to focus language button image */
-			int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
+			int lb_index = TS_NEW_GEOM(w_global.config->new_style) && (fwin->flags.state == 1) ? 1 : 0;
 
 			paintButton(button, fwin->title_texture[fwin->flags.state],
 				    WMColorPixel(fwin->title_color[fwin->flags.state]),
@@ -2082,7 +2097,7 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 			return;
 
 		/* map focused and pfocused states to focus language button image */
-		int lb_index = w_global.config->new_style == TS_NEW && (fwin->flags.state == 1) ? 1 : 0;
+		int lb_index = TS_NEW_GEOM(w_global.config->new_style) && (fwin->flags.state == 1) ? 1 : 0;
 
 		image = fwin->languagebutton_image[lb_index];
 	}

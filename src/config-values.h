@@ -138,6 +138,13 @@
 #define TS_NEW		0
 #define TS_OLD		1
 #define TS_NEXT		2
+#define TS_FLAT		3
+
+/* TS_FLAT reuses TS_NEW geometry (button cores are children of the
+ * frame core and the titlebar is shrunk between them) but draws no
+ * per-slice relief, so every site that decides parenting, button size
+ * or x-math tests this instead of TS_NEW directly. */
+#define TS_NEW_GEOM(s)	((s) == TS_NEW || (s) == TS_FLAT)
 
 /* default titlebar button layout, left side */
 #ifdef XKB_BUTTON_HINT
