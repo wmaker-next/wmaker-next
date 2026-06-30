@@ -552,8 +552,6 @@ static void enter_idle(void)
 static void leave_idle(void)
 {
 	idle_mode = 0;
-	if (dpms_forced_off)
-		dpms_force(0);
 	XClearWindow(dpy, covers[0].win);
 	WMMapWidget(panel->win);
 	WMSetFocusToWidget(panel->text);
@@ -572,8 +570,30 @@ static void idle_tick(void *data)
 	if (idle_mode)
 		draw_clock();
 	if (dpms_timeout > 0 && dpms_capable && !dpms_forced_off &&
-	    now - last_activity >= dpms_timeout)
+	    now - last_activity >= dpms_timeout) {
 		dpms_force(1);
+		/* nothing left to count down to and the panel is dark,
+		 * stop waking every second so the locker parks in
+		 * epoll on the X fd alone, note_activity() re-arms on
+		 * the first key, button or motion event */
+		WMDeleteTimerHandler(idle_timer);
+		idle_timer = NULL;
+	}
+}
+
+static void note_activity(void)
+{
+	last_activity = time(NULL);
+
+	/* the X server wakes DPMS on any input-device event, mirror
+	 * that in our own state and restart the per-second countdown
+	 * that idle_tick() dropped when it forced the panel off, this
+	 * also covers the --dpms-timeout < --idle-timeout corner where
+	 * leave_idle() would not have run */
+	if (dpms_forced_off)
+		dpms_force(0);
+	if (!idle_timer)
+		idle_timer = WMAddPersistentTimerHandler(1000, idle_tick, NULL);
 }
 
 static void run_lock(WMScreen *scr, const char *user)
@@ -658,7 +678,7 @@ static void run_lock(WMScreen *scr, const char *user)
 			 * cover, intercept Escape ourselves and forward the
 			 * rest to the panel so the WINGs text field handles
 			 * editing and Return triggers the default button */
-			last_activity = time(NULL);
+			note_activity();
 			woke = 0;
 			if (idle_mode && ev.type == KeyPress) {
 				leave_idle();
@@ -693,7 +713,7 @@ static void run_lock(WMScreen *scr, const char *user)
 			 * pointer event lands on the cover, the panel itself
 			 * stays keyboard-only but motion or a click counts as
 			 * activity for the idle clock and DPMS wake */
-			last_activity = time(NULL);
+			note_activity();
 			if (idle_mode)
 				leave_idle();
 			continue;
