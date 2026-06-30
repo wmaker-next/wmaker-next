@@ -1,0 +1,19 @@
+/* XPM */
+static char *button_close_xpm[] = {
+"12 12 4 1",
+"  c None",
+". c #7a1a1a",
+"o c #ff5f57",
+"+ c #ffaaa6",
+"    ....    ",
+"  ..oooo..  ",
+" .oo++++oo. ",
+" .o++oooo+. ",
+".oo+oooooo..",
+".oo+ooooooo.",
+".ooooooooo+.",
+".oooooooo++.",
+" .oooooo++. ",
+" .oooo++++. ",
+"  ..oooo..  ",
+"    ....    "};

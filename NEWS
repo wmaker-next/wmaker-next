@@ -187,6 +187,37 @@ clamped to the free span between the left and right offsets, this
 also fixes the existing modelock case where a long title overlapped
 the language button.
 
+Six new defaults let a style replace the compiled-in titlebar button
+glyphs with image files. The Close role draws one of three images
+depending on client state and the Maximize role draws one of two
+depending on window state, so there is one key per drawn variant
+rather than per role:
+
+  CloseButtonPixmap        Close button, normal case
+  BrokenCloseButtonPixmap  Close button while the client has flagged
+                           the document as edited (the dotted X)
+  KillButtonPixmap         Close button when the client does not
+                           support WM_DELETE_WINDOW so clicking it
+                           kills the process
+  MiniaturizeButtonPixmap  Miniaturize button
+  MaximizeButtonPixmap     Maximize button while not maximized
+  RestoreButtonPixmap      Maximize button while maximized
+
+Each is a filename resolved against PixmapPath (any wrlib-supported
+format), an empty value or a load failure keeps the built-in glyph
+for that slot, so a style can override any subset and the rest fall
+back. Loaded images are blitted as-is so
+their own colours survive instead of being stencilled in the title
+text colour, the existing convention that an image at least twice as
+wide as it is tall holds a second pressed-state picture in its right
+half still applies. The keys are read once at startup like NewStyle
+and TitlebarLeft. Three sample pixmaps button_close.xpm,
+button_miniaturize.xpm and button_maximize.xpm (red, amber and green
+circles) are installed in the shared Pixmaps directory so a style can
+reference them by bare filename, pairing them with NewStyle = flat
+and TitlebarLeft = (Close, Miniaturize, Maximize) gives a
+traffic-light cluster on a flat titlebar.
+
 NewStyle = flat is a fourth titlebar style that uses the same
 geometry as NewStyle = new (button cores are full-height children of
 the frame and the title surface is shrunk between them) but draws no

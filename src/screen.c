@@ -232,99 +232,97 @@ static Bool replace_existing_wm(WScreen *scr)
  * 	Allocates shared pixmaps for the screen. These pixmaps should
  * not be freed by anybody.
  *----------------------------------------------------------------------
+ *
+ *      A non-empty *ButtonPixmap default overrides the compiled-in
+ *      glyph for that slot. The themed image is resolved against
+ *      PixmapPath like every other style asset and marked themed so
+ *      paintButton() blits it with XCopyArea and keeps its own
+ *      colours, the compiled-in fallback is taken on any load failure
+ *      so a broken theme still gets working buttons.
  */
-static void allocButtonPixmaps(WScreen * scr)
+static WPixmap *load_button_file(WScreen *scr, const char *file)
+{
+	RImage *image;
+	WPixmap *pix;
+	char *path;
+
+	if (!file || !*file)
+		return NULL;
+
+	path = FindImage(w_global.config->pixmap_path, file);
+	if (!path) {
+		wwarning(_("could not find button pixmap \"%s\" in PixmapPath"), file);
+		return NULL;
+	}
+	image = RLoadImage(scr->rcontext, path, 0);
+	wfree(path);
+	if (!image) {
+		wwarning(_("could not load button pixmap \"%s\": %s"), file,
+			 RMessageForError(RErrorCode));
+		return NULL;
+	}
+
+	pix = wmalloc(sizeof(WPixmap));
+	if (!RConvertImageMask(scr->rcontext, image, &pix->image, &pix->mask, 128)) {
+		RReleaseImage(image);
+		wfree(pix);
+		return NULL;
+	}
+	pix->width = image->width;
+	pix->height = image->height;
+	pix->depth = scr->w_depth;
+	pix->themed = 1;
+	RReleaseImage(image);
+
+	return pix;
+}
+
+static WPixmap *load_button_slot(WScreen *scr, const char *file,
+				 char **pred_xpm, char **next_xpm)
 {
 	WPixmap *pix;
 
-	/* create predefined pixmaps */
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_CLOSE_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_CLOSE_XPM);
-	}
+	pix = load_button_file(scr, file);
+	if (!pix)
+		pix = wPixmapCreateFromXPMData(scr,
+			(w_global.config->new_style == TS_NEXT) ? next_xpm : pred_xpm);
 	if (pix)
 		pix->shared = 1;
-	scr->b_pixmaps[WBUT_CLOSE] = pix;
+	return pix;
+}
 
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_BROKEN_CLOSE_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_BROKEN_CLOSE_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_BROKENCLOSE] = pix;
+static void allocButtonPixmaps(WScreen *scr)
+{
+	const WConfig *cfg = w_global.config;
 
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_ICONIFY_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_ICONIFY_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_ICONIFY] = pix;
-
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_MAXIMIZE_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_MAXIMIZE_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_MAXIMIZE] = pix;
-
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_RESTORE_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_RESTORE_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_RESTORE] = pix;
+	scr->b_pixmaps[WBUT_CLOSE] =
+	    load_button_slot(scr, cfg->close_button_pixmap,
+			     PRED_CLOSE_XPM, NEXT_CLOSE_XPM);
+	scr->b_pixmaps[WBUT_BROKENCLOSE] =
+	    load_button_slot(scr, cfg->broken_close_button_pixmap,
+			     PRED_BROKEN_CLOSE_XPM, NEXT_BROKEN_CLOSE_XPM);
+	scr->b_pixmaps[WBUT_ICONIFY] =
+	    load_button_slot(scr, cfg->miniaturize_button_pixmap,
+			     PRED_ICONIFY_XPM, NEXT_ICONIFY_XPM);
+	scr->b_pixmaps[WBUT_MAXIMIZE] =
+	    load_button_slot(scr, cfg->maximize_button_pixmap,
+			     PRED_MAXIMIZE_XPM, NEXT_MAXIMIZE_XPM);
+	scr->b_pixmaps[WBUT_RESTORE] =
+	    load_button_slot(scr, cfg->restore_button_pixmap,
+			     PRED_RESTORE_XPM, NEXT_RESTORE_XPM);
+	scr->b_pixmaps[WBUT_KILL] =
+	    load_button_slot(scr, cfg->kill_button_pixmap,
+			     PRED_KILL_XPM, NEXT_KILL_XPM);
 #ifdef XKB_BUTTON_HINT
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP1_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP1_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_XKBGROUP1] = pix;
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP2_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP2_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_XKBGROUP2] = pix;
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP3_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP3_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_XKBGROUP3] = pix;
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_XKBGROUP4_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_XKBGROUP4_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_XKBGROUP4] = pix;
+	scr->b_pixmaps[WBUT_XKBGROUP1] =
+	    load_button_slot(scr, NULL, PRED_XKBGROUP1_XPM, NEXT_XKBGROUP1_XPM);
+	scr->b_pixmaps[WBUT_XKBGROUP2] =
+	    load_button_slot(scr, NULL, PRED_XKBGROUP2_XPM, NEXT_XKBGROUP2_XPM);
+	scr->b_pixmaps[WBUT_XKBGROUP3] =
+	    load_button_slot(scr, NULL, PRED_XKBGROUP3_XPM, NEXT_XKBGROUP3_XPM);
+	scr->b_pixmaps[WBUT_XKBGROUP4] =
+	    load_button_slot(scr, NULL, PRED_XKBGROUP4_XPM, NEXT_XKBGROUP4_XPM);
 #endif
-
-	if (w_global.config->new_style == TS_NEXT) {
-		pix = wPixmapCreateFromXPMData(scr, NEXT_KILL_XPM);
-	} else {
-		pix = wPixmapCreateFromXPMData(scr, PRED_KILL_XPM);
-	}
-	if (pix)
-		pix->shared = 1;
-	scr->b_pixmaps[WBUT_KILL] = pix;
 }
 
 static int get_dot_mult(void)

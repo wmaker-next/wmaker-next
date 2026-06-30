@@ -95,6 +95,12 @@ static char *options[] = {
 	"WindowTitleExtendSpace",
 	"MenuTitleExtendSpace",
 	"MenuTextExtendSpace",
+	"CloseButtonPixmap",
+	"BrokenCloseButtonPixmap",
+	"KillButtonPixmap",
+	"MiniaturizeButtonPixmap",
+	"MaximizeButtonPixmap",
+	"RestoreButtonPixmap",
 	NULL
 };
 

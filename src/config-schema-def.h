@@ -74,6 +74,18 @@
 	  DEF_TITLEBAR_LEFT, NULL, 0, 8, WCFG_STARTUP_ONLY, 0) \
 	_(TITLEBAR_RIGHT, "TitlebarRight", STRING_ARRAY, titlebar_right, \
 	  "(Close)", NULL, 0, 8, WCFG_STARTUP_ONLY, 0) \
+	_(CLOSE_BUTTON_PIXMAP, "CloseButtonPixmap", STRING, \
+	  close_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(BROKEN_CLOSE_BUTTON_PIXMAP, "BrokenCloseButtonPixmap", STRING, \
+	  broken_close_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(KILL_BUTTON_PIXMAP, "KillButtonPixmap", STRING, \
+	  kill_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(MINIATURIZE_BUTTON_PIXMAP, "MiniaturizeButtonPixmap", STRING, \
+	  miniaturize_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(MAXIMIZE_BUTTON_PIXMAP, "MaximizeButtonPixmap", STRING, \
+	  maximize_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
+	_(RESTORE_BUTTON_PIXMAP, "RestoreButtonPixmap", STRING, \
+	  restore_button_pixmap, "", NULL, INT_MIN, INT_MAX, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_DOCK, "DisableDock", BOOL, disable_dock, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_CLIP, "DisableClip", BOOL, disable_clip, "NO", \

@@ -1,0 +1,19 @@
+/* XPM */
+static char *button_miniaturize_xpm[] = {
+"12 12 4 1",
+"  c None",
+". c #8a6a00",
+"o c #febc2e",
+"+ c #ffe39e",
+"    ....    ",
+"  ..oooo..  ",
+" .oo++++oo. ",
+" .o++oooo+. ",
+".oo+oooooo..",
+".oo+ooooooo.",
+".ooooooooo+.",
+".oooooooo++.",
+" .oooooo++. ",
+" .oooo++++. ",
+"  ..oooo..  ",
+"    ....    "};

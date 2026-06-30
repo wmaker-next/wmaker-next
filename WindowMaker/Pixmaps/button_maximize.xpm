@@ -1,0 +1,19 @@
+/* XPM */
+static char *button_maximize_xpm[] = {
+"12 12 4 1",
+"  c None",
+". c #0f6a1f",
+"o c #28c840",
+"+ c #9ee8a9",
+"    ....    ",
+"  ..oooo..  ",
+" .oo++++oo. ",
+" .o++oooo+. ",
+".oo+oooooo..",
+".oo+ooooooo.",
+".ooooooooo+.",
+".oooooooo++.",
+" .oooooo++. ",
+" .oooo++++. ",
+"  ..oooo..  ",
+"    ....    "};

@@ -4,6 +4,12 @@
 	FocusMode = manual;
 	NewStyle = new;
 	TitlebarRight = (Close);
+	CloseButtonPixmap = "";
+	BrokenCloseButtonPixmap = "";
+	KillButtonPixmap = "";
+	MiniaturizeButtonPixmap = "";
+	MaximizeButtonPixmap = "";
+	RestoreButtonPixmap = "";
 	DisableDock = NO;
 	DisableClip = NO;
 	DisableDrawers = NO;

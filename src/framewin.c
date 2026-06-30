@@ -1903,6 +1903,15 @@ static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long 
 	int x = 0, y = 0, d = 0;
 	int left = 0, width = 0;
 
+	/* a theme-supplied colour pixmap must keep its own colours, the
+	 * from_xpm path stencils the mask in title_color which would turn
+	 * a red close circle into a title-coloured silhouette, so route
+	 * themed images through the XCopyArea branch and let the press
+	 * feedback come from the d=1 offset and the optional second half
+	 * of a double-wide image */
+	if (image && image->themed)
+		from_xpm = 0;
+
 	/* setup stuff according to the state */
 	if (pushed) {
 		if (image) {

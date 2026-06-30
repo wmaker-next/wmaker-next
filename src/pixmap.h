@@ -30,6 +30,10 @@ typedef struct WPixmap {
                                         * when structure is freed */
     unsigned int client_owned:1;
     unsigned int client_owned_mask:1;
+	unsigned int themed:1;	       /* loaded from a theme file, blit
+					* with XCopyArea so its own colours
+					* survive instead of being filled
+					* through the mask in title_color */
 } WPixmap;
 
 
