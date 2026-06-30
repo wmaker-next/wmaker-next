@@ -51,6 +51,9 @@
 #include <xcb/sync.h>
 #include <xcb/sync.h>
 #endif
+#ifdef USE_XCB_SCREENSAVER
+#include <xcb/screensaver.h>
+#endif
 
 #include "WindowMaker.h"
 #include "GNUstep.h"
@@ -568,6 +571,9 @@ void StartUp(Bool defaultScreenOnly)
 #ifdef USE_RANDR
 	xcb_prefetch_extension_data(xc, &xcb_randr_id);
 #endif
+#ifdef USE_XCB_SCREENSAVER
+	xcb_prefetch_extension_data(xc, &xcb_screensaver_id);
+#endif
 
 #ifdef USE_XSHAPE
 	xer = xcb_get_extension_data(xc, &xcb_shape_id);
@@ -616,6 +622,18 @@ void StartUp(Bool defaultScreenOnly)
 				 rr_major, rr_minor);
 	}
 	free(rrr);
+#endif
+
+#ifdef USE_XCB_SCREENSAVER
+	xer = xcb_get_extension_data(xc, &xcb_screensaver_id);
+	w_global.xext.screensaver.supported = xer && xer->present;
+	if (w_global.xext.screensaver.supported) {
+		w_global.xext.screensaver.event_base = xer->first_event;
+		free(xcb_screensaver_query_version_reply(xc,
+			xcb_screensaver_query_version(xc,
+				XCB_SCREENSAVER_MAJOR_VERSION,
+				XCB_SCREENSAVER_MINOR_VERSION), NULL));
+	}
 #endif
 
 	/* wXkbInit() negotiates XkbUseExtension, loads the keymap and state,

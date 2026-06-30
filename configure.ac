@@ -779,6 +779,31 @@ AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
 
 
+dnl xcb-screensaver delivers MIT-SCREEN-SAVER notify events on the
+dnl existing X fd so the window manager can disarm decorative timers
+dnl while the server has blanked or DPMS-powered the display, ships in
+dnl the libxcb tarball but distros split it into its own -dev package
+dnl so probe softly
+AC_ARG_WITH([xcb-screensaver],
+    [AS_HELP_STRING([--without-xcb-screensaver],
+                    [do not use the MIT-SCREEN-SAVER extension for display-off detection])],
+    [],
+    [with_xcb_screensaver=auto])
+AS_IF([test "x$with_xcb_screensaver" != xno],
+    [PKG_CHECK_MODULES([XCB_SCREENSAVER], [xcb-screensaver],
+        [AC_DEFINE([USE_XCB_SCREENSAVER], [1],
+                   [defined when xcb-screensaver is available so wmaker can react to ScreenSaverNotify])
+         supported_xext="$supported_xext MIT-SCREEN-SAVER"],
+        [AS_IF([test "x$with_xcb_screensaver" = xyes],
+            [AC_MSG_ERROR([xcb-screensaver requested but not found -- $XCB_SCREENSAVER_PKG_ERRORS])],
+            [XCB_SCREENSAVER_CFLAGS=
+             XCB_SCREENSAVER_LIBS=])])],
+    [XCB_SCREENSAVER_CFLAGS=
+     XCB_SCREENSAVER_LIBS=])
+AC_SUBST(XCB_SCREENSAVER_CFLAGS)
+AC_SUBST(XCB_SCREENSAVER_LIBS)
+
+
 dnl xcb subset for libwraster: the X-side of wrlib (RContext, RConvertImage,
 dnl RCreateImageFromDrawable) talks to the server via xcb only so the shared
 dnl object links without libX11/libXext. xcb-image gives the native ZPixmap

@@ -34,6 +34,9 @@
 #ifdef USE_RANDR
 #include "randr.h"
 #endif
+#ifdef USE_XCB_SCREENSAVER
+#include <xcb/screensaver.h>
+#endif
 
 #include <wraster.h>
 #include "WindowMaker.h"
@@ -722,6 +725,12 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 				       XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE
 				       | XCB_RANDR_NOTIFY_MASK_CRTC_CHANGE
 				       | XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
+#endif
+
+#ifdef USE_XCB_SCREENSAVER
+	if (w_global.xext.screensaver.supported)
+		xcb_screensaver_select_input(xconn, scr->root_win,
+					     XCB_SCREENSAVER_EVENT_NOTIFY_MASK);
 #endif
 
 	XDefineCursor(dpy, scr->root_win, wPreferences.cursor[WCUR_ROOT]);

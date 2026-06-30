@@ -1,4 +1,5 @@
-/* event_ext.c - X extension events: Shape, RandR, XSync alarm, XKB
+/* event_ext.c - X extension events: Shape, RandR, XSync alarm, XKB,
+ *               MIT-SCREEN-SAVER
  *
  *  Window Maker window manager
  *
@@ -31,6 +32,9 @@
 #endif
 #ifdef USE_XSYNC
 # include <xcb/sync.h>
+#endif
+#ifdef USE_XCB_SCREENSAVER
+# include <xcb/screensaver.h>
 #endif
 #include <xcb/xkb.h>
 
@@ -177,6 +181,25 @@ static void handleRandRNotify(const xcb_generic_event_t *xe, XEvent *ev)
 }
 #endif	/* USE_RANDR */
 
+#ifdef USE_XCB_SCREENSAVER
+static void handleScreenSaverNotify(const xcb_generic_event_t *xe, XEvent *ev)
+{
+	const xcb_screensaver_notify_event_t *se =
+		(const xcb_screensaver_notify_event_t *)xe;
+	(void) ev;
+
+	/* STATE_ON means the server has activated its internal blank
+	 * window or DPMS has powered the panel down, STATE_OFF means
+	 * the user is back, STATE_CYCLE only arrives with the cycle
+	 * mask which is not selected here, treat anything else as no
+	 * change so a stray STATE_DISABLED never latches display_off */
+	if (se->state == XCB_SCREENSAVER_STATE_ON)
+		wDisplaySetOff(True);
+	else if (se->state == XCB_SCREENSAVER_STATE_OFF)
+		wDisplaySetOff(False);
+}
+#endif	/* USE_XCB_SCREENSAVER */
+
 #ifdef USE_XSYNC
 static void handleSyncAlarm(const xcb_generic_event_t *xe, XEvent *ev)
 {
@@ -207,6 +230,12 @@ void wEventExtRegister(void)
 		wEventRegisterHandler(w_global.xext.randr.event_base + XCB_RANDR_NOTIFY,
 				      handleRandRNotify);
 	}
+#endif
+#ifdef USE_XCB_SCREENSAVER
+	if (w_global.xext.screensaver.supported)
+		wEventRegisterHandler(w_global.xext.screensaver.event_base
+				      + XCB_SCREENSAVER_NOTIFY,
+				      handleScreenSaverNotify);
 #endif
 	if (w_global.xext.xkb.supported)
 		wEventRegisterHandler(w_global.xext.xkb.event_base, handleXkbEvent);

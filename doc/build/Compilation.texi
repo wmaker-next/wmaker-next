@@ -578,6 +578,11 @@ keeps up with the frame.
 Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
 whose clipboard-manager mode depends on XFixes selection owner notifications.
 
+@item --without-xcb-screensaver
+Do not use the @emph{MIT-SCREEN-SAVER} extension. With it the window manager receives a
+notify when the X server blanks or DPMS-powers the display so decorative animations and the
+urgent-icon bounce can disarm while the output is dark.
+
 @item --disable-wmlock
 Do not build the @command{wmlock} screen locker. By default it is built when either PAM
 (@file{security/pam_appl.h} and @code{-lpam}) or OpenBSD @code{bsd_auth} is found, and

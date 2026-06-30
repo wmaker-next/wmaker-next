@@ -173,6 +173,7 @@ AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
 	-I$(top_srcdir)/wrlib \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	@XCB_CFLAGS@ \
+	@XCB_SCREENSAVER_CFLAGS@ \
 	@STARTUP_NOTIFICATION_CFLAGS@ \
 	@HEADER_SEARCH_PATH@
 
@@ -185,6 +186,7 @@ wmaker_LDADD = \
 	@XLFLAGS@ \
 	@STARTUP_NOTIFICATION_LIBS@ \
 	@XCB_LIBS@ \
+	@XCB_SCREENSAVER_LIBS@ \
 	@XLIBS@ \
 	@LIBM@ \
 	@INTLIBS@
