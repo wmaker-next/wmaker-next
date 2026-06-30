@@ -95,7 +95,7 @@
 	_(CLIP_MERGED_IN_DOCK, "ClipMergedInDock", BOOL, clip_merged_in_dock, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DISABLE_MINIWINDOWS, "DisableMiniwindows", BOOL, disable_miniwindows, "NO", \
-	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(ENABLE_WORKSPACE_PAGER, "EnableWorkspacePager", BOOL, enable_workspace_pager, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \

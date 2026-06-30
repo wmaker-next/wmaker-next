@@ -47,6 +47,7 @@ static char *last_key_binding_spec;
 static int last_key_binding_index;
 static int key_tree_rebuilds;
 static int regrab_mouse_grabs;
+static int refresh_miniwindows;
 static int aa_flush_count;
 static Bool aa_current;
 static int texture_spec_updates;
@@ -108,6 +109,12 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 		arrange_icons_all++;
 	else
 		arrange_icons_visible++;
+}
+
+void wRefreshMiniwindows(WScreen *scr)
+{
+	(void)scr;
+	refresh_miniwindows++;
 }
 
 void wWorkspaceForceChange(WScreen *scr, int workspace)
@@ -362,6 +369,7 @@ static void reset_phase4_counters(void)
 	key_binding_changed_updates = 0;
 	key_tree_rebuilds = 0;
 	regrab_mouse_grabs = 0;
+	refresh_miniwindows = 0;
 	aa_flush_count = 0;
 	aa_current = 0;
 	texture_spec_updates = 0;
@@ -1769,13 +1777,12 @@ static void test_startup_only_frozen_across_reload(void)
 
 	reset_preferences();
 	/* simulate StartUp(): adopt the boot-time parse and clamp it.
-	 * FocusMode, EnableWorkspacePager and SwitchPanelIconSize used to
-	 * be in this set but are now WCFG_RUNTIME_RELOAD (see the matching
-	 * test_*_live_apply cases); the keys still frozen are IconSize,
-	 * NewStyle and DisableMiniwindows. */
+	 * FocusMode, EnableWorkspacePager, SwitchPanelIconSize and
+	 * DisableMiniwindows used to be in this set but are now
+	 * WCFG_RUNTIME_RELOAD (see the matching test_*_live_apply cases);
+	 * the keys still frozen are IconSize and NewStyle. */
 	old_dict = dict_from_desc("{ IconSize = 96; "
-				  "NewStyle = next; "
-				  "DisableMiniwindows = YES; }");
+				  "NewStyle = next; }");
 	if (!old_dict)
 		return;
 	wConfigCacheWindowMaker(old_dict);
@@ -1789,7 +1796,6 @@ static void test_startup_only_frozen_across_reload(void)
 	wConfigApplyRuntimeDefaults(NULL, new_dict);
 	CHECK(w_global.config->icon_size == 96);
 	CHECK(w_global.config->new_style == TS_NEXT);
-	CHECK(w_global.config->disable_miniwindows == 1);
 
 	WMReleasePropList(new_dict);
 out:
@@ -1810,6 +1816,32 @@ static void test_focus_mode_live_apply(void)
 		goto out;
 	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
 	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* DisableMiniwindows is read at every minimize/restore decision; flipping
+ * it live walks every miniaturized window via wRefreshMiniwindows() so a
+ * NO -> YES tears down stale miniwindows and YES -> NO creates them. */
+static void test_disable_miniwindows_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ DisableMiniwindows = NO; }");
+	new_dict = dict_from_desc("{ DisableMiniwindows = YES; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->disable_miniwindows == 1);
+	CHECK(refresh_miniwindows == 1);
 
 out:
 	if (old_dict)
@@ -2341,6 +2373,7 @@ int main(void)
 	test_focus_mode_live_apply();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
+	test_disable_miniwindows_live_apply();
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();
 	test_antialiased_text_live_apply();

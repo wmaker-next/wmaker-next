@@ -1117,6 +1117,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		if (scr)
 			wRegrabWindowMouseGrabs(scr);
 	}
+	if (scr && wConfigChangesHas(changes, WCFG_KEY_DISABLE_MINIWINDOWS))
+		wRefreshMiniwindows(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_LABELS))
 		wConfigApplyModifierKeyLabels(scr, &new_config->modifier_key_labels);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_SHORT_LABELS))

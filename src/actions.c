@@ -1839,6 +1839,42 @@ void wDeiconifyWindow(WWindow *wwin)
 	w_global.ignore_workspace_change = False;
 }
 
+/* Re-evaluate every miniaturized window against the current
+ * DisableMiniwindows policy after a runtime flip. NO -> YES tears down
+ * the existing miniwindow so it does not stay mapped and stacked,
+ * YES -> NO fakes a re-iconify so the icon-creation branch of
+ * wIconifyWindow() runs and the window gains its miniwindow. Windows
+ * whose icon is owned by an EWMH pager are skipped, the same as the
+ * iconify/deiconify paths above. */
+void wRefreshMiniwindows(WScreen *scr)
+{
+	WWindow *wwin;
+	Bool disabled;
+
+	disabled = w_global.config->disable_miniwindows;
+	wwin = scr->focused_window;
+	while (wwin) {
+		if (wwin->flags.miniaturized && !wwin->flags.net_handle_icon
+		    && !wGroupIsInactiveMember(wwin)) {
+			if (disabled && wwin->icon) {
+				if (wwin->icon->mapped)
+					XUnmapWindow(dpy, wwin->icon->core->window);
+				RemoveFromStackList(wwin->icon->core);
+				wIconDestroy(wwin->icon);
+				wwin->icon = NULL;
+			} else if (!disabled && !wwin->icon) {
+				wwin->flags.miniaturized = False;
+				wwin->flags.skip_next_animation = True;
+				wIconifyWindow(wwin);
+			}
+		}
+		wwin = wwin->prev;
+	}
+
+	if (!disabled && w_global.config->auto_arrange_icons)
+		wArrangeIcons(scr, True);
+}
+
 static void hideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int animate)
 {
 	if (wwin->flags.miniaturized) {

@@ -72,6 +72,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows,
                         Bool bringToCurrentWS);
 
 void wRefreshDesktop(WScreen *scr);
+void wRefreshMiniwindows(WScreen *scr);
 
 void wArrangeIcons(WScreen *scr, Bool arrangeAll);
 
