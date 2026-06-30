@@ -68,6 +68,7 @@ void wNETWMUpdateDesktop(WScreen *scr);
 void wNETWMUpdateCurrentDesktop(WScreen *scr);
 void wNETWMPositionSplash(WWindow *wwin, int *x, int *y, int width, int height);
 int wNETWMGetPidForWindow(Window window);
+WXCookie wNETWMReqPid(Window window);
 Bool wNETWMIsPingProtocol(Atom protocol);
 void wNETWMPingWindow(WWindow *wwin, Time timestamp);
 void wNETWMCancelPing(WWindow *wwin);

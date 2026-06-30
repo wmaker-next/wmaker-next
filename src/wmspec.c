@@ -273,7 +273,8 @@ static void updateCurrentWorkspace(WScreen *scr);
 static void updateWorkspaceCount(WScreen *scr);
 static void updateUserTimeWindow(WWindow *wwin, WXCookie *ck);
 static void readUserTime(WWindow *wwin);
-static void cacheLocalPid(WWindow *wwin);
+static void readUserTimeCk(WWindow *wwin, WXCookie ck);
+static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck);
 static void wNETWMShowingDesktop(WScreen *scr, Bool show);
 
 typedef struct NetData {
@@ -561,19 +562,13 @@ static RImage *findBestIcon(const uint32_t *data, size_t items)
 	return ret_image;
 }
 
-RImage *get_window_image_from_x11(Window window)
+static RImage *get_window_image_from_x11_ck(WXCookie ck)
 {
 	RImage *image;
 	size_t items;
 	uint32_t *property;
 
-	/* Get the icon from X11 Window. Cap the read at 4 Mi CARDINALs
-	 * (16 MiB), Electron and Chromium based applications ship a
-	 * single 1024x1024 icon (1,048,578 cardinals) and nothing
-	 * smaller, so the bound must cover that, while still preventing
-	 * a hostile client from forcing an arbitrarily large transient
-	 * allocation by stuffing the property. */
-	property = WXGetCardinalList(dpy, window, net_wm_icon, 1u << 22, &items);
+	property = WXRcvCardinalList(dpy, ck, &items);
 	if (!property)
 		return NULL;
 
@@ -594,7 +589,19 @@ RImage *get_window_image_from_x11(Window window)
 	return image;
 }
 
-static void updateIconImage(WWindow *wwin)
+RImage *get_window_image_from_x11(Window window)
+{
+	/* Cap the read at 4 Mi CARDINALs (16 MiB), Electron and Chromium
+	 * based applications ship a single 1024x1024 icon (1,048,578
+	 * cardinals) and nothing smaller, so the bound must cover that,
+	 * while still preventing a hostile client from forcing an
+	 * arbitrarily large transient allocation by stuffing the
+	 * property. */
+	return get_window_image_from_x11_ck(
+		WXReqFormat32(dpy, window, net_wm_icon, XA_CARDINAL, 1u << 22));
+}
+
+static void updateIconImageCk(WWindow *wwin, WXCookie icon_ck)
 {
 	WApplication *app;
 	Bool had_image;
@@ -605,7 +612,7 @@ static void updateIconImage(WWindow *wwin)
 		RReleaseImage(wwin->net_icon_image);
 
 	/* Save the icon in the X11 icon */
-	wwin->net_icon_image = get_window_image_from_x11(wwin->client_win);
+	wwin->net_icon_image = get_window_image_from_x11_ck(icon_ck);
 
 	if (wwin->frame)
 		wWindowRefreshTitlebarIcon(wwin);
@@ -639,6 +646,12 @@ static void updateIconImage(WWindow *wwin)
 			wAppIconPaint(app->app_icon);
 		}
 	}
+}
+
+static void updateIconImage(WWindow *wwin)
+{
+	updateIconImageCk(wwin,
+		WXReqFormat32(dpy, wwin->client_win, net_wm_icon, XA_CARDINAL, 1u << 22));
 }
 
 static void updateWindowOpacityCk(WWindow *wwin, WXCookie ck)
@@ -1758,7 +1771,17 @@ void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck)
 	ck->icon_geom     = WXReqFormat32(dpy, window, net_wm_icon_geometry, XA_CARDINAL, 4);
 	ck->opacity       = WXReqFormat32(dpy, window, net_wm_window_opacity, XA_CARDINAL, 1);
 	ck->user_time_win = WXReqFormat32(dpy, window, net_wm_user_time_window, XA_WINDOW, 1);
+	ck->user_time     = WXReqFormat32(dpy, window, net_wm_user_time, XA_CARDINAL, 1);
 	ck->startup_id    = WXReqString8(dpy, window, net_startup_id, utf8_string);
+	/* icon last so its potentially large reply does not sit ahead of
+	 * the small ones in the server's output queue */
+	ck->icon          = WXReqFormat32(dpy, window, net_wm_icon, XA_CARDINAL, 1u << 22);
+	ck->machine       = WXReqString8(dpy, window, XA_WM_CLIENT_MACHINE, XA_STRING);
+}
+
+WXCookie wNETWMReqPid(Window window)
+{
+	return WXReqFormat32(dpy, window, net_wm_pid, XA_CARDINAL, 1);
 }
 
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
@@ -1927,13 +1950,13 @@ void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck)
 	}
 
 	updateNetIconInfoCk(wwin, ck->handled_icons, ck->icon_geom);
-	updateIconImage(wwin);
+	updateIconImageCk(wwin, ck->icon);
 
 	updateUserTimeWindow(wwin, &ck->user_time_win);
-	readUserTime(wwin);
+	readUserTimeCk(wwin, ck->user_time);
 	matchStartupNotification(wwin, ck);
 
-	cacheLocalPid(wwin);
+	cacheLocalPid(wwin, ck->machine);
 	wNETWMSyncRequestSetup(wwin);
 }
 
@@ -2448,7 +2471,7 @@ void wNETWMCancelPing(WWindow *wwin)
  * wGetWindowPid() (XRes preferred, falling back to _NET_WM_PID), so
  * use that instead of reading the property again, an XRes-supplied
  * value is local by construction so the hostname check still passes. */
-static void cacheLocalPid(WWindow *wwin)
+static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck)
 {
 	char host[256], *machine;
 	int pid;
@@ -2456,10 +2479,11 @@ static void cacheLocalPid(WWindow *wwin)
 	wwin->net_ping.pid = 0;
 
 	pid = (int)wwin->client_pid;
-	if (pid <= 0)
+	machine = WXRcvString(dpy, machine_ck, NULL);
+	if (pid <= 0) {
+		wfree(machine);
 		return;
-
-	machine = WXGetLatin1String(dpy, wwin->client_win, XA_WM_CLIENT_MACHINE, NULL);
+	}
 	if (!machine)
 		return;
 
@@ -2549,15 +2573,8 @@ void wNETWMPingWindow(WWindow *wwin, Time timestamp)
  * PropertyNotify on the helper can be routed without a linear scan */
 static XContext user_time_ctx = 0;
 
-static void readUserTime(WWindow *wwin)
+static void applyUserTime(WWindow *wwin, uint32_t ts)
 {
-	Window src = wwin->net_user_time_win ? wwin->net_user_time_win
-					     : wwin->client_win;
-	uint32_t ts;
-
-	if (!WXGetCardinal(dpy, src, net_wm_user_time, &ts))
-		return;
-
 	wwin->net_user_time = (Time)ts;
 	wwin->net_user_time_set = 1;
 
@@ -2566,6 +2583,31 @@ static void readUserTime(WWindow *wwin)
 	if (ts != 0 && (wwin->screen_ptr->net_last_user_time == 0
 			|| USER_TIME_NEWER(ts, wwin->screen_ptr->net_last_user_time)))
 		wwin->screen_ptr->net_last_user_time = (Time)ts;
+}
+
+static void readUserTime(WWindow *wwin)
+{
+	Window src = wwin->net_user_time_win ? wwin->net_user_time_win
+					     : wwin->client_win;
+	uint32_t ts;
+
+	if (WXGetCardinal(dpy, src, net_wm_user_time, &ts))
+		applyUserTime(wwin, ts);
+}
+
+/* the prefetched cookie was issued against client_win, when the client
+ * indirects through _NET_WM_USER_TIME_WINDOW the value lives on a
+ * different window so discard the cookie and read that one instead */
+static void readUserTimeCk(WWindow *wwin, WXCookie ck)
+{
+	uint32_t ts;
+
+	if (wwin->net_user_time_win != None) {
+		WXDiscard(dpy, ck);
+		readUserTime(wwin);
+	} else if (WXRcvCardinal(dpy, ck, &ts)) {
+		applyUserTime(wwin, ts);
+	}
 }
 
 static void detachUserTimeWindow(WWindow *wwin)

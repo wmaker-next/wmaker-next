@@ -469,7 +469,10 @@ typedef struct {
     WXCookie icon_geom;     /* _NET_WM_ICON_GEOMETRY */
     WXCookie opacity;       /* _NET_WM_WINDOW_OPACITY */
     WXCookie user_time_win; /* _NET_WM_USER_TIME_WINDOW */
+    WXCookie user_time;     /* _NET_WM_USER_TIME (on the client window) */
     WXCookie startup_id;    /* _NET_STARTUP_ID */
+    WXCookie icon;          /* _NET_WM_ICON */
+    WXCookie machine;       /* WM_CLIENT_MACHINE */
 } WNETWMInitialCookies;
 
 typedef struct {
@@ -486,6 +489,8 @@ typedef struct {
     WXCookie motif;         /* _MOTIF_WM_HINTS */
     WXCookie cmap_windows;  /* WM_COLORMAP_WINDOWS */
     WXCookie command;       /* WM_COMMAND */
+    WXCookie pid;           /* _NET_WM_PID, fallback for wGetWindowPid */
+    WXCookie appmenu;       /* _WINDOWMAKER_MENU (existence) */
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */
     WXCookie saved_state;   /* _WINDOWMAKER_STATE */
     WXCookie mark_key;      /* _WINDOWMAKER_MARK_KEY */

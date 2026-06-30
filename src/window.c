@@ -341,6 +341,8 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 #endif
 	ck->cmap_windows = wClientReqColormapWindows(window);
 	ck->command   = WXReqCommand(dpy, window);
+	ck->pid       = wNETWMReqPid(window);
+	ck->appmenu   = WXReqExists(dpy, window, w_global.atom.wmaker.menu);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
 					w_global.atom.wmaker.state, 10);
@@ -593,7 +595,7 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 
 /* Get the owning client PID for an X window, preferring the server-side
  * X-Resource extension over the client-supplied _NET_WM_PID property */
-pid_t wGetWindowPid(Window win)
+static pid_t getWindowPidXRes(Window win)
 {
 #ifdef USE_XRES
 	xcb_connection_t *conn = XGetXCBConnection(dpy);
@@ -620,9 +622,19 @@ pid_t wGetWindowPid(Window win)
 			free(reply);
 		}
 	}
+	return pid;
+#else
+	(void)win;
+	return -1;
+#endif
+}
+
+pid_t wGetWindowPid(Window win)
+{
+	pid_t pid = getWindowPidXRes(win);
+
 	if (pid > 0)
 		return pid;
-#endif
 	return wNETWMGetPidForWindow(win);
 }
 
@@ -898,6 +910,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	WSavedState *wstate;
 	char **cmd_argv;
 	int cmd_argc;
+	uint32_t net_pid;
 	int gx, gy;
 
 	/* mutex. */
@@ -976,8 +989,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->colormap = wattribs.colormap;
 	/* one XRes round-trip per managed window, read everywhere else
 	 * via wwin->client_pid, the wManagePrefetch batch is in flight
-	 * so this stacks behind it rather than serialising */
-	wwin->client_pid = wGetWindowPid(window);
+	 * so this stacks behind it rather than serialising. The
+	 * _NET_WM_PID fallback is the batched cookie so a build without
+	 * XRes (or a remote client XRes cannot resolve) costs no extra
+	 * round-trip. */
+	wwin->client_pid = getWindowPidXRes(window);
+	if (wwin->client_pid <= 0) {
+		if (WXRcvCardinal(dpy, ck.pid, &net_pid))
+			wwin->client_pid = (pid_t)net_pid;
+		ck.pid.seq = 0;
+	}
 	wwin->event_mask = CLIENT_EVENTS;
 	attribs.event_mask = CLIENT_EVENTS;
 	attribs.do_not_propagate_mask = ButtonPressMask | ButtonReleaseMask;
@@ -1084,7 +1105,18 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wwin->client_flags.shared_appicon = 0;
 
 	if (wwin->main_window) {
-		if (WXPropExists(dpy, wwin->main_window, w_global.atom.wmaker.menu))
+		Bool has_appmenu;
+		/* the prefetch batch already probed _WINDOWMAKER_MENU on the
+		 * client window, only re-read when main_window resolved to a
+		 * distinct group leader */
+		if (wwin->main_window == wwin->client_win) {
+			has_appmenu = WXRcvExists(dpy, ck.appmenu);
+			ck.appmenu.seq = 0;
+		} else {
+			has_appmenu = WXPropExists(dpy, wwin->main_window,
+						   w_global.atom.wmaker.menu);
+		}
+		if (has_appmenu)
 			wwin->client_flags.shared_appicon = 0;
 	}
 

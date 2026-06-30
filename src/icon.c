@@ -341,6 +341,17 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 	/* Remove the previous icon title */
 	if (icon->icon_name != NULL)
 		wfree(icon->icon_name);
+	icon->icon_name = NULL;
+
+	/* the application-icon stub for a shared_appicon fake group leader
+	 * has client_win pointing at a window wmaker created with no name
+	 * properties at all, so reading them back is three round-trips for
+	 * a known-empty result, fall through to the visible-name update
+	 * with no title which is what the reads would have produced */
+	if (wwin->fake_group && wwin->fake_group->leader == wwin->client_win) {
+		wNETWMUpdateVisibleIconName(wwin, NULL, NULL);
+		return;
+	}
 
 	/* Set the new one, using two methods to identify
 	the icon name or switch back to window name */
