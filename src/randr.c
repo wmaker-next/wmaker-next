@@ -36,6 +36,7 @@
 #include "dock.h"
 #include "workspace.h"
 #include "actions.h"
+#include "event.h"
 #include "hotcorner.h"
 
 #define RANDR_DEBOUNCE_DELAY  100   /* milliseconds */
@@ -53,6 +54,12 @@ typedef struct {
 typedef struct {
 	WRandROutput outputs[WM_MAX_HEADS];
 	int n_outputs;
+	/* raw GetMonitors active count from the last
+	 * wRandR_ApplyToXinerama() call, before the zero-heads
+	 * fallback synthesizes a screen-sized head, -1 when the
+	 * GetMonitors request itself failed, used by wRandR_Update()
+	 * to drive wDisplaySetOff() */
+	int active_monitors;
 } WRandRState;
 
 typedef struct {
@@ -137,6 +144,9 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 	mr = xcb_randr_get_monitors_reply(xconn,
 			xcb_randr_get_monitors(xconn, scr->root_win, 1), NULL);
 
+	if (scr->randr_state)
+		((WRandRState *)scr->randr_state)->active_monitors = mr ? 0 : -1;
+
 	if (mr) {
 		for (mi = xcb_randr_get_monitors_monitors_iterator(mr);
 			 mi.rem && count < WM_MAX_HEADS;
@@ -156,6 +166,8 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 			count++;
 		}
 		free(mr);
+		if (scr->randr_state)
+			((WRandRState *)scr->randr_state)->active_monitors = count;
 	}
 
 	/* Resolve every monitor-name atom in one round-trip rather than one
@@ -551,6 +563,7 @@ static void wRandR_Update(WScreen *scr)
 	WRandRState *state = (WRandRState *)scr->randr_state;
 	char *old_name[WM_MAX_HEADS];
 	int old_ws[WM_MAX_HEADS];
+	Bool applied;
 	int old_heads;
 	int i, h, k;
 
@@ -659,7 +672,21 @@ static void wRandR_Update(WScreen *scr)
 
 	/* Apply new geometry to the Xinerama head layer */
 	i = scr->xine_info.primary_head;
-	if (!wRandR_ApplyToXinerama(scr)) {
+	applied = wRandR_ApplyToXinerama(scr);
+
+	/* GetMonitors with get_active=1 returning zero entries means no
+	 * CRTC is driving an output, the framebuffer has no viewer.
+	 * That is the lid-closed-with-no-external-display case, mark
+	 * the display off so the decorative timers disarm.  When the
+	 * request itself failed (active_monitors == -1) leave the
+	 * display state alone.  This runs for both the applied and the
+	 * stub-fallback branch because the all-off case is the one that
+	 * usually takes the stub branch (xine_info still remembers the
+	 * pre-disconnect head). */
+	if (state->active_monitors >= 0)
+		wDisplaySetOff(state->active_monitors == 0);
+
+	if (!applied) {
 		/* Stub-RandR fallback kept the XINERAMA head list, nothing
 		 * actually moved, GetMonitors on such servers also makes them
 		 * emit spurious change events so do not let those churn the
