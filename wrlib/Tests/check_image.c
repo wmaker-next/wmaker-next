@@ -392,6 +392,113 @@ static void test_blend_endpoints(void)
 	RReleaseImage(dst);
 }
 
+/* Scalar reference for RCombineAlpha with RGBA source and destination,
+ * mirroring the original branchy loop, so the SSE2 path can be checked
+ * byte-for-byte across odd widths and the full opacity range. */
+static void ref_combine_alpha(unsigned char *dst, const unsigned char *src,
+			      int width, int height, int opacity)
+{
+	int x, y, sa, da, t, alpha, ratio, inv;
+
+	for (y = 0; y < height; y++) {
+		for (x = 0; x < width; x++) {
+			sa = src[3];
+			if (opacity != 255) {
+				t = sa * opacity + 0x80;
+				sa = ((t >> 8) + t) >> 8;
+			}
+			da = dst[3];
+			t = da * (255 - sa) + 0x80;
+			alpha = sa + (((t >> 8) + t) >> 8);
+			if (alpha == 0) {
+				dst[3] = 0;
+			} else if (sa == alpha) {
+				dst[0] = src[0]; dst[1] = src[1];
+				dst[2] = src[2]; dst[3] = alpha;
+			} else if (sa == 0) {
+				dst[3] = alpha;
+			} else {
+				ratio = (sa << 8) / alpha;
+				inv = 256 - ratio;
+				dst[0] = (dst[0] * inv + src[0] * ratio) >> 8;
+				dst[1] = (dst[1] * inv + src[1] * ratio) >> 8;
+				dst[2] = (dst[2] * inv + src[2] * ratio) >> 8;
+				dst[3] = alpha;
+			}
+			src += 4; dst += 4;
+		}
+	}
+}
+
+static void fill_prand(RImage *img, unsigned int seed)
+{
+	unsigned char *p = img->data;
+	unsigned int s = seed;
+	int i, n;
+
+	n = img->width * img->height * 4;
+	for (i = 0; i < n; i++) {
+		s = s * 1103515245u + 12345u;
+		p[i] = (unsigned char)(s >> 16);
+	}
+	/* force a few alpha edge values into both source and dest rows */
+	p[3] = 0; p[7] = 255; p[11] = 1; p[15] = 254;
+}
+
+static void test_combine_alpha_equiv(void)
+{
+	static const int ops[] = { 0, 1, 64, 128, 200, 254, 255 };
+	RImage *src, *dst, *ref;
+	int w, h, i, k, n, bad;
+
+	w = 137; h = 91;
+	src = RCreateImage(w, h, 1);
+	dst = RCreateImage(w, h, 1);
+	CHECK(src != NULL && dst != NULL);
+	if (!src || !dst)
+		return;
+	n = w * h * 4;
+
+	for (k = 0; k < (int)(sizeof(ops) / sizeof(ops[0])); k++) {
+		fill_prand(src, 0x1234u + k);
+		fill_prand(dst, 0xabcdu + k);
+		ref = RCloneImage(dst);
+
+		RCombineImagesWithOpaqueness(dst, src, ops[k]);
+		ref_combine_alpha(ref->data, src->data, w, h, ops[k]);
+
+		bad = 0;
+		for (i = 0; i < n; i++) {
+			if (dst->data[i] != ref->data[i]) {
+				if (bad == 0)
+					fprintf(stderr,
+						"FAIL combine-alpha op=%d byte %d: got %d want %d\n",
+						ops[k], i, dst->data[i], ref->data[i]);
+				bad++;
+			}
+		}
+		CHECK(bad == 0);
+		RReleaseImage(ref);
+	}
+
+	/* odd row width below the 4-pixel vector stride exercises the
+	 * scalar tail alone */
+	RReleaseImage(src);
+	RReleaseImage(dst);
+	src = RCreateImage(3, 5, 1);
+	dst = RCreateImage(3, 5, 1);
+	fill_prand(src, 7);
+	fill_prand(dst, 9);
+	ref = RCloneImage(dst);
+	RCombineImagesWithOpaqueness(dst, src, 173);
+	ref_combine_alpha(ref->data, src->data, 3, 5, 173);
+	CHECK(memcmp(dst->data, ref->data, 3 * 5 * 4) == 0);
+
+	RReleaseImage(ref);
+	RReleaseImage(src);
+	RReleaseImage(dst);
+}
+
 int main(void)
 {
 	test_create_limits();
@@ -405,6 +512,7 @@ int main(void)
 	test_hsv();
 	test_combine_color();
 	test_blend_endpoints();
+	test_combine_alpha_equiv();
 
 	return check_report("check_image");
 }
