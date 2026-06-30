@@ -36,11 +36,12 @@ endif
 if BUILD_WMLOCK
 bin_PROGRAMS += wmlock
 wmlock_SOURCES = wmlock.c
+wmlock_CFLAGS = @XCB_CFLAGS@ @XCB_DPMS_CFLAGS@
 wmlock_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @PAM_LIBS@ $(liblist)
+	@XLFLAGS@ @XLIBS@ @XCB_DPMS_LIBS@ @PAM_LIBS@ $(liblist)
 if HAVE_PAM
 pamconfdir = $(sysconfdir)/pam.d
 dist_pamconf_DATA = pam.d/wmlock

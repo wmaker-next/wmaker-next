@@ -868,7 +868,17 @@ AS_IF([test "x$enable_wmlock" != xno],
                             [PAM service name used by wmlock when HAVE_PAM is set])])
      dnl wmlock scrubs the password buffer, glibc/musl/FreeBSD/OpenBSD have
      dnl explicit_bzero, NetBSD only has explicit_memset
-     AC_CHECK_FUNCS([explicit_bzero explicit_memset])])
+     AC_CHECK_FUNCS([explicit_bzero explicit_memset])
+     dnl xcb-dpms ships in the libxcb tarball but distros split it into a
+     dnl separate -dev package, so probe softly and let wmlock compile out
+     dnl the monitor blanking when it is absent
+     PKG_CHECK_MODULES([XCB_DPMS], [x11-xcb xcb-dpms],
+        [AC_DEFINE([HAVE_XCB_DPMS], [1],
+                   [defined when xcb-dpms is available so wmlock can force monitor power level])],
+        [XCB_DPMS_CFLAGS=
+         XCB_DPMS_LIBS=])])
+AC_SUBST(XCB_DPMS_CFLAGS)
+AC_SUBST(XCB_DPMS_LIBS)
 AC_SUBST(PAM_LIBS)
 AM_CONDITIONAL([HAVE_PAM], [test "x$have_pam" = xyes])
 AM_CONDITIONAL([BUILD_WMLOCK], [test "x$enable_wmlock" = xyes])

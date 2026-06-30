@@ -14,8 +14,17 @@ window showing a grayscaled, blurred snapshot of the desktop. The
 keyboard and pointer are grabbed for the entire lifetime of the lock and
 key events are forwarded to a WINGs password prompt that lives inside
 the cover, so user input is not delivered to other clients while the
-lock holds. The pointer is hidden and ignored, the prompt is keyboard
-only.
+lock holds.
+.PP
+While there is no input the cover shows only a large centred clock and
+date. Pressing a key, clicking, or moving the pointer reveals the
+password prompt, and the keystroke that revealed it is delivered to the
+field so the password can be typed straight away. Return and Escape are
+the exception, on the clock view they only reveal the prompt. After
+.B \-\-idle\-timeout
+seconds without further input the prompt is hidden again, any partly
+typed password is discarded, and the clock returns. The pointer is
+hidden and the prompt itself stays keyboard only.
 .PP
 The lock releases when the invoking user's password is accepted.
 Return submits, Backspace edits, Escape clears the field.
@@ -32,18 +41,58 @@ touching the system login stack. On OpenBSD authentication uses
 with style
 .BR auth-wmlock .
 .PP
+After
+.B \-\-dpms\-timeout
+seconds without input
 .B wmlock
-does not alter DPMS timeouts. Pair it with
+forces the monitor into DPMS Off and forces it back On at the next key,
+button or motion event. The DPMS enabled or disabled state that was in
+effect before the lock is restored when the prompt wakes and again on
+exit, and the server's DPMS standby, suspend and off timeouts are never
+changed, so an
 .BR xset (1)
-or
-.BR xss-lock (1)
-if blanking is wanted.
+configuration outside the lock is preserved. Monitor blanking is
+compiled out when the
+.B xcb-dpms
+development package was not present at build time and is silently
+skipped at run time when the X server reports the display is not DPMS
+capable.
 .SH OPTIONS
+.TP
+.BI \-\-date\-format " FMT"
+.BR strftime (3)
+format for the date line. Default
+.BR "%A %e %B" .
+.TP
+.BI \-\-dpms\-timeout " SECS"
+Force the monitor into DPMS Off after
+.I SECS
+seconds without keyboard or pointer activity. A value of 0 disables
+monitor blanking. Default 300.
 .TP
 .B \-\-help
 Print a short usage summary and exit. The short
 .B \-h
 alias is also accepted.
+.TP
+.BI \-\-idle\-timeout " SECS"
+Hide the prompt and show the clock after
+.I SECS
+seconds without keyboard or pointer activity. Default 10.
+.TP
+.B \-\-no\-idle\-clock
+Keep the password prompt visible for the entire lock and never show the
+clock. The lock then starts directly on the prompt.
+.TP
+.BI \-\-time\-format " FMT"
+.BR strftime (3)
+format for the large time line. The default follows the
+.B LC_TIME
+locale,
+.B "%I:%M %p"
+when the locale defines a 12-hour clock and
+.B %H:%M
+otherwise.
 .TP
 .B \-\-verbose
 Print best-effort diagnostics (OOM score, mlock, VT switch lock, PAM
