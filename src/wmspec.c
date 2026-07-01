@@ -720,9 +720,9 @@ void wNETWMUpdateDesktopLayout(WScreen *scr)
 	scr->net_desktop_layout.corner = (v[3] <= 3) ? (int)v[3] : 0;
 }
 
-void wNETWMCheckRootHintChange(WScreen *scr, XPropertyEvent *event)
+void wNETWMCheckRootHintChange(WScreen *scr, Atom atom)
 {
-	if (event->atom == net_desktop_layout)
+	if (atom == net_desktop_layout)
 		wNETWMUpdateDesktopLayout(scr);
 }
 
@@ -2401,37 +2401,37 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	return False;
 }
 
-void wNETWMCheckClientHintChange(WWindow *wwin, XPropertyEvent *event)
+void wNETWMCheckClientHintChange(WWindow *wwin, Atom atom)
 {
 #ifdef DEBUG_WMSPEC
-	wmessage("clientHintChange type %s", atom_name(event->atom));
+	wmessage("clientHintChange type %s", atom_name(atom));
 #endif
 
-	if (event->atom == net_wm_strut || event->atom == net_wm_strut_partial) {
+	if (atom == net_wm_strut || atom == net_wm_strut_partial) {
 		updateStrut(wwin->screen_ptr, wwin->client_win, False);
 		updateStrut(wwin->screen_ptr, wwin->client_win, True);
 		wScreenUpdateUsableArea(wwin->screen_ptr);
-	} else if (event->atom == net_wm_handled_icons || event->atom == net_wm_icon_geometry) {
+	} else if (atom == net_wm_handled_icons || atom == net_wm_icon_geometry) {
 		updateNetIconInfo(wwin);
-	} else if (event->atom == net_wm_window_type) {
+	} else if (atom == net_wm_window_type) {
 		updateWindowType(wwin);
-	} else if (event->atom == net_wm_name) {
+	} else if (atom == net_wm_name) {
 		char *name = wNETWMGetWindowName(wwin->client_win);
 		wWindowUpdateName(wwin, name);
 		if (name)
 			wfree(name);
-	} else if (event->atom == net_wm_icon_name) {
+	} else if (atom == net_wm_icon_name) {
 		if (wwin->icon) {
 			wIconChangeTitle(wwin->icon, wwin);
 			wIconPaint(wwin->icon);
 		}
-	} else if (event->atom == net_wm_icon) {
+	} else if (atom == net_wm_icon) {
 		updateIconImage(wwin);
-	} else if (event->atom == net_wm_window_opacity) {
+	} else if (atom == net_wm_window_opacity) {
 		updateWindowOpacity(wwin);
-	} else if (event->atom == net_wm_user_time) {
+	} else if (atom == net_wm_user_time) {
 		readUserTime(wwin);
-	} else if (event->atom == net_wm_user_time_window) {
+	} else if (atom == net_wm_user_time_window) {
 		updateUserTimeWindow(wwin, NULL);
 		readUserTime(wwin);
 	}

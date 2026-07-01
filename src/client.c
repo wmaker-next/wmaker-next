@@ -294,14 +294,14 @@ void wClientKill(WWindow * wwin)
  * 	Depends on the changed property.
  *----------------------------------------------------------------------
  */
-void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
+void wClientCheckProperty(WWindow *wwin, Atom atom)
 {
 	XWindowAttributes attribs;
 	WXWMHints *new_hints;
 	int i, g1, g2;
 	char *tmp = NULL;
 
-	switch (event->atom) {
+	switch (atom) {
 	case XA_WM_NAME:
 		if (!wwin->flags.net_has_title) {
 			/* window title was changed */
@@ -561,7 +561,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 		break;
 
 	default:
-		if (event->atom == w_global.atom.wm.protocols) {
+		if (atom == w_global.atom.wm.protocols) {
 
 			PropGetProtocols(wwin->client_win, &wwin->protocols);
 
@@ -570,12 +570,12 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 			if (wwin->frame)
 				wWindowUpdateButtonImages(wwin);
 
-		} else if (event->atom == w_global.atom.wm.colormap_windows) {
+		} else if (atom == w_global.atom.wm.colormap_windows) {
 
 			GetColormapWindows(wwin);
 			wColormapInstallForWindow(wwin->screen_ptr, wwin);
 
-		} else if (event->atom == w_global.atom.wmaker.menu) {
+		} else if (atom == w_global.atom.wmaker.menu) {
 			WApplication *wapp;
 
 			wapp = wApplicationOf(wwin->main_window);
@@ -631,7 +631,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 				wSetFocusTo(wwin->screen_ptr, NULL);
 				wSetFocusTo(wwin->screen_ptr, wwin->screen_ptr->focused_window);
 			}
-		} else if (event->atom == w_global.atom.gnustep.wm_attr) {
+		} else if (atom == w_global.atom.gnustep.wm_attr) {
 			GNUstepWMAttributes *attr;
 
 			PropGetGNUstepWMAttr(wwin->client_win, &attr);
@@ -640,7 +640,7 @@ void wClientCheckProperty(WWindow * wwin, XPropertyEvent * event)
 
 			wfree(attr);
 		} else {
-			wNETWMCheckClientHintChange(wwin, event);
+			wNETWMCheckClientHintChange(wwin, atom);
 		}
 	}
 }

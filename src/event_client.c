@@ -279,9 +279,11 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	WWindow *wwin;
 	WApplication *wapp;
 
+	(void) ev;
+
 	wwin = wWindowFor(e->window);
 	if (wwin) {
-		wClientCheckProperty(wwin, &ev->xproperty);
+		wClientCheckProperty(wwin, e->atom);
 	} else {
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (scr && scr->root_win == e->window) {
@@ -294,7 +296,7 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 					wScreenReadXftDpi(wScreenWithNumber(i));
 				return;
 			}
-			wNETWMCheckRootHintChange(scr, &ev->xproperty);
+			wNETWMCheckRootHintChange(scr, e->atom);
 			return;
 		}
 		/* a client may carry _NET_WM_USER_TIME on a separate
@@ -307,7 +309,7 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 	wapp = wApplicationOf(e->window);
 	if (wapp) {
-		wClientCheckProperty(wapp->main_window_desc, &ev->xproperty);
+		wClientCheckProperty(wapp->main_window_desc, e->atom);
 	}
 }
 
