@@ -164,7 +164,7 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 		scr->flags.ignore_focus_events = e->data.data32[0] ? 1 : 0;
 	} else if (wStartupNotifyProcessXcbEvent(xe)) {
 		/* _NET_STARTUP_INFO{,_BEGIN}, consumed by libsn */
-	} else if (wNETWMProcessClientMessage(&ev->xclient)) {
+	} else if (wNETWMProcessClientMessage(e)) {
 		/* do nothing */
 #ifdef USE_DOCK_XDND
 	} else if (wXDNDProcessClientMessage(&ev->xclient)) {

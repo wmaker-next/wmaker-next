@@ -2013,31 +2013,34 @@ static void handleDesktopNames(WScreen *scr)
 	wfree(data);
 }
 
-Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
+Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 {
 	WScreen *scr;
 	WWindow *wwin;
 
 #ifdef DEBUG_WMSPEC
-	wmessage("processClientMessage type %s", atom_name(event->message_type));
+	wmessage("processClientMessage type %s", atom_name(event->type));
 #endif
 
 	/* every NETWM client message carries 32-bit data fields, refuse
-	 * format-8/16 spoofs before reading data.l[] */
+	 * format-8/16 spoofs before reading data.data32[] */
 	if (event->format != 32)
 		return False;
 
 	scr = wScreenForWindow(event->window);
 	if (scr) {
 		/* generic client messages */
-		if (event->message_type == net_current_desktop) {
-			wWorkspaceChange(scr, event->data.l[0]);
+		if (event->type == net_current_desktop) {
+			wWorkspaceChange(scr, event->data.data32[0]);
 			return True;
 
-		} else if (event->message_type == net_number_of_desktops) {
+		} else if (event->type == net_number_of_desktops) {
 			long value;
 
-			value = event->data.l[0];
+			/* the wire word is CARD32, cast through int32_t so a
+			 * client that sent a negative-as-32-bit count still
+			 * lands in the value < 1 clamp below on LP64 */
+			value = (int32_t)event->data.data32[0];
 			if (value < 1)
 				value = 1;
 			else if (value > MAX_WORKSPACES)
@@ -2061,21 +2064,21 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 			}
 			return True;
 
-		} else if (event->message_type == net_showing_desktop) {
-			wNETWMShowingDesktop(scr, event->data.l[0]);
+		} else if (event->type == net_showing_desktop) {
+			wNETWMShowingDesktop(scr, event->data.data32[0]);
 			return True;
 
-		} else if (event->message_type == net_desktop_names) {
+		} else if (event->type == net_desktop_names) {
 			handleDesktopNames(scr);
 			return True;
 
-		} else if (event->message_type == w_global.atom.wm.protocols
-			   && (Atom)event->data.l[0] == net_wm_ping) {
+		} else if (event->type == w_global.atom.wm.protocols
+			   && (Atom)event->data.data32[0] == net_wm_ping) {
 			/* client echoed our ping back to the root window,
 			 * data.l[2] is the client window per spec */
-			wwin = wWindowFor((Window)event->data.l[2]);
+			wwin = wWindowFor((Window)event->data.data32[2]);
 			if (wwin && wwin->net_ping.timer
-			    && (Time)event->data.l[1] == wwin->net_ping.timestamp)
+			    && (Time)event->data.data32[1] == wwin->net_ping.timestamp)
 				wNETWMCancelPing(wwin);
 			return True;
 		}
@@ -2088,7 +2091,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	 * clients use this for (placing themselves so the framed window
 	 * lands where they expect). If the window turns out to be a splash
 	 * or borderless type the real extents replace this on map. */
-	if (event->message_type == net_request_frame_extents) {
+	if (event->type == net_request_frame_extents) {
 		const WConfig *cfg = w_global.config;
 		uint32_t extents[4];
 		int top;
@@ -2118,10 +2121,10 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	if (!wwin)
 		return False;
 
-	if (event->message_type == net_active_window) {
+	if (event->type == net_active_window) {
 		WScreen *scr = wwin->screen_ptr;
-		long source = event->data.l[0];
-		Time ev_time = (Time)event->data.l[1];
+		long source = event->data.data32[0];
+		Time ev_time = (Time)event->data.data32[1];
 		Bool same_workspace;
 		Bool same_head = True;
 		Bool allow;
@@ -2184,7 +2187,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		}
 		return True;
 
-	} else if (event->message_type == net_close_window) {
+	} else if (event->type == net_close_window) {
 		if (!WFLAGP(wwin, no_closable)) {
 			if (wwin->protocols.DELETE_WINDOW) {
 				wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
@@ -2194,9 +2197,9 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		}
 		return True;
 
-	} else if (event->message_type == net_moveresize_window) {
+	} else if (event->type == net_moveresize_window) {
 		xcb_configure_request_event_t xcre;
-		unsigned long flags = (unsigned long)event->data.l[0];
+		unsigned long flags = (unsigned long)event->data.data32[0];
 		int gravity = flags & 0xff;
 		int saved_gravity = wwin->normal_hints->win_gravity;
 
@@ -2208,10 +2211,10 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		memset(&xcre, 0, sizeof(xcre));
 		xcre.window = event->window;
 		xcre.value_mask = (flags >> 8) & (CWX | CWY | CWWidth | CWHeight);
-		xcre.x = (int16_t)event->data.l[1];
-		xcre.y = (int16_t)event->data.l[2];
-		xcre.width = (uint16_t)event->data.l[3];
-		xcre.height = (uint16_t)event->data.l[4];
+		xcre.x = (int16_t)event->data.data32[1];
+		xcre.y = (int16_t)event->data.data32[2];
+		xcre.width = (uint16_t)event->data.data32[3];
+		xcre.height = (uint16_t)event->data.data32[4];
 		xcre.border_width = wwin->old_border_width;
 
 		/* gravity 0 means honour the window's own gravity, anything
@@ -2222,13 +2225,13 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		wwin->normal_hints->win_gravity = saved_gravity;
 		return True;
 
-	} else if (event->message_type == net_restack_window) {
+	} else if (event->type == net_restack_window) {
 		xcb_configure_request_event_t xcre;
-		long source = event->data.l[0];
-		long detail = event->data.l[2];
+		long source = event->data.data32[0];
+		long detail = event->data.data32[2];
 		WWindow *sib;
 
-		/* data.l[0] = source indication (1=app, 2=pager), l[1] =
+		/* data32[0] = source indication (1=app, 2=pager), l[1] =
 		 * sibling, l[2] = stack mode (Above..Opposite). Route through
 		 * the ConfigureRequest path so the sibling is translated to
 		 * its frame and the managed stacking list is rebuilt in one
@@ -2245,13 +2248,13 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		 * must not reorder other clients' windows. */
 		if (detail < Above || detail > Opposite)
 			return True;
-		if (source != 2 && event->data.l[1] != None)
+		if (source != 2 && event->data.data32[1] != None)
 			return True;
 		memset(&xcre, 0, sizeof(xcre));
 		xcre.window = event->window;
 		xcre.value_mask = CWStackMode;
 		xcre.stack_mode = (uint8_t)detail;
-		sib = (event->data.l[1] != None) ? wWindowFor((Window)event->data.l[1]) : NULL;
+		sib = (event->data.data32[1] != None) ? wWindowFor((Window)event->data.data32[1]) : NULL;
 		if (sib && sib != wwin && sib->screen_ptr == wwin->screen_ptr) {
 			xcre.value_mask |= CWSibling;
 			xcre.sibling = sib->client_win;
@@ -2260,18 +2263,18 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		wClientConfigure(wwin, &xcre);
 		return True;
 
-	} else if (event->message_type == net_wm_state) {
+	} else if (event->type == net_wm_state) {
 		int maximized = wwin->flags.maximized;
-		long set = event->data.l[0];
+		long set = event->data.data32[0];
 
 #ifdef DEBUG_WMSPEC
 		wmessage("net_wm_state set %ld a1 %s a2 %s", set,
-		       atom_name(event->data.l[1]), atom_name(event->data.l[2]));
+		       atom_name(event->data.data32[1]), atom_name(event->data.data32[2]));
 #endif
 
-		doStateAtom(wwin, (Atom) event->data.l[1], set, False);
-		if (event->data.l[2] && event->data.l[2] != event->data.l[1])
-			doStateAtom(wwin, (Atom) event->data.l[2], set, False);
+		doStateAtom(wwin, (Atom) event->data.data32[1], set, False);
+		if (event->data.data32[2] && event->data.data32[2] != event->data.data32[1])
+			doStateAtom(wwin, (Atom) event->data.data32[2], set, False);
 
 		if (wwin->flags.maximized != maximized && !wwin->flags.fullscreen) {
 			if (!wwin->flags.maximized) {
@@ -2285,12 +2288,15 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		updateStateHint(wwin, False, False);
 		return True;
 
-	} else if (event->message_type == net_wm_handled_icons || event->message_type == net_wm_icon_geometry) {
+	} else if (event->type == net_wm_handled_icons || event->type == net_wm_icon_geometry) {
 		updateNetIconInfo(wwin);
 		return True;
 
-	} else if (event->message_type == net_wm_desktop) {
-		long desktop = event->data.l[0];
+	} else if (event->type == net_wm_desktop) {
+		/* 0xFFFFFFFF means all desktops, cast through int32_t so
+		 * the -1 comparison holds on LP64 where widening a
+		 * uint32_t to long would give 4294967295 instead */
+		long desktop = (int32_t)event->data.data32[0];
 
 		if (desktop == -1) {
 			wWindowSetOmnipresent(wwin, True);
@@ -2301,12 +2307,12 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		}
 		return True;
 
-	} else if (event->message_type == net_wm_moveresize) {
+	} else if (event->type == net_wm_moveresize) {
 		XEvent fake_event;
-		int direction = event->data.l[2];
-		int x_root = event->data.l[0];
-		int y_root = event->data.l[1];
-		int button = event->data.l[3];
+		int direction = event->data.data32[2];
+		int x_root = event->data.data32[0];
+		int y_root = event->data.data32[1];
+		int button = event->data.data32[3];
 		int junk;
 		Window junkw;
 		unsigned int mask;
@@ -2318,7 +2324,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 				fake_event.xbutton.window = wwin->frame->core->window;
 				fake_event.xbutton.x_root = x_root;
 				fake_event.xbutton.y_root = y_root;
-				fake_event.xbutton.button = event->data.l[3];
+				fake_event.xbutton.button = event->data.data32[3];
 				XSendEvent(dpy, wwin->frame->core->window, False, ButtonReleaseMask, &fake_event);
 			}
 			return True;
@@ -2379,14 +2385,14 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 
 		return True;
 
-	} else if (event->message_type == net_wm_fullscreen_monitors) {
+	} else if (event->type == net_wm_fullscreen_monitors) {
 		unsigned long top, bottom, left, right, src_indication;
 
-		top = event->data.l[0];
-		bottom = event->data.l[1];
-		left = event->data.l[2];
-		right = event->data.l[3];
-		src_indication = event->data.l[4];
+		top = event->data.data32[0];
+		bottom = event->data.data32[1];
+		left = event->data.data32[2];
+		right = event->data.data32[3];
+		src_indication = event->data.data32[4];
 
 		if (src_indication > 1)
 			wwarning("_NET_WM_FULLSCREEN_MONITORS source indication %ld not supported", src_indication);
@@ -2396,7 +2402,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 	}
 
 #ifdef DEBUG_WMSPEC
-	wmessage("processClientMessage unsupported type %s", atom_name(event->message_type));
+	wmessage("processClientMessage unsupported type %s", atom_name(event->type));
 #endif
 	return False;
 }
