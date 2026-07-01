@@ -23,8 +23,7 @@
 #include "config-schema.h"
 #include "wconfigmodel.h"
 #include "hotcorner.h"
-
-void wKeyTreeRebuild(WScreen *scr);
+#include "misc.h"
 
 static WMPropList *dict_get(WMPropList *dict, const char *key)
 {
@@ -1031,6 +1030,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	Bool workspace_back_force = False;
 	Bool workspace_back_requested;
 	Bool workspace_back_actual;
+	Bool pixmap_path_changed;
 	unsigned int refresh;
 	const WConfigEntry *schema;
 	size_t i, count;
@@ -1039,6 +1039,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		return 0;
 
 	refresh = config_refresh_mask_for_changes(changes);
+	pixmap_path_changed = wConfigChangesHas(changes, WCFG_KEY_PIXMAP_PATH);
 
 	if (wConfigChangesHas(changes, WCFG_KEY_ICON_POSITION)) {
 		update_usable_area = True;
@@ -1105,8 +1106,15 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_ACTIONS))
 		wConfigApplyHotCornerActions(scr, &new_config->hot_corner_actions);
-	if (wConfigChangesHas(changes, WCFG_KEY_SWITCH_PANEL_IMAGES))
+	if (wConfigChangesHas(changes, WCFG_KEY_SWITCH_PANEL_IMAGES) ||
+	    pixmap_path_changed)
 		wConfigApplySwitchPanelImages(scr, &new_config->switch_panel_images);
+	if (scr && pixmap_path_changed && scr->flags.backimage_helper_launched) {
+		/* the wmsetbg helper is only told PixmapPath at launch, so a
+		 * running helper would keep resolving background pixmap files
+		 * against the old search path until restarted */
+		SendHelperMessage(scr, 'P', -1, new_config->pixmap_path);
+	}
 	if (wConfigChangesHas(changes, WCFG_KEY_TAB_DRAG_MODIFIER))
 		wConfigApplyTabDragModifier(new_config->tab_drag_modifier);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY)) {
@@ -1149,8 +1157,19 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	for (i = 0; i < count; i++) {
 		const WConfigResourceSpec *spec;
+		Bool changed;
 
-		if (!wConfigChangesHas(changes, schema[i].config_key))
+		changed = wConfigChangesHas(changes, schema[i].config_key);
+		/* Texture and cursor specs may reference pixmap files by name,
+		 * resolved against PixmapPath at apply time and cached for the
+		 * session. Force a re-apply when PixmapPath changes so a
+		 * previously unresolved file is retried under the new search
+		 * path and a theme edit that only touches PixmapPath still
+		 * repaints. */
+		if (pixmap_path_changed && (schema[i].type == WCFG_TEXTURE_SPEC ||
+					    schema[i].type == WCFG_CURSOR_SPEC))
+			changed = True;
+		if (!changed)
 			continue;
 
 		spec = (const WConfigResourceSpec *)

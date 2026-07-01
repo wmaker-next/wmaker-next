@@ -68,6 +68,9 @@ static char *last_font_spec;
 static char *last_color_spec;
 static char *last_cursor_spec;
 static char *last_background_spec;
+static int helper_messages;
+static char last_helper_type;
+static char *last_helper_msg;
 
 #define EXPECTED_PIXMAP_PATH \
 	"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps:" \
@@ -347,6 +350,15 @@ void wRegrabWindowMouseGrabs(WScreen *scr)
 	regrab_mouse_grabs++;
 }
 
+void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
+{
+	(void)scr;
+	(void)workspace;
+	helper_messages++;
+	last_helper_type = type;
+	replace_test_string(&last_helper_msg, msg);
+}
+
 Bool WMGetAntialiasedText(void)
 {
 	return aa_current;
@@ -416,8 +428,11 @@ static void reset_phase4_counters(void)
 	replace_test_string(&last_color_spec, NULL);
 	replace_test_string(&last_cursor_spec, NULL);
 	replace_test_string(&last_background_spec, NULL);
+	replace_test_string(&last_helper_msg, NULL);
 	switch_panel_center_width = 0;
 	switch_panel_center_height = 0;
+	helper_messages = 0;
+	last_helper_type = 0;
 }
 
 static unsigned int apply_runtime_defaults_for_test(WScreen *scr,
@@ -1660,12 +1675,15 @@ static void test_runtime_apply(void)
 	CHECK(workspace_force_last == 3);
 	CHECK(dock_swaps == 1);
 	CHECK(root_mask_updates == 1);
+	/* WCFG_REFRESH_WINDOW_TEXTURES: PixmapPath changed above so every
+	 * texture spec is force re-applied under the new search path. */
 	CHECK(refresh == (WCFG_REFRESH_MENU_TEXTURE |
 			  WCFG_REFRESH_WINDOW_TITLE_COLOR |
 			  WCFG_REFRESH_WINDOW_FONT |
 			  WCFG_REFRESH_BUTTON_IMAGES |
 			  WCFG_REFRESH_MENU_TITLE_FONT |
-			  WCFG_REFRESH_MENU_FONT));
+			  WCFG_REFRESH_MENU_FONT |
+			  WCFG_REFRESH_WINDOW_TEXTURES));
 
 out:
 	if (old_dict)
@@ -1938,6 +1956,69 @@ static void test_switch_panel_icon_size_live_apply(void)
 		goto out;
 	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
 	CHECK(w_global.config->switch_panel_icon_size == 40);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* PixmapPath is resolved at texture/cursor/switch-panel apply time and the
+ * result cached for the session, so a runtime PixmapPath change must force
+ * a re-apply of every such consumer (and tell a running background helper
+ * the new search path) even when their own values did not change. */
+static void test_pixmap_path_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	const WConfigEntry *schema;
+	WScreen screen;
+	size_t j, count;
+	int textures = 0, cursors = 0;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	screen.flags.backimage_helper_launched = 1;
+
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (j = 0; j < count; j++) {
+		if (schema[j].type == WCFG_TEXTURE_SPEC)
+			textures++;
+		else if (schema[j].type == WCFG_CURSOR_SPEC)
+			cursors++;
+	}
+
+	old_dict = dict_from_desc("{ PixmapPath = (\"/old\"); }");
+	new_dict = dict_from_desc("{ PixmapPath = (\"/new/pix\"); }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(strcmp(w_global.config->pixmap_path, "/new/pix") == 0);
+	CHECK(switch_panel_updates == 1);
+	CHECK(texture_spec_updates == textures);
+	CHECK(cursor_spec_updates == cursors);
+	CHECK(helper_messages == 1);
+	CHECK(last_helper_type == 'P');
+	CHECK(last_helper_msg && strcmp(last_helper_msg, "/new/pix") == 0);
+
+	/* no helper running, no 'P' message */
+	reset_phase4_counters();
+	screen.flags.backimage_helper_launched = 0;
+	apply_runtime_defaults_for_test(&screen, old_dict, new_dict);
+	CHECK(switch_panel_updates == 1);
+	CHECK(texture_spec_updates == textures);
+	CHECK(helper_messages == 0);
+
+	/* PixmapPath unchanged, none of this fires */
+	reset_phase4_counters();
+	apply_runtime_defaults_for_test(&screen, old_dict, old_dict);
+	CHECK(switch_panel_updates == 0);
+	CHECK(texture_spec_updates == 0);
+	CHECK(cursor_spec_updates == 0);
+	CHECK(helper_messages == 0);
 
 out:
 	if (old_dict)
@@ -2445,6 +2526,7 @@ int main(void)
 	test_focus_mode_live_apply();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
+	test_pixmap_path_live_apply();
 	test_disable_miniwindows_live_apply();
 	test_icon_size_live_apply();
 	test_modifier_key_live_apply();
