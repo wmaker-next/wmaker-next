@@ -283,3 +283,10 @@ int wConfigSchemaClampInt(const char *key, int v)
 		return e->max_value;
 	return v;
 }
+
+int wConfigSchemaRequiresRestart(const char *key)
+{
+	const WConfigEntry *e = wConfigEntryForKey(key);
+
+	return e && (e->flags & WCFG_STARTUP_ONLY);
+}

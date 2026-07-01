@@ -87,16 +87,64 @@ static noreturn void quit(WMWidget *w, void *data)
 	exit(0);
 }
 
+static WMPropList *effectiveValue(WMPropList *dict, WMPropList *key)
+{
+	WMPropList *v = dict ? WMGetFromPLDictionary(dict, key) : NULL;
+
+	if (!v && GlobalDB)
+		v = WMGetFromPLDictionary(GlobalDB, key);
+	return v;
+}
+
+/* Panels blindly re-write every key they own on save, so diff the snapshot
+ * taken before storeData() against the current dictionary and report only
+ * keys the schema marks WCFG_STARTUP_ONLY whose effective value actually
+ * changed. Fall back to GlobalDB on both sides so a key the compress step
+ * dropped (because it matched the global default) does not read as a fresh
+ * addition on the next save. */
+static Bool changedStartupOnlyKey(WMPropList *before, WMPropList *after)
+{
+	WMPropList *keys, *key, *v1, *v2;
+	int i, n, side;
+	Bool hit = False;
+
+	for (side = 0; side < 2 && !hit; side++) {
+		WMPropList *dict = side ? before : after;
+
+		if (!dict)
+			continue;
+		keys = WMGetPLDictionaryKeys(dict);
+		n = WMGetPropListItemCount(keys);
+		for (i = 0; i < n && !hit; i++) {
+			key = WMGetFromPLArray(keys, i);
+			if (!wConfigSchemaRequiresRestart(WMGetFromPLString(key)))
+				continue;
+			v1 = effectiveValue(after, key);
+			v2 = effectiveValue(before, key);
+			if (v1 == v2)
+				continue;
+			if (!v1 || !v2 || !WMIsPropListEqualTo(v1, v2))
+				hit = True;
+		}
+		WMReleasePropList(keys);
+	}
+	return hit;
+}
+
 static void save(WMWidget * w, void *data)
 {
-	int i;
+	int i, res;
 	WMPropList *p1, *p2;
 	WMPropList *keyList;
 	WMPropList *key;
 	WMPropList *reply;
+	WMPropList *snapshot;
+	const char *verb = "reconfigure";
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) data;
+
+	snapshot = WindowMakerDB ? WMDeepCopyPropList(WindowMakerDB) : NULL;
 
 	/*    puts("gathering data"); */
 	for (i = 0; i < WPrefs.sectionCount; i++) {
@@ -104,6 +152,22 @@ static void save(WMWidget * w, void *data)
 		if ((rec->callbacks.flags & INITIALIZED_PANEL))
 			savePanelData((Panel *) rec);
 	}
+
+	/* Detect edits to keys the window manager freezes for the session,
+	 * before the compress step below drops keys that match the global
+	 * defaults. Offer a restart so the change is not a silent no-op. */
+	if (changedStartupOnlyKey(snapshot, WindowMakerDB)) {
+		res = WMRunAlertPanel(WMWidgetScreen(w), WPrefs.win,
+				      _("Restart Required"),
+				      _("One or more options you changed only take\n"
+					"effect after Window Maker is restarted."),
+				      _("Restart Now"), _("Later"), NULL);
+		if (res == WAPRDefault)
+			verb = "restart";
+	}
+	if (snapshot)
+		WMReleasePropList(snapshot);
+
 	/*    puts("compressing data"); */
 	/* compare the user dictionary with the global and remove redundant data */
 	keyList = WMGetPLDictionaryKeys(GlobalDB);
@@ -130,14 +194,16 @@ static void save(WMWidget * w, void *data)
 
 	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
 
-	reply = wIPCCommand(NULL, "reconfigure");
+	reply = wIPCCommand(NULL, verb);
 	if (reply) {
 		WMReleasePropList(reply);
 		return;
 	}
 
 	/* fall back to the legacy X ClientMessage when no IPC socket is
-	 * reachable, e.g. talking to an older Window Maker */
+	 * reachable, e.g. talking to an older Window Maker; that channel
+	 * only accepts Reconfigure, so a restart request degrades to the
+	 * live-apply subset and the frozen keys wait for a manual restart */
 	WXSendWmakerCommand(WMScreenDisplay(WMWidgetScreen(w)), "Reconfigure");
 }
 

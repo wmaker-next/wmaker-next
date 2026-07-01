@@ -27,4 +27,8 @@ const char *wConfigSchemaDefault(const char *key);
  * returns v unchanged if the key is unknown. */
 int wConfigSchemaClampInt(const char *key, int v);
 
+/* Nonzero if this key is frozen for the session (WCFG_STARTUP_ONLY),
+ * zero if it re-applies on reconfigure or the key is unknown. */
+int wConfigSchemaRequiresRestart(const char *key);
+
 #endif /* WMCONFIG_SCHEMA_PUBLIC_H_ */

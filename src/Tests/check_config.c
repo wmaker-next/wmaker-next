@@ -2028,6 +2028,36 @@ out:
 	wConfigClearWindowMaker();
 }
 
+/* wConfigSchemaRequiresRestart() is the WPrefs-visible view of the
+ * WCFG_STARTUP_ONLY schema flag: nonzero for a still-frozen key, zero for
+ * a runtime-reload key or an unknown key. */
+static void test_schema_requires_restart(void)
+{
+	const WConfigEntry *schema;
+	size_t j, count;
+	int frozen = 0;
+
+	CHECK(wConfigSchemaRequiresRestart("PerHeadWorkspaces"));
+	CHECK(wConfigSchemaRequiresRestart("NewStyle"));
+	CHECK(wConfigSchemaRequiresRestart("DisableDock"));
+	CHECK(!wConfigSchemaRequiresRestart("IconSize"));
+	CHECK(!wConfigSchemaRequiresRestart("FocusMode"));
+	CHECK(!wConfigSchemaRequiresRestart("PixmapPath"));
+	CHECK(!wConfigSchemaRequiresRestart("NoSuchKey"));
+	CHECK(!wConfigSchemaRequiresRestart(NULL));
+
+	/* the accessor and the schema flag must agree for every key */
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (j = 0; j < count; j++) {
+		int want = (schema[j].flags & WCFG_STARTUP_ONLY) != 0;
+		CHECK(!wConfigSchemaRequiresRestart(schema[j].key) == !want);
+		if (want)
+			frozen++;
+	}
+	CHECK(frozen > 0);
+}
+
 /* EnableWorkspacePager is read per-event; no NETWM hint depends on it, so
  * unfreezing suffices and the new value propagates on reload. */
 static void test_enable_workspace_pager_live_apply(void)
@@ -2527,6 +2557,7 @@ int main(void)
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
 	test_pixmap_path_live_apply();
+	test_schema_requires_restart();
 	test_disable_miniwindows_live_apply();
 	test_icon_size_live_apply();
 	test_modifier_key_live_apply();

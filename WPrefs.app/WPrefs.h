@@ -68,7 +68,6 @@ typedef struct {
 
     void (*createWidgets)(Panel*);     /* called when showing for first time */
     void (*updateDomain)(Panel*);      /* save the changes to the dictionary */
-    Bool (*requiresRestart)(Panel*);   /* return True if some static option was changed */
     void (*undoChanges)(Panel*);       /* reset values to those in the dictionary */
     void (*prepareForClose)(Panel*);   /* called when exiting WPrefs */
     void (*showPanel)(Panel*);	       /* called when entering the panel */
