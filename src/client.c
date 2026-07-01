@@ -146,13 +146,11 @@ void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
 	}
 }
 
-void wClientConfigure(WWindow * wwin, XConfigureRequestEvent * xcre)
+void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 {
 	XWindowChanges xwc;
 	int nx, ny, nwidth, nheight;
 	int ofs_x, ofs_y;
-
-	/*  printf("configure event: %d %d %d %d\n", xcre->x, xcre->y, xcre->width, xcre->height); */
 
 	if (wwin == NULL) {
 		/*
@@ -163,8 +161,8 @@ void wClientConfigure(WWindow * wwin, XConfigureRequestEvent * xcre)
 		xwc.width = xcre->width;
 		xwc.height = xcre->height;
 		xwc.border_width = xcre->border_width;
-		xwc.stack_mode = xcre->detail;
-		xwc.sibling = xcre->above;
+		xwc.stack_mode = xcre->stack_mode;
+		xwc.sibling = xcre->sibling;
 		XConfigureWindow(dpy, xcre->window, xcre->value_mask, &xwc);
 		return;
 	}
@@ -184,14 +182,14 @@ void wClientConfigure(WWindow * wwin, XConfigureRequestEvent * xcre)
 		WWindow *sibling;
 
 		if ((xcre->value_mask & CWSibling) &&
-		    (XFindContext(dpy, xcre->above, w_global.context.client_win, (XPointer *) & desc) == XCSUCCESS)
+		    (XFindContext(dpy, xcre->sibling, w_global.context.client_win, (XPointer *) & desc) == XCSUCCESS)
 		    && (desc->parent_type == WCLASS_WINDOW)) {
 			sibling = desc->parent;
 			xwc.sibling = sibling->frame->core->window;
 		} else {
-			xwc.sibling = xcre->above;
+			xwc.sibling = xcre->sibling;
 		}
-		xwc.stack_mode = xcre->detail;
+		xwc.stack_mode = xcre->stack_mode;
 		XConfigureWindow(dpy, wwin->frame->core->window,
 				 xcre->value_mask & (CWSibling | CWStackMode), &xwc);
 		/* fix stacking order */

@@ -2195,7 +2195,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		return True;
 
 	} else if (event->message_type == net_moveresize_window) {
-		XConfigureRequestEvent xcre;
+		xcb_configure_request_event_t xcre;
 		unsigned long flags = (unsigned long)event->data.l[0];
 		int gravity = flags & 0xff;
 		int saved_gravity = wwin->normal_hints->win_gravity;
@@ -2208,10 +2208,10 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		memset(&xcre, 0, sizeof(xcre));
 		xcre.window = event->window;
 		xcre.value_mask = (flags >> 8) & (CWX | CWY | CWWidth | CWHeight);
-		xcre.x = event->data.l[1];
-		xcre.y = event->data.l[2];
-		xcre.width = event->data.l[3];
-		xcre.height = event->data.l[4];
+		xcre.x = (int16_t)event->data.l[1];
+		xcre.y = (int16_t)event->data.l[2];
+		xcre.width = (uint16_t)event->data.l[3];
+		xcre.height = (uint16_t)event->data.l[4];
 		xcre.border_width = wwin->old_border_width;
 
 		/* gravity 0 means honour the window's own gravity, anything
@@ -2223,7 +2223,7 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		return True;
 
 	} else if (event->message_type == net_restack_window) {
-		XConfigureRequestEvent xcre;
+		xcb_configure_request_event_t xcre;
 		long source = event->data.l[0];
 		long detail = event->data.l[2];
 		WWindow *sib;
@@ -2250,11 +2250,11 @@ Bool wNETWMProcessClientMessage(XClientMessageEvent *event)
 		memset(&xcre, 0, sizeof(xcre));
 		xcre.window = event->window;
 		xcre.value_mask = CWStackMode;
-		xcre.detail = detail;
+		xcre.stack_mode = (uint8_t)detail;
 		sib = (event->data.l[1] != None) ? wWindowFor((Window)event->data.l[1]) : NULL;
 		if (sib && sib != wwin && sib->screen_ptr == wwin->screen_ptr) {
 			xcre.value_mask |= CWSibling;
-			xcre.above = sib->client_win;
+			xcre.sibling = sib->client_win;
 		}
 		xcre.border_width = wwin->old_border_width;
 		wClientConfigure(wwin, &xcre);

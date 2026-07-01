@@ -263,14 +263,9 @@ static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 static void handleConfigureRequest(const xcb_generic_event_t *xe, XEvent *ev)
 {
 	const xcb_configure_request_event_t *e = (const xcb_configure_request_event_t *)xe;
-	WWindow *wwin;
 
-	wwin = wWindowFor(e->window);
-	/* wClientConfigure() reads x/y/width/height/border_width/value_mask
-	 * and detail from the Xlib struct and writes the synthetic
-	 * ConfigureNotify back via XSendEvent, so hand it the cooked event
-	 * until the client.c surface moves onto xcb */
-	wClientConfigure(wwin, &ev->xconfigurerequest);
+	(void) ev;
+	wClientConfigure(wWindowFor(e->window), e);
 }
 
 static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)

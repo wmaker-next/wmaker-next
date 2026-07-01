@@ -23,7 +23,7 @@
 void wClientSetState(WWindow *wwin, int state, Window icon_win);
 
 void wClientRestore(WWindow *wwin);
-void wClientConfigure(WWindow *wwin, XConfigureRequestEvent *xcre);
+void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre);
 void wClientGetGravityOffsets(WWindow *wwin, int *ofs_x, int *ofs_y);
 void wClientSendProtocol(WWindow *wwin, Atom protocol, Time time);
 void wClientKill(WWindow *wwin);
