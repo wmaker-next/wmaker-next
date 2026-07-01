@@ -90,6 +90,13 @@ typedef struct _WScreen {
     int scr_width;		       /* size of the screen */
     int scr_height;
 
+    /* Xft.dpi from the RESOURCE_MANAGER string on screen 0's root, or a
+     * vertical-DPI fallback derived from HeightMMOfScreen when unset,
+     * clamped to 96 on servers that report no physical size. Consumers
+     * that want a HiDPI scale factor divide by 96. Refreshed on
+     * PropertyNotify so xrdb -merge at runtime takes effect. */
+    int xft_dpi;
+
     Window root_win;		       /* root window of screen */
     int  depth;			       /* depth of the default visual */
     Colormap colormap;		       /* root colormap */
@@ -440,6 +447,7 @@ void wScreenDestroy(WScreen *scr);
 void wScreenApplyIconSize(WScreen *scr);
 void wScreenUpdateUsableArea(WScreen *scr);
 void wScreenUpdateRootEventMask(WScreen *scr);
+void wScreenReadXftDpi(WScreen *scr);
 XFontStruct *wScreenGetTechDrawFont(WScreen *scr);
 
 void create_logo_image(WScreen *scr);

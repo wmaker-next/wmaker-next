@@ -631,6 +631,72 @@ static void createInternalWindows(WScreen * scr)
 	scr->mini_screenshot_timeout = 0;
 }
 
+/* scan a RESOURCE_MANAGER buffer for a single "key: value" line, matching
+ * key at the start of a line so a substring like Xft.dpi does not fire on
+ * SomeOtherThing.Xft.dpi, and return a pointer to the first non-blank
+ * byte of the value, the buffer is NUL-terminated by WXGetLatin1String
+ * so callers can hand the return straight to strtod */
+static const char *findResourceValue(const char *buf, const char *key)
+{
+	const char *p;
+	size_t klen;
+
+	klen = strlen(key);
+	p = buf;
+	while (p) {
+		if (strncmp(p, key, klen) == 0 && p[klen] == ':') {
+			p += klen + 1;
+			while (*p == ' ' || *p == '\t')
+				p++;
+			return p;
+		}
+		p = strchr(p, '\n');
+		if (p)
+			p++;
+	}
+	return NULL;
+}
+
+/* read Xft.dpi from the RESOURCE_MANAGER property, xrdb writes that
+ * property only on screen 0's root regardless of which screen the
+ * caller manages so we always read from DefaultRootWindow, when the
+ * key is absent fall back to the vertical DPI derived from the root
+ * height and the reported physical height and clamp to 96 for headless
+ * servers that report 0 mm, no xcb-util-xrm dependency because Xft.dpi
+ * is by convention a plain literal key with no wildcard resolution */
+void wScreenReadXftDpi(WScreen *scr)
+{
+	const char *val;
+	char *rm;
+	double d;
+	int mm, ndpi;
+
+	ndpi = 0;
+	rm = WXGetLatin1String(dpy, DefaultRootWindow(dpy),
+			       XA_RESOURCE_MANAGER, NULL);
+	if (rm) {
+		val = findResourceValue(rm, "Xft.dpi");
+		if (val) {
+			d = strtod(val, NULL);
+			if (d > 0.0)
+				ndpi = (int)(d + 0.5);
+		}
+		wfree(rm);
+	}
+	if (ndpi <= 0) {
+		mm = HeightMMOfScreen(ScreenOfDisplay(dpy, scr->screen));
+		if (mm > 0)
+			ndpi = (int)((double)scr->scr_height * 25.4 / mm + 0.5);
+	}
+	if (ndpi <= 0)
+		ndpi = 96;
+	if (ndpi != scr->xft_dpi) {
+		scr->xft_dpi = ndpi;
+		wmessage("screen %d: Xft.dpi %d (scale %.2f)", scr->screen,
+			 ndpi, ndpi / 96.0);
+	}
+}
+
 /*
  *----------------------------------------------------------------------
  * wScreenInit--
@@ -671,6 +737,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	scr->scr_width = WidthOfScreen(ScreenOfDisplay(dpy, screen_number));
 	scr->scr_height = HeightOfScreen(ScreenOfDisplay(dpy, screen_number));
+
+	wScreenReadXftDpi(scr);
 
 	wInitXinerama(scr);
 

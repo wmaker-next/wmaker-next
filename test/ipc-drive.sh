@@ -178,7 +178,12 @@ if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 fi
 
 note "start Xvfb $DPY"
-Xvfb "$DPY" -screen 0 1024x768x24 -ac >>"$LOG" 2>&1 &
+# -noreset so root properties (RESOURCE_MANAGER for the Xft.dpi checks
+# below, and anything a future row wants to survive the row-2 restart)
+# are not wiped when wmaker's exec() briefly drops the client count to
+# zero, this matches a real session where other clients keep the server
+# alive
+Xvfb "$DPY" -screen 0 1024x768x24 -ac -noreset >>"$LOG" 2>&1 &
 XVFB_PID=$!
 echo "$XVFB_PID" >> "$PIDFILE"
 xvfb_ready() {
@@ -199,6 +204,22 @@ esac
 note "start wmaker (readiness via get_version poll)"
 start_wmaker || fatal "wmaker did not answer get_version within 8s"
 record_pass "IPC readiness poll succeeds"
+
+# ---- Xft.dpi from RESOURCE_MANAGER --------------------------------------
+
+log_has_dpi() {
+	log_has_dpi_n=$(grep -c "Xft.dpi $1 " "$LOG" 2>/dev/null)
+	[ "${log_has_dpi_n:-0}" -ge "$2" ]
+}
+
+note "Xft.dpi from RESOURCE_MANAGER"
+# a multi-line database with a red-herring key that contains the
+# substring Xft.dpi so the line-anchored scan is exercised
+DISPLAY=$DPY xprop -root -f RESOURCE_MANAGER 8s -set RESOURCE_MANAGER \
+	"$(printf 'Xft.antialias:\t1\nBogus.notXft.dpi:\t42\nXft.dpi:\t192\nXft.hinting:\t1\n')"
+wait_for 30 log_has_dpi 192 1
+check "Xft.dpi picked up on RESOURCE_MANAGER PropertyNotify" log_has_dpi 192 1
+# left in place for row 2 to assert the cold-boot re-read after restart
 
 # ---- exit-status convention ----------------------------------------------
 
@@ -386,6 +407,11 @@ MON_PID=
 # socket path must answer again
 wait_for 80 ipc_ready
 check "same socket path re-binds after restart" ipc_ready
+
+# the RESOURCE_MANAGER property set earlier survived the restart
+# thanks to -noreset, so the cold-boot wScreenReadXftDpi() read must
+# have logged the same value a second time
+check "Xft.dpi read from RESOURCE_MANAGER at cold boot" log_has_dpi 192 2
 
 # refresh the recorded pid, restart re-exec'd in place so the original
 # entry in $PIDFILE is stale

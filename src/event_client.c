@@ -285,6 +285,15 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	} else {
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (scr && scr->root_win == e->window) {
+			/* xrdb writes RESOURCE_MANAGER only on screen 0's
+			 * root, but Xft.dpi is a session-wide value so a
+			 * change there re-reads for every managed screen */
+			if (e->atom == XCB_ATOM_RESOURCE_MANAGER) {
+				int i;
+				for (i = 0; i < w_global.screen_count; i++)
+					wScreenReadXftDpi(wScreenWithNumber(i));
+				return;
+			}
 			wNETWMCheckRootHintChange(scr, &ev->xproperty);
 			return;
 		}
