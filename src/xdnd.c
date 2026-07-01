@@ -308,13 +308,13 @@ static void wXDNDGetTypeList(Display *dpy, Window window)
 	wfree(typelist);
 }
 
-Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
+Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
 {
 	/* every XDND client message carries 32-bit data fields */
 	if (event->format != 32)
 		return False;
 
-	if (event->message_type == _XA_XdndEnter) {
+	if (event->type == _XA_XdndEnter) {
 		int i;
 
 		/* reset so a previous drag's negotiated type does not leak
@@ -332,11 +332,11 @@ Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
 			wXDNDGetTypeList(dpy, XDND_ENTER_SOURCE_WIN(event));
 		}
 		return True;
-	} else if (event->message_type == _XA_XdndLeave) {
+	} else if (event->type == _XA_XdndLeave) {
 		selected_typelist = None;
 		xdnd_requestor = None;
 		return True;
-	} else if (event->message_type == _XA_XdndDrop) {
+	} else if (event->type == _XA_XdndDrop) {
 		if (selected_typelist == supported_typelist &&
 		    XDND_DROP_SOURCE_WIN(event) == XGetSelectionOwner(dpy, _XA_XdndSelection)) {
 			xdnd_requestor = event->window;
@@ -346,7 +346,7 @@ Bool wXDNDProcessClientMessage(XClientMessageEvent *event)
 			selected_typelist = None;
 		}
 		return True;
-	} else if (event->message_type == _XA_XdndPosition) {
+	} else if (event->type == _XA_XdndPosition) {
 		Window srcwin = XDND_POSITION_SOURCE_WIN(event);
 		if (selected_typelist == supported_typelist) {
 			long flags = (acceptXDND(event->window) ? 0x1L : 0L) | 0x2L;

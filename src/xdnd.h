@@ -23,29 +23,22 @@
 
 void wXDNDInitializeAtoms(void);
 Bool wXDNDProcessSelection(XEvent *event);
-Bool wXDNDProcessClientMessage(XClientMessageEvent *event);
+Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event);
 void wXDNDMakeAwareness(Window window);
 
 #define XDND_VERSION 3L
 
-#define XDND_ENTER_SOURCE_WIN(e)	((e)->data.l[0])
-#define XDND_ENTER_THREE_TYPES(e)	(((e)->data.l[1] & 0x1UL) == 0)
-#define XDND_ENTER_TYPE(e, i)		((e)->data.l[2 + i])	/* i => (0, 1, 2) */
+/* accessor macros over the xcb_client_message_event_t data.data32[]
+ * words, the source window is data32[0] for every XdndEnter/Position/
+ * Drop message and the type slots ride in data32[2..4] on Enter */
+#define XDND_ENTER_SOURCE_WIN(e)	((e)->data.data32[0])
+#define XDND_ENTER_THREE_TYPES(e)	(((e)->data.data32[1] & 0x1u) == 0)
+#define XDND_ENTER_TYPE(e, i)		((e)->data.data32[2 + (i)])	/* i => (0, 1, 2) */
 
 /* XdndPosition */
-#define XDND_POSITION_SOURCE_WIN(e)     ((e)->data.l[0])
-
-/* XdndStatus */
-#define XDND_STATUS_TARGET_WIN(e)	((e)->xclient.data.l[0])
-#define XDND_STATUS_WILL_ACCEPT_SET(e, b) (e)->xclient.data.l[1] = ((e)->xclient.data.l[1] & ~0x1UL) | (((b) == 0) ? 0 : 0x1UL)
-#define XDND_STATUS_WANT_POSITION_SET(e, b) (e)->xclient.data.l[1] = ((e)->xclient.data.l[1] & ~0x2UL) | (((b) == 0) ? 0 : 0x2UL)
-#define XDND_STATUS_RECT_SET(e, x, y, w, h)	{(e)->xclient.data.l[2] = ((x) << 16) | ((y) & 0xFFFFUL); (e)->xclient.data.l[3] = ((w) << 16) | ((h) & 0xFFFFUL); }
-#define XDND_STATUS_ACTION(e)		((e)->xclient.data.l[4])
+#define XDND_POSITION_SOURCE_WIN(e)     ((e)->data.data32[0])
 
 /* XdndDrop */
-#define XDND_DROP_SOURCE_WIN(e)         ((e)->data.l[0])
-
-/* XdndFinished */
-#define XDND_FINISHED_TARGET_WIN(e)	((e)->xclient.data.l[0])
+#define XDND_DROP_SOURCE_WIN(e)         ((e)->data.data32[0])
 
 #endif

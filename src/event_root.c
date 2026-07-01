@@ -167,7 +167,7 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 	} else if (wNETWMProcessClientMessage(e)) {
 		/* do nothing */
 #ifdef USE_DOCK_XDND
-	} else if (wXDNDProcessClientMessage(&ev->xclient)) {
+	} else if (wXDNDProcessClientMessage(e)) {
 		/* do nothing */
 #endif	/* USE_DOCK_XDND */
 	} else {
