@@ -51,11 +51,10 @@ Bool IsDoubleClick(WScreen *scr, XEvent *event);
 /* per-protocol handlers in event_client.c, event_input.c, event_root.c
  * and event_ext.c are dispatched from a table indexed by
  * response_type & 0x7f.  Each handler reads the typed xcb struct via
- * xe for its own logic and passes the cooked ev through to the legacy
- * XEvent* callback surface (WObjDescriptor, wClientConfigure,
- * wNETWMProcessClientMessage, WMHandleEvent) until those signatures
- * move onto xcb in a later commit.  The wire bytes travel inside ev
- * via WXWireEvent.wire so a handler reached from a modal loop's
+ * xe for its own logic, the cooked ev is now only for the
+ * WObjDescriptor.handle_*(desc, XEvent *) callback surface and
+ * WMHandleEvent().  The wire bytes travel inside ev via
+ * WXWireEvent.wire so a handler reached from a modal loop's
  * WMHandleEvent default arm has them too. */
 typedef void (*WEventHandler)(const xcb_generic_event_t *xe, XEvent *ev);
 

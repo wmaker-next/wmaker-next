@@ -60,6 +60,8 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 	WWindow *wwin;
 	WObjDescriptor *desc;
 
+	(void) ev;
+
 	/* handle transition from Normal to Iconic state */
 	if (e->type == w_global.atom.wm.change_state
 	    && e->format == 32 && e->data.data32[0] == IconicState) {
@@ -171,13 +173,14 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 		/* do nothing */
 #endif	/* USE_DOCK_XDND */
 	} else {
-		/*
-		 * Non-standard thing, but needed by OffiX DND.
-		 * For when the icon frame gets a ClientMessage
-		 * that should have gone to the icon_window.
-		 */
+		/* an unrecognised ClientMessage that landed on an icon
+		 * frame is forwarded to the reparented icon_window so a
+		 * client speaking a private protocol to what it thinks is
+		 * its own icon still receives it, xcb_send_event takes the
+		 * 32 wire bytes verbatim so copy and rewrite .window */
 		if (XFindContext(dpy, e->window, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
 			struct WIcon *icon = NULL;
+			xcb_client_message_event_t fwd;
 
 			if (desc->parent_type == WCLASS_MINIWINDOW) {
 				icon = (WIcon *) desc->parent;
@@ -186,8 +189,10 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 			}
 			if (icon && (wwin = icon->owner)) {
 				if (wwin->client_win != e->window) {
-					ev->xclient.window = wwin->client_win;
-					XSendEvent(dpy, wwin->client_win, False, NoEventMask, ev);
+					fwd = *e;
+					fwd.window = wwin->client_win;
+					xcb_send_event(xconn, 0, wwin->client_win,
+						       0, (const char *)&fwd);
 				}
 			}
 		}
