@@ -52,6 +52,7 @@
 #include "framewin.h"
 #include "session.h"
 #include "shutdown.h"
+#include "xsmp.h"
 #include "wxkb.h"
 #include "rootmenu.h"
 #include "startup.h"
@@ -193,7 +194,8 @@ static void shutdownCommand(WMenu * menu, WMenuEntry * entry)
 	}
 
 	if (result != R_CANCEL) {
-		Shutdown(WSKillMode, False);
+		if (!wXSMPRequestShutdown(w_global.config->save_session_on_exit))
+			Shutdown(WSKillMode, False);
 	}
 #undef R_CLOSE
 #undef R_CANCEL

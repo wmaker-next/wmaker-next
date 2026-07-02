@@ -79,6 +79,7 @@ POTFILES  = \
 	$(top_srcdir)/src/wxkb.c \
 	$(top_srcdir)/src/xdnd.c \
 	$(top_srcdir)/src/xinerama.c \
+	$(top_srcdir)/src/xsmp.c \
 	$(top_srcdir)/src/xutil.c
 
 SUFFIXES = .po .mo

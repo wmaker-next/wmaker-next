@@ -936,6 +936,40 @@ AC_SUBST(STARTUP_NOTIFICATION_LIBS)
 AM_CONDITIONAL([HAVE_STARTUP_NOTIFICATION], [test "x$have_startup_notification" = xyes])
 
 
+dnl X Session Management Protocol client support
+dnl ============================================
+dnl Auto-enabled when libSM/libICE are present: runtime is gated on
+dnl $SESSION_MANAGER so a bare startx session sees no behavioural change,
+dnl and both libraries ship with every X distribution.
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([xsmp],
+    [AS_HELP_STRING([--disable-xsmp],
+                    [do not connect to an XSMP session manager for checkpoint/restart])],
+    [AS_CASE([$enableval],
+        [yes|no], [],
+        [AC_MSG_ERROR([bad value '$enableval' for --enable-xsmp])])],
+    [enable_xsmp=auto])
+m4_divert_pop([INIT_PREPARE])dnl
+
+AS_IF([test "x$enable_xsmp" != "xno"],
+    [PKG_CHECK_MODULES([XSMP], [sm ice],
+        [AC_DEFINE([USE_XSMP], [1],
+                   [defined when libSM/libICE are linked so wmaker registers as an XSMP client])
+         enable_xsmp=yes
+         supported_core="$supported_core XSMP"],
+        [AS_IF([test "x$enable_xsmp" = "xyes"],
+            [AC_MSG_ERROR([--enable-xsmp given but libSM/libICE not found -- $XSMP_PKG_ERRORS])],
+            [enable_xsmp=no
+             XSMP_CFLAGS=
+             XSMP_LIBS=
+             unsupported="$unsupported XSMP"])])],
+    [XSMP_CFLAGS=
+     XSMP_LIBS=
+     unsupported="$unsupported XSMP"])
+AC_SUBST(XSMP_CFLAGS)
+AC_SUBST(XSMP_LIBS)
+
+
 dnl PANGO support
 dnl =============
 dnl The libray can be used by WINGs to get better support on UTF-8 for i18n

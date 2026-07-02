@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Window Maker registers with an XSMP session manager
+---------------------------------------------------
+
+When started under a session manager that exports SESSION_MANAGER,
+Window Maker now opens an XSMP connection so the session manager can
+checkpoint and restart it. On a SaveYourself request the window list
+is snapshotted in the phase-2 slot after every other client has
+answered, so the on-disk WMState reflects the full set of managed
+windows at the moment of the checkpoint. The root-menu Exit and Kill
+X session entries ask the session manager for an orderly logout when
+connected and only fall back to closing clients directly when no
+session manager is present. Under a plain startx or xinit session
+nothing changes. Pass --disable-xsmp to configure to drop the libSM
+and libICE link and keep the previous behaviour unconditionally.
+
 Decorative work pauses while the display is off
 -----------------------------------------------
 

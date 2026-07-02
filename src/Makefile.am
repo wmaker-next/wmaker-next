@@ -120,6 +120,8 @@ wmaker_SOURCES = 	\
 	xdnd.h \
 	xinerama.h \
 	xinerama.c \
+	xsmp.c \
+	xsmp.h \
 	wxkb.c \
 	wxkb.h \
 	xutil.c \
@@ -175,6 +177,7 @@ AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
 	@XCB_CFLAGS@ \
 	@XCB_SCREENSAVER_CFLAGS@ \
 	@STARTUP_NOTIFICATION_CFLAGS@ \
+	@XSMP_CFLAGS@ \
 	@HEADER_SEARCH_PATH@
 
 
@@ -185,6 +188,7 @@ wmaker_LDADD = \
 	$(top_builddir)/wrlib/libwraster.la\
 	@XLFLAGS@ \
 	@STARTUP_NOTIFICATION_LIBS@ \
+	@XSMP_LIBS@ \
 	@XCB_LIBS@ \
 	@XCB_SCREENSAVER_LIBS@ \
 	@XLIBS@ \

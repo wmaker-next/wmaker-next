@@ -39,6 +39,7 @@
 #include "screen.h"
 #include "shutdown.h"
 #include "ipc.h"
+#include "xsmp.h"
 
 
 static void wipeDesktop(WScreen * scr);
@@ -65,6 +66,11 @@ static void wipeDesktop(WScreen * scr);
 void Shutdown(WShutdownMode mode, Bool external)
 {
 	int i;
+
+	/* a deliberate exit or restart must not look like a crash to the
+	 * session manager, drop the restart hint and close the ICE
+	 * connection before tearing down screens */
+	wXSMPDisconnect();
 
 	switch (mode) {
 	case WSLogoutMode:

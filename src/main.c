@@ -87,6 +87,7 @@ const char *__lsan_default_suppressions(void)
 #include "misc.h"
 #include "framewin.h"
 #include "startup_notify.h"
+#include "xsmp.h"
 
 #include <WINGs/WUtil.h>
 
@@ -494,6 +495,7 @@ static void print_help(void)
 	puts(_(" --no-autolaunch	do not autolaunch applications"));
 	puts(_(" --no-drawer		disable drawers in the dock"));
 	puts(_(" --dont-restore		do not restore saved session"));
+	puts(_(" --clientid id		session management client ID"));
 
 	puts(_(" --locale locale	locale to use"));
 
@@ -679,6 +681,7 @@ static int real_main(int argc, char **argv)
 	int i;
 	char *pos;
 	int d, s;
+	const char *sm_client_id = NULL;
 
 	setlocale(LC_ALL, "");
 	wsetabort(wAbort);
@@ -757,6 +760,13 @@ static int real_main(int argc, char **argv)
 					wwarning(_("bad value for visualid: \"%s\""), argv[i]);
 					exit(0);
 				}
+			} else if (strcmp(argv[i], "-clientid") == 0 || strcmp(argv[i], "--clientid") == 0) {
+				i++;
+				if (i >= argc) {
+					wwarning(_("too few arguments for %s"), argv[i - 1]);
+					exit(0);
+				}
+				sm_client_id = argv[i];
 			} else if (strcmp(argv[i], "-static") == 0 || strcmp(argv[i], "--static") == 0) {
 				wPreferences.flags.noupdates = 1;
 			} else if (strcmp(argv[i], "--no-polling") == 0) {
@@ -881,6 +891,8 @@ static int real_main(int argc, char **argv)
 
 	if (w_global.screen_count == 1)
 		multiHead = False;
+
+	wXSMPConnect(argc, argv, sm_client_id);
 
 	execInitScript();
 #ifdef HAVE_INOTIFY

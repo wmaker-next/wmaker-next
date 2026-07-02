@@ -11,6 +11,11 @@ emulate NeXT's look as much as possible, but it deviates from it as
 necessary.
 .SH "OPTIONS"
 .TP
+.BI \-\-clientid " id"
+specify the XSMP session management client ID. This is normally passed
+by the session manager when restarting Window Maker to restore the
+saved session
+.TP
 .BI \-display " host:display.screen"
 specify the display to use.
 On multiheaded machines, Window Maker will automatically manage all screens.

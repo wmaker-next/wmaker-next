@@ -574,6 +574,12 @@ Disables use of the @emph{X Synchronization} extension for the @code{_NET_WM_SYN
 protocol, which paces opaque interactive resizes to the client's redraw so the window content
 keeps up with the frame.
 
+@item --disable-xsmp
+Disable registering as an XSMP client when a session manager sets @env{SESSION_MANAGER}.
+When enabled Window Maker checkpoints @file{WMState} in the phase-2 SaveYourself slot and hands a
+user-initiated exit off to the session manager for an orderly logout, when disabled or when no
+session manager is running the local shutdown path is used unchanged.
+
 @item --without-xfixes
 Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
 whose clipboard-manager mode depends on XFixes selection owner notifications.

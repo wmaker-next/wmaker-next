@@ -52,6 +52,7 @@
 #include "main.h"
 #include "event.h"
 #include "shutdown.h"
+#include "xsmp.h"
 
 
 #define ICON_SIZE w_global.config->icon_size
@@ -545,8 +546,10 @@ void ExecuteExitCommand(WScreen *scr, long quickmode)
 			w_global.config->save_session_on_exit = oldSaveSessionFlag;
 		}
 	}
-	if (result == R_EXIT)
-		Shutdown(WSExitMode, False);
+	if (result == R_EXIT) {
+		if (!wXSMPRequestShutdown(w_global.config->save_session_on_exit))
+			Shutdown(WSExitMode, False);
+	}
 
 #undef R_EXIT
 #undef R_CANCEL
