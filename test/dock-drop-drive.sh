@@ -75,6 +75,12 @@ for tool in Xvfb xdpyinfo xwininfo xprop; do
 done
 [ -x "$ROOT/src/.libs/wmaker" ] || skip_all "src/.libs/wmaker not built"
 [ -x "$WMAKERMSG" ] || skip_all "util/.libs/wmakermsg not built"
+# the DisplayName check asserts Name[en] wins over Name, which needs a
+# working en_* LC_MESSAGES so the desktop-file parser sees "en" as the
+# locale prefix, on a box with only C generated the localized key is
+# never matched and both DisplayName checks would false-fail
+locale -a 2>/dev/null | grep -qi '^en_' \
+	|| skip_all "no en_* locale installed (locale-gen en_US.UTF-8)"
 
 ${CC:-cc} -std=gnu11 "$ROOT/test/xdnd-source.c" -o "$XDNDSRC" -lX11 >>"$LOG" 2>&1 \
 	|| skip_all "could not build test/xdnd-source.c"
@@ -272,7 +278,9 @@ check "no loose appicon spawned for class-mismatched launch" \
 NOTX_PID=$(notxterm_pid)
 echo "$NOTX_PID" >> "$PIDFILE"
 kill "$NOTX_PID" 2>/dev/null
-check "NotXTerm window unmanaged after kill" wait_for 50 window_gone
+# the unmanage can lag the DestroyNotify behind the shared-appicon tile
+# reset round-trip, and under load that has exceeded the usual 5 s poll
+check "NotXTerm window unmanaged after kill" wait_for 150 window_gone
 
 # wDockLaunchWithState silently refuses while running||launching, and
 # with shared_appicon the tile only resets once the DestroyNotify for

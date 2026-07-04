@@ -106,12 +106,15 @@ osd_wider_than() {
 }
 
 write_domain() {
+	# the chain leader is a plain letter combination rather than an
+	# F-key: some xdotool builds prepend Alt_L when synthesizing an
+	# F-key keysym so the passive grab for a bare F9 never matches
 	cat > "$WMHOME/Defaults/WindowMaker" <<EOF
 {
   KeychainDisplayPosition = $1;
   KeychainTimeoutDelay = 2000;
-  MaximizeKey = "Control+F9 a m";
-  VMaximizeKey = "Control+F9 v";
+  MaximizeKey = "Control+Shift+O a m";
+  VMaximizeKey = "Control+Shift+O v";
 }
 EOF
 	# without a root menu OpenRootMenu() pops a modal error dialog
@@ -170,7 +173,7 @@ if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 fi
 
 note "start Xvfb $DPY"
-Xvfb "$DPY" -screen 0 1024x768x24 -ac >>"$LOG" 2>&1 &
+Xvfb "$DPY" -screen 0 1024x768x24 -noreset -ac >>"$LOG" 2>&1 &
 XVFB_PID=$!
 echo "$XVFB_PID" >> "$PIDFILE"
 xvfb_ready() {
@@ -192,7 +195,7 @@ sleep 0.5
 snapshot_base
 
 note "leader maps the OSD"
-xdo key ctrl+F9
+xdo key --clearmodifiers ctrl+shift+o
 new_mapped() {
 	NEW=$(new_since_base)
 	[ -n "$NEW" ]
@@ -222,7 +225,7 @@ wait_for 20 osd_unmapped
 check "OSD unmapped after leaf executes" osd_unmapped
 
 note "timeout hides the OSD"
-xdo key ctrl+F9
+xdo key --clearmodifiers ctrl+shift+o
 wait_for 20 osd_mapped || fatal "OSD did not remap on second leader"
 check "OSD mapped after second leader" osd_mapped
 # KeychainTimeoutDelay = 2000 ms, the OSD must unmap on its own
@@ -230,7 +233,7 @@ wait_for 40 osd_unmapped
 check "OSD unmapped after KeychainTimeoutDelay" osd_unmapped
 
 note "unrecognized follower hides the OSD"
-xdo key ctrl+F9
+xdo key --clearmodifiers ctrl+shift+o
 wait_for 20 osd_mapped || fatal "OSD did not remap on third leader"
 xdo key z
 wait_for 20 osd_unmapped
@@ -246,7 +249,7 @@ start_wmaker || fatal "wmaker did not come up"
 sleep 0.5
 
 snapshot_base
-xdo key ctrl+F9
+xdo key --clearmodifiers ctrl+shift+o
 sleep 0.3
 NEW=$(new_since_base)
 check "no OSD mapped with KeychainDisplayPosition = none" \

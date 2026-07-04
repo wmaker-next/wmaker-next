@@ -66,6 +66,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
   HotCornerEdge = 10;
   HotCornerActions = ("touch $MARK/tl", "touch $MARK/tr",
                       "touch $MARK/bl", "touch $MARK/br");
+  RootMenuKey = "Control+Shift+R";
 }
 EOF
 export WMAKER_USER_ROOT="$WMHOME"
@@ -129,6 +130,10 @@ hit_corner $((W-2)) $((H-2)) br "bottom-right over fullscreen client"
 
 DISPLAY=$DPY wmctrl -i -c "$XTW" 2>/dev/null
 wait_for 30 pid_gone "$XTPID"
+# wSetFocusTo(scr, NULL) after unmanage moves input focus back onto
+# no_focus_win, give that a beat before the RootMenuKey press below so
+# the KeyPress lands on a window wmaker listens on
+sleep 0.3
 
 # --- 5. root PointerMotionMask gated on mapped menus ------------------------
 # ScrollableMenus is at its YES default (not in the WindowMaker domain
@@ -153,7 +158,10 @@ root_mask | grep ButtonMotion >/dev/null \
 note "ok: root ButtonMotion always selected"
 
 note "root motion mask: menu open"
-xdo key F12
+# some xdotool builds prepend Alt_L when synthesizing an F-key keysym
+# so the passive grab for the F12 default never matches, the domain
+# above rebinds RootMenuKey to a plain letter combination instead
+xdo key --clearmodifiers ctrl+shift+r
 wait_for 30 root_has_motion \
     || fail "root has no PointerMotion with a menu mapped"
 note "ok: root PointerMotion with menu mapped"

@@ -82,7 +82,11 @@ if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     exit 1
 fi
 note "start Xephyr $DPY"
-Xephyr "$DPY" -screen ${W}x${H} -ac >>"$LOG" 2>&1 &
+# -noreset keeps Xephyr from resetting between the per-style wmaker
+# restarts, on hosts where /tmp/.X11-unix is not sticky-1777 Xephyr
+# listens on the abstract socket only and the next wmaker races the
+# reset with a "could not open display" fatal
+Xephyr "$DPY" -screen ${W}x${H} -noreset -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {
@@ -423,8 +427,23 @@ isz=$((THEIGHT - 4))
 # at width = 4*theight all three button cores still fit (k=4 boundary),
 # leaving theight of surface, the icon (theight-4) plus a theight of
 # slack does not fit so it must be hidden even though
-# width >= 4*top_width
-xdo windowsize "$XTW" $((4 * THEIGHT)) 100; sleep 0.4
+# width >= 4*top_width. xterm's PResizeInc rounds a client-width
+# ConfigureRequest to a cell multiple, so 4*theight can land below the
+# k=4 boundary and drop two of the three cores, defeating the check.
+# Widen the request until the frame reads back at least 4*theight but
+# stay below 5*theight-4 so surface < icon+slack still holds.
+narrow_target=$((4 * THEIGHT))
+narrow_limit=$((5 * THEIGHT - 5))
+frame_width() {
+    DISPLAY=$DPY xwininfo -id "$frame" | awk '/Width:/ {print $2; exit}'
+}
+xdo windowsize "$XTW" "$narrow_target" 100; sleep 0.4
+while [ "$(frame_width)" -lt $((4 * THEIGHT)) ]; do
+    narrow_target=$((narrow_target + 4))
+    [ "$narrow_target" -le "$narrow_limit" ] \
+        || fail "cannot land frame width in [4*theight,5*theight-5) at PResizeInc"
+    xdo windowsize "$XTW" "$narrow_target" 100; sleep 0.3
+done
 fx=$(DISPLAY=$DPY xwininfo -id "$frame" | awk '/Absolute upper-left X:/ {print $4; exit}')
 fy=$(DISPLAY=$DPY xwininfo -id "$frame" | awk '/Absolute upper-left Y:/ {print $4; exit}')
 narrowslot="${isz}x${isz}+$((fx + 2*THEIGHT + 3))+$((fy + 2))"
