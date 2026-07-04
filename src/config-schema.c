@@ -144,7 +144,6 @@ static const WConfigEnum geometry_displays[] = {
 	{"Center", WDIS_CENTER, 0},
 	{"Corner", WDIS_TOPLEFT, 0},
 	{"Floating", WDIS_FRAME_CENTER, 0},
-	{"Line", WDIS_NEW, 0},
 	{NULL, 0, 0}
 };
 

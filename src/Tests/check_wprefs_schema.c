@@ -88,10 +88,6 @@ static const size_t wprefs_choice_count =
 static const struct choice wprefs_hidden[] = {
 	/* config-values.h marks WIS_RANDOM "secret" */
 	{ "IconificationStyle", "random" },
-	/* moveres.c showPosition() has the WDIS_NEW move-mode drawing
-	 * compiled out under #if 0 and the cycle key skips it, the value
-	 * is only meaningful for ResizeDisplay which shares the enum */
-	{ "MoveDisplay", "Line" },
 };
 
 static int wprefs_hides(const char *key, const char *value)

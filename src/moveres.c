@@ -49,7 +49,7 @@
 
 /* How many different types of geometry/position
  display thingies are there? */
-#define NUM_DISPLAYS 5
+#define NUM_DISPLAYS 4
 
 #define LEFT            1
 #define RIGHT           2
@@ -140,23 +140,7 @@ static void showPosition(WWindow * wwin, int x, int y)
 {
 	WScreen *scr = wwin->screen_ptr;
 
-	if (w_global.config->move_display == WDIS_NEW) {
-#if 0
-		int width = wwin->frame->core->width;
-		int height = wwin->frame->core->height;
-
-		GC lgc = scr->line_gc;
-		XSetForeground(dpy, lgc, scr->line_pixel);
-		snprintf(num, sizeof(num), "%i", x);
-
-		XDrawLine(dpy, scr->root_win, lgc, 0, y - 1, scr->scr_width, y - 1);
-		XDrawLine(dpy, scr->root_win, lgc, 0, y + height + 2, scr->scr_width, y + height + 2);
-		XDrawLine(dpy, scr->root_win, lgc, x - 1, 0, x - 1, scr->scr_height);
-		XDrawLine(dpy, scr->root_win, lgc, x + width + 2, 0, x + width + 2, scr->scr_height);
-#endif
-	} else {
-		WSetGeometryViewShownPosition(scr->gview, x, y);
-	}
+	WSetGeometryViewShownPosition(scr->gview, x, y);
 }
 
 static void placeGeometryDisplay(WWindow *wwin, int mode, int x, int y, int w, int h)
@@ -184,11 +168,6 @@ static void cyclePositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 	w_global.config->move_display++;
 	w_global.config->move_display %= NUM_DISPLAYS;
 
-	if (w_global.config->move_display == WDIS_NEW) {
-		w_global.config->move_display++;
-		w_global.config->move_display %= NUM_DISPLAYS;
-	}
-
 	if (w_global.config->move_display == WDIS_NONE)
 		WMUnmapWidget(scr->gview);
 	else
@@ -199,7 +178,7 @@ static void mapPositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 {
 	WScreen *scr = wwin->screen_ptr;
 
-	if (w_global.config->move_display == WDIS_NEW || w_global.config->move_display == WDIS_NONE)
+	if (w_global.config->move_display == WDIS_NONE)
 		return;
 
 	placeGeometryDisplay(wwin, w_global.config->move_display, x, y, w, h);
@@ -209,18 +188,9 @@ static void mapPositionDisplay(WWindow * wwin, int x, int y, int w, int h)
 static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int direction)
 {
 	WScreen *scr = wwin->screen_ptr;
-	Window root = scr->root_win;
-	GC gc = scr->line_gc;
-	XFontStruct *tdfont;
-	int ty, by, my, x, y, mx, s;
-	char num[16];
-	XSegment segment[4];
-	int fw, fh;
+	int ty, by;
 
-	/* This seems necessary for some odd reason (too lazy to write x1-1 and
-	 * x2-1 everywhere below in the code). But why only for x? */
-	x1--;
-	x2--;
+	(void)direction;
 
 	if (HAS_BORDER_WITH_SELECT(wwin)) {
 		x1 += scr->frame_border_width;
@@ -232,138 +202,10 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 	ty = y1 + wwin->frame->top_width;
 	by = y2 - wwin->frame->bottom_width;
 
-	if (w_global.config->size_display == WDIS_NEW) {
-		tdfont = wScreenGetTechDrawFont(scr);
-		fw = XTextWidth(tdfont, "8888", 4);
-		fh = tdfont->ascent + tdfont->descent;
-
-		XSetForeground(dpy, gc, scr->line_pixel);
-
-		/* vertical geometry */
-		if (((direction & LEFT) && (x2 < scr->scr_width - fw)) || (x1 < fw)) {
-			x = x2;
-			s = -15;
-		} else {
-			x = x1;
-			s = 15;
-		}
-		my = (ty + by) / 2;
-
-		/* top arrow & end bar */
-		segment[0].x1 = x - (s + 6);
-		segment[0].y1 = ty;
-		segment[0].x2 = x - (s - 10);
-		segment[0].y2 = ty;
-
-		/* arrowhead */
-		segment[1].x1 = x - (s - 2);
-		segment[1].y1 = ty + 1;
-		segment[1].x2 = x - (s - 5);
-		segment[1].y2 = ty + 7;
-
-		segment[2].x1 = x - (s - 2);
-		segment[2].y1 = ty + 1;
-		segment[2].x2 = x - (s + 1);
-		segment[2].y2 = ty + 7;
-
-		/* line */
-		segment[3].x1 = x - (s - 2);
-		segment[3].y1 = ty + 1;
-		segment[3].x2 = x - (s - 2);
-		segment[3].y2 = my - fh / 2 - 1;
-
-		XDrawSegments(dpy, root, gc, segment, 4);
-
-		/* bottom arrow & end bar */
-		segment[0].y1 = by;
-		segment[0].y2 = by;
-
-		/* arrowhead */
-		segment[1].y1 = by - 1;
-		segment[1].y2 = by - 7;
-
-		segment[2].y1 = by - 1;
-		segment[2].y2 = by - 7;
-
-		/* line */
-		segment[3].y1 = my + fh / 2 + 2;
-		segment[3].y2 = by - 1;
-
-		XDrawSegments(dpy, root, gc, segment, 4);
-
-		snprintf(num, sizeof(num), "%i", (by - ty - wwin->normal_hints->base_height) /
-			 wwin->normal_hints->height_inc);
-		fw = XTextWidth(tdfont, num, strlen(num));
-
-		/* Display the height. */
-		XSetFont(dpy, gc, tdfont->fid);
-		XDrawString(dpy, root, gc, x - s + 3 - fw / 2, my + tdfont->ascent - fh / 2 + 1, num,
-			    strlen(num));
-
-		/* horizontal geometry */
-		if (y1 < 15) {
-			y = y2;
-			s = -15;
-		} else {
-			y = y1;
-			s = 15;
-		}
-		mx = x1 + (x2 - x1) / 2;
-		snprintf(num, sizeof(num), "%i", (x2 - x1 - wwin->normal_hints->base_width) /
-			 wwin->normal_hints->width_inc);
-		fw = XTextWidth(tdfont, num, strlen(num));
-
-		/* left arrow & end bar */
-		segment[0].x1 = x1;
-		segment[0].y1 = y - (s + 6);
-		segment[0].x2 = x1;
-		segment[0].y2 = y - (s - 10);
-
-		/* arrowhead */
-		segment[1].x1 = x1 + 7;
-		segment[1].y1 = y - (s + 1);
-		segment[1].x2 = x1 + 1;
-		segment[1].y2 = y - (s - 2);
-
-		segment[2].x1 = x1 + 1;
-		segment[2].y1 = y - (s - 2);
-		segment[2].x2 = x1 + 7;
-		segment[2].y2 = y - (s - 5);
-
-		/* line */
-		segment[3].x1 = x1 + 1;
-		segment[3].y1 = y - (s - 2);
-		segment[3].x2 = mx - fw / 2 - 2;
-		segment[3].y2 = y - (s - 2);
-
-		XDrawSegments(dpy, root, gc, segment, 4);
-
-		/* right arrow & end bar */
-		segment[0].x1 = x2 + 1;
-		segment[0].x2 = x2 + 1;
-
-		/* arrowhead */
-		segment[1].x1 = x2 - 6;
-		segment[1].x2 = x2;
-
-		segment[2].x1 = x2;
-		segment[2].x2 = x2 - 6;
-
-		/* line */
-		segment[3].x1 = mx + fw / 2 + 2;
-		segment[3].x2 = x2;
-
-		XDrawSegments(dpy, root, gc, segment, 4);
-
-		/* Display the width. */
-		XDrawString(dpy, root, gc, mx - fw / 2 + 1, y - s + tdfont->ascent - fh / 2 + 1, num,
-			    strlen(num));
-	} else {
-		WSetGeometryViewShownSize(scr->gview, (x2 - x1 - wwin->normal_hints->base_width)
-					  / wwin->normal_hints->width_inc,
-					  (by - ty - wwin->normal_hints->base_height)
-					  / wwin->normal_hints->height_inc);
-	}
+	WSetGeometryViewShownSize(scr->gview, (x2 - x1 - wwin->normal_hints->base_width)
+				  / wwin->normal_hints->width_inc,
+				  (by - ty - wwin->normal_hints->base_height)
+				  / wwin->normal_hints->height_inc);
 }
 
 static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int dir)
@@ -373,7 +215,7 @@ static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int
 	w_global.config->size_display++;
 	w_global.config->size_display %= NUM_DISPLAYS;
 
-	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE) {
+	if (w_global.config->size_display == WDIS_NONE) {
 		WMUnmapWidget(scr->gview);
 	} else {
 		placeGeometryDisplay(wwin, w_global.config->size_display, x, y, w, h);
@@ -383,7 +225,7 @@ static void cycleGeometryDisplay(WWindow * wwin, int x, int y, int w, int h, int
 
 static void mapGeometryDisplay(WWindow * wwin, int x, int y, int w, int h)
 {
-	if (w_global.config->size_display == WDIS_NEW || w_global.config->size_display == WDIS_NONE)
+	if (w_global.config->size_display == WDIS_NONE)
 		return;
 
 	placeGeometryDisplay(wwin, w_global.config->size_display, x, y, w, h);
@@ -1357,7 +1199,6 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	if (!wwin->flags.selected) {
 		wUnselectWindows(scr);
 	}
-	XGrabServer(dpy);
 	XGrabPointer(dpy, scr->root_win, True, PointerMotionMask
 		     | ButtonReleaseMask | ButtonPressMask, GrabModeAsync,
 		     GrabModeAsync, None, wPreferences.cursor[WCUR_NORMAL], CurrentTime);
@@ -1395,7 +1236,6 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			showGeometry(wwin, src_x + off_x, src_y + off_y, src_x + off_x + ww, src_y + off_y + wh,
 				     0);
 
-		XUngrabServer(dpy);
 		XSync(dpy, False);
 
 		switch (event.type) {
@@ -1547,9 +1387,6 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			break;
 		}
 
-		XGrabServer(dpy);
-		/*xxx */
-
 		if (wwin->flags.shaded && !scr->selected_windows) {
 			moveGeometryDisplayCentered(scr, src_x + off_x + w / 2, src_y + off_y + h / 2);
 		} else {
@@ -1579,10 +1416,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		} else if (!scr->selected_windows)
 			showPosition(wwin, src_x + off_x, src_y + off_y);
 
-				if (opaqueMoveResize) {
-					XUngrabServer(dpy);
-					wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww, wh - vert_border);
-				};
+		if (opaqueMoveResize)
+			wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww, wh - vert_border);
 
 		if (done) {
 			wWireframeHide(scr);
@@ -1596,7 +1431,6 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 
 			XUngrabKeyboard(dpy, CurrentTime);
 			XUngrabPointer(dpy, CurrentTime);
-			XUngrabServer(dpy);
 
 			/* XKeyEvent and XButtonEvent share layout up to .time
 			 * so this reads correctly whichever ended the loop */
@@ -1850,9 +1684,6 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 						wWorkspaceForHead(scr, wwin->last_head));
 					wSetFocusTo(scr, wwin);
 				}
-				if (w_global.config->move_display == WDIS_NEW)
-					showPosition(wwin, moveData.realX, moveData.realY);
-
 				/* close the suppression bracket after the
 				 * last frame-moving request, the
 				 * NotifyUngrab crossing from the later
@@ -2111,8 +1942,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	int rx1, ry1, rx2, ry2;
 	int res = 0;
 	KeyCode shiftl, shiftr;
-	int orig_fx = fx;
-	int orig_fy = fy;
 	int orig_fw = fw;
 	int orig_fh = fh;
 	int original_fw = fw;
@@ -2121,7 +1950,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 	int opaqueResize = w_global.config->opaque_resize;
-	Bool server_grabbed = False;
 
 	if (!IS_RESIZABLE(wwin))
 		return;
@@ -2199,19 +2027,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		case KeyPress:
 			showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 			if (!opaqueResize && started
-			    && (event.xkey.keycode == shiftl || event.xkey.keycode == shiftr)) {
+			    && (event.xkey.keycode == shiftl || event.xkey.keycode == shiftr))
 				cycleGeometryDisplay(wwin, fx, fy, fw, fh, res);
-				/* the tech-draw style XORs on the root window
-				 * and needs the display frozen between its
-				 * draw and erase, the other styles do not */
-				if (server_grabbed && w_global.config->size_display != WDIS_NEW) {
-					XUngrabServer(dpy);
-					server_grabbed = False;
-				} else if (!server_grabbed && w_global.config->size_display == WDIS_NEW) {
-					XGrabServer(dpy);
-					server_grabbed = True;
-				}
-			}
 			showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 			break;
 
@@ -2220,8 +2037,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				dw = 0;
 				dh = 0;
 
-				orig_fx = fx;
-				orig_fy = fy;
 				orig_fw = fw;
 				orig_fh = fh;
 
@@ -2305,12 +2120,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 				XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 
-				if (!opaqueResize && w_global.config->size_display == WDIS_NEW) {
-					/* see the KeyPress case */
-					XGrabServer(dpy);
-					server_grabbed = True;
-				}
-
 				/* Draw the resize frame for the first time. */
 				mapGeometryDisplay(wwin, fx, fy, fw, fh);
 
@@ -2328,13 +2137,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				if (!opaqueResize)
 					showResizeWireframe(wwin, fx, fy, fw, fh);
 
-				if (fh != orig_fh || fw != orig_fw) {
-					if (w_global.config->size_display == WDIS_NEW)
-						showGeometry(wwin, orig_fx, orig_fy, orig_fx + orig_fw,
-							     orig_fy + orig_fh, res);
-
+				if (fh != orig_fh || fw != orig_fw)
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
-				}
 
 				if (opaqueResize) {
 					/* Fist clean the geometry line */
@@ -2373,8 +2177,6 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 				XUngrabKeyboard(dpy, CurrentTime);
 				WMUnmapWidget(scr->gview);
-				if (server_grabbed)
-					XUngrabServer(dpy);
 
 				if (fw != original_fw)
 					wwin->flags.maximized &= ~(MAX_HORIZONTAL | MAX_TOPHALF | MAX_BOTTOMHALF | MAX_MAXIMUS | MAX_CENTRAL);

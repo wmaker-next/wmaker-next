@@ -447,24 +447,6 @@ static void allocGCs(WScreen * scr)
 	scr->frame_gc = XCreateGC(dpy, scr->root_win, GCForeground | GCGraphicsExposures
 				  | GCFunction | GCSubwindowMode | GCLineWidth | GCPlaneMask, &gcv);
 
-	/* line GC */
-	gcv.foreground = color.pixel;
-
-	if (gcv.foreground == 0)
-		/* XOR:ing with a zero is not going to be of much use, so
-		   in that case, we somewhat arbitrarily xor with 17 instead. */
-		gcv.foreground = 17;
-
-	gcv.function = GXxor;
-	gcv.subwindow_mode = IncludeInferiors;
-	gcv.line_width = 1;
-	gcv.cap_style = CapRound;
-	gcv.graphics_exposures = False;
-	gcm = GCForeground | GCFunction | GCSubwindowMode | GCLineWidth | GCCapStyle | GCGraphicsExposures;
-	scr->line_gc = XCreateGC(dpy, scr->root_win, gcm, &gcv);
-
-	scr->line_pixel = gcv.foreground;
-
 	/* copy GC */
 	gcv.foreground = scr->white_pixel;
 	gcv.background = scr->black_pixel;
@@ -910,11 +892,6 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	 * wConfigApplyAntialiasedText() can detect a live WMGLOBAL change */
 	scr->antialiased_text_applied = WMGetAntialiasedText();
 
-	/* tech_draw_font is loaded lazily by wScreenGetTechDrawFont() so the
-	 * core-font QueryFont round-trip is paid only when ResizeDisplay or
-	 * MoveDisplay is set to "techwindowmaker". */
-	scr->tech_draw_font = NULL;
-
 	scr->gview = WCreateGeometryView(scr->wmscreen);
 	WMRealizeWidget(scr->gview);
 
@@ -924,16 +901,6 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	wScreenUpdateUsableArea(scr);
 
 	return scr;
-}
-
-XFontStruct *wScreenGetTechDrawFont(WScreen *scr)
-{
-	if (!scr->tech_draw_font) {
-		scr->tech_draw_font = XLoadQueryFont(dpy, "-adobe-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
-		if (!scr->tech_draw_font)
-			scr->tech_draw_font = XLoadQueryFont(dpy, "fixed");
-	}
-	return scr->tech_draw_font;
 }
 
 /*

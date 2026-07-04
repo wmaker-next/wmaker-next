@@ -1022,7 +1022,7 @@ static void test_valid_parse(void)
 			      "SingleClickLaunch = YES; StrictWindozeCycle = NO; "
 			      "SwitchPanelOnlyOpen = YES; MiniPreviewSize = 96; "
 			      "IgnoreGtkHints = YES; NoWindowOverDock = YES; "
-			      "NoWindowOverIcons = YES; ResizeDisplay = Line; "
+			      "NoWindowOverIcons = YES; ResizeDisplay = None; "
 			      "MoveDisplay = Corner; "
 #ifdef USE_RANDR
 			      "HotplugMonitor = YES; "
@@ -1141,7 +1141,7 @@ static void test_valid_parse(void)
 	CHECK(config->ignore_gtk_decoration_hints == 1);
 	CHECK(config->no_window_over_dock == 1);
 	CHECK(config->no_window_over_icons == 1);
-	CHECK(config->size_display == WDIS_NEW);
+	CHECK(config->size_display == WDIS_NONE);
 	CHECK(config->move_display == WDIS_TOPLEFT);
 #ifdef USE_RANDR
 	CHECK(config->hotplug_monitor == 1);
@@ -1510,7 +1510,7 @@ static void test_runtime_apply(void)
 				  "SingleClickLaunch = YES; StrictWindozeCycle = NO; "
 				  "SwitchPanelOnlyOpen = YES; MiniPreviewSize = 96; "
 				  "IgnoreGtkHints = YES; NoWindowOverDock = YES; "
-				  "NoWindowOverIcons = YES; ResizeDisplay = Line; "
+				  "NoWindowOverIcons = YES; ResizeDisplay = None; "
 				  "MoveDisplay = Corner; "
 #ifdef USE_RANDR
 				  "HotplugMonitor = YES; "
@@ -1602,7 +1602,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->ignore_gtk_decoration_hints == 1);
 	CHECK(w_global.config->no_window_over_dock == 1);
 	CHECK(w_global.config->no_window_over_icons == 1);
-	CHECK(w_global.config->size_display == WDIS_NEW);
+	CHECK(w_global.config->size_display == WDIS_NONE);
 	CHECK(w_global.config->move_display == WDIS_TOPLEFT);
 #ifdef USE_RANDR
 	CHECK(w_global.config->hotplug_monitor == 1);

@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+ResizeDisplay = "Line" removed
+------------------------------
+
+The technical-drawing style for the interactive resize geometry
+readout has been removed. It XOR-drew dimension arrows and numbers
+directly on the root window and was the only reason a non-opaque
+resize still had to grab the X server on every step. An existing
+ResizeDisplay = Line (or MoveDisplay = Line, which was already
+non-functional) in a user's WindowMaker domain now warns once and
+falls back to the "Center" default. The remaining Corner, Center,
+Floating and None values are unchanged and the WPrefs pop-up for
+ResizeDisplay no longer lists the Technical drawing-like row.
+
 Window Maker registers with an XSMP session manager
 ---------------------------------------------------
 

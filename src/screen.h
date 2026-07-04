@@ -222,10 +222,6 @@ typedef struct _WScreen {
     WMFont *info_text_font;	       /* text on things like geometry
                                         * hint boxes */
 
-    XFontStruct *tech_draw_font;       /* font for tech draw style geom view
-                                          needs to be a core font so we can
-                                          use it with a XORing GC */
-
     WMFont *workspace_name_font;
 
 	/* AntialiasedText (WMGLOBAL) value the screen's fonts were last opened
@@ -247,7 +243,6 @@ typedef struct _WScreen {
     WMColor *frame_focused_border_color;
     WMColor *frame_selected_border_color;
 
-    WMPixel line_pixel;
     WMPixel frame_border_pixel;	       /* frame border */
     WMPixel frame_focused_border_pixel;	       /* frame border */
     WMPixel frame_selected_border_pixel;/* frame border */
@@ -273,7 +268,6 @@ typedef struct _WScreen {
     GC icon_select_gc;
 
     GC frame_gc;		       /* gc for resize/move frame (root) */
-    GC line_gc;			       /* gc for drawing XORed lines (root) */
     GC copy_gc;			       /* gc for XCopyArea() */
     GC stipple_gc;		       /* gc for stippled filling */
     GC draw_gc;			       /* gc for drawing misc things */
@@ -448,7 +442,6 @@ void wScreenApplyIconSize(WScreen *scr);
 void wScreenUpdateUsableArea(WScreen *scr);
 void wScreenUpdateRootEventMask(WScreen *scr);
 void wScreenReadXftDpi(WScreen *scr);
-XFontStruct *wScreenGetTechDrawFont(WScreen *scr);
 
 void create_logo_image(WScreen *scr);
 #endif

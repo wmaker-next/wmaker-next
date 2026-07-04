@@ -100,7 +100,6 @@
 	R("corner",   N_("Corner of screen")) \
 	R("center",   N_("Center of screen")) \
 	R("floating", N_("Center of resized window")) \
-	R("line",     N_("Technical drawing-like")) \
 	R("none",     N_("Disabled"))
 
 /* Preferences.c, key "MoveDisplay" */
