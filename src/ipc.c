@@ -46,6 +46,7 @@
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
+#include "xsmp.h"
 #include "ipc.h"
 
 #define WIPC_DRAIN_TIMEOUT_MS  10000
@@ -1045,6 +1046,18 @@ static void ipc_read_cb(int fd, int mask, void *data)
 			wm = pending_restart_wm;
 			pending_shutdown_mode = -1;
 			pending_restart_wm = NULL;
+			/* mirror the root-menu Exit / Kill-session paths: when a
+			 * session manager is present, hand it the shutdown so
+			 * peers get an orderly SaveYourself and wmaker exits
+			 * from the SM's Die callback rather than tearing the
+			 * session down itself, the queued success reply flushes
+			 * on the next loop iteration and the connection stays
+			 * open until Die arrives */
+			if ((mode == WSExitMode || mode == WSKillMode) &&
+			    wXSMPRequestShutdown(w_global.config->save_session_on_exit)) {
+				ipc_try_write(c);
+				return;
+			}
 			/* wIPCServerStop() runs from Shutdown() and does the
 			 * final drain, so the success reply queued above is
 			 * delivered there */

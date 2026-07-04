@@ -106,6 +106,7 @@ src/Tests/check_wdefaults
 src/Tests/check_wprefs_schema
 src/Tests/check_desktopfile
 src/Tests/check_cmdexpand
+src/Tests/check_xsmp
 wrlib/Tests/bench_image
 wrlib/Tests/check_image
 wrlib/Tests/check_xside
