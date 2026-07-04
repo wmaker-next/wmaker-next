@@ -40,6 +40,14 @@
 void wWireframeBegin(WScreen *scr);
 void wWireframeAddOutline(WScreen *scr, int x, int y, int width, int height,
 			  int titlebar_h, int resizebar_h, int border);
+
+/* add an open or closed polyline (any orientation) rendered as a
+ * WIREFRAME_THICKNESS-wide band, used for the non-axis-aligned
+ * iconify animations, points are in root coordinates and the array
+ * is copied so the caller may reuse it, the no-XShape fallback path
+ * skips polylines since callers are cosmetic-only animations */
+void wWireframeAddPolyline(WScreen *scr, const XPoint *pts, int npts);
+
 void wWireframeCommit(WScreen *scr);
 void wWireframeHide(WScreen *scr);
 

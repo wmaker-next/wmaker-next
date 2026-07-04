@@ -397,7 +397,6 @@ static WPixmap *make3Dots(WScreen * scr)
 static void allocGCs(WScreen * scr)
 {
 	XGCValues gcv;
-	XColor color;
 	int gcm;
 
 	scr->stipple_bitmap = XCreateBitmapFromData(dpy, scr->w_win, STIPPLE_DATA, STIPPLE_WIDTH, STIPPLE_HEIGHT);
@@ -433,19 +432,6 @@ static void allocGCs(WScreen * scr)
 	/* don't retain scr->black here because we may alter its alpha */
 	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
 	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
-
-	/* frame GC */
-	wGetColor(scr, DEF_FRAME_COLOR, &color);
-	gcv.function = GXxor;
-	gcv.plane_mask = AllPlanes;
-	gcv.foreground = color.pixel;
-	if (gcv.foreground == 0)
-		gcv.foreground = 1;
-	gcv.line_width = DEF_FRAME_THICKNESS;
-	gcv.subwindow_mode = IncludeInferiors;
-	gcv.graphics_exposures = False;
-	scr->frame_gc = XCreateGC(dpy, scr->root_win, GCForeground | GCGraphicsExposures
-				  | GCFunction | GCSubwindowMode | GCLineWidth | GCPlaneMask, &gcv);
 
 	/* copy GC */
 	gcv.foreground = scr->white_pixel;

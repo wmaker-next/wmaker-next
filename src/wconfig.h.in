@@ -164,12 +164,6 @@
 /* window title to use for untitled windows */
 #define DEF_WINDOW_TITLE "Untitled"
 
-/* default style */
-#define DEF_FRAME_COLOR   "white"
-
-/* line width of the move/resize frame */
-#define DEF_FRAME_THICKNESS              1
-
 #define DEF_WINDOW_TITLE_EXTEND_SPACE	"0"
 #define DEF_MENU_TITLE_EXTEND_SPACE	"0"
 #define DEF_MENU_TEXT_EXTEND_SPACE	"0"

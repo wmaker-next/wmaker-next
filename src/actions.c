@@ -50,6 +50,7 @@
 #include "misc.h"
 #include "event.h"
 #include "tabgroup.h"
+#include "wireframe.h"
 
 
 #ifndef HAVE_FLOAT_MATHFUNC
@@ -1252,13 +1253,12 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 		points[4].x = points[0].x;
 		points[4].y = points[0].y;
 
-		XGrabServer(dpy);
-		XDrawLines(dpy, scr->root_win, scr->frame_gc, points, 5, CoordModeOrigin);
+		wWireframeBegin(scr);
+		wWireframeAddPolyline(scr, points, 5);
+		wWireframeCommit(scr);
 		XFlush(dpy);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_F);
 
-		XDrawLines(dpy, scr->root_win, scr->frame_gc, points, 5, CoordModeOrigin);
-		XUngrabServer(dpy);
 		cx += xstep;
 		cy += ystep;
 		cw += wstep;
@@ -1267,6 +1267,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 			break;
 
 	}
+	wWireframeHide(scr);
 	XFlush(dpy);
 }
 
@@ -1315,13 +1316,13 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 		points[3].y = cy + sinf(angle + a + (float)WM_PI) * d;
 		points[4].x = cx + cosf(angle - a) * d;
 		points[4].y = cy + sinf(angle - a) * d;
-		XGrabServer(dpy);
-		XDrawLines(dpy, scr->root_win, scr->frame_gc, points, 5, CoordModeOrigin);
+
+		wWireframeBegin(scr);
+		wWireframeAddPolyline(scr, points, 5);
+		wWireframeCommit(scr);
 		XFlush(dpy);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_T);
 
-		XDrawLines(dpy, scr->root_win, scr->frame_gc, points, 5, CoordModeOrigin);
-		XUngrabServer(dpy);
 		cx += xstep;
 		cy += ystep;
 		cw += wstep;
@@ -1330,6 +1331,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 			break;
 
 	}
+	wWireframeHide(scr);
 	XFlush(dpy);
 }
 
@@ -1353,18 +1355,16 @@ static void animateResizeZoom(WScreen *scr, int x, int y, int w, int h, int fx, 
 		cw[j] = (float)w;
 		ch[j] = (float)h;
 	}
-	XGrabServer(dpy);
-	for (i = 0; i < steps; i++) {
-		for (j = 0; j < FRAMES; j++) {
-			XDrawRectangle(dpy, scr->root_win, scr->frame_gc,
-				       (int)cx[j], (int)cy[j], (int)cw[j], (int)ch[j]);
-		}
+	for (i = 0; i <= steps; i++) {
+		wWireframeBegin(scr);
+		for (j = 0; j < FRAMES; j++)
+			wWireframeAddOutline(scr, (int)cx[j], (int)cy[j],
+					     (int)cw[j], (int)ch[j], 0, 0, 0);
+		wWireframeCommit(scr);
 		XFlush(dpy);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z);
 
 		for (j = 0; j < FRAMES; j++) {
-			XDrawRectangle(dpy, scr->root_win, scr->frame_gc,
-				       (int)cx[j], (int)cy[j], (int)cw[j], (int)ch[j]);
 			if (j < FRAMES - 1) {
 				cx[j] = cx[j + 1];
 				cy[j] = cy[j + 1];
@@ -1378,16 +1378,7 @@ static void animateResizeZoom(WScreen *scr, int x, int y, int w, int h, int fx, 
 			}
 		}
 	}
-
-	for (j = 0; j < FRAMES; j++)
-		XDrawRectangle(dpy, scr->root_win, scr->frame_gc, (int)cx[j], (int)cy[j], (int)cw[j], (int)ch[j]);
-	XFlush(dpy);
-	wusleep(MINIATURIZE_ANIMATION_DELAY_Z);
-
-	for (j = 0; j < FRAMES; j++)
-		XDrawRectangle(dpy, scr->root_win, scr->frame_gc, (int)cx[j], (int)cy[j], (int)cw[j], (int)ch[j]);
-
-	XUngrabServer(dpy);
+	wWireframeHide(scr);
 }
 
 #undef FRAMES

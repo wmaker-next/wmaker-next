@@ -267,7 +267,6 @@ typedef struct _WScreen {
 
     GC icon_select_gc;
 
-    GC frame_gc;		       /* gc for resize/move frame (root) */
     GC copy_gc;			       /* gc for XCopyArea() */
     GC stipple_gc;		       /* gc for stippled filling */
     GC draw_gc;			       /* gc for drawing misc things */
