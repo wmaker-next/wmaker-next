@@ -168,8 +168,6 @@ static void hideChainOSD(WScreen *scr)
 static void showChainOSD(WScreen *scr)
 {
 	char label[MAX_SHORTCUT_LENGTH * 2];
-	WMRect rect;
-	int head, w, h, px, py;
 
 	if (!scr || !scr->keychain_osd)
 		return;
@@ -183,44 +181,8 @@ static void showChainOSD(WScreen *scr)
 	formatChainPosition(w_global.shortcut.curpos, label, sizeof(label));
 	WSetOSDViewText(scr->keychain_osd, label);
 
-	head = wGetHeadForPointerLocation(scr);
-	rect = wGetRectForHead(scr, head);
-	w = WMWidgetWidth(scr->keychain_osd);
-	h = WMWidgetHeight(scr->keychain_osd);
-
-	switch (w_global.config->keychain_display_position) {
-	case WD_TOP:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + CHAIN_OSD_PAD;
-		break;
-	case WD_BOTTOM:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
-		break;
-	case WD_TOPLEFT:
-		px = rect.pos.x + CHAIN_OSD_PAD;
-		py = rect.pos.y + CHAIN_OSD_PAD;
-		break;
-	case WD_TOPRIGHT:
-		px = rect.pos.x + rect.size.width - w - CHAIN_OSD_PAD;
-		py = rect.pos.y + CHAIN_OSD_PAD;
-		break;
-	case WD_BOTTOMLEFT:
-		px = rect.pos.x + CHAIN_OSD_PAD;
-		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
-		break;
-	case WD_BOTTOMRIGHT:
-		px = rect.pos.x + rect.size.width - w - CHAIN_OSD_PAD;
-		py = rect.pos.y + rect.size.height - h - CHAIN_OSD_PAD;
-		break;
-	case WD_CENTER:
-	default:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + (rect.size.height - h) / 2;
-		break;
-	}
-
-	WMMoveWidget(scr->keychain_osd, px, py);
+	wPlaceOSDOnHead(scr, scr->keychain_osd,
+			w_global.config->keychain_display_position, CHAIN_OSD_PAD);
 	WMMapWidget(scr->keychain_osd);
 	XRaiseWindow(dpy, WMWidgetXID(scr->keychain_osd));
 }

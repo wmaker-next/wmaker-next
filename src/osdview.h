@@ -21,9 +21,15 @@
 #ifndef OSDVIEW_H
 #define OSDVIEW_H
 
+struct _WScreen;
+
 typedef struct W_OSDView WOSDView;
 
 WOSDView *WCreateOSDView(WMScreen *scr);
+
+/* Override the 12pt system font used for the text and re-measure. The
+ * font is retained. */
+void WSetOSDViewFont(WOSDView *view, WMFont *font);
 
 /* Lock the widget size to whatever 'tmpl' measures so that subsequent
  * WSetOSDViewText() calls only repaint and never resize. Used by the
@@ -34,5 +40,11 @@ void WSetOSDViewFixedTemplate(WOSDView *view, const char *tmpl);
 /* Replace the displayed text. The string is copied. When no fixed
  * template is set the widget resizes to fit. */
 void WSetOSDViewText(WOSDView *view, const char *text);
+
+/* Move 'view' onto the head under the pointer at one of the WD_*
+ * anchor positions from config-values.h, 'pad' pixels from the
+ * anchored edge(s). WD_NONE is treated as WD_CENTER, callers gate
+ * visibility on WD_NONE themselves. */
+void wPlaceOSDOnHead(struct _WScreen *scr, WOSDView *view, int wd_pos, int pad);
 
 #endif  /* OSDVIEW_H */

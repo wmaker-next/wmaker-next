@@ -19,8 +19,14 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "wconfig.h"
+
 #include <WINGs/WINGsP.h>
 
+#include "WindowMaker.h"
+#include "screen.h"
+#include "xinerama.h"
+#include "config-values.h"
 #include "osdview.h"
 
 #define OSDVIEW_PAD_W 8
@@ -95,6 +101,26 @@ WOSDView *WCreateOSDView(WMScreen *scr)
 	return osd;
 }
 
+void WSetOSDViewFont(WOSDView *osd, WMFont *font)
+{
+	if (font == NULL || font == osd->font)
+		return;
+
+	WMReleaseFont(osd->font);
+	osd->font = WMRetainFont(font);
+
+	if (osd->text) {
+		osd->text_size.width = WMWidthOfString(osd->font, osd->text, strlen(osd->text));
+		osd->text_size.height = WMFontHeight(osd->font);
+	}
+	if (!osd->fixed_size)
+		W_ResizeView(osd->view, osd->text_size.width + OSDVIEW_PAD_W,
+			     WMFontHeight(osd->font) + OSDVIEW_PAD_H);
+
+	if (W_VIEW_MAPPED(osd->view))
+		paint(osd);
+}
+
 void WSetOSDViewFixedTemplate(WOSDView *osd, const char *tmpl)
 {
 	int w, h;
@@ -157,4 +183,49 @@ static void handleEvents(XEvent *event, void *clientData)
 		paint(osd);
 		break;
 	}
+}
+
+void wPlaceOSDOnHead(WScreen *scr, WOSDView *osd, int wd_pos, int pad)
+{
+	WMRect rect;
+	int head, w, h, px, py;
+
+	head = wGetHeadForPointerLocation(scr);
+	rect = wGetRectForHead(scr, head);
+	w = W_VIEW_WIDTH(osd->view);
+	h = W_VIEW_HEIGHT(osd->view);
+
+	switch (wd_pos) {
+	case WD_TOP:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + pad;
+		break;
+	case WD_BOTTOM:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + rect.size.height - h - pad;
+		break;
+	case WD_TOPLEFT:
+		px = rect.pos.x + pad;
+		py = rect.pos.y + pad;
+		break;
+	case WD_TOPRIGHT:
+		px = rect.pos.x + rect.size.width - w - pad;
+		py = rect.pos.y + pad;
+		break;
+	case WD_BOTTOMLEFT:
+		px = rect.pos.x + pad;
+		py = rect.pos.y + rect.size.height - h - pad;
+		break;
+	case WD_BOTTOMRIGHT:
+		px = rect.pos.x + rect.size.width - w - pad;
+		py = rect.pos.y + rect.size.height - h - pad;
+		break;
+	case WD_CENTER:
+	default:
+		px = rect.pos.x + (rect.size.width - w) / 2;
+		py = rect.pos.y + (rect.size.height - h) / 2;
+		break;
+	}
+
+	W_MoveView(osd->view, px, py);
 }
