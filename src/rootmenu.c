@@ -1812,10 +1812,18 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 	if (!menu) {
 		/* menu hasn't changed or could not be read */
 		if (!scr->root_menu) {
-			wMessageDialog(scr, _("Error"),
-				       _("The applications menu could not be loaded. "
-					 "Look at the console output for a detailed "
-					 "description of the errors."), _("OK"), NULL, NULL);
+			/* wScreenRestoreState() opens the menu once at
+			 * (-10000,-10000) to build the tree before StartUp()
+			 * has returned, a modal dialog there would swallow
+			 * the rest of startup into its own event loop, defer
+			 * the alert to the first real open and just log */
+			if (scr->flags.startup)
+				wwarning(_("the applications menu could not be loaded, using a fallback"));
+			else
+				wMessageDialog(scr, _("Error"),
+					       _("The applications menu could not be loaded. "
+						 "Look at the console output for a detailed "
+						 "description of the errors."), _("OK"), NULL, NULL);
 
 			menu = makeDefaultMenu(scr);
 			scr->root_menu = menu;

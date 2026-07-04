@@ -712,6 +712,15 @@ void StartUp(Bool defaultScreenOnly)
 
 		lastDesktop = wNETWMGetCurrentDesktopFromHint(wScreen[j]);
 
+		/* mark the screen as being brought up before OpenRootMenu()
+		 * runs from wScreenRestoreState(): with no readable WMRootMenu
+		 * that path pops a modal wMessageDialog whose WMNextEvent loop
+		 * would run the rest of the session with StartUp() never
+		 * having returned, so wXSMPConnect(), execInitScript() and
+		 * inotifyWatchConfig() would never fire, manageAllWindows()
+		 * clears the flag once the initial adopt is done */
+		wScreen[j]->flags.startup = 1;
+
 		wScreenRestoreState(wScreen[j]);
 
 		/* manage all windows that were already here before us */
