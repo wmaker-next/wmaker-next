@@ -21,9 +21,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#ifdef USE_XSHAPE
-#include <xcb/shape.h>
-#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -51,6 +48,7 @@
 #include "wsmap.h"
 #include "dialog.h"
 #include "tabgroup.h"
+#include "osdview.h"
 
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
@@ -362,208 +360,37 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	return True;
 }
 
-typedef struct WorkspaceNameData {
-	int count;
-	RImage *back;
-	RImage *text;
-	time_t timeout;
-} WorkspaceNameData;
-
 static void hideWorkspaceName(void *data)
 {
 	WScreen *scr = (WScreen *) data;
 
-	if (!scr->workspace_name_data || scr->workspace_name_data->count == 0
-	    || time(NULL) > scr->workspace_name_data->timeout) {
-		XUnmapWindow(dpy, scr->workspace_name);
-
-		if (scr->workspace_name_data) {
-			RReleaseImage(scr->workspace_name_data->back);
-			RReleaseImage(scr->workspace_name_data->text);
-			wfree(scr->workspace_name_data);
-
-			scr->workspace_name_data = NULL;
-		}
-		scr->workspace_name_timer = NULL;
-	} else {
-		RImage *img = RCloneImage(scr->workspace_name_data->back);
-		Pixmap pix;
-
-		scr->workspace_name_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideWorkspaceName, scr);
-
-		RCombineImagesWithOpaqueness(img, scr->workspace_name_data->text,
-					     scr->workspace_name_data->count * 255 / 10);
-
-		RConvertImage(scr->rcontext, img, &pix);
-
-		RReleaseImage(img);
-
-		XSetWindowBackgroundPixmap(dpy, scr->workspace_name, pix);
-		XClearWindow(dpy, scr->workspace_name);
-		XFreePixmap(dpy, pix);
-		XFlush(dpy);
-
-		scr->workspace_name_data->count--;
-	}
+	scr->workspace_name_timer = NULL;
+	if (scr->workspace_name_osd)
+		WMUnmapWidget(scr->workspace_name_osd);
 }
 
-static void showWorkspaceName(WScreen * scr, int workspace)
+static void showWorkspaceName(WScreen *scr, int workspace)
 {
-	WorkspaceNameData *data;
-	RXImage *ximg;
-	Pixmap text, mask;
-	int w, h;
-	int px, py;
-	char *name = scr->workspaces[workspace]->name;
-	int len = strlen(name);
-	int x, y;
-	int head;
-	WMRect rect;
-	int xx, yy;
-
 	if (w_global.config->workspace_name_display_position == WD_NONE || scr->workspace_count < 2
-	    || w_global.display_off)
+	    || w_global.display_off || !scr->workspace_name_osd)
 		return;
 
-	if (scr->workspace_name_timer) {
-		WMDeleteTimerHandler(scr->workspace_name_timer);
-		XUnmapWindow(dpy, scr->workspace_name);
-		XFlush(dpy);
-	}
-	scr->workspace_name_timer = WMAddTimerHandler(WORKSPACE_NAME_DELAY, hideWorkspaceName, scr);
-
-	if (scr->workspace_name_data) {
-		RReleaseImage(scr->workspace_name_data->back);
-		RReleaseImage(scr->workspace_name_data->text);
-		wfree(scr->workspace_name_data);
-	}
-
-	data = wmalloc(sizeof(WorkspaceNameData));
-	data->back = NULL;
-
-	w = WMWidthOfString(scr->workspace_name_font, name, len);
-	h = WMFontHeight(scr->workspace_name_font);
-
-	head = wGetHeadForPointerLocation(scr);
-	rect = wGetRectForHead(scr, head);
-	xx = rect.pos.x + ((int)rect.size.width - (w + 4)) / 2;
-	yy = rect.pos.y + ((int)rect.size.height - (h + 4)) / 2;
-
-	switch (w_global.config->workspace_name_display_position) {
-	case WD_TOP:
-		px = xx;
-		py = WORKSPACE_NAME_DISPLAY_PADDING;
-		break;
-	case WD_BOTTOM:
-		px = xx;
-		py = scr->scr_height - (h + 4 + WORKSPACE_NAME_DISPLAY_PADDING);
-		break;
-	case WD_TOPLEFT:
-		px = WORKSPACE_NAME_DISPLAY_PADDING;
-		py = WORKSPACE_NAME_DISPLAY_PADDING;
-		break;
-	case WD_TOPRIGHT:
-		px = scr->scr_width - (w + 4 + WORKSPACE_NAME_DISPLAY_PADDING);
-		py = WORKSPACE_NAME_DISPLAY_PADDING;
-		break;
-	case WD_BOTTOMLEFT:
-		px = WORKSPACE_NAME_DISPLAY_PADDING;
-		py = scr->scr_height - (h + 4 + WORKSPACE_NAME_DISPLAY_PADDING);
-		break;
-	case WD_BOTTOMRIGHT:
-		px = scr->scr_width - (w + 4 + WORKSPACE_NAME_DISPLAY_PADDING);
-		py = scr->scr_height - (h + 4 + WORKSPACE_NAME_DISPLAY_PADDING);
-		break;
-	case WD_CENTER:
-	default:
-		px = xx;
-		py = yy;
-		break;
-	}
-	XResizeWindow(dpy, scr->workspace_name, w + 4, h + 4);
-	XMoveWindow(dpy, scr->workspace_name, px, py);
-
-	text = XCreatePixmap(dpy, scr->w_win, w + 4, h + 4, scr->w_depth);
-	mask = XCreatePixmap(dpy, scr->w_win, w + 4, h + 4, 1);
-
-	/*XSetForeground(dpy, scr->mono_gc, 0);
-	   XFillRectangle(dpy, mask, scr->mono_gc, 0, 0, w+4, h+4); */
-
-	XFillRectangle(dpy, text, WMColorGC(scr->black), 0, 0, w + 4, h + 4);
-
-	for (x = 0; x <= 4; x++)
-		for (y = 0; y <= 4; y++)
-			WMDrawString(scr->wmscreen, text, scr->white, scr->workspace_name_font, x, y, name, len);
-
-	XSetForeground(dpy, scr->mono_gc, 1);
-	XSetBackground(dpy, scr->mono_gc, 0);
-
-	XCopyPlane(dpy, text, mask, scr->mono_gc, 0, 0, w + 4, h + 4, 0, 0, 1 << (scr->w_depth - 1));
-
-	/*XSetForeground(dpy, scr->mono_gc, 1); */
-	XSetBackground(dpy, scr->mono_gc, 1);
-
-	XFillRectangle(dpy, text, WMColorGC(scr->black), 0, 0, w + 4, h + 4);
-
-	WMDrawString(scr->wmscreen, text, scr->white, scr->workspace_name_font, 2, 2, name, len);
-
-#ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported)
-		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
-			       scr->workspace_name, 0, 0, mask);
-#endif
-	XSetWindowBackgroundPixmap(dpy, scr->workspace_name, text);
-	XClearWindow(dpy, scr->workspace_name);
-
-	data->text = RCreateImageFromDrawable(scr->rcontext, text, None);
-
-	XFreePixmap(dpy, text);
-	XFreePixmap(dpy, mask);
-
-	if (!data->text) {
-		XMapRaised(dpy, scr->workspace_name);
-		XFlush(dpy);
-
-		goto erro;
-	}
-
-	ximg = RGetXImage(scr->rcontext, scr->root_win, px, py, data->text->width, data->text->height);
-	if (!ximg)
-		goto erro;
-
-	XMapRaised(dpy, scr->workspace_name);
-	XFlush(dpy);
-
-	data->back = RCreateImageFromRXImage(scr->rcontext, ximg, NULL);
-	RDestroyXImage(scr->rcontext, ximg);
-
-	if (!data->back) {
-		goto erro;
-	}
-
-	data->count = 10;
-
-	/* set a timeout for the effect */
-	data->timeout = time(NULL) + 2 + (WORKSPACE_NAME_DELAY + WORKSPACE_NAME_FADE_DELAY * data->count) / 1000;
-
-	scr->workspace_name_data = data;
-
-	return;
-
- erro:
 	if (scr->workspace_name_timer)
 		WMDeleteTimerHandler(scr->workspace_name_timer);
 
-	if (data->text)
-		RReleaseImage(data->text);
-	if (data->back)
-		RReleaseImage(data->back);
-	wfree(data);
+	WSetOSDViewText(scr->workspace_name_osd, scr->workspaces[workspace]->name);
+	wPlaceOSDOnHead(scr, scr->workspace_name_osd,
+			w_global.config->workspace_name_display_position,
+			WORKSPACE_NAME_DISPLAY_PADDING);
+	WMMapWidget(scr->workspace_name_osd);
+	XRaiseWindow(dpy, WMWidgetXID(scr->workspace_name_osd));
 
-	scr->workspace_name_data = NULL;
-
-	scr->workspace_name_timer = WMAddTimerHandler(WORKSPACE_NAME_DELAY +
-						      10 * WORKSPACE_NAME_FADE_DELAY, hideWorkspaceName, scr);
+	/* Match the visible lifetime of the previous shape/fade path,
+	 * WORKSPACE_NAME_DELAY solid plus the ten-step fade tail. The
+	 * fade itself comes back once Cairo owns rendering. */
+	scr->workspace_name_timer =
+		WMAddTimerHandler(WORKSPACE_NAME_DELAY + 10 * WORKSPACE_NAME_FADE_DELAY,
+				  hideWorkspaceName, scr);
 }
 
 void wWorkspaceChange(WScreen *scr, int workspace)

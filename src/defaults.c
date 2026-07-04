@@ -66,6 +66,7 @@
 #include "misc.h"
 #include "winmenu.h"
 #include "rootmenu.h"
+#include "osdview.h"
 
 typedef int (WConfigUpdateCallback)(WScreen *scr, void *tdata,
 				    void *extra_data);
@@ -1796,13 +1797,18 @@ static int setLargeDisplayFont(WScreen *scr, void *tdata, void *foo)
 	WMFont *font = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) scr;
 	(void) foo;
 
 	if (scr->workspace_name_font)
 		WMReleaseFont(scr->workspace_name_font);
 
 	scr->workspace_name_font = font;
+
+	/* On cold boot this runs from wReadDefaults() before wScreenInit()
+	 * has created the OSD, wScreenInit() applies the initial font
+	 * itself right after WCreateOSDView(). */
+	if (scr->workspace_name_osd)
+		WSetOSDViewFont(scr->workspace_name_osd, font);
 
 	return 0;
 }

@@ -270,7 +270,6 @@ typedef struct _WScreen {
     GC copy_gc;			       /* gc for XCopyArea() */
     GC stipple_gc;		       /* gc for stippled filling */
     GC draw_gc;			       /* gc for drawing misc things */
-    GC mono_gc;			       /* gc for 1 bit drawables */
 
     struct WPixmap *b_pixmaps[PRED_BPIXMAPS]; /* internal pixmaps for buttons*/
     WTitlebarLayout titlebar_layout;          /* parsed TitlebarLeft/Right */
@@ -334,6 +333,7 @@ typedef struct _WScreen {
 
     struct W_OSDView *gview;           /* size/position view */
     struct W_OSDView *keychain_osd;    /* key-chain prefix popup */
+    struct W_OSDView *workspace_name_osd;  /* workspace-switch name popup */
 
     struct WWireframe *wireframe;      /* move/resize outline window */
 
@@ -351,9 +351,7 @@ typedef struct _WScreen {
     struct _WBalloon *balloon;
 
     /* workspace name data */
-    Window workspace_name;
     WMHandlerID workspace_name_timer;
-    struct WorkspaceNameData *workspace_name_data;
 
     /* mini screenshot data */
     Window mini_screenshot;

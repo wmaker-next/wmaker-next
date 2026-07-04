@@ -445,9 +445,6 @@ static void allocGCs(WScreen * scr)
 	scr->draw_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
 
 	assert(scr->stipple_bitmap != None);
-
-	/* mono GC */
-	scr->mono_gc = XCreateGC(dpy, scr->stipple_bitmap, gcm, &gcv);
 }
 
 static void createPixmaps(WScreen * scr)
@@ -586,16 +583,6 @@ static void createInternalWindows(WScreen * scr)
 	    XCreateWindow(dpy, scr->root_win, 0, 0, w_global.config->icon_size,
 			  w_global.config->icon_size, 0, scr->w_depth, CopyFromParent, scr->w_visual, vmask, &attribs);
 
-	/* workspace name */
-	vmask = CWBackPixel | CWSaveUnder | CWOverrideRedirect | CWColormap | CWBorderPixel;
-	attribs.save_under = True;
-	attribs.override_redirect = True;
-	attribs.colormap = scr->w_colormap;
-	attribs.background_pixel = scr->icon_back_texture->normal.pixel;
-	attribs.border_pixel = 0;	/* do not care */
-	scr->workspace_name =
-	    XCreateWindow(dpy, scr->root_win, 0, 0, 10, 10, 0, scr->w_depth,
-			  CopyFromParent, scr->w_visual, vmask, &attribs);
 	scr->mini_screenshot_timeout = 0;
 }
 
@@ -883,6 +870,11 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	scr->keychain_osd = WCreateOSDView(scr->wmscreen);
 	WMRealizeWidget(scr->keychain_osd);
+
+	scr->workspace_name_osd = WCreateOSDView(scr->wmscreen);
+	if (scr->workspace_name_font)
+		WSetOSDViewFont(scr->workspace_name_osd, scr->workspace_name_font);
+	WMRealizeWidget(scr->workspace_name_osd);
 
 	wScreenUpdateUsableArea(scr);
 

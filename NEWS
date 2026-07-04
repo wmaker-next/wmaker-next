@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Workspace-name popup drawn as an OSD box
+----------------------------------------
+
+The workspace name shown on a workspace switch is now drawn in the
+same boxed style as the move/resize geometry readout and the
+key-chain prefix display, using LargeDisplayFont on the head under
+the pointer. The previous shaped floating text with a screenshot
+fade-out has been retired along with its per-switch root-window
+XGetImage. The corner and edge WorkspaceNameDisplayPosition values
+now anchor to the pointer head instead of the whole root window on
+a multi-monitor layout so the popup follows the switch to the
+output it was triggered on. The visible lifetime is unchanged.
+
 ResizeDisplay = "Line" removed
 ------------------------------
 

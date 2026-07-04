@@ -2650,8 +2650,7 @@ static Bool isSafeUserTimeWindow(WWindow *wwin, Window win, long *prev_mask)
 	for (i = 0; i < w_global.screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (win == scr->root_win || win == scr->info_window || win == scr->no_focus_win
-		    || win == scr->dock_shadow || win == scr->workspace_name
-		    || win == scr->mini_screenshot)
+		    || win == scr->dock_shadow || win == scr->mini_screenshot)
 			return False;
 	}
 	if (!XGetWindowAttributes(dpy, win, &attr))
