@@ -1454,8 +1454,7 @@ void wClipIconPaint(WAppIcon *aicon)
 	wfree(ws_name);
 
 	if (aicon->launching)
-		XFillRectangle(dpy, aicon->icon->core->window, scr->stipple_gc,
-			       0, 0, w_global.config->icon_size, w_global.config->icon_size);
+		wAppIconPaintLaunching(scr, aicon->icon->core->window);
 
 	paintClipButtons(aicon, aicon->dock->lclip_button_pushed, aicon->dock->rclip_button_pushed);
 }

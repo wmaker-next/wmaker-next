@@ -20,6 +20,9 @@
 
 #include "wconfig.h"
 
+#include <cairo.h>
+#include <WINGs/WINGsP.h>
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <stdlib.h>
@@ -248,11 +251,55 @@ void wIconDestroy(WIcon *icon)
 
 static void drawIconTitleBackground(WScreen *scr, Pixmap pixmap, int height)
 {
-	XFillRectangle(dpy, pixmap, scr->icon_title_texture->normal_gc, 0, 0, w_global.config->icon_size, height + 1);
-	XDrawLine(dpy, pixmap, scr->icon_title_texture->light_gc, 0, 0, w_global.config->icon_size, 0);
-	XDrawLine(dpy, pixmap, scr->icon_title_texture->light_gc, 0, 0, 0, height + 1);
-	XDrawLine(dpy, pixmap, scr->icon_title_texture->dim_gc,
-		  w_global.config->icon_size - 1, 0, w_global.config->icon_size - 1, height + 1);
+	WTexSolid *tex = scr->icon_title_texture;
+	int isz = w_global.config->icon_size;
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	WCairoSetSourceXColor(cr, &tex->normal);
+	cairo_rectangle(cr, 0, 0, isz, height + 1);
+	cairo_fill(cr);
+
+	WCairoSetSourceXColor(cr, &tex->light);
+	cairo_move_to(cr, 0.5, height + 1.5);
+	cairo_line_to(cr, 0.5, 0.5);
+	cairo_line_to(cr, isz + 0.5, 0.5);
+	cairo_stroke(cr);
+
+	WCairoSetSourceXColor(cr, &tex->dim);
+	cairo_move_to(cr, isz - 0.5, 0.5);
+	cairo_line_to(cr, isz - 0.5, height + 1.5);
+	cairo_stroke(cr);
+
+	WCairoEnd(cr);
+}
+
+/* the marching-ants selection outline: solid black under a
+ * white 4-on/4-off dash with a per-tick offset, matching what
+ * icon_select_gc's LineDoubleDash white/black produced */
+static void drawIconSelection(WIcon *icon)
+{
+	WScreen *scr = icon->core->screen_ptr;
+	double dash[2] = { 4.0, 4.0 };
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr->wmscreen, icon->core->window);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_rectangle(cr, 0.5, 0.5,
+			icon->core->width - 1, icon->core->height - 1);
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_stroke_preserve(cr);
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_set_dash(cr, dash, 2, (double)icon->step);
+	cairo_stroke(cr);
+	WCairoEnd(cr);
 }
 
 static void icon_update_pixmap(WIcon *icon, RImage *image)
@@ -323,6 +370,10 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 		wwarning(_("error rendering image:%s"), RMessageForError(RErrorCode));
 
 	RReleaseImage(tile);
+
+	WMScreenNoteDrawableSize(scr->wmscreen, pixmap,
+				 w_global.config->icon_size,
+				 w_global.config->icon_size);
 
 	/* Draw the icon's title background (without text) */
 	if (icon->show_title)
@@ -650,15 +701,9 @@ void remove_cache_icon(char *filename)
 static void cycleColor(void *data)
 {
 	WIcon *icon = (WIcon *) data;
-	WScreen *scr = icon->core->screen_ptr;
-	XGCValues gcv;
 
 	icon->step--;
-	gcv.dash_offset = icon->step;
-	XChangeGC(dpy, scr->icon_select_gc, GCDashOffset, &gcv);
-
-	XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
-		       icon->core->width - 1, icon->core->height - 1);
+	drawIconSelection(icon);
 
 	/* the static rectangle is enough to mark the icon selected
 	 * while no output is powered, stop re-arming so an idle
@@ -708,7 +753,6 @@ void wIconSetHighlited(WIcon *icon, Bool flag)
 
 void wIconSelect(WIcon *icon)
 {
-	WScreen *scr = icon->core->screen_ptr;
 	icon->selected = !icon->selected;
 
 	if (icon->selected) {
@@ -716,8 +760,7 @@ void wIconSelect(WIcon *icon)
 		if (!w_global.config->dont_blink)
 			icon->handlerID = WMAddTimerHandler(10, cycleColor, icon);
 		else
-			XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
-				       icon->core->width - 1, icon->core->height - 1);
+			drawIconSelection(icon);
 	} else {
 		WMDeleteTimerHandlerPtr(&icon->handlerID);
 		XClearArea(dpy, icon->core->window, 0, 0, icon->core->width, icon->core->height, True);
@@ -1013,15 +1056,12 @@ void wIconPaint(WIcon *icon)
 	if (!icon || !icon->core || !icon->core->screen_ptr)
 		return;
 
-	WScreen *scr = icon->core->screen_ptr;
-
 	XClearWindow(dpy, icon->core->window);
 
 	update_icon_title(icon);
 
 	if (icon->selected)
-		XDrawRectangle(dpy, icon->core->window, scr->icon_select_gc, 0, 0,
-			       icon->core->width - 1, icon->core->height - 1);
+		drawIconSelection(icon);
 }
 
 /******************************************************************/

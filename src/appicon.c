@@ -32,6 +32,7 @@
 #include <errno.h>
 
 #include <cairo.h>
+#include <cairo-xcb.h>
 #include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
@@ -450,28 +451,63 @@ void wAppIconPaint(WAppIcon *aicon)
 	if (aicon->docked && scr->dock && scr->dock == aicon->dock && aicon->yindex == 0)
 		updateDockNumbers(scr);
 # endif
-	if (aicon->docked && !aicon->running && aicon->command != NULL) {
-		XSetClipMask(dpy, scr->copy_gc, scr->dock_dots->mask);
-		XSetClipOrigin(dpy, scr->copy_gc, 0, 0);
-		XCopyArea(dpy, scr->dock_dots->image, aicon->icon->core->window,
-			  scr->copy_gc, 0, 0, scr->dock_dots->width, scr->dock_dots->height, 0, 0);
-	}
+	if (aicon->docked && !aicon->running && aicon->command != NULL)
+		wAppIconPaintDockDots(scr, aicon->icon->core->window,
+				      scr->dock_dots->width);
 #ifdef HIDDENDOT
-	if (wapp && wapp->flags.hidden) {
-		XSetClipMask(dpy, scr->copy_gc, scr->dock_dots->mask);
-		XSetClipOrigin(dpy, scr->copy_gc, 0, 0);
-		XCopyArea(dpy, scr->dock_dots->image,
-			  aicon->icon->core->window, scr->copy_gc, 0, 0, 7, scr->dock_dots->height, 0, 0);
-	}
+	if (wapp && wapp->flags.hidden)
+		wAppIconPaintDockDots(scr, aicon->icon->core->window, 7);
 #endif				/* HIDDENDOT */
 
 	if (aicon->omnipresent)
 		drawCorner(aicon->icon);
 
-	XSetClipMask(dpy, scr->copy_gc, None);
 	if (aicon->launching)
-		XFillRectangle(dpy, aicon->icon->core->window, scr->stipple_gc,
-			       0, 0, w_global.config->icon_size, w_global.config->icon_size);
+		wAppIconPaintLaunching(scr, aicon->icon->core->window);
+}
+
+/* the three-dot not-running indicator (or its first-column-only
+ * single-dot variant when width is clamped), masked through the
+ * shared depth-1 mask so only the dot bodies land */
+void wAppIconPaintDockDots(WScreen *scr, Window win, int width)
+{
+	RContext *rc = scr->rcontext;
+	WPixmap *dots = scr->dock_dots;
+	cairo_surface_t *psurf, *msurf;
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr->wmscreen, win);
+	if (!cr)
+		return;
+	psurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)dots->image,
+					 rc->xvisual, dots->width, dots->height);
+	msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+						    (xcb_pixmap_t)dots->mask,
+						    dots->width, dots->height);
+	cairo_rectangle(cr, 0, 0, width, dots->height);
+	cairo_clip(cr);
+	cairo_set_source_surface(cr, psurf, 0, 0);
+	cairo_mask_surface(cr, msurf, 0, 0);
+	cairo_surface_destroy(psurf);
+	cairo_surface_destroy(msurf);
+	WCairoEnd(cr);
+}
+
+/* half-white overlay while a docked launcher is starting: the
+ * FillStippled 50% checkerboard read as a uniform lightening at icon
+ * scale, so paint the same effect as a translucent white fill */
+void wAppIconPaintLaunching(WScreen *scr, Window win)
+{
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr->wmscreen, win);
+	if (!cr)
+		return;
+	cairo_set_source_rgba(cr, 1, 1, 1, 0.5);
+	cairo_rectangle(cr, 0, 0, w_global.config->icon_size,
+			w_global.config->icon_size);
+	cairo_fill(cr);
+	WCairoEnd(cr);
 }
 
 /* Save the application icon, if it's a dockapp then use it with dock = True */
