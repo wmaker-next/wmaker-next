@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 #define XDND_COLOR_DATA_TYPE "application/X-color"
@@ -297,12 +299,20 @@ static WMPixmap *makeDragPixmap(WMColorWell * cPtr)
 {
 	WMScreen *scr = cPtr->view->screen;
 	Pixmap pix;
+	cairo_t *cr;
 
 	pix = XCreatePixmap(scr->display, W_DRAWABLE(scr), 16, 16, scr->depth);
+	WMScreenNoteDrawableSize(scr, pix, 16, 16);
 
-	XFillRectangle(scr->display, pix, WMColorGC(cPtr->color), 0, 0, 15, 15);
-
-	XDrawRectangle(scr->display, pix, WMColorGC(scr->black), 0, 0, 15, 15);
+	cr = WCairoBeginForDrawable(scr, pix);
+	WCairoSetSourceColor(cr, cPtr->color);
+	cairo_rectangle(cr, 0, 0, 16, 16);
+	cairo_fill(cr);
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_set_line_width(cr, 1.0);
+	cairo_rectangle(cr, 0.5, 0.5, 15, 15);
+	cairo_stroke(cr);
+	WCairoEnd(cr);
 
 	return WMCreatePixmapFromXPixmaps(scr, pix, None, 16, 16, scr->depth);
 }
