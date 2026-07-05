@@ -20,7 +20,6 @@
 
 #include "wconfig.h"
 
-#include <limits.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -29,6 +28,7 @@
 #endif
 
 #include <cairo.h>
+#include <cairo-xcb.h>
 #include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
@@ -47,25 +47,26 @@ typedef struct WireframeOutline {
 } WireframeOutline;
 
 /* polylines are stored as a flat XPoint array plus a per-polyline
- * point count so Commit can walk them with one XDrawLines each */
+ * point count so commitCairo() can walk them once */
 #define POLY_MAX_RUNS 8
 
 typedef struct WWireframe {
 	WScreen *scr;
-	Bool use_shape;
 
-	/* cairo path, one root-sized ARGB32 window painted with a
-	 * SOURCE-operator clear then a translucent fill and opaque
-	 * band per outline. Taken only when the server offers a
-	 * depth-32 visual and a compositing manager owns _NET_WM_CM_Sn,
-	 * otherwise alpha=0 pixels would show as opaque black. */
+	/* one root-sized ARGB32 window painted with a SOURCE-operator
+	 * clear then an opaque band per outline. Taken whenever the
+	 * server offers a depth-32 visual and the Shape extension. When
+	 * a compositing manager owns _NET_WM_CM_Sn the alpha channel is
+	 * blended so the interior fill is drawn translucent and the
+	 * window is left unshaped, otherwise ShapeBounding is set to the
+	 * band rectangles (and a stroked polyline mask) so the alpha=0
+	 * regions are cut out rather than showing as opaque black. */
 	Bool use_cairo;
+	Bool composited;	/* refreshed on every wWireframeBegin() */
+	Bool shaped;		/* ShapeBounding currently applied */
 	WCairoSurface *csurf;
 
-	/* shape path, one root-sized window whose ShapeBounding is the
-	 * union of the outline bands */
 	Window window;
-	GC gc;			/* white pen for the outline cores */
 	int win_width, win_height;	/* root size the window was created for */
 	Bool mapped;
 
@@ -73,20 +74,14 @@ typedef struct WWireframe {
 	int count;
 	int capacity;
 
-	/* non-axis-aligned polylines rendered via a 1-bit shape mask,
-	 * poly_mask is kept across commits and only the previous
-	 * frame's dirty box is cleared */
-	Pixmap poly_mask;
-	GC poly_set_gc;		/* fg=1, band-width lines onto the mask */
-	GC poly_clr_gc;		/* fg=0 fill for the dirty-box clear */
 	XPoint *poly_pts;
 	int poly_run[POLY_MAX_RUNS];	/* npoints per polyline */
 	int poly_nruns;
 	int poly_npts;
 	int poly_pts_capacity;
-	int dirty_x, dirty_y, dirty_w, dirty_h;	/* mask area to clear */
+	Pixmap poly_mask;	/* depth-1 root-sized, lazily created */
 
-	/* no-XShape fallback, one white window with a black border per band */
+	/* no-depth-32 fallback, one white window with a black border per band */
 	Window *bars;
 	int bars_mapped;
 	int bars_capacity;
@@ -98,26 +93,19 @@ static void createCairoWindow(WWireframe *wf)
 	RContext *rc = scr->rcontext;
 	XSetWindowAttributes attribs;
 	XClassHint class_hint;
-	XVisualInfo vtempl, *vinfo;
-	int nret;
 
-	/* wraster only exposes the xcb visualtype, resolve the libX11
-	 * Visual* XCreateWindow needs from its id */
-	vtempl.visualid = rc->xvisual_argb->visual_id;
-	vinfo = XGetVisualInfo(dpy, VisualIDMask, &vtempl, &nret);
-
+	/* background None: the server must not fill on map, expose, or a
+	 * ShapeBounding grow, otherwise it clears the bands to the
+	 * background pixel right after cairo has painted them */
 	attribs.override_redirect = True;
 	attribs.colormap = rc->cmap_argb;
 	attribs.border_pixel = 0;
-	attribs.background_pixel = 0;
+	attribs.background_pixmap = None;
 	wf->window = XCreateWindow(dpy, scr->root_win, 0, 0,
 				   scr->scr_width, scr->scr_height, 0,
-				   32, InputOutput,
-				   vinfo ? vinfo[0].visual : CopyFromParent,
+				   32, InputOutput, scr->wmscreen->visual_argb,
 				   CWOverrideRedirect | CWColormap | CWBorderPixel
-				   | CWBackPixel, &attribs);
-	if (vinfo)
-		XFree(vinfo);
+				   | CWBackPixmap, &attribs);
 	wf->win_width = scr->scr_width;
 	wf->win_height = scr->scr_height;
 
@@ -126,8 +114,8 @@ static void createCairoWindow(WWireframe *wf)
 	XSetClassHint(dpy, wf->window, &class_hint);
 
 #ifdef USE_XSHAPE
-	/* still empty ShapeInput so the band never eats pointer events,
-	 * this is orthogonal to whether ShapeBounding is used */
+	/* empty ShapeInput so the band never eats pointer events, this is
+	 * orthogonal to whether ShapeBounding is used for the visual cut */
 	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT,
 			     XCB_CLIP_ORDERING_UNSORTED, wf->window, 0, 0, 0, NULL);
 #endif
@@ -144,82 +132,35 @@ static WWireframe *getWireframe(WScreen *scr)
 	if (!wf) {
 		wf = wmalloc(sizeof(*wf));
 		wf->scr = scr;
-		wf->use_cairo = scr->rcontext->xvisual_argb
-				&& W_ScreenCheckCompositor(scr->wmscreen);
 #ifdef USE_XSHAPE
-		if (!wf->use_cairo)
-			wf->use_shape = w_global.xext.shape.supported;
+		/* Shape is required either way: composited for the empty
+		 * ShapeInput click-through, uncomposited for ShapeBounding
+		 * as well. Without it fall through to the bars path. */
+		wf->use_cairo = scr->rcontext->xvisual_argb
+				&& scr->wmscreen->visual_argb
+				&& w_global.xext.shape.supported;
 #endif
 		scr->wireframe = wf;
 	}
 
-	if (wf->use_cairo) {
-		if (wf->window != None
-		    && (wf->win_width != scr->scr_width || wf->win_height != scr->scr_height)) {
-			WCairoSurfaceDestroy(wf->csurf);
-			XDestroyWindow(dpy, wf->window);
-			wf->window = None;
-			wf->csurf = NULL;
-			wf->mapped = False;
-		}
-		if (wf->window == None)
-			createCairoWindow(wf);
+	if (!wf->use_cairo)
 		return wf;
-	}
 
-#ifdef USE_XSHAPE
-	if (wf->use_shape) {
-		if (wf->window != None
-		    && (wf->win_width != scr->scr_width || wf->win_height != scr->scr_height)) {
-			/* the root was resized under us, recreate at the new size */
-			XFreeGC(dpy, wf->gc);
-			XDestroyWindow(dpy, wf->window);
-			wf->window = None;
-			wf->mapped = False;
-			if (wf->poly_mask != None) {
-				XFreeGC(dpy, wf->poly_set_gc);
-				XFreeGC(dpy, wf->poly_clr_gc);
-				XFreePixmap(dpy, wf->poly_mask);
-				wf->poly_mask = None;
-				wf->dirty_w = 0;
-			}
-		}
-
-		if (wf->window == None) {
-			XSetWindowAttributes attribs;
-			XClassHint class_hint;
-			XGCValues gcv;
-
-			attribs.override_redirect = True;
-			attribs.save_under = True;
-			attribs.background_pixel = scr->black_pixel;
-			wf->window = XCreateWindow(dpy, scr->root_win, 0, 0,
-						   scr->scr_width, scr->scr_height, 0,
-						   CopyFromParent, InputOutput, CopyFromParent,
-						   CWOverrideRedirect | CWSaveUnder | CWBackPixel,
-						   &attribs);
-			wf->win_width = scr->scr_width;
-			wf->win_height = scr->scr_height;
-
-			class_hint.res_name = (char *)"wireframe";
-			class_hint.res_class = (char *)"WindowMaker";
-			XSetClassHint(dpy, wf->window, &class_hint);
-
-			/* never take input, the band must not generate
-			 * crossing events or swallow clicks while it is up */
-			xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET,
-					     XCB_SHAPE_SK_INPUT,
-					     XCB_CLIP_ORDERING_UNSORTED,
-					     wf->window, 0, 0, 0, NULL);
-
-			gcv.foreground = scr->white_pixel;
-			gcv.line_width = 1;
-			gcv.graphics_exposures = False;
-			wf->gc = XCreateGC(dpy, wf->window,
-					   GCForeground | GCLineWidth | GCGraphicsExposures, &gcv);
+	if (wf->window != None
+	    && (wf->win_width != scr->scr_width || wf->win_height != scr->scr_height)) {
+		WCairoSurfaceDestroy(wf->csurf);
+		XDestroyWindow(dpy, wf->window);
+		wf->window = None;
+		wf->csurf = NULL;
+		wf->mapped = False;
+		wf->shaped = False;
+		if (wf->poly_mask != None) {
+			XFreePixmap(dpy, wf->poly_mask);
+			wf->poly_mask = None;
 		}
 	}
-#endif
+	if (wf->window == None)
+		createCairoWindow(wf);
 
 	return wf;
 }
@@ -254,22 +195,11 @@ static int outlineRects(const WireframeOutline *o, XRectangle *rects)
 	return n;
 }
 
-#ifdef USE_XSHAPE
-static void drawOutlineCore(WWireframe *wf, const WireframeOutline *o)
-{
-	if (o->w >= 3 && o->h >= 3)
-		XDrawRectangle(dpy, wf->window, wf->gc, o->x + 1, o->y + 1, o->w - 3, o->h - 3);
-	if (o->title_y > 0)
-		XDrawLine(dpy, wf->window, wf->gc, o->x + 1, o->title_y, o->x + o->w - 2, o->title_y);
-	if (o->resize_y > 0)
-		XDrawLine(dpy, wf->window, wf->gc, o->x + 1, o->resize_y, o->x + o->w - 2, o->resize_y);
-}
-#endif
-
 static void commitBars(WWireframe *wf, const XRectangle *rects, int n)
 {
 	WScreen *scr = wf->scr;
-	int i;
+	XSetWindowAttributes attribs;
+	int i, w, h;
 
 	if (n > wf->bars_capacity) {
 		wf->bars = wrealloc(wf->bars, n * sizeof(*wf->bars));
@@ -279,12 +209,10 @@ static void commitBars(WWireframe *wf, const XRectangle *rects, int n)
 	}
 
 	for (i = 0; i < n; i++) {
-		int w = rects[i].width > 2 ? rects[i].width - 2 : 1;
-		int h = rects[i].height > 2 ? rects[i].height - 2 : 1;
+		w = rects[i].width > 2 ? rects[i].width - 2 : 1;
+		h = rects[i].height > 2 ? rects[i].height - 2 : 1;
 
 		if (wf->bars[i] == None) {
-			XSetWindowAttributes attribs;
-
 			attribs.override_redirect = True;
 			attribs.save_under = True;
 			attribs.background_pixel = scr->white_pixel;
@@ -306,103 +234,32 @@ static void commitBars(WWireframe *wf, const XRectangle *rects, int n)
 	wf->bars_mapped = n;
 }
 
-void wWireframeBegin(WScreen *scr)
+/* build every accumulated polyline as a single cairo path so one stroke
+ * covers them, used both for the visible band/core and the shape mask */
+static void addPolylinePath(cairo_t *cr, const WWireframe *wf)
 {
-	WWireframe *wf = getWireframe(scr);
-
-	wf->count = 0;
-	wf->poly_nruns = 0;
-	wf->poly_npts = 0;
-}
-
-#ifdef USE_XSHAPE
-static void ensurePolyMask(WWireframe *wf)
-{
-	XGCValues gcv;
-
-	if (wf->poly_mask != None)
-		return;
-
-	wf->poly_mask = XCreatePixmap(dpy, wf->scr->root_win,
-				      wf->win_width, wf->win_height, 1);
-
-	gcv.foreground = 1;
-	gcv.line_width = WIREFRAME_THICKNESS;
-	gcv.cap_style = CapRound;
-	gcv.join_style = JoinRound;
-	gcv.graphics_exposures = False;
-	wf->poly_set_gc = XCreateGC(dpy, wf->poly_mask,
-				    GCForeground | GCLineWidth | GCCapStyle |
-				    GCJoinStyle | GCGraphicsExposures, &gcv);
-
-	gcv.foreground = 0;
-	wf->poly_clr_gc = XCreateGC(dpy, wf->poly_mask,
-				    GCForeground | GCGraphicsExposures, &gcv);
-
-	/* fresh pixmap contents are undefined, so the first commit must
-	 * clear the whole thing, subsequent commits clear only the
-	 * previous frame's bounding box */
-	wf->dirty_x = 0;
-	wf->dirty_y = 0;
-	wf->dirty_w = wf->win_width;
-	wf->dirty_h = wf->win_height;
-}
-
-static void renderPolyMask(WWireframe *wf)
-{
-	int i, off, x0, y0, x1, y1;
-
-	ensurePolyMask(wf);
-
-	if (wf->dirty_w > 0)
-		XFillRectangle(dpy, wf->poly_mask, wf->poly_clr_gc,
-			       wf->dirty_x, wf->dirty_y, wf->dirty_w, wf->dirty_h);
-
-	x0 = y0 = INT_MAX;
-	x1 = y1 = INT_MIN;
-	for (i = 0; i < wf->poly_npts; i++) {
-		if (wf->poly_pts[i].x < x0) x0 = wf->poly_pts[i].x;
-		if (wf->poly_pts[i].y < y0) y0 = wf->poly_pts[i].y;
-		if (wf->poly_pts[i].x > x1) x1 = wf->poly_pts[i].x;
-		if (wf->poly_pts[i].y > y1) y1 = wf->poly_pts[i].y;
-	}
+	int i, j, off;
 
 	off = 0;
 	for (i = 0; i < wf->poly_nruns; i++) {
-		XDrawLines(dpy, wf->poly_mask, wf->poly_set_gc,
-			   wf->poly_pts + off, wf->poly_run[i], CoordModeOrigin);
-		off += wf->poly_run[i];
-	}
-
-	/* record the box (padded for line width and rounded caps) so the
-	 * next commit clears only what this one drew */
-	wf->dirty_x = x0 - WIREFRAME_THICKNESS;
-	wf->dirty_y = y0 - WIREFRAME_THICKNESS;
-	wf->dirty_w = (x1 - x0) + 2 * WIREFRAME_THICKNESS;
-	wf->dirty_h = (y1 - y0) + 2 * WIREFRAME_THICKNESS;
-}
-
-static void drawPolyCores(WWireframe *wf)
-{
-	int i, off;
-
-	off = 0;
-	for (i = 0; i < wf->poly_nruns; i++) {
-		XDrawLines(dpy, wf->window, wf->gc,
-			   wf->poly_pts + off, wf->poly_run[i], CoordModeOrigin);
+		cairo_move_to(cr, wf->poly_pts[off].x, wf->poly_pts[off].y);
+		for (j = 1; j < wf->poly_run[i]; j++)
+			cairo_line_to(cr, wf->poly_pts[off + j].x,
+				      wf->poly_pts[off + j].y);
 		off += wf->poly_run[i];
 	}
 }
-#endif
 
-/* one closed rounded-rect outline: translucent interior, then a
- * WIREFRAME_THICKNESS opaque black band with a 1 px white core, and
- * the optional titlebar/resizebar separator lines on top */
-static void paintCairoOutline(cairo_t *cr, const WireframeOutline *o)
+/* one closed rounded-rect outline: translucent interior when composited,
+ * then a WIREFRAME_THICKNESS opaque black band with a 1 px white core,
+ * and the optional titlebar/resizebar separator lines on top */
+static void paintCairoOutline(cairo_t *cr, const WireframeOutline *o, Bool fill)
 {
-	cairo_set_source_rgba(cr, 0.20, 0.40, 0.60, 0.30);
-	cairo_rectangle(cr, o->x, o->y, o->w, o->h);
-	cairo_fill(cr);
+	if (fill) {
+		cairo_set_source_rgba(cr, 0.20, 0.40, 0.60, 0.30);
+		cairo_rectangle(cr, o->x, o->y, o->w, o->h);
+		cairo_fill(cr);
+	}
 
 	cairo_set_line_width(cr, WIREFRAME_THICKNESS);
 	cairo_set_source_rgb(cr, 0, 0, 0);
@@ -425,10 +282,87 @@ static void paintCairoOutline(cairo_t *cr, const WireframeOutline *o)
 	cairo_stroke(cr);
 }
 
+#ifdef USE_XSHAPE
+/* set ShapeBounding to the union of the outline band rectangles and, when
+ * polylines are present, a depth-1 mask stroked with the same paths so the
+ * transparent regions of the ARGB window are cut out on the uncomposited
+ * path. The mask is root-sized and reused across commits. */
+static void applyShapeBounding(WWireframe *wf)
+{
+	RContext *rc = wf->scr->rcontext;
+	cairo_surface_t *ms;
+	cairo_t *cr;
+	XRectangle *rects;
+	int i, n, op;
+
+	n = 0;
+	rects = wf->count ? wmalloc(wf->count * 6 * sizeof(*rects)) : NULL;
+	for (i = 0; i < wf->count; i++)
+		n += outlineRects(&wf->outlines[i], rects + n);
+
+	op = XCB_SHAPE_SO_SET;
+	if (n > 0) {
+		xcb_shape_rectangles(xconn, op, XCB_SHAPE_SK_BOUNDING,
+				     XCB_CLIP_ORDERING_UNSORTED,
+				     wf->window, 0, 0, n,
+				     (xcb_rectangle_t *)rects);
+		op = XCB_SHAPE_SO_UNION;
+	}
+	wfree(rects);
+
+	if (wf->poly_nruns > 0) {
+		if (wf->poly_mask == None) {
+			wf->poly_mask = xcb_generate_id(rc->xc);
+			xcb_create_pixmap(rc->xc, 1, wf->poly_mask,
+					  rc->xscreen->root,
+					  wf->win_width, wf->win_height);
+		}
+		ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							 (xcb_pixmap_t)wf->poly_mask,
+							 wf->win_width,
+							 wf->win_height);
+		cr = cairo_create(ms);
+		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+		cairo_set_source_rgba(cr, 0, 0, 0, 0);
+		cairo_paint(cr);
+		cairo_set_source_rgba(cr, 0, 0, 0, 1);
+		cairo_set_line_width(cr, WIREFRAME_THICKNESS);
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+		cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+		addPolylinePath(cr, wf);
+		cairo_stroke(cr);
+		cairo_destroy(cr);
+		cairo_surface_flush(ms);
+		cairo_surface_destroy(ms);
+
+		xcb_shape_mask(xconn, op, XCB_SHAPE_SK_BOUNDING,
+			       wf->window, 0, 0, wf->poly_mask);
+	}
+	wf->shaped = True;
+}
+#endif
+
 static void commitCairo(WWireframe *wf)
 {
 	cairo_t *cr;
-	int i, j, off;
+	int i;
+
+#ifdef USE_XSHAPE
+	if (!wf->composited) {
+		/* shape before painting: growing ShapeBounding exposes the
+		 * newly-included bands and would clear them to the window
+		 * background if it ran after the paint, and shaping before
+		 * the first MapRaised keeps the window from ever appearing
+		 * at its unshaped root-sized extent */
+		applyShapeBounding(wf);
+	} else if (wf->shaped) {
+		/* a compositor started mid-session, drop the bounding shape
+		 * so the translucent interior fill shows */
+		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+			       wf->window, 0, 0, XCB_NONE);
+		wf->shaped = False;
+	}
+#endif
 
 	cr = WCairoBegin(wf->csurf);
 
@@ -441,19 +375,12 @@ static void commitCairo(WWireframe *wf)
 	cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
 	for (i = 0; i < wf->count; i++)
-		paintCairoOutline(cr, &wf->outlines[i]);
+		paintCairoOutline(cr, &wf->outlines[i], wf->composited);
 
 	if (wf->poly_nruns > 0) {
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 		cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
-		off = 0;
-		for (i = 0; i < wf->poly_nruns; i++) {
-			cairo_move_to(cr, wf->poly_pts[off].x, wf->poly_pts[off].y);
-			for (j = 1; j < wf->poly_run[i]; j++)
-				cairo_line_to(cr, wf->poly_pts[off + j].x,
-					      wf->poly_pts[off + j].y);
-			off += wf->poly_run[i];
-		}
+		addPolylinePath(cr, wf);
 		cairo_set_line_width(cr, WIREFRAME_THICKNESS);
 		cairo_set_source_rgb(cr, 0, 0, 0);
 		cairo_stroke_preserve(cr);
@@ -472,12 +399,25 @@ static void commitCairo(WWireframe *wf)
 	}
 }
 
+void wWireframeBegin(WScreen *scr)
+{
+	WWireframe *wf = getWireframe(scr);
+
+	wf->count = 0;
+	wf->poly_nruns = 0;
+	wf->poly_npts = 0;
+	/* only re-probe the compositor at the start of a drag, not on
+	 * every motion step, the check is a synchronous round trip */
+	if (wf->use_cairo && !wf->mapped)
+		wf->composited = W_ScreenCheckCompositor(scr->wmscreen);
+}
+
 void wWireframeAddPolyline(WScreen *scr, const XPoint *pts, int npts)
 {
 	WWireframe *wf = getWireframe(scr);
 	int i;
 
-	if (npts < 2 || !(wf->use_shape || wf->use_cairo) || wf->poly_nruns >= POLY_MAX_RUNS)
+	if (npts < 2 || !wf->use_cairo || wf->poly_nruns >= POLY_MAX_RUNS)
 		return;
 
 	if (wf->poly_npts + npts > wf->poly_pts_capacity) {
@@ -514,7 +454,7 @@ void wWireframeAddOutline(WScreen *scr, int x, int y, int width, int height,
 void wWireframeCommit(WScreen *scr)
 {
 	WWireframe *wf = getWireframe(scr);
-	XRectangle *rects = NULL;
+	XRectangle *rects;
 	int i, n;
 
 	if (wf->count == 0 && wf->poly_nruns == 0) {
@@ -528,56 +468,10 @@ void wWireframeCommit(WScreen *scr)
 	}
 
 	n = 0;
-	if (wf->count > 0) {
-		rects = wmalloc(wf->count * 6 * sizeof(*rects));
-		for (i = 0; i < wf->count; i++)
-			n += outlineRects(&wf->outlines[i], rects + n);
-	}
-
-#ifdef USE_XSHAPE
-	if (wf->use_shape) {
-		/* set the full ShapeBounding before the first MapRaised so
-		 * the window never appears at its default (unshaped, root
-		 * sized) extent, when both sources are present the mask is
-		 * unioned onto the rectangle region */
-		if (wf->poly_nruns > 0)
-			renderPolyMask(wf);
-		if (n > 0) {
-			xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET,
-					     XCB_SHAPE_SK_BOUNDING,
-					     XCB_CLIP_ORDERING_UNSORTED,
-					     wf->window, 0, 0, n,
-					     (xcb_rectangle_t *)rects);
-			if (wf->poly_nruns > 0)
-				xcb_shape_mask(xconn, XCB_SHAPE_SO_UNION,
-					       XCB_SHAPE_SK_BOUNDING,
-					       wf->window, 0, 0, wf->poly_mask);
-		} else {
-			xcb_shape_mask(xconn, XCB_SHAPE_SO_SET,
-				       XCB_SHAPE_SK_BOUNDING,
-				       wf->window, 0, 0, wf->poly_mask);
-		}
-		if (wf->mapped) {
-			/* a workspace switch during the drag maps client
-			 * frames on top of the stack, stay above them */
-			XRaiseWindow(dpy, wf->window);
-		} else {
-			XMapRaised(dpy, wf->window);
-			wf->mapped = True;
-		}
-		/* regions that stayed inside the new shape keep their
-		 * contents, clear the previous step's cores and repaint */
-		XClearWindow(dpy, wf->window);
-		for (i = 0; i < wf->count; i++)
-			drawOutlineCore(wf, &wf->outlines[i]);
-		if (wf->poly_nruns > 0)
-			drawPolyCores(wf);
-	} else
-#endif
-	{
-		commitBars(wf, rects, n);
-	}
-
+	rects = wmalloc(wf->count * 6 * sizeof(*rects));
+	for (i = 0; i < wf->count; i++)
+		n += outlineRects(&wf->outlines[i], rects + n);
+	commitBars(wf, rects, n);
 	wfree(rects);
 }
 
@@ -600,16 +494,6 @@ void wWireframeHide(WScreen *scr)
 		}
 		return;
 	}
-
-#ifdef USE_XSHAPE
-	if (wf->use_shape) {
-		if (wf->mapped) {
-			XUnmapWindow(dpy, wf->window);
-			wf->mapped = False;
-		}
-		return;
-	}
-#endif
 
 	for (i = 0; i < wf->bars_mapped; i++)
 		XUnmapWindow(dpy, wf->bars[i]);
