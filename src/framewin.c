@@ -26,6 +26,9 @@
 #include <string.h>
 
 #include <wraster.h>
+#include <cairo.h>
+#include <cairo-xcb.h>
+#include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
 #include "GNUstep.h"
@@ -887,17 +890,88 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
 	redrawTitlebar(fwin);
 }
 
+/* Paint texture as a cairo pattern into a fresh width x height Pixmap
+ * with an optional RBEV_RAISED2 bevel on the (bx,0,bw,height) span.
+ * Returns None when the texture has no pattern equivalent so the
+ * caller falls back to the RImage renderer. */
+static Pixmap paintTextureSlice(WScreen *scr, cairo_pattern_t *pat,
+				int width, int height, int bx, int bw, int bevel)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *surf;
+	cairo_t *cr;
+	Pixmap pix;
+
+	pix = xcb_generate_id(rc->xc);
+	xcb_create_pixmap(rc->xc, rc->xdepth, pix, rc->xscreen->root, width, height);
+
+	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
+					rc->xvisual, width, height);
+	cr = cairo_create(surf);
+	cairo_set_source(cr, pat);
+	cairo_paint(cr);
+	if (bevel)
+		wTextureCairoBevel(cr, bx, 0, bw, height);
+	cairo_destroy(cr);
+	cairo_surface_flush(surf);
+	cairo_surface_destroy(surf);
+
+	WMScreenNoteDrawableSize(scr->wmscreen, pix, width, height);
+	return pix;
+}
+
 static void
 renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	      int bwidth, int bheight, int nleft, int nright,
 	      Pixmap * title, Pixmap slices[])
 {
 	RImage *img, *sub, *mimg;
+	cairo_pattern_t *pat;
+	cairo_matrix_t m;
 	int x, w, i, bevel;
 
 	*title = None;
 	for (i = 0; i < nleft + nright; i++)
 		slices[i] = None;
+
+	pat = wTextureCairoPattern(texture, width, height);
+	if (pat) {
+		bevel = (w_global.config->new_style == TS_NEW);
+		if (TS_NEW_GEOM(w_global.config->new_style)) {
+			/* button slices: shift the pattern origin so each
+			 * slice samples the same span of the full-width
+			 * gradient it would have been carved from */
+			for (i = 0; i < nleft; i++) {
+				cairo_matrix_init_translate(&m, i * bwidth, 0);
+				cairo_pattern_set_matrix(pat, &m);
+				slices[i] = paintTextureSlice(scr, pat,
+							      bwidth, bheight,
+							      0, bwidth, bevel);
+			}
+			for (i = 0; i < nright; i++) {
+				cairo_matrix_init_translate(&m,
+							    width - (i + 1) * bwidth, 0);
+				cairo_pattern_set_matrix(pat, &m);
+				slices[nleft + i] = paintTextureSlice(scr, pat,
+								      bwidth, bheight,
+								      0, bwidth, bevel);
+			}
+			x = nleft * bwidth;
+			w = width - (nleft + nright) * bwidth;
+			if (w <= 0) {
+				w = width;
+				x = 0;
+			}
+			cairo_matrix_init_translate(&m, x, 0);
+			cairo_pattern_set_matrix(pat, &m);
+			*title = paintTextureSlice(scr, pat, w, height, 0, w, bevel);
+		} else {
+			*title = paintTextureSlice(scr, pat, width, height,
+						   0, width, 1);
+		}
+		cairo_pattern_destroy(pat);
+		return;
+	}
 
 	img = wTextureRenderImage(texture, width, height, WREL_FLAT);
 	if (!img) {
@@ -964,14 +1038,59 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	RReleaseImage(img);
 }
 
+static void resizebarGrips(cairo_t *cr, int width, int height, int cwidth)
+{
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	cairo_set_source_rgba(cr, 0, 0, 0, 0.35);
+	cairo_move_to(cr, 0.5, 0.5);
+	cairo_line_to(cr, width - 0.5, 0.5);
+	cairo_move_to(cr, cwidth + 0.5, 2.5);
+	cairo_line_to(cr, cwidth + 0.5, height - 0.5);
+	if (width > 1) {
+		cairo_move_to(cr, width - cwidth - 1.5, 2.5);
+		cairo_line_to(cr, width - cwidth - 1.5, height - 0.5);
+	}
+	cairo_stroke(cr);
+
+	cairo_set_source_rgba(cr, 1, 1, 1, 0.45);
+	cairo_move_to(cr, 0.5, 1.5);
+	cairo_line_to(cr, width - 0.5, 1.5);
+	cairo_move_to(cr, cwidth + 1.5, 2.5);
+	cairo_line_to(cr, cwidth + 1.5, height - 0.5);
+	cairo_move_to(cr, width - cwidth - 0.5, 2.5);
+	cairo_line_to(cr, width - cwidth - 0.5, height - 0.5);
+	cairo_stroke(cr);
+}
+
 static void
 renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height, int cwidth, Pixmap * pmap)
 {
 	RImage *img;
 	RColor light;
 	RColor dark;
+	cairo_pattern_t *pat;
+	cairo_surface_t *surf;
+	cairo_t *cr;
 
 	*pmap = None;
+
+	pat = wTextureCairoPattern(texture, width, height);
+	if (pat) {
+		*pmap = paintTextureSlice(scr, pat, width, height, 0, 0, 0);
+		cairo_pattern_destroy(pat);
+		surf = cairo_xcb_surface_create(scr->rcontext->xc,
+						(xcb_drawable_t)*pmap,
+						scr->rcontext->xvisual,
+						width, height);
+		cr = cairo_create(surf);
+		resizebarGrips(cr, width, height, cwidth);
+		cairo_destroy(cr);
+		cairo_surface_flush(surf);
+		cairo_surface_destroy(surf);
+		return;
+	}
 
 	img = wTextureRenderImage(texture, width, height, WREL_FLAT);
 	if (!img) {

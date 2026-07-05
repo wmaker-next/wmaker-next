@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <wraster.h>
+#include <cairo.h>
 
 #include "WindowMaker.h"
 #include "texture.h"
@@ -501,6 +502,120 @@ RImage *wTextureRenderImage(WTexture * texture, int width, int height, int relie
 	}
 
 	return image;
+}
+
+/*
+ * Map a WTexture onto a cairo pattern of the same geometry as
+ * wTextureRenderImage() would produce for the flat (unbevelled) case.
+ * Returns NULL for the interwoven, textured-gradient and plugin
+ * variants that have no direct pattern equivalent, so callers fall
+ * back to the RImage path for those. Solid, the three linear-gradient
+ * families and pixmap textures cover the shipped default and every
+ * theme in the tree. The caller owns the returned reference and must
+ * cairo_pattern_destroy() it.
+ */
+cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height)
+{
+	cairo_pattern_t *pat;
+	cairo_surface_t *surf;
+	cairo_matrix_t m;
+	RImage *pix;
+
+	switch (texture->any.type) {
+	case WTEX_SOLID:
+		return cairo_pattern_create_rgb(texture->solid.normal.red   / 65535.0,
+						texture->solid.normal.green / 65535.0,
+						texture->solid.normal.blue  / 65535.0);
+
+	case WTEX_HGRADIENT:
+		return RGradientCairoPattern(RHorizontalGradient, width, height,
+					     &texture->gradient.color1,
+					     &texture->gradient.color2);
+	case WTEX_VGRADIENT:
+		return RGradientCairoPattern(RVerticalGradient, width, height,
+					     &texture->gradient.color1,
+					     &texture->gradient.color2);
+	case WTEX_DGRADIENT:
+		return RGradientCairoPattern(RDiagonalGradient, width, height,
+					     &texture->gradient.color1,
+					     &texture->gradient.color2);
+
+	case WTEX_MHGRADIENT:
+		return RMultiGradientCairoPattern(RHorizontalGradient, width, height,
+						  &texture->mgradient.colors[1]);
+	case WTEX_MVGRADIENT:
+		return RMultiGradientCairoPattern(RVerticalGradient, width, height,
+						  &texture->mgradient.colors[1]);
+	case WTEX_MDGRADIENT:
+		return RMultiGradientCairoPattern(RDiagonalGradient, width, height,
+						  &texture->mgradient.colors[1]);
+
+	case WTEX_PIXMAP:
+		pix = texture->pixmap.pixmap;
+		surf = RImageCairoSurface(pix);
+		if (!surf)
+			return NULL;
+		pat = cairo_pattern_create_for_surface(surf);
+		cairo_surface_destroy(surf);
+		/* the pattern matrix maps user space to pattern space, so
+		 * a scale of source/target stretches the source to fill */
+		if (texture->pixmap.subtype == WTP_TILE) {
+			cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
+		} else if (texture->pixmap.subtype == WTP_SCALE) {
+			cairo_matrix_init_scale(&m,
+						(double)pix->width  / width,
+						(double)pix->height / height);
+			cairo_pattern_set_matrix(pat, &m);
+			cairo_pattern_set_extend(pat, CAIRO_EXTEND_PAD);
+		} else {
+			/* WTP_CENTER: pad with the edge colour past the
+			 * source extent (RMakeCenteredImage fills with the
+			 * flat normal colour instead, close enough for a
+			 * background and avoids a second layer here) */
+			cairo_matrix_init_translate(&m,
+						    -(width - pix->width) / 2.0,
+						    -(height - pix->height) / 2.0);
+			cairo_pattern_set_matrix(pat, &m);
+			cairo_pattern_set_extend(pat, CAIRO_EXTEND_PAD);
+		}
+		return pat;
+
+	default:
+		return NULL;
+	}
+}
+
+/* RBEV_RAISED2 as cairo strokes on top of an already-painted
+ * background: 1 px white top/left highlight, 1 px 40%-black inner
+ * bottom/right, 1 px black outer bottom/right. Operator OVER so the
+ * translucent lines lighten/darken whatever gradient sits below,
+ * matching RBevelImage's add/subtract-80 arithmetic closely enough
+ * for a titlebar-height band. */
+void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h)
+{
+	cairo_save(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	cairo_set_source_rgba(cr, 1, 1, 1, 0.45);
+	cairo_move_to(cr, x + 0.5, y + h - 1.5);
+	cairo_line_to(cr, x + 0.5, y + 0.5);
+	cairo_line_to(cr, x + w - 1.5, y + 0.5);
+	cairo_stroke(cr);
+
+	cairo_set_source_rgba(cr, 0, 0, 0, 0.35);
+	cairo_move_to(cr, x + 1.5, y + h - 1.5);
+	cairo_line_to(cr, x + w - 1.5, y + h - 1.5);
+	cairo_line_to(cr, x + w - 1.5, y + 1.5);
+	cairo_stroke(cr);
+
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_move_to(cr, x + 0.5, y + h - 0.5);
+	cairo_line_to(cr, x + w - 0.5, y + h - 0.5);
+	cairo_line_to(cr, x + w - 0.5, y + 0.5);
+	cairo_stroke(cr);
+
+	cairo_restore(cr);
 }
 
 static void bevelImage(RImage * image, int relief)

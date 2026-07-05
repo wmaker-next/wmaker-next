@@ -167,6 +167,19 @@ WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file,
 void wTextureDestroy(WScreen*, WTexture*);
 struct RImage *wTextureRenderImage(WTexture*, int, int, int);
 
+typedef struct _cairo_pattern cairo_pattern_t;
+typedef struct _cairo cairo_t;
+
+/* WTexture as a cairo pattern with the same geometry as
+ * wTextureRenderImage(texture, width, height, WREL_FLAT). NULL for the
+ * variants with no direct pattern equivalent (interwoven, textured
+ * gradient, plugin) so callers fall back to the RImage path. */
+cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height);
+
+/* the RBEV_RAISED2 highlight/shadow lines as translucent strokes on
+ * top of an already-painted background */
+void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h);
+
 
 void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, Pixmap *tdata,
                            int repaint);
