@@ -1,6 +1,8 @@
 
 /*  WINGs WMText: multi-line/font/color/graphic text widget,  by Nwanua. */
 
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
 #include <ctype.h>
 #include <X11/keysym.h>
@@ -104,7 +106,6 @@ typedef struct W_Text {
 	WMColor *fgColor;	/* The current foreground color */
 	WMColor *bgColor;	/* The background color */
 
-	GC stippledGC;		/* the GC to overlay selected graphics with */
 	Pixmap db;		/* the buffer on which to draw */
 	WMPixmap *bgPixmap;	/* the background pixmap */
 
@@ -197,12 +198,6 @@ static void output(char *ptr, int len)
 #define CURSOR_BLINK_ON_DELAY   600
 #define CURSOR_BLINK_OFF_DELAY  400
 #endif
-
-#define STIPPLE_WIDTH 8
-#define STIPPLE_HEIGHT 8
-static char STIPPLE_BITS[] = {
-	0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa
-};
 
 static char *default_bullet[] = {
 	"6 6 4 1",
@@ -614,6 +609,14 @@ static Bool updateStartForCurrentTextBlock(Text * tPtr, int x, int y, int *dir, 
 	return 1;
 }
 
+static void hLine(cairo_t *cr, WMColor *c, int x1, int x2, int y)
+{
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y + 0.5);
+	cairo_stroke(cr);
+}
+
 static void paintText(Text * tPtr)
 {
 	TextBlock *tb;
@@ -621,19 +624,30 @@ static void paintText(Text * tPtr)
 	const char *text;
 	int len, y, c, s, done = False, dir; /* dir 1 = down */
 	WMScreen *scr = tPtr->view->screen;
-	Display *dpy = tPtr->view->screen->display;
+	RContext *rc = scr->rcontext;
 	Window win = tPtr->view->window;
 	WMColor *color;
+	XRectangle rect;
+	W_View *gview;
+	cairo_surface_t *dbsurf;
+	cairo_t *cr;
+	int j, h;
 
 	if (!tPtr->view->flags.realized || !tPtr->db || tPtr->flags.frozen)
 		return;
 
-	XFillRectangle(dpy, tPtr->db, WMColorGC(tPtr->bgColor), 0, 0, tPtr->visible.w, tPtr->visible.h);
+	cr = WCairoBeginForDrawable(scr, tPtr->db);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+	WCairoSetSourceColor(cr, tPtr->bgColor);
+	cairo_paint(cr);
 
 	if (tPtr->bgPixmap) {
-		WMDrawPixmap(tPtr->bgPixmap, tPtr->db,
-			     (tPtr->visible.w - tPtr->visible.x - tPtr->bgPixmap->width) / 2,
-			     (tPtr->visible.h - tPtr->visible.y - tPtr->bgPixmap->height) / 2);
+		WCairoPaintPixmap(cr, tPtr->bgPixmap,
+				  (tPtr->visible.w - tPtr->visible.x - tPtr->bgPixmap->width) / 2,
+				  (tPtr->visible.h - tPtr->visible.y - tPtr->bgPixmap->height) / 2);
 	}
 
 	if (!(tb = tPtr->currentTextBlock)) {
@@ -705,25 +719,24 @@ static void paintText(Text * tPtr)
 			}
 
 			if (tPtr->flags.ownsSelection) {
-				XRectangle rect;
-
 				if (sectionWasSelected(tPtr, tb, &rect, s)) {
 					tb->selected = True;
-					XFillRectangle(dpy, tPtr->db, WMColorGC(scr->gray),
-						       rect.x, rect.y, rect.width, rect.height);
+					WCairoSetSourceColor(cr, scr->gray);
+					cairo_rectangle(cr, rect.x, rect.y, rect.width, rect.height);
+					cairo_fill(cr);
 				}
 			}
 
 			len = tb->sections[s].end - tb->sections[s].begin;
 			text = &(tb->text[tb->sections[s].begin]);
 			y = tb->sections[s].y - tPtr->vpos;
-			WMDrawString(scr, tPtr->db, color, font, tb->sections[s].x - tPtr->hpos, y, text, len);
+			WMDrawStringCairo(cr, color, font, tb->sections[s].x - tPtr->hpos, y, text, len);
 
 			if (!tPtr->flags.monoFont && tb->underlined) {
-				XDrawLine(dpy, tPtr->db, WMColorGC(color),
-					  tb->sections[s].x - tPtr->hpos,
-					  y + font->y + 1,
-					  tb->sections[s].x + tb->sections[s].w - tPtr->hpos, y + font->y + 1);
+				hLine(cr, color,
+				      tb->sections[s].x - tPtr->hpos,
+				      tb->sections[s].x + tb->sections[s].w - tPtr->hpos,
+				      y + font->y + 1);
 			}
 		}
 		tb = (!done ? tb->next : NULL);
@@ -732,8 +745,6 @@ static void paintText(Text * tPtr)
 	/* now , show all graphic items that can be viewed */
 	c = WMGetArrayItemCount(tPtr->gfxItems);
 	if (c > 0 && !tPtr->flags.monoFont) {
-		int j, h;
-
 		for (j = 0; j < c; j++) {
 			tb = (TextBlock *) WMGetFromArray(tPtr->gfxItems, j);
 
@@ -749,14 +760,14 @@ static void paintText(Text * tPtr)
 			} else {
 				/* if it's viewable, and not mapped, map it */
 				if (tb->object) {
-					W_View *view = W_VIEW(tb->d.widget);
+					gview = W_VIEW(tb->d.widget);
 
-					if (!view->flags.realized)
+					if (!gview->flags.realized)
 						WMRealizeWidget(tb->d.widget);
-					if (!view->flags.mapped) {
-						XMapWindow(view->screen->display, view->window);
-						XFlush(view->screen->display);
-						view->flags.mapped = 1;
+					if (!gview->flags.mapped) {
+						XMapWindow(gview->screen->display, gview->window);
+						XFlush(gview->screen->display);
+						gview->flags.mapped = 1;
 					}
 				}
 
@@ -767,33 +778,26 @@ static void paintText(Text * tPtr)
 					h = WMWidgetHeight(tb->d.widget) + 1;
 
 				} else {
-					WMDrawPixmap(tb->d.pixmap, tPtr->db,
-						     tb->sections[0].x - tPtr->hpos,
-						     tb->sections[0].y - tPtr->vpos);
+					WCairoPaintPixmap(cr, tb->d.pixmap,
+							  tb->sections[0].x - tPtr->hpos,
+							  tb->sections[0].y - tPtr->vpos);
 					h = tb->d.pixmap->height + 1;
 
 				}
 
 				if (tPtr->flags.ownsSelection) {
-					XRectangle rect;
-
 					if (sectionWasSelected(tPtr, tb, &rect, 0)) {
-						Drawable d = (0 && tb->object ?
-							      (WMWidgetView(tb->d.widget))->window : tPtr->db);
-
 						tb->selected = True;
-						XFillRectangle(dpy, d, tPtr->stippledGC,
-							       /*XFillRectangle(dpy, tPtr->db, tPtr->stippledGC, */
-							       rect.x, rect.y, rect.width, rect.height);
+						WCairoStippleFill(cr, scr, rect.x, rect.y,
+								  rect.width, rect.height);
 					}
 				}
 
 				if (!tPtr->flags.monoFont && tb->underlined) {
-					XDrawLine(dpy, tPtr->db, WMColorGC(tb->color),
-						  tb->sections[0].x - tPtr->hpos,
-						  tb->sections[0].y + h - tPtr->vpos,
-						  tb->sections[0].x + tb->sections[0].w - tPtr->hpos,
-						  tb->sections[0].y + h - tPtr->vpos);
+					hLine(cr, tb->color,
+					      tb->sections[0].x - tPtr->hpos,
+					      tb->sections[0].x + tb->sections[0].w - tPtr->hpos,
+					      tb->sections[0].y + h - tPtr->vpos);
 				}
 			}
 		}
@@ -801,19 +805,33 @@ static void paintText(Text * tPtr)
 
  _copy_area:
 	if (tPtr->flags.editable && tPtr->flags.cursorShown && tPtr->cursor.x != -23 && tPtr->flags.focused) {
-		int y = tPtr->cursor.y - tPtr->vpos;
-		XDrawLine(dpy, tPtr->db, WMColorGC(tPtr->fgColor),
-			  tPtr->cursor.x, y, tPtr->cursor.x, y + tPtr->cursor.h);
+		y = tPtr->cursor.y - tPtr->vpos;
+		WCairoSetSourceColor(cr, tPtr->fgColor);
+		cairo_move_to(cr, tPtr->cursor.x + 0.5, y + 0.5);
+		cairo_line_to(cr, tPtr->cursor.x + 0.5, y + tPtr->cursor.h + 0.5);
+		cairo_stroke(cr);
 	}
+	WCairoEnd(cr);
 
-	XCopyArea(dpy, tPtr->db, win, WMColorGC(tPtr->bgColor), 0, 0,
-		  tPtr->visible.w, tPtr->visible.h, tPtr->visible.x, tPtr->visible.y);
+	cr = WCairoBeginForDrawable(scr, win);
+	if (!cr)
+		return;
+	dbsurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)tPtr->db,
+					  rc->xvisual, tPtr->visible.w, tPtr->visible.h);
+	cairo_set_source_surface(cr, dbsurf, tPtr->visible.x, tPtr->visible.y);
+	cairo_rectangle(cr, tPtr->visible.x, tPtr->visible.y,
+			tPtr->visible.w, tPtr->visible.h);
+	cairo_fill(cr);
+	cairo_surface_destroy(dbsurf);
 
-	W_DrawRelief(scr, win, 0, 0, tPtr->view->size.width, tPtr->view->size.height, tPtr->flags.relief);
+	W_DrawReliefCairo(cr, scr, 0, 0, tPtr->view->size.width, tPtr->view->size.height, tPtr->flags.relief);
 
-	if (tPtr->ruler && tPtr->flags.rulerShown)
-		XDrawLine(dpy, win, WMColorGC(tPtr->fgColor), 2, 42, tPtr->view->size.width - 4, 42);
-
+	if (tPtr->ruler && tPtr->flags.rulerShown) {
+		cairo_set_line_width(cr, 1.0);
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+		hLine(cr, tPtr->fgColor, 2, tPtr->view->size.width - 4, 42);
+	}
+	WCairoEnd(cr);
 }
 
 static void mouseOverObject(Text * tPtr, int x, int y)
@@ -1716,6 +1734,7 @@ static void textDidResize(W_ViewDelegate * self, WMView * view)
 	if (tPtr->view->flags.realized) {
 
 		if (tPtr->db) {
+			WMScreenAbandonDrawable(tPtr->view->screen, tPtr->db);
 			XFreePixmap(tPtr->view->screen->display, tPtr->db);
 			tPtr->db = (Pixmap) NULL;
 		}
@@ -1729,6 +1748,8 @@ static void textDidResize(W_ViewDelegate * self, WMView * view)
 			tPtr->db = XCreatePixmap(tPtr->view->screen->display,
 						 tPtr->view->window, tPtr->visible.w,
 						 tPtr->visible.h, tPtr->view->screen->depth);
+			WMScreenNoteDrawableSize(tPtr->view->screen, tPtr->db,
+						 tPtr->visible.w, tPtr->visible.h);
 		}
 	}
 
@@ -2622,8 +2643,10 @@ static void handleEvents(XEvent * event, void *data)
 
 	case DestroyNotify:
 		clearText(tPtr);
-		if (tPtr->db)
+		if (tPtr->db) {
+			WMScreenAbandonDrawable(tPtr->view->screen, tPtr->db);
 			XFreePixmap(tPtr->view->screen->display, tPtr->db);
+		}
 		if (tPtr->gfxItems)
 			WMEmptyArray(tPtr->gfxItems);
 #if DO_BLINK
@@ -2962,7 +2985,6 @@ WMText *WMCreateTextForDocumentType(WMWidget * parent, WMAction * parser, WMActi
 	Text *tPtr;
 	Display *dpy;
 	WMScreen *scr;
-	XGCValues gcv;
 	WMArray *types;
 
 	tPtr = wmalloc(sizeof(Text));
@@ -2997,16 +3019,6 @@ WMText *WMCreateTextForDocumentType(WMWidget * parent, WMAction * parser, WMActi
 	tPtr->fgColor = WMBlackColor(scr);
 	tPtr->bgColor = WMWhiteColor(scr);
 	W_SetViewBackgroundColor(tPtr->view, tPtr->bgColor);
-
-	gcv.graphics_exposures = False;
-	gcv.foreground = W_PIXEL(scr->gray);
-	gcv.background = W_PIXEL(scr->darkGray);
-	gcv.fill_style = FillStippled;
-	/* why not use scr->stipple here? */
-	gcv.stipple = XCreateBitmapFromData(dpy, W_DRAWABLE(scr), STIPPLE_BITS, STIPPLE_WIDTH, STIPPLE_HEIGHT);
-	tPtr->stippledGC = XCreateGC(dpy, W_DRAWABLE(scr),
-				     GCForeground | GCBackground | GCStipple
-				     | GCFillStyle | GCGraphicsExposures, &gcv);
 
 	tPtr->ruler = NULL;
 	tPtr->vS = NULL;
