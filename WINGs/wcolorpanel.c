@@ -24,6 +24,9 @@
  */
 
 #include "wconfig.h"
+
+#include <cairo.h>
+
 #include "WINGsP.h"
 #include "rgb.h"
 
@@ -369,9 +372,8 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	RColor from;
 	RColor to;
 	WMColor *textcolor, *graybuttoncolor;
+	cairo_t *cr;
 	int i;
-	GC bgc = WMColorGC(scrPtr->black);
-	GC wgc = WMColorGC(scrPtr->white);
 
 	panel = wmalloc(sizeof(WMColorPanel));
 	panel->color.rgb.red = 0;
@@ -1061,8 +1063,16 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	 * wheelframe MUST be mapped.
 	 */
 	panel->selectionImg = XCreatePixmap(scrPtr->display, WMWidgetXID(panel->win), 4, 4, scrPtr->depth);
-	XFillRectangle(scrPtr->display, panel->selectionImg, bgc, 0, 0, 4, 4);
-	XFillRectangle(scrPtr->display, panel->selectionImg, wgc, 1, 1, 2, 2);
+	WMScreenNoteDrawableSize(scrPtr, panel->selectionImg, 4, 4);
+	cr = WCairoBeginForDrawable(scrPtr, panel->selectionImg);
+	if (cr) {
+		cairo_set_source_rgb(cr, 0, 0, 0);
+		cairo_paint(cr);
+		cairo_set_source_rgb(cr, 1, 1, 1);
+		cairo_rectangle(cr, 1, 1, 2, 2);
+		cairo_fill(cr);
+		WCairoEnd(cr);
+	}
 
 	readConfiguration(panel);
 	readXColors(panel);
@@ -3269,29 +3279,32 @@ static void customPaletteHistoryCallback(WMWidget * w, void *data)
 static void colorListPaintItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect)
 {
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	Display *dpy = WMScreenDisplay(scr);
 	WMView *view = W_VIEW(lPtr);
 	RColor *color = (RColor *) WMGetListItem(lPtr, index)->clientData;
 	W_ColorPanel *panel = WMGetHangedData(lPtr);
+	cairo_t *cr;
 	int width, height, x, y;
-	WMColor *fillColor;
 
 	width = rect->size.width;
 	height = rect->size.height;
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	if (state & WLDSSelected)
-		XFillRectangle(dpy, d, WMColorGC(scr->white), x, y, width, height);
-	else
-		XFillRectangle(dpy, d, WMColorGC(view->backColor), x, y, width, height);
+	cr = WCairoBeginForDrawable(scr, d);
+	if (!cr)
+		return;
 
-	fillColor = WMCreateRGBColor(scr, color->red << 8, color->green << 8, color->blue << 8, True);
+	WCairoSetSourceColor(cr, (state & WLDSSelected) ? scr->white : view->backColor);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
 
-	XFillRectangle(dpy, d, WMColorGC(fillColor), x, y, 15, height);
-	WMReleaseColor(fillColor);
+	cairo_set_source_rgb(cr, color->red / 255.0, color->green / 255.0,
+			     color->blue / 255.0);
+	cairo_rectangle(cr, x, y, 15, height);
+	cairo_fill(cr);
 
-	WMDrawString(scr, d, scr->black, panel->font12, x + 18, y, text, strlen(text));
+	WMDrawStringCairo(cr, scr->black, panel->font12, x + 18, y, text, strlen(text));
+	WCairoEnd(cr);
 }
 
 static void colorListSelect(WMWidget * w, void *data)
