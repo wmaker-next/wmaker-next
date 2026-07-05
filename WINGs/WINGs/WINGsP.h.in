@@ -494,6 +494,10 @@ void WCairoSetSourceXColor(cairo_t *cr, const XColor *color);
  * fill sits below (the widget-slot and progress-bar interiors) */
 void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h);
 
+/* paint a screen-depth WMPixmap at (x, y), masked through its depth-1
+ * mask when it has one, else clipped to its own extents */
+void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pixmap, int x, int y);
+
 /* speech-bubble path: rounded body at (x,y,w,h) with a triangular
  * tail on the top or bottom edge near the left or right corner */
 enum {

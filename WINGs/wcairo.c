@@ -307,6 +307,32 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 	cairo_restore(cr);
 }
 
+/* paint a screen-depth WMPixmap at (x, y). The image half is wrapped
+ * as a source surface at the screen visual, and when the pixmap has a
+ * depth-1 mask it is wrapped for_bitmap and used as the cairo mask so
+ * only the shape lands, otherwise a rectangle at the pixmap extents
+ * bounds the fill. */
+void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
+{
+	RContext *rc = pix->screen->rcontext;
+	cairo_surface_t *ps, *ms;
+
+	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
+				      rc->xvisual, pix->width, pix->height);
+	cairo_set_source_surface(cr, ps, x, y);
+	if (pix->mask != None) {
+		ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							 (xcb_pixmap_t)pix->mask,
+							 pix->width, pix->height);
+		cairo_mask_surface(cr, ms, x, y);
+		cairo_surface_destroy(ms);
+	} else {
+		cairo_rectangle(cr, x, y, pix->width, pix->height);
+		cairo_fill(cr);
+	}
+	cairo_surface_destroy(ps);
+}
+
 /* ---- balloon path ---------------------------------------------------- */
 
 /* Rounded-rectangle body with a triangular tail on one edge, built as
