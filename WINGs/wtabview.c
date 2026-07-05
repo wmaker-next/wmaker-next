@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 typedef struct W_TabView {
@@ -63,7 +65,7 @@ static void paintTabView(TabView * tPtr);
 
 static void W_SetTabViewItemParent(WMTabViewItem * item, WMTabView * parent);
 
-static void W_DrawLabel(WMTabViewItem * item, Drawable d, WMRect rect, Bool enabled);
+static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, Bool enabled);
 
 static void W_UnmapTabViewItem(WMTabViewItem * item);
 
@@ -532,87 +534,91 @@ static void recalcTabWidth(TabView * tPtr)
 	}
 }
 
-static void drawRelief(W_Screen * scr, Drawable d, int x, int y, unsigned int width, unsigned int height)
+static void tLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	Display *dpy = scr->display;
-	GC bgc = WMColorGC(scr->black);
-	GC wgc = WMColorGC(scr->white);
-	GC dgc = WMColorGC(scr->darkGray);
-
-	XDrawLine(dpy, d, wgc, x, y, x, y + height - 1);
-
-	XDrawLine(dpy, d, bgc, x, y + height - 1, x + width - 1, y + height - 1);
-	XDrawLine(dpy, d, dgc, x + 1, y + height - 2, x + width - 2, y + height - 2);
-
-	XDrawLine(dpy, d, bgc, x + width - 1, y, x + width - 1, y + height - 1);
-	XDrawLine(dpy, d, dgc, x + width - 2, y + 1, x + width - 2, y + height - 2);
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
 }
 
-static void drawTab(TabView * tPtr, Drawable d, int x, int y, unsigned width, unsigned height, Bool selected)
+/* WRRaised without the top line, that row belongs to the tab strip */
+static void drawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
+		       unsigned int width, unsigned int height)
 {
-	WMScreen *scr = W_VIEW(tPtr)->screen;
-	Display *dpy = scr->display;
-	GC white = WMColorGC(selected ? scr->white : tPtr->lightGray);
-	GC black = WMColorGC(scr->black);
-	GC dark = WMColorGC(scr->darkGray);
-	GC light = WMColorGC(scr->gray);
-	XPoint trap[8];
+	tLine(cr, scr->white, x, y, x, y + height - 1);
 
-	trap[0].x = x + (selected ? 0 : 1);
-	trap[0].y = y + height - (selected ? 0 : 1);
+	tLine(cr, scr->black, x, y + height - 1, x + width - 1, y + height - 1);
+	tLine(cr, scr->darkGray, x + 1, y + height - 2, x + width - 2, y + height - 2);
 
-	trap[1].x = x + 3;
-	trap[1].y = y + height - 3;
-
-	trap[2].x = x + 10 - 3;
-	trap[2].y = y + 3;
-
-	trap[3].x = x + 10;
-	trap[3].y = y;
-
-	trap[4].x = x + width - 10;
-	trap[4].y = y;
-
-	trap[5].x = x + width - 10 + 3;
-	trap[5].y = y + 3;
-
-	trap[6].x = x + width - 3;
-	trap[6].y = y + height - 3;
-
-	trap[7].x = x + width - (selected ? 0 : 1);
-	trap[7].y = y + height - (selected ? 0 : 1);
-
-	XFillPolygon(dpy, d, selected ? light : WMColorGC(tPtr->tabColor), trap, 8, Convex, CoordModeOrigin);
-
-	XDrawLine(dpy, d, white, trap[0].x, trap[0].y, trap[1].x, trap[1].y);
-	XDrawLine(dpy, d, white, trap[1].x, trap[1].y, trap[2].x, trap[2].y);
-	XDrawLine(dpy, d, white, trap[2].x, trap[2].y, trap[3].x, trap[3].y);
-	XDrawLine(dpy, d, white, trap[3].x, trap[3].y, trap[4].x, trap[4].y);
-	XDrawLine(dpy, d, dark, trap[4].x, trap[4].y, trap[5].x, trap[5].y);
-	XDrawLine(dpy, d, black, trap[5].x, trap[5].y, trap[6].x, trap[6].y);
-	XDrawLine(dpy, d, black, trap[6].x, trap[6].y, trap[7].x, trap[7].y);
-
-	XDrawLine(dpy, d, selected ? light : WMColorGC(scr->white), trap[0].x, trap[0].y, trap[7].x, trap[7].y);
+	tLine(cr, scr->black, x + width - 1, y, x + width - 1, y + height - 1);
+	tLine(cr, scr->darkGray, x + width - 2, y + 1, x + width - 2, y + height - 2);
 }
 
-static void paintDot(TabView * tPtr, Drawable d, int x, int y)
+static void drawTab(TabView *tPtr, cairo_t *cr, int x, int y,
+		    unsigned width, unsigned height, Bool selected)
 {
 	WMScreen *scr = W_VIEW(tPtr)->screen;
-	Display *dpy = scr->display;
-	GC white = WMColorGC(scr->white);
-	GC black = WMColorGC(scr->black);
+	WMColor *hi = selected ? scr->white : tPtr->lightGray;
+	double tx[8], ty[8];
+	int k;
 
-	XFillRectangle(dpy, d, black, x, y, 2, 2);
-	XDrawPoint(dpy, d, white, x, y);
+	tx[0] = x + (selected ? 0 : 1);
+	ty[0] = y + height - (selected ? 0 : 1);
+	tx[1] = x + 3;             ty[1] = y + height - 3;
+	tx[2] = x + 7;             ty[2] = y + 3;
+	tx[3] = x + 10;            ty[3] = y;
+	tx[4] = x + width - 10;    ty[4] = y;
+	tx[5] = x + width - 7;     ty[5] = y + 3;
+	tx[6] = x + width - 3;     ty[6] = y + height - 3;
+	tx[7] = x + width - (selected ? 0 : 1);
+	ty[7] = y + height - (selected ? 0 : 1);
+
+	WCairoSetSourceColor(cr, selected ? scr->gray : tPtr->tabColor);
+	cairo_move_to(cr, tx[0], ty[0]);
+	for (k = 1; k < 8; k++)
+		cairo_line_to(cr, tx[k], ty[k]);
+	cairo_close_path(cr);
+	cairo_fill(cr);
+
+	WCairoSetSourceColor(cr, hi);
+	cairo_move_to(cr, tx[0] + 0.5, ty[0] + 0.5);
+	for (k = 1; k <= 4; k++)
+		cairo_line_to(cr, tx[k] + 0.5, ty[k] + 0.5);
+	cairo_stroke(cr);
+
+	tLine(cr, scr->darkGray, tx[4], ty[4], tx[5], ty[5]);
+
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_move_to(cr, tx[5] + 0.5, ty[5] + 0.5);
+	cairo_line_to(cr, tx[6] + 0.5, ty[6] + 0.5);
+	cairo_line_to(cr, tx[7] + 0.5, ty[7] + 0.5);
+	cairo_stroke(cr);
+
+	tLine(cr, selected ? scr->gray : scr->white, tx[0], ty[0], tx[7], ty[7]);
+}
+
+static void paintDot(cairo_t *cr, W_Screen *scr, int x, int y)
+{
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_rectangle(cr, x, y, 2, 2);
+	cairo_fill(cr);
+	WCairoSetSourceColor(cr, scr->white);
+	cairo_rectangle(cr, x, y, 1, 1);
+	cairo_fill(cr);
 }
 
 static void paintTabView(TabView * tPtr)
 {
-	Pixmap buffer;
 	WMScreen *scr = W_VIEW(tPtr)->screen;
-	Display *dpy = scr->display;
-	GC white = WMColorGC(scr->white);
+	cairo_t *cr;
 	int i;
+
+	cr = WCairoBeginForDrawable(scr, W_VIEW(tPtr)->window);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
 	if (tPtr->flags.type == WTTopTabsBevelBorder) {
 		int count = tPtr->visibleTabs;
@@ -626,11 +632,9 @@ static void paintTabView(TabView * tPtr)
 		ty = 2;
 		theight = tPtr->tabHeight;
 
-		buffer = XCreatePixmap(dpy, W_VIEW(tPtr)->window,
-				       W_VIEW(tPtr)->size.width, theight, W_VIEW(tPtr)->screen->depth);
-
-		XFillRectangle(dpy, buffer, WMColorGC(W_VIEW(tPtr)->backColor),
-			       0, 0, W_VIEW(tPtr)->size.width, tPtr->tabHeight);
+		WCairoSetSourceColor(cr, W_VIEW(tPtr)->backColor);
+		cairo_rectangle(cr, 0, 0, W_VIEW(tPtr)->size.width, theight);
+		cairo_fill(cr);
 
 		if (tPtr->flags.dontFitAll) {
 			moreAtLeft = first > 0;
@@ -646,34 +650,35 @@ static void paintTabView(TabView * tPtr)
 		}
 
 		if (moreAtRight) {
-			drawTab(tPtr, buffer, positionOfTab(tPtr, first + count), 0,
+			drawTab(tPtr, cr, positionOfTab(tPtr, first + count), 0,
 				W_VIEW_WIDTH(tPtr->view), theight, False);
 		}
 		for (i = first + count - 1; i >= first; i--) {
 			if (!selectedIsVisible || i != tPtr->selectedItem) {
 				twidth = W_TabViewItemTabWidth(tPtr->items[i]);
 
-				drawTab(tPtr, buffer, positionOfTab(tPtr, i), 0, twidth, theight, False);
+				drawTab(tPtr, cr, positionOfTab(tPtr, i), 0, twidth, theight, False);
 			}
 		}
 		if (moreAtLeft) {
-			drawTab(tPtr, buffer, positionOfTab(tPtr, 0) - 2 * BUTTONED_SIDE_OFFSET,
+			drawTab(tPtr, cr, positionOfTab(tPtr, 0) - 2 * BUTTONED_SIDE_OFFSET,
 				0, BUTTONED_SIDE_OFFSET * 4, theight, False);
 		}
 
 		if (selectedIsVisible) {
 			int idx = tPtr->selectedItem;
 
-			drawTab(tPtr, buffer, positionOfTab(tPtr, idx),
+			drawTab(tPtr, cr, positionOfTab(tPtr, idx),
 				0, W_TabViewItemTabWidth(tPtr->items[idx]), theight, True);
 
-			XDrawLine(dpy, buffer, white, 0, theight - 1, positionOfTab(tPtr, idx), theight - 1);
-
-			XDrawLine(dpy, buffer, white,
-				  positionOfTab(tPtr, idx) + W_TabViewItemTabWidth(tPtr->items[idx]),
-				  tPtr->tabHeight - 1, W_VIEW_WIDTH(tPtr->view) - 1, tPtr->tabHeight - 1);
+			tLine(cr, scr->white, 0, theight - 1,
+			      positionOfTab(tPtr, idx), theight - 1);
+			tLine(cr, scr->white,
+			      positionOfTab(tPtr, idx) + W_TabViewItemTabWidth(tPtr->items[idx]),
+			      theight - 1, W_VIEW_WIDTH(tPtr->view) - 1, theight - 1);
 		} else {
-			XDrawLine(dpy, buffer, white, 0, theight - 1, W_VIEW_WIDTH(tPtr->view), theight - 1);
+			tLine(cr, scr->white, 0, theight - 1,
+			      W_VIEW_WIDTH(tPtr->view), theight - 1);
 		}
 
 		for (i = 0; i < count; i++) {
@@ -683,14 +688,14 @@ static void paintTabView(TabView * tPtr)
 			rect.pos.y = ty;
 			rect.size.width = W_TabViewItemTabWidth(tPtr->items[first + i]);
 			rect.size.height = theight;
-			W_DrawLabel(tPtr->items[first + i], buffer, rect,
+			W_DrawLabel(tPtr->items[first + i], cr, rect,
 				    tPtr->flags.enabled && tPtr->items[first + i]->flags.enabled);
 		}
 
 		if (moreAtLeft) {
-			paintDot(tPtr, buffer, 4, 10);
-			paintDot(tPtr, buffer, 7, 10);
-			paintDot(tPtr, buffer, 10, 10);
+			paintDot(cr, scr, 4, 10);
+			paintDot(cr, scr, 7, 10);
+			paintDot(cr, scr, 10, 10);
 		}
 		if (moreAtRight) {
 			int x;
@@ -698,35 +703,32 @@ static void paintTabView(TabView * tPtr)
 			x = positionOfTab(tPtr, tPtr->firstVisible + tPtr->visibleTabs);
 
 			x = x + (W_VIEW_WIDTH(tPtr->view) - x) / 2;
-			paintDot(tPtr, buffer, x + 5, 10);
-			paintDot(tPtr, buffer, x + 8, 10);
-			paintDot(tPtr, buffer, x + 11, 10);
+			paintDot(cr, scr, x + 5, 10);
+			paintDot(cr, scr, x + 8, 10);
+			paintDot(cr, scr, x + 11, 10);
 		}
-
-		XCopyArea(dpy, buffer, W_VIEW(tPtr)->window, scr->copyGC, 0, 0,
-			  W_VIEW_WIDTH(tPtr->view), theight, 0, 0);
-
-		XFreePixmap(dpy, buffer);
 	}
 	switch (tPtr->flags.type) {
 	case WTTopTabsBevelBorder:
-		drawRelief(scr, W_VIEW(tPtr)->window, 0, tPtr->tabHeight - 1,
+		drawRelief(cr, scr, 0, tPtr->tabHeight - 1,
 			   W_VIEW(tPtr)->size.width, W_VIEW(tPtr)->size.height - tPtr->tabHeight + 1);
 		break;
 
 	case WTNoTabsBevelBorder:
-		W_DrawRelief(scr, W_VIEW(tPtr)->window, 0, 0, W_VIEW(tPtr)->size.width,
-			     W_VIEW(tPtr)->size.height, WRRaised);
+		W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
+				  W_VIEW(tPtr)->size.height, WRRaised);
 		break;
 
 	case WTNoTabsLineBorder:
-		W_DrawRelief(scr, W_VIEW(tPtr)->window, 0, 0, W_VIEW(tPtr)->size.width,
-			     W_VIEW(tPtr)->size.height, WRSimple);
+		W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
+				  W_VIEW(tPtr)->size.height, WRSimple);
 		break;
 
 	case WTNoTabsNoBorder:
 		break;
 	}
+
+	WCairoEnd(cr);
 }
 
 static void rearrange(TabView * tPtr)
@@ -780,15 +782,16 @@ static void W_SetTabViewItemParent(WMTabViewItem * item, WMTabView * parent)
 	item->tabView = parent;
 }
 
-static void W_DrawLabel(WMTabViewItem * item, Drawable d, WMRect rect, Bool enabled)
+static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, Bool enabled)
 {
 	WMScreen *scr = W_VIEW(item->tabView)->screen;
 
 	if (!item->label)
 		return;
 
-	WMDrawString(scr, d, enabled ? scr->black : scr->darkGray,
-		     item->tabView->font, rect.pos.x, rect.pos.y, item->label, strlen(item->label));
+	WMDrawStringCairo(cr, enabled ? scr->black : scr->darkGray,
+			  item->tabView->font, rect.pos.x, rect.pos.y,
+			  item->label, strlen(item->label));
 }
 
 static void W_UnmapTabViewItem(WMTabViewItem * item)
