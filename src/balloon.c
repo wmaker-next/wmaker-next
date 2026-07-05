@@ -32,6 +32,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cairo-xcb.h>
+
 #include <wraster.h>
 #include <WINGs/WINGsP.h>
 
@@ -111,8 +113,8 @@ static int getMaxStringWidth(WMFont *font, const char *text)
 	return w;
 }
 
-static void drawMultiLineString(WMScreen *scr, Pixmap pixmap, WMColor *color,
-		    WMFont *font, int x, int y, const char *text, int len)
+static void drawMultiLineString(cairo_t *cr, WMColor *color, WMFont *font,
+				int x, int y, const char *text, int len)
 {
 	const char *p = text;
 	const char *pb = p;
@@ -121,7 +123,7 @@ static void drawMultiLineString(WMScreen *scr, Pixmap pixmap, WMColor *color,
 
 	while (*p && p - text < len) {
 		if (*p == '\n') {
-			WMDrawString(scr, pixmap, color, font, x, y + l * height, pb, pos);
+			WMDrawStringCairo(cr, color, font, x, y + l * height, pb, pos);
 			l++;
 			pos = 0;
 			pb = p + 1;
@@ -131,7 +133,37 @@ static void drawMultiLineString(WMScreen *scr, Pixmap pixmap, WMColor *color,
 		p++;
 	}
 	if (pos > 0)
-		WMDrawString(scr, pixmap, color, font, x, y + l * height, pb, pos);
+		WMDrawStringCairo(cr, color, font, x, y + l * height, pb, pos);
+}
+
+/* fresh background pixmap for the balloon window filled with the
+ * unfocused-title texture colour (or gray if no title texture is set),
+ * returned with a live cairo_t so the caller adds text and thumbnail
+ * on top and calls WCairoEnd() itself */
+static Pixmap makeBackground(WScreen *scr, int width, int height, cairo_t **crp)
+{
+	Pixmap pixmap;
+	cairo_t *cr;
+
+	pixmap = XCreatePixmap(dpy, scr->root_win, width, height, scr->w_depth);
+	WMScreenNoteDrawableSize(scr->wmscreen, pixmap, width, height);
+	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
+	if (scr->window_title_texture[0])
+		WCairoSetSourceXColor(cr, &scr->window_title_texture[0]->any.color);
+	else
+		WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
+	*crp = cr;
+	return pixmap;
+}
+
+static void freeContents(WScreen *scr)
+{
+	if (scr->balloon->contents) {
+		WMScreenAbandonDrawable(scr->wmscreen, scr->balloon->contents);
+		XFreePixmap(dpy, scr->balloon->contents);
+		scr->balloon->contents = None;
+	}
 }
 
 #ifdef SHAPED_BALLOON
@@ -146,12 +178,12 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	Pixmap pixmap;
 	Pixmap mask;
 	WMFont *font = scr->info_text_font;
+	cairo_t *cr;
 	int side = 0;
 	int ty;
 	int bx, by;
 
-	if (scr->balloon->contents)
-		XFreePixmap(dpy, scr->balloon->contents);
+	freeContents(scr);
 
 	width = getMaxStringWidth(font, text) + 16;
 	height = countLines(text) * WMFontHeight(font) + 4;
@@ -189,7 +221,9 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 			    | ((side & RIGHT) ? WCairoBalloonRight : 0),
 			    SPACE, scr->white, scr->black, &pixmap, &mask);
 
-	drawMultiLineString(scr->wmscreen, pixmap, scr->black, font, 8, ty + 2, text, strlen(text));
+	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
+	drawMultiLineString(cr, scr->black, font, 8, ty + 2, text, strlen(text));
+	WCairoEnd(cr);
 
 	XSetWindowBackgroundPixmap(dpy, scr->balloon->window, pixmap);
 	scr->balloon->contents = pixmap;
@@ -211,12 +245,11 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	int height;
 	Pixmap pixmap;
 	WMFont *font = scr->info_text_font;
+	cairo_t *cr;
 
-	if (scr->balloon->contents)
-		XFreePixmap(dpy, scr->balloon->contents);
+	freeContents(scr);
 
 	width = getMaxStringWidth(font, text) + 8;
-	/*width = WMWidthOfString(font, text, strlen(text))+8; */
 	height = countLines(text) * WMFontHeight(font) + 4;
 
 	if (x < 0)
@@ -232,15 +265,9 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 		y -= height + 2;
 	}
 
-	if (scr->window_title_texture[0])
-		XSetForeground(dpy, scr->draw_gc, scr->window_title_texture[0]->any.color.pixel);
-	else
-		XSetForeground(dpy, scr->draw_gc, scr->light_pixel);
-
-	pixmap = XCreatePixmap(dpy, scr->root_win, width, height, scr->w_depth);
-	XFillRectangle(dpy, pixmap, scr->draw_gc, 0, 0, width, height);
-
-	drawMultiLineString(scr->wmscreen, pixmap, scr->window_title_color[0], font, 4, 2, text, strlen(text));
+	pixmap = makeBackground(scr, width, height, &cr);
+	drawMultiLineString(cr, scr->window_title_color[0], font, 4, 2, text, strlen(text));
+	WCairoEnd(cr);
 
 	XResizeWindow(dpy, scr->balloon->window, width, height);
 	XMoveWindow(dpy, scr->balloon->window, x, y);
@@ -257,14 +284,17 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 
 static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixmap mini_preview)
 {
+	RContext *rc = scr->rcontext;
 	Pixmap pixmap;
 	WMFont *font = scr->info_text_font;
+	cairo_surface_t *psurf;
+	cairo_t *cr;
 	int width, height;
 	int titleHeight;
+	int thumb;
 	char *shortenTitle;
 
-	if (scr->balloon->contents)
-		XFreePixmap(dpy, scr->balloon->contents);
+	freeContents(scr);
 
 	width  = w_global.config->minipreview_size;
 	height = w_global.config->minipreview_size;
@@ -291,24 +321,28 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 		y -= height + 2;
 	}
 
-	if (scr->window_title_texture[0])
-		XSetForeground(dpy, scr->draw_gc, scr->window_title_texture[0]->any.color.pixel);
-	else
-		XSetForeground(dpy, scr->draw_gc, scr->light_pixel);
-
-	pixmap = XCreatePixmap(dpy, scr->root_win, width, height, scr->w_depth);
-	XFillRectangle(dpy, pixmap, scr->draw_gc, 0, 0, width, height);
+	pixmap = makeBackground(scr, width, height, &cr);
 
 	if (shortenTitle != NULL) {
-		drawMultiLineString(scr->wmscreen, pixmap, scr->window_title_color[0], font,
-						MINIPREVIEW_BORDER, MINIPREVIEW_BORDER, shortenTitle, strlen(shortenTitle));
+		drawMultiLineString(cr, scr->window_title_color[0], font,
+				    MINIPREVIEW_BORDER, MINIPREVIEW_BORDER,
+				    shortenTitle, strlen(shortenTitle));
 		wfree(shortenTitle);
 	}
 
-	XCopyArea(dpy, mini_preview, pixmap, scr->draw_gc,
-	          0, 0, (w_global.config->minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
-	          (w_global.config->minipreview_size - 1 - MINIPREVIEW_BORDER * 2),
-	          MINIPREVIEW_BORDER, MINIPREVIEW_BORDER + titleHeight);
+	/* the scaled snapshot pixmap set_icon_minipreview() built is one
+	 * pixel wider than the border-inset area, keep the same one-pixel
+	 * right and bottom margin the previous copy left */
+	thumb = w_global.config->minipreview_size - MINIPREVIEW_BORDER * 2;
+	psurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)mini_preview,
+					 rc->xvisual, thumb, thumb);
+	cairo_set_source_surface(cr, psurf,
+				 MINIPREVIEW_BORDER, MINIPREVIEW_BORDER + titleHeight);
+	cairo_rectangle(cr, MINIPREVIEW_BORDER, MINIPREVIEW_BORDER + titleHeight,
+			thumb - 1, thumb - 1);
+	cairo_fill(cr);
+	cairo_surface_destroy(psurf);
+	WCairoEnd(cr);
 
 #ifdef SHAPED_BALLOON
 	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
