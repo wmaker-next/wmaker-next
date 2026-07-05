@@ -370,10 +370,13 @@ static char *atomNames[] = {
  */
 void StartUp(Bool defaultScreenOnly)
 {
+	static const char empty_bits[(16 * 16) / 8];
 	struct sigaction sig_action;
 	int i, j, max;
 	int idx;
 	char **formats;
+	Pixmap cur;
+	XColor black;
 	Atom atom[wlengthof(atomNames)];
 	xcb_connection_t *xc = XGetXCBConnection(dpy);
 	const xcb_query_extension_reply_t *xer;
@@ -426,13 +429,8 @@ void StartUp(Bool defaultScreenOnly)
 	wPreferences.cursor[WCUR_SELECT] = XCreateFontCursor(dpy, XC_cross);
 	wPreferences.cursor[WCUR_CAPTURE] = XCreateFontCursor(dpy, XC_crosshair);
 
-	Pixmap cur = XCreatePixmap(dpy, DefaultRootWindow(dpy), 16, 16, 1);
-	GC gc = XCreateGC(dpy, cur, 0, NULL);
-	XColor black;
-	memset(&black, 0, sizeof(XColor));
-	XSetForeground(dpy, gc, 0);
-	XFillRectangle(dpy, cur, gc, 0, 0, 16, 16);
-	XFreeGC(dpy, gc);
+	memset(&black, 0, sizeof(black));
+	cur = XCreateBitmapFromData(dpy, DefaultRootWindow(dpy), empty_bits, 16, 16);
 	wPreferences.cursor[WCUR_EMPTY] = XCreatePixmapCursor(dpy, cur, cur, &black, &black, 0, 0);
 	XFreePixmap(dpy, cur);
 
