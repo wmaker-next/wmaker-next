@@ -1,5 +1,10 @@
 
+#include <cairo.h>
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
+
+#include <wraster.h>
 
 #undef STRICT_NEXT_BEHAVIOUR
 
@@ -193,10 +198,19 @@ void WMSetSliderAction(WMSlider * slider, WMAction * action, void *data)
 	slider->clientData = data;
 }
 
+static void kLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
+{
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
+}
+
 static void makeKnobPixmap(Slider * sPtr)
 {
-	Pixmap pix;
 	WMScreen *scr = sPtr->view->screen;
+	cairo_t *cr;
+	Pixmap pix;
 	int w, h;
 
 	if (sPtr->flags.vertical) {
@@ -208,44 +222,53 @@ static void makeKnobPixmap(Slider * sPtr)
 	}
 
 	pix = XCreatePixmap(scr->display, sPtr->view->window, w, h, scr->depth);
-	XFillRectangle(scr->display, pix, WMColorGC(scr->gray), 0, 0, w, h);
+	WMScreenNoteDrawableSize(scr, pix, w, h);
+
+	cr = WCairoBeginForDrawable(scr, pix);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
 
 	if (sPtr->knobThickness < 10) {
-		W_DrawRelief(scr, pix, 0, 0, w, h, WRRaised);
+		W_DrawReliefCairo(cr, scr, 0, 0, w, h, WRRaised);
 	} else if (sPtr->flags.vertical) {
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 0, 0, 0, h - 3);
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 1, 0, 1, h - 3);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w - 2, 1, w - 2, h / 2 - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w - 2, h / 2, w - 2, h - 2);
+		kLine(cr, scr->white,    0, 0, 0, h - 3);
+		kLine(cr, scr->white,    1, 0, 1, h - 3);
+		kLine(cr, scr->darkGray, w - 2, 1, w - 2, h / 2 - 2);
+		kLine(cr, scr->darkGray, w - 2, h / 2, w - 2, h - 2);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 0, 0, w - 2, 0);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), 1, h / 2 - 2, w - 3, h / 2 - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 0, h / 2 - 1, w - 3, h / 2 - 1);
+		kLine(cr, scr->white,    0, 0, w - 2, 0);
+		kLine(cr, scr->darkGray, 1, h / 2 - 2, w - 3, h / 2 - 2);
+		kLine(cr, scr->white,    0, h / 2 - 1, w - 3, h / 2 - 1);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->black), w - 1, 0, w - 1, h - 2);
+		kLine(cr, scr->black,    w - 1, 0, w - 1, h - 2);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), 0, h - 3, w - 2, h - 3);
-		XDrawLine(scr->display, pix, WMColorGC(scr->black), 0, h - 2, w - 1, h - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), 0, h - 1, w - 1, h - 1);
+		kLine(cr, scr->darkGray, 0, h - 3, w - 2, h - 3);
+		kLine(cr, scr->black,    0, h - 2, w - 1, h - 2);
+		kLine(cr, scr->darkGray, 0, h - 1, w - 1, h - 1);
 	} else {
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 0, 0, w - 3, 0);
+		kLine(cr, scr->white,    0, 0, w - 3, 0);
+		kLine(cr, scr->white,    0, 0, 0, h - 2);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 0, 0, 0, h - 2);
+		kLine(cr, scr->white,    1, 0, 1, h - 3);
+		kLine(cr, scr->darkGray, w / 2 - 2, 1, w / 2 - 2, h - 3);
+		kLine(cr, scr->white,    w / 2 - 1, 0, w / 2 - 1, h - 3);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), 1, 0, 1, h - 3);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w / 2 - 2, 1, w / 2 - 2, h - 3);
-		XDrawLine(scr->display, pix, WMColorGC(scr->white), w / 2 - 1, 0, w / 2 - 1, h - 3);
+		kLine(cr, scr->darkGray, w - 3, 0, w - 3, h - 2);
+		kLine(cr, scr->black,    w - 2, 0, w - 2, h - 2);
+		kLine(cr, scr->darkGray, w - 1, 0, w - 1, h - 1);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w - 3, 0, w - 3, h - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->black), w - 2, 0, w - 2, h - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w - 1, 0, w - 1, h - 1);
+		kLine(cr, scr->black,    1, h - 1, w / 2 + 1, h - 1);
+		kLine(cr, scr->darkGray, 1, h - 2, w / 2 - 2, h - 2);
+		kLine(cr, scr->darkGray, w / 2, h - 2, w - 3, h - 2);
 
-		XDrawLine(scr->display, pix, WMColorGC(scr->black), 1, h - 1, w / 2 + 1, h - 1);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), 1, h - 2, w / 2 - 2, h - 2);
-		XDrawLine(scr->display, pix, WMColorGC(scr->darkGray), w / 2, h - 2, w - 3, h - 2);
-
-		XDrawLine(scr->display, pix, WMColorGC(scr->black), 0, h - 1, w - 2, h - 1);
+		kLine(cr, scr->black,    0, h - 1, w - 2, h - 1);
 	}
+	WCairoEnd(cr);
 
 	if (sPtr->knobPixmap)
 		XFreePixmap(scr->display, sPtr->knobPixmap);
@@ -279,56 +302,71 @@ static void didResizeSlider(W_ViewDelegate * self, WMView * view)
 	}
 }
 
+/* wrap a screen-depth server pixmap and paint it at (x,y), clipped
+ * to (x,y,w,h) so a smaller-than-slot backPixmap does not smear */
+static void blitPixmap(cairo_t *cr, W_Screen *scr, Pixmap pix,
+		       int pw, int ph, int x, int y, int w, int h)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *surf;
+
+	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
+					rc->xvisual, pw, ph);
+	cairo_set_source_surface(cr, surf, x, y);
+	cairo_rectangle(cr, x, y, w, h);
+	cairo_fill(cr);
+	cairo_surface_destroy(surf);
+}
+
 static void paintSlider(Slider * sPtr)
 {
 	W_Screen *scr = sPtr->view->screen;
-	GC bgc;
-	GC wgc;
-	GC lgc;
 	WMSize size = sPtr->view->size;
-	int pos;
-	Pixmap buffer;
+	cairo_t *cr;
+	int pos, kw, kh;
 
 #define MINV sPtr->minValue
 #define MAXV sPtr->maxValue
 #define POSV sPtr->value
 
-	bgc = WMColorGC(scr->black);
-	wgc = WMColorGC(scr->white);
-	lgc = WMColorGC(scr->gray);
-
-	buffer = XCreatePixmap(scr->display, sPtr->view->window, size.width, size.height, scr->depth);
+	/* the knob and backPixmap sources are server pixmaps, drawing
+	 * directly onto the view keeps their composite server-side
+	 * instead of reading them back into a client image buffer */
+	cr = WCairoBeginForDrawable(scr, sPtr->view->window);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
 	if (sPtr->backPixmap) {
-		WMSize size = WMGetPixmapSize(sPtr->backPixmap);
+		WMSize psz = WMGetPixmapSize(sPtr->backPixmap);
 
-		XCopyArea(scr->display, WMGetPixmapXID(sPtr->backPixmap),
-			  buffer, scr->copyGC, 0, 0, size.width, size.height, 1, 1);
+		blitPixmap(cr, scr, WMGetPixmapXID(sPtr->backPixmap),
+			   psz.width, psz.height, 1, 1, psz.width, psz.height);
 	} else {
-		XFillRectangle(scr->display, buffer, lgc, 0, 0, size.width, size.height);
-		XFillRectangle(scr->display, buffer, scr->stippleGC, 0, 0, size.width, size.height);
+		WCairoSetSourceColor(cr, scr->gray);
+		cairo_paint(cr);
+		WCairoStippleFill(cr, scr, 0, 0, size.width, size.height);
 	}
 
 	if (sPtr->flags.vertical) {
 		pos = (MAXV != MINV) ? (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
-		/* draw knob */
-		XCopyArea(scr->display, sPtr->knobPixmap, buffer,
-			  scr->copyGC, 0, 0, size.width - 2, sPtr->knobThickness, 1, pos);
+		kw = size.width - 2;
+		kh = sPtr->knobThickness;
+		blitPixmap(cr, scr, sPtr->knobPixmap, kw, kh, 1, pos, kw, kh);
 	} else {
 		pos = (MAXV != MINV) ? (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
-		/* draw knob */
-		XCopyArea(scr->display, sPtr->knobPixmap, buffer,
-			  scr->copyGC, 0, 0, sPtr->knobThickness, size.height, pos, 1);
+		kw = sPtr->knobThickness;
+		kh = size.height - 2;
+		blitPixmap(cr, scr, sPtr->knobPixmap, kw, kh, pos, 1, kw, kh);
 	}
 
-	XDrawLine(scr->display, buffer, bgc, 0, 0, 0, size.height - 1);
-	XDrawLine(scr->display, buffer, bgc, 0, 0, size.width, 0);
+	kLine(cr, scr->black, 0, 0, 0, size.height - 1);
+	kLine(cr, scr->black, 0, 0, size.width, 0);
+	kLine(cr, scr->white, size.width - 1, 0, size.width - 1, size.height - 1);
+	kLine(cr, scr->white, 0, size.height - 1, size.width - 1, size.height - 1);
 
-	XDrawLine(scr->display, buffer, wgc, size.width - 1, 0, size.width - 1, size.height - 1);
-	XDrawLine(scr->display, buffer, wgc, 0, size.height - 1, size.width - 1, size.height - 1);
-
-	XCopyArea(scr->display, buffer, sPtr->view->window, scr->copyGC, 0, 0, size.width, size.height, 0, 0);
-	XFreePixmap(scr->display, buffer);
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent * event, void *data)
