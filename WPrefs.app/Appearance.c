@@ -18,6 +18,8 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cairo.h>
+
 #include "WPrefs.h"
 #include "enumchoices.h"
 
@@ -424,6 +426,12 @@ enum {
 };
 
 enum {
+	/* full extents of panel->preview / previewNoText / previewBack */
+	PREVIEW_WIDTH  = 240 - 4,
+	PREVIEW_HEIGHT = 215 - 4
+};
+
+enum {
 	FTITLE_COL,
 	UTITLE_COL,
 	OTITLE_COL,
@@ -764,7 +772,6 @@ static Pixmap renderMenu(_Panel * panel, WMPropList * texture, int width, int ih
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	Display *dpy = WMScreenDisplay(scr);
 	Pixmap pix, tmp;
-	GC gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
 	int i;
 
 	switch (panel->menuStyle) {
@@ -772,9 +779,10 @@ static Pixmap renderMenu(_Panel * panel, WMPropList * texture, int width, int ih
 		tmp = renderTexture(scr, texture, width, iheight, NULL, RBEV_RAISED2);
 
 		pix = XCreatePixmap(dpy, tmp, width, iheight * 4, WMScreenDepth(scr));
-		for (i = 0; i < 4; i++) {
-			XCopyArea(dpy, tmp, pix, gc, 0, 0, width, iheight, 0, iheight * i);
-		}
+		WMScreenNoteDrawableSize(scr, pix, width, iheight * 4);
+		for (i = 0; i < 4; i++)
+			WCairoCopyArea(scr, tmp, width, iheight,
+				       0, 0, width, iheight, pix, 0, iheight * i);
 		XFreePixmap(dpy, tmp);
 		break;
 	case MSTYLE_SINGLE:
@@ -786,32 +794,30 @@ static Pixmap renderMenu(_Panel * panel, WMPropList * texture, int width, int ih
 	default:
 		pix = None;
 	}
-	XFreeGC(dpy, gc);
 
 	return pix;
 }
 
-static void renderPreview(_Panel * panel, GC gc, int part, int relief)
+static void renderPreview(_Panel *panel, int part, int relief)
 {
 	WMListItem *item;
 	TextureListItem *titem;
 	Pixmap pix;
 	WMScreen *scr = WMWidgetScreen(panel->box);
+	int w, h, x, y;
 
 	item = WMGetListItem(panel->texLs, panel->textureIndex[part]);
 	titem = (TextureListItem *) item->clientData;
 
-	pix = renderTexture(scr, titem->prop,
-	                    textureOptions[part].preview.size.width, textureOptions[part].preview.size.height,
-	                    NULL, relief);
+	w = textureOptions[part].preview.size.width;
+	h = textureOptions[part].preview.size.height;
+	x = textureOptions[part].preview.pos.x;
+	y = textureOptions[part].preview.pos.y;
 
-	XCopyArea(WMScreenDisplay(scr), pix, panel->preview, gc, 0, 0,
-	          textureOptions[part].preview.size.width, textureOptions[part].preview.size.height,
-	          textureOptions[part].preview.pos.x, textureOptions[part].preview.pos.y);
+	pix = renderTexture(scr, titem->prop, w, h, NULL, relief);
 
-	XCopyArea(WMScreenDisplay(scr), pix, panel->previewNoText, gc, 0, 0,
-	          textureOptions[part].preview.size.width, textureOptions[part].preview.size.height,
-	          textureOptions[part].preview.pos.x, textureOptions[part].preview.pos.y);
+	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
+	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
 	XFreePixmap(WMScreenDisplay(scr), pix);
 }
@@ -821,20 +827,19 @@ static void updatePreviewBox(_Panel * panel, int elements)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	Display *dpy = WMScreenDisplay(scr);
 	Pixmap pix;
-	GC gc;
 	int colorUpdate = 0;
-
-	gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
 
 	if (panel->preview == None) {
 		WMPixmap *p;
 
 		panel->previewNoText = XCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						     240 - 4, 215 - 4, WMScreenDepth(scr));
+						     PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
 		panel->previewBack = XCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						     240 - 4, 215 - 4, WMScreenDepth(scr));
+						   PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
+		WMScreenNoteDrawableSize(scr, panel->previewNoText, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+		WMScreenNoteDrawableSize(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT);
 
-		p = WMCreatePixmap(scr, 240 - 4, 215 - 4, WMScreenDepth(scr), False);
+		p = WMCreatePixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr), False);
 		panel->preview = WMGetPixmapXID(p);
 		WMSetLabelImage(panel->prevL, p);
 		WMReleasePixmap(p);
@@ -847,52 +852,54 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		item = WMGetListItem(panel->texLs,
 				     panel->textureIndex[PBACKGROUND]);
 		titem = (TextureListItem *) item->clientData;
-		tmp = renderTexture(scr, titem->prop, 240 - 4, 215 - 4, NULL, 0);
+		tmp = renderTexture(scr, titem->prop, PREVIEW_WIDTH, PREVIEW_HEIGHT, NULL, 0);
 
-		XCopyArea(dpy, tmp, panel->preview, gc, 0, 0, 240 - 4, 215 -4 , 0, 0);
-		XCopyArea(dpy, tmp, panel->previewNoText, gc, 0, 0, 240 - 4, 215 -4 , 0, 0);
-		XCopyArea(dpy, tmp, panel->previewBack, gc, 0, 0, 240 - 4, 215 -4 , 0, 0);
+		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->preview, 0, 0);
+		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewNoText, 0, 0);
+		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewBack, 0, 0);
 		XFreePixmap(dpy, tmp);
 	}
 
 	if (elements & (1 << PFOCUSED)) {
-		renderPreview(panel, gc, PFOCUSED, RBEV_RAISED2);
+		renderPreview(panel, PFOCUSED, RBEV_RAISED2);
 		colorUpdate |= 1 << FTITLE_COL | 1 << FFBORDER_COL;
 	}
 	if (elements & (1 << PUNFOCUSED)) {
-		renderPreview(panel, gc, PUNFOCUSED, RBEV_RAISED2);
+		renderPreview(panel, PUNFOCUSED, RBEV_RAISED2);
 		colorUpdate |= 1 << UTITLE_COL | 1 << FBORDER_COL;
 	}
 	if (elements & (1 << POWNER)) {
-		renderPreview(panel, gc, POWNER, RBEV_RAISED2);
+		renderPreview(panel, POWNER, RBEV_RAISED2);
 		colorUpdate |= 1 << OTITLE_COL | 1 << FBORDER_COL;
 	}
 	if (elements & (1 << PRESIZEBAR)) {
-		renderPreview(panel, gc, PRESIZEBAR, RESIZEBAR_BEVEL);
+		renderPreview(panel, PRESIZEBAR, RESIZEBAR_BEVEL);
 		colorUpdate |= 1 << FBORDER_COL;
 	}
 	if (elements & (1 << PMTITLE)) {
-		renderPreview(panel, gc, PMTITLE, RBEV_RAISED2);
+		renderPreview(panel, PMTITLE, RBEV_RAISED2);
 		colorUpdate |= 1 << MTITLE_COL | 1 << FBORDER_COL;
 	}
 	if (elements & (1 << PMITEM)) {
 		WMListItem *item;
 		TextureListItem *titem;
+		int w, h, x, y;
 
 		item = WMGetListItem(panel->texLs, panel->textureIndex[5]);
 		titem = (TextureListItem *) item->clientData;
 
-		pix = renderMenu(panel, titem->prop,
-		                 textureOptions[PMITEM].preview.size.width,
-		                 textureOptions[PMITEM].preview.size.height / 4);
+		w = textureOptions[PMITEM].preview.size.width;
+		h = textureOptions[PMITEM].preview.size.height;
+		x = textureOptions[PMITEM].preview.pos.x;
+		y = textureOptions[PMITEM].preview.pos.y;
 
-		XCopyArea(dpy, pix, panel->preview, gc, 0, 0,
-		          textureOptions[PMITEM].preview.size.width, textureOptions[PMITEM].preview.size.height,
-		          textureOptions[PMITEM].preview.pos.x, textureOptions[PMITEM].preview.pos.y);
+		pix = renderMenu(panel, titem->prop, w, h / 4);
 
-		XCopyArea(dpy, pix, panel->previewNoText, gc, 0, 0,
-			  textureOptions[PMITEM].preview.size.width, textureOptions[PMITEM].preview.size.height,
-			  textureOptions[PMITEM].preview.pos.x, textureOptions[PMITEM].preview.pos.y);
+		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
+		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
 		XFreePixmap(dpy, pix);
 
@@ -907,15 +914,13 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		item = WMGetListItem(panel->texLs, panel->textureIndex[6]);
 		titem = (TextureListItem *) item->clientData;
 
-		renderPreview(panel, gc, PICON, titem->ispixmap ? 0 : RBEV_RAISED3);
+		renderPreview(panel, PICON, titem->ispixmap ? 0 : RBEV_RAISED3);
 	}
 
 	if (colorUpdate)
 		updateColorPreviewBox(panel, colorUpdate);
 	else
 		WMRedisplayWidget(panel->prevL);
-
-	XFreeGC(dpy, gc);
 }
 
 static void cancelNewTexture(void *data)
@@ -1140,8 +1145,6 @@ static void changePage(WMWidget * w, void *data)
 	_Panel *panel = (_Panel *) data;
 	int section = 0;
 	WMScreen *scr = WMWidgetScreen(panel->box);
-	Display *dpy = WMScreenDisplay(scr);
-	GC gc;
 
 	if (w) {
 		section = WMGetPopUpButtonSelectedItem(panel->secP);
@@ -1153,10 +1156,10 @@ static void changePage(WMWidget * w, void *data)
 		WMSetListPosition(panel->texLs, panel->textureIndex[section] - 2);
 	}
 
-	gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
-	XCopyArea(dpy, panel->previewBack, panel->preview, gc,
-	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y, 22, 22,
-	          textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
+	WCairoCopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		       textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y,
+		       22, 22, panel->preview,
+		       textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
 
 	if (w) {
 		panel->oldsection = section;
@@ -1275,11 +1278,11 @@ static void paintListItem(WMList * lPtr, int index, Drawable d, char *text, int 
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
 	int width, height, x, y, tmp;
-	Display *dpy = WMScreenDisplay(scr);
 	WMColor *back = (state & WLDSSelected) ? WMWhiteColor(scr) : WMGrayColor(scr);
 	WMListItem *item;
 	WMColor *black = WMBlackColor(scr);
 	TextureListItem *titem;
+	cairo_t *cr;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) text;
@@ -1297,23 +1300,27 @@ static void paintListItem(WMList * lPtr, int index, Drawable d, char *text, int 
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	XFillRectangle(dpy, d, WMColorGC(back), x, y, width, height);
+	cr = WCairoBeginForDrawable(scr, d);
+	WCairoSetSourceColor(cr, back);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
 
 	if (titem->preview)
-		XCopyArea(dpy, titem->preview, d, WMColorGC(black), 0, 0,
-			  TEXPREV_WIDTH, TEXPREV_HEIGHT, x + 5, y + 5);
+		WCairoPaintArea(cr, scr, titem->preview, TEXPREV_WIDTH, TEXPREV_HEIGHT,
+				0, 0, TEXPREV_WIDTH, TEXPREV_HEIGHT, x + 5, y + 5);
 
 	tmp = WMGetPopUpButtonSelectedItem(panel->secP);
 	if ((tmp >= 0) && ((1 << tmp) & titem->selectedFor))
-		WMDrawPixmap(panel->onLed, d, x + TEXPREV_WIDTH + 10, y + 6);
+		WCairoPaintPixmap(cr, panel->onLed, x + TEXPREV_WIDTH + 10, y + 6);
 	else if (titem->selectedFor)
-		WMDrawPixmap(panel->offLed, d, x + TEXPREV_WIDTH + 10, y + 6);
+		WCairoPaintPixmap(cr, panel->offLed, x + TEXPREV_WIDTH + 10, y + 6);
 
-	WMDrawString(scr, d, black, panel->boldFont,
-		     x + TEXPREV_WIDTH + 22, y + 2, titem->title, strlen(titem->title));
+	WMDrawStringCairo(cr, black, panel->boldFont,
+			  x + TEXPREV_WIDTH + 22, y + 2, titem->title, strlen(titem->title));
 
-	WMDrawString(scr, d, black, panel->smallFont,
-		     x + TEXPREV_WIDTH + 14, y + 18, titem->texture, strlen(titem->texture));
+	WMDrawStringCairo(cr, black, panel->smallFont,
+			  x + TEXPREV_WIDTH + 14, y + 18, titem->texture, strlen(titem->texture));
+	WCairoEnd(cr);
 
 	WMReleaseColor(back);
 	WMReleaseColor(black);
@@ -1437,22 +1444,17 @@ static void changeColorPage(WMWidget * w, void *data)
 	_Panel *panel = (_Panel *) data;
 	int section;
 	WMScreen *scr = WMWidgetScreen(panel->box);
-	Display *dpy = WMScreenDisplay(scr);
 
 	section = WMGetPopUpButtonSelectedItem(panel->colP);
 	if (section < 0)
 		return;
 
-	if (panel->preview) {
-		GC gc;
-
-		gc = XCreateGC(dpy, WMWidgetXID(panel->parent), 0, NULL);
-		XCopyArea(dpy, panel->previewBack, panel->preview, gc,
-			  colorOptions[panel->oldcsection].hand.x,
-			  colorOptions[panel->oldcsection].hand.y, 22, 22 ,
-			  colorOptions[panel->oldcsection].hand.x,
-			  colorOptions[panel->oldcsection].hand.y);
-	}
+	if (panel->preview)
+		WCairoCopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+			       colorOptions[panel->oldcsection].hand.x,
+			       colorOptions[panel->oldcsection].hand.y, 22, 22, panel->preview,
+			       colorOptions[panel->oldcsection].hand.x,
+			       colorOptions[panel->oldcsection].hand.y);
 	if (w) {
 
 		panel->oldcsection = section;
@@ -1468,8 +1470,41 @@ static void changeColorPage(WMWidget * w, void *data)
 	WMRedisplayWidget(panel->prevL);
 }
 
+/* the frame-border outline drawn identically on panel->preview and
+ * panel->previewNoText: two titlebar rectangles, the resizebar
+ * three-sided outline and the menu three-sided outline. +0.5 keeps the
+ * 1px stroke on pixel centres so it matches the previous XDrawLine. */
+static void strokeFrameBorder(cairo_t *cr, WMColor *color)
+{
+	WCairoSetSourceColor(cr, color);
+	cairo_set_line_width(cr, 1.0);
+	cairo_rectangle(cr, 29 + 0.5, 39 + 0.5, 190, 20);
+	cairo_rectangle(cr, 29 + 0.5, 69 + 0.5, 190, 20);
+	cairo_move_to(cr,  30 + 0.5, 100);
+	cairo_line_to(cr,  30 + 0.5, 109 + 0.5);
+	cairo_line_to(cr, 220 + 0.5, 109 + 0.5);
+	cairo_line_to(cr, 220 + 0.5, 100);
+	cairo_move_to(cr,  29 + 0.5, 221);
+	cairo_line_to(cr,  29 + 0.5, 119 + 0.5);
+	cairo_line_to(cr, 119 + 0.5, 119 + 0.5);
+	cairo_line_to(cr, 119 + 0.5, 221);
+	cairo_stroke(cr);
+}
+
+static void fillClipArrow(cairo_t *cr, WMColor *color, double *px, double *py)
+{
+	WCairoSetSourceColor(cr, color);
+	cairo_set_line_width(cr, 1.0);
+	cairo_move_to(cr, px[0] + 0.5, py[0] + 0.5);
+	cairo_line_to(cr, px[1] + 0.5, py[1] + 0.5);
+	cairo_line_to(cr, px[2] + 0.5, py[2] + 0.5);
+	cairo_close_path(cr);
+	cairo_fill_preserve(cr);
+	cairo_stroke(cr);
+}
+
 static void
-paintText(WMScreen * scr, Drawable d, WMColor * color, WMFont * font,
+paintText(cairo_t *cr, WMColor *color, WMFont *font,
 	  int x, int y, int w, int h, WMAlignment align, char *text)
 {
 	int l = strlen(text);
@@ -1486,7 +1521,7 @@ paintText(WMScreen * scr, Drawable d, WMColor * color, WMFont * font,
 		x += (w - WMWidthOfString(font, text, l)) / 2;
 		break;
 	}
-	WMDrawString(scr, d, color, font, x, y + (h - WMFontHeight(font)) / 2, text, l);
+	WMDrawStringCairo(cr, color, font, x, y + (h - WMFontHeight(font)) / 2, text, l);
 }
 
 static void updateColorPreviewBox(_Panel * panel, int elements)
@@ -1494,128 +1529,102 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 	WMScreen *scr = WMWidgetScreen(panel->box);
 	Display *dpy = WMScreenDisplay(scr);
 	Pixmap d, pnot;
-	GC gc;
+	cairo_t *crd, *crn;
 
 	d = panel->preview;
 	pnot = panel->previewNoText;
-	gc = WMColorGC(panel->colors[FTITLE_COL]);
+	crd = WCairoBeginForDrawable(scr, d);
+	crn = WCairoBeginForDrawable(scr, pnot);
 
 	if (elements & (1 << FTITLE_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 10, 190, 20, 30, 10);
-		paintText(scr, d, panel->colors[FTITLE_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 10, 190, 20, 30, 10);
+		paintText(crd, panel->colors[FTITLE_COL],
 			  panel->boldFont, 30, 10, 190, 20,
 			  panel->titleAlignment, _("Focused Window"));
 	}
 	if (elements & (1 << UTITLE_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 40, 190, 20, 30, 40);
-		paintText(scr, d, panel->colors[UTITLE_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 40, 190, 20, 30, 40);
+		paintText(crd, panel->colors[UTITLE_COL],
 			  panel->boldFont, 30, 40, 190, 20,
 			  panel->titleAlignment,
 			  _("Unfocused Window"));
 	}
 	if (elements & (1 << OTITLE_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 70, 190, 20, 30, 70);
-		paintText(scr, d, panel->colors[OTITLE_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 70, 190, 20, 30, 70);
+		paintText(crd, panel->colors[OTITLE_COL],
 			  panel->boldFont, 30, 70, 190, 20,
 			  panel->titleAlignment,
 			  _("Owner of Focused Window"));
 	}
 	if (elements & (1 << MTITLE_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 120, 90, 20, 30, 120);
-		paintText(scr, d, panel->colors[MTITLE_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 120, 90, 20, 30, 120);
+		paintText(crd, panel->colors[MTITLE_COL],
 			  panel->boldFont, 30, 120, 90, 20, WALeft,
 			  _("Menu Title"));
 	}
 	if (elements & (1 << MITEM_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 140, 90, 20, 30, 140);
-		paintText(scr, d, panel->colors[MITEM_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 140, 90, 20, 30, 140);
+		paintText(crd, panel->colors[MITEM_COL],
 			  panel->normalFont, 30, 140, 90, 20, WALeft,
 			  _("Normal Item"));
-		XCopyArea(dpy, pnot, d, gc, 30, 200, 90, 20, 30, 200);
-		paintText(scr, d, panel->colors[MITEM_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 200, 90, 20, 30, 200);
+		paintText(crd, panel->colors[MITEM_COL],
 			  panel->normalFont, 30, 200, 90, 20, WALeft,
 			  _("Normal Item"));
 	}
 	if (elements & (1 << MDISAB_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 160, 90, 20, 30, 160);
-		paintText(scr, d, panel->colors[MDISAB_COL],
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 160, 90, 20, 30, 160);
+		paintText(crd, panel->colors[MDISAB_COL],
 			  panel->normalFont, 30, 160, 90, 20, WALeft,
 			  _("Disabled Item"));
 	}
 	if (elements & (1 << MHIGH_COL)) {
-		XFillRectangle(WMScreenDisplay(scr), d,
-			       WMColorGC(panel->colors[MHIGH_COL]),
-			       31, 181, 87, 17);
-		XFillRectangle(WMScreenDisplay(scr), pnot,
-			       WMColorGC(panel->colors[MHIGH_COL]),
-			       31, 181, 87, 17);
+		WCairoSetSourceColor(crd, panel->colors[MHIGH_COL]);
+		cairo_rectangle(crd, 31, 181, 87, 17);
+		cairo_fill(crd);
+		WCairoSetSourceColor(crn, panel->colors[MHIGH_COL]);
+		cairo_rectangle(crn, 31, 181, 87, 17);
+		cairo_fill(crn);
 		elements |= 1 << MHIGHT_COL;
 	}
 	if (elements & (1 << MHIGHT_COL)) {
-		XCopyArea(dpy, pnot, d, gc, 30, 180, 90, 20, 30, 180);
-		paintText(scr, d, panel->colors[MHIGHT_COL],
+		/* the highlight fill on crn above must reach the server
+		 * before this reads pnot back through a fresh surface */
+		cairo_surface_flush(cairo_get_target(crn));
+		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+				30, 180, 90, 20, 30, 180);
+		paintText(crd, panel->colors[MHIGHT_COL],
 			  panel->normalFont, 30, 180, 90, 20, WALeft,
 			  _("Highlighted"));
 	}
 	if (elements & (1 << FBORDER_COL)) {
-		XDrawRectangle(dpy, pnot,
-			       WMColorGC(panel->colors[FBORDER_COL]),
-			       29, 39, 190, 20);
-		XDrawRectangle(dpy, d,
-			       WMColorGC(panel->colors[FBORDER_COL]),
-			       29, 39, 190, 20);
-		XDrawRectangle(dpy, pnot,
-			       WMColorGC(panel->colors[FBORDER_COL]),
-			       29, 69, 190, 20);
-		XDrawRectangle(dpy, d,
-			       WMColorGC(panel->colors[FBORDER_COL]),
-			       29, 69, 190, 20);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  30, 100, 30, 109);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  30, 100, 30, 109);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  31, 109, 219, 109);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  31, 109, 219, 109);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  220, 100, 220, 109);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  220, 100, 220, 109);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  29, 120, 29, 220);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  29, 120, 29, 220);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  29, 119, 119, 119);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  29, 119, 119, 119);
-		XDrawLine(dpy, pnot,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  119, 120, 119, 220);
-		XDrawLine(dpy, d,
-			  WMColorGC(panel->colors[FBORDER_COL]),
-			  119, 120, 119, 220);
+		strokeFrameBorder(crn, panel->colors[FBORDER_COL]);
+		strokeFrameBorder(crd, panel->colors[FBORDER_COL]);
 	}
 
 	if (elements & (1 << FFBORDER_COL)) {
-		XDrawRectangle(dpy, pnot,
-			       WMColorGC(panel->colors[FFBORDER_COL]),
-			       29, 9, 190, 20);
-		XDrawRectangle(dpy, d,
-			       WMColorGC(panel->colors[FFBORDER_COL]),
-			       29, 9, 190, 20);
+		WCairoSetSourceColor(crn, panel->colors[FFBORDER_COL]);
+		cairo_set_line_width(crn, 1.0);
+		cairo_rectangle(crn, 29 + 0.5, 9 + 0.5, 190, 20);
+		cairo_stroke(crn);
+		WCairoSetSourceColor(crd, panel->colors[FFBORDER_COL]);
+		cairo_set_line_width(crd, 1.0);
+		cairo_rectangle(crd, 29 + 0.5, 9 + 0.5, 190, 20);
+		cairo_stroke(crd);
 	}
+
+	/* the icon and clip sections below re-enter updatePreviewBox()
+	 * which opens its own transient contexts on the same two
+	 * pixmaps, so flush and close these before that happens */
+	WCairoEnd(crn);
+	WCairoEnd(crd);
 
 	if (elements & (1 << ICONT_COL) || elements & (1 << ICONB_COL)) {
 		RColor rgb;
@@ -1641,14 +1650,25 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		RHSVtoRGB(&hsv2, &rgb);
 		dim = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, False);
 
-		XFillRectangle(dpy, d, WMColorGC(panel->colors[ICONB_COL]), 156, 131, 62, 11);
-		XDrawLine(dpy, d, WMColorGC(light), 155, 130, 155, 142);
-		XDrawLine(dpy, d, WMColorGC(light), 156, 130, 217, 130);
-		XDrawLine(dpy, d, WMColorGC(dim), 218, 130, 218, 142);
+		crd = WCairoBeginForDrawable(scr, d);
+		WCairoSetSourceColor(crd, panel->colors[ICONB_COL]);
+		cairo_rectangle(crd, 156, 131, 62, 11);
+		cairo_fill(crd);
+		cairo_set_line_width(crd, 1.0);
+		WCairoSetSourceColor(crd, light);
+		cairo_move_to(crd, 155 + 0.5, 143);
+		cairo_line_to(crd, 155 + 0.5, 130 + 0.5);
+		cairo_line_to(crd, 218,       130 + 0.5);
+		cairo_stroke(crd);
+		WCairoSetSourceColor(crd, dim);
+		cairo_move_to(crd, 218 + 0.5, 130);
+		cairo_line_to(crd, 218 + 0.5, 143);
+		cairo_stroke(crd);
 
-		paintText(scr, d, panel->colors[ICONT_COL],
-			     panel->smallFont, 155, 130, 64, 13, WALeft,
-			     _("Icon Text"));
+		paintText(crd, panel->colors[ICONT_COL],
+			  panel->smallFont, 155, 130, 64, 13, WALeft,
+			  _("Icon Text"));
+		WCairoEnd(crd);
 
 		WMReleaseColor(light);
 		WMReleaseColor(dim);
@@ -1662,7 +1682,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		RImage *tile;
 		TextureListItem *titem;
 		WMListItem *item;
-		XPoint p[4];
+		double px[3], py[3];
 
 		item = WMGetListItem(panel->texLs, panel->textureIndex[PICON]);
 		titem = (TextureListItem *) item->clientData;
@@ -1702,44 +1722,42 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		RConvertImage(WMScreenRContext(scr), tile, &pix);
 		RReleaseImage(tile);
 
-		XCopyArea(dpy, pix, d, gc, 0, 0, 64, 64, 155, 130);
+		crd = WCairoBeginForDrawable(scr, d);
+		WCairoPaintArea(crd, scr, pix, 64, 64, 0, 0, 64, 64, 155, 130);
 		XFreePixmap(dpy, pix);
 
 		/* top right arrow */
-		p[0].x = p[3].x = 155 + 64 - 5 - (23 - 15);
-		p[0].y = p[3].y = 130 + 5;
-		p[1].x = 155 + 64 - 6;
-		p[1].y = 130 + 5;
-		p[2].x = 155 + 64 - 6;
-		p[2].y = 130 + 4 + 23 - 15;
-
-		XFillPolygon(dpy, d, WMColorGC(panel->colors[CLIP_COL]), p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, d, WMColorGC(panel->colors[CLIP_COL]), p, 4, CoordModeOrigin);
+		px[0] = 155 + 64 - 5 - (23 - 15);
+		py[0] = 130 + 5;
+		px[1] = 155 + 64 - 6;
+		py[1] = 130 + 5;
+		px[2] = 155 + 64 - 6;
+		py[2] = 130 + 4 + 23 - 15;
+		fillClipArrow(crd, panel->colors[CLIP_COL], px, py);
 
 		/* bottom left arrow */
-		p[0].x = p[3].x = 155 + 5;
-		p[0].y = p[3].y = 130 + 64 - 5 - (23 - 15);
-		p[1].x = 155 + 5;
-		p[1].y = 130 + 64 - 6;
-		p[2].x = 155 + 4 + 23 - 15;
-		p[2].y = 130 + 64 - 6;
+		px[0] = 155 + 5;
+		py[0] = 130 + 64 - 5 - (23 - 15);
+		px[1] = 155 + 5;
+		py[1] = 130 + 64 - 6;
+		px[2] = 155 + 4 + 23 - 15;
+		py[2] = 130 + 64 - 6;
+		fillClipArrow(crd, panel->colors[CLIP_COL], px, py);
 
-		XFillPolygon(dpy, d, WMColorGC(panel->colors[CLIP_COL]), p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, d, WMColorGC(panel->colors[CLIP_COL]), p, 4, CoordModeOrigin);
+		if (elements & (1 << CLIP_COL))
+			paintText(crd, panel->colors[CLIP_COL],
+				  panel->boldFont, 155 + 23, 130 + 64 - 15 - 3, 22, 15, WALeft,
+				  _("Clip"));
 
-	}
+		if (elements & (1 << CCLIP_COL)) {
+			paintText(crd, panel->colors[CCLIP_COL],
+				  panel->boldFont, 155 + 2, 130 + 2, 26, 15, WALeft, _("Coll."));
+			paintText(crd, panel->colors[CCLIP_COL],
+				  panel->boldFont, 155 + 23, 130 + 64 - 15 - 3, 22, 15, WALeft,
+				  _("Clip"));
+		}
 
-	if (elements & (1 << CLIP_COL))
-		paintText(scr, d, panel->colors[CLIP_COL],
-			  panel->boldFont, 155 + 23, 130 + 64 - 15 - 3, 22, 15, WALeft,
-			  _("Clip"));
-
-	if (elements & (1 << CCLIP_COL)) {
-		paintText(scr, d, panel->colors[CCLIP_COL],
-			  panel->boldFont, 155+2, 130 + 2, 26, 15, WALeft, _("Coll."));
-		paintText(scr, d, panel->colors[CCLIP_COL],
-			  panel->boldFont, 155 + 23, 130 + 64 - 15 - 3, 22, 15, WALeft,
-			  _("Clip"));
+		WCairoEnd(crd);
 	}
 
 	WMRedisplayWidget(panel->prevL);
