@@ -24,6 +24,10 @@
 #include <cairo.h>
 #include <pango/pangocairo.h>
 
+#ifdef USE_XSHAPE
+#include <xcb/shape.h>
+#endif
+
 #include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
@@ -49,11 +53,83 @@ struct W_OSDView {
 
 	WCairoSurface *csurf;
 
+	/* whole-frame opacity applied in paint(), 1.0 unless the caller
+	 * is running a fade (only the workspace-name OSD does). Values
+	 * below 1.0 are only visually meaningful when view->flags.argb
+	 * held after realize, otherwise the RGB24 blit just darkens. */
+	double alpha;
+
+	unsigned transparent:1;
 	unsigned fixed_size:1;
 };
 
 static void handleEvents(XEvent *event, void *clientData);
 static void paint(WOSDView *osd);
+
+#ifdef USE_XSHAPE
+static void applyTextShape(WOSDView *osd, int width, int height)
+{
+	cairo_surface_t *surface;
+	cairo_t *cr;
+	xcb_rectangle_t *rectangles;
+	int rectangle_count;
+	int x, y;
+
+	if (!osd->transparent || osd->view->flags.argb) {
+		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+			       W_VIEW_DRAWABLE(osd->view), 0, 0, XCB_NONE);
+		return;
+	}
+
+	surface = cairo_image_surface_create(CAIRO_FORMAT_A8, width, height);
+	cr = cairo_create(surface);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+	cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+	if (osd->text) {
+		pango_layout_set_text(osd->font->layout, osd->text, -1);
+		pango_cairo_update_layout(cr, osd->font->layout);
+		cairo_set_source_rgb(cr, 1, 1, 1);
+		cairo_move_to(cr,
+			      (width - osd->text_size.width) / 2,
+			      (height - osd->text_size.height) / 2);
+		pango_cairo_show_layout(cr, osd->font->layout);
+	}
+	cairo_destroy(cr);
+	cairo_surface_flush(surface);
+
+	rectangles = wmalloc(sizeof(*rectangles) * (size_t)width * height);
+	rectangle_count = 0;
+	for (y = 0; y < height; y++) {
+		const unsigned char *row = cairo_image_surface_get_data(surface)
+			+ y * cairo_image_surface_get_stride(surface);
+		for (x = 0; x < width;) {
+			int start;
+
+			while (x < width && row[x] == 0)
+				x++;
+			start = x;
+			while (x < width && row[x] > 0)
+				x++;
+			if (x > start) {
+				rectangles[rectangle_count].x = start;
+				rectangles[rectangle_count].y = y;
+				rectangles[rectangle_count].width = x - start;
+				rectangles[rectangle_count].height = 1;
+				rectangle_count++;
+			}
+		}
+	}
+
+	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+			     3, W_VIEW_DRAWABLE(osd->view),
+			     0, 0, rectangle_count, rectangles);
+	xcb_flush(xconn);
+	wfree(rectangles);
+	cairo_surface_destroy(surface);
+}
+#endif
 
 WOSDView *WCreateOSDView(WMScreen *scr)
 {
@@ -72,6 +148,15 @@ WOSDView *WCreateOSDView(WMScreen *scr)
 		return NULL;
 	}
 	osd->view->self = osd;
+	osd->alpha = 1.0;
+
+	/* opt into the depth-32 visual so WSetOSDViewAlpha() can ramp a
+	 * real alpha channel. Only when a compositor owns _NET_WM_CM_Sn,
+	 * else alpha=0 pixels would render as opaque black. W_RealizeView()
+	 * clears the flag again if the server has no depth-32 visual, and
+	 * paint() reads it back to pick the surface format. */
+	if (scr->rcontext->xvisual_argb && scr->compositor_running)
+		osd->view->flags.argb = 1;
 
 	/* The Floating MoveDisplay/ResizeDisplay mode XMoveWindow()s this
 	 * window on every motion step while the non-opaque move/resize loop
@@ -153,10 +238,28 @@ void WSetOSDViewText(WOSDView *osd, const char *text)
 	paint(osd);
 }
 
+void WSetOSDViewTransparent(WOSDView *osd, Bool transparent)
+{
+	osd->transparent = transparent != False;
+	if (W_VIEW_MAPPED(osd->view))
+		paint(osd);
+}
+
+void WSetOSDViewAlpha(WOSDView *osd, double alpha)
+{
+	if (alpha < 0.0)
+		alpha = 0.0;
+	else if (alpha > 1.0)
+		alpha = 1.0;
+	osd->alpha = alpha;
+	if (W_VIEW_MAPPED(osd->view))
+		paint(osd);
+}
+
 static void paint(WOSDView *osd)
 {
 	cairo_t *cr;
-	int w, h;
+	int w, h, flags;
 
 	if (!W_VIEW_REALIZED(osd->view))
 		return;
@@ -167,17 +270,28 @@ static void paint(WOSDView *osd)
 	/* the surface is bound to the view's window for its lifetime (a
 	 * WOSDView is never destroyed), the resize below is a no-op when
 	 * the view size has not changed */
-	if (!osd->csurf)
+	if (!osd->csurf) {
+		flags = WCairoBuffered;
+		if (osd->view->flags.argb)
+			flags |= WCairoARGB;
 		osd->csurf = WCairoSurfaceCreate(W_VIEW_SCREEN(osd->view),
 						 W_VIEW_DRAWABLE(osd->view),
-						 w, h, WCairoBuffered);
-	else
+						 w, h, flags);
+	} else {
 		WCairoSurfaceResize(osd->csurf, w, h);
+	}
 
 	cr = WCairoBegin(osd->csurf);
 
-	WCairoSetSourceColor(cr, osd->bgColor);
+	/* SOURCE so the fill replaces the previous frame instead of
+	 * blending over its alpha, then back to OVER for text/relief. */
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	if (osd->transparent)
+		cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	else
+		WCairoSetSourceColor(cr, osd->bgColor);
 	cairo_paint(cr);
+	cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
 	if (osd->text) {
 		/* the layout was already measured with this text by
@@ -192,9 +306,25 @@ static void paint(WOSDView *osd)
 		pango_cairo_show_layout(cr, osd->font->layout);
 	}
 
-	W_DrawReliefCairo(cr, W_VIEW_SCREEN(osd->view), 0, 0, w, h, WRSimple);
+	if (!osd->transparent)
+		W_DrawReliefCairo(cr, W_VIEW_SCREEN(osd->view), 0, 0, w, h, WRSimple);
+
+	if (osd->alpha < 1.0) {
+		/* scale the whole opaque frame by alpha in place: DEST_IN
+		 * multiplies every channel of the destination by the source
+		 * alpha. On the ARGB32 back buffer that yields premultiplied
+		 * (r*a, g*a, b*a, a) and on the RGB24 fallback it darkens
+		 * toward black, which is the intended non-composited look. */
+		cairo_set_operator(cr, CAIRO_OPERATOR_DEST_IN);
+		cairo_set_source_rgba(cr, 0, 0, 0, osd->alpha);
+		cairo_paint(cr);
+	}
 
 	WCairoEnd(cr);
+
+#ifdef USE_XSHAPE
+	applyTextShape(osd, w, h);
+#endif
 }
 
 static void handleEvents(XEvent *event, void *clientData)

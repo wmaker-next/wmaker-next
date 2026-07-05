@@ -648,6 +648,13 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->visual = vinfo ? vinfo[0].visual : DefaultVisual(display, screen);
 	if (vinfo)
 		XFree(vinfo);
+	if (context->xvisual_argb) {
+		vtempl.visualid = context->xvisual_argb->visual_id;
+		vinfo = XGetVisualInfo(display, VisualIDMask, &vtempl, &nret);
+		scrPtr->visual_argb = vinfo ? vinfo[0].visual : NULL;
+		if (vinfo)
+			XFree(vinfo);
+	}
 
 	scrPtr->rootWin = RootWindow(display, screen);
 

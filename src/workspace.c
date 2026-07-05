@@ -360,13 +360,27 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	return True;
 }
 
-static void hideWorkspaceName(void *data)
+#define WORKSPACE_NAME_FADE_STEPS 10
+
+static void fadeWorkspaceName(void *data)
 {
-	WScreen *scr = (WScreen *) data;
+	WScreen *scr = (WScreen *)data;
 
 	scr->workspace_name_timer = NULL;
-	if (scr->workspace_name_osd)
+	if (!scr->workspace_name_osd)
+		return;
+
+	if (scr->workspace_name_fade_step >= WORKSPACE_NAME_FADE_STEPS) {
 		WMUnmapWidget(scr->workspace_name_osd);
+		return;
+	}
+
+	scr->workspace_name_fade_step++;
+	WSetOSDViewAlpha(scr->workspace_name_osd,
+			 1.0 - (double)scr->workspace_name_fade_step / WORKSPACE_NAME_FADE_STEPS);
+	XFlush(dpy);
+	scr->workspace_name_timer =
+		WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, fadeWorkspaceName, scr);
 }
 
 static void showWorkspaceName(WScreen *scr, int workspace)
@@ -378,6 +392,8 @@ static void showWorkspaceName(WScreen *scr, int workspace)
 	if (scr->workspace_name_timer)
 		WMDeleteTimerHandler(scr->workspace_name_timer);
 
+	scr->workspace_name_fade_step = 0;
+	WSetOSDViewAlpha(scr->workspace_name_osd, 1.0);
 	WSetOSDViewText(scr->workspace_name_osd, scr->workspaces[workspace]->name);
 	wPlaceOSDOnHead(scr, scr->workspace_name_osd,
 			w_global.config->workspace_name_display_position,
@@ -385,12 +401,12 @@ static void showWorkspaceName(WScreen *scr, int workspace)
 	WMMapWidget(scr->workspace_name_osd);
 	XRaiseWindow(dpy, WMWidgetXID(scr->workspace_name_osd));
 
-	/* Match the visible lifetime of the previous shape/fade path,
-	 * WORKSPACE_NAME_DELAY solid plus the ten-step fade tail. The
-	 * fade itself comes back once Cairo owns rendering. */
+	/* solid for WORKSPACE_NAME_DELAY, then a ten-step alpha ramp to
+	 * zero at WORKSPACE_NAME_FADE_DELAY per step. Under a compositor
+	 * the OSD window is depth-32 so the ramp is genuinely translucent,
+	 * otherwise it darkens toward black before the unmap. */
 	scr->workspace_name_timer =
-		WMAddTimerHandler(WORKSPACE_NAME_DELAY + 10 * WORKSPACE_NAME_FADE_DELAY,
-				  hideWorkspaceName, scr);
+		WMAddTimerHandler(WORKSPACE_NAME_DELAY, fadeWorkspaceName, scr);
 }
 
 void wWorkspaceChange(WScreen *scr, int workspace)

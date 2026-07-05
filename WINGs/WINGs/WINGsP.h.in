@@ -88,6 +88,11 @@ typedef struct W_Screen {
     Colormap colormap;
 
     Visual *visual;
+    /* libX11 handle for rcontext->xvisual_argb, resolved once in
+     * WMCreateScreenWithRContext() so W_RealizeView() can pass it to
+     * XCreateWindow() without an XGetVisualInfo round trip per view.
+     * NULL when the server has no depth-32 TrueColor visual. */
+    Visual *visual_argb;
 
     Time lastEventTime;
 
@@ -728,6 +733,13 @@ struct W_View {
         unsigned int pendingRelease4:1;
         unsigned int pendingRelease5:1;
         unsigned int xdndHintSet:1;
+
+        /* create the window on screen->visual_argb at depth 32 with
+         * rcontext->cmap_argb. Set before realize by widgets that
+         * paint their whole surface through cairo and want a working
+         * alpha channel under a compositor. Ignored when the server
+         * has no depth-32 visual. */
+        unsigned int argb:1;
     } flags;
 
     int refCount;

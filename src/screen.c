@@ -872,6 +872,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	WMRealizeWidget(scr->keychain_osd);
 
 	scr->workspace_name_osd = WCreateOSDView(scr->wmscreen);
+	WSetOSDViewTransparent(scr->workspace_name_osd, True);
 	if (scr->workspace_name_font)
 		WSetOSDViewFont(scr->workspace_name_osd, scr->workspace_name_font);
 	WMRealizeWidget(scr->workspace_name_osd);

@@ -41,6 +41,15 @@ void WSetOSDViewFixedTemplate(WOSDView *view, const char *tmpl);
  * template is set the widget resizes to fit. */
 void WSetOSDViewText(WOSDView *view, const char *text);
 
+/* Clear the background; use ARGB compositing when available and a shaped
+ * text window as the fallback on non-composited displays. */
+void WSetOSDViewTransparent(WOSDView *view, Bool transparent);
+
+/* Whole-frame opacity in [0,1], repaints when mapped. Only visually
+ * translucent when a compositor is running and the server offers a
+ * depth-32 visual, otherwise the frame darkens toward black. */
+void WSetOSDViewAlpha(WOSDView *view, double alpha);
+
 /* Move 'view' onto the head under the pointer at one of the WD_*
  * anchor positions from config-values.h, 'pad' pixels from the
  * anchored edge(s). WD_NONE is treated as WD_CENTER, callers gate

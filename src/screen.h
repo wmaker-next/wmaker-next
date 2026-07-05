@@ -352,6 +352,7 @@ typedef struct _WScreen {
 
     /* workspace name data */
     WMHandlerID workspace_name_timer;
+    int workspace_name_fade_step;
 
     /* mini screenshot data */
     Window mini_screenshot;

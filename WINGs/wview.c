@@ -179,6 +179,8 @@ void W_RealizeView(W_View * view)
 	Window parentWID;
 	Display *dpy = view->screen->display;
 	W_View *ptr;
+	Visual *visual;
+	int depth;
 
 	assert(view->size.width > 0);
 	assert(view->size.height > 0);
@@ -195,11 +197,33 @@ void W_RealizeView(W_View * view)
 			return;
 		}
 
+		visual = view->screen->visual;
+		depth = view->screen->depth;
+		if (view->flags.argb && view->screen->visual_argb) {
+			/* the depth-32 visual differs from the parent's, so
+			 * XCreateWindow requires an explicit colormap and
+			 * literal border/background pixels (createView()
+			 * already set CWColormap|CWBorderPixel|CWBackPixel).
+			 * The WMColor pixels createView() stored were
+			 * allocated on the default colormap and read as
+			 * near-transparent noise on a direct-colour ARGB
+			 * visual, so replace them with 0: an argb view
+			 * repaints its whole surface through cairo anyway. */
+			visual = view->screen->visual_argb;
+			depth = 32;
+			view->attribs.colormap = view->screen->rcontext->cmap_argb;
+			view->attribs.border_pixel = 0;
+			view->attribs.background_pixel = 0;
+			view->attribFlags &= ~CWBackPixmap;
+		} else {
+			view->flags.argb = 0;
+		}
+
 		parentWID = view->parent->window;
 		view->window = XCreateWindow(dpy, parentWID, view->pos.x, view->pos.y,
 					     view->size.width, view->size.height, 0,
-					     view->screen->depth, InputOutput,
-					     view->screen->visual, view->attribFlags, &view->attribs);
+					     depth, InputOutput,
+					     visual, view->attribFlags, &view->attribs);
 
 		XSaveContext(dpy, view->window, ViewContext, (XPointer) view);
 		WMScreenNoteDrawableSize(view->screen, view->window,
