@@ -549,6 +549,12 @@ typedef struct W_Font {
 
 #define W_FONTID(f)		(f)->font->fid
 
+/* WMDrawString onto a caller-owned cairo_t so a paint pass that
+ * already has one open (segment overlay + text, WINGs widget interior
+ * + label) folds the pango_cairo_show_layout into the same context */
+void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
+                       int x, int y, const char *text, int length);
+
 
 /* ---[ widgets.c ]------------------------------------------------------- */
 

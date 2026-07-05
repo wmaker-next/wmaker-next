@@ -53,8 +53,9 @@
  * frames share a refcounted entry instead.
  *
  * The Pixmap fields in WFrameWindow stay and hold copies of the cached
- * XIDs so existing read sites (updateTexture, the title XCopyArea path)
- * are unchanged, only the create/free sites move to acquire/release.
+ * XIDs so existing read sites (updateTexture, the segment overlay
+ * source-surface) are unchanged, only the create/free sites move to
+ * acquire/release.
  */
 
 struct WFrameTexCache {
@@ -1541,11 +1542,13 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h)
 {
 	WScreen *scr = fwin->screen_ptr;
+	RContext *rc = scr->rcontext;
 	WWindow *owner, *member;
 	WWindowGroup *grp;
 	WFrameWindow *mframe;
 	WTexture *seg_tex;
-	Drawable buf;
+	cairo_surface_t *back;
+	cairo_t *cr;
 	const char *base;
 	char *txt;
 	int span, avail, tab_w, rem, sep_w;
@@ -1602,7 +1605,11 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 	icol_slot = fwin->title_color[WS_TABINACTIVE]
 		  ? WS_TABINACTIVE : WS_PFOCUSED;
 
-	XSetClipMask(dpy, scr->copy_gc, None);
+	cr = WCairoBeginForDrawable(scr->wmscreen, fwin->titlebar->window);
+	if (!cr)
+		return 0;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
 	for (i = 0; i < n; i++) {
 		sx = fwin->tab_seg_x[i];
@@ -1617,8 +1624,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 		 * and WS_PFOCUSED on an unfocused one so it always stands
 		 * out, inactive segments use the dedicated tab slot (or
 		 * its PFOCUSED fallback) on a focused frame and
-		 * WS_UNFOCUSED otherwise, the overlay is drawn whenever
-		 * seg_state differs from the titlebar background */
+		 * WS_UNFOCUSED otherwise */
 		if (i == grp->active_index) {
 			seg_state = (state == WS_UNFOCUSED) ? WS_PFOCUSED : state;
 			col_state = seg_state;
@@ -1629,47 +1635,52 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 							  : WS_UNFOCUSED;
 		}
 
-		if (seg_state != state) {
-			seg_tex = fwin->title_texture[seg_state];
-			if (seg_tex->any.type != WTEX_SOLID
-			    && fwin->title_back[seg_state] != None) {
-				XCopyArea(dpy, fwin->title_back[seg_state],
-					  fwin->titlebar->window, scr->copy_gc,
-					  sx, 0, sw, th, sx, 0);
-			} else {
-				XSetForeground(dpy, scr->copy_gc,
-					       seg_tex->solid.normal.pixel);
-				XFillRectangle(dpy, fwin->titlebar->window,
-					       scr->copy_gc, sx, 0, sw, th);
-				/* restore the top/bottom relief lines the
-				 * fill just overpainted, interior side
-				 * edges are the separator lines drawn
-				 * below, the outermost segments redraw
-				 * the titlebar's own left/right bevel */
-				XDrawLine(dpy, fwin->titlebar->window,
-					  seg_tex->solid.light_gc,
-					  sx, 0, sx + sw - 1, 0);
-				XDrawLine(dpy, fwin->titlebar->window,
-					  seg_tex->solid.dim_gc,
-					  sx, th - 2, sx + sw - 1, th - 2);
-				XDrawLine(dpy, fwin->titlebar->window,
-					  seg_tex->solid.dark_gc,
-					  sx, th - 1, sx + sw - 1, th - 1);
-				if (sx == 0)
-					XDrawLine(dpy, fwin->titlebar->window,
-						  seg_tex->solid.light_gc,
-						  0, 0, 0, th - 2);
-				if (sx + sw >= (int)fwin->titlebar->width) {
-					XDrawLine(dpy, fwin->titlebar->window,
-						  seg_tex->solid.dim_gc,
-						  sx + sw - 2, 1,
-						  sx + sw - 2, th - 2);
-					XDrawLine(dpy, fwin->titlebar->window,
-						  seg_tex->solid.dark_gc,
-						  sx + sw - 1, 0,
-						  sx + sw - 1, th - 1);
-				}
+		/* paint every segment's background even when seg_state
+		 * matches the titlebar's own state, so a repeat paint
+		 * without an intervening XClearWindow does not OVER-blend
+		 * the AA-rendered label onto its previous self */
+		seg_tex = fwin->title_texture[seg_state];
+		if (seg_tex->any.type != WTEX_SOLID
+		    && fwin->title_back[seg_state] != None) {
+			back = cairo_xcb_surface_create(rc->xc,
+					(xcb_drawable_t)fwin->title_back[seg_state],
+					rc->xvisual, fwin->titlebar->width, th);
+			cairo_set_source_surface(cr, back, 0, 0);
+			cairo_rectangle(cr, sx, 0, sw, th);
+			cairo_fill(cr);
+			cairo_surface_destroy(back);
+		} else {
+			WCairoSetSourceXColor(cr, &seg_tex->solid.normal);
+			cairo_rectangle(cr, sx, 0, sw, th);
+			cairo_fill(cr);
+			/* restore the top/bottom relief lines the fill just
+			 * overpainted, interior side edges are the separator
+			 * lines drawn below, the outermost segments redraw
+			 * the titlebar's own left/right bevel */
+			WCairoSetSourceXColor(cr, &seg_tex->solid.light);
+			cairo_move_to(cr, sx + 0.5, 0.5);
+			cairo_line_to(cr, sx + sw - 0.5, 0.5);
+			if (sx == 0) {
+				cairo_move_to(cr, 0.5, 0.5);
+				cairo_line_to(cr, 0.5, th - 1.5);
 			}
+			cairo_stroke(cr);
+			WCairoSetSourceXColor(cr, &seg_tex->solid.dim);
+			cairo_move_to(cr, sx + 0.5, th - 1.5);
+			cairo_line_to(cr, sx + sw - 0.5, th - 1.5);
+			if (sx + sw >= (int)fwin->titlebar->width) {
+				cairo_move_to(cr, sx + sw - 1.5, 1.5);
+				cairo_line_to(cr, sx + sw - 1.5, th - 1.5);
+			}
+			cairo_stroke(cr);
+			WCairoSetSourceXColor(cr, &seg_tex->solid.dark);
+			cairo_move_to(cr, sx + 0.5, th - 0.5);
+			cairo_line_to(cr, sx + sw - 0.5, th - 0.5);
+			if (sx + sw >= (int)fwin->titlebar->width) {
+				cairo_move_to(cr, sx + sw - 0.5, 0.5);
+				cairo_line_to(cr, sx + sw - 0.5, th - 0.5);
+			}
+			cairo_stroke(cr);
 		}
 
 		tx = sx + 3;
@@ -1679,11 +1690,8 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 		if (show_icon && mframe && mframe->titlebar_icon != None
 		    && isz > 0 && sw >= isz * 2) {
 			iy = (th - isz) / 2;
-			XSetClipMask(dpy, scr->copy_gc, mframe->titlebar_icon_mask);
-			XSetClipOrigin(dpy, scr->copy_gc, tx, iy);
-			XCopyArea(dpy, mframe->titlebar_icon, fwin->titlebar->window,
-				  scr->copy_gc, 0, 0, isz, isz, tx, iy);
-			XSetClipMask(dpy, scr->copy_gc, None);
+			maskedBlit(cr, rc, mframe->titlebar_icon,
+				   mframe->titlebar_icon_mask, isz, isz, tx, iy);
 			tx += isz + 3;
 			tw -= isz + 3;
 		}
@@ -1694,47 +1702,32 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 		base = (mframe && mframe->title) ? mframe->title : DEF_WINDOW_TITLE;
 		txt = ShrinkString(*fwin->font, base, tw);
 		len = strlen(txt);
-		tw = WMWidthOfString(*fwin->font, txt, len);
-		if (tw <= 0) {
-			wfree(txt);
-			continue;
+		if (WMWidthOfString(*fwin->font, txt, len) > 0) {
+			cairo_save(cr);
+			cairo_rectangle(cr, tx, y, tw, h);
+			cairo_clip(cr);
+			WMDrawStringCairo(cr, fwin->title_color[col_state],
+					  *fwin->font, tx, y, txt, len);
+			cairo_restore(cr);
 		}
-
-		/* same w+2 AA-overdraw buffer the single-title path uses,
-		 * background slice is taken from the segment state pixmap */
-		buf = XCreatePixmap(dpy, fwin->titlebar->window, tw + 2, h,
-				    scr->w_depth);
-		seg_tex = fwin->title_texture[seg_state];
-		if (seg_tex->any.type != WTEX_SOLID
-		    && fwin->title_back[seg_state] != None) {
-			XCopyArea(dpy, fwin->title_back[seg_state], buf,
-				  scr->copy_gc, tx - 1, y, tw + 2, h, 0, 0);
-		} else {
-			XSetForeground(dpy, scr->copy_gc,
-				       seg_tex->solid.normal.pixel);
-			XFillRectangle(dpy, buf, scr->copy_gc, 0, 0, tw + 2, h);
-		}
-		WMDrawString(scr->wmscreen, buf, fwin->title_color[col_state],
-			     *fwin->font, 1, 0, txt, len);
-		XCopyArea(dpy, buf, fwin->titlebar->window, scr->copy_gc,
-			  0, 0, tw + 2, h, tx - 1, y);
-		XFreePixmap(dpy, buf);
 		wfree(txt);
 	}
 
 	/* 1-pixel relief separator between segments, dark/light pair so it
-	 * reads on both gradient and solid backgrounds, skipped when the
-	 * inactive-segment background already differs from the active one */
+	 * reads on both gradient and solid backgrounds */
 	for (i = 1; i < n; i++) {
 		sx = fwin->tab_seg_x[i];
-		XSetForeground(dpy, scr->copy_gc, scr->dark_pixel);
-		XDrawLine(dpy, fwin->titlebar->window, scr->copy_gc,
-			  sx - 1, 1, sx - 1, th - 2);
-		XSetForeground(dpy, scr->copy_gc, scr->light_pixel);
-		XDrawLine(dpy, fwin->titlebar->window, scr->copy_gc,
-			  sx, 1, sx, th - 2);
+		WCairoSetSourceColor(cr, scr->darkGray);
+		cairo_move_to(cr, sx - 0.5, 1.5);
+		cairo_line_to(cr, sx - 0.5, th - 1.5);
+		cairo_stroke(cr);
+		WCairoSetSourceColor(cr, scr->gray);
+		cairo_move_to(cr, sx + 0.5, 1.5);
+		cairo_line_to(cr, sx + 0.5, th - 1.5);
+		cairo_stroke(cr);
 	}
 
+	WCairoEnd(cr);
 	return 1;
 }
 

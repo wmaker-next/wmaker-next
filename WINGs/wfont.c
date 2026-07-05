@@ -312,6 +312,16 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 	return width;
 }
 
+void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
+		       int x, int y, const char *text, int length)
+{
+	setLayoutText(font->layout, text, length);
+	WCairoSetSourceColor(cr, color);
+	cairo_move_to(cr, x, y);
+	pango_cairo_update_layout(cr, font->layout);
+	pango_cairo_show_layout(cr, font->layout);
+}
+
 void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, int x, int y, const char *text, int length)
 {
 	cairo_t *cr;
@@ -321,13 +331,7 @@ void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, in
 	cr = WCairoBeginForDrawable(scr, d);
 	if (!cr)
 		return;
-
-	setLayoutText(font->layout, text, length);
-	WCairoSetSourceColor(cr, color);
-	cairo_move_to(cr, x, y);
-	pango_cairo_update_layout(cr, font->layout);
-	pango_cairo_show_layout(cr, font->layout);
-
+	WMDrawStringCairo(cr, color, font, x, y, text, length);
 	WCairoEnd(cr);
 }
 
