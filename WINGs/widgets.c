@@ -1,4 +1,6 @@
 
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
 #include "wconfig.h"
 
@@ -362,63 +364,92 @@ static int userWidgetCount = 0;
 
 /*****  end data  ******/
 
-static void renderPixmap(W_Screen * screen, Pixmap d, Pixmap mask, char **data, int width, int height)
+/* pick the four-tone bevel palette entry for one glyph cell and, when
+ * the char is '=', clear the matching mask alpha byte so that cell is
+ * outside the shape. Returns the WMColor to write into the image. */
+static WMColor *pickCellColor(W_Screen *screen, char c, unsigned char *mask_cell)
 {
-	int x, y;
-	GC whiteGC = WMColorGC(screen->white);
-	GC blackGC = WMColorGC(screen->black);
-	GC lightGC = WMColorGC(screen->gray);
-	GC darkGC = WMColorGC(screen->darkGray);
-
-	if (mask)
-		XSetForeground(screen->display, screen->monoGC, 0);
-
-	for (y = 0; y < height; y++) {
-		for (x = 0; x < width; x++) {
-			switch (data[y][x]) {
-			case ' ':
-			case 'w':
-				XDrawPoint(screen->display, d, whiteGC, x, y);
-				break;
-
-			case '=':
-				if (mask)
-					XDrawPoint(screen->display, mask, screen->monoGC, x, y);
-
-				/* FALLTHRU */
-			case '.':
-			case 'l':
-				XDrawPoint(screen->display, d, lightGC, x, y);
-				break;
-
-			case '%':
-			case 'd':
-				XDrawPoint(screen->display, d, darkGC, x, y);
-				break;
-
-			case '#':
-			case 'b':
-			default:
-				XDrawPoint(screen->display, d, blackGC, x, y);
-				break;
-			}
-		}
+	switch (c) {
+	case ' ':
+	case 'w':
+		return screen->white;
+	case '=':
+		if (mask_cell)
+			*mask_cell = 0;
+		/* FALLTHRU */
+	case '.':
+	case 'l':
+		return screen->gray;
+	case '%':
+	case 'd':
+		return screen->darkGray;
+	case '#':
+	case 'b':
+	default:
+		return screen->black;
 	}
 }
 
 static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height, int masked)
 {
+	RContext *rc = sPtr->rcontext;
 	Pixmap pixmap, mask = None;
+	cairo_surface_t *img, *m, *ps;
+	cairo_t *cr;
+	unsigned char *row, *mrow;
+	int stride, mstride, x, y;
+	WMColor *c;
 
-	pixmap = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, sPtr->depth);
-
+	/* build the image and (optional) mask client-side so the whole
+	 * glyph uploads in one PutImage each rather than one round trip
+	 * per pixel */
+	img = cairo_image_surface_create(CAIRO_FORMAT_RGB24, width, height);
+	stride = cairo_image_surface_get_stride(img);
+	m = NULL;
+	mstride = 0;
 	if (masked) {
-		mask = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, 1);
-		XSetForeground(sPtr->display, sPtr->monoGC, 1);
-		XFillRectangle(sPtr->display, mask, sPtr->monoGC, 0, 0, width, height);
+		m = cairo_image_surface_create(CAIRO_FORMAT_A8, width, height);
+		mstride = cairo_image_surface_get_stride(m);
+		memset(cairo_image_surface_get_data(m), 0xff, mstride * height);
 	}
 
-	renderPixmap(sPtr, pixmap, mask, data, width, height);
+	for (y = 0; y < height; y++) {
+		row = cairo_image_surface_get_data(img) + y * stride;
+		mrow = m ? cairo_image_surface_get_data(m) + y * mstride : NULL;
+		for (x = 0; x < width; x++) {
+			c = pickCellColor(sPtr, data[y][x], mrow ? &mrow[x] : NULL);
+			row[4 * x + 0] = c->color.blue >> 8;
+			row[4 * x + 1] = c->color.green >> 8;
+			row[4 * x + 2] = c->color.red >> 8;
+		}
+	}
+	cairo_surface_mark_dirty(img);
+
+	pixmap = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, sPtr->depth);
+	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pixmap,
+				      rc->xvisual, width, height);
+	cr = cairo_create(ps);
+	cairo_set_source_surface(cr, img, 0, 0);
+	cairo_paint(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ps);
+	cairo_surface_destroy(ps);
+	cairo_surface_destroy(img);
+
+	if (masked) {
+		cairo_surface_mark_dirty(m);
+		mask = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, 1);
+		ps = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							 (xcb_pixmap_t)mask, width, height);
+		cr = cairo_create(ps);
+		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+		cairo_set_source_surface(cr, m, 0, 0);
+		cairo_paint(cr);
+		cairo_destroy(cr);
+		cairo_surface_flush(ps);
+		cairo_surface_destroy(ps);
+		cairo_surface_destroy(m);
+	}
 
 	return WMCreatePixmapFromXPixmaps(sPtr, pixmap, mask, width, height, sPtr->depth);
 }
@@ -878,10 +909,7 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 
 	scrPtr->textCursor = XCreateFontCursor(display, XC_xterm);
 
-	blank = XCreatePixmap(display, scrPtr->stipple, 1, 1, 1);
-	XSetForeground(display, scrPtr->monoGC, 0);
-	XFillRectangle(display, blank, scrPtr->monoGC, 0, 0, 1, 1);
-
+	blank = XCreateBitmapFromData(display, W_DRAWABLE(scrPtr), "\0", 1, 1);
 	scrPtr->invisibleCursor = XCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
 	XFreePixmap(display, blank);
 
