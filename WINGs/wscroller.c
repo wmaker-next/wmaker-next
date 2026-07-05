@@ -7,8 +7,12 @@
 #   undef _XOPEN_SOURCE
 #endif
 
+#include <cairo.h>
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
 
+#include <wraster.h>
 #include <math.h>
 
 /* undefine will disable the autoadjusting of the knob dimple to be
@@ -217,118 +221,80 @@ WMScrollerPart WMGetScrollerHitPart(WMScroller * sPtr)
 	return sPtr->flags.hitPart;
 }
 
-static void paintArrow(WMScroller * sPtr, Drawable d, int part)
+static void blitPixmap(cairo_t *cr, W_Screen *scr, W_Pixmap *pix, int x, int y)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *psurf, *msurf;
+
+	psurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
+					 rc->xvisual, pix->width, pix->height);
+	cairo_set_source_surface(cr, psurf, x, y);
+	if (pix->mask != None) {
+		msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+					(xcb_pixmap_t)pix->mask,
+					pix->width, pix->height);
+		cairo_mask_surface(cr, msurf, x, y);
+		cairo_surface_destroy(msurf);
+	} else {
+		cairo_rectangle(cr, x, y, pix->width, pix->height);
+		cairo_fill(cr);
+	}
+	cairo_surface_destroy(psurf);
+}
+
+static void paintArrow(WMScroller *sPtr, cairo_t *cr, int part)
 /*
  * part- 0 paints the decrement arrow, 1 the increment arrow
  */
 {
 	WMView *view = sPtr->view;
 	WMScreen *scr = view->screen;
-	int ofs;
 	W_Pixmap *arrow;
-
-#ifndef DOUBLE_BUFFER
-	GC gc = scr->lightGC;
-#endif
+	int ofs, bx, by, down;
 
 	if (part == 0) {	/* decrement button */
+		down = sPtr->flags.decrDown;
 		if (sPtr->flags.horizontal) {
-			if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
-				ofs = view->size.width - 2 * (BUTTON_SIZE + 1) - 1;
-			} else {
-				ofs = 2;
-			}
-			if (sPtr->flags.decrDown)
-				arrow = scr->hiLeftArrow;
-			else
-				arrow = scr->leftArrow;
-
+			ofs = (sPtr->flags.arrowsPosition == WSAMaxEnd)
+			    ? view->size.width - 2 * (BUTTON_SIZE + 1) - 1 : 2;
+			arrow = down ? scr->hiLeftArrow : scr->leftArrow;
 		} else {
-			if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
-				ofs = view->size.height - 2 * (BUTTON_SIZE + 1) - 1;
-			} else {
-				ofs = 2;
-			}
-			if (sPtr->flags.decrDown)
-				arrow = scr->hiUpArrow;
-			else
-				arrow = scr->upArrow;
+			ofs = (sPtr->flags.arrowsPosition == WSAMaxEnd)
+			    ? view->size.height - 2 * (BUTTON_SIZE + 1) - 1 : 2;
+			arrow = down ? scr->hiUpArrow : scr->upArrow;
 		}
-
-#ifndef DOUBLE_BUFFER
-		if (sPtr->flags.decrDown)
-			gc = WMColorGC(scr->white);
-#endif
 	} else {		/* increment button */
+		down = sPtr->flags.incrDown;
 		if (sPtr->flags.horizontal) {
-			if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
-				ofs = view->size.width - BUTTON_SIZE + 1 - 3;
-			} else {
-				ofs = 2 + BUTTON_SIZE + 1;
-			}
-			if (sPtr->flags.incrDown)
-				arrow = scr->hiRightArrow;
-			else
-				arrow = scr->rightArrow;
+			ofs = (sPtr->flags.arrowsPosition == WSAMaxEnd)
+			    ? view->size.width - BUTTON_SIZE + 1 - 3
+			    : 2 + BUTTON_SIZE + 1;
+			arrow = down ? scr->hiRightArrow : scr->rightArrow;
 		} else {
-			if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
-				ofs = view->size.height - BUTTON_SIZE + 1 - 3;
-			} else {
-				ofs = 2 + BUTTON_SIZE + 1;
-			}
-			if (sPtr->flags.incrDown)
-				arrow = scr->hiDownArrow;
-			else
-				arrow = scr->downArrow;
+			ofs = (sPtr->flags.arrowsPosition == WSAMaxEnd)
+			    ? view->size.height - BUTTON_SIZE + 1 - 3
+			    : 2 + BUTTON_SIZE + 1;
+			arrow = down ? scr->hiDownArrow : scr->downArrow;
 		}
-
-#ifndef DOUBLE_BUFFER
-		if (sPtr->flags.incrDown)
-			gc = scr->whiteGC;
-#endif
 	}
 
 	if (sPtr->flags.horizontal) {
-		/* paint button */
-#ifndef DOUBLE_BUFFER
-		XFillRectangle(scr->display, d, gc, ofs + 1, 2 + 1, BUTTON_SIZE + 1 - 3, BUTTON_SIZE - 3);
-#else
-		if ((!part && sPtr->flags.decrDown) || (part && sPtr->flags.incrDown))
-			XFillRectangle(scr->display, d, WMColorGC(scr->white),
-				       ofs + 1, 2 + 1, BUTTON_SIZE + 1 - 3, BUTTON_SIZE - 3);
-#endif				/* DOUBLE_BUFFER */
-		W_DrawRelief(scr, d, ofs, 2, BUTTON_SIZE, BUTTON_SIZE, WRRaised);
-
-		/* paint arrow */
-		XSetClipMask(scr->display, scr->clipGC, arrow->mask);
-		XSetClipOrigin(scr->display, scr->clipGC,
-			       ofs + (BUTTON_SIZE - arrow->width) / 2, 2 + (BUTTON_SIZE - arrow->height) / 2);
-
-		XCopyArea(scr->display, arrow->pixmap, d, scr->clipGC,
-			  0, 0, arrow->width, arrow->height,
-			  ofs + (BUTTON_SIZE - arrow->width) / 2, 2 + (BUTTON_SIZE - arrow->height) / 2);
-
-	} else {		/* vertical */
-
-		/* paint button */
-#ifndef DOUBLE_BUFFER
-		XFillRectangle(scr->display, d, gc, 2 + 1, ofs + 1, BUTTON_SIZE - 3, BUTTON_SIZE + 1 - 3);
-#else
-		if ((!part && sPtr->flags.decrDown) || (part && sPtr->flags.incrDown))
-			XFillRectangle(scr->display, d, WMColorGC(scr->white),
-				       2 + 1, ofs + 1, BUTTON_SIZE - 3, BUTTON_SIZE + 1 - 3);
-#endif				/* DOUBLE_BUFFER */
-		W_DrawRelief(scr, d, 2, ofs, BUTTON_SIZE, BUTTON_SIZE, WRRaised);
-
-		/* paint arrow */
-
-		XSetClipMask(scr->display, scr->clipGC, arrow->mask);
-		XSetClipOrigin(scr->display, scr->clipGC,
-			       2 + (BUTTON_SIZE - arrow->width) / 2, ofs + (BUTTON_SIZE - arrow->height) / 2);
-		XCopyArea(scr->display, arrow->pixmap, d, scr->clipGC,
-			  0, 0, arrow->width, arrow->height,
-			  2 + (BUTTON_SIZE - arrow->width) / 2, ofs + (BUTTON_SIZE - arrow->height) / 2);
+		bx = ofs;
+		by = 2;
+	} else {
+		bx = 2;
+		by = ofs;
 	}
+
+	if (down) {
+		WCairoSetSourceColor(cr, scr->white);
+		cairo_rectangle(cr, bx + 1, by + 1, BUTTON_SIZE - 2, BUTTON_SIZE - 2);
+		cairo_fill(cr);
+	}
+	W_DrawReliefCairo(cr, scr, bx, by, BUTTON_SIZE, BUTTON_SIZE, WRRaised);
+	blitPixmap(cr, scr, arrow,
+		   bx + (BUTTON_SIZE - arrow->width) / 2,
+		   by + (BUTTON_SIZE - arrow->height) / 2);
 }
 
 static int knobLength(Scroller * sPtr)
@@ -356,23 +322,22 @@ static void paintScroller(Scroller * sPtr)
 {
 	WMView *view = sPtr->view;
 	WMScreen *scr = view->screen;
-#ifdef DOUBLE_BUFFER
-	Pixmap d;
-#else
-	Drawable d = view->window;
-#endif
+	cairo_t *cr;
 	int length, ofs;
 	float knobP, knobL;
 
-#ifdef DOUBLE_BUFFER
-	d = XCreatePixmap(scr->display, view->window, view->size.width, view->size.height, scr->depth);
-	XFillRectangle(scr->display, d, WMColorGC(scr->gray), 0, 0, view->size.width, view->size.height);
-#endif
+	/* the arrow and dimple sources are server pixmaps so draw
+	 * directly onto the view and keep those composites server-side */
+	cr = WCairoBeginForDrawable(scr, view->window);
+	if (!cr)
+		return;
 
-	XDrawRectangle(scr->display, d, WMColorGC(scr->black), 0, 0, view->size.width - 1, view->size.height - 1);
-#ifndef DOUBLE_BUFFER
-	XDrawRectangle(scr->display, d, WMColorGC(scr->gray), 1, 1, view->size.width - 3, view->size.height - 3);
-#endif
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_set_line_width(cr, 1.0);
+	cairo_rectangle(cr, 0.5, 0.5, view->size.width - 1, view->size.height - 1);
+	cairo_stroke(cr);
 
 	if (sPtr->flags.horizontal)
 		length = view->size.width - 4;
@@ -380,7 +345,7 @@ static void paintScroller(Scroller * sPtr)
 		length = view->size.height - 4;
 
 	if (sPtr->flags.documentFullyVisible) {
-		XFillRectangle(scr->display, d, scr->stippleGC, 2, 2, view->size.width - 4, view->size.height - 4);
+		WCairoStippleFill(cr, scr, 2, 2, view->size.width - 4, view->size.height - 4);
 	} else {
 		ofs = 2;
 		if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
@@ -396,62 +361,47 @@ static void paintScroller(Scroller * sPtr)
 
 		if (sPtr->flags.horizontal) {
 			/* before */
-			XFillRectangle(scr->display, d, scr->stippleGC, ofs, 2, (int)knobP, view->size.height - 4);
+			WCairoStippleFill(cr, scr, ofs, 2, (int)knobP, view->size.height - 4);
 
 			/* knob */
-#ifndef DOUBLE_BUFFER
-			XFillRectangle(scr->display, d, scr->lightGC,
-				       ofs + (int)knobP + 2, 2 + 2, (int)knobL - 4, view->size.height - 4 - 4);
-#endif
-			W_DrawRelief(scr, d, ofs + (int)knobP, 2, (int)knobL, view->size.height - 4, WRRaised);
-
-			XCopyArea(scr->display, scr->scrollerDimple->pixmap, d,
-				  scr->copyGC, 0, 0,
-				  scr->scrollerDimple->width, scr->scrollerDimple->height,
-				  ofs + (int)knobP + ((int)knobL - scr->scrollerDimple->width - 1) / 2,
-				  (view->size.height - scr->scrollerDimple->height - 1) / 2);
+			W_DrawReliefCairo(cr, scr, ofs + (int)knobP, 2,
+					  (int)knobL, view->size.height - 4, WRRaised);
+			blitPixmap(cr, scr, scr->scrollerDimple,
+				   ofs + (int)knobP + ((int)knobL - scr->scrollerDimple->width - 1) / 2,
+				   (view->size.height - scr->scrollerDimple->height - 1) / 2);
 
 			/* after */
 			if ((int)(knobP + knobL) < length)
-				XFillRectangle(scr->display, d, scr->stippleGC,
-					       ofs + (int)(knobP + knobL), 2,
-					       length - (int)(knobP + knobL), view->size.height - 4);
+				WCairoStippleFill(cr, scr,
+						  ofs + (int)(knobP + knobL), 2,
+						  length - (int)(knobP + knobL), view->size.height - 4);
 		} else {
 			/* before */
 			if (knobP > 0.0F)
-				XFillRectangle(scr->display, d, scr->stippleGC,
-					       2, ofs, view->size.width - 4, (int)knobP);
+				WCairoStippleFill(cr, scr, 2, ofs,
+						  view->size.width - 4, (int)knobP);
 
 			/* knob */
-#ifndef DOUBLE_BUFFER
-			XFillRectangle(scr->display, d, scr->lightGC,
-				       2 + 2, ofs + (int)knobP + 2, view->size.width - 4 - 4, (int)knobL - 4);
-#endif
-			XCopyArea(scr->display, scr->scrollerDimple->pixmap, d,
-				  scr->copyGC, 0, 0,
-				  scr->scrollerDimple->width, scr->scrollerDimple->height,
-				  (view->size.width - scr->scrollerDimple->width - 1) / 2,
-				  ofs + (int)knobP + ((int)knobL - scr->scrollerDimple->height - 1) / 2);
-
-			W_DrawRelief(scr, d, 2, ofs + (int)knobP, view->size.width - 4, (int)knobL, WRRaised);
+			W_DrawReliefCairo(cr, scr, 2, ofs + (int)knobP,
+					  view->size.width - 4, (int)knobL, WRRaised);
+			blitPixmap(cr, scr, scr->scrollerDimple,
+				   (view->size.width - scr->scrollerDimple->width - 1) / 2,
+				   ofs + (int)knobP + ((int)knobL - scr->scrollerDimple->height - 1) / 2);
 
 			/* after */
 			if ((int)(knobP + knobL) < length)
-				XFillRectangle(scr->display, d, scr->stippleGC,
-					       2, ofs + (int)(knobP + knobL),
-					       view->size.width - 4, length - (int)(knobP + knobL));
+				WCairoStippleFill(cr, scr,
+						  2, ofs + (int)(knobP + knobL),
+						  view->size.width - 4, length - (int)(knobP + knobL));
 		}
 
 		if (sPtr->flags.arrowsPosition != WSANone) {
-			paintArrow(sPtr, d, 0);
-			paintArrow(sPtr, d, 1);
+			paintArrow(sPtr, cr, 0);
+			paintArrow(sPtr, cr, 1);
 		}
 	}
 
-#ifdef DOUBLE_BUFFER
-	XCopyArea(scr->display, d, view->window, scr->copyGC, 0, 0, view->size.width, view->size.height, 0, 0);
-	XFreePixmap(scr->display, d);
-#endif
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent * event, void *data)
