@@ -59,4 +59,4 @@ EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_srcdir)/wrlib -I$(top_srcdir)/src -I$(top_srcdir)/test \
 	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XFT_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @HEADER_SEARCH_PATH@ \
-	@PANGO_CFLAGS@
+	@CAIRO_CFLAGS@

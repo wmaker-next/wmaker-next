@@ -145,6 +145,22 @@ Dependencies include @emph{freetype2} and @emph{fontconfig}.
 You will also need the development files for them (@file{xft2-devel}).
 Sources are available at: @uref{http://www.freedesktop.org/wiki/Software/Xft/}
 
+@item @emph{cairo} 1.16 or newer, built with the @emph{xcb} backend
+
+Frame decorations, on-screen popups and @emph{WINGs} widget painting are drawn
+through cairo onto @code{cairo-xcb} surfaces on the shared xcb connection.
+Packaged as @file{libcairo2-dev} on Debian/Ubuntu and @file{cairo-devel} on
+Fedora/SUSE.
+Sources: @uref{https://www.cairographics.org/}
+
+@item @emph{Pango} 1.44 or newer (with @emph{PangoCairo})
+
+All text rendering in @emph{WINGs} goes through @emph{PangoCairo}, which
+provides Unicode text layout, complex-script shaping and bidirectional text.
+Packaged as @file{libpango1.0-dev} on Debian/Ubuntu and @file{pango-devel} on
+Fedora/SUSE (both ship @file{pangocairo.pc}).
+Sources: @uref{https://www.pango.org/}
+
 @item @emph{libev}
 
 Drives the WINGs/WUtil event loop (timers, idle and input handlers).
@@ -226,13 +242,6 @@ The reference library from @emph{Google} for their image format,
 If you want to use translated messages, you will need @emph{GNU gettext}.
 Other versions of @emph{gettext} are not compatible and will not work.
 Get the @emph{GNU} version from @uref{http://www.gnu.org/software/gettext/}
-
-@item @emph{Pango} 1.36.8 or newer
-
-This library can be used by the @emph{WINGs} toolkit to improve support for @emph{UTF-8} and for
-languages written in right-to-left direction, in some widgets.
-If detected, it will be automatically used; you may request explicit support/ignore through (@pxref{Configure Options}).
-You can get it from @uref{http://www.pango.org/Download}
 
 @item @emph{libbsd}
 
@@ -494,9 +503,6 @@ even if your system provides it.
 
 @item --disable-magick
 Disable @emph{ImageMagick's MagickWand} support in @emph{WRaster}, used to support for image formats.
-
-@item --disable-pango
-Disable @emph{Pango} text layout support in @emph{WINGs}.
 
 @item --disable-png
 Disable PNG support in @emph{WRaster}; when enabled use @file{libpng}.

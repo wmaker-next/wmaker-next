@@ -61,7 +61,7 @@ WPrefs_TRANSLATABLE_FILES = \
 #	KeyboardSettings.c \
 #	Themes.c
 
-AM_CFLAGS = @PANGO_CFLAGS@ @FONTCONFIG_CFLAGS@
+AM_CFLAGS = @CAIRO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
 AM_CPPFLAGS = -DRESOURCE_PATH=\"$(wpdatadir)\" -DWMAKER_RESOURCE_PATH=\"$(pkgdatadir)\" \
 	 -I$(top_srcdir)/src -I$(top_builddir)/src \

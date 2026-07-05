@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_xsmp
 TESTS = $(check_PROGRAMS)
 
-AM_CFLAGS = @PANGO_CFLAGS@
+AM_CFLAGS = @CAIRO_CFLAGS@
 
 AM_CPPFLAGS = $(DFLAGS) \
 	-DWMAKER_DEFAULTS_TEMPLATE=\"$(top_srcdir)/WindowMaker/Defaults/WindowMaker.in\" \

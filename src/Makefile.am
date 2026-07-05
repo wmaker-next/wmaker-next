@@ -169,7 +169,7 @@ wmaker_SOURCES += osdep_stub.c
 endif
 
 
-AM_CFLAGS = @PANGO_CFLAGS@
+AM_CFLAGS = @CAIRO_CFLAGS@
 
 AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
 	-I$(top_srcdir)/wrlib \
