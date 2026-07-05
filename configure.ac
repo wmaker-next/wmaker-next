@@ -825,6 +825,14 @@ PKG_CHECK_MODULES([WRASTER_XCB], [xcb xcb-shm xcb-image], [],
 AC_SUBST(WRASTER_XCB_CFLAGS)
 AC_SUBST(WRASTER_XCB_LIBS)
 
+dnl cairo image-surface bridge in libwraster: RImageCairoSurface() and the
+dnl gradient-pattern helpers only need the client-side image API, not the
+dnl xcb backend, so this stays a narrower module list than the WINGs check.
+PKG_CHECK_MODULES([WRASTER_CAIRO], [cairo >= 1.16], [],
+    [AC_MSG_ERROR([libwraster requires cairo -- $WRASTER_CAIRO_PKG_ERRORS])])
+AC_SUBST(WRASTER_CAIRO_CFLAGS)
+AC_SUBST(WRASTER_CAIRO_LIBS)
+
 
 dnl xcb-imdkit: optional XIM protocol IM client for WINGs text fields
 dnl Restores fcitx5/ibus input after the xcb event-queue flip, without it

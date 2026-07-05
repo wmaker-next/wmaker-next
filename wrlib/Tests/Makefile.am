@@ -18,7 +18,7 @@ check_convolve_SOURCES = check_convolve.c
 check_convolve_LDADD = $(top_builddir)/wrlib/libwraster.la
 
 check_image_SOURCES = check_image.c
-check_image_LDADD = $(top_builddir)/wrlib/libwraster.la
+check_image_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_CAIRO_LIBS@
 
 # round-trips RImage -> Pixmap -> RImage so it needs a server, exits 77
 # (SKIP) without one so make check stays X-free
@@ -29,7 +29,7 @@ EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
 	pnm-p4.pbm pnm-p5.pgm pnm-p6.ppm
 
-AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. -I$(top_srcdir)/test $(DFLAGS) @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(srcdir)/.. -I$(top_srcdir)/test $(DFLAGS) @WRASTER_CAIRO_CFLAGS@ @HEADER_SEARCH_PATH@
 
 LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@ -lX11-xcb
 

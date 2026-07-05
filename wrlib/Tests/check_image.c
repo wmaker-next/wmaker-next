@@ -20,6 +20,7 @@
 
 #include <config.h>
 #include <wraster.h>
+#include <cairo.h>
 
 #include "check_common.h"
 
@@ -499,6 +500,72 @@ static void test_combine_alpha_equiv(void)
 	RReleaseImage(dst);
 }
 
+static void test_cairo_bridge(void)
+{
+	RImage *img;
+	cairo_surface_t *s1, *s2;
+	cairo_pattern_t *pat;
+	RColor from, to;
+	uint32_t *px;
+	int stride, nstops;
+
+	/* 2x1 RGBA: opaque red, half-alpha green */
+	img = RCreateImage(2, 1, 1);
+	img->data[0] = 0xff; img->data[1] = 0x00; img->data[2] = 0x00; img->data[3] = 0xff;
+	img->data[4] = 0x00; img->data[5] = 0x80; img->data[6] = 0x00; img->data[7] = 0x80;
+
+	s1 = RImageCairoSurface(img);
+	CHECK(s1 != NULL);
+	CHECK(cairo_image_surface_get_format(s1) == CAIRO_FORMAT_ARGB32);
+	CHECK(cairo_image_surface_get_width(s1) == 2);
+	CHECK(cairo_image_surface_get_height(s1) == 1);
+
+	stride = cairo_image_surface_get_stride(s1);
+	px = (uint32_t *)cairo_image_surface_get_data(s1);
+	/* opaque red: unchanged */
+	CHECK(px[0] == 0xffff0000u);
+	/* half-alpha green: g premultiplied to 0x80*0x80/255 = 0x40 (rounded) */
+	CHECK(px[1] == 0x80004000u);
+	(void)stride;
+
+	/* second call returns the cached surface */
+	s2 = RImageCairoSurface(img);
+	CHECK(s2 == s1);
+	cairo_surface_destroy(s2);
+
+	/* drop and re-read after mutation */
+	img->data[0] = 0x00;
+	RImageDropCairoSurface(img);
+	s2 = RImageCairoSurface(img);
+	CHECK(s2 != s1);
+	px = (uint32_t *)cairo_image_surface_get_data(s2);
+	CHECK(px[0] == 0xff000000u);
+	cairo_surface_destroy(s2);
+
+	cairo_surface_destroy(s1);
+	CHECK(img->cairo_surface != NULL);
+	RReleaseImage(img);
+
+	/* RGB (no alpha) path */
+	img = RCreateImage(1, 1, 0);
+	img->data[0] = 0x11; img->data[1] = 0x22; img->data[2] = 0x33;
+	s1 = RImageCairoSurface(img);
+	px = (uint32_t *)cairo_image_surface_get_data(s1);
+	CHECK(px[0] == 0xff112233u);
+	cairo_surface_destroy(s1);
+	RReleaseImage(img);
+
+	/* two-stop horizontal gradient pattern */
+	from.red = 0; from.green = 0; from.blue = 0; from.alpha = 255;
+	to.red = 255; to.green = 255; to.blue = 255; to.alpha = 255;
+	pat = RGradientCairoPattern(RHorizontalGradient, 100, 20, &from, &to);
+	CHECK(pat != NULL);
+	CHECK(cairo_pattern_get_type(pat) == CAIRO_PATTERN_TYPE_LINEAR);
+	CHECK(cairo_pattern_get_color_stop_count(pat, &nstops) == CAIRO_STATUS_SUCCESS);
+	CHECK(nstops == 2);
+	cairo_pattern_destroy(pat);
+}
+
 int main(void)
 {
 	test_create_limits();
@@ -513,6 +580,7 @@ int main(void)
 	test_combine_color();
 	test_blend_endpoints();
 	test_combine_alpha_equiv();
+	test_cairo_bridge();
 
 	return check_report("check_image");
 }

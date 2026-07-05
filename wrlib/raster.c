@@ -87,6 +87,7 @@ void RReleaseImage(RImage * image)
 	image->refCount--;
 
 	if (image->refCount < 1) {
+		RImageDropCairoSurface(image);
 		free(image->data);
 		free(image);
 	}

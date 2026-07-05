@@ -23,6 +23,7 @@ libwraster_la_SOURCES = 	\
 	imgformat.h 	\
 	raster.c 	\
 	alpha_combine.c \
+	cairo.c		\
 	draw.c		\
 	color.c		\
 	load.c 		\
@@ -79,9 +80,9 @@ libwraster_la_SOURCES += load_magick.c
 endif
 
 AM_CFLAGS = @MAGICKFLAGS@
-AM_CPPFLAGS = $(DFLAGS) @WRASTER_XCB_CFLAGS@ @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = $(DFLAGS) @WRASTER_XCB_CFLAGS@ @WRASTER_CAIRO_CFLAGS@ @HEADER_SEARCH_PATH@
 
-libwraster_la_LIBADD = @LIBRARY_SEARCH_PATH@ @GFXLIBS@ @MAGICKLIBS@ @WRASTER_XCB_LIBS@ @INTLIBS@ -lm
+libwraster_la_LIBADD = @LIBRARY_SEARCH_PATH@ @GFXLIBS@ @MAGICKLIBS@ @WRASTER_XCB_LIBS@ @WRASTER_CAIRO_LIBS@ @INTLIBS@ -lm
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = wrlib.pc

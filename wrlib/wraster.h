@@ -235,6 +235,10 @@ typedef struct RImage {
     enum RImageFormat format;
     RColor background;	   /* background color */
     int refCount;
+    /* Private: premultiplied ARGB32 cairo_image_surface_t snapshot,
+     * created lazily on the first RImageCairoSurface() call and freed
+     * from RReleaseImage(). Not updated by the in-place mutators. */
+    void *cairo_surface;
 } RImage;
 
 
@@ -289,6 +293,40 @@ typedef enum {
 #define RGRD_HORIZONTAL  RHorizontalGradient
 #define RGRD_VERTICAL 	RVerticalGradient
 #define RGRD_DIAGONAL	RDiagonalGradient
+
+
+/*
+ * Cairo bridge. Forward-declared so wraster.h does not force cairo.h
+ * on every includer, callers that use the return value already have it.
+ */
+typedef struct _cairo_surface cairo_surface_t;
+typedef struct _cairo_pattern cairo_pattern_t;
+
+/* CAIRO_FORMAT_ARGB32 image surface holding a premultiplied copy of
+ * the RImage pixels. The surface is created on the first call and
+ * cached on the RImage until RReleaseImage() (or an explicit
+ * RImageDropCairoSurface()), so repeat calls are free. It is a
+ * snapshot: RCombineImages/RClearImage/etc do not update it. The
+ * caller receives an added reference and releases it with
+ * cairo_surface_destroy(). */
+cairo_surface_t *RImageCairoSurface(RImage *image);
+
+/* Drop the cached surface so the next RImageCairoSurface() re-reads
+ * image->data, for callers that mutate the image in place between
+ * paints. */
+void RImageDropCairoSurface(RImage *image);
+
+/* cairo linear pattern with the same geometry as RRenderGradient(),
+ * width/height give the diagonal slope, caller owns the reference. */
+cairo_pattern_t *RGradientCairoPattern(RGradientStyle style,
+                                       unsigned width, unsigned height,
+                                       const RColor *from, const RColor *to);
+
+/* Multi-stop variant matching RRenderMultiGradient(), colours is a
+ * NULL-terminated array spread evenly from 0 to 1. */
+cairo_pattern_t *RMultiGradientCairoPattern(RGradientStyle style,
+                                            unsigned width, unsigned height,
+                                            RColor **colors);
 
 
 /*
