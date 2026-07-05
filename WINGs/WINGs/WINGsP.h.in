@@ -494,9 +494,14 @@ void WCairoSetSourceXColor(cairo_t *cr, const XColor *color);
  * fill sits below (the widget-slot and progress-bar interiors) */
 void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h);
 
-/* paint a screen-depth WMPixmap at (x, y), masked through its depth-1
- * mask when it has one, else clipped to its own extents */
+/* paint a WMPixmap at (x, y), masked through its depth-1 mask when it
+ * has one, else clipped to its own extents. A depth-1 image is painted
+ * as a black shape (bit=1 lands, bit=0 leaves the destination). */
 void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pixmap, int x, int y);
+
+/* fill the target with the view's background: an explicit WMColor if
+ * given, else the view's background pixmap tiled, else its backColor */
+void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor);
 
 /* speech-bubble path: rounded body at (x,y,w,h) with a triangular
  * tail on the top or bottom edge near the left or right corner */
@@ -631,6 +636,10 @@ void W_PaintTextAndImage(W_View *view, int wrap, WMColor *textColor,
                          W_Font *font, WMReliefType relief, const char *text,
                          WMAlignment alignment, W_Pixmap *image,
                          WMImagePosition position, WMColor *backColor, int ofs);
+
+void W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
+                      int width, WMAlignment alignment, WMColor *color,
+                      int wrap, const char *text, int length);
 
 void W_PaintText(W_View *view, Drawable d, WMFont *font,  int x, int y,
                  int width, WMAlignment alignment, WMColor *color,

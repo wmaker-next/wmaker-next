@@ -307,30 +307,75 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 	cairo_restore(cr);
 }
 
-/* paint a screen-depth WMPixmap at (x, y). The image half is wrapped
- * as a source surface at the screen visual, and when the pixmap has a
- * depth-1 mask it is wrapped for_bitmap and used as the cairo mask so
- * only the shape lands, otherwise a rectangle at the pixmap extents
- * bounds the fill. */
+/* paint a WMPixmap at (x, y). A screen-depth image half is wrapped as
+ * a source surface at the screen visual, a depth-1 image half is
+ * wrapped for_bitmap and painted as a black shape (bit=1 lands, bit=0
+ * leaves the destination) which is what the button and label glyph
+ * callers want. When the pixmap has a depth-1 mask it is wrapped
+ * for_bitmap and used as the cairo mask so only the shape lands,
+ * otherwise a rectangle at the pixmap extents bounds the fill. */
 void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
 {
 	RContext *rc = pix->screen->rcontext;
 	cairo_surface_t *ps, *ms;
 
-	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
-				      rc->xvisual, pix->width, pix->height);
-	cairo_set_source_surface(cr, ps, x, y);
+	if (pix->depth == 1) {
+		ps = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							 (xcb_pixmap_t)pix->pixmap,
+							 pix->width, pix->height);
+		cairo_set_source_rgb(cr, 0, 0, 0);
+	} else {
+		ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
+					      rc->xvisual, pix->width, pix->height);
+		cairo_set_source_surface(cr, ps, x, y);
+	}
+
 	if (pix->mask != None) {
 		ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 							 (xcb_pixmap_t)pix->mask,
 							 pix->width, pix->height);
 		cairo_mask_surface(cr, ms, x, y);
 		cairo_surface_destroy(ms);
+	} else if (pix->depth == 1) {
+		cairo_mask_surface(cr, ps, x, y);
 	} else {
 		cairo_rectangle(cr, x, y, pix->width, pix->height);
 		cairo_fill(cr);
 	}
 	cairo_surface_destroy(ps);
+}
+
+/* fill the cairo target with the view's background: an explicit
+ * WMColor if the caller passes one, else the view's background pixmap
+ * tiled with EXTEND_REPEAT so it matches what the server would show,
+ * else the view's background WMColor. Shared by W_PaintTextAndImage
+ * and any per-widget buffered painter that starts from a bare row. */
+void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor)
+{
+	RContext *rc = view->screen->rcontext;
+	cairo_surface_t *bg;
+	cairo_pattern_t *pat;
+
+	if (backColor) {
+		WCairoSetSourceColor(cr, backColor);
+		cairo_paint(cr);
+	} else if (view->backImage) {
+		bg = cairo_xcb_surface_create(rc->xc,
+					      (xcb_drawable_t)view->backImage->pixmap,
+					      rc->xvisual,
+					      view->backImage->width,
+					      view->backImage->height);
+		pat = cairo_pattern_create_for_surface(bg);
+		cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
+		cairo_set_source(cr, pat);
+		cairo_paint(cr);
+		cairo_pattern_destroy(pat);
+		cairo_surface_destroy(bg);
+	} else {
+		WCairoSetSourceColor(cr, view->backColor ? view->backColor
+							 : view->screen->gray);
+		cairo_paint(cr);
+	}
 }
 
 /* ---- balloon path ---------------------------------------------------- */

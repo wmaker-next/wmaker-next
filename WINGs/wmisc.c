@@ -182,9 +182,9 @@ int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 }
 
 void
-W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
-	    int width, WMAlignment alignment, WMColor * color, int wrap,
-	    const char *text, int length)
+W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
+		 int width, WMAlignment alignment, WMColor *color, int wrap,
+		 const char *text, int length)
 {
 	const char *ptr = text;
 	int line_width;
@@ -203,7 +203,7 @@ W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
 		else
 			line_x = x + (width - line_width) / 2;
 
-		WMDrawString(view->screen, d, color, font, line_x, y, ptr, count);
+		WMDrawStringCairo(cr, color, font, line_x, y, ptr, count);
 
 		if (wrap && ptr[count] != '\n')
 			y += fheight;
@@ -222,6 +222,21 @@ W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
 }
 
 void
+W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
+	    int width, WMAlignment alignment, WMColor * color, int wrap,
+	    const char *text, int length)
+{
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(view->screen, d);
+	if (!cr)
+		return;
+	W_PaintTextCairo(cr, font, x, y, width, alignment, color,
+			 wrap, text, length);
+	WCairoEnd(cr);
+}
+
+void
 W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
 		    WMReliefType relief, const char *text,
 		    WMAlignment alignment, W_Pixmap * image,
@@ -230,32 +245,14 @@ W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
 	W_Screen *screen = view->screen;
 	int ix, iy;
 	int x, y, w, h;
-	Drawable d = view->window;
+	int textHeight;
+	cairo_t *cr;
 
-#ifdef DOUBLE_BUFFER
-	d = XCreatePixmap(screen->display, view->window, view->size.width, view->size.height, screen->depth);
-#endif
+	cr = WCairoBeginBuffered(screen, view->window);
+	if (!cr)
+		return;
 
-	/* background */
-	if (backColor) {
-		XFillRectangle(screen->display, d, WMColorGC(backColor),
-			       0, 0, view->size.width, view->size.height);
-	} else {
-		if (view->attribs.background_pixmap) {
-#ifndef DOUBLE_BUFFER
-			XClearWindow(screen->display, d);
-#else
-			XCopyArea(screen->display, view->attribs.background_pixmap, d, screen->copyGC, 0, 0, view->size.width, view->size.height, 0, 0);
-#endif
-		} else {
-#ifndef DOUBLE_BUFFER
-			XClearWindow(screen->display, d);
-#else
-			XSetForeground(screen->display, screen->copyGC, view->attribs.background_pixel);
-			XFillRectangle(screen->display, d, screen->copyGC, 0, 0, view->size.width, view->size.height);
-#endif
-		}
-	}
+	WCairoPaintViewBackground(cr, view, backColor);
 
 	if (relief == WRFlat) {
 		x = 0;
@@ -315,34 +312,20 @@ W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
 		ix += ofs;
 		iy += ofs;
 
-		XSetClipOrigin(screen->display, screen->clipGC, ix, iy);
-		XSetClipMask(screen->display, screen->clipGC, image->mask);
-
-		if (image->depth == 1)
-			XCopyPlane(screen->display, image->pixmap, d, screen->clipGC,
-				   0, 0, image->width, image->height, ix, iy, 1);
-		else
-			XCopyArea(screen->display, image->pixmap, d, screen->clipGC,
-				  0, 0, image->width, image->height, ix, iy);
+		WCairoPaintPixmap(cr, image, ix, iy);
 	}
 
 	/* draw text */
 	if (position != WIPImageOnly && text != NULL) {
-		int textHeight;
-
 		textHeight = W_GetTextHeight(font, text, w - 8, wrap);
-		W_PaintText(view, d, font, x + ofs + 4, y + ofs + (h - textHeight) / 2, w - 8,
-			    alignment, textColor, wrap, text, strlen(text));
+		W_PaintTextCairo(cr, font, x + ofs + 4, y + ofs + (h - textHeight) / 2,
+				 w - 8, alignment, textColor, wrap, text, strlen(text));
 	}
 
 	/* draw relief */
-	W_DrawRelief(screen, d, 0, 0, view->size.width, view->size.height, relief);
+	W_DrawReliefCairo(cr, screen, 0, 0, view->size.width, view->size.height, relief);
 
-#ifdef DOUBLE_BUFFER
-	XCopyArea(screen->display, d, view->window, screen->copyGC, 0, 0,
-		  view->size.width, view->size.height, 0, 0);
-	XFreePixmap(screen->display, d);
-#endif
+	WCairoEnd(cr);
 }
 
 WMPoint wmkpoint(int x, int y)
