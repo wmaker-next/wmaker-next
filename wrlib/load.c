@@ -88,6 +88,10 @@ typedef struct RCachedImage {
 	char *file;
 	time_t last_modif;	/* last time file was modified */
 	time_t last_use;	/* last time image was used */
+	/* requested render size for vector formats, 0 for raster so a
+	 * cache lookup for foo.svg at 48x48 does not return the 128x128
+	 * render from an earlier caller */
+	unsigned width, height;
 } RCachedImage;
 
 static char *copy_cache_filename(const char *file)
@@ -159,6 +163,9 @@ static const struct {
 #ifdef USE_WEBP
 	{ IM_WEBP,    "WEBP" },
 #endif
+#ifdef USE_SVG
+	{ IM_SVG,     "SVG"  },
+#endif
 };
 #define WR_FORMAT_NAME_COUNT (sizeof(wr_format_names) / sizeof(wr_format_names[0]))
 
@@ -223,9 +230,20 @@ void RReleaseCache(void)
 
 RImage *RLoadImage(RContext *context, const char *file, int index)
 {
+	return RLoadImageAtSize(context, file, index, 0, 0);
+}
+
+RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
+			 unsigned width, unsigned height)
+{
 	RImage *image = NULL;
 	int i;
 	struct stat st;
+
+#ifndef USE_SVG
+	(void)width;
+	(void)height;
+#endif
 
 	assert(file != NULL);
 
@@ -235,7 +253,8 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 	if (RImageCacheSize > 0) {
 
 		for (i = 0; i < RImageCacheSize; i++) {
-			if (RImageCache[i].file && strcmp(file, RImageCache[i].file) == 0) {
+			if (RImageCache[i].file && strcmp(file, RImageCache[i].file) == 0
+			    && RImageCache[i].width == width && RImageCache[i].height == height) {
 
 				if (stat(file, &st) == 0 && st.st_mtime == RImageCache[i].last_modif) {
 					RImageCache[i].last_use = time(NULL);
@@ -258,7 +277,7 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 	case IM_UNKNOWN:
 		/* TGA, PSD and PIC have no usable magic for identFile(),
 		 * stb_image probes the structure itself. ImageMagick stays
-		 * as the last resort for SVG, PCX, PICT etc. */
+		 * as the last resort for PCX, PICT etc. */
 		image = RLoadStb(file);
 #ifdef USE_MAGICK
 		if (!image)
@@ -308,6 +327,12 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 		break;
 #endif				/* USE_WEBP */
 
+#ifdef USE_SVG
+	case IM_SVG:
+		image = RLoadSVG(file, width, height);
+		break;
+#endif				/* USE_SVG */
+
 	case IM_PPM:
 		image = RLoadPPM(file);
 		break;
@@ -337,6 +362,8 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 				RImageCache[i].image = RCloneImage(image);
 				RImageCache[i].last_modif = st.st_mtime;
 				RImageCache[i].last_use = time(NULL);
+				RImageCache[i].width = width;
+				RImageCache[i].height = height;
 				done = 1;
 				break;
 			} else {
@@ -359,6 +386,8 @@ RImage *RLoadImage(RContext *context, const char *file, int index)
 			RImageCache[oldest_idx].image = RCloneImage(image);
 			RImageCache[oldest_idx].last_modif = st.st_mtime;
 			RImageCache[oldest_idx].last_use = time(NULL);
+			RImageCache[oldest_idx].width = width;
+			RImageCache[oldest_idx].height = height;
 		}
 	}
 
@@ -385,7 +414,8 @@ static WRImgFormat identFile(const char *path)
 {
 	FILE *file;
 	unsigned char buffer[32];
-	size_t nread;
+	const unsigned char *p;
+	size_t nread, rem;
 
 	assert(path != NULL);
 
@@ -455,6 +485,24 @@ static WRImgFormat identFile(const char *path)
 	/* check for BMP (DIB, OS/2 v1/v2, Windows v3+) */
 	if (buffer[0] == 'B' && buffer[1] == 'M')
 		return IM_BMP;
+
+	/* check for SVG: after an optional UTF-8 BOM, either an XML
+	 * prolog (the <svg root may sit past this 32-byte prefix, so
+	 * accept on the prolog alone and let the loader reject non-SVG
+	 * XML) or a bare <svg root */
+	p = buffer;
+	rem = nread;
+	if (rem >= 3 && p[0] == 0xef && p[1] == 0xbb && p[2] == 0xbf) {
+		p += 3;
+		rem -= 3;
+	}
+	while (rem > 0 && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+		p++;
+		rem--;
+	}
+	if ((rem >= 5 && memcmp(p, "<?xml", 5) == 0) ||
+	    (rem >= 4 && memcmp(p, "<svg", 4) == 0))
+		return IM_SVG;
 
 	/* check for WEBP */
 	if (buffer[0]  == 'R' && buffer[1]  == 'I' && buffer[2]  == 'F' && buffer[3]  == 'F' &&

@@ -65,10 +65,11 @@ void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx);
 /* resolve a freedesktop icon-theme name to an absolute file by
  * walking the spec-mandated hicolor fallback theme and the legacy
  * pixmaps directory, context is the hicolor subdirectory ("apps",
- * "mimetypes", ...), sizes nearest want_size win preferring the
- * next-larger raster over an upscale and PNG over XPM, SVG is
- * skipped because wrlib has no loader for it, returns a malloc'd
- * path or NULL */
+ * "mimetypes", ...), sizes nearest want_size win preferring an
+ * exact-size raster then a scalable render then the next-larger
+ * raster over an upscale, and PNG over SVG over XPM, returns a
+ * malloc'd path or NULL. When the returned path is a vector format,
+ * load it with RLoadImageAtSize(..., want_size, want_size). */
 char *wXDGFindThemeIcon(const char *name, const char *context,
 			int want_size);
 

@@ -276,7 +276,11 @@ void wXDGForEachDataDir(const char *suffix, WXDGDirFn fn, void *ctx)
 static void probeThemeIcon(const char *dir, const char *name,
 			   int base_score, char **best, int *score)
 {
+#ifdef USE_SVG
+	static const char * const ext[] = { "png", "svg", "xpm" };
+#else
 	static const char * const ext[] = { "png", "xpm" };
+#endif
 	char path[PATH_MAX];
 	int e, sc;
 
@@ -315,6 +319,18 @@ static Bool scanHicolorDir(const char *base, void *ctx)
 	if (!dp)
 		return True;
 	while ((de = readdir(dp))) {
+#ifdef USE_SVG
+		if (strcmp(de->d_name, "scalable") == 0) {
+			/* rank between an exact-size raster hit (score 0)
+			 * and any resample, so a shipped NxN PNG at the
+			 * wanted size still wins but a scalable render
+			 * beats scaling a wrong-size raster */
+			snprintf(dir, sizeof(dir), "%s/hicolor/scalable/%s",
+				 base, st->context);
+			probeThemeIcon(dir, st->name, 1, &st->best, &st->score);
+			continue;
+		}
+#endif
 		if (sscanf(de->d_name, "%dx%d", &w, &h) != 2 || w != h)
 			continue;
 		/* prefer the smallest raster at or above the target,

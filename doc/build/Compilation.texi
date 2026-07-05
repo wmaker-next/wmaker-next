@@ -237,6 +237,13 @@ For @emph{JXL} image support,
 The reference library from @emph{Google} for their image format,
 @uref{https://developers.google.com/speed/webp/download}
 
+@item @emph{librsvg} 2.46 or newer
+
+For @emph{SVG} image support in @emph{WRaster} (rendered through cairo).
+Lets the freedesktop icon-theme resolver pick @file{scalable/} icons for
+applications that ship no raster sizes.
+@uref{https://gitlab.gnome.org/GNOME/librsvg}
+
 @item @emph{GNU xgettext}
 
 If you want to use translated messages, you will need @emph{GNU gettext}.
@@ -506,6 +513,9 @@ Disable @emph{ImageMagick's MagickWand} support in @emph{WRaster}, used to suppo
 
 @item --disable-png
 Disable PNG support in @emph{WRaster}; when enabled use @file{libpng}.
+
+@item --disable-svg
+Disable SVG support in @emph{WRaster}; when enabled use @file{librsvg}.
 
 @item --disable-tiff
 Disable TIFF support in @emph{WRaster}. when enabled use @file{libtiff}.

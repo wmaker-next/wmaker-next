@@ -42,6 +42,13 @@ static RImage *load_noctx(const char *path)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((no_sanitize("nonnull-attribute")))
 #endif
+static RImage *load_noctx_sized(const char *path, unsigned w, unsigned h)
+{
+	return RLoadImageAtSize(NULL, path, 0, w, h);
+}
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("nonnull-attribute")))
+#endif
 static RImage *xpmdata_noctx(char **data)
 {
 	return RGetImageFromXPMData(NULL, data);
@@ -356,6 +363,64 @@ static void test_xpm_transparent(void)
 #endif
 }
 
+static void test_svg(void)
+{
+	RImage *img;
+	char *path;
+	static const char golden[] =
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\">"
+		"<rect width=\"2\" height=\"2\" fill=\"#4080c0\"/></svg>";
+	static const char huge[] =
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" "
+		"viewBox=\"0 0 1e9 1e9\" width=\"1e9\" height=\"1e9\"/>";
+
+#ifdef USE_SVG
+	/* identFile() must recognise both a bare <svg root and one
+	 * behind an XML prolog and BOM */
+	path = write_sample("bare.svg", golden, sizeof(golden) - 1);
+	CHECK(RGetImageFileFormat(path) != NULL &&
+	      strcmp(RGetImageFileFormat(path), "SVG") == 0);
+	path = write_sample("bom.svg", "\xef\xbb\xbf<?xml version=\"1.0\"?>\n<svg/>", 30);
+	CHECK(RGetImageFileFormat(path) != NULL &&
+	      strcmp(RGetImageFileFormat(path), "SVG") == 0);
+
+	/* 2x2 flat colour at intrinsic size */
+	path = write_sample("g.svg", golden, sizeof(golden) - 1);
+	img = load_noctx(path);
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 2);
+		CHECK(img->format == RRGBAFormat);
+		CHECK(img->data[0] == 0x40 && img->data[1] == 0x80
+		      && img->data[2] == 0xc0 && img->data[3] == 0xff);
+		RReleaseImage(img);
+	}
+
+	/* rendered at a caller-supplied size */
+	img = load_noctx_sized(path, 8, 8);
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 8 && img->height == 8);
+		CHECK(img->data[0] == 0x40 && img->data[3] == 0xff);
+		RReleaseImage(img);
+	}
+
+	/* absurd viewBox is clamped, not honoured, and the loader must
+	 * not attempt a 1e9x1e9 surface allocation */
+	path = write_sample("huge.svg", huge, sizeof(huge) - 1);
+	img = load_noctx(path);
+	CHECK(img == NULL || (img->width <= 256 && img->height <= 256));
+	if (img)
+		RReleaseImage(img);
+#else
+	(void)golden;
+	(void)huge;
+	(void)load_noctx_sized;
+	(void)img;
+	(void)path;
+#endif
+}
+
 int main(void)
 {
 	srcdir = getenv("srcdir");
@@ -372,6 +437,7 @@ int main(void)
 	test_pnm_reject();
 	test_stb_formats();
 	test_xpm_transparent();
+	test_svg();
 
 	/* best-effort cleanup */
 	(void)wspawnvp_wait((char *[]){"rm", "-rf", tmpdir, NULL});

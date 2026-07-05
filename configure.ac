@@ -1091,6 +1091,19 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_IMGFMT_CHECK_WEBP
 
 
+dnl SVG Support
+dnl ===========
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([svg],
+    [AS_HELP_STRING([--disable-svg], [disable SVG support through librsvg])],
+    [AS_CASE(["$enableval"],
+        [yes|no], [],
+        [AC_MSG_ERROR([bad value $enableval for --enable-svg])] )],
+    [enable_svg=auto])
+m4_divert_pop([INIT_PREPARE])dnl
+WM_IMGFMT_CHECK_SVG
+
+
 dnl MagicK Support
 dnl ==============
 m4_divert_push([INIT_PREPARE])dnl

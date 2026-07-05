@@ -53,12 +53,13 @@ typedef enum {
 	IM_GIF     =  6,
 	IM_WEBP    =  7,
 	IM_JXL     =  8,
-	IM_BMP     =  9
+	IM_BMP     =  9,
+	IM_SVG     = 10
 } WRImgFormat;
 
 /* How many image types we have. */
 /* Increase this when adding new image types! */
-#define IM_TYPES    9
+#define IM_TYPES    10
 
 /*
  * Function for Loading in a specific format
@@ -89,6 +90,10 @@ RImage *RLoadJXL(const char *file);
 
 #ifdef USE_WEBP
 RImage *RLoadWEBP(const char *file);
+#endif
+
+#ifdef USE_SVG
+RImage *RLoadSVG(const char *file, unsigned width, unsigned height);
 #endif
 
 #ifdef USE_MAGICK

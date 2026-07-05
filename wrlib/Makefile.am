@@ -71,6 +71,10 @@ else
 libwraster_la_SOURCES += load_xpm_builtin.c
 endif
 
+if USE_SVG
+libwraster_la_SOURCES += load_svg.c
+endif
+
 if USE_WEBP
 libwraster_la_SOURCES += load_webp.c
 endif
@@ -80,7 +84,7 @@ libwraster_la_SOURCES += load_magick.c
 endif
 
 AM_CFLAGS = @MAGICKFLAGS@
-AM_CPPFLAGS = $(DFLAGS) @WRASTER_XCB_CFLAGS@ @WRASTER_CAIRO_CFLAGS@ @HEADER_SEARCH_PATH@
+AM_CPPFLAGS = $(DFLAGS) @WRASTER_XCB_CFLAGS@ @WRASTER_CAIRO_CFLAGS@ @RSVG_CFLAGS@ @HEADER_SEARCH_PATH@
 
 libwraster_la_LIBADD = @LIBRARY_SEARCH_PATH@ @GFXLIBS@ @MAGICKLIBS@ @WRASTER_XCB_LIBS@ @WRASTER_CAIRO_LIBS@ @INTLIBS@ -lm
 

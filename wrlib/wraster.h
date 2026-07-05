@@ -401,6 +401,14 @@ RImage *RCreateImageFromDrawable(RContext *context, Drawable drawable,
 RImage *RLoadImage(RContext *context, const char *file, int index)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
+/* As RLoadImage but with a target render size for vector formats
+ * (SVG). Raster loaders ignore width/height. 0,0 asks for the file's
+ * intrinsic size (clamped to a sane default when the file declares
+ * none), and RLoadImage() is a (..., 0, 0) shim. */
+RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
+                         unsigned width, unsigned height)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
+
 RImage* RRetainImage(RImage *image);
 
 void RReleaseImage(RImage *image)

@@ -185,6 +185,33 @@ AM_CONDITIONAL([USE_WEBP], [test "x$enable_webp" != "xno"])dnl
 ])
 
 
+# WM_IMGFMT_CHECK_SVG
+# -------------------
+#
+# Check for SVG support through librsvg (>= 2.46 for
+# rsvg_handle_render_document). The check depends on variable
+# 'enable_svg' being either yes/no/auto. When found, appends to
+# GFXLIBS and supported_gfx, else to unsupported.
+AC_DEFUN_ONCE([WM_IMGFMT_CHECK_SVG],
+[AS_IF([test "x$enable_svg" = "xno"],
+    [unsupported="$unsupported SVG"],
+    [PKG_CHECK_MODULES([RSVG], [librsvg-2.0 >= 2.46],
+        [wm_cv_imgfmt_svg=yes], [wm_cv_imgfmt_svg=no])
+     AS_IF([test "x$enable_svg$wm_cv_imgfmt_svg" = "xyesno"],
+        [AC_MSG_ERROR([explicit SVG support requested but librsvg >= 2.46 not found -- $RSVG_PKG_ERRORS])])
+     AS_IF([test "x$wm_cv_imgfmt_svg" = "xno"],
+        [unsupported="$unsupported SVG"
+         enable_svg="no"],
+        [supported_gfx="$supported_gfx SVG"
+         WM_APPEND_ONCE([$RSVG_LIBS], [GFXLIBS])
+         AC_DEFINE([USE_SVG], [1],
+             [defined when librsvg is available for the SVG loader])])
+    ])
+AM_CONDITIONAL([USE_SVG], [test "x$enable_svg" != "xno"])dnl
+AC_SUBST([RSVG_CFLAGS])dnl
+])
+
+
 # WM_IMGFMT_CHECK_XPM
 # -------------------
 #
