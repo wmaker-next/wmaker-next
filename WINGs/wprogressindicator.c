@@ -5,6 +5,8 @@
  * - centralized drawing into one pain function
  */
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 typedef struct W_ProgressIndicator {
@@ -148,28 +150,40 @@ static void didResizeProgressIndicator(W_ViewDelegate * self, WMView * view)
 	assert(height > 0);
 }
 
+static void hLine(cairo_t *cr, WMColor *c, double x1, double y, double x2)
+{
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y + 0.5);
+	cairo_stroke(cr);
+}
+
+static void vLine(cairo_t *cr, WMColor *c, double x, double y1, double y2)
+{
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
+}
+
 static void paintProgressIndicator(ProgressIndicator * pPtr)
 {
 	W_Screen *scr = pPtr->view->screen;
-	GC bgc;
-	GC wgc;
-	GC lgc;
-	GC dgc;
 	WMSize size = pPtr->view->size;
+	cairo_t *cr;
 	int perc, w, h;
 	double unit, i;
-	Pixmap buffer;
-
-	bgc = WMColorGC(scr->black);
-	wgc = WMColorGC(scr->white);
-	lgc = WMColorGC(scr->gray);
-	dgc = WMColorGC(scr->darkGray);
 
 	unit = (double)(size.width - 3.0) / 100;
 
-	buffer = XCreatePixmap(scr->display, pPtr->view->window, size.width, size.height, scr->depth);
+	cr = WCairoBeginBuffered(scr, pPtr->view->window);
+	if (!cr)
+		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	XFillRectangle(scr->display, buffer, lgc, 0, 0, size.width, size.height);
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
 
 	/* Calculate size of Progress to draw and paint ticks */
 	perc = (pPtr->maxValue != pPtr->minValue) ? (pPtr->value - pPtr->minValue) * 100 / (pPtr->maxValue - pPtr->minValue) : 0;
@@ -181,9 +195,7 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 		w = size.width - 3;
 
 	if (w > 0) {
-		XFillRectangle(scr->display, buffer, lgc, 2, 1, w, h);
-		XFillRectangle(scr->display, buffer, scr->stippleGC, 2, 1, w, h);
-		W_DrawRelief(scr, buffer, 2, 1, w, h, WRFlat);
+		WCairoStippleFill(cr, scr, 2, 1, w, h);
 
 		/* Draw Progress Marks */
 		i = (5.0 * unit);
@@ -193,7 +205,7 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 #else
 		while ((int)i < (size.width - 3)) {
 #endif
-			XDrawLine(scr->display, buffer, dgc, (int)i + 2, h - 1, i + 2, h - 3);
+			vLine(cr, scr->darkGray, (int)i + 2, h - 1, h - 3);
 
 			i += (5.0 * unit);
 
@@ -202,26 +214,24 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 				break;
 #endif
 
-			XDrawLine(scr->display, buffer, dgc, (int)i + 2, h - 1, i + 2, h - 6);
+			vLine(cr, scr->darkGray, (int)i + 2, h - 1, h - 6);
 
 			i += (5.0 * unit);
 		}
 	}
 
-	XDrawLine(scr->display, buffer, bgc, w + 2, 1, w + 2, h + 1);
-	XDrawLine(scr->display, buffer, lgc, 2, h, w + 2, h);
+	vLine(cr, scr->black, w + 2, 1, h + 1);
+	hLine(cr, scr->gray, 2, h, w + 2);
 
-	XDrawLine(scr->display, buffer, dgc, 0, 0, 0, size.height - 1);
-	XDrawLine(scr->display, buffer, dgc, 0, 0, size.width, 0);
-	XDrawLine(scr->display, buffer, bgc, 1, 1, 1, size.height - 1);
-	XDrawLine(scr->display, buffer, bgc, 1, 1, size.width - 1, 1);
+	vLine(cr, scr->darkGray, 0, 0, size.height - 1);
+	hLine(cr, scr->darkGray, 0, 0, size.width);
+	vLine(cr, scr->black, 1, 1, size.height - 1);
+	hLine(cr, scr->black, 1, 1, size.width - 1);
 
-	XDrawLine(scr->display, buffer, wgc, size.width - 1, 0, size.width - 1, size.height - 1);
-	XDrawLine(scr->display, buffer, wgc, 0, size.height - 1, size.width - 1, size.height - 1);
+	vLine(cr, scr->white, size.width - 1, 0, size.height - 1);
+	hLine(cr, scr->white, 0, size.height - 1, size.width - 1);
 
-	XCopyArea(scr->display, buffer, pPtr->view->window, scr->copyGC, 0, 0, size.width, size.height, 0, 0);
-
-	XFreePixmap(scr->display, buffer);
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent * event, void *data)

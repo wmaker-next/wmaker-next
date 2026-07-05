@@ -458,7 +458,10 @@ enum {
      * WCairoEnd() blits the finished frame onto the xcb surface in one
      * SOURCE-operator paint, so a fill+text+border repaint never
      * flashes the intermediate stages */
-    WCairoBuffered = 1 << 1
+    WCairoBuffered  = 1 << 1,
+    /* WCairoEnd() destroys the WCairoSurface after the blit, used by
+     * WCairoBeginBuffered() so the caller holds only a cairo_t */
+    WCairoTransient = 1 << 2
 };
 
 /* one per Drawable that paints, cached lazily on the owning W_View or
@@ -472,12 +475,19 @@ cairo_t *WCairoBegin(WCairoSurface *cs);
 /* transient path for a bare Drawable, size from the drawableSize
  * cache with an xcb_get_geometry fallback on miss */
 cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d);
+/* same but into a client-side image buffer that WCairoEnd() blits in
+ * one go, replacing the XCreatePixmap + draw + XCopyArea pattern */
+cairo_t *WCairoBeginBuffered(W_Screen *scr, Drawable d);
 /* flushes the target surface, warns on cairo error, destroys cr */
 void WCairoEnd(cairo_t *cr);
 
 void WCairoSetSourceColor(cairo_t *cr, WMColor *color);
 void WCairoSetSourceRColor(cairo_t *cr, const RColor *color);
 void WCairoSetSourceXColor(cairo_t *cr, const XColor *color);
+
+/* the FillStippled 50% checkerboard in darkGray, masked over whatever
+ * fill sits below (the widget-slot and progress-bar interiors) */
+void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h);
 
 /* speech-bubble path: rounded body at (x,y,w,h) with a triangular
  * tail on the top or bottom edge near the left or right corner */

@@ -191,6 +191,24 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
 	return cr;
 }
 
+/* Like WCairoBeginForDrawable() but the cairo_t targets a client-side
+ * image surface and WCairoEnd() blits the finished frame onto the
+ * drawable in one SOURCE-operator paint. Drop-in replacement for the
+ * XCreatePixmap + draw + XCopyArea + XFreePixmap pattern the widget
+ * paint paths used to avoid flicker on a full repaint. */
+cairo_t *WCairoBeginBuffered(W_Screen *scr, Drawable d)
+{
+	WCairoSurface *cs;
+	int w, h;
+
+	if (!lookupDrawableSize(scr, d, &w, &h))
+		return NULL;
+	cs = WCairoSurfaceCreate(scr, d, w, h, WCairoBuffered | WCairoTransient);
+	if (!cs)
+		return NULL;
+	return WCairoBegin(cs);
+}
+
 void WCairoEnd(cairo_t *cr)
 {
 	WCairoSurface *cs;
@@ -222,6 +240,8 @@ void WCairoEnd(cairo_t *cr)
 		cairo_surface_flush(surface);
 	}
 	cairo_destroy(cr);
+	if (cs && (cs->flags & WCairoTransient))
+		WCairoSurfaceDestroy(cs);
 }
 
 /* ---- source colour helpers ------------------------------------------- */
@@ -250,6 +270,41 @@ void WCairoSetSourceXColor(cairo_t *cr, const XColor *color)
 			     color->red   / 65535.0,
 			     color->green / 65535.0,
 			     color->blue  / 65535.0);
+}
+
+/* the FillStippled darkGray-over-gray checkerboard the widget-slot
+ * and progress-bar interiors use: mask darkGray through a 2x2 A8
+ * checkerboard tiled with EXTEND_REPEAT so bits=1 land darkGray and
+ * bits=0 leave whatever gray fill sits below untouched. Built as a
+ * client-side image surface (not the server-side scr->stipple bitmap)
+ * so a WCairoBuffered target masks with pixman rather than reading
+ * back from the X server. */
+void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
+{
+	static cairo_pattern_t *pat;
+	cairo_surface_t *stip;
+	unsigned char *data;
+	int stride;
+
+	if (!pat) {
+		stip = cairo_image_surface_create(CAIRO_FORMAT_A8, 2, 2);
+		data = cairo_image_surface_get_data(stip);
+		stride = cairo_image_surface_get_stride(stip);
+		data[0] = 0xff; data[1] = 0x00;
+		data[stride] = 0x00; data[stride + 1] = 0xff;
+		cairo_surface_mark_dirty(stip);
+		pat = cairo_pattern_create_for_surface(stip);
+		cairo_surface_destroy(stip);
+		cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
+		cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
+	}
+
+	cairo_save(cr);
+	cairo_rectangle(cr, x, y, w, h);
+	cairo_clip(cr);
+	WCairoSetSourceColor(cr, scr->darkGray);
+	cairo_mask(cr, pat);
+	cairo_restore(cr);
 }
 
 /* ---- balloon path ---------------------------------------------------- */
