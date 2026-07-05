@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 #include "wconfig.h"
 
@@ -665,6 +667,7 @@ static void paintCursor(TextField * tPtr)
 {
 	int cx;
 	WMScreen *screen = tPtr->view->screen;
+	cairo_t *cr;
 	int textWidth;
 	char *text;
 
@@ -696,15 +699,18 @@ static void paintCursor(TextField * tPtr)
 			cx += tPtr->offsetWidth;
 		break;
 	}
-	/*
-	   XDrawRectangle(screen->display, tPtr->view->window, screen->xorGC,
-	   cx, tPtr->offsetWidth, 1,
-	   tPtr->view->size.height - 2*tPtr->offsetWidth - 1);
-	   printf("%d %d\n",cx,tPtr->cursorPosition);
-	 */
-
-	XDrawLine(screen->display, tPtr->view->window, screen->xorGC,
-		  cx, tPtr->offsetWidth, cx, tPtr->view->size.height - tPtr->offsetWidth - 1);
+	/* the caret toggled through GXxor so a second draw restored the
+	 * pixels underneath, DIFFERENCE with a white source is the same
+	 * per-channel inversion and round-trips the same way */
+	cr = WCairoBeginForDrawable(screen, tPtr->view->window);
+	if (cr) {
+		cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
+		cairo_set_source_rgb(cr, 1, 1, 1);
+		cairo_rectangle(cr, cx, tPtr->offsetWidth, 1,
+				tPtr->view->size.height - 2 * tPtr->offsetWidth);
+		cairo_fill(cr);
+		WCairoEnd(cr);
+	}
 
 	W_SetPreeditPositon(tPtr->view, cx, 0);
 
@@ -713,62 +719,51 @@ static void paintCursor(TextField * tPtr)
 	}
 }
 
-static void drawRelief(WMView * view, Bool beveled)
+static void reliefLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	WMScreen *scr = view->screen;
-	Display *dpy = scr->display;
-	GC wgc;
-	GC lgc;
-	GC dgc;
-	int width = view->size.width;
-	int height = view->size.height;
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
+}
 
-	dgc = WMColorGC(scr->darkGray);
-
+static void drawRelief(cairo_t *cr, W_Screen *scr, int width, int height, Bool beveled)
+{
 	if (!beveled) {
-		XDrawRectangle(dpy, view->window, dgc, 0, 0, width - 1, height - 1);
-
+		WCairoSetSourceColor(cr, scr->darkGray);
+		cairo_rectangle(cr, 0.5, 0.5, width - 1, height - 1);
+		cairo_stroke(cr);
 		return;
 	}
-	wgc = WMColorGC(scr->white);
-	lgc = WMColorGC(scr->gray);
 
 	/* top left */
-	XDrawLine(dpy, view->window, dgc, 0, 0, width - 1, 0);
-	XDrawLine(dpy, view->window, dgc, 0, 1, width - 2, 1);
-
-	XDrawLine(dpy, view->window, dgc, 0, 0, 0, height - 2);
-	XDrawLine(dpy, view->window, dgc, 1, 0, 1, height - 3);
+	reliefLine(cr, scr->darkGray, 0, 0, width - 1, 0);
+	reliefLine(cr, scr->darkGray, 0, 1, width - 2, 1);
+	reliefLine(cr, scr->darkGray, 0, 0, 0, height - 2);
+	reliefLine(cr, scr->darkGray, 1, 0, 1, height - 3);
 
 	/* bottom right */
-	XDrawLine(dpy, view->window, wgc, 0, height - 1, width - 1, height - 1);
-	XDrawLine(dpy, view->window, lgc, 1, height - 2, width - 2, height - 2);
-
-	XDrawLine(dpy, view->window, wgc, width - 1, 0, width - 1, height - 1);
-	XDrawLine(dpy, view->window, lgc, width - 2, 1, width - 2, height - 3);
+	reliefLine(cr, scr->white, 0, height - 1, width - 1, height - 1);
+	reliefLine(cr, scr->gray,  1, height - 2, width - 2, height - 2);
+	reliefLine(cr, scr->white, width - 1, 0, width - 1, height - 1);
+	reliefLine(cr, scr->gray,  width - 2, 1, width - 2, height - 3);
 }
 
 static void paintTextField(TextField * tPtr)
 {
 	W_Screen *screen = tPtr->view->screen;
 	W_View *view = tPtr->view;
-	W_View viewbuffer;
+	cairo_t *cr;
 	int tx, ty, tw;
 	int rx;
 	int bd;
-	int totalWidth;
 	char *text;
-	Pixmap drawbuffer;
 	WMColor *color;
 
 	if (!view->flags.realized || !view->flags.mapped)
 		return;
 
-	if (!tPtr->flags.bordered) {
-		bd = 0;
-	} else {
-		bd = 2;
-	}
+	bd = tPtr->flags.bordered ? 2 : 0;
 
 	if (tPtr->flags.secure) {
 		text = makeHiddenString(strlen(tPtr->text));
@@ -776,16 +771,17 @@ static void paintTextField(TextField * tPtr)
 		text = tPtr->text;
 	}
 
-	totalWidth = tPtr->view->size.width - 2 * bd;
+	cr = WCairoBeginBuffered(screen, view->window);
+	if (!cr) {
+		if (tPtr->flags.secure)
+			wfree(text);
+		return;
+	}
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	drawbuffer = XCreatePixmap(screen->display, view->window,
-				   view->size.width, view->size.height, screen->depth);
-	XFillRectangle(screen->display, drawbuffer, WMColorGC(screen->white),
-		       0, 0, view->size.width, view->size.height);
-	/* this is quite dirty */
-	viewbuffer.screen = view->screen;
-	viewbuffer.size = view->size;
-	viewbuffer.window = drawbuffer;
+	WCairoSetSourceColor(cr, screen->white);
+	cairo_paint(cr);
 
 	if (tPtr->textLen > 0) {
 		tw = WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]), tPtr->textLen - tPtr->viewPosition);
@@ -794,32 +790,24 @@ static void paintTextField(TextField * tPtr)
 		switch (tPtr->flags.alignment) {
 		case WALeft:
 			tx = tPtr->offsetWidth + 1;
-			if (tw < tPtr->usableWidth)
-				XFillRectangle(screen->display, drawbuffer,
-					       WMColorGC(screen->white),
-					       bd + tw, bd, totalWidth - tw, view->size.height - 2 * bd);
 			break;
-
 		case WACenter:
 			tx = tPtr->offsetWidth + (tPtr->usableWidth - tw) / 2;
-			if (tw < tPtr->usableWidth)
-				XClearArea(screen->display, view->window, bd, bd,
-					   totalWidth, view->size.height - 2 * bd, False);
 			break;
-
 		default:
 		case WARight:
 			tx = tPtr->offsetWidth + tPtr->usableWidth - tw - 1;
-			if (tw < tPtr->usableWidth)
-				XClearArea(screen->display, view->window, bd, bd,
-					   totalWidth - tw, view->size.height - 2 * bd, False);
 			break;
 		}
 
 		color = tPtr->flags.enabled ? screen->black : screen->darkGray;
 
-		WMDrawImageString(screen, drawbuffer, color, screen->white,
-				  tPtr->font, tx, ty, &(text[tPtr->viewPosition]),
+		cairo_save(cr);
+		cairo_rectangle(cr, bd, bd, view->size.width - 2 * bd,
+				view->size.height - 2 * bd);
+		cairo_clip(cr);
+		WMDrawStringCairo(cr, color, tPtr->font, tx, ty,
+				  &(text[tPtr->viewPosition]),
 				  tPtr->textLen - tPtr->viewPosition);
 
 		if (tPtr->selection.count) {
@@ -836,24 +824,26 @@ static void paintTextField(TextField * tPtr)
 			rx = tx + WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]),
 			                          count - tPtr->viewPosition);
 
-			WMDrawImageString(screen, drawbuffer, color, screen->gray,
-					  tPtr->font, rx, ty, &(text[count]), count2);
+			WCairoSetSourceColor(cr, screen->gray);
+			cairo_rectangle(cr, rx, ty,
+					WMWidthOfString(tPtr->font, &(text[count]), count2),
+					WMFontHeight(tPtr->font));
+			cairo_fill(cr);
+			WMDrawStringCairo(cr, color, tPtr->font, rx, ty,
+					  &(text[count]), count2);
 		}
-	} else {
-		XFillRectangle(screen->display, drawbuffer, WMColorGC(screen->white),
-			       bd, bd, totalWidth, view->size.height - 2 * bd);
+		cairo_restore(cr);
 	}
 
 	/* draw relief */
-	if (tPtr->flags.bordered) {
-		drawRelief(&viewbuffer, tPtr->flags.beveled);
-	}
+	if (tPtr->flags.bordered)
+		drawRelief(cr, screen, view->size.width, view->size.height,
+			   tPtr->flags.beveled);
 
 	if (tPtr->flags.secure)
 		wfree(text);
-	XCopyArea(screen->display, drawbuffer, view->window,
-		  screen->copyGC, 0, 0, view->size.width, view->size.height, 0, 0);
-	XFreePixmap(screen->display, drawbuffer);
+
+	WCairoEnd(cr);
 
 	/* draw cursor */
 	if (tPtr->flags.focused && tPtr->flags.enabled && tPtr->flags.cursorOn) {
