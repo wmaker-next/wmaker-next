@@ -450,11 +450,21 @@ typedef struct _cairo cairo_t;
 
 typedef struct WCairoSurface WCairoSurface;
 
+enum {
+    /* pick rcontext->xvisual_argb for the on-server surface (falls back
+     * to the default visual when the server has no depth-32 TrueColor) */
+    WCairoARGB     = 1 << 0,
+    /* WCairoBegin() draws into a client-side image surface and
+     * WCairoEnd() blits the finished frame onto the xcb surface in one
+     * SOURCE-operator paint, so a fill+text+border repaint never
+     * flashes the intermediate stages */
+    WCairoBuffered = 1 << 1
+};
+
 /* one per Drawable that paints, cached lazily on the owning W_View or
- * WCoreWindow. argb picks rcontext->xvisual_argb (falls back to the
- * default visual when the server has no depth-32 TrueColor). */
+ * WCoreWindow. flags is a bitmask of the WCairo* values above. */
 WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d,
-                                   int width, int height, Bool argb);
+                                   int width, int height, int flags);
 void WCairoSurfaceResize(WCairoSurface *cs, int width, int height);
 void WCairoSurfaceDestroy(WCairoSurface *cs);
 

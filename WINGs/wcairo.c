@@ -29,10 +29,16 @@
  * here holds its own copy of those.
  */
 struct WCairoSurface {
-	cairo_surface_t *surface;
+	cairo_surface_t *xcb;   /* on-server surface bound to the drawable */
+	cairo_surface_t *back;  /* NULL for direct, else client image buffer */
 	int width;
 	int height;
+	int flags;
 };
+
+/* attached to the cairo_t returned by WCairoBegin() so WCairoEnd() can
+ * find the on-server surface to blit onto without a signature change */
+static const cairo_user_data_key_t wcairo_cs_key;
 
 /* ---- drawable size cache ---------------------------------------------
  *
@@ -97,27 +103,32 @@ static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h)
 
 /* ---- surface lifecycle ----------------------------------------------- */
 
-WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d, int width, int height, Bool argb)
+WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d, int width, int height, int flags)
 {
 	WCairoSurface *cs;
 	RContext *rc;
 	xcb_visualtype_t *visual;
 
 	rc = scr->rcontext;
-	visual = (argb && rc->xvisual_argb) ? rc->xvisual_argb : rc->xvisual;
+	visual = ((flags & WCairoARGB) && rc->xvisual_argb) ? rc->xvisual_argb : rc->xvisual;
 
 	cs = wmalloc(sizeof(*cs));
 	cs->width = width;
 	cs->height = height;
-	cs->surface = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)d,
-					       visual, width, height);
-	if (cairo_surface_status(cs->surface) != CAIRO_STATUS_SUCCESS) {
+	cs->flags = flags;
+	cs->xcb = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)d,
+					   visual, width, height);
+	if (cairo_surface_status(cs->xcb) != CAIRO_STATUS_SUCCESS) {
 		wwarning("cairo_xcb_surface_create: %s",
-			 cairo_status_to_string(cairo_surface_status(cs->surface)));
-		cairo_surface_destroy(cs->surface);
+			 cairo_status_to_string(cairo_surface_status(cs->xcb)));
+		cairo_surface_destroy(cs->xcb);
 		wfree(cs);
 		return NULL;
 	}
+	if (flags & WCairoBuffered)
+		cs->back = cairo_image_surface_create(
+				(flags & WCairoARGB) ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+				width, height);
 	return cs;
 }
 
@@ -125,7 +136,14 @@ void WCairoSurfaceResize(WCairoSurface *cs, int width, int height)
 {
 	if (!cs || (cs->width == width && cs->height == height))
 		return;
-	cairo_xcb_surface_set_size(cs->surface, width, height);
+	cairo_xcb_surface_set_size(cs->xcb, width, height);
+	if (cs->back) {
+		/* image surfaces cannot be resized, so replace it */
+		cairo_surface_destroy(cs->back);
+		cs->back = cairo_image_surface_create(
+				(cs->flags & WCairoARGB) ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+				width, height);
+	}
 	cs->width = width;
 	cs->height = height;
 }
@@ -134,13 +152,19 @@ void WCairoSurfaceDestroy(WCairoSurface *cs)
 {
 	if (!cs)
 		return;
-	cairo_surface_destroy(cs->surface);
+	if (cs->back)
+		cairo_surface_destroy(cs->back);
+	cairo_surface_destroy(cs->xcb);
 	wfree(cs);
 }
 
 cairo_t *WCairoBegin(WCairoSurface *cs)
 {
-	return cairo_create(cs->surface);
+	cairo_t *cr;
+
+	cr = cairo_create(cs->back ? cs->back : cs->xcb);
+	cairo_set_user_data(cr, &wcairo_cs_key, cs, NULL);
+	return cr;
 }
 
 /* Transient path for callers that only have a bare Drawable (chiefly
@@ -167,17 +191,34 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
 
 void WCairoEnd(cairo_t *cr)
 {
+	WCairoSurface *cs;
 	cairo_surface_t *surface;
 	cairo_status_t st;
+	cairo_t *front;
 
 	if (!cr)
 		return;
 
-	surface = cairo_get_target(cr);
-	cairo_surface_flush(surface);
 	st = cairo_status(cr);
 	if (st != CAIRO_STATUS_SUCCESS)
 		wwarning("cairo: %s", cairo_status_to_string(st));
+
+	cs = cairo_get_user_data(cr, &wcairo_cs_key);
+	if (cs && cs->back) {
+		/* buffered: the caller drew into cs->back, blit the whole
+		 * frame onto the on-server surface in one operation so no
+		 * intermediate paint stage is ever visible */
+		cairo_surface_flush(cs->back);
+		front = cairo_create(cs->xcb);
+		cairo_set_operator(front, CAIRO_OPERATOR_SOURCE);
+		cairo_set_source_surface(front, cs->back, 0, 0);
+		cairo_paint(front);
+		cairo_destroy(front);
+		cairo_surface_flush(cs->xcb);
+	} else {
+		surface = cairo_get_target(cr);
+		cairo_surface_flush(surface);
+	}
 	cairo_destroy(cr);
 }
 

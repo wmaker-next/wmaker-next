@@ -191,6 +191,7 @@ wmaker_LDADD = \
 	@XSMP_LIBS@ \
 	@XCB_LIBS@ \
 	@XCB_SCREENSAVER_LIBS@ \
+	@CAIRO_LIBS@ \
 	@XLIBS@ \
 	@LIBM@ \
 	@INTLIBS@

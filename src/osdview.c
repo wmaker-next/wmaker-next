@@ -21,6 +21,9 @@
 
 #include "wconfig.h"
 
+#include <cairo.h>
+#include <pango/pangocairo.h>
+
 #include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
@@ -43,6 +46,8 @@ struct W_OSDView {
 
 	char *text;
 	WMSize text_size;
+
+	WCairoSurface *csurf;
 
 	unsigned fixed_size:1;
 };
@@ -150,6 +155,7 @@ void WSetOSDViewText(WOSDView *osd, const char *text)
 
 static void paint(WOSDView *osd)
 {
+	cairo_t *cr;
 	int w, h;
 
 	if (!W_VIEW_REALIZED(osd->view))
@@ -158,20 +164,42 @@ static void paint(WOSDView *osd)
 	w = W_VIEW_WIDTH(osd->view);
 	h = W_VIEW_HEIGHT(osd->view);
 
-	/* WMDrawImageString() only fills a rect the size of the current
-	 * string, so a shorter repaint inside a fixed-size box would leave
-	 * stale glyph edges. Clear the whole widget first. */
-	XFillRectangle(W_VIEW_DISPLAY(osd->view), W_VIEW_DRAWABLE(osd->view),
-		       WMColorGC(osd->bgColor), 0, 0, w, h);
+	/* the surface is bound to the view's window for its lifetime (a
+	 * WOSDView is never destroyed), the resize below is a no-op when
+	 * the view size has not changed */
+	if (!osd->csurf)
+		osd->csurf = WCairoSurfaceCreate(W_VIEW_SCREEN(osd->view),
+						 W_VIEW_DRAWABLE(osd->view),
+						 w, h, WCairoBuffered);
+	else
+		WCairoSurfaceResize(osd->csurf, w, h);
 
-	if (osd->text)
-		WMDrawImageString(W_VIEW_SCREEN(osd->view), W_VIEW_DRAWABLE(osd->view),
-				  osd->color, osd->bgColor, osd->font,
-				  (w - osd->text_size.width) / 2,
-				  (h - osd->text_size.height) / 2,
-				  osd->text, strlen(osd->text));
+	cr = WCairoBegin(osd->csurf);
 
-	W_DrawRelief(W_VIEW_SCREEN(osd->view), W_VIEW_DRAWABLE(osd->view), 0, 0, w, h, WRSimple);
+	WCairoSetSourceColor(cr, osd->bgColor);
+	cairo_paint(cr);
+
+	if (osd->text) {
+		/* the layout was already measured with this text by
+		 * WSetOSDViewText()/WSetOSDViewFont(), so this is a
+		 * cheap same-string set */
+		pango_layout_set_text(osd->font->layout, osd->text, -1);
+		pango_cairo_update_layout(cr, osd->font->layout);
+		WCairoSetSourceColor(cr, osd->color);
+		cairo_move_to(cr,
+			      (w - osd->text_size.width) / 2,
+			      (h - osd->text_size.height) / 2);
+		pango_cairo_show_layout(cr, osd->font->layout);
+	}
+
+	/* WRSimple relief: a 1 px black border on the inside edge. Offset
+	 * by 0.5 so a line width of 1 lands on whole device pixels. */
+	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+	cairo_set_line_width(cr, 1.0);
+	cairo_rectangle(cr, 0.5, 0.5, w - 1, h - 1);
+	cairo_stroke(cr);
+
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent *event, void *clientData)
