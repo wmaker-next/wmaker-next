@@ -478,6 +478,25 @@ void WCairoEnd(cairo_t *cr);
 void WCairoSetSourceColor(cairo_t *cr, WMColor *color);
 void WCairoSetSourceRColor(cairo_t *cr, const RColor *color);
 
+/* speech-bubble path: rounded body at (x,y,w,h) with a triangular
+ * tail on the top or bottom edge near the left or right corner */
+enum {
+    WCairoBalloonBottom = 1 << 0,
+    WCairoBalloonRight  = 1 << 1
+};
+void WCairoBalloonPath(cairo_t *cr, double x, double y, double w, double h,
+                       int side, double tail_len);
+
+/* render that path into a fresh depth-1 mask pixmap for ShapeBounding
+ * and a fresh depth-N content pixmap for the window background, both
+ * width x height (which already includes the tail-length pad),
+ * caller draws text on *content and frees both */
+void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
+                         double bx, double by, double bw, double bh,
+                         int side, double tail_len,
+                         WMColor *fill, WMColor *border,
+                         Pixmap *content, Pixmap *mask);
+
 /* refresh scr->compositor_running from the _NET_WM_CM_Sn owner */
 int W_ScreenCheckCompositor(W_Screen *scr);
 

@@ -15,6 +15,8 @@
 
 #include "wconfig.h"
 
+#include <math.h>
+
 #include <cairo.h>
 #include <cairo-xcb.h>
 
@@ -240,6 +242,129 @@ void WCairoSetSourceRColor(cairo_t *cr, const RColor *color)
 			      color->green / 255.0,
 			      color->blue  / 255.0,
 			      color->alpha / 255.0);
+}
+
+/* ---- balloon path ---------------------------------------------------- */
+
+/* Rounded-rectangle body with a triangular tail on one edge, built as
+ * a single closed path so the caller can fill_preserve() the interior
+ * and stroke() the outline in one pass. side is a bitmask of
+ * WCairoBalloonBottom / WCairoBalloonRight naming which corner the
+ * tail points from, tail_len is the tail's protrusion past the body
+ * edge. */
+void WCairoBalloonPath(cairo_t *cr, double x, double y, double w, double h,
+		       int side, double tail_len)
+{
+	double r, w1, base0, base1, apex, edge;
+
+	r = h * 3.0 / 20.0;		/* corner radius */
+	w1 = (h > 21.0) ? h : 21.0;	/* tail base scale */
+
+	/* tail base points and apex on the body-edge axis, mirrored by
+	 * the RIGHT bit so the tail sits near the pointed-at corner */
+	if (side & WCairoBalloonRight) {
+		base0 = x + w - w1 + 2.0 * w1 / 16.0;
+		apex  = x + w - w1 + 11.0 * w1 / 16.0;
+		base1 = x + w - w1 + 7.0 * w1 / 16.0;
+	} else {
+		base0 = x + w1 - 2.0 * w1 / 16.0;
+		apex  = x + w1 - 11.0 * w1 / 16.0;
+		base1 = x + w1 - 7.0 * w1 / 16.0;
+	}
+
+	cairo_new_sub_path(cr);
+	cairo_arc(cr, x + w - r, y + r,     r, -M_PI / 2, 0);
+	cairo_arc(cr, x + w - r, y + h - r, r, 0, M_PI / 2);
+
+	if (side & WCairoBalloonBottom) {
+		edge = y + h;
+		if (side & WCairoBalloonRight) {
+			cairo_line_to(cr, base1, edge);
+			cairo_line_to(cr, apex,  edge + tail_len);
+			cairo_line_to(cr, base0, edge);
+		} else {
+			cairo_line_to(cr, base0, edge);
+			cairo_line_to(cr, apex,  edge + tail_len);
+			cairo_line_to(cr, base1, edge);
+		}
+	}
+
+	cairo_arc(cr, x + r, y + h - r, r, M_PI / 2, M_PI);
+	cairo_arc(cr, x + r, y + r,     r, M_PI, 3 * M_PI / 2);
+
+	if (!(side & WCairoBalloonBottom)) {
+		edge = y;
+		if (side & WCairoBalloonRight) {
+			cairo_line_to(cr, base0, edge);
+			cairo_line_to(cr, apex,  edge - tail_len);
+			cairo_line_to(cr, base1, edge);
+		} else {
+			cairo_line_to(cr, base1, edge);
+			cairo_line_to(cr, apex,  edge - tail_len);
+			cairo_line_to(cr, base0, edge);
+		}
+	}
+
+	cairo_close_path(cr);
+}
+
+/* Render the balloon shape into a fresh 1-bit server pixmap for
+ * ShapeBounding and a fresh depth-N pixmap for the window background,
+ * both width x height (which already includes the tail-length pad).
+ * Caller draws text on top of *content and frees both. */
+void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
+			 double bx, double by, double bw, double bh,
+			 int side, double tail_len,
+			 WMColor *fill, WMColor *border,
+			 Pixmap *content, Pixmap *mask)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *ms, *ps;
+	cairo_t *cr;
+
+	*mask = xcb_generate_id(rc->xc);
+	xcb_create_pixmap(rc->xc, 1, *mask, rc->xscreen->root, width, height);
+	*content = xcb_generate_id(rc->xc);
+	xcb_create_pixmap(rc->xc, rc->xdepth, *content, rc->xscreen->root, width, height);
+
+	/* mask: A1 surface on the depth-1 pixmap, clear then fill the
+	 * path solid, stroke widens by half a pixel so the content
+	 * outline is not clipped by the shape edge */
+	ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+						 (xcb_pixmap_t)*mask, width, height);
+	cr = cairo_create(ms);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_paint(cr);
+	cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	WCairoBalloonPath(cr, bx, by, bw, bh, side, tail_len);
+	cairo_fill_preserve(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_stroke(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ms);
+	cairo_surface_destroy(ms);
+
+	/* content: fill in the border colour first so any pixel the
+	 * shape mask exposes but the interior fill misses (sub-pixel
+	 * rounding at the arcs) shows as border rather than junk, then
+	 * fill the interior and stroke the outline */
+	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)*content,
+				      rc->xvisual, width, height);
+	cr = cairo_create(ps);
+	WCairoSetSourceColor(cr, border);
+	cairo_paint(cr);
+	WCairoBalloonPath(cr, bx, by, bw, bh, side, tail_len);
+	WCairoSetSourceColor(cr, fill);
+	cairo_fill_preserve(cr);
+	WCairoSetSourceColor(cr, border);
+	cairo_set_line_width(cr, 1.0);
+	cairo_stroke(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ps);
+	cairo_surface_destroy(ps);
+
+	WMScreenNoteDrawableSize(scr, *content, width, height);
 }
 
 /* ---- compositor probe ------------------------------------------------ */
