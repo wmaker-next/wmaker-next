@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 typedef struct W_Frame {
@@ -70,14 +72,10 @@ static void paintFrame(Frame * fPtr)
 	W_View *view = fPtr->view;
 	W_Screen *scrPtr = view->screen;
 	WMFont *font = scrPtr->normalFont;
-	Display *display = scrPtr->display;
+	cairo_t *cr;
 	int tx, ty, tw, th, tlen;
 	int fy, fh;
 	Bool drawTitle;
-	XRectangle rect;
-	Region region, tmp;
-	GC gc[4];
-	int i;
 
 	if (fPtr->caption != NULL) {
 		th = WMFontHeight(font);
@@ -141,56 +139,34 @@ static void paintFrame(Frame * fPtr)
 		drawTitle = False;
 	}
 
-	region = XCreateRegion();
+	cr = WCairoBeginForDrawable(scrPtr, view->window);
+	if (!cr)
+		return;
 
-	rect.x = 0;
-	rect.y = 0;
-	rect.width = view->size.width;
-	rect.height = view->size.height;
-	XUnionRectWithRegion(&rect, region, region);
+	/* punch the title span out of the clip so the relief lines skip
+	 * it, EVEN_ODD on the outer view rectangle minus the (tx,ty,tw,th)
+	 * inner rectangle is the same shape the XRegion subtract built */
+	cairo_save(cr);
 	if (drawTitle) {
-		tmp = XCreateRegion();
-		rect.x = tx;
-		rect.y = ty;
-		rect.width = tw;
-		rect.height = th;
-		XUnionRectWithRegion(&rect, tmp, tmp);
-		XSubtractRegion(region, tmp, region);
-		XDestroyRegion(tmp);
+		cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+		cairo_rectangle(cr, 0, 0, view->size.width, view->size.height);
+		cairo_rectangle(cr, tx, ty, tw, th);
+		cairo_clip(cr);
 	}
-	gc[0] = WMColorGC(scrPtr->black);
-	gc[1] = WMColorGC(scrPtr->darkGray);
-	gc[2] = WMColorGC(scrPtr->gray);
-	gc[3] = WMColorGC(scrPtr->white);
-
-	for (i = 0; i < 4; i++) {
-		XSetRegion(display, gc[i], region);
-	}
-	XDestroyRegion(region);
-
-	W_DrawReliefWithGC(scrPtr, view->window, 0, fy, view->size.width, fh,
-			   fPtr->flags.relief, gc[0], gc[1], gc[2], gc[3]);
-
-	for (i = 0; i < 4; i++) {
-		XSetClipMask(display, gc[i], None);
-	}
+	W_DrawReliefCairo(cr, scrPtr, 0, fy, view->size.width, fh, fPtr->flags.relief);
+	cairo_restore(cr);
 
 	if (drawTitle) {
-		/* can't draw AA text over and over again because it gets messed */
-		/* // TODO create the dbl buffer pixmap when create/set frame title */
-		if (scrPtr->antialiasedText) {
-			Drawable d;
-
-			d = XCreatePixmap(display, view->window, tw, th, scrPtr->depth);
-			XFillRectangle(display, d, WMColorGC(view->backColor), 0, 0, tw, th);
-
-			WMDrawString(scrPtr, d, fPtr->textColor ? fPtr->textColor : scrPtr->black, font, 0, 0, fPtr->caption, tlen);
-			XCopyArea(display, d, view->window, scrPtr->copyGC, 0, 0, tw, th, tx, ty);
-			XFreePixmap(display, d);
-		} else {
-			WMDrawString(scrPtr, view->window, scrPtr->black, font, tx, ty, fPtr->caption, tlen);
-		}
+		/* fill backColor under the caption first so a repeat paint
+		 * without an XClearWindow does not thicken the AA fringe */
+		WCairoSetSourceColor(cr, view->backColor);
+		cairo_rectangle(cr, tx, ty, tw, th);
+		cairo_fill(cr);
+		WMDrawStringCairo(cr, fPtr->textColor ? fPtr->textColor : scrPtr->black,
+				  font, tx, ty, fPtr->caption, tlen);
 	}
+
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent * event, void *data)
