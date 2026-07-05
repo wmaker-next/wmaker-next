@@ -44,6 +44,9 @@
 #endif
 
 #include <signal.h>
+
+#include <cairo.h>
+#include <WINGs/WINGsP.h>
 #ifdef __FreeBSD__
 #include <sys/signal.h>
 #endif
@@ -980,6 +983,7 @@ static void drawCandidate(WMList *lPtr, int index, Drawable d,
 	WMColor *back;
 	WMPixmap *icon;
 	WMSize isz;
+	cairo_t *cr;
 	const char *line1, *line2;
 	int fh, tx, iy;
 
@@ -987,29 +991,33 @@ static void drawCandidate(WMList *lPtr, int index, Drawable d,
 
 	v = WMGetListItem(lPtr, index)->clientData;
 	back = (state & WLDSSelected) ? p->scr->white : p->scr->gray;
-	XFillRectangle(dpy, d, WMColorGC(back),
-		       rect->pos.x, rect->pos.y,
-		       rect->size.width, rect->size.height);
+
+	cr = WCairoBeginForDrawable(wscr, d);
+	WCairoSetSourceColor(cr, back);
+	cairo_rectangle(cr, rect->pos.x, rect->pos.y,
+			rect->size.width, rect->size.height);
+	cairo_fill(cr);
 
 	tx = rect->pos.x + p->dropItemH + 4;
 	icon = loadRowIcon(p, v->icon_hint, p->scr->gray);
 	if (icon) {
 		isz = WMGetPixmapSize(icon);
 		iy = rect->pos.y + (p->dropItemH - isz.height) / 2;
-		WMDrawPixmap(icon, d,
-			     rect->pos.x + 2 +
-			     (p->dropIconSize - isz.width) / 2, iy);
+		WCairoPaintPixmap(cr, icon,
+				  rect->pos.x + 2 +
+				  (p->dropIconSize - isz.width) / 2, iy);
 	}
 
 	line1 = v->label ? v->label : text;
 	line2 = v->label ? v->text : NULL;
 	fh = WMFontHeight(p->dropBold);
-	WMDrawString(wscr, d, p->scr->black, p->dropBold,
-		     tx, rect->pos.y + 2, line1, strlen(line1));
+	WMDrawStringCairo(cr, p->scr->black, p->dropBold,
+			  tx, rect->pos.y + 2, line1, strlen(line1));
 	if (line2)
-		WMDrawString(wscr, d, p->dropDim, p->dropNorm,
-			     tx, rect->pos.y + 2 + fh,
-			     line2, strlen(line2));
+		WMDrawStringCairo(cr, p->dropDim, p->dropNorm,
+				  tx, rect->pos.y + 2 + fh,
+				  line2, strlen(line2));
+	WCairoEnd(cr);
 }
 
 static void hideDropList(WMInputPanelWithHistory *p);
@@ -1867,14 +1875,13 @@ static void drawIconProc(WMList * lPtr, int index, Drawable d, char *text, int s
 {
 	IconPanel *panel = WMGetHangedData(lPtr);
 	WScreen *scr = panel->scr;
-	GC gc = scr->draw_gc;
-	GC copygc = scr->copy_gc;
 	char *file, *dirfile;
 	WMPixmap *pixmap;
 	WMColor *back;
 	WMSize size;
 	WMScreen *wmscr = WMWidgetScreen(panel->win);
 	RColor color;
+	cairo_t *cr;
 	int x, y, width, height, len;
 	int i, j;
 	int fheight, tlen, twidth;
@@ -1912,19 +1919,27 @@ static void drawIconProc(WMList * lPtr, int index, Drawable d, char *text, int s
 		return;
 	}
 
-	XFillRectangle(dpy, d, WMColorGC(back), x, y, width, height);
+	cr = WCairoBeginForDrawable(wmscr, d);
+	WCairoSetSourceColor(cr, back);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
 
-	XSetClipMask(dpy, gc, None);
-	/*XDrawRectangle(dpy, d, WMColorGC(white), x+5, y+5, width-10, 54); */
-	XDrawLine(dpy, d, WMColorGC(scr->white), x, y + height - 1, x + width, y + height - 1);
+	WCairoSetSourceColor(cr, scr->white);
+	cairo_rectangle(cr, x, y + height - 1, width, 1);
+	cairo_fill(cr);
 
 	size = WMGetPixmapSize(pixmap);
 
-	XSetClipMask(dpy, copygc, WMGetPixmapMaskXID(pixmap));
-	XSetClipOrigin(dpy, copygc, x + (width - size.width) / 2, y + 2);
-	XCopyArea(dpy, WMGetPixmapXID(pixmap), d, copygc, 0, 0,
-		  size.width > 100 ? 100 : size.width, size.height > 64 ? 64 : size.height,
-		  x + (width - size.width) / 2, y + 2);
+	/* WMCreateScaledBlendedPixmapFromFile already fits the image to
+	 * the row cell so the extra 100x64 clip only ever bites when the
+	 * loader could not scale, keep it as a guard */
+	cairo_save(cr);
+	cairo_rectangle(cr, x + (width - size.width) / 2, y + 2,
+			size.width > 100 ? 100 : size.width,
+			size.height > 64 ? 64 : size.height);
+	cairo_clip(cr);
+	WCairoPaintPixmap(cr, pixmap, x + (width - size.width) / 2, y + 2);
+	cairo_restore(cr);
 
 	fheight = WMFontHeight(panel->normalfont);
 	tlen = strlen(text);
@@ -1934,10 +1949,11 @@ static void drawIconProc(WMList * lPtr, int index, Drawable d, char *text, int s
 
 	for (i = -1; i < 2; i++)
 		for (j = -1; j < 2; j++)
-			WMDrawString(wmscr, d, scr->white, panel->normalfont,
-				     ofx + i, ofy + j, text, tlen);
+			WMDrawStringCairo(cr, scr->white, panel->normalfont,
+					  ofx + i, ofy + j, text, tlen);
 
-	WMDrawString(wmscr, d, scr->black, panel->normalfont, ofx, ofy, text, tlen);
+	WMDrawStringCairo(cr, scr->black, panel->normalfont, ofx, ofy, text, tlen);
+	WCairoEnd(cr);
 
 	WMReleasePixmap(pixmap);
 	/* I hope it is better to do not use cache / on my box it is fast nuff */

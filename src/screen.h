@@ -269,7 +269,6 @@ typedef struct _WScreen {
 
     GC copy_gc;			       /* gc for XCopyArea() */
     GC stipple_gc;		       /* gc for stippled filling */
-    GC draw_gc;			       /* gc for drawing misc things */
 
     struct WPixmap *b_pixmaps[PRED_BPIXMAPS]; /* internal pixmaps for buttons*/
     WTitlebarLayout titlebar_layout;          /* parsed TitlebarLeft/Right */

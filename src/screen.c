@@ -452,11 +452,6 @@ static void allocGCs(WScreen * scr)
 	gcv.graphics_exposures = False;
 	scr->copy_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
-	/* misc drawing GC */
-	gcv.graphics_exposures = False;
-	gcm = GCGraphicsExposures;
-	scr->draw_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
 	assert(scr->stipple_bitmap != None);
 }
 
