@@ -251,10 +251,11 @@ WMPixmap *WMGetSystemPixmap(WMScreen * scr, int image)
 
 void WMDrawPixmap(WMPixmap * pixmap, Drawable d, int x, int y)
 {
-	WMScreen *scr = pixmap->screen;
+	cairo_t *cr;
 
-	XSetClipMask(scr->display, scr->clipGC, pixmap->mask);
-	XSetClipOrigin(scr->display, scr->clipGC, x, y);
-
-	XCopyArea(scr->display, pixmap->pixmap, d, scr->clipGC, 0, 0, pixmap->width, pixmap->height, x, y);
+	cr = WCairoBeginForDrawable(pixmap->screen, d);
+	if (!cr)
+		return;
+	WCairoPaintPixmap(cr, pixmap, x, y);
+	WCairoEnd(cr);
 }

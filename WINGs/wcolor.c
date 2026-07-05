@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 #include "wconfig.h"
@@ -191,7 +193,15 @@ void WMSetColorAlpha(WMColor * color, unsigned short alpha)
 
 void WMPaintColorSwatch(WMColor * color, Drawable d, int x, int y, unsigned int width, unsigned int height)
 {
-	XFillRectangle(color->screen->display, d, WMColorGC(color), x, y, width, height);
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(color->screen, d);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, color);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
+	WCairoEnd(cr);
 }
 
 WMPixel WMColorPixel(WMColor * color)
