@@ -618,6 +618,37 @@ void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h)
 	cairo_restore(cr);
 }
 
+/* WREL_MENUENTRY bevel as translucent strokes: +80 highlight on top
+ * and left, -40 dim on right and inner-bottom, opaque black bottom
+ * separator. Matches bevelImage() below for the RImage fallback. */
+void wTextureCairoMenuBevel(cairo_t *cr, int x, int y, int w, int h)
+{
+	cairo_save(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	cairo_set_source_rgba(cr, 1, 1, 1, 0.45);
+	cairo_move_to(cr, x + 1.5, y + 0.5);
+	cairo_line_to(cr, x + w - 1.5, y + 0.5);
+	cairo_move_to(cr, x + 0.5, y + 0.5);
+	cairo_line_to(cr, x + 0.5, y + h - 0.5);
+	cairo_stroke(cr);
+
+	cairo_set_source_rgba(cr, 0, 0, 0, 0.30);
+	cairo_move_to(cr, x + w - 0.5, y + 0.5);
+	cairo_line_to(cr, x + w - 0.5, y + h - 0.5);
+	cairo_move_to(cr, x + 1.5, y + h - 1.5);
+	cairo_line_to(cr, x + w - 1.5, y + h - 1.5);
+	cairo_stroke(cr);
+
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_move_to(cr, x + 0.5, y + h - 0.5);
+	cairo_line_to(cr, x + w - 0.5, y + h - 0.5);
+	cairo_stroke(cr);
+
+	cairo_restore(cr);
+}
+
 static void bevelImage(RImage * image, int relief)
 {
 	int width = image->width;

@@ -31,6 +31,9 @@
 #include <unistd.h>
 #include <ctype.h>
 
+#include <cairo.h>
+#include <cairo-xcb.h>
+
 #include "WindowMaker.h"
 #include "wcore.h"
 #include "framewin.h"
@@ -455,7 +458,49 @@ static Pixmap renderTexture(WMenu * menu)
 	RColor dark;
 	RColor mid;
 	WScreen *scr = menu->menu->screen_ptr;
+	RContext *rc = scr->rcontext;
 	WTexture *texture = scr->menu_item_texture;
+	cairo_pattern_t *pat;
+	cairo_surface_t *surf;
+	cairo_t *cr;
+	int width, height;
+
+	width = menu->menu->width;
+	height = (w_global.config->menu_style == MS_NORMAL)
+		 ? menu->entry_height : menu->menu->height + 1;
+
+	pat = wTextureCairoPattern(texture, width, height);
+	if (pat) {
+		pix = xcb_generate_id(rc->xc);
+		xcb_create_pixmap(rc->xc, rc->xdepth, pix,
+				  rc->xscreen->root, width, height);
+		WMScreenNoteDrawableSize(scr->wmscreen, pix, width, height);
+
+		surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
+						rc->xvisual, width, height);
+		cr = cairo_create(surf);
+		cairo_set_source(cr, pat);
+		cairo_paint(cr);
+		cairo_pattern_destroy(pat);
+
+		if (w_global.config->menu_style == MS_SINGLE_TEXTURE) {
+			for (i = 1; i < menu->entry_no; i++)
+				wTextureCairoMenuBevel(cr, 0,
+						       (i - 1) * menu->entry_height,
+						       width, menu->entry_height + 1);
+			if (menu->entry_no > 0)
+				wTextureCairoMenuBevel(cr, 0,
+						       (menu->entry_no - 1) * menu->entry_height,
+						       width, menu->entry_height);
+		} else if (w_global.config->menu_style == MS_NORMAL) {
+			wTextureCairoMenuBevel(cr, 0, 0, width, height);
+		}
+
+		cairo_destroy(cr);
+		cairo_surface_flush(surf);
+		cairo_surface_destroy(surf);
+		return pix;
+	}
 
 	if (w_global.config->menu_style == MS_NORMAL) {
 		img = wTextureRenderImage(texture, menu->menu->width, menu->entry_height, WREL_MENUENTRY);

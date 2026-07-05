@@ -180,6 +180,10 @@ cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height);
  * top of an already-painted background */
 void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h);
 
+/* the WREL_MENUENTRY bevel: +highlight top/left, -dim right and inner
+ * bottom, opaque black separator on the bottom edge */
+void wTextureCairoMenuBevel(cairo_t *cr, int x, int y, int w, int h);
+
 
 void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, Pixmap *tdata,
                            int repaint);
