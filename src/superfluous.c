@@ -28,6 +28,8 @@
 #include <math.h>
 #include <time.h>
 
+#include <cairo-xcb.h>
+
 #include <wraster.h>
 
 #include "WindowMaker.h"
@@ -52,35 +54,50 @@
 void DoKaboom(WScreen * scr, Window win, int x, int y)
 {
 #ifdef NORMAL_ICON_KABOOM
+	RContext *rc = scr->rcontext;
 	int i, j, k;
 	int sw = scr->scr_width, sh = scr->scr_height;
+	int isize = w_global.config->icon_size;
 	int px[PIECES];
 	short py[PIECES];
 	char pvx[PIECES], pvy[PIECES];
 	/* in MkLinux/PPC gcc seems to think that char is unsigned? */
 	signed char ax[PIECES], ay[PIECES];
-	Pixmap tmp;
+	cairo_surface_t *snap, *ws, *root;
+	cairo_t *cr;
 
-	XSetClipMask(dpy, scr->copy_gc, None);
-	tmp = XCreatePixmap(dpy, scr->root_win, w_global.config->icon_size, w_global.config->icon_size, scr->depth);
-	if (scr->w_visual == DefaultVisual(dpy, scr->screen))
-		XCopyArea(dpy, win, tmp, scr->copy_gc, 0, 0, w_global.config->icon_size, w_global.config->icon_size, 0, 0);
-	else {
-		XImage *image;
-
-		image = XGetImage(dpy, win, 0, 0, w_global.config->icon_size,
-				  w_global.config->icon_size, AllPlanes, ZPixmap);
-		if (!image) {
-			XUnmapWindow(dpy, win);
-			return;
-		}
-		XPutImage(dpy, tmp, scr->copy_gc, image, 0, 0, 0, 0,
-			  w_global.config->icon_size, w_global.config->icon_size);
-		XDestroyImage(image);
+	/* the icon core window is at rc->xvisual, and painting the root
+	 * through the same visual works whenever its depth matches the
+	 * root depth (the normal case). A depth mismatch would BadMatch
+	 * on the first Composite, so skip the decoration then just as
+	 * the previous XGetImage fallback effectively did. */
+	if (rc->xdepth != scr->depth) {
+		XUnmapWindow(dpy, win);
+		return;
 	}
 
-	for (i = 0, k = 0; i < w_global.config->icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; i++) {
-		for (j = 0; j < w_global.config->icon_size / ICON_KABOOM_PIECE_SIZE && k < PIECES; j++) {
+	/* pull a client-side copy while the window is still mapped so
+	 * the pieces stay valid after the unmap below */
+	ws = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)win,
+				      rc->xvisual, isize, isize);
+	snap = cairo_image_surface_create(CAIRO_FORMAT_RGB24, isize, isize);
+	cr = cairo_create(snap);
+	cairo_set_source_surface(cr, ws, 0, 0);
+	cairo_paint(cr);
+	cairo_destroy(cr);
+	cairo_surface_destroy(ws);
+	if (cairo_surface_status(snap) != CAIRO_STATUS_SUCCESS) {
+		cairo_surface_destroy(snap);
+		XUnmapWindow(dpy, win);
+		return;
+	}
+
+	root = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)scr->root_win,
+					rc->xvisual, sw, sh);
+	cr = cairo_create(root);
+
+	for (i = 0, k = 0; i < isize / ICON_KABOOM_PIECE_SIZE && k < PIECES; i++) {
+		for (j = 0; j < isize / ICON_KABOOM_PIECE_SIZE && k < PIECES; j++) {
 			if (rand() % 2) {
 				ax[k] = i;
 				ay[k] = j;
@@ -116,22 +133,28 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 				py[i] += pvy[i];
 				_px = px[i] >> KAB_PRECISION;
 				pvy[i]++;
-				if (_px < -w_global.config->icon_size || _px > sw || py[i] >= sh) {
+				if (_px < -isize || _px > sw || py[i] >= sh) {
 					ax[i] = -1;
 					k--;
 				} else {
-					XCopyArea(dpy, tmp, scr->root_win, scr->copy_gc,
-						  ax[i] * ICON_KABOOM_PIECE_SIZE, ay[i] * ICON_KABOOM_PIECE_SIZE,
-						  ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE, _px, py[i]);
+					cairo_set_source_surface(cr, snap,
+						_px - ax[i] * ICON_KABOOM_PIECE_SIZE,
+						py[i] - ay[i] * ICON_KABOOM_PIECE_SIZE);
+					cairo_rectangle(cr, _px, py[i],
+						ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE);
+					cairo_fill(cr);
 				}
 			}
 		}
 
+		cairo_surface_flush(root);
 		XFlush(dpy);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z * 2);
 	}
 
-	XFreePixmap(dpy, tmp);
+	cairo_destroy(cr);
+	cairo_surface_destroy(root);
+	cairo_surface_destroy(snap);
 #endif	/* NORMAL_ICON_KABOOM */
 }
 
