@@ -17,6 +17,8 @@
  *  along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 #include "wconfig.h"
 
@@ -32,14 +34,11 @@ typedef struct W_Ruler {
 	void *clientData;
 
 	WMColor *fg;
-	GC fgGC, bgGC;
 	WMFont *font;
 	WMRulerMargins margins;
 	int offset;
 	int motion;		/* the position of the _moving_ marker(s) */
 	int end;		/* the last tick on the baseline (restrict markers to it) */
-
-	Pixmap drawBuffer;
 
 	struct {
 		unsigned int whichMarker:3;
@@ -61,22 +60,19 @@ typedef struct W_Ruler {
    |
 
  */
-static void drawLeftMarker(Ruler * rPtr)
+static void drawLeftMarker(cairo_t *cr, Ruler *rPtr)
 {
-	XPoint points[4];
 	int xpos = (rPtr->flags.whichMarker == 1 ? rPtr->motion : rPtr->margins.left);
 
-	XDrawLine(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC, xpos, 8, xpos, 22);
-	points[0].x = xpos;
-	points[0].y = 1;
-	points[1].x = points[0].x + 6;
-	points[1].y = 8;
-	points[2].x = points[0].x + 6;
-	points[2].y = 9;
-	points[3].x = points[0].x;
-	points[3].y = 9;
-	XFillPolygon(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC,
-		     points, 4, Convex, CoordModeOrigin);
+	cairo_move_to(cr, xpos + 0.5, 8.5);
+	cairo_line_to(cr, xpos + 0.5, 22.5);
+	cairo_stroke(cr);
+	cairo_move_to(cr, xpos, 1);
+	cairo_line_to(cr, xpos + 6, 8);
+	cairo_line_to(cr, xpos + 6, 9);
+	cairo_line_to(cr, xpos, 9);
+	cairo_close_path(cr);
+	cairo_fill(cr);
 }
 
 /* Marker for right margin
@@ -88,22 +84,19 @@ static void drawLeftMarker(Ruler * rPtr)
    |
 
  */
-static void drawRightMarker(Ruler * rPtr)
+static void drawRightMarker(cairo_t *cr, Ruler *rPtr)
 {
-	XPoint points[4];
 	int xpos = (rPtr->flags.whichMarker == 2 ? rPtr->motion : rPtr->margins.right);
 
-	XDrawLine(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC, xpos, 8, xpos, 22);
-	points[0].x = xpos + 1;
-	points[0].y = 0;
-	points[1].x = points[0].x - 6;
-	points[1].y = 7;
-	points[2].x = points[0].x - 6;
-	points[2].y = 9;
-	points[3].x = points[0].x;
-	points[3].y = 9;
-	XFillPolygon(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC,
-		     points, 4, Convex, CoordModeOrigin);
+	cairo_move_to(cr, xpos + 0.5, 8.5);
+	cairo_line_to(cr, xpos + 0.5, 22.5);
+	cairo_stroke(cr);
+	cairo_move_to(cr, xpos + 1, 0);
+	cairo_line_to(cr, xpos - 5, 7);
+	cairo_line_to(cr, xpos - 5, 9);
+	cairo_line_to(cr, xpos + 1, 9);
+	cairo_close_path(cr);
+	cairo_fill(cr);
 }
 
 /* Marker for first line only
@@ -112,13 +105,16 @@ static void drawRightMarker(Ruler * rPtr)
    |
 
  */
-static void drawFirstMarker(Ruler * rPtr)
+static void drawFirstMarker(cairo_t *cr, Ruler *rPtr)
 {
 	int xpos = ((rPtr->flags.whichMarker == 3 || rPtr->flags.whichMarker == 6) ?
 		    rPtr->motion : rPtr->margins.first);
 
-	XFillRectangle(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC, xpos - 5, 10, 11, 5);
-	XDrawLine(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC, xpos, 12, xpos, 22);
+	cairo_rectangle(cr, xpos - 5, 10, 11, 5);
+	cairo_fill(cr);
+	cairo_move_to(cr, xpos + 0.5, 12.5);
+	cairo_line_to(cr, xpos + 0.5, 22.5);
+	cairo_stroke(cr);
 }
 
 /* Marker for rest of body
@@ -126,62 +122,54 @@ static void drawFirstMarker(Ruler * rPtr)
    \   /
     \./
  */
-static void drawBodyMarker(Ruler * rPtr)
+static void drawBodyMarker(cairo_t *cr, Ruler *rPtr)
 {
-	XPoint points[4];
 	int xpos = ((rPtr->flags.whichMarker == 4 || rPtr->flags.whichMarker == 6) ?
 		    rPtr->motion : rPtr->margins.body);
 
-	points[0].x = xpos - 5;
-	points[0].y = 16;
-	points[1].x = points[0].x + 11;
-	points[1].y = 16;
-	points[2].x = points[0].x + 5;
-	points[2].y = 22;
-	XFillPolygon(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC,
-		     points, 3, Convex, CoordModeOrigin);
+	cairo_move_to(cr, xpos - 5, 16);
+	cairo_line_to(cr, xpos + 6, 16);
+	cairo_line_to(cr, xpos, 22);
+	cairo_close_path(cr);
+	cairo_fill(cr);
 }
 
-static void createDrawBuffer(Ruler * rPtr)
+static void paintRuler(Ruler * rPtr)
 {
+	int marks[8] = { 11, 3, 5, 3, 7, 3, 5, 3 };
+	W_Screen *scr = rPtr->view->screen;
+	cairo_t *cr;
+	int i, j, w, m;
+	char c[3];
+
 	if (!rPtr->view->flags.realized)
 		return;
 
-	if (rPtr->drawBuffer)
-		XFreePixmap(rPtr->view->screen->display, rPtr->drawBuffer);
-
-	rPtr->drawBuffer = XCreatePixmap(rPtr->view->screen->display,
-					 rPtr->view->window, rPtr->view->size.width, 40,
-					 rPtr->view->screen->depth);
-	XFillRectangle(rPtr->view->screen->display, rPtr->drawBuffer,
-		       rPtr->bgGC, 0, 0, rPtr->view->size.width, 40);
-}
-
-static void drawRulerOnPixmap(Ruler * rPtr)
-{
-	int i, j, w, m;
-	char c[3];
-	int marks[9] = { 11, 3, 5, 3, 7, 3, 5, 3 };
-
-	if (!rPtr->drawBuffer || !rPtr->view->flags.realized)
+	cr = WCairoBeginBuffered(scr, rPtr->view->window);
+	if (!cr)
 		return;
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	XFillRectangle(rPtr->view->screen->display, rPtr->drawBuffer,
-		       rPtr->bgGC, 0, 0, rPtr->view->size.width, 40);
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
 
-	WMDrawString(rPtr->view->screen, rPtr->drawBuffer, rPtr->fg,
-		     rPtr->font, rPtr->margins.left + 2, 26, _("0   inches"), 10);
+	WMDrawStringCairo(cr, rPtr->fg, rPtr->font,
+			  rPtr->margins.left + 2, 26, _("0   inches"), 10);
 
 	/* marker ticks */
+	WCairoSetSourceColor(cr, rPtr->fg);
 	i = j = m = 0;
 	w = rPtr->view->size.width - rPtr->margins.left;
 	while (m < w) {
-		XDrawLine(rPtr->view->screen->display, rPtr->drawBuffer,
-			  rPtr->fgGC, rPtr->margins.left + m, 23, rPtr->margins.left + m, marks[i % 8] + 23);
+		cairo_move_to(cr, rPtr->margins.left + m + 0.5, 23.5);
+		cairo_line_to(cr, rPtr->margins.left + m + 0.5, marks[i % 8] + 23.5);
+		cairo_stroke(cr);
 		if (i != 0 && i % 8 == 0) {
 			snprintf(c, sizeof(c), "%hu", ++j);
-			WMDrawString(rPtr->view->screen, rPtr->drawBuffer, rPtr->fg,
-				     rPtr->font, rPtr->margins.left + 2 + m, 26, c, 2);
+			WMDrawStringCairo(cr, rPtr->fg, rPtr->font,
+					  rPtr->margins.left + 2 + m, 26, c, 2);
+			WCairoSetSourceColor(cr, rPtr->fg);
 		}
 		m = (++i) * 10;
 	}
@@ -190,26 +178,17 @@ static void drawRulerOnPixmap(Ruler * rPtr)
 	if (rPtr->margins.right > rPtr->end)
 		rPtr->margins.right = rPtr->end;
 	/* base line */
-	XDrawLine(rPtr->view->screen->display, rPtr->drawBuffer, rPtr->fgGC,
-		  rPtr->margins.left, 22, rPtr->margins.left + m - 10, 22);
+	cairo_move_to(cr, rPtr->margins.left + 0.5, 22.5);
+	cairo_line_to(cr, rPtr->margins.left + m - 9.5, 22.5);
+	cairo_stroke(cr);
 
-	drawLeftMarker(rPtr);
-	drawRightMarker(rPtr);
-	drawFirstMarker(rPtr);
-	drawBodyMarker(rPtr);
+	drawLeftMarker(cr, rPtr);
+	drawRightMarker(cr, rPtr);
+	drawFirstMarker(cr, rPtr);
+	drawBodyMarker(cr, rPtr);
 
+	WCairoEnd(cr);
 	rPtr->flags.redraw = False;
-}
-
-static void paintRuler(Ruler * rPtr)
-{
-	if (!rPtr->drawBuffer || !rPtr->view->flags.realized)
-		return;
-
-	if (rPtr->flags.redraw)
-		drawRulerOnPixmap(rPtr);
-	XCopyArea(rPtr->view->screen->display, rPtr->drawBuffer,
-		  rPtr->view->window, rPtr->bgGC, 0, 0, rPtr->view->size.width, 40, 0, 0);
 }
 
 static Bool verifyMarkerMove(Ruler * rPtr, int x)
@@ -295,10 +274,8 @@ static void rulerDidResize(W_ViewDelegate * self, WMView * view)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 
-	createDrawBuffer(rPtr);
 	rPtr->flags.redraw = True;
 	paintRuler(rPtr);
-
 }
 
 static void handleEvents(XEvent * event, void *data)
@@ -313,18 +290,23 @@ static void handleEvents(XEvent * event, void *data)
 	case MotionNotify:
 		if (rPtr->flags.buttonPressed && (event->xmotion.state & Button1Mask)) {
 			if (verifyMarkerMove(rPtr, event->xmotion.x)) {
-				GC gc = WMColorGC(WMDarkGrayColor(rPtr->view->screen));
+				cairo_t *cr;
 
 				if (rPtr->moveAction)
 					(rPtr->moveAction) (rPtr, rPtr->clientData);
 				rPtr->flags.redraw = True;
 				paintRuler(rPtr);
-				XSetLineAttributes(rPtr->view->screen->display, gc, 1,
-						   LineSolid, CapNotLast, JoinMiter);
-				XDrawLine(rPtr->pview->screen->display,
-					  rPtr->pview->window,
-					  gc, rPtr->motion + 1, 40,
-					  rPtr->motion + 1, rPtr->pview->size.height - 5);
+				cr = WCairoBeginForDrawable(rPtr->pview->screen,
+							    rPtr->pview->window);
+				if (cr) {
+					WCairoSetSourceColor(cr, rPtr->pview->screen->darkGray);
+					cairo_set_line_width(cr, 1.0);
+					cairo_move_to(cr, rPtr->motion + 1.5, 40);
+					cairo_line_to(cr, rPtr->motion + 1.5,
+						      rPtr->pview->size.height - 5);
+					cairo_stroke(cr);
+					WCairoEnd(cr);
+				}
 			}
 		}
 		break;
@@ -394,8 +376,6 @@ WMRuler *WMCreateRuler(WMWidget * parent)
 
 	rPtr->view->self = rPtr;
 
-	rPtr->drawBuffer = (Pixmap) NULL;
-
 	W_ResizeView(rPtr->view, w, 40);
 
 	WMCreateEventHandler(rPtr->view, ExposureMask | StructureNotifyMask
@@ -406,8 +386,6 @@ WMRuler *WMCreateRuler(WMWidget * parent)
 	rPtr->view->delegate = &_RulerViewDelegate;
 
 	rPtr->fg = WMBlackColor(rPtr->view->screen);
-	rPtr->fgGC = WMColorGC(rPtr->fg);
-	rPtr->bgGC = WMColorGC(WMGrayColor(rPtr->view->screen));
 	rPtr->font = WMSystemFontOfSize(rPtr->view->screen, 8);
 
 	rPtr->offset = 22;
