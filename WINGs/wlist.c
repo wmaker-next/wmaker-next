@@ -1,4 +1,6 @@
 
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
 #include <ctype.h>
 #include <strings.h>
@@ -93,10 +95,14 @@ static void updateDoubleBufferPixmap(WMList * lPtr)
 	if (!view->flags.realized)
 		return;
 
-	if (lPtr->doubleBuffer)
+	if (lPtr->doubleBuffer) {
+		WMScreenAbandonDrawable(scr, lPtr->doubleBuffer);
 		XFreePixmap(scr->display, lPtr->doubleBuffer);
+	}
 	lPtr->doubleBuffer =
 	    XCreatePixmap(scr->display, view->window, view->size.width, lPtr->itemHeight, scr->depth);
+	WMScreenNoteDrawableSize(scr, lPtr->doubleBuffer,
+				 view->size.width, lPtr->itemHeight);
 }
 
 static void realizeObserver(void *self, WMNotification * not)
@@ -458,10 +464,15 @@ static void paintItem(List * lPtr, int index)
 {
 	WMView *view = lPtr->view;
 	W_Screen *scr = view->screen;
-	Display *display = scr->display;
+	RContext *rc = scr->rcontext;
 	int width, height, x, y, tlen;
 	WMListItem *itemPtr;
 	Drawable d = lPtr->doubleBuffer;
+	WMColor *back;
+	WMRect rect;
+	int flags;
+	cairo_surface_t *bs;
+	cairo_t *cr;
 
 	itemPtr = WMGetFromArray(lPtr->items, index);
 
@@ -472,9 +483,6 @@ static void paintItem(List * lPtr, int index)
 	tlen = strlen(itemPtr->text);
 
 	if (lPtr->flags.userDrawn) {
-		WMRect rect;
-		int flags;
-
 		rect.size.width = width;
 		rect.size.height = height;
 		rect.pos.x = 0;
@@ -490,21 +498,31 @@ static void paintItem(List * lPtr, int index)
 
 		if (lPtr->draw)
 			(*lPtr->draw) (lPtr, index, d, itemPtr->text, flags, &rect);
-
-		XCopyArea(display, d, view->window, scr->copyGC, 0, 0, width, height, x, y);
 	} else {
-		WMColor *back = (itemPtr->selected ? scr->white : view->backColor);
-
-		XFillRectangle(display, d, WMColorGC(back), 0, 0, width, height);
-
-		W_PaintText(view, d, scr->normalFont, 4, 0, width, WALeft, scr->black, False, itemPtr->text, tlen);
-		XCopyArea(display, d, view->window, scr->copyGC, 0, 0, width, height, x, y);
+		back = (itemPtr->selected ? scr->white : view->backColor);
+		cr = WCairoBeginForDrawable(scr, d);
+		WCairoSetSourceColor(cr, back);
+		cairo_rectangle(cr, 0, 0, width, height);
+		cairo_fill(cr);
+		W_PaintTextCairo(cr, scr->normalFont, 4, 0, width, WALeft,
+				 scr->black, False, itemPtr->text, tlen);
+		WCairoEnd(cr);
 	}
 
-	if ((index - lPtr->topItem + lPtr->fullFitLines) * lPtr->itemHeight > lPtr->view->size.height - 2) {
-		W_DrawRelief(lPtr->view->screen, lPtr->view->window, 0, 0,
-			     lPtr->view->size.width, lPtr->view->size.height, WRSunken);
-	}
+	/* the buffer is view->size.width wide but only the row area right
+	 * of the scroller strip is copied onto the on-screen window */
+	cr = WCairoBeginForDrawable(scr, view->window);
+	bs = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)d, rc->xvisual,
+				      view->size.width, height);
+	cairo_set_source_surface(cr, bs, x, y);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
+	cairo_surface_destroy(bs);
+
+	if ((index - lPtr->topItem + lPtr->fullFitLines) * lPtr->itemHeight > lPtr->view->size.height - 2)
+		W_DrawReliefCairo(cr, scr, 0, 0,
+				  lPtr->view->size.width, lPtr->view->size.height, WRSunken);
+	WCairoEnd(cr);
 }
 
 static void paintList(List * lPtr)
@@ -1594,8 +1612,10 @@ static void destroyList(List * lPtr)
 	if (lPtr->items)
 		WMFreeArray(lPtr->items);
 
-	if (lPtr->doubleBuffer)
+	if (lPtr->doubleBuffer) {
+		WMScreenAbandonDrawable(lPtr->view->screen, lPtr->doubleBuffer);
 		XFreePixmap(lPtr->view->screen->display, lPtr->doubleBuffer);
+	}
 
 	if (lPtr->typeahead)
 		wfree(lPtr->typeahead);
