@@ -25,7 +25,7 @@
 
 #include "wconfig.h"
 
-#include <cairo.h>
+#include <cairo-xcb.h>
 
 #include "WINGsP.h"
 #include "rgb.h"
@@ -271,6 +271,29 @@ static char *generateNewFilename(const char *curName);
 static void convertCPColor(CPColor * color);
 static RColor ulongToRColor(WMScreen * scr, unsigned long value);
 static unsigned char getShift(unsigned char value);
+
+/* copy a w x h rectangle from (sx, sy) on a screen-depth drawable src
+ * (whose full extents are srcW x srcH) onto dst at (dx, dy). Shared by
+ * the wheel, custom-palette and magnifier save-under paths that shuttle
+ * a 4x4 selection marker between server pixmaps and the view window. */
+static void blitArea(W_Screen *scr, Drawable src, int srcW, int srcH,
+		     int sx, int sy, int w, int h, Drawable dst, int dx, int dy)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *ss;
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr, dst);
+	if (!cr)
+		return;
+	ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)src,
+				      rc->xvisual, srcW, srcH);
+	cairo_set_source_surface(cr, ss, dx - sx, dy - sy);
+	cairo_rectangle(cr, dx, dy, w, h);
+	cairo_fill(cr);
+	cairo_surface_destroy(ss);
+	WCairoEnd(cr);
+}
 
 static void modeButtonCallback(WMWidget * w, void *data);
 static int getPickerPart(W_ColorPanel * panel, int x, int y);
@@ -1546,6 +1569,8 @@ static Pixmap magnifyCreatePixmap(WMColorPanel * panel)
 	Pixmap pixmap;
 #endif
 	unsigned long color;
+	RColor cell;
+	cairo_t *cr;
 
 	if (!panel->magnifyGlass->image)
 		return None;
@@ -1556,14 +1581,14 @@ static Pixmap magnifyCreatePixmap(WMColorPanel * panel)
 	/*
 	 * Copy an area of only 5x5 pixels from the center of the image.
 	 */
+	cr = WCairoBeginForDrawable(scr, panel->magnifyGlass->magPix);
 	for (u = 0; u < 5; u++) {
 		for (v = 0; v < 5; v++) {
 			color = XGetPixel(panel->magnifyGlass->image, u + 9, v + 9);
-
-			XSetForeground(scr->display, scr->copyGC, color);
+			cell = ulongToRColor(scr, color);
 
 			if ((u == 2) && (v == 2))	/* (2,2) is center pixel (unmagn.) */
-				panel->magnifyGlass->color = ulongToRColor(scr, color);
+				panel->magnifyGlass->color = cell;
 
 			/* The center square must eventually be centered around the
 			 * hotspot. The image needs shifting to achieve this. The amount of
@@ -1572,12 +1597,15 @@ static Pixmap magnifyCreatePixmap(WMColorPanel * panel)
 			 * |_|_|_|_|_|
 			 *      ^------- center of center square == Cursor_x_hot
 			 */
-			XFillRectangle(scr->display, panel->magnifyGlass->magPix,
-				       scr->copyGC,
-				       u * 5 + (u == 0 ? 0 : -1), v * 5 + (v == 0 ? 0 : -1),
-				       (u == 0 ? 4 : 5), (v == 0 ? 4 : 5));
+			cairo_set_source_rgb(cr, cell.red / 255.0,
+					     cell.green / 255.0, cell.blue / 255.0);
+			cairo_rectangle(cr,
+					u * 5 + (u == 0 ? 0 : -1), v * 5 + (v == 0 ? 0 : -1),
+					(u == 0 ? 4 : 5), (v == 0 ? 4 : 5));
+			cairo_fill(cr);
 		}
 	}
+	WCairoEnd(cr);
 
 #ifdef USE_XSHAPE
 	return panel->magnifyGlass->magPix;
@@ -1665,6 +1693,7 @@ static WMPoint magnifyInitialize(W_ColorPanel * panel)
 						1, 0, 1);
 	panel->magnifyGlass->magPix = XCreatePixmap(scr->display, W_DRAWABLE(scr),
 						    5 * 5 - 1, 5 * 5 - 1, scr->depth);
+	WMScreenNoteDrawableSize(scr, panel->magnifyGlass->magPix, 5 * 5 - 1, 5 * 5 - 1);
 
 	XQueryPointer(scr->display, scr->rootWin, &root_return, &child_return, &x, &y, &u, &v, &mask);
 
@@ -2057,8 +2086,10 @@ static void wheelRender(W_ColorPanel * panel)
 	if (!panel->selectionBackImg) {
 		panel->selectionBackImg = XCreatePixmap(scr->display,
 							W_VIEW(panel->wheelFrm)->window, 4, 4, scr->depth);
-		XCopyArea(scr->display, panel->wheelImg, panel->selectionBackImg,
-			  scr->copyGC, panel->colx - 2, panel->coly - 2, 4, 4, 0, 0);
+		WMScreenNoteDrawableSize(scr, panel->selectionBackImg, 4, 4);
+		blitArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+			 panel->colx - 2, panel->coly - 2, 4, 4,
+			 panel->selectionBackImg, 0, 0);
 		/* -2 is hot spot correction */
 	}
 }
@@ -2073,12 +2104,13 @@ static void wheelPaint(W_ColorPanel * panel)
 {
 	W_Screen *scr = WMWidgetScreen(panel->win);
 
-	XCopyArea(scr->display, panel->wheelImg, panel->wheelView->window,
-		  scr->copyGC, 0, 0, colorWheelSize + 4, colorWheelSize + 4, 0, 0);
+	blitArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+		 0, 0, colorWheelSize + 4, colorWheelSize + 4,
+		 panel->wheelView->window, 0, 0);
 
 	/* Draw selection image */
-	XCopyArea(scr->display, panel->selectionImg, panel->wheelView->window,
-		  scr->copyGC, 0, 0, 4, 4, panel->colx - 2, panel->coly - 2);
+	blitArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 }
 
 static void wheelHandleEvents(XEvent * event, void *data)
@@ -2188,11 +2220,12 @@ static void wheelUpdateSelection(W_ColorPanel * panel)
 	panel->lastChanged = WMWheelModeColorPanel;
 
 	/* Redraw color selector (and make a backup of the part it will cover) */
-	XCopyArea(scr->display, panel->wheelImg, panel->selectionBackImg,
-		  scr->copyGC, panel->colx - 2, panel->coly - 2, 4, 4, 0, 0);
+	blitArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+		 panel->colx - 2, panel->coly - 2, 4, 4,
+		 panel->selectionBackImg, 0, 0);
 	/* "-2" is correction for hotspot location */
-	XCopyArea(scr->display, panel->selectionImg, panel->wheelView->window,
-		  scr->copyGC, 0, 0, 4, 4, panel->colx - 2, panel->coly - 2);
+	blitArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 	/* see above */
 }
 
@@ -2200,8 +2233,8 @@ static void wheelUndrawSelection(W_ColorPanel * panel)
 {
 	W_Screen *scr = WMWidgetScreen(panel->win);
 
-	XCopyArea(scr->display, panel->selectionBackImg, panel->wheelView->window,
-		  scr->copyGC, 0, 0, 4, 4, panel->colx - 2, panel->coly - 2);
+	blitArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
+		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 	/* see above */
 }
 
@@ -2855,20 +2888,23 @@ static void customSetPalette(W_ColorPanel * panel)
 	RConvertImage(scr->rcontext, scaledImg, &image);
 	RReleaseImage(scaledImg);
 
-	XCopyArea(scr->display, image, panel->customPaletteContentView->window,
-		  scr->copyGC, 0, 0, customPaletteWidth, customPaletteHeight, 0, 0);
+	blitArea(scr, image, customPaletteWidth, customPaletteHeight,
+		 0, 0, customPaletteWidth, customPaletteHeight,
+		 panel->customPaletteContentView->window, 0, 0);
 
 	/* Check backimage exists. If it doesn't, allocate and fill it */
 	if (!panel->selectionBackImg) {
 		panel->selectionBackImg = XCreatePixmap(scr->display,
 							panel->customPaletteContentView->window, 4, 4, scr->depth);
+		WMScreenNoteDrawableSize(scr, panel->selectionBackImg, 4, 4);
 	}
 
-	XCopyArea(scr->display, image, panel->selectionBackImg, scr->copyGC,
-		  panel->palx - 2, panel->paly - 2, 4, 4, 0, 0);
-	XCopyArea(scr->display, panel->selectionImg,
-		  panel->customPaletteContentView->window, scr->copyGC, 0, 0, 4, 4,
-		  panel->palx - 2, panel->paly - 2);
+	blitArea(scr, image, customPaletteWidth, customPaletteHeight,
+		 panel->palx - 2, panel->paly - 2, 4, 4,
+		 panel->selectionBackImg, 0, 0);
+	blitArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+		 panel->customPaletteContentView->window,
+		 panel->palx - 2, panel->paly - 2);
 	XFreePixmap(scr->display, image);
 
 	panel->palXRatio = (double)(panel->customPaletteImg->width) / (double)(customPaletteWidth);
@@ -2881,9 +2917,9 @@ static void customPalettePositionSelection(W_ColorPanel * panel, int x, int y)
 	unsigned long ofs;
 
 	/* undraw selection */
-	XCopyArea(scr->display, panel->selectionBackImg,
-		  panel->customPaletteContentView->window, scr->copyGC, 0, 0, 4, 4,
-		  panel->palx - 2, panel->paly - 2);
+	blitArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
+		 panel->customPaletteContentView->window,
+		 panel->palx - 2, panel->paly - 2);
 
 	panel->palx = x;
 	panel->paly = y;
@@ -2899,8 +2935,13 @@ static void customPalettePositionSelection(W_ColorPanel * panel, int x, int y)
 	panel->lastChanged = WMCustomPaletteModeColorPanel;
 
 	/* Redraw color selector (and make a backup of the part it will cover) */
-	XCopyArea(scr->display, panel->customPaletteContentView->window, panel->selectionBackImg, scr->copyGC, panel->palx - 2, panel->paly - 2, 4, 4, 0, 0);	/* "-2" is correction for hotspot location */
-	XCopyArea(scr->display, panel->selectionImg, panel->customPaletteContentView->window, scr->copyGC, 0, 0, 4, 4, panel->palx - 2, panel->paly - 2);	/* see above */
+	blitArea(scr, panel->customPaletteContentView->window,
+		 customPaletteWidth, customPaletteHeight,
+		 panel->palx - 2, panel->paly - 2, 4, 4,
+		 panel->selectionBackImg, 0, 0);	/* "-2" is correction for hotspot location */
+	blitArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+		 panel->customPaletteContentView->window,
+		 panel->palx - 2, panel->paly - 2);	/* see above */
 }
 
 static void customPalettePositionSelectionOutBounds(W_ColorPanel * panel, int x, int y)
