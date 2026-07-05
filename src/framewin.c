@@ -1883,12 +1883,42 @@ static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, Pixmap *pixma
 	return 1;
 }
 
+/* left half of tmp[i] is the normal-state background, right half the
+ * pushed state, then the language label centred in each half */
+static void paintLanguageHalf(cairo_t *cr, RContext *rc, int x, int kw, int kh,
+			      Pixmap back, const XColor *fill,
+			      WMColor *text, WMFont *font, const char *label,
+			      int tx, int ty)
+{
+	cairo_surface_t *bs;
+
+	if (back != None) {
+		bs = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)back,
+					      rc->xvisual, kw + 1, kh + 1);
+		cairo_set_source_surface(cr, bs, x - 1, -1);
+		cairo_rectangle(cr, x, 0, kw, kh);
+		cairo_fill(cr);
+		cairo_surface_destroy(bs);
+	} else {
+		WCairoSetSourceXColor(cr, fill);
+		cairo_rectangle(cr, x, 0, kw, kh);
+		cairo_fill(cr);
+	}
+	WMDrawStringCairo(cr, text, font, x + tx, ty, label, strlen(label));
+}
+
 void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 {
 	WScreen *scr = fwin->screen_ptr;
+	RContext *rc = scr->rcontext;
 	WCoreWindow *button = fwin->buttons[WTB_LANGUAGE];
-	GC gc = scr->copy_gc;
-	int i, text_width, text_height;
+	WMFont *small;
+	WMColor *silver, *ntext, *ptext;
+	const XColor *nfill, *pfill;
+	Pixmap nback;
+	cairo_surface_t *surf;
+	cairo_t *cr;
+	int i, count, small_px, text_width, text_height, tx, ty;
 	int border_thickness = 3;
 	int key_width, key_height;
 	int group_index;
@@ -1904,102 +1934,68 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	if (group_index < 0 || group_index >= 4)
 		return;
 
-	/* Calculate text dimensions */
-	int small_px = WMFontHeight(*fwin->font) * 55 / 100;
-	WMFont *small = WMBoldSystemFontOfSize(scr->wmscreen, small_px);
+	small_px = WMFontHeight(*fwin->font) * 55 / 100;
+	small = WMBoldSystemFontOfSize(scr->wmscreen, small_px);
 	text_width = WMWidthOfString(small, fwin->language_label, strlen(fwin->language_label));
 	text_height = WMFontHeight(small);
 
 	key_width = button->width - border_thickness;
 	key_height = button->height - border_thickness;
 
-	/* Ensure dimensions are valid */
 	if (key_width < 1 || key_height < 1) {
 		WMReleaseFont(small);
 		return;
 	}
 
-	/* Create temporary pixmaps for immediate drawing */
-	tmp[0] = XCreatePixmap(dpy, button->window, 2*key_width, key_height, scr->w_depth);
-	if (tmp[0] == None) {
-		WMReleaseFont(small);
-		return;
+	count = TS_NEW_GEOM(w_global.config->new_style) ? 2 : 1;
+	silver = NULL;
+	tx = (key_width - text_width) / 2;
+	ty = (key_height - text_height) / 2;
+
+	for (i = 0; i < count; i++) {
+		tmp[i] = XCreatePixmap(dpy, button->window,
+				       2 * key_width, key_height, scr->w_depth);
+		WMScreenNoteDrawableSize(scr->wmscreen, tmp[i], 2 * key_width, key_height);
+
+		nback = None;
+		if (TS_NEW_GEOM(w_global.config->new_style)) {
+			if (fwin->title_texture[i]->any.type != WTEX_SOLID
+			    && fwin->title_back[i] != None)
+				nback = fwin->button_back[WTB_LANGUAGE][i];
+			nfill = &fwin->title_texture[i]->solid.normal;
+			ntext = fwin->title_color[i];
+			pfill = &scr->wmscreen->white->color;
+			ptext = WMBlackColor(scr->wmscreen);
+		} else if (w_global.config->new_style == TS_OLD) {
+			nfill = &scr->widget_texture->normal;
+			ntext = WMBlackColor(scr->wmscreen);
+			pfill = &scr->wmscreen->white->color;
+			ptext = WMDarkGrayColor(scr->wmscreen);
+		} else {
+			if (!silver)
+				silver = WMCreateRGBColor(scr->wmscreen, 0xc0c0,
+							  0xc0c0, 0xc0c0, True);
+			nfill = pfill = &scr->widget_texture->dark;
+			ntext = ptext = silver;
+		}
+
+		surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)tmp[i],
+						rc->xvisual, 2 * key_width, key_height);
+		cr = cairo_create(surf);
+		paintLanguageHalf(cr, rc, 0, key_width, key_height, nback, nfill,
+				  ntext, small, fwin->language_label, tx, ty);
+		paintLanguageHalf(cr, rc, key_width, key_width, key_height, None, pfill,
+				  ptext, small, fwin->language_label, tx, ty);
+		cairo_destroy(cr);
+		cairo_surface_flush(surf);
+		cairo_surface_destroy(surf);
 	}
 
-	tmp[1] = None;
-	if (TS_NEW_GEOM(w_global.config->new_style)) {
-		tmp[1] = XCreatePixmap(dpy, button->window, 2*key_width, key_height, scr->w_depth);
-		if (tmp[1] == None) {
-			XFreePixmap(dpy, tmp[0]);
-			WMReleaseFont(small);
-			return;
-		}
-	}
-
-	/* Reset GC to ensure clean state for drawing */
-	XSetClipMask(dpy, gc, None);
-
-	/* Draw the language label centered in the button */
-	int text_x = (key_width - text_width) / 2;
-	int text_y = (key_height - text_height) / 2;
-
-	/* Fill the color pixmap depending on the style  */
-	if (TS_NEW_GEOM(w_global.config->new_style)) {
-		for (i = 0; i < 2; i++) {
-			if (fwin->title_texture[i]->any.type != WTEX_SOLID && fwin->title_back[i] != None) {
-				XCopyArea(dpy, fwin->button_back[WTB_LANGUAGE][i], tmp[i], scr->copy_gc,
-						  0, 0, button->width, button->height, -1, -1);
-			} else {
-				unsigned long bg_pixel = fwin->title_texture[i]->solid.normal.pixel;
-				XSetForeground(dpy, gc, bg_pixel);
-				XFillRectangle(dpy, tmp[i], gc, 0, 0, key_width, key_height);
-			}
-			WMDrawString(scr->wmscreen, tmp[i], fwin->title_color[i],
-						 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
-		}
-	} else if (w_global.config->new_style == TS_OLD) {
-		unsigned long bg_pixel = scr->widget_texture->normal.pixel;
-		XSetForeground(dpy, gc, bg_pixel);
-		XFillRectangle(dpy, tmp[0], gc, 0, 0, key_width, key_height);
-		WMDrawString(scr->wmscreen, tmp[0], WMBlackColor(scr->wmscreen),
-					 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
-	} else {
-		unsigned long bg_pixel = scr->widget_texture->dark.pixel;
-		XSetForeground(dpy, gc, bg_pixel);
-		XFillRectangle(dpy, tmp[0], gc, 0, 0, key_width, key_height);
-		WMColor *silver = WMCreateRGBColor(scr->wmscreen, 0xc0c0, 0xc0c0, 0xc0c0, True);
-		WMDrawString(scr->wmscreen, tmp[0], silver,
-					 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
+	if (silver)
 		WMReleaseColor(silver);
-	}
-
-	/* pushed button next to normal for easy access when painting */
-	text_x = key_width + (key_width - text_width) / 2;
-	if (TS_NEW_GEOM(w_global.config->new_style)) {
-		XSetForeground(dpy, gc, scr->white_pixel);
-		for (i = 0; i < 2; i++) {
-			XFillRectangle(dpy, tmp[i], gc, key_width, 0, key_width, key_height);
-			WMDrawString(scr->wmscreen, tmp[i], WMBlackColor(scr->wmscreen),
-						 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
-		}
-	} else if (w_global.config->new_style == TS_OLD) {
-		XSetForeground(dpy, gc, scr->white_pixel);
-		XFillRectangle(dpy, tmp[0], gc, key_width, 0, key_width, key_height);
-		WMDrawString(scr->wmscreen, tmp[0], WMDarkGrayColor(scr->wmscreen),
-			small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
-	} else {
-		unsigned long bg_pixel = scr->widget_texture->dark.pixel;
-		WMColor *silver = WMCreateRGBColor(scr->wmscreen, 0xc0c0, 0xc0c0, 0xc0c0, True);
-		XSetForeground(dpy, gc, bg_pixel);
-		XFillRectangle(dpy, tmp[0], gc, key_width, 0, key_width, key_height);
-		WMDrawString(scr->wmscreen, tmp[0], silver,
-					 small, text_x, text_y, fwin->language_label, strlen(fwin->language_label));
-		WMReleaseColor(silver);
-	}
-
 	WMReleaseFont(small);
 
-	wFrameWindowSetLanguageButtonImages(fwin, tmp, TS_NEW_GEOM(w_global.config->new_style) ? 2 : 1);
+	wFrameWindowSetLanguageButtonImages(fwin, tmp, count);
 }
 #endif				/* XKB_BUTTON_HINT */
 
