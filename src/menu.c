@@ -33,6 +33,7 @@
 
 #include <cairo.h>
 #include <cairo-xcb.h>
+#include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
 #include "wcore.h"
@@ -750,41 +751,34 @@ void wMenuDestroy(WMenu * menu, int recurse)
 #define F_BOTTOM	2
 #define F_NONE		3
 
-static void drawFrame(WScreen * scr, Drawable win, int y, int w, int h, int type)
+/* one horizontal or vertical 1 px line, +0.5 so a width-1 stroke
+ * lands on a single device pixel row */
+static void hvLine(cairo_t *cr, const XColor *c, int x1, int y1, int x2, int y2)
 {
-	XSegment segs[2];
-	int i;
+	WCairoSetSourceXColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
+}
 
-	i = 0;
-	segs[i].x1 = segs[i].x2 = w - 1;
-	segs[i].y1 = y;
-	segs[i].y2 = y + h - 1;
-	i++;
-	if (type != F_TOP && type != F_NONE) {
-		segs[i].x1 = 1;
-		segs[i].y1 = segs[i].y2 = y + h - 2;
-		segs[i].x2 = w - 1;
-		i++;
-	}
-	XDrawSegments(dpy, win, scr->menu_item_auxtexture->dim_gc, segs, i);
+static void drawFrame(cairo_t *cr, WTexSolid *aux, int y, int w, int h, int type)
+{
+	cairo_save(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	i = 0;
-	segs[i].x1 = 0;
-	segs[i].y1 = y;
-	segs[i].x2 = 0;
-	segs[i].y2 = y + h - 1;
-	i++;
-	if (type != F_BOTTOM && type != F_NONE) {
-		segs[i].x1 = 0;
-		segs[i].y1 = y;
-		segs[i].x2 = w - 1;
-		segs[i].y2 = y;
-		i++;
-	}
-	XDrawSegments(dpy, win, scr->menu_item_auxtexture->light_gc, segs, i);
+	hvLine(cr, &aux->dim, w - 1, y, w - 1, y + h - 1);
+	if (type != F_TOP && type != F_NONE)
+		hvLine(cr, &aux->dim, 1, y + h - 2, w - 1, y + h - 2);
+
+	hvLine(cr, &aux->light, 0, y, 0, y + h - 1);
+	if (type != F_BOTTOM && type != F_NONE)
+		hvLine(cr, &aux->light, 0, y, w - 1, y);
 
 	if (type != F_TOP && type != F_NONE)
-		XDrawLine(dpy, win, scr->menu_item_auxtexture->dark_gc, 0, y + h - 1, w - 1, y + h - 1);
+		hvLine(cr, &aux->dark, 0, y + h - 1, w - 1, y + h - 1);
+
+	cairo_restore(cr);
 }
 
 static void paintEntry(WMenu * menu, int index, int selected)
@@ -792,9 +786,12 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	WScreen *scr = menu->frame->screen_ptr;
 	Window win = menu->menu->window;
 	WMenuEntry *entry = menu->entries[index];
-	GC light, dim, dark;
+	WTexSolid *aux = scr->menu_item_auxtexture;
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *isurf, *msurf;
+	cairo_t *cr;
 	WMColor *color;
-	int x, y, w, h, tw;
+	int x, y, w, h, tw, ix, iy;
 	int type;
 
 	if (!menu->flags.realized)
@@ -802,10 +799,6 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	h = menu->entry_height;
 	w = menu->menu->width;
 	y = index * h;
-
-	light = scr->menu_item_auxtexture->light_gc;
-	dim = scr->menu_item_auxtexture->dim_gc;
-	dark = scr->menu_item_auxtexture->dark_gc;
 
 	if (w_global.config->menu_style == MS_FLAT && menu->entry_no > 1) {
 		if (index == 0)
@@ -818,20 +811,28 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		type = F_NORMAL;
 	}
 
-	/* paint background */
-	if (selected) {
-		XFillRectangle(dpy, win, WMColorGC(scr->select_color), 1, y + 1, w - 2, h - 3);
+	/* the unselected background is the window's background pixmap
+	 * (the texture rendered by updateTexture()), so restore it via
+	 * XClearArea before opening the cairo context that layers the
+	 * selection fill, bevel, glyphs and text on top */
+	if (!selected) {
 		if (scr->menu_item_texture->any.type == WTEX_SOLID)
-			drawFrame(scr, win, y, w, h, type);
-	} else {
-		if (scr->menu_item_texture->any.type == WTEX_SOLID) {
 			XClearArea(dpy, win, 0, y + 1, w - 1, h - 3, False);
-			/* draw the frame */
-			drawFrame(scr, win, y, w, h, type);
-		} else {
+		else
 			XClearArea(dpy, win, 0, y, w, h, False);
-		}
 	}
+
+	cr = WCairoBeginForDrawable(scr->wmscreen, win);
+	if (!cr)
+		return;
+
+	if (selected) {
+		WCairoSetSourceColor(cr, scr->select_color);
+		cairo_rectangle(cr, 1, y + 1, w - 2, h - 3);
+		cairo_fill(cr);
+	}
+	if (scr->menu_item_texture->any.type == WTEX_SOLID)
+		drawFrame(cr, aux, y, w, h, type);
 
 	if (selected) {
 		if (entry->flags.enabled)
@@ -849,33 +850,47 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		x += MENU_INDICATOR_SPACE + 2;
 
 	if (w_global.config->window_list_app_icons && entry->icon && entry->icon->image != None) {
-		int ix = x;
-		int iy = y + (h - entry->icon->height) / 2;
+		ix = x;
+		iy = y + (h - entry->icon->height) / 2;
 
+		isurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)entry->icon->image,
+						 rc->xvisual, entry->icon->width,
+						 entry->icon->height);
+		cairo_set_source_surface(cr, isurf, ix, iy);
 		if (entry->icon->mask != None) {
-			XSetClipMask(dpy, scr->copy_gc, entry->icon->mask);
-			XSetClipOrigin(dpy, scr->copy_gc, ix, iy);
+			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+								    (xcb_pixmap_t)entry->icon->mask,
+								    entry->icon->width,
+								    entry->icon->height);
+			cairo_mask_surface(cr, msurf, ix, iy);
+			cairo_surface_destroy(msurf);
 		} else {
-			XSetClipMask(dpy, scr->copy_gc, None);
-			XSetClipOrigin(dpy, scr->copy_gc, 0, 0);
+			cairo_rectangle(cr, ix, iy, entry->icon->width, entry->icon->height);
+			cairo_fill(cr);
 		}
-
-		XCopyArea(dpy, entry->icon->image, win, scr->copy_gc,
-			  0, 0, entry->icon->width, entry->icon->height, ix, iy);
-		XSetClipMask(dpy, scr->copy_gc, None);
-		XSetClipOrigin(dpy, scr->copy_gc, 0, 0);
+		cairo_surface_destroy(isurf);
 
 		x += entry->icon->width + 4;
 	}
 
-	WMDrawString(scr->wmscreen, win, color, scr->menu_entry_font,
-		     x, 3 + y + w_global.config->menu_text_clearance, entry->text, strlen(entry->text));
+	WMDrawStringCairo(cr, color, scr->menu_entry_font,
+			  x, 3 + y + w_global.config->menu_text_clearance,
+			  entry->text, strlen(entry->text));
 
 	if (entry->cascade >= 0) {
-		/* draw the cascade indicator */
-		XDrawLine(dpy, win, dim, w - 11, y + 6, w - 6, y + h / 2 - 1);
-		XDrawLine(dpy, win, light, w - 11, y + h - 8, w - 6, y + h / 2 - 1);
-		XDrawLine(dpy, win, dark, w - 12, y + 6, w - 12, y + h - 8);
+		/* the cascade arrow is a bevelled wedge, not axis-aligned,
+		 * so integer endpoints keep the diagonals looking as before */
+		cairo_set_line_width(cr, 1.0);
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+		WCairoSetSourceXColor(cr, &aux->dim);
+		cairo_move_to(cr, w - 11, y + 6);
+		cairo_line_to(cr, w - 6, y + h / 2 - 1);
+		cairo_stroke(cr);
+		WCairoSetSourceXColor(cr, &aux->light);
+		cairo_move_to(cr, w - 11, y + h - 8);
+		cairo_line_to(cr, w - 6, y + h / 2 - 1);
+		cairo_stroke(cr);
+		hvLine(cr, &aux->dark, w - 12, y + 6, w - 12, y + h - 8);
 	}
 
 	/* draw indicator */
@@ -943,27 +958,15 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		if (indicator) {
 			iw = indicator->width;
 			ih = indicator->height;
-			XSetClipMask(dpy, scr->copy_gc, indicator->mask);
-			XSetClipOrigin(dpy, scr->copy_gc, 5, y + (h - ih) / 2);
-			if (selected) {
-				if (entry->flags.enabled) {
-					XSetForeground(dpy, scr->copy_gc, WMColorPixel(scr->select_text_color));
-				} else {
-					XSetForeground(dpy, scr->copy_gc, WMColorPixel(scr->dtext_color));
-				}
-			} else {
-				if (entry->flags.enabled) {
-					XSetForeground(dpy, scr->copy_gc, WMColorPixel(scr->mtext_color));
-				} else {
-					XSetForeground(dpy, scr->copy_gc, WMColorPixel(scr->dtext_color));
-				}
-			}
-			XFillRectangle(dpy, win, scr->copy_gc, 5, y + (h - ih) / 2, iw, ih);
-			/*
-			 XCopyArea(dpy, indicator->image, win, scr->copy_gc, 0, 0,
-			 iw, ih, 5, y+(h-ih)/2);
-			*/
-			XSetClipOrigin(dpy, scr->copy_gc, 0, 0);
+			/* the indicator is a shape-only glyph: fill the text
+			 * colour through its mask so it tracks the selected
+			 * and disabled states like the label does */
+			WCairoSetSourceColor(cr, color);
+			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+								    (xcb_pixmap_t)indicator->mask,
+								    iw, ih);
+			cairo_mask_surface(cr, msurf, 5, y + (h - ih) / 2);
+			cairo_surface_destroy(msurf);
 		}
 	}
 
@@ -972,9 +975,12 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	if (entry->rtext && entry->cascade < 0) {
 		tw = WMWidthOfString(scr->menu_entry_font, entry->rtext, strlen(entry->rtext));
 
-		WMDrawString(scr->wmscreen, win, color, scr->menu_entry_font, w - 6 - tw,
-			     y + 3 + w_global.config->menu_text_clearance, entry->rtext, strlen(entry->rtext));
+		WMDrawStringCairo(cr, color, scr->menu_entry_font, w - 6 - tw,
+				  y + 3 + w_global.config->menu_text_clearance,
+				  entry->rtext, strlen(entry->rtext));
 	}
+
+	WCairoEnd(cr);
 }
 
 static void move_menus(WMenu * menu, int x, int y)
