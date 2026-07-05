@@ -1,18 +1,104 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 #include <wraster.h>
 #include <ctype.h>
 
+/* One horizontal or vertical device-pixel line. XDrawLine lights the
+ * pixel row/column at integer coordinates and includes both endpoints,
+ * cairo strokes are centred on the path with square caps that extend
+ * half the line width past each end, so shifting the path by 0.5 in
+ * both axes lands a width-1 stroke on exactly the same pixels. */
+static void hvLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
+{
+	WCairoSetSourceColor(cr, c);
+	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
+	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
+	cairo_stroke(cr);
+}
+
+void
+W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
+		  unsigned int width, unsigned int height, WMReliefType relief)
+{
+	WMColor *bgc, *wgc, *lgc, *dgc;
+
+	cairo_save(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+	switch (relief) {
+	case WRSimple:
+		WCairoSetSourceColor(cr, scr->black);
+		cairo_rectangle(cr, x + 0.5, y + 0.5, width - 1, height - 1);
+		cairo_stroke(cr);
+		cairo_restore(cr);
+		return;
+	case WRRaised:
+		bgc = scr->black; dgc = scr->darkGray;
+		wgc = scr->white; lgc = scr->gray;
+		break;
+	case WRSunken:
+		wgc = scr->darkGray; lgc = scr->black;
+		bgc = scr->white;    dgc = scr->gray;
+		break;
+	case WRPushed:
+		lgc = wgc = scr->black;
+		dgc = bgc = scr->white;
+		break;
+	case WRRidge:
+		lgc = bgc = scr->darkGray;
+		dgc = wgc = scr->white;
+		break;
+	case WRGroove:
+		wgc = dgc = scr->darkGray;
+		lgc = bgc = scr->white;
+		break;
+	default:
+		cairo_restore(cr);
+		return;
+	}
+
+	/* top left */
+	hvLine(cr, wgc, x, y, x + width - 1, y);
+	if (width > 2 && relief != WRRaised && relief != WRPushed)
+		hvLine(cr, lgc, x + 1, y + 1, x + width - 3, y + 1);
+
+	hvLine(cr, wgc, x, y, x, y + height - 1);
+	if (height > 2 && relief != WRRaised && relief != WRPushed)
+		hvLine(cr, lgc, x + 1, y + 1, x + 1, y + height - 3);
+
+	/* bottom right */
+	hvLine(cr, bgc, x, y + height - 1, x + width - 1, y + height - 1);
+	if (width > 2 && relief != WRPushed)
+		hvLine(cr, dgc, x + 1, y + height - 2, x + width - 2, y + height - 2);
+
+	hvLine(cr, bgc, x + width - 1, y, x + width - 1, y + height - 1);
+	if (height > 2 && relief != WRPushed)
+		hvLine(cr, dgc, x + width - 2, y + 1, x + width - 2, y + height - 2);
+
+	cairo_restore(cr);
+}
+
 void
 W_DrawRelief(W_Screen * scr, Drawable d, int x, int y, unsigned int width,
 	     unsigned int height, WMReliefType relief)
 {
-	W_DrawReliefWithGC(scr, d, x, y, width, height, relief,
-			   WMColorGC(scr->black), WMColorGC(scr->darkGray),
-			   WMColorGC(scr->gray), WMColorGC(scr->white));
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr, d);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, x, y, width, height, relief);
+	WCairoEnd(cr);
 }
 
+/* Legacy GC-based path kept only for wframe.c, which sets an X Region
+ * clip on the four GCs so the bevel skips the title-text span. Goes
+ * once that file's paint block acquires its own cairo_t and calls
+ * W_DrawReliefCairo() after cairo_clip(). */
 void
 W_DrawReliefWithGC(W_Screen * scr, Drawable d, int x, int y, unsigned int width,
 		   unsigned int height, WMReliefType relief, GC black, GC dark, GC light, GC white)

@@ -192,12 +192,7 @@ static void paint(WOSDView *osd)
 		pango_cairo_show_layout(cr, osd->font->layout);
 	}
 
-	/* WRSimple relief: a 1 px black border on the inside edge. Offset
-	 * by 0.5 so a line width of 1 lands on whole device pixels. */
-	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-	cairo_set_line_width(cr, 1.0);
-	cairo_rectangle(cr, 0.5, 0.5, w - 1, h - 1);
-	cairo_stroke(cr);
+	W_DrawReliefCairo(cr, W_VIEW_SCREEN(osd->view), 0, 0, w, h, WRSimple);
 
 	WCairoEnd(cr);
 }

@@ -575,6 +575,13 @@ int W_IMComposeKey(void *compose_state, KeySym ksym, char *buf, int buflen, KeyS
 void W_DrawRelief(W_Screen *scr, Drawable d, int x, int y, unsigned int width,
                   unsigned int height, WMReliefType relief);
 
+/* draw the same bevel onto a live cairo_t so a caller that already
+ * has one open (WOSDView, wframe.c after it sets a clip) folds the
+ * relief into its own paint pass */
+void W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
+                       unsigned int width, unsigned int height,
+                       WMReliefType relief);
+
 void W_DrawReliefWithGC(W_Screen *scr, Drawable d, int x, int y,
                         unsigned int width, unsigned int height,
                         WMReliefType relief,
