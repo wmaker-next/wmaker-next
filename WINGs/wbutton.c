@@ -1,4 +1,6 @@
 
+#include <cairo-xcb.h>
+
 #include "WINGsP.h"
 
 typedef struct W_Button {
@@ -219,43 +221,63 @@ WMButton *WMCreateButton(WMWidget * parent, WMButtonType type)
 static void updateDisabledMask(WMButton * bPtr)
 {
 	WMScreen *scr = WMWidgetScreen(bPtr);
+	RContext *rc = scr->rcontext;
 	Display *dpy = scr->display;
+	cairo_surface_t *ms, *stip, *imask;
+	cairo_pattern_t *pat;
+	cairo_t *cr;
+	int w, h;
 
-	if (bPtr->image && bPtr->dimage) {
-		XGCValues gcv;
+	if (!bPtr->image || !bPtr->dimage)
+		return;
 
-		if (bPtr->dimage->mask) {
-			XFreePixmap(dpy, bPtr->dimage->mask);
-			bPtr->dimage->mask = None;
-		}
-
-		if (bPtr->flags.dimsWhenDisabled) {
-			bPtr->dimage->mask = XCreatePixmap(dpy, scr->stipple,
-							   bPtr->dimage->width, bPtr->dimage->height, 1);
-
-			XSetForeground(dpy, scr->monoGC, 0);
-			XFillRectangle(dpy, bPtr->dimage->mask, scr->monoGC, 0, 0,
-				       bPtr->dimage->width, bPtr->dimage->height);
-
-			gcv.foreground = 1;
-			gcv.background = 0;
-			gcv.stipple = scr->stipple;
-			gcv.fill_style = FillStippled;
-			gcv.clip_mask = bPtr->image->mask;
-			gcv.clip_x_origin = 0;
-			gcv.clip_y_origin = 0;
-
-			XChangeGC(dpy, scr->monoGC, GCForeground | GCBackground | GCStipple
-				  | GCFillStyle | GCClipMask | GCClipXOrigin | GCClipYOrigin, &gcv);
-
-			XFillRectangle(dpy, bPtr->dimage->mask, scr->monoGC, 0, 0,
-				       bPtr->dimage->width, bPtr->dimage->height);
-
-			gcv.fill_style = FillSolid;
-			gcv.clip_mask = None;
-			XChangeGC(dpy, scr->monoGC, GCFillStyle | GCClipMask, &gcv);
-		}
+	if (bPtr->dimage->mask) {
+		XFreePixmap(dpy, bPtr->dimage->mask);
+		bPtr->dimage->mask = None;
 	}
+	if (!bPtr->flags.dimsWhenDisabled)
+		return;
+
+	/* the disabled-state mask is the enabled image shape halved by the
+	 * 50% checkerboard so every other pixel of the icon drops out and
+	 * the button background shows through: mask the checkerboard onto
+	 * a cleared A1 surface, then intersect with the image mask via
+	 * DEST_IN so bits outside the shape go back to zero */
+	w = bPtr->dimage->width;
+	h = bPtr->dimage->height;
+	bPtr->dimage->mask = XCreatePixmap(dpy, scr->stipple, w, h, 1);
+	ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+						 (xcb_pixmap_t)bPtr->dimage->mask, w, h);
+	cr = cairo_create(ms);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_paint(cr);
+
+	stip = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+						   (xcb_pixmap_t)scr->stipple, 8, 8);
+	pat = cairo_pattern_create_for_surface(stip);
+	cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
+	cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
+	cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+	cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	cairo_mask(cr, pat);
+	cairo_pattern_destroy(pat);
+	cairo_surface_destroy(stip);
+
+	if (bPtr->image->mask) {
+		imask = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							    (xcb_pixmap_t)bPtr->image->mask,
+							    bPtr->image->width,
+							    bPtr->image->height);
+		cairo_set_operator(cr, CAIRO_OPERATOR_DEST_IN);
+		cairo_set_source_surface(cr, imask, 0, 0);
+		cairo_paint(cr);
+		cairo_surface_destroy(imask);
+	}
+
+	cairo_destroy(cr);
+	cairo_surface_flush(ms);
+	cairo_surface_destroy(ms);
 }
 
 void WMSetButtonImageDefault(WMButton * bPtr)
