@@ -1,4 +1,5 @@
 
+#include <cairo.h>
 #include <WINGs/WINGsP.h>
 #include <X11/cursorfont.h>
 #include <stdint.h>
@@ -128,7 +129,6 @@ struct W_TableView {
 
 	WMColor *backColor;
 
-	GC gridGC;
 	WMColor *gridColor;
 
 	Cursor splitterCursor;
@@ -398,6 +398,23 @@ static void doScroll(WMWidget * self, void *data)
 	}
 }
 
+/* self-inverting one-pixel column-splitter guide: DIFFERENCE with a
+ * white source gives |1-c| per channel, so drawing the same line twice
+ * restores the original pixels just like the previous GXxor GC */
+static void invertVLine(WMScreen *scr, Window w, int x, int h)
+{
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr, w);
+	if (!cr)
+		return;
+	cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_rectangle(cr, x, 0, 1, h);
+	cairo_fill(cr);
+	WCairoEnd(cr);
+}
+
 static void splitterHandler(XEvent * event, void *data)
 {
 	(void) event;
@@ -407,10 +424,10 @@ static void splitterHandler(XEvent * event, void *data)
 	int cx, ox, offsX;
 	WMPoint pos;
 	WMScreen *scr = WMWidgetScreen(table);
-	GC gc = scr->ixorGC;
 	Display *dpy = WMScreenDisplay(scr);
 	int h = WMWidgetHeight(table) - 22;
 	Window w = WMViewXID(table->view);
+	XEvent ev;
 
 	pos = WMGetViewPosition(WMWidgetView(column->titleW));
 
@@ -418,11 +435,9 @@ static void splitterHandler(XEvent * event, void *data)
 
 	ox = cx = offsX;
 
-	XDrawLine(dpy, w, gc, cx + 20, 0, cx + 20, h);
+	invertVLine(scr, w, cx + 20, h);
 
 	while (!done) {
-		XEvent ev;
-
 		WMMaskEvent(dpy, ButtonMotionMask | ButtonReleaseMask, &ev);
 
 		switch (ev.type) {
@@ -436,8 +451,8 @@ static void splitterHandler(XEvent * event, void *data)
 			else
 				cx = offsX + ev.xmotion.x;
 
-			XDrawLine(dpy, w, gc, ox + 20, 0, ox + 20, h);
-			XDrawLine(dpy, w, gc, cx + 20, 0, cx + 20, h);
+			invertVLine(scr, w, ox + 20, h);
+			invertVLine(scr, w, cx + 20, h);
 			break;
 
 		case ButtonRelease:
@@ -447,7 +462,7 @@ static void splitterHandler(XEvent * event, void *data)
 		}
 	}
 
-	XDrawLine(dpy, w, gc, cx + 20, 0, cx + 20, h);
+	invertVLine(scr, w, cx + 20, h);
 	rearrangeHeader(table);
 	repaintTable(table);
 }
@@ -463,9 +478,6 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 {
 	WMTableView *table = wmalloc(sizeof(WMTableView));
 	WMScreen *scr = WMWidgetScreen(parent);
-	XGCValues gcv;
-
-	memset(table, 0, sizeof(WMTableView));
 
 	if (!tableClass) {
 		tableClass = W_RegisterUserWidget();
@@ -522,11 +534,6 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 	/*   table->gridColor = WMGrayColor(scr); */
 
 	table->backColor = WMWhiteColor(scr);
-
-	gcv.foreground = WMColorPixel(table->gridColor);
-	gcv.dashes = 1;
-	gcv.line_style = LineOnOffDash;
-	table->gridGC = XCreateGC(WMScreenDisplay(scr), W_DRAWABLE(scr), GCForeground, &gcv);
 
 	table->editingRow = -1;
 	table->clickedRow = -1;
@@ -776,7 +783,6 @@ void WMSetTableViewGridColor(WMTableView * table, WMColor * color)
 {
 	WMReleaseColor(table->gridColor);
 	table->gridColor = WMRetainColor(color);
-	XSetForeground(WMScreenDisplay(WMWidgetScreen(table)), table->gridGC, WMColorPixel(color));
 	repaintTable(table);
 }
 
@@ -813,51 +819,42 @@ void WMScrollTableViewRowToVisible(WMTableView * table, int row)
 static void drawGrid(WMTableView * table, WMRect rect)
 {
 	WMScreen *scr = WMWidgetScreen(table);
-	Display *dpy = WMScreenDisplay(scr);
+	WMTableColumn *column;
 	int i;
 	int y1, y2;
 	int x1, x2;
 	int xx;
 	Drawable d = WMGetPixmapXID(table->viewBuffer);
-	GC gc = table->gridGC;
+	cairo_t *cr;
 
-#if 0
-	char dashl[1] = { 1 };
+	cr = WCairoBeginForDrawable(scr, d);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, table->gridColor);
 
-	XSetDashes(dpy, gc, 0, dashl, 1);
-
-	y1 = (rect.pos.y / table->rowHeight - 1) * table->rowHeight;
-	y2 = y1 + (rect.size.height / table->rowHeight + 2) * table->rowHeight;
-#endif
 	y1 = 0;
 	y2 = W_VIEW_HEIGHT(table->tableView);
 
 	xx = -rect.pos.x;
 	for (i = 0; i < WMGetArrayItemCount(table->columns); i++) {
-		WMTableColumn *column;
-
-		XDrawLine(dpy, d, gc, xx, y1, xx, y2);
-
+		cairo_rectangle(cr, xx, y1, 1, y2 - y1 + 1);
 		column = WMGetFromArray(table->columns, i);
 		xx += column->width;
 	}
-	XDrawLine(dpy, d, gc, xx, y1, xx, y2);
+	cairo_rectangle(cr, xx, y1, 1, y2 - y1 + 1);
 
 	x1 = 0;
 	x2 = rect.size.width;
 
-	if (x2 <= x1)
-		return;
-#if 0
-	XSetDashes(dpy, gc, (rect.pos.x & 1), dashl, 1);
-#endif
+	if (x2 > x1) {
+		y1 = -rect.pos.y % table->rowHeight;
+		y2 = y1 + rect.size.height + table->rowHeight;
 
-	y1 = -rect.pos.y % table->rowHeight;
-	y2 = y1 + rect.size.height + table->rowHeight;
-
-	for (i = y1; i <= y2; i += table->rowHeight) {
-		XDrawLine(dpy, d, gc, x1, i, x2, i);
+		for (i = y1; i <= y2; i += table->rowHeight)
+			cairo_rectangle(cr, x1, i, x2 - x1 + 1, 1);
 	}
+	cairo_fill(cr);
+	WCairoEnd(cr);
 }
 
 static WMRange columnsInRect(WMTableView * table, WMRect rect)
@@ -984,10 +981,8 @@ static void repaintTable(WMTableView * table)
 						   W_VIEW_HEIGHT(table->tableView), WMScreenDepth(scr), 0);
 	}
 
-	XFillRectangle(scr->display,
-		       WMGetPixmapXID(table->viewBuffer),
-		       WMColorGC(table->backColor), 0, 0,
-		       W_VIEW_WIDTH(table->tableView), W_VIEW_HEIGHT(table->tableView));
+	WMPaintColorSwatch(table->backColor, WMGetPixmapXID(table->viewBuffer), 0, 0,
+			   W_VIEW_WIDTH(table->tableView), W_VIEW_HEIGHT(table->tableView));
 
 	rect = getVisibleRect(table);
 

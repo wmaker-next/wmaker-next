@@ -1,5 +1,7 @@
 
 #include <stdint.h>
+
+#include <cairo.h>
 #include <WINGs/WINGsP.h>
 
 #include "wtableview.h"
@@ -9,22 +11,22 @@
 typedef struct {
 	WMTableView *table;
 	WMFont *font;
-	GC gc;
-	GC selGC;
+	WMColor *back;
+	WMColor *selBack;
 	WMColor *textColor;
 } StringData;
 
 typedef struct {
 	WMTableView *table;
-	GC selGc;
+	WMColor *selBack;
 } PixmapData;
 
 typedef struct {
 	WMTextField *widget;
 	WMTableView *table;
 	WMFont *font;
-	GC gc;
-	GC selGC;
+	WMColor *back;
+	WMColor *selBack;
 	WMColor *textColor;
 } StringEditorData;
 
@@ -34,8 +36,8 @@ typedef struct {
 	WMFont *font;
 	char **options;
 	int count;
-	GC gc;
-	GC selGC;
+	WMColor *back;
+	WMColor *selBack;
 	WMColor *textColor;
 } EnumSelectorData;
 
@@ -43,78 +45,65 @@ typedef struct {
 	WMButton *widget;
 	WMTableView *table;
 	Bool state;
-	GC gc;
-	GC selGC;
+	WMColor *back;
+	WMColor *selBack;
 } BooleanSwitchData;
 
 static char *SelectionColor = "#bbbbcc";
 
-static void
-stringDraw(WMScreen * scr, Drawable d, GC gc, GC sgc, WMColor * textColor,
-	   WMFont * font, void *data, WMRect rect, Bool selected)
+/* one cell interior inset by one pixel from the grid line, filled in
+ * the row-state background then clipped so text or the pixmap glyph
+ * cannot overrun into the neighbouring cell */
+static cairo_t *cellBegin(WMScreen *scr, Drawable d, WMColor *back,
+			  WMColor *selBack, WMRect rect, Bool selected)
 {
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr, d);
+	if (!cr)
+		return NULL;
+	cairo_rectangle(cr, rect.pos.x + 1, rect.pos.y + 1,
+			rect.size.width - 1, rect.size.height - 1);
+	WCairoSetSourceColor(cr, selected ? selBack : back);
+	cairo_fill_preserve(cr);
+	cairo_clip(cr);
+	return cr;
+}
+
+static void
+stringDraw(WMScreen * scr, Drawable d, WMColor *back, WMColor *selBack,
+	   WMColor *textColor, WMFont *font, void *data, WMRect rect, Bool selected)
+{
+	cairo_t *cr;
 	int x, y;
-	XRectangle rects[1];
-	Display *dpy = WMScreenDisplay(scr);
 
 	x = rect.pos.x + 5;
 	y = rect.pos.y + (rect.size.height - WMFontHeight(font)) / 2;
 
-	rects[0].x = rect.pos.x + 1;
-	rects[0].y = rect.pos.y + 1;
-	rects[0].width = rect.size.width - 1;
-	rects[0].height = rect.size.height - 1;
-	XSetClipRectangles(dpy, gc, 0, 0, rects, 1, YXSorted);
-
-	if (!selected) {
-		XFillRectangles(dpy, d, gc, rects, 1);
-
-		WMDrawString(scr, d, textColor, font, x, y, data, strlen(data));
-	} else {
-		XFillRectangles(dpy, d, sgc, rects, 1);
-
-		WMDrawString(scr, d, textColor, font, x, y, data, strlen(data));
-	}
-
-	XSetClipMask(dpy, gc, None);
+	cr = cellBegin(scr, d, back, selBack, rect, selected);
+	if (!cr)
+		return;
+	WMDrawStringCairo(cr, textColor, font, x, y, data, strlen(data));
+	WCairoEnd(cr);
 }
 
-static void pixmapDraw(WMScreen * scr, Drawable d, GC gc, GC sgc, WMPixmap * pixmap, WMRect rect, Bool selected)
+static void pixmapDraw(WMScreen *scr, Drawable d, WMColor *back, WMColor *selBack,
+		       WMPixmap *pixmap, WMRect rect, Bool selected)
 {
-	int x, y;
-	XRectangle rects[1];
-	Display *dpy = WMScreenDisplay(scr);
+	cairo_t *cr;
 	WMSize size;
+	int x, y;
 
-	rects[0].x = rect.pos.x + 1;
-	rects[0].y = rect.pos.y + 1;
-	rects[0].width = rect.size.width - 1;
-	rects[0].height = rect.size.height - 1;
-	XSetClipRectangles(dpy, gc, 0, 0, rects, 1, YXSorted);
-
-	if (!selected) {
-		XFillRectangles(dpy, d, gc, rects, 1);
-
-		if (pixmap) {
-			size = WMGetPixmapSize(pixmap);
-			x = rect.pos.x + (rect.size.width - size.width) / 2;
-			y = rect.pos.y + (rect.size.height - size.height) / 2;
-
-			WMDrawPixmap(pixmap, d, x, y);
-		}
-	} else {
-		XFillRectangles(dpy, d, sgc, rects, 1);
-
-		if (pixmap) {
-			size = WMGetPixmapSize(pixmap);
-			x = rect.pos.x + (rect.size.width - size.width) / 2;
-			y = rect.pos.y + (rect.size.height - size.height) / 2;
-
-			WMDrawPixmap(pixmap, d, x, y);
-		}
+	cr = cellBegin(scr, d, back, selBack, rect, selected);
+	if (!cr)
+		return;
+	if (pixmap) {
+		size = WMGetPixmapSize(pixmap);
+		x = rect.pos.x + (rect.size.width - size.width) / 2;
+		y = rect.pos.y + (rect.size.height - size.height) / 2;
+		WCairoPaintPixmap(cr, pixmap, x, y);
 	}
-
-	XSetClipMask(dpy, gc, None);
+	WCairoEnd(cr);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -125,7 +114,7 @@ static void SECellPainter(WMTableColumnDelegate * self, WMTableColumn * column, 
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), False);
 }
 
@@ -135,7 +124,7 @@ static void selectedSECellPainter(WMTableColumnDelegate * self, WMTableColumn * 
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), True);
 }
 
@@ -173,8 +162,8 @@ WMTableColumnDelegate *WTCreateStringEditorDelegate(WMTableView * parent)
 	W_ReparentView(WMWidgetView(data->widget), WMGetTableViewDocumentView(parent), 0, 0);
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(WMCreateNamedColor(scr, SelectionColor, False));
+	data->back = WMWhiteColor(scr);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -195,7 +184,7 @@ static void ESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, 
 	uintptr_t i = (uintptr_t)WMTableViewDataForCell(table, column, row);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   strdata->options[i], WMTableViewRectForCell(table, column, row), False);
 }
 
@@ -206,7 +195,7 @@ static void selectedESCellPainter(WMTableColumnDelegate * self, WMTableColumn * 
 	uintptr_t i = (uintptr_t)WMTableViewDataForCell(table, column, row);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   strdata->options[i], WMTableViewRectForCell(table, column, row), True);
 }
 
@@ -247,8 +236,8 @@ WMTableColumnDelegate *WTCreateEnumSelectorDelegate(WMTableView * parent)
 	W_ReparentView(WMWidgetView(data->widget), WMGetTableViewDocumentView(parent), 0, 0);
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(WMCreateNamedColor(scr, SelectionColor, False));
+	data->back = WMWhiteColor(scr);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
 	data->textColor = WMBlackColor(scr);
 	data->count = 0;
 	data->options = NULL;
@@ -290,11 +279,11 @@ static void BSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, 
 
 	if (i) {
 		pixmapDraw(scr, d,
-			   strdata->gc, strdata->selGC, WMGetSystemPixmap(scr, WSICheckMark),
+			   strdata->back, strdata->selBack, WMGetSystemPixmap(scr, WSICheckMark),
 			   WMTableViewRectForCell(table, column, row), False);
 	} else {
 		pixmapDraw(scr, d,
-			   strdata->gc, strdata->selGC, NULL, WMTableViewRectForCell(table, column, row), False);
+			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), False);
 	}
 }
 
@@ -307,11 +296,11 @@ static void selectedBSCellPainter(WMTableColumnDelegate * self, WMTableColumn * 
 
 	if (i) {
 		pixmapDraw(scr, d,
-			   strdata->gc, strdata->selGC, WMGetSystemPixmap(scr, WSICheckMark),
+			   strdata->back, strdata->selBack, WMGetSystemPixmap(scr, WSICheckMark),
 			   WMTableViewRectForCell(table, column, row), True);
 	} else {
 		pixmapDraw(scr, d,
-			   strdata->gc, strdata->selGC, NULL, WMTableViewRectForCell(table, column, row), True);
+			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), True);
 	}
 }
 
@@ -355,8 +344,8 @@ WMTableColumnDelegate *WTCreateBooleanSwitchDelegate(WMTableView * parent)
 	data->table = parent;
 	color = WMCreateNamedColor(scr, SelectionColor, False);
 	WMSetWidgetBackgroundColor(data->widget, color);
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(color);
+	data->back = WMWhiteColor(scr);
+	data->selBack = color;
 
 	delegate->data = data;
 	delegate->drawCell = BSCellPainter;
@@ -375,7 +364,7 @@ static void SCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, i
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), False);
 }
 
@@ -385,7 +374,7 @@ static void selectedSCellPainter(WMTableColumnDelegate * self, WMTableColumn * c
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC, strdata->textColor, strdata->font,
+		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
 		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), True);
 }
 
@@ -397,8 +386,8 @@ WMTableColumnDelegate *WTCreateStringDelegate(WMTableView * parent)
 
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(WMCreateNamedColor(scr, SelectionColor, False));
+	data->back = WMWhiteColor(scr);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -418,7 +407,7 @@ static void PCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, i
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	pixmapDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC,
+		   strdata->back, strdata->selBack,
 		   (WMPixmap *) WMTableViewDataForCell(table, column, row),
 		   WMTableViewRectForCell(table, column, row), False);
 }
@@ -429,7 +418,7 @@ static void selectedPCellPainter(WMTableColumnDelegate * self, WMTableColumn * c
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	pixmapDraw(WMWidgetScreen(table), d,
-		   strdata->gc, strdata->selGC,
+		   strdata->back, strdata->selBack,
 		   (WMPixmap *) WMTableViewDataForCell(table, column, row),
 		   WMTableViewRectForCell(table, column, row), True);
 }
@@ -441,8 +430,8 @@ WMTableColumnDelegate *WTCreatePixmapDelegate(WMTableView * table)
 	StringData *data = wmalloc(sizeof(StringData));
 
 	data->table = table;
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(WMCreateNamedColor(scr, SelectionColor, False));
+	data->back = WMWhiteColor(scr);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
 
 	delegate->data = data;
 	delegate->drawCell = PCellPainter;
@@ -480,13 +469,13 @@ static void drawPSCell(WMTableColumnDelegate * self, Drawable d, WMTableColumn *
 
 		pixmapDraw(WMWidgetScreen(table),
 			   WMViewXID(WMGetTableViewDocumentView(table)),
-			   strdata->gc, strdata->selGC, pix, rect, selected);
+			   strdata->back, strdata->selBack, pix, rect, selected);
 
 		rect.pos.x += size.width - 1;
 		rect.size.width = owidth - size.width + 1;
 	}
 
-	stringDraw(WMWidgetScreen(table), d, strdata->gc, strdata->selGC,
+	stringDraw(WMWidgetScreen(table), d, strdata->back, strdata->selBack,
 		   strdata->textColor, strdata->font, str, rect, selected);
 }
 
@@ -508,8 +497,8 @@ WMTableColumnDelegate *WTCreatePixmapStringDelegate(WMTableView * parent)
 
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
-	data->gc = WMColorGC(WMWhiteColor(scr));
-	data->selGC = WMColorGC(WMCreateNamedColor(scr, SelectionColor, False));
+	data->back = WMWhiteColor(scr);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
