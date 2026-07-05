@@ -244,6 +244,14 @@ void WCairoSetSourceRColor(cairo_t *cr, const RColor *color)
 			      color->alpha / 255.0);
 }
 
+void WCairoSetSourceXColor(cairo_t *cr, const XColor *color)
+{
+	cairo_set_source_rgb(cr,
+			     color->red   / 65535.0,
+			     color->green / 65535.0,
+			     color->blue  / 65535.0);
+}
+
 /* ---- balloon path ---------------------------------------------------- */
 
 /* Rounded-rectangle body with a triangular tail on one edge, built as

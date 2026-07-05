@@ -477,6 +477,7 @@ void WCairoEnd(cairo_t *cr);
 
 void WCairoSetSourceColor(cairo_t *cr, WMColor *color);
 void WCairoSetSourceRColor(cairo_t *cr, const RColor *color);
+void WCairoSetSourceXColor(cairo_t *cr, const XColor *color);
 
 /* speech-bubble path: rounded body at (x,y,w,h) with a triangular
  * tail on the top or bottom edge near the left or right corner */

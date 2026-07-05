@@ -191,7 +191,10 @@ void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, Pixmap *tdat
 
 #define FREE_PIXMAP(p) if ((p)!=None) XFreePixmap(dpy, (p)), (p)=None
 
-void wDrawBevel(Drawable d, unsigned width, unsigned height,
+/* WREL_RAISED / WREL_ICON bevel in a WTexSolid's own light/dim/dark
+ * colours (opaque strokes, unlike wTextureCairoBevel's translucent
+ * add/subtract), used on the solid-texture titlebar and button paths */
+void wDrawBevel(cairo_t *cr, unsigned width, unsigned height,
                 WTexSolid *texture, int relief);
 
 #endif

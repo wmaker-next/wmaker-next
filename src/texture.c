@@ -28,6 +28,7 @@
 
 #include <wraster.h>
 #include <cairo.h>
+#include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
 #include "texture.h"
@@ -676,62 +677,56 @@ static void bevelImage(RImage * image, int relief)
 	}
 }
 
-void wDrawBevel(Drawable d, unsigned width, unsigned height, WTexSolid * texture, int relief)
+void wDrawBevel(cairo_t *cr, unsigned width, unsigned height, WTexSolid *texture, int relief)
 {
-	GC light, dim, dark;
-	XSegment segs[4];
+	const XColor *light, *dim, *dark;
+	int nx;
 
 	if (relief == WREL_FLAT)
 		return;
 
-	light = texture->light_gc;
-	dim = texture->dim_gc;
-	dark = texture->dark_gc;
+	light = &texture->light;
+	dim = &texture->dim;
+	dark = &texture->dark;
+	nx = (w_global.config->new_style == TS_NEXT);
+
 	switch (relief) {
 	case WREL_MENUENTRY:
 	case WREL_RAISED:
 	case WREL_ICON:
-		segs[0].x1 = 1;
-		segs[0].x2 = width - 2;
-		segs[0].y2 = segs[0].y1 = height - 2;
-		segs[1].x1 = width - 2;
-		segs[1].y1 = 1;
-		segs[1].x2 = width - 2;
-		segs[1].y2 = height - 2;
-		if (w_global.config->new_style == TS_NEXT) {
-			XDrawSegments(dpy, d, dark, segs, 2);
-		} else {
-			XDrawSegments(dpy, d, dim, segs, 2);
-		}
-		segs[0].x1 = 0;
-		segs[0].x2 = width - 1;
-		segs[0].y2 = segs[0].y1 = height - 1;
-		segs[1].x1 = segs[1].x2 = width - 1;
-		segs[1].y1 = 0;
-		segs[1].y2 = height - 1;
-		if (w_global.config->new_style == TS_NEXT) {
-			XDrawSegments(dpy, d, light, segs, 2);
-		} else {
-			XDrawSegments(dpy, d, dark, segs, 2);
-		}
-		segs[0].x1 = segs[0].y1 = segs[0].y2 = 0;
-		segs[0].x2 = width - 2;
-		segs[1].x1 = segs[1].y1 = 0;
-		segs[1].x2 = 0;
-		segs[1].y2 = height - 2;
-		if (w_global.config->new_style == TS_NEXT) {
-			XDrawSegments(dpy, d, dark, segs, 2);
-		} else {
-			XDrawSegments(dpy, d, light, segs, 2);
-		}
+		cairo_save(cr);
+		cairo_set_line_width(cr, 1.0);
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+		/* inner bottom-right shadow */
+		WCairoSetSourceXColor(cr, nx ? dark : dim);
+		cairo_move_to(cr, 1.5, height - 1.5);
+		cairo_line_to(cr, width - 1.5, height - 1.5);
+		cairo_line_to(cr, width - 1.5, 1.5);
+		cairo_stroke(cr);
+
+		/* outer bottom-right */
+		WCairoSetSourceXColor(cr, nx ? light : dark);
+		cairo_move_to(cr, 0.5, height - 0.5);
+		cairo_line_to(cr, width - 0.5, height - 0.5);
+		cairo_line_to(cr, width - 0.5, 0.5);
+		cairo_stroke(cr);
+
+		/* top-left highlight */
+		WCairoSetSourceXColor(cr, nx ? dark : light);
+		cairo_move_to(cr, 0.5, height - 1.5);
+		cairo_line_to(cr, 0.5, 0.5);
+		cairo_line_to(cr, width - 1.5, 0.5);
+		cairo_stroke(cr);
+
 		if (relief == WREL_ICON) {
-			segs[0].x1 = segs[0].y1 = segs[0].y2 = 1;
-			segs[0].x2 = width - 2;
-			segs[1].x1 = segs[1].y1 = 1;
-			segs[1].x2 = 1;
-			segs[1].y2 = height - 2;
-			XDrawSegments(dpy, d, light, segs, 2);
+			WCairoSetSourceXColor(cr, light);
+			cairo_move_to(cr, 1.5, height - 1.5);
+			cairo_line_to(cr, 1.5, 1.5);
+			cairo_line_to(cr, width - 1.5, 1.5);
+			cairo_stroke(cr);
 		}
+		cairo_restore(cr);
 		break;
 	}
 }

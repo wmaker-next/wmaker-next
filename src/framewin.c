@@ -348,10 +348,35 @@ static void checkTitleSize(WFrameWindow * fwin);
 
 static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h);
 
-static void paintButton(WCoreWindow * button, WTexture * texture,
-			unsigned long color, WPixmap * image, int pushed, int from_xpm);
+static void paintButton(WCoreWindow *button, WTexture *texture,
+			WMColor *color, WPixmap *image, int pushed, int from_xpm);
 
 static void updateTitlebar(WFrameWindow * fwin);
+
+/* Paint a screen-depth server pixmap at (x,y) shaped by an optional
+ * depth-1 server mask, both wrapped in transient xcb surfaces so
+ * nothing outlives the paint. Used for the titlebar app-icon blit
+ * where the source is already an RConvertImageMask() pair and there is
+ * no RImage to reach through RImageCairoSurface(). */
+static void maskedBlit(cairo_t *cr, RContext *rc, Pixmap image, Pixmap mask,
+		       int iw, int ih, int x, int y)
+{
+	cairo_surface_t *isurf, *msurf;
+
+	isurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)image,
+					 rc->xvisual, iw, ih);
+	cairo_set_source_surface(cr, isurf, x, y);
+	if (mask != None) {
+		msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+							    (xcb_pixmap_t)mask, iw, ih);
+		cairo_mask_surface(cr, msurf, x, y);
+		cairo_surface_destroy(msurf);
+	} else {
+		cairo_rectangle(cr, x, y, iw, ih);
+		cairo_fill(cr);
+	}
+	cairo_surface_destroy(isurf);
+}
 
 static void allocFrameBorderPixel(WFrameWindow *fwin, WMColor *color, unsigned long **pixel)
 {
@@ -1305,41 +1330,66 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 	if (fwin->titlebar && !fwin->flags.repaint_only_resizebar
 	    && fwin->title_texture[state]->any.type == WTEX_SOLID
 	    && w_global.config->new_style != TS_FLAT) {
-		wDrawBevel(fwin->titlebar->window, fwin->titlebar->width,
-			   fwin->titlebar->height, (WTexSolid *) fwin->title_texture[state], WREL_RAISED);
+		cairo_t *cr;
+
+		cr = WCairoBeginForDrawable(scr->wmscreen, fwin->titlebar->window);
+		if (cr) {
+			wDrawBevel(cr, fwin->titlebar->width, fwin->titlebar->height,
+				   (WTexSolid *)fwin->title_texture[state], WREL_RAISED);
+			WCairoEnd(cr);
+		}
 	}
 
 	if (fwin->resizebar && !fwin->flags.repaint_only_titlebar
 	    && fwin->resizebar_texture[0]->any.type == WTEX_SOLID) {
-		Window win;
-		int w, h;
-		int cw;
-		GC light_gc, dim_gc;
-		WTexSolid *texture = (WTexSolid *) fwin->resizebar_texture[0];
+		WTexSolid *texture = (WTexSolid *)fwin->resizebar_texture[0];
+		cairo_t *cr;
+		int w, h, cw;
 
 		w = fwin->resizebar->width;
 		h = fwin->resizebar->height;
 		cw = fwin->resizebar_corner_width;
-		light_gc = texture->light_gc;
-		dim_gc = texture->dim_gc;
-		win = fwin->resizebar->window;
 
-		XDrawLine(dpy, win, dim_gc, 0, 0, w, 0);
-		XDrawLine(dpy, win, light_gc, 0, 1, w, 1);
+		cr = WCairoBeginForDrawable(scr->wmscreen, fwin->resizebar->window);
+		if (cr) {
+			cairo_set_line_width(cr, 1.0);
+			cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-		XDrawLine(dpy, win, dim_gc, cw, 2, cw, h);
-		XDrawLine(dpy, win, light_gc, cw + 1, 2, cw + 1, h);
+			WCairoSetSourceXColor(cr, &texture->dim);
+			cairo_move_to(cr, 0.5, 0.5);
+			cairo_line_to(cr, w + 0.5, 0.5);
+			cairo_move_to(cr, cw + 0.5, 2.5);
+			cairo_line_to(cr, cw + 0.5, h + 0.5);
+			cairo_move_to(cr, w - cw - 1.5, 2.5);
+			cairo_line_to(cr, w - cw - 1.5, h + 0.5);
+			cairo_stroke(cr);
 
-		XDrawLine(dpy, win, dim_gc, w - cw - 2, 2, w - cw - 2, h);
-		XDrawLine(dpy, win, light_gc, w - cw - 1, 2, w - cw - 1, h);
+			WCairoSetSourceXColor(cr, &texture->light);
+			cairo_move_to(cr, 0.5, 1.5);
+			cairo_line_to(cr, w + 0.5, 1.5);
+			cairo_move_to(cr, cw + 1.5, 2.5);
+			cairo_line_to(cr, cw + 1.5, h + 0.5);
+			cairo_move_to(cr, w - cw - 0.5, 2.5);
+			cairo_line_to(cr, w - cw - 0.5, h + 0.5);
+			cairo_stroke(cr);
 
 #ifdef SHADOW_RESIZEBAR
-		XDrawLine(dpy, win, light_gc, 0, 1, 0, h - 1);
-		XDrawLine(dpy, win, dim_gc, w - 1, 2, w - 1, h - 1);
-		XDrawLine(dpy, win, dim_gc, 1, h - 1, cw, h - 1);
-		XDrawLine(dpy, win, dim_gc, cw + 2, h - 1, w - cw - 2, h - 1);
-		XDrawLine(dpy, win, dim_gc, w - cw, h - 1, w - 1, h - 1);
+			cairo_move_to(cr, 0.5, 1.5);
+			cairo_line_to(cr, 0.5, h - 0.5);
+			cairo_stroke(cr);
+			WCairoSetSourceXColor(cr, &texture->dim);
+			cairo_move_to(cr, w - 0.5, 2.5);
+			cairo_line_to(cr, w - 0.5, h - 0.5);
+			cairo_move_to(cr, 1.5, h - 0.5);
+			cairo_line_to(cr, cw + 0.5, h - 0.5);
+			cairo_move_to(cr, cw + 2.5, h - 0.5);
+			cairo_line_to(cr, w - cw - 1.5, h - 0.5);
+			cairo_move_to(cr, w - cw + 0.5, h - 0.5);
+			cairo_line_to(cr, w - 0.5, h - 0.5);
+			cairo_stroke(cr);
 #endif				/* SHADOW_RESIZEBAR */
+			WCairoEnd(cr);
+		}
 	}
 
 	if (fwin->titlebar && !fwin->flags.repaint_only_resizebar) {
@@ -1404,17 +1454,20 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 #endif
 
 		if (icon_visible) {
+			cairo_t *cr;
 			int iy = (fwin->titlebar->height - fwin->titlebar_icon_size) / 2;
-			XSetClipMask(dpy, scr->copy_gc, fwin->titlebar_icon_mask);
-			XSetClipOrigin(dpy, scr->copy_gc, icon_x, iy);
-			XCopyArea(dpy, fwin->titlebar_icon, fwin->titlebar->window, scr->copy_gc,
-				  0, 0, fwin->titlebar_icon_size, fwin->titlebar_icon_size,
-				  icon_x, iy);
-			XSetClipMask(dpy, scr->copy_gc, None);
+
+			cr = WCairoBeginForDrawable(scr->wmscreen, fwin->titlebar->window);
+			if (cr) {
+				maskedBlit(cr, scr->rcontext, fwin->titlebar_icon,
+					   fwin->titlebar_icon_mask,
+					   fwin->titlebar_icon_size, fwin->titlebar_icon_size,
+					   icon_x, iy);
+				WCairoEnd(cr);
+			}
 		}
 
 		if (fwin->title) {
-			Drawable buf;
 			char *title;
 
 			title = ShrinkString(*fwin->font, fwin->title, fwin->titlebar->width - lofs - rofs);
@@ -1446,32 +1499,19 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 				break;
 			}
 
-			/* We use a w+2 buffer to have an extra pixel on the left and
-			 * another one on the right. This is because for some odd reason,
-			 * sometimes when using AA fonts (when libfreetype2 is compiled
-			 * with bytecode interpreter turned off), some fonts are drawn
-			 * starting from x = -1 not from 0 as requested. Observed with
-			 * capital A letter on the bold 'trebuchet ms' font. -Dan
-			 */
-			buf = XCreatePixmap(dpy, fwin->titlebar->window, w + 2, h, scr->w_depth);
-
-			XSetClipMask(dpy, scr->copy_gc, None);
-
-			if (fwin->title_texture[state]->any.type != WTEX_SOLID) {
-				XCopyArea(dpy, fwin->title_back[state], buf, scr->copy_gc,
-					  x - 1, y, w + 2, h, 0, 0);
-			} else {
-				XSetForeground(dpy, scr->copy_gc, fwin->title_texture[state]->solid.normal.pixel);
-				XFillRectangle(dpy, buf, scr->copy_gc, 0, 0, w + 2, h);
-			}
-
-			/*XDrawRectangle(dpy, buf, WMColorGC(scr->white),1,0,w,h-1); */
-			WMDrawString(scr->wmscreen, buf, fwin->title_color[state],
-				     *fwin->font, 1, 0, title, titlelen);
-
-			XCopyArea(dpy, buf, fwin->titlebar->window, scr->copy_gc, 0, 0, w + 2, h, x - 1, y);
-
-			XFreePixmap(dpy, buf);
+			/* pangocairo lays glyphs out with a correct sub-pixel
+			 * origin so the old off-screen buffer that padded a
+			 * pixel either side for an Xft x=-1 quirk is gone,
+			 * but a repeat paint without an intervening clear (a
+			 * partial Expose after a state-change paint) would
+			 * OVER-blend the AA fringe onto itself, so restore
+			 * the window background under the text span first
+			 * and the draw stays idempotent */
+			XClearArea(dpy, fwin->titlebar->window,
+				   x - 1, y, w + 2, h, False);
+			WMDrawString(scr->wmscreen, fwin->titlebar->window,
+				     fwin->title_color[state], *fwin->font,
+				     x, y, title, titlelen);
 
 			wfree(title);
 		}
@@ -2015,124 +2055,129 @@ static void checkTitleSize(WFrameWindow * fwin)
 		fwin->flags.incomplete_title = 0;
 }
 
-static void paintButton(WCoreWindow * button, WTexture * texture, unsigned long color, WPixmap * image, int pushed, int from_xpm)
+static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
+			WPixmap *image, int pushed, int from_xpm)
 {
 	WScreen *scr = button->screen_ptr;
-	GC copy_gc = scr->copy_gc;
-	int x = 0, y = 0, d = 0;
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *msurf = NULL;
+	cairo_t *cr;
+	int x, y, d = 0;
 	int left = 0, width = 0;
+	int bw = button->width, bh = button->height;
+	int rw, rh, stencil;
 
 	/* a theme-supplied colour pixmap must keep its own colours, the
 	 * from_xpm path stencils the mask in title_color which would turn
 	 * a red close circle into a title-coloured silhouette, so route
-	 * themed images through the XCopyArea branch and let the press
-	 * feedback come from the d=1 offset and the optional second half
-	 * of a double-wide image */
+	 * themed images through the pixmap-source branch and let the
+	 * press feedback come from the d=1 offset and the optional second
+	 * half of a double-wide image */
 	if (image && image->themed)
 		from_xpm = 0;
 
-	/* setup stuff according to the state */
-	if (pushed) {
-		if (image) {
-			if (image->width >= image->height * 2) {
-				/* the image contains 2 pictures: the second is for the
-				 * pushed state */
-				width = image->width / 2;
-				left = image->width / 2;
-			} else {
-				width = image->width;
-			}
-		}
-		XSetClipMask(dpy, copy_gc, None);
-		if (w_global.config->new_style == TS_NEXT)
-			XSetForeground(dpy, copy_gc, scr->black_pixel);
-		else
-			XSetForeground(dpy, copy_gc, scr->white_pixel);
-
-		d = 1;
-		if (w_global.config->new_style == TS_NEW) {
-			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
-			XSetForeground(dpy, copy_gc, scr->black_pixel);
-			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width - 1, button->height - 1);
-		} else if (w_global.config->new_style == TS_FLAT) {
-			/* keep the texture slice as the pushed background so a
-			 * round pixmap stays flush, the press feedback is the
-			 * darkened image and the 1 px offset only */
-			XClearWindow(dpy, button->window);
-		} else if (w_global.config->new_style == TS_OLD) {
-			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
-			XSetForeground(dpy, copy_gc, scr->black_pixel);
-			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
+	if (image) {
+		if (image->width >= image->height * 2) {
+			/* the image contains 2 pictures: the second is for the
+			 * pushed state */
+			width = image->width / 2;
+			if (pushed)
+				left = width;
 		} else {
-			XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width-3, button->height-3);
-			XSetForeground(dpy, copy_gc, scr->black_pixel);
-			XDrawRectangle(dpy, button->window, copy_gc, 0, 0, button->width-3, button->height-3);
+			width = image->width;
 		}
-	} else {
+	}
+
+	if (!pushed || w_global.config->new_style == TS_FLAT)
 		XClearWindow(dpy, button->window);
 
-		if (image) {
-			if (image->width >= image->height * 2)
-				width = image->width / 2;
-			else
-				width = image->width;
-		}
-		d = 0;
+	cr = WCairoBeginForDrawable(scr->wmscreen, button->window);
+	if (!cr)
+		return;
 
+	if (pushed) {
+		d = 1;
+		/* keep the texture slice as the pushed background under
+		 * TS_FLAT so a round pixmap stays flush, the press feedback
+		 * is the darkened glyph and the 1 px offset only */
+		if (w_global.config->new_style != TS_FLAT) {
+			if (w_global.config->new_style == TS_NEXT)
+				cairo_set_source_rgb(cr, 0, 0, 0);
+			else
+				cairo_set_source_rgb(cr, 1, 1, 1);
+			if (w_global.config->new_style == TS_NEW) {
+				rw = bw - 1;
+				rh = bh - 1;
+			} else if (w_global.config->new_style == TS_OLD) {
+				rw = bw;
+				rh = bh;
+			} else {
+				rw = bw - 3;
+				rh = bh - 3;
+			}
+			cairo_rectangle(cr, 0, 0, rw, rh);
+			cairo_fill(cr);
+			cairo_set_source_rgb(cr, 0, 0, 0);
+			cairo_set_line_width(cr, 1.0);
+			cairo_rectangle(cr, 0.5, 0.5, rw, rh);
+			cairo_stroke(cr);
+		}
+	} else {
 		if (w_global.config->new_style == TS_NEW) {
-			if (texture->any.type == WTEX_SOLID || pushed)
-				wDrawBevel(button->window, button->width, button->height,
-					   (WTexSolid *) texture, WREL_RAISED);
+			if (texture->any.type == WTEX_SOLID)
+				wDrawBevel(cr, bw, bh, (WTexSolid *)texture, WREL_RAISED);
 		} else if (w_global.config->new_style != TS_FLAT) {
-			wDrawBevel(button->window, button->width, button->height,
-				   scr->widget_texture, WREL_RAISED);
+			wDrawBevel(cr, bw, bh, scr->widget_texture, WREL_RAISED);
 		}
 	}
 
 	if (image) {
-		/* display image */
-		XSetClipMask(dpy, copy_gc, image->mask);
-		x = (button->width - width) / 2 + d;
-		y = (button->height - image->height) / 2 + d;
-		XSetClipOrigin(dpy, copy_gc, x - left, y);
-		if (!TS_NEW_GEOM(w_global.config->new_style)) {
-			XSetForeground(dpy, copy_gc, scr->black_pixel);
-			if (!pushed) {
-				if (image->depth == 1)
-					XCopyPlane(dpy, image->image, button->window, copy_gc,
-						   left, 0, width, image->height, x, y, 1);
-				else
-					XCopyArea(dpy, image->image, button->window, copy_gc,
-						  left, 0, width, image->height, x, y);
-			} else {
-				if (w_global.config->new_style == TS_OLD) {
-					XSetForeground(dpy, copy_gc, scr->dark_pixel);
-					if (from_xpm)
-						XFillRectangle(dpy, button->window, copy_gc, 0, 0,
-								button->width, button->height);
-					else
-						XCopyArea(dpy, image->image, button->window, copy_gc,
-							left, 0, width, image->height, x, y);
-				} else {
-					XSetForeground(dpy, copy_gc, scr->black_pixel);
-					XCopyArea(dpy, image->image, button->window, copy_gc,
-						  left, 0, width, image->height, x, y);
-				}
-			}
-		} else {
-			if (pushed) {
-				XSetForeground(dpy, copy_gc, scr->black_pixel);
-			} else {
-				XSetForeground(dpy, copy_gc, color);
-				XSetBackground(dpy, copy_gc, texture->any.color.pixel);
-			}
-			if (from_xpm)
-				XFillRectangle(dpy, button->window, copy_gc, 0, 0, button->width, button->height);
+		cairo_surface_t *isurf = NULL;
+
+		x = (bw - width) / 2 + d;
+		y = (bh - image->height) / 2 + d;
+
+		/* built-in glyphs are stencilled through the mask in a
+		 * flat colour under TS_NEW/TS_FLAT (title colour normally,
+		 * black when pushed) and under TS_OLD when pushed (dark
+		 * grey), every other combination blits the pixmap itself */
+		stencil = from_xpm && (TS_NEW_GEOM(w_global.config->new_style)
+				       || (pushed && w_global.config->new_style == TS_OLD));
+
+		/* the mask (and image, when double-wide) covers both halves,
+		 * offset the source origin so the wanted half sits under
+		 * (x,y) and clip to that half so the other never bleeds */
+		cairo_rectangle(cr, x, y, width, image->height);
+		cairo_clip(cr);
+
+		if (stencil) {
+			if (!TS_NEW_GEOM(w_global.config->new_style))
+				WCairoSetSourceColor(cr, scr->darkGray);
+			else if (pushed)
+				cairo_set_source_rgb(cr, 0, 0, 0);
 			else
-				XCopyArea(dpy, image->image, button->window, copy_gc,
-					left, 0, width, image->height, x, y);
+				WCairoSetSourceColor(cr, color);
+		} else {
+			isurf = cairo_xcb_surface_create(rc->xc,
+					(xcb_drawable_t)image->image, rc->xvisual,
+					image->width, image->height);
+			cairo_set_source_surface(cr, isurf, x - left, y);
 		}
+
+		if (image->mask != None) {
+			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+					(xcb_pixmap_t)image->mask,
+					image->width, image->height);
+			cairo_mask_surface(cr, msurf, x - left, y);
+			cairo_surface_destroy(msurf);
+		} else {
+			cairo_paint(cr);
+		}
+		if (isurf)
+			cairo_surface_destroy(isurf);
 	}
+
+	WCairoEnd(cr);
 }
 
 static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
@@ -2157,7 +2202,7 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 			int lb_index = TS_NEW_GEOM(w_global.config->new_style) && (fwin->flags.state == 1) ? 1 : 0;
 
 			paintButton(button, fwin->title_texture[fwin->flags.state],
-				    WMColorPixel(fwin->title_color[fwin->flags.state]),
+				    fwin->title_color[fwin->flags.state],
 				    fwin->languagebutton_image[lb_index],
 				    False, False);
 		}
@@ -2165,7 +2210,7 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 	}
 #endif
 	paintButton(button, fwin->title_texture[fwin->flags.state],
-		    WMColorPixel(fwin->title_color[fwin->flags.state]),
+		    fwin->title_color[fwin->flags.state],
 		    fwin->button_image[r], False, wtb_role_info[r].from_xpm);
 }
 
@@ -2200,7 +2245,7 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 	XEvent ev;
 	int r, done = 0, execute = 1, from_xpm;
 	WTexture *texture;
-	unsigned long pixel;
+	WMColor *color;
 	int clickButton = event->xbutton.button;
 
 	for (r = 0; r < WTB_ROLE_COUNT; r++)
@@ -2231,9 +2276,9 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 	}
 #endif
 
-	pixel = WMColorPixel(fwin->title_color[fwin->flags.state]);
+	color = fwin->title_color[fwin->flags.state];
 	texture = fwin->title_texture[fwin->flags.state];
-	paintButton(button, texture, pixel, image, True, from_xpm);
+	paintButton(button, texture, color, image, True, from_xpm);
 
 	while (!done) {
 		WMMaskEvent(dpy, LeaveWindowMask | EnterWindowMask | ButtonReleaseMask
@@ -2241,12 +2286,12 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 		switch (ev.type) {
 		case LeaveNotify:
 			execute = 0;
-			paintButton(button, texture, pixel, image, False, from_xpm);
+			paintButton(button, texture, color, image, False, from_xpm);
 			break;
 
 		case EnterNotify:
 			execute = 1;
-			paintButton(button, texture, pixel, image, True, from_xpm);
+			paintButton(button, texture, color, image, True, from_xpm);
 			break;
 
 		case ButtonPress:
@@ -2261,7 +2306,7 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 			WMHandleEvent(&ev);
 		}
 	}
-	paintButton(button, texture, pixel, image, False, from_xpm);
+	paintButton(button, texture, color, image, False, from_xpm);
 
 	if (execute && fwin->on_click_button[r])
 		(*fwin->on_click_button[r]) (button, fwin->child, &ev);
