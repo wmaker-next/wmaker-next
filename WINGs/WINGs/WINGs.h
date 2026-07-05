@@ -883,9 +883,7 @@ void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d,
                               unsigned width, unsigned height);
 
 /* Drop any per-screen render state pointing at d before the caller
- * destroys d: evict the cached size and retarget the shared XftDraw
- * so the next paint does not touch a server-side resource that was
- * auto-freed with the drawable. */
+ * destroys d, so the next paint does not reuse a stale cache entry. */
 void WMScreenAbandonDrawable(WMScreen *scr, Drawable d);
 
 /* Detach every cached WMFont for this screen so the next WMCreateFont re-opens

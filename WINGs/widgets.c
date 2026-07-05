@@ -2,8 +2,7 @@
 #include "WINGsP.h"
 #include "wconfig.h"
 
-#include <X11/Xft/Xft.h>
-
+#include <fontconfig/fontconfig.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib-xcb.h>
@@ -643,7 +642,7 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->lastEventTime = 0;
 	scrPtr->colormap = context->cmap;
 	/* wraster only exposes the xcb visualtype now, so resolve the
-	 * libX11 Visual* WINGs hands to Xft and XCreateWindow here */
+	 * libX11 Visual* WINGs hands to XCreateWindow here */
 	vtempl.visualid = context->xvisual->visual_id;
 	vinfo = XGetVisualInfo(display, VisualIDMask, &vtempl, &nret);
 	scrPtr->visual = vinfo ? vinfo[0].visual : DefaultVisual(display, screen);
@@ -652,11 +651,14 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 
 	scrPtr->rootWin = RootWindow(display, screen);
 
+	/* WMCreateFont() calls FcNameParse() before anything else has
+	 * initialised fontconfig (XftFontOpenName used to do it as a
+	 * side effect), so do it once here and silence the warning */
+	FcInit();
+
 	scrPtr->fontCache = WMCreateHashTable(WMStringPointerHashCallbacks);
 	scrPtr->drawableSize = WMCreateHashTable(WMIntHashCallbacks);
 	scrPtr->compositor_running = W_ScreenCheckCompositor(scrPtr);
-
-	scrPtr->xftdraw = XftDrawCreate(scrPtr->display, W_DRAWABLE(scrPtr), scrPtr->visual, scrPtr->colormap);
 
 	/* Create missing CUT_BUFFERs */
 	rootWinProps = XListProperties(display, scrPtr->rootWin, &count);

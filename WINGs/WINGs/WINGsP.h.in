@@ -5,7 +5,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-@USE_PANGO@#include <pango/pango.h>
+#include <pango/pango.h>
 
 #include <WINGs/WINGs.h>
 #include <WINGs/WXProp.h>
@@ -98,8 +98,6 @@ typedef struct W_Screen {
     RContext *rcontext;
 
     struct W_IMContext *imctx;
-
-    struct _XftDraw *xftdraw;          /* shared XftDraw */
 
     /* Drawable -> packed (width<<16 | height), fed from the four
      * create/resize chokepoints so cairo surface acquisition never
@@ -508,22 +506,15 @@ void W_CallDestroyHandlers(W_View *view);
 
 /* ---[ wfont.c ]--------------------------------------------------------- */
 
-/* retarget the shared XftDraw off d before d is destroyed. Called only
- * from WMScreenAbandonDrawable(), and goes with the XftDraw itself once
- * the render sink moves to pangocairo. */
-void W_XftAbandonDrawable(WMScreen *scr, Drawable d);
-
 typedef struct W_Font {
     struct W_Screen *screen;
-
-    struct _XftFont *font;
 
     short height;
     short y;
     short refCount;
     char *name;
 
-@USE_PANGO@    PangoLayout *layout;
+    PangoLayout *layout;
 } W_Font;
 
 #define W_FONTID(f)		(f)->font->fid

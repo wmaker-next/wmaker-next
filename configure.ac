@@ -782,12 +782,9 @@ AC_SUBST(XCB_LIBS)
 dnl Cairo rendering and PangoCairo text layout (required)
 dnl =====================================================
 dnl cairo-xcb draws onto the shared xcb connection resolved above and
-dnl pangocairo replaces the previous pangoxft render sink. cairo 1.16 is
-dnl the floor for a stable cairo-xcb backend and is in every maintained
-dnl distribution. pangoxft stays in this list only until the WINGs font
-dnl layer stops calling pango_xft_render_layout(), it is dropped in the
-dnl commit that swaps the render sink to pango_cairo_show_layout().
-PKG_CHECK_MODULES([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo pangoxft], [],
+dnl pangocairo is the WINGs text render sink. cairo 1.16 is the floor for
+dnl a stable cairo-xcb backend and is in every maintained distribution.
+PKG_CHECK_MODULES([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo], [],
     [AC_MSG_ERROR([cairo (>= 1.16 with the xcb backend) and pangocairo are required -- $CAIRO_PKG_ERRORS])])
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
@@ -982,15 +979,6 @@ AS_IF([test "x$enable_xsmp" != "xno"],
      unsupported="$unsupported XSMP"])
 AC_SUBST(XSMP_CFLAGS)
 AC_SUBST(XSMP_LIBS)
-
-
-dnl PANGO support
-dnl =============
-dnl PangoCairo is a required dependency (see the CAIRO check above), so the
-dnl former --disable-pango opt-out and its raw-Xft fallback branch are gone.
-dnl Keep the USE_PANGO define for now so wfont.c and the WINGsP.h.in filter
-dnl step build unchanged, both go once the render sink moves to PangoCairo.
-AC_DEFINE([USE_PANGO], [1], [defined when the pango library is used in WINGs])
 
 
 dnl ==============================================

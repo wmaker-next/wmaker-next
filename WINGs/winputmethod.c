@@ -581,10 +581,12 @@ void W_CreateIC(WMView * view)
 		spot.x = rect.x;
 		spot.y = rect.y + rect.height;
 
-		/* this really needs to be changed, but I don't know how yet -Dan
-		 * it used to be like this with fontsets, but no longer applies to xft */
+		/* the over-the-spot style would take XNFontSet here, but WMFont
+		 * has never been an XFontSet and there is no PangoLayout binding
+		 * for XIM preedit, so leave the font to the IM server as the
+		 * previous XftFont pointer here was already ignored */
 		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot,
-						   XNArea, &rect, XNFontInfo, scr->normalFont->font, (void *)0);
+						   XNArea, &rect, (void *)0);
 	}
 
 	view->xic = XCreateIC(scr->imctx->xim, XNInputStyle, scr->imctx->ximstyle,

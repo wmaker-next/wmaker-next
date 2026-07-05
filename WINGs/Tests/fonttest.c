@@ -107,11 +107,7 @@ void paintSamples(XEvent *event, void *data)
 	          10, y - 5, width - 10, y - 5);
 
 	WMFont *footerFont = WMSystemFontOfSize(scr, 9);
-#ifdef USE_PANGO
 	const char *footer = "✓ Rendering: Cairo + Pango (advanced layout, full Unicode support)";
-#else
-	const char *footer = "✓ Rendering: Cairo (basic antialiasing, limited Unicode)";
-#endif
 	WMDrawString(scr, win, black, footerFont, 10, y, footer, strlen(footer));
 	WMReleaseFont(footerFont);
 
@@ -235,11 +231,7 @@ void testUnicode(WMScreen *scr)
 
 	/* Title */
 	label = WMCreateLabel(vbox);
-#ifdef USE_PANGO
 	WMSetLabelText(label, "Unicode with Pango - Full Support");
-#else
-	WMSetLabelText(label, "Unicode with Cairo - Basic Support");
-#endif
 	WMSetLabelFont(label, WMBoldSystemFontOfSize(scr, 16));
 	WMSetLabelTextAlignment(label, WACenter);
 	WMResizeWidget(label, 500, 35);
@@ -279,24 +271,7 @@ int main(int argc, char **argv)
 	printf("\n=================================================\n");
 	printf("WINGs Font Rendering Test\n");
 	printf("=================================================\n");
-#ifdef USE_PANGO
-	printf("Backend: Cairo + Pango (Full featured)\n\n");
-	printf("Features:\n");
-	printf("  ✓ Smooth antialiasing (Cairo)\n");
-	printf("  ✓ Full Unicode support\n");
-	printf("  ✓ Complex text layout (RTL, ligatures)\n");
-	printf("  ✓ Font fallback for missing glyphs\n");
-	printf("  ✓ Advanced typography\n");
-	printf("  ✓ Better international text support\n");
-#else
-	printf("Backend: Cairo (Basic)\n\n");
-	printf("Features:\n");
-	printf("  ✓ Smooth antialiasing (Cairo)\n");
-	printf("  ○ Limited Unicode (Basic glyphs only)\n");
-	printf("  ○ Simple text layout only\n");
-	printf("  ○ No RTL or complex scripts\n\n");
-	printf("Note: Compile with -DUSE_PANGO for full features\n");
-#endif
+	printf("Backend: Cairo + Pango\n");
 	printf("=================================================\n\n");
 
 	printf("Creating test windows...\n");

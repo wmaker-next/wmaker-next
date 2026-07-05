@@ -11,8 +11,8 @@ include_HEADERS = WINGs.h WUtil.h WXProp.h WXHints.h WIPC.h
 nodist_include_HEADERS = WINGsP.h
 EXTRA_DIST = WINGsP.h.in
 
-WINGsP.h: WINGsP.h.in $(top_builddir)/config.h
-	$(AM_V_GEN)$(top_srcdir)/script/replace-ac-keywords.sh \
-		--header "$(top_builddir)/config.h" \
-		--filter "USE_PANGO" \
-		-o $@  $<
+# nothing left to substitute now that Pango is unconditional, but the
+# generated header stays a build product so it lands in $(builddir) for
+# VPATH builds and is not shipped in the dist tarball twice
+WINGsP.h: WINGsP.h.in
+	$(AM_V_GEN)cp $< $@

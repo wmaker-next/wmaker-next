@@ -65,13 +65,6 @@ void WMScreenAbandonDrawable(WMScreen *scr, Drawable d)
 
 	if (scr->drawableSize)
 		WMHashRemove(scr->drawableSize, (const void *)(uintptr_t)d);
-
-	/* the shared XftDraw may still be pointed at d, retarget it to
-	 * the scratch drawable so the next XftDrawChange() does not try
-	 * to free a Render Picture the server already auto-freed when
-	 * the caller destroys d. Goes away with the XftDraw itself when
-	 * the pangocairo render sink lands. */
-	W_XftAbandonDrawable(scr, d);
 }
 
 static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h)

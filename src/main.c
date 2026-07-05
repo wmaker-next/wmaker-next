@@ -44,9 +44,9 @@
 /*
  * When built with --enable-asan, suppress LeakSanitizer reports for
  * process-lifetime allocations inside third-party libraries that we
- * cannot release (fontconfig keeps its FcInit configuration and the
- * FcPattern from XftFontMatch alive, FcFini cannot run while any
- * XftFont is open, and pangoxft/glib keep type-system bookkeeping).
+ * cannot release (fontconfig keeps its FcInit configuration alive,
+ * FcFini cannot run while a Pango font map is loaded, and pangocairo/
+ * glib keep type-system bookkeeping).
  * This makes a plain `./src/wmaker` ASan run report only our own leaks.
  */
 #if defined(__SANITIZE_ADDRESS__)
@@ -61,7 +61,8 @@ const char *__lsan_default_suppressions(void);
 const char *__lsan_default_suppressions(void)
 {
 	return "leak:libfontconfig.so\n"
-	       "leak:libpangoxft-1.0.so\n"
+	       "leak:libpangocairo-1.0.so\n"
+	       "leak:libcairo.so\n"
 	       "leak:libglib-2.0.so\n"
 	       "leak:libgobject-2.0.so\n";
 }
