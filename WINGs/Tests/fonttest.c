@@ -59,8 +59,7 @@ void paintSamples(XEvent *event, void *data)
 	int i;
 
 	/* Clear with background */
-	XSetForeground(WMScreenDisplay(scr), WMColorGC(bg), WMColorPixel(bg));
-	XFillRectangle(WMScreenDisplay(scr), win, WMColorGC(bg), 0, 0, width, height);
+	WMPaintColorSwatch(bg, win, 0, 0, width, height);
 
 	/* Create test fonts */
 	for (i = 0; i < 6; i++) {
@@ -78,8 +77,7 @@ void paintSamples(XEvent *event, void *data)
 	WMReleaseFont(titleFont);
 
 	/* Separator */
-	XDrawLine(WMScreenDisplay(scr), win, WMColorGC(black),
-	          10, y, width - 10, y);
+	WMPaintColorSwatch(black, win, 10, y, width - 20, 1);
 	y += 10;
 
 	/* Render sample texts */
@@ -103,8 +101,7 @@ void paintSamples(XEvent *event, void *data)
 
 	/* Footer */
 	y = height - 30;
-	XDrawLine(WMScreenDisplay(scr), win, WMColorGC(black),
-	          10, y - 5, width - 10, y - 5);
+	WMPaintColorSwatch(black, win, 10, y - 5, width - 20, 1);
 
 	WMFont *footerFont = WMSystemFontOfSize(scr, 9);
 	const char *footer = "✓ Rendering: Cairo + Pango (advanced layout, full Unicode support)";
