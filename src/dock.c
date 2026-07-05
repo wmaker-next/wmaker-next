@@ -33,6 +33,9 @@
 #include <math.h>
 #include <limits.h>
 #include <dirent.h>
+
+#include <cairo.h>
+#include <WINGs/WINGsP.h>
 #include <sys/stat.h>
 
 #include <WINGs/WUtil.h>
@@ -309,71 +312,57 @@ static WMArray *getSelected(WDock *dock)
 	return ret;
 }
 
+static void fillArrow(cairo_t *cr, WMColor *color,
+		      double x0, double y0, double x1, double y1,
+		      double x2, double y2)
+{
+	WCairoSetSourceColor(cr, color);
+	cairo_move_to(cr, x0, y0);
+	cairo_line_to(cr, x1, y1);
+	cairo_line_to(cr, x2, y2);
+	cairo_close_path(cr);
+	cairo_fill_preserve(cr);
+	cairo_set_line_width(cr, 1.0);
+	cairo_stroke(cr);
+}
+
 static void paintClipButtons(WAppIcon *clipIcon, Bool lpushed, Bool rpushed)
 {
 	Window win = clipIcon->icon->core->window;
 	WScreen *scr = clipIcon->icon->core->screen_ptr;
-	XPoint p[4];
 	int pt = CLIP_BUTTON_SIZE * ICON_SIZE / 64;
 	int tp = ICON_SIZE - pt;
 	int as = pt - 15;	/* 15 = 5+5+5 */
-	GC gc = scr->draw_gc;	/* maybe use WMColorGC() instead here? */
 	WMColor *color;
+	cairo_t *cr;
 
 	color = scr->clip_title_color[CLIP_NORMAL];
 
-	XSetForeground(dpy, gc, WMColorPixel(color));
+	cr = WCairoBeginForDrawable(scr->wmscreen, win);
+	if (!cr)
+		return;
 
-	if (rpushed) {
-		p[0].x = tp + 1;
-		p[0].y = 1;
-		p[1].x = ICON_SIZE - 2;
-		p[1].y = 1;
-		p[2].x = ICON_SIZE - 2;
-		p[2].y = pt - 1;
-	} else if (lpushed) {
-		p[0].x = 1;
-		p[0].y = tp;
-		p[1].x = pt;
-		p[1].y = ICON_SIZE - 2;
-		p[2].x = 1;
-		p[2].y = ICON_SIZE - 2;
-	}
-	if (lpushed || rpushed) {
-		XSetForeground(dpy, scr->draw_gc, scr->white_pixel);
-		XFillPolygon(dpy, win, scr->draw_gc, p, 3, Convex, CoordModeOrigin);
-		XSetForeground(dpy, scr->draw_gc, scr->black_pixel);
-	}
+	/* pressed-corner white flash under the arrow */
+	if (rpushed)
+		fillArrow(cr, scr->white,
+			  tp + 1, 1, ICON_SIZE - 2, 1, ICON_SIZE - 2, pt - 1);
+	else if (lpushed)
+		fillArrow(cr, scr->white,
+			  1, tp, pt, ICON_SIZE - 2, 1, ICON_SIZE - 2);
 
 	/* top right arrow */
-	p[0].x = p[3].x = ICON_SIZE - 5 - as;
-	p[0].y = p[3].y = 5;
-	p[1].x = ICON_SIZE - 6;
-	p[1].y = 5;
-	p[2].x = ICON_SIZE - 6;
-	p[2].y = 4 + as;
-	if (rpushed) {
-		XFillPolygon(dpy, win, scr->draw_gc, p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, win, scr->draw_gc, p, 4, CoordModeOrigin);
-	} else {
-		XFillPolygon(dpy, win, gc, p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, win, gc, p, 4, CoordModeOrigin);
-	}
+	fillArrow(cr, rpushed ? scr->black : color,
+		  ICON_SIZE - 5 - as, 5,
+		  ICON_SIZE - 6, 5,
+		  ICON_SIZE - 6, 4 + as);
 
 	/* bottom left arrow */
-	p[0].x = p[3].x = 5;
-	p[0].y = p[3].y = ICON_SIZE - 5 - as;
-	p[1].x = 5;
-	p[1].y = ICON_SIZE - 6;
-	p[2].x = 4 + as;
-	p[2].y = ICON_SIZE - 6;
-	if (lpushed) {
-		XFillPolygon(dpy, win, scr->draw_gc, p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, win, scr->draw_gc, p, 4, CoordModeOrigin);
-	} else {
-		XFillPolygon(dpy, win, gc, p, 3, Convex, CoordModeOrigin);
-		XDrawLines(dpy, win, gc, p, 4, CoordModeOrigin);
-	}
+	fillArrow(cr, lpushed ? scr->black : color,
+		  5, ICON_SIZE - 5 - as,
+		  5, ICON_SIZE - 6,
+		  4 + as, ICON_SIZE - 6);
+
+	WCairoEnd(cr);
 }
 
 RImage *wClipMakeTile(RImage *normalTile)
@@ -4964,9 +4953,8 @@ void wDrawerIconPaint(WAppIcon *dicon)
 {
 	Window win = dicon->icon->core->window;
 	WScreen *scr = dicon->icon->core->screen_ptr;
-	XPoint p[4];
-	GC gc = scr->draw_gc;
 	WMColor *color;
+	cairo_t *cr;
 
 	wIconPaint(dicon->icon);
 
@@ -4974,26 +4962,21 @@ void wDrawerIconPaint(WAppIcon *dicon)
 		color = scr->clip_title_color[CLIP_NORMAL];
 	else
 		color = scr->clip_title_color[CLIP_COLLAPSED];
-	XSetForeground(dpy, gc, WMColorPixel(color));
 
-	if (dicon->dock->on_right_side) {
-		p[0].x = p[3].x = 10;
-		p[0].y = p[3].y = ICON_SIZE / 2 - 5;
-		p[1].x = 10;
-		p[1].y = ICON_SIZE / 2 + 5;
-		p[2].x = 5;
-		p[2].y = ICON_SIZE / 2;
-	}
-	else {
-		p[0].x = p[3].x = ICON_SIZE-1 - 10;
-		p[0].y = p[3].y = ICON_SIZE / 2 - 5;
-		p[1].x = ICON_SIZE-1 - 10;
-		p[1].y = ICON_SIZE / 2 + 5;
-		p[2].x = ICON_SIZE-1 - 5;
-		p[2].y = ICON_SIZE / 2;
-	}
-	XFillPolygon(dpy, win, gc, p,3,Convex,CoordModeOrigin);
-	XDrawLines(dpy, win, gc, p,4,CoordModeOrigin);
+	cr = WCairoBeginForDrawable(scr->wmscreen, win);
+	if (!cr)
+		return;
+	if (dicon->dock->on_right_side)
+		fillArrow(cr, color,
+			  10, ICON_SIZE / 2 - 5,
+			  10, ICON_SIZE / 2 + 5,
+			  5,  ICON_SIZE / 2);
+	else
+		fillArrow(cr, color,
+			  ICON_SIZE - 1 - 10, ICON_SIZE / 2 - 5,
+			  ICON_SIZE - 1 - 10, ICON_SIZE / 2 + 5,
+			  ICON_SIZE - 1 - 5,  ICON_SIZE / 2);
+	WCairoEnd(cr);
 }
 
 

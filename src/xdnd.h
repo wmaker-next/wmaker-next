@@ -26,7 +26,9 @@ Bool wXDNDProcessSelection(XEvent *event);
 Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event);
 void wXDNDMakeAwareness(Window window);
 
+#ifndef XDND_VERSION
 #define XDND_VERSION 3L
+#endif
 
 /* accessor macros over the xcb_client_message_event_t data.data32[]
  * words, the source window is data32[0] for every XdndEnter/Position/

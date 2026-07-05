@@ -31,6 +31,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+#include <cairo.h>
+#include <WINGs/WINGsP.h>
+
 #include "WindowMaker.h"
 #include "window.h"
 #include "icon.h"
@@ -376,18 +379,32 @@ void wAppIconDestroy(WAppIcon * aicon)
 static void drawCorner(WIcon * icon)
 {
 	WScreen *scr = icon->core->screen_ptr;
-	XPoint points[3];
+	WTexSolid *tex = scr->icon_title_texture;
+	cairo_t *cr;
 
-	points[0].x = 1;
-	points[0].y = 1;
-	points[1].x = 12;
-	points[1].y = 1;
-	points[2].x = 1;
-	points[2].y = 12;
-	XFillPolygon(dpy, icon->core->window, scr->icon_title_texture->normal_gc,
-		     points, 3, Convex, CoordModeOrigin);
-	XDrawLine(dpy, icon->core->window, scr->icon_title_texture->light_gc, 0, 0, 0, 12);
-	XDrawLine(dpy, icon->core->window, scr->icon_title_texture->light_gc, 0, 0, 12, 0);
+	cr = WCairoBeginForDrawable(scr->wmscreen, icon->core->window);
+	if (!cr)
+		return;
+
+	cairo_set_source_rgb(cr, tex->normal.red / 65535.0,
+			     tex->normal.green / 65535.0,
+			     tex->normal.blue / 65535.0);
+	cairo_move_to(cr, 1, 1);
+	cairo_line_to(cr, 12, 1);
+	cairo_line_to(cr, 1, 12);
+	cairo_close_path(cr);
+	cairo_fill(cr);
+
+	cairo_set_source_rgb(cr, tex->light.red / 65535.0,
+			     tex->light.green / 65535.0,
+			     tex->light.blue / 65535.0);
+	cairo_set_line_width(cr, 1.0);
+	cairo_move_to(cr, 0.5, 12.5);
+	cairo_line_to(cr, 0.5, 0.5);
+	cairo_line_to(cr, 12.5, 0.5);
+	cairo_stroke(cr);
+
+	WCairoEnd(cr);
 }
 
 void wAppIconMove(WAppIcon * aicon, int x, int y)
