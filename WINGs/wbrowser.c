@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 #include <math.h>		/* for : double rint (double) */
 
@@ -230,34 +232,42 @@ void WMSetBrowserPathSeparator(WMBrowser * bPtr, const char *separator)
 static void drawTitleOfColumn(WMBrowser * bPtr, int column)
 {
 	WMScreen *scr = bPtr->view->screen;
+	cairo_t *cr;
+	char *titleBuf;
+	int titleLen, widthC;
 	int x;
 
 	x = (column - bPtr->firstVisibleColumn) * (bPtr->columnSize.width + COLUMN_SPACING);
 
-	XFillRectangle(scr->display, bPtr->view->window, WMColorGC(scr->darkGray), x, 0,
-		       bPtr->columnSize.width, bPtr->titleHeight);
-	W_DrawRelief(scr, bPtr->view->window, x, 0, bPtr->columnSize.width, bPtr->titleHeight, WRSunken);
+	cr = WCairoBeginForDrawable(scr, bPtr->view->window);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, scr->darkGray);
+	cairo_rectangle(cr, x, 0, bPtr->columnSize.width, bPtr->titleHeight);
+	cairo_fill(cr);
+	W_DrawReliefCairo(cr, scr, x, 0, bPtr->columnSize.width, bPtr->titleHeight, WRSunken);
 
 	if (column < bPtr->usedColumnCount && bPtr->titles[column]) {
-		int titleLen = strlen(bPtr->titles[column]);
-		int widthC = bPtr->columnSize.width - 8;
+		titleLen = strlen(bPtr->titles[column]);
+		widthC = bPtr->columnSize.width - 8;
 
-		if (WMWidthOfString(scr->boldFont, bPtr->titles[column], titleLen)
-		    > widthC) {
-			char *titleBuf = createTruncatedString(scr->boldFont,
-							       bPtr->titles[column],
-							       &titleLen, widthC);
-			W_PaintText(bPtr->view, bPtr->view->window, scr->boldFont, x,
-				    (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
-				    bPtr->columnSize.width, WACenter, scr->white, False, titleBuf, titleLen);
+		if (WMWidthOfString(scr->boldFont, bPtr->titles[column], titleLen) > widthC) {
+			titleBuf = createTruncatedString(scr->boldFont,
+							 bPtr->titles[column],
+							 &titleLen, widthC);
+			W_PaintTextCairo(cr, scr->boldFont, x,
+					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
+					 bPtr->columnSize.width, WACenter, scr->white,
+					 False, titleBuf, titleLen);
 			wfree(titleBuf);
 		} else {
-			W_PaintText(bPtr->view, bPtr->view->window, scr->boldFont, x,
-				    (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
-				    bPtr->columnSize.width, WACenter, scr->white,
-				    False, bPtr->titles[column], titleLen);
+			W_PaintTextCairo(cr, scr->boldFont, x,
+					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
+					 bPtr->columnSize.width, WACenter, scr->white,
+					 False, bPtr->titles[column], titleLen);
 		}
 	}
+	WCairoEnd(cr);
 }
 
 WMList *WMGetBrowserListInColumn(WMBrowser * bPtr, int column)
@@ -473,10 +483,13 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 {
 	WMView *view = W_VIEW(lPtr);
 	W_Screen *scr = view->screen;
-	Display *display = scr->display;
 	WMFont *font = ((state & WLDSIsBranch) ? scr->boldFont : scr->normalFont);
 	WMColor *backColor = ((state & WLDSSelected) ? scr->white : view->backColor);
+	WMColor *lineColor;
+	cairo_t *cr;
+	char *textBuf;
 	int width, height, x, y;
+	int widthC, textLen;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) index;
@@ -486,33 +499,46 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	XFillRectangle(display, d, WMColorGC(backColor), x, y, width, height);
+	cr = WCairoBeginForDrawable(scr, d);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, backColor);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
 
 	if (text) {
-		int widthC, textLen;
-
 		/* Avoid overlaping... */
 		widthC = (state & WLDSIsBranch) ? width - 20 : width - 8;
 		textLen = strlen(text);
 		if (WMWidthOfString(font, text, textLen) > widthC) {
-			char *textBuf = createTruncatedString(font, text, &textLen, widthC);
-			W_PaintText(view, d, font, x + 4, y, widthC, WALeft, scr->black, False, textBuf, textLen);
+			textBuf = createTruncatedString(font, text, &textLen, widthC);
+			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
+					 scr->black, False, textBuf, textLen);
 			wfree(textBuf);
 		} else {
-			W_PaintText(view, d, font, x + 4, y, widthC, WALeft, scr->black, False, text, textLen);
+			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
+					 scr->black, False, text, textLen);
 		}
 	}
 
 	if (state & WLDSIsBranch) {
-		WMColor *lineColor = ((state & WLDSSelected) ? scr->gray : scr->white);
-
-		XDrawLine(display, d, WMColorGC(scr->darkGray), x + width - 11, y + 3,
-			  x + width - 6, y + height / 2);
-		XDrawLine(display, d, WMColorGC(lineColor), x + width - 11, y + height - 5,
-			  x + width - 6, y + height / 2);
-		XDrawLine(display, d, WMColorGC(scr->black), x + width - 12, y + 3,
-			  x + width - 12, y + height - 5);
+		lineColor = ((state & WLDSSelected) ? scr->gray : scr->white);
+		cairo_set_line_width(cr, 1.0);
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+		WCairoSetSourceColor(cr, scr->darkGray);
+		cairo_move_to(cr, x + width - 10.5, y + 3.5);
+		cairo_line_to(cr, x + width - 5.5, y + height / 2 + 0.5);
+		cairo_stroke(cr);
+		WCairoSetSourceColor(cr, lineColor);
+		cairo_move_to(cr, x + width - 10.5, y + height - 4.5);
+		cairo_line_to(cr, x + width - 5.5, y + height / 2 + 0.5);
+		cairo_stroke(cr);
+		WCairoSetSourceColor(cr, scr->black);
+		cairo_move_to(cr, x + width - 11.5, y + 3.5);
+		cairo_line_to(cr, x + width - 11.5, y + height - 4.5);
+		cairo_stroke(cr);
 	}
+	WCairoEnd(cr);
 }
 
 static void scrollCallback(WMWidget * scroller, void *self)
