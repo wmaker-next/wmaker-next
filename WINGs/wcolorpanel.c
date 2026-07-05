@@ -100,6 +100,9 @@ typedef struct MovingView {
 	XImage *image;		/* What's under the view */
 	XImage *dirtyRect;	/* Storage of overlapped image area */
 	Pixmap magPix;		/* Magnified part of pixmap */
+#ifndef USE_XSHAPE
+	Pixmap mask;		/* Circular clip for magPix onto image */
+#endif
 	RColor color;		/* Color of a pixel in the image */
 	int x, y;		/* Position of view */
 } MovingView;
@@ -1544,6 +1547,7 @@ static Pixmap magnifyCreatePixmap(WMColorPanel * panel)
 	int u, v;
 #ifndef USE_XSHAPE
 	Pixmap pixmap;
+	cairo_surface_t *ss, *ms;
 #endif
 	unsigned long color;
 	RColor cell;
@@ -1590,14 +1594,38 @@ static Pixmap magnifyCreatePixmap(WMColorPanel * panel)
 	pixmap = XCreatePixmap(scr->display, W_DRAWABLE(scr), Cursor_mask_width, Cursor_mask_height, scr->depth);
 	if (!pixmap)
 		return None;
+	WMScreenNoteDrawableSize(scr, pixmap, Cursor_mask_width, Cursor_mask_height);
 
-	XPutImage(scr->display, pixmap, scr->copyGC, panel->magnifyGlass->image,
-		  0, 0, 0, 0, Cursor_mask_width, Cursor_mask_height);
+	/* Background: the captured surroundings so the square view's
+	 * corners outside the circular mask show what is underneath.
+	 * The XImage is at server pixel format, so decode each pixel
+	 * through ulongToRColor the same way the 5x5 loop above does.
+	 * This is a per-motion 24x24 grid on a fallback path only
+	 * built when the Shape extension is compiled out. */
+	cr = WCairoBeginForDrawable(scr, pixmap);
+	for (u = 0; u < Cursor_mask_width; u++) {
+		for (v = 0; v < Cursor_mask_height; v++) {
+			color = XGetPixel(panel->magnifyGlass->image, u, v);
+			cell = ulongToRColor(scr, color);
+			cairo_set_source_rgb(cr, cell.red / 255.0,
+					     cell.green / 255.0, cell.blue / 255.0);
+			cairo_rectangle(cr, u, v, 1, 1);
+			cairo_fill(cr);
+		}
+	}
 
-	/* Copy the magnified pixmap, with the clip mask, to background pixmap */
-	XCopyArea(scr->display, panel->magnifyGlass->magPix, pixmap,
-		  scr->clipGC, 0, 0, Cursor_mask_width, Cursor_mask_height, 0, 0);
-	/* (2,2) puts center pixel on center of glass */
+	/* Magnified circle on top, masked through the cursor bitmap */
+	ms = cairo_xcb_surface_create_for_bitmap(scr->rcontext->xc, scr->rcontext->xscreen,
+						 (xcb_pixmap_t)panel->magnifyGlass->mask,
+						 Cursor_mask_width, Cursor_mask_height);
+	ss = cairo_xcb_surface_create(scr->rcontext->xc,
+				      (xcb_drawable_t)panel->magnifyGlass->magPix,
+				      scr->rcontext->xvisual, 5 * 5 - 1, 5 * 5 - 1);
+	cairo_set_source_surface(cr, ss, 0, 0);
+	cairo_mask_surface(cr, ms, 0, 0);
+	cairo_surface_destroy(ss);
+	cairo_surface_destroy(ms);
+	WCairoEnd(cr);
 
 	return pixmap;
 #endif
@@ -1681,13 +1709,12 @@ static WMPoint magnifyInitialize(W_ColorPanel * panel)
 	xcb_shape_mask(XGetXCBConnection(scr->display), XCB_SHAPE_SO_SET,
 		       XCB_SHAPE_SK_BOUNDING, WMViewXID(panel->magnifyGlass->view),
 		       0, 0, clip_mask);
-#else
-	/* Clip circle in glass cursor */
-	XSetClipMask(scr->display, scr->clipGC, clip_mask);
-	XSetClipOrigin(scr->display, scr->clipGC, 0, 0);
-#endif
-
 	XFreePixmap(scr->display, clip_mask);
+#else
+	/* keep the bitmap so magnifyCreatePixmap() can mask magPix
+	 * through it onto the captured background each motion step */
+	panel->magnifyGlass->mask = clip_mask;
+#endif
 
 	/* Draw initial magnifying glass contents */
 	magnifyGetImageStored(panel, x, y, x, y);
@@ -1698,6 +1725,7 @@ static WMPoint magnifyInitialize(W_ColorPanel * panel)
 	XFlush(scr->display);
 
 #ifndef USE_XSHAPE
+	WMScreenAbandonDrawable(scr, pixmap);
 	XFreePixmap(scr->display, pixmap);
 #endif
 
@@ -1816,6 +1844,7 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 				/* Synchronize the event queue, so the Expose is handled NOW */
 				XFlush(scr->display);
 #ifndef USE_XSHAPE
+				WMScreenAbandonDrawable(scr, pixmap);
 				XFreePixmap(scr->display, pixmap);
 #endif
 			}
@@ -1858,6 +1887,10 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 
 	XFreePixmap(scr->display, panel->magnifyGlass->magPix);
 	panel->magnifyGlass->magPix = None;
+#ifndef USE_XSHAPE
+	XFreePixmap(scr->display, panel->magnifyGlass->mask);
+	panel->magnifyGlass->mask = None;
+#endif
 
 	W_UnmapView(panel->magnifyGlass->view);
 	W_DestroyView(panel->magnifyGlass->view);
