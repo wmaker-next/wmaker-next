@@ -38,6 +38,8 @@
 #include <xcb/screensaver.h>
 #endif
 
+#include <cairo-xcb.h>
+
 #include <wraster.h>
 #include "WindowMaker.h"
 #include "def_pixmaps.h"
@@ -239,9 +241,9 @@ static Bool replace_existing_wm(WScreen *scr)
  *      A non-empty *ButtonPixmap default overrides the compiled-in
  *      glyph for that slot. The themed image is resolved against
  *      PixmapPath like every other style asset and marked themed so
- *      paintButton() blits it with XCopyArea and keeps its own
- *      colours, the compiled-in fallback is taken on any load failure
- *      so a broken theme still gets working buttons.
+ *      paintButton() paints it as-is and keeps its own colours, the
+ *      compiled-in fallback is taken on any load failure so a broken
+ *      theme still gets working buttons.
  */
 static WPixmap *load_button_file(WScreen *scr, const char *file)
 {
@@ -345,48 +347,59 @@ static int get_dot_mult(void)
     return dot_mult;
 }
 
-static void draw_dot(WScreen * scr, Drawable d, int x, int y, GC gc)
+/* one 3x2 (times m) raised-bevel dot on the image half of the pair,
+ * the mask half is a plain rectangle so only these six cells show */
+static void draw_dot(cairo_t *cr, WScreen *scr, int x, int y, int m)
 {
-    int dot_mult;
-
-    dot_mult = get_dot_mult();
-	XSetForeground(dpy, gc, scr->black_pixel);
-	XFillRectangle(dpy, d, gc, x, y, x + (2 * dot_mult), y + (1 * dot_mult));
-	XFillRectangle(dpy, d, gc, x, y + (1 * dot_mult), x + (1 * dot_mult), y + (2 * dot_mult));
-	XSetForeground(dpy, gc, scr->white_pixel);
-	XFillRectangle(dpy, d, gc, x + (2 * dot_mult), y, x + (3 * dot_mult), y + (2 * dot_mult));
-	XFillRectangle(dpy, d, gc, x + (1 * dot_mult), y + (1 * dot_mult), x + (2 * dot_mult), y + (2 * dot_mult));
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_rectangle(cr, x, y, 2 * m, m);
+	cairo_rectangle(cr, x, y + m, m, m);
+	cairo_fill(cr);
+	WCairoSetSourceColor(cr, scr->white);
+	cairo_rectangle(cr, x + 2 * m, y, m, m);
+	cairo_rectangle(cr, x + m, y + m, 2 * m, m);
+	cairo_fill(cr);
 }
 
-static WPixmap *make3Dots(WScreen * scr)
+static WPixmap *make3Dots(WScreen *scr)
 {
+	RContext *rc = scr->rcontext;
 	WPixmap *wpix;
-	GC gc2, gc;
-	XGCValues gcv;
 	Pixmap pix, mask;
-    int dot_mult;
+	cairo_surface_t *surf;
+	cairo_t *cr;
+	int isize, m, dy, i;
 
-    dot_mult = get_dot_mult();
-	gc = scr->copy_gc;
-	pix = XCreatePixmap(dpy, scr->w_win, w_global.config->icon_size, w_global.config->icon_size, scr->w_depth);
-	XSetForeground(dpy, gc, scr->black_pixel);
-	XFillRectangle(dpy, pix, gc, 0, 0, w_global.config->icon_size, w_global.config->icon_size);
-	XSetForeground(dpy, gc, scr->white_pixel);
-	draw_dot(scr, pix, 4 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
-	draw_dot(scr, pix, 9 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
-	draw_dot(scr, pix, 14 * dot_mult, w_global.config->icon_size - (6 * dot_mult), gc);
+	isize = w_global.config->icon_size;
+	m = get_dot_mult();
+	dy = isize - 6 * m;
 
-	mask = XCreatePixmap(dpy, scr->w_win, w_global.config->icon_size, w_global.config->icon_size, 1);
-	gcv.foreground = 0;
-	gcv.graphics_exposures = False;
-	gc2 = XCreateGC(dpy, mask, GCForeground | GCGraphicsExposures, &gcv);
-	XFillRectangle(dpy, mask, gc2, 0, 0, w_global.config->icon_size, w_global.config->icon_size);
-	XSetForeground(dpy, gc2, 1);
-	XFillRectangle(dpy, mask, gc2, 4 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
-	XFillRectangle(dpy, mask, gc2, 9 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
-	XFillRectangle(dpy, mask, gc2, 14 * dot_mult, w_global.config->icon_size - (6 * dot_mult), 3 * dot_mult, 2 * dot_mult);
+	pix = XCreatePixmap(dpy, scr->w_win, isize, isize, scr->w_depth);
+	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
+					rc->xvisual, isize, isize);
+	cr = cairo_create(surf);
+	WCairoSetSourceColor(cr, scr->black);
+	cairo_paint(cr);
+	for (i = 0; i < 3; i++)
+		draw_dot(cr, scr, (4 + 5 * i) * m, dy, m);
+	cairo_destroy(cr);
+	cairo_surface_flush(surf);
+	cairo_surface_destroy(surf);
 
-	XFreeGC(dpy, gc2);
+	mask = XCreatePixmap(dpy, scr->w_win, isize, isize, 1);
+	surf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
+						   (xcb_pixmap_t)mask, isize, isize);
+	cr = cairo_create(surf);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_paint(cr);
+	cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	for (i = 0; i < 3; i++)
+		cairo_rectangle(cr, (4 + 5 * i) * m, dy, 3 * m, 2 * m);
+	cairo_fill(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(surf);
+	cairo_surface_destroy(surf);
 
 	wpix = wPixmapCreate(pix, mask);
 	wpix->shared = 1;
@@ -1358,8 +1371,10 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 		scr->mini_screenshot = win;
 	}
 	RConvertImage(scr->rcontext, img, &pix);
-	XMapWindow(dpy, scr->mini_screenshot);
-	XCopyArea(dpy, pix, scr->mini_screenshot, scr->copy_gc, 0, 0, img->width, img->height, 0, 0);
+	XSetWindowBackgroundPixmap(dpy, scr->mini_screenshot, pix);
+	XFreePixmap(dpy, pix);
+	XClearWindow(dpy, scr->mini_screenshot);
+	XMapRaised(dpy, scr->mini_screenshot);
 	XFlush(dpy);
 
 	scr->mini_screenshot_timeout = time(NULL) + 2;
