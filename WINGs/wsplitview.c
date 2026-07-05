@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 /*
@@ -380,6 +382,7 @@ static void paintSplitView(WMSplitView * sPtr)
 	W_Screen *scr = sPtr->view->screen;
 	int x, y, i, count;
 	WMPixmap *dimple = scr->scrollerDimple;
+	cairo_t *cr;
 
 #if 0
 	printf("---- (paintSplitView - 1) ----\n");
@@ -400,8 +403,6 @@ static void paintSplitView(WMSplitView * sPtr)
 		sPtr->flags.adjustOnPaint = 0;
 	}
 
-	XSetClipMask(scr->display, scr->clipGC, dimple->mask);
-
 	if (sPtr->flags.vertical) {
 		x = ((DIVIDER_THICKNESS - dimple->width) / 2);
 		y = (sPtr->view->size.height - dimple->height) / 2;
@@ -410,6 +411,7 @@ static void paintSplitView(WMSplitView * sPtr)
 		y = ((DIVIDER_THICKNESS - dimple->height) / 2);
 	}
 
+	cr = WCairoBeginForDrawable(scr, sPtr->view->window);
 	for (i = 0; i < count - 1; i++) {
 		p = _GetPSubviewStructAt(i);
 
@@ -418,15 +420,14 @@ static void paintSplitView(WMSplitView * sPtr)
 		else
 			y += p->size;
 
-		XSetClipOrigin(scr->display, scr->clipGC, x, y);
-		XCopyArea(scr->display, dimple->pixmap, sPtr->view->window,
-			  scr->clipGC, 0, 0, dimple->width, dimple->height, x, y);
+		WCairoPaintPixmap(cr, dimple, x, y);
 
 		if (sPtr->flags.vertical)
 			x += DIVIDER_THICKNESS;
 		else
 			y += DIVIDER_THICKNESS;
 	}
+	WCairoEnd(cr);
 
 #if 0
 	printf("---- (paintSplitView - 2) ----\n");
@@ -434,8 +435,12 @@ static void paintSplitView(WMSplitView * sPtr)
 #endif
 }
 
+/* self-inverting rubber-band strip in the divider gap: DIFFERENCE with
+ * a white source gives |1-c| per channel, so painting the same rect
+ * twice restores the original pixels just like the previous GXxor GC */
 static void drawDragingRectangle(WMSplitView * sPtr, int pos)
 {
+	cairo_t *cr;
 	int x, y, w, h;
 
 	if (sPtr->flags.vertical) {
@@ -450,7 +455,14 @@ static void drawDragingRectangle(WMSplitView * sPtr, int pos)
 		h = DIVIDER_THICKNESS;
 	}
 
-	XFillRectangle(sPtr->view->screen->display, sPtr->view->window, sPtr->view->screen->ixorGC, x, y, w, h);
+	cr = WCairoBeginForDrawable(sPtr->view->screen, sPtr->view->window);
+	if (!cr)
+		return;
+	cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_rectangle(cr, x, y, w, h);
+	cairo_fill(cr);
+	WCairoEnd(cr);
 }
 
 static void getMinMaxDividerCoord(WMSplitView * sPtr, int divider, int *minC, int *maxC)
