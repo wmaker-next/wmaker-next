@@ -3,6 +3,42 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Cairo and PangoCairo are now required build dependencies
+--------------------------------------------------------
+
+Window titles, menu entries, on-screen popups, help balloons and every
+WINGs widget label are now shaped and rendered through PangoCairo onto
+cairo-xcb surfaces on the shared xcb connection. The previous optional
+--disable-pango path and its raw single-font fallback are removed:
+Pango is what provides per-script font fallback, complex-script shaping
+and bidirectional layout, so a build without it left CJK and RTL text
+broken and there is no reason to keep that configuration. Widget bevels,
+the boxed geometry / workspace-name / key-chain popups and the shaped
+help balloon are painted through cairo, and under a compositing manager
+the non-opaque move/resize outline is a translucent-fill ARGB window.
+
+libwraster gains a small cairo bridge (RImageCairoSurface() and
+gradient-pattern helpers) so callers can paint an RImage or a
+horizontal/vertical/diagonal gradient straight from a cairo pattern.
+
+configure requires cairo (>= 1.16 with the xcb backend) and pangocairo,
+which every maintained distribution ships. Packagers should add
+libcairo2-dev / cairo-devel and libpango1.0-dev / pango-devel to the
+build dependencies.
+
+SVG icons are loaded natively
+-----------------------------
+
+libwraster now decodes SVG through librsvg (>= 2.46) rendered into a
+cairo image surface. The freedesktop icon-theme resolver descends the
+hicolor scalable/ directory when no exact-size raster is available, so
+applications that ship only a scalable icon get their proper artwork in
+the XDG root menu, the run dialog and dock slots filled from a .desktop
+file instead of the fallback tile. RLoadImageAtSize() lets callers
+request a specific render size for a vector image, and wmsetbg and wmiv
+gain SVG through the existing RLoadImage() dispatch. The loader is
+optional (configure --disable-svg) and off when librsvg is not found.
+
 Workspace-name popup drawn as an OSD box
 ----------------------------------------
 
