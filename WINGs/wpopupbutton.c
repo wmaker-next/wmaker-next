@@ -1,4 +1,6 @@
 
+#include <cairo.h>
+
 #include "WINGsP.h"
 
 typedef struct W_PopUpButton {
@@ -307,8 +309,9 @@ int WMSelectPopUpButtonNextItem(WMPopUpButton * bPtr)
 static void paintPopUpButton(PopUpButton * bPtr)
 {
 	W_Screen *scr = bPtr->view->screen;
+	WMPixmap *ind;
 	char *caption;
-	Pixmap pixmap;
+	cairo_t *cr;
 
 	if (bPtr->flags.pullsDown) {
 		caption = bPtr->caption;
@@ -321,42 +324,28 @@ static void paintPopUpButton(PopUpButton * bPtr)
 		}
 	}
 
-	pixmap = XCreatePixmap(scr->display, bPtr->view->window,
-			       bPtr->view->size.width, bPtr->view->size.height, scr->depth);
-	XFillRectangle(scr->display, pixmap, WMColorGC(scr->gray), 0, 0,
-		       bPtr->view->size.width, bPtr->view->size.height);
+	cr = WCairoBeginBuffered(scr, bPtr->view->window);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
 
-	W_DrawRelief(scr, pixmap, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
+	W_DrawReliefCairo(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
 
 	if (caption) {
-		W_PaintText(bPtr->view, pixmap, scr->normalFont, 6,
-			    (bPtr->view->size.height - WMFontHeight(scr->normalFont)) / 2,
-			    bPtr->view->size.width, WALeft,
-			    bPtr->flags.enabled ? scr->black : scr->darkGray, False, caption, strlen(caption));
+		W_PaintTextCairo(cr, scr->normalFont, 6,
+				 (bPtr->view->size.height - WMFontHeight(scr->normalFont)) / 2,
+				 bPtr->view->size.width, WALeft,
+				 bPtr->flags.enabled ? scr->black : scr->darkGray,
+				 False, caption, strlen(caption));
 	}
 
-	if (bPtr->flags.pullsDown) {
-		XCopyArea(scr->display, scr->pullDownIndicator->pixmap,
-			  pixmap, scr->copyGC, 0, 0, scr->pullDownIndicator->width,
-			  scr->pullDownIndicator->height,
-			  bPtr->view->size.width - scr->pullDownIndicator->width - 4,
-			  (bPtr->view->size.height - scr->pullDownIndicator->height) / 2);
-	} else {
-		int x, y;
+	ind = bPtr->flags.pullsDown ? scr->pullDownIndicator : scr->popUpIndicator;
+	WCairoPaintPixmap(cr, ind,
+			  bPtr->view->size.width - ind->width - 4,
+			  (bPtr->view->size.height - ind->height) / 2);
 
-		x = bPtr->view->size.width - scr->popUpIndicator->width - 4;
-		y = (bPtr->view->size.height - scr->popUpIndicator->height) / 2;
-
-		XSetClipOrigin(scr->display, scr->clipGC, x, y);
-		XSetClipMask(scr->display, scr->clipGC, scr->popUpIndicator->mask);
-		XCopyArea(scr->display, scr->popUpIndicator->pixmap, pixmap,
-			  scr->clipGC, 0, 0, scr->popUpIndicator->width, scr->popUpIndicator->height, x, y);
-	}
-
-	XCopyArea(scr->display, pixmap, bPtr->view->window, scr->copyGC, 0, 0,
-		  bPtr->view->size.width, bPtr->view->size.height, 0, 0);
-
-	XFreePixmap(scr->display, pixmap);
+	WCairoEnd(cr);
 }
 
 static void handleEvents(XEvent * event, void *data)
@@ -384,6 +373,7 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 	int yo;
 	int width, itemHeight, itemCount;
 	char *title;
+	cairo_t *cr;
 
 	itemCount = WMGetArrayItemCount(bPtr->items);
 	if (index < 0 || index >= itemCount)
@@ -398,23 +388,26 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 		return;
 	}
 
-	XFillRectangle(scr->display, bPtr->menuView->window, WMColorGC(scr->white),
-		       1, index * itemHeight + 1, width - 3, itemHeight - 3);
+	cr = WCairoBeginForDrawable(scr, bPtr->menuView->window);
+	if (!cr)
+		return;
+	WCairoSetSourceColor(cr, scr->white);
+	cairo_rectangle(cr, 1, index * itemHeight + 1, width - 3, itemHeight - 3);
+	cairo_fill(cr);
 
 	title = WMGetPopUpButtonItem(bPtr, index);
 
-	W_DrawRelief(scr, bPtr->menuView->window, 0, index * itemHeight, width, itemHeight, WRRaised);
+	W_DrawReliefCairo(cr, scr, 0, index * itemHeight, width, itemHeight, WRRaised);
 
-	W_PaintText(bPtr->menuView, bPtr->menuView->window, scr->normalFont, 6,
-		    index * itemHeight + yo, width, WALeft, scr->black, False, title, strlen(title));
+	W_PaintTextCairo(cr, scr->normalFont, 6,
+			 index * itemHeight + yo, width, WALeft, scr->black,
+			 False, title, strlen(title));
 
-	if (!bPtr->flags.pullsDown && index == bPtr->selectedItemIndex) {
-		XCopyArea(scr->display, scr->popUpIndicator->pixmap,
-			  bPtr->menuView->window, scr->copyGC, 0, 0,
-			  scr->popUpIndicator->width, scr->popUpIndicator->height,
-			  width - scr->popUpIndicator->width - 4,
-			  index * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
-	}
+	if (!bPtr->flags.pullsDown && index == bPtr->selectedItemIndex)
+		WCairoPaintPixmap(cr, scr->popUpIndicator,
+				  width - scr->popUpIndicator->width - 4,
+				  index * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
+	WCairoEnd(cr);
 }
 
 static Pixmap makeMenuPixmap(PopUpButton * bPtr)
@@ -423,6 +416,9 @@ static Pixmap makeMenuPixmap(PopUpButton * bPtr)
 	W_Screen *scr = bPtr->view->screen;
 	WMMenuItem *item;
 	WMArrayIterator iter;
+	WMColor *color;
+	char *text;
+	cairo_t *cr;
 	int yo, i;
 	int width, height, itemHeight;
 
@@ -432,36 +428,32 @@ static Pixmap makeMenuPixmap(PopUpButton * bPtr)
 	yo = (itemHeight - WMFontHeight(scr->normalFont)) / 2;
 
 	pixmap = XCreatePixmap(scr->display, bPtr->view->window, width, height, scr->depth);
+	WMScreenNoteDrawableSize(scr, pixmap, width, height);
 
-	XFillRectangle(scr->display, pixmap, WMColorGC(scr->gray), 0, 0, width, height);
+	cr = WCairoBeginForDrawable(scr, pixmap);
+	WCairoSetSourceColor(cr, scr->gray);
+	cairo_paint(cr);
 
 	i = 0;
 	WM_ITERATE_ARRAY(bPtr->items, item, iter) {
-		WMColor *color;
-		char *text;
-
 		text = WMGetMenuItemTitle(item);
 
-		W_DrawRelief(scr, pixmap, 0, i * itemHeight, width, itemHeight, WRRaised);
+		W_DrawReliefCairo(cr, scr, 0, i * itemHeight, width, itemHeight, WRRaised);
 
-		if (!WMGetMenuItemEnabled(item))
-			color = scr->darkGray;
-		else
-			color = scr->black;
+		color = WMGetMenuItemEnabled(item) ? scr->black : scr->darkGray;
 
-		W_PaintText(bPtr->menuView, pixmap, scr->normalFont, 6,
-			    i * itemHeight + yo, width, WALeft, color, False, text, strlen(text));
+		W_PaintTextCairo(cr, scr->normalFont, 6,
+				 i * itemHeight + yo, width, WALeft, color,
+				 False, text, strlen(text));
 
-		if (!bPtr->flags.pullsDown && i == bPtr->selectedItemIndex) {
-			XCopyArea(scr->display, scr->popUpIndicator->pixmap, pixmap,
-				  scr->copyGC, 0, 0, scr->popUpIndicator->width,
-				  scr->popUpIndicator->height,
-				  width - scr->popUpIndicator->width - 4,
-				  i * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
-		}
+		if (!bPtr->flags.pullsDown && i == bPtr->selectedItemIndex)
+			WCairoPaintPixmap(cr, scr->popUpIndicator,
+					  width - scr->popUpIndicator->width - 4,
+					  i * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
 
 		i++;
 	}
+	WCairoEnd(cr);
 
 	return pixmap;
 }
