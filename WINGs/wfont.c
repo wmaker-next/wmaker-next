@@ -484,7 +484,7 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 #endif
 }
 
-void WMScreenAbandonXftDrawable(WMScreen *scr, Drawable d)
+void W_XftAbandonDrawable(WMScreen *scr, Drawable d)
 {
 	if (!scr || !scr->xftdraw)
 		return;

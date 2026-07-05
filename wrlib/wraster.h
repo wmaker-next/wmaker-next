@@ -166,6 +166,13 @@ typedef struct RContext {
     xcb_gcontext_t copy_xgc;
     uint8_t xdepth;
 
+    /* depth-32 TrueColor visual and a colormap created against it, for
+     * callers that want per-pixel alpha (translucent OSD, wireframe fill,
+     * switch panel). NULL/0 when the server offers no such visual, in
+     * which case the caller stays on the opaque path. */
+    xcb_visualtype_t *xvisual_argb;
+    xcb_colormap_t cmap_argb;
+
     struct {
         unsigned int use_shared_pixmap:1;
         unsigned int optimize_for_speed:1

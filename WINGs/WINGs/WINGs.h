@@ -875,10 +875,18 @@ void WMDrawImageString(WMScreen *scr, Drawable d, WMColor *color,
 
 int WMWidthOfString(WMFont *font, const char *text, int length);
 
-/* Retarget the per-screen shared XftDraw away from d before the caller
- * destroys d, so the next WMDrawString does not try to free a Render
- * Picture the server already auto-freed with the drawable. */
-void WMScreenAbandonXftDrawable(WMScreen *scr, Drawable d);
+/* Record d's size for the cairo surface acquisition path so painting
+ * on d never needs a synchronous geometry read. Called from the
+ * window create and resize chokepoints, callers that create Pixmaps
+ * ad hoc may call it too. */
+void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d,
+                              unsigned width, unsigned height);
+
+/* Drop any per-screen render state pointing at d before the caller
+ * destroys d: evict the cached size and retarget the shared XftDraw
+ * so the next paint does not touch a server-side resource that was
+ * auto-freed with the drawable. */
+void WMScreenAbandonDrawable(WMScreen *scr, Drawable d);
 
 /* Detach every cached WMFont for this screen so the next WMCreateFont re-opens
  * under the current antialiasedText flag. Holders keep valid references. */

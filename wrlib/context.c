@@ -160,6 +160,34 @@ static int bestContext(RContext *context)
 	return 1;
 }
 
+/*
+ * Find a depth-32 TrueColor visual for per-pixel alpha and create a
+ * colormap against it once so callers can hand both to XCreateWindow /
+ * cairo_xcb_surface_create() without repeating the walk. Leaves
+ * xvisual_argb NULL and cmap_argb 0 when the server has none (Xnest,
+ * some VNC servers), the caller then keeps the opaque path.
+ */
+static void probeARGBVisual(RContext *context)
+{
+	xcb_depth_iterator_t di;
+	xcb_visualtype_iterator_t vi;
+
+	for (di = xcb_screen_allowed_depths_iterator(context->xscreen); di.rem; xcb_depth_next(&di)) {
+		if (di.data->depth != 32)
+			continue;
+		for (vi = xcb_depth_visuals_iterator(di.data); vi.rem; xcb_visualtype_next(&vi)) {
+			if (vi.data->_class != XCB_VISUAL_CLASS_TRUE_COLOR)
+				continue;
+			context->xvisual_argb = vi.data;
+			context->cmap_argb = xcb_generate_id(context->xc);
+			xcb_create_colormap(context->xc, XCB_COLORMAP_ALLOC_NONE,
+					    context->cmap_argb, context->xscreen->root,
+					    vi.data->visual_id);
+			return;
+		}
+	}
+}
+
 static uint32_t pixel_for(RContext *ctx, uint32_t r, uint32_t g, uint32_t b)
 {
 	uint32_t rmask = ctx->xvisual->red_mask >> ctx->red_offset;
@@ -288,6 +316,8 @@ RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number, const RCont
 		context->white = pixel_for(context, 0xff, 0xff, 0xff);
 	}
 
+	probeARGBVisual(context);
+
 	gcvals[0] = XCB_GX_COPY;
 	gcvals[1] = 0;
 	context->copy_xgc = xcb_generate_id(xc);
@@ -318,6 +348,8 @@ void RDestroyContext(RContext *context)
 		RReleaseSharedSegment(context);
 		if (context->copy_xgc)
 			xcb_free_gc(context->xc, context->copy_xgc);
+		if (context->cmap_argb)
+			xcb_free_colormap(context->xc, context->cmap_argb);
 		if (context->drawable && context->xscreen
 		    && context->drawable != context->xscreen->root) {
 			xcb_destroy_window(context->xc, context->drawable);

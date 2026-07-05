@@ -33,6 +33,7 @@ libWINGs_la_SOURCES = 	\
 	wbox.c \
 	wbrowser.c \
 	wbutton.c \
+	wcairo.c \
 	wcolor.c \
 	wcolorpanel.c \
 	wcolorwell.c \

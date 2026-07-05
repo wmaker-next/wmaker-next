@@ -70,6 +70,7 @@ WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width, int h
 
 	XClearWindow(dpy, core->window);
 	XSaveContext(dpy, core->window, w_global.context.client_win, (XPointer) & core->descriptor);
+	WMScreenNoteDrawableSize(screen->wmscreen, core->window, width, height);
 
 	return core;
 }
@@ -114,6 +115,7 @@ WCoreWindow *wCoreCreate(WCoreWindow *parent, int x, int y, int width, int heigh
 	core->descriptor.self = core;
 
 	XSaveContext(dpy, core->window, w_global.context.client_win, (XPointer) & core->descriptor);
+	WMScreenNoteDrawableSize(core->screen_ptr->wmscreen, core->window, width, height);
 	return core;
 }
 
@@ -122,13 +124,11 @@ void wCoreDestroy(WCoreWindow * core)
 	if (core->stacking)
 		wfree(core->stacking);
 
-	/* WMDrawString() retargets a per-screen XftDraw to whatever
-	 * drawable was last drawn on. If that is this core window the
-	 * next XftDrawChange() would try to free a Render Picture the
-	 * server already auto-freed when we destroy the window below,
-	 * so move the cache off this drawable first. */
+	/* drop the cached size and any per-screen render state that is
+	 * still pointed at this window before the server auto-frees the
+	 * resources hung off it */
 	if (core->screen_ptr && core->screen_ptr->wmscreen)
-		WMScreenAbandonXftDrawable(core->screen_ptr->wmscreen, core->window);
+		WMScreenAbandonDrawable(core->screen_ptr->wmscreen, core->window);
 
 	XDeleteContext(dpy, core->window, w_global.context.client_win);
 	XDestroyWindow(dpy, core->window);
@@ -156,6 +156,8 @@ void wCoreConfigure(WCoreWindow * core, int req_x, int req_y, int req_w, int req
 		xwc.height = req_h;
 		core->width = req_w;
 		core->height = req_h;
+		WMScreenNoteDrawableSize(core->screen_ptr->wmscreen, core->window,
+					 req_w, req_h);
 	}
 	XConfigureWindow(dpy, core->window, mask, &xwc);
 }

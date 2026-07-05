@@ -43,6 +43,7 @@ POTFILES += \
 	$(top_srcdir)/WINGs/wbox.c \
 	$(top_srcdir)/WINGs/wbrowser.c \
 	$(top_srcdir)/WINGs/wbutton.c \
+	$(top_srcdir)/WINGs/wcairo.c \
 	$(top_srcdir)/WINGs/wcolor.c \
 	$(top_srcdir)/WINGs/wcolorpanel.c \
 	$(top_srcdir)/WINGs/wcolorwell.c \

@@ -202,6 +202,8 @@ void W_RealizeView(W_View * view)
 					     view->screen->visual, view->attribFlags, &view->attribs);
 
 		XSaveContext(dpy, view->window, ViewContext, (XPointer) view);
+		WMScreenNoteDrawableSize(view->screen, view->window,
+					 view->size.width, view->size.height);
 
 		view->flags.realized = 1;
 
@@ -381,6 +383,7 @@ static void destroyView(W_View * view)
 
 	if (view->flags.realized) {
 		XDeleteContext(view->screen->display, view->window, ViewContext);
+		WMScreenAbandonDrawable(view->screen, view->window);
 
 		/* if parent is being destroyed, it will die naturaly */
 		if (!view->flags.parentDying || view->flags.topLevel)
@@ -458,6 +461,7 @@ void W_ResizeView(W_View * view, unsigned int width, unsigned int height)
 
 	if (view->flags.realized) {
 		XResizeWindow(view->screen->display, view->window, width, height);
+		WMScreenNoteDrawableSize(view->screen, view->window, width, height);
 	}
 	view->size.width = width;
 	view->size.height = height;

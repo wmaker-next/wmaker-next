@@ -653,6 +653,8 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->rootWin = RootWindow(display, screen);
 
 	scrPtr->fontCache = WMCreateHashTable(WMStringPointerHashCallbacks);
+	scrPtr->drawableSize = WMCreateHashTable(WMIntHashCallbacks);
+	scrPtr->compositor_running = W_ScreenCheckCompositor(scrPtr);
 
 	scrPtr->xftdraw = XftDrawCreate(scrPtr->display, W_DRAWABLE(scrPtr), scrPtr->visual, scrPtr->colormap);
 
