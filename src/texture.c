@@ -44,8 +44,6 @@ static RImage * get_texture_image(WScreen *scr, const char *pixmap_file);
 WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
 {
 	WTexSolid *texture;
-	int gcm;
-	XGCValues gcv;
 
 	texture = wmalloc(sizeof(WTexture));
 
@@ -93,21 +91,6 @@ WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
 	wAllocColor(scr, scr->w_colormap, &texture->dim);
 	wAllocColor(scr, scr->w_colormap, &texture->dark);
 
-	gcm = GCForeground | GCBackground | GCGraphicsExposures;
-	gcv.graphics_exposures = False;
-
-	gcv.background = gcv.foreground = texture->light.pixel;
-	texture->light_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
-	gcv.background = gcv.foreground = texture->dim.pixel;
-	texture->dim_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
-	gcv.background = gcv.foreground = texture->dark.pixel;
-	texture->dark_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
-	gcv.background = gcv.foreground = color->pixel;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
 	return texture;
 }
 
@@ -123,9 +106,6 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 #define CANFREE(c) (c!=scr->black_pixel && c!=scr->white_pixel && c!=0)
 	switch (texture->any.type) {
 	case WTEX_SOLID:
-		XFreeGC(dpy, texture->solid.light_gc);
-		XFreeGC(dpy, texture->solid.dark_gc);
-		XFreeGC(dpy, texture->solid.dim_gc);
 		if (CANFREE(texture->solid.light.pixel))
 			colors[count++] = texture->solid.light.pixel;
 		if (CANFREE(texture->solid.dim.pixel))
@@ -171,7 +151,6 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 			xcb_free_colors_checked(xconn, scr->w_colormap, 0,
 						count, pixels)));
 	}
-	XFreeGC(dpy, texture->any.gc);
 	wfree(texture);
 #undef CANFREE
 }
@@ -179,7 +158,6 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 WTexGradient *wTextureMakeGradient(WScreen *scr, int style, const RColor *from, const RColor *to)
 {
 	WTexGradient *texture;
-	XGCValues gcv;
 
 	texture = wmalloc(sizeof(WTexture));
 	texture->type = style;
@@ -193,9 +171,6 @@ WTexGradient *wTextureMakeGradient(WScreen *scr, int style, const RColor *from, 
 	texture->normal.blue = (from->blue + to->blue) << 7;
 
 	wAllocColor(scr, scr->w_colormap, &texture->normal);
-	gcv.background = gcv.foreground = texture->normal.pixel;
-	gcv.graphics_exposures = False;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
 	return texture;
 }
@@ -204,7 +179,6 @@ WTexIGradient *wTextureMakeIGradient(WScreen *scr, int thickness1, const RColor 
 				     int thickness2, const RColor colors2[2])
 {
 	WTexIGradient *texture;
-	XGCValues gcv;
 	int i;
 
 	texture = wmalloc(sizeof(WTexture));
@@ -225,9 +199,6 @@ WTexIGradient *wTextureMakeIGradient(WScreen *scr, int thickness1, const RColor 
 		texture->normal.blue = (colors2[0].blue + colors2[1].blue) << 7;
 	}
 	wAllocColor(scr, scr->w_colormap, &texture->normal);
-	gcv.background = gcv.foreground = texture->normal.pixel;
-	gcv.graphics_exposures = False;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
 	return texture;
 }
@@ -235,7 +206,6 @@ WTexIGradient *wTextureMakeIGradient(WScreen *scr, int thickness1, const RColor 
 WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 {
 	WTexMGradient *texture;
-	XGCValues gcv;
 	int i;
 
 	texture = wmalloc(sizeof(WTexture));
@@ -258,9 +228,6 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 	texture->colors = colors;
 
 	wAllocColor(scr, scr->w_colormap, &texture->normal);
-	gcv.background = gcv.foreground = texture->normal.pixel;
-	gcv.graphics_exposures = False;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
 	return texture;
 }
@@ -268,7 +235,6 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file, XColor *color)
 {
 	WTexPixmap *texture;
-	XGCValues gcv;
 	RImage *image;
 
 	image = get_texture_image(scr, pixmap_file);
@@ -282,9 +248,6 @@ WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file,
 	texture->normal = *color;
 
 	wAllocColor(scr, scr->w_colormap, &texture->normal);
-	gcv.background = gcv.foreground = texture->normal.pixel;
-	gcv.graphics_exposures = False;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
 	texture->pixmap = image;
 
@@ -295,7 +258,6 @@ WTexTGradient *wTextureMakeTGradient(WScreen *scr, int style, const RColor *from
 				     const char *pixmap_file, int opacity)
 {
 	WTexTGradient *texture;
-	XGCValues gcv;
 	RImage *image;
 
 	image = get_texture_image(scr, pixmap_file);
@@ -315,9 +277,6 @@ WTexTGradient *wTextureMakeTGradient(WScreen *scr, int style, const RColor *from
 	texture->normal.blue = (from->blue + to->blue) << 7;
 
 	wAllocColor(scr, scr->w_colormap, &texture->normal);
-	gcv.background = gcv.foreground = texture->normal.pixel;
-	gcv.graphics_exposures = False;
-	texture->normal_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
 
 	texture->pixmap = image;
 

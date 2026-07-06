@@ -93,10 +93,6 @@
 #define REPLACE_WM_TIMEOUT 15
 #endif
 
-#define STIPPLE_WIDTH 2
-#define STIPPLE_HEIGHT 2
-static char STIPPLE_DATA[] = { 0x02, 0x01 };
-
 static WMPropList *dApplications = NULL;
 static WMPropList *dWorkspace;
 static WMPropList *dDock;
@@ -407,52 +403,13 @@ static WPixmap *make3Dots(WScreen *scr)
 	return wpix;
 }
 
-static void allocGCs(WScreen * scr)
+static void allocDefaultColors(WScreen *scr)
 {
-	XGCValues gcv;
-	int gcm;
-
-	scr->stipple_bitmap = XCreateBitmapFromData(dpy, scr->w_win, STIPPLE_DATA, STIPPLE_WIDTH, STIPPLE_HEIGHT);
-
-	gcv.stipple = scr->stipple_bitmap;
-	gcv.foreground = scr->white_pixel;
-	gcv.fill_style = FillStippled;
-	gcv.graphics_exposures = False;
-	gcm = GCForeground | GCStipple | GCFillStyle | GCGraphicsExposures;
-	scr->stipple_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
-	/* selected icon border GCs */
-	gcv.function = GXcopy;
-	gcv.foreground = scr->white_pixel;
-	gcv.background = scr->black_pixel;
-	gcv.line_width = 1;
-	gcv.line_style = LineDoubleDash;
-	gcv.fill_style = FillSolid;
-	gcv.dash_offset = 0;
-	gcv.dashes = 4;
-	gcv.graphics_exposures = False;
-
-	gcm = GCFunction | GCGraphicsExposures;
-	gcm |= GCForeground | GCBackground;
-	gcm |= GCLineWidth | GCLineStyle;
-	gcm |= GCFillStyle;
-	gcm |= GCDashOffset | GCDashList;
-
-	scr->icon_select_gc = XCreateGC(dpy, scr->w_win, gcm, &gcv);
-
 	scr->menu_title_color[0] = WMRetainColor(scr->white);
 
 	/* don't retain scr->black here because we may alter its alpha */
 	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
 	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
-
-	/* copy GC */
-	gcv.foreground = scr->white_pixel;
-	gcv.background = scr->black_pixel;
-	gcv.graphics_exposures = False;
-	scr->copy_gc = XCreateGC(dpy, scr->w_win, GCForeground | GCBackground | GCGraphicsExposures, &gcv);
-
-	assert(scr->stipple_bitmap != None);
 }
 
 static void createPixmaps(WScreen * scr)
@@ -818,7 +775,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	scr->dark_pixel = WMColorPixel(scr->darkGray);
 
 	/* create GCs with default values */
-	allocGCs(scr);
+	allocDefaultColors(scr);
 
 	/* read defaults for this screen, old_config is NULL because
 	 * wScreenInit() only runs at first startup */

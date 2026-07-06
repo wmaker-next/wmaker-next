@@ -211,7 +211,6 @@ typedef struct _WScreen {
     WMPixel light_pixel;
     WMPixel dark_pixel;
 
-    Pixmap stipple_bitmap;
     Pixmap transp_stipple;	       /* for making holes in icon masks for
                                         * transparent icon simulation */
     WMFont *title_font;		       /* default font for the titlebars */
@@ -264,11 +263,6 @@ typedef struct _WScreen {
 
 
     WMColor *icon_title_color;	       /* icon title color */
-
-    GC icon_select_gc;
-
-    GC copy_gc;			       /* gc for XCopyArea() */
-    GC stipple_gc;		       /* gc for stippled filling */
 
     struct WPixmap *b_pixmaps[PRED_BPIXMAPS]; /* internal pixmaps for buttons*/
     WTitlebarLayout titlebar_layout;          /* parsed TitlebarLeft/Right */
