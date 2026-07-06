@@ -338,7 +338,7 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 		sx = (image->width - w) / 2;
 
 		if (icon->show_title)
-			theight = WMFontHeight(scr->icon_title_font);
+			theight = WSCALE(scr, WMFontHeight(scr->icon_title_font));
 
 		h = (image->height + theight > w_global.config->icon_size
 		     ? w_global.config->icon_size - theight : image->height);
@@ -1062,8 +1062,8 @@ static void update_icon_title(WIcon *icon)
 
 	/* draw the icon title */
 	if (icon->show_title && icon->icon_name != NULL) {
-		tmp = ShrinkString(scr->icon_title_font, icon->icon_name, w_global.config->icon_size - 4);
-		w = WMWidthOfString(scr->icon_title_font, tmp, l = strlen(tmp));
+		tmp = ShrinkString(scr->icon_title_font, icon->icon_name, WUNSCALE(scr, w_global.config->icon_size - 4));
+		w = WSCALE(scr, WMWidthOfString(scr->icon_title_font, tmp, l = strlen(tmp)));
 
 		if (w > icon->core->width - 4)
 			x = (icon->core->width - 4) - w;

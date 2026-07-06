@@ -90,6 +90,11 @@ typedef struct _WScreen {
     int scr_width;		       /* size of the screen */
     int scr_height;
 
+    /* WMScreenUIScale(wmscreen) cached at wScreenInit() so wm-side
+     * device-px layout can convert logical WMFontHeight() results
+     * without a per-read accessor call. */
+    double ui_scale;
+
     Window root_win;		       /* root window of screen */
     int  depth;			       /* depth of the default visual */
     Colormap colormap;		       /* root colormap */
@@ -430,6 +435,11 @@ void wScreenDestroy(WScreen *scr);
 void wScreenApplyIconSize(WScreen *scr);
 void wScreenUpdateUsableArea(WScreen *scr);
 void wScreenUpdateRootEventMask(WScreen *scr);
+
+/* logical <-> device px for wm-side layout that mixes WMFontHeight()
+ * (logical) with WCoreWindow geometry (device). */
+#define WSCALE(scr, n)   ((int)((n) * (scr)->ui_scale + 0.5))
+#define WUNSCALE(scr, n) ((int)((n) / (scr)->ui_scale + 0.5))
 
 void create_logo_image(WScreen *scr);
 #endif

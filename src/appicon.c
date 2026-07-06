@@ -425,7 +425,7 @@ static void updateDockNumbers(WScreen *scr)
 	snprintf(ws_numbers, sizeof(ws_numbers), "%i [ %i ]", scr->current_workspace + 1, ((scr->current_workspace / 10) + 1));
 	length = strlen(ws_numbers);
 
-	XClearArea(dpy, dicon->icon->core->window, 2, 2, 50, WMFontHeight(scr->icon_title_font) + 1, False);
+	XClearArea(dpy, dicon->icon->core->window, 2, 2, 50, WSCALE(scr, WMFontHeight(scr->icon_title_font)) + 1, False);
 
 	WMDrawString(scr->wmscreen, dicon->icon->core->window, scr->black,
 		     scr->icon_title_font, 4, 3, ws_numbers, length);

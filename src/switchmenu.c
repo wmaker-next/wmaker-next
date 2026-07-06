@@ -60,7 +60,7 @@ static WPixmap *switchMenuIconForWindow(WScreen *scr, WWindow *wwin)
 	if (!scr || !wwin)
 		return NULL;
 
-	max_size = WMFontHeight(scr->menu_entry_font) + 2;
+	max_size = WSCALE(scr, WMFontHeight(scr->menu_entry_font) + 2);
 	if (max_size < 12)
 		max_size = 12;
 

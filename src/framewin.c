@@ -483,7 +483,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		height = fwin->core->height - fwin->top_width - fwin->bottom_width;
 
 	if (flags & WFF_TITLEBAR) {
-		theight = WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2;
+		theight = WSCALE(scr, WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2);
 
 		if (theight > frame_title_max_height(fwin))
 			theight = frame_title_max_height(fwin);
@@ -735,7 +735,7 @@ static void updateTitlebar(WFrameWindow * fwin)
 	int x, w, nleft, nright;
 	int theight, bsize;
 
-	theight = WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2;
+	theight = WSCALE(fwin->screen_ptr, WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2);
 
 	if (theight > frame_title_max_height(fwin))
 		theight = frame_title_max_height(fwin);
@@ -1418,7 +1418,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 		}
 
 		y = frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE;
-		h = WMFontHeight(*fwin->font);
+		h = WSCALE(scr, WMFontHeight(*fwin->font));
 		if (y * 2 + h > frame_title_max_height(fwin))
 			y = (frame_title_max_height(fwin) - h) / 2;
 		if (y * 2 + h < frame_title_min_height(fwin))
@@ -1471,9 +1471,9 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 		if (fwin->title) {
 			char *title;
 
-			title = ShrinkString(*fwin->font, fwin->title, fwin->titlebar->width - lofs - rofs);
+			title = ShrinkString(*fwin->font, fwin->title, WUNSCALE(scr, fwin->titlebar->width - lofs - rofs));
 			titlelen = strlen(title);
-			w = WMWidthOfString(*fwin->font, title, titlelen);
+			w = WSCALE(scr, WMWidthOfString(*fwin->font, title, titlelen));
 
 			switch (fwin->flags.justification) {
 			case WTJ_LEFT:
@@ -1700,7 +1700,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 			continue;
 
 		base = (mframe && mframe->title) ? mframe->title : DEF_WINDOW_TITLE;
-		txt = ShrinkString(*fwin->font, base, tw);
+		txt = ShrinkString(*fwin->font, base, WUNSCALE(scr, tw));
 		len = strlen(txt);
 		if (WMWidthOfString(*fwin->font, txt, len) > 0) {
 			cairo_save(cr);
@@ -1936,8 +1936,8 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 	small_px = WMFontHeight(*fwin->font) * 55 / 100;
 	small = WMBoldSystemFontOfSize(scr->wmscreen, small_px);
-	text_width = WMWidthOfString(small, fwin->language_label, strlen(fwin->language_label));
-	text_height = WMFontHeight(small);
+	text_width = WSCALE(scr, WMWidthOfString(small, fwin->language_label, strlen(fwin->language_label)));
+	text_height = WSCALE(scr, WMFontHeight(small));
 
 	key_width = button->width - border_thickness;
 	key_height = button->height - border_thickness;
@@ -2038,7 +2038,7 @@ static void checkTitleSize(WFrameWindow * fwin)
 	if (buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != None)
 		width -= fwin->titlebar_icon_size + 3;
 
-	if (WMWidthOfString(*fwin->font, fwin->title, strlen(fwin->title)) > width)
+	if (WSCALE(fwin->screen_ptr, WMWidthOfString(*fwin->font, fwin->title, strlen(fwin->title))) > width)
 		fwin->flags.incomplete_title = 1;
 	else
 		fwin->flags.incomplete_title = 0;

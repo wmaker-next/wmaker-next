@@ -2100,8 +2100,8 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 			scr = wScreenForWindow(event->window);
 		if (!scr)
 			return True;
-		top = WMFontHeight(scr->title_font)
-		      + (cfg->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+		top = WSCALE(scr, WMFontHeight(scr->title_font)
+		      + (cfg->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2);
 		if (top > cfg->window_title_max_height)
 			top = cfg->window_title_max_height;
 		if (top < cfg->window_title_min_height)

@@ -86,7 +86,7 @@ static int countLines(const char *text)
 	return h;
 }
 
-static int getMaxStringWidth(WMFont *font, const char *text)
+static int getMaxStringWidth(WScreen *scr, WMFont *font, const char *text)
 {
 	const char *p = text;
 	const char *pb = p;
@@ -95,7 +95,7 @@ static int getMaxStringWidth(WMFont *font, const char *text)
 
 	while (*p) {
 		if (*p == '\n') {
-			wt = WMWidthOfString(font, pb, pos);
+			wt = WSCALE(scr, WMWidthOfString(font, pb, pos));
 			if (wt > w)
 				w = wt;
 			pos = 0;
@@ -106,20 +106,20 @@ static int getMaxStringWidth(WMFont *font, const char *text)
 		p++;
 	}
 	if (pos > 0) {
-		wt = WMWidthOfString(font, pb, pos);
+		wt = WSCALE(scr, WMWidthOfString(font, pb, pos));
 		if (wt > w)
 			w = wt;
 	}
 	return w;
 }
 
-static void drawMultiLineString(cairo_t *cr, WMColor *color, WMFont *font,
+static void drawMultiLineString(WScreen *scr, cairo_t *cr, WMColor *color, WMFont *font,
 				int x, int y, const char *text, int len)
 {
 	const char *p = text;
 	const char *pb = p;
 	int l = 0, pos = 0;
-	int height = WMFontHeight(font);
+	int height = WSCALE(scr, WMFontHeight(font));
 
 	while (*p && p - text < len) {
 		if (*p == '\n') {
@@ -185,8 +185,8 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 
 	freeContents(scr);
 
-	width = getMaxStringWidth(font, text) + 16;
-	height = countLines(text) * WMFontHeight(font) + 4;
+	width = getMaxStringWidth(scr, font, text) + 16;
+	height = WSCALE(scr, countLines(text) * WMFontHeight(font) + 4);
 
 	if (height < 16)
 		height = 16;
@@ -222,7 +222,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 			    SPACE, scr->white, scr->black, &pixmap, &mask);
 
 	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
-	drawMultiLineString(cr, scr->black, font, 8, ty + 2, text, strlen(text));
+	drawMultiLineString(scr, cr, scr->black, font, 8, ty + 2, text, strlen(text));
 	WCairoEnd(cr);
 
 	XSetWindowBackgroundPixmap(dpy, scr->balloon->window, pixmap);
@@ -249,8 +249,8 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 
 	freeContents(scr);
 
-	width = getMaxStringWidth(font, text) + 8;
-	height = countLines(text) * WMFontHeight(font) + 4;
+	width = getMaxStringWidth(scr, font, text) + 8;
+	height = WSCALE(scr, countLines(text) * WMFontHeight(font) + 4);
 
 	if (x < 0)
 		x = 0;
@@ -266,7 +266,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	}
 
 	pixmap = makeBackground(scr, width, height, &cr);
-	drawMultiLineString(cr, scr->window_title_color[0], font, 4, 2, text, strlen(text));
+	drawMultiLineString(scr, cr, scr->window_title_color[0], font, 4, 2, text, strlen(text));
 	WCairoEnd(cr);
 
 	XResizeWindow(dpy, scr->balloon->window, width, height);
@@ -300,8 +300,8 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	height = w_global.config->minipreview_size;
 
 	if (w_global.config->miniwin_title_balloon) {
-		shortenTitle = ShrinkString(font, title, width - MINIPREVIEW_BORDER * 2);
-		titleHeight = countLines(shortenTitle) * WMFontHeight(font) + 4;
+		shortenTitle = ShrinkString(font, title, WUNSCALE(scr, width - MINIPREVIEW_BORDER * 2));
+		titleHeight = WSCALE(scr, countLines(shortenTitle) * WMFontHeight(font) + 4);
 		height += titleHeight;
 	} else {
 		shortenTitle = NULL;
@@ -324,7 +324,7 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	pixmap = makeBackground(scr, width, height, &cr);
 
 	if (shortenTitle != NULL) {
-		drawMultiLineString(cr, scr->window_title_color[0], font,
+		drawMultiLineString(scr, cr, scr->window_title_color[0], font,
 				    MINIPREVIEW_BORDER, MINIPREVIEW_BORDER,
 				    shortenTitle, strlen(shortenTitle));
 		wfree(shortenTitle);

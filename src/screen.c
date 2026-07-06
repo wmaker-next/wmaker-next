@@ -683,6 +683,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* create screen descriptor for WINGs */
 	scr->wmscreen = WMCreateScreenWithRContext(dpy, screen_number, scr->rcontext);
+	scr->ui_scale = WMScreenUIScale(scr->wmscreen);
 
 	if (!scr->wmscreen) {
 		wfatal(_("could not initialize WINGs widget set"));

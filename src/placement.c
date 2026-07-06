@@ -504,8 +504,8 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 {
 	WScreen *scr = wwin->screen_ptr;
 	int head;
-	int h = WMFontHeight(scr->title_font)
-		+ (w_global.config->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2;
+	int h = WSCALE(scr, WMFontHeight(scr->title_font)
+		+ (w_global.config->window_title_clearance + TITLEBAR_EXTEND_SPACE) * 2);
 
 	if (h > w_global.config->window_title_max_height)
 		h = w_global.config->window_title_max_height;

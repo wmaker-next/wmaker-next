@@ -611,14 +611,14 @@ void wMenuRealize(WMenu * menu)
 	wFrameWindowUpdateBorders(menu->frame, flags);
 
 	if (menu->flags.titled) {
-		twidth = WMWidthOfString(scr->menu_title_font, menu->frame->title, strlen(menu->frame->title));
+		twidth = WSCALE(scr, WMWidthOfString(scr->menu_title_font, menu->frame->title, strlen(menu->frame->title)));
 		theight = menu->frame->top_width;
 		twidth += theight + (TS_NEW_GEOM(w_global.config->new_style) ? 16 : 8);
 	} else {
 		twidth = 0;
 		theight = 0;
 	}
-	eheight = WMFontHeight(scr->menu_entry_font) + 6 + w_global.config->menu_text_clearance * 2;
+	eheight = WSCALE(scr, WMFontHeight(scr->menu_entry_font) + 6 + w_global.config->menu_text_clearance * 2);
 	menu->entry_height = eheight;
 	mrwidth = 0;
 	mwidth = 0;
@@ -627,7 +627,7 @@ void wMenuRealize(WMenu * menu)
 
 		/* search widest text */
 		text = menu->entries[i]->text;
-		width = WMWidthOfString(scr->menu_entry_font, text, strlen(text)) + 10;
+		width = WSCALE(scr, WMWidthOfString(scr->menu_entry_font, text, strlen(text)) + 10);
 
 		if (w_global.config->window_list_app_icons && menu->entries[i]->icon) {
 			width += menu->entries[i]->icon->width + 4;
@@ -643,8 +643,8 @@ void wMenuRealize(WMenu * menu)
 		/* search widest text on right */
 		text = menu->entries[i]->rtext;
 		if (text)
-			rwidth = WMWidthOfString(scr->menu_entry_font, text, strlen(text))
-			    + 10;
+			rwidth = WSCALE(scr, WMWidthOfString(scr->menu_entry_font, text, strlen(text))
+			    + 10);
 		else if (menu->entries[i]->cascade >= 0)
 			rwidth = 16;
 		else
@@ -973,7 +973,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	/* draw right text */
 
 	if (entry->rtext && entry->cascade < 0) {
-		tw = WMWidthOfString(scr->menu_entry_font, entry->rtext, strlen(entry->rtext));
+		tw = WSCALE(scr, WMWidthOfString(scr->menu_entry_font, entry->rtext, strlen(entry->rtext)));
 
 		WMDrawStringCairo(cr, color, scr->menu_entry_font, w - 6 - tw,
 				  y + 3 + w_global.config->menu_text_clearance,

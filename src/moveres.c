@@ -279,8 +279,8 @@ static void addWindowOutline(WWindow * wwin, int x, int y, int width, int height
 		fb = wwin->screen_ptr->frame_border_width;
 
 	if (HAS_TITLEBAR(wwin) && !wwin->flags.shaded) {
-		h = WMFontHeight(wwin->screen_ptr->title_font) + (w_global.config->window_title_clearance +
-								  TITLEBAR_EXTEND_SPACE) * 2;
+		h = WSCALE(wwin->screen_ptr, WMFontHeight(wwin->screen_ptr->title_font) + (w_global.config->window_title_clearance +
+								  TITLEBAR_EXTEND_SPACE) * 2);
 
 		if (h > w_global.config->window_title_max_height)
 			h = w_global.config->window_title_max_height;
@@ -2329,8 +2329,8 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 		return;
 	}
 	if (HAS_TITLEBAR(wwin)) {
-		h = WMFontHeight(scr->title_font) + (w_global.config->window_title_clearance +
-						     TITLEBAR_EXTEND_SPACE) * 2;
+		h = WSCALE(scr, WMFontHeight(scr->title_font) + (w_global.config->window_title_clearance +
+						     TITLEBAR_EXTEND_SPACE) * 2);
 
 		if (h > w_global.config->window_title_max_height)
 			h = w_global.config->window_title_max_height;

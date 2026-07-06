@@ -1440,14 +1440,14 @@ void wClipIconPaint(WAppIcon *aicon)
 	else
 		color = scr->clip_title_color[CLIP_COLLAPSED];
 
-	ty = ICON_SIZE - WMFontHeight(scr->clip_title_font) - 3;
+	ty = ICON_SIZE - WSCALE(scr, WMFontHeight(scr->clip_title_font)) - 3;
 
 	tx = CLIP_BUTTON_SIZE * ICON_SIZE / 64;
 
 	if(w_global.config->show_clip_title)
 		WMDrawString(scr->wmscreen, win, color, scr->clip_title_font, tx, ty, ws_name, length);
 
-	tx = (ICON_SIZE / 2 - WMWidthOfString(scr->clip_title_font, ws_number, nlength)) / 2;
+	tx = (ICON_SIZE / 2 - WSCALE(scr, WMWidthOfString(scr->clip_title_font, ws_number, nlength))) / 2;
 
 	WMDrawString(scr->wmscreen, win, color, scr->clip_title_font, tx, 2, ws_number, nlength);
 
