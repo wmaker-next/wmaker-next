@@ -466,8 +466,14 @@ void W_MoveView(W_View * view, int x, int y)
 		return;
 
 	if (view->flags.realized) {
-		XMoveWindow(view->screen->display, view->window,
-			    VDEV(view->screen, x), VDEV(view->screen, y));
+		/* a top-level's parent is root, and root coordinates are
+		 * device pixels already, so only child-view positions are
+		 * scaled inside their (scaled) parent */
+		if (view->flags.topLevel)
+			XMoveWindow(view->screen->display, view->window, x, y);
+		else
+			XMoveWindow(view->screen->display, view->window,
+				    VDEV(view->screen, x), VDEV(view->screen, y));
 	}
 	view->pos.x = x;
 	view->pos.y = y;

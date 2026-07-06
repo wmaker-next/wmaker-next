@@ -221,8 +221,7 @@ static void makeKnobPixmap(Slider * sPtr)
 		h = sPtr->view->size.height - 2;
 	}
 
-	pix = XCreatePixmap(scr->display, sPtr->view->window, w, h, scr->depth);
-	WMScreenNoteDrawableSize(scr, pix, w, h);
+	pix = W_CreateScaledPixmap(scr, w, h);
 
 	cr = WCairoBeginForDrawable(scr, pix);
 	if (!cr)
@@ -302,22 +301,6 @@ static void didResizeSlider(W_ViewDelegate * self, WMView * view)
 	}
 }
 
-/* wrap a screen-depth server pixmap and paint it at (x,y), clipped
- * to (x,y,w,h) so a smaller-than-slot backPixmap does not smear */
-static void blitPixmap(cairo_t *cr, W_Screen *scr, Pixmap pix,
-		       int pw, int ph, int x, int y, int w, int h)
-{
-	RContext *rc = scr->rcontext;
-	cairo_surface_t *surf;
-
-	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
-					rc->xvisual, pw, ph);
-	cairo_set_source_surface(cr, surf, x, y);
-	cairo_rectangle(cr, x, y, w, h);
-	cairo_fill(cr);
-	cairo_surface_destroy(surf);
-}
-
 static void paintSlider(Slider * sPtr)
 {
 	W_Screen *scr = sPtr->view->screen;
@@ -341,8 +324,9 @@ static void paintSlider(Slider * sPtr)
 	if (sPtr->backPixmap) {
 		WMSize psz = WMGetPixmapSize(sPtr->backPixmap);
 
-		blitPixmap(cr, scr, WMGetPixmapXID(sPtr->backPixmap),
-			   psz.width, psz.height, 1, 1, psz.width, psz.height);
+		WCairoPaintArea(cr, scr, WMGetPixmapXID(sPtr->backPixmap),
+				psz.width, psz.height, 0, 0,
+				psz.width, psz.height, 1, 1);
 	} else {
 		WCairoSetSourceColor(cr, scr->gray);
 		cairo_paint(cr);
@@ -353,12 +337,12 @@ static void paintSlider(Slider * sPtr)
 		pos = (MAXV != MINV) ? (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		kw = size.width - 2;
 		kh = sPtr->knobThickness;
-		blitPixmap(cr, scr, sPtr->knobPixmap, kw, kh, 1, pos, kw, kh);
+		WCairoPaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, 1, pos);
 	} else {
 		pos = (MAXV != MINV) ? (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		kw = sPtr->knobThickness;
 		kh = size.height - 2;
-		blitPixmap(cr, scr, sPtr->knobPixmap, kw, kh, pos, 1, kw, kh);
+		WCairoPaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, pos, 1);
 	}
 
 	kLine(cr, scr->black, 0, 0, 0, size.height - 1);

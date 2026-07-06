@@ -298,6 +298,7 @@ static void willResizeWindow(W_ViewDelegate * self, WMView * view, unsigned *wid
 static void setSizeHints(WMWindow * win)
 {
 	WXSizeHints *hints;
+	double s;
 
 	hints = WXAllocSizeHints();
 	if (!hints) {
@@ -305,6 +306,9 @@ static void setSizeHints(WMWindow * win)
 		return;
 	}
 
+	/* the WM reads these in device px against the scaled window
+	 * geometry, positions are root coords which are already device */
+	s = win->view->screen->uiScale;
 	hints->flags = 0;
 
 	if (win->flags.setPPos) {
@@ -319,23 +323,23 @@ static void setSizeHints(WMWindow * win)
 	}
 	if (win->minSize.width > 0 && win->minSize.height > 0) {
 		hints->flags |= PMinSize;
-		hints->min_width = win->minSize.width;
-		hints->min_height = win->minSize.height;
+		hints->min_width = (int)(win->minSize.width * s + 0.5);
+		hints->min_height = (int)(win->minSize.height * s + 0.5);
 	}
 	if (win->maxSize.width > 0 && win->maxSize.height > 0) {
 		hints->flags |= PMaxSize;
-		hints->max_width = win->maxSize.width;
-		hints->max_height = win->maxSize.height;
+		hints->max_width = (int)(win->maxSize.width * s + 0.5);
+		hints->max_height = (int)(win->maxSize.height * s + 0.5);
 	}
 	if (win->baseSize.width > 0 && win->baseSize.height > 0) {
 		hints->flags |= PBaseSize;
-		hints->base_width = win->baseSize.width;
-		hints->base_height = win->baseSize.height;
+		hints->base_width = (int)(win->baseSize.width * s + 0.5);
+		hints->base_height = (int)(win->baseSize.height * s + 0.5);
 	}
 	if (win->resizeIncrement.width > 0 && win->resizeIncrement.height > 0) {
 		hints->flags |= PResizeInc;
-		hints->width_inc = win->resizeIncrement.width;
-		hints->height_inc = win->resizeIncrement.height;
+		hints->width_inc = (int)(win->resizeIncrement.width * s + 0.5);
+		hints->height_inc = (int)(win->resizeIncrement.height * s + 0.5);
 	}
 	if (win->flags.setAspect) {
 		hints->flags |= PAspect;

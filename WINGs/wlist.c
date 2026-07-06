@@ -36,8 +36,6 @@ typedef struct W_List {
 	WMScroller *vScroller;
 
 	Pixmap doubleBuffer;
-	int devBufWidth;
-	int devBufHeight;
 
 	char *typeahead;
 	int typeaheadLen;
@@ -102,8 +100,6 @@ static void updateDoubleBufferPixmap(WMList * lPtr)
 		XFreePixmap(scr->display, lPtr->doubleBuffer);
 	}
 	lPtr->doubleBuffer = W_CreateScaledPixmap(scr, view->size.width, lPtr->itemHeight);
-	lPtr->devBufWidth = (int)(view->size.width * scr->uiScale + 0.5);
-	lPtr->devBufHeight = (int)(lPtr->itemHeight * scr->uiScale + 0.5);
 }
 
 static void realizeObserver(void *self, WMNotification * not)
@@ -465,14 +461,12 @@ static void paintItem(List * lPtr, int index)
 {
 	WMView *view = lPtr->view;
 	W_Screen *scr = view->screen;
-	RContext *rc = scr->rcontext;
 	int width, height, x, y, tlen;
 	WMListItem *itemPtr;
 	Drawable d = lPtr->doubleBuffer;
 	WMColor *back;
 	WMRect rect;
 	int flags;
-	cairo_surface_t *bs;
 	cairo_t *cr;
 
 	itemPtr = WMGetFromArray(lPtr->items, index);
@@ -511,19 +505,10 @@ static void paintItem(List * lPtr, int index)
 	}
 
 	/* the buffer is view->size.width wide but only the row area right
-	 * of the scroller strip is copied onto the on-screen window. Both
-	 * source and dest are at device size so blit under identity CTM. */
+	 * of the scroller strip is copied onto the on-screen window */
 	cr = WCairoBeginForDrawable(scr, view->window);
-	bs = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)d, rc->xvisual,
-				      lPtr->devBufWidth, lPtr->devBufHeight);
-	cairo_save(cr);
-	cairo_identity_matrix(cr);
-	cairo_set_source_surface(cr, bs, x * scr->uiScale, y * scr->uiScale);
-	cairo_rectangle(cr, x * scr->uiScale, y * scr->uiScale,
-			width * scr->uiScale, height * scr->uiScale);
-	cairo_fill(cr);
-	cairo_restore(cr);
-	cairo_surface_destroy(bs);
+	WCairoPaintArea(cr, scr, d, view->size.width, height,
+			0, 0, width, height, x, y);
 
 	if ((index - lPtr->topItem + lPtr->fullFitLines) * lPtr->itemHeight > lPtr->view->size.height - 2)
 		W_DrawReliefCairo(cr, scr, 0, 0,

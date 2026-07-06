@@ -427,8 +427,7 @@ static Pixmap makeMenuPixmap(PopUpButton * bPtr)
 	height = itemHeight * WMGetArrayItemCount(bPtr->items);
 	yo = (itemHeight - WMFontHeight(scr->normalFont)) / 2;
 
-	pixmap = XCreatePixmap(scr->display, bPtr->view->window, width, height, scr->depth);
-	WMScreenNoteDrawableSize(scr, pixmap, width, height);
+	pixmap = W_CreateScaledPixmap(scr, width, height);
 
 	cr = WCairoBeginForDrawable(scr, pixmap);
 	WCairoSetSourceColor(cr, scr->gray);

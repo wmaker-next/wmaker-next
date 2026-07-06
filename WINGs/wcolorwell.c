@@ -300,21 +300,23 @@ static WMPixmap *makeDragPixmap(WMColorWell * cPtr)
 	WMScreen *scr = cPtr->view->screen;
 	Pixmap pix;
 	cairo_t *cr;
+	int d;
 
-	pix = XCreatePixmap(scr->display, W_DRAWABLE(scr), 16, 16, scr->depth);
-	WMScreenNoteDrawableSize(scr, pix, 16, 16);
+	pix = W_CreateScaledPixmap(scr, 16, 16);
+	d = (int)(16 * scr->uiScale + 0.5);
 
 	cr = WCairoBeginForDrawable(scr, pix);
 	WCairoSetSourceColor(cr, cPtr->color);
-	cairo_rectangle(cr, 0, 0, 16, 16);
-	cairo_fill(cr);
+	cairo_paint(cr);
 	WCairoSetSourceColor(cr, scr->black);
 	cairo_set_line_width(cr, 1.0);
 	cairo_rectangle(cr, 0.5, 0.5, 15, 15);
 	cairo_stroke(cr);
 	WCairoEnd(cr);
 
-	return WMCreatePixmapFromXPixmaps(scr, pix, None, 16, 16, scr->depth);
+	/* the drag follower window is created at pixmap->width x height
+	 * with this as its background_pixmap, so hand back device size */
+	return WMCreatePixmapFromXPixmaps(scr, pix, None, d, d, scr->depth);
 }
 
 static void handleDragEvents(XEvent * event, void *data)

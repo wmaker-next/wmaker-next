@@ -359,12 +359,39 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
  * cairo target at (dx, dy). srcW/srcH are passed explicitly rather than
  * looked up in drawableSize because most callers hold a short-lived
  * pixmap from RConvertImage or XCreatePixmap and already know the
- * answer, so a cache miss and the associated round trip is avoided. */
+ * answer, so a cache miss and the associated round trip is avoided.
+ *
+ * When src was created via W_CreateScaledPixmap() (or is a scaled
+ * W_View window) and cr's CTM is the same uiScale, both endpoints hold
+ * device pixels at the same density, so blit under identity CTM to
+ * avoid cairo up-scaling the already-scaled source a second time.
+ * When only cr is scaled and src is a raw device-px pixmap the CTM
+ * up-scale is what places a 1x thumbnail correctly on a 2x canvas, so
+ * that case is left alone. */
 void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int srcH,
 		     int sx, int sy, int w, int h, int dx, int dy)
 {
 	RContext *rc = scr->rcontext;
 	cairo_surface_t *ss;
+	uintptr_t v;
+	double s;
+
+	v = (uintptr_t)WMHashGet(scr->drawableSize, (const void *)(uintptr_t)src);
+	if ((v & DRAWABLE_SIZE_SCALED_BIT) && scr->uiScale > 1.0001) {
+		s = scr->uiScale;
+		ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)src,
+					      rc->xvisual,
+					      (int)((v >> 16) & 0x7fff),
+					      (int)(v & 0xffff));
+		cairo_save(cr);
+		cairo_identity_matrix(cr);
+		cairo_set_source_surface(cr, ss, (dx - sx) * s, (dy - sy) * s);
+		cairo_rectangle(cr, dx * s, dy * s, w * s, h * s);
+		cairo_fill(cr);
+		cairo_restore(cr);
+		cairo_surface_destroy(ss);
+		return;
+	}
 
 	ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)src,
 				      rc->xvisual, srcW, srcH);

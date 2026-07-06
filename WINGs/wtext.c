@@ -624,12 +624,10 @@ static void paintText(Text * tPtr)
 	const char *text;
 	int len, y, c, s, done = False, dir; /* dir 1 = down */
 	WMScreen *scr = tPtr->view->screen;
-	RContext *rc = scr->rcontext;
 	Window win = tPtr->view->window;
 	WMColor *color;
 	XRectangle rect;
 	W_View *gview;
-	cairo_surface_t *dbsurf;
 	cairo_t *cr;
 	int j, h;
 
@@ -816,13 +814,9 @@ static void paintText(Text * tPtr)
 	cr = WCairoBeginForDrawable(scr, win);
 	if (!cr)
 		return;
-	dbsurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)tPtr->db,
-					  rc->xvisual, tPtr->visible.w, tPtr->visible.h);
-	cairo_set_source_surface(cr, dbsurf, tPtr->visible.x, tPtr->visible.y);
-	cairo_rectangle(cr, tPtr->visible.x, tPtr->visible.y,
-			tPtr->visible.w, tPtr->visible.h);
-	cairo_fill(cr);
-	cairo_surface_destroy(dbsurf);
+	WCairoPaintArea(cr, scr, tPtr->db, tPtr->visible.w, tPtr->visible.h,
+			0, 0, tPtr->visible.w, tPtr->visible.h,
+			tPtr->visible.x, tPtr->visible.y);
 
 	W_DrawReliefCairo(cr, scr, 0, 0, tPtr->view->size.width, tPtr->view->size.height, tPtr->flags.relief);
 
@@ -1744,13 +1738,9 @@ static void textDidResize(W_ViewDelegate * self, WMView * view)
 		if (tPtr->visible.h < 20)
 			tPtr->visible.h = 20;
 
-		if (!tPtr->db) {
-			tPtr->db = XCreatePixmap(tPtr->view->screen->display,
-						 tPtr->view->window, tPtr->visible.w,
-						 tPtr->visible.h, tPtr->view->screen->depth);
-			WMScreenNoteDrawableSize(tPtr->view->screen, tPtr->db,
-						 tPtr->visible.w, tPtr->visible.h);
-		}
+		if (!tPtr->db)
+			tPtr->db = W_CreateScaledPixmap(tPtr->view->screen,
+							tPtr->visible.w, tPtr->visible.h);
 	}
 
 	WMThawText(tPtr);
