@@ -31,7 +31,7 @@
 
 "Hlavní menu" MENU
 	"Správce oken" MENU
-		"Editace menu" SHEXEC xterm -T 'Editace menu' -e joe $WMAKER_USER_ROOT/Library/WindowMaker/menu
+		"Editace menu" SHEXEC xterm -T 'Editace menu' -e joe $WMAKER_USER_DATA/menu
 	"Správce oken" END
 	"Info" MENU
 		"Info Panel..." INFO_PANEL

@@ -164,12 +164,12 @@
 	"창 관 리" END
 	"작업환경" MENU
 		"설    정" SHEXEC #wprefs# || wmakerconf
-		"테    마" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"테마저장" EXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(테마 이름,파일 이름을 입력하세요:)"
-		"아이콘셋" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
-		"아이콘셋저장" EXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(아이콘셋 이름,파일 이름을 입력하세요:)"
+		"테    마" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"테마저장" EXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(테마 이름,파일 이름을 입력하세요:)"
+		"아이콘셋" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
+		"아이콘셋저장" EXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(아이콘셋 이름,파일 이름을 입력하세요:)"
 #if (DEPTH>8)
-		"스 타 일" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
+		"스 타 일" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
 #endif
 		"배경화면" MENU
 			"단    색" MENU
@@ -184,9 +184,9 @@
 				"색 지정" WS_BACK '(solid, "%a(배경색:)")'
 			"단    색" END
 			"그    림" MENU
-				"전체화면" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -s
-				"타일형식" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
-				"가 운 데" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -e
+				"전체화면" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -s
+				"타일형식" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
+				"가 운 데" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -e
 			"그    림" END
 #if (DEPTH>8)
 			"그래디언트" MENU

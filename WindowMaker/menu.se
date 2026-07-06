@@ -172,9 +172,9 @@
 	"Arbetsbord" END
 
 	"Utseende" MENU
-		"Teman" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Stilar" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Ikonuppsättningar" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Teman" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Stilar" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Ikonuppsättningar" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Bakgrund" MENU
 			"Enfärgat" MENU
                         	"Svart" WS_BACK '(solid, black)'
@@ -190,10 +190,10 @@
 				"Flagga" WS_BACK '(mdgradient, green, red, white, green)'
 				"Himmel" WS_BACK '(vgradient, blue4, white)'
 			"Toningar" END
-			"Bilder" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Bilder" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Bakgrund" END
-		"Spara tema" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Theme name)"
-		"Spara ikonuppsättning" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(IconSet name)"
+		"Spara tema" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Theme name)"
+		"Spara ikonuppsättning" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(IconSet name)"
 	"Utseende" END
 
 	"Avsluta"	MENU

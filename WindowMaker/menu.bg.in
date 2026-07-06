@@ -181,9 +181,9 @@
 	"Работни места" END
 
 	"Изглед" MENU
-		"Теми" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Стилове" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Колекции иконки" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Теми" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Стилове" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Колекции иконки" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Фон" MENU
 			"Плътен" MENU
 				"Черен" WS_BACK '(solid, black)'
@@ -205,10 +205,10 @@
 				"Сиви сенки" WS_BACK '(vgradient, "#636380", "#131318")'
 				"Винени сенки" WS_BACK '(vgradient, "#600040", "#180010")'
 			"Градиент" END
-			"Images" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Images" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Фон" END
-		"Запази темата" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Theme name,Enter file name:)"
-		"Запази колекцията иконки" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(IconSet name,Enter file name:)"
+		"Запази темата" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Theme name,Enter file name:)"
+		"Запази колекцията иконки" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(IconSet name,Enter file name:)"
 		"Пособие за настройки" EXEC #wprefs#
 	"Изглед" END
 

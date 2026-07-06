@@ -66,9 +66,9 @@
   ("Изчисти запазената сесия", CLEAR_SESSION)
   ),
  ("Изглед",
-  ("Теми", OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"),
-  ("Стилове", OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"),
-  ("Колекции иконки", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"),
+  ("Теми", OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_DATA/Themes WITH setstyle"),
+  ("Стилове", OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_DATA/Styles WITH setstyle"),
+  ("Колекции иконки", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_DATA/IconSets WITH seticons"),
   ("Фон",
    ("Плътен",
     ("Черен", EXEC, "wdwrite WindowMaker WorkspaceBack '(solid, black)'"),
@@ -90,10 +90,10 @@
     ("Сиви сенки",   EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#636380\", \"#131318\")'"),
     ("Винени сенки",   EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#600040\", \"#180010\")'")
     ),
-   ("Изображения", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t")
+   ("Изображения", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t")
    ),
-  ("Запази темата", SHEXEC, "getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/\"%a(Theme name)\""),
-  ("Запази колекцията иконки", SHEXEC, "geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/\"%a(IconSet name)\""),
+  ("Запази темата", SHEXEC, "getstyle -t $WMAKER_USER_DATA/Themes/\"%a(Theme name)\""),
+  ("Запази колекцията иконки", SHEXEC, "geticonset $WMAKER_USER_DATA/IconSets/\"%a(IconSet name)\""),
   ("Пособие за настройки", EXEC, "#wprefs#")
   ),
  ("Изход",

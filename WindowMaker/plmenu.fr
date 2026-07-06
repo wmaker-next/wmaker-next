@@ -66,9 +66,9 @@
    ("Effacer la session", CLEAR_SESSION)
   ),
  ("Apparence",
-   ("Thèmes", OPEN_MENU, "-noext /opt/share/WindowMaker/Themes $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"),
-   ("Styles", OPEN_MENU, "-noext /opt/share/WindowMaker/Styles $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"),
-   ("Jeu d'icônes", OPEN_MENU, "-noext /opt/share/WindowMaker/IconSets $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"),
+   ("Thèmes", OPEN_MENU, "-noext /opt/share/WindowMaker/Themes $WMAKER_USER_DATA/Themes WITH setstyle"),
+   ("Styles", OPEN_MENU, "-noext /opt/share/WindowMaker/Styles $WMAKER_USER_DATA/Styles WITH setstyle"),
+   ("Jeu d'icônes", OPEN_MENU, "-noext /opt/share/WindowMaker/IconSets $WMAKER_USER_DATA/IconSets WITH seticons"),
    ("Fond d'écran",
      ("Unifié",
        ("Noir", EXEC, "wdwrite WindowMaker WorkspaceBack '(solid, black)'"),
@@ -88,10 +88,10 @@
        ("Dégradés de Gris",    EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#636380\", \"#131318\")'"),
        ("Dégradés de Bordeau", EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#600040\", \"#180010\")'")
       ),
-     ("Images", OPEN_MENU, "-noext /opt/share/WindowMaker/Backgrounds $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t")
+     ("Images", OPEN_MENU, "-noext /opt/share/WindowMaker/Backgrounds $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t")
       ),
-   ("Sauver le thème", SHEXEC, "getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes /\"%a(Nom du thème,Entrez un nom de fichier:)\""),
-   ("Sauver le jeu d'icônes", SHEXEC, "geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets /\"%a(Nom du jeu d'icônes,Entrez un nom de fichier:)\"")
+   ("Sauver le thème", SHEXEC, "getstyle -t $WMAKER_USER_DATA/Themes /\"%a(Nom du thème,Entrez un nom de fichier:)\""),
+   ("Sauver le jeu d'icônes", SHEXEC, "geticonset $WMAKER_USER_DATA/IconSets /\"%a(Nom du jeu d'icônes,Entrez un nom de fichier:)\"")
   ),
  ("Quitter",
    ("Redémarrer", RESTART),

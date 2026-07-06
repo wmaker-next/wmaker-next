@@ -162,9 +162,9 @@
 	"הדובע בחרמ" END
 
 	"הארמ" MENU
-		"Themes" OPEN_MENU -noext  THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"תונונגס" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"םינוקייא טס" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Themes" OPEN_MENU -noext  THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"תונונגס" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"םינוקייא טס" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"עקר" MENU
 			"Solid" MENU
                         	"רוחש" WS_BACK '(solid, black)'
@@ -180,10 +180,10 @@
 				"Flag" WS_BACK '(vdgradient, blue, white, blue)'
 				"Sky" WS_BACK '(vgradient, blue4, white)'
 			"Gradient" END
-			"Images" OPEN_MENU -noext  BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Images" OPEN_MENU -noext  BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"עקר" END
-		"Save Theme" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Theme name)"
-		"Save IconSet" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(IconSet name)"
+		"Save Theme" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Theme name)"
+		"Save IconSet" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(IconSet name)"
 	"הארמ" END
 
 	"האיצי"	MENU

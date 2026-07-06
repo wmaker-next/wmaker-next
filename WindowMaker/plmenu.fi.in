@@ -238,17 +238,17 @@
 		(
 		"Teemat",
 		OPEN_MENU,
-		"-noext /usr/local/share/WindowMaker/Themes  $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"
+		"-noext /usr/local/share/WindowMaker/Themes  $WMAKER_USER_DATA/Themes WITH setstyle"
 		),
 		(
 		"Tyylit",
 		OPEN_MENU,
-		"-noext /usr/local/share/WindowMaker/Styles  $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"
+		"-noext /usr/local/share/WindowMaker/Styles  $WMAKER_USER_DATA/Styles WITH setstyle"
 		),
 		(
 		"Kuvakkeet",
 		OPEN_MENU,
-		"-noext /usr/local/share/WindowMaker/IconSets  $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"
+		"-noext /usr/local/share/WindowMaker/IconSets  $WMAKER_USER_DATA/IconSets WITH seticons"
 		),
 		(
 		"Taustat",
@@ -341,18 +341,18 @@
 			(
 			"Kuvat",
 			OPEN_MENU,
-			"-noext /usr/local/share/WindowMaker/Backgrounds  $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t"
+			"-noext /usr/local/share/WindowMaker/Backgrounds  $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t"
 			)
 		),
 		(
 		"Tallenna teema",
 		EXEC,
-		"getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/\"%a(Teeman nimi,Kirjoita teematiedoston nimi:)\""
+		"getstyle -t $WMAKER_USER_DATA/Themes/\"%a(Teeman nimi,Kirjoita teematiedoston nimi:)\""
 		),
 		(
 		"Tallenna kuvakkeet",
 		EXEC,
-		"geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/\"%a(Kuvakesetin nimi,Kirjoita tiedostonnimi:)\""
+		"geticonset $WMAKER_USER_DATA/IconSets/\"%a(Kuvakesetin nimi,Kirjoita tiedostonnimi:)\""
 		),
 		(
 		"Asetukset",

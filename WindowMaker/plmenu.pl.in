@@ -9,7 +9,7 @@
 	),
 
 	("Konfiguracja",
-		("Edycja menu",       EXEC, "xterm -T 'Edycja menu' -e vi $WMAKER_USER_ROOT/Library/WindowMaker/menu"),
+		("Edycja menu",       EXEC, "xterm -T 'Edycja menu' -e vi $WMAKER_USER_DATA/menu"),
 		("Ustawienie fontów", EXEC, "xterm -T 'Ustawienie fontów' -e vi $WMAKER_USER_ROOT/Defaults/WMGLOBAL"),
 		("Konfiguracja",      EXEC, "xterm -T 'Konfiguracja' -e vi $WMAKER_USER_ROOT/Defaults/WindowMaker")
 	),
@@ -131,9 +131,9 @@
 	),
 
 	("Wygląd",
-		("Tematy",          OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"),
-		("Style",           OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"),
-		("Ustawienia ikon", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"),
+		("Tematy",          OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_DATA/Themes WITH setstyle"),
+		("Style",           OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_DATA/Styles WITH setstyle"),
+		("Ustawienia ikon", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_DATA/IconSets WITH seticons"),
 		("Tło",
 			("Jednolite",
                	("Czarny",            EXEC, "wdwrite WindowMaker WorkspaceBack '(solid, black)'"),
@@ -155,10 +155,10 @@
     			("Cieniowany Szary",      EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, '#636380', '#131318')'"),
     			("Cieniowany Winnny",     EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, '#600040', '#180010')'")
 			),
-			("Obrazki", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t)")
+			("Obrazki", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t)")
 		),
-		("Zaoamiętanie Tematu",        EXEC, "getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/'%a(Nazwa tematu,Wpisz nazwe pliku:)'"),
-		("Zapamiętanie Ustawień Ikon", EXEC, "geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/'%a(Ustawienia ikon,Wpisz nazwe pliku:)'")
+		("Zaoamiętanie Tematu",        EXEC, "getstyle -t $WMAKER_USER_DATA/Themes/'%a(Nazwa tematu,Wpisz nazwe pliku:)'"),
+		("Zapamiętanie Ustawień Ikon", EXEC, "geticonset $WMAKER_USER_DATA/IconSets/'%a(Ustawienia ikon,Wpisz nazwe pliku:)'")
 	),
 
 	("Wyjście",

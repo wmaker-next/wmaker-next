@@ -171,9 +171,9 @@
 	"Delovni prostor" END
 
 	"Izgled" MENU
-		"Teme" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Stili" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Zbirke ikon" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Teme" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Stili" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Zbirke ikon" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Odzadje" MENU
 			"Barva" MENU
                         	"Črna" WS_BACK '(solid, black)'
@@ -189,10 +189,10 @@
 				"Zastava" WS_BACK '(mdgradient, green, red, white, green)'
 				"Nebo" WS_BACK '(vgradient, blue4, white)'
 			"Preliv" END
-			"Slike" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Slike" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Odzadje" END
-		"Shrani temo" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Theme name)"
-		"Shrani zbirko ikon" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(IconSet name)"
+		"Shrani temo" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Theme name)"
+		"Shrani zbirko ikon" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(IconSet name)"
 	"Izgled" END
 
 	"Izhod"	MENU

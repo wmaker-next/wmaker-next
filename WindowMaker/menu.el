@@ -185,9 +185,9 @@
 	"Επιφάνεια" END
 
 	"Εμφάνιση" MENU
-		"Θέματα" OPEN_MENU -noext  THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Στυλ" OPEN_MENU -noext  STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Ομάδα Εικονιδίων" OPEN_MENU -noext  ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Θέματα" OPEN_MENU -noext  THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Στυλ" OPEN_MENU -noext  STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Ομάδα Εικονιδίων" OPEN_MENU -noext  ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Παρασκήνιο" MENU
 			"Μονόχρωμο" MENU
                         	"Μαύρο" WS_BACK '(solid, black)'
@@ -209,10 +209,10 @@
     				"Γκρίζες Αποχρώσεις" WS_BACK '(vgradient, "#636380", "#131318")'
     				"Κοκκινωπές Αποχρώσεις" WS_BACK '(vgradient, "#600040", "#180010")'
 			"Διαβαθμισμένο" END
-			"Εικόνες" OPEN_MENU -noext  BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Εικόνες" OPEN_MENU -noext  BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Παρασκήνιο" END
-		"Αποθήκευση Θέματος" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Όνομα Θέματος,Γράψε το όνομα του αρχείου:)"
-		"Αποθήκευση Ομάδας Εικονιδίων" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(Όνομα Ομάδας,Γράψε το όνομα του αρχείου:)"
+		"Αποθήκευση Θέματος" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Όνομα Θέματος,Γράψε το όνομα του αρχείου:)"
+		"Αποθήκευση Ομάδας Εικονιδίων" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(Όνομα Ομάδας,Γράψε το όνομα του αρχείου:)"
 	"Εμφάνιση" END
 
 	"Έξοδος" MENU

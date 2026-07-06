@@ -172,9 +172,9 @@
 	"Área de Trabalho" END
 
 	"Aparência" MENU
-		"Temas" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Estilos" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Conjunto de Ícones" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Temas" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Estilos" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Conjunto de Ícones" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Papéis de Parede" MENU
 			"Sólido" MENU
                         	"Preto" WS_BACK '(solid, black)'
@@ -190,10 +190,10 @@
 				"Bandeira" WS_BACK '(mdgradient, green, green, yellow)'
 				"Céu" WS_BACK '(vgradient, blue4, white)'
 			"Degradé" END
-			"Imagens" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Imagens" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Papéis de Parede" END
-		"Salvar Tema" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Nome do Tema)"
-		"Salvar Configuração de Ícones" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(Nome do Conjunto de Ícones)"
+		"Salvar Tema" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Nome do Tema)"
+		"Salvar Configuração de Ícones" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(Nome do Conjunto de Ícones)"
 	"Appearance" END
 
 	"Sair"	MENU

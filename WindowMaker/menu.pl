@@ -111,7 +111,7 @@
 	"Informacja" END
 
 	"Konfiguracja" MENU
-		"Edycja menu"       EXEC ULUB_TERM -T "Edycja menu" -e ULUB_EDYTOR $WMAKER_USER_ROOT/Library/WindowMaker/menu
+		"Edycja menu"       EXEC ULUB_TERM -T "Edycja menu" -e ULUB_EDYTOR $WMAKER_USER_DATA/menu
 		"Ustawienie fontów" EXEC ULUB_TERM -T "Ustawienie fontów" -e ULUB_EDYTOR $WMAKER_USER_ROOT/Defaults/WMGLOBAL
 		"Konfiguracja"      EXEC ULUB_TERM -T "Konfiguracja" -e ULUB_EDYTOR $WMAKER_USER_ROOT/Defaults/WindowMaker
 	"Konfiguracja" END
@@ -234,9 +234,9 @@
 	"Ekran" END
 
 	"Wygląd" MENU
-		"Tematy"          OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Style"           OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Ustawienia ikon" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Tematy"          OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Style"           OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Ustawienia ikon" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Tło" MENU
 			"Jednolite" MENU
                	"Czarny"            WS_BACK '(solid, black)'
@@ -258,10 +258,10 @@
     			"Cieniowany Szary"      WS_BACK '(vgradient, "#636380", "#131318")'
     			"Cieniowany Winnny"     WS_BACK '(vgradient, "#600040", "#180010")'
 			"Cieniowane" END
-			"Obrazki" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Obrazki" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Tło" END
-		"Zaoamiętanie Tematu"        EXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Nazwa tematu,Wpisz nazwe pliku:)"
-		"Zapamiętanie Ustawień Ikon" EXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(Ustawienia ikon,wpisz nazwe pliku:)"
+		"Zaoamiętanie Tematu"        EXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Nazwa tematu,Wpisz nazwe pliku:)"
+		"Zapamiętanie Ustawień Ikon" EXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(Ustawienia ikon,wpisz nazwe pliku:)"
 	"Wygląd" END
 
 	"Wyjście" MENU

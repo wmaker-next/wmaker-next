@@ -492,21 +492,21 @@ static void createPanel(_Panel * p)
 	data->param.directory.command = "setstyle";
 	data->param.directory.directory =
 	    WMAKER_RESOURCE_PATH "/Themes"
-	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Themes";
+	    " $WMAKER_USER_DATA/Themes";
 	data->param.directory.stripExt = 1;
 
 	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (scale)"));
 	data->param.directory.command = "wmsetbg -u -s";
 	data->param.directory.directory =
 	    WMAKER_RESOURCE_PATH "/Backgrounds"
-	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+	    " $WMAKER_USER_DATA/Backgrounds";
 	data->param.directory.stripExt = 1;
 
 	data = putNewItem(panel, pad, DirectoryInfo, _("Bg Images (tile)"));
 	data->param.directory.command = "wmsetbg -u -t";
 	data->param.directory.directory =
 	    WMAKER_RESOURCE_PATH "/Backgrounds"
-	    " $WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/Backgrounds";
+	    " $WMAKER_USER_DATA/Backgrounds";
 	data->param.directory.stripExt = 1;
 
 	smenu = putNewSubmenu(pad, _("Assorted XTerms"));
@@ -594,7 +594,7 @@ static void createPanel(_Panel * p)
 	WMSetLabelText(label, _("Enter the path for a file containing a menu\n"
 				"or a list of directories with the programs you\n"
 				"want to have listed in the menu. Ex:\n"
-				"$WMAKER_USER_ROOT/" USERDATA_SUBDIR "/" PACKAGE_TARNAME "/menu\n"
+				"$WMAKER_USER_DATA/menu\n"
 				"or\n" "/usr/bin ~/xbin"));
 
 	WMMapSubwidgets(panel->pathF);

@@ -66,9 +66,9 @@
   ("Zmazať sedenie", CLEAR_SESSION)
   ),
  ("Vzhľad",
-  ("Témy", OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle"),
-  ("Štýly", OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle"),
-  ("Sada ikon", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons"),
+  ("Témy", OPEN_MENU, "-noext #wmdatadir#/Themes $WMAKER_USER_DATA/Themes WITH setstyle"),
+  ("Štýly", OPEN_MENU, "-noext #wmdatadir#/Styles $WMAKER_USER_DATA/Styles WITH setstyle"),
+  ("Sada ikon", OPEN_MENU, "-noext #wmdatadir#/IconSets $WMAKER_USER_DATA/IconSets WITH seticons"),
   ("Pozadie",
    ("Jedna farba",
     ("Čierna", EXEC, "wdwrite WindowMaker WorkspaceBack '(solid, black)'"),
@@ -90,10 +90,10 @@
     ("Odtiene sivej",   EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#636380\", \"#131318\")'"),
     ("Odtiene vínovej",   EXEC, "wdwrite WindowMaker WorkspaceBack '(vgradient, \"#600040\", \"#180010\")'")
     ),
-   ("Obrázky", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t")
+   ("Obrázky", OPEN_MENU, "-noext #wmdatadir#/Backgrounds $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t")
    ),
-  ("Uložiť tému", SHEXEC, "getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/\"%a(Theme name)\""),
-  ("Uložiť sadu ikon", SHEXEC, "geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/\"%a(IconSet name)\""),
+  ("Uložiť tému", SHEXEC, "getstyle -t $WMAKER_USER_DATA/Themes/\"%a(Theme name)\""),
+  ("Uložiť sadu ikon", SHEXEC, "geticonset $WMAKER_USER_DATA/IconSets/\"%a(IconSet name)\""),
   ("Konfiguračný nástroj", EXEC, "#wprefs#")
   ),
  ("Koniec",

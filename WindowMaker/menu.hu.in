@@ -178,9 +178,9 @@
 	"Munkafelület" END
 
 	"Megjelenés" MENU
-		"Témák" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Themes WITH setstyle
-		"Stílusok" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Styles WITH setstyle
-		"Ikonok" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/IconSets WITH seticons
+		"Témák" OPEN_MENU -noext THEMES_DIR $WMAKER_USER_DATA/Themes WITH setstyle
+		"Stílusok" OPEN_MENU -noext STYLES_DIR $WMAKER_USER_DATA/Styles WITH setstyle
+		"Ikonok" OPEN_MENU -noext ICON_SETS_DIR $WMAKER_USER_DATA/IconSets WITH seticons
 		"Háttér" MENU
 			"Szolíd" MENU
                         	"Fekete" WS_BACK '(solid, black)'
@@ -200,10 +200,10 @@
     				"Lilás" WS_BACK '(vgradient, "#636380", "#131318")'
     				"Vöröses" WS_BACK '(vgradient, "#600040", "#180010")'
 			"Gradiens" END
-			"Képek" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds WITH wmsetbg -u -t
+			"Képek" OPEN_MENU -noext BACKGROUNDS_DIR $WMAKER_USER_DATA/Backgrounds WITH wmsetbg -u -t
 		"Háttér" END
-		"Téma mentése" SHEXEC getstyle -t $WMAKER_USER_ROOT/Library/WindowMaker/Themes/"%a(Téma neve,Add meg a téma fájl nevét:)"
-		"Ikonbeállítások mentése" SHEXEC geticonset $WMAKER_USER_ROOT/Library/WindowMaker/IconSets/"%a(Ikonbeállítások mentése,Add meg a fájl nevét:)"
+		"Téma mentése" SHEXEC getstyle -t $WMAKER_USER_DATA/Themes/"%a(Téma neve,Add meg a téma fájl nevét:)"
+		"Ikonbeállítások mentése" SHEXEC geticonset $WMAKER_USER_DATA/IconSets/"%a(Ikonbeállítások mentése,Add meg a fájl nevét:)"
 		"Konfiguráló program" EXEC #wprefs#
 	"Megjelenés" END
 

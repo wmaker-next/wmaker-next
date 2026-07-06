@@ -32,7 +32,7 @@ make_dir() {
 }
 
 #
-# Copy files, rewriting any user-root placeholder to the resolved $GSDIR.
+# Copy files, rewriting any user-root placeholder to the resolved paths.
 # The substitutions are no-ops on files that do not contain a placeholder.
 #
 copy() {
@@ -40,6 +40,8 @@ copy() {
 	target="$2"
 	rm -f "$target"
 	sed -e "s|\$WMAKER_USER_ROOT|$GSDIR|g" \
+	    -e "s|\$WMAKER_USER_DATA|$WDATADIR|g" \
+	    -e "s|\$WMAKER_USER_CACHE|$WCACHEDIR|g" \
 	    -e "s|\$HOME/GNUstep|$GSDIR|g" \
 	    -e "s|~/GNUstep|$GSDIR|g" \
 	    "$source" > "$target"
@@ -49,7 +51,7 @@ copy() {
 # Generate WMRootmenu
 #
 GenerateMenu() {
-	wmgenmenu > $GSDIR/Defaults/WMRootMenu
+	wmgenmenu > "$WDEFAULTSDIR/WMRootMenu"
 }
 
 echo "Installing WindowMaker $VERSION for current user..."
@@ -79,29 +81,36 @@ fi
 #   2. ~/GNUstep when ~/GNUstep/Defaults already exists (legacy install)
 #   3. ${XDG_CONFIG_HOME:-~/.config}/WindowMaker
 #
+# The first two keep the legacy single-tree layout with everything under
+# $GSDIR. The third splits config/data/cache across the XDG basedirs.
+#
 if test "x$WMAKER_USER_ROOT" != "x"; then
 	GSDIR="$WMAKER_USER_ROOT"
+	WDEFAULTSDIR="$GSDIR/Defaults"
+	WDATADIR="$GSDIR/Library/WindowMaker"
+	WCACHEDIR="$WDATADIR"
 elif [ -d "$USERDIR/GNUstep/Defaults" ]; then
 	GSDIR="$USERDIR/GNUstep"
+	WDEFAULTSDIR="$GSDIR/Defaults"
+	WDATADIR="$GSDIR/Library/WindowMaker"
+	WCACHEDIR="$WDATADIR"
 else
 	GSDIR="${XDG_CONFIG_HOME:-$USERDIR/.config}/WindowMaker"
+	WDEFAULTSDIR="$GSDIR"
+	WDATADIR="${XDG_DATA_HOME:-$USERDIR/.local/share}/WindowMaker"
+	WCACHEDIR="${XDG_CACHE_HOME:-$USERDIR/.cache}/WindowMaker"
 fi
 
-if [ ! -d "$GSDIR" ]; then
-	echo "Creating $GSDIR user directory"
-	mkdir -p "$GSDIR" || {
-	    echo "User configuration directory $GSDIR does not exist and could not be created"
-	    exit 1
-	}
-	chmod +rwx "$GSDIR" || exit 1
-fi
-cd "$GSDIR"
-cd ..
-
-
-if [ ! -d "$GSDIR/Defaults" ]; then
-	make_dir "$GSDIR/Defaults"
-fi
+for d in "$GSDIR" "$WDEFAULTSDIR" "$WDATADIR" "$WCACHEDIR"; do
+	if [ ! -d "$d" ]; then
+		echo "Creating $d"
+		mkdir -p "$d" || {
+			echo "Directory $d does not exist and could not be created"
+			exit 1
+		}
+		chmod +rwx "$d" || exit 1
+	fi
+done
 
 echo "Copying defaults database..."
 
@@ -109,7 +118,7 @@ FILES="$(cd "$GLOBALDEFDIR" && ls -d *)"
 all=""
 for i in $FILES; do
 	if [ ! -d "$GLOBALDEFDIR/$i" ]; then
-		if [ -f "$GSDIR/Defaults/$i" -a -z "$BATCH" ]; then
+		if [ -f "$WDEFAULTSDIR/$i" -a -z "$BATCH" ]; then
 			echo "The configuration file \"$i\" already exists in your defaults database."
 			echo "Do you wish to replace it? <y/n/a> [n] $all"
 			if [ "$all" != "a" ]; then
@@ -119,84 +128,38 @@ for i in $FILES; do
 				fi
 			fi
 			if [ "$foo" = "y" -o "$foo" = "Y" -o "$all" = "a" ]; then
-				copy "$GLOBALDEFDIR/$i" "$GSDIR/Defaults/$i"
+				copy "$GLOBALDEFDIR/$i" "$WDEFAULTSDIR/$i"
 			fi
 		else
-			copy "$GLOBALDEFDIR/$i" "$GSDIR/Defaults/$i"
+			copy "$GLOBALDEFDIR/$i" "$WDEFAULTSDIR/$i"
 		fi
 	fi
 done
 
 	GenerateMenu
 
-if [ ! -d "$GSDIR/Library/Icons/" ]; then
-      echo "Creating icon library directory $GSDIR/Library/Icons"
-      if [ ! -d "$GSDIR/Library" ]; then
-              make_dir "$GSDIR/Library"
-      fi
-      make_dir "$GSDIR/Library/Icons"
+for sub in Icons Styles Themes Backgrounds IconSets Pixmaps; do
+	if [ ! -d "$WDATADIR/$sub" ]; then
+		echo "Creating $sub library $WDATADIR/$sub"
+		make_dir "$WDATADIR/$sub"
+	fi
+done
+
+if [ ! -d "$WCACHEDIR/CachedPixmaps" ]; then
+	make_dir "$WCACHEDIR/CachedPixmaps"
 fi
 
-
-if [ ! -d "$GSDIR/Library/WindowMaker/" ]; then
-      echo "Creating WindowMaker data library directory $GSDIR/Library/WindowMaker"
-      if [ ! -d "$GSDIR/Library" ]; then
-              make_dir "$GSDIR/Library"
-      fi
-      make_dir "$GSDIR/Library/WindowMaker"
-fi
-
-if [ ! -d "$GSDIR/Library/WindowMaker/Styles" ]; then
-	echo "Creating style library $GSDIR/Library/WindowMaker/Styles"
-	make_dir "$GSDIR/Library/WindowMaker/Styles"
-fi
-
-
-if [ ! -d "$GSDIR/Library/WindowMaker/Themes" ]; then
-	echo "Creating theme library $GSDIR/Library/WindowMaker/Themes"
-	make_dir  "$GSDIR/Library/WindowMaker/Themes"
-fi
-
-
-if [ ! -d "$GSDIR/Library/WindowMaker/Backgrounds" ]; then
-	echo "Creating bg image library $GSDIR/Library/WindowMaker/Backgrounds"
-	make_dir  "$GSDIR/Library/WindowMaker/Backgrounds"
-else
-	echo "Default Backgrounds directory already exists. Skipping..."
-fi
-
-
-if [ ! -d "$GSDIR/Library/WindowMaker/IconSets" ]; then
-	echo "Creating icon setup library $GSDIR/Library/WindowMaker/IconSets"
-	make_dir  "$GSDIR/Library/WindowMaker/IconSets"
-else
-	echo "Default IconSets directory already exists. Skipping..."
-fi
-
-
-if [ ! -d "$GSDIR/Library/WindowMaker/Pixmaps" ]; then
-	echo "Creating pixmap library $GSDIR/Library/WindowMaker/Pixmaps"
-	make_dir  "$GSDIR/Library/WindowMaker/Pixmaps"
-else
-	echo "Default Pixmaps directory already exists. Skipping..."
-fi
-
-
-if [ ! -d "$GSDIR/Library/WindowMaker/CachedPixmaps" ]; then
-	make_dir "$GSDIR/Library/WindowMaker/CachedPixmaps"
-fi
-
-if [ ! -d "$GSDIR/Library/WindowMaker/WPrefs" ]; then
-	make_dir "$GSDIR/Library/WindowMaker/WPrefs"
+if [ ! -d "$WCACHEDIR/WPrefs" ]; then
+	make_dir "$WCACHEDIR/WPrefs"
 fi
 
 if test -z "#LITE#" ; then
 FILES="$(cd "$GLOBALDIR" && ls menu menu.* plmenu plmenu.?? wmmacros)"
 for i in $FILES; do
 # xx herbert
-	if [ -f "$GSDIR/Library/WindowMaker/$i" -a -z "$BATCH" ]; then
+	if [ -f "$WDATADIR/$i" -a -z "$BATCH" ]; then
 # /xx herbert
-		echo "The file \"$i\" already exists in $GSDIR/Library/WindowMaker"
+		echo "The file \"$i\" already exists in $WDATADIR"
 		echo "Do you wish to replace it? <y/n/a> [n] $all"
 		if [ "$all" != "a" ]; then
 			read foo
@@ -205,24 +168,24 @@ for i in $FILES; do
 			fi
 		fi
 		if [ "$foo" = "y" -o "$foo" = "Y" -o "$foo" = "a" ]; then
-			copy "$GLOBALDIR/$i" "$GSDIR/Library/WindowMaker/$i"
+			copy "$GLOBALDIR/$i" "$WDATADIR/$i"
 		fi
 	else
-		copy "$GLOBALDIR/$i" "$GSDIR/Library/WindowMaker/$i"
+		copy "$GLOBALDIR/$i" "$WDATADIR/$i"
 	fi
 done
 fi
 
-cp "$GLOBALDIR/README.themes" "$GSDIR/Library/WindowMaker"
-cp "$GLOBALDIR/README" "$GSDIR/Library/WindowMaker"
+cp "$GLOBALDIR/README.themes" "$WDATADIR"
+cp "$GLOBALDIR/README" "$WDATADIR"
 
-test -f "$GSDIR/Library/WindowMaker/autostart" || \
-    cp "$GLOBALDIR/autostart.sh" "$GSDIR/Library/WindowMaker/autostart"
-chmod +rx "$GSDIR/Library/WindowMaker/autostart"
+test -f "$WDATADIR/autostart" || \
+    cp "$GLOBALDIR/autostart.sh" "$WDATADIR/autostart"
+chmod +rx "$WDATADIR/autostart"
 
-test -f "$GSDIR/Library/WindowMaker/exitscript" || \
-    cp "$GLOBALDIR/exitscript.sh" "$GSDIR/Library/WindowMaker/exitscript"
-chmod +rx "$GSDIR/Library/WindowMaker/exitscript"
+test -f "$WDATADIR/exitscript" || \
+    cp "$GLOBALDIR/exitscript.sh" "$WDATADIR/exitscript"
+chmod +rx "$WDATADIR/exitscript"
 
 # xx herbert
 if test -n "$BATCH" ; then
@@ -246,12 +209,12 @@ echo "There are menus in 2 different file formats. The plain text format and"
 echo "the property list format. The plain text format is more flexible, but"
 echo "the menu in the property list format can be edited graphically. The"
 echo "menu that will be used by default is the property list one. Read"
-echo "    $GSDIR/Library/WindowMaker/README"
+echo "    $WDATADIR/README"
 echo "for information on how to change it."
   if [ "${inst_menu%.*}" = "menu" ]; then
 echo "However, since you have locale set to $LOCALE and plmenu for such locale"
 echo "was not found, your WMRootMenu contains path to text formated menu:"
-echo "    $GSDIR/Library/WindowMaker/$inst_menu"
+echo "    $WDATADIR/$inst_menu"
   fi
 }
 
