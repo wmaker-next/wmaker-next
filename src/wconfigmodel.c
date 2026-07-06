@@ -1081,8 +1081,19 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wRefreshKeyChainOSD(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_DOUBLE_CLICK_TIME))
 		W_setconf_doubleClickDelay(new_config->double_click_time);
-	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH))
-		scr->frame_border_width = new_config->frame_border_width;
+	if (scr) {
+		double uiscale = WMScreenUIScale(scr->wmscreen);
+
+		if (wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH))
+			scr->frame_border_width =
+			    (int)(new_config->frame_border_width * uiscale + 0.5);
+		if (!old_config) {
+			scr->resizebar_height =
+			    (int)(RESIZEBAR_HEIGHT * uiscale + 0.5);
+			scr->resizebar_corner_width =
+			    (int)(RESIZEBAR_CORNER_WIDTH * uiscale + 0.5);
+		}
+	}
 
 	workspace_back_requested =
 	    wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BACK);

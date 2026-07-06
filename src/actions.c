@@ -979,7 +979,7 @@ static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, i
 	if (HAS_TITLEBAR(wwin))
 		tbar_height_0 = TITLEBAR_HEIGHT;
 	if (HAS_RESIZEBAR(wwin))
-		rbar_height_0 = RESIZEBAR_HEIGHT;
+		rbar_height_0 = wwin->screen_ptr->resizebar_height;
 	if (HAS_BORDER(wwin))
 		bd_width_0 = wwin->screen_ptr->frame_border_width;
 

@@ -230,7 +230,12 @@ typedef struct _WScreen {
     WMColor *mtext_color;	       /* menu item text */
     WMColor *dtext_color;	       /* disabled menu item text */
 
+    /* device-pixel decoration sizes, the config value or compile-time
+     * constant multiplied by WMScreenUIScale() so a HiDPI display gets
+     * a proportionally taller resizebar and thicker frame */
     int frame_border_width;
+    int resizebar_height;
+    int resizebar_corner_width;
     WMColor *frame_border_color;
     WMColor *frame_focused_border_color;
     WMColor *frame_selected_border_color;

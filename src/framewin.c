@@ -584,14 +584,14 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 	checkTitleSize(fwin);
 
 	if (flags & WFF_RESIZEBAR) {
-		fwin->bottom_width = RESIZEBAR_HEIGHT;
+		fwin->bottom_width = scr->resizebar_height;
 
 		if (!fwin->resizebar) {
 			fwin->flags.resizebar = 1;
 			fwin->resizebar = wCoreCreate(fwin->core, 0,
-						      height + fwin->top_width, width, RESIZEBAR_HEIGHT);
-			fwin->resizebar_corner_width = RESIZEBAR_CORNER_WIDTH;
-			if (width < RESIZEBAR_CORNER_WIDTH * 2 + RESIZEBAR_MIN_WIDTH) {
+						      height + fwin->top_width, width, scr->resizebar_height);
+			fwin->resizebar_corner_width = scr->resizebar_corner_width;
+			if (width < scr->resizebar_corner_width * 2 + RESIZEBAR_MIN_WIDTH) {
 				fwin->resizebar_corner_width = (width - RESIZEBAR_MIN_WIDTH) / 2;
 				if (fwin->resizebar_corner_width < 0)
 					fwin->resizebar_corner_width = 0;
@@ -605,7 +605,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		} else {
 			if (height + fwin->top_width + fwin->bottom_width != fwin->core->height)
 				wCoreConfigure(fwin->resizebar, 0, height + fwin->top_width,
-					       width, RESIZEBAR_HEIGHT);
+					       width, scr->resizebar_height);
 		}
 	} else {
 		fwin->bottom_width = 0;
@@ -1816,8 +1816,8 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 			       fwin->core->height - fwin->resizebar->height,
 			       fwin->core->width, fwin->resizebar->height);
 
-		fwin->resizebar_corner_width = RESIZEBAR_CORNER_WIDTH;
-		if (fwin->core->width < RESIZEBAR_CORNER_WIDTH * 2 + RESIZEBAR_MIN_WIDTH)
+		fwin->resizebar_corner_width = fwin->screen_ptr->resizebar_corner_width;
+		if (fwin->core->width < fwin->resizebar_corner_width * 2 + RESIZEBAR_MIN_WIDTH)
 			fwin->resizebar_corner_width = fwin->core->width / 2;
 
 		/* opaque resize calls reconfigure() per motion step, the

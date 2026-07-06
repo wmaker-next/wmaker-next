@@ -2109,7 +2109,7 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		extents[0] = scr->frame_border_width;
 		extents[1] = scr->frame_border_width;
 		extents[2] = top + scr->frame_border_width;
-		extents[3] = RESIZEBAR_HEIGHT + scr->frame_border_width;
+		extents[3] = scr->resizebar_height + scr->frame_border_width;
 		WXSetCardinalN(dpy, event->window, net_frame_extents, extents, 4);
 		XFlush(dpy);
 		return True;

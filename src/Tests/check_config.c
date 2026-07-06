@@ -108,6 +108,12 @@ void W_setconf_doubleClickDelay(int value)
 	double_click_delay = value;
 }
 
+double WMScreenUIScale(WMScreen *scr)
+{
+	(void)scr;
+	return 1.0;
+}
+
 void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 {
 	(void)scr;

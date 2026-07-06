@@ -291,7 +291,7 @@ static void addWindowOutline(WWindow * wwin, int x, int y, int width, int height
 	if (HAS_RESIZEBAR(wwin) && !wwin->flags.shaded) {
 		/* Can't use wwin-frame->bottom_width because, in some cases
 		   (e.g. interactive placement), frame does not point to anything. */
-		bottom = RESIZEBAR_HEIGHT;
+		bottom = wwin->screen_ptr->resizebar_height;
 	}
 
 	wWireframeAddOutline(wwin->screen_ptr, x, y, width, height, h, bottom, fb);
@@ -2341,7 +2341,7 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 		height += h;
 	}
 	if (HAS_RESIZEBAR(wwin)) {
-		height += RESIZEBAR_HEIGHT;
+		height += wwin->screen_ptr->resizebar_height;
 	}
 	XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 	XQueryPointer(dpy, root, &junkw, &junkw, &x, &y, &junk, &junk, (unsigned *)&junk);
