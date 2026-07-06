@@ -888,6 +888,18 @@ int WMWidthOfString(WMFont *font, const char *text, int length);
 void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d,
                               unsigned width, unsigned height);
 
+/* Same, but width/height are logical units and the cache records the
+ * derived device size plus a scaled flag so WCairoBeginForDrawable()
+ * on d applies cairo_scale(uiScale). */
+void WMScreenNoteDrawableSizeScaled(WMScreen *scr, Drawable d,
+                                    unsigned width, unsigned height);
+
+/* Create a screen-depth server pixmap at logical width x height scaled
+ * to device size and record it as scaled, so WCairoBeginForDrawable()
+ * on it works in logical units. Pair with WMScreenAbandonDrawable() +
+ * XFreePixmap(). */
+Pixmap W_CreateScaledPixmap(WMScreen *scr, unsigned width, unsigned height);
+
 /* Drop any per-screen render state pointing at d before the caller
  * destroys d, so the next paint does not reuse a stale cache entry. */
 void WMScreenAbandonDrawable(WMScreen *scr, Drawable d);

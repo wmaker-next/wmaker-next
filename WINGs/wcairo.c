@@ -33,9 +33,10 @@
 struct WCairoSurface {
 	cairo_surface_t *xcb;   /* on-server surface bound to the drawable */
 	cairo_surface_t *back;  /* NULL for direct, else client image buffer */
-	int width;
+	int width;              /* device pixels */
 	int height;
 	int flags;
+	double scale;           /* uiScale applied in WCairoBegin(), 1.0 if unscaled */
 };
 
 /* attached to the cairo_t returned by WCairoBegin() so WCairoEnd() can
@@ -55,15 +56,51 @@ static const cairo_user_data_key_t wcairo_cs_key;
  * they pack into the hash value.
  */
 
-void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d, unsigned width, unsigned height)
+/* bit 31 marks a drawable created at logical*uiScale device pixels so
+ * WCairoBegin* apply cairo_scale() and paint code stays in logical
+ * units. Width is capped to 15 bits (32767, above any real widget) so
+ * the flag fits a 32-bit uintptr. */
+#define DRAWABLE_SIZE_SCALED_BIT ((uintptr_t)1u << 31)
+
+static void noteDrawableSize(WMScreen *scr, Drawable d, unsigned width,
+			     unsigned height, int scaled)
 {
 	uintptr_t packed;
 
 	if (!scr || !scr->drawableSize || d == None)
 		return;
 
-	packed = ((uintptr_t)(width & 0xffff) << 16) | (height & 0xffff);
+	packed = ((uintptr_t)(width & 0x7fff) << 16) | (height & 0xffff);
+	if (scaled)
+		packed |= DRAWABLE_SIZE_SCALED_BIT;
 	WMHashInsert(scr->drawableSize, (const void *)(uintptr_t)d, (void *)packed);
+}
+
+void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d, unsigned width, unsigned height)
+{
+	noteDrawableSize(scr, d, width, height, 0);
+}
+
+void WMScreenNoteDrawableSizeScaled(WMScreen *scr, Drawable d, unsigned width, unsigned height)
+{
+	int dw, dh;
+
+	dw = (int)(width * scr->uiScale + 0.5);
+	dh = (int)(height * scr->uiScale + 0.5);
+	noteDrawableSize(scr, d, dw, dh, scr->uiScale > 1.0001);
+}
+
+Pixmap W_CreateScaledPixmap(WMScreen *scr, unsigned width, unsigned height)
+{
+	Pixmap p;
+	int dw, dh;
+
+	dw = (int)(width * scr->uiScale + 0.5);
+	dh = (int)(height * scr->uiScale + 0.5);
+	p = XCreatePixmap(scr->display, scr->rootWin, dw > 0 ? dw : 1,
+			  dh > 0 ? dh : 1, scr->depth);
+	noteDrawableSize(scr, p, dw, dh, scr->uiScale > 1.0001);
+	return p;
 }
 
 void WMScreenAbandonDrawable(WMScreen *scr, Drawable d)
@@ -75,7 +112,7 @@ void WMScreenAbandonDrawable(WMScreen *scr, Drawable d)
 		WMHashRemove(scr->drawableSize, (const void *)(uintptr_t)d);
 }
 
-static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h)
+static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h, int *scaled)
 {
 	xcb_connection_t *xc;
 	xcb_get_geometry_reply_t *geom;
@@ -85,8 +122,10 @@ static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h)
 	if (val) {
 		uintptr_t packed = (uintptr_t)val;
 
-		*w = (int)((packed >> 16) & 0xffff);
+		*w = (int)((packed >> 16) & 0x7fff);
 		*h = (int)(packed & 0xffff);
+		if (scaled)
+			*scaled = (packed & DRAWABLE_SIZE_SCALED_BIT) != 0;
 		return 1;
 	}
 
@@ -97,9 +136,11 @@ static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h)
 		return 0;
 	*w = geom->width;
 	*h = geom->height;
+	if (scaled)
+		*scaled = 0;
 	free(geom);
 
-	WMScreenNoteDrawableSize(scr, d, (unsigned)*w, (unsigned)*h);
+	noteDrawableSize(scr, d, (unsigned)*w, (unsigned)*h, 0);
 	return 1;
 }
 
@@ -118,6 +159,7 @@ WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d, int width, int hei
 	cs->width = width;
 	cs->height = height;
 	cs->flags = flags;
+	cs->scale = (flags & WCairoScaled) ? scr->uiScale : 1.0;
 	cs->xcb = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)d,
 					   visual, width, height);
 	if (cairo_surface_status(cs->xcb) != CAIRO_STATUS_SUCCESS) {
@@ -166,6 +208,8 @@ cairo_t *WCairoBegin(WCairoSurface *cs)
 
 	cr = cairo_create(cs->back ? cs->back : cs->xcb);
 	cairo_set_user_data(cr, &wcairo_cs_key, cs, NULL);
+	if (cs->scale > 1.0001)
+		cairo_scale(cr, cs->scale, cs->scale);
 	return cr;
 }
 
@@ -177,9 +221,9 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
 {
 	cairo_surface_t *surface;
 	cairo_t *cr;
-	int w, h;
+	int w, h, scaled;
 
-	if (!lookupDrawableSize(scr, d, &w, &h))
+	if (!lookupDrawableSize(scr, d, &w, &h, &scaled))
 		return NULL;
 
 	surface = cairo_xcb_surface_create(scr->rcontext->xc, (xcb_drawable_t)d,
@@ -188,6 +232,8 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
 	/* cairo_t holds its own reference, drop ours so WCairoEnd()'s
 	 * cairo_destroy() releases the last one */
 	cairo_surface_destroy(surface);
+	if (scaled)
+		cairo_scale(cr, scr->uiScale, scr->uiScale);
 	return cr;
 }
 
@@ -199,11 +245,12 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
 cairo_t *WCairoBeginBuffered(W_Screen *scr, Drawable d)
 {
 	WCairoSurface *cs;
-	int w, h;
+	int w, h, scaled, flags;
 
-	if (!lookupDrawableSize(scr, d, &w, &h))
+	if (!lookupDrawableSize(scr, d, &w, &h, &scaled))
 		return NULL;
-	cs = WCairoSurfaceCreate(scr, d, w, h, WCairoBuffered | WCairoTransient);
+	flags = WCairoBuffered | WCairoTransient | (scaled ? WCairoScaled : 0);
+	cs = WCairoSurfaceCreate(scr, d, w, h, flags);
 	if (!cs)
 		return NULL;
 	return WCairoBegin(cs);

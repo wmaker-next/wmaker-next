@@ -456,7 +456,10 @@ enum {
     WCairoBuffered  = 1 << 1,
     /* WCairoEnd() destroys the WCairoSurface after the blit, used by
      * WCairoBeginBuffered() so the caller holds only a cairo_t */
-    WCairoTransient = 1 << 2
+    WCairoTransient = 1 << 2,
+    /* WCairoBegin() applies cairo_scale(uiScale) so paint code stays
+     * in logical units on a device-size backing store */
+    WCairoScaled    = 1 << 3
 };
 
 /* one per Drawable that paints, cached lazily on the owning W_View or

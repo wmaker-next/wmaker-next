@@ -9,6 +9,11 @@ const char *WMViewSizeDidChangeNotification = "WMViewSizeDidChangeNotification";
 const char *WMViewFocusDidChangeNotification = "WMViewFocusDidChangeNotification";
 const char *WMViewRealizedNotification = "WMViewRealizedNotification";
 
+/* logical -> device pixel: view->pos and view->size are kept in
+ * logical units and only the X window geometry is scaled here, so
+ * every widget layout call site stays unchanged. */
+#define VDEV(scr, v) ((int)((v) * (scr)->uiScale + 0.5))
+
 #define EVENT_MASK  \
     KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask| \
     EnterWindowMask|LeaveWindowMask|PointerMotionMask|ExposureMask| \
@@ -220,14 +225,17 @@ void W_RealizeView(W_View * view)
 		}
 
 		parentWID = view->parent->window;
-		view->window = XCreateWindow(dpy, parentWID, view->pos.x, view->pos.y,
-					     view->size.width, view->size.height, 0,
+		view->window = XCreateWindow(dpy, parentWID,
+					     VDEV(view->screen, view->pos.x),
+					     VDEV(view->screen, view->pos.y),
+					     VDEV(view->screen, view->size.width),
+					     VDEV(view->screen, view->size.height), 0,
 					     depth, InputOutput,
 					     visual, view->attribFlags, &view->attribs);
 
 		XSaveContext(dpy, view->window, ViewContext, (XPointer) view);
-		WMScreenNoteDrawableSize(view->screen, view->window,
-					 view->size.width, view->size.height);
+		WMScreenNoteDrawableSizeScaled(view->screen, view->window,
+					       view->size.width, view->size.height);
 
 		view->flags.realized = 1;
 
@@ -259,7 +267,8 @@ void W_ReparentView(W_View * view, W_View * newParent, int x, int y)
 
 	if (view->flags.realized) {
 		if (newParent->flags.realized) {
-			XReparentWindow(dpy, view->window, newParent->window, x, y);
+			XReparentWindow(dpy, view->window, newParent->window,
+					VDEV(view->screen, x), VDEV(view->screen, y));
 		} else {
 			wwarning("trying to reparent realized view to unrealized parent");
 			return;
@@ -457,7 +466,8 @@ void W_MoveView(W_View * view, int x, int y)
 		return;
 
 	if (view->flags.realized) {
-		XMoveWindow(view->screen->display, view->window, x, y);
+		XMoveWindow(view->screen->display, view->window,
+			    VDEV(view->screen, x), VDEV(view->screen, y));
 	}
 	view->pos.x = x;
 	view->pos.y = y;
@@ -484,8 +494,9 @@ void W_ResizeView(W_View * view, unsigned int width, unsigned int height)
 	/*shrinked = width < view->size.width || height < view->size.height; */
 
 	if (view->flags.realized) {
-		XResizeWindow(view->screen->display, view->window, width, height);
-		WMScreenNoteDrawableSize(view->screen, view->window, width, height);
+		XResizeWindow(view->screen->display, view->window,
+			      VDEV(view->screen, width), VDEV(view->screen, height));
+		WMScreenNoteDrawableSizeScaled(view->screen, view->window, width, height);
 	}
 	view->size.width = width;
 	view->size.height = height;

@@ -224,6 +224,43 @@ int WMHandleEvent(XEvent * event)
 		while (WXEvqTakeTyped(event->xexpose.display, Expose, view->window, event)) ;
 	}
 
+	/* Events on a scaled W_View window carry device-pixel coordinates,
+	 * translate to the logical units the widget handlers were written
+	 * for. Done after compression so the surviving event is scaled
+	 * once. x_root/y_root are left in device px since they are only
+	 * used for screen-relative placement. */
+	if (view->screen->uiScale > 1.0001) {
+		double is = 1.0 / view->screen->uiScale;
+		switch (event->type) {
+		case ButtonPress:
+		case ButtonRelease:
+			event->xbutton.x = (int)(event->xbutton.x * is);
+			event->xbutton.y = (int)(event->xbutton.y * is);
+			break;
+		case MotionNotify:
+			event->xmotion.x = (int)(event->xmotion.x * is);
+			event->xmotion.y = (int)(event->xmotion.y * is);
+			break;
+		case EnterNotify:
+		case LeaveNotify:
+			event->xcrossing.x = (int)(event->xcrossing.x * is);
+			event->xcrossing.y = (int)(event->xcrossing.y * is);
+			break;
+		case Expose:
+			event->xexpose.x = (int)(event->xexpose.x * is);
+			event->xexpose.y = (int)(event->xexpose.y * is);
+			event->xexpose.width = (int)(event->xexpose.width * is + 0.999);
+			event->xexpose.height = (int)(event->xexpose.height * is + 0.999);
+			break;
+		case ConfigureNotify:
+			event->xconfigure.x = (int)(event->xconfigure.x * is);
+			event->xconfigure.y = (int)(event->xconfigure.y * is);
+			event->xconfigure.width = (int)(event->xconfigure.width * is + 0.5);
+			event->xconfigure.height = (int)(event->xconfigure.height * is + 0.5);
+			break;
+		}
+	}
+
 	if (view->screen->modalLoop && toplevel != view->screen->modalView && !toplevel->flags.worksWhenModal) {
 		if (event->type == KeyPress || event->type == KeyRelease
 		    || event->type == MotionNotify || event->type == ButtonPress
