@@ -84,6 +84,7 @@ typedef struct WObjDescriptor {
 	/* event handlers */
 	void (*handle_expose)(struct WObjDescriptor *sender, XEvent *event);
 	void (*handle_mousedown)(struct WObjDescriptor *sender, XEvent *event);
+	void (*handle_motionnotify)(struct WObjDescriptor *sender, XEvent *event);
 	void (*handle_enternotify)(struct WObjDescriptor *sender, XEvent *event);
 	void (*handle_leavenotify)(struct WObjDescriptor *sender, XEvent *event);
 

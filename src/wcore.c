@@ -101,9 +101,7 @@ WCoreWindow *wCoreCreate(WCoreWindow *parent, int x, int y, int width, int heigh
 	attribs.cursor = wPreferences.cursor[WCUR_NORMAL];
 	attribs.background_pixmap = None;
 	attribs.background_pixel = parent->screen_ptr->black_pixel;
-	attribs.event_mask = KeyPressMask | KeyReleaseMask | ButtonPressMask |
-			     ButtonReleaseMask | ButtonMotionMask |
-			     ExposureMask | EnterWindowMask | LeaveWindowMask;
+	attribs.event_mask = WCORE_CHILD_EVENT_MASK;
 	attribs.colormap = parent->screen_ptr->w_colormap;
 	core->window = XCreateWindow(dpy, parent->window, x, y, width, height, 0,
 			  parent->screen_ptr->w_depth, CopyFromParent,

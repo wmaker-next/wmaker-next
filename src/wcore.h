@@ -23,6 +23,15 @@
 
 #include "screen.h"
 
+/* Event mask applied to every child WCoreWindow (titlebar, resizebar,
+ * titlebar buttons, menu body). Exposed so callers that want extra
+ * events on a single core window can OR them in via XSelectInput
+ * without duplicating the base set. */
+#define WCORE_CHILD_EVENT_MASK  (KeyPressMask | KeyReleaseMask | \
+				 ButtonPressMask | ButtonReleaseMask | \
+				 ButtonMotionMask | ExposureMask | \
+				 EnterWindowMask | LeaveWindowMask)
+
 typedef struct WStacking {
 	struct _WCoreWindow *above;
 	struct _WCoreWindow *under;

@@ -1231,7 +1231,12 @@ static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
 static void handleMotionNotify(const xcb_generic_event_t *xe, XEvent *ev)
 {
 	const xcb_motion_notify_event_t *e = (const xcb_motion_notify_event_t *)xe;
-	(void) ev;
+	WObjDescriptor *desc = NULL;
+
+	if (XFindContext(dpy, e->event, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
+		if (desc->handle_motionnotify)
+			(*desc->handle_motionnotify) (desc, ev);
+	}
 
 	if (w_global.config->scrollable_menus) {
 		WScreen *scr = wScreenForRootWindow(e->root);
