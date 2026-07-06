@@ -27,6 +27,7 @@
 
 #include <X11/Xlib.h>
 
+#include <cairo.h>
 #include <WINGs/WINGs.h>
 
 #include "WPrefs.h"
@@ -442,25 +443,25 @@ static void paintGradListItem(WMList *lPtr, int index, Drawable d, char *text, i
 	WMColor *black = WMBlackColor(scr);
 	WMColor *gray = WMGrayColor(scr);
 	int width, height, x, y;
-	Display *dpy;
-
-	dpy = WMScreenDisplay(scr);
+	cairo_t *cr;
 
 	width = rect->size.width;
 	height = rect->size.height;
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	if (state & WLDSSelected)
-		XFillRectangle(dpy, d, WMColorGC(white), x, y, width, height);
-	else
-		XFillRectangle(dpy, d, WMColorGC(gray), x, y, width, height);
+	cr = WCairoBeginForDrawable(scr, d);
+	WCairoSetSourceColor(cr, (state & WLDSSelected) ? white : gray);
+	cairo_rectangle(cr, x, y, width, height);
+	cairo_fill(cr);
 
-	if (panel->gimage) {
-		XCopyArea(WMScreenDisplay(scr), panel->gimage, d, WMColorGC(white),
-			  0, height * index, 30, height, x + 5, y);
-	}
-	WMDrawString(scr, d, black, panel->listFont, x + 40, y + 1, text, strlen(text));
+	if (panel->gimage)
+		WCairoPaintArea(cr, scr, panel->gimage,
+				30, WMGetListNumberOfRows(lPtr) * height,
+				0, height * index, 30, height, x + 5, y);
+
+	WMDrawStringCairo(cr, black, panel->listFont, x + 40, y + 1, text, strlen(text));
+	WCairoEnd(cr);
 
 	WMReleaseColor(white);
 	WMReleaseColor(black);
@@ -1243,7 +1244,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 
 		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), False);
 		color = WMDarkGrayColor(scr);
-		XFillRectangle(WMScreenDisplay(scr), WMGetPixmapXID(pixmap), WMColorGC(color), 0, 0, 130, 16);
+		WMPaintColorSwatch(color, WMGetPixmapXID(pixmap), 0, 0, 130, 16);
 		WMReleaseColor(color);
 		color = WMWhiteColor(color);
 		WMDrawString(scr, WMGetPixmapXID(pixmap), color,
@@ -1264,7 +1265,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 
 		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), False);
 		color = WMDarkGrayColor(scr);
-		XFillRectangle(WMScreenDisplay(scr), WMGetPixmapXID(pixmap), WMColorGC(color), 0, 0, 130, 16);
+		WMPaintColorSwatch(color, WMGetPixmapXID(pixmap), 0, 0, 130, 16);
 		WMReleaseColor(color);
 		color = WMWhiteColor(scr);
 		WMDrawString(scr, WMGetPixmapXID(pixmap), color,
@@ -1358,7 +1359,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 	p = WMGetPixmapXID(pixmap);
 
 	color = WMDarkGrayColor(scr);
-	XFillRectangle(WMScreenDisplay(scr), p, WMColorGC(color), 0, 0, 155, 18);
+	WMPaintColorSwatch(color, p, 0, 0, 155, 18);
 	WMReleaseColor(color);
 
 	color = WMWhiteColor(scr);
@@ -1488,7 +1489,6 @@ void testOKButton(WMWidget *self, void *data)
 	Window win;
 	Pixmap pix;
 	RImage *image;
-	GC gc;
 
 	TexturePanel *panel = (TexturePanel *) data;
 	/* test = GetTexturePanelTextureString(panel); */
@@ -1504,9 +1504,8 @@ void testOKButton(WMWidget *self, void *data)
 
 	RConvertImage(WMScreenRContext(WMWidgetScreen(panel->okB)), image, &pix);
 
-	gc = XCreateGC(dpy, win, 0, NULL);
-	XCopyArea(dpy, pix, win, gc, 0, 0, image->width, image->height, 0, 0);
-	XFreeGC(dpy, gc);
+	WCairoCopyArea(WMWidgetScreen(panel->okB), pix, image->width, image->height,
+		       0, 0, image->width, image->height, win, 0, 0);
 
 	wfree(test);
 
