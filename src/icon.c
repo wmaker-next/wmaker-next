@@ -55,7 +55,7 @@
 /**** Global variables ****/
 
 #define MOD_MASK wPreferences.modifier_mask
-#define CACHE_ICON_PATH "/" PACKAGE_TARNAME "/CachedPixmaps"
+#define CACHE_ICON_PATH "/CachedPixmaps"
 #define ICON_BORDER 3
 
 static void miniwindowExpose(WObjDescriptor *desc, XEvent *event);
@@ -516,14 +516,40 @@ char *get_name_for_instance_class(const char *wm_instance, const char *wm_class)
 	return suffix;
 }
 
+/*
+ * The directory wIconStore() writes cached app icons into
+ * (<cache-root>/CachedPixmaps). Computed once and cached for the lifetime
+ * of the process. The directory is not created here so read-side callers
+ * can use it without side effects.
+ */
+const char *wGetIconCacheDir(void)
+{
+	static char *path;
+	const char *prefix;
+
+	if (path)
+		return path;
+
+	prefix = wusercachepath();
+	if (prefix)
+		path = wstrconcat(prefix, CACHE_ICON_PATH "/");
+
+	return path;
+}
+
+/*
+ * Returns a freshly allocated copy of the icon cache directory path,
+ * creating the directory if it does not yet exist. Callers must wfree()
+ * the result. Used by the write side (wIconStore, remove_cache_icon).
+ */
 static char *get_icon_cache_path(void)
 {
-	const char *prefix;
 	char *path;
 	int ret;
 
-	prefix = wuserdatapath();
-	path = wstrconcat(prefix, CACHE_ICON_PATH "/");
+	path = wstrdup(wGetIconCacheDir());
+	if (!path)
+		return NULL;
 
 	/* If the folder exists, exit */
 	if (access(path, F_OK) == 0)

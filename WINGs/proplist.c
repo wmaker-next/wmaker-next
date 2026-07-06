@@ -1855,10 +1855,31 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
  * file, and the last component is stripped off. the rest is the
  * the hierarchy to be created.
  *
- * refuses to create anything outside $WMAKER_USER_ROOT
+ * refuses to create anything outside the user config/data/cache roots
  *
  * returns 1 on success, 0 on failure
  */
+static const char *path_under_user_root(const char *path)
+{
+	const char *root[3];
+	size_t n;
+	int i;
+
+	root[0] = wusergnusteppath();
+	root[1] = wuserdatapath();
+	root[2] = wusercachepath();
+
+	for (i = 0; i < 3; i++) {
+		if (!root[i])
+			continue;
+		n = strlen(root[i]);
+		if (strncmp(path, root[i], n) == 0 &&
+		    (path[n] == '/' || path[n] == '\0'))
+			return root[i];
+	}
+	return NULL;
+}
+
 int wmkdirhier(const char *path)
 {
 	const char *t;
@@ -1892,20 +1913,18 @@ int wmkdirhier(const char *path)
 		}
 	}
 
-	/* Need to create something, only allow that under $WMAKER_USER_ROOT.
-	 * Reject sibling-prefix matches like ".../GNUstep_evil/" by requiring
-	 * a path separator (or end of string) right after the root, and
-	 * reject any ".." component so the walk cannot escape the root. */
-	if ((t = wusergnusteppath()) == NULL) {
+	/* Need to create something, only allow that under one of the
+	 * user configuration/data/cache roots. On the legacy layout the
+	 * data and cache roots are inside the config root, on the XDG
+	 * layout they are three separate trees. Reject sibling-prefix
+	 * matches like ".../GNUstep_evil/" by requiring a path separator
+	 * (or end of string) right after the root, and reject any ".."
+	 * component so the walk cannot escape the root. */
+	if ((t = path_under_user_root(path)) == NULL) {
 		wfree(thePath);
 		return 0;
 	}
 	rootlen = strlen(t);
-	if (strncmp(path, t, rootlen) != 0 ||
-	    (path[rootlen] != '/' && path[rootlen] != '\0')) {
-		wfree(thePath);
-		return 0;
-	}
 	for (p = rootlen; thePath[p]; p++) {
 		if (thePath[p] == '/' && thePath[p + 1] == '.' && thePath[p + 2] == '.' &&
 		    (thePath[p + 3] == '/' || thePath[p + 3] == '\0')) {
@@ -1914,8 +1933,6 @@ int wmkdirhier(const char *path)
 		}
 	}
 
-	wstrlcpy(buf, t, sizeof(buf));
-	p = strlen(buf);
 	plen = strlen(thePath);
 
 	/* the loop below copies up to plen+1 bytes into buf, so refuse paths
@@ -1926,15 +1943,10 @@ int wmkdirhier(const char *path)
 		return 0;
 	}
 
-	/* the loop below starts after the root prefix, so on a fresh
-	 * account where the user root itself does not exist yet every
-	 * mkdir would fail with ENOENT, create the root first */
-	if (mkdir(buf, 0777) == -1 && errno != EEXIST) {
-		werror(_("Could not create %s: %s"), buf, strerror(errno));
-		wfree(thePath);
-		return 0;
-	}
-
+	/* Walk the whole path so a fresh account gets its XDG basedirs
+	 * (~/.cache, ~/.local/share) created too. Components above the
+	 * matched root already exist and yield EEXIST, which is fine. */
+	p = 0;
 	do {
 		while (p++ < plen && thePath[p] != '/')
 			;
@@ -1987,7 +1999,8 @@ static int wrmdirhier_fn(const char *path, const struct stat *st,
 /*
  * remove a directory hierarchy
  *
- * refuses to remove anything outside $WMAKER_USER_ROOT/Defaults or $WMAKER_USER_ROOT/Library
+ * refuses to remove anything that is not strictly inside one of the
+ * user config/data/cache roots
  *
  * returns 1 on success, 0 on failure
  *
@@ -1997,27 +2010,15 @@ static int wrmdirhier_fn(const char *path, const struct stat *st,
  */
 int wrmdirhier(const char *path)
 {
-	const char *libpath;
-	char *udefpath = NULL;
+	const char *root;
 	struct stat st;
 	int error;
 
-	/* Only remove directories under $WMAKER_USER_ROOT/Defaults or $WMAKER_USER_ROOT/Library */
-	libpath = wuserdatapath();
-	if (strncmp(path, libpath, strlen(libpath)) == 0)
-		if (path[strlen(libpath)] == '/')
-			goto path_in_valid_tree;
-
-	udefpath = wdefaultspathfordomain("");
-	if (strncmp(path, udefpath, strlen(udefpath)) == 0)
-		/* Note: by side effect, 'udefpath' already contains a final '/'  */
-		goto path_in_valid_tree;
-
-	wfree(udefpath);
-	return EPERM;
-
- path_in_valid_tree:
-	wfree(udefpath);
+	/* Only remove directories strictly inside a permitted root, never
+	 * the root itself. */
+	root = path_under_user_root(path);
+	if (!root || path[strlen(root)] != '/')
+		return EPERM;
 
 	/* Shortcut if it doesn't exist to begin with */
 	if (stat(path, &st) == -1)

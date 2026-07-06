@@ -13,6 +13,7 @@
 #include "window.h"
 #include "defaults.h"
 #include "wdefaults.h"
+#include "icon.h"
 
 #include "check_common.h"
 
@@ -20,6 +21,17 @@ struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
 
 /* --- stubs for wdefaults.c externs not exercised here --- */
+
+const char *wGetIconCacheDir(void)
+{
+	return NULL;
+}
+
+char *get_name_for_instance_class(const char *wm_instance, const char *wm_class)
+{
+	(void)wm_instance; (void)wm_class;
+	return NULL;
+}
 
 int WMPLGetBool(WMPropList *value)
 {

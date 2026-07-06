@@ -171,6 +171,11 @@ cat > "$WMHOME/Defaults/WMState" <<'WMEOD'
 WMEOD
 export XDG_RUNTIME_DIR="$RUNTIME"
 unset WMAKER_IPC_SOCKET
+# keep the legacy Defaults/ layout so the seeded $WMHOME/Defaults/WindowMaker
+# and $WMHOME/Defaults/WMState below are seen by wdefaultspathfordomain(),
+# otherwise an empty WMAKER_USER_XDG still counts as set and check_defaults()
+# runs the first-run installer, clobbering WMState
+unset WMAKER_USER_XDG
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set IPC_DRIVE_DISPLAY to a free one" >&2

@@ -164,6 +164,7 @@ done
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 export XDG_RUNTIME_DIR="$RUNTIME"
 unset WMAKER_IPC_SOCKET
 

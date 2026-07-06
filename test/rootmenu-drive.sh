@@ -74,6 +74,7 @@ cat >"$WMHOME/Defaults/WMRootMenu" <<EOF
  ("Second", EXEC, "touch $MARK/second"))
 EOF
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 export XDG_RUNTIME_DIR="$RUNTIME"
 unset WMAKER_IPC_SOCKET
 

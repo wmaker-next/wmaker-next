@@ -16,7 +16,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <WINGs/WUtil.h>
 
@@ -383,8 +385,140 @@ static void test_spawn(void)
 	wfree(out);
 }
 
+static int child_eq(const char *got, const char *want)
+{
+	if (got && strcmp(got, want) == 0)
+		return 1;
+	fprintf(stderr, "  got %s, want %s\n", got ? got : "(null)", want);
+	return 0;
+}
+
+/* wusergnusteppath()/wuserdatapath()/wusercachepath() cache their result
+ * for the process lifetime, so each layout is exercised in its own child. */
+static void check_userpaths(int xdg, const char *cfg, const char *dom,
+			    const char *data, const char *cache)
+{
+	pid_t pid;
+	int st, ok;
+	char *d;
+
+	pid = fork();
+	CHECK(pid >= 0);
+	if (pid > 0) {
+		CHECK(waitpid(pid, &st, 0) == pid);
+		CHECK(WIFEXITED(st) && WEXITSTATUS(st) == 0);
+		return;
+	}
+
+	ok = child_eq(wusergnusteppath(), cfg);
+	ok &= child_eq(wuserdatapath(), data);
+	ok &= child_eq(wusercachepath(), cache);
+	d = wdefaultspathfordomain("WMState");
+	ok &= child_eq(d, dom);
+	wfree(d);
+	/* the config-root call must have exported the derived roots */
+	ok &= child_eq(getenv("WMAKER_USER_DATA"), data);
+	ok &= child_eq(getenv("WMAKER_USER_CACHE"), cache);
+	/* wmkdirhier() accepts creation under each root */
+	d = wstrconcat(data, "/wmk-check/sub/leaf");
+	ok &= wmkdirhier(d) == 1;
+	wfree(d);
+	if (xdg) {
+		/* three separate trees, cache root is not under data root */
+		d = wstrconcat(cache, "/wmk-check/sub/leaf");
+		ok &= wmkdirhier(d) == 1;
+		wfree(d);
+	}
+	_exit(ok ? 0 : 1);
+}
+
+/* Must run before anything else calls wgethomedir()/wusergnusteppath()
+ * so the forked children start with unpopulated static caches. */
+static void test_userpaths(void)
+{
+	char home[] = "/tmp/check_wutil_home_XXXXXX";
+	char cfg[160], dom[160], data[160], cache[160], sub[160];
+	char *saved_home;
+
+	if (!mkdtemp(home))
+		return;
+	saved_home = getenv("HOME");
+	saved_home = saved_home ? wstrdup(saved_home) : NULL;
+	unsetenv("WMAKER_USER_ROOT");
+	unsetenv("WMAKER_USER_DATA");
+	unsetenv("WMAKER_USER_CACHE");
+	unsetenv("WMAKER_USER_XDG");
+	unsetenv("XDG_CONFIG_HOME");
+	unsetenv("XDG_DATA_HOME");
+	unsetenv("XDG_CACHE_HOME");
+	setenv("HOME", home, 1);
+
+	/* explicit root -> legacy single-tree layout */
+	snprintf(cfg, sizeof(cfg), "%s/R", home);
+	snprintf(dom, sizeof(dom), "%s/Defaults/WMState", cfg);
+	snprintf(data, sizeof(data), "%s/Library/WindowMaker", cfg);
+	setenv("WMAKER_USER_ROOT", cfg, 1);
+	check_userpaths(0, cfg, dom, data, data);
+	unsetenv("WMAKER_USER_ROOT");
+	unsetenv("WMAKER_USER_XDG");
+
+	/* legacy ~/GNUstep tree present -> single-tree layout */
+	snprintf(cfg, sizeof(cfg), "%s/GNUstep", home);
+	snprintf(sub, sizeof(sub), "%s/Defaults", cfg);
+	mkdir(cfg, 0700);
+	mkdir(sub, 0700);
+	snprintf(dom, sizeof(dom), "%s/Defaults/WMState", cfg);
+	snprintf(data, sizeof(data), "%s/Library/WindowMaker", cfg);
+	check_userpaths(0, cfg, dom, data, data);
+	rmdir(sub);
+	rmdir(cfg);
+
+	/* fresh account, no XDG vars set -> XDG defaults, split layout,
+	 * wmkdirhier() creates the missing ~/.local/share and ~/.cache */
+	snprintf(cfg, sizeof(cfg), "%s/.config/WindowMaker", home);
+	snprintf(dom, sizeof(dom), "%s/WMState", cfg);
+	snprintf(data, sizeof(data), "%s/.local/share/WindowMaker", home);
+	snprintf(cache, sizeof(cache), "%s/.cache/WindowMaker", home);
+	check_userpaths(1, cfg, dom, data, cache);
+
+	/* explicit XDG_*_HOME -> honoured, split layout */
+	snprintf(sub, sizeof(sub), "%s/xc", home);
+	setenv("XDG_CONFIG_HOME", sub, 1);
+	snprintf(sub, sizeof(sub), "%s/xd", home);
+	setenv("XDG_DATA_HOME", sub, 1);
+	snprintf(sub, sizeof(sub), "%s/xh", home);
+	setenv("XDG_CACHE_HOME", sub, 1);
+	snprintf(cfg, sizeof(cfg), "%s/xc/WindowMaker", home);
+	snprintf(dom, sizeof(dom), "%s/WMState", cfg);
+	snprintf(data, sizeof(data), "%s/xd/WindowMaker", home);
+	snprintf(cache, sizeof(cache), "%s/xh/WindowMaker", home);
+	check_userpaths(1, cfg, dom, data, cache);
+
+	/* child inheriting WMAKER_USER_ROOT + WMAKER_USER_XDG from an XDG
+	 * parent must keep the split layout, not fall back to Defaults/ */
+	snprintf(cfg, sizeof(cfg), "%s/xc/WindowMaker", home);
+	snprintf(dom, sizeof(dom), "%s/WMState", cfg);
+	snprintf(data, sizeof(data), "%s/xd/WindowMaker", home);
+	snprintf(cache, sizeof(cache), "%s/xh/WindowMaker", home);
+	setenv("WMAKER_USER_ROOT", cfg, 1);
+	setenv("WMAKER_USER_XDG", "1", 1);
+	check_userpaths(1, cfg, dom, data, cache);
+	unsetenv("WMAKER_USER_ROOT");
+	unsetenv("WMAKER_USER_XDG");
+
+	unsetenv("XDG_CONFIG_HOME");
+	unsetenv("XDG_DATA_HOME");
+	unsetenv("XDG_CACHE_HOME");
+	if (saved_home) {
+		setenv("HOME", saved_home, 1);
+		wfree(saved_home);
+	}
+	wspawnvp_wait((char *[]){ "rm", "-rf", home, NULL });
+}
+
 int main(void)
 {
+	test_userpaths();
 	test_wstrlcpy();
 	test_wstrndup();
 	test_wshellquote();

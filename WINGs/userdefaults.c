@@ -36,6 +36,11 @@ typedef struct W_UserDefaults {
 
 static UserDefaults *sharedUserDefaults = NULL;
 
+/* set by wusergnusteppath() so the data/cache/domain helpers know whether
+ * to keep the legacy single-tree GNUstep layout or split across the XDG
+ * config/data/cache basedirs */
+static int xdg_layout = 0;
+
 char *WMUserDefaultsDidChangeNotification = "WMUserDefaultsDidChangeNotification";
 
 static void synchronizeUserDefaults(void *foo);
@@ -55,7 +60,11 @@ static void synchronizeUserDefaults(void *foo);
  * The result is cached for the process lifetime and exported back to the
  * environment as WMAKER_USER_ROOT (without overwriting an explicit value),
  * so wexpandpath("$WMAKER_USER_ROOT/...") and spawned children see the
- * resolved root regardless of which branch was taken.
+ * resolved root regardless of which branch was taken. The XDG branches
+ * additionally export WMAKER_USER_XDG=1 so children that inherit
+ * WMAKER_USER_ROOT (branch 1) keep the XDG split layout instead of wrongly
+ * falling back to the legacy Defaults/ subdirectory and Library/ data dir.
+ * An explicit WMAKER_USER_ROOT without WMAKER_USER_XDG stays legacy.
  */
 const char *wusergnusteppath(void)
 {
@@ -73,6 +82,8 @@ const char *wusergnusteppath(void)
 		gspath = wexpandpath(gspath);
 		if (gspath) {
 			path = gspath;
+			if (GETENV("WMAKER_USER_XDG") != NULL)
+				xdg_layout = 1;
 			goto done;
 		}
 		wwarning(_("variable WMAKER_USER_ROOT defined with invalid path, not used"));
@@ -97,9 +108,40 @@ const char *wusergnusteppath(void)
 		path = wstrconcat(xdg, "/" PACKAGE_TARNAME);
 	else
 		path = wstrconcat(home, "/.config/" PACKAGE_TARNAME);
+	xdg_layout = 1;
 
 done:
 	setenv("WMAKER_USER_ROOT", path, 0);
+	if (xdg_layout)
+		setenv("WMAKER_USER_XDG", "1", 0);
+	/* force the data and cache roots to be resolved and exported now
+	 * so wexpandpath("$WMAKER_USER_DATA/...") works from the very
+	 * first caller, the recursion terminates on the cache above */
+	wuserdatapath();
+	wusercachepath();
+	return path;
+}
+
+/* ${var:-~/.fallback}/WindowMaker on the XDG branch, or the given legacy
+ * subdirectory of the config root otherwise, exported as env for
+ * wexpandpath() and spawned children. */
+static char *xdg_or_legacy(const char *var, const char *fallback,
+			   const char *legacy_sub, const char *env)
+{
+	const char *root, *dir;
+	char *path;
+
+	root = wusergnusteppath();
+	if (!xdg_layout) {
+		path = wstrconcat(root, legacy_sub);
+	} else {
+		dir = GETENV(var);
+		if (dir && dir[0] == '/')
+			path = wstrconcat(dir, "/" PACKAGE_TARNAME);
+		else
+			path = wstrconcat(wgethomedir(), fallback);
+	}
+	setenv(env, path, 0);
 	return path;
 }
 
@@ -111,8 +153,22 @@ const char *wuserdatapath(void)
 		/* Value have been already computed, re-use it */
 		return path;
 
-	path = wstrconcat(wusergnusteppath(), "/" USERDATA_SUBDIR);
+	path = xdg_or_legacy("XDG_DATA_HOME", "/.local/share/" PACKAGE_TARNAME,
+			     "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME,
+			     "WMAKER_USER_DATA");
+	return path;
+}
 
+const char *wusercachepath(void)
+{
+	static char *path = NULL;
+
+	if (path)
+		return path;
+
+	path = xdg_or_legacy("XDG_CACHE_HOME", "/.cache/" PACKAGE_TARNAME,
+			     "/" USERDATA_SUBDIR "/" PACKAGE_TARNAME,
+			     "WMAKER_USER_CACHE");
 	return path;
 }
 
@@ -138,7 +194,7 @@ static int domain_name_is_valid(const char *domain)
 char *wdefaultspathfordomain(const char *domain)
 {
 	char *path;
-	const char *gspath;
+	const char *gspath, *sub;
 	size_t slen;
 
 	if (!domain_name_is_valid(domain)) {
@@ -147,10 +203,11 @@ char *wdefaultspathfordomain(const char *domain)
 	}
 
 	gspath = wusergnusteppath();
-	slen = strlen(gspath) + strlen("/" DEFAULTS_SUBDIR "/") + strlen(domain) + 1;
+	sub = xdg_layout ? "/" : "/" DEFAULTS_SUBDIR "/";
+	slen = strlen(gspath) + strlen(sub) + strlen(domain) + 1;
 	path = wmalloc(slen);
 
-	snprintf(path, slen, "%s/" DEFAULTS_SUBDIR "/%s", gspath, domain);
+	snprintf(path, slen, "%s%s%s", gspath, sub, domain);
 
 	return path;
 }

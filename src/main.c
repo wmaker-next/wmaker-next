@@ -572,13 +572,9 @@ static void inotifyWatchConfig(void)
 
 static void execInitScript(void)
 {
-	char *file, *paths;
+	char *file;
 
-	paths = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME);
-	paths = wstrappend(paths, ":" DEF_CONFIG_PATHS);
-
-	file = wfindfile(paths, DEF_INIT_SCRIPT);
-	wfree(paths);
+	file = wfindfile(DEF_CONFIG_PATHS, DEF_INIT_SCRIPT);
 
 	if (file) {
 		/* run the script directly (its shebang picks the interpreter)
@@ -592,13 +588,9 @@ static void execInitScript(void)
 
 void ExecExitScript(void)
 {
-	char *file, *paths;
+	char *file;
 
-	paths = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME);
-	paths = wstrappend(paths, ":" DEF_CONFIG_PATHS);
-
-	file = wfindfile(paths, DEF_EXIT_SCRIPT);
-	wfree(paths);
+	file = wfindfile(DEF_CONFIG_PATHS, DEF_EXIT_SCRIPT);
 
 	if (file) {
 		if (wspawnvp_wait((char *[]){ file, NULL }) != 0)

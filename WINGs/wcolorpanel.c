@@ -1174,6 +1174,19 @@ static void readConfiguration(W_ColorPanel * panel)
 	DIR *dPtr;
 	struct dirent *dp;
 	int item;
+	char *legacy;
+
+	/* one-shot migration from the pre-split <root>/Library/Colors,
+	 * moved whole-directory when the new location does not exist yet
+	 * so a user's saved palettes survive the layout change */
+	legacy = wstrconcat(wusergnusteppath(), "/" USERDATA_SUBDIR "/Colors");
+	if (access(panel->configurationPath, F_OK) != 0 &&
+	    access(legacy, F_OK) == 0 &&
+	    wmkdirhier(panel->configurationPath) &&
+	    rename(legacy, panel->configurationPath) != 0)
+		wwarning("%s -> %s: %s", legacy, panel->configurationPath,
+			 strerror(errno));
+	wfree(legacy);
 
 	if (!wmkdirhier(panel->configurationPath)) {
 		werror(_("Color Panel: Could not create directory %s needed"

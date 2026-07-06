@@ -564,6 +564,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'WMEOD'
 }
 WMEOD
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 
 if run_x xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set EWMH_LAYOUT_DRIVE_DISPLAY to a free one" >&2

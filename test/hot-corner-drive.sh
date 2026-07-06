@@ -70,6 +70,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
 }
 EOF
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 
 # --- Xephyr -----------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then

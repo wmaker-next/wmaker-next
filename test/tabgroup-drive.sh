@@ -164,6 +164,7 @@ ipc_ready() { msg -q get_version >/dev/null 2>&1; }
 
 unset WMAKER_IPC_SOCKET
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 export XDG_RUNTIME_DIR="$RUNTIME"
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 # pin the titlebar layout so segment geometry is computable from the

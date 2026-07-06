@@ -54,7 +54,7 @@
 #include "../src/wconfig.h"
 
 
-#define THEME_SUBPATH "/" PACKAGE_TARNAME "/Themes/"
+#define THEME_SUBPATH "/Themes/"
 #define THEME_EXTDIR  ".themed/"
 
 /* table of style related options */
@@ -172,7 +172,7 @@ static noreturn void print_help(int print_usage, int exitval)
 	printf("Usage: %s [-t] [-p] [-h] [-v] [file]\n", prog_name);
 	if (print_usage) {
 		puts("Retrieves style/theme configuration and outputs to "
-		     "$WMAKER_USER_ROOT/" USERDATA_SUBDIR THEME_SUBPATH "file" THEME_EXTDIR "style"
+		     "$WMAKER_USER_DATA" THEME_SUBPATH "file" THEME_EXTDIR "style"
 		     " or to stdout");
 		puts("");
 		puts("  -h, --help           display this help and exit");

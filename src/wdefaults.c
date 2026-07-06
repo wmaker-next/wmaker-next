@@ -385,6 +385,36 @@ out:
 	WMPLSetCaseSensitive(False);
 }
 
+/* Search the icon cache directory for an icon. When file_name is given
+ * (a per-app Icon entry from WMWindowAttributes) look it up there. When
+ * it is NULL, fall back to the standard <instance>.<class>.xpm naming
+ * that wIconStore() uses, so an entry dropped after a stale-IconPath
+ * lookup self-heals from the cached file. */
+static char *find_in_icon_cache(const char *file_name,
+			       const char *winstance, const char *wclass)
+{
+	const char *cache_dir = wGetIconCacheDir();
+	char *constructed = NULL;
+	char *path;
+
+	if (!cache_dir)
+		return NULL;
+
+	if (!file_name) {
+		char *base = get_name_for_instance_class(winstance, wclass);
+
+		if (!base)
+			return NULL;
+		constructed = wstrconcat(base, ".xpm");
+		wfree(base);
+		file_name = constructed;
+	}
+
+	path = FindImage(cache_dir, file_name);
+	wfree(constructed);
+	return path;
+}
+
 /* Get the file name of the image, using instance and class */
 char *get_icon_filename(const char *winstance, const char *wclass, const char *command,
 			Bool default_icon)
@@ -401,13 +431,27 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 	else
 		file_path = NULL;
 
+	/* wIconStore() writes cached icons to <cache-root>/CachedPixmaps,
+	 * which the default IconPath includes via $WMAKER_USER_CACHE. A user
+	 * IconPath inherited from a pre-XDG-cache layout may still point at
+	 * the old (now unused) location and miss the cache dir entirely, so
+	 * search it directly to keep the cache write and the cache lookup
+	 * consistent regardless of the configured IconPath. When no per-app
+	 * Icon entry exists at all, the cache is also searched by its
+	 * standard naming so a dropped entry self-heals. */
+	if (!file_path)
+		file_path = find_in_icon_cache(file_name, winstance, wclass);
+
 	/* If the specific icon filename is not found, and command is specified,
 	 * then include the .app icons and re-do the search. */
 	if (!file_path && command) {
 		wApplicationExtractDirPackIcon(command, winstance, wclass);
 		file_name = wDefaultGetIconFile(winstance, wclass, False);
-		if (file_name)
+		if (file_name) {
 			file_path = FindImage(w_global.config->icon_path, file_name);
+			if (!file_path)
+				file_path = find_in_icon_cache(file_name, winstance, wclass);
+		}
 	}
 
 	/*

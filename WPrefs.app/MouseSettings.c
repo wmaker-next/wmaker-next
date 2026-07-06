@@ -617,7 +617,7 @@ static void storeCommandInScript(const char *cmd, const char *line)
 	umask(permissions);
 	permissions = (S_IRWXU | S_IRWXG | S_IRWXO) & (~permissions);
 
-	path = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME "/autostart");
+	path = wstrconcat(wuserdatapath(), "/autostart");
 
 	f = fopen(path, "rb");
 	if (!f) {
@@ -639,7 +639,7 @@ static void storeCommandInScript(const char *cmd, const char *line)
 		char *tmppath;
 		FILE *fo;
 
-		tmppath = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME "/autostart.tmp");
+		tmppath = wstrconcat(wuserdatapath(), "/autostart.tmp");
 		fo = fopen(tmppath, "wb");
 		if (!fo) {
 			werror(_("could not create temporary file %s"), tmppath);

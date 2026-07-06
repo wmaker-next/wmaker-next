@@ -114,7 +114,7 @@
  */
 
 /* list of paths to look for the config files, searched in order of appearance */
-#define DEF_CONFIG_PATHS "$WMAKER_USER_ROOT/Library/WindowMaker:"PKGDATADIR
+#define DEF_CONFIG_PATHS "$WMAKER_USER_DATA:"PKGDATADIR
 #define DEF_MENU_FILE	 "menu"
 
 /* name of the script to execute at startup */
@@ -134,9 +134,9 @@
 /* pixmap path */
 #define DEF_PIXMAP_PATHS \
 	"("                                                                  \
-		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps\","         \
-		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds\","     \
-		"\"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps\","   \
+		"\"$WMAKER_USER_DATA/Pixmaps\","                             \
+		"\"$WMAKER_USER_DATA/Backgrounds\","                         \
+		"\"$WMAKER_USER_CACHE/CachedPixmaps\","                      \
 		"\"~/pixmaps\","                                             \
 		"\""PKGDATADIR"/Pixmaps\","                                  \
 		"\""PKGDATADIR"/Backgrounds\","                              \
@@ -146,15 +146,15 @@
 #ifdef USER_MENU
 #define GLOBAL_USER_MENU_PATH PKGDATADIR"/UserMenus"
 #define DEF_USER_MENU_PATHS \
-    "$WMAKER_USER_ROOT/Library/WindowMaker/UserMenus:"GLOBAL_USER_MENU_PATH
+    "$WMAKER_USER_DATA/UserMenus:"GLOBAL_USER_MENU_PATH
 #endif
 
 /* icon path */
 #define DEF_ICON_PATHS \
 	"("                                                                  \
-		"\"$WMAKER_USER_ROOT/Library/Icons\","                       \
-		"\"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps\","         \
-		"\"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps\","   \
+		"\"$WMAKER_USER_DATA/Icons\","                               \
+		"\"$WMAKER_USER_DATA/Pixmaps\","                             \
+		"\"$WMAKER_USER_CACHE/CachedPixmaps\","                      \
 		"\"~/pixmaps\","                                             \
 		"\""PKGDATADIR"/Icons\","                                    \
 		"\""PKGDATADIR"/Pixmaps\","                                  \

@@ -893,10 +893,23 @@ Bool WMWritePropListToFile(WMPropList *plist, const char *path);
 
 /* Returns the per-user configuration root: $WMAKER_USER_ROOT, else ~/GNUstep
  * if a legacy ~/GNUstep/Defaults exists, else ${XDG_CONFIG_HOME:-~/.config}/WindowMaker.
- * The result is exported as WMAKER_USER_ROOT for child processes.
+ * The result is exported as WMAKER_USER_ROOT for child processes. The XDG
+ * layout is additionally flagged via WMAKER_USER_XDG=1 so inheriting children
+ * keep domain files at <root>/<domain> rather than <root>/Defaults/<domain>.
  * Don't free the returned string. */
 const char* wusergnusteppath(void);
+
+/* Returns the per-user data directory (themes, styles, backgrounds, autostart):
+ * <root>/Library/WindowMaker on the legacy layout,
+ * ${XDG_DATA_HOME:-~/.local/share}/WindowMaker on the XDG layout.
+ * Exported as WMAKER_USER_DATA. Don't free the returned string. */
 const char* wuserdatapath(void);
+
+/* Returns the per-user cache directory (CachedPixmaps, WPrefs previews):
+ * same as wuserdatapath() on the legacy layout,
+ * ${XDG_CACHE_HOME:-~/.cache}/WindowMaker on the XDG layout.
+ * Exported as WMAKER_USER_CACHE. Don't free the returned string. */
+const char* wusercachepath(void);
 
 /* Free the returned string when you no longer need it */
 char* wdefaultspathfordomain(const char *domain);

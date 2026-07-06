@@ -1862,27 +1862,10 @@ static void createPanel(Panel * p)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMTabViewItem *item;
 	int i;
-	char *tmp;
-	Bool ok = True;
 
-	panel->fprefix = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME);
-
-	if (access(panel->fprefix, F_OK) != 0) {
-		if (-1 == mkdir(panel->fprefix, 0755) && errno != EEXIST) {
-			werror("%s", panel->fprefix);
-			ok = False;
-		}
-	}
-	if (ok) {
-		tmp = wstrconcat(panel->fprefix, "/WPrefs/");
-		wfree(panel->fprefix);
-		panel->fprefix = tmp;
-		if (access(panel->fprefix, F_OK) != 0) {
-			if (-1 == mkdir(panel->fprefix, 0755) && errno != EEXIST) {
-				werror("%s", panel->fprefix);
-			}
-		}
-	}
+	panel->fprefix = wstrconcat(wusercachepath(), "/WPrefs/");
+	if (!wmkdirhier(panel->fprefix))
+		werror("%s", panel->fprefix);
 
 	panel->smallFont = WMSystemFontOfSize(scr, 10);
 	panel->normalFont = WMSystemFontOfSize(scr, 12);

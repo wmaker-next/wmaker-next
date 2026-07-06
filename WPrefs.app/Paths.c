@@ -94,7 +94,7 @@ static void showData(_Panel * panel)
 		if (array)
 			wwarning(_("bad value in option PixmapPath. Using default path list"));
 		addPathToList(panel->pixL, -1, "~/pixmaps");
-		p = wstrconcat(wuserdatapath(), "/" PACKAGE_TARNAME "/Pixmaps");
+		p = wstrconcat(wuserdatapath(), "/Pixmaps");
 		addPathToList(panel->pixL, -1, p);
 		wfree(p);
 		addPathToList(panel->pixL, -1, WMAKER_RESOURCE_PATH "/Pixmaps");

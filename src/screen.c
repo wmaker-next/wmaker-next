@@ -1360,10 +1360,10 @@ void ScreenCapture(WScreen *scr, int mode)
 		return;
 	}
 
-	screenshot_dir = wstrconcat(wusergnusteppath(), "/Library/WindowMaker/Screenshots/");
-	if (-1 == mkdir(screenshot_dir, 0700) && errno != EEXIST) {
+	screenshot_dir = wstrconcat(wuserdatapath(), "/Screenshots/");
+	if (!wmkdirhier(screenshot_dir)) {
 		wfree(screenshot_dir);
-		werror(_("Unable to create screenshot directory: %s"), strerror(errno));
+		werror(_("Unable to create screenshot directory"));
 		return;
 	}
 

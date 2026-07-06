@@ -76,6 +76,7 @@ RImage *wWindowGetIconImage(WWindow *wwin);
 
 char *wIconStore(WIcon *icon);
 char *get_name_for_instance_class(const char *wm_instance, const char *wm_class);
+const char *wGetIconCacheDir(void);
 
 void wIconResumeBlink(WScreen *scr);
 void wIconSetHighlited(WIcon *icon, Bool flag);

@@ -73,16 +73,16 @@ static char last_helper_type;
 static char *last_helper_msg;
 
 #define EXPECTED_PIXMAP_PATH \
-	"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps:" \
-	"$WMAKER_USER_ROOT/Library/WindowMaker/Backgrounds:" \
-	"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps:" \
+	"$WMAKER_USER_DATA/Pixmaps:" \
+	"$WMAKER_USER_DATA/Backgrounds:" \
+	"$WMAKER_USER_CACHE/CachedPixmaps:" \
 	"~/pixmaps:" PKGDATADIR "/Pixmaps:" PKGDATADIR "/Backgrounds:" \
 	PIXMAPDIR
 
 #define EXPECTED_ICON_PATH \
-	"$WMAKER_USER_ROOT/Library/Icons:" \
-	"$WMAKER_USER_ROOT/Library/WindowMaker/Pixmaps:" \
-	"$WMAKER_USER_ROOT/Library/WindowMaker/CachedPixmaps:" \
+	"$WMAKER_USER_DATA/Icons:" \
+	"$WMAKER_USER_DATA/Pixmaps:" \
+	"$WMAKER_USER_CACHE/CachedPixmaps:" \
 	"~/pixmaps:" PKGDATADIR "/Icons:" PKGDATADIR "/Pixmaps:" \
 	PIXMAPDIR
 
