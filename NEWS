@@ -26,6 +26,33 @@ which every maintained distribution ships. Packagers should add
 libcairo2-dev / cairo-devel and libpango1.0-dev / pango-devel to the
 build dependencies.
 
+XDG data and cache directories are split from the configuration root
+--------------------------------------------------------------------
+
+On the XDG layout (no ~/GNUstep/Defaults and no explicit
+WMAKER_USER_ROOT), the per-user tree is now split across the three
+XDG basedirs instead of nesting everything under ~/.config/WindowMaker:
+
+    defaults domains  ${XDG_CONFIG_HOME:-~/.config}/WindowMaker/
+    themes, styles,   ${XDG_DATA_HOME:-~/.local/share}/WindowMaker/
+    backgrounds,
+    autostart, menus
+    cached pixmaps,   ${XDG_CACHE_HOME:-~/.cache}/WindowMaker/
+    WPrefs previews
+
+The Defaults/ and Library/WindowMaker/ intermediate directories are
+gone on this layout, so the WindowMaker domain sits directly at
+~/.config/WindowMaker/WindowMaker and themes at
+~/.local/share/WindowMaker/Themes.
+
+An explicit WMAKER_USER_ROOT and an existing ~/GNUstep tree keep the
+single-tree Defaults/ + Library/WindowMaker/ layout unchanged, so
+existing installs are unaffected. Two additional environment variables
+WMAKER_USER_DATA and WMAKER_USER_CACHE are exported alongside
+WMAKER_USER_ROOT with the resolved data and cache directories, and the
+seeded root menu, PixmapPath and IconPath reference them so the same
+templates work on both layouts.
+
 SVG icons are loaded natively
 -----------------------------
 
