@@ -25,6 +25,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xlib-xcb.h>
 
 #include "WindowMaker.h"
 #include "window.h"
@@ -200,19 +201,31 @@ void RestoreDesktop(WScreen * scr)
 /*
  *----------------------------------------------------------------------
  * wipeDesktop--
- * 	Kills all windows in a screen. Send DeleteWindow to all windows
- * that support it and KillClient on all windows that don't.
+ * 	Kills every client on a screen. Managed windows get
+ * WM_DELETE_WINDOW where they advertised it, then a root XQueryTree
+ * sweep XKillClient()s every top-level that is not one of our own
+ * so override-redirect and withdrawn clients do not survive the
+ * session kill.
  *
  * Side effects:
- * 	All managed windows are closed.
+ * 	All clients are closed.
  *
- * TODO: change to XQueryTree()
  *----------------------------------------------------------------------
  */
 static void wipeDesktop(WScreen * scr)
 {
 	WWindow *wwin;
+	Window root, parent;
+	Window *children;
+	unsigned int nchildren, i;
+	const xcb_setup_t *setup = xcb_get_setup(XGetXCBConnection(dpy));
+	uint32_t own_base = setup->resource_id_base;
+	uint32_t own_mask = setup->resource_id_mask;
 
+	/* Managed clients first: they are reparented under our frame
+	 * windows so the root-children sweep below will not see them,
+	 * and walking the WWindow list lets us honour WM_DELETE_WINDOW
+	 * where the client asked for it. */
 	wwin = scr->focused_window;
 	while (wwin) {
 		if (wwin->protocols.DELETE_WINDOW)
@@ -222,5 +235,20 @@ static void wipeDesktop(WScreen * scr)
 			wClientKill(wwin);
 		wwin = wwin->prev;
 	}
+
+	/* Sweep every remaining top-level that is not in this
+	 * connection's XID range (frames, dock tiles, menus, OSD).
+	 * Override-redirect panels, withdrawn clients and anything
+	 * else that never had a WWindow would otherwise outlive the
+	 * session kill. */
+	if (XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren)) {
+		for (i = 0; i < nchildren; i++) {
+			if (((uint32_t)children[i] & ~own_mask) != own_base)
+				XKillClient(dpy, children[i]);
+		}
+		if (children)
+			XFree(children);
+	}
+
 	XSync(dpy, False);
 }
