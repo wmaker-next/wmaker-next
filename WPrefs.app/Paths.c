@@ -178,7 +178,6 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	Display *dpy = WMScreenDisplay(scr);
 	WMColor *backColor = (state & WLDSSelected) ? panel->white : panel->gray;
 
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -189,7 +188,7 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	XFillRectangle(dpy, d, WMColorGC(backColor), x, y, width, height);
+	WMPaintColorSwatch(backColor, d, x, y, width, height);
 
 	if (state & 1) {
 		WMDrawString(scr, d, panel->red, panel->font, x + 4, y, text, strlen(text));

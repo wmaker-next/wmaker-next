@@ -83,8 +83,8 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 	W_Screen *scr = dPtr->view->screen;
 
 	if (dPtr->active) {
-		XFillRectangle(scr->display, dPtr->view->window, WMColorGC(scr->white),
-			       0, 0, dPtr->view->size.width, dPtr->view->size.height);
+		WMPaintColorSwatch(scr->white, dPtr->view->window,
+				   0, 0, dPtr->view->size.width, dPtr->view->size.height);
 	} else {
 		XClearWindow(scr->display, dPtr->view->window);
 	}

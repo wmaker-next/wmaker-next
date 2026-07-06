@@ -18,6 +18,7 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cairo.h>
 #include <WINGs/WINGsP.h>
 #include <WINGs/WUtil.h>
 #include <stdlib.h>
@@ -202,10 +203,25 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 
 		WMDrawPixmap(iPtr->pixmap, win, w - size.width - 5, (h - size.height) / 2);
 	} else if (iPtr->submenu) {
-		/* draw the cascade indicator */
-		XDrawLine(scr->display, win, WMColorGC(scr->darkGray), w - 11, 6, w - 6, h / 2 - 1);
-		XDrawLine(scr->display, win, WMColorGC(scr->white), w - 11, h - 8, w - 6, h / 2 - 1);
-		XDrawLine(scr->display, win, WMColorGC(scr->black), w - 12, 6, w - 12, h - 8);
+		/* draw the cascade indicator: three 1px bevel edges of a
+		 * right-pointing triangle, dark on top, white below, black
+		 * on the left. +0.5 keeps the 1px stroke on pixel centres. */
+		cairo_t *cr = WCairoBeginForDrawable(scr, win);
+
+		cairo_set_line_width(cr, 1.0);
+		WCairoSetSourceColor(cr, scr->darkGray);
+		cairo_move_to(cr, w - 11 + 0.5, 6 + 0.5);
+		cairo_line_to(cr, w - 6 + 0.5, h / 2 - 1 + 0.5);
+		cairo_stroke(cr);
+		WCairoSetSourceColor(cr, scr->white);
+		cairo_move_to(cr, w - 11 + 0.5, h - 8 + 0.5);
+		cairo_line_to(cr, w - 6 + 0.5, h / 2 - 1 + 0.5);
+		cairo_stroke(cr);
+		WCairoSetSourceColor(cr, scr->black);
+		cairo_move_to(cr, w - 12 + 0.5, 6 + 0.5);
+		cairo_line_to(cr, w - 12 + 0.5, h - 8 + 0.5);
+		cairo_stroke(cr);
+		WCairoEnd(cr);
 	}
 }
 

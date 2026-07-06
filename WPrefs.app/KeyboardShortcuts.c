@@ -625,7 +625,6 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	Display *dpy = WMScreenDisplay(scr);
 	WMColor *backColor = (state & WLDSSelected) ? panel->white : panel->gray;
 
 	width = rect->size.width;
@@ -633,7 +632,7 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 	x = rect->pos.x;
 	y = rect->pos.y;
 
-	XFillRectangle(dpy, d, WMColorGC(backColor), x, y, width, height);
+	WMPaintColorSwatch(backColor, d, x, y, width, height);
 
 	if (panel->shortcuts[index]) {
 		WMPixmap *pix = WMGetSystemPixmap(scr, WSICheckMark);
