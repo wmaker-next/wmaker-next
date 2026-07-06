@@ -499,6 +499,15 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h);
  * as a black shape (bit=1 lands, bit=0 leaves the destination). */
 void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pixmap, int x, int y);
 
+/* copy a w x h rectangle from (sx, sy) on a screen-depth server
+ * drawable src (whose full extents are srcW x srcH) onto the caller's
+ * cairo target at (dx, dy) */
+void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int srcH,
+                     int sx, int sy, int w, int h, int dx, int dy);
+/* one-shot server-side copy: open a transient cr on dst, blit, close */
+void WCairoCopyArea(W_Screen *scr, Drawable src, int srcW, int srcH,
+                    int sx, int sy, int w, int h, Drawable dst, int dx, int dy);
+
 /* fill the target with the view's background: an explicit WMColor if
  * given, else the view's background pixmap tiled, else its backColor */
 void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor);

@@ -307,6 +307,42 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 	cairo_restore(cr);
 }
 
+/* copy a w x h rectangle from (sx, sy) on a screen-depth server
+ * drawable src (whose full extents are srcW x srcH) onto the caller's
+ * cairo target at (dx, dy). srcW/srcH are passed explicitly rather than
+ * looked up in drawableSize because most callers hold a short-lived
+ * pixmap from RConvertImage or XCreatePixmap and already know the
+ * answer, so a cache miss and the associated round trip is avoided. */
+void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int srcH,
+		     int sx, int sy, int w, int h, int dx, int dy)
+{
+	RContext *rc = scr->rcontext;
+	cairo_surface_t *ss;
+
+	ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)src,
+				      rc->xvisual, srcW, srcH);
+	cairo_set_source_surface(cr, ss, dx - sx, dy - sy);
+	cairo_rectangle(cr, dx, dy, w, h);
+	cairo_fill(cr);
+	cairo_surface_destroy(ss);
+}
+
+/* one-shot server-side copy: open a transient cairo_t on dst, blit the
+ * rectangle, close. Drop-in for the XCreateGC + XCopyArea + XFreeGC
+ * pattern used by preview compositors that shuffle rendered pixmaps
+ * between scratch surfaces. */
+void WCairoCopyArea(W_Screen *scr, Drawable src, int srcW, int srcH,
+		    int sx, int sy, int w, int h, Drawable dst, int dx, int dy)
+{
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(scr, dst);
+	if (!cr)
+		return;
+	WCairoPaintArea(cr, scr, src, srcW, srcH, sx, sy, w, h, dx, dy);
+	WCairoEnd(cr);
+}
+
 /* paint a WMPixmap at (x, y). A screen-depth image half is wrapped as
  * a source surface at the screen visual, a depth-1 image half is
  * wrapped for_bitmap and painted as a black shape (bit=1 lands, bit=0
