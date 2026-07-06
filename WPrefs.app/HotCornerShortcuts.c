@@ -209,7 +209,7 @@ static void createPanel(Panel * p)
 	RImage *xis = NULL;
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	RContext *rc = WMScreenRContext(scr);
-	GC gc = XCreateGC(scr->display, WMWidgetXID(panel->parent), 0, NULL);
+	int qw, qh;
 
 	path = LocateImage(ICON_FILE);
 	if (path) {
@@ -318,90 +318,95 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->hcactionsF, 265, 77);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
-	WMResizeWidget(panel->icornerL, 24, 24);
-	WMMoveWidget(panel->icornerL, 10, 18);
+	WMResizeWidget(panel->icornerL, 20, 20);
+	WMMoveWidget(panel->icornerL, 15, 20);
 	WMSetLabelImagePosition(panel->icornerL, WIPImageOnly);
 	CreateImages(scr, rc, xis, ICON_FILE, &panel->icon, NULL);
-	if (panel->icon)
-	{
+	qw = panel->icon ? panel->icon->width / 2 : 0;
+	qh = panel->icon ? panel->icon->height / 2 : 0;
+	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[0] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
-		XCopyArea(scr->display, WMGetPixmapXID(panel->icon), panel->quarter[0], gc, 0, 0, panel->icon->width/2, panel->icon->height/2,  0, 0);
+		panel->quarter[0] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		WMScreenNoteDrawableSize(scr, panel->quarter[0], qw - 4, qh - 4);
+		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+			       1, 1, qw - 3, qh - 3, panel->quarter[0], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[0], WMGetPixmapMaskXID(panel->icon),
-                                     panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
+						   qw - 4, qh - 4, WMScreenDepth(scr));
 		WMSetLabelImage(panel->icornerL, nicon);
 		WMReleasePixmap(nicon);
 	}
 
 	panel->hcactionsT[0] = WMCreateTextField(panel->hcactionsF);
 	WMResizeWidget(panel->hcactionsT[0], 180, 20);
-	WMMoveWidget(panel->hcactionsT[0], 50, 20);
+	WMMoveWidget(panel->hcactionsT[0], 45, 20);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
-	WMResizeWidget(panel->icornerL, 24, 24);
-	WMMoveWidget(panel->icornerL, 10, 48);
+	WMResizeWidget(panel->icornerL, 20, 20);
+	WMMoveWidget(panel->icornerL, 15, 50);
 	WMSetLabelImagePosition(panel->icornerL, WIPImageOnly);
-	if (panel->icon)
-	{
+	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[1] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
-		XCopyArea(scr->display, WMGetPixmapXID(panel->icon), panel->quarter[1], gc, panel->icon->width/2, 0, panel->icon->width/2, panel->icon->height/2,  0, 0);
+		panel->quarter[1] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		WMScreenNoteDrawableSize(scr, panel->quarter[1], qw - 4, qh - 4);
+		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+			       qw + 3, 1, qw - 1, qh - 1, panel->quarter[1], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[1], WMGetPixmapMaskXID(panel->icon),
-                                     panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
+						   qw - 4, qh - 4, WMScreenDepth(scr));
 		WMSetLabelImage(panel->icornerL, nicon);
 		WMReleasePixmap(nicon);
 	}
 
 	panel->hcactionsT[1] = WMCreateTextField(panel->hcactionsF);
 	WMResizeWidget(panel->hcactionsT[1], 180, 20);
-	WMMoveWidget(panel->hcactionsT[1], 50, 50);
+	WMMoveWidget(panel->hcactionsT[1], 45, 50);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
-	WMResizeWidget(panel->icornerL, 24, 24);
-	WMMoveWidget(panel->icornerL, 10, 78);
+	WMResizeWidget(panel->icornerL, 20, 20);
+	WMMoveWidget(panel->icornerL, 15, 80);
 	WMSetLabelImagePosition(panel->icornerL, WIPImageOnly);
-	if (panel->icon)
-	{
+	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[2] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
-		XCopyArea(scr->display, WMGetPixmapXID(panel->icon), panel->quarter[2], gc, 0, panel->icon->height/2, panel->icon->width/2, panel->icon->height/2,  0, 0);
+		panel->quarter[2] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		WMScreenNoteDrawableSize(scr, panel->quarter[2], qw - 4, qh - 4);
+		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+			       1, qh + 3, qw - 1, qh - 1, panel->quarter[2], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[2], WMGetPixmapMaskXID(panel->icon),
-                                     panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
+						   qw - 4, qh - 4, WMScreenDepth(scr));
 		WMSetLabelImage(panel->icornerL, nicon);
 		WMReleasePixmap(nicon);
 	}
 	panel->hcactionsT[2] = WMCreateTextField(panel->hcactionsF);
 	WMResizeWidget(panel->hcactionsT[2], 180, 20);
-	WMMoveWidget(panel->hcactionsT[2], 50, 80);
+	WMMoveWidget(panel->hcactionsT[2], 45, 80);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
-	WMResizeWidget(panel->icornerL, 24, 24);
-	WMMoveWidget(panel->icornerL, 10, 108);
+	WMResizeWidget(panel->icornerL, 20, 20);
+	WMMoveWidget(panel->icornerL, 15, 110);
 	WMSetLabelImagePosition(panel->icornerL, WIPImageOnly);
-	if (panel->icon)
-	{
+	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[3] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
-		XCopyArea(scr->display, WMGetPixmapXID(panel->icon), panel->quarter[3], gc, panel->icon->width/2, panel->icon->height/2, panel->icon->width/2, panel->icon->height/2,  0, 0);
+		panel->quarter[3] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		WMScreenNoteDrawableSize(scr, panel->quarter[3], qw - 4, qh - 4);
+		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+			       qw + 3, qh + 3, qw - 1, qh - 1, panel->quarter[3], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[3], WMGetPixmapMaskXID(panel->icon),
-                                     panel->icon->width/2, panel->icon->height/2, WMScreenDepth(scr));
+						   qw - 4, qh - 4, WMScreenDepth(scr));
 		WMSetLabelImage(panel->icornerL, nicon);
 		WMReleasePixmap(nicon);
 	}
 
 	panel->hcactionsT[3] = WMCreateTextField(panel->hcactionsF);
 	WMResizeWidget(panel->hcactionsT[3], 180, 20);
-	WMMoveWidget(panel->hcactionsT[3], 50, 107);
+	WMMoveWidget(panel->hcactionsT[3], 45, 110);
 
 	WMMapSubwidgets(panel->hcactionsF);
 
 	if (xis)
 		RReleaseImage(xis);
-	XFreeGC(scr->display, gc);
 
 	WMRealizeWidget(panel->box);
 	WMMapSubwidgets(panel->box);

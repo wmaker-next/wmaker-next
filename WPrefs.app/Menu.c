@@ -355,9 +355,8 @@ static void createPanel(_Panel * p)
 	WMFont *font = WMSystemFontOfSize(scr, 12);
 	WMLabel *label;
 	int width;
-	Display *dpy = WMScreenDisplay(scr);
-	Pixmap pix;
-	GC gc;
+	RImage *marker;
+	RColor mblack;
 	WMPixmap *pixm;
 	WEditMenu *pad, *smenu;
 	ItemData *data;
@@ -374,28 +373,16 @@ static void createPanel(_Panel * p)
 	panel->white = white;
 	panel->gray = gray;
 
-	pixm = WMCreatePixmap(scr, 7, 7, WMScreenDepth(scr), True);
-
-	pix = WMGetPixmapXID(pixm);
-
-	XDrawLine(dpy, pix, WMColorGC(black), 0, 3, 6, 3);
-	XDrawLine(dpy, pix, WMColorGC(black), 3, 0, 3, 6);
-	/*
-	   XDrawLine(dpy, pix, WMColorGC(black), 1, 0, 3, 3);
-	   XDrawLine(dpy, pix, WMColorGC(black), 1, 6, 3, 3);
-	   XDrawLine(dpy, pix, WMColorGC(black), 0, 0, 0, 6);
-	 */
-
-	pix = WMGetPixmapMaskXID(pixm);
-
-	gc = XCreateGC(dpy, pix, 0, NULL);
-
-	XSetForeground(dpy, gc, 0);
-	XFillRectangle(dpy, pix, gc, 0, 0, 7, 7);
-
-	XSetForeground(dpy, gc, 1);
-	XDrawLine(dpy, pix, gc, 0, 3, 6, 3);
-	XDrawLine(dpy, pix, gc, 3, 0, 3, 6);
+	/* the "generated submenu" marker: a 7x7 black plus. Build it as
+	 * an RImage with alpha so WMCreatePixmapFromRImage derives both
+	 * the screen-depth glyph and its 1-bit mask from one draw. */
+	marker = RCreateImage(7, 7, True);
+	mblack.red = mblack.green = mblack.blue = 0;
+	mblack.alpha = 255;
+	RDrawLine(marker, 0, 3, 6, 3, &mblack);
+	RDrawLine(marker, 3, 0, 3, 6, &mblack);
+	pixm = WMCreatePixmapFromRImage(scr, marker, 127);
+	RReleaseImage(marker);
 
 	panel->markerPix[ExternalInfo] = pixm;
 	panel->markerPix[PipeInfo] = pixm;
@@ -403,8 +390,6 @@ static void createPanel(_Panel * p)
 	panel->markerPix[DirectoryInfo] = pixm;
 	panel->markerPix[WSMenuInfo] = pixm;
 	panel->markerPix[WWindowListInfo] = pixm;
-
-	XFreeGC(dpy, gc);
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
