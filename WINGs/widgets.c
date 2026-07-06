@@ -695,6 +695,7 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->fontCache = WMCreateHashTable(WMStringPointerHashCallbacks);
 	scrPtr->drawableSize = WMCreateHashTable(WMIntHashCallbacks);
 	scrPtr->compositor_running = W_ScreenCheckCompositor(scrPtr);
+	WMScreenReadUIScale(scrPtr);
 
 	/* Create missing CUT_BUFFERs */
 	rootWinProps = XListProperties(display, scrPtr->rootWin, &count);
@@ -1142,6 +1143,72 @@ Display *WMScreenDisplay(WMScreen * scr)
 int WMScreenDepth(WMScreen * scr)
 {
 	return scr->depth;
+}
+
+double WMScreenUIScale(WMScreen *scr)
+{
+	return scr && scr->uiScale > 0.0 ? scr->uiScale : 1.0;
+}
+
+/* scan a RESOURCE_MANAGER buffer for a single "key: value" line, matching
+ * key at the start of a line so a substring like Xft.dpi does not fire on
+ * SomeOtherThing.Xft.dpi, and return a pointer to the first non-blank
+ * byte of the value, the buffer is NUL-terminated by WXGetLatin1String
+ * so callers can hand the return straight to strtod */
+static const char *findResourceValue(const char *buf, const char *key)
+{
+	const char *p;
+	size_t klen;
+
+	klen = strlen(key);
+	p = buf;
+	while (p) {
+		if (strncmp(p, key, klen) == 0 && p[klen] == ':') {
+			p += klen + 1;
+			while (*p == ' ' || *p == '\t')
+				p++;
+			return p;
+		}
+		p = strchr(p, '\n');
+		if (p)
+			p++;
+	}
+	return NULL;
+}
+
+/* read Xft.dpi from the RESOURCE_MANAGER property, xrdb writes that
+ * property only on screen 0's root regardless of which screen the
+ * caller manages so we always read from DefaultRootWindow, no
+ * xcb-util-xrm dependency because Xft.dpi is by convention a plain
+ * literal key with no wildcard resolution. When the key is absent the
+ * scale is 1.0 rather than derived from HeightMMOfScreen because the
+ * reported physical size is unreliable (Xvfb reports 100 dpi, some
+ * multi-head and projector setups report nonsense) and that would
+ * change font sizes on setups that never set Xft.dpi. */
+void WMScreenReadUIScale(WMScreen *scr)
+{
+	const char *val;
+	char *rm;
+	double d, s;
+
+	d = 0.0;
+	rm = WXGetLatin1String(scr->display, DefaultRootWindow(scr->display),
+			       XA_RESOURCE_MANAGER, NULL);
+	if (rm) {
+		val = findResourceValue(rm, "Xft.dpi");
+		if (val)
+			d = strtod(val, NULL);
+		wfree(rm);
+	}
+	s = d > 0.0 ? d / 96.0 : 1.0;
+	if (s > 4.0)
+		s = 4.0;
+	if (scr->uiScale <= 0.0 || (s - scr->uiScale) * (s - scr->uiScale) > 0.0001) {
+		scr->uiScale = s;
+		if (d > 0.0)
+			wmessage("screen %d: Xft.dpi %.0f (scale %.2f)",
+				 scr->screen, d, s);
+	}
 }
 
 unsigned int WMScreenWidth(WMScreen * scr)

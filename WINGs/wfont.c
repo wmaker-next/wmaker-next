@@ -222,7 +222,10 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	/* the default cairo font map on any fontconfig platform is a
 	 * PangoFcFontMap, so pango_fc_font_description_from_pattern()
 	 * below resolves against the same fontconfig configuration the
-	 * previous Xft path used */
+	 * previous Xft path used. The description stays at the requested
+	 * logical size, WMDrawStringCairo() applies uiScale at paint time
+	 * so WMFontHeight()/WMWidthOfString() return logical px and mix
+	 * correctly with logical view->size in widget layout. */
 	fontmap = pango_cairo_font_map_get_default();
 	context = pango_font_map_create_context(fontmap);
 
@@ -389,14 +392,39 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 	return width;
 }
 
+/* Render the layout at (x, y). The font description is at logical
+ * pixelsize so on a scaled cairo context (WINGs W_View drawables) the
+ * CTM carries the layout to device size. On an unscaled context
+ * (wm-side WCoreWindow drawables, device-px paint) apply the scale
+ * locally around the pango call so the same font renders at the same
+ * device size in both worlds, treating (x, y) as device px there. */
+static void showLayout(cairo_t *cr, WMFont *font, int x, int y)
+{
+	double s = font->screen->uiScale;
+	cairo_matrix_t m;
+
+	cairo_get_matrix(cr, &m);
+	if (s > 1.0001 && m.xx > 0.999 && m.xx < 1.001) {
+		cairo_save(cr);
+		cairo_translate(cr, x, y);
+		cairo_scale(cr, s, s);
+		cairo_move_to(cr, 0, 0);
+		pango_cairo_update_layout(cr, font->layout);
+		pango_cairo_show_layout(cr, font->layout);
+		cairo_restore(cr);
+	} else {
+		cairo_move_to(cr, x, y);
+		pango_cairo_update_layout(cr, font->layout);
+		pango_cairo_show_layout(cr, font->layout);
+	}
+}
+
 void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
 		       int x, int y, const char *text, int length)
 {
 	setLayoutText(font->layout, text, length);
 	WCairoSetSourceColor(cr, color);
-	cairo_move_to(cr, x, y);
-	pango_cairo_update_layout(cr, font->layout);
-	pango_cairo_show_layout(cr, font->layout);
+	showLayout(cr, font, x, y);
 }
 
 void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, int x, int y, const char *text, int length)
@@ -433,9 +461,7 @@ WMDrawImageString(WMScreen * scr, Drawable d, WMColor * color, WMColor * backgro
 	cairo_fill(cr);
 
 	WCairoSetSourceColor(cr, color);
-	cairo_move_to(cr, x, y);
-	pango_cairo_update_layout(cr, font->layout);
-	pango_cairo_show_layout(cr, font->layout);
+	showLayout(cr, font, x, y);
 
 	WCairoEnd(cr);
 }

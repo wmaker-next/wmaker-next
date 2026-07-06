@@ -288,7 +288,7 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			if (e->atom == XCB_ATOM_RESOURCE_MANAGER) {
 				int i;
 				for (i = 0; i < w_global.screen_count; i++)
-					wScreenReadXftDpi(wScreenWithNumber(i));
+					WMScreenReadUIScale(wScreenWithNumber(i)->wmscreen);
 				return;
 			}
 			wNETWMCheckRootHintChange(scr, e->atom);

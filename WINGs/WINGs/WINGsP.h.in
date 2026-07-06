@@ -115,6 +115,11 @@ typedef struct W_Screen {
      * wm side when the selection owner changes. */
     unsigned int compositor_running:1;
 
+    /* Xft.dpi / 96, or a HeightMMOfScreen fallback, clamped to 1.0 on
+     * headless servers. WMCreateFont() multiplies FC_PIXEL_SIZE by this
+     * and hands 96*uiScale to pango_cairo_context_set_resolution(). */
+    double uiScale;
+
     /* application related */
 
     W_FocusInfo *focusInfo;

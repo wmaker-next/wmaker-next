@@ -678,6 +678,12 @@ Display* WMScreenDisplay(WMScreen *scr);
 
 int WMScreenDepth(WMScreen *scr);
 
+/* Xft.dpi/96 (or a physical-size fallback), read once at screen
+ * creation and refreshed via WMScreenReadUIScale(). Multiply logical
+ * pixel dimensions by this to get device pixels. */
+double WMScreenUIScale(WMScreen *scr);
+void WMScreenReadUIScale(WMScreen *scr);
+
 void WMSetFocusToWidget(WMWidget *widget);
 
 /* ---[ WINGs/wappresource.c ]-------------------------------------------- */
