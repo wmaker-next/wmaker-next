@@ -8,7 +8,6 @@
 #include <strings.h>
 #include <stdint.h>
 
-#include <X11/Xft/Xft.h>
 #include <fontconfig/fontconfig.h>
 
 char *WMFontPanelFontChangedNotification = "WMFontPanelFontChangedNotification";
@@ -172,7 +171,7 @@ static void selectFontByName(FontPanel * panel, const char *fontName)
 		pattern = FcNameParse((const FcChar8 *) fontName);
 	} else {
 		/* maybe its proper xlfd and we can convert it to an FcPattern */
-		pattern = XftXlfdParse(fontName, False, False);
+		pattern = W_XlfdToFcPattern(fontName);
 	}
 
 	if (!pattern)

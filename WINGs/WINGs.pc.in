@@ -9,5 +9,5 @@ Version: @VERSION@
 Requires: wrlib WUtil
 Requires.private: cairo cairo-xcb pangocairo
 Libs: @lib_search_path@ -lWINGs
-Libs.private: @XCB_LIBS@ @XFT_LIBS@ @FCLIBS@ @XLIBS@ -lm @INTLIBS@
+Libs.private: @XCB_LIBS@ @FCLIBS@ @XLIBS@ -lm @INTLIBS@
 Cflags: @inc_search_path@ @CAIRO_CFLAGS@

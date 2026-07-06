@@ -729,27 +729,6 @@ FCLIBS=$FONTCONFIG_LIBS
 AC_SUBST(FCLIBS)
 
 
-dnl Xft2 antialiased font support
-dnl =============================
-m4_define([XFT_MIN_VERSION], [2.1.0])
-PKG_CHECK_MODULES([XFT], [xft >= ]XFT_MIN_VERSION,
-    [], dnl Module found, nothing to do
-    [XFT_CFLAGS=failed])
-AS_IF([test "x$XFT_CFLAGS" = "xfailed"],
-    [dnl pkg-config did not find it, try the legacy method
-     AC_CHECK_PROG([XFTCONFIG], [xft-config], [xft-config])
-     AS_IF([test -z "$XFTCONFIG"],
-         [AC_MSG_ERROR([libXft2 is not installed, is too old or could not be found -- $XFT_PKG_ERRORS]) ])
-     XFT_LIBS=`$XFTCONFIG --libs`
-     XFT_CFLAGS=`$XFTCONFIG --cflags`
-     WM_CHECK_XFT_VERSION(XFT_MIN_VERSION,
-         [], dnl Version is ok, nothing to do
-         [AC_MSG_ERROR([Version of libXft is too old, consider upgrading to] XFT_MIN_VERSION [or newer]) ])
-    ])
-AC_SUBST(XFT_CFLAGS)
-AC_SUBST(XFT_LIBS)
-
-
 dnl XCB (with Xlib bridge) for the typed property/ICCCM layer
 dnl =========================================================
 dnl xcb-icccm 0.3.8 renamed every public symbol from xcb_* to xcb_icccm_*,

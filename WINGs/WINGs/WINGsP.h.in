@@ -572,6 +572,11 @@ typedef struct W_Font {
 void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
                        int x, int y, const char *text, int length);
 
+/* compat parse for legacy dash-separated XLFD font names into a
+ * fontconfig pattern (family, weight, slant, pixelsize/pointsize),
+ * falling back to the WINGs default font on a malformed name */
+struct _FcPattern *W_XlfdToFcPattern(const char *xlfd);
+
 
 /* ---[ widgets.c ]------------------------------------------------------- */
 

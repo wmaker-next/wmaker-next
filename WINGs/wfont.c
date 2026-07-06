@@ -9,7 +9,6 @@
 #include <assert.h>
 #include <X11/Xlocale.h>
 
-#include <X11/Xft/Xft.h>	/* XftXlfdParse only */
 #include <fontconfig/fontconfig.h>
 
 #include <cairo.h>
@@ -21,29 +20,107 @@
 
 #define DEFAULT_SIZE WINGsConfiguration.defaultFontSize
 
+/* Compat parse for legacy XLFD font names still present in old
+ * WindowMaker/WMGLOBAL domains, e.g.
+ *   -adobe-helvetica-bold-r-normal--12-120-75-75-p-70-iso8859-1
+ * Only the family, weight, slant and pixelsize (or pointsize/10 when
+ * pixelsize is a wildcard) carry into the fontconfig pattern, the
+ * foundry, setwidth, resolution, spacing and encoding fields are
+ * discarded because fontconfig substitutes those at match time.
+ * A malformed name (missing leading dash, too few fields, %d
+ * placeholder from an old fontset spec) falls back to DEFAULT_FONT. */
+FcPattern *W_XlfdToFcPattern(const char *xlfd)
+{
+	static const struct { const char *name; int weight; } weights[] = {
+		{ "thin",	FC_WEIGHT_THIN },
+		{ "extralight",	FC_WEIGHT_EXTRALIGHT },
+		{ "ultralight",	FC_WEIGHT_ULTRALIGHT },
+		{ "light",	FC_WEIGHT_LIGHT },
+		{ "book",	FC_WEIGHT_BOOK },
+		{ "regular",	FC_WEIGHT_REGULAR },
+		{ "normal",	FC_WEIGHT_NORMAL },
+		{ "medium",	FC_WEIGHT_MEDIUM },
+		{ "demibold",	FC_WEIGHT_DEMIBOLD },
+		{ "semibold",	FC_WEIGHT_SEMIBOLD },
+		{ "bold",	FC_WEIGHT_BOLD },
+		{ "extrabold",	FC_WEIGHT_EXTRABOLD },
+		{ "ultrabold",	FC_WEIGHT_ULTRABOLD },
+		{ "black",	FC_WEIGHT_BLACK },
+		{ "heavy",	FC_WEIGHT_HEAVY },
+	};
+	FcPattern *pattern;
+	char *fname, *field[14], *p;
+	double px, pt;
+	int i, n;
+
+	if (xlfd[0] != '-' || strchr(xlfd, '%') != NULL)
+		return FcNameParse((const FcChar8 *)DEFAULT_FONT);
+
+	/* work on a private copy, cut at the first comma so an old
+	 * comma-separated fontset spec yields its first face, then
+	 * split into up to 14 dash-separated fields (the leading dash
+	 * means field[0] is one past the string start) */
+	fname = wstrdup(xlfd);
+	p = strchr(fname, ',');
+	if (p)
+		*p = '\0';
+	n = 0;
+	for (p = fname; *p && n < 14; p++) {
+		if (*p == '-') {
+			*p = '\0';
+			field[n++] = p + 1;
+		}
+	}
+	if (n < 7) {
+		wwarning(_("invalid font: %s. Trying '%s'"), xlfd, DEFAULT_FONT);
+		wfree(fname);
+		return FcNameParse((const FcChar8 *)DEFAULT_FONT);
+	}
+
+	pattern = FcPatternCreate();
+
+	/* family, wildcard leaves it to fontconfig's default sans */
+	if (field[1][0] && strcmp(field[1], "*") != 0)
+		FcPatternAddString(pattern, FC_FAMILY, (const FcChar8 *)field[1]);
+
+	/* weight */
+	for (i = 0; i < (int)wlengthof(weights); i++) {
+		if (strcasecmp(field[2], weights[i].name) == 0) {
+			FcPatternAddInteger(pattern, FC_WEIGHT, weights[i].weight);
+			break;
+		}
+	}
+
+	/* slant: r roman, i italic, o oblique */
+	switch (field[3][0]) {
+	case 'i': case 'I':
+		FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ITALIC);
+		break;
+	case 'o': case 'O':
+		FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_OBLIQUE);
+		break;
+	case 'r': case 'R':
+		FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ROMAN);
+		break;
+	}
+
+	/* pixelsize, else pointsize (decipoints in the XLFD field) */
+	px = strtod(field[6], NULL);
+	if (px > 0.0) {
+		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, px);
+	} else if (n > 7) {
+		pt = strtod(field[7], NULL);
+		if (pt > 0.0)
+			FcPatternAddDouble(pattern, FC_SIZE, pt / 10.0);
+	}
+
+	wfree(fname);
+	return pattern;
+}
+
 static FcPattern *xlfdToFcPattern(const char *xlfd)
 {
-	FcPattern *pattern;
-	char *fname, *ptr;
-
-	/* Just skip old font names that contain %d in them.
-	 * We don't support that anymore. */
-	if (strchr(xlfd, '%') != NULL)
-		return FcNameParse((FcChar8 *) DEFAULT_FONT);
-
-	fname = wstrdup(xlfd);
-	if ((ptr = strchr(fname, ','))) {
-		*ptr = 0;
-	}
-	pattern = XftXlfdParse(fname, False, False);
-	wfree(fname);
-
-	if (!pattern) {
-		wwarning(_("invalid font: %s. Trying '%s'"), xlfd, DEFAULT_FONT);
-		pattern = FcNameParse((FcChar8 *) DEFAULT_FONT);
-	}
-
-	return pattern;
+	return W_XlfdToFcPattern(xlfd);
 }
 
 static char *xlfdToFcName(const char *xlfd)

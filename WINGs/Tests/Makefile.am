@@ -43,7 +43,7 @@ check_menuparser_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@XFT_LIBS@ @INTLIBS@ @XLIBS@
+	@INTLIBS@ @XLIBS@
 
 
 testmywidget_SOURCES = testmywidget.c mywidget.c mywidget.h
@@ -58,5 +58,5 @@ EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 
 AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_srcdir)/wrlib -I$(top_srcdir)/src -I$(top_srcdir)/test \
-	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XFT_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @HEADER_SEARCH_PATH@ \
+	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @XCB_IMDKIT_CFLAGS@ @HEADER_SEARCH_PATH@ \
 	@CAIRO_CFLAGS@

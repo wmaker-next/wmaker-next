@@ -34,33 +34,6 @@ AC_DEFUN([WM_DENY_ARG_WITH],
  m4_divert_pop([INIT_PREPARE])])
 
 
-# WM_CHECK_XFT_VERSION(MIN_VERSION, [ACTION-IF-FOUND [,ACTION-IF-NOT-FOUND]])
-#
-# $XFT_CFLAGS should be defined before calling this macro,
-# else it will not be able to find Xft.h
-#
-AC_DEFUN([WM_CHECK_XFT_VERSION],
-[m4_define([XFT_REQUIRED_VERSION],
-    m4_eval(m4_bregexp($1, [^\([[0-9]]*\)\.\([[0-9]]*\)\.\([[0-9]]*\)],
-                       [\1 * 10000 + \2 * 100 + \3]) ) )dnl
- AC_CACHE_CHECK([whether libXft is at least version $1], [ac_cv_lib_xft_version_ok],
-    [CPPFLAGS_save="$CPPFLAGS"
-     CPPFLAGS="$CPPFLAGS $XFT_CFLAGS"
-     AC_LINK_IFELSE(
-[AC_LANG_PROGRAM([
-#include <X11/Xlib.h>
-#include <X11/Xft/Xft.h>
-], [
-#if !defined(XFT_VERSION) || XFT_VERSION < ]XFT_REQUIRED_VERSION[
-#error libXft on this system is too old. Consider upgrading to at least $1
-#endif
-])], [ac_cv_lib_xft_version_ok=yes], [ac_cv_lib_xft_version_ok=no])
-     CPPFLAGS="$CPPFLAGS_save"])
- m4_undefine([XFT_REQUIRED_VERSION])dnl
- AS_IF([test "x$ac_cv_lib_xft_version_ok" != "xyes"], [$3], [$2])dnl
-])
-
-
 # _WM_LIB_CHECK_FUNCTS
 # --------------------
 # (internal shell functions)
