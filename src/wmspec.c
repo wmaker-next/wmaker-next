@@ -635,9 +635,14 @@ static void updateIconImageCk(WWindow *wwin, WXCookie icon_ck)
 
 	app = wApplicationOf(wwin->main_window);
 	if (app) {
-		if (app->main_window_desc && app->main_window_desc != wwin) {
-			if (app->main_window_desc->net_icon_image)
-				RReleaseImage(app->main_window_desc->net_icon_image);
+		/* Only seed a leader that has no icon of its own, so a
+		 * hidden group-leader stub still receives the first real
+		 * window's image for the appicon, but a secondary window
+		 * (a different WM_CLASS instance under the same leader)
+		 * cannot overwrite the appicon with its own icon on every
+		 * property update. */
+		if (app->main_window_desc && app->main_window_desc != wwin
+		    && !app->main_window_desc->net_icon_image) {
 			app->main_window_desc->net_icon_image =
 				RRetainImage(wwin->net_icon_image);
 		}

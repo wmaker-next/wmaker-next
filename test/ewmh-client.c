@@ -412,6 +412,7 @@ static int wm_state_mode(Display *dpy)
 static int seticon_mode(Display *dpy)
 {
 	Window target = env_window("EWMH_CLIENT_SETICON_TARGET", None);
+	long argb = env_long("EWMH_CLIENT_SETICON_ARGB", 0xFFFF0000L);
 	long icon[2 + 16 * 16];
 	int i;
 
@@ -420,7 +421,7 @@ static int seticon_mode(Display *dpy)
 	icon[0] = 16;
 	icon[1] = 16;
 	for (i = 0; i < 16 * 16; i++)
-		icon[2 + i] = 0xFFFF0000L;
+		icon[2 + i] = argb;
 	set_cardinals(dpy, target, intern_atom(dpy, "_NET_WM_ICON"),
 		      icon, 2 + 16 * 16);
 	XFlush(dpy);
@@ -460,6 +461,7 @@ int main(void)
 	int was_fullscreen = 0, want_restored_print = 0;
 	const char *startup_id = getenv("EWMH_CLIENT_STARTUP_ID");
 	const char *res_class = getenv("EWMH_CLIENT_CLASS");
+	const char *res_name = getenv("EWMH_CLIENT_INSTANCE");
 
 	if (!name)
 		name = "ewmh-drive-client";
@@ -536,7 +538,7 @@ int main(void)
 				  BlackPixel(dpy, screen), WhitePixel(dpy, screen));
 	XSelectInput(dpy, win, StructureNotifyMask | PropertyChangeMask);
 
-	class_hint.res_name = (char *)"ewmh-drive-client";
+	class_hint.res_name = (char *)(res_name ? res_name : "ewmh-drive-client");
 	class_hint.res_class = (char *)(res_class ? res_class : "EwmhDriveClient");
 	XSetClassHint(dpy, win, &class_hint);
 	XStoreName(dpy, win, name);
