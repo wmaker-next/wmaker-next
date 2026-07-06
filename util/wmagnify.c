@@ -11,6 +11,8 @@
 #include <X11/Xutil.h>
 
 #include <WINGs/WINGs.h>
+#include <wraster.h>
+#include <cairo-xcb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -26,10 +28,6 @@ int refreshrate = 200;
 
 typedef struct {
 	Drawable d;
-	XRectangle *rects;
-	int rectP;
-	unsigned long lastpixel;
-	unsigned long *buffer;
 	int width, height;
 	int rwidth, rheight;	/* size of window in real pixels */
 	int magfactor;
@@ -49,7 +47,6 @@ typedef struct {
 
 	int x, y;
 	Bool frozen;
-	Bool firstDraw;
 	Bool markPointerHotspot;
 
 	WMHandlerID tid;
@@ -59,10 +56,10 @@ static BufferData *newWindow(int magfactor);
 
 int windowCount = 0;
 
-int rectBufferSize = 32;
 Display *dpy, *vdpy;
 WMScreen *scr;
-unsigned int black;
+static int rshift, gshift, bshift;
+static unsigned long rmask, gmask, bmask;
 WMColor *cursorColor1;
 WMColor *cursorColor2;
 
@@ -78,12 +75,7 @@ static BufferData *makeBufferData(WMWindow * win, WMLabel * label, int width, in
 
 	data->refreshrate = refreshrate;
 
-	data->firstDraw = True;
-
 	data->magfactor = magfactor;
-
-	data->rects = wmalloc(sizeof(XRectangle) * rectBufferSize);
-	data->rectP = 0;
 
 	data->win = win;
 	data->label = label;
@@ -95,28 +87,19 @@ static BufferData *makeBufferData(WMWindow * win, WMLabel * label, int width, in
 
 	data->frozen = False;
 
-	width /= magfactor;
-	height /= magfactor;
-	data->buffer = wmalloc(sizeof(unsigned long) * width * height);
-	data->width = width;
-	data->height = height;
+	data->width = width / magfactor;
+	data->height = height / magfactor;
 
 	return data;
 }
 
 static void resizeBufferData(BufferData * data, int width, int height, int magfactor)
 {
-	int w = width / magfactor;
-	int h = height / magfactor;
-
 	data->rwidth = width;
 	data->rheight = height;
-	data->firstDraw = True;
 	data->magfactor = magfactor;
-	data->buffer = wrealloc(data->buffer, sizeof(unsigned long) * w * h);
-	data->width = w;
-	data->height = h;
-	memset(data->buffer, 0, w * h * sizeof(unsigned long));
+	data->width = width / magfactor;
+	data->height = height / magfactor;
 
 	WMResizeWidget(data->label, width, height);
 
@@ -127,59 +110,64 @@ static void resizeBufferData(BufferData * data, int width, int height, int magfa
 	data->d = WMGetPixmapXID(data->pixmap);
 }
 
-static int drawpoint(BufferData * data, unsigned long pixel, int x, int y)
+static int mask_shift(unsigned long m)
 {
-	static GC gc = NULL;
-	Bool flush = (x < 0);
+	int s = 0;
 
-	if (!flush) {
-		if (data->buffer[x + data->width * y] == pixel && !data->firstDraw)
-			return 0;
-
-		data->buffer[x + data->width * y] = pixel;
-	}
-	if (gc == NULL) {
-		gc = XCreateGC(dpy, DefaultRootWindow(dpy), 0, NULL);
-	}
-
-	if (!flush && data->lastpixel == pixel && data->rectP < rectBufferSize) {
-		data->rects[data->rectP].x = x * data->magfactor;
-		data->rects[data->rectP].y = y * data->magfactor;
-		data->rects[data->rectP].width = data->magfactor;
-		data->rects[data->rectP].height = data->magfactor;
-		data->rectP++;
-
+	if (!m)
 		return 0;
+	while (!(m & 1)) {
+		m >>= 1;
+		s++;
 	}
-	XSetForeground(dpy, gc, data->lastpixel);
-	XFillRectangles(dpy, data->d, gc, data->rects, data->rectP);
-	data->rectP = 0;
-	data->rects[data->rectP].x = x * data->magfactor;
-	data->rects[data->rectP].y = y * data->magfactor;
-	data->rects[data->rectP].width = data->magfactor;
-	data->rects[data->rectP].height = data->magfactor;
-	data->rectP++;
-
-	data->lastpixel = pixel;
-
-	return 1;
+	/* scale a sub-8-bit channel up to 8 bits */
+	while (!(m & 0x80)) {
+		m = (m << 1) | 1;
+		s--;
+	}
+	return s;
 }
 
-static inline unsigned long getpix(XImage * image, int x, int y, int xoffs, int yoffs)
+/* Unpack the grabbed source region into CAIRO_FORMAT_RGB24 (native
+ * endian 0xRRGGBB per pixel) using the source visual's channel masks.
+ * The result is a data->width x data->height buffer with the off-screen
+ * border already black, so the caller can paint the whole thing. */
+static void unpack_image(BufferData *data, XImage *im, int xoffs, int yoffs,
+			 uint32_t *out, int stride)
 {
-	if (x < xoffs || y < yoffs || x >= xoffs + image->width || y >= yoffs + image->height) {
-		return black;
+	unsigned long p;
+	uint32_t *row;
+	int x, y;
+
+	for (y = 0; y < data->height; y++) {
+		row = (uint32_t *)((unsigned char *)out + y * stride);
+		for (x = 0; x < data->width; x++) {
+			if (x < xoffs || y < yoffs ||
+			    x >= xoffs + im->width || y >= yoffs + im->height) {
+				row[x] = 0;
+				continue;
+			}
+			p = XGetPixel(im, x - xoffs, y - yoffs);
+#define SH(v, s) ((s) >= 0 ? ((v) >> (s)) : ((v) << -(s)))
+			row[x] = (SH(p & rmask, rshift) & 0xff) << 16 |
+				 (SH(p & gmask, gshift) & 0xff) << 8 |
+				 (SH(p & bmask, bshift) & 0xff);
+#undef SH
+		}
 	}
-	return XGetPixel(image, x - xoffs, y - yoffs);
 }
 
 static void updateImage(BufferData * data, int rx, int ry)
 {
 	int gx, gy, gw, gh;
-	int x, y;
 	int xoffs, yoffs;
-	int changedPixels = 0;
+	int stride;
 	XImage *image;
+	uint32_t *buf;
+	cairo_surface_t *ss, *ds;
+	cairo_pattern_t *pat;
+	cairo_t *cr;
+	RContext *rc;
 
 	gw = data->width;
 	gh = data->height;
@@ -207,20 +195,30 @@ static void updateImage(BufferData * data, int rx, int ry)
 
 	image = XGetImage(vdpy, DefaultRootWindow(vdpy), gx, gy, gw, gh, AllPlanes, ZPixmap);
 
-	for (y = 0; y < data->height; y++) {
-		for (x = 0; x < data->width; x++) {
-			unsigned long pixel;
-
-			pixel = getpix(image, x, y, xoffs, yoffs);
-
-			if (drawpoint(data, pixel, x, y))
-				changedPixels++;
-		}
-	}
-	/* flush the point cache */
-	drawpoint(data, 0, -1, -1);
-
+	stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, data->width);
+	buf = wmalloc(stride * data->height);
+	unpack_image(data, image, xoffs, yoffs, buf, stride);
 	XDestroyImage(image);
+
+	rc = WMScreenRContext(scr);
+	ss = cairo_image_surface_create_for_data((unsigned char *)buf,
+						 CAIRO_FORMAT_RGB24,
+						 data->width, data->height, stride);
+	ds = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)data->d, rc->xvisual,
+				      data->rwidth, data->rheight);
+	cr = cairo_create(ds);
+	cairo_scale(cr, data->magfactor, data->magfactor);
+	cairo_set_source_surface(cr, ss, 0, 0);
+	pat = cairo_get_source(cr);
+	cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
+	cairo_pattern_set_extend(pat, CAIRO_EXTEND_PAD);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ds);
+	cairo_surface_destroy(ss);
+	cairo_surface_destroy(ds);
+	wfree(buf);
 
 	if (data->markPointerHotspot && !data->frozen) {
 		XRectangle rects[4];
@@ -256,11 +254,7 @@ static void updateImage(BufferData * data, int rx, int ry)
 				   rects[3].width, rects[3].height);
 	}
 
-	if (changedPixels > 0) {
-		WMRedisplayWidget(data->label);
-	}
-
-	data->firstDraw = False;
+	WMRedisplayWidget(data->label);
 }
 
 static void update(void *d)
@@ -304,8 +298,6 @@ static void closeWindow(WMWidget * w, void *d)
 	} else {
 		WMDeleteTimerHandler(data->tid);
 		WMDestroyWidget(w);
-		wfree(data->buffer);
-		wfree(data->rects);
 		WMReleasePixmap(data->pixmap);
 		wfree(data);
 	}
@@ -406,6 +398,7 @@ int main(int argc, char **argv)
 	char *display = "";
 	char *vdisplay = NULL;
 	int magfactor = 2;
+	Visual *vis;
 
 	WMInitializeApplication("Magnify", &argc, argv);
 
@@ -474,13 +467,13 @@ int main(int argc, char **argv)
 		vdpy = dpy;
 	}
 
-	/* calculate how many rectangles we can send in a trip to the server */
-	rectBufferSize = XMaxRequestSize(dpy) - 128;
-	rectBufferSize /= sizeof(XRectangle);
-	if (rectBufferSize < 1)
-		rectBufferSize = 1;
-
-	black = BlackPixel(dpy, DefaultScreen(dpy));
+	vis = DefaultVisual(vdpy, DefaultScreen(vdpy));
+	rmask = vis->red_mask;
+	gmask = vis->green_mask;
+	bmask = vis->blue_mask;
+	rshift = mask_shift(rmask);
+	gshift = mask_shift(gmask);
+	bshift = mask_shift(bmask);
 
 	scr = WMCreateScreen(dpy, 0);
 
