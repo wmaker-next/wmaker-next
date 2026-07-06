@@ -26,6 +26,30 @@ which every maintained distribution ships. Packagers should add
 libcairo2-dev / cairo-devel and libpango1.0-dev / pango-devel to the
 build dependencies.
 
+Window decorations, dialogs and WPrefs scale with Xft.dpi
+---------------------------------------------------------
+
+When the Xft.dpi X resource is set (typically via ~/.Xresources and
+xrdb, or by a display manager), Window Maker now derives a UI scale
+factor from it (Xft.dpi / 96) and applies it to titlebar and menu
+text, the resizebar, the frame border, and every WINGs widget window
+including WPrefs, the window inspector, the run dialog, the switch
+panel and alert panels. Widget geometry, text and icon pixmaps are
+rendered at device resolution, so a 4K display at Xft.dpi 192 gets
+crisp 2x decorations and dialogs rather than tiny 96-dpi ones.
+
+To try it without editing ~/.Xresources, override the resource for the
+current display:
+
+    echo "Xft.dpi: 144" | xrdb -override -
+
+When Xft.dpi is not set nothing changes: the scale is 1.0 rather than
+guessed from the reported physical screen size, which is unreliable.
+Changing Xft.dpi at runtime updates the stored scale but existing
+windows keep their size until Window Maker is restarted. Dock and
+appicon size follows the IconSize preference as before, and the
+titlebar button glyphs are fixed-size bitmaps that stay unscaled.
+
 XDG data and cache directories are split from the configuration root
 --------------------------------------------------------------------
 
