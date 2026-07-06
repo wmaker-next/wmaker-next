@@ -1064,9 +1064,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 
 	/* Pixmap to indicate selection positions
 	 * wheelframe MUST be mapped.
-	 */
-	panel->selectionImg = XCreatePixmap(scrPtr->display, WMWidgetXID(panel->win), 4, 4, scrPtr->depth);
-	WMScreenNoteDrawableSize(scrPtr, panel->selectionImg, 4, 4);
+	 * Created at logical*uiScale device pixels so the hard-edged
+	 * marker stays crisp when it lands on a scaled W_View, the
+	 * scaled bit lets WCairoPaintArea() identity-blit it. */
+	panel->selectionImg = W_CreateScaledPixmap(scrPtr, 4, 4);
 	cr = WCairoBeginForDrawable(scrPtr, panel->selectionImg);
 	if (cr) {
 		cairo_set_source_rgb(cr, 0, 0, 0);
@@ -1118,12 +1119,18 @@ void WMFreeColorPanel(WMColorPanel * panel)
 
 	/* pixmaps */
 	wheelDestroyMatrix(panel->wheelMtrx);
-	if (panel->wheelImg)
+	if (panel->wheelImg) {
+		WMScreenAbandonDrawable(scr, panel->wheelImg);
 		XFreePixmap(scr->display, panel->wheelImg);
-	if (panel->selectionImg)
+	}
+	if (panel->selectionImg) {
+		WMScreenAbandonDrawable(scr, panel->selectionImg);
 		XFreePixmap(scr->display, panel->selectionImg);
-	if (panel->selectionBackImg)
+	}
+	if (panel->selectionBackImg) {
+		WMScreenAbandonDrawable(scr, panel->selectionBackImg);
 		XFreePixmap(scr->display, panel->selectionBackImg);
+	}
 	RReleaseImage(panel->customPaletteImg);
 
 	/* structs */
@@ -1241,7 +1248,8 @@ void WMSetColorPanelPickerMode(WMColorPanel * panel, WMColorPanelMode mode)
 	if (mode != WMWheelModeColorPanel) {
 		WMUnmapWidget(panel->wheelFrm);
 		if (panel->selectionBackImg) {
-			XFreePixmap(WMWidgetScreen(panel->win)->display, panel->selectionBackImg);
+			WMScreenAbandonDrawable(scr, panel->selectionBackImg);
+			XFreePixmap(scr->display, panel->selectionBackImg);
 			panel->selectionBackImg = None;
 		}
 	}
@@ -1256,7 +1264,8 @@ void WMSetColorPanelPickerMode(WMColorPanel * panel, WMColorPanelMode mode)
 	if (mode != WMCustomPaletteModeColorPanel) {
 		WMUnmapWidget(panel->customPaletteFrm);
 		if (panel->selectionBackImg) {
-			XFreePixmap(WMWidgetScreen(panel->win)->display, panel->selectionBackImg);
+			WMScreenAbandonDrawable(scr, panel->selectionBackImg);
+			XFreePixmap(scr->display, panel->selectionBackImg);
 			panel->selectionBackImg = None;
 		}
 	}
@@ -2062,9 +2071,11 @@ static void wheelRender(W_ColorPanel * panel)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	int x, y;
 	RImage *image;
+	RImage *scaled;
 	unsigned char *ptr;
 	RColor gray;
 	unsigned long ofs = 0;
+	double s = scr->uiScale;
 	/*unsigned char     shift = getShift(sizeof(unsigned char)); */
 
 	image = RCreateImage(colorWheelSize + 4, colorWheelSize + 4, True);
@@ -2099,17 +2110,29 @@ static void wheelRender(W_ColorPanel * panel)
 		}
 	}
 
-	if (panel->wheelImg)
+	if (panel->wheelImg) {
+		WMScreenAbandonDrawable(scr, panel->wheelImg);
 		XFreePixmap(scr->display, panel->wheelImg);
+	}
 
+	/* wheelMtrx and image are logical-sized, upscale to device
+	 * pixels and mark the pixmap scaled so it identity-blits onto
+	 * the scaled wheelView instead of a soft CTM upscale. */
+	if (s > 1.0001) {
+		scaled = RSmoothScaleImage(image,
+					   (int)((colorWheelSize + 4) * s + 0.5),
+					   (int)((colorWheelSize + 4) * s + 0.5));
+		RReleaseImage(image);
+		image = scaled;
+	}
 	RConvertImage(scr->rcontext, image, &panel->wheelImg);
+	WMScreenNoteDrawableSizeScaled(scr, panel->wheelImg,
+				       colorWheelSize + 4, colorWheelSize + 4);
 	RReleaseImage(image);
 
 	/* Check if backimage exists. If it doesn't, allocate and fill it */
 	if (!panel->selectionBackImg) {
-		panel->selectionBackImg = XCreatePixmap(scr->display,
-							W_VIEW(panel->wheelFrm)->window, 4, 4, scr->depth);
-		WMScreenNoteDrawableSize(scr, panel->selectionBackImg, 4, 4);
+		panel->selectionBackImg = W_CreateScaledPixmap(scr, 4, 4);
 		WCairoCopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
 			 panel->colx - 2, panel->coly - 2, 4, 4,
 			 panel->selectionBackImg, 0, 0);
@@ -2905,10 +2928,18 @@ static void customSetPalette(W_ColorPanel * panel)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	RImage *scaledImg;
 	Pixmap image;
+	double s = scr->uiScale;
 
-	image = XCreatePixmap(scr->display, W_DRAWABLE(scr), customPaletteWidth, customPaletteHeight, scr->depth);
-	scaledImg = RScaleImage(panel->customPaletteImg, customPaletteWidth, customPaletteHeight);
+	/* Scale straight to device pixels and mark the resulting pixmap
+	 * so it identity-blits onto the scaled content view, otherwise
+	 * the CTM up-scale softens the palette raster. RConvertImage()
+	 * always creates a fresh pixmap so no pre-allocation is needed. */
+	scaledImg = RScaleImage(panel->customPaletteImg,
+				(int)(customPaletteWidth * s + 0.5),
+				(int)(customPaletteHeight * s + 0.5));
 	RConvertImage(scr->rcontext, scaledImg, &image);
+	WMScreenNoteDrawableSizeScaled(scr, image,
+				       customPaletteWidth, customPaletteHeight);
 	RReleaseImage(scaledImg);
 
 	WCairoCopyArea(scr, image, customPaletteWidth, customPaletteHeight,
@@ -2916,11 +2947,8 @@ static void customSetPalette(W_ColorPanel * panel)
 		 panel->customPaletteContentView->window, 0, 0);
 
 	/* Check backimage exists. If it doesn't, allocate and fill it */
-	if (!panel->selectionBackImg) {
-		panel->selectionBackImg = XCreatePixmap(scr->display,
-							panel->customPaletteContentView->window, 4, 4, scr->depth);
-		WMScreenNoteDrawableSize(scr, panel->selectionBackImg, 4, 4);
-	}
+	if (!panel->selectionBackImg)
+		panel->selectionBackImg = W_CreateScaledPixmap(scr, 4, 4);
 
 	WCairoCopyArea(scr, image, customPaletteWidth, customPaletteHeight,
 		 panel->palx - 2, panel->paly - 2, 4, 4,
@@ -2928,6 +2956,7 @@ static void customSetPalette(W_ColorPanel * panel)
 	WCairoCopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
 		 panel->customPaletteContentView->window,
 		 panel->palx - 2, panel->paly - 2);
+	WMScreenAbandonDrawable(scr, image);
 	XFreePixmap(scr->display, image);
 
 	panel->palXRatio = (double)(panel->customPaletteImg->width) / (double)(customPaletteWidth);
