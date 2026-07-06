@@ -57,6 +57,7 @@
 
 #include <X11/Xlib-xcb.h>
 #include <xcb/randr.h>
+#include <cairo-xcb.h>
 
 #ifdef USE_XPM
 extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixmap *, void *);
@@ -82,7 +83,6 @@ Window win;
 RContext *ctx;
 RImage *img;
 Pixmap pix;
-GC copy_gc;
 
 /* XDND drag-out support */
 static Bool button1_pressed = False;
@@ -1440,14 +1440,45 @@ int rescale_image(void)
 }
 
 /*
+	Blit the rendered pixmap onto the display window at (0,0), or
+	centred inside the max_width x max_height fullscreen frame.
+*/
+static void redraw_window(int centred)
+{
+	cairo_surface_t *ws, *ps;
+	cairo_t *cr;
+	int ww, wh, dx, dy;
+
+	if (!img || !win || !pix)
+		return;
+	ww = centred ? max_width : img->width;
+	wh = centred ? max_height : img->height;
+	dx = centred ? max_width / 2 - img->width / 2 : 0;
+	dy = centred ? max_height / 2 - img->height / 2 : 0;
+
+	ws = cairo_xcb_surface_create(ctx->xc, (xcb_drawable_t)win,
+				      ctx->xvisual, ww, wh);
+	ps = cairo_xcb_surface_create(ctx->xc, (xcb_drawable_t)pix,
+				      ctx->xvisual, img->width, img->height);
+	cr = cairo_create(ws);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_surface(cr, ps, dx, dy);
+	cairo_rectangle(cr, dx, dy, img->width, img->height);
+	cairo_fill(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ws);
+	cairo_surface_destroy(ps);
+	cairo_surface_destroy(ws);
+}
+
+/*
 	Find the best image size for the current display
 	Returns EXIT_SUCCESS on success
 */
 int maximize_image(void)
 {
 	rescale_image();
-	XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-		img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
+	redraw_window(1);
 	return EXIT_SUCCESS;
 }
 
@@ -1506,13 +1537,9 @@ int rotate_image(float angle)
 	img = tmp;
 
 	rescale_image();
-	if (!fullscreen_flag) {
-		XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
-	} else {
+	if (fullscreen_flag)
 		XClearWindow(dpy, win);
-		XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-			img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
-	}
+	redraw_window(fullscreen_flag);
 
 	return EXIT_SUCCESS;
 }
@@ -1682,18 +1709,10 @@ static int show_pasted_image(char *path)
 
 	change_title((char *)current_link->data);
 	if (win) {
-		if (!fullscreen_flag) {
+		if (!fullscreen_flag)
 			XResizeWindow(dpy, win, img->width, img->height);
-			XClearWindow(dpy, win);
-			XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-				img->width, img->height, 0, 0);
-		} else {
-			XClearWindow(dpy, win);
-			XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-				img->width, img->height,
-				max_width / 2 - img->width / 2,
-				max_height / 2 - img->height / 2);
-		}
+		XClearWindow(dpy, win);
+		redraw_window(fullscreen_flag);
 		XSync(dpy, False);
 	}
 	return EXIT_SUCCESS;
@@ -1944,12 +1963,11 @@ int change_image(int way)
 				if ((old_img_width != img->width) || (old_img_height != img->height))
 					XResizeWindow(dpy, win, img->width, img->height);
 				else
-					XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
+					redraw_window(0);
 				change_title((char *)current_link->data);
 			} else {
 				XClearWindow(dpy, win);
-				XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-					img->width, img->height, max_width/2-img->width/2, max_height/2-img->height/2);
+				redraw_window(1);
 			}
 		}
 		return EXIT_SUCCESS;
@@ -2459,7 +2477,6 @@ int main(int argc, char **argv)
 	int option = -1;
 	RContextAttributes attr = {};
 	XEvent e;
-	XGCValues gcv;
 	KeySym keysym;
 	char *reading_filename = "";
 	int screen_num, file_i;
@@ -2603,9 +2620,6 @@ int main(int argc, char **argv)
 	merge_with_background(img);
 
 	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 10, 10, 0, 0, BlackPixel(dpy, screen_num));
-	gcv.function = GXcopy;
-	gcv.graphics_exposures = False;
-	copy_gc = XCreateGC(dpy, win, GCFunction | GCGraphicsExposures, &gcv);
 	XSelectInput(dpy, win, KeyPressMask|StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|FocusChangeMask|PropertyChangeMask);
 
 	delWindow = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -2702,8 +2716,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Display size: %dx%d\n", max_width, max_height);
 
 	rescale_image();
-	XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
 	XResizeWindow(dpy, win, img->width, img->height);
+	redraw_window(0);
 	XSync(dpy, True);
 
 	/* Main event loop */
@@ -2789,7 +2803,7 @@ int main(int argc, char **argv)
 		if (!fullscreen_flag && (e.type == Expose)) {
 			XExposeEvent xev = e.xexpose;
 			if (xev.count == 0)
-				XCopyArea(dpy, pix, win, copy_gc, 0, 0, img->width, img->height, 0, 0);
+				redraw_window(0);
 			continue;
 		}
 		if (!fullscreen_flag && e.type == ConfigureNotify) {
@@ -2829,8 +2843,7 @@ int main(int argc, char **argv)
 						XSync(dpy, True);
 						rescale_image();
 						XResizeWindow(dpy, win, img->width, img->height);
-						XCopyArea(dpy, pix, win, copy_gc, 0, 0,
-							img->width, img->height, 0, 0);
+						redraw_window(0);
 
 					}
 				}
