@@ -473,5 +473,44 @@ cmp -s "$SHOTDIR/iconfit-wide.png" "$SHOTDIR/iconfit-wide-bare.png" \
 note "ok: surface-based icon dont-fit hides when narrow, draws when wide"
 stop_clients
 
+# --- 5. FTitleBack gradient direction --------------------------------------
+# The focused titlebar is filled through wTextureCairoPattern() from an
+# hgradient, so a left sample must be strictly darker than a right sample
+# on the same row. Use a wide dark->light ramp so the endpoints are far
+# apart even after the RBEV_RAISED2 bevel eats a couple of edge pixels.
+note "hgradient direction on focused titlebar"
+stop_clients
+cat >"$WMHOME/Defaults/WindowMaker" <<'EOF'
+{
+  NewStyle = new;
+  TitlebarLeft = ();
+  TitlebarRight = (Close);
+  FTitleBack = (hgradient, "#202020", "#e0e0e0");
+  WindowTitleFont = "Sans:bold:pixelsize=12";
+}
+EOF
+start_wmaker
+start_xterm
+capture_titlebar "$SHOTDIR/hgrad.png"
+# sum of R+G+B at (x,y) inside the captured titlebar strip, y is the
+# row centre so text glyphs are avoided by sampling at the far ends
+grad_lum() {
+    convert "$SHOTDIR/hgrad.png" -crop "1x1+$1+$2" +repage txt:- 2>/dev/null \
+        | awk -F'[(,) ]+' '/^0,0:/ { print $3 + $4 + $5 }'
+}
+gy=$((THEIGHT / 2))
+gl=$(grad_lum 4 "$gy")
+gr=$(grad_lum $((fw - 5 - THEIGHT)) "$gy")
+[ -n "$gl" ] && [ -n "$gr" ] || fail "could not sample gradient endpoints"
+[ "$gl" -lt "$gr" ] \
+    || fail "hgradient not monotone left->right (left=$gl right=$gr)"
+# and roughly the expected span, the source stops are 0x20 and 0xe0 so
+# the endpoint gap should be well over half the 3*255 range even with
+# bevel and dither eating into it
+[ "$((gr - gl))" -gt 300 ] \
+    || fail "hgradient span too small (left=$gl right=$gr)"
+note "ok: hgradient monotone (left=$gl right=$gr)"
+stop_clients
+
 note "all checks passed"
 exit 0

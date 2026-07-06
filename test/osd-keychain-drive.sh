@@ -157,7 +157,7 @@ finish() {
 
 # ----------------------------------------------------------------------
 
-for tool in Xvfb xdpyinfo xdotool xwininfo xprop; do
+for tool in Xvfb xdpyinfo xdotool xwininfo xprop import; do
 	command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
 done
 [ -x "$ROOT/src/.libs/wmaker" ] || skip_all "src/.libs/wmaker not built"
@@ -256,6 +256,98 @@ check "no OSD mapped with KeychainDisplayPosition = none" \
 	[ -z "$NEW" ]
 # follower still completes the chain so the keyboard grab is released
 xdo key v
+
+stop_wmaker
+
+# ---- workspace-name OSD alpha ramp ---------------------------------------
+# showWorkspaceName() paints the OSD solid for WORKSPACE_NAME_DELAY
+# then ramps alpha to zero in ten WORKSPACE_NAME_FADE_DELAY steps.
+# Under Xvfb there is no compositor so the RGB24 fallback applies
+# DEST_IN which multiplies each channel toward black, so the interior
+# brightness must strictly decrease before the unmap. Sample at
+# (35,35): topleft padding is 32 and the WRSimple border is 1px, so
+# that lands on the background fill clear of the centred label.
+
+note "workspace-name OSD alpha ramp"
+cat > "$WMHOME/Defaults/WindowMaker" <<'EOF'
+{
+  WorkspaceNameDisplayPosition = topleft;
+  NextWorkspaceKey = "Control+Shift+O";
+}
+EOF
+cat > "$WMHOME/Defaults/WMRootMenu" <<'EOF'
+("osd-drive", ("Exit", EXIT))
+EOF
+cat > "$WMHOME/Defaults/WMState" <<'EOF'
+{
+  Workspaces = ( {Name = ws1;}, {Name = ws2;} );
+}
+EOF
+start_wmaker || fatal "wmaker did not come up"
+sleep 0.5
+
+# R+G+B at root (x,y). The full 0x336699 background sums to 306.
+# Grab only a 4x4 patch around the point so the pipeline is fast
+# enough to sample inside the 400ms solid hold on a loaded runner.
+lum_at() {
+	DISPLAY=$DPY import -window root -crop "4x4+$1+$2" +repage txt:- 2>/dev/null \
+		| awk -F'[(,) ]+' '/^0,0:/ { print $3 + $4 + $5 }'
+}
+
+# the workspace-name OSD is realized at startup but unmapped,
+# so the child list does not change when it maps and the diff-based
+# finder above would race the 700ms lifetime. Instead detect it by
+# geometry: it is the only child at +32+32.
+WSN_XID=$(DISPLAY=$DPY xwininfo -root -children 2>/dev/null \
+		| awk '$1 ~ /^0x/ && $NF == "+32+32" { print $1; exit }')
+[ -n "$WSN_XID" ] || fatal "could not locate workspace-name OSD child at +32+32"
+wsn_mapped() {
+	DISPLAY=$DPY xwininfo -id "$WSN_XID" 2>/dev/null \
+		| grep -q 'Map State: IsViewable'
+}
+wsn_unmapped() { ! wsn_mapped; }
+
+# brightest R+G+B sum across the OSD window's own pixmap. The OSD is
+# created with WSetOSDViewTransparent(True) so with the SHAPE extension
+# the window is clipped to its text glyphs and the background fill is
+# not visible through root, so sampling root at the OSD coords would
+# just see the desktop. Capturing the window directly returns its own
+# back buffer where the white label pixels sit at full brightness and
+# the DEST_IN fade ramp multiplies every channel toward black.
+wsn_lum() {
+	DISPLAY=$DPY import -window "$WSN_XID" txt:- 2>/dev/null \
+		| awk -F'[(,) ]+' '/^[0-9]+,[0-9]+:/ { v=$3+$4+$5; if(v>m)m=v } END { print m }'
+}
+
+WSN_ROOT=$(lum_at 35 35)
+xdo key --clearmodifiers ctrl+shift+o
+wait_for 20 wsn_mapped || fatal "workspace-name OSD did not map after switch"
+
+WSN_L0=$(wsn_lum)
+# the sample may land a step or two into the ramp under load, so
+# assert only that the OSD content is up (well above the root sample)
+# and let the fade check below prove the ramp itself
+[ -n "$WSN_L0" ] && [ "$WSN_L0" -gt "$((WSN_ROOT + 50))" ] \
+	&& record_pass "workspace-name OSD interior painted ($WSN_L0, root=$WSN_ROOT)" \
+	|| record_fail "workspace-name OSD interior painted ($WSN_L0, root=$WSN_ROOT)"
+
+# poll until the sampled brightness has dropped to under 70% of the
+# solid frame while the OSD is still mapped, which must happen within
+# the 400ms hold + 300ms ramp plus generous slack for a loaded runner
+wsn_l=
+wsn_faded() {
+	wsn_mapped || return 1
+	wsn_l=$(wsn_lum)
+	[ -n "$wsn_l" ] && [ "$wsn_l" -lt "$((WSN_L0 * 7 / 10))" ]
+}
+if wait_for 30 wsn_faded; then
+	record_pass "workspace-name OSD dims during the fade (now=$wsn_l)"
+else
+	record_fail "workspace-name OSD did not dim (start=$WSN_L0 now=$wsn_l)"
+fi
+
+wait_for 30 wsn_unmapped
+check "workspace-name OSD unmapped after the fade" wsn_unmapped
 
 stop_wmaker
 
