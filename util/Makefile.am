@@ -71,17 +71,19 @@ seticons_LDADD= $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 geticonset_LDADD= $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
+wmagnify_CFLAGS = @CAIRO_CFLAGS@
 wmagnify_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @INTLIBS@
+	@XLFLAGS@ @XLIBS@ @CAIRO_LIBS@ @INTLIBS@
 
+wmsetbg_CFLAGS = @CAIRO_CFLAGS@
 wmsetbg_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @XCB_LIBS@ @INTLIBS@
+	@XLFLAGS@ @XLIBS@ @XCB_LIBS@ @CAIRO_LIBS@ @INTLIBS@
 
 wmgenmenu_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \

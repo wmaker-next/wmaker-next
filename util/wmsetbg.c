@@ -32,6 +32,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib-xcb.h>
+#include <cairo-xcb.h>
 #include <WINGs/WXProp.h>
 #include <string.h>
 #include <strings.h>
@@ -195,6 +196,30 @@ static RImage *loadImage(RContext * rc, const char *file)
 	return image;
 }
 
+static cairo_t *cairo_begin_pixmap(RContext *rc, Pixmap p, int w, int h)
+{
+	cairo_surface_t *s;
+	cairo_t *cr;
+
+	s = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)p, rc->xvisual, w, h);
+	cr = cairo_create(s);
+	cairo_surface_destroy(s);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	return cr;
+}
+
+static void fill_pixmap(RContext *rc, Pixmap p, int w, int h, const XColor *c)
+{
+	cairo_t *cr;
+
+	cr = cairo_begin_pixmap(rc, p, w, h);
+	cairo_set_source_rgb(cr, c->red / 65535.0, c->green / 65535.0,
+			     c->blue / 65535.0);
+	cairo_paint(cr);
+	cairo_surface_flush(cairo_get_target(cr));
+	cairo_destroy(cr);
+}
+
 static void
 applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type,
 	   int x, int y, int width, int height)
@@ -248,6 +273,9 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 	case 'C':
 		{
 			Pixmap pixmap;
+			cairo_surface_t *ss;
+			cairo_t *cr;
+			int sx = 0, sy = 0;
 
 			if (!RConvertImage(rc, image, &pixmap)) {
 				wwarning("could not convert texture:%s", RMessageForError(RErrorCode));
@@ -256,30 +284,32 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 				return;
 			}
 
-			if (image->width != width || image->height != height) {
-				int sx, sy, w, h;
+			if (image->height < height) {
+				h = image->height;
+				y += (height - h) / 2;
+			} else {
+				sy = (image->height - height) / 2;
+				h = height;
+			}
+			if (image->width < width) {
+				w = image->width;
+				x += (width - w) / 2;
+			} else {
+				sx = (image->width - width) / 2;
+				w = width;
+			}
 
-				if (image->height < height) {
-					h = image->height;
-					y += (height - h) / 2;
-					sy = 0;
-				} else {
-					sy = (image->height - height) / 2;
-					h = height;
-				}
-				if (image->width < width) {
-					w = image->width;
-					x += (width - w) / 2;
-					sx = 0;
-				} else {
-					sx = (image->width - width) / 2;
-					w = width;
-				}
-
-				XCopyArea(dpy, pixmap, texture->pixmap, DefaultGC(dpy, scr), sx, sy, w, h, x, y);
-			} else
-				XCopyArea(dpy, pixmap, texture->pixmap, DefaultGC(dpy, scr), 0, 0, width, height,
-					  x, y);
+			cr = cairo_begin_pixmap(rc, texture->pixmap,
+						texture->width, texture->height);
+			ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pixmap,
+						      rc->xvisual,
+						      image->width, image->height);
+			cairo_set_source_surface(cr, ss, x - sx, y - sy);
+			cairo_rectangle(cr, x, y, w, h);
+			cairo_fill(cr);
+			cairo_surface_destroy(ss);
+			cairo_surface_flush(cairo_get_target(cr));
+			cairo_destroy(cr);
 
 			XFreePixmap(dpy, pixmap);
 			if (fimage) {
@@ -336,8 +366,7 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 		XAllocColor(dpy, DefaultColormap(dpy, scr), &color);
 
 		pixmap = XCreatePixmap(dpy, root, 8, 8, DefaultDepth(dpy, scr));
-		XSetForeground(dpy, DefaultGC(dpy, scr), color.pixel);
-		XFillRectangle(dpy, pixmap, DefaultGC(dpy, scr), 0, 0, 8, 8);
+		fill_pixmap(rc, pixmap, 8, 8, &color);
 
 		texture->pixmap = pixmap;
 		texture->color = color;
@@ -578,8 +607,7 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 			{
 				Pixmap tpixmap =
 				    XCreatePixmap(dpy, root, scrWidth, scrHeight, DefaultDepth(dpy, scr));
-				XSetForeground(dpy, DefaultGC(dpy, scr), color.pixel);
-				XFillRectangle(dpy, tpixmap, DefaultGC(dpy, scr), 0, 0, scrWidth, scrHeight);
+				fill_pixmap(rc, tpixmap, scrWidth, scrHeight, &color);
 
 				texture->pixmap = tpixmap;
 				texture->color = color;
@@ -811,10 +839,15 @@ static Pixmap duplicatePixmap(Pixmap pixmap, int width, int height)
 
 		return None;
 	} else {
+		xcb_connection_t *txc = XGetXCBConnection(tmpDpy);
+		xcb_gcontext_t tgc = xcb_generate_id(txc);
+
 		XSync(dpy, False);
 
 		copyP = XCreatePixmap(tmpDpy, root, width, height, DefaultDepth(tmpDpy, scr));
-		XCopyArea(tmpDpy, pixmap, copyP, DefaultGC(tmpDpy, scr), 0, 0, width, height, 0, 0);
+		xcb_create_gc(txc, tgc, copyP, 0, NULL);
+		xcb_copy_area(txc, pixmap, copyP, tgc, 0, 0, 0, 0, width, height);
+		xcb_free_gc(txc, tgc);
 		XSync(tmpDpy, False);
 
 		XSetCloseDownMode(tmpDpy, RetainPermanent);
