@@ -948,10 +948,6 @@ WMColor* WMBlackColor(WMScreen *scr);
 
 WMColor* WMWhiteColor(WMScreen *scr);
 
-void WMSetColorInGC(WMColor *color, GC gc);
-
-GC WMColorGC(WMColor *color);
-
 WMPixel WMColorPixel(WMColor *color);
 
 void WMPaintColorSwatch(WMColor *color, Drawable d, int x, int y,

@@ -235,7 +235,10 @@ static void updateImage(BufferData * data, int rx, int ry)
 		rects[1].width = 2 * data->magfactor;
 		rects[1].height = data->magfactor;
 
-		XFillRectangles(dpy, data->d, WMColorGC(cursorColor1), rects, 2);
+		WMPaintColorSwatch(cursorColor1, data->d, rects[0].x, rects[0].y,
+				   rects[0].width, rects[0].height);
+		WMPaintColorSwatch(cursorColor1, data->d, rects[1].x, rects[1].y,
+				   rects[1].width, rects[1].height);
 
 		rects[2].y = (data->height / 2 - 3) * data->magfactor;
 		rects[2].x = (data->width / 2) * data->magfactor;
@@ -247,7 +250,10 @@ static void updateImage(BufferData * data, int rx, int ry)
 		rects[3].height = 2 * data->magfactor;
 		rects[3].width = data->magfactor;
 
-		XFillRectangles(dpy, data->d, WMColorGC(cursorColor2), rects + 2, 2);
+		WMPaintColorSwatch(cursorColor2, data->d, rects[2].x, rects[2].y,
+				   rects[2].width, rects[2].height);
+		WMPaintColorSwatch(cursorColor2, data->d, rects[3].x, rects[3].y,
+				   rects[3].width, rects[3].height);
 	}
 
 	if (changedPixels > 0) {

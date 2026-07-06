@@ -7,18 +7,6 @@
 
 #include <wraster.h>
 
-#define LIGHT_STIPPLE_WIDTH 4
-#define LIGHT_STIPPLE_HEIGHT 4
-static char LIGHT_STIPPLE_BITS[] = {
-	0x05, 0x0a, 0x05, 0x0a
-};
-
-#define DARK_STIPPLE_WIDTH 4
-#define DARK_STIPPLE_HEIGHT 4
-static char DARK_STIPPLE_BITS[] = {
-	0x0a, 0x04, 0x0a, 0x01
-};
-
 static WMColor *createRGBAColor(WMScreen * scr, unsigned short red,
 				unsigned short green, unsigned short blue, unsigned short alpha);
 
@@ -77,7 +65,6 @@ static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned shor
 	color->color = xcolor;
 	color->alpha = alpha;
 	color->flags.exact = 0;
-	color->gc = NULL;
 
 	return color;
 }
@@ -102,7 +89,6 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red, unsigned sho
 	color->color = xcolor;
 	color->alpha = alpha;
 	color->flags.exact = 1;
-	color->gc = NULL;
 
 	return color;
 }
@@ -180,8 +166,6 @@ void WMReleaseColor(WMColor * color)
 	if (color->refCount < 1) {
 		if (color->screen->rcontext->vclass != TrueColor)
 			XFreeColors(color->screen->display, color->screen->colormap, &(color->color.pixel), 1, 0);
-		if (color->gc)
-			XFreeGC(color->screen->display, color->gc);
 		wfree(color);
 	}
 }
@@ -209,26 +193,6 @@ WMPixel WMColorPixel(WMColor * color)
 	return color->color.pixel;
 }
 
-GC WMColorGC(WMColor * color)
-{
-	if (!color->gc) {
-		XGCValues gcv;
-		WMScreen *scr = color->screen;
-
-		gcv.foreground = color->color.pixel;
-		gcv.graphics_exposures = False;
-		color->gc = XCreateGC(scr->display, scr->rcontext->drawable,
-				      GCForeground | GCGraphicsExposures, &gcv);
-	}
-
-	return color->gc;
-}
-
-void WMSetColorInGC(WMColor * color, GC gc)
-{
-	XSetForeground(color->screen->display, gc, color->color.pixel);
-}
-
 /* "system" colors */
 WMColor *WMWhiteColor(WMScreen * scr)
 {
@@ -253,37 +217,9 @@ WMColor *WMBlackColor(WMScreen * scr)
 WMColor *WMGrayColor(WMScreen * scr)
 {
 	if (!scr->gray) {
-		WMColor *color;
-
-		if (scr->depth == 1) {
-			Pixmap stipple;
-			WMColor *white = WMWhiteColor(scr);
-			WMColor *black = WMBlackColor(scr);
-			XGCValues gcv;
-
-			stipple = XCreateBitmapFromData(scr->display, W_DRAWABLE(scr),
-							LIGHT_STIPPLE_BITS, LIGHT_STIPPLE_WIDTH,
-							LIGHT_STIPPLE_HEIGHT);
-
-			color = createRGBAColor(scr, 0xffff, 0xffff, 0xffff, 0xffff);
-
-			gcv.foreground = white->color.pixel;
-			gcv.background = black->color.pixel;
-			gcv.fill_style = FillStippled;
-			gcv.stipple = stipple;
-			color->gc = XCreateGC(scr->display, W_DRAWABLE(scr), GCForeground
-					      | GCBackground | GCStipple | GCFillStyle
-					      | GCGraphicsExposures, &gcv);
-
-			XFreePixmap(scr->display, stipple);
-			WMReleaseColor(white);
-			WMReleaseColor(black);
-		} else {
-			color = WMCreateRGBColor(scr, 0xaeba, 0xaaaa, 0xaeba, True);
-			if (!color->flags.exact)
-				wwarning(_("could not allocate %s color"), _("gray"));
-		}
-		scr->gray = color;
+		scr->gray = WMCreateRGBColor(scr, 0xaeba, 0xaaaa, 0xaeba, True);
+		if (!scr->gray->flags.exact)
+			wwarning(_("could not allocate %s color"), _("gray"));
 	}
 	return WMRetainColor(scr->gray);
 }
@@ -291,37 +227,9 @@ WMColor *WMGrayColor(WMScreen * scr)
 WMColor *WMDarkGrayColor(WMScreen * scr)
 {
 	if (!scr->darkGray) {
-		WMColor *color;
-
-		if (scr->depth == 1) {
-			Pixmap stipple;
-			WMColor *white = WMWhiteColor(scr);
-			WMColor *black = WMBlackColor(scr);
-			XGCValues gcv;
-
-			stipple = XCreateBitmapFromData(scr->display, W_DRAWABLE(scr),
-							DARK_STIPPLE_BITS, DARK_STIPPLE_WIDTH,
-							DARK_STIPPLE_HEIGHT);
-
-			color = createRGBAColor(scr, 0, 0, 0, 0xffff);
-
-			gcv.foreground = white->color.pixel;
-			gcv.background = black->color.pixel;
-			gcv.fill_style = FillStippled;
-			gcv.stipple = stipple;
-			color->gc = XCreateGC(scr->display, W_DRAWABLE(scr), GCForeground
-					      | GCBackground | GCStipple | GCFillStyle
-					      | GCGraphicsExposures, &gcv);
-
-			XFreePixmap(scr->display, stipple);
-			WMReleaseColor(white);
-			WMReleaseColor(black);
-		} else {
-			color = WMCreateRGBColor(scr, 0x5144, 0x5555, 0x5144, True);
-			if (!color->flags.exact)
-				wwarning(_("could not allocate %s color"), _("dark gray"));
-		}
-		scr->darkGray = color;
+		scr->darkGray = WMCreateRGBColor(scr, 0x5144, 0x5555, 0x5144, True);
+		if (!scr->darkGray->flags.exact)
+			wwarning(_("could not allocate %s color"), _("dark gray"));
 	}
 	return WMRetainColor(scr->darkGray);
 }

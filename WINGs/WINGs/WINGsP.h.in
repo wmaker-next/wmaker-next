@@ -153,21 +153,6 @@ typedef struct W_Screen {
     W_Color *gray;
     W_Color *darkGray;
 
-    GC stippleGC;
-
-    GC copyGC;
-    GC clipGC;
-
-    GC monoGC;                         /* GC for 1bpp visuals */
-
-    GC xorGC;
-
-    GC ixorGC;                         /* IncludeInferiors XOR */
-
-    GC drawStringGC;                   /* for WMDrawString() */
-
-    GC drawImStringGC;                 /* for WMDrawImageString() */
-
     struct W_Font *normalFont;
 
     struct W_Font *boldFont;
@@ -543,7 +528,6 @@ struct W_Color {
     XColor color;
     unsigned short alpha;
     short refCount;
-    GC gc;
     struct {
         unsigned int exact:1;
     } flags;

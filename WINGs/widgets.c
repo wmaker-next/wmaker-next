@@ -599,9 +599,7 @@ WMScreen *WMCreateScreen(Display * display, int screen)
 WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * context)
 {
 	W_Screen *scrPtr;
-	XGCValues gcv;
 	XVisualInfo vtempl, *vinfo;
-	Pixmap stipple;
 	int nret;
 	static int initialized = 0;
 	static char *atomNames[] = {
@@ -786,42 +784,8 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	WMGrayColor(scrPtr);
 	WMDarkGrayColor(scrPtr);
 
-	gcv.graphics_exposures = False;
-
-	gcv.function = GXxor;
-	gcv.foreground = W_PIXEL(scrPtr->white);
-	if (gcv.foreground == 0)
-		gcv.foreground = 1;
-	scrPtr->xorGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCFunction
-				  | GCGraphicsExposures | GCForeground, &gcv);
-
-	gcv.function = GXxor;
-	gcv.foreground = W_PIXEL(scrPtr->gray);
-	gcv.subwindow_mode = IncludeInferiors;
-	scrPtr->ixorGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCFunction
-				   | GCGraphicsExposures | GCForeground | GCSubwindowMode, &gcv);
-
-	gcv.function = GXcopy;
-	scrPtr->copyGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCFunction | GCGraphicsExposures, &gcv);
-
-	scrPtr->clipGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCFunction | GCGraphicsExposures, &gcv);
-
-	stipple = XCreateBitmapFromData(display, W_DRAWABLE(scrPtr), STIPPLE_BITS, STIPPLE_WIDTH, STIPPLE_HEIGHT);
-	gcv.foreground = W_PIXEL(scrPtr->darkGray);
-	gcv.background = W_PIXEL(scrPtr->gray);
-	gcv.fill_style = FillStippled;
-	gcv.stipple = stipple;
-	scrPtr->stippleGC = XCreateGC(display, W_DRAWABLE(scrPtr),
-				      GCForeground | GCBackground | GCStipple
-				      | GCFillStyle | GCGraphicsExposures, &gcv);
-
-	scrPtr->drawStringGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCGraphicsExposures, &gcv);
-	scrPtr->drawImStringGC = XCreateGC(display, W_DRAWABLE(scrPtr), GCGraphicsExposures, &gcv);
-
-	/* we need a 1bpp drawable for the monoGC, so borrow this one */
-	scrPtr->monoGC = XCreateGC(display, stipple, 0, NULL);
-
-	scrPtr->stipple = stipple;
+	scrPtr->stipple = XCreateBitmapFromData(display, W_DRAWABLE(scrPtr),
+						STIPPLE_BITS, STIPPLE_WIDTH, STIPPLE_HEIGHT);
 
 	scrPtr->antialiasedText = WINGsConfiguration.antialiasedText;
 
