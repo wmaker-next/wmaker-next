@@ -57,9 +57,9 @@
 #define REVERT_TO_DEFAULT	4
 #define PWIDTH			290
 #ifdef XKB_BUTTON_HINT
-#define PHEIGHT			400
+#define PHEIGHT			410
 #else
-#define PHEIGHT			380
+#define PHEIGHT			390
 #endif
 #define UNDEFINED_POS		0xffffff
 #define UPDATE_DEFAULTS		1
@@ -194,6 +194,10 @@ static const struct InspectorAttr {
 	{ WATTR_NO_TABBING, N_("Do not allow tab grouping"),
 	  N_("Refuse this window as either the dragged window or the\n"
 	     "drop target when attaching windows into a tab group.") },
+
+	{ WATTR_NO_TILING, N_("Do not tile"),
+	  N_("Exempt this window from the workspace tiling layout.\n"
+	     "It stays floating and the layout reflows around it.") },
 
 #ifdef XKB_BUTTON_HINT
 	{ WATTR_NO_LANGUAGE_BUTTON, N_("Disable language button"),
@@ -1379,9 +1383,9 @@ static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int
 	WMSetFrameTitle(panel->moreFrm, _("Advanced"));
 	WMMoveWidget(panel->moreFrm, 15, 45);
 #ifdef XKB_BUTTON_HINT
-	WMResizeWidget(panel->moreFrm, frame_width, 305);
+	WMResizeWidget(panel->moreFrm, frame_width, 320);
 #else
-	WMResizeWidget(panel->moreFrm, frame_width, 285);
+	WMResizeWidget(panel->moreFrm, frame_width, 300);
 #endif
 
 	for (i = 0; i < wlengthof(advanced_option); i++) {

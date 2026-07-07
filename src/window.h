@@ -151,6 +151,8 @@ typedef struct {
     unsigned int no_tabbing:1;
     /* auto-join an existing tab group whose members share the same WM_CLASS */
     unsigned int auto_tab_group:1;
+    /* exempt this window from the workspace tiling layout */
+    unsigned int no_tiling:1;
 
 } WWindowAttributes;
 
@@ -343,6 +345,12 @@ typedef struct WWindow {
 		unsigned int maximized:10;
 		unsigned int old_maximized:10;
 		unsigned int fullscreen:1;
+		/* window is currently placed by the workspace tiling layout,
+		 * old_geometry holds the pre-tiling frame */
+		unsigned int tiled:1;
+		/* runtime opt-out of the workspace tiling layout, set by the
+		 * TilingToggleKey and by starting an interactive move/resize */
+		unsigned int no_tiling:1;
 		long fullscreen_monitors[4];
 		unsigned int omnipresent:1;
 		unsigned int semi_focused:1;
