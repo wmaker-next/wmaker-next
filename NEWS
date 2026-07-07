@@ -3,6 +3,38 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Per-workspace tiling layouts
+----------------------------
+
+Each workspace can now carry an opt-in tiling layout that arranges
+every eligible window on it into a fixed pattern. Five layouts are
+available: float (the default and exactly today's behaviour, no layout
+pass at all), tile (a master column at a configurable width ratio with
+the remaining windows stacked to its right), tileh (the same with a
+horizontal master row), grid (a near-square grid of equal cells) and
+monocle (every window at the full usable area, focused one on top).
+
+The layout, master-window count and master-column ratio are stored per
+workspace in WMState and survive a restart. New workspaces pick their
+initial layout from DefaultWorkspaceLayout, LayoutMasterCount and
+LayoutMasterRatio in the WindowMaker defaults domain. Ten new keyboard
+shortcuts (all unbound by default) cycle the layout, swap its axis,
+force it back to float, adjust the master count and ratio, toggle the
+focused window in and out of the layout, and swap it into the master
+slot. The chosen layout name is flashed in the key-chain OSD after a
+cycle when that OSD is enabled.
+
+Windows are exempt from tiling when they are transient, omnipresent,
+minimised, shaded, fullscreen, non-resizable, kept-on-top or -bottom,
+or carry the new NoTiling attribute (settable per class via
+WMWindowAttributes and per window via the inspector's "Do not tile"
+checkbox). Starting an interactive move or resize on a tiled window
+pops it out of the layout in place and reflows the others around it.
+
+The IPC set-layout verb sets a workspace's layout from wmakermsg or
+scripts, get_workspaces reports each workspace's layout, master count
+and ratio, and the workspace event stream now includes layout changes.
+
 Cairo and PangoCairo are now required build dependencies
 --------------------------------------------------------
 
