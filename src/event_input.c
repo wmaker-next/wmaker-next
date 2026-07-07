@@ -54,6 +54,7 @@
 #include "osdview.h"
 #include "wxkb.h"
 #include "winmenu.h"
+#include "layout.h"
 #include "switchmenu.h"
 #include "wsmap.h"
 #include "hotcorner.h"
@@ -190,6 +191,74 @@ static void showChainOSD(WScreen *scr)
 void wRefreshKeyChainOSD(WScreen *scr)
 {
 	showChainOSD(scr);
+}
+
+static void hideLayoutOSD(void *data)
+{
+	WScreen *scr = data;
+
+	scr->layout_osd_timer = NULL;
+	/* the chord display owns this widget while a chain is armed,
+	 * refresh instead of unconditionally hiding */
+	if (w_global.shortcut.curpos)
+		showChainOSD(scr);
+	else
+		hideChainOSD(scr);
+}
+
+static void flashLayoutOSD(WScreen *scr, const char *text)
+{
+	if (!scr || !scr->keychain_osd)
+		return;
+	if (w_global.config->keychain_display_position == WD_NONE)
+		return;
+
+	if (scr->layout_osd_timer)
+		WMDeleteTimerHandler(scr->layout_osd_timer);
+
+	WSetOSDViewText(scr->keychain_osd, text);
+	wPlaceOSDOnHead(scr, scr->keychain_osd,
+			w_global.config->keychain_display_position, CHAIN_OSD_PAD);
+	WMMapWidget(scr->keychain_osd);
+	XRaiseWindow(dpy, WMWidgetXID(scr->keychain_osd));
+	scr->layout_osd_timer = WMAddTimerHandler(800, hideLayoutOSD, scr);
+}
+
+static void changeLayoutMasterCount(WScreen *scr, int step)
+{
+	WWorkspace *ws = scr->workspaces[scr->current_workspace];
+	char buf[32];
+
+	ws->master_count += step;
+	if (ws->master_count < 0)
+		ws->master_count = 0;
+	wLayoutApply(scr, scr->current_workspace);
+	snprintf(buf, sizeof(buf), "master %d", ws->master_count);
+	flashLayoutOSD(scr, buf);
+}
+
+static void changeLayoutMasterRatio(WScreen *scr, float step)
+{
+	WWorkspace *ws = scr->workspaces[scr->current_workspace];
+	char buf[32];
+
+	ws->master_ratio += step;
+	if (ws->master_ratio < WLAYOUT_RATIO_MIN)
+		ws->master_ratio = WLAYOUT_RATIO_MIN;
+	if (ws->master_ratio > WLAYOUT_RATIO_MAX)
+		ws->master_ratio = WLAYOUT_RATIO_MAX;
+	wLayoutApply(scr, scr->current_workspace);
+	snprintf(buf, sizeof(buf), "ratio %.2f", (double)ws->master_ratio);
+	flashLayoutOSD(scr, buf);
+}
+
+static void cycleLayout(WScreen *scr, int step)
+{
+	WWorkspace *ws = scr->workspaces[scr->current_workspace];
+	WLayout next = (ws->layout + step + WLAYOUT_COUNT) % WLAYOUT_COUNT;
+
+	wLayoutSetWorkspace(scr, scr->current_workspace, next);
+	flashLayoutOSD(scr, wLayoutName(next));
 }
 
 /* ------------------------------------------------------------------ *
@@ -525,6 +594,45 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 
 	case WKBD_GROUPTAB_DETACH:
 		wGroupTabDetach(scr);
+		break;
+
+	case WKBD_LAYOUTCYCLE:
+		cycleLayout(scr, 1);
+		break;
+	case WKBD_LAYOUTCYCLEBACK:
+		cycleLayout(scr, -1);
+		break;
+	case WKBD_LAYOUTAXIS:
+		i = scr->workspaces[scr->current_workspace]->layout;
+		if (i == WLAYOUT_TILE)
+			wLayoutSetWorkspace(scr, scr->current_workspace, WLAYOUT_TILE_H);
+		else if (i == WLAYOUT_TILE_H)
+			wLayoutSetWorkspace(scr, scr->current_workspace, WLAYOUT_TILE);
+		flashLayoutOSD(scr, wLayoutName(scr->workspaces[scr->current_workspace]->layout));
+		break;
+	case WKBD_LAYOUTFLOAT:
+		wLayoutSetWorkspace(scr, scr->current_workspace, WLAYOUT_FLOAT);
+		flashLayoutOSD(scr, wLayoutName(WLAYOUT_FLOAT));
+		break;
+	case WKBD_MASTERCOUNTINC:
+		changeLayoutMasterCount(scr, 1);
+		break;
+	case WKBD_MASTERCOUNTDEC:
+		changeLayoutMasterCount(scr, -1);
+		break;
+	case WKBD_MASTERRATIOINC:
+		changeLayoutMasterRatio(scr, WLAYOUT_RATIO_STEP);
+		break;
+	case WKBD_MASTERRATIODEC:
+		changeLayoutMasterRatio(scr, -WLAYOUT_RATIO_STEP);
+		break;
+	case WKBD_TILINGTOGGLE:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
+			wLayoutSetWindowTiled(wwin, wwin->flags.no_tiling);
+		break;
+	case WKBD_TILINGSWAP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
+			wLayoutSwapMaster(scr, scr->current_workspace, wwin);
 		break;
 
 	case WKBD_WORKSPACE1 ... WKBD_WORKSPACE10:

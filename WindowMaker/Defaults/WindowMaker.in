@@ -207,6 +207,16 @@
 	BLCMaximizeKey = None;
 	BRCMaximizeKey = None;
 	MaximusKey = None;
+	LayoutCycleKey = None;
+	LayoutCycleBackKey = None;
+	LayoutAxisKey = None;
+	LayoutFloatKey = None;
+	MasterCountIncKey = None;
+	MasterCountDecKey = None;
+	MasterRatioIncKey = None;
+	MasterRatioDecKey = None;
+	TilingToggleKey = None;
+	TilingSwapMasterKey = None;
 	ToggleFullscreenKey = None;
 	CenterKey = None;
 	KeepOnTopKey = None;

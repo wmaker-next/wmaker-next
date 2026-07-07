@@ -583,6 +583,16 @@
 	_(BLC_MAXIMIZE_KEY, "BLCMaximizeKey", "None", WKBD_LBCMAXIMIZE) \
 	_(BRC_MAXIMIZE_KEY, "BRCMaximizeKey", "None", WKBD_RBCMAXIMIZE) \
 	_(MAXIMUS_KEY, "MaximusKey", "None", WKBD_MAXIMUS) \
+	_(LAYOUT_CYCLE_KEY, "LayoutCycleKey", "None", WKBD_LAYOUTCYCLE) \
+	_(LAYOUT_CYCLE_BACK_KEY, "LayoutCycleBackKey", "None", WKBD_LAYOUTCYCLEBACK) \
+	_(LAYOUT_AXIS_KEY, "LayoutAxisKey", "None", WKBD_LAYOUTAXIS) \
+	_(LAYOUT_FLOAT_KEY, "LayoutFloatKey", "None", WKBD_LAYOUTFLOAT) \
+	_(MASTER_COUNT_INC_KEY, "MasterCountIncKey", "None", WKBD_MASTERCOUNTINC) \
+	_(MASTER_COUNT_DEC_KEY, "MasterCountDecKey", "None", WKBD_MASTERCOUNTDEC) \
+	_(MASTER_RATIO_INC_KEY, "MasterRatioIncKey", "None", WKBD_MASTERRATIOINC) \
+	_(MASTER_RATIO_DEC_KEY, "MasterRatioDecKey", "None", WKBD_MASTERRATIODEC) \
+	_(TILING_TOGGLE_KEY, "TilingToggleKey", "None", WKBD_TILINGTOGGLE) \
+	_(TILING_SWAP_MASTER_KEY, "TilingSwapMasterKey", "None", WKBD_TILINGSWAP) \
 	_(TOGGLE_FULLSCREEN_KEY, "ToggleFullscreenKey", "None", WKBD_FULLSCREEN) \
 	_(CENTER_KEY, "CenterKey", "None", WKBD_CENTRAL) \
 	_(KEEP_ON_TOP_KEY, "KeepOnTopKey", "None", WKBD_KEEP_ON_TOP) \
