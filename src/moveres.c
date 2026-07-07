@@ -35,6 +35,7 @@
 #include "icon.h"
 #include "dock.h"
 #include "actions.h"
+#include "layout.h"
 #include "wxkb.h"
 #include "workspace.h"
 #include "placement.h"
@@ -1519,6 +1520,15 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 	if (!IS_MOVABLE(wwin))
 		return False;
 
+	if (wwin->flags.tiled) {
+		/* pop the window out of the layout in place so the drag
+		 * starts from where the user grabbed it, and let the
+		 * remaining tileable windows reflow into the freed cell */
+		wwin->flags.tiled = 0;
+		wwin->flags.no_tiling = 1;
+		wLayoutApply(scr, wwin->frame->workspace);
+	}
+
 	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
 		XSetWindowAttributes attr;
 
@@ -1953,6 +1963,12 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 	if (!IS_RESIZABLE(wwin))
 		return;
+
+	if (wwin->flags.tiled) {
+		wwin->flags.tiled = 0;
+		wwin->flags.no_tiling = 1;
+		wLayoutApply(scr, wwin->frame->workspace);
+	}
 
 #ifdef USE_XSYNC
 	/* a previous drag may have given up on this client, every new
