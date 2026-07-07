@@ -172,6 +172,16 @@ static struct keyOption {
 	{ "MoveToWorkspace8Key",  N_("Move window to workspace 8") },
 	{ "MoveToWorkspace9Key",  N_("Move window to workspace 9") },
 	{ "MoveToWorkspace10Key", N_("Move window to workspace 10") },
+	{ "ToggleWorkspace1Key",  N_("Toggle window on workspace 1") },
+	{ "ToggleWorkspace2Key",  N_("Toggle window on workspace 2") },
+	{ "ToggleWorkspace3Key",  N_("Toggle window on workspace 3") },
+	{ "ToggleWorkspace4Key",  N_("Toggle window on workspace 4") },
+	{ "ToggleWorkspace5Key",  N_("Toggle window on workspace 5") },
+	{ "ToggleWorkspace6Key",  N_("Toggle window on workspace 6") },
+	{ "ToggleWorkspace7Key",  N_("Toggle window on workspace 7") },
+	{ "ToggleWorkspace8Key",  N_("Toggle window on workspace 8") },
+	{ "ToggleWorkspace9Key",  N_("Toggle window on workspace 9") },
+	{ "ToggleWorkspace10Key", N_("Toggle window on workspace 10") },
 
 	/* Window Selection */
 	{ "WindowShortcut1Key",  N_("Shortcut for window 1") },

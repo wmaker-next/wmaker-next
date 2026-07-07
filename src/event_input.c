@@ -671,6 +671,17 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			wWindowChangeWorkspace(wwin, i);
 		break;
 
+	case WKBD_TOGGLE_WORKSPACE1 ... WKBD_TOGGLE_WORKSPACE10:
+		widx = command - WKBD_TOGGLE_WORKSPACE1;
+		i = (scr->current_workspace / 10) * 10 + widx;
+		if (wwin && wwin->frame && i < scr->workspace_count) {
+			if (WWIN_WS_MASK(wwin) & WS_BIT(i))
+				wWindowRemoveFromWorkspace(wwin, i);
+			else
+				wWindowAddToWorkspace(wwin, i);
+		}
+		break;
+
 	case WKBD_MOVE_NEXTWORKSPACE:
 		if (wwin)
 			wWindowChangeWorkspaceRelative(wwin, 1);

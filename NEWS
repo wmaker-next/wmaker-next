@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Multiple workspace membership
+-----------------------------
+
+A window can now belong to more than one workspace at a time. The window
+menu's "Move To" submenu is renamed "Workspaces" and shows a check mark
+next to every workspace the window is on, clicking an entry toggles that
+membership. The
+ToggleWorkspace1Key .. ToggleWorkspace10Key keyboard shortcuts do the same
+for the focused window, and `wmakermsg window-workspace XID +N` / `-N` add
+or remove a single membership over IPC. MoveToWorkspaceNKey and the plain
+`window-workspace XID N` form keep their existing "put it on N and nowhere
+else" meaning. A multi-member window is shown as `[Name+]` in the Windows
+list and is placed by whichever member workspace's tiling layout is
+currently active. The maximum number of workspaces is now 64.
+
 Per-workspace tiling layouts
 ----------------------------
 

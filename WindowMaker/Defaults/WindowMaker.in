@@ -269,6 +269,16 @@
 	MoveToWorkspace8Key = None;
 	MoveToWorkspace9Key = None;
 	MoveToWorkspace10Key = None;
+	ToggleWorkspace1Key = None;
+	ToggleWorkspace2Key = None;
+	ToggleWorkspace3Key = None;
+	ToggleWorkspace4Key = None;
+	ToggleWorkspace5Key = None;
+	ToggleWorkspace6Key = None;
+	ToggleWorkspace7Key = None;
+	ToggleWorkspace8Key = None;
+	ToggleWorkspace9Key = None;
+	ToggleWorkspace10Key = None;
 	MoveToNextWorkspaceKey = None;
 	MoveToPrevWorkspaceKey = None;
 	MoveToLastWorkspaceKey = None;

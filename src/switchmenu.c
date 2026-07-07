@@ -226,12 +226,15 @@ static void fillRtext(char *buf, size_t bufsz, WWindow *wwin, WScreen *scr)
 		else
 			snprintf(buf, bufsz, "[*]");
 	} else {
+		const char *plus = (WWIN_WS_MASK(wwin) != WS_BIT(WWIN_PRIMARY_WS(wwin)))
+				   ? "+" : "";
+
 		if (mlbl)
-			snprintf(buf, bufsz, "[%s] [%s]", mlbl,
-				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
+			snprintf(buf, bufsz, "[%s] [%s%s]", mlbl,
+				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name, plus);
 		else
-			snprintf(buf, bufsz, "[%s]",
-				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
+			snprintf(buf, bufsz, "[%s%s]",
+				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name, plus);
 	}
 	wfree(mlbl);
 }

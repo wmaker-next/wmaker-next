@@ -93,7 +93,7 @@ static const struct {
 	[MC_HIDE]        = { N_("Hide"), NULL },
 	[MC_MOVERESIZE]  = { N_("Resize/Move"), NULL },
 	[MC_SELECT]      = { N_("Select"), NULL },
-	[MC_CHANGEWKSPC] = { N_("Move To"), makeWorkspaceMenu },
+	[MC_CHANGEWKSPC] = { N_("Workspaces"), makeWorkspaceMenu },
 	[MC_PROPERTIES]  = { N_("Attributes..."), NULL },
 	[MC_OPTIONS]     = { N_("Options"), makeOptionsMenu },
 	[MC_GROUPTAB_ATTACH]   = { N_("Attach as Tab..."), NULL },
@@ -356,7 +356,10 @@ static void switchWSCommand(WMenu * menu, WMenuEntry * entry)
 	(void) menu;
 
 	wSelectWindow(wwin, False);
-	wWindowChangeWorkspace(wwin, entry->order);
+	if (wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(entry->order)))
+		wWindowRemoveFromWorkspace(wwin, entry->order);
+	else
+		wWindowAddToWorkspace(wwin, entry->order);
 }
 
 static void makeShortcutCommand(WMenu * menu, WMenuEntry * entry)
@@ -409,13 +412,15 @@ static void updateWorkspaceMenu(WMenu * menu)
 			wstrlcpy(title, scr->workspaces[i]->name, sizeof(title));
 
 			entry = wMenuAddCallback(menu, title, switchWSCommand, NULL);
+			entry->flags.indicator = 1;
+			entry->flags.indicator_type = MI_CHECK;
 			menu->flags.realized = 0;
 		}
 
 		/* workspace shortcut labels */
 		if (i / 10 == scr->current_workspace / 10)
 			wMenuEntrySetShortcutText(entry,
-						  GetShortcutKey(wKeyBindings[WKBD_MOVE_WORKSPACE1 + (i % 10)]));
+						  GetShortcutKey(wKeyBindings[WKBD_TOGGLE_WORKSPACE1 + (i % 10)]));
 		else
 			wMenuEntrySetShortcutText(entry, NULL);
 	}
@@ -752,11 +757,11 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 
 	for (i = 0; i < scr->workspace_submenu->entry_no; i++) {
 		scr->workspace_submenu->entries[i]->clientdata = wwin;
-		if (i == scr->current_workspace)
-			wMenuSetEnabled(scr->workspace_submenu, i, False);
-		else
-			wMenuSetEnabled(scr->workspace_submenu, i, True);
+		scr->workspace_submenu->entries[i]->flags.indicator_on =
+			wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(i)) ? 1 : 0;
+		wMenuSetEnabled(scr->workspace_submenu, i, True);
 	}
+	scr->workspace_submenu->flags.realized = 0;
 
 	menu->flags.realized = 0;
 	wMenuRealize(menu);
@@ -834,6 +839,8 @@ void OpenWindowMenu2(WWindow *wwin, int x, int y, int keyboard)
 	/* Specific menu position */
 	for (i = 0; i < scr->workspace_submenu->entry_no; i++) {
 		scr->workspace_submenu->entries[i]->clientdata = wwin;
+		scr->workspace_submenu->entries[i]->flags.indicator_on =
+			wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(i)) ? 1 : 0;
 		wMenuSetEnabled(scr->workspace_submenu, i, True);
 	}
 
