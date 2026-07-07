@@ -75,6 +75,9 @@ static const struct choice wprefs_choices[] = {
 #define CUR_KEY "MoveDisplay"
 	WPREFS_TABLE_move_display(R2)
 #undef CUR_KEY
+#define CUR_KEY "DefaultWorkspaceLayout"
+	WPREFS_TABLE_workspace_layouts(R2)
+#undef CUR_KEY
 };
 
 #undef R2

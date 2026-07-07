@@ -19,6 +19,8 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
+#include "config-values.h"
 
 typedef struct _Panel {
 	WMBox *box;
@@ -36,7 +38,6 @@ typedef struct _Panel {
 	WMButton *linkB;
 	WMButton *cyclB;
 	WMButton *newB;
-	WMButton *perheadB;
 	WMLabel *linkL;
 	WMLabel *cyclL;
 	WMLabel *newL;
@@ -44,30 +45,91 @@ typedef struct _Panel {
 	WMLabel *posiL;
 	WMLabel *posL;
 	WMPopUpButton *posP;
+
+	WMFrame *layF;
+	WMPopUpButton *layP;
+	WMTextField *mcT;
+	WMSlider *mrS;
 } _Panel;
+
+static const struct {
+	const char *db_value;
+	const char *label;
+} layout_choices[] = {
+#define R(v, l) { v, l },
+	WPREFS_TABLE_workspace_layouts(R)
+#undef R
+};
 
 #define ICON_FILE	"workspace"
 
-#define ARQUIVO_XIS	"xis"
 #define DONT_LINK_FILE	"dontlinkworkspaces"
 #define CYCLE_FILE	"cycleworkspaces"
 #define ADVANCE_FILE	"advancetonewworkspace"
 #define WSNAME_FILE 	"workspacename"
 
+/* Navigation icons are 48x48 / 50x40 XPMs. The navigation frame has four
+ * rows in ~180 px, so each icon is scaled to NAV_ICON_H before being
+ * placed on a uniformly-sized WIPImageOnly label, keeping the rows
+ * aligned and the icons fully visible. Nearest-neighbor (RScaleImage)
+ * is used because the source XPMs are pixel art — Catmull-Rom softens
+ * them at this small ratio. */
+#define NAV_ICON_H	32
+
+static WMPixmap *loadScaledNavIcon(WMScreen *scr, RContext *rc, const char *file)
+{
+	WMPixmap *pix;
+	RImage *src, *scaled;
+	char *path;
+	unsigned target_w;
+
+	path = LocateImage(file);
+	if (!path)
+		return NULL;
+
+	src = RLoadImage(rc, path, 0);
+	wfree(path);
+	if (!src) {
+		wwarning(_("could not load image file %s"), file);
+		return NULL;
+	}
+
+	target_w = src->width * NAV_ICON_H / src->height;
+	if (target_w == 0)
+		target_w = 1;
+
+	scaled = RScaleImage(src, target_w, NAV_ICON_H);
+	RReleaseImage(src);
+	if (!scaled)
+		return NULL;
+
+	pix = WMCreatePixmapFromRImage(scr, scaled, 0);
+	RReleaseImage(scaled);
+	return pix;
+}
+
 static void showData(_Panel * panel)
 {
+	char buf[16];
+
 	WMSetButtonSelected(panel->linkB, !GetBoolForKey("DontLinkWorkspaces"));
 
 	WMSetButtonSelected(panel->cyclB, GetBoolForKey("CycleWorkspaces"));
 
 	WMSetButtonSelected(panel->newB, GetBoolForKey("AdvanceToNewWorkspace"));
 
-	WMSetButtonSelected(panel->perheadB, GetBoolForKey("PerHeadWorkspaces"));
-
 	/* popup items are added in WD_NONE..WD_BOTTOMRIGHT order in createPanel(),
 	 * so the schema value is the popup index directly */
 	WMSetPopUpButtonSelectedItem(panel->posP,
 				     GetEnumForKey("WorkspaceNameDisplayPosition", WD_CENTER));
+
+	/* layout_choices[] is added in WVL_FLOAT.. order in createPanel(),
+	 * so the schema value is the popup index directly */
+	WMSetPopUpButtonSelectedItem(panel->layP,
+				     GetEnumForKey("DefaultWorkspaceLayout", WVL_FLOAT));
+	snprintf(buf, sizeof(buf), "%d", GetIntegerForKey("LayoutMasterCount"));
+	WMSetTextFieldText(panel->mcT, buf);
+	WMSetSliderValue(panel->mrS, GetIntegerForKey("LayoutMasterRatio"));
 }
 
 static void createPanel(Panel * p)
@@ -75,38 +137,29 @@ static void createPanel(Panel * p)
 	_Panel *panel = (_Panel *) p;
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMPixmap *icon1;
-	RImage *xis = NULL;
+	WMLabel *label;
 	RContext *rc = WMScreenRContext(scr);
-	char *path;
-
-	path = LocateImage(ARQUIVO_XIS);
-	if (path) {
-		xis = RLoadImage(rc, path, 0);
-		if (!xis) {
-			wwarning(_("could not load image file %s"), path);
-		}
-		wfree(path);
-	}
+	int i;
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
 
     /***************** Workspace Navigation *****************/
 	panel->navF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->navF, 490, 200);
-	WMMoveWidget(panel->navF, 15, 6);
+	WMResizeWidget(panel->navF, 490, 180);
+	WMMoveWidget(panel->navF, 15, 4);
 	WMSetFrameTitle(panel->navF, _("Workspace Navigation"));
 
 	panel->cyclB = WMCreateSwitchButton(panel->navF);
-	WMResizeWidget(panel->cyclB, 410, 34);
-	WMMoveWidget(panel->cyclB, 75, 18);
+	WMResizeWidget(panel->cyclB, 410, 30);
+	WMMoveWidget(panel->cyclB, 75, 20);
 	WMSetButtonText(panel->cyclB, _("Wrap to the first workspace from the last workspace"));
 
 	panel->cyclL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->cyclL, 60, 60);
-	WMMoveWidget(panel->cyclL, 10, 6);
+	WMResizeWidget(panel->cyclL, 60, 36);
+	WMMoveWidget(panel->cyclL, 10, 16);
 	WMSetLabelImagePosition(panel->cyclL, WIPImageOnly);
-	CreateImages(scr, rc, xis, CYCLE_FILE, &icon1, NULL);
+	icon1 = loadScaledNavIcon(scr, rc, CYCLE_FILE);
 	if (icon1)
 	{
 		WMSetLabelImage(panel->cyclL, icon1);
@@ -114,15 +167,15 @@ static void createPanel(Panel * p)
 	}
 
 	/**/ panel->linkB = WMCreateSwitchButton(panel->navF);
-	WMResizeWidget(panel->linkB, 410, 34);
-	WMMoveWidget(panel->linkB, 75, 64);
+	WMResizeWidget(panel->linkB, 410, 30);
+	WMMoveWidget(panel->linkB, 75, 60);
 	WMSetButtonText(panel->linkB, _("Switch workspaces while dragging windows"));
 
 	panel->linkL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->linkL, 60, 40);
-	WMMoveWidget(panel->linkL, 10, 68);
+	WMResizeWidget(panel->linkL, 60, 36);
+	WMMoveWidget(panel->linkL, 10, 56);
 	WMSetLabelImagePosition(panel->linkL, WIPImageOnly);
-	CreateImages(scr, rc, xis, DONT_LINK_FILE, &icon1, NULL);
+	icon1 = loadScaledNavIcon(scr, rc, DONT_LINK_FILE);
 	if (icon1)
 	{
 		WMSetLabelImage(panel->linkL, icon1);
@@ -130,15 +183,15 @@ static void createPanel(Panel * p)
 	}
 
 	/**/ panel->newB = WMCreateSwitchButton(panel->navF);
-	WMResizeWidget(panel->newB, 410, 34);
-	WMMoveWidget(panel->newB, 75, 108);
+	WMResizeWidget(panel->newB, 410, 30);
+	WMMoveWidget(panel->newB, 75, 100);
 	WMSetButtonText(panel->newB, _("Automatically create new workspaces"));
 
 	panel->newL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->newL, 60, 20);
-	WMMoveWidget(panel->newL, 10, 116);
+	WMResizeWidget(panel->newL, 60, 36);
+	WMMoveWidget(panel->newL, 10, 96);
 	WMSetLabelImagePosition(panel->newL, WIPImageOnly);
-	CreateImages(scr, rc, xis, ADVANCE_FILE, &icon1, NULL);
+	icon1 = loadScaledNavIcon(scr, rc, ADVANCE_FILE);
 	if (icon1)
 	{
 		WMSetLabelImage(panel->newL, icon1);
@@ -147,15 +200,15 @@ static void createPanel(Panel * p)
 
 	/**/ panel->posL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->posL, 275, 30);
-	WMMoveWidget(panel->posL, 75, 154);
+	WMMoveWidget(panel->posL, 75, 140);
 	// WMSetLabelTextAlignment(panel->posL, WARight);
 	WMSetLabelText(panel->posL, _("Position of workspace name display"));
 
 	panel->posiL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->posiL, 60, 40);
-	WMMoveWidget(panel->posiL, 10, 149);
+	WMResizeWidget(panel->posiL, 60, 36);
+	WMMoveWidget(panel->posiL, 10, 136);
 	WMSetLabelImagePosition(panel->posiL, WIPImageOnly);
-	CreateImages(scr, rc, xis, WSNAME_FILE, &icon1, NULL);
+	icon1 = loadScaledNavIcon(scr, rc, WSNAME_FILE);
 	if (icon1)
 	{
 		WMSetLabelImage(panel->posiL, icon1);
@@ -164,7 +217,7 @@ static void createPanel(Panel * p)
 
 	panel->posP = WMCreatePopUpButton(panel->navF);
 	WMResizeWidget(panel->posP, 125, 20);
-	WMMoveWidget(panel->posP, 350, 159);
+	WMMoveWidget(panel->posP, 350, 143);
 	WMAddPopUpButtonItem(panel->posP, _("Disable"));
 	WMAddPopUpButtonItem(panel->posP, _("Center"));
 	WMAddPopUpButtonItem(panel->posP, _("Top"));
@@ -176,18 +229,47 @@ static void createPanel(Panel * p)
 
 	WMMapSubwidgets(panel->navF);
 
-	panel->perheadB = WMCreateSwitchButton(panel->box);
-	WMResizeWidget(panel->perheadB, 490, 20);
-	WMMoveWidget(panel->perheadB, 15, 210);
-	WMSetButtonText(panel->perheadB,
-		_("Each monitor keeps its own active workspace (requires restart)"));
+    /***************** Tiling Layout *****************/
+	panel->layF = WMCreateFrame(panel->box);
+	WMResizeWidget(panel->layF, 490, 42);
+	WMMoveWidget(panel->layF, 15, 183);
+	WMSetFrameTitle(panel->layF, _("Default Tiling Layout"));
 	WMSetBalloonTextForView(
-		_("PerHeadWorkspaces is read once at startup. The workspace pager\n"
-		  "and per-head clip UI are not yet per-head aware in this mode."),
-		WMWidgetView(panel->perheadB));
+		_("Tiling layout applied to newly created workspaces.\n"
+		  "Existing workspaces keep whatever layout they were\n"
+		  "last set to. 'Float' is the ordinary unmanaged\n"
+		  "placement."),
+		WMWidgetView(panel->layF));
 
-	if (xis)
-		RReleaseImage(xis);
+	panel->layP = WMCreatePopUpButton(panel->layF);
+	WMResizeWidget(panel->layP, 100, 20);
+	WMMoveWidget(panel->layP, 10, 16);
+	for (i = 0; i < (int)wlengthof(layout_choices); i++)
+		WMAddPopUpButtonItem(panel->layP, _(layout_choices[i].label));
+
+	label = WMCreateLabel(panel->layF);
+	WMResizeWidget(label, 90, 18);
+	WMMoveWidget(label, 120, 17);
+	WMSetLabelTextAlignment(label, WARight);
+	WMSetLabelText(label, _("Master count:"));
+
+	panel->mcT = WMCreateTextField(panel->layF);
+	WMResizeWidget(panel->mcT, 30, 20);
+	WMMoveWidget(panel->mcT, 214, 16);
+
+	label = WMCreateLabel(panel->layF);
+	WMResizeWidget(label, 80, 18);
+	WMMoveWidget(label, 254, 17);
+	WMSetLabelTextAlignment(label, WARight);
+	WMSetLabelText(label, _("Master ratio:"));
+
+	panel->mrS = WMCreateSlider(panel->layF);
+	WMResizeWidget(panel->mrS, 140, 18);
+	WMMoveWidget(panel->mrS, 338, 17);
+	WMSetSliderMinValue(panel->mrS, 10);
+	WMSetSliderMaxValue(panel->mrS, 90);
+
+	WMMapSubwidgets(panel->layF);
 
 	WMRealizeWidget(panel->box);
 	WMMapSubwidgets(panel->box);
@@ -198,15 +280,23 @@ static void createPanel(Panel * p)
 static void storeData(_Panel * panel)
 {
 	int tmp = WMGetPopUpButtonSelectedItem(panel->posP);
+	char *s;
 
 	if (tmp < 0)
 		return;
 	SetBoolForKey(!WMGetButtonSelected(panel->linkB), "DontLinkWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->cyclB), "CycleWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AdvanceToNewWorkspace");
-	SetBoolForKey(WMGetButtonSelected(panel->perheadB), "PerHeadWorkspaces");
 
 	SetEnumForKey(tmp, "WorkspaceNameDisplayPosition");
+
+	tmp = WMGetPopUpButtonSelectedItem(panel->layP);
+	if (tmp >= 0)
+		SetEnumForKey(tmp, "DefaultWorkspaceLayout");
+	s = WMGetTextFieldText(panel->mcT);
+	SetIntegerForKey(wConfigSchemaParseInt("LayoutMasterCount", s), "LayoutMasterCount");
+	wfree(s);
+	SetIntegerForKey(WMGetSliderValue(panel->mrS), "LayoutMasterRatio");
 }
 
 Panel *InitWorkspace(WMWidget *parent)

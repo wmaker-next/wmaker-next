@@ -71,6 +71,14 @@
 	R("SwitchWorkspaces", N_("Switch Workspaces")) \
 	R("SwitchWindows",    N_("Switch Windows"))
 
+/* Workspace.c, key "DefaultWorkspaceLayout" */
+#define WPREFS_TABLE_workspace_layouts(R) \
+	R("float",   N_("Float")) \
+	R("tile",    N_("Tile")) \
+	R("tileh",   N_("Tile wide")) \
+	R("grid",    N_("Grid")) \
+	R("monocle", N_("Monocle"))
+
 /* WindowHandling.c, key "WindowPlacement" */
 #define WPREFS_TABLE_window_placements(R) \
 	R("auto",    N_("Automatic")) \

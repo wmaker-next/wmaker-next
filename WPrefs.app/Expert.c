@@ -83,6 +83,9 @@ static struct expert_option {
 	{ N_("Let a new window on another head take focus automatically."),
 	  OPTION_WMAKER, "AutoFocusAcrossHeads" },
 
+	{ N_("Each monitor keeps its own active workspace (requires restart)."),
+	  OPTION_WMAKER, "PerHeadWorkspaces" },
+
 	{ N_("Cycle all windows from all workspaces."),
 	  OPTION_WMAKER, "CycleAllWorkspaces" },
 
