@@ -276,20 +276,47 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 {
 	WWindow *tmp;
 	WWorkspace **list;
+	uint64_t old_mask, new_mask;
+	int old_primary, new_primary;
 	int i, j;
 
 	if (workspace <= 0)
 		return False;
 
-	/* verify if workspace is in use by some window */
+	/* verify if workspace is in use by some window, a multi-member
+	 * window that also lives elsewhere is not a blocker */
 	tmp = scr->focused_window;
 	while (tmp) {
-		if (!IS_OMNIPRESENT(tmp) && WWIN_PRIMARY_WS(tmp) == workspace) {
+		if (!IS_OMNIPRESENT(tmp) && WWIN_WS_MASK(tmp) == WS_BIT(workspace)) {
 			char buf[256];
 			snprintf(buf, sizeof(buf), _("Workspace \"%s\" in use; cannot delete"),
 				 scr->workspaces[workspace]->name);
 			wMessageDialog(scr, _("Error"), buf, _("OK"), NULL, NULL);
 			return False;
+		}
+		tmp = tmp->prev;
+	}
+
+	/* Compact every non-omnipresent membership set along with the
+	 * workspace array, and keep its primary in the compacted index space. */
+	tmp = scr->focused_window;
+	while (tmp) {
+		if (!IS_OMNIPRESENT(tmp)) {
+			old_mask = WWIN_WS_MASK(tmp);
+			old_primary = WWIN_PRIMARY_WS(tmp);
+			new_mask = (old_mask & (WS_BIT(workspace) - 1))
+				| ((old_mask & ~((WS_BIT(workspace) - 1) | WS_BIT(workspace))) >> 1);
+			new_primary = old_primary;
+			if (old_primary == workspace)
+				new_primary = __builtin_ctzll(new_mask);
+			else if (old_primary > workspace)
+				new_primary--;
+
+			tmp->frame->ws_mask = new_mask;
+			tmp->frame->workspace = new_primary;
+			if (new_primary != old_primary)
+				WMPostNotificationName(WMNChangedWorkspace, tmp,
+						       (void *)(uintptr_t)old_primary);
 		}
 		tmp = tmp->prev;
 	}
@@ -321,6 +348,21 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	scr->workspaces = list;
 
 	scr->workspace_count--;
+	if (scr->current_workspace > workspace)
+		scr->current_workspace--;
+	if (scr->last_workspace > workspace)
+		scr->last_workspace--;
+	if (w_global.config->per_head_workspaces) {
+		for (i = 0; i < wHeadCount(scr); i++) {
+			if (scr->head_workspace[i] > workspace)
+				scr->head_workspace[i]--;
+			if (scr->last_head_workspace[i] > workspace)
+				scr->last_head_workspace[i]--;
+		}
+	}
+
+	for (i = 0; i < scr->workspace_count; i++)
+		wLayoutApply(scr, i);
 
 	/* update menu */
 	wWorkspaceMenuUpdate(scr, scr->workspace_menu);
@@ -682,35 +724,39 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		 * but will create annoyance for every other application
 		 */
 		while (tmp) {
-			if (WWIN_PRIMARY_WS(tmp) != workspace && !tmp->flags.selected) {
+			/* Omnipresent windows track the new current workspace
+			 * as their primary. Any window already on the target
+			 * (omnipresent or a multi-member set that includes it)
+			 * is a fallback focus candidate when nothing has to be
+			 * remapped below. */
+			if (IS_OMNIPRESENT(tmp) && WWIN_PRIMARY_WS(tmp) != workspace) {
+				WApplication *wapp = wApplicationOf(tmp->main_window);
+
+				tmp->frame->workspace = workspace;
+				tmp->frame->ws_mask = WS_BIT(workspace);
+				if (wapp)
+					wapp->last_workspace = workspace;
+			}
+			if (WWIN_ON_WORKSPACE(tmp, workspace) && !foc2
+			    && (tmp->flags.mapped || tmp->flags.shaded)
+			    && !WFLAGP(tmp, no_focusable))
+				foc2 = tmp;
+
+			if (!WWIN_ON_WORKSPACE(tmp, workspace) && !tmp->flags.selected) {
 				/* defer unmap of windows (and per-workspace miniwindow
 				 * icons) not on this workspace until after the
 				 * destination workspace's windows have been mapped, so
 				 * the root background is never exposed mid-switch */
 				if (((tmp->flags.mapped || tmp->flags.shaded) &&
-				     !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) ||
+				     !tmp->flags.changing_workspace) ||
 				    (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
-				     tmp->icon && !IS_OMNIPRESENT(tmp))) {
+				     tmp->icon)) {
 					if (toUnmapCount == toUnmapSize)
 					{
 						toUnmapSize *= 2;
 						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
 					}
 					toUnmap[toUnmapCount++] = tmp;
-				}
-				/* update current workspace of omnipresent windows */
-				if (IS_OMNIPRESENT(tmp)) {
-					WApplication *wapp = wApplicationOf(tmp->main_window);
-
-					tmp->frame->workspace = workspace;
-					tmp->frame->ws_mask = WS_BIT(workspace);
-
-					if (wapp) {
-						wapp->last_workspace = workspace;
-					}
-					if (!foc2 && (tmp->flags.mapped || tmp->flags.shaded)) {
-						foc2 = tmp;
-					}
 				}
 			} else {
 				/* change selected windows' workspace */

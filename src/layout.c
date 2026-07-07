@@ -194,7 +194,12 @@ int wLayoutCompute(WLayout layout, WArea usable,
 
 static Bool window_is_tileable(WWindow *wwin, int workspace)
 {
-	if (!wwin->frame || WWIN_PRIMARY_WS(wwin) != workspace)
+	/* Multi-member windows are tiled by every member workspace's
+	 * layout, the frame is recomputed on each switch and the single
+	 * old_geometry copy only records the pre-tiling floating frame
+	 * so two layouts never contend for it. Omnipresent windows still
+	 * float so a sticky panel is never packed into a stack. */
+	if (!wwin->frame || !WWIN_ON_WORKSPACE(wwin, workspace))
 		return False;
 	if (IS_OMNIPRESENT(wwin))
 		return False;
@@ -312,7 +317,8 @@ void wLayoutRestore(WScreen *scr, int workspace)
 	if (!scr)
 		return;
 	for (w = scr->focused_window; w; w = w->prev) {
-		if (w->frame && WWIN_PRIMARY_WS(w) == workspace && w->flags.tiled)
+		if (w->frame && WWIN_ON_WORKSPACE(w, workspace)
+		    && !IS_OMNIPRESENT(w) && w->flags.tiled)
 			restore_tiled_window(w);
 	}
 }

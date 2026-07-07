@@ -201,6 +201,67 @@ static void test_icon_and_workspace(void)
 	CHECK(wDefaultGetStartWorkspace(NULL, "urxvt", "URxvt") == 3);
 }
 
+static void test_start_workspaces_plural(void)
+{
+	uint64_t mask;
+
+	/* plural StartWorkspaces array resolves to a multi-bit mask */
+	set_attr_dict("{"
+		" XTerm = { StartWorkspaces = (\"2\", \"4\"); };"
+		"}");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == (WS_BIT(1) | WS_BIT(3)));
+
+	/* a single-element array is a 1-bit mask */
+	set_attr_dict("{ XTerm = { StartWorkspaces = (\"3\"); }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == WS_BIT(2));
+
+	/* empty array = no hint */
+	set_attr_dict("{ XTerm = { StartWorkspaces = (); }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+
+	/* singular-only falls back to a 1-bit mask */
+	set_attr_dict("{ XTerm = { StartWorkspace = 3; }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == WS_BIT(2));
+
+	/* plural takes precedence over singular in the same entry */
+	set_attr_dict("{ XTerm = { StartWorkspace = 3; StartWorkspaces = (\"1\"); }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == WS_BIT(0));
+
+	/* a name that resolves to nothing yields no hint */
+	set_attr_dict("{ XTerm = { StartWorkspaces = (\"nonexistent\"); }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+
+	/* no key at all = no hint */
+	set_attr_dict("{ XTerm = { NoTitlebar = YES; }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+
+	/* "*" global default supplies the singular fallback */
+	set_attr_dict("{ \"*\" = { StartWorkspace = 2; }; }");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == True);
+	CHECK(mask == WS_BIT(1));
+
+	/* instance.class plural wins over class singular */
+	set_attr_dict("{"
+		" XTerm = { StartWorkspace = 3; };"
+		" \"xterm.XTerm\" = { StartWorkspaces = (\"1\", \"2\"); };"
+		"}");
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == (WS_BIT(0) | WS_BIT(1)));
+}
+
 static void test_change_icon_reloads_cache(void)
 {
 	char *icon;
@@ -288,6 +349,7 @@ int main(void)
 	test_global_default();
 	test_precedence();
 	test_icon_and_workspace();
+	test_start_workspaces_plural();
 	test_change_icon_reloads_cache();
 	test_empty_class();
 	test_case_sensitivity();

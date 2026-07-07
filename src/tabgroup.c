@@ -576,6 +576,7 @@ void wGroupSyncWorkspace(WWindow *source)
 {
 	WWindowGroup *grp;
 	WWindow *peer;
+	uint64_t mask;
 	int workspace, old, i;
 
 	grp = source->tab_group;
@@ -583,20 +584,23 @@ void wGroupSyncWorkspace(WWindow *source)
 		return;
 
 	workspace = WWIN_PRIMARY_WS(source);
+	mask = WWIN_WS_MASK(source);
 
 	syncing_peers = 1;
 	for (i = 0; i < grp->member_count; i++) {
 		peer = grp->members[i];
 		if (peer == source || !peer->frame)
 			continue;
-		if (WWIN_PRIMARY_WS(peer) == workspace)
+		if (WWIN_PRIMARY_WS(peer) == workspace
+		    && WWIN_WS_MASK(peer) == mask)
 			continue;
 		old = WWIN_PRIMARY_WS(peer);
 		peer->frame->workspace = workspace;
-		peer->frame->ws_mask = WS_BIT(workspace);
+		peer->frame->ws_mask = mask;
 		peer->last_head = source->last_head;
-		WMPostNotificationName(WMNChangedWorkspace, peer,
-		                       (void *)(uintptr_t)old);
+		if (old != workspace)
+			WMPostNotificationName(WMNChangedWorkspace, peer,
+			                       (void *)(uintptr_t)old);
 	}
 	syncing_peers = 0;
 }

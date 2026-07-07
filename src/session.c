@@ -90,6 +90,7 @@ static WMPropList *sApplications = NULL;
 static WMPropList *sCommand;
 static WMPropList *sName;
 static WMPropList *sWorkspace;
+static WMPropList *sWorkspaces;
 static WMPropList *sShaded;
 static WMPropList *sMiniaturized;
 static WMPropList *sMaximized;
@@ -111,6 +112,7 @@ static void make_keys(void)
 	sCommand = WMCreatePLString("Command");
 	sName = WMCreatePLString("Name");
 	sWorkspace = WMCreatePLString("Workspace");
+	sWorkspaces = WMCreatePLString("Workspaces");
 	sShaded = WMCreatePLString("Shaded");
 	sMiniaturized = WMCreatePLString("Miniaturized");
 	sMaximized = WMCreatePLString("Maximized");
@@ -234,6 +236,25 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 		if (mark_key_pl) {
 			WMPutInPLDictionary(win_state, sMarkKey, mark_key_pl);
 			WMReleasePropList(mark_key_pl);
+		}
+
+		/* Extra workspace memberships beyond the primary. Written only
+		 * when the window is on more than one workspace and not
+		 * omnipresent so single-membership sessions stay unchanged. */
+		if (!IS_OMNIPRESENT(wwin)
+		    && WWIN_WS_MASK(wwin) != WS_BIT(WWIN_PRIMARY_WS(wwin))) {
+			WMPropList *wl = WMCreatePLArray(NULL);
+			WMPropList *e;
+
+			for (i = 0; i < scr->workspace_count; i++) {
+				if (!(WWIN_WS_MASK(wwin) & WS_BIT(i)))
+					continue;
+				e = WMCreatePLString(scr->workspaces[i]->name);
+				WMAddToPLArray(wl, e);
+				WMReleasePropList(e);
+			}
+			WMPutInPLDictionary(win_state, sWorkspaces, wl);
+			WMReleasePropList(wl);
 		}
 
 		if (wwin->tab_group) {
@@ -441,6 +462,26 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 			}
 		} else {
 			state->workspace--;
+		}
+	}
+
+	value = WMGetFromPLDictionary(win_state, sWorkspaces);
+	if (value && WMIsPLArray(value)) {
+		int n = WMGetPropListItemCount(value);
+		int j;
+
+		for (j = 0; j < n; j++) {
+			WMPropList *e = WMGetFromPLArray(value, j);
+
+			if (!e || !WMIsPLString(e))
+				continue;
+			tmp = WMGetFromPLString(e);
+			for (i = 0; i < scr->workspace_count; i++) {
+				if (strcmp(scr->workspaces[i]->name, tmp) == 0) {
+					state->ws_mask |= WS_BIT(i);
+					break;
+				}
+			}
 		}
 	}
 

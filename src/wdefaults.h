@@ -86,13 +86,16 @@ typedef enum {
  * One parsed WMWindowAttributes entry. value/set are bitsets indexed by
  * WWindowAttrKey, set carries which keys this entry supplied so the
  * four-level merge knows what to override. icon and start_workspace are
- * owned copies, NULL when the entry does not supply them.
+ * Icon and StartWorkspace/StartWorkspaces are the non-boolean keys and are
+ * handled as plain string/array fields alongside the bitset.
  */
 typedef struct WWindowAttrs {
 	uint32_t value;
 	uint32_t set;
 	char *icon;
 	char *start_workspace;
+	char **start_workspaces;
+	int start_workspace_count;
 } WWindowAttrs;
 
 #endif /* WMWDEFAULTS_H_ */

@@ -603,6 +603,47 @@ static int parse_xid(WMPropList *args, Window *out, char **err)
 	return 1;
 }
 
+static verb_rc verb_window_workspace(WScreen *scr, WMPropList *args,
+				     char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	Window xid;
+	WWindow *wwin;
+	const char *spec;
+	const char *number;
+	long n;
+	char *end;
+
+	(void)scr;
+	(void)reply;
+	if (!parse_xid(args, &xid, err))
+		return VERB_FAIL;
+	wwin = wWindowFor(xid);
+	if (!wwin || !wwin->frame) {
+		*err = wstrdup("window not managed");
+		return VERB_FAIL;
+	}
+	if (WMGetPropListItemCount(args) < 3
+	    || !(a = WMGetFromPLArray(args, 2)) || !WMIsPLString(a)) {
+		*err = wstrdup("window-workspace: missing +N/-N/N");
+		return VERB_FAIL;
+	}
+	spec = WMGetFromPLString(a);
+	number = (*spec == '+' || *spec == '-') ? spec + 1 : spec;
+	n = strtol(number, &end, 10);
+	if (end == number || *end || n < 0 || n >= wwin->screen_ptr->workspace_count) {
+		*err = wstrdup("window-workspace: invalid index");
+		return VERB_FAIL;
+	}
+	if (*spec == '+')
+		wWindowAddToWorkspace(wwin, (int)n);
+	else if (*spec == '-')
+		wWindowRemoveFromWorkspace(wwin, (int)n);
+	else
+		wWindowChangeWorkspace(wwin, (int)n);
+	return VERB_OK;
+}
+
 static verb_rc verb_hide_app(WScreen *scr, WMPropList *args,
 			     char **err, WMPropList **reply)
 {
@@ -754,6 +795,7 @@ static const struct {
 	{ "exit",             verb_exit },
 	{ "kill-session",     verb_kill_session },
 	{ "workspace",        verb_workspace },
+	{ "window-workspace", verb_window_workspace },
 	{ "set-layout",       verb_set_layout },
 	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },
@@ -930,6 +972,19 @@ static void handle_get_windows(struct WIPCClient *c)
 		pl_dict_put(d, "instance", pl_string(wwin->wm_instance));
 		pl_dict_put(d, "title", pl_string(wwin->frame ? wwin->frame->title : NULL));
 		pl_dict_put(d, "workspace", pl_int(wwin->frame ? WWIN_PRIMARY_WS(wwin) : 0));
+		if (wwin->frame) {
+			WMPropList *wl = WMCreatePLArray(NULL);
+			WMPropList *wsi;
+			int i;
+
+			for (i = 0; i < c->scr->workspace_count; i++)
+				if (WWIN_WS_MASK(wwin) & WS_BIT(i)) {
+					wsi = pl_int(i);
+					WMAddToPLArray(wl, wsi);
+					WMReleasePropList(wsi);
+				}
+			pl_dict_put(d, "workspaces", wl);
+		}
 		WMAddToPLArray(arr, d);
 		WMReleasePropList(d);
 	}

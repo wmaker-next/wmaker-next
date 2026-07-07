@@ -56,7 +56,11 @@ _Static_assert(WATTR_BOOL_COUNT <= 32,
 static WMHashTable *attrs_cache;
 /* every boolean defaults to No, set covers all bits so merge_attrs()
  * writes every flag when useGlobalDefault is in effect */
-static const WWindowAttrs attrs_global_default = { 0, ~(uint32_t)0, NULL, NULL };
+static const WWindowAttrs attrs_global_default = {
+	.value = 0, .set = ~(uint32_t)0,
+	.icon = NULL, .start_workspace = NULL,
+	.start_workspaces = NULL, .start_workspace_count = 0
+};
 
 /* proplist key atoms used by the write/maintenance helpers */
 static WMPropList *AIcon;
@@ -95,6 +99,7 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 {
 	WWindowAttrs *attrs;
 	const char *str;
+	WMPropList *sws;
 	int i;
 
 	attrs = wmalloc(sizeof(*attrs));
@@ -116,6 +121,27 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	str = get_entry_string(entry, "StartWorkspace");
 	if (str)
 		attrs->start_workspace = wstrdup(str);
+	sws = WMGetFromPLDictionaryByName(entry, "StartWorkspaces");
+
+	if (sws && WMIsPLArray(sws)) {
+		int sws_n = WMGetPropListItemCount(sws);
+		int j, cnt = 0;
+
+		attrs->start_workspaces = wmalloc(sizeof(char *) * (sws_n + 1));
+		for (j = 0; j < sws_n; j++) {
+			WMPropList *item = WMGetFromPLArray(sws, j);
+			const char *tok;
+
+			if (!item || !WMIsPLString(item))
+				continue;
+			tok = WMGetFromPLString(item);
+			if (!tok || tok[0] == '\0')
+				continue;
+			attrs->start_workspaces[cnt++] = wstrdup(tok);
+		}
+		attrs->start_workspaces[cnt] = NULL;
+		attrs->start_workspace_count = cnt;
+	}
 
 	return attrs;
 }
@@ -128,6 +154,13 @@ static void free_attrs_entry(WWindowAttrs *attrs)
 		wfree(attrs->icon);
 	if (attrs->start_workspace)
 		wfree(attrs->start_workspace);
+	if (attrs->start_workspaces) {
+		int j;
+
+		for (j = 0; j < attrs->start_workspace_count; j++)
+			wfree(attrs->start_workspaces[j]);
+		wfree(attrs->start_workspaces);
+	}
 	wfree(attrs);
 }
 
@@ -559,6 +592,47 @@ int wDefaultGetStartWorkspace(WScreen *scr, const char *instance, const char *cl
 			return wGetWorkspaceNumber(scr, ws);
 	}
 	return -1;
+}
+
+Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
+			       const char *class, uint64_t *out_mask)
+{
+	const WWindowAttrs *level[4];
+	int n, i, j;
+
+	n = attrs_lookup_levels(instance, class, True, level);
+	for (i = 0; i < n; i++) {
+		const WWindowAttrs *a = level[i];
+
+		if (a->start_workspace_count > 0 && a->start_workspaces) {
+			uint64_t mask = 0;
+
+			for (j = 0; j < a->start_workspace_count; j++) {
+				int w = wGetWorkspaceNumber(scr, a->start_workspaces[j]);
+
+				if (w >= 0 && w < MAX_WORKSPACES)
+					mask |= WS_BIT(w);
+			}
+			if (mask) {
+				*out_mask = mask;
+				return True;
+			}
+		}
+	}
+	/* fall back to singular StartWorkspace as a 1-bit mask */
+	for (i = 0; i < n; i++) {
+		const char *ws = level[i]->start_workspace;
+
+		if (ws && ws[0] != '\0') {
+			int w = wGetWorkspaceNumber(scr, ws);
+
+			if (w >= 0 && w < MAX_WORKSPACES) {
+				*out_mask = WS_BIT(w);
+				return True;
+			}
+		}
+	}
+	return False;
 }
 
 /* Get the name of the Icon File. If default_icon is True, then, default value included.

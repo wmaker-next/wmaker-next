@@ -348,7 +348,7 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 	ck->appmenu   = WXReqExists(dpy, window, w_global.atom.wmaker.menu);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
-					w_global.atom.wmaker.state, 10);
+					w_global.atom.wmaker.state, 12);
 	ck->mark_key  = WXReqString8(dpy, window, w_global.atom.wmaker.mark_key, XA_STRING);
 	ck->tab_group = WXReqFormat32(dpy, window, w_global.atom.wmaker.tab_group,
 				      w_global.atom.wmaker.tab_group, 3);
@@ -866,6 +866,28 @@ static int matchIdentifier(const void *item, const void *cdata)
 	return (strcmp(((WFakeGroupLeader *) item)->identifier, (char *)cdata) == 0);
 }
 
+/* Resolve the plural StartWorkspaces hint: lowest set bit is the primary,
+ * rest goes into restored_ws_mask. Returns False for no/empty/omnipresent. */
+static Bool resolve_start_workspaces_hint(WScreen *scr, const char *instance,
+					   const char *class,
+					   int *out_workspace,
+					   uint64_t *out_restored_mask)
+{
+	uint64_t hint_mask = 0;
+
+	if (!wDefaultGetStartWorkspaces(scr, instance, class, &hint_mask))
+		return False;
+	if (hint_mask == 0 || hint_mask == WS_ALL)
+		return False;
+	if (scr->workspace_count < MAX_WORKSPACES)
+		hint_mask &= WS_BIT(scr->workspace_count) - 1;
+	if (hint_mask == 0)
+		return False;
+	*out_workspace = __builtin_ctzll(hint_mask);
+	*out_restored_mask = hint_mask & ~WS_BIT(*out_workspace);
+	return True;
+}
+
 /*
  *----------------------------------------------------------------
  * wManageWindow--
@@ -905,6 +927,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	int wm_state;
 	int foo;
 	int workspace = -1;
+	uint64_t restored_ws_mask = 0;
 	char *title;
 	Bool withdraw = False;
 	Bool raise = False;
@@ -1241,14 +1264,18 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			wwin->flags.maximized = win_state->state->maximized;
 
 		if (!IS_OMNIPRESENT(wwin)) {
-			int w = wDefaultGetStartWorkspace(scr, wwin->wm_instance,
-							  wwin->wm_class);
-			if (w < 0 || w >= scr->workspace_count) {
+			int hint_ws;
+			uint64_t hint_rest;
+
+			if (resolve_start_workspaces_hint(scr, wwin->wm_instance,
+							  wwin->wm_class, &hint_ws, &hint_rest)) {
+				workspace = hint_ws;
+				restored_ws_mask = hint_rest;
+			} else {
 				workspace = win_state->state->workspace;
+				restored_ws_mask = win_state->state->ws_mask;
 				if (workspace >= scr->workspace_count)
 					workspace = scr->current_workspace;
-			} else {
-				workspace = w;
 			}
 		} else {
 			workspace = scr->current_workspace;
@@ -1270,6 +1297,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		}
 
 		workspace = wstate->workspace;
+		restored_ws_mask = wstate->ws_mask;
 	} else {
 		wstate = NULL;
 	}
@@ -1338,12 +1366,14 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (workspace > scr->workspace_count - 1)
 			workspace = workspace % scr->workspace_count;
 	} else {
-		int w;
+		int hint_ws;
+		uint64_t hint_rest;
 
-		w = wDefaultGetStartWorkspace(scr, wwin->wm_instance, wwin->wm_class);
-
-		if (w >= 0 && w < scr->workspace_count && !(IS_OMNIPRESENT(wwin))) {
-			workspace = w;
+		if (!IS_OMNIPRESENT(wwin) &&
+		    resolve_start_workspaces_hint(scr, wwin->wm_instance,
+						  wwin->wm_class, &hint_ws, &hint_rest)) {
+			workspace = hint_ws;
+			restored_ws_mask = hint_rest;
 		} else {
 			if (w_global.config->open_transients_with_parent && transientOwner)
 				workspace = WWIN_PRIMARY_WS(transientOwner);
@@ -1557,7 +1587,13 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = workspace;
-	wwin->frame->ws_mask = WS_BIT(workspace);
+	/* Restored membership mask (from _WINDOWMAKER_STATE across a restart
+	 * or the session Workspaces list) is applied on top of the primary
+	 * bit and clamped to the current workspace count so a stale bit for
+	 * a since-deleted workspace does not linger. */
+	wwin->frame->ws_mask = WS_BIT(workspace) | restored_ws_mask;
+	if (scr->workspace_count < MAX_WORKSPACES)
+		wwin->frame->ws_mask &= WS_BIT(scr->workspace_count) - 1;
 	wwin->frame->on_click_button[WTB_MINIATURIZE] = windowIconifyClick;
 
 #ifdef XKB_BUTTON_HINT
@@ -2640,6 +2676,118 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	wLayoutApply(scr, workspace);
 }
 
+/* Set the full workspace membership mask and primary. wWindowChangeWorkspace()
+ * remains the "move to N" verb (mask becomes exactly WS_BIT(N)) so its callers
+ * and the opaque-drag changing_workspace path stay untouched, this entry point
+ * is for the multi-membership toggles where the mask can gain or lose a bit
+ * while the window stays visible. Omnipresent windows ignore the mask. */
+void wWindowSetWorkspaceMask(WWindow *wwin, uint64_t mask, int primary)
+{
+	WScreen *scr = wwin->screen_ptr;
+	WApplication *wapp;
+	uint64_t old_mask, changed;
+	int old_primary, i, fallback;
+	Bool was_visible, now_visible;
+
+	if (!wwin->frame || IS_OMNIPRESENT(wwin))
+		return;
+
+	if (scr->workspace_count < MAX_WORKSPACES)
+		mask &= WS_BIT(scr->workspace_count) - 1;
+	if (mask == 0)
+		return;
+
+	if (primary < 0 || primary >= scr->workspace_count
+	    || !(mask & WS_BIT(primary))) {
+		fallback = scr->current_workspace;
+		if (w_global.config->per_head_workspaces)
+			fallback = scr->head_workspace[wWindowEffectiveHead(wwin)];
+		if (mask & WS_BIT(fallback))
+			primary = fallback;
+		else
+			primary = __builtin_ctzll(mask);
+	}
+
+	old_mask = wwin->frame->ws_mask;
+	old_primary = wwin->frame->workspace;
+	if (mask == old_mask && primary == old_primary)
+		return;
+
+	was_visible = wWindowIsVisibleOnAnyHead(wwin);
+	wwin->frame->workspace = primary;
+	wwin->frame->ws_mask = mask;
+	now_visible = wWindowIsVisibleOnAnyHead(wwin);
+
+	if (was_visible && !now_visible) {
+		wapp = wApplicationOf(wwin->main_window);
+		if (wapp)
+			wapp->last_workspace = primary;
+		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
+			if (wwin->icon) {
+				XUnmapWindow(dpy, wwin->icon->core->window);
+				wwin->icon->mapped = 0;
+			}
+		} else if (wwin->flags.mapped || wwin->flags.shaded) {
+			wSetFocusTo(scr, NULL);
+			wWindowUnmap(wwin);
+		}
+	} else if (!was_visible && now_visible) {
+		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
+			if (wwin->icon) {
+				XMapWindow(dpy, wwin->icon->core->window);
+				wwin->icon->mapped = 1;
+			}
+		} else if (!wwin->flags.mapped
+			   && !(wwin->flags.miniaturized || wwin->flags.hidden)
+			   && !wGroupIsInactiveMember(wwin)) {
+			wWindowMap(wwin);
+		}
+	}
+
+	if (primary != old_primary)
+		WMPostNotificationName(WMNChangedWorkspace, wwin,
+				       (void *)(uintptr_t)old_primary);
+	if ((old_mask == WS_ALL) != (mask == WS_ALL))
+		WMPostNotificationName(WMNChangedState, wwin, "omnipresent");
+
+	if (wwin->tab_group)
+		wGroupSyncWorkspace(wwin);
+
+	/* Reflow every workspace whose membership flipped so a tiling
+	 * layout on either side picks up or drops this window. */
+	changed = old_mask ^ mask;
+	for (i = 0; changed; i++) {
+		if (changed & WS_BIT(i))
+			wLayoutApply(scr, i);
+		changed &= ~WS_BIT(i);
+	}
+}
+
+void wWindowAddToWorkspace(WWindow *wwin, int workspace)
+{
+	if (!wwin->frame || workspace < 0
+	    || workspace >= wwin->screen_ptr->workspace_count)
+		return;
+	wWindowSetWorkspaceMask(wwin, wwin->frame->ws_mask | WS_BIT(workspace),
+				wwin->frame->workspace);
+}
+
+void wWindowRemoveFromWorkspace(WWindow *wwin, int workspace)
+{
+	uint64_t mask;
+
+	if (!wwin->frame || workspace < 0
+	    || workspace >= wwin->screen_ptr->workspace_count)
+		return;
+	mask = wwin->frame->ws_mask & ~WS_BIT(workspace);
+	if (mask == 0)
+		return;
+	/* primary is passed through unchanged, wWindowSetWorkspaceMask()
+	 * picks current-if-member else lowest bit when it was the bit
+	 * just cleared */
+	wWindowSetWorkspaceMask(wwin, mask, wwin->frame->workspace);
+}
+
 void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount)
 {
 	WScreen *scr = wwin->screen_ptr;
@@ -3086,7 +3234,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 void wWindowSaveState(WWindow *wwin)
 {
-	uint32_t data[10];
+	uint32_t data[12];
 	int i;
 
 	memset(data, 0, sizeof(data));
@@ -3112,9 +3260,11 @@ void wWindowSaveState(WWindow *wwin)
 		    WMCountInArray(wwin->screen_ptr->shortcutWindows[i], wwin))
 			data[9] |= 1 << i;
 	}
+	data[10] = (uint32_t)(wwin->frame->ws_mask & 0xffffffffu);
+	data[11] = (uint32_t)(wwin->frame->ws_mask >> 32);
 
 	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wmaker.state,
-		       w_global.atom.wmaker.state, data, 10);
+		       w_global.atom.wmaker.state, data, 12);
 
 	if (wwin->tab_group != NULL) {
 		uint32_t tab[3];
@@ -3138,11 +3288,16 @@ void wWindowSaveState(WWindow *wwin)
 static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 			   WXCookie tab_ck, WSavedState **state)
 {
-	uint32_t data[10];
+	uint32_t *data;
 	uint32_t tab[3];
-	size_t len;
+	size_t len, count;
 
-	if (!WXRcvFormat32N(dpy, state_ck, data, 10)) {
+	/* Accept both the pre-mask 10-slot layout and the current 12-slot
+	 * one so a restart from an older binary still recovers primary
+	 * workspace, and the mask defaults to 0 (derived from primary). */
+	data = WXRcvFormat32List(dpy, state_ck, &count);
+	if (!data || count < 10) {
+		wfree(data);
 		WXDiscard(dpy, mark_ck);
 		WXDiscard(dpy, tab_ck);
 		return 0;
@@ -3162,6 +3317,9 @@ static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 	(*state)->w = data[7];
 	(*state)->h = data[8];
 	(*state)->window_shortcuts = data[9];
+	if (count >= 12)
+		(*state)->ws_mask = (uint64_t)data[10] | ((uint64_t)data[11] << 32);
+	wfree(data);
 
 	(*state)->mark_key = WXRcvString(dpy, mark_ck, &len);
 	if ((*state)->mark_key)

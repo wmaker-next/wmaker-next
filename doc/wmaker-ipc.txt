@@ -74,6 +74,9 @@ Command verbs (request type 0)
     exit
     kill-session
     workspace next|prev|last|N
+    window-workspace XID +N|-N|N
+            move (N), add (+N) or remove (-N) the window's workspace
+            membership; N is a 0-based workspace index
     set-layout LAYOUT [workspace N] [master_count N] [master_ratio F]
             switch workspace N (current by default) to LAYOUT, which is
             one of float, tile, tileh, grid, monocle (case-insensitive);

@@ -440,6 +440,7 @@ typedef struct WWindow {
  */
 typedef struct WSavedState {
     int workspace;
+    uint64_t ws_mask;		       /* 0 = derive WS_BIT(workspace) */
     int miniaturized;
     int maximized;
     int shaded;
@@ -567,6 +568,9 @@ void wWindowSaveState(WWindow *wwin);
 
 void wWindowChangeWorkspace(WWindow *wwin, int workspace);
 void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount);
+void wWindowSetWorkspaceMask(WWindow *wwin, uint64_t mask, int primary);
+void wWindowAddToWorkspace(WWindow *wwin, int workspace);
+void wWindowRemoveFromWorkspace(WWindow *wwin, int workspace);
 
 void wWindowSetKeyGrabs(WWindow *wwin);
 
