@@ -788,7 +788,12 @@ static void applySettings(WMWidget *button, void *client_data)
 	else
 		ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
 
-	wwin->flags.omnipresent = 0;
+	/* The Omnipresent attribute checkbox now drives IS_OMNIPRESENT via
+	 * WFLAGP, so drop any runtime WS_ALL mask so unchecking it here
+	 * actually returns the window to a single workspace. Multi-bit
+	 * memberships that are not WS_ALL are left intact. */
+	if (wwin->frame && wwin->frame->ws_mask == WS_ALL)
+		wwin->frame->ws_mask = WS_BIT(wwin->frame->workspace);
 
 	if (WFLAGP(wwin, skip_window_list) != old_skip_window_list) {
 		UpdateSwitchMenu(wwin->screen_ptr, wwin, WFLAGP(wwin, skip_window_list)?ACTION_REMOVE:ACTION_ADD);

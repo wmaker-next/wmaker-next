@@ -352,7 +352,6 @@ typedef struct WWindow {
 		 * TilingToggleKey and by starting an interactive move/resize */
 		unsigned int no_tiling:1;
 		long fullscreen_monitors[4];
-		unsigned int omnipresent:1;
 		unsigned int semi_focused:1;
 		/* window type flags */
 		unsigned int urgent:1;		/* if wm_hints says this is urgent */
@@ -420,20 +419,20 @@ typedef struct WWindow {
 #define HAS_BORDER(w)		(!(WFLAGP((w), no_border) || (w)->flags.fullscreen))
 #define IS_MOVABLE(w)		(!(WFLAGP((w), no_movable) || (w)->flags.fullscreen))
 #define IS_RESIZABLE(w)		(!(WFLAGP((w), no_resizable) || (w)->flags.fullscreen))
-#define IS_OMNIPRESENT(w)	((w)->flags.omnipresent | WFLAGP(w, omnipresent))
 #define WINDOW_LEVEL(w)		((w)->frame->core->stacking->window_level)
 
 /* Workspace membership predicates. WWIN_PRIMARY_WS names the single
  * workspace used for labels, EWMH _NET_WM_DESKTOP and tiling ownership.
- * WWIN_ON_WORKSPACE tests the ws_mask bitset and folds the omnipresent
- * flag so callers never open-code either. The mask is currently kept as
- * exactly WS_BIT(primary), so the predicate is equivalent to the old
- * primary == n compare until multi-membership lands. */
+ * WWIN_ON_WORKSPACE tests the ws_mask bitset. Omnipresent has two
+ * sources: the WWindowAttributes hint (window type or a saved
+ * per-class attribute) via WFLAGP, which forces it regardless of the
+ * mask, and the runtime toggle which is ws_mask == WS_ALL. */
 #define WS_BIT(n)		((uint64_t)1 << (n))
 #define WS_ALL			(~(uint64_t)0)
 #define WWIN_WS_MASK(w)		((w)->frame->ws_mask)
 #define WWIN_PRIMARY_WS(w)	((w)->frame->workspace)
-#define WWIN_ON_WORKSPACE(w, n)	(IS_OMNIPRESENT(w) || (WWIN_WS_MASK(w) & WS_BIT(n)))
+#define IS_OMNIPRESENT(w)	(WFLAGP(w, omnipresent) || ((w)->frame && WWIN_WS_MASK(w) == WS_ALL))
+#define WWIN_ON_WORKSPACE(w, n)	(WFLAGP(w, omnipresent) || (WWIN_WS_MASK(w) & WS_BIT(n)))
 
 /*
  * Changes to this must update wWindowSaveState/getSavedState

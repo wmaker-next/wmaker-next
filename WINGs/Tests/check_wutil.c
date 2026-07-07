@@ -437,7 +437,7 @@ static void check_userpaths(int xdg, const char *cfg, const char *dom,
 static void test_userpaths(void)
 {
 	char home[] = "/tmp/check_wutil_home_XXXXXX";
-	char cfg[160], dom[160], data[160], cache[160], sub[160];
+	char cfg[256], dom[512], data[512], cache[512], sub[512];
 	char *saved_home;
 
 	if (!mkdtemp(home))

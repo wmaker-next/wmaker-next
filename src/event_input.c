@@ -488,7 +488,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
 			CloseWindowMenu(scr);
 
-			wWindowSetOmnipresent(wwin, !wwin->flags.omnipresent);
+			wWindowSetOmnipresent(wwin, !IS_OMNIPRESENT(wwin));
 		}
 		break;
 	case WKBD_RAISE:

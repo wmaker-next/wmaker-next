@@ -171,7 +171,7 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 		break;
 
 	case WO_OMNIPRESENT:
-		wWindowSetOmnipresent(wwin, !wwin->flags.omnipresent);
+		wWindowSetOmnipresent(wwin, !IS_OMNIPRESENT(wwin));
 		break;
 	}
 }

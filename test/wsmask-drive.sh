@@ -55,6 +55,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'EOF'
   DisableDock = YES;
   DisableClip = YES;
   DisableDrawers = YES;
+    OmnipresentKey = "Control+Shift+O";
 }
 EOF
 cat >"$WMHOME/Defaults/WMState" <<'EOF'
@@ -223,6 +224,30 @@ sleep 0.3
 [ "$(win_primary "$XIDHEX")" = "2" ] || fail "restart lost primary got $(win_primary "$XIDHEX")"
 [ "$(win_mask "$XIDHEX")" = "0,2" ]  || fail "restart lost mask got $(win_mask "$XIDHEX")"
 ok "restart preserved primary=2 mask=(0,2)"
+
+# --- runtime omnipresent survives restart ----------------------------------
+
+note "make window omnipresent through its shortcut"
+DISPLAY=$DPY xdotool windowactivate "$XID"
+DISPLAY=$DPY xdotool key --clearmodifiers ctrl+shift+o
+is_sticky() {
+    DISPLAY=$DPY xprop -id "$XID" _NET_WM_STATE 2>/dev/null \
+        | grep -q '_NET_WM_STATE_STICKY'
+}
+wait_for 20 is_sticky || fail "window did not become omnipresent"
+
+note "restart omnipresent window"
+msg -q restart || fail "restart rejected"
+sleep 0.5
+wait_for 120 ipc_ready || fail "wmaker did not come back after omnipresent restart"
+wait_for 20 is_sticky || fail "restart lost omnipresent state"
+ok "restart preserved omnipresent state"
+
+note "turn off omnipresent state"
+DISPLAY=$DPY xdotool windowactivate "$XID"
+DISPLAY=$DPY xdotool key --clearmodifiers ctrl+shift+o
+not_sticky() { ! is_sticky; }
+wait_for 20 not_sticky || fail "window did not leave omnipresent state"
 
 # --- plain N replaces the mask --------------------------------------------
 

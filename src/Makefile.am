@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS =
 BUILT_SOURCES = wconfig.h
 
 bin_PROGRAMS = wmaker
-SUBDIRS = Tests
+SUBDIRS = . Tests
 
 EXTRA_DIST =
 

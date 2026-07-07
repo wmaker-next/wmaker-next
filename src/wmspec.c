@@ -1417,8 +1417,7 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 		if (set == _NET_WM_STATE_TOGGLE)
 			set = !IS_OMNIPRESENT(wwin);
 
-		if (set != wwin->flags.omnipresent)
-			wWindowSetOmnipresent(wwin, set);
+		wWindowSetOmnipresent(wwin, set);
 
 	} else if (state == net_wm_state_shaded) {
 		if (set == _NET_WM_STATE_TOGGLE)

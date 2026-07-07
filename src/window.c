@@ -1526,11 +1526,6 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wNETWMPositionSplash(wwin, &x, &y, width, height);
 
-	if (wwin->flags.urgent) {
-		if (!IS_OMNIPRESENT(wwin))
-			wwin->flags.omnipresent ^= 1;
-	}
-
 	/* Create frame, borders and do reparenting */
 	foo = WFF_MINIATURIZE_BUTTON | WFF_CLOSE_BUTTON | WFF_MAXIMIZE_BUTTON | WFF_ICON_SLOT;
 #ifdef XKB_BUTTON_HINT
@@ -1592,8 +1587,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	 * bit and clamped to the current workspace count so a stale bit for
 	 * a since-deleted workspace does not linger. */
 	wwin->frame->ws_mask = WS_BIT(workspace) | restored_ws_mask;
-	if (scr->workspace_count < MAX_WORKSPACES)
+	if (wwin->frame->ws_mask != WS_ALL && scr->workspace_count < MAX_WORKSPACES)
 		wwin->frame->ws_mask &= WS_BIT(scr->workspace_count) - 1;
+	if (wwin->flags.urgent && !WFLAGP(wwin, omnipresent))
+		wwin->frame->ws_mask = WS_ALL;
 	wwin->frame->on_click_button[WTB_MINIATURIZE] = windowIconifyClick;
 
 #ifdef XKB_BUTTON_HINT
@@ -1898,7 +1895,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = wwin->screen_ptr->current_workspace;
-	wwin->frame->ws_mask = WS_BIT(wwin->frame->workspace);
+	wwin->frame->ws_mask = WS_ALL;
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -3682,10 +3679,19 @@ static void release_wwindowstate(WWindowState *wstate)
 
 void wWindowSetOmnipresent(WWindow *wwin, Bool flag)
 {
-	if (wwin->flags.omnipresent == flag)
+	uint64_t mask;
+
+	if (!wwin->frame)
+		return;
+	if (!flag && WFLAGP(wwin, omnipresent))
+		return;
+	mask = flag ? WS_ALL : WS_BIT(wwin->frame->workspace);
+	if (wwin->frame->ws_mask == mask)
 		return;
 
-	wwin->flags.omnipresent = flag;
+	wwin->frame->ws_mask = mask;
+	if (wwin->tab_group)
+		wGroupSyncWorkspace(wwin);
 	WMPostNotificationName(WMNChangedState, wwin, "omnipresent");
 }
 

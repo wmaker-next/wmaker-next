@@ -733,7 +733,6 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 				WApplication *wapp = wApplicationOf(tmp->main_window);
 
 				tmp->frame->workspace = workspace;
-				tmp->frame->ws_mask = WS_BIT(workspace);
 				if (wapp)
 					wapp->last_workspace = workspace;
 			}
@@ -994,7 +993,6 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 				if (IS_OMNIPRESENT(tmp)) {
 					WApplication *wapp = wApplicationOf(tmp->main_window);
 					tmp->frame->workspace = workspace;
-					tmp->frame->ws_mask = WS_BIT(workspace);
 					if (wapp)
 						wapp->last_workspace = workspace;
 					if (!foc2 && (tmp->flags.mapped || tmp->flags.shaded))

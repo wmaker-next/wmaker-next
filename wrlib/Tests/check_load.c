@@ -46,6 +46,7 @@ static RImage *load_noctx_sized(const char *path, unsigned w, unsigned h)
 {
 	return RLoadImageAtSize(NULL, path, 0, w, h);
 }
+#ifndef USE_XPM
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((no_sanitize("nonnull-attribute")))
 #endif
@@ -53,6 +54,7 @@ static RImage *xpmdata_noctx(char **data)
 {
 	return RGetImageFromXPMData(NULL, data);
 }
+#endif
 #pragma GCC diagnostic pop
 
 static char tmpdir[] = "/tmp/wrlib-check-XXXXXX";
