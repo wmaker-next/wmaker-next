@@ -593,6 +593,7 @@ void wGroupSyncWorkspace(WWindow *source)
 			continue;
 		old = WWIN_PRIMARY_WS(peer);
 		peer->frame->workspace = workspace;
+		peer->frame->ws_mask = WS_BIT(workspace);
 		peer->last_head = source->last_head;
 		WMPostNotificationName(WMNChangedWorkspace, peer,
 		                       (void *)(uintptr_t)old);

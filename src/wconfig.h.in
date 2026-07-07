@@ -341,7 +341,7 @@
 #define ICON_BORDER_WIDTH         2
 #define MAX_ICON_WIDTH	          60  /* size of the icon pixmap */
 #define MAX_ICON_HEIGHT           48
-#define MAX_WORKSPACES            100
+#define MAX_WORKSPACES            64
 #define MAX_MENU_TEXT_LENGTH      512
 #define MAX_RESTART_ARGS          16
 #define MAX_DEAD_PROCESSES        128

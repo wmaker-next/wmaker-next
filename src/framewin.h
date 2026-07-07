@@ -20,6 +20,8 @@
 #ifndef WMFRAMEWINDOW_H_
 #define WMFRAMEWINDOW_H_
 
+#include <stdint.h>
+
 #include "wcore.h"
 #include "pixmap.h"
 
@@ -58,7 +60,8 @@ typedef struct WFrameWindow {
     WCoreWindow *titlebar;	       /* the titlebar */
     WCoreWindow *buttons[WTB_ROLE_COUNT];
 
-    short workspace;		       /* workspace that the window occupies */
+    short workspace;		       /* primary workspace, always a member of ws_mask */
+    uint64_t ws_mask;		       /* bit N set = window is on workspace N */
 
     short top_width;
     short bottom_width;

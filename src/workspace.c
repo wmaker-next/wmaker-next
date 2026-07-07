@@ -51,6 +51,9 @@
 #include "osdview.h"
 #include "layout.h"
 
+_Static_assert(MAX_WORKSPACES <= 64,
+               "WFrameWindow.ws_mask is 64 bits wide");
+
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
 /* index of the first workspace menu entry */
@@ -700,6 +703,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 					WApplication *wapp = wApplicationOf(tmp->main_window);
 
 					tmp->frame->workspace = workspace;
+					tmp->frame->ws_mask = WS_BIT(workspace);
 
 					if (wapp) {
 						wapp->last_workspace = workspace;
@@ -944,6 +948,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 				if (IS_OMNIPRESENT(tmp)) {
 					WApplication *wapp = wApplicationOf(tmp->main_window);
 					tmp->frame->workspace = workspace;
+					tmp->frame->ws_mask = WS_BIT(workspace);
 					if (wapp)
 						wapp->last_workspace = workspace;
 					if (!foc2 && (tmp->flags.mapped || tmp->flags.shaded))

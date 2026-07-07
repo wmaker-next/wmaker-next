@@ -1557,6 +1557,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = workspace;
+	wwin->frame->ws_mask = WS_BIT(workspace);
 	wwin->frame->on_click_button[WTB_MINIATURIZE] = windowIconifyClick;
 
 #ifdef XKB_BUTTON_HINT
@@ -1861,6 +1862,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	wwin->frame->child = wwin;
 	wwin->frame->workspace = wwin->screen_ptr->current_workspace;
+	wwin->frame->ws_mask = WS_BIT(wwin->frame->workspace);
 
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
@@ -2528,6 +2530,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 
 		if (!IS_OMNIPRESENT(wwin)) {
 			wwin->frame->workspace = workspace;
+			wwin->frame->ws_mask = WS_BIT(workspace);
 
 			/* The absolute, directional, last-workspace and layer
 			 * move-window keybinds, the window-menu Move To
@@ -2623,6 +2626,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	if (!IS_OMNIPRESENT(wwin)) {
 		int oldWorkspace = WWIN_PRIMARY_WS(wwin);
 		wwin->frame->workspace = workspace;
+		wwin->frame->ws_mask = WS_BIT(workspace);
 		WMPostNotificationName(WMNChangedWorkspace, wwin, (void *)(uintptr_t) oldWorkspace);
 	}
 

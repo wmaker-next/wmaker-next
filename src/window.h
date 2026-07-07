@@ -423,16 +423,17 @@ typedef struct WWindow {
 #define IS_OMNIPRESENT(w)	((w)->flags.omnipresent | WFLAGP(w, omnipresent))
 #define WINDOW_LEVEL(w)		((w)->frame->core->stacking->window_level)
 
-/* Workspace membership predicates. Every reader of a window's workspace
- * goes through these so the backing storage can later become a bitmask
- * without another tree-wide sweep. WWIN_PRIMARY_WS names the single
- * workspace used for labels, EWMH _NET_WM_DESKTOP and tiling ownership,
- * WWIN_ON_WORKSPACE is the visibility test and already folds the
- * omnipresent case. */
+/* Workspace membership predicates. WWIN_PRIMARY_WS names the single
+ * workspace used for labels, EWMH _NET_WM_DESKTOP and tiling ownership.
+ * WWIN_ON_WORKSPACE tests the ws_mask bitset and folds the omnipresent
+ * flag so callers never open-code either. The mask is currently kept as
+ * exactly WS_BIT(primary), so the predicate is equivalent to the old
+ * primary == n compare until multi-membership lands. */
 #define WS_BIT(n)		((uint64_t)1 << (n))
 #define WS_ALL			(~(uint64_t)0)
+#define WWIN_WS_MASK(w)		((w)->frame->ws_mask)
 #define WWIN_PRIMARY_WS(w)	((w)->frame->workspace)
-#define WWIN_ON_WORKSPACE(w, n)	(IS_OMNIPRESENT(w) || (w)->frame->workspace == (n))
+#define WWIN_ON_WORKSPACE(w, n)	(IS_OMNIPRESENT(w) || (WWIN_WS_MASK(w) & WS_BIT(n)))
 
 /*
  * Changes to this must update wWindowSaveState/getSavedState
