@@ -53,6 +53,7 @@
 #include "icon.h"
 #include "properties.h"
 #include "actions.h"
+#include "layout.h"
 #include "client.h"
 #include "colormap.h"
 #include "keybind.h"
@@ -1796,6 +1797,9 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	if (wwin)
 		wWindowTrySwallow(wwin);
 
+	if (wwin && wwin->frame)
+		wLayoutApply(scr, wwin->frame->workspace);
+
 	return wwin;
 }
 
@@ -1938,6 +1942,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	WWindow *newFocusedWindow = NULL;
 	int wasFocused;
 	WScreen *scr = wwin->screen_ptr;
+	int wwin_workspace = wwin->frame->workspace;
 
 	/* if this window was swallowed by a terminal, restore the terminal */
 	wWindowUnswallow(wwin);
@@ -2121,6 +2126,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	wNETCleanupFrameExtents(wwin);
 
 	wWindowDestroy(wwin);
+	wLayoutApply(scr, wwin_workspace);
 	XFlush(dpy);
 }
 
@@ -2510,6 +2516,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	WScreen *scr = wwin->screen_ptr;
 	WApplication *wapp;
 	int unmap = 0;
+	int src_workspace = wwin->frame->workspace;
 
 	if (workspace >= scr->workspace_count || workspace < 0 || workspace == wwin->frame->workspace)
 		return;
@@ -2576,6 +2583,8 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 					       (void *)(uintptr_t) oldWorkspace);
 		if (wwin->tab_group)
 			wGroupSyncWorkspace(wwin);
+		wLayoutApply(scr, src_workspace);
+		wLayoutApply(scr, workspace);
 		return;
 	}
 
@@ -2622,6 +2631,9 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 
 	if (wwin->tab_group)
 		wGroupSyncWorkspace(wwin);
+
+	wLayoutApply(scr, src_workspace);
+	wLayoutApply(scr, workspace);
 }
 
 void wWindowChangeWorkspaceRelative(WWindow *wwin, int amount)

@@ -350,6 +350,9 @@ typedef struct _WScreen {
     WMHandlerID workspace_name_timer;
     int workspace_name_fade_step;
 
+    /* one-shot hide timer for the layout-name flash in keychain_osd */
+    WMHandlerID layout_osd_timer;
+
     /* mini screenshot data */
     Window mini_screenshot;
     time_t mini_screenshot_timeout;

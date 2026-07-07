@@ -55,6 +55,7 @@
 #include "dock.h"
 #include "resources.h"
 #include "workspace.h"
+#include "layout.h"
 #include "session.h"
 #include "balloon.h"
 #include "geomview.h"
@@ -879,6 +880,8 @@ void wScreenUpdateUsableArea(WScreen *scr)
 	/* publish the recomputed usable area as _NET_WORKAREA so pagers
 	 * and toolkits see strut changes, not only workspace-count ones */
 	wNETWMUpdateWorkarea(scr);
+
+	wLayoutApply(scr, scr->current_workspace);
 }
 
 void wScreenRestoreState(WScreen * scr)

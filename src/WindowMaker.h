@@ -511,6 +511,7 @@ extern const char WMNWorkspaceCreated[];
 extern const char WMNWorkspaceDestroyed[];
 extern const char WMNWorkspaceChanged[];
 extern const char WMNWorkspaceNameChanged[];
+extern const char WMNWorkspaceLayoutChanged[];
 
 extern const char WMNResetStacking[];
 

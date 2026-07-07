@@ -119,6 +119,7 @@ const char WMNWorkspaceCreated[] = "WMNWorkspaceCreated";
 const char WMNWorkspaceDestroyed[] = "WMNWorkspaceDestroyed";
 const char WMNWorkspaceChanged[] = "WMNWorkspaceChanged";
 const char WMNWorkspaceNameChanged[] = "WMNWorkspaceNameChanged";
+const char WMNWorkspaceLayoutChanged[] = "WMNWorkspaceLayoutChanged";
 
 const char WMNResetStacking[] = "WMNResetStacking";
 

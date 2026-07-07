@@ -834,6 +834,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	wScreenUpdateUsableArea(scr);
 	wNETWMUpdateDesktop(scr);
 	showWorkspaceName(scr, workspace);
+	wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 
@@ -1043,6 +1044,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 	wNETWMUpdateDesktop(scr);
 	wNETWMUpdateCurrentDesktop(scr);
 	showWorkspaceName(scr, workspace);
+	wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 }

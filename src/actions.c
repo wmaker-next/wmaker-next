@@ -44,6 +44,7 @@
 #include "appmenu.h"
 #include "winspector.h"
 #include "workspace.h"
+#include "layout.h"
 #include "xinerama.h"
 #include "usermenu.h"
 #include "placement.h"
@@ -62,7 +63,6 @@
 
 static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, int *new_y,
 				  unsigned int *new_width, unsigned int *new_height);
-static void save_old_geometry(WWindow *wwin, int directions);
 
 /******* Local Variables *******/
 #ifdef USE_ANIMATIONS
@@ -430,7 +430,7 @@ void wUnshadeWindow(WWindow *wwin)
 }
 
 /* Set the old coordinates using the current values */
-static void save_old_geometry(WWindow *wwin, int directions)
+void save_old_geometry(WWindow *wwin, int directions)
 {
 	/* never been saved? */
 	if (!wwin->old_geometry.width)
@@ -1707,6 +1707,8 @@ void wIconifyWindow(WWindow *wwin)
 
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, True);
+
+	wLayoutApply(wwin->screen_ptr, wwin->frame->workspace);
 }
 
 void wDeiconifyWindow(WWindow *wwin)
@@ -1829,6 +1831,8 @@ void wDeiconifyWindow(WWindow *wwin)
 		wUnshadeWindow(wwin);
 
 	w_global.ignore_workspace_change = False;
+
+	wLayoutApply(wwin->screen_ptr, wwin->frame->workspace);
 }
 
 /* Re-evaluate every miniaturized window against the current

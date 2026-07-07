@@ -184,5 +184,195 @@ int wLayoutCompute(WLayout layout, WArea usable,
 
 #ifndef WLAYOUT_COMPUTE_ONLY
 
-#endif /* WLAYOUT_COMPUTE_ONLY */
+#include "screen.h"
+#include "window.h"
+#include "framewin.h"
+#include "actions.h"
+#include "workspace.h"
+#include "stacking.h"
+#include "xinerama.h"
 
+static Bool window_is_tileable(WWindow *wwin, int workspace)
+{
+	if (!wwin->frame || wwin->frame->workspace != workspace)
+		return False;
+	if (IS_OMNIPRESENT(wwin))
+		return False;
+	if (wwin->flags.miniaturized || wwin->flags.hidden
+	    || wwin->flags.shaded || wwin->flags.fullscreen)
+		return False;
+	if (WFLAGP(wwin, no_resizable) || WFLAGP(wwin, no_movable))
+		return False;
+	if (WFLAGP(wwin, no_tiling) || wwin->flags.no_tiling)
+		return False;
+	if (wwin->transient_for != None
+	    && wwin->transient_for != wwin->screen_ptr->root_win)
+		return False;
+	if (WFLAGP(wwin, floating) || WFLAGP(wwin, sunken))
+		return False;
+	return True;
+}
+
+/* Fill wins[] (caller-sized to at least the workspace population) with the
+ * tileable windows on (workspace, head) in focus-MRU order and return the
+ * count. head < 0 collects across every head. */
+static int collect_tileable(WScreen *scr, int workspace, int head,
+			    WWindow **wins, int max)
+{
+	WWindow *w;
+	int n = 0;
+
+	for (w = scr->focused_window; w && n < max; w = w->prev) {
+		if (!window_is_tileable(w, workspace))
+			continue;
+		if (head >= 0 && wGetHeadForWindow(w) != head)
+			continue;
+		wins[n++] = w;
+	}
+	return n;
+}
+
+static void configure_into_cell(WWindow *wwin, WLayoutRect r)
+{
+	unsigned int cw, ch;
+	int bw, vh;
+
+	bw = HAS_BORDER(wwin) ? 2 * wwin->screen_ptr->frame_border_width : 0;
+	cw = (r.w > bw) ? r.w - bw : 1;
+	vh = r.h - wwin->frame->top_width - wwin->frame->bottom_width - bw;
+	ch = (vh > 0) ? vh : 1;
+
+	wWindowConstrainSize(wwin, &cw, &ch);
+
+	if (!wwin->flags.tiled) {
+		save_old_geometry(wwin, SAVE_GEOMETRY_ALL);
+		wwin->flags.tiled = 1;
+	}
+	if (wwin->flags.maximized) {
+		wwin->flags.maximized = 0;
+		wwin->flags.old_maximized = 0;
+		wWindowUpdateButtonImages(wwin);
+	}
+	wWindowConfigure(wwin, r.x, r.y, (int)cw, (int)ch);
+	wWindowSynthConfigureNotify(wwin);
+}
+
+static void restore_tiled_window(WWindow *wwin)
+{
+	int x, y;
+	unsigned int w, h;
+
+	if (!wwin->flags.tiled)
+		return;
+	wwin->flags.tiled = 0;
+	x = wwin->old_geometry.x;
+	y = wwin->old_geometry.y;
+	w = wwin->old_geometry.width ? wwin->old_geometry.width : wwin->client.width;
+	h = wwin->old_geometry.height ? wwin->old_geometry.height : wwin->client.height;
+	wWindowConstrainSize(wwin, &w, &h);
+	wWindowConfigure(wwin, x, y, (int)w, (int)h);
+	wWindowSynthConfigureNotify(wwin);
+}
+
+#define WLAYOUT_MAX_TILEABLE 128
+
+void wLayoutApply(WScreen *scr, int workspace)
+{
+	WWorkspace *ws;
+	WWindow *wins[WLAYOUT_MAX_TILEABLE];
+	WLayoutRect out[WLAYOUT_MAX_TILEABLE];
+	WArea usable;
+	int head, n, i;
+
+	if (!scr || workspace < 0 || workspace >= scr->workspace_count)
+		return;
+	ws = scr->workspaces[workspace];
+	if (ws->layout == WLAYOUT_FLOAT)
+		return;
+
+	for (head = 0; head < wXineramaHeads(scr); head++) {
+		n = collect_tileable(scr, workspace, head, wins, WLAYOUT_MAX_TILEABLE);
+		if (n == 0)
+			continue;
+		usable = wGetUsableAreaForHead(scr, head, NULL, True);
+		if (!wLayoutCompute(ws->layout, usable, ws->master_count,
+				    ws->master_ratio, n, out))
+			continue;
+		for (i = 0; i < n; i++)
+			configure_into_cell(wins[i], out[i]);
+		if (ws->layout == WLAYOUT_MONOCLE)
+			wRaiseFrame(wins[0]->frame->core);
+	}
+}
+
+void wLayoutRestore(WScreen *scr, int workspace)
+{
+	WWindow *w;
+
+	if (!scr)
+		return;
+	for (w = scr->focused_window; w; w = w->prev) {
+		if (w->frame && w->frame->workspace == workspace && w->flags.tiled)
+			restore_tiled_window(w);
+	}
+}
+
+void wLayoutSetWorkspace(WScreen *scr, int workspace, WLayout layout)
+{
+	WWorkspace *ws;
+
+	if (!scr || workspace < 0 || workspace >= scr->workspace_count)
+		return;
+	if (layout < 0 || layout >= WLAYOUT_COUNT)
+		return;
+	ws = scr->workspaces[workspace];
+	if (ws->layout == layout)
+		return;
+	ws->layout = layout;
+	if (layout == WLAYOUT_FLOAT)
+		wLayoutRestore(scr, workspace);
+	else
+		wLayoutApply(scr, workspace);
+	WMPostNotificationName(WMNWorkspaceLayoutChanged, scr,
+			       (void *)(uintptr_t)workspace);
+}
+
+void wLayoutSetWindowTiled(WWindow *wwin, Bool tiled)
+{
+	WScreen *scr;
+
+	if (!wwin || !wwin->frame)
+		return;
+	scr = wwin->screen_ptr;
+	if (tiled) {
+		wwin->flags.no_tiling = 0;
+	} else {
+		wwin->flags.no_tiling = 1;
+		if (wwin->flags.tiled)
+			restore_tiled_window(wwin);
+	}
+	wLayoutApply(scr, wwin->frame->workspace);
+}
+
+void wLayoutSwapMaster(WScreen *scr, int workspace, WWindow *wwin)
+{
+	WWindow *wins[WLAYOUT_MAX_TILEABLE];
+	int head, n;
+
+	if (!scr || !wwin || !wwin->frame)
+		return;
+	if (workspace < 0 || workspace >= scr->workspace_count)
+		return;
+	if (scr->workspaces[workspace]->layout == WLAYOUT_FLOAT)
+		return;
+	/* the tileable list is built in focus-MRU order so the focused
+	 * window is already the head, a re-apply is what promotes it into
+	 * the master cell and demotes the previous master into the stack */
+	head = wGetHeadForWindow(wwin);
+	n = collect_tileable(scr, workspace, head, wins, WLAYOUT_MAX_TILEABLE);
+	if (n < 2)
+		return;
+	wLayoutApply(scr, workspace);
+}
+
+#endif /* WLAYOUT_COMPUTE_ONLY */
