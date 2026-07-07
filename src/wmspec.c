@@ -1200,7 +1200,7 @@ static void updateWorkspaceHint(WWindow *wwin, Bool fake, Bool del)
 	if (del) {
 		WXDeleteProperty(dpy, wwin->client_win, net_wm_desktop);
 	} else {
-		uint32_t l = ((fake || IS_OMNIPRESENT(wwin)) ? 0xffffffffu : (uint32_t)wwin->frame->workspace);
+		uint32_t l = ((fake || IS_OMNIPRESENT(wwin)) ? 0xffffffffu : (uint32_t)WWIN_PRIMARY_WS(wwin));
 		WXSetCardinal(dpy, wwin->client_win, net_wm_desktop, l);
 	}
 }
@@ -2140,7 +2140,7 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		if (!wwin->frame)
 			return True;
 
-		same_workspace = wwin->frame->workspace == scr->current_workspace;
+		same_workspace = WWIN_PRIMARY_WS(wwin) == scr->current_workspace;
 
 		if (w_global.config->per_head_workspaces) {
 			/* In per-head mode the target may be visible on a

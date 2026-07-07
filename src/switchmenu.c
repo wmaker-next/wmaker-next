@@ -209,7 +209,7 @@ static int menuIndexForWindow(WMenu * menu, WWindow * wwin, int old_pos)
 			move_down = 1;
 
 		if (IS_OMNIPRESENT(tw) || (tw != wwin &&
-					   tw->frame->workspace >= wwin->frame->workspace))
+					   WWIN_PRIMARY_WS(tw) >= WWIN_PRIMARY_WS(wwin)))
 			return idx - move_down;
 	}
 
@@ -228,10 +228,10 @@ static void fillRtext(char *buf, size_t bufsz, WWindow *wwin, WScreen *scr)
 	} else {
 		if (mlbl)
 			snprintf(buf, bufsz, "[%s] [%s]", mlbl,
-				 scr->workspaces[wwin->frame->workspace]->name);
+				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
 		else
 			snprintf(buf, bufsz, "[%s]",
-				 scr->workspaces[wwin->frame->workspace]->name);
+				 scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
 	}
 	wfree(mlbl);
 }
@@ -439,7 +439,7 @@ static void UpdateSwitchMenuWorkspace(WScreen *scr, int workspace)
 	for (i = 0; i < menu->entry_no; i++) {
 		wwin = (WWindow *) menu->entries[i]->clientdata;
 
-		if (wwin->frame->workspace == workspace && !IS_OMNIPRESENT(wwin)) {
+		if (WWIN_PRIMARY_WS(wwin) == workspace && !IS_OMNIPRESENT(wwin)) {
 			fillRtext(menu->entries[i]->rtext, MAX_RTEXT_LENGTH, wwin, scr);
 			menu->flags.realized = 0;
 		}

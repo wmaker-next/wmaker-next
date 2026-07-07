@@ -929,7 +929,7 @@ static void handle_get_windows(struct WIPCClient *c)
 		pl_dict_put(d, "class", pl_string(wwin->wm_class));
 		pl_dict_put(d, "instance", pl_string(wwin->wm_instance));
 		pl_dict_put(d, "title", pl_string(wwin->frame ? wwin->frame->title : NULL));
-		pl_dict_put(d, "workspace", pl_int(wwin->frame ? wwin->frame->workspace : 0));
+		pl_dict_put(d, "workspace", pl_int(wwin->frame ? WWIN_PRIMARY_WS(wwin) : 0));
 		WMAddToPLArray(arr, d);
 		WMReleasePropList(d);
 	}

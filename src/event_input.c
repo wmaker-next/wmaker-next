@@ -888,7 +888,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			wwin = scr->focused_window;
 
 			if (wwin && wwin->flags.mapped
-			    && wwin->frame->workspace == wwin->screen_ptr->current_workspace
+			    && WWIN_PRIMARY_WS(wwin) == wwin->screen_ptr->current_workspace
 			    && !wwin->flags.miniaturized && !wwin->flags.hidden) {
 				xkbgroup = wXkbGetGroup();
 
@@ -1010,7 +1010,7 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 			if (tw == NULL) {
 				wwarning("window mark: no window labelled '%s'", label);
 			} else if (capture_mode == MARK_CAPTURE_BRING) {
-				if (tw->frame->workspace != scr->current_workspace)
+				if (WWIN_PRIMARY_WS(tw) != scr->current_workspace)
 					wWindowChangeWorkspace(tw, scr->current_workspace);
 				wMakeWindowVisible(tw);
 			} else if (capture_mode == MARK_CAPTURE_JUMP) {
@@ -1029,13 +1029,13 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 				fy   = focused->frame_y;
 				fw   = focused->client.width;
 				fh   = focused->client.height;
-				f_ws = focused->frame->workspace;
+				f_ws = WWIN_PRIMARY_WS(focused);
 
 				tx   = tw->frame_x;
 				ty   = tw->frame_y;
 				tw_w = tw->client.width;
 				tw_h = tw->client.height;
-				t_ws = tw->frame->workspace;
+				t_ws = WWIN_PRIMARY_WS(tw);
 
 				/* Swap workspaces first so configure lands in the right one */
 				if (f_ws != t_ws) {

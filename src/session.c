@@ -199,7 +199,7 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 
 		name = WMCreatePLString(buffer);
 		cmd = WMCreatePLString(command);
-		workspace = WMCreatePLString(scr->workspaces[wwin->frame->workspace]->name);
+		workspace = WMCreatePLString(scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
 
 		shaded = wwin->flags.shaded ? sYes : sNo;
 		miniaturized = wwin->flags.miniaturized ? sYes : sNo;

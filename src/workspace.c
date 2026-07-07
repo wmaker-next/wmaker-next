@@ -159,11 +159,11 @@ Bool wWindowIsVisibleOnAnyHead(WWindow *wwin)
 
 	scr = wwin->screen_ptr;
 	if (!w_global.config->per_head_workspaces)
-		return wwin->frame->workspace == scr->current_workspace;
+		return WWIN_ON_WORKSPACE(wwin, scr->current_workspace);
 
 	head = wWindowEffectiveHead(wwin);
 	if (head >= 0 && head < wHeadCount(scr)
-	    && scr->head_workspace[head] == wwin->frame->workspace)
+	    && WWIN_ON_WORKSPACE(wwin, scr->head_workspace[head]))
 		return True;
 	return False;
 }
@@ -281,7 +281,7 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	/* verify if workspace is in use by some window */
 	tmp = scr->focused_window;
 	while (tmp) {
-		if (!IS_OMNIPRESENT(tmp) && tmp->frame->workspace == workspace) {
+		if (!IS_OMNIPRESENT(tmp) && WWIN_PRIMARY_WS(tmp) == workspace) {
 			char buf[256];
 			snprintf(buf, sizeof(buf), _("Workspace \"%s\" in use; cannot delete"),
 				 scr->workspaces[workspace]->name);
@@ -679,7 +679,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		 * but will create annoyance for every other application
 		 */
 		while (tmp) {
-			if (tmp->frame->workspace != workspace && !tmp->flags.selected) {
+			if (WWIN_PRIMARY_WS(tmp) != workspace && !tmp->flags.selected) {
 				/* defer unmap of windows (and per-workspace miniwindow
 				 * icons) not on this workspace until after the
 				 * destination workspace's windows have been mapped, so

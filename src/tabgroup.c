@@ -122,8 +122,7 @@ WWindow *wGroupFindAttachTarget(WScreen *scr, WWindow *payload)
 			continue;
 		if (cand->screen_ptr != scr)
 			continue;
-		if (cand->frame && cand->frame->workspace != scr->current_workspace
-		    && !IS_OMNIPRESENT(cand))
+		if (cand->frame && !WWIN_ON_WORKSPACE(cand, scr->current_workspace))
 			continue;
 		if (!wGroupIsTabable(cand))
 			continue;
@@ -583,16 +582,16 @@ void wGroupSyncWorkspace(WWindow *source)
 	if (!grp || syncing_peers || !source->frame)
 		return;
 
-	workspace = source->frame->workspace;
+	workspace = WWIN_PRIMARY_WS(source);
 
 	syncing_peers = 1;
 	for (i = 0; i < grp->member_count; i++) {
 		peer = grp->members[i];
 		if (peer == source || !peer->frame)
 			continue;
-		if (peer->frame->workspace == workspace)
+		if (WWIN_PRIMARY_WS(peer) == workspace)
 			continue;
-		old = peer->frame->workspace;
+		old = WWIN_PRIMARY_WS(peer);
 		peer->frame->workspace = workspace;
 		peer->last_head = source->last_head;
 		WMPostNotificationName(WMNChangedWorkspace, peer,
@@ -1001,8 +1000,7 @@ static Bool wGroupIsDropTarget(WScreen *scr, WWindow *target, WWindow *payload)
 		return False;
 	if (!wGroupIsTabable(target))
 		return False;
-	if (target->frame->workspace != scr->current_workspace
-	    && !IS_OMNIPRESENT(target))
+	if (!WWIN_ON_WORKSPACE(target, scr->current_workspace))
 		return False;
 	if (wGroupIsInactiveMember(target))
 		return False;
@@ -1492,8 +1490,7 @@ void wGroupAutoAttach(WWindow *wwin)
 				continue;
 			/* group must be on the same workspace or omnipresent */
 			if (m->frame &&
-			    m->frame->workspace != wwin->screen_ptr->current_workspace
-			    && !IS_OMNIPRESENT(m))
+			    !WWIN_ON_WORKSPACE(m, wwin->screen_ptr->current_workspace))
 				continue;
 			if (!wGroupIsTabable(m))
 				continue;

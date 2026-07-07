@@ -182,7 +182,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 	/* remember last workspace where the app has been */
 	if (napp)
-		napp->last_workspace = wwin->frame->workspace;
+		napp->last_workspace = WWIN_PRIMARY_WS(wwin);
 
 	if (wwin->flags.mapped && !WFLAGP(wwin, no_focusable)) {
 		/* install colormap if colormap mode is lock mode */
@@ -1671,7 +1671,7 @@ void wIconifyWindow(WWindow *wwin)
 			while (tmp) {
 				if (!WFLAGP(tmp, no_focusable)
 				    && !(tmp->flags.hidden || tmp->flags.miniaturized)
-				    && (wwin->frame->workspace == tmp->frame->workspace))
+				    && (WWIN_PRIMARY_WS(wwin) == WWIN_PRIMARY_WS(tmp)))
 					break;
 				tmp = tmp->prev;
 			}
@@ -1708,7 +1708,7 @@ void wIconifyWindow(WWindow *wwin)
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, True);
 
-	wLayoutApply(wwin->screen_ptr, wwin->frame->workspace);
+	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
 }
 
 void wDeiconifyWindow(WWindow *wwin)
@@ -1724,7 +1724,7 @@ void wDeiconifyWindow(WWindow *wwin)
 
 	/* we're hiding for show_desktop */
 	int netwm_hidden = wwin->flags.net_show_desktop &&
-	    wwin->frame->workspace != wwin->screen_ptr->current_workspace;
+	    WWIN_PRIMARY_WS(wwin) != wwin->screen_ptr->current_workspace;
 
 	if (!netwm_hidden)
 		wWindowChangeWorkspace(wwin, wwin->screen_ptr->current_workspace);
@@ -1832,7 +1832,7 @@ void wDeiconifyWindow(WWindow *wwin)
 
 	w_global.ignore_workspace_change = False;
 
-	wLayoutApply(wwin->screen_ptr, wwin->frame->workspace);
+	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
 }
 
 /* Re-evaluate every miniaturized window against the current
@@ -1946,7 +1946,7 @@ void wHideAll(WScreen *scr)
 
 	for (i = 0; i < wcount; i++) {
 		wwin = windows[i];
-		if (wwin->frame->workspace == scr->current_workspace
+		if (WWIN_PRIMARY_WS(wwin) == scr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
 		    && !wGroupIsInactiveMember(wwin)
@@ -1971,7 +1971,7 @@ void wHideOtherApplications(WWindow *awin)
 
 	while (wwin) {
 		if (wwin != awin
-		    && wwin->frame->workspace == awin->screen_ptr->current_workspace
+		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
 		    && wGetWindowOfInspectorForWindow(wwin) != awin && !WFLAGP(wwin, no_hide_others)) {
@@ -2135,7 +2135,7 @@ static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int
 	(void) animate;
 #endif
 	wwin->flags.skip_next_animation = 0;
-	if (wwin->screen_ptr->current_workspace == wwin->frame->workspace
+	if (wwin->screen_ptr->current_workspace == WWIN_PRIMARY_WS(wwin)
 	    && !wGroupIsInactiveMember(wwin)) {
 		XMapWindow(dpy, wwin->client_win);
 		XMapWindow(dpy, wwin->frame->core->window);
@@ -2181,7 +2181,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 
 			if (wlist->flags.miniaturized) {
 				if ((bringToCurrentWS || w_global.config->sticky_icons ||
-				     wlist->frame->workspace == scr->current_workspace) && wlist->icon) {
+				     WWIN_PRIMARY_WS(wlist) == scr->current_workspace) && wlist->icon) {
 					if (!wlist->icon->mapped) {
 						int x, y;
 
@@ -2198,14 +2198,14 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				if (bringToCurrentWS)
 					wWindowChangeWorkspace(wlist, scr->current_workspace);
 				wlist->flags.hidden = 0;
-				if (miniwindows && wlist->frame->workspace == scr->current_workspace)
+				if (miniwindows && WWIN_PRIMARY_WS(wlist) == scr->current_workspace)
 					wDeiconifyWindow(wlist);
 				WMPostNotificationName(WMNChangedState, wlist, "hide");
 			} else if (wlist->flags.shaded) {
 				if (bringToCurrentWS)
 					wWindowChangeWorkspace(wlist, scr->current_workspace);
 				wlist->flags.hidden = 0;
-				if (wlist->frame->workspace == scr->current_workspace
+				if (WWIN_PRIMARY_WS(wlist) == scr->current_workspace
 				    && !wGroupIsInactiveMember(wlist)) {
 					wRaiseFrame(wlist->frame->core);
 					XMapWindow(dpy, wlist->frame->core->window);
@@ -2218,7 +2218,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 					     wapp->app_icon->y_pos, wlist, animate, bringToCurrentWS);
 				animate = False;
 			} else {
-				if (bringToCurrentWS && wlist->frame->workspace != scr->current_workspace)
+				if (bringToCurrentWS && WWIN_PRIMARY_WS(wlist) != scr->current_workspace)
 					wWindowChangeWorkspace(wlist, scr->current_workspace);
 
 				wRaiseFrame(wlist->frame->core);
@@ -2253,7 +2253,7 @@ void wShowAllWindows(WScreen *scr)
 	old_foc = wwin = scr->focused_window;
 	while (wwin) {
 		if (!wwin->flags.internal_window &&
-		    (scr->current_workspace == wwin->frame->workspace || IS_OMNIPRESENT(wwin))) {
+		    WWIN_ON_WORKSPACE(wwin, scr->current_workspace)) {
 			if (wwin->flags.miniaturized) {
 				wwin->flags.skip_next_animation = 1;
 				wDeiconifyWindow(wwin);
@@ -2408,8 +2408,8 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 
 	while (wwin) {
 		if (wwin->icon && wwin->flags.miniaturized && !wwin->flags.hidden &&
-		    (wwin->frame->workspace == scr->current_workspace ||
-		     IS_OMNIPRESENT(wwin) || w_global.config->sticky_icons)) {
+		    (WWIN_ON_WORKSPACE(wwin, scr->current_workspace) ||
+		     w_global.config->sticky_icons)) {
 
 			head = wGetHeadForWindow(wwin);
 
@@ -2480,7 +2480,7 @@ void wMakeWindowVisible(WWindow *wwin)
 	if (!wWindowIsVisibleOnAnyHead(wwin)) {
 		if (w_global.config->per_head_workspaces) {
 			WScreen *scr = wwin->screen_ptr;
-			int ws = wwin->frame->workspace;
+			int ws = WWIN_PRIMARY_WS(wwin);
 			int head = wWindowEffectiveHead(wwin);
 
 			/* Prefer the window's own head, but never push a
@@ -2491,7 +2491,7 @@ void wMakeWindowVisible(WWindow *wwin)
 			if (wWorkspaceIsAllowedOnHead(scr, ws, head))
 				wWorkspaceForceChangeOnHead(scr, ws, head);
 		} else {
-			wWorkspaceChange(wwin->screen_ptr, wwin->frame->workspace);
+			wWorkspaceChange(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
 		}
 	}
 

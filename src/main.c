@@ -430,7 +430,7 @@ Bool RelaunchWindow(WWindow *wwin)
 	struct LaunchSetup ls;
 	ls.scr = wwin->screen_ptr;
 	ls.sn = wStartupLaunchBegin(wwin->screen_ptr, argv[0], argv[0], wwin->wm_class,
-				    wwin->frame ? wwin->frame->workspace
+				    wwin->frame ? WWIN_PRIMARY_WS(wwin)
 						: wwin->screen_ptr->current_workspace,
 				    NULL);
 

@@ -1526,7 +1526,7 @@ int wMouseMoveWindow(WWindow * wwin, XEvent * ev)
 		 * remaining tileable windows reflow into the freed cell */
 		wwin->flags.tiled = 0;
 		wwin->flags.no_tiling = 1;
-		wLayoutApply(scr, wwin->frame->workspace);
+		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
 	}
 
 	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
@@ -1967,7 +1967,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	if (wwin->flags.tiled) {
 		wwin->flags.tiled = 0;
 		wwin->flags.no_tiling = 1;
-		wLayoutApply(scr, wwin->frame->workspace);
+		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
 	}
 
 #ifdef USE_XSYNC

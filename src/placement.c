@@ -63,8 +63,7 @@ iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 
 		ok = 1;
 	} else if (wcore->descriptor.parent_type == WCLASS_MINIWINDOW &&
-		   (((WIcon *) parent)->owner->frame->workspace == workspace
-		    || IS_OMNIPRESENT(((WIcon *) parent)->owner)
+		   (WWIN_ON_WORKSPACE(((WIcon *) parent)->owner, workspace)
 		    || w_global.config->sticky_icons)
 		   && ((WIcon *) parent)->mapped) {
 
@@ -74,7 +73,7 @@ iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 		ok = 1;
 	} else if (wcore->descriptor.parent_type == WCLASS_WINDOW
 		   && ((WWindow *) parent)->flags.icon_moved
-		   && (((WWindow *) parent)->frame->workspace == workspace || IS_OMNIPRESENT((WWindow *) parent)
+		   && (WWIN_ON_WORKSPACE((WWindow *) parent, workspace)
 		       || w_global.config->sticky_icons)) {
 		*retX = ((WWindow *) parent)->icon_x;
 		*retY = ((WWindow *) parent)->icon_y;

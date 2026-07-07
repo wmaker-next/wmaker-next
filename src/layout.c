@@ -194,7 +194,7 @@ int wLayoutCompute(WLayout layout, WArea usable,
 
 static Bool window_is_tileable(WWindow *wwin, int workspace)
 {
-	if (!wwin->frame || wwin->frame->workspace != workspace)
+	if (!wwin->frame || WWIN_PRIMARY_WS(wwin) != workspace)
 		return False;
 	if (IS_OMNIPRESENT(wwin))
 		return False;
@@ -312,7 +312,7 @@ void wLayoutRestore(WScreen *scr, int workspace)
 	if (!scr)
 		return;
 	for (w = scr->focused_window; w; w = w->prev) {
-		if (w->frame && w->frame->workspace == workspace && w->flags.tiled)
+		if (w->frame && WWIN_PRIMARY_WS(w) == workspace && w->flags.tiled)
 			restore_tiled_window(w);
 	}
 }
@@ -351,7 +351,7 @@ void wLayoutSetWindowTiled(WWindow *wwin, Bool tiled)
 		if (wwin->flags.tiled)
 			restore_tiled_window(wwin);
 	}
-	wLayoutApply(scr, wwin->frame->workspace);
+	wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
 }
 
 void wLayoutSwapMaster(WScreen *scr, int workspace, WWindow *wwin)

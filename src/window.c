@@ -585,7 +585,7 @@ Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 	h2 = obscured->frame->core->height;
 
 	if (!IS_OMNIPRESENT(wwin) && !IS_OMNIPRESENT(obscured)
-	    && wwin->frame->workspace != obscured->frame->workspace)
+	    && WWIN_PRIMARY_WS(wwin) != WWIN_PRIMARY_WS(obscured))
 		return False;
 
 	if (wwin->frame_x + w1 < obscured->frame_x
@@ -1346,7 +1346,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			workspace = w;
 		} else {
 			if (w_global.config->open_transients_with_parent && transientOwner)
-				workspace = transientOwner->frame->workspace;
+				workspace = WWIN_PRIMARY_WS(transientOwner);
 			else if (wwin->sn_workspace >= 0 && wwin->sn_workspace < scr->workspace_count)
 				workspace = wwin->sn_workspace;
 			else
@@ -1798,7 +1798,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wWindowTrySwallow(wwin);
 
 	if (wwin && wwin->frame)
-		wLayoutApply(scr, wwin->frame->workspace);
+		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
 
 	return wwin;
 }
@@ -1942,7 +1942,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	WWindow *newFocusedWindow = NULL;
 	int wasFocused;
 	WScreen *scr = wwin->screen_ptr;
-	int wwin_workspace = wwin->frame->workspace;
+	int wwin_workspace = WWIN_PRIMARY_WS(wwin);
 
 	/* if this window was swallowed by a terminal, restore the terminal */
 	wWindowUnswallow(wwin);
@@ -2195,7 +2195,7 @@ void wWindowFocusPrev(WWindow *wwin, Bool inSameWorkspace)
 		tmp = tmp->prev;
 
 	if (inSameWorkspace)
-		while (tmp && (tmp->frame->workspace != wwin->frame->workspace))
+		while (tmp && (WWIN_PRIMARY_WS(tmp) != WWIN_PRIMARY_WS(wwin)))
 			tmp = tmp->next;
 
 	wWindowSingleFocus(tmp);
@@ -2210,7 +2210,7 @@ void wWindowFocusNext(WWindow *wwin, Bool inSameWorkspace)
 
 	tmp = wwin->prev;
 	if (inSameWorkspace)
-		while (tmp && (tmp->frame->workspace != wwin->frame->workspace))
+		while (tmp && (WWIN_PRIMARY_WS(tmp) != WWIN_PRIMARY_WS(wwin)))
 			tmp = tmp->prev;
 
 	wWindowSingleFocus(tmp);
@@ -2516,13 +2516,13 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 	WScreen *scr = wwin->screen_ptr;
 	WApplication *wapp;
 	int unmap = 0;
-	int src_workspace = wwin->frame->workspace;
+	int src_workspace = WWIN_PRIMARY_WS(wwin);
 
-	if (workspace >= scr->workspace_count || workspace < 0 || workspace == wwin->frame->workspace)
+	if (workspace >= scr->workspace_count || workspace < 0 || workspace == WWIN_PRIMARY_WS(wwin))
 		return;
 
 	if (w_global.config->per_head_workspaces) {
-		int oldWorkspace = wwin->frame->workspace;
+		int oldWorkspace = WWIN_PRIMARY_WS(wwin);
 		Bool was_visible = wWindowIsVisibleOnAnyHead(wwin);
 		Bool now_visible;
 
@@ -2621,7 +2621,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 		}
 	}
 	if (!IS_OMNIPRESENT(wwin)) {
-		int oldWorkspace = wwin->frame->workspace;
+		int oldWorkspace = WWIN_PRIMARY_WS(wwin);
 		wwin->frame->workspace = workspace;
 		WMPostNotificationName(WMNChangedWorkspace, wwin, (void *)(uintptr_t) oldWorkspace);
 	}
@@ -3086,7 +3086,7 @@ void wWindowSaveState(WWindow *wwin)
 	int i;
 
 	memset(data, 0, sizeof(data));
-	data[0] = wwin->frame->workspace;
+	data[0] = WWIN_PRIMARY_WS(wwin);
 	data[1] = wwin->flags.miniaturized;
 	data[2] = wwin->flags.shaded;
 	data[3] = wwin->flags.hidden;
