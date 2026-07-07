@@ -1,0 +1,214 @@
+#!/bin/sh
+# Drive the per-workspace tiling layout under Xvfb: spawn three xterms,
+# set-layout tile via IPC, assert their frame-outer geometries against
+# the expected 0.55 master/stack split, cycle through grid and monocle,
+# then set-layout float and check the original geometries are restored.
+set -u
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+DPY=${LAYOUT_DRIVE_DISPLAY:-:96}
+W=1200
+H=800
+RUNTIME=$(mktemp -d /tmp/layout-drive.XXXXXX)
+WMHOME="$RUNTIME/home"
+PIDFILE="$RUNTIME/pids"
+LOG=/tmp/layout-drive.log
+WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
+WMAKERMSG="$ROOT/util/.libs/wmakermsg"
+: > "$PIDFILE"
+: > "$LOG"
+
+cleanup() {
+    while read -r p; do
+        [ -n "$p" ] && kill "$p" 2>/dev/null
+    done < "$PIDFILE"
+    rm -f "$PIDFILE"
+    rm -rf "$RUNTIME"
+}
+trap cleanup EXIT
+
+note() { printf '\n=== %s ===\n' "$*" | tee -a "$LOG"; }
+fail() { printf 'FAIL: %s\n' "$*" | tee -a "$LOG"; exit 1; }
+
+wait_for() {
+    _wf=$1; shift
+    while [ "$_wf" -gt 0 ]; do
+        "$@" && return 0
+        sleep 0.1
+        _wf=$((_wf - 1))
+    done
+    return 1
+}
+pid_gone() { ! kill -0 "$1" 2>/dev/null; }
+
+command -v Xvfb    >/dev/null || { echo "SKIP: Xvfb not found"; exit 77; }
+command -v xdotool >/dev/null || { echo "SKIP: xdotool not found"; exit 77; }
+command -v xterm   >/dev/null || { echo "SKIP: xterm not found"; exit 77; }
+[ -x "$ROOT/src/.libs/wmaker" ] || { echo "SKIP: wmaker not built"; exit 77; }
+[ -x "$WMAKERMSG" ] || { echo "SKIP: wmakermsg not built"; exit 77; }
+
+msg() {
+    LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        "$WMAKERMSG" -s "$SOCKET" "$@"
+}
+
+# --- isolated WMAKER_USER_ROOT --------------------------------------------
+mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
+cat >"$WMHOME/Defaults/WindowMaker" <<EOF
+{
+  DisableDock = YES;
+  DisableClip = YES;
+  DisableDrawers = YES;
+}
+EOF
+export WMAKER_USER_ROOT="$WMHOME"
+export XDG_RUNTIME_DIR="$RUNTIME"
+unset WMAKER_IPC_SOCKET
+
+# --- Xvfb ------------------------------------------------------------------
+if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
+    echo "display $DPY is already in use, set LAYOUT_DRIVE_DISPLAY" >&2
+    exit 1
+fi
+note "start Xvfb $DPY"
+Xvfb "$DPY" -screen 0 ${W}x${H}x24 -ac >>"$LOG" 2>&1 &
+XVFB_PID=$!
+echo "$XVFB_PID" >> "$PIDFILE"
+xvfb_ready() {
+    kill -0 "$XVFB_PID" 2>/dev/null || fail "Xvfb exited early"
+    DISPLAY=$DPY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xvfb_ready || fail "Xvfb failed to start"
+
+# --- wmaker ----------------------------------------------------------------
+note "start wmaker"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0" \
+DISPLAY=$DPY \
+"$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
+WMAKER_PID=$!
+echo "$WMAKER_PID" >> "$PIDFILE"
+
+SOCKET=$(LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY XDG_RUNTIME_DIR="$RUNTIME" "$WMAKERMSG" --get-socketpath)
+ipc_ready() { msg -q get_version >/dev/null 2>&1; }
+wait_for 120 ipc_ready || fail "wmaker did not come up"
+sleep 0.3
+
+frame_of() {
+    DISPLAY=$DPY xwininfo -tree -id "$1" 2>/dev/null \
+        | awk '/Parent window id:/ {print $4; exit}'
+}
+
+frame_top() {
+    ftcur=$1
+    ftroot=$(DISPLAY=$DPY xwininfo -root 2>/dev/null \
+                 | awk '/Window id:/ {print $4; exit}')
+    ftn=0
+    while [ $ftn -lt 5 ]; do
+        ftp=$(frame_of "$ftcur")
+        [ -n "$ftp" ] && [ "$ftp" != "0x0" ] || return 1
+        [ "$ftp" = "$ftroot" ] && { printf '%s\n' "$ftcur"; return 0; }
+        ftcur=$ftp
+        ftn=$((ftn + 1))
+    done
+    return 1
+}
+
+# frame-outer rect for a client XID, border included, matching the
+# WLayoutRect the compute pass produces
+frame_geom() {
+    fgframe=$(frame_top "$1") || { echo "0 0 0 0"; return; }
+    DISPLAY=$DPY xwininfo -id "$fgframe" 2>/dev/null \
+        | awk '/Absolute upper-left X:/ {x=$4}
+               /Absolute upper-left Y:/ {y=$4}
+               /Width:/  && !w {w=$2}
+               /Height:/ && !h {h=$2}
+               /Border width:/ {b=$3}
+               END {print x, y, w+2*b, h+2*b}'
+}
+
+# match with a small slack to absorb WM_NORMAL_HINTS resize increments
+expect_rect() {
+    tag=$1; got=$2; wx=$3; wy=$4; ww=$5; wh=$6; slack=${7:-24}
+    set -- $got
+    gx=$1; gy=$2; gw=$3; gh=$4
+    dx=$((gx - wx)); dy=$((gy - wy)); dw=$((gw - ww)); dh=$((gh - wh))
+    [ "${dx#-}" -le "$slack" ] && [ "${dy#-}" -le "$slack" ] \
+        && [ "${dw#-}" -le "$slack" ] && [ "${dh#-}" -le "$slack" ] \
+        || fail "$tag: got ($gx,$gy ${gw}x${gh}) want (~$wx,~$wy ${ww}x${wh})"
+    note "ok: $tag = ($gx,$gy ${gw}x${gh})"
+}
+
+# --- spawn three clients ---------------------------------------------------
+note "spawn 3 xterms"
+xt_client() {
+    DISPLAY=$DPY xdotool search --name "^$1\$" 2>/dev/null | tail -n 1
+}
+spawn_xt() {
+    DISPLAY=$DPY xterm -title "$1" -geometry "$2" -e 'sleep 300' >>"$LOG" 2>&1 &
+    echo "$!" >> "$PIDFILE"
+    xt_mapped() { [ -n "$(xt_client "$1")" ]; }
+    wait_for 60 xt_mapped "$1" || fail "$1 did not map"
+    sleep 0.2
+}
+spawn_xt lxa 60x8+40+40
+spawn_xt lxb 60x8+80+80
+spawn_xt lxc 60x8+120+120
+
+Wa=$(xt_client lxa); Wb=$(xt_client lxb); Wc=$(xt_client lxc)
+[ -n "$Wa" ] && [ -n "$Wb" ] && [ -n "$Wc" ] || fail "could not resolve client XIDs"
+
+# focus in a known order so the MRU list is c, b, a (c = master)
+DISPLAY=$DPY timeout 5 xdotool windowactivate --sync "$Wa" 2>/dev/null || true
+DISPLAY=$DPY timeout 5 xdotool windowactivate --sync "$Wb" 2>/dev/null || true
+DISPLAY=$DPY timeout 5 xdotool windowactivate --sync "$Wc" 2>/dev/null || true
+sleep 0.2
+W1=$Wc; W2=$Wb; W3=$Wa
+
+G1_ORIG=$(frame_geom "$W1")
+G2_ORIG=$(frame_geom "$W2")
+G3_ORIG=$(frame_geom "$W3")
+
+# --- tile ------------------------------------------------------------------
+note "set-layout tile"
+msg -q set-layout tile || fail "set-layout tile rejected"
+sleep 0.3
+msg get_workspaces | grep -q 'layout = tile' \
+    || fail "get_workspaces does not report layout = tile"
+
+expect_rect "tile master" "$(frame_geom "$W1")" 0 0 660 800
+expect_rect "tile stack0" "$(frame_geom "$W2")" 660 0 540 400
+expect_rect "tile stack1" "$(frame_geom "$W3")" 660 400 540 400
+
+# --- grid ------------------------------------------------------------------
+note "set-layout grid"
+msg -q set-layout grid || fail "set-layout grid rejected"
+sleep 0.3
+expect_rect "grid[0]" "$(frame_geom "$W1")" 0 0 600 400
+expect_rect "grid[1]" "$(frame_geom "$W2")" 0 400 600 400
+expect_rect "grid[2]" "$(frame_geom "$W3")" 600 0 600 800
+
+# --- monocle ---------------------------------------------------------------
+note "set-layout monocle"
+msg -q set-layout monocle || fail "set-layout monocle rejected"
+sleep 0.3
+expect_rect "monocle[0]" "$(frame_geom "$W1")" 0 0 1200 800
+
+# --- float restores --------------------------------------------------------
+note "set-layout float"
+msg -q set-layout float || fail "set-layout float rejected"
+sleep 0.3
+msg get_workspaces | grep -q 'layout = float' \
+    || fail "get_workspaces does not report layout = float"
+
+expect_rect "float restore W1" "$(frame_geom "$W1")" $G1_ORIG 4
+expect_rect "float restore W2" "$(frame_geom "$W2")" $G2_ORIG 4
+expect_rect "float restore W3" "$(frame_geom "$W3")" $G3_ORIG 4
+
+# --- teardown --------------------------------------------------------------
+kill -TERM "$WMAKER_PID" 2>/dev/null
+wait_for 50 pid_gone "$WMAKER_PID"
+
+note "PASS"
+exit 0

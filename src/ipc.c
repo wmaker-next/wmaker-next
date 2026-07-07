@@ -46,6 +46,7 @@
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
+#include "layout.h"
 #include "xsmp.h"
 #include "ipc.h"
 
@@ -695,6 +696,55 @@ static verb_rc verb_info(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
+			       char **err, WMPropList **reply)
+{
+	WMPropList *a, *k, *v;
+	WWorkspace *ws;
+	long widx;
+	char *end;
+	int i;
+
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 2) {
+		*err = wstrdup("set-layout: missing layout name");
+		return VERB_FAIL;
+	}
+	a = WMGetFromPLArray(args, 1);
+	if (!a || !WMIsPLString(a)) {
+		*err = wstrdup("set-layout: layout must be a string");
+		return VERB_FAIL;
+	}
+	widx = scr->current_workspace;
+	for (i = 2; i + 1 < WMGetPropListItemCount(args); i += 2) {
+		k = WMGetFromPLArray(args, i);
+		v = WMGetFromPLArray(args, i + 1);
+		if (!k || !WMIsPLString(k) || !v || !WMIsPLString(v))
+			continue;
+		if (strcmp(WMGetFromPLString(k), "workspace") == 0) {
+			widx = strtol(WMGetFromPLString(v), &end, 10);
+			if (*end || widx < 0 || widx >= scr->workspace_count) {
+				*err = wstrdup("set-layout: invalid workspace index");
+				return VERB_FAIL;
+			}
+		} else if (strcmp(WMGetFromPLString(k), "master_count") == 0) {
+			scr->workspaces[widx]->master_count =
+				(int)strtol(WMGetFromPLString(v), NULL, 10);
+		} else if (strcmp(WMGetFromPLString(k), "master_ratio") == 0) {
+			scr->workspaces[widx]->master_ratio =
+				(float)atof(WMGetFromPLString(v));
+		}
+	}
+	ws = scr->workspaces[widx];
+	if (ws->layout == wLayoutFromName(WMGetFromPLString(a))
+	    && strcasecmp(WMGetFromPLString(a), "float") != 0)
+		wLayoutApply(scr, (int)widx);
+	else
+		wLayoutSetWorkspace(scr, (int)widx, wLayoutFromName(WMGetFromPLString(a)));
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
 static const struct {
 	const char *name;
 	verb_fn fn;
@@ -704,6 +754,7 @@ static const struct {
 	{ "exit",             verb_exit },
 	{ "kill-session",     verb_kill_session },
 	{ "workspace",        verb_workspace },
+	{ "set-layout",       verb_set_layout },
 	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },
 	{ "arrange-icons",    verb_arrange_icons },
@@ -842,14 +893,21 @@ static void handle_subscribe(struct WIPCClient *c, const char *body)
 static void handle_get_workspaces(struct WIPCClient *c)
 {
 	WMPropList *arr, *d;
+	WWorkspace *ws;
+	char rbuf[16];
 	int i;
 
 	arr = WMCreatePLArray(NULL);
 	for (i = 0; i < c->scr->workspace_count; i++) {
+		ws = c->scr->workspaces[i];
 		d = WMCreatePLDictionary(NULL, NULL);
-		pl_dict_put(d, "name", pl_string(c->scr->workspaces[i]->name));
+		pl_dict_put(d, "name", pl_string(ws->name));
 		pl_dict_put(d, "index", pl_int(i));
 		pl_dict_put(d, "current", pl_bool(i == c->scr->current_workspace));
+		pl_dict_put(d, "layout", pl_string(wLayoutName(ws->layout)));
+		pl_dict_put(d, "master_count", pl_int(ws->master_count));
+		snprintf(rbuf, sizeof(rbuf), "%.2f", (double)ws->master_ratio);
+		pl_dict_put(d, "master_ratio", pl_string(rbuf));
 		WMAddToPLArray(arr, d);
 		WMReleasePropList(d);
 	}
@@ -1328,8 +1386,11 @@ static void emit_workspace(WScreen *scr, const char *change, int idx)
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "change", pl_string(change));
 	pl_dict_put(d, "index", pl_int(idx));
-	if (idx >= 0 && idx < scr->workspace_count && scr->workspaces[idx])
+	if (idx >= 0 && idx < scr->workspace_count && scr->workspaces[idx]) {
 		pl_dict_put(d, "name", pl_string(scr->workspaces[idx]->name));
+		pl_dict_put(d, "layout",
+			    pl_string(wLayoutName(scr->workspaces[idx]->layout)));
+	}
 	wIPCBroadcast(scr, WIPC_EV_WORKSPACE, d);
 	WMReleasePropList(d);
 }
@@ -1351,6 +1412,8 @@ static void obs_workspace(void *self, WMNotification *notif)
 		emit_workspace(scr, "destroy", idx);
 	else if (strcmp(name, WMNWorkspaceNameChanged) == 0)
 		emit_workspace(scr, "rename", idx);
+	else if (strcmp(name, WMNWorkspaceLayoutChanged) == 0)
+		emit_workspace(scr, "layout", idx);
 }
 
 static void emit_window(WWindow *wwin, const char *change)
@@ -1400,6 +1463,7 @@ static void ipc_register_observers(void)
 	WMAddNotificationObserver(obs_workspace, &sentinel, WMNWorkspaceCreated, NULL);
 	WMAddNotificationObserver(obs_workspace, &sentinel, WMNWorkspaceDestroyed, NULL);
 	WMAddNotificationObserver(obs_workspace, &sentinel, WMNWorkspaceNameChanged, NULL);
+	WMAddNotificationObserver(obs_workspace, &sentinel, WMNWorkspaceLayoutChanged, NULL);
 	WMAddNotificationObserver(obs_window, &sentinel, WMNManaged, NULL);
 	WMAddNotificationObserver(obs_window, &sentinel, WMNUnmanaged, NULL);
 	WMAddNotificationObserver(obs_window, &sentinel, WMNChangedFocus, NULL);
