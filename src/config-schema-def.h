@@ -291,6 +291,12 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(PER_HEAD_WORKSPACES, "PerHeadWorkspaces", BOOL, per_head_workspaces, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
+	_(DEFAULT_WORKSPACE_LAYOUT, "DefaultWorkspaceLayout", ENUM, default_workspace_layout, \
+	  "float", workspace_layouts, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(LAYOUT_MASTER_COUNT, "LayoutMasterCount", INT, layout_master_count, "1", \
+	  NULL, 0, 32, WCFG_RUNTIME_RELOAD, 0) \
+	_(LAYOUT_MASTER_RATIO, "LayoutMasterRatio", INT, layout_master_ratio, "55", \
+	  NULL, 10, 90, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_NAME_DISPLAY_POSITION, "WorkspaceNameDisplayPosition", ENUM, \
 	  workspace_name_display_position, "center", display_positions, INT_MIN, INT_MAX, \
 	  WCFG_RUNTIME_RELOAD, 0) \

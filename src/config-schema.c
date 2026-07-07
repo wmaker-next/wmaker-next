@@ -215,6 +215,15 @@ static const WConfigEnum run_matching_modes[] = {
 	{NULL, 0, 0}
 };
 
+static const WConfigEnum workspace_layouts[] = {
+	{"float", WVL_FLOAT, 0},
+	{"tile", WVL_TILE, 0},
+	{"tileh", WVL_TILE_H, 0},
+	{"grid", WVL_GRID, 0},
+	{"monocle", WVL_MONOCLE, 0},
+	{NULL, 0, 0}
+};
+
 #define WCFG_SCHEMA_ROW(K, name, T, field, def, etable, lo, hi, fl, refresh) \
 	{ name, WCFG_KEY_##K, WCFG_##T, def, FIELD(field), etable, lo, hi, fl, refresh },
 #define WCFG_SCHEMA_KB_ROW(K, name, def, wkbd) \

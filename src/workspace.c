@@ -49,6 +49,7 @@
 #include "dialog.h"
 #include "tabgroup.h"
 #include "osdview.h"
+#include "layout.h"
 
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
@@ -59,6 +60,7 @@
 
 static WMPropList *dWorkspaces = NULL;
 static WMPropList *dClip, *dName, *dHeadWorkspaces;
+static WMPropList *dLayout, *dMasterCount, *dMasterRatio;
 
 static void make_keys(void)
 {
@@ -69,6 +71,9 @@ static void make_keys(void)
 	dName = WMCreatePLString("Name");
 	dClip = WMCreatePLString("Clip");
 	dHeadWorkspaces = WMCreatePLString("HeadWorkspaces");
+	dLayout = WMCreatePLString("Layout");
+	dMasterCount = WMCreatePLString("MasterCount");
+	dMasterRatio = WMCreatePLString("MasterRatio");
 }
 
 /* ---------- per-head workspace helpers ---------- */
@@ -222,6 +227,9 @@ int wWorkspaceNew(WScreen *scr)
 		wspace->clip = NULL;
 		wspace->head_names = NULL;
 		wspace->head_name_count = 0;
+		wspace->layout = w_global.config->default_workspace_layout;
+		wspace->master_count = w_global.config->layout_master_count;
+		wspace->master_ratio = w_global.config->layout_master_ratio / 100.0f;
 
 		if (!wspace->name) {
 			static const char *new_name = NULL;
@@ -1478,6 +1486,7 @@ void wWorkspaceMenuUpdate(WScreen * scr, WMenu * menu)
 void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 {
 	WMPropList *parr, *pstr, *wks_state, *old_wks_state, *foo, *bar;
+	char buf[32];
 	int i;
 
 	make_keys();
@@ -1488,6 +1497,20 @@ void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 		pstr = WMCreatePLString(scr->workspaces[i]->name);
 		wks_state = WMCreatePLDictionary(dName, pstr, NULL);
 		WMReleasePropList(pstr);
+		pstr = WMCreatePLString(wLayoutName(scr->workspaces[i]->layout));
+		WMPutInPLDictionary(wks_state, dLayout, pstr);
+		WMReleasePropList(pstr);
+		if (scr->workspaces[i]->layout != WLAYOUT_FLOAT) {
+			snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->master_count);
+			pstr = WMCreatePLString(buf);
+			WMPutInPLDictionary(wks_state, dMasterCount, pstr);
+			WMReleasePropList(pstr);
+			snprintf(buf, sizeof(buf), "%.2f",
+				 (double)scr->workspaces[i]->master_ratio);
+			pstr = WMCreatePLString(buf);
+			WMPutInPLDictionary(wks_state, dMasterRatio, pstr);
+			WMReleasePropList(pstr);
+		}
 		if (!wPreferences.flags.noclip) {
 			pstr = wClipSaveWorkspaceState(scr, i);
 			WMPutInPLDictionary(wks_state, dClip, pstr);
@@ -1541,6 +1564,22 @@ void wWorkspaceRestoreState(WScreen *scr)
 
 		wfree(scr->workspaces[i]->name);
 		scr->workspaces[i]->name = wstrndup(WMGetFromPLString(pstr), MAX_WORKSPACENAME_WIDTH);
+
+		if (WMIsPLDictionary(wks_state)) {
+			pstr = WMGetFromPLDictionary(wks_state, dLayout);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->layout =
+					wLayoutFromName(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dMasterCount);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->master_count =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dMasterRatio);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->master_ratio =
+					atof(WMGetFromPLString(pstr));
+		}
+
 		if (!wPreferences.flags.noclip) {
 			int added_omnipresent_icons = 0;
 

@@ -32,6 +32,10 @@ typedef struct WWorkspace {
      * head). */
     char **head_names;
     int head_name_count;
+    /* per-workspace tiling layout, WLAYOUT_FLOAT is the no-op default */
+    signed char layout;
+    short master_count;
+    float master_ratio;
 } WWorkspace;
 
 void wWorkspaceMake(WScreen *scr, int count);

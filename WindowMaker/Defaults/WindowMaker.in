@@ -56,6 +56,9 @@
 	AdvanceToNewWorkspace = NO;
 	CycleWorkspaces = NO;
 	PerHeadWorkspaces = NO;
+	DefaultWorkspaceLayout = float;
+	LayoutMasterCount = 1;
+	LayoutMasterRatio = 55;
 	WorkspaceNameDisplayPosition = center;
 	WorkspaceBorder = None;
 	WorkspaceBorderSize = 0;

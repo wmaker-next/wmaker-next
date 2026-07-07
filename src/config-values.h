@@ -179,4 +179,14 @@ enum {
 	RUN_MATCH_FUZZY
 };
 
+/* per-workspace tiling layout, kept in sync with WLayout in layout.h so
+ * WPrefs can consume the schema without pulling in wmaker headers */
+enum {
+	WVL_FLOAT,
+	WVL_TILE,
+	WVL_TILE_H,
+	WVL_GRID,
+	WVL_MONOCLE
+};
+
 #endif /* WMCONFIG_VALUES_H_ */
