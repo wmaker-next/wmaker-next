@@ -129,10 +129,10 @@ static void createPanel(Panel *p)
 	for (i = 0; i < 5; i++) {
 		panel->icoB[i] = WMCreateCustomButton(panel->icoF, WBBStateChangeMask);
 		panel->shaB[i] = WMCreateCustomButton(panel->shaF, WBBStateChangeMask);
-		WMResizeWidget(panel->icoB[i], 40, 24);
-		WMMoveWidget(panel->icoB[i], 2 + (40 * i), 15);
-		WMResizeWidget(panel->shaB[i], 40, 24);
-		WMMoveWidget(panel->shaB[i], 2 + (40 * i), 15);
+		WMResizeWidget(panel->icoB[i], 40, 26);
+		WMMoveWidget(panel->icoB[i], 2 + (40 * i), 14);
+		WMResizeWidget(panel->shaB[i], 40, 26);
+		WMMoveWidget(panel->shaB[i], 2 + (40 * i), 14);
 		WMSetButtonBordered(panel->icoB[i], False);
 		WMSetButtonImagePosition(panel->icoB[i], WIPImageOnly);
 		if (i > 0) {
