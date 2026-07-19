@@ -2594,15 +2594,28 @@ void wShowInfoPanel(WScreen *scr)
 	strbuf = wstrappend(strbuf, buffer);
 
 	panel->infoL = WMCreateLabel(panel->win);
-#if defined(HAVE_MALLOC_H) && defined(HAVE_MALLINFO2) && defined(DEBUG)
-	WMResizeWidget(panel->infoL, WMScaleX(430), WMScaleY(105));
-#else
-	WMResizeWidget(panel->infoL, WMScaleX(370), WMScaleY(105));
-#endif
 	WMMoveWidget(panel->infoL, WMScaleX(15), WMScaleY(115));
 	WMSetLabelText(panel->infoL, strbuf);
 	font = WMSystemFontOfSize(scr->wmscreen, WMScaleY(11));
 	if (font) {
+		const char *line = strbuf;
+		int infoWidth = 0;
+
+		while (line && *line) {
+			const char *lineEnd = strchr(line, '\n');
+			size_t lineLength = lineEnd ? (size_t)(lineEnd - line) : strlen(line);
+			int lineWidth = WMWidthOfString(font, line, lineLength);
+
+			if (lineWidth > infoWidth)
+				infoWidth = lineWidth;
+			line = lineEnd ? lineEnd + 1 : NULL;
+		}
+
+		if (infoWidth + WMScaleX(36) > pwidth)
+			pwidth = infoWidth + WMScaleX(36);
+		WMResizeWidget(panel->win, pwidth, pheight);
+		WMResizeWidget(panel->infoL, pwidth - WMScaleX(30), WMScaleY(105));
+		WMResizeWidget(panel->copyrL, pwidth - WMScaleX(30), WMScaleY(60));
 		WMSetLabelFont(panel->infoL, font);
 		WMReleaseFont(font);
 		font = NULL;
