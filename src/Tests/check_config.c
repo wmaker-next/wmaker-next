@@ -60,6 +60,7 @@ static int cursor_spec_updates;
 static int last_texture_target;
 static int last_font_target;
 static int last_color_target;
+static int color_targets[8];
 static int last_cursor_target;
 static int last_background_target;
 static char *last_modifier_key_spec;
@@ -206,6 +207,8 @@ unsigned int wConfigApplyColorSpec(WScreen *scr, const char *key,
 	(void)default_spec;
 	color_spec_updates++;
 	last_color_target = target;
+	if (color_spec_updates <= (int)(sizeof(color_targets) / sizeof(color_targets[0])))
+		color_targets[color_spec_updates - 1] = target;
 	replace_test_string(&last_color_spec, spec ? spec->spec : NULL);
 	return WCFG_REFRESH_MENU_COLOR;
 }
@@ -417,6 +420,7 @@ static void reset_phase4_counters(void)
 	texture_spec_updates = 0;
 	font_spec_updates = 0;
 	color_spec_updates = 0;
+	memset(color_targets, 0, sizeof(color_targets));
 	cursor_spec_updates = 0;
 	last_key_binding_index = -1;
 	last_texture_target = -1;
@@ -881,6 +885,9 @@ static void test_defaults(void)
 	CHECK(strcmp(config->highlight_color.spec, "white") == 0);
 	CHECK(strcmp(config->cclip_title_color.spec, "rgb:61/61/61") == 0);
 	CHECK(config->frame_border_width == 1);
+	CHECK(config->frame_inner_border_width == 0);
+	CHECK(strcmp(config->frame_inner_border_color.spec, "green") == 0);
+	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "yellow") == 0);
 	CHECK(strcmp(config->normal_cursor.spec, "(builtin, left_ptr)") == 0);
 	CHECK(config->hot_corner_actions.count == 4);
 	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
@@ -2237,6 +2244,61 @@ second_out:
 		WMReleasePropList(new_dict);
 }
 
+static void test_inner_frame_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	old_dict = dict_from_desc("{ FrameInnerBorderWidth = 2; "
+				  "FrameInnerBorderColor = green; "
+				  "FrameInnerFocusedBorderColor = yellow; }");
+	new_dict = dict_from_desc("{ FrameInnerBorderWidth = 4; "
+				  "FrameInnerBorderColor = red; "
+				  "FrameInnerFocusedBorderColor = blue; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(screen.frame_inner_border_width == 4);
+	CHECK(color_spec_updates == 2);
+	CHECK(color_targets[0] == WCFG_COLOR_FRAME_INNER_BORDER);
+	CHECK(color_targets[1] == WCFG_COLOR_FRAME_INNER_FOCUSED_BORDER);
+	CHECK(last_color_target == WCFG_COLOR_FRAME_INNER_FOCUSED_BORDER);
+	CHECK(strcmp(last_color_spec, "blue") == 0);
+	CHECK(refresh == (WCFG_REFRESH_INNER_BORDER |
+				  WCFG_REFRESH_MENU_COLOR));
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+}
+
+static void test_empty_color_uses_default(void)
+{
+	WMPropList *dict;
+	WConfig *config;
+
+	dict = dict_from_desc("{ FTitleColor = \"\"; "
+			      "FrameInnerBorderColor = \"\"; "
+			      "FrameInnerFocusedBorderColor = \"\"; "
+			      "TabInactiveTitleColor = \"\"; }");
+	if (!dict)
+		return;
+
+	config = wConfigReadWindowMaker(dict);
+	CHECK(strcmp(config->ftitle_color.spec, "white") == 0);
+	CHECK(strcmp(config->frame_inner_border_color.spec, "green") == 0);
+	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "yellow") == 0);
+	CHECK(config->tab_inactive_title_color.spec[0] == '\0');
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+}
+
 static void test_deleted_key_keeps_current(void)
 {
 	WMPropList *old_dict, *new_dict;
@@ -2557,6 +2619,8 @@ int main(void)
 	test_runtime_apply_phase4();
 	test_runtime_apply_phase5();
 	test_runtime_apply_phase7();
+	test_inner_frame_live_apply();
+	test_empty_color_uses_default();
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();

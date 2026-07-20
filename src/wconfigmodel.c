@@ -559,6 +559,11 @@ static Bool parse_string_resource_spec_plist(const WConfigEntry *entry,
 			 entry->key);
 		return False;
 	}
+	if (entry->type == WCFG_COLOR_SPEC && entry->default_value[0] != '\0' &&
+	    WMGetFromPLString(value)[0] == '\0') {
+		wwarning(_("Empty color for key \"%s\"."), entry->key);
+		return False;
+	}
 
 	out->spec = wstrdup(WMGetFromPLString(value));
 	return True;
