@@ -1354,35 +1354,62 @@ void wCloseInspectorForWindow(WWindow *wwin)
 
 static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, int frame_width)
 {
-	int i = 0;
+	int i, j, tmp;
+	/* See create_tab_window_advanced for the rationale on sorting by
+	 * the translated caption while keeping panel->attrChk[] indexed by
+	 * the original window_attribute[] position. */
+	int order[sizeof(window_attribute) / sizeof(window_attribute[0])];
 
 	panel->attrFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->attrFrm, _("Attributes"));
 	WMMoveWidget(panel->attrFrm, 15, 45);
 	WMResizeWidget(panel->attrFrm, frame_width, 265);
 
+	for (i = 0; i < wlengthof(window_attribute); i++)
+		order[i] = i;
+	for (i = 1; i < wlengthof(window_attribute); i++) {
+		for (j = i; j > 0; j--) {
+			const char *a = _(window_attribute[order[j - 1]].caption);
+			const char *b = _(window_attribute[order[j]].caption);
+
+			if (strcoll(a, b) <= 0)
+				break;
+			tmp = order[j];
+			order[j] = order[j - 1];
+			order[j - 1] = tmp;
+		}
+	}
+
 	for (i = 0; i < wlengthof(window_attribute); i++) {
+		int idx = order[i];
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[i].attr);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[idx].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, window_attribute[i].attr);
+			flag = get_attr_flag(&wwin->user_flags, window_attribute[idx].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, window_attribute[i].attr);
+			flag = get_attr_flag(&wwin->client_flags, window_attribute[idx].attr);
 
-		panel->attrChk[i] = WMCreateSwitchButton(panel->attrFrm);
-		WMMoveWidget(panel->attrChk[i], 10, 20 * (i + 1));
-		WMResizeWidget(panel->attrChk[i], frame_width - 15, 20);
-		WMSetButtonSelected(panel->attrChk[i], flag);
-		WMSetButtonText(panel->attrChk[i], _(window_attribute[i].caption));
+		panel->attrChk[idx] = WMCreateSwitchButton(panel->attrFrm);
+		WMMoveWidget(panel->attrChk[idx], 10, 20 * (i + 1));
+		WMResizeWidget(panel->attrChk[idx], frame_width - 15, 20);
+		WMSetButtonSelected(panel->attrChk[idx], flag);
+		WMSetButtonText(panel->attrChk[idx], _(window_attribute[idx].caption));
 
-		WMSetBalloonTextForView(_(window_attribute[i].description), WMWidgetView(panel->attrChk[i]));
+		WMSetBalloonTextForView(_(window_attribute[idx].description), WMWidgetView(panel->attrChk[idx]));
 	}
 }
 
 static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int frame_width)
 {
-	int i = 0;
+	int i, j, tmp;
+	/* Indices into advanced_option[] laid out top-to-bottom in the frame.
+	 * Sorted by the translated caption so the inspector presents the
+	 * Advanced entries in the user's locale collation order, independent
+	 * of the source-code table layout. panel->moreChk[] remains indexed
+	 * by the original advanced_option[] position so the save/apply/revert
+	 * loops keep matching moreChk[i] with advanced_option[i].attr. */
+	int order[sizeof(advanced_option) / sizeof(advanced_option[0])];
 
 	panel->moreFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->moreFrm, _("Advanced"));
@@ -1393,22 +1420,39 @@ static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int
 	WMResizeWidget(panel->moreFrm, frame_width, 300);
 #endif
 
+	for (i = 0; i < wlengthof(advanced_option); i++)
+		order[i] = i;
+	/* Stable insertion sort by strcoll() of the translated caption. */
+	for (i = 1; i < wlengthof(advanced_option); i++) {
+		for (j = i; j > 0; j--) {
+			const char *a = _(advanced_option[order[j - 1]].caption);
+			const char *b = _(advanced_option[order[j]].caption);
+
+			if (strcoll(a, b) <= 0)
+				break;
+			tmp = order[j];
+			order[j] = order[j - 1];
+			order[j - 1] = tmp;
+		}
+	}
+
 	for (i = 0; i < wlengthof(advanced_option); i++) {
+		int idx = order[i];
 		int is_userdef, flag;
 
-		is_userdef = get_attr_flag(&wwin->defined_user_flags, advanced_option[i].attr);
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, advanced_option[idx].attr);
 		if (is_userdef)
-			flag = get_attr_flag(&wwin->user_flags, advanced_option[i].attr);
+			flag = get_attr_flag(&wwin->user_flags, advanced_option[idx].attr);
 		else
-			flag = get_attr_flag(&wwin->client_flags, advanced_option[i].attr);
+			flag = get_attr_flag(&wwin->client_flags, advanced_option[idx].attr);
 
-		panel->moreChk[i] = WMCreateSwitchButton(panel->moreFrm);
-		WMMoveWidget(panel->moreChk[i], 10, 20 * (i + 1) - 4);
-		WMResizeWidget(panel->moreChk[i], frame_width - 15, 20);
-		WMSetButtonSelected(panel->moreChk[i], flag);
-		WMSetButtonText(panel->moreChk[i], _(advanced_option[i].caption));
+		panel->moreChk[idx] = WMCreateSwitchButton(panel->moreFrm);
+		WMMoveWidget(panel->moreChk[idx], 10, 20 * (i + 1) - 4);
+		WMResizeWidget(panel->moreChk[idx], frame_width - 15, 20);
+		WMSetButtonSelected(panel->moreChk[idx], flag);
+		WMSetButtonText(panel->moreChk[idx], _(advanced_option[idx].caption));
 
-		WMSetBalloonTextForView(_(advanced_option[i].description), WMWidgetView(panel->moreChk[i]));
+		WMSetBalloonTextForView(_(advanced_option[idx].description), WMWidgetView(panel->moreChk[idx]));
 	}
 }
 
@@ -1480,7 +1524,11 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel)
 static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int frame_width)
 {
 	WScreen *scr = wwin->screen_ptr;
-	int i = 0, tmp;
+	int i, j, tmp;
+	/* See create_tab_window_advanced for the rationale on sorting by
+	 * the translated caption while keeping panel->appChk[] indexed by
+	 * the original application_attr[] position. */
+	int order[sizeof(application_attr) / sizeof(application_attr[0])];
 
 	if (wwin->main_window != None) {
 		WApplication *wapp = wApplicationOf(wwin->main_window);
@@ -1490,23 +1538,39 @@ static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int fr
 		WMMoveWidget(panel->appFrm, 15, 50);
 		WMResizeWidget(panel->appFrm, frame_width, 240);
 
+		for (i = 0; i < wlengthof(application_attr); i++)
+			order[i] = i;
+		for (i = 1; i < wlengthof(application_attr); i++) {
+			for (j = i; j > 0; j--) {
+				const char *a = _(application_attr[order[j - 1]].caption);
+				const char *b = _(application_attr[order[j]].caption);
+
+				if (strcoll(a, b) <= 0)
+					break;
+				tmp = order[j];
+				order[j] = order[j - 1];
+				order[j - 1] = tmp;
+			}
+		}
+
 		for (i = 0; i < wlengthof(application_attr); i++) {
+			int idx = order[i];
 			int is_userdef, flag;
 
-			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, application_attr[i].attr);
+			is_userdef = get_attr_flag(&wapp->main_window_desc->defined_user_flags, application_attr[idx].attr);
 			if (is_userdef)
-				flag = get_attr_flag(&wapp->main_window_desc->user_flags, application_attr[i].attr);
+				flag = get_attr_flag(&wapp->main_window_desc->user_flags, application_attr[idx].attr);
 			else
-				flag = get_attr_flag(&wapp->main_window_desc->client_flags, application_attr[i].attr);
+				flag = get_attr_flag(&wapp->main_window_desc->client_flags, application_attr[idx].attr);
 
-			panel->appChk[i] = WMCreateSwitchButton(panel->appFrm);
-			WMMoveWidget(panel->appChk[i], 10, 20 * (i + 1));
-			WMResizeWidget(panel->appChk[i], 205, 20);
-			WMSetButtonSelected(panel->appChk[i], flag);
-			WMSetButtonText(panel->appChk[i], _(application_attr[i].caption));
+			panel->appChk[idx] = WMCreateSwitchButton(panel->appFrm);
+			WMMoveWidget(panel->appChk[idx], 10, 20 * (i + 1));
+			WMResizeWidget(panel->appChk[idx], 205, 20);
+			WMSetButtonSelected(panel->appChk[idx], flag);
+			WMSetButtonText(panel->appChk[idx], _(application_attr[idx].caption));
 
-			WMSetBalloonTextForView(_(application_attr[i].description),
-			                        WMWidgetView(panel->appChk[i]));
+			WMSetBalloonTextForView(_(application_attr[idx].description),
+			                        WMWidgetView(panel->appChk[idx]));
 		}
 
 		if (WFLAGP(wwin, emulate_appicon)) {
