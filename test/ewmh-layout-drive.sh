@@ -138,6 +138,15 @@ window_cardinal_count_is() {
 	return 1
 }
 
+window_frame_horizontal_extents_are() {
+	wf_win=$1
+	wf_expected=$2
+	wf_vals=$(window_values "$wf_win" _NET_FRAME_EXTENTS)
+	set -- $(printf "%s\n" "$wf_vals" | tr "," " ")
+	[ "$#" -eq 4 ] || return 1
+	[ "$1" = "$wf_expected" ] && [ "$2" = "$wf_expected" ]
+}
+
 window_atom_has() {
 	window_values "$1" "$2" \
 		| tr "," "\n" \
@@ -561,6 +570,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'WMEOD'
   MoveToRightWorkspaceKey = "Control+Shift+Right";
   MoveToDownWorkspaceKey = "Control+Shift+Down";
   AutoFocusAcrossHeads = NO;
+	FrameInnerBorderWidth = 3;
 }
 WMEOD
 export WMAKER_USER_ROOT="$WMHOME"
@@ -752,6 +762,8 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		check "WM writes _NET_WM_DESKTOP for client" wait_for 40 window_prop_has_values "$CLIENT_XID" _NET_WM_DESKTOP 0
 		check "WM writes _NET_WM_STATE for client" wait_for 40 window_prop_exists "$CLIENT_XID" _NET_WM_STATE
 		check "WM writes _NET_FRAME_EXTENTS for client" wait_for 40 window_cardinal_count_is "$CLIENT_XID" _NET_FRAME_EXTENTS 4
+		check "_NET_FRAME_EXTENTS includes the configured inner border" \
+			wait_for 40 window_frame_horizontal_extents_are "$CLIENT_XID" 4
 		for action in \
 			_NET_WM_ACTION_MOVE \
 			_NET_WM_ACTION_RESIZE \

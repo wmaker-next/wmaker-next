@@ -244,10 +244,15 @@ typedef struct _WScreen {
     WMColor *frame_border_color;
     WMColor *frame_focused_border_color;
     WMColor *frame_selected_border_color;
+	int frame_inner_border_width;
+	WMColor *frame_inner_border_color;
+	WMColor *frame_inner_focused_border_color;
 
     WMPixel frame_border_pixel;	       /* frame border */
     WMPixel frame_focused_border_pixel;	       /* frame border */
     WMPixel frame_selected_border_pixel;/* frame border */
+	WMPixel frame_inner_border_pixel;
+	WMPixel frame_inner_focused_border_pixel;
 
 
     union WTexture *menu_title_texture[3];/* menu titlebar texture (tex, -, -) */

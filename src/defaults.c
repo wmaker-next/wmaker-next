@@ -83,6 +83,8 @@ static WConfigUpdateCallback setIconTitleBack;
 static WConfigUpdateCallback setFrameBorderColor;
 static WConfigUpdateCallback setFrameFocusedBorderColor;
 static WConfigUpdateCallback setFrameSelectedBorderColor;
+static WConfigUpdateCallback setFrameInnerBorderColor;
+static WConfigUpdateCallback setFrameInnerFocusedBorderColor;
 static WConfigUpdateCallback setLargeDisplayFont;
 static WConfigUpdateCallback setWTitleColor;
 static WConfigUpdateCallback setFTitleBack;
@@ -122,6 +124,7 @@ static WConfigUpdateCallback setCursor;
 #define REFRESH_ICON_TITLE_BACK WCFG_REFRESH_ICON_TITLE_BACK
 #define REFRESH_WORKSPACE_MENU WCFG_REFRESH_WORKSPACE_MENU
 #define REFRESH_FRAME_BORDER WCFG_REFRESH_FRAME_BORDER
+#define REFRESH_INNER_BORDER WCFG_REFRESH_INNER_BORDER
 
 /* stat() the user file behind a domain and tell whether it changed since
  * the last successful read, comparing the POSIX-2008 st_mtim so two
@@ -490,6 +493,15 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 				scr->workspace_submenu->flags.realized = 0;
 			if (scr->clip_submenu)
 				scr->clip_submenu->flags.realized = 0;
+		}
+		if (needs_refresh & REFRESH_INNER_BORDER) {
+			WWindow *wwin = scr->focused_window;
+
+			while (wwin) {
+				wWindowApplyInnerBorder(wwin);
+				wwin = wwin->prev;
+			}
+			XFlush(dpy);
 		}
 	}
 }
@@ -1401,6 +1413,10 @@ static WConfigUpdateCallback *color_update_for_target(int target, void **extra_d
 		return setFrameFocusedBorderColor;
 	case WCFG_COLOR_FRAME_SELECTED_BORDER:
 		return setFrameSelectedBorderColor;
+	case WCFG_COLOR_FRAME_INNER_BORDER:
+		return setFrameInnerBorderColor;
+	case WCFG_COLOR_FRAME_INNER_FOCUSED_BORDER:
+		return setFrameInnerFocusedBorderColor;
 	}
 
 	return NULL;
@@ -1431,6 +1447,11 @@ again:
 	if (!candidate[0] && target == WCFG_COLOR_TAB_INACTIVE_TITLE) {
 		extra_data = (void *)WS_TABINACTIVE;
 		return setWTitleColor(scr, NULL, extra_data);
+	}
+	if (!candidate[0] && !used_default && default_spec) {
+		candidate = default_spec;
+		used_default = 1;
+		goto again;
 	}
 
 	if (!wGetColor(scr, candidate, &color)) {
@@ -2026,6 +2047,36 @@ static int setFrameSelectedBorderColor(WScreen *scr, void *tdata, void *foo)
 	wFreeColor(scr, color->pixel);
 
 	return REFRESH_FRAME_BORDER;
+}
+
+static int setFrameInnerBorderColor(WScreen *scr, void *tdata, void *foo)
+{
+	XColor *color = tdata;
+
+	(void) foo;
+
+	if (scr->frame_inner_border_color)
+		WMReleaseColor(scr->frame_inner_border_color);
+	scr->frame_inner_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_inner_border_pixel = WMColorPixel(scr->frame_inner_border_color);
+	wFreeColor(scr, color->pixel);
+
+	return REFRESH_INNER_BORDER;
+}
+
+static int setFrameInnerFocusedBorderColor(WScreen *scr, void *tdata, void *foo)
+{
+	XColor *color = tdata;
+
+	(void) foo;
+
+	if (scr->frame_inner_focused_border_color)
+		WMReleaseColor(scr->frame_inner_focused_border_color);
+	scr->frame_inner_focused_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_inner_focused_border_pixel = WMColorPixel(scr->frame_inner_focused_border_color);
+	wFreeColor(scr, color->pixel);
+
+	return REFRESH_INNER_BORDER;
 }
 
 static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)

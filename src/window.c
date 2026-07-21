@@ -1540,15 +1540,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	if (HAS_BORDER(wwin))
 		foo |= WFF_BORDER;
+	foo |= WFF_IS_CLIENT_WINDOW_FRAME;
 
 	wwin->frame = wFrameWindowCreate(scr, window_level,
-					 x, y, width, height,
+					 x, y, width + 2 * (HAS_BORDER(wwin) ? scr->frame_inner_border_width : 0),
+					 height + 2 * (HAS_BORDER(wwin) ? scr->frame_inner_border_width : 0),
 					 foo,
 					 scr->window_title_texture,
 					 scr->resizebar_texture, scr->window_title_color, &scr->title_font,
 					 wattribs.depth, wattribs.visual, wattribs.colormap);
 
-	wwin->frame->flags.is_client_window_frame = 1;
 	wwin->frame->flags.justification = w_global.config->title_justification;
 
 	wNETWMCheckInitialFrameStateCk(wwin, ck.netwm_initial.opacity);
@@ -1606,7 +1607,9 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
 
 	XSelectInput(dpy, wwin->client_win, wwin->event_mask & ~StructureNotifyMask);
-	XReparentWindow(dpy, wwin->client_win, wwin->frame->core->window, 0, wwin->frame->top_width);
+	XReparentWindow(dpy, wwin->client_win, wwin->frame->core->window,
+					 HAS_BORDER(wwin) ? scr->frame_inner_border_width : 0,
+					 wwin->frame->top_width + (HAS_BORDER(wwin) ? scr->frame_inner_border_width : 0));
 	XSelectInput(dpy, wwin->client_win, wwin->event_mask);
 
 	wClientGetGravityOffsets(wwin, &gx, &gy);
@@ -1867,6 +1870,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	foo = WFF_CLOSE_BUTTON | WFF_BORDER;
 	foo |= WFF_TITLEBAR;
+	foo |= WFF_IS_CLIENT_WINDOW_FRAME;
 #ifdef XKB_BUTTON_HINT
 	if (w_global.config->modelock)
 		foo |= WFF_LANGUAGE_BUTTON;
@@ -1874,7 +1878,8 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	wwin->frame = wFrameWindowCreate(scr, WMFloatingLevel,
 					 wwin->frame_x, wwin->frame_y,
-					 width, height,
+					 width + 2 * scr->frame_inner_border_width,
+					 height + 2 * scr->frame_inner_border_width,
 					 foo,
 					 scr->window_title_texture,
 					 scr->resizebar_texture, scr->window_title_color, &scr->title_font,
@@ -1882,7 +1887,6 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	XSaveContext(dpy, window, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
 
-	wwin->frame->flags.is_client_window_frame = 1;
 	wwin->frame->flags.justification = w_global.config->title_justification;
 
 	wFrameWindowChangeTitle(wwin->frame, title);
@@ -1908,7 +1912,9 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
 	wwin->client.y += wwin->frame->top_width;
 
-	XReparentWindow(dpy, wwin->client_win, wwin->frame->core->window, 0, wwin->frame->top_width);
+	XReparentWindow(dpy, wwin->client_win, wwin->frame->core->window,
+					 scr->frame_inner_border_width,
+					 wwin->frame->top_width + scr->frame_inner_border_width);
 	wWindowConfigure(wwin, wwin->frame_x, wwin->frame_y, wwin->client.width, wwin->client.height);
 
 	/* setup the frame descriptor */
@@ -2878,6 +2884,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 {
 	int synth_notify = False;
 	int resize;
+	int inner = HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0;
 
 	resize = (req_width != wwin->client.width || req_height != wwin->client.height);
 
@@ -2898,14 +2905,17 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 			XResizeWindow(dpy, wwin->client_win, req_width, req_height);
 
 		if (wwin->flags.shaded) {
-			wFrameWindowConfigure(wwin->frame, req_x, req_y, req_width, wwin->frame->core->height);
+			wFrameWindowConfigure(wwin->frame, req_x, req_y,
+					   req_width + 2 * inner, wwin->frame->core->height);
 			wwin->old_geometry.height = req_height;
 		} else {
 			int h;
 
-			h = req_height + wwin->frame->top_width + wwin->frame->bottom_width;
+			h = req_height + wwin->frame->top_width + wwin->frame->bottom_width
+			    + 2 * inner;
 
-			wFrameWindowConfigure(wwin->frame, req_x, req_y, req_width, h);
+			wFrameWindowConfigure(wwin->frame, req_x, req_y,
+					   req_width + 2 * inner, h);
 		}
 
 		/*
@@ -2914,19 +2924,20 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		 * a GravityNotify with xev), leaving it at the wrong offset.
 		 */
 		if (wwin->normal_hints && wwin->normal_hints->win_gravity != NorthWestGravity)
-			XMoveWindow(dpy, wwin->client_win, 0, wwin->frame->top_width);
+			XMoveWindow(dpy, wwin->client_win, inner,
+				    wwin->frame->top_width + inner);
 
 		if (!(req_height > wwin->frame->core->height || req_width > wwin->frame->core->width))
 			XResizeWindow(dpy, wwin->client_win, req_width, req_height);
 
-		wwin->client.x = req_x;
-		wwin->client.y = req_y + wwin->frame->top_width;
+		wwin->client.x = req_x + inner;
+		wwin->client.y = req_y + wwin->frame->top_width + inner;
 		wwin->client.width = req_width;
 		wwin->client.height = req_height;
 	} else {
 		if (req_x != wwin->frame_x || req_y != wwin->frame_y) {
-			wwin->client.x = req_x;
-			wwin->client.y = req_y + wwin->frame->top_width;
+			wwin->client.x = req_x + inner;
+			wwin->client.y = req_y + wwin->frame->top_width + inner;
 			XMoveWindow(dpy, wwin->frame->core->window, req_x, req_y);
 		}
 		/*
@@ -2939,7 +2950,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 	wwin->frame_x = req_x;
 	wwin->frame_y = req_y;
 	if (HAS_BORDER(wwin)) {
-		wwin->client.x += wwin->screen_ptr->frame_border_width;
+		wwin->client.x += wwin->screen_ptr->frame_border_width + inner;
 		wwin->client.y += wwin->screen_ptr->frame_border_width;
 	}
 #ifdef USE_XSHAPE
@@ -2967,6 +2978,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 /* req_x, req_y:  new position of the frame */
 void wWindowMove(WWindow *wwin, int req_x, int req_y)
 {
+	int inner = HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0;
 #ifdef CONFIGURE_WINDOW_WHILE_MOVING
 	int synth_notify = False;
 
@@ -2985,7 +2997,7 @@ void wWindowMove(WWindow *wwin, int req_x, int req_y)
 	wwin->client.x = req_x;
 	wwin->client.y = req_y + wwin->frame->top_width;
 	if (HAS_BORDER(wwin)) {
-		wwin->client.x += wwin->screen_ptr->frame_border_width;
+		wwin->client.x += wwin->screen_ptr->frame_border_width + inner;
 		wwin->client.y += wwin->screen_ptr->frame_border_width;
 	}
 
@@ -3004,6 +3016,29 @@ void wWindowMove(WWindow *wwin, int req_x, int req_y)
 
 	if (wwin->on_geometry_change)
 		wwin->on_geometry_change(wwin, wwin->geometry_data);
+}
+
+void wWindowApplyInnerBorder(WWindow *wwin)
+{
+	int inner;
+	int border;
+	int width;
+	int height;
+
+	if (!wwin->frame || !wwin->frame->flags.is_client_window_frame)
+		return;
+
+	inner = HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0;
+	border = HAS_BORDER(wwin) ? wwin->screen_ptr->frame_border_width : 0;
+	width = wwin->client.width + 2 * inner;
+	height = wwin->client.height + wwin->frame->top_width + wwin->frame->bottom_width + 2 * inner;
+
+	wFrameWindowConfigure(wwin->frame, wwin->frame_x, wwin->frame_y, width, height);
+	XMoveWindow(dpy, wwin->client_win, inner, wwin->frame->top_width + inner);
+	wwin->client.x = wwin->frame_x + border + inner;
+	wwin->client.y = wwin->frame_y + border + wwin->frame->top_width + inner;
+	wWindowSynthConfigureNotify(wwin);
+	wNETFrameExtents(wwin);
 }
 
 /* Move the window to the nearest on-screen position if its stored
@@ -3157,11 +3192,20 @@ void wWindowConfigureBorders(WWindow *wwin)
 			flags |= WFF_SELECTED;
 
 		oldh = wwin->frame->top_width;
-		wFrameWindowUpdateBorders(wwin->frame, flags);
+		{
+			int old_border = wwin->frame->flags.border;
+
+			wFrameWindowUpdateBorders(wwin->frame, flags);
+			if (old_border != wwin->frame->flags.border)
+				wWindowApplyInnerBorder(wwin);
+		}
 		if (oldh != wwin->frame->top_width) {
 			newy = wwin->frame_y + oldh - wwin->frame->top_width;
 
-			XMoveWindow(dpy, wwin->client_win, 0, wwin->frame->top_width);
+			XMoveWindow(dpy, wwin->client_win,
+					HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0,
+					wwin->frame->top_width +
+					(HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0));
 			wWindowConfigure(wwin, wwin->frame_x, newy, wwin->client.width, wwin->client.height);
 			/* the existing call below only fires when a hide
 			 * flag toggles, wWindowUpdateButtonImages itself

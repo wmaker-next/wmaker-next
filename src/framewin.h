@@ -48,6 +48,7 @@
 
 #define WFF_IS_SHADED	(1<<16)
 #define WFF_IS_MENU	(1<<17)
+#define WFF_IS_CLIENT_WINDOW_FRAME	(1<<18)
 
 extern const int wtb_role_flag_shift[WTB_ROLE_COUNT];
 #define WFF_ROLE_BIT(r)		(1 << wtb_role_flag_shift[(r)])
@@ -146,7 +147,8 @@ typedef struct WFrameWindow {
         unsigned int repaint_only_titlebar:1;
         unsigned int repaint_only_resizebar:1;
 
-        unsigned int is_client_window_frame:1;
+	unsigned int is_client_window_frame:1;
+	unsigned int border:1;
         /* selects the menu_title_* triple from w_global.config instead of
          * window_title_*, replacing the three int * fields that pointed
          * into the swap-and-destroy WConfig and went stale on reload */
@@ -157,9 +159,12 @@ typedef struct WFrameWindow {
     int depth;
     Visual *visual;
     Colormap colormap;
+	GC inner_border_gc;
     unsigned long *border_pixel;
     unsigned long *focused_border_pixel;
     unsigned long *selected_border_pixel;
+	unsigned long *inner_border_pixel;
+	unsigned long *inner_focused_border_pixel;
 } WFrameWindow;
 
 

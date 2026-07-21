@@ -182,6 +182,9 @@
 	FrameBorderColor = black;
 	FrameFocusedBorderColor = black;
 	FrameSelectedBorderColor = white;
+	FrameInnerBorderWidth = 0;
+	FrameInnerBorderColor = "#b5b5b5";
+	FrameInnerFocusedBorderColor = white;
 	WorkspaceMapBack = (solid, black);
 	RootMenuKey = F12;
 	WindowListKey = F11;

@@ -558,6 +558,7 @@ WWindow *wWindowFor(Window window);
 
 
 void wWindowConfigureBorders(WWindow *wwin);
+void wWindowApplyInnerBorder(WWindow *wwin);
 
 void wWindowUpdateButtonImages(WWindow *wwin);
 

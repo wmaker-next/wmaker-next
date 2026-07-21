@@ -714,6 +714,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	/* read defaults for this screen, old_config is NULL because
 	 * wScreenInit() only runs at first startup */
 	wReadDefaults(scr, NULL, config, changes);
+	scr->frame_inner_border_width = config->frame_inner_border_width;
 
 	/* frame boder color */
 	desc = WMGetColorRGBDescription(scr->frame_border_color);
@@ -728,6 +729,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	wGetColor(scr, desc, &xcol);
 	scr->frame_selected_border_pixel = xcol.pixel;
 	wfree(desc);
+	scr->frame_inner_border_pixel = WMColorPixel(scr->frame_inner_border_color);
+	scr->frame_inner_focused_border_pixel = WMColorPixel(scr->frame_inner_focused_border_color);
 
 	createInternalWindows(scr);
 

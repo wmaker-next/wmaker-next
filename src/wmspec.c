@@ -3111,10 +3111,12 @@ void wNETFrameExtents(WWindow *wwin)
 	if (wwin->frame->resizebar)
 		extents[3] = wwin->frame->resizebar->height;
 	if (HAS_BORDER(wwin)) {
-		extents[0] += wwin->screen_ptr->frame_border_width;
-		extents[1] += wwin->screen_ptr->frame_border_width;
-		extents[2] += wwin->screen_ptr->frame_border_width;
-		extents[3] += wwin->screen_ptr->frame_border_width;
+		int inner = wwin->screen_ptr->frame_inner_border_width;
+
+		extents[0] += wwin->screen_ptr->frame_border_width + inner;
+		extents[1] += wwin->screen_ptr->frame_border_width + inner;
+		extents[2] += wwin->screen_ptr->frame_border_width + inner;
+		extents[3] += wwin->screen_ptr->frame_border_width + inner;
 	}
 
 	WXSetCardinalN(dpy, wwin->client_win, net_frame_extents, extents, 4);

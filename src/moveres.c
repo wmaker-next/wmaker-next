@@ -1168,7 +1168,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	int h = wwin->frame->core->height;
 	int scr_width = wwin->screen_ptr->scr_width;
 	int scr_height = wwin->screen_ptr->scr_height;
-	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width;
+	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
+		+ 2 * (HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0);
 	int src_x = wwin->frame_x;
 	int src_y = wwin->frame_y;
 	int original_w = w;
@@ -1939,7 +1940,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	XEvent event;
 	WScreen *scr = wwin->screen_ptr;
 	Window root = scr->root_win;
-	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width;
+	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
+		+ 2 * (HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0);
 	int fw = wwin->frame->core->width;
 	int fh = wwin->frame->core->height;
 	int fx = wwin->frame_x;

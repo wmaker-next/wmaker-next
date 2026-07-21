@@ -1043,6 +1043,9 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	if (!new_config)
 		return 0;
 
+	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_INNER_BORDER_WIDTH))
+		scr->frame_inner_border_width = new_config->frame_inner_border_width;
+
 	refresh = config_refresh_mask_for_changes(changes);
 	pixmap_path_changed = wConfigChangesHas(changes, WCFG_KEY_PIXMAP_PATH);
 

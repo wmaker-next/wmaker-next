@@ -886,8 +886,8 @@ static void test_defaults(void)
 	CHECK(strcmp(config->cclip_title_color.spec, "rgb:61/61/61") == 0);
 	CHECK(config->frame_border_width == 1);
 	CHECK(config->frame_inner_border_width == 0);
-	CHECK(strcmp(config->frame_inner_border_color.spec, "green") == 0);
-	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "yellow") == 0);
+	CHECK(strcmp(config->frame_inner_border_color.spec, "#b5b5b5") == 0);
+	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "white") == 0);
 	CHECK(strcmp(config->normal_cursor.spec, "(builtin, left_ptr)") == 0);
 	CHECK(config->hot_corner_actions.count == 4);
 	CHECK(strcmp(config->hot_corner_actions.items[0], "None") == 0);
@@ -2292,8 +2292,8 @@ static void test_empty_color_uses_default(void)
 
 	config = wConfigReadWindowMaker(dict);
 	CHECK(strcmp(config->ftitle_color.spec, "white") == 0);
-	CHECK(strcmp(config->frame_inner_border_color.spec, "green") == 0);
-	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "yellow") == 0);
+	CHECK(strcmp(config->frame_inner_border_color.spec, "#b5b5b5") == 0);
+	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "white") == 0);
 	CHECK(config->tab_inactive_title_color.spec[0] == '\0');
 	wConfigDestroy(config);
 	WMReleasePropList(dict);

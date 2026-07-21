@@ -3,6 +3,23 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Configurable inner frame border
+-------------------------------
+
+A second border can now be drawn inside the outer frame border, between
+it and the client window. Three new runtime-reloadable defaults control
+it: FrameInnerBorderWidth (0 by default, so the look is unchanged unless
+raised), FrameInnerBorderColor and FrameInnerFocusedBorderColor (the
+unfocused and focused inner-border colors, defaulting to #b5b5b5 and
+white). The inset is rendered as four strips painted on the frame window
+and is only applied to client-window frames, so menus and docks keep
+their existing chrome.
+
+_NET_FRAME_EXTENTS now reports the inner-border width alongside the
+outer frame border, so clients and pagers see the true geometry. Window
+placement, interactive resize, the shade animation, the keyboard move/
+resize geometry and internal windows all account for the inset.
+
 Multiple workspace membership
 -----------------------------
 
