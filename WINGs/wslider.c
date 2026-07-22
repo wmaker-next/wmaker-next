@@ -30,6 +30,7 @@ typedef struct W_Slider {
 
 		unsigned int vertical:1;
 		unsigned int dragging:1;
+		unsigned int enabled:1;
 	} flags;
 
 } Slider;
@@ -90,6 +91,7 @@ WMSlider *WMCreateSlider(WMWidget * parent)
 	sPtr->knobThickness = 20;
 
 	sPtr->flags.continuous = 1;
+	sPtr->flags.enabled = 1;
 
 	WMAddNotificationObserver(realizeObserver, sPtr, WMViewRealizedNotification, sPtr->view);
 
@@ -106,6 +108,22 @@ void WMSetSliderImage(WMSlider * sPtr, WMPixmap * pixmap)
 	if (sPtr->view->flags.mapped) {
 		paintSlider(sPtr);
 	}
+}
+
+void WMSetSliderEnabled(WMSlider *sPtr, Bool flag)
+{
+	CHECK_CLASS(sPtr, WC_Slider);
+
+	sPtr->flags.enabled = flag ? 1 : 0;
+	if (sPtr->view->flags.mapped)
+		paintSlider(sPtr);
+}
+
+Bool WMGetSliderEnabled(WMSlider *sPtr)
+{
+	CHECK_CLASS(sPtr, WC_Slider);
+
+	return sPtr->flags.enabled;
 }
 
 void WMSetSliderKnobThickness(WMSlider * sPtr, int thickness)
@@ -350,6 +368,12 @@ static void paintSlider(Slider * sPtr)
 	kLine(cr, scr->white, size.width - 1, 0, size.width - 1, size.height - 1);
 	kLine(cr, scr->white, 0, size.height - 1, size.width - 1, size.height - 1);
 
+	if (!sPtr->flags.enabled) {
+		WCairoSetSourceColor(cr, scr->gray);
+		cairo_set_source_rgba(cr, 0.5, 0.5, 0.5, 0.5);
+		cairo_paint(cr);
+	}
+
 	WCairoEnd(cr);
 }
 
@@ -429,6 +453,9 @@ static void handleActionEvents(XEvent * event, void *data)
 	WMSlider *sPtr = (Slider *) data;
 
 	CHECK_CLASS(data, WC_Slider);
+
+	if (!sPtr->flags.enabled)
+		return;
 
 	switch (event->type) {
 	case ButtonPress:

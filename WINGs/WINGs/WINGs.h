@@ -1659,6 +1659,10 @@ void WMSetSliderKnobThickness(WMSlider *sPtr, int thickness);
 
 void WMSetSliderImage(WMSlider *sPtr, WMPixmap *pixmap);
 
+void WMSetSliderEnabled(WMSlider *sPtr, Bool flag);
+
+Bool WMGetSliderEnabled(WMSlider *sPtr);
+
 /* ---[ WINGs/wsplitview.c ]---------------------------------------------- */
 
 
