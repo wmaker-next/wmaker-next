@@ -58,6 +58,34 @@ typedef struct _Panel {
 #define DELAY_ICON "timer%i"
 #define DELAY_ICON_S "timer%is"
 
+static void updateControlsSensitivity(_Panel *panel)
+{
+	Bool enabled = WMGetButtonSelected(panel->hcB);
+	int i;
+	WMColor *color;
+
+	color = enabled ? WMBlackColor(WMWidgetScreen(panel->parent))
+			: WMDarkGrayColor(WMWidgetScreen(panel->parent));
+
+	WMSetSliderEnabled(panel->hceS, enabled);
+	for (i = 0; i < 5; i++)
+		WMSetButtonEnabled(panel->hcdelayB[i], enabled);
+	WMSetTextFieldEditable(panel->hcdelayT, enabled);
+	for (i = 0; i < (int)(sizeof(panel->hcactionsT) / sizeof(WMTextField *)); i++)
+		WMSetTextFieldEditable(panel->hcactionsT[i], enabled);
+
+	WMSetLabelTextColor(panel->hceL, color);
+}
+
+static void hcToggledCallback(WMWidget *w, void *data)
+{
+	_Panel *panel = (_Panel *) data;
+
+	(void) w;
+
+	updateControlsSensitivity(panel);
+}
+
 static void edgeCallback(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
@@ -131,6 +159,8 @@ static void showData(_Panel * panel)
 					WMSetTextFieldText(panel->hcactionsT[i], WMGetFromPLString(WMGetFromPLArray(array, i)));
 		}
 	}
+
+	updateControlsSensitivity(panel);
 }
 
 static void storeData(_Panel * panel)
@@ -232,6 +262,7 @@ static void createPanel(Panel * p)
 	WMResizeWidget(panel->hcB, 150, 30);
 	WMMoveWidget(panel->hcB, 15, 12);
 	WMSetButtonText(panel->hcB, _("Enable Hot Corners"));
+	WMSetButtonAction(panel->hcB, hcToggledCallback, panel);
 
 	WMMapSubwidgets(panel->hcF);
 
