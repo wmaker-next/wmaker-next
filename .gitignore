@@ -180,6 +180,10 @@ WPrefs.app/WPrefs.desktop
 /wrlib/po/*.pot
 /wrlib/po/*.mo
 
+# Local agent/editor guidance, not for the repository
+CLAUDE.md
+AGENTS.md
+
 # Some text editors generate backup files
 *~
 
