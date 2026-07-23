@@ -332,6 +332,14 @@ test "x$prefix" = xNONE && prefix=$ac_default_prefix
 dnl Let make expand exec_prefix.
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 
+dnl Default sysconfdir to /etc (not ${prefix}/etc) when installing under a
+dnl system prefix, so that 'configure --prefix=/usr' lands configuration
+dnl files in /etc as expected by distributions and the FHS. Users can still
+dnl override with an explicit --sysconfdir=... .
+AS_IF([test "x$sysconfdir" = 'x${prefix}/etc'],
+    [AS_CASE([$prefix],
+        [/|/usr], [sysconfdir=/etc])])
+
 
 _bindir=`eval echo $bindir`
 _bindir=`eval echo $_bindir`
