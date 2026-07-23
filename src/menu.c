@@ -85,6 +85,107 @@ static void selectEntry(WMenu * menu, int entry_no);
 static void closeCascade(WMenu * menu);
 
 /*
+ * Hidden-entry layout helpers. A hidden entry stays in the entries[] array
+ * (so its MC_* index keeps resolving) but contributes zero height and is
+ * skipped by paint, hit-testing and keyboard navigation. visible_count is
+ * recomputed on every layout pass in wMenuRealize() and cached on the menu
+ * so the per-paint cost is O(1) for the common all-visible case.
+ */
+static int menuVisibleCount(const WMenu *menu)
+{
+	int i, n = 0;
+
+	for (i = 0; i < menu->entry_no; i++)
+		if (!menu->entries[i]->flags.hidden)
+			n++;
+	return n;
+}
+
+static int menuVisibleSlot(const WMenu *menu, int index)
+{
+	int i, slot = 0;
+
+	if (index < 0)
+		return -1;
+	for (i = 0; i < index && i < menu->entry_no; i++)
+		if (!menu->entries[i]->flags.hidden)
+			slot++;
+	return slot;
+}
+
+static int menuEntryAtPoint(const WMenu *menu, int y)
+{
+	int i, slot;
+
+	if (y < 0 || menu->entry_height <= 0)
+		return -1;
+	slot = y / menu->entry_height;
+	if (slot < 0)
+		return -1;
+	for (i = 0; i < menu->entry_no; i++) {
+		if (menu->entries[i]->flags.hidden)
+			continue;
+		if (slot == 0)
+			return i;
+		slot--;
+	}
+	return -1;
+}
+
+static int menuFirstVisible(const WMenu *menu)
+{
+	int i;
+
+	for (i = 0; i < menu->entry_no; i++)
+		if (!menu->entries[i]->flags.hidden)
+			return i;
+	return -1;
+}
+
+static int menuLastVisible(const WMenu *menu)
+{
+	int i, last = -1;
+
+	for (i = 0; i < menu->entry_no; i++)
+		if (!menu->entries[i]->flags.hidden)
+			last = i;
+	return last;
+}
+
+static int menuStepVisible(const WMenu *menu, int index, int dir)
+{
+	int i, start, end, step;
+
+	if (dir > 0) {
+		start = index + 1;
+		end = menu->entry_no;
+		step = 1;
+	} else {
+		start = index - 1;
+		end = -1;
+		step = -1;
+	}
+	for (i = start; i != end; i += step) {
+		if (i < 0 || i >= menu->entry_no)
+			break;
+		if (!menu->entries[i]->flags.hidden)
+			return i;
+	}
+	/* wrap */
+	if (dir > 0) {
+		for (i = 0; i <= index && i < menu->entry_no; i++)
+			if (!menu->entries[i]->flags.hidden)
+				return i;
+	} else {
+		for (i = menu->entry_no - 1; i >= index && i >= 0; i--)
+			if (!menu->entries[i]->flags.hidden)
+				return i;
+	}
+	return -1;
+}
+
+
+/*
  * Track how many menus are mapped on the screen so the root window
  * PointerMotionMask for ScrollableMenus is selected only while a menu
  * exists for it to scroll, an idle desktop with no menu mapped then
@@ -495,13 +596,16 @@ static Pixmap renderTexture(WMenu * menu)
 		cairo_pattern_destroy(pat);
 
 		if (w_global.config->menu_style == MS_SINGLE_TEXTURE) {
-			for (i = 1; i < menu->entry_no; i++)
+			int vc = menuVisibleCount(menu);
+			int s;
+
+			for (s = 0; s + 1 < vc; s++)
 				wTextureCairoMenuBevel(cr, 0,
-						       (i - 1) * menu->entry_height,
+						       s * menu->entry_height,
 						       width, menu->entry_height + 1);
-			if (menu->entry_no > 0)
+			if (vc > 0)
 				wTextureCairoMenuBevel(cr, 0,
-						       (menu->entry_no - 1) * menu->entry_height,
+						       (vc - 1) * menu->entry_height,
 						       width, menu->entry_height);
 		} else if (w_global.config->menu_style == MS_NORMAL) {
 			wTextureCairoMenuBevel(cr, 0, 0, width, height);
@@ -604,6 +708,7 @@ void wMenuRealize(WMenu * menu)
 	int i;
 	int width, rwidth, mrwidth, mwidth;
 	int theight, twidth, eheight;
+	int visible_count;
 	WScreen *scr = menu->frame->screen_ptr;
 	static int brother_done = 0;
 	int flags;
@@ -634,6 +739,9 @@ void wMenuRealize(WMenu * menu)
 	mwidth = 0;
 	for (i = 0; i < menu->entry_no; i++) {
 		char *text;
+
+		if (menu->entries[i]->flags.hidden)
+			continue;
 
 		/* search widest text */
 		text = menu->entries[i]->text;
@@ -668,9 +776,10 @@ void wMenuRealize(WMenu * menu)
 	if (mwidth < twidth)
 		mwidth = twidth;
 
-	wCoreConfigure(menu->menu, 0, theight, mwidth, menu->entry_no * eheight - 1);
+	visible_count = menuVisibleCount(menu);
 
-	wFrameWindowResize(menu->frame, mwidth, menu->entry_no * eheight - 1
+	wCoreConfigure(menu->menu, 0, theight, mwidth, visible_count * eheight - 1);
+	wFrameWindowResize(menu->frame, mwidth, visible_count * eheight - 1
 			   + menu->frame->top_width + menu->frame->bottom_width);
 
 	updateTexture(menu);
@@ -806,14 +915,16 @@ static void paintEntry(WMenu * menu, int index, int selected)
 
 	if (!menu->flags.realized)
 		return;
+	if (entry->flags.hidden)
+		return;
 	h = menu->entry_height;
 	w = menu->menu->width;
-	y = index * h;
+	y = menuVisibleSlot(menu, index) * h;
 
-	if (w_global.config->menu_style == MS_FLAT && menu->entry_no > 1) {
-		if (index == 0)
+	if (w_global.config->menu_style == MS_FLAT && menuVisibleCount(menu) > 1) {
+		if (menuVisibleSlot(menu, index) == 0)
 			type = F_TOP;
-		else if (index == menu->entry_no - 1)
+		else if (index == menuLastVisible(menu))
 			type = F_BOTTOM;
 		else
 			type = F_NONE;
@@ -999,7 +1110,7 @@ static void move_menus(WMenu * menu, int x, int y)
 		menu = menu->parent;
 		x -= MENUW(menu);
 		if (!w_global.config->align_menus && menu->selected_entry >= 0) {
-			y -= menu->selected_entry * menu->entry_height;
+			y -= menuVisibleSlot(menu, menu->selected_entry) * menu->entry_height;
 		}
 	}
 	wMenuMove(menu, x, y, True);
@@ -1015,7 +1126,7 @@ static void makeVisible(WMenu * menu)
 		return;
 
 	x1 = menu->frame_x;
-	y1 = menu->frame_y + menu->frame->top_width + menu->selected_entry * menu->entry_height;
+	y1 = menu->frame_y + menu->frame->top_width + menuVisibleSlot(menu, menu->selected_entry) * menu->entry_height;
 	x2 = x1 + MENUW(menu);
 	y2 = y1 + menu->entry_height;
 
@@ -1034,7 +1145,7 @@ static void makeVisible(WMenu * menu)
 		new_y = rect.pos.y + rect.size.height - menu->entry_height - 1;
 	}
 
-	new_y = new_y - menu->frame->top_width - menu->selected_entry * menu->entry_height;
+	new_y = new_y - menu->frame->top_width - menuVisibleSlot(menu, menu->selected_entry) * menu->entry_height;
 	move_menus(menu, new_x, new_y);
 }
 
@@ -1123,45 +1234,43 @@ static int keyboardMenu(WMenu * menu)
 				done = 1;
 				break;
 
-			case XK_Home:
+		case XK_Home:
 #ifdef XK_KP_Home
-			case XK_KP_Home:
+		case XK_KP_Home:
 #endif
-				selectEntry(menu, 0);
-				makeVisible(menu);
-				break;
+			selectEntry(menu, menuFirstVisible(menu));
+			makeVisible(menu);
+			break;
 
-			case XK_End:
+		case XK_End:
 #ifdef XK_KP_End
-			case XK_KP_End:
+		case XK_KP_End:
 #endif
-				selectEntry(menu, menu->entry_no - 1);
-				makeVisible(menu);
-				break;
+			selectEntry(menu, menuLastVisible(menu));
+			makeVisible(menu);
+			break;
 
-			case XK_Up:
+		case XK_Up:
 #ifdef XK_KP_Up
-			case XK_KP_Up:
+		case XK_KP_Up:
 #endif
-				if (menu->selected_entry <= 0)
-					selectEntry(menu, menu->entry_no - 1);
-				else
-					selectEntry(menu, menu->selected_entry - 1);
-				makeVisible(menu);
-				break;
+			if (menu->selected_entry < 0)
+				selectEntry(menu, menuLastVisible(menu));
+			else
+				selectEntry(menu, menuStepVisible(menu, menu->selected_entry, -1));
+			makeVisible(menu);
+			break;
 
-			case XK_Down:
+		case XK_Down:
 #ifdef XK_KP_Down
-			case XK_KP_Down:
+		case XK_KP_Down:
 #endif
-				if (menu->selected_entry < 0)
-					selectEntry(menu, 0);
-				else if (menu->selected_entry == menu->entry_no - 1)
-					selectEntry(menu, 0);
-				else if (menu->selected_entry < menu->entry_no - 1)
-					selectEntry(menu, menu->selected_entry + 1);
-				makeVisible(menu);
-				break;
+			if (menu->selected_entry < 0)
+				selectEntry(menu, menuFirstVisible(menu));
+			else
+				selectEntry(menu, menuStepVisible(menu, menu->selected_entry, 1));
+			makeVisible(menu);
+			break;
 
 			case XK_Right:
 #ifdef XK_KP_Right
@@ -1336,7 +1445,7 @@ void wMenuUnmap(WMenu * menu)
 
 	if (menu->flags.shaded) {
 		wFrameWindowResize(menu->frame, menu->frame->core->width, menu->frame->top_width +
-				   menu->entry_height*menu->entry_no + menu->frame->bottom_width - 1);
+				   menu->entry_height * menuVisibleCount(menu) + menu->frame->bottom_width - 1);
 		menu->flags.shaded = 0;
 	}
 
@@ -1371,6 +1480,21 @@ void wMenuSetEnabled(WMenu * menu, int index, int enable)
 	menu->entries[index]->flags.enabled = enable;
 	paintEntry(menu, index, index == menu->selected_entry);
 	paintEntry(menu->brother, index, index == menu->selected_entry);
+}
+
+void wMenuSetHidden(WMenu *menu, int index, int hidden)
+{
+	if (index >= menu->entry_no)
+		return;
+	menu->entries[index]->flags.hidden = hidden;
+	/* Hidden entries contribute zero height and are skipped by paint,
+	 * hit-testing and keyboard nav, so the menu must be re-realised
+	 * (resize window + rebuild the SINGLE_TEXTURE background pixmap)
+	 * before the next paint. Callers that batch updates set
+	 * flags.realized = 0 themselves; do it here too so a lone
+	 * wMenuSetHidden on an already-realised menu takes effect. */
+	menu->flags.realized = 0;
+	menu->brother->flags.realized = 0;
 }
 
 /*
@@ -1473,14 +1597,14 @@ static void selectEntry(WMenu * menu, int entry_no)
 					x = menu->frame_x + MENUW(menu);
 				}
 
-				if (w_global.config->align_menus) {
-					y = menu->frame_y;
-				} else {
-					y = menu->frame_y + menu->entry_height * entry_no;
-					if (menu->flags.titled)
-						y += menu->frame->top_width;
-					if (menu->cascades[entry->cascade]->flags.titled)
-						y -= menu->cascades[entry->cascade]->frame->top_width;
+			if (w_global.config->align_menus) {
+				y = menu->frame_y;
+			} else {
+				y = menu->frame_y + menu->entry_height * menuVisibleSlot(menu, entry_no);
+				if (menu->flags.titled)
+					y += menu->frame->top_width;
+				if (menu->cascades[entry->cascade]->flags.titled)
+					y -= menu->cascades[entry->cascade]->frame->top_width;
 				}
 
 				wMenuMapAt(menu->cascades[entry->cascade], x, y, False);
@@ -1560,7 +1684,11 @@ static void closeBrotherCascadesOf(WMenu * menu)
 	}
 }
 
-#define getEntryAt(menu, x, y)   ((y)<0 ? -1 : (y)/(menu->entry_height))
+static inline int getEntryAt(const WMenu *menu, int x, int y)
+{
+	(void) x;
+	return menuEntryAtPoint(menu, y);
+}
 
 static WMenu *parentMenu(WMenu * menu)
 {
@@ -2319,7 +2447,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 					wMenuMove(submenu, x + MENUW(menu), y, submenus);
 				} else {
 					wMenuMove(submenu, x + MENUW(menu),
-						  y + submenu->entry_height * menu->selected_entry, submenus);
+						  y + submenu->entry_height * menuVisibleSlot(menu, menu->selected_entry), submenus);
 				}
 			}
 		}
@@ -2329,7 +2457,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 			wMenuMove(menu->parent, x - MENUW(menu->parent), y, submenus);
 		} else {
 			wMenuMove(menu->parent, x - MENUW(menu->parent), menu->frame_y
-				  - menu->parent->entry_height * menu->parent->selected_entry, submenus);
+				  - menu->parent->entry_height * menuVisibleSlot(menu->parent, menu->parent->selected_entry), submenus);
 		}
 	}
 }
@@ -2373,7 +2501,7 @@ static void menuTitleDoubleClick(WCoreWindow * sender, void *data, XEvent * even
 	} else {
 		if (menu->flags.shaded) {
 			wFrameWindowResize(menu->frame, menu->frame->core->width, menu->frame->top_width +
-					   menu->entry_height*menu->entry_no + menu->frame->bottom_width - 1);
+					   menu->entry_height * menuVisibleCount(menu) + menu->frame->bottom_width - 1);
 			menu->flags.shaded = 0;
 		} else {
 			wFrameWindowResize(menu->frame, menu->frame->core->width, menu->frame->top_width - 1);

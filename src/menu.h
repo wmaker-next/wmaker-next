@@ -59,6 +59,7 @@ typedef struct WMenuEntry {
 		unsigned int indicator_on:1;
 		unsigned int indicator_type:5;
 		unsigned int editable:1;
+		unsigned int hidden:1;	       /* entry is not shown */
 	} flags;
 } WMenuEntry;
 
@@ -143,6 +144,7 @@ void wMenuMapAt(WMenu *menu, int x, int y, int keyboard);
 #define wMenuMapCopyAt(menu, x, y) wMenuMapAt((menu)->brother, (x), (y), False)
 void wMenuUnmap(WMenu *menu);
 void wMenuSetEnabled(WMenu *menu, int index, int enable);
+void wMenuSetHidden(WMenu *menu, int index, int hidden);
 void wMenuEntrySetShortcutText(WMenuEntry *entry, char *rtext);
 void wMenuMove(WMenu *menu, int x, int y, int submenus);
 void wMenuEntryRemoveCascade(WMenu *menu, WMenuEntry *entry);

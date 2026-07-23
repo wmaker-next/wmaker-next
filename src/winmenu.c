@@ -743,10 +743,13 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	wMenuEntrySetShortcutText(menu->entries[MC_RELAUNCH], GetShortcutKey(wKeyBindings[WKBD_RELAUNCH]));
 	wMenuEntrySetShortcutText(menu->entries[MC_CLOSE], GetShortcutKey(wKeyBindings[WKBD_CLOSE]));
 
-	/* tab group entries */
+	/* tab group entries. "Attach as Tab..." is the entry point and stays
+	 * visible (disabled when not tabable); "Detach Tab" and "Close Tab
+	 * Group" only make sense once the window is already grouped, so hide
+	 * them rather than grey them out. */
 	wMenuSetEnabled(menu, MC_GROUPTAB_ATTACH, wGroupIsTabable(wwin));
-	wMenuSetEnabled(menu, MC_GROUPTAB_DETACH, wwin->tab_group != NULL);
-	wMenuSetEnabled(menu, MC_GROUPTAB_CLOSEALL, wwin->tab_group != NULL);
+	wMenuSetHidden(menu, MC_GROUPTAB_DETACH, wwin->tab_group == NULL);
+	wMenuSetHidden(menu, MC_GROUPTAB_CLOSEALL, wwin->tab_group == NULL);
 	wMenuEntrySetShortcutText(menu->entries[MC_GROUPTAB_ATTACH], GetShortcutKey(wKeyBindings[WKBD_GROUPTAB_ATTACH]));
 	wMenuEntrySetShortcutText(menu->entries[MC_GROUPTAB_DETACH], GetShortcutKey(wKeyBindings[WKBD_GROUPTAB_DETACH]));
 
