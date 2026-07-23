@@ -32,9 +32,23 @@ dnl Because the 2.69 was released only a few month later, let's just ask for it
 AC_PREREQ([2.69])
 
 
+dnl Execute git at autoconf time to produce a literal string for AC_INIT
+m4_define([WM_VERSION_CMD], [
+  PATH="$PATH:/usr/local/bin:/usr/pkg/bin"
+  base_ver="0.96.0"
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+  if test "$branch" = "next"; then
+    printf "%s-next" "$base_ver"
+  else
+    printf "%s" "$base_ver"
+  fi
+])
+
+
 dnl Configuration for Autoconf and Automake
 dnl =======================================
-AC_INIT([WindowMaker],[0.96.0],[wmaker-dev@googlegroups.com],[WindowMaker],[http://www.windowmaker.org/])
+AC_INIT([WindowMaker],[m4_esyscmd_s(WM_VERSION_CMD)],[wmaker-dev@googlegroups.com],[WindowMaker],[http://www.windowmaker.org/])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
