@@ -242,7 +242,7 @@ static void configure_into_cell(WWindow *wwin, WLayoutRect r)
 	unsigned int cw, ch;
 	int bw, vh;
 
-	bw = HAS_BORDER(wwin) ? 2 * wwin->screen_ptr->frame_border_width : 0;
+	bw = HAS_BORDER(wwin) ? 2 * wFrameBorderWidth(wwin) : 0;
 	cw = (r.w > bw) ? r.w - bw : 1;
 	vh = r.h - wwin->frame->top_width - wwin->frame->bottom_width - bw;
 	ch = (vh > 0) ? vh : 1;

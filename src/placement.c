@@ -298,8 +298,8 @@ static void set_width_height(WWindow *wwin, unsigned int *width, unsigned int *h
 			*height += RESIZEBAR_HEIGHT;
 	}
 	if (HAS_BORDER(wwin)) {
-		*height += 2 * wwin->screen_ptr->frame_border_width;
-		*width  += 2 * wwin->screen_ptr->frame_border_width;
+		*height += 2 * wFrameBorderWidth(wwin);
+		*width  += 2 * wFrameBorderWidth(wwin);
 	}
 }
 

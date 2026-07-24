@@ -70,6 +70,10 @@ Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 void wDefaultChangeIcon(const char *instance, const char* class, const char *file);
 RImage *get_rimage_from_file(WScreen *scr, const char *file_name, int max_size);
 
+void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
+			      const char *class, WWindow *wwin);
+const char *wDefaultGetStartGeometry(const char *instance, const char *class);
+
 void wDefaultPurgeInfo(const char *instance, const char *class);
 void wKeyTreeRebuild(WScreen *scr);	/* Rebuild the key-chain trie from the current key bindings */
 #endif /* WMDEFAULTS_H_ */

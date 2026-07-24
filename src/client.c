@@ -61,8 +61,8 @@ void wClientRestore(WWindow * wwin)
 
 	wClientGetGravityOffsets(wwin, &gx, &gy);
 	/* set the position of the frame on screen */
-	wwin->frame_x -= gx * wwin->screen_ptr->frame_border_width;
-	wwin->frame_y -= gy * wwin->screen_ptr->frame_border_width;
+	wwin->frame_x -= gx * wFrameBorderWidth(wwin);
+	wwin->frame_y -= gy * wFrameBorderWidth(wwin);
 	/* if gravity is to the south, account for the border sizes */
 	if (gy > 0)
 		wwin->frame_y += (wwin->frame->top_width + wwin->frame->bottom_width);

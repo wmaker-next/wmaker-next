@@ -304,7 +304,7 @@ static void wRandR_BringAllWindowsInside(WScreen *scr)
 		if (!wwin->flags.mapped || wwin->flags.hidden)
 			continue;
 
-		bw = HAS_BORDER(wwin) ? scr->frame_border_width : 0;
+		bw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
 		wx = wwin->frame_x - bw;
 		wy = wwin->frame_y - bw;
 		ww = (int)wwin->frame->core->width  + 2 * bw;

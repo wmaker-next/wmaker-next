@@ -3,6 +3,36 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Per-window frame border overrides
+---------------------------------
+
+The seven frame-border settings that previously lived only on the
+screen-global WindowMaker domain — FrameBorderWidth, FrameBorderColor,
+FrameFocusedBorderColor, FrameSelectedBorderColor, FrameInnerBorderWidth,
+FrameInnerBorderColor and FrameInnerFocusedBorderColor — can now be
+overridden per window class in WMWindowAttributes. An entry such as
+
+  xterm.XTerm = {
+    FrameInnerFocusedBorderColor = green;
+    FrameBorderWidth = 3;
+  };
+
+gives every xterm a thicker outer border and a green focused inner
+border, while every other application keeps the screen-global value.
+Color specs are resolved at manage time and fall back to the
+screen-global color when no per-window override is set.
+
+StartGeometry attribute
+----------------------
+
+A new StartGeometry key in WMWindowAttributes pins a window class to a
+fixed initial position and size at map time. The value is a standard
+X geometry string of the form WxH+X+Y (e.g. "800x600+0+0"), where W
+and H are the requested client width and height and X and Y are the
+absolute frame coordinates. Negative X or Y offsets the window from
+the right or bottom screen edge. The client's WM_NORMAL_HINTS size
+increments are still honoured.
+
 Configurable inner frame border
 -------------------------------
 

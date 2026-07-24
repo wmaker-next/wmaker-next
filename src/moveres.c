@@ -194,10 +194,12 @@ static void showGeometry(WWindow * wwin, int x1, int y1, int x2, int y2, int dir
 	(void)direction;
 
 	if (HAS_BORDER_WITH_SELECT(wwin)) {
-		x1 += scr->frame_border_width;
-		x2 += scr->frame_border_width;
-		y1 += scr->frame_border_width;
-		y2 += scr->frame_border_width;
+		int fbw = wFrameBorderWidth(wwin);
+
+		x1 += fbw;
+		x2 += fbw;
+		y1 += fbw;
+		y2 += fbw;
 	}
 
 	ty = y1 + wwin->frame->top_width;
@@ -277,7 +279,7 @@ static void addWindowOutline(WWindow * wwin, int x, int y, int width, int height
 	int fb = 0;
 
 	if (HAS_BORDER_WITH_SELECT(wwin))
-		fb = wwin->screen_ptr->frame_border_width;
+		fb = wFrameBorderWidth(wwin);
 
 	if (HAS_TITLEBAR(wwin) && !wwin->flags.shaded) {
 		h = WSCALE(wwin->screen_ptr, WMFontHeight(wwin->screen_ptr->title_font) + (w_global.config->window_title_clearance +
@@ -414,9 +416,9 @@ typedef struct {
 #define WTOP(w) (w)->frame_y
 #define WLEFT(w) (w)->frame_x
 #define WRIGHT(w) ((w)->frame_x + (int)(w)->frame->core->width - 1 + \
-    (HAS_BORDER_WITH_SELECT(w) ? 2*(w)->screen_ptr->frame_border_width : 0))
+		   (HAS_BORDER_WITH_SELECT(w) ? 2*wFrameBorderWidth(w) : 0))
 #define WBOTTOM(w) ((w)->frame_y + (int)(w)->frame->core->height - 1 + \
-    (HAS_BORDER_WITH_SELECT(w) ? 2*(w)->screen_ptr->frame_border_width : 0))
+		    (HAS_BORDER_WITH_SELECT(w) ? 2*wFrameBorderWidth(w) : 0))
 
 static int compareWTop(const void *a, const void *b)
 {
@@ -648,8 +650,8 @@ static void initMoveData(WWindow * wwin, MoveData * data)
 	data->calcX = wwin->frame_x;
 	data->calcY = wwin->frame_y;
 
-	data->winWidth = wwin->frame->core->width + (HAS_BORDER_WITH_SELECT(wwin) ? 2 * wwin->screen_ptr->frame_border_width : 0);
-	data->winHeight = wwin->frame->core->height + (HAS_BORDER_WITH_SELECT(wwin) ? 2 * wwin->screen_ptr->frame_border_width : 0);
+	data->winWidth = wwin->frame->core->width + (HAS_BORDER_WITH_SELECT(wwin) ? 2 * wFrameBorderWidth(wwin) : 0);
+	data->winHeight = wwin->frame->core->height + (HAS_BORDER_WITH_SELECT(wwin) ? 2 * wFrameBorderWidth(wwin) : 0);
 
 	data->snap = SNAP_NONE;
 }
@@ -1007,7 +1009,7 @@ static void addSnapOutline(WWindow *wwin, int direction)
 	y = rect.pos.y;
 	width = rect.size.width;
 	height = rect.size.height;
-	fb = HAS_BORDER_WITH_SELECT(wwin) ? 2 * wwin->screen_ptr->frame_border_width : 0;
+	fb = HAS_BORDER_WITH_SELECT(wwin) ? 2 * wFrameBorderWidth(wwin) : 0;
 
 	switch (direction) {
 	case SNAP_LEFT:
@@ -1169,7 +1171,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	int scr_width = wwin->screen_ptr->scr_width;
 	int scr_height = wwin->screen_ptr->scr_height;
 	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
-		+ 2 * (HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0);
+		+ 2 * (HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0);
 	int src_x = wwin->frame_x;
 	int src_y = wwin->frame_y;
 	int original_w = w;
@@ -1769,7 +1771,7 @@ static void snapResizeGeometry(WWindow *wwin, int res, int rx1, int ry1,
 	WScreen *scr = wwin->screen_ptr;
 	int resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 	Bool attract = w_global.config->attract;
-	int fb2 = HAS_BORDER_WITH_SELECT(wwin) ? 2 * scr->frame_border_width : 0;
+	int fb2 = HAS_BORDER_WITH_SELECT(wwin) ? 2 * wFrameBorderWidth(wwin) : 0;
 	int span_l = WLEFT(wwin), span_r = WRIGHT(wwin);
 	int span_t = WTOP(wwin), span_b = WBOTTOM(wwin);
 	int cand_x = 0, cand_y = 0;
@@ -1941,7 +1943,7 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	WScreen *scr = wwin->screen_ptr;
 	Window root = scr->root_win;
 	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
-		+ 2 * (HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0);
+		+ 2 * (HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0);
 	int fw = wwin->frame->core->width;
 	int fh = wwin->frame->core->height;
 	int fx = wwin->frame_x;

@@ -57,9 +57,21 @@ static WMHashTable *attrs_cache;
 /* every boolean defaults to No, set covers all bits so merge_attrs()
  * writes every flag when useGlobalDefault is in effect */
 static const WWindowAttrs attrs_global_default = {
-	.value = 0, .set = ~(uint32_t)0,
-	.icon = NULL, .start_workspace = NULL,
-	.start_workspaces = NULL, .start_workspace_count = 0
+	.value = 0,
+	.set = ~(uint32_t)0,
+	.icon = NULL,
+	.start_workspace = NULL,
+	.start_workspaces = NULL,
+	.start_workspace_count = 0,
+	.frame_set = 0,
+	.frame_border_width = 0,
+	.frame_inner_border_width = 0,
+	.frame_border_color_spec = NULL,
+	.frame_focused_border_color_spec = NULL,
+	.frame_selected_border_color_spec = NULL,
+	.frame_inner_border_color_spec = NULL,
+	.frame_inner_focused_border_color_spec = NULL,
+	.start_geometry_spec = NULL
 };
 
 /* proplist key atoms used by the write/maintenance helpers */
@@ -143,6 +155,45 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 		attrs->start_workspace_count = cnt;
 	}
 
+	str = get_entry_string(entry, "FrameBorderWidth");
+	if (str) {
+		attrs->frame_border_width = atoi(str);
+		attrs->frame_set |= WATTR_FRAME_BORDER_WIDTH;
+	}
+	str = get_entry_string(entry, "FrameBorderColor");
+	if (str) {
+		attrs->frame_border_color_spec = wstrdup(str);
+		attrs->frame_set |= WATTR_FRAME_BORDER_COLOR;
+	}
+	str = get_entry_string(entry, "FrameFocusedBorderColor");
+	if (str) {
+		attrs->frame_focused_border_color_spec = wstrdup(str);
+		attrs->frame_set |= WATTR_FRAME_FOCUSED_BORDER_COLOR;
+	}
+	str = get_entry_string(entry, "FrameSelectedBorderColor");
+	if (str) {
+		attrs->frame_selected_border_color_spec = wstrdup(str);
+		attrs->frame_set |= WATTR_FRAME_SELECTED_BORDER_COLOR;
+	}
+	str = get_entry_string(entry, "FrameInnerBorderWidth");
+	if (str) {
+		attrs->frame_inner_border_width = atoi(str);
+		attrs->frame_set |= WATTR_FRAME_INNER_BORDER_WIDTH;
+	}
+	str = get_entry_string(entry, "FrameInnerBorderColor");
+	if (str) {
+		attrs->frame_inner_border_color_spec = wstrdup(str);
+		attrs->frame_set |= WATTR_FRAME_INNER_BORDER_COLOR;
+	}
+	str = get_entry_string(entry, "FrameInnerFocusedBorderColor");
+	if (str) {
+		attrs->frame_inner_focused_border_color_spec = wstrdup(str);
+		attrs->frame_set |= WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR;
+	}
+	str = get_entry_string(entry, "StartGeometry");
+	if (str)
+		attrs->start_geometry_spec = wstrdup(str);
+
 	return attrs;
 }
 
@@ -161,6 +212,18 @@ static void free_attrs_entry(WWindowAttrs *attrs)
 			wfree(attrs->start_workspaces[j]);
 		wfree(attrs->start_workspaces);
 	}
+	if (attrs->frame_border_color_spec)
+		wfree(attrs->frame_border_color_spec);
+	if (attrs->frame_focused_border_color_spec)
+		wfree(attrs->frame_focused_border_color_spec);
+	if (attrs->frame_selected_border_color_spec)
+		wfree(attrs->frame_selected_border_color_spec);
+	if (attrs->frame_inner_border_color_spec)
+		wfree(attrs->frame_inner_border_color_spec);
+	if (attrs->frame_inner_focused_border_color_spec)
+		wfree(attrs->frame_inner_focused_border_color_spec);
+	if (attrs->start_geometry_spec)
+		wfree(attrs->start_geometry_spec);
 	wfree(attrs);
 }
 
@@ -633,6 +696,78 @@ Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 		}
 	}
 	return False;
+}
+
+void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
+			     const char *class, WWindow *wwin)
+{
+	const WWindowAttrs *level[4];
+	const WWindowAttrs *re = NULL;
+	int n, i;
+	Bool resolved_any = False;
+
+	n = attrs_lookup_levels(instance, class, True, level);
+	for (i = 0; i < n; i++) {
+		const WWindowAttrs *a = level[i];
+
+		if ((a->frame_set & WATTR_FRAME_BORDER_WIDTH) && !wwin->frame_border.frame_border_width_set) {
+			wwin->frame_border.frame_border_width = a->frame_border_width;
+			wwin->frame_border.frame_border_width_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_WIDTH) && !wwin->frame_border.frame_inner_border_width_set) {
+			wwin->frame_border.frame_inner_border_width = a->frame_inner_border_width;
+			wwin->frame_border.frame_inner_border_width_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_BORDER_COLOR) && !wwin->frame_border.frame_border_color_set) {
+			wwin->frame_border.frame_border_color = (a->frame_border_color_spec && a->frame_border_color_spec[0])
+				? WMCreateNamedColor(scr->wmscreen, a->frame_border_color_spec, True) : NULL;
+			wwin->frame_border.frame_border_color_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_FOCUSED_BORDER_COLOR) && !wwin->frame_border.frame_focused_border_color_set) {
+			wwin->frame_border.frame_focused_border_color = (a->frame_focused_border_color_spec && a->frame_focused_border_color_spec[0])
+				? WMCreateNamedColor(scr->wmscreen, a->frame_focused_border_color_spec, True) : NULL;
+			wwin->frame_border.frame_focused_border_color_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_SELECTED_BORDER_COLOR) && !wwin->frame_border.frame_selected_border_color_set) {
+			wwin->frame_border.frame_selected_border_color = (a->frame_selected_border_color_spec && a->frame_selected_border_color_spec[0])
+				? WMCreateNamedColor(scr->wmscreen, a->frame_selected_border_color_spec, True) : NULL;
+			wwin->frame_border.frame_selected_border_color_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_COLOR) && !wwin->frame_border.frame_inner_border_color_set) {
+			wwin->frame_border.frame_inner_border_color = (a->frame_inner_border_color_spec && a->frame_inner_border_color_spec[0])
+				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_border_color_spec, True) : NULL;
+			wwin->frame_border.frame_inner_border_color_set = 1;
+			resolved_any = True;
+		}
+		if ((a->frame_set & WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR) && !wwin->frame_border.frame_inner_focused_border_color_set) {
+			wwin->frame_border.frame_inner_focused_border_color = (a->frame_inner_focused_border_color_spec && a->frame_inner_focused_border_color_spec[0])
+				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_focused_border_color_spec, True) : NULL;
+			wwin->frame_border.frame_inner_focused_border_color_set = 1;
+			resolved_any = True;
+		}
+	}
+
+	(void) resolved_any;
+}
+
+const char *wDefaultGetStartGeometry(const char *instance, const char *class)
+{
+	const WWindowAttrs *level[4];
+	int n, i;
+
+	n = attrs_lookup_levels(instance, class, True, level);
+	for (i = 0; i < n; i++) {
+		const char *spec = level[i]->start_geometry_spec;
+
+		if (spec && spec[0] != '\0')
+			return spec;
+	}
+	return NULL;
 }
 
 /* Get the name of the Icon File. If default_icon is True, then, default value included.

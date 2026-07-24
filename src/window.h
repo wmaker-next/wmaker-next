@@ -198,6 +198,28 @@ typedef struct WWindowGroup {
 } WWindowGroup;
 
 
+typedef struct WGeometry {
+	int x, y;
+	unsigned int width, height;
+} WGeometry;
+
+typedef struct WFrameBorderOverride {
+	int frame_border_width;
+	int frame_inner_border_width;
+	WMColor *frame_border_color;
+	WMColor *frame_focused_border_color;
+	WMColor *frame_selected_border_color;
+	WMColor *frame_inner_border_color;
+	WMColor *frame_inner_focused_border_color;
+	unsigned int frame_border_width_set:1;
+	unsigned int frame_border_color_set:1;
+	unsigned int frame_focused_border_color_set:1;
+	unsigned int frame_selected_border_color_set:1;
+	unsigned int frame_inner_border_width_set:1;
+	unsigned int frame_inner_border_color_set:1;
+	unsigned int frame_inner_focused_border_color_set:1;
+} WFrameBorderOverride;
+
 /*
  * Stores client window information. Each client window has its
  * structure created when it's being first mapped.
@@ -217,15 +239,9 @@ typedef struct WWindow {
 	struct WFrameWindow *frame;		/* the frame window */
 	int frame_x, frame_y;			/* position of the frame in root*/
 
-	struct {
-		int x, y;
-		unsigned int width, height;	/* original geometry of the window */
-	} old_geometry;				/* (before things like maximize) */
+	WGeometry old_geometry;			/* (before things like maximize) */
 
-	struct {
-		int x, y;
-		unsigned int width, height;	/* original geometry of the window */
-	} bfs_geometry;				/* (before fullscreen) */
+	WGeometry bfs_geometry;			/* (before fullscreen) */
 	int bfs_maximized;			/* flags.maximized at fullscreen entry */
 
 	int maximus_x;				/* size after Maximusizing */
@@ -408,6 +424,10 @@ typedef struct WWindow {
 	int restore_tab_idx;
 	int restore_tab_active;
 
+	WFrameBorderOverride frame_border;	/* per-window frame border overrides */
+	WGeometry start_geometry;			/* StartGeometry attribute */
+	unsigned int start_geometry_set:1;	/* StartGeometry was specified */
+
 	/* invoked from wWindowMove()/wWindowConfigure() after geometry is
 	 * final, so an attached overlay can track the window */
 	void (*on_geometry_change)(struct WWindow *wwin, void *data);
@@ -418,8 +438,16 @@ typedef struct WWindow {
 #define HAS_RESIZEBAR(w)	(!(WFLAGP((w), no_resizebar) || (w)->flags.fullscreen))
 #define HAS_BORDER(w)		(!(WFLAGP((w), no_border) || (w)->flags.fullscreen))
 #define IS_MOVABLE(w)		(!(WFLAGP((w), no_movable) || (w)->flags.fullscreen))
-#define IS_RESIZABLE(w)		(!(WFLAGP((w), no_resizable) || (w)->flags.fullscreen))
+#define IS_RESIZABLE(w)	(!(WFLAGP((w), no_resizable) || (w)->flags.fullscreen))
 #define WINDOW_LEVEL(w)		((w)->frame->core->stacking->window_level)
+
+int wFrameBorderWidth(const WWindow *wwin);
+int wFrameInnerBorderWidth(const WWindow *wwin);
+WMColor *wFrameBorderColor(const WWindow *wwin);
+WMColor *wFrameFocusedBorderColor(const WWindow *wwin);
+WMColor *wFrameSelectedBorderColor(const WWindow *wwin);
+WMColor *wFrameInnerBorderColor(const WWindow *wwin);
+WMColor *wFrameInnerFocusedBorderColor(const WWindow *wwin);
 
 /* Workspace membership predicates. WWIN_PRIMARY_WS names the single
  * workspace used for labels, EWMH _NET_WM_DESKTOP and tiling ownership.

@@ -352,7 +352,8 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	WScreen *scr = fwin->screen_ptr;
 	int width = fwin->core->width;
 	int height = fwin->core->height;
-	int inner = scr->frame_inner_border_width;
+	int inner = (fwin->flags.is_client_window_frame && fwin->child)
+		? wFrameInnerBorderWidth((WWindow *)fwin->child) : scr->frame_inner_border_width;
 	int middle = height - fwin->top_width - fwin->bottom_width;
 	unsigned long pixel;
 	XRectangle rectangles[4];
@@ -528,7 +529,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		height = fwin->core->height - fwin->top_width - fwin->bottom_width;
 
 	inner = (fwin->flags.is_client_window_frame && (flags & WFF_BORDER))
-		? scr->frame_inner_border_width : 0;
+		? (fwin->child ? wFrameInnerBorderWidth((WWindow *)fwin->child) : scr->frame_inner_border_width)
+		: 0;
 	fwin->flags.border = (flags & WFF_BORDER) != 0;
 	if (height > 0)
 		height -= 2 * inner;
@@ -675,7 +677,9 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		wFrameWindowResize(fwin, width, height + fwin->top_width + fwin->bottom_width + 2 * inner);
 
 	if (flags & WFF_BORDER)
-		XSetWindowBorderWidth(dpy, fwin->core->window, scr->frame_border_width);
+		XSetWindowBorderWidth(dpy, fwin->core->window,
+				      (fwin->flags.is_client_window_frame && fwin->child)
+				      ? wFrameBorderWidth((WWindow *)fwin->child) : scr->frame_border_width);
 	else
 		XSetWindowBorderWidth(dpy, fwin->core->window, 0);
 
@@ -705,11 +709,21 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 	checkTitleSize(fwin);
 
-	allocFrameBorderPixel(fwin, scr->frame_border_color, &fwin->border_pixel);
-	allocFrameBorderPixel(fwin, scr->frame_focused_border_color, &fwin->focused_border_pixel);
-	allocFrameBorderPixel(fwin, scr->frame_selected_border_color, &fwin->selected_border_pixel);
-	allocFrameBorderPixel(fwin, scr->frame_inner_border_color, &fwin->inner_border_pixel);
-	allocFrameBorderPixel(fwin, scr->frame_inner_focused_border_color, &fwin->inner_focused_border_pixel);
+	if (fwin->flags.is_client_window_frame && fwin->child) {
+		WWindow *wwin = (WWindow *)fwin->child;
+
+		allocFrameBorderPixel(fwin, wFrameBorderColor(wwin), &fwin->border_pixel);
+		allocFrameBorderPixel(fwin, wFrameFocusedBorderColor(wwin), &fwin->focused_border_pixel);
+		allocFrameBorderPixel(fwin, wFrameSelectedBorderColor(wwin), &fwin->selected_border_pixel);
+		allocFrameBorderPixel(fwin, wFrameInnerBorderColor(wwin), &fwin->inner_border_pixel);
+		allocFrameBorderPixel(fwin, wFrameInnerFocusedBorderColor(wwin), &fwin->inner_focused_border_pixel);
+	} else {
+		allocFrameBorderPixel(fwin, scr->frame_border_color, &fwin->border_pixel);
+		allocFrameBorderPixel(fwin, scr->frame_focused_border_color, &fwin->focused_border_pixel);
+		allocFrameBorderPixel(fwin, scr->frame_selected_border_color, &fwin->selected_border_pixel);
+		allocFrameBorderPixel(fwin, scr->frame_inner_border_color, &fwin->inner_border_pixel);
+		allocFrameBorderPixel(fwin, scr->frame_inner_focused_border_color, &fwin->inner_focused_border_pixel);
+	}
 
 	if (flags & WFF_SELECTED) {
 		if (fwin->selected_border_pixel)

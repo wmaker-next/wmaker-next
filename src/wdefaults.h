@@ -86,9 +86,29 @@ typedef enum {
  * One parsed WMWindowAttributes entry. value/set are bitsets indexed by
  * WWindowAttrKey, set carries which keys this entry supplied so the
  * four-level merge knows what to override. icon and start_workspace are
- * Icon and StartWorkspace/StartWorkspaces are the non-boolean keys and are
- * handled as plain string/array fields alongside the bitset.
+ * owned copies, NULL when the entry does not supply them.
+ *
+ * The frame_border_* fields are per-window frame border overrides:
+ * widths are plain ints (0 when absent), color specs are owned strings
+ * resolved to WMColor at map time by wDefaultFillFrameBorders(), NULL when
+ * the entry does not supply them. frame_set is a bitmask of
+ * WATTR_FRAME_* keys that this entry supplied.
+ *
+ * start_workspaces is the plural "StartWorkspaces" array (owned workspace
+ * name copies). start_workspace (singular) is kept for backward reads of
+ * the old single-string "StartWorkspace" key.
+ *
+ * start_geometry_spec is the StartGeometry attribute: an owned
+ * copy of the "WxH+X+Y" string, parsed at map time via XParseGeometry.
  */
+#define WATTR_FRAME_BORDER_WIDTH          (1u << 0)
+#define WATTR_FRAME_BORDER_COLOR          (1u << 1)
+#define WATTR_FRAME_FOCUSED_BORDER_COLOR (1u << 2)
+#define WATTR_FRAME_SELECTED_BORDER_COLOR  (1u << 3)
+#define WATTR_FRAME_INNER_BORDER_WIDTH   (1u << 4)
+#define WATTR_FRAME_INNER_BORDER_COLOR   (1u << 5)
+#define WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR (1u << 6)
+
 typedef struct WWindowAttrs {
 	uint32_t value;
 	uint32_t set;
@@ -96,6 +116,15 @@ typedef struct WWindowAttrs {
 	char *start_workspace;
 	char **start_workspaces;
 	int start_workspace_count;
+	uint32_t frame_set;
+	int frame_border_width;
+	int frame_inner_border_width;
+	char *frame_border_color_spec;
+	char *frame_focused_border_color_spec;
+	char *frame_selected_border_color_spec;
+	char *frame_inner_border_color_spec;
+	char *frame_inner_focused_border_color_spec;
+	char *start_geometry_spec;
 } WWindowAttrs;
 
 #endif /* WMWDEFAULTS_H_ */
