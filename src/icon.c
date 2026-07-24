@@ -427,6 +427,17 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 				    from_client ? icon->icon_name : NULL);
 }
 
+int wIconEffectiveSize(void)
+{
+	int size = w_global.config->icon_size;
+
+	if (w_global.config->enforce_icon_margin) {
+		size = (int)((double)w_global.config->icon_size * 0.75 + 0.5);
+		size = (size >> 2) << 2;
+	}
+	return size;
+}
+
 RImage *wIconValidateIconSize(RImage *icon, int max_size)
 {
 	RImage *nimage;
@@ -465,7 +476,7 @@ int wIconChangeImageFile(WIcon *icon, const char *file)
 	if (!path)
 		return 0;
 
-	image = get_rimage_from_file(scr, path, w_global.config->icon_size);
+	image = get_rimage_from_file(scr, path, wIconEffectiveSize());
 	if (!image) {
 		wfree(path);
 		return 0;
@@ -617,7 +628,7 @@ RImage *wWindowGetIconImage(WWindow *wwin)
 	file = get_icon_filename(wwin->wm_instance, wwin->wm_class, NULL, False);
 	if (file) {
 		image = get_rimage_from_file(wwin->screen_ptr, file,
-					     w_global.config->icon_size);
+					     wIconEffectiveSize());
 		wfree(file);
 	}
 	return image;
@@ -1220,7 +1231,7 @@ void set_icon_image_from_database(WIcon *icon, const char *wm_instance, const ch
 		 * release those before replacing them */
 		unset_icon_image(icon);
 		icon->file = wstrdup(file);
-		icon->file_image = get_rimage_from_file(icon->core->screen_ptr, icon->file, w_global.config->icon_size);
+		icon->file_image = get_rimage_from_file(icon->core->screen_ptr, icon->file, wIconEffectiveSize());
 		wfree(file);
 	}
 }

@@ -34,12 +34,14 @@
 
 #include <wraster.h>
 
+#include <WINGs/WUtil.h>
 #include "WindowMaker.h"
 #include "window.h"
 #include "appicon.h"
 #include "screen.h"
 #include "workspace.h"
 #include "defaults.h"
+#include "desktopfile.h"
 #include "wdefaults.h"
 #include "icon.h"
 #include "misc.h"
@@ -548,6 +550,38 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 			if (!file_path)
 				file_path = find_in_icon_cache(file_name, winstance, wclass);
 		}
+	}
+
+	/*
+	 * Freedesktop hicolor icon-theme fallback for windows that set
+	 * neither an _NET_WM_ICON property nor a WMWindowAttributes Icon=
+	 * entry. Electron/Chromium apps rely on the desktop environment
+	 * resolving their icon from hicolor/apps/<name>.{png,xpm,svg}.
+	 * res_class is the canonical icon-name identifier, fall back to
+	 * res_instance, then to a lower-cased retry since WM_CLASS casing
+	 * is unconstrained while hicolor file names are conventionally
+	 * lower-case. This runs only after the user-configured Icon= and
+	 * the icon cache misses, so a real asset wins over the generic
+	 * default icon below.
+	 */
+	if (!file_path && wclass) {
+		file_path = wXDGFindThemeIcon(wclass, "apps",
+					      wIconEffectiveSize());
+	}
+	if (!file_path && winstance) {
+		file_path = wXDGFindThemeIcon(winstance, "apps",
+					      wIconEffectiveSize());
+	}
+	if (!file_path && wclass) {
+		char *fold = wstrdup(wclass);
+		char *p;
+
+		for (p = fold; *p; p++)
+			*p = tolower((unsigned char)*p);
+		if (strcmp(fold, wclass) != 0)
+			file_path = wXDGFindThemeIcon(fold, "apps",
+						      wIconEffectiveSize());
+		wfree(fold);
 	}
 
 	/*

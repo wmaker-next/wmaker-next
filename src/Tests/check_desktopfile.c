@@ -272,6 +272,97 @@ static void test_frecency_score(void)
 	CHECK(wFrecencyScore(10000, now, now) == 100);
 }
 
+/* ---- hicolor icon-theme resolver ---- */
+
+static void mkicon(const char *dir, const char *name)
+{
+	char path[PATH_MAX + 64];
+	FILE *f;
+
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	f = fopen(path, "w");
+	if (f)
+		fclose(f);
+}
+
+static void test_xdg_find_theme_icon(void)
+{
+	char tmpl[] = "/tmp/wmaker-hicolor-XXXXXX";
+	char root[PATH_MAX], dir48[PATH_MAX + 32], dir256[PATH_MAX + 32];
+	char dirscal[PATH_MAX + 32], dir64[PATH_MAX + 32];
+	char *got;
+	const char *prev;
+
+	prev = getenv("XDG_DATA_HOME");
+
+	root[0] = '\0';
+	if (!mkdtemp(tmpl)) {
+		perror("mkdtemp");
+		check_failures++;
+		return;
+	}
+	snprintf(root, sizeof(root), "%s", tmpl);
+
+	snprintf(dir48, sizeof(dir48), "%s/icons/hicolor/48x48/apps", root);
+	snprintf(dir256, sizeof(dir256), "%s/icons/hicolor/256x256/apps", root);
+	snprintf(dir64, sizeof(dir64), "%s/icons/hicolor/64x64/apps", root);
+	snprintf(dirscal, sizeof(dirscal), "%s/icons/hicolor/scalable/apps", root);
+	/* mkdir -p each leaf */
+	(void)wspawnvp_wait((char *[]){"mkdir", "-p", dir48, dir256,
+				       dir64, dirscal, NULL});
+
+	mkicon(dir48, "myapp.png");
+	mkicon(dir256, "myapp.png");
+	mkicon(dirscal, "vector.svg");
+	mkicon(dir64, "vector.png");
+	/* an asset that exists only as SVG, to test USE_SVG gating */
+	mkicon(dirscal, "onlysvg.svg");
+
+	setenv("XDG_DATA_HOME", root, 1);
+
+	/* exact-size raster hit */
+	got = wXDGFindThemeIcon("myapp", "apps", 48);
+	CHECK(got != NULL);
+	CHECK(strstr(got, "48x48") != NULL);
+	wfree(got);
+
+	/* no exact size, nearest-larger raster wins over a smaller one */
+	got = wXDGFindThemeIcon("myapp", "apps", 64);
+	CHECK(got != NULL);
+	CHECK(strstr(got, "256x256") != NULL);
+	wfree(got);
+
+	/* missing asset returns NULL cleanly */
+	got = wXDGFindThemeIcon("nope", "apps", 48);
+	CHECK(got == NULL);
+
+#ifdef USE_SVG
+	/* a scalable hit with no competing raster */
+	got = wXDGFindThemeIcon("onlysvg", "apps", 128);
+	CHECK(got != NULL);
+	CHECK(strstr(got, "scalable") != NULL);
+	wfree(got);
+
+	/* exact-size raster beats a scalable render at the same want */
+	got = wXDGFindThemeIcon("vector", "apps", 64);
+	CHECK(got != NULL);
+	CHECK(strstr(got, "64x64") != NULL);
+	wfree(got);
+#else
+	/* without USE_SVG an SVG-only asset is not found, no crash */
+	got = wXDGFindThemeIcon("onlysvg", "apps", 128);
+	CHECK(got == NULL);
+#endif
+
+	/* restore the harness-wide XDG_DATA_HOME for the MIME tests */
+	if (prev)
+		setenv("XDG_DATA_HOME", prev, 1);
+	else
+		unsetenv("XDG_DATA_HOME");
+
+	(void)wspawnvp_wait((char *[]){"rm", "-rf", root, NULL});
+}
+
 int main(void)
 {
 	const char *src;
@@ -305,6 +396,7 @@ int main(void)
 	test_doc_list();
 	test_fuzzy_score();
 	test_frecency_score();
+	test_xdg_find_theme_icon();
 
 	wXDGMimeInvalidate();
 	wXDGAppListInvalidate();

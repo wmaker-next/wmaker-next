@@ -22,6 +22,13 @@ struct wmaker_global_variables w_global;
 
 /* --- stubs for wdefaults.c externs not exercised here --- */
 
+/* controllable by get_icon_filename() fallback tests */
+const char *findimage_return;
+const char *xdg_match_name;
+const char *xdg_return_path;
+int xdg_call_count;
+int xdg_last_want;
+
 const char *wGetIconCacheDir(void)
 {
 	return NULL;
@@ -73,9 +80,49 @@ RImage *wIconValidateIconSize(RImage *icon, int max_size)
 	return icon;
 }
 
+int wIconEffectiveSize(void)
+{
+	int size = w_global.config->icon_size;
+
+	if (w_global.config->enforce_icon_margin) {
+		size = (int)((double)w_global.config->icon_size * 0.75 + 0.5);
+		size = (size >> 2) << 2;
+	}
+	return size;
+}
+
 char *FindImage(const char *paths, const char *file)
 {
-	(void)paths; (void)file;
+	(void)paths;
+	/* controllable by tests that exercise get_icon_filename()'s
+	 * fallback chain; NULL = "not found" (the historical behaviour) */
+	if (findimage_return) {
+		size_t n = strlen(findimage_return) + 1;
+		char *path = wmalloc(n);
+
+		snprintf(path, n, "%s", findimage_return);
+		return path;
+	}
+	(void)file;
+	return NULL;
+}
+
+/* controllable stub of the hicolor icon-theme resolver so the
+ * get_icon_filename() fallback ordering can be tested in isolation
+ * from the real filesystem walker in desktopfile.c */
+char *wXDGFindThemeIcon(const char *name, const char *context, int want_size)
+{
+	(void)context;
+	xdg_call_count++;
+	xdg_last_want = want_size;
+	if (name && xdg_match_name && strcmp(name, xdg_match_name) == 0
+	    && xdg_return_path) {
+		size_t n = strlen(xdg_return_path) + 1;
+		char *p = wmalloc(n);
+
+		snprintf(p, n, "%s", xdg_return_path);
+		return p;
+	}
 	return NULL;
 }
 
@@ -343,8 +390,115 @@ static void test_schema_count(void)
 	CHECK(WATTR_BOOL_COUNT <= 32);
 }
 
+static void reset_icon_stubs(void)
+{
+	findimage_return = NULL;
+	xdg_match_name = NULL;
+	xdg_return_path = NULL;
+	xdg_call_count = 0;
+	xdg_last_want = -1;
+}
+
+/* exercise the hicolor icon-theme fallback wired into
+ * get_icon_filename(): precedence over the generic default icon,
+ * fallback to wXDGFindThemeIcon(res_class) when no Icon= is set,
+ * and the lower-cased retry for mixed-case WM_CLASS strings */
+static void test_hicolor_fallback(void)
+{
+	char *path;
+
+	/* case 1: no Icon= entry, no cache hit -> hicolor resolver is
+	 * consulted with res_class and its result wins over the generic
+	 * default icon */
+	set_attr_dict("{}");
+	reset_icon_stubs();
+	xdg_match_name = "myapp";
+	xdg_return_path = "/hicolor/myapp.png";
+	path = get_icon_filename("myapp", "myapp", NULL, False);
+	CHECK_STR(path, "/hicolor/myapp.png");
+	wfree(path);
+	CHECK(xdg_call_count >= 1);
+
+	/* case 2: a user-configured Icon= that resolves via FindImage
+	 * takes precedence, the hicolor resolver must not be reached */
+	set_attr_dict("{ myapp = { Icon = \"user.png\"; }; }");
+	reset_icon_stubs();
+	findimage_return = "/user/user.png";
+	xdg_match_name = "myapp";
+	xdg_return_path = "/hicolor/myapp.png";
+	path = get_icon_filename("myapp", "myapp", NULL, False);
+	CHECK_STR(path, "/user/user.png");
+	wfree(path);
+	/* user Icon= resolved before any hicolor lookup */
+	CHECK(xdg_call_count == 0);
+
+	/* case 3: mixed-case WM_CLASS (res_class = "MyApp") with a
+	 * hicolor asset deployed as myapp.png. The literal lookup
+	 * misses, then the lower-cased retry hits */
+	set_attr_dict("{}");
+	reset_icon_stubs();
+	/* literal "MyApp" misses */
+	xdg_match_name = "myapp";
+	xdg_return_path = "/hicolor/myapp.png";
+	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	CHECK_STR(path, "/hicolor/myapp.png");
+	wfree(path);
+
+	/* case 4: nothing resolves -> NULL, not the default icon when
+	 * default_icon is False; and the generic default icon when True
+	 * (here get_default_image_path also calls FindImage, which is NULL,
+	 *  so even True returns NULL) */
+	set_attr_dict("{}");
+	reset_icon_stubs();
+	path = get_icon_filename("x", "X", NULL, False);
+	CHECK(path == NULL);
+}
+
+/* EnforceIconMargin must steer the hicolor resolver at the margin-adjusted size */
+static void test_hicolor_enforce_margin(void)
+{
+	struct WConfig *cfg = w_global.config;
+	char *path;
+	int saved_size, saved_margin;
+
+	saved_size = cfg->icon_size;
+	saved_margin = cfg->enforce_icon_margin;
+
+	/* icon_size 64 -> effective 48 when the margin is enforced */
+	set_attr_dict("{}");
+	cfg->icon_size = 64;
+	cfg->enforce_icon_margin = 1;
+	reset_icon_stubs();
+	xdg_match_name = "MyApp";
+	xdg_return_path = "/hicolor/myapp.png";
+	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	CHECK_STR(path, "/hicolor/myapp.png");
+	wfree(path);
+	CHECK(xdg_last_want == 48);
+
+	/* with the margin off, the resolver is asked for the full icon_size */
+	cfg->enforce_icon_margin = 0;
+	reset_icon_stubs();
+	xdg_match_name = "MyApp";
+	xdg_return_path = "/hicolor/myapp.png";
+	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	CHECK_STR(path, "/hicolor/myapp.png");
+	wfree(path);
+	CHECK(xdg_last_want == 64);
+
+	cfg->icon_size = saved_size;
+	cfg->enforce_icon_margin = saved_margin;
+}
+
 int main(void)
 {
+	/* w_global.config is a pointer the real WM initializes; give the
+	 * test a zeroed WConfig so get_icon_filename() can read icon_size
+	 * without dereferencing NULL */
+	static struct WConfig test_config;
+
+	w_global.config = &test_config;
+
 	test_schema_count();
 	test_global_default();
 	test_precedence();
@@ -353,6 +507,8 @@ int main(void)
 	test_change_icon_reloads_cache();
 	test_empty_class();
 	test_case_sensitivity();
+	test_hicolor_fallback();
+	test_hicolor_enforce_margin();
 
 	set_attr_dict(NULL);
 

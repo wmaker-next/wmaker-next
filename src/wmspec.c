@@ -476,23 +476,7 @@ static RImage *findBestIcon(const uint32_t *data, size_t items)
 	RImage *src_image, *ret_image;
 	double f;
 
-	if (w_global.config->enforce_icon_margin) {
-
-		/* better use only 75% of icon_size. For 64x64 this means 48x48
-		 * This leaves room around the icon for the miniwindow title and
-		 * results in better overall aesthetics -Dan */
-		wanted = (int)((double)w_global.config->icon_size * 0.75 + 0.5);
-
-		/* the size should be a multiple of 4 */
-		wanted = (wanted >> 2) << 2;
-
-	} else {
-
-		/* This is the "old" approach, which tries to find the largest
-		 * icon that still fits into icon_size. */
-		wanted = w_global.config->icon_size;
-
-	}
+	wanted = wIconEffectiveSize();
 
 	/* try to find an icon which is close to the wanted size, but not larger */
 	icon = NULL;
