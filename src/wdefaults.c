@@ -581,7 +581,14 @@ RImage *get_rimage_from_file(WScreen *scr, const char *file_name, int max_size)
 	if (!file_name)
 		return NULL;
 
-	image = RLoadImage(scr->rcontext, file_name, 0);
+	/* RLoadImage() passes width=height=0 to the loaders, which leaves
+	 * SVGs rendering at their intrinsic size (capped at 256) instead of
+	 * the wanted icon size. wIconValidateIconSize() below only downscales,
+	 * never upscales, so an SVG with a small intrinsic size would stay
+	 * tiny. Pass max_size as the render dimensions: only the SVG loader
+	 * consults width/height, every raster loader ignores them. */
+	image = RLoadImageAtSize(scr->rcontext, file_name, 0,
+				 (unsigned int)max_size, (unsigned int)max_size);
 	if (!image)
 		wwarning(_("error loading image file \"%s\": %s"), file_name,
 			 RMessageForError(RErrorCode));
