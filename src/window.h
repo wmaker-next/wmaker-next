@@ -262,6 +262,17 @@ typedef struct WWindow {
 	char *wm_instance;			/* instance of WM_CLASS */
 	char *wm_class;				/* class of WM_CLASS */
 	char *wm_command;			/* WM_COMMAND argv joined with wtokenjoin */
+	char *wm_role;				/* WM_WINDOW_ROLE (read once at manage time) */
+	char *wm_machine;			/* WM_CLIENT_MACHINE (read once at manage time) */
+	char *wm_title;			/* current window title, kept in sync by
+						 * wWindowUpdateName() so the dynamic-rule
+						 * lookup has a stable source without a frame */
+	Atom *wm_types;			/* full _NET_WM_WINDOW_TYPE atom list as
+						 * advertised by the client (read once) */
+	int wm_type_count;
+	char **wm_type_names;		/* XGetAtomName() result per wm_types[],
+						 * pre-resolved at manage time so the rule
+						 * lookup never calls XGetAtomName() */
 	GNUstepWMAttributes *wm_gnustep_attr;	/* GNUstep window attributes */
 
 	int state;				/* state as in ICCCM */
@@ -399,6 +410,18 @@ typedef struct WWindow {
 		unsigned int net_has_title:1;	/* use netwm version of WM_NAME */
 		unsigned int net_modal:1;	/* _NET_WM_STATE_MODAL */
 		unsigned int net_demands_attention:1;	/* _NET_WM_STATE_DEMANDS_ATTENTION */
+		/* True from wManageWindow() entry until just before it
+		 * returns. wWindowConfigureBorders() uses it to skip the
+		 * top_width-compensation frame shift: on the initial setup
+		 * path the frame position was already chosen (saved frame
+		 * origin via _WINDOWMAKER_STATE, or fresh placement) for
+		 * the FINAL decorations, so the "preserve client position"
+		 * shift that is correct for an interactive decoration toggle
+		 * would instead drift the frame by |Δtop_width| every
+		 * restart. Covers both the static-rule apply at first
+		 * wWindowConfigureBorders() and the first dynamic-rule
+		 * apply via wWindowReapplyDecorativeAttrs() at map time. */
+		unsigned int initializing:1;
 	} flags;				/* state of the window */
 
 	struct WIcon *icon;			/* Window icon when miminized
@@ -427,6 +450,10 @@ typedef struct WWindow {
 	WFrameBorderOverride frame_border;	/* per-window frame border overrides */
 	WGeometry start_geometry;			/* StartGeometry attribute */
 	unsigned int start_geometry_set:1;	/* StartGeometry was specified */
+	WWindowAttributes regex_applied_mask;	/* which legal-delta fields the regex
+						 * layer supplied at the last
+						 * re-eval/map-time apply, so the next
+						 * re-eval can revert them to baseline */
 
 	/* invoked from wWindowMove()/wWindowConfigure() after geometry is
 	 * final, so an attached overlay can track the window */
@@ -538,6 +565,7 @@ typedef struct {
     WXCookie motif;         /* _MOTIF_WM_HINTS */
     WXCookie cmap_windows;  /* WM_COLORMAP_WINDOWS */
     WXCookie command;       /* WM_COMMAND */
+	WXCookie role;          /* WM_WINDOW_ROLE */
     WXCookie pid;           /* _NET_WM_PID, fallback for wGetWindowPid */
     WXCookie appmenu;       /* _WINDOWMAKER_MENU (existence) */
     WXCookie gtk;           /* _GTK_APPLICATION_OBJECT_PATH (existence) */

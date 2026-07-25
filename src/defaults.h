@@ -49,6 +49,15 @@ void wDefaultsCheckDomains(void *arg);
 void wDefaultFillAttributes(const char *instance, const char *class,
                             WWindowAttributes *attr, WWindowAttributes *mask,
                             Bool useGlobalDefault);
+/* Same as wDefaultFillAttributes but additionally layers the first matching
+ * DynamicRules entry on top. Pulls the title, role, command, machine and
+ * _NET_WM_WINDOW_TYPE atom-name list directly from WWindow so the lookup
+ * never calls XGetAtomName() itself. Pass a WWindow with the relevant
+ * fields populated (the test harness does so without an open display). */
+void wDefaultFillAttributesForWindow(const WWindow *wwin,
+				     WWindowAttributes *attr,
+				     WWindowAttributes *mask,
+				     Bool useGlobalDefault);
 /* Reparse w_global.domain.window_attr->dictionary into the lookup cache.
  * Call after the domain is loaded, after a runtime reload, and after any
  * in-process mutation of the dictionary. */

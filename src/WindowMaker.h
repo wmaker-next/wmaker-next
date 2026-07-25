@@ -393,6 +393,7 @@ extern struct wmaker_global_variables {
 			Atom colormap_notify;
 			Atom motif_wm_hints;
 			Atom ignore_focus_events;
+			Atom window_role;
 		} wm;
 
 		/* GNUStep related */

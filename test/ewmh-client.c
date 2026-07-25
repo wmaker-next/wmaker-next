@@ -3,6 +3,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -509,6 +510,13 @@ int main(void)
 	const char *startup_id = getenv("EWMH_CLIENT_STARTUP_ID");
 	const char *res_class = getenv("EWMH_CLIENT_CLASS");
 	const char *res_name = getenv("EWMH_CLIENT_INSTANCE");
+	const char *gravity = getenv("EWMH_CLIENT_GRAVITY");
+	const char *pos_x = getenv("EWMH_CLIENT_X");
+	const char *pos_y = getenv("EWMH_CLIENT_Y");
+	const char *sz_w = getenv("EWMH_CLIENT_WIDTH");
+	const char *sz_h = getenv("EWMH_CLIENT_HEIGHT");
+	int init_x, init_y;
+	unsigned int init_w, init_h;
 
 	if (!name)
 		name = "ewmh-drive-client";
@@ -593,7 +601,12 @@ int main(void)
 
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
-	win = XCreateSimpleWindow(dpy, root, 80, 80, 320, 180, 0,
+	init_x = pos_x ? atoi(pos_x) : 80;
+	init_y = pos_y ? atoi(pos_y) : 80;
+	init_w = sz_w ? (unsigned int)atoi(sz_w) : 320;
+	init_h = sz_h ? (unsigned int)atoi(sz_h) : 180;
+
+	win = XCreateSimpleWindow(dpy, root, init_x, init_y, init_w, init_h, 0,
 				  BlackPixel(dpy, screen), WhitePixel(dpy, screen));
 	XSelectInput(dpy, win, StructureNotifyMask | PropertyChangeMask);
 
@@ -603,10 +616,49 @@ int main(void)
 	XStoreName(dpy, win, name);
 
 	size_hints.flags = PPosition | PSize;
-	size_hints.x = 80;
-	size_hints.y = 80;
-	size_hints.width = 320;
-	size_hints.height = 180;
+	size_hints.x = pos_x ? atoi(pos_x) : 80;
+	size_hints.y = pos_y ? atoi(pos_y) : 80;
+	size_hints.width = sz_w ? atoi(sz_w) : 320;
+	size_hints.height = sz_h ? atoi(sz_h) : 180;
+	if (gravity) {
+		/* Accept the X11 gravity names case-insensitively. Map
+		 * them to the NorthWestGravity..SouthEastGravity +
+		 * StaticGravity constants from <X11/Xlib.h>. */
+		const struct {
+			const char *name;
+			int value;
+		} gravities[] = {
+			{ "northwest", NorthWestGravity },
+			{ "north",     NorthGravity     },
+			{ "northeast", NorthEastGravity },
+			{ "west",      WestGravity      },
+			{ "center",    CenterGravity    },
+			{ "east",      EastGravity      },
+			{ "southwest", SouthWestGravity },
+			{ "south",     SouthGravity     },
+			{ "southeast", SouthEastGravity },
+			{ "static",    StaticGravity    },
+		};
+		size_t gi, glen = strlen(gravity);
+		char lower[16];
+		int matched = -1;
+
+		if (glen > 0 && glen < sizeof(lower)) {
+			for (gi = 0; gi < glen; gi++)
+				lower[gi] = (char)tolower((unsigned char)gravity[gi]);
+			lower[glen] = '\0';
+			for (gi = 0; gi < sizeof(gravities) / sizeof(gravities[0]); gi++) {
+				if (strcmp(lower, gravities[gi].name) == 0) {
+					matched = gravities[gi].value;
+					break;
+				}
+			}
+		}
+		if (matched != -1) {
+			size_hints.flags |= PWinGravity;
+			size_hints.win_gravity = matched;
+		}
+	}
 	XSetWMNormalHints(dpy, win, &size_hints);
 
 	net_wm_name = intern_atom(dpy, "_NET_WM_NAME");

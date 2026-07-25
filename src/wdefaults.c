@@ -27,6 +27,8 @@
 #include <strings.h>
 #include <ctype.h>
 #include <errno.h>
+#include <regex.h>
+#include <sys/types.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -80,6 +82,39 @@ static const WWindowAttrs attrs_global_default = {
 static WMPropList *AIcon;
 static WMPropList *AnyWindow;
 
+/* proplist keys for the DynamicRules array, created once in
+ * init_wdefaults() and held for program lifetime */
+static WMPropList *ADynamicRules;
+static WMPropList *AMatchClass, *AMatchInstance, *AMatchTitle;
+static WMPropList *AMatchRole, *AMatchCommand, *AMatchMachine, *AMatchWindowType;
+static WMPropList *AAttributes;
+
+typedef enum {
+	REGEX_MATCH_CLASS       = 1 << 0,
+	REGEX_MATCH_INSTANCE    = 1 << 1,
+	REGEX_MATCH_TITLE       = 1 << 2,
+	REGEX_MATCH_ROLE        = 1 << 3,
+	REGEX_MATCH_COMMAND     = 1 << 4,
+	REGEX_MATCH_MACHINE     = 1 << 5,
+	REGEX_MATCH_WINDOW_TYPE = 1 << 6,
+} regex_match_kind;
+
+typedef struct WDynamicRule {
+	unsigned int has_match;        /* bitmask of regex_match_kind */
+	regex_t re_class;
+	regex_t re_instance;
+	regex_t re_title;
+	regex_t re_role;
+	regex_t re_command;
+	regex_t re_machine;
+	regex_t re_window_type;
+	unsigned int compiled;        /* bitmask of regex_match_kind that compiled */
+	WWindowAttrs *attrs;       /* parsed Attributes block, owned */
+} WDynamicRule;
+
+static WDynamicRule *dynamic_rules;
+static int dynamic_rule_count;
+
 #define WATTR_NAME_ROW(K, name, flag) name,
 static const char * const attr_bool_names[WATTR_BOOL_COUNT] = {
 	WATTR_BOOLS(WATTR_NAME_ROW)
@@ -92,6 +127,15 @@ static void init_wdefaults(void)
 		return;
 	AIcon = WMCreatePLString("Icon");
 	AnyWindow = WMCreatePLString("*");
+	ADynamicRules       = WMCreatePLString("DynamicRules");
+	AMatchClass         = WMCreatePLString("MatchClass");
+	AMatchInstance      = WMCreatePLString("MatchInstance");
+	AMatchTitle         = WMCreatePLString("MatchTitle");
+	AMatchRole          = WMCreatePLString("MatchRole");
+	AMatchCommand       = WMCreatePLString("MatchCommand");
+	AMatchMachine       = WMCreatePLString("MatchMachine");
+	AMatchWindowType    = WMCreatePLString("MatchWindowType");
+	AAttributes         = WMCreatePLString("Attributes");
 }
 
 static char *get_entry_string(WMPropList *entry, const char *key)
@@ -243,13 +287,273 @@ static void free_attrs_cache(void)
 	attrs_cache = NULL;
 }
 
+/* Backslash-escape every POSIX ERE metacharacter in s so the result
+ * can be spliced into a regex pattern as a literal substring. */
+static char *re_escape(const char *s)
+{
+	static const char specials[] = ".[]\\()*+?^$|{}";
+	size_t n, i, j;
+	char *out;
+
+	n = strlen(s);
+	/* upper bound: every char escaped plus terminator */
+	out = wmalloc(n * 2 + 1);
+	for (i = 0, j = 0; i < n; i++) {
+		if (strchr(specials, s[i]))
+			out[j++] = '\\';
+		out[j++] = s[i];
+	}
+	out[j] = '\0';
+	return out;
+}
+
+/* Splice environment-variable values into $_NAME sequences in pattern.
+ * NAME is [A-Za-z_][A-Za-z0-9_]*, auto-escaped for POSIX ERE. Unset vars
+ * substitute to empty. $_ with no name byte and $ not followed by _ are
+ * passed through verbatim. Substitution does not happen inside bracket
+ * expressions [...] where backslash is not honoured. */
+static char *subst_env_in_pattern(const char *pattern)
+{
+	size_t cap, len, i;
+	char *out;
+	Bool in_bracket = False;
+	Bool bracket_first = False;
+	char class_term = '\0';
+
+	if (!pattern)
+		return NULL;
+
+	cap = strlen(pattern) + 1;
+	out = wmalloc(cap);
+	len = 0;
+
+	for (i = 0; pattern[i] != '\0'; i++) {
+		char c = pattern[i];
+
+		if (in_bracket) {
+			if (class_term) {
+				if (c == class_term && pattern[i + 1] == ']') {
+					out[len++] = c;
+					out[len++] = ']';
+					i += 1;
+					if (len + 2 >= cap) {
+						cap = (len + 2) * 2;
+						out = wrealloc(out, cap);
+					}
+					class_term = '\0';
+					bracket_first = False;
+					continue;
+				}
+				out[len++] = c;
+				if (len + 1 >= cap) {
+					cap *= 2;
+					out = wrealloc(out, cap);
+				}
+				continue;
+			}
+			if (c == '[' && (pattern[i + 1] == ':' ||
+					 pattern[i + 1] == '.' ||
+					 pattern[i + 1] == '=')) {
+				class_term = pattern[i + 1];
+				bracket_first = False;
+				out[len++] = c;
+				if (len + 1 >= cap) {
+					cap *= 2;
+					out = wrealloc(out, cap);
+				}
+				continue;
+			}
+			if (c == ']' && !bracket_first) {
+				in_bracket = False;
+				out[len++] = c;
+				if (len + 1 >= cap) {
+					cap *= 2;
+					out = wrealloc(out, cap);
+				}
+				continue;
+			}
+			if (bracket_first && c == '^') {
+				out[len++] = c;
+				if (len + 1 >= cap) {
+					cap *= 2;
+					out = wrealloc(out, cap);
+				}
+				continue;
+			}
+			bracket_first = False;
+			out[len++] = c;
+			if (len + 1 >= cap) {
+				cap *= 2;
+				out = wrealloc(out, cap);
+			}
+			continue;
+		}
+
+		if (c == '[') {
+			in_bracket = True;
+			bracket_first = True;
+			class_term = '\0';
+			out[len++] = c;
+			if (len + 1 >= cap) {
+				cap *= 2;
+				out = wrealloc(out, cap);
+			}
+			continue;
+		}
+
+		if (c == '$' && pattern[i + 1] == '_') {
+			char name[256];
+			size_t ni = 0;
+			size_t j = i + 2;
+			const char *val;
+
+			while (pattern[j] != '\0' && ni < sizeof(name) - 1 &&
+			       (isalnum((unsigned char)pattern[j]) || pattern[j] == '_'))
+				name[ni++] = pattern[j++];
+			name[ni] = '\0';
+
+			if (ni == 0) {
+				/* $_ with no name byte: literal $_, no getenv() */
+				out[len++] = '$';
+				out[len++] = '_';
+				if (len + 1 >= cap) {
+					cap = (len + 1) * 2;
+					out = wrealloc(out, cap);
+				}
+				i += 1; /* consumed the '_' */
+				continue;
+			}
+
+			val = getenv(name);
+			if (val && val[0]) {
+				char *esc = re_escape(val);
+				size_t el = strlen(esc);
+
+				while (len + el + 1 >= cap) {
+					cap *= 2;
+					out = wrealloc(out, cap);
+				}
+				memcpy(out + len, esc, el);
+				len += el;
+				wfree(esc);
+			}
+			i = j - 1; /* skip the consumed name bytes */
+			continue;
+		}
+
+		out[len++] = c;
+		if (len + 1 >= cap) {
+			cap *= 2;
+			out = wrealloc(out, cap);
+		}
+	}
+	out[len] = '\0';
+	return out;
+}
+
+static int compile_one(regex_t *re, const char *pattern)
+{
+	char *subst;
+	int ok;
+
+	subst = subst_env_in_pattern(pattern);
+	ok = regcomp(re, subst ? subst : "", REG_EXTENDED | REG_NOSUB) == 0;
+	wfree(subst);
+	return ok;
+}
+
+/* Compile all present Match* predicates of one rule. Returns True on
+ * success, False (with a wwarning per bad pattern) if any compile failed. */
+static Bool compile_rule_predicates(WDynamicRule *r, WMPropList *rule)
+{
+	struct {
+		WMPropList *key;
+		regex_t *re;
+		unsigned int flag;
+		const char *name;
+	} p[7];
+	int k;
+	Bool bad = False;
+
+	p[0].key = AMatchClass;       p[0].re = &r->re_class;       p[0].flag = REGEX_MATCH_CLASS;       p[0].name = "Class";
+	p[1].key = AMatchInstance;    p[1].re = &r->re_instance;    p[1].flag = REGEX_MATCH_INSTANCE;   p[1].name = "Instance";
+	p[2].key = AMatchTitle;       p[2].re = &r->re_title;       p[2].flag = REGEX_MATCH_TITLE;      p[2].name = "Title";
+	p[3].key = AMatchRole;        p[3].re = &r->re_role;         p[3].flag = REGEX_MATCH_ROLE;       p[3].name = "Role";
+	p[4].key = AMatchCommand;     p[4].re = &r->re_command;     p[4].flag = REGEX_MATCH_COMMAND;    p[4].name = "Command";
+	p[5].key = AMatchMachine;     p[5].re = &r->re_machine;     p[5].flag = REGEX_MATCH_MACHINE;   p[5].name = "Machine";
+	p[6].key = AMatchWindowType;  p[6].re = &r->re_window_type;  p[6].flag = REGEX_MATCH_WINDOW_TYPE; p[6].name = "WindowType";
+
+	for (k = 0; k < 7 && !bad; k++) {
+		WMPropList *m = WMGetFromPLDictionary(rule, p[k].key);
+
+		if (m && WMIsPLString(m)) {
+			if (compile_one(p[k].re, WMGetFromPLString(m))) {
+				r->has_match |= p[k].flag;
+				r->compiled  |= p[k].flag;
+			} else {
+				wwarning("DynamicRules: bad Match%s pattern", p[k].name);
+				bad = True;
+			}
+		} else if (m) {
+			wwarning("DynamicRules: Match%s is not a string", p[k].name);
+			bad = True;
+		}
+	}
+	return !bad;
+}
+
+/* regfree() every compiled regex of a rule. The compiled bitmask gates
+ * each call since regfree() on an uncompiled regex_t is undefined. */
+static void regfree_rule(WDynamicRule *r)
+{
+	if (r->compiled & REGEX_MATCH_CLASS)
+		regfree(&r->re_class);
+	if (r->compiled & REGEX_MATCH_INSTANCE)
+		regfree(&r->re_instance);
+	if (r->compiled & REGEX_MATCH_TITLE)
+		regfree(&r->re_title);
+	if (r->compiled & REGEX_MATCH_ROLE)
+		regfree(&r->re_role);
+	if (r->compiled & REGEX_MATCH_COMMAND)
+		regfree(&r->re_command);
+	if (r->compiled & REGEX_MATCH_MACHINE)
+		regfree(&r->re_machine);
+	if (r->compiled & REGEX_MATCH_WINDOW_TYPE)
+		regfree(&r->re_window_type);
+	r->compiled = 0;
+	r->has_match = 0;
+}
+
+static void free_dynamic_rules(void)
+{
+	int i;
+
+	if (!dynamic_rules)
+		return;
+	for (i = 0; i < dynamic_rule_count; i++) {
+		WDynamicRule *r = &dynamic_rules[i];
+
+		regfree_rule(r);
+		free_attrs_entry(r->attrs);
+	}
+	wfree(dynamic_rules);
+	dynamic_rules = NULL;
+	dynamic_rule_count = 0;
+}
+
+Bool wDefaultHasDynamicRules(void)
+{
+	return dynamic_rule_count > 0;
+}
+
 void wWindowAttrsReload(void)
 {
-	WMPropList *dict, *keys;
-	int i, count;
+	WMPropList *dict, *keys, *rules_array;
+	int i, count, rcount, j;
 
 	init_wdefaults();
 	free_attrs_cache();
+	free_dynamic_rules();
 	attrs_cache = WMCreateHashTable(WMStringHashCallbacks);
 
 	if (!w_global.domain.window_attr)
@@ -280,6 +584,51 @@ void wWindowAttrsReload(void)
 	}
 	if (keys)
 		WMReleasePropList(keys);
+
+	/* DynamicRules array: compile each Match* regex once at reload time
+	 * and parse its Attributes block. The first matching rule (in array
+	 * order) is layered on top of the four-level precedence stack. */
+	rules_array = WMGetFromPLDictionary(dict, ADynamicRules);
+	if (rules_array && WMIsPLArray(rules_array)) {
+		rcount = WMGetPropListItemCount(rules_array);
+		/* wmalloc() zero-initialises, so the WDynamicRule
+		 * fields start at zero/NULL */
+		if (rcount > 0)
+			dynamic_rules = wmalloc(sizeof(WDynamicRule) * rcount);
+		for (j = 0; j < rcount; j++) {
+			WMPropList *rule = WMGetFromPLArray(rules_array, j);
+			WMPropList *attrs_pl;
+			WDynamicRule *r = &dynamic_rules[dynamic_rule_count];
+
+			if (!rule || !WMIsPLDictionary(rule))
+				continue;
+
+			if (!compile_rule_predicates(r, rule)) {
+				/* regfree the partial compiles of this slot
+				 * so free_dynamic_rules() does not see a
+				 * stale compiled bit on an abandoned slot;
+				 * the slot is left unused */
+				regfree_rule(r);
+				continue;
+			}
+
+			/* a rule with no Match* key would match every
+			 * window */
+			if (!r->has_match) {
+				regfree_rule(r);
+				continue;
+			}
+
+			attrs_pl = WMGetFromPLDictionary(rule, AAttributes);
+			if (!attrs_pl || !WMIsPLDictionary(attrs_pl)) {
+				regfree_rule(r);
+				continue;
+			}
+			r->attrs = parse_attrs_entry(attrs_pl);
+
+		dynamic_rule_count++;
+		}
+	}
 
 	WMPLSetCaseSensitive(False);
 }
@@ -349,20 +698,110 @@ static void merge_attrs(WWindowAttributes *attr, WWindowAttributes *mask,
 
 /*
  *----------------------------------------------------------------------
- * wDefaultFillAttributes--
- * 	Retrieves attributes for the specified instance/class and
- * fills attr with it. Values that are actually defined are also
- * set in mask. If useGlobalDefault is True, the default for
- * all windows ("*") will be used for when no values are found
- * for that instance/class.
+ * attrs_lookup_dynamic / fill_attrs_with_title--
+ *  Return the first DynamicRule whose every present Match* predicate
+ * matches. Empty (NULL) predicate sources are treated as no match,
+ * mirroring attrs_lookup_levels(). window_types is an array of
+ * already-resolved _NET_WM_WINDOW_TYPE atom-name strings. The lookup
+ * never calls XGetAtomName() itself. A rule with MatchWindowType
+ * matches if its regex matches any advertised type name. An empty list
+ * never satisfies a MatchWindowType predicate.
  *
+ * fill_attrs_with_title runs the four-level merge first, then layers
+ * the first matching dynamic rule on top. The dynamic lookup is gated
+ * by the useDynamic parameter, so the legacy wDefaultFillAttributes()
+ * path (useDynamic=False) skips the regex layer entirely while
+ * wDefaultFillAttributesForWindow() (useDynamic=True) runs it.
+ * attrs_lookup_dynamic() treats NULL predicate sources as no-match,
+ * so a rule with only MatchClass/MatchInstance still applies.
  *----------------------------------------------------------------------
  */
-void wDefaultFillAttributes(const char *instance, const char *class,
-			    WWindowAttributes *attr, WWindowAttributes *mask,
-			    Bool useGlobalDefault)
+static const WWindowAttrs *attrs_lookup_dynamic(const char *title,
+						const char *instance,
+						const char *class,
+						const char *role,
+						const char *command,
+						const char *machine,
+						const char * const *window_types,
+						int window_type_count)
+{
+	char title_buf[DYNRULE_MAX_TITLE_LEN + 1];
+	size_t tlen;
+	int i, j;
+
+	if (!dynamic_rule_count)
+		return NULL;
+
+	/* Empty strings identify nothing, matching attrs_lookup_levels.
+	 * Treat them as absent so a rule with MatchClass can never match
+	 * a client that set WM_CLASS to the empty string. */
+	if (instance && !*instance)
+		instance = NULL;
+	if (class && !*class)
+		class = NULL;
+
+	/* Truncate the title once per call. The same capped value is
+	 * matched against every rule. */
+	if (title) {
+		tlen = strnlen(title, DYNRULE_MAX_TITLE_LEN + 1);
+		if (tlen > DYNRULE_MAX_TITLE_LEN) {
+			memcpy(title_buf, title, DYNRULE_MAX_TITLE_LEN);
+			title_buf[DYNRULE_MAX_TITLE_LEN] = '\0';
+			title = title_buf;
+		}
+	}
+
+	for (i = 0; i < dynamic_rule_count; i++) {
+		WDynamicRule *r = &dynamic_rules[i];
+
+		if ((r->has_match & REGEX_MATCH_CLASS) &&
+		    (!class || regexec(&r->re_class, class, 0, NULL, 0) != 0))
+			continue;
+		if ((r->has_match & REGEX_MATCH_INSTANCE) &&
+		    (!instance || regexec(&r->re_instance, instance, 0, NULL, 0) != 0))
+			continue;
+		if ((r->has_match & REGEX_MATCH_TITLE) &&
+		    (!title || regexec(&r->re_title, title, 0, NULL, 0) != 0))
+			continue;
+		if ((r->has_match & REGEX_MATCH_ROLE) &&
+		    (!role || regexec(&r->re_role, role, 0, NULL, 0) != 0))
+			continue;
+		if ((r->has_match & REGEX_MATCH_COMMAND) &&
+		    (!command || regexec(&r->re_command, command, 0, NULL, 0) != 0))
+			continue;
+		if ((r->has_match & REGEX_MATCH_MACHINE) &&
+		    (!machine || regexec(&r->re_machine, machine, 0, NULL, 0) != 0))
+			continue;
+		if (r->has_match & REGEX_MATCH_WINDOW_TYPE) {
+			Bool matched = False;
+
+			for (j = 0; j < window_type_count; j++) {
+				if (window_types[j] &&
+				    regexec(&r->re_window_type, window_types[j],
+					    0, NULL, 0) == 0) {
+					matched = True;
+					break;
+				}
+			}
+			if (!matched)
+				continue;
+		}
+		return r->attrs;
+	}
+	return NULL;
+}
+
+static void fill_attrs_with_title(const char *instance, const char *class,
+				 const char *title,
+				 const char *role, const char *command,
+				 const char *machine,
+				 const char * const *window_types,
+				 int window_type_count,
+				 WWindowAttributes *attr, WWindowAttributes *mask,
+				 Bool useGlobalDefault, Bool useDynamic)
 {
 	const WWindowAttrs *level[4];
+	const WWindowAttrs *re;
 	int n, i;
 
 	n = attrs_lookup_levels(instance, class, useGlobalDefault, level);
@@ -374,6 +813,49 @@ void wDefaultFillAttributes(const char *instance, const char *class,
 		merge_attrs(attr, mask, &attrs_global_default);
 	for (i = n - 1; i >= 0; i--)
 		merge_attrs(attr, mask, level[i]);
+
+	/* Dynamic rules layer on top, highest precedence. The lookup is
+	 * only attempted when useDynamic=True, so the legacy
+	 * wDefaultFillAttributes() path skips the regex layer. */
+	if (useDynamic) {
+		re = attrs_lookup_dynamic(title, instance, class, role, command,
+					  machine, window_types,
+					  window_type_count);
+		if (re)
+			merge_attrs(attr, mask, re);
+	}
+}
+
+void wDefaultFillAttributes(const char *instance, const char *class,
+			    WWindowAttributes *attr, WWindowAttributes *mask,
+			    Bool useGlobalDefault)
+{
+	fill_attrs_with_title(instance, class, NULL, NULL, NULL, NULL, NULL, 0,
+			      attr, mask, useGlobalDefault, False);
+}
+
+/*
+ *----------------------------------------------------------------------
+ * wDefaultFillAttributesForWindow--
+ *  Same as wDefaultFillAttributes but pulls the dynamic-rule predicate
+ * sources (title, role, command, machine, and _NET_WM_WINDOW_TYPE
+ * atom names) directly from WWindow. The atom-name list is read from
+ * wwin->wm_type_names (populated once at manage time) so this path
+ * stays round-trip-free on the per-title-change re-evaluation path.
+ *----------------------------------------------------------------------
+ */
+void wDefaultFillAttributesForWindow(const WWindow *wwin,
+				     WWindowAttributes *attr,
+				     WWindowAttributes *mask,
+				     Bool useGlobalDefault)
+{
+	const char *title = wwin->wm_title ? wwin->wm_title : NULL;
+
+	fill_attrs_with_title(wwin->wm_instance, wwin->wm_class, title,
+			      wwin->wm_role, wwin->wm_command, wwin->wm_machine,
+			      (const char * const *)wwin->wm_type_names,
+			      wwin->wm_type_count,
+			      attr, mask, useGlobalDefault, True);
 }
 
 /*
@@ -791,6 +1273,49 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 			wwin->frame_border.frame_inner_focused_border_color_set = 1;
 			resolved_any = True;
 		}
+	}
+
+	/* Dynamic rules layer on top, highest precedence. attrs_lookup_dynamic()
+	 * already treats NULL predicate sources as no-match, so a rule with only
+	 * MatchClass/MatchInstance still applies here. Override any field the
+	 * matched rule supplies, releasing the prior value first. */
+	re = attrs_lookup_dynamic(wwin->wm_title, instance, class, wwin->wm_role,
+				 wwin->wm_command, wwin->wm_machine,
+				 (const char * const *)wwin->wm_type_names,
+				 wwin->wm_type_count);
+	if (re) {
+		if (re->frame_set & WATTR_FRAME_BORDER_WIDTH) {
+			wwin->frame_border.frame_border_width = re->frame_border_width;
+			wwin->frame_border.frame_border_width_set = 1;
+			resolved_any = True;
+		}
+		if (re->frame_set & WATTR_FRAME_INNER_BORDER_WIDTH) {
+			wwin->frame_border.frame_inner_border_width = re->frame_inner_border_width;
+			wwin->frame_border.frame_inner_border_width_set = 1;
+			resolved_any = True;
+		}
+#define OVERLAY_COLOR(spec_field, mask_bit, target_field, set_field) \
+	do { \
+		if (re->frame_set & (mask_bit)) { \
+			if (wwin->frame_border.target_field) \
+				WMReleaseColor(wwin->frame_border.target_field); \
+			wwin->frame_border.target_field = (re->spec_field && re->spec_field[0]) \
+				? WMCreateNamedColor(scr->wmscreen, re->spec_field, True) : NULL; \
+			wwin->frame_border.set_field = 1; \
+			resolved_any = True; \
+		} \
+	} while (0)
+		OVERLAY_COLOR(frame_border_color_spec, WATTR_FRAME_BORDER_COLOR,
+			      frame_border_color, frame_border_color_set);
+		OVERLAY_COLOR(frame_focused_border_color_spec, WATTR_FRAME_FOCUSED_BORDER_COLOR,
+			      frame_focused_border_color, frame_focused_border_color_set);
+		OVERLAY_COLOR(frame_selected_border_color_spec, WATTR_FRAME_SELECTED_BORDER_COLOR,
+			      frame_selected_border_color, frame_selected_border_color_set);
+		OVERLAY_COLOR(frame_inner_border_color_spec, WATTR_FRAME_INNER_BORDER_COLOR,
+			      frame_inner_border_color, frame_inner_border_color_set);
+		OVERLAY_COLOR(frame_inner_focused_border_color_spec, WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR,
+			      frame_inner_focused_border_color, frame_inner_focused_border_color_set);
+#undef OVERLAY_COLOR
 	}
 
 	(void) resolved_any;

@@ -490,6 +490,545 @@ static void test_hicolor_enforce_margin(void)
 	cfg->enforce_icon_margin = saved_margin;
 }
 
+/* --- DynamicRules tests --- */
+
+/* Build a stack WWindow with the seven predicate sources populated. The
+ * frame is left NULL (wDefaultFillAttributesForWindow never dereferences
+ * it), so the matcher can be exercised without an open display. */
+static WWindow make_wwin(const char *instance, const char *class,
+			 const char *title, const char *role,
+			 const char *command, const char *machine,
+			 const char * const *types, int ntypes)
+{
+	WWindow w;
+
+	memset(&w, 0, sizeof(w));
+	w.wm_instance = (char *)instance;
+	w.wm_class = (char *)class;
+	w.wm_title = (char *)title;
+	w.wm_role = (char *)role;
+	w.wm_command = (char *)command;
+	w.wm_machine = (char *)machine;
+	w.wm_type_names = (char **)types;
+	w.wm_type_count = ntypes;
+	return w;
+}
+
+static void test_dynamic_single_predicate(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^Firefox$\";"
+		      "    Attributes = { NoTitlebar = YES; }; },"
+		      "  { MatchInstance = \"^xterm$\";"
+		      "    Attributes = { KeepOnTop = YES; }; },"
+		      "  { MatchTitle = \".*YouTube.*\";"
+		      "    Attributes = { SkipWindowList = YES; }; },"
+		      "  { MatchRole = \"^browser$\";"
+		      "    Attributes = { NoBorder = YES; }; },"
+		      "  { MatchCommand = \".*firefox.*\";"
+		      "    Attributes = { Omnipresent = YES; }; },"
+		      "  { MatchMachine = \"^build-cluster$\";"
+		      "    Attributes = { Unfocusable = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	CHECK(mask.no_titlebar == 1);
+
+	w = make_wwin("xterm", NULL, NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.floating == 1);
+
+	w = make_wwin(NULL, NULL, "watching YouTube", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.skip_window_list == 1);
+
+	w = make_wwin(NULL, NULL, NULL, "browser", NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_border == 1);
+
+	w = make_wwin(NULL, NULL, NULL, NULL, "/usr/bin/firefox", NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.omnipresent == 1);
+
+	w = make_wwin(NULL, NULL, NULL, NULL, NULL, "build-cluster", NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_focusable == 1);
+
+	w = make_wwin("urxvt", "URxvt", "plain", "term", "urxvt", "laptop", NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+	CHECK(attr.floating == 0);
+	CHECK(attr.skip_window_list == 0);
+	CHECK(attr.no_border == 0);
+	CHECK(attr.omnipresent == 0);
+	CHECK(attr.no_focusable == 0);
+}
+
+static void test_dynamic_multi_predicate_and(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^Firefox$\";"
+		      "    MatchTitle = \".*YouTube.*\";"
+		      "    Attributes = { NoTitlebar = YES; KeepOnTop = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, "Firefox", "watching YouTube", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	CHECK(attr.floating == 1);
+
+	w = make_wwin(NULL, "Firefox", "about:blank", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+	CHECK(attr.floating == 0);
+
+	w = make_wwin(NULL, "Chrome", "watching YouTube", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+	CHECK(attr.floating == 0);
+}
+
+static void test_dynamic_first_match_wins(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^Firefox$\";"
+		      "    Attributes = { NoTitlebar = YES; }; },"
+		      "  { MatchClass = \"^Firefox$\";"
+		      "    Attributes = { NoBorder = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	CHECK(attr.no_border == 0);
+}
+
+static void test_dynamic_empty_block_rejected(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin("urxvt", "URxvt", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^x$\"; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, "x", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+}
+
+static void test_dynamic_missing_attributes_no_pollution(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	/* Rule 1 has no Attributes block and rule 2 supplies one. Slot
+	 * reuse must not leak rule 1's compiled Class regex into rule 2. */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^Foo$\"; },"
+		      "  { MatchInstance = \"^bar$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+
+	/* rule 2 matches on instance, class is unrelated */
+	w = make_wwin("bar", "Other", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	CHECK(mask.no_titlebar == 1);
+
+	/* a window that satisfies rule 1's class but not rule 2's
+	 * instance must not get the attributes either */
+	w = make_wwin("notbar", "Foo", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+}
+
+static void test_dynamic_malformed_regex_skipped(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"[\";"
+		      "    Attributes = { NoTitlebar = YES; }; },"
+		      "  { MatchClass = \"^Firefox$\";"
+		      "    Attributes = { NoBorder = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+	CHECK(attr.no_border == 1);
+}
+
+static void test_dynamic_window_type_multi(void)
+{
+	WWindowAttributes attr, mask;
+	static const char * const types_a[] = {
+		"_NET_WM_WINDOW_TYPE_NORMAL",
+		"_NET_WM_WINDOW_TYPE_UTILITY"
+	};
+	static const char * const types_b[] = {
+		"_NET_WM_WINDOW_TYPE_NORMAL"
+	};
+	WWindow w;
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchWindowType = \"_NET_WM_WINDOW_TYPE_UTILITY\";"
+		      "    Attributes = { KeepOnTop = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, types_a, 2);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.floating == 1);
+
+	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, types_b, 1);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.floating == 0);
+
+	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.floating == 0);
+}
+
+static void test_dynamic_reeval_and_reversion(void)
+{
+	WWindowAttributes attr, mask, base_attr, base_mask;
+	WWindow w;
+
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { NoTitlebar = YES; };"
+		      " DynamicRules = ("
+		      "  { MatchInstance = \"^xterm$\";"
+		      "    MatchTitle = \".*Special.*\";"
+		      "    Attributes = { NoTitlebar = NO; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin("xterm", "XTerm", "Special Edit", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	memset(&base_attr, 0, sizeof(base_attr));
+	memset(&base_mask, 0, sizeof(base_mask));
+	wDefaultFillAttributes("xterm", "XTerm", &base_attr, &base_mask, False);
+	CHECK(base_attr.no_titlebar == 1);
+	CHECK(base_mask.no_titlebar == 1);
+
+	w = make_wwin("xterm", "XTerm", "Plain", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \".*Special.*\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "Special Edit", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+
+	w = make_wwin(NULL, NULL, "Plain", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+}
+
+static void test_dynamic_env_substitution(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+	char *icon;
+
+	setenv("WM_TEST_FOO", "bar", 1);
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"^$_WM_TEST_FOO$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, NULL, "bar", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+
+	w = make_wwin(NULL, NULL, "baz", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	setenv("WM_TEST_FOO", "a.b*c", 1);
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"^$_WM_TEST_FOO$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "a.b*c", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "abc", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+	w = make_wwin(NULL, NULL, "axbxc", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	setenv("WM_TEST_HOST", "build-1.example.com", 1);
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \".*@$_WM_TEST_HOST:.*\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "user@build-1.example.com: ~", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "user@other-host: ~", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	unsetenv("WM_TEST_UNSET");
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"^$_WM_TEST_UNSET$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "x", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"^ab$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "ab", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "abc", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	setenv("WM_TEST_HOME", "/home", 1);
+	set_attr_dict("{"
+		      " \"*\" = { Icon = \"$_WM_TEST_HOME/myicon.png\"; };"
+		      "}");
+	icon = wDefaultGetIconFile(NULL, NULL, True);
+
+	CHECK_STR(icon, "$_WM_TEST_HOME/myicon.png");
+
+	unsetenv("WM_TEST_FOO");
+	unsetenv("WM_TEST_HOST");
+	unsetenv("WM_TEST_HOME");
+}
+
+static void test_dynamic_env_bracket_passthrough(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+
+	setenv("WM_TEST_FOO", "abc", 1);
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"[$_WM_TEST_FOO]\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+
+	w = make_wwin(NULL, NULL, "$", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	/* []]: ] at first position is literal, so $_WM_TEST_FOO
+	 * inside must not be substituted */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"[]$_WM_TEST_FOO]\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	/* unsubstituted set is ], $, _, W, M, T, E, S, F, O */
+	w = make_wwin(NULL, NULL, "]", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	/* [^]]: ] right after ^ is literal. Without the fix ^
+	 * clears bracket_first, the ] closes early, and
+	 * $_WM_TEST_FOO is substituted outside the bracket */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"[^]$_WM_TEST_FOO]\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	/* unsubstituted [^]...] excludes ], $, _, W, M, T, E, S, F, O.
+	 * If substituted (bug) it becomes [^]abc] which excludes "a" */
+	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "]", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	/* [[:alpha:]$_WM_TEST_FOO]: the ] in :] is part of the
+	 * character class syntax, not a bracket closer. Without
+	 * the fix it closes the bracket and $_WM_TEST_FOO is
+	 * substituted outside */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \"[[:alpha:]$_WM_TEST_FOO]\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin(NULL, NULL, "$", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	w = make_wwin(NULL, NULL, "!", NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	unsetenv("WM_TEST_FOO");
+}
+
+/* MatchTitle's source is capped at DYNRULE_MAX_TITLE_LEN bytes so a
+ * user-authored ERE cannot be driven into pathological backtracking by
+ * a multi-megabyte WM_NAME. Verify the cap: a marker past the
+ * truncation point is invisible to the regex, a marker within the
+ * first DYNRULE_MAX_TITLE_LEN bytes still matches. */
+static void test_dynamic_title_cap(void)
+{
+	WWindowAttributes attr, mask;
+	WWindow w;
+	char long_title[700];
+
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \".*FOUNDME.*\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+
+	/* title longer than the cap, marker placed past byte 512:
+	 * the truncated match input is all 'x' and the rule must not fire */
+	memset(long_title, 'x', 600);
+	memcpy(long_title + 600, "FOUNDME", 7);
+	memset(long_title + 607, 'x', sizeof(long_title) - 607 - 1);
+	long_title[sizeof(long_title) - 1] = '\0';
+	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 0);
+
+	/* same length, marker placed inside the first 512 bytes:
+	 * truncation keeps it and the rule fires */
+	memset(long_title, 'x', 10);
+	memcpy(long_title + 10, "FOUNDME", 7);
+	memset(long_title + 17, 'x', sizeof(long_title) - 17 - 1);
+	long_title[sizeof(long_title) - 1] = '\0';
+	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+	CHECK(mask.no_titlebar == 1);
+
+	/* a title exactly at the cap is not truncated, so a marker
+	 * sitting at the last byte still matches */
+	memset(long_title, 'x', DYNRULE_MAX_TITLE_LEN - 7);
+	memcpy(long_title + DYNRULE_MAX_TITLE_LEN - 7, "FOUNDME", 7);
+	long_title[DYNRULE_MAX_TITLE_LEN] = '\0';
+	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
+	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	CHECK(attr.no_titlebar == 1);
+}
+
 int main(void)
 {
 	/* w_global.config is a pointer the real WM initializes; give the
@@ -509,6 +1048,17 @@ int main(void)
 	test_case_sensitivity();
 	test_hicolor_fallback();
 	test_hicolor_enforce_margin();
+	test_dynamic_single_predicate();
+	test_dynamic_multi_predicate_and();
+	test_dynamic_first_match_wins();
+	test_dynamic_empty_block_rejected();
+	test_dynamic_missing_attributes_no_pollution();
+	test_dynamic_malformed_regex_skipped();
+	test_dynamic_window_type_multi();
+	test_dynamic_reeval_and_reversion();
+	test_dynamic_env_substitution();
+	test_dynamic_env_bracket_passthrough();
+	test_dynamic_title_cap();
 
 	set_attr_dict(NULL);
 

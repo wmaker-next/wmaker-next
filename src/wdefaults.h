@@ -130,4 +130,13 @@ typedef struct WWindowAttrs {
 char *find_in_icon_cache(const char *file_name,
 			 const char *winstance, const char *wclass);
 
+Bool wDefaultHasDynamicRules(void);
+
+/* Bytes of a client-supplied window title handed to regexec() for a
+ * MatchTitle predicate. The property reader caps WM_NAME/_NET_WM_NAME
+ * at 16 MiB. Without this bound a user-authored ERE could be driven
+ * into pathological backtracking by a hostile title, and the
+ * re-evaluation runs on every title change. */
+#define DYNRULE_MAX_TITLE_LEN 512
+
 #endif /* WMWDEFAULTS_H_ */

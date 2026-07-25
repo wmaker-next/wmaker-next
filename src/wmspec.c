@@ -60,6 +60,13 @@
 #include "startup_notify.h"
 
 
+/* Cap on the number of _NET_WM_WINDOW_TYPE atoms resolved via
+ * XGetAtomName() per window. The property reader allows up to 16 MiB
+ * of atoms, so without this cap a hostile client can stall the WM
+ * with millions of synchronous round trips at manage time. */
+#define NET_WM_WINDOW_TYPE_MAX 32
+
+
 /* Root Window Properties */
 static Atom net_supported;
 static Atom net_client_list;
@@ -758,7 +765,7 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 
 #ifdef DEBUG_WMSPEC
 /* XGetAtomName returns a malloc'd string that must be XFree'd, and
- * returns NULL for an invalid atom; both are UB for %s. Return a
+ * returns NULL for an invalid atom. Both are UB for %s. Return a
  * static buffer instead, freeing the Xlib allocation. */
 static const char *atom_name(Atom atom)
 {
@@ -1794,7 +1801,46 @@ void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int 
 
 	atoms = WXRcvAtomList(dpy, ck->type, &nitems);
 	if (atoms) {
-		for (i = 0; i < nitems; ++i) {
+		/* Retain the advertised _NET_WM_WINDOW_TYPE list and its
+		 * resolved atom names on WWindow so the dynamic-rule
+		 * MatchWindowType predicate can test against every type
+		 * (not just the first one Window Maker understood) without
+		 * calling XGetAtomName() on the per-title-change re-eval
+		 * path. Free any prior copy first: this path also runs on
+		 * the inspector re-apply path (wWindowSetupInitialAttributes
+		 * with ck=NULL), which re-reads the property.
+		 * Cap the retained list so a hostile client cannot stall
+		 * the WM with millions of XGetAtomName round trips. */
+		size_t capped = nitems > NET_WM_WINDOW_TYPE_MAX ? NET_WM_WINDOW_TYPE_MAX : nitems;
+
+		if (wwin->wm_types)
+			wfree(wwin->wm_types);
+		if (wwin->wm_type_names) {
+			size_t k;
+
+			for (k = 0; k < (size_t)wwin->wm_type_count; k++)
+				if (wwin->wm_type_names[k])
+					XFree(wwin->wm_type_names[k]);
+			wfree(wwin->wm_type_names);
+		}
+		wwin->wm_types = NULL;
+		wwin->wm_type_names = NULL;
+		wwin->wm_type_count = 0;
+		if (capped > 0) {
+			size_t k;
+
+			wwin->wm_types = wmalloc(sizeof(Atom) * capped);
+			memcpy(wwin->wm_types, atoms, sizeof(Atom) * capped);
+			wwin->wm_type_names = wmalloc(sizeof(char *) * capped);
+			for (k = 0; k < capped; k++) {
+				char *nm = XGetAtomName(dpy, atoms[k]);
+
+				wwin->wm_type_names[k] = nm; /* may be NULL */
+			}
+			wwin->wm_type_count = (int)capped;
+		}
+
+		for (i = 0; i < capped; ++i) {
 			if (handleWindowType(wwin, atoms[i], layer))
 				break;
 		}
@@ -2481,12 +2527,23 @@ static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck)
 	if (!machine)
 		return;
 
+	/* Retain the already-fetched WM_CLIENT_MACHINE string on WWindow so
+	 * the dynamic-rule MatchMachine predicate can read it without a
+	 * second round-trip. The string is freed in wWindowDestroy(). An
+	 * empty string is dropped to NULL, mirroring wm_role handling.
+	 * The inspector re-apply path re-runs this after manage time, so
+	 * release any prior value first. */
+	if (machine[0] != '\0') {
+		wfree(wwin->wm_machine);
+		wwin->wm_machine = machine;
+	} else
+		wfree(machine);
+
 	if (gethostname(host, sizeof(host)) == 0) {
 		host[sizeof(host) - 1] = '\0';
-		if (strcmp(host, machine) == 0)
+		if (strcmp(host, wwin->wm_machine ? wwin->wm_machine : "") == 0)
 			wwin->net_ping.pid = pid;
 	}
-	wfree(machine);
 }
 
 static void handlePingTimeout(void *cdata)

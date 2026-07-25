@@ -244,6 +244,27 @@ void wWindowDestroy(WWindow *wwin)
 	if (wwin->wm_command)
 		wfree(wwin->wm_command);
 
+	if (wwin->wm_role)
+		wfree(wwin->wm_role);
+
+	if (wwin->wm_machine)
+		wfree(wwin->wm_machine);
+
+	if (wwin->wm_title)
+		wfree(wwin->wm_title);
+
+	if (wwin->wm_types)
+		wfree(wwin->wm_types);
+
+	if (wwin->wm_type_names) {
+		int k;
+
+		for (k = 0; k < wwin->wm_type_count; k++)
+			if (wwin->wm_type_names[k])
+				XFree(wwin->wm_type_names[k]);
+		wfree(wwin->wm_type_names);
+	}
+
 	if (wwin->frame_border.frame_border_color)
 		WMReleaseColor(wwin->frame_border.frame_border_color);
 	if (wwin->frame_border.frame_focused_border_color)
@@ -356,6 +377,7 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 #endif
 	ck->cmap_windows = wClientReqColormapWindows(window);
 	ck->command   = WXReqCommand(dpy, window);
+	ck->role      = WXReqString8(dpy, window, w_global.atom.wm.window_role, XA_STRING);
 	ck->pid       = wNETWMReqPid(window);
 	ck->appmenu   = WXReqExists(dpy, window, w_global.atom.wmaker.menu);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
@@ -963,6 +985,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	Bool withdraw = False;
 	Bool raise = False;
 	Bool dontBring = False;
+	/* True when x/y were taken from a saved-state source (session file
+	 * or _WINDOWMAKER_STATE), so the south-gravity conversion below
+	 * can be skipped: saved coords are already frame-relative. */
+	Bool position_from_saved = False;
 	WManageCookies ck;
 	WSavedState *wstate;
 	char **cmd_argv;
@@ -1005,12 +1031,19 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	}
 
 	wwin = wWindowCreate();
+	/* Mark the window as mid-manage so wWindowConfigureBorders() can
+	 * skip the top_width-compensation on the initial static- and
+	 * dynamic-rule decoration apply. Cleared just before return. */
+	wwin->flags.initializing = 1;
 
 	title = WXRcvString(dpy, ck.net_name, NULL);
 	if (title)
 		wwin->flags.net_has_title = 1;
 	else
 		title = WXRcvWMName(dpy, ck.name);
+
+	if (title)
+		wwin->wm_title = wstrdup(title);
 
 	XSaveContext(dpy, window, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
 
@@ -1028,6 +1061,12 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	/* Get hints and other information in properties */
 	PropRcvWMClass(ck.wclass, &wwin->wm_class, &wwin->wm_instance);
+
+	wwin->wm_role = WXRcvString(dpy, ck.role, NULL);
+	if (wwin->wm_role && wwin->wm_role[0] == '\0') {
+		wfree(wwin->wm_role);
+		wwin->wm_role = NULL;
+	}
 
 	if (WXRcvCommand(dpy, ck.command, &cmd_argv, &cmd_argc)) {
 		if (cmd_argc > 0)
@@ -1379,11 +1418,9 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wwin->restore_tab_active = win_state->state->tab_group_active;
 	}
 
-	if (wstate != NULL) {
-		if (wstate->mark_key != NULL)
-			wfree(wstate->mark_key);
-		wfree(wstate);
-	}
+	/* wstate is freed after the placement decision below, which still
+	 * needs wstate->x/y as the saved frame origin on warm restart when
+	 * the session-file channel (win_state) is empty. */
 
 	/* don't let transients start miniaturized if their owners are not */
 	if (transientOwner && !transientOwner->flags.miniaturized && wwin->flags.miniaturized && !withdraw) {
@@ -1437,9 +1474,43 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 		x = win_state->state->x;
 		y = win_state->state->y;
+		position_from_saved = True;
 
 		/* If the saved position falls in dead space (for example a monitor that no longer
 		* exists), clamp the window to the nearest active head. */
+		rect.pos.x = x;
+		rect.pos.y = y;
+		rect.size.width = width;
+		rect.size.height = height;
+
+		head = wGetRectPlacementInfo(scr, rect, &flags);
+		if (flags & XFLAG_DEAD) {
+			rect = wGetRectForHead(scr, head);
+
+			x = rect.pos.x + (x * rect.size.width) / scr->scr_width;
+			y = rect.pos.y + (y * rect.size.height) / scr->scr_height;
+
+			wScreenBringInside(scr, &x, &y, width, height);
+		}
+	} else if (wstate != NULL && !wwin->flags.maximized && wstate->w > 0) {
+		/* Warm restart: wSessionRestoreState() runs only on cold boot,
+		 * so on a warm restart win_state is empty and without this
+		 * branch x/y would default to wattribs->x/y (the
+		 * client's current root position). wWindowConfigure() treats
+		 * req_y as the new frame origin, so feeding it the client root
+		 * y drifts frame_y by (top_width + border + inner) each
+		 * restart. The _WINDOWMAKER_STATE property written by
+		 * wWindowSaveState() stores the exact frame origin for
+		 * non-maximized windows, so reuse it here. wstate->w/h are
+		 * frame core dimensions and cannot override the client size
+		 * (wattribs->width/height) that wWindowConfigure() expects. */
+		WMRect rect;
+		int head, flags;
+
+		x = wstate->x;
+		y = wstate->y;
+		position_from_saved = True;
+
 		rect.pos.x = x;
 		rect.pos.y = y;
 		rect.size.width = width;
@@ -1667,8 +1738,16 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 
 	wClientGetGravityOffsets(wwin, &gx, &gy);
 
-	/* if gravity is to the south, account for the border sizes */
-	if (gy > 0)
+	/* The south-gravity adjustment converts a client-relative position
+	 * (where the requested y is anchored to the client's bottom edge)
+	 * into a frame-relative position by subtracting the frame's
+	 * vertical decoration. It must not fire when the position came
+	 * from a saved-state source: the session file and the
+	 * _WINDOWMAKER_STATE property both store the frame origin, which
+	 * is already frame-relative, so applying the conversion would
+	 * shift the window up by (top_width + bottom_width) on every
+	 * restore. */
+	if (gy > 0 && !position_from_saved)
 		y -= wwin->frame->top_width + wwin->frame->bottom_width;
 
 	/*
@@ -1676,6 +1755,15 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	 * (wwin->client.{width,height}) and all other geometry
 	 * related variables (frame_x,frame_y) */
 	wWindowConfigure(wwin, x, y, width, height);
+
+	/* wstate supplied the saved frame origin for the placement above.
+	 * Now that wWindowConfigure() has set wwin->frame_x/frame_y it is
+	 * safe to release. */
+	if (wstate != NULL) {
+		if (wstate->mark_key != NULL)
+			wfree(wstate->mark_key);
+		wfree(wstate);
+	}
 
 	wWindowRefreshTitlebarIcon(wwin);
 
@@ -1890,6 +1978,13 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	if (wwin && wwin->frame)
 		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
 
+	/* Initial static- and dynamic-rule decoration apply (including the
+	 * first wWindowReapplyDecorativeAttrs() from wWindowUpdateName)
+	 * is done. wWindowConfigureBorders() can now apply the
+	 * top_width-compensation normally on subsequent decoration
+	 * changes (interactive toggle, rule reload on title change). */
+	if (wwin)
+		wwin->flags.initializing = 0;
 	return wwin;
 }
 
@@ -2403,6 +2498,270 @@ void wWindowUnfocus(WWindow *wwin)
 	WMPostNotificationName(WMNChangedFocus, wwin, (void *)False);
 }
 
+/* Re-apply decoration-affecting attributes when a dynamic-rule predicate
+ * source changes. Computes two merges so attributes previously applied
+ * by a now-non-matching dynamic rule revert to their non-rule baseline:
+ *  - base_attr/base_mask: four-level merge without the regex layer and
+ *    without the global default (base_mask.flag is 1 only when a per-app
+ *    entry actually set that field).
+ *  - final_attr/final_mask: full merge with the regex layer but without
+ *    the global default.
+ * The regex contribution this pass is, per field,
+ * final_mask.flag && !base_mask.flag. A field is touched only when the
+ * regex layer is currently setting it (regex_mask.flag) or previously
+ * set it and must revert (old_applied.flag). When reverting, if a per-app
+ * entry also set the field, its value is restored via WSETUFLAG. Otherwise
+ * the user flag is undefined so the client's own hints take over. Fields
+ * in neither mask are left untouched. The runtime pattern mirrors
+ * src/winspector.c applySettings(): WSETUFLAG the
+ * user_flags/defined_user_flags pair, run per-field side effects, then a
+ * single wWindowConfigureBorders()+wFrameWindowPaint()+wNETRMUpdateActions()
+ * to rebuild decoration. */
+static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
+{
+	WWindowAttributes base_attr, base_mask;
+	WWindowAttributes final_attr, final_mask;
+	WWindowAttributes regex_mask;
+	WWindowAttributes old_applied;
+	Bool old_omnipresent, old_skip_window_list, old_no_bind_keys, old_no_bind_mouse;
+	int old_inner_width, old_inner_set;
+
+	if (!wwin->frame)
+		return;
+
+	if (!wDefaultHasDynamicRules()) {
+		static const WWindowAttributes zero;
+		WWindowAttributes *old = &wwin->regex_applied_mask;
+
+		if (memcmp(old, &zero, sizeof(WWindowAttributes)) == 0)
+			return;
+	}
+
+	memset(&base_attr, 0, sizeof(base_attr));
+	memset(&base_mask, 0, sizeof(base_mask));
+	wDefaultFillAttributes(wwin->wm_instance, wwin->wm_class,
+			       &base_attr, &base_mask, False);
+
+	memset(&final_attr, 0, sizeof(final_attr));
+	memset(&final_mask, 0, sizeof(final_mask));
+	wDefaultFillAttributesForWindow(wwin, &final_attr, &final_mask, False);
+
+	memset(&regex_mask, 0, sizeof(regex_mask));
+#define REGEX_CONTRIB(flag) \
+	regex_mask.flag = (final_mask.flag && !base_mask.flag) ? 1 : 0
+	REGEX_CONTRIB(no_titlebar);
+	REGEX_CONTRIB(no_resizebar);
+	REGEX_CONTRIB(no_close_button);
+	REGEX_CONTRIB(no_miniaturize_button);
+	REGEX_CONTRIB(no_border);
+	REGEX_CONTRIB(floating);
+	REGEX_CONTRIB(sunken);
+	REGEX_CONTRIB(omnipresent);
+	REGEX_CONTRIB(skip_window_list);
+	REGEX_CONTRIB(skip_switchpanel);
+	REGEX_CONTRIB(dont_move_off);
+	REGEX_CONTRIB(no_focusable);
+	REGEX_CONTRIB(no_bind_mouse);
+	REGEX_CONTRIB(no_bind_keys);
+	REGEX_CONTRIB(no_appicon);
+	REGEX_CONTRIB(shared_appicon);
+	REGEX_CONTRIB(no_tabbing);
+	REGEX_CONTRIB(no_tiling);
+#undef REGEX_CONTRIB
+
+	old_applied = wwin->regex_applied_mask;
+
+#define REAPPLY_FIELD(flag) \
+	do { \
+		if (regex_mask.flag) { \
+			WSETUFLAG(wwin, flag, final_attr.flag); \
+		} else if (old_applied.flag) { \
+			if (base_mask.flag) \
+				WSETUFLAG(wwin, flag, base_attr.flag); \
+			else \
+				wwin->defined_user_flags.flag = 0; \
+		} \
+	} while (0)
+	REAPPLY_FIELD(no_close_button);
+	REAPPLY_FIELD(no_miniaturize_button);
+	REAPPLY_FIELD(no_border);
+	REAPPLY_FIELD(no_resizebar);
+	REAPPLY_FIELD(no_titlebar);
+	REAPPLY_FIELD(skip_switchpanel);
+	REAPPLY_FIELD(dont_move_off);
+	REAPPLY_FIELD(no_focusable);
+	REAPPLY_FIELD(no_appicon);
+	REAPPLY_FIELD(shared_appicon);
+	REAPPLY_FIELD(no_tabbing);
+	REAPPLY_FIELD(no_tiling);
+#undef REAPPLY_FIELD
+
+	/* no_titlebar has a dependent side effect: a shaded window cannot
+	 * lose its titlebar (the no_shadeable invariant enforced at
+	 * manage time). */
+	if (regex_mask.no_titlebar && final_attr.no_titlebar && wwin->flags.shaded)
+		wUnshadeWindow(wwin);
+
+	/* floating/sunken are a 3-way enum (Normal/Floating/Sunken), not
+	 * independent bools. Evaluate them as a unit and call
+	 * ChangeStackingLevel() once. */
+	if (regex_mask.floating || regex_mask.sunken ||
+	    old_applied.floating || old_applied.sunken) {
+		Bool use_final = regex_mask.floating || regex_mask.sunken;
+		const WWindowAttributes *src = use_final ? &final_attr : &base_attr;
+		int layer;
+
+		if (src->floating)
+			layer = WMFloatingLevel;
+		else if (src->sunken)
+			layer = WMSunkenLevel;
+		else
+			layer = WMNormalLevel;
+		if (use_final || base_mask.floating || base_mask.sunken) {
+			WSETUFLAG(wwin, floating, src->floating);
+			WSETUFLAG(wwin, sunken, src->sunken);
+		} else {
+			wwin->defined_user_flags.floating = 0;
+			wwin->defined_user_flags.sunken = 0;
+		}
+		ChangeStackingLevel(wwin->frame->core, layer);
+	}
+
+	/* omnipresent: toggle the WS_ALL runtime mask and notify. */
+	old_omnipresent = WFLAGP(wwin, omnipresent);
+	if (regex_mask.omnipresent || old_applied.omnipresent) {
+		Bool v;
+
+		if (regex_mask.omnipresent)
+			v = final_attr.omnipresent;
+		else if (base_mask.omnipresent)
+			v = base_attr.omnipresent;
+		else {
+			wwin->defined_user_flags.omnipresent = 0;
+			v = WFLAGP(wwin, omnipresent);
+		}
+		if (regex_mask.omnipresent || base_mask.omnipresent)
+			WSETUFLAG(wwin, omnipresent, v);
+		if (v && wwin->frame->ws_mask != WS_ALL)
+			wwin->frame->ws_mask = WS_ALL;
+		else if (!v && wwin->frame->ws_mask == WS_ALL)
+			wwin->frame->ws_mask = WS_BIT(wwin->frame->workspace);
+		if (WFLAGP(wwin, omnipresent) != old_omnipresent)
+			WMPostNotificationName(WMNChangedState, wwin, "omnipresent");
+	}
+
+	/* skip_window_list: rebuild the switch menu membership. */
+	old_skip_window_list = WFLAGP(wwin, skip_window_list);
+	if (regex_mask.skip_window_list || old_applied.skip_window_list) {
+		Bool v;
+
+		if (regex_mask.skip_window_list)
+			v = final_attr.skip_window_list;
+		else if (base_mask.skip_window_list)
+			v = base_attr.skip_window_list;
+		else {
+			wwin->defined_user_flags.skip_window_list = 0;
+			v = WFLAGP(wwin, skip_window_list);
+		}
+		if (regex_mask.skip_window_list || base_mask.skip_window_list)
+			WSETUFLAG(wwin, skip_window_list, v);
+		if (WFLAGP(wwin, skip_window_list) != old_skip_window_list) {
+			UpdateSwitchMenu(wwin->screen_ptr, wwin,
+					 WFLAGP(wwin, skip_window_list) ? ACTION_REMOVE
+									: ACTION_ADD);
+		}
+	}
+
+	/* no_bind_keys: re-grab or ungrab keys. */
+	old_no_bind_keys = WFLAGP(wwin, no_bind_keys);
+	if (regex_mask.no_bind_keys || old_applied.no_bind_keys) {
+		Bool v;
+
+		if (regex_mask.no_bind_keys)
+			v = final_attr.no_bind_keys;
+		else if (base_mask.no_bind_keys)
+			v = base_attr.no_bind_keys;
+		else {
+			wwin->defined_user_flags.no_bind_keys = 0;
+			v = WFLAGP(wwin, no_bind_keys);
+		}
+		if (regex_mask.no_bind_keys || base_mask.no_bind_keys)
+			WSETUFLAG(wwin, no_bind_keys, v);
+		if (WFLAGP(wwin, no_bind_keys) != old_no_bind_keys) {
+			if (WFLAGP(wwin, no_bind_keys))
+				XUngrabKey(dpy, AnyKey, AnyModifier, wwin->frame->core->window);
+			else
+				wWindowSetKeyGrabs(wwin);
+		}
+	}
+
+	/* no_bind_mouse: re-grab mouse bindings. */
+	old_no_bind_mouse = WFLAGP(wwin, no_bind_mouse);
+	if (regex_mask.no_bind_mouse || old_applied.no_bind_mouse) {
+		Bool v;
+
+		if (regex_mask.no_bind_mouse)
+			v = final_attr.no_bind_mouse;
+		else if (base_mask.no_bind_mouse)
+			v = base_attr.no_bind_mouse;
+		else {
+			wwin->defined_user_flags.no_bind_mouse = 0;
+			v = WFLAGP(wwin, no_bind_mouse);
+		}
+		if (regex_mask.no_bind_mouse || base_mask.no_bind_mouse)
+			WSETUFLAG(wwin, no_bind_mouse, v);
+		if (WFLAGP(wwin, no_bind_mouse) != old_no_bind_mouse)
+			wWindowResetMouseGrabs(wwin);
+	}
+
+	/* Re-evaluate frame border overrides: release the prior resolved
+	 * colors so wDefaultFillFrameBorders() can re-resolve them from the
+	 * now-current predicate sources (the title changed). */
+	old_inner_width = wwin->frame_border.frame_inner_border_width;
+	old_inner_set = wwin->frame_border.frame_inner_border_width_set;
+
+	if (wwin->frame_border.frame_border_color) {
+		WMReleaseColor(wwin->frame_border.frame_border_color);
+		wwin->frame_border.frame_border_color = NULL;
+	}
+	if (wwin->frame_border.frame_focused_border_color) {
+		WMReleaseColor(wwin->frame_border.frame_focused_border_color);
+		wwin->frame_border.frame_focused_border_color = NULL;
+	}
+	if (wwin->frame_border.frame_selected_border_color) {
+		WMReleaseColor(wwin->frame_border.frame_selected_border_color);
+		wwin->frame_border.frame_selected_border_color = NULL;
+	}
+	if (wwin->frame_border.frame_inner_border_color) {
+		WMReleaseColor(wwin->frame_border.frame_inner_border_color);
+		wwin->frame_border.frame_inner_border_color = NULL;
+	}
+	if (wwin->frame_border.frame_inner_focused_border_color) {
+		WMReleaseColor(wwin->frame_border.frame_inner_focused_border_color);
+		wwin->frame_border.frame_inner_focused_border_color = NULL;
+	}
+	memset(&wwin->frame_border, 0, sizeof(wwin->frame_border));
+	wDefaultFillFrameBorders(wwin->screen_ptr, wwin->wm_instance,
+				 wwin->wm_class, wwin);
+
+	/* when the inner border width changed, the frame geometry
+	 * must be re-applied so paintInnerBorderStrips() draws all
+	 * four sides at the correct dimensions */
+	if (old_inner_set != wwin->frame_border.frame_inner_border_width_set ||
+	    old_inner_width != wwin->frame_border.frame_inner_border_width)
+		wWindowApplyInnerBorder(wwin);
+
+	/* Decoration flags converge on a single wWindowConfigureBorders()
+	 * call which rebuilds the titlebar, buttons, resizebar and border,
+	 * then repaint and sync EWMH actions. */
+	wwin->frame->flags.need_texture_change = 1;
+	wWindowConfigureBorders(wwin);
+	wFrameWindowPaint(wwin->frame);
+	wNETWMUpdateActions(wwin, False);
+
+	wwin->regex_applied_mask = regex_mask;
+}
+
 void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 {
 	const char *title;
@@ -2416,6 +2775,14 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 		title = DEF_WINDOW_TITLE; /* the hint was removed */
 	else
 		title = newTitle;
+
+	/* keep the dynamic-rule title predicate source in sync with the
+	 * undecorated client title before any re-evaluation runs */
+	if (wwin->wm_title) {
+		wfree(wwin->wm_title);
+		wwin->wm_title = NULL;
+	}
+	wwin->wm_title = wstrdup(title);
 
 	/* Re-apply [N/M] prefix when this window is part of a tab group and
 	 * the segmented titlebar renderer is off */
@@ -2440,6 +2807,13 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 		if (act && act->frame)
 			wFrameWindowRepaintTitle(act->frame);
 	}
+
+	/* Re-evaluate dynamic-rule attributes now that the title (the only
+	 * predicate source that changes on a WM_NAME/_NET_WM_NAME update)
+	 * has been committed. The other six sources are read once at manage
+	 * time. Rules keyed purely on them stay constant. The first call at
+	 * map time seeds regex_applied_mask from zero. */
+	wWindowReapplyDecorativeAttrs(wwin);
 }
 
 /*
@@ -3304,7 +3678,24 @@ void wWindowConfigureBorders(WWindow *wwin)
 				wWindowApplyInnerBorder(wwin);
 		}
 		if (oldh != wwin->frame->top_width) {
-			newy = wwin->frame_y + oldh - wwin->frame->top_width;
+			/* When the titlebar height changes on an already-mapped
+			 * window (interactive decoration toggle, runtime rule
+			 * reload), keep the client's root position fixed by
+			 * shifting the frame: newy = frame_y + oldh - top_width.
+			 * On the initial setup path (wManageWindow still in
+			 * progress, flags.initializing is set) the frame
+			 * position was already chosen for the FINAL decorations
+			 * by wManageWindow() (saved frame origin via
+			 * _WINDOWMAKER_STATE or fresh placement), so the shift
+			 * would move the window by |Δtop_width| every restart.
+			 * Keep the frame put in that case. The XMoveWindow and
+			 * wWindowConfigure below still reposition the client at
+			 * the new (inner, top_width + inner) offset inside the
+			 * resized frame. */
+			if (wwin->flags.initializing)
+				newy = wwin->frame_y;
+			else
+				newy = wwin->frame_y + oldh - wwin->frame->top_width;
 
 			XMoveWindow(dpy, wwin->client_win,
 					HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0,

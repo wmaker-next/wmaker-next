@@ -3,6 +3,69 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Dynamic window rules
+--------------------
+
+WMWindowAttributes now accepts a top-level DynamicRules array whose
+entries match windows by regular expression and overlay attributes on
+top of the usual per-instance/per-class stack. Each rule combines any
+of seven predicates with implicit AND logic:
+
+  MatchClass         (WM_CLASS res_class)
+  MatchInstance      (WM_CLASS res_instance)
+  MatchTitle         (WM_NAME / _NET_WM_NAME, live-updated)
+  MatchRole          (WM_WINDOW_ROLE)
+  MatchCommand       (WM_COMMAND, joined)
+  MatchMachine       (WM_CLIENT_MACHINE)
+  MatchWindowType    (_NET_WM_WINDOW_TYPE atom name; matches if any
+                      advertised type satisfies the regex)
+
+The first rule (in array order) whose every present predicate matches
+is layered on top of the four-level instance.class/instance/class/"*"
+precedence, so a dynamic rule wins over even an exact per-app entry.
+For example
+
+  DynamicRules = (
+    {
+      MatchClass = "^Firefox$";
+      MatchTitle = ".*YouTube.*";
+      Attributes = {
+        NoTitlebar = YES;
+        KeepOnTop = YES;
+      };
+    }
+  );
+
+drops the titlebar and floats every Firefox window whose title contains
+"YouTube". Rules are compiled once when the domain is reloaded.
+
+Because only MatchTitle's source changes on a WM_NAME/_NET_WM_NAME
+update, the re-evaluation hook lives inside the existing
+wWindowUpdateName() convergence point: when a title change makes a
+previously-matching rule stop matching, the attributes it supplied are
+reverted to their non-rule baseline (the four-level merge without the
+regex layer). A per-window regex_applied_mask tracks which legal-delta
+fields the regex layer supplied so reversion does not clobber values
+set by a non-rule layer (e.g. an exact per-app entry). Map-time-only
+attributes (StartWorkspace, StartMiniaturized, StartHidden,
+StartMaximized, AutoTabGroup, StartGeometry) are not re-evaluated.
+
+Inside any Match* regex pattern, the sequence $_NAME (where NAME matches
+the C-identifier rule [A-Za-z_][A-Za-z0-9_]*) is replaced at reload
+time with the value of the environment variable NAME, auto-escaped for
+POSIX ERE so the substituted value is treated as a literal substring.
+This lets the same rule file stay portable across machines without
+hard-coding host-specific values:
+
+  MatchTitle = ".*@$_HOSTNAME:.*";
+
+Unset environment variables substitute to the empty string. $_ with no
+following name byte, and $ not followed by _, are passed through
+verbatim (the latter is the ERE end-anchor). Substitution does not apply
+inside bracket expressions [...] where backslash escapes are not
+honoured, nor to Attributes string values (Icon, StartWorkspace,
+StartGeometry, the frame color specs) which are not regex.
+
 Per-window frame border overrides
 ---------------------------------
 
