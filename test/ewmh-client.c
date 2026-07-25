@@ -256,6 +256,53 @@ static int format8_close_mode(Display *dpy)
 	return 0;
 }
 
+/* Send a valid format-32 _NET_CLOSE_WINDOW ClientMessage so the WM
+ * dispatches WM_DELETE_WINDOW (and a paired _NET_WM_PING) to the
+ * target. data.l[0] = timestamp, data.l[1] = source indication
+ * (0=unknown, 1=application, 2=pager). The WM ignores both fields and
+ * uses w_global.timestamp.last_event, but the spec requires them so
+ * clients/pagers can construct a well-formed request.
+ * EWMH_CLIENT_CLOSE_TARGET=<xid>
+ * EWMH_CLIENT_CLOSE_SOURCE=<n>      default 1
+ * EWMH_CLIENT_CLOSE_TIME=<n>        default 0 (CurrentTime) */
+static int close_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_CLOSE_TARGET", None);
+	long source = env_long("EWMH_CLIENT_CLOSE_SOURCE", 1);
+	long ts = env_long("EWMH_CLIENT_CLOSE_TIME", 0);
+
+	if (target == None)
+		return 1;
+	send_root_message(dpy, target, intern_atom(dpy, "_NET_CLOSE_WINDOW"),
+			  ts, source, 0, 0, 0);
+	return 0;
+}
+
+/* Set _NET_WM_ICON_GEOMETRY on the target window and send the matching
+ * ClientMessage so wmaker's net_wm_icon_geometry handler re-reads the
+ * property (PropertyNotify alone also works, the ClientMessage path is
+ * what the spec mandates for an explicit client-driven update).
+ * EWMH_CLIENT_ICON_GEOMETRY_TARGET=<xid>
+ * EWMH_CLIENT_ICON_GEOMETRY="x y w h" */
+static int icon_geometry_mode(Display *dpy)
+{
+	Window target = env_window("EWMH_CLIENT_ICON_GEOMETRY_TARGET", None);
+	const char *spec = getenv("EWMH_CLIENT_ICON_GEOMETRY");
+	long geom[4];
+
+	if (target == None || !spec
+	    || sscanf(spec, "%ld %ld %ld %ld",
+		      &geom[0], &geom[1], &geom[2], &geom[3]) != 4)
+		return 1;
+	set_cardinals(dpy, target, intern_atom(dpy, "_NET_WM_ICON_GEOMETRY"),
+		      geom, 4);
+	send_root_message(dpy, target,
+			  intern_atom(dpy, "_NET_WM_ICON_GEOMETRY"),
+			  0, 0, 0, 0, 0);
+	XFlush(dpy);
+	return 0;
+}
+
 /* Send _NET_WM_MOVERESIZE with an arbitrary direction value to exercise
  * the direction-range validation. EWMH_CLIENT_MOVERESIZE_TARGET=<xid>
  * EWMH_CLIENT_MOVERESIZE_DIRECTION=<n> */
@@ -508,6 +555,18 @@ int main(void)
 	}
 	if (getenv("EWMH_CLIENT_FORMAT8_CLOSE_TARGET")) {
 		int ret = format8_close_mode(dpy);
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_CLOSE_TARGET")) {
+		int ret = close_mode(dpy);
+
+		XCloseDisplay(dpy);
+		return ret;
+	}
+	if (getenv("EWMH_CLIENT_ICON_GEOMETRY_TARGET")) {
+		int ret = icon_geometry_mode(dpy);
+
 		XCloseDisplay(dpy);
 		return ret;
 	}

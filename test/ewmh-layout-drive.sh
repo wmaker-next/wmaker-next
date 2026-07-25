@@ -293,6 +293,30 @@ send_format8_gnustep() {
 		"$CLIENT_BIN" >>"$LOG" 2>&1
 }
 
+# send_close_window TARGET [SOURCE [TIMESTAMP]] : send a valid format-32
+# _NET_CLOSE_WINDOW ClientMessage so the WM dispatches WM_DELETE_WINDOW
+# (and a paired _NET_WM_PING) to the target
+send_close_window() {
+	DISPLAY=$DPY env EWMH_CLIENT_CLOSE_TARGET="$1" \
+		EWMH_CLIENT_CLOSE_SOURCE="${2:-1}" \
+		EWMH_CLIENT_CLOSE_TIME="${3:-0}" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
+# send_icon_geometry TARGET X Y W H : set _NET_WM_ICON_GEOMETRY on the
+# target and send the matching ClientMessage so wmaker re-reads it
+send_icon_geometry() {
+	DISPLAY=$DPY env EWMH_CLIENT_ICON_GEOMETRY_TARGET="$1" \
+		EWMH_CLIENT_ICON_GEOMETRY="$2 $3 $4 $5" \
+		"$CLIENT_BIN" >>"$LOG" 2>&1
+}
+
+# count managed windows in _NET_CLIENT_LIST, used to detect whether a
+# modal "Application Not Responding" dialog was raised (it would add one)
+client_list_count() {
+	prop_values _NET_CLIENT_LIST | tr ',' '\n' | grep -c 'window id'
+}
+
 prop_values() {
 	root_prop "$1" | sed -e 's/^[^=]*= //' -e 's/^[^:]*: //'
 }
@@ -1006,6 +1030,30 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		check "clears _NET_WM_STATE_DEMANDS_ATTENTION on focus" wait_for 40 window_atom_lacks "$CLIENT_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
 		move_client_to_desktop 0 >/dev/null
 
+		# _NET_WM_STATE_MODAL: the only state atom not yet exercised
+		# above. doStateAtom() for modal raises the window and moves
+		# focus to it, so assert all three: the atom is published, the
+		# window takes focus, and it is stacked above its owner.
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+		if start_second_client EWMH_CLIENT_NAME=modal-transient \
+				EWMH_CLIENT_CLASS=EwmhDriveModal \
+				EWMH_CLIENT_TRANSIENT_FOR="$CLIENT_XID" \
+				EWMH_CLIENT_USER_TIME=1; then
+			send_wm_state "$CLIENT2_XID" 1 _NET_WM_STATE_MODAL
+			check "honors _NET_WM_STATE_MODAL add" \
+				wait_for 40 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_MODAL
+			check "_NET_WM_STATE_MODAL grabs focus" \
+				wait_for 30 active_window_is "$CLIENT2_XID"
+			check "_NET_WM_STATE_MODAL raises above owner" \
+				wait_for 30 stacking_above "$CLIENT2_XID" "$CLIENT_XID"
+			stop_second_client
+		else
+			record_fail "could not launch modal transient client"
+		fi
+		run_x wmctrl -i -a "$CLIENT_XID" >>"$LOG" 2>&1
+		wait_for 30 active_window_is "$CLIENT_XID" >/dev/null
+
 		check "honors _NET_MOVERESIZE_WINDOW request" sh -c "
 			DISPLAY=$DPY wmctrl -i -r '$CLIENT_XID' -e 0,100,100,400,300 >>'$LOG' 2>&1 || exit 1
 			i=40; while [ \$i -gt 0 ]; do
@@ -1336,6 +1384,24 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		record_skip "could not launch malformed icon client"
 	fi
 
+	note "_NET_WM_ICON_GEOMETRY"
+	# regression gate for updateNetIconInfoCk() at src/wmspec.c:1832:
+	# setting the property and sending the ClientMessage must not crash,
+	# the value must be reflected back, and no internal X errors logged.
+	# Without NETWM_PROPER (the default build) this also flips
+	# net_handle_icon which suppresses miniwindow creation on iconify.
+	if set_desktop 0 && start_second_client EWMH_CLIENT_NAME=icon-geom; then
+		send_icon_geometry "$CLIENT2_XID" 10 20 48 48
+		sleep 0.3
+		check "_NET_WM_ICON_GEOMETRY keeps wmaker alive" wmaker_alive
+		check "_NET_WM_ICON_GEOMETRY echoed back" \
+			wait_for 30 window_prop_has_values "$CLIENT2_XID" _NET_WM_ICON_GEOMETRY "10, 20, 48, 48"
+		check "_NET_WM_ICON_GEOMETRY logs no internal X errors" no_internal_x_errors
+		stop_second_client
+	else
+		record_skip "could not launch icon-geometry client"
+	fi
+
 	note "hostile-input regressions"
 	ROOT_XID=$(run_x xwininfo -root 2>/dev/null \
 		| sed -n 's/^xwininfo: Window id: \(0x[0-9a-fA-F]*\).*/\1/p')
@@ -1446,6 +1512,51 @@ if set_desktop 0 \
 	CLIENT2_XID=
 else
 	record_skip "could not launch no-ping client"
+fi
+
+note "_NET_CLOSE_WINDOW happy path"
+# the no-reply test above sends wmctrl -i -c (which maps to
+# _NET_CLOSE_WINDOW) and the client ignores WM_DELETE_WINDOW so the
+# ping times out. Here the client honours WM_DELETE_WINDOW, so it must
+# exit cleanly before the 5 s ping timeout fires and the
+# "Application Not Responding" kill dialog appears.
+if set_desktop 0 && start_second_client EWMH_CLIENT_NAME=closer; then
+	CL_COUNT_BEFORE=$(client_list_count)
+	send_close_window "$CLIENT2_XID" 1 0
+	check "_NET_CLOSE_WINDOW: client exits before ping timeout" \
+		wait_for 25 pid_gone "$CLIENT2_PID"
+	CL_COUNT_AFTER=$(client_list_count)
+	check "_NET_CLOSE_WINDOW: no kill dialog raised" \
+		[ "$CL_COUNT_BEFORE" = "$CL_COUNT_AFTER" ]
+	check "_NET_CLOSE_WINDOW: wmaker alive" wmaker_alive
+	check "_NET_CLOSE_WINDOW: no internal X errors" no_internal_x_errors
+	CLIENT2_PID=
+	CLIENT2_XID=
+else
+	record_skip "could not launch _NET_CLOSE_WINDOW happy-path client"
+fi
+
+note "_NET_WM_PING happy path"
+# the client replies to the ping but ignores WM_DELETE_WINDOW: the ping
+# reply cancels the 5 s timeout so no kill dialog should appear, and the
+# client must still be alive after waiting well past the timeout.
+if set_desktop 0 \
+   && start_second_client EWMH_CLIENT_NAME=ping-reply EWMH_CLIENT_IGNORE_DELETE=1; then
+	CL_COUNT_BEFORE=$(client_list_count)
+	send_close_window "$CLIENT2_XID" 1 0
+	sleep 6
+	check "_NET_WM_PING: replying client stays alive past timeout" kill -0 "$CLIENT2_PID" 2>/dev/null
+	CL_COUNT_AFTER=$(client_list_count)
+	check "_NET_WM_PING: no kill dialog raised" \
+		[ "$CL_COUNT_BEFORE" = "$CL_COUNT_AFTER" ]
+	check "_NET_WM_PING: wmaker alive" wmaker_alive
+	check "_NET_WM_PING: no internal X errors" no_internal_x_errors
+	kill "$CLIENT2_PID" 2>/dev/null
+	wait_for 50 pid_gone "$CLIENT2_PID"
+	CLIENT2_PID=
+	CLIENT2_XID=
+else
+	record_skip "could not launch _NET_WM_PING happy-path client"
 fi
 
 check "no internal X errors logged during the run" no_internal_x_errors
