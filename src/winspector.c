@@ -56,6 +56,7 @@
 #define UPDATE_TEXT_FIELD	2
 #define REVERT_TO_DEFAULT	4
 #define PWIDTH			290
+#define ICON_PREVIEW_SIZE	56
 #ifdef XKB_BUTTON_HINT
 #define PHEIGHT			410
 #else
@@ -482,6 +483,8 @@ static int showIconFor(WMScreen *scrPtr, InspectorPanel *panel, const char *wm_i
 {
 	WMPixmap *pixmap = (WMPixmap *) NULL;
 	char *file = NULL, *path = NULL;
+	RColor color;
+	RImage *net_icon;
 
 	if ((flags & USE_TEXT_FIELD) != 0) {
 		file = WMGetTextFieldText(panel->fileText);
@@ -503,8 +506,16 @@ static int showIconFor(WMScreen *scrPtr, InspectorPanel *panel, const char *wm_i
 	if ((flags & UPDATE_TEXT_FIELD) != 0)
 		WMSetTextFieldText(panel->fileText, file);
 
-	if (file) {
+	if (!file && (wm_instance || wm_class)) {
+		/* no per-app Icon= entry, _NET_WM_ICON-only apps get the
+		 * icon resolved by the same chain as their appicon */
+		path = get_icon_filename(wm_instance, wm_class, NULL, False);
+	} else if (file) {
 		path = FindImage(w_global.config->icon_path, file);
+		/* fall back to the icon cache directory, same as
+		 * get_icon_filename() in wdefaults.c */
+		if (!path)
+			path = find_in_icon_cache(file, wm_instance, wm_class);
 
 		if (!path) {
 			char *buf;
@@ -518,23 +529,41 @@ static int showIconFor(WMScreen *scrPtr, InspectorPanel *panel, const char *wm_i
 			return -1;
 		}
 
-		pixmap = WMCreatePixmapFromFile(scrPtr, path);
-		wfree(path);
+		wfree(file);
+	}
+
+	if (path) {
+		color.red = 0xae;
+		color.green = 0xaa;
+		color.blue = 0xae;
+		color.alpha = 0;
+		pixmap = WMCreateScaledBlendedPixmapFromFile(scrPtr, path, &color,
+							     ICON_PREVIEW_SIZE, ICON_PREVIEW_SIZE);
 
 		if (!pixmap) {
 			char *buf;
-			int len = strlen(file) + 80;
+			int len = strlen(path) + 80;
 
 			buf = wmalloc(len);
 			snprintf(buf, len, _("Could not open specified icon \"%s\":%s"),
-				 file, RMessageForError(RErrorCode));
+				 path, RMessageForError(RErrorCode));
 			wMessageDialog(panel->frame->screen_ptr, _("Error"), buf, _("OK"), NULL, NULL);
 			wfree(buf);
-			wfree(file);
+			wfree(path);
 			return -1;
 		}
-		wfree(file);
+		wfree(path);
+	} else if (panel->inspected && panel->inspected->net_icon_image) {
+		/* apps without any icon file get their _NET_WM_ICON */
+		net_icon = RRetainImage(panel->inspected->net_icon_image);
+		net_icon = wIconValidateIconSize(net_icon,
+						 ICON_PREVIEW_SIZE + ICON_BORDER_WIDTH);
+		pixmap = WMCreatePixmapFromRImage(scrPtr, net_icon, 127);
+		RReleaseImage(net_icon);
 	}
+
+	if (!pixmap)
+		return 0;
 
 	WMSetLabelImage(panel->iconLbl, pixmap);
 	if (pixmap)

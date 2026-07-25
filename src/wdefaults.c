@@ -488,7 +488,7 @@ out:
  * it is NULL, fall back to the standard <instance>.<class>.xpm naming
  * that wIconStore() uses, so an entry dropped after a stale-IconPath
  * lookup self-heals from the cached file. */
-static char *find_in_icon_cache(const char *file_name,
+char *find_in_icon_cache(const char *file_name,
 			       const char *winstance, const char *wclass)
 {
 	const char *cache_dir = wGetIconCacheDir();

@@ -127,4 +127,7 @@ typedef struct WWindowAttrs {
 	char *start_geometry_spec;
 } WWindowAttrs;
 
+char *find_in_icon_cache(const char *file_name,
+			 const char *winstance, const char *wclass);
+
 #endif /* WMWDEFAULTS_H_ */
