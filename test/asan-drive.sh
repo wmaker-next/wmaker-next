@@ -35,6 +35,16 @@ trap cleanup EXIT
 note() { printf '\n=== %s ===\n' "$*" | tee -a "$LOG"; }
 xdo()  { DISPLAY=$DPY xdotool "$@"; }
 
+# dump the Xephyr root window as a PNG when WMAKER_SHOTS_DIR is set,
+# ad-hoc debugging aid (e.g. `WMAKER_SHOTS_DIR=/tmp/shots ./asan-drive.sh`)
+shot() {
+    [ -n "${WMAKER_SHOTS_DIR:-}" ] || return 0
+    command -v xwd >/dev/null 2>&1 && command -v convert >/dev/null 2>&1 || return 0
+    mkdir -p "$WMAKER_SHOTS_DIR"
+    sleep 0.3
+    xwd -display "$DPY" -root -silent | convert xwd:- "png:$WMAKER_SHOTS_DIR/$1.png"
+}
+
 # launch a libWINGs GUI under ASan, wait for its window, optionally drive
 # it with extra xdotool commands, then close it cleanly so LSan reports
 run_gui() {
@@ -129,6 +139,7 @@ sleep 1
 # pick one managed client window to drive
 WID=$(DISPLAY=$DPY xdotool search --class XTerm | head -1)
 note "driving window $WID"
+shot clients-mapped
 
 # --- focus / move / resize --------------------------------------------------
 note "focus / move / resize"
@@ -138,6 +149,7 @@ xdo windowmove "$WID" 300 250; sleep 0.2
 xdo windowsize "$WID" 500 350; sleep 0.2
 xdo windowsize "$WID" 700 450; sleep 0.2
 xdo windowsize "$WID" 400 300; sleep 0.2
+shot xterm-focused
 
 # --- titlebar interaction (framewin.c, actions.c) ---------------------------
 note "titlebar double-click (shade), drag, button menu"
@@ -151,6 +163,7 @@ xdo click 3; sleep 0.3; xdo key Escape; sleep 0.2        # window menu
 # --- maximise / minimise via EWMH (wmspec.c handlers) ----------------------
 note "EWMH state toggles"
 DISPLAY=$DPY wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz 2>/dev/null; sleep 0.3
+shot xterm-maximized
 DISPLAY=$DPY wmctrl -i -r "$WID" -b remove,maximized_vert,maximized_horz 2>/dev/null; sleep 0.3
 DISPLAY=$DPY wmctrl -i -r "$WID" -b add,fullscreen 2>/dev/null; sleep 0.3
 DISPLAY=$DPY wmctrl -i -r "$WID" -b remove,fullscreen 2>/dev/null; sleep 0.3
@@ -172,6 +185,7 @@ xdo mousemove 640 500; sleep 0.1
 xdo click 3; sleep 0.4
 xdo key Down Down Down; sleep 0.2
 xdo key Right; sleep 0.3
+shot rootmenu-open
 xdo key Escape; sleep 0.2
 xdo key Escape; sleep 0.2
 # window list menu (middle click on root)
@@ -182,6 +196,7 @@ xdo key Escape; sleep 0.2
 note "switchpanel"
 xdo keydown alt; sleep 0.1
 xdo key Tab; sleep 0.2; xdo key Tab; sleep 0.2; xdo key Tab; sleep 0.2
+shot switchpanel
 xdo keyup alt; sleep 0.3
 
 # --- iconify / deiconify (icon.c) -------------------------------------------
@@ -313,6 +328,7 @@ kill -0 "$GUI_PID" 2>/dev/null && close_gui wmiv
 run_gui "$ROOT/WPrefs.app/.libs/WPrefs" "Preferences"
 if [ -n "$GUI_WIN" ]; then
     xdo windowactivate "$GUI_WIN"; sleep 0.3
+    shot wprefs-open
     # click through several section icons along the top toolbar
     for x in 60 110 160 210 260 310 360; do
         xdo mousemove --window "$GUI_WIN" "$x" 50 click 1; sleep 0.4

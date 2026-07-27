@@ -52,6 +52,7 @@ test-driver
 # These are compilation results
 src/wmaker
 test/wtest
+test/shots/current/
 
 util/convertfonts
 util/geticonset
