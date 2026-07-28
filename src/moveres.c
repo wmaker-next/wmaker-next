@@ -994,7 +994,7 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 	data->realY = newY;
 }
 
-static void addSnapOutline(WWindow *wwin, int direction)
+static void addSnapOutline(WWindow *wwin, int direction, int mouseX, int mouseY)
 {
 	WScreen *scr;
 	int head, x, y, fb;
@@ -1002,7 +1002,7 @@ static void addSnapOutline(WWindow *wwin, int direction)
 	WMRect rect;
 
 	scr = wwin->screen_ptr;
-	head = wGetHeadForWindow(wwin);
+	head = wGetHeadForPoint(scr, wmkpoint(mouseX, mouseY));
 	rect = wGetRectForHead(scr, head);
 
 	x = rect.pos.x;
@@ -1074,7 +1074,7 @@ static void showMoveWireframe(WWindow *wwin, MoveData *data, Bool opaqueMove)
 		addFrameOutlines(wwin, scr->selected_windows,
 				 data->realX - wwin->frame_x, data->realY - wwin->frame_y);
 	if (data->snap)
-		addSnapOutline(wwin, data->snap);
+		addSnapOutline(wwin, data->snap, data->mouseX, data->mouseY);
 	wWireframeCommit(scr);
 }
 
