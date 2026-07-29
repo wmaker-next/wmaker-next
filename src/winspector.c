@@ -782,12 +782,16 @@ static void applySettings(WMWidget *button, void *client_data)
 	WWindow *wwin = panel->inspected;
 	WApplication *wapp = wApplicationOf(wwin->main_window);
 	int old_skip_window_list, old_omnipresent, old_no_bind_keys, old_no_bind_mouse;
+	int old_always_user_icon;
+	const char *old_icon_file;
 	int i;
 
 	old_skip_window_list = WFLAGP(wwin, skip_window_list);
 	old_omnipresent = WFLAGP(wwin, omnipresent);
 	old_no_bind_keys = WFLAGP(wwin, no_bind_keys);
 	old_no_bind_mouse = WFLAGP(wwin, no_bind_mouse);
+	old_always_user_icon = WFLAGP(wwin, always_user_icon);
+	old_icon_file = wDefaultGetIconFile(wwin->wm_instance, wwin->wm_class, False);
 
 	showIconFor(WMWidgetScreen(button), panel, NULL, NULL, USE_TEXT_FIELD);
 
@@ -916,40 +920,47 @@ static void applySettings(WMWidget *button, void *client_data)
 			WMSetButtonSelected(panel->alwChk, 0);
 		}
 
-		/* After test the always_user_icon flag value before,
-		 * the "else" block is used only if the flag is set and
-		 * the icon text box has an icon path */
-		if (!WFLAGP(wwin, always_user_icon)) {
-			/* Change App Icon image, using the icon provided by the client */
-			if (wapp->app_icon) {
-				RImage *image = get_rimage_icon_from_wm_hints(wapp->app_icon->icon);
-				if (image) {
-					set_icon_image_from_image(wapp->app_icon->icon, image);
-					update_icon_pixmap(wapp->app_icon->icon);
-				} else {
-					wIconUpdate(wapp->app_icon->icon);
-				}
-			}
+		/* Only replace the icon when always_user_icon or the icon
+		 * filename changed, so a bare Apply does not clobber a docked
+		 * app icon with the client WM_HINTS pixmap. */
+		if (WFLAGP(wwin, always_user_icon) != old_always_user_icon ||
+		    (file && !old_icon_file) ||
+		    (!file && old_icon_file) ||
+		    (file && old_icon_file && strcmp(file, old_icon_file) != 0)) {
+			if (!WFLAGP(wwin, always_user_icon)) {
+				/* Change App Icon image, using the icon provided by the client */
+				if (wapp->app_icon) {
+					RImage *image = get_rimage_icon_from_wm_hints(wapp->app_icon->icon);
 
-			/* Change icon image if the app is minimized,
-			 * using the icon provided by the client */
-			if (wwin->icon) {
-				RImage *image = get_rimage_icon_from_wm_hints(wwin->icon);
-				if (image) {
-					set_icon_image_from_image(wwin->icon, image);
-					update_icon_pixmap(wwin->icon);
-				} else {
-					wIconUpdate(wwin->icon);
+					if (image) {
+						set_icon_image_from_image(wapp->app_icon->icon, image);
+						update_icon_pixmap(wapp->app_icon->icon);
+					} else {
+						wIconUpdate(wapp->app_icon->icon);
+					}
 				}
-			}
-		} else {
-			/* Change App Icon image */
-			if (wapp->app_icon)
-				wIconChangeImageFile(wapp->app_icon->icon, file);
 
-			/* Change icon image if the app is minimized */
-			if (wwin->icon)
-				wIconChangeImageFile(wwin->icon, file);
+				/* Change icon image if the app is minimized,
+				 * using the icon provided by the client */
+				if (wwin->icon) {
+					RImage *image = get_rimage_icon_from_wm_hints(wwin->icon);
+
+					if (image) {
+						set_icon_image_from_image(wwin->icon, image);
+						update_icon_pixmap(wwin->icon);
+					} else {
+						wIconUpdate(wwin->icon);
+					}
+				}
+			} else {
+				/* Change App Icon image */
+				if (wapp->app_icon)
+					wIconChangeImageFile(wapp->app_icon->icon, file);
+
+				/* Change icon image if the app is minimized */
+				if (wwin->icon)
+					wIconChangeImageFile(wwin->icon, file);
+			}
 		}
 
 		if (file)
