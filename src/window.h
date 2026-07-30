@@ -369,6 +369,12 @@ typedef struct WWindow {
 		unsigned int miniaturized:1;
 		unsigned int hidden:1;
 		unsigned int shaded:1;
+		/* per-window auto-on-unfocus behaviour, set from the window
+		 * inspector and round-tripped through _WINDOWMAKER_STATE /
+		 * WMState Applications like shaded/hidden, never through the
+		 * per-class WMWindowAttributes domain */
+		unsigned int auto_hide_on_unfocus:1;
+		unsigned int auto_miniaturize_on_unfocus:1;
 		unsigned int maximized:10;
 		unsigned int old_maximized:10;
 		unsigned int fullscreen:1;
@@ -499,6 +505,8 @@ typedef struct WSavedState {
     int maximized;
     int shaded;
     int hidden;
+    int auto_hide_on_unfocus;
+    int auto_miniaturize_on_unfocus;
     int x;			       /* original geometry of the */
     int y;			       /* window if it's maximized */
     unsigned int w;

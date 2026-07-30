@@ -1683,7 +1683,11 @@ void wIconifyWindow(WWindow *wwin)
 				tmp = tmp->prev;
 			}
 			wSetFocusTo(wwin->screen_ptr, tmp);
-		} else if (w_global.config->focus_mode != WKF_CLICK) {
+		} else if (w_global.config->focus_mode != WKF_CLICK && wwin->flags.focused) {
+			/* Skip the focus reset when iconify was triggered by the
+			 * auto-hide/miniaturize-on-unfocus path: focus has already
+			 * moved to the new window and wWindowUnfocus() cleared
+			 * wwin->flags.focused, so resetting here would unfocus it. */
 			wSetFocusTo(wwin->screen_ptr, NULL);
 		}
 #ifdef USE_ANIMATIONS
@@ -1878,7 +1882,7 @@ void wRefreshMiniwindows(WScreen *scr)
 		wArrangeIcons(scr, True);
 }
 
-static void hideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int animate)
+void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate)
 {
 	if (wwin->flags.miniaturized) {
 		if (wwin->icon) {
@@ -1897,11 +1901,11 @@ static void hideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int a
 	wwin->flags.hidden = 1;
 	wWindowUnmap(wwin);
 
-	wClientSetState(wwin, IconicState, icon->icon_win);
+	wClientSetState(wwin, IconicState, icon ? icon->icon_win : None);
 	flushExpose();
 
 #ifdef USE_ANIMATIONS
-	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
+	if (icon && !wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
 	    !w_global.display_off && !wwin->flags.skip_next_animation && animate) {
 		animateResize(wwin->screen_ptr, wwin->frame_x, wwin->frame_y,
 			      wwin->frame->core->width, wwin->frame->core->height,
@@ -2080,8 +2084,8 @@ void wHideApplication(WApplication *wapp)
 			if (wlist->flags.focused)
 				hadfocus = 1;
 			if (wapp->app_icon) {
-				hideWindow(wapp->app_icon->icon, wapp->app_icon->x_pos,
-					   wapp->app_icon->y_pos, wlist, animate);
+				wHideWindow(wlist, wapp->app_icon->icon,
+					   wapp->app_icon->x_pos, wapp->app_icon->y_pos, animate);
 				animate = False;
 			}
 		}
@@ -2116,7 +2120,8 @@ void wHideApplication(WApplication *wapp)
 #endif
 }
 
-static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int animate, int bringToCurrentWS)
+void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
+		   int animate, int bringToCurrentWS)
 {
 	if (bringToCurrentWS)
 		wWindowChangeWorkspace(wwin, wwin->screen_ptr->current_workspace);
@@ -2127,7 +2132,7 @@ static void unhideWindow(WIcon *icon, int icon_x, int icon_y, WWindow *wwin, int
 	wWindowSnapToHead(wwin);
 
 #ifdef USE_ANIMATIONS
-	if (!wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
+	if (icon && !wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
 	    !w_global.display_off && animate) {
 		animateResize(wwin->screen_ptr, icon_x, icon_y,
 			      icon->core->width, icon->core->height,
@@ -2221,8 +2226,11 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				}
 				WMPostNotificationName(WMNChangedState, wlist, "hide");
 			} else if (wlist->flags.hidden) {
-				unhideWindow(wapp->app_icon->icon, wapp->app_icon->x_pos,
-					     wapp->app_icon->y_pos, wlist, animate, bringToCurrentWS);
+				WAppIcon *ai = wapp->app_icon;
+
+				wUnhideWindow(wlist, ai ? ai->icon : NULL,
+					     ai ? ai->x_pos : 0, ai ? ai->y_pos : 0,
+					     animate, bringToCurrentWS);
 				animate = False;
 			} else {
 				if (bringToCurrentWS && WWIN_PRIMARY_WS(wlist) != scr->current_workspace)
@@ -2248,7 +2256,8 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 		wArrangeIcons(scr, True);
 
 #ifdef HIDDENDOT
-	wAppIconPaint(wapp->app_icon);
+	if (wapp->app_icon)
+		wAppIconPaint(wapp->app_icon);
 #endif
 }
 

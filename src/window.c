@@ -382,7 +382,7 @@ void wManagePrefetch(Window window, WManageCookies *ck)
 	ck->appmenu   = WXReqExists(dpy, window, w_global.atom.wmaker.menu);
 	ck->gtk       = WXReqExists(dpy, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(dpy, window, w_global.atom.wmaker.state,
-					w_global.atom.wmaker.state, 12);
+					w_global.atom.wmaker.state, 14);
 	ck->mark_key  = WXReqString8(dpy, window, w_global.atom.wmaker.mark_key, XA_STRING);
 	ck->tab_group = WXReqFormat32(dpy, window, w_global.atom.wmaker.tab_group,
 				      w_global.atom.wmaker.tab_group, 3);
@@ -1333,6 +1333,12 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (win_state->state->maximized > 0)
 			wwin->flags.maximized = win_state->state->maximized;
 
+		if (win_state->state->auto_hide_on_unfocus > 0)
+			wwin->flags.auto_hide_on_unfocus = win_state->state->auto_hide_on_unfocus;
+
+		if (win_state->state->auto_miniaturize_on_unfocus > 0)
+			wwin->flags.auto_miniaturize_on_unfocus = win_state->state->auto_miniaturize_on_unfocus;
+
 		if (!IS_OMNIPRESENT(wwin)) {
 			int hint_ws;
 			uint64_t hint_rest;
@@ -1359,6 +1365,8 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		wwin->flags.hidden = wstate->hidden;
 		wwin->flags.miniaturized = wstate->miniaturized;
 		wwin->flags.maximized = wstate->maximized;
+		wwin->flags.auto_hide_on_unfocus = wstate->auto_hide_on_unfocus;
+		wwin->flags.auto_miniaturize_on_unfocus = wstate->auto_miniaturize_on_unfocus;
 		if (wwin->flags.maximized) {
 			wwin->old_geometry.x = wstate->x;
 			wwin->old_geometry.y = wstate->y;
@@ -2477,6 +2485,8 @@ void wWindowFocus(WWindow *wwin, WWindow *owin)
 
 void wWindowUnfocus(WWindow *wwin)
 {
+	Bool was_focused = wwin->flags.focused;
+
 	CloseWindowMenu(wwin->screen_ptr);
 
 	if (wwin->flags.is_gnustep == 0)
@@ -2496,6 +2506,31 @@ void wWindowUnfocus(WWindow *wwin)
 	wwin->flags.focused = 0;
 	wWindowResetMouseGrabs(wwin);
 	WMPostNotificationName(WMNChangedFocus, wwin, (void *)False);
+
+	/* Only fire for a window that actually held focus, not transient
+	 * owners unfocused as a side effect or a stale focused_window slot.
+	 * Exclude windows with an open inspector so focusing the panel does
+	 * not hide/miniaturize the inspected window mid-edit, and skip when
+	 * focus is moving to an internal window (dialog, inspector, docked
+	 * panel) so opening one does not dismiss the window. By the time
+	 * wWindowUnfocus() runs, scr->focused_window already holds the new
+	 * target. */
+	if (was_focused && !wwin->flags.miniaturized && !wwin->flags.hidden &&
+	    !wwin->flags.semi_focused && wwin->flags.mapped &&
+	    !wwin->flags.inspector_open &&
+	    !(wwin->screen_ptr->focused_window &&
+	      wwin->screen_ptr->focused_window->flags.internal_window)) {
+		/* AutoHideOnUnfocus wins over AutoMiniaturizeOnUnfocus: hide is
+		 * a distinct primitive and the user asking for it wants the
+		 * window off-screen regardless of miniaturizability. NoMiniaturizable
+		 * (per-class) still vetoes the miniaturize branch, mirroring the
+		 * StartMiniaturized precedent at wManageWindow(). */
+		if (wwin->flags.auto_hide_on_unfocus)
+			wHideWindow(wwin, NULL, 0, 0, 0);
+		else if (wwin->flags.auto_miniaturize_on_unfocus &&
+			 !WFLAGP(wwin, no_miniaturizable))
+			wIconifyWindow(wwin);
+	}
 }
 
 /* Re-apply decoration-affecting attributes when a dynamic-rule predicate
@@ -3770,7 +3805,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 void wWindowSaveState(WWindow *wwin)
 {
-	uint32_t data[12];
+	uint32_t data[14];
 	int i;
 
 	memset(data, 0, sizeof(data));
@@ -3798,9 +3833,13 @@ void wWindowSaveState(WWindow *wwin)
 	}
 	data[10] = (uint32_t)(wwin->frame->ws_mask & 0xffffffffu);
 	data[11] = (uint32_t)(wwin->frame->ws_mask >> 32);
+	/* per-window auto-on-unfocus bits, modelled on shaded/hidden so they
+	 * survive warm restart without propagating to same-class siblings */
+	data[12] = wwin->flags.auto_hide_on_unfocus;
+	data[13] = wwin->flags.auto_miniaturize_on_unfocus;
 
 	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wmaker.state,
-		       w_global.atom.wmaker.state, data, 12);
+		       w_global.atom.wmaker.state, data, 14);
 
 	if (wwin->tab_group != NULL) {
 		uint32_t tab[3];
@@ -3828,9 +3867,10 @@ static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 	uint32_t tab[3];
 	size_t len, count;
 
-	/* Accept both the pre-mask 10-slot layout and the current 12-slot
-	 * one so a restart from an older binary still recovers primary
-	 * workspace, and the mask defaults to 0 (derived from primary). */
+	/* Accept the pre-mask 10-slot layout, the 12-slot layout, and the
+	 * current 14-slot one so a restart from an older binary still recovers
+	 * primary workspace, the mask defaults to 0 (derived from primary),
+	 * and the auto-on-unfocus bits default to 0 (per-window, off). */
 	data = WXRcvFormat32List(dpy, state_ck, &count);
 	if (!data || count < 10) {
 		wfree(data);
@@ -3855,6 +3895,10 @@ static int getSavedStateCk(Window window, WXCookie state_ck, WXCookie mark_ck,
 	(*state)->window_shortcuts = data[9];
 	if (count >= 12)
 		(*state)->ws_mask = (uint64_t)data[10] | ((uint64_t)data[11] << 32);
+	if (count >= 13)
+		(*state)->auto_hide_on_unfocus = data[12];
+	if (count >= 14)
+		(*state)->auto_miniaturize_on_unfocus = data[13];
 	wfree(data);
 
 	(*state)->mark_key = WXRcvString(dpy, mark_ck, &len);

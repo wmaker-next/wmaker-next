@@ -95,6 +95,8 @@ static WMPropList *sShaded;
 static WMPropList *sMiniaturized;
 static WMPropList *sMaximized;
 static WMPropList *sHidden;
+static WMPropList *sAutoHideOnUnfocus;
+static WMPropList *sAutoMiniaturizeOnUnfocus;
 static WMPropList *sGeometry;
 static WMPropList *sShortcutMask;
 static WMPropList *sMarkKey;
@@ -117,6 +119,8 @@ static void make_keys(void)
 	sMiniaturized = WMCreatePLString("Miniaturized");
 	sMaximized = WMCreatePLString("Maximized");
 	sHidden = WMCreatePLString("Hidden");
+	sAutoHideOnUnfocus = WMCreatePLString("AutoHideOnUnfocus");
+	sAutoMiniaturizeOnUnfocus = WMCreatePLString("AutoMiniaturizeOnUnfocus");
 	sGeometry = WMCreatePLString("Geometry");
 	sDock = WMCreatePLString("Dock");
 	sShortcutMask = WMCreatePLString("ShortcutMask");
@@ -232,6 +236,15 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 						 sMaximized, maximized,
 						 sHidden, hidden,
 						 sShortcutMask, shortcut, sGeometry, geometry, NULL);
+
+		/* Per-window auto-on-unfocus bits round-trip through the
+		 * WMState Applications array like shaded/hidden so a full
+		 * session restore honours them. They are NOT in the per-class
+		 * WMWindowAttributes domain. */
+		WMPutInPLDictionary(win_state, sAutoHideOnUnfocus,
+				    wwin->flags.auto_hide_on_unfocus ? sYes : sNo);
+		WMPutInPLDictionary(win_state, sAutoMiniaturizeOnUnfocus,
+				    wwin->flags.auto_miniaturize_on_unfocus ? sYes : sNo);
 
 		if (mark_key_pl) {
 			WMPutInPLDictionary(win_state, sMarkKey, mark_key_pl);
@@ -501,6 +514,14 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 	value = WMGetFromPLDictionary(win_state, sHidden);
 	if (value != NULL)
 		state->hidden = WMPLGetBool(value);
+
+	value = WMGetFromPLDictionary(win_state, sAutoHideOnUnfocus);
+	if (value != NULL)
+		state->auto_hide_on_unfocus = WMPLGetBool(value);
+
+	value = WMGetFromPLDictionary(win_state, sAutoMiniaturizeOnUnfocus);
+	if (value != NULL)
+		state->auto_miniaturize_on_unfocus = WMPLGetBool(value);
 
 	value = WMGetFromPLDictionary(win_state, sShortcutMask);
 	if (value != NULL) {

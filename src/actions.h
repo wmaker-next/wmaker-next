@@ -21,6 +21,7 @@
 #define WMACTIONS_H_
 
 #include "window.h"
+#include "icon.h"
 
 #define MAX_HORIZONTAL         (1 << 0)
 #define MAX_VERTICAL           (1 << 1)
@@ -70,6 +71,10 @@ void wHideApplication(WApplication *wapp);
 void wRequestHideApplication(WApplication *wapp, WWindow *via);
 void wUnhideApplication(WApplication *wapp, Bool miniwindows,
                         Bool bringToCurrentWS);
+
+void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate);
+void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
+		   int animate, int bringToCurrentWS);
 
 void wRefreshDesktop(WScreen *scr);
 void wRefreshMiniwindows(WScreen *scr);
