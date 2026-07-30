@@ -977,6 +977,73 @@ static void test_dynamic_env_bracket_passthrough(void)
 	unsetenv("WM_TEST_FOO");
 }
 
+static void test_dynamic_mark_key(void)
+{
+	WWindow w;
+	const char *result;
+
+	/* case 1: DynamicRules supplies a non-empty MarkKey */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^XTerm$\";"
+		      "    Attributes = { MarkKey = \"foo\"; }; }"
+		      " );"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK_STR(result, "foo");
+
+	/* case 2: empty MarkKey means local-unmark, returned as "" not NULL */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^XTerm$\";"
+		      "    Attributes = { MarkKey = \"\"; }; }"
+		      " );"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK(result != NULL && result[0] == '\0');
+
+	/* case 3: a matching rule that does not supply MarkKey returns NULL */
+	set_attr_dict("{"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^XTerm$\";"
+		      "    Attributes = { NoTitlebar = YES; }; }"
+		      " );"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK(result == NULL);
+
+	/* case 4: per-app static entry (keys directly on the per-app dict,
+	 * not inside an Attributes sub-dictionary) exercises the four-level
+	 * merge path */
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { MarkKey = \"bar\"; };"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK_STR(result, "bar");
+
+	/* case 5: a dynamic rule wins over the per-app static entry */
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { MarkKey = \"bar\"; };"
+		      " DynamicRules = ("
+		      "  { MatchClass = \"^XTerm$\";"
+		      "    Attributes = { MarkKey = \"baz\"; }; }"
+		      " );"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK_STR(result, "baz");
+
+	/* case 6: no matching rule and no per-app entry returns NULL */
+	set_attr_dict("{}");
+	w = make_wwin("urxvt", "URxvt", NULL, NULL, NULL, NULL, NULL, 0);
+	result = wDefaultGetMarkKeyForWindow(&w);
+	CHECK(result == NULL);
+}
+
 /* MatchTitle's source is capped at DYNRULE_MAX_TITLE_LEN bytes so a
  * user-authored ERE cannot be driven into pathological backtracking by
  * a multi-megabyte WM_NAME. Verify the cap: a marker past the
@@ -1058,6 +1125,7 @@ int main(void)
 	test_dynamic_reeval_and_reversion();
 	test_dynamic_env_substitution();
 	test_dynamic_env_bracket_passthrough();
+	test_dynamic_mark_key();
 	test_dynamic_title_cap();
 
 	set_attr_dict(NULL);

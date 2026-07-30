@@ -671,6 +671,7 @@ void wWindowSetOmnipresent(WWindow *wwin, Bool flag);
 /* Vim-like window marking management */
 void wWindowSetMark(WWindow *wwin, const char *label);
 void wWindowUnsetMark(WWindow *wwin);
+void wWindowStealMark(WWindow *wwin, const char *label);
 
 #ifdef XKB_BUTTON_HINT
 void wWindowGetLanguageLabel(int group_index, char *label);

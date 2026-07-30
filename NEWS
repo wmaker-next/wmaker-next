@@ -48,7 +48,34 @@ regex layer). A per-window regex_applied_mask tracks which legal-delta
 fields the regex layer supplied so reversion does not clobber values
 set by a non-rule layer (e.g. an exact per-app entry). Map-time-only
 attributes (StartWorkspace, StartMiniaturized, StartHidden,
-StartMaximized, AutoTabGroup, StartGeometry) are not re-evaluated.
+StartMaximized, AutoTabGroup, StartGeometry, MarkKey) are not
+re-evaluated.
+
+Among these, MarkKey tags a window with a vim-like mark label at manage
+time, with last-opened-wins semantics: when a new window matches a
+MarkKey = "label" rule, any existing holder of that label is unmarked
+first, then the newcomer receives it. It works in both rule
+shapes that share the Attributes dictionary — a per-app static entry
+
+  xterm.XTerm = { MarkKey = "t"; };
+
+and a DynamicRules entry
+
+  DynamicRules = (
+    { MatchClass = "^XTerm$"; Attributes = { MarkKey = "t"; }; }
+  );
+
+The value is a three-state string. A non-empty label is stolen globally
+and a warning naming the displaced holder and the incoming window is
+logged when a steal happens, so misconfigured rules whose class matches
+many concurrently-open windows are diagnosable. An empty string
+(MarkKey = "") is a local unmark that clears the window's own mark
+only; omitting the key leaves the mark untouched. Because the per-window
+mark saved in WMState (set interactively with MarkSetKey or carried over
+from a prior rule application) is the more specific per-window signal,
+a restored mark wins for the incoming window and the rule does not
+reassign it; the steal, however, is unconditional with respect to the
+existing holder, which is unmarked so the newcomer can take it.
 
 Inside any Match* regex pattern, the sequence $_NAME (where NAME matches
 the C-identifier rule [A-Za-z_][A-Za-z0-9_]*) is replaced at reload

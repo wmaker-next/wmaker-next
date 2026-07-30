@@ -75,7 +75,8 @@ static const WWindowAttrs attrs_global_default = {
 	.frame_selected_border_color_spec = NULL,
 	.frame_inner_border_color_spec = NULL,
 	.frame_inner_focused_border_color_spec = NULL,
-	.start_geometry_spec = NULL
+	.start_geometry_spec = NULL,
+	.mark_key_spec = NULL
 };
 
 /* proplist key atoms used by the write/maintenance helpers */
@@ -200,6 +201,9 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 		attrs->start_workspaces[cnt] = NULL;
 		attrs->start_workspace_count = cnt;
 	}
+	str = get_entry_string(entry, "MarkKey");
+	if (str)
+		attrs->mark_key_spec = wstrdup(str);
 
 	str = get_entry_string(entry, "FrameBorderWidth");
 	if (str) {
@@ -258,6 +262,8 @@ static void free_attrs_entry(WWindowAttrs *attrs)
 			wfree(attrs->start_workspaces[j]);
 		wfree(attrs->start_workspaces);
 	}
+	if (attrs->mark_key_spec)
+		wfree(attrs->mark_key_spec);
 	if (attrs->frame_border_color_spec)
 		wfree(attrs->frame_border_color_spec);
 	if (attrs->frame_focused_border_color_spec)
@@ -1334,6 +1340,33 @@ const char *wDefaultGetStartGeometry(const char *instance, const char *class)
 			return spec;
 	}
 	return NULL;
+}
+
+const char *wDefaultGetMarkKeyForWindow(const WWindow *wwin)
+{
+	const char *result = NULL;
+	const char *title;
+	const WWindowAttrs *re;
+	const WWindowAttrs *level[4];
+	int n, i;
+
+	n = attrs_lookup_levels(wwin->wm_instance, wwin->wm_class, True, level);
+	for (i = 0; i < n; i++) {
+		if (level[i]->mark_key_spec != NULL) {
+			result = level[i]->mark_key_spec;
+			break;
+		}
+	}
+
+	title = wwin->wm_title ? wwin->wm_title : NULL;
+	re = attrs_lookup_dynamic(title, wwin->wm_instance, wwin->wm_class,
+				  wwin->wm_role, wwin->wm_command, wwin->wm_machine,
+				  (const char * const *)wwin->wm_type_names,
+				  wwin->wm_type_count);
+	if (re && re->mark_key_spec != NULL)
+		result = re->mark_key_spec;
+
+	return result;
 }
 
 /* Get the name of the Icon File. If default_icon is True, then, default value included.

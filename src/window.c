@@ -1404,11 +1404,26 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		}
 	}
 
-	/* restore mark: prefer session state, fall back to warm-restart hint */
+	/* restore mark: prefer session state, fall back to warm-restart hint.
+	 * The session-file and dynamic-rule paths steal from any existing
+	 * holder so the global-uniqueness invariant holds across warm
+	 * restarts. The client-supplied _WINDOWMAKER_MARK_KEY hint is
+	 * untrusted, so set it without stealing to prevent a hostile
+	 * client from stripping marks off other windows. */
 	if (win_state != NULL && win_state->state->mark_key != NULL)
-		wWindowSetMark(wwin, win_state->state->mark_key);
+		wWindowStealMark(wwin, win_state->state->mark_key);
 	else if (wstate != NULL && wstate->mark_key != NULL)
 		wWindowSetMark(wwin, wstate->mark_key);
+	else {
+		const char *mk = wDefaultGetMarkKeyForWindow(wwin);
+
+		if (mk != NULL) {
+			if (mk[0] == '\0')
+				wWindowUnsetMark(wwin);
+			else
+				wWindowStealMark(wwin, mk);
+		}
+	}
 
 	/* restore tab group: warm-restart hint takes precedence because it
 	 * is per-client-window, the session entry is matched by class and
@@ -4289,6 +4304,17 @@ void wWindowSetMark(WWindow *wwin, const char *label)
 	UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE);
 }
 
+/* Sanitize a mark label for safe log output by replacing
+ * non-printable characters with '?'. */
+static void log_mark_label(char *dst, const char *src, size_t n)
+{
+	size_t i;
+
+	for (i = 0; i + 1 < n && src[i]; i++)
+		dst[i] = iscntrl((unsigned char)src[i]) ? '?' : src[i];
+	dst[i] = '\0';
+}
+
 void wWindowUnsetMark(WWindow *wwin)
 {
 	if (wwin->mark_key_label == NULL)
@@ -4298,6 +4324,39 @@ void wWindowUnsetMark(WWindow *wwin)
 	wwin->mark_key_label = NULL;
 
 	UpdateSwitchMenu(wwin->screen_ptr, wwin, ACTION_CHANGE);
+}
+
+void wWindowStealMark(WWindow *wwin, const char *label)
+{
+	WScreen *scr = wwin->screen_ptr;
+	WWindow *tw;
+
+	/* At manage time wwin is not yet linked into scr->focused_window
+	 * (the link-up happens later in wManageWindow), so this scan never
+	 * finds wwin itself. Walk the entire list: the global-uniqueness
+	 * invariant should leave at most one holder, but the scan must
+	 * not assume it. */
+	tw = scr->focused_window;
+	while (tw) {
+		if (tw != wwin && tw->mark_key_label != NULL &&
+		    strcmp(tw->mark_key_label, label) == 0) {
+			char safe_lbl[128];
+
+			log_mark_label(safe_lbl, label, sizeof(safe_lbl));
+			wwarning("window mark: label '%s' moved from %s.%s (0x%lx) "
+				 "to %s.%s (0x%lx)", safe_lbl,
+				 tw->wm_instance ? tw->wm_instance : "",
+				 tw->wm_class ? tw->wm_class : "",
+				 (unsigned long)tw->client_win,
+				 wwin->wm_instance ? wwin->wm_instance : "",
+				 wwin->wm_class ? wwin->wm_class : "",
+				 (unsigned long)wwin->client_win);
+			wWindowUnsetMark(tw);
+		}
+		tw = tw->prev;
+	}
+
+	wWindowSetMark(wwin, label);
 }
 
 

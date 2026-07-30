@@ -100,6 +100,16 @@ typedef enum {
  *
  * start_geometry_spec is the StartGeometry attribute: an owned
  * copy of the "WxH+X+Y" string, parsed at map time via XParseGeometry.
+ *
+ * mark_key_spec is the MarkKey attribute: an owned copy of the
+ * vim-like mark label string, applied at manage time. Three states:
+ *   NULL  - entry does not supply MarkKey
+ *   ""    - local unmark: clear this window's own mark
+ *   "x"   - global steal: unmark any other window holding "x", then
+ *           mark this window
+ * The empty-vs-non-empty split selects local-unmark vs. global-steal,
+ * so the accessor returns the first non-NULL spec (not the first
+ * non-empty one).
  */
 #define WATTR_FRAME_BORDER_WIDTH          (1u << 0)
 #define WATTR_FRAME_BORDER_COLOR          (1u << 1)
@@ -125,6 +135,7 @@ typedef struct WWindowAttrs {
 	char *frame_inner_border_color_spec;
 	char *frame_inner_focused_border_color_spec;
 	char *start_geometry_spec;
+	char *mark_key_spec;
 } WWindowAttrs;
 
 char *find_in_icon_cache(const char *file_name,

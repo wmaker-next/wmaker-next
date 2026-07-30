@@ -82,6 +82,12 @@ RImage *get_rimage_from_file(WScreen *scr, const char *file_name, int max_size);
 void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 			      const char *class, WWindow *wwin);
 const char *wDefaultGetStartGeometry(const char *instance, const char *class);
+/* Resolve the MarkKey attribute for wwin through the four-level per-app
+ * merge and the first matching DynamicRules entry (dynamic wins). NULL
+ * when neither supplies MarkKey, an empty string means local-unmark and
+ * is returned as such. The pointer is owned by the attrs cache and is
+ * invalidated by wWindowAttrsReload(). */
+const char *wDefaultGetMarkKeyForWindow(const WWindow *wwin);
 
 void wDefaultPurgeInfo(const char *instance, const char *class);
 void wKeyTreeRebuild(WScreen *scr);	/* Rebuild the key-chain trie from the current key bindings */
