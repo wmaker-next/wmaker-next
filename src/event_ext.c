@@ -129,8 +129,10 @@ static void handleXkbEvent(const xcb_generic_event_t *xe, XEvent *ev)
 	int xkb_type = ke->xkbType;
 	(void) ev;
 
-	if (xkb_type == XCB_XKB_STATE_NOTIFY)
-		wXkbUpdateState((const xcb_xkb_state_notify_event_t *)xe);
+	if (xkb_type == XCB_XKB_STATE_NOTIFY
+	    && wXkbUpdateState((const xcb_xkb_state_notify_event_t *)xe)) {
+		wRereadKeybindings();
+	}
 
 	if (xkb_type == XCB_XKB_NEW_KEYBOARD_NOTIFY
 	    || xkb_type == XCB_XKB_MAP_NOTIFY) {

@@ -21,6 +21,8 @@
 #ifndef WMWXKB_H
 #define WMWXKB_H
 
+#include <stdbool.h>
+
 #include <xkbcommon/xkbcommon.h>
 #include <xcb/xkb.h>
 
@@ -28,7 +30,7 @@
 
 int  wXkbInit(void);
 void wXkbRefresh(void);
-void wXkbUpdateState(const xcb_xkb_state_notify_event_t *e);
+bool wXkbUpdateState(const xcb_xkb_state_notify_event_t *e);
 
 /* ---[ keysym / keycode resolution ]------------------------------------- */
 

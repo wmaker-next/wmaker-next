@@ -351,16 +351,24 @@ void wDisplaySetOff(Bool off, WDisplayPowerSource source)
 	}
 }
 
-void wRefreshKeybindings(void)
+/* bindings-only re-read: a group switch changes the effective layout
+ * the resolution prefers while the keymap is unchanged, and a reload
+ * would reset the tracked group */
+void wRereadKeybindings(void)
 {
 	int j;
 
-	wXkbRefresh();
 	for (j = 0; j < w_global.screen_count; j++) {
 		WScreen *scr = wScreenWithNumber(j);
 		if (scr)
 			wReadKeybindings(scr, w_global.domain.wmaker->dictionary);
 	}
+}
+
+void wRefreshKeybindings(void)
+{
+	wXkbRefresh();
+	wRereadKeybindings();
 }
 
 void DispatchEvent(XEvent *event)

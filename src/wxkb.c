@@ -282,13 +282,18 @@ void wXkbRefresh(void)
 	resolveModifiers();
 }
 
-void wXkbUpdateState(const xcb_xkb_state_notify_event_t *e)
+bool wXkbUpdateState(const xcb_xkb_state_notify_event_t *e)
 {
+	uint32_t before, after;
+
 	if (!state)
-		return;
+		return false;
+	before = xkb_state_serialize_layout(state, XKB_STATE_LAYOUT_EFFECTIVE);
 	xkb_state_update_mask(state,
 			      e->baseMods, e->latchedMods, e->lockedMods,
 			      e->baseGroup, e->latchedGroup, e->lockedGroup);
+	after = xkb_state_serialize_layout(state, XKB_STATE_LAYOUT_EFFECTIVE);
+	return before != after;
 }
 
 /* ---[ keysym / keycode resolution ]------------------------------------- */
@@ -327,8 +332,8 @@ xkb_keysym_t wXkbKeycodeToKeysym(xkb_keycode_t kc, int level)
 	return syms[0];
 }
 
-/* first keycode whose keysym list (any layout, any level) contains ks,
- * matching the documented XKeysymToKeycode semantics */
+/* first keycode whose keysym list (effective layout, then any layout)
+ * contains ks */
 xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
 {
 	xkb_keycode_t kc, min_kc, max_kc;
@@ -338,6 +343,27 @@ xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
 
 	min_kc = xkb_keymap_min_keycode(keymap);
 	max_kc = xkb_keymap_max_keycode(keymap);
+
+	if (state) {
+		for (kc = min_kc; kc <= max_kc; kc++) {
+			xkb_layout_index_t lay = xkb_state_key_get_layout(state, kc);
+			xkb_level_index_t nlev, lev;
+
+			if (lay == XKB_LAYOUT_INVALID)
+				continue;
+			nlev = xkb_keymap_num_levels_for_key(keymap, kc, lay);
+			for (lev = 0; lev < nlev; lev++) {
+				const xkb_keysym_t *syms;
+				int n, i;
+
+				n = xkb_keymap_key_get_syms_by_level(keymap,
+						kc, lay, lev, &syms);
+				for (i = 0; i < n; i++)
+					if (syms[i] == ks)
+						return kc;
+			}
+		}
+	}
 
 	for (kc = min_kc; kc <= max_kc; kc++) {
 		xkb_layout_index_t nlay = xkb_keymap_num_layouts_for_key(keymap, kc);

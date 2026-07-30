@@ -91,6 +91,7 @@ Bool wEventCrossingIgnored(unsigned long sequence);
  * (event_input.c) and XKB NewKeyboardNotify/MapNotify (event_ext.c)
  * land here */
 void wRefreshKeybindings(void);
+void wRereadKeybindings(void);
 
 /* Tear down any active key-chain state on scr: cancel the inactivity
  * timer, hide the prefix OSD, ungrab the keyboard, and clear curpos.
