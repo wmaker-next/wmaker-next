@@ -24,6 +24,39 @@
 #include "wconfigmodel.h"
 #include "hotcorner.h"
 #include "misc.h"
+#include "window.h"
+
+/* Parse a FrameInnerBorderSides WConfigStringArray into the
+ * INNER_SIDE_* bitmask. An empty array means all four sides so a
+ * user who sets only FrameInnerBorderWidth keeps the symmetric look. */
+unsigned int wFrameInnerBorderSidesFromArray(const WConfigStringArray *array)
+{
+	unsigned int sides = 0;
+	size_t i;
+
+	if (!array || array->count == 0)
+		return INNER_SIDE_ALL;
+
+	for (i = 0; i < array->count; i++) {
+		const char *s = array->items[i];
+
+		if (!s)
+			continue;
+		if (strcasecmp(s, "left") == 0)
+			sides |= INNER_SIDE_LEFT;
+		else if (strcasecmp(s, "right") == 0)
+			sides |= INNER_SIDE_RIGHT;
+		else if (strcasecmp(s, "top") == 0)
+			sides |= INNER_SIDE_TOP;
+		else if (strcasecmp(s, "bottom") == 0)
+			sides |= INNER_SIDE_BOTTOM;
+		else if (strcasecmp(s, "all") == 0)
+			sides |= INNER_SIDE_ALL;
+		else
+			wwarning(_("unknown FrameInnerBorderSides token \"%s\""), s);
+	}
+	return sides ? sides : INNER_SIDE_ALL;
+}
 
 static WMPropList *dict_get(WMPropList *dict, const char *key)
 {
@@ -1045,6 +1078,10 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_INNER_BORDER_WIDTH))
 		scr->frame_inner_border_width = new_config->frame_inner_border_width;
+
+	if (scr && wConfigChangesHas(changes, WCFG_KEY_FRAME_INNER_BORDER_SIDES))
+		scr->frame_inner_border_sides =
+			wFrameInnerBorderSidesFromArray(&new_config->frame_inner_border_sides);
 
 	refresh = config_refresh_mask_for_changes(changes);
 	pixmap_path_changed = wConfigChangesHas(changes, WCFG_KEY_PIXMAP_PATH);

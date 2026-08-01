@@ -715,6 +715,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	 * wScreenInit() only runs at first startup */
 	wReadDefaults(scr, NULL, config, changes);
 	scr->frame_inner_border_width = config->frame_inner_border_width;
+	scr->frame_inner_border_sides =
+		wFrameInnerBorderSidesFromArray(&config->frame_inner_border_sides);
 
 	/* frame boder color */
 	desc = WMGetColorRGBDescription(scr->frame_border_color);

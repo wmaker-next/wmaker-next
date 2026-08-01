@@ -200,6 +200,10 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 				   const WConfigSwitchPanelImages *images);
 void wConfigApplyModifierKeyLabels(WScreen *scr,
 				   const WConfigStringArray *labels);
+
+/* Parse a FrameInnerBorderSides array into the INNER_SIDE_* bitmask
+ * defined in window.h. An empty array means all four sides. */
+unsigned int wFrameInnerBorderSidesFromArray(const WConfigStringArray *array);
 void wConfigApplyModifierKeyShortLabels(WScreen *scr,
 					const WConfigStringArray *labels);
 void wConfigApplyHotCornerActions(WScreen *scr,

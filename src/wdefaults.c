@@ -70,6 +70,7 @@ static const WWindowAttrs attrs_global_default = {
 	.frame_set = 0,
 	.frame_border_width = 0,
 	.frame_inner_border_width = 0,
+	.frame_inner_border_sides = INNER_SIDE_ALL,
 	.frame_border_color_spec = NULL,
 	.frame_focused_border_color_spec = NULL,
 	.frame_selected_border_color_spec = NULL,
@@ -154,12 +155,48 @@ static char *get_entry_string(WMPropList *entry, const char *key)
 	return WMGetFromPLString(value);
 }
 
+static unsigned int inner_border_sides_parse(const char *spec)
+{
+	unsigned int sides = 0;
+	const char *p = spec ? spec : "";
+
+	while (*p) {
+		char buf[16];
+		size_t len = 0;
+
+		while (*p && (isspace((unsigned char)*p) || *p == ',' || *p == '(' || *p == ')'))
+			p++;
+		while (*p && !isspace((unsigned char)*p) && *p != ',' && *p != '(' && *p != ')') {
+			if (len < sizeof(buf) - 1)
+				buf[len++] = *p;
+			p++;
+		}
+		buf[len] = '\0';
+		if (len == 0)
+			continue;
+		if (strcasecmp(buf, "left") == 0)
+			sides |= INNER_SIDE_LEFT;
+		else if (strcasecmp(buf, "right") == 0)
+			sides |= INNER_SIDE_RIGHT;
+		else if (strcasecmp(buf, "top") == 0)
+			sides |= INNER_SIDE_TOP;
+		else if (strcasecmp(buf, "bottom") == 0)
+			sides |= INNER_SIDE_BOTTOM;
+		else if (strcasecmp(buf, "all") == 0)
+			sides |= INNER_SIDE_ALL;
+		else
+			wwarning(_("unknown FrameInnerBorderSides token \"%s\""), buf);
+	}
+	return sides ? sides : INNER_SIDE_ALL;
+}
+
 static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 {
 	WWindowAttrs *attrs;
 	const char *str;
-	WMPropList *sws;
-	int i;
+	WMPropList *sws, *sides;
+	int i, j, n;
+	unsigned int sides_mask;
 
 	attrs = wmalloc(sizeof(*attrs));
 
@@ -229,6 +266,40 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	if (str) {
 		attrs->frame_inner_border_width = atoi(str);
 		attrs->frame_set |= WATTR_FRAME_INNER_BORDER_WIDTH;
+	}
+	sides = WMGetFromPLDictionaryByName(entry, "FrameInnerBorderSides");
+	if (sides) {
+		if (WMIsPLArray(sides)) {
+			n = WMGetPropListItemCount(sides);
+			sides_mask = 0;
+
+			for (j = 0; j < n; j++) {
+				WMPropList *item = WMGetFromPLArray(sides, j);
+				const char *tok;
+
+				if (!item || !WMIsPLString(item))
+					continue;
+				tok = WMGetFromPLString(item);
+				if (strcasecmp(tok, "left") == 0)
+					sides_mask |= INNER_SIDE_LEFT;
+				else if (strcasecmp(tok, "right") == 0)
+					sides_mask |= INNER_SIDE_RIGHT;
+				else if (strcasecmp(tok, "top") == 0)
+					sides_mask |= INNER_SIDE_TOP;
+				else if (strcasecmp(tok, "bottom") == 0)
+					sides_mask |= INNER_SIDE_BOTTOM;
+				else if (strcasecmp(tok, "all") == 0)
+					sides_mask |= INNER_SIDE_ALL;
+				else
+					wwarning(_("unknown FrameInnerBorderSides token \"%s\""), tok);
+			}
+			attrs->frame_inner_border_sides = sides_mask ? sides_mask : INNER_SIDE_ALL;
+			attrs->frame_set |= WATTR_FRAME_INNER_BORDER_SIDES;
+		} else if (WMIsPLString(sides)) {
+			attrs->frame_inner_border_sides =
+				inner_border_sides_parse(WMGetFromPLString(sides));
+			attrs->frame_set |= WATTR_FRAME_INNER_BORDER_SIDES;
+		}
 	}
 	str = get_entry_string(entry, "FrameInnerBorderColor");
 	if (str) {
@@ -1249,6 +1320,11 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 			wwin->frame_border.frame_inner_border_width_set = 1;
 			resolved_any = True;
 		}
+		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_SIDES) && !wwin->frame_border.frame_inner_border_sides_set) {
+			wwin->frame_border.frame_inner_border_sides = a->frame_inner_border_sides;
+			wwin->frame_border.frame_inner_border_sides_set = 1;
+			resolved_any = True;
+		}
 		if ((a->frame_set & WATTR_FRAME_BORDER_COLOR) && !wwin->frame_border.frame_border_color_set) {
 			wwin->frame_border.frame_border_color = (a->frame_border_color_spec && a->frame_border_color_spec[0])
 				? WMCreateNamedColor(scr->wmscreen, a->frame_border_color_spec, True) : NULL;
@@ -1298,6 +1374,11 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 		if (re->frame_set & WATTR_FRAME_INNER_BORDER_WIDTH) {
 			wwin->frame_border.frame_inner_border_width = re->frame_inner_border_width;
 			wwin->frame_border.frame_inner_border_width_set = 1;
+			resolved_any = True;
+		}
+		if (re->frame_set & WATTR_FRAME_INNER_BORDER_SIDES) {
+			wwin->frame_border.frame_inner_border_sides = re->frame_inner_border_sides;
+			wwin->frame_border.frame_inner_border_sides_set = 1;
 			resolved_any = True;
 		}
 #define OVERLAY_COLOR(spec_field, mask_bit, target_field, set_field) \

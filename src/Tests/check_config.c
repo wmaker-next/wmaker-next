@@ -12,6 +12,7 @@
 
 #include "WindowMaker.h"
 #include "screen.h"
+#include "window.h"
 #include "config-schema.h"
 #include "wconfigmodel.h"
 
@@ -886,6 +887,11 @@ static void test_defaults(void)
 	CHECK(strcmp(config->cclip_title_color.spec, "rgb:61/61/61") == 0);
 	CHECK(config->frame_border_width == 1);
 	CHECK(config->frame_inner_border_width == 0);
+	CHECK(config->frame_inner_border_sides.count == 4);
+	CHECK(strcmp(config->frame_inner_border_sides.items[0], "left") == 0);
+	CHECK(strcmp(config->frame_inner_border_sides.items[1], "right") == 0);
+	CHECK(strcmp(config->frame_inner_border_sides.items[2], "top") == 0);
+	CHECK(strcmp(config->frame_inner_border_sides.items[3], "bottom") == 0);
 	CHECK(strcmp(config->frame_inner_border_color.spec, "#b5b5b5") == 0);
 	CHECK(strcmp(config->frame_inner_focused_border_color.spec, "white") == 0);
 	CHECK(strcmp(config->normal_cursor.spec, "(builtin, left_ptr)") == 0);
@@ -2253,9 +2259,11 @@ static void test_inner_frame_live_apply(void)
 	reset_preferences();
 	memset(&screen, 0, sizeof(screen));
 	old_dict = dict_from_desc("{ FrameInnerBorderWidth = 2; "
+				  "FrameInnerBorderSides = (left, right, top, bottom); "
 				  "FrameInnerBorderColor = green; "
 				  "FrameInnerFocusedBorderColor = yellow; }");
 	new_dict = dict_from_desc("{ FrameInnerBorderWidth = 4; "
+				  "FrameInnerBorderSides = (top, left); "
 				  "FrameInnerBorderColor = red; "
 				  "FrameInnerFocusedBorderColor = blue; }");
 	if (!old_dict || !new_dict)
@@ -2263,6 +2271,7 @@ static void test_inner_frame_live_apply(void)
 
 	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(screen.frame_inner_border_width == 4);
+	CHECK(screen.frame_inner_border_sides == (INNER_SIDE_TOP | INNER_SIDE_LEFT));
 	CHECK(color_spec_updates == 2);
 	CHECK(color_targets[0] == WCFG_COLOR_FRAME_INNER_BORDER);
 	CHECK(color_targets[1] == WCFG_COLOR_FRAME_INNER_FOCUSED_BORDER);

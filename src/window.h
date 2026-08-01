@@ -206,6 +206,7 @@ typedef struct WGeometry {
 typedef struct WFrameBorderOverride {
 	int frame_border_width;
 	int frame_inner_border_width;
+	unsigned int frame_inner_border_sides;
 	WMColor *frame_border_color;
 	WMColor *frame_focused_border_color;
 	WMColor *frame_selected_border_color;
@@ -216,6 +217,7 @@ typedef struct WFrameBorderOverride {
 	unsigned int frame_focused_border_color_set:1;
 	unsigned int frame_selected_border_color_set:1;
 	unsigned int frame_inner_border_width_set:1;
+	unsigned int frame_inner_border_sides_set:1;
 	unsigned int frame_inner_border_color_set:1;
 	unsigned int frame_inner_focused_border_color_set:1;
 } WFrameBorderOverride;
@@ -474,8 +476,21 @@ typedef struct WWindow {
 #define IS_RESIZABLE(w)	(!(WFLAGP((w), no_resizable) || (w)->flags.fullscreen))
 #define WINDOW_LEVEL(w)		((w)->frame->core->stacking->window_level)
 
+/* Which sides the inner frame border is painted on, matching the
+ * _NET_FRAME_EXTENTS order: left, right, top, bottom. An empty sides
+ * selection (or an unset override) means all four. */
+#define INNER_SIDE_LEFT   (1u << 0)
+#define INNER_SIDE_RIGHT  (1u << 1)
+#define INNER_SIDE_TOP    (1u << 2)
+#define INNER_SIDE_BOTTOM (1u << 3)
+#define INNER_SIDE_ALL    (INNER_SIDE_LEFT | INNER_SIDE_RIGHT | INNER_SIDE_TOP | INNER_SIDE_BOTTOM)
+
 int wFrameBorderWidth(const WWindow *wwin);
 int wFrameInnerBorderWidth(const WWindow *wwin);
+unsigned int wFrameInnerBorderSides(const WWindow *wwin);
+void wFrameInnerBorderWidths(const WWindow *wwin, int *il, int *ir, int *it, int *ib);
+void wFrameInnerBorderClientOrigin(const WWindow *wwin, int frame_x, int frame_y,
+				   int *client_x, int *client_y);
 WMColor *wFrameBorderColor(const WWindow *wwin);
 WMColor *wFrameFocusedBorderColor(const WWindow *wwin);
 WMColor *wFrameSelectedBorderColor(const WWindow *wwin);

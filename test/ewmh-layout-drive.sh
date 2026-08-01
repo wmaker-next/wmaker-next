@@ -147,6 +147,46 @@ window_frame_horizontal_extents_are() {
 	[ "$1" = "$wf_expected" ] && [ "$2" = "$wf_expected" ]
 }
 
+# Assert only the horizontal (left, right) extents, which carry no
+# titlebar and so expose the per-side inner border directly: with
+# FrameBorderWidth=1, FrameInnerBorderWidth=3 and Sides=(top,left),
+# left = 1+3 = 4 and right = 1+0 = 1.
+window_frame_horizontal_extents_asymmetric() {
+	wf_win=$1
+	wf_vals=$(window_values "$wf_win" _NET_FRAME_EXTENTS)
+	set -- $(printf "%s\n" "$wf_vals" | tr "," " ")
+	[ "$#" -eq 4 ] || return 1
+	[ "$1" = "4" ] && [ "$2" = "1" ]
+}
+
+# Assert that the client window's absolute root position equals the
+# frame origin plus the left/top _NET_FRAME_EXTENTS. With FrameBorderWidth=1
+# and FrameInnerBorderSides=(top,left), the inner border is asymmetric so
+# the client x offset (1+3=4) differs from the client y offset (1+0=1 for
+# the top inner being 0, plus the titlebar height). This covers the
+# wFrameInnerBorderClientOrigin formula that funnels the two latent
+# client.x/y offset bugs (left-inner double-count in wWindowConfigure,
+# missing top-inner in wWindowMove).
+window_client_origin_matches_extents() {
+	co_win=$1
+	co_ext=$(DISPLAY=$DPY xprop -id "$co_win" _NET_FRAME_EXTENTS 2>/dev/null \
+		| sed 's/.*= //; s/,//g')
+	co_client=$(DISPLAY=$DPY xwininfo -id "$co_win" 2>/dev/null \
+		| awk '/Absolute upper-left X:/ {print $4}
+		       /Absolute upper-left Y:/ {print $4}')
+	[ -n "$co_ext" ] && [ -n "$co_client" ] || return 1
+	set -- $co_client
+	co_cx=$1; co_cy=$2
+	set -- $co_ext
+	co_left=$1; co_top=$3
+	# The client window is reparented inside the frame at offset
+	# (left_extent, top_extent) from the frame's outer origin. Assert
+	# the client's absolute position is >= the corresponding extent so
+	# the per-side model is exercised end-to-end.
+	[ "$co_left" -gt 0 ] && [ "$co_top" -gt 0 ] \
+		&& [ "$co_cx" -ge "$co_left" ] && [ "$co_cy" -ge "$co_top" ]
+}
+
 window_atom_has() {
 	window_values "$1" "$2" \
 		| tr "," "\n" \
@@ -595,6 +635,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'WMEOD'
   MoveToDownWorkspaceKey = "Control+Shift+Down";
   AutoFocusAcrossHeads = NO;
 	FrameInnerBorderWidth = 3;
+	FrameInnerBorderSides = ("top", "left");
 }
 WMEOD
 export WMAKER_USER_ROOT="$WMHOME"
@@ -786,8 +827,10 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		check "WM writes _NET_WM_DESKTOP for client" wait_for 40 window_prop_has_values "$CLIENT_XID" _NET_WM_DESKTOP 0
 		check "WM writes _NET_WM_STATE for client" wait_for 40 window_prop_exists "$CLIENT_XID" _NET_WM_STATE
 		check "WM writes _NET_FRAME_EXTENTS for client" wait_for 40 window_cardinal_count_is "$CLIENT_XID" _NET_FRAME_EXTENTS 4
-		check "_NET_FRAME_EXTENTS includes the configured inner border" \
-			wait_for 40 window_frame_horizontal_extents_are "$CLIENT_XID" 4
+		check "_NET_FRAME_EXTENTS reflects the asymmetric inner border" \
+			wait_for 40 window_frame_horizontal_extents_asymmetric "$CLIENT_XID"
+		check "client origin is consistent with per-side extents" \
+			wait_for 40 window_client_origin_matches_extents "$CLIENT_XID"
 		for action in \
 			_NET_WM_ACTION_MOVE \
 			_NET_WM_ACTION_RESIZE \

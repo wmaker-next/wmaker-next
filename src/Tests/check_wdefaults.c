@@ -1096,6 +1096,56 @@ static void test_dynamic_title_cap(void)
 	CHECK(attr.no_titlebar == 1);
 }
 
+static void test_frame_inner_border_sides(void)
+{
+	static WScreen scr;
+	WWindow w;
+
+	memset(&scr, 0, sizeof(scr));
+
+	/* per-app static entry with a subset of sides */
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { FrameInnerBorderWidth = 4;"
+		      "                    FrameInnerBorderSides = (\"left\", \"top\"); };"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	wDefaultFillFrameBorders(&scr, "xterm", "XTerm", &w);
+	CHECK(w.frame_border.frame_inner_border_width == 4);
+	CHECK(w.frame_border.frame_inner_border_width_set == 1);
+	CHECK(w.frame_border.frame_inner_border_sides == (INNER_SIDE_LEFT | INNER_SIDE_TOP));
+	CHECK(w.frame_border.frame_inner_border_sides_set == 1);
+
+	/* a dynamic rule overrides the static entry; the dynamic lookup
+	 * only runs when the window has a title/role/command/machine/type,
+	 * so give it a title and match on that */
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { FrameInnerBorderSides = (\"bottom\"); };"
+		      " DynamicRules = ("
+		      "  { MatchTitle = \".*term.*\";"
+		      "    Attributes = { FrameInnerBorderSides = (\"right\"); }; }"
+		      " );"
+		      "}");
+	w = make_wwin("xterm", "XTerm", "myterm", NULL, NULL, NULL, NULL, 0);
+	wDefaultFillFrameBorders(&scr, "xterm", "XTerm", &w);
+	CHECK(w.frame_border.frame_inner_border_sides == INNER_SIDE_RIGHT);
+	CHECK(w.frame_border.frame_inner_border_sides_set == 1);
+
+	/* an empty sides array resolves to all four */
+	set_attr_dict("{"
+		      " \"xterm.XTerm\" = { FrameInnerBorderSides = (); };"
+		      "}");
+	w = make_wwin("xterm", "XTerm", NULL, NULL, NULL, NULL, NULL, 0);
+	wDefaultFillFrameBorders(&scr, "xterm", "XTerm", &w);
+	CHECK(w.frame_border.frame_inner_border_sides == INNER_SIDE_ALL);
+	CHECK(w.frame_border.frame_inner_border_sides_set == 1);
+
+	/* no entry leaves the override unset, falling back to the screen */
+	set_attr_dict("{}");
+	w = make_wwin("urxvt", "URxvt", NULL, NULL, NULL, NULL, NULL, 0);
+	wDefaultFillFrameBorders(&scr, "urxvt", "URxvt", &w);
+	CHECK(w.frame_border.frame_inner_border_sides_set == 0);
+}
+
 int main(void)
 {
 	/* w_global.config is a pointer the real WM initializes; give the
@@ -1127,6 +1177,7 @@ int main(void)
 	test_dynamic_env_bracket_passthrough();
 	test_dynamic_mark_key();
 	test_dynamic_title_cap();
+	test_frame_inner_border_sides();
 
 	set_attr_dict(NULL);
 

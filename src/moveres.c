@@ -1170,8 +1170,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	int h = wwin->frame->core->height;
 	int scr_width = wwin->screen_ptr->scr_width;
 	int scr_height = wwin->screen_ptr->scr_height;
-	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
-		+ 2 * (HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0);
+	int it = 0, ib = 0;
+	int vert_border;
 	int src_x = wwin->frame_x;
 	int src_y = wwin->frame_y;
 	int original_w = w;
@@ -1191,6 +1191,10 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	shiftl = wXkbKeysymToKeycode(XK_Shift_L);
 	shiftr = wXkbKeysymToKeycode(XK_Shift_R);
 	ctrlmode = done = off_x = off_y = 0;
+
+	if (HAS_BORDER(wwin))
+		wFrameInnerBorderWidths(wwin, NULL, NULL, &it, &ib);
+	vert_border = wwin->frame->top_width + wwin->frame->bottom_width + it + ib;
 
 	if (modes == RESIZABLE_BIT) {
 		ctrlmode = 1;
@@ -1942,8 +1946,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 	XEvent event;
 	WScreen *scr = wwin->screen_ptr;
 	Window root = scr->root_win;
-	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width
-		+ 2 * (HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0);
+	int it = 0, ib = 0;
+	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width;
 	int fw = wwin->frame->core->width;
 	int fh = wwin->frame->core->height;
 	int fx = wwin->frame_x;
@@ -1964,6 +1968,10 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 	int opaqueResize = w_global.config->opaque_resize;
+
+	if (HAS_BORDER(wwin))
+		wFrameInnerBorderWidths(wwin, NULL, NULL, &it, &ib);
+	vert_border += it + ib;
 
 	if (!IS_RESIZABLE(wwin))
 		return;

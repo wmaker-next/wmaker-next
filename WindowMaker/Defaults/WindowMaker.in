@@ -183,6 +183,7 @@
 	FrameFocusedBorderColor = black;
 	FrameSelectedBorderColor = white;
 	FrameInnerBorderWidth = 0;
+	FrameInnerBorderSides = ("left", "right", "top", "bottom");
 	FrameInnerBorderColor = "#b5b5b5";
 	FrameInnerFocusedBorderColor = white;
 	WorkspaceMapBack = (solid, black);

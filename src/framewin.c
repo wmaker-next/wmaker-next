@@ -352,13 +352,22 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	WScreen *scr = fwin->screen_ptr;
 	int width = fwin->core->width;
 	int height = fwin->core->height;
-	int inner = (fwin->flags.is_client_window_frame && fwin->child)
-		? wFrameInnerBorderWidth((WWindow *)fwin->child) : scr->frame_inner_border_width;
+	int il = 0, ir = 0, it = 0, ib = 0;
 	int middle = height - fwin->top_width - fwin->bottom_width;
+	int inner_h;
 	unsigned long pixel;
 	XRectangle rectangles[4];
+	int nrects = 0;
 
-	if (inner <= 0 || middle <= 0 || width < 2 * inner || !fwin->inner_border_gc)
+	if (fwin->flags.is_client_window_frame && fwin->child)
+		wFrameInnerBorderWidths((WWindow *)fwin->child, &il, &ir, &it, &ib);
+	else
+		il = ir = it = ib = scr->frame_inner_border_width;
+
+	inner_h = il + ir;
+	if (!fwin->inner_border_gc || middle <= 0 || inner_h > width)
+		return;
+	if (il <= 0 && ir <= 0 && it <= 0 && ib <= 0)
 		return;
 
 	if (fwin->flags.state == WS_FOCUSED && fwin->inner_focused_border_pixel)
@@ -370,24 +379,39 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 
 	XSetWindowBackground(dpy, fwin->core->window, pixel);
 	XSetForeground(dpy, fwin->inner_border_gc, pixel);
-	rectangles[0].x = 0;
-	rectangles[0].y = fwin->top_width;
-	rectangles[0].width = inner;
-	rectangles[0].height = middle;
-	rectangles[1].x = width - inner;
-	rectangles[1].y = fwin->top_width;
-	rectangles[1].width = inner;
-	rectangles[1].height = middle;
-	rectangles[2].x = inner;
-	rectangles[2].y = fwin->top_width;
-	rectangles[2].width = width - 2 * inner;
-	rectangles[2].height = inner;
-	rectangles[3].x = inner;
-	rectangles[3].y = height - fwin->bottom_width - inner;
-	rectangles[3].width = width - 2 * inner;
-	rectangles[3].height = inner;
-	XFillRectangles(dpy, fwin->core->window, fwin->inner_border_gc,
-			rectangles, 4);
+
+	if (il > 0) {
+		rectangles[nrects].x = 0;
+		rectangles[nrects].y = fwin->top_width;
+		rectangles[nrects].width = il;
+		rectangles[nrects].height = middle;
+		nrects++;
+	}
+	if (ir > 0) {
+		rectangles[nrects].x = width - ir;
+		rectangles[nrects].y = fwin->top_width;
+		rectangles[nrects].width = ir;
+		rectangles[nrects].height = middle;
+		nrects++;
+	}
+	if (it > 0) {
+		rectangles[nrects].x = il;
+		rectangles[nrects].y = fwin->top_width;
+		rectangles[nrects].width = width - inner_h;
+		rectangles[nrects].height = it;
+		nrects++;
+	}
+	if (ib > 0) {
+		rectangles[nrects].x = il;
+		rectangles[nrects].y = height - fwin->bottom_width - ib;
+		rectangles[nrects].width = width - inner_h;
+		rectangles[nrects].height = ib;
+		nrects++;
+	}
+
+	if (nrects > 0)
+		XFillRectangles(dpy, fwin->core->window, fwin->inner_border_gc,
+				rectangles, nrects);
 }
 
 static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h);
@@ -519,7 +543,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 	int bsize;
 	int width, height;
 	int i;
-	int inner;
+	int it = 0, ib = 0, il = 0, ir = 0;
+	int iv, ih;
 	WScreen *scr = fwin->screen_ptr;
 
 	width = fwin->core->width;
@@ -528,12 +553,13 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 	else
 		height = fwin->core->height - fwin->top_width - fwin->bottom_width;
 
-	inner = (fwin->flags.is_client_window_frame && (flags & WFF_BORDER))
-		? (fwin->child ? wFrameInnerBorderWidth((WWindow *)fwin->child) : scr->frame_inner_border_width)
-		: 0;
+	if (fwin->flags.is_client_window_frame && (flags & WFF_BORDER) && fwin->child)
+		wFrameInnerBorderWidths((WWindow *)fwin->child, &il, &ir, &it, &ib);
+	iv = it + ib;
+	ih = il + ir;
 	fwin->flags.border = (flags & WFF_BORDER) != 0;
 	if (height > 0)
-		height -= 2 * inner;
+		height -= iv;
 
 	if (flags & WFF_TITLEBAR) {
 		theight = WSCALE(scr, WMFontHeight(*fwin->font) + (frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE) * 2);
@@ -642,7 +668,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		if (!fwin->resizebar) {
 			fwin->flags.resizebar = 1;
 			fwin->resizebar = wCoreCreate(fwin->core, 0,
-						  height + fwin->top_width + 2 * inner,
+						  height + fwin->top_width + iv,
 						  width, scr->resizebar_height);
 			fwin->resizebar_corner_width = scr->resizebar_corner_width;
 			if (width < scr->resizebar_corner_width * 2 + RESIZEBAR_MIN_WIDTH) {
@@ -657,8 +683,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 			fwin->flags.need_texture_remake = 1;
 		} else {
-			if (height + fwin->top_width + fwin->bottom_width + 2 * inner != fwin->core->height)
-				wCoreConfigure(fwin->resizebar, 0, height + fwin->top_width + 2 * inner,
+			if (height + fwin->top_width + fwin->bottom_width + iv != fwin->core->height)
+				wCoreConfigure(fwin->resizebar, 0, height + fwin->top_width + iv,
 						   width, scr->resizebar_height);
 		}
 	} else {
@@ -673,8 +699,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		}
 	}
 
-	if (height + fwin->top_width + fwin->bottom_width + 2 * inner != fwin->core->height && !(flags & WFF_IS_SHADED))
-		wFrameWindowResize(fwin, width, height + fwin->top_width + fwin->bottom_width + 2 * inner);
+	if (height + fwin->top_width + fwin->bottom_width + iv != fwin->core->height && !(flags & WFF_IS_SHADED))
+		wFrameWindowResize(fwin, width, height + fwin->top_width + fwin->bottom_width + iv);
 
 	if (flags & WFF_BORDER)
 		XSetWindowBorderWidth(dpy, fwin->core->window,
@@ -738,7 +764,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				XSetWindowBorder(dpy, fwin->core->window, *fwin->border_pixel);
 		}
 
-		if (fwin->flags.is_client_window_frame && inner > 0)
+		if (fwin->flags.is_client_window_frame && (iv + ih) > 0)
 			paintInnerBorderStrips(fwin);
 	}
 }

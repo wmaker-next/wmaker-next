@@ -276,6 +276,10 @@ static int calcSumOfCoveredAreas(WWindow *wwin, int x, int y, int w, int h)
 		th = test_window->frame->core->height;
 		tx = test_window->frame_x;
 		ty = test_window->frame_y;
+		if (HAS_BORDER(test_window)) {
+			tw += 2 * wFrameBorderWidth(test_window);
+			th += 2 * wFrameBorderWidth(test_window);
+		}
 
 		if (test_window->flags.mapped || (test_window->flags.shaded &&
 		     wWindowIsVisibleOnAnyHead(test_window) &&
@@ -317,6 +321,10 @@ window_overlaps(WWindow *win, int x, int y, int w, int h, Bool ignore_sunken)
 	th = win->frame->core->height;
 	tx = win->frame_x;
 	ty = win->frame_y;
+	if (HAS_BORDER(win)) {
+		tw += 2 * wFrameBorderWidth(win);
+		th += 2 * wFrameBorderWidth(win);
+	}
 
 	if ((tx < (x + w)) && ((tx + tw) > x) &&
 	    (ty < (y + h)) && ((ty + th) > y) &&

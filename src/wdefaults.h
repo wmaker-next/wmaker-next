@@ -114,10 +114,11 @@ typedef enum {
 #define WATTR_FRAME_BORDER_WIDTH          (1u << 0)
 #define WATTR_FRAME_BORDER_COLOR          (1u << 1)
 #define WATTR_FRAME_FOCUSED_BORDER_COLOR (1u << 2)
-#define WATTR_FRAME_SELECTED_BORDER_COLOR  (1u << 3)
+#define WATTR_FRAME_SELECTED_BORDER_COLOR (1u << 3)
 #define WATTR_FRAME_INNER_BORDER_WIDTH   (1u << 4)
 #define WATTR_FRAME_INNER_BORDER_COLOR   (1u << 5)
 #define WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR (1u << 6)
+#define WATTR_FRAME_INNER_BORDER_SIDES  (1u << 7)
 
 typedef struct WWindowAttrs {
 	uint32_t value;
@@ -129,6 +130,7 @@ typedef struct WWindowAttrs {
 	uint32_t frame_set;
 	int frame_border_width;
 	int frame_inner_border_width;
+	unsigned int frame_inner_border_sides;
 	char *frame_border_color_spec;
 	char *frame_focused_border_color_spec;
 	char *frame_selected_border_color_spec;

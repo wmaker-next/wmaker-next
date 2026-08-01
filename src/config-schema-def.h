@@ -491,6 +491,9 @@
 	  WCFG_RUNTIME_RELOAD, 0) \
 	_(FRAME_INNER_BORDER_WIDTH, "FrameInnerBorderWidth", INT, frame_inner_border_width, "0", \
 		NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, WCFG_REFRESH_INNER_BORDER) \
+	_(FRAME_INNER_BORDER_SIDES, "FrameInnerBorderSides", STRING_ARRAY, frame_inner_border_sides, \
+		"(left, right, top, bottom)", NULL, 0, 4, \
+		WCFG_RUNTIME_RELOAD, WCFG_REFRESH_INNER_BORDER) \
 	_(FRAME_INNER_BORDER_COLOR, "FrameInnerBorderColor", COLOR_SPEC, frame_inner_border_color, \
 		"#b5b5b5", NULL, WCFG_COLOR_FRAME_INNER_BORDER, WCFG_COLOR_FRAME_INNER_BORDER, \
 		WCFG_RUNTIME_RELOAD, WCFG_REFRESH_INNER_BORDER) \

@@ -245,6 +245,7 @@ typedef struct _WScreen {
     WMColor *frame_focused_border_color;
     WMColor *frame_selected_border_color;
 	int frame_inner_border_width;
+	unsigned int frame_inner_border_sides;
 	WMColor *frame_inner_border_color;
 	WMColor *frame_inner_focused_border_color;
 

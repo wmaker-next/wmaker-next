@@ -401,7 +401,8 @@ void wShadeWindow(WWindow *wwin)
 
 void wUnshadeWindow(WWindow *wwin)
 {
-	int inner;
+	int il, ir, it, ib;
+	int iv;
 
 	if (!wwin->flags.shaded)
 		return;
@@ -413,15 +414,14 @@ void wUnshadeWindow(WWindow *wwin)
 	shade_animate(wwin, UNSHADE);
 
 	wwin->flags.skip_next_animation = 0;
-	inner = HAS_BORDER(wwin) ? wFrameInnerBorderWidth(wwin) : 0;
-
+	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+	iv = it + ib;
 	wFrameWindowResize(wwin->frame, wwin->frame->core->width,
 				wwin->frame->top_width + wwin->client.height
-				+ wwin->frame->bottom_width + 2 * inner);
-	XMoveWindow(dpy, wwin->client_win, inner, wwin->frame->top_width + inner);
-	wwin->client.x = wwin->frame_x + wFrameBorderWidth(wwin) + inner;
-	wwin->client.y = wwin->frame_y + wFrameBorderWidth(wwin)
-				+ wwin->frame->top_width + inner;
+				+ wwin->frame->bottom_width + iv);
+	XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
+	wFrameInnerBorderClientOrigin(wwin, wwin->frame_x, wwin->frame_y,
+				      &wwin->client.x, &wwin->client.y);
 
 	wWindowSynthConfigureNotify(wwin);
 
@@ -2553,8 +2553,10 @@ void movePointerToWindowCenter(WWindow *wwin)
 static void shade_animate(WWindow *wwin, Bool what)
 {
 	int y, s, w, h;
-	int inner = HAS_BORDER(wwin) ? wwin->screen_ptr->frame_inner_border_width : 0;
+	int il, it;
 	time_t time0 = time(NULL);
+
+	wFrameInnerBorderWidths(wwin, &il, NULL, &it, NULL);
 
 	if (wwin->flags.skip_next_animation || w_global.config->no_animations
 	    || w_global.display_off)
@@ -2571,7 +2573,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 			w = wwin->frame->core->width;
 			y = wwin->frame->top_width;
 			while (h > wwin->frame->top_width + 1) {
-				XMoveWindow(dpy, wwin->client_win, inner, y);
+				XMoveWindow(dpy, wwin->client_win, il, y);
 				XResizeWindow(dpy, wwin->frame->core->window, w, h);
 				XFlush(dpy);
 
@@ -2585,7 +2587,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 				h -= s;
 				y -= s;
 			}
-			XMoveWindow(dpy, wwin->client_win, inner, wwin->frame->top_width + inner);
+			XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
 		}
 		break;
 
@@ -2596,11 +2598,11 @@ static void shade_animate(WWindow *wwin, Bool what)
 		if (s < 1)
 			s = 1;
 		w = wwin->frame->core->width;
-		XMoveWindow(dpy, wwin->client_win, inner, y);
+		XMoveWindow(dpy, wwin->client_win, il, y);
 		if (s > 0) {
 			while (h < wwin->client.height + wwin->frame->top_width + wwin->frame->bottom_width) {
 				XResizeWindow(dpy, wwin->frame->core->window, w, h);
-				XMoveWindow(dpy, wwin->client_win, inner, y);
+				XMoveWindow(dpy, wwin->client_win, il, y);
 				XFlush(dpy);
 				if (SHADE_DELAY > 0)
 					wusleep(SHADE_DELAY * 2000L / 3);
@@ -2613,7 +2615,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 					break;
 			}
 		}
-		XMoveWindow(dpy, wwin->client_win, inner, wwin->frame->top_width + inner);
+		XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
 		break;
 	}
 }
