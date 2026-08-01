@@ -20,13 +20,12 @@ window. Window Maker uses this command internally to set the root
 window image on start up.
 .SH OPTIONS
 .TP
-.BR \-\-back\-color | \-b " \fIcolor\fP"
-the specified \fIcolor\fP is used as the background color for the
-\fItexture\fP.  Window Maker temporary sets the background to this
-color while loading and processing the texture.  You can specify colors
-using their X11 names or as an RGB triplet (either as "rgb:RR/GG/BB" or
-"#RRGGBB") (reference to appropriate manpage should be here).  In the
-later case \fIcolor\fB is a quoted string.
+.BR \-c | \-b | \--color " \fIcolor\fP"
+the specified \fIcolor\fP is used as the background color, both for the
+\fIsolid_color\fP mode and as the letterbox fill behind a centered or
+\fIfit\fP image. You can specify colors using their X11 names or as an
+RGB triplet (either as "rgb:RR/GG/BB" or "#RRGGBB"). \fB\-\-back\-color\fP
+is accepted as a deprecated alias.
 .TP
 .BR \-\-center | \-e
 centers the \fIimage\fP in the screen
@@ -43,6 +42,19 @@ print a help message with the list of options
 .BR \-\-maxscale | \-a
 scales the specified \fIimage\fP to fit inside the screen preserving its aspect ratio
 .TP
+.BR \-\-mode | \-m " \fImode\fP"
+set the background mode: \fItile\fP, \fIcenter\fP, \fIscale\fP, \fIfit\fP,
+\fIfill\fP, or \fIsolid_color\fP. The short flags \fB\-t\fP, \fB\-e\fP,
+\fB\-s\fP, \fB\-a\fP and \fB\-f\fP are aliases for \fItile\fP, \fIcenter\fP,
+\fIscale\fP, \fIfit\fP and \fIfill\fP respectively. \fIsolid_color\fP
+paints the \fIcolor\fP without an image.
+.TP
+.BR \-\-output | \-o " \fIname\fP"
+assign the following \fIimage\fP, \fImode\fP and \fIcolor\fP arguments to
+a specific output. May be given more than once. Outputs not named on the
+command line inherit the default spec gathered before the first
+\fB\-\-output\fP.
+.TP
 .BR \-\-parse | \-p " \fItexture\fP"
 parses the specified \fItexture\fP as a \fIproplist style texture\fP
 .TP
@@ -51,6 +63,10 @@ scales the specified \fIimage\fP to fill the screen (default)
 .TP
 .BR \-\-smooth | \-S
 use a smooth scaling algorithm when resizing \fIimage\fP
+.TP
+.BR \-\-stretch\-all | \-X
+stretch one image across all heads instead of applying it per-output.
+\fB\-\-xinerama\fP is accepted as a deprecated alias.
 .TP
 .BR \-\-tile | \-t
 tiles the specified \fIimage\fP
@@ -66,9 +82,6 @@ print the version of Window Maker from which the program comes
 .TP
 .BR \-\-workspace | \-w " \fIworkspace\fP"
 update background only for the specified \fIworkspace\fP
-.TP
-.BR \-\-xinerama | \-X
-stretch image across Xinerama heads
 .SH SEE ALSO
 .BR wmaker (1)
 .SH AUTHOR

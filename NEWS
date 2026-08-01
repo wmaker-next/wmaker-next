@@ -1054,6 +1054,40 @@ the client's size-hint increments are applied after the snap so a
 terminal still rounds to whole character cells.
 
 
+wmsetbg per-output, mode and color flags
+---------------------------------------
+
+wmsetbg now supports per-output wallpaper assignment via --output
+<name>, a --mode {tile,center,scale,fit,fill,solid_color} selector
+(-m short form), --color / -c for solid backgrounds, and
+-X / --stretch-all to stretch one image across all heads. Head
+geometry and names are queried via RandR 1.5 GetMonitors with a
+XINERAMA fallback. The old -b and --back-color aliases are kept as
+deprecated.
+
+
+Wallpaper-derived tonal palette (wmsetbg --dynamic-color)
+--------------------------------------------------------
+
+wrlib gains a bounded median-cut palette extractor
+(RExtractPalette) that derives a small set of swatches from the
+loaded wallpaper. wmsetbg --dynamic-color[=Auto|Light|Dark] tints
+every UI role from the seed hue at a fixed tone, Material You-style:
+surface fills use low saturation so a vivid wallpaper does not
+produce screaming titlebars, while the highlight accent uses full
+seed saturation. Monochrome wallpapers produce neutral grays. The
+derived palette is persisted via wdwrite so it survives a restart.
+
+
+EnforceIconMargin enabled by default
+-----------------------------------
+
+Appicons now render at 75% of the tile size by default, leaving room
+around the icon so it does not touch the tile border. The
+EnforceIconMargin default is now YES; set it to NO to restore the
+old edge-to-edge icon filling.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory

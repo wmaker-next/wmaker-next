@@ -32,6 +32,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib-xcb.h>
+#include <xcb/randr.h>
 #include <cairo-xcb.h>
 #include <WINGs/WXProp.h>
 #include <string.h>
@@ -110,6 +111,22 @@ static noreturn void quit(int rcode)
 
 #define WMSETBG_MAX_HEADS       32
 
+static char head_names[WMSETBG_MAX_HEADS][256];
+
+typedef struct {
+	char *name;
+	char *image;
+	char *style;
+	char *color;
+	int smooth;
+	Bool used;
+} OutputSpec;
+
+static OutputSpec defSpec;
+static OutputSpec *namedSpecs;
+static int nnamed;
+static Bool havePerOutput = False;
+
 /* Speak the XINERAMA wire protocol directly so we do not link libXinerama.
  * On hardware the X server synthesises this list from RandR, and on nested
  * servers such as Xephyr +xinerama it is the only multi-head view, so a
@@ -172,6 +189,82 @@ static void initXinerama(void)
 	SyncHandle();
 }
 
+static Bool initRandR(void)
+{
+	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_randr_get_monitors_reply_t *mr;
+	xcb_randr_monitor_info_iterator_t mi;
+	xcb_get_atom_name_cookie_t name_ck[WMSETBG_MAX_HEADS];
+	xcb_randr_query_version_reply_t *vr;
+	WMRect local_screens[WMSETBG_MAX_HEADS];
+	xcb_atom_t local_atoms[WMSETBG_MAX_HEADS];
+	Bool have15;
+	int count = 0;
+	int i;
+
+	memset(head_names, 0, sizeof(head_names));
+
+	vr = xcb_randr_query_version_reply(xc,
+			xcb_randr_query_version(xc, 1, 5), NULL);
+	if (!vr)
+		return False;
+	have15 = (vr->major_version > 1 ||
+		  (vr->major_version == 1 && vr->minor_version >= 5));
+	free(vr);
+	if (!have15)
+		return False;
+
+	mr = xcb_randr_get_monitors_reply(xc,
+			xcb_randr_get_monitors(xc, root, 1), NULL);
+	if (!mr)
+		return False;
+
+	for (mi = xcb_randr_get_monitors_monitors_iterator(mr);
+	     mi.rem && count < WMSETBG_MAX_HEADS;
+	     xcb_randr_monitor_info_next(&mi)) {
+		if (mi.data->width <= 0 || mi.data->height <= 0)
+			continue;
+		local_screens[count].pos.x = mi.data->x;
+		local_screens[count].pos.y = mi.data->y;
+		local_screens[count].size.width = mi.data->width;
+		local_screens[count].size.height = mi.data->height;
+		local_atoms[count] = mi.data->name;
+		count++;
+	}
+	free(mr);
+
+	if (count == 0)
+		return False;
+
+	for (i = 0; i < count; i++)
+		name_ck[i] = (local_atoms[i] != XCB_ATOM_NONE)
+			? xcb_get_atom_name(xc, local_atoms[i])
+			: (xcb_get_atom_name_cookie_t){0};
+	xcb_flush(xc);
+	for (i = 0; i < count; i++) {
+		xcb_get_atom_name_reply_t *rep;
+
+		if (name_ck[i].sequence) {
+			rep = xcb_get_atom_name_reply(xc, name_ck[i], NULL);
+			if (rep) {
+				int nlen = xcb_get_atom_name_name_length(rep);
+
+				if (nlen >= (int)sizeof(head_names[i]))
+					nlen = sizeof(head_names[i]) - 1;
+				memcpy(head_names[i], xcb_get_atom_name_name(rep), nlen);
+				head_names[i][nlen] = '\0';
+				free(rep);
+			}
+		}
+	}
+
+	xineInfo.screens = wmalloc(sizeof(WMRect) * (count + 1));
+	memcpy(xineInfo.screens, local_screens, sizeof(WMRect) * count);
+	xineInfo.count = count;
+
+	return True;
+}
+
 static RImage *loadImage(RContext * rc, const char *file)
 {
 	char *path;
@@ -220,12 +313,27 @@ static void fill_pixmap(RContext *rc, Pixmap p, int w, int h, const XColor *c)
 	cairo_destroy(cr);
 }
 
+static void fill_rect(RContext *rc, Pixmap p, int x, int y, int w, int h,
+		      const XColor *c)
+{
+	cairo_t *cr;
+
+	cr = cairo_begin_pixmap(rc, p, scrWidth, scrHeight);
+	cairo_set_source_rgb(cr, c->red / 65535.0, c->green / 65535.0,
+			     c->blue / 65535.0);
+	cairo_rectangle(cr, x, y, w, h);
+	cairo_fill(cr);
+	cairo_surface_flush(cairo_get_target(cr));
+	cairo_destroy(cr);
+}
+
 static void
 applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type,
 	   int x, int y, int width, int height)
 {
 	int w, h;
 	Bool fimage = False;
+	RImage *timage;
 
 	switch (toupper(type)) {
 	case 'S':
@@ -269,7 +377,18 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 			image = simage;
 		}
 
-		/* fall through */
+		__attribute__((fallthrough));
+	case 'T':
+		if (image->width != width || image->height != height) {
+			timage = RMakeTiledImage(image, width, height);
+			if (!timage) {
+				wwarning("could not tile texture:%s", RMessageForError(RErrorCode));
+				return;
+			}
+			fimage = True;
+			image = timage;
+		}
+		__attribute__((fallthrough));
 	case 'C':
 		{
 			Pixmap pixmap;
@@ -451,12 +570,7 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 		RGradientStyle gtype;
 		int iwidth, iheight;
 
-		colors = malloc(sizeof(RColor *) * (count - 1));
-		if (!colors) {
-			wwarning("out of memory while parsing texture");
-			goto error;
-		}
-		memset(colors, 0, sizeof(RColor *) * (count - 1));
+		colors = wmalloc(sizeof(RColor *) * (count - 1));
 
 		for (i = 2; i < count; i++) {
 			val = WMGetFromPLArray(texarray, i);
@@ -478,14 +592,7 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 				wfree(colors);
 				goto error;
 			}
-			if (!(colors[i - 2] = malloc(sizeof(RColor)))) {
-				wwarning("out of memory while parsing texture");
-
-				for (j = 0; colors[j] != NULL; j++)
-					wfree(colors[j]);
-				wfree(colors);
-				goto error;
-			}
+			colors[i - 2] = wmalloc(sizeof(RColor));
 
 			colors[i - 2]->red = color.red >> 8;
 			colors[i - 2]->green = color.green >> 8;
@@ -579,9 +686,15 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 			rcolor.blue = color.blue >> 8;
 			RGetClosestXColor(rc, &rcolor, &color.pixel);
 		} else {
+			unsigned long pixel = color.pixel;
+
 			rcolor.red = 0;
 			rcolor.green = 0;
 			rcolor.blue = 0;
+			/* the allocated cell's pixel is never read back (the
+			 * renderers use the server-adjusted RGB), so return the
+			 * reservation immediately */
+			XFreeColors(dpy, DefaultColormap(dpy, scr), &pixel, 1, 0);
 		}
 		/* for images with a transparent color */
 		if (image && image->data[3])
@@ -771,6 +884,127 @@ static void freeTexture(BackgroundTexture * texture)
 	}
 	wfree(texture->spec);
 	wfree(texture);
+}
+
+static Bool parseBackColor(RContext *rc, const char *str, XColor *xc, RColor *rcolor)
+{
+	if (!XParseColor(dpy, DefaultColormap(dpy, scr), str, xc)) {
+		wwarning("could not parse color %s", str);
+		xc->red = xc->green = xc->blue = 0;
+		xc->pixel = 0;
+		rcolor->red = rcolor->green = rcolor->blue = 0;
+		return False;
+	}
+	if (!XAllocColor(dpy, DefaultColormap(dpy, scr), xc)) {
+		rcolor->red = xc->red >> 8;
+		rcolor->green = xc->green >> 8;
+		rcolor->blue = xc->blue >> 8;
+		RGetClosestXColor(rc, rcolor, &xc->pixel);
+	} else {
+		unsigned long pixel = xc->pixel;
+
+		rcolor->red = 0;
+		rcolor->green = 0;
+		rcolor->blue = 0;
+		XFreeColors(dpy, DefaultColormap(dpy, scr), &pixel, 1, 0);
+	}
+	return True;
+}
+
+static OutputSpec *findSpec(const char *name)
+{
+	int i;
+
+	if (name && name[0]) {
+		for (i = 0; i < nnamed; i++)
+			if (namedSpecs[i].name && strcmp(namedSpecs[i].name, name) == 0) {
+				namedSpecs[i].used = True;
+				return &namedSpecs[i];
+			}
+	}
+	return &defSpec;
+}
+
+static void renderOutputHead(RContext *rc, BackgroundTexture *texture,
+			     WMRect *rect, const char *name)
+{
+	OutputSpec *spec = findSpec(name);
+	const char *style = spec->style ? spec->style :
+		(defSpec.style ? defSpec.style : "spixmap");
+	const char *color_str = spec->color ? spec->color :
+		(defSpec.color ? defSpec.color : "gray20");
+	const char *image_name = spec->image ? spec->image : defSpec.image;
+	XColor xc;
+	RColor rcolor;
+	Bool old_smooth;
+	RImage *image = NULL;
+
+	parseBackColor(rc, color_str, &xc, &rcolor);
+
+	fill_rect(rc, texture->pixmap, rect->pos.x, rect->pos.y,
+		  rect->size.width, rect->size.height, &xc);
+
+	if (!image_name)
+		return;
+
+	image = loadImage(rc, image_name);
+	if (!image)
+		return;
+
+	if (image->data[3])
+		RCombineImageWithColor(image, &rcolor);
+
+	old_smooth = smooth;
+	if (spec->smooth >= 0)
+		smooth = (Bool)spec->smooth;
+
+	if (strcmp(style, "solid") != 0)
+		applyImage(rc, texture, image, style[0],
+			   rect->pos.x, rect->pos.y,
+			   rect->size.width, rect->size.height);
+
+	smooth = old_smooth;
+	RReleaseImage(image);
+}
+
+static BackgroundTexture *renderPerOutput(RContext *rc)
+{
+	BackgroundTexture *texture;
+	XColor xc;
+	RColor rcolor;
+	int i;
+
+	texture = wmalloc(sizeof(BackgroundTexture));
+	texture->pixmap = XCreatePixmap(dpy, root, scrWidth, scrHeight,
+					DefaultDepth(dpy, scr));
+	texture->width = scrWidth;
+	texture->height = scrHeight;
+	texture->solid = 0;
+	texture->spec = wstrdup("per-output");
+
+	/* cover the pixels that no monitor owns */
+	parseBackColor(rc, defSpec.color ? defSpec.color : "gray20", &xc, &rcolor);
+	fill_pixmap(rc, texture->pixmap, scrWidth, scrHeight, &xc);
+
+	if (xineInfo.count && !xineStretch) {
+		for (i = 0; i < xineInfo.count; i++)
+			renderOutputHead(rc, texture, &xineInfo.screens[i],
+					 head_names[i][0] ? head_names[i] : NULL);
+	} else {
+		WMRect whole;
+
+		whole.pos.x = 0;
+		whole.pos.y = 0;
+		whole.size.width = scrWidth;
+		whole.size.height = scrHeight;
+		renderOutputHead(rc, texture, &whole, NULL);
+	}
+
+	for (i = 0; i < nnamed; i++)
+		if (!namedSpecs[i].used)
+			wwarning("--output %s: no matching monitor", namedSpecs[i].name);
+
+	return texture;
 }
 
 static void setupTexture(RContext * rc, BackgroundTexture ** textures, int *maxTextures, int workspace, char *texture)
@@ -1004,6 +1238,7 @@ static noreturn void helperLoop(RContext * rc)
 			}
 			continue;
 		}
+		buffer[size] = 0;
 #ifdef DEBUG
 		printf("RECEIVED %s\n", buffer);
 #endif
@@ -1239,13 +1474,15 @@ static void print_help(void)
 	puts("");
 	puts(" -display <display>            display to use");
 	puts(" -S, --smooth                  smooth scaled image");
-	puts(" -X, --xinerama                stretch image across Xinerama heads");
-	puts(" -b, --back-color <color>      background color");
-	puts(" -t, --tile                    tile   image");
+	puts(" -X, --stretch-all             stretch image across all heads");
+	puts(" -o, --output <name>           assign following image/mode/color to a specific output");
+	puts(" -c, -b, --color <color>       background color");
+	puts(" -t, --tile                    tile image");
 	puts(" -e, --center                  center image");
-	puts(" -s, --scale                   scale  image (default)");
-	puts(" -a, --maxscale                scale  image and keep aspect ratio");
-	puts(" -f, --fillscale               scale  image to fill screen and keep aspect ratio");
+	puts(" -s, --scale                   scale image (default)");
+	puts(" -a, --maxscale                scale image and keep aspect ratio");
+	puts(" -f, --fillscale               scale image to fill screen and keep aspect ratio");
+	puts(" -m, --mode <mode>             tile|center|scale|fit|fill|solid_color");
 	puts(" -u, --update-wmaker           update WindowMaker domain database");
 	puts(" -D, --update-domain <domain>  update <domain> database");
 	puts(" -p, --parse <texture>         proplist style texture specification");
@@ -1285,8 +1522,10 @@ static int changeTextureForWorkspace(const char *domain, char *texture, int work
 
 		WMReleasePropList(empty);
 	} else {
-		WMDeleteFromPLArray(array, workspace);
-		WMInsertInPLArray(array, workspace, val);
+		int idx = workspace > 0 ? workspace - 1 : 0;
+
+		WMDeleteFromPLArray(array, idx);
+		WMInsertInPLArray(array, idx, val);
 	}
 
 	value = WMGetPropListDescription(array, False);
@@ -1298,19 +1537,47 @@ static int changeTextureForWorkspace(const char *domain, char *texture, int work
 	return status;
 }
 
+static const char *mode_to_style(const char *mode)
+{
+	if (strcmp(mode, "tile") == 0)
+		return "tpixmap";
+	if (strcmp(mode, "center") == 0)
+		return "cpixmap";
+	if (strcmp(mode, "scale") == 0)
+		return "spixmap";
+	if (strcmp(mode, "fit") == 0)
+		return "mpixmap";
+	if (strcmp(mode, "fill") == 0)
+		return "fpixmap";
+	if (strcmp(mode, "solid_color") == 0)
+		return "solid";
+	return NULL;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
 	int helperMode = 0;
 	RContext *rc;
 	RContextAttributes rattr;
-	char *style = "spixmap";
-	char *back_color = "gray20";
-	char *image_name = NULL;
+	char *style;
+	char *back_color;
+	char *image_name;
 	char *domain = "WindowMaker";
 	int update = 0;
 	char *texture = NULL;
 	int workspace = -1;
+	OutputSpec *curSpec;
+	int j;
+	Bool texture_from_p;
+	Bool any_spec;
+
+	defSpec.name = NULL;
+	defSpec.image = NULL;
+	defSpec.style = NULL;
+	defSpec.color = NULL;
+	defSpec.smooth = -1;
+	curSpec = &defSpec;
 
 	signal(SIGINT, SIG_DFL);
 	signal(SIGTERM, SIG_DFL);
@@ -1336,31 +1603,55 @@ int main(int argc, char **argv)
 				quit(1);
 			}
 			display = argv[i];
-		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--scale") == 0) {
-			style = "spixmap";
-		} else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tile") == 0) {
-			style = "tpixmap";
-		} else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--center") == 0) {
-			style = "cpixmap";
-		} else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--maxscale") == 0) {
-			style = "mpixmap";
-		} else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--fillscale") == 0) {
-			style = "fpixmap";
-		} else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--dither") == 0 ||
-			   strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--match") == 0) {
-			/* indexed-colour rendering is gone, accept and ignore for
-			 * compatibility with old scripts */
-		} else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--colors") == 0) {
-			/* same, but consume the argument */
+		} else if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0) {
+			const char *s;
+
 			i++;
 			if (i >= argc) {
 				wfatal("too few arguments for %s", argv[i - 1]);
 				quit(1);
 			}
+			s = mode_to_style(argv[i]);
+			if (!s) {
+				wfatal("unknown mode '%s'", argv[i]);
+				quit(1);
+			}
+			curSpec->style = (char *)s;
+		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--scale") == 0) {
+			curSpec->style = "spixmap";
+		} else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tile") == 0) {
+			curSpec->style = "tpixmap";
+		} else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--center") == 0) {
+			curSpec->style = "cpixmap";
+		} else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--maxscale") == 0) {
+			curSpec->style = "mpixmap";
+		} else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--fillscale") == 0) {
+			curSpec->style = "fpixmap";
 		} else if (strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "--smooth") == 0) {
-			smooth = True;
-		} else if (strcmp(argv[i], "-X") == 0 || strcmp(argv[i], "--xinerama") == 0) {
+			curSpec->smooth = 1;
+		} else if (strcmp(argv[i], "--stretch-all") == 0 || strcmp(argv[i], "--span") == 0
+			   || strcmp(argv[i], "-X") == 0 || strcmp(argv[i], "--xinerama") == 0) {
 			xineStretch = True;
+		} else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+			i++;
+			if (i >= argc) {
+				wfatal("too few arguments for %s", argv[i - 1]);
+				quit(1);
+			}
+			/* reuse an existing named spec or push a new one */
+			for (j = 0; j < nnamed; j++) {
+				if (namedSpecs[j].name && strcmp(namedSpecs[j].name, argv[i]) == 0)
+					break;
+			}
+			if (j == nnamed) {
+				namedSpecs = wrealloc(namedSpecs, sizeof(OutputSpec) * (nnamed + 1));
+				memset(&namedSpecs[nnamed], 0, sizeof(OutputSpec));
+				namedSpecs[nnamed].name = argv[i];
+				namedSpecs[nnamed].smooth = -1;
+				nnamed++;
+			}
+			curSpec = &namedSpecs[j];
+			havePerOutput = True;
 		} else if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--update-wmaker") == 0) {
 			update++;
 		} else if (strcmp(argv[i], "-D") == 0 || strcmp(argv[i], "--update-domain") == 0) {
@@ -1371,13 +1662,15 @@ int main(int argc, char **argv)
 				quit(1);
 			}
 			domain = wstrdup(argv[i]);
-		} else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--back-color") == 0) {
+		} else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "-b") == 0
+			   || strcmp(argv[i], "--color") == 0
+			   || strcmp(argv[i], "--back-color") == 0) {
 			i++;
 			if (i >= argc) {
 				wfatal("too few arguments for %s", argv[i - 1]);
 				quit(1);
 			}
-			back_color = argv[i];
+			curSpec->color = argv[i];
 		} else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--parse") == 0) {
 			i++;
 			if (i >= argc) {
@@ -1402,14 +1695,44 @@ int main(int argc, char **argv)
 			print_help();
 			quit(0);
 		} else if (argv[i][0] != '-') {
-			image_name = argv[i];
+			curSpec->image = argv[i];
 		} else {
 			printf("%s: invalid argument '%s'\n", prog_name, argv[i]);
 			printf("Try '%s --help' for more information\n", prog_name);
 			quit(1);
 		}
 	}
-	if (!image_name && !texture && !helperMode) {
+
+	style = defSpec.style ? defSpec.style : "spixmap";
+	back_color = defSpec.color ? defSpec.color : "gray20";
+	image_name = defSpec.image;
+	smooth = (defSpec.smooth >= 0) ? (Bool)defSpec.smooth : False;
+	texture_from_p = (texture != NULL);
+
+	if (havePerOutput && texture_from_p) {
+		wfatal("--output and --parse are mutually exclusive");
+		quit(1);
+	}
+	if (havePerOutput && update) {
+		wfatal("--output cannot be combined with --update-wmaker or --update-domain");
+		quit(1);
+	}
+	if (havePerOutput && workspace >= 0) {
+		wfatal("--output and --workspace are mutually exclusive");
+		quit(1);
+	}
+
+	any_spec = (image_name != NULL);
+
+	if (!any_spec && style && strcmp(style, "solid") == 0)
+		any_spec = True;
+	for (j = 0; j < nnamed && !any_spec; j++) {
+		any_spec = (namedSpecs[j].image != NULL);
+		if (!any_spec && namedSpecs[j].style &&
+		    strcmp(namedSpecs[j].style, "solid") == 0)
+			any_spec = True;
+	}
+	if (!any_spec && !texture && !helperMode) {
 		printf("%s: you must specify a image file name or a texture\n", prog_name);
 		printf("Try '%s --help' for more information\n", prog_name);
 		quit(1);
@@ -1418,12 +1741,8 @@ int main(int argc, char **argv)
 	PixmapPath = getPixmapPath(domain);
 	if (!smooth) {
 		WMPropList *val;
-		/* carlos, don't remove this */
-#if 0				/* some problem with Alpha... TODO: check if its right */
-		val = WMGetFromPLDictionary(domain, WMCreatePLString("SmoothWorkspaceBack"));
-#else
+
 		val = getValueForKey(domain, "SmoothWorkspaceBack");
-#endif
 
 		if (val && WMIsPLString(val) && strcasecmp(WMGetFromPLString(val), "YES") == 0)
 			smooth = True;
@@ -1448,7 +1767,8 @@ int main(int argc, char **argv)
 	scrHeight = HeightOfScreen(DefaultScreenOfDisplay(dpy));
 	scrX = scrY = 0;
 
-	initXinerama();
+	if (!initRandR())
+		initXinerama();
 
 	rattr.flags = RC_DefaultVisual;
 	rc = RCreateContextXCB(XGetXCBConnection(dpy), scr, &rattr);
@@ -1472,39 +1792,56 @@ int main(int argc, char **argv)
 		int update_status = -1;
 
 		if (!texture) {
-			char *image_path = getFullPixmapPath(image_name);
-			/* build the (style, path, color) array via the proplist
-			 * API so quotes and backslashes in the path are escaped
-			 * in the serialized description, instead of breaking
-			 * out of a hand-built "..." */
-			WMPropList *pl = WMCreatePLArray(WMCreatePLString(style),
-							 WMCreatePLString(image_path),
-							 WMCreatePLString(back_color),
-							 NULL);
-			gen_texture = WMGetPropListDescription(pl, False);
-			WMReleasePropList(pl);
-			wfree(image_path);
-			texture = gen_texture;
+			if (strcmp(style, "solid") == 0) {
+				WMPropList *pl = WMCreatePLArray(WMCreatePLString("solid"),
+								 WMCreatePLString(back_color),
+								 NULL);
+				gen_texture = WMGetPropListDescription(pl, False);
+				WMReleasePropList(pl);
+				texture = gen_texture;
+			} else if (image_name) {
+				char *image_path = getFullPixmapPath(image_name);
+				/* build the (style, path, color) array via the proplist
+				 * API so quotes and backslashes in the path are escaped
+				 * in the serialized description, instead of breaking
+				 * out of a hand-built "..." */
+				WMPropList *pl = WMCreatePLArray(WMCreatePLString(style),
+								 WMCreatePLString(image_path),
+								 WMCreatePLString(back_color),
+								 NULL);
+				gen_texture = WMGetPropListDescription(pl, False);
+				WMReleasePropList(pl);
+				wfree(image_path);
+				texture = gen_texture;
+			}
 		}
 
-		if (update && workspace < 0) {
+		if (update && workspace < 0 && texture) {
 			update_status = updateDomain(domain, "WorkspaceBack", texture);
 			if (update_status >= 0) {
 				if (gen_texture)
 					wfree(gen_texture);
+				if (namedSpecs)
+					wfree(namedSpecs);
 				RDestroyContext(rc);
 				WMReleaseApplication();
 				return update_status;
 			}
 		}
 
-		tex = parseTexture(rc, texture);
+		if (havePerOutput && !texture_from_p)
+			tex = renderPerOutput(rc);
+		else {
+			if (!texture)
+				quit(1);
+			tex = parseTexture(rc, texture);
+		}
 		if (!tex)
 			quit(1);
 
 		if (workspace < 0)
 			changeTexture(tex);
-		else {
+		else if (texture) {
 			/* always update domain */
 			update_status = changeTextureForWorkspace(domain, texture, workspace);
 		}
@@ -1512,6 +1849,10 @@ int main(int argc, char **argv)
 		freeTexture(tex);
 		if (gen_texture)
 			wfree(gen_texture);
+		if (namedSpecs) {
+			wfree(namedSpecs);
+			namedSpecs = NULL;
+		}
 		if (update_status >= 0) {
 			RDestroyContext(rc);
 			WMReleaseApplication();
@@ -1519,6 +1860,8 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (namedSpecs)
+		wfree(namedSpecs);
 	RDestroyContext(rc);
 	WMReleaseApplication();
 	return 0;
