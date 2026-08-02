@@ -893,6 +893,25 @@ void wConfigDestroy(WConfig *config)
 	wfree(config);
 }
 
+/* Deep-copy a WConfig via the schema's copy_entry_value() per-field helper */
+WConfig *wConfigClone(const WConfig *src)
+{
+	WConfig *dst;
+	const WConfigEntry *schema;
+	size_t i, count;
+
+	if (!src)
+		return NULL;
+
+	dst = wmalloc(sizeof(WConfig));
+	schema = wConfigSchema();
+	count = wConfigSchemaCount();
+	for (i = 0; i < count; i++)
+		copy_entry_value(dst, src, &schema[i]);
+
+	return dst;
+}
+
 static Bool string_values_equal(const char *old_value, const char *new_value)
 {
 	if (!old_value || !new_value)

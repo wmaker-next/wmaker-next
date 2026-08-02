@@ -33,6 +33,16 @@ centers the \fIimage\fP in the screen
 .BR \-display " \fIdisplay\fP"
 connect to the X \fIdisplay\fP
 .TP
+.BR \-\-dynamic-color [=Auto|Light|Dark]
+derive a UI palette (titlebar, menu, icon, and frame colors) from the
+wallpaper and write it to the WindowMaker domain database, so the next
+reconfigure applies the derived colors. The optional \fIMODE\fP selects
+the framing ladder direction: \fBAuto\fP (default) picks light or dark
+based on the average swatch luminance, \fBLight\fP and \fBDark\fP force
+the direction. The derived colors overwrite the user's theme keys. A
+subsequent wallpaper change re\-derives, and omitting the flag leaves the
+user's values untouched.
+.TP
 .BR \-\-fillscale | \-f
 scales the specified \fIimage\fP to fill screen while preserving aspect ratio
 .TP

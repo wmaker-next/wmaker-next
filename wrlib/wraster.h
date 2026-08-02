@@ -613,6 +613,69 @@ int RStackBlurImage(RImage *image, unsigned radius)
 void RGrayscaleImage(RImage *image)
 	__wrlib_nonnull(1);
 
+/*
+ * Wallpaper-derived UI palette.
+ */
+
+#define DYNAMIC_PALETTE_SWATCHES 8
+
+typedef struct RPaletteSwatch {
+	unsigned char r, g, b;
+	unsigned long weight;
+} RPaletteSwatch;
+
+typedef struct RPalette {
+	RPaletteSwatch swatches[DYNAMIC_PALETTE_SWATCHES];
+	int count;
+} RPalette;
+
+enum RDynamicColorMode {
+	RDYNAMIC_MODE_AUTO = 0,
+	RDYNAMIC_MODE_LIGHT,
+	RDYNAMIC_MODE_DARK
+};
+
+enum RDynamicColorLadder {
+	RDYNAMIC_LADDER_LIGHT = 0,
+	RDYNAMIC_LADDER_DARK
+};
+
+enum {
+	RDYNAMIC_ROLE_DOMINANT_BACK,	/* FTitleBack, MenuTitleBack */
+	RDYNAMIC_ROLE_SECONDARY_BACK,	/* UTitleBack, MenuTextBack, ResizebarBack,
+					 * WidgetColor, IconTitleBack, FrameBorderColor */
+	RDYNAMIC_ROLE_TERTIARY_BACK,	/* PTitleBack */
+	RDYNAMIC_ROLE_ICON_BACK_NEAR,	/* IconBack endpoint 1 */
+	RDYNAMIC_ROLE_ICON_BACK_FAR,	/* IconBack endpoint 2 */
+	RDYNAMIC_ROLE_HIGHLIGHT_BACK,	/* HighlightColor */
+	RDYNAMIC_ROLE_DOMINANT_TEXT,	/* FTitleColor, MenuTitleColor, ClipTitleColor,
+					 * CClipTitleColor, FrameSelectedBorderColor */
+	RDYNAMIC_ROLE_SECONDARY_TEXT,	/* UTitleColor, MenuTextColor, IconTitleColor,
+					 * TabInactiveTitleColor */
+	RDYNAMIC_ROLE_TERTIARY_TEXT,	/* PTitleColor */
+	RDYNAMIC_ROLE_MENU_DISABLED_TEXT,/* MenuDisabledColor */
+	RDYNAMIC_ROLE_HIGHLIGHT_TEXT,	/* HighlightTextColor */
+	RDYNAMIC_ROLE_FOCUSED_BORDER,	/* FrameFocusedBorderColor */
+	RDYNAMIC_ROLE_COUNT
+};
+
+typedef struct RDynamicTheme {
+	RColor roles[RDYNAMIC_ROLE_COUNT];
+	int ladder;
+} RDynamicTheme;
+
+RPalette *RExtractPalette(const RImage *image)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
+RDynamicTheme *RDeriveDynamicTheme(const RImage *image, int mode)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
+
+/* WCAG 2.x relative luminance of an sRGB triple, in [0,1]. */
+double RRelativeLuminance(unsigned char r, unsigned char g, unsigned char b);
+/* WCAG 2.x contrast ratio of two relative luminances, >= 1.0. */
+double RWCAGContrastRatio(double l1, double l2);
+/* Black or white, whichever has the higher WCAG ratio against (r,g,b). */
+RColor RPickWCAGText(unsigned char r, unsigned char g, unsigned char b);
+
 /****** Global Variables *******/
 
 extern int RErrorCode;

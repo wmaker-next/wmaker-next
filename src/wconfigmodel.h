@@ -164,6 +164,9 @@ WConfig *wConfigCreateDefault(void);
 WConfig *wConfigReadWindowMaker(WMPropList *dict);
 void wConfigDestroy(WConfig *config);
 
+/* Deep-copy a WConfig for independent modification and destruction */
+WConfig *wConfigClone(const WConfig *src);
+
 Bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
 		 WConfigChanges *changes);
 Bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key);

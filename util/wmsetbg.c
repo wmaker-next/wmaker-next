@@ -1318,6 +1318,127 @@ static int updateDomain(const char *domain, const char *key, const char *texture
 	return status;
 }
 
+/* Write a color key to the domain via wdwrite (value must be proplist-quoted) */
+static void write_color_key(const char *domain, const char *key,
+			    unsigned char r, unsigned char g, unsigned char b)
+{
+	char buf[12];
+
+	snprintf(buf, sizeof(buf), "\"#%02x%02x%02x\"", r, g, b);
+	(void)wspawnvp_wait((char *[]){"wdwrite", (char *)domain,
+				   (char *)key, buf, NULL});
+}
+
+/* Write a (solid, "#rrggbb") texture key to the domain via wdwrite. */
+static void write_solid_texture_key(const char *domain, const char *key,
+				    unsigned char r, unsigned char g,
+				    unsigned char b)
+{
+	char buf[24];
+
+	snprintf(buf, sizeof(buf), "(solid, \"#%02x%02x%02x\")", r, g, b);
+	(void)wspawnvp_wait((char *[]){"wdwrite", (char *)domain,
+				   (char *)key, buf, NULL});
+}
+
+/* Write a (dgradient, "#rrggbb", "#rrggbb") texture key to the domain. */
+static void write_gradient_texture_key(const char *domain, const char *key,
+				       unsigned char r1, unsigned char g1,
+				       unsigned char b1,
+				       unsigned char r2, unsigned char g2,
+				       unsigned char b2)
+{
+	char buf[48];
+
+	snprintf(buf, sizeof(buf),
+		 "(dgradient, \"#%02x%02x%02x\", \"#%02x%02x%02x\")",
+		 r1, g1, b1, r2, g2, b2);
+	(void)wspawnvp_wait((char *[]){"wdwrite", (char *)domain,
+				   (char *)key, buf, NULL});
+}
+
+/* Derive palette from <image> and write color/texture keys to the domain */
+static void derive_dynamic_colors(RContext *rc, const char *domain,
+				  const char *image_name, const char *back_color,
+				  int mode)
+{
+	RImage *image = NULL;
+	RDynamicTheme *th;
+
+	if (image_name)
+		image = loadImage(rc, image_name);
+	if (!image && back_color) {
+		RColor c;
+		XColor xcol;
+
+		if (XParseColor(dpy, DefaultColormap(dpy, scr), back_color, &xcol)) {
+			c.red = xcol.red >> 8;
+			c.green = xcol.green >> 8;
+			c.blue = xcol.blue >> 8;
+			c.alpha = 255;
+			image = RCreateImage(1, 1, 0);
+			if (image) {
+				image->data[0] = c.red;
+				image->data[1] = c.green;
+				image->data[2] = c.blue;
+			}
+		}
+	}
+	if (!image) {
+		wwarning("--dynamic-color: no image to derive from");
+		return;
+	}
+
+	th = RDeriveDynamicTheme(image, mode);
+	if (th) {
+		RColor dom = th->roles[RDYNAMIC_ROLE_DOMINANT_BACK];
+		RColor sec = th->roles[RDYNAMIC_ROLE_SECONDARY_BACK];
+		RColor ter = th->roles[RDYNAMIC_ROLE_TERTIARY_BACK];
+		RColor in = th->roles[RDYNAMIC_ROLE_ICON_BACK_NEAR];
+		RColor ifar = th->roles[RDYNAMIC_ROLE_ICON_BACK_FAR];
+		RColor hl = th->roles[RDYNAMIC_ROLE_HIGHLIGHT_BACK];
+		RColor dt = th->roles[RDYNAMIC_ROLE_DOMINANT_TEXT];
+		RColor st = th->roles[RDYNAMIC_ROLE_SECONDARY_TEXT];
+		RColor tt = th->roles[RDYNAMIC_ROLE_TERTIARY_TEXT];
+		RColor ht = th->roles[RDYNAMIC_ROLE_HIGHLIGHT_TEXT];
+		RColor md = th->roles[RDYNAMIC_ROLE_MENU_DISABLED_TEXT];
+		RColor fb = th->roles[RDYNAMIC_ROLE_FOCUSED_BORDER];
+
+		write_solid_texture_key(domain, "FTitleBack", dom.red, dom.green, dom.blue);
+		write_solid_texture_key(domain, "MenuTitleBack", dom.red, dom.green, dom.blue);
+		write_solid_texture_key(domain, "UTitleBack", sec.red, sec.green, sec.blue);
+		write_solid_texture_key(domain, "MenuTextBack", sec.red, sec.green, sec.blue);
+		write_solid_texture_key(domain, "ResizebarBack", sec.red, sec.green, sec.blue);
+		write_solid_texture_key(domain, "WidgetColor", sec.red, sec.green, sec.blue);
+		write_solid_texture_key(domain, "PTitleBack", ter.red, ter.green, ter.blue);
+		write_gradient_texture_key(domain, "IconBack",
+					   in.red, in.green, in.blue,
+					   ifar.red, ifar.green, ifar.blue);
+
+		write_color_key(domain, "IconTitleBack", sec.red, sec.green, sec.blue);
+		write_color_key(domain, "FTitleColor", dt.red, dt.green, dt.blue);
+		write_color_key(domain, "UTitleColor", st.red, st.green, st.blue);
+		write_color_key(domain, "PTitleColor", tt.red, tt.green, tt.blue);
+		write_color_key(domain, "MenuTitleColor", dt.red, dt.green, dt.blue);
+		write_color_key(domain, "MenuTextColor", st.red, st.green, st.blue);
+		write_color_key(domain, "MenuDisabledColor", md.red, md.green, md.blue);
+		write_color_key(domain, "IconTitleColor", st.red, st.green, st.blue);
+		write_color_key(domain, "HighlightColor", hl.red, hl.green, hl.blue);
+		write_color_key(domain, "HighlightTextColor", ht.red, ht.green, ht.blue);
+		write_color_key(domain, "ClipTitleColor", dt.red, dt.green, dt.blue);
+		write_color_key(domain, "CClipTitleColor", dt.red, dt.green, dt.blue);
+		write_color_key(domain, "TabInactiveTitleColor", st.red, st.green, st.blue);
+		write_color_key(domain, "FrameBorderColor", sec.red, sec.green, sec.blue);
+		write_color_key(domain, "FrameFocusedBorderColor", fb.red, fb.green, fb.blue);
+		write_color_key(domain, "FrameSelectedBorderColor", dt.red, dt.green, dt.blue);
+
+		free(th);
+	} else {
+		wwarning("--dynamic-color: could not derive the palette");
+	}
+	RReleaseImage(image);
+}
+
 static WMPropList *getValueForKey(const char *domain, const char *keyName)
 {
 	char *path;
@@ -1487,6 +1608,8 @@ static void print_help(void)
 	puts(" -D, --update-domain <domain>  update <domain> database");
 	puts(" -p, --parse <texture>         proplist style texture specification");
 	puts(" -w, --workspace <workspace>   update background for the specified workspace");
+	puts("     --dynamic-color[=MODE]    derive UI palette from the wallpaper and");
+	puts("                               write it to the domain (MODE: Auto|Light|Dark)");
 	puts(" -v, --version                 show version of wmsetbg and exit");
 	puts(" -h, --help                    show this help and exit");
 }
@@ -1563,10 +1686,13 @@ int main(int argc, char **argv)
 	char *style;
 	char *back_color;
 	char *image_name;
+	char *dyn_image = NULL;
+	char *dyn_color = NULL;
 	char *domain = "WindowMaker";
 	int update = 0;
 	char *texture = NULL;
 	int workspace = -1;
+	int dynamic_color_mode = -1;	/* -1 off, RDYNAMIC_MODE_* otherwise */
 	OutputSpec *curSpec;
 	int j;
 	Bool texture_from_p;
@@ -1688,6 +1814,21 @@ int main(int argc, char **argv)
 				wfatal("bad value for workspace number: \"%s\"", argv[i]);
 				quit(1);
 			}
+		} else if (strcmp(argv[i], "--dynamic-color") == 0) {
+			dynamic_color_mode = RDYNAMIC_MODE_AUTO;
+		} else if (strncmp(argv[i], "--dynamic-color=", 16) == 0) {
+			const char *m = argv[i] + 16;
+
+			if (strcasecmp(m, "Auto") == 0)
+				dynamic_color_mode = RDYNAMIC_MODE_AUTO;
+			else if (strcasecmp(m, "Light") == 0)
+				dynamic_color_mode = RDYNAMIC_MODE_LIGHT;
+			else if (strcasecmp(m, "Dark") == 0)
+				dynamic_color_mode = RDYNAMIC_MODE_DARK;
+			else {
+				wfatal("unknown --dynamic-color mode '%s' (Auto|Light|Dark)", m);
+				quit(1);
+			}
 		} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
 			printf("%s (Window Maker %s)\n", prog_name, VERSION);
 			quit(0);
@@ -1723,6 +1864,22 @@ int main(int argc, char **argv)
 	}
 
 	any_spec = (image_name != NULL);
+
+	/* --dynamic-color source: the default image, else the first
+	 * per-output image, else the first user color. The "gray20"
+	 * fill default is not a palette source. */
+	if (dynamic_color_mode >= 0) {
+		dyn_image = image_name;
+		dyn_color = defSpec.color;
+		if (!dyn_image) {
+			for (j = 0; j < nnamed && !dyn_image; j++)
+				dyn_image = namedSpecs[j].image;
+		}
+		if (!dyn_image && !dyn_color) {
+			for (j = 0; j < nnamed && !dyn_color; j++)
+				dyn_color = namedSpecs[j].color;
+		}
+	}
 
 	if (!any_spec && style && strcmp(style, "solid") == 0)
 		any_spec = True;
@@ -1819,6 +1976,9 @@ int main(int argc, char **argv)
 		if (update && workspace < 0 && texture) {
 			update_status = updateDomain(domain, "WorkspaceBack", texture);
 			if (update_status >= 0) {
+				if (dynamic_color_mode >= 0)
+					derive_dynamic_colors(rc, domain, dyn_image,
+							      dyn_color, dynamic_color_mode);
 				if (gen_texture)
 					wfree(gen_texture);
 				if (namedSpecs)
@@ -1853,6 +2013,11 @@ int main(int argc, char **argv)
 			wfree(namedSpecs);
 			namedSpecs = NULL;
 		}
+
+		if (dynamic_color_mode >= 0)
+			derive_dynamic_colors(rc, domain, dyn_image, dyn_color,
+					      dynamic_color_mode);
+
 		if (update_status >= 0) {
 			RDestroyContext(rc);
 			WMReleaseApplication();

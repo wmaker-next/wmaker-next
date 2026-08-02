@@ -40,6 +40,7 @@ libwraster_la_SOURCES = 	\
 	rotate.h	\
 	flip.c		\
 	convolve.c	\
+	palette.c	\
 	save_xpm.c	\
 	wr_i18n.h	\
 	xutil.c		\

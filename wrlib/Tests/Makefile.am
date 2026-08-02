@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = testdraw testgrad testrot view bench_image
 
 # automated decoder tests, run by `make check`
-check_PROGRAMS = check_load check_convolve check_image check_xside
+check_PROGRAMS = check_load check_convolve check_image check_palette check_xside
 TESTS = $(check_PROGRAMS)
 AM_TESTS_ENVIRONMENT = srcdir='$(srcdir)'; export srcdir;
 
@@ -22,6 +22,9 @@ check_convolve_LDADD = $(top_builddir)/wrlib/libwraster.la
 
 check_image_SOURCES = check_image.c
 check_image_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_CAIRO_LIBS@
+
+check_palette_SOURCES = check_palette.c
+check_palette_LDADD = $(top_builddir)/wrlib/libwraster.la
 
 # round-trips RImage -> Pixmap -> RImage so it needs a server, exits 77
 # (SKIP) without one so make check stays X-free

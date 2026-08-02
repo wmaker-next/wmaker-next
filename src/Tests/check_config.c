@@ -2250,6 +2250,44 @@ second_out:
 		WMReleasePropList(new_dict);
 }
 
+/* wConfigClone deep-copies a WConfig: the clone is value-equal to the
+ * source (no diff), mutating one field on the clone flags exactly that key,
+ * and both can be destroyed independently without aliasing/double-free. */
+static void test_wConfigClone(void)
+{
+	WMPropList *dict;
+	WConfig *config, *clone;
+	WConfigChanges changes;
+	size_t i;
+
+	dict = dict_from_desc("{ IconSize = 48; ModifierKey = Mod4; "
+			      "FTitleColor = black; "
+			      "UTitleBack = (solid, \"#123456\"); }");
+	if (!dict)
+		return;
+	config = wConfigReadWindowMaker(dict);
+	CHECK(config != NULL);
+	clone = wConfigClone(config);
+	CHECK(clone != NULL);
+
+	/* clone is value-equal to the source: an empty change set */
+	CHECK(wConfigDiff(config, clone, &changes));
+	for (i = 0; i < WCFG_CHANGE_WORDS; i++)
+		CHECK(changes.changed[i] == 0);
+
+	/* mutate one palette field on the clone only */
+	wfree(clone->ftitle_color.spec);
+	clone->ftitle_color.spec = wstrdup("#abcdef");
+	CHECK(wConfigDiff(config, clone, &changes));
+	CHECK(wConfigChangesHas(&changes, WCFG_KEY_F_TITLE_COLOR));
+	CHECK(!wConfigChangesHas(&changes, WCFG_KEY_U_TITLE_BACK));
+
+	/* independent lifetimes: destroying both must not double-free */
+	wConfigDestroy(clone);
+	wConfigDestroy(config);
+	WMReleasePropList(dict);
+}
+
 static void test_inner_frame_live_apply(void)
 {
 	WMPropList *old_dict, *new_dict;
@@ -2628,6 +2666,7 @@ int main(void)
 	test_runtime_apply_phase4();
 	test_runtime_apply_phase5();
 	test_runtime_apply_phase7();
+	test_wConfigClone();
 	test_inner_frame_live_apply();
 	test_empty_color_uses_default();
 	test_runtime_apply_uses_cached_old_config();
