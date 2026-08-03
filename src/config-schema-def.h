@@ -150,7 +150,7 @@
 	  WCFG_REFRESH_TITLE_GEOM) \
 	_(ICONIFICATION_STYLE, "IconificationStyle", ENUM, iconification_style, "Zoom", \
 	  iconification_styles, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
-	_(ENFORCE_ICON_MARGIN, "EnforceIconMargin", BOOL, enforce_icon_margin, "NO", \
+	_(ENFORCE_ICON_MARGIN, "EnforceIconMargin", BOOL, enforce_icon_margin, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISABLE_WS_MOUSE_ACTIONS, "DisableWSMouseActions", BOOL, disable_root_mouse, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \

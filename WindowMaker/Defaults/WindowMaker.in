@@ -19,7 +19,7 @@
 	SwitchPanelIconSize = 64;
 	IconPosition = blh;
 	IconificationStyle = Zoom;
-	EnforceIconMargin = NO;
+	EnforceIconMargin = YES;
 	DisableWSMouseActions = NO;
 	MouseLeftButtonAction = SelectWindows;
 	MouseMiddleButtonAction = OpenWindowListMenu;

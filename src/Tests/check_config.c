@@ -781,7 +781,7 @@ static void test_defaults(void)
 	CHECK(config->menu_title_max_height == INT_MAX);
 	CHECK(config->menu_text_clearance == 0);
 	CHECK(config->iconification_style == WIS_ZOOM);
-	CHECK(config->enforce_icon_margin == 0);
+	CHECK(config->enforce_icon_margin == 1);
 	CHECK(config->disable_root_mouse == 0);
 	CHECK(config->mouse_button1 == WA_SELECT_WINDOWS);
 	CHECK(config->mouse_button2 == WA_OPEN_WINLISTMENU);
@@ -1358,7 +1358,7 @@ static void test_invalid_fallback(void)
 	CHECK(config->window_placement == WPM_AUTO);
 	CHECK(config->double_click_time == 250);
 	CHECK(config->iconification_style == WIS_ZOOM);
-	CHECK(config->enforce_icon_margin == 0);
+	CHECK(config->enforce_icon_margin == 1);
 	CHECK(config->mouse_button1 == WA_SELECT_WINDOWS);
 	CHECK(config->mouse_wheel_scroll == WA_NONE);
 	CHECK(config->dont_confirm_kill == 0);
