@@ -26,13 +26,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/Xfixes.h>
+#include <xcb/xcb.h>
+#include <xcb/xfixes.h>
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
-#include <WINGs/WXProp.h>
 
 #include "config.h"
 #include "clip-common.h"
@@ -51,45 +49,46 @@ typedef struct {
 	ContentKind kind;
 	unsigned char *data;
 	size_t size;
-	Atom type;
+	xcb_atom_t type;
 	char *path;
 	char *uri;
-	Time timestamp;
+	xcb_timestamp_t timestamp;
 	int owns;
 } ClipBuffer;
 
 static const char *prog;
-static Display *dpy;
-static Window owner_window;
-static int xfixes_event_base;
+static xcb_connection_t *xc;
+static xcb_window_t owner_window;
+static xcb_window_t root_window;
+static int xfixes_first_event;
 static int run_clipboard;
 static int run_screenshots;
 static int verbose;
 static volatile sig_atomic_t running = 1;
 
-static Atom atom_clipboard;
-static Atom atom_primary;
-static Atom atom_targets;
-static Atom atom_incr;
-static Atom atom_utf8;
-static Atom atom_text;
-static Atom atom_compound_text;
-static Atom atom_png;
-static Atom atom_jpeg;
-static Atom atom_uri_list;
-static Atom atom_text_plain;
-static Atom atom_text_plain_utf8;
-static Atom atom_wmclipd_property;
+static xcb_atom_t atom_clipboard;
+static xcb_atom_t atom_primary;
+static xcb_atom_t atom_targets;
+static xcb_atom_t atom_incr;
+static xcb_atom_t atom_utf8;
+static xcb_atom_t atom_text;
+static xcb_atom_t atom_compound_text;
+static xcb_atom_t atom_png;
+static xcb_atom_t atom_jpeg;
+static xcb_atom_t atom_uri_list;
+static xcb_atom_t atom_text_plain;
+static xcb_atom_t atom_text_plain_utf8;
+static xcb_atom_t atom_wmclipd_property;
 
 static ClipBuffer clipboard_buffer;
 static ClipBuffer primary_buffer;
 static ClipIncrSend incr;
 static ClipBuffer *incr_source;
 
-static void handle_selection_request(XSelectionRequestEvent *req);
-static void handle_selection_clear(XSelectionClearEvent *ev);
-static void handle_property_notify(XPropertyEvent *ev);
-static void handle_destroy_notify(XDestroyWindowEvent *ev);
+static void handle_selection_request(xcb_selection_request_event_t *req);
+static void handle_selection_clear(xcb_selection_clear_event_t *ev);
+static void handle_property_notify(xcb_property_notify_event_t *ev);
+static void handle_destroy_notify(xcb_destroy_notify_event_t *ev);
 
 static void usage(FILE *out)
 {
@@ -113,13 +112,6 @@ static void signal_handler(int signo)
 	running = 0;
 }
 
-static int ignore_x_errors(Display *display, XErrorEvent *event)
-{
-	(void)display;
-	(void)event;
-	return 0;
-}
-
 static void debug_log(const char *fmt, ...)
 	__attribute__((__format__(printf, 1, 2)));
 
@@ -137,21 +129,30 @@ static void debug_log(const char *fmt, ...)
 	fputc('\n', stderr);
 }
 
-static char *debug_atom_name(Atom atom)
+static char *debug_atom_name(xcb_atom_t atom)
 {
-	char *name, *copy;
+	xcb_get_atom_name_cookie_t ck;
+	xcb_get_atom_name_reply_t *rep;
+	char *copy;
+	int len;
 
-	if (atom == None)
+	if (atom == XCB_ATOM_NONE)
 		return wstrdup("None");
 
-	name = XGetAtomName(dpy, atom);
-	copy = wstrdup(name ? name : "unknown");
-	if (name)
-		XFree(name);
+	ck = xcb_get_atom_name(xc, atom);
+	rep = xcb_get_atom_name_reply(xc, ck, NULL);
+	if (!rep)
+		return wstrdup("unknown");
+
+	len = xcb_get_atom_name_name_length(rep);
+	copy = wmalloc(len + 1);
+	memcpy(copy, xcb_get_atom_name_name(rep), len);
+	copy[len] = '\0';
+	free(rep);
 	return copy;
 }
 
-static const char *debug_selection_name(Atom selection)
+static const char *debug_selection_name(xcb_atom_t selection)
 {
 	if (selection == atom_clipboard)
 		return "CLIPBOARD";
@@ -169,22 +170,22 @@ static int buffer_has_payload(const ClipBuffer *buf)
 	return 0;
 }
 
-static int is_text_atom(Atom atom)
+static int is_text_atom(xcb_atom_t atom)
 {
 	return atom == atom_utf8 ||
-	       atom == XA_STRING ||
+	       atom == XCB_ATOM_STRING ||
 	       atom == atom_text ||
 	       atom == atom_compound_text ||
 	       atom == atom_text_plain ||
 	       atom == atom_text_plain_utf8;
 }
 
-static int is_image_atom(Atom atom)
+static int is_image_atom(xcb_atom_t atom)
 {
 	return atom == atom_png || atom == atom_jpeg;
 }
 
-static int selection_type_matches_target(Atom target, Atom actual)
+static int selection_type_matches_target(xcb_atom_t target, xcb_atom_t actual)
 {
 	if (actual == target)
 		return 1;
@@ -194,7 +195,7 @@ static int selection_type_matches_target(Atom target, Atom actual)
 static void clear_buffer(ClipBuffer *buf)
 {
 	if (incr.active && incr_source == buf) {
-		clip_incr_send_cancel(dpy, &incr);
+		clip_incr_send_cancel(xc, &incr);
 		incr_source = NULL;
 	}
 
@@ -204,22 +205,27 @@ static void clear_buffer(ClipBuffer *buf)
 	memset(buf, 0, sizeof(*buf));
 }
 
-static void dispatch_during_capture(XEvent *ev, void *udata)
+static void dispatch_during_capture(xcb_generic_event_t *ev, void *udata)
 {
+	uint8_t rt;
+
 	(void)udata;
-	if (ev->type == SelectionRequest)
-		handle_selection_request(&ev->xselectionrequest);
-	else if (ev->type == SelectionClear)
-		handle_selection_clear(&ev->xselectionclear);
-	else if (ev->type == PropertyNotify)
-		handle_property_notify(&ev->xproperty);
-	else if (ev->type == DestroyNotify)
-		handle_destroy_notify(&ev->xdestroywindow);
+	rt = ev->response_type & 0x7f;
+	if (rt == XCB_SELECTION_REQUEST)
+		handle_selection_request((xcb_selection_request_event_t *)ev);
+	else if (rt == XCB_SELECTION_CLEAR)
+		handle_selection_clear((xcb_selection_clear_event_t *)ev);
+	else if (rt == XCB_PROPERTY_NOTIFY)
+		handle_property_notify((xcb_property_notify_event_t *)ev);
+	else if (rt == XCB_DESTROY_NOTIFY)
+		handle_destroy_notify((xcb_destroy_notify_event_t *)ev);
+	free(ev);
 }
 
-static int wait_selection_notify(Atom selection, Atom property, XSelectionEvent *out)
+static int wait_selection_notify(xcb_atom_t selection, xcb_atom_t property,
+				 xcb_selection_notify_event_t *out)
 {
-	XEvent ev;
+	xcb_generic_event_t *ev;
 	long long deadline = clip_monotonic_ms() + SELECTION_WAIT_MS;
 	int wait_ms;
 
@@ -227,65 +233,69 @@ static int wait_selection_notify(Atom selection, Atom property, XSelectionEvent 
 		wait_ms = (int)(deadline - clip_monotonic_ms());
 		if (wait_ms <= 0)
 			return 0;
-		if (!clip_wait_event(dpy, &ev, wait_ms))
+		if (!clip_wait_event(xc, &ev, wait_ms))
 			return 0;
-		if (ev.type == SelectionNotify &&
-		    ev.xselection.selection == selection &&
-		    (ev.xselection.property == property || ev.xselection.property == None)) {
-			*out = ev.xselection;
-			return 1;
+		if ((ev->response_type & 0x7f) == XCB_SELECTION_NOTIFY) {
+			xcb_selection_notify_event_t *sn =
+				(xcb_selection_notify_event_t *)ev;
+			if (sn->selection == selection &&
+			    (sn->property == property ||
+			     sn->property == XCB_ATOM_NONE)) {
+				*out = *sn;
+				free(ev);
+				return 1;
+			}
 		}
-		dispatch_during_capture(&ev, NULL);
+		dispatch_during_capture(ev, NULL);
 	}
 	return 0;
 }
 
-static int query_targets(Atom selection, Time timestamp, Atom **targets_out,
-			 unsigned long *count_out)
+static int query_targets(xcb_atom_t selection, xcb_timestamp_t timestamp,
+			xcb_atom_t **targets_out, size_t *count_out)
 {
-	XSelectionEvent sev;
-	Atom type;
-	int format;
-	unsigned long nitems, bytes_after;
-	unsigned char *prop = NULL;
-	Atom *copy;
+	xcb_selection_notify_event_t sev;
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	xcb_atom_t *copy;
 
 	*targets_out = NULL;
 	*count_out = 0;
 
-	XConvertSelection(dpy, selection, atom_targets, atom_wmclipd_property,
-			  owner_window, timestamp);
-	XFlush(dpy);
+	xcb_convert_selection(xc, owner_window, selection, atom_targets,
+			      atom_wmclipd_property, timestamp);
+	xcb_flush(xc);
 
 	if (!wait_selection_notify(selection, atom_wmclipd_property, &sev) ||
-	    sev.property == None) {
+	    sev.property == XCB_ATOM_NONE) {
 		return 0;
 	}
 
-	if (XGetWindowProperty(dpy, owner_window, atom_wmclipd_property,
-			       0, 1024, True, XA_ATOM, &type, &format,
-			       &nitems, &bytes_after, &prop) != Success) {
+	ck = xcb_get_property(xc, 1, owner_window, atom_wmclipd_property,
+			      XCB_ATOM_ATOM, 0, 1024);
+	rep = xcb_get_property_reply(xc, ck, NULL);
+	if (!rep)
+		return 0;
+
+	if (rep->type != XCB_ATOM_ATOM || rep->format != 32 ||
+	    rep->value_len == 0 || rep->bytes_after != 0) {
+		free(rep);
 		return 0;
 	}
 
-	if (type != XA_ATOM || format != 32 || nitems == 0 || bytes_after != 0) {
-		if (prop)
-			XFree(prop);
-		return 0;
-	}
-
-	copy = wmalloc(sizeof(Atom) * (size_t)nitems);
-	memcpy(copy, prop, sizeof(Atom) * (size_t)nitems);
-	XFree(prop);
-
+	copy = wmalloc(sizeof(xcb_atom_t) * (size_t)rep->value_len);
+	memcpy(copy, xcb_get_property_value(rep),
+	       sizeof(xcb_atom_t) * (size_t)rep->value_len);
 	*targets_out = copy;
-	*count_out = nitems;
+	*count_out = rep->value_len;
+	free(rep);
 	return 1;
 }
 
-static int target_in_list(const Atom *targets, unsigned long count, Atom atom)
+static int target_in_list(const xcb_atom_t *targets, size_t count,
+			  xcb_atom_t atom)
 {
-	unsigned long i;
+	size_t i;
 
 	for (i = 0; i < count; i++) {
 		if (targets[i] == atom)
@@ -294,15 +304,16 @@ static int target_in_list(const Atom *targets, unsigned long count, Atom atom)
 	return 0;
 }
 
-static Atom choose_preferred_target(const Atom *targets, unsigned long count)
+static xcb_atom_t choose_preferred_target(const xcb_atom_t *targets,
+					   size_t count)
 {
-	Atom prefs[6];
+	xcb_atom_t prefs[6];
 	size_t i;
 
 	prefs[0] = atom_png;
 	prefs[1] = atom_jpeg;
 	prefs[2] = atom_utf8;
-	prefs[3] = XA_STRING;
+	prefs[3] = XCB_ATOM_STRING;
 	prefs[4] = atom_text;
 	prefs[5] = atom_compound_text;
 
@@ -310,36 +321,37 @@ static Atom choose_preferred_target(const Atom *targets, unsigned long count)
 		if (target_in_list(targets, count, prefs[i]))
 			return prefs[i];
 	}
-	return None;
+	return XCB_ATOM_NONE;
 }
 
-static int request_selection_data(Atom selection, Atom target, Time timestamp,
-				  Atom *type_out, unsigned char **data_out,
-				  size_t *len_out)
+static int request_selection_data(xcb_atom_t selection, xcb_atom_t target,
+				  xcb_timestamp_t timestamp,
+				  xcb_atom_t *type_out,
+				  unsigned char **data_out, size_t *len_out)
 {
-	XSelectionEvent sev;
+	xcb_selection_notify_event_t sev;
 	unsigned char *data;
-	Atom type;
+	xcb_atom_t type;
 	size_t len;
 
 	*data_out = NULL;
 	*len_out = 0;
-	*type_out = None;
+	*type_out = XCB_ATOM_NONE;
 
-	XDeleteProperty(dpy, owner_window, atom_wmclipd_property);
-	XConvertSelection(dpy, selection, target, atom_wmclipd_property,
-			  owner_window, timestamp);
-	XFlush(dpy);
+	xcb_delete_property(xc, owner_window, atom_wmclipd_property);
+	xcb_convert_selection(xc, owner_window, selection, target,
+			      atom_wmclipd_property, timestamp);
+	xcb_flush(xc);
 
 	if (!wait_selection_notify(selection, atom_wmclipd_property, &sev) ||
-	    sev.property == None) {
+	    sev.property == XCB_ATOM_NONE) {
 		return 0;
 	}
 
-	data = clip_retrieve_property(dpy, owner_window, atom_wmclipd_property,
-					 atom_incr, CLIP_DEFAULT_MAX_BYTES,
-					 INCR_WAIT_MS, dispatch_during_capture,
-					 NULL, &type, &len);
+	data = clip_retrieve_property(xc, owner_window, atom_wmclipd_property,
+				     atom_incr, CLIP_DEFAULT_MAX_BYTES,
+				     INCR_WAIT_MS, dispatch_during_capture,
+				     NULL, &type, &len);
 	if (!data)
 		return 0;
 	if (!selection_type_matches_target(target, type)) {
@@ -347,18 +359,32 @@ static int request_selection_data(Atom selection, Atom target, Time timestamp,
 		return 0;
 	}
 
-	*type_out = type == None ? target : type;
+	*type_out = type == XCB_ATOM_NONE ? target : type;
 	*data_out = data;
 	*len_out = len;
 	return 1;
 }
 
-static int claim_selection(Atom selection, ClipBuffer *buf, Time timestamp)
+static xcb_window_t selection_owner(xcb_atom_t selection)
 {
-	XSetSelectionOwner(dpy, selection, owner_window, timestamp);
-	XFlush(dpy);
+	xcb_get_selection_owner_cookie_t ck;
+	xcb_get_selection_owner_reply_t *rep;
+	xcb_window_t owner;
 
-	if (XGetSelectionOwner(dpy, selection) != owner_window) {
+	ck = xcb_get_selection_owner(xc, selection);
+	rep = xcb_get_selection_owner_reply(xc, ck, NULL);
+	owner = rep ? rep->owner : 0;
+	free(rep);
+	return owner;
+}
+
+static int claim_selection(xcb_atom_t selection, ClipBuffer *buf,
+			   xcb_timestamp_t timestamp)
+{
+	xcb_set_selection_owner(xc, owner_window, selection, timestamp);
+	xcb_flush(xc);
+
+	if (selection_owner(selection) != owner_window) {
 		buf->owns = 0;
 		debug_log("failed to own %s", debug_selection_name(selection));
 		return 0;
@@ -370,44 +396,46 @@ static int claim_selection(Atom selection, ClipBuffer *buf, Time timestamp)
 	return 1;
 }
 
-static int capture_selection(Atom selection, ClipBuffer *buf, Time timestamp,
-			     int claim_after_capture)
+static int capture_selection(xcb_atom_t selection, ClipBuffer *buf,
+			     xcb_timestamp_t timestamp, int claim_after_capture)
 {
-	Atom *targets = NULL;
-	unsigned long target_count = 0;
-	Atom target, type;
+	xcb_atom_t *targets = NULL;
+	size_t target_count = 0;
+	xcb_atom_t target, type;
 	unsigned char *data = NULL;
 	size_t size = 0;
-	Atom fallbacks[6];
+	xcb_atom_t fallbacks[6];
 	size_t i;
 	int ok = 0;
 
 	debug_log("capturing %s", debug_selection_name(selection));
 
-	if (XGetSelectionOwner(dpy, selection) == owner_window)
+	if (selection_owner(selection) == owner_window)
 		return 1;
 
-	target = None;
+	target = XCB_ATOM_NONE;
 	if (query_targets(selection, timestamp, &targets, &target_count))
 		target = choose_preferred_target(targets, target_count);
 	wfree(targets);
 
-	if (target != None)
-		ok = request_selection_data(selection, target, timestamp, &type, &data, &size);
+	if (target != XCB_ATOM_NONE)
+		ok = request_selection_data(selection, target, timestamp,
+					    &type, &data, &size);
 
 	if (!ok) {
 		fallbacks[0] = atom_png;
 		fallbacks[1] = atom_jpeg;
 		fallbacks[2] = atom_utf8;
-		fallbacks[3] = XA_STRING;
+		fallbacks[3] = XCB_ATOM_STRING;
 		fallbacks[4] = atom_text;
 		fallbacks[5] = atom_compound_text;
 
 		for (i = 0; i < sizeof(fallbacks) / sizeof(fallbacks[0]); i++) {
 			if (fallbacks[i] == target)
 				continue;
-			if (request_selection_data(selection, fallbacks[i], timestamp,
-						   &type, &data, &size)) {
+			if (request_selection_data(selection, fallbacks[i],
+						   timestamp, &type, &data,
+						   &size)) {
 				ok = 1;
 				break;
 			}
@@ -415,7 +443,8 @@ static int capture_selection(Atom selection, ClipBuffer *buf, Time timestamp,
 	}
 
 	if (!ok) {
-		debug_log("capture failed for %s", debug_selection_name(selection));
+		debug_log("capture failed for %s",
+			  debug_selection_name(selection));
 		if (buffer_has_payload(buf))
 			claim_selection(selection, buf, timestamp);
 		return 0;
@@ -425,7 +454,7 @@ static int capture_selection(Atom selection, ClipBuffer *buf, Time timestamp,
 	buf->kind = CONTENT_CAPTURED;
 	buf->data = data;
 	buf->size = size;
-	buf->type = type == None ? target : type;
+	buf->type = type == XCB_ATOM_NONE ? target : type;
 	if (verbose) {
 		char *type_name = debug_atom_name(buf->type);
 		debug_log("captured %s: %zu bytes as %s",
@@ -437,7 +466,8 @@ static int capture_selection(Atom selection, ClipBuffer *buf, Time timestamp,
 	} else {
 		buf->owns = 0;
 		buf->timestamp = timestamp;
-		debug_log("cached %s without owning it", debug_selection_name(selection));
+		debug_log("cached %s without owning it",
+			  debug_selection_name(selection));
 	}
 	return 1;
 }
@@ -457,8 +487,8 @@ static int copy_captured_payload(ClipBuffer *dst, const ClipBuffer *src)
 	return 1;
 }
 
-static int mirror_primary_to_clipboard(Time timestamp, const char *reason,
-				       int images_only)
+static int mirror_primary_to_clipboard(xcb_timestamp_t timestamp,
+				       const char *reason, int images_only)
 {
 	if (images_only && !is_image_atom(primary_buffer.type))
 		return 0;
@@ -470,7 +500,8 @@ static int mirror_primary_to_clipboard(Time timestamp, const char *reason,
 	return claim_selection(atom_clipboard, &clipboard_buffer, timestamp);
 }
 
-static int mirror_clipboard_text_to_primary(Time timestamp, const char *reason)
+static int mirror_clipboard_text_to_primary(xcb_timestamp_t timestamp,
+					    const char *reason)
 {
 	if (!is_text_atom(clipboard_buffer.type))
 		return 0;
@@ -484,11 +515,11 @@ static int mirror_clipboard_text_to_primary(Time timestamp, const char *reason)
 	return 1;
 }
 
-static void add_atom_unique(Atom *atoms, int *count, Atom atom)
+static void add_atom_unique(xcb_atom_t *atoms, int *count, xcb_atom_t atom)
 {
 	int i;
 
-	if (atom == None)
+	if (atom == XCB_ATOM_NONE)
 		return;
 	for (i = 0; i < *count; i++) {
 		if (atoms[i] == atom)
@@ -497,7 +528,7 @@ static void add_atom_unique(Atom *atoms, int *count, Atom atom)
 	atoms[(*count)++] = atom;
 }
 
-static int make_targets(const ClipBuffer *buf, Atom *atoms)
+static int make_targets(const ClipBuffer *buf, xcb_atom_t *atoms)
 {
 	int count = 0;
 
@@ -507,7 +538,7 @@ static int make_targets(const ClipBuffer *buf, Atom *atoms)
 		add_atom_unique(atoms, &count, buf->type);
 		add_atom_unique(atoms, &count, atom_uri_list);
 		add_atom_unique(atoms, &count, atom_utf8);
-		add_atom_unique(atoms, &count, XA_STRING);
+		add_atom_unique(atoms, &count, XCB_ATOM_STRING);
 		add_atom_unique(atoms, &count, atom_text_plain);
 		add_atom_unique(atoms, &count, atom_text_plain_utf8);
 		return count;
@@ -517,7 +548,7 @@ static int make_targets(const ClipBuffer *buf, Atom *atoms)
 		add_atom_unique(atoms, &count, buf->type);
 		if (is_text_atom(buf->type)) {
 			add_atom_unique(atoms, &count, atom_utf8);
-			add_atom_unique(atoms, &count, XA_STRING);
+			add_atom_unique(atoms, &count, XCB_ATOM_STRING);
 			add_atom_unique(atoms, &count, atom_text);
 			add_atom_unique(atoms, &count, atom_text_plain);
 			add_atom_unique(atoms, &count, atom_text_plain_utf8);
@@ -527,9 +558,9 @@ static int make_targets(const ClipBuffer *buf, Atom *atoms)
 	return count;
 }
 
-static int payload_for_request(ClipBuffer *buf, Atom target,
+static int payload_for_request(ClipBuffer *buf, xcb_atom_t target,
 			       const unsigned char **data, size_t *size,
-			       Atom *type)
+			       xcb_atom_t *type)
 {
 	if (!buffer_has_payload(buf))
 		return 0;
@@ -550,14 +581,16 @@ static int payload_for_request(ClipBuffer *buf, Atom target,
 		if (is_text_atom(target) && buf->path) {
 			*data = (const unsigned char *)buf->path;
 			*size = strlen(buf->path);
-			*type = target == XA_STRING ? XA_STRING : target;
+			*type = target == XCB_ATOM_STRING ?
+				XCB_ATOM_STRING : target;
 			return 1;
 		}
 		return 0;
 	}
 
 	if (buf->kind == CONTENT_CAPTURED) {
-		if (target == buf->type || (is_text_atom(target) && is_text_atom(buf->type))) {
+		if (target == buf->type ||
+		    (is_text_atom(target) && is_text_atom(buf->type))) {
 			*data = buf->data;
 			*size = buf->size;
 			*type = target == buf->type ? buf->type : target;
@@ -568,25 +601,36 @@ static int payload_for_request(ClipBuffer *buf, Atom target,
 	return 0;
 }
 
-static void send_selection_notify(XSelectionRequestEvent *req, Atom property)
+static void send_selection_notify(xcb_selection_request_event_t *req,
+				 xcb_atom_t property)
 {
-	WXSendSelectionNotify(dpy, req, property);
+	xcb_selection_notify_event_t ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = XCB_SELECTION_NOTIFY;
+	ev.time = req->time;
+	ev.requestor = req->requestor;
+	ev.selection = req->selection;
+	ev.target = req->target;
+	ev.property = property;
+	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
+	xcb_flush(xc);
 }
 
-static void handle_selection_request(XSelectionRequestEvent *req)
+static void handle_selection_request(xcb_selection_request_event_t *req)
 {
 	ClipBuffer *buf;
-	Atom property, targets[12], type;
+	xcb_atom_t property, targets[12], type;
 	const unsigned char *data;
 	size_t size;
 	int count;
 
-	property = req->property == None ? req->target : req->property;
+	property = req->property == XCB_ATOM_NONE ? req->target : req->property;
 	if (verbose) {
 		char *target_name = debug_atom_name(req->target);
-		debug_log("selection request: %s target=%s requestor=0x%lx",
+		debug_log("selection request: %s target=%s requestor=0x%x",
 			  debug_selection_name(req->selection), target_name,
-			  (unsigned long)req->requestor);
+			  (unsigned int)req->requestor);
 		wfree(target_name);
 	}
 	buf = NULL;
@@ -596,42 +640,42 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 		buf = &primary_buffer;
 
 	if (!buf || !buf->owns || !buffer_has_payload(buf)) {
-		send_selection_notify(req, None);
+		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
 	if (req->target == atom_targets) {
 		count = make_targets(buf, targets);
-		XChangeProperty(dpy, req->requestor, property, XA_ATOM, 32,
-				PropModeReplace, (unsigned char *)targets, count);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+				    property, XCB_ATOM_ATOM, 32, count, targets);
 		send_selection_notify(req, property);
 		return;
 	}
 
 	if (!payload_for_request(buf, req->target, &data, &size, &type)) {
-		send_selection_notify(req, None);
+		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
 	if (size > CLIP_DEFAULT_DIRECT_LIMIT) {
-		if (!clip_incr_send_start(dpy, &incr, req, atom_incr, type,
+		if (!clip_incr_send_start(xc, &incr, req, atom_incr, type,
 					   data, size, CLIP_DEFAULT_CHUNK_SIZE)) {
-			send_selection_notify(req, None);
+			send_selection_notify(req, XCB_ATOM_NONE);
 			return;
 		}
 		incr_source = buf;
-		debug_log("starting INCR transfer to 0x%lx: %zu bytes",
-			  (unsigned long)req->requestor, size);
+		debug_log("starting INCR transfer to 0x%x: %zu bytes",
+			  (unsigned int)req->requestor, size);
 		send_selection_notify(req, property);
 		return;
 	}
 
-	XChangeProperty(dpy, req->requestor, property, type, 8,
-			PropModeReplace, data, (int)size);
+	xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+			    property, type, 8, size, data);
 	send_selection_notify(req, property);
 }
 
-static void handle_selection_clear(XSelectionClearEvent *ev)
+static void handle_selection_clear(xcb_selection_clear_event_t *ev)
 {
 	ClipBuffer *buf;
 
@@ -648,30 +692,31 @@ static void handle_selection_clear(XSelectionClearEvent *ev)
 		clear_buffer(buf);
 }
 
-static void handle_property_notify(XPropertyEvent *ev)
+static void handle_property_notify(xcb_property_notify_event_t *ev)
 {
-	if (clip_incr_send_property_notify(dpy, &incr, ev)) {
+	if (clip_incr_send_property_notify(xc, &incr, ev)) {
 		if (incr.active)
-			debug_log("sent INCR chunk to 0x%lx: %zu/%zu bytes",
-				  (unsigned long)incr.requestor, incr.offset, incr.size);
+			debug_log("sent INCR chunk to 0x%x: %zu/%zu bytes",
+				  (unsigned int)incr.requestor, incr.offset,
+				  incr.size);
 		else
 			incr_source = NULL;
 	}
 }
 
-static void handle_destroy_notify(XDestroyWindowEvent *ev)
+static void handle_destroy_notify(xcb_destroy_notify_event_t *ev)
 {
-	if (clip_incr_send_destroy_notify(dpy, &incr, ev)) {
-		debug_log("cancelled INCR transfer: requestor 0x%lx was destroyed",
-			  (unsigned long)ev->window);
+	if (clip_incr_send_destroy_notify(xc, &incr, ev)) {
+		debug_log("cancelled INCR transfer: requestor 0x%x was destroyed",
+			  (unsigned int)ev->window);
 		incr_source = NULL;
 	}
 }
 
-static void handle_selection_change(XFixesSelectionNotifyEvent *ev)
+static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 {
 	ClipBuffer *buf;
-	Window source_owner, clipboard_owner;
+	xcb_window_t source_owner, clipboard_owner;
 	int captured;
 
 	if (ev->selection == atom_clipboard)
@@ -684,12 +729,14 @@ static void handle_selection_change(XFixesSelectionNotifyEvent *ev)
 	if (ev->owner == owner_window)
 		return;
 
-	debug_log("selection changed: %s owner=0x%lx",
-		  debug_selection_name(ev->selection), (unsigned long)ev->owner);
+	debug_log("selection changed: %s owner=0x%x",
+		  debug_selection_name(ev->selection),
+		  (unsigned int)ev->owner);
 	buf->owns = 0;
-	if (ev->owner == None) {
+	if (ev->owner == 0) {
 		if (ev->selection == atom_clipboard && !buffer_has_payload(buf) &&
-		    mirror_primary_to_clipboard(ev->timestamp, "clipboard owner cleared", 1))
+		    mirror_primary_to_clipboard(ev->timestamp,
+						"clipboard owner cleared", 1))
 			return;
 		if (buffer_has_payload(buf))
 			claim_selection(ev->selection, buf, ev->timestamp);
@@ -701,16 +748,18 @@ static void handle_selection_change(XFixesSelectionNotifyEvent *ev)
 		captured = capture_selection(ev->selection, buf, ev->timestamp, 0);
 		if (!captured)
 			return;
-		clipboard_owner = XGetSelectionOwner(dpy, atom_clipboard);
+		clipboard_owner = selection_owner(atom_clipboard);
 		if (clipboard_owner == source_owner) {
-			mirror_primary_to_clipboard(ev->timestamp, "same source owner", 0);
-		} else if (clipboard_owner == None) {
-			mirror_primary_to_clipboard(ev->timestamp, "clipboard empty", 1);
+			mirror_primary_to_clipboard(ev->timestamp,
+						    "same source owner", 0);
+		} else if (clipboard_owner == 0) {
+			mirror_primary_to_clipboard(ev->timestamp,
+						    "clipboard empty", 1);
 		}
 	} else {
 		captured = capture_selection(ev->selection, buf, ev->timestamp, 1);
 		if (captured) {
-			Window primary_owner = XGetSelectionOwner(dpy, atom_primary);
+			xcb_window_t primary_owner = selection_owner(atom_primary);
 
 			if (primary_owner == source_owner)
 				mirror_clipboard_text_to_primary(ev->timestamp,
@@ -719,26 +768,27 @@ static void handle_selection_change(XFixesSelectionNotifyEvent *ev)
 	}
 }
 
-static void handle_x_event(XEvent *ev)
+static void handle_x_event(xcb_generic_event_t *ev)
 {
-	if (run_clipboard &&
-	    ev->type == xfixes_event_base + XFixesSelectionNotify) {
-		handle_selection_change((XFixesSelectionNotifyEvent *)ev);
+	uint8_t rt = ev->response_type & 0x7f;
+
+	if (run_clipboard && rt == xfixes_first_event + XCB_XFIXES_SELECTION_NOTIFY) {
+		handle_selection_change((xcb_xfixes_selection_notify_event_t *)ev);
 		return;
 	}
 
-	switch (ev->type) {
-	case SelectionRequest:
-		handle_selection_request(&ev->xselectionrequest);
+	switch (rt) {
+	case XCB_SELECTION_REQUEST:
+		handle_selection_request((xcb_selection_request_event_t *)ev);
 		break;
-	case SelectionClear:
-		handle_selection_clear(&ev->xselectionclear);
+	case XCB_SELECTION_CLEAR:
+		handle_selection_clear((xcb_selection_clear_event_t *)ev);
 		break;
-	case PropertyNotify:
-		handle_property_notify(&ev->xproperty);
+	case XCB_PROPERTY_NOTIFY:
+		handle_property_notify((xcb_property_notify_event_t *)ev);
 		break;
-	case DestroyNotify:
-		handle_destroy_notify(&ev->xdestroywindow);
+	case XCB_DESTROY_NOTIFY:
+		handle_destroy_notify((xcb_destroy_notify_event_t *)ev);
 		break;
 	default:
 		break;
@@ -825,7 +875,8 @@ static int read_file_bounded(const char *path, unsigned char **data_out,
 	return 1;
 }
 
-static Atom detect_image_target(const char *path, const unsigned char *data, size_t size)
+static xcb_atom_t detect_image_target(const char *path,
+				      const unsigned char *data, size_t size)
 {
 	const char *ext;
 	static const unsigned char png_sig[8] = {
@@ -839,19 +890,19 @@ static Atom detect_image_target(const char *path, const unsigned char *data, siz
 
 	ext = strrchr(path, '.');
 	if (!ext)
-		return None;
+		return XCB_ATOM_NONE;
 	if (strcasecmp(ext, ".png") == 0)
 		return atom_png;
 	if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)
 		return atom_jpeg;
-	return None;
+	return XCB_ATOM_NONE;
 }
 
 static int publish_screenshot(const char *path)
 {
 	unsigned char *data = NULL;
 	size_t size = 0;
-	Atom image_type;
+	xcb_atom_t image_type;
 
 	debug_log("publishing screenshot: %s", path ? path : "");
 
@@ -864,10 +915,11 @@ static int publish_screenshot(const char *path)
 	image_type = detect_image_target(path, data, size);
 	if (verbose) {
 		char *type_name = debug_atom_name(image_type);
-		debug_log("loaded screenshot: %zu bytes, image target=%s", size, type_name);
+		debug_log("loaded screenshot: %zu bytes, image target=%s",
+			  size, type_name);
 		wfree(type_name);
 	}
-	if (image_type == None) {
+	if (image_type == XCB_ATOM_NONE) {
 		wfree(data);
 		data = NULL;
 		size = 0;
@@ -881,7 +933,8 @@ static int publish_screenshot(const char *path)
 	clipboard_buffer.path = wstrdup(path);
 	clipboard_buffer.uri = file_uri_from_path(path);
 
-	return claim_selection(atom_clipboard, &clipboard_buffer, CurrentTime);
+	return claim_selection(atom_clipboard, &clipboard_buffer,
+			       XCB_TIME_CURRENT_TIME);
 }
 
 static char *screenshot_path_from_event(const char *body)
@@ -962,71 +1015,128 @@ static int handle_ipc_frame(int fd)
 	return 1;
 }
 
+static void intern_atoms(void)
+{
+	struct {
+		const char *name;
+		xcb_atom_t *out;
+	} list[] = {
+		{ "CLIPBOARD",                   &atom_clipboard },
+		{ "TARGETS",                     &atom_targets },
+		{ "INCR",                        &atom_incr },
+		{ "UTF8_STRING",                 &atom_utf8 },
+		{ "TEXT",                        &atom_text },
+		{ "COMPOUND_TEXT",               &atom_compound_text },
+		{ "image/png",                   &atom_png },
+		{ "image/jpeg",                  &atom_jpeg },
+		{ "text/uri-list",               &atom_uri_list },
+		{ "text/plain",                  &atom_text_plain },
+		{ "text/plain;charset=utf-8",    &atom_text_plain_utf8 },
+		{ "WMCLIPD_SELECTION",           &atom_wmclipd_property },
+	};
+	xcb_intern_atom_cookie_t cookies[sizeof(list) / sizeof(list[0])];
+	xcb_intern_atom_reply_t *rep;
+	size_t i;
+
+	for (i = 0; i < sizeof(list) / sizeof(list[0]); i++)
+		cookies[i] = xcb_intern_atom(xc, 0,
+					     strlen(list[i].name),
+					     list[i].name);
+
+	for (i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
+		rep = xcb_intern_atom_reply(xc, cookies[i], NULL);
+		if (rep) {
+			*list[i].out = rep->atom;
+			free(rep);
+		}
+	}
+
+	atom_primary = XCB_ATOM_PRIMARY;
+}
+
 static int init_x11(void)
 {
-	dpy = XOpenDisplay(NULL);
-	if (!dpy) {
+	int screen_num;
+	xcb_screen_iterator_t iter;
+	xcb_screen_t *screen;
+	uint32_t mask;
+
+	xc = xcb_connect(NULL, &screen_num);
+	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "%s: cannot open X display\n", prog);
+		xcb_disconnect(xc);
+		xc = NULL;
 		return 0;
 	}
 
-	XSetErrorHandler(ignore_x_errors);
+	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
+	for (; screen_num > 0; screen_num--)
+		xcb_screen_next(&iter);
+	screen = iter.data;
+	root_window = screen->root;
 
-	atom_clipboard = XInternAtom(dpy, "CLIPBOARD", False);
-	atom_primary = XA_PRIMARY;
-	atom_targets = XInternAtom(dpy, "TARGETS", False);
-	atom_incr = XInternAtom(dpy, "INCR", False);
-	atom_utf8 = XInternAtom(dpy, "UTF8_STRING", False);
-	atom_text = XInternAtom(dpy, "TEXT", False);
-	atom_compound_text = XInternAtom(dpy, "COMPOUND_TEXT", False);
-	atom_png = XInternAtom(dpy, "image/png", False);
-	atom_jpeg = XInternAtom(dpy, "image/jpeg", False);
-	atom_uri_list = XInternAtom(dpy, "text/uri-list", False);
-	atom_text_plain = XInternAtom(dpy, "text/plain", False);
-	atom_text_plain_utf8 = XInternAtom(dpy, "text/plain;charset=utf-8", False);
-	atom_wmclipd_property = XInternAtom(dpy, "WMCLIPD_SELECTION", False);
+	intern_atoms();
 
-	owner_window = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-					   -1, -1, 1, 1, 0, 0, 0);
-	XSelectInput(dpy, owner_window, PropertyChangeMask);
-	XFlush(dpy);
-	debug_log("opened X display %s, owner window=0x%lx",
-		  DisplayString(dpy), (unsigned long)owner_window);
+	owner_window = xcb_generate_id(xc);
+	xcb_create_window(xc, XCB_COPY_FROM_PARENT, owner_window, root_window,
+			 -1, -1, 1, 1, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+			 XCB_COPY_FROM_PARENT, 0, NULL);
+	mask = XCB_EVENT_MASK_PROPERTY_CHANGE;
+	xcb_change_window_attributes(xc, owner_window, XCB_CW_EVENT_MASK,
+				     &mask);
+	xcb_flush(xc);
+	debug_log("opened X display, owner window=0x%x",
+		  (unsigned int)owner_window);
 	return 1;
 }
 
 static int init_clipboard_monitor(void)
 {
-	int error_base;
-	unsigned long mask;
-	Window clipboard_owner;
-	Window primary_owner;
+	xcb_xfixes_query_version_cookie_t vck;
+	xcb_xfixes_query_version_reply_t *vrep;
+	const xcb_query_extension_reply_t *ext;
+	uint32_t mask;
+	xcb_window_t clipboard_owner;
+	xcb_window_t primary_owner;
 
-	if (!XFixesQueryExtension(dpy, &xfixes_event_base, &error_base)) {
+	ext = xcb_get_extension_data(xc, &xcb_xfixes_id);
+	if (!ext || !ext->present) {
 		fprintf(stderr, "%s: XFixes extension is required for --clipboard\n", prog);
 		return 0;
 	}
+	xfixes_first_event = ext->first_event;
 
-	mask = XFixesSetSelectionOwnerNotifyMask |
-	       XFixesSelectionWindowDestroyNotifyMask |
-	       XFixesSelectionClientCloseNotifyMask;
+	vck = xcb_xfixes_query_version(xc, XCB_XFIXES_MAJOR_VERSION,
+				      XCB_XFIXES_MINOR_VERSION);
+	vrep = xcb_xfixes_query_version_reply(xc, vck, NULL);
+	if (!vrep) {
+		fprintf(stderr, "%s: XFixes extension is required for --clipboard\n", prog);
+		return 0;
+	}
+	free(vrep);
 
-	XFixesSelectSelectionInput(dpy, DefaultRootWindow(dpy), atom_clipboard, mask);
-	XFixesSelectSelectionInput(dpy, DefaultRootWindow(dpy), atom_primary, mask);
+	mask = XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER |
+	       XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY |
+	       XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE;
 
-	clipboard_owner = XGetSelectionOwner(dpy, atom_clipboard);
-	primary_owner = XGetSelectionOwner(dpy, atom_primary);
+	xcb_xfixes_select_selection_input(xc, root_window, atom_clipboard, mask);
+	xcb_xfixes_select_selection_input(xc, root_window, atom_primary, mask);
 
-	if (clipboard_owner != None)
-		capture_selection(atom_clipboard, &clipboard_buffer, CurrentTime, 1);
-	if (primary_owner != None &&
-	    capture_selection(atom_primary, &primary_buffer, CurrentTime, 0) &&
-	    clipboard_owner == None) {
-		mirror_primary_to_clipboard(CurrentTime,
+	clipboard_owner = selection_owner(atom_clipboard);
+	primary_owner = selection_owner(atom_primary);
+
+	if (clipboard_owner != 0)
+		capture_selection(atom_clipboard, &clipboard_buffer,
+				  XCB_TIME_CURRENT_TIME, 1);
+	if (primary_owner != 0 &&
+	    capture_selection(atom_primary, &primary_buffer,
+			      XCB_TIME_CURRENT_TIME, 0) &&
+	    clipboard_owner == 0) {
+		mirror_primary_to_clipboard(XCB_TIME_CURRENT_TIME,
 					    "clipboard empty at startup", 1);
 	}
 
-	XFlush(dpy);
+	xcb_flush(xc);
 	debug_log("monitoring CLIPBOARD and PRIMARY with XFixes");
 	return 1;
 }
@@ -1085,7 +1195,7 @@ int main(int argc, char **argv)
 	int ipc_fd = -1;
 	int parse_rc, nfds, x_index, ipc_index, rc, timeout;
 	long long next_ipc_connect = 0, now;
-	XEvent ev;
+	xcb_generic_event_t *ev;
 
 	prog = argv[0];
 	parse_rc = parse_args(argc, argv);
@@ -1108,10 +1218,12 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	while (running) {
-		while (XPending(dpy)) {
-			XNextEvent(dpy, &ev);
-			handle_x_event(&ev);
+		while ((ev = xcb_poll_for_event(xc)) != NULL) {
+			handle_x_event(ev);
+			free(ev);
 		}
+		if (xcb_connection_has_error(xc))
+			break;
 
 		now = clip_monotonic_ms();
 		if (run_screenshots && ipc_fd < 0 && now >= next_ipc_connect) {
@@ -1122,7 +1234,7 @@ int main(int argc, char **argv)
 
 		nfds = 0;
 		x_index = nfds;
-		fds[nfds].fd = ConnectionNumber(dpy);
+		fds[nfds].fd = xcb_get_file_descriptor(xc);
 		fds[nfds].events = POLLIN;
 		fds[nfds].revents = 0;
 		nfds++;
@@ -1139,7 +1251,8 @@ int main(int argc, char **argv)
 		timeout = -1;
 		if (run_screenshots && ipc_fd < 0) {
 			now = clip_monotonic_ms();
-			timeout = next_ipc_connect > now ? (int)(next_ipc_connect - now) : 0;
+			timeout = next_ipc_connect > now ?
+				(int)(next_ipc_connect - now) : 0;
 		}
 
 		rc = poll(fds, nfds, timeout);
@@ -1150,11 +1263,13 @@ int main(int argc, char **argv)
 		}
 
 		if (fds[x_index].revents & POLLIN) {
-			while (XPending(dpy)) {
-				XNextEvent(dpy, &ev);
-				handle_x_event(&ev);
+			while ((ev = xcb_poll_for_event(xc)) != NULL) {
+				handle_x_event(ev);
+				free(ev);
 			}
 		}
+		if (fds[x_index].revents & (POLLERR | POLLHUP | POLLNVAL))
+			break;
 
 		if (ipc_index >= 0 && fds[ipc_index].revents) {
 			if (fds[ipc_index].revents & POLLIN) {
@@ -1176,10 +1291,10 @@ int main(int argc, char **argv)
 	debug_log("stopping");
 	if (ipc_fd >= 0)
 		close(ipc_fd);
-	clip_incr_send_cancel(dpy, &incr);
+	clip_incr_send_cancel(xc, &incr);
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
-	if (dpy)
-		XCloseDisplay(dpy);
+	if (xc)
+		xcb_disconnect(xc);
 	return 0;
 }

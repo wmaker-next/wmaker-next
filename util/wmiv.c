@@ -17,9 +17,12 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
-#include <WINGs/WINGsP.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_icccm.h>
+#include <xcb/randr.h>
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-x11.h>
+#include <X11/keysym.h>
 #include <wraster.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,9 +33,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
+#include <poll.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -55,15 +56,9 @@
 #include <archive_entry.h>
 #endif
 
-#include <X11/Xlib-xcb.h>
-#include <xcb/randr.h>
 #include <cairo-xcb.h>
 
-#ifdef USE_XPM
-extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixmap *, void *);
-/*	This is the icon from the eog project git.gnome.org/browse/eog */
-#include "wmiv.h"
-#endif
+#include "wmiv_icon.h"
 
 #ifdef DEBUG
 #define WMIV_DEBUG 1
@@ -78,8 +73,21 @@ extern int XpmCreatePixmapFromData(Display *, Drawable, char **, Pixmap *, Pixma
 
 #define CLIPBOARD_PASTE_TIMEOUT_MS 5000
 
-Display *dpy;
-Window win;
+/* Bool/True/False were provided by <X11/Xlib.h> via <WINGs/WINGsP.h>;
+ * with the xcb port only <X11/X.h> (via <wraster.h>) is pulled in, which
+ * does not define them, so provide the same definitions here */
+typedef int Bool;
+#ifndef True
+#define True 1
+#endif
+#ifndef False
+#define False 0
+#endif
+
+xcb_connection_t *xc;
+int screen_num;
+xcb_window_t root_window;
+xcb_window_t win;
 RContext *ctx;
 RImage *img;
 Pixmap pix;
@@ -92,16 +100,16 @@ static int drag_threshold = 5; /* pixels */
 /* XDND protocol atoms, interned once in wmiv_xdnd_init_atoms() */
 #define WMIV_XDND_VERSION 5
 #define WMIV_XDND_MAX_TYPES 64
-static Atom atom_XdndAware, atom_XdndEnter, atom_XdndPosition, atom_XdndStatus;
-static Atom atom_XdndLeave, atom_XdndDrop, atom_XdndFinished, atom_XdndSelection;
-static Atom atom_XdndTypeList, atom_XdndActionCopy;
-static Atom atom_uri_list, atom_text_plain;
+static xcb_atom_t atom_XdndAware, atom_XdndEnter, atom_XdndPosition, atom_XdndStatus;
+static xcb_atom_t atom_XdndLeave, atom_XdndDrop, atom_XdndFinished, atom_XdndSelection;
+static xcb_atom_t atom_XdndTypeList, atom_XdndActionCopy;
+static xcb_atom_t atom_uri_list, atom_text_plain;
 
 /* XDND drop-target state, updated as ClientMessages arrive */
 static struct {
-	Window source;
-	Atom   want_type;
-	int    version;
+	xcb_window_t source;
+	xcb_atom_t   want_type;
+	int          version;
 } xdnd_target;
 
 /* file:// URI for the current image, served on XdndSelection requests */
@@ -164,12 +172,25 @@ linked_list_t list;
 link_t *current_link;
 
 /* --- Clipboard/PNG + JPEG + INCR globals --- */
-static Atom clipboard_atom = None;
-static Atom targets_atom = None;
-static Atom png_atom = None;
-static Atom jpeg_atom = None;
-static Atom property_atom = None;
-static Atom incr_atom = None;
+static xcb_atom_t clipboard_atom = XCB_ATOM_NONE;
+static xcb_atom_t targets_atom = XCB_ATOM_NONE;
+static xcb_atom_t png_atom = XCB_ATOM_NONE;
+static xcb_atom_t jpeg_atom = XCB_ATOM_NONE;
+static xcb_atom_t property_atom = XCB_ATOM_NONE;
+static xcb_atom_t incr_atom = XCB_ATOM_NONE;
+
+/* --- xkbcommon-x11 keyboard mapping --- */
+static struct xkb_context *xkb_ctx;
+static struct xkb_keymap *xkb_keymap;
+static xcb_keycode_t right_keycode;
+
+/* --- Thin app-owned event queue (mirrors WINGs/wxevq.c) --- */
+typedef struct wmiv_event_queue_node {
+	xcb_generic_event_t *ev;
+	struct wmiv_event_queue_node *next;
+} wmiv_event_queue_node_t;
+static wmiv_event_queue_node_t *wmiv_q_head;
+static wmiv_event_queue_node_t *wmiv_q_tail;
 
 static unsigned char *clipboard_png_data = NULL;
 static size_t clipboard_png_size = 0;
@@ -212,71 +233,311 @@ static int wmiv_deadline_remaining_ms(const struct timespec *deadline)
 	return (int)(sec * 1000 + (nsec + 999999L) / 1000000L);
 }
 
-static int wmiv_wait_x_until(Display *disp, const struct timespec *deadline)
+/* --- Event queue (mirrors WINGs/wxevq.c, simplified for xcb-native wmiv) --- */
+
+typedef int (*wmiv_event_pred)(const xcb_generic_event_t *ev, void *arg);
+
+static void wmiv_q_pump(void)
 {
-	int remaining = wmiv_deadline_remaining_ms(deadline);
-	struct timeval timeout;
-	fd_set fdset;
-	int ready;
+	xcb_generic_event_t *ev;
 
-	if (remaining <= 0)
-		return 0;
+	/* xcb_poll_for_event does not flush the output buffer, so flush
+	 * explicitly before polling, matching what xcb_wait_for_event does
+	 * internally — without this, pending write requests (e.g.
+	 * xcb_configure_window from resize_window) would sit in the output
+	 * buffer and the server would never generate events in response */
+	xcb_flush(xc);
+	while ((ev = xcb_poll_for_event(xc)) != NULL) {
+		wmiv_event_queue_node_t *n = malloc(sizeof(*n));
 
-	FD_ZERO(&fdset);
-	FD_SET(ConnectionNumber(disp), &fdset);
-	timeout.tv_sec = remaining / 1000;
-	timeout.tv_usec = (remaining % 1000) * 1000;
-	XFlush(disp);
-
-	ready = select(ConnectionNumber(disp) + 1, &fdset, NULL, NULL, &timeout);
-	if (ready < 0) {
-		if (errno == EINTR)
-			return 1;
-		return -1;
+		if (!n) {
+			fprintf(stderr, "wmiv: out of memory in event queue\n");
+			exit(EXIT_FAILURE);
+		}
+		n->ev = ev;
+		n->next = NULL;
+		if (wmiv_q_tail)
+			wmiv_q_tail->next = n;
+		else
+			wmiv_q_head = n;
+		wmiv_q_tail = n;
 	}
-	return ready > 0;
 }
 
-static Bool wmiv_wait_for_matching_event_until(Display *disp, XEvent *event,
-		Bool (*predicate)(Display *, XEvent *, XPointer), XPointer arg,
-		const struct timespec *deadline)
+static xcb_generic_event_t *wmiv_q_pop_head(void)
 {
-	int ready;
+	wmiv_event_queue_node_t *n;
+	xcb_generic_event_t *ev;
+
+	n = wmiv_q_head;
+	if (!n)
+		return NULL;
+	wmiv_q_head = n->next;
+	if (!wmiv_q_head)
+		wmiv_q_tail = NULL;
+	ev = n->ev;
+	free(n);
+	return ev;
+}
+
+static xcb_generic_event_t *wmiv_q_take_if(wmiv_event_pred pred, void *arg)
+{
+	wmiv_event_queue_node_t **pp;
+
+	for (pp = &wmiv_q_head; *pp; pp = &(*pp)->next) {
+		if (pred((*pp)->ev, arg)) {
+			wmiv_event_queue_node_t *n = *pp;
+			xcb_generic_event_t *ev = n->ev;
+
+			*pp = n->next;
+			if (n == wmiv_q_tail) {
+				wmiv_event_queue_node_t *t = wmiv_q_head;
+
+				while (t && t->next)
+					t = t->next;
+				wmiv_q_tail = t;
+			}
+			free(n);
+			return ev;
+		}
+	}
+	return NULL;
+}
+
+static xcb_generic_event_t *wmiv_q_wait(int timeout_ms)
+{
+	struct pollfd pfd;
+	int rc;
 
 	for (;;) {
-		if (XCheckIfEvent(disp, event, predicate, arg))
-			return True;
+		wmiv_q_pump();
+		if (wmiv_q_head)
+			return wmiv_q_pop_head();
+		if (xcb_connection_has_error(xc))
+			return NULL;
 
-		ready = wmiv_wait_x_until(disp, deadline);
-		if (ready <= 0)
-			return False;
+		pfd.fd = xcb_get_file_descriptor(xc);
+
+		pfd.events = POLLIN;
+		pfd.revents = 0;
+		rc = poll(&pfd, 1, timeout_ms);
+		if (rc < 0) {
+			if (errno == EINTR)
+				continue;
+			return NULL;
+		}
+		if (rc == 0)
+			return NULL;
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+			return NULL;
 	}
 }
 
-static Bool wmiv_wait_for_matching_event(Display *disp, XEvent *event,
-		Bool (*predicate)(Display *, XEvent *, XPointer), XPointer arg,
-		int timeout_ms)
+static xcb_generic_event_t *wmiv_q_match(wmiv_event_pred pred, void *arg,
+					 int timeout_ms)
 {
 	struct timespec deadline;
 
 	wmiv_set_deadline(&deadline, timeout_ms);
-	return wmiv_wait_for_matching_event_until(disp, event, predicate, arg, &deadline);
+
+	for (;;) {
+		wmiv_q_pump();
+
+		xcb_generic_event_t *ev = wmiv_q_take_if(pred, arg);
+
+		if (ev)
+			return ev;
+
+		if (xcb_connection_has_error(xc))
+			return NULL;
+
+		int remaining = wmiv_deadline_remaining_ms(&deadline);
+
+		if (remaining <= 0)
+			return NULL;
+
+		struct pollfd pfd;
+
+		pfd.fd = xcb_get_file_descriptor(xc);
+
+		pfd.events = POLLIN;
+		pfd.revents = 0;
+		int rc = poll(&pfd, 1, remaining);
+
+		if (rc < 0) {
+			if (errno == EINTR)
+				continue;
+			return NULL;
+		}
+		if (rc == 0)
+			return NULL;
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+			return NULL;
+	}
+}
+
+static void wmiv_q_put_back(xcb_generic_event_t *ev)
+{
+	wmiv_event_queue_node_t *n = malloc(sizeof(*n));
+
+	if (!n) {
+		fprintf(stderr, "wmiv: out of memory in event queue\n");
+		exit(EXIT_FAILURE);
+	}
+	n->ev = ev;
+	n->next = wmiv_q_head;
+	wmiv_q_head = n;
+	if (!wmiv_q_tail)
+		wmiv_q_tail = n;
+}
+
+static void wmiv_q_drain_to(uint8_t event_type)
+{
+	wmiv_event_queue_node_t *last_match = NULL;
+	wmiv_event_queue_node_t *p;
+
+	wmiv_q_pump();
+
+	for (p = wmiv_q_head; p; p = p->next) {
+		if ((p->ev->response_type & 0x7f) == event_type)
+			last_match = p;
+	}
+	if (!last_match)
+		return;
+
+	p = wmiv_q_head;
+	while (p) {
+		wmiv_event_queue_node_t *n = p;
+
+		p = p->next;
+		free(n->ev);
+		free(n);
+		if (n == last_match)
+			break;
+	}
+	wmiv_q_head = p;
+	if (!p)
+		wmiv_q_tail = NULL;
+	else {
+		wmiv_event_queue_node_t *t = p;
+
+		while (t->next)
+			t = t->next;
+		wmiv_q_tail = t;
+	}
+}
+
+/* xcb helpers replacing common Xlib one-liners */
+static void resize_window(xcb_window_t w, int width, int height)
+{
+	uint32_t values[2] = { (uint32_t)width, (uint32_t)height };
+
+	xcb_configure_window(xc, w,
+			     XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+			     values);
+}
+
+static void clear_window(xcb_window_t w)
+{
+	xcb_clear_area(xc, 0, w, 0, 0, 0, 0);
+}
+
+static void send_client_message(xcb_window_t dest, uint32_t mask,
+	xcb_window_t about, xcb_atom_t type,
+	uint32_t l0, uint32_t l1, uint32_t l2, uint32_t l3, uint32_t l4)
+{
+	xcb_client_message_event_t ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = XCB_CLIENT_MESSAGE;
+	ev.format = 32;
+	ev.window = about;
+	ev.type = type;
+	ev.data.data32[0] = l0;
+	ev.data.data32[1] = l1;
+	ev.data.data32[2] = l2;
+	ev.data.data32[3] = l3;
+	ev.data.data32[4] = l4;
+	xcb_send_event(xc, 0, dest, mask, (const char *)&ev);
+	xcb_flush(xc);
+}
+
+/* Additional atoms interned at startup */
+static xcb_atom_t atom_net_frame_extents;
+static xcb_atom_t atom_net_wm_state;
+static xcb_atom_t atom_net_wm_state_fullscreen;
+static xcb_atom_t atom_wm_protocols;
+static xcb_atom_t atom_wm_delete_window;
+static xcb_atom_t atom_utf8_string;
+static xcb_atom_t atom_net_wm_icon;
+
+static xcb_atom_t intern_atom(const char *name)
+{
+	xcb_intern_atom_cookie_t ck;
+	xcb_intern_atom_reply_t *rep;
+	xcb_atom_t atom;
+
+	ck = xcb_intern_atom(xc, 0, strlen(name), name);
+	rep = xcb_intern_atom_reply(xc, ck, NULL);
+
+	atom = rep ? rep->atom : XCB_ATOM_NONE;
+	free(rep);
+	return atom;
+}
+
+static Bool get_cardinal(xcb_window_t w, xcb_atom_t prop, uint32_t *out)
+{
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	Bool ok = False;
+
+	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_CARDINAL, 0, 1);
+	rep = xcb_get_property_reply(xc, ck, NULL);
+
+	if (rep && rep->type == XCB_ATOM_CARDINAL && rep->format == 32 &&
+	    rep->value_len >= 1) {
+		*out = ((uint32_t *)xcb_get_property_value(rep))[0];
+		ok = True;
+	}
+	free(rep);
+	return ok;
+}
+
+static Bool get_cardinal_n(xcb_window_t w, xcb_atom_t prop, uint32_t *out, int n)
+{
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	Bool ok = False;
+
+	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_CARDINAL, 0, n);
+	rep = xcb_get_property_reply(xc, ck, NULL);
+
+	if (rep && rep->type == XCB_ATOM_CARDINAL && rep->format == 32 &&
+	    rep->value_len >= (uint32_t)n) {
+		memcpy(out, xcb_get_property_value(rep), sizeof(uint32_t) * n);
+
+		ok = True;
+	}
+	free(rep);
+	return ok;
 }
 
 typedef struct FrameExtentsWaitData {
-	Window window;
-	Atom atom;
+	xcb_window_t window;
+	xcb_atom_t atom;
 } FrameExtentsWaitData;
 
-static Bool frameExtentsNotifyMatches(Display *disp, XEvent *event, XPointer arg)
+static int frame_extents_notify_matches(const xcb_generic_event_t *ev, void *arg)
 {
 	FrameExtentsWaitData *wait = (FrameExtentsWaitData *)arg;
 
-	(void)disp;
-	return event->type == PropertyNotify &&
-		event->xproperty.window == wait->window &&
-		event->xproperty.atom == wait->atom &&
-		event->xproperty.state == PropertyNewValue;
+	if ((ev->response_type & 0x7f) != XCB_PROPERTY_NOTIFY)
+		return 0;
+	xcb_property_notify_event_t *pn = (xcb_property_notify_event_t *)ev;
+
+	return pn->window == wait->window &&
+	       pn->atom == wait->atom &&
+	       pn->state == XCB_PROPERTY_NEW_VALUE;
 }
 
 /*
@@ -284,28 +545,28 @@ static Bool frameExtentsNotifyMatches(Display *disp, XEvent *event, XPointer arg
 	by listening for PropertyNotify events
 	Returns 1 on success, 0 on timeout
 */
-int wait_for_frame_extents(Display *disp, Window win, int timeout_ms) {
-	Atom net_frame_extents = XInternAtom(disp, "_NET_FRAME_EXTENTS", False);
+int wait_for_frame_extents(xcb_window_t win_id, int timeout_ms)
+{
 	FrameExtentsWaitData wait;
-	struct timespec deadline;
-	XEvent event;
 
-	if (net_frame_extents == None)
+	if (atom_net_frame_extents == XCB_ATOM_NONE)
 		return 0;
 
-	wait.window = win;
-	wait.atom = net_frame_extents;
-	wmiv_set_deadline(&deadline, timeout_ms);
+	wait.window = win_id;
+	wait.atom = atom_net_frame_extents;
 
 	for (;;) {
 		uint32_t tmp;
 
-		if (WXGetCardinal(disp, win, net_frame_extents, &tmp))
+		if (get_cardinal(win_id, atom_net_frame_extents, &tmp))
 			return 1;
-		if (XCheckIfEvent(disp, &event, frameExtentsNotifyMatches, (XPointer)&wait))
+		xcb_generic_event_t *ev = wmiv_q_match(frame_extents_notify_matches,
+						       &wait, timeout_ms);
+		if (ev) {
+			free(ev);
 			return 1;
-		if (wmiv_wait_x_until(disp, &deadline) <= 0)
-			return 0;
+		}
+		return 0;
 	}
 }
 
@@ -313,19 +574,16 @@ int wait_for_frame_extents(Display *disp, Window win, int timeout_ms) {
 	Get the frame extents (decorations) of a window
 	Returns 1 on success, 0 on failure
 */
-int get_window_decor_size(Display *disp, Window win, FrameExtents *extents) {
+int get_window_decor_size(xcb_window_t win_id, FrameExtents *extents)
+{
 	uint32_t ext[4];
-	Atom net_frame_extents;
 
-	/* Get the atom for the _NET_FRAME_EXTENTS property */
-	net_frame_extents = XInternAtom(disp, "_NET_FRAME_EXTENTS", False);
-	if (net_frame_extents == None) {
+	if (atom_net_frame_extents == XCB_ATOM_NONE) {
 		fprintf(stderr, "Warning: _NET_FRAME_EXTENTS atom not supported\n");
 		return 0;
 	}
 
-	/* Retrieve the property value */
-	if (WXGetCardinalN(disp, win, net_frame_extents, ext, 4)) {
+	if (get_cardinal_n(win_id, atom_net_frame_extents, ext, 4)) {
 		extents->left = ext[0];
 		extents->right = ext[1];
 		extents->top = ext[2];
@@ -429,6 +687,7 @@ static void cleanup_paste_temp_dir(void)
 static Bool has_suffix_ci(const char *s, const char *suffix)
 {
 	size_t sl = strlen(s), xl = strlen(suffix);
+
 	return sl >= xl && strcasecmp(s + sl - xl, suffix) == 0;
 }
 
@@ -492,6 +751,7 @@ static char *find_image_directory_depth(const char *start_dir, int depth)
 	DIR *dir;
 	struct dirent *entry;
 	struct stat st;
+
 	char full_path[PATH_MAX];
 	int image_count = 0;
 	char *result = NULL;
@@ -548,6 +808,7 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 {
 	struct archive *a;
 	struct archive_entry *entry;
+
 	char dest_path[PATH_MAX];
 	char *buffer = NULL;
 	const size_t buffer_size = 8192;
@@ -583,11 +844,14 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 	 * cannot fill the temporary directory. */
 	const la_int64_t budget_max = (la_int64_t)256 * 1024 * 1024;
 	la_int64_t budget_used = 0;
+
 	while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
 		const char *entry_name = archive_entry_pathname(entry);
+
 		la_int64_t entry_size = archive_entry_size(entry);
 		mode_t entry_mode = archive_entry_mode(entry);
 		FILE *output_file;
+
 		la_ssize_t bytes_read;
 		int write_failed = 0;
 		int out_fd;
@@ -617,6 +881,7 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 
 		/* Create directory structure if needed */
 		char *dir_end = strrchr(dest_path, '/');
+
 		if (dir_end) {
 			*dir_end = '\0';
 			if (create_directories(dest_path) != 0) {
@@ -652,6 +917,7 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 			}
 			if (fwrite(buffer, 1, bytes_read, output_file) != (size_t)bytes_read) {
 				fprintf(stderr, "Error: short write extracting %s\n", entry_name);
+
 				write_failed = 1;
 				break;
 			}
@@ -723,11 +989,13 @@ static char *extract_archive(const char *filename)
 
 	/* Check if extraction resulted in nested directories - find the one with actual images */
 	char *image_dir = find_image_directory(temp_dir);
+
 	if (image_dir && strcmp(image_dir, temp_dir) != 0) {
 		if (WMIV_DEBUG)
 			fprintf(stderr, "Archive contains nested directories, using image directory: %s\n", image_dir);
 
 		char *result_dir = strdup(image_dir);
+
 		free(image_dir);
 		is_archive = True;
 		return result_dir;
@@ -787,12 +1055,69 @@ static void free_clipboard_data(void)
 	clipboard_jpeg_size = 0;
 }
 
+static void send_selection_notify(xcb_selection_request_event_t *req,
+				  xcb_atom_t property)
+{
+	xcb_selection_notify_event_t ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = XCB_SELECTION_NOTIFY;
+	ev.time = req->time;
+	ev.requestor = req->requestor;
+	ev.selection = req->selection;
+	ev.target = req->target;
+	ev.property = property;
+	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
+	xcb_flush(xc);
+}
+
+static xcb_window_t selection_owner(xcb_atom_t selection)
+{
+	xcb_get_selection_owner_cookie_t ck;
+	xcb_get_selection_owner_reply_t *rep;
+	xcb_window_t owner;
+
+	ck = xcb_get_selection_owner(xc, selection);
+	rep = xcb_get_selection_owner_reply(xc, ck, NULL);
+
+	owner = rep ? rep->owner : 0;
+	free(rep);
+	return owner;
+}
+
+static char *atom_name(xcb_atom_t atom)
+{
+	xcb_get_atom_name_cookie_t ck;
+	xcb_get_atom_name_reply_t *rep;
+	char *name;
+	int len;
+
+	if (atom == XCB_ATOM_NONE)
+		return NULL;
+	ck = xcb_get_atom_name(xc, atom);
+	rep = xcb_get_atom_name_reply(xc, ck, NULL);
+
+	if (!rep)
+		return NULL;
+	len = xcb_get_atom_name_name_length(rep);
+
+	name = malloc(len + 1);
+	if (name) {
+		memcpy(name, xcb_get_atom_name_name(rep), len);
+
+		name[len] = '\0';
+	}
+	free(rep);
+	return name;
+}
+
 /*
 	Called when Ctrl+C pressed: encode current image to PNG and JPEG and claim CLIPBOARD
 */
 static void copy_current_image_to_clipboard(void)
 {
-	if (!dpy || !win || !img) return;
+	if (!xc || !win || !img)
+		return;
 
 	/* free previous */
 	free_clipboard_data();
@@ -820,15 +1145,17 @@ static void copy_current_image_to_clipboard(void)
 	}
 
 	/* claim CLIPBOARD */
-	XSetSelectionOwner(dpy, clipboard_atom, win, CurrentTime);
-	if (XGetSelectionOwner(dpy, clipboard_atom) != win) {
+	xcb_set_selection_owner(xc, win, clipboard_atom, XCB_TIME_CURRENT_TIME);
+
+	if (selection_owner(clipboard_atom) != win) {
 		fprintf(stderr, "Error: failed to own clipboard selection\n");
 		free_clipboard_data();
 		we_own_clipboard = False;
 		return;
 	}
 	we_own_clipboard = True;
-	XFlush(dpy);
+	xcb_flush(xc);
+
 	if (WMIV_DEBUG)
 		fprintf(stderr, "Copied image to clipboard (PNG: %zu bytes, JPEG: %zu bytes)\n", clipboard_png_size, clipboard_jpeg_size);
 }
@@ -836,38 +1163,42 @@ static void copy_current_image_to_clipboard(void)
 /*
 	Handle SelectionRequest events: serve TARGETS and image formats (with INCR when needed)
 */
-static void handle_selection_request(XSelectionRequestEvent *req)
+static void handle_selection_request(xcb_selection_request_event_t *req)
 {
-	Atom property = req->property == None ? req->target : req->property;
-	Atom types[3];
+	xcb_atom_t property = req->property == XCB_ATOM_NONE ? req->target : req->property;
+	xcb_atom_t types[3];
 	int ntypes = 0;
 	unsigned char *data = NULL;
 	size_t size = 0;
 
 	if (WMIV_DEBUG) {
-		char *target_name = XGetAtomName(req->display, req->target);
-		char *selection_name = XGetAtomName(req->display, req->selection);
+		char *target_name = atom_name(req->target);
+		char *selection_name = atom_name(req->selection);
 
 		fprintf(stderr, "SelectionRequest received: target=%s, selection=%s\n",
 				target_name ? target_name : "unknown",
 				selection_name ? selection_name : "unknown");
-		if (target_name)
-			XFree(target_name);
-		if (selection_name)
-			XFree(selection_name);
+		free(target_name);
+		free(selection_name);
 	}
 
 	if (req->selection == atom_XdndSelection) {
 		/* serve the file:// URI prepared by initiate_file_drag() */
 		if (xdnd_drag_uri &&
 		    (req->target == atom_uri_list || req->target == atom_text_plain)) {
-			XChangeProperty(dpy, req->requestor, property, req->target, 8,
-					PropModeReplace, (unsigned char *)xdnd_drag_uri,
-					(int)strlen(xdnd_drag_uri));
-			WXSendSelectionNotify(dpy, req, property);
+			xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+					    property, req->target, 8,
+					    strlen(xdnd_drag_uri),
+					    xdnd_drag_uri);
+			send_selection_notify(req, property);
 		} else {
-			WXSendSelectionNotify(dpy, req, None);
+			send_selection_notify(req, XCB_ATOM_NONE);
 		}
+		return;
+	}
+
+	if (req->selection != clipboard_atom) {
+		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
@@ -880,9 +1211,9 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 #ifdef USE_JPEG
 		types[ntypes++] = jpeg_atom;
 #endif
-		XChangeProperty(dpy, req->requestor, property, XA_ATOM, 32, PropModeReplace,
-				(unsigned char *)types, ntypes);
-		WXSendSelectionNotify(dpy, req, property);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+				    property, XCB_ATOM_ATOM, 32, ntypes, types);
+		send_selection_notify(req, property);
 		return;
 	}
 
@@ -895,37 +1226,39 @@ static void handle_selection_request(XSelectionRequestEvent *req)
 	}
 
 	if (!data) {
-		WXSendSelectionNotify(dpy, req, None);
+		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
 	if (size > CLIP_DEFAULT_DIRECT_LIMIT) {
-		if (!clip_incr_send_start(dpy, &incr, req, incr_atom, req->target,
+		if (!clip_incr_send_start(xc, &incr, req, incr_atom, req->target,
 					   data, size, CLIP_DEFAULT_CHUNK_SIZE)) {
 			if (WMIV_DEBUG)
-				fprintf(stderr, "INCR: refusing concurrent transfer to 0x%lx\n",
-					(unsigned long)req->requestor);
-			WXSendSelectionNotify(dpy, req, None);
+				fprintf(stderr, "INCR: refusing concurrent transfer to 0x%x\n",
+					(unsigned int)req->requestor);
+			send_selection_notify(req, XCB_ATOM_NONE);
 			return;
 		}
 		if (WMIV_DEBUG)
 			fprintf(stderr, "Starting INCR for %s %zu bytes\n",
 				req->target == png_atom ? "PNG" : "JPEG", size);
-		WXSendSelectionNotify(dpy, req, property);
+		send_selection_notify(req, property);
 		return;
 	}
 
-	XChangeProperty(dpy, req->requestor, property, req->target, 8, PropModeReplace,
-			data, (int)size);
-	WXSendSelectionNotify(dpy, req, property);
+	xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+			    property, req->target, 8, size, data);
+	send_selection_notify(req, property);
 }
 
 /*
 	Called when the owner loses the selection
 */
-static void handle_selection_clear(void)
+static void handle_selection_clear(xcb_selection_clear_event_t *ev)
 {
-	clip_incr_send_cancel(dpy, &incr);
+	if (ev->selection != clipboard_atom)
+		return;
+	clip_incr_send_cancel(xc, &incr);
 	if (we_own_clipboard) {
 		we_own_clipboard = False;
 		free_clipboard_data();
@@ -933,146 +1266,134 @@ static void handle_selection_clear(void)
 }
 
 typedef struct {
-	Atom selection;
-	Atom target;
-	Atom property;
+	xcb_atom_t selection;
+	xcb_atom_t target;
+	xcb_atom_t property;
 } ClipboardSelectionWait;
 
-static Bool clipboard_selection_notify_matches(Display *display, XEvent *event, XPointer arg)
+static int clipboard_selection_notify_matches(const xcb_generic_event_t *ev, void *arg)
 {
 	ClipboardSelectionWait *wait = (ClipboardSelectionWait *)arg;
 
-	(void)display;
-	return event->type == SelectionNotify &&
-		event->xselection.selection == wait->selection &&
-		event->xselection.requestor == win &&
-		event->xselection.target == wait->target &&
-		(event->xselection.property == wait->property ||
-		 event->xselection.property == None);
+	if ((ev->response_type & 0x7f) != XCB_SELECTION_NOTIFY)
+		return 0;
+	xcb_selection_notify_event_t *sn = (xcb_selection_notify_event_t *)ev;
+
+	return sn->selection == wait->selection &&
+	       sn->requestor == win &&
+	       sn->target == wait->target &&
+	       (sn->property == wait->property || sn->property == XCB_ATOM_NONE);
 }
 
-static Bool clipboard_service_event_matches(Display *display, XEvent *event, XPointer arg)
+static int clipboard_service_event_matches(const xcb_generic_event_t *ev, void *arg)
 {
-	(void)display;
+	uint8_t rt;
+
 	(void)arg;
+	rt = ev->response_type & 0x7f;
+	if (rt == XCB_SELECTION_REQUEST || rt == XCB_SELECTION_CLEAR)
+		return 1;
+	if (rt == XCB_PROPERTY_NOTIFY && incr.active) {
+		xcb_property_notify_event_t *pn = (xcb_property_notify_event_t *)ev;
 
-	return event->type == SelectionRequest ||
-		event->type == SelectionClear ||
-		(event->type == PropertyNotify &&
-		 incr.active &&
-		 event->xproperty.window == incr.requestor &&
-		 event->xproperty.atom == incr.property &&
-		 event->xproperty.state == PropertyDelete);
+		return pn->window == incr.requestor &&
+		       pn->atom == incr.property &&
+		       pn->state == XCB_PROPERTY_DELETE;
+	}
+	return 0;
 }
 
-static void dispatch_clipboard_service_event(XEvent *event)
+static void dispatch_clipboard_service_event(xcb_generic_event_t *event)
 {
-	if (event->type == SelectionRequest) {
-		handle_selection_request(&event->xselectionrequest);
-	} else if (event->type == SelectionClear) {
-		handle_selection_clear();
-	} else if (event->type == PropertyNotify) {
-		clip_incr_send_property_notify(dpy, &incr, &event->xproperty);
+	uint8_t rt = event->response_type & 0x7f;
+
+	if (rt == XCB_SELECTION_REQUEST) {
+		handle_selection_request((xcb_selection_request_event_t *)event);
+	} else if (rt == XCB_SELECTION_CLEAR) {
+		handle_selection_clear((xcb_selection_clear_event_t *)event);
+	} else if (rt == XCB_PROPERTY_NOTIFY) {
+		clip_incr_send_property_notify(xc, &incr,
+			(xcb_property_notify_event_t *)event);
 	}
 }
 
-static int defer_clipboard_event(XEvent **events, size_t *count,
-		size_t *capacity, XEvent *event)
-{
-	XEvent *new_events;
-	size_t new_capacity;
-
-	if (*count == *capacity) {
-		new_capacity = *capacity ? *capacity * 2 : 8;
-		new_events = realloc(*events, new_capacity * sizeof(**events));
-		if (!new_events)
-			return 0;
-		*events = new_events;
-		*capacity = new_capacity;
-	}
-
-	(*events)[(*count)++] = *event;
-	return 1;
-}
-
-static void restore_clipboard_events(XEvent *events, size_t count)
-{
-	while (count > 0)
-		XPutBackEvent(dpy, &events[--count]);
-	free(events);
-}
-
-static Bool wait_for_clipboard_event(Bool (*predicate)(Display *, XEvent *, XPointer),
-		XPointer arg, XEvent *out, int timeout_ms)
+static Bool wait_for_clipboard_event(wmiv_event_pred pred, void *arg,
+				     xcb_generic_event_t **out, int timeout_ms)
 {
 	struct timespec deadline;
-	XEvent service;
-	XEvent ignored;
-	XEvent *deferred = NULL;
-	size_t deferred_count = 0;
-	size_t deferred_capacity = 0;
-	int ready;
 
 	wmiv_set_deadline(&deadline, timeout_ms);
 	for (;;) {
-		if (XCheckIfEvent(dpy, out, predicate, arg)) {
-			restore_clipboard_events(deferred, deferred_count);
+		wmiv_q_pump();
+
+		/* dispatch service events so we keep answering requestors */
+		for (;;) {
+			xcb_generic_event_t *svc = wmiv_q_take_if(
+				clipboard_service_event_matches, NULL);
+			if (!svc)
+				break;
+			dispatch_clipboard_service_event(svc);
+			free(svc);
+		}
+
+		*out = wmiv_q_take_if(pred, arg);
+		if (*out)
 			return True;
-		}
 
-		while (XCheckIfEvent(dpy, &service, clipboard_service_event_matches, NULL))
-			dispatch_clipboard_service_event(&service);
+		if (xcb_connection_has_error(xc))
+			return False;
 
-		if (XCheckIfEvent(dpy, out, predicate, arg)) {
-			restore_clipboard_events(deferred, deferred_count);
-			return True;
-		}
+		int remaining = wmiv_deadline_remaining_ms(&deadline);
 
-		if (XPending(dpy)) {
-			XNextEvent(dpy, &ignored);
-			if (clipboard_service_event_matches(dpy, &ignored, NULL)) {
-				dispatch_clipboard_service_event(&ignored);
-			} else if (!defer_clipboard_event(&deferred, &deferred_count,
-					&deferred_capacity, &ignored)) {
-				XPutBackEvent(dpy, &ignored);
-				restore_clipboard_events(deferred, deferred_count);
-				return False;
-			}
-			continue;
-		}
+		if (remaining <= 0)
+			return False;
 
-		ready = wmiv_wait_x_until(dpy, &deadline);
-		if (ready <= 0) {
-			restore_clipboard_events(deferred, deferred_count);
+		struct pollfd pfd;
+
+		pfd.fd = xcb_get_file_descriptor(xc);
+
+		pfd.events = POLLIN;
+		pfd.revents = 0;
+		int rc = poll(&pfd, 1, remaining);
+
+		if (rc < 0) {
+			if (errno == EINTR)
+				continue;
 			return False;
 		}
+		if (rc == 0)
+			return False;
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+			return False;
 	}
 }
 
-static Bool request_clipboard_selection(Atom selection, Atom target, Atom property,
-		Time timestamp, XSelectionEvent *out)
+static Bool request_clipboard_selection(xcb_atom_t selection, xcb_atom_t target,
+		xcb_atom_t property, xcb_timestamp_t timestamp,
+		xcb_selection_notify_event_t *out)
 {
 	ClipboardSelectionWait wait;
-	XEvent event;
+	xcb_generic_event_t *event;
 
 	wait.selection = selection;
 	wait.target = target;
 	wait.property = property;
 
-	XDeleteProperty(dpy, win, property);
-	XConvertSelection(dpy, selection, target, property, win, timestamp);
-	XFlush(dpy);
+	xcb_delete_property(xc, win, property);
+	xcb_convert_selection(xc, win, selection, target, property, timestamp);
+	xcb_flush(xc);
 
 	if (!wait_for_clipboard_event(clipboard_selection_notify_matches,
-			(XPointer)&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
+			&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
 		return False;
 	}
 
-	*out = event.xselection;
-	return out->property != None;
+	*out = *(xcb_selection_notify_event_t *)event;
+	free(event);
+	return out->property != XCB_ATOM_NONE;
 }
 
-static int clipboard_candidate_targets(Atom *targets)
+static int clipboard_candidate_targets(xcb_atom_t *targets)
 {
 	int count = 0;
 
@@ -1085,7 +1406,7 @@ static int clipboard_candidate_targets(Atom *targets)
 	return count;
 }
 
-static const char *clipboard_target_name(Atom target)
+static const char *clipboard_target_name(xcb_atom_t target)
 {
 	if (target == png_atom)
 		return "image/png";
@@ -1094,43 +1415,37 @@ static const char *clipboard_target_name(Atom target)
 	return "unknown";
 }
 
-static Atom choose_clipboard_target(void)
+static xcb_atom_t choose_clipboard_target(void)
 {
-	XSelectionEvent selection;
-	Atom type;
-	int format;
-	unsigned long nitems;
-	unsigned long bytes_after;
-	unsigned char *prop = NULL;
-	Atom candidates[2];
-	Atom *targets;
+	xcb_selection_notify_event_t selection;
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	xcb_atom_t candidates[2];
+	xcb_atom_t result = XCB_ATOM_NONE;
 	int candidate_count;
 	int i;
-	unsigned long j;
-	Atom result = None;
+	uint32_t j;
 
 	if (!request_clipboard_selection(clipboard_atom, targets_atom, property_atom,
-			CurrentTime, &selection)) {
-		return None;
+			XCB_TIME_CURRENT_TIME, &selection)) {
+		return XCB_ATOM_NONE;
 	}
 
-	if (XGetWindowProperty(dpy, win, property_atom, 0, 1024, False,
-			XA_ATOM, &type, &format, &nitems, &bytes_after,
-			&prop) != Success) {
-		return None;
-	}
-	XDeleteProperty(dpy, win, property_atom);
+	ck = xcb_get_property(xc, 0, win, property_atom, XCB_ATOM_ATOM, 0, 1024);
+	rep = xcb_get_property_reply(xc, ck, NULL);
+	xcb_delete_property(xc, win, property_atom);
 
-	if (type != XA_ATOM || format != 32 || nitems == 0 || bytes_after != 0 || !prop) {
-		if (prop)
-			XFree(prop);
-		return None;
+	if (!rep || rep->type != XCB_ATOM_ATOM || rep->format != 32 ||
+	    rep->value_len == 0 || rep->bytes_after != 0) {
+		free(rep);
+		return XCB_ATOM_NONE;
 	}
 
 	candidate_count = clipboard_candidate_targets(candidates);
-	targets = (Atom *)prop;
-	for (i = 0; i < candidate_count && result == None; i++) {
-		for (j = 0; j < nitems; j++) {
+	xcb_atom_t *targets = (xcb_atom_t *)xcb_get_property_value(rep);
+
+	for (i = 0; i < candidate_count && result == XCB_ATOM_NONE; i++) {
+		for (j = 0; j < rep->value_len; j++) {
 			if (targets[j] == candidates[i]) {
 				result = candidates[i];
 				break;
@@ -1138,52 +1453,46 @@ static Atom choose_clipboard_target(void)
 		}
 	}
 
-	XFree(prop);
+	free(rep);
 	return result;
 }
 
-static XEvent *paste_deferred;
-static size_t paste_deferred_count, paste_deferred_capacity;
-
 /* During an INCR receive the helper hands us every event that is not
  * the awaited PropertyNotify. Service selection events so we keep
- * answering requestors, and stash everything else so the main loop
- * sees it once the paste is done. */
-static void paste_dispatch(XEvent *event, void *udata)
+ * answering requestors, and put everything else back into the queue
+ * so the main loop sees it once the paste is done. */
+static void paste_dispatch(xcb_generic_event_t *event, void *udata)
 {
 	(void)udata;
-	if (clipboard_service_event_matches(dpy, event, NULL))
+	if (clipboard_service_event_matches(event, NULL)) {
 		dispatch_clipboard_service_event(event);
-	else
-		defer_clipboard_event(&paste_deferred, &paste_deferred_count,
-				      &paste_deferred_capacity, event);
+		free(event);
+	} else {
+		wmiv_q_put_back(event);
+	}
 }
 
-static int request_clipboard_data(Atom target, Atom *type_out,
+static int request_clipboard_data(xcb_atom_t target, xcb_atom_t *type_out,
 		unsigned char **data_out, size_t *len_out)
 {
-	XSelectionEvent selection;
+	xcb_selection_notify_event_t selection;
 	unsigned char *data;
-	Atom type;
+	xcb_atom_t type;
 	size_t len;
 
-	*type_out = None;
+	*type_out = XCB_ATOM_NONE;
 	*data_out = NULL;
 	*len_out = 0;
 
 	if (!request_clipboard_selection(clipboard_atom, target, property_atom,
-			CurrentTime, &selection)) {
+			XCB_TIME_CURRENT_TIME, &selection)) {
 		return 0;
 	}
 
-	data = clip_retrieve_property(dpy, win, property_atom, incr_atom,
+	data = clip_retrieve_property(xc, win, property_atom, incr_atom,
 					CLIP_DEFAULT_MAX_BYTES,
 					CLIPBOARD_PASTE_TIMEOUT_MS,
 					paste_dispatch, NULL, &type, &len);
-
-	restore_clipboard_events(paste_deferred, paste_deferred_count);
-	paste_deferred = NULL;
-	paste_deferred_count = paste_deferred_capacity = 0;
 
 	if (!data)
 		return 0;
@@ -1292,9 +1601,11 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 		return NULL;
 #ifdef HAVE_EXIF
 	ExifData *exifData = exif_data_new_from_file(file);
+
 	if (exifData) {
 		ExifByteOrder byteOrder = exif_data_get_byte_order(exifData);
 		ExifEntry *exifEntry = exif_data_get_entry(exifData, EXIF_TAG_ORIENTATION);
+
 		if (exifEntry)
 			orientation = exif_get_short(exifEntry->data, byteOrder);
 
@@ -1315,6 +1626,7 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 
 	if (image && (orientation > 1)) {
 		RImage *tmp = NULL;
+
 		switch (orientation) {
 		case 2:
 			tmp = RFlipImage(image, RHorizontalFlip);
@@ -1327,6 +1639,7 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 			break;
 		case 5: {
 				RImage *tmp2;
+
 				tmp2 = RFlipImage(image, RVerticalFlip);
 				if (tmp2) {
 					tmp = RRotateImage(tmp2, 90);
@@ -1339,6 +1652,7 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 			break;
 		case 7: {
 				RImage *tmp2;
+
 				tmp2 = RFlipImage(image, RVerticalFlip);
 				if (tmp2) {
 					tmp = RRotateImage(tmp2, 270);
@@ -1366,16 +1680,18 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 int change_title(char *filename)
 {
 	char *combined_title = NULL;
+
 	if (ignore_unknown_file_format) {
-		if (!asprintf(&combined_title, "%s - %s", APPNAME, filename))
+		if (asprintf(&combined_title, "%s - %s", APPNAME, filename) < 0)
 			return EXIT_FAILURE;
 	}
 	else {
-		if (!asprintf(&combined_title, "%s - %u/%u - %s", APPNAME, current_index, max_index, filename))
-			if (!asprintf(&combined_title, "%s - %u/%u", APPNAME, current_index, max_index))
+		if (asprintf(&combined_title, "%s - %u/%u - %s", APPNAME, current_index, max_index, filename) < 0)
+			if (asprintf(&combined_title, "%s - %u/%u", APPNAME, current_index, max_index) < 0)
 				return EXIT_FAILURE;
 	}
-	WXSetWMName(dpy, win, combined_title);
+	xcb_icccm_set_wm_name(xc, win, atom_utf8_string, 8,
+			      strlen(combined_title), combined_title);
 	free(combined_title);
 	return EXIT_SUCCESS;
 }
@@ -1403,6 +1719,7 @@ int rescale_image(void)
 	}
 	if ((max_width_tmp < final_width) || (max_height_tmp < final_height)) {
 		double val = 0;
+
 		if (final_width > final_height) {
 			val = final_height * max_width_tmp / final_width;
 			final_width = ceil(final_width * val / final_height);
@@ -1425,6 +1742,7 @@ int rescale_image(void)
 	}
 	if ((final_width != img->width) || (final_height != img->height)) {
 		RImage *old_img = img;
+
 		img = RScaleImage(img, final_width, final_height);
 		if (!img) {
 			img = old_img;
@@ -1447,6 +1765,7 @@ static void redraw_window(int centred)
 {
 	cairo_surface_t *ws, *ps;
 	cairo_t *cr;
+
 	int ww, wh, dx, dy;
 
 	if (!img || !win || !pix)
@@ -1490,6 +1809,7 @@ int merge_with_background(RImage *i)
 {
 	if (i) {
 		RImage *back;
+
 		back = RCreateImage(i->width, i->height, True);
 		if (back) {
 			int opaq = 255;
@@ -1530,7 +1850,7 @@ int rotate_image(float angle)
 
 	if (!fullscreen_flag) {
 		if (img->width != tmp->width || img->height != tmp->height)
-			XResizeWindow(dpy, win, tmp->width, tmp->height);
+			resize_window(win, tmp->width, tmp->height);
 	}
 
 	RReleaseImage(img);
@@ -1538,7 +1858,7 @@ int rotate_image(float angle)
 
 	rescale_image();
 	if (fullscreen_flag)
-		XClearWindow(dpy, win);
+		clear_window(win);
 	redraw_window(fullscreen_flag);
 
 	return EXIT_SUCCESS;
@@ -1569,12 +1889,17 @@ int rotate_image_left(void)
 RImage *draw_failed_image(void)
 {
 	RImage *failed_image = NULL;
-	XWindowAttributes attr;
+	xcb_get_geometry_cookie_t ck;
+	xcb_get_geometry_reply_t *geo;
 
-	if (win && (XGetWindowAttributes(dpy, win, &attr) >= 0))
-		failed_image = RCreateImage(attr.width, attr.height, False);
+	ck = xcb_get_geometry(xc, win);
+	geo = xcb_get_geometry_reply(xc, ck, NULL);
+
+	if (win && geo)
+		failed_image = RCreateImage(geo->width, geo->height, False);
 	else
 		failed_image = RCreateImage(50, 50, False);
+	free(geo);
 	if (!failed_image)
 		return NULL;
 
@@ -1588,6 +1913,7 @@ RImage *draw_failed_image(void)
 
 	/* Calculate line thickness based on image size (minimum 3, maximum 8 pixels) */
 	int thickness = (failed_image->width + failed_image->height) / 100;
+
 	if (thickness < 3) thickness = 3;
 	if (thickness > 8) thickness = 8;
 
@@ -1619,9 +1945,6 @@ RImage *draw_failed_image(void)
 */
 int full_screen(void)
 {
-	Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", True);
-	Atom fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", True);
-
 	if (fullscreen_flag) {
 		fullscreen_flag = False;
 		zoom_factor = 0;
@@ -1637,8 +1960,9 @@ int full_screen(void)
 			merge_with_background(img);
 	}
 
-	WXSendClientMessage(dpy, DefaultRootWindow(dpy), SubstructureNotifyMask,
-			    win, wm_state, fullscreen_flag, fullscreen, 0, 0, 0);
+	send_client_message(root_window, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+			    win, atom_net_wm_state, fullscreen_flag,
+			    atom_net_wm_state_fullscreen, 0, 0, 0);
 	return EXIT_SUCCESS;
 }
 
@@ -1710,26 +2034,28 @@ static int show_pasted_image(char *path)
 	change_title((char *)current_link->data);
 	if (win) {
 		if (!fullscreen_flag)
-			XResizeWindow(dpy, win, img->width, img->height);
-		XClearWindow(dpy, win);
+			resize_window(win, img->width, img->height);
+		clear_window(win);
 		redraw_window(fullscreen_flag);
-		XSync(dpy, False);
+		free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
+		xcb_flush(xc);
+
 	}
 	return EXIT_SUCCESS;
 }
 
 static int paste_clipboard_image(void)
 {
-	Atom candidates[2];
-	Atom target;
-	Atom actual_type = None;
+	xcb_atom_t candidates[2];
+	xcb_atom_t target;
+	xcb_atom_t actual_type = XCB_ATOM_NONE;
 	unsigned char *data = NULL;
 	size_t size = 0;
 	char *path;
 	int candidate_count;
 	int i;
 
-	if (XGetSelectionOwner(dpy, clipboard_atom) == None) {
+	if (selection_owner(clipboard_atom) == 0) {
 		fprintf(stderr, "Error: clipboard is empty\n");
 		return EXIT_FAILURE;
 	}
@@ -1741,7 +2067,7 @@ static int paste_clipboard_image(void)
 	}
 
 	target = choose_clipboard_target();
-	if (target != None && request_clipboard_data(target, &actual_type, &data, &size)) {
+	if (target != XCB_ATOM_NONE && request_clipboard_data(target, &actual_type, &data, &size)) {
 		/* data filled */
 	} else {
 		for (i = 0; i < candidate_count; i++) {
@@ -1816,6 +2142,7 @@ void linked_list_free(linked_list_t *list)
 {
 	link_t *link;
 	link_t *next;
+
 	for (link = list->first; link; link = next) {
 		/* Store the next value so that we don't access freed memory. */
 		next = link->next;
@@ -1835,6 +2162,7 @@ int zoom_in_out(int z)
 {
 	RImage *old_img = img;
 	RImage *tmp = load_oriented_image(ctx, current_link->data, 0);
+
 	if (!tmp)
 		return EXIT_FAILURE;
 
@@ -1851,6 +2179,7 @@ int zoom_in_out(int z)
 		zoom_factor -= 0.2f;
 		int new_width = tmp->width + (int) (tmp->width * zoom_factor);
 		int new_height = tmp->height + (int)(tmp->height * zoom_factor);
+
 		if ((new_width <= 0) || (new_height <= 0)) {
 			zoom_factor += 0.2f;
 			RReleaseImage(tmp);
@@ -1865,14 +2194,14 @@ int zoom_in_out(int z)
 	}
 	RReleaseImage(old_img);
 	RReleaseImage(tmp);
-	XFreePixmap(dpy, pix);
+	xcb_free_pixmap(xc, (xcb_pixmap_t)pix);
 
 	merge_with_background(img);
 	if (!RConvertImage(ctx, img, &pix)) {
 		fprintf(stderr, "Error: %s\n", RMessageForError(RErrorCode));
 		return EXIT_FAILURE;
 	}
-	XResizeWindow(dpy, win, img->width, img->height);
+	resize_window(win, img->width, img->height);
 	return EXIT_SUCCESS;
 }
 
@@ -1937,6 +2266,7 @@ int change_image(int way)
 			img = draw_failed_image();
 			if (ignore_unknown_file_format) {
 				link_t *tmp_link;
+
 				if (WMIV_DEBUG)
 					fprintf(stderr, "Skipping file...\n");
 				if (way == NEXT)
@@ -1961,12 +2291,12 @@ int change_image(int way)
 		if (win) {
 			if (!fullscreen_flag) {
 				if ((old_img_width != img->width) || (old_img_height != img->height))
-					XResizeWindow(dpy, win, img->width, img->height);
+					resize_window(win, img->width, img->height);
 				else
 					redraw_window(0);
 				change_title((char *)current_link->data);
 			} else {
-				XClearWindow(dpy, win);
+				clear_window(win);
 				redraw_window(1);
 			}
 		}
@@ -1983,27 +2313,25 @@ void *slideshow(void *arg)
 {
 	(void) arg;
 
-	XKeyEvent event;
-	event.display = dpy;
-	event.window = win;
-	event.root = DefaultRootWindow(dpy);
-	event.subwindow = None;
-	event.time = CurrentTime;
-	event.x = 1;
-	event.y = 1;
-	event.x_root = 1;
-	event.y_root = 1;
-	event.same_screen = True;
-	event.keycode = XKeysymToKeycode(dpy, XK_Right);
-	event.state = 0;
-	event.type = KeyPress;
+	xcb_key_press_event_t event;
+
+	memset(&event, 0, sizeof(event));
+	event.response_type = XCB_KEY_PRESS;
+	event.event = win;
+	event.root = root_window;
+	event.detail = right_keycode;
+	event.root_x = 1;
+	event.root_y = 1;
+	event.event_x = 1;
+	event.event_y = 1;
+	event.same_screen = 1;
+	event.time = XCB_TIME_CURRENT_TIME;
 
 	while (slideshow_flag) {
-		int r;
-		r = XSendEvent(event.display, event.window, True, KeyPressMask, (XEvent *)&event);
-		if (!r)
-			fprintf(stderr, "Error: can't send event\n");
-		XFlush(dpy);
+		xcb_send_event(xc, 1, win, XCB_EVENT_MASK_KEY_PRESS,
+			       (const char *)&event);
+		xcb_flush(xc);
+
 		/* default sleep time between moving to next image */
 		sleep(slideshow_delay);
 	}
@@ -2030,12 +2358,14 @@ link_t *connect_dir(char *dirpath, linked_list_t *list)
 	if (dv < 0) {
 		/* maybe it's a file */
 		struct stat stDirInfo;
+
 		if (lstat(dirpath, &stDirInfo) == 0)
 			linked_list_add(list, strdup(dirpath));
 		return list->first;
 	}
 	for (idx = 0; idx < dv; idx++) {
 			struct stat stDirInfo;
+
 			if (dirpath[strlen(dirpath)-1] == FILE_SEPARATOR)
 				snprintf(path, PATH_MAX, "%s%s", dirpath, dir[idx]->d_name);
 			else
@@ -2055,24 +2385,30 @@ link_t *connect_dir(char *dirpath, linked_list_t *list)
 	RandR 1.5 the GetMonitors reply is NULL and the caller keeps
 	the DisplayWidth/DisplayHeight fallback it already seeded.
 */
-void get_monitor_dimensions(Display *dpy, int screen_num, Window win, int *width, int *height)
+void get_monitor_dimensions(xcb_window_t win_id, int *width, int *height)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
 	xcb_randr_get_monitors_reply_t *mr;
 	xcb_randr_monitor_info_iterator_t mi;
-	Window root_window = RootWindow(dpy, screen_num);
-	XWindowAttributes attrs;
-	Window child;
+	xcb_translate_coordinates_cookie_t tck;
+	xcb_translate_coordinates_reply_t *trep;
 	int abs_x, abs_y;
 
-	XGetWindowAttributes(dpy, win, &attrs);
-	XTranslateCoordinates(dpy, win, attrs.root, 0, 0, &abs_x, &abs_y, &child);
+	tck = xcb_translate_coordinates(xc, win_id, root_window, 0, 0);
+	trep = xcb_translate_coordinates_reply(xc, tck, NULL);
+
+	if (!trep)
+		return;
+	abs_x = trep->dst_x;
+	abs_y = trep->dst_y;
+	free(trep);
 
 	mr = xcb_randr_get_monitors_reply(xc,
 			xcb_randr_get_monitors(xc, root_window, 1), NULL);
+
 	if (!mr)
 		return;
 	for (mi = xcb_randr_get_monitors_monitors_iterator(mr);
+
 		 mi.rem;
 		 xcb_randr_monitor_info_next(&mi)) {
 		if (abs_x >= mi.data->x && abs_x < mi.data->x + mi.data->width &&
@@ -2095,31 +2431,77 @@ void get_monitor_dimensions(Display *dpy, int screen_num, Window win, int *width
 
 static void wmiv_xdnd_init_atoms(void)
 {
-	static char *names[] = {
+	static const char *const names[] = {
 		"XdndAware", "XdndEnter", "XdndPosition", "XdndStatus",
 		"XdndLeave", "XdndDrop", "XdndFinished", "XdndSelection",
 		"XdndTypeList", "XdndActionCopy", "text/uri-list", "text/plain"
 	};
-	Atom out[12];
+	xcb_intern_atom_cookie_t cookies[12];
+	xcb_intern_atom_reply_t *rep;
+	int i;
 
-	XInternAtoms(dpy, names, 12, False, out);
-	atom_XdndAware      = out[0];
-	atom_XdndEnter      = out[1];
-	atom_XdndPosition   = out[2];
-	atom_XdndStatus     = out[3];
-	atom_XdndLeave      = out[4];
-	atom_XdndDrop       = out[5];
-	atom_XdndFinished   = out[6];
-	atom_XdndSelection  = out[7];
-	atom_XdndTypeList   = out[8];
-	atom_XdndActionCopy = out[9];
-	atom_uri_list       = out[10];
-	atom_text_plain     = out[11];
+	for (i = 0; i < 12; i++)
+		cookies[i] = xcb_intern_atom(xc, 0, strlen(names[i]), names[i]);
+
+	#define XDND_ATOM(idx, dst) do { \
+		rep = xcb_intern_atom_reply(xc, cookies[idx], NULL); \
+		dst = rep ? rep->atom : XCB_ATOM_NONE; \
+		free(rep); \
+	} while (0)
+
+	XDND_ATOM(0, atom_XdndAware);
+	XDND_ATOM(1, atom_XdndEnter);
+	XDND_ATOM(2, atom_XdndPosition);
+	XDND_ATOM(3, atom_XdndStatus);
+	XDND_ATOM(4, atom_XdndLeave);
+	XDND_ATOM(5, atom_XdndDrop);
+	XDND_ATOM(6, atom_XdndFinished);
+	XDND_ATOM(7, atom_XdndSelection);
+	XDND_ATOM(8, atom_XdndTypeList);
+	XDND_ATOM(9, atom_XdndActionCopy);
+	XDND_ATOM(10, atom_uri_list);
+	XDND_ATOM(11, atom_text_plain);
+	#undef XDND_ATOM
+}
+
+/* Local copy of the inline percent-decode helper from WINGs/WXProp.h */
+static int wmiv_xdnd_hex_nibble(unsigned char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return -1;
+}
+
+static void wmiv_xdnd_decode_uri(char *uri)
+{
+	char *last;
+
+	int hi, lo;
+
+	if (uri[0] == '\0' || uri[1] == '\0')
+		return;
+	last = uri + strlen(uri);
+	while (uri < last - 2) {
+		if (*uri == '%') {
+			hi = wmiv_xdnd_hex_nibble((unsigned char)uri[1]);
+			lo = wmiv_xdnd_hex_nibble((unsigned char)uri[2]);
+			if (hi < 0 || lo < 0)
+				break;
+			*uri = (char)((hi << 4) | lo);
+			memmove(uri + 1, uri + 3, last - (uri + 2));
+			last -= 2;
+		}
+		uri++;
+	}
 }
 
 /* ----- XDND drop target ---------------------------------------------- */
 
-static Atom wmiv_xdnd_pick_type(const Atom *types, size_t count)
+static xcb_atom_t wmiv_xdnd_pick_type(const xcb_atom_t *types, size_t count)
 {
 	size_t i;
 
@@ -2129,158 +2511,184 @@ static Atom wmiv_xdnd_pick_type(const Atom *types, size_t count)
 	for (i = 0; i < count; i++)
 		if (types[i] == atom_text_plain)
 			return atom_text_plain;
-	return None;
+	return XCB_ATOM_NONE;
 }
 
 static void wmiv_xdnd_send_status(Bool accept)
 {
-	WXSendClientMessage(dpy, xdnd_target.source, NoEventMask,
+	send_client_message(xdnd_target.source, 0,
 			    xdnd_target.source, atom_XdndStatus,
-			    (long)win,
+			    (uint32_t)win,
 			    accept ? 1 : 0,
 			    0, 0,
-			    accept ? (long)atom_XdndActionCopy : 0);
-	XFlush(dpy);
+			    accept ? (uint32_t)atom_XdndActionCopy : 0);
 }
 
 static void wmiv_xdnd_send_finished(Bool ok)
 {
-	WXSendClientMessage(dpy, xdnd_target.source, NoEventMask,
+	send_client_message(xdnd_target.source, 0,
 			    xdnd_target.source, atom_XdndFinished,
-			    (long)win,
+			    (uint32_t)win,
 			    (xdnd_target.version >= 5 && ok) ? 1 : 0,
-			    (xdnd_target.version >= 5 && ok) ? (long)atom_XdndActionCopy : 0,
+			    (xdnd_target.version >= 5 && ok) ? (uint32_t)atom_XdndActionCopy : 0,
 			    0, 0);
-	XFlush(dpy);
 }
 
-static Bool wmiv_xdnd_is_selnotify(Display *d, XEvent *ev, XPointer arg)
+static int wmiv_xdnd_is_selnotify(const xcb_generic_event_t *ev, void *arg)
 {
-	(void)d; (void)arg;
-	/* bind the reply to the conversion we issued, a stale or forged
-	 * SelectionNotify naming a different requestor, target or
-	 * property must not steer which window property we then read as
-	 * the dropped URI list */
-	return ev->type == SelectionNotify
-		&& ev->xselection.selection == atom_XdndSelection
-		&& ev->xselection.requestor == win
-		&& ev->xselection.target == xdnd_target.want_type
-		&& (ev->xselection.property == atom_XdndSelection
-		    || ev->xselection.property == None);
+	(void)arg;
+	if ((ev->response_type & 0x7f) != XCB_SELECTION_NOTIFY)
+		return 0;
+	xcb_selection_notify_event_t *sn = (xcb_selection_notify_event_t *)ev;
+
+	return sn->selection == atom_XdndSelection &&
+	       sn->requestor == win &&
+	       sn->target == xdnd_target.want_type &&
+	       (sn->property == atom_XdndSelection || sn->property == XCB_ATOM_NONE);
 }
 
 /* bounded wait for the XdndSelection SelectionNotify so a hostile or
  * crashed source cannot wedge the main loop indefinitely */
-static Bool wmiv_xdnd_wait_selnotify(XEvent *out)
+static Bool wmiv_xdnd_wait_selnotify(xcb_selection_notify_event_t *out)
 {
-	return wmiv_wait_for_matching_event(dpy, out, wmiv_xdnd_is_selnotify, NULL, 2000);
+	xcb_generic_event_t *ev = wmiv_q_match(wmiv_xdnd_is_selnotify, NULL, 2000);
+
+	if (!ev)
+		return False;
+	*out = *(xcb_selection_notify_event_t *)ev;
+	free(ev);
+	return True;
 }
 
-static Bool wmiv_xdnd_is_drag_reply(Display *display, XEvent *event, XPointer arg)
+static int wmiv_xdnd_is_drag_reply(const xcb_generic_event_t *ev, void *arg)
 {
-	(void)display;
-	(void)arg;
+	uint8_t rt;
 
-	return event->type == SelectionRequest ||
-		(event->type == ClientMessage &&
-		 event->xclient.window == win &&
-		 event->xclient.message_type == atom_XdndFinished);
+	(void)arg;
+	rt = ev->response_type & 0x7f;
+	if (rt == XCB_SELECTION_REQUEST)
+		return 1;
+	if (rt == XCB_CLIENT_MESSAGE) {
+		xcb_client_message_event_t *cm = (xcb_client_message_event_t *)ev;
+
+		return cm->window == win && cm->type == atom_XdndFinished;
+	}
+	return 0;
 }
 
 /*
  * Called from the main loop for every ClientMessage. Advances the XDND
- * target state machine and returns 1 with a NUL-terminated wmalloc'd copy
+ * target state machine and returns 1 with a NUL-terminated malloc'd copy
  * of the dropped data only when an XdndDrop completes. Returns 0 for
  * non-XDND messages and for intermediate XDND messages so the caller can
  * continue dispatching.
  */
-static int wmiv_xdnd_handle_message(XClientMessageEvent *ev, unsigned char **out, int *out_len)
+static int wmiv_xdnd_handle_message(xcb_client_message_event_t *ev, unsigned char **out, int *out_len)
 {
 	/* every XDND message is a format-32 ClientMessage, anything else
 	 * has garbage in data.l[] */
 	if (ev->format != 32)
 		return 0;
 
-	if (ev->message_type == atom_XdndEnter) {
-		Atom inline_types[3];
+	if (ev->type == atom_XdndEnter) {
+		xcb_atom_t inline_types[3];
 
-		xdnd_target.source  = (Window)ev->data.l[0];
-		xdnd_target.version = (int)((unsigned long)ev->data.l[1] >> 24);
-		xdnd_target.want_type = None;
+		xdnd_target.source  = (xcb_window_t)ev->data.data32[0];
+		xdnd_target.version = (int)((unsigned int)ev->data.data32[1] >> 24);
+		xdnd_target.want_type = XCB_ATOM_NONE;
 
-		if (ev->data.l[1] & 1) {
+		if (ev->data.data32[1] & 1) {
 			/* more than three types, fetch the bounded list from the
-			 * source window using the validating helper */
-			size_t n;
-			Atom *types = WXGetAtomList(dpy, xdnd_target.source,
-						    atom_XdndTypeList, WMIV_XDND_MAX_TYPES, &n);
-			if (types) {
-				xdnd_target.want_type = wmiv_xdnd_pick_type(types, n);
-				wfree(types);
+			 * source window */
+			xcb_get_property_cookie_t ck;
+			xcb_get_property_reply_t *rep;
+
+			ck = xcb_get_property(xc, 0, xdnd_target.source,
+					      atom_XdndTypeList, XCB_ATOM_ATOM,
+					      0, WMIV_XDND_MAX_TYPES);
+			rep = xcb_get_property_reply(xc, ck, NULL);
+
+			if (rep && rep->type == XCB_ATOM_ATOM &&
+			    rep->format == 32) {
+				xdnd_target.want_type =
+					wmiv_xdnd_pick_type(
+						(xcb_atom_t *)xcb_get_property_value(rep),
+						rep->value_len);
 			}
+			free(rep);
 		} else {
-			inline_types[0] = (Atom)ev->data.l[2];
-			inline_types[1] = (Atom)ev->data.l[3];
-			inline_types[2] = (Atom)ev->data.l[4];
+			inline_types[0] = (xcb_atom_t)ev->data.data32[2];
+			inline_types[1] = (xcb_atom_t)ev->data.data32[3];
+			inline_types[2] = (xcb_atom_t)ev->data.data32[4];
 			xdnd_target.want_type = wmiv_xdnd_pick_type(inline_types, 3);
 		}
 		return 0;
 	}
 
-	if (ev->message_type == atom_XdndPosition) {
-		if ((Window)ev->data.l[0] == xdnd_target.source)
-			wmiv_xdnd_send_status(xdnd_target.want_type != None);
+	if (ev->type == atom_XdndPosition) {
+		if ((xcb_window_t)ev->data.data32[0] == xdnd_target.source)
+			wmiv_xdnd_send_status(xdnd_target.want_type != XCB_ATOM_NONE);
 		return 0;
 	}
 
-	if (ev->message_type == atom_XdndLeave) {
-		xdnd_target.source = None;
-		xdnd_target.want_type = None;
+	if (ev->type == atom_XdndLeave) {
+		xdnd_target.source = 0;
+		xdnd_target.want_type = XCB_ATOM_NONE;
 		return 0;
 	}
 
-	if (ev->message_type == atom_XdndDrop) {
-		XEvent sn;
+	if (ev->type == atom_XdndDrop) {
+		xcb_selection_notify_event_t sn;
 		size_t len = 0;
 		char *data;
 
-		if ((Window)ev->data.l[0] != xdnd_target.source ||
-		    xdnd_target.want_type == None) {
+		if ((xcb_window_t)ev->data.data32[0] != xdnd_target.source ||
+		    xdnd_target.want_type == XCB_ATOM_NONE) {
 			wmiv_xdnd_send_finished(False);
-			xdnd_target.source = None;
+			xdnd_target.source = 0;
 			return 0;
 		}
 
-		XConvertSelection(dpy, atom_XdndSelection, xdnd_target.want_type,
-				  atom_XdndSelection, win, (Time)ev->data.l[2]);
-		XFlush(dpy);
+		xcb_convert_selection(xc, win, atom_XdndSelection,
+				      xdnd_target.want_type, atom_XdndSelection,
+				      ev->data.data32[2]);
+		xcb_flush(xc);
 
 		/* wait for the source to deliver the converted selection,
 		 * bounded so an unresponsive source cannot block us */
 		if (!wmiv_xdnd_wait_selnotify(&sn)) {
 			wmiv_xdnd_send_finished(False);
-			xdnd_target.source = None;
-			xdnd_target.want_type = None;
+			xdnd_target.source = 0;
+			xdnd_target.want_type = XCB_ATOM_NONE;
 			return 0;
 		}
 
-		if (sn.xselection.property == None) {
+		if (sn.property == XCB_ATOM_NONE) {
 			wmiv_xdnd_send_finished(False);
-			xdnd_target.source = None;
+			xdnd_target.source = 0;
 			return 0;
 		}
 
-		data = WXRcvString(dpy, WXReqString8(dpy, win, sn.xselection.property,
-						     xdnd_target.want_type), &len);
-		XDeleteProperty(dpy, win, sn.xselection.property);
+		{
+			xcb_atom_t prop_type;
+			size_t prop_len;
+
+			data = (char *)clip_read_property8(xc, win, sn.property,
+							   CLIP_DEFAULT_MAX_BYTES,
+							   &prop_type, &prop_len);
+			len = prop_len;
+		}
+		xcb_delete_property(xc, win, sn.property);
+
 		wmiv_xdnd_send_finished(data != NULL);
-		xdnd_target.source = None;
-		xdnd_target.want_type = None;
+		xdnd_target.source = 0;
+		xdnd_target.want_type = XCB_ATOM_NONE;
 
 		if (!data)
 			return 0;
 
 		*out = (unsigned char *)data;
+
 		*out_len = (int)len;
 		return 1;
 	}
@@ -2304,10 +2712,32 @@ static char *wmiv_build_drag_uri(void)
 		return NULL;
 
 	n = strlen("file://") + strlen(full_path) + 1;
-	uri = wmalloc(n);
+	uri = malloc(n);
+	if (!uri) {
+		free(full_path);
+		return NULL;
+	}
 	snprintf(uri, n, "file://%s", full_path);
 	free(full_path);
 	return uri;
+}
+
+static Bool get_atom_prop(xcb_window_t w, xcb_atom_t prop, xcb_atom_t *out)
+{
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	Bool ok = False;
+
+	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_ATOM, 0, 1);
+	rep = xcb_get_property_reply(xc, ck, NULL);
+
+	if (rep && rep->type == XCB_ATOM_ATOM && rep->format == 32 &&
+	    rep->value_len >= 1) {
+		*out = ((xcb_atom_t *)xcb_get_property_value(rep))[0];
+		ok = True;
+	}
+	free(rep);
+	return ok;
 }
 
 /*
@@ -2316,53 +2746,61 @@ static char *wmiv_build_drag_uri(void)
  * remember the highest aware ancestor and keep descending while children
  * exist under the pointer.
  */
-static Window wmiv_xdnd_find_target(Window root, int rx, int ry)
+static xcb_window_t wmiv_xdnd_find_target(xcb_window_t root, int rx, int ry)
 {
-	Window cur = root, child, aware = None;
-	int cx = rx, cy = ry;
-	Atom version;
+	xcb_window_t cur = root, child, aware = 0;
+	xcb_atom_t version;
 
 	for (;;) {
 		if (cur != root && cur != win &&
-		    WXGetAtom(dpy, cur, atom_XdndAware, &version))
+		    get_atom_prop(cur, atom_XdndAware, &version))
 			aware = cur;
-		if (!XTranslateCoordinates(dpy, root, cur, rx, ry, &cx, &cy, &child) ||
-		    child == None)
+		xcb_translate_coordinates_cookie_t tck;
+
+		tck = xcb_translate_coordinates(xc, root, cur, rx, ry);
+		xcb_translate_coordinates_reply_t *trep =
+			xcb_translate_coordinates_reply(xc, tck, NULL);
+
+		if (!trep)
+			break;
+		child = trep->child;
+		free(trep);
+		if (child == 0)
 			break;
 		cur = child;
 	}
 	return aware;
 }
 
-static void wmiv_xdnd_send_enter(Window target)
+static void wmiv_xdnd_send_enter(xcb_window_t target)
 {
-	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndEnter,
-			    (long)win,
-			    (long)WMIV_XDND_VERSION << 24,
-			    (long)atom_uri_list,
-			    (long)atom_text_plain,
+	send_client_message(target, 0, target, atom_XdndEnter,
+			    (uint32_t)win,
+			    (uint32_t)WMIV_XDND_VERSION << 24,
+			    (uint32_t)atom_uri_list,
+			    (uint32_t)atom_text_plain,
 			    0);
 }
 
-static void wmiv_xdnd_send_position(Window target, int rx, int ry, Time t)
+static void wmiv_xdnd_send_position(xcb_window_t target, int rx, int ry, xcb_timestamp_t t)
 {
-	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndPosition,
-			    (long)win, 0,
-			    ((long)rx << 16) | (ry & 0xffff),
-			    (long)t,
-			    (long)atom_XdndActionCopy);
+	send_client_message(target, 0, target, atom_XdndPosition,
+			    (uint32_t)win, 0,
+			    ((uint32_t)rx << 16) | ((uint32_t)ry & 0xffff),
+			    (uint32_t)t,
+			    (uint32_t)atom_XdndActionCopy);
 }
 
-static void wmiv_xdnd_send_leave(Window target)
+static void wmiv_xdnd_send_leave(xcb_window_t target)
 {
-	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndLeave,
-			    (long)win, 0, 0, 0, 0);
+	send_client_message(target, 0, target, atom_XdndLeave,
+			    (uint32_t)win, 0, 0, 0, 0);
 }
 
-static void wmiv_xdnd_send_drop(Window target, Time t)
+static void wmiv_xdnd_send_drop(xcb_window_t target, xcb_timestamp_t t)
 {
-	WXSendClientMessage(dpy, target, NoEventMask, target, atom_XdndDrop,
-			    (long)win, 0, (long)t, 0, 0);
+	send_client_message(target, 0, target, atom_XdndDrop,
+			    (uint32_t)win, 0, (uint32_t)t, 0, 0);
 }
 
 /*
@@ -2372,101 +2810,189 @@ static void wmiv_xdnd_send_drop(Window target, Time t)
  */
 static void initiate_file_drag(void)
 {
-	Window root = DefaultRootWindow(dpy);
-	Window target = None;
+	xcb_window_t target = 0;
 	Bool target_accepts = False;
-	XEvent ev;
+	xcb_grab_pointer_cookie_t gck;
+	xcb_grab_pointer_reply_t *grep;
 
 	if (xdnd_drag_uri)
-		wfree(xdnd_drag_uri);
+		free(xdnd_drag_uri);
 	xdnd_drag_uri = wmiv_build_drag_uri();
 	if (!xdnd_drag_uri)
 		return;
 
-	XSetSelectionOwner(dpy, atom_XdndSelection, win, CurrentTime);
-	if (XGetSelectionOwner(dpy, atom_XdndSelection) != win) {
-		wfree(xdnd_drag_uri);
+	xcb_set_selection_owner(xc, win, atom_XdndSelection, XCB_TIME_CURRENT_TIME);
+
+	if (selection_owner(atom_XdndSelection) != win) {
+		free(xdnd_drag_uri);
 		xdnd_drag_uri = NULL;
 		return;
 	}
 
-	if (XGrabPointer(dpy, win, False,
-			 ButtonReleaseMask | PointerMotionMask,
-			 GrabModeAsync, GrabModeAsync, None, None,
-			 CurrentTime) != GrabSuccess) {
-		wfree(xdnd_drag_uri);
+	gck = xcb_grab_pointer(xc, 0, win,
+			      XCB_EVENT_MASK_BUTTON_RELEASE |
+			      XCB_EVENT_MASK_POINTER_MOTION,
+			      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+			      0, 0, XCB_TIME_CURRENT_TIME);
+	grep = xcb_grab_pointer_reply(xc, gck, NULL);
+
+	if (!grep || grep->status != XCB_GRAB_STATUS_SUCCESS) {
+		free(grep);
+		free(xdnd_drag_uri);
 		xdnd_drag_uri = NULL;
 		return;
 	}
+	free(grep);
 
 	if (WMIV_DEBUG)
 		fprintf(stderr, "XDND drag started: %s\n", xdnd_drag_uri);
 
 	for (;;) {
-		XNextEvent(dpy, &ev);
+		xcb_generic_event_t *ev = wmiv_q_wait(-1);
 
-		if (ev.type == MotionNotify) {
-			Window over = wmiv_xdnd_find_target(root,
-							    ev.xmotion.x_root,
-							    ev.xmotion.y_root);
+		if (!ev)
+			break;
+		uint8_t rt = ev->response_type & 0x7f;
+
+		if (rt == XCB_MOTION_NOTIFY) {
+			xcb_motion_notify_event_t *mn = (xcb_motion_notify_event_t *)ev;
+			xcb_window_t over = wmiv_xdnd_find_target(root_window,
+								  mn->root_x,
+								  mn->root_y);
 			if (over != target) {
-				if (target != None)
+				if (target != 0)
 					wmiv_xdnd_send_leave(target);
 				target = over;
 				target_accepts = False;
-				if (target != None)
+				if (target != 0)
 					wmiv_xdnd_send_enter(target);
 			}
-			if (target != None)
+			if (target != 0)
 				wmiv_xdnd_send_position(target,
-							ev.xmotion.x_root,
-							ev.xmotion.y_root,
-							ev.xmotion.time);
-			XFlush(dpy);
+							mn->root_x,
+							mn->root_y,
+							mn->time);
+			xcb_flush(xc);
+
+			free(ev);
 			continue;
 		}
 
-		if (ev.type == ClientMessage &&
-		    ev.xclient.message_type == atom_XdndStatus) {
-			if ((Window)ev.xclient.data.l[0] == target)
-				target_accepts = (ev.xclient.data.l[1] & 1) != 0;
+		if (rt == XCB_CLIENT_MESSAGE) {
+			xcb_client_message_event_t *cm = (xcb_client_message_event_t *)ev;
+
+			if (cm->type == atom_XdndStatus) {
+				if ((xcb_window_t)cm->data.data32[0] == target)
+					target_accepts = (cm->data.data32[1] & 1) != 0;
+				free(ev);
+				continue;
+			}
+		}
+
+		if (rt == XCB_SELECTION_REQUEST) {
+			handle_selection_request((xcb_selection_request_event_t *)ev);
+			free(ev);
 			continue;
 		}
 
-		if (ev.type == SelectionRequest) {
-			handle_selection_request(&ev.xselectionrequest);
-			continue;
-		}
+		if (rt == XCB_BUTTON_RELEASE) {
+			xcb_button_release_event_t *br = (xcb_button_release_event_t *)ev;
 
-		if (ev.type == ButtonRelease) {
-			XUngrabPointer(dpy, ev.xbutton.time);
-			if (target != None && target_accepts) {
-				struct timespec deadline;
+			xcb_ungrab_pointer(xc, br->time);
 
-				wmiv_xdnd_send_drop(target, ev.xbutton.time);
-				XFlush(dpy);
+			if (target != 0 && target_accepts) {
+				wmiv_xdnd_send_drop(target, br->time);
+				xcb_flush(xc);
+
 				/* serve the selection and wait briefly for
 				 * XdndFinished, but do not block forever if
 				 * the target never sends it */
-				wmiv_set_deadline(&deadline, 1000);
-				while (wmiv_wait_for_matching_event_until(dpy, &ev, wmiv_xdnd_is_drag_reply,
-								       NULL, &deadline)) {
-					if (ev.type == SelectionRequest) {
-						handle_selection_request(&ev.xselectionrequest);
+				for (;;) {
+					xcb_generic_event_t *fev =
+						wmiv_q_match(wmiv_xdnd_is_drag_reply,
+							     NULL, 1000);
+					if (!fev)
+						break;
+					if ((fev->response_type & 0x7f) == XCB_SELECTION_REQUEST) {
+						handle_selection_request(
+							(xcb_selection_request_event_t *)fev);
+						free(fev);
 						continue;
 					}
+					free(fev);
 					break;
 				}
-			} else if (target != None) {
+			} else if (target != 0) {
 				wmiv_xdnd_send_leave(target);
 			}
-			XFlush(dpy);
+			xcb_flush(xc);
+
+			free(ev);
+			break;
+		}
+
+		free(ev);
+	}
+
+	free(xdnd_drag_uri);
+	xdnd_drag_uri = NULL;
+}
+
+/* xkbcommon-x11 keysym resolution */
+static xkb_keysym_t keycode_to_keysym(xcb_keycode_t keycode, int level)
+{
+	const xkb_keysym_t *syms;
+	int n;
+
+	if (!xkb_keymap)
+		return XKB_KEY_NoSymbol;
+	n = xkb_keymap_key_get_syms_by_level(xkb_keymap, keycode, 0, level, &syms);
+
+	return n > 0 ? syms[0] : XKB_KEY_NoSymbol;
+}
+
+static void init_xkb(void)
+{
+	int32_t device_id;
+
+	xkb_keycode_t min_kc, max_kc;
+	const xkb_keysym_t *syms;
+	int n;
+
+	if (!xkb_x11_setup_xkb_extension(xc,
+					 XKB_X11_MIN_MAJOR_XKB_VERSION,
+					 XKB_X11_MIN_MINOR_XKB_VERSION,
+					 XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
+					 NULL, NULL, NULL, NULL))
+		return;
+
+	xkb_ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+
+	if (!xkb_ctx)
+		return;
+
+	device_id = xkb_x11_get_core_keyboard_device_id(xc);
+
+	if (device_id < 0)
+		return;
+
+	xkb_keymap = xkb_x11_keymap_new_from_device(xkb_ctx, xc, device_id,
+						    XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (!xkb_keymap)
+		return;
+
+	/* Find the Right arrow keycode for the slideshow thread */
+	min_kc = xkb_keymap_min_keycode(xkb_keymap);
+	max_kc = xkb_keymap_max_keycode(xkb_keymap);
+
+	for (xkb_keycode_t kc = min_kc; kc <= max_kc; kc++) {
+		n = xkb_keymap_key_get_syms_by_level(xkb_keymap, kc, 0, 0, &syms);
+
+		if (n > 0 && syms[0] == XK_Right) {
+			right_keycode = kc;
 			break;
 		}
 	}
-
-	wfree(xdnd_drag_uri);
-	xdnd_drag_uri = NULL;
 }
 
 /*
@@ -2476,17 +3002,20 @@ int main(int argc, char **argv)
 {
 	int option = -1;
 	RContextAttributes attr = {};
-	XEvent e;
-	KeySym keysym;
+	xkb_keysym_t keysym;
 	char *reading_filename = "";
-	int screen_num, file_i;
+	int file_i;
 	int quit = 0;
-	WXWMHints *win_hints;
-	Atom delWindow;
-
-#ifdef USE_XPM
-	Pixmap icon_pixmap, icon_shape;
-#endif
+	xcb_screen_iterator_t iter;
+	xcb_screen_t *screen;
+	uint32_t event_mask;
+	uint32_t values[2];
+	xcb_atom_t xdnd_version;
+	xcb_icccm_wm_hints_t hints;
+	char cmd_buf[4096];
+	int cmd_pos;
+	char wm_class_buf[32];
+	int inst_len, cls_len, pos;
 
 	/* Init colors */
 	lightGray.red = lightGray.green = lightGray.blue = 211;
@@ -2550,27 +3079,47 @@ int main(int argc, char **argv)
 	/* Register cleanup function for temporary directory */
 	atexit(cleanup_temp_dir);
 #endif
-	dpy = XOpenDisplay(NULL);
-	if (!dpy) {
+	xc = xcb_connect(NULL, &screen_num);
+
+	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "Error: can't open display\n");
+		xcb_disconnect(xc);
+
 		linked_list_free(&list);
 		return EXIT_FAILURE;
 	}
 
-	/* Initialize clipboard atoms */
-	clipboard_atom = XInternAtom(dpy, "CLIPBOARD", False);
-	targets_atom = XInternAtom(dpy, "TARGETS", False);
-	png_atom = XInternAtom(dpy, "image/png", False);
-	jpeg_atom = XInternAtom(dpy, "image/jpeg", False);
-	property_atom = XInternAtom(dpy, "WMIV_CLIPBOARD_PROP", False);
-	incr_atom = XInternAtom(dpy, "INCR", False);
+	/* Get screen info */
+	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
 
-	screen_num = DefaultScreen(dpy);
-	max_width = DisplayWidth(dpy, screen_num);
-	max_height = DisplayHeight(dpy, screen_num);
+	for (int i = 0; i < screen_num; i++)
+		xcb_screen_next(&iter);
+	screen = iter.data;
+
+	root_window = screen->root;
+	max_width = screen->width_in_pixels;
+	max_height = screen->height_in_pixels;
+
+	/* Initialize XKB keyboard mapping */
+	init_xkb();
+
+	/* Initialize clipboard atoms */
+	clipboard_atom = intern_atom("CLIPBOARD");
+	targets_atom = intern_atom("TARGETS");
+	png_atom = intern_atom("image/png");
+	jpeg_atom = intern_atom("image/jpeg");
+	property_atom = intern_atom("WMIV_CLIPBOARD_PROP");
+	incr_atom = intern_atom("INCR");
+	atom_net_frame_extents = intern_atom("_NET_FRAME_EXTENTS");
+	atom_net_wm_state = intern_atom("_NET_WM_STATE");
+	atom_net_wm_state_fullscreen = intern_atom("_NET_WM_STATE_FULLSCREEN");
+	atom_wm_protocols = intern_atom("WM_PROTOCOLS");
+	atom_wm_delete_window = intern_atom("WM_DELETE_WINDOW");
+	atom_utf8_string = intern_atom("UTF8_STRING");
+	atom_net_wm_icon = intern_atom("_NET_WM_ICON");
 
 	attr.flags = 0;
-	ctx = RCreateContextXCB(XGetXCBConnection(dpy), screen_num, &attr);
+	ctx = RCreateContextXCB(xc, screen_num, &attr);
 
 	if (argc < 2) {
 		argv[1] = ".";
@@ -2581,6 +3130,7 @@ int main(int argc, char **argv)
 		/* Check if this is an archive file */
 		if (is_archive_file(argv[file_i])) {
 			char *extracted_dir = extract_archive(argv[file_i]);
+
 			if (extracted_dir) {
 				current_link = connect_dir(extracted_dir, &list);
 				free(extracted_dir);
@@ -2619,115 +3169,124 @@ int main(int argc, char **argv)
 
 	merge_with_background(img);
 
-	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 10, 10, 0, 0, BlackPixel(dpy, screen_num));
-	XSelectInput(dpy, win, KeyPressMask|StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|FocusChangeMask|PropertyChangeMask);
+	/* Create window */
+	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
 
-	delWindow = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-	WXSetWMProtocols(dpy, win, &delWindow, 1);
+	for (int i = 0; i < screen_num; i++)
+		xcb_screen_next(&iter);
+	screen = iter.data;
+	event_mask = XCB_EVENT_MASK_KEY_PRESS |
+		     XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+		     XCB_EVENT_MASK_EXPOSURE |
+		     XCB_EVENT_MASK_BUTTON_PRESS |
+		     XCB_EVENT_MASK_BUTTON_RELEASE |
+		     XCB_EVENT_MASK_POINTER_MOTION |
+		     XCB_EVENT_MASK_FOCUS_CHANGE |
+		     XCB_EVENT_MASK_PROPERTY_CHANGE;
+	values[0] = screen->black_pixel;
+	values[1] = event_mask;
+
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, screen->root_depth, win, root_window,
+			  0, 0, 10, 10, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			  screen->root_visual,
+			  XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, values);
+
+	xcb_icccm_set_wm_protocols(xc, win, atom_wm_protocols, 1,
+				   &atom_wm_delete_window);
 	change_title(reading_filename);
 
 	wmiv_xdnd_init_atoms();
-	WXSetAtom(dpy, win, atom_XdndAware, (Atom)WMIV_XDND_VERSION);
-	win_hints = WXAllocWMHints();
+	xdnd_version = WMIV_XDND_VERSION;
 
-	if (win_hints) {
-		win_hints->flags = StateHint|InputHint|WindowGroupHint;
+	xcb_change_property(xc, XCB_PROP_MODE_REPLACE, win,
+			    atom_XdndAware, XCB_ATOM_ATOM, 32, 1,
+			    &xdnd_version);
 
-#ifdef USE_XPM
-		if ((XpmCreatePixmapFromData(dpy, win, wmiv_xpm, &icon_pixmap, &icon_shape, NULL)) == 0) {
-			win_hints->flags |= IconPixmapHint|IconMaskHint;
-			win_hints->icon_pixmap = icon_pixmap;
-			win_hints->icon_mask = icon_shape;
+	/* Set _NET_WM_ICON from the hardcoded ARGB literal */
+	xcb_change_property(xc, XCB_PROP_MODE_REPLACE, win,
+			    atom_net_wm_icon, XCB_ATOM_CARDINAL, 32,
+			    WMIV_ICON_ARGB_LEN, wmiv_icon_argb);
 
-			Atom net_wm_icon = XInternAtom(dpy, "_NET_WM_ICON", False);
-			if (net_wm_icon != None) {
-				int icon_width, icon_height;
-				if (sscanf(wmiv_xpm[0], "%d %d", &icon_width, &icon_height) == 2
-				    && icon_width > 0 && icon_height > 0
-				    && icon_width <= 20000 && icon_height <= 20000
-				    && (unsigned long)icon_width * (unsigned long)icon_height <= 0x80000000UL / 4UL) {
-					/* Convert XPM pixmap to ARGB32 format */
-					XImage *icon_image = XGetImage(dpy, icon_pixmap, 0, 0, icon_width, icon_height, AllPlanes, ZPixmap);
-					if (icon_image) {
-						XImage *mask_image = NULL;
-						if (icon_shape != None) {
-							mask_image = XGetImage(dpy, icon_shape, 0, 0, icon_width, icon_height, AllPlanes, ZPixmap);
-						}
+	/* Set WM hints */
+	memset(&hints, 0, sizeof(hints));
+	xcb_icccm_wm_hints_set_normal(&hints);
+	xcb_icccm_wm_hints_set_input(&hints, 1);
+	xcb_icccm_wm_hints_set_window_group(&hints, win);
+	xcb_icccm_set_wm_hints(xc, win, &hints);
 
-						/* Create ARGB32 data: width, height, followed by ARGB pixel data */
-						uint32_t *icon_data = malloc(sizeof(uint32_t) * (2 + icon_width * icon_height));
-						if (icon_data) {
-							icon_data[0] = icon_width;
-							icon_data[1] = icon_height;
+	xcb_icccm_set_wm_icon_name(xc, win, atom_utf8_string, 8,
+				   strlen(APPNAME), APPNAME);
 
-							for (int y = 0; y < icon_height; y++) {
-								for (int x = 0; x < icon_width; x++) {
-									unsigned long pixel = XGetPixel(icon_image, x, y);
-									unsigned long alpha = 0xFF000000; /* default opaque */
+	/* Set WM_COMMAND */
+	cmd_pos = 0;
 
-									/* Check mask for transparency */
-									if (mask_image) {
-										unsigned long mask_pixel = XGetPixel(mask_image, x, y);
-										if (mask_pixel == 0) {
-											alpha = 0x00000000; /* transparent */
-										}
-									}
+	for (int i = 0; i < argc && cmd_pos < (int)sizeof(cmd_buf); i++) {
+		int arg_len = strlen(argv[i]);
 
-									icon_data[2 + y * icon_width + x] = alpha | (pixel & 0x00FFFFFF);
-								}
-							}
-
-							WXSetCardinalN(dpy, win, net_wm_icon, icon_data, 2 + icon_width * icon_height);
-							free(icon_data);
-						}
-
-						XDestroyImage(icon_image);
-						if (mask_image) {
-							XDestroyImage(mask_image);
-						}
-					}
-				}
-			}
-		}
-#endif
-		win_hints->initial_state = NormalState;
-		win_hints->input = True;
-		win_hints->window_group = win;
-		WXSetWMIconName(dpy, win, APPNAME);
-		WXSetCommand(dpy, win, argv, argc);
-		WXSetWMHints(dpy, win, win_hints);
-		WXSetWMClass(dpy, win, APPNAME, "wmiv");
-		wfree(win_hints);
+		if (cmd_pos + arg_len + 1 > (int)sizeof(cmd_buf))
+			break;
+		memcpy(cmd_buf + cmd_pos, argv[i], arg_len);
+		cmd_pos += arg_len;
+		cmd_buf[cmd_pos++] = '\0';
 	}
-	XMapWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_property(xc, XCB_PROP_MODE_REPLACE, win,
+			    XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8,
+			    cmd_pos, cmd_buf);
 
-	if (wait_for_frame_extents(dpy, win, 1000)) { /* Wait up to 1 second */
-		if (!get_window_decor_size(dpy, win, &extents) && WMIV_DEBUG)
+	/* Set WM_CLASS */
+	inst_len = strlen(APPNAME);
+	cls_len = strlen("wmiv");
+	pos = 0;
+
+	memcpy(wm_class_buf + pos, APPNAME, inst_len);
+	pos += inst_len;
+	wm_class_buf[pos++] = '\0';
+	memcpy(wm_class_buf + pos, "wmiv", cls_len);
+	pos += cls_len;
+	wm_class_buf[pos++] = '\0';
+	xcb_icccm_set_wm_class(xc, win, pos, wm_class_buf);
+
+	xcb_map_window(xc, win);
+	xcb_flush(xc);
+
+	if (wait_for_frame_extents(win, 1000)) { /* Wait up to 1 second */
+		if (!get_window_decor_size(win, &extents) && WMIV_DEBUG)
 			fprintf(stderr, "Warning: Property found but could not parse frame extents\n");
 	} else {
 		if (WMIV_DEBUG)
 			fprintf(stderr, "Warning: Window manager did not set _NET_FRAME_EXTENTS property within timeout\n");
+
 	}
 
-	get_monitor_dimensions(dpy, screen_num, win, &max_width, &max_height);
+	get_monitor_dimensions(win, &max_width, &max_height);
 
 	if (WMIV_DEBUG)
 		fprintf(stderr, "Display size: %dx%d\n", max_width, max_height);
 
 	rescale_image();
-	XResizeWindow(dpy, win, img->width, img->height);
+	resize_window(win, img->width, img->height);
 	redraw_window(0);
-	XSync(dpy, True);
+	/* Flush all pending requests and wait for the server to process them,
+	 * then discard the accumulated events — this replaces XSync(dpy, True) */
+	xcb_flush(xc);
+	free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
+	wmiv_q_drain_to(XCB_CONFIGURE_NOTIFY);
 
 	/* Main event loop */
 	while (!quit) {
-		XNextEvent(dpy, &e);
-		if (e.type == ClientMessage) {
+		xcb_generic_event_t *ev = wmiv_q_wait(-1);
+
+		if (!ev)
+			break;
+		uint8_t rt = ev->response_type & 0x7f;
+
+		if (rt == XCB_CLIENT_MESSAGE) {
+			xcb_client_message_event_t *cm = (xcb_client_message_event_t *)ev;
 			unsigned char *dropBuffer;
 			int length;
 
-			if (wmiv_xdnd_handle_message(&e.xclient, &dropBuffer, &length)) {
+			if (wmiv_xdnd_handle_message(cm, &dropBuffer, &length)) {
 				char *handled_uri_header = "file://";
 				char *filename_separator = "\n";
 				char *ptr = strtok((char *)dropBuffer, filename_separator);
@@ -2739,21 +3298,23 @@ int main(int argc, char **argv)
 				linked_list_init(&list);
 
 				Bool find_one_file = False;
+
 				while (ptr != NULL) {
 					if (strstr(ptr, handled_uri_header) == ptr) {
 						char *tmp_file;
+
 						if (ptr[strlen(ptr) - 1] == '\r')
 							ptr[strlen(ptr) - 1] = '\0';
 						tmp_file = ptr + strlen(handled_uri_header);
 
 						/* drag-and-drop file name format as per the spec is encoded as an URI */
-						WXDndDecodeURI(tmp_file);
+						wmiv_xdnd_decode_uri(tmp_file);
 						if (connect_dir(tmp_file, &list))
 							find_one_file = True;
 					}
 					ptr = strtok(NULL, filename_separator);
 				}
-				wfree(dropBuffer);
+				free(dropBuffer);
 
 				if (find_one_file) {
 					max_index = list.count;
@@ -2762,77 +3323,93 @@ int main(int argc, char **argv)
 				} else {
 					if (WMIV_DEBUG)
 						fprintf(stderr, "Error: no valid file found in dropped data\n");
-					XClearArea(dpy, win, 0, 0, 0, 0, True);
+					xcb_clear_area(xc, 1, win, 0, 0, 0, 0);
+
 				}
 			}
-			if (e.xclient.data.l[0] == delWindow)
+			if (cm->type == atom_wm_protocols && cm->format == 32 &&
+			    cm->data.data32[0] == atom_wm_delete_window)
 				quit = 1;
+			free(ev);
 			continue;
 		}
-		if (e.type == SelectionRequest) {
+		if (rt == XCB_SELECTION_REQUEST) {
 			/* Serve clipboard requests */
-			handle_selection_request(&e.xselectionrequest);
+			handle_selection_request((xcb_selection_request_event_t *)ev);
+			free(ev);
 			continue;
 		}
-		if (e.type == SelectionClear) {
+		if (rt == XCB_SELECTION_CLEAR) {
 			/* we lost ownership */
-			handle_selection_clear();
+			handle_selection_clear((xcb_selection_clear_event_t *)ev);
+			free(ev);
 			continue;
 		}
-		if (e.type == PropertyNotify) {
-			if (clip_incr_send_property_notify(dpy, &incr, &e.xproperty)) {
+		if (rt == XCB_PROPERTY_NOTIFY) {
+			if (clip_incr_send_property_notify(xc, &incr,
+					(xcb_property_notify_event_t *)ev)) {
 				if (WMIV_DEBUG)
 					fprintf(stderr, "INCR: sent chunk %zu/%zu%s\n",
 						incr.offset, incr.size,
 						incr.active ? "" : " (complete)");
 			}
+			free(ev);
 			continue;
 		}
-		if (e.type == DestroyNotify) {
-			clip_incr_send_destroy_notify(dpy, &incr, &e.xdestroywindow);
+		if (rt == XCB_DESTROY_NOTIFY) {
+			clip_incr_send_destroy_notify(xc, &incr,
+					(xcb_destroy_notify_event_t *)ev);
+			free(ev);
 			continue;
 		}
-		if (e.type == FocusIn) {
+		if (rt == XCB_FOCUS_IN) {
 			focus = True;
+			free(ev);
 			continue;
 		}
-		if (e.type == FocusOut) {
+		if (rt == XCB_FOCUS_OUT) {
 			focus = False;
+			free(ev);
 			continue;
 		}
-		if (!fullscreen_flag && (e.type == Expose)) {
-			XExposeEvent xev = e.xexpose;
-			if (xev.count == 0)
+		if (!fullscreen_flag && (rt == XCB_EXPOSE)) {
+			xcb_expose_event_t *xe = (xcb_expose_event_t *)ev;
+
+			if (xe->count == 0)
 				redraw_window(0);
+			free(ev);
 			continue;
 		}
-		if (!fullscreen_flag && e.type == ConfigureNotify) {
-			XConfigureEvent xce = e.xconfigure;
+		if (!fullscreen_flag && rt == XCB_CONFIGURE_NOTIFY) {
+			xcb_configure_notify_event_t *xce = (xcb_configure_notify_event_t *)ev;
 
 			/* there is no file loaded and the window is resized */
 			if (!current_link) {
-				XResizeWindow(dpy, win, img->width, img->height);
+				resize_window(win, img->width, img->height);
+				free(ev);
 				continue;
 			}
 
-			if (xce.width != img->width || xce.height != img->height) {
+			if (xce->width != img->width || xce->height != img->height) {
 				RImage *old_img = img;
+
 				img = load_oriented_image(ctx, current_link->data, 0);
 				if (!img) {
 					/* keep the old img and window size */
 					img = old_img;
-					XResizeWindow(dpy, win, img->width, img->height);
+					resize_window(win, img->width, img->height);
 				} else {
 					RImage *tmp2;
+
 					if (!back_from_fullscreen) {
 						/* manually resized window */
-						tmp2 = RScaleImage(img, xce.width, xce.height);
+						tmp2 = RScaleImage(img, xce->width, xce->height);
 					}
 					else {
 						/* back from fullscreen mode, maybe img was rotated */
 						tmp2 = img;
 						back_from_fullscreen = False;
-						XClearWindow(dpy, win);
+						clear_window(win);
 					}
 					merge_with_background(tmp2);
 					if (RConvertImage(ctx, tmp2, &pix)) {
@@ -2840,36 +3417,42 @@ int main(int argc, char **argv)
 						img = RCloneImage(tmp2);
 						RReleaseImage(tmp2);
 						change_title((char *)current_link->data);
-						XSync(dpy, True);
+						xcb_flush(xc);
+						free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
+						wmiv_q_drain_to(XCB_CONFIGURE_NOTIFY);
 						rescale_image();
-						XResizeWindow(dpy, win, img->width, img->height);
+						resize_window(win, img->width, img->height);
 						redraw_window(0);
 
 					}
 				}
 			}
+			free(ev);
 			continue;
 		}
-		if (fullscreen_flag && e.type == ConfigureNotify) {
-			int new_width = e.xconfigure.width;
-			int new_height = e.xconfigure.height;
-			if (new_width != img->width || new_height != img->height)
+		if (fullscreen_flag && rt == XCB_CONFIGURE_NOTIFY) {
+			xcb_configure_notify_event_t *xce = (xcb_configure_notify_event_t *)ev;
+
+			if (xce->width != img->width || xce->height != img->height)
 				maximize_image();
+			free(ev);
 			continue;
 		}
-		if (e.type == ButtonPress) {
-			switch (e.xbutton.button) {
-			case Button1: {
+		if (rt == XCB_BUTTON_PRESS) {
+			xcb_button_press_event_t *be = (xcb_button_press_event_t *)ev;
+
+			switch (be->detail) {
+			case 1: {
 				/* Store button press for potential drag operation */
 				button1_pressed = True;
-				drag_start_x = e.xbutton.x;
-				drag_start_y = e.xbutton.y;
+				drag_start_x = be->event_x;
+				drag_start_y = be->event_y;
 			}
 			break;
-			case Button4:
+			case 4:
 				zoom_in();
 				break;
-			case Button5:
+			case 5:
 				zoom_out();
 				break;
 			case 8:
@@ -2879,10 +3462,13 @@ int main(int argc, char **argv)
 				change_image(NEXT);
 				break;
 			}
+			free(ev);
 			continue;
 		}
-		if (e.type == ButtonRelease) {
-			if (e.xbutton.button == Button1 && button1_pressed) {
+		if (rt == XCB_BUTTON_RELEASE) {
+			xcb_button_release_event_t *be = (xcb_button_release_event_t *)ev;
+
+			if (be->detail == 1 && button1_pressed) {
 				/* Button released without dragging - treat as click for image navigation */
 				button1_pressed = False;
 				if (focus) {
@@ -2892,12 +3478,16 @@ int main(int argc, char **argv)
 						change_image(PREV);
 				}
 			}
+			free(ev);
 			continue;
 		}
-		if (e.type == MotionNotify && button1_pressed) {
+		if (rt == XCB_MOTION_NOTIFY && button1_pressed) {
+			xcb_motion_notify_event_t *me = (xcb_motion_notify_event_t *)ev;
+
 			/* Check if we've moved enough to start a drag */
-			int dx = e.xmotion.x - drag_start_x;
-			int dy = e.xmotion.y - drag_start_y;
+			int dx = me->event_x - drag_start_x;
+			int dy = me->event_y - drag_start_y;
+
 			if (abs(dx) > drag_threshold || abs(dy) > drag_threshold) {
 				/* Start drag operation */
 				button1_pressed = False;
@@ -2905,21 +3495,27 @@ int main(int argc, char **argv)
 					initiate_file_drag();
 				}
 			}
+			free(ev);
 			continue;
 		}
-		if (e.type == KeyPress) {
-			keysym = W_KeycodeToKeysym(dpy, e.xkey.keycode, e.xkey.state & ShiftMask?1:0);
+		if (rt == XCB_KEY_PRESS) {
+			xcb_key_press_event_t *ke = (xcb_key_press_event_t *)ev;
+			int level = (ke->state & XCB_KEY_BUT_MASK_SHIFT) ? 1 : 0;
+
+			keysym = keycode_to_keysym(ke->detail, level);
 #ifdef HAVE_PTHREAD
 			if (keysym != XK_Right)
 				slideshow_flag = False;
 #endif
 			/* Detect Ctrl+C: state contains ControlMask */
-			if ((e.xkey.state & ControlMask) && (keysym == XK_c || keysym == XK_C)) {
+			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XK_c || keysym == XK_C)) {
 				copy_current_image_to_clipboard();
+				free(ev);
 				continue;
 			}
-			if ((e.xkey.state & ControlMask) && (keysym == XK_v || keysym == XK_V)) {
+			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XK_v || keysym == XK_V)) {
 				paste_clipboard_image();
+				free(ev);
 				continue;
 			}
 
@@ -2984,19 +3580,17 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			free(ev);
+		} else {
+			free(ev);
 		}
 	}
 
 	if (img)
 		RReleaseImage(img);
 	if (pix)
-		XFreePixmap(dpy, pix);
-#ifdef USE_XPM
-	if (icon_pixmap)
-		XFreePixmap(dpy, icon_pixmap);
-	if (icon_shape)
-		XFreePixmap(dpy, icon_shape);
-#endif
+		xcb_free_pixmap(xc, (xcb_pixmap_t)pix);
+
 	linked_list_free(&list);
 	RDestroyContext(ctx);
 	RShutdown();
@@ -3004,6 +3598,13 @@ int main(int argc, char **argv)
 	free_clipboard_data();
 	cleanup_temp_dir();
 
-	XCloseDisplay(dpy);
+	if (xkb_keymap)
+		xkb_keymap_unref(xkb_keymap);
+
+	if (xkb_ctx)
+		xkb_context_unref(xkb_ctx);
+
+	xcb_disconnect(xc);
+
 	return EXIT_SUCCESS;
 }

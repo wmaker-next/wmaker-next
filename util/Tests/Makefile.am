@@ -7,7 +7,8 @@ DRIVE_TESTS = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
 AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_srcdir)/util @HEADER_SEARCH_PATH@
 
 wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip-common.c
-wmclipd_cliptest_LDADD = @XLFLAGS@ @XLIBS@
+wmclipd_cliptest_CFLAGS = @XCB_CFLAGS@
+wmclipd_cliptest_LDADD = @XCB_LIBS@ -lxcb-keysyms
 
 EXTRA_DIST = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
 

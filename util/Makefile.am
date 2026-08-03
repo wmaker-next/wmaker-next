@@ -24,14 +24,12 @@ wdread_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
-if HAVE_XFIXES
 bin_PROGRAMS += wmclipd
-wmclipd_CFLAGS = @XFIXES_CFLAGS@
+wmclipd_CFLAGS = @XCB_CFLAGS@
 wmclipd_SOURCES = wmclipd.c clip-common.c clip-common.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@XLFLAGS@ @XLIBS@ @XFIXES_LIBS@ $(liblist)
-endif
+	@XCB_LIBS@ $(liblist)
 
 if BUILD_WMLOCK
 bin_PROGRAMS += wmlock
@@ -103,13 +101,11 @@ wmiv_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@ @PTHREAD_CFLAGS@ @LIBARCHIVE_CFLAGS@
 
 wmiv_LDADD = \
 	$(top_builddir)/wrlib/libwraster.la \
-	$(top_builddir)/WINGs/libWINGs.la \
-	$(top_builddir)/WINGs/libWUtil.la \
-	@XLFLAGS@ @XLIBS@ @XCB_LIBS@ @GFXLIBS@ \
+	@XCB_LIBS@ -lxcb-icccm \
 	@CAIRO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@
 
-wmiv_SOURCES = wmiv.c wmiv.h clip-common.c clip-common.h
+wmiv_SOURCES = wmiv.c wmiv_icon.h clip-common.c clip-common.h
 
 CLEANFILES = wmaker.inst
 

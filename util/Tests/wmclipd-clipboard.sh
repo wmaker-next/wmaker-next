@@ -88,7 +88,7 @@ start_wmclipd()
 	: > "$LOG"
 	LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 	DISPLAY=$DPY \
-		"$WMCLIPD" --clipboard --verbose >>"$LOG" 2>&1 &
+		"$WMCLIPD" --clipboard --debug >>"$LOG" 2>&1 &
 	WMCLIPD_PID=$!
 	echo "$WMCLIPD_PID" >> "$PIDFILE"
 	wait_for 30 log_has "monitoring CLIPBOARD and PRIMARY" ||

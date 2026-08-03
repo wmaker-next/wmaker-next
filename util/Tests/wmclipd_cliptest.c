@@ -11,83 +11,124 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
-
-#include <WINGs/WXProp.h>
 
 #include "clip-common.h"
 
 #define CHUNK_SIZE 32768
 
-static Display *dpy;
-static Window win;
-static Atom atom_clipboard;
-static Atom atom_primary;
-static Atom atom_targets;
-static Atom atom_png;
-static Atom atom_incr;
-static Atom atom_property;
+static xcb_connection_t *xc;
+static xcb_window_t win;
+static xcb_window_t root_window;
+static xcb_atom_t atom_clipboard;
+static xcb_atom_t atom_primary;
+static xcb_atom_t atom_targets;
+static xcb_atom_t atom_png;
+static xcb_atom_t atom_incr;
+static xcb_atom_t atom_property;
 
 static unsigned char *payload;
 static size_t payload_len;
 
 static ClipIncrSend transfer;
 
-static void serve_request(XSelectionRequestEvent *req, int use_incr)
+static void send_selection_notify(xcb_selection_request_event_t *req,
+				  xcb_atom_t property)
 {
-	Atom property = req->property == None ? req->target : req->property;
-	Atom targets[2];
+	xcb_selection_notify_event_t ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = XCB_SELECTION_NOTIFY;
+	ev.time = req->time;
+	ev.requestor = req->requestor;
+	ev.selection = req->selection;
+	ev.target = req->target;
+	ev.property = property;
+	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
+	xcb_flush(xc);
+}
+
+static void serve_request(xcb_selection_request_event_t *req, int use_incr)
+{
+	xcb_atom_t property = req->property == XCB_ATOM_NONE ?
+		req->target : req->property;
+	xcb_atom_t targets[2];
 
 	if (req->target == atom_targets) {
 		targets[0] = atom_targets;
 		targets[1] = atom_png;
-		XChangeProperty(dpy, req->requestor, property, XA_ATOM, 32,
-				PropModeReplace, (unsigned char *)targets, 2);
-		WXSendSelectionNotify(dpy, req, property);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+				    property, XCB_ATOM_ATOM, 32, 2, targets);
+		send_selection_notify(req, property);
 		return;
 	}
 
 	if (req->target != atom_png) {
-		WXSendSelectionNotify(dpy, req, None);
+		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
 	if (use_incr) {
-		if (!clip_incr_send_start(dpy, &transfer, req, atom_incr,
+		if (!clip_incr_send_start(xc, &transfer, req, atom_incr,
 					   atom_png, payload, payload_len,
 					   CHUNK_SIZE)) {
-			WXSendSelectionNotify(dpy, req, None);
+			send_selection_notify(req, XCB_ATOM_NONE);
 			return;
 		}
-		WXSendSelectionNotify(dpy, req, property);
+		send_selection_notify(req, property);
 	} else {
-		XChangeProperty(dpy, req->requestor, property, atom_png, 8,
-				PropModeReplace, payload, (int)payload_len);
-		WXSendSelectionNotify(dpy, req, property);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+				    property, atom_png, 8, payload_len,
+				    payload);
+		send_selection_notify(req, property);
 	}
 }
 
-static int serve_selection(Atom selection, int use_incr)
+static xcb_window_t selection_owner(xcb_atom_t selection)
 {
-	XEvent ev;
+	xcb_get_selection_owner_cookie_t ck;
+	xcb_get_selection_owner_reply_t *rep;
+	xcb_window_t owner;
 
-	XSetSelectionOwner(dpy, selection, win, CurrentTime);
-	XFlush(dpy);
-	if (XGetSelectionOwner(dpy, selection) != win) {
+	ck = xcb_get_selection_owner(xc, selection);
+	rep = xcb_get_selection_owner_reply(xc, ck, NULL);
+
+	owner = rep ? rep->owner : 0;
+	free(rep);
+	return owner;
+}
+
+static int serve_selection(xcb_atom_t selection, int use_incr)
+{
+	xcb_generic_event_t *ev;
+
+	xcb_set_selection_owner(xc, win, selection, XCB_TIME_CURRENT_TIME);
+	xcb_flush(xc);
+
+	if (selection_owner(selection) != win) {
 		fprintf(stderr, "failed to own selection\n");
 		return 3;
 	}
 
 	for (;;) {
-		XNextEvent(dpy, &ev);
-		if (ev.type == SelectionRequest)
-			serve_request(&ev.xselectionrequest, use_incr);
-		else if (ev.type == PropertyNotify)
-			clip_incr_send_property_notify(dpy, &transfer, &ev.xproperty);
-		else if (ev.type == DestroyNotify)
-			clip_incr_send_destroy_notify(dpy, &transfer, &ev.xdestroywindow);
+		ev = xcb_wait_for_event(xc);
+
+		if (!ev)
+			return 4;
+		uint8_t rt = ev->response_type & 0x7f;
+
+		if (rt == XCB_SELECTION_REQUEST)
+			serve_request((xcb_selection_request_event_t *)ev,
+				      use_incr);
+		else if (rt == XCB_PROPERTY_NOTIFY)
+			clip_incr_send_property_notify(xc, &transfer,
+				(xcb_property_notify_event_t *)ev);
+		else if (rt == XCB_DESTROY_NOTIFY)
+			clip_incr_send_destroy_notify(xc, &transfer,
+				(xcb_destroy_notify_event_t *)ev);
+		free(ev);
 	}
 }
 
@@ -157,67 +198,94 @@ static int serve_clipboard_file(const char *path, int use_incr)
 
 static int send_ctrl_v(const char *window_id)
 {
-	XKeyEvent ev;
-	Window target;
+	xcb_key_symbols_t *syms;
+	xcb_keycode_t *keycodes;
+	xcb_key_press_event_t ev;
+	xcb_window_t target;
 
-	target = (Window)strtoul(window_id, NULL, 0);
-	if (target == None)
+	target = (xcb_window_t)strtoul(window_id, NULL, 0);
+	if (target == 0)
 		return 2;
 
-	memset(&ev, 0, sizeof(ev));
-	ev.display = dpy;
-	ev.window = target;
-	ev.root = DefaultRootWindow(dpy);
-	ev.subwindow = None;
-	ev.time = CurrentTime;
-	ev.x = 1;
-	ev.y = 1;
-	ev.x_root = 1;
-	ev.y_root = 1;
-	ev.same_screen = True;
-	ev.keycode = XKeysymToKeycode(dpy, XK_v);
-	ev.state = ControlMask;
-	XSetInputFocus(dpy, target, RevertToParent, CurrentTime);
-	ev.type = KeyPress;
-	if (!XSendEvent(dpy, target, False, KeyPressMask, (XEvent *)&ev))
+	syms = xcb_key_symbols_alloc(xc);
+
+	if (!syms)
 		return 3;
-	ev.type = KeyRelease;
-	XSendEvent(dpy, target, False, KeyReleaseMask, (XEvent *)&ev);
-	XFlush(dpy);
+	keycodes = xcb_key_symbols_get_keycode(syms, XK_v);
+	xcb_key_symbols_free(syms);
+
+	if (!keycodes)
+		return 3;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = XCB_KEY_PRESS;
+	ev.detail = keycodes[0];
+	ev.root = root_window;
+	ev.event = target;
+	ev.root_x = 1;
+	ev.root_y = 1;
+	ev.event_x = 1;
+	ev.event_y = 1;
+	ev.state = XCB_KEY_BUT_MASK_CONTROL;
+	ev.same_screen = 1;
+	ev.time = XCB_TIME_CURRENT_TIME;
+
+	free(keycodes);
+
+	xcb_set_input_focus(xc, target, XCB_INPUT_FOCUS_PARENT,
+			    XCB_TIME_CURRENT_TIME);
+	xcb_send_event(xc, 0, target, XCB_EVENT_MASK_KEY_PRESS,
+		       (const char *)&ev);
+
+	ev.response_type = XCB_KEY_RELEASE;
+	xcb_send_event(xc, 0, target, XCB_EVENT_MASK_KEY_RELEASE,
+		       (const char *)&ev);
+	xcb_flush(xc);
+
 	return 0;
 }
 
 static int read_clipboard(void)
 {
-	XEvent ev;
-	Atom type;
+	xcb_generic_event_t *ev;
+	xcb_atom_t type;
+	xcb_selection_notify_event_t *sn;
 	unsigned char *data;
 	size_t data_len, i;
 	unsigned long checksum = 0;
 	long long deadline;
 
-	XDeleteProperty(dpy, win, atom_property);
-	XConvertSelection(dpy, atom_clipboard, atom_png, atom_property, win,
-			  CurrentTime);
-	XFlush(dpy);
+	xcb_delete_property(xc, win, atom_property);
+	xcb_convert_selection(xc, win, atom_clipboard, atom_png, atom_property,
+			      XCB_TIME_CURRENT_TIME);
+	xcb_flush(xc);
 
 	deadline = clip_monotonic_ms() + 3000;
 	for (;;) {
-		if (!clip_wait_event(dpy, &ev, (int)(deadline - clip_monotonic_ms()))) {
+		int wait_ms = (int)(deadline - clip_monotonic_ms());
+
+		if (wait_ms < 0)
+			wait_ms = 0;
+		if (!clip_wait_event(xc, &ev, wait_ms)) {
 			fprintf(stderr, "timed out waiting for SelectionNotify\n");
 			return 4;
 		}
-		if (ev.type == SelectionNotify)
+		if ((ev->response_type & 0x7f) == XCB_SELECTION_NOTIFY)
 			break;
-	}
-	if (ev.xselection.property == None) {
-		fprintf(stderr, "selection denied\n");
-		return 4;
+		free(ev);
 	}
 
-	data = clip_retrieve_property(dpy, win, atom_property, atom_incr,
-					CLIP_DEFAULT_MAX_BYTES, 3000,
-					NULL, NULL, &type, &data_len);
+	sn = (xcb_selection_notify_event_t *)ev;
+	if (sn->property == XCB_ATOM_NONE) {
+		fprintf(stderr, "selection denied\n");
+		free(ev);
+		return 4;
+	}
+	free(ev);
+
+	data = clip_retrieve_property(xc, win, atom_property, atom_incr,
+				      CLIP_DEFAULT_MAX_BYTES, 3000,
+				      NULL, NULL, &type, &data_len);
 	if (!data) {
 		fprintf(stderr, "failed to read selection property\n");
 		return 5;
@@ -233,24 +301,68 @@ static int read_clipboard(void)
 
 static int init_x11(void)
 {
-	dpy = XOpenDisplay(NULL);
-	if (!dpy) {
+	int screen_num;
+	xcb_screen_iterator_t iter;
+	xcb_screen_t *screen;
+	xcb_intern_atom_cookie_t cookies[5];
+	xcb_intern_atom_reply_t *rep;
+	uint32_t mask;
+	int i = 0;
+
+	xc = xcb_connect(NULL, &screen_num);
+
+	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "cannot open display\n");
+		xcb_disconnect(xc);
+
+		xc = NULL;
 		return 0;
 	}
 
-	atom_clipboard = XInternAtom(dpy, "CLIPBOARD", False);
-	atom_primary = XA_PRIMARY;
-	atom_targets = XInternAtom(dpy, "TARGETS", False);
-	atom_png = XInternAtom(dpy, "image/png", False);
-	atom_incr = XInternAtom(dpy, "INCR", False);
-	atom_property = XInternAtom(dpy, "WMCLIPD_TEST", False);
+	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
 
-	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 1, 1,
-				  0, 0, 0);
-	XSelectInput(dpy, win, PropertyChangeMask);
-	XFlush(dpy);
+	for (; screen_num > 0; screen_num--)
+		xcb_screen_next(&iter);
+
+	screen = iter.data;
+	root_window = screen->root;
+
+	cookies[i++] = xcb_intern_atom(xc, 0, strlen("CLIPBOARD"), "CLIPBOARD");
+	cookies[i++] = xcb_intern_atom(xc, 0, strlen("TARGETS"), "TARGETS");
+	cookies[i++] = xcb_intern_atom(xc, 0, strlen("image/png"), "image/png");
+	cookies[i++] = xcb_intern_atom(xc, 0, strlen("INCR"), "INCR");
+	cookies[i++] = xcb_intern_atom(xc, 0, strlen("WMCLIPD_TEST"), "WMCLIPD_TEST");
+
+	i = 0;
+	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
+	if (!rep) goto fail;
+	atom_clipboard = rep->atom; free(rep);
+	atom_primary = XCB_ATOM_PRIMARY;
+	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
+	if (!rep) goto fail;
+	atom_targets = rep->atom; free(rep);
+	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
+	if (!rep) goto fail;
+	atom_png = rep->atom; free(rep);
+	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
+	if (!rep) goto fail;
+	atom_incr = rep->atom; free(rep);
+	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
+	if (!rep) goto fail;
+	atom_property = rep->atom; free(rep);
+
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, XCB_COPY_FROM_PARENT, win, root_window,
+			  0, 0, 1, 1, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+			  XCB_COPY_FROM_PARENT, 0, NULL);
+	mask = XCB_EVENT_MASK_PROPERTY_CHANGE;
+	xcb_change_window_attributes(xc, win, XCB_CW_EVENT_MASK, &mask);
+	xcb_flush(xc);
+
 	return 1;
+fail:
+	fprintf(stderr, "wmclipd_cliptest: intern_atom reply failed\n");
+	return 0;
 }
 
 int main(int argc, char **argv)
