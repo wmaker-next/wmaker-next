@@ -578,7 +578,8 @@
 	_(DOCK_RAISE_LOWER_KEY, "DockRaiseLowerKey", "None", WKBD_DOCKRAISELOWER) \
 	_(CLIP_RAISE_LOWER_KEY, "ClipRaiseLowerKey", "None", WKBD_CLIPRAISELOWER) \
 	_(MINIATURIZE_KEY, "MiniaturizeKey", "Mod1+M", WKBD_MINIATURIZE) \
-	_(MINIMIZE_ALL_KEY, "MinimizeAllKey", "None", WKBD_MINIMIZEALL) \
+	_(MINIATURIZE_ALL_KEY, "MiniaturizeAllKey", "None", WKBD_MINIATURIZEALL) \
+	_(MINIATURIZE_OTHERS_KEY, "MiniaturizeOthersKey", "None", WKBD_MINIATURIZE_OTHERS) \
 	_(HIDE_KEY, "HideKey", "Mod1+H", WKBD_HIDE) \
 	_(HIDE_OTHERS_KEY, "HideOthersKey", "None", WKBD_HIDE_OTHERS) \
 	_(MOVE_RESIZE_KEY, "MoveResizeKey", "None", WKBD_MOVERESIZE) \

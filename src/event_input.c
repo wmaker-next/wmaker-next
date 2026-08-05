@@ -323,7 +323,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
 			OpenWindowMenu(wwin, wwin->frame_x, wwin->frame_y + wwin->frame->top_width, True);
 		break;
-	case WKBD_MINIMIZEALL:
+	case WKBD_MINIATURIZEALL:
 		CloseWindowMenu(scr);
 		wHideAll(scr);
 		break;
@@ -350,6 +350,13 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			CloseWindowMenu(scr);
 
 			wHideOtherApplications(wwin);
+		}
+		break;
+	case WKBD_MINIATURIZE_OTHERS:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+			CloseWindowMenu(scr);
+
+			wMiniaturizeOtherApplications(wwin);
 		}
 		break;
 	case WKBD_MAXIMIZE:

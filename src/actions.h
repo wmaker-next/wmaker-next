@@ -65,6 +65,7 @@ void handleMaximize(WWindow *wwin, int directions);
 
 void wHideAll(WScreen *src);
 void wHideOtherApplications(WWindow *wwin);
+void wMiniaturizeOtherApplications(WWindow *wwin);
 void wShowAllWindows(WScreen *scr);
 
 void wHideApplication(WApplication *wapp);

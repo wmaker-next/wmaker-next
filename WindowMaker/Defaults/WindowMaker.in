@@ -194,7 +194,8 @@
 	DockRaiseLowerKey = None;
 	ClipRaiseLowerKey = None;
 	MiniaturizeKey = "Mod1+M";
-	MinimizeAllKey = None;
+	MiniaturizeAllKey = None;
+	MiniaturizeOthersKey = None;
 	HideKey = "Mod1+H";
 	HideOthersKey = None;
 	MoveResizeKey = None;

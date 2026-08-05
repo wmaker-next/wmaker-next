@@ -910,6 +910,7 @@ static void test_defaults(void)
 	CHECK(strcmp(config->key_bindings[WKBD_WINDOWMENU].spec,
 		     "Control+Escape") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_KEYCHAIN_CANCEL].spec, "None") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_MINIATURIZE_OTHERS].spec, "None") == 0);
 	wConfigDestroy(config);
 }
 

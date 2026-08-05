@@ -246,6 +246,14 @@ static void hideOthersCommand(WMenu * menu, WMenuEntry * entry)
 	wHideOtherApplications(menu->frame->screen_ptr->focused_window);
 }
 
+static void miniaturizeOthersCommand(WMenu *menu, WMenuEntry *entry)
+{
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void) entry;
+
+	wMiniaturizeOtherApplications(menu->frame->screen_ptr->focused_window);
+}
+
 static void saveSessionCommand(WMenu * menu, WMenuEntry * entry)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -967,6 +975,10 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		shortcutOk = True;
 	} else if (strcmp(command, "HIDE_OTHERS") == 0) {
 		entry = wMenuAddCallback(menu, title, hideOthersCommand, NULL);
+
+		shortcutOk = True;
+	} else if (strcmp(command, "MINIATURIZE_OTHERS") == 0) {
+		entry = wMenuAddCallback(menu, title, miniaturizeOthersCommand, NULL);
 
 		shortcutOk = True;
 	} else if (strcmp(command, "SHOW_ALL") == 0) {

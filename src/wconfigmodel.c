@@ -758,6 +758,22 @@ WConfig *wConfigCreateDefault(void)
 	return wConfigReadWindowMaker(NULL);
 }
 
+/* MinimizeAllKey was renamed to MiniaturizeAllKey with no alias */
+static void warn_renamed_key(WMPropList *dict)
+{
+	WMPropList *v;
+	const char *s;
+
+	if (!dict)
+		return;
+	v = dict_get(dict, "MinimizeAllKey");
+	if (!v || !WMIsPLString(v))
+		return;
+	s = WMGetFromPLString(v);
+	if (s && *s && strcasecmp(s, "None") != 0)
+		wwarning(_("\"MinimizeAllKey\" was renamed to \"MiniaturizeAllKey\"; update your domain"));
+}
+
 WConfig *wConfigReadWindowMaker(WMPropList *dict)
 {
 	WConfig *config;
@@ -769,6 +785,8 @@ WConfig *wConfigReadWindowMaker(WMPropList *dict)
 	count = wConfigSchemaCount();
 	for (i = 0; i < count; i++)
 		parse_entry(config, &schema[i], dict_get_entry(dict, &schema[i]));
+
+	warn_renamed_key(dict);
 
 	return config;
 }

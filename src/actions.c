@@ -1975,12 +1975,26 @@ void wHideOtherApplications(WWindow *awin)
 {
 	WWindow *wwin;
 	WApplication *tapp;
+	WWindow **windows;
+	unsigned int wcount = 0;
+	int i;
 
 	if (!awin)
 		return;
-	wwin = awin->screen_ptr->focused_window;
 
+	/* Snapshot the focus chain first: wIconifyWindow()/wHideApplication()
+	 * can rewire it via wSetFocusTo() focus migration, so walking it
+	 * live can skip the window that migrated to the head. */
+	windows = wmalloc(sizeof(WWindow *));
+	wwin = awin->screen_ptr->focused_window;
 	while (wwin) {
+		windows[wcount++] = wwin;
+		windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
+		wwin = wwin->prev;
+	}
+
+	for (i = 0; i < wcount; i++) {
+		wwin = windows[i];
 		if (wwin != awin
 		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
@@ -2005,11 +2019,47 @@ void wHideOtherApplications(WWindow *awin)
 				}
 			}
 		}
+	}
+	wfree(windows);
+}
+
+void wMiniaturizeOtherApplications(WWindow *awin)
+{
+	WWindow *wwin;
+	WWindow **windows;
+	unsigned int wcount = 0;
+	int i;
+
+	if (!awin)
+		return;
+
+	/* Snapshot the focus chain first: wIconifyWindow() can rewire it
+	 * via wSetFocusTo() focus migration, so walking it live can skip
+	 * the window that migrated to the head. */
+	windows = wmalloc(sizeof(WWindow *));
+	wwin = awin->screen_ptr->focused_window;
+	while (wwin) {
+		windows[wcount++] = wwin;
+		windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
 		wwin = wwin->prev;
 	}
-	/*
-	   wSetFocusTo(awin->screen_ptr, awin);
-	 */
+
+	for (i = 0; i < wcount; i++) {
+		wwin = windows[i];
+		if (wwin != awin
+		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
+		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
+		    && !wwin->flags.internal_window
+		    && !wGroupIsInactiveMember(wwin)
+		    && !WFLAGP(wwin, no_miniaturizable)
+		    && !WFLAGP(wwin, no_hide_others)
+		    && wGetWindowOfInspectorForWindow(wwin) != awin
+		    && !(awin->main_window != None && wwin->main_window == awin->main_window)) {
+			wwin->flags.skip_next_animation = 1;
+			wIconifyWindow(wwin);
+		}
+	}
+	wfree(windows);
 }
 
 /*

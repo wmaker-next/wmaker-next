@@ -1088,6 +1088,21 @@ EnforceIconMargin default is now YES; set it to NO to restore the
 old edge-to-edge icon filling.
 
 
+Miniaturize other applications' windows
+---------------------------------------
+
+New `MiniaturizeOthersKey` (default `None`) miniaturizes every window
+of other applications on the current workspace, leaving the focused
+application's windows in place. It mirrors `MiniaturizeAllKey` but
+skips the focused app's windows. Configurable in WPrefs as
+"Miniaturize other windows".
+
+`MinimizeAllKey` is renamed `MiniaturizeAllKey` for consistency with
+the `Miniaturize*` family. No key-name migration exists, so an
+existing config that sets `MinimizeAllKey` falls back to the default
+`None`.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory
