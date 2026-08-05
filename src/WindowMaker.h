@@ -351,6 +351,11 @@ extern struct wmaker_global_variables {
 	 */
 	Bool ignore_workspace_change;
 
+	/* Set while the focus-repair timer re-asserts focus so the
+	 * AutoMiniaturize/AutoHide-on-unfocus hook stays out of the
+	 * focus it steals from during the repair burst. */
+	Bool restore_focus_repair;
+
 	/*
 	 * Process WorkspaceMap Event:
 	 * this variable is set when the Workspace Map window is being displayed,

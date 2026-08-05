@@ -26,6 +26,7 @@
 #include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
@@ -106,6 +107,22 @@ static inline void shade_animate(WWindow *wwin, Bool what)
 	(void) what;
 }
 #endif
+
+static void focusRestoredWindow(void *data)
+{
+	Window client_win = (Window)(uintptr_t)data;
+	WWindow *wwin = wWindowFor(client_win);
+
+	if (!wwin || !wwin->flags.mapped)
+		return;
+
+	wRaiseFrame(wwin->frame->core);
+	XSetInputFocus(dpy, wwin->screen_ptr->no_focus_win,
+		       RevertToParent, CurrentTime);
+	w_global.restore_focus_repair = True;
+	wSetFocusTo(wwin->screen_ptr, wwin);
+	w_global.restore_focus_repair = False;
+}
 
 /*
  *----------------------------------------------------------------------
@@ -1812,21 +1829,8 @@ void wDeiconifyWindow(WWindow *wwin)
 		XUngrabServer(dpy);
 
 		wSetFocusTo(wwin->screen_ptr, wwin);
-
-#ifdef USE_ANIMATIONS
-		if (!wwin->screen_ptr->flags.startup) {
-			/* Catch up with events not processed while animation was running */
-			Window clientwin = wwin->client_win;
-
-			ProcessPendingEvents();
-
-			/* the window can disappear while ProcessPendingEvents() runs */
-			if (!wWindowFor(clientwin)) {
-				w_global.ignore_workspace_change = False;
-				return;
-			}
-		}
-#endif
+		WMAddTimerHandler(1, focusRestoredWindow,
+				  (void *)(uintptr_t)wwin->client_win);
 	}
 
 	if (w_global.config->auto_arrange_icons)
@@ -2216,6 +2220,8 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 	WScreen *scr;
 	WWindow *wlist, *next;
 	WWindow *focused = NULL;
+	WWindow *target = NULL;
+	Window clientwin = None;
 	int animate;
 
 	if (!wapp)
@@ -2291,16 +2297,29 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 		}
 		wlist = next;
 	}
-
 	wapp->flags.skip_next_animation = 0;
 	wapp->flags.hidden = 0;
 
-	if (wapp->last_focused && wapp->last_focused->flags.mapped) {
-		wRaiseFrame(wapp->last_focused->frame->core);
-		wSetFocusTo(scr, wapp->last_focused);
-	} else if (focused) {
-		wSetFocusTo(scr, focused);
+	/* The target may have disappeared while restoring the application. */
+	if (wapp->last_focused && wapp->last_focused->flags.mapped)
+		target = wapp->last_focused;
+	else if (focused)
+		target = focused;
+
+	if (target) {
+		clientwin = target->client_win;
+		target = wWindowFor(clientwin);
+		if (target) {
+		wRaiseFrame(target->frame->core);
+		wSetFocusTo(scr, target);
+		/* Fire strictly later than the 1 ms deiconify timers above so
+		 * libev's heap orders it after them and the final focus lands
+		 * on the intended window, not a deiconified one. */
+		WMAddTimerHandler(2, focusRestoredWindow,
+				  (void *)(uintptr_t)clientwin);
+		}
 	}
+
 	wapp->last_focused = NULL;
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(scr, True);

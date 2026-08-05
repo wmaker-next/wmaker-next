@@ -612,6 +612,7 @@ int main(int argc, char **argv)
 	w_global.timestamp.last_event = CurrentTime;
 	w_global.timestamp.focus_change = CurrentTime;
 	w_global.ignore_workspace_change = False;
+	w_global.restore_focus_repair = False;
 	w_global.shortcut.modifiers_mask = 0xff;
 #ifdef HAVE_INOTIFY
 	w_global.inotify.fd_event_queue = -1;

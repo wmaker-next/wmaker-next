@@ -2527,14 +2527,16 @@ void wWindowUnfocus(WWindow *wwin)
 	/* Only fire for a window that actually held focus, not transient
 	 * owners unfocused as a side effect or a stale focused_window slot.
 	 * Exclude windows with an open inspector so focusing the panel does
-	 * not hide/miniaturize the inspected window mid-edit, and skip when
-	 * focus is moving to an internal window (dialog, inspector, docked
-	 * panel) so opening one does not dismiss the window. By the time
-	 * wWindowUnfocus() runs, scr->focused_window already holds the new
-	 * target. */
+	 * not hide/miniaturize the inspected window mid-edit, the repair
+	 * burst's own focus steal (w_global.restore_focus_repair), and
+	 * skip when focus is moving to an internal window (dialog,
+	 * inspector, docked panel) so opening one does not dismiss the
+	 * window. By the time wWindowUnfocus() runs, scr->focused_window
+	 * already holds the new target. */
 	if (was_focused && !wwin->flags.miniaturized && !wwin->flags.hidden &&
 	    !wwin->flags.semi_focused && wwin->flags.mapped &&
 	    !wwin->flags.inspector_open &&
+	    !w_global.restore_focus_repair &&
 	    !(wwin->screen_ptr->focused_window &&
 	      wwin->screen_ptr->focused_window->flags.internal_window)) {
 		/* AutoHideOnUnfocus wins over AutoMiniaturizeOnUnfocus: hide is
