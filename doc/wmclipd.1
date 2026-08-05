@@ -3,7 +3,7 @@
 wmclipd \- X11 clipboard daemon for Window Maker
 .SH SYNOPSIS
 .B wmclipd
-[\fB\-\-clipboard\fR] [\fB\-\-screenshots\fR] [\fB\-\-debug\fR]
+[\fB\-\-clipboard\fR] [\fB\-\-screenshots\fR] [\fB\-\-history\fR\ \fIN\fR] [\fB\-\-debug\fR]
 .br
 .B wmclipd
 \fB\-\-help\fR|\fB\-h\fR
@@ -17,6 +17,15 @@ the CLIPBOARD and PRIMARY selections and preserves supported text and image
 payloads after the original owner exits. In screenshot mode it subscribes to
 Window Maker screenshot IPC events and publishes each saved screenshot to the
 CLIPBOARD selection.
+.PP
+When clipboard history is enabled (the default), wmclipd keeps a ring of the
+last
+.I N
+captured entries and can show a popup list to pick from the history. The popup
+is triggered by a Window Maker keybinding that sends a WIPC tick event; see
+the
+.B CLIPBOARD POPUP
+section below.
 .PP
 Screenshot payloads are offered as
 .B image/png
@@ -38,6 +47,19 @@ Print a short usage summary and exit. The short
 .B \-h
 alias is also accepted.
 .TP
+.B \-\-history N
+Keep the last
+.I N
+clipboard entries in an in-memory history ring (default 10, 0 disables).
+History is active whenever
+.B \-\-clipboard
+or
+.B \-\-screenshots
+runs. Setting
+.I N
+to 0 reverts to the single-slot legacy mode. Entries larger than 16 MiB are
+kept as the live selection but are not added to the ring.
+.TP
 .B \-\-screenshots
 Subscribe to Window Maker screenshot IPC events and publish saved screenshots
 to CLIPBOARD.
@@ -52,7 +74,10 @@ alias is also accepted.
 .SH EXAMPLES
 .TP
 .B wmclipd --clipboard
-Run only the clipboard manager.
+Run only the clipboard manager with the default history ring (10 entries).
+.TP
+.B wmclipd --clipboard --history 0
+Run the clipboard manager in legacy single-slot mode (no history popup).
 .TP
 .B wmclipd --screenshots
 Copy Window Maker screenshots to CLIPBOARD without monitoring normal clipboard
@@ -68,6 +93,64 @@ wmclipd --clipboard --screenshots &
 .EE
 to
 .BR ~/.config/WindowMaker/Library/WindowMaker/autostart .
+.SH "CLIPBOARD POPUP"
+When history is enabled, wmclipd subscribes to Window Maker IPC tick events
+and shows a popup list of the history ring when it receives a tick with the
+payload
+.IR wmclipd-popup .
+The popup is wired to a Window Maker keybinding through two defaults in the
+WindowMaker domain:
+.TP
+.B ClipboardKey
+Keybinding that triggers the clipboard popup (default
+.IR Mod4+v ).
+.TP
+.B ClipboardCommand
+Command run when
+.B ClipboardKey
+is pressed (default
+.IR "wmakermsg send_tick wmclipd-popup" ).
+Any clipboard manager can be invoked this way.
+.SS "Popup keys"
+.TP
+.B v
+Advance selection to the next entry (wrap around).
+.TP
+.BR Up / Down " or " k / j
+Move selection to the previous or next entry.
+.TP
+.BR Home / End
+Jump to the first or last entry.
+.TP
+.BR PageUp / PageDown
+Scroll the list by one viewport.
+.TP
+.B p
+Toggle a pin on the current entry. Pinned entries are exempt from capacity
+eviction and from the clear-all key; they are shown with a pin marker.
+.TP
+.B Delete
+Remove the selected entry from the ring. The live CLIPBOARD selection is
+unaffected. If no entries remain, the popup dismisses.
+.TP
+.BR "Shift+Delete"
+Clear all non-pinned entries from the ring. The live CLIPBOARD selection is
+unaffected. If no entries remain, the popup dismisses.
+.TP
+.B Return
+Commit the selected entry to CLIPBOARD and dismiss.
+.TP
+.B Escape
+Cancel and dismiss without changing CLIPBOARD.
+.TP
+.B "click"
+Single-click on a row to commit that entry and dismiss.
+.TP
+.B "release modifier"
+If a modifier key was held when the popup appeared, releasing any key that is
+not a navigation, action, or modifier key commits the current selection
+(matches Alt+Tab muscle memory). If no modifier was held (e.g. a modifier-less
+keybinding), explicit Return or click is required.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY

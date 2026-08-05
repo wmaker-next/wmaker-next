@@ -764,9 +764,11 @@ dnl xkbcommon and xkbcommon-x11 own the keymap and keyboard state in
 dnl src/wxkb.c so the resolver no longer reads the libX11 cache, both ship
 dnl in the libxkbcommon tarball with the X11 module needing 0.4.1 for
 dnl xkb_x11_setup_xkb_extension
+dnl xcb-xtest drives wmclipd's paste keystroke injection without the libXtst
+dnl Xlib binding, keeping the clipboard daemon off libX11's XTest wrapper.
 PKG_CHECK_MODULES([XCB],
-    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xkbcommon xkbcommon-x11 >= 0.4.1], [],
-    [AC_MSG_ERROR([libxcb, x11-xcb, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes and xkbcommon/-x11 are required -- $XCB_PKG_ERRORS])])
+    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xkbcommon xkbcommon-x11 >= 0.4.1], [],
+    [AC_MSG_ERROR([libxcb, x11-xcb, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest and xkbcommon/-x11 are required -- $XCB_PKG_ERRORS])])
 dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
 dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so
 dnl ask pkg-config where the >= 0.3.8 module actually lives and search that

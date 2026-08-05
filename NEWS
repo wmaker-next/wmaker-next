@@ -681,6 +681,15 @@ wmclipd(1).  XFixes is now an auto-detected build dependency,
 wmiv gains Ctrl+V to paste an image/png or image/jpeg from CLIPBOARD,
 appending it to the image list as a temporary file.
 
+wmclipd also keeps a bounded in-memory history ring of the last N
+captured CLIPBOARD/PRIMARY entries (default 10, --history 0 disables)
+and offers it through a popup bound to Super+v by the new
+ClipboardKey/ClipboardCommand defaults pair. The popup lists entries
+with a bold label and dim detail line, supports v/arrows/j/k/Home/End
+navigation, p to pin (exempt from eviction and clear-all), Delete to
+remove one entry, Shift+Delete to clear non-pinned entries, and
+Return/click or release-modifier to commit Alt+Tab style.
+
 
 Startup-notification launcher and monitor
 ------------------------------------------

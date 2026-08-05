@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -29,8 +30,16 @@
 #include <xcb/xcb.h>
 #include <xcb/xfixes.h>
 
+#include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
+#include <X11/keysym.h>
+#include <xcb/xtest.h>
+
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
+#include <WINGs/WINGs.h>
+#include <WINGs/WXProp.h>
+#include <wraster.h>
 
 #include "config.h"
 #include "clip-common.h"
@@ -38,6 +47,14 @@
 #define IPC_RECONNECT_MS   1000
 #define SELECTION_WAIT_MS  1000
 #define INCR_WAIT_MS       5000
+#define PRIMARY_DEBOUNCE_MS 300
+
+#define CLIP_HISTORY_DEFAULT_CAPACITY 10
+#define CLIP_HISTORY_MAX_BYTES   ((size_t)16 * 1024 * 1024)
+#define CLIP_POPUP_TICK          "wmclipd-popup"
+#define CLIP_POPUP_PREVIEW_LEN   64
+#define CLIP_POPUP_PIN_CHAR      "\xF0\x9F\x93\x8C"  /* U+1F4CC pushpin */
+#define CLIP_POPUP_PIN_LEN       4
 
 typedef enum {
 	CONTENT_EMPTY,
@@ -56,13 +73,39 @@ typedef struct {
 	int owns;
 } ClipBuffer;
 
+typedef struct ClipHistoryEntry {
+	ContentKind kind;
+	unsigned char *data;
+	size_t size;
+	xcb_atom_t type;
+	xcb_timestamp_t timestamp;
+	time_t wall_time;
+	char *text_preview;
+	char *image_path;
+	char *uri;
+	int owns;
+	int pinned;
+	int width;
+	int height;
+} ClipHistoryEntry;
+
+typedef struct {
+	ClipHistoryEntry **entries;
+	int count;
+	int capacity;
+	int pinned_count;
+} ClipHistory;
+
 static const char *prog;
 static xcb_connection_t *xc;
+static Display *dpy;
 static xcb_window_t owner_window;
 static xcb_window_t root_window;
 static int xfixes_first_event;
 static int run_clipboard;
 static int run_screenshots;
+static int history_capacity = CLIP_HISTORY_DEFAULT_CAPACITY;
+static int history_enabled;
 static int verbose;
 static volatile sig_atomic_t running = 1;
 
@@ -85,25 +128,46 @@ static ClipBuffer primary_buffer;
 static ClipIncrSend incr;
 static ClipBuffer *incr_source;
 
+static xcb_timestamp_t primary_pending_ts;
+static long long primary_pending_deadline;
+
+static ClipHistory history;
+static int popup_active;
+static int popup_ipc_fd = -1;
+static WMScreen *popup_wscr;
+static WMWindow *popup_win;
+static WMList *popup_list;
+static int popup_mapped;
+static WMFont *popup_bold_font;
+static WMFont *popup_norm_font;
+static WMColor *popup_dim_color;
+static int popup_item_h;
+static int popup_icon_size;
+static WMHashTable *popup_thumbs;
+
 static void handle_selection_request(xcb_selection_request_event_t *req);
 static void handle_selection_clear(xcb_selection_clear_event_t *ev);
 static void handle_property_notify(xcb_property_notify_event_t *ev);
 static void handle_destroy_notify(xcb_destroy_notify_event_t *ev);
+static void show_clipboard_popup(void);
+static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts);
+static void flush_primary_pending(void);
 
 static void usage(FILE *out)
 {
 	fprintf(out,
-		"Usage: %s [--clipboard] [--screenshots] [--debug]\n"
+		"Usage: %s [--clipboard] [--screenshots] [--history N] [--debug]\n"
 		"       %s --help|-h\n"
 		"       %s --version|-v\n"
 		"Options:\n"
 		"  --clipboard    Run as an X11 clipboard manager.\n"
 		"  --debug        Print runtime diagnostics to stderr.\n"
 		"  --help, -h     Show this message.\n"
+		"  --history N    Keep the last N clipboard entries in a history ring (default %d, 0 disables).\n"
 		"  --screenshots  Subscribe to Window Maker screenshot IPC events and publish them to CLIPBOARD.\n"
 		"                 The singular --screenshot is accepted as an alias.\n"
 		"  --version, -v  Print version information and exit.\n",
-		prog, prog, prog);
+		prog, prog, prog, CLIP_HISTORY_DEFAULT_CAPACITY);
 }
 
 static void signal_handler(int signo)
@@ -442,7 +506,8 @@ static int capture_selection(xcb_atom_t selection, ClipBuffer *buf,
 		}
 	}
 
-	if (!ok) {
+	if (!ok || size == 0) {
+		free(data);
 		debug_log("capture failed for %s",
 			  debug_selection_name(selection));
 		if (buffer_has_payload(buf))
@@ -469,6 +534,7 @@ static int capture_selection(xcb_atom_t selection, ClipBuffer *buf,
 		debug_log("cached %s without owning it",
 			  debug_selection_name(selection));
 	}
+	history_add_from_buffer(buf, timestamp);
 	return 1;
 }
 
@@ -485,6 +551,321 @@ static int copy_captured_payload(ClipBuffer *dst, const ClipBuffer *src)
 	dst->size = src->size;
 	dst->type = src->type;
 	return 1;
+}
+
+/* --- History ring ----------------------------------------------------- */
+
+static void history_free_entry(ClipHistoryEntry *e)
+{
+	WMPixmap *thumb;
+
+	if (!e)
+		return;
+	if (popup_thumbs) {
+		thumb = WMHashGet(popup_thumbs, (void *)(intptr_t)e);
+		if (thumb) {
+			WMReleasePixmap(thumb);
+			WMHashRemove(popup_thumbs, (void *)(intptr_t)e);
+		}
+	}
+	wfree(e->data);
+	wfree(e->text_preview);
+	wfree(e->image_path);
+	wfree(e->uri);
+	wfree(e);
+}
+
+/* True if utf8 starts with a combining mark (Mn/Mc/Me). Only the
+ * dedicated combining blocks are checked. */
+static int first_cp_is_combining(const char *utf8)
+{
+	unsigned char c = (unsigned char)utf8[0];
+	uint32_t cp;
+
+	if (c < 0x80)
+		return 0;
+	if ((c & 0xE0) == 0xC0)
+		cp = ((uint32_t)(c & 0x1F) << 6) | (uint32_t)(utf8[1] & 0x3F);
+	else if ((c & 0xF0) == 0xE0)
+		cp = ((uint32_t)(c & 0x0F) << 12) |
+		     ((uint32_t)(utf8[1] & 0x3F) << 6) |
+		     (uint32_t)(utf8[2] & 0x3F);
+	else if ((c & 0xF8) == 0xF0)
+		cp = ((uint32_t)(c & 0x07) << 18) |
+		     ((uint32_t)(utf8[1] & 0x3F) << 12) |
+		     ((uint32_t)(utf8[2] & 0x3F) << 6) |
+		     (uint32_t)(utf8[3] & 0x3F);
+	else
+		return 0;
+
+	return (cp >= 0x0300 && cp <= 0x036F) ||  /* Combining Diacritical Marks */
+	       (cp >= 0x1AB0 && cp <= 0x1AFF) ||  /* Comb. Diacritical Marks Extended */
+	       (cp >= 0x1DC0 && cp <= 0x1DFF) ||  /* Comb. Diacritical Marks Supp. */
+	       (cp >= 0x20D0 && cp <= 0x20FF) ||  /* Comb. Diacritical Marks for Symbols */
+	       (cp >= 0xFE20 && cp <= 0xFE2F);    /* Combining Half Marks */
+}
+
+static char *make_text_preview(const unsigned char *data, size_t size)
+{
+	size_t i, len, out;
+	char *preview;
+	unsigned char c;
+
+	if (!data || size == 0)
+		return wstrdup("");
+
+	len = size < CLIP_POPUP_PREVIEW_LEN ? size : CLIP_POPUP_PREVIEW_LEN;
+	/* Truncate at a UTF-8 boundary: if the last bytes are a partial
+	 * multi-byte sequence, drop it so pango_layout_set_text() does not
+	 * receive invalid UTF-8. Walk backward skipping continuation
+	 * bytes until a lead byte is found; if that lead byte needs more
+	 * bytes than remain, drop it too. */
+	if (len > 0 && (data[len - 1] & 0xC0) == 0x80) {
+		size_t back = len;
+		while (back > 0 && (data[back - 1] & 0xC0) == 0x80)
+			back--;
+		if (back > 0) {
+			unsigned char lead = data[back - 1];
+			size_t need;
+			if (lead < 0x80)       need = 1;
+			else if ((lead & 0xE0) == 0xC0) need = 2;
+			else if ((lead & 0xF0) == 0xE0) need = 3;
+			else if ((lead & 0xF8) == 0xF0) need = 4;
+			else need = 1; /* invalid lead */
+			if (len - (back - 1) < need)
+				len = back - 1; /* sequence is incomplete */
+		}
+	}
+	if (len == 0)
+		len = size < CLIP_POPUP_PREVIEW_LEN ? size : CLIP_POPUP_PREVIEW_LEN;
+
+	/* Validate the UTF-8 and replace any invalid byte with U+FFFD
+	 * (REPLACEMENT CHARACTER) so pango never receives bad sequences. */
+	preview = wmalloc(len * 3 + 7);	/* room for U+25CC, "...", NUL */
+	out = 0;
+	i = 0;
+	while (i < len) {
+		c = data[i];
+		if (c < 0x80) {
+			if (c == '\n' || c == '\r' || c == '\t' || c == '\0' ||
+			    (c < 0x20 && c != 0))
+				c = ' ';
+			preview[out++] = (char)c;
+			i++;
+		} else if ((c & 0xE0) == 0xC0 && i + 1 < len &&
+			   (data[i + 1] & 0xC0) == 0x80) {
+			preview[out++] = (char)c;
+			preview[out++] = (char)data[i + 1];
+			i += 2;
+		} else if ((c & 0xF0) == 0xE0 && i + 2 < len &&
+			   (data[i + 1] & 0xC0) == 0x80 &&
+			   (data[i + 2] & 0xC0) == 0x80) {
+			preview[out++] = (char)c;
+			preview[out++] = (char)data[i + 1];
+			preview[out++] = (char)data[i + 2];
+			i += 3;
+		} else if ((c & 0xF8) == 0xF0 && i + 3 < len &&
+			   (data[i + 1] & 0xC0) == 0x80 &&
+			   (data[i + 2] & 0xC0) == 0x80 &&
+			   (data[i + 3] & 0xC0) == 0x80) {
+			preview[out++] = (char)c;
+			preview[out++] = (char)data[i + 1];
+			preview[out++] = (char)data[i + 2];
+			preview[out++] = (char)data[i + 3];
+			i += 4;
+		} else {
+			/* invalid lead or truncated sequence: U+FFFD */
+			preview[out++] = (char)0xEF;
+			preview[out++] = (char)0xBF;
+			preview[out++] = (char)0xBD;
+			i++;
+		}
+	}
+	if (size > len)
+		memcpy(preview + out, "...", 3), out += 3;
+	preview[out] = '\0';
+
+	/* Prepend U+25CC DOTTED CIRCLE if the preview starts with a
+	 * combining mark, so Pango has a base to attach it to. */
+	if (out > 0 && first_cp_is_combining(preview)) {
+		memmove(preview + 3, preview, out + 1);
+		memcpy(preview, "\xE2\x97\x8C", 3);	/* U+25CC */
+	}
+
+	return preview;
+}
+
+static int history_entry_matches(const ClipHistoryEntry *e, const ClipBuffer *buf)
+{
+	if (e->kind != buf->kind)
+		return 0;
+	if (e->type != buf->type)
+		return 0;
+	if (e->size != buf->size)
+		return 0;
+	if (e->size > 0 && memcmp(e->data, buf->data, e->size) != 0)
+		return 0;
+	return 1;
+}
+
+static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
+{
+	ClipHistoryEntry *e;
+	ClipHistoryEntry **new_entries;
+
+	if (!history_enabled || buf->kind == CONTENT_EMPTY)
+		return;
+	if (buf->size == 0 || buf->size > CLIP_HISTORY_MAX_BYTES)
+		return;
+
+	/* dedup consecutive identical entries */
+	if (history.count > 0 && history.entries[0] &&
+	    history_entry_matches(history.entries[0], buf)) {
+		history.entries[0]->timestamp = ts;
+		history.entries[0]->owns = buf->owns;
+		return;
+	}
+
+	e = wmalloc(sizeof(*e));
+	e->kind = buf->kind;
+	e->size = buf->size;
+	e->type = buf->type;
+	e->timestamp = ts;
+	e->wall_time = time(NULL);
+	e->owns = buf->owns;
+	e->pinned = 0;
+
+	if (buf->data && buf->size > 0) {
+		e->data = wmalloc(buf->size);
+		memcpy(e->data, buf->data, buf->size);
+	} else {
+		e->data = NULL;
+	}
+
+	if (buf->kind == CONTENT_CAPTURED && is_text_atom(buf->type))
+		e->text_preview = make_text_preview(buf->data, buf->size);
+	else
+		e->text_preview = NULL;
+
+	if (buf->path)
+		e->image_path = wstrdup(buf->path);
+	else
+		e->image_path = NULL;
+
+	if (buf->uri)
+		e->uri = wstrdup(buf->uri);
+	else
+		e->uri = NULL;
+
+	/* prepend */
+	new_entries = wmalloc(sizeof(ClipHistoryEntry *) * (size_t)(history.count + 1));
+	new_entries[0] = e;
+	if (history.count > 0)
+		memcpy(new_entries + 1, history.entries,
+		       sizeof(ClipHistoryEntry *) * (size_t)history.count);
+	wfree(history.entries);
+	history.entries = new_entries;
+	history.count++;
+
+	/* evict oldest non-pinned entry when over capacity */
+	while (history.count > history.capacity) {
+		int i, found = -1;
+		for (i = history.count - 1; i >= 0; i--) {
+			if (!history.entries[i]->pinned) {
+				found = i;
+				break;
+			}
+		}
+		if (found < 0)
+			break;
+		history_free_entry(history.entries[found]);
+		memmove(history.entries + found, history.entries + found + 1,
+			sizeof(ClipHistoryEntry *) * (size_t)(history.count - found - 1));
+		history.count--;
+	}
+
+	debug_log("history: added entry (%d total)", history.count);
+}
+
+static void history_clear_non_pinned(void)
+{
+	int i, j;
+
+	j = 0;
+	for (i = 0; i < history.count; i++) {
+		if (history.entries[i]->pinned) {
+			history.entries[j++] = history.entries[i];
+		} else {
+			history_free_entry(history.entries[i]);
+		}
+	}
+	history.count = j;
+}
+
+static void history_remove_entry(int row)
+{
+	ClipHistoryEntry *e;
+	int i;
+
+	if (row < 0 || row >= history.count)
+		return;
+	e = history.entries[row];
+	if (e->pinned)
+		history.pinned_count--;
+	history_free_entry(e);
+	for (i = row; i < history.count - 1; i++)
+		history.entries[i] = history.entries[i + 1];
+	history.count--;
+}
+
+static void history_clear_all(void)
+{
+	int i;
+
+	for (i = 0; i < history.count; i++)
+		history_free_entry(history.entries[i]);
+	wfree(history.entries);
+	memset(&history, 0, sizeof(history));
+	if (popup_thumbs) {
+		WMFreeHashTable(popup_thumbs);
+		popup_thumbs = NULL;
+	}
+}
+
+static int history_pinned_cap(void)
+{
+	return history.capacity;
+}
+
+static void history_toggle_pin(int row)
+{
+	ClipHistoryEntry *e;
+	int i, oldest_pinned = -1;
+
+	if (row < 0 || row >= history.count)
+		return;
+	e = history.entries[row];
+
+	if (!e->pinned) {
+		if (history.pinned_count >= history_pinned_cap()) {
+			/* unpin the oldest pinned entry (FIFO) first */
+			for (i = history.count - 1; i >= 0; i--) {
+				if (history.entries[i]->pinned) {
+					oldest_pinned = i;
+					break;
+				}
+			}
+			if (oldest_pinned >= 0) {
+				history.entries[oldest_pinned]->pinned = 0;
+				history.pinned_count--;
+			}
+		}
+		e->pinned = 1;
+		history.pinned_count++;
+	} else {
+		e->pinned = 0;
+		history.pinned_count--;
+	}
 }
 
 static int mirror_primary_to_clipboard(xcb_timestamp_t timestamp,
@@ -614,7 +995,7 @@ static void send_selection_notify(xcb_selection_request_event_t *req,
 	ev.target = req->target;
 	ev.property = property;
 	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
-	xcb_flush(xc);
+	XFlush(dpy);
 }
 
 static void handle_selection_request(xcb_selection_request_event_t *req)
@@ -716,7 +1097,7 @@ static void handle_destroy_notify(xcb_destroy_notify_event_t *ev)
 static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 {
 	ClipBuffer *buf;
-	xcb_window_t source_owner, clipboard_owner;
+	xcb_window_t source_owner, primary_owner;
 	int captured;
 
 	if (ev->selection == atom_clipboard)
@@ -726,14 +1107,19 @@ static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 	else
 		return;
 
-	if (ev->owner == owner_window)
+	if (ev->owner == owner_window) {
+		if (ev->selection == atom_primary)
+			primary_pending_deadline = 0;
 		return;
+	}
 
 	debug_log("selection changed: %s owner=0x%x",
 		  debug_selection_name(ev->selection),
 		  (unsigned int)ev->owner);
 	buf->owns = 0;
 	if (ev->owner == 0) {
+		if (ev->selection == atom_primary)
+			primary_pending_deadline = 0;
 		if (ev->selection == atom_clipboard && !buffer_has_payload(buf) &&
 		    mirror_primary_to_clipboard(ev->timestamp,
 						"clipboard owner cleared", 1))
@@ -743,29 +1129,51 @@ static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 		return;
 	}
 
-	source_owner = ev->owner;
 	if (ev->selection == atom_primary) {
-		captured = capture_selection(ev->selection, buf, ev->timestamp, 0);
-		if (!captured)
-			return;
-		clipboard_owner = selection_owner(atom_clipboard);
-		if (clipboard_owner == source_owner) {
-			mirror_primary_to_clipboard(ev->timestamp,
-						    "same source owner", 0);
-		} else if (clipboard_owner == 0) {
-			mirror_primary_to_clipboard(ev->timestamp,
-						    "clipboard empty", 1);
-		}
-	} else {
-		captured = capture_selection(ev->selection, buf, ev->timestamp, 1);
-		if (captured) {
-			xcb_window_t primary_owner = selection_owner(atom_primary);
-
-			if (primary_owner == source_owner)
-				mirror_clipboard_text_to_primary(ev->timestamp,
-								 "same source owner");
-		}
+		primary_pending_ts = ev->timestamp;
+		primary_pending_deadline = clip_monotonic_ms() + PRIMARY_DEBOUNCE_MS;
+		debug_log("deferring PRIMARY capture (debounce %dms)",
+			  PRIMARY_DEBOUNCE_MS);
+		return;
 	}
+
+	source_owner = ev->owner;
+	captured = capture_selection(ev->selection, buf, ev->timestamp, 1);
+	if (captured) {
+		primary_owner = selection_owner(atom_primary);
+
+		if (primary_owner == source_owner)
+			mirror_clipboard_text_to_primary(ev->timestamp,
+							 "same source owner");
+	}
+}
+
+static void flush_primary_pending(void)
+{
+	xcb_window_t source_owner, clipboard_owner;
+	int captured;
+
+	if (primary_pending_deadline == 0)
+		return;
+
+	primary_pending_deadline = 0;
+	primary_buffer.owns = 0;
+
+	source_owner = selection_owner(atom_primary);
+	if (source_owner == 0 || source_owner == owner_window)
+		return;
+
+	captured = capture_selection(atom_primary, &primary_buffer,
+				     primary_pending_ts, 0);
+	if (!captured)
+		return;
+	clipboard_owner = selection_owner(atom_clipboard);
+	if (clipboard_owner == source_owner)
+		mirror_primary_to_clipboard(primary_pending_ts,
+					    "same source owner", 0);
+	else if (clipboard_owner == 0)
+		mirror_primary_to_clipboard(primary_pending_ts,
+					    "clipboard empty", 1);
 }
 
 static void handle_x_event(xcb_generic_event_t *ev)
@@ -793,6 +1201,23 @@ static void handle_x_event(xcb_generic_event_t *ev)
 	default:
 		break;
 	}
+}
+
+static void dispatch_xevent(XEvent *xev)
+{
+	uint8_t rt = (uint8_t)xev->type;
+	xcb_generic_event_t *wire;
+
+	if (rt == (uint8_t)(xfixes_first_event + XCB_XFIXES_SELECTION_NOTIFY) ||
+	    rt == SelectionRequest || rt == SelectionClear ||
+	    rt == PropertyNotify || rt == DestroyNotify) {
+		wire = (xcb_generic_event_t *)((WXWireEvent *)xev)->wire;
+		handle_x_event(wire);
+		return;
+	}
+
+	if (popup_wscr)
+		WMHandleEvent(xev);
 }
 
 static char *file_uri_from_path(const char *path)
@@ -924,6 +1349,12 @@ static int publish_screenshot(const char *path)
 		data = NULL;
 		size = 0;
 	}
+	if (size == 0) {
+		fprintf(stderr, "%s: ignoring empty or unrecognized screenshot '%s'\n",
+			prog, path ? path : "");
+		wfree(data);
+		return 0;
+	}
 
 	clear_buffer(&clipboard_buffer);
 	clipboard_buffer.kind = CONTENT_SCREENSHOT;
@@ -932,6 +1363,8 @@ static int publish_screenshot(const char *path)
 	clipboard_buffer.type = image_type;
 	clipboard_buffer.path = wstrdup(path);
 	clipboard_buffer.uri = file_uri_from_path(path);
+
+	history_add_from_buffer(&clipboard_buffer, XCB_TIME_CURRENT_TIME);
 
 	return claim_selection(atom_clipboard, &clipboard_buffer,
 			       XCB_TIME_CURRENT_TIME);
@@ -958,11 +1391,41 @@ static char *screenshot_path_from_event(const char *body)
 	return path;
 }
 
-static int subscribe_screenshots(int fd)
+static char *tick_payload_from_event(const char *body)
 {
-	const char *events[] = { "screenshot" };
+	WMPropList *pl, *key, *val;
+	char *payload = NULL;
 
-	return wIPCSendStringArray(fd, WIPC_SUBSCRIBE, events, 1) == 0;
+	pl = WMCreatePropListFromDescription(body);
+	if (!pl)
+		return NULL;
+
+	if (WMIsPLDictionary(pl)) {
+		key = WMCreatePLString("payload");
+		val = WMGetFromPLDictionary(pl, key);
+		WMReleasePropList(key);
+		if (val && WMIsPLString(val))
+			payload = wstrdup(WMGetFromPLString(val));
+	}
+
+	WMReleasePropList(pl);
+	return payload;
+}
+
+static int subscribe_events(int fd)
+{
+	const char *events[2];
+	int n = 0;
+
+	if (run_screenshots)
+		events[n++] = "screenshot";
+	if (history_enabled)
+		events[n++] = "tick";
+
+	if (n == 0)
+		return 1;
+
+	return wIPCSendStringArray(fd, WIPC_SUBSCRIBE, events, n) == 0;
 }
 
 static int connect_ipc(void)
@@ -980,12 +1443,14 @@ static int connect_ipc(void)
 	}
 	wfree(path);
 
-	if (!subscribe_screenshots(fd)) {
-		debug_log("IPC screenshot subscription failed: %s", strerror(errno));
+	if (!subscribe_events(fd)) {
+		debug_log("IPC subscription failed: %s", strerror(errno));
 		close(fd);
 		return -1;
 	}
-	debug_log("subscribed to screenshot IPC events");
+	debug_log("subscribed to IPC events (screenshots=%s, tick=%s)",
+		  run_screenshots ? "yes" : "no",
+		  history_enabled ? "yes" : "no");
 	return fd;
 }
 
@@ -1008,6 +1473,17 @@ static int handle_ipc_frame(int fd)
 			wfree(path);
 		} else {
 			debug_log("received screenshot IPC event without a valid path");
+		}
+	} else if ((type & WIPC_EVENT_BIT) &&
+		   ((type & ~WIPC_EVENT_BIT) == WIPC_EV_TICK)) {
+		char *payload = tick_payload_from_event(body);
+		if (payload) {
+			if (strcmp(payload, CLIP_POPUP_TICK) == 0) {
+				debug_log("received clipboard popup tick");
+				if (!popup_active)
+					show_clipboard_popup();
+			}
+			wfree(payload);
 		}
 	}
 
@@ -1061,14 +1537,25 @@ static int init_x11(void)
 	xcb_screen_t *screen;
 	uint32_t mask;
 
-	xc = xcb_connect(NULL, &screen_num);
+	dpy = XOpenDisplay(NULL);
+	if (!dpy) {
+		fprintf(stderr, "%s: cannot open X display\n", prog);
+		return 0;
+	}
+	xc = XGetXCBConnection(dpy);
 	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "%s: cannot open X display\n", prog);
-		xcb_disconnect(xc);
+		XCloseDisplay(dpy);
+		dpy = NULL;
 		xc = NULL;
 		return 0;
 	}
+	/* hand event-queue ownership to xcb so the WINGs event queue
+	 * reads xcb_poll_for_event(), Xlib keeps issuing requests on
+	 * the same socket */
+	WXEvqFlipToXcb(dpy);
 
+	screen_num = DefaultScreen(dpy);
 	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
 	for (; screen_num > 0; screen_num--)
 		xcb_screen_next(&iter);
@@ -1146,17 +1633,19 @@ static int parse_args(int argc, char **argv)
 	enum {
 		OPT_CLIPBOARD = 256,
 		OPT_SCREENSHOTS,
+		OPT_HISTORY,
 		OPT_DEBUG,
 	};
 	int ch;
 	struct option longopts[] = {
-		{ "clipboard",   no_argument, NULL, OPT_CLIPBOARD },
-		{ "screenshots", no_argument, NULL, OPT_SCREENSHOTS },
-		{ "screenshot",  no_argument, NULL, OPT_SCREENSHOTS },
-		{ "debug",       no_argument, NULL, OPT_DEBUG },
-		{ "help",        no_argument, NULL, 'h' },
-		{ "version",     no_argument, NULL, 'v' },
-		{ NULL,          0,           NULL, 0 }
+		{ "clipboard",   no_argument,       NULL, OPT_CLIPBOARD },
+		{ "screenshots", no_argument,       NULL, OPT_SCREENSHOTS },
+		{ "screenshot",  no_argument,       NULL, OPT_SCREENSHOTS },
+		{ "history",     required_argument, NULL, OPT_HISTORY },
+		{ "debug",       no_argument,       NULL, OPT_DEBUG },
+		{ "help",        no_argument,       NULL, 'h' },
+		{ "version",     no_argument,       NULL, 'v' },
+		{ NULL,          0,                 NULL, 0 }
 	};
 
 	while ((ch = getopt_long(argc, argv, "hv", longopts, NULL)) != -1) {
@@ -1166,6 +1655,11 @@ static int parse_args(int argc, char **argv)
 			break;
 		case OPT_SCREENSHOTS:
 			run_screenshots = 1;
+			break;
+		case OPT_HISTORY:
+			history_capacity = atoi(optarg);
+			if (history_capacity < 0)
+				history_capacity = 0;
 			break;
 		case OPT_DEBUG:
 			verbose = 1;
@@ -1186,16 +1680,827 @@ static int parse_args(int argc, char **argv)
 		usage(stderr);
 		return -1;
 	}
+	history_enabled = history_capacity > 0;
 	return 0;
+}
+
+/* --- Clipboard popup -------------------------------------------------- */
+
+static int popup_clicked_row = -1;
+static int popup_x, popup_y, popup_w, popup_h;
+
+static const char *entry_type_label(xcb_atom_t type)
+{
+	if (type == atom_png)
+		return "image/png";
+	if (type == atom_jpeg)
+		return "image/jpeg";
+	if (type == atom_utf8)
+		return "UTF8 text";
+	if (type == XCB_ATOM_STRING)
+		return "text";
+	if (type == atom_text || type == atom_compound_text)
+		return "text";
+	if (type == atom_text_plain || type == atom_text_plain_utf8)
+		return "text/plain";
+	return "data";
+}
+
+static void popup_list_action(WMWidget *w, void *data)
+{
+	(void)data;
+	popup_clicked_row = WMGetListSelectedItemRow((WMList *)w);
+}
+
+static WMPixmap *load_thumbnail(ClipHistoryEntry *e)
+{
+	WMPixmap *pix;
+	RContext *rctx;
+	RImage *img, *scaled;
+	int icon;
+
+	if (!popup_thumbs)
+		popup_thumbs = WMCreateHashTable(WMIntHashCallbacks);
+
+	pix = WMHashGet(popup_thumbs, (void *)(intptr_t)e);
+	if (pix)
+		return pix;
+
+	if (!is_image_atom(e->type))
+		return NULL;
+
+	rctx = WMScreenRContext(popup_wscr);
+	if (!rctx)
+		return NULL;
+
+	if (e->image_path) {
+		img = RLoadImage(rctx, e->image_path, 0);
+	} else if (e->data && e->size > 0) {
+		char tmppath[] = "/tmp/wmclipd-thumb-XXXXXX";
+		int fd = mkstemp(tmppath);
+		if (fd < 0)
+			return NULL;
+		if (write(fd, e->data, e->size) != (ssize_t)e->size) {
+			close(fd);
+			unlink(tmppath);
+			return NULL;
+		}
+		close(fd);
+		img = RLoadImage(rctx, tmppath, 0);
+		unlink(tmppath);
+	} else {
+		return NULL;
+	}
+
+	if (!img)
+		return NULL;
+
+	e->width = img->width;
+	e->height = img->height;
+
+	icon = popup_icon_size;
+	if (img->width > icon || img->height > icon) {
+		int nw, nh;
+		if (img->width >= img->height) {
+			nw = icon;
+			nh = (icon * img->height + img->width / 2) / img->width;
+		} else {
+			nh = icon;
+			nw = (icon * img->width + img->height / 2) / img->height;
+		}
+		if (nw < 1) nw = 1;
+		if (nh < 1) nh = 1;
+		scaled = RSmoothScaleImage(img, nw, nh);
+		RReleaseImage(img);
+		if (!scaled)
+			return NULL;
+		img = scaled;
+	}
+
+	pix = WMCreatePixmapFromRImage(popup_wscr, img, 128);
+	RReleaseImage(img);
+	if (pix)
+		WMHashInsert(popup_thumbs, (void *)(intptr_t)e, pix);
+	return pix;
+}
+
+static void draw_history_entry(WMList *lPtr, int index, Drawable d,
+			       char *text, int state, WMRect *rect)
+{
+	WMListItem *item;
+	ClipHistoryEntry *e;
+	WMColor *back;
+	char detail[64];
+	char capbuf[256];
+	char tbuf[16];
+	char sbuf[32];
+	struct tm *tm;
+	const char *label;
+	int tx, fh, ix, iy;
+	WMPixmap *thumb;
+	WMSize isz;
+
+	(void)text;
+	item = WMGetListItem(lPtr, index);
+	if (!item || !item->clientData)
+		return;
+	e = (ClipHistoryEntry *)item->clientData;
+
+	back = (state & WLDSSelected) ? WMWhiteColor(popup_wscr)
+				      : WMGrayColor(popup_wscr);
+	WMPaintColorSwatch(back, d, rect->pos.x, rect->pos.y,
+			   rect->size.width, rect->size.height);
+
+	ix = rect->pos.x + 2;
+	iy = rect->pos.y + 2;
+
+	thumb = load_thumbnail(e);
+	if (thumb) {
+		isz = WMGetPixmapSize(thumb);
+		iy = rect->pos.y + (popup_item_h - isz.height) / 2;
+		WMDrawPixmap(thumb, d, ix + (popup_icon_size - isz.width) / 2, iy);
+	}
+
+	tx = ix + popup_icon_size + 4;
+	int text_x = tx;
+
+	if (e->kind == CONTENT_SCREENSHOT && e->image_path) {
+		const char *base = strrchr(e->image_path, '/');
+		const char *fname = base ? base + 1 : e->image_path;
+		if (is_image_atom(e->type) && e->width > 0)
+			snprintf(capbuf, sizeof(capbuf), "%s  %d\xc3\x97%d",
+				 fname, e->width, e->height);
+		else
+			snprintf(capbuf, sizeof(capbuf), "%s", fname);
+		label = capbuf;
+	} else if (is_image_atom(e->type) && e->width > 0) {
+		snprintf(capbuf, sizeof(capbuf), "%d\xc3\x97%d",
+			 e->width, e->height);
+		label = capbuf;
+	} else if (e->text_preview) {
+		label = e->text_preview;
+	} else {
+		label = entry_type_label(e->type);
+	}
+
+	fh = WMFontHeight(popup_bold_font);
+	WMDrawString(popup_wscr, d, WMBlackColor(popup_wscr), popup_bold_font,
+		     tx, rect->pos.y + 2, label, strlen(label));
+	tx += WMWidthOfString(popup_bold_font, label, strlen(label));
+
+	if (e->pinned) {
+		tx += 4;
+		WMDrawString(popup_wscr, d, WMBlackColor(popup_wscr),
+			     popup_bold_font, tx, rect->pos.y + 2,
+			     CLIP_POPUP_PIN_CHAR, CLIP_POPUP_PIN_LEN);
+	}
+
+	if (e->size >= 1024 * 1024) {
+		snprintf(sbuf, sizeof(sbuf), "%.1f MiB",
+			 (double)e->size / (1024 * 1024));
+	} else if (e->size >= 1024) {
+		snprintf(sbuf, sizeof(sbuf), "%.1f KiB",
+			 (double)e->size / 1024);
+	} else {
+		snprintf(sbuf, sizeof(sbuf), "%zu B", e->size);
+	}
+
+	tm = localtime(&e->wall_time);
+	if (tm)
+		strftime(tbuf, sizeof(tbuf), "%H:%M", tm);
+	else
+		tbuf[0] = '\0';
+
+	snprintf(detail, sizeof(detail), "%s  %s  %s",
+		 entry_type_label(e->type), sbuf, tbuf);
+	WMDrawString(popup_wscr, d, popup_dim_color, popup_norm_font,
+		     text_x, rect->pos.y + 2 + fh, detail, strlen(detail));
+}
+
+static void get_work_area(int *ax, int *ay, int *aw, int *ah)
+{
+	Atom net_workarea, net_current_desktop;
+	uint32_t desktop = 0;
+	size_t count;
+	uint32_t *areas;
+
+	*ax = 0;
+	*ay = 0;
+	*aw = DisplayWidth(dpy, DefaultScreen(dpy));
+	*ah = DisplayHeight(dpy, DefaultScreen(dpy));
+
+	net_workarea = XInternAtom(dpy, "_NET_WORKAREA", True);
+	net_current_desktop = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", True);
+	if (net_workarea == None)
+		return;
+
+	if (net_current_desktop != None)
+		WXGetCardinal(dpy, (Window)root_window, net_current_desktop, &desktop);
+
+	areas = WXGetCardinalList(dpy, (Window)root_window, net_workarea,
+				  1024, &count);
+	if (areas && ((uint64_t)desktop + 1) * 4 <= count) {
+		*ax = (int)areas[desktop * 4];
+		*ay = (int)areas[desktop * 4 + 1];
+		*aw = (int)areas[desktop * 4 + 2];
+		*ah = (int)areas[desktop * 4 + 3];
+	}
+	wfree(areas);
+}
+
+static void place_popup(int rows)
+{
+	int rx, ry, wx, wy;
+	unsigned int mask;
+	Window root, child;
+	int ax, ay, aw, ah;
+
+	XQueryPointer(dpy, (Window)root_window, &root, &child,
+		      &rx, &ry, &wx, &wy, &mask);
+
+	get_work_area(&ax, &ay, &aw, &ah);
+
+	popup_w = aw * 40 / 100;
+	if (popup_w > 400)
+		popup_w = 400;
+	if (popup_w < 200)
+		popup_w = 200;
+
+	popup_h = rows * popup_item_h + 4;
+	if (popup_h > ah)
+		popup_h = ah;
+
+	popup_x = rx - popup_w / 2;
+	popup_y = ry - popup_item_h / 2;
+
+	if (popup_x < ax)
+		popup_x = ax;
+	if (popup_x + popup_w > ax + aw)
+		popup_x = ax + aw - popup_w;
+	if (popup_y < ay)
+		popup_y = ay;
+	if (popup_y + popup_h > ay + ah)
+		popup_y = ay + ah - popup_h;
+}
+
+static void refresh_popup_list(void)
+{
+	int i, rows;
+
+	WMClearList(popup_list);
+	rows = history.count;
+	if (rows > 20)
+		rows = 20;
+	for (i = 0; i < rows; i++) {
+		WMListItem *it = WMInsertListItem(popup_list, -1, "");
+		it->clientData = history.entries[i];
+	}
+	place_popup(rows);
+	WMResizeWidget(popup_win, popup_w, popup_h);
+	WMResizeWidget(popup_list, popup_w, popup_h);
+	WMMoveWidget(popup_win, popup_x, popup_y);
+	WMSelectListItem(popup_list, 0);
+	WMSetListPosition(popup_list, 0);
+}
+
+static void hide_popup(void)
+{
+	if (popup_mapped) {
+		WMUnmapWidget(popup_win);
+		XFlush(dpy);
+		popup_mapped = 0;
+	}
+}
+
+static void copy_entry_to_buffer(const ClipHistoryEntry *e, ClipBuffer *buf)
+{
+	clear_buffer(buf);
+	buf->kind = e->kind;
+	buf->type = e->type;
+	buf->size = e->size;
+	if (e->data && e->size > 0) {
+		buf->data = wmalloc(e->size);
+		memcpy(buf->data, e->data, e->size);
+	}
+	if (e->image_path)
+		buf->path = wstrdup(e->image_path);
+	if (e->uri)
+		buf->uri = wstrdup(e->uri);
+}
+
+static void activate_entry(int row)
+{
+	ClipHistoryEntry *e;
+
+	if (row < 0 || row >= history.count)
+		return;
+	e = history.entries[row];
+	copy_entry_to_buffer(e, &clipboard_buffer);
+	/* Use Xlib to set the selection owner so the Xlib/XCB bridge
+	 * flushes the request through the shared connection immediately,
+	 * rather than xcb_flush which may race with Xlib's buffered
+	 * output. Claim both CLIPBOARD and PRIMARY for text entries so
+	 * that terminals which paste from either selection on
+	 * Shift+Insert receive the activated content. */
+	XSetSelectionOwner(dpy, atom_clipboard, owner_window, CurrentTime);
+	if (is_text_atom(e->type)) {
+		copy_entry_to_buffer(e, &primary_buffer);
+		XSetSelectionOwner(dpy, atom_primary, owner_window, CurrentTime);
+		primary_buffer.owns = 1;
+		primary_buffer.timestamp = XCB_TIME_CURRENT_TIME;
+	}
+	XFlush(dpy);
+	clipboard_buffer.owns = 1;
+	clipboard_buffer.timestamp = XCB_TIME_CURRENT_TIME;
+	debug_log("activated history entry %d", row);
+}
+
+static void ensure_popup(void)
+{
+	XSetWindowAttributes attr;
+	int wmScaleW, wmScaleH;
+	static int app_inited = 0;
+
+	if (popup_wscr)
+		return;
+
+	if (!app_inited) {
+		int ac = 1;
+		char *av = (char *)"wmclipd";
+		WMInitializeApplication("wmclipd", &ac, &av);
+		app_inited = 1;
+	}
+
+	popup_wscr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	if (!popup_wscr) {
+		debug_log("cannot create WINGs screen for popup");
+		return;
+	}
+
+	WMGetScaleBaseFromSystemFont(popup_wscr, &wmScaleW, &wmScaleH);
+	(void)wmScaleW;
+	popup_bold_font = WMCreateFont(popup_wscr, "Sans:pixelsize=12:weight=bold");
+	if (!popup_bold_font)
+		popup_bold_font = WMBoldSystemFontOfSize(popup_wscr, 12);
+	popup_norm_font = WMCreateFont(popup_wscr, "Sans:pixelsize=11");
+	if (!popup_norm_font)
+		popup_norm_font = WMSystemFontOfSize(popup_wscr, 11);
+	popup_dim_color = WMDarkGrayColor(popup_wscr);
+	popup_item_h = WMFontHeight(popup_bold_font) +
+		       WMFontHeight(popup_norm_font) + 6;
+	popup_icon_size = popup_item_h - 4;
+
+	popup_win = WMCreateWindowWithStyle(popup_wscr, "clipPopup",
+					    WMBorderlessWindowMask);
+	WMSetWindowLevel(popup_win, WMPopUpMenuWindowLevel);
+	WMResizeWidget(popup_win, 100, popup_item_h);
+
+	popup_list = WMCreateList(popup_win);
+	WMHangData(popup_list, NULL);
+	WMSetListAllowEmptySelection(popup_list, False);
+	WMSetListUserDrawItemHeight(popup_list, (unsigned short)popup_item_h);
+	WMSetListUserDrawProc(popup_list, draw_history_entry);
+	WMSetListAction(popup_list, popup_list_action, NULL);
+	WMMoveWidget(popup_list, 0, 0);
+
+	WMMapSubwidgets(popup_win);
+	WMRealizeWidget(popup_win);
+
+	attr.override_redirect = True;
+	attr.save_under = True;
+	XChangeWindowAttributes(dpy, WMWidgetXID(popup_win),
+				CWOverrideRedirect | CWSaveUnder, &attr);
+}
+
+static int modifier_is_down(void)
+{
+	char keys[32];
+	unsigned int i;
+
+	XQueryKeymap(dpy, keys);
+
+	struct {
+		KeySym sym;
+	} mods[] = {
+		{ XK_Super_L }, { XK_Super_R },
+		{ XK_Alt_L }, { XK_Alt_R },
+		{ XK_Control_L }, { XK_Control_R },
+		{ XK_Shift_L }, { XK_Shift_R },
+		{ XK_Meta_L }, { XK_Meta_R },
+	};
+
+	for (i = 0; i < sizeof(mods) / sizeof(mods[0]); i++) {
+		unsigned int code = XKeysymToKeycode(dpy, mods[i].sym);
+		if (code > 0 && code < 256 && (keys[code >> 3] & (1 << (code & 7))))
+			return 1;
+	}
+	return 0;
+}
+
+static void drain_popup_ipc(void)
+{
+	struct pollfd pfd;
+
+	if (popup_ipc_fd < 0)
+		return;
+	pfd.fd = popup_ipc_fd;
+	pfd.events = POLLIN;
+	while (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) {
+		if (!handle_ipc_frame(popup_ipc_fd)) {
+			debug_log("IPC disconnected during popup drain");
+			close(popup_ipc_fd);
+			popup_ipc_fd = -1;
+			return;
+		}
+		pfd.revents = 0;
+	}
+}
+
+static int xtest_available = -1;
+
+static int have_xtest(void)
+{
+	xcb_test_get_version_cookie_t vck;
+	xcb_test_get_version_reply_t *vrep;
+	const xcb_query_extension_reply_t *ext;
+
+	if (xtest_available >= 0)
+		return xtest_available;
+	ext = xcb_get_extension_data(xc, &xcb_test_id);
+	if (!ext || !ext->present)
+		xtest_available = 0;
+	else {
+		vck = xcb_test_get_version(xc, XCB_TEST_MAJOR_VERSION,
+					   XCB_TEST_MINOR_VERSION);
+		vrep = xcb_test_get_version_reply(xc, vck, NULL);
+		xtest_available = vrep ? 1 : 0;
+		free(vrep);
+	}
+	debug_log("XTest extension: %s", xtest_available ? "yes" : "no");
+	return xtest_available;
+}
+
+/* Send a paste keystroke to the target window. XTest injects at the
+ * server level so events appear as real hardware keypresses (no
+ * send_event flag), which terminals like xterm accept. XSendEvent is
+ * the fallback for servers without XTest. */
+static void send_paste_key(Window target, KeyCode key, unsigned int modifiers)
+{
+	if (have_xtest()) {
+		/* press modifier, press key, release key, release modifier */
+		if (modifiers & ShiftMask) {
+			KeyCode shift = XKeysymToKeycode(dpy, XK_Shift_L);
+			xcb_test_fake_input(xc, XCB_KEY_PRESS, shift,
+					    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		}
+		if (modifiers & ControlMask) {
+			KeyCode ctrl = XKeysymToKeycode(dpy, XK_Control_L);
+			xcb_test_fake_input(xc, XCB_KEY_PRESS, ctrl,
+					    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		}
+		xcb_test_fake_input(xc, XCB_KEY_PRESS, key,
+				    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		xcb_test_fake_input(xc, XCB_KEY_RELEASE, key,
+				    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		if (modifiers & ControlMask) {
+			KeyCode ctrl = XKeysymToKeycode(dpy, XK_Control_L);
+			xcb_test_fake_input(xc, XCB_KEY_RELEASE, ctrl,
+					    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		}
+		if (modifiers & ShiftMask) {
+			KeyCode shift = XKeysymToKeycode(dpy, XK_Shift_L);
+			xcb_test_fake_input(xc, XCB_KEY_RELEASE, shift,
+					    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		}
+		xcb_flush(xc);
+	} else {
+		XEvent kev;
+
+		memset(&kev, 0, sizeof(kev));
+		kev.type = KeyPress;
+		kev.xkey.display = dpy;
+		kev.xkey.window = target;
+		kev.xkey.root = (Window)root_window;
+		kev.xkey.time = CurrentTime;
+		kev.xkey.keycode = key;
+		kev.xkey.state = modifiers;
+		XSendEvent(dpy, target, True, KeyPressMask, &kev);
+
+		kev.type = KeyRelease;
+		XSendEvent(dpy, target, True, KeyReleaseMask, &kev);
+
+		XFlush(dpy);
+	}
+}
+
+static void show_clipboard_popup(void)
+{
+	KeyCode vKey, upKey, downKey, homeKey, endKey, pgupKey, pgdnKey;
+	KeyCode returnKey, escapeKey, shiftLKey, shiftRKey;
+	KeyCode jKey, kKey, pKey, delKey;
+	Bool done = False, esc_cancel = False, commit = False;
+	Bool release_commits;
+	int commit_row = -1;
+	int i;
+	int row, nrows;
+	int rx, ry;
+	XEvent ev;
+	Window focus_save = None;
+	int focus_revert = RevertToPointerRoot;
+	Window focus_target = None;
+
+	if (popup_active)
+		return;
+	if (!history_enabled || history.count == 0) {
+		debug_log("popup requested but history is empty");
+		return;
+	}
+
+	popup_active = 1;
+	ensure_popup();
+	if (!popup_wscr) {
+		popup_active = 0;
+		return;
+	}
+
+	refresh_popup_list();
+	WMMapWidget(popup_win);
+	XRaiseWindow(dpy, WMWidgetXID(popup_win));
+	XFlush(dpy);
+	popup_mapped = 1;
+
+	vKey = XKeysymToKeycode(dpy, XK_v);
+	upKey = XKeysymToKeycode(dpy, XK_Up);
+	downKey = XKeysymToKeycode(dpy, XK_Down);
+	homeKey = XKeysymToKeycode(dpy, XK_Home);
+	endKey = XKeysymToKeycode(dpy, XK_End);
+	pgupKey = XKeysymToKeycode(dpy, XK_Prior);
+	pgdnKey = XKeysymToKeycode(dpy, XK_Next);
+	returnKey = XKeysymToKeycode(dpy, XK_Return);
+	escapeKey = XKeysymToKeycode(dpy, XK_Escape);
+	shiftLKey = XKeysymToKeycode(dpy, XK_Shift_L);
+	shiftRKey = XKeysymToKeycode(dpy, XK_Shift_R);
+	jKey = XKeysymToKeycode(dpy, XK_j);
+	kKey = XKeysymToKeycode(dpy, XK_k);
+	pKey = XKeysymToKeycode(dpy, XK_p);
+	delKey = XKeysymToKeycode(dpy, XK_Delete);
+
+	release_commits = modifier_is_down() ? True : False;
+
+	/* Save the currently focused window so we can send a Ctrl+V
+	 * paste keystroke to it after committing the selection. */
+	XGetInputFocus(dpy, &focus_save, &focus_revert);
+	focus_target = focus_save;
+
+	/* The wmaker keybinding uses a passive XGrabKey that stays active
+	 * while the modifier (e.g. Super) is held. Retry until the user
+	 * releases it, then our active grab can take over. */
+	for (i = 0; i < 100; i++) {
+		int gkr = XGrabKeyboard(dpy, (Window)root_window, False,
+					GrabModeAsync, GrabModeAsync,
+					CurrentTime);
+		if (gkr == GrabSuccess)
+			break;
+		usleep(10000);
+	}
+	if (i >= 100) {
+		debug_log("keyboard grab failed after retry");
+		release_commits = False;
+	} else
+		debug_log("keyboard grab succeeded after %d retries", i);
+	XGrabPointer(dpy, (Window)root_window, True,
+		     ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+		     GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+
+	while (!done && running) {
+		XEvent sev;
+
+		/* Extract only selection/property/destroy events that
+		 * WMMaskEvent would strand (they don't match its mask).
+		 * Key, button, motion and expose events stay queued for
+		 * WMMaskEvent to return. Include XFixes selection-notify so
+		 * clipboard changes made while the popup is open reach the
+		 * history instead of being silently dropped. */
+		while (WXEvqTakeTyped(dpy, SelectionRequest, None, &sev))
+			dispatch_xevent(&sev);
+		while (WXEvqTakeTyped(dpy, SelectionClear, None, &sev))
+			dispatch_xevent(&sev);
+		while (WXEvqTakeTyped(dpy, PropertyNotify, None, &sev))
+			dispatch_xevent(&sev);
+		while (WXEvqTakeTyped(dpy, DestroyNotify, None, &sev))
+			dispatch_xevent(&sev);
+		if (run_clipboard) {
+			int xfixes_type = xfixes_first_event + XCB_XFIXES_SELECTION_NOTIFY;
+			while (WXEvqTakeTyped(dpy, xfixes_type, None, &sev))
+				dispatch_xevent(&sev);
+		}
+
+		WMMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask
+			    | PointerMotionMask | ButtonPressMask
+			    | ButtonReleaseMask | EnterWindowMask, &ev);
+
+		switch (ev.type) {
+		case KeyPress:
+			row = WMGetListSelectedItemRow(popup_list);
+			nrows = WMGetListNumberOfRows(popup_list);
+
+			if (ev.xkey.keycode == vKey) {
+				if (row < 0)
+					row = 0;
+				else
+					row = (row + 1) % nrows;
+				WMSelectListItem(popup_list, row);
+				WMSetListPosition(popup_list, row);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == downKey ||
+				   ev.xkey.keycode == jKey) {
+				if (row < 0)
+					row = 0;
+				else
+					row = (row + 1) % nrows;
+				WMSelectListItem(popup_list, row);
+				WMSetListPosition(popup_list, row);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == upKey ||
+				   ev.xkey.keycode == kKey) {
+				if (row < 0)
+					row = nrows - 1;
+				else
+					row = row > 0 ? row - 1 : nrows - 1;
+				WMSelectListItem(popup_list, row);
+				WMSetListPosition(popup_list, row);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == homeKey) {
+				WMSelectListItem(popup_list, 0);
+				WMSetListPosition(popup_list, 0);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == endKey) {
+				WMSelectListItem(popup_list, nrows - 1);
+				WMSetListPosition(popup_list, nrows - 1);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == pgupKey ||
+				   ev.xkey.keycode == pgdnKey) {
+				int vis = popup_h / popup_item_h;
+				if (vis < 1)
+					vis = 1;
+				if (ev.xkey.keycode == pgupKey)
+					row = row > vis ? row - vis : 0;
+				else
+					row = row + vis < nrows ? row + vis : nrows - 1;
+				WMSelectListItem(popup_list, row);
+				WMSetListPosition(popup_list, row);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == pKey) {
+				history_toggle_pin(row);
+				WMRedisplayWidget(popup_list);
+				XFlush(dpy);
+			} else if (ev.xkey.keycode == delKey &&
+				   (ev.xkey.state & ShiftMask)) {
+				history_clear_non_pinned();
+				if (history.count == 0) {
+					done = True;
+					esc_cancel = True;
+				} else {
+					refresh_popup_list();
+					WMMapWidget(popup_win);
+					XFlush(dpy);
+				}
+			} else if (ev.xkey.keycode == delKey) {
+				int next_row = row;
+
+				history_remove_entry(row);
+				if (history.count == 0) {
+					done = True;
+					esc_cancel = True;
+				} else {
+					if (next_row >= history.count)
+						next_row = history.count - 1;
+					refresh_popup_list();
+					WMSelectListItem(popup_list, next_row);
+					WMSetListPosition(popup_list, next_row);
+					WMMapWidget(popup_win);
+					XFlush(dpy);
+				}
+			} else if (ev.xkey.keycode == returnKey) {
+				commit_row = row;
+				commit = True;
+				done = True;
+			} else if (ev.xkey.keycode == escapeKey) {
+				done = True;
+				esc_cancel = True;
+			} else if (ev.xkey.keycode != shiftLKey &&
+				   ev.xkey.keycode != shiftRKey) {
+				commit_row = row;
+				commit = True;
+				done = True;
+			}
+			break;
+		case KeyRelease:
+			if (!release_commits)
+				break;
+			if (ev.xkey.keycode == vKey ||
+			    ev.xkey.keycode == upKey ||
+			    ev.xkey.keycode == downKey ||
+			    ev.xkey.keycode == homeKey ||
+			    ev.xkey.keycode == endKey ||
+			    ev.xkey.keycode == pgupKey ||
+			    ev.xkey.keycode == pgdnKey ||
+			    ev.xkey.keycode == returnKey ||
+			    ev.xkey.keycode == escapeKey ||
+			    ev.xkey.keycode == jKey ||
+			    ev.xkey.keycode == kKey ||
+			    ev.xkey.keycode == pKey ||
+			    ev.xkey.keycode == delKey ||
+			    ev.xkey.keycode == shiftLKey ||
+			    ev.xkey.keycode == shiftRKey)
+				break;
+			row = WMGetListSelectedItemRow(popup_list);
+			commit_row = row;
+			commit = True;
+			done = True;
+			break;
+		case ButtonPress:
+			rx = ev.xbutton.x_root; ry = ev.xbutton.y_root;
+			if (rx < popup_x || rx >= popup_x + popup_w ||
+			    ry < popup_y || ry >= popup_y + popup_h) {
+				done = True;
+				esc_cancel = True;
+			} else {
+				popup_clicked_row = -1;
+				WMHandleEvent(&ev);
+			}
+			break;
+		case ButtonRelease:
+			WMHandleEvent(&ev);
+			if (popup_clicked_row >= 0) {
+				commit_row = popup_clicked_row;
+				commit = True;
+				done = True;
+			}
+			break;
+		case MotionNotify:
+		case Expose:
+			WMHandleEvent(&ev);
+			break;
+		default:
+			WMHandleEvent(&ev);
+			break;
+		}
+	}
+
+	XUngrabPointer(dpy, CurrentTime);
+	XUngrabKeyboard(dpy, CurrentTime);
+	hide_popup();
+	XFlush(dpy);
+
+	if (commit && !esc_cancel && commit_row >= 0 && commit_row < history.count) {
+		activate_entry(commit_row);
+
+		/* Simulate a paste into the previously focused window using
+		 * XTest (real keypresses, not synthetic events). For image
+		 * entries send Ctrl+V, which TUI applications that support
+		 * image paste (e.g. opencode) intercept to read CLIPBOARD as
+		 * an image; Shift+Insert only triggers a terminal text paste
+		 * which cannot carry image data. For text entries send
+		 * Shift+Insert, the standard X11 paste shortcut that works in
+		 * both terminals and GUI apps; Ctrl+V in a terminal enters
+		 * readline's quoted-insert mode rather than pasting. */
+		if (focus_target != None && focus_target != PointerRoot &&
+		    focus_target != WMWidgetXID(popup_win)) {
+			ClipHistoryEntry *ce = history.entries[commit_row];
+			int is_image = is_image_atom(ce->type);
+
+			XSetInputFocus(dpy, focus_target, RevertToPointerRoot, CurrentTime);
+			XFlush(dpy);
+
+			if (is_image) {
+				KeyCode v_kc = XKeysymToKeycode(dpy, XK_v);
+				if (v_kc > 0) {
+					send_paste_key(focus_target, v_kc, ControlMask);
+					debug_log("sent Ctrl+V paste to 0x%x",
+						  (unsigned int)focus_target);
+				}
+			} else {
+				KeyCode insert_kc = XKeysymToKeycode(dpy, XK_Insert);
+				if (insert_kc > 0) {
+					send_paste_key(focus_target, insert_kc, ShiftMask);
+					debug_log("sent Shift+Insert paste to 0x%x",
+						  (unsigned int)focus_target);
+				}
+			}
+		}
+	}
+
+	drain_popup_ipc();
+	popup_active = 0;
 }
 
 int main(int argc, char **argv)
 {
 	struct pollfd fds[2];
-	int ipc_fd = -1;
 	int parse_rc, nfds, x_index, ipc_index, rc, timeout;
 	long long next_ipc_connect = 0, now;
-	xcb_generic_event_t *ev;
+	XEvent xev;
 
 	prog = argv[0];
 	parse_rc = parse_args(argc, argv);
@@ -1204,12 +2509,16 @@ int main(int argc, char **argv)
 	if (parse_rc < 0)
 		return 2;
 
-	debug_log("starting: clipboard=%s screenshots=%s",
+	debug_log("starting: clipboard=%s screenshots=%s history=%d",
 		  run_clipboard ? "yes" : "no",
-		  run_screenshots ? "yes" : "no");
+		  run_screenshots ? "yes" : "no",
+		  history_capacity);
 
 	if (!init_x11())
 		return 1;
+
+	history.capacity = history_capacity;
+
 	if (run_clipboard && !init_clipboard_monitor())
 		return 1;
 
@@ -1218,17 +2527,23 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	while (running) {
-		while ((ev = xcb_poll_for_event(xc)) != NULL) {
-			handle_x_event(ev);
-			free(ev);
+		while (WXEvqPending(dpy)) {
+			if (!WXEvqNext(dpy, &xev))
+				break;
+			dispatch_xevent(&xev);
 		}
 		if (xcb_connection_has_error(xc))
 			break;
 
+		if (primary_pending_deadline > 0 &&
+		    clip_monotonic_ms() >= primary_pending_deadline)
+			flush_primary_pending();
+
 		now = clip_monotonic_ms();
-		if (run_screenshots && ipc_fd < 0 && now >= next_ipc_connect) {
-			ipc_fd = connect_ipc();
-			if (ipc_fd < 0)
+		if ((run_screenshots || history_enabled) &&
+		    popup_ipc_fd < 0 && now >= next_ipc_connect) {
+			popup_ipc_fd = connect_ipc();
+			if (popup_ipc_fd < 0)
 				next_ipc_connect = now + IPC_RECONNECT_MS;
 		}
 
@@ -1240,19 +2555,27 @@ int main(int argc, char **argv)
 		nfds++;
 
 		ipc_index = -1;
-		if (ipc_fd >= 0) {
+		if (popup_ipc_fd >= 0) {
 			ipc_index = nfds;
-			fds[nfds].fd = ipc_fd;
+			fds[nfds].fd = popup_ipc_fd;
 			fds[nfds].events = POLLIN;
 			fds[nfds].revents = 0;
 			nfds++;
 		}
 
 		timeout = -1;
-		if (run_screenshots && ipc_fd < 0) {
+		if ((run_screenshots || history_enabled) && popup_ipc_fd < 0) {
 			now = clip_monotonic_ms();
 			timeout = next_ipc_connect > now ?
 				(int)(next_ipc_connect - now) : 0;
+		}
+		if (primary_pending_deadline > 0) {
+			long long dl = primary_pending_deadline -
+				       clip_monotonic_ms();
+			int dl_ms = dl < 0 ? 0 : (int)dl;
+
+			if (timeout < 0 || dl_ms < timeout)
+				timeout = dl_ms;
 		}
 
 		rc = poll(fds, nfds, timeout);
@@ -1263,38 +2586,44 @@ int main(int argc, char **argv)
 		}
 
 		if (fds[x_index].revents & POLLIN) {
-			while ((ev = xcb_poll_for_event(xc)) != NULL) {
-				handle_x_event(ev);
-				free(ev);
+			while (WXEvqPending(dpy)) {
+				if (!WXEvqNext(dpy, &xev))
+					break;
+				dispatch_xevent(&xev);
 			}
 		}
 		if (fds[x_index].revents & (POLLERR | POLLHUP | POLLNVAL))
 			break;
 
+		if (primary_pending_deadline > 0 &&
+		    clip_monotonic_ms() >= primary_pending_deadline)
+			flush_primary_pending();
+
 		if (ipc_index >= 0 && fds[ipc_index].revents) {
 			if (fds[ipc_index].revents & POLLIN) {
-				if (!handle_ipc_frame(ipc_fd)) {
+				if (!handle_ipc_frame(popup_ipc_fd)) {
 					debug_log("IPC disconnected; will reconnect");
-					close(ipc_fd);
-					ipc_fd = -1;
+					close(popup_ipc_fd);
+					popup_ipc_fd = -1;
 					next_ipc_connect = clip_monotonic_ms() + IPC_RECONNECT_MS;
 				}
 			} else if (fds[ipc_index].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				debug_log("IPC poll error; will reconnect");
-				close(ipc_fd);
-				ipc_fd = -1;
+				close(popup_ipc_fd);
+				popup_ipc_fd = -1;
 				next_ipc_connect = clip_monotonic_ms() + IPC_RECONNECT_MS;
 			}
 		}
 	}
 
 	debug_log("stopping");
-	if (ipc_fd >= 0)
-		close(ipc_fd);
+	history_clear_all();
+	if (popup_ipc_fd >= 0)
+		close(popup_ipc_fd);
 	clip_incr_send_cancel(xc, &incr);
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
-	if (xc)
-		xcb_disconnect(xc);
+	if (dpy)
+		XCloseDisplay(dpy);
 	return 0;
 }

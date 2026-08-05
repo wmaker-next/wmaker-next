@@ -195,6 +195,9 @@ enum {
 	/* run LockScreenCommand */
 	WKBD_LOCKSCREEN,
 
+	/* run ClipboardCommand */
+	WKBD_CLIPBOARD,
+
 #ifdef KEEP_XKB_LOCK_STATUS
 	WKBD_TOGGLE,
 #endif

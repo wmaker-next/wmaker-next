@@ -9,6 +9,29 @@ wmaker \- X11 window manager with a NEXTSTEP look
 Window Maker is a X11 window manager with a NEXTSTEP look. It tries to
 emulate NeXT's look as much as possible, but it deviates from it as
 necessary.
+.PP
+Several keybindings can be configured to run external commands. The
+.B LockScreenKey
+/
+.B LockScreenCommand
+pair invokes a screen locker, and the
+.B ClipboardKey
+/
+.B ClipboardCommand
+pair invokes a clipboard manager. The
+.B LockScreenCommand
+defaults to
+.BR wmlock ;
+the clipboard pair defaults to
+.I None
+(empty/unbound). Set them in the
+WindowMaker defaults domain. For the bundled
+.BR wmclipd (1)
+clipboard history manager, use:
+.EX
+ClipboardKey = "Mod4+v";
+ClipboardCommand = "wmakermsg send_tick wmclipd-popup";
+.EE
 .SH "OPTIONS"
 .TP
 .BI \-\-clientid " id"
@@ -195,6 +218,7 @@ The Window Maker FAQ
 .BR wmsetbg (1),
 .BR wmgenmenu (1),
 .BR wmmenugen (1),
+.BR wmclipd (1),
 .BR wdread (1),
 .BR wdwrite (1)
 .SH AUTHOR

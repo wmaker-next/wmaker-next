@@ -874,6 +874,12 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			ExecuteShellCommand(scr, w_global.config->lock_screen_command);
 		break;
 
+	case WKBD_CLIPBOARD:
+		if (w_global.config->clipboard_command &&
+		    w_global.config->clipboard_command[0])
+			ExecuteShellCommand(scr, w_global.config->clipboard_command);
+		break;
+
 	case WKBD_NEXTWSLAYER:
 	case WKBD_PREVWSLAYER:
 		{

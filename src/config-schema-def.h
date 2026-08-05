@@ -119,6 +119,8 @@
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(LOCK_SCREEN_COMMAND, "LockScreenCommand", STRING, lock_screen_command, \
 	  "wmlock", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(CLIPBOARD_COMMAND, "ClipboardCommand", STRING, clipboard_command, \
+	  "wmakermsg send_tick wmclipd-popup", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISPLAY_OFF_COMMAND, "DisplayOffCommand", STRING, display_off_command, \
 	  "", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISPLAY_ON_COMMAND, "DisplayOnCommand", STRING, display_on_command, \
@@ -697,6 +699,7 @@
 	_(WINDOW_CAPTURE_KEY, "WindowCaptureKey", "None", WKBD_PRINTW) \
 	_(PARTIAL_CAPTURE_KEY, "PartialCaptureKey", "None", WKBD_PRINTP) \
 	_(LOCK_SCREEN_KEY, "LockScreenKey", "None", WKBD_LOCKSCREEN) \
+	_(CLIPBOARD_KEY, "ClipboardKey", "Mod4+v", WKBD_CLIPBOARD) \
 	_(MARK_SET_KEY, "MarkSetKey", "None", WKBD_MARK_SET) \
 	_(MARK_UNSET_KEY, "MarkUnsetKey", "None", WKBD_MARK_UNSET) \
 	_(MARK_BRING_KEY, "MarkBringKey", "None", WKBD_MARK_BRING) \

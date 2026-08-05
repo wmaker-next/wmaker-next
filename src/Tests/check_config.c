@@ -911,6 +911,10 @@ static void test_defaults(void)
 		     "Control+Escape") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_KEYCHAIN_CANCEL].spec, "None") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_MINIATURIZE_OTHERS].spec, "None") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_LOCKSCREEN].spec, "None") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_CLIPBOARD].spec, "Mod4+v") == 0);
+	CHECK(strcmp(config->lock_screen_command, "wmlock") == 0);
+	CHECK(strcmp(config->clipboard_command, "wmakermsg send_tick wmclipd-popup") == 0);
 	wConfigDestroy(config);
 }
 
