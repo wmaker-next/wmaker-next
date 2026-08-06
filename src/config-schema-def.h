@@ -289,6 +289,10 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(ADVANCE_TO_NEW_WORKSPACE, "AdvanceToNewWorkspace", BOOL, ws_advance, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(AUTO_REMOVE_EMPTY_WORKSPACES, "AutoRemoveEmptyWorkspaces", BOOL, \
+	  auto_remove_empty_workspaces, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(MIN_WORKSPACE_COUNT, "MinWorkspaceCount", INT, min_workspace_count, "1", \
+	  NULL, 1, MAX_WORKSPACES, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_WORKSPACES, "CycleWorkspaces", BOOL, ws_cycle, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(PER_HEAD_WORKSPACES, "PerHeadWorkspaces", BOOL, per_head_workspaces, "NO", \
@@ -359,9 +363,9 @@
 	_(WINDOW_SNAPPING, "WindowSnapping", BOOL, window_snapping, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_EDGE_DETECT, "SnapEdgeDetect", INT, snap_edge_detect, "1", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_CORNER_DETECT, "SnapCornerDetect", INT, snap_corner_detect, "10", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_TO_TOP_MAXIMIZES_FULLSCREEN, "SnapToTopMaximizesFullscreen", BOOL, \
 	  snap_to_top_maximizes_fullscreen, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DRAG_MAXIMIZED_WINDOW, "DragMaximizedWindow", ENUM, drag_maximized_window, "Move", \

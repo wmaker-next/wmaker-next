@@ -3,6 +3,7 @@ xpmdatadir = $(wprefs_datadir)/xpm
 if ICON_EXT_XPM
 dist_xpmdata_DATA = \
 	advancetonewworkspace.xpm \
+	autoremoveempty.xpm \
 	animations.xpm \
 	appearance.xpm \
 	clip.xpm \

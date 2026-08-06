@@ -3,6 +3,7 @@ tiffdatadir = $(wprefs_datadir)/tiff
 if ICON_EXT_TIFF
 dist_tiffdata_DATA = \
 	advancetonewworkspace.tiff \
+	autoremoveempty.tiff \
 	animations.tiff \
 	appearance.tiff \
 	clip.tiff \

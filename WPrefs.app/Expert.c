@@ -86,6 +86,14 @@ static struct expert_option {
 	{ N_("Each monitor keeps its own active workspace (requires restart)."),
 	  OPTION_WMAKER, "PerHeadWorkspaces" },
 
+	{ N_("Keep at least this many workspaces."),
+	  OPTION_WMAKER_INT, "MinWorkspaceCount" },
+
+#ifdef VIRTUAL_DESKTOP
+	{ N_("Enable virtual desktop (pannable workspaces larger than the screen)."),
+	  OPTION_WMAKER, "EnableVirtualDesktop" },
+#endif
+
 	{ N_("Cycle all windows from all workspaces."),
 	  OPTION_WMAKER, "CycleAllWorkspaces" },
 
@@ -214,6 +222,7 @@ static Bool altPairForKey(const char *key, const char *pair[2])
 static void changeIntTextfield(void *data, int delta)
 {
 	WMTextField *textfield;
+	const char *key;
 	char *text, buffer[12];
 	int value;
 
@@ -222,6 +231,11 @@ static void changeIntTextfield(void *data, int delta)
 	value = atoi(text);
 	wfree(text);
 	value += delta;
+
+	key = (const char *) WMGetHangedData(textfield);
+	if (key)
+		value = wConfigSchemaClampInt(key, value);
+
 	snprintf(buffer, sizeof(buffer), "%d", value);
 	WMSetTextFieldText(textfield, buffer);
 }
@@ -356,6 +370,35 @@ static void upButtonCallback(WMWidget *self, void *data)
 	changeIntTextfield(data, 1);
 }
 
+/* Clamp the text field to the schema's [min, max] when the user leaves
+ * the field, so the UI never displays (or stores) an out-of-range value
+ * such as a negative snap distance. The option key is hung on the field
+ * via WMHangData in createPanel(). */
+static void intTextFieldEndEditing(WMTextField *tPtr)
+{
+	const char *key;
+	char *text, buffer[12];
+	int value;
+
+	key = (const char *) WMGetHangedData(tPtr);
+	if (!key)
+		return;
+
+	text = WMGetTextFieldText(tPtr);
+	value = atoi(text);
+	wfree(text);
+
+	value = wConfigSchemaClampInt(key, value);
+	snprintf(buffer, sizeof(buffer), "%d", value);
+	WMSetTextFieldText(tPtr, buffer);
+}
+
+static void intTextFieldObserver(void *self, WMNotification *not)
+{
+	(void) self;
+	intTextFieldEndEditing(WMGetNotificationObject(not));
+}
+
 static int cmpExpertOptions(const void *v1, const void *v2)
 {
 	int rc;
@@ -435,13 +478,17 @@ static void createPanel(Panel *p)
 
 		case OPTION_WMAKER_INT:
 		{
-			char tmp[10];
+			char tmp[12];
 			WMButton *up, *down;
 			WMLabel *label;
 
 			panel->textfield[i] = WMCreateTextField(f);
 			WMResizeWidget(panel->textfield[i], 41, 20);
 			WMMoveWidget(panel->textfield[i], 22, 7 + i * 25);
+			WMHangData(panel->textfield[i], (void *) expert_options[i].op_name);
+			WMAddNotificationObserver(intTextFieldObserver, panel,
+						  WMTextDidEndEditingNotification,
+						  panel->textfield[i]);
 
 			down = WMCreateCommandButton(f);
 			WMSetButtonImage(down, WMGetSystemPixmap(WMWidgetScreen(down), WSIArrowDown));
@@ -545,6 +592,7 @@ static void storeDefaults(_Panel *panel)
 			value = atoi(text);
 			wfree(text);
 
+			value = wConfigSchemaClampInt(expert_options[i].op_name, value);
 			SetIntegerForKey(value, expert_options[i].op_name);
 			break;
 		}

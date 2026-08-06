@@ -38,9 +38,11 @@ typedef struct _Panel {
 	WMButton *linkB;
 	WMButton *cyclB;
 	WMButton *newB;
+	WMButton *autoB;
 	WMLabel *linkL;
 	WMLabel *cyclL;
 	WMLabel *newL;
+	WMLabel *autoL;
 
 	WMLabel *posiL;
 	WMLabel *posL;
@@ -66,6 +68,7 @@ static const struct {
 #define DONT_LINK_FILE	"dontlinkworkspaces"
 #define CYCLE_FILE	"cycleworkspaces"
 #define ADVANCE_FILE	"advancetonewworkspace"
+#define AUTO_REMOVE_FILE	"autoremoveempty"
 #define WSNAME_FILE 	"workspacename"
 
 /* Navigation icons are 48x48 / 50x40 XPMs. The navigation frame has four
@@ -74,7 +77,7 @@ static const struct {
  * aligned and the icons fully visible. Nearest-neighbor (RScaleImage)
  * is used because the source XPMs are pixel art — Catmull-Rom softens
  * them at this small ratio. */
-#define NAV_ICON_H	32
+#define NAV_ICON_H	26
 
 static WMPixmap *loadScaledNavIcon(WMScreen *scr, RContext *rc, const char *file)
 {
@@ -118,6 +121,8 @@ static void showData(_Panel * panel)
 
 	WMSetButtonSelected(panel->newB, GetBoolForKey("AdvanceToNewWorkspace"));
 
+	WMSetButtonSelected(panel->autoB, GetBoolForKey("AutoRemoveEmptyWorkspaces"));
+
 	/* popup items are added in WD_NONE..WD_BOTTOMRIGHT order in createPanel(),
 	 * so the schema value is the popup index directly */
 	WMSetPopUpButtonSelectedItem(panel->posP,
@@ -146,17 +151,17 @@ static void createPanel(Panel * p)
 
     /***************** Workspace Navigation *****************/
 	panel->navF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->navF, 490, 180);
-	WMMoveWidget(panel->navF, 15, 4);
+	WMResizeWidget(panel->navF, 490, 184);
+	WMMoveWidget(panel->navF, 15, 2);
 	WMSetFrameTitle(panel->navF, _("Workspace Navigation"));
 
 	panel->cyclB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->cyclB, 410, 30);
-	WMMoveWidget(panel->cyclB, 75, 20);
+	WMMoveWidget(panel->cyclB, 75, 18);
 	WMSetButtonText(panel->cyclB, _("Wrap to the first workspace from the last workspace"));
 
 	panel->cyclL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->cyclL, 60, 36);
+	WMResizeWidget(panel->cyclL, 60, 30);
 	WMMoveWidget(panel->cyclL, 10, 16);
 	WMSetLabelImagePosition(panel->cyclL, WIPImageOnly);
 	icon1 = loadScaledNavIcon(scr, rc, CYCLE_FILE);
@@ -168,12 +173,12 @@ static void createPanel(Panel * p)
 
 	/**/ panel->linkB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->linkB, 410, 30);
-	WMMoveWidget(panel->linkB, 75, 60);
+	WMMoveWidget(panel->linkB, 75, 51);
 	WMSetButtonText(panel->linkB, _("Switch workspaces while dragging windows"));
 
 	panel->linkL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->linkL, 60, 36);
-	WMMoveWidget(panel->linkL, 10, 56);
+	WMResizeWidget(panel->linkL, 60, 30);
+	WMMoveWidget(panel->linkL, 10, 49);
 	WMSetLabelImagePosition(panel->linkL, WIPImageOnly);
 	icon1 = loadScaledNavIcon(scr, rc, DONT_LINK_FILE);
 	if (icon1)
@@ -184,12 +189,12 @@ static void createPanel(Panel * p)
 
 	/**/ panel->newB = WMCreateSwitchButton(panel->navF);
 	WMResizeWidget(panel->newB, 410, 30);
-	WMMoveWidget(panel->newB, 75, 100);
+	WMMoveWidget(panel->newB, 75, 84);
 	WMSetButtonText(panel->newB, _("Automatically create new workspaces"));
 
 	panel->newL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->newL, 60, 36);
-	WMMoveWidget(panel->newL, 10, 96);
+	WMResizeWidget(panel->newL, 60, 30);
+	WMMoveWidget(panel->newL, 10, 82);
 	WMSetLabelImagePosition(panel->newL, WIPImageOnly);
 	icon1 = loadScaledNavIcon(scr, rc, ADVANCE_FILE);
 	if (icon1)
@@ -198,15 +203,30 @@ static void createPanel(Panel * p)
 		WMReleasePixmap(icon1);
 	}
 
+	/**/ panel->autoB = WMCreateSwitchButton(panel->navF);
+	WMResizeWidget(panel->autoB, 410, 30);
+	WMMoveWidget(panel->autoB, 75, 117);
+	WMSetButtonText(panel->autoB, _("Automatically remove empty workspaces"));
+
+	panel->autoL = WMCreateLabel(panel->navF);
+	WMResizeWidget(panel->autoL, 60, 30);
+	WMMoveWidget(panel->autoL, 10, 115);
+	WMSetLabelImagePosition(panel->autoL, WIPImageOnly);
+	icon1 = loadScaledNavIcon(scr, rc, AUTO_REMOVE_FILE);
+	if (icon1) {
+		WMSetLabelImage(panel->autoL, icon1);
+		WMReleasePixmap(icon1);
+	}
+
 	/**/ panel->posL = WMCreateLabel(panel->navF);
 	WMResizeWidget(panel->posL, 275, 30);
-	WMMoveWidget(panel->posL, 75, 140);
+	WMMoveWidget(panel->posL, 75, 150);
 	// WMSetLabelTextAlignment(panel->posL, WARight);
 	WMSetLabelText(panel->posL, _("Position of workspace name display"));
 
 	panel->posiL = WMCreateLabel(panel->navF);
-	WMResizeWidget(panel->posiL, 60, 36);
-	WMMoveWidget(panel->posiL, 10, 136);
+	WMResizeWidget(panel->posiL, 60, 30);
+	WMMoveWidget(panel->posiL, 10, 148);
 	WMSetLabelImagePosition(panel->posiL, WIPImageOnly);
 	icon1 = loadScaledNavIcon(scr, rc, WSNAME_FILE);
 	if (icon1)
@@ -217,7 +237,7 @@ static void createPanel(Panel * p)
 
 	panel->posP = WMCreatePopUpButton(panel->navF);
 	WMResizeWidget(panel->posP, 125, 20);
-	WMMoveWidget(panel->posP, 350, 143);
+	WMMoveWidget(panel->posP, 350, 153);
 	WMAddPopUpButtonItem(panel->posP, _("Disable"));
 	WMAddPopUpButtonItem(panel->posP, _("Center"));
 	WMAddPopUpButtonItem(panel->posP, _("Top"));
@@ -232,7 +252,7 @@ static void createPanel(Panel * p)
     /***************** Tiling Layout *****************/
 	panel->layF = WMCreateFrame(panel->box);
 	WMResizeWidget(panel->layF, 490, 42);
-	WMMoveWidget(panel->layF, 15, 183);
+	WMMoveWidget(panel->layF, 15, 187);
 	WMSetFrameTitle(panel->layF, _("Default Tiling Layout"));
 	WMSetBalloonTextForView(
 		_("Tiling layout applied to newly created workspaces.\n"
@@ -287,6 +307,7 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(!WMGetButtonSelected(panel->linkB), "DontLinkWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->cyclB), "CycleWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AdvanceToNewWorkspace");
+	SetBoolForKey(WMGetButtonSelected(panel->autoB), "AutoRemoveEmptyWorkspaces");
 
 	SetEnumForKey(tmp, "WorkspaceNameDisplayPosition");
 
