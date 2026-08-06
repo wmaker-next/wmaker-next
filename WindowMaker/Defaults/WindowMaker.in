@@ -54,6 +54,8 @@
 	CirculateRaise = NO;
 	Superfluous = YES;
 	AdvanceToNewWorkspace = NO;
+	AutoRemoveEmptyWorkspaces = NO;
+	MinWorkspaceCount = 1;
 	CycleWorkspaces = NO;
 	PerHeadWorkspaces = NO;
 	DefaultWorkspaceLayout = float;

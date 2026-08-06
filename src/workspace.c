@@ -413,6 +413,52 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	return True;
 }
 
+/* Auto-destroy trailing empty workspaces. A workspace is empty when no
+ * non-omnipresent window carries its bit. The currently displayed
+ * workspace (and, under PerHeadWorkspaces, every head's active
+ * workspace) is never destroyed even if empty, so the user's view is
+ * never yanked by an automatic sweep. Workspaces below
+ * min_workspace_count are kept as a permanent floor. Only contiguous
+ * empty workspaces at the end of the array are reaped, so the
+ * numbering of workspaces still in use stays stable. */
+void wAutoRemoveEmptyWorkspaces(WScreen *scr)
+{
+	uint64_t active_mask;
+	int i, h;
+
+	if (!w_global.config->auto_remove_empty_workspaces
+	    || scr->flags.startup || scr->flags.startup2)
+		return;
+
+	active_mask = WS_BIT(scr->current_workspace);
+	if (w_global.config->per_head_workspaces) {
+		for (h = 0; h < wHeadCount(scr); h++)
+			active_mask |= WS_BIT(scr->head_workspace[h]);
+	}
+
+	while (scr->workspace_count > 0) {
+		WWindow *tmp;
+
+		i = scr->workspace_count - 1;
+		if (i < w_global.config->min_workspace_count)
+			break;
+		if (active_mask & WS_BIT(i))
+			break;
+
+		tmp = scr->focused_window;
+		while (tmp) {
+			if (!IS_OMNIPRESENT(tmp) && (WWIN_WS_MASK(tmp) & WS_BIT(i)))
+				break;
+			tmp = tmp->prev;
+		}
+		if (tmp)
+			break;
+
+		if (!wWorkspaceDelete(scr, i))
+			break;
+	}
+}
+
 #define WORKSPACE_NAME_FADE_STEPS 10
 
 static void fadeWorkspaceName(void *data)

@@ -2047,6 +2047,12 @@ msgstr "Vaihda työtiloja ikkunoita vedettäessä"
 msgid "Automatically create new workspaces"
 msgstr "Luo uusia työtiloja automaattisesti"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../../WPrefs.app/Workspace.c:250
 msgid "Position of workspace name display"
 msgstr "Työtilan nimi-näytön paikka"

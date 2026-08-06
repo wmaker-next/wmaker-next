@@ -2276,6 +2276,12 @@ msgstr "Munkafelület váltás ablakok mozgatásakor"
 msgid "Automatically create new workspaces"
 msgstr "Új munkafelületek automatikus létrehozása"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #. WMSetLabelTextAlignment(panel->posL, WARight);
 #: ../../../wmaker-crm/WPrefs.app/Workspace.c:172
 msgid "Position of workspace name display"

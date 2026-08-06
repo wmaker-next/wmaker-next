@@ -2343,6 +2343,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 
 	wWindowDestroy(wwin);
 	wLayoutApply(scr, wwin_workspace);
+	wAutoRemoveEmptyWorkspaces(scr);
 	XFlush(dpy);
 }
 
@@ -3116,6 +3117,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 			wGroupSyncWorkspace(wwin);
 		wLayoutApply(scr, src_workspace);
 		wLayoutApply(scr, workspace);
+		wAutoRemoveEmptyWorkspaces(scr);
 		return;
 	}
 
@@ -3166,6 +3168,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 
 	wLayoutApply(scr, src_workspace);
 	wLayoutApply(scr, workspace);
+	wAutoRemoveEmptyWorkspaces(scr);
 }
 
 /* Set the full workspace membership mask and primary. wWindowChangeWorkspace()
@@ -3253,6 +3256,7 @@ void wWindowSetWorkspaceMask(WWindow *wwin, uint64_t mask, int primary)
 			wLayoutApply(scr, i);
 		changed &= ~WS_BIT(i);
 	}
+	wAutoRemoveEmptyWorkspaces(scr);
 }
 
 void wWindowAddToWorkspace(WWindow *wwin, int workspace)
@@ -4341,6 +4345,7 @@ void wWindowSetOmnipresent(WWindow *wwin, Bool flag)
 	if (wwin->tab_group)
 		wGroupSyncWorkspace(wwin);
 	WMPostNotificationName(WMNChangedState, wwin, "omnipresent");
+	wAutoRemoveEmptyWorkspaces(wwin->screen_ptr);
 }
 
 void wWindowSetMark(WWindow *wwin, const char *label)

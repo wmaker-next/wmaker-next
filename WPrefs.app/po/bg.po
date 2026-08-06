@@ -2432,6 +2432,12 @@ msgstr "да се сменя работното място при влачене
 msgid "Automatically create new workspaces"
 msgstr "автоматично да се създават нови работни места"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 # ../../WPrefs.app/Workspace.c:251
 #: ../../WPrefs.app/Workspace.c:250
 msgid "Position of workspace name display"

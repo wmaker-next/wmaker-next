@@ -42,6 +42,7 @@ void wWorkspaceMake(WScreen *scr, int count);
 int wWorkspaceNew(WScreen *scr);
 int wGetWorkspaceNumber(WScreen *scr, const char *value);
 Bool wWorkspaceDelete(WScreen *scr, int workspace);
+void wAutoRemoveEmptyWorkspaces(WScreen *scr);
 void wWorkspaceChange(WScreen *scr, int workspace);
 void wWorkspaceForceChange(WScreen *scr, int workspace);
 WMenu *wWorkspaceMenuMake(WScreen *scr, Bool titled);

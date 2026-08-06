@@ -1736,6 +1736,12 @@ msgstr "Mover janelas entre áreas de trabalho"
 msgid "Automatically create new workspaces"
 msgstr "criar áreas de trabalho novas automaticamente"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../../WPrefs.app/Workspace.c:251
 msgid "Position of workspace name display"
 msgstr "Posição do nome da área de trabalho"

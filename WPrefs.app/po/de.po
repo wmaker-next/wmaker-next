@@ -1996,6 +1996,12 @@ msgstr "Beim Bewegen von Fenstern Arbeitsfläche wechseln"
 msgid "Automatically create new workspaces"
 msgstr "Automatisch neue Arbeitsflächen erstellen"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../../WPrefs.app/Workspace.c:226
 msgid "Position of workspace name display"
 msgstr "Position des Namens der Arbeitsfläche"

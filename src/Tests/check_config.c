@@ -836,6 +836,8 @@ static void test_defaults(void)
 	CHECK(config->circ_raise == 0);
 	CHECK(config->superfluous == 1);
 	CHECK(config->ws_advance == 0);
+	CHECK(config->auto_remove_empty_workspaces == 0);
+	CHECK(config->min_workspace_count == 1);
 	CHECK(config->ws_cycle == 0);
 	CHECK(config->workspace_name_display_position == WD_CENTER);
 	CHECK(config->window_placement == WPM_AUTO);
@@ -1067,6 +1069,7 @@ static void test_valid_parse(void)
 			      "AutoFocusAcrossHeads = NO; RaiseDelay = 12; "
 			      "CirculateRaise = YES; Superfluous = NO; "
 			      "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+			      "AutoRemoveEmptyWorkspaces = YES; MinWorkspaceCount = 2; "
 			      "WorkspaceNameDisplayPosition = topright; "
 			      "WindowPlacement = Center; WorkspaceBorder = AllDirections; "
 			      "WorkspaceBorderSize = 7; WrapMenus = YES; "
@@ -1194,6 +1197,8 @@ static void test_valid_parse(void)
 	CHECK(config->circ_raise == 1);
 	CHECK(config->superfluous == 0);
 	CHECK(config->ws_advance == 1);
+	CHECK(config->auto_remove_empty_workspaces == 1);
+	CHECK(config->min_workspace_count == 2);
 	CHECK(config->ws_cycle == 1);
 	CHECK(config->workspace_name_display_position == WD_TOPRIGHT);
 	CHECK(config->window_placement == WPM_CENTER);
@@ -1555,6 +1560,7 @@ static void test_runtime_apply(void)
 				  "AutoFocusAcrossHeads = NO; RaiseDelay = 15; "
 				  "CirculateRaise = YES; Superfluous = NO; "
 				  "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+				  "AutoRemoveEmptyWorkspaces = YES; MinWorkspaceCount = 2; "
 				  "WorkspaceNameDisplayPosition = bottomleft; "
 				  "WorkspaceBorderSize = 4; ScrollableMenus = NO; "
 				  "DoubleClickTime = 400; SaveSessionOnExit = YES; "
@@ -1655,6 +1661,8 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->circ_raise == 1);
 	CHECK(w_global.config->superfluous == 0);
 	CHECK(w_global.config->ws_advance == 1);
+	CHECK(w_global.config->auto_remove_empty_workspaces == 1);
+	CHECK(w_global.config->min_workspace_count == 2);
 	CHECK(w_global.config->ws_cycle == 1);
 	CHECK(w_global.config->workspace_name_display_position == WD_BOTTOMLEFT);
 	CHECK(w_global.config->workspace_border_size == 4);

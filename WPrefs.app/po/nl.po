@@ -2531,6 +2531,12 @@ msgstr "Van werkruimte wisselen bij vensters verslepen"
 msgid "Automatically create new workspaces"
 msgstr "Vanzelf nieuwe werkruimten aanmaken"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #. WMSetLabelTextAlignment(panel->posL, WARight);
 #: ../../WPrefs.app/Workspace.c:172
 msgid "Position of workspace name display"

@@ -2012,6 +2012,12 @@ msgstr "ťahanie okien medzi pracovnými plochami"
 msgid "Automatically create new workspaces"
 msgstr "Automaticky vytvárať nové pracovné plochy"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../../WPrefs.app/Workspace.c:250
 msgid "Position of workspace name display"
 msgstr "Umiestnenie názvu pracovnej plochy"

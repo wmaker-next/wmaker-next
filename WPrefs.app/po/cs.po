@@ -1962,6 +1962,12 @@ msgstr "Automaticky se přepnout na další plochu při přetažení aplikace p�
 msgid "Automatically create new workspaces"
 msgstr "Automaticky vytvářet nové pracovní plochy"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../Workspace.c:250
 msgid "Position of workspace name display"
 msgstr "Pozice názvu indikátoru pracovní plochy:"

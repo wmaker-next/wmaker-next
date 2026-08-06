@@ -1812,3 +1812,9 @@ msgstr ""
 "目录中的每一个文件会有对应项目, 且会用提供的命令打开.举例来说,如果目录含有"
 "图像文件, 而命令是 \"xv -root\", 目录中的每一个文件都会有一个象 \"xv -root "
 "imagefile\" 的菜单项."
+
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""

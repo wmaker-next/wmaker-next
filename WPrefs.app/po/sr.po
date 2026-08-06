@@ -2539,6 +2539,12 @@ msgstr "Пребацуј површине при превлачењу прозо
 msgid "Automatically create new workspaces"
 msgstr "Аутоматски креирај нове површине"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #. WMSetLabelTextAlignment(panel->posL, WARight);
 #: ../../WPrefs.app/Workspace.c:172
 msgid "Position of workspace name display"

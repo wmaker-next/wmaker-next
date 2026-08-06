@@ -2515,6 +2515,12 @@ msgstr "Pencereleri sürüklerken çalışma alanlarını değiştir"
 msgid "Automatically create new workspaces"
 msgstr "Otomatik olarak yeni çalışma alanları yarat"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #. WMSetLabelTextAlignment(panel->posL, WARight);
 #: ../../WPrefs.app/Workspace.c:172
 msgid "Position of workspace name display"

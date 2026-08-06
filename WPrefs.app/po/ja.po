@@ -2005,6 +2005,12 @@ msgstr "ドラッグ中にワークスペースの切り替え"
 msgid "Automatically create new workspaces"
 msgstr "自動的に新しいワークスペースを作成"
 
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""
+
 #: ../../WPrefs.app/Workspace.c:225
 msgid "Position of workspace name display"
 msgstr "ワークスペースの名前の表示位置"

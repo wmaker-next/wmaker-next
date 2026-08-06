@@ -2134,3 +2134,9 @@ msgstr "не вдається відкрити дисплей %s"
 #: ../../WPrefs.app/main.c:158
 msgid "could not initialize application"
 msgstr "не вдається ініціалізувати програму"
+
+msgid "Automatically remove empty workspaces"
+msgstr ""
+
+msgid "Keep at least this many workspaces."
+msgstr ""

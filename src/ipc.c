@@ -40,12 +40,14 @@
 #include "actions.h"
 #include "appicon.h"
 #include "application.h"
+#include "client.h"
 #include "defaults.h"
 #include "dock.h"
 #include "event.h"
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
+#include "wmspec.h"
 #include "layout.h"
 #include "xsmp.h"
 #include "ipc.h"
@@ -737,6 +739,45 @@ static verb_rc verb_info(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+#ifdef VIRTUAL_DESKTOP
+static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
+				 char **err, WMPropList **reply)
+{
+	WMPropList *ax, *ay;
+	long vx, vy;
+	char *end;
+
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 3) {
+		*err = wstrdup("set-viewport: usage: set-viewport X Y");
+		return VERB_FAIL;
+	}
+	ax = WMGetFromPLArray(args, 1);
+	ay = WMGetFromPLArray(args, 2);
+	if (!ax || !WMIsPLString(ax) || !ay || !WMIsPLString(ay)) {
+		*err = wstrdup("set-viewport: X and Y must be integers");
+		return VERB_FAIL;
+	}
+	vx = strtol(WMGetFromPLString(ax), &end, 10);
+	if (*end) {
+		*err = wstrdup("set-viewport: X is not an integer");
+		return VERB_FAIL;
+	}
+	vy = strtol(WMGetFromPLString(ay), &end, 10);
+	if (*end) {
+		*err = wstrdup("set-viewport: Y is not an integer");
+		return VERB_FAIL;
+	}
+	if (!wVdeskSetViewport(scr, scr->current_workspace, vx, vy)) {
+		*err = wstrdup("set-viewport: workspace not pannable "
+			       "(tiled or no change)");
+		return VERB_FAIL;
+	}
+	XSync(dpy, False);
+	return VERB_OK;
+}
+#endif
+
 static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 			       char **err, WMPropList **reply)
 {
@@ -786,6 +827,105 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_workspace_new(WScreen *scr, WMPropList *args,
+				   char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	long n;
+	char *end;
+
+	(void)reply;
+	n = 1;
+	if (args && WMGetPropListItemCount(args) > 1) {
+		a = WMGetFromPLArray(args, 1);
+		if (!a || !WMIsPLString(a)) {
+			*err = wstrdup("workspace-new: count must be a string");
+			return VERB_FAIL;
+		}
+		n = strtol(WMGetFromPLString(a), &end, 10);
+		if (*end || n < 1) {
+			*err = wstrdup("workspace-new: invalid count");
+			return VERB_FAIL;
+		}
+		if (n > MAX_WORKSPACES - scr->workspace_count)
+			n = MAX_WORKSPACES - scr->workspace_count;
+	}
+	if (n > 0)
+		wWorkspaceMake(scr, (int)n);
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
+static verb_rc verb_workspace_delete(WScreen *scr, WMPropList *args,
+				     char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	long n;
+	char *end;
+	WWindow *tmp;
+
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 2) {
+		*err = wstrdup("workspace-delete: missing workspace index");
+		return VERB_FAIL;
+	}
+	a = WMGetFromPLArray(args, 1);
+	if (!a || !WMIsPLString(a)) {
+		*err = wstrdup("workspace-delete: index must be a string");
+		return VERB_FAIL;
+	}
+	n = strtol(WMGetFromPLString(a), &end, 10);
+	if (*end || n <= 0 || n >= scr->workspace_count) {
+		*err = wstrdup("workspace-delete: invalid index");
+		return VERB_FAIL;
+	}
+	/* wWorkspaceDelete() pops a modal "in use" dialog when the workspace
+	 * is the sole membership of some non-omnipresent window, which would
+	 * block the IPC reply forever. Pre-check the same sole-membership
+	 * condition here and reject without invoking the dialog. */
+	tmp = scr->focused_window;
+
+	while (tmp) {
+		if (!IS_OMNIPRESENT(tmp) && WWIN_WS_MASK(tmp) == WS_BIT(n)) {
+			*err = wstrdup("workspace-delete: workspace in use");
+			return VERB_FAIL;
+		}
+		tmp = tmp->prev;
+	}
+	if (!wWorkspaceDelete(scr, (int)n)) {
+		*err = wstrdup("workspace-delete: workspace in use");
+		return VERB_FAIL;
+	}
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
+static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
+				 char **err, WMPropList **reply)
+{
+	Window xid;
+	WWindow *wwin;
+
+	(void)scr;
+	(void)reply;
+	if (!parse_xid(args, &xid, err))
+		return VERB_FAIL;
+	wwin = wWindowFor(xid);
+	if (!wwin) {
+		*err = wstrdup("window not managed");
+		return VERB_FAIL;
+	}
+	if (WFLAGP(wwin, no_closable)) {
+		*err = wstrdup("window not closable");
+		return VERB_FAIL;
+	}
+	wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
+			    w_global.timestamp.last_event);
+	wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
 static const struct {
 	const char *name;
 	verb_fn fn;
@@ -795,7 +935,10 @@ static const struct {
 	{ "exit",             verb_exit },
 	{ "kill-session",     verb_kill_session },
 	{ "workspace",        verb_workspace },
+	{ "workspace-new",    verb_workspace_new },
+	{ "workspace-delete", verb_workspace_delete },
 	{ "window-workspace", verb_window_workspace },
+	{ "window-close",     verb_window_close },
 	{ "set-layout",       verb_set_layout },
 	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },

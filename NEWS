@@ -3,6 +3,67 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Dynamic workspaces (auto-destroy)
+---------------------------------
+
+Empty trailing workspaces are now destroyed automatically when a
+window-membership change leaves them at the end of the workspace array.
+The new `AutoRemoveEmptyWorkspaces` default (NO) enables the sweep,
+and `MinWorkspaceCount` (default 1) sets a floor below which
+workspaces are never destroyed. The currently displayed workspace is
+never destroyed even if empty, so navigating onto a fresh workspace and
+back does not yank the user's view. Only window destruction and
+membership moves/removals trigger a sweep (iconifying or hiding a
+window does not). The sweep reaps only contiguous empty workspaces at
+the end of the array, so the numbering of workspaces still in use
+stays stable. Together with the existing `AdvanceToNewWorkspace`
+(auto-create) toggle the workspace set now grows and shrinks with use.
+The two toggles are independent. A WPrefs control has been added to
+the Workspace Navigation panel.
+
+Virtual desktop viewport panning
+--------------------------------
+
+A virtual desktop larger than the physical screen is back. The
+viewport code now compiles in by default; pass
+`--disable-virtual-desktop` to omit it. The feature is opt-in at run
+time via the `EnableVirtualDesktop` default (NO). On a floating
+(tiling-disabled) workspace, the desktop extends past the screen edges
+and is panned by moving every non-sticky window with the window-move
+model: a pan subtracts the viewport delta from each window's
+frame_x/frame_y and calls XMoveWindow, so the on-screen position is
+the world coordinate and no compositor is required.
+
+Panning is driven four ways:
+
+  * keyboard: VirtualEdgeLeftKey / RightKey / UpKey / DownKey snap to
+    the nearest window edge in the chosen direction;
+  * edge-scroll: 1px InputOnly windows along each head's outer edge
+    pan towards the pointer when it dwells there, with resistance and
+    attraction thresholds (VirtualEdgeResistance / VirtualEdgeAttraction)
+    and configurable scroll speeds;
+  * EWMH: _NET_DESKTOP_VIEWPORT ClientMessage requests are honoured when
+    they land inside the workspace's finite extent, and the
+    _NET_DESKTOP_VIEWPORT / _NET_DESKTOP_GEOMETRY root properties are
+    maintained so pagers track the viewport;
+  * IPC: `wmakermsg set-viewport X Y` pans programmatically.
+
+Three companion keybinds complement the pan keys: VirtualDesktopHomeKey
+resets the camera to (0,0), VirtualDesktopCenterKey pans so the focused
+window is screen-centered, and VirtualDesktopPinKey toggles
+virtual_stick on the focused window so it stays put on subsequent pans.
+EWMH _NET_WM_WINDOW_TYPE_{DESKTOP,DOCK,TOOLBAR} windows are
+pan-sticky by default, matching their existing dont_move_off handling.
+
+The desktop extent is finite for now: it grows to fit every
+non-sticky window's outer frame border (computed from the configured
+FrameBorderWidth on each side, not a hardcoded constant) and the
+viewport is clamped within [vdesk_x, vdesk_x + vdesk_w - scr_w]. A
+workspace whose layout is not WLAYOUT_FLOAT cannot pan — the tiler
+would snap windows back. Per-head workspaces and WorkspaceOutputs
+output-pinned workspaces leave the feature inert (a per-head guard
+lands in a follow-up).
+
 Dynamic window rules
 --------------------
 
