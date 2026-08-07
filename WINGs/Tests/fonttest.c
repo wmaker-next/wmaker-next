@@ -251,6 +251,104 @@ void testUnicode(WMScreen *scr)
 	WMMapWidget(win);
 }
 
+static WMLabel *makeMarkupLabel(WMWidget *parent, const char *markup,
+				int width, int height, Bool wrap,
+				WMAlignment align, WMFont *font)
+{
+	WMLabel *label = WMCreateLabel(parent);
+
+	WMSetLabelTextAlignment(label, align);
+	WMSetLabelWraps(label, wrap);
+	if (font)
+		WMSetLabelFont(label, font);
+	WMResizeWidget(label, width, height);
+	if (markup)
+		WMSetLabelMarkup(label, markup);
+	else
+		WMSetLabelText(label, markup);
+	return label;
+}
+
+void testMarkup(WMScreen *scr)
+{
+	WMWindow *win;
+	WMBox *vbox;
+	WMLabel *label;
+	WMFont *font;
+	WMPixmap *logo;
+
+	win = WMCreateWindow(scr, "markupTest");
+	WMSetWindowTitle(win, "WMLabel Pango Markup Test");
+	WMResizeWidget(win, 640, 520);
+	WMSetWindowCloseAction(win, NULL, NULL);
+
+	vbox = WMCreateBox(win);
+	WMSetBoxHorizontal(vbox, False);
+	WMResizeWidget(vbox, 640, 520);
+
+	font = WMSystemFontOfSize(scr, 14);
+
+	/* 1. Plain text regression (markup mode off) */
+	label = WMCreateLabel(vbox);
+	WMSetLabelText(label, "1. Plain: Hello World (no markup)");
+	WMSetLabelFont(label, font);
+	WMResizeWidget(label, 640, 25);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+
+	/* 2. Bold + italic, wrap at small width so span crosses a line */
+	label = makeMarkupLabel(vbox,
+		"2. <b>Bold</b> and <i>italic</i> wrapped around the line boundary",
+		200, 50, True, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 50, 0, 4);
+
+	/* 3. Per-span foreground colors */
+	label = makeMarkupLabel(vbox,
+		"3. mix <span foreground=\"red\">red</span> and <span foreground=\"blue\">blue</span>",
+		640, 25, False, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+
+	/* 4. Mixed font sizes (vertical centering via pixel_size) */
+	label = makeMarkupLabel(vbox,
+		"4. <span font=\"Sans 24\">big</span> small",
+		640, 40, False, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 40, 0, 4);
+
+	/* 5. Malformed markup - must render verbatim, not blank, emit wwarning */
+	label = makeMarkupLabel(vbox,
+		"5. a < b > c (malformed, renders verbatim)",
+		640, 25, False, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+
+	/* 6. noWrap center-aligned mixed weight - alignment parity */
+	label = makeMarkupLabel(vbox,
+		"6. <b>center</b> <i>noWrap</i> aligned",
+		640, 25, False, WACenter, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+
+	/* 7. Image at WIPLeft under markup - text block offsets past image */
+	logo = WMCreatePixmapFromFile(scr, "logo.xpm");
+	if (logo) {
+		label = makeMarkupLabel(vbox,
+			"7. <b>image</b> + <i>markup</i> text",
+			640, 60, False, WALeft, font);
+		WMSetLabelImage(label, logo);
+		WMSetLabelImagePosition(label, WIPLeft);
+		WMReleasePixmap(logo);
+	} else {
+		label = makeMarkupLabel(vbox,
+			"7. <b>image</b> + <i>markup</i> text (logo.xpm not found)",
+			640, 60, False, WALeft, font);
+	}
+	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 60, 0, 4);
+
+	WMReleaseFont(font);
+
+	WMMapSubwidgets(vbox);
+	WMMapSubwidgets(win);
+	WMRealizeWidget(win);
+	WMMapWidget(win);
+}
+
 int main(int argc, char **argv)
 {
 	WMScreen *scr;
@@ -274,7 +372,8 @@ int main(int argc, char **argv)
 	printf("Creating test windows...\n");
 	printf("  1. Main font samples window\n");
 	printf("  2. Font size comparison\n");
-	printf("  3. Unicode support test\n\n");
+	printf("  3. Unicode support test\n");
+	printf("  4. Pango markup test\n\n");
 	printf("Close all windows to exit.\n");
 	printf("Observe the smooth antialiased text!\n\n");
 
@@ -282,6 +381,7 @@ int main(int argc, char **argv)
 	testMainWindow(scr);
 	testSizeComparison(scr);
 	testUnicode(scr);
+	testMarkup(scr);
 
 	WMScreenMainLoop(scr);
 

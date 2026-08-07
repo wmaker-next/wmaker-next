@@ -1,4 +1,6 @@
 
+#include "wconfig.h"
+
 #include "WINGsP.h"
 
 typedef struct W_Label {
@@ -12,6 +14,8 @@ typedef struct W_Label {
 
 	W_Pixmap *image;
 
+	PangoLayout *layout;	/* NULL in plain mode; label-owned in markup mode */
+
 	struct {
 		WMReliefType relief:3;
 		WMImagePosition imagePosition:4;
@@ -20,6 +24,7 @@ typedef struct W_Label {
 		unsigned int noWrap:1;
 
 		unsigned int redrawPending:1;
+		unsigned int useMarkup:1;
 	} flags;
 } Label;
 
@@ -31,6 +36,8 @@ typedef struct W_Label {
 
 static void destroyLabel(Label * lPtr);
 static void paintLabel(Label * lPtr);
+static PangoLayout *labelCreateLayout(Label *lPtr);
+static void labelApplyText(Label *lPtr);
 
 static void handleEvents(XEvent * event, void *data);
 
@@ -121,6 +128,8 @@ void WMSetLabelText(WMLabel * lPtr, const char *text)
 	} else {
 		lPtr->caption = NULL;
 	}
+	if (lPtr->flags.useMarkup)
+		labelApplyText(lPtr);
 	if (lPtr->view->flags.realized) {
 		paintLabel(lPtr);
 	}
@@ -139,6 +148,13 @@ void WMSetLabelFont(WMLabel * lPtr, WMFont * font)
 		lPtr->font = WMRetainFont(font);
 	else
 		lPtr->font = NULL;
+
+	if (lPtr->layout) {
+		WMFont *base = font ? font : lPtr->view->screen->normalFont;
+
+		pango_layout_set_font_description(lPtr->layout,
+			pango_layout_get_font_description(base->layout));
+	}
 
 	if (lPtr->view->flags.realized) {
 		paintLabel(lPtr);
@@ -166,15 +182,90 @@ void WMSetLabelWraps(WMLabel * lPtr, Bool flag)
 	}
 }
 
+void WMSetLabelUseMarkup(WMLabel *lPtr, Bool flag)
+{
+	flag = (flag != 0);
+	if (lPtr->flags.useMarkup != flag) {
+		lPtr->flags.useMarkup = flag;
+		if (flag) {
+			if (!lPtr->layout)
+				lPtr->layout = labelCreateLayout(lPtr);
+			labelApplyText(lPtr);
+		}
+		if (lPtr->view->flags.realized)
+			paintLabel(lPtr);
+	}
+}
+
+Bool WMGetLabelUseMarkup(WMLabel *lPtr)
+{
+	return lPtr->flags.useMarkup;
+}
+
+void WMSetLabelMarkup(WMLabel *lPtr, const char *markup)
+{
+	if (!lPtr->flags.useMarkup)
+		WMSetLabelUseMarkup(lPtr, True);
+	if (!markup)
+		markup = "";
+	WMSetLabelText(lPtr, markup);
+}
+
+static PangoLayout *labelCreateLayout(Label *lPtr)
+{
+	WMFont *font = lPtr->font ? lPtr->font : lPtr->view->screen->normalFont;
+	PangoContext *context = pango_layout_get_context(font->layout);
+	PangoLayout *layout = pango_layout_new(context);
+
+	pango_layout_set_font_description(layout,
+		pango_layout_get_font_description(font->layout));
+	return layout;
+}
+
+static void labelApplyText(Label *lPtr)
+{
+	PangoAttrList *attrs = NULL;
+	char *text = NULL;
+	GError *err = NULL;
+
+	if (!lPtr->layout)
+		return;
+
+	if (!lPtr->caption) {
+		pango_layout_set_text(lPtr->layout, "", 0);
+		pango_layout_set_attributes(lPtr->layout, NULL);
+		return;
+	}
+
+	if (pango_parse_markup(lPtr->caption, -1, 0, &attrs, &text, NULL, &err)) {
+		pango_layout_set_text(lPtr->layout, text, -1);
+		pango_layout_set_attributes(lPtr->layout, attrs);
+		pango_attr_list_unref(attrs);
+		g_free(text);
+	} else {
+		wwarning(_("malformed label markup: %s"), err->message);
+		g_error_free(err);
+		pango_layout_set_text(lPtr->layout, lPtr->caption, -1);
+		pango_layout_set_attributes(lPtr->layout, NULL);
+	}
+}
+
 static void paintLabel(Label * lPtr)
 {
 	W_Screen *scrPtr = lPtr->view->screen;
+	WMFont *font = (lPtr->font != NULL ? lPtr->font : scrPtr->normalFont);
+	WMColor *color = lPtr->textColor ? lPtr->textColor : scrPtr->black;
 
-	W_PaintTextAndImage(lPtr->view, !lPtr->flags.noWrap,
-			    lPtr->textColor ? lPtr->textColor : scrPtr->black,
-			    (lPtr->font != NULL ? lPtr->font : scrPtr->normalFont),
-			    lPtr->flags.relief, lPtr->caption,
-			    lPtr->flags.alignment, lPtr->image, lPtr->flags.imagePosition, NULL, 0);
+	if (lPtr->flags.useMarkup && lPtr->layout)
+		W_PaintTextAndImageMarkup(lPtr->view, !lPtr->flags.noWrap, color,
+			font, lPtr->flags.relief,
+			lPtr->flags.alignment, lPtr->image, lPtr->flags.imagePosition,
+			NULL, 0, lPtr->layout);
+	else
+		W_PaintTextAndImage(lPtr->view, !lPtr->flags.noWrap, color,
+			font, lPtr->flags.relief, lPtr->caption,
+			lPtr->flags.alignment, lPtr->image, lPtr->flags.imagePosition,
+			NULL, 0);
 }
 
 static void handleEvents(XEvent * event, void *data)
@@ -209,6 +300,9 @@ static void destroyLabel(Label * lPtr)
 
 	if (lPtr->image)
 		WMReleasePixmap(lPtr->image);
+
+	if (lPtr->layout)
+		g_object_unref(lPtr->layout);
 
 	wfree(lPtr);
 }

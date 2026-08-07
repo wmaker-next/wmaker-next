@@ -236,11 +236,12 @@ W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
 	WCairoEnd(cr);
 }
 
-void
-W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
-		    WMReliefType relief, const char *text,
-		    WMAlignment alignment, W_Pixmap * image,
-		    WMImagePosition position, WMColor * backColor, int ofs)
+static void
+paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
+		  WMReliefType relief, const char *text,
+		  WMAlignment alignment, W_Pixmap *image,
+		  WMImagePosition position, WMColor *backColor, int ofs,
+		  PangoLayout *markupLayout)
 {
 	W_Screen *screen = view->screen;
 	int ix, iy;
@@ -273,10 +274,6 @@ W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
 		case WIPImageOnly:
 			ix = (view->size.width - image->width) / 2;
 			iy = (view->size.height - image->height) / 2;
-			/*
-			   x = 2;
-			   y = 0;
-			 */
 			break;
 
 		case WIPLeft:
@@ -316,16 +313,70 @@ W_PaintTextAndImage(W_View * view, int wrap, WMColor * textColor, W_Font * font,
 	}
 
 	/* draw text */
-	if (position != WIPImageOnly && text != NULL) {
-		textHeight = W_GetTextHeight(font, text, w - 8, wrap);
-		W_PaintTextCairo(cr, font, x + ofs + 4, y + ofs + (h - textHeight) / 2,
-				 w - 8, alignment, textColor, wrap, text, strlen(text));
+	if (position != WIPImageOnly) {
+		if (markupLayout) {
+			WCairoSetSourceColor(cr, textColor);
+			if (wrap) {
+				PangoAlignment pa;
+
+				if (alignment == WARight)
+					pa = PANGO_ALIGN_RIGHT;
+				else if (alignment == WACenter)
+					pa = PANGO_ALIGN_CENTER;
+				else
+					pa = PANGO_ALIGN_LEFT;
+				pango_layout_set_width(markupLayout, (w - 8) * PANGO_SCALE);
+				pango_layout_set_wrap(markupLayout, PANGO_WRAP_WORD);
+				pango_layout_set_alignment(markupLayout, pa);
+				pango_layout_get_pixel_size(markupLayout, NULL, &textHeight);
+				W_ShowLayout(cr, font, markupLayout,
+					     x + ofs + 4, y + ofs + (h - textHeight) / 2);
+			} else {
+				int tw, tx;
+
+				pango_layout_set_width(markupLayout, -1);
+				pango_layout_get_pixel_size(markupLayout, &tw, &textHeight);
+				if (alignment == WARight)
+					tx = x + (w - 8) - tw;
+				else if (alignment == WACenter)
+					tx = x + ((w - 8) - tw) / 2;
+				else
+					tx = x;
+				W_ShowLayout(cr, font, markupLayout,
+					     tx + ofs + 4, y + ofs + (h - textHeight) / 2);
+			}
+		} else if (text != NULL) {
+			textHeight = W_GetTextHeight(font, text, w - 8, wrap);
+			W_PaintTextCairo(cr, font, x + ofs + 4, y + ofs + (h - textHeight) / 2,
+					 w - 8, alignment, textColor, wrap, text, strlen(text));
+		}
 	}
 
 	/* draw relief */
 	W_DrawReliefCairo(cr, screen, 0, 0, view->size.width, view->size.height, relief);
 
 	WCairoEnd(cr);
+}
+
+void
+W_PaintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
+		    WMReliefType relief, const char *text,
+		    WMAlignment alignment, W_Pixmap *image,
+		    WMImagePosition position, WMColor *backColor, int ofs)
+{
+	paintTextAndImage(view, wrap, textColor, font, relief, text,
+			  alignment, image, position, backColor, ofs, NULL);
+}
+
+void
+W_PaintTextAndImageMarkup(W_View *view, int wrap, WMColor *textColor,
+			  W_Font *font, WMReliefType relief,
+			  WMAlignment alignment, W_Pixmap *image,
+			  WMImagePosition position, WMColor *backColor, int ofs,
+			  PangoLayout *markupLayout)
+{
+	paintTextAndImage(view, wrap, textColor, font, relief, NULL,
+			  alignment, image, position, backColor, ofs, markupLayout);
 }
 
 WMPoint wmkpoint(int x, int y)

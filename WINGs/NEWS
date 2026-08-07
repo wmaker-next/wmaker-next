@@ -8,6 +8,7 @@ struct W_DragDestinationInfo: new members added SIZE CHANGE
 
 <WINGs.h>
 WMGetTextFieldCursorPosition ADDED
+WMSetLabelMarkup ADDED
 WC_Matrix REMOVED from enum.
 WMCreateProgressIndicator REMOVED
 WMSetProgressIndicatorMinValue REMOVED

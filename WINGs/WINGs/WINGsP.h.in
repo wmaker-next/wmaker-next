@@ -580,6 +580,9 @@ typedef struct W_Font {
 void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
                        int x, int y, const char *text, int length);
 
+void W_ShowLayout(cairo_t *cr, WMFont *font, PangoLayout *layout,
+                  int x, int y);
+
 /* compat parse for legacy dash-separated XLFD font names into a
  * fontconfig pattern (family, weight, slant, pixelsize/pointsize),
  * falling back to the WINGs default font on a malformed name */
@@ -642,6 +645,12 @@ void W_PaintTextAndImage(W_View *view, int wrap, WMColor *textColor,
                          W_Font *font, WMReliefType relief, const char *text,
                          WMAlignment alignment, W_Pixmap *image,
                          WMImagePosition position, WMColor *backColor, int ofs);
+
+void W_PaintTextAndImageMarkup(W_View *view, int wrap, WMColor *textColor,
+                               W_Font *font, WMReliefType relief,
+                               WMAlignment alignment, W_Pixmap *image,
+                               WMImagePosition position, WMColor *backColor,
+                               int ofs, PangoLayout *markupLayout);
 
 void W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
                       int width, WMAlignment alignment, WMColor *color,

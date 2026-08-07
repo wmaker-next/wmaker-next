@@ -1227,6 +1227,18 @@ void WMSetLabelFont(WMLabel *lPtr, WMFont *font);
 
 void WMSetLabelTextColor(WMLabel *lPtr, WMColor *color);
 
+/*! In markup mode the label's caption is parsed as Pango markup
+ *  (<b>, <i>, <span foreground=...>, ...). Any non-literal string must be
+ *  escaped with g_markup_escape_text() before being set. */
+void WMSetLabelUseMarkup(WMLabel *lPtr, Bool flag);
+
+Bool WMGetLabelUseMarkup(WMLabel *lPtr);
+
+/*! Equivalent to WMSetLabelUseMarkup(lPtr, True) followed by
+ *  WMSetLabelText(lPtr, markup). WMGetLabelText() still returns the raw
+ *  stored string including tags. */
+void WMSetLabelMarkup(WMLabel *lPtr, const char *markup);
+
 /* ---[ WINGs/wframe.c ]-------------------------------------------------- */
 
 WMFrame* WMCreateFrame(WMWidget *parent);

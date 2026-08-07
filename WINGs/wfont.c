@@ -398,7 +398,7 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
  * (wm-side WCoreWindow drawables, device-px paint) apply the scale
  * locally around the pango call so the same font renders at the same
  * device size in both worlds, treating (x, y) as device px there. */
-static void showLayout(cairo_t *cr, WMFont *font, int x, int y)
+void W_ShowLayout(cairo_t *cr, WMFont *font, PangoLayout *layout, int x, int y)
 {
 	double s = font->screen->uiScale;
 	cairo_matrix_t m;
@@ -409,13 +409,13 @@ static void showLayout(cairo_t *cr, WMFont *font, int x, int y)
 		cairo_translate(cr, x, y);
 		cairo_scale(cr, s, s);
 		cairo_move_to(cr, 0, 0);
-		pango_cairo_update_layout(cr, font->layout);
-		pango_cairo_show_layout(cr, font->layout);
+		pango_cairo_update_layout(cr, layout);
+		pango_cairo_show_layout(cr, layout);
 		cairo_restore(cr);
 	} else {
 		cairo_move_to(cr, x, y);
-		pango_cairo_update_layout(cr, font->layout);
-		pango_cairo_show_layout(cr, font->layout);
+		pango_cairo_update_layout(cr, layout);
+		pango_cairo_show_layout(cr, layout);
 	}
 }
 
@@ -424,7 +424,7 @@ void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
 {
 	setLayoutText(font->layout, text, length);
 	WCairoSetSourceColor(cr, color);
-	showLayout(cr, font, x, y);
+	W_ShowLayout(cr, font, font->layout, x, y);
 }
 
 void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, int x, int y, const char *text, int length)
@@ -461,7 +461,7 @@ WMDrawImageString(WMScreen * scr, Drawable d, WMColor * color, WMColor * backgro
 	cairo_fill(cr);
 
 	WCairoSetSourceColor(cr, color);
-	showLayout(cr, font, x, y);
+	W_ShowLayout(cr, font, font->layout, x, y);
 
 	WCairoEnd(cr);
 }
