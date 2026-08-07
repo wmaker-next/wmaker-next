@@ -161,6 +161,7 @@ it becomes a launcher. No configuration needed.
 | Binary | What it does |
 |---|---|
 | `wmclipd` | Clipboard daemon with `MAX_CLIP_BYTES` bounded transfers |
+| `wmglyph` | Unicode glyph selector that copies a clicked character to PRIMARY and CLIPBOARD |
 | `wmlock` | Screen locker with idle clock view and DPMS blanking |
 
 ---

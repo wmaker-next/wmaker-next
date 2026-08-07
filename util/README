@@ -40,6 +40,9 @@ wmclipd- X11 clipboard daemon, can also subscribe to Window Maker screenshot
 wmgenmenu- generate a Window Maker root menu by probing for installed
 	applications.
 
+wmglyph- lightweight Unicode glyph selector. Click a character to copy it
+	to the X selection (PRIMARY and CLIPBOARD).
+
 wmiv- quick image viewer using wrlib
 
 wmlock- X11 screen locker for Window Maker, authenticates via PAM or

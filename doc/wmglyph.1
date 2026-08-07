@@ -1,0 +1,80 @@
+.TH WMGLYPH 1 "2026" "Window Maker"
+.SH NAME
+wmglyph \- lightweight Unicode glyph selector
+.SH SYNOPSIS
+.B wmglyph
+[\fB\-h\fR|\fB\-\-help\fR] [\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B wmglyph
+is an emoji-picker-style Unicode character browser. A search field and a
+category (Unicode block) dropdown filter a scrollable, painted glyph grid.
+Clicking a glyph copies its UTF-8 encoding to both the
+.B PRIMARY
+and
+.B CLIPBOARD
+X selections, so it can be pasted elsewhere with middle-click or the
+clipboard paste key of the target application.
+.PP
+The character and block data is derived from the
+Unicode Character Database files
+.IR UnicodeData.txt " and " Blocks.txt
+files. See the
+.B FILES
+section for the license notice covering those tables.
+.SH OPTIONS
+.TP
+.B \-\-help
+Display a short usage summary and exit. The short
+.B \-h
+alias is also accepted.
+.TP
+.B \-\-version
+Print version information and exit. The short
+.B \-v
+alias is also accepted.
+.SH USAGE
+The window is laid out, top to bottom, as:
+.IP \(bu 2
+a search field that filters characters by name (case-insensitive substring);
+.IP \(bu 2
+a category dropdown listing the Unicode blocks;
+.IP \(bu 2
+a scrollable grid of glyphs for the current block or search result;
+.IP \(bu 2
+a status bar showing the selected character's block, code point, glyph and name;
+.PP
+The grid shows at most one page of rows at a time. When a search matches
+more characters than fit on one page,
+.B Prev
+and
+.B Next
+buttons beside the status bar page through the result set, and the status
+bar shows which slice is displayed.
+.PP
+Click a cell to select it and copy the character. The mouse wheel scrolls
+the grid. Combining marks are shown on a dotted circle for display only, but
+only the mark itself is copied, so it attaches to whatever base character
+follows the cursor.
+.PP
+Legacy requestors asking for
+.BR XA_STRING " receive Latin-1 text when the selected character is in"
+Latin-1 and a conversion failure otherwise. The character is always
+available as UTF-8 via
+.BR UTF8_STRING .
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+X display to use.
+.SH FILES
+.TP
+.I wmglyph\-data/UNICODE\-LICENSE
+copy of the Unicode License v3 covering the derived character and block
+tables compiled into
+.BR wmglyph .
+.SH SEE ALSO
+.BR wmaker (1),
+.BR wxcopy (1),
+.BR wxpaste (1)
+.SH AUTHOR
+.B wmglyph
+is a part of Window Maker.

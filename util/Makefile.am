@@ -5,11 +5,12 @@ AUTOMAKE_OPTIONS =
 pkgdatadir  = $(datadir)/@PACKAGE@
 
 bin_PROGRAMS = wxcopy wxpaste wdwrite wdread getstyle setstyle convertfonts \
-	seticons geticonset wmsetbg wmagnify wmgenmenu wmmenugen wmiv wmakermsg
+	seticons geticonset wmsetbg wmagnify wmgenmenu wmmenugen wmiv wmakermsg wmglyph
 
 bin_SCRIPTS = wmaker.inst wm-oldmenu2new wkdemenu.pl
 
-EXTRA_DIST = wmaker.inst.in bughint wm-oldmenu2new wkdemenu.pl
+EXTRA_DIST = wmaker.inst.in bughint wm-oldmenu2new wkdemenu.pl \
+	wmglyph-data/UNICODE-LICENSE
 
 AM_CPPFLAGS = \
 	 $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs -I$(top_srcdir)/wrlib \
@@ -77,6 +78,15 @@ wmagnify_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
 	@XLFLAGS@ @XLIBS@ @CAIRO_LIBS@ @INTLIBS@
+
+wmglyph_LDADD = \
+	$(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	$(top_builddir)/wrlib/libwraster.la \
+	@XLFLAGS@ @XLIBS@ @CAIRO_LIBS@ @INTLIBS@
+
+wmglyph_SOURCES = wmglyph.c wmglyph-data/wmglyph_data.c wmglyph-data/wmglyph_data.h wmglyph_icon.h
+wmglyph_CFLAGS = -I$(srcdir)/wmglyph-data @CAIRO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
 wmsetbg_CFLAGS = @CAIRO_CFLAGS@
 wmsetbg_LDADD = \

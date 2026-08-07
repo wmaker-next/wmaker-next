@@ -1,0 +1,87 @@
+/*
+ * wmglyph application icon - 64x64 XPM
+ *
+ * Depicts the app's own UI: a search field strip atop a 3x3
+ * glyph-cell grid, with the center cell highlighted in the
+ * selection blue (#3050A0) bearing a white "A" — i.e. a
+ * character being selected from a grid.
+ */
+#ifndef WMGLYPH_ICON_XPM_H
+#define WMGLYPH_ICON_XPM_H
+
+static char *wmglyph_xpm[] = {
+"64 64 7 1",
+"  c None",
+"# c #2A2A2A",
+". c #AEAAAE",
+"o c #E8E8E8",
+"- c #6A6A6A",
+"w c #FFFFFF",
+"b c #3050A0",
+"################################################################",
+"################################################################",
+"##............................................................##",
+"##..oooooooooooooooooooooooooooooooooooooooooooooooooooooooo..##",
+"##..oooooooooooooooooooooooooooooooooooooooooooooooooooooooo..##",
+"##..oooooooooooooooooooooooooooooooooooooooooooooooooooooooo..##",
+"##..oooooooooooooooooooooooooooooooooooooooooooooooooooooooo..##",
+"##..oooooooooooooooooooooooooooooooooooooooooooooooooooooooo..##",
+"##..--------------------------------------------------------..##",
+"##............................................................##",
+"##............................................................##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##............................................................##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbbbbbbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbbbbbbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbbwwbbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbwwwwbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbwwwwwwbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbwwwwwwwwwwbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbwwwwwwwwwwbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbwwbbbbwwbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbbbbbbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.bbbbbbbbbbbbbbbb.wwwwwwwwwwwwwwww.....##",
+"##............................................................##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##.....wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.wwwwwwwwwwwwwwww.....##",
+"##............................................................##",
+"################################################################",
+"################################################################"
+};
+
+#endif /* WMGLYPH_ICON_XPM_H */

@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+wmglyph Unicode glyph selector
+------------------------------
+
+The new "wmglyph" utility is an emoji-picker-style browser over the
+Unicode named-character data, including the algorithmic Hangul
+syllable and CJK ideograph ranges expanded by name formula. A search
+field and a block dropdown filter a scrollable glyph grid, and
+clicking a character copies its UTF-8 to both PRIMARY and CLIPBOARD.
+Result sets wider than the grid are paginated with Prev/Next buttons
+beside the status bar. Legacy XA_STRING requestors receive Latin-1
+when possible and a conversion failure otherwise, so they no longer
+paste mojibake. The character and block tables are generated from
+UnicodeData.txt and Blocks.txt and committed under the Unicode
+License v3, so the build needs no network fetch.
+
 Dynamic workspaces (auto-destroy)
 ---------------------------------
 
