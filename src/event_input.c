@@ -613,11 +613,11 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_FOCUSNEXT:
-		StartWindozeCycle(wwin, event, True, False);
+		StartWindozeCycle(wwin, event, True, CYCLE_FLAT);
 		break;
 
 	case WKBD_FOCUSPREV:
-		StartWindozeCycle(wwin, event, False, False);
+		StartWindozeCycle(wwin, event, False, CYCLE_FLAT);
 		break;
 
 	case WKBD_FOCUSLEFT:
@@ -636,12 +636,20 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		wSetFocusToDirection(scr, DIRECTION_DOWN);
 		break;
 
+	case WKBD_GROUPWINDOWNEXT:
+		StartWindozeCycle(wwin, event, True, CYCLE_CLASS_ONLY);
+		break;
+
+	case WKBD_GROUPWINDOWPREV:
+		StartWindozeCycle(wwin, event, False, CYCLE_CLASS_ONLY);
+		break;
+
 	case WKBD_GROUPNEXT:
-		StartWindozeCycle(wwin, event, True, True);
+		StartWindozeCycle(wwin, event, True, CYCLE_GROUP);
 		break;
 
 	case WKBD_GROUPPREV:
-		StartWindozeCycle(wwin, event, False, True);
+		StartWindozeCycle(wwin, event, False, CYCLE_GROUP);
 		break;
 
 	case WKBD_GROUPTAB_NEXT:

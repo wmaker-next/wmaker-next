@@ -3,6 +3,50 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Application-group switch panel (GroupNextKey / GroupPrevKey)
+------------------------------------------------------------
+
+The switch panel now has three modes:
+
+  * FocusNextKey / FocusPrevKey (flat, all windows) -- unchanged,
+    default Mod1+Tab / Mod1+Shift+Tab;
+  * GroupWindowNextKey / GroupWindowPrevKey (intra-app, same WM_CLASS)
+    -- default Mod4+grave / Mod4+Shift+grave;
+  * GroupNextKey / GroupPrevKey (app-group, one tile per WM_CLASS) --
+    default Mod4+Tab / Mod4+Shift+Tab, new.
+
+The app-group mode shows one tile per application class. Selecting a
+tile focuses the most recently used window of that group. After
+switching to a group with GroupNextKey, GroupWindowNextKey cycles the
+individual windows of the now-focused group.
+
+The live re-trigger loop now recognizes only the key pair that opened
+the panel. Pressing another mode's pair while a panel is open closes
+it and opens that other mode's switcher.
+
+Upgrade note: GroupNextKey and GroupPrevKey previously controlled the
+intra-app switcher (default None). They now control the app-group
+switcher, and the intra-app switcher has been renamed to
+GroupWindowNextKey / GroupWindowPrevKey. An existing domain with
+GroupNextKey = None leaves the app-group switcher unbound until the
+stale line is removed or rebound in WPrefs. The intra-app switcher
+picks up its new Mod4+grave default automatically. A custom
+GroupNextKey binding now drives the app-group switcher. Intra-app
+falls back to Mod4+grave.
+
+Letter-key window lookup in the Alt+Tab switch panel
+-----------------------------------------------------
+
+While the switch panel is open, pressing a letter key moves the
+selection to the next entry whose displayed label starts with that
+letter, wrapping at the end of the list. The label is the application
+class (`WM_CLASS`) in the app-group switcher and the window title
+everywhere else, so in the flat panel and in the intra-app switcher
+the letter matches the title. Shift+letter scans backward,
+mirroring Shift+Tab. An unmatched letter is ignored, so several
+letters can be tried in one cycle. A non-letter key still dismisses
+the panel as before.
+
 wmglyph Unicode glyph selector
 ------------------------------
 

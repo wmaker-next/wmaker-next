@@ -117,8 +117,10 @@ static struct keyOption {
 	{ "FocusWindowRightKey", N_("Focus the window to the right") },
 	{ "FocusWindowUpKey",    N_("Focus the window above") },
 	{ "FocusWindowDownKey",  N_("Focus the window below") },
-	{ "GroupNextKey",   N_("Focus next group window") },
-	{ "GroupPrevKey",   N_("Focus previous group window") },
+	{ "GroupWindowNextKey",   N_("Focus next window in group") },
+	{ "GroupWindowPrevKey",   N_("Focus previous window in group") },
+	{ "GroupNextKey",   N_("Switch to next application group") },
+	{ "GroupPrevKey",   N_("Switch to previous application group") },
 
 	/* Titlebar tab grouping */
 	{ "GroupTabNextKey",   N_("Switch to next tab in group") },

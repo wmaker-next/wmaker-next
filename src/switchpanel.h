@@ -22,12 +22,19 @@
 
 typedef struct SwitchPanel WSwitchPanel;
 
-WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only);
+typedef enum {
+	CYCLE_FLAT = 0,     /* all windows, no filtering         */
+	CYCLE_CLASS_ONLY,   /* intra-app: same WM_CLASS          */
+	CYCLE_GROUP         /* app-group: one tile per WM_CLASS  */
+} CycleMode;
+
+WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode);
 
 void wSwitchPanelDestroy(WSwitchPanel *panel);
 
-WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, Bool class_only);
+WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, CycleMode mode);
 WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back);
+WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back);
 
 WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event);
 

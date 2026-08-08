@@ -60,6 +60,16 @@ static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 	}
 }
 
+/* base-level letter keysym of a keycode, or NoSymbol */
+static int cycle_letter(KeyCode keycode)
+{
+	xkb_keysym_t ks = wXkbKeycodeToKeysym(keycode, 0);
+
+	if ((ks >= XK_a && ks <= XK_z) || (ks >= XK_A && ks <= XK_Z))
+		return (int) ks;
+	return NoSymbol;
+}
+
 static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
 				       WSwitchPanel *swpanel, WScreen *scr, Bool esc_cancel)
 {
@@ -83,10 +93,10 @@ static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
 	return oldFocused;
 }
 
-void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
+void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 {
 
-	WShortKey binding;
+	WShortKey binding, fwd_binding, bwd_binding;
 	WSwitchPanel    *swpanel       = NULL;
 	WScreen         *scr           = wScreenForRootWindow(event->xkey.root);
 	KeyCode         leftKey        = wXkbKeysymToKeycode(XK_Left);
@@ -110,17 +120,21 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 	if (!wwin)
 		return;
 
-	if (next) {
-		if (class_only)
-			binding = wKeyBindings[WKBD_GROUPNEXT];
-		else
-			binding = wKeyBindings[WKBD_FOCUSNEXT];
-	} else {
-		if (class_only)
-			binding = wKeyBindings[WKBD_GROUPPREV];
-		else
-			binding = wKeyBindings[WKBD_FOCUSPREV];
+	switch (mode) {
+	case CYCLE_GROUP:
+		fwd_binding = wKeyBindings[WKBD_GROUPNEXT];
+		bwd_binding = wKeyBindings[WKBD_GROUPPREV];
+		break;
+	case CYCLE_CLASS_ONLY:
+		fwd_binding = wKeyBindings[WKBD_GROUPWINDOWNEXT];
+		bwd_binding = wKeyBindings[WKBD_GROUPWINDOWPREV];
+		break;
+	default: /* CYCLE_FLAT */
+		fwd_binding = wKeyBindings[WKBD_FOCUSNEXT];
+		bwd_binding = wKeyBindings[WKBD_FOCUSPREV];
+		break;
 	}
+	binding = next ? fwd_binding : bwd_binding;
 
 	hasModifier = (binding.modifier != 0);
 	if (hasModifier)
@@ -128,12 +142,12 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 
 	scr->flags.doing_alt_tab = 1;
 
-	swpanel = wInitSwitchPanel(scr, wwin, class_only);
+	swpanel = wInitSwitchPanel(scr, wwin, mode);
 	oldFocused = wwin;
 
 	if (swpanel) {
 		if (wwin->flags.mapped && !w_global.config->panel_only_open)
-			newFocused = wSwitchPanelSelectNext(swpanel, !next, True, False);
+			newFocused = wSwitchPanelSelectNext(swpanel, !next, True, mode);
 		else
 			newFocused = wSwitchPanelSelectFirst(swpanel, False);
 
@@ -157,22 +171,18 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 
 		switch (ev.type) {
 		case KeyPress:
-			if ((wKeyBindings[WKBD_FOCUSNEXT].keycode == ev.xkey.keycode
-			     && wKeyBindings[WKBD_FOCUSNEXT].modifier == modifiers)
-			    || (wKeyBindings[WKBD_GROUPNEXT].keycode == ev.xkey.keycode
-			    && wKeyBindings[WKBD_GROUPNEXT].modifier == modifiers)
+			if ((fwd_binding.keycode == ev.xkey.keycode
+			     && fwd_binding.modifier == modifiers)
 			    || ev.xkey.keycode == rightKey) {
 
-				newFocused = wSwitchPanelSelectNext(swpanel, False, ev.xkey.keycode != rightKey, (!class_only && wKeyBindings[WKBD_GROUPNEXT].keycode == ev.xkey.keycode && wKeyBindings[WKBD_GROUPNEXT].modifier == modifiers));
+				newFocused = wSwitchPanelSelectNext(swpanel, False, ev.xkey.keycode != rightKey, mode);
 				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
 
-			} else if ((wKeyBindings[WKBD_FOCUSPREV].keycode == ev.xkey.keycode
-				    && wKeyBindings[WKBD_FOCUSPREV].modifier == modifiers)
-			    || (wKeyBindings[WKBD_GROUPPREV].keycode == ev.xkey.keycode
-			    && wKeyBindings[WKBD_GROUPPREV].modifier == modifiers)
+			} else if ((bwd_binding.keycode == ev.xkey.keycode
+				    && bwd_binding.modifier == modifiers)
 				   || ev.xkey.keycode == leftKey) {
 
-				newFocused = wSwitchPanelSelectNext(swpanel, True, ev.xkey.keycode != leftKey, (!class_only && wKeyBindings[WKBD_GROUPPREV].keycode == ev.xkey.keycode && wKeyBindings[WKBD_GROUPPREV].modifier == modifiers));
+				newFocused = wSwitchPanelSelectNext(swpanel, True, ev.xkey.keycode != leftKey, mode);
 				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
 
 			} else if (ev.xkey.keycode == homeKey || ev.xkey.keycode == endKey) {
@@ -194,9 +204,19 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 				done = True;
 
 			} else if (ev.xkey.keycode != shiftLKey && ev.xkey.keycode != shiftRKey) {
+				int letter = cycle_letter(ev.xkey.keycode);
 
-				somethingElse = True;
-				done = True;
+				if (letter != NoSymbol) {
+					int back = (modifiers & ShiftMask) != 0;
+
+					newFocused = wSwitchPanelSelectByKey(swpanel, letter, back);
+					if (newFocused)
+						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					/* no match: drop the key, stay in the cycle */
+				} else {
+					somethingElse = True;
+					done = True;
+				}
 			}
 			break;
 
@@ -209,6 +229,10 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only)
 				break;
 
 			if (ev.xkey.keycode == XK_Return)
+				break;
+
+			/* a lookup letter's release is part of the consumed keystroke */
+			if (cycle_letter(ev.xkey.keycode) != NoSymbol)
 				break;
 
 			if (ev.xkey.keycode != binding.keycode)

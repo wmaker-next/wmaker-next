@@ -629,8 +629,10 @@
 	_(FOCUS_WINDOW_RIGHT_KEY, "FocusWindowRightKey", "None", WKBD_FOCUSRIGHT) \
 	_(FOCUS_WINDOW_UP_KEY, "FocusWindowUpKey", "None", WKBD_FOCUSUP) \
 	_(FOCUS_WINDOW_DOWN_KEY, "FocusWindowDownKey", "None", WKBD_FOCUSDOWN) \
-	_(GROUP_NEXT_KEY, "GroupNextKey", "None", WKBD_GROUPNEXT) \
-	_(GROUP_PREV_KEY, "GroupPrevKey", "None", WKBD_GROUPPREV) \
+	_(GROUP_WINDOW_NEXT_KEY, "GroupWindowNextKey", "Mod4+grave", WKBD_GROUPWINDOWNEXT) \
+	_(GROUP_WINDOW_PREV_KEY, "GroupWindowPrevKey", "Mod4+Shift+grave", WKBD_GROUPWINDOWPREV) \
+	_(GROUP_NEXT_KEY, "GroupNextKey", "Mod4+Tab", WKBD_GROUPNEXT) \
+	_(GROUP_PREV_KEY, "GroupPrevKey", "Mod4+Shift+Tab", WKBD_GROUPPREV) \
 	_(GROUP_TAB_NEXT_KEY, "GroupTabNextKey", "None", WKBD_GROUPTAB_NEXT) \
 	_(GROUP_TAB_PREV_KEY, "GroupTabPrevKey", "None", WKBD_GROUPTAB_PREV) \
 	_(GROUP_TAB_ATTACH_KEY, "GroupTabAttachKey", "None", WKBD_GROUPTAB_ATTACH) \

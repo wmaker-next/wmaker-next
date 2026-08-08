@@ -242,8 +242,10 @@
 	FocusWindowRightKey = None;
 	FocusWindowUpKey = None;
 	FocusWindowDownKey = None;
-	GroupNextKey = None;
-	GroupPrevKey = None;
+	GroupWindowNextKey = "Mod4+grave";
+	GroupWindowPrevKey = "Mod4+Shift+grave";
+	GroupNextKey = "Mod4+Tab";
+	GroupPrevKey = "Mod4+Shift+Tab";
 	GroupTabNextKey = None;
 	GroupTabPrevKey = None;
 	GroupTabAttachKey = None;

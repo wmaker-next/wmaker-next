@@ -19,6 +19,7 @@
 
 #include "wconfig.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,7 @@ struct SwitchPanel {
 	int current;
 	int firstVisible;
 	int visibleCount;
+	CycleMode mode;
 
 	WMLabel *label;
 
@@ -113,7 +115,7 @@ static Bool sameWindowClass(WWindow *wwin, WWindow *curwin)
 	return True;
 }
 
-static Bool modalReachableThroughParent(WScreen *scr, WWindow *wwin, int include_unmapped, Bool class_only)
+static Bool modalReachableThroughParent(WScreen *scr, WWindow *wwin, int include_unmapped, CycleMode mode)
 {
 	WWindow *parent;
 
@@ -133,7 +135,8 @@ static Bool modalReachableThroughParent(WScreen *scr, WWindow *wwin, int include
 		return False;
 	if (!(parent->flags.mapped || parent->flags.shaded || include_unmapped))
 		return False;
-	if (class_only && !sameWindowClass(scr->focused_window, parent))
+	/* A modal belongs to its parent's group for both non-flat modes. */
+	if (mode != CYCLE_FLAT && !sameWindowClass(scr->focused_window, parent))
 		return False;
 
 	return True;
@@ -254,7 +257,7 @@ static void scrollIcons(WSwitchPanel *panel, int delta)
 	int count = WMGetArrayItemCount(panel->windows);
 	Bool dim;
 
-	if (count <= panel->visibleCount)
+	if (!panel->iconBox || count <= panel->visibleCount)
 		return;
 
 	if (nfirst < 0)
@@ -403,7 +406,26 @@ static void drawTitle(WSwitchPanel *panel, int idecks, const char *title)
 		free(ntitle);
 }
 
-static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, Bool class_only)
+static const char *panelLabelForWindow(WSwitchPanel *panel, WWindow *wwin)
+{
+	if (panel->mode == CYCLE_GROUP && wwin->wm_class)
+		return wwin->wm_class;
+	return wwin->frame->title;
+}
+
+static Bool classAlreadyInArray(WMArray *windows, WWindow *wwin)
+{
+	int j;
+	WWindow *rep;
+
+	WM_ITERATE_ARRAY(windows, rep, j) {
+		if (sameWindowClass(rep, wwin))
+			return True;
+	}
+	return False;
+}
+
+static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, CycleMode mode)
 {
 	WMArray *windows = WMCreateArray(10);
 	WWindow *wwin = scr->focused_window;
@@ -411,7 +433,7 @@ static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, Bool cla
 	while (wwin) {
 		if ((canReceiveFocus(wwin) != 0) &&
 		    (wwin->flags.mapped || wwin->flags.shaded || include_unmapped)) {
-			if (class_only)
+			if (mode == CYCLE_CLASS_ONLY)
 				if (!sameWindowClass(scr->focused_window, wwin)) {
 					wwin = wwin->prev;
 					continue;
@@ -424,8 +446,13 @@ static WMArray *makeWindowListArray(WScreen *scr, int include_unmapped, Bool cla
 			/* A direct modal transient is redundant only when its
 			 * parent would be listed and can redirect focus to it. */
 			if (!WFLAGP(wwin, skip_switchpanel) &&
-			    !modalReachableThroughParent(scr, wwin, include_unmapped, class_only))
+			    !modalReachableThroughParent(scr, wwin, include_unmapped, mode)) {
+				if (mode == CYCLE_GROUP && classAlreadyInArray(windows, wwin)) {
+					wwin = wwin->prev;
+					continue;
+				}
 				WMAddToArray(windows, wwin);
+			}
 		}
 		wwin = wwin->prev;
 	}
@@ -443,16 +470,9 @@ static WMArray *makeWindowFlagsArray(int count)
 	return flags;
 }
 
-WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
+WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 {
 	int wmScaleWidth, wmScaleHeight;
-	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
-
-	icon_size = w_global.config->switch_panel_icon_size;
-	icon_tile_size = (short int)(((float)icon_size * 1.2F) + 0.5F);
-	border_space = WMScaleY(10);
-	label_height = WMScaleY(25);
-
 	WWindow *wwin;
 	WSwitchPanel *panel = wmalloc(sizeof(WSwitchPanel));
 	WMFrame *viewport;
@@ -460,8 +480,16 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, Bool class_only)
 	WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
 	WMPoint center;
 
+	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
+
+	icon_size = w_global.config->switch_panel_icon_size;
+	icon_tile_size = (short int)(((float)icon_size * 1.2F) + 0.5F);
+	border_space = WMScaleY(10);
+	label_height = WMScaleY(25);
+
 	panel->scr = scr;
-	panel->windows = makeWindowListArray(scr, wPreferences.swtileImage != NULL, class_only);
+	panel->mode = mode;
+	panel->windows = makeWindowListArray(scr, wPreferences.swtileImage != NULL, mode);
 	count = WMGetArrayItemCount(panel->windows);
 	if (count)
 		panel->flags = makeWindowFlagsArray(count);
@@ -643,7 +671,7 @@ void wSwitchPanelDestroy(WSwitchPanel *panel)
 	wfree(panel);
 }
 
-WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, Bool class_only)
+WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, CycleMode mode)
 {
 	WWindow *wwin, *curwin, *tmpwin;
 	int count = WMGetArrayItemCount(panel->windows);
@@ -671,7 +699,7 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 			panel->current = (count + panel->current) % count;
 			wwin = WMGetFromArray(panel->windows, panel->current);
 
-			if (!class_only)
+			if (mode != CYCLE_CLASS_ONLY)
 				break;
 			if (panel->current == orig)
 				break;
@@ -681,7 +709,7 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 	WM_ITERATE_ARRAY(panel->windows, tmpwin, i) {
 		if (i == panel->current)
 			continue;
-		if (!class_only || sameWindowClass(tmpwin, curwin))
+		if (mode != CYCLE_CLASS_ONLY || sameWindowClass(tmpwin, curwin))
 			changeImage(panel, i, 0, False, False);
 		else {
 			if (i == orig)
@@ -697,7 +725,7 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 		scrollIcons(panel, panel->current - panel->firstVisible - panel->visibleCount + 1);
 
 	if (panel->win) {
-		drawTitle(panel, panel->current, wwin->frame->title);
+		drawTitle(panel, panel->current, panelLabelForWindow(panel, wwin));
 		if (panel->current != orig)
 			changeImage(panel, orig, 0, dim, False);
 		changeImage(panel, panel->current, 1, False, False);
@@ -710,7 +738,6 @@ WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back)
 {
 	WWindow *wwin;
 	int count = WMGetArrayItemCount(panel->windows);
-	char *title;
 	int i;
 
 	if (count == 0)
@@ -725,13 +752,63 @@ WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back)
 	}
 
 	wwin = WMGetFromArray(panel->windows, panel->current);
-	title = wwin->frame->title;
 
 	if (panel->win) {
 		for (WMArrayFirst(panel->windows, &(i)); (i) != WANotFound; WMArrayNext(panel->windows, &(i)))
 			changeImage(panel, i, i == panel->current, False, False);
 
-		drawTitle(panel, panel->current, title);
+		drawTitle(panel, panel->current, panelLabelForWindow(panel, wwin));
+	}
+
+	return wwin;
+}
+
+WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back)
+{
+	WWindow *wwin;
+	int count = WMGetArrayItemCount(panel->windows);
+	int orig = panel->current;
+	int i, n, ch;
+
+	if (count == 0)
+		return NULL;
+
+	ch = toupper((unsigned char) key_char);
+	if (!isalpha(ch))
+		return NULL;
+
+	/* scan from the entry after/before the current one, wrapping */
+	n = -1;
+	for (i = 1; i <= count; i++) {
+		int idx = back ? (orig - i + count) % count
+			       : (orig + i) % count;
+		WWindow *w = WMGetFromArray(panel->windows, idx);
+
+		if (w->wm_class && toupper((unsigned char) w->wm_class[0]) == ch) {
+			n = idx;
+			break;
+		}
+	}
+	if (n < 0)
+		return NULL;	/* no match: leave panel->current unchanged */
+
+	panel->current = n;
+	wwin = WMGetFromArray(panel->windows, n);
+
+	/* re-render — mirrors wSwitchPanelSelectFirst, no dimming */
+	if (panel->win) {
+		for (WMArrayFirst(panel->windows, &(i)); (i) != WANotFound; WMArrayNext(panel->windows, &(i)))
+			changeImage(panel, i, i == panel->current, False, False);
+	}
+
+	if (panel->current < panel->firstVisible)
+		scrollIcons(panel, panel->current - panel->firstVisible);
+	else if (panel->current - panel->firstVisible >= panel->visibleCount)
+		scrollIcons(panel, panel->current - panel->firstVisible - panel->visibleCount + 1);
+
+	if (panel->win) {
+		drawTitle(panel, panel->current, panelLabelForWindow(panel, wwin));
+		changeImage(panel, panel->current, 1, False, False);
 	}
 
 	return wwin;
@@ -765,7 +842,7 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
 
 		wwin = WMGetFromArray(panel->windows, focus);
 
-		drawTitle(panel, panel->current, wwin->frame->title);
+		drawTitle(panel, panel->current, panelLabelForWindow(panel, wwin));
 
 		return wwin;
 	}

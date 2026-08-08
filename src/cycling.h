@@ -21,6 +21,8 @@
 #ifndef WMCYCLING_H
 #define WMCYCLING_H
 
-void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, Bool class_only);
+#include "switchpanel.h"
+
+void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode);
 
 #endif /* WMCYCLING_H */
