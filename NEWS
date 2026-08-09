@@ -284,6 +284,13 @@ else" meaning. A multi-member window is shown as `[Name+]` in the Windows
 list and is placed by whichever member workspace's tiling layout is
 currently active. The maximum number of workspaces is now 64.
 
+The Inspector's "Initial Workspaces" control is now a multi-select
+dropdown that seeds this multi-bit membership at manage time. The
+selection is saved as a proplist array under the new "StartWorkspaces"
+key (lowest set bit is the primary, rest is OR-ed into the ws_mask). The
+old singular "StartWorkspace" key is still read for backward
+compatibility. An empty selection means "no opinion".
+
 Per-workspace tiling layouts
 ----------------------------
 

@@ -267,7 +267,7 @@ typedef struct InspectorPanel {
 	WMButton *autoTabGrpChk;
 	WMButton *browseIconBtn;
 	WMFrame *wsFrm;
-	WMPopUpButton *wsP;
+	WMMultiSelectPopUpButton *wsP;
 
 	/* 5th page. application wide attributes */
 	WMFrame *appFrm;
@@ -288,7 +288,7 @@ static InspectorPanel *panelList = NULL;
  */
 static WMPropList *pl_wattr[WATTR_BOOL_COUNT] = { [0] = NULL };
 
-static WMPropList *AStartWorkspace;
+static WMPropList *AStartWorkspaces;
 static WMPropList *AIcon;
 
 /* application wide options */
@@ -384,7 +384,7 @@ static void make_keys(void)
 		wwarning("inspector attribute tables out of sync with WATTR_BOOLS");
 
 	AIcon = WMCreatePLString("Icon");
-	AStartWorkspace = WMCreatePLString("StartWorkspace");
+	AStartWorkspaces = WMCreatePLString("StartWorkspaces");
 
 	AnyWindow = WMCreatePLString("*");
 	EmptyString = WMCreatePLString("");
@@ -626,9 +626,11 @@ static void saveSettings(WMWidget *button, void *client_data)
 	WWindow *wwin = panel->inspected;
 	WDDomain *db = w_global.domain.window_attr;
 	WMPropList *dict = NULL;
-	WMPropList *winDic, *appDic, *value, *value1, *key = NULL, *key2;
+	WMPropList *winDic, *appDic, *value, *value1, *key = NULL, *key2, *arr = NULL;
 	char *icon_file, *buf1, *buf2;
 	int flags = 0, i = 0, different = 0, different2 = 0;
+	uint64_t mask;
+	int ws_count, j;
 
 	/* Save will apply the changes and save them */
 	applySettings(panel->applyBtn, panel);
@@ -693,11 +695,21 @@ static void saveSettings(WMWidget *button, void *client_data)
 		wfree(icon_file);
 	}
 
-	i = WMGetPopUpButtonSelectedItem(panel->wsP) - 1;
-	if (i >= 0 && i < panel->frame->screen_ptr->workspace_count) {
-		value = WMCreatePLString(panel->frame->screen_ptr->workspaces[i]->name);
-		different |= insertAttribute(dict, winDic, AStartWorkspace, value, flags);
-		WMReleasePropList(value);
+	mask = WMGetMultiSelectPopUpButtonSelectionMask(panel->wsP);
+	ws_count = panel->frame->screen_ptr->workspace_count;
+
+	for (j = 0; j < ws_count; j++) {
+		if (mask & ((uint64_t)1 << j)) {
+			if (!arr)
+				arr = WMCreatePLArray(NULL, 0);
+			value = WMCreatePLString(panel->frame->screen_ptr->workspaces[j]->name);
+			WMAddToPLArray(arr, value);
+			WMReleasePropList(value);
+		}
+	}
+	if (arr) {
+		different |= insertAttribute(dict, winDic, AStartWorkspaces, arr, flags);
+		WMReleasePropList(arr);
 	}
 
 	flags |= IS_BOOLEAN;
@@ -980,8 +992,9 @@ static void revertSettings(WMWidget *button, void *client_data)
 	InspectorPanel *panel = (InspectorPanel *) client_data;
 	WWindow *wwin = panel->inspected;
 	WApplication *wapp = wApplicationOf(wwin->main_window);
-	int i, n, workspace, level;
+	int i, workspace, level;
 	char *wm_instance = NULL, *wm_class = NULL;
+	uint64_t mask = 0;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) button;
@@ -1063,12 +1076,10 @@ static void revertSettings(WMWidget *button, void *client_data)
 
 	showIconFor(WMWidgetScreen(panel->alwChk), panel, wm_instance, wm_class, REVERT_TO_DEFAULT);
 
-	n = wDefaultGetStartWorkspace(wwin->screen_ptr, wm_instance, wm_class);
-
-	if (n >= 0 && n < wwin->screen_ptr->workspace_count)
-		WMSetPopUpButtonSelectedItem(panel->wsP, n + 1);
+	if (wDefaultGetStartWorkspaces(wwin->screen_ptr, wm_instance, wm_class, &mask))
+		WMSetMultiSelectPopUpButtonSelectionMask(panel->wsP, mask);
 	else
-		WMSetPopUpButtonSelectedItem(panel->wsP, 0);
+		WMSetMultiSelectPopUpButtonSelectionMask(panel->wsP, 0);
 
 	/* must auto apply, so that there wno't be internal
 	 * inconsistencies between the state in the flags and
@@ -1624,6 +1635,7 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel)
 	const char *db_icon;
 	WScreen *scr = wwin->screen_ptr;
 	int i = 0;
+	uint64_t mask = 0;
 
 	/* miniwindow/workspace */
 	panel->iconFrm = WMCreateFrame(panel->win);
@@ -1664,24 +1676,24 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel)
 	panel->wsFrm = WMCreateFrame(panel->win);
 	WMMoveWidget(panel->wsFrm, 15, 225);
 	WMResizeWidget(panel->wsFrm, PWIDTH - (2 * 15), 70);
-	WMSetFrameTitle(panel->wsFrm, _("Initial Workspace"));
+	WMSetFrameTitle(panel->wsFrm, _("Initial Workspaces"));
 
-	WMSetBalloonTextForView(_("The workspace to place the window when it's"
-				  " first shown."), WMWidgetView(panel->wsFrm));
+	WMSetBalloonTextForView(_("The workspace(s) to place the window when it's"
+				  " first shown. An empty selection means no"
+				  " opinion, use the normal rules."),
+				WMWidgetView(panel->wsFrm));
 
-	panel->wsP = WMCreatePopUpButton(panel->wsFrm);
+	panel->wsP = WMCreateMultiSelectPopUpButton(panel->wsFrm);
 	WMMoveWidget(panel->wsP, 20, 30);
 	WMResizeWidget(panel->wsP, PWIDTH - (2 * 15) - (2 * 20), 20);
-	WMAddPopUpButtonItem(panel->wsP, _("Nowhere in particular"));
+	WMSetMultiSelectPopUpButtonCaption(panel->wsP, _("Nowhere in particular"));
 
 	for (i = 0; i < wwin->screen_ptr->workspace_count; i++)
-		WMAddPopUpButtonItem(panel->wsP, scr->workspaces[i]->name);
+		WMAddMultiSelectPopUpButtonItem(panel->wsP, scr->workspaces[i]->name);
 
-	i = wDefaultGetStartWorkspace(wwin->screen_ptr, wwin->wm_instance, wwin->wm_class);
-	if (i >= 0 && i <= wwin->screen_ptr->workspace_count)
-		WMSetPopUpButtonSelectedItem(panel->wsP, i + 1);
-	else
-		WMSetPopUpButtonSelectedItem(panel->wsP, 0);
+	if (wDefaultGetStartWorkspaces(wwin->screen_ptr, wwin->wm_instance,
+				       wwin->wm_class, &mask))
+		WMSetMultiSelectPopUpButtonSelectionMask(panel->wsP, mask);
 }
 
 static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int frame_width)

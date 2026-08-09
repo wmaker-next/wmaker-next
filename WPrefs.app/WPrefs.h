@@ -138,6 +138,22 @@ void SetSpeedForKey(int speed, const char *defaultName);
 
 void SetEnumForKey(int value, const char *defaultName);
 
+/* enum-backed single-select popup helper for the {db_value, label} tables
+ * expanded from WPREFS_TABLE_* macros */
+typedef struct {
+	const char *db_value;
+	const char *label;
+} wm_enum_choice;
+
+WMPopUpButton *wm_enum_popup_new(WMWidget *parent,
+				 const wm_enum_choice *table, int n);
+
+void wm_enum_popup_select(WMPopUpButton *popup, const wm_enum_choice *table,
+			  int n, const char *value, const char *key_name);
+
+void wm_enum_popup_store(WMPopUpButton *popup, const wm_enum_choice *table,
+			 int n, const char *key_name);
+
 Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback);
 
 void SetWMGlobalBoolForKey(Bool value, const char *defaultName);

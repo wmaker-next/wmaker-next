@@ -995,6 +995,44 @@ void SetEnumForKey(int value, const char *defaultName)
 		}
 }
 
+WMPopUpButton *wm_enum_popup_new(WMWidget *parent, const wm_enum_choice *table, int n)
+{
+	WMPopUpButton *popup = WMCreatePopUpButton(parent);
+	int i;
+
+	for (i = 0; i < n; i++)
+		WMAddPopUpButtonItem(popup, _(table[i].label));
+
+	return popup;
+}
+
+void wm_enum_popup_select(WMPopUpButton *popup, const wm_enum_choice *table,
+			  int n, const char *value, const char *key_name)
+{
+	int i;
+
+	if (value) {
+		for (i = 0; i < n; i++) {
+			if (strcasecmp(value, table[i].db_value) == 0) {
+				WMSetPopUpButtonSelectedItem(popup, i);
+				return;
+			}
+		}
+		wwarning(_("bad value \"%s\" for option %s, using default \"%s\""),
+			 value, key_name, table[0].db_value);
+	}
+	WMSetPopUpButtonSelectedItem(popup, 0);
+}
+
+void wm_enum_popup_store(WMPopUpButton *popup, const wm_enum_choice *table,
+			 int n, const char *key_name)
+{
+	int i = WMGetPopUpButtonSelectedItem(popup);
+
+	if (i >= 0 && i < n)
+		SetStringForKey(table[i].db_value, key_name);
+}
+
 Bool GetDefaultBoolForKey(const char *defaultName)
 {
 	const char *def = wConfigSchemaDefault(defaultName);

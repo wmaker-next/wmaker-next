@@ -58,6 +58,7 @@ POTFILES += \
 	$(top_srcdir)/WINGs/wlist.c \
 	$(top_srcdir)/WINGs/wmenuitem.c \
 	$(top_srcdir)/WINGs/wmisc.c \
+	$(top_srcdir)/WINGs/wmultiselectpopup.c \
 	$(top_srcdir)/WINGs/wpanel.c \
 	$(top_srcdir)/WINGs/wpixmap.c \
 	$(top_srcdir)/WINGs/wpopupbutton.c \

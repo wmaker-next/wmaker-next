@@ -226,6 +226,7 @@ static void test_precedence(void)
 static void test_icon_and_workspace(void)
 {
 	char *icon;
+	uint64_t mask;
 
 	set_attr_dict("{"
 		      " \"*\" = { Icon = \"any.png\"; StartWorkspace = 4; };"
@@ -243,9 +244,17 @@ static void test_icon_and_workspace(void)
 	icon = wDefaultGetIconFile(NULL, NULL, True);
 	CHECK(icon && strcmp(icon, "any.png") == 0);
 
-	CHECK(wDefaultGetStartWorkspace(NULL, "xterm", "XTerm") == 1);
-	CHECK(wDefaultGetStartWorkspace(NULL, NULL, "XTerm") == 3);
-	CHECK(wDefaultGetStartWorkspace(NULL, "urxvt", "URxvt") == 3);
+	/* singular StartWorkspace falls back through the plural getter as a
+	 * 1-bit mask (xterm=ws2->bit1, XTerm=ws4->bit3, urxvt via "*"=ws4->bit3) */
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(mask == WS_BIT(1));
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, NULL, "XTerm", &mask) == True);
+	CHECK(mask == WS_BIT(3));
+	mask = 0;
+	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == True);
+	CHECK(mask == WS_BIT(3));
 }
 
 static void test_start_workspaces_plural(void)

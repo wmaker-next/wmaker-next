@@ -195,7 +195,7 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	WWindowAttrs *attrs;
 	const char *str;
 	WMPropList *sws, *sides;
-	int i, j, n;
+	int i, j, cnt, n;
 	unsigned int sides_mask;
 
 	attrs = wmalloc(sizeof(*attrs));
@@ -218,12 +218,11 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	if (str)
 		attrs->start_workspace = wstrdup(str);
 	sws = WMGetFromPLDictionaryByName(entry, "StartWorkspaces");
-
 	if (sws && WMIsPLArray(sws)) {
 		int sws_n = WMGetPropListItemCount(sws);
-		int j, cnt = 0;
 
 		attrs->start_workspaces = wmalloc(sizeof(char *) * (sws_n + 1));
+		cnt = 0;
 		for (j = 0; j < sws_n; j++) {
 			WMPropList *item = WMGetFromPLArray(sws, j);
 			const char *tok;
@@ -703,7 +702,7 @@ void wWindowAttrsReload(void)
 			}
 			r->attrs = parse_attrs_entry(attrs_pl);
 
-		dynamic_rule_count++;
+			dynamic_rule_count++;
 		}
 	}
 
@@ -1241,20 +1240,6 @@ RImage *get_icon_image(WScreen *scr, const char *winstance, const char *wclass, 
 	wfree(file_name);
 
 	return image;
-}
-
-int wDefaultGetStartWorkspace(WScreen *scr, const char *instance, const char *class)
-{
-	const WWindowAttrs *level[4];
-	int n, i;
-
-	n = attrs_lookup_levels(instance, class, True, level);
-	for (i = 0; i < n; i++) {
-		const char *ws = level[i]->start_workspace;
-		if (ws && ws[0] != '\0')
-			return wGetWorkspaceNumber(scr, ws);
-	}
-	return -1;
 }
 
 Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,

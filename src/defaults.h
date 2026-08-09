@@ -73,7 +73,6 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 			Bool default_icon);
 
 
-int wDefaultGetStartWorkspace(WScreen *scr, const char *instance, const char *class);
 Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 				const char *class, uint64_t *out_mask);
 void wDefaultChangeIcon(const char *instance, const char* class, const char *file);

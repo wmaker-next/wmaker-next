@@ -24,6 +24,7 @@
 #include <wraster.h>
 #include <WINGs/WUtil.h>
 #include <X11/Xlib.h>
+#include <stdint.h>
 
 #define WINGS_H_VERSION  20230226
 
@@ -341,7 +342,8 @@ enum {
     WC_MenuView = 16,
     WC_Ruler = 17,
     WC_Text = 18,
-    WC_Box = 19
+	WC_Box = 19,
+	WC_MultiSelectPopUpButton = 20
 };
 
 /* All widgets must start with the following structure
@@ -379,6 +381,7 @@ typedef struct W_ScrollView WMScrollView;
 typedef struct W_List WMList;
 typedef struct W_Browser WMBrowser;
 typedef struct W_PopUpButton WMPopUpButton;
+typedef struct W_MultiSelectPopUpButton WMMultiSelectPopUpButton;
 typedef struct W_ProgressIndicator WMProgressIndicator;
 typedef struct W_ColorWell WMColorWell;
 typedef struct W_Slider WMSlider;
@@ -1569,6 +1572,48 @@ Bool WMGetPopUpButtonEnabled(WMPopUpButton *bPtr);
 int WMSelectPopUpButtonPreviousItem(WMPopUpButton *bPtr);
 
 int WMSelectPopUpButtonNextItem(WMPopUpButton *bPtr);
+
+/* ---[ WINGs/wmultiselectpopup.c ]-------------------------------------- */
+
+WMMultiSelectPopUpButton *WMCreateMultiSelectPopUpButton(WMWidget *parent);
+
+void WMSetMultiSelectPopUpButtonAction(WMMultiSelectPopUpButton *bPtr,
+					WMAction *action, void *clientData);
+
+WMMenuItem *WMAddMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr,
+					    const char *title);
+
+void WMRemoveMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr, int index);
+
+void WMRemoveAllMultiSelectPopUpButtonItems(WMMultiSelectPopUpButton *bPtr);
+
+void WMSetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr,
+					    int index, Bool flag);
+
+Bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index);
+
+int WMGetMultiSelectPopUpButtonNumberOfItems(WMMultiSelectPopUpButton *bPtr);
+
+/* don't free the returned data */
+char *WMGetMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr, int index);
+
+WMMenuItem *WMGetMultiSelectPopUpButtonMenuItem(WMMultiSelectPopUpButton *bPtr,
+						int index);
+
+void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, Bool flag);
+
+Bool WMGetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr);
+
+void WMSetMultiSelectPopUpButtonCaption(WMMultiSelectPopUpButton *bPtr,
+					const char *text);
+
+/* bit N of the mask corresponds to item N (1 = selected, 0 = unselected),
+ * capped at the 64 bits a uint64_t can hold, so items beyond 64 are
+ * ignored by the setter and never set by the getter */
+void WMSetMultiSelectPopUpButtonSelectionMask(WMMultiSelectPopUpButton *bPtr,
+						uint64_t mask);
+
+uint64_t WMGetMultiSelectPopUpButtonSelectionMask(WMMultiSelectPopUpButton *bPtr);
 
 /* ---[ WINGs/wprogressindicator.c ]------------------------------------- */
 

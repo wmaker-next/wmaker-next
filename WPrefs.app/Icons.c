@@ -22,10 +22,7 @@
 #include "enumchoices.h"
 
 
-static const struct {
-	const char *db_value;
-	const char *label;
-} icon_animation[] = {
+static const wm_enum_choice icon_animation[] = {
 #define R(v, l) { v, l },
 	WPREFS_TABLE_icon_animation(R)
 #undef R
@@ -219,20 +216,8 @@ static void showData(_Panel * panel)
 
 	/* Animation */
 	str = GetStringForKey("IconificationStyle");
-	if (str != NULL) {
-		for (i = 0; i < wlengthof(icon_animation); i++) {
-			if (strcasecmp(str, icon_animation[i].db_value) == 0) {
-				WMSetPopUpButtonSelectedItem(panel->animP, i);
-				goto found_animation_value;
-			}
-		}
-		wwarning(_("animation style \"%s\" is unknown, resetting to \"%s\""),
-		         str, icon_animation[0].db_value);
-	}
-	/* If we're here, no valid value have been found so we fall-back to the default */
-	WMSetPopUpButtonSelectedItem(panel->animP, 0);
- found_animation_value:
-	;
+	wm_enum_popup_select(panel->animP, icon_animation,
+			     wlengthof(icon_animation), str, "IconificationStyle");
 }
 
 static void createPanel(Panel * p)
@@ -377,11 +362,10 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->animF, 292, 6);
 	WMSetFrameTitle(panel->animF, _("Iconification Animation"));
 
-	panel->animP = WMCreatePopUpButton(panel->animF);
+	panel->animP = wm_enum_popup_new(panel->animF, icon_animation,
+					 wlengthof(icon_animation));
 	WMResizeWidget(panel->animP, 195, 20);
 	WMMoveWidget(panel->animP, 10, 19);
-	for (i = 0; i < wlengthof(icon_animation); i++)
-		WMAddPopUpButtonItem(panel->animP, _(icon_animation[i].label));
 
 	WMMapSubwidgets(panel->animF);
 
@@ -460,7 +444,8 @@ static void storeData(_Panel * panel)
 		SetIntegerForKey(i, "MiniPreviewSize");
 	}
 
-	SetStringForKey(icon_animation[WMGetPopUpButtonSelectedItem(panel->animP)].db_value, "IconificationStyle");
+	wm_enum_popup_store(panel->animP, icon_animation,
+			   wlengthof(icon_animation), "IconificationStyle");
 }
 
 Panel *InitIcons(WMWidget *parent)

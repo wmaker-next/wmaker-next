@@ -81,19 +81,13 @@ typedef struct _Panel {
 
 #define THUMB_SIZE	16
 
-static const struct {
-	const char *db_value;
-	const char *label;
-} window_placements[] = {
+static const wm_enum_choice window_placements[] = {
 #define R(v, l) { v, l },
 	WPREFS_TABLE_window_placements(R)
 #undef R
 };
 
-static const struct {
-	const char *db_value;
-	const char *label;
-} drag_maximized_window_options[] = {
+static const wm_enum_choice drag_maximized_window_options[] = {
 #define R(v, l) { v, l },
 	WPREFS_TABLE_drag_maximized_window(R)
 #undef R
@@ -159,39 +153,6 @@ static void resizeCallback(WMWidget * w, void *data)
 	}
 }
 
-static int getPlacement(const char *str)
-{
-	int i;
-
-	if (!str)
-		return 0;
-
-	for (i = 0; i < wlengthof(window_placements); i++) {
-		if (strcasecmp(str, window_placements[i].db_value) == 0)
-			return i;
-	}
-
-	wwarning(_("bad option value %s in WindowPlacement. Using default value"), str);
-	return 0;
-}
-
-static int getDragMaximizedWindow(const char *str)
-{
-	int i;
-
-	if (!str)
-		return 0;
-
-	for (i = 0; i < wlengthof(drag_maximized_window_options); i++) {
-		if (strcasecmp(str, drag_maximized_window_options[i].db_value) == 0)
-			return i;
-	}
-
-	wwarning(_("bad option value %s in WindowPlacement. Using default value"), str);
-	return 0;
-}
-
-
 static void showData(_Panel * panel)
 {
 	char *str;
@@ -200,7 +161,8 @@ static void showData(_Panel * panel)
 
 	str = GetStringForKey("WindowPlacement");
 
-	WMSetPopUpButtonSelectedItem(panel->placP, getPlacement(str));
+	wm_enum_popup_select(panel->placP, window_placements,
+			     wlengthof(window_placements), str, "WindowPlacement");
 
 	arr = GetObjectForKey("WindowPlaceOrigin");
 
@@ -225,7 +187,9 @@ static void showData(_Panel * panel)
 	resistanceCallback(NULL, panel);
 
 	str = GetStringForKey("DragMaximizedWindow");
-	WMSetPopUpButtonSelectedItem(panel->dragmaxP, getDragMaximizedWindow(str));
+	wm_enum_popup_select(panel->dragmaxP, drag_maximized_window_options,
+			     wlengthof(drag_maximized_window_options), str,
+			     "DragMaximizedWindow");
 
 	x = GetIntegerForKey("ResizeIncrement");
 	WMSetSliderValue(panel->resizeS, x);
@@ -257,7 +221,8 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->opaqresizeB), "OpaqueResize");
 	SetBoolForKey(WMGetButtonSelected(panel->opaqkeybB), "OpaqueMoveResizeKeyboard");
 
-	SetStringForKey(window_placements[WMGetPopUpButtonSelectedItem(panel->placP)].db_value, "WindowPlacement");
+	wm_enum_popup_store(panel->placP, window_placements,
+			    wlengthof(window_placements), "WindowPlacement");
 	snprintf(buf, sizeof(buf), "%i", WMGetSliderValue(panel->hsli));
 	x = WMCreatePLString(buf);
 	snprintf(buf, sizeof(buf), "%i", WMGetSliderValue(panel->vsli));
@@ -269,8 +234,9 @@ static void storeData(_Panel * panel)
 
 	SetIntegerForKey(WMGetSliderValue(panel->resS), "EdgeResistance");
 
-	SetStringForKey(drag_maximized_window_options[WMGetPopUpButtonSelectedItem(panel->dragmaxP)].db_value,
-	                "DragMaximizedWindow");
+	wm_enum_popup_store(panel->dragmaxP, drag_maximized_window_options,
+			    wlengthof(drag_maximized_window_options),
+			    "DragMaximizedWindow");
 
 	SetIntegerForKey(WMGetSliderValue(panel->resizeS), "ResizeIncrement");
 	SetBoolForKey(WMGetButtonSelected(panel->resrB), "Attraction");
@@ -288,7 +254,6 @@ static void createPanel(Panel * p)
 	int swidth, sheight;
 	char *path;
 	WMBox *hbox;
-	int i;
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
@@ -307,12 +272,10 @@ static void createPanel(Panel * p)
 	WMSetBalloonTextForView(_("How to place windows when they are first put\n"
 				  "on screen."), WMWidgetView(panel->placF));
 
-	panel->placP = WMCreatePopUpButton(panel->placF);
+	panel->placP = wm_enum_popup_new(panel->placF, window_placements,
+					 wlengthof(window_placements));
 	WMResizeWidget(panel->placP, 90, 20);
 	WMMoveWidget(panel->placP, 9, 19);
-
-	for (i = 0; i < wlengthof(window_placements); i++)
-		WMAddPopUpButtonItem(panel->placP, _(window_placements[i].label));
 
 	panel->porigL = WMCreateLabel(panel->placF);
 	WMResizeWidget(panel->porigL, 50, 20);
@@ -564,12 +527,11 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->dragmaxF, 8, 172);
 	WMSetFrameTitle(panel->dragmaxF, _("Dragging a maximized window..."));
 
-	panel->dragmaxP = WMCreatePopUpButton(panel->dragmaxF);
+	panel->dragmaxP = wm_enum_popup_new(panel->dragmaxF,
+					     drag_maximized_window_options,
+					     wlengthof(drag_maximized_window_options));
 	WMResizeWidget(panel->dragmaxP, 328, 20);
 	WMMoveWidget(panel->dragmaxP, 15, 18);
-
-	for (i = 0; i < wlengthof(drag_maximized_window_options); i++)
-		WMAddPopUpButtonItem(panel->dragmaxP, _(drag_maximized_window_options[i].label));
 
 	WMMapSubwidgets(panel->dragmaxF);
 
