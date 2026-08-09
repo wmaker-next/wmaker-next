@@ -790,7 +790,7 @@ static void hideCallback(WMenu *menu, WMenuEntry *entry)
 	wapp = wApplicationOf(btn->icon->owner->main_window);
 
 	if (wapp->flags.hidden) {
-		wWorkspaceChange(btn->icon->core->screen_ptr, wapp->last_workspace);
+		wWorkspaceChangeFromPointer(btn->icon->core->screen_ptr, wapp->last_workspace);
 		wUnhideApplication(wapp, False, False);
 	} else {
 		wRequestHideApplication(wapp, btn->icon->owner);
@@ -4066,7 +4066,7 @@ static void iconDblClick(WObjDescriptor *desc, XEvent *event)
 
 		/* go to the last workspace that the user worked on the app */
 		if (wapp->last_workspace != dock->screen_ptr->current_workspace && !unhideHere)
-			wWorkspaceChange(dock->screen_ptr, wapp->last_workspace);
+			wWorkspaceChangeFromPointer(dock->screen_ptr, wapp->last_workspace);
 
 		wUnhideApplication(wapp, event->xbutton.button == Button2, unhideHere);
 
@@ -4390,16 +4390,16 @@ static void handleClipChangeWorkspace(WScreen *scr, XEvent *event)
 
 	if (direction == CLIP_FORWARD) {
 		if (scr->current_workspace < scr->workspace_count - 1)
-			wWorkspaceChange(scr, scr->current_workspace + 1);
+			wWorkspaceChangeFromPointer(scr, scr->current_workspace + 1);
 		else if (new_ws && scr->current_workspace < MAX_WORKSPACES - 1)
-			wWorkspaceChange(scr, scr->current_workspace + 1);
+			wWorkspaceChangeFromPointer(scr, scr->current_workspace + 1);
 		else if (w_global.config->ws_cycle)
-			wWorkspaceChange(scr, 0);
+			wWorkspaceChangeFromPointer(scr, 0);
 	} else if (direction == CLIP_REWIND) {
 		if (scr->current_workspace > 0)
-			wWorkspaceChange(scr, scr->current_workspace - 1);
+			wWorkspaceChangeFromPointer(scr, scr->current_workspace - 1);
 		else if (scr->current_workspace == 0 && w_global.config->ws_cycle)
-			wWorkspaceChange(scr, scr->workspace_count - 1);
+			wWorkspaceChangeFromPointer(scr, scr->workspace_count - 1);
 	}
 
 	wClipIconPaint(scr->clip_icon);
@@ -4491,9 +4491,9 @@ static void iconMouseDown(WObjDescriptor *desc, XEvent *event)
 		if (!btn->launching && (!btn->running || (event->xbutton.state & ControlMask)))
 			launchDockedApplication(btn, True);
 	} else if (event->xbutton.button == Button4 && dock->type == WM_CLIP) {
-		wWorkspaceRelativeChange(scr, 1);
+		wWorkspaceRelativeChangeFromPointer(scr, 1);
 	} else if (event->xbutton.button == Button5 && dock->type == WM_CLIP) {
-		wWorkspaceRelativeChange(scr, -1);
+		wWorkspaceRelativeChangeFromPointer(scr, -1);
 	}
 }
 

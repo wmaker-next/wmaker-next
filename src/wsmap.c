@@ -132,7 +132,7 @@ static void selected_workspace_callback(WMWidget *w, void *data)
 	if (w && wsmap) {
 		int workspace_id = atoi(WMGetButtonText(click_button));
 
-		wWorkspaceChange(wsmap->scr, workspace_id);
+		wWorkspaceChangeFromPointer(wsmap->scr, workspace_id);
 		w_global.process_workspacemap_event = False;
 	}
 }
@@ -464,11 +464,11 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 		case ButtonPress:
 			switch (ev.xbutton.button) {
 			case Button6:
-				wWorkspaceDirectionalChange(wsmap->scr, -1, 0);
+				wWorkspaceDirectionalChangeFromPointer(wsmap->scr, -1, 0);
 				refresh_mini_workspace(wsmap, wsmap_array);
 				break;
 			case Button7:
-				wWorkspaceDirectionalChange(wsmap->scr, 1, 0);
+				wWorkspaceDirectionalChangeFromPointer(wsmap->scr, 1, 0);
 				refresh_mini_workspace(wsmap, wsmap_array);
 				break;
 			default:

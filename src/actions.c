@@ -373,6 +373,7 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 		if (w_global.config->circ_raise)
 			wRaiseFrame(best->frame->core);
 		wSetFocusTo(scr, best);
+		warpPointerToFocusedWindow(best);
 	}
 }
 
@@ -1691,15 +1692,11 @@ void wIconifyWindow(WWindow *wwin)
 		    && w_global.config->focus_mode == WKF_CLICK) {
 			WWindow *tmp;
 
-			tmp = wwin->prev;
-			while (tmp) {
-				if (!WFLAGP(tmp, no_focusable)
-				    && !(tmp->flags.hidden || tmp->flags.miniaturized)
-				    && (WWIN_PRIMARY_WS(wwin) == WWIN_PRIMARY_WS(tmp)))
-					break;
-				tmp = tmp->prev;
-			}
+			tmp = wWindowUnderPointerForFocus(wwin->screen_ptr, wwin);
 			wSetFocusTo(wwin->screen_ptr, tmp);
+			if (tmp)
+				wRaiseFrame(tmp->frame->core);
+			warpPointerToFocusedWindow(tmp);
 		} else if (w_global.config->focus_mode != WKF_CLICK && wwin->flags.focused) {
 			/* Skip the focus reset when iconify was triggered by the
 			 * auto-hide/miniaturize-on-unfocus path: focus has already
@@ -1768,6 +1765,7 @@ void wDeiconifyWindow(WWindow *wwin)
 		if (owner && owner->flags.miniaturized) {
 			wDeiconifyWindow(owner);
 			wSetFocusTo(wwin->screen_ptr, wwin);
+			warpPointerToFocusedWindow(wwin);
 			wRaiseFrame(wwin->frame->core);
 			w_global.ignore_workspace_change = False;
 			return;
@@ -1821,6 +1819,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	    && !wwin->flags.net_handle_icon) {
 		RemoveFromStackList(wwin->icon->core);
 		wSetFocusTo(wwin->screen_ptr, wwin);
+		warpPointerToFocusedWindow(wwin);
 		wIconDestroy(wwin->icon);
 		wwin->icon = NULL;
 	}
@@ -1829,6 +1828,7 @@ void wDeiconifyWindow(WWindow *wwin)
 		XUngrabServer(dpy);
 
 		wSetFocusTo(wwin->screen_ptr, wwin);
+		warpPointerToFocusedWindow(wwin);
 		WMAddTimerHandler(1, focusRestoredWindow,
 				  (void *)(uintptr_t)wwin->client_win);
 	}
@@ -2150,14 +2150,11 @@ void wHideApplication(WApplication *wapp)
 
 	if (hadfocus) {
 		if (w_global.config->focus_mode == WKF_CLICK) {
-			wlist = scr->focused_window;
-			while (wlist) {
-				if (!WFLAGP(wlist, no_focusable) && !wlist->flags.hidden
-				    && (wlist->flags.mapped || wlist->flags.shaded))
-					break;
-				wlist = wlist->prev;
-			}
+			wlist = wWindowUnderPointerForFocus(scr, NULL);
 			wSetFocusTo(scr, wlist);
+			if (wlist)
+				wRaiseFrame(wlist->frame->core);
+			warpPointerToFocusedWindow(wlist);
 		} else {
 			wSetFocusTo(scr, NULL);
 		}
@@ -2310,13 +2307,15 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 		clientwin = target->client_win;
 		target = wWindowFor(clientwin);
 		if (target) {
-		wRaiseFrame(target->frame->core);
-		wSetFocusTo(scr, target);
-		/* Fire strictly later than the 1 ms deiconify timers above so
-		 * libev's heap orders it after them and the final focus lands
-		 * on the intended window, not a deiconified one. */
-		WMAddTimerHandler(2, focusRestoredWindow,
-				  (void *)(uintptr_t)clientwin);
+			wRaiseFrame(target->frame->core);
+			wSetFocusTo(scr, target);
+			warpPointerToFocusedWindow(target);
+			/* Fire strictly later than the 1 ms deiconify timers
+			 * above so libev's heap orders it after them and the
+			 * final focus lands on the intended window, not a
+			 * deiconified one. */
+			WMAddTimerHandler(2, focusRestoredWindow,
+					  (void *)(uintptr_t)clientwin);
 		}
 	}
 
@@ -2355,6 +2354,7 @@ void wShowAllWindows(WScreen *scr)
 		wwin = wwin->prev;
 	}
 	wSetFocusTo(scr, old_foc);
+	warpPointerToFocusedWindow(old_foc);
 	/*wRaiseFrame(old_foc->frame->core); */
 }
 
@@ -2611,6 +2611,178 @@ void movePointerToWindowCenter(WWindow *wwin)
 	XWarpPointer(dpy, None, wwin->screen_ptr->root_win, 0, 0, 0, 0,
 			wwin->frame_x + wwin->client.width / 2,
 			wwin->frame_y + wwin->client.height / 2);
+	XFlush(dpy);
+}
+
+/* Focusable client window under the pointer, or NULL if on the root.
+ * exclude is the window being minimized/hidden/closed (may be NULL). */
+WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude)
+{
+	unsigned int mask;
+	int foo;
+	Window bar, win;
+	WWindow *tmp;
+
+	if (!XQueryPointer(dpy, scr->root_win, &bar, &win,
+			   &foo, &foo, &foo, &foo, &mask))
+		return NULL;
+
+	tmp = wWindowFor(win);
+	if (!tmp || tmp == exclude)
+		return NULL;
+	if (WFLAGP(tmp, no_focusable))
+		return NULL;
+	if (tmp->flags.hidden || tmp->flags.miniaturized)
+		return NULL;
+	if (!(tmp->flags.mapped || tmp->flags.shaded))
+		return NULL;
+	return tmp;
+}
+
+/*
+ * Warp the pointer to the center of wwin's frame. Gated by
+ * PointerFollowsFocus.
+ *
+ * Call this only from EXPLICIT focus paths where a window received
+ * focus (new-window manage, cycling/switch panel, directional focus
+ * keys, keyboard tab switching, workspace switch landing on a window,
+ * honored _NET_ACTIVE_WINDOW, focus migration after close/hide/
+ * iconify/deiconify). Never call it from pointer-driven paths
+ * (EnterNotify sloppy focus, FocusIn handler, click-to-focus, tab-
+ * strip clicks): warping on pointer motion would fight sloppy focus.
+ */
+void warpPointerToFocusedWindow(WWindow *wwin)
+{
+	Window root_ret, win_ret;
+	int rx, ry, wx, wy;
+	unsigned int mask;
+	int fx, fy, fw, fh;
+
+	if (!w_global.config->pointer_follows_focus)
+		return;
+	if (!wwin || !wwin->frame || !wwin->frame->core)
+		return;
+	/* workspace-switch candidates are mapped by construction. These
+	 * checks guard the close/destroy-time callers */
+	if (!wwin->flags.mapped || wwin->flags.miniaturized || wwin->flags.hidden)
+		return;
+
+	/* Skip the warp when the pointer is already inside the frame, so
+	 * cycling between two overlapping windows does not jitter the
+	 * cursor onto the frame center each time. */
+	fx = wwin->frame_x;
+	fy = wwin->frame_y;
+	fw = (int)wwin->frame->core->width;
+	fh = (int)wwin->frame->core->height;
+	if (XQueryPointer(dpy, wwin->screen_ptr->root_win, &root_ret, &win_ret,
+			 &rx, &ry, &wx, &wy, &mask)
+	    && rx >= fx && rx < fx + fw && ry >= fy && ry < fy + fh)
+		return;
+
+	XWarpPointer(dpy, None, wwin->screen_ptr->root_win, 0, 0, 0, 0,
+			fx + fw / 2, fy + fh / 2);
+	XFlush(dpy);
+}
+
+/*
+ * Warp the pointer to the center of the head the pointer is on. Gated
+ * by PointerFollowsMonitor. Call on workspace switch to an empty
+ * workspace (no window to follow), so the pointer does not leap to
+ * another head on a multi-head screen when merely switching
+ * workspaces. Never call it from pointer-driven paths.
+ *
+ * Falls back to the whole-screen center when Xinerama is off or the
+ * head lookup fails.
+ */
+void warpPointerToMonitor(WScreen *scr)
+{
+	WMRect r;
+	int cx, cy;
+	int head;
+
+	if (!w_global.config->pointer_follows_monitor)
+		return;
+	if (!scr)
+		return;
+
+	if (scr->xine_info.count > 1) {
+		head = wGetHeadForPointerLocation(scr);
+		if (head < 0 || head >= scr->xine_info.count)
+			head = scr->xine_info.primary_head;
+		if (head < 0 || head >= scr->xine_info.count)
+			head = 0;
+		r = scr->xine_info.screens[head];
+		cx = r.pos.x + (int)r.size.width  / 2;
+		cy = r.pos.y + (int)r.size.height / 2;
+	} else {
+		cx = scr->scr_width  / 2;
+		cy = scr->scr_height / 2;
+	}
+
+	XWarpPointer(dpy, None, scr->root_win, 0, 0, 0, 0, cx, cy);
+	XFlush(dpy);
+}
+
+/*
+ * Warp pointer to the center of the next monitor, cycling.
+ *
+ * Monitors are the Xinerama/RandR heads of every managed screen,
+ * visited in (screen, head) order starting from the head the pointer
+ * is on. With one head per screen this reduces to hopping from X11
+ * screen to X11 screen as before.
+ *
+ * Gated by PointerFollowsMonitor so the previously-unconditional
+ * WKBD_SWITCH_SCREEN warp can be turned off.
+ */
+void warpPointerToNextMonitor(WScreen *scr)
+{
+	WMRect rect;
+	WScreen *target;
+	int total, current, next;
+	int i, h;
+
+	if (!w_global.config->pointer_follows_monitor)
+		return;
+
+	total = 0;
+	for (i = 0; i < w_global.screen_count; i++)
+		total += wHeadCount(wScreenWithNumber(i));
+
+	if (total <= 1)
+		return;
+
+	/* flat index of the monitor the pointer is currently on */
+	current = 0;
+	for (i = 0; i < w_global.screen_count; i++) {
+		if (wScreenWithNumber(i) == scr) {
+			h = wGetHeadForPointerLocation(scr);
+			if (h < 0 || h >= wHeadCount(scr))
+				h = 0;
+			current += h;
+			break;
+		}
+		current += wHeadCount(wScreenWithNumber(i));
+	}
+
+	next = (current + 1) % total;
+
+	/* map the flat index back to a (screen, head) pair */
+	target = NULL;
+	for (i = 0; i < w_global.screen_count; i++) {
+		target = wScreenWithNumber(i);
+		h = wHeadCount(target);
+		if (next < h)
+			break;
+		next -= h;
+		target = NULL;
+	}
+	if (!target)
+		return;
+
+	rect = wGetRectForHead(target, next);
+	XWarpPointer(dpy, None, target->root_win, 0, 0, 0, 0,
+			rect.pos.x + (int)rect.size.width / 2,
+			rect.pos.y + (int)rect.size.height / 2);
 	XFlush(dpy);
 }
 

@@ -761,6 +761,7 @@ static void wWindowTrySwallow(WWindow *wwin)
 		WMPostNotificationName(WMNChangedState, parent, "hide");
 
 		wSetFocusTo(scr, wwin);
+		warpPointerToFocusedWindow(wwin);
 		wRaiseFrame(wwin->frame->core);
 		break;
 	}
@@ -792,6 +793,7 @@ static void wWindowUnswallow(WWindow *wwin)
 		parent->flags.mapped = 1;
 		wRaiseFrame(parent->frame->core);
 		wSetFocusTo(parent->screen_ptr, parent);
+		warpPointerToFocusedWindow(parent);
 	}
 }
 
@@ -1959,6 +1961,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			if (same_screen == 1 && same_head == 1) {
 				if (wNETWMShouldStealFocus(wwin)) {
 					wSetFocusTo(scr, wwin);
+					warpPointerToFocusedWindow(wwin);
 				} else {
 					/* the new window's _NET_WM_USER_TIME
 					 * is older than the screen's most
@@ -2267,38 +2270,17 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 		}
 
 		if (w_global.config->focus_mode == WKF_CLICK) {
-
-			/* if in click to focus mode and the window
-			 * was a transient, focus the owner window
-			 */
-			tmp = NULL;
-			if (w_global.config->focus_mode == WKF_CLICK) {
-				tmp = wWindowFor(wwin->transient_for);
-				if (tmp && (!tmp->flags.mapped || WFLAGP(tmp, no_focusable))) {
-					tmp = NULL;
-				}
-			}
-			/* otherwise, focus the next one in the focus list */
-			if (!tmp) {
-				tmp = scr->focused_window;
-				while (tmp) {	/* look for one in the window list first */
-					if (!WFLAGP(tmp, no_focusable) && !WFLAGP(tmp, skip_window_list)
-					    && (tmp->flags.mapped || tmp->flags.shaded))
-						break;
-					tmp = tmp->prev;
-				}
-				if (!tmp) {	/* if unsuccessful, choose any focusable window */
-					tmp = scr->focused_window;
-					while (tmp) {
-						if (!WFLAGP(tmp, no_focusable)
-						    && (tmp->flags.mapped || tmp->flags.shaded))
-							break;
-						tmp = tmp->prev;
-					}
-				}
-			}
-
-			newFocusedWindow = tmp;
+			/* A focused transient hands focus back to its owner;
+			 * otherwise focus the window under the pointer, or
+			 * clear to root when on the desktop, instead of
+			 * warping to an MRU pick. */
+			tmp = wWindowFor(wwin->transient_for);
+			if (tmp && (!tmp->flags.mapped || WFLAGP(tmp, no_focusable)))
+				tmp = NULL;
+			if (tmp)
+				newFocusedWindow = tmp;
+			else
+				newFocusedWindow = wWindowUnderPointerForFocus(scr, wwin);
 
 		} else if (w_global.config->focus_mode == WKF_SLOPPY) {
 			unsigned int mask;
@@ -2328,6 +2310,9 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 				wFrameWindowChangeState(owner->frame, WS_UNFOCUSED);
 		}
 		wSetFocusTo(scr, newFocusedWindow);
+		if (w_global.config->focus_mode == WKF_CLICK && newFocusedWindow)
+			wRaiseFrame(newFocusedWindow->frame->core);
+		warpPointerToFocusedWindow(newFocusedWindow);
 	}
 
 	/* Close menu and unhighlight */

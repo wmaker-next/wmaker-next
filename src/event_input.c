@@ -293,63 +293,6 @@ static void startMarkCapture(WScreen *scr, Display *d, WMarkCaptureMode mode)
 	XGrabKeyboard(d, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 }
 
-/*
- * Warp pointer to the center of the next monitor, cycling.
- *
- * Monitors are the Xinerama/RandR heads of every managed screen,
- * visited in (screen, head) order starting from the head the pointer
- * is on. With one head per screen this reduces to hopping from X11
- * screen to X11 screen as before.
- */
-static void warpPointerToNextMonitor(WScreen *scr)
-{
-	WMRect rect;
-	WScreen *target;
-	int total, current, next;
-	int i, h;
-
-	total = 0;
-	for (i = 0; i < w_global.screen_count; i++)
-		total += wHeadCount(wScreenWithNumber(i));
-
-	if (total <= 1)
-		return;
-
-	/* flat index of the monitor the pointer is currently on */
-	current = 0;
-	for (i = 0; i < w_global.screen_count; i++) {
-		if (wScreenWithNumber(i) == scr) {
-			h = wGetHeadForPointerLocation(scr);
-			if (h < 0 || h >= wHeadCount(scr))
-				h = 0;
-			current += h;
-			break;
-		}
-		current += wHeadCount(wScreenWithNumber(i));
-	}
-
-	next = (current + 1) % total;
-
-	/* map the flat index back to a (screen, head) pair */
-	target = NULL;
-	for (i = 0; i < w_global.screen_count; i++) {
-		target = wScreenWithNumber(i);
-		h = wHeadCount(target);
-		if (next < h)
-			break;
-		next -= h;
-		target = NULL;
-	}
-	if (!target)
-		return;
-
-	rect = wGetRectForHead(target, next);
-	XWarpPointer(dpy, None, target->root_win, 0, 0, 0, 0,
-		     rect.pos.x + (int)rect.size.width / 2,
-		     rect.pos.y + (int)rect.size.height / 2);
-	XFlush(dpy);
-}
-
 static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent *event)
 {
 	short widx;
@@ -1118,10 +1061,11 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 				wWindowConfigure(tw, fx, fy, fw, fh);
 
 				/* Follow origin window: switch view to the workspace it landed in,
-				* then restore focus to it */
+				 * then restore focus to it */
 				if (f_ws != t_ws)
 					wWorkspaceChange(scr, t_ws);
 				wSetFocusTo(scr, focused);
+				warpPointerToFocusedWindow(focused);
 			}
 		}
 		return;
@@ -1252,9 +1196,9 @@ static void executeWheelAction(WScreen *scr, int button, int action)
 	switch (action) {
 	case WA_SWITCH_WORKSPACES:
 		if (next_direction)
-			wWorkspaceRelativeChange(scr, 1);
+			wWorkspaceRelativeChangeFromPointer(scr, 1);
 		else
-			wWorkspaceRelativeChange(scr, -1);
+			wWorkspaceRelativeChangeFromPointer(scr, -1);
 		break;
 
 	case WA_SWITCH_WINDOWS:
@@ -1307,10 +1251,10 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 		}
 		break;
 	case WA_MOVE_PREVWORKSPACE:
-		wWorkspaceRelativeChange(scr, -1);
+		wWorkspaceRelativeChangeFromPointer(scr, -1);
 		break;
 	case WA_MOVE_NEXTWORKSPACE:
-		wWorkspaceRelativeChange(scr, 1);
+		wWorkspaceRelativeChangeFromPointer(scr, 1);
 		break;
 	case WA_MOVE_PREVWINDOW:
 		wwin = scr->focused_window;

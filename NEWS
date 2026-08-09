@@ -1232,6 +1232,49 @@ existing config that sets `MinimizeAllKey` falls back to the default
 `None`.
 
 
+Pointer follows focus / monitor
+-------------------------------
+
+Two independent options:
+
+"PointerFollowsFocus" (default NO, opt-in) — when keyboard focus
+changes (Alt-Tab cycling, the window switcher, the directional focus
+keys, keyboard tab switching, a workspace switch, or a new window
+taking focus via "Automatically focus new windows"), the mouse
+pointer is moved to the center of the window that received focus, so
+the pointer stays with the active window. When the focused window
+closes, hides or iconifies, focus now goes to the window under the
+pointer (previously the most-recently-used window was chosen), and
+the pointer moves to that window. A closed focused transient hands
+focus back to the window it is transient for. With the pointer over
+the empty desktop under ClickToFocus, focus otherwise drops to the
+root. Restoring windows from miniwindows or dock icons also moves the
+pointer.
+
+"PointerFollowsMonitor" (default YES, preserving existing behaviour)
+— when you switch to an empty workspace or to another monitor, the
+mouse pointer is moved to the center of that monitor or of the head
+the pointer is on, so the pointer follows your navigation even when
+there is no window to focus. The YES default keeps the monitor-switch
+keyboard shortcut's behaviour of warping the pointer to the next
+monitor's center (cycling between heads on single-screen multi-head
+setups). That warp was previously unconditional and can now be turned
+off by setting the option to NO. YES also enables the new
+empty-workspace warp.
+
+Enable/disable "PointerFollowsFocus" in WPrefs.app under Window Focus
+Preferences. Both options can also be set to "YES" or "NO" in
+~/GNUstep/Defaults/WindowMaker. "PointerFollowsMonitor" has no WPrefs
+UI and must be edited there directly.
+
+Neither option moves the pointer when focus follows the mouse
+(Auto / sloppy focus mode) and you focus a window by moving the
+pointer into it. The warps only apply to explicit, non-pointer
+focus changes. With PointerFollowsFocus enabled, honored window-
+activation requests from applications (e.g. pagers and taskbars) can
+move the pointer, since they change focus to that window.
+
+
 -- 0.97.0
 
 XDG-based user configuration directory

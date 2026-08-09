@@ -281,6 +281,10 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(AUTO_FOCUS_ACROSS_HEADS, "AutoFocusAcrossHeads", BOOL, auto_focus_across_heads, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(POINTER_FOLLOWS_FOCUS, "PointerFollowsFocus", BOOL, pointer_follows_focus, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(POINTER_FOLLOWS_MONITOR, "PointerFollowsMonitor", BOOL, pointer_follows_monitor, "YES", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RAISE_DELAY, "RaiseDelay", INT, raise_delay, "0", \
 	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CIRCULATE_RAISE, "CirculateRaise", BOOL, circ_raise, "NO", \

@@ -97,5 +97,11 @@ void save_old_geometry(WWindow *wwin, int directions);
 void movePointerToWindowCenter(WWindow *wwin);
 void moveBetweenHeads(WWindow *wwin, int direction);
 
+WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude);
+
+void warpPointerToFocusedWindow(WWindow *wwin);
+void warpPointerToMonitor(WScreen *scr);
+void warpPointerToNextMonitor(WScreen *scr);
+
 #endif
 

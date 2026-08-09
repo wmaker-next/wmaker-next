@@ -50,6 +50,8 @@
 	ColormapMode = auto;
 	AutoFocus = YES;
 	AutoFocusAcrossHeads = YES;
+	PointerFollowsFocus = NO;
+	PointerFollowsMonitor = YES;
 	RaiseDelay = 0;
 	CirculateRaise = NO;
 	Superfluous = YES;

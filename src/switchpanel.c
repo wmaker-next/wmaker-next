@@ -783,8 +783,14 @@ WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back)
 		int idx = back ? (orig - i + count) % count
 			       : (orig + i) % count;
 		WWindow *w = WMGetFromArray(panel->windows, idx);
+		const char *match;
 
-		if (w->wm_class && toupper((unsigned char) w->wm_class[0]) == ch) {
+		if (panel->mode == CYCLE_CLASS_ONLY)
+			match = w->frame->title;
+		else
+			match = w->wm_class;
+
+		if (match && toupper((unsigned char) match[0]) == ch) {
 			n = idx;
 			break;
 		}

@@ -44,6 +44,11 @@ int wGetWorkspaceNumber(WScreen *scr, const char *value);
 Bool wWorkspaceDelete(WScreen *scr, int workspace);
 void wAutoRemoveEmptyWorkspaces(WScreen *scr);
 void wWorkspaceChange(WScreen *scr, int workspace);
+/* Pointer-initiated variants set w_global.pointer_driven_change so the warp
+ * in wWorkspaceForceChange[OnHead] is skipped. */
+void wWorkspaceChangeFromPointer(WScreen *scr, int workspace);
+void wWorkspaceRelativeChangeFromPointer(WScreen *scr, int amount);
+void wWorkspaceDirectionalChangeFromPointer(WScreen *scr, int dcol, int drow);
 void wWorkspaceForceChange(WScreen *scr, int workspace);
 WMenu *wWorkspaceMenuMake(WScreen *scr, Bool titled);
 void wWorkspaceMenuUpdate(WScreen *scr, WMenu *menu);

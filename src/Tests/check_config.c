@@ -832,6 +832,8 @@ static void test_defaults(void)
 	CHECK(config->colormap_mode == WCM_POINTER);
 	CHECK(config->auto_focus == 1);
 	CHECK(config->auto_focus_across_heads == 1);
+	CHECK(config->pointer_follows_focus == 0);
+	CHECK(config->pointer_follows_monitor == 1);
 	CHECK(config->raise_delay == 0);
 	CHECK(config->circ_raise == 0);
 	CHECK(config->superfluous == 1);
@@ -1093,6 +1095,7 @@ static void test_valid_parse(void)
 			      "MoveHalfMaximizedWindowsBetweenScreens = YES; "
 			      "AlternativeHalfMaximized = YES; "
 			      "PointerWithHalfMaxWindows = YES; "
+			      "PointerFollowsFocus = YES; PointerFollowsMonitor = NO; "
 			      "HighlightActiveApp = NO; AutoArrangeIcons = YES; "
 			      "WorkspaceSpecificBack = ((solid, black), (solid, white)); "
 			      "WorkspaceBack = (solid, \"rgb:11/22/33\"); "
@@ -1236,6 +1239,8 @@ static void test_valid_parse(void)
 	CHECK(config->move_half_max_between_heads == 1);
 	CHECK(config->alt_half_maximize == 1);
 	CHECK(config->pointer_with_half_max_windows == 1);
+	CHECK(config->pointer_follows_focus == 1);
+	CHECK(config->pointer_follows_monitor == 0);
 	CHECK(config->highlight_active_app == 0);
 	CHECK(config->auto_arrange_icons == 1);
 	CHECK(strcmp(config->workspace_specific_back.spec,
@@ -2074,6 +2079,8 @@ static void test_schema_requires_restart(void)
 	CHECK(wConfigSchemaRequiresRestart("DisableDock"));
 	CHECK(!wConfigSchemaRequiresRestart("IconSize"));
 	CHECK(!wConfigSchemaRequiresRestart("FocusMode"));
+	CHECK(!wConfigSchemaRequiresRestart("PointerFollowsFocus"));
+	CHECK(!wConfigSchemaRequiresRestart("PointerFollowsMonitor"));
 	CHECK(!wConfigSchemaRequiresRestart("PixmapPath"));
 	CHECK(!wConfigSchemaRequiresRestart("NoSuchKey"));
 	CHECK(!wConfigSchemaRequiresRestart(NULL));

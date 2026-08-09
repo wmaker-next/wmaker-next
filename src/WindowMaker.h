@@ -356,6 +356,11 @@ extern struct wmaker_global_variables {
 	 * focus it steals from during the repair burst. */
 	Bool restore_focus_repair;
 
+	/* Set around a pointer-initiated switch so the PointerFollowsMonitor and
+	 * PointerFollowsFocus warps are skipped. Toggled by the
+	 * wWorkspaceChangeFromPointer wrappers, read by the force-change warp. */
+	Bool pointer_driven_change;
+
 	/*
 	 * Process WorkspaceMap Event:
 	 * this variable is set when the Workspace Map window is being displayed,

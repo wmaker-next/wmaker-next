@@ -2214,6 +2214,7 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 				scr->net_last_user_time = ev_time;
 			wNETWMShowingDesktop(scr, False);
 			wMakeWindowVisible(wwin);
+			warpPointerToFocusedWindow(wwin);
 		} else if (!wwin->flags.focused && !wwin->flags.net_demands_attention) {
 			wwin->flags.net_demands_attention = 1;
 			updateStateHint(wwin, False, False);

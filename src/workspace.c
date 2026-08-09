@@ -530,6 +530,32 @@ void wWorkspaceChange(WScreen *scr, int workspace)
 		wWorkspaceForceChange(scr, workspace);
 }
 
+/* Pointer-initiated wrappers set w_global.pointer_driven_change so the warp
+ * decision in wWorkspaceForceChange[OnHead] skips recentering the pointer. */
+void wWorkspaceChangeFromPointer(WScreen *scr, int workspace)
+{
+	Bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = True;
+	wWorkspaceChange(scr, workspace);
+	w_global.pointer_driven_change = prev;
+}
+
+void wWorkspaceRelativeChangeFromPointer(WScreen *scr, int amount)
+{
+	Bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = True;
+	wWorkspaceRelativeChange(scr, amount);
+	w_global.pointer_driven_change = prev;
+}
+
+void wWorkspaceDirectionalChangeFromPointer(WScreen *scr, int dcol, int drow)
+{
+	Bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = True;
+	wWorkspaceDirectionalChange(scr, dcol, drow);
+	w_global.pointer_driven_change = prev;
+}
+
 /* Advance one head's workspace by amount, skipping workspaces pinned to
  * other outputs so Next/Prev never lands on a workspace that cannot be
  * shown on the active head. */
@@ -882,6 +908,12 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		}
 		if (w_global.config->focus_mode == WKF_CLICK) {
 			wSetFocusTo(scr, foc);
+			if (!w_global.pointer_driven_change) {
+				if (foc)
+					warpPointerToFocusedWindow(foc);
+				else
+					warpPointerToMonitor(scr);
+			}
 		} else {
 			unsigned int mask;
 			int foo;
@@ -900,6 +932,12 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 			 */
 			if (!tmp && w_global.config->focus_mode == WKF_SLOPPY) {
 				wSetFocusTo(scr, foc);
+				if (!w_global.pointer_driven_change) {
+					if (foc)
+						warpPointerToFocusedWindow(foc);
+					else
+						warpPointerToMonitor(scr);
+				}
 			} else {
 				wSetFocusTo(scr, tmp);
 			}
@@ -1107,6 +1145,12 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 			foc = scr->focused_window;
 		if (w_global.config->focus_mode == WKF_CLICK) {
 			wSetFocusTo(scr, foc);
+			if (!w_global.pointer_driven_change) {
+				if (foc)
+					warpPointerToFocusedWindow(foc);
+				else
+					warpPointerToMonitor(scr);
+			}
 		} else {
 			unsigned int mask;
 			int foo;
@@ -1115,9 +1159,15 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 
 			if (XQueryPointer(dpy, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 				ptmp = wWindowFor(win);
-			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY)
+			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY) {
 				wSetFocusTo(scr, foc);
-			else
+				if (!w_global.pointer_driven_change) {
+					if (foc)
+						warpPointerToFocusedWindow(foc);
+					else
+						warpPointerToMonitor(scr);
+				}
+			} else
 				wSetFocusTo(scr, ptmp);
 		}
 	}
@@ -1408,7 +1458,7 @@ void wWorkspaceRestoreHeadState(WScreen *scr)
 
 static void switchWSCommand(WMenu * menu, WMenuEntry * entry)
 {
-	wWorkspaceChange(menu->frame->screen_ptr, (long)entry->clientdata);
+	wWorkspaceChangeFromPointer(menu->frame->screen_ptr, (long)entry->clientdata);
 }
 
 static void lastWSCommand(WMenu *menu, WMenuEntry *entry)
@@ -1416,7 +1466,7 @@ static void lastWSCommand(WMenu *menu, WMenuEntry *entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) entry;
 
-	wWorkspaceChange(menu->frame->screen_ptr, menu->frame->screen_ptr->last_workspace);
+	wWorkspaceChangeFromPointer(menu->frame->screen_ptr, menu->frame->screen_ptr->last_workspace);
 }
 
 static void deleteWSCommand(WMenu *menu, WMenuEntry *entry)
@@ -1438,7 +1488,7 @@ static void newWSCommand(WMenu *menu, WMenuEntry *foo)
 
 	/* autochange workspace */
 	if (ws >= 0)
-		wWorkspaceChange(menu->frame->screen_ptr, ws);
+		wWorkspaceChangeFromPointer(menu->frame->screen_ptr, ws);
 }
 
 void wWorkspaceRename(WScreen *scr, int workspace, const char *name)

@@ -46,6 +46,7 @@ typedef struct _Panel {
 	WMFrame *optF;
 	WMButton *ignB;
 	WMButton *newB;
+	WMButton *warpFocB;
 	WMButton *craisB;
 
 	char raiseDelaySelected;
@@ -96,6 +97,7 @@ static void showData(_Panel * panel)
 	 /**/ WMSetButtonSelected(panel->ignB, GetBoolForKey("IgnoreFocusClick"));
 
 	WMSetButtonSelected(panel->newB, GetBoolForKey("AutoFocus"));
+	WMSetButtonSelected(panel->warpFocB, GetBoolForKey("PointerFollowsFocus"));
 	WMSetButtonSelected(panel->craisB, GetBoolForKey("CirculateRaise"));
 }
 
@@ -115,6 +117,7 @@ static void storeData(_Panel * panel)
 
 	SetBoolForKey(WMGetButtonSelected(panel->ignB), "IgnoreFocusClick");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AutoFocus");
+	SetBoolForKey(WMGetButtonSelected(panel->warpFocB), "PointerFollowsFocus");
 	SetBoolForKey(WMGetButtonSelected(panel->craisB), "CirculateRaise");
 }
 
@@ -265,18 +268,29 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->optF, 265, 88);
 
 	panel->ignB = WMCreateSwitchButton(panel->optF);
-	WMResizeWidget(panel->ignB, 228, 50-2);
+	WMResizeWidget(panel->ignB, 228, 38);
 	WMMoveWidget(panel->ignB, 10, 4);
 	WMSetButtonText(panel->ignB, _("Do not let applications receive the click used to focus windows"));
 
 	panel->newB = WMCreateSwitchButton(panel->optF);
-	WMResizeWidget(panel->newB, 228, 35);
-	WMMoveWidget(panel->newB, 10, 52);
+	WMResizeWidget(panel->newB, 228, 22);
+	WMMoveWidget(panel->newB, 10, 42);
 	WMSetButtonText(panel->newB, _("Automatically focus new windows"));
 
+	panel->warpFocB = WMCreateSwitchButton(panel->optF);
+	WMResizeWidget(panel->warpFocB, 228, 22);
+	WMMoveWidget(panel->warpFocB, 10, 64);
+	WMSetButtonText(panel->warpFocB, _("Move pointer to focused window"));
+	WMSetBalloonTextForView(_("Moves the pointer to the center of a window when focus is set by the\n"
+		"keyboard, the window switcher, activation requests, or when a new\n"
+		"window is created. Does not move the pointer when you focus a\n"
+		"window by moving the mouse into it. Restoring windows from\n"
+		"miniwindows or dock icons also moves the pointer."),
+		WMWidgetView(panel->warpFocB));
+
 	panel->craisB = WMCreateSwitchButton(panel->optF);
-	WMResizeWidget(panel->craisB, 228, 36);
-	WMMoveWidget(panel->craisB, 10, 87);
+	WMResizeWidget(panel->craisB, 228, 38);
+	WMMoveWidget(panel->craisB, 10, 86);
 	WMSetButtonText(panel->craisB, _("Raise window when switching focus with keyboard"));
 
 	WMMapSubwidgets(panel->optF);

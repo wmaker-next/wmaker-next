@@ -283,6 +283,7 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 		if (!newFocused->flags.mapped)
 			wMakeWindowVisible(newFocused);
 		wSetFocusTo(scr, newFocused);
+		warpPointerToFocusedWindow(newFocused);
 	}
 
 	scr->flags.doing_alt_tab = 0;
