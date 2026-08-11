@@ -67,6 +67,8 @@ util/wmaker.inst
 util/wmakermsg
 util/wmclipd
 util/Tests/wmclipd_cliptest
+util/Tests/check_wmgenmenu
+util/Tests/check_wmakermsg
 util/wmgenmenu
 util/wmglyph
 util/wmiv
