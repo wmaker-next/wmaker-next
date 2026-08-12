@@ -105,6 +105,7 @@ EOF
 cat >"$WMHOME/Defaults/WMWindowAttributes" <<EOF
 {
   "xterm.XTerm" = { DontMoveOff = Yes; };
+	"notitle.XTerm" = { NoTitlebar = Yes; };
   "EwmhDriveClient.EwmhDriveClient" = { DontMoveOff = Yes; };
   "*" = { NoAppIcon = Yes; };
   DynamicRules = (
@@ -210,23 +211,16 @@ wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^driftsouth\$' 2>/dev/nul
 EWMHW=$(DISPLAY=$DPY xdotool search --name '^driftsouth$' 2>/dev/null | tail -n 1)
 [ -n "$EWMHW" ] || fatal "could not find driftsouth client window"
 
-# third client: an ewmh-client with the NoTitlebar attribute applied
-# via WMWindowAttributes (instance/class "notitle.EwmhDriveClient").
+# third client: an xterm with the NoTitlebar attribute applied via
+# WMWindowAttributes (instance/class "notitle.XTerm").
 # This is the regression case for wWindowConfigureBorders(): the frame
 # is created with the default top_width (titlebar) and the rule then
 # removes it, and the top_width-compensation must not shift the frame
 # on the initial setup path. Without the fix the frame drifts down by
 # |old top_width| per restart.
-note "spawn ewmh-client (NoTitlebar, NW gravity) at +600+200"
-EWMH_CLIENT_NAME=driftnotitle \
-EWMH_CLIENT_CLASS=EwmhDriveClient \
-EWMH_CLIENT_INSTANCE=notitle \
-EWMH_CLIENT_GRAVITY=NorthWest \
-EWMH_CLIENT_X=600 \
-EWMH_CLIENT_Y=200 \
-EWMH_CLIENT_WIDTH=240 \
-EWMH_CLIENT_HEIGHT=120 \
-DISPLAY=$DPY "$EWMH_CLIENT" >>"$LOG" 2>&1 &
+note "spawn xterm (NoTitlebar, NW gravity) at +600+200"
+DISPLAY=$DPY xterm -name notitle -geometry 60x8+600+200 -title driftnotitle \
+	-e 'sleep 600' >>"$LOG" 2>&1 &
 NOTITLEPID=$!
 echo "$NOTITLEPID" >> "$PIDFILE"
 wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^driftnotitle\$' 2>/dev/null | grep -q ." \
@@ -329,6 +323,46 @@ while [ "$cycle" -lt "$RESTARTS" ]; do
 	assert_no_drift "south-grav cycle $cycle" "$BASE_EW_FX" "$BASE_EW_FY" "$EW_FX" "$EW_FY"
 	assert_no_drift "no-title cycle $cycle"  "$BASE_NT_FX" "$BASE_NT_FY" "$NT_FX" "$NT_FY"
 done
+
+# --- cold session restore --------------------------------------------------
+note "cold session restore"
+msg -q exit >>"$LOG" 2>&1 || fatal "wmaker session save failed"
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker did not exit"
+kill "$EWMHPID" "$NOTITLEPID" "$XTPID" 2>/dev/null
+wait_for 30 pid_gone "$EWMHPID"
+wait_for 30 pid_gone "$NOTITLEPID"
+wait_for 30 pid_gone "$XTPID"
+
+# The cold restore must carry NoTitlebar from the session file rather than
+# depending on the default that was active when the window was first managed.
+sed -i '/notitle\.XTerm/d' "$WMHOME/Defaults/WMWindowAttributes"
+
+start_wmaker
+wait_for 120 wm_ready || fatal "wmaker did not come up for cold restore"
+wait_for 80 ipc_ready || fatal "wmaker IPC did not come up for cold restore"
+wait_for 120 sh -c "DISPLAY=$DPY xdotool search --name '^driftterm\$' 2>/dev/null | grep -q ." \
+	|| fatal "xterm was not restored from the session"
+XTW=$(DISPLAY=$DPY xdotool search --name '^driftterm$' 2>/dev/null | tail -n 1)
+wait_for 120 sh -c "DISPLAY=$DPY xdotool search --name '^driftnotitle\$' 2>/dev/null | grep -q ." \
+	|| fatal "no-titlebar window was not restored from the session"
+NOTITLEW=$(DISPLAY=$DPY xdotool search --name '^driftnotitle$' 2>/dev/null | tail -n 1)
+XT_GEOM=$(frame_geom "$XTW") || fatal "could not measure cold-restored xterm"
+set -- $XT_GEOM
+XT_FX=$1; XT_FY=$2
+NT_GEOM=$(frame_geom "$NOTITLEW") || fatal "could not measure cold-restored no-titlebar xterm"
+set -- $NT_GEOM
+NT_FX=$1; NT_FY=$2
+XT_EXT=$(DISPLAY=$DPY xprop -id "$XTW" _NET_FRAME_EXTENTS 2>/dev/null \
+	| sed 's/.*= //; s/,//g')
+NT_EXT=$(DISPLAY=$DPY xprop -id "$NOTITLEW" _NET_FRAME_EXTENTS 2>/dev/null \
+	| sed 's/.*= //; s/,//g')
+set -- $XT_EXT
+XT_TOP=$3
+set -- $NT_EXT
+NT_TOP=$3
+[ "$NT_TOP" -lt "$XT_TOP" ] || fatal "NoTitlebar was not restored from the session"
+assert_no_drift "xterm cold restore" "$BASE_XT_FX" "$BASE_XT_FY" "$XT_FX" "$XT_FY"
+assert_no_drift "no-title cold restore" "$BASE_NT_FX" "$BASE_NT_FY" "$NT_FX" "$NT_FY"
 
 # --- teardown --------------------------------------------------------------
 note "summary: $PASSED passed, $FAILED failed"

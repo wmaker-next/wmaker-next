@@ -92,6 +92,11 @@ static WMPropList *sName;
 static WMPropList *sWorkspace;
 static WMPropList *sWorkspaces;
 static WMPropList *sShaded;
+static WMPropList *sNoTitlebar;
+static WMPropList *sNoResizebar;
+static WMPropList *sNoCloseButton;
+static WMPropList *sNoMiniaturizeButton;
+static WMPropList *sNoBorder;
 static WMPropList *sMiniaturized;
 static WMPropList *sMaximized;
 static WMPropList *sHidden;
@@ -116,6 +121,11 @@ static void make_keys(void)
 	sWorkspace = WMCreatePLString("Workspace");
 	sWorkspaces = WMCreatePLString("Workspaces");
 	sShaded = WMCreatePLString("Shaded");
+	sNoTitlebar = WMCreatePLString("NoTitlebar");
+	sNoResizebar = WMCreatePLString("NoResizebar");
+	sNoCloseButton = WMCreatePLString("NoCloseButton");
+	sNoMiniaturizeButton = WMCreatePLString("NoMiniaturizeButton");
+	sNoBorder = WMCreatePLString("NoBorder");
 	sMiniaturized = WMCreatePLString("Miniaturized");
 	sMaximized = WMCreatePLString("Maximized");
 	sHidden = WMCreatePLString("Hidden");
@@ -171,7 +181,9 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 	unsigned mask;
 	char *class, *instance, *command = NULL, buffer[512];
 	WMPropList *win_state, *cmd, *name, *workspace;
-	WMPropList *shaded, *miniaturized, *maximized, *hidden, *geometry;
+	WMPropList *shaded, *no_titlebar, *no_resizebar, *no_close_button;
+	WMPropList *no_miniaturize_button, *no_border;
+	WMPropList *miniaturized, *maximized, *hidden, *geometry;
 	WMPropList *dock, *shortcut;
 	WMPropList *mark_key_pl = NULL;
 
@@ -208,6 +220,11 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 		workspace = WMCreatePLString(scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name);
 
 		shaded = wwin->flags.shaded ? sYes : sNo;
+		no_titlebar = WFLAGP(wwin, no_titlebar) ? sYes : sNo;
+		no_resizebar = WFLAGP(wwin, no_resizebar) ? sYes : sNo;
+		no_close_button = WFLAGP(wwin, no_close_button) ? sYes : sNo;
+		no_miniaturize_button = WFLAGP(wwin, no_miniaturize_button) ? sYes : sNo;
+		no_border = WFLAGP(wwin, no_border) ? sYes : sNo;
 		miniaturized = wwin->flags.miniaturized ? sYes : sNo;
 		snprintf(buffer, sizeof(buffer), "0x%04X", wwin->flags.maximized);
 		maximized = WMCreatePLString(buffer);
@@ -232,6 +249,11 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 						 sCommand, cmd,
 						 sWorkspace, workspace,
 						 sShaded, shaded,
+						 sNoTitlebar, no_titlebar,
+						 sNoResizebar, no_resizebar,
+						 sNoCloseButton, no_close_button,
+						 sNoMiniaturizeButton, no_miniaturize_button,
+						 sNoBorder, no_border,
 						 sMiniaturized, miniaturized,
 						 sMaximized, maximized,
 						 sHidden, hidden,
@@ -501,6 +523,36 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 	value = WMGetFromPLDictionary(win_state, sShaded);
 	if (value != NULL)
 		state->shaded = WMPLGetBool(value);
+
+	value = WMGetFromPLDictionary(win_state, sNoTitlebar);
+	if (value != NULL) {
+		state->no_titlebar = WMPLGetBool(value);
+		state->no_titlebar_set = 1;
+	}
+
+	value = WMGetFromPLDictionary(win_state, sNoResizebar);
+	if (value != NULL) {
+		state->no_resizebar = WMPLGetBool(value);
+		state->no_resizebar_set = 1;
+	}
+
+	value = WMGetFromPLDictionary(win_state, sNoCloseButton);
+	if (value != NULL) {
+		state->no_close_button = WMPLGetBool(value);
+		state->no_close_button_set = 1;
+	}
+
+	value = WMGetFromPLDictionary(win_state, sNoMiniaturizeButton);
+	if (value != NULL) {
+		state->no_miniaturize_button = WMPLGetBool(value);
+		state->no_miniaturize_button_set = 1;
+	}
+
+	value = WMGetFromPLDictionary(win_state, sNoBorder);
+	if (value != NULL) {
+		state->no_border = WMPLGetBool(value);
+		state->no_border_set = 1;
+	}
 
 	value = WMGetFromPLDictionary(win_state, sMiniaturized);
 	if (value != NULL)

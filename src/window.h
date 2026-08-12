@@ -519,6 +519,16 @@ typedef struct WSavedState {
     int miniaturized;
     int maximized;
     int shaded;
+    int no_titlebar;
+    int no_titlebar_set;
+    int no_resizebar;
+    int no_resizebar_set;
+    int no_close_button;
+    int no_close_button_set;
+    int no_miniaturize_button;
+    int no_miniaturize_button_set;
+    int no_border;
+    int no_border_set;
     int hidden;
     int auto_hide_on_unfocus;
     int auto_miniaturize_on_unfocus;
@@ -527,7 +537,7 @@ typedef struct WSavedState {
     unsigned int w;
     unsigned int h;
     unsigned window_shortcuts; /* mask like 1<<shortcut_number */
-	char *mark_key;	/* serialised mark key label */
+    char *mark_key;	/* serialised mark key label */
     unsigned tab_group_gid;    /* non-zero when this window was a tab member */
     int tab_group_idx;         /* position within the saved group */
     int tab_group_active;      /* saved active_index of the group */

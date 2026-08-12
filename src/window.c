@@ -1324,6 +1324,26 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		win_state = (WWindowState *) wWindowGetSavedState(window);
 
 	if (win_state && !withdraw) {
+		if (win_state->state->no_titlebar_set ||
+		    win_state->state->no_resizebar_set ||
+		    win_state->state->no_close_button_set ||
+		    win_state->state->no_miniaturize_button_set ||
+		    win_state->state->no_border_set) {
+			if (win_state->state->no_titlebar_set) {
+				WSETUFLAG(wwin, no_titlebar, win_state->state->no_titlebar);
+				WSETUFLAG(wwin, no_shadeable, win_state->state->no_titlebar);
+			}
+			if (win_state->state->no_resizebar_set)
+				WSETUFLAG(wwin, no_resizebar, win_state->state->no_resizebar);
+			if (win_state->state->no_close_button_set)
+				WSETUFLAG(wwin, no_close_button, win_state->state->no_close_button);
+			if (win_state->state->no_miniaturize_button_set)
+				WSETUFLAG(wwin, no_miniaturize_button,
+					  win_state->state->no_miniaturize_button);
+			if (win_state->state->no_border_set)
+				WSETUFLAG(wwin, no_border, win_state->state->no_border);
+		}
+
 		if (win_state->state->hidden > 0)
 			wwin->flags.hidden = win_state->state->hidden;
 
@@ -2613,6 +2633,8 @@ static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
 
 	old_applied = wwin->regex_applied_mask;
 
+	/* Dynamic rules matched at map time take precedence over the
+	 * session-restored no_* flags. */
 #define REAPPLY_FIELD(flag) \
 	do { \
 		if (regex_mask.flag) { \
