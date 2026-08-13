@@ -570,7 +570,7 @@
 	  "(\"None\", \"None\", \"None\", \"None\")", NULL, 4, 4, \
 	  WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_IMAGES, "SwitchPanelImages", SWITCH_PANEL_IMAGES, switch_panel_images, \
-	  "(swtile.png, swback.png, 30, 40)", NULL, INT_MIN, INT_MAX, \
+	  "(swtile.png, swback.png, swtile_arrow.png, 30, 40)", NULL, INT_MIN, INT_MAX, \
 	  WCFG_RUNTIME_RELOAD, 0) \
 	_(MODIFIER_KEY_LABELS, "ModifierKeyLabels", STRING_ARRAY, modifier_key_labels, \
 	  "(\"Shift+\", \"Control+\", \"Mod1+\", \"Mod2+\", \"Mod3+\", \"Mod4+\", \"Mod5+\")", \

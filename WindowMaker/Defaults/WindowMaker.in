@@ -180,7 +180,7 @@
 	MenuTextBack = (solid, "rgb:aa/aa/aa");
 	IconTitleColor = white;
 	IconTitleBack = black;
-	SwitchPanelImages = (swtile.png, swback.png, 30, 40);
+	SwitchPanelImages = (swtile.png, swback.png, swtile_arrow.png, 30, 40);
 	ModifierKeyLabels = ("Shift+", "Control+", "Mod1+", "Mod2+", "Mod3+", "Mod4+", "Mod5+");
 	ModifierKeyShortLabels = ("Sh+", "^", "M1+", "M2+", "M3+", "M4+", "M5+", "M+", "A+");
 	FrameBorderWidth = 1;

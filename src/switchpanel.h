@@ -28,16 +28,40 @@ typedef enum {
 	CYCLE_GROUP         /* app-group: one tile per WM_CLASS  */
 } CycleMode;
 
+typedef enum { STRIP_MAIN, STRIP_SUB } Strip;
+
 WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode);
 
 void wSwitchPanelDestroy(WSwitchPanel *panel);
 
-WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, CycleMode mode);
-WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back);
-WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back);
+WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimized, CycleMode mode, Strip strip);
+WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back, Strip strip);
+WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, Strip strip);
 
 WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event);
 
 Window wSwitchPanelGetWindow(WSwitchPanel *swpanel);
+
+/* Drill into the highlighted group's windows (sub-panel).
+ * Returns the first (MRU) window of the group. */
+WWindow *wSwitchPanelDrill(WSwitchPanel *panel);
+
+/* Show the sub-panel without entering drilled mode, so arrow keys
+ * stay on the main strip. Returns the group rep on the main strip. */
+WWindow *wSwitchPanelPreviewDrill(WSwitchPanel *panel);
+
+/* Rebuild the sub-strip for the group now highlighted on the main strip.
+ * Returns the new group's first (MRU) window. */
+WWindow *wSwitchPanelRefreshSub(WSwitchPanel *panel);
+
+/* Collapse the sub-strip and return focus to the main strip. Returns the
+ * group rep now highlighted on the main strip. */
+WWindow *wSwitchPanelUndrill(WSwitchPanel *panel);
+
+/* True once the sub-strip has been opened with wSwitchPanelDrill. */
+Bool wSwitchPanelIsDrilled(WSwitchPanel *panel);
+
+/* True if the sub-strip is shown as a preview (not focused). */
+Bool wSwitchPanelIsDrillPreview(WSwitchPanel *panel);
 
 #endif /* _SWITCHPANEL_H_ */

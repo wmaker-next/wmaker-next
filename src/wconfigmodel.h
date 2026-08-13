@@ -29,6 +29,7 @@ typedef struct WConfigStringArray {
 
 typedef struct WConfigSwitchPanelImages {
 	char *tile;
+	char *tile_arrow;
 	char *background;
 	int center_width;
 	int center_height;

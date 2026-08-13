@@ -2471,6 +2471,9 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		if (prefs->swtileImage)
 			RReleaseImage(prefs->swtileImage);
 		prefs->swtileImage = NULL;
+		if (prefs->swtileArrowImage)
+			RReleaseImage(prefs->swtileArrowImage);
+		prefs->swtileArrowImage = NULL;
 		release_switch_panel_back_images(prefs);
 		return;
 	}
@@ -2545,6 +2548,23 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 			wwarning(_("Could not load image \"%s\" for option \"%s\""),
 				 path, "SwitchPanelImages");
 		wfree(path);
+	}
+
+	if (prefs->swtileArrowImage)
+		RReleaseImage(prefs->swtileArrowImage);
+	prefs->swtileArrowImage = NULL;
+	if (images->tile_arrow) {
+		path = FindImage(w_global.config->pixmap_path, images->tile_arrow);
+		if (!path) {
+			wwarning(_("Could not find image \"%s\" for option \"%s\""),
+				 images->tile_arrow, "SwitchPanelImages");
+		} else {
+			prefs->swtileArrowImage = RLoadImage(scr->rcontext, path, 0);
+			if (!prefs->swtileArrowImage)
+				wwarning(_("Could not load image \"%s\" for option \"%s\""),
+					 path, "SwitchPanelImages");
+			wfree(path);
+		}
 	}
 }
 

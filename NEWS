@@ -3,6 +3,23 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Application-group switch panel sub-panel (drill)
+-------------------------------------------------
+
+The app-group switch panel now supports a sub-panel for
+drilling into a group's individual windows. While the app-group panel
+(GroupNextKey, default Mod4+Tab) is open, pressing Down or grave opens a
+second icon strip below the group strip showing the windows of the
+highlighted application, and moves the panel focus to it. Up moves
+focus back to the group strip and collapses the sub-panel. Left/Right
+navigate whichever strip currently has focus: groups on the main strip,
+individual windows on the sub strip. Tab/Shift+Tab always switch
+groups. Home/End and letter keys act on the focused strip (letters
+match window titles in the sub strip, WM_CLASS on the main strip). No
+new key binding is needed -- the drill keys are handled inside the open
+panel, so the top-level Mod4+grave (GroupWindowNextKey) binding is
+unaffected.
+
 Application-group switch panel (GroupNextKey / GroupPrevKey)
 ------------------------------------------------------------
 

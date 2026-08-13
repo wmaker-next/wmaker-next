@@ -492,9 +492,12 @@ static void switch_panel_images_clear(WConfigSwitchPanelImages *images)
 		return;
 	if (images->tile)
 		wfree(images->tile);
+	if (images->tile_arrow)
+		wfree(images->tile_arrow);
 	if (images->background)
 		wfree(images->background);
 	images->tile = NULL;
+	images->tile_arrow = NULL;
 	images->background = NULL;
 	images->center_width = 0;
 	images->center_height = 0;
@@ -528,7 +531,7 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 					    WMPropList *value,
 					    WConfigSwitchPanelImages *out)
 {
-	const char *tile, *background;
+	const char *tile, *background, *tile_arrow;
 	int count, center_width, center_height;
 
 	if (!value || !WMIsPLArray(value)) {
@@ -541,7 +544,7 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 	if (count == 0)
 		return True;
 
-	if (count != 1 && count != 4) {
+	if (count != 1 && count != 3 && count != 4 && count != 5) {
 		wwarning(_("Invalid number of arguments for option \"%s\""),
 			 entry->key);
 		return False;
@@ -556,15 +559,42 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 	if (count == 1)
 		return True;
 
-	if (!plist_string_at(value, 1, &background) ||
-	    !plist_int_at(value, 2, &center_width) ||
-	    !plist_int_at(value, 3, &center_height)) {
+	if (!plist_string_at(value, 1, &background)) {
 		wwarning(_("Invalid arguments for option \"%s\""), entry->key);
 		switch_panel_images_clear(out);
 		return False;
 	}
-
 	out->background = wstrdup(background);
+
+	/* (tile, background, tile_arrow) */
+	if (count == 3) {
+		if (plist_string_at(value, 2, &tile_arrow))
+			out->tile_arrow = wstrdup(tile_arrow);
+		return True;
+	}
+
+	/* (tile, background, center_width, center_height) — legacy 4-element */
+	if (count == 4) {
+		if (!plist_int_at(value, 2, &center_width) ||
+		    !plist_int_at(value, 3, &center_height)) {
+			wwarning(_("Invalid arguments for option \"%s\""), entry->key);
+			switch_panel_images_clear(out);
+			return False;
+		}
+		out->center_width = center_width;
+		out->center_height = center_height;
+		return True;
+	}
+
+	/* (tile, background, tile_arrow, center_width, center_height) */
+	if (!plist_string_at(value, 2, &tile_arrow) ||
+	    !plist_int_at(value, 3, &center_width) ||
+	    !plist_int_at(value, 4, &center_height)) {
+		wwarning(_("Invalid arguments for option \"%s\""), entry->key);
+		switch_panel_images_clear(out);
+		return False;
+	}
+	out->tile_arrow = wstrdup(tile_arrow);
 	out->center_width = center_width;
 	out->center_height = center_height;
 	return True;
@@ -870,6 +900,7 @@ static void copy_entry_value(WConfig *dst, const WConfig *src,
 		src_sp = (const WConfigSwitchPanelImages *)src_base;
 		dst_sp = (WConfigSwitchPanelImages *)dst_base;
 		dst_sp->tile = string_dup(src_sp->tile);
+		dst_sp->tile_arrow = string_dup(src_sp->tile_arrow);
 		dst_sp->background = string_dup(src_sp->background);
 		dst_sp->center_width = src_sp->center_width;
 		dst_sp->center_height = src_sp->center_height;
@@ -955,6 +986,7 @@ static Bool switch_panel_images_equal(const WConfigSwitchPanelImages *old_images
 				      const WConfigSwitchPanelImages *new_images)
 {
 	return string_values_equal(old_images->tile, new_images->tile) &&
+	    string_values_equal(old_images->tile_arrow, new_images->tile_arrow) &&
 	    string_values_equal(old_images->background, new_images->background) &&
 	    old_images->center_width == new_images->center_width &&
 	    old_images->center_height == new_images->center_height;

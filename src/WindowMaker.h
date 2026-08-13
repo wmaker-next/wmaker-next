@@ -260,6 +260,7 @@ extern struct WPreferences {
 	unsigned int supports_tiff;        /* Use tiff files */
 
 	RImage *swtileImage;
+	RImage *swtileArrowImage;
 	RImage *swbackImage[9];
 
 	union WTexture *wsmbackTexture;

@@ -85,6 +85,16 @@ wm_class_of() {
     DISPLAY=$DPY xprop -id "$1" WM_CLASS 2>/dev/null \
         | sed -n 's/.*WM_CLASS(STRING) = "[^"]*", "\([^"]*\)".*/\1/p'
 }
+panel_window() {
+    DISPLAY=$DPY xdotool search --name '^Window Maker Switch Panel$' 2>/dev/null \
+        | tail -n 1
+}
+panel_height() {
+    panel=$(panel_window)
+    [ -n "$panel" ] || return 1
+    DISPLAY=$DPY xwininfo -id "$panel" 2>/dev/null \
+        | sed -n 's/^  Height: \([0-9][0-9]*\)$/\1/p'
+}
 
 for tool in Xephyr xdotool xterm xprop xwininfo wmctrl; do
     command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not found"
@@ -236,6 +246,28 @@ check "Mod4+Tab changed WM_CLASS ($before_class -> $after_class)" \
     [ "$before_class" != "$after_class" ]
 check "wmaker alive after app-group cycle" ipc_ready
 
+note "CYCLE_GROUP: held Super survives auto-drill and modifier repeat"
+xdo windowactivate "$XA"; sleep 0.3
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key a; sleep 1.0
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup super; sleep 0.3
+check "wmaker alive after single-window auto-drill" ipc_ready
+
+xdo windowactivate "$GM"; sleep 0.3
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 1.0
+drill_height=$(panel_height)
+check "multi-window auto-drill expanded the switch panel (height $drill_height)" \
+    [ "${drill_height:-0}" -gt 100 ]
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup super; sleep 0.3
+check "wmaker alive after multi-window auto-drill" ipc_ready
+
 # --- 4. Letter-key lookup on app-group panel --------------------------------
 note "letter-key: Mod4+Tab then 'b' selects a Beta-class window"
 # Focus xtA (class XTerm) so the app-group panel starts from a non-Beta class.
@@ -323,6 +355,197 @@ LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
     "$WDWRITE" WindowMaker SwitchPanelIconSize 64
 msg -q reconfigure || true
 sleep 0.2
+
+# --- 9. Drill into a group's windows (grave/Down + Right) ---------------------
+note "CYCLE_GROUP drill: Down drills, Right cycles within the sub-strip"
+# Re-establish MRU so the panel order is deterministic: Alpha, Beta, Gamma,
+# then the two XTerms. xtB is the most-recent XTerm so it is the group rep.
+for w in "$AC" "$BT" "$GM" "$XA" "$XB"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+before=$(active_window)
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+# Jump to the XTerm group (class starts with 'X').
+xdo key x; sleep 0.2
+# Drill into the XTerm sub-strip with Down.
+xdo key Down; sleep 0.2
+# Advance to the next window in the sub-strip with Right.
+xdo key Right; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+check "drill+Right focused a window" [ -n "$after" ]
+check "drill+Right stayed within XTerm (got $(wm_class_of "$after"))" \
+    [ "$(wm_class_of "$after")" = "XTerm" ]
+check "drill+Right selected a different window than the pre-panel focus ($before -> $after)" \
+    [ "$before" != "$after" ]
+check "wmaker alive after drill+Right" ipc_ready
+
+# --- 10. Group switch while drilled (Tab) --------------------------------------
+note "CYCLE_GROUP drill: Tab switches groups while drilled"
+for w in "$AC" "$BT" "$GM" "$XA" "$XB"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+xdo key Down; sleep 0.2
+# Now drilled into XTerm. Press Tab to switch to the next group.
+xdo key Tab; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+after_class=$(wm_class_of "$after")
+check "group switch while drilled left XTerm (got $after_class)" \
+    [ "$after_class" != "XTerm" ]
+check "group switch while drilled focused a real group window" [ -n "$after" ]
+check "wmaker alive after drilled group switch" ipc_ready
+
+# --- 11. Confirm and cancel while drilled -------------------------------------
+note "CYCLE_GROUP drill: confirm and cancel while drilled"
+# Confirm: drill + Right + release Mod4 focuses the selected XTerm window.
+for w in "$AC" "$BT" "$GM" "$XA" "$XB"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+before=$(active_window)
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+xdo key Down; sleep 0.2
+xdo key Right; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+check "drill confirm focused an XTerm window (got $(wm_class_of "$after"))" \
+    [ "$(wm_class_of "$after")" = "XTerm" ]
+check "drill confirm moved focus from $before to $after" [ "$before" != "$after" ]
+
+# Cancel: drill + Escape restores focus to the pre-panel window.
+xdo windowactivate "$XB"; sleep 0.3
+before=$(active_window)
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+xdo key Down; sleep 0.2
+xdo key Escape; sleep 0.3
+xdo keyup super; sleep 0.2
+after=$(active_window)
+check "drill Escape restored focus to $before (got $after)" [ "$before" = "$after" ]
+check "wmaker alive after drill cancel" ipc_ready
+
+# --- 12. Up undrills back to the main strip ------------------------------------
+note "CYCLE_GROUP drill: Up undrills back to the main strip"
+for w in "$AC" "$BT" "$GM" "$XA" "$XB"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+# Drill into XTerm sub-strip.
+xdo key Down; sleep 0.2
+# Up undrills back to the main strip.
+xdo key Up; sleep 0.2
+# Now on the main strip, Right should switch to a different group.
+xdo key Right; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+after_class=$(wm_class_of "$after")
+check "undrill+Right switched groups away from XTerm (got $after_class)" \
+    [ "$after_class" != "XTerm" ]
+check "wmaker alive after Up-undrill" ipc_ready
+
+# --- 13. Re-drill after undrill shows window icons -------------------------------
+note "CYCLE_GROUP drill: re-drill after undrill shows window icons"
+for w in "$AC" "$BT" "$GM" "$XA" "$XB"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+# Drill into XTerm, undrill, switch group, re-drill into the new group.
+xdo key Down; sleep 0.2
+xdo key Up; sleep 0.2
+xdo key Right; sleep 0.2
+xdo key Down; sleep 0.2
+# The re-drilled sub-strip must show windows: Right should cycle to a
+# different window within the new group.
+xdo key Right; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+after_class=$(wm_class_of "$after")
+check "re-drill after undrill focused a window" [ -n "$after" ]
+check "re-drill after undrill did not stay on XTerm (got $after_class)" \
+    [ "$after_class" != "XTerm" ]
+check "wmaker alive after re-drill" ipc_ready
+
+# --- 14. Single-window group does not drill -------------------------------------
+note "CYCLE_GROUP drill: single-window group does not drill"
+# Alpha is a single-window group (class Alpha). Drill into it with Down
+# should be a no-op: the sub-panel stays closed, and Right still acts on
+# the main strip (switching groups) instead of cycling a sub-strip.
+for w in "$XA" "$XB" "$AC"; do
+    xdo windowactivate "$w"; sleep 0.2
+done
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key a; sleep 0.2
+# Down on a single-window group: no drill, stay on main strip.
+xdo key Down; sleep 0.2
+# Right should still switch groups (main strip active), not cycle a sub.
+xdo key Right; sleep 0.2
+xdo keyup super; sleep 0.3
+after=$(active_window)
+after_class=$(wm_class_of "$after")
+check "single-window drill+Right switched groups away from Alpha (got $after_class)" \
+    [ "$after_class" != "Alpha" ]
+check "wmaker alive after single-window drill" ipc_ready
+
+# --- 15. Mixed app groups survive delayed auto-drill ------------------------
+note "CYCLE_GROUP: mixed multi-window and standalone groups with auto-drill"
+# XTerm has two windows. Alpha, Beta, and Gamma are standalone groups.
+xdo windowactivate "$XB"; sleep 0.3
+before=$(active_window)
+before_class=$(wm_class_of "$before")
+xdo keydown super
+xdo key Tab
+sleep 1.1
+# A repeated modifier press must not close the panel after auto-drill.
+xdo keydown super
+xdo key Tab
+sleep 0.2
+xdo keyup super
+sleep 0.3
+after=$(active_window)
+after_class=$(wm_class_of "$after")
+check "mixed-group delayed auto-drill moved focus away from $before" [ "$before" != "$after" ]
+check "mixed-group delayed auto-drill selected another app group ($before_class -> $after_class)" \
+    [ "$before_class" != "$after_class" ]
+check "wmaker alive after mixed-group delayed auto-drill" ipc_ready
+
+# --- 16. Forward/backward cycling after repeated auto-drill -----------------
+note "CYCLE_GROUP: forward and backward after repeated auto-drill waits"
+xdo windowactivate "$AC"; sleep 0.3
+xdo keydown super
+xdo key Tab
+xdo key x
+sleep 1.0
+# Move to a standalone group, wait, then return to the multi-window group.
+xdo key Tab
+sleep 1.0
+xdo keydown shift
+xdo key Tab
+sleep 0.2
+xdo keyup shift
+# Repeat both directions after the drill preview has been refreshed.
+xdo key Tab
+sleep 1.0
+xdo keydown shift
+xdo key Tab
+sleep 0.2
+xdo keyup shift
+xdo keyup super
+sleep 0.3
+check "repeated forward/backward Super+Tab kept XTerm selected" \
+    [ "$(wm_class_of "$(active_window)")" = "XTerm" ]
+check "wmaker alive after repeated forward/backward auto-drill" ipc_ready
 
 # --- teardown --------------------------------------------------------------
 note "switchpanel drive summary"
