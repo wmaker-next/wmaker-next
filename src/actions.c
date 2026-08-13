@@ -1668,6 +1668,16 @@ void wIconifyWindow(WWindow *wwin)
 			animateResize(wwin->screen_ptr, wwin->frame_x, wwin->frame_y,
 				      wwin->frame->core->width, wwin->frame->core->height, ix, iy, iw, ih);
 #endif
+	} else {
+		/* window was not visible yet (e.g. session-restore iconify
+		 * before the frame was mapped), still set WM_STATE to
+		 * IconicState so the client and downstream consumers see
+		 * the correct state */
+		if (w_global.config->disable_miniwindows || wwin->flags.net_handle_icon
+		    || !wwin->icon)
+			wClientSetState(wwin, IconicState, None);
+		else
+			wClientSetState(wwin, IconicState, wwin->icon->icon_win);
 	}
 
 	wwin->flags.skip_next_animation = 0;
@@ -1705,7 +1715,8 @@ void wIconifyWindow(WWindow *wwin)
 			wSetFocusTo(wwin->screen_ptr, NULL);
 		}
 #ifdef USE_ANIMATIONS
-		if (!wwin->screen_ptr->flags.startup) {
+		if (!wwin->screen_ptr->flags.startup &&
+		    !wwin->flags.restore_iconified) {
 			/* Catch up with events not processed while animation was running */
 			Window clientwin = wwin->client_win;
 
@@ -1773,6 +1784,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	}
 
 	wwin->flags.miniaturized = 0;
+	wwin->flags.restore_iconified = 0;
 
 	if (!netwm_hidden && !wwin->flags.shaded)
 		wwin->flags.mapped = 1;

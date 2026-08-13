@@ -754,6 +754,7 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 	} else if (scr->netdata->show_desktop != NULL) {
 		WWindow **tmp;
 		for (tmp = scr->netdata->show_desktop; *tmp; ++tmp) {
+			(*tmp)->flags.restore_iconified = 0;
 			wDeiconifyWindow(*tmp);
 			(*tmp)->flags.net_show_desktop = 0;
 		}
@@ -2204,6 +2205,12 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		}
 
 		if (allow) {
+			/* A client must not undo the saved minimized state while it is
+			 * being restored. Pager requests still represent explicit user
+			 * activation and remain actionable. */
+			if (wwin->flags.restore_iconified && source != 2)
+				return True;
+
 			/* an honoured non-pager request carries a user-activity
 			 * timestamp, advance the focus-stealing baseline so a
 			 * later request with an older stamp is recognised as

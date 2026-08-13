@@ -449,7 +449,7 @@ static WWindow *findManagedWindow(WScreen *scr, const char *instance,
 		     wwin->transient_for == wwin->screen_ptr->root_win) &&
 		    WMStrEqual(instance, wwin->wm_instance) &&
 		    WMStrEqual(class, wwin->wm_class) &&
-		    WMStrEqual(command, wwin->wm_command))
+		    wWindowCommandsMatch(command, wwin->wm_command))
 			return wwin;
 		wwin = wwin->prev;
 	}
@@ -461,8 +461,23 @@ static pid_t execCommand(WScreen *scr, char *command)
 	pid_t pid;
 	char **argv = NULL;
 	int argc;
+	char *single_command;
 
 	wtokensplit(command, &argv, &argc);
+
+	if (!argc)
+		return 0;
+
+	/* Some clients report the complete command as one quoted WM_COMMAND
+	 * element. Keep the original command for state matching, but split
+	 * that element before spawning the replacement process. */
+	if (argc == 1 && strchr(argv[0], ' ') != NULL &&
+	    access(argv[0], X_OK) != 0) {
+		single_command = wstrdup(argv[0]);
+		wtokenfree(argv, argc);
+		wtokensplit(single_command, &argv, &argc);
+		wfree(single_command);
+	}
 
 	if (!argc)
 		return 0;
@@ -758,4 +773,73 @@ void wSessionRestoreLastWorkspace(WScreen * scr)
 
 	if (w != scr->current_workspace && w < scr->workspace_count)
 		wWorkspaceChange(scr, w);
+}
+
+/* Pre-load non-dock saved states into windowState so manageAllWindows can
+ * match adopted windows. wSessionRestoreState runs after manageAllWindows,
+ * so without this adopted windows miss their saved miniaturized state.
+ * Unconsumed pid=0 entries are cleaned up before relaunching unmatched apps. */
+void wSessionQueueSavedState(WScreen *scr)
+{
+	WMPropList *apps, *win_info, *cmd, *value;
+	char *instance, *class, *command;
+	WSavedState *state;
+	int i, count;
+
+	make_keys();
+
+	if (!scr->session_state)
+		return;
+
+	WMPLSetCaseSensitive(True);
+
+	apps = WMGetFromPLDictionary(scr->session_state, sApplications);
+	if (!apps)
+		goto cleanup;
+
+	count = WMGetPropListItemCount(apps);
+	for (i = 0; i < count; i++) {
+		win_info = WMGetFromPLArray(apps, i);
+
+		cmd = WMGetFromPLDictionary(win_info, sCommand);
+		if (!cmd || !WMIsPLString(cmd))
+			continue;
+		command = WMGetFromPLString(cmd);
+		if (!command)
+			continue;
+
+		value = WMGetFromPLDictionary(win_info, sName);
+		if (!value)
+			continue;
+
+		ParseWindowName(value, &instance, &class, "session-queue");
+		if (!instance && !class)
+			continue;
+
+		/* skip dock/clip/drawer entries (they have Dock = ...) */
+		value = WMGetFromPLDictionary(win_info, sDock);
+		if (value)
+			goto next;
+
+		state = getWindowState(scr, win_info);
+
+		wWindowAddSavedState(instance, class, command, 0, state);
+next:
+		if (instance)
+			wfree(instance);
+		if (class)
+			wfree(class);
+	}
+
+cleanup:
+	WMPLSetCaseSensitive(False);
+}
+
+/* Remove unmatched (pid=0) saved states queued by wSessionQueueSavedState
+ * but not consumed by manageAllWindows, so wSessionRestoreState does not
+ * double-launch adopted apps. The saved-state list is process-wide, so
+ * there is no per-screen argument. */
+void wSessionCleanupUnmatchedSavedState(void)
+{
+	wWindowDeleteUnmatchedSavedStates();
 }

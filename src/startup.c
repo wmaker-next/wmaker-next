@@ -726,7 +726,16 @@ void StartUp(Bool defaultScreenOnly)
 		if (!wPreferences.flags.nodock && wScreen[j]->dock)
 			wScreen[j]->last_dock = wScreen[j]->dock;
 
+		/* Pre-load saved states from WMState so manageAllWindows can
+		 * match adopted windows against their saved state.
+		 * wSessionRestoreState runs after manageAllWindows. */
+		if (wPreferences.flags.restarting == 0 && !wPreferences.flags.norestore)
+			wSessionQueueSavedState(wScreen[j]);
+
 		manageAllWindows(wScreen[j], wPreferences.flags.restarting == 2);
+
+		if (wPreferences.flags.restarting == 0 && !wPreferences.flags.norestore)
+			wSessionCleanupUnmatchedSavedState();
 
 		/* restore saved menus */
 		wMenuRestoreState(wScreen[j]);
@@ -975,6 +984,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 
 				wwin->flags.skip_next_animation = 1;
 				wwin->flags.miniaturized = 0;
+				wwin->flags.restore_iconified = 1;
 				wIconifyWindow(wwin);
 			} else {
 				wClientSetState(wwin, NormalState, None);

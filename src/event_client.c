@@ -38,6 +38,7 @@
 #include "wmspec.h"
 #include "screen.h"
 #include "event.h"
+#include "properties.h"
 
 
 static int matchWindow(const void *item, const void *cdata)
@@ -58,7 +59,7 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 			wUnshadeWindow(wwin);
 		}
 		/* deiconify window */
-		if (wwin->flags.miniaturized) {
+		if (wwin->flags.miniaturized && !wwin->flags.restore_iconified) {
 			wDeiconifyWindow(wwin);
 		} else if (wwin->flags.hidden) {
 			WApplication *wapp = wApplicationOf(wwin->main_window);
@@ -99,7 +100,8 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 
 	if (wwin) {
-		wClientSetState(wwin, NormalState, None);
+		if (!wwin->flags.miniaturized && !wwin->flags.hidden)
+			wClientSetState(wwin, NormalState, None);
 		if (wwin->flags.maximized) {
 			wMaximizeWindow(wwin, wwin->flags.maximized,
 					wGetHeadForWindow(wwin));
@@ -112,6 +114,8 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 		if (wwin->flags.miniaturized) {
 			wwin->flags.miniaturized = 0;
 			wwin->flags.skip_next_animation = 1;
+			/* restore_iconified is only granted by the session
+			 * paths, not for the client's own iconic hint */
 			wIconifyWindow(wwin);
 		}
 		if (wwin->flags.fullscreen) {
@@ -190,12 +194,26 @@ static void handleMapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 {
 	const xcb_map_notify_event_t *e = (const xcb_map_notify_event_t *)xe;
 	WWindow *wwin;
+	WXCookie state_ck;
+	int wm_state;
 	(void) ev;
 
 	wwin = wWindowFor(e->event);
 	if (wwin && wwin->client_win == e->event) {
+		state_ck = WXReqFormat32(dpy, e->event, w_global.atom.wm.state,
+					 w_global.atom.wm.state, 1);
+		wm_state = PropRcvWindowState(state_ck);
+<<<<<<< Updated upstream
+		if (wm_state == IconicState && !wwin->flags.miniaturized) {
+=======
+		if (wm_state == XCB_ICCCM_WM_STATE_ICONIC && !wwin->flags.miniaturized)
+>>>>>>> Stashed changes
+			wwin->flags.miniaturized = 1;
 		if (wwin->flags.miniaturized) {
-			wDeiconifyWindow(wwin);
+			if (!wwin->flags.restore_iconified) {
+				wDeiconifyWindow(wwin);
+			}
+			/* else: keep iconic, skip wWindowMap + NormalState */
 		} else {
 			XGrabServer(dpy);
 			wWindowMap(wwin);

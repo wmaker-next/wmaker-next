@@ -430,6 +430,11 @@ typedef struct WWindow {
 		 * wWindowConfigureBorders() and the first dynamic-rule
 		 * apply via wWindowReapplyDecorativeAttrs() at map time. */
 		unsigned int initializing:1;
+		unsigned int restore_iconified:1;	/* iconified by session
+						 * restore, not by the user,
+						 * suppress deiconify on client
+						 * re-map and re-queue state
+						 * if unmanaged */
 	} flags;				/* state of the window */
 
 	struct WIcon *icon;			/* Window icon when miminized
@@ -680,6 +685,7 @@ void wWindowUnmap(WWindow *wwin);
 pid_t wGetWindowPid(Window win);
 
 void wWindowDeleteSavedStatesForPID(pid_t pid);
+void wWindowDeleteUnmatchedSavedStates(void);
 
 WMagicNumber wWindowAddSavedState(const char *instance, const char *class, const char *command,
                                   pid_t pid, WSavedState *state);
@@ -687,6 +693,8 @@ WMagicNumber wWindowAddSavedState(const char *instance, const char *class, const
 WMagicNumber wWindowGetSavedState(Window win);
 
 void wWindowDeleteSavedState(WMagicNumber id);
+
+Bool wWindowCommandsMatch(const char *saved, const char *current);
 
 Bool wWindowIsFullyCovered(WWindow *wwin);
 Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured);

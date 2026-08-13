@@ -37,6 +37,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <ctype.h>
+#include <unistd.h>
 
 /* For getting mouse wheel mappings from WINGs */
 #include <WINGs/WINGs.h>
@@ -1350,8 +1351,10 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 		if (win_state->state->shaded > 0 && !WFLAGP(wwin, no_shadeable))
 			wwin->flags.shaded = win_state->state->shaded;
 
-		if (win_state->state->miniaturized > 0 && !WFLAGP(wwin, no_miniaturizable))
+		if (win_state->state->miniaturized > 0 && !WFLAGP(wwin, no_miniaturizable)) {
 			wwin->flags.miniaturized = win_state->state->miniaturized;
+			wwin->flags.restore_iconified = 1;
+		}
 
 		if (win_state->state->maximized > 0)
 			wwin->flags.maximized = win_state->state->maximized;
@@ -2345,6 +2348,21 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	}
 
 	wNETCleanupFrameExtents(wwin);
+
+	/* Re-queue saved state for session-restored iconified windows so a
+	 * replacement window the client maps during startup also gets
+	 * iconified. Startup-only: the queue exists for the replacement
+	 * window of the startup adopt, a runtime close must not arm
+	 * force-iconify plus the restore lock for the next launch of the
+	 * command. Cleaned up by wWindowDeleteSavedStatesForPID on exit. */
+	if (scr->flags.startup && wwin->flags.restore_iconified && wwin->wm_command) {
+		WSavedState *state = wmalloc(sizeof(WSavedState));
+
+		state->workspace = -1;
+		state->miniaturized = 1;
+		wWindowAddSavedState(wwin->wm_instance, wwin->wm_class,
+				     wwin->wm_command, wwin->client_pid, state);
+	}
 
 	wWindowDestroy(wwin);
 	wLayoutApply(scr, wwin_workspace);
@@ -4234,6 +4252,59 @@ WMagicNumber wWindowAddSavedState(const char *instance, const char *class,
 	return wstate;
 }
 
+static void splitCommandForMatch(const char *command, char ***argv, int *argc)
+{
+	char *copy, *single_command;
+
+	copy = wstrdup(command);
+	wtokensplit(copy, argv, argc);
+	wfree(copy);
+
+	/* A sole whitespace-bearing token is normally an executable path.
+	 * Launchers that instead put the whole command line in one WM_COMMAND
+	 * element leave a non-executable string, so unpack only that form. */
+	if (*argc == 1 && strchr((*argv)[0], ' ') != NULL &&
+	    access((*argv)[0], X_OK) != 0) {
+		single_command = wstrdup((*argv)[0]);
+		wtokenfree(*argv, *argc);
+		*argv = NULL;
+		wtokensplit(single_command, argv, argc);
+		wfree(single_command);
+	}
+}
+
+Bool wWindowCommandsMatch(const char *saved, const char *current)
+{
+	char **saved_argv = NULL, **current_argv = NULL;
+	int saved_argc, current_argc, i;
+	Bool match = False;
+
+	if (!saved || !current)
+		return WMStrEqual(saved, current);
+
+	if (WMStrEqual(saved, current))
+		return True;
+
+	splitCommandForMatch(saved, &saved_argv, &saved_argc);
+	splitCommandForMatch(current, &current_argv, &current_argc);
+
+	if (saved_argc != current_argc)
+		goto cleanup;
+
+	match = True;
+	for (i = 0; i < saved_argc; i++) {
+		if (!WMStrEqual(saved_argv[i], current_argv[i])) {
+			match = False;
+			break;
+		}
+	}
+
+cleanup:
+	wtokenfree(saved_argv, saved_argc);
+	wtokenfree(current_argv, current_argc);
+	return match;
+}
+
 WMagicNumber wWindowGetSavedState(Window win)
 {
 	char *instance, *class, *command = NULL;
@@ -4250,7 +4321,7 @@ WMagicNumber wWindowGetSavedState(Window win)
 		while (wstate) {
 			if (WMStrEqual(instance, wstate->instance) &&
 			    WMStrEqual(class, wstate->class) &&
-			    WMStrEqual(command, wstate->command)) {
+			    wWindowCommandsMatch(wstate->command, command)) {
 				break;
 			}
 			wstate = wstate->next;
@@ -4315,6 +4386,19 @@ void wWindowDeleteSavedStatesForPID(pid_t pid)
 			}
 			tmp = tmp->next;
 		}
+	}
+}
+
+void wWindowDeleteUnmatchedSavedStates(void)
+{
+	WWindowState *wstate, *next;
+
+	wstate = windowState;
+	while (wstate) {
+		next = wstate->next;
+		if (wstate->pid == 0)
+			wWindowDeleteSavedState(wstate);
+		wstate = next;
 	}
 }
 
