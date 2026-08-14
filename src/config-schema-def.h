@@ -189,6 +189,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(EDGE_RESISTANCE, "EdgeResistance", INT, edge_resistance, "30", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(WINDOW_GAP, "WindowGap", INT, window_gap, "0", \
+	  NULL, 0, 50, WCFG_RUNTIME_RELOAD, 0) \
 	_(RESIZE_INCREMENT, "ResizeIncrement", INT, resize_increment, "0", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ATTRACTION, "Attraction", BOOL, attract, "NO", \
@@ -606,6 +608,18 @@
 	_(BLC_MAXIMIZE_KEY, "BLCMaximizeKey", "None", WKBD_LBCMAXIMIZE) \
 	_(BRC_MAXIMIZE_KEY, "BRCMaximizeKey", "None", WKBD_RBCMAXIMIZE) \
 	_(MAXIMUS_KEY, "MaximusKey", "None", WKBD_MAXIMUS) \
+	_(MOVE_TO_EDGE_LEFT_KEY, "MoveToEdgeLeftKey", "None", WKBD_MOVE_TO_EDGE_LEFT) \
+	_(MOVE_TO_EDGE_RIGHT_KEY, "MoveToEdgeRightKey", "None", WKBD_MOVE_TO_EDGE_RIGHT) \
+	_(MOVE_TO_EDGE_UP_KEY, "MoveToEdgeUpKey", "None", WKBD_MOVE_TO_EDGE_UP) \
+	_(MOVE_TO_EDGE_DOWN_KEY, "MoveToEdgeDownKey", "None", WKBD_MOVE_TO_EDGE_DOWN) \
+	_(GROW_TO_EDGE_LEFT_KEY, "GrowToEdgeLeftKey", "None", WKBD_GROW_TO_EDGE_LEFT) \
+	_(GROW_TO_EDGE_RIGHT_KEY, "GrowToEdgeRightKey", "None", WKBD_GROW_TO_EDGE_RIGHT) \
+	_(GROW_TO_EDGE_UP_KEY, "GrowToEdgeUpKey", "None", WKBD_GROW_TO_EDGE_UP) \
+	_(GROW_TO_EDGE_DOWN_KEY, "GrowToEdgeDownKey", "None", WKBD_GROW_TO_EDGE_DOWN) \
+	_(SHRINK_TO_EDGE_LEFT_KEY, "ShrinkToEdgeLeftKey", "None", WKBD_SHRINK_TO_EDGE_LEFT) \
+	_(SHRINK_TO_EDGE_RIGHT_KEY, "ShrinkToEdgeRightKey", "None", WKBD_SHRINK_TO_EDGE_RIGHT) \
+	_(SHRINK_TO_EDGE_UP_KEY, "ShrinkToEdgeUpKey", "None", WKBD_SHRINK_TO_EDGE_UP) \
+	_(SHRINK_TO_EDGE_DOWN_KEY, "ShrinkToEdgeDownKey", "None", WKBD_SHRINK_TO_EDGE_DOWN) \
 	_(LAYOUT_CYCLE_KEY, "LayoutCycleKey", "None", WKBD_LAYOUTCYCLE) \
 	_(LAYOUT_CYCLE_BACK_KEY, "LayoutCycleBackKey", "None", WKBD_LAYOUTCYCLEBACK) \
 	_(LAYOUT_AXIS_KEY, "LayoutAxisKey", "None", WKBD_LAYOUTAXIS) \

@@ -479,6 +479,8 @@ typedef struct WWindow {
 #define HAS_BORDER(w)		(!(WFLAGP((w), no_border) || (w)->flags.fullscreen))
 #define IS_MOVABLE(w)		(!(WFLAGP((w), no_movable) || (w)->flags.fullscreen))
 #define IS_RESIZABLE(w)	(!(WFLAGP((w), no_resizable) || (w)->flags.fullscreen))
+#define ISMAPPED(w)		((w) && !(w)->flags.miniaturized && ((w)->flags.mapped || (w)->flags.shaded))
+#define ISFOCUSED(w)		((w) && (w)->flags.focused)
 #define WINDOW_LEVEL(w)		((w)->frame->core->stacking->window_level)
 
 /* Which sides the inner frame border is painted on, matching the

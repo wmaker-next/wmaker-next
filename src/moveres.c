@@ -1881,6 +1881,91 @@ static void snapResizeGeometry(WWindow *wwin, int res, int rx1, int ry1,
 	}
 }
 
+Bool find_nearest_edge(WWindow *self, int head, int workspace,
+		       int direction, int from_offset, int to_offset,
+		       int axis_lo, int axis_hi, int max_dist, int gap,
+		       int seed_gap, int *best_offset)
+{
+	WScreen *scr = self->screen_ptr;
+	WWindow *tmp;
+	Bool found = False;
+	Bool decreasing;
+	int best, cand, dist;
+
+	switch (direction) {
+	case DIRECTION_LEFT:
+	case DIRECTION_UP:
+		decreasing = True;
+		best = to_offset + seed_gap;
+		break;
+	case DIRECTION_RIGHT:
+	case DIRECTION_DOWN:
+		decreasing = False;
+		best = to_offset - seed_gap;
+		break;
+	default:
+		return False;
+	}
+
+	dist = decreasing ? (from_offset - best) : (best - from_offset);
+	if (dist < 0)
+		dist = -dist;
+	if (dist <= max_dist)
+		found = True;
+
+	for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
+		if (tmp == self)
+			continue;
+		if (tmp->flags.miniaturized || tmp->flags.hidden)
+			continue;
+		if (!wWindowIsVisibleOnAnyHead(tmp))
+			continue;
+		if (!WWIN_ON_WORKSPACE(tmp, workspace))
+			continue;
+		if (wGetHeadForWindow(tmp) != head)
+			continue;
+
+		if (direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT) {
+			if (WTOP(tmp) > axis_hi || WBOTTOM(tmp) < axis_lo)
+				continue;
+			if (direction == DIRECTION_LEFT)
+				cand = WRIGHT(tmp) + 1 + gap;
+			else
+				cand = WLEFT(tmp) - gap;
+		} else {
+			if (WLEFT(tmp) > axis_hi || WRIGHT(tmp) < axis_lo)
+				continue;
+			if (direction == DIRECTION_UP)
+				cand = WBOTTOM(tmp) + 1 + gap;
+			else
+				cand = WTOP(tmp) - gap;
+		}
+
+		if (decreasing) {
+			if (cand > from_offset || cand < to_offset)
+				continue;
+		} else {
+			if (cand < from_offset || cand > to_offset)
+				continue;
+		}
+
+		dist = decreasing ? (from_offset - cand) : (cand - from_offset);
+		if (dist < 0)
+			dist = -dist;
+		if (dist > max_dist)
+			continue;
+
+		if (!found || (decreasing ? (cand > best) : (cand < best))) {
+			best = cand;
+			found = True;
+		}
+	}
+
+	if (found)
+		*best_offset = best;
+	return found;
+}
+
 #define RESIZEBAR	1
 #define HCONSTRAIN	2
 

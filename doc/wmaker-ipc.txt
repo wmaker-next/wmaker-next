@@ -77,6 +77,25 @@ Command verbs (request type 0)
     window-workspace XID +N|-N|N
             move (N), add (+N) or remove (-N) the window's workspace
             membership; N is a 0-based workspace index
+    move-to-edge left|right|up|down [snap|nosnap]
+            slide the focused window in the named direction until it
+            touches the screen edge. With snap (the default) it stops
+            first at the nearest intervening window edge; nosnap goes
+            straight to the screen edge. A window already at the screen
+            edge jumps to the adjacent head's near edge, keeping its
+            perpendicular position
+    grow-to-edge left|right|up|down
+            grow the focused window toward the named screen edge,
+            keeping the opposite edge fixed and stopping at the nearest
+            intervening window edge. Skipped when the window is
+            fullscreen or maximized; unshades a shaded window first.
+            Aborts when the result would shrink it or change nothing
+    shrink-to-edge left|right|up|down
+            shrink the focused window by up to half, keeping the named
+            edge fixed and moving the opposite edge inward, stopping
+            earlier at the nearest intervening window edge or the
+            size-hint minimum. Same skip and unshade behavior as
+            grow-to-edge; aborts when the final size is unchanged
     set-layout LAYOUT [workspace N] [master_count N] [master_ratio F]
             switch workspace N (current by default) to LAYOUT, which is
             one of float, tile, tileh, grid, monocle (case-insensitive);

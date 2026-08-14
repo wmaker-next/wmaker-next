@@ -265,9 +265,6 @@ static void cycleLayout(WScreen *scr, int step)
  * keybind command dispatch                                          *
  * ------------------------------------------------------------------ */
 
-#define ISMAPPED(w) ((w) && !(w)->flags.miniaturized && ((w)->flags.mapped || (w)->flags.shaded))
-#define ISFOCUSED(w) ((w) && (w)->flags.focused)
-
 static WWindow *windowUnderPointer(WScreen *scr)
 {
 	unsigned int mask;
@@ -533,6 +530,78 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			CloseWindowMenu(scr);
 
 			wKeyboardMoveResizeWindow(wwin);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_LEFT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_LEFT, True);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_RIGHT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_RIGHT, True);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_UP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_UP, True);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_DOWN:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_DOWN, True);
+		}
+		break;
+	case WKBD_GROW_TO_EDGE_LEFT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wGrowToEdge(wwin, DIRECTION_LEFT);
+		}
+		break;
+	case WKBD_GROW_TO_EDGE_RIGHT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wGrowToEdge(wwin, DIRECTION_RIGHT);
+		}
+		break;
+	case WKBD_GROW_TO_EDGE_UP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wGrowToEdge(wwin, DIRECTION_UP);
+		}
+		break;
+	case WKBD_GROW_TO_EDGE_DOWN:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wGrowToEdge(wwin, DIRECTION_DOWN);
+		}
+		break;
+	case WKBD_SHRINK_TO_EDGE_LEFT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wShrinkToEdge(wwin, DIRECTION_LEFT);
+		}
+		break;
+	case WKBD_SHRINK_TO_EDGE_RIGHT:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wShrinkToEdge(wwin, DIRECTION_RIGHT);
+		}
+		break;
+	case WKBD_SHRINK_TO_EDGE_UP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wShrinkToEdge(wwin, DIRECTION_UP);
+		}
+		break;
+	case WKBD_SHRINK_TO_EDGE_DOWN:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wShrinkToEdge(wwin, DIRECTION_DOWN);
 		}
 		break;
 	case WKBD_CLOSE:

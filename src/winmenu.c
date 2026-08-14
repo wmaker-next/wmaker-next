@@ -52,6 +52,7 @@
 static WMenu *makeWorkspaceMenu(WScreen *scr);
 static WMenu *makeOptionsMenu(WScreen *scr);
 static WMenu *makeMaximizeMenu(WScreen *scr);
+static WMenu *makeEdgeSnapMenu(WScreen *scr);
 
 /*
  * Define the Menu entry that will be present in the Window menu
@@ -65,6 +66,7 @@ enum
 	MC_MAXIMIZE,
 	MC_FULLSCREEN,
 	MC_OTHERMAX,
+	MC_EDGE_SNAP,
 	MC_MINIATURIZE,
 	MC_SHADE,
 	MC_HIDE,
@@ -88,6 +90,7 @@ static const struct {
 	[MC_MAXIMIZE]    = { N_("Maximize"), NULL },
 	[MC_FULLSCREEN]  = { N_("Fullscreen"), NULL },
 	[MC_OTHERMAX]    = { N_("Other maximization"), makeMaximizeMenu },
+	[MC_EDGE_SNAP]   = { N_("Edge snap"), makeEdgeSnapMenu },
 	[MC_MINIATURIZE] = { N_("Miniaturize"), NULL },
 	[MC_SHADE]       = { N_("Shade"), NULL },
 	[MC_HIDE]        = { N_("Hide"), NULL },
@@ -184,6 +187,46 @@ static void execMaximizeCommand(WMenu * menu, WMenuEntry * entry)
 	(void) menu;
 
 	handleMaximize(wwin, menu_maximize_entries[entry->order].maxim_direction);
+}
+
+static const struct {
+	const char *label;
+	unsigned int shortcut_idx;
+	int direction;
+	int action; /* 0 = move, 1 = grow, 2 = shrink */
+} menu_edge_snap_entries[] = {
+	{ N_("Move left"),  WKBD_MOVE_TO_EDGE_LEFT,  DIRECTION_LEFT,  0 },
+	{ N_("Move right"), WKBD_MOVE_TO_EDGE_RIGHT, DIRECTION_RIGHT, 0 },
+	{ N_("Move up"),    WKBD_MOVE_TO_EDGE_UP,    DIRECTION_UP,    0 },
+	{ N_("Move down"),  WKBD_MOVE_TO_EDGE_DOWN,  DIRECTION_DOWN,  0 },
+	{ N_("Grow left"),  WKBD_GROW_TO_EDGE_LEFT,  DIRECTION_LEFT,  1 },
+	{ N_("Grow right"), WKBD_GROW_TO_EDGE_RIGHT, DIRECTION_RIGHT, 1 },
+	{ N_("Grow up"),    WKBD_GROW_TO_EDGE_UP,    DIRECTION_UP,    1 },
+	{ N_("Grow down"),  WKBD_GROW_TO_EDGE_DOWN,  DIRECTION_DOWN,  1 },
+	{ N_("Shrink left"),  WKBD_SHRINK_TO_EDGE_LEFT,  DIRECTION_LEFT,  2 },
+	{ N_("Shrink right"), WKBD_SHRINK_TO_EDGE_RIGHT, DIRECTION_RIGHT, 2 },
+	{ N_("Shrink up"),    WKBD_SHRINK_TO_EDGE_UP,    DIRECTION_UP,    2 },
+	{ N_("Shrink down"),  WKBD_SHRINK_TO_EDGE_DOWN,  DIRECTION_DOWN,  2 }
+};
+
+static void execEdgeSnap(WMenu *menu, WMenuEntry *entry)
+{
+	WWindow *wwin = (WWindow *) entry->clientdata;
+	int idx = entry->order;
+
+	(void) menu;
+
+	switch (menu_edge_snap_entries[idx].action) {
+	case 0:
+		wMoveToEdge(wwin, menu_edge_snap_entries[idx].direction, True);
+		break;
+	case 1:
+		wGrowToEdge(wwin, menu_edge_snap_entries[idx].direction);
+		break;
+	case 2:
+		wShrinkToEdge(wwin, menu_edge_snap_entries[idx].direction);
+		break;
+	}
 }
 
 static void updateUnmaximizeShortcut(WMenuEntry * entry, int flags)
@@ -545,6 +588,21 @@ static void updateMaximizeMenu(WMenu * menu, WWindow * wwin)
 	wMenuRealize(smenu);
 }
 
+static void updateEdgeSnapMenu(WMenu *menu, WWindow *wwin)
+{
+	WMenu *smenu = menu->cascades[menu->entries[MC_EDGE_SNAP]->cascade];
+	int i;
+
+	for (i = 0; i < smenu->entry_no; i++) {
+		smenu->entries[i]->clientdata = wwin;
+		wMenuEntrySetShortcutText(smenu->entries[i],
+					  GetShortcutKey(wKeyBindings[menu_edge_snap_entries[i].shortcut_idx]));
+	}
+
+	smenu->flags.realized = 0;
+	wMenuRealize(smenu);
+}
+
 static WMenu *makeWorkspaceMenu(WScreen * scr)
 {
 	WMenu *menu;
@@ -615,6 +673,27 @@ static WMenu *makeMaximizeMenu(WScreen * scr)
 	return menu;
 }
 
+static WMenu *makeEdgeSnapMenu(WScreen *scr)
+{
+	WMenu *menu;
+	WMenuEntry *entry;
+	int i;
+
+	menu = wMenuCreate(scr, NULL, False);
+	if (!menu) {
+		wwarning(_("could not create submenu for window menu"));
+		return NULL;
+	}
+
+	for (i = 0; i < wlengthof(menu_edge_snap_entries); i++) {
+		entry = wMenuAddCallback(menu, _(menu_edge_snap_entries[i].label), execEdgeSnap, NULL);
+		wMenuEntrySetShortcutText(entry,
+			GetShortcutKey(wKeyBindings[menu_edge_snap_entries[i].shortcut_idx]));
+	}
+
+	return menu;
+}
+
 static WMenu *createWindowMenu(WScreen * scr)
 {
 	WMenu *menu;
@@ -662,6 +741,7 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 
 	updateOptionsMenu(menu, wwin);
 	updateMaximizeMenu(menu, wwin);
+	updateEdgeSnapMenu(menu, wwin);
 
 	updateMakeShortcutMenu(menu, wwin);
 
@@ -703,6 +783,9 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	wMenuSetEnabled(menu, MC_FULLSCREEN, wwin->flags.fullscreen || IS_RESIZABLE(wwin));
 
 	wMenuSetEnabled(menu, MC_MOVERESIZE, IS_RESIZABLE(wwin)
+			&& !wwin->flags.miniaturized);
+
+	wMenuSetEnabled(menu, MC_EDGE_SNAP, (IS_MOVABLE(wwin) || IS_RESIZABLE(wwin))
 			&& !wwin->flags.miniaturized);
 
 	if (wwin->flags.shaded) {

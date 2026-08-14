@@ -125,6 +125,7 @@
 	AppIconBalloons = NO;
 	HelpBalloons = NO;
 	EdgeResistance = 30;
+	WindowGap = 0;
 	ResizeIncrement = 0;
 	Attraction = NO;
 	DisableBlinking = NO;
@@ -217,6 +218,18 @@
 	BLCMaximizeKey = None;
 	BRCMaximizeKey = None;
 	MaximusKey = None;
+	MoveToEdgeLeftKey = None;
+	MoveToEdgeRightKey = None;
+	MoveToEdgeUpKey = None;
+	MoveToEdgeDownKey = None;
+	GrowToEdgeLeftKey = None;
+	GrowToEdgeRightKey = None;
+	GrowToEdgeUpKey = None;
+	GrowToEdgeDownKey = None;
+	ShrinkToEdgeLeftKey = None;
+	ShrinkToEdgeRightKey = None;
+	ShrinkToEdgeUpKey = None;
+	ShrinkToEdgeDownKey = None;
 	LayoutCycleKey = None;
 	LayoutCycleBackKey = None;
 	LayoutAxisKey = None;

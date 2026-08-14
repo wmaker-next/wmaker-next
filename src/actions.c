@@ -950,6 +950,319 @@ void moveBetweenHeads(WWindow *wwin, int direction)
 	return;
 }
 
+void wMoveToEdge(WWindow *wwin, int direction, Bool snap_to_windows)
+{
+	WScreen *scr = wwin->screen_ptr;
+	int head = wGetHeadForWindow(wwin);
+	WArea total, usable;
+	int gap = w_global.config->window_gap;
+	int x = wwin->frame_x;
+	int y = wwin->frame_y;
+	int w = wwin->frame->core->width +
+		(HAS_BORDER(wwin) ? 2 * wFrameBorderWidth(wwin) : 0);
+	int h = wwin->frame->core->height +
+		(HAS_BORDER(wwin) ? 2 * wFrameBorderWidth(wwin) : 0);
+	int target, new_x = x, new_y = y;
+	int dest_head;
+	WArea dest_usable, dest_total;
+
+	if (!IS_MOVABLE(wwin) || wwin->flags.shaded
+	    || wwin->flags.fullscreen || wwin->flags.maximized)
+		return;
+
+	usable = wGetUsableAreaForHead(scr, head, &total, True);
+
+	switch (direction) {
+	case DIRECTION_LEFT:
+		target = usable.x1;
+		if (usable.x1 >= x)
+			goto cross_head;
+		new_x = target;
+		break;
+	case DIRECTION_RIGHT:
+		target = usable.x2 - w;
+		if (usable.x2 - w <= x)
+			goto cross_head;
+		new_x = target;
+		break;
+	case DIRECTION_UP:
+		target = usable.y1;
+		if (usable.y1 >= y)
+			goto cross_head;
+		new_y = target;
+		break;
+	case DIRECTION_DOWN:
+		target = usable.y2 - h;
+		if (usable.y2 - h <= y)
+			goto cross_head;
+		new_y = target;
+		break;
+	default:
+		return;
+	}
+
+	if (snap_to_windows) {
+		int best;
+		int from_off, to_off, alo, ahi;
+
+		if (direction == DIRECTION_LEFT) {
+			from_off = x;
+			to_off = usable.x1;
+			alo = y;
+			ahi = y + h - 1;
+		} else if (direction == DIRECTION_RIGHT) {
+			from_off = x + w;
+			to_off = usable.x2;
+			alo = y;
+			ahi = y + h - 1;
+		} else if (direction == DIRECTION_UP) {
+			from_off = y;
+			to_off = usable.y1;
+			alo = x;
+			ahi = x + w - 1;
+		} else {
+			from_off = y + h;
+			to_off = usable.y2;
+			alo = x;
+			ahi = x + w - 1;
+		}
+
+		if (find_nearest_edge(wwin, head, scr->current_workspace, direction, from_off, to_off, alo, ahi, INT_MAX, gap, gap, &best)) {
+			if (direction == DIRECTION_LEFT)
+				new_x = best;
+			else if (direction == DIRECTION_RIGHT)
+				new_x = best - w;
+			else if (direction == DIRECTION_UP)
+				new_y = best;
+			else
+				new_y = best - h;
+		}
+	}
+
+	wWindowMove(wwin, new_x, new_y);
+	WMPostNotificationName(WMNChangedState, wwin, "move");
+	return;
+
+cross_head:
+	dest_head = wGetHeadRelativeToCurrentHead(scr, head, direction);
+
+	if (dest_head < 0 || dest_head == head)
+		return;
+
+	dest_usable = wGetUsableAreaForHead(scr, dest_head, &dest_total, True);
+
+	switch (direction) {
+	case DIRECTION_LEFT:
+		new_x = dest_usable.x2 - w;
+		break;
+	case DIRECTION_RIGHT:
+		new_x = dest_usable.x1;
+		break;
+	case DIRECTION_UP:
+		new_y = dest_usable.y2 - h;
+		break;
+	case DIRECTION_DOWN:
+		new_y = dest_usable.y1;
+		break;
+	}
+
+	if (new_x > dest_usable.x2 - w)
+		new_x = dest_usable.x2 - w;
+	if (new_x < dest_usable.x1)
+		new_x = WMAX(dest_usable.x1, dest_usable.x2 - w);
+	if (new_y > dest_usable.y2 - h)
+		new_y = dest_usable.y2 - h;
+	if (new_y < dest_usable.y1)
+		new_y = WMAX(dest_usable.y1, dest_usable.y2 - h);
+
+	wWindowMove(wwin, new_x, new_y);
+	WMPostNotificationName(WMNChangedState, wwin, "move");
+}
+
+void wGrowToEdge(WWindow *wwin, int direction)
+{
+	WScreen *scr = wwin->screen_ptr;
+	int head = wGetHeadForWindow(wwin);
+	WArea total, usable;
+	int gap = w_global.config->window_gap;
+	int x = wwin->frame_x;
+	int y = wwin->frame_y;
+	int fbw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
+	int w = wwin->frame->core->width + 2 * fbw;
+	int h = wwin->frame->core->height + 2 * fbw;
+	int new_x = x, new_y = y, new_w = w, new_h = h;
+	int il, ir, it, ib, ih, iv;
+	unsigned int cw, ch;
+	int best;
+
+	if (!IS_RESIZABLE(wwin) || wwin->flags.fullscreen || wwin->flags.maximized)
+		return;
+	if (wwin->flags.shaded)
+		wUnshadeWindow(wwin);
+
+	usable = wGetUsableAreaForHead(scr, head, &total, True);
+	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+	ih = il + ir;
+	iv = it + ib;
+
+	switch (direction) {
+	case DIRECTION_LEFT:
+		new_x = usable.x1;
+		new_w = x + w - new_x;
+		break;
+	case DIRECTION_RIGHT:
+		new_w = usable.x2 - x;
+		break;
+	case DIRECTION_UP:
+		new_y = usable.y1;
+		new_h = y + h - new_y;
+		break;
+	case DIRECTION_DOWN:
+		new_h = usable.y2 - y;
+		break;
+	default:
+		return;
+	}
+
+	if ((direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT) && new_w <= w)
+		return;
+	if ((direction == DIRECTION_UP || direction == DIRECTION_DOWN) && new_h <= h)
+		return;
+
+	if (direction == DIRECTION_LEFT) {
+		if (!find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_LEFT, x, usable.x1, y, y + h - 1, INT_MAX, gap, gap, &best))
+			return;
+		new_x = best;
+		new_w = x + w - new_x;
+	} else if (direction == DIRECTION_RIGHT) {
+		if (!find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_RIGHT, x + w, usable.x2, y, y + h - 1, INT_MAX, gap, gap, &best))
+			return;
+		new_w = best - x;
+	} else if (direction == DIRECTION_UP) {
+		if (!find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_UP, y, usable.y1, x, x + w - 1, INT_MAX, gap, gap, &best))
+			return;
+		new_y = best;
+		new_h = y + h - new_y;
+	} else {
+		if (!find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_DOWN, y + h, usable.y2, x, x + w - 1, INT_MAX, gap, gap, &best))
+			return;
+		new_h = best - y;
+	}
+
+	if ((direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT) && new_w <= w)
+		return;
+	if ((direction == DIRECTION_UP || direction == DIRECTION_DOWN) && new_h <= h)
+		return;
+
+	cw = new_w - ih - 2 * fbw;
+	ch = new_h - wwin->frame->top_width - wwin->frame->bottom_width - iv - 2 * fbw;
+
+	wWindowConstrainSize(wwin, &cw, &ch);
+	wWindowCropSize(wwin, usable.x2 - usable.x1 - ih - 2 * fbw, usable.y2 - usable.y1 - wwin->frame->top_width - wwin->frame->bottom_width - iv - 2 * fbw, &cw, &ch);
+
+	if (direction == DIRECTION_LEFT)
+		new_x = x + w - (cw + ih + 2 * fbw);
+	else if (direction == DIRECTION_UP)
+		new_y = y + h - (ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw);
+
+	if ((int)(cw + ih + 2 * fbw) == w && (int)(ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw) == h)
+		return;
+
+	wWindowConfigure(wwin, new_x, new_y, cw, ch);
+	wWindowSynthConfigureNotify(wwin);
+	WMPostNotificationName(WMNChangedState, wwin, "grow");
+	if (wwin->tab_group)
+		wGroupSyncMaximize(wwin);
+}
+
+void wShrinkToEdge(WWindow *wwin, int direction)
+{
+	WScreen *scr = wwin->screen_ptr;
+	int head = wGetHeadForWindow(wwin);
+	int gap = w_global.config->window_gap;
+	int x = wwin->frame_x;
+	int y = wwin->frame_y;
+	int fbw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
+	int w = wwin->frame->core->width + 2 * fbw;
+	int h = wwin->frame->core->height + 2 * fbw;
+	int new_x = x, new_y = y, new_w = w, new_h = h;
+	int il, ir, it, ib, ih, iv;
+	unsigned int cw, ch, min_cw, min_ch;
+	int best;
+
+	if (!IS_RESIZABLE(wwin) || wwin->flags.fullscreen || wwin->flags.maximized)
+		return;
+	if (wwin->flags.shaded)
+		wUnshadeWindow(wwin);
+
+	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+	ih = il + ir;
+	iv = it + ib;
+
+	if (direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT) {
+		min_cw = 1;
+		min_ch = h - wwin->frame->top_width - wwin->frame->bottom_width - iv - 2 * fbw;
+		wWindowConstrainSize(wwin, &min_cw, &min_ch);
+		new_w = w / 2;
+		if (new_w < (int)(min_cw + ih + 2 * fbw))
+			new_w = min_cw + ih + 2 * fbw;
+	} else {
+		min_cw = w - ih - 2 * fbw;
+		min_ch = 1;
+		wWindowConstrainSize(wwin, &min_cw, &min_ch);
+		new_h = h / 2;
+		if (new_h < (int)(min_ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw))
+			new_h = min_ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw;
+	}
+
+	switch (direction) {
+	case DIRECTION_LEFT:
+		if (find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_LEFT, x + w, x + new_w, y, y + h - 1, INT_MAX, gap, 0, &best))
+			new_w = best - x;
+		break;
+	case DIRECTION_RIGHT:
+		new_x = x + w - new_w;
+		if (find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_RIGHT, x, new_x, y, y + h - 1, INT_MAX, gap, 0, &best))
+			new_w = x + w - best;
+		break;
+	case DIRECTION_UP:
+		if (find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_UP, y + h, y + new_h, x, x + w - 1, INT_MAX, gap, 0, &best))
+			new_h = best - y;
+		break;
+	case DIRECTION_DOWN:
+		new_y = y + h - new_h;
+		if (find_nearest_edge(wwin, head, scr->current_workspace, DIRECTION_DOWN, y, new_y, x, x + w - 1, INT_MAX, gap, 0, &best))
+			new_h = y + h - best;
+		break;
+	default:
+		return;
+	}
+
+	if ((direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT) && new_w >= w)
+		return;
+	if ((direction == DIRECTION_UP || direction == DIRECTION_DOWN) && new_h >= h)
+		return;
+
+	cw = new_w - ih - 2 * fbw;
+	ch = new_h - wwin->frame->top_width - wwin->frame->bottom_width - iv - 2 * fbw;
+
+	wWindowConstrainSize(wwin, &cw, &ch);
+
+	if (direction == DIRECTION_RIGHT)
+		new_x = x + w - (cw + ih + 2 * fbw);
+	else if (direction == DIRECTION_DOWN)
+		new_y = y + h - (ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw);
+
+	if ((int)(cw + ih + 2 * fbw) == w && (int)(ch + wwin->frame->top_width + wwin->frame->bottom_width + iv + 2 * fbw) == h)
+		return;
+
+	wWindowConfigure(wwin, new_x, new_y, cw, ch);
+	wWindowSynthConfigureNotify(wwin);
+	WMPostNotificationName(WMNChangedState, wwin, "shrink");
+	if (wwin->tab_group)
+		wGroupSyncMaximize(wwin);
+}
+
 /* the window boundary coordinates */
 typedef struct {
 	int left;

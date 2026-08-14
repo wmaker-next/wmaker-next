@@ -48,6 +48,10 @@ typedef struct _Panel {
 	WMButton *resaB;
 	WMButton *resrB;
 
+	WMFrame *winGapF;
+	WMSlider *winGapS;
+	WMLabel *winGapL;
+
 	WMFrame *maxiF;
 	WMLabel *maxiL;
 	WMButton *miconB;
@@ -134,6 +138,24 @@ static void resistanceCallback(WMWidget * w, void *data)
 	}
 }
 
+static void gapCallback(WMWidget *w, void *data)
+{
+	_Panel *panel = (_Panel *) data;
+	char buffer[64];
+	int i;
+
+	(void) w;
+
+	i = WMGetSliderValue(panel->winGapS);
+
+	if (i == 0)
+		WMSetLabelText(panel->winGapL, _("OFF"));
+	else {
+		snprintf(buffer, sizeof(buffer), "%i", i);
+		WMSetLabelText(panel->winGapL, buffer);
+	}
+}
+
 static void resizeCallback(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
@@ -186,6 +208,10 @@ static void showData(_Panel * panel)
 	WMSetSliderValue(panel->resS, x);
 	resistanceCallback(NULL, panel);
 
+	x = GetIntegerForKey("WindowGap");
+	WMSetSliderValue(panel->winGapS, x);
+	gapCallback(NULL, panel);
+
 	str = GetStringForKey("DragMaximizedWindow");
 	wm_enum_popup_select(panel->dragmaxP, drag_maximized_window_options,
 			     wlengthof(drag_maximized_window_options), str,
@@ -233,6 +259,7 @@ static void storeData(_Panel * panel)
 	SetObjectForKey(arr, "WindowPlaceOrigin");
 
 	SetIntegerForKey(WMGetSliderValue(panel->resS), "EdgeResistance");
+	SetIntegerForKey(WMGetSliderValue(panel->winGapS), "WindowGap");
 
 	wm_enum_popup_store(panel->dragmaxP, drag_maximized_window_options,
 			    wlengthof(drag_maximized_window_options),
@@ -465,7 +492,7 @@ static void createPanel(Panel * p)
     /**************** Resize with Mod+Wheel ***************/
 	panel->resizeF = WMCreateFrame(panel->box);
 	WMResizeWidget(panel->resizeF, 127, 66);
-	WMMoveWidget(panel->resizeF, 238, 103);
+	WMMoveWidget(panel->resizeF, 238, 155);
 	WMSetFrameTitle(panel->resizeF, _("Mod+Wheel"));
 
 	panel->resizeTextL = WMCreateLabel(panel->resizeF);
@@ -521,17 +548,40 @@ static void createPanel(Panel * p)
 
 	WMMapSubwidgets(panel->resF);
 
+    /**************** Window Gap ****************/
+	panel->winGapF = WMCreateFrame(panel->box);
+	WMResizeWidget(panel->winGapF, 127, 52);
+	WMMoveWidget(panel->winGapF, 238, 103);
+	WMSetFrameTitle(panel->winGapF, _("Window Gap"));
+
+	WMSetBalloonTextForView(_("Margin (in pixels) left between windows and screen/window\n"
+				  "edges by edge-snap actions. 0 = flush."),
+				WMWidgetView(panel->winGapF));
+
+	panel->winGapS = WMCreateSlider(panel->winGapF);
+	WMResizeWidget(panel->winGapS, 80, 15);
+	WMMoveWidget(panel->winGapS, 9, 20);
+	WMSetSliderMinValue(panel->winGapS, 0);
+	WMSetSliderMaxValue(panel->winGapS, 50);
+	WMSetSliderAction(panel->winGapS, gapCallback, panel);
+
+	panel->winGapL = WMCreateLabel(panel->winGapF);
+	WMResizeWidget(panel->winGapL, 30, 15);
+	WMMoveWidget(panel->winGapL, 90, 22);
+
+	WMMapSubwidgets(panel->winGapF);
+
     /**************** Dragging a Maximized Window ****************/
 	panel->dragmaxF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->dragmaxF, 357, 49);
+	WMResizeWidget(panel->dragmaxF, 222, 49);
 	WMMoveWidget(panel->dragmaxF, 8, 172);
 	WMSetFrameTitle(panel->dragmaxF, _("Dragging a maximized window..."));
 
 	panel->dragmaxP = wm_enum_popup_new(panel->dragmaxF,
 					     drag_maximized_window_options,
 					     wlengthof(drag_maximized_window_options));
-	WMResizeWidget(panel->dragmaxP, 328, 20);
-	WMMoveWidget(panel->dragmaxP, 15, 18);
+	WMResizeWidget(panel->dragmaxP, 205, 20);
+	WMMoveWidget(panel->dragmaxP, 8, 18);
 
 	WMMapSubwidgets(panel->dragmaxF);
 

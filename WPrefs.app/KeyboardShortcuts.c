@@ -59,6 +59,12 @@ typedef struct _Panel {
 
 #define ICON_FILE	"keyshortcuts"
 
+#define DIR_KEYS(stem, l, r, u, d) \
+	{ stem "LeftKey",  N_(l) }, \
+	{ stem "RightKey", N_(r) }, \
+	{ stem "UpKey",    N_(u) }, \
+	{ stem "DownKey",  N_(d) }
+
 /*
  * List of user definable shortcut keys
  * First parameter is the internal keyword known by WMaker
@@ -109,6 +115,22 @@ static struct keyOption {
 	{ "RaiseLowerKey",  N_("Raise/Lower window under mouse pointer") },
 	{ "ShadeKey",       N_("Shade active window") },
 	{ "MoveResizeKey",  N_("Move/Resize active window") },
+	/* Edge-snap actions */
+	DIR_KEYS("MoveToEdge",
+		 "Move active window to left edge",
+		 "Move active window to right edge",
+		 "Move active window to top edge",
+		 "Move active window to bottom edge"),
+	DIR_KEYS("GrowToEdge",
+		 "Grow active window to left edge",
+		 "Grow active window to right edge",
+		 "Grow active window to top edge",
+		 "Grow active window to bottom edge"),
+	DIR_KEYS("ShrinkToEdge",
+		 "Shrink active window from left edge",
+		 "Shrink active window from right edge",
+		 "Shrink active window from top edge",
+		 "Shrink active window from bottom edge"),
 	{ "SelectKey",      N_("Select active window") },
 	{ "FocusNextKey",   N_("Focus next window") },
 	{ "FocusPrevKey",   N_("Focus previous window") },

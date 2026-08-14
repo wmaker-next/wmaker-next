@@ -97,6 +97,14 @@ void save_old_geometry(WWindow *wwin, int directions);
 void movePointerToWindowCenter(WWindow *wwin);
 void moveBetweenHeads(WWindow *wwin, int direction);
 
+Bool find_nearest_edge(WWindow *self, int head, int workspace,
+		       int direction, int from_offset, int to_offset,
+		       int axis_lo, int axis_hi, int max_dist, int gap,
+		       int seed_gap, int *best_offset);
+void wMoveToEdge(WWindow *wwin, int direction, Bool snap_to_windows);
+void wGrowToEdge(WWindow *wwin, int direction);
+void wShrinkToEdge(WWindow *wwin, int direction);
+
 WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude);
 
 void warpPointerToFocusedWindow(WWindow *wwin);

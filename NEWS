@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Edge-snap window actions (MoveToEdge, GrowToEdge, ShrinkToEdge)
+----------------------------------------------------------------
+
+Three new window actions that move, grow or shrink the focused
+window toward a screen edge, stopping at the nearest intervening
+window edge on the way. All three take a direction (left, right,
+up, down) and are available as keyboard shortcuts, window menu
+entries and IPC verbs (move-to-edge, grow-to-edge,
+shrink-to-edge). MoveToEdge also accepts an optional snap/nosnap
+argument to control whether it stops at neighbor windows. A
+WindowGap setting controls the pixel margin left between the
+snapped window and screen/window edges (0 = flush).
+
 Application-group switch panel sub-panel (drill)
 -------------------------------------------------
 
