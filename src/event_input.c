@@ -349,6 +349,10 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			wHideOtherApplications(wwin);
 		}
 		break;
+	case WKBD_SHOW_DESKTOP:
+		CloseWindowMenu(scr);
+		wNETWMShowingDesktopToggle(scr);
+		break;
 	case WKBD_MINIATURIZE_OTHERS:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
 			CloseWindowMenu(scr);

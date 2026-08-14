@@ -79,6 +79,7 @@ static struct keyOption {
 	{ "WindowMenuKey",  N_("Open window commands menu") },
 	{ "HideKey",        N_("Hide active application") },
 	{ "HideOthersKey",  N_("Hide other applications") },
+	{ "ShowDesktopKey", N_("Toggle show desktop (minimize/restore all)") },
 	{ "MiniaturizeKey", N_("Miniaturize active window") },
 	{ "MiniaturizeAllKey", N_("Miniaturize all windows") },
 	{ "MiniaturizeOthersKey", N_("Miniaturize other windows") },

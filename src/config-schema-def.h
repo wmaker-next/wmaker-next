@@ -594,6 +594,7 @@
 	_(MINIATURIZE_OTHERS_KEY, "MiniaturizeOthersKey", "None", WKBD_MINIATURIZE_OTHERS) \
 	_(HIDE_KEY, "HideKey", "Mod1+H", WKBD_HIDE) \
 	_(HIDE_OTHERS_KEY, "HideOthersKey", "None", WKBD_HIDE_OTHERS) \
+	_(SHOW_DESKTOP_KEY, "ShowDesktopKey", "None", WKBD_SHOW_DESKTOP) \
 	_(MOVE_RESIZE_KEY, "MoveResizeKey", "None", WKBD_MOVERESIZE) \
 	_(CLOSE_KEY, "CloseKey", "None", WKBD_CLOSE) \
 	_(MAXIMIZE_KEY, "MaximizeKey", "None", WKBD_MAXIMIZE) \

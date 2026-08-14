@@ -737,7 +737,11 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 
 		tmp = scr->focused_window;
 		while (tmp) {
-			if (!tmp->flags.hidden && !tmp->flags.miniaturized && !WFLAGP(tmp, skip_window_list)) {
+			WWindow *next = tmp->prev;
+
+			if (!tmp->flags.hidden && !tmp->flags.miniaturized
+			    && !tmp->flags.internal_window
+			    && !WFLAGP(tmp, skip_window_list)) {
 
 				wins[i++] = tmp;
 				tmp->flags.skip_next_animation = 1;
@@ -745,7 +749,7 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 				wIconifyWindow(tmp);
 			}
 
-			tmp = tmp->prev;
+			tmp = next;
 		}
 		wins[i++] = NULL;
 
@@ -761,6 +765,30 @@ static void wNETWMShowingDesktop(WScreen *scr, Bool show)
 		wfree(scr->netdata->show_desktop);
 		scr->netdata->show_desktop = NULL;
 		updateShowDesktop(scr, False);
+	}
+}
+
+void wNETWMShowingDesktopToggle(WScreen *scr)
+{
+	wNETWMShowingDesktop(scr, scr->netdata->show_desktop == NULL);
+}
+
+/* Remove wwin from the show-desktop restore list so a window
+ * destroyed while show-desktop is active does not leave a stale
+ * pointer for the restore loop. */
+void wNETWMShowingDesktopForgetWindow(WScreen *scr, WWindow *wwin)
+{
+	WWindow **arr, **dst;
+
+	arr = scr->netdata->show_desktop;
+	if (!arr)
+		return;
+	for (dst = arr; *dst; dst++) {
+		if (*dst == wwin) {
+			for (; *dst; dst++)
+				*dst = *(dst + 1);
+			break;
+		}
 	}
 }
 

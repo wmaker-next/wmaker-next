@@ -3,6 +3,17 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Show Desktop key binding (ShowDesktopKey)
+------------------------------------------
+
+A new keyboard shortcut, ShowDesktopKey (default unbound), toggles
+the EWMH "showing desktop" state: it iconifies all non-skip windows
+across all workspaces (setting _NET_SHOWING_DESKTOP to 1 on the root
+window), and a second press restores them. An external
+_NET_SHOWING_DESKTOP ClientMessage from a panel still toggles the same
+state, so the two paths share one restore list. Also available as the
+IPC verb `show-desktop`.
+
 Edge-snap window actions (MoveToEdge, GrowToEdge, ShrinkToEdge)
 ----------------------------------------------------------------
 

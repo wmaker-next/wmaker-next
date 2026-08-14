@@ -2348,6 +2348,7 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 	}
 
 	wNETCleanupFrameExtents(wwin);
+	wNETWMShowingDesktopForgetWindow(scr, wwin);
 
 	/* Re-queue saved state for session-restored iconified windows so a
 	 * replacement window the client maps during startup also gets

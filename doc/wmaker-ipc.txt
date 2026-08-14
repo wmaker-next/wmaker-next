@@ -103,6 +103,11 @@ Command verbs (request type 0)
             parameters of the same workspace
     dock-launch SLOT
     show-all
+    show-desktop
+            toggle the EWMH "showing desktop" state: iconify all
+            non-skip windows across all workspaces and set
+            _NET_SHOWING_DESKTOP to 1, or restore the previously
+            iconified windows and set it to 0
     arrange-icons
     hide-application XID
     hide-others XID

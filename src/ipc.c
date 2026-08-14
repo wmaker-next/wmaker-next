@@ -572,6 +572,17 @@ static verb_rc verb_show_all(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_show_desktop(WScreen *scr, WMPropList *args,
+				 char **err, WMPropList **reply)
+{
+	(void)args;
+	(void)err;
+	(void)reply;
+	wNETWMShowingDesktopToggle(scr);
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
 static verb_rc verb_arrange_icons(WScreen *scr, WMPropList *args,
 				  char **err, WMPropList **reply)
 {
@@ -1050,6 +1061,7 @@ static const struct {
 	{ "set-layout",       verb_set_layout },
 	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },
+	{ "show-desktop",     verb_show_desktop },
 	{ "arrange-icons",    verb_arrange_icons },
 	{ "hide-application", verb_hide_app },
 	{ "hide-others",      verb_hide_others },

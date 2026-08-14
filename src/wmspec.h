@@ -66,6 +66,8 @@ void wNETWMCheckClientHintChange(WWindow *wwin, Atom atom);
 void wNETWMUpdateActions(WWindow *wwin, Bool del);
 void wNETWMUpdateDesktop(WScreen *scr);
 void wNETWMUpdateCurrentDesktop(WScreen *scr);
+void wNETWMShowingDesktopToggle(WScreen *scr);
+void wNETWMShowingDesktopForgetWindow(WScreen *scr, WWindow *wwin);
 void wNETWMPositionSplash(WWindow *wwin, int *x, int *y, int width, int height);
 int wNETWMGetPidForWindow(Window window);
 WXCookie wNETWMReqPid(Window window);

@@ -204,6 +204,7 @@
 	MiniaturizeOthersKey = None;
 	HideKey = "Mod1+H";
 	HideOthersKey = None;
+	ShowDesktopKey = None;
 	MoveResizeKey = None;
 	CloseKey = None;
 	MaximizeKey = None;
