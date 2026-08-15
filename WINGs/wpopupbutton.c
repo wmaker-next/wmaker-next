@@ -35,6 +35,8 @@ typedef struct W_PopUpButton {
 
 		unsigned int enabled:1;
 
+		unsigned int menuAutoWidth:1;
+
 	} flags;
 } PopUpButton;
 
@@ -111,6 +113,9 @@ WMMenuItem *WMAddPopUpButtonItem(WMPopUpButton * bPtr, const char *title)
 
 	CHECK_CLASS(bPtr, WC_PopUpButton);
 
+	if (!title)
+		return NULL;
+
 	item = WMCreateMenuItem();
 	WMSetMenuItemTitle(item, title);
 
@@ -127,6 +132,9 @@ WMMenuItem *WMInsertPopUpButtonItem(WMPopUpButton * bPtr, int index, const char 
 	WMMenuItem *item;
 
 	CHECK_CLASS(bPtr, WC_PopUpButton);
+
+	if (!title)
+		return NULL;
 
 	item = WMCreateMenuItem();
 	WMSetMenuItemTitle(item, title);
@@ -236,6 +244,14 @@ void WMSetPopUpButtonPullsDown(WMPopUpButton * bPtr, Bool flag)
 
 	if (bPtr->view->flags.mapped)
 		paintPopUpButton(bPtr);
+}
+
+void WMSetPopUpButtonMenuAutoWidth(WMPopUpButton *bPtr, Bool flag)
+{
+	bPtr->flags.menuAutoWidth = ((flag == 0) ? 0 : 1);
+
+	if (bPtr->menuView && bPtr->menuView->flags.realized)
+		resizeMenu(bPtr);
 }
 
 int WMGetPopUpButtonNumberOfItems(WMPopUpButton * bPtr)
@@ -380,7 +396,7 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 		return;
 
 	itemHeight = bPtr->view->size.height;
-	width = bPtr->view->size.width;
+	width = bPtr->menuView->size.width;
 	yo = (itemHeight - WMFontHeight(scr->normalFont)) / 2;
 
 	if (!highlight) {
@@ -423,7 +439,7 @@ static Pixmap makeMenuPixmap(PopUpButton * bPtr)
 	int width, height, itemHeight;
 
 	itemHeight = bPtr->view->size.height;
-	width = bPtr->view->size.width;
+	width = bPtr->menuView->size.width;
 	height = itemHeight * WMGetArrayItemCount(bPtr->items);
 	yo = (itemHeight - WMFontHeight(scr->normalFont)) / 2;
 
@@ -460,16 +476,40 @@ static Pixmap makeMenuPixmap(PopUpButton * bPtr)
 static void resizeMenu(PopUpButton * bPtr)
 {
 	int height;
+	int width = bPtr->view->size.width;
+	int scrWidth = bPtr->view->screen->rootView->size.width;
+
+	if (bPtr->flags.menuAutoWidth) {
+		W_Screen *scr = bPtr->view->screen;
+		WMMenuItem *item;
+		WMArrayIterator iter;
+		int maxw = 0;
+
+		WM_ITERATE_ARRAY(bPtr->items, item, iter) {
+			char *title = WMGetMenuItemTitle(item);
+			int w = title ? WMWidthOfString(scr->normalFont, title, strlen(title)) : 0;
+
+			if (w > maxw)
+				maxw = w;
+		}
+		width = maxw + scr->popUpIndicator->width + 12;
+	}
+
+	if (width < bPtr->view->size.width)
+		width = bPtr->view->size.width;
+	if (width > scrWidth)
+		width = scrWidth;
 
 	height = WMGetArrayItemCount(bPtr->items) * bPtr->view->size.height;
 	if (height > 0)
-		W_ResizeView(bPtr->menuView, bPtr->view->size.width, height);
+		W_ResizeView(bPtr->menuView, width, height);
 }
 
 static void popUpMenu(PopUpButton * bPtr)
 {
 	W_Screen *scr = bPtr->view->screen;
 	Window dummyW;
+	int scrWidth = scr->rootView->size.width;
 	int x, y;
 
 	if (!bPtr->flags.enabled)
@@ -490,6 +530,15 @@ static void popUpMenu(PopUpButton * bPtr)
 	} else {
 		y -= bPtr->view->size.height * bPtr->selectedItemIndex;
 	}
+
+	if (W_VIEW_WIDTH(bPtr->menuView) != W_VIEW_WIDTH(bPtr->view))
+		resizeMenu(bPtr);
+
+	if (x + bPtr->menuView->size.width > scrWidth)
+		x = scrWidth - bPtr->menuView->size.width;
+	if (x < 0)
+		x = 0;
+
 	W_MoveView(bPtr->menuView, x, y);
 
 	if (bPtr->menuPixmap != None)
@@ -497,9 +546,6 @@ static void popUpMenu(PopUpButton * bPtr)
 	bPtr->menuPixmap = makeMenuPixmap(bPtr);
 	XSetWindowBackgroundPixmap(scr->display, bPtr->menuView->window, bPtr->menuPixmap);
 	XClearWindow(scr->display, bPtr->menuView->window);
-
-	if (W_VIEW_WIDTH(bPtr->menuView) != W_VIEW_WIDTH(bPtr->view))
-		resizeMenu(bPtr);
 
 	W_MapView(bPtr->menuView);
 

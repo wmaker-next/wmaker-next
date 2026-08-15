@@ -26,6 +26,7 @@ WMGetMultiSelectPopUpButtonEnabled ADDED
 WMSetMultiSelectPopUpButtonCaption ADDED
 WMSetMultiSelectPopUpButtonSelectionMask ADDED
 WMGetMultiSelectPopUpButtonSelectionMask ADDED
+WMSetPopUpButtonMenuAutoWidth ADDED
 WC_Matrix REMOVED from enum.
 WMCreateProgressIndicator REMOVED
 WMSetProgressIndicatorMinValue REMOVED

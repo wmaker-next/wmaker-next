@@ -1541,6 +1541,8 @@ void WMSetPopUpButtonAction(WMPopUpButton *sPtr, WMAction *action,
 
 void WMSetPopUpButtonPullsDown(WMPopUpButton *bPtr, Bool flag);
 
+void WMSetPopUpButtonMenuAutoWidth(WMPopUpButton *bPtr, Bool flag);
+
 WMMenuItem* WMAddPopUpButtonItem(WMPopUpButton *bPtr, const char *title);
 
 WMMenuItem* WMInsertPopUpButtonItem(WMPopUpButton *bPtr, int index,

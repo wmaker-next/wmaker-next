@@ -38,6 +38,9 @@ typedef struct W_TextField {
 
 	WMRange selection;
 
+	char *clipText;		/* CLIPBOARD snapshot taken at copy/cut time */
+	int clipLen;
+
 	WMFont *font;
 
 	WMTextFieldDelegate *delegate;
@@ -62,6 +65,8 @@ typedef struct W_TextField {
 		unsigned int pointerGrabbed:1;
 
 		unsigned int ownsSelection:1;
+
+		unsigned int ownsClipboard:1;
 
 		unsigned int waitingSelection:1;	/* requested selection, but
 							 * didnt get yet */
@@ -172,6 +177,24 @@ static void memmv(char *dest, const char *src, int size)
 	}
 }
 
+/* Snapshot the current selection for CLIPBOARD so a later paste from
+ * another window gets the bytes that were selected at copy time, not
+ * the live (possibly empty) selection range. */
+static void snapshotClipboard(TextField *tPtr)
+{
+	int start = tPtr->selection.count < 0
+	    ? tPtr->selection.position + tPtr->selection.count
+	    : tPtr->selection.position;
+	int len = abs(tPtr->selection.count);
+
+	wfree(tPtr->clipText);
+	tPtr->clipText = wmalloc(len + 1);
+	if (len > 0)
+		memcpy(tPtr->clipText, &tPtr->text[start], len);
+	tPtr->clipText[len] = '\0';
+	tPtr->clipLen = len;
+}
+
 static int incrToFit(TextField * tPtr)
 {
 	int vp = tPtr->viewPosition;
@@ -230,17 +253,24 @@ static WMData *requestHandler(WMView * view, Atom selection, Atom target, void *
 	Atom XA_TEXT = XInternAtom(dpy, "TEXT", False);
 	Atom XA_COMPOUND_TEXT = XInternAtom(dpy, "COMPOUND_TEXT", False);
 	WMData *data;
+	const char *src;
+	int srclen;
 
 	/* Parameter not used, but tell the compiler that it is ok */
-	(void) selection;
 	(void) cdata;
 
-	count = tPtr->selection.count < 0
-	    ? tPtr->selection.position + tPtr->selection.count : tPtr->selection.position;
-
 	if (target == XA_STRING || target == XA_TEXT || target == XA_COMPOUND_TEXT) {
-
-		data = WMCreateDataWithBytes(&(tPtr->text[count]), abs(tPtr->selection.count));
+		if (selection == tPtr->view->screen->clipboardAtom) {
+			src = tPtr->clipText ? tPtr->clipText : "";
+			srclen = tPtr->clipLen;
+		} else {
+			count = tPtr->selection.count < 0
+			    ? tPtr->selection.position + tPtr->selection.count
+			    : tPtr->selection.position;
+			src = &tPtr->text[count];
+			srclen = abs(tPtr->selection.count);
+		}
+		data = WMCreateDataWithBytes(src, srclen);
 		WMSetDataFormat(data, 8);
 		*type = target;
 
@@ -274,27 +304,30 @@ static void lostSelection(WMView * view, Atom selection, void *cdata)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) cdata;
 
-	if (tPtr->flags.ownsSelection) {
+	if (selection == XA_PRIMARY && tPtr->flags.ownsSelection) {
 		WMDeleteSelectionHandler(view, selection, CurrentTime);
 		tPtr->flags.ownsSelection = 0;
-	}
-	if (tPtr->selection.count != 0) {
-		tPtr->selection.count = 0;
-		paintTextField(tPtr);
+		if (!tPtr->flags.ownsClipboard && tPtr->selection.count != 0) {
+			tPtr->selection.count = 0;
+			paintTextField(tPtr);
+		}
+	} else if (selection != XA_PRIMARY && tPtr->flags.ownsClipboard) {
+		WMDeleteSelectionHandler(view, selection, CurrentTime);
+		tPtr->flags.ownsClipboard = 0;
+		wfree(tPtr->clipText);
+		tPtr->clipText = NULL;
+		tPtr->clipLen = 0;
 	}
 }
 
 static void selectionNotification(void *observerData, WMNotification * notification)
 {
 	WMView *observerView = (WMView *) observerData;
+	Atom selection = (Atom)(uintptr_t) WMGetNotificationObject(notification);
 	WMView *newOwnerView = (WMView *) WMGetNotificationClientData(notification);
 
 	if (observerView != newOwnerView) {
-		/*
-		   //if (tPtr->flags.ownsSelection)
-		   //    WMDeleteSelectionHandler(observerView, XA_PRIMARY, CurrentTime);
-		 */
-		lostSelection(observerView, XA_PRIMARY, NULL);
+		lostSelection(observerView, selection, NULL);
 	}
 }
 
@@ -350,6 +383,9 @@ WMTextField *WMCreateTextField(WMWidget * parent)
 
 	WMAddNotificationObserver(selectionNotification, tPtr->view,
 				  WMSelectionOwnerDidChangeNotification, (void *)XA_PRIMARY);
+	WMAddNotificationObserver(selectionNotification, tPtr->view,
+				  WMSelectionOwnerDidChangeNotification,
+				  (void *)tPtr->view->screen->clipboardAtom);
 
 	WMAddNotificationObserver(realizeObserver, tPtr, WMViewRealizedNotification, tPtr->view);
 
@@ -913,6 +949,111 @@ static void handleEvents(XEvent * event, void *data)
 	}
 }
 
+static void pasteText(WMView *view, Atom selection, Atom target, Time timestamp, void *cdata, WMData *data)
+{
+	TextField *tPtr = (TextField *) view->self;
+	char *str;
+
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void) selection;
+	(void) target;
+	(void) timestamp;
+	(void) cdata;
+
+	tPtr->flags.waitingSelection = 0;
+
+	if (data != NULL) {
+		unsigned len, fmt;
+
+		fmt = WMGetDataFormat(data);
+		len = WMGetDataLength(data);
+
+		/* Only accept format-8 (string) data, and NUL-terminate
+		 * the copy since WMInsertTextFieldText does strlen() and
+		 * WMData payloads are not guaranteed NUL-terminated. */
+		if (fmt == 8 && len > 0) {
+			char *tmp = wmalloc(len + 1);
+
+			memcpy(tmp, WMDataBytes(data), len);
+			tmp[len] = '\0';
+			WMInsertTextFieldText(tPtr, tmp, tPtr->cursorPosition);
+			wfree(tmp);
+			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
+		}
+	} else {
+		int n;
+
+		str = XFetchBuffer(tPtr->view->screen->display, &n, 0);
+
+		if (str != NULL) {
+			char *tmp = wmalloc(n + 1);
+
+			memcpy(tmp, str, n);
+			tmp[n] = 0;
+			XFree(str);
+			str = tmp;
+
+			WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
+			wfree(str);
+			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
+		}
+	}
+}
+
+/* Shared paste path for Shift+Insert, Ctrl+V, and middle-click.
+ * tryClipboardFirst picks CLIPBOARD then PRIMARY, else PRIMARY only.
+ * Returns True on synchronous cut-buffer fallback insert (caller posts the
+ * change notification). Returns False when an async request is in flight
+ * or nothing was pasted. deleteSelection deletes the current selection
+ * first. */
+static Bool requestPaste(TextField *tPtr, Time timestamp, Bool tryClipboardFirst, Bool deleteSelection)
+{
+	char *text;
+	char *tmp;
+	int n;
+	Bool deleted = False;
+
+	if (deleteSelection && tPtr->selection.count) {
+		WMDeleteTextFieldRange(tPtr, tPtr->selection);
+		deleted = True;
+	}
+
+	if ((tryClipboardFirst
+	     && WMRequestSelection(tPtr->view, tPtr->view->screen->clipboardAtom,
+				   XA_STRING, timestamp, pasteText, NULL))
+	    || WMRequestSelection(tPtr->view, XA_PRIMARY, XA_STRING,
+				  timestamp, pasteText, NULL)) {
+		tPtr->flags.waitingSelection = 1;
+		/* The selection was deleted but the paste is async: post the
+		 * change notification now so delegates see the deletion even
+		 * if the async paste later fails. */
+		if (deleted)
+			NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
+			       (void *)WMDeleteTextEvent);
+		return False;
+	}
+
+	text = XFetchBuffer(tPtr->view->screen->display, &n, 0);
+	if (text) {
+		tmp = wmalloc(n + 1);
+
+		memcpy(tmp, text, n);
+		tmp[n] = 0;
+		XFree(text);
+		text = tmp;
+
+		WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
+		wfree(text);
+		/* the caller skips the selection recompute on a synchronous
+		 * paste, so clear it here like the async path leaves it */
+		tPtr->selection.count = 0;
+		tPtr->selection.position = tPtr->cursorPosition;
+		return True;
+	}
+
+	return deleted;
+}
+
 static void handleTextFieldKeyPress(TextField * tPtr, XEvent * event)
 {
 	char buffer[64];
@@ -1188,6 +1329,90 @@ static void handleTextFieldKeyPress(TextField * tPtr, XEvent * event)
 		}
 		break;
 
+	case XK_Insert:
+		if (!shifted || controled)
+			goto normal_key;
+		/* Shift+Insert: paste from clipboard, fall back to primary */
+		if (tPtr->flags.enabled && !tPtr->flags.waitingSelection) {
+			if (requestPaste(tPtr, event->xkey.time, True, True)) {
+				data = (void *)WMInsertTextEvent;
+				textEvent = WMTextDidChangeNotification;
+			}
+			cancelSelection = 0;
+		}
+		relay = False;
+		break;
+
+	case XK_c:
+	case XK_C:
+		if (!controled)
+			goto normal_key;
+		/* Ctrl+C: copy selection to clipboard */
+		if (!tPtr->flags.secure && tPtr->selection.count != 0) {
+			int start = tPtr->selection.count < 0
+			    ? tPtr->selection.position + tPtr->selection.count
+			    : tPtr->selection.position;
+
+			XStoreBuffer(tPtr->view->screen->display,
+				     &tPtr->text[start],
+				     abs(tPtr->selection.count), 0);
+			snapshotClipboard(tPtr);
+			if (!tPtr->flags.ownsClipboard)
+				tPtr->flags.ownsClipboard =
+				    WMCreateSelectionHandler(tPtr->view,
+							     tPtr->view->screen->clipboardAtom,
+							     event->xkey.time,
+							     &selectionHandler, NULL);
+		}
+		cancelSelection = 0;
+		relay = False;
+		break;
+
+	case XK_v:
+	case XK_V:
+		if (!controled)
+			goto normal_key;
+		/* Ctrl+V: paste from clipboard, fall back to primary */
+		if (tPtr->flags.enabled && !tPtr->flags.waitingSelection) {
+			if (requestPaste(tPtr, event->xkey.time, True, True)) {
+				data = (void *)WMInsertTextEvent;
+				textEvent = WMTextDidChangeNotification;
+			}
+			cancelSelection = 0;
+		}
+		relay = False;
+		break;
+
+	case XK_x:
+	case XK_X:
+		if (!controled)
+			goto normal_key;
+		/* Ctrl+X: cut — copy to clipboard then delete */
+		if (!tPtr->flags.secure && tPtr->selection.count != 0) {
+			int start = tPtr->selection.count < 0
+			    ? tPtr->selection.position + tPtr->selection.count
+			    : tPtr->selection.position;
+
+			XStoreBuffer(tPtr->view->screen->display,
+				     &tPtr->text[start],
+				     abs(tPtr->selection.count), 0);
+			snapshotClipboard(tPtr);
+			if (!tPtr->flags.ownsClipboard)
+				tPtr->flags.ownsClipboard =
+				    WMCreateSelectionHandler(tPtr->view,
+							     tPtr->view->screen->clipboardAtom,
+							     event->xkey.time,
+							     &selectionHandler, NULL);
+			WMDeleteTextFieldRange(tPtr, tPtr->selection);
+			tPtr->selection.count = 0;
+			tPtr->selection.position = tPtr->cursorPosition;
+			data = (void *)WMDeleteTextEvent;
+			textEvent = WMTextDidChangeNotification;
+		}
+		cancelSelection = 0;
+		relay = False;
+		break;
+
  normal_key:
 	default:
 		if (!controled) {
@@ -1301,43 +1526,6 @@ static int pointToCursorPosition(TextField * tPtr, int x)
 	}
 
 	return b;
-}
-
-static void pasteText(WMView * view, Atom selection, Atom target, Time timestamp, void *cdata, WMData * data)
-{
-	TextField *tPtr = (TextField *) view->self;
-	char *str;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) selection;
-	(void) target;
-	(void) timestamp;
-	(void) cdata;
-
-	tPtr->flags.waitingSelection = 0;
-
-	if (data != NULL) {
-		str = (char *)WMDataBytes(data);
-
-		WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
-		NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
-	} else {
-		int n;
-
-		str = XFetchBuffer(tPtr->view->screen->display, &n, 0);
-
-		if (str != NULL) {
-			char *tmp = wmalloc(n + 1);
-			memcpy(tmp, str, n);
-			tmp[n] = 0;
-			XFree(str);
-			str = tmp;
-
-			WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
-			wfree(str);
-			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
-		}
-	}
 }
 
 static void handleTextFieldActionEvents(XEvent * event, void *data)
@@ -1487,27 +1675,10 @@ static void handleTextFieldActionEvents(XEvent * event, void *data)
 		}
 
 		if (event->xbutton.button == Button2 && tPtr->flags.enabled) {
-			char *text;
-			int n;
-
-			if (!WMRequestSelection(tPtr->view, XA_PRIMARY, XA_STRING,
-						event->xbutton.time, pasteText, NULL)) {
-				text = XFetchBuffer(tPtr->view->screen->display, &n, 0);
-
-				if (text) {
-					char *tmp = wmalloc(n + 1);
-					memcpy(tmp, text, n);
-					tmp[n] = 0;
-					XFree(text);
-					text = tmp;
-
-					WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
-					wfree(text);
-					NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
-							(void *)WMInsertTextEvent);
-				}
-			} else {
-				tPtr->flags.waitingSelection = 1;
+			/* Middle-click: paste from primary selection */
+			if (requestPaste(tPtr, event->xbutton.time, False, False)) {
+				NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
+					(void *)WMInsertTextEvent);
 			}
 		}
 
@@ -1594,7 +1765,11 @@ static void destroyTextField(TextField * tPtr)
 	WMReleaseFont(tPtr->font);
 	/*// use lostSelection() instead of WMDeleteSelectionHandler here? */
 	WMDeleteSelectionHandler(tPtr->view, XA_PRIMARY, CurrentTime);
+	WMDeleteSelectionHandler(tPtr->view, tPtr->view->screen->clipboardAtom, CurrentTime);
 	WMRemoveNotificationObserver(tPtr);
+
+	if (tPtr->clipText)
+		wfree(tPtr->clipText);
 
 	if (tPtr->text)
 		wfree(tPtr->text);

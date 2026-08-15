@@ -580,6 +580,7 @@ static void createPanel(Panel * p)
 	panel->dragmaxP = wm_enum_popup_new(panel->dragmaxF,
 					     drag_maximized_window_options,
 					     wlengthof(drag_maximized_window_options));
+	WMSetPopUpButtonMenuAutoWidth(panel->dragmaxP, True);
 	WMResizeWidget(panel->dragmaxP, 205, 20);
 	WMMoveWidget(panel->dragmaxP, 8, 18);
 
