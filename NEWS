@@ -3,6 +3,24 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Skip empty workspaces when switching workspaces
+-----------------------------------------------
+
+A new "Skip empty workspaces" option (SkipEmptyWorkspaces, default off,
+in the WPrefs Expert panel) makes the Next/Prev/Left/Right/Up/Down
+workspace shortcuts, the Clip scroll-wheel and arrow buttons, the
+root-window mouse-wheel switch actions, the workspace-map directional
+keys, and the `workspace next`/`workspace prev` IPC verbs skip past
+workspaces that contain no non-omnipresent windows. Explicit jumps
+(Workspace1..10, LastWorkspace, Next/PrevWorkspaceLayerKey, `workspace N`,
+`workspace last`, workspace-menu entries, and pager-sent
+_NET_CURRENT_DESKTOP messages) and the MoveTo* actions that send a window
+to another workspace are unaffected. While the option is on,
+AdvanceToNewWorkspace is suppressed for the gated actions (so cycling
+never lands on a freshly-created empty workspace). CycleWorkspaces still
+wraps the walk within the existing set. AutoRemoveEmptyWorkspaces is
+orthogonal and both options may be combined.
+
 Show Desktop key binding (ShowDesktopKey)
 ------------------------------------------
 

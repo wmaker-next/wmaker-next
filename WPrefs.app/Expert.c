@@ -118,6 +118,9 @@ static struct expert_option {
 	{ N_("Show workspace title on Clip."),
 	  OPTION_WMAKER, "ShowClipTitle" },
 
+	{ N_("Skip empty workspaces when switching with Next/Prev/Left/Right/Up/Down keys."),
+	  OPTION_WMAKER, "SkipEmptyWorkspaces" },
+
 	{ N_("Highlight the icon of the application when it has the focus."),
 	  OPTION_WMAKER, "HighlightActiveApp" },
 

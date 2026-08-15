@@ -4388,7 +4388,14 @@ static void handleClipChangeWorkspace(WScreen *scr, XEvent *event)
 
 	new_ws = w_global.config->ws_advance || (event->xbutton.state & ControlMask);
 
-	if (direction == CLIP_FORWARD) {
+	/* SkipEmptyWorkspaces: take the same occupied-only walk as the Clip
+	 * scroll-wheel, suppressing the ws_advance/ControlMask path below. */
+	if (w_global.config->skip_empty_workspaces) {
+		if (direction == CLIP_FORWARD)
+			wWorkspaceRelativeChangeFromPointer(scr, 1);
+		else if (direction == CLIP_REWIND)
+			wWorkspaceRelativeChangeFromPointer(scr, -1);
+	} else if (direction == CLIP_FORWARD) {
 		if (scr->current_workspace < scr->workspace_count - 1)
 			wWorkspaceChangeFromPointer(scr, scr->current_workspace + 1);
 		else if (new_ws && scr->current_workspace < MAX_WORKSPACES - 1)

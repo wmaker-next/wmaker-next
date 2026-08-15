@@ -592,6 +592,53 @@ int wWorkspaceRelativeHeadTarget(WScreen *scr, int head, int amount)
 	return -1;
 }
 
+/* Occupied = a non-omnipresent window has the workspace bit, iconic counts.
+ * Same test as wAutoRemoveEmptyWorkspaces. */
+static Bool workspace_is_occupied(WScreen *scr, int workspace)
+{
+	WWindow *tmp;
+
+	if (workspace < 0 || workspace >= scr->workspace_count)
+		return False;
+	for (tmp = scr->focused_window; tmp; tmp = tmp->prev)
+		if (!IS_OMNIPRESENT(tmp) && (WWIN_WS_MASK(tmp) & WS_BIT(workspace)))
+			return True;
+	return False;
+}
+
+/* Occupied-only walk of wWorkspaceRelativeHeadTarget (head < 0 = any head).
+ * ws_advance is suppressed: a freshly grown workspace is empty by definition. */
+static int wWorkspaceRelativeOccupiedTarget(WScreen *scr, int head, int amount)
+{
+	int n = scr->workspace_count;
+	int dir = (amount > 0) ? 1 : -1;
+	int w = (head >= 0) ? scr->head_workspace[head] : scr->current_workspace;
+	int steps;
+
+	if (amount == 0 || n <= 0)
+		return -1;
+
+	for (steps = 0; steps < n + 1; steps++) {
+		w += dir;
+		if (w < 0) {
+			if (!w_global.config->ws_cycle)
+				return -1;
+			w = n - 1;
+		} else if (w >= n) {
+			if (!w_global.config->ws_cycle)
+				return -1;
+			w = 0;
+		}
+		if (workspace_is_occupied(scr, w) &&
+		    (head < 0 || wWorkspaceIsAllowedOnHead(scr, w, head))) {
+			amount -= dir;
+			if (amount == 0)
+				return w;
+		}
+	}
+	return -1;
+}
+
 void wWorkspaceRelativeChange(WScreen * scr, int amount)
 {
 	int w;
@@ -606,7 +653,17 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
 	if (w_global.config->per_head_workspaces) {
 		int head = wGetActiveHead(scr);
 
-		w = wWorkspaceRelativeHeadTarget(scr, head, amount);
+		if (w_global.config->skip_empty_workspaces)
+			w = wWorkspaceRelativeOccupiedTarget(scr, head, amount);
+		else
+			w = wWorkspaceRelativeHeadTarget(scr, head, amount);
+		if (w >= 0)
+			wWorkspaceChange(scr, w);
+		return;
+	}
+
+	if (w_global.config->skip_empty_workspaces) {
+		w = wWorkspaceRelativeOccupiedTarget(scr, -1, amount);
 		if (w >= 0)
 			wWorkspaceChange(scr, w);
 		return;
@@ -740,8 +797,26 @@ void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow)
 			to = wWorkspaceNeighbour(scr, from, dcol, drow);
 			if (to < 0 || to == scr->head_workspace[head])
 				return;
-			if (wWorkspaceIsAllowedOnHead(scr, to, head)) {
+			if (wWorkspaceIsAllowedOnHead(scr, to, head) &&
+			    (!w_global.config->skip_empty_workspaces || workspace_is_occupied(scr, to))) {
 				wWorkspaceForceChangeOnHead(scr, to, head);
+				return;
+			}
+			from = to;
+		}
+		return;
+	}
+
+	if (w_global.config->skip_empty_workspaces) {
+		int steps;
+
+		from = scr->current_workspace;
+		for (steps = 0; steps < scr->workspace_count; steps++) {
+			to = wWorkspaceNeighbour(scr, from, dcol, drow);
+			if (to < 0 || to == scr->current_workspace)
+				return;
+			if (workspace_is_occupied(scr, to)) {
+				wWorkspaceChange(scr, to);
 				return;
 			}
 			from = to;

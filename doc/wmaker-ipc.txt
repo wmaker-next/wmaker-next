@@ -74,6 +74,9 @@ Command verbs (request type 0)
     exit
     kill-session
     workspace next|prev|last|N
+            next and prev honor the SkipEmptyWorkspaces option and skip
+            workspaces holding no non-omnipresent windows. last and N
+            are explicit targets and are never filtered
     window-workspace XID +N|-N|N
             move (N), add (+N) or remove (-N) the window's workspace
             membership; N is a 0-based workspace index

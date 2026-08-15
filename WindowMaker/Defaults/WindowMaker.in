@@ -59,6 +59,7 @@
 	AutoRemoveEmptyWorkspaces = NO;
 	MinWorkspaceCount = 1;
 	CycleWorkspaces = NO;
+	SkipEmptyWorkspaces = NO;
 	PerHeadWorkspaces = NO;
 	DefaultWorkspaceLayout = float;
 	LayoutMasterCount = 1;

@@ -798,6 +798,7 @@ static void test_defaults(void)
 	CHECK(config->help_balloon == 0);
 	CHECK(config->edge_resistance == 30);
 	CHECK(config->resize_increment == 0);
+	CHECK(config->window_gap == 0);
 	CHECK(config->attract == 0);
 	CHECK(config->dont_blink == 0);
 	CHECK(config->single_click == 0);
@@ -841,6 +842,7 @@ static void test_defaults(void)
 	CHECK(config->auto_remove_empty_workspaces == 0);
 	CHECK(config->min_workspace_count == 1);
 	CHECK(config->ws_cycle == 0);
+	CHECK(config->skip_empty_workspaces == 0);
 	CHECK(config->workspace_name_display_position == WD_CENTER);
 	CHECK(config->window_placement == WPM_AUTO);
 	CHECK(config->workspace_border_position == WB_NONE);
@@ -917,6 +919,10 @@ static void test_defaults(void)
 	CHECK(strcmp(config->key_bindings[WKBD_MINIATURIZE_OTHERS].spec, "None") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_LOCKSCREEN].spec, "None") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_CLIPBOARD].spec, "Mod4+v") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_SHOW_DESKTOP].spec, "None") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWNEXT].spec, "Mod4+grave") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWPREV].spec, "Mod4+Shift+grave") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_MOVE_TO_EDGE_LEFT].spec, "None") == 0);
 	CHECK(strcmp(config->lock_screen_command, "wmlock") == 0);
 	CHECK(strcmp(config->clipboard_command, "wmakermsg send_tick wmclipd-popup") == 0);
 	wConfigDestroy(config);
@@ -1070,8 +1076,9 @@ static void test_valid_parse(void)
 			      "ColormapMode = Manual; AutoFocus = NO; "
 			      "AutoFocusAcrossHeads = NO; RaiseDelay = 12; "
 			      "CirculateRaise = YES; Superfluous = NO; "
-			      "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
-			      "AutoRemoveEmptyWorkspaces = YES; MinWorkspaceCount = 2; "
+		      "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+		      "SkipEmptyWorkspaces = YES; "
+		      "AutoRemoveEmptyWorkspaces = YES; MinWorkspaceCount = 2; "
 			      "WorkspaceNameDisplayPosition = topright; "
 			      "WindowPlacement = Center; WorkspaceBorder = AllDirections; "
 			      "WorkspaceBorderSize = 7; WrapMenus = YES; "
@@ -1109,6 +1116,11 @@ static void test_valid_parse(void)
 			      "ModifierKeyLabels = (\"S+\", \"C+\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\"); "
 			      "ModifierKeyShortLabels = (S, C, M1, M2, M3, M4, M5, M, A); "
 			      "RootMenuKey = \"Mod1+X Control+Y\"; "
+			      "WindowGap = 7; "
+			      "ShowDesktopKey = \"Mod4+D\"; "
+			      "GroupWindowNextKey = \"Mod1+grave\"; "
+			      "GroupWindowPrevKey = \"Mod1+Shift+grave\"; "
+			      "MoveToEdgeLeftKey = \"Mod1+Left\"; "
 			      "Workspace1Key = \"Mod4+1\"; }");
 	if (!dict)
 		return;
@@ -1203,6 +1215,7 @@ static void test_valid_parse(void)
 	CHECK(config->auto_remove_empty_workspaces == 1);
 	CHECK(config->min_workspace_count == 2);
 	CHECK(config->ws_cycle == 1);
+	CHECK(config->skip_empty_workspaces == 1);
 	CHECK(config->workspace_name_display_position == WD_TOPRIGHT);
 	CHECK(config->window_placement == WPM_CENTER);
 	CHECK(config->workspace_border_position == WB_ALLDIRS);
@@ -1267,6 +1280,11 @@ static void test_valid_parse(void)
 	CHECK(strcmp(config->key_bindings[WKBD_ROOTMENU].spec,
 		     "Mod1+X Control+Y") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_WORKSPACE1].spec, "Mod4+1") == 0);
+	CHECK(config->window_gap == 7);
+	CHECK(strcmp(config->key_bindings[WKBD_SHOW_DESKTOP].spec, "Mod4+D") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWNEXT].spec, "Mod1+grave") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWPREV].spec, "Mod1+Shift+grave") == 0);
+	CHECK(strcmp(config->key_bindings[WKBD_MOVE_TO_EDGE_LEFT].spec, "Mod1+Left") == 0);
 
 	wConfigDestroy(config);
 	WMReleasePropList(dict);
@@ -1489,6 +1507,7 @@ static void test_runtime_apply(void)
 				  "AutoFocusAcrossHeads = YES; RaiseDelay = 0; "
 				  "CirculateRaise = NO; Superfluous = YES; "
 				  "AdvanceToNewWorkspace = NO; CycleWorkspaces = NO; "
+				  "SkipEmptyWorkspaces = NO; "
 				  "WorkspaceNameDisplayPosition = center; "
 				  "WorkspaceBorderSize = 0; ScrollableMenus = YES; "
 				  "DoubleClickTime = 250; SaveSessionOnExit = NO; "
@@ -1565,6 +1584,7 @@ static void test_runtime_apply(void)
 				  "AutoFocusAcrossHeads = NO; RaiseDelay = 15; "
 				  "CirculateRaise = YES; Superfluous = NO; "
 				  "AdvanceToNewWorkspace = YES; CycleWorkspaces = YES; "
+				  "SkipEmptyWorkspaces = YES; "
 				  "AutoRemoveEmptyWorkspaces = YES; MinWorkspaceCount = 2; "
 				  "WorkspaceNameDisplayPosition = bottomleft; "
 				  "WorkspaceBorderSize = 4; ScrollableMenus = NO; "
@@ -1669,6 +1689,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->auto_remove_empty_workspaces == 1);
 	CHECK(w_global.config->min_workspace_count == 2);
 	CHECK(w_global.config->ws_cycle == 1);
+	CHECK(w_global.config->skip_empty_workspaces == 1);
 	CHECK(w_global.config->workspace_name_display_position == WD_BOTTOMLEFT);
 	CHECK(w_global.config->workspace_border_size == 4);
 	CHECK(w_global.config->scrollable_menus == 0);

@@ -301,6 +301,8 @@
 	  NULL, 1, MAX_WORKSPACES, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_WORKSPACES, "CycleWorkspaces", BOOL, ws_cycle, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(SKIP_EMPTY_WORKSPACES, "SkipEmptyWorkspaces", BOOL, skip_empty_workspaces, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(PER_HEAD_WORKSPACES, "PerHeadWorkspaces", BOOL, per_head_workspaces, "NO", \
 	  NULL, 0, 1, WCFG_STARTUP_ONLY, 0) \
 	_(DEFAULT_WORKSPACE_LAYOUT, "DefaultWorkspaceLayout", ENUM, default_workspace_layout, \
