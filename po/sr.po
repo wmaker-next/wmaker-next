@@ -1416,8 +1416,8 @@ msgid "Maximize"
 msgstr "Максимизуј"
 
 #: ../src/winmenu.c:85
-msgid "Other maximization"
-msgstr "Друге максимизације"
+msgid "Region snap"
+msgstr "Приањање уз регион"
 
 #: ../src/winmenu.c:86 ../src/winmenu.c:652
 msgid "Miniaturize"

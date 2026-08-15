@@ -1418,8 +1418,8 @@ msgid "Maximize"
 msgstr "Teljes méret"
 
 #: ../../wmaker-crm/src/winmenu.c:536
-msgid "Other maximization"
-msgstr "Teljes méret opciók"
+msgid "Region snap"
+msgstr "Régióhoz illesztés"
 
 #: ../../wmaker-crm/src/winmenu.c:539 ../../wmaker-crm/src/winmenu.c:606
 msgid "Miniaturize"

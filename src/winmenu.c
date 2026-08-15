@@ -51,7 +51,7 @@
 
 static WMenu *makeWorkspaceMenu(WScreen *scr);
 static WMenu *makeOptionsMenu(WScreen *scr);
-static WMenu *makeMaximizeMenu(WScreen *scr);
+static WMenu *makeRegionSnapMenu(WScreen *scr);
 static WMenu *makeEdgeSnapMenu(WScreen *scr);
 
 /*
@@ -65,7 +65,7 @@ enum
 {
 	MC_MAXIMIZE,
 	MC_FULLSCREEN,
-	MC_OTHERMAX,
+	MC_REGION_SNAP,
 	MC_EDGE_SNAP,
 	MC_MINIATURIZE,
 	MC_SHADE,
@@ -89,7 +89,7 @@ static const struct {
 } window_menu_entries[] = {
 	[MC_MAXIMIZE]    = { N_("Maximize"), NULL },
 	[MC_FULLSCREEN]  = { N_("Fullscreen"), NULL },
-	[MC_OTHERMAX]    = { N_("Other maximization"), makeMaximizeMenu },
+	[MC_REGION_SNAP] = { N_("Region snap"), makeRegionSnapMenu },
 	[MC_EDGE_SNAP]   = { N_("Edge snap"), makeEdgeSnapMenu },
 	[MC_MINIATURIZE] = { N_("Miniaturize"), NULL },
 	[MC_SHADE]       = { N_("Shade"), NULL },
@@ -127,7 +127,7 @@ static const char *const menu_options_entries[] = {
 };
 
 /*
- * Defines the menu entries for the Other maximization sub-menu
+ * Defines the menu entries for the Region snap sub-menu
  */
 static const struct {
 	unsigned int indicator;
@@ -575,7 +575,7 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin)
 
 static void updateMaximizeMenu(WMenu * menu, WWindow * wwin)
 {
-	WMenu *smenu = menu->cascades[menu->entries[MC_OTHERMAX]->cascade];
+	WMenu *smenu = menu->cascades[menu->entries[MC_REGION_SNAP]->cascade];
 	int i;
 
 	for (i = 0; i < smenu->entry_no; i++) {
@@ -652,7 +652,7 @@ static WMenu *makeOptionsMenu(WScreen * scr)
 	return menu;
 }
 
-static WMenu *makeMaximizeMenu(WScreen * scr)
+static WMenu *makeRegionSnapMenu(WScreen *scr)
 {
 	WMenu *menu;
 	WMenuEntry *entry;

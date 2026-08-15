@@ -1501,8 +1501,8 @@ msgid "Maximize"
 msgstr "Maximaliseren"
 
 #: ../src/winmenu.c:85
-msgid "Other maximization"
-msgstr "Andere maximalisering"
+msgid "Region snap"
+msgstr "Regio vastmaken"
 
 #: ../src/winmenu.c:86 ../src/winmenu.c:646
 msgid "Miniaturize"
