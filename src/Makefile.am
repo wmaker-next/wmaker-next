@@ -148,7 +148,9 @@ wmaker_SOURCES = 	\
 	workspace.c \
 	workspace.h \
 	wsmap.c \
-	wsmap.h
+	wsmap.h \
+	wsound.c \
+	wsound.h
 
 if USE_DOCK_XDND
 wmaker_SOURCES += xdnd.c

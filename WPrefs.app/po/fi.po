@@ -530,6 +530,14 @@ msgstr ""
 "Voit hakea sen osoitteesta\n"
 "http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Ota käyttöön/pois äänitehosteet ikkunatoiminnoille kuten varjostus, kuvakkeistus\n"
+"ja telakointi. Vaatii wmsoundd-daemonin käynnissä oloa."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

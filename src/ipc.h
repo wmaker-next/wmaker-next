@@ -48,5 +48,6 @@ void wIPCEmitDialog(struct _WScreen *scr, const char *kind,
 		    const char *title, const char *text);
 void wIPCEmitScreenshot(struct _WScreen *scr, const char *path, int mode);
 void wIPCEmitDisplayPower(int off, const char *source);
+void wIPCEmitSound(struct _WScreen *scr, const char *event);
 
 #endif /* _WM_IPC_H_ */

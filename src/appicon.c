@@ -56,6 +56,7 @@
 #include "placement.h"
 #include "misc.h"
 #include "event.h"
+#include "wsound.h"
 #ifdef USE_DOCK_XDND
 #include "xdnd.h"
 #endif
@@ -1111,20 +1112,22 @@ Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event)
 				/* If docked (or tried to dock) to a auto_collapsing dock, unset
 				 * collapsed, so that wHandleAppIconMove doesn't collapse it
 				 * right away (the timer will take care of it) */
-				if (lastDock->auto_collapse)
-					collapsed = 0;
-			}
-			else {
+			if (lastDock->auto_collapse)
+				collapsed = 0;
+			if (docked)
+				wSoundPlay(scr, WSOUND_DOCK);
+			} else {
 				if (originalDock != NULL) { /* Detaching a docked appicon */
-					if (superfluous) {
-						if (!aicon->running && !w_global.config->no_animations) {
-							/* We need to deselect it, even if is deselected in
-							 * wDockDetach(), because else DoKaboom() will fail.
-							 */
-							if (aicon->icon->selected)
-								wIconSelect(aicon->icon);
-							DoKaboom(scr, aicon->icon->core->window, x, y);
-						}
+					if (superfluous && !aicon->running && !w_global.config->no_animations) {
+						/* We need to deselect it, even if is deselected in
+						 * wDockDetach(), because else DoKaboom() will fail.
+						 */
+						if (aicon->icon->selected)
+							wIconSelect(aicon->icon);
+						wSoundPlay(scr, WSOUND_KABOOM);
+						DoKaboom(scr, aicon->icon->core->window, x, y);
+					} else {
+						wSoundPlay(scr, WSOUND_UNDOCK);
 					}
 					wDockDetach(originalDock, aicon);
 					if (originalDock->auto_collapse && !originalDock->collapsed) {

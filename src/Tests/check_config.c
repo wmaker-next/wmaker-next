@@ -799,6 +799,7 @@ static void test_defaults(void)
 	CHECK(config->edge_resistance == 30);
 	CHECK(config->resize_increment == 0);
 	CHECK(config->window_gap == 0);
+	CHECK(config->no_sound == 1);
 	CHECK(config->attract == 0);
 	CHECK(config->dont_blink == 0);
 	CHECK(config->single_click == 0);
@@ -1116,7 +1117,7 @@ static void test_valid_parse(void)
 			      "ModifierKeyLabels = (\"S+\", \"C+\", \"M1+\", \"M2+\", \"M3+\", \"M4+\", \"M5+\"); "
 			      "ModifierKeyShortLabels = (S, C, M1, M2, M3, M4, M5, M, A); "
 			      "RootMenuKey = \"Mod1+X Control+Y\"; "
-			      "WindowGap = 7; "
+			      "WindowGap = 7; DisableSound = NO; "
 			      "ShowDesktopKey = \"Mod4+D\"; "
 			      "GroupWindowNextKey = \"Mod1+grave\"; "
 			      "GroupWindowPrevKey = \"Mod1+Shift+grave\"; "
@@ -1281,6 +1282,7 @@ static void test_valid_parse(void)
 		     "Mod1+X Control+Y") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_WORKSPACE1].spec, "Mod4+1") == 0);
 	CHECK(config->window_gap == 7);
+	CHECK(config->no_sound == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_SHOW_DESKTOP].spec, "Mod4+D") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWNEXT].spec, "Mod1+grave") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWPREV].spec, "Mod1+Shift+grave") == 0);

@@ -85,7 +85,7 @@ struct WIPCClient {
 
 static const char *event_names[WIPC_EV_COUNT] = {
 	"workspace", "window", "shutdown", "child_exit", "dialog", "tick",
-	"screenshot", "display_power"
+	"screenshot", "display_power", "sound"
 };
 
 /* set on first wIPCServerStart() so notification observers register once */
@@ -1042,6 +1042,46 @@ static verb_rc verb_shrink_to_edge(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static const char *const sound_event_names[] = {
+	"shade", "unshade", "maximize", "unmaximize",
+	"iconify", "deiconify", "hide", "unhide",
+	"appstart", "appexit", "dock", "undock", "kaboom",
+	"startup", "shutdown", "workspace", "screenshot", "lock"
+};
+
+static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,
+			       char **err, WMPropList **reply)
+{
+	WMPropList *ev;
+	const char *name;
+	size_t i;
+	Bool valid = False;
+
+	(void)reply;
+	ev = WMGetFromPLArray(args, 1);
+	if (!ev || !WMIsPLString(ev)) {
+		*err = wstrdup("play-sound requires an event name");
+		return VERB_FAIL;
+	}
+	name = WMGetFromPLString(ev);
+	if (!*name) {
+		*err = wstrdup("play-sound requires a non-empty event name");
+		return VERB_FAIL;
+	}
+	for (i = 0; i < sizeof(sound_event_names) / sizeof(sound_event_names[0]); i++)
+		if (strcmp(name, sound_event_names[i]) == 0) {
+			valid = True;
+			break;
+		}
+	if (!valid) {
+		*err = wstrdup("play-sound: unknown event name");
+		return VERB_FAIL;
+	}
+	wIPCEmitSound(scr, name);
+	XSync(dpy, False);
+	return VERB_OK;
+}
+
 static const struct {
 	const char *name;
 	verb_fn fn;
@@ -1054,7 +1094,7 @@ static const struct {
 	{ "workspace-new",    verb_workspace_new },
 	{ "workspace-delete", verb_workspace_delete },
 	{ "window-workspace", verb_window_workspace },
-	{ "window-close",     verb_window_close },
+	{ "window-close",      verb_window_close },
 	{ "move-to-edge",     verb_move_to_edge },
 	{ "grow-to-edge",     verb_grow_to_edge },
 	{ "shrink-to-edge",   verb_shrink_to_edge },
@@ -1066,6 +1106,7 @@ static const struct {
 	{ "hide-application", verb_hide_app },
 	{ "hide-others",      verb_hide_others },
 	{ "display-power",    verb_display_power },
+	{ "play-sound",       verb_play_sound },
 	{ "info",             verb_info },
 	{ NULL, NULL }
 };
@@ -1692,6 +1733,18 @@ void wIPCEmitScreenshot(WScreen *scr, const char *path, int mode)
 	pl_dict_put(d, "screen", pl_int(scr->screen));
 	pl_dict_put(d, "workspace", pl_int(scr->current_workspace));
 	wIPCBroadcast(scr, WIPC_EV_SCREENSHOT, d);
+	WMReleasePropList(d);
+}
+
+void wIPCEmitSound(WScreen *scr, const char *event)
+{
+	WMPropList *d;
+
+	d = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(d, "event", pl_string(event));
+	pl_dict_put(d, "screen", pl_int(scr->screen));
+	pl_dict_put(d, "workspace", pl_int(scr->current_workspace));
+	wIPCBroadcast(scr, WIPC_EV_SOUND, d);
 	WMReleasePropList(d);
 }
 

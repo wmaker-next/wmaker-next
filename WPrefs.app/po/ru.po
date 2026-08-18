@@ -325,6 +325,14 @@ msgstr ""
 "Вы можете загрузить его с:\n"
 "http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Включить/выключить звуковые эффекты для действий с окнами, таких как сворачивание, иконификация\n"
+"и стыковка. Требуется, чтобы демон wmsoundd был запущен."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

@@ -312,6 +312,14 @@ msgstr ""
 "Animációk ki/be kapcsolása (pl. ablak ikonná\n"
 "kicsinyítésnél, felhúzásnál, stb.)"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Hanghatások be-/kikapcsolása ablakműveletekhez, mint árnyékolás, ikonizálás\n"
+"és dokkolás. A wmsoundd démon futását igényli."
+
 #: ../../../wmaker-crm/WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "Haszontalan"

@@ -310,6 +310,14 @@ msgstr ""
 "你需要分開發送的模組。你可以在這裡取得:\n"
 "http://largo.windowmaker.info/files.php#WSoundServer"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"啟用/停用視窗操作的音效，如捲起、最小化\n"
+"和停靠。需要 wmsoundd 守護行程正在執行。"
+
 #: ../../WPrefs.app/Configurations.c:418
 msgid ""
 "Note: sound requires a module distributed\n"

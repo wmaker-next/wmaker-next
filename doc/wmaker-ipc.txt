@@ -58,8 +58,13 @@ Event types (type field = (1u<<31) | id)
                     screen=N; workspace=N;}
     7  display_power
                    {state="on"|"off"; source="ipc"|"randr"|"screensaver";}
+    8  sound       {event="shade"|"unshade"|"maximize"|"unmaximize"|
+                   "iconify"|"deiconify"|"hide"|"unhide"|"appstart"|
+                   "appexit"|"dock"|"undock"|"kaboom"|"startup"|
+                   "shutdown"|"workspace"|"screenshot"|"lock";
+                   screen=N; workspace=N;}
 
-workspace, window and screenshot are screen-scoped, the rest are process-scoped.
+workspace, window, screenshot and sound are screen-scoped, the rest are process-scoped.
 
 display_power is emitted on every actual transition of the global
 display_off flag regardless of source. The DisplayOffCommand and
@@ -123,6 +128,13 @@ Command verbs (request type 0)
             send WM_DELETE_WINDOW to the window and ping it
             via _NET_WM_PING
     display-power on|off
+    play-sound EVENT
+            emit a sound event on the IPC stream; EVENT is one of
+            shade, unshade, maximize, unmaximize, iconify, deiconify,
+            hide, unhide, appstart, appexit, dock, undock, kaboom,
+            startup, shutdown, workspace, screenshot, lock.
+            Requires the wmsoundd daemon to be subscribed to
+            produce audio; the verb itself only emits the event
     info
 
 An unknown verb yields {success=NO; error="unknown command '...'";}

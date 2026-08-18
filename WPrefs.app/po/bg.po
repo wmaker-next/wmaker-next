@@ -401,6 +401,14 @@ msgstr ""
 "Може да го получите от адрес\n"
 "http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Включване/изключване на звуковите ефекти за действия с прозорци като сгъване, иконификация\n"
+"и скачване. Изисква демонът wmsoundd да работи."
+
 # ../../WPrefs.app/Configurations.c:419
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""

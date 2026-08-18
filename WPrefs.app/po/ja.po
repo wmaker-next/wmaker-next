@@ -285,6 +285,14 @@ msgstr ""
 "ウィンドウの最小化やシェードのときのアニメ表示\n"
 "を有効化/無効化します."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"シェード、アイコン化、ドックなどのウィンドウ操作の効果音を\n"
+"有効/無効にします。wmsounddデーモンの実行が必要です。"
+
 #: ../../WPrefs.app/Configurations.c:361
 msgid "Superfluous"
 msgstr "特殊効果"

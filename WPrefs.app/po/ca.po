@@ -327,6 +327,14 @@ msgstr ""
 "un mòdul que es distribueix per separat i que podeu\n"
 "trobar a: http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Activa/desactiva els efectes de so per a accions de finestra com ombrejar, iconificar\n"
+"i acoblar. Requereix que el dimoni wmsoundd s'estigui executant."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

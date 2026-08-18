@@ -89,6 +89,7 @@ const char *__lsan_default_suppressions(void)
 #include "framewin.h"
 #include "startup_notify.h"
 #include "xsmp.h"
+#include "wsound.h"
 
 #include <WINGs/WUtil.h>
 
@@ -137,6 +138,24 @@ static int *wVisualID = NULL;
 static int wVisualID_len = 0;
 
 static int real_main(int argc, char **argv);
+
+/* Defer the startup chime into the event loop. The WIPC socket is bound
+ * in StartUp, but a subscriber must connect and SUBSCRIBE before it
+ * receives anything, which only happens once EventLoop runs. */
+#define STARTUP_SOUND_DELAY_MS 250
+
+static void play_startup_sound(void *data)
+{
+	int i;
+	WScreen *scr;
+
+	(void)data;
+	for (i = 0; i < w_global.screen_count; i++) {
+		scr = wScreenWithNumber(i);
+		if (scr)
+			wSoundPlay(scr, WSOUND_STARTUP);
+	}
+}
 
 int getWVisualID(int screen)
 {
@@ -893,6 +912,7 @@ static int real_main(int argc, char **argv)
 #ifdef HAVE_INOTIFY
 	inotifyWatchConfig();
 #endif
+	WMAddTimerHandler(STARTUP_SOUND_DELAY_MS, play_startup_sound, NULL);
 	EventLoop();
 	return -1;
 }

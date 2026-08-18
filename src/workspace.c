@@ -50,6 +50,7 @@
 #include "tabgroup.h"
 #include "osdview.h"
 #include "layout.h"
+#include "wsound.h"
 
 _Static_assert(MAX_WORKSPACES <= 64,
                "WFrameWindow.ws_mask is 64 bits wide");
@@ -1045,6 +1046,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
+	wSoundPlay(scr, WSOUND_WORKSPACE);
 
 	/*   XSync(dpy, False); */
 }
@@ -1267,6 +1269,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 	wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
+	wSoundPlay(scr, WSOUND_WORKSPACE);
 }
 
 /* One full map/unmap reconciliation over every window using the per-head

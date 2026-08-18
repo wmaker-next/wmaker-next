@@ -93,6 +93,7 @@
 	OpaqueResize = NO;
 	OpaqueMoveResizeKeyboard = NO;
 	DisableAnimations = NO;
+	DisableSound = YES;
 	DontLinkWorkspaces = YES;
 	WindowSnapping = NO;
 	SnapEdgeDetect = 1;

@@ -515,6 +515,14 @@ msgstr ""
 "这个功能. 你可以从以下地址得到:\n"
 "http://www.frontiernet.net/~southgat/wmsound"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"启用/禁用窗口操作的音效，如卷起、最小化\n"
+"和停靠。需要 wmsoundd 守护进程正在运行。"
+
 #: ../../WPrefs.app/Configurations.c:418
 msgid "Note: sound requires a module distributed separately"
 msgstr "注意:音效需要一个单独发行的模块"

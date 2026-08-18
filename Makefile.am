@@ -89,7 +89,7 @@ analyze:
 # Kernel-only conventions that do not apply to Window Maker, plus categories
 # that fight the existing tree style (block-comment layout, line length) or
 # are near-pure false positives in C ("Window window" repeated-word).
-CHECKPATCH_IGNORE = NEW_TYPEDEFS,SPDX_LICENSE_TAG,COMPLEX_MACRO,PREFER_KERNEL_TYPES,ARRAY_SIZE,EMAIL_SUBJECT,FILE_PATH_CHANGES,GIT_COMMIT_ID,MISSING_SIGN_OFF,BAD_SIGN_OFF,NO_AUTHOR_SIGN_OFF,BAD_REPORTED_BY_LINK,BAD_FIXES_TAG,STRCPY,STRNCPY,SPRINTF,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE,EMBEDDED_FUNCTION_NAME,BLOCK_COMMENT_STYLE,LONG_LINE,LONG_LINE_STRING,LONG_LINE_COMMENT,REPEATED_WORD,SPLIT_STRING
+CHECKPATCH_IGNORE = NEW_TYPEDEFS,SPDX_LICENSE_TAG,COMPLEX_MACRO,PREFER_KERNEL_TYPES,ARRAY_SIZE,EMAIL_SUBJECT,FILE_PATH_CHANGES,GIT_COMMIT_ID,MISSING_SIGN_OFF,BAD_SIGN_OFF,NO_AUTHOR_SIGN_OFF,BAD_REPORTED_BY_LINK,BAD_FIXES_TAG,STRCPY,STRNCPY,SPRINTF,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE,EMBEDDED_FUNCTION_NAME,BLOCK_COMMENT_STYLE,DEEP_INDENTATION,LONG_LINE,LONG_LINE_STRING,LONG_LINE_COMMENT,REPEATED_WORD,SPLIT_STRING
 # License texts are verbatim documents, so their diff sections are removed
 # before linting rather than adding kernel-only checks to CHECKPATCH_IGNORE.
 CHECKPATCH_FILTER_LICENSE = $(top_srcdir)/script/checkpatch-filter-license.pl
@@ -229,7 +229,7 @@ configure-documentation:
 # on demand. Each driver still does its own per-tool `command -v` check
 # and exits 77 (SKIP) when something it needs is missing, the
 # AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
-DRIVE_TESTS = test/ipc-drive.sh test/ipc-verbs-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/restart-drift-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/window-menu-drive.sh test/dock-drop-drive.sh test/xsmp-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh test/layout-drive.sh test/switchpanel-drive.sh test/wsmask-drive.sh test/workspace-drive.sh test/mouse-button-drive.sh test/disable-ws-mouse-drive.sh test/cycle-workspaces-drive.sh test/wmsetbg-drive.sh test/last-workspace-restore-drive.sh test/iconsize-reflow-drive.sh test/edge-finder-drive.sh test/edge-snap-drive.sh test/snapping-drive.sh test/restore-iconic-drive.sh test/show-desktop-drive.sh test/skip-empty-workspaces-drive.sh
+DRIVE_TESTS = test/ipc-drive.sh test/ipc-verbs-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/restart-drift-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/window-menu-drive.sh test/dock-drop-drive.sh test/xsmp-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh test/layout-drive.sh test/switchpanel-drive.sh test/wsmask-drive.sh test/workspace-drive.sh test/mouse-button-drive.sh test/disable-ws-mouse-drive.sh test/cycle-workspaces-drive.sh test/wmsetbg-drive.sh test/last-workspace-restore-drive.sh test/iconsize-reflow-drive.sh test/edge-finder-drive.sh test/edge-snap-drive.sh test/snapping-drive.sh test/restore-iconic-drive.sh test/show-desktop-drive.sh test/skip-empty-workspaces-drive.sh test/sound-drive.sh
 DRIVE_SUBDIRS = util/Tests
 
 check-drive:

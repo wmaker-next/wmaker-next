@@ -328,6 +328,14 @@ msgstr ""
 "модуль. Домашня сторінка цього модуля:\n"
 "http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Увімкнути/вимкнути звукові ефекти для дій з вікнами, таких як згортання, іконіфікація\n"
+"та стиковка. Потребує запущеного демона wmsoundd."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

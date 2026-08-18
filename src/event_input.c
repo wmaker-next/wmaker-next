@@ -58,6 +58,7 @@
 #include "switchmenu.h"
 #include "wsmap.h"
 #include "hotcorner.h"
+#include "wsound.h"
 
 
 #define MOD_MASK wPreferences.modifier_mask
@@ -932,8 +933,10 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 
 	case WKBD_LOCKSCREEN:
 		if (w_global.config->lock_screen_command &&
-		    w_global.config->lock_screen_command[0])
+		    w_global.config->lock_screen_command[0]) {
+			wSoundPlay(scr, WSOUND_LOCK);
 			ExecuteShellCommand(scr, w_global.config->lock_screen_command);
+		}
 		break;
 
 	case WKBD_CLIPBOARD:

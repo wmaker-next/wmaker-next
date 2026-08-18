@@ -62,6 +62,14 @@ msgstr "Zvukovi"
 msgid "Note: sound requires a module distributed separately"
 msgstr "Upozorenje: zvuk ovisi o zasebnom modulu"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Omogući/onemogući zvučne efekte za radnje prozora kao što su sjenčanje, ikonificiranje\n"
+"i sidrenje. Zahtijeva da demon wmsoundd radi."
+
 #: ../../WPrefs/Configurations.c:364
 msgid "Dithering colormap for 8bpp"
 msgstr "Dithering colormap for 8bpp"

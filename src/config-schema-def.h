@@ -366,6 +366,8 @@
 	  opaque_move_resize_keyboard, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DISABLE_ANIMATIONS, "DisableAnimations", BOOL, no_animations, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(DISABLE_SOUND, "DisableSound", BOOL, no_sound, "YES", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DONT_LINK_WORKSPACES, "DontLinkWorkspaces", BOOL, no_autowrap, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_SNAPPING, "WindowSnapping", BOOL, window_snapping, "NO", \

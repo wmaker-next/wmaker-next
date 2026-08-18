@@ -291,6 +291,14 @@ msgstr ""
 "Animationen wie Fenster-Minimierung, Rollen usw. \n"
 "ein-/ausschalten"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Sound-Effekte für Fensteraktionen wie Schattieren, Minimieren\n"
+"und Andocken aktivieren/deaktivieren. Erfordert, dass der Dämon wmsoundd läuft."
+
 #: ../../WPrefs.app/Configurations.c:338
 msgid "Superfluous"
 msgstr "Zusätzliche Effekte"

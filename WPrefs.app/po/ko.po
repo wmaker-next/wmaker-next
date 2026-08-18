@@ -273,6 +273,14 @@ msgstr ""
 "윈도우 최소화시, 쉐이딩 기능등에서 애니메이션을\n"
 "켜고 끄는 것을 설정합니다."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"창 작업(셰이드, 아이콘화, 독 작업 등)의 음향 효과를\n"
+"활성화/비활성화합니다. wmsoundd 데몬이 실행 중이어야 합니다."
+
 #: ../../WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "추가 설정"

@@ -321,6 +321,14 @@ msgstr ""
 "Vous pouvez l'obtenir à l'adresse :\n"
 "http://shadowmere.student.utwente.nl/"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Activer/désactiver les effets sonores pour les actions de fenêtre comme l'enroulement, l'iconification\n"
+"et l'ancrage. Nécessite que le démon wmsoundd soit en cours d'exécution."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

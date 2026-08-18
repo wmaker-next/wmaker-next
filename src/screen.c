@@ -66,6 +66,7 @@
 #include "misc.h"
 #include "ipc.h"
 #include "startup_notify.h"
+#include "wsound.h"
 
 #include "xinerama.h"
 
@@ -1389,6 +1390,7 @@ void ScreenCapture(WScreen *scr, int mode)
 	if (img) {
 		if (RSaveTitledImage(img, filepath, (char *)(filetype + 1), "Screenshot from Window Maker")) {
 			wIPCEmitScreenshot(scr, filepath, mode);
+			wSoundPlay(scr, WSOUND_SCREENSHOT);
 			scale_img = RSmoothScaleImage(img, scr->scr_width / 10, scr->scr_height / 10);
 			showMiniScreenshot(scr, scale_img);
 			RReleaseImage(scale_img);

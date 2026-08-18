@@ -385,6 +385,14 @@ msgstr ""
 "Pencere minyatürleştirme, gölgeleme vb. Gibi animasyonları devre dışı "
 "bırakın / etkinleştirin."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Pencere eylemleri için gölgeleme, simge durumuna küçültme\n"
+"ve yanaştırma gibi ses efektlerini etkinleştir/devre dışı bırak. wmsoundd daemonunun çalışması gerekir."
+
 #: ../../WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "Gereksiz"

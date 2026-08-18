@@ -1964,3 +1964,10 @@ msgstr "Uus"
 #: ../src/workspace.c:964
 msgid "Destroy Last"
 msgstr "Eemalda viimane"
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+
+

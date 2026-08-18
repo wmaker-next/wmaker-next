@@ -392,6 +392,14 @@ msgstr ""
 "приказане при минијатуризацији прозора,\n"
 "замотавању, итд."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Омогући/онемогући звучне ефекте за радње прозора као што су сенчење, иконификовање\n"
+"и сидрење. Захтева да демон wmsoundd ради."
+
 #: ../../WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "Непотр."

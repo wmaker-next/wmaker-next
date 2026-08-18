@@ -45,6 +45,7 @@ typedef struct _Panel {
 	WMFrame *animF;
 	WMButton *animB;
 	WMButton *supB;
+	WMButton *sfxB;
 	WMLabel *noteL;
 
 	WMFrame *smoF;
@@ -57,6 +58,7 @@ typedef struct _Panel {
 #define NEXT_IMAGE	"nextstyle"
 #define ANIM_IMAGE	"animations"
 #define SUPERF_IMAGE	"moreanim"
+#define SOUND_IMAGE	"sound"
 #define SMOOTH_IMAGE	"smooth"
 #define SPEED_IMAGE 	"speed%i"
 #define SPEED_IMAGE_S 	"speed%is"
@@ -85,6 +87,7 @@ static void showData(_Panel *panel)
 
 	WMSetButtonSelected(panel->animB, !GetBoolForKey("DisableAnimations"));
 	WMSetButtonSelected(panel->supB, GetBoolForKey("Superfluous"));
+	WMSetButtonSelected(panel->sfxB, !GetBoolForKey("DisableSound"));
 	WMSetButtonSelected(panel->smoB, GetBoolForKey("SmoothWorkspaceBack"));
 }
 
@@ -179,7 +182,7 @@ static void createPanel(Panel *p)
     /***************** Smoothed Scaling *****************/
 	panel->smoF = WMCreateFrame(panel->box);
 	WMResizeWidget(panel->smoF, 94, 100);
-	WMMoveWidget(panel->smoF, 420, 10);
+	WMMoveWidget(panel->smoF, 420, 120);
 	WMSetFrameTitle(panel->smoF, _("Smooth Scaling"));
 
 	panel->smoB = WMCreateButton(panel->smoF, WBTToggle);
@@ -276,9 +279,9 @@ static void createPanel(Panel *p)
 
     /**************** Features ******************/
 	panel->animF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->animF, 173, 100);
+	WMResizeWidget(panel->animF, 255, 100);
 	WMMoveWidget(panel->animF, 237, 10);
-	WMSetFrameTitle(panel->animF, _("Animations"));
+	WMSetFrameTitle(panel->animF, _("Animations and Sound"));
 
 	panel->animB = WMCreateButton(panel->animF, WBTToggle);
 	WMResizeWidget(panel->animB, 64, 64);
@@ -314,9 +317,29 @@ static void createPanel(Panel *p)
 		WMReleasePixmap(altIcon);
 	}
 	WMSetBalloonTextForView(_("Disable/enable `superfluous' features and\n"
-				  "animations. These include the `ghosting' of the\n"
-				  "dock when it's being moved to another side and\n"
-				  "the explosion animation when undocking icons."), WMWidgetView(panel->supB));
+			  "animations. These include the `ghosting' of the\n"
+			  "dock when it's being moved to another side and\n"
+			  "the explosion animation when undocking icons."), WMWidgetView(panel->supB));
+
+	panel->sfxB = WMCreateButton(panel->animF, WBTToggle);
+	WMResizeWidget(panel->sfxB, 64, 64);
+	WMMoveWidget(panel->sfxB, 175, 23);
+	WMSetButtonFont(panel->sfxB, font);
+	WMSetButtonText(panel->sfxB, _("Sounds"));
+	WMSetButtonImagePosition(panel->sfxB, WIPAbove);
+	CreateImages(scr, rc, xis, SOUND_IMAGE, &altIcon, &icon);
+	if (icon) {
+		WMSetButtonImage(panel->sfxB, icon);
+		WMReleasePixmap(icon);
+	}
+	if (altIcon) {
+		WMSetButtonAltImage(panel->sfxB, altIcon);
+		WMReleasePixmap(altIcon);
+	}
+	WMSetBalloonTextForView(_("Disable/enable sound effects for "
+			  "window actions like shading, iconifying\n"
+			  "and docking. Requires the wmsoundd daemon "
+			  "to be running."), WMWidgetView(panel->sfxB));
 
 	WMMapSubwidgets(panel->animF);
 
@@ -354,6 +377,7 @@ static void storeData(_Panel *panel)
 	}
 	SetBoolForKey(!WMGetButtonSelected(panel->animB), "DisableAnimations");
 	SetBoolForKey(WMGetButtonSelected(panel->supB), "Superfluous");
+	SetBoolForKey(!WMGetButtonSelected(panel->sfxB), "DisableSound");
 	SetBoolForKey(WMGetButtonSelected(panel->smoB), "SmoothWorkspaceBack");
 }
 

@@ -77,6 +77,7 @@ POTFILES  = \
 	$(top_srcdir)/src/wmspec.c \
 	$(top_srcdir)/src/workspace.c \
 	$(top_srcdir)/src/wsmap.c \
+	$(top_srcdir)/src/wsound.c \
 	$(top_srcdir)/src/wxkb.c \
 	$(top_srcdir)/src/xdnd.c \
 	$(top_srcdir)/src/xinerama.c \

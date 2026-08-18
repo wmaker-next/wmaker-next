@@ -36,6 +36,7 @@
 #include "workspace.h"
 #include "dock.h"
 #include "defaults.h"
+#include "wsound.h"
 
 
 /******** Local variables ********/
@@ -193,6 +194,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	scr->wapp_list = wapp;
 
 	create_appicon_for_application(wapp, wwin);
+	wSoundPlay(wwin->screen_ptr, WSOUND_APPSTART);
 
 	return wapp;
 }
@@ -244,6 +246,7 @@ void wApplicationDestroy(WApplication *wapp)
 		 * wWindowDestroy */
 		XSaveContext(dpy, wwin->client_win, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
 	}
+	wSoundPlay(scr, WSOUND_APPEXIT);
 	wfree(wapp);
 }
 

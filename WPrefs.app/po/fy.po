@@ -393,6 +393,12 @@ msgstr ""
 "Skeakelje animaasjes yn/út, sa as dy toand\n"
 "foar finster miniaturisearjen, oprôljen ensfh."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+
 #: ../../WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "Oerfloedich"

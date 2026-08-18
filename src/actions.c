@@ -53,6 +53,7 @@
 #include "event.h"
 #include "tabgroup.h"
 #include "wireframe.h"
+#include "wsound.h"
 
 
 #ifndef HAVE_FLOAT_MATHFUNC
@@ -384,6 +385,7 @@ void wShadeWindow(WWindow *wwin)
 		return;
 
 	XLowerWindow(dpy, wwin->client_win);
+	wSoundPlay(wwin->screen_ptr, WSOUND_SHADE);
 	shade_animate(wwin, SHADE);
 
 	wwin->flags.skip_next_animation = 0;
@@ -428,6 +430,7 @@ void wUnshadeWindow(WWindow *wwin)
 	wwin->flags.shaded = 0;
 	wwin->flags.mapped = 1;
 	XMapWindow(dpy, wwin->client_win);
+	wSoundPlay(wwin->screen_ptr, WSOUND_UNSHADE);
 
 	shade_animate(wwin, UNSHADE);
 
@@ -668,6 +671,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	wWindowSynthConfigureNotify(wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
+	wSoundPlay(wwin->screen_ptr, WSOUND_MAXIMIZE);
 
 	if (wwin->tab_group)
 		wGroupSyncMaximize(wwin);
@@ -1420,6 +1424,7 @@ void wUnmaximizeWindow(WWindow *wwin)
 	wWindowSynthConfigureNotify(wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
+	wSoundPlay(wwin->screen_ptr, WSOUND_UNMAXIMIZE);
 
 	if (wwin->tab_group)
 		wGroupSyncMaximize(wwin);
@@ -1964,6 +1969,7 @@ void wIconifyWindow(WWindow *wwin)
 #ifdef USE_ANIMATIONS
 		int ix, iy, iw, ih;
 #endif
+		wSoundPlay(wwin->screen_ptr, WSOUND_ICONIFY);
 		XUngrabPointer(dpy, CurrentTime);
 		wWindowUnmap(wwin);
 		/* let all Expose events arrive so that we can repaint
@@ -2062,6 +2068,7 @@ void wIconifyWindow(WWindow *wwin)
 
 void wDeiconifyWindow(WWindow *wwin)
 {
+	Bool was_shaded;
 	/* deiconify always targets the active tab so it finds the
 	 * miniwindow and maps the right frame, wWindowSingleFocus()
 	 * has already promoted any explicitly requested member */
@@ -2074,6 +2081,8 @@ void wDeiconifyWindow(WWindow *wwin)
 	/* we're hiding for show_desktop */
 	int netwm_hidden = wwin->flags.net_show_desktop &&
 	    WWIN_PRIMARY_WS(wwin) != wwin->screen_ptr->current_workspace;
+
+	was_shaded = wwin->flags.shaded;
 
 	if (!netwm_hidden)
 		wWindowChangeWorkspace(wwin, wwin->screen_ptr->current_workspace);
@@ -2166,9 +2175,13 @@ void wDeiconifyWindow(WWindow *wwin)
 	if (wwin->tab_group)
 		wGroupSyncMiniaturize(wwin);
 
-	/* In case we were shaded and iconified, also unshade */
+	/* wUnshadeWindow already played WSOUND_UNSHADE, so skip the
+	 * deiconify sound on shaded+iconified restore. */
 	if (!netwm_hidden)
 		wUnshadeWindow(wwin);
+
+	if (!netwm_hidden && !was_shaded)
+		wSoundPlay(wwin->screen_ptr, WSOUND_DEICONIFY);
 
 	w_global.ignore_workspace_change = False;
 
@@ -2232,6 +2245,7 @@ void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate
 
 	wClientSetState(wwin, IconicState, icon ? icon->icon_win : None);
 	flushExpose();
+	wSoundPlay(wwin->screen_ptr, WSOUND_HIDE);
 
 #ifdef USE_ANIMATIONS
 	if (icon && !wwin->screen_ptr->flags.startup && !w_global.config->no_animations &&
@@ -2503,6 +2517,7 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 		wWindowChangeWorkspace(wwin, wwin->screen_ptr->current_workspace);
 
 	wwin->flags.hidden = 0;
+	wSoundPlay(wwin->screen_ptr, WSOUND_UNHIDE);
 
 	/* Relocate to an active head if the stored position is in dead space */
 	wWindowSnapToHead(wwin);

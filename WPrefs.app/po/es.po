@@ -315,6 +315,14 @@ msgstr ""
 "un módulo distribuido separadamente para esto. Puede\n"
 "obtenerse de http://www.frontiernet.net/~southgat/wmsound"
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Activar/desactivar los efectos de sonido para las acciones de ventanas como sombrear, iconificar\n"
+"y acoplar. Requiere que el demonio wmsoundd se esté ejecutando."
+
 #: ../../WPrefs.app/Configurations.c:419
 msgid ""
 "Note: sound requires a module distributed\n"

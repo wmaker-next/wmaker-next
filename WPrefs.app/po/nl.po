@@ -393,6 +393,14 @@ msgstr ""
 "Schakel animaties in/uit, zoals die getoond\n"
 "voor venster miniaturiseren, oprollen enz."
 
+#: ../../WPrefs.app/Configurations.c:352
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"Geluidseffecten voor vensteracties zoals oprollen, iconificeren\n"
+"en docken in-/uitschakelen. Vereist dat de wmsoundd-daemon draait."
+
 #: ../../WPrefs.app/Configurations.c:324
 msgid "Superfluous"
 msgstr "Overvloed"

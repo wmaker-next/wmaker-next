@@ -41,6 +41,7 @@
 #include "shutdown.h"
 #include "ipc.h"
 #include "xsmp.h"
+#include "wsound.h"
 
 
 static void wipeDesktop(WScreen * scr);
@@ -87,6 +88,7 @@ void Shutdown(WShutdownMode mode, Bool external)
 
 			scr = wScreenWithNumber(i);
 			if (scr) {
+				wSoundPlay(scr, WSOUND_SHUTDOWN);
 				wIPCServerStop(scr, "exit");
 
 				if (scr->helper_pid)
@@ -114,6 +116,7 @@ void Shutdown(WShutdownMode mode, Bool external)
 #endif
 			scr = wScreenWithNumber(i);
 			if (scr) {
+				wSoundPlay(scr, WSOUND_SHUTDOWN);
 				wIPCServerStop(scr, "restart");
 
 				if (scr->helper_pid)
