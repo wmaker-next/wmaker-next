@@ -14,6 +14,7 @@ dist_tiffdata_DATA = \
 	dontlinkworkspaces.tiff \
 	drawer.tiff \
 	ergonomic.tiff \
+	flatstyle.tiff \
 	expert.tiff \
 	fonts.tiff \
 	hotcorners.tiff \

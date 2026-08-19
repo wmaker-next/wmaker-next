@@ -40,7 +40,7 @@ typedef struct _Panel {
 	WMButton *oldsB;
 	WMButton *newsB;
 	WMButton *nextB;
-	int loadedFlat;
+	WMButton *flatB;
 
 	WMFrame *animF;
 	WMButton *animB;
@@ -56,6 +56,7 @@ typedef struct _Panel {
 #define OLDS_IMAGE	"oldstyle"
 #define NEWS_IMAGE	"newstyle"
 #define NEXT_IMAGE	"nextstyle"
+#define FLAT_IMAGE	"flatstyle"
 #define ANIM_IMAGE	"animations"
 #define SUPERF_IMAGE	"moreanim"
 #define SOUND_IMAGE	"sound"
@@ -72,16 +73,13 @@ static void showData(_Panel *panel)
 	WMPerformButtonClick(panel->shaB[GetSpeedForKey("ShadeSpeed")]);
 
 	str = GetStringForKey("NewStyle");
-	panel->loadedFlat = (str && strcasecmp(str, "flat") == 0);
 	if (str && strcasecmp(str, "next") == 0) {
 		WMPerformButtonClick(panel->nextB);
 	} else if (str && strcasecmp(str, "old") == 0) {
 		WMPerformButtonClick(panel->oldsB);
+	} else if (str && strcasecmp(str, "flat") == 0) {
+		WMPerformButtonClick(panel->flatB);
 	} else {
-		/* "new" and "flat" share geometry so map both onto the
-		 * newsB radio until the panel grows a fourth preview,
-		 * loadedFlat lets storeData() round-trip "flat" instead
-		 * of silently downgrading it to "new" on save */
 		WMPerformButtonClick(panel->newsB);
 	}
 
@@ -181,13 +179,13 @@ static void createPanel(Panel *p)
 
     /***************** Smoothed Scaling *****************/
 	panel->smoF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->smoF, 94, 100);
-	WMMoveWidget(panel->smoF, 420, 120);
+	WMResizeWidget(panel->smoF, 268, 100);
+	WMMoveWidget(panel->smoF, 237, 120);
 	WMSetFrameTitle(panel->smoF, _("Smooth Scaling"));
 
 	panel->smoB = WMCreateButton(panel->smoF, WBTToggle);
 	WMResizeWidget(panel->smoB, 64, 64);
-	WMMoveWidget(panel->smoB, 15, 23);
+	WMMoveWidget(panel->smoB, 102, 23);
 	WMSetButtonImagePosition(panel->smoB, WIPImageOnly);
 	path = LocateImage(SMOOTH_IMAGE);
 	if (path) {
@@ -226,13 +224,13 @@ static void createPanel(Panel *p)
 
     /***************** Titlebar Style Size ****************/
 	panel->titlF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->titlF, 212, 97);
+	WMResizeWidget(panel->titlF, 212, 100);
 	WMMoveWidget(panel->titlF, 15, 120);
 	WMSetFrameTitle(panel->titlF, _("Titlebar Style"));
 
 	panel->oldsB = WMCreateButton(panel->titlF, WBTOnOff);
-	WMResizeWidget(panel->oldsB, 60, 40);
-	WMMoveWidget(panel->oldsB, 16, 32);
+	WMResizeWidget(panel->oldsB, 50, 40);
+	WMMoveWidget(panel->oldsB, 6, 32);
 	WMSetButtonImagePosition(panel->oldsB, WIPImageOnly);
 	path = LocateImage(OLDS_IMAGE);
 	if (path) {
@@ -245,8 +243,8 @@ static void createPanel(Panel *p)
 	}
 
 	panel->newsB = WMCreateButton(panel->titlF, WBTOnOff);
-	WMResizeWidget(panel->newsB, 60, 40);
-	WMMoveWidget(panel->newsB, 76, 32);
+	WMResizeWidget(panel->newsB, 50, 40);
+	WMMoveWidget(panel->newsB, 56, 32);
 	WMSetButtonImagePosition(panel->newsB, WIPImageOnly);
 	path = LocateImage(NEWS_IMAGE);
 	if (path) {
@@ -259,8 +257,8 @@ static void createPanel(Panel *p)
 	}
 
 	panel->nextB = WMCreateButton(panel->titlF, WBTOnOff);
-	WMResizeWidget(panel->nextB, 60, 40);
-	WMMoveWidget(panel->nextB, 136, 32);
+	WMResizeWidget(panel->nextB, 50, 40);
+	WMMoveWidget(panel->nextB, 106, 32);
 	WMSetButtonImagePosition(panel->nextB, WIPImageOnly);
 	path = LocateImage(NEXT_IMAGE);
 	if (path) {
@@ -272,20 +270,35 @@ static void createPanel(Panel *p)
 		wfree(path);
 	}
 
+	panel->flatB = WMCreateButton(panel->titlF, WBTOnOff);
+	WMResizeWidget(panel->flatB, 50, 40);
+	WMMoveWidget(panel->flatB, 156, 32);
+	WMSetButtonImagePosition(panel->flatB, WIPImageOnly);
+	path = LocateImage(FLAT_IMAGE);
+	if (path) {
+		icon = WMCreatePixmapFromFile(scr, path);
+		if (icon) {
+			WMSetButtonImage(panel->flatB, icon);
+			WMReleasePixmap(icon);
+		}
+		wfree(path);
+	}
+
 	WMGroupButtons(panel->newsB, panel->oldsB);
 	WMGroupButtons(panel->newsB, panel->nextB);
+	WMGroupButtons(panel->newsB, panel->flatB);
 
 	WMMapSubwidgets(panel->titlF);
 
     /**************** Features ******************/
 	panel->animF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->animF, 255, 100);
+	WMResizeWidget(panel->animF, 268, 100);
 	WMMoveWidget(panel->animF, 237, 10);
 	WMSetFrameTitle(panel->animF, _("Animations and Sound"));
 
 	panel->animB = WMCreateButton(panel->animF, WBTToggle);
-	WMResizeWidget(panel->animB, 64, 64);
-	WMMoveWidget(panel->animB, 15, 23);
+	WMResizeWidget(panel->animB, 76, 70);
+	WMMoveWidget(panel->animB, 10, 20);
 	WMSetButtonFont(panel->animB, font);
 	WMSetButtonText(panel->animB, _("Animations"));
 	WMSetButtonImagePosition(panel->animB, WIPAbove);
@@ -302,8 +315,8 @@ static void createPanel(Panel *p)
 				  "for window miniaturization, shading etc."), WMWidgetView(panel->animB));
 
 	panel->supB = WMCreateButton(panel->animF, WBTToggle);
-	WMResizeWidget(panel->supB, 64, 64);
-	WMMoveWidget(panel->supB, 94, 23);
+	WMResizeWidget(panel->supB, 76, 70);
+	WMMoveWidget(panel->supB, 96, 20);
 	WMSetButtonFont(panel->supB, font);
 	WMSetButtonText(panel->supB, _("Superfluous"));
 	WMSetButtonImagePosition(panel->supB, WIPAbove);
@@ -322,8 +335,8 @@ static void createPanel(Panel *p)
 			  "the explosion animation when undocking icons."), WMWidgetView(panel->supB));
 
 	panel->sfxB = WMCreateButton(panel->animF, WBTToggle);
-	WMResizeWidget(panel->sfxB, 64, 64);
-	WMMoveWidget(panel->sfxB, 175, 23);
+	WMResizeWidget(panel->sfxB, 76, 70);
+	WMMoveWidget(panel->sfxB, 182, 20);
 	WMSetButtonFont(panel->sfxB, font);
 	WMSetButtonText(panel->sfxB, _("Sounds"));
 	WMSetButtonImagePosition(panel->sfxB, WIPAbove);
@@ -369,9 +382,11 @@ static void storeData(_Panel *panel)
 	SetSpeedForKey(i, "ShadeSpeed");
 
 	if (WMGetButtonSelected(panel->newsB)) {
-		SetStringForKey(panel->loadedFlat ? "flat" : "new", "NewStyle");
+		SetStringForKey("new", "NewStyle");
 	} else if (WMGetButtonSelected(panel->oldsB)) {
 		SetStringForKey("old", "NewStyle");
+	} else if (WMGetButtonSelected(panel->flatB)) {
+		SetStringForKey("flat", "NewStyle");
 	} else {
 		SetStringForKey("next", "NewStyle");
 	}

@@ -14,6 +14,7 @@ dist_xpmdata_DATA = \
 	dontlinkworkspaces.xpm \
 	drawer.xpm \
 	ergonomic.xpm \
+	flatstyle.xpm \
 	expert.xpm \
 	fonts.xpm \
 	hotcorners.xpm \
