@@ -1043,10 +1043,9 @@ static verb_rc verb_shrink_to_edge(WScreen *scr, WMPropList *args,
 }
 
 static const char *const sound_event_names[] = {
-	"shade", "unshade", "maximize", "unmaximize",
-	"iconify", "deiconify", "hide", "unhide",
-	"appstart", "appexit", "dock", "undock", "kaboom",
-	"startup", "shutdown", "workspace", "screenshot", "lock"
+#define WSOUND_ITEM(id, wire, key) wire,
+	WSOUND_EVENTS(WSOUND_ITEM)
+#undef WSOUND_ITEM
 };
 
 static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,

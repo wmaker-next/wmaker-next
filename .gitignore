@@ -75,6 +75,7 @@ util/wmiv
 util/wmlock
 util/wmmenugen
 util/wmsetbg
+util/wmsoundd
 util/wmsetup
 util/wxcopy
 util/wxpaste
@@ -166,6 +167,7 @@ WindowMaker/wmmacros
 
 WindowMaker/Defaults/WMRootMenu
 WindowMaker/Defaults/WMState
+WindowMaker/Defaults/WMSound
 WindowMaker/Defaults/WMWindowAttributes
 WindowMaker/Defaults/WindowMaker
 WindowMaker/IconSets/Default.iconset

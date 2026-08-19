@@ -15,6 +15,7 @@ dist_man_MANS = \
 	wmagnify.1 \
 	wmclipd.1 \
 	wmakermsg.1 \
+	wmsoundd.1 \
 	wmgenmenu.1 \
 	wmglyph.1 \
 	wmiv.1 \
@@ -57,7 +58,7 @@ am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
 check-local: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmglyph-args wmiv-args wmlock-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmgenmenu-args wmglyph-args wmiv-args wmlock-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 wmaker-args:
@@ -112,6 +113,14 @@ wmakermsg-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmakermsg" --man-page "$(top_srcdir)/doc/wmakermsg.1"
 
+wmsoundd-args:
+if BUILD_WSOUND
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
+		--program "$(top_builddir)/util/wmsoundd" --man-page "$(top_srcdir)/doc/wmsoundd.1"
+else
+	@echo "  SKIP     wmsoundd-args (built without PipeWire)"
+endif
+
 wmgenmenu-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmgenmenu" --man-page "$(top_srcdir)/doc/wmgenmenu.1"
@@ -149,7 +158,7 @@ wxpaste-args:
 		--program "$(top_builddir)/util/wxpaste" --man-page "$(top_srcdir)/doc/wxpaste.1"
 
 .PHONY: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmgenmenu-args wmglyph-args wmiv-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmgenmenu-args wmglyph-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 

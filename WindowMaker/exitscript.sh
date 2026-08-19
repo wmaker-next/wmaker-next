@@ -9,3 +9,6 @@
 # This file must be executable.
 #
 
+#pkill -u "$(id -u)" -x wmclipd
+#pkill -u "$(id -u)" -x wmsoundd
+

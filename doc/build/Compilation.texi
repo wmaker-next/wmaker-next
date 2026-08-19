@@ -509,6 +509,10 @@ even if your system provides it.
 @item --disable-magick
 Disable @emph{ImageMagick's MagickWand} support in @emph{WRaster}, used to support for image formats.
 
+@item --with-pipewire=auto|yes|no
+Control the optional @command{wmsoundd} sound event daemon; @file{auto} detects
+PipeWire when available, @file{yes} requires it, and @file{no} disables the daemon.
+
 @item --disable-png
 Disable PNG support in @emph{WRaster}; when enabled use @file{libpng}.
 

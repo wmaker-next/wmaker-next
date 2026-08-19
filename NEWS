@@ -3,6 +3,27 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Sound event support restored
+-----------------------------
+
+Window Maker can again emit sound events for window actions (shade,
+unshade, maximize, unmaximize, iconify, deiconify, hide, unhide, dock,
+undock, kaboom) and lifecycle events (appstart, appexit, startup,
+shutdown, workspace, screenshot, lock). Events travel on the existing AF_UNIX IPC stream
+as a new `sound` event type, not the spoofable X ClientMessage used by
+the original 2001-era implementation. A new `DisableSound` preference
+(default YES, opt-in) gates the 20 automatic emit sites. The
+`play-sound` IPC verb emits events on demand and deliberately bypasses
+the preference for testing and scripting. The WPrefs "Other
+Configurations" panel has a "Sounds" toggle in the "Animations and
+Sound" frame. A new `wmsoundd` daemon (built when PipeWire and libsndfile are found,
+`--with-pipewire=auto`) subscribes to the IPC stream, reads the
+`WMSound` defaults domain to map event names to sound files, and plays
+them through PipeWire. libsndfile decodes WAV/AIFF/AU/FLAC/Ogg/Vorbis/
+Opus/MP3, so the freedesktop sound theme files under
+`/usr/share/sounds/` are usable directly. wmaker itself never links
+PipeWire or libsndfile.
+
 Skip empty workspaces when switching workspaces
 -----------------------------------------------
 

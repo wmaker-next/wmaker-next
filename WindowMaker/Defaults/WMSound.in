@@ -1,0 +1,24 @@
+{
+  Startup = "None";
+  Shutdown = "None";
+  AppStart = "None";
+  AppExit = "None";
+  Maximize = "None";
+  UnMaximize = "None";
+  Iconify = "None";
+  DeIconify = "None";
+  Hide = "None";
+  UnHide = "None";
+  Shade = "None";
+  UnShade = "None";
+  Dock = "None";
+  UnDock = "None";
+  Kaboom = "None";
+  Workspace = "None";
+  Screenshot = "None";
+  Lock = "None";
+  SoundPath = (
+    "#pkgdatadir#/Sounds"
+  );
+  Volume = "1.0";
+}

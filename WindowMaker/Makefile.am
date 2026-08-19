@@ -1,4 +1,4 @@
-SUBDIRS = Backgrounds . Defaults IconSets Icons Pixmaps Styles Themes
+SUBDIRS = Backgrounds . Defaults IconSets Icons Pixmaps Sounds Styles Themes
 
 prefsdatadir = $(pkgdatadir)
 

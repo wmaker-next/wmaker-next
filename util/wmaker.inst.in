@@ -138,7 +138,7 @@ done
 
 	GenerateMenu
 
-for sub in Icons Styles Themes Backgrounds IconSets Pixmaps; do
+for sub in Icons Styles Themes Backgrounds IconSets Pixmaps Sounds; do
 	if [ ! -d "$WDATADIR/$sub" ]; then
 		echo "Creating $sub library $WDATADIR/$sub"
 		make_dir "$WDATADIR/$sub"

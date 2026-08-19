@@ -20,3 +20,10 @@
 # Window Maker screenshots on the clipboard. See wmclipd(1).
 # The pgrep guard stops a second copy starting when Window Maker restarts.
 #pgrep -u "$(id -u)" -x wmclipd >/dev/null 2>&1 || wmclipd --clipboard --screenshots &
+
+# Uncomment to run the sound event daemon, which plays sound files mapped
+# in the WMSound defaults domain when Window Maker emits sound IPC
+# events (shade, iconify, dock, workspace switch, etc.). See wmsoundd(1).
+# Requires DisableSound = NO in the WindowMaker domain and PipeWire.
+# The pgrep guard stops a second copy starting when Window Maker restarts.
+#pgrep -u "$(id -u)" -x wmsoundd >/dev/null 2>&1 || wmsoundd &

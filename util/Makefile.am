@@ -50,6 +50,15 @@ endif
 endif
 EXTRA_DIST += pam.d/wmlock
 
+if BUILD_WSOUND
+bin_PROGRAMS += wmsoundd
+wmsoundd_SOURCES = wmsoundd.c
+wmsoundd_CFLAGS = @WSOUND_CFLAGS@
+wmsoundd_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@WSOUND_LIBS@ $(liblist)
+endif
+
 wxcopy_LDADD = @XLFLAGS@ @XLIBS@
 
 wxpaste_LDADD = @XLFLAGS@ @XLIBS@

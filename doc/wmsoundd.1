@@ -1,0 +1,124 @@
+.TH WMSOUNDD 1 "2026" "Window Maker"
+.SH NAME
+wmsoundd \- Window Maker sound event player daemon
+.SH SYNOPSIS
+.B wmsoundd
+[\fB\-s\fR\ \fISOCKET\fR] [\fB\-d\fR\ \fIDISPLAY\fR] [\fB\-\-debug\fR]
+.br
+.B wmsoundd
+\fB\-h\fR|\fB\-\-help\fR
+.br
+.B wmsoundd
+\fB\-v\fR|\fB\-\-version\fR
+.SH DESCRIPTION
+.B wmsoundd
+subscribes to Window Maker's WIPC sound event stream and plays the sound
+file mapped to each event in the
+.B WMSound
+defaults domain. It runs as a user-started daemon, linking libWUtil,
+libsndfile and PipeWire, with no X11 dependency.
+.PP
+Window Maker emits
+.B sound
+IPC events on its AF_UNIX socket when window actions occur (shading,
+iconifying, docking, etc.) and on lifecycle events (startup, shutdown,
+workspace switch).
+.B wmsoundd
+receives these events, looks up the corresponding sound file in the
+.B WMSound
+domain, and plays it through PipeWire.
+.PP
+The
+.B WMSound
+domain maps CamelCase event keys to file names (or
+.IR None ).
+Sound files are resolved by walking the
+.B SoundPath
+array, expanding each entry with
+.IR wexpandpath (3),
+and returning the first
+.IR access (2)
+hit. Absolute paths are used as-is.
+.PP
+If the Window Maker IPC socket is not present when
+.B wmsoundd
+starts, or the connection is dropped or refused, it retries with
+exponential backoff and gives up after 10 minutes, exiting with
+status 1 (see
+.BR "EXIT STATUS" ).
+.PP
+Sound files are decoded with libsndfile (WAV, AIFF, AU, FLAC,
+Ogg/Vorbis, Ogg/Opus, MP3) to 16-bit PCM. Files larger than 16 MiB, or
+decoding to more than 64 MiB of PCM, are rejected.
+.SH OPTIONS
+.TP
+.BI \-d " DISPLAY"
+Resolve the Window Maker IPC socket for
+.I DISPLAY
+instead of
+.BR $DISPLAY .
+.TP
+.B \-\-debug
+Print runtime diagnostics to standard error.
+.TP
+.B \-\-help
+Print a short usage summary and exit.
+.TP
+.BI \-s " SOCKET"
+Connect to
+.I SOCKET
+instead of the resolved IPC path.
+.TP
+.B \-\-version
+Print version information and exit.
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+Used to resolve the Window Maker IPC socket when
+.B \-s
+is not given.
+.TP
+.B WMAKER_IPC_SOCKET
+Overrides the Window Maker IPC socket path.
+.SH SIGNALS
+.TP
+.B SIGHUP
+Reload the
+.B WMSound
+domain from disk.
+.TP
+.B SIGTERM , SIGINT
+Stop the IPC session, drain active playback (bounded to 10 seconds)
+and exit with status 0.
+.SH EXIT STATUS
+.TP
+.B 0
+Clean exit on SIGTERM or SIGINT.
+.TP
+.B 1
+Startup failure, or give-up after 10 minutes without a usable IPC
+socket.
+.SH FILES
+.TP
+.I ~/.config/WindowMaker/WMSound
+XDG location for the
+.B WMSound
+defaults domain.
+.TP
+.I ~/GNUstep/Defaults/WMSound
+Legacy location for the
+.B WMSound
+defaults domain.
+.TP
+.I ~/.local/share/WindowMaker/Sounds
+User sound file directory on the XDG layout, searched first.
+.TP
+.I ~/GNUstep/Library/WindowMaker/Sounds
+User sound file directory on the legacy layout, also searched before
+the system path.
+.TP
+.I /usr/share/WindowMaker/Sounds
+System-wide sound file directory, searched last.
+.SH "SEE ALSO"
+.BR wmaker (1),
+.BR wmakermsg (1)

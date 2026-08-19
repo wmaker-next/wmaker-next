@@ -54,6 +54,28 @@ enum WIPCEvent {
 	WIPC_EV_COUNT
 };
 
+/* Sound event table: identifier suffix, IPC wire name, WMSound domain
+ * key. The domain keys must stay in sync with WMSound.in */
+#define WSOUND_EVENTS(X) \
+	X(SHADE,       "shade",      "Shade") \
+	X(UNSHADE,     "unshade",    "UnShade") \
+	X(MAXIMIZE,    "maximize",   "Maximize") \
+	X(UNMAXIMIZE,  "unmaximize", "UnMaximize") \
+	X(ICONIFY,     "iconify",    "Iconify") \
+	X(DEICONIFY,   "deiconify",  "DeIconify") \
+	X(HIDE,        "hide",       "Hide") \
+	X(UNHIDE,      "unhide",     "UnHide") \
+	X(APPSTART,    "appstart",   "AppStart") \
+	X(APPEXIT,     "appexit",    "AppExit") \
+	X(DOCK,        "dock",       "Dock") \
+	X(UNDOCK,      "undock",     "UnDock") \
+	X(KABOOM,      "kaboom",     "Kaboom") \
+	X(STARTUP,     "startup",    "Startup") \
+	X(SHUTDOWN,    "shutdown",   "Shutdown") \
+	X(WORKSPACE,   "workspace",  "Workspace") \
+	X(SCREENSHOT,  "screenshot", "Screenshot") \
+	X(LOCK,        "lock",       "Lock")
+
 /* forward declaration only, callers that touch the result include
  * <WINGs/WUtil.h> themselves, the struct tag is used directly here so
  * including both headers does not redeclare the typedef */

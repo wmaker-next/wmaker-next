@@ -313,6 +313,7 @@ unsupported=""
 supported_core=""
 supported_xext=""
 supported_gfx=""
+supported_sound=""
 
 
 dnl Platform-specific Makefile setup
@@ -1175,6 +1176,38 @@ dnl         End of Graphic Format Libraries
 dnl ==============================================
 
 
+dnl ==============================================
+dnl         Sound daemon (PipeWire + libsndfile)
+dnl ==============================================
+dnl wmaker only emits sound IPC events, it never links PipeWire or
+dnl libsndfile. Both probes gate the wmsoundd player daemon, an optional
+dnl util program subscribed to the WIPC sound event stream. libsndfile
+dnl decodes WAV/AIFF/AU/FLAC/Ogg/Opus/MP3 so the freedesktop sound theme
+dnl files under /usr/share/sounds/ are usable out of the box
+AC_ARG_WITH([pipewire],
+    [AS_HELP_STRING([--with-pipewire@<:@=auto|yes|no@:>@],
+        [build the wmsoundd event player daemon @<:@default=auto@:>@])],
+    [AS_CASE([$withval],
+        [yes|no|auto], [with_pipewire="$withval"],
+        [AC_MSG_ERROR([bad value '$withval' for --with-pipewire, expected yes, no or auto])])],
+    [with_pipewire=auto])
+WSOUND_CFLAGS=
+WSOUND_LIBS=
+have_pipewire=no
+AS_IF([test "x$with_pipewire" != "xno"],
+    [PKG_CHECK_MODULES([WSOUND], [libpipewire-0.3 sndfile],
+         [AC_DEFINE([HAVE_PIPEWIRE], [1], [Define if PipeWire is available])
+          have_pipewire=yes
+          supported_sound="$supported_sound wmsoundd"],
+         [AS_IF([test "x$with_pipewire" = "xyes"],
+             [AC_MSG_ERROR([--with-pipewire given but $WSOUND_PKG_ERRORS])])
+          unsupported="$unsupported wmsoundd"])],
+    [unsupported="$unsupported wmsoundd"])
+AC_SUBST([WSOUND_CFLAGS])
+AC_SUBST([WSOUND_LIBS])
+AM_CONDITIONAL([BUILD_WSOUND], [test "x$have_pipewire" = "xyes"])
+
+
 dnl
 dnl stdlib.h is checked here, because of conflict in jpeglib.h
 AC_CHECK_HEADERS(stdlib.h)
@@ -1323,7 +1356,8 @@ AC_CONFIG_FILES(
     WindowMaker/Makefile WindowMaker/Backgrounds/Makefile
     WindowMaker/Defaults/Makefile WindowMaker/IconSets/Makefile
     WindowMaker/Icons/Makefile WindowMaker/Pixmaps/Makefile
-    WindowMaker/Styles/Makefile WindowMaker/Themes/Makefile
+    WindowMaker/Sounds/Makefile WindowMaker/Styles/Makefile
+    WindowMaker/Themes/Makefile
 
     dnl Preference GUI
     WPrefs.app/Makefile WPrefs.app/po/Makefile
@@ -1354,6 +1388,7 @@ echo "Installation path for WPrefs.app    : $wprefs_base_dir" | sed -e 's|\${pre
 echo "Supported core features:            :$supported_core"
 echo "Supported X extensions:             :$supported_xext"
 echo "Supported graphic format libraries  :$supported_gfx"
+echo "Supported sound daemons             :$supported_sound"
 echo "Unsupported features                :$unsupported"
 echo "Cairo / PangoCairo rendering        : `$PKG_CONFIG --modversion cairo` / `$PKG_CONFIG --modversion pangocairo`"
 echo "Integration-test tools found        :$drive_tools"
