@@ -239,6 +239,7 @@ static void storeData(_Panel * panel)
 		p = WMGetListItem(panel->icoL, i)->text;
 		tmp = WMCreatePLString(p);
 		WMAddToPLArray(list, tmp);
+		WMReleasePropList(tmp);
 	}
 	SetObjectForKey(list, "IconPath");
 	WMReleasePropList(list);
@@ -248,6 +249,7 @@ static void storeData(_Panel * panel)
 		p = WMGetListItem(panel->pixL, i)->text;
 		tmp = WMCreatePLString(p);
 		WMAddToPLArray(list, tmp);
+		WMReleasePropList(tmp);
 	}
 	SetObjectForKey(list, "PixmapPath");
 	WMReleasePropList(list);
@@ -257,6 +259,7 @@ static void storeData(_Panel * panel)
 		p = WMGetListItem(panel->sndL, i)->text;
 		tmp = WMCreatePLString(p);
 		WMAddToPLArray(list, tmp);
+		WMReleasePropList(tmp);
 	}
 	SetSoundObjectForKey(list, "SoundPath");
 	WMReleasePropList(list);
