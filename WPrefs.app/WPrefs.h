@@ -138,6 +138,12 @@ void SetSpeedForKey(int speed, const char *defaultName);
 
 void SetEnumForKey(int value, const char *defaultName);
 
+/* manipulate the dictionary for the WMSound domain (Sound.c panel) */
+
+WMPropList *GetSoundObjectForKey(const char *defaultName);
+
+void SetSoundObjectForKey(WMPropList *object, const char *defaultName);
+
 /* enum-backed single-select popup helper for the {db_value, label} tables
  * expanded from WPREFS_TABLE_* macros */
 typedef struct {

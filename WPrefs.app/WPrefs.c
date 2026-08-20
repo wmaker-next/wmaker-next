@@ -31,7 +31,7 @@
 #endif
 
 
-#define MAX_SECTIONS 16
+#define MAX_SECTIONS 32
 
 typedef struct _WPrefs {
 	WMWindow *win;
@@ -64,12 +64,19 @@ static WMPropList *GlobalDB = NULL;
 /* user defaults dictionary */
 static WMPropList *WindowMakerDB = NULL;
 static char *WindowMakerDBPath = NULL;
+/* user WMSound domain dictionary, edited by the Sound panel. NULL until
+ * either loaded from disk or created by the first SetSoundObjectForKey. */
+static WMPropList *WMSoundDB;
+static char *WMSoundDBPath;
+/* installed global WMSound domain. Read-only */
+static WMPropList *WMSoundGlobalDB;
 
 static Bool TIFFOK = False;
 
 #define INITIALIZED_PANEL	(1<<0)
 
 static void loadConfigurations(WMScreen * scr, WMWindow * mainw);
+static void loadSoundDomain(WMScreen *scr, WMWindow *mainw);
 
 static void savePanelData(Panel * panel);
 
@@ -193,6 +200,11 @@ static void save(WMWidget * w, void *data)
 	/*    puts("storing data"); */
 
 	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
+
+	/* The Sound panel edits a separate domain; persist it alongside the
+	 * main one so the wmsoundd daemon (inotify-watching the file) reloads. */
+	if (WMSoundDB && WMSoundDBPath)
+		WMWritePropListToFile(WMSoundDB, WMSoundDBPath);
 
 	reply = wIPCCommand(NULL, verb);
 	if (reply) {
@@ -648,6 +660,7 @@ void Initialize(WMScreen * scr)
 	WMSetLabelText(WPrefs.statusL, _("Loading Window Maker configuration files..."));
 	XFlush(WMScreenDisplay(scr));
 	loadConfigurations(scr, WPrefs.win);
+	loadSoundDomain(scr, WPrefs.win);
 
 	WMSetLabelText(WPrefs.statusL, _("Initializing configuration panels..."));
 
@@ -807,6 +820,35 @@ static void loadConfigurations(WMScreen * scr, WMWindow * mainw)
 	WindowMakerDB = db;
 }
 
+/* Load the user WMSound domain (~/.../WMSound). A missing file is not an
+ * error: WMSoundDB stays NULL and is created on the first write. The
+ * installed global WMSound domain is a read-only fallback. */
+static void loadSoundDomain(WMScreen *scr, WMWindow *mainw)
+{
+	char *path;
+	char mbuf[256];
+
+	path = wdefaultspathfordomain("WMSound");
+	WMSoundDBPath = path;
+
+	WMSoundDB = WMReadPropListFromFile(path);
+	if (WMSoundDB && !WMIsPLDictionary(WMSoundDB)) {
+		WMReleasePropList(WMSoundDB);
+		WMSoundDB = NULL;
+		snprintf(mbuf, sizeof(mbuf),
+			 _("Window Maker sound domain (%s) is corrupted!"), path);
+		WMRunAlertPanel(scr, mainw, _("Error"), mbuf, _("OK"), NULL, NULL);
+	}
+
+	path = wglobaldefaultspathfordomain("WMSound");
+	WMSoundGlobalDB = path ? WMReadPropListFromFile(path) : NULL;
+	if (WMSoundGlobalDB && !WMIsPLDictionary(WMSoundGlobalDB)) {
+		WMReleasePropList(WMSoundGlobalDB);
+		WMSoundGlobalDB = NULL;
+	}
+	wfree(path);
+}
+
 WMPropList *GetObjectForKey(const char *defaultName)
 {
 	WMPropList *object = NULL;
@@ -835,6 +877,32 @@ void RemoveObjectForKey(const char *defaultName)
 
 	WMRemoveFromPLDictionary(WindowMakerDB, key);
 
+	WMReleasePropList(key);
+}
+
+/* manipulate the dictionary for the WMSound domain (edited by Sound.c) */
+
+WMPropList *GetSoundObjectForKey(const char *defaultName)
+{
+	WMPropList *key, *object = NULL;
+
+	key = WMCreatePLString(defaultName);
+	if (WMSoundDB)
+		object = WMGetFromPLDictionary(WMSoundDB, key);
+	if (!object && WMSoundGlobalDB)
+		object = WMGetFromPLDictionary(WMSoundGlobalDB, key);
+	WMReleasePropList(key);
+	return object;
+}
+
+void SetSoundObjectForKey(WMPropList *object, const char *defaultName)
+{
+	WMPropList *key;
+
+	if (!WMSoundDB)
+		WMSoundDB = WMCreatePLDictionary(NULL, NULL);
+	key = WMCreatePLString(defaultName);
+	WMPutInPLDictionary(WMSoundDB, key, object);
 	WMReleasePropList(key);
 }
 

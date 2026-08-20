@@ -44,6 +44,11 @@ typedef struct _Panel {
 	WMButton *icoaB;
 	WMButton *icorB;
 
+	WMFrame *sndF;
+	WMList *sndL;
+	WMButton *sndaB;
+	WMButton *sndrB;
+
 	WMColor *red;
 	WMColor *black;
 	WMColor *white;
@@ -104,6 +109,21 @@ static void showData(_Panel * panel)
 			addPathToList(panel->pixL, -1, WMGetFromPLString(val));
 		}
 	}
+
+	array = GetSoundObjectForKey("SoundPath");
+	if (!array || !WMIsPLArray(array) || WMGetPropListItemCount(array) == 0) {
+		if (array && !WMIsPLArray(array))
+			wwarning(_("bad value in option SoundPath. Using default path list"));
+		p = wstrconcat(wuserdatapath(), "/Sounds");
+		addPathToList(panel->sndL, -1, p);
+		wfree(p);
+		addPathToList(panel->sndL, -1, WMAKER_RESOURCE_PATH "/Sounds");
+	} else {
+		for (i = 0; i < WMGetPropListItemCount(array); i++) {
+			val = WMGetFromPLArray(array, i);
+			addPathToList(panel->sndL, -1, WMGetFromPLString(val));
+		}
+	}
 }
 
 static void pushButton(WMWidget * w, void *data)
@@ -126,6 +146,14 @@ static void pushButton(WMWidget * w, void *data)
 		if (i >= 0)
 			WMRemoveListItem(panel->pixL, i);
 	}
+
+	/* sound paths */
+	if (w == panel->sndrB) {
+		i = WMGetListSelectedItemRow(panel->sndL);
+
+		if (i >= 0)
+			WMRemoveListItem(panel->sndL, i);
+	}
 }
 
 static void browseForFile(WMWidget * w, void *data)
@@ -133,7 +161,7 @@ static void browseForFile(WMWidget * w, void *data)
 	_Panel *panel = (_Panel *) data;
 	WMFilePanel *filePanel;
 
-	assert(w == panel->icoaB || w == panel->pixaB);
+	assert(w == panel->icoaB || w == panel->pixaB || w == panel->sndaB);
 
 	filePanel = WMGetOpenPanel(WMWidgetScreen(w));
 
@@ -158,6 +186,8 @@ static void browseForFile(WMWidget * w, void *data)
 					lPtr = panel->icoL;
 				else if (w == panel->pixaB)
 					lPtr = panel->pixL;
+				else if (w == panel->sndaB)
+					lPtr = panel->sndL;
 				else
 					goto error_unknown_widget;
 
@@ -211,6 +241,7 @@ static void storeData(_Panel * panel)
 		WMAddToPLArray(list, tmp);
 	}
 	SetObjectForKey(list, "IconPath");
+	WMReleasePropList(list);
 
 	list = WMCreatePLArray(NULL, NULL);
 	for (i = 0; i < WMGetListNumberOfRows(panel->pixL); i++) {
@@ -219,6 +250,16 @@ static void storeData(_Panel * panel)
 		WMAddToPLArray(list, tmp);
 	}
 	SetObjectForKey(list, "PixmapPath");
+	WMReleasePropList(list);
+
+	list = WMCreatePLArray(NULL, NULL);
+	for (i = 0; i < WMGetListNumberOfRows(panel->sndL); i++) {
+		p = WMGetListItem(panel->sndL, i)->text;
+		tmp = WMCreatePLString(p);
+		WMAddToPLArray(list, tmp);
+	}
+	SetSoundObjectForKey(list, "SoundPath");
+	WMReleasePropList(list);
 }
 
 static void createPanel(Panel * p)
@@ -301,6 +342,37 @@ static void createPanel(Panel * p)
 	WMSetButtonAction(panel->pixrB, pushButton, panel);
 
 	WMMapSubwidgets(panel->pixF);
+
+	/* sound path */
+	panel->sndF = WMCreateFrame(panel->box);
+	WMSetFrameRelief(panel->sndF, WRFlat);
+	WMResizeWidget(panel->sndF, 230, 210);
+
+	tab = WMCreateTabViewItemWithIdentifier(0);
+	WMSetTabViewItemView(tab, WMWidgetView(panel->sndF));
+	WMAddItemInTabView(panel->tabv, tab);
+	WMSetTabViewItemLabel(tab, _("Sound Search Paths"));
+
+	panel->sndL = WMCreateList(panel->sndF);
+	WMResizeWidget(panel->sndL, 480, 147);
+	WMMoveWidget(panel->sndL, 10, 10);
+	WMSetListUserDrawProc(panel->sndL, paintItem);
+	WMHangData(panel->sndL, panel);
+
+	panel->sndaB = WMCreateCommandButton(panel->sndF);
+	WMResizeWidget(panel->sndaB, 95, 24);
+	WMMoveWidget(panel->sndaB, 293, 165);
+	WMSetButtonText(panel->sndaB, _("Add"));
+	WMSetButtonAction(panel->sndaB, browseForFile, panel);
+	WMSetButtonImagePosition(panel->sndaB, WIPRight);
+
+	panel->sndrB = WMCreateCommandButton(panel->sndF);
+	WMResizeWidget(panel->sndrB, 95, 24);
+	WMMoveWidget(panel->sndrB, 395, 165);
+	WMSetButtonText(panel->sndrB, _("Remove"));
+	WMSetButtonAction(panel->sndrB, pushButton, panel);
+
+	WMMapSubwidgets(panel->sndF);
 
 	WMRealizeWidget(panel->box);
 	WMMapSubwidgets(panel->box);
