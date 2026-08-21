@@ -460,7 +460,7 @@ AC_FUNC_VPRINTF
 WM_FUNC_SECURE_GETENV
 AC_CHECK_FUNCS(gethostname strcasecmp strncasecmp \
 	       setsid mallinfo2 mkstemp sysconf fmemopen accept4 \
-	       memfd_create shm_mkstemp)
+	       memfd_create shm_mkstemp newlocale strtod_l)
 AC_CHECK_DECLS([SHM_ANON], [], [], [[#include <sys/mman.h>]])
 AC_SEARCH_LIBS([strerror], [cposix])
 

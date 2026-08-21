@@ -363,6 +363,7 @@
 	RunDialogMatching = substring;
 	RunDialogPopupList = YES;
 	RunDialogPopupRows = 8;
+	RunDialogCalculator = YES;
 	RunDialogDocumentSearch = YES;
 	RunDialogDocumentPaths = ("~/Documents", "~/Downloads", "~/Desktop");
 	RunDialogDocumentDepth = 3;

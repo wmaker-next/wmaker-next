@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_xsmp check_layout
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @CAIRO_CFLAGS@
@@ -71,6 +71,15 @@ check_cmdexpand_SOURCES = \
 check_cmdexpand_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
+
+check_calc_SOURCES = \
+	check_calc.c \
+	../calc.c
+
+check_calc_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@ \
+	@LIBM@
 
 check_xsmp_SOURCES = \
 	check_xsmp.c

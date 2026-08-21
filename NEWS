@@ -555,8 +555,8 @@ event with state and source is emitted on every transition for
 consumers that prefer `wmakermsg -m display_power` over the shell
 hook.
 
-Run dialog completes against XDG application names
----------------------------------------------------
+Run dialog: XDG completion, popup list, and prefix modes
+-------------------------------------------------------
 
 The %A() input dialog used by the "Run..." root-menu entry (now
 relabeled "Find...") now also matches the first word against the
@@ -618,6 +618,16 @@ list, the Right arrow drills into an open-with sub-list of those
 handlers (each row showing the document name and the application
 it would open with) and Left or Escape returns to the outer
 document list at the same row.
+
+A leading = in the first word evaluates an arithmetic expression
+(operators + - * / % ^, parentheses, functions sin cos tan asin acos
+atan atan2 sqrt cbrt exp log log2 log10 pow fabs floor ceil round hypot
+fmin fmax, constants pi e tau); the result appears in the completion
+popup as you type and pressing Return dismisses the dialog without
+running anything, so =2+3 shows 5 and closes. RunDialogCalculator
+(default YES) gates this mode, and = expressions are recorded in a
+separate Calc history file so Up/Down recalls both commands and
+expressions.
 
 Drag a file onto the dock to create a launcher
 -----------------------------------------------

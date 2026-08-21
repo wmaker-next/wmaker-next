@@ -258,6 +258,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RUN_DIALOG_POPUP_ROWS, "RunDialogPopupRows", INT, run_popup_rows, "8", \
 	  NULL, 3, 20, WCFG_RUNTIME_RELOAD, 0) \
+	_(RUN_DIALOG_CALCULATOR, "RunDialogCalculator", BOOL, run_calc, "YES", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RUN_DIALOG_DOCUMENT_SEARCH, "RunDialogDocumentSearch", BOOL, run_doc_search, "YES", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RUN_DIALOG_DOCUMENT_PATHS, "RunDialogDocumentPaths", STRING_ARRAY, run_doc_paths, \

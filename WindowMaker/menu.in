@@ -91,10 +91,13 @@
  *			application inserts its Exec command. A leading ?
  *			searches documents under the XDG user directories
  *			instead and inserts the file's default MIME
- *			handler. The optional name selects a separate
+ *			handler. A leading = evaluates an arithmetic
+ *			expression and shows the result in the popup.
+ *			The optional name selects a separate
  *			history file. Application completion can be
  *			disabled with RunDialogXDGCompletion = NO and
  *			document search with RunDialogDocumentSearch = NO.
+ *			RunDialogCalculator gates the = mode.
  *			RunDialogMatching = prefix|substring|fuzzy selects
  *			the matching algorithm.
  * %w - substitute with XID for the current focused window

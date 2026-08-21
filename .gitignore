@@ -105,6 +105,7 @@ WINGs/Tests/check_ipc
 WINGs/Tests/check_evq
 WINGs/Tests/check_im
 WINGs/Tests/check_menuparser
+src/Tests/check_calc
 src/Tests/check_config
 src/Tests/check_wdefaults
 src/Tests/check_wprefs_schema

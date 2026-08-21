@@ -69,6 +69,14 @@
 #include "actions.h"
 #include "ipc.h"
 #include "xinerama.h"
+#include "calc.h"
+#include "switchmenu.h"
+#include "tabgroup.h"
+#include "workspace.h"
+#include "application.h"
+#include "appicon.h"
+#include "icon.h"
+#include "defaults.h"
 
 
 static WMPoint getCenter(WScreen * scr, int width, int height)
@@ -177,6 +185,13 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	return result;
 }
 
+typedef enum {
+	RUN_ACTION_EXEC = 0,
+	RUN_ACTION_DISMISS,
+	RUN_ACTION_FOCUS_WINDOW,
+	RUN_ACTION_SWITCH_WORKSPACE
+} RunVariantAction;
+
 typedef struct RunVariant {
 	char *text;	/* suffix to append, or full word when replace */
 	char *label;	/* shown in mLbl while selected, may be NULL */
@@ -188,6 +203,9 @@ typedef struct RunVariant {
 	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
 	Bool replace;	/* True: text replaces the current word */
+	RunVariantAction action;
+	WWindow *focus_win;
+	int target_workspace;
 } RunVariant;
 
 /* rank bands, lower sorts first */
@@ -196,7 +214,10 @@ enum {
 	RUN_RANK_APP_SUBSTR = 1,
 	RUN_RANK_PATH = 2,
 	RUN_RANK_DOC_PREFIX = 10,
-	RUN_RANK_DOC_SUBSTR = 11
+	RUN_RANK_DOC_SUBSTR = 11,
+	RUN_RANK_WORKSPACE = 10,
+	RUN_RANK_WINDOW = 15,
+	RUN_RANK_CALC = 20
 };
 
 typedef struct _WMInputPanelWithHistory {
@@ -472,6 +493,76 @@ static void SaveHistory(WMArray * history, const char *filename)
 
 	WMWritePropListToFile(plhistory, filename);
 	WMReleasePropList(plhistory);
+}
+
+static void SaveHistoryFiltered(WMArray *history, const char *filename, char prefix_char)
+{
+	int i;
+	WMPropList *plhistory;
+	const char *s;
+
+	plhistory = WMCreatePLArray(NULL);
+	for (i = 0; i < WMGetArrayItemCount(history); ++i) {
+		s = WMGetFromArray(history, i);
+		if (prefix_char != 0) {
+			if (s[0] == prefix_char)
+				WMAddToPLArray(plhistory, WMCreatePLString(s));
+		} else {
+			if (s[0] != '=' || !w_global.config->run_calc)
+				WMAddToPLArray(plhistory, WMCreatePLString(s));
+		}
+	}
+	WMWritePropListToFile(plhistory, filename);
+	WMReleasePropList(plhistory);
+}
+
+static void mergeCalcHistory(WMArray *history)
+{
+	char *calcfile = HistoryFileName("Calc");
+	WMArray *calchist;
+	int ci, cn, cap;
+
+	cap = w_global.config->history_lines;
+	calchist = LoadHistory(calcfile, cap);
+	cn = WMGetArrayItemCount(calchist);
+	for (ci = 0; ci < cn; ci++) {
+		const char *entry = WMGetFromArray(calchist, ci);
+
+		if (!entry || !entry[0])
+			continue;
+		if (WMGetArrayItemCount(history) >= cap)
+			break;
+		if (WMFindInArray(history, strmatch, (void *)entry) == WANotFound)
+			WMAddToArray(history, wstrdup(entry));
+	}
+	WMFreeArray(calchist);
+	wfree(calcfile);
+}
+
+static void noteCalcLine(WMInputPanelWithHistory *p)
+{
+	char *text, *calcfile;
+	int i;
+
+	if (!p->panel || !p->panel->text)
+		return;
+	text = WMGetTextFieldText(p->panel->text);
+	if (!text || text[0] != '=') {
+		if (text)
+			wfree(text);
+		return;
+	}
+	for (i = 0; i < WMGetArrayItemCount(p->history); i++)
+		if (strcmp(WMGetFromArray(p->history, i), text) == 0)
+			break;
+	if (i >= WMGetArrayItemCount(p->history) &&
+	    WMGetArrayItemCount(p->history) < w_global.config->history_lines) {
+		wfree(WMReplaceInArray(p->history, 0, wstrdup(text)));
+	}
+	calcfile = HistoryFileName("Calc");
+	SaveHistoryFiltered(p->history, calcfile, '=');
+	wfree(calcfile);
+	wfree(text);
 }
 
 static int compareVariants(const void *a, const void *b)
@@ -794,6 +885,39 @@ static void matchDocuments(const char *word, WMArray *result)
 	}
 }
 
+#define CALC_ICON "apps:accessories-calculator"
+
+static RunVariant *makeCalcVariant(const char *result, const char *err)
+{
+	RunVariant *v;
+	char *label;
+
+	if (err)
+		label = wstrconcat("= ! ", err);
+	else
+		label = wstrconcat("= ", result);
+	v = makeVariant(wstrdup(""), label, RUN_RANK_CALC, False);
+	v->icon_hint = wstrdup(CALC_ICON);
+	v->action = RUN_ACTION_DISMISS;
+	return v;
+}
+
+static void matchCalc(const char *expr, WMArray *result)
+{
+	double val;
+	char *err = NULL, *fmt;
+
+	if (!CalcEvaluate(expr, &val, &err)) {
+		WMAddToArray(result, makeCalcVariant(NULL, err ? err : "error"));
+		if (err)
+			wfree(err);
+		return;
+	}
+	fmt = CalcFormatResult(val);
+	WMAddToArray(result, makeCalcVariant(fmt, NULL));
+	wfree(fmt);
+}
+
 static WMArray *GenerateVariants(const char *complete, int *word_off)
 {
 	Bool firstWord = True;
@@ -810,14 +934,19 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	while (*complete == ' ')
 		++complete;
 
-	pos = strrchr(complete, ' ');
-	if (pos != NULL) {
-		complete = pos + 1;
-		firstWord = False;
+	if (*complete != '=' && *complete != '#' && *complete != '@' && *complete != '?') {
+		pos = strrchr(complete, ' ');
+		if (pos != NULL) {
+			complete = pos + 1;
+			firstWord = False;
+		}
 	}
 	*word_off = complete - start;
 
-	pos = strrchr(complete, '/');
+	pos = NULL;
+	if (*complete != '=' && *complete != '#' && *complete != '@' && *complete != '?') {
+		pos = strrchr(complete, '/');
+	}
 	if (pos != NULL) {
 		tmp = wstrndup(complete, pos - complete + 1);
 		if (*tmp == '~' && *(tmp + 1) == '/' && getenv("HOME")) {
@@ -837,6 +966,9 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	} else if (firstWord && *complete == '?') {
 		if (w_global.config->run_doc_search)
 			matchDocuments(complete + 1, variants);
+	} else if (firstWord && *complete == '=') {
+		if (w_global.config->run_calc)
+			matchCalc(complete + 1, variants);
 	} else if (firstWord) {
 		flen = strlen(complete);
 		if (flen >= sizeof(fold))
@@ -1048,6 +1180,24 @@ static void candidateActivate(WMWidget *w, void *cdata)
 			wfree(p->accepted_key);
 			p->accepted_key = wstrdup(v->frec_key);
 		}
+		if (v->action == RUN_ACTION_FOCUS_WINDOW) {
+			wWindowSingleFocus(v->focus_win);
+			hideDropList(p);
+			WMPerformButtonClick(p->panel->altBtn);
+			return;
+		}
+		if (v->action == RUN_ACTION_SWITCH_WORKSPACE) {
+			wWorkspaceChange(p->scr, v->target_workspace);
+			hideDropList(p);
+			WMPerformButtonClick(p->panel->altBtn);
+			return;
+		}
+		if (v->action == RUN_ACTION_DISMISS) {
+			noteCalcLine(p);
+			hideDropList(p);
+			WMPerformButtonClick(p->panel->altBtn);
+			return;
+		}
 	}
 	hideDropList(p);
 	if (p->panel->defBtn)
@@ -1159,6 +1309,16 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 	WMMoveWidget(p->dropWin, x, y);
 }
 
+static Bool prefixIsModal(const WMInputPanelWithHistory *p)
+{
+	const char *w;
+
+	if (!p->prefix || p->word_off >= (int)strlen(p->prefix))
+		return False;
+	w = p->prefix + p->word_off;
+	return p->word_off == 0 && (*w == '=' || *w == '#' || *w == '@');
+}
+
 static void refreshDropList(WMInputPanelWithHistory *p)
 {
 	RunVariant *v;
@@ -1168,7 +1328,7 @@ static void refreshDropList(WMInputPanelWithHistory *p)
 	if (!w_global.config->run_popup_list || !p->wwin)
 		return;
 	n = p->variants ? WMGetArrayItemCount(p->variants) : 0;
-	if (n < 2) {
+	if (n < 2 && !(n == 1 && prefixIsModal(p))) {
 		hideDropList(p);
 		resetVariants(p);
 		return;
@@ -1439,14 +1599,29 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		break;
 	case XK_Return:
 	case XK_KP_Enter:
-		/* the field already holds the applied command, the
-		 * text field has clicked defBtn for us, just let the
-		 * modal loop exit and clean up afterwards */
 		if (p->variants && p->varpos > 0) {
 			av = WMGetFromArray(p->variants, p->varpos - 1);
 			if (av->frec_key) {
 				wfree(p->accepted_key);
 				p->accepted_key = wstrdup(av->frec_key);
+			}
+			if (av->action == RUN_ACTION_FOCUS_WINDOW) {
+				wWindowSingleFocus(av->focus_win);
+				hideDropList(p);
+				WMPerformButtonClick(p->panel->altBtn);
+				return;
+			}
+			if (av->action == RUN_ACTION_SWITCH_WORKSPACE) {
+				wWorkspaceChange(p->scr, av->target_workspace);
+				hideDropList(p);
+				WMPerformButtonClick(p->panel->altBtn);
+				return;
+			}
+			if (av->action == RUN_ACTION_DISMISS) {
+				noteCalcLine(p);
+				hideDropList(p);
+				WMPerformButtonClick(p->panel->altBtn);
+				return;
 			}
 		}
 		hideDropList(p);
@@ -1560,6 +1735,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	p = wmalloc(sizeof(WMInputPanelWithHistory));
 	p->panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));
 	p->history = LoadHistory(filename, w_global.config->history_lines);
+	mergeCalcHistory(p->history);
 	p->scr = scr;
 	WMCreateEventHandler(WMWidgetView(p->panel->text), KeyPressMask, handleHistoryKeyPress, p);
 	widenInputDialog(scr, p->panel);
@@ -1604,10 +1780,23 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 
 	if (p->panel->result == WAPRDefault) {
 		result = WMGetTextFieldText(p->panel->text);
-		wfree(WMReplaceInArray(p->history, 0, wstrdup(result)));
-		SaveHistory(p->history, filename);
-		if (p->accepted_key)
-			frecencyRecord(p->accepted_key);
+		if (result &&
+		    ((result[0] == '=' && w_global.config->run_calc) ||
+		     (result[0] == '#' && w_global.config->run_window_switcher) ||
+		     (result[0] == '@' &&
+		      (strchr(result, '#') ? w_global.config->run_window_switcher
+					   : w_global.config->run_workspace_jumper)))) {
+			if (result[0] == '=')
+				noteCalcLine(p);
+			wfree(result);
+			result = NULL;
+		}
+		if (result) {
+			wfree(WMReplaceInArray(p->history, 0, wstrdup(result)));
+			SaveHistoryFiltered(p->history, filename, '\0');
+			if (p->accepted_key)
+				frecencyRecord(p->accepted_key);
+		}
 	} else
 		result = NULL;
 	wfree(p->accepted_key);
