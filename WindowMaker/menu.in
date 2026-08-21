@@ -92,12 +92,14 @@
  *			searches documents under the XDG user directories
  *			instead and inserts the file's default MIME
  *			handler. A leading = evaluates an arithmetic
- *			expression and shows the result in the popup.
- *			The optional name selects a separate
+ *			expression and shows the result in the popup. A
+ *			leading # searches managed windows (# only the
+ *			current workspace). The optional name selects a separate
  *			history file. Application completion can be
  *			disabled with RunDialogXDGCompletion = NO and
  *			document search with RunDialogDocumentSearch = NO.
- *			RunDialogCalculator gates the = mode.
+ *			RunDialogCalculator gates the = mode and
+ *			RunDialogWindowSwitcher gates the # mode.
  *			RunDialogMatching = prefix|substring|fuzzy selects
  *			the matching algorithm.
  * %w - substitute with XID for the current focused window

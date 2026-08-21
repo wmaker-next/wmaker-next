@@ -204,7 +204,7 @@ typedef struct RunVariant {
 	time_t mtime;	/* recency tiebreak within the document band */
 	Bool replace;	/* True: text replaces the current word */
 	RunVariantAction action;
-	WWindow *focus_win;
+	Window focus_xid;	/* client_win of a window row, re-resolved at use */
 	int target_workspace;
 } RunVariant;
 
@@ -872,7 +872,9 @@ static void matchDocuments(const char *word, WMArray *result)
 		v->doc_path = d->path;
 		mt = wXDGMimeTypeForPath(d->path);
 		v->doc_mime = mt;
-		if (mt) {
+		if (mt && strncmp(mt, "image/", 6) == 0) {
+			v->icon_hint = wstrdup(d->path);
+		} else if (mt) {
 			snprintf(hint, sizeof(hint), "mimetypes:%s", mt);
 			for (hp = hint; *hp; hp++)
 				if (*hp == '/')
@@ -916,6 +918,249 @@ static void matchCalc(const char *expr, WMArray *result)
 	fmt = CalcFormatResult(val);
 	WMAddToArray(result, makeCalcVariant(fmt, NULL));
 	wfree(fmt);
+}
+
+#define IS_GNUSTEP_MENU_WIN(w) ((w)->wm_gnustep_attr && \
+	((w)->wm_gnustep_attr->flags & GSWindowLevelAttr) && \
+	((w)->wm_gnustep_attr->window_level == WMMainMenuWindowLevel || \
+	 (w)->wm_gnustep_attr->window_level == WMSubmenuWindowLevel))
+
+static Bool ws_in_scope(WWindow *wwin, const int *scope, int count)
+{
+	int i;
+
+	if (count == 0)
+		return True;
+	if (count < 0)	/* requested scope matched nothing */
+		return False;
+	for (i = 0; i < count; i++)
+		if (WWIN_ON_WORKSPACE(wwin, scope[i]))
+			return True;
+	return False;
+}
+
+static int resolve_ws_scope(WScreen *scr, const char *ws, int *out, int max)
+{
+	int n, w, i, count;
+	char nfld[256], fold[256];
+	int band, score;
+	size_t wlen;
+
+	if (!ws || !*ws)
+		return 0;
+	if (sscanf(ws, "%i", &n) == 1) {
+		w = n - 1;
+		if (w >= 0 && w < scr->workspace_count && max >= 1) {
+			out[0] = w;
+			return 1;
+		}
+	}
+	wlen = strlen(ws);
+	if (wlen >= sizeof(nfld))
+		return 0;
+	for (i = 0; i < (int)wlen; i++)
+		nfld[i] = tolower((unsigned char)ws[i]);
+	nfld[wlen] = 0;
+	count = 0;
+	for (i = 0; i < scr->workspace_count && count < max; i++) {
+		const char *name = scr->workspaces[i]->name;
+		size_t ln;
+
+		if (!name)
+			continue;
+		ln = strlen(name);
+		if (ln >= sizeof(fold))
+			continue;
+		for (size_t k = 0; k <= ln; k++)
+			fold[k] = tolower((unsigned char)name[k]);
+		if (!matchName(nfld, fold, name, &band, &score))
+			continue;
+		out[count++] = i;
+	}
+	return count > 0 ? count : -1;
+}
+
+static RunVariant *makeWindowVariant(WWindow *wwin, int rank, int score)
+{
+	RunVariant *v;
+	WScreen *scr = wwin->screen_ptr;
+	const char *title, *wsname, *plus;
+	char *label, tag[64], hint[32];
+
+	title = (wwin->frame && wwin->frame->title) ? wwin->frame->title
+		: (wwin->wm_title ? wwin->wm_title : "");
+	tag[0] = 0;
+	if (IS_OMNIPRESENT(wwin)) {
+		snprintf(tag, sizeof(tag), "  [*]");
+	} else if (WWIN_PRIMARY_WS(wwin) != scr->current_workspace) {
+		wsname = scr->workspaces[WWIN_PRIMARY_WS(wwin)]->name;
+		plus = (WWIN_WS_MASK(wwin) != WS_BIT(WWIN_PRIMARY_WS(wwin))) ? "+" : "";
+		snprintf(tag, sizeof(tag), "  [%s%s]", wsname, plus);
+	}
+	label = wstrconcat(title, tag);
+	v = makeVariant(wstrdup(""), label, rank, False);
+	snprintf(hint, sizeof(hint), "win:0x%lx", (unsigned long)wwin->client_win);
+	v->icon_hint = wstrdup(hint);
+	v->score = score;
+	v->action = RUN_ACTION_FOCUS_WINDOW;
+	v->focus_xid = wwin->client_win;
+	return v;
+}
+
+static int matchWindowFields(const char *fold, WWindow *wwin,
+			     int *out_band, int *out_score)
+{
+	const char *fields[3];
+	int band, score, best_band = -1, best_score = 0, fi;
+
+	fields[0] = (wwin->frame && wwin->frame->title) ? wwin->frame->title
+		  : (wwin->wm_title ? wwin->wm_title : NULL);
+	fields[1] = wwin->wm_class;
+	fields[2] = wwin->wm_instance;
+	for (fi = 0; fi < 3; fi++) {
+		char ff[256];
+		const char *f = fields[fi];
+		size_t fl;
+
+		if (!f)
+			continue;
+		fl = strlen(f);
+		if (fl >= sizeof(ff))
+			continue;
+		for (size_t k = 0; k <= fl; k++)
+			ff[k] = tolower((unsigned char)f[k]);
+		if (matchName(fold, ff, f, &band, &score)) {
+			if (best_band < 0 || band < best_band ||
+			    (band == best_band && score > best_score)) {
+				best_band = band;
+				best_score = score;
+			}
+		}
+	}
+	if (best_band < 0)
+		return 0;
+	*out_band = best_band;
+	*out_score = best_score;
+	return 1;
+}
+
+static void matchWindows(const char *complete, WMArray *result)
+{
+	WScreen *scr;
+	WWindow *wwin;
+	const char *needle, *hash;
+	char wsn[256], fold[256];
+	int scope[MAX_WORKSPACES];
+	int scope_count = 0, band, score;
+	size_t i, nlen, wlen;
+
+	scr = wScreenWithNumber(0);
+	if (!scr)
+		return;
+	if (*complete == '@') {
+		hash = strchr(complete, '#');
+		if (!hash)
+			return;
+		wlen = (size_t)(hash - (complete + 1));
+		if (wlen >= sizeof(wsn))
+			return;
+		memcpy(wsn, complete + 1, wlen);
+		wsn[wlen] = 0;
+		scope_count = resolve_ws_scope(scr, wsn, scope, scr->workspace_count);
+		needle = hash + 1;
+	} else if (complete[0] == '#' && complete[1] == '#') {
+		scope[0] = scr->current_workspace;
+		scope_count = 1;
+		needle = complete + 2;
+	} else {
+		needle = complete + 1;
+	}
+	nlen = strlen(needle);
+	if (nlen >= sizeof(fold))
+		return;
+	for (i = 0; i < nlen; i++)
+		fold[i] = tolower((unsigned char)needle[i]);
+	fold[nlen] = 0;
+	for (wwin = scr->focused_window; wwin; wwin = wwin->prev) {
+		if (wwin->flags.internal_window)
+			continue;
+		if (WFLAGP(wwin, skip_window_list))
+			continue;
+		if (IS_GNUSTEP_MENU_WIN(wwin))
+			continue;
+		if (!w_global.config->show_all_tabs_in_switch_panel
+		    && wGroupIsInactiveMember(wwin))
+			continue;
+		if (!ws_in_scope(wwin, scope, scope_count))
+			continue;
+		if (!matchWindowFields(fold, wwin, &band, &score))
+			continue;
+		WMAddToArray(result, makeWindowVariant(wwin,
+				RUN_RANK_WINDOW + band, score));
+	}
+}
+
+static RunVariant *makeWorkspaceVariant(int ws_index, int rank, int score)
+{
+	RunVariant *v;
+	WScreen *scr = wScreenWithNumber(0);
+	const char *name;
+	char *text;
+
+	if (!scr || ws_index < 0 || ws_index >= scr->workspace_count)
+		return NULL;
+	name = scr->workspaces[ws_index]->name;
+	text = wstrconcat("@", name ? name : "");
+	v = makeVariant(text, wstrdup(name ? name : ""), rank, True);
+	v->score = score;
+	v->action = RUN_ACTION_SWITCH_WORKSPACE;
+	v->target_workspace = ws_index;
+	return v;
+}
+
+static void matchWorkspaces(const char *needle, WMArray *result)
+{
+	WScreen *scr;
+	RunVariant *v;
+	int n, w, i;
+	char fold[256], ff[256];
+	int band, score;
+	size_t nlen, fl;
+
+	scr = wScreenWithNumber(0);
+	if (!scr || scr->workspace_count <= 0)
+		return;
+	if (needle && *needle && sscanf(needle, "%i", &n) == 1) {
+		w = n - 1;
+		if (w >= 0 && w < scr->workspace_count) {
+			v = makeWorkspaceVariant(w, RUN_RANK_WORKSPACE, 0);
+			if (v)
+				WMAddToArray(result, v);
+			return;
+		}
+	}
+	nlen = needle ? strlen(needle) : 0;
+	if (nlen >= sizeof(fold))
+		return;
+	for (i = 0; i < (int)nlen; i++)
+		fold[i] = tolower((unsigned char)needle[i]);
+	fold[nlen] = 0;
+	for (i = 0; i < scr->workspace_count; i++) {
+		const char *name = scr->workspaces[i]->name;
+
+		if (!name)
+			continue;
+		fl = strlen(name);
+		if (fl >= sizeof(ff))
+			continue;
+		for (size_t k = 0; k <= fl; k++)
+			ff[k] = tolower((unsigned char)name[k]);
+		if (!matchName(fold, ff, name, &band, &score))
+			continue;
+		v = makeWorkspaceVariant(i, RUN_RANK_WORKSPACE + band, score);
+		if (v)
+			WMAddToArray(result, v);
+	}
 }
 
 static WMArray *GenerateVariants(const char *complete, int *word_off)
@@ -969,6 +1214,9 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	} else if (firstWord && *complete == '=') {
 		if (w_global.config->run_calc)
 			matchCalc(complete + 1, variants);
+	} else if (firstWord && *complete == '#') {
+		if (w_global.config->run_window_switcher)
+			matchWindows(complete, variants);
 	} else if (firstWord) {
 		flen = strlen(complete);
 		if (flen >= sizeof(fold))
@@ -1070,6 +1318,7 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 	RColor color;
 	const char *colon;
 	char ctx[32], *path;
+	RImage *image;
 
 	if (!hint || !hint[0])
 		return NULL;
@@ -1077,8 +1326,34 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 	if (pix)
 		return pix == (WMPixmap *)&dropIconMiss ? NULL : pix;
 
-	if (hint[0] == '/') {
-		path = wstrdup(hint);
+	color.red = WMRedComponentOfColor(back) >> 8;
+	color.green = WMGreenComponentOfColor(back) >> 8;
+	color.blue = WMBlueComponentOfColor(back) >> 8;
+	color.alpha = WMGetColorAlpha(back) >> 8;
+
+	image = NULL;
+
+	if (strncmp(hint, "win:", 4) == 0) {
+		Window xid = strtoul(hint + 4, NULL, 0);
+		WWindow *w = wWindowFor(xid);
+
+		if (w) {
+			WApplication *wapp;
+
+			wapp = wApplicationOf(w->main_window);
+			if (wapp && wapp->app_icon && wapp->app_icon->icon &&
+			    wapp->app_icon->icon->file_image)
+				image = RRetainImage(wapp->app_icon->icon->file_image);
+			if (!image && !WFLAGP(w, always_user_icon) && w->net_icon_image)
+				image = RRetainImage(w->net_icon_image);
+			if (!image)
+				image = get_icon_image(p->scr, w->wm_instance,
+						       w->wm_class, p->dropIconSize);
+			if (image)
+				image = wIconValidateIconSize(image, p->dropIconSize);
+		}
+	} else if (hint[0] == '/') {
+		image = RLoadImage(p->scr->rcontext, hint, 0);
 	} else {
 		colon = strchr(hint, ':');
 		if (!colon || (size_t)(colon - hint) >= sizeof(ctx))
@@ -1086,18 +1361,39 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 		memcpy(ctx, hint, colon - hint);
 		ctx[colon - hint] = 0;
 		path = wXDGFindThemeIcon(colon + 1, ctx, p->dropIconSize);
+		if (path) {
+			image = RLoadImage(p->scr->rcontext, path, 0);
+			wfree(path);
+		}
 	}
-	if (path) {
-		color.red = WMRedComponentOfColor(back) >> 8;
-		color.green = WMGreenComponentOfColor(back) >> 8;
-		color.blue = WMBlueComponentOfColor(back) >> 8;
-		color.alpha = WMGetColorAlpha(back) >> 8;
-		pix = WMCreateScaledBlendedPixmapFromFile(p->scr->wmscreen,
-							  path, &color,
-							  p->dropIconSize,
-							  p->dropIconSize);
-		wfree(path);
+
+	if (image) {
+		if (image->width > p->dropIconSize ||
+		    image->height > p->dropIconSize) {
+			int nw, nh;
+			RImage *scaled;
+
+			nw = image->width;
+			nh = image->height;
+			if (nw > p->dropIconSize) {
+				nw = p->dropIconSize;
+				nh = p->dropIconSize * image->height / image->width;
+			}
+			if (nh > p->dropIconSize) {
+				nw = p->dropIconSize * image->width / image->height;
+				nh = p->dropIconSize;
+			}
+			scaled = RSmoothScaleImage(image, nw, nh);
+			RReleaseImage(image);
+			image = scaled;
+		}
+		if (image) {
+			RCombineImageWithColor(image, &color);
+			pix = WMCreatePixmapFromRImage(p->scr->wmscreen, image, 0);
+			RReleaseImage(image);
+		}
 	}
+
 	if (!pix) {
 		WMHashInsert(p->dropIcons, hint, &dropIconMiss);
 		return NULL;
@@ -1172,6 +1468,7 @@ static void candidateActivate(WMWidget *w, void *cdata)
 {
 	WMInputPanelWithHistory *p = cdata;
 	RunVariant *v;
+	WWindow *twin;
 
 	candidateClicked(w, cdata);
 	if (p->variants && p->varpos > 0) {
@@ -1181,7 +1478,9 @@ static void candidateActivate(WMWidget *w, void *cdata)
 			p->accepted_key = wstrdup(v->frec_key);
 		}
 		if (v->action == RUN_ACTION_FOCUS_WINDOW) {
-			wWindowSingleFocus(v->focus_win);
+			twin = wWindowFor(v->focus_xid);
+			if (twin)
+				wWindowSingleFocus(twin);
 			hideDropList(p);
 			WMPerformButtonClick(p->panel->altBtn);
 			return;
@@ -1528,6 +1827,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 	unsigned pos;
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
 	RunVariant *av;
+	WWindow *twin;
 	KeySym ksym;
 	Bool wasFiltering;
 
@@ -1606,7 +1906,9 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 				p->accepted_key = wstrdup(av->frec_key);
 			}
 			if (av->action == RUN_ACTION_FOCUS_WINDOW) {
-				wWindowSingleFocus(av->focus_win);
+				twin = wWindowFor(av->focus_xid);
+				if (twin)
+					wWindowSingleFocus(twin);
 				hideDropList(p);
 				WMPerformButtonClick(p->panel->altBtn);
 				return;

@@ -629,6 +629,11 @@ running anything, so =2+3 shows 5 and closes. RunDialogCalculator
 separate Calc history file so Up/Down recalls both commands and
 expressions.
 
+A leading # searches managed windows by title, WM_CLASS and
+WM_INSTANCE across all workspaces (## limits the search to the
+current workspace) and accepting a row focuses that window.
+RunDialogWindowSwitcher (default YES) gates this mode.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

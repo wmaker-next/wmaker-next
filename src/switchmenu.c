@@ -50,7 +50,7 @@ static int initialized = 0;
 static void observer(void *self, WMNotification * notif);
 static void wsobserver(void *self, WMNotification * notif);
 
-static WPixmap *switchMenuIconForWindow(WScreen *scr, WWindow *wwin)
+WPixmap *switchMenuIconForWindow(WScreen *scr, WWindow *wwin)
 {
 	RImage *image = NULL;
 	WPixmap *pix;

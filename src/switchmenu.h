@@ -24,5 +24,6 @@
 void UpdateSwitchMenu(WScreen *scr, WWindow *wwin, int action);
 void OpenSwitchMenu(WScreen *scr, int x, int y, int keyboard);
 void InitializeSwitchMenu(void);
+WPixmap *switchMenuIconForWindow(WScreen *scr, WWindow *wwin);
 
 #endif /* WMSWITCHMENU_H */
