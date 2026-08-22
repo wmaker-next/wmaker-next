@@ -634,6 +634,11 @@ WM_INSTANCE across all workspaces (## limits the search to the
 current workspace) and accepting a row focuses that window.
 RunDialogWindowSwitcher (default YES) gates this mode.
 
+A leading @ jumps to a matching workspace by 1-based index or name;
+@ws#needle lists windows on the workspaces matching ws and accepting
+a row focuses that window. RunDialogWorkspaceJumper (default YES)
+gates the bare @ jump; @ws#needle is gated by RunDialogWindowSwitcher.
+
 Drag a file onto the dock to create a launcher
 -----------------------------------------------
 

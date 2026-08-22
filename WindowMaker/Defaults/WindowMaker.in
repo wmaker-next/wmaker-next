@@ -365,6 +365,7 @@
 	RunDialogPopupRows = 8;
 	RunDialogCalculator = YES;
 	RunDialogWindowSwitcher = YES;
+	RunDialogWorkspaceJumper = YES;
 	RunDialogDocumentSearch = YES;
 	RunDialogDocumentPaths = ("~/Documents", "~/Downloads", "~/Desktop");
 	RunDialogDocumentDepth = 3;

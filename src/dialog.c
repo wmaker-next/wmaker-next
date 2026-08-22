@@ -481,20 +481,6 @@ static WMArray *LoadHistory(const char *filename, int max)
 	return history;
 }
 
-static void SaveHistory(WMArray * history, const char *filename)
-{
-	int i;
-	WMPropList *plhistory;
-
-	plhistory = WMCreatePLArray(NULL);
-
-	for (i = 0; i < WMGetArrayItemCount(history); ++i)
-		WMAddToPLArray(plhistory, WMCreatePLString(WMGetFromArray(history, i)));
-
-	WMWritePropListToFile(plhistory, filename);
-	WMReleasePropList(plhistory);
-}
-
 static void SaveHistoryFiltered(WMArray *history, const char *filename, char prefix_char)
 {
 	int i;
@@ -1211,6 +1197,16 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 	} else if (firstWord && *complete == '?') {
 		if (w_global.config->run_doc_search)
 			matchDocuments(complete + 1, variants);
+	} else if (firstWord && *complete == '@') {
+		char *hash = strchr(complete, '#');
+
+		if (hash) {
+			if (w_global.config->run_window_switcher)
+				matchWindows(complete, variants);
+		} else {
+			if (w_global.config->run_workspace_jumper)
+				matchWorkspaces(complete + 1, variants);
+		}
 	} else if (firstWord && *complete == '=') {
 		if (w_global.config->run_calc)
 			matchCalc(complete + 1, variants);
