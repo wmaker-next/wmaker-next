@@ -2337,10 +2337,14 @@ void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed)
 			if (wwin->flags.is_gnustep == 0)
 				wFrameWindowChangeState(owner->frame, WS_UNFOCUSED);
 		}
-		wSetFocusTo(scr, newFocusedWindow);
-		if (w_global.config->focus_mode == WKF_CLICK && newFocusedWindow)
+		/* internal windows are wmaker-owned panels, their close must
+		 * not hand focus to whatever sits under the pointer.
+		 * Callers that want a specific successor set it themselves */
+		wSetFocusTo(scr, wwin->flags.internal_window ? NULL : newFocusedWindow);
+		if (!wwin->flags.internal_window && w_global.config->focus_mode == WKF_CLICK && newFocusedWindow)
 			wRaiseFrame(newFocusedWindow->frame->core);
-		warpPointerToFocusedWindow(newFocusedWindow);
+		if (!wwin->flags.internal_window)
+			warpPointerToFocusedWindow(newFocusedWindow);
 	}
 
 	/* Close menu and unhighlight */

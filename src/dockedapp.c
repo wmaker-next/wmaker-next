@@ -141,7 +141,8 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 	WMSetButtonEnabled(panel->iconBtn, False);
 
 	result = wIconChooserDialog(panel->wwin->screen_ptr, &file,
-				    panel->editedIcon->wm_instance, panel->editedIcon->wm_class);
+				    panel->editedIcon->wm_instance, panel->editedIcon->wm_class,
+				    panel->wwin);
 
 	panel->choosingIcon = 0;
 	if (!panel->destroyed) {

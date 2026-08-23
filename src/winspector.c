@@ -1109,7 +1109,7 @@ static void chooseIconCallback(WMWidget *self, void *clientData)
 
 	result = wIconChooserDialog(panel->frame->screen_ptr, &file,
 				    panel->inspected->wm_instance,
-				    panel->inspected->wm_class);
+				    panel->inspected->wm_class, panel->frame);
 
 	panel->choosingIcon = 0;
 

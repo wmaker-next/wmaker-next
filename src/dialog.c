@@ -2553,9 +2553,11 @@ static void keyPressHandler(XEvent * event, void *data)
 	}
 }
 
-Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const char *class)
+Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const char *class,
+			WWindow *for_window)
 {
 	WWindow *wwin;
+	WWindow *prevFocused;
 	Window parent;
 	IconPanel *panel;
 	WMColor *color;
@@ -2695,8 +2697,22 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	center = getCenter(scr, pwidth, pheight);
 
-	wwin = wManageInternalWindow(scr, parent, None, title, center.x, center.y, pwidth, pheight);
+	/* remember who owns focus so it can be restored on close,
+	 * wUnmanageWindow() would otherwise focus whatever sits under
+	 * the pointer */
+	prevFocused = scr->focused_window;
+
+	wwin = wManageInternalWindow(scr, parent, for_window ? for_window->client_win : None,
+				     title, center.x, center.y, pwidth, pheight);
 	wfree(title);
+
+	/* let handleKeyPress() redispatch keys aimed at the raw wrapper
+	 * into the WINGs widget tree, key interest is selected centrally
+	 * via wwin->event_mask */
+	wwin->client_leader = WMWidgetXID(panel->win);
+
+	if (for_window)
+		WXSetTransientFor(dpy, parent, for_window->client_win);
 
 	/* put icon paths in the list */
 	listIconPaths(panel->dirList);
@@ -2750,9 +2766,20 @@ Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	wUnmanageWindow(wwin, False, False);
 
-	wfree(panel);
-
+	/* destroy the chooser's X window before restoring focus, otherwise
+	 * the server delivers a trailing FocusIn that undoes the restore */
 	XDestroyWindow(dpy, parent);
+
+	/* hand focus back to the opener. Clicking its WINGs widgets never
+	 * moves WM focus, so fall back to whoever held focus before if
+	 * the opener is gone */
+	if (for_window && wWindowFor(for_window->client_win) == for_window)
+		wSetFocusTo(scr, for_window);
+	else if (prevFocused && prevFocused->screen_ptr == scr &&
+		 wWindowFor(prevFocused->client_win) == prevFocused)
+		wSetFocusTo(scr, prevFocused);
+
+	wfree(panel);
 
 	return result;
 }
