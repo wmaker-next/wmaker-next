@@ -50,6 +50,7 @@
 #include "menu.h"
 #include "framewin.h"
 #include "dialog.h"
+#include "dialog_icon.h"
 #include "startup_notify.h"
 #include "xinerama.h"
 #include "client.h"

@@ -47,7 +47,9 @@
 #include "window.h"
 #include "framewin.h"
 #include "dialog.h"
+#include "dialog_run.h"
 #include "xutil.h"
+#include "xinerama.h"
 #include "wxkb.h"
 #include "main.h"
 #include "event.h"
@@ -1042,4 +1044,10 @@ static char *getCommandForWindow(Window win, int elements)
 char *GetCommandForWindow(Window win)
 {
 	return getCommandForWindow(win, 0);
+}
+
+/* Center a width x height rectangle on the head under the pointer */
+WMPoint wGetCenter(WScreen *scr, int width, int height)
+{
+	return wGetPointToCenterRectInHead(scr, wGetHeadForPointerLocation(scr), width, height);
 }

@@ -32,14 +32,10 @@ enum {
 
 int wMessageDialog(WScreen *scr, const char *title, const char *message,
                    const char *defBtn, const char *altBtn, const char *othBtn);
-int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, const char *name, char **text);
 int wInputDialog(WScreen *scr, const char *title, const char *message, char **text);
 
 int wExitDialog(WScreen *scr, const char *title, const char *message, const char *defBtn,
                 const char *altBtn, const char *othBtn);
-
-Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const char *class,
-			WWindow *for_window);
 
 void wShowInfoPanel(WScreen *scr);
 void wShowLegalPanel(WScreen *scr);

@@ -57,6 +57,7 @@ char *GetShortcutKey(WShortKey key);
 char *EscapeWM_CLASS(const char *name, const char *class);
 char *StrConcatDot(const char *a, const char *b);
 char *GetCommandForWindow(Window win);
+WMPoint wGetCenter(WScreen *scr, int width, int height);
 int WMStrEqual(const char *x, const char *y);
 int WMPLGetBool(WMPropList *value);
 #endif

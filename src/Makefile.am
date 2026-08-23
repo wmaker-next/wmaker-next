@@ -47,6 +47,10 @@ wmaker_SOURCES = 	\
 	desktopfile.h \
 	dialog.c \
 	dialog.h \
+	dialog_icon.c \
+	dialog_icon.h \
+	dialog_run.c \
+	dialog_run.h \
 	dock.c \
 	dockedapp.c \
 	dockedapp.h \

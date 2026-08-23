@@ -34,6 +34,7 @@
 #include "dock.h"
 #include "dockedapp.h"
 #include "dialog.h"
+#include "dialog_icon.h"
 #include "misc.h"
 #include "wxkb.h"
 #include "defaults.h"
