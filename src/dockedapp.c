@@ -22,6 +22,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include "dockedapp.h"
 #include "dialog.h"
 #include "misc.h"
+#include "wxkb.h"
 #include "defaults.h"
 #include "framewin.h"
 #include "xinerama.h"
@@ -226,6 +228,14 @@ static void panelBtnCallback(WMWidget * self, void *data)
 	DestroyDockAppSettingsPanel(panel);
 }
 
+static void keyPressHandler(XEvent *event, void *data)
+{
+	AppSettingsPanel *panel = (AppSettingsPanel *) data;
+
+	if (wXkbKeycodeToKeysym(event->xkey.keycode, 0) == XK_Escape)
+		WMPerformButtonClick(panel->cancelBtn);
+}
+
 void ShowDockAppSettingsPanel(WAppIcon * aicon)
 {
 	AppSettingsPanel *panel;
@@ -278,6 +288,9 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	panel->win = WMCreateWindow(scr->wmscreen, "applicationSettings");
 	WMResizeWidget(panel->win, pwidth, pheight);
+
+	/* Escape anywhere in the panel closes it */
+	WMCreateEventHandler(WMWidgetView(panel->win), KeyPressMask, keyPressHandler, panel);
 
 	/* clickable icon preview, also reachable from the Browse button so
 	 * keyboard-only users keep a path to the chooser */
@@ -427,6 +440,11 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	WMMapSubwidgets(hbox);
 
+	WMSetViewNextResponder(WMWidgetView(panel->commandField), WMWidgetView(panel->win));
+	WMSetViewNextResponder(WMWidgetView(panel->pasteCommandField), WMWidgetView(panel->win));
+	WMSetViewNextResponder(WMWidgetView(panel->dndCommandField), WMWidgetView(panel->win));
+	WMSetViewNextResponder(WMWidgetView(panel->iconField), WMWidgetView(panel->win));
+
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 	WMMapSubwidgets(vbox);
@@ -435,7 +453,6 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	updateSettingsPanelIcon(panel);
 
 	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XSelectInput(dpy, parent, KeyPressMask | KeyReleaseMask);
 
 	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
 
@@ -480,6 +497,8 @@ void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 	}
 
 	panel->destroyed = 1;
+
+	WMRemoveNotificationObserver(panel);
 
 	/*
 	 * kluge. If we destroy the panel before the icon chooser is closed,

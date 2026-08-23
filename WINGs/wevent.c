@@ -282,6 +282,16 @@ int WMHandleEvent(XEvent * event)
 			(*hPtr->proc) (event, hPtr->clientData);
 		}
 	}
+
+	/* Key events are redirected to the focused control above, so
+	 * panel-wide handlers on the toplevel view never see them.
+	 * Run the toplevel handlers after the focused view. */
+	if ((mask & (KeyPressMask | KeyReleaseMask)) && view != toplevel) {
+		WM_ITERATE_ARRAY(toplevel->eventHandlers, hPtr, iter) {
+			if (hPtr->eventMask & mask)
+				(*hPtr->proc) (event, hPtr->clientData);
+		}
+	}
 #if 0
 	/* pass the event to the top level window of the widget */
 	/* TODO: change this to a responder chain */

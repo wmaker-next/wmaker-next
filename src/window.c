@@ -2058,6 +2058,11 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 
 	wwin->focus_mode = WFM_PASSIVE;
 	wwin->client_win = window;
+	/* panels keep input focus on this window while open and need key
+	 * events here for handleKeyPress() to redispatch into the WINGs
+	 * tree. Must live in event_mask because wWindowMap()/
+	 * wWindowUnmap() reselect client_win from it */
+	wwin->event_mask = KeyPressMask | KeyReleaseMask;
 	wwin->screen_ptr = scr;
 	wwin->transient_for = owner;
 	wwin->client.x = x;

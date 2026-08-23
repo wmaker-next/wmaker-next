@@ -23,6 +23,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 #include <WINGs/WXHints.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -48,6 +49,7 @@
 #include "client.h"
 #include "wmspec.h"
 #include "misc.h"
+#include "wxkb.h"
 #include "switchmenu.h"
 
 #include <WINGs/WUtil.h>
@@ -434,6 +436,14 @@ static void destroyInspector(WCoreWindow *foo, void *data, XEvent *event)
 	wUnmanageWindow(panel->frame, True, False);
 
 	freeInspector(panel);
+}
+
+static void keyPressHandler(XEvent *event, void *data)
+{
+	InspectorPanel *panel = (InspectorPanel *) data;
+
+	if (wXkbKeycodeToKeysym(event->xkey.keycode, 0) == XK_Escape)
+		destroyInspector(NULL, panel->frame, NULL);
 }
 
 void wDestroyInspectorPanels(void)
@@ -1119,8 +1129,12 @@ static void chooseIconCallback(WMWidget *self, void *clientData)
 static void textEditedObserver(void *observerData, WMNotification *notification)
 {
 	InspectorPanel *panel = (InspectorPanel *) observerData;
+	long movement = (long)WMGetNotificationClientData(notification);
 
-	if ((long)WMGetNotificationClientData(notification) != WMReturnTextMovement)
+	/* Escape is handled by the panel-wide keyPressHandler, which the
+	 * key dispatch also reaches when a text field holds focus */
+
+	if (movement != WMReturnTextMovement)
 		return;
 
 	showIconFor(WMWidgetScreen(panel->win), panel, NULL, NULL, USE_TEXT_FIELD);
@@ -1200,6 +1214,9 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	panelList = panel;
 	panel->win = WMCreateWindow(scr->wmscreen, "windowInspector");
 	WMResizeWidget(panel->win, PWIDTH, PHEIGHT);
+
+	/* Escape anywhere in the panel closes it */
+	WMCreateEventHandler(WMWidgetView(panel->win), KeyPressMask, keyPressHandler, panel);
 
 	/**** create common stuff ****/
 	/* command buttons */
@@ -1356,7 +1373,6 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	}
 
 	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, PWIDTH, PHEIGHT, 0, 0, 0);
-	XSelectInput(dpy, parent, KeyPressMask | KeyReleaseMask);
 	panel->parent = parent;
 	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
 
@@ -1666,6 +1682,7 @@ static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel)
 	db_icon = wDefaultGetIconFile(wwin->wm_instance, wwin->wm_class, False);
 	WMSetTextFieldText(panel->fileText, db_icon);
 	WMAddNotificationObserver(textEditedObserver, panel, WMTextDidEndEditingNotification, panel->fileText);
+	WMSetViewNextResponder(WMWidgetView(panel->fileText), WMWidgetView(panel->win));
 
 	panel->alwChk = WMCreateSwitchButton(panel->iconFrm);
 	WMMoveWidget(panel->alwChk, 20, 130);

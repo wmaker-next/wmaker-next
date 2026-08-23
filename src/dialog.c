@@ -2041,8 +2041,6 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	pheight = WMWidgetHeight(p->panel->win);
 
 	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XSelectInput(dpy, parent, KeyPressMask | KeyReleaseMask);
-
 	XReparentWindow(dpy, WMWidgetXID(p->panel->win), parent, 0, 0);
 
 	center = getCenter(scr, pwidth, pheight);
@@ -2137,8 +2135,6 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	pheight = WMWidgetHeight(panel->win);
 
 	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XSelectInput(dpy, parent, KeyPressMask | KeyReleaseMask);
-
 	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = getCenter(scr, pwidth, pheight);
