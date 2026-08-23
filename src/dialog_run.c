@@ -1900,6 +1900,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	filename = HistoryFileName(name);
 	p = wmalloc(sizeof(WMInputPanelWithHistory));
 	p->panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));
+	WMSetTextFieldPlaceholder(p->panel->text, _("Search or enter command..."));
 	p->history = LoadHistory(filename, w_global.config->history_lines);
 	mergeCalcHistory(p->history);
 	p->scr = scr;

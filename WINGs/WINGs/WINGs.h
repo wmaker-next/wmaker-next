@@ -1267,6 +1267,10 @@ char* WMGetTextFieldText(WMTextField *tPtr);
 
 void WMSetTextFieldText(WMTextField *tPtr, const char *text);
 
+/* hint drawn in a dim color while the field is empty and unfilled,
+ * disappears as soon as the user types */
+void WMSetTextFieldPlaceholder(WMTextField *tPtr, const char *text);
+
 void WMSetTextFieldAlignment(WMTextField *tPtr, WMAlignment alignment);
 
 void WMSetTextFieldFont(WMTextField *tPtr, WMFont *font);

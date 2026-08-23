@@ -29,6 +29,8 @@ typedef struct W_TextField {
 	int textLen;		/* size of text */
 	int bufferSize;		/* memory allocated for text */
 
+	char *placeholderText;	/* hint shown while the field is empty */
+
 	int viewPosition;	/* position of text being shown */
 
 	int cursorPosition;	/* position of the insertion cursor */
@@ -514,6 +516,22 @@ void WMSetTextFieldText(WMTextField * tPtr, const char *text)
 		paintTextField(tPtr);
 }
 
+void WMSetTextFieldPlaceholder(WMTextField * tPtr, const char *text)
+{
+	CHECK_CLASS(tPtr, WC_TextField);
+
+	if (tPtr->placeholderText) {
+		wfree(tPtr->placeholderText);
+		tPtr->placeholderText = NULL;
+	}
+
+	if (text && text[0])
+		tPtr->placeholderText = wstrdup(text);
+
+	if (tPtr->view->flags.realized)
+		paintTextField(tPtr);
+}
+
 void WMSetTextFieldAlignment(WMTextField * tPtr, WMAlignment alignment)
 {
 	CHECK_CLASS(tPtr, WC_TextField);
@@ -868,6 +886,35 @@ static void paintTextField(TextField * tPtr)
 			WMDrawStringCairo(cr, color, tPtr->font, rx, ty,
 					  &(text[count]), count2);
 		}
+		cairo_restore(cr);
+	} else if (tPtr->placeholderText) {
+		int px, pw;
+
+		pw = WMWidthOfString(tPtr->font, tPtr->placeholderText,
+				     strlen(tPtr->placeholderText));
+		switch (tPtr->flags.alignment) {
+		case WARight:
+			px = pw < tPtr->usableWidth ?
+			    tPtr->offsetWidth + tPtr->usableWidth - pw + 1 :
+			    tPtr->offsetWidth + 1;
+			break;
+		case WACenter:
+			px = pw < tPtr->usableWidth ?
+			    tPtr->offsetWidth + (tPtr->usableWidth - pw) / 2 :
+			    tPtr->offsetWidth;
+			break;
+		default:
+			px = tPtr->offsetWidth + 1;
+			break;
+		}
+		cairo_save(cr);
+		cairo_rectangle(cr, bd, bd, view->size.width - 2 * bd,
+				view->size.height - 2 * bd);
+		cairo_clip(cr);
+		WMDrawStringCairo(cr, screen->darkGray, tPtr->font,
+				  px, tPtr->offsetWidth,
+				  tPtr->placeholderText,
+				  strlen(tPtr->placeholderText));
 		cairo_restore(cr);
 	}
 
@@ -1770,6 +1817,9 @@ static void destroyTextField(TextField * tPtr)
 
 	if (tPtr->clipText)
 		wfree(tPtr->clipText);
+
+	if (tPtr->placeholderText)
+		wfree(tPtr->placeholderText);
 
 	if (tPtr->text)
 		wfree(tPtr->text);
