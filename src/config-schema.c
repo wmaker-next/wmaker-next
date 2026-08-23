@@ -129,6 +129,9 @@ static const WConfigEnum mouse_button_actions[] = {
 	{"MoveToNextWorkspace", WA_MOVE_NEXTWORKSPACE, 0},
 	{"MoveToPrevWindow", WA_MOVE_PREVWINDOW, 0},
 	{"MoveToNextWindow", WA_MOVE_NEXTWINDOW, 0},
+#ifdef VIRTUAL_DESKTOP
+	{"VirtualDesktopPan", WA_VIRTUAL_DESKTOP_PAN, 0},
+#endif
 	{NULL, 0, 0}
 };
 

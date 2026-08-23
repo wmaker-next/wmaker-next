@@ -45,6 +45,9 @@
 #include "stacking.h"
 #include "xinerama.h"
 #include "workspace.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 #include "dialog.h"
 #include "rootmenu.h"
 #include "switchmenu.h"
@@ -1862,7 +1865,11 @@ static void scrollMenuCallback(void *data)
 	int hamount = 0;	/* amount to scroll */
 	int vamount = 0;
 
-	getScrollAmount(menu, &hamount, &vamount);
+#ifdef VIRTUAL_DESKTOP
+	/* don't scroll menus when in vdesk mode (edges own the screen edge) */
+	if (!w_global.config->vdesk_enable)
+#endif
+		getScrollAmount(menu, &hamount, &vamount);
 
 	if (hamount != 0 || vamount != 0) {
 		wMenuMove(parent, parent->frame_x + hamount, parent->frame_y + vamount, True);
@@ -2231,6 +2238,10 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 
 	prevx = bev->x_root;
 	prevy = bev->y_root;
+#ifdef VIRTUAL_DESKTOP
+	if (w_global.config->vdesk_enable)
+		wWorkspaceLowerEdge(scr);
+#endif
 	while (!done) {
 		int x, y;
 
@@ -2360,6 +2371,12 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 
 		case Expose:
 			WMHandleEvent(&ev);
+#ifdef VIRTUAL_DESKTOP
+			/* expose raises the edge windows back up; lower them
+			 * again so the menu stays above the edges */
+			if (w_global.config->vdesk_enable)
+				wWorkspaceLowerEdge(scr);
+#endif
 			break;
 		}
 	}
@@ -2423,6 +2440,10 @@ static void menuMouseDown(WObjDescriptor * desc, XEvent * event)
 	WMDeleteTimerHandlerPtr(&d_data.magic);
 
 	((WMenu *) desc->parent)->flags.inside_handler = 0;
+#ifdef VIRTUAL_DESKTOP
+	if (w_global.config->vdesk_enable)
+		wWorkspaceRaiseEdge(scr);
+#endif
 }
 
 void wMenuMove(WMenu * menu, int x, int y, int submenus)

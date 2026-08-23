@@ -33,6 +33,7 @@
 #include <xcb/sync.h>
 #endif
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,6 +47,7 @@
 #include "window.h"
 #include "screen.h"
 #include "workspace.h"
+#include "vdesk.h"
 #include "framewin.h"
 #include "actions.h"
 #include "client.h"
@@ -418,12 +420,25 @@ void wNETWMUpdateDesktop(WScreen *scr)
 
 	count = scr->workspace_count * 2;
 	views = wmalloc(sizeof(uint32_t) * count);
+#ifdef VIRTUAL_DESKTOP
+	sizes[0] = scr->workspaces[scr->current_workspace]->vdesk_w;
+	sizes[1] = scr->workspaces[scr->current_workspace]->vdesk_h;
+#else
 	sizes[0] = scr->scr_width;
 	sizes[1] = scr->scr_height;
+#endif
 
 	for (i = 0; i < scr->workspace_count; i++) {
+#ifdef VIRTUAL_DESKTOP
+		/* EWMH viewport has no signed values, so negatives would wrap */
+		views[2 * i + 0] = scr->workspaces[i]->view_x > 0 ?
+				   (uint32_t)scr->workspaces[i]->view_x : 0;
+		views[2 * i + 1] = scr->workspaces[i]->view_y > 0 ?
+				   (uint32_t)scr->workspaces[i]->view_y : 0;
+#else
 		views[2 * i + 0] = 0;
 		views[2 * i + 1] = 0;
+#endif
 	}
 
 	WXSetCardinalN(dpy, scr->root_win, net_desktop_geometry, sizes, 2);
@@ -1605,6 +1620,9 @@ static Bool handleWindowType(WWindow *wwin, Atom type, int *layer)
 		wwin->flags.net_skip_pager = 1;
 		wwin->frame_x = 0;
 		wwin->frame_y = 0;
+#ifdef VIRTUAL_DESKTOP
+		wwin->client_flags.virtual_stick = 1;
+#endif
 	} else if (type == net_wm_window_type_dock) {
 		wwin->client_flags.no_titlebar = 1;
 		wwin->client_flags.no_resizable = 1;
@@ -1618,6 +1636,9 @@ static Bool handleWindowType(WWindow *wwin, Atom type, int *layer)
 		wwin->client_flags.skip_switchpanel = 1;
 		wwin->client_flags.dont_move_off = 1;
 		wwin->flags.net_skip_pager = 1;
+#ifdef VIRTUAL_DESKTOP
+		wwin->client_flags.virtual_stick = 1;
+#endif
 	} else if (type == net_wm_window_type_toolbar ||
 	           type == net_wm_window_type_menu) {
 		wwin->client_flags.no_resizable = 1;
@@ -1628,6 +1649,9 @@ static Bool handleWindowType(WWindow *wwin, Atom type, int *layer)
 		wwin->client_flags.skip_switchpanel = 1;
 		wwin->client_flags.dont_move_off = 1;
 		wwin->client_flags.no_appicon = 1;
+#ifdef VIRTUAL_DESKTOP
+		wwin->client_flags.virtual_stick = 1;
+#endif
 	} else if (type == net_wm_window_type_dropdown_menu ||
 			type == net_wm_window_type_popup_menu ||
 			type == net_wm_window_type_combo) {
@@ -2130,7 +2154,23 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		} else if (event->type == net_showing_desktop) {
 			wNETWMShowingDesktop(scr, event->data.data32[0]);
 			return True;
+#ifdef VIRTUAL_DESKTOP
+		} else if (event->type == net_desktop_viewport) {
+			int ws = scr->current_workspace;
+			int vx = (int32_t)event->data.data32[0];
+			int vy = (int32_t)event->data.data32[1];
+			WWorkspace *wptr = scr->workspaces[ws];
 
+			/* vx/vy are untrusted client input: compare in
+			 * 64-bit so vx + scr_width cannot overflow int and
+			 * slip past the clamp */
+			if ((int64_t)vx >= wptr->vdesk_x && (int64_t)vy >= wptr->vdesk_y
+			    && (int64_t)vx + scr->scr_width <= (int64_t)wptr->vdesk_x + wptr->vdesk_w
+			    && (int64_t)vy + scr->scr_height <= (int64_t)wptr->vdesk_y + wptr->vdesk_h) {
+				wVdeskSetViewport(scr, ws, vx, vy);
+				return True;
+			}
+#endif
 		} else if (event->type == net_desktop_names) {
 			handleDesktopNames(scr);
 			return True;

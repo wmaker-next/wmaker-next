@@ -38,6 +38,9 @@
 #include "actions.h"
 #include "event.h"
 #include "hotcorner.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 
 #define RANDR_DEBOUNCE_DELAY  100   /* milliseconds */
 
@@ -731,6 +734,10 @@ static void wRandR_Update(WScreen *scr)
 			wfree(old_name[h]);
 
 	wHotCornersUpdate(scr);
+
+#ifdef VIRTUAL_DESKTOP
+	wWorkspaceUpdateEdge(scr);
+#endif
 
 	/* Move the dock if needed */
 	if (scr->dock &&

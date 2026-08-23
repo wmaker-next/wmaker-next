@@ -674,6 +674,14 @@ This feature, disabled by default, allows to add a user-defined custom menu to a
 when choosing an entry of the menu it will send the key combination defined by the user to that
 application. @xref{Application User Menu,,,NEWS,@file{NEWS}} for more information.
 
+@item --disable-virtual-desktop
+Omit viewport panning support. When a workspace is in the floating
+layout, the pointer and keyboard can pan the view across a desktop extent larger than the
+screen, and a tiled workspace is not pannable. The code is compiled in by default, and this option
+removes it for a smaller binary or stricter attack surface. The feature is off by default at
+run time (the @code{EnableVirtualDesktop} default is @code{NO}) and is opt-in there. See
+the @code{VirtualDesktop} defaults keys and the @code{VirtualEdge*} keybindings.
+
 @item --with-menu-textdomain=@i{DOMAIN}
 Selection of the domain used for translation of the menus;
 @pxref{Translations for Menus,,,wmaker_i18n,@file{README.i18n}}.

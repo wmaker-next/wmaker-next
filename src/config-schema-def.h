@@ -34,6 +34,12 @@
 # define WCFG_IF_RANDR(x)
 #endif
 
+#ifdef VIRTUAL_DESKTOP
+# define WCFG_IF_VDESK(x) x
+#else
+# define WCFG_IF_VDESK(x)
+#endif
+
 #ifdef KEEP_XKB_LOCK_STATUS
 # define WCFG_IF_XKB_LOCK(x) x
 #else
@@ -326,6 +332,20 @@
 	  workspace_borders, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(WORKSPACE_BORDER_SIZE, "WorkspaceBorderSize", UINT, workspace_border_size, "0", \
 	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	WCFG_IF_VDESK( \
+	_(ENABLE_VIRTUAL_DESKTOP, "EnableVirtualDesktop", BOOL, vdesk_enable, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(VIRTUALEDGE_BORDERSIZE, "VirtualEdgeBorderSize", UINT, vedge_bordersize, "2", \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(VIRTUALEDGE_HSCROLLSPEED, "VirtualEdgeHorizontalScrollSpeed", UINT, \
+	  vedge_hscrollspeed, "20", NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(VIRTUALEDGE_VSCROLLSPEED, "VirtualEdgeVerticalScrollSpeed", UINT, \
+	  vedge_vscrollspeed, "20", NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(VIRTUALEDGE_RESISTANCE, "VirtualEdgeResistance", UINT, vedge_resistance, "30", \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(VIRTUALEDGE_ATTRACTION, "VirtualEdgeAttraction", UINT, vedge_attraction, "20", \
+	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	) \
 	_(WRAP_MENUS, "WrapMenus", BOOL, wrap_menus, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SCROLLABLE_MENUS, "ScrollableMenus", BOOL, scrollable_menus, "YES", \
@@ -675,6 +695,15 @@
 	_(RIGHT_WORKSPACE_KEY, "RightWorkspaceKey", "None", WKBD_RIGHTWORKSPACE) \
 	_(UP_WORKSPACE_KEY, "UpWorkspaceKey", "None", WKBD_UPWORKSPACE) \
 	_(DOWN_WORKSPACE_KEY, "DownWorkspaceKey", "None", WKBD_DOWNWORKSPACE) \
+	WCFG_IF_VDESK( \
+	_(VIRTUAL_EDGE_LEFT_KEY, "VirtualEdgeLeftKey", "None", WKBD_VDESK_LEFT) \
+	_(VIRTUAL_EDGE_RIGHT_KEY, "VirtualEdgeRightKey", "None", WKBD_VDESK_RIGHT) \
+	_(VIRTUAL_EDGE_UP_KEY, "VirtualEdgeUpKey", "None", WKBD_VDESK_UP) \
+	_(VIRTUAL_EDGE_DOWN_KEY, "VirtualEdgeDownKey", "None", WKBD_VDESK_DOWN) \
+	_(VDESK_HOME_KEY, "VirtualDesktopHomeKey", "None", WKBD_VDESK_HOME) \
+	_(VDESK_CENTER_KEY, "VirtualDesktopCenterKey", "None", WKBD_VDESK_CENTER) \
+	_(VDESK_PIN_KEY, "VirtualDesktopPinKey", "None", WKBD_VDESK_PIN) \
+	) \
 	_(WORKSPACE1_KEY, "Workspace1Key", "Mod1+1", WKBD_WORKSPACE1) \
 	_(WORKSPACE2_KEY, "Workspace2Key", "Mod1+2", WKBD_WORKSPACE2) \
 	_(WORKSPACE3_KEY, "Workspace3Key", "Mod1+3", WKBD_WORKSPACE3) \

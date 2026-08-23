@@ -112,6 +112,15 @@ All seven `Frame*BorderColor` / `Frame*BorderWidth` keys, plus a new
 Pin a window class to a specific geometry with `StartGeometry =
 "800x600+0+0"`.
 
+### Virtual desktop viewport panning
+
+A virtual desktop larger than the physical screen, opt-in at runtime
+(default off). On a floating (non-tiled) workspace the desktop extends
+past the screen edges and is panned by moving every non-sticky window.
+No compositor needed. Drive it with edge-scroll, keyboard snap, EWMH
+`_NET_DESKTOP_VIEWPORT`, or `wmakermsg set-viewport X Y`. Three
+companion keybinds reset, center, and pin the focused window.
+
 ---
 
 ## Integration that respects your session
@@ -177,6 +186,7 @@ it becomes a launcher. No configuration needed.
 | `show-all` | unhide everything |
 | `arrange-icons` | arrange icons |
 | `window-workspace` | move window between workspaces |
+| `set-viewport` | pan a floating workspace to (X, Y) |
 | `set-layout` | set a workspace's tiling layout |
 | `display-power` | blank / unblank via ScreenSaver notify |
 

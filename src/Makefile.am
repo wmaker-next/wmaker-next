@@ -153,6 +153,8 @@ wmaker_SOURCES = 	\
 	wmspec.c \
 	workspace.c \
 	workspace.h \
+	vdesk.c \
+	vdesk.h \
 	wsmap.c \
 	wsmap.h \
 	wsound.c \

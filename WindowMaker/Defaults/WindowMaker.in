@@ -67,6 +67,12 @@
 	WorkspaceNameDisplayPosition = center;
 	WorkspaceBorder = None;
 	WorkspaceBorderSize = 0;
+	EnableVirtualDesktop = NO;
+	VirtualEdgeBorderSize = 2;
+	VirtualEdgeHorizontalScrollSpeed = 20;
+	VirtualEdgeVerticalScrollSpeed = 20;
+	VirtualEdgeResistance = 30;
+	VirtualEdgeAttraction = 20;
 	StickyIcons = NO;
 	SaveSessionOnExit = NO;
 	WrapMenus = NO;
@@ -277,6 +283,13 @@
 	RightWorkspaceKey = None;
 	UpWorkspaceKey = None;
 	DownWorkspaceKey = None;
+	VirtualEdgeLeftKey = None;
+	VirtualEdgeRightKey = None;
+	VirtualEdgeUpKey = None;
+	VirtualEdgeDownKey = None;
+	VirtualDesktopHomeKey = None;
+	VirtualDesktopCenterKey = None;
+	VirtualDesktopPinKey = None;
 	Workspace1Key = "Mod1+1";
 	Workspace2Key = "Mod1+2";
 	Workspace3Key = "Mod1+3";

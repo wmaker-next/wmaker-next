@@ -50,6 +50,9 @@
 #include "workspace.h"
 #include "wmspec.h"
 #include "layout.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 #include "xsmp.h"
 #include "ipc.h"
 
@@ -780,7 +783,7 @@ static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 		*err = wstrdup("set-viewport: Y is not an integer");
 		return VERB_FAIL;
 	}
-	if (!wVdeskSetViewport(scr, scr->current_workspace, vx, vy)) {
+	if (!wVdeskSetViewport(scr, scr->current_workspace, (int)vx, (int)vy)) {
 		*err = wstrdup("set-viewport: workspace not pannable "
 			       "(tiled or no change)");
 		return VERB_FAIL;
@@ -1098,6 +1101,9 @@ static const struct {
 	{ "grow-to-edge",     verb_grow_to_edge },
 	{ "shrink-to-edge",   verb_shrink_to_edge },
 	{ "set-layout",       verb_set_layout },
+#ifdef VIRTUAL_DESKTOP
+	{ "set-viewport",     verb_set_viewport },
+#endif
 	{ "dock-launch",      verb_dock_launch },
 	{ "show-all",         verb_show_all },
 	{ "show-desktop",     verb_show_desktop },

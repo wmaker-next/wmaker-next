@@ -122,6 +122,7 @@
 #define WA_SWITCH_WINDOWS       7
 #define WA_MOVE_PREVWINDOW      8
 #define WA_MOVE_NEXTWINDOW      9
+#define WA_VIRTUAL_DESKTOP_PAN  10
 
 /* workspace display position */
 #define WD_NONE		0

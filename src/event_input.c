@@ -41,6 +41,9 @@
 #include "stacking.h"
 #include "defaults.h"
 #include "workspace.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 #include "dock.h"
 #include "framewin.h"
 #include "balloon.h"
@@ -1014,6 +1017,29 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
 			startMarkCapture(scr, dpy, MARK_CAPTURE_SWAP);
 		break;
+#ifdef VIRTUAL_DESKTOP
+	case WKBD_VDESK_LEFT:
+		wVdeskKeyboardMoveDesktop(scr, VEC_LEFT);
+		break;
+	case WKBD_VDESK_RIGHT:
+		wVdeskKeyboardMoveDesktop(scr, VEC_RIGHT);
+		break;
+	case WKBD_VDESK_UP:
+		wVdeskKeyboardMoveDesktop(scr, VEC_UP);
+		break;
+	case WKBD_VDESK_DOWN:
+		wVdeskKeyboardMoveDesktop(scr, VEC_DOWN);
+		break;
+	case WKBD_VDESK_HOME:
+		wVdeskHome(scr);
+		break;
+	case WKBD_VDESK_CENTER:
+		wVdeskCenter(scr, wwin);
+		break;
+	case WKBD_VDESK_PIN:
+		wVdeskPin(scr, wwin);
+		break;
+#endif
 	}
 }
 
@@ -1340,6 +1366,11 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 		wwin = scr->focused_window;
 		wWindowFocusNext(wwin, True);
 		break;
+#ifdef VIRTUAL_DESKTOP
+	case WA_VIRTUAL_DESKTOP_PAN:
+		wVdeskDragPan(scr, event);
+		break;
+#endif
 	}
 }
 
@@ -1487,6 +1518,9 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	WObjDescriptor *desc = NULL;
 	XEvent peek;
 	WScreen *scr = wScreenForRootWindow(e->root);
+#ifdef VIRTUAL_DESKTOP
+	void (*vdHandler)(XEvent *) = NULL;
+#endif
 
 	/* xany.serial carries full_sequence (set by the cooker), the
 	 * 32-byte wire copy at xe does not reach offset 32 so
@@ -1509,6 +1543,14 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			return;
 		}
 	}
+
+#ifdef VIRTUAL_DESKTOP
+	if (XFindContext(dpy, e->event, wVEdgeContext, (XPointer *)&vdHandler) != XCNOENT
+	    && vdHandler != NULL) {
+		(*vdHandler)(ev);
+		return;
+	}
+#endif
 
 	if (XFindContext(dpy, e->event, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
 		if (desc->handle_enternotify)

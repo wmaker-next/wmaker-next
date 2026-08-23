@@ -55,6 +55,18 @@
 	R(WARight,  "right",  N_("Right"))
 
 /* MouseSettings.c, keys "Mouse{Left,Middle,Right,Backward,Forward}ButtonAction" */
+#ifdef VIRTUAL_DESKTOP
+#define WPREFS_TABLE_button_actions(R) \
+	R("None",                 N_("None")) \
+	R("OpenApplicationsMenu", N_("Applications Menu")) \
+	R("OpenWindowListMenu",   N_("Window List Menu")) \
+	R("SelectWindows",        N_("Select Windows")) \
+	R("MoveToPrevWorkspace",  N_("Previous Workspace")) \
+	R("MoveToNextWorkspace",  N_("Next Workspace")) \
+	R("MoveToPrevWindow",     N_("Previous Window")) \
+	R("MoveToNextWindow",     N_("Next Window")) \
+	R("VirtualDesktopPan",    N_("Pan Viewport"))
+#else
 #define WPREFS_TABLE_button_actions(R) \
 	R("None",                 N_("None")) \
 	R("OpenApplicationsMenu", N_("Applications Menu")) \
@@ -64,6 +76,7 @@
 	R("MoveToNextWorkspace",  N_("Next Workspace")) \
 	R("MoveToPrevWindow",     N_("Previous Window")) \
 	R("MoveToNextWindow",     N_("Next Window"))
+#endif
 
 /* MouseSettings.c, keys "MouseWheelAction" / "MouseWheelTiltAction" */
 #define WPREFS_TABLE_wheel_actions(R) \

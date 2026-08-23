@@ -202,6 +202,15 @@ static struct keyOption {
 	{ "ToggleWorkspace2Key",  N_("Toggle window on workspace 2") },
 	{ "ToggleWorkspace3Key",  N_("Toggle window on workspace 3") },
 	{ "ToggleWorkspace4Key",  N_("Toggle window on workspace 4") },
+#ifdef VIRTUAL_DESKTOP
+	{ "VirtualEdgeLeftKey",  N_("Move VirtualDesktop to next left edge") },
+	{ "VirtualEdgeRightKey", N_("Move VirtualDesktop to next right edge") },
+	{ "VirtualEdgeUpKey",    N_("Move VirtualDesktop to next top edge") },
+	{ "VirtualEdgeDownKey",  N_("Move VirtualDesktop to next bottom edge") },
+	{ "VirtualDesktopHomeKey",   N_("Move VirtualDesktop to its origin") },
+	{ "VirtualDesktopCenterKey", N_("Center the focused window in the VirtualDesktop") },
+	{ "VirtualDesktopPinKey",    N_("Pin the focused window to the VirtualDesktop viewport") },
+#endif
 	{ "ToggleWorkspace5Key",  N_("Toggle window on workspace 5") },
 	{ "ToggleWorkspace6Key",  N_("Toggle window on workspace 6") },
 	{ "ToggleWorkspace7Key",  N_("Toggle window on workspace 7") },

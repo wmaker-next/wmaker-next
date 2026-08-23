@@ -18,6 +18,10 @@
 
 #include "check_common.h"
 
+#ifdef VIRTUAL_DESKTOP
+void wWorkspaceUpdateEdge(WScreen *scr) { (void)scr; }
+#endif
+
 struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
 static int usable_area_updates;
@@ -664,6 +668,22 @@ static Bool is_non_schema_defaults_key(const char *key)
 #ifndef KEEP_XKB_LOCK_STATUS
 	if (strcmp(key, "KbdModeLock") == 0 ||
 	    strcmp(key, "ToggleKbdModeKey") == 0)
+		return True;
+#endif
+#ifndef VIRTUAL_DESKTOP
+	if (strcmp(key, "EnableVirtualDesktop") == 0 ||
+	    strcmp(key, "VirtualEdgeBorderSize") == 0 ||
+	    strcmp(key, "VirtualEdgeHorizontalScrollSpeed") == 0 ||
+	    strcmp(key, "VirtualEdgeVerticalScrollSpeed") == 0 ||
+	    strcmp(key, "VirtualEdgeResistance") == 0 ||
+	    strcmp(key, "VirtualEdgeAttraction") == 0 ||
+	    strcmp(key, "VirtualEdgeLeftKey") == 0 ||
+	    strcmp(key, "VirtualEdgeRightKey") == 0 ||
+	    strcmp(key, "VirtualEdgeUpKey") == 0 ||
+	    strcmp(key, "VirtualEdgeDownKey") == 0 ||
+	    strcmp(key, "VirtualDesktopHomeKey") == 0 ||
+	    strcmp(key, "VirtualDesktopCenterKey") == 0 ||
+	    strcmp(key, "VirtualDesktopPinKey") == 0)
 		return True;
 #endif
 

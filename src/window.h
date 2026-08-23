@@ -140,6 +140,11 @@ typedef struct {
 
     unsigned int full_maximize:1;
     unsigned int swallow_child:1;
+#ifdef VIRTUAL_DESKTOP
+    /* Pan-sticky: window stays put when the viewport pans. Set from EWMH
+     * window-type hints and toggleable per-window via WKBD_VDESK_PIN. */
+    unsigned int virtual_stick:1;
+#endif
     /*
      * emulate_app_icon must be automatically disabled for apps that can
      * generate their own appicons and for apps that have no_appicon=1
@@ -516,6 +521,15 @@ WMColor *wFrameInnerFocusedBorderColor(const WWindow *wwin);
 #define WWIN_PRIMARY_WS(w)	((w)->frame->workspace)
 #define IS_OMNIPRESENT(w)	(WFLAGP(w, omnipresent) || ((w)->frame && WWIN_WS_MASK(w) == WS_ALL))
 #define WWIN_ON_WORKSPACE(w, n)	(WFLAGP(w, omnipresent) || (WWIN_WS_MASK(w) & WS_BIT(n)))
+
+#ifdef VIRTUAL_DESKTOP
+/* Pan-sticky predicate. A fullscreen window is also treated as
+ * pan-stuck so panning cannot strand a fullscreen client pointing at
+ * empty canvas. */
+# ifndef IS_VSTUCK
+#  define IS_VSTUCK(w)	(WFLAGP((w), virtual_stick) || (w)->flags.fullscreen)
+# endif
+#endif
 
 /*
  * Changes to this must update wWindowSaveState/getSavedState

@@ -65,6 +65,9 @@ _Static_assert(MAX_WORKSPACES <= 64,
 static WMPropList *dWorkspaces = NULL;
 static WMPropList *dClip, *dName, *dHeadWorkspaces;
 static WMPropList *dLayout, *dMasterCount, *dMasterRatio;
+#ifdef VIRTUAL_DESKTOP
+static WMPropList *dVdeskX, *dVdeskY, *dVdeskW, *dVdeskH, *dViewX, *dViewY;
+#endif
 
 static void make_keys(void)
 {
@@ -78,6 +81,18 @@ static void make_keys(void)
 	dLayout = WMCreatePLString("Layout");
 	dMasterCount = WMCreatePLString("MasterCount");
 	dMasterRatio = WMCreatePLString("MasterRatio");
+#ifdef VIRTUAL_DESKTOP
+	/* Per-workspace viewport state: view_x/y is the camera origin,
+	 * vdesk_w/h/x/y the finite-desktop extent and origin. Pair with
+	 * wWindowSaveState's frame_x/y (saved screen positions) to
+	 * reconstruct the world coord = frame + view. */
+	dVdeskX = WMCreatePLString("VdeskX");
+	dVdeskY = WMCreatePLString("VdeskY");
+	dVdeskW = WMCreatePLString("VdeskW");
+	dVdeskH = WMCreatePLString("VdeskH");
+	dViewX = WMCreatePLString("ViewX");
+	dViewY = WMCreatePLString("ViewY");
+#endif
 }
 
 /* ---------- per-head workspace helpers ---------- */
@@ -234,6 +249,17 @@ int wWorkspaceNew(WScreen *scr)
 		wspace->layout = w_global.config->default_workspace_layout;
 		wspace->master_count = w_global.config->layout_master_count;
 		wspace->master_ratio = w_global.config->layout_master_ratio / 100.0f;
+#ifdef VIRTUAL_DESKTOP
+		/* wmalloc zero-initialized this already. Seed the viewport
+		 * fields here so a freshly created workspace has a sane camera
+		 * origin and a screen-sized world before any window extends it. */
+		wspace->vdesk_w = scr->scr_width;
+		wspace->vdesk_h = scr->scr_height;
+		wspace->vdesk_x = 0;
+		wspace->vdesk_y = 0;
+		wspace->view_x = 0;
+		wspace->view_y = 0;
+#endif
 
 		if (!wspace->name) {
 			static const char *new_name = NULL;
@@ -1748,6 +1774,37 @@ void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 					WMPutInPLDictionary(wks_state, dClip, bar);
 			}
 		}
+#ifdef VIRTUAL_DESKTOP
+		/* Persist per-workspace viewport state. A tiled workspace
+		 * never panned, so its view is (0,0) and extent is
+		 * screen-sized; still saved so a later float toggle restores
+		 * a sane camera origin. The per-head guard is checked at pan
+		 * time, not here. */
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->vdesk_x);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dVdeskX, pstr);
+		WMReleasePropList(pstr);
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->vdesk_y);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dVdeskY, pstr);
+		WMReleasePropList(pstr);
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->vdesk_w);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dVdeskW, pstr);
+		WMReleasePropList(pstr);
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->vdesk_h);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dVdeskH, pstr);
+		WMReleasePropList(pstr);
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->view_x);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dViewX, pstr);
+		WMReleasePropList(pstr);
+		snprintf(buf, sizeof(buf), "%d", scr->workspaces[i]->view_y);
+		pstr = WMCreatePLString(buf);
+		WMPutInPLDictionary(wks_state, dViewY, pstr);
+		WMReleasePropList(pstr);
+#endif
 		WMAddToPLArray(parr, wks_state);
 		WMReleasePropList(wks_state);
 	}
@@ -1803,6 +1860,38 @@ void wWorkspaceRestoreState(WScreen *scr)
 			if (pstr && WMIsPLString(pstr))
 				scr->workspaces[i]->master_ratio =
 					atof(WMGetFromPLString(pstr));
+#ifdef VIRTUAL_DESKTOP
+			/* Restore per-workspace viewport state by direct
+			 * field assignment, NOT wVdeskSetViewport: the saved
+			 * frame_x/frame_y restored by wSessionRestoreState()
+			 * are saved screen positions, so calling
+			 * wVdeskSetViewport would shift them by the saved
+			 * view delta and break the restore. */
+			pstr = WMGetFromPLDictionary(wks_state, dVdeskX);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->vdesk_x =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dVdeskY);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->vdesk_y =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dVdeskW);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->vdesk_w =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dVdeskH);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->vdesk_h =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dViewX);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->view_x =
+					atoi(WMGetFromPLString(pstr));
+			pstr = WMGetFromPLDictionary(wks_state, dViewY);
+			if (pstr && WMIsPLString(pstr))
+				scr->workspaces[i]->view_y =
+					atoi(WMGetFromPLString(pstr));
+#endif
 		}
 
 		if (!wPreferences.flags.noclip) {

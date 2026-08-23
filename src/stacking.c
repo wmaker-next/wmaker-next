@@ -34,6 +34,9 @@
 #include "stacking.h"
 #include "workspace.h"
 #include "hotcorner.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 
 
 static void notifyStackChange(WCoreWindow * frame, char *detail)
@@ -130,6 +133,9 @@ void CommitStacking(WScreen * scr)
 	XRestackWindows(dpy, windows, i);
 	wfree(windows);
 	wHotCornersRaise(scr);
+#ifdef VIRTUAL_DESKTOP
+	wWorkspaceRaiseEdge(scr);
+#endif
 	WMPostNotificationName(WMNResetStacking, scr, NULL);
 }
 
@@ -274,6 +280,9 @@ void wRaiseFrame(WCoreWindow * frame)
 	}
 
 	notifyStackChange(frame, "raise");
+#ifdef VIRTUAL_DESKTOP
+	wWorkspaceRaiseEdge(frame->screen_ptr);
+#endif
 }
 
 void wRaiseLowerFrame(WCoreWindow * frame)
@@ -384,6 +393,9 @@ void wLowerFrame(WCoreWindow * frame)
 	}
 
 	notifyStackChange(frame, "lower");
+#ifdef VIRTUAL_DESKTOP
+	wWorkspaceRaiseEdge(frame->screen_ptr);
+#endif
 }
 
 /*
@@ -500,6 +512,9 @@ void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
 	CommitStackingForWindow(frame);
 
 	WMPostNotificationName(WMNResetStacking, scr, NULL);
+#ifdef VIRTUAL_DESKTOP
+	wWorkspaceRaiseEdge(scr);
+#endif
 }
 
 /*

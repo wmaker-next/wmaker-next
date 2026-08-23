@@ -140,8 +140,15 @@ static void moveGeometryDisplayCentered(WScreen * scr, int x, int y)
 static void showPosition(WWindow * wwin, int x, int y)
 {
 	WScreen *scr = wwin->screen_ptr;
-
+#ifdef VIRTUAL_DESKTOP
+	/* show world coordinates (frame_x + view_x) so the move OSD reflects
+	 * the pan offset, not just the on-screen position */
+	WSetGeometryViewShownPosition(scr->gview,
+		x + scr->workspaces[scr->current_workspace]->view_x,
+		y + scr->workspaces[scr->current_workspace]->view_y);
+#else
 	WSetGeometryViewShownPosition(scr->gview, x, y);
+#endif
 }
 
 static void placeGeometryDisplay(WWindow *wwin, int mode, int x, int y, int w, int h)

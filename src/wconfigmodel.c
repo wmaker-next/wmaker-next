@@ -20,6 +20,9 @@
 #include "screen.h"
 #include "event.h"
 #include "workspace.h"
+#ifdef VIRTUAL_DESKTOP
+#include "vdesk.h"
+#endif
 #include "config-schema.h"
 #include "wconfigmodel.h"
 #include "hotcorner.h"
@@ -1189,6 +1192,15 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		update_usable_area = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER_SIZE))
 		update_usable_area = True;
+#ifdef VIRTUAL_DESKTOP
+	if (wConfigChangesHas(changes, WCFG_KEY_ENABLE_VIRTUAL_DESKTOP) ||
+	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_BORDERSIZE) ||
+	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_RESISTANCE) ||
+	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_ATTRACTION)) {
+		if (scr)
+			wWorkspaceUpdateEdge(scr);
+	}
+#endif
 	if (wConfigChangesHas(changes, WCFG_KEY_SCROLLABLE_MENUS))
 		update_root_mask = True;
 	if (wConfigChangesHas(changes, WCFG_KEY_KEYCHAIN_DISPLAY_POSITION) && scr)

@@ -693,6 +693,24 @@ m4_divert_pop([INIT_PREPARE])dnl
 
 WM_XEXT_CHECK_XSHAPE
 
+dnl Virtual desktop (viewport panning over a desktop larger than the screen)
+dnl ======================================================
+dnl VIRTUAL_DESKTOP symbol; default-on so the code is compiled in by
+dnl default and `make check` exercises it. The feature remains opt-in at
+dnl runtime via EnableVirtualDesktop (default "NO" in config-schema-def.h);
+dnl --disable-virtual-desktop is the escape hatch for a smaller binary or
+dnl stricter attack-surface removal.
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([virtual-desktop],
+    [AS_HELP_STRING([--disable-virtual-desktop], [disable support for viewport panning @<:@default=enabled@:>@])],
+    [AS_CASE(["$enableval"],
+        [yes|no], [],
+        [AC_MSG_ERROR([bad value $enableval for --disable-virtual-desktop]) ]) ],
+    [enable_virtual_desktop=yes])
+m4_divert_pop([INIT_PREPARE])dnl
+AS_IF([test "x$enable_virtual_desktop" = xyes],
+    [AC_DEFINE([VIRTUAL_DESKTOP], [1], [Define to 1 to compile viewport panning support (runtime default off)])])
+
 
 dnl XSync support (for _NET_WM_SYNC_REQUEST frame-synchronised resize)
 dnl ==================================================================

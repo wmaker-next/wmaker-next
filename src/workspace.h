@@ -36,6 +36,21 @@ typedef struct WWorkspace {
     signed char layout;
     short master_count;
     float master_ratio;
+#ifdef VIRTUAL_DESKTOP
+    /* Viewport (pannable desktop) state. Under the window-move model
+     * view_x/view_y record where the camera *is* for
+     * EWMH/OSD. On-screen frame_x/frame_y are the world coords and a
+     * pan mutates them directly. vdesk_w/h is the finite desktop extent
+     * used to clamp the viewport. vdesk_x/y is the world-space origin of
+     * that extent (0 when no window extends past the origin, negative
+     * when a window has been moved off the left/top edge) so the viewport
+     * clamp can reach windows dragged off-screen in any direction. The
+     * extent itself is computed from invariant world coordinates
+     * (frame + view) so it does not shrink as the viewport pans. */
+    int vdesk_w, vdesk_h;
+    int vdesk_x, vdesk_y;
+    int view_x, view_y;
+#endif
 } WWorkspace;
 
 void wWorkspaceMake(WScreen *scr, int count);
@@ -75,5 +90,16 @@ void wWorkspaceClearOutputPins(WScreen *scr);
 void wWorkspaceSaveHeadState(WScreen *scr);
 void wWorkspaceRestoreHeadState(WScreen *scr);
 void wWorkspaceReconcileHeads(WScreen *scr);
+
+#ifdef VIRTUAL_DESKTOP
+/* Maps each edge InputOnly window to its edge-scroll direction handler.
+ * Defined in src/vdesk.c, used by src/event_input.c. 0 until
+ * wWorkspaceUpdateEdge() first runs. Declared extern here (not in
+ * vdesk.h) so the standalone check_config unit test (which compiles
+ * src/wconfigmodel.c without src/vdesk.c) can still see it as a plain
+ * symbol. The runtime-reload branch in wconfigmodel.c calls
+ * wWorkspaceUpdateEdge(), declared in vdesk.h. */
+extern XContext wVEdgeContext;
+#endif
 
 #endif

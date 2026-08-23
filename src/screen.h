@@ -159,6 +159,14 @@ typedef struct _WScreen {
     int current_workspace;	       /* current workspace number */
     int last_workspace;		       /* last used workspace number */
 
+#ifdef VIRTUAL_DESKTOP
+    /* Edge InputOnly windows for viewport edge-scroll panning. Created
+     * and destroyed by wWorkspaceUpdateEdge(). The XContext wVEdgeContext
+     * maps each edge window to its direction handler. */
+    int virtual_nr_edges;
+    Window *virtual_edges;
+#endif
+
     /* Per-head independent workspace state. With PerHeadWorkspaces off
      * these stay zeroed and current_workspace is the only source of
      * truth. With it on, current_workspace becomes a compatibility
