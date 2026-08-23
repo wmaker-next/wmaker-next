@@ -56,17 +56,6 @@
  */
 void wClientRestore(WWindow * wwin)
 {
-#if 0
-	int gx, gy;
-
-	wClientGetGravityOffsets(wwin, &gx, &gy);
-	/* set the position of the frame on screen */
-	wwin->frame_x -= gx * wFrameBorderWidth(wwin);
-	wwin->frame_y -= gy * wFrameBorderWidth(wwin);
-	/* if gravity is to the south, account for the border sizes */
-	if (gy > 0)
-		wwin->frame_y += (wwin->frame->top_width + wwin->frame->bottom_width);
-#endif
 	XSetWindowBorderWidth(dpy, wwin->client_win, wwin->old_border_width);
 	XReparentWindow(dpy, wwin->client_win, wwin->screen_ptr->root_win, wwin->frame_x, wwin->frame_y);
 
@@ -103,6 +92,14 @@ void wClientSetState(WWindow * wwin, int state, Window icon_win)
 
 void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
 {
+	/* internal windows have no size hints, behave like
+	 * NorthWestGravity instead of crashing */
+	if (!wwin->normal_hints) {
+		*ofs_x = -1;
+		*ofs_y = -1;
+		return;
+	}
+
 	switch (wwin->normal_hints->win_gravity) {
 	default:
 	case ForgetGravity:
