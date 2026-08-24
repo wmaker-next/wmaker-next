@@ -29,6 +29,7 @@
 Bool wFetchName(Display *dpy, Window win, char **winname);
 Bool wGetIconName(Display *dpy, Window win, char **iconname);
 Bool UpdateDomainFile(WDDomain * domain);
+Bool wMaskEventTimed(Display *dpy, long mask, Window window, XEvent *ev, int timeout_ms);
 
 void move_window(Window win, int from_x, int from_y, int to_x, int to_y);
 void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int to_y);

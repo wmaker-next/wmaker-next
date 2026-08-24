@@ -33,6 +33,7 @@
 #include <math.h>
 #include <time.h>
 #include <errno.h>
+#include <poll.h>
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WINGsP.h>
@@ -112,6 +113,31 @@ int WMPLGetBool(WMPropList *value)
 		wwarning(_("can't convert \"%s\" to boolean"), val);
 		return 0;
 	}
+}
+
+/* Wait up to timeout_ms (-1 waits forever) for an X event matching
+ * mask, restricted to window when window != None, blocking on poll()
+ * between queue checks. True if an event was taken, False on timeout
+ * or poll error. */
+Bool wMaskEventTimed(Display *dpy, long mask, Window window, XEvent *ev, int timeout_ms)
+{
+	struct pollfd pfd;
+	int ret;
+
+	while (!WXEvqTakeMask(dpy, mask, window, ev)) {
+		pfd.fd = ConnectionNumber(dpy);
+		pfd.events = POLLIN;
+		ret = poll(&pfd, 1, timeout_ms);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return False;
+		}
+		if (ret == 0)
+			return False;
+		XFlush(dpy);
+	}
+	return True;
 }
 
 static void eatExpose(void)

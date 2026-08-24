@@ -40,6 +40,7 @@
 #include "cycling.h"
 #include "tabgroup.h"
 #include "xinerama.h"
+#include "misc.h"
 #include "workspace.h"
 #include "switchpanel.h"
 #include "hotcorner.h"
@@ -74,29 +75,6 @@ static int cycle_letter(KeyCode keycode)
 	if ((ks >= XK_a && ks <= XK_z) || (ks >= XK_A && ks <= XK_Z))
 		return (int) ks;
 	return NoSymbol;
-}
-
-/* Wait for an X event matching mask, or until timeout_ms elapses.
- * Returns True if an event was received, False on timeout. */
-static Bool maskEventTimed(Display *dpy, long mask, XEvent *ev, int timeout_ms)
-{
-	struct pollfd pfd;
-	int ret;
-
-	while (!WXEvqTakeMask(dpy, mask, None, ev)) {
-		pfd.fd = ConnectionNumber(dpy);
-		pfd.events = POLLIN;
-		ret = poll(&pfd, 1, timeout_ms);
-		if (ret < 0) {
-			if (errno == EINTR)
-				continue;
-			return False;
-		}
-		if (ret == 0)
-			return False;
-		XFlush(dpy);
-	}
-	return True;
 }
 
 static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
@@ -211,9 +189,9 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 			break;
 
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = maskEventTimed(dpy, eventMask, &ev, AUTO_DRILL_DELAY);
+			gotEvent = wMaskEventTimed(dpy, eventMask, None, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = maskEventTimed(dpy, eventMask, &ev, -1);
+			gotEvent = wMaskEventTimed(dpy, eventMask, None, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {

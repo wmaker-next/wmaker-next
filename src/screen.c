@@ -184,25 +184,29 @@ static Bool replace_existing_wm(WScreen *scr)
 
 	/* Wait for other window manager to exit */
 	if (wm) {
-		unsigned long wait = 0;
-		unsigned long timeout = REPLACE_WM_TIMEOUT * 1000000L;
+		struct timespec deadline, now;
 		XEvent event;
+		int remain;
 
-		while (wait < timeout) {
-			if (!(wait % 1000000))
-				wmessage(_("waiting %lus for other window manager to exit"), (timeout - wait) / 1000000L);
+		wmessage(_("waiting %ds for other window manager to exit"), (int)REPLACE_WM_TIMEOUT);
 
-			if (WXEvqTakeMask(dpy, StructureNotifyMask, wm, &event))
-				if (event.type == DestroyNotify)
-					break;
+		clock_gettime(CLOCK_MONOTONIC, &deadline);
+		deadline.tv_sec += REPLACE_WM_TIMEOUT;
 
-			wusleep(100000);
-			wait += 100000;
-		}
+		for (;;) {
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			remain = (int)((deadline.tv_sec - now.tv_sec) * 1000 +
+				       (deadline.tv_nsec - now.tv_nsec) / 1000000);
+			if (remain < 0)
+				remain = 0;
 
-		if (wait >= timeout) {
-			wwarning(_("other window manager hasn't exited!"));
-			return False;
+			if (!wMaskEventTimed(dpy, StructureNotifyMask, wm, &event, remain)) {
+				wwarning(_("other window manager hasn't exited!"));
+				return False;
+			}
+
+			if (event.type == DestroyNotify)
+				break;
 		}
 
 		wmessage(_("replacing the other window manager"));
