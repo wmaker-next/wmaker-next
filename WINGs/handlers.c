@@ -87,6 +87,12 @@ static int w_xfd = -1;
  * woke only because a timer expired (the old select() arm did the same) */
 static Bool input_fired;
 
+/* single-slot per-iteration hook run from prepareTrampoline just before
+ * each poll, lets an application apply deferred server-side state (e.g.
+ * restacking) once per ev_run() iteration including nested modal loops */
+static WMPrepareProc *w_prepare_hook;
+static void *w_prepare_hook_data;
+
 static void prepareTrampoline(struct ev_loop *loop, ev_prepare *w, int revents)
 {
 	(void)loop;
@@ -94,6 +100,9 @@ static void prepareTrampoline(struct ev_loop *loop, ev_prepare *w, int revents)
 	(void)revents;
 
 	W_FlushASAPNotificationQueue();
+
+	if (w_prepare_hook)
+		(*w_prepare_hook)(w_prepare_hook_data);
 }
 
 static void checkTrampoline(struct ev_loop *loop, ev_check *w, int revents)
@@ -455,6 +464,12 @@ void WMDeleteInputHandler(WMHandlerID handlerID)
 
 	unlinkInput(h);
 	wfree(h);
+}
+
+void WMSetPrepareHook(WMPrepareProc *proc, void *clientData)
+{
+	w_prepare_hook = proc;
+	w_prepare_hook_data = clientData;
 }
 
 /* ---- loop driver ----------------------------------------------------- */

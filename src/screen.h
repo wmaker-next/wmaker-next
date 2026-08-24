@@ -424,6 +424,8 @@ typedef struct _WScreen {
         unsigned int doing_alt_tab:1;
         unsigned int jump_back_pending:1;
         unsigned int ignore_focus_events:1;
+        unsigned int need_restack:1;   /* stacking list changed, X side
+                                        * stale until CommitStacking() */
         unsigned int in_hot_corner:3;
         unsigned int mark_capture_mode:3;  /* one of WMarkCaptureMode */
 

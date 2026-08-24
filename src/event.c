@@ -45,6 +45,7 @@
 #include "icon.h"
 #include "screen.h"
 #include "shutdown.h"
+#include "stacking.h"
 #include "event.h"
 #include "wxkb.h"
 #include "ipc.h"
@@ -610,6 +611,19 @@ void wInotifyRemoveWatch(int wd)
  * main loop                                                          *
  * ------------------------------------------------------------------ */
 
+static void commitPendingStacking(void *unused)
+{
+	int i;
+
+	(void) unused;
+
+	for (i = 0; i < w_global.screen_count; i++) {
+		WScreen *scr = wScreenWithNumber(i);
+		if (scr && scr->flags.need_restack)
+			CommitStacking(scr);
+	}
+}
+
 noreturn void EventLoop(void)
 {
 	XEvent event;
@@ -625,6 +639,8 @@ noreturn void EventLoop(void)
 		w_global.inotify.input_handler = WMAddInputHandler(w_global.inotify.fd_event_queue,
 							      WIReadMask, inotify_input, NULL);
 #endif
+
+	WMSetPrepareHook(commitPendingStacking, NULL);
 
 	for (;;) {
 		WMNextEvent(dpy, &event);	/* Blocks here */
@@ -645,6 +661,8 @@ void ProcessPendingEvents(void)
 
 	while (WXEvqNext(NULL, &event))
 		WMHandleEvent(&event);
+
+	commitPendingStacking(NULL);
 }
 
 Bool IsDoubleClick(WScreen *scr, XEvent *event)

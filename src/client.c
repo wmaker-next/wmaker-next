@@ -187,6 +187,15 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 			xwc.sibling = xcre->sibling;
 		}
 		xwc.stack_mode = xcre->stack_mode;
+
+		/* Apply a deferred raise/lower from this event batch first:
+		 * the request below must stack against the order the user
+		 * asked for, and the RemakeStackList() rebuild after the
+		 * XConfigureWindow must not overwrite the still-unflushed
+		 * internal mutation */
+		if (wwin->screen_ptr->flags.need_restack)
+			CommitStacking(wwin->screen_ptr);
+
 		XConfigureWindow(dpy, wwin->frame->core->window,
 				 xcre->value_mask & (CWSibling | CWStackMode), &xwc);
 		/* fix stacking order */

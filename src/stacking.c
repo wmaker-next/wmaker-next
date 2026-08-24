@@ -107,6 +107,12 @@ void RemakeStackList(WScreen * scr)
  * order in the internal window stacking lists. It does the opposite
  * of RemakeStackList().
  *
+ * This is the flush point for the deferred restack: the mutators below
+ * only update the internal list and set scr->flags.need_restack, and
+ * one call per event-loop iteration (from EventLoop's prepare hook)
+ * applies the whole batch as a single XRestackWindows. The
+ * WMNResetStacking notification is posted here, once per batch.
+ *
  * Side effects:
  * 	Windows may be restacked.
  *----------------------------------------------------------------------
@@ -117,6 +123,8 @@ void CommitStacking(WScreen * scr)
 	int nwindows, i;
 	Window *windows;
 	WMBagIterator iter;
+
+	scr->flags.need_restack = 0;
 
 	nwindows = scr->window_count;
 	if (nwindows == 0)
@@ -137,68 +145,6 @@ void CommitStacking(WScreen * scr)
 	wWorkspaceRaiseEdge(scr);
 #endif
 	WMPostNotificationName(WMNResetStacking, scr, NULL);
-}
-
-/*
- *----------------------------------------------------------------------
- * moveFrameToUnder--
- * 	Reestacks windows so that "frame" is under "under".
- *
- * Returns:
- *	None
- *
- * Side effects:
- * 	Changes the stacking order of frame.
- *----------------------------------------------------------------------
- */
-static void moveFrameToUnder(WCoreWindow * under, WCoreWindow * frame)
-{
-	Window wins[2];
-
-	wins[0] = under->window;
-	wins[1] = frame->window;
-	XRestackWindows(dpy, wins, 2);
-}
-
-/*
- *----------------------------------------------------------------------
- * CommitStackingForWindow--
- * 	Reorders the stacking for the specified window, so that it has the
- * stacking order in the internal window stacking lists.
- *
- * Side effects:
- * 	Windows may be restacked.
- *----------------------------------------------------------------------
- */
-void CommitStackingForWindow(WCoreWindow * frame)
-{
-	int level = frame->stacking->window_level;
-	WScreen *scr = frame->screen_ptr;
-
-	if (frame->stacking->above == NULL) {
-		WMBagIterator iter;
-		WCoreWindow *above = WMBagLast(scr->stacking_list, &iter);
-		int i, last = above->stacking->window_level;
-
-		/* find the 1st level above us which has windows in it */
-		for (i = level + 1, above = NULL; i <= last; i++) {
-			above = WMGetFromBag(scr->stacking_list, i);
-			if (above != NULL)
-				break;
-		}
-
-		if (above != frame && above != NULL) {
-			while (above->stacking->under)
-				above = above->stacking->under;
-			moveFrameToUnder(above, frame);
-		} else {
-			/* no window above us */
-			XRaiseWindow(dpy, frame->window);
-			wHotCornersRaise(frame->screen_ptr);
-		}
-	} else {
-		moveFrameToUnder(frame->stacking->above, frame);
-	}
 }
 
 /*
@@ -252,37 +198,9 @@ void wRaiseFrame(WCoreWindow * frame)
 		wlist = wlist->stacking->above;
 	}
 
-	/* try to optimize things a little */
-	if (frame->stacking->above == NULL) {
-		WMBagIterator iter;
-		WCoreWindow *above = WMBagLast(scr->stacking_list, &iter);
-		int i, last = above->stacking->window_level;
-
-		/* find the 1st level above us which has windows in it */
-		for (i = level + 1, above = NULL; i <= last; i++) {
-			above = WMGetFromBag(scr->stacking_list, i);
-			if (above != NULL)
-				break;
-		}
-
-		if (above != frame && above != NULL) {
-			while (above->stacking->under)
-				above = above->stacking->under;
-			moveFrameToUnder(above, frame);
-		} else {
-			/* no window above us */
-			above = NULL;
-			XRaiseWindow(dpy, frame->window);
-			wHotCornersRaise(frame->screen_ptr);
-		}
-	} else {
-		moveFrameToUnder(frame->stacking->above, frame);
-	}
+	scr->flags.need_restack = 1;
 
 	notifyStackChange(frame, "raise");
-#ifdef VIRTUAL_DESKTOP
-	wWorkspaceRaiseEdge(frame->screen_ptr);
-#endif
 }
 
 void wRaiseLowerFrame(WCoreWindow * frame)
@@ -368,34 +286,9 @@ void wLowerFrame(WCoreWindow * frame)
 		frame->stacking->under = NULL;
 	}
 
-	if (frame->stacking->above == NULL) {
-		WMBagIterator iter;
-		WCoreWindow *above = WMBagLast(scr->stacking_list, &iter);
-		int i, last = above->stacking->window_level;
-
-		/* find the 1st level above us which has windows in it */
-		for (i = level + 1, above = NULL; i <= last; i++) {
-			above = WMGetFromBag(scr->stacking_list, i);
-			if (above != NULL)
-				break;
-		}
-
-		if (above != frame && above != NULL) {
-			while (above->stacking->under)
-				above = above->stacking->under;
-			moveFrameToUnder(above, frame);
-		} else {
-			/* no window below us */
-			XLowerWindow(dpy, frame->window);
-		}
-	} else {
-		moveFrameToUnder(frame->stacking->above, frame);
-	}
+	scr->flags.need_restack = 1;
 
 	notifyStackChange(frame, "lower");
-#ifdef VIRTUAL_DESKTOP
-	wWorkspaceRaiseEdge(frame->screen_ptr);
-#endif
 }
 
 /*
@@ -427,7 +320,7 @@ void AddToStackList(WCoreWindow * frame)
 		WMSetInBag(scr->stacking_list, index, frame);
 		frame->stacking->above = NULL;
 		frame->stacking->under = NULL;
-		CommitStacking(scr);
+		scr->flags.need_restack = 1;
 		return;
 	}
 
@@ -457,7 +350,7 @@ void AddToStackList(WCoreWindow * frame)
 		curtop->stacking->above = frame;
 		WMSetInBag(scr->stacking_list, index, frame);
 	}
-	CommitStacking(scr);
+	scr->flags.need_restack = 1;
 }
 
 /*
@@ -502,19 +395,8 @@ void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
 	if (tmpw == next)
 		WMSetInBag(scr->stacking_list, index, frame);
 
-	/*
-	 * The internal list is now correct, hand the X-side restack to the
-	 * shared helper.  The old open-coded path used WMBagIteratorAtIndex()
-	 * to find a higher-level anchor, but that does an exact-index lookup
-	 * so a gap above this level fell through to XRaiseWindow() and pushed
-	 * frame above the dock and every later wRaiseFrame() anchor.
-	 */
-	CommitStackingForWindow(frame);
-
-	WMPostNotificationName(WMNResetStacking, scr, NULL);
-#ifdef VIRTUAL_DESKTOP
-	wWorkspaceRaiseEdge(scr);
-#endif
+	/* WMNResetStacking rides the CommitStacking() flush */
+	scr->flags.need_restack = 1;
 }
 
 /*
@@ -556,9 +438,7 @@ void MoveInStackListUnder(WCoreWindow * prev, WCoreWindow * frame)
 	frame->stacking->above = prev;
 	frame->stacking->under = prev->stacking->under;
 	prev->stacking->under = frame;
-	moveFrameToUnder(prev, frame);
-
-	WMPostNotificationName(WMNResetStacking, scr, NULL);
+	scr->flags.need_restack = 1;
 }
 
 void RemoveFromStackList(WCoreWindow * frame)

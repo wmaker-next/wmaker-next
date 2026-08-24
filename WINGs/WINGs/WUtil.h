@@ -355,6 +355,14 @@ WMHandlerID WMAddInputHandler(int fd, int condition, WMInputProc *proc,
 
 void WMDeleteInputHandler(WMHandlerID handlerID);
 
+typedef void WMPrepareProc(void *clientData);
+
+/* Set a single-slot callback invoked once per ev_run() iteration just
+ * before the loop polls, including iterations driven by WMMaskEvent()
+ * modal loops. Use it to apply deferred server-side state coalesced
+ * across one event burst. Passing NULL removes the hook. */
+void WMSetPrepareHook(WMPrepareProc *proc, void *clientData);
+
 
 /* This function is used _only_ if you create a non-GUI program.
  * For GUI based programs use WMNextEvent()/WMHandleEvent() instead.
