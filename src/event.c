@@ -468,14 +468,63 @@ void wInotifyRemoveWatch(int wd)
 	}
 }
 
+#define DEFAULTS_RELOAD_SETTLE_MS 50
+#define DEFAULTS_RELOAD_MAX_MS 250
+
+static struct {
+	WMHandlerID settle;
+	WMHandlerID max;
+} defaults_reload_timer;
+
+static void run_defaults_reload(void)
+{
+	if (defaults_reload_timer.settle) {
+		WMDeleteTimerHandler(defaults_reload_timer.settle);
+		defaults_reload_timer.settle = NULL;
+	}
+	if (defaults_reload_timer.max) {
+		WMDeleteTimerHandler(defaults_reload_timer.max);
+		defaults_reload_timer.max = NULL;
+	}
+
+	wwarning(_("Inotify: Reading config files in defaults database."));
+	wDefaultsCheckDomains(NULL);
+}
+
+static void defaults_reload_settled(void *arg)
+{
+	(void)arg;
+	defaults_reload_timer.settle = NULL;
+	run_defaults_reload();
+}
+
+static void defaults_reload_capped(void *arg)
+{
+	(void)arg;
+	defaults_reload_timer.max = NULL;
+	run_defaults_reload();
+}
+
+static void schedule_defaults_reload(void)
+{
+	if (!defaults_reload_timer.settle && !defaults_reload_timer.max) {
+		defaults_reload_timer.settle =
+			WMAddTimerHandler(DEFAULTS_RELOAD_SETTLE_MS, defaults_reload_settled, NULL);
+		defaults_reload_timer.max =
+			WMAddTimerHandler(DEFAULTS_RELOAD_MAX_MS, defaults_reload_capped, NULL);
+	} else if (defaults_reload_timer.settle) {
+		WMDeleteTimerHandler(defaults_reload_timer.settle);
+		defaults_reload_timer.settle =
+			WMAddTimerHandler(DEFAULTS_RELOAD_SETTLE_MS, defaults_reload_settled, NULL);
+	}
+}
+
 static void handle_inotify_events(void)
 {
 	ssize_t eventQLength;
 	size_t i = 0;
 	/* Make room for at lease 5 simultaneous events, with path + filenames */
 	char buff[ (sizeof(struct inotify_event) + NAME_MAX + 1) * 5 ];
-	/* Check config only once per read of the event queue */
-	int oneShotFlag = 0;
 	int j, fire_n, fired[WINOTIFY_MAX_EXTRA] = {0};
 	void (*fire_cb[WINOTIFY_MAX_EXTRA])(void);
 
@@ -540,11 +589,8 @@ static void handle_inotify_events(void)
 
 			if (matched) {
 				/* react to events that indicate a file was created/moved/written */
-				if ((pevent->mask & (IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE)) && oneShotFlag == 0) {
-					wwarning(_("Inotify: Reading config files in defaults database."));
-					wDefaultsCheckDomains(NULL);
-					oneShotFlag = 1;
-				}
+				if (pevent->mask & (IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE))
+					schedule_defaults_reload();
 			}
 		}
 
@@ -571,6 +617,10 @@ static void handle_inotify_events(void)
 
 void wInotifyCleanup(void)
 {
+	/* flush a pending reload so late writes are honoured */
+	if (defaults_reload_timer.settle || defaults_reload_timer.max)
+		run_defaults_reload();
+
 	if (w_global.inotify.input_handler) {
 		WMDeleteInputHandler(w_global.inotify.input_handler);
 		w_global.inotify.input_handler = NULL;
