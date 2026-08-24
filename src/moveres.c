@@ -481,7 +481,6 @@ static int compareWBottom(const void *a, const void *b)
 
 static void updateResistance(MoveData *data, int newX, int newY)
 {
-	int i;
 	int newX2 = newX + data->winWidth;
 	int newY2 = newY + data->winHeight;
 	Bool ok = False;
@@ -522,33 +521,35 @@ static void updateResistance(MoveData *data, int newX, int newY)
 	if (!ok)
 		return;
 
-	/* TODO: optimize this */
-	if (data->realY < WBOTTOM(data->bottomList[0])) {
-		data->bottomIndex = 0;
-	}
-	if (data->realX < WRIGHT(data->rightList[0])) {
-		data->rightIndex = 0;
-	}
-	if ((data->realX + data->winWidth) > WLEFT(data->leftList[0])) {
-		data->leftIndex = 0;
-	}
-	if ((data->realY + data->winHeight) > WTOP(data->topList[0])) {
-		data->topIndex = 0;
-	}
-	for (i = 0; i < data->count; i++) {
-		if (data->realY > WBOTTOM(data->bottomList[i])) {
-			data->bottomIndex = i + 1;
-		}
-		if (data->realX > WRIGHT(data->rightList[i])) {
-			data->rightIndex = i + 1;
-		}
-		if ((data->realX + data->winWidth) < WLEFT(data->leftList[i])) {
-			data->leftIndex = i + 1;
-		}
-		if ((data->realY + data->winHeight) < WTOP(data->topList[i])) {
-			data->topIndex = i + 1;
-		}
-	}
+	/* Step the cached indices to the boundaries for the current
+	 * position instead of rescanning the whole lists. */
+	while (data->bottomIndex > 0
+	       && data->realY <= WBOTTOM(data->bottomList[data->bottomIndex - 1]))
+		data->bottomIndex--;
+	while (data->bottomIndex < data->count
+	       && data->realY > WBOTTOM(data->bottomList[data->bottomIndex]))
+		data->bottomIndex++;
+
+	while (data->rightIndex > 0
+	       && data->realX <= WRIGHT(data->rightList[data->rightIndex - 1]))
+		data->rightIndex--;
+	while (data->rightIndex < data->count
+	       && data->realX > WRIGHT(data->rightList[data->rightIndex]))
+		data->rightIndex++;
+
+	while (data->leftIndex > 0
+	       && (data->realX + data->winWidth) >= WLEFT(data->leftList[data->leftIndex - 1]))
+		data->leftIndex--;
+	while (data->leftIndex < data->count
+	       && (data->realX + data->winWidth) < WLEFT(data->leftList[data->leftIndex]))
+		data->leftIndex++;
+
+	while (data->topIndex > 0
+	       && (data->realY + data->winHeight) >= WTOP(data->topList[data->topIndex - 1]))
+		data->topIndex--;
+	while (data->topIndex < data->count
+	       && (data->realY + data->winHeight) < WTOP(data->topList[data->topIndex]))
+		data->topIndex++;
 }
 
 static void freeMoveData(MoveData * data)
@@ -721,6 +722,39 @@ static Bool checkWorkspaceChange(WWindow * wwin, MoveData * data, Bool opaqueMov
 	return changed;
 }
 
+/* Return the first window in list[start..0] (backward) or
+ * list[start..count-1] whose perpendicular extent meets [lo, hi]:
+ * the Y range for left/right lists, the X range for top/bottom lists.
+ * Returns NULL when no window overlaps. */
+static WWindow *
+find_nearest_overlapping(WWindow **list, int start, int count,
+			 Bool backward, Bool xaxis, int lo, int hi)
+{
+	int i;
+
+	if (backward) {
+		for (i = start; i >= 0; i--) {
+			WWindow *tmp = list[i];
+			int elo = xaxis ? WTOP(tmp) : WLEFT(tmp);
+			int ehi = xaxis ? WBOTTOM(tmp) : WRIGHT(tmp);
+
+			if (!(lo > ehi || hi < elo))
+				return tmp;
+		}
+	} else {
+		for (i = start; i < count; i++) {
+			WWindow *tmp = list[i];
+			int elo = xaxis ? WTOP(tmp) : WLEFT(tmp);
+			int ehi = xaxis ? WBOTTOM(tmp) : WRIGHT(tmp);
+
+			if (!(lo > ehi || hi < elo))
+				return tmp;
+		}
+	}
+
+	return NULL;
+}
+
 static void
 updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 		     Bool opaqueMove, int newMouseX, int newMouseY)
@@ -764,7 +798,8 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 		/* horizontal movement: check horizontal edge resistances */
 		if (dx || dy) {
 			WMRect rect;
-			int i, head;
+			int head;
+			WWindow *looprw;
 			/* window is the leftmost window: check against screen edge */
 
 			/* Add inter head resistance 1/2 (if needed) */
@@ -778,60 +813,45 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 
 			/* 1 */
 			if ((data->rightIndex >= 0) && (data->rightIndex <= data->count)) {
-				WWindow *looprw;
-
-				for (i = data->rightIndex - 1; i >= 0; i--) {
-					looprw = data->rightList[i];
-					if (!(data->realY > WBOTTOM(looprw)
-					      || (data->realY + data->winHeight) < WTOP(looprw))) {
-						if (attract || ((data->realX < (WRIGHT(looprw) + 2)) && dx < 0)) {
-							l_edge = WRIGHT(looprw) + 1;
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-						}
-						break;
-					}
+				looprw = find_nearest_overlapping(data->rightList, data->rightIndex - 1,
+								  data->count, True, True,
+								  data->realY, data->realY + data->winHeight);
+				if (looprw && (attract || ((data->realX < (WRIGHT(looprw) + 2)) && dx < 0))) {
+					l_edge = WRIGHT(looprw) + 1;
+					resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 				}
 
 				if (attract) {
-					for (i = data->rightIndex; i < data->count; i++) {
-						looprw = data->rightList[i];
-						if (!(data->realY > WBOTTOM(looprw)
-						      || (data->realY + data->winHeight) < WTOP(looprw))) {
-							r_edge = WRIGHT(looprw) + 1;
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-							break;
-						}
+					looprw = find_nearest_overlapping(data->rightList, data->rightIndex,
+									  data->count, False, True,
+									  data->realY, data->realY + data->winHeight);
+					if (looprw) {
+						r_edge = WRIGHT(looprw) + 1;
+						resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 					}
 				}
 			}
 
 			if ((data->leftIndex >= 0) && (data->leftIndex <= data->count)) {
-				WWindow *looprw;
-
-				for (i = data->leftIndex - 1; i >= 0; i--) {
-					looprw = data->leftList[i];
-					if (!(data->realY > WBOTTOM(looprw)
-					      || (data->realY + data->winHeight) < WTOP(looprw))) {
-						if (attract
-						    || (((data->realX + data->winWidth) > (WLEFT(looprw) - 1))
-							&& dx > 0)) {
-							edge_r = WLEFT(looprw);
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-						}
-						break;
-					}
+				looprw = find_nearest_overlapping(data->leftList, data->leftIndex - 1,
+								  data->count, True, True,
+								  data->realY, data->realY + data->winHeight);
+				if (looprw
+				    && (attract
+					|| (((data->realX + data->winWidth) > (WLEFT(looprw) - 1)) && dx > 0))) {
+					edge_r = WLEFT(looprw);
+					resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 				}
 
-				if (attract)
-					for (i = data->leftIndex; i < data->count; i++) {
-						looprw = data->leftList[i];
-						if (!(data->realY > WBOTTOM(looprw)
-						      || (data->realY + data->winHeight) < WTOP(looprw))) {
-							edge_l = WLEFT(looprw);
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-							break;
-						}
+				if (attract) {
+					looprw = find_nearest_overlapping(data->leftList, data->leftIndex,
+									  data->count, False, True,
+									  data->realY, data->realY + data->winHeight);
+					if (looprw) {
+						edge_l = WLEFT(looprw);
+						resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 					}
+				}
 			}
 
 			/*
@@ -877,60 +897,45 @@ updateWindowPosition(WWindow * wwin, MoveData * data, Bool doResistance,
 			b_edge = edge_b + resist;
 
 			if ((data->bottomIndex >= 0) && (data->bottomIndex <= data->count)) {
-				WWindow *looprw;
-
-				for (i = data->bottomIndex - 1; i >= 0; i--) {
-					looprw = data->bottomList[i];
-					if (!(data->realX > WRIGHT(looprw)
-					      || (data->realX + data->winWidth) < WLEFT(looprw))) {
-						if (attract || ((data->realY < (WBOTTOM(looprw) + 2)) && dy < 0)) {
-							t_edge = WBOTTOM(looprw) + 1;
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-						}
-						break;
-					}
+				looprw = find_nearest_overlapping(data->bottomList, data->bottomIndex - 1,
+								  data->count, True, False,
+								  data->realX, data->realX + data->winWidth);
+				if (looprw && (attract || ((data->realY < (WBOTTOM(looprw) + 2)) && dy < 0))) {
+					t_edge = WBOTTOM(looprw) + 1;
+					resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 				}
 
 				if (attract) {
-					for (i = data->bottomIndex; i < data->count; i++) {
-						looprw = data->bottomList[i];
-						if (!(data->realX > WRIGHT(looprw)
-						      || (data->realX + data->winWidth) < WLEFT(looprw))) {
-							b_edge = WBOTTOM(looprw) + 1;
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-							break;
-						}
+					looprw = find_nearest_overlapping(data->bottomList, data->bottomIndex,
+									  data->count, False, False,
+									  data->realX, data->realX + data->winWidth);
+					if (looprw) {
+						b_edge = WBOTTOM(looprw) + 1;
+						resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 					}
 				}
 			}
 
 			if ((data->topIndex >= 0) && (data->topIndex <= data->count)) {
-				WWindow *looprw;
-
-				for (i = data->topIndex - 1; i >= 0; i--) {
-					looprw = data->topList[i];
-					if (!(data->realX > WRIGHT(looprw)
-					      || (data->realX + data->winWidth) < WLEFT(looprw))) {
-						if (attract
-						    || (((data->realY + data->winHeight) > (WTOP(looprw) - 1))
-							&& dy > 0)) {
-							edge_b = WTOP(looprw);
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-						}
-						break;
-					}
+				looprw = find_nearest_overlapping(data->topList, data->topIndex - 1,
+								  data->count, True, False,
+								  data->realX, data->realX + data->winWidth);
+				if (looprw
+				    && (attract
+					|| (((data->realY + data->winHeight) > (WTOP(looprw) - 1)) && dy > 0))) {
+					edge_b = WTOP(looprw);
+					resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 				}
 
-				if (attract)
-					for (i = data->topIndex; i < data->count; i++) {
-						looprw = data->topList[i];
-						if (!(data->realX > WRIGHT(looprw)
-						      || (data->realX + data->winWidth) < WLEFT(looprw))) {
-							edge_t = WTOP(looprw);
-							resist = WIN_RESISTANCE(w_global.config->edge_resistance);
-							break;
-						}
+				if (attract) {
+					looprw = find_nearest_overlapping(data->topList, data->topIndex,
+									  data->count, False, False,
+									  data->realX, data->realX + data->winWidth);
+					if (looprw) {
+						edge_t = WTOP(looprw);
+						resist = WIN_RESISTANCE(w_global.config->edge_resistance);
 					}
+				}
 			}
 
 			if ((winT - t_edge) < (b_edge - winT)) {
