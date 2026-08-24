@@ -2012,8 +2012,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	if (win_state)
 		wWindowDeleteSavedState(win_state);
 
-	/* If the window must be withdrawed, then do it now.
-	 * Must do some optimization, 'though */
+	/* If the window must be withdrawed, then do it now. */
 	if (withdraw) {
 		wwin->flags.mapped = 0;
 		wClientSetState(wwin, WithdrawnState, None);

@@ -167,10 +167,6 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	/*
 	 * Create a map with the occupied slots. 1 means the slot is used
 	 * or at least partially used.
-	 * The slot usage can be optimized by only marking fully used slots
-	 * or slots that have most of it covered.
-	 * Space usage is worse than the fvwm algorithm (used in the old version)
-	 * but complexity is much better (faster) than it.
 	 */
 	map = wmalloc((sw + 2) * (sh + 2));
 

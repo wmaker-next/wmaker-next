@@ -253,7 +253,6 @@ void *WMHashInsert(WMHashTable * table, const void *key, const void *data)
 		table->itemCount++;
 	}
 
-	/* OPTIMIZE: put this in an idle handler. */
 	if (table->itemCount > table->size) {
 #ifdef DEBUG0
 		printf("rebuilding hash table...\n");
