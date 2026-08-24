@@ -713,7 +713,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	allocDefaultColors(scr);
 
 	/* read defaults for this screen, old_config is NULL because
-	 * wScreenInit() only runs at first startup */
+	 * wScreenInit() only runs at first startup, mark the screen as
+	 * starting up so a realisation failure in the domain falls back
+	 * to the schema default instead of leaving the resource unset */
+	scr->flags.startup = 1;
 	wReadDefaults(scr, NULL, config, changes);
 	scr->frame_inner_border_width = config->frame_inner_border_width;
 	scr->frame_inner_border_sides =
