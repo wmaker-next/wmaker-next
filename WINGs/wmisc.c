@@ -163,17 +163,21 @@ int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 	int h;
 	int fheight = WMFontHeight(font);
 
+	/* account lines exactly like W_PaintTextCairo does */
 	h = 0;
 	while (length > 0) {
 		count = fitText(ptr, font, width, wrap);
 
+		if (ptr[count] != '\n')
+			h += fheight;
+
+		while (ptr[count] && ptr[count] == '\n') {
+			h += fheight;
+			count++;
+		}
+
 		if (count == 0)
 			break;
-
-		h += fheight;
-
-		if (isspace(ptr[count]))
-			count++;
 
 		ptr += count;
 		length -= count;
@@ -205,7 +209,7 @@ W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
 
 		WMDrawStringCairo(cr, color, font, line_x, y, ptr, count);
 
-		if (wrap && ptr[count] != '\n')
+		if (ptr[count] != '\n')
 			y += fheight;
 
 		while (ptr[count] && ptr[count] == '\n') {

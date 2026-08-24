@@ -90,7 +90,10 @@ WMAlertPanel *WMCreateAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	WMFont *defaultFont;
 	int dw = 0, aw = 0, ow = 0, w;
 	WMBox *hbox;
+	WMBox *mbox;
 	WMPixmap *icon;
+	int pwidth, pheight;
+	int msgw, msgh;
 
 	defaultFont = WMSystemFontOfSize(scrPtr, 12);
 	panel = wmalloc(sizeof(WMAlertPanel));
@@ -101,9 +104,46 @@ WMAlertPanel *WMCreateAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 		panel->win = WMCreateWindowWithStyle(scrPtr, "alertPanel", WMTitledWindowMask);
 	}
 
+	/* calculate and set the panel's size */
+	pwidth = 400;
+
+	/* widen so the non-wrapping title fits beside the icon */
+	if (title) {
+		WMFont *largeFont = WMBoldSystemFontOfSize(scrPtr, 24);
+
+		if (largeFont) {
+			w = WMWidthOfString(largeFont, title, strlen(title))
+			    + 64			/* icon */
+			    + 10			/* gap after icon */
+			    + 2 * 5			/* row borders */
+			    + 8;			/* label paint inset */
+			if (w > pwidth)
+				pwidth = w;
+			WMReleaseFont(largeFont);
+		}
+	}
+	if (pwidth > scrPtr->rootView->size.width - 40)
+		pwidth = scrPtr->rootView->size.width - 40;
+
+	pheight = 64 + 2 * 5;		/* icon row */
+	msgw = pwidth - 2 * 12 - 8;
+	msgh = 0;
+	if (msg) {
+		msgh = W_GetTextHeight(defaultFont, msg, msgw, True);
+		if (msgh < WMFontHeight(defaultFont) * 2)
+			msgh = WMFontHeight(defaultFont) * 2;
+		pheight += msgh + 2 * 12 + 5;
+	}
+	pheight += 44;			/* button row */
+
+	if (pheight > scrPtr->rootView->size.height - 40)
+		pheight = scrPtr->rootView->size.height - 40;
+
+	WMResizeWidget(panel->win, pwidth, pheight);
+
 	WMSetWindowInitialPosition(panel->win,
-				   (scrPtr->rootView->size.width - WMWidgetWidth(panel->win)) / 2,
-				   (scrPtr->rootView->size.height - WMWidgetHeight(panel->win)) / 2);
+				   (scrPtr->rootView->size.width - pwidth) / 2,
+				   (scrPtr->rootView->size.height - pheight) / 2);
 
 	WMSetWindowTitle(panel->win, "");
 
@@ -153,11 +193,19 @@ WMAlertPanel *WMCreateAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	WMSetFrameRelief(panel->line, WRGroove);
 
 	if (msg) {
-		panel->mLbl = WMCreateLabel(panel->vbox);
+		/* bordered row so the text keeps a gap from the frame */
+		mbox = WMCreateBox(panel->vbox);
+		WMSetBoxBorderWidth(mbox, 12);
+		WMSetBoxHorizontal(mbox, True);
+		WMMapWidget(mbox);
+		WMAddBoxSubview(panel->vbox, WMWidgetView(mbox), True, True,
+				msgh + 24, 0, 5);
+
+		panel->mLbl = WMCreateLabel(mbox);
 		WMSetLabelWraps(panel->mLbl, True);
 		WMMapWidget(panel->mLbl);
-		WMAddBoxSubview(panel->vbox, WMWidgetView(panel->mLbl), True, True,
-				WMFontHeight(scrPtr->normalFont) * 4, 0, 5);
+		WMAddBoxSubview(mbox, WMWidgetView(panel->mLbl), False, True,
+				pwidth - 24, 0, 0);
 		WMSetLabelText(panel->mLbl, msg);
 		WMSetLabelTextAlignment(panel->mLbl, WACenter);
 		WMSetLabelFont(panel->mLbl, defaultFont);
@@ -243,9 +291,11 @@ WMAlertPanel *WMCreateScaledAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	WMAlertPanel *panel;
 	int dw = 0, aw = 0, ow = 0, w;
 	WMBox *hbox;
+	WMBox *mbox;
 	WMPixmap *icon;
 	int wmScaleWidth, wmScaleHeight;
 	int pwidth, pheight;
+	int msgw, msgh;
 
 	panel = wmalloc(sizeof(WMAlertPanel));
 
@@ -258,14 +308,42 @@ WMAlertPanel *WMCreateScaledAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	/* calculate and set the panel's size */
 	WMGetScaleBaseFromSystemFont(scrPtr, &wmScaleWidth, &wmScaleHeight);
 	pwidth = WMScaleX(400);
-	pheight = WMScaleY(5)    /* upper margin */
-		+ 64             /* icon size */
-		+ WMScaleY(5)    /* space between icon and divider line */
-		+ 2              /* divider line */
-		+ WMScaleY(5);   /* space between divider line and message */
-	if (msg)
-		pheight += WMFontHeight(scrPtr->normalFont) * 4 + WMScaleY(5);
-	pheight += WMScaleY(44);
+
+	/* widen so the non-wrapping title fits beside the icon */
+	if (title) {
+		WMFont *largeFont = WMBoldSystemFontOfSize(scrPtr, WMScaleY(24));
+
+		if (largeFont) {
+			w = WMWidthOfString(largeFont, title, strlen(title))
+			    + 64			/* icon */
+			    + WMScaleX(10)		/* gap after icon */
+			    + 2 * WMScaleX(5)		/* row borders */
+			    + 8;			/* label paint inset */
+			if (w > pwidth)
+				pwidth = w;
+			WMReleaseFont(largeFont);
+		}
+	}
+	w = scrPtr->rootView->size.width - 2 * WMScaleX(20);
+	if (pwidth > w)
+		pwidth = w;
+
+	pheight = 64 + 2 * WMScaleY(5)	/* icon row */
+	    + WMScaleY(5) + 2 + WMScaleY(5);	/* divider line */
+	msgw = pwidth - 2 * WMScaleX(12) - 8;
+	msgh = 0;
+	if (msg) {
+		msgh = W_GetTextHeight(scrPtr->normalFont, msg, msgw, True);
+		if (msgh < WMFontHeight(scrPtr->normalFont) * 2)
+			msgh = WMFontHeight(scrPtr->normalFont) * 2;
+		pheight += msgh + 2 * WMScaleY(12) + WMScaleY(5);
+	}
+	pheight += WMScaleY(44);	/* button row */
+
+	w = scrPtr->rootView->size.height - 2 * WMScaleY(20);
+	if (pheight > w)
+		pheight = w;
+
 	WMResizeWidget(panel->win, pwidth, pheight);
 
 	WMSetWindowInitialPosition(panel->win,
@@ -320,11 +398,19 @@ WMAlertPanel *WMCreateScaledAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	WMSetFrameRelief(panel->line, WRGroove);
 
 	if (msg) {
-		panel->mLbl = WMCreateLabel(panel->vbox);
+		/* bordered row so the text keeps a gap from the frame */
+		mbox = WMCreateBox(panel->vbox);
+		WMSetBoxBorderWidth(mbox, WMScaleX(12));
+		WMSetBoxHorizontal(mbox, True);
+		WMMapWidget(mbox);
+		WMAddBoxSubview(panel->vbox, WMWidgetView(mbox), True, True,
+				msgh + 2 * WMScaleY(12), 0, WMScaleY(5));
+
+		panel->mLbl = WMCreateLabel(mbox);
 		WMSetLabelWraps(panel->mLbl, True);
 		WMMapWidget(panel->mLbl);
-		WMAddBoxSubview(panel->vbox, WMWidgetView(panel->mLbl), True, True,
-				WMFontHeight(scrPtr->normalFont) * 4, 0, WMScaleY(5));
+		WMAddBoxSubview(mbox, WMWidgetView(panel->mLbl), False, True,
+				pwidth - 2 * WMScaleX(12), 0, 0);
 		WMSetLabelText(panel->mLbl, msg);
 		WMSetLabelTextAlignment(panel->mLbl, WACenter);
 	}
