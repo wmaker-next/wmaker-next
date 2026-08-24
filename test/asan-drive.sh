@@ -597,6 +597,31 @@ run_util wmgenmenu
 run_util wmsetbg -p '(solid, "#404040")'
 run_util convertfonts "$WMHOME/asan-style"
 
+# --- resource realisation failures (resource_retry_default call sites) ------
+# After startup scr->flags.startup is clear, so an invalid spec must warn
+# and keep the previously realised resource instead of retrying the
+# schema default, and never crash or poison the reload. Fonts are not
+# exercisable this way any more: WMCreateFont() on Pango falls back
+# internally and cannot fail on a bogus spec.
+note "invalid specs keep previous resources (runtime reload)"
+run_util wdwrite WindowMaker FTitleBack '(totally, bogus, spec)'
+sleep 0.4
+grep -q 'Error in texture specification for key "FTitleBack"' "$LOG" \
+    || warn "garbage FTitleBack did not hit the texture failure path"
+run_util wdwrite WindowMaker FTitleColor '"#zz1234"'
+sleep 0.4
+grep -q 'could not get color for key "FTitleColor"' "$LOG" \
+    || warn "invalid FTitleColor did not hit the color failure path"
+run_util wdwrite WindowMaker NormalCursor \
+    '(bitmap, "asan-no-such.xbm", "asan-no-such.xbm")'
+sleep 0.4
+grep -q 'Error in cursor specification for key "NormalCursor"' "$LOG" \
+    || warn "bad NormalCursor did not hit the cursor failure path"
+kill -0 "$WMAKER_PID" 2>/dev/null \
+    || warn "wmaker died after invalid resource specs"
+# a valid style must still apply cleanly afterwards
+run_util setstyle "$WMHOME/asan-style"
+
 # --- GUI tools under ASan (wmagnify, wmiv, WPrefs) --------------------------
 note "GUI tools"
 run_gui "$ROOT/util/.libs/wmagnify" "Magnify"
