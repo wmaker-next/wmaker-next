@@ -1175,20 +1175,54 @@ static void applyVariant(WMInputPanelWithHistory *p)
  * is not redone on every repaint, never released */
 static int dropIconMiss;
 
+/* Same faded-icon rule as the window list panel: unmapped windows that
+ * are shaded, miniaturized or hidden wash out against the tile */
+static Bool rowIconIsFaded(WWindow *wwin)
+{
+	if (wwin->flags.mapped)
+		return False;
+	if (wGroupIsInactiveMember(wwin))
+		return True;
+	if (!wwin->flags.shaded && !wwin->flags.miniaturized &&
+	    !wwin->flags.hidden && !w_global.config->cycle_all_workspaces)
+		return False;
+
+	return True;
+}
+
 static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 			     WMColor *back)
 {
 	WMPixmap *pix;
 	RColor color;
-	const char *colon;
-	char ctx[32], *path;
+	const char *colon, *key;
+	char ctx[32], *path, *fkey = NULL;
 	RImage *image;
+	WWindow *wwin = NULL;
+	int opaq = 255;
+	Bool is_win;
 
 	if (!hint || !hint[0])
 		return NULL;
-	pix = WMHashGet(p->dropIcons, hint);
-	if (pix)
+
+	is_win = strncmp(hint, "win:", 4) == 0;
+	if (is_win)
+		wwin = wWindowFor(strtoul(hint + 4, NULL, 0));
+
+	/* distinct cache slot so unshading/restoring repaints at full
+	 * strength instead of reusing the faded pixels */
+	key = hint;
+	if (wwin && rowIconIsFaded(wwin)) {
+		opaq = 50;
+		fkey = wstrconcat(hint, "\x01");
+		key = fkey;
+	}
+
+	pix = WMHashGet(p->dropIcons, key);
+	if (pix) {
+		wfree(fkey);
 		return pix == (WMPixmap *)&dropIconMiss ? NULL : pix;
+	}
 
 	color.red = WMRedComponentOfColor(back) >> 8;
 	color.green = WMGreenComponentOfColor(back) >> 8;
@@ -1197,22 +1231,20 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 
 	image = NULL;
 
-	if (strncmp(hint, "win:", 4) == 0) {
-		Window xid = strtoul(hint + 4, NULL, 0);
-		WWindow *w = wWindowFor(xid);
-
-		if (w) {
+	if (is_win) {
+		if (wwin) {
 			WApplication *wapp;
 
-			wapp = wApplicationOf(w->main_window);
+			wapp = wApplicationOf(wwin->main_window);
 			if (wapp && wapp->app_icon && wapp->app_icon->icon &&
 			    wapp->app_icon->icon->file_image)
 				image = RRetainImage(wapp->app_icon->icon->file_image);
-			if (!image && !WFLAGP(w, always_user_icon) && w->net_icon_image)
-				image = RRetainImage(w->net_icon_image);
+			if (!image && !WFLAGP(wwin, always_user_icon) &&
+			    wwin->net_icon_image)
+				image = RRetainImage(wwin->net_icon_image);
 			if (!image)
-				image = get_icon_image(p->scr, w->wm_instance,
-						       w->wm_class, p->dropIconSize);
+				image = get_icon_image(p->scr, wwin->wm_instance,
+						       wwin->wm_class, p->dropIconSize);
 			if (image)
 				image = wIconValidateIconSize(image, p->dropIconSize);
 		}
@@ -1220,8 +1252,10 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 		image = RLoadImage(p->scr->rcontext, hint, 0);
 	} else {
 		colon = strchr(hint, ':');
-		if (!colon || (size_t)(colon - hint) >= sizeof(ctx))
+		if (!colon || (size_t)(colon - hint) >= sizeof(ctx)) {
+			wfree(fkey);
 			return NULL;
+		}
 		memcpy(ctx, hint, colon - hint);
 		ctx[colon - hint] = 0;
 		path = wXDGFindThemeIcon(colon + 1, ctx, p->dropIconSize);
@@ -1252,17 +1286,36 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 			image = scaled;
 		}
 		if (image) {
-			RCombineImageWithColor(image, &color);
+			if (opaq != 255) {
+				RImage *flat;
+
+				flat = RCreateImage(image->width, image->height,
+						    False);
+				if (flat) {
+					RFillImage(flat, &color);
+					RCombineAreaWithOpaqueness(flat, image,
+								   0, 0, image->width,
+								   image->height, 0, 0, opaq);
+					RReleaseImage(image);
+					image = flat;
+				} else {
+					RCombineImageWithColor(image, &color);
+				}
+			} else {
+				RCombineImageWithColor(image, &color);
+			}
 			pix = WMCreatePixmapFromRImage(p->scr->wmscreen, image, 0);
 			RReleaseImage(image);
 		}
 	}
 
 	if (!pix) {
-		WMHashInsert(p->dropIcons, hint, &dropIconMiss);
+		WMHashInsert(p->dropIcons, key, &dropIconMiss);
+		wfree(fkey);
 		return NULL;
 	}
-	WMHashInsert(p->dropIcons, hint, pix);
+	WMHashInsert(p->dropIcons, key, pix);
+	wfree(fkey);
 	return pix;
 }
 
