@@ -673,7 +673,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([res],
     [AS_HELP_STRING([--disable-res], [disable resource window extension support])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-res]) ]) ],
     [enable_res=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -686,7 +686,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([shape],
     [AS_HELP_STRING([--disable-shape], [disable shaped window extension support])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-shape]) ]) ],
     [enable_shape=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -718,7 +718,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([xsync],
     [AS_HELP_STRING([--disable-xsync], [disable _NET_WM_SYNC_REQUEST frame-synchronised resize])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-xsync]) ]) ],
     [enable_xsync=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -732,7 +732,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([shm],
     [AS_HELP_STRING([--disable-shm], [disable usage of MIT-SHM extension])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-shm]) ]) ],
     [enable_shm=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -745,7 +745,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([randr],
     [AS_HELP_STRING([--disable-randr], [disable RandR multi-monitor live reconfiguration])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-randr]) ]) ],
     [enable_randr=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -764,8 +764,7 @@ dnl ==========
 dnl libWINGS uses FcPatternDel from libfontconfig, this is mandatory for
 dnl every libWINGs consumer (wmaker, WPrefs, util/) so fail at configure
 dnl with a clear message rather than logging "not found" and building anyway
-PKG_CHECK_MODULES([FONTCONFIG], [fontconfig], [],
-    [AC_MSG_ERROR([fontconfig is required -- $FONTCONFIG_PKG_ERRORS])])
+WM_REQUIRE_DEP([FONTCONFIG], [fontconfig], [fontconfig is required])
 FCLIBS=$FONTCONFIG_LIBS
 AC_SUBST(FCLIBS)
 
@@ -785,9 +784,9 @@ dnl in the libxkbcommon tarball with the X11 module needing 0.4.1 for
 dnl xkb_x11_setup_xkb_extension
 dnl xcb-xtest drives wmclipd's paste keystroke injection without the libXtst
 dnl Xlib binding, keeping the clipboard daemon off libX11's XTest wrapper.
-PKG_CHECK_MODULES([XCB],
-    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xkbcommon xkbcommon-x11 >= 0.4.1], [],
-    [AC_MSG_ERROR([libxcb, x11-xcb, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest and xkbcommon/-x11 are required -- $XCB_PKG_ERRORS])])
+WM_REQUIRE_DEP([XCB],
+    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xkbcommon xkbcommon-x11 >= 0.4.1],
+    [libxcb, x11-xcb, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest and xkbcommon/-x11 are required])
 dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
 dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so
 dnl ask pkg-config where the >= 0.3.8 module actually lives and search that
@@ -805,8 +804,8 @@ dnl =====================================================
 dnl cairo-xcb draws onto the shared xcb connection resolved above and
 dnl pangocairo is the WINGs text render sink. cairo 1.16 is the floor for
 dnl a stable cairo-xcb backend and is in every maintained distribution.
-PKG_CHECK_MODULES([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo], [],
-    [AC_MSG_ERROR([cairo (>= 1.16 with the xcb backend) and pangocairo are required -- $CAIRO_PKG_ERRORS])])
+WM_REQUIRE_DEP([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo],
+    [cairo (>= 1.16 with the xcb backend) and pangocairo are required])
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
 
@@ -816,24 +815,14 @@ dnl existing X fd so the window manager can disarm decorative timers
 dnl while the server has blanked or DPMS-powered the display, ships in
 dnl the libxcb tarball but distros split it into its own -dev package
 dnl so probe softly
-AC_ARG_WITH([xcb-screensaver],
-    [AS_HELP_STRING([--without-xcb-screensaver],
-                    [do not use the MIT-SCREEN-SAVER extension for display-off detection])],
-    [],
-    [with_xcb_screensaver=auto])
-AS_IF([test "x$with_xcb_screensaver" != xno],
-    [PKG_CHECK_MODULES([XCB_SCREENSAVER], [xcb-screensaver],
-        [AC_DEFINE([USE_XCB_SCREENSAVER], [1],
-                   [defined when xcb-screensaver is available so wmaker can react to ScreenSaverNotify])
-         supported_xext="$supported_xext MIT-SCREEN-SAVER"],
-        [AS_IF([test "x$with_xcb_screensaver" = xyes],
-            [AC_MSG_ERROR([xcb-screensaver requested but not found -- $XCB_SCREENSAVER_PKG_ERRORS])],
-            [XCB_SCREENSAVER_CFLAGS=
-             XCB_SCREENSAVER_LIBS=])])],
-    [XCB_SCREENSAVER_CFLAGS=
-     XCB_SCREENSAVER_LIBS=])
-AC_SUBST(XCB_SCREENSAVER_CFLAGS)
-AC_SUBST(XCB_SCREENSAVER_LIBS)
+WM_OPTIONAL_DEP([XCB_SCREENSAVER], [xcb-screensaver], [have_xcb_screensaver],
+    [with], [xcb-screensaver],
+    [--without-xcb-screensaver],
+    [do not use the MIT-SCREEN-SAVER extension for display-off detection],
+    [AC_DEFINE([USE_XCB_SCREENSAVER], [1],
+               [defined when xcb-screensaver is available so wmaker can react to ScreenSaverNotify])
+     supported_xext="$supported_xext MIT-SCREEN-SAVER"],
+    [MIT-SCREEN-SAVER])
 
 
 dnl xcb subset for libwraster: the X-side of wrlib (RContext, RConvertImage,
@@ -841,16 +830,16 @@ dnl RCreateImageFromDrawable) talks to the server via xcb only so the shared
 dnl object links without libX11/libXext. xcb-image gives the native ZPixmap
 dnl packing/stride and pulls in xcb-shm for the persistent put-image segment.
 dnl =====================================================================
-PKG_CHECK_MODULES([WRASTER_XCB], [xcb xcb-shm xcb-image], [],
-    [AC_MSG_ERROR([libwraster requires xcb, xcb-shm and xcb-image -- $WRASTER_XCB_PKG_ERRORS])])
+WM_REQUIRE_DEP([WRASTER_XCB], [xcb xcb-shm xcb-image],
+    [libwraster requires xcb, xcb-shm and xcb-image])
 AC_SUBST(WRASTER_XCB_CFLAGS)
 AC_SUBST(WRASTER_XCB_LIBS)
 
 dnl cairo image-surface bridge in libwraster: RImageCairoSurface() and the
 dnl gradient-pattern helpers only need the client-side image API, not the
 dnl xcb backend, so this stays a narrower module list than the WINGs check.
-PKG_CHECK_MODULES([WRASTER_CAIRO], [cairo >= 1.16], [],
-    [AC_MSG_ERROR([libwraster requires cairo -- $WRASTER_CAIRO_PKG_ERRORS])])
+WM_REQUIRE_DEP([WRASTER_CAIRO], [cairo >= 1.16],
+    [libwraster requires cairo])
 AC_SUBST(WRASTER_CAIRO_CFLAGS)
 AC_SUBST(WRASTER_CAIRO_LIBS)
 
@@ -859,49 +848,25 @@ dnl xcb-imdkit: optional XIM protocol IM client for WINGs text fields
 dnl Restores fcitx5/ibus input after the xcb event-queue flip, without it
 dnl xkb_compose_state still handles dead-key / Compose sequences.
 dnl =====================================================================
-AC_ARG_WITH([xcb-imdkit],
-    [AS_HELP_STRING([--without-xcb-imdkit],
-                    [disable xcb-imdkit IM support in WINGs (compose/dead-keys still work)])],
-    [], [with_xcb_imdkit=auto])
-AS_IF([test "x$with_xcb_imdkit" != xno],
-    [PKG_CHECK_MODULES([XCB_IMDKIT], [xcb-imdkit >= 1.0.3],
-        [have_xcb_imdkit=yes
-         AC_DEFINE([HAVE_XCB_IMDKIT], [1],
-                   [defined when xcb-imdkit >= 1.0.3 is available for WINGs IM support])],
-        [AS_IF([test "x$with_xcb_imdkit" = xyes],
-            [AC_MSG_ERROR([xcb-imdkit >= 1.0.3 is required -- $XCB_IMDKIT_PKG_ERRORS])],
-            [have_xcb_imdkit=no
-             XCB_IMDKIT_CFLAGS=
-             XCB_IMDKIT_LIBS=])])],
-    [have_xcb_imdkit=no
-     XCB_IMDKIT_CFLAGS=
-     XCB_IMDKIT_LIBS=])
-AC_SUBST(XCB_IMDKIT_CFLAGS)
-AC_SUBST(XCB_IMDKIT_LIBS)
-AM_CONDITIONAL([HAVE_XCB_IMDKIT], [test "x$have_xcb_imdkit" = xyes])
+WM_OPTIONAL_DEP([XCB_IMDKIT], [xcb-imdkit >= 1.0.3], [have_xcb_imdkit],
+    [with], [xcb-imdkit],
+    [--without-xcb-imdkit],
+    [disable xcb-imdkit IM support in WINGs (compose/dead-keys still work)],
+    [AC_DEFINE([HAVE_XCB_IMDKIT], [1],
+               [defined when xcb-imdkit >= 1.0.3 is available for WINGs IM support])],
+    [xcb-imdkit],
+    [HAVE_XCB_IMDKIT])
 
 
 dnl XFixes selection notifications, used by wmclipd clipboard-manager mode
 dnl =====================================================================
-AC_ARG_WITH([xfixes],
-    [AS_HELP_STRING([--without-xfixes], [disable XFixes support and wmclipd])],
-    [],
-    [with_xfixes=auto])
-AS_IF([test "x$with_xfixes" != xno],
-    [PKG_CHECK_MODULES([XFIXES], [xfixes],
-        [have_xfixes=yes
-         supported_xext="$supported_xext XFixes"],
-        [AS_IF([test "x$with_xfixes" = xyes],
-            [AC_MSG_ERROR([libXfixes is required for wmclipd -- $XFIXES_PKG_ERRORS])],
-            [have_xfixes=no
-             XFIXES_CFLAGS=
-             XFIXES_LIBS=])])],
-    [have_xfixes=no
-     XFIXES_CFLAGS=
-     XFIXES_LIBS=])
-AC_SUBST(XFIXES_CFLAGS)
-AC_SUBST(XFIXES_LIBS)
-AM_CONDITIONAL([HAVE_XFIXES], [test "x$have_xfixes" = xyes])
+WM_OPTIONAL_DEP([XFIXES], [xfixes], [have_xfixes],
+    [with], [xfixes],
+    [--without-xfixes],
+    [disable XFixes support and wmclipd],
+    [supported_xext="$supported_xext XFixes"],
+    [XFixes],
+    [HAVE_XFIXES])
 
 
 dnl wmlock screen locker, needs PAM (Linux/FreeBSD/NetBSD) or bsd_auth (OpenBSD)
@@ -951,29 +916,17 @@ AM_CONDITIONAL([BUILD_WMLOCK], [test "x$enable_wmlock" = xyes])
 
 dnl Startup notification - launcher and monitor support
 dnl ====================================================
-AC_ARG_WITH([startup-notification],
-    [AS_HELP_STRING([--without-startup-notification],
-                    [disable startup-notification launcher and monitor support])],
-    [],
-    [with_startup_notification=auto])
-AS_IF([test "x$with_startup_notification" != xno],
-    [PKG_CHECK_MODULES([STARTUP_NOTIFICATION], [libstartup-notification-1.0],
-        [have_startup_notification=yes
-         supported_xext="$supported_xext StartupNotification"
-         AC_DEFINE([HAVE_STARTUP_NOTIFICATION], [1],
-                   [defined when libstartup-notification is available so the dock and root
-                    menu can broadcast launches and the monitor can match _NET_STARTUP_ID])],
-        [AS_IF([test "x$with_startup_notification" = xyes],
-            [AC_MSG_ERROR([libstartup-notification-1.0 was requested but not found -- $STARTUP_NOTIFICATION_PKG_ERRORS])],
-            [have_startup_notification=no
-             STARTUP_NOTIFICATION_CFLAGS=
-             STARTUP_NOTIFICATION_LIBS=])])],
-    [have_startup_notification=no
-     STARTUP_NOTIFICATION_CFLAGS=
-     STARTUP_NOTIFICATION_LIBS=])
-AC_SUBST(STARTUP_NOTIFICATION_CFLAGS)
-AC_SUBST(STARTUP_NOTIFICATION_LIBS)
-AM_CONDITIONAL([HAVE_STARTUP_NOTIFICATION], [test "x$have_startup_notification" = xyes])
+WM_OPTIONAL_DEP([STARTUP_NOTIFICATION], [libstartup-notification-1.0],
+    [have_startup_notification],
+    [with], [startup-notification],
+    [--without-startup-notification],
+    [disable startup-notification launcher and monitor support],
+    [supported_xext="$supported_xext StartupNotification"
+     AC_DEFINE([HAVE_STARTUP_NOTIFICATION], [1],
+               [defined when libstartup-notification is available so the dock and root
+                menu can broadcast launches and the monitor can match _NET_STARTUP_ID])],
+    [StartupNotification],
+    [HAVE_STARTUP_NOTIFICATION])
 
 
 dnl X Session Management Protocol client support
@@ -981,33 +934,17 @@ dnl ============================================
 dnl Auto-enabled when libSM/libICE are present: runtime is gated on
 dnl $SESSION_MANAGER so a bare startx session sees no behavioural change,
 dnl and both libraries ship with every X distribution.
-m4_divert_push([INIT_PREPARE])dnl
-AC_ARG_ENABLE([xsmp],
-    [AS_HELP_STRING([--disable-xsmp],
-                    [do not connect to an XSMP session manager for checkpoint/restart])],
-    [AS_CASE([$enableval],
-        [yes|no], [],
-        [AC_MSG_ERROR([bad value '$enableval' for --enable-xsmp])])],
-    [enable_xsmp=auto])
-m4_divert_pop([INIT_PREPARE])dnl
-
-AS_IF([test "x$enable_xsmp" != "xno"],
-    [PKG_CHECK_MODULES([XSMP], [sm ice],
-        [AC_DEFINE([USE_XSMP], [1],
-                   [defined when libSM/libICE are linked so wmaker registers as an XSMP client])
-         enable_xsmp=yes
-         supported_core="$supported_core XSMP"],
-        [AS_IF([test "x$enable_xsmp" = "xyes"],
-            [AC_MSG_ERROR([--enable-xsmp given but libSM/libICE not found -- $XSMP_PKG_ERRORS])],
-            [enable_xsmp=no
-             XSMP_CFLAGS=
-             XSMP_LIBS=
-             unsupported="$unsupported XSMP"])])],
-    [XSMP_CFLAGS=
-     XSMP_LIBS=
-     unsupported="$unsupported XSMP"])
-AC_SUBST(XSMP_CFLAGS)
-AC_SUBST(XSMP_LIBS)
+dnl No INIT_PREPARE divert here: WM_OPTIONAL_DEP bundles the pkg-config
+dnl probe with the argument parsing, and the probe must run after
+dnl PKG_PROG_PKG_CONFIG (diverted code is emitted before it).
+WM_OPTIONAL_DEP([XSMP], [sm ice], [enable_xsmp],
+    [enable], [xsmp],
+    [--disable-xsmp],
+    [do not connect to an XSMP session manager for checkpoint/restart],
+    [AC_DEFINE([USE_XSMP], [1],
+               [defined when libSM/libICE are linked so wmaker registers as an XSMP client])
+     supported_core="$supported_core XSMP"],
+    [XSMP])
 
 
 dnl ==============================================
@@ -1020,7 +957,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([xpm],
     [AS_HELP_STRING([--disable-xpm], [disable use of XPM pixmaps through libXpm])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-xpm])] )],
     [enable_xpm=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1048,7 +985,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([png],
     [AS_HELP_STRING([--disable-png], [disable PNG support through libpng])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-png])] )],
     [enable_png=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1061,7 +998,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([jpeg],
     [AS_HELP_STRING([--disable-jpeg], [disable JPEG support through libjpeg])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-jpeg])] )],
     [enable_jpeg=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1074,7 +1011,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([jxl],
     [AS_HELP_STRING([--disable-jxl], [disable JXL support through libjxl])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-jxl])] )],
     [enable_jxl=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1092,7 +1029,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([tiff],
     [AS_HELP_STRING([--disable-tiff], [disable use of TIFF images through libtiff])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-tiff])] )],
     [enable_tiff=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1105,7 +1042,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([webp],
     [AS_HELP_STRING([--disable-webp], [disable WEBP support through libwebp])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-webp])] )],
     [enable_webp=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1118,7 +1055,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([svg],
     [AS_HELP_STRING([--disable-svg], [disable SVG support through librsvg])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-svg])] )],
     [enable_svg=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1131,7 +1068,7 @@ m4_divert_push([INIT_PREPARE])dnl
 AC_ARG_ENABLE([magick],
     [AS_HELP_STRING([--disable-magick], [disable MAGICK support through libMagickWand])],
     [AS_CASE(["$enableval"],
-        [yes|no], [],
+        [yes|no|auto], [],
         [AC_MSG_ERROR([bad value $enableval for --enable-magick])] )],
     [enable_magick=auto])
 m4_divert_pop([INIT_PREPARE])dnl
@@ -1168,25 +1105,13 @@ dnl Archive Support for wmiv
 dnl =================================
 dnl libarchive ships a .pc, use PKG_CHECK_MODULES so transitive private
 dnl dependencies (lzma, zstd, lz4, bz2, zlib, ...) reach a static link
-AC_ARG_WITH([libarchive],
-    [AS_HELP_STRING([--with-libarchive@<:@=auto|yes|no@:>@],
-        [enable archive (.tar/.zip/.cbz/...) support in wmiv @<:@default=auto@:>@])],
-    [AS_CASE([$withval],
-        [yes|no|auto], [with_libarchive="$withval"],
-        [AC_MSG_ERROR([bad value '$withval' for --with-libarchive, expected yes, no or auto])])],
-    [with_libarchive=auto])
-LIBARCHIVE_LIBS=
-LIBARCHIVE_CFLAGS=
-AS_IF([test "x$with_libarchive" != "xno"],
-    [PKG_CHECK_MODULES([LIBARCHIVE], [libarchive],
-        [AC_DEFINE([HAVE_LIBARCHIVE], [1], [Define if libarchive is available])
-         supported_gfx="$supported_gfx libarchive"],
-        [AS_IF([test "x$with_libarchive" = "xyes"],
-            [AC_MSG_ERROR([--with-libarchive given but $LIBARCHIVE_PKG_ERRORS])])
-         unsupported="$unsupported libarchive"])],
-    [unsupported="$unsupported libarchive"])
-AC_SUBST([LIBARCHIVE_LIBS])
-AC_SUBST([LIBARCHIVE_CFLAGS])
+WM_OPTIONAL_DEP([LIBARCHIVE], [libarchive], [have_libarchive],
+    [with], [libarchive],
+    [--with-libarchive@<:@=auto|yes|no@:>@],
+    [enable archive (.tar/.zip/.cbz/...) support in wmiv @<:@default=auto@:>@],
+    [AC_DEFINE([HAVE_LIBARCHIVE], [1], [Define if libarchive is available])
+     supported_gfx="$supported_gfx libarchive"],
+    [libarchive])
 
 
 dnl ==============================================
@@ -1202,28 +1127,14 @@ dnl libsndfile. Both probes gate the wmsoundd player daemon, an optional
 dnl util program subscribed to the WIPC sound event stream. libsndfile
 dnl decodes WAV/AIFF/AU/FLAC/Ogg/Opus/MP3 so the freedesktop sound theme
 dnl files under /usr/share/sounds/ are usable out of the box
-AC_ARG_WITH([pipewire],
-    [AS_HELP_STRING([--with-pipewire@<:@=auto|yes|no@:>@],
-        [build the wmsoundd event player daemon @<:@default=auto@:>@])],
-    [AS_CASE([$withval],
-        [yes|no|auto], [with_pipewire="$withval"],
-        [AC_MSG_ERROR([bad value '$withval' for --with-pipewire, expected yes, no or auto])])],
-    [with_pipewire=auto])
-WSOUND_CFLAGS=
-WSOUND_LIBS=
-have_pipewire=no
-AS_IF([test "x$with_pipewire" != "xno"],
-    [PKG_CHECK_MODULES([WSOUND], [libpipewire-0.3 sndfile],
-         [AC_DEFINE([HAVE_PIPEWIRE], [1], [Define if PipeWire is available])
-          have_pipewire=yes
-          supported_sound="$supported_sound wmsoundd"],
-         [AS_IF([test "x$with_pipewire" = "xyes"],
-             [AC_MSG_ERROR([--with-pipewire given but $WSOUND_PKG_ERRORS])])
-          unsupported="$unsupported wmsoundd"])],
-    [unsupported="$unsupported wmsoundd"])
-AC_SUBST([WSOUND_CFLAGS])
-AC_SUBST([WSOUND_LIBS])
-AM_CONDITIONAL([BUILD_WSOUND], [test "x$have_pipewire" = "xyes"])
+WM_OPTIONAL_DEP([WSOUND], [libpipewire-0.3 sndfile], [have_pipewire],
+    [with], [pipewire],
+    [--with-pipewire@<:@=auto|yes|no@:>@],
+    [build the wmsoundd event player daemon @<:@default=auto@:>@],
+    [AC_DEFINE([HAVE_PIPEWIRE], [1], [Define if PipeWire is available])
+     supported_sound="$supported_sound wmsoundd"],
+    [wmsoundd],
+    [BUILD_WSOUND])
 
 
 dnl
