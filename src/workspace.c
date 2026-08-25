@@ -1114,7 +1114,7 @@ static int collectHeadsToSwitch(WScreen *scr, int workspace, int head, int *swit
  * a single workspace index. */
 void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 {
-	WWindow *tmp, *foc = NULL, *foc2 = NULL;
+	WWindow *tmp, *foc = NULL;
 	int switch_head[WM_MAX_HEADS];
 	int n_switch, i;
 	int old_mirror;
@@ -1177,14 +1177,6 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 					}
 					toUnmap[toUnmapCount++] = tmp;
 				}
-				if (IS_OMNIPRESENT(tmp)) {
-					WApplication *wapp = wApplicationOf(tmp->main_window);
-					tmp->frame->workspace = workspace;
-					if (wapp)
-						wapp->last_workspace = workspace;
-					if (!foc2 && (tmp->flags.mapped || tmp->flags.shaded))
-						foc2 = tmp;
-				}
 			} else {
 				if (tmp->flags.selected) {
 					wWindowChangeWorkspace(tmp, workspace);
@@ -1227,9 +1219,6 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		scr->flags.ignore_focus_events = 1;
 		ProcessPendingEvents();
 		scr->flags.ignore_focus_events = 0;
-
-		if (!foc)
-			foc = foc2;
 
 		if (foc != NULL) {
 			WWindow *parse;
