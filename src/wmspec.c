@@ -1124,6 +1124,11 @@ static void updateClientList(WScreen *scr)
 	Window *windows;
 	int count;
 
+	if (scr->flags.manage_burst) {
+		scr->flags.client_lists_stale = 1;
+		return;
+	}
+
 	windows = (Window *) wmalloc(sizeof(Window) * (scr->window_count + 1));
 
 	count = 0;
@@ -1145,6 +1150,11 @@ static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
 	int client_count, i;
 	WCoreWindow *tmp;
 	WMBagIterator iter;
+
+	if (scr->flags.manage_burst) {
+		scr->flags.client_lists_stale = 1;
+		return;
+	}
 
 	/* update client list */
 	i = scr->window_count + 1;
@@ -1174,6 +1184,21 @@ static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
 	wfree(client_list_reverse);
 
 	XFlush(dpy);
+}
+
+/*
+ * Flush point for the manage burst: updates suppressed while
+ * scr->flags.manage_burst was set are applied here as one rebuild of
+ * each list. A no-op when nothing was suppressed.
+ */
+void wNETWMFlushClientLists(WScreen *scr)
+{
+	if (!scr->flags.client_lists_stale)
+		return;
+
+	scr->flags.client_lists_stale = 0;
+	updateClientList(scr);
+	updateClientListStacking(scr, NULL);
 }
 
 static void updateWorkspaceCount(WScreen *scr)

@@ -426,6 +426,10 @@ typedef struct _WScreen {
         unsigned int ignore_focus_events:1;
         unsigned int need_restack:1;   /* stacking list changed, X side
                                         * stale until CommitStacking() */
+	unsigned int manage_burst:1;   /* inside manageAllWindows(), EWMH
+					* client lists flush once at end */
+	unsigned int client_lists_stale:1; /* client lists changed while
+					    * manage_burst was set */
         unsigned int in_hot_corner:3;
         unsigned int mark_capture_mode:3;  /* one of WMarkCaptureMode */
 

@@ -876,6 +876,8 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
+	/* one client-list rebuild per burst instead of two per window */
+	scr->flags.manage_burst = 1;
 
 	/* Windows in this connection's XID range are wmaker's own helper
 	 * windows (dock tiles, balloon, geometry view, hot-corner sentinels),
@@ -1011,6 +1013,9 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	wfree(attr_ck);
 	wfree(geom_ck);
 	XUngrabServer(dpy);
+
+	scr->flags.manage_burst = 0;
+	wNETWMFlushClientLists(scr);
 
 	/* hide apps */
 	wwin = scr->focused_window;
