@@ -25,6 +25,7 @@ POTFILES  = \
 	$(top_srcdir)/src/defaults.c \
 	$(top_srcdir)/src/desktopfile.c \
 	$(top_srcdir)/src/dialog.c \
+	$(top_srcdir)/src/dialog_crash.c \
 	$(top_srcdir)/src/dialog_icon.c \
 	$(top_srcdir)/src/dialog_run.c \
 	$(top_srcdir)/src/dock.c \

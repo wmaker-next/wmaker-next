@@ -47,8 +47,6 @@ static int showCrashDialog(int sig)
 
 	dpy = XOpenDisplay(NULL);
 	if (dpy) {
-/* XXX TODO make sure that window states are saved and restored via netwm */
-
 		XGrabServer(dpy);
 		crashAction = wShowCrashingDialogPanel(sig);
 		XCloseDisplay(dpy);

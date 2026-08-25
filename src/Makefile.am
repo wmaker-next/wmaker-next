@@ -47,6 +47,7 @@ wmaker_SOURCES = 	\
 	desktopfile.h \
 	dialog.c \
 	dialog.h \
+	dialog_crash.c \
 	dialog_icon.c \
 	dialog_icon.h \
 	dialog_run.c \
