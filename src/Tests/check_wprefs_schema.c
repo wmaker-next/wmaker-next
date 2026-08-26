@@ -69,6 +69,9 @@ static const struct choice wprefs_choices[] = {
 #define CUR_KEY "TabAttachArea"
 	WPREFS_TABLE_tab_attach_area(R2)
 #undef CUR_KEY
+#define CUR_KEY "SwitcherOrder"
+	WPREFS_TABLE_switcher_order(R2)
+#undef CUR_KEY
 #define CUR_KEY "ResizeDisplay"
 	WPREFS_TABLE_resize_display(R2)
 #undef CUR_KEY

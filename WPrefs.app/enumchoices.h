@@ -109,6 +109,12 @@
 	R("Titlebar", N_("Titlebar")) \
 	R("Window",   N_("Window"))
 
+/* Expert.c, key "SwitcherOrder". Surfaced as an OPTION_WMAKER_ALT
+ * checkbox, this table only pins the value pair for check_wprefs_schema. */
+#define WPREFS_TABLE_switcher_order(R) \
+	R("Focus", N_("Focus")) \
+	R("Age",   N_("Age"))
+
 /* WindowHandling.c, key "DragMaximizedWindow" */
 #define WPREFS_TABLE_drag_maximized_window(R) \
 	R("Move",            N_("...changes its position (normal behavior)")) \

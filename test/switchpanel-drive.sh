@@ -2,7 +2,8 @@
 # Drive the window switch panel: flat cycle (Alt+Tab), app-group cycle
 # (Mod4+Tab), intra-app cycle (Mod4+grave), letter-key lookup by WM_CLASS
 # initial, Escape cancel, skip_switchpanel exclusion via
-# _NET_WM_STATE_SKIP_TASKBAR, and SwitchPanelIconSize runtime reconfigure.
+# _NET_WM_STATE_SKIP_TASKBAR, SwitchPanelIconSize runtime reconfigure,
+# and the SwitcherOrder runtime flip (Focus/MRU vs Age/creation).
 #
 # Harness conventions follow tabgroup-drive.sh: Xephyr, isolated
 # WMAKER_USER_ROOT and XDG_RUNTIME_DIR, PID tracking, no pkill.
@@ -546,6 +547,107 @@ sleep 0.3
 check "repeated forward/backward Super+Tab kept XTerm selected" \
     [ "$(wm_class_of "$(active_window)")" = "XTerm" ]
 check "wmaker alive after repeated forward/backward auto-drill" ipc_ready
+
+# --- 17. SwitcherOrder runtime flip ------------------------------------------
+note "SwitcherOrder: Focus (MRU) vs Age (creation order)"
+# Close the earlier xterms so exactly three clients remain and the cycle
+# array is fully known ([ordA, ...] with no older windows ahead).
+for w in "$XA" "$XB" "$AC" "$BT" "$GM"; do
+    DISPLAY=$DPY wmctrl -i -c "$w"
+done
+all_gone() {
+    DISPLAY=$DPY xdotool search --name '^(xtA|xtB|Alpha|Beta|Gamma)$' 2>/dev/null \
+        | grep -q . && return 1
+    return 0
+}
+wait_for 40 all_gone || fatal "old xterms did not close"
+check "wmaker alive after closing five xterms" ipc_ready
+
+# Three fresh xterms with distinct classes, spawned one at a time so the
+# manage order (and therefore creation order) is OA < OB < OC. Distinct
+# -class keeps each in its own WApplication so tab-groups and the group
+# dedup stay out of the way.
+spawn_term ordA OA 80x24+50+450
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^ordA\$' 2>/dev/null | grep -q ." \
+    || fatal "ordA did not map"
+spawn_term ordB OB 80x24+250+450
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^ordB\$' 2>/dev/null | grep -q ." \
+    || fatal "ordB did not map"
+spawn_term ordC OC 80x24+450+450
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^ordC\$' 2>/dev/null | grep -q ." \
+    || fatal "ordC did not map"
+sleep 0.3
+# active_window() reports hex, xdotool reports decimal: normalize to hex.
+OA=$(printf '0x%x' "$(find_client ordA)")
+OB=$(printf '0x%x' "$(find_client ordB)")
+OC=$(printf '0x%x' "$(find_client ordC)")
+note "ordA=$OA ordB=$OB ordC=$OC"
+
+# Activate B, C, then A so the recency chain is A, C, B while creation
+# order stays A < B < C. Re-run before every probe: each cycle moves
+# focus and the Focus-mode expectations depend on exact recency.
+mru_chain() {
+    for w in "$OB" "$OC" "$OA"; do
+        xdo windowactivate "$w"; sleep 0.2
+    done
+}
+
+# Baseline Focus assertion: Alt+Tab forward from A selects C.
+mru_chain
+sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.3
+after=$(active_window)
+check "Focus order: Alt+Tab from most-recent picks next-most-recent ($after = $OC)" \
+    [ "$after" = "$OC" ]
+check "wmaker alive after Focus-order cycle" ipc_ready
+
+# Flip to Age at runtime.
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitcherOrder Age
+msg -q reconfigure || fail "reconfigure rejected"
+sleep 0.3
+
+# Age assertion: same array position math but creation-ordered list.
+mru_chain
+sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.3
+after=$(active_window)
+check "Age order: Alt+Tab from oldest of three picks next-created ($after = $OB)" \
+    [ "$after" = "$OB" ]
+check "wmaker alive after Age-order cycle" ipc_ready
+
+# Backward discriminator: Alt+Shift+Tab from A wraps to the newest window C
+# in Age mode (it would wrap past B to an old window in Focus mode).
+mru_chain
+sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo keydown shift; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup shift; sleep 0.1
+xdo keyup alt; sleep 0.3
+after=$(active_window)
+check "Age order: backward cycle wraps to newest created ($after = $OC)" \
+    [ "$after" = "$OC" ]
+check "wmaker alive after Age-order backward cycle" ipc_ready
+
+# Flip back and confirm the round trip restores MRU behaviour.
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitcherOrder Focus
+msg -q reconfigure || fail "reconfigure rejected"
+sleep 0.3
+mru_chain
+sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.3
+after=$(active_window)
+check "Focus order after flip-back: Alt+Tab picks next-most-recent again ($after = $OC)" \
+    [ "$after" = "$OC" ]
+check "wmaker alive after SwitcherOrder round-trip" ipc_ready
 
 # --- teardown --------------------------------------------------------------
 note "switchpanel drive summary"

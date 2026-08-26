@@ -180,6 +180,10 @@ enum {
 	RUN_MATCH_FUZZY
 };
 
+/* switch panel order */
+#define SWO_FOCUS	0	/* most recently focused first */
+#define SWO_AGE		1	/* creation order, oldest first */
+
 /* per-workspace tiling layout, kept in sync with WLayout in layout.h so
  * WPrefs can consume the schema without pulling in wmaker headers */
 enum {

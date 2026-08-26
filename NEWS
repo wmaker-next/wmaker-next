@@ -3,6 +3,17 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Configurable switch panel ordering
+-----------------------------------
+
+A new SwitcherOrder option chooses how the switch panel (Alt-Tab) and
+the window list menu order their entries. The default "Focus" keeps
+the most-recently-focused ordering. "Age" lists windows oldest-created
+first, independent of the focus history, so the cycle order stays
+stable while windows are opened and closed. The window list menu
+applies the same ordering within each workspace block. The setting is
+runtime-reloadable and has an Expert panel checkbox in WPrefs.
+
 Shared-edge resize of tiled half/quarter windows
 -------------------------------------------------
 

@@ -195,6 +195,7 @@ void OpenSwitchMenu(WScreen * scr, int x, int y, int keyboard)
 
 static int menuIndexForWindow(WMenu * menu, WWindow * wwin, int old_pos)
 {
+	Bool age = w_global.config->switcher_order == SWO_AGE;
 	int idx, move_down;
 
 	if (menu->entry_no <= old_pos)
@@ -208,8 +209,14 @@ static int menuIndexForWindow(WMenu * menu, WWindow * wwin, int old_pos)
 		if (tw == wwin)
 			move_down = 1;
 
-		if (IS_OMNIPRESENT(tw) || (tw != wwin &&
-					   WWIN_PRIMARY_WS(tw) >= WWIN_PRIMARY_WS(wwin)))
+		if (IS_OMNIPRESENT(tw))
+			return idx - move_down;
+
+		if (tw != wwin && WWIN_PRIMARY_WS(tw) > WWIN_PRIMARY_WS(wwin))
+			return idx - move_down;
+
+		if (tw != wwin && WWIN_PRIMARY_WS(tw) == WWIN_PRIMARY_WS(wwin) &&
+		    (!age || tw->creation_id > wwin->creation_id))
 			return idx - move_down;
 	}
 

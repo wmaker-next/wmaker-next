@@ -211,6 +211,12 @@ static const WConfigEnum tab_attach_areas[] = {
 	{NULL, 0, 0}
 };
 
+static const WConfigEnum switcher_orders[] = {
+	{"Focus", SWO_FOCUS, 0},
+	{"Age",   SWO_AGE,   0},
+	{NULL, 0, 0}
+};
+
 static const WConfigEnum run_matching_modes[] = {
 	{"prefix", RUN_MATCH_PREFIX, 0},
 	{"substring", RUN_MATCH_SUBSTRING, 0},

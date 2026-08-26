@@ -284,6 +284,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CYCLE_IGNORE_MINIMIZED, "CycleIgnoreMinimized", BOOL, cycle_ignore_minimized, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(SWITCHER_ORDER, "SwitcherOrder", ENUM, switcher_order, "Focus", \
+	  switcher_orders, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(DB_CLICK_MAXIMIZE, "DbClickMaximize", BOOL, double_click_maximize, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLOSE_ROOT_MENU_BY_LEFT_OR_RIGHT_MOUSE_CLICK, \

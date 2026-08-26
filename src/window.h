@@ -465,6 +465,9 @@ typedef struct WWindow {
 	int restore_tab_idx;
 	int restore_tab_active;
 
+	unsigned int creation_id;	/* per-screen monotonic manage-order id,
+					 * used by SwitcherOrder = Age */
+
 	WFrameBorderOverride frame_border;	/* per-window frame border overrides */
 	WGeometry start_geometry;			/* StartGeometry attribute */
 	unsigned int start_geometry_set:1;	/* StartGeometry was specified */

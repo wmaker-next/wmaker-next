@@ -1039,6 +1039,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	 * skip the top_width-compensation on the initial static- and
 	 * dynamic-rule decoration apply. Cleared just before return. */
 	wwin->flags.initializing = 1;
+	wwin->creation_id = ++scr->last_creation_id;
 
 	title = WXRcvString(dpy, ck.net_name, NULL);
 	if (title)
@@ -2045,6 +2046,7 @@ WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
 	int il, ir, it, ib;
 
 	wwin = wWindowCreate();
+	wwin->creation_id = ++scr->last_creation_id;
 
 	WMAddNotificationObserver(appearanceObserver, wwin, WNWindowAppearanceSettingsChanged, wwin);
 

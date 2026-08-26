@@ -178,19 +178,28 @@ static Bool classAlreadyInArray(WMArray *windows, WWindow *wwin)
 	return False;
 }
 
+static int compareCreationOrder(const void *a, const void *b)
+{
+	const WWindow *wa = *(WWindow *const *)a;
+	const WWindow *wb = *(WWindow *const *)b;
+
+	if (wa->creation_id < wb->creation_id)
+		return -1;
+	if (wa->creation_id > wb->creation_id)
+		return 1;
+	return 0;
+}
+
 static WMArray *makeWindowListArray(WWindow *ref, int include_unmapped, CycleMode mode)
 {
+	WMArray *candidates = WMCreateArray(10);
 	WMArray *windows = WMCreateArray(10);
 	WWindow *wwin = ref;
+	int i;
 
 	while (wwin) {
 		if ((canReceiveFocus(wwin) != 0) &&
 		    (wwin->flags.mapped || wwin->flags.shaded || include_unmapped)) {
-			if (mode == CYCLE_CLASS_ONLY)
-				if (!sameWindowClass(ref, wwin)) {
-					wwin = wwin->prev;
-					continue;
-				}
 			if (!w_global.config->show_all_tabs_in_switch_panel
 			    && wGroupIsInactiveMember(wwin)) {
 				wwin = wwin->prev;
@@ -199,16 +208,23 @@ static WMArray *makeWindowListArray(WWindow *ref, int include_unmapped, CycleMod
 			/* A direct modal transient is redundant only when its
 			 * parent would be listed and can redirect focus to it. */
 			if (!WFLAGP(wwin, skip_switchpanel) &&
-			    !modalReachableThroughParent(ref, wwin, include_unmapped, mode)) {
-				if (mode == CYCLE_GROUP && classAlreadyInArray(windows, wwin)) {
-					wwin = wwin->prev;
-					continue;
-				}
-				WMAddToArray(windows, wwin);
-			}
+			    !modalReachableThroughParent(ref, wwin, include_unmapped, mode))
+				WMAddToArray(candidates, wwin);
 		}
 		wwin = wwin->prev;
 	}
+
+	if (w_global.config->switcher_order == SWO_AGE)
+		WMSortArray(candidates, compareCreationOrder);
+
+	WM_ITERATE_ARRAY(candidates, wwin, i) {
+		if (mode == CYCLE_CLASS_ONLY && !sameWindowClass(ref, wwin))
+			continue;
+		if (mode == CYCLE_GROUP && classAlreadyInArray(windows, wwin))
+			continue;
+		WMAddToArray(windows, wwin);
+	}
+	WMFreeArray(candidates);
 	return windows;
 }
 

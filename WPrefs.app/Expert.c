@@ -100,6 +100,9 @@ static struct expert_option {
 	{ N_("Ignore minimized windows when cycling."),
 	  OPTION_WMAKER, "CycleIgnoreMinimized" },
 
+	{ N_("Order the switch panel by creation time instead of focus history."),
+	  OPTION_WMAKER_ALT, "SwitcherOrder" },
+
 	{ N_("Show app icons in window list."),
 	  OPTION_WMAKER, "WindowListAppIcons" },
 

@@ -387,6 +387,7 @@
 	CycleActiveHeadOnly = NO;
 	CycleAllWorkspaces = NO;
 	CycleIgnoreMinimized = NO;
+	SwitcherOrder = Focus;
 	WindowListAppIcons = NO;
 	ShowAllTabsInSwitchPanel = YES;
 	TabsInTitlebar = YES;
