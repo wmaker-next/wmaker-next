@@ -398,6 +398,8 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(WINDOW_SNAPPING, "WindowSnapping", BOOL, window_snapping, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(SHARED_EDGE_RESIZE, "SharedEdgeResize", BOOL, shared_edge_resize, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_EDGE_DETECT, "SnapEdgeDetect", INT, snap_edge_detect, "1", \
 	  NULL, 0, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SNAP_CORNER_DETECT, "SnapCornerDetect", INT, snap_corner_detect, "10", \

@@ -102,6 +102,7 @@
 	DisableSound = YES;
 	DontLinkWorkspaces = YES;
 	WindowSnapping = NO;
+	SharedEdgeResize = NO;
 	SnapEdgeDetect = 1;
 	SnapCornerDetect = 10;
 	SnapToTopMaximizesFullscreen = NO;

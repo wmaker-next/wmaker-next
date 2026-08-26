@@ -1978,6 +1978,335 @@ Bool find_nearest_edge(WWindow *self, int head, int workspace,
 	return found;
 }
 
+/*
+ * Shared-edge resize: when the grabbed edge of an interactive resize is
+ * the seam of a tiled half/quarter arrangement, the window across the
+ * seam is resized in lockstep, one growing by d while the other shrinks.
+ */
+
+/* abutment tolerance: WindowGap, with slack for hand placement */
+#define SHARED_EDGE_ABUT_TOL()	WMAX(w_global.config->window_gap, 8)
+
+typedef struct {
+	WWindow *partner;
+	int side;		/* +1: partner right/below the seam, -1 left/above */
+	int gap;		/* seam gap measured at drag start */
+	int clamp_lo;		/* inclusive seam range from both min sizes */
+	int clamp_hi;
+	int fixed_far;		/* partner outer boundary away from the seam */
+	int fixed_near;		/* grabbed window boundary opposite the seam */
+	int fb2;		/* partner frame border term */
+	int inner;		/* partner il+ir (X) or it+ib (Y) */
+	int titlebar;		/* partner top_width+bottom_width (Y only) */
+	int min;		/* partner minimum client extent on the axis */
+	int px, py, pw, ph;	/* last computed partner client geometry */
+} SharedEdgePair;
+
+static int shared_edge_min_client_extent(WWindow *wwin, int horizontal)
+{
+	int minv = 1;
+
+	if (wwin->normal_hints) {
+		if (horizontal) {
+			if (wwin->normal_hints->min_width > minv)
+				minv = wwin->normal_hints->min_width;
+		} else {
+			if (wwin->normal_hints->min_height > minv)
+				minv = wwin->normal_hints->min_height;
+		}
+	}
+	if (minv < MIN_WINDOW_SIZE)
+		minv = MIN_WINDOW_SIZE;
+
+	return minv;
+}
+
+/* Partner client geometry for a seam at the given coordinate. The far
+ * edge stays fixed, the near edge follows the seam at the recorded
+ * distance. Client dimensions come out through the partner's own
+ * border widths, never the grabbed window's. */
+static void shared_edge_partner_geometry(SharedEdgePair *p, int axis, int seam)
+{
+	if (axis == 0) {
+		if (p->side > 0)
+			p->px = seam + p->gap;
+		else
+			p->px = p->fixed_far;
+		p->pw = ((p->side > 0) ? p->fixed_far : seam - p->gap)
+			- p->px - p->fb2 - p->inner;
+	} else {
+		if (p->side > 0)
+			p->py = seam + p->gap;
+		else
+			p->py = p->fixed_far;
+		p->ph = ((p->side > 0) ? p->fixed_far : seam - p->gap)
+			- p->py - p->fb2 - p->titlebar - p->inner;
+	}
+}
+
+/*
+ * Find the window tiled against wwin on one axis. axis is 0 for an X
+ * split (left/right seam) or 1 for a Y split (top/bottom seam), side is
+ * the direction to look in relative to wwin (+1 right/below, -1
+ * left/above). Detection is purely geometric and seam-local: any
+ * resizable window abutting wwin across the split axis and matching
+ * wwin's extent on the perpendicular axis qualifies. Returns at most
+ * one partner, refusing ambiguous arrangements.
+ */
+static WWindow *wFindTilePartnerAxis(WWindow *wwin, int axis, int side)
+{
+	WScreen *scr = wwin->screen_ptr;
+	int head = wGetHeadForWindow(wwin);
+	int tol = SHARED_EDGE_ABUT_TOL();
+	int self_left = WLEFT(wwin), self_right = WRIGHT(wwin) + 1;
+	int self_top = WTOP(wwin), self_bottom = WBOTTOM(wwin) + 1;
+	int self_lo, self_hi, facing;
+	WWindow *tmp, *best;
+	int best_diff;
+	Bool ambiguous;
+
+	if (axis == 0) {
+		self_lo = self_top;
+		self_hi = self_bottom;
+		facing = (side > 0) ? self_right : self_left;
+	} else {
+		self_lo = self_left;
+		self_hi = self_right;
+		facing = (side > 0) ? self_bottom : self_top;
+	}
+
+	best = NULL;
+	best_diff = 0;
+	ambiguous = False;
+
+	for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
+		int cand_lo, cand_hi, cand_facing, cand_span;
+		int overlap, span, diff;
+
+		/* a shaded window passes every geometric test but cannot
+		 * be meaningfully resized, just skip it. Transients are
+		 * never tile partners either. */
+		if (tmp == wwin || tmp->flags.miniaturized || tmp->flags.hidden
+		    || tmp->flags.shaded || tmp->flags.obscured
+		    || WFLAGP(tmp, sunken) || tmp->transient_for != None)
+			continue;
+		if (!IS_RESIZABLE(tmp))
+			continue;
+		if (!WWIN_ON_WORKSPACE(tmp, scr->current_workspace))
+			continue;
+		if (wGetHeadForWindow(tmp) != head)
+			continue;
+
+		if (axis == 0) {
+			cand_lo = WTOP(tmp);
+			cand_hi = WBOTTOM(tmp) + 1;
+			cand_facing = (side > 0) ? WLEFT(tmp) : WRIGHT(tmp) + 1;
+		} else {
+			cand_lo = WLEFT(tmp);
+			cand_hi = WRIGHT(tmp) + 1;
+			cand_facing = (side > 0) ? WTOP(tmp) : WBOTTOM(tmp) + 1;
+		}
+
+		/* abutting across the split axis */
+		if (abs(cand_facing - facing) > tol)
+			continue;
+
+		/* matched extent on the perpendicular axis: >90% overlap
+		 * and no grossly different span, so a half next to a
+		 * quarter refuses while hand-placement drift pairs. The
+		 * floor absorbs row quantization of terminal clients. */
+		cand_span = cand_hi - cand_lo;
+		diff = abs(cand_span - (self_hi - self_lo));
+		overlap = WMIN(self_hi, cand_hi) - WMAX(self_lo, cand_lo);
+		span = WMIN(self_hi - self_lo, cand_span);
+		if (overlap <= 0 || overlap * 10 <= span * 9)
+			continue;
+		if (diff > WMAX(span / 8, 28))
+			continue;
+
+		if (!best || diff < best_diff) {
+			best = tmp;
+			best_diff = diff;
+			ambiguous = False;
+		} else if (diff == best_diff) {
+			ambiguous = True;
+		}
+	}
+
+	if (ambiguous)
+		return NULL;
+
+	return best;
+}
+
+/* Record the seam constants for one axis of a drag. Everything the
+ * per-motion math needs is fixed at start: the partner's far edge, the
+ * gap, and the clamp range derived from both windows' minimum sizes.
+ * If that range is empty the pairing is refused and the axis falls
+ * back to a plain single-window resize. */
+static void shared_edge_pair_setup(SharedEdgePair *p, WWindow *wwin,
+				   int axis, int side,
+				   int origin, int end, int vert_border)
+{
+	WWindow *partner;
+	int gap, self_inner, self_min, far_total, seam0;
+	int il, ir, it, ib;
+
+	memset(p, 0, sizeof(*p));
+
+	partner = wFindTilePartnerAxis(wwin, axis, side);
+	if (!partner)
+		return;
+
+	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+	self_inner = il + ir;
+	self_min = shared_edge_min_client_extent(wwin, axis == 0);
+
+	p->fb2 = HAS_BORDER_WITH_SELECT(partner) ? 2 * wFrameBorderWidth(partner) : 0;
+	wFrameInnerBorderWidths(partner, &il, &ir, &it, &ib);
+	if (axis == 0) {
+		p->inner = il + ir;
+		p->titlebar = 0;
+	} else {
+		p->inner = it + ib;
+		p->titlebar = partner->frame->top_width + partner->frame->bottom_width;
+	}
+	p->min = shared_edge_min_client_extent(partner, axis == 0);
+	far_total = p->min + p->fb2 + p->inner + p->titlebar;
+
+	/* the seam tracks the grabbed window's moving edge in the same
+	 * frame-core coordinates the resize loop uses (fx+fw for a RIGHT
+	 * grab and so on), so the recorded gap absorbs any outer border
+	 * and the pair never shifts at drag start */
+	if (side > 0) {
+		if (axis == 0) {
+			gap = WLEFT(partner) - (WLEFT(wwin) + (int)wwin->frame->core->width);
+			p->fixed_far = WRIGHT(partner) + 1;
+			p->clamp_lo = origin + self_min + self_inner;
+		} else {
+			gap = WTOP(partner) - (WTOP(wwin) + (int)wwin->frame->core->height);
+			p->fixed_far = WBOTTOM(partner) + 1;
+			p->clamp_lo = origin + self_min + vert_border;
+		}
+		p->clamp_hi = p->fixed_far - gap - far_total;
+	} else {
+		if (axis == 0) {
+			gap = WLEFT(wwin) - (WRIGHT(partner) + 1);
+			p->fixed_far = WLEFT(partner);
+			p->fixed_near = end + 1;
+			p->clamp_hi = end + 1 - self_min - self_inner;
+		} else {
+			gap = WTOP(wwin) - (WBOTTOM(partner) + 1);
+			p->fixed_far = WTOP(partner);
+			p->fixed_near = end + 1;
+			p->clamp_hi = end + 1 - self_min - vert_border;
+		}
+		p->clamp_lo = p->fixed_far + gap + far_total;
+	}
+
+	if (p->clamp_lo > p->clamp_hi) {
+		/* both min sizes exceed the span, plain resize instead */
+		memset(p, 0, sizeof(*p));
+		return;
+	}
+
+	p->partner = partner;
+	p->side = side;
+	p->gap = gap;
+
+	p->px = WLEFT(partner);
+	p->py = WTOP(partner);
+	p->pw = partner->client.width;
+	p->ph = partner->client.height;
+
+	seam0 = origin;
+	if (side > 0)
+		seam0 += (axis == 0) ? (int)wwin->frame->core->width
+				     : (int)wwin->frame->core->height;
+	shared_edge_partner_geometry(p, axis, seam0);
+}
+
+/* Slide each active seam to the grabbed window's moving edge, clamped
+ * so neither window violates its minimum size, and recompute the
+ * grabbed dimension accordingly. The axes are independent. */
+static void shared_edge_adjust(SharedEdgePair *pair_x, SharedEdgePair *pair_y,
+			       int *fx, int *fy, int *fw, int *fh)
+{
+	SharedEdgePair *pairs[2];
+	int axes[2];
+	int i, seam;
+
+	pairs[0] = pair_x;
+	pairs[1] = pair_y;
+	axes[0] = 0;
+	axes[1] = 1;
+
+	for (i = 0; i < 2; i++) {
+		SharedEdgePair *p = pairs[i];
+
+		if (!p->partner)
+			continue;
+
+		if (i == 0)
+			seam = (p->side > 0) ? *fx + *fw : *fx;
+		else
+			seam = (p->side > 0) ? *fy + *fh : *fy;
+
+		if (seam < p->clamp_lo)
+			seam = p->clamp_lo;
+		else if (seam > p->clamp_hi)
+			seam = p->clamp_hi;
+
+		if (i == 0) {
+			if (p->side > 0) {
+				*fw = seam - *fx;
+			} else {
+				*fx = seam;
+				*fw = p->fixed_near - seam;
+			}
+		} else {
+			if (p->side > 0) {
+				*fh = seam - *fy;
+			} else {
+				*fy = seam;
+				*fh = p->fixed_near - seam;
+			}
+		}
+
+		shared_edge_partner_geometry(p, axes[i], seam);
+	}
+}
+
+/* Live partner update on the opaque path, paced by the partner's own
+ * _NET_WM_SYNC state so the pair cannot desync. */
+static void shared_edge_apply_motion(SharedEdgePair *p)
+{
+	if (!p->partner || p->pw < 1 || p->ph < 1)
+		return;
+
+	if (!wNETWMSyncRequestPending(p->partner)) {
+		wNETWMSyncRequestSend(p->partner);
+		wWindowConfigure(p->partner, p->px, p->py, p->pw, p->ph);
+	}
+}
+
+/*
+ * A completed paired drag leaves every moved window matching no
+ * maximize layout, so drop all maximize state instead of leaving bits
+ * that make the next titlebar drag restore stale pre-maximize
+ * geometry.
+ */
+static void shared_edge_forget_maximized(WWindow *wwin)
+{
+	if (!wwin || !(wwin->flags.maximized || wwin->flags.old_maximized))
+		return;
+
+	wwin->flags.maximized = 0;
+	wwin->flags.old_maximized = 0;
+	wWindowUpdateButtonImages(wwin);
+	WMPostNotificationName(WMNChangedState, wwin, "maximize");
+}
+
 #define RESIZEBAR	1
 #define HCONSTRAIN	2
 
@@ -2065,6 +2394,10 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 		    ? wGetHeadForWindow(wwin)
 		    : scr->xine_info.primary_head);
 	int opaqueResize = w_global.config->opaque_resize;
+	SharedEdgePair pair_x, pair_y;
+
+	pair_x.partner = NULL;
+	pair_y.partner = NULL;
 
 	if (HAS_BORDER(wwin))
 		wFrameInnerBorderWidths(wwin, NULL, NULL, &it, &ib);
@@ -2193,6 +2526,10 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 					fy = ry2 - fh + 1;
 				else if (res & DOWN)
 					fy = ry1;
+
+				if (pair_x.partner || pair_y.partner)
+					shared_edge_adjust(&pair_x, &pair_y,
+							   &fx, &fy, &fw, &fh);
 			} else if (abs(orig_x - event.xmotion.x_root) >= MOVE_THRESHOLD
 				   || abs(orig_y - event.xmotion.y_root) >= MOVE_THRESHOLD) {
 				int tx, ty;
@@ -2254,6 +2591,17 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 				showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 
 				started = 1;
+
+				if (w_global.config->shared_edge_resize) {
+					if (res & (LEFT | RIGHT))
+						shared_edge_pair_setup(&pair_x, wwin, 0,
+								       (res & RIGHT) ? 1 : -1,
+								       rx1, rx2, vert_border);
+					if (res & (UP | DOWN))
+						shared_edge_pair_setup(&pair_y, wwin, 1,
+								       (res & DOWN) ? 1 : -1,
+								       ry1, ry2, vert_border);
+				}
 			}
 			if (started) {
 				if (w_global.config->size_display == WDIS_FRAME_CENTER)
@@ -2283,6 +2631,8 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 						wNETWMSyncRequestSend(wwin);
 						wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
 					}
+					shared_edge_apply_motion(&pair_x);
+					shared_edge_apply_motion(&pair_y);
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 				};
 			}
@@ -2311,6 +2661,25 @@ void wMouseResizeWindow(WWindow * wwin, XEvent * ev)
 
 				wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
 				wWindowSynthConfigureNotify(wwin);
+
+				if (pair_x.partner) {
+					wWindowConfigure(pair_x.partner, pair_x.px, pair_x.py,
+							 pair_x.pw, pair_x.ph);
+					wWindowSynthConfigureNotify(pair_x.partner);
+				}
+				if (pair_y.partner) {
+					wWindowConfigure(pair_y.partner, pair_y.px, pair_y.py,
+							 pair_y.pw, pair_y.ph);
+					wWindowSynthConfigureNotify(pair_y.partner);
+				}
+
+				/* an unchanged drag did not break the maximized layout */
+				if ((pair_x.partner || pair_y.partner)
+				    && (fw != original_fw || fh != original_fh)) {
+					shared_edge_forget_maximized(wwin);
+					shared_edge_forget_maximized(pair_x.partner);
+					shared_edge_forget_maximized(pair_y.partner);
+				}
 			}
 			if (wwin->moveresize.active) {
 				XUngrabPointer(dpy, CurrentTime);

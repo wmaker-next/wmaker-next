@@ -3,6 +3,25 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Shared-edge resize of tiled half/quarter windows
+-------------------------------------------------
+
+When two windows form a left/right or top/bottom tiled pair (or four
+windows form a 2x2 quarter grid), resizing through the shared edge now
+moves the seam instead of resizing one window: the grabbed window grows
+by the drag amount while its partner shrinks by the same amount, keeping
+the tiling intact. Pairing is automatic and geometry based -- any two resizable
+windows that abut across a shared edge and match on the perpendicular
+axis qualify, however they were created or positioned. Diagonal grabs
+pair each axis independently, so dragging the
+inner corner of a 2x2 grid moves both seams at once. A completed paired
+resize clears the maximize state of every window it moved, so a later
+titlebar drag just moves it. The feature is off by default; enable it
+with "SharedEdgeResize = YES" in ~/GNUstep/Defaults/WindowMaker.
+Pairing tolerates hand placement: facing edges within max(WindowGap,
+8) pixels and perpendicular extents within an eighth of the smaller
+one pair. The seam gap is preserved during the drag.
+
 Sound event support restored
 -----------------------------
 

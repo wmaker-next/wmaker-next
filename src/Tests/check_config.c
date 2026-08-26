@@ -893,6 +893,7 @@ static void test_defaults(void)
 	CHECK(config->no_animations == 0);
 	CHECK(config->no_autowrap == 1);
 	CHECK(config->window_snapping == 0);
+	CHECK(config->shared_edge_resize == 0);
 	CHECK(config->snap_edge_detect == 1);
 	CHECK(config->snap_corner_detect == 10);
 	CHECK(config->snap_to_top_maximizes_fullscreen == 0);
@@ -1117,6 +1118,7 @@ static void test_valid_parse(void)
 			      "OpaqueMove = NO; OpaqueResize = YES; "
 			      "OpaqueMoveResizeKeyboard = YES; DisableAnimations = YES; "
 			      "DontLinkWorkspaces = NO; WindowSnapping = YES; "
+			      "SharedEdgeResize = YES; "
 			      "SnapEdgeDetect = 5; SnapCornerDetect = 15; "
 			      "SnapToTopMaximizesFullscreen = YES; "
 			      "DragMaximizedWindow = RestoreGeometry; "
@@ -1266,6 +1268,7 @@ static void test_valid_parse(void)
 	CHECK(config->no_animations == 1);
 	CHECK(config->no_autowrap == 0);
 	CHECK(config->window_snapping == 1);
+	CHECK(config->shared_edge_resize == 1);
 	CHECK(config->snap_edge_detect == 5);
 	CHECK(config->snap_corner_detect == 15);
 	CHECK(config->snap_to_top_maximizes_fullscreen == 1);
@@ -1545,6 +1548,7 @@ static void test_runtime_apply(void)
 				  "OpaqueMove = YES; OpaqueResize = NO; "
 				  "OpaqueMoveResizeKeyboard = NO; DisableAnimations = NO; "
 				  "DontLinkWorkspaces = YES; WindowSnapping = NO; "
+				  "SharedEdgeResize = NO; "
 				  "SnapEdgeDetect = 1; SnapCornerDetect = 10; "
 				  "SnapToTopMaximizesFullscreen = NO; "
 				  "DragMaximizedWindow = Move; "
@@ -1623,6 +1627,7 @@ static void test_runtime_apply(void)
 				  "OpaqueMove = NO; OpaqueResize = YES; "
 				  "OpaqueMoveResizeKeyboard = YES; DisableAnimations = YES; "
 				  "DontLinkWorkspaces = NO; WindowSnapping = YES; "
+				  "SharedEdgeResize = YES; "
 				  "SnapEdgeDetect = 5; SnapCornerDetect = 15; "
 				  "SnapToTopMaximizesFullscreen = YES; "
 				  "DragMaximizedWindow = NoMove; "
@@ -1738,6 +1743,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->no_animations == 1);
 	CHECK(w_global.config->no_autowrap == 0);
 	CHECK(w_global.config->window_snapping == 1);
+	CHECK(w_global.config->shared_edge_resize == 1);
 	CHECK(w_global.config->snap_edge_detect == 5);
 	CHECK(w_global.config->snap_corner_detect == 15);
 	CHECK(w_global.config->snap_to_top_maximizes_fullscreen == 1);
