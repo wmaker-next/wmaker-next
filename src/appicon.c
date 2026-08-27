@@ -741,6 +741,7 @@ static void iconDblClick(WObjDescriptor *desc, XEvent *event)
 	WApplication *wapp;
 	WScreen *scr = aicon->icon->core->screen_ptr;
 	int unhideHere;
+	WWindow *uwin;
 
 	assert(aicon->icon->owner != NULL);
 
@@ -752,11 +753,18 @@ static void iconDblClick(WObjDescriptor *desc, XEvent *event)
 	}
 
 	unhideHere = (event->xbutton.state & ShiftMask);
-	/* go to the last workspace that the user worked on the app */
-	if (!unhideHere && wapp->last_workspace != scr->current_workspace)
-		wWorkspaceChangeFromPointer(scr, wapp->last_workspace);
 
-	wUnhideApplication(wapp, event->xbutton.button == Button2, unhideHere);
+	uwin = wApplicationUrgentWindow(wapp);
+	if (uwin && !unhideHere) {
+		/* activate the window asking for attention */
+		wWindowSingleFocus(uwin);
+	} else {
+		/* go to the last workspace that the user worked on the app */
+		if (!unhideHere && wapp->last_workspace != scr->current_workspace)
+			wWorkspaceChangeFromPointer(scr, wapp->last_workspace);
+
+		wUnhideApplication(wapp, event->xbutton.button == Button2, unhideHere);
+	}
 
 	if (event->xbutton.state & MOD_MASK)
 		wHideOtherApplications(aicon->icon->owner);

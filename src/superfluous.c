@@ -357,27 +357,12 @@ void wAppBounce(WApplication *wapp)
 
 static int appIsUrgent(WApplication *wapp)
 {
-	WScreen *scr;
-	WWindow *wlist;
-
 	if (!wapp->main_window_desc) {
 		wwarning("group leader not found for window group");
 		return 0;
 	}
-	scr = wapp->main_window_desc->screen_ptr;
-	wlist = scr->focused_window;
-	if (!wlist)
-		return 0;
 
-	while (wlist) {
-		if (wlist->main_window == wapp->main_window) {
-			if (wlist->flags.urgent || wlist->flags.net_demands_attention)
-				return 1;
-		}
-		wlist = wlist->prev;
-	}
-
-	return 0;
+	return wApplicationUrgentWindow(wapp) != NULL;
 }
 
 static void doAppUrgentBounce(void *arg)

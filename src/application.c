@@ -102,6 +102,29 @@ WApplication *wApplicationOf(Window window)
 	return wapp;
 }
 
+/* Most recently focused window of the application asking for attention,
+ * NULL when none is. */
+WWindow *wApplicationUrgentWindow(WApplication *wapp)
+{
+	WScreen *scr;
+	WWindow *wwin;
+
+	if (!wapp || !wapp->main_window_desc)
+		return NULL;
+
+	scr = wapp->main_window_desc->screen_ptr;
+	wwin = scr->focused_window;
+
+	while (wwin) {
+		if (wwin->main_window == wapp->main_window
+		    && (wwin->flags.urgent || wwin->flags.net_demands_attention))
+			return wwin;
+		wwin = wwin->prev;
+	}
+
+	return NULL;
+}
+
 WApplication *wApplicationCreate(WWindow * wwin)
 {
 	WScreen *scr = wwin->screen_ptr;
