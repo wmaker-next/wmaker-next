@@ -248,7 +248,11 @@ static pid_t find_descendant_pid(pid_t parent, const char *cmd)
 #elif defined( FREEBSD ) || defined( DRAGONFLYBSD )
 static pid_t find_descendant_pid(pid_t parent, const char *cmd)
 {
+#if defined( FREEBSD )
 	int mib[3] = { CTL_KERN, KERN_PROC, KERN_PROC_PROC };
+#else /* DRAGONFLYBSD has no KERN_PROC_PROC, KERN_PROC_ALL is the full table */
+	int mib[3] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL };
+#endif
 	size_t len;
 	struct kinfo_proc *kp;
 	int nprocs, i;

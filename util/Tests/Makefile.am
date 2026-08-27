@@ -1,14 +1,18 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = wmclipd_cliptest check_wmgenmenu check_wmakermsg
+check_PROGRAMS = check_wmgenmenu check_wmakermsg
 TESTS = check_wmgenmenu check_wmakermsg
-DRIVE_TESTS = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
+DRIVE_TESTS =
+if USE_XCB_KEYSYMS
+check_PROGRAMS += wmclipd_cliptest
+DRIVE_TESTS += wmclipd-clipboard.sh wmiv-clipboard-paste.sh
+endif
 
 AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_srcdir)/util -I$(top_srcdir)/test @HEADER_SEARCH_PATH@
 
 wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip-common.c
-wmclipd_cliptest_CFLAGS = @XCB_CFLAGS@
-wmclipd_cliptest_LDADD = @XCB_LIBS@ -lxcb-keysyms
+wmclipd_cliptest_CFLAGS = @XCB_CFLAGS@ @XCBKEYSYMS_CFLAGS@
+wmclipd_cliptest_LDADD = @XCB_LIBS@ @XCBKEYSYMS_LIBS@
 
 check_wmgenmenu_SOURCES = check_wmgenmenu.c
 check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@

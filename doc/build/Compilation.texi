@@ -627,6 +627,11 @@ xcb connection so CJK and other input methods work; without it those fields fall
 xkbcommon compose table, so dead keys and the Compose key still work but no input-method
 server is consulted.
 
+@item --without-xcb-keysyms
+Do not build the @command{wmclipd} clipboard test client in @file{util/Tests}, which is the
+only consumer of the @emph{xcb-keysyms} library (it synthesises Ctrl+V key presses during the
+clipboard integration tests). The @command{wmclipd} daemon itself does not use the library.
+
 @item --disable-randr
 Disable use of the @emph{RandR} extension for live multi-monitor reconfiguration. With RandR
 enabled (the default) @sc{Window Maker} reads the per-output geometry from the server and

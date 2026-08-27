@@ -465,17 +465,23 @@ AC_CHECK_DECLS([SHM_ANON], [], [], [[#include <sys/mman.h>]])
 AC_SEARCH_LIBS([strerror], [cposix])
 
 dnl libev drives the WINGs event loop (timer, idle and input handlers).
-dnl Upstream ships no .pc file, so probe header + library directly and
-dnl keep the result out of the global LIBS so only libWUtil links it.
-AC_CHECK_HEADER([ev.h], [],
-    [AC_MSG_ERROR([libev header <ev.h> not found, install libev-dev / libev])])
+dnl Probe pkg-config first: distro packages land in /usr/local on DragonFly
+dnl where the base compiler does not search by default. libev ships a .pc
+dnl on Linux and the BSD package collections; fall back to header + library
+dnl probes for installations without one, keeping the result out of the
+dnl global LIBS so only libWUtil links it.
 LIBEV_LIBS=
-wm_save_LIBS=$LIBS
-AC_SEARCH_LIBS([ev_run], [ev],
-    [AS_IF([test "x$ac_cv_search_ev_run" != "xnone required"],
-        [LIBEV_LIBS="$ac_cv_search_ev_run"])],
-    [AC_MSG_ERROR([libev not found])])
-LIBS=$wm_save_LIBS
+PKG_CHECK_MODULES([LIBEV], [libev], [],
+    [LIBEV_CFLAGS=
+     LIBEV_LIBS=
+     AC_CHECK_HEADER([ev.h], [],
+         [AC_MSG_ERROR([libev header <ev.h> not found, install libev-dev / libev])])
+     wm_save_LIBS=$LIBS
+     AC_SEARCH_LIBS([ev_run], [ev],
+         [AS_IF([test "x$ac_cv_search_ev_run" != "xnone required"],
+             [LIBEV_LIBS="$ac_cv_search_ev_run"])],
+         [AC_MSG_ERROR([libev not found])])
+     LIBS=$wm_save_LIBS])
 AC_SUBST([LIBEV_LIBS])
 
 dnl nanosleep is generally available in standard libc, although not always the
@@ -804,7 +810,18 @@ dnl =====================================================
 dnl cairo-xcb draws onto the shared xcb connection resolved above and
 dnl pangocairo is the WINGs text render sink. cairo 1.16 is the floor for
 dnl a stable cairo-xcb backend and is in every maintained distribution.
-WM_REQUIRE_DEP([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo],
+dnl WINGs/wfont.c calls pango_fc_font_description_from_pattern() directly,
+dnl so the fontconfig module must be linked explicitly: some linkers
+dnl (DragonFly base binutils) do not resolve symbols through the
+dnl transitive libpangocairo -> libpangoft2 dependency chain. The module
+dnl is named pangofc-fontmap on pango < 1.44 and pangofc since.
+PANGOFC_MODULE=
+AS_IF([$PKG_CONFIG --exists pangofc-fontmap],
+    [PANGOFC_MODULE=pangofc-fontmap],
+    [AS_IF([$PKG_CONFIG --exists pangofc], [PANGOFC_MODULE=pangofc])])
+AS_IF([test -z "$PANGOFC_MODULE"],
+    [AC_MSG_ERROR([pangocairo is installed without a fontconfig module (pangofc or pangofc-fontmap) -- the pango installation cannot support WINGs text rendering])])
+WM_REQUIRE_DEP([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo $PANGOFC_MODULE],
     [cairo (>= 1.16 with the xcb backend) and pangocairo are required])
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
@@ -856,6 +873,20 @@ WM_OPTIONAL_DEP([XCB_IMDKIT], [xcb-imdkit >= 1.0.3], [have_xcb_imdkit],
                [defined when xcb-imdkit >= 1.0.3 is available for WINGs IM support])],
     [xcb-imdkit],
     [HAVE_XCB_IMDKIT])
+
+
+dnl xcb-keysyms is used only by the wmclipd clipboard test client
+dnl (util/Tests/wmclipd_cliptest.c) to synthesise Ctrl+V; the daemon and
+dnl the window manager do not need it, so probe softly and drop that one
+dnl test when the module is absent.
+dnl =====================================================================
+WM_OPTIONAL_DEP([XCBKEYSYMS], [xcb-keysyms], [have_xcb_keysyms],
+    [with], [xcb-keysyms],
+    [--without-xcb-keysyms],
+    [skip building the wmclipd clipboard test client (needs xcb-keysyms)],
+    [],
+    [],
+    [USE_XCB_KEYSYMS])
 
 
 dnl XFixes selection notifications, used by wmclipd clipboard-manager mode

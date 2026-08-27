@@ -148,11 +148,25 @@ static int cmp_ppix(const ppix *pa, const ppix *pb, int channel)
 	return va - vb;
 }
 
-/* qsort_r wrapper: the channel is passed through the context pointer. */
+/* BSD qsort_r and macOS take the context before the comparator and
+   pass it as the comparator's first parameter. glibc and NetBSD pass
+   it as the comparator's last parameter. */
+#if defined( FREEBSD ) || defined( DRAGONFLYBSD ) || \
+    defined( OPENBSD ) || defined( __APPLE__ )
+#define QSORT_R_CTX_FIRST 1
+#endif
+
+#ifdef QSORT_R_CTX_FIRST
+static int cmp_ppix_thunk(void *ctx, const void *a, const void *b)
+{
+	return cmp_ppix((const ppix *)a, (const ppix *)b, *(const int *)ctx);
+}
+#else
 static int cmp_ppix_r(const void *a, const void *b, void *ctx)
 {
 	return cmp_ppix(a, b, *(const int *)ctx);
 }
+#endif
 
 static void bucket_range(const pbucket *b, int *channel, int *range)
 {
@@ -254,7 +268,12 @@ RPalette *RExtractPalette(const RImage *image)
 			break;
 		b = &buck[best];
 		mid = b->n / 2;
-		qsort_r(b->p, b->n, sizeof(ppix), cmp_ppix_r, &best_channel);
+		qsort_r(b->p, b->n, sizeof(ppix),
+#ifdef QSORT_R_CTX_FIRST
+			&best_channel, cmp_ppix_thunk);
+#else
+			cmp_ppix_r, &best_channel);
+#endif
 		buck[nb].p = b->p + mid;
 		buck[nb].n = b->n - mid;
 		b->n = mid;
