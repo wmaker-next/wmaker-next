@@ -142,6 +142,10 @@ typedef struct WFrameWindow {
 
         unsigned int single_texture:1;
 
+	/* urgent-blink phase: 1 shows the "focused" look, 0 the frame's
+	 * own state, see frameEffectiveState() */
+	unsigned int urgent_blink:1;
+
         unsigned int need_texture_change:1;
 
         unsigned int repaint_only_titlebar:1;
@@ -181,6 +185,12 @@ void wFrameWindowUpdateBorders(WFrameWindow *fwin, int flags);
 void wFrameWindowDestroy(WFrameWindow *fwin);
 
 void wFrameWindowChangeState(WFrameWindow *fwin, int state);
+
+/* arm or disarm the urgent-blink appearance; repaints immediately so the
+ * window lands on the "focused" look the moment urgency arrives */
+void wFrameWindowUrgentBlink(WFrameWindow *fwin, int on);
+/* one blink tick: flip the phase and repaint titlebar and buttons */
+void wFrameWindowBlinkTick(WFrameWindow *fwin);
 
 void wFrameWindowPaint(WFrameWindow *fwin);
 

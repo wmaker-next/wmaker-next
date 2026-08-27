@@ -258,6 +258,8 @@ typedef struct WWindow {
 	short old_border_width;			/* original border width of client_win*/
 	Window client_win;			/* the window we're managing */
 	WObjDescriptor client_descriptor;	/* dummy descriptor for client */
+	WMHandlerID urgent_blink_timer;	/* armed while the titlebar blinks
+						 * its urgency phase */
 	struct {
 		int x, y;			/* position of *client* relative
 						 * to root */
@@ -654,6 +656,10 @@ void wWindowFocusPrev(WWindow *wwin, Bool inSameWorkspace);
 void wWindowFocusNext(WWindow *wwin, Bool inSameWorkspace);
 void wWindowFocus(WWindow *wwin, WWindow *owin);
 void wWindowUnfocus(WWindow *wwin);
+
+/* Idempotent: arms the per-window titlebar blink when the window is urgent
+ * and blinkable, disarms it otherwise. Mirrors wAppBounceWhileUrgent(). */
+void wWindowUrgentBlink(WWindow *wwin);
 
 void wWindowUpdateName(WWindow *wwin, const char *newTitle);
 void wWindowConstrainSize(WWindow *wwin, unsigned int *nwidth, unsigned int *nheight);

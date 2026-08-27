@@ -493,6 +493,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 			else
 				wwin->flags.urgent = 0;
 			wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+			wWindowUrgentBlink(wwin);
 		/*} else if (wwin->fake_group!=NULL) {
 			wwin->group_id = wwin->fake_group->leader; */
 		} else {

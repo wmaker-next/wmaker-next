@@ -178,11 +178,14 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		oapp = wApplicationOf(old_focused->main_window);
 
 	if (wwin == NULL) {
+		Window old_client = old_focused ? old_focused->client_win : None;
+
 		XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
 		if (old_focused)
 			wWindowUnfocus(old_focused);
 
-		if (oapp) {
+		/* the hook may have destroyed the window and its app */
+		if (oapp && wWindowFor(old_client)) {
 			wAppMenuUnmap(oapp->menu);
 			if (w_global.config->highlight_active_app)
 				wApplicationDeactivate(oapp);
@@ -1961,6 +1964,7 @@ void wIconifyWindow(WWindow *wwin)
 
 	wwin->flags.miniaturized = 1;
 	wwin->flags.mapped = 0;
+	wWindowUrgentBlink(wwin);
 
 	/* unmap transients */
 	unmapTransientsFor(wwin);
@@ -2107,6 +2111,7 @@ void wDeiconifyWindow(WWindow *wwin)
 
 	wwin->flags.miniaturized = 0;
 	wwin->flags.restore_iconified = 0;
+	wWindowUrgentBlink(wwin);
 
 	if (!netwm_hidden && !wwin->flags.shaded)
 		wwin->flags.mapped = 1;
@@ -2548,6 +2553,8 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 	}
 	if (wwin->flags.inspector_open)
 		wUnhideInspectorForWindow(wwin);
+
+	wWindowUrgentBlink(wwin);
 
 	WMPostNotificationName(WMNChangedState, wwin, "hide");
 }

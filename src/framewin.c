@@ -120,6 +120,15 @@ static inline int hideButton(const WFrameWindow *fwin, int role)
 	return (fwin->flags.hide_button >> role) & 1;
 }
 
+/* Appearance reads of the frame state go through this so an urgent-blink
+ * phase maps to the focused look without touching flags.state, which the
+ * border and focus code keeps reading raw. */
+static int frameEffectiveState(const WFrameWindow *fwin)
+{
+	return (fwin->flags.urgent_blink && !fwin->flags.single_texture)
+	     ? WS_FOCUSED : fwin->flags.state;
+}
+
 static inline int dontFit(const WFrameWindow *fwin, int role)
 {
 	return (fwin->flags.button_dont_fit >> role) & 1;
@@ -346,6 +355,7 @@ static void titlebarMouseDown(WObjDescriptor * desc, XEvent * event);
 static void resizebarMouseDown(WObjDescriptor * desc, XEvent * event);
 
 static void checkTitleSize(WFrameWindow * fwin);
+static void updateTexture(WFrameWindow *fwin);
 
 static void paintInnerBorderStrips(WFrameWindow *fwin)
 {
@@ -370,7 +380,7 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	if (il <= 0 && ir <= 0 && it <= 0 && ib <= 0)
 		return;
 
-	if (fwin->flags.state == WS_FOCUSED && fwin->inner_focused_border_pixel)
+	if (frameEffectiveState(fwin) == WS_FOCUSED && fwin->inner_focused_border_pixel)
 		pixel = *fwin->inner_focused_border_pixel;
 	else if (fwin->inner_border_pixel)
 		pixel = *fwin->inner_border_pixel;
@@ -831,6 +841,47 @@ void wFrameWindowChangeState(WFrameWindow * fwin, int state)
 	wFrameWindowPaint(fwin);
 }
 
+/* Re-point the titlebar and button backgrounds at the current phase's
+ * pre-rendered pixmaps and repaint. Skips the outer border swap when the
+ * frame's child is selected, nothing re-applies selected_border_pixel
+ * periodically so a tick would stomp the selection border for good, and
+ * when both border pixels are equal, a per-tick check because a theme
+ * reload re-allocates them mid-blink. */
+static void wFrameWindowBlinkRefresh(WFrameWindow *fwin)
+{
+	int state;
+
+	if (!fwin->titlebar)
+		return;
+
+	updateTexture(fwin);
+
+	state = frameEffectiveState(fwin);
+	if (fwin->flags.is_client_window_frame && fwin->child
+	    && !((WWindow *)fwin->child)->flags.selected
+	    && fwin->border_pixel && fwin->focused_border_pixel
+	    && *fwin->border_pixel != *fwin->focused_border_pixel)
+		XSetWindowBorder(dpy, fwin->core->window,
+				 state == WS_FOCUSED ? *fwin->focused_border_pixel
+						      : *fwin->border_pixel);
+
+	wFrameWindowPaint(fwin);
+}
+
+void wFrameWindowUrgentBlink(WFrameWindow *fwin, int on)
+{
+	if (fwin->flags.urgent_blink == (on != 0))
+		return;
+	fwin->flags.urgent_blink = on ? 1 : 0;
+	wFrameWindowBlinkRefresh(fwin);
+}
+
+void wFrameWindowBlinkTick(WFrameWindow *fwin)
+{
+	fwin->flags.urgent_blink = !fwin->flags.urgent_blink;
+	wFrameWindowBlinkRefresh(fwin);
+}
+
 static void updateTitlebar(WFrameWindow * fwin)
 {
 	short rolepos[WTB_ROLE_COUNT];
@@ -1260,7 +1311,7 @@ static void updateTexture(WFrameWindow * fwin)
 	int i, r;
 	unsigned long pixel;
 
-	i = fwin->flags.state;
+	i = frameEffectiveState(fwin);
 	if (fwin->titlebar) {
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
 			XSetWindowBackgroundPixmap(dpy, fwin->titlebar->window, fwin->title_back[i]);
@@ -1393,7 +1444,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 	WScreen *scr = fwin->screen_ptr;
 	int state;
 
-	state = fwin->flags.state;
+	state = frameEffectiveState(fwin);
 
 	if (fwin->flags.is_client_window_frame)
 		fwin->flags.justification = w_global.config->title_justification;
@@ -2278,10 +2329,13 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 {
 	WFrameWindow *fwin = (WFrameWindow *) desc->parent;
 	WCoreWindow *button = (WCoreWindow *) desc->self;
+	int state;
 	int r;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) event;
+
+	state = frameEffectiveState(fwin);
 
 	for (r = 0; r < WTB_ROLE_COUNT; r++)
 		if (button == fwin->buttons[r])
@@ -2293,18 +2347,18 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 	if (r == WTB_LANGUAGE) {
 		if (!hideButton(fwin, WTB_LANGUAGE)) {
 			/* map focused and pfocused states to focus language button image */
-			int lb_index = TS_NEW_GEOM(w_global.config->new_style) && (fwin->flags.state == 1) ? 1 : 0;
+			int lb_index = TS_NEW_GEOM(w_global.config->new_style) && (state == 1) ? 1 : 0;
 
-			paintButton(button, fwin->title_texture[fwin->flags.state],
-				    fwin->title_color[fwin->flags.state],
+			paintButton(button, fwin->title_texture[state],
+				    fwin->title_color[state],
 				    fwin->languagebutton_image[lb_index],
 				    False, False);
 		}
 		return;
 	}
 #endif
-	paintButton(button, fwin->title_texture[fwin->flags.state],
-		    fwin->title_color[fwin->flags.state],
+	paintButton(button, fwin->title_texture[state],
+		    fwin->title_color[state],
 		    fwin->button_image[r], False, wtb_role_info[r].from_xpm);
 }
 
@@ -2370,8 +2424,8 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 	}
 #endif
 
-	color = fwin->title_color[fwin->flags.state];
-	texture = fwin->title_texture[fwin->flags.state];
+	color = fwin->title_color[frameEffectiveState(fwin)];
+	texture = fwin->title_texture[frameEffectiveState(fwin)];
 	paintButton(button, texture, color, image, True, from_xpm);
 
 	while (!done) {

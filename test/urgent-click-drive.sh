@@ -6,6 +6,15 @@
 # (src/appicon.c iconDblClick) and a docked running tile (src/dock.c
 # iconDblClick). Asserts via _NET_ACTIVE_WINDOW, _NET_CURRENT_DESKTOP
 # and WM_STATE/_NET_WM_STATE on the client.
+#
+# A third boot verifies the urgent titlebar blink (BlinkTitlebarWhenUrgent):
+# an unfocused urgent window's titlebar must alternate between the
+# focused and unfocused appearance, stop on focus, survive an
+# iconify/deiconify round-trip, and turn off with the config key. The
+# blink phases are proven by pixel-comparing the test window's titlebar
+# crop against its own focused/unfocused reference crops (same window,
+# hence identical texture-cache pixmaps); a second window holds the
+# focus because a focused window rejects the demand.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -16,6 +25,7 @@ PIDFILE="$RUNTIME/pids"
 LOG=$(mktemp /tmp/urgent-click-drive.XXXXXX)
 WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 WMAKERMSG="$ROOT/util/.libs/wmakermsg"
+WDWRITE="$ROOT/util/.libs/wdwrite"
 SOCKET=
 SCR_W=1024
 SCR_H=768
@@ -56,6 +66,11 @@ msg() {
         "$WMAKERMSG" -s "$SOCKET" "$@"
 }
 ipc_ready() { msg -q get_version >/dev/null 2>&1; }
+
+wdwrite() {
+    LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        DISPLAY=$DPY "$WDWRITE" "$@"
+}
 
 start_wmaker() {
     LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
@@ -98,6 +113,53 @@ mapped_named() {
     DISPLAY=$DPY xdotool search --name "^$1\$" 2>/dev/null | grep -q .
 }
 
+# --- urgent titlebar blink helpers --------------------------------------------
+# frame core of the client (child-of-root ancestor of the frame)
+blink_frame() {
+    bfcur=$1
+    bfroot=$(DISPLAY=$DPY xwininfo -root 2>/dev/null | awk '/Window id:/ {print $4; exit}')
+    n=0
+    while [ "$n" -lt 5 ]; do
+        bfp=$(DISPLAY=$DPY xwininfo -tree -id "$bfcur" 2>/dev/null \
+                  | awk '/Parent window id:/ {print $4; exit}')
+        [ -n "$bfp" ] || return 1
+        [ "$bfp" = "0x0" ] && return 1
+        [ "$bfp" = "$bfroot" ] && { printf '%s\n' "$bfcur"; return 0; }
+        bfcur=$bfp
+        n=$((n + 1))
+    done
+    return 1
+}
+
+# titlebar + top border strip of client $1 to $2: from the frame's outer
+# top-left down to the client's top, so the 2px border and the titlebar
+# are in-crop but not the content area (a live xterm cursor would not be)
+blink_titlebar_crop() {
+    bcw=$1
+    bout=$2
+    bframe=$(blink_frame "$bcw") || return 1
+    set -- $(DISPLAY=$DPY xwininfo -id "$bframe" 2>/dev/null \
+                 | awk '/Absolute upper-left X:/ {x=$4}
+                        /Absolute upper-left Y:/ {y=$4}
+                        /Width:/ && !w {w=$2}
+                        /Border width:/ {b=$3}
+                        END {print x, y, w, b}')
+    bfx=$1; bfy=$2; bfw=$3; bfb=$4
+    bcy=$(DISPLAY=$DPY xwininfo -id "$bcw" 2>/dev/null \
+              | awk '/Absolute upper-left Y:/ {print $4; exit}')
+    bht=$((bcy - bfy))
+    [ "$bht" -gt 0 ] || return 1
+    DISPLAY=$DPY import -window root \
+        -crop "$((bfw + 2 * bfb))x${bht}+$bfx+$bfy" \
+        +repage "png:$bout" 2>>"$LOG" || return 1
+}
+
+# r,g,b of the pixel at $2,$3 inside image $1
+blink_px() {
+    DISPLAY=$DPY convert "$1" -crop "1x1+$2+$3" +repage txt:- 2>/dev/null \
+        | awk -F'[(,) ]+' '/^0,0:/ {print $3","$4","$5}'
+}
+
 # window ids of the viewable ICON_SIZE toplevel icons outside the dock
 # column; icon core windows carry no WM_NAME so identification is
 # positional (a solo app before the focus holder exists)
@@ -124,17 +186,20 @@ dblclick_at() {
     sleep 0.4
 }
 
-for tool in Xvfb xdpyinfo xdotool xprop xterm wmctrl; do
+for tool in Xvfb xdpyinfo xdotool xprop xterm wmctrl import convert; do
     command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
 done
 [ -x "$ROOT/src/.libs/wmaker" ] || skip_all "src/.libs/wmaker not built"
 [ -x "$WMAKERMSG" ] || skip_all "util/.libs/wmakermsg not built"
+[ -x "$WDWRITE" ] || skip_all "util/.libs/wdwrite not built"
 
 export WMAKER_USER_ROOT="$WMHOME"
 unset WMAKER_USER_XDG
 export XDG_RUNTIME_DIR="$RUNTIME"
 unset WMAKER_IPC_SOCKET
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
+SHOTDIR="$RUNTIME/shots"
+mkdir -p "$SHOTDIR"
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use" >&2; exit 1
@@ -313,6 +378,136 @@ check "clicking the dock tile switches workspaces" desktop_is 1
 check "clicking the dock tile focuses uc-dock" active_is "$WD"
 
 kill "$XTBG2" 2>/dev/null
+msg -q exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID"
+
+# --- boot 3: urgent titlebar blink ---------------------------------------------
+note "urgent titlebar blink (BlinkTitlebarWhenUrgent)"
+cat >"$WMHOME/Defaults/WindowMaker" <<'EOF'
+{
+  DisableDock = YES;
+  DisableClip = YES;
+  DisableDrawers = YES;
+  DisableAnimations = YES;
+  FrameBorderWidth = 2;
+  FrameBorderColor = red;
+  FrameFocusedBorderColor = blue;
+}
+EOF
+start_wmaker
+
+# one test window and one focus holder, the test window's own focused
+# and unfocused frames are the references (identical width, so the
+# blink phases match them pixel for pixel)
+DISPLAY=$DPY xterm -title uc-blk -geometry 50x10+100+100 -e 'sleep 600' >>"$LOG" 2>&1 &
+XTB=$!
+echo "$XTB" >> "$PIDFILE"
+DISPLAY=$DPY xterm -title uc-foc -geometry 50x10+700+100 -e 'sleep 600' >>"$LOG" 2>&1 &
+XTF=$!
+echo "$XTF" >> "$PIDFILE"
+n=0
+until [ -n "$(DISPLAY=$DPY xdotool search --name '^uc-blk$' 2>/dev/null)" ] \
+      && [ -n "$(DISPLAY=$DPY xdotool search --name '^uc-foc$' 2>/dev/null)" ]; do
+    sleep 0.1
+    n=$((n + 1))
+    [ "$n" -ge 60 ] && fatal "blink test windows did not map"
+done
+WT=$(DISPLAY=$DPY xdotool search --name '^uc-blk$' 2>/dev/null | tail -n 1)
+WF=$(DISPLAY=$DPY xdotool search --name '^uc-foc$' 2>/dev/null | tail -n 1)
+sleep 0.5
+
+# references from the test window itself, urgency is still off so the
+# crops capture the plain focused/unfocused frames
+DISPLAY=$DPY wmctrl -i -a "$WT" 2>>"$LOG"
+check "test window holds focus" wait_for 30 active_is "$WT"
+blink_titlebar_crop "$WT" "$SHOTDIR/ref-focused.png" || fatal "focused reference crop failed"
+DISPLAY=$DPY wmctrl -i -a "$WF" 2>>"$LOG"
+check "focus holder takes the focus" wait_for 30 active_is "$WF"
+blink_titlebar_crop "$WT" "$SHOTDIR/ref-unfocused.png" || fatal "unfocused reference crop failed"
+cmp -s "$SHOTDIR/ref-focused.png" "$SHOTDIR/ref-unfocused.png" \
+    && fatal "focused/unfocused reference crops are identical, cannot distinguish states"
+note "references captured"
+
+# a focused window rejects the demand, so the holder keeps the focus
+# while the test window advertises urgency
+DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+check "test window advertises DEMANDS_ATTENTION" wait_for 30 has_demands_attention "$WT"
+BLINK_SAW_FOCUSED=0
+BLINK_SAW_UNFOCUSED=0
+i=0
+while [ "$i" -lt 13 ]; do
+    blink_titlebar_crop "$WT" "$SHOTDIR/blink-$i.png" || fatal "blink sample crop failed"
+    cmp -s "$SHOTDIR/blink-$i.png" "$SHOTDIR/ref-focused.png" \
+        && BLINK_SAW_FOCUSED=1
+    cmp -s "$SHOTDIR/blink-$i.png" "$SHOTDIR/ref-unfocused.png" \
+        && BLINK_SAW_UNFOCUSED=1
+    sleep 0.15
+    i=$((i + 1))
+done
+check "blink reached the focused phase" [ "$BLINK_SAW_FOCUSED" = 1 ]
+check "blink reached the unfocused phase" [ "$BLINK_SAW_UNFOCUSED" = 1 ]
+
+# border colour follows the phase, sampled from the same frame image
+# (pixel (1,1) is the top-left corner of the 2px outer border)
+bp_focus=$(blink_px "$SHOTDIR/ref-focused.png" 1 1)
+bp_unfocus=$(blink_px "$SHOTDIR/ref-unfocused.png" 1 1)
+check "focused border is blue" [ "$bp_focus" = "0,0,255" ]
+check "unfocused border is red" [ "$bp_unfocus" = "255,0,0" ]
+
+# focus the urgent window: the blink stops, the window keeps the
+# focused look
+DISPLAY=$DPY wmctrl -i -a "$WT" 2>>"$LOG"
+check "focus cleared DEMANDS_ATTENTION" wait_for 30 lacks_demands_attention "$WT"
+sleep 0.5
+BLINK_FOCUS_STABLE=1
+i=0
+while [ "$i" -lt 6 ]; do
+    blink_titlebar_crop "$WT" "$SHOTDIR/blink-focus-$i.png" || BLINK_FOCUS_STABLE=0
+    cmp -s "$SHOTDIR/blink-focus-$i.png" "$SHOTDIR/ref-focused.png" || BLINK_FOCUS_STABLE=0
+    sleep 0.2
+    i=$((i + 1))
+done
+check "blink stopped after focus (frame stays focused)" [ "$BLINK_FOCUS_STABLE" = 1 ]
+
+# iconify while urgent then deiconify: the blink resumes
+DISPLAY=$DPY wmctrl -i -a "$WF" 2>>"$LOG"
+sleep 0.3
+DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+wait_for 30 has_demands_attention "$WT"
+DISPLAY=$DPY xdotool windowminimize "$WT" 2>>"$LOG"
+wait_for 30 window_state_is "$WT" Iconic
+DISPLAY=$DPY wmctrl -i -a "$WT" 2>>"$LOG"
+wait_for 30 window_state_is "$WT" Normal
+DISPLAY=$DPY wmctrl -i -a "$WF" 2>>"$LOG"
+sleep 0.3
+DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+wait_for 30 has_demands_attention "$WT"
+BLINK_RESUMED=0
+i=0
+while [ "$i" -lt 13 ]; do
+    blink_titlebar_crop "$WT" "$SHOTDIR/blink-resume-$i.png" || i=$((i + 1))
+    cmp -s "$SHOTDIR/blink-resume-$i.png" "$SHOTDIR/ref-focused.png" || BLINK_RESUMED=1
+    sleep 0.15
+    i=$((i + 1))
+done
+check "blink resumed after deiconify" [ "$BLINK_RESUMED" = 1 ]
+
+# negative: disable the key via wdwrite + reconfigure, the urgent window
+# must stay on the unfocused appearance
+wdwrite WindowMaker BlinkTitlebarWhenUrgent NO >>"$LOG" 2>&1
+msg -q reconfigure >>"$LOG" 2>&1
+sleep 0.5
+BLINK_OFF_STABLE=1
+i=0
+while [ "$i" -lt 6 ]; do
+    blink_titlebar_crop "$WT" "$SHOTDIR/blink-off-$i.png" || BLINK_OFF_STABLE=0
+    cmp -s "$SHOTDIR/blink-off-$i.png" "$SHOTDIR/ref-unfocused.png" || BLINK_OFF_STABLE=0
+    sleep 0.2
+    i=$((i + 1))
+done
+check "BlinkTitlebarWhenUrgent=NO stops the blink" [ "$BLINK_OFF_STABLE" = 1 ]
+
+kill "$XTB" "$XTF" 2>/dev/null
 msg -q exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID"
 

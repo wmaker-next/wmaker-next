@@ -1592,8 +1592,10 @@ static void doStateAtom(WWindow *wwin, Atom state, int set, Bool init)
 			set = 0;
 
 		wwin->flags.net_demands_attention = set;
-		if (!init)
+		if (!init) {
 			wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+			wWindowUrgentBlink(wwin);
+		}
 
 	} else if (state == net_wm_state_modal) {
 		if (set == _NET_WM_STATE_TOGGLE)
@@ -2319,6 +2321,7 @@ Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 			wwin->flags.net_demands_attention = 1;
 			updateStateHint(wwin, False, False);
 			wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+			wWindowUrgentBlink(wwin);
 		}
 		return True;
 

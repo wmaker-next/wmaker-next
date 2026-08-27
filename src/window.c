@@ -198,6 +198,7 @@ void wWindowDestroy(WWindow *wwin)
 		wwin->screen_ptr->cmap_window = NULL;
 
 	WMRemoveNotificationObserver(wwin);
+	WMDeleteTimerHandlerPtr(&wwin->urgent_blink_timer);
 	wNETWMCancelPing(wwin);
 	wNETWMDetachUserTimeWindow(wwin);
 	wNETWMSyncRequestDestroy(wwin);
@@ -1998,6 +1999,9 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			}
 		}
 	}
+	/* the frame only exists past creation above, so manage-time
+	 * urgency (UrgencyHint or a denied map) arms here */
+	wWindowUrgentBlink(wwin);
 	wWindowResetMouseGrabs(wwin);
 
 	if (!WFLAGP(wwin, no_bind_keys))
@@ -2489,6 +2493,7 @@ void wWindowFocus(WWindow *wwin, WWindow *owin)
 		wwin->flags.net_demands_attention = 0;
 		wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
 	}
+	wWindowUrgentBlink(wwin);
 
 	wWindowResetMouseGrabs(wwin);
 
@@ -2548,9 +2553,13 @@ void wWindowUnfocus(WWindow *wwin)
 		WWindow *owner;
 		owner = wWindowFor(wwin->transient_for);
 		if (owner && owner->flags.semi_focused) {
+			Window oclient = owner->client_win;
+
 			owner->flags.semi_focused = 0;
 			if (owner->flags.mapped || owner->flags.shaded) {
 				wWindowUnfocus(owner);
+				if (!wWindowFor(oclient))
+					return;
 				wFrameWindowPaint(owner->frame);
 			}
 		}
@@ -2582,8 +2591,76 @@ void wWindowUnfocus(WWindow *wwin)
 		if (wwin->flags.auto_hide_on_unfocus)
 			wHideWindow(wwin, NULL, 0, 0, 0);
 		else if (wwin->flags.auto_miniaturize_on_unfocus &&
-			 !WFLAGP(wwin, no_miniaturizable))
+			 !WFLAGP(wwin, no_miniaturizable)) {
+			Window client = wwin->client_win;
+
 			wIconifyWindow(wwin);
+			if (!wWindowFor(client))
+				return;
+		}
+	}
+	wWindowUrgentBlink(wwin);
+}
+
+/*
+ * Urgent titlebar blink.
+ */
+
+#define URGENT_BLINK_DELAY 500
+
+static int wWindowUrgentBlinkable(WWindow *wwin)
+{
+	if (!wwin || !wwin->screen_ptr)
+		return 0;
+	if (!(wwin->flags.urgent || wwin->flags.net_demands_attention))
+		return 0;
+	if (wwin->flags.focused || wwin->flags.miniaturized || wwin->flags.hidden)
+		return 0;
+	if (wwin->flags.is_gnustep)
+		return 0;
+	if (!wwin->frame || !wwin->frame->flags.is_client_window_frame
+	    || !wwin->frame->titlebar)
+		return 0;
+	if (!w_global.config->blink_titlebar_when_urgent)
+		return 0;
+	if (w_global.display_off)
+		return 0;
+	return 1;
+}
+
+static void wWindowUrgentBlinkTimer(void *arg)
+{
+	WWindow *wwin = arg;
+
+	if (w_global.display_off) {
+		/* wDisplaySetOff(False) re-arms when the output comes
+		 * back, mirrors doAppUrgentBounce() */
+		WMDeleteTimerHandlerPtr(&wwin->urgent_blink_timer);
+		wFrameWindowUrgentBlink(wwin->frame, 0);
+		return;
+	}
+	if (!wWindowUrgentBlinkable(wwin)) {
+		WMDeleteTimerHandlerPtr(&wwin->urgent_blink_timer);
+		wFrameWindowUrgentBlink(wwin->frame, 0);
+		return;
+	}
+	wFrameWindowBlinkTick(wwin->frame);
+}
+
+void wWindowUrgentBlink(WWindow *wwin)
+{
+	if (wWindowUrgentBlinkable(wwin)) {
+		if (!wwin->urgent_blink_timer) {
+			wFrameWindowUrgentBlink(wwin->frame, 1);
+			wwin->urgent_blink_timer =
+			    WMAddPersistentTimerHandler(URGENT_BLINK_DELAY,
+							wWindowUrgentBlinkTimer,
+							wwin);
+		}
+	} else {
+		WMDeleteTimerHandlerPtr(&wwin->urgent_blink_timer);
+		if (wwin->frame)
+			wFrameWindowUrgentBlink(wwin->frame, 0);
 	}
 }
 

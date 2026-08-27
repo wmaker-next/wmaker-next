@@ -3,6 +3,23 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Urgent titlebar blink
+----------------------
+
+A window that advertises urgency (WM_HINTS UrgencyHint or
+_NET_WM_STATE_DEMANDS_ATTENTION) now blinks its titlebar between the
+focused and unfocused appearance until the urgency is cleared or the
+window gains focus. Before this the only urgency feedback was the
+dock/appicon bounce, which users with a hidden dock never saw. The
+blink toggles the frame's focused look every 500 ms (a 1 s full
+cycle): the titlebar texture, bevel and text, the button cores, the
+tab segments, the outer border and the inner-border strips all follow
+the phase. No texture is re-rendered per tick, both states are
+pre-rendered and cached, so a tick only re-points the window background
+and repaints. The blink never runs on a focused, miniaturized, hidden
+or GNUstep window. It is enabled by default and can be turned off with
+"BlinkTitlebarWhenUrgent = NO" in ~/GNUstep/Defaults/WindowMaker.
+
 Configurable switch panel ordering
 -----------------------------------
 

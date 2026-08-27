@@ -81,6 +81,7 @@
 	IconSlideSpeed = fast;
 	ShadeSpeed = fast;
 	BounceAppIconsWhenUrgent = YES;
+	BlinkTitlebarWhenUrgent = YES;
 	RaiseAppIconsWhenBouncing = NO;
 	DoNotMakeAppIconsBounce = NO;
 	DoubleClickTime = 250;

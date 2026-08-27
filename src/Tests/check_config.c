@@ -41,6 +41,7 @@ static int modifier_label_updates;
 static int modifier_short_label_updates;
 static int hot_corner_updates;
 static int modifier_key_updates;
+static int urgent_blink_calls;
 static int background_spec_updates;
 static int workspace_specific_background_updates;
 static int workspace_background_updates;
@@ -133,6 +134,12 @@ void wRefreshMiniwindows(WScreen *scr)
 {
 	(void)scr;
 	refresh_miniwindows++;
+}
+
+void wWindowUrgentBlink(WWindow *wwin)
+{
+	(void)wwin;
+	urgent_blink_calls++;
 }
 
 void wScreenApplyIconSize(WScreen *scr)
@@ -422,6 +429,7 @@ static void reset_phase4_counters(void)
 	dock_apply_icon_size = 0;
 	aa_flush_count = 0;
 	aa_current = 0;
+	urgent_blink_calls = 0;
 	texture_spec_updates = 0;
 	font_spec_updates = 0;
 	color_spec_updates = 0;
@@ -876,6 +884,7 @@ static void test_defaults(void)
 	CHECK(config->icon_slide_speed == SPEED_FAST);
 	CHECK(config->shade_speed == SPEED_FAST);
 	CHECK(config->bounce_appicons_when_urgent == 1);
+	CHECK(config->blink_titlebar_when_urgent == 1);
 	CHECK(config->raise_appicons_when_bouncing == 0);
 	CHECK(config->do_not_make_appicons_bounce == 0);
 	CHECK(config->clip_auto_raise_delay == 600);
@@ -1108,6 +1117,7 @@ static void test_valid_parse(void)
 			      "SaveSessionOnExit = YES; MenuScrollSpeed = UltraSlow; "
 			      "IconSlideSpeed = Medium; ShadeSpeed = Slow; "
 			      "BounceAppIconsWhenUrgent = NO; "
+			      "BlinkTitlebarWhenUrgent = NO; "
 			      "RaiseAppIconsWhenBouncing = YES; "
 			      "DoNotMakeAppIconsBounce = YES; "
 			      "ClipAutoraiseDelay = 11; ClipAutolowerDelay = 22; "
@@ -1251,6 +1261,7 @@ static void test_valid_parse(void)
 	CHECK(config->icon_slide_speed == SPEED_MEDIUM);
 	CHECK(config->shade_speed == SPEED_SLOW);
 	CHECK(config->bounce_appicons_when_urgent == 0);
+	CHECK(config->blink_titlebar_when_urgent == 0);
 	CHECK(config->raise_appicons_when_bouncing == 1);
 	CHECK(config->do_not_make_appicons_bounce == 1);
 	CHECK(config->clip_auto_raise_delay == 11);
@@ -1617,6 +1628,7 @@ static void test_runtime_apply(void)
 				  "DoubleClickTime = 400; SaveSessionOnExit = YES; "
 				  "MenuScrollSpeed = UltraFast; IconSlideSpeed = Medium; "
 				  "ShadeSpeed = UltraSlow; BounceAppIconsWhenUrgent = NO; "
+				  "BlinkTitlebarWhenUrgent = NO; "
 				  "RaiseAppIconsWhenBouncing = YES; "
 				  "DoNotMakeAppIconsBounce = YES; "
 				  "ClipAutoraiseDelay = 1; ClipAutolowerDelay = 2; "
@@ -1726,6 +1738,7 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->icon_slide_speed == SPEED_MEDIUM);
 	CHECK(w_global.config->shade_speed == SPEED_ULTRASLOW);
 	CHECK(w_global.config->bounce_appicons_when_urgent == 0);
+	CHECK(w_global.config->blink_titlebar_when_urgent == 0);
 	CHECK(w_global.config->raise_appicons_when_bouncing == 1);
 	CHECK(w_global.config->do_not_make_appicons_bounce == 1);
 	CHECK(w_global.config->clip_auto_raise_delay == 1);
@@ -2018,6 +2031,39 @@ static void test_disable_miniwindows_live_apply(void)
 	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(w_global.config->disable_miniwindows == 1);
 	CHECK(refresh_miniwindows == 1);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+/* BlinkTitlebarWhenUrgent re-arms or disarms the per-window blink
+ * timers for every window on the screen when it changes. */
+static void test_blink_titlebar_when_urgent_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	WWindow wwin;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	memset(&wwin, 0, sizeof(wwin));
+	screen.focused_window = &wwin;
+	old_dict = dict_from_desc("{ BlinkTitlebarWhenUrgent = YES; }");
+	new_dict = dict_from_desc("{ BlinkTitlebarWhenUrgent = NO; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	urgent_blink_calls = 0;
+	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->blink_titlebar_when_urgent == 0);
+	CHECK(urgent_blink_calls == 1);
+
+	urgent_blink_calls = 0;
+	apply_runtime_defaults_for_test(&screen, new_dict, new_dict);
+	CHECK(urgent_blink_calls == 0);
 
 out:
 	if (old_dict)
@@ -2746,6 +2792,7 @@ int main(void)
 	test_pixmap_path_live_apply();
 	test_schema_requires_restart();
 	test_disable_miniwindows_live_apply();
+	test_blink_titlebar_when_urgent_live_apply();
 	test_icon_size_live_apply();
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();

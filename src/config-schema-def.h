@@ -364,6 +364,8 @@
 	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(BOUNCE_APPICONS_WHEN_URGENT, "BounceAppIconsWhenUrgent", BOOL, \
 	  bounce_appicons_when_urgent, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(BLINK_TITLEBAR_WHEN_URGENT, "BlinkTitlebarWhenUrgent", BOOL, \
+	  blink_titlebar_when_urgent, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(RAISE_APPICONS_WHEN_BOUNCING, "RaiseAppIconsWhenBouncing", BOOL, \
 	  raise_appicons_when_bouncing, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DO_NOT_MAKE_APPICONS_BOUNCE, "DoNotMakeAppIconsBounce", BOOL, \

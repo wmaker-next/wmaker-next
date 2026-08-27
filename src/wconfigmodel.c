@@ -1282,6 +1282,14 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_DISABLE_MINIWINDOWS))
 		wRefreshMiniwindows(scr);
+	if (scr && wConfigChangesHas(changes, WCFG_KEY_BLINK_TITLEBAR_WHEN_URGENT)) {
+		WWindow *wwin = scr->focused_window;
+
+		while (wwin) {
+			wWindowUrgentBlink(wwin);
+			wwin = wwin->prev;
+		}
+	}
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_LABELS))
 		wConfigApplyModifierKeyLabels(scr, &new_config->modifier_key_labels);
 	if (wConfigChangesHas(changes, WCFG_KEY_MODIFIER_KEY_SHORT_LABELS))

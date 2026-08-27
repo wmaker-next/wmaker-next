@@ -70,6 +70,9 @@ static struct expert_option {
 	{ N_("Disable selection animation for selected icons."),
 	  OPTION_WMAKER, "DisableBlinking" },
 
+	{ N_("Blink the titlebar of windows that demand attention."),
+	  OPTION_WMAKER, "BlinkTitlebarWhenUrgent" },
+
 	/* AntialiasedText is a WMGLOBAL key read by WINGs/configuration.c,
 	 * not a WindowMaker-domain key, so the previous OPTION_WMAKER
 	 * classification wrote it to a domain nothing reads. WINGs treats
