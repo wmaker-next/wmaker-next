@@ -1204,7 +1204,7 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 	wwin->orig_main_window = wwin->main_window;
 
 	if (wwin->flags.is_gnustep)
-		wwin->client_flags.shared_appicon = 0;
+		WSETUFLAG(wwin, shared_appicon, 0);
 
 	if (wwin->main_window) {
 		Bool has_appmenu;
@@ -1218,18 +1218,20 @@ WWindow *wManageWindow(WScreen *scr, Window window,
 			has_appmenu = WXPropExists(dpy, wwin->main_window,
 						   w_global.atom.wmaker.menu);
 		}
-		if (has_appmenu)
-			wwin->client_flags.shared_appicon = 0;
+		if (has_appmenu) {
+			WSETUFLAG(wwin, shared_appicon, 0);
+		}
 	}
 
 	if (wwin->flags.is_dockapp)
-		wwin->client_flags.shared_appicon = 0;
+		WSETUFLAG(wwin, shared_appicon, 0);
 
 	if (wwin->main_window) {
-            WApplication *app = wApplicationOf(wwin->main_window);
-            if (app && app->app_icon)
-		wwin->client_flags.shared_appicon = 0;
-        }
+		WApplication *app = wApplicationOf(wwin->main_window);
+
+		if (app && app->app_icon)
+			WSETUFLAG(wwin, shared_appicon, 0);
+	}
 
 	if (!withdraw && wwin->main_window && WFLAGP(wwin, shared_appicon)) {
 		char *buffer, *instance, *class;
