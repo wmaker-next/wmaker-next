@@ -3,7 +3,7 @@
 wmclipd \- X11 clipboard daemon for Window Maker
 .SH SYNOPSIS
 .B wmclipd
-[\fB\-\-clipboard\fR] [\fB\-\-screenshots\fR] [\fB\-\-history\fR\ \fIN\fR] [\fB\-\-debug\fR]
+[\fB\-\-clipboard\fR] [\fB\-\-screenshots\fR] [\fB\-\-history\fR\ \fIN\fR] [\fB\-\-ttl\fR\ \fIDURATION\fR] [\fB\-\-persist\fR] [\fB\-\-history\-file\fR\ \fIPATH\fR] [\fB\-\-debug\fR]
 .br
 .B wmclipd
 \fB\-\-help\fR|\fB\-h\fR
@@ -25,7 +25,8 @@ captured entries and can show a popup list to pick from the history. The popup
 is triggered by a Window Maker keybinding that sends a WIPC tick event; see
 the
 .B CLIPBOARD POPUP
-section below.
+section below. Entries can additionally be expired after a fixed age with
+.BR \-\-ttl .
 .PP
 Screenshot payloads are offered as
 .B image/png
@@ -60,12 +61,46 @@ runs. Setting
 to 0 reverts to the single-slot legacy mode. Entries larger than 16 MiB are
 kept as the live selection but are not added to the ring.
 .TP
+.BI \-\-history\-file " PATH"
+Store the persistent history in
+.I PATH
+instead of the default location. Implies
+.BR \-\-persist .
+.TP
+.B \-\-persist
+Save the history ring to disk on clean exit and restore it on the next start.
+See the
+.B PERSISTENCE
+section below.
+.TP
 .B \-\-screenshots
 Subscribe to Window Maker screenshot IPC events and publish saved screenshots
 to CLIPBOARD.
 The singular
 .B \-\-screenshot
 is accepted as an alias.
+.TP
+.BI \-\-ttl " DURATION"
+Remove history entries older than
+.IR DURATION .
+The duration is a number followed by a unit:
+.B s
+(seconds),
+.B m
+(minutes),
+.B h
+(hours) or
+.B d
+(days); a bare number means seconds and combinations such as
+.B 1h30m
+are accepted. The smallest enabled duration is
+.B 5s
+and the largest is
+.BR 365d .
+The default
+.B 0
+disables expiry. Pinned entries are exempt from expiry, matching capacity
+eviction, and re-copying the same content restarts that entry's timer.
 .TP
 .B \-\-version
 Print version information and exit. The short
@@ -78,6 +113,16 @@ Run only the clipboard manager with the default history ring (10 entries).
 .TP
 .B wmclipd --clipboard --history 0
 Run the clipboard manager in legacy single-slot mode (no history popup).
+.TP
+.B wmclipd --clipboard --history 20 --ttl 1h
+Keep 20 entries and drop each one an hour after it was captured.
+.TP
+.B wmclipd --clipboard --ttl 10m
+Keep the default ring of 10 entries, dropping each 10 minutes after it was
+captured.
+.TP
+.B wmclipd --clipboard --persist --ttl 1d
+Keep the default ring for a day and restore it across logouts and restarts.
 .TP
 .B wmclipd --screenshots
 Copy Window Maker screenshots to CLIPBOARD without monitoring normal clipboard
@@ -93,6 +138,40 @@ wmclipd --clipboard --screenshots &
 .EE
 to
 .BR ~/.config/WindowMaker/Library/WindowMaker/autostart .
+.SH PERSISTENCE
+By default the history ring lives in memory only and every restart starts
+empty. With
+.BR \-\-persist ,
+the ring is written to a single binary state file on clean exit and restored
+on the next start, keeping content, order, pin state, capture time and X
+content type. A clean exit is
+.B SIGTERM
+or
+.B SIGINT
+(as sent by the login manager at session logout) or an X server disconnect.
+A crash or
+.B SIGKILL
+loses the history.
+.PP
+Because clipboard history regularly contains passwords and other secrets,
+persistence is opt-in. The state file is created with mode
+.B 0600
+inside a
+.B 0700
+directory, by default
+.IB $XDG_STATE_HOME /WindowMaker/wmclipd-history
+(fallback
+.IR ~/.local/state/WindowMaker/wmclipd-history ).
+Screenshot entries whose backing file no longer exists at load time are
+dropped, and non-pinned entries whose
+.B \-\-ttl
+has already passed are skipped. Restored entries do not re-claim the live
+CLIPBOARD selection, ownership stays session-local.
+.PP
+In the popup, entries captured on a previous day are labelled with the
+weekday and day (for example
+.IR "Fri 26 17:03" )
+instead of a bare time.
 .SH "CLIPBOARD POPUP"
 When history is enabled, wmclipd subscribes to Window Maker IPC tick events
 and shows a popup list of the history ring when it receives a tick with the
@@ -127,7 +206,9 @@ Scroll the list by one viewport.
 .TP
 .B p
 Toggle a pin on the current entry. Pinned entries are exempt from capacity
-eviction and from the clear-all key; they are shown with a pin marker.
+eviction, from
+.B \-\-ttl
+expiry and from the clear-all key; they are shown with a pin marker.
 .TP
 .B Delete
 Remove the selected entry from the ring. The live CLIPBOARD selection is

@@ -51,6 +51,8 @@
 
 #define CLIP_HISTORY_DEFAULT_CAPACITY 10
 #define CLIP_HISTORY_MAX_BYTES   ((size_t)16 * 1024 * 1024)
+#define CLIP_TTL_MIN_SECONDS     5
+#define CLIP_TTL_MAX_SECONDS     (365L * 24 * 60 * 60)
 #define CLIP_POPUP_TICK          "wmclipd-popup"
 #define CLIP_POPUP_PREVIEW_LEN   64
 #define CLIP_POPUP_PIN_CHAR      "\xF0\x9F\x93\x8C"  /* U+1F4CC pushpin */
@@ -80,6 +82,7 @@ typedef struct ClipHistoryEntry {
 	xcb_atom_t type;
 	xcb_timestamp_t timestamp;
 	time_t wall_time;
+	long long mono_ms;
 	char *text_preview;
 	char *image_path;
 	char *uri;
@@ -106,6 +109,9 @@ static int run_clipboard;
 static int run_screenshots;
 static int history_capacity = CLIP_HISTORY_DEFAULT_CAPACITY;
 static int history_enabled;
+static int persist_enabled;
+static char *history_file_override;
+static long long ttl_seconds;
 static int verbose;
 static volatile sig_atomic_t running = 1;
 
@@ -151,12 +157,14 @@ static void handle_property_notify(xcb_property_notify_event_t *ev);
 static void handle_destroy_notify(xcb_destroy_notify_event_t *ev);
 static void show_clipboard_popup(void);
 static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts);
+static void history_evict_over_capacity(void);
 static void flush_primary_pending(void);
 
 static void usage(FILE *out)
 {
 	fprintf(out,
-		"Usage: %s [--clipboard] [--screenshots] [--history N] [--debug]\n"
+		"Usage: %s [--clipboard] [--screenshots] [--history N] [--ttl DURATION] [--persist]\n"
+		"          [--history-file PATH] [--debug]\n"
 		"       %s --help|-h\n"
 		"       %s --version|-v\n"
 		"Options:\n"
@@ -164,8 +172,18 @@ static void usage(FILE *out)
 		"  --debug        Print runtime diagnostics to stderr.\n"
 		"  --help, -h     Show this message.\n"
 		"  --history N    Keep the last N clipboard entries in a history ring (default %d, 0 disables).\n"
+		"  --history-file PATH\n"
+		"                 Store the persistent history in PATH instead of the default\n"
+		"                 location. Implies --persist.\n"
+		"  --persist      Save the history ring to disk on clean exit (SIGTERM/SIGINT\n"
+		"                 or X disconnect) and restore it on the next start. History\n"
+		"                 can contain secrets, so this is opt-in. Default file:\n"
+		"                 $XDG_STATE_HOME/WindowMaker/wmclipd-history, mode 0600.\n"
 		"  --screenshots  Subscribe to Window Maker screenshot IPC events and publish them to CLIPBOARD.\n"
 		"                 The singular --screenshot is accepted as an alias.\n"
+		"  --ttl DURATION Expire history entries after DURATION, e.g. 30s, 10m, 2h, 1d\n"
+		"                 (combinations like 1h30m are accepted, a bare number means\n"
+		"                 seconds; minimum 5s, maximum 365d). 0 disables (default).\n"
 		"  --version, -v  Print version information and exit.\n",
 		prog, prog, prog, CLIP_HISTORY_DEFAULT_CAPACITY);
 }
@@ -723,6 +741,8 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	    history_entry_matches(history.entries[0], buf)) {
 		history.entries[0]->timestamp = ts;
 		history.entries[0]->owns = buf->owns;
+		/* re-copying the same content restarts its TTL */
+		history.entries[0]->mono_ms = clip_monotonic_ms();
 		return;
 	}
 
@@ -732,6 +752,7 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	e->type = buf->type;
 	e->timestamp = ts;
 	e->wall_time = time(NULL);
+	e->mono_ms = clip_monotonic_ms();
 	e->owns = buf->owns;
 	e->pinned = 0;
 
@@ -767,7 +788,14 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	history.entries = new_entries;
 	history.count++;
 
-	/* evict oldest non-pinned entry when over capacity */
+	history_evict_over_capacity();
+
+	debug_log("history: added entry (%d total)", history.count);
+}
+
+/* Evict oldest non-pinned entries while over capacity. */
+static void history_evict_over_capacity(void)
+{
 	while (history.count > history.capacity) {
 		int i, found = -1;
 		for (i = history.count - 1; i >= 0; i--) {
@@ -783,8 +811,6 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 			sizeof(ClipHistoryEntry *) * (size_t)(history.count - found - 1));
 		history.count--;
 	}
-
-	debug_log("history: added entry (%d total)", history.count);
 }
 
 static void history_clear_non_pinned(void)
@@ -832,6 +858,62 @@ static void history_clear_all(void)
 	}
 }
 
+static long long entry_expiry_ms(const ClipHistoryEntry *e)
+{
+	return e->mono_ms + ttl_seconds * 1000;
+}
+
+/* Free non-pinned entries whose TTL has passed. */
+static void history_expire_entries(void)
+{
+	int i, j, expired = 0;
+
+	if (ttl_seconds <= 0)
+		return;
+
+	j = 0;
+	for (i = 0; i < history.count; i++) {
+		ClipHistoryEntry *e = history.entries[i];
+
+		if (!e->pinned && clip_monotonic_ms() >= entry_expiry_ms(e)) {
+			history_free_entry(e);
+			expired++;
+			continue;
+		}
+		history.entries[j++] = e;
+	}
+	if (expired > 0) {
+		history.count = j;
+		debug_log("history: expired %d entr%s (ttl %llds)",
+			  expired, expired == 1 ? "y" : "ies", ttl_seconds);
+	}
+}
+
+/* Soonest expiry deadline among non-pinned entries, in monotonic ms.
+ * Returns 0 when nothing is tracked and `now` when already due. */
+static long long history_next_expiry(long long now)
+{
+	long long next = 0;
+	int i;
+
+	if (ttl_seconds <= 0)
+		return 0;
+
+	for (i = 0; i < history.count; i++) {
+		ClipHistoryEntry *e = history.entries[i];
+		long long dl;
+
+		if (e->pinned)
+			continue;
+		dl = entry_expiry_ms(e);
+		if (dl <= now)
+			return now;
+		if (next == 0 || dl < next)
+			next = dl;
+	}
+	return next;
+}
+
 static int history_pinned_cap(void)
 {
 	return history.capacity;
@@ -866,6 +948,620 @@ static void history_toggle_pin(int row)
 		e->pinned = 0;
 		history.pinned_count--;
 	}
+}
+
+/* --- History persistence ---------------------------------------------- */
+
+#define CLIP_HISTORY_MAGIC       "WMCLPHST"
+#define CLIP_HISTORY_VERSION     1u
+#define CLIP_HISTORY_MAX_ENTRIES 1000
+#define CLIP_HISTORY_NAME_MAX    256
+
+static void put_u16(unsigned char *p, uint16_t v)
+{
+	p[0] = (unsigned char)(v & 0xff);
+	p[1] = (unsigned char)((v >> 8) & 0xff);
+}
+
+static void put_u32(unsigned char *p, uint32_t v)
+{
+	p[0] = (unsigned char)(v & 0xff);
+	p[1] = (unsigned char)((v >> 8) & 0xff);
+	p[2] = (unsigned char)((v >> 16) & 0xff);
+	p[3] = (unsigned char)((v >> 24) & 0xff);
+}
+
+static void put_u64(unsigned char *p, uint64_t v)
+{
+	int i;
+
+	for (i = 0; i < 8; i++)
+		p[i] = (unsigned char)((v >> (8 * i)) & 0xff);
+}
+
+static uint16_t get_u16(const unsigned char *p)
+{
+	return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+}
+
+static uint32_t get_u32(const unsigned char *p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+	       ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static uint64_t get_u64(const unsigned char *p)
+{
+	uint64_t v = 0;
+	int i;
+
+	for (i = 7; i >= 0; i--)
+		v = (v << 8) | p[i];
+	return v;
+}
+
+static const struct {
+	xcb_atom_t *atom;
+	const char *name;
+} history_atom_names[] = {
+	{ &atom_utf8,            "UTF8_STRING" },
+	{ &atom_png,             "image/png" },
+	{ &atom_jpeg,            "image/jpeg" },
+	{ &atom_uri_list,        "text/uri-list" },
+	{ &atom_text_plain,      "text/plain" },
+	{ &atom_text_plain_utf8, "text/plain;charset=utf-8" },
+	{ &atom_text,            "TEXT" },
+	{ &atom_compound_text,   "COMPOUND_TEXT" },
+};
+
+#define HISTORY_N_ATOM_NAMES \
+	((int)(sizeof(history_atom_names) / sizeof(history_atom_names[0])))
+
+static struct {
+	xcb_atom_t atom;
+	char *name;
+} history_name_cache[8];
+static int history_name_cache_count;
+
+/* Fallback for atoms outside the interned pool, queried once per atom
+ * while the X connection is alive (at save time it may already be gone). */
+static const char *history_cached_name(xcb_atom_t atom)
+{
+	xcb_get_atom_name_cookie_t ck;
+	xcb_get_atom_name_reply_t *rep;
+	int i, len, cache_max;
+
+	cache_max = (int)(sizeof(history_name_cache) / sizeof(history_name_cache[0]));
+	for (i = 0; i < cache_max; i++) {
+		if (history_name_cache[i].name && history_name_cache[i].atom == atom)
+			return history_name_cache[i].name;
+	}
+
+	if (!xc || xcb_connection_has_error(xc))
+		return NULL;
+	if (history_name_cache_count >= cache_max)
+		return NULL;
+
+	ck = xcb_get_atom_name(xc, atom);
+	rep = xcb_get_atom_name_reply(xc, ck, NULL);
+	if (!rep)
+		return NULL;
+	len = xcb_get_atom_name_name_length(rep);
+	if (len < 0 || len >= CLIP_HISTORY_NAME_MAX) {
+		free(rep);
+		return NULL;
+	}
+	i = history_name_cache_count++;
+	history_name_cache[i].atom = atom;
+	history_name_cache[i].name = wmalloc((size_t)len + 1);
+	memcpy(history_name_cache[i].name, xcb_get_atom_name_name(rep), (size_t)len);
+	history_name_cache[i].name[len] = '\0';
+	free(rep);
+	return history_name_cache[i].name;
+}
+
+static int history_type_to_name(xcb_atom_t atom, char *out, size_t outsz)
+{
+	const char *name = NULL;
+	size_t len;
+	int i;
+
+	if (atom == XCB_ATOM_STRING)
+		name = "STRING";
+	for (i = 0; !name && i < HISTORY_N_ATOM_NAMES; i++) {
+		if (*history_atom_names[i].atom == atom)
+			name = history_atom_names[i].name;
+	}
+	if (!name)
+		name = history_cached_name(atom);
+	if (!name)
+		return -1;
+	len = strlen(name);
+	if (len + 1 > outsz)
+		return -1;
+	memcpy(out, name, len + 1);
+	return (int)len;
+}
+
+static xcb_atom_t history_name_to_type(const char *name)
+{
+	int i;
+
+	if (strcmp(name, "STRING") == 0)
+		return XCB_ATOM_STRING;
+	for (i = 0; i < HISTORY_N_ATOM_NAMES; i++) {
+		if (strcmp(name, history_atom_names[i].name) == 0)
+			return *history_atom_names[i].atom;
+	}
+	for (i = 0; i < history_name_cache_count; i++) {
+		if (history_name_cache[i].name &&
+		    strcmp(name, history_name_cache[i].name) == 0)
+			return history_name_cache[i].atom;
+	}
+	return XCB_ATOM_NONE;
+}
+
+static char *history_state_path(void)
+{
+	const char *state, *home;
+	char *dir, *path;
+
+	if (history_file_override)
+		return wstrdup(history_file_override);
+
+	state = getenv("XDG_STATE_HOME");
+	if (state && state[0] == '/') {
+		dir = wstrconcat(state, "/" PACKAGE_TARNAME);
+	} else {
+		home = getenv("HOME");
+		dir = wstrconcat(home ? home : "",
+				 "/.local/state/" PACKAGE_TARNAME);
+	}
+	path = wstrappend(dir, "/wmclipd-history");
+	return path;
+}
+
+/* Create each missing component of the parent directory of `path`,
+ * mode 0700. */
+static int history_mkdir_parents(const char *path)
+{
+	const char *slash;
+	char *dir, *p;
+	size_t len;
+	int rc;
+
+	slash = strrchr(path, '/');
+	if (!slash || slash == path)
+		return 0;
+	len = (size_t)(slash - path);
+	dir = wmalloc(len + 1);
+	memcpy(dir, path, len);
+	dir[len] = '\0';
+
+	rc = 0;
+	for (p = dir + 1; ; p++) {
+		if (*p == '/' || *p == '\0') {
+			char saved = *p;
+			*p = '\0';
+			if (mkdir(dir, 0700) < 0 && errno != EEXIST) {
+				debug_log("history: cannot create %s: %s",
+					  dir, strerror(errno));
+				rc = -1;
+			}
+			*p = saved;
+			if (rc < 0 || saved == '\0')
+				break;
+		}
+	}
+	wfree(dir);
+	return rc;
+}
+
+/* Write via a same-directory temp file so a partial save can never
+ * replace a good file. */
+static int history_write_file(const char *path, const unsigned char *data,
+			      size_t len)
+{
+	char *tmp;
+	const unsigned char *p;
+	size_t remaining;
+	ssize_t w;
+	int fd, ok, closed;
+
+	tmp = wmalloc(strlen(path) + 5);
+	sprintf(tmp, "%s.tmp", path);
+
+	if (history_mkdir_parents(path) < 0) {
+		wfree(tmp);
+		return -1;
+	}
+
+	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0600);
+	if (fd < 0) {
+		debug_log("history: cannot create %s: %s", tmp, strerror(errno));
+		wfree(tmp);
+		return -1;
+	}
+
+	ok = 1;
+	p = data;
+	remaining = len;
+	while (remaining > 0) {
+		w = write(fd, p, remaining);
+		if (w < 0) {
+			if (errno == EINTR)
+				continue;
+			ok = 0;
+			break;
+		}
+		p += w;
+		remaining -= w;
+	}
+	if (ok && fsync(fd) < 0)
+		ok = 0;
+	closed = close(fd) == 0;
+	if (ok && !closed)
+		ok = 0;
+
+	if (ok && rename(tmp, path) < 0) {
+		debug_log("history: cannot rename %s: %s", tmp, strerror(errno));
+		ok = 0;
+	}
+	if (!ok) {
+		unlink(tmp);
+		wfree(tmp);
+		return -1;
+	}
+	wfree(tmp);
+	return 0;
+}
+
+static int history_buf_reserve(unsigned char **pbuf, size_t *pcap, size_t need)
+{
+	unsigned char *nb;
+	size_t ncap;
+
+	if (need <= *pcap)
+		return 0;
+	ncap = *pcap > 0 ? *pcap : 512;
+	while (ncap < need) {
+		if (ncap > SIZE_MAX / 2) {
+			ncap = need;
+			break;
+		}
+		ncap *= 2;
+	}
+	nb = wrealloc(*pbuf, ncap);
+	if (!nb)
+		return -1;
+	*pbuf = nb;
+	*pcap = ncap;
+	return 0;
+}
+
+static void history_save(void)
+{
+	unsigned char *buf, *p;
+	size_t cap, len, namelen, pathlen, urilen;
+	char *path, name[CLIP_HISTORY_NAME_MAX];
+	ClipHistoryEntry *e;
+	int i, nsaved, nlen;
+
+	if (!persist_enabled || !history_enabled)
+		return;
+
+	path = history_state_path();
+	buf = NULL;
+	cap = 0;
+	len = 0;
+	nsaved = 0;
+
+	if (history_buf_reserve(&buf, &cap, 16) == 0) {
+		memcpy(buf, CLIP_HISTORY_MAGIC, 8);
+		put_u32(buf + 8, CLIP_HISTORY_VERSION);
+		put_u32(buf + 12, 0);
+		len = 16;
+
+		/* entries are stored newest first, same order as memory */
+		for (i = 0; i < history.count; i++) {
+			e = history.entries[i];
+			if (!e->data || e->size == 0 || e->size > CLIP_HISTORY_MAX_BYTES)
+				continue;
+			nlen = history_type_to_name(e->type, name, sizeof(name));
+			if (nlen < 0) {
+				debug_log("history: cannot resolve type atom %u, entry skipped",
+					  (unsigned int)e->type);
+				continue;
+			}
+			namelen = (size_t)nlen;
+			pathlen = e->kind == CONTENT_SCREENSHOT && e->image_path ?
+				  strlen(e->image_path) : 0;
+			urilen = e->kind == CONTENT_SCREENSHOT && e->uri ?
+				 strlen(e->uri) : 0;
+			if (history_buf_reserve(&buf, &cap, len + 4 + namelen + 16 +
+						e->size + 4 + pathlen + 4 + urilen) < 0)
+				break;
+			p = buf + len;
+			p[0] = (unsigned char)e->kind;
+			p[1] = e->pinned ? 1 : 0;
+			put_u16(p + 2, (uint16_t)namelen);
+			memcpy(p + 4, name, namelen);
+			p += 4 + namelen;
+			put_u64(p, (uint64_t)e->wall_time);
+			put_u64(p + 8, (uint64_t)e->size);
+			p += 16;
+			memcpy(p, e->data, e->size);
+			p += e->size;
+			if (e->kind == CONTENT_SCREENSHOT) {
+				put_u32(p, (uint32_t)pathlen);
+				p += 4;
+				if (pathlen > 0) {
+					memcpy(p, e->image_path, pathlen);
+					p += pathlen;
+				}
+				put_u32(p, (uint32_t)urilen);
+				p += 4;
+				if (urilen > 0) {
+					memcpy(p, e->uri, urilen);
+					p += urilen;
+				}
+			}
+			len = (size_t)(p - buf);
+			nsaved++;
+		}
+		put_u32(buf + 12, (uint32_t)nsaved);
+	}
+
+	if (len == 0) {
+		debug_log("history: cannot build the state buffer");
+		wfree(buf);
+		wfree(path);
+		return;
+	}
+
+	if (history_write_file(path, buf, len) == 0) {
+		debug_log("history: saved %d entr%s to %s", nsaved,
+			  nsaved == 1 ? "y" : "ies", path);
+	}
+
+	wfree(buf);
+	wfree(path);
+}
+
+static void history_load(void)
+{
+	ClipHistoryEntry **loaded, *e;
+	unsigned char *buf;
+	const unsigned char *payload;
+	char *path, *imgpath, *uri, tname[CLIP_HISTORY_NAME_MAX];
+	struct stat st, pst;
+	uint64_t limit;
+	ssize_t got;
+	size_t dlen, off, pos, namelen, pathlen, urilen, size;
+	long long age, mono_now, left;
+	time_t now, wall;
+	int fd, n, i, kind, pinned, loaded_count, broken;
+	xcb_atom_t type;
+
+	if (!persist_enabled || !history_enabled)
+		return;
+
+	path = history_state_path();
+	fd = open(path, O_RDONLY | O_NOFOLLOW);
+	if (fd < 0) {
+		if (errno != ENOENT)
+			debug_log("history: cannot open %s: %s", path, strerror(errno));
+		wfree(path);
+		return;
+	}
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode)) {
+		debug_log("history: %s is not a regular file", path);
+		close(fd);
+		wfree(path);
+		return;
+	}
+	limit = (uint64_t)history.capacity *
+		((uint64_t)CLIP_HISTORY_MAX_BYTES + 4096) + 65536;
+	if ((uint64_t)st.st_size > limit) {
+		debug_log("history: %s is too large, ignoring", path);
+		close(fd);
+		wfree(path);
+		return;
+	}
+
+	dlen = (size_t)st.st_size;
+	buf = wmalloc(dlen > 0 ? dlen : 1);
+	off = 0;
+	while (off < dlen) {
+		got = read(fd, buf + off, dlen - off);
+		if (got < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (got == 0)
+			break;
+		off += (size_t)got;
+	}
+	close(fd);
+
+	if (dlen < 16 || memcmp(buf, CLIP_HISTORY_MAGIC, 8) != 0) {
+		debug_log("history: %s has no valid header", path);
+		wfree(buf);
+		wfree(path);
+		return;
+	}
+	if (get_u32(buf + 8) != CLIP_HISTORY_VERSION) {
+		debug_log("history: %s has unsupported version %u",
+			  path, get_u32(buf + 8));
+		wfree(buf);
+		wfree(path);
+		return;
+	}
+	n = (int)get_u32(buf + 12);
+	if (n > CLIP_HISTORY_MAX_ENTRIES) {
+		debug_log("history: %s declares too many entries", path);
+		wfree(buf);
+		wfree(path);
+		return;
+	}
+
+	loaded = wmalloc(sizeof(ClipHistoryEntry *) * (size_t)(n > 0 ? n : 1));
+	loaded_count = 0;
+	broken = 0;
+	mono_now = clip_monotonic_ms();
+	now = time(NULL);
+	pos = 16;
+
+	for (i = 0; i < n; i++) {
+		imgpath = NULL;
+		uri = NULL;
+
+		if (dlen - pos < 4) {
+			broken = 1;
+			break;
+		}
+		kind = buf[pos];
+		pinned = buf[pos + 1] ? 1 : 0;
+		namelen = get_u16(buf + pos + 2);
+		if ((kind != CONTENT_CAPTURED && kind != CONTENT_SCREENSHOT) ||
+		    namelen == 0 || namelen >= sizeof(tname) ||
+		    dlen - pos < 4 + namelen) {
+			broken = 1;
+			break;
+		}
+		memcpy(tname, buf + pos + 4, namelen);
+		tname[namelen] = '\0';
+		type = history_name_to_type(tname);
+		pos += 4 + namelen;
+
+		if (dlen - pos < 16) {
+			broken = 1;
+			break;
+		}
+		wall = (time_t)get_u64(buf + pos);
+		size = (size_t)get_u64(buf + pos + 8);
+		pos += 16;
+		if (size > CLIP_HISTORY_MAX_BYTES || dlen - pos < size) {
+			broken = 1;
+			break;
+		}
+		payload = buf + pos;
+		pos += size;
+
+		if (kind == CONTENT_SCREENSHOT) {
+			if (dlen - pos < 4) {
+				broken = 1;
+				break;
+			}
+			pathlen = get_u32(buf + pos);
+			pos += 4;
+			if (pathlen > dlen - pos) {
+				broken = 1;
+				break;
+			}
+			if (pathlen > 0) {
+				imgpath = wmalloc(pathlen + 1);
+				memcpy(imgpath, buf + pos, pathlen);
+				imgpath[pathlen] = '\0';
+			}
+			pos += pathlen;
+			if (dlen - pos < 4) {
+				broken = 1;
+				break;
+			}
+			urilen = get_u32(buf + pos);
+			pos += 4;
+			if (urilen > dlen - pos) {
+				broken = 1;
+				break;
+			}
+			if (urilen > 0) {
+				uri = wmalloc(urilen + 1);
+				memcpy(uri, buf + pos, urilen);
+				uri[urilen] = '\0';
+			}
+			pos += urilen;
+		}
+
+		if (type == XCB_ATOM_NONE) {
+			debug_log("history: entry type '%s' is unknown here, dropped",
+				  tname);
+			wfree(imgpath);
+			wfree(uri);
+			continue;
+		}
+		if (size == 0) {
+			wfree(imgpath);
+			wfree(uri);
+			continue;
+		}
+		if (kind == CONTENT_SCREENSHOT) {
+			if (!imgpath || stat(imgpath, &pst) < 0) {
+				debug_log("history: screenshot file is gone, dropped");
+				wfree(imgpath);
+				wfree(uri);
+				continue;
+			}
+		}
+
+		if (ttl_seconds > 0 && !pinned) {
+			left = (long long)wall + ttl_seconds - (long long)now;
+			if (left <= 0) {
+				debug_log("history: dropped expired entry");
+				wfree(imgpath);
+				wfree(uri);
+				continue;
+			}
+			age = (long long)now - (long long)wall;
+			if (age < 0)
+				age = 0;
+		} else {
+			age = 0;
+		}
+
+		e = wmalloc(sizeof(*e));
+		e->kind = (ContentKind)kind;
+		e->size = size;
+		e->type = type;
+		e->timestamp = 0;
+		e->wall_time = wall;
+		e->mono_ms = mono_now - age * 1000;
+		e->owns = 0;
+		e->pinned = pinned;
+		e->data = wmalloc(size);
+		memcpy(e->data, payload, size);
+		if (kind == CONTENT_CAPTURED && is_text_atom(type))
+			e->text_preview = make_text_preview(e->data, size);
+		e->image_path = imgpath;
+		e->uri = uri;
+		imgpath = NULL;
+		uri = NULL;
+		loaded[loaded_count++] = e;
+	}
+
+	if (broken) {
+		debug_log("history: %s is corrupt or truncated after %d entries",
+			  path, loaded_count);
+		wfree(imgpath);
+		wfree(uri);
+	}
+
+	if (loaded_count > 0) {
+		for (i = 0; i < loaded_count; i++) {
+			if (loaded[i]->pinned)
+				history.pinned_count++;
+		}
+		history.entries = loaded;
+		history.count = loaded_count;
+		history_evict_over_capacity();
+	} else {
+		wfree(loaded);
+	}
+	debug_log("history: loaded %d entr%s from %s", history.count,
+		  history.count == 1 ? "y" : "ies", path);
+	wfree(buf);
+	wfree(path);
 }
 
 static int mirror_primary_to_clipboard(xcb_timestamp_t timestamp,
@@ -1628,24 +2324,93 @@ static int init_clipboard_monitor(void)
 	return 1;
 }
 
+/* Parse "30s", "10m", "2h", "1d" or "1h30m"; a bare number means
+ * seconds and 0 disables. Returns 0 with the total in *out, or -1 on
+ * malformed input or an out-of-range total. */
+static int parse_ttl_duration(const char *arg, long long *out)
+{
+	static const struct {
+		char unit;
+		long long mult;
+	} units[] = {
+		{ 's', 1 }, { 'm', 60 }, { 'h', 3600 }, { 'd', 86400 },
+	};
+	const char *p = arg;
+	long long total = 0;
+	int segments = 0;
+
+	if (!arg || !*arg)
+		return -1;
+
+	while (*p) {
+		char *end;
+		long long val, mult;
+		size_t u;
+
+		if (!isdigit((unsigned char)*p))
+			return -1;
+		errno = 0;
+		val = strtoll(p, &end, 10);
+		if (errno == ERANGE || val < 0)
+			return -1;
+		p = end;
+
+		if (*p == '\0') {
+			if (segments > 0)
+				return -1;
+			mult = 1;
+		} else {
+			mult = 0;
+			for (u = 0; u < sizeof(units) / sizeof(units[0]); u++) {
+				if (units[u].unit == *p) {
+					mult = units[u].mult;
+					break;
+				}
+			}
+			if (mult == 0)
+				return -1;
+			p++;
+		}
+
+		if (val > CLIP_TTL_MAX_SECONDS)
+			return -1;
+		total += val * mult;
+		if (total > CLIP_TTL_MAX_SECONDS)
+			return -1;
+		segments++;
+	}
+
+	if (total > 0 && total < CLIP_TTL_MIN_SECONDS)
+		return -1;
+
+	*out = total;
+	return 0;
+}
+
 static int parse_args(int argc, char **argv)
 {
 	enum {
 		OPT_CLIPBOARD = 256,
 		OPT_SCREENSHOTS,
 		OPT_HISTORY,
+		OPT_HISTORY_FILE,
+		OPT_TTL,
+		OPT_PERSIST,
 		OPT_DEBUG,
 	};
 	int ch;
 	struct option longopts[] = {
-		{ "clipboard",   no_argument,       NULL, OPT_CLIPBOARD },
-		{ "screenshots", no_argument,       NULL, OPT_SCREENSHOTS },
-		{ "screenshot",  no_argument,       NULL, OPT_SCREENSHOTS },
-		{ "history",     required_argument, NULL, OPT_HISTORY },
-		{ "debug",       no_argument,       NULL, OPT_DEBUG },
-		{ "help",        no_argument,       NULL, 'h' },
-		{ "version",     no_argument,       NULL, 'v' },
-		{ NULL,          0,                 NULL, 0 }
+		{ "clipboard",     no_argument,       NULL, OPT_CLIPBOARD },
+		{ "screenshots",   no_argument,       NULL, OPT_SCREENSHOTS },
+		{ "screenshot",    no_argument,       NULL, OPT_SCREENSHOTS },
+		{ "history",       required_argument, NULL, OPT_HISTORY },
+		{ "history-file",  required_argument, NULL, OPT_HISTORY_FILE },
+		{ "ttl",           required_argument, NULL, OPT_TTL },
+		{ "persist",       no_argument,       NULL, OPT_PERSIST },
+		{ "debug",         no_argument,       NULL, OPT_DEBUG },
+		{ "help",          no_argument,       NULL, 'h' },
+		{ "version",       no_argument,       NULL, 'v' },
+		{ NULL,            0,                 NULL, 0 }
 	};
 
 	while ((ch = getopt_long(argc, argv, "hv", longopts, NULL)) != -1) {
@@ -1660,6 +2425,27 @@ static int parse_args(int argc, char **argv)
 			history_capacity = atoi(optarg);
 			if (history_capacity < 0)
 				history_capacity = 0;
+			if (history_capacity > CLIP_HISTORY_MAX_ENTRIES) {
+				fprintf(stderr,
+					"%s: --history %d exceeds the persist limit of %d; clamping\n",
+					prog, history_capacity, CLIP_HISTORY_MAX_ENTRIES);
+				history_capacity = CLIP_HISTORY_MAX_ENTRIES;
+			}
+			break;
+		case OPT_HISTORY_FILE:
+			history_file_override = optarg;
+			persist_enabled = 1;
+			break;
+		case OPT_PERSIST:
+			persist_enabled = 1;
+			break;
+		case OPT_TTL:
+			if (parse_ttl_duration(optarg, &ttl_seconds) < 0) {
+				fprintf(stderr,
+					"%s: invalid --ttl duration '%s' (use e.g. 30s, 10m, 2h, 365d; minimum 5s, maximum 365d)\n",
+					prog, optarg);
+				return -1;
+			}
 			break;
 		case OPT_DEBUG:
 			verbose = 1;
@@ -1794,9 +2580,11 @@ static void draw_history_entry(WMList *lPtr, int index, Drawable d,
 	char capbuf[256];
 	char tbuf[16];
 	char sbuf[32];
-	struct tm *tm;
+	struct tm tm_now, tm_entry;
+	time_t now_time;
 	const char *label;
 	int tx, fh, ix, iy;
+	int tm_ok;
 	WMPixmap *thumb;
 	WMSize isz;
 
@@ -1865,9 +2653,14 @@ static void draw_history_entry(WMList *lPtr, int index, Drawable d,
 		snprintf(sbuf, sizeof(sbuf), "%zu B", e->size);
 	}
 
-	tm = localtime(&e->wall_time);
-	if (tm)
-		strftime(tbuf, sizeof(tbuf), "%H:%M", tm);
+	now_time = time(NULL);
+	tm_ok = localtime_r(&now_time, &tm_now) != NULL &&
+		localtime_r(&e->wall_time, &tm_entry) != NULL;
+	if (tm_ok && (tm_now.tm_year != tm_entry.tm_year ||
+		      tm_now.tm_yday != tm_entry.tm_yday))
+		strftime(tbuf, sizeof(tbuf), "%a %d %H:%M", &tm_entry);
+	else if (tm_ok)
+		strftime(tbuf, sizeof(tbuf), "%H:%M", &tm_entry);
 	else
 		tbuf[0] = '\0';
 
@@ -2513,11 +3306,14 @@ int main(int argc, char **argv)
 		  run_clipboard ? "yes" : "no",
 		  run_screenshots ? "yes" : "no",
 		  history_capacity);
+	if (ttl_seconds > 0 && !history_enabled)
+		debug_log("--ttl ignored: history is disabled");
 
 	if (!init_x11())
 		return 1;
 
 	history.capacity = history_capacity;
+	history_load();
 
 	if (run_clipboard && !init_clipboard_monitor())
 		return 1;
@@ -2538,6 +3334,7 @@ int main(int argc, char **argv)
 		if (primary_pending_deadline > 0 &&
 		    clip_monotonic_ms() >= primary_pending_deadline)
 			flush_primary_pending();
+		history_expire_entries();
 
 		now = clip_monotonic_ms();
 		if ((run_screenshots || history_enabled) &&
@@ -2577,6 +3374,19 @@ int main(int argc, char **argv)
 			if (timeout < 0 || dl_ms < timeout)
 				timeout = dl_ms;
 		}
+		if (history_enabled) {
+			long long dl = history_next_expiry(now);
+			long long dl_ms;
+			int dl_int;
+
+			if (dl > 0) {
+				dl_ms = dl - now;
+				dl_int = dl_ms <= 0 ? 0 :
+					 dl_ms > INT_MAX ? INT_MAX : (int)dl_ms;
+				if (timeout < 0 || dl_int < timeout)
+					timeout = dl_int;
+			}
+		}
 
 		rc = poll(fds, nfds, timeout);
 		if (rc < 0) {
@@ -2598,6 +3408,7 @@ int main(int argc, char **argv)
 		if (primary_pending_deadline > 0 &&
 		    clip_monotonic_ms() >= primary_pending_deadline)
 			flush_primary_pending();
+		history_expire_entries();
 
 		if (ipc_index >= 0 && fds[ipc_index].revents) {
 			if (fds[ipc_index].revents & POLLIN) {
@@ -2617,6 +3428,7 @@ int main(int argc, char **argv)
 	}
 
 	debug_log("stopping");
+	history_save();
 	history_clear_all();
 	if (popup_ipc_fd >= 0)
 		close(popup_ipc_fd);

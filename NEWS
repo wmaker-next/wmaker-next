@@ -50,6 +50,37 @@ Pairing tolerates hand placement: facing edges within max(WindowGap,
 8) pixels and perpendicular extents within an eighth of the smaller
 one pair. The seam gap is preserved during the drag.
 
+Clipboard history expiry and persistence for wmclipd
+----------------------------------------------------
+
+The `wmclipd` clipboard daemon accepts a new `--ttl DURATION` option
+(default 0, disabled) that removes history entries after a fixed age.
+Durations use user-friendly units: `30s`, `10m`, `2h`, `1d`, a bare
+number means seconds, combinations such as `1h30m` are accepted, the
+smallest enabled duration is `5s` and the largest is `365d`. Expiry
+only affects the history ring, the live CLIPBOARD payload is preserved.
+Pinned entries are exempt from expiry (matching capacity eviction) and
+re-copying the same content restarts that entry's timer. Expiry is
+driven by the daemon's main poll loop, so entries disappear on time
+even without new clipboard activity.
+
+The history ring can also survive daemon restarts with the new
+`--persist` option. On a clean exit (`SIGTERM`/`SIGINT`, as sent by the
+login manager at session logout, or an X server disconnect) the ring is
+written to a single binary state file, and the next start restores
+content, order, pin state, capture time and content type. Selection
+ownership, X timestamps and TTL deadlines stay session-local. Because
+clipboard history regularly contains passwords and other secrets,
+persistence is opt-in: without the flag nothing is written to disk.
+The state file is created with mode 0600 in a 0700 directory under
+`$XDG_STATE_HOME/WindowMaker/` (fallback
+`~/.local/state/WindowMaker/`), and `--history-file PATH` chooses a
+different location. Screenshot entries whose backing file is gone and
+non-pinned entries already past their `--ttl` are skipped on load, and
+restored entries never re-claim the live CLIPBOARD selection. In the
+popup, entries captured on a previous day are labelled with the
+weekday and day instead of a bare time.
+
 Sound event support restored
 -----------------------------
 

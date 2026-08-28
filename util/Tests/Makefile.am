@@ -5,7 +5,8 @@ TESTS = check_wmgenmenu check_wmakermsg
 DRIVE_TESTS =
 if USE_XCB_KEYSYMS
 check_PROGRAMS += wmclipd_cliptest
-DRIVE_TESTS += wmclipd-clipboard.sh wmiv-clipboard-paste.sh
+DRIVE_TESTS += wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
+	wmclipd-asan.sh
 endif
 
 AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_srcdir)/util -I$(top_srcdir)/test @HEADER_SEARCH_PATH@
@@ -20,7 +21,8 @@ check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 check_wmakermsg_SOURCES = check_wmakermsg.c
 check_wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
-EXTRA_DIST = wmclipd-clipboard.sh wmiv-clipboard-paste.sh
+EXTRA_DIST = wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
+	wmclipd-asan.sh
 
 TESTS_ENVIRONMENT = \
 	top_builddir='$(top_builddir)'; export top_builddir; \
