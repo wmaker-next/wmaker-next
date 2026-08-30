@@ -9,10 +9,11 @@
  *  (at your option) any later version.
  *
  *  Run by `make check`. Writes tiny PNM samples to a temp directory,
- *  decodes each through RLoadImage(NULL, ...) (the PNM and normalized
- *  XPM loaders ignore the context), and verifies dimensions and a known
- *  pixel. Also exercises RGetImageFromXPMData() with a transparent
- *  colour to confirm the RGB bytes are zero, not heap garbage.
+ *  decodes each through RLoadImage(NULL, ...) (the PNM and XPM
+ *  loaders run headless, no Display needed), and verifies dimensions
+ *  and a known pixel. Also exercises RGetImageFromXPMData() with a
+ *  transparent colour to confirm the RGB bytes are zero, not heap
+ *  garbage.
  */
 
 #include <stdio.h>
@@ -46,7 +47,6 @@ static RImage *load_noctx_sized(const char *path, unsigned w, unsigned h)
 {
 	return RLoadImageAtSize(NULL, path, 0, w, h);
 }
-#ifndef USE_XPM
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((no_sanitize("nonnull-attribute")))
 #endif
@@ -54,7 +54,6 @@ static RImage *xpmdata_noctx(char **data)
 {
 	return RGetImageFromXPMData(NULL, data);
 }
-#endif
 #pragma GCC diagnostic pop
 
 static char tmpdir[] = "/tmp/wrlib-check-XXXXXX";
@@ -324,12 +323,6 @@ static void test_pnm_reject(void)
 
 static void test_xpm_transparent(void)
 {
-#ifdef USE_XPM
-	/* the libXpm-backed loader needs a Display, only the normalized
-	 * fallback (built when --without-xpm) can run headless */
-	printf("skip - xpm transparent (libXpm build needs a Display)\n");
-	return;
-#else
 	/* 2x1 XPM, first pixel transparent (None), second red */
 	static char *xpm[] = {
 		"2 1 2 1",
@@ -362,7 +355,217 @@ static void test_xpm_transparent(void)
 	CHECK(img->data[7] == 255);
 
 	RReleaseImage(img);
-#endif
+}
+
+static void test_xpm_extended(void)
+{
+	static const char with_comments[] =
+		"/* XPM */\n"
+		"/* leading comment */\n"
+		"static char *x[] = {\n"
+		"/* spanning\n"
+		"   two lines */\n"
+		"\n"
+		"\"2 1 2 1\",\n"
+		"/* colour table */\n"
+		"\"r c #ff0000\",\n"
+		"\"g c #00ff00\",\n"
+		"\n"
+		"\"rg\"\n"
+		"};\n";
+	static const char named_colors[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"2 1 3 1\",\n"
+		"\"w c white\",\n"
+		"\"g c gray50\",\n"
+		"\"b c black\",\n"
+		"\"wgb\"\n"
+		"};\n";
+	static const char cpp_four[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"2 1 2 4\",\n"
+		"\"abcd c #112233\",\n"
+		"\"efgh c #445566\",\n"
+		"\"abcdefgh\"\n"
+		"};\n";
+	static const char with_hotspot[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"2 1 1 1 1 0\",\n"
+		"\"x c white\",\n"
+		"\"xx\"\n"
+		"};\n";
+	static const char short_row[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"4 1 1 1\",\n"
+		"\"x c #ff0000\",\n"
+		"\"xx\"\n"
+		"};\n";
+	static const char bad_hex[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"1 1 1 1\",\n"
+		"\"x c #ff00zz\",\n"
+		"\"x\"\n"
+		"};\n";
+	static const char unknown_name[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"1 1 1 1\",\n"
+		"\"x c notacolorname\",\n"
+		"\"x\"\n"
+		"};\n";
+	static const char cpp_five[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"1 1 1 5\",\n"
+		"\"abcde c #112233\",\n"
+		"\"abcde\"\n"
+		"};\n";
+	static const char gray_pct[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"1 1 1 1\",\n"
+		"\"x c %50\",\n"
+		"\"x\"\n"
+		"};\n";
+	static const char key_pref[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"2 1 2 1\",\n"
+		"\"a g #808080 g4 #404040 m #202020\",\n"
+		"\"b m #404040\",\n"
+		"\"ab\"\n"
+		"};\n";
+	static const char inline_cmt[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"/* two pixels */ \"2 1 2 1\",\n"
+		"/* red */ \"r c #ff0000\",\n"
+		"\"g c #00ff00\",\n"
+		"\"rg\"\n"
+		"};\n";
+	static const char cmt_close_payload[] =
+		"/* XPM */\n"
+		"static char *x[] = {\n"
+		"\"2 1 2 1\",\n"
+		"/* red\n"
+		"   ends */ \"r c #ff0000\",\n"
+		"\"g c #00ff00\",\n"
+		"\"rg\"\n"
+		"};\n";
+	static const char *const huge_dims[] = {
+		"1 2000000000 2000000000 1",
+		"x c #ff0000",
+		"x"
+	};
+	char buf[512];
+	RImage *img;
+
+	/* comments and blank lines, multi-line comments included */
+	img = load_noctx(write_sample("cmt.xpm", with_comments, sizeof(with_comments) - 1));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+		CHECK(img->data[3] == 0 && img->data[4] == 255 && img->data[5] == 0);
+		RReleaseImage(img);
+	}
+
+	/* named colours resolve headless through the fallback table */
+	img = load_noctx(write_sample("named.xpm", named_colors, sizeof(named_colors) - 1));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->data[0] == 255 && img->data[1] == 255 && img->data[2] == 255);
+		CHECK(img->data[3] == 0x7f && img->data[4] == 0x7f && img->data[5] == 0x7f);
+		RReleaseImage(img);
+	}
+
+	/* four characters per pixel */
+	img = load_noctx(write_sample("cpp4.xpm", cpp_four, sizeof(cpp_four) - 1));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->data[0] == 0x11 && img->data[1] == 0x22 && img->data[2] == 0x33);
+		CHECK(img->data[3] == 0x44 && img->data[4] == 0x55 && img->data[5] == 0x66);
+		RReleaseImage(img);
+	}
+
+	/* values-line hotspot fields are ignored */
+	img = load_noctx(write_sample("hot.xpm", with_hotspot, sizeof(with_hotspot) - 1));
+	CHECK(img != NULL);
+	if (img)
+		RReleaseImage(img);
+
+	/* a colour line far beyond the historical 64-char buffer */
+	snprintf(buf, sizeof(buf),
+		 "/* XPM */\n"
+		 "static char *x[] = {\n"
+		 "\"1 1 2 1\",\n"
+		 "\"a c #123456\",\n"
+		 "\"  c #abcdef s %0200d\",\n"
+		 "\" a\"\n"
+		 "};\n", 1);
+	img = load_noctx(write_sample("long.xpm", buf, strlen(buf)));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 1 && img->height == 1);
+		CHECK(img->data[0] == 0xab && img->data[1] == 0xcd && img->data[2] == 0xef);
+		RReleaseImage(img);
+	}
+
+	/* %nn grayscale (NEWS-advertised): %50 == 127 */
+	expect_golden("xpm gray %50",
+		      load_noctx(write_sample("gray.xpm", gray_pct,
+					      sizeof(gray_pct) - 1)),
+		      1, 1, 127, 127, 127, 127, 127, 127);
+
+	/* key preference: c > g/g4 > m; the g value beats g4/m, and an
+	 * m-only entry still resolves */
+	expect_golden("xpm key preference",
+		      load_noctx(write_sample("keys.xpm", key_pref,
+					      sizeof(key_pref) - 1)),
+		      2, 1, 0x80, 0x80, 0x80, 0x40, 0x40, 0x40);
+
+	/* inline comments: payload after the comment close on the values
+	 * and colour lines */
+	img = load_noctx(write_sample("icmt.xpm", inline_cmt, sizeof(inline_cmt) - 1));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+		CHECK(img->data[3] == 0 && img->data[4] == 255 && img->data[5] == 0);
+		RReleaseImage(img);
+	}
+
+	/* multi-line comment whose closing line carries the payload */
+	img = load_noctx(write_sample("mccmt.xpm", cmt_close_payload,
+				      sizeof(cmt_close_payload) - 1));
+	CHECK(img != NULL);
+	if (img) {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+		CHECK(img->data[3] == 0 && img->data[4] == 255 && img->data[5] == 0);
+		RReleaseImage(img);
+	}
+
+	/* rejects: short pixel row, bad hex, unknown colour name, cpp>4 */
+	img = load_noctx(write_sample("short.xpm", short_row, sizeof(short_row) - 1));
+	CHECK(img == NULL);
+	img = load_noctx(write_sample("badhex.xpm", bad_hex, sizeof(bad_hex) - 1));
+	CHECK(img == NULL);
+	img = load_noctx(write_sample("badname.xpm", unknown_name, sizeof(unknown_name) - 1));
+	CHECK(img == NULL);
+	img = load_noctx(write_sample("cpp5.xpm", cpp_five, sizeof(cpp_five) - 1));
+	CHECK(img == NULL);
+
+	/* in-memory dimension caps reject near-INT_MAX values before
+	 * 1 + ccount + h can overflow */
+	CHECK(xpmdata_noctx((char **)huge_dims) == NULL);
 }
 
 static void test_svg(void)
@@ -439,6 +642,7 @@ int main(void)
 	test_pnm_reject();
 	test_stb_formats();
 	test_xpm_transparent();
+	test_xpm_extended();
 	test_svg();
 
 	/* best-effort cleanup */

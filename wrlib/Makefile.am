@@ -46,7 +46,8 @@ libwraster_la_SOURCES = 	\
 	xutil.c		\
 	xutil.h		\
 	load_ppm.c	\
-	load_stb.c
+	load_stb.c	\
+	load_xpm.c
 
 if USE_JPEG
 libwraster_la_SOURCES += load_jpeg.c
@@ -64,12 +65,6 @@ endif
 
 if USE_TIFF
 libwraster_la_SOURCES += load_tiff.c
-endif
-
-if USE_XPM
-libwraster_la_SOURCES += load_xpm.c
-else
-libwraster_la_SOURCES += load_xpm_builtin.c
 endif
 
 if USE_SVG

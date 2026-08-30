@@ -197,15 +197,6 @@ These libraries are not required to make @sc{Window Maker} work, but they are su
 want to use them. Version numbers are indicative, but other versions might work too.
 
 @itemize -
-@item @emph{libXPM} 4.7 or newer
-
-Older versions may not work!
-
-Available from @uref{http://xlibs.freedesktop.org/release/}
-
-There is built-in support for @emph{XPM} files, but it will not
-load images in some uncommon encodings.
-
 @item @emph{libpng} 0.96 or newer and @emph{zlib}
 
 For @emph{PNG} image support,
@@ -524,9 +515,6 @@ Disable TIFF support in @emph{WRaster}. when enabled use @file{libtiff}.
 
 @item --disable-webp
 Disable WEBP support in @emph{WRaster}. when enabled use @file{libwebp}.
-
-@item --disable-xpm
-Disable use of @file{libXpm} for XPM support in @emph{WRaster}, use internal code instead.
 
 @end table
 
@@ -856,16 +844,9 @@ You can put multiple paths in any of these options, as the example of @option{--
 Just put a space between them.
 
 
-@section configure doesn't detect @emph{libXpm}
-
-Check if you have a symbolic link from @file{libXpm.so.4.9} to @file{libXpm.so}
-
-
 @section Segmentation fault on startup
 
 @itemize
-@item Check if the version of @emph{libXPM} you have is at least 4.7
-
 @item Check if you have an updated version of @file{~/GNUstep/Defaults/WindowMaker}
 @end itemize
 

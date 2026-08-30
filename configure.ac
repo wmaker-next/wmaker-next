@@ -982,19 +982,6 @@ dnl ==============================================
 dnl         Graphic Format Libraries
 dnl ==============================================
 
-dnl XPM Support
-dnl ===========
-m4_divert_push([INIT_PREPARE])dnl
-AC_ARG_ENABLE([xpm],
-    [AS_HELP_STRING([--disable-xpm], [disable use of XPM pixmaps through libXpm])],
-    [AS_CASE(["$enableval"],
-        [yes|no|auto], [],
-        [AC_MSG_ERROR([bad value $enableval for --enable-xpm])] )],
-    [enable_xpm=auto])
-m4_divert_pop([INIT_PREPARE])dnl
-WM_IMGFMT_CHECK_XPM
-
-
 AC_SUBST(XLFLAGS)
 AC_SUBST(XLIBS)
 AC_SUBST(X_EXTRA_LIBS)
@@ -1111,6 +1098,11 @@ dnl ===========
 # The PPM format is always enabled because we have built-in support for the format
 # We are not using any external library like libppm
 supported_gfx="$supported_gfx builtin-PPM"
+
+dnl XPM Support
+dnl ===========
+# XPM is always enabled through the built-in reader, no external library
+supported_gfx="$supported_gfx builtin-XPM"
 
 
 # Choice of the default format for icons

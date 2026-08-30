@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+XPM without libXpm
+-------------------
+
+libXpm is no longer used or required: XPM images are decoded by the
+reader built into libwraster, so the library no longer pulls libXpm
+(and through it libX11) into its link. The reader now accepts what
+real-world theme files use: comments and blank lines anywhere in the
+file, symbolic and monochrome colour entries, one to four characters
+per pixel, named colours ("white", "gray50", ...) and grayscale
+"%nn" values. Loading still fails cleanly on truncated rows and
+unresolvable colours instead of rendering garbage. The
+"--disable-xpm" configure option is gone (XPM is always built in).
+
 Urgent titlebar blink
 ----------------------
 
