@@ -53,6 +53,8 @@ test-driver
 # These are compilation results
 src/wmaker
 test/wtest
+test/dockapp-client
+test/appmenu-client
 test/shots/current/
 
 util/convertfonts
