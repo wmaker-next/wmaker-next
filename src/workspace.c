@@ -415,7 +415,7 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 		wMenuRealize(menu);
 	}
 	wNETWMUpdateDesktop(scr);
-	WMPostNotificationName(WMNWorkspaceDestroyed, scr, (void *)(uintptr_t) (scr->workspace_count - 1));
+	WMPostNotificationName(WMNWorkspaceDestroyed, scr, (void *)(uintptr_t) workspace);
 
 	if (scr->current_workspace >= scr->workspace_count)
 		wWorkspaceChange(scr, scr->workspace_count - 1);
