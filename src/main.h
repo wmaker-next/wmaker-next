@@ -39,12 +39,12 @@ struct LaunchSetup {
 };
 
 noreturn void Exit(int status);
-void Restart(char *manager, Bool abortOnFailure);
+void Restart(char *manager, bool abortOnFailure);
 void SetupEnvironment(WScreen *scr);
 void LaunchChildSetup(void *data);
 void ExecuteShellCommand(WScreen *scr, const char *command);
-Bool RelaunchWindow(WWindow *wwin);
-noreturn void wAbort(Bool dumpCore);
+bool RelaunchWindow(WWindow *wwin);
+noreturn void wAbort(int dumpCore);
 void ExecExitScript(void);
 int getWVisualID(int screen);
 

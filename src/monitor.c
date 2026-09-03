@@ -28,10 +28,6 @@
 #include <sys/signal.h>
 #endif
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xproto.h>
-
 #include <WINGs/WUtil.h>
 
 #include "WindowMaker.h"
@@ -44,14 +40,18 @@
 static int showCrashDialog(int sig)
 {
 	int crashAction;
+	int scrnum;
 
-	dpy = XOpenDisplay(NULL);
-	if (dpy) {
-		XGrabServer(dpy);
+	xconn = xcb_connect(NULL, &scrnum);
+	if (!xcb_connection_has_error(xconn)) {
+		dflt_screen = scrnum;
+		wXGrabServer(xconn);
 		crashAction = wShowCrashingDialogPanel(sig);
-		XCloseDisplay(dpy);
-		dpy = NULL;
+		xcb_disconnect(xconn);
+		xconn = NULL;
 	} else {
+		xcb_disconnect(xconn);
+		xconn = NULL;
 		werror(_("cannot open connection for crashing dialog panel. Aborting."));
 		crashAction = WMAbort;
 	}
@@ -62,7 +62,7 @@ static int showCrashDialog(int sig)
 		wmessage(_("trying to start alternate window manager..."));
 
 		for (i = 0; i < WMGetArrayItemCount(wPreferences.fallbackWMs); i++) {
-			Restart(WMGetFromArray(wPreferences.fallbackWMs, i), False);
+			Restart(WMGetFromArray(wPreferences.fallbackWMs, i), false);
 		}
 
 		wfatal(_("failed to start alternate window manager. Aborting."));
@@ -80,7 +80,7 @@ int MonitorLoop(int argc, char **argv)
 	char **child_argv = wmalloc(sizeof(char *) * (argc + 2));
 	int i, status;
 	time_t last_start;
-	Bool error = False;
+	bool error = false;
 
 	for (i = 0; i < argc; i++)
 		child_argv[i] = argv[i];
@@ -101,7 +101,7 @@ int MonitorLoop(int argc, char **argv)
 			exited = waitpid(-1, &status, 0);
 			if (exited < 0) {
 				werror(_("Error during monitoring of Window Maker process."));
-				error = True;
+				error = true;
 				break;
 			}
 		} while (exited != pid);

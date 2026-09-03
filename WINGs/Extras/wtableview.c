@@ -1,7 +1,7 @@
 
 #include <cairo.h>
+#include <stdbool.h>
 #include <WINGs/WINGsP.h>
-#include <X11/cursorfont.h>
 #include <stdint.h>
 #include <math.h>
 #include <float.h>
@@ -94,7 +94,7 @@ void WMSetTableColumnConstraints(WMTableColumn * column, unsigned minWidth, unsi
 		WMSetTableColumnWidth(column, column->maxWidth);
 }
 
-void WMSetTableColumnEditable(WMTableColumn * column, Bool flag)
+void WMSetTableColumnEditable(WMTableColumn * column, bool flag)
 {
 	column->editable = ((flag == 0) ? 0 : 1);
 }
@@ -131,7 +131,7 @@ struct W_TableView {
 
 	WMColor *gridColor;
 
-	Cursor splitterCursor;
+	xcb_cursor_t splitterCursor;
 
 	void *dataSource;
 
@@ -171,8 +171,8 @@ static W_ViewDelegate viewDelegate = {
 
 static void reorganizeInterior(WMTableView * table);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleTableEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleTableEvents(xcb_generic_event_t * event, void *data);
 static void repaintTable(WMTableView * table);
 
 static WMSize getTotalSize(WMTableView * table)
@@ -401,7 +401,7 @@ static void doScroll(WMWidget * self, void *data)
 /* self-inverting one-pixel column-splitter guide: DIFFERENCE with a
  * white source gives |1-c| per channel, so drawing the same line twice
  * restores the original pixels just like the previous GXxor GC */
-static void invertVLine(WMScreen *scr, Window w, int x, int h)
+static void invertVLine(WMScreen *scr, xcb_window_t w, int x, int h)
 {
 	cairo_t *cr;
 
@@ -415,7 +415,7 @@ static void invertVLine(WMScreen *scr, Window w, int x, int h)
 	WCairoEnd(cr);
 }
 
-static void splitterHandler(XEvent * event, void *data)
+static void splitterHandler(xcb_generic_event_t * event, void *data)
 {
 	(void) event;
 	WMTableColumn *column = (WMTableColumn *) data;
@@ -424,10 +424,10 @@ static void splitterHandler(XEvent * event, void *data)
 	int cx, ox, offsX;
 	WMPoint pos;
 	WMScreen *scr = WMWidgetScreen(table);
-	Display *dpy = WMScreenDisplay(scr);
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
 	int h = WMWidgetHeight(table) - 22;
-	Window w = WMViewXID(table->view);
-	XEvent ev;
+	xcb_window_t w = WMViewXID(table->view);
+	xcb_generic_event_t *ev;
 
 	pos = WMGetViewPosition(WMWidgetView(column->titleW));
 
@@ -438,28 +438,30 @@ static void splitterHandler(XEvent * event, void *data)
 	invertVLine(scr, w, cx + 20, h);
 
 	while (!done) {
-		WMMaskEvent(dpy, ButtonMotionMask | ButtonReleaseMask, &ev);
+		WMMaskEvent(dpy, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
 
-		switch (ev.type) {
-		case MotionNotify:
+		switch (ev->response_type & 0x7f) {
+		case XCB_MOTION_NOTIFY:
 			ox = cx;
 
-			if (column->width + ev.xmotion.x < column->minWidth)
+			if (column->width + ((xcb_motion_notify_event_t *)ev)->event_x < column->minWidth)
 				cx = pos.x + column->minWidth;
-			else if (column->maxWidth > 0 && column->width + ev.xmotion.x > column->maxWidth)
+			else if (column->maxWidth > 0 && column->width + ((xcb_motion_notify_event_t *)ev)->event_x > column->maxWidth)
 				cx = pos.x + column->maxWidth;
 			else
-				cx = offsX + ev.xmotion.x;
+				cx = offsX + ((xcb_motion_notify_event_t *)ev)->event_x;
 
 			invertVLine(scr, w, ox + 20, h);
 			invertVLine(scr, w, cx + 20, h);
 			break;
 
-		case ButtonRelease:
+		case XCB_BUTTON_RELEASE:
 			column->width = cx - pos.x;
 			done = 1;
 			break;
 		}
+		free(ev);
+		ev = NULL;
 	}
 
 	invertVLine(scr, w, cx + 20, h);
@@ -530,7 +532,7 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 
 	table->tableView->flags.dontCompressExpose = 1;
 
-	table->gridColor = WMCreateNamedColor(scr, "#cccccc", False);
+	table->gridColor = WMCreateNamedColor(scr, "#cccccc", false);
 	/*   table->gridColor = WMGrayColor(scr); */
 
 	table->backColor = WMWhiteColor(scr);
@@ -548,14 +550,14 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 
 	table->selectedRows = WMCreateArray(16);
 
-	table->splitterCursor = XCreateFontCursor(WMScreenDisplay(scr), XC_sb_h_double_arrow);
+	table->splitterCursor = wXLoadCursor(WMScreenDisplay(scr), 0, "sb_h_double_arrow");
 
 	table->canSelectRow = 1;
 
-	WMCreateEventHandler(table->view, ExposureMask | StructureNotifyMask, handleEvents, table);
+	WMCreateEventHandler(table->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, table);
 
-	WMCreateEventHandler(table->tableView, ExposureMask | ButtonPressMask |
-			     ButtonReleaseMask | ButtonMotionMask, handleTableEvents, table);
+	WMCreateEventHandler(table->tableView, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS |
+			     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_MOTION, handleTableEvents, table);
 
 	WMResizeWidget(table, 50, 50);
 
@@ -603,7 +605,7 @@ void WMAddTableViewColumn(WMTableView * table, WMTableColumn * column)
 	W_MapView(splitter);
 
 	W_SetViewCursor(splitter, table->splitterCursor);
-	WMCreateEventHandler(splitter, ButtonPressMask | ButtonReleaseMask, splitterHandler, column);
+	WMCreateEventHandler(splitter, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE, splitterHandler, column);
 
 	WMAddToArray(table->splitters, splitter);
 
@@ -698,7 +700,7 @@ void *WMGetTableViewDataSource(WMTableView * table)
 	return table->dataSource;
 }
 
-void WMSetTableViewHasHorizontalScroller(WMTableView * tPtr, Bool flag)
+void WMSetTableViewHasHorizontalScroller(WMTableView * tPtr, bool flag)
 {
 	if (flag) {
 		if (tPtr->hasHScroller)
@@ -733,7 +735,7 @@ void WMSetTableViewHasHorizontalScroller(WMTableView * tPtr, Bool flag)
 
 #if 0
 /* not supported by now */
-void WMSetTableViewHasVerticalScroller(WMTableView * tPtr, Bool flag)
+void WMSetTableViewHasVerticalScroller(WMTableView * tPtr, bool flag)
 {
 	if (flag) {
 		if (tPtr->hasVScroller)
@@ -824,7 +826,7 @@ static void drawGrid(WMTableView * table, WMRect rect)
 	int y1, y2;
 	int x1, x2;
 	int xx;
-	Drawable d = WMGetPixmapXID(table->viewBuffer);
+	xcb_drawable_t d = WMGetPixmapXID(table->viewBuffer);
 	cairo_t *cr;
 
 	cr = WCairoBeginForDrawable(scr, d);
@@ -906,7 +908,7 @@ static void drawRow(WMTableView * table, int row, WMRect clipRect)
 	int i;
 	WMRange cols = columnsInRect(table, clipRect);
 	WMTableColumn *column;
-	Drawable d = WMGetPixmapXID(table->viewBuffer);
+	xcb_drawable_t d = WMGetPixmapXID(table->viewBuffer);
 
 	for (i = cols.position; i < cols.position + cols.count; i++) {
 		column = WMGetFromArray(table->columns, i);
@@ -926,7 +928,7 @@ static void drawFullRow(WMTableView * table, int row)
 {
 	int i;
 	WMTableColumn *column;
-	Drawable d = WMGetPixmapXID(table->viewBuffer);
+	xcb_drawable_t d = WMGetPixmapXID(table->viewBuffer);
 
 	for (i = 0; i < WMGetArrayItemCount(table->columns); i++) {
 		column = WMGetFromArray(table->columns, i);
@@ -942,7 +944,7 @@ static void drawFullRow(WMTableView * table, int row)
 }
 #endif
 
-static void setRowSelected(WMTableView * table, unsigned row, Bool flag)
+static void setRowSelected(WMTableView * table, unsigned int row, bool flag)
 {
 	int repaint = 0;
 
@@ -995,8 +997,9 @@ static void repaintTable(WMTableView * table)
 		drawRow(table, i, rect);
 	}
 
-	XSetWindowBackgroundPixmap(scr->display, table->tableView->window, WMGetPixmapXID(table->viewBuffer));
-	XClearWindow(scr->display, table->tableView->window);
+	xcb_change_window_attributes(scr->display), table->tableView->window,
+				     XCB_CW_BACK_PIXMAP, (uint32_t *)&table->viewBuffer->pixmap);
+	wXClearArea(scr->display, table->tableView->window, 0, 0, 0, 0, false);
 }
 
 static void stopRowEdit(WMTableView * table, int row)
@@ -1038,13 +1041,13 @@ void WMEditTableViewRow(WMTableView * table, int row)
 void WMSelectTableViewRow(WMTableView * table, int row)
 {
 	if (table->clickedRow >= 0)
-		setRowSelected(table, table->clickedRow, False);
+		setRowSelected(table, table->clickedRow, false);
 
 	if (row < 0 || row >= table->rows) {
 		return;
 	}
 
-	setRowSelected(table, row, True);
+	setRowSelected(table, row, true);
 	table->clickedRow = row;
 
 	if (table->action)
@@ -1088,28 +1091,28 @@ void WMNoteTableViewNumberOfRowsChanged(WMTableView * table)
 	WMReloadTableView(table);
 }
 
-static void handleTableEvents(XEvent * event, void *data)
+static void handleTableEvents(xcb_generic_event_t * event, void *data)
 {
 	WMTableView *table = (WMTableView *) data;
 	int row;
 
-	switch (event->type) {
-	case ButtonPress:
-		if (event->xbutton.button == Button1) {
+	switch (event->response_type & 0x7f) {
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
 			WMRect rect = getVisibleRect(table);
 
-			row = (event->xbutton.y + rect.pos.y) / table->rowHeight;
+			row = (((xcb_button_press_event_t *)event)->event_y + rect.pos.y) / table->rowHeight;
 			if (row < 0 || row >= table->rows) {
 				if (table->clickedRow >= 0)
-					setRowSelected(table, table->clickedRow, False);
+					setRowSelected(table, table->clickedRow, false);
 				table->clickedRow = -1;
 				table->dragging = 0;
 				break;
 			}
 			if (row != table->clickedRow) {
 				if (table->clickedRow >= 0)
-					setRowSelected(table, table->clickedRow, False);
-				setRowSelected(table, row, True);
+					setRowSelected(table, table->clickedRow, false);
+				setRowSelected(table, row, true);
 				table->clickedRow = row;
 				table->dragging = 1;
 			} else {
@@ -1118,21 +1121,21 @@ static void handleTableEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case MotionNotify:
-		if (table->dragging && event->xmotion.y >= 0) {
+	case XCB_MOTION_NOTIFY:
+		if (table->dragging && ((xcb_motion_notify_event_t *)event)->event_y >= 0) {
 			WMRect rect = getVisibleRect(table);
 
-			row = (event->xmotion.y + rect.pos.y) / table->rowHeight;
+			row = (((xcb_motion_notify_event_t *)event)->event_y + rect.pos.y) / table->rowHeight;
 			if (table->clickedRow != row && row >= 0 && row < table->rows) {
-				setRowSelected(table, table->clickedRow, False);
-				setRowSelected(table, row, True);
+				setRowSelected(table, table->clickedRow, false);
+				setRowSelected(table, row, true);
 				table->clickedRow = row;
 			}
 		}
 		break;
 
-	case ButtonRelease:
-		if (event->xbutton.button == Button1) {
+	case XCB_BUTTON_RELEASE:
+		if (((xcb_button_release_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
 			if (table->clickedRow >= 0 && table->clickedRow < table->rows) {
 				if (table->action)
 					(*table->action) (table, table->clientData);
@@ -1144,13 +1147,13 @@ static void handleTableEvents(XEvent * event, void *data)
 	}
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	WMTableView *table = (WMTableView *) data;
 	WMScreen *scr = WMWidgetScreen(table);
 
-	switch (event->type) {
-	case Expose:
+	switch (event->response_type & 0x7f) {
+	case XCB_EXPOSE:
 		W_DrawRelief(scr, W_VIEW_DRAWABLE(table->view), 0, 0,
 			     W_VIEW_WIDTH(table->view), W_VIEW_HEIGHT(table->view), WRSunken);
 		break;

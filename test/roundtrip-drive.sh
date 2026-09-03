@@ -5,7 +5,9 @@
 # total stays under ROUNDTRIP_LIMIT. The bulk of the count is the
 # pipelined InternAtom and per-screen prefetch batches (one round-trip
 # for many replies), the assertion catches a serial GetProperty or
-# XSync sneaking back into the manage path.
+# XSync sneaking back into the manage path. The per-WINGs-screen
+# xkbcommon stack (WINGs/wxkb.c) mirrors src/wxkb.c and prefetches the
+# keymap once at boot on the same connection, worth ~7 replies.
 #
 # In bench mode (BENCH=1) five clients are also managed and the
 # per-window GetProperty and reply deltas are printed, no assertion.
@@ -22,7 +24,7 @@ WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 WMAKERMSG="$ROOT/util/.libs/wmakermsg"
 REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:90}
 PROXY=${ROUNDTRIP_DRIVE_PROXY:-:89}
-LIMIT=${ROUNDTRIP_LIMIT:-350}
+LIMIT=${ROUNDTRIP_LIMIT:-360}
 TRACE=/tmp/roundtrip-drive.trace
 LOG=/tmp/roundtrip-drive.log
 BENCH=${BENCH:-0}

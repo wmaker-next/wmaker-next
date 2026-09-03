@@ -43,10 +43,10 @@
 void wSetFocusTo(WScreen *scr, WWindow *wwin);
 void wSetFocusToDirection(WScreen *scr, int direction);
 
-int wMouseMoveWindow(WWindow *wwin, XEvent *ev);
+int wMouseMoveWindow(WWindow *wwin, xcb_generic_event_t *ev);
 int wKeyboardMoveResizeWindow(WWindow *wwin);
 
-void wMouseResizeWindow(WWindow *wwin, XEvent *ev);
+void wMouseResizeWindow(WWindow *wwin, xcb_generic_event_t *ev);
 
 void wShadeWindow(WWindow *wwin);
 void wUnshadeWindow(WWindow *wwin);
@@ -54,9 +54,9 @@ void wUnshadeWindow(WWindow *wwin);
 void wIconifyWindow(WWindow *wwin);
 void wDeiconifyWindow(WWindow *wwin);
 
-void wSelectWindows(WScreen *scr, XEvent *ev);
+void wSelectWindows(WScreen *scr, xcb_generic_event_t *ev);
 
-void wSelectWindow(WWindow *wwin, Bool flag);
+void wSelectWindow(WWindow *wwin, bool flag);
 void wUnselectWindows(WScreen *scr);
 
 void wMaximizeWindow(WWindow *wwin, int directions, int head);
@@ -70,8 +70,8 @@ void wShowAllWindows(WScreen *scr);
 
 void wHideApplication(WApplication *wapp);
 void wRequestHideApplication(WApplication *wapp, WWindow *via);
-void wUnhideApplication(WApplication *wapp, Bool miniwindows,
-                        Bool bringToCurrentWS);
+void wUnhideApplication(WApplication *wapp, bool miniwindows,
+                        bool bringToCurrentWS);
 
 void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate);
 void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
@@ -80,7 +80,7 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 void wRefreshDesktop(WScreen *scr);
 void wRefreshMiniwindows(WScreen *scr);
 
-void wArrangeIcons(WScreen *scr, Bool arrangeAll);
+void wArrangeIcons(WScreen *scr, bool arrangeAll);
 
 void wMakeWindowVisible(WWindow *wwin);
 
@@ -97,11 +97,11 @@ void save_old_geometry(WWindow *wwin, int directions);
 void movePointerToWindowCenter(WWindow *wwin);
 void moveBetweenHeads(WWindow *wwin, int direction);
 
-Bool find_nearest_edge(WWindow *self, int head, int workspace,
+bool find_nearest_edge(WWindow *self, int head, int workspace,
 		       int direction, int from_offset, int to_offset,
 		       int axis_lo, int axis_hi, int max_dist, int gap,
 		       int seed_gap, int *best_offset);
-void wMoveToEdge(WWindow *wwin, int direction, Bool snap_to_windows);
+void wMoveToEdge(WWindow *wwin, int direction, bool snap_to_windows);
 void wGrowToEdge(WWindow *wwin, int direction);
 void wShrinkToEdge(WWindow *wwin, int direction);
 
@@ -112,4 +112,3 @@ void warpPointerToMonitor(WScreen *scr);
 void warpPointerToNextMonitor(WScreen *scr);
 
 #endif
-

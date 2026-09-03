@@ -23,8 +23,7 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include <X11/keysym.h>
-#include <X11/cursorfont.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "editmenu.h"
 
@@ -106,10 +105,10 @@ typedef struct _Panel {
 
 	WMButton *quickB;
 
-	Bool dontAsk;		/* whether to comfirm submenu remove */
-	Bool dontSave;
+	bool dontAsk;		/* whether to comfirm submenu remove */
+	bool dontSave;
 
-	Bool capturing;
+	bool capturing;
 
 	/* about the currently selected item */
 	WEditMenuItem *currentItem;
@@ -174,7 +173,7 @@ static void menuItemCloned(struct WEditMenuDelegate *delegate, WEditMenu * menu,
 
 static void menuItemEdited(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item);
 
-static Bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item);
+static bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item);
 
 static void freeItemData(ItemData * data);
 
@@ -245,9 +244,9 @@ static void browseForFile(WMWidget * self, void *clientData)
 		*ptr = 0;
 	}
 
-	WMSetFilePanelCanChooseDirectories(filePanel, False);
+	WMSetFilePanelCanChooseDirectories(filePanel, false);
 
-	if (WMRunModalFilePanelForDirectory(filePanel, panel->parent, oldprog, _("Select Program"), NULL) == True) {
+	if (WMRunModalFilePanelForDirectory(filePanel, panel->parent, oldprog, _("Select Program"), NULL) == true) {
 		newprog = WMGetFilePanelFileName(filePanel);
 		WMSetTextFieldText(panel->commandT, newprog);
 		updateMenuItem(panel, panel->currentItem, panel->commandT);
@@ -260,7 +259,7 @@ static void browseForFile(WMWidget * self, void *clientData)
 static void sgrabClicked(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
-	Display *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
+	xcb_connection_t *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
 	char *shortcut;
 
 	if (w == panel->sclearB) {
@@ -272,8 +271,8 @@ static void sgrabClicked(WMWidget * w, void *data)
 	if (!panel->capturing) {
 		panel->capturing = 1;
 		WMSetButtonText(w, _("Cancel"));
-		XGrabKeyboard(dpy, WMWidgetXID(panel->parent), True, GrabModeAsync, GrabModeAsync, CurrentTime);
-		shortcut = capture_shortcut(dpy, &panel->capturing, 0);
+		wXGrabKeyboard(dpy, WMWidgetXID(panel->parent), true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+		shortcut = capture_shortcut(WMWidgetScreen(panel->parent), &panel->capturing, 0);
 		if (shortcut) {
 			WMSetTextFieldText(panel->shortT, shortcut);
 			updateMenuItem(panel, panel->currentItem, panel->shortT);
@@ -282,7 +281,7 @@ static void sgrabClicked(WMWidget * w, void *data)
 	}
 	panel->capturing = 0;
 	WMSetButtonText(w, _("Capture"));
-	XUngrabKeyboard(dpy, CurrentTime);
+	wXUngrabKeyboard(dpy, XCB_CURRENT_TIME);
 }
 
 static void changedItemPad(WMWidget * w, void *data)
@@ -306,7 +305,7 @@ static WEditMenu *putNewSubmenu(WEditMenu * menu, const char *title)
 	item = WAddMenuItemWithTitle(menu, title);
 
 	tmp = WCreateEditMenu(WMWidgetScreen(menu), title);
-	WSetEditMenuAcceptsDrop(tmp, True);
+	WSetEditMenuAcceptsDrop(tmp, true);
 	WSetEditMenuDelegate(tmp, &menuDelegate);
 	WSetEditMenuSubmenu(menu, item, tmp);
 
@@ -336,9 +335,9 @@ static WEditMenu *makeFactoryMenu(WMWidget * parent, int width)
 	WMResizeWidget(pad, width, 10);
 	WSetEditMenuMinSize(pad, wmksize(width, 0));
 	WSetEditMenuMaxSize(pad, wmksize(width, 0));
-	WSetEditMenuSelectable(pad, False);
-	WSetEditMenuEditable(pad, False);
-	WSetEditMenuIsFactory(pad, True);
+	WSetEditMenuSelectable(pad, false);
+	WSetEditMenuEditable(pad, false);
+	WSetEditMenuIsFactory(pad, true);
 	WSetEditMenuDelegate(pad, &menuDelegate);
 
 	return pad;
@@ -376,7 +375,7 @@ static void createPanel(_Panel * p)
 	/* the "generated submenu" marker: a 7x7 black plus. Build it as
 	 * an RImage with alpha so WMCreatePixmapFromRImage derives both
 	 * the screen-depth glyph and its 1-bit mask from one draw. */
-	marker = RCreateImage(7, 7, True);
+	marker = RCreateImage(7, 7, true);
 	mblack.red = mblack.green = mblack.blue = 0;
 	mblack.alpha = 255;
 	RDrawLine(marker, 0, 3, 6, 3, &mblack);
@@ -424,7 +423,7 @@ static void createPanel(_Panel * p)
 	sview = WMCreateScrollView(panel->box);
 	WMResizeWidget(sview, 150, 180);
 	WMMoveWidget(sview, 10, 40);
-	WMSetScrollViewHasVerticalScroller(sview, True);
+	WMSetScrollViewHasVerticalScroller(sview, true);
 
 	pad = makeFactoryMenu(panel->box, 130);
 
@@ -473,7 +472,7 @@ static void createPanel(_Panel * p)
 	sview = WMCreateScrollView(panel->box);
 	WMResizeWidget(sview, 150, 180);
 	WMMoveWidget(sview, 10, 40);
-	WMSetScrollViewHasVerticalScroller(sview, True);
+	WMSetScrollViewHasVerticalScroller(sview, true);
 
 	pad = makeFactoryMenu(panel->box, 130);
 
@@ -1264,12 +1263,12 @@ static void menuItemEdited(struct WEditMenuDelegate *delegate, WEditMenu * menu,
 	}
 }
 
-static Bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item)
+static bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item)
 {
 	_Panel *panel = (_Panel *) delegate->data;
 
 	if (panel->dontAsk)
-		return True;
+		return true;
 
 	if (WGetEditMenuSubmenu(item)) {
 		int res;
@@ -1281,15 +1280,15 @@ static Bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * men
 				      _("Yes"), _("No"), _("Yes, don't ask again"));
 		switch (res) {
 		case WAPRDefault:
-			return True;
+			return true;
 		case WAPRAlternate:
-			return False;
+			return false;
 		case WAPROther:
-			panel->dontAsk = True;
-			return True;
+			panel->dontAsk = true;
+			return true;
 		}
 	}
-	return True;
+	return true;
 }
 
 static void menuItemDeselected(WEditMenuDelegate * delegate, WEditMenu * menu, WEditMenuItem * item)
@@ -1426,7 +1425,7 @@ static WEditMenu *buildSubmenu(_Panel * panel, WMPropList * pl)
 		}
 	}
 
-	WSetEditMenuAcceptsDrop(menu, True);
+	WSetEditMenuAcceptsDrop(menu, true);
 	WSetEditMenuDelegate(menu, &menuDelegate);
 
 	WMRealizeWidget(menu);
@@ -1513,7 +1512,7 @@ static void showData(_Panel * panel)
 					panel->parent,
 					_("Warning"), buf,
 					_("OK"), NULL, NULL);
-			panel->dontSave = True;
+			panel->dontSave = true;
 			wfree(path);
 			wfree(menuPath);
 			menuPath = NULL;
@@ -1544,7 +1543,7 @@ static void showData(_Panel * panel)
 				pmenu = WMCreatePLArray(WMCreatePLString("Applications"), NULL);
 			}
 		} else {
-			panel->dontSave = True;
+			panel->dontSave = true;
 			return;
 		}
 	}
@@ -1564,16 +1563,16 @@ static void showData(_Panel * panel)
 	WMReleasePropList(pmenu);
 }
 
-static Bool notblank(const char *s)
+static bool notblank(const char *s)
 {
 	if (s) {
 		while (*s) {
 			if (!isspace(*s))
-				return True;
+				return true;
 			s++;
 		}
 	}
-	return False;
+	return false;
 }
 
 static WMPropList *processData(const char *title, ItemData * data)

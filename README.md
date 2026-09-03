@@ -59,10 +59,11 @@ use today exposes. In return, `convert.c` lost ~1600 lines of
 unreachable colormap code and the `WRASTER_COLOR_RESOLUTION` env var is
 dropped.
 
-The `libXinerama` link dependency is also gone: multi-head geometry is
-authoritative via **RandR 1.5** `GetMonitors`, with the XINERAMA wire
-protocol spoken directly (no library) as a fallback for nested servers.
-The `USE_XINERAMA` build switch no longer exists —
+The Xlib `libXinerama` link dependency is also gone, but Xinerama
+multi-head support is not: multi-monitor geometry is handled through
+**RandR 1.5**, and servers or configurations that only offer the older
+XINERAMA extension are still supported as a fallback. The
+`USE_XINERAMA` build switch no longer exists —
 `_NET_WM_FULLSCREEN_MONITORS`, the per-head workspace-name placement,
 and the `-X`/`--xinerama` `wmsetbg` flag are all unconditional now.
 

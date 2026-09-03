@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 	wfree(style_paths);
 	wfree(icon_paths);
 
-	tmp = WMGetPropListDescription(RMenu, True);
+	tmp = WMGetPropListDescription(RMenu, true);
 	printf("%s\n", tmp ? tmp : "");
 	wfree(tmp);
 

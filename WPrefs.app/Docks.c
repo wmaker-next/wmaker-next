@@ -140,12 +140,12 @@ static void pushDockButton(WMWidget *w, void *data)
 	if (button == panel->docksB[0] &&
 	    !WMGetButtonSelected(panel->docksB[0]))
 	{
-		WMSetButtonSelected(panel->docksB[2], False);
+		WMSetButtonSelected(panel->docksB[2], false);
 	}
 	if (button == panel->docksB[2] &&
 	    WMGetButtonSelected(panel->docksB[2]))
 	{
-		WMSetButtonSelected(panel->docksB[0], True);
+		WMSetButtonSelected(panel->docksB[0], true);
 	}
 }
 
@@ -197,7 +197,7 @@ static void createPanel(Panel *p)
 				panel->autoDelayB[i + k * 2][j] = WMCreateCustomButton(panel->autoDelayF[k], WBBStateChangeMask);
 				WMResizeWidget(panel->autoDelayB[i + k * 2][j], 25, 25);
 				WMMoveWidget(panel->autoDelayB[i + k * 2][j], 160 + (26 * j), 25 + 40 * i);
-				WMSetButtonBordered(panel->autoDelayB[i + k * 2][j], False);
+				WMSetButtonBordered(panel->autoDelayB[i + k * 2][j], false);
 				WMSetButtonImagePosition(panel->autoDelayB[i + k * 2][j], WIPImageOnly);
 				WMSetButtonAction(panel->autoDelayB[i + k * 2][j], pushAutoDelayButton, panel);
 				if (j > 0)

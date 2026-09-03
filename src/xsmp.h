@@ -21,7 +21,6 @@
 #ifndef WMXSMP_H_
 #define WMXSMP_H_
 
-#include <X11/Xlib.h>
 
 /* Return a wmalloc()'d NULL-terminated copy of argv with any --for-real*
  * flag and any -clientid/--clientid pair removed, and write the surviving
@@ -42,14 +41,14 @@ void wXSMPConnect(int argc, char **argv, const char *previous_id);
 /* True when a session manager connection is open, callers use this to
  * decide whether to hand shutdown to the session manager or run the
  * local wipeDesktop()/Shutdown() path. */
-Bool wXSMPConnected(void);
+bool wXSMPConnected(void);
 
 /* Ask the session manager for a global SaveYourself with shutdown=True.
  * save_state maps to SmSaveBoth vs SmSaveGlobal so the exit-dialog
  * "Save workspace state" checkbox controls whether clients are asked
  * to checkpoint. Returns False when no connection is open so the caller
  * falls back to the direct Shutdown() path. */
-Bool wXSMPRequestShutdown(Bool save_state);
+bool wXSMPRequestShutdown(bool save_state);
 
 /* Called from Shutdown() before exit so the session manager sees a
  * deliberate close as SmRestartIfRunning rather than a crash to
@@ -62,8 +61,8 @@ static inline void wXSMPConnect(int argc, char **argv, const char *previous_id)
 {
 	(void)argc; (void)argv; (void)previous_id;
 }
-static inline Bool wXSMPConnected(void) { return False; }
-static inline Bool wXSMPRequestShutdown(Bool save_state) { (void)save_state; return False; }
+static inline bool wXSMPConnected(void) { return false; }
+static inline bool wXSMPRequestShutdown(bool save_state) { (void)save_state; return false; }
 static inline void wXSMPDisconnect(void) { }
 
 #endif  /* USE_XSMP */

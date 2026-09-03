@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,7 +176,7 @@ int main(int argc, char **argv)
 	} else if (strcmp(argv[0], "send_tick") == 0) {
 		req_type = WIPC_SEND_TICK;
 		s = WMCreatePLString(argc > 1 ? argv[1] : "");
-		body = WMGetPropListDescription(s, False);
+		body = WMGetPropListDescription(s, false);
 		WMReleasePropList(s);
 	} else {
 		inner = WMCreatePLArray(NULL);
@@ -186,7 +187,7 @@ int main(int argc, char **argv)
 		}
 		outer = WMCreatePLArray(inner, NULL);
 		WMReleasePropList(inner);
-		body = WMGetPropListDescription(outer, False);
+		body = WMGetPropListDescription(outer, false);
 		WMReleasePropList(outer);
 	}
 

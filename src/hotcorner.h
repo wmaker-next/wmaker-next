@@ -31,7 +31,7 @@
 
 void wHotCornersUpdate(WScreen *scr);
 void wHotCornersRaise(WScreen *scr);
-int  wHotCornerForWindow(WScreen *scr, Window w);
+int  wHotCornerForWindow(WScreen *scr, xcb_window_t w);
 void wHotCornersEnter(WScreen *scr, int corner);
 void wHotCornersLeave(WScreen *scr);
 

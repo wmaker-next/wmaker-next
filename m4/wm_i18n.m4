@@ -167,26 +167,3 @@ AS_IF([test "x$menutextdomain" != "x"],
 ])
 
 
-dnl WM_I18N_XLOCALE
-dnl ---------------
-dnl
-dnl X11 needs to redefine the function 'setlocale' to properly initialize itself,
-dnl we check if user wants to disable this behaviour or if it is not supported
-AC_DEFUN_ONCE([WM_I18N_XLOCALE],
-[m4_divert_push([INIT_PREPARE])dnl
- AC_ARG_ENABLE([xlocale],
-    [AS_HELP_STRING([--disable-xlocale],
-        [disable initialization of locale for X])],
-    [AS_CASE([$enableval],
-        [yes|no], [],
-        [AC_MSG_ERROR([bad value '$enableval' for --disable-xlocale])])],
-    [enable_xlocale=auto])
-m4_divert_pop([INIT_PREPARE])dnl
-AS_IF([test "x$enable_xlocale" != "xno"],
-    [AC_CHECK_LIB([X11], [_Xsetlocale],
-        [AC_DEFINE([X_LOCALE], [1],
-            [defined if the locale is initialized by X window])],
-        [AS_IF([test "x$enable_xlocale" = "xyes"],
-            [AC_MSG_ERROR([support for X_LOCALE was explicitely requested, but X11 lacks the appropriate function])])],
-        [$XLFLAGS $XLIBS]) ])
-])

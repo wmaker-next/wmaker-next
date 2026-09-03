@@ -53,7 +53,7 @@ typedef struct _AppSettingsPanel {
 	WMButton *okBtn;
 	WMButton *cancelBtn;
 
-	Window parent;
+	xcb_window_t parent;
 
 	/* kluge */
 	unsigned int destroyed:1;

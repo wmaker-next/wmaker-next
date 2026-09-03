@@ -250,7 +250,7 @@ frame_geom() {
 	fg_ext=$(DISPLAY=$DPY xprop -id "$fg_xid" _NET_FRAME_EXTENTS 2>/dev/null \
 		| sed 's/.*= //; s/,//g')
 	[ -n "$fg_client" ] && [ -n "$fg_ext" ] || return 1
-	# fg_client is two lines (CX\nCY); split on IFS so $1=CX $2=CY
+	# fg_client is two lines (CX\nCY), split on IFS so $1=CX $2=CY
 	set -- $fg_client
 	fg_cx=$1
 	fg_cy=$2
@@ -308,7 +308,7 @@ while [ "$cycle" -lt "$RESTARTS" ]; do
 	if [ "$rc" -ne 0 ]; then
 		fatal "wmakermsg restart failed (rc=$rc)"
 	fi
-	# restart re-execs in place, the old PID file entry is stale; refresh
+	# restart re-execs in place, the old PID file entry is stale, refresh
 	# the recorded pid from get_version after IPC re-binds
 	wait_for 120 ipc_ready || fatal "IPC did not re-bind after restart cycle $cycle"
 	WMAKER_PID=$(msg get_version 2>/dev/null \

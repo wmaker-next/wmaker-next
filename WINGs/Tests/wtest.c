@@ -19,7 +19,6 @@ _Noreturn void wAbort(void)
 	exit(1);
 }
 
-Display *dpy;
 
 int windowCount = 0;
 
@@ -132,30 +131,30 @@ void testBox(WMScreen * scr)
 	WMSetBoxBorderWidth(box, 5);
 	WMSetViewExpandsToParent(WMWidgetView(box), 0, 0, 0, 0);
 
-	/*WMSetBoxHorizontal(box, True); */
+	/*WMSetBoxHorizontal(box, true); */
 	for (i = 0; i < 4; i++) {
 		btn = WMCreateCommandButton(box);
 		WMSetButtonText(btn, "bla");
 		WMMapWidget(btn);
-		WMAddBoxSubview(box, WMWidgetView(btn), i & 1, True, 20, 0, 5);
+		WMAddBoxSubview(box, WMWidgetView(btn), i & 1, true, 20, 0, 5);
 	}
 
 	pop = WMCreatePopUpButton(box);
 	WMAddPopUpButtonItem(pop, "ewqeq");
 	WMAddPopUpButtonItem(pop, "ewqeqrewrw");
-	WMAddBoxSubview(box, WMWidgetView(pop), False, True, 20, 0, 5);
+	WMAddBoxSubview(box, WMWidgetView(pop), false, true, 20, 0, 5);
 	WMMapWidget(pop);
 
 	hbox = WMCreateBox(box);
-	WMSetBoxHorizontal(hbox, True);
-	WMAddBoxSubview(box, WMWidgetView(hbox), False, True, 24, 0, 0);
+	WMSetBoxHorizontal(hbox, true);
+	WMAddBoxSubview(box, WMWidgetView(hbox), false, true, 24, 0, 0);
 	WMMapWidget(hbox);
 
 	for (i = 0; i < 4; i++) {
 		btn = WMCreateCommandButton(hbox);
 		WMSetButtonText(btn, "bla");
 		WMMapWidget(btn);
-		WMAddBoxSubview(hbox, WMWidgetView(btn), 1, True, 60, 0, i < 3 ? 5 : 0);
+		WMAddBoxSubview(hbox, WMWidgetView(btn), 1, true, 60, 0, i < 3 ? 5 : 0);
 	}
 
 	WMRealizeWidget(win);
@@ -218,15 +217,15 @@ void testList(WMScreen * scr)
 	WMSetLabelText(mtitle, "Multiple selection list");
 
 	list = WMCreateList(win);
-	/*WMSetListAllowEmptySelection(list, True); */
+	/*WMSetListAllowEmptySelection(list, true); */
 	WMMoveWidget(list, 10, 40);
 	for (i = 0; i < 105; i++) {
 		snprintf(text, sizeof(text), "Item %i", i);
 		WMAddListItem(list, text);
 	}
 	mlist = WMCreateList(win);
-	WMSetListAllowMultipleSelection(mlist, True);
-	/*WMSetListAllowEmptySelection(mlist, True); */
+	WMSetListAllowMultipleSelection(mlist, true);
+	/*WMSetListAllowEmptySelection(mlist, true); */
 	WMMoveWidget(mlist, 210, 40);
 	for (i = 0; i < 135; i++) {
 		snprintf(text, sizeof(text), "Item %i", i);
@@ -319,7 +318,7 @@ void testGradientButtons(WMScreen * scr)
 	dark.green = 0x30;
 	dark.blue = 0x35;
 
-	color = WMCreateRGBColor(scr, 0x5900, 0x5100, 0x5900, True);
+	color = WMCreateRGBColor(scr, 0x5900, 0x5100, 0x5900, true);
 	WMSetWidgetBackgroundColor(win, color);
 	WMReleaseColor(color);
 
@@ -334,12 +333,12 @@ void testGradientButtons(WMScreen * scr)
 	RReleaseImage(back);
 
 	color = WMWhiteColor(scr);
-	altColor = WMCreateNamedColor(scr, "red", True);
+	altColor = WMCreateNamedColor(scr, "red", true);
 
 	btn = WMCreateButton(win, WBTMomentaryChange);
 	WMResizeWidget(btn, 60, 24);
 	WMMoveWidget(btn, 20, 100);
-	WMSetButtonBordered(btn, False);
+	WMSetButtonBordered(btn, false);
 	WMSetButtonImagePosition(btn, WIPOverlaps);
 	WMSetButtonImage(btn, pix1);
 	WMSetButtonAltImage(btn, pix2);
@@ -352,7 +351,7 @@ void testGradientButtons(WMScreen * scr)
 	btn = WMCreateButton(win, WBTMomentaryChange);
 	WMResizeWidget(btn, 60, 24);
 	WMMoveWidget(btn, 90, 100);
-	WMSetButtonBordered(btn, False);
+	WMSetButtonBordered(btn, false);
 	WMSetButtonImagePosition(btn, WIPOverlaps);
 	WMSetButtonImage(btn, pix1);
 	WMSetButtonAltImage(btn, pix2);
@@ -362,12 +361,12 @@ void testGradientButtons(WMScreen * scr)
 	WMSetBalloonTextForView("Este é outro balão.", WMWidgetView(btn));
 
 	WMReleaseColor(color);
-	color = WMCreateNamedColor(scr, "orange", True);
+	color = WMCreateNamedColor(scr, "orange", true);
 
 	btn = WMCreateButton(win, WBTMomentaryChange);
 	WMResizeWidget(btn, 60, 24);
 	WMMoveWidget(btn, 160, 100);
-	WMSetButtonBordered(btn, False);
+	WMSetButtonBordered(btn, false);
 	WMSetButtonImagePosition(btn, WIPOverlaps);
 	WMSetButtonImage(btn, pix1);
 	WMSetButtonAltImage(btn, pix2);
@@ -410,8 +409,8 @@ void testScrollView(WMScreen * scr)
 	WMResizeWidget(sview, 200, 200);
 	WMMoveWidget(sview, 30, 30);
 	WMSetScrollViewRelief(sview, WRSunken);
-	WMSetScrollViewHasVerticalScroller(sview, True);
-	WMSetScrollViewHasHorizontalScroller(sview, True);
+	WMSetScrollViewHasVerticalScroller(sview, true);
+	WMSetScrollViewHasHorizontalScroller(sview, true);
 
 	/* create a frame with a bunch of labels */
 	f = WMCreateFrame(win);
@@ -458,11 +457,11 @@ void testColorWell(WMScreen * scr)
 	well1 = WMCreateColorWell(win);
 	WMResizeWidget(well1, 60, 40);
 	WMMoveWidget(well1, 100, 100);
-	WMSetColorWellColor(well1, WMCreateRGBColor(scr, 0x8888, 0, 0x1111, True));
+	WMSetColorWellColor(well1, WMCreateRGBColor(scr, 0x8888, 0, 0x1111, true));
 	well2 = WMCreateColorWell(win);
 	WMResizeWidget(well2, 60, 40);
 	WMMoveWidget(well2, 200, 100);
-	WMSetColorWellColor(well2, WMCreateRGBColor(scr, 0, 0, 0x8888, True));
+	WMSetColorWellColor(well2, WMCreateRGBColor(scr, 0, 0, 0x8888, true));
 
 	WMRealizeWidget(win);
 	WMMapSubwidgets(win);
@@ -474,7 +473,7 @@ void testColorPanel(WMScreen * scr)
 	WMColorPanel *panel = WMGetColorPanel(scr);
 
 	/*if (colorname) {
-	   startcolor = WMCreateNamedColor(scr, colorname, False);
+	   startcolor = WMCreateNamedColor(scr, colorname, false);
 	   WMSetColorPanelColor(panel, startcolor);
 	   WMReleaseColor(startcolor);
 	   } */
@@ -505,7 +504,7 @@ void testSlider(WMScreen * scr)
 	WMResizeWidget(s, 16, 100);
 	WMMoveWidget(s, 100, 100);
 	WMSetSliderKnobThickness(s, 8);
-	WMSetSliderContinuous(s, False);
+	WMSetSliderContinuous(s, false);
 	WMSetSliderAction(s, sliderCallback, s);
 
 	s = WMCreateSlider(win);
@@ -569,9 +568,9 @@ void testText(WMScreen * scr)
 	text = WMCreateText(win);
 	WMResizeWidget(text, 480, 280);
 	WMMoveWidget(text, 10, 10);
-	WMSetTextHasVerticalScroller(text, True);
-	WMSetTextEditable(text, False);
-	WMSetTextIgnoresNewline(text, False);
+	WMSetTextHasVerticalScroller(text, true);
+	WMSetTextEditable(text, false);
+	WMSetTextIgnoresNewline(text, false);
 
 #define FNAME "Verdana,sans serif:pixelsize=12"
 #define MSG \
@@ -649,7 +648,7 @@ void testPullDown(WMScreen * scr)
 	pop = WMCreatePopUpButton(win);
 	WMResizeWidget(pop, 100, 20);
 	WMMoveWidget(pop, 50, 60);
-	WMSetPopUpButtonPullsDown(pop, True);
+	WMSetPopUpButtonPullsDown(pop, true);
 	WMSetPopUpButtonText(pop, "Commands");
 	WMAddPopUpButtonItem(pop, "Add");
 	WMAddPopUpButtonItem(pop, "Remove");
@@ -777,18 +776,18 @@ void splitViewConstrainProc(WMSplitView * sPtr, int indView, int *minSize, int *
 	}
 }
 
-static void resizeSplitView(XEvent * event, void *data)
+static void resizeSplitView(xcb_generic_event_t * event, void *data)
 {
 	WMSplitView *sPtr = (WMSplitView *) data;
 
-	if (event->type == ConfigureNotify) {
-		int width = event->xconfigure.width - 10;
+	if ((event->response_type & 0x7f) == XCB_CONFIGURE_NOTIFY) {
+		int width = ((xcb_configure_notify_event_t *)event)->width - 10;
 
 		if (width < WMGetSplitViewDividerThickness(sPtr))
 			width = WMGetSplitViewDividerThickness(sPtr);
 
-		if (width != WMWidgetWidth(sPtr) || event->xconfigure.height != WMWidgetHeight(sPtr))
-			WMResizeWidget(sPtr, width, event->xconfigure.height - 55);
+		if (width != WMWidgetWidth(sPtr) || ((xcb_configure_notify_event_t *)event)->height != WMWidgetHeight(sPtr))
+			WMResizeWidget(sPtr, width, ((xcb_configure_notify_event_t *)event)->height - 55);
 	}
 }
 
@@ -856,7 +855,7 @@ void testSplitView(WMScreen * scr)
 	WMMoveWidget(splitv1, 5, 50);
 	WMResizeWidget(splitv1, 290, 345);
 	WMSetSplitViewConstrainProc(splitv1, splitViewConstrainProc);
-	WMCreateEventHandler(WMWidgetView(win), StructureNotifyMask, resizeSplitView, splitv1);
+	WMCreateEventHandler(WMWidgetView(win), XCB_EVENT_MASK_STRUCTURE_NOTIFY, resizeSplitView, splitv1);
 
 	button = WMCreateCommandButton(frame);
 	WMSetButtonText(button, "+");
@@ -890,7 +889,7 @@ void testSplitView(WMScreen * scr)
 
 	splitv2 = WMCreateSplitView(splitv1);
 	WMResizeWidget(splitv2, 150, 150);
-	WMSetSplitViewVertical(splitv2, True);
+	WMSetSplitViewVertical(splitv2, true);
 
 	label = WMCreateLabel(splitv2);
 	WMSetLabelText(label, "Subview 2.1");
@@ -933,6 +932,9 @@ void testUD(void)
 
 int main(int argc, char **argv)
 {
+	xcb_connection_t *xc;
+	int sn;
+	xcb_connection_t *xc;
 	WMScreen *scr;
 	WMPixmap *pixmap;
 
@@ -944,24 +946,17 @@ int main(int argc, char **argv)
 	/*
 	 * Open connection to the X display.
 	 */
-	dpy = XOpenDisplay("");
+	xc = xcb_connect(NULL, &sn);
 
-	if (!dpy) {
+	if (xcb_connection_has_error(xc)) {
 		puts("could not open display");
 		exit(1);
 	}
 
-	/* This is used to disable buffering of X protocol requests.
-	 * Do NOT use it unless when debugging. It will cause a major
-	 * slowdown in your application
-	 */
-#if 0
-	XSynchronize(dpy, True);
-#endif
 	/*
 	 * Create screen descriptor.
 	 */
-	scr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	scr = WMCreateScreen(xc, sn);
 
 	/*
 	 * Loads the logo of the application.

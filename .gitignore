@@ -107,7 +107,12 @@ WINGs/Tests/check_ipc
 WINGs/Tests/check_evq
 WINGs/Tests/check_im
 WINGs/Tests/check_menuparser
+WINGs/Tests/check_selection
+WINGs/Tests/check_wxparse
+WINGs/Tests/check_xbm
+WINGs/Extras/tableview
 src/Tests/check_calc
+src/Tests/check_xerror
 src/Tests/check_config
 src/Tests/check_wdefaults
 src/Tests/check_wprefs_schema
@@ -115,6 +120,8 @@ src/Tests/check_desktopfile
 src/Tests/check_cmdexpand
 src/Tests/check_layout
 src/Tests/check_xsmp
+src/Tests/check_geometry
+src/Tests/check_xlibfree
 wrlib/Tests/bench_image
 wrlib/Tests/check_image
 wrlib/Tests/check_palette

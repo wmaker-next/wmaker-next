@@ -2,7 +2,8 @@
 
 AUTOMAKE_OPTIONS =
 
-# interactive demo programs, built on demand only (e.g. `make testdraw`)
+# interactive demo programs, built on demand only (e.g. `make testdraw`),
+# standalone xcb clients like wxcopy/wxpaste (no libWINGs helpers)
 EXTRA_PROGRAMS = testdraw testgrad testrot view bench_image
 
 # automated decoder tests, run by `make check`
@@ -29,7 +30,7 @@ check_palette_LDADD = $(top_builddir)/wrlib/libwraster.la
 # round-trips RImage -> Pixmap -> RImage so it needs a server, exits 77
 # (SKIP) without one so make check stays X-free
 check_xside_SOURCES = check_xside.c
-check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@ @XLIBS@ -lX11-xcb
+check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@
 
 EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
@@ -37,7 +38,7 @@ EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 
 AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(top_srcdir)/WINGs -I$(srcdir)/.. -I$(top_srcdir)/test $(DFLAGS) @WRASTER_CAIRO_CFLAGS@ @HEADER_SEARCH_PATH@
 
-LIBLIST = $(top_builddir)/wrlib/libwraster.la @XLIBS@ -lX11-xcb
+LIBLIST = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@
 
 testdraw_SOURCES = testdraw.c
 testdraw_LDADD = $(LIBLIST)

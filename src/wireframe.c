@@ -21,8 +21,6 @@
 #include "wconfig.h"
 
 #include <stdlib.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #ifdef USE_XSHAPE
 #include <xcb/shape.h>
 #endif
@@ -61,28 +59,28 @@ typedef struct WWireframe {
 	 * window is left unshaped, otherwise ShapeBounding is set to the
 	 * band rectangles (and a stroked polyline mask) so the alpha=0
 	 * regions are cut out rather than showing as opaque black. */
-	Bool use_cairo;
-	Bool composited;	/* refreshed on every wWireframeBegin() */
-	Bool shaped;		/* ShapeBounding currently applied */
+	bool use_cairo;
+	bool composited;	/* refreshed on every wWireframeBegin() */
+	bool shaped;		/* ShapeBounding currently applied */
 	WCairoSurface *csurf;
 
-	Window window;
+	xcb_window_t window;
 	int win_width, win_height;	/* root size the window was created for */
-	Bool mapped;
+	bool mapped;
 
 	WireframeOutline *outlines;	/* outlines accumulated since Begin */
 	int count;
 	int capacity;
 
-	XPoint *poly_pts;
+	xcb_point_t *poly_pts;
 	int poly_run[POLY_MAX_RUNS];	/* npoints per polyline */
 	int poly_nruns;
 	int poly_npts;
 	int poly_pts_capacity;
-	Pixmap poly_mask;	/* depth-1 root-sized, lazily created */
+	xcb_pixmap_t poly_mask;	/* depth-1 root-sized, lazily created */
 
 	/* no-depth-32 fallback, one white window with a black border per band */
-	Window *bars;
+	xcb_window_t *bars;
 	int bars_mapped;
 	int bars_capacity;
 } WWireframe;
@@ -91,27 +89,22 @@ static void createCairoWindow(WWireframe *wf)
 {
 	WScreen *scr = wf->scr;
 	RContext *rc = scr->rcontext;
-	XSetWindowAttributes attribs;
-	XClassHint class_hint;
 
 	/* background None: the server must not fill on map, expose, or a
 	 * ShapeBounding grow, otherwise it clears the bands to the
 	 * background pixel right after cairo has painted them */
-	attribs.override_redirect = True;
-	attribs.colormap = rc->cmap_argb;
-	attribs.border_pixel = 0;
-	attribs.background_pixmap = None;
-	wf->window = XCreateWindow(dpy, scr->root_win, 0, 0,
-				   scr->scr_width, scr->scr_height, 0,
-				   32, InputOutput, scr->wmscreen->visual_argb,
-				   CWOverrideRedirect | CWColormap | CWBorderPixel
-				   | CWBackPixmap, &attribs);
+	wf->window = xcb_generate_id(xconn);
+	xcb_create_window(xconn, 32, wf->window, scr->root_win, 0, 0,
+			  scr->scr_width, scr->scr_height, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			  scr->wmscreen->visual_argb->visual_id,
+			  XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT
+			  | XCB_CW_COLORMAP,
+			  (const uint32_t[]){ XCB_BACK_PIXMAP_NONE, 0, true, rc->cmap_argb });
 	wf->win_width = scr->scr_width;
 	wf->win_height = scr->scr_height;
 
-	class_hint.res_name = (char *)"wireframe";
-	class_hint.res_class = (char *)"WindowMaker";
-	XSetClassHint(dpy, wf->window, &class_hint);
+	wXSetClassHint(xconn, wf->window, "wireframe", "WindowMaker");
 
 #ifdef USE_XSHAPE
 	/* empty ShapeInput so the band never eats pointer events, this is
@@ -146,26 +139,26 @@ static WWireframe *getWireframe(WScreen *scr)
 	if (!wf->use_cairo)
 		return wf;
 
-	if (wf->window != None
+	if (wf->window != XCB_NONE
 	    && (wf->win_width != scr->scr_width || wf->win_height != scr->scr_height)) {
 		WCairoSurfaceDestroy(wf->csurf);
-		XDestroyWindow(dpy, wf->window);
-		wf->window = None;
+		xcb_destroy_window(xconn, wf->window);
+		wf->window = XCB_NONE;
 		wf->csurf = NULL;
-		wf->mapped = False;
-		wf->shaped = False;
-		if (wf->poly_mask != None) {
-			XFreePixmap(dpy, wf->poly_mask);
-			wf->poly_mask = None;
+		wf->mapped = false;
+		wf->shaped = false;
+		if (wf->poly_mask != XCB_NONE) {
+			xcb_free_pixmap(xconn, wf->poly_mask);
+			wf->poly_mask = XCB_NONE;
 		}
 	}
-	if (wf->window == None)
+	if (wf->window == XCB_NONE)
 		createCairoWindow(wf);
 
 	return wf;
 }
 
-static void setRect(XRectangle *r, int x, int y, int w, int h)
+static void setRect(xcb_rectangle_t *r, int x, int y, int w, int h)
 {
 	r->x = x;
 	r->y = y;
@@ -174,7 +167,7 @@ static void setRect(XRectangle *r, int x, int y, int w, int h)
 }
 
 /* expand one outline into its band rectangles, at most 6 */
-static int outlineRects(const WireframeOutline *o, XRectangle *rects)
+static int outlineRects(const WireframeOutline *o, xcb_rectangle_t *rects)
 {
 	const int t = WIREFRAME_THICKNESS;
 	int n = 0;
@@ -195,16 +188,15 @@ static int outlineRects(const WireframeOutline *o, XRectangle *rects)
 	return n;
 }
 
-static void commitBars(WWireframe *wf, const XRectangle *rects, int n)
+static void commitBars(WWireframe *wf, const xcb_rectangle_t *rects, int n)
 {
 	WScreen *scr = wf->scr;
-	XSetWindowAttributes attribs;
 	int i, w, h;
 
 	if (n > wf->bars_capacity) {
 		wf->bars = wrealloc(wf->bars, n * sizeof(*wf->bars));
 		for (i = wf->bars_capacity; i < n; i++)
-			wf->bars[i] = None;
+			wf->bars[i] = XCB_NONE;
 		wf->bars_capacity = n;
 	}
 
@@ -212,25 +204,26 @@ static void commitBars(WWireframe *wf, const XRectangle *rects, int n)
 		w = rects[i].width > 2 ? rects[i].width - 2 : 1;
 		h = rects[i].height > 2 ? rects[i].height - 2 : 1;
 
-		if (wf->bars[i] == None) {
-			attribs.override_redirect = True;
-			attribs.save_under = True;
-			attribs.background_pixel = scr->white_pixel;
-			attribs.border_pixel = scr->black_pixel;
-			wf->bars[i] = XCreateWindow(dpy, scr->root_win,
-						    rects[i].x, rects[i].y, w, h, 1,
-						    CopyFromParent, InputOutput, CopyFromParent,
-						    CWOverrideRedirect | CWSaveUnder
-						    | CWBackPixel | CWBorderPixel, &attribs);
+		if (wf->bars[i] == XCB_NONE) {
+			wf->bars[i] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, wf->bars[i],
+					  scr->root_win, rects[i].x, rects[i].y, w, h, 1,
+					  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+					  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL
+					  | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER,
+					  (const uint32_t[]){ scr->white_pixel, scr->black_pixel,
+							      true, true });
 		} else {
-			XMoveResizeWindow(dpy, wf->bars[i], rects[i].x, rects[i].y, w, h);
+			xcb_configure_window(xconn, wf->bars[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ rects[i].x, rects[i].y, w, h });
 		}
-		if (i >= wf->bars_mapped)
-			XMapRaised(dpy, wf->bars[i]);
+		if (i >= wf->bars_mapped) {
+			xcb_configure_window(xconn, wf->bars[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_map_window(xconn, wf->bars[i]);
+		}
 	}
 
 	for (i = n; i < wf->bars_mapped; i++)
-		XUnmapWindow(dpy, wf->bars[i]);
+		xcb_unmap_window(xconn, wf->bars[i]);
 	wf->bars_mapped = n;
 }
 
@@ -253,7 +246,7 @@ static void addPolylinePath(cairo_t *cr, const WWireframe *wf)
 /* one closed rounded-rect outline: translucent interior when composited,
  * then a WIREFRAME_THICKNESS opaque black band with a 1 px white core,
  * and the optional titlebar/resizebar separator lines on top */
-static void paintCairoOutline(cairo_t *cr, const WireframeOutline *o, Bool fill)
+static void paintCairoOutline(cairo_t *cr, const WireframeOutline *o, bool fill)
 {
 	if (fill) {
 		cairo_set_source_rgba(cr, 0.20, 0.40, 0.60, 0.30);
@@ -292,7 +285,7 @@ static void applyShapeBounding(WWireframe *wf)
 	RContext *rc = wf->scr->rcontext;
 	cairo_surface_t *ms;
 	cairo_t *cr;
-	XRectangle *rects;
+	xcb_rectangle_t *rects;
 	int i, n, op;
 
 	n = 0;
@@ -311,7 +304,7 @@ static void applyShapeBounding(WWireframe *wf)
 	wfree(rects);
 
 	if (wf->poly_nruns > 0) {
-		if (wf->poly_mask == None) {
+		if (wf->poly_mask == XCB_NONE) {
 			wf->poly_mask = xcb_generate_id(rc->xc);
 			xcb_create_pixmap(rc->xc, 1, wf->poly_mask,
 					  rc->xscreen->root,
@@ -338,7 +331,7 @@ static void applyShapeBounding(WWireframe *wf)
 		xcb_shape_mask(xconn, op, XCB_SHAPE_SK_BOUNDING,
 			       wf->window, 0, 0, wf->poly_mask);
 	}
-	wf->shaped = True;
+	wf->shaped = true;
 }
 #endif
 
@@ -360,7 +353,7 @@ static void commitCairo(WWireframe *wf)
 		 * so the translucent interior fill shows */
 		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			       wf->window, 0, 0, XCB_NONE);
-		wf->shaped = False;
+		wf->shaped = false;
 	}
 #endif
 
@@ -392,10 +385,11 @@ static void commitCairo(WWireframe *wf)
 	WCairoEnd(cr);
 
 	if (wf->mapped)
-		XRaiseWindow(dpy, wf->window);
+		xcb_configure_window(xconn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	else {
-		XMapRaised(dpy, wf->window);
-		wf->mapped = True;
+		xcb_configure_window(xconn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		xcb_map_window(xconn, wf->window);
+		wf->mapped = true;
 	}
 }
 
@@ -412,7 +406,7 @@ void wWireframeBegin(WScreen *scr)
 		wf->composited = W_ScreenCheckCompositor(scr->wmscreen);
 }
 
-void wWireframeAddPolyline(WScreen *scr, const XPoint *pts, int npts)
+void wWireframeAddPolyline(WScreen *scr, const xcb_point_t *pts, int npts)
 {
 	WWireframe *wf = getWireframe(scr);
 	int i;
@@ -454,7 +448,7 @@ void wWireframeAddOutline(WScreen *scr, int x, int y, int width, int height,
 void wWireframeCommit(WScreen *scr)
 {
 	WWireframe *wf = getWireframe(scr);
-	XRectangle *rects;
+	xcb_rectangle_t *rects;
 	int i, n;
 
 	if (wf->count == 0 && wf->poly_nruns == 0) {
@@ -489,13 +483,13 @@ void wWireframeHide(WScreen *scr)
 
 	if (wf->use_cairo) {
 		if (wf->mapped) {
-			XUnmapWindow(dpy, wf->window);
-			wf->mapped = False;
+			xcb_unmap_window(xconn, wf->window);
+			wf->mapped = false;
 		}
 		return;
 	}
 
 	for (i = 0; i < wf->bars_mapped; i++)
-		XUnmapWindow(dpy, wf->bars[i]);
+		xcb_unmap_window(xconn, wf->bars[i]);
 	wf->bars_mapped = 0;
 }

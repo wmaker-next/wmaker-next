@@ -143,7 +143,7 @@ typedef struct WWindowAttrs {
 char *find_in_icon_cache(const char *file_name,
 			 const char *winstance, const char *wclass);
 
-Bool wDefaultHasDynamicRules(void);
+bool wDefaultHasDynamicRules(void);
 
 /* Bytes of a client-supplied window title handed to regexec() for a
  * MatchTitle predicate. The property reader caps WM_NAME/_NET_WM_NAME

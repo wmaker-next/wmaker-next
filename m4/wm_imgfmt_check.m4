@@ -29,7 +29,7 @@
 # the variable 'supported_gfx'
 # When not found, append info to variable 'unsupported'
 AC_DEFUN_ONCE([WM_IMGFMT_CHECK_JPEG],
-[WM_LIB_CHECK([JPEG], [-ljpeg], [jpeg_destroy_compress], [$XLFLAGS $XLIBS],
+[WM_LIB_CHECK([JPEG], [-ljpeg], [jpeg_destroy_compress], [],
     [AC_COMPILE_IFELSE(
                 [AC_LANG_PROGRAM(
                     [@%:@include <stdlib.h>
@@ -62,7 +62,7 @@ AC_DEFUN_ONCE([WM_IMGFMT_CHECK_JPEG],
 # the variable 'supported_gfx'
 # When not found, append info to variable 'unsupported'
 AC_DEFUN_ONCE([WM_IMGFMT_CHECK_JXL],
-[WM_LIB_CHECK([JXL], [-ljxl], [JxlDecoderCreate], [$XLFLAGS $XLIBS],
+[WM_LIB_CHECK([JXL], [-ljxl], [JxlDecoderCreate], [],
     [AC_COMPILE_IFELSE(
                 [AC_LANG_PROGRAM(
                     [@%:@include <stdlib.h>
@@ -93,7 +93,7 @@ AC_DEFUN_ONCE([WM_IMGFMT_CHECK_JXL],
 # the variable 'supported_gfx'
 # When not found, append info to variable 'unsupported'
 AC_DEFUN_ONCE([WM_IMGFMT_CHECK_PNG],
-[WM_LIB_CHECK([PNG], ["-lpng" "-lpng -lz" "-lpng -lz -lm"], [png_get_valid], [$XLFLAGS $XLIBS],
+[WM_LIB_CHECK([PNG], ["-lpng" "-lpng -lz" "-lpng -lz -lm"], [png_get_valid], [],
     [wm_save_CFLAGS="$CFLAGS"
      AS_IF([wm_fn_lib_try_compile "png.h" "" "return 0" ""],
          [],
@@ -129,7 +129,7 @@ AC_DEFUN_ONCE([WM_IMGFMT_CHECK_TIFF],
      "-ltiff -ljpeg -ljbig -lz"  \
      dnl Probably for historical reasons?
      "-ltiff34" "-ltiff34 -ljpeg" "-ltiff34 -ljpeg -lm"],
-    [TIFFGetVersion], [$XLFLAGS $XLIBS],
+    [TIFFGetVersion], [],
     [wm_save_CFLAGS="$CFLAGS"
      AS_IF([wm_fn_lib_try_compile "tiffio.h" "" "return 0" ""],
          [],

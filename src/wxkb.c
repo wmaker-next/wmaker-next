@@ -24,14 +24,13 @@
 #include <string.h>
 #include <strings.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/xkb.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-x11.h>
 
+#include <WINGs/WINGsP.h>
 #include <WINGs/WUtil.h>
 
 #include "WindowMaker.h"
@@ -50,139 +49,93 @@ static int32_t device_id = -1;
 static unsigned int MetaMask, AltMask, SuperMask, HyperMask, ModeMask;
 static unsigned int NumLockMask, ScrollLockMask;
 
+/* modifier-map slot indexes, the Xlib ShiftMapIndex..Mod5MapIndex
+ * values; xcb's modifier mapping is the same slot order */
+enum {
+	ModShiftSlot = 0,
+	ModLockSlot,
+	ModControlSlot,
+	Mod1Slot, Mod2Slot, Mod3Slot, Mod4Slot, Mod5Slot
+};
+
 static const char *index_to_name(int idx)
 {
 	switch (idx) {
-	case ShiftMapIndex:   return "ModShift";
-	case LockMapIndex:    return "ModLock";
-	case ControlMapIndex: return "ModControl";
-	case Mod1MapIndex:    return "Mod1";
-	case Mod2MapIndex:    return "Mod2";
-	case Mod3MapIndex:    return "Mod3";
-	case Mod4MapIndex:    return "Mod4";
-	case Mod5MapIndex:    return "Mod5";
-	default:              return "???";
+	case ModShiftSlot:   return "ModShift";
+	case ModLockSlot:    return "ModLock";
+	case ModControlSlot: return "ModControl";
+	case Mod1Slot:       return "Mod1";
+	case Mod2Slot:       return "Mod2";
+	case Mod3Slot:       return "Mod3";
+	case Mod4Slot:       return "Mod4";
+	case Mod5Slot:       return "Mod5";
+	default:             return "???";
 	}
 }
 
-/* xkbcommon exposes no public vmod -> real-modifier mapping, so the
- * Alt/Meta/Super/Hyper resolution still walks the core modifier map.
- * One xcb round-trip replaces the two XGetModifierMapping walks that
- * lived in xmodifier.c (named modifiers) and startup.c (NumLock and
- * ScrollLock for the grab fan-out), and the per-keycode keysym lookup
- * reads the local keymap instead of round-tripping per column. */
+/* the shared classification against the local keymap, recomputed on
+ * every keyboard change */
 static void resolveModifiers(void)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
-	xcb_get_modifier_mapping_reply_t *r;
-	xcb_keycode_t *codes;
-	int per, mi, ki, level;
-	int meta_bit = 0, alt_bit = 0, super_bit = 0, hyper_bit = 0;
-	int mode_bit = 0, num_bit = 0, scroll_bit = 0;
+	WXModifierSlots slots;
+	const char *warn;
 
-	r = xcb_get_modifier_mapping_reply(xc, xcb_get_modifier_mapping(xc), NULL);
-	if (!r)
-		return;
-	codes = xcb_get_modifier_mapping_keycodes(r);
-	per = r->keycodes_per_modifier;
+	W_XkbModifierSlots(xconn, keymap, &slots);
 
-#define store_modifier(name, bitp)						\
-	do {									\
-		if (mi < Mod1MapIndex)						\
-			wwarning(_("key %s (0x%x) generates %s, which is nonsensical"), \
-				 (name), kc, index_to_name(mi));		\
-		else if (*(bitp) && *(bitp) != mi)				\
-			wwarning(_("key %s (0x%x) generates both %s and %s, which is nonsensical"), \
-				 (name), kc, index_to_name(*(bitp)),		\
-				 index_to_name(mi));				\
-		else								\
-			*(bitp) = mi;						\
-	} while (0)
-
-	for (mi = 0; mi < 8; mi++) {
-		for (ki = 0; ki < per; ki++) {
-			xkb_keycode_t kc = codes[mi * per + ki];
-			xkb_keysym_t last = XKB_KEY_NoSymbol;
-
-			if (kc == 0)
-				continue;
-
-			/* check the unshifted and shifted columns of the
-			 * first layout, matching the previous behaviour
-			 * (XKeycodeToKeysym columns 0 and 2) */
-			for (level = 0; level < 2; level++) {
-				xkb_keysym_t sym = wXkbKeycodeToKeysym(kc, level);
-
-				if (sym == XKB_KEY_NoSymbol || sym == last)
-					continue;
-				last = sym;
-
-				switch (sym) {
-				case XKB_KEY_Meta_L:
-				case XKB_KEY_Meta_R:
-					store_modifier("Meta", &meta_bit);
-					break;
-				case XKB_KEY_Alt_L:
-				case XKB_KEY_Alt_R:
-					store_modifier("Alt", &alt_bit);
-					break;
-				case XKB_KEY_Super_L:
-				case XKB_KEY_Super_R:
-					store_modifier("Super", &super_bit);
-					break;
-				case XKB_KEY_Hyper_L:
-				case XKB_KEY_Hyper_R:
-					store_modifier("Hyper", &hyper_bit);
-					break;
-				case XKB_KEY_Mode_switch:
-					if (mi >= Mod1MapIndex)
-						mode_bit = mi;
-					break;
-				case XKB_KEY_Num_Lock:
-					num_bit = mi;
-					break;
-				case XKB_KEY_Scroll_Lock:
-					scroll_bit = mi;
-					break;
-				default:
-					break;
-				}
-			}
-		}
-	}
-#undef store_modifier
-	free(r);
+	/* a named modifier bound to the Shift, Lock or Control columns
+	 * can never work as a shortcut modifier */
+	if (slots.alt >= 0 && slots.alt < Mod1Slot)
+		wwarning(_("Alt is bound to %s, which is nonsensical"),
+			 index_to_name(slots.alt));
+	if (slots.meta >= 0 && slots.meta < Mod1Slot)
+		wwarning(_("Meta is bound to %s, which is nonsensical"),
+			 index_to_name(slots.meta));
+	if (slots.super >= 0 && slots.super < Mod1Slot)
+		wwarning(_("Super is bound to %s, which is nonsensical"),
+			 index_to_name(slots.super));
+	if (slots.hyper >= 0 && slots.hyper < Mod1Slot)
+		wwarning(_("Hyper is bound to %s, which is nonsensical"),
+			 index_to_name(slots.hyper));
 
 	/* if there was no Meta key then Alt stands in for it, and Alt as a
 	 * separate name becomes unavailable, this is the long-standing
 	 * behaviour shortcut specs depend on */
-	if (!meta_bit && alt_bit) {
-		meta_bit = alt_bit;
-		alt_bit = 0;
+	if (slots.meta < 0 && slots.alt >= 0) {
+		slots.meta = slots.alt;
+		slots.alt = -1;
 	}
 
 	/* Mode_switch overrides everything since the server consumes that
 	 * bit for group selection before we see the event, so a virtual
 	 * modifier sharing it would never match */
-	if (mode_bit) {
-		const char *warn = NULL;
+	if (slots.mode_switch >= 0) {
+		warn = NULL;
 
-		if (mode_bit == meta_bit)       { warn = "Meta";  meta_bit = 0; }
-		else if (mode_bit == hyper_bit) { warn = "Hyper"; hyper_bit = 0; }
-		else if (mode_bit == super_bit) { warn = "Super"; super_bit = 0; }
-		else if (mode_bit == alt_bit)   { warn = "Alt";   alt_bit = 0; }
+		if (slots.mode_switch == slots.meta) {
+			warn = "Meta";
+			slots.meta = -1;
+		} else if (slots.mode_switch == slots.hyper) {
+			warn = "Hyper";
+			slots.hyper = -1;
+		} else if (slots.mode_switch == slots.super) {
+			warn = "Super";
+			slots.super = -1;
+		} else if (slots.mode_switch == slots.alt) {
+			warn = "Alt";
+			slots.alt = -1;
+		}
 		if (warn)
 			wwarning("%s is being used for both Mode_switch and %s.",
-				 index_to_name(mode_bit), warn);
+				 index_to_name(slots.mode_switch), warn);
 	}
 
-	MetaMask       = meta_bit   ? (1u << meta_bit)   : 0;
-	AltMask        = alt_bit    ? (1u << alt_bit)    : 0;
-	SuperMask      = super_bit  ? (1u << super_bit)  : 0;
-	HyperMask      = hyper_bit  ? (1u << hyper_bit)  : 0;
-	ModeMask       = mode_bit   ? (1u << mode_bit)   : 0;
-	NumLockMask    = num_bit    ? (1u << num_bit)    : 0;
-	ScrollLockMask = scroll_bit ? (1u << scroll_bit) : 0;
+	MetaMask       = slots.meta   >= 0 ? 1u << slots.meta   : 0;
+	AltMask        = slots.alt    >= 0 ? 1u << slots.alt    : 0;
+	SuperMask      = slots.super >= 0 ? 1u << slots.super : 0;
+	HyperMask      = slots.hyper >= 0 ? 1u << slots.hyper : 0;
+	ModeMask       = slots.mode_switch >= 0 ? 1u << slots.mode_switch : 0;
+	NumLockMask    = slots.numlock >= 0 ? 1u << slots.numlock : 0;
+	ScrollLockMask = slots.scrolllock >= 0 ? 1u << slots.scrolllock : 0;
 
 	(void) ModeMask;
 
@@ -190,12 +143,12 @@ static void resolveModifiers(void)
 	 * binding matches regardless of those, recomputed here so it stays
 	 * correct after every keyboard change instead of only at startup */
 	w_global.shortcut.modifiers_mask =
-		0xff & ~(LockMask | NumLockMask | ScrollLockMask);
+		0xff & ~(XCB_MOD_MASK_LOCK | NumLockMask | ScrollLockMask);
 }
 
 static int loadKeymap(void)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_connection_t *xc = xconn;
 	struct xkb_keymap *new_keymap;
 	struct xkb_state *new_state;
 
@@ -219,7 +172,7 @@ static int loadKeymap(void)
 
 int wXkbInit(void)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_connection_t *xc = xconn;
 	uint16_t want, map_parts;
 	uint8_t base_event = 0;
 
@@ -319,17 +272,26 @@ int wXkbKeysymName(xkb_keysym_t ks, char *buf, size_t size)
 	return xkb_keysym_get_name(ks, buf, size);
 }
 
+/* first keysym at `level` across the keymap's layouts, the first
+ * layout carrying a symbol at that level wins */
 xkb_keysym_t wXkbKeycodeToKeysym(xkb_keycode_t kc, int level)
 {
+	xkb_layout_index_t layouts, l;
 	const xkb_keysym_t *syms;
 	int n;
 
 	if (!keymap || kc == 0)
 		return XKB_KEY_NoSymbol;
-	n = xkb_keymap_key_get_syms_by_level(keymap, kc, 0, level, &syms);
-	if (n < 1)
-		return XKB_KEY_NoSymbol;
-	return syms[0];
+
+	layouts = xkb_keymap_num_layouts_for_key(keymap, kc);
+	for (l = 0; l < layouts; l++) {
+		n = xkb_keymap_key_get_syms_by_level(keymap, kc, l,
+						     (xkb_level_index_t) level,
+						     &syms);
+		if (n > 0 && syms[0] != XKB_KEY_NoSymbol)
+			return syms[0];
+	}
+	return XKB_KEY_NoSymbol;
 }
 
 /* first keycode whose keysym list (effective layout, then any layout)
@@ -411,9 +373,9 @@ int wXkbStateUtf8(xkb_keycode_t kc, char *buf, size_t size)
 int wXModifierFromKey(const char *key)
 {
 	if (strcasecmp(key, "SHIFT") == 0)
-		return ShiftMask;
+		return XCB_MOD_MASK_SHIFT;
 	else if (strcasecmp(key, "CONTROL") == 0)
-		return ControlMask;
+		return XCB_MOD_MASK_CONTROL;
 	else if (strcasecmp(key, "ALT") == 0 && AltMask != 0)
 		return AltMask;
 	else if (strcasecmp(key, "META") == 0 && MetaMask != 0)
@@ -423,15 +385,15 @@ int wXModifierFromKey(const char *key)
 	else if (strcasecmp(key, "HYPER") == 0 && HyperMask != 0)
 		return HyperMask;
 	else if (strcasecmp(key, "MOD1") == 0)
-		return Mod1Mask;
+		return XCB_MOD_MASK_1;
 	else if (strcasecmp(key, "MOD2") == 0)
-		return Mod2Mask;
+		return XCB_MOD_MASK_2;
 	else if (strcasecmp(key, "MOD3") == 0)
-		return Mod3Mask;
+		return XCB_MOD_MASK_3;
 	else if (strcasecmp(key, "MOD4") == 0)
-		return Mod4Mask;
+		return XCB_MOD_MASK_4;
 	else if (strcasecmp(key, "MOD5") == 0)
-		return Mod5Mask;
+		return XCB_MOD_MASK_5;
 	else
 		return -1;
 }
@@ -443,14 +405,14 @@ const char *wXModifierToShortcutLabel(int mask)
 		int label_index;
 		const char *def;
 	} maps[] = {
-		{ ShiftMask,   0, "Sh+" },
-		{ ControlMask, 1, "^"   },
+		{ XCB_MOD_MASK_SHIFT,   0, "Sh+" },
+		{ XCB_MOD_MASK_CONTROL, 1, "^"   },
 		{ AltMask,     8, "A+"  },
-		{ Mod1Mask,    2, "M1+" },
-		{ Mod2Mask,    3, "M2+" },
-		{ Mod3Mask,    4, "M3+" },
-		{ Mod4Mask,    5, "M4+" },
-		{ Mod5Mask,    6, "M5+" },
+		{ XCB_MOD_MASK_1,    2, "M1+" },
+		{ XCB_MOD_MASK_2,    3, "M2+" },
+		{ XCB_MOD_MASK_3,    4, "M3+" },
+		{ XCB_MOD_MASK_4,    5, "M4+" },
+		{ XCB_MOD_MASK_5,    6, "M5+" },
 		{ MetaMask,    7, "M+"  }
 	};
 	size_t i;
@@ -504,7 +466,7 @@ const char *wXkbLayoutName(int idx)
  * has no reply so any error surfaces through the WXEvqErrorHook */
 void wXkbLockGroup(int group)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_connection_t *xc = xconn;
 
 	xcb_xkb_latch_lock_state(xc, XCB_XKB_ID_USE_CORE_KBD,
 				 0, 0, 1, group, 0, 0, 0);
@@ -514,7 +476,7 @@ void wXkbLockGroup(int group)
 /* current effective keyboard group, -1 if the round-trip failed */
 int wXkbGetGroup(void)
 {
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_connection_t *xc = xconn;
 	xcb_xkb_get_state_reply_t *r;
 	int group;
 
@@ -533,73 +495,73 @@ int wXkbGetGroup(void)
 #ifdef NUMLOCK_HACK
 void
 wHackedGrabKey(int keycode, unsigned int modifiers,
-	       Window grab_window, Bool owner_events, int pointer_mode,
+	       xcb_window_t grab_window, bool owner_events, int pointer_mode,
 	       int keyboard_mode)
 {
-	if (modifiers == AnyModifier)
+	if (modifiers == XCB_MOD_MASK_ANY)
 		return;
 
 	/* grab all combinations of the modifier with CapsLock, NumLock and
 	 * ScrollLock so a binding matches regardless of those latches */
 	if (NumLockMask)
-		XGrabKey(dpy, keycode, modifiers | NumLockMask,
+		wXGrabKey(xconn, keycode, modifiers | NumLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | ScrollLockMask,
+		wXGrabKey(xconn, keycode, modifiers | ScrollLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask && ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | NumLockMask | ScrollLockMask,
+		wXGrabKey(xconn, keycode, modifiers | NumLockMask | ScrollLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask)
-		XGrabKey(dpy, keycode, modifiers | NumLockMask | LockMask,
+		wXGrabKey(xconn, keycode, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | ScrollLockMask | LockMask,
+		wXGrabKey(xconn, keycode, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask && ScrollLockMask)
-		XGrabKey(dpy, keycode, modifiers | NumLockMask | ScrollLockMask | LockMask,
+		wXGrabKey(xconn, keycode, modifiers | NumLockMask | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 }
 #endif
 
 void
 wHackedGrabButton(unsigned int button, unsigned int modifiers,
-		  Window grab_window, Bool owner_events,
+		  xcb_window_t grab_window, bool owner_events,
 		  unsigned int event_mask, int pointer_mode,
-		  int keyboard_mode, Window confine_to, Cursor cursor)
+		  int keyboard_mode, xcb_window_t confine_to, xcb_cursor_t cursor)
 {
-	XGrabButton(dpy, button, modifiers, grab_window, owner_events,
+	wXGrabButton(xconn, button, modifiers, grab_window, owner_events,
 		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
 
-	if (modifiers == AnyModifier)
+	if (modifiers == XCB_MOD_MASK_ANY)
 		return;
 
-	XGrabButton(dpy, button, modifiers | LockMask, grab_window, owner_events,
+	wXGrabButton(xconn, button, modifiers | XCB_MOD_MASK_LOCK, grab_window, owner_events,
 		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
 
 #ifdef NUMLOCK_HACK
 	if (NumLockMask)
-		XGrabButton(dpy, button, modifiers | NumLockMask,
+		wXGrabButton(xconn, button, modifiers | NumLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | ScrollLockMask,
+		wXGrabButton(xconn, button, modifiers | ScrollLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask && ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | ScrollLockMask | NumLockMask,
+		wXGrabButton(xconn, button, modifiers | ScrollLockMask | NumLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask)
-		XGrabButton(dpy, button, modifiers | NumLockMask | LockMask,
+		wXGrabButton(xconn, button, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | ScrollLockMask | LockMask,
+		wXGrabButton(xconn, button, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask && ScrollLockMask)
-		XGrabButton(dpy, button, modifiers | ScrollLockMask | NumLockMask | LockMask,
+		wXGrabButton(xconn, button, modifiers | ScrollLockMask | NumLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 #endif /* NUMLOCK_HACK */

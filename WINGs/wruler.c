@@ -188,48 +188,48 @@ static void paintRuler(Ruler * rPtr)
 	drawBodyMarker(cr, rPtr);
 
 	WCairoEnd(cr);
-	rPtr->flags.redraw = False;
+	rPtr->flags.redraw = false;
 }
 
-static Bool verifyMarkerMove(Ruler * rPtr, int x)
+static bool verifyMarkerMove(Ruler * rPtr, int x)
 {
 	if (rPtr->flags.whichMarker < 1 || rPtr->flags.whichMarker > 6)
-		return False;
+		return false;
 
 	switch (rPtr->flags.whichMarker) {
 	case 1:
 		if (x > rPtr->margins.right - 10 || x < rPtr->offset ||
 		    rPtr->margins.body + x > rPtr->margins.right - MIN_DOC_WIDTH ||
 		    rPtr->margins.first + x > rPtr->margins.right - MIN_DOC_WIDTH)
-			return False;
+			return false;
 		break;
 
 	case 2:
 		if (x < rPtr->margins.first + MIN_DOC_WIDTH || x < rPtr->margins.body + MIN_DOC_WIDTH || x < rPtr->margins.left + MIN_DOC_WIDTH || x > rPtr->end)	/*rPtr->view->size.width) */
-			return False;
+			return false;
 		break;
 
 	case 3:
 		if (x >= rPtr->margins.right - MIN_DOC_WIDTH || x < rPtr->margins.left)
-			return False;
+			return false;
 		break;
 
 	case 4:
 		if (x >= rPtr->margins.right - MIN_DOC_WIDTH || x < rPtr->margins.left)
-			return False;
+			return false;
 		break;
 
 	case 6:
 		if (x >= rPtr->margins.right - MIN_DOC_WIDTH || x < rPtr->margins.left)
-			return False;
+			return false;
 		break;
 
 	default:
-		return False;
+		return false;
 	}
 
 	rPtr->motion = x;
-	return True;
+	return true;
 }
 
 static int whichMarker(Ruler * rPtr, int x, int y)
@@ -274,27 +274,27 @@ static void rulerDidResize(W_ViewDelegate * self, WMView * view)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 
-	rPtr->flags.redraw = True;
+	rPtr->flags.redraw = true;
 	paintRuler(rPtr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Ruler *rPtr = (Ruler *) data;
 
-	switch (event->type) {
-	case Expose:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
 		rulerDidResize(rPtr->view->delegate, rPtr->view);
 		break;
 
-	case MotionNotify:
-		if (rPtr->flags.buttonPressed && (event->xmotion.state & Button1Mask)) {
-			if (verifyMarkerMove(rPtr, event->xmotion.x)) {
+	case XCB_MOTION_NOTIFY:
+		if (rPtr->flags.buttonPressed && (((xcb_motion_notify_event_t *)event)->state & (XCB_BUTTON_INDEX_1 << 7))) {
+			if (verifyMarkerMove(rPtr, ((xcb_motion_notify_event_t *)event)->event_x)) {
 				cairo_t *cr;
 
 				if (rPtr->moveAction)
 					(rPtr->moveAction) (rPtr, rPtr->clientData);
-				rPtr->flags.redraw = True;
+				rPtr->flags.redraw = true;
 				paintRuler(rPtr);
 				cr = WCairoBeginForDrawable(rPtr->pview->screen,
 							    rPtr->pview->window);
@@ -311,17 +311,17 @@ static void handleEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case ButtonPress:
-		if (event->xbutton.button != Button1)
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail != XCB_BUTTON_INDEX_1)
 			return;
-		rPtr->flags.buttonPressed = True;
-		rPtr->flags.whichMarker = whichMarker(rPtr, event->xmotion.x, event->xmotion.y);
+		rPtr->flags.buttonPressed = true;
+		rPtr->flags.whichMarker = whichMarker(rPtr, ((xcb_motion_notify_event_t *)event)->event_x, ((xcb_motion_notify_event_t *)event)->event_y);
 		break;
 
-	case ButtonRelease:
-		if (event->xbutton.button != Button1)
+	case XCB_BUTTON_RELEASE:
+		if (((xcb_button_press_event_t *)event)->detail != XCB_BUTTON_INDEX_1)
 			return;
-		rPtr->flags.buttonPressed = False;
+		rPtr->flags.buttonPressed = false;
 		switch (rPtr->flags.whichMarker) {
 		case 1:{
 				int change = rPtr->margins.left - rPtr->motion;
@@ -329,7 +329,7 @@ static void handleEvents(XEvent * event, void *data)
 				rPtr->margins.first -= change;
 				rPtr->margins.body -= change;
 				rPtr->margins.left = rPtr->motion;
-				rPtr->flags.redraw = True;
+				rPtr->flags.redraw = true;
 				paintRuler(rPtr);
 				break;
 			}
@@ -378,10 +378,10 @@ WMRuler *WMCreateRuler(WMWidget * parent)
 
 	W_ResizeView(rPtr->view, w, 40);
 
-	WMCreateEventHandler(rPtr->view, ExposureMask | StructureNotifyMask
-			     | EnterWindowMask | LeaveWindowMask | FocusChangeMask
-			     | ButtonReleaseMask | ButtonPressMask | KeyReleaseMask
-			     | KeyPressMask | Button1MotionMask, handleEvents, rPtr);
+	WMCreateEventHandler(rPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE
+			     | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_KEY_RELEASE
+			     | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_1_MOTION, handleEvents, rPtr);
 
 	rPtr->view->delegate = &_RulerViewDelegate;
 
@@ -396,8 +396,8 @@ WMRuler *WMCreateRuler(WMWidget * parent)
 	rPtr->margins.tabs = NULL;
 
 	rPtr->flags.whichMarker = 0;	/* none */
-	rPtr->flags.buttonPressed = False;
-	rPtr->flags.redraw = True;
+	rPtr->flags.buttonPressed = false;
+	rPtr->flags.redraw = true;
 
 	rPtr->moveAction = NULL;
 	rPtr->releaseAction = NULL;
@@ -416,7 +416,7 @@ void WMSetRulerMargins(WMRuler * rPtr, WMRulerMargins margins)
 	rPtr->margins.first = margins.first + rPtr->offset;
 	rPtr->margins.body = margins.body + rPtr->offset;
 	rPtr->margins.tabs = margins.tabs;	/*for loop */
-	rPtr->flags.redraw = True;
+	rPtr->flags.redraw = true;
 	paintRuler(rPtr);
 
 }
@@ -441,22 +441,22 @@ WMRulerMargins *WMGetRulerMargins(WMRuler * rPtr)
 	return margins;
 }
 
-Bool WMIsMarginEqualToMargin(WMRulerMargins * aMargin, WMRulerMargins * anotherMargin)
+bool WMIsMarginEqualToMargin(WMRulerMargins * aMargin, WMRulerMargins * anotherMargin)
 {
 	if (aMargin == anotherMargin)
-		return True;
+		return true;
 	else if (!aMargin || !anotherMargin)
-		return False;
+		return false;
 	if (aMargin->left != anotherMargin->left)
-		return False;
+		return false;
 	if (aMargin->first != anotherMargin->first)
-		return False;
+		return false;
 	if (aMargin->body != anotherMargin->body)
-		return False;
+		return false;
 	if (aMargin->right != anotherMargin->right)
-		return False;
+		return false;
 
-	return True;
+	return true;
 }
 
 void WMSetRulerOffset(WMRuler * rPtr, int pixels)

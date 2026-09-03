@@ -18,9 +18,9 @@ extern const char *WMTableViewSelectionDidChangeNotification;
 typedef struct WMTableColumnDelegate {
     void *data;
     void (*drawCell)(struct WMTableColumnDelegate *self,
-                     WMTableColumn *column, int row, Drawable d);
+                     WMTableColumn *column, int row, xcb_drawable_t d);
     void (*drawSelectedCell)(struct WMTableColumnDelegate *self,
-                             WMTableColumn *column, int row, Drawable d);
+                             WMTableColumn *column, int row, xcb_drawable_t d);
 
     void (*beginCellEdit)(struct WMTableColumnDelegate *self, WMTableColumn *column,
                           int row);
@@ -110,7 +110,7 @@ void WMNoteTableViewNumberOfRowsChanged(WMTableView *table);
 
 void WMScrollTableViewRowToVisible(WMTableView *table, int row);
 
-void WMSetTableViewHasHorizontalScroller(WMTableView *tPtr, Bool flag);
+void WMSetTableViewHasHorizontalScroller(WMTableView *tPtr, bool flag);
 
 
 #ifdef __cplusplus

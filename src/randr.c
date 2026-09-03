@@ -24,8 +24,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 #include <xcb/randr.h>
 
 #include "randr.h"
@@ -49,8 +47,8 @@ typedef struct {
 	xcb_randr_crtc_t crtc;
 	int x, y, w, h;
 	uint16_t rotation;     /* current CRTC rotation */
-	Bool connected;        /* RR_Connected */
-	Bool stale;            /* mark-scan scratch flag */
+	bool connected;        /* RR_Connected */
+	bool stale;            /* mark-scan scratch flag */
 	char name[64];
 } WRandROutput;
 
@@ -85,19 +83,19 @@ static void copyOutputName(WRandROutput *o, const char *name, int len)
 	o->name[n] = '\0';
 }
 
-static Bool getResources(WScreen *scr, WRandRResources *sr)
+static bool getResources(WScreen *scr, WRandRResources *sr)
 {
 	sr->reply = xcb_randr_get_screen_resources_current_reply(xconn,
 			xcb_randr_get_screen_resources_current(xconn, scr->root_win), NULL);
 	if (!sr->reply)
-		return False;
+		return false;
 
 	sr->timestamp = sr->reply->config_timestamp;
 	sr->outputs = xcb_randr_get_screen_resources_current_outputs(sr->reply);
 	sr->noutput = xcb_randr_get_screen_resources_current_outputs_length(sr->reply);
 	sr->modes = xcb_randr_get_screen_resources_current_modes(sr->reply);
 	sr->nmode = xcb_randr_get_screen_resources_current_modes_length(sr->reply);
-	return True;
+	return true;
 }
 
 static int setCrtcConfig(WRandRResources *sr, xcb_randr_crtc_t crtc,
@@ -125,7 +123,7 @@ static int setCrtcConfig(WRandRResources *sr, xcb_randr_crtc_t crtc,
  *
  * Returns True when the RandR view was adopted into xine_info, False when
  * the stub-RandR fallback kept the existing XINERAMA-derived head list. */
-static Bool wRandR_ApplyToXinerama(WScreen *scr)
+static bool wRandR_ApplyToXinerama(WScreen *scr)
 {
 	WMRect new_screens[WM_MAX_HEADS];
 	char name_buf[WM_MAX_HEADS][64];
@@ -234,7 +232,7 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 		 * HeadWorkspaces and WorkspaceOutputs keep addressing these
 		 * heads, the stub view's synthetic monitor name carries no
 		 * connector identity worth pinning to. */
-		return False;
+		return false;
 	}
 
 	/* Fallback: if every output disappeared, use the full virtual screen so
@@ -291,7 +289,7 @@ static Bool wRandR_ApplyToXinerama(WScreen *scr)
 		scr->usableArea[i].y2 = scr->totalUsableArea[i].y2 = r->pos.y + r->size.height;
 	}
 
-	return True;
+	return true;
 }
 
 /* Bring any off-screen windows in */
@@ -337,9 +335,9 @@ static void wRandR_BringAllWindowsInside(WScreen *scr)
  * the server to fire a fresh batch of RandR events.
  *
  * Returns True if at least one CRTC was freed */
-static Bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResources *sr)
+static bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResources *sr)
 {
-	Bool deactivated = False;
+	bool deactivated = false;
 	int i;
 
 	for (i = 0; i < state->n_outputs; i++) {
@@ -355,7 +353,7 @@ static Bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
 			wwarning("RandR: released CRTC for disconnected output %s", o->name);
 			o->crtc = XCB_NONE;
 			o->w = o->h = 0;
-			deactivated = True;
+			deactivated = true;
 		} else {
 			wwarning("RandR: failed to release CRTC for output %s", o->name);
 		}
@@ -413,9 +411,9 @@ static Bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
 		/* Shrink the virtual framebuffer down to the compacted bounding box */
 		if (max_x > 0 && max_y > 0 &&
 			(max_x < scr->scr_width || max_y < scr->scr_height)) {
-			int mm_w = (int)((long)WidthMMOfScreen(ScreenOfDisplay(dpy, scr->screen))
+			int mm_w = (int)((long)wXScreenOf(xconn, scr->screen)->width_in_millimeters
 							  * max_x / scr->scr_width);
-			int mm_h = (int)((long)HeightMMOfScreen(ScreenOfDisplay(dpy, scr->screen))
+			int mm_h = (int)((long)wXScreenOf(xconn, scr->screen)->height_in_millimeters
 							  * max_y / scr->scr_height);
 			xcb_randr_set_screen_size(xconn, scr->root_win, max_x, max_y, mm_w, mm_h);
 		}
@@ -431,9 +429,9 @@ static Bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
  * expand the virtual framebuffer if needed, then SetCrtcConfig.
  *
  * Returns True if at least one output was activated */
-static Bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResources *sr)
+static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResources *sr)
 {
-	Bool activated = False;
+	bool activated = false;
 	int i, j;
 
 	for (i = 0; i < state->n_outputs; i++) {
@@ -541,9 +539,9 @@ static Bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		new_vh = mode_h > scr->scr_height ? mode_h : scr->scr_height;
 
 		if (new_vw > scr->scr_width || new_vh > scr->scr_height) {
-			int mm_w = (int)((long)WidthMMOfScreen(ScreenOfDisplay(dpy, scr->screen))
+			int mm_w = (int)((long)wXScreenOf(xconn, scr->screen)->width_in_millimeters
 						  * new_vw / scr->scr_width);
-			int mm_h = (int)((long)HeightMMOfScreen(ScreenOfDisplay(dpy, scr->screen))
+			int mm_h = (int)((long)wXScreenOf(xconn, scr->screen)->height_in_millimeters
 						  * new_vh / scr->scr_height);
 			xcb_randr_set_screen_size(xconn, scr->root_win, new_vw, new_vh, mm_w, mm_h);
 		}
@@ -551,7 +549,7 @@ static Bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		if (setCrtcConfig(sr, free_crtc, new_x, 0, best_mode, rotation,
 						  &o->xid, 1) == XCB_RANDR_SET_CONFIG_SUCCESS) {
 			wwarning("RandR: auto-activated output %s at +%d+0", o->name, new_x);
-			activated = True;
+			activated = true;
 		} else {
 			wwarning("RandR: failed to auto-activate output %s", o->name);
 		}
@@ -566,7 +564,7 @@ static void wRandR_Update(WScreen *scr)
 	WRandRState *state = (WRandRState *)scr->randr_state;
 	char *old_name[WM_MAX_HEADS];
 	int old_ws[WM_MAX_HEADS];
-	Bool applied;
+	bool applied;
 	int old_heads;
 	int i, h, k;
 
@@ -576,12 +574,12 @@ static void wRandR_Update(WScreen *scr)
 	 * the resources walk is confined to this branch. */
 	if (w_global.config->hotplug_monitor) {
 		WRandRResources sr;
-		Bool changed;
+		bool changed;
 		int j;
 
 		/* Assume all outputs removed until server confirms */
 		for (i = 0; i < state->n_outputs; i++)
-			state->outputs[i].stale = True;
+			state->outputs[i].stale = true;
 
 		if (!getResources(scr, &sr)) {
 			wwarning("wRandR_Update: GetScreenResourcesCurrent failed");
@@ -616,7 +614,7 @@ static void wRandR_Update(WScreen *scr)
 			}
 
 			if (found) {
-				found->stale = False;
+				found->stale = false;
 				found->connected = (oi->connection == XCB_RANDR_CONNECTION_CONNECTED);
 				found->crtc = oi->crtc;
 				found->w = 0;
@@ -680,9 +678,9 @@ static void wRandR_Update(WScreen *scr)
 	/* GetMonitors with get_active=1 returning zero entries means no
 	 * CRTC is driving an output, the framebuffer has no viewer.
 	 * That is the lid-closed-with-no-external-display case, mark
-	 * the display off so the decorative timers disarm.  When the
+	 * the display off so the decorative timers disarm. When the
 	 * request itself failed (active_monitors == -1) leave the
-	 * display state alone.  This runs for both the applied and the
+	 * display state alone. This runs for both the applied and the
 	 * stub-fallback branch because the all-off case is the one that
 	 * usually takes the stub branch (xine_info still remembers the
 	 * pre-disconnect head). */
@@ -775,7 +773,7 @@ static void wRandR_Update(WScreen *scr)
 	}
 
 	/* Rearrange miniaturized and appicons into the icon yard */
-	wArrangeIcons(scr, True);
+	wArrangeIcons(scr, true);
 }
 
 static void wRandRDebounceTimerFired(void *data)

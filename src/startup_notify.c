@@ -25,8 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 
 #define SN_API_NOT_YET_FROZEN 1
 #include <libsn/sn.h>
@@ -51,10 +49,10 @@ struct WPendingLaunch {
 	SnLauncherContext *ctx;		/* ref'd, NULL when wmaker was not the launcher */
 	WAppIcon *btn;			/* dock tile to repaint on completion, may be NULL */
 	pid_t pid;			/* child pid, 0 until Spawned() */
-	Time launch_time;
+	xcb_timestamp_t launch_time;
 	int workspace;
-	Bool has_launch_info;
-	Bool sets_busy_cursor;		/* counts toward wStartupNotifyAppStarting() */
+	bool has_launch_info;
+	bool sets_busy_cursor;		/* counts toward wStartupNotifyAppStarting() */
 	WMHandlerID timeout;
 	WMHandlerID fallback_timeout;	/* only while seq == NULL after spawn */
 	WScreen *scr;
@@ -73,7 +71,7 @@ static int sn_dpy_refs;
 static void sn_event_cb(SnMonitorEvent *ev, void *data);
 static void sn_seq_timeout_cb(void *data);
 static void sn_fallback_timeout_cb(void *data);
-static void pending_dispose(WPendingLaunch *pl, Bool clear_btn);
+static void pending_dispose(WPendingLaunch *pl, bool clear_btn);
 
 static WPendingLaunch *pending_find_id(WScreen *scr, const char *id)
 {
@@ -107,25 +105,25 @@ static WPendingLaunch *pending_find_seq(WScreen *scr, SnStartupSequence *seq)
 
 void wStartupNotifyUpdateCursor(WScreen *scr)
 {
-	Cursor cur;
+	xcb_cursor_t cur;
 
 	cur = wStartupNotifyAppStarting(scr) ? wPreferences.cursor[WCUR_WAIT]
 					     : wPreferences.cursor[WCUR_ROOT];
-	XDefineCursor(dpy, scr->root_win, cur);
+	wXDefineCursor(xconn, scr->root_win, cur);
 }
 
-Bool wStartupNotifyAppStarting(WScreen *scr)
+bool wStartupNotifyAppStarting(WScreen *scr)
 {
 	WPendingLaunch *pl;
 	WMArrayIterator it;
 
 	if (!scr->sn)
-		return False;
+		return false;
 	WM_ITERATE_ARRAY(scr->sn->pending, pl, it) {
 		if (pl->sets_busy_cursor)
-			return True;
+			return true;
 	}
-	return False;
+	return false;
 }
 
 void wStartupNotifyInit(WScreen *scr)
@@ -140,7 +138,7 @@ void wStartupNotifyInit(WScreen *scr)
 		 * xcb_client_message_event_t and drops the cooked-event
 		 * dependency from the only ClientMessage consumer that does
 		 * not need it */
-		sn_dpy = sn_xcb_display_new(XGetXCBConnection(dpy), NULL, NULL);
+		sn_dpy = sn_xcb_display_new(xconn, NULL, NULL);
 		if (!sn_dpy)
 			return;
 	}
@@ -170,7 +168,7 @@ void wStartupNotifyShutdown(WScreen *scr)
 	 * restore below, but keep the array itself alive until after that
 	 * call because UpdateCursor() reads scr->sn->pending */
 	WM_ITERATE_ARRAY(sn->pending, pl, it) {
-		pending_dispose(pl, False);
+		pending_dispose(pl, false);
 	}
 	WMEmptyArray(sn->pending);
 	wStartupNotifyUpdateCursor(scr);
@@ -186,18 +184,18 @@ void wStartupNotifyShutdown(WScreen *scr)
 	}
 }
 
-Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe)
+bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe)
 {
 	if (!sn_dpy)
-		return False;
+		return false;
 	/* libsn never modifies the event it is handed and the parameter
 	 * is only non-const for historical reasons, the cast is safe */
-	return sn_xcb_display_process_event(sn_dpy, (xcb_generic_event_t *)xe) ? True : False;
+	return sn_xcb_display_process_event(sn_dpy, (xcb_generic_event_t *)xe) ? true : false;
 }
 
 /* tear down a pending entry without removing it from the array, callers
  * that own array membership do the WMRemoveFromArray() themselves */
-static void pending_dispose(WPendingLaunch *pl, Bool clear_btn)
+static void pending_dispose(WPendingLaunch *pl, bool clear_btn)
 {
 	if (!pl)
 		return;
@@ -218,7 +216,7 @@ static void pending_dispose(WPendingLaunch *pl, Bool clear_btn)
 	wfree(pl);
 }
 
-static void pending_remove(WScreen *scr, WPendingLaunch *pl, Bool clear_btn)
+static void pending_remove(WScreen *scr, WPendingLaunch *pl, bool clear_btn)
 {
 	if (!pl || !scr->sn)
 		return;
@@ -251,7 +249,7 @@ static void sn_event_cb(SnMonitorEvent *ev, void *data)
 			pl->id = id ? wstrdup(id) : NULL;
 			pl->scr = scr;
 			pl->workspace = -1;
-			pl->sets_busy_cursor = True;
+			pl->sets_busy_cursor = true;
 			WMAddToArray(scr->sn->pending, pl);
 		}
 		if (!pl->seq && seq) {
@@ -260,7 +258,7 @@ static void sn_event_cb(SnMonitorEvent *ev, void *data)
 		}
 		WMDeleteTimerHandlerPtr(&pl->fallback_timeout);
 		if (seq) {
-			Time seq_ts = sn_startup_sequence_get_timestamp(seq);
+			xcb_timestamp_t seq_ts = sn_startup_sequence_get_timestamp(seq);
 			int seq_ws = sn_startup_sequence_get_workspace(seq);
 
 			/* keep the launcher-supplied values when libsn could
@@ -270,7 +268,7 @@ static void sn_event_cb(SnMonitorEvent *ev, void *data)
 				pl->launch_time = seq_ts;
 			if (seq_ws >= 0 || !pl->has_launch_info)
 				pl->workspace = seq_ws;
-			pl->has_launch_info = True;
+			pl->has_launch_info = true;
 		}
 		if (!pl->timeout)
 			pl->timeout = WMAddTimerHandler(WSN_TIMEOUT_MS, sn_seq_timeout_cb, pl);
@@ -282,7 +280,7 @@ static void sn_event_cb(SnMonitorEvent *ev, void *data)
 		pl = pending_find_id(scr, id);
 		if (!pl)
 			pl = pending_find_seq(scr, seq);
-		pending_remove(scr, pl, True);
+		pending_remove(scr, pl, true);
 		break;
 
 	case SN_MONITOR_EVENT_CHANGED:
@@ -302,7 +300,7 @@ static void sn_seq_timeout_cb(void *data)
 		return;
 	}
 	/* no sequence ever arrived, dispose directly */
-	pending_remove(pl->scr, pl, True);
+	pending_remove(pl->scr, pl, true);
 }
 
 static void sn_fallback_timeout_cb(void *data)
@@ -317,12 +315,12 @@ static void sn_fallback_timeout_cb(void *data)
 	}
 	if (pl->ctx)
 		sn_launcher_context_complete(pl->ctx);
-	pending_remove(pl->scr, pl, True);
+	pending_remove(pl->scr, pl, true);
 }
 
-Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
+bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 			       const char *wm_class, const char *wm_instance,
-			       pid_t pid, Time *launch_time_out, int *workspace_out)
+			       pid_t pid, xcb_timestamp_t *launch_time_out, int *workspace_out)
 {
 	WPendingLaunch *pl;
 	WPendingLaunch *hit = NULL;
@@ -330,7 +328,7 @@ Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 	const char *seq_class;
 
 	if (!scr->sn || WMGetArrayItemCount(scr->sn->pending) == 0)
-		return False;
+		return false;
 
 	/* pass 1, exact startup id, so a window carrying id X never consumes
 	 * an earlier same-class launch sitting before X in the array */
@@ -375,7 +373,7 @@ Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 	}
 
 	if (!hit)
-		return False;
+		return false;
 
 	if (hit->has_launch_info) {
 		*launch_time_out = hit->launch_time;
@@ -402,9 +400,9 @@ Bool wStartupNotifyMatchWindow(WScreen *scr, const char *startup_id,
 	} else {
 		if (hit->ctx)
 			sn_launcher_context_complete(hit->ctx);
-		pending_remove(scr, hit, False);
+		pending_remove(scr, hit, false);
 	}
-	return True;
+	return true;
 }
 
 WStartupLaunch *wStartupLaunchBegin(WScreen *scr, const char *bin,
@@ -414,7 +412,7 @@ WStartupLaunch *wStartupLaunchBegin(WScreen *scr, const char *bin,
 	SnLauncherContext *ctx;
 	WPendingLaunch *pl;
 	const char *id;
-	Time ts;
+	xcb_timestamp_t ts;
 
 	if (!sn_dpy || !scr->sn)
 		return NULL;
@@ -442,7 +440,7 @@ WStartupLaunch *wStartupLaunchBegin(WScreen *scr, const char *bin,
 	pl->btn = btn;
 	pl->launch_time = ts;
 	pl->workspace = workspace;
-	pl->has_launch_info = True;
+	pl->has_launch_info = true;
 	/* a launch with no wmclass cannot be matched on window-map by a
 	 * client that does not speak startup-notification, so it would hold
 	 * the busy cursor for the full 20 s timeout for every such app
@@ -508,7 +506,7 @@ void wStartupLaunchChildExited(WScreen *scr, pid_t pid)
 		} else {
 			if (pl->ctx)
 				sn_launcher_context_complete(pl->ctx);
-			pending_remove(scr, pl, False);
+			pending_remove(scr, pl, false);
 		}
 		return;
 	}
@@ -523,7 +521,7 @@ void wStartupLaunchAbort(WStartupLaunch *l)
 	 * delete any timers defensively even though Spawned() never ran */
 	if (l->ctx)
 		sn_launcher_context_complete(l->ctx);
-	pending_remove(l->scr, l, True);
+	pending_remove(l->scr, l, true);
 }
 
 void wStartupNotifyForgetIcon(WAppIcon *btn)

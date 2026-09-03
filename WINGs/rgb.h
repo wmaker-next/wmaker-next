@@ -768,4 +768,3 @@ RGBColor rgbColors[] = {
 };
 
 #endif
-

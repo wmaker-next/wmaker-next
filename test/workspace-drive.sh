@@ -87,7 +87,7 @@ EOF
 }
 
 write_wmstate() {
-	# seed a single workspace; scenarios grow with workspace-new
+	# seed a single workspace, scenarios grow with workspace-new
 	cat >"$WMHOME/Defaults/WMState" <<'EOF'
 {
   Workspaces = ( { Name = "ws0"; } );
@@ -185,7 +185,7 @@ msg -q workspace 0 || fail "switch to ws 0 rejected"
 sleep 0.2
 msg -q -- window-close "$A" || fail "window-close A rejected"
 wait_for 30 no_windows || fail "A did not close"
-# ws 2 and ws 1 both empty trailing -> reaped; ws 0 active kept -> count 1
+# ws 2 and ws 1 both empty trailing -> reaped, ws 0 active kept -> count 1
 wait_count 1 || fail "close reaps: count $(ws_count) != 1"
 ok "close reaps all trailing empties -> count 1"
 
@@ -235,7 +235,7 @@ msg -q -- window-workspace "$A" +1 || fail "add A to ws 1"
 msg -q -- window-workspace "$A" +2 || fail "add A to ws 2"
 sleep 0.2
 [ "$(win_mask "$A")" = "0,1,2" ] || fail "A mask != (0,1,2) got $(win_mask "$A")"
-# drop ws 0 so A lives on {1,2}; ws 2 has A so the sweep stops there
+# drop ws 0 so A lives on {1,2}, ws 2 has A so the sweep stops there
 msg -q -- window-workspace "$A" -0 || fail "remove A from ws 0"
 sleep 0.2
 [ "$(win_mask "$A")" = "1,2" ] || fail "A mask != (1,2) got $(win_mask "$A")"
@@ -385,7 +385,7 @@ sleep 0.2
 wait_count 3 || fail "delete empty: count $(ws_count) != 3"
 [ "$(win_primary "$A")" = "2" ] || fail "A primary changed after delete 3"
 ok "explicit delete empty ws 3 -> count 3, A stays ws 2"
-# A on ws 2, ws 1 empty middle; delete ws 1 -> A compacted 2 -> 1, count 2
+# A on ws 2, ws 1 empty middle, delete ws 1 -> A compacted 2 -> 1, count 2
 msg -q workspace-delete 1 || fail "workspace-delete 1 rejected"
 sleep 0.2
 wait_count 2 || fail "delete ws 1: count $(ws_count) != 2"

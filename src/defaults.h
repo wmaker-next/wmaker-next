@@ -36,7 +36,7 @@ typedef struct WDDomain {
 struct WConfig;
 struct WConfigChanges;
 
-WDDomain * wDefaultsInitDomain(const char *domain, Bool requireDictionary);
+WDDomain * wDefaultsInitDomain(const char *domain, bool requireDictionary);
 
 void wDefaultsMergeGlobalMenus(WDDomain *menuDomain);
 
@@ -48,7 +48,7 @@ void wDefaultUpdateIcons(WScreen *scr);
 void wDefaultsCheckDomains(void *arg);
 void wDefaultFillAttributes(const char *instance, const char *class,
                             WWindowAttributes *attr, WWindowAttributes *mask,
-                            Bool useGlobalDefault);
+                            bool useGlobalDefault);
 /* Same as wDefaultFillAttributes but additionally layers the first matching
  * DynamicRules entry on top. Pulls the title, role, command, machine and
  * _NET_WM_WINDOW_TYPE atom-name list directly from WWindow so the lookup
@@ -57,7 +57,7 @@ void wDefaultFillAttributes(const char *instance, const char *class,
 void wDefaultFillAttributesForWindow(const WWindow *wwin,
 				     WWindowAttributes *attr,
 				     WWindowAttributes *mask,
-				     Bool useGlobalDefault);
+				     bool useGlobalDefault);
 /* Reparse w_global.domain.window_attr->dictionary into the lookup cache.
  * Call after the domain is loaded, after a runtime reload, and after any
  * in-process mutation of the dictionary. */
@@ -66,14 +66,14 @@ void wWindowAttrsReload(void);
 char *get_default_image_path(void);
 RImage *get_default_image(WScreen *scr);
 
-char *wDefaultGetIconFile(const char *instance, const char *class, Bool default_icon);
+char *wDefaultGetIconFile(const char *instance, const char *class, bool default_icon);
 
 RImage *get_icon_image(WScreen *scr, const char *winstance, const char *wclass, int max_size);
 char *get_icon_filename(const char *winstance, const char *wclass, const char *command,
-			Bool default_icon);
+			bool default_icon);
 
 
-Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
+bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 				const char *class, uint64_t *out_mask);
 void wDefaultChangeIcon(const char *instance, const char* class, const char *file);
 RImage *get_rimage_from_file(WScreen *scr, const char *file_name, int max_size);

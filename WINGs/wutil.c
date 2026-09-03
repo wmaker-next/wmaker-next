@@ -11,5 +11,5 @@ void WHandleEvents(void)
 	 * handlers, input handlers and the notification-queue flushes in
 	 * one pass, with no referenced watchers it returns at once so a
 	 * timer-only or empty caller is not a busy spin */
-	W_HandleInputEvents(True, -1);
+	W_HandleInputEvents(true, -1);
 }

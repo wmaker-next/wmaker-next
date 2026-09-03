@@ -25,8 +25,6 @@
 #include <unistd.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include "WindowMaker.h"
 #include "actions.h"
@@ -218,7 +216,7 @@ static void execEdgeSnap(WMenu *menu, WMenuEntry *entry)
 
 	switch (menu_edge_snap_entries[idx].action) {
 	case 0:
-		wMoveToEdge(wwin, menu_edge_snap_entries[idx].direction, True);
+		wMoveToEdge(wwin, menu_edge_snap_entries[idx].direction, true);
 		break;
 	case 1:
 		wGrowToEdge(wwin, menu_edge_snap_entries[idx].direction);
@@ -398,7 +396,7 @@ static void switchWSCommand(WMenu * menu, WMenuEntry * entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
 
-	wSelectWindow(wwin, False);
+	wSelectWindow(wwin, false);
 	if (wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(entry->order)))
 		wWindowRemoveFromWorkspace(wwin, entry->order);
 	else
@@ -429,10 +427,10 @@ static void makeShortcutCommand(WMenu * menu, WMenuEntry * entry)
 	}
 
 	wSelectWindow(wwin, !wwin->flags.selected);
-	XFlush(dpy);
+	wXFlush(xconn);
 	wusleep(3000);
 	wSelectWindow(wwin, !wwin->flags.selected);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 static void updateWorkspaceMenu(WMenu * menu)
@@ -477,7 +475,7 @@ static void updateMakeShortcutMenu(WMenu * menu, WWindow * wwin)
 	WMenu *smenu = menu->cascades[menu->entries[MC_OPTIONS]->cascade];
 	int i;
 	char buffer[64];
-	KeyCode kcode;
+	xcb_keycode_t kcode;
 
 	if (!smenu)
 		return;
@@ -531,9 +529,9 @@ static void updateMakeShortcutMenu(WMenu * menu, WWindow * wwin)
 				/* There was a shortcut but it did not change */
 				wfree(tmp);
 			}
-			wMenuSetEnabled(smenu, i, True);
+			wMenuSetEnabled(smenu, i, true);
 		} else {
-			wMenuSetEnabled(smenu, i, False);
+			wMenuSetEnabled(smenu, i, false);
 			if (entry->rtext) {
 				wfree(entry->rtext);
 				entry->rtext = NULL;
@@ -607,7 +605,7 @@ static WMenu *makeWorkspaceMenu(WScreen * scr)
 {
 	WMenu *menu;
 
-	menu = wMenuCreate(scr, NULL, False);
+	menu = wMenuCreate(scr, NULL, false);
 	if (!menu) {
 		wwarning(_("could not create submenu for window menu"));
 		return NULL;
@@ -632,7 +630,7 @@ static WMenu *makeOptionsMenu(WScreen * scr)
 	WMenuEntry *entry;
 	int i;
 
-	menu = wMenuCreate(scr, NULL, False);
+	menu = wMenuCreate(scr, NULL, false);
 	if (!menu) {
 		wwarning(_("could not create submenu for window menu"));
 		return NULL;
@@ -658,7 +656,7 @@ static WMenu *makeRegionSnapMenu(WScreen *scr)
 	WMenuEntry *entry;
 	int i;
 
-	menu = wMenuCreate(scr, NULL, False);
+	menu = wMenuCreate(scr, NULL, false);
 	if (!menu) {
 		wwarning(_("could not create submenu for window menu"));
 		return NULL;
@@ -679,7 +677,7 @@ static WMenu *makeEdgeSnapMenu(WScreen *scr)
 	WMenuEntry *entry;
 	int i;
 
-	menu = wMenuCreate(scr, NULL, False);
+	menu = wMenuCreate(scr, NULL, false);
 	if (!menu) {
 		wwarning(_("could not create submenu for window menu"));
 		return NULL;
@@ -699,7 +697,7 @@ static WMenu *createWindowMenu(WScreen * scr)
 	WMenu *menu;
 	int i;
 
-	menu = wMenuCreate(scr, NULL, False);
+	menu = wMenuCreate(scr, NULL, false);
 
 	for (i = 0; i < wlengthof(window_menu_entries); i++) {
 		WMenuEntry *entry;
@@ -810,9 +808,9 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 	wMenuSetEnabled(menu, MC_CHANGEWKSPC, !IS_OMNIPRESENT(wwin));
 
 	if (!wwin->flags.inspector_open) {
-		wMenuSetEnabled(menu, MC_PROPERTIES, True);
+		wMenuSetEnabled(menu, MC_PROPERTIES, true);
 	} else {
-		wMenuSetEnabled(menu, MC_PROPERTIES, False);
+		wMenuSetEnabled(menu, MC_PROPERTIES, false);
 	}
 
 	/* Update shortcut labels except for (Un)Maximize which is
@@ -845,7 +843,7 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 		scr->workspace_submenu->entries[i]->clientdata = wwin;
 		scr->workspace_submenu->entries[i]->flags.indicator_on =
 			wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(i)) ? 1 : 0;
-		wMenuSetEnabled(scr->workspace_submenu, i, True);
+		wMenuSetEnabled(scr->workspace_submenu, i, true);
 	}
 	scr->workspace_submenu->flags.realized = 0;
 
@@ -927,7 +925,7 @@ void OpenWindowMenu2(WWindow *wwin, int x, int y, int keyboard)
 		scr->workspace_submenu->entries[i]->clientdata = wwin;
 		scr->workspace_submenu->entries[i]->flags.indicator_on =
 			wwin->frame && (WWIN_WS_MASK(wwin) & WS_BIT(i)) ? 1 : 0;
-		wMenuSetEnabled(scr->workspace_submenu, i, True);
+		wMenuSetEnabled(scr->workspace_submenu, i, true);
 	}
 
 	x -= menu->frame->core->width / 2;
@@ -949,13 +947,13 @@ void OpenMiniwindowMenu(WWindow * wwin, int x, int y)
 
 	x -= menu->frame->core->width / 2;
 
-	wMenuMapAt(menu, x, y, False);
+	wMenuMapAt(menu, x, y, false);
 }
 
 void DestroyWindowMenu(WScreen *scr)
 {
 	if (scr->window_menu) {
-		wMenuDestroy(scr->window_menu, True);
+		wMenuDestroy(scr->window_menu, true);
 		scr->window_menu = NULL;
 	}
 }

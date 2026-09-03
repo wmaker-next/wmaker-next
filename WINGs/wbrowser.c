@@ -52,9 +52,9 @@ typedef struct W_Browser {
 
 #define DEFAULT_WIDTH                 305
 #define DEFAULT_HEIGHT                200
-#define DEFAULT_HAS_SCROLLER          True
+#define DEFAULT_HAS_SCROLLER          true
 #define DEFAULT_TITLE_HEIGHT          20
-#define DEFAULT_IS_TITLED             True
+#define DEFAULT_IS_TITLED             true
 #define DEFAULT_MAX_VISIBLE_COLUMNS   2
 #define DEFAULT_SEPARATOR             "/"
 
@@ -64,14 +64,14 @@ typedef struct W_Browser {
 #define COLUMN_IS_VISIBLE(b, c)	((c) >= (b)->firstVisibleColumn \
     && (c) < (b)->firstVisibleColumn + (b)->maxVisibleColumns)
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 static void destroyBrowser(WMBrowser * bPtr);
 
 static void setupScroller(WMBrowser * bPtr);
 
-static void scrollToColumn(WMBrowser * bPtr, int column, Bool updateScroller);
+static void scrollToColumn(WMBrowser * bPtr, int column, bool updateScroller);
 
-static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect);
+static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect);
 
 static void loadColumn(WMBrowser * bPtr, int column);
 
@@ -109,7 +109,7 @@ WMBrowser *WMCreateBrowser(WMWidget * parent)
 
 	bPtr->view->delegate = &_BrowserViewDelegate;
 
-	WMCreateEventHandler(bPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, bPtr);
 
 	/* default configuration */
@@ -136,7 +136,7 @@ WMBrowser *WMCreateBrowser(WMWidget * parent)
 	return bPtr;
 }
 
-void WMSetBrowserAllowMultipleSelection(WMBrowser * bPtr, Bool flag)
+void WMSetBrowserAllowMultipleSelection(WMBrowser * bPtr, bool flag)
 {
 	int i;
 
@@ -146,7 +146,7 @@ void WMSetBrowserAllowMultipleSelection(WMBrowser * bPtr, Bool flag)
 	}
 }
 
-void WMSetBrowserAllowEmptySelection(WMBrowser * bPtr, Bool flag)
+void WMSetBrowserAllowEmptySelection(WMBrowser * bPtr, bool flag)
 {
 	int i;
 
@@ -211,9 +211,9 @@ void WMSetBrowserMaxVisibleColumns(WMBrowser * bPtr, int columns)
 	}
 	WMResizeWidget(bPtr, bPtr->view->size.width, bPtr->view->size.height);
 	if (bPtr->flags.loaded) {
-		XClearArea(bPtr->view->screen->display, bPtr->view->window, 0, 0,
-			   bPtr->view->size.width, bPtr->titleHeight, False);
-		scrollToColumn(bPtr, newFirstVisibleColumn, True);
+		wXClearArea(bPtr->view->screen->display, bPtr->view->window, 0, 0,
+			    bPtr->view->size.width, bPtr->titleHeight, false);
+		scrollToColumn(bPtr, newFirstVisibleColumn, true);
 	}
 }
 
@@ -258,13 +258,13 @@ static void drawTitleOfColumn(WMBrowser * bPtr, int column)
 			W_PaintTextCairo(cr, scr->boldFont, x,
 					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
 					 bPtr->columnSize.width, WACenter, scr->white,
-					 False, titleBuf, titleLen);
+					 false, titleBuf, titleLen);
 			wfree(titleBuf);
 		} else {
 			W_PaintTextCairo(cr, scr->boldFont, x,
 					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
 					 bPtr->columnSize.width, WACenter, scr->white,
-					 False, bPtr->titles[column], titleLen);
+					 false, bPtr->titles[column], titleLen);
 		}
 	}
 	WCairoEnd(cr);
@@ -375,7 +375,7 @@ void WMSetBrowserColumnTitle(WMBrowser * bPtr, int column, const char *title)
 	}
 }
 
-void WMSetBrowserTitled(WMBrowser * bPtr, Bool flag)
+void WMSetBrowserTitled(WMBrowser * bPtr, bool flag)
 {
 	int i;
 	int columnX, columnY;
@@ -422,7 +422,7 @@ void WMSortBrowserColumnWithComparer(WMBrowser * bPtr, int column, WMCompareData
 	WMSortListItemsWithComparer(bPtr->columns[column], func);
 }
 
-WMListItem *WMInsertBrowserItem(WMBrowser * bPtr, int column, int row, const char *text, Bool isBranch)
+WMListItem *WMInsertBrowserItem(WMBrowser * bPtr, int column, int row, const char *text, bool isBranch)
 {
 	WMListItem *item;
 
@@ -479,7 +479,7 @@ static void willResizeBrowser(W_ViewDelegate * self, WMView * view, unsigned int
 	}
 }
 
-static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect)
+static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect)
 {
 	WMView *view = W_VIEW(lPtr);
 	W_Screen *scr = view->screen;
@@ -513,11 +513,11 @@ static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int stat
 		if (WMWidthOfString(font, text, textLen) > widthC) {
 			textBuf = createTruncatedString(font, text, &textLen, widthC);
 			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
-					 scr->black, False, textBuf, textLen);
+					 scr->black, false, textBuf, textLen);
 			wfree(textBuf);
 		} else {
 			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
-					 scr->black, False, text, textLen);
+					 scr->black, false, text, textLen);
 		}
 	}
 
@@ -551,7 +551,7 @@ static void scrollCallback(WMWidget * scroller, void *self)
 	switch (WMGetScrollerHitPart(sPtr)) {
 	case WSDecrementLine:
 		if (bPtr->firstVisibleColumn > 0) {
-			scrollToColumn(bPtr, bPtr->firstVisibleColumn - 1, True);
+			scrollToColumn(bPtr, bPtr->firstVisibleColumn - 1, true);
 		}
 		break;
 
@@ -560,13 +560,13 @@ static void scrollCallback(WMWidget * scroller, void *self)
 		if (bPtr->firstVisibleColumn > 0) {
 			newFirst = bPtr->firstVisibleColumn - bPtr->maxVisibleColumns;
 
-			scrollToColumn(bPtr, newFirst, True);
+			scrollToColumn(bPtr, newFirst, true);
 		}
 		break;
 
 	case WSIncrementLine:
 		if (LAST_VISIBLE_COLUMN < bPtr->usedColumnCount) {
-			scrollToColumn(bPtr, bPtr->firstVisibleColumn + 1, True);
+			scrollToColumn(bPtr, bPtr->firstVisibleColumn + 1, true);
 		}
 		break;
 
@@ -578,7 +578,7 @@ static void scrollCallback(WMWidget * scroller, void *self)
 			if (newFirst + bPtr->maxVisibleColumns >= bPtr->columnCount)
 				newFirst = bPtr->columnCount - bPtr->maxVisibleColumns;
 
-			scrollToColumn(bPtr, newFirst, True);
+			scrollToColumn(bPtr, newFirst, true);
 		}
 		break;
 
@@ -594,7 +594,7 @@ static void scrollCallback(WMWidget * scroller, void *self)
 			newFirst = rint(floatValue * (double)(bPtr->columnCount - bPtr->maxVisibleColumns));
 
 			if (bPtr->firstVisibleColumn != newFirst)
-				scrollToColumn(bPtr, newFirst, False);
+				scrollToColumn(bPtr, newFirst, false);
 			/*else
 			   WMSetScrollerParameters(bPtr->scroller, floatValue,
 			   bPtr->maxVisibleColumns/(float)bPtr->columnCount);
@@ -656,7 +656,7 @@ const char *WMSetBrowserPath(WMBrowser * bPtr, const char *path)
 
 	/* WMLoadBrowserColumnZero must be call first */
 	if (!bPtr->flags.loaded) {
-		return False;
+		return false;
 	}
 
 	removeColumn(bPtr, 1);
@@ -708,7 +708,7 @@ const char *WMSetBrowserPath(WMBrowser * bPtr, const char *path)
 		bPtr->usedColumnCount = curUsedColumnCount;
 	}
 
-	scrollToColumn(bPtr, bPtr->columnCount - bPtr->maxVisibleColumns, True);
+	scrollToColumn(bPtr, bPtr->columnCount - bPtr->maxVisibleColumns, true);
 
 	return retPtr;
 }
@@ -824,12 +824,12 @@ WMArray *WMGetBrowserPaths(WMBrowser * bPtr)
 	return paths;
 }
 
-Bool WMBrowserAllowsMultipleSelection(WMBrowser * bPtr)
+bool WMBrowserAllowsMultipleSelection(WMBrowser * bPtr)
 {
 	return bPtr->flags.allowMultipleSelection;
 }
 
-Bool WMBrowserAllowsEmptySelection(WMBrowser * bPtr)
+bool WMBrowserAllowsEmptySelection(WMBrowser * bPtr)
 {
 	return bPtr->flags.allowEmptySelection;
 }
@@ -876,25 +876,25 @@ static void paintBrowser(WMBrowser * bPtr)
 	}
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	WMBrowser *bPtr = (WMBrowser *) data;
 
 	CHECK_CLASS(data, WC_Browser);
 
-	switch (event->type) {
-	case Expose:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
 		paintBrowser(bPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyBrowser(bPtr);
 		break;
 
 	}
 }
 
-static void scrollToColumn(WMBrowser * bPtr, int column, Bool updateScroller)
+static void scrollToColumn(WMBrowser * bPtr, int column, bool updateScroller)
 {
 	int i;
 	int x;
@@ -977,7 +977,7 @@ static void listCallback(void *self, void *clientData)
 			i = 0;
 		else
 			i = bPtr->usedColumnCount - bPtr->maxVisibleColumns;
-		scrollToColumn(bPtr, i, True);
+		scrollToColumn(bPtr, i, true);
 		if (item && item->isBranch && selNo == 1) {
 			loadColumn(bPtr, bPtr->usedColumnCount - 1);
 		}
@@ -1015,7 +1015,7 @@ void WMLoadBrowserColumnZero(WMBrowser * bPtr)
 		loadColumn(bPtr, 0);
 
 		/* make column 0 visible */
-		scrollToColumn(bPtr, 0, True);
+		scrollToColumn(bPtr, 0, true);
 
 		bPtr->flags.loaded = 1;
 	}
@@ -1035,9 +1035,9 @@ void WMRemoveBrowserItem(WMBrowser * bPtr, int column, int row)
 
 	removeColumn(bPtr, column + 1);
 	if (bPtr->usedColumnCount < bPtr->maxVisibleColumns)
-		scrollToColumn(bPtr, 0, True);
+		scrollToColumn(bPtr, 0, true);
 	else
-		scrollToColumn(bPtr, bPtr->usedColumnCount - bPtr->maxVisibleColumns, True);
+		scrollToColumn(bPtr, bPtr->usedColumnCount - bPtr->maxVisibleColumns, true);
 
 	WMRemoveListItem(list, row);
 }

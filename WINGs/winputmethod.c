@@ -1,17 +1,14 @@
 /*
  * WINGs input method support
  *
- * Two paths are compiled in:
+ * One path, on the xcb-owned event queue:
  *
- *  non-xcb (WPrefs, wmagnify): classic Xlib XIM via XOpenIM/XCreateIC/
- *    XFilterEvent/Xutf8LookupString.  Unchanged from the original code.
- *
- *  xcb (wmaker after WXEvqFlipToXcb): XFilterEvent and Xutf8LookupString are
- *    retired.  Dead-key / Compose sequences are handled by xkb_compose_state
- *    (unconditional fallback).  When HAVE_XCB_IMDKIT is defined, a protocol
- *    IM client (xcb_xim_t) is also created and fcitx5 / ibus connections are
- *    routed through it, committed text arrives via the commit_string callback
- *    and is inserted at the cursor of the focused view.
+ *  Dead-key / Compose sequences are handled by xkb_compose_state
+ *  (unconditional fallback). A protocol IM client (xcb_xim_t,
+ *  auto-reconnecting) is created for every screen and fcitx5 / ibus
+ *  connections are routed through it, committed text arrives via the
+ *  commit_string callback and is inserted at the cursor of the focused
+ *  view. Xlib's protocol-XIM transport is retired.
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -21,67 +18,17 @@
  *  option) any later version.
  */
 
-#include <locale.h>
 #include <stdint.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+#include <xcb/xcb.h>
+#include <xcb-imdkit/imclient.h>
+#include <xcb-imdkit/encoding.h>
+#include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
 
 #include "wconfig.h"
 #include "WINGsP.h"
-
-#ifdef HAVE_XCB_IMDKIT
-#include <xcb/xcb.h>
-#include <X11/Xlib-xcb.h>
-#include <xcb-imdkit/imclient.h>
-#endif
-
-/* -----------------------------------------------------------------------
- * Internal structure for the non-xcb (Xlib XIM) path
- * -------------------------------------------------------------------- */
-
-typedef struct W_IMContext {
-	XIM xim;
-	XIMStyle ximstyle;
-} WMIMContext;
-
-/* -----------------------------------------------------------------------
- * Non-xcb callbacks (Xlib XIM)
- * -------------------------------------------------------------------- */
-
-static void instantiateIM_cb(Display * display, XPointer client_data, XPointer call_data)
-{
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) display;
-	(void) call_data;
-
-	W_InitIM((W_Screen *) client_data);
-}
-
-static void destroyIM_cb(XIM xim, XPointer client_data, XPointer call_data)
-{
-	W_Screen *scr = (W_Screen *) client_data;
-	W_View *target;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) call_data;
-
-	if (scr->imctx->xim != xim)
-		return;
-
-	target = scr->rootView->childrenList;
-	while (target != NULL) {
-		W_DestroyIC(target);
-		target = target->nextSister;
-	}
-
-	wfree(scr->imctx);
-	scr->imctx = NULL;
-
-	XRegisterIMInstantiateCallback(scr->display, NULL, NULL, NULL, instantiateIM_cb, (XPointer) scr);
-}
 
 /* -----------------------------------------------------------------------
  * xcb-path compose helper
@@ -95,13 +42,13 @@ static void destroyIM_cb(XIM xim, XPointer client_data, XPointer call_data)
  *  0    : still composing, cancelled, or keysym not in any sequence
  *
  * compose_state is void * so the unit tests can use it without the
- * HAVE_XCB_IMDKIT guard.
+ * xcb-imdkit types.
  */
-int W_IMComposeKey(void *compose_state, KeySym ksym, char *buf, int buflen, KeySym *sym_out)
+int W_IMComposeKey(void *compose_state, xkb_keysym_t ksym, char *buf, int buflen, xkb_keysym_t *sym_out)
 {
 	struct xkb_compose_state *cs = (struct xkb_compose_state *)compose_state;
 
-	if (!cs || ksym == NoSymbol)
+	if (!cs || ksym == XKB_KEY_NoSymbol)
 		return 0;
 
 	if (xkb_compose_state_feed(cs, ksym) != XKB_COMPOSE_FEED_ACCEPTED)
@@ -126,10 +73,8 @@ int W_IMComposeKey(void *compose_state, KeySym ksym, char *buf, int buflen, KeyS
 	return 0;
 }
 
-#ifdef HAVE_XCB_IMDKIT
-
 /* -----------------------------------------------------------------------
- * xcb-path IM bypass ring -- prevents re-forwarding keys the IM returned
+ * IM bypass ring -- prevents re-forwarding keys the IM returned
  * -------------------------------------------------------------------- */
 
 #define IM_BYPASS_MAX 8
@@ -145,7 +90,7 @@ static void im_bypass_mark(unsigned long serial)
 		im_bypass_count++;
 }
 
-static Bool im_bypass_check(unsigned long serial)
+static bool im_bypass_check(unsigned long serial)
 {
 	int i;
 
@@ -164,15 +109,147 @@ static Bool im_bypass_check(unsigned long serial)
 			}
 			im_bypass_head = (im_bypass_head - 1 + IM_BYPASS_MAX) % IM_BYPASS_MAX;
 			im_bypass_count--;
-			return True;
+			return true;
 		}
 	}
-	return False;
+	return false;
+}
+
+/* the true 32-bit sequence marked when the key was forwarded, matched
+ * by the wire low half, found/not-found reported explicitly since a
+ * pre-wrap session makes the true value equal the wire value */
+static bool im_bypass_resolve(uint16_t wire, unsigned long *full)
+{
+	int i;
+
+	for (i = 0; i < im_bypass_count; i++) {
+		int idx = (im_bypass_head - 1 - i + IM_BYPASS_MAX) % IM_BYPASS_MAX;
+
+		if ((im_bypass_serials[idx] & 0xFFFF) == wire) {
+			*full = im_bypass_serials[idx];
+			return true;
+		}
+	}
+	return false;
 }
 
 /* -----------------------------------------------------------------------
- * xcb-path IM callbacks (xcb-imdkit)
+ * IM callbacks (xcb-imdkit)
  * -------------------------------------------------------------------- */
+
+/*
+ * IC creation is serialized here. xcb-imdkit keeps exactly one
+ * request in flight (im->current) and only drains its request queue
+ * from the request entry points -- no reply handler re-triggers the
+ * queue, and set_ic_focus/ext_move do not either -- so a create_ic
+ * issued while another one awaits its reply would sit queued forever.
+ * One request is therefore kept on the wire at a time and the next
+ * one is picked by the reply callback or the reconnect walk.
+ */
+typedef struct {
+	W_Screen *scr;
+	W_View *view;
+} ICPending;
+
+/* destroy_ic requests deferred while another request owns the wire,
+ * drained FIFO one per reply callback */
+typedef struct ImDestroyPend {
+	struct ImDestroyPend *next;
+	xcb_xic_t ic;
+} ImDestroyPend;
+
+static void on_create_ic(xcb_xim_t *im, xcb_xic_t ic, void *user_data);
+static void on_destroy_ic(xcb_xim_t *im, xcb_xic_t ic, void *user_data);
+
+/* first realized view that asked for an IC and has none yet */
+static W_View *first_wanted_view(W_View *view)
+{
+	W_View *child, *hit;
+
+	if (view->flags.realized && view->flags.xcbxic_wanted && !view->xcbxic)
+		return view;
+
+	for (child = view->childrenList; child != NULL; child = child->nextSister) {
+		hit = first_wanted_view(child);
+		if (hit)
+			return hit;
+	}
+	return NULL;
+}
+
+/* enqueue the destroy, the wire holds one request and xcb-imdkit only
+ * drains its queue from request entry points */
+static void im_issue_destroy(W_Screen *scr, xcb_xic_t ic)
+{
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
+	ImDestroyPend *pend, *last;
+
+	if (!im)
+		return;
+
+	if (scr->ic_inflight || scr->ic_destroy_inflight) {
+		pend = wmalloc(sizeof(*pend));
+		pend->ic = ic;
+
+		last = (ImDestroyPend *)scr->ic_destroy_pend;
+		if (!last) {
+			scr->ic_destroy_pend = pend;
+		} else {
+			while (last->next)
+				last = last->next;
+			last->next = pend;
+		}
+		return;
+	}
+
+	scr->ic_destroy_inflight = 1;
+	xcb_xim_destroy_ic(im, ic, on_destroy_ic, scr);
+}
+
+static void im_flush_destroy(W_Screen *scr)
+{
+	ImDestroyPend *pend = (ImDestroyPend *)scr->ic_destroy_pend;
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
+
+	if (!pend || !im || scr->ic_inflight || scr->ic_destroy_inflight)
+		return;
+
+	scr->ic_destroy_pend = pend->next;
+	scr->ic_destroy_inflight = 1;
+	xcb_xim_destroy_ic(im, pend->ic, on_destroy_ic, scr);
+	wfree(pend);
+}
+
+static void im_kick(W_Screen *scr)
+{
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
+	ICPending *req;
+	W_View *view;
+	xcb_window_t win;
+	uint32_t style = XCB_IM_PreeditNothing | XCB_IM_StatusNothing;
+
+	if (!im || !scr->im_open)
+		return;
+
+	im_flush_destroy(scr);
+	if (scr->ic_inflight || scr->ic_destroy_inflight)
+		return;
+
+	view = first_wanted_view(scr->rootView);
+	if (!view)
+		return;
+
+	req = wmalloc(sizeof(ICPending));
+	req->scr = scr;
+	req->view = view;
+	scr->ic_inflight = req;
+	win = view->window;
+	xcb_xim_create_ic(im, on_create_ic, req,
+	                  XCB_XIM_XNInputStyle,   &style,
+	                  XCB_XIM_XNClientWindow, &win,
+	                  XCB_XIM_XNFocusWindow,  &win,
+	                  NULL);
+}
 
 /* find focused view with xcbxic == ic across all toplevels */
 static W_View *find_xcbxic_view(W_Screen *scr, xcb_xic_t ic)
@@ -209,15 +286,37 @@ static void on_commit_string(xcb_xim_t *im, xcb_xic_t ic,
 	W_Screen *scr = (W_Screen *)user_data;
 	W_View *view;
 	WMTextField *tf;
-	char *text;
+	char *text = NULL;
+	bool lib_owned = false;
 
-	(void)im;
 	(void)flag;
 	(void)keysym;
 	(void)nkeysym;
 
 	if (!str || length == 0)
 		return;
+
+	/* the commit string is in the encoding picked at negotiation,
+	 * but several servers (ibus among them) commit compound text
+	 * even when UTF8_STRING was negotiated. CT marks its charset
+	 * switches with ESC, so when UTF8_STRING is on the wire only a
+	 * payload carrying an ESC byte is decoded as CT — well-behaved
+	 * UTF-8 commits pass through untouched */
+	if (xcb_xim_get_encoding(im) != XCB_XIM_UTF8_STRING ||
+	    memchr(str, '\x1b', length)) {
+		size_t out_len = 0;
+		char *decoded = xcb_compound_text_to_utf8(str, length, &out_len);
+
+		if (decoded) {
+			text = decoded;
+			lib_owned = true;
+		}
+	}
+	if (!text) {
+		text = wmalloc(length + 1);
+		memcpy(text, str, length);
+		text[length] = '\0';
+	}
 
 	/* prefer the view that owns this IC, fall back to any focused textfield */
 	view = find_xcbxic_view(scr, ic);
@@ -231,17 +330,23 @@ static void on_commit_string(xcb_xim_t *im, xcb_xic_t ic,
 			}
 		}
 	}
-	if (!view || !view->self)
+	if (!view || !view->self) {
+		if (lib_owned)
+			free(text);
 		return;
-	if (W_CLASS(view->self) != WC_TextField)
+	}
+	if (W_CLASS(view->self) != WC_TextField) {
+		if (lib_owned)
+			free(text);
 		return;
+	}
 
 	tf = (WMTextField *)view->self;
-	text = wmalloc(length + 1);
-	memcpy(text, str, length);
-	text[length] = '\0';
 	WMInsertTextFieldText(tf, text, WMGetTextFieldCursorPosition(tf));
-	wfree(text);
+	if (lib_owned)
+		free(text);
+	else
+		wfree(text);
 
 	WMPostNotificationName(WMTextDidChangeNotification, tf,
 	                       (void *)WMInsertTextEvent);
@@ -253,48 +358,115 @@ static void on_forward_event(xcb_xim_t *im, xcb_xic_t ic,
 {
 	W_Screen *scr = (W_Screen *)user_data;
 	W_View *view = find_xcbxic_view(scr, ic);
-	XEvent cooked;
+	xcb_key_press_event_t *copy;
+	unsigned long full;
+	bool marked;
 
 	(void)im;
 
 	if (!view)
 		return;
 
-	W_CookXcbEvent(scr->display, (xcb_generic_event_t *)event, &cooked);
-	cooked.xkey.window = view->window;
-	im_bypass_mark(cooked.xkey.serial);
-	WXEvqPutBack(&cooked);
+	/* re-inject the key event on the WINGs queue with the window
+	 * rewritten to the IC's view so dispatch finds it. The echo
+	 * carries only the 16-bit wire sequence, the true value marked
+	 * at forward time is resolved from the bypass ring, unmatched
+	 * echoes keep the 16-bit stamp and mark it themselves */
+	copy = (xcb_key_press_event_t *) W_SynthEvent(event->response_type);
+	memcpy(copy, event, sizeof(*event));
+	copy->event = view->window;
+	marked = im_bypass_resolve(event->sequence, &full);
+	if (!marked)
+		full = event->sequence;
+	((xcb_generic_event_t *)copy)->full_sequence = full;
+	if (!marked)
+		im_bypass_mark(full);
+	WXEvqPutBack((xcb_generic_event_t *)copy);
+}
+
+/* IC ids are invalid after a disconnect; the reconnect walk re-creates */
+static void clear_xcbxic(W_View *view)
+{
+	W_View *child;
+
+	view->xcbxic = 0;
+	view->xcbxic_fwd_mask = 0;
+	for (child = view->childrenList; child != NULL; child = child->nextSister)
+		clear_xcbxic(child);
 }
 
 static void on_disconnected(xcb_xim_t *im, void *user_data)
 {
-	/* auto_connect=true in xcb_xim_open means xcb-imdkit will retry */
+	W_Screen *scr = (W_Screen *)user_data;
+	ImDestroyPend *pend;
+
 	(void)im;
-	(void)user_data;
+	/* every IC died with the connection; xcb-imdkit freed the
+	 * in-flight request without running its callback, so the
+	 * ICPending cell has to be released here */
+	scr->im_open = 0;
+	if (scr->ic_inflight) {
+		wfree(scr->ic_inflight);
+		scr->ic_inflight = NULL;
+	}
+	scr->ic_inflight_gone = 0;
+	while ((pend = (ImDestroyPend *)scr->ic_destroy_pend) != NULL) {
+		scr->ic_destroy_pend = pend->next;
+		wfree(pend);
+	}
+	scr->ic_destroy_inflight = 0;
+	clear_xcbxic(scr->rootView);
 }
 
 static void on_create_ic(xcb_xim_t *im, xcb_xic_t ic, void *user_data)
 {
-	W_View *view = (W_View *)user_data;
+	ICPending *req = (ICPending *)user_data;
+	W_Screen *scr = req->scr;
+	W_View *view = req->view;
 
 	(void)im;
-
-	if (ic)
+	scr->ic_inflight = NULL;
+	if (scr->ic_inflight_gone) {
+		/* the view was destroyed while the request was on the
+		 * wire; do not touch the dangling pointer, but the IC
+		 * the server just created would leak with a focus
+		 * window pointing at the dead view */
+		if (ic)
+			im_issue_destroy(scr, ic);
+		scr->ic_inflight_gone = 0;
+	} else if (ic) {
 		view->xcbxic = ic;
+	} else {
+		/* creation failed; a persistent failure (a hostile or
+		 * wedged IM server) would re-pick this view on every
+		 * kick, so drop the want and let the compose fallback
+		 * carry the view */
+		view->flags.xcbxic_wanted = 0;
+	}
+	wfree(req);
+	im_kick(scr);
+}
+
+static void on_destroy_ic(xcb_xim_t *im, xcb_xic_t ic, void *user_data)
+{
+	W_Screen *scr = (W_Screen *)user_data;
+
+	(void)im;
+	(void)ic;
+
+	scr->ic_destroy_inflight = 0;
+	im_kick(scr);
 }
 
 static void on_im_open(xcb_xim_t *im, void *user_data)
 {
 	W_Screen *scr = (W_Screen *)user_data;
-	W_View *child;
 
 	(void)im;
-
-	/* create ICs for views that realised while the IM was connecting */
-	for (child = scr->rootView->childrenList; child != NULL; child = child->nextSister) {
-		if (child->flags.realized && !child->xcbxic)
-			W_CreateIC(child);
-	}
+	scr->im_open = 1;
+	/* create ICs for views that realised while the IM was
+	 * connecting or that lost theirs on a reconnect */
+	im_kick(scr);
 }
 
 /* global xcb_xim list for W_IMFilterEventGlobal (one entry per screen) */
@@ -308,143 +480,96 @@ static void xcb_im_register(xcb_xim_t *im)
 		g_xcb_ims[g_xcb_im_count++] = im;
 }
 
-#endif /* HAVE_XCB_IMDKIT */
-
 /* -----------------------------------------------------------------------
  * W_IMFilterEventGlobal -- filter XIM protocol messages before view lookup
  *
- * Called from WMHandleEvent in the xcb path, before W_GetViewForXWindow,
- * because XIM protocol messages arrive on IM-internal windows that have
- * no matching W_View.
+ * Called from WMHandleEvent, before W_GetViewForXWindow, because XIM
+ * protocol messages arrive on IM-internal windows that have no matching
+ * W_View.
  * -------------------------------------------------------------------- */
 
-Bool W_IMFilterEventGlobal(Display *dpy, XEvent *event)
+bool W_IMFilterEventGlobal(xcb_generic_event_t *event)
 {
-#ifdef HAVE_XCB_IMDKIT
-	xcb_generic_event_t *xcb_ev;
 	int i;
 
-	(void)dpy;
-
 	if (g_xcb_im_count == 0)
-		return False;
-
-	xcb_ev = (xcb_generic_event_t *)((WXWireEvent *)event)->wire;
+		return false;
 
 	for (i = 0; i < g_xcb_im_count; i++) {
-		if (xcb_xim_filter_event(g_xcb_ims[i], xcb_ev))
-			return True;
+		if (xcb_xim_filter_event(g_xcb_ims[i], event))
+			return true;
 	}
-#else
-	(void)dpy;
-	(void)event;
-#endif
-	return False;
+	return false;
 }
 
 /* -----------------------------------------------------------------------
  * W_IMForwardKey -- forward a key press to the IM, returns True if consumed
  *
- * Called at the top of handleTextFieldKeyPress.  Returns True when the key
+ * Called at the top of handleTextFieldKeyPress. Returns True when the key
  * was sent to the IM and text will arrive later via commit_string, the
- * caller should return without further processing.  Returns False for
+ * caller should return without further processing. Returns False for
  * navigation/modifier keysyms and when no xcb-imdkit IC exists.
  * -------------------------------------------------------------------- */
 
-#ifdef HAVE_XCB_IMDKIT
-
-static Bool should_forward_to_im(KeySym ksym)
+static bool should_forward_to_im(xkb_keysym_t ksym)
 {
-	if (ksym == NoSymbol)
-		return False;
+	if (ksym == XKB_KEY_NoSymbol)
+		return false;
 	/* modifier keys */
-	if (ksym >= XK_Shift_L && ksym <= XK_Hyper_R)
-		return False;
-#ifdef XK_ISO_Lock
-	if (ksym >= XK_ISO_Lock && ksym <= XK_ISO_Last_Group_Lock)
-		return False;
-#endif
+	if (ksym >= XKB_KEY_Shift_L && ksym <= XKB_KEY_Hyper_R)
+		return false;
+	if (ksym >= XKB_KEY_ISO_Lock && ksym <= XKB_KEY_ISO_Last_Group_Lock)
+		return false;
 	/* 0xFF00..0xFFFF: BackSpace, Tab, Return, Escape, arrows, F-keys, Delete */
 	if (ksym >= 0xFF00)
-		return False;
+		return false;
 	/* 0xFE00..0xFEFF: dead keys -- forward to IM so it handles compose */
 	if (ksym >= 0xFE00)
-		return True;
+		return true;
 	/* printable range */
 	if (ksym >= 0x0020)
-		return True;
-	return False;
+		return true;
+	return false;
 }
 
-Bool W_IMForwardKey(W_View *view, XEvent *event)
+bool W_IMForwardKey(W_View *view, xcb_generic_event_t *event)
 {
 	W_Screen *scr;
 	xcb_xim_t *im;
-	KeySym ksym;
-	xcb_key_press_event_t *wire;
+	xkb_keysym_t ksym;
 
 	if (!view->xcbxic)
-		return False;
+		return false;
 
 	scr = view->screen;
 	if (!scr || !scr->xcbim)
-		return False;
+		return false;
 
 	/* event was re-injected by forward_event callback: process normally */
-	if (im_bypass_check(event->xkey.serial))
-		return False;
+	if (im_bypass_check(event->full_sequence))
+		return false;
 
-	ksym = XLookupKeysym(&event->xkey, 0);
+	/* keysym classification only needs the keycode, resolved against
+	 * the screen's xkbcommon keymap */
+	ksym = W_EventKeysym(scr, (const xcb_key_press_event_t *)event);
 	if (!should_forward_to_im(ksym))
-		return False;
+		return false;
 
 	im = (xcb_xim_t *)scr->xcbim;
-	wire = (xcb_key_press_event_t *)((WXWireEvent *)event)->wire;
-	xcb_xim_forward_event(im, view->xcbxic, wire);
-	return True;
+	/* the echo comes back with only the 16-bit wire sequence, the
+	 * bypass ring resolves it via the true value marked here */
+	im_bypass_mark(event->full_sequence);
+	xcb_xim_forward_event(im, view->xcbxic, (xcb_key_press_event_t *)event);
+	return true;
 }
-
-#else
-
-Bool W_IMForwardKey(W_View *view, XEvent *event)
-{
-	(void)view;
-	(void)event;
-	return False;
-}
-
-#endif /* HAVE_XCB_IMDKIT */
 
 /* -----------------------------------------------------------------------
  * W_InitIM -- called once per screen at screen creation
+ *
+ * The xkbcommon stack (keymap, state, compose) is W_InitXkb()'s job in
+ * wxkb.c, called from the screen-creation path before this.
  * -------------------------------------------------------------------- */
 
-static void init_compose_state(W_Screen *scr)
-{
-	struct xkb_context *ctx;
-	struct xkb_compose_table *table;
-	const char *locale;
-
-	if (scr->compose_state)
-		return;
-
-	ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-	if (!ctx)
-		return;
-
-	locale = setlocale(LC_CTYPE, NULL);
-	if (!locale || locale[0] == '\0')
-		locale = "C";
-
-	table = xkb_compose_table_new_from_locale(ctx, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
-	if (table) {
-		scr->compose_state = xkb_compose_state_new(table, XKB_COMPOSE_STATE_NO_FLAGS);
-		xkb_compose_table_unref(table);
-	}
-	xkb_context_unref(ctx);
-}
-
-#ifdef HAVE_XCB_IMDKIT
 static void init_xcb_im(W_Screen *scr)
 {
 	static const xcb_xim_im_callback im_cbs = {
@@ -459,7 +584,7 @@ static void init_xcb_im(W_Screen *scr)
 	if (scr->xcbim)
 		return;
 
-	conn = XGetXCBConnection(scr->display);
+	conn = scr->display;
 	if (!conn)
 		return;
 
@@ -467,69 +592,32 @@ static void init_xcb_im(W_Screen *scr)
 	if (!im)
 		return;
 
+	/* UTF-8 preferred; compound text stays offered for servers that
+	 * only negotiate it, on_commit_string decodes whichever the
+	 * server picked (ibus commits compound text even when UTF8_STRING
+	 * was negotiated) */
+	xcb_compound_text_init();
 	xcb_xim_set_use_utf8_string(im, true);
 	xcb_xim_set_im_callback(im, &im_cbs, scr);
-	if (xcb_xim_open(im, on_im_open, true, scr)) {
-		scr->xcbim = im;
-		xcb_im_register(im);
-	} else {
-		xcb_xim_destroy(im);
-	}
+	/*
+	 * xcb_xim_open() returns False when no IM server has registered
+	 * yet, but with auto_connect it has already armed the
+	 * XIM_SERVERS root-property watch at that point: once a server
+	 * appears, the property notify drives the reconnect and
+	 * on_im_open fires. The handle must therefore be kept and
+	 * registered even on a failed first open, and the im kept in
+	 * the event filter so the notify is seen.
+	 */
+	scr->xcbim = im;
+	xcb_im_register(im);
+	(void)xcb_xim_open(im, on_im_open, true, scr);
 }
-#endif
 
 void W_InitIM(W_Screen * scr)
 {
-	XIM xim;
-	XIMStyles *im_styles;
-	XIMCallback cb;
-	int i;
-
-	if (WXEvqXcbOwned()) {
-		/* xcb path: xkb_compose_state for the dead-key / Compose
-		 * fallback, plus an optional auto-reconnecting protocol IM */
-		init_compose_state(scr);
-#ifdef HAVE_XCB_IMDKIT
-		init_xcb_im(scr);
-#endif
-		return;
-	}
-
-	/* non-xcb path: classic Xlib XIM --------------------------------- */
-	if (scr->imctx)
-		return;
-
-	xim = XOpenIM(scr->display, NULL, NULL, NULL);
-	if (!xim) {
-		XRegisterIMInstantiateCallback(scr->display, NULL, NULL, NULL,
-		                               instantiateIM_cb, (XPointer) scr);
-		return;
-	}
-
-	scr->imctx = wmalloc(sizeof(WMIMContext));
-	scr->imctx->xim = xim;
-
-	cb.callback = destroyIM_cb;
-	cb.client_data = (XPointer) scr;
-	if (XSetIMValues(scr->imctx->xim, XNDestroyCallback, &cb, (void *)0))
-		wwarning(_("could not add destroy callback for XIM input method"));
-	XUnregisterIMInstantiateCallback(scr->display, NULL, NULL, NULL,
-	                                 instantiateIM_cb, (XPointer) scr);
-	/* Get available input style */
-	XGetIMValues(scr->imctx->xim, XNQueryInputStyle, &im_styles, (void *)0);
-
-	scr->imctx->ximstyle = 0;
-
-	for (i = 0; i < im_styles->count_styles && scr->imctx->ximstyle == 0; i++) {
-		if ((im_styles->supported_styles[i] & XIMPreeditPosition) &&
-		    (im_styles->supported_styles[i] & XIMStatusNothing)) {
-			scr->imctx->ximstyle = XIMPreeditPosition | XIMStatusNothing;
-		} else if ((im_styles->supported_styles[i] & XIMPreeditNothing) &&
-			   (im_styles->supported_styles[i] & XIMStatusNothing)) {
-			scr->imctx->ximstyle = XIMPreeditNothing | XIMStatusNothing;
-		}
-	}
-	XFree(im_styles);
+	/* the auto-reconnecting protocol IM, compose/dead-key fallback
+	 * stays for when no IM server answers */
+	init_xcb_im(scr);
 }
 
 /* -----------------------------------------------------------------------
@@ -539,70 +627,12 @@ void W_InitIM(W_Screen * scr)
 void W_CreateIC(WMView * view)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
-	XVaNestedList preedit_attr = NULL;
-	unsigned long fevent;
 
 	if (!view->flags.realized)
 		return;
 
-	if (WXEvqXcbOwned()) {
-#ifdef HAVE_XCB_IMDKIT
-		xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
-		xcb_window_t win = view->window;
-		uint32_t style = XCB_IM_PreeditNothing | XCB_IM_StatusNothing;
-
-		if (im && !view->xcbxic)
-			xcb_xim_create_ic(im, on_create_ic, view,
-			                  XCB_XIM_XNInputStyle,   &style,
-			                  XCB_XIM_XNClientWindow, &win,
-			                  XCB_XIM_XNFocusWindow,  &win,
-			                  NULL);
-#else
-		(void)scr;
-#endif
-		return;
-	}
-
-	/* non-xcb path */
-	if (view->xic || !scr->imctx)
-		return;
-
-	if (scr->imctx->ximstyle & XIMPreeditPosition) {
-		XPoint spot;
-		XRectangle rect;
-		int ofs;
-
-		ofs = (view->size.height - WMFontHeight(scr->normalFont)) / 2;
-
-		rect.x = ofs;
-		rect.y = ofs;
-		rect.height = WMFontHeight(scr->normalFont);
-		rect.width = view->size.width - ofs * 2;
-		spot.x = rect.x;
-		spot.y = rect.y + rect.height;
-
-		/* the over-the-spot style would take XNFontSet here, but WMFont
-		 * has never been an XFontSet and there is no PangoLayout binding
-		 * for XIM preedit, so leave the font to the IM server as the
-		 * previous XftFont pointer here was already ignored */
-		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot,
-						   XNArea, &rect, (void *)0);
-	}
-
-	view->xic = XCreateIC(scr->imctx->xim, XNInputStyle, scr->imctx->ximstyle,
-			      XNClientWindow, view->window,
-			      preedit_attr ? XNPreeditAttributes : NULL, preedit_attr, (void *)0);
-
-	if (preedit_attr)
-		XFree(preedit_attr);
-
-	if (view->xic) {
-		fevent = 0;
-		XGetICValues(view->xic, XNFilterEvents, &fevent, (void *)0);
-		XSelectInput(scr->display, view->window,
-			     ButtonPressMask | ButtonReleaseMask | ExposureMask |
-			     KeyPressMask | FocusChangeMask | ButtonMotionMask | fevent);
-	}
+	view->flags.xcbxic_wanted = 1;
+	im_kick(scr);
 }
 
 /* -----------------------------------------------------------------------
@@ -611,93 +641,45 @@ void W_CreateIC(WMView * view)
 
 void W_DestroyIC(WMView * view)
 {
-	if (WXEvqXcbOwned()) {
-#ifdef HAVE_XCB_IMDKIT
-		WMScreen *scr = W_VIEW_SCREEN(view);
-		xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
+	WMScreen *scr = W_VIEW_SCREEN(view);
+	ICPending *req = (ICPending *)scr->ic_inflight;
 
-		if (im && view->xcbxic) {
-			xcb_xim_destroy_ic(im, view->xcbxic, NULL, NULL);
-			view->xcbxic = 0;
-			view->xcbxic_fwd_mask = 0;
-		}
-#endif
-		return;
+	view->flags.xcbxic_wanted = 0;
+	if (req && req->view == view) {
+		/* the reply callback will find the request but must not
+		 * touch the view */
+		scr->ic_inflight_gone = 1;
 	}
-
-	if (view->xic) {
-		XDestroyIC(view->xic);
-		view->xic = 0;
+	if (view->xcbxic) {
+		im_issue_destroy(scr, view->xcbxic);
+		view->xcbxic = 0;
+		view->xcbxic_fwd_mask = 0;
 	}
+	im_kick(scr);
 }
 
 /* -----------------------------------------------------------------------
  * W_FocusIC / W_UnFocusIC
  * -------------------------------------------------------------------- */
 
-static void setPreeditArea(W_View * view)
-{
-	WMScreen *scr = W_VIEW_SCREEN(view);
-	XVaNestedList preedit_attr = NULL;
-
-	if (view->xic && (scr->imctx->ximstyle & XIMPreeditPosition)) {
-		XRectangle rect;
-		int ofs;
-
-		ofs = (view->size.height - WMFontHeight(scr->normalFont)) / 2;
-		rect.x = ofs;
-		rect.y = ofs;
-		rect.height = WMFontHeight(scr->normalFont);
-		rect.width = view->size.width - ofs * 2;
-
-		preedit_attr = XVaCreateNestedList(0, XNArea, &rect, (void *)0);
-		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, (void *)0);
-
-		if (preedit_attr)
-			XFree(preedit_attr);
-	}
-}
-
 void W_FocusIC(WMView * view)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
 
-	if (WXEvqXcbOwned()) {
-#ifdef HAVE_XCB_IMDKIT
-		xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
-
-		if (im && view->xcbxic)
-			xcb_xim_set_ic_focus(im, view->xcbxic);
-#else
-		(void)scr;
-#endif
-		return;
-	}
-
-	if (view->xic) {
-		XSetICFocus(view->xic);
-		XSetICValues(view->xic, XNFocusWindow, view->window, (void *)0);
-
-		if (scr->imctx->ximstyle & XIMPreeditPosition)
-			setPreeditArea(view);
-	}
+	if (im && view->xcbxic)
+		xcb_xim_set_ic_focus(im, view->xcbxic);
+	im_kick(scr);
 }
 
 void W_UnFocusIC(WMView * view)
 {
-	if (WXEvqXcbOwned()) {
-#ifdef HAVE_XCB_IMDKIT
-		WMScreen *scr = W_VIEW_SCREEN(view);
-		xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
+	WMScreen *scr = W_VIEW_SCREEN(view);
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
 
-		if (im && view->xcbxic)
-			xcb_xim_unset_ic_focus(im, view->xcbxic);
-#endif
-		return;
-	}
-
-	if (view->xic)
-		XUnsetICFocus(view->xic);
+	if (im && view->xcbxic)
+		xcb_xim_unset_ic_focus(im, view->xcbxic);
+	im_kick(scr);
 }
 
 /* -----------------------------------------------------------------------
@@ -707,129 +689,57 @@ void W_UnFocusIC(WMView * view)
 void W_SetPreeditPositon(W_View * view, int x, int y)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
-	XVaNestedList preedit_attr;
-	XPoint spot;
-	int ofs;
+	xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
 
-	if (WXEvqXcbOwned()) {
-#ifdef HAVE_XCB_IMDKIT
-		xcb_xim_t *im = (xcb_xim_t *)scr->xcbim;
-
-		if (im && view->xcbxic)
-			xcb_xim_ext_move(im, view->xcbxic, (int16_t)x, (int16_t)y);
-#else
-		(void)scr; (void)x; (void)y;
-#endif
-		return;
-	}
-
-	if (view->xic && (scr->imctx->ximstyle & XIMPreeditPosition)) {
-		ofs = (view->size.height - WMFontHeight(scr->normalFont)) / 2;
-		spot.x = x;
-		spot.y = y + view->size.height - ofs - 3;
-		preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot, (void *)0);
-		XSetICValues(view->xic, XNPreeditAttributes, preedit_attr, (void *)0);
-		if (preedit_attr)
-			XFree(preedit_attr);
-	}
+	if (im && view->xcbxic)
+		xcb_xim_ext_move(im, view->xcbxic, (int16_t)x, (int16_t)y);
+	im_kick(scr);
 }
 
 /* -----------------------------------------------------------------------
  * W_LookupString
  * -------------------------------------------------------------------- */
 
-int W_LookupString(W_View *view, XKeyPressedEvent *event, char *buffer, int buflen, KeySym *keysym, Status *status)
+int W_LookupString(W_View *view, const xcb_key_press_event_t *event, char *buffer, int buflen, xkb_keysym_t *keysym, WXLookupStatus *status)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
+	void *state = W_XkbStateOf(scr);
+	void *compose = scr->compose_state;
 
-	if (WXEvqXcbOwned()) {
-		struct xkb_compose_state *cs;
-		KeySym ksym = NoSymbol;
-		KeySym composed_sym;
-		int n, cn;
+	/* When xcbxic != 0 the key was already forwarded to the IM
+	 * by W_IMForwardKey, only navigation keysyms reach here and
+	 * compose must not run, the IM owns the dead keys.
+	 *
+	 * When xcbxic == 0 the xkb compose state handles dead-key /
+	 * Compose sequences, but only on press: compose rules
+	 * progress on key presses and a release-fed state machine
+	 * would leak into the next press elsewhere (the screen's
+	 * compose state is shared). */
+	if (view->xcbxic || (event->response_type & 0x7f) != XCB_KEY_PRESS)
+		compose = NULL;
 
-		/* xcb path: XFilterEvent and Xutf8LookupString are retired.
-		 *
-		 * When xcbxic != 0 the key was already forwarded to the IM by
-		 * W_IMForwardKey, only navigation keysyms reach here, so plain
-		 * XLookupString is sufficient (no compose for navigation).
-		 *
-		 * When xcbxic == 0 run xkb_compose_state to handle dead-key /
-		 * Compose sequences, fall back to XLookupString otherwise. */
-		if (view->xcbxic) {
-			n = XLookupString(event, buffer, buflen, keysym, NULL);
-			if (status)
-				*status = (n > 0) ? XLookupBoth : XLookupKeySym;
-			return n;
-		}
-
-		/* compose fallback */
-		n = XLookupString(event, buffer, buflen, &ksym, NULL);
-		if (keysym)
-			*keysym = ksym;
-		if (status)
-			*status = (n > 0) ? XLookupBoth : XLookupKeySym;
-
-		cs = (struct xkb_compose_state *)scr->compose_state;
-		if (cs && ksym != NoSymbol) {
-			composed_sym = ksym;
-			cn = W_IMComposeKey(cs, ksym, buffer, buflen, &composed_sym);
-			if (cn > 0) {
-				if (keysym)
-					*keysym = composed_sym;
-				if (status)
-					*status = XLookupBoth;
-				return cn;
-			}
-			/* still composing: swallow the dead key silently */
-			if (xkb_compose_state_get_status(cs) == XKB_COMPOSE_COMPOSING) {
-				if (status)
-					*status = XLookupNone;
-				return 0;
-			}
-		}
-		return n;
-	}
-
-	/* non-xcb path: original Xlib implementation */
-	XSetInputFocus(scr->display, view->window, RevertToParent, CurrentTime);
-
-#ifdef X_HAVE_UTF8_STRING
-	if (view->xic)
-		return Xutf8LookupString(view->xic, event, buffer, buflen, keysym, status);
-#endif
-	return XLookupString(event, buffer, buflen, keysym, (XComposeStatus *) status);
+	/* state is NULL when the server has no XKB, W_XkbLookupString
+	 * answers XLookupNone for that */
+	return W_XkbLookupString(state, compose, event,
+				 buffer, buflen,
+				 keysym, status);
 }
 
 /* -----------------------------------------------------------------------
- * W_KeycodeToKeysym (unchanged)
+ * W_EventKeysym
  * -------------------------------------------------------------------- */
 
 /*
- * Map a keycode to the corresponding keysym
- * To replace the deprecated X11 function XKeycodeToKeysym
+ * Keysym of a key event without touching the compose state machine,
+ * for the navigation-only classifications. Resolved against the
+ * per-screen xkbcommon state.
  */
-KeySym W_KeycodeToKeysym(Display *display, KeyCode keycode, int index)
+xkb_keysym_t W_EventKeysym(W_Screen *scr, const xcb_key_press_event_t *event)
 {
-	static int min_kc = -1;
-	static int max_kc;
-	int num_syms;
-	KeySym *key_syms;
-	KeySym ks;
+	void *state = scr ? W_XkbStateOf(scr) : NULL;
 
-	XDisplayKeycodes(display, &min_kc, &max_kc);
-	if (keycode < min_kc || keycode > max_kc || index < 0) {
-		return NoSymbol;
-	}
+	if (!state)
+		return XKB_KEY_NoSymbol;
 
-	key_syms = XGetKeyboardMapping(display, keycode, 1, &num_syms);
-	if (index >= num_syms) {
-		XFree(key_syms);
-		return NoSymbol;
-	}
-
-	ks = key_syms[index];
-	XFree(key_syms);
-
-	return ks;
+	return xkb_state_key_get_one_sym(state, event->detail);
 }

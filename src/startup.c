@@ -3,6 +3,7 @@
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
  *  Copyright (c) 1998-2003 Dan Pascu
+ *  Copyright (c) 2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,34 +33,28 @@
 #include <sys/signal.h>
 #endif
 
-#include <X11/Xlib.h>
-#include <X11/Xresource.h>
-#include <X11/Xutil.h>
 #include <WINGs/WXHints.h>
-#include <X11/cursorfont.h>
-#include <X11/Xproto.h>
-#include <X11/Xlib-xcb.h>
 #ifdef USE_XSHAPE
-#include <xcb/shape.h>
 #include <xcb/shape.h>
 #endif
 #ifdef USE_RANDR
 #include <xcb/randr.h>
-#include <xcb/randr.h>
 #endif
 #ifdef USE_XSYNC
-#include <xcb/sync.h>
 #include <xcb/sync.h>
 #endif
 #ifdef USE_XCB_SCREENSAVER
 #include <xcb/screensaver.h>
 #endif
 
+#include <xcb/xproto.h>
+
 #include "WindowMaker.h"
 #include "GNUstep.h"
 #include "texture.h"
 #include "screen.h"
 #include "window.h"
+#include "misc.h"
 #include "actions.h"
 #include "client.h"
 #include "main.h"
@@ -103,55 +98,51 @@ static void manageAllWindows(WScreen * scr, int crashed);
 
 /* primary error path, in-stream errors from xcb-issued reply-less
  * requests reach the WINGs event queue as response_type 0 and land
- * here via WXEvqSetErrorHook(), Xlib-issued errors arrive via the
- * catchXError shim below so the warning text and the
- * BadWindow-on-a-vanished-client suppression are identical for both
- * sources, FormatXError() takes the unpacked fields so neither path
- * needs a synthetic XErrorEvent */
-static void wHandleXcbError(Display *d, unsigned int error_code,
-			    unsigned int major_opcode, unsigned int minor_opcode,
-			    unsigned long resource_id, unsigned long serial)
+ * here via WXEvqSetErrorHook(), FormatXError() takes the unpacked
+ * fields so the handler needs no synthetic error event */
+static void reportXError(unsigned int error_code, unsigned int major_opcode,
+			 unsigned int minor_opcode, unsigned long resource_id,
+			 unsigned long serial)
 {
 	char buffer[MAXLINE];
 
 	/* ignore the benign races, a managed client can vanish between
 	 * any two requests so BadWindow on a client-owned XID is normal */
-	if (resource_id != None
-	    && ((error_code == BadDrawable && major_opcode == X_GetGeometry)
-		|| (error_code == BadMatch && major_opcode == X_SetInputFocus)
-		|| error_code == BadWindow
-		|| major_opcode == X_InstallColormap)) {
+	/* core error / request opcode codes (xproto): 3 BadWindow,
+	 * 8 BadMatch, 9 BadDrawable, 14 GetGeometry, 42 SetInputFocus,
+	 * 81 InstallColormap */
+	if (resource_id != XCB_NONE
+	    && ((error_code == 9 && major_opcode == 14)
+		|| (error_code == 8 && major_opcode == 42)
+		|| error_code == 3
+		|| major_opcode == 81)) {
 		return;
 	}
-	FormatXError(d, error_code, major_opcode, minor_opcode, resource_id,
-		     serial, buffer, MAXLINE);
+	FormatXError(error_code, major_opcode, minor_opcode,
+		     resource_id, serial, buffer, MAXLINE);
 	wwarning(_("internal X error: %s"), buffer);
 }
 
-/* the residual Xlib request surface (grabs, reparent, core drawing
- * until Cairo) still routes through the global Xlib error handler,
- * unpack the XErrorEvent and forward to the same body */
-static int catchXError(Display *d, XErrorEvent *error)
+static void wHandleXcbError(xcb_connection_t *d, unsigned int error_code,
+			    unsigned int major_opcode, unsigned int minor_opcode,
+			    unsigned long resource_id, unsigned long serial)
 {
-	wHandleXcbError(d, error->error_code, error->request_code,
-			error->minor_code, error->resourceid, error->serial);
-	return 0;
+	/* the in-stream xcb error path, the display argument carries no
+	 * state the report needs */
+	(void) d;
+
+	reportXError(error_code, major_opcode, minor_opcode, resource_id,
+		     serial);
 }
 
-/*
- *----------------------------------------------------------------------
- * handleXIO-
- * 	Handle X shutdowns and other stuff.
- *----------------------------------------------------------------------
- */
-static int handleXIO(Display * xio_dpy)
+/* the xcb-queue equivalent of the old Xlib IO-error handler: the
+ * WINGs drain noticed xcb_connection_has_error() on the connection */
+static void lostXConnection(xcb_connection_t *dconn)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) xio_dpy;
+	(void) dconn;
 
-	dpy = NULL;
+	xconn = NULL;
 	Exit(0);
-	return 0;
 }
 
 /* self-pipe written by signal handlers to wake the main event loop */
@@ -286,7 +277,7 @@ WScreen *wScreenWithNumber(int i)
 	return wScreen[i];
 }
 
-WScreen *wScreenForRootWindow(Window window)
+WScreen *wScreenForRootWindow(xcb_window_t window)
 {
 	int i;
 
@@ -303,61 +294,18 @@ WScreen *wScreenForRootWindow(Window window)
 	return wScreenForWindow(window);
 }
 
-WScreen *wScreenForWindow(Window window)
+WScreen *wScreenForWindow(xcb_window_t window)
 {
-	XWindowAttributes attr;
+	WXWindowAttributes attr;
 
 	if (w_global.screen_count == 1)
 		return wScreen[0];
 
-	if (XGetWindowAttributes(dpy, window, &attr))
+	if (wXGetWindowAttributes(xconn, window, &attr, NULL))
 		return wScreenForRootWindow(attr.root);
 
 	return NULL;
 }
-
-/*
- * Core atoms interned at startup. Each row is the field path under
- * w_global.atom and the X atom name. The list is expanded twice, once
- * into atomNames[] for the batched XInternAtoms() call and once into the
- * assignment sequence, so the name array and the field stores cannot
- * drift out of step. To add an atom, add one row here and the matching
- * Atom field in WindowMaker.h, no index renumbering.
- */
-#define WGLOBAL_ATOMS(_) \
-	_(wm.state,                     "WM_STATE") \
-	_(wm.change_state,              "WM_CHANGE_STATE") \
-	_(wm.protocols,                 "WM_PROTOCOLS") \
-	_(wm.take_focus,                "WM_TAKE_FOCUS") \
-	_(wm.delete_window,             "WM_DELETE_WINDOW") \
-	_(wm.save_yourself,             "WM_SAVE_YOURSELF") \
-	_(wm.client_leader,             "WM_CLIENT_LEADER") \
-	_(wm.colormap_windows,          "WM_COLORMAP_WINDOWS") \
-	_(wm.colormap_notify,           "WM_COLORMAP_NOTIFY") \
-	_(wm.motif_wm_hints,            "_MOTIF_WM_HINTS") \
-	_(wm.ignore_focus_events,       "WM_IGNORE_FOCUS_EVENTS") \
-	_(wm.window_role,               "WM_WINDOW_ROLE") \
-	_(wmaker.menu,                  "_WINDOWMAKER_MENU") \
-	_(wmaker.state,                 "_WINDOWMAKER_STATE") \
-	_(wmaker.wm_protocols,          "_WINDOWMAKER_WM_PROTOCOLS") \
-	_(wmaker.wm_function,           "_WINDOWMAKER_WM_FUNCTION") \
-	_(wmaker.noticeboard,           "_WINDOWMAKER_NOTICEBOARD") \
-	_(wmaker.command,               "_WINDOWMAKER_COMMAND") \
-	_(wmaker.icon_size,             "_WINDOWMAKER_ICON_SIZE") \
-	_(wmaker.icon_tile,             "_WINDOWMAKER_ICON_TILE") \
-	_(wmaker.mark_key,              "_WINDOWMAKER_MARK_KEY") \
-	_(wmaker.tab_group,             "_WINDOWMAKER_TABGROUP") \
-	_(gnustep.wm_attr,              GNUSTEP_WM_ATTR_NAME) \
-	_(gnustep.wm_miniaturize_window, GNUSTEP_WM_MINIATURIZE_WINDOW) \
-	_(gnustep.wm_hide_app,          GNUSTEP_WM_HIDE_APP) \
-	_(gnustep.titlebar_state,       GNUSTEP_TITLEBAR_STATE) \
-	_(desktop.gtk_object_path,      "_GTK_APPLICATION_OBJECT_PATH")
-
-#define WATOM_NAME(field, name)		name,
-static char *atomNames[] = {
-	WGLOBAL_ATOMS(WATOM_NAME)
-};
-#undef WATOM_NAME
 
 /*
  *----------------------------------------------------------
@@ -369,17 +317,15 @@ static char *atomNames[] = {
  * global data declared in main.c is initialized
  *----------------------------------------------------------
  */
-void StartUp(Bool defaultScreenOnly)
+void StartUp(bool defaultScreenOnly)
 {
 	static const char empty_bits[(16 * 16) / 8];
 	struct sigaction sig_action;
 	int i, j, max;
-	int idx;
 	char **formats;
-	Pixmap cur;
-	XColor black;
-	Atom atom[wlengthof(atomNames)];
-	xcb_connection_t *xc = XGetXCBConnection(dpy);
+	xcb_pixmap_t cur;
+	WXColor black;
+	xcb_connection_t *xc = xconn;
 	const xcb_query_extension_reply_t *xer;
 #ifdef USE_XSYNC
 	xcb_sync_initialize_reply_t *syncr;
@@ -395,45 +341,66 @@ void StartUp(Bool defaultScreenOnly)
 
 	memset(&wKeyBindings, 0, sizeof(wKeyBindings));
 
-	w_global.context.client_win = XUniqueContext();
-	w_global.context.app_win = XUniqueContext();
-	w_global.context.stack = XUniqueContext();
+	w_global.context.client_win = WMCreateHashTable(WMIntHashCallbacks);
+	w_global.context.app_win = WMCreateHashTable(WMIntHashCallbacks);
+	w_global.context.stack = WMCreateHashTable(WMIntHashCallbacks);
 
-	/*    _XA_VERSION = XInternAtom(dpy, "VERSION", False); */
+	WXStaticAtomsInit(xconn);
 
-	XInternAtoms(dpy, atomNames, wlengthof(atomNames), False, atom);
-
-	idx = 0;
-#define WATOM_ASSIGN(field, name)	w_global.atom.field = atom[idx++];
-	WGLOBAL_ATOMS(WATOM_ASSIGN)
-#undef WATOM_ASSIGN
+	w_global.atom.wm.state = wx_static_atoms[W_ATOM_WM_STATE];
+	w_global.atom.wm.change_state = wx_static_atoms[W_ATOM_WM_CHANGE_STATE];
+	w_global.atom.wm.protocols = wx_static_atoms[W_ATOM_WM_PROTOCOLS];
+	w_global.atom.wm.take_focus = wx_static_atoms[W_ATOM_WM_TAKE_FOCUS];
+	w_global.atom.wm.delete_window = wx_static_atoms[W_ATOM_WM_DELETE_WINDOW];
+	w_global.atom.wm.save_yourself = wx_static_atoms[W_ATOM_WM_SAVE_YOURSELF];
+	w_global.atom.wm.client_leader = wx_static_atoms[W_ATOM_WM_CLIENT_LEADER];
+	w_global.atom.wm.colormap_windows = wx_static_atoms[W_ATOM_WM_COLORMAP_WINDOWS];
+	w_global.atom.wm.colormap_notify = wx_static_atoms[W_ATOM_WM_COLORMAP_NOTIFY];
+	w_global.atom.wm.motif_wm_hints = wx_static_atoms[W_ATOM_MOTIF_WM_HINTS];
+	w_global.atom.wm.ignore_focus_events = wx_static_atoms[W_ATOM_WM_IGNORE_FOCUS_EVENTS];
+	w_global.atom.wm.window_role = wx_static_atoms[W_ATOM_WM_WINDOW_ROLE];
+	w_global.atom.wmaker.menu = wx_static_atoms[W_ATOM_WINDOWMAKER_MENU];
+	w_global.atom.wmaker.state = wx_static_atoms[W_ATOM_WINDOWMAKER_STATE];
+	w_global.atom.wmaker.wm_protocols = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_PROTOCOLS];
+	w_global.atom.wmaker.wm_function = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_FUNCTION];
+	w_global.atom.wmaker.noticeboard = wx_static_atoms[W_ATOM_WINDOWMAKER_NOTICEBOARD];
+	w_global.atom.wmaker.command = wx_static_atoms[W_ATOM_WINDOWMAKER_COMMAND];
+	w_global.atom.wmaker.icon_size = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_SIZE];
+	w_global.atom.wmaker.icon_tile = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_TILE];
+	w_global.atom.wmaker.mark_key = wx_static_atoms[W_ATOM_WINDOWMAKER_MARK_KEY];
+	w_global.atom.wmaker.tab_group = wx_static_atoms[W_ATOM_WINDOWMAKER_TABGROUP];
+	w_global.atom.gnustep.wm_attr = wx_static_atoms[W_ATOM_GNUSTEP_WM_ATTR];
+	w_global.atom.gnustep.wm_miniaturize_window = wx_static_atoms[W_ATOM_GNUSTEP_WM_MINIATURIZE_WINDOW];
+	w_global.atom.gnustep.wm_hide_app = wx_static_atoms[W_ATOM_GNUSTEP_WM_HIDE_APP];
+	w_global.atom.gnustep.titlebar_state = wx_static_atoms[W_ATOM_GNUSTEP_TITLEBAR_STATE];
+	w_global.atom.desktop.gtk_object_path = wx_static_atoms[W_ATOM_GTK_APPLICATION_OBJECT_PATH];
 
 #ifdef USE_DOCK_XDND
 	wXDNDInitializeAtoms();
 #endif
 
 	/* cursors */
-	wPreferences.cursor[WCUR_NORMAL] = None;	/* inherit from root */
-	wPreferences.cursor[WCUR_ROOT] = XCreateFontCursor(dpy, XC_left_ptr);
-	wPreferences.cursor[WCUR_ARROW] = XCreateFontCursor(dpy, XC_top_left_arrow);
-	wPreferences.cursor[WCUR_MOVE] = XCreateFontCursor(dpy, XC_fleur);
-	wPreferences.cursor[WCUR_RESIZE] = XCreateFontCursor(dpy, XC_sizing);
-	wPreferences.cursor[WCUR_TOPLEFTRESIZE] = XCreateFontCursor(dpy, XC_top_left_corner);
-	wPreferences.cursor[WCUR_TOPRIGHTRESIZE] = XCreateFontCursor(dpy, XC_top_right_corner);
-	wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE] = XCreateFontCursor(dpy, XC_bottom_left_corner);
-	wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE] = XCreateFontCursor(dpy, XC_bottom_right_corner);
-	wPreferences.cursor[WCUR_VERTICALRESIZE] = XCreateFontCursor(dpy, XC_sb_v_double_arrow);
-	wPreferences.cursor[WCUR_HORIZONRESIZE] = XCreateFontCursor(dpy, XC_sb_h_double_arrow);
-	wPreferences.cursor[WCUR_WAIT] = XCreateFontCursor(dpy, XC_watch);
-	wPreferences.cursor[WCUR_QUESTION] = XCreateFontCursor(dpy, XC_question_arrow);
-	wPreferences.cursor[WCUR_TEXT] = XCreateFontCursor(dpy, XC_xterm);	/* odd name??? */
-	wPreferences.cursor[WCUR_SELECT] = XCreateFontCursor(dpy, XC_cross);
-	wPreferences.cursor[WCUR_CAPTURE] = XCreateFontCursor(dpy, XC_crosshair);
+	wPreferences.cursor[WCUR_NORMAL] = XCB_NONE;	/* inherit from root */
+	wPreferences.cursor[WCUR_ROOT] = wXLoadCursor(xconn, 0, "left_ptr");
+	wPreferences.cursor[WCUR_ARROW] = wXLoadCursor(xconn, 0, "top_left_arrow");
+	wPreferences.cursor[WCUR_MOVE] = wXLoadCursor(xconn, 0, "fleur");
+	wPreferences.cursor[WCUR_RESIZE] = wXLoadCursor(xconn, 0, "sizing");
+	wPreferences.cursor[WCUR_TOPLEFTRESIZE] = wXLoadCursor(xconn, 0, "top_left_corner");
+	wPreferences.cursor[WCUR_TOPRIGHTRESIZE] = wXLoadCursor(xconn, 0, "top_right_corner");
+	wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE] = wXLoadCursor(xconn, 0, "bottom_left_corner");
+	wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE] = wXLoadCursor(xconn, 0, "bottom_right_corner");
+	wPreferences.cursor[WCUR_VERTICALRESIZE] = wXLoadCursor(xconn, 0, "sb_v_double_arrow");
+	wPreferences.cursor[WCUR_HORIZONRESIZE] = wXLoadCursor(xconn, 0, "sb_h_double_arrow");
+	wPreferences.cursor[WCUR_WAIT] = wXLoadCursor(xconn, 0, "watch");
+	wPreferences.cursor[WCUR_QUESTION] = wXLoadCursor(xconn, 0, "question_arrow");
+	wPreferences.cursor[WCUR_TEXT] = wXLoadCursor(xconn, 0, "xterm");
+	wPreferences.cursor[WCUR_SELECT] = wXLoadCursor(xconn, 0, "cross");
+	wPreferences.cursor[WCUR_CAPTURE] = wXLoadCursor(xconn, 0, "crosshair");
 
 	memset(&black, 0, sizeof(black));
-	cur = XCreateBitmapFromData(dpy, DefaultRootWindow(dpy), empty_bits, 16, 16);
-	wPreferences.cursor[WCUR_EMPTY] = XCreatePixmapCursor(dpy, cur, cur, &black, &black, 0, 0);
-	XFreePixmap(dpy, cur);
+	cur = wXCreateBitmapFromData(xconn, wXRootWindow(xconn, 0), empty_bits, 16, 16);
+	wPreferences.cursor[WCUR_EMPTY] = wXCreatePixmapCursor(xconn, cur, cur, &black, &black, 0, 0);
+	xcb_free_pixmap(xconn, cur);
 
 	/* self-pipe so signal handlers can wake the main loop without
 	 * calling async-signal-unsafe functions from handler context */
@@ -500,14 +467,14 @@ void StartUp(Bool defaultScreenOnly)
 	sigfillset(&sig_action.sa_mask);
 	sigprocmask(SIG_UNBLOCK, &sig_action.sa_mask, NULL);
 
-	/* handle X shutdowns a such */
-	XSetIOErrorHandler(handleXIO);
+	/* a lost X connection dies through the WINGs drain's dead hook */
+	WXEvqSetDeadHook(lostXConnection);
 
 	/* set hook for out event dispatcher in WINGs event dispatcher */
 	WMHookEventHandler(DispatchEvent);
 
 	/* initialize defaults stuff */
-	w_global.domain.wmaker = wDefaultsInitDomain("WindowMaker", True);
+	w_global.domain.wmaker = wDefaultsInitDomain("WindowMaker", true);
 	if (!w_global.domain.wmaker->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WindowMaker");
 
@@ -533,7 +500,7 @@ void StartUp(Bool defaultScreenOnly)
 	}
 
 	/* init other domains */
-	w_global.domain.root_menu = wDefaultsInitDomain("WMRootMenu", False);
+	w_global.domain.root_menu = wDefaultsInitDomain("WMRootMenu", false);
 	if (!w_global.domain.root_menu->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WMRootMenu");
 
@@ -542,9 +509,9 @@ void StartUp(Bool defaultScreenOnly)
 	/* WMWindowAttributes outer keys are X11 instance.class strings and
 	 * are case-sensitive ("xterm" != "XTerm"), keep them distinct while
 	 * the user and global domain files are read and merged */
-	WMPLSetCaseSensitive(True);
-	w_global.domain.window_attr = wDefaultsInitDomain("WMWindowAttributes", True);
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(true);
+	w_global.domain.window_attr = wDefaultsInitDomain("WMWindowAttributes", true);
+	WMPLSetCaseSensitive(false);
 	if (!w_global.domain.window_attr->dictionary)
 		wwarning(_("could not read domain \"%s\" from defaults database"), "WMWindowAttributes");
 	wWindowAttrsReload();
@@ -552,9 +519,8 @@ void StartUp(Bool defaultScreenOnly)
 	/* WMGLOBAL holds WINGs-global options (AntialiasedText, SystemFont, ...);
 	 * the WM only tracks it for live-reload change detection, WINGs reads
 	 * the values itself via WMGetStandardUserDefaults/WMReloadConfiguration. */
-	w_global.domain.wmglobal = wDefaultsInitDomain("WMGLOBAL", False);
+	w_global.domain.wmglobal = wDefaultsInitDomain("WMGLOBAL", false);
 
-	XSetErrorHandler((XErrorHandler) catchXError);
 	WXEvqSetErrorHook(wHandleXcbError);
 
 	/* prefetch the QueryExtension probes so they fly in one round-trip,
@@ -659,7 +625,7 @@ void StartUp(Bool defaultScreenOnly)
 	if (defaultScreenOnly)
 		max = 1;
 	else
-		max = ScreenCount(dpy);
+		max = wXScreenCount(xconn);
 
 	wScreen = wmalloc(sizeof(WScreen *) * max);
 
@@ -683,7 +649,7 @@ void StartUp(Bool defaultScreenOnly)
 	/* manage the screens */
 	for (j = 0; j < max; j++) {
 		if (defaultScreenOnly || max == 1) {
-			wScreen[w_global.screen_count] = wScreenInit(DefaultScreen(dpy), new_config, &changes);
+			wScreen[w_global.screen_count] = wScreenInit(dflt_screen, new_config, &changes);
 			if (!wScreen[w_global.screen_count]) {
 				wfatal(_("it seems that there is already a window manager running"));
 				Exit(1);
@@ -813,13 +779,13 @@ void StartUp(Bool defaultScreenOnly)
 
 }
 
-static Bool windowInList(Window window, Window * list, int count)
+static bool windowInList(xcb_window_t window, xcb_window_t * list, int count)
 {
-	for (; count >= 0; count--) {
-		if (window == list[count])
-			return True;
+	for (; count > 0; count--) {
+		if (window == list[count - 1])
+			return true;
 	}
-	return False;
+	return false;
 }
 
 /*
@@ -833,47 +799,20 @@ static Bool windowInList(Window window, Window * list, int count)
  * reparented/managed.
  *-----------------------------------------------------------------------
  */
-static Visual *visualForId(WScreen *scr, VisualID vid)
-{
-	XVisualInfo tmpl, *vi;
-	int n;
-	Visual *v;
-
-	/* almost every client uses the screen's default visual, so try
-	 * that first before walking the full visual list */
-	if (scr->w_visual && XVisualIDFromVisual(scr->w_visual) == vid)
-		return scr->w_visual;
-
-	tmpl.visualid = vid;
-	vi = XGetVisualInfo(dpy, VisualIDMask, &tmpl, &n);
-	if (!vi || n < 1) {
-		if (vi)
-			XFree(vi);
-		/* do not guess, a non-default (e.g. ARGB) visual paired
-		 * with the prefetched depth/colormap would BadMatch on
-		 * frame creation. Caller falls back to a fresh
-		 * XGetWindowAttributes() instead. */
-		return NULL;
-	}
-	v = vi[0].visual;
-	XFree(vi);
-	return v;
-}
-
 static void manageAllWindows(WScreen * scr, int crashRecovery)
 {
-	Window root, parent;
-	Window *children;
+	xcb_window_t root, parent;
+	xcb_window_t *children;
 	unsigned int nchildren;
 	unsigned int i, j;
 	WWindow *wwin;
 	WXCookie *hints_ck, *attr_ck, *geom_ck;
-	const xcb_setup_t *setup = xcb_get_setup(XGetXCBConnection(dpy));
+	const xcb_setup_t *setup = xcb_get_setup(xconn);
 	uint32_t own_base = setup->resource_id_base;
 	uint32_t own_mask = setup->resource_id_mask;
 
-	XGrabServer(dpy);
-	XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren);
+	wXGrabServer(xconn);
+	wXQueryTree(xconn, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
 	/* one client-list rebuild per burst instead of two per window */
@@ -892,28 +831,28 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 
 	/* Issue WM_HINTS, GetWindowAttributes and GetGeometry for every
 	 * child up front so the icon-window and override-redirect filters,
-	 * and the per-window XGetWindowAttributes that wManageWindow would
+	 * and the per-window attribute fetch that wManageWindow would
 	 * otherwise do, all cost one round-trip instead of nchildren. */
 	hints_ck = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
 	attr_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
 	geom_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
 	for (i = 0; i < nchildren; i++) {
-		hints_ck[i] = WXReqWMHints(dpy, children[i]);
-		attr_ck[i]  = WXReqWindowAttributes(dpy, children[i]);
-		geom_ck[i]  = WXReqGeometry(dpy, children[i]);
+		hints_ck[i] = WXReqWMHints(xconn, children[i]);
+		attr_ck[i]  = WXReqWindowAttributes(xconn, children[i]);
+		geom_ck[i]  = WXReqGeometry(xconn, children[i]);
 	}
 
 	/* first remove all icon windows */
 	for (i = 0; i < nchildren; i++) {
 		WXWMHints *wmhints;
 
-		wmhints = WXRcvWMHints(dpy, hints_ck[i]);
-		if (wmhints && (wmhints->flags & IconWindowHint)) {
+		wmhints = WXRcvWMHints(xconn, hints_ck[i]);
+		if (wmhints && (wmhints->flags & XCB_ICCCM_WM_HINT_ICON_WINDOW)) {
 			for (j = 0; j < nchildren; j++) {
 				if (children[j] == wmhints->icon_window) {
 					wfree(wmhints);
 					wmhints = NULL;
-					children[j] = None;
+					children[j] = XCB_NONE;
 					break;
 				}
 			}
@@ -925,40 +864,40 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	wfree(hints_ck);
 
 	for (i = 0; i < nchildren; i++) {
-		WXWindowAttributes xa;
+		WXWindowAttrReply xa;
 		WXGeometry xg;
-		XWindowAttributes wattribs;
+		WXWindowAttributes wattribs;
 
-		if (children[i] == None) {
-			WXDiscard(dpy, attr_ck[i]);
-			WXDiscard(dpy, geom_ck[i]);
+		if (children[i] == XCB_NONE) {
+			WXDiscard(xconn, attr_ck[i]);
+			WXDiscard(xconn, geom_ck[i]);
 			continue;
 		}
 
-		if (!WXRcvWindowAttributes(dpy, attr_ck[i], &xa)) {
-			WXDiscard(dpy, geom_ck[i]);
+		if (!WXRcvWindowAttributes(xconn, attr_ck[i], &xa)) {
+			WXDiscard(xconn, geom_ck[i]);
 			continue;
 		}
 
 		/* drop override-redirect and unviewable children here so the
 		 * many wmaker-owned helper windows do not each cycle
 		 * XGrabServer/XUngrabServer inside wManageWindow */
-		if (xa.override_redirect || xa.map_state == IsUnviewable) {
-			WXDiscard(dpy, geom_ck[i]);
+		if (xa.override_redirect || xa.map_state == XCB_MAP_STATE_UNVIEWABLE) {
+			WXDiscard(xconn, geom_ck[i]);
 			continue;
 		}
 
-		if (!WXRcvGeometry(dpy, geom_ck[i], &xg))
+		if (!WXRcvGeometry(xconn, geom_ck[i], &xg))
 			continue;
 
 		/* assemble what wManageWindow and wClientGetNormalHints read
-		 * from XWindowAttributes */
+		 * from WXWindowAttributes */
 		memset(&wattribs, 0, sizeof(wattribs));
 		wattribs.override_redirect = xa.override_redirect;
 		wattribs.map_state         = xa.map_state;
 		wattribs.class             = xa.window_class;
 		wattribs.colormap          = xa.colormap;
-		wattribs.visual            = visualForId(scr, xa.visual);
+		wattribs.visual            = wVisualForId(scr, xa.visual);
 		wattribs.root              = xg.root;
 		wattribs.x                 = xg.x;
 		wattribs.y                 = xg.y;
@@ -969,7 +908,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 
 		/* if the visual could not be resolved do not hand a guessed
 		 * one to frame creation, let wManageWindow fetch its own
-		 * coherent XWindowAttributes instead */
+		 * coherent WXWindowAttributes instead */
 		wwin = wManageWindow(scr, children[i],
 				     wattribs.visual ? &wattribs : NULL);
 		if (wwin) {
@@ -980,7 +919,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 				wShadeWindow(wwin);
 			}
 			if (wwin->flags.miniaturized
-			    && (wwin->transient_for == None
+			    && (wwin->transient_for == XCB_NONE
 				|| wwin->transient_for == scr->root_win
 				|| !windowInList(wwin->transient_for, children, nchildren))) {
 
@@ -989,7 +928,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 				wwin->flags.restore_iconified = 1;
 				wIconifyWindow(wwin);
 			} else {
-				wClientSetState(wwin, NormalState, None);
+				wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 			}
 			if (crashRecovery) {
 				int border;
@@ -1012,7 +951,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	}
 	wfree(attr_ck);
 	wfree(geom_ck);
-	XUngrabServer(dpy);
+	wXUngrabServer(xconn);
 
 	scr->flags.manage_burst = 0;
 	wNETWMFlushClientLists(scr);
@@ -1033,14 +972,15 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 		wwin = wwin->prev;
 	}
 
-	XFree(children);
+	wfree(children);
 	scr->flags.startup = 0;
 	scr->flags.startup2 = 1;
 
-	while (WXEvqPending(dpy)) {
-		XEvent ev;
-		WMNextEvent(dpy, &ev);
-		WMHandleEvent(&ev);
+	while (WXEvqPending(xconn)) {
+		xcb_generic_event_t *ev = NULL;
+		WMNextEvent(xconn, &ev);
+		WMHandleEvent(ev);
+		free(ev);
 	}
 	scr->last_workspace = 0;
 	if (w_global.config->per_head_workspaces) {

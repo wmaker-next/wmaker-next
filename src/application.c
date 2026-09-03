@@ -19,7 +19,6 @@
  */
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
 #include <WINGs/WXHints.h>
 #include <string.h>
 
@@ -37,14 +36,15 @@
 #include "dock.h"
 #include "defaults.h"
 #include "wsound.h"
+#include "misc.h"
 
 
 /******** Local variables ********/
 
-static WWindow *makeMainWindow(WScreen *scr, Window window, WWindow *src)
+static WWindow *makeMainWindow(WScreen *scr, xcb_window_t window, WWindow *src)
 {
 	WWindow *wwin;
-	XWindowAttributes attr;
+	WXWindowAttributes attr;
 
 	wwin = wWindowCreate();
 	wwin->screen_ptr = scr;
@@ -63,7 +63,7 @@ static WWindow *makeMainWindow(WScreen *scr, Window window, WWindow *src)
 				/* fake leader, createFakeWindowGroupLeader
 				 * pointed window_group at itself */
 				wwin->wm_hints->window_group = window;
-				wwin->wm_hints->flags |= WindowGroupHint;
+				wwin->wm_hints->flags |= XCB_ICCCM_WM_HINT_WINDOW_GROUP;
 			}
 		}
 		wwin->wm_instance = (char *)wintern(src->wm_instance);
@@ -72,32 +72,31 @@ static WWindow *makeMainWindow(WScreen *scr, Window window, WWindow *src)
 		 * which covers PropertyChange and StructureNotify, the fake
 		 * leader is fresh so select here */
 		if (window != src->client_win)
-			XSelectInput(dpy, window,
-				     PropertyChangeMask | StructureNotifyMask);
+			xcb_change_window_attributes(xconn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
 	} else {
-		if (!XGetWindowAttributes(dpy, window, &attr)) {
+		if (!wXGetWindowAttributes(xconn, window, &attr, NULL)) {
 			wWindowDestroy(wwin);
 			return NULL;
 		}
-		wwin->wm_hints = WXGetWMHints(dpy, window);
+		wwin->wm_hints = WXGetWMHints(xconn, window);
 		PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
-		XSelectInput(dpy, window,
-			     attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
+		xcb_change_window_attributes(xconn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ attr.your_event_mask | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
 	}
 
 	wDefaultFillAttributes(wwin->wm_instance, wwin->wm_class, &wwin->user_flags,
-			       &wwin->defined_user_flags, True);
+			       &wwin->defined_user_flags, true);
 
 	return wwin;
 }
 
-WApplication *wApplicationOf(Window window)
+WApplication *wApplicationOf(xcb_window_t window)
 {
 	WApplication *wapp;
 
-	if (window == None)
+	if (window == XCB_NONE)
 		return NULL;
-	if (XFindContext(dpy, window, w_global.context.app_win, (XPointer *) & wapp) != XCSUCCESS)
+	wapp = WMHashGet(w_global.context.app_win, (void *)(uintptr_t) window);
+	if (wapp == NULL)
 		return NULL;
 	return wapp;
 }
@@ -128,15 +127,13 @@ WWindow *wApplicationUrgentWindow(WApplication *wapp)
 WApplication *wApplicationCreate(WWindow * wwin)
 {
 	WScreen *scr = wwin->screen_ptr;
-	Window main_window = wwin->main_window;
+	xcb_window_t main_window = wwin->main_window;
 	WApplication *wapp;
 	WWindow *leader;
 	WWindow *src;
-	Window root;
-	int foo;
-	unsigned int bar;
+	WXGeometry xg;
 
-	if (main_window == None || main_window == scr->root_win)
+	if (main_window == XCB_NONE || main_window == scr->root_win)
 		return NULL;
 
 	wapp = wApplicationOf(main_window);
@@ -162,7 +159,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 		src = NULL;
 
 	/* check if the window is valid */
-	if (!src && !XGetGeometry(dpy, main_window, &root, &foo, &foo, &bar, &bar, &bar, &bar))
+	if (!src && !WXRcvGeometry(xconn, WXReqGeometry(xconn, main_window), &xg))
 		return NULL;
 
 	wapp = wmalloc(sizeof(WApplication));
@@ -205,11 +202,11 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	wapp->flags.emulated = WFLAGP(wapp->main_window_desc, emulate_appicon);
 
 	/* application descriptor */
-	XSaveContext(dpy, main_window, w_global.context.app_win, (XPointer) wapp);
+	WMHashInsert(w_global.context.app_win, (void *)(uintptr_t) main_window, wapp);
 
 	/* link into the per-screen application list, wApplicationDestroy
 	 * unlinks from here and the list keeps wapp reachable from
-	 * w_global once XCloseDisplay drops the XSaveContext reference */
+	 * w_global until wApplicationDestroy removes the hash entry */
 	wapp->prev = NULL;
 	wapp->next = scr->wapp_list;
 	if (scr->wapp_list)
@@ -255,7 +252,7 @@ void wApplicationDestroy(WApplication *wapp)
 			wapp->prev->next = wapp->next;
 	}
 
-	XDeleteContext(dpy, wapp->main_window, w_global.context.app_win);
+	WMHashRemove(w_global.context.app_win, (void *)(uintptr_t) wapp->main_window);
 	wAppMenuDestroy(wapp->menu);
 
 	/* Remove application icon */
@@ -265,9 +262,10 @@ void wApplicationDestroy(WApplication *wapp)
 
 	wWindowDestroy(wapp->main_window_desc);
 	if (wwin) {
-		/* undelete client window context that was deleted in
+		/* undelete client window descriptor that was deleted in
 		 * wWindowDestroy */
-		XSaveContext(dpy, wwin->client_win, w_global.context.client_win, (XPointer) & wwin->client_descriptor);
+		WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) wwin->client_win,
+			     &wwin->client_descriptor);
 	}
 	wSoundPlay(scr, WSOUND_APPEXIT);
 	wfree(wapp);
@@ -276,7 +274,7 @@ void wApplicationDestroy(WApplication *wapp)
 void wApplicationActivate(WApplication *wapp)
 {
 	if (wapp->app_icon) {
-		wIconSetHighlited(wapp->app_icon->icon, True);
+		wIconSetHighlited(wapp->app_icon->icon, true);
 		wAppIconPaint(wapp->app_icon);
 	}
 }
@@ -284,7 +282,7 @@ void wApplicationActivate(WApplication *wapp)
 void wApplicationDeactivate(WApplication *wapp)
 {
 	if (wapp->app_icon) {
-		wIconSetHighlited(wapp->app_icon->icon, False);
+		wIconSetHighlited(wapp->app_icon->icon, false);
 		wAppIconPaint(wapp->app_icon);
 	}
 }

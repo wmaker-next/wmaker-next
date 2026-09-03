@@ -2,7 +2,7 @@
  *
  *  WPrefs - Window Maker Preferences Program
  *
- *  Copyright (c) 2023 Window Maker Team
+ *  Copyright (c) 2023-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ typedef struct _Panel {
 
 	WMWidget *parent;
 	WMPixmap *icon;
-	Pixmap quarter[4];
+	xcb_pixmap_t quarter[4];
 
 	WMFrame *hcF;
 	WMButton *hcB;
@@ -60,7 +60,7 @@ typedef struct _Panel {
 
 static void updateControlsSensitivity(_Panel *panel)
 {
-	Bool enabled = WMGetButtonSelected(panel->hcB);
+	bool enabled = WMGetButtonSelected(panel->hcB);
 	int i;
 	WMColor *color;
 
@@ -223,7 +223,7 @@ static void delayTextChanged(void *observerData, WMNotification * notification)
 
 	if (panel->hotcornerDelaySelected) {
 		for (i = 0; i < 5; i++)
-			WMSetButtonSelected(panel->hcdelayB[i], False);
+			WMSetButtonSelected(panel->hcdelayB[i], false);
 		panel->hotcornerDelaySelected = 0;
 	}
 }
@@ -309,15 +309,15 @@ static void createPanel(Panel * p)
 		panel->hcdelayB[i] = WMCreateCustomButton(panel->hcdelayF, WBBStateChangeMask);
 		WMResizeWidget(panel->hcdelayB[i], 25, 25);
 		WMMoveWidget(panel->hcdelayB[i], 12 + (30 * i), 25);
-		WMSetButtonBordered(panel->hcdelayB[i], False);
+		WMSetButtonBordered(panel->hcdelayB[i], false);
 		WMSetButtonImagePosition(panel->hcdelayB[i], WIPImageOnly);
 		WMSetButtonAction(panel->hcdelayB[i], pushDelayButton, panel);
 		if (i > 0)
 			WMGroupButtons(panel->hcdelayB[0], panel->hcdelayB[i]);
 		snprintf(buf, sizeof(buf), DELAY_ICON, i);
-		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, False);
+		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, false);
 		snprintf(buf, sizeof(buf), DELAY_ICON_S, i);
-		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, True);
+		SetButtonImageFromFile(scr, panel->hcdelayB[i], buf, true);
 	}
 
 	panel->hcdelayT = WMCreateTextField(panel->hcdelayF);
@@ -358,7 +358,7 @@ static void createPanel(Panel * p)
 	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[0] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		panel->quarter[0] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[0], qw - 4, qh - 4);
 		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       1, 1, qw - 3, qh - 3, panel->quarter[0], 0, 0);
@@ -379,7 +379,7 @@ static void createPanel(Panel * p)
 	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[1] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		panel->quarter[1] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[1], qw - 4, qh - 4);
 		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       qw + 3, 1, qw - 1, qh - 1, panel->quarter[1], 0, 0);
@@ -400,7 +400,7 @@ static void createPanel(Panel * p)
 	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[2] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		panel->quarter[2] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[2], qw - 4, qh - 4);
 		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       1, qh + 3, qw - 1, qh - 1, panel->quarter[2], 0, 0);
@@ -420,7 +420,7 @@ static void createPanel(Panel * p)
 	if (panel->icon) {
 		WMPixmap *nicon;
 
-		panel->quarter[3] = XCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
+		panel->quarter[3] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[3], qw - 4, qh - 4);
 		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       qw + 3, qh + 3, qw - 1, qh - 1, panel->quarter[3], 0, 0);
@@ -450,8 +450,8 @@ static void prepareForClose(_Panel *panel)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 
 	WMReleasePixmap(panel->icon);
-	for (i = 0; i < sizeof(panel->quarter) / sizeof(Pixmap); i++)
-		XFreePixmap(scr->display, panel->quarter[i]);
+	for (i = 0; i < sizeof(panel->quarter) / sizeof(xcb_pixmap_t); i++)
+		wXFreePixmap(scr->display, panel->quarter[i]);
 }
 
 Panel *InitHotCornerShortcuts(WMWidget *parent)

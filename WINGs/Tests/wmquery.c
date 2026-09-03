@@ -37,7 +37,9 @@ _Noreturn void usage(void)
 
 int main(int argc, char **argv)
 {
-	Display *dpy = XOpenDisplay("");
+	xcb_connection_t *xc;
+	int sn;
+	xcb_connection_t *xc;
 	WMScreen *scr;
 	WMPixmap *pixmap;
 	char *title = NULL;
@@ -50,7 +52,10 @@ int main(int argc, char **argv)
 
 	ProgName = argv[0];
 
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		puts("could not open display");
 		exit(1);
 	}
@@ -73,7 +78,7 @@ int main(int argc, char **argv)
 	for (; optind < argc; optind++)
 		usage();
 
-	scr = WMCreateSimpleApplicationScreen(dpy);
+	scr = WMCreateSimpleApplicationScreen(xc, sn);
 
 	pixmap = WMCreatePixmapFromXPMData(scr, GNUSTEP_XPM);
 

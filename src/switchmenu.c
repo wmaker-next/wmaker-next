@@ -25,8 +25,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include "WindowMaker.h"
 #include "window.h"
@@ -152,7 +150,7 @@ void OpenSwitchMenu(WScreen * scr, int x, int y, int keyboard)
 				wRaiseFrame(switchmenu->frame->core);
 
 				if (keyboard)
-					wMenuMapAt(switchmenu, 0, 0, True);
+					wMenuMapAt(switchmenu, 0, 0, true);
 				else
 					wMenuMapCopyAt(switchmenu, x - switchmenu->frame->core->width / 2, y);
 			}
@@ -164,7 +162,7 @@ void OpenSwitchMenu(WScreen * scr, int x, int y, int keyboard)
 		}
 		return;
 	}
-	switchmenu = wMenuCreate(scr, _("Windows"), True);
+	switchmenu = wMenuCreate(scr, _("Windows"), true);
 	scr->switch_menu = switchmenu;
 
 	wwin = scr->focused_window;
@@ -195,7 +193,7 @@ void OpenSwitchMenu(WScreen * scr, int x, int y, int keyboard)
 
 static int menuIndexForWindow(WMenu * menu, WWindow * wwin, int old_pos)
 {
-	Bool age = w_global.config->switcher_order == SWO_AGE;
+	bool age = w_global.config->switcher_order == SWO_AGE;
 	int idx, move_down;
 
 	if (menu->entry_no <= old_pos)
@@ -204,7 +202,7 @@ static int menuIndexForWindow(WMenu * menu, WWindow * wwin, int old_pos)
 	for (idx = 0, move_down = 0; idx < menu->entry_no; idx++) {
 		WWindow *tw = (WWindow *) menu->entries[idx]->clientdata;
 
-		/* Is the window moving down in the menu?  If so, we'll need to
+		/* Is the window moving down in the menu? If so, we'll need to
 		   adjust its new index by 1. */
 		if (tw == wwin)
 			move_down = 1;
@@ -257,11 +255,11 @@ static void switchMenuTitle(WWindow *wwin, char *buf, size_t bufsz)
 	char *xname = NULL;
 
 	src = wwin->frame->title ? wwin->frame->title : DEF_WINDOW_TITLE;
-	if (wwin->tab_group && wFetchName(dpy, wwin->client_win, &xname) && xname)
+	if (wwin->tab_group && wFetchName(xconn, wwin->client_win, &xname) && xname)
 		src = xname;
 	snprintf(buf, bufsz, "%s", src);
 	if (xname)
-		XFree(xname);
+		wfree(xname);
 }
 
 /*
@@ -281,11 +279,11 @@ void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
 	/*
 	 *  This menu is updated under the following conditions:
 	 *
-	 *    1.  When a window is created.
-	 *    2.  When a window is destroyed.
+	 *    1. When a window is created.
+	 *    2. When a window is destroyed.
 	 *
-	 *    3.  When a window changes its title.
-	 *    4.  When a window changes its workspace.
+	 *    3. When a window changes its title.
+	 *    4. When a window changes its workspace.
 	 */
 	if (action == ACTION_ADD) {
 		char *t;
@@ -431,7 +429,7 @@ void UpdateSwitchMenu(WScreen * scr, WWindow * wwin, int action)
 		/* if menu got unreachable, bring it to a visible place */
 		if (switchmenu->frame_x < tmp - (int)switchmenu->frame->core->width) {
 			wMenuMove(switchmenu, tmp - (int)switchmenu->frame->core->width,
-				  switchmenu->frame_y, False);
+				  switchmenu->frame_y, false);
 		}
 	}
 	wMenuPaint(switchmenu);

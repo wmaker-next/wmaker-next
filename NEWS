@@ -3,6 +3,28 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Xlib is gone, everything runs on xcb
+-------------------------------------
+
+Window Maker, libWINGs, WPrefs and the utility programs no longer
+link libX11: property and hint requests, event delivery, grabs,
+colours, cursors, selections and cut buffers all go through libxcb,
+and the keyboard is driven entirely by libxkbcommon. Text fields
+talk to fcitx5 or ibus servers through xcb-imdkit when available,
+with an xkbcommon compose-table fallback. Property reads at startup
+are batched into a single server round-trip, so taking over a busy
+desktop is noticeably faster, especially over a remote display.
+Nothing changes for users: the same themes, defaults, menus and key
+bindings keep working, and the only X11 headers left in the tree are
+the ones used by the optional XSMP session-manager module.
+
+Xinerama multi-head support is unaffected by the removal of Xlib's
+libXinerama: head geometry comes from RandR 1.5 GetMonitors on every
+modern server, and servers that expose Xinerama without a RandR
+description (nested servers, builds configured --disable-randr) fall
+back to the XINERAMA extension through the xcb-xinerama module, the
+generated xcb binding that libxcb ships.
+
 XPM without libXpm
 -------------------
 

@@ -24,8 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <wraster.h>
 
@@ -76,7 +74,7 @@ static const struct {
 	{ "blue",     0x0000, 0x0000, 0xffff },
 };
 
-int wParseColor(Colormap colormap, const char *spec, XColor *color)
+int wParseColor(xcb_colormap_t colormap, const char *spec, WXColor *color)
 {
 	size_t i;
 
@@ -85,57 +83,56 @@ int wParseColor(Colormap colormap, const char *spec, XColor *color)
 			color->red = builtin_color_names[i].r;
 			color->green = builtin_color_names[i].g;
 			color->blue = builtin_color_names[i].b;
-			color->flags = DoRed | DoGreen | DoBlue;
-			return True;
+			return true;
 		}
 	}
 
-	return XParseColor(dpy, colormap, spec, color);
+	return wXParseColor(xconn, colormap, spec, color);
 }
 
-int wAllocColor(WScreen *scr, Colormap colormap, XColor *color)
+int wAllocColor(WScreen *scr, xcb_colormap_t colormap, WXColor *color)
 {
-	if (scr->w_visual->class == TrueColor) {
+	if (scr->w_visual->_class == XCB_VISUAL_CLASS_TRUE_COLOR) {
 		/* Compute pixel directly from RGB components using the visual's
 		 * channel masks, an AllocColor request on a TrueColor colormap
 		 * is a server round-trip that returns exactly this value. */
 		color->pixel = scale_color_component(color->red,   scr->w_visual->red_mask)
 		             | scale_color_component(color->green, scr->w_visual->green_mask)
 		             | scale_color_component(color->blue,  scr->w_visual->blue_mask);
-		return True;
+		return true;
 	}
 
-	return XAllocColor(dpy, colormap, color);
+	return wXAllocColor(xconn, colormap, color);
 }
 
-int wGetColorForColormap(WScreen *scr, Colormap colormap, const char *color_name, XColor *color)
+int wGetColorForColormap(WScreen *scr, xcb_colormap_t colormap, const char *color_name, WXColor *color)
 {
 	if (!wParseColor(colormap, color_name, color)) {
 		wwarning(_("could not parse color \"%s\""), color_name);
-		return False;
+		return false;
 	}
 
 	if (!wAllocColor(scr, colormap, color)) {
 		wwarning(_("could not allocate color \"%s\""), color_name);
-		return False;
+		return false;
 	}
-	return True;
+	return true;
 }
 
-int wGetColor(WScreen *scr, const char *color_name, XColor *color)
+int wGetColor(WScreen *scr, const char *color_name, WXColor *color)
 {
 	return wGetColorForColormap(scr, scr->w_colormap, color_name, color);
 }
 
 void wFreeColor(WScreen * scr, unsigned long pixel)
 {
-	if (scr->w_visual->class == TrueColor)
+	if (scr->w_visual->_class == XCB_VISUAL_CLASS_TRUE_COLOR)
 		return;
 
 	if (pixel != scr->white_pixel && pixel != scr->black_pixel) {
-		unsigned long colors[1];
+		uint32_t colors[1];
 
 		colors[0] = pixel;
-		XFreeColors(dpy, scr->w_colormap, colors, 1, 0);
+		wXFreeColors(xconn, scr->w_colormap, colors, 1, 0);
 	}
 }

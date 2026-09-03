@@ -6,12 +6,12 @@
 # small offset, closing the active member of a two-window group reveals
 # the survivor at the group position without remapping the destroyed
 # client, and Shift+click on the close button sends WM_DELETE_WINDOW to
-# every member.  Peer-state propagation is asserted for move, workspace,
-# iconify, shade and maximize.  Titlebar segment click, wheel cycle and
-# Ctrl+click close are driven against computed segment centres.  Button2
-# drag covers attach, tear-off and reorder.  A wmakermsg restart while
+# every member. Peer-state propagation is asserted for move, workspace,
+# iconify, shade and maximize. Titlebar segment click, wheel cycle and
+# Ctrl+click close are driven against computed segment centres. Button2
+# drag covers attach, tear-off and reorder. A wmakermsg restart while
 # mapped and again while iconified asserts the saved active member and
-# tab order survive a warm re-exec.  Runs wmaker under Xephyr on an
+# tab order survive a warm re-exec. Runs wmaker under Xephyr on an
 # isolated display, XDG_RUNTIME_DIR and WMAKER_USER_ROOT, tracks every
 # PID it spawns and kills only those.
 set -u
@@ -45,7 +45,7 @@ fail() { printf 'FAIL: %s\n' "$*" | tee -a "$LOG"; exit 1; }
 skip() { printf 'SKIP: %s\n' "$*" | tee -a "$LOG"; exit 77; }
 xdo()  { DISPLAY=$DPY xdotool "$@"; }
 
-for tool in Xephyr xdotool xterm xprop xwininfo wmctrl; do
+for tool in Xvfb Xephyr xdotool xterm xprop xwininfo wmctrl; do
     command -v "$tool" >/dev/null 2>&1 || skip "$tool not found"
 done
 [ -x "$WMAKERMSG" ] || skip "util/.libs/wmakermsg not built"
@@ -194,12 +194,27 @@ cat >"$WMHOME/Defaults/WMWindowAttributes" <<EOF
 EOF
 
 # --- Xephyr ----------------------------------------------------------------
+# Xephyr is a nested server: on the session display its host pointer
+# tracks the live mouse, and a host motion landing between the XTEST
+# warp and the XTEST press makes the press fire wherever the host
+# pointer happened to be. Run it on a private headless parent instead,
+# whose virtual pointer only moves when Xephyr itself mirrors a warp.
+PARENT_DISPLAY=":$(( ${DPY#:} + 1 ))"
+Xvfb "$PARENT_DISPLAY" -screen 0 2400x1600x24 -ac >>"$LOG" 2>&1 &
+XVFB_PARENT_PID=$!
+echo "$XVFB_PARENT_PID" >> "$PIDFILE"
+xvfb_parent_ready() {
+    kill -0 "$XVFB_PARENT_PID" 2>/dev/null || return 1
+    DISPLAY=$PARENT_DISPLAY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xvfb_parent_ready || fail "parent Xvfb failed to start"
+
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set TABGROUP_DRIVE_DISPLAY" >&2
     exit 1
 fi
-note "start Xephyr $DPY"
-Xephyr "$DPY" -screen ${W}x${H} -ac >>"$LOG" 2>&1 &
+note "start Xephyr $DPY on parent $PARENT_DISPLAY"
+Xephyr "$DPY" -display "$PARENT_DISPLAY" -screen ${W}x${H} -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {
@@ -232,7 +247,7 @@ sleep 0.5
 
 # drag_btn BUTTON SX SY TX TY -> press at (SX,SY), nudge past
 # MOVE_THRESHOLD so the modal drag loop sets started=True, then move to
-# the drop point and release.  Each step is a separate xdotool call with
+# the drop point and release. Each step is a separate xdotool call with
 # --sync so wmaker's grabbed event loop sees motion before the release
 drag_btn() {
     dbbtn=$1; dbsx=$2; dbsy=$3; dbtx=$4; dbty=$5
@@ -668,7 +683,7 @@ kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died during restart block"
 # --- 14. bystander raise after tab switch ---------------------------------
 # wGroupSetActive() restacks the incoming frame above the outgoing one via
 # MoveInStackListAbove(), which used WMBagIteratorAtIndex(level+1) to find
-# a higher-level anchor.  That helper is exact-match, so a level gap fell
+# a higher-level anchor. That helper is exact-match, so a level gap fell
 # through to XRaiseWindow() and pushed the active frame above the anchor
 # wRaiseFrame() restacks under, leaving the next clicked window stuck
 # below the group on screen even though the internal list and

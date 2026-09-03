@@ -22,7 +22,8 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
+#include <stdlib.h>
+
 #include <xcb/xcb.h>
 #ifdef USE_XSHAPE
 # include <xcb/shape.h>
@@ -51,30 +52,31 @@
 
 
 #ifdef USE_XSHAPE
-static void handleShapeNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleShapeNotify(xcb_generic_event_t *ev)
 {
-	const xcb_shape_notify_event_t *se = (const xcb_shape_notify_event_t *)xe;
-	int kind = se->shape_kind;
+	const xcb_shape_notify_event_t *se = (const xcb_shape_notify_event_t *)ev;
 	int shaped = se->shaped;
+	xcb_generic_event_t *peek, *owned;
 	WWindow *wwin;
-	XEvent peek;
 
-	while (WXEvqTakeTyped(dpy, ev->type, se->affected_window, &peek)) {
+	/* extension events carry no wire window, so the run is
+	 * compared on the typed affected_window field, and only the
+	 * bounding neighbours with the same shaped flag compress */
+	while (WXEvqPeek(xconn, &peek)) {
 		const xcb_shape_notify_event_t *ne =
-			(const xcb_shape_notify_event_t *)((WXWireEvent *)&peek)->wire;
-		if (ne->shape_kind == XCB_SHAPE_SK_BOUNDING) {
-			if (ne->shaped == shaped) {
-				kind = ne->shape_kind;
-				shaped = ne->shaped;
-			} else {
-				WXEvqPutBack(&peek);
-				break;
-			}
-		}
+			(const xcb_shape_notify_event_t *)peek;
+
+		if ((peek->response_type & 0x7f) != (ev->response_type & 0x7f)
+		    || ne->affected_window != se->affected_window
+		    || ne->shape_kind != XCB_SHAPE_SK_BOUNDING
+		    || ne->shaped != shaped)
+			break;
+		WXEvqNext(xconn, &owned);
+		free(owned);
 	}
 
 	wwin = wWindowFor(se->affected_window);
-	if (!wwin || kind != XCB_SHAPE_SK_BOUNDING)
+	if (!wwin || se->shape_kind != XCB_SHAPE_SK_BOUNDING)
 		return;
 
 	if (!shaped && wwin->flags.shaped) {
@@ -119,18 +121,17 @@ static void handleXkbIndicatorStateNotify(void)
 }
 #endif	/* KEEP_XKB_LOCK_STATUS */
 
-static void handleXkbEvent(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleXkbEvent(xcb_generic_event_t *ev)
 {
 	/* XKB has a single event opcode and every sub-type shares the
 	 * same {response_type, xkbType, sequence, time, deviceID}
 	 * prefix, so any of the typed structs reads xkbType */
 	const xcb_xkb_new_keyboard_notify_event_t *ke =
-		(const xcb_xkb_new_keyboard_notify_event_t *)xe;
+		(const xcb_xkb_new_keyboard_notify_event_t *)ev;
 	int xkb_type = ke->xkbType;
-	(void) ev;
 
 	if (xkb_type == XCB_XKB_STATE_NOTIFY
-	    && wXkbUpdateState((const xcb_xkb_state_notify_event_t *)xe)) {
+	    && wXkbUpdateState((const xcb_xkb_state_notify_event_t *)ev)) {
 		wRereadKeybindings();
 	}
 
@@ -150,26 +151,24 @@ static void handleXkbEvent(const xcb_generic_event_t *xe, XEvent *ev)
 }
 
 #ifdef USE_RANDR
-static void handleRandRScreenChange(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleRandRScreenChange(xcb_generic_event_t *ev)
 {
 	const xcb_randr_screen_change_notify_event_t *re =
-		(const xcb_randr_screen_change_notify_event_t *)xe;
+		(const xcb_randr_screen_change_notify_event_t *)ev;
 	WScreen *scr = wScreenForRootWindow(re->root);
-	(void) ev;
 
 	if (scr)
 		wRandRHandleNotify(scr);
 }
 
-static void handleRandRNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleRandRNotify(xcb_generic_event_t *ev)
 {
 	/* only CrtcChange and OutputChange carry the root that
 	 * registered with RRSelectInput, every other subCode just
 	 * rearms the per-screen debounce on screen 0 */
-	const xcb_randr_notify_event_t *re = (const xcb_randr_notify_event_t *)xe;
+	const xcb_randr_notify_event_t *re = (const xcb_randr_notify_event_t *)ev;
 	WScreen *scr;
-	Window root;
-	(void) ev;
+	xcb_window_t root;
 
 	if (re->subCode == XCB_RANDR_NOTIFY_CRTC_CHANGE)
 		root = re->u.cc.window;
@@ -184,11 +183,10 @@ static void handleRandRNotify(const xcb_generic_event_t *xe, XEvent *ev)
 #endif	/* USE_RANDR */
 
 #ifdef USE_XCB_SCREENSAVER
-static void handleScreenSaverNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleScreenSaverNotify(xcb_generic_event_t *ev)
 {
 	const xcb_screensaver_notify_event_t *se =
-		(const xcb_screensaver_notify_event_t *)xe;
-	(void) ev;
+		(const xcb_screensaver_notify_event_t *)ev;
 
 	/* STATE_ON means the server has activated its internal blank
 	 * window or DPMS has powered the panel down, STATE_OFF means
@@ -196,16 +194,15 @@ static void handleScreenSaverNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	 * mask which is not selected here, treat anything else as no
 	 * change so a stray STATE_DISABLED never latches display_off */
 	if (se->state == XCB_SCREENSAVER_STATE_ON)
-		wDisplaySetOff(True, WDisplayPowerSourceScreenSaver);
+		wDisplaySetOff(true, WDisplayPowerSourceScreenSaver);
 	else if (se->state == XCB_SCREENSAVER_STATE_OFF)
-		wDisplaySetOff(False, WDisplayPowerSourceScreenSaver);
+		wDisplaySetOff(false, WDisplayPowerSourceScreenSaver);
 }
 #endif	/* USE_XCB_SCREENSAVER */
 
 #ifdef USE_XSYNC
-static void handleSyncAlarm(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleSyncAlarm(xcb_generic_event_t *ev)
 {
-	(void) xe;
 	/* wNETWMSyncRequestHandleAlarm() reads .wire itself and is also
 	 * called from the opaque-resize loop with a WXEvqTakeTyped result,
 	 * so keep it on the cooked-event signature for now */

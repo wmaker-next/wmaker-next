@@ -10,12 +10,12 @@
 #include "wconfig.h"
 #include "osdep.h"
 
-Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 {
 	(void)ancestor;
 	(void)pid;
 
-	return False;
+	return false;
 }
 
 int IsBackgroundProcess(pid_t pid)
@@ -42,7 +42,7 @@ pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
  * returns 0 for failure, in which case argc := 0 and argv := NULL
  * returns 1 for success
  */
-Bool GetCommandForPid(int pid, char ***argv, int *argc)
+bool GetCommandForPid(int pid, char ***argv, int *argc)
 #ifdef KERN_PROCARGS2
 {
 	int mib[4];
@@ -63,7 +63,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 		count = sizeof(argmax);
 		if (sysctl(mib, 2, &argmax, &count, NULL, 0) == -1)
-			return False;
+			return false;
 	}
 
 	/* if argmax is still 0, something went very seriously wrong */
@@ -80,7 +80,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 	count = argmax;
 	if (sysctl(mib, 3, args, &count, NULL, 0) == -1 || count == 0)
-		return False;
+		return false;
 
 	/* get argc, skip */
 	memcpy(argc, args, sizeof(*argc));
@@ -103,7 +103,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
         // Don’t overrun!
         if (p-args >= argmax)
         {
-            return False;
+            return false;
         }
     }
     // At this point, p points to the last \0 in the source array. 
@@ -132,13 +132,13 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
     }
     (*argv)[found] = NULL; // Terminating NULL
     
-	return True;
+	return true;
 }
 #else /* !KERN_PROCARGS2 */
 {
 	*argv = NULL;
 	*argc = 0;
 
-	return False;
+	return false;
 }
 #endif

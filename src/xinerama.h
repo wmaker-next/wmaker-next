@@ -61,14 +61,14 @@ int wGetHeadForPointerLocation(WScreen *scr);
 
 WMRect wGetRectForHead(WScreen *scr, int head);
 
-WArea wGetUsableAreaForHead(WScreen *scr, int head, WArea *totalAreaPtr, Bool noicons);
+WArea wGetUsableAreaForHead(WScreen *scr, int head, WArea *totalAreaPtr, bool noicons);
 
 WMPoint wGetPointToCenterRectInHead(WScreen *scr, int head, int width, int height);
 
 void wGetRectUnion(const WMRect *rect1, const WMRect *rect2, WMRect *dest);
 
-Bool wWindowTouchesHead(WWindow *wwin, int head);
-Bool wAppIconTouchesHead(WAppIcon *aicon, int head);
+bool wWindowTouchesHead(WWindow *wwin, int head);
+bool wAppIconTouchesHead(WAppIcon *aicon, int head);
 
 /* Per-head workspace support */
 int wGetActiveHead(WScreen *scr);
@@ -78,6 +78,3 @@ const char *wOutputNameForHead(WScreen *scr, int head);
 void wClearHeadOutputNames(WScreen *scr);
 
 #endif
-
-
-

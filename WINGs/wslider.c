@@ -17,7 +17,7 @@ typedef struct W_Slider {
 
 	int value;
 
-	Pixmap knobPixmap;
+	xcb_pixmap_t knobPixmap;
 	WMPixmap *backPixmap;
 
 	WMAction *action;
@@ -48,8 +48,8 @@ W_ViewDelegate _SliderViewDelegate = {
 static void destroySlider(Slider * sPtr);
 static void paintSlider(Slider * sPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void makeKnobPixmap(Slider * sPtr);
 
@@ -77,10 +77,10 @@ WMSlider *WMCreateSlider(WMWidget * parent)
 
 	sPtr->view->delegate = &_SliderViewDelegate;
 
-	WMCreateEventHandler(sPtr->view, ExposureMask | StructureNotifyMask, handleEvents, sPtr);
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, sPtr);
 
-	WMCreateEventHandler(sPtr->view, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask | ButtonMotionMask, handleActionEvents, sPtr);
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_BUTTON_MOTION, handleActionEvents, sPtr);
 
 	W_ResizeView(sPtr->view, 100, 16);
 	sPtr->flags.vertical = 0;
@@ -110,7 +110,7 @@ void WMSetSliderImage(WMSlider * sPtr, WMPixmap * pixmap)
 	}
 }
 
-void WMSetSliderEnabled(WMSlider *sPtr, Bool flag)
+void WMSetSliderEnabled(WMSlider *sPtr, bool flag)
 {
 	CHECK_CLASS(sPtr, WC_Slider);
 
@@ -119,7 +119,7 @@ void WMSetSliderEnabled(WMSlider *sPtr, Bool flag)
 		paintSlider(sPtr);
 }
 
-Bool WMGetSliderEnabled(WMSlider *sPtr)
+bool WMGetSliderEnabled(WMSlider *sPtr)
 {
 	CHECK_CLASS(sPtr, WC_Slider);
 
@@ -201,7 +201,7 @@ void WMSetSliderValue(WMSlider * slider, int value)
 		paintSlider(slider);
 }
 
-void WMSetSliderContinuous(WMSlider * slider, Bool flag)
+void WMSetSliderContinuous(WMSlider * slider, bool flag)
 {
 	CHECK_CLASS(slider, WC_Slider);
 
@@ -228,7 +228,7 @@ static void makeKnobPixmap(Slider * sPtr)
 {
 	WMScreen *scr = sPtr->view->screen;
 	cairo_t *cr;
-	Pixmap pix;
+	xcb_pixmap_t pix;
 	int w, h;
 
 	if (sPtr->flags.vertical) {
@@ -288,7 +288,7 @@ static void makeKnobPixmap(Slider * sPtr)
 	WCairoEnd(cr);
 
 	if (sPtr->knobPixmap)
-		XFreePixmap(scr->display, sPtr->knobPixmap);
+		xcb_free_pixmap(scr->display, sPtr->knobPixmap);
 	sPtr->knobPixmap = pix;
 }
 
@@ -377,20 +377,20 @@ static void paintSlider(Slider * sPtr)
 	WCairoEnd(cr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Slider *sPtr = (Slider *) data;
 
 	CHECK_CLASS(data, WC_Slider);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintSlider(sPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroySlider(sPtr);
 		break;
 
@@ -448,7 +448,7 @@ static int valueForMousePoint(Slider * sPtr, int x, int y)
 	return f;
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	WMSlider *sPtr = (Slider *) data;
 
@@ -457,9 +457,9 @@ static void handleActionEvents(XEvent * event, void *data)
 	if (!sPtr->flags.enabled)
 		return;
 
-	switch (event->type) {
-	case ButtonPress:
-		if (event->xbutton.button == WINGsConfiguration.mouseWheelDown && !sPtr->flags.dragging) {
+	switch ((event->response_type & 0x7f)) {
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelDown && !sPtr->flags.dragging) {
 			/* Wheel down */
 			if (sPtr->value + 1 <= sPtr->maxValue) {
 				WMSetSliderValue(sPtr, sPtr->value + 1);
@@ -467,7 +467,7 @@ static void handleActionEvents(XEvent * event, void *data)
 					(*sPtr->action) (sPtr, sPtr->clientData);
 				}
 			}
-		} else if (event->xbutton.button == WINGsConfiguration.mouseWheelUp && !sPtr->flags.dragging) {
+		} else if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp && !sPtr->flags.dragging) {
 			/* Wheel up */
 			if (sPtr->value - 1 >= sPtr->minValue) {
 				WMSetSliderValue(sPtr, sPtr->value - 1);
@@ -475,25 +475,25 @@ static void handleActionEvents(XEvent * event, void *data)
 					(*sPtr->action) (sPtr, sPtr->clientData);
 				}
 			}
-		} else if (getSliderPart(sPtr, event->xbutton.x, event->xbutton.y)
+		} else if (getSliderPart(sPtr, ((xcb_button_press_event_t *)event)->event_x, ((xcb_button_press_event_t *)event)->event_y)
 			   == KNOB_PART)
 			sPtr->flags.dragging = 1;
 		else {
 #ifdef STRICT_NEXT_BEHAVIOUR
 			sPtr->flags.dragging = 1;
 
-			sPtr->value = valueForMousePoint(sPtr, event->xmotion.x, event->xmotion.y);
+			sPtr->value = valueForMousePoint(sPtr, ((xcb_motion_notify_event_t *)event)->event_x, ((xcb_motion_notify_event_t *)event)->event_y);
 			paintSlider(sPtr);
 #else
 			int tmp;
 
-			if (event->xbutton.button == Button2) {
+			if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_2) {
 				sPtr->flags.dragging = 1;
 
-				sPtr->value = valueForMousePoint(sPtr, event->xmotion.x, event->xmotion.y);
+				sPtr->value = valueForMousePoint(sPtr, ((xcb_motion_notify_event_t *)event)->event_x, ((xcb_motion_notify_event_t *)event)->event_y);
 				paintSlider(sPtr);
 			} else {
-				tmp = valueForMousePoint(sPtr, event->xmotion.x, event->xmotion.y);
+				tmp = valueForMousePoint(sPtr, ((xcb_motion_notify_event_t *)event)->event_x, ((xcb_motion_notify_event_t *)event)->event_y);
 				if (tmp < sPtr->value)
 					tmp = sPtr->value - 1;
 				else
@@ -508,16 +508,16 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case ButtonRelease:
+	case XCB_BUTTON_RELEASE:
 		if (!sPtr->flags.continuous && sPtr->action) {
 			(*sPtr->action) (sPtr, sPtr->clientData);
 		}
 		sPtr->flags.dragging = 0;
 		break;
 
-	case MotionNotify:
+	case XCB_MOTION_NOTIFY:
 		if (sPtr->flags.dragging) {
-			sPtr->value = valueForMousePoint(sPtr, event->xmotion.x, event->xmotion.y);
+			sPtr->value = valueForMousePoint(sPtr, ((xcb_motion_notify_event_t *)event)->event_x, ((xcb_motion_notify_event_t *)event)->event_y);
 			paintSlider(sPtr);
 
 			if (sPtr->flags.continuous && sPtr->action) {
@@ -531,7 +531,7 @@ static void handleActionEvents(XEvent * event, void *data)
 static void destroySlider(Slider * sPtr)
 {
 	if (sPtr->knobPixmap)
-		XFreePixmap(sPtr->view->screen->display, sPtr->knobPixmap);
+		wXFreePixmap(sPtr->view->screen->display, sPtr->knobPixmap);
 
 	if (sPtr->backPixmap)
 		WMReleasePixmap(sPtr->backPixmap);

@@ -21,7 +21,6 @@
 #ifndef WMSTARTUP_NOTIFY_H_
 #define WMSTARTUP_NOTIFY_H_
 
-#include <X11/Xlib.h>
 #include <xcb/xcb.h>
 #include <sys/types.h>
 
@@ -40,13 +39,13 @@ typedef WPendingLaunch WStartupLaunch;
 
 void wStartupNotifyInit(struct _WScreen *scr);
 void wStartupNotifyShutdown(struct _WScreen *scr);
-Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe);
-Bool wStartupNotifyAppStarting(struct _WScreen *scr);
+bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe);
+bool wStartupNotifyAppStarting(struct _WScreen *scr);
 void wStartupNotifyUpdateCursor(struct _WScreen *scr);
 
-Bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
+bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
 			       const char *wm_class, const char *wm_instance,
-			       pid_t pid, Time *launch_time_out, int *workspace_out);
+			       pid_t pid, xcb_timestamp_t *launch_time_out, int *workspace_out);
 
 WStartupLaunch *wStartupLaunchBegin(struct _WScreen *scr, const char *bin,
 				    const char *name, const char *wmclass,
@@ -62,17 +61,17 @@ void wStartupNotifyForgetIcon(struct WAppIcon *btn);
 
 static inline void wStartupNotifyInit(struct _WScreen *scr) { (void)scr; }
 static inline void wStartupNotifyShutdown(struct _WScreen *scr) { (void)scr; }
-static inline Bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe) { (void)xe; return False; }
-static inline Bool wStartupNotifyAppStarting(struct _WScreen *scr) { (void)scr; return False; }
+static inline bool wStartupNotifyProcessXcbEvent(const xcb_generic_event_t *xe) { (void)xe; return false; }
+static inline bool wStartupNotifyAppStarting(struct _WScreen *scr) { (void)scr; return false; }
 static inline void wStartupNotifyUpdateCursor(struct _WScreen *scr) { (void)scr; }
 
-static inline Bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
+static inline bool wStartupNotifyMatchWindow(struct _WScreen *scr, const char *startup_id,
 					     const char *wm_class, const char *wm_instance,
-					     pid_t pid, Time *launch_time_out, int *workspace_out)
+					     pid_t pid, xcb_timestamp_t *launch_time_out, int *workspace_out)
 {
 	(void)scr; (void)startup_id; (void)wm_class; (void)wm_instance; (void)pid;
 	(void)launch_time_out; (void)workspace_out;
-	return False;
+	return false;
 }
 
 static inline WStartupLaunch *wStartupLaunchBegin(struct _WScreen *scr, const char *bin,

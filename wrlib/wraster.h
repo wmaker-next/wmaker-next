@@ -39,10 +39,9 @@
 
 
 /* version of the header for the library */
-#define WRASTER_HEADER_VERSION	26
+#define WRASTER_HEADER_VERSION	28
 
 
-#include <X11/X.h>
 #include <xcb/xcb.h>
 
 /* forward-declared so this header does not pull in <xcb/xcb_image.h> */
@@ -128,8 +127,8 @@ typedef struct RContextAttributes {
     float rgamma;		       /* gamma correction for red, */
     float ggamma;		       /* green, */
     float bgamma;		       /* and blue */
-    VisualID visualid;	       /* visual ID to use */
-    int use_shared_memory;	       /* True of False */
+    xcb_visualid_t visualid;	       /* visual ID to use */
+    int use_shared_memory;	       /* true or false */
     RScalingFilter scaling_filter;
 } RContextAttributes;
 
@@ -138,18 +137,16 @@ typedef struct RContextAttributes {
  * describes a screen in terms of depth and visual. Only TrueColor visuals
  * are supported, indexed-colour displays are no longer handled.
  *
- * cmap/drawable are XIDs and read fine from either side, the libX11 Visual*
- * for the chosen visual is no longer carried here so an Xlib caller that
- * needs one resolves it itself from xvisual->visual_id.
+ * cmap/drawable are xcb XIDs.
  */
 typedef struct RContext {
     int screen_number;
-    Colormap cmap;
+    xcb_colormap_t cmap;
 
     RContextAttributes *attribs;
 
     int depth;
-    Window drawable;               /* window to pass for XCreatePixmap().*/
+    xcb_drawable_t drawable;               /* window to pass for XCreatePixmap().*/
     /* generally = root */
     int vclass;
 
@@ -373,8 +370,7 @@ char *RGetImageFileFormat(const char *file)
 	__wrlib_useresult __wrlib_nonnull(1);
 
 /*
- * Context. A caller holding only a libX11 Display* passes
- * XGetXCBConnection(dpy) here, the library does not link libX11.
+ * Context. The connection comes from xcb_connect().
  */
 RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number,
                             const RContextAttributes *attribs)
@@ -382,7 +378,7 @@ RContext *RCreateContextXCB(xcb_connection_t *xc, int screen_number,
 
 void RDestroyContext(RContext *context);
 
-int RGetClosestXColor(RContext *context, const RColor *color, unsigned long *pixel)
+int RGetClosestXColor(RContext *context, const RColor *color, uint32_t *pixel)
 	__wrlib_nonnull(1, 2, 3);
 
 /*
@@ -394,8 +390,8 @@ RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
-RImage *RCreateImageFromDrawable(RContext *context, Drawable drawable,
-                                 Pixmap mask)
+RImage *RCreateImageFromDrawable(RContext *context, xcb_drawable_t drawable,
+                                 xcb_pixmap_t mask)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
 
 RImage *RLoadImage(RContext *context, const char *file, int index)
@@ -573,11 +569,11 @@ RImage *RRenderInterwovenGradient(unsigned width, unsigned height,
 /*
  * Convertion into X Pixmaps
  */
-int RConvertImage(RContext *context, RImage *image, Pixmap *pixmap)
+int RConvertImage(RContext *context, RImage *image, xcb_pixmap_t *pixmap)
 	__wrlib_nonnull(1, 2, 3);
 
-int RConvertImageMask(RContext *context, RImage *image, Pixmap *pixmap,
-                      Pixmap *mask, int threshold)
+int RConvertImageMask(RContext *context, RImage *image, xcb_pixmap_t *pixmap,
+                      xcb_pixmap_t *mask, int threshold)
 	__wrlib_nonnull(1, 2, 3, 4);
 
 
@@ -588,14 +584,14 @@ RXImage *RCreateXImage(RContext *context, int depth,
                        unsigned width, unsigned height)
 	__wrlib_nonalias __wrlib_useresult __wrlib_nonnull(1);
 
-RXImage *RGetXImage(RContext *context, Drawable d, int x, int y,
+RXImage *RGetXImage(RContext *context, xcb_drawable_t d, int x, int y,
                     unsigned width, unsigned height)
 	__wrlib_nonalias __wrlib_useresult __wrlib_nonnull(1);
 
 void RDestroyXImage(RContext *context, RXImage *ximage)
 	__wrlib_nonnull(1, 2);
 
-void RPutXImage(RContext *context, Drawable d, xcb_gcontext_t gc, RXImage *ximage,
+void RPutXImage(RContext *context, xcb_drawable_t d, xcb_gcontext_t gc, RXImage *ximage,
                 int src_x, int src_y, int dest_x, int dest_y,
                 unsigned width, unsigned height)
 	__wrlib_nonnull(1);

@@ -284,12 +284,12 @@ static void createPanel(Panel * p)
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
-	WMSetBoxHorizontal(panel->box, False);
+	WMSetBoxHorizontal(panel->box, false);
 	WMSetBoxBorderWidth(panel->box, 8);
 
 	hbox = WMCreateBox(panel->box);
-	WMSetBoxHorizontal(hbox, True);
-	WMAddBoxSubview(panel->box, WMWidgetView(hbox), False, True, 110, 0, 10);
+	WMSetBoxHorizontal(hbox, true);
+	WMAddBoxSubview(panel->box, WMWidgetView(hbox), false, true, 110, 0, 10);
 
     /************** Window Placement ***************/
 	panel->placF = WMCreateFrame(panel->box);
@@ -315,7 +315,7 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->porigvL, 150, 19);
 	WMSetLabelTextAlignment(panel->porigvL, WACenter);
 
-	color = WMCreateRGBColor(scr, 0x5100, 0x5100, 0x7100, True);
+	color = WMCreateRGBColor(scr, 0x5100, 0x5100, 0x7100, true);
 	panel->porigF = WMCreateFrame(panel->placF);
 	WMSetWidgetBackgroundColor(panel->porigF, color);
 	WMReleaseColor(color);
@@ -328,8 +328,8 @@ static void createPanel(Panel * p)
 	 * In this area, we want to have a rectangle with the same aspect
 	 * ratio as the screen.
 	 */
-	swidth = WidthOfScreen(DefaultScreenOfDisplay(WMScreenDisplay(scr)));
-	sheight = HeightOfScreen(DefaultScreenOfDisplay(WMScreenDisplay(scr)));
+	swidth = wXDisplayWidth(WMScreenDisplay(scr), scr->screen);
+	sheight = wXDisplayHeight(WMScreenDisplay(scr), scr->screen);
 
 	width = swidth * (109 - 13) / sheight;
 	if (width <= (204 - 13)) {
@@ -580,7 +580,7 @@ static void createPanel(Panel * p)
 	panel->dragmaxP = wm_enum_popup_new(panel->dragmaxF,
 					     drag_maximized_window_options,
 					     wlengthof(drag_maximized_window_options));
-	WMSetPopUpButtonMenuAutoWidth(panel->dragmaxP, True);
+	WMSetPopUpButtonMenuAutoWidth(panel->dragmaxP, true);
 	WMResizeWidget(panel->dragmaxP, 205, 20);
 	WMMoveWidget(panel->dragmaxP, 8, 18);
 

@@ -78,7 +78,7 @@ WPrefs_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la\
 	$(top_builddir)/wrlib/libwraster.la \
 	@CAIRO_LIBS@ \
-	@XLFLAGS@ @XLIBS@ \
+	@XCB_LIBS@ \
 	@LIBM@ \
 	@FCLIBS@ \
 	@INTLIBS@

@@ -190,19 +190,19 @@ void *WMHashGet(WMHashTable * table, const void *key)
 	return (void *)item->data;
 }
 
-Bool WMHashGetItemAndKey(WMHashTable * table, const void *key, void **retItem, void **retKey)
+bool WMHashGetItemAndKey(WMHashTable * table, const void *key, void **retItem, void **retKey)
 {
 	HashItem *item;
 
 	item = hashGetItem(table, key);
 	if (!item)
-		return False;
+		return false;
 
 	if (retKey)
 		*retKey = (void *)item->key;
 	if (retItem)
 		*retItem = (void *)item->data;
-	return True;
+	return true;
 }
 
 void *WMHashInsert(WMHashTable * table, const void *key, const void *data)
@@ -360,7 +360,7 @@ void *WMNextHashEnumeratorKey(WMHashEnumerator * enumerator)
 	return (void *)key;
 }
 
-Bool WMNextHashEnumeratorItemAndKey(WMHashEnumerator * enumerator, void **item, void **key)
+bool WMNextHashEnumeratorItemAndKey(WMHashEnumerator * enumerator, void **item, void **key)
 {
 	/* this assumes the table doesn't change between
 	 * WMEnumerateHashTable() and WMNextHashEnumeratorItemAndKey() calls */
@@ -382,13 +382,13 @@ Bool WMNextHashEnumeratorItemAndKey(WMHashEnumerator * enumerator, void **item, 
 			*key = (void *)((HashItem *) enumerator->nextItem)->key;
 		enumerator->nextItem = ((HashItem *) enumerator->nextItem)->next;
 
-		return True;
+		return true;
 	}
 
-	return False;
+	return false;
 }
 
-static Bool compareStrings(const void *param1, const void *param2)
+static bool compareStrings(const void *param1, const void *param2)
 {
 	const char *key1 = param1;
 	const char *key2 = param2;

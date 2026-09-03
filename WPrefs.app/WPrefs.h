@@ -27,7 +27,6 @@
 #include <strings.h>
 #include <signal.h>
 
-#include <X11/Xlib.h>
 
 #include <wraster.h>
 
@@ -95,7 +94,7 @@ char *LocateImage(const char *name);
 
 void SetButtonAlphaImage(WMScreen *scr, WMButton *bPtr, const char *file);
 
-void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, Bool alt);
+void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, bool alt);
 
 /* Loads `file' into `icon_normal'. If `icon_greyed' is not NULL,
  * combine `icon_normal' with some grey and then optionally with image
@@ -118,13 +117,13 @@ char *GetStringForKey(const char *defaultName);
 
 int GetIntegerForKey(const char *defaultName);
 
-Bool GetBoolForKey(const char *defaultName);
+bool GetBoolForKey(const char *defaultName);
 
 int GetSpeedForKey(const char *defaultName);
 
 int GetEnumForKey(const char *defaultName, int fallback);
 
-Bool GetDefaultBoolForKey(const char *defaultName);
+bool GetDefaultBoolForKey(const char *defaultName);
 
 int GetDefaultIntegerForKey(const char *defaultName);
 
@@ -132,7 +131,7 @@ void SetIntegerForKey(int value, const char *defaultName);
 
 void SetStringForKey(const char *value, const char *defaultName);
 
-void SetBoolForKey(Bool value, const char *defaultName);
+void SetBoolForKey(bool value, const char *defaultName);
 
 void SetSpeedForKey(int speed, const char *defaultName);
 
@@ -160,14 +159,14 @@ void wm_enum_popup_select(WMPopUpButton *popup, const wm_enum_choice *table,
 void wm_enum_popup_store(WMPopUpButton *popup, const wm_enum_choice *table,
 			 int n, const char *key_name);
 
-Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback);
+bool GetWMGlobalBoolForKey(const char *defaultName, bool fallback);
 
-void SetWMGlobalBoolForKey(Bool value, const char *defaultName);
+void SetWMGlobalBoolForKey(bool value, const char *defaultName);
 
 
 /* ---[ KeyboardShortcuts.c ] -------------------------------------------- */
 
-char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case);
+char *capture_shortcut(W_Screen *scr, bool *capturing, bool convert_case);
 
 
 /* ---[ double.c ] ------------------------------------------------------- */
@@ -181,7 +180,7 @@ void AddDeadChildHandler(pid_t pid, void (*handler)(void*), void *data);
 
 
 /* ---[ xmodifier.c ] ---------------------------------------------------- */
-int ModifierFromKey(Display * dpy, const char *key);
+int ModifierFromKey(W_Screen *scr, const char *key);
 
 
 /* ---[ Panel Initializers ]---------------------------------------------- */
@@ -212,4 +211,3 @@ Panel *InitWorkspace(WMWidget *parent);
 #define FRAME_WIDTH	524
 #define FRAME_HEIGHT	235
 #endif /* WPREFS_H_ */
-

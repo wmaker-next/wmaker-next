@@ -6,6 +6,7 @@
  */
 
 #include "wconfig.h"
+#include <stdbool.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +28,7 @@ static double ev(const char *expr, char **err)
 	return out;
 }
 
-static Bool near(double got, double want)
+static bool near(double got, double want)
 {
 	return fabs(got - want) < 1e-12;
 }

@@ -24,12 +24,12 @@
 #include "GNUstep.h"
 #include <WINGs/WXHints.h>
 
-void PropGetProtocols(Window window, WProtocols *prots);
-int PropGetWMClass(Window window, char **wm_class, char **wm_instance);
-int PropGetGNUstepWMAttr(Window window, GNUstepWMAttributes **attr);
+void PropGetProtocols(xcb_window_t window, WProtocols *prots);
+int PropGetWMClass(xcb_window_t window, char **wm_class, char **wm_instance);
+int PropGetGNUstepWMAttr(xcb_window_t window, GNUstepWMAttributes **attr);
 
-void PropSetWMakerProtocols(Window root);
-void PropCleanUp(Window root);
+void PropSetWMakerProtocols(xcb_window_t root);
+void PropCleanUp(xcb_window_t root);
 void PropSetIconTileHint(WScreen *scr, RImage *image);
 
 /* Split-phase variants for batching: caller issues the matching WXReq*
@@ -39,6 +39,6 @@ int    PropRcvNormalHints  (WXCookie ck, WXSizeHints *size_hints, int *pre_iccm)
 void   PropRcvProtocols    (WXCookie ck, WProtocols *prots);
 int    PropRcvWMClass      (WXCookie ck, char **wm_class, char **wm_instance);
 int    PropRcvGNUstepWMAttr(WXCookie ck, GNUstepWMAttributes **attr);
-Window PropRcvClientLeader (WXCookie ck);
+xcb_window_t PropRcvClientLeader (WXCookie ck);
 
 #endif

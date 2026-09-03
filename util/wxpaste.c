@@ -20,18 +20,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
-#include <time.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#ifdef HAVE_SYS_SELECT_H
-# include <sys/select.h>
-#endif
+#include <xcb/xcb.h>
+#include <xcb/xproto.h>
+
+#include "clip-common.h"
+#include "xcconn.h"
 
 #define MAXDATA		(4*1024*1024)
 
@@ -49,164 +47,160 @@ static void print_help(void)
 	puts("  -v, --version            output version information and exit");
 }
 
-
-typedef Bool XEventMatchProc(XEvent *event, void *data);
-
-static void addMilliseconds(struct timespec *deadline, int timeout_ms)
+/* Generate a server timestamp on our private window and bound the
+ * wait so a broken display connection cannot wedge wxpaste forever. */
+static xcb_timestamp_t getTimestamp(xcb_connection_t *c, xcb_window_t win)
 {
-	deadline->tv_sec += timeout_ms / 1000;
-	deadline->tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
-	if (deadline->tv_nsec >= 1000000000L) {
-		deadline->tv_sec++;
-		deadline->tv_nsec -= 1000000000L;
-	}
-}
+	xcb_generic_event_t *ev;
+	xcb_property_notify_event_t *pn;
+	xcb_timestamp_t t = XCB_CURRENT_TIME;
+	bool got = false;
 
-static int remainingMilliseconds(const struct timespec *deadline)
-{
-	struct timespec now;
-	time_t sec;
-	long nsec;
+	xcb_change_window_attributes(c, win, XCB_CW_EVENT_MASK,
+				     (const uint32_t[]){ XCB_EVENT_MASK_PROPERTY_CHANGE });
+	xcb_change_property(c, XCB_PROP_MODE_REPLACE, win, XCB_ATOM_WM_NAME,
+			    XCB_ATOM_STRING, 8, 7, "wxpaste");
+	xcb_flush(c);
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	sec = deadline->tv_sec - now.tv_sec;
-	nsec = deadline->tv_nsec - now.tv_nsec;
-	if (nsec < 0) {
-		sec--;
-		nsec += 1000000000L;
-	}
-	if (sec < 0)
-		return 0;
-	if (sec > INT_MAX / 1000)
-		return INT_MAX;
-	return (int)(sec * 1000 + (nsec + 999999L) / 1000000L);
-}
-
-static int waitForXEvent(Display *dpy, int timeout_ms, XEventMatchProc *match, void *data, XEvent *out)
-{
-	struct timespec deadline;
-	Bool bounded = timeout_ms >= 0;
-
-	if (bounded) {
-		clock_gettime(CLOCK_MONOTONIC, &deadline);
-		addMilliseconds(&deadline, timeout_ms);
-	}
-
-	for (;;) {
-		while (XPending(dpy) > 0) {
-			XNextEvent(dpy, out);
-			if ((*match)(out, data))
-				return 1;
+	while (!got) {
+		if (!clip_wait_event(c, &ev, 1000)) {
+			break;
 		}
-
-		struct timeval timeout;
-		struct timeval *timeout_ptr = NULL;
-		fd_set fdset;
-		int ready;
-
-		if (bounded) {
-			int remaining = remainingMilliseconds(&deadline);
-			if (remaining <= 0)
-				return 0;
-			timeout.tv_sec = remaining / 1000;
-			timeout.tv_usec = (remaining % 1000) * 1000;
-			timeout_ptr = &timeout;
+		pn = (xcb_property_notify_event_t *) ev;
+		if ((ev->response_type & 0x7f) == XCB_PROPERTY_NOTIFY && pn->window == win) {
+			t = pn->time;
+			got = true;
 		}
-
-		FD_ZERO(&fdset);
-		FD_SET(ConnectionNumber(dpy), &fdset);
-		XFlush(dpy);
-		ready = select(ConnectionNumber(dpy) + 1, &fdset, NULL, NULL, timeout_ptr);
-		if (ready < 0) {
-			if (errno == EINTR)
-				continue;
-			return -1;
-		}
-		if (ready == 0)
-			return 0;
+		free(ev);
 	}
-}
-
-static Bool timestampEventMatches(XEvent *event, void *data)
-{
-	Window win = *(Window *)data;
-
-	return event->type == PropertyNotify && event->xproperty.window == win;
-}
-
-static Time getTimestamp(Display * dpy, Window win)
-{
-	XEvent ev;
-
-	/* Generate a server timestamp on our private window and bound the
-	 * wait so a broken display connection cannot wedge wxpaste forever. */
-	XSelectInput(dpy, win, PropertyChangeMask);
-	XStoreName(dpy, win, "wxpaste");
-
-	if (waitForXEvent(dpy, 1000, timestampEventMatches, &win, &ev) > 0)
-		return ev.xproperty.time;
-
-	return CurrentTime;
+	return t;
 }
 
 typedef struct SelectionWaitData {
-	Window requestor;
-	Atom selection;
+	xcb_window_t requestor;
+	xcb_atom_t selection;
 } SelectionWaitData;
 
-static Bool selectionNotifyMatches(XEvent *event, void *data)
+static bool selectionNotifyMatches(xcb_generic_event_t *ev, SelectionWaitData *wait)
 {
-	SelectionWaitData *wait = data;
+	xcb_selection_notify_event_t *sn;
 
-	return event->type == SelectionNotify &&
-		event->xselection.requestor == wait->requestor &&
-		event->xselection.selection == wait->selection;
+	if ((ev->response_type & 0x7f) != XCB_SELECTION_NOTIFY)
+		return false;
+	sn = (xcb_selection_notify_event_t *) ev;
+	return sn->requestor == wait->requestor && sn->selection == wait->selection;
 }
 
-static char *fetchSelection(Display *dpy, const char *selection, int *length)
+static char *fetchSelection(xcb_connection_t *c, int screen, const char *selection, int *length)
 {
-	Atom selatom = XInternAtom(dpy, selection, False);
-	Atom clipatom = XInternAtom(dpy, "CLIPBOARD", False);
-	Time now;
-	XEvent ev;
-	Window win;
+	xcb_intern_atom_cookie_t ck1, ck2;
+	xcb_intern_atom_reply_t *r1, *r2;
+	xcb_atom_t selatom, clipatom, prop;
+	xcb_window_t win;
+	xcb_timestamp_t now;
+	xcb_get_property_cookie_t pck;
+	xcb_get_property_reply_t *prep;
+	xcb_generic_event_t *ev;
 	SelectionWaitData wait;
 	char *result = NULL;
+	bool got = false;
 
-	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 1, 1, 0, 0, 0);
-	/* The ICCCM says CurrentTime is not valid for XConvertSelection(),
-	 * so generate a timestamp on our requestor window first. */
-	now = getTimestamp(dpy, win);
+	*length = 0;
+
+	ck1 = xcb_intern_atom(c, 0, strlen(selection), selection);
+	ck2 = xcb_intern_atom(c, 0, strlen("CLIPBOARD"), "CLIPBOARD");
+	r1 = xcb_intern_atom_reply(c, ck1, NULL);
+	r2 = xcb_intern_atom_reply(c, ck2, NULL);
+	selatom = r1 ? r1->atom : XCB_ATOM_NONE;
+	clipatom = r2 ? r2->atom : XCB_ATOM_NONE;
+	free(r1);
+	free(r2);
+	if (selatom == XCB_ATOM_NONE || clipatom == XCB_ATOM_NONE)
+		return NULL;
+
+	win = xcb_generate_id(c);
+	xcb_create_window(c, XCB_COPY_FROM_PARENT, win, xcconn_root(c, screen),
+			  0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			  XCB_COPY_FROM_PARENT, 0, NULL);
+
+	/* The ICCCM says CurrentTime is not valid for
+	 * xcb_convert_selection(), so generate a timestamp on our
+	 * requestor window first. */
+	now = getTimestamp(c, win);
 
 	wait.requestor = win;
 	wait.selection = selatom;
-	XConvertSelection(dpy, selatom, XA_STRING, clipatom, win, now);
+	xcb_convert_selection(c, win, selatom, XCB_ATOM_STRING, clipatom, now);
+	xcb_flush(c);
 
-	if (waitForXEvent(dpy, 1000, selectionNotifyMatches, &wait, &ev) > 0 &&
-	    ev.xselection.property != None) {
-		Atom rtype;
-		int bits;
-		unsigned long len, bytes;
-		unsigned char *data = NULL;
-
-		if (XGetWindowProperty(dpy, win, ev.xselection.property, 0, MAXDATA / 4, False,
-				       XA_STRING, &rtype, &bits, &len, &bytes, &data) == Success &&
-		    rtype == XA_STRING && bits == 8 && bytes == 0 && len <= INT_MAX) {
-			*length = (int)len;
-			result = (char *)data;
-		} else if (data) {
-			XFree(data);
+	while (!got) {
+		if (!clip_wait_event(c, &ev, 1000)) {
+			break;
 		}
+		if (selectionNotifyMatches(ev, &wait)) {
+			prop = ((xcb_selection_notify_event_t *) ev)->property;
+			got = true;
+		}
+		free(ev);
 	}
 
-	XDestroyWindow(dpy, win);
+	if (got && prop != XCB_ATOM_NONE) {
+		pck = xcb_get_property(c, false, win, prop, XCB_ATOM_STRING, 0, MAXDATA / 4);
+		prep = xcb_get_property_reply(c, pck, NULL);
+		if (prep && prep->type == XCB_ATOM_STRING && prep->format == 8 &&
+		    prep->bytes_after == 0 && prep->value_len > 0 &&
+		    prep->value_len <= INT_MAX) {
+			size_t n = prep->value_len;
+
+			result = malloc(n + 1);
+			if (result) {
+				memcpy(result, xcb_get_property_value(prep), n);
+				result[n] = '\0';
+				*length = (int) n;
+			}
+		}
+		free(prep);
+	}
+
+	xcb_destroy_window(c, win);
 	return result;
+}
+
+static char *fetchBuffer(xcb_connection_t *c, int buffer, int *length)
+{
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+	char *out = NULL;
+
+	*length = 0;
+
+	/* long_length is in 32-bit units, 10000000 is Xlib's own cap.
+	 * Xlib's XFetchBuffer always reads screen 0's root */
+	ck = xcb_get_property(c, false, xcconn_root(c, 0),
+			      XCB_ATOM_CUT_BUFFER0 + buffer,
+			      XCB_ATOM_STRING, 0, 10000000);
+	rep = xcb_get_property_reply(c, ck, NULL);
+	if (rep && rep->type == XCB_ATOM_STRING && rep->format == 8 &&
+	    rep->bytes_after == 0 && rep->value_len > 0 &&
+	    rep->value_len <= INT_MAX) {
+		size_t n = rep->value_len;
+
+		out = malloc(n + 1);
+		if (out) {
+			memcpy(out, xcb_get_property_value(rep), n);
+			out[n] = '\0';
+			*length = (int) n;
+		}
+	}
+	free(rep);
+	return out;
 }
 
 int main(int argc, char **argv)
 {
-	Display *dpy;
+	xcb_connection_t *c;
 	int i, l = 0;
+	int sn = 0;
 	int buffer = 0;
 	char *buf;
 	int status;
@@ -259,21 +253,15 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-	dpy = XOpenDisplay(display_name);
-	if (!dpy) {
-		fprintf(stderr, "%s: could not open display \"%s\"\n", prog_name, XDisplayName(display_name));
-		exit(1);
-	}
+	c = xcconn_open(display_name, prog_name, 1, &sn);
 
-	if (selection_name) {
-		buf = fetchSelection(dpy, selection_name, &l);
-	} else {
+	if (selection_name)
+		buf = fetchSelection(c, sn, selection_name, &l);
+	else
 		buf = NULL;
-	}
 
-	if (buf == NULL) {
-		buf = XFetchBuffer(dpy, &l, buffer);
-	}
+	if (buf == NULL)
+		buf = fetchBuffer(c, buffer, &l);
 
 	if (buf == NULL) {
 		status = 1;
@@ -283,6 +271,6 @@ int main(int argc, char **argv)
 		else
 			status = 0;
 	}
-	XCloseDisplay(dpy);
+	xcb_disconnect(c);
 	exit(status);
 }

@@ -38,9 +38,9 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back, Strip strip);
 WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, Strip strip);
 
-WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event);
+WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, xcb_generic_event_t *event);
 
-Window wSwitchPanelGetWindow(WSwitchPanel *swpanel);
+xcb_window_t wSwitchPanelGetWindow(WSwitchPanel *swpanel);
 
 /* Drill into the highlighted group's windows (sub-panel).
  * Returns the first (MRU) window of the group. */
@@ -59,9 +59,9 @@ WWindow *wSwitchPanelRefreshSub(WSwitchPanel *panel);
 WWindow *wSwitchPanelUndrill(WSwitchPanel *panel);
 
 /* True once the sub-strip has been opened with wSwitchPanelDrill. */
-Bool wSwitchPanelIsDrilled(WSwitchPanel *panel);
+bool wSwitchPanelIsDrilled(WSwitchPanel *panel);
 
 /* True if the sub-strip is shown as a preview (not focused). */
-Bool wSwitchPanelIsDrillPreview(WSwitchPanel *panel);
+bool wSwitchPanelIsDrillPreview(WSwitchPanel *panel);
 
 #endif /* _SWITCHPANEL_H_ */

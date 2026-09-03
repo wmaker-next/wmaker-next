@@ -21,7 +21,7 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
+#include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
@@ -43,15 +43,14 @@
 
 static int matchWindow(const void *item, const void *cdata)
 {
-	return (((WFakeGroupLeader *) item)->origLeader == (Window) cdata);
+	return (((WFakeGroupLeader *) item)->origLeader == (xcb_window_t)(uintptr_t) cdata);
 }
 
-static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleMapRequest(xcb_generic_event_t *ev)
 {
-	const xcb_map_request_event_t *e = (const xcb_map_request_event_t *)xe;
+	const xcb_map_request_event_t *e = (const xcb_map_request_event_t *)ev;
 	WWindow *wwin;
 	WScreen *scr;
-	(void) ev;
 
 	wwin = wWindowFor(e->window);
 	if (wwin != NULL) {
@@ -67,7 +66,7 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 			if (wapp) {
 				wWorkspaceChange(wwin->screen_ptr, wapp->last_workspace);
 			}
-			wUnhideApplication(wapp, False, False);
+			wUnhideApplication(wapp, false, false);
 		}
 		return;
 	}
@@ -84,7 +83,7 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 	 */
 	if (scr->last_dock) {
 		pid_t client_pid = wwin ? wwin->client_pid : wGetWindowPid(e->window);
-		Window track = (wwin && wwin->main_window != None
+		xcb_window_t track = (wwin && wwin->main_window != XCB_NONE
 				&& wwin->main_window != e->window)
 			       ? wwin->main_window : e->window;
 
@@ -101,7 +100,7 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 
 	if (wwin) {
 		if (!wwin->flags.miniaturized && !wwin->flags.hidden)
-			wClientSetState(wwin, NormalState, None);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 		if (wwin->flags.maximized) {
 			wMaximizeWindow(wwin, wwin->flags.maximized,
 					wGetHeadForWindow(wwin));
@@ -141,18 +140,17 @@ static void handleMapRequest(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 }
 
-static void handleDestroyNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleDestroyNotify(xcb_generic_event_t *ev)
 {
-	const xcb_destroy_notify_event_t *e = (const xcb_destroy_notify_event_t *)xe;
+	const xcb_destroy_notify_event_t *e = (const xcb_destroy_notify_event_t *)ev;
 	WWindow *wwin;
 	WApplication *app;
 	WScreen *scr;
 	int widx;
-	(void) ev;
 
 	wwin = wWindowFor(e->window);
 	if (wwin) {
-		wUnmanageWindow(wwin, False, True);
+		wUnmanageWindow(wwin, false, true);
 	}
 
 	scr = wScreenForRootWindow(e->event);
@@ -164,13 +162,13 @@ static void handleDestroyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			fPtr = WMGetFromArray(scr->fakeGroupLeaders, widx);
 			if (fPtr->retainCount > 0) {
 				fPtr->retainCount--;
-				if (fPtr->retainCount == 0 && fPtr->leader != None) {
-					XDestroyWindow(dpy, fPtr->leader);
-					fPtr->leader = None;
-					XFlush(dpy);
+				if (fPtr->retainCount == 0 && fPtr->leader != XCB_NONE) {
+					xcb_destroy_window(xconn, fPtr->leader);
+					fPtr->leader = XCB_NONE;
+					wXFlush(xconn);
 				}
 			}
-			fPtr->origLeader = None;
+			fPtr->origLeader = XCB_NONE;
 		}
 	}
 
@@ -181,7 +179,7 @@ static void handleDestroyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			wwin = app->main_window_desc->screen_ptr->focused_window;
 			while (wwin) {
 				if (wwin->main_window == e->window) {
-					wwin->main_window = None;
+					wwin->main_window = XCB_NONE;
 				}
 				wwin = wwin->prev;
 			}
@@ -190,24 +188,19 @@ static void handleDestroyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 }
 
-static void handleMapNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleMapNotify(xcb_generic_event_t *ev)
 {
-	const xcb_map_notify_event_t *e = (const xcb_map_notify_event_t *)xe;
+	const xcb_map_notify_event_t *e = (const xcb_map_notify_event_t *)ev;
 	WWindow *wwin;
 	WXCookie state_ck;
 	int wm_state;
-	(void) ev;
 
 	wwin = wWindowFor(e->event);
 	if (wwin && wwin->client_win == e->event) {
-		state_ck = WXReqFormat32(dpy, e->event, w_global.atom.wm.state,
+		state_ck = WXReqFormat32(xconn, e->event, w_global.atom.wm.state,
 					 w_global.atom.wm.state, 1);
 		wm_state = PropRcvWindowState(state_ck);
-<<<<<<< Updated upstream
-		if (wm_state == IconicState && !wwin->flags.miniaturized) {
-=======
 		if (wm_state == XCB_ICCCM_WM_STATE_ICONIC && !wwin->flags.miniaturized)
->>>>>>> Stashed changes
 			wwin->flags.miniaturized = 1;
 		if (wwin->flags.miniaturized) {
 			if (!wwin->flags.restore_iconified) {
@@ -215,20 +208,20 @@ static void handleMapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 			}
 			/* else: keep iconic, skip wWindowMap + NormalState */
 		} else {
-			XGrabServer(dpy);
+			wXGrabServer(xconn);
 			wWindowMap(wwin);
-			wClientSetState(wwin, NormalState, None);
-			XUngrabServer(dpy);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
+			wXUngrabServer(xconn);
 		}
 	}
 }
 
-static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleUnmapNotify(xcb_generic_event_t *ev)
 {
-	const xcb_unmap_notify_event_t *e = (const xcb_unmap_notify_event_t *)xe;
+	const xcb_unmap_notify_event_t *e = (const xcb_unmap_notify_event_t *)ev;
 	WWindow *wwin;
-	XEvent peek;
-	Bool withdraw = False;
+	xcb_generic_event_t *peek = NULL;
+	bool withdraw = false;
 
 	/* only process windows with StructureNotify selected
 	 * (ignore SubstructureNotify) */
@@ -237,8 +230,8 @@ static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 		return;
 
 	/* whether the event is a Withdrawal request */
-	if (e->event == wwin->screen_ptr->root_win && ev->xany.send_event)
-		withdraw = True;
+	if (e->event == wwin->screen_ptr->root_win && ((ev->response_type & 0x80) != 0))
+		withdraw = true;
 
 	if (wwin->client_win != e->event && !withdraw)
 		return;
@@ -248,51 +241,54 @@ static void handleUnmapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	    && !wwin->flags.miniaturized && !wwin->flags.hidden)
 		return;
 
-	XGrabServer(dpy);
-	XUnmapWindow(dpy, wwin->frame->core->window);
+	wXGrabServer(xconn);
+	xcb_unmap_window(xconn, wwin->frame->core->window);
 	wwin->flags.mapped = 0;
-	XSync(dpy, 0);
+	wXSync(xconn);
 	/* check if the window was destroyed */
-	if (WXEvqTakeTyped(dpy, DestroyNotify, wwin->client_win, &peek)) {
+	if (WXEvqTakeTyped(xconn, XCB_DESTROY_NOTIFY, wwin->client_win, &peek)) {
 		/* DispatchEvent reaches wUnmanageWindow and the
 		 * WMNUnmanaged observers, which issue several X
 		 * round-trips; release the server grab first so other
 		 * clients are not stalled while we tear the window down */
-		XUngrabServer(dpy);
-		DispatchEvent(&peek);
+		wXUngrabServer(xconn);
+		DispatchEvent(peek);
+		free(peek);
+		peek = NULL;
 	} else {
-		Bool reparented = False;
+		bool reparented = false;
 
-		if (WXEvqTakeTyped(dpy, ReparentNotify, wwin->client_win, &peek))
-			reparented = True;
+		if (WXEvqTakeTyped(xconn, XCB_REPARENT_NOTIFY, wwin->client_win, &peek)) {
+			reparented = true;
+			free(peek);
+			peek = NULL;
+		}
 
 		/* withdraw window */
 		wwin->flags.mapped = 0;
 		if (!reparented)
-			wClientSetState(wwin, WithdrawnState, None);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_WITHDRAWN, XCB_NONE);
 
-		XUngrabServer(dpy);
+		wXUngrabServer(xconn);
 		/* if the window was reparented, do not reparent it back to the
 		 * root window */
-		wUnmanageWindow(wwin, !reparented, False);
+		wUnmanageWindow(wwin, !reparented, false);
 	}
 }
 
-static void handleConfigureRequest(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleConfigureRequest(xcb_generic_event_t *ev)
 {
-	const xcb_configure_request_event_t *e = (const xcb_configure_request_event_t *)xe;
+	const xcb_configure_request_event_t *e = (const xcb_configure_request_event_t *)ev;
 
-	(void) ev;
 	wClientConfigure(wWindowFor(e->window), e);
 }
 
-static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handlePropertyNotify(xcb_generic_event_t *ev)
 {
-	const xcb_property_notify_event_t *e = (const xcb_property_notify_event_t *)xe;
+	const xcb_property_notify_event_t *e = (const xcb_property_notify_event_t *)ev;
 	WWindow *wwin;
 	WApplication *wapp;
 
-	(void) ev;
 
 	wwin = wWindowFor(e->window);
 	if (wwin) {
@@ -326,15 +322,17 @@ static void handlePropertyNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 }
 
-static void handleExpose(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleExpose(xcb_generic_event_t *ev)
 {
-	const xcb_expose_event_t *e = (const xcb_expose_event_t *)xe;
+	const xcb_expose_event_t *e = (const xcb_expose_event_t *)ev;
 	WObjDescriptor *desc;
-	XEvent junk;
+	xcb_generic_event_t *junk = NULL;
 
-	while (WXEvqTakeTyped(dpy, Expose, e->window, &junk)) ;
+	while (WXEvqTakeTyped(xconn, XCB_EXPOSE, e->window, &junk))
+		free(junk);
 
-	if (XFindContext(dpy, e->window, w_global.context.client_win, (XPointer *) & desc) == XCNOENT) {
+	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->window);
+	if (desc == NULL) {
 		return;
 	}
 

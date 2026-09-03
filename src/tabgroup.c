@@ -1,17 +1,16 @@
 /*
  * Window tab-grouping for Window Maker.
  *
- * Multiple managed windows share one on-screen frame slot.  Only the
+ * Multiple managed windows share one on-screen frame slot. Only the
  * active member is mapped, the others stay managed but unmapped at the
- * same screen position.  Each member keeps its own WFrameWindow, the
+ * same screen position. Each member keeps its own WFrameWindow, the
  * active member's titlebar carries an [N/M] prefix until the segmented
  * renderer lands.
  */
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,24 +35,24 @@
 
 static void wGroupUpdateTitlebar(WWindow *wwin);
 static void wGroupNotifyState(WWindow *wwin);
-static void wGroupRevealMember(WScreen *scr, WWindow *wwin, Bool focus);
+static void wGroupRevealMember(WScreen *scr, WWindow *wwin, bool focus);
 static void wGroupPlaceDetached(WWindow *wwin, WWindow *anchor);
-static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging);
+static void wGroupRemoveMember(WWindow *wwin, bool unmanaging);
 static void wGroupDestroy(WWindowGroup *grp, WScreen *scr);
 
 
 /*
- * Shared reentry guard for every wGroupSync*() helper.  The propagators
+ * Shared reentry guard for every wGroupSync*() helper. The propagators
  * call back into wWindowConfigure(), wWindowMove() and friends which in
  * turn call back into the same propagators, the guard breaks that cycle.
  */
 static int syncing_peers = 0;
 
 /*
- * Pending session-restore state.  Members of a saved group arrive
+ * Pending session-restore state. Members of a saved group arrive
  * asynchronously as their commands map a window, or all at once during a
  * warm restart, so each gid keeps an insertion-sorted list of arrived
- * members alongside the live group once two of them exist.  Slots are
+ * members alongside the live group once two of them exist. Slots are
  * never freed, the list is short and only consulted from
  * wGroupRestoreMember() during startup.
  */
@@ -76,34 +75,34 @@ static WGroupRestore *restore_slots = NULL;
  * Predicates
  * -------------------------------------------------------------------- */
 
-Bool wGroupIsInactiveMember(const WWindow *wwin)
+bool wGroupIsInactiveMember(const WWindow *wwin)
 {
 	if (!wwin || !wwin->tab_group)
-		return False;
+		return false;
 	return wwin->tab_group_index != wwin->tab_group->active_index;
 }
 
 /*
  * A window may join a tab group only when it has a normal titlebar,
  * is movable and resizable, sits at WMNormalLevel and is not currently
- * fullscreen, miniaturized or hidden.  Fixed-size and borderless
+ * fullscreen, miniaturized or hidden. Fixed-size and borderless
  * windows are refused so members never desync on size.
  */
-Bool wGroupIsTabable(WWindow *wwin)
+bool wGroupIsTabable(WWindow *wwin)
 {
 	if (!wwin || !wwin->frame)
-		return False;
+		return false;
 	if (!HAS_TITLEBAR(wwin) || !IS_MOVABLE(wwin) || !IS_RESIZABLE(wwin))
-		return False;
+		return false;
 	if (WINDOW_LEVEL(wwin) != WMNormalLevel)
-		return False;
+		return false;
 	if (wwin->flags.fullscreen || wwin->flags.miniaturized || wwin->flags.hidden)
-		return False;
+		return false;
 	if (wwin->flags.internal_window)
-		return False;
+		return false;
 	if (WFLAGP(wwin, no_tabbing))
-		return False;
-	return True;
+		return false;
+	return true;
 }
 
 /*
@@ -147,7 +146,7 @@ static void wGroupUpdateTitlebar(WWindow *wwin)
 		return;
 
 	xname = NULL;
-	if (!wFetchName(dpy, wwin->client_win, &xname) || !xname)
+	if (!wFetchName(xconn, wwin->client_win, &xname) || !xname)
 		base = DEF_WINDOW_TITLE;
 	else
 		base = xname;
@@ -173,7 +172,7 @@ static void wGroupUpdateTitlebar(WWindow *wwin)
 	}
 
 	if (xname)
-		XFree(xname);
+		wfree(xname);
 }
 
 void wGroupRefreshTitles(WWindowGroup *grp)
@@ -189,7 +188,7 @@ void wGroupRefreshTitles(WWindowGroup *grp)
 	/*
 	 * Each member's wFrameWindowChangeTitle() repainted its own frame,
 	 * but only the active member is mapped and its segmented titlebar
-	 * shows every member's title.  An inactive member whose title did
+	 * shows every member's title. An inactive member whose title did
 	 * not change short-circuits without repainting, so do it once
 	 * explicitly here.
 	 */
@@ -210,7 +209,7 @@ static void wGroupNotifyState(WWindow *wwin)
 	WMPostNotificationName(WMNChangedState, wwin, "tabgroup");
 }
 
-static void wGroupRevealMember(WScreen *scr, WWindow *wwin, Bool focus)
+static void wGroupRevealMember(WScreen *scr, WWindow *wwin, bool focus)
 {
 	if (!wwin->frame)
 		return;
@@ -218,9 +217,9 @@ static void wGroupRevealMember(WScreen *scr, WWindow *wwin, Bool focus)
 	 * newly active member stays unmapped and only the membership state
 	 * is published, the existing miniwindow or app icon brings it back */
 	if (!wwin->flags.miniaturized && !wwin->flags.hidden) {
-		XMapWindow(dpy, wwin->frame->core->window);
+		xcb_map_window(xconn, wwin->frame->core->window);
 		if (!wwin->flags.shaded) {
-			XMapWindow(dpy, wwin->client_win);
+			xcb_map_window(xconn, wwin->client_win);
 			wwin->flags.mapped = 1;
 		}
 		if (focus)
@@ -334,7 +333,7 @@ void wGroupAttach(WWindowGroup *grp, WWindow *wwin)
 			wIconDestroy(wwin->icon);
 			wwin->icon = NULL;
 		}
-		XUnmapWindow(dpy, wwin->frame->core->window);
+		xcb_unmap_window(xconn, wwin->frame->core->window);
 		wwin->flags.mapped = 0;
 		wGroupNotifyState(wwin);
 	}
@@ -343,18 +342,18 @@ void wGroupAttach(WWindowGroup *grp, WWindow *wwin)
 }
 
 /*
- * Internal removal.  When unmanaging is True the leaving window is being
+ * Internal removal. When unmanaging is True the leaving window is being
  * destroyed by wUnmanageWindow(), so it must not be touched beyond
  * clearing its membership pointer.
  */
-static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging)
+static void wGroupRemoveMember(WWindow *wwin, bool unmanaging)
 {
 	WWindowGroup *grp;
 	WScreen *scr;
 	WWindow *survivor;
 	WWindow *anchor;
 	int idx, i;
-	Bool was_active;
+	bool was_active;
 
 	grp = wwin->tab_group;
 	if (!grp)
@@ -385,7 +384,7 @@ static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging)
 
 	if (grp->member_count == 1) {
 		/*
-		 * Only one member left, dissolve the group.  The survivor
+		 * Only one member left, dissolve the group. The survivor
 		 * keeps its current geometry, only the title prefix is
 		 * removed.
 		 */
@@ -401,7 +400,7 @@ static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging)
 		if (!unmanaging) {
 			wGroupPlaceDetached(wwin, survivor);
 			if (!wwin->flags.mapped && !wwin->flags.miniaturized && !wwin->flags.hidden)
-				wGroupRevealMember(scr, wwin, False);
+				wGroupRevealMember(scr, wwin, false);
 		}
 
 		wGroupDestroy(grp, scr);
@@ -424,19 +423,19 @@ static void wGroupRemoveMember(WWindow *wwin, Bool unmanaging)
 	if (!unmanaging) {
 		wGroupPlaceDetached(wwin, anchor);
 		if (!wwin->flags.mapped && !wwin->flags.miniaturized && !wwin->flags.hidden)
-			wGroupRevealMember(scr, wwin, False);
+			wGroupRevealMember(scr, wwin, false);
 	}
 }
 
 void wGroupDetach(WWindow *wwin)
 {
-	wGroupRemoveMember(wwin, False);
+	wGroupRemoveMember(wwin, false);
 }
 
-void wGroupUnmanageMember(WWindow *wwin, Bool destroyed)
+void wGroupUnmanageMember(WWindow *wwin, bool destroyed)
 {
 	(void) destroyed;
-	wGroupRemoveMember(wwin, True);
+	wGroupRemoveMember(wwin, true);
 }
 
 void wGroupSetActive(WWindowGroup *grp, int idx)
@@ -463,7 +462,7 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 
 	/*
 	 * The whole group may be miniaturized or hidden by an application
-	 * hide.  Both members are already unmapped in that case, so only
+	 * hide. Both members are already unmapped in that case, so only
 	 * the active index moves and the miniwindow, if any, is handed to
 	 * the new active member so a later wDeiconifyWindow() finds it.
 	 */
@@ -484,16 +483,16 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 		return;
 	}
 
-	XGrabServer(dpy);
+	wXGrabServer(xconn);
 
 	/*
 	 * Map and focus the incoming frame before unmapping the outgoing
 	 * one so X does not revert focus to the root in between.
 	 */
 	wWindowMove(nxt, x, y);
-	XMapWindow(dpy, nxt->frame->core->window);
+	xcb_map_window(xconn, nxt->frame->core->window);
 	if (!nxt->flags.shaded)
-		XMapWindow(dpy, nxt->client_win);
+		xcb_map_window(xconn, nxt->client_win);
 	nxt->flags.mapped = 1;
 
 	/*
@@ -506,10 +505,10 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 	grp->active_index = idx;
 	wSetFocusTo(scr, nxt);
 
-	XUnmapWindow(dpy, cur->frame->core->window);
+	xcb_unmap_window(xconn, cur->frame->core->window);
 	cur->flags.mapped = 0;
 
-	XUngrabServer(dpy);
+	wXUngrabServer(xconn);
 
 	wGroupNotifyState(cur);
 	wGroupNotifyState(nxt);
@@ -616,7 +615,7 @@ void wGroupSyncShade(WWindow *source)
 	WWindowGroup *grp;
 	WWindow *peer;
 	int i;
-	Bool shaded;
+	bool shaded;
 
 	grp = source->tab_group;
 	if (!grp || syncing_peers)
@@ -635,10 +634,9 @@ void wGroupSyncShade(WWindow *source)
 		peer->flags.shaded = shaded;
 		if (shaded) {
 			peer->flags.mapped = 0;
-			XSelectInput(dpy, peer->client_win,
-			             peer->event_mask & ~StructureNotifyMask);
-			XUnmapWindow(dpy, peer->client_win);
-			XSelectInput(dpy, peer->client_win, peer->event_mask);
+			xcb_change_window_attributes(xconn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+			xcb_unmap_window(xconn, peer->client_win);
+			xcb_change_window_attributes(xconn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask });
 			wFrameWindowResize(peer->frame, peer->frame->core->width,
 			                   peer->frame->top_width - 1);
 			peer->client.y = peer->frame_y - (int)peer->client.height
@@ -649,7 +647,7 @@ void wGroupSyncShade(WWindow *source)
 			                   + (int)peer->client.height
 			                   + peer->frame->bottom_width);
 			peer->client.y = peer->frame_y + (int)peer->frame->top_width;
-			XMapWindow(dpy, peer->client_win);
+			xcb_map_window(xconn, peer->client_win);
 		}
 		wWindowSynthConfigureNotify(peer);
 		WMPostNotificationName(WMNChangedState, peer, "shade");
@@ -658,7 +656,7 @@ void wGroupSyncShade(WWindow *source)
 }
 
 /*
- * Mirror miniaturized state.  Only the active member ever creates or
+ * Mirror miniaturized state. Only the active member ever creates or
  * owns a WIcon, peers just follow flags.miniaturized and WM_STATE so
  * pagers and the switch menu show one minimized unit.
  */
@@ -667,7 +665,7 @@ void wGroupSyncMiniaturize(WWindow *source)
 	WWindowGroup *grp;
 	WWindow *peer;
 	int i;
-	Bool mini;
+	bool mini;
 
 	grp = source->tab_group;
 	if (!grp || syncing_peers)
@@ -685,14 +683,14 @@ void wGroupSyncMiniaturize(WWindow *source)
 
 		peer->flags.miniaturized = mini;
 		peer->flags.mapped = 0;
-		wClientSetState(peer, mini ? IconicState : NormalState, None);
+		wClientSetState(peer, mini ? XCB_ICCCM_WM_STATE_ICONIC : XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 		WMPostNotificationName(WMNChangedState, peer, "iconify");
 	}
 	syncing_peers = 0;
 }
 
 /*
- * Mirror maximize bookkeeping.  Geometry itself is already propagated
+ * Mirror maximize bookkeeping. Geometry itself is already propagated
  * through wWindowConfigure() into wGroupSyncSize(), this only copies
  * the maximize direction bitmask and the saved pre-maximize geometry
  * so a later unmaximize on any member restores to the same place.
@@ -738,7 +736,7 @@ void wGroupCloseAll(WWindowGroup *grp)
 		return;
 
 	/*
-	 * Snapshot the member list first.  Each close triggers an
+	 * Snapshot the member list first. Each close triggers an
 	 * asynchronous unmanage that mutates grp->members[] as the clients
 	 * actually go away.
 	 */
@@ -847,22 +845,22 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 {
 	WWindow *target;
 	WWindowGroup *grp;
-	XEvent ev;
-	KeySym ks;
-	Window root, child;
+	xcb_generic_event_t *ev = NULL;
+	xkb_keysym_t ks;
+	xcb_window_t root, child;
 	int rx, ry, wx, wy;
 	unsigned int mask;
-	Bool done, cancelled;
+	bool done, cancelled;
 
 	if (!payload || !wGroupIsTabable(payload))
 		return;
 
-	if (XGrabPointer(dpy, scr->root_win, False,
-	                 ButtonPressMask | ButtonReleaseMask,
-	                 GrabModeAsync, GrabModeAsync, scr->root_win,
-	                 wPreferences.cursor[WCUR_SELECT], CurrentTime) != GrabSuccess)
+	if (wXGrabPointer(xconn, scr->root_win, false,
+	                 XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE,
+	                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, scr->root_win,
+	                 wPreferences.cursor[WCUR_SELECT], XCB_CURRENT_TIME) != WXGrabSuccess)
 		return;
-	XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	/* latch the payload so wUnmanageWindow() can knock it out if the
 	 * client exits while the pick loop is waiting on the user, the
@@ -871,62 +869,69 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 	scr->tab_pick_payload = payload;
 
 	target = NULL;
-	done = False;
-	cancelled = False;
+	done = false;
+	cancelled = false;
 
 	while (!done) {
-		WMMaskEvent(dpy, ButtonPressMask | ButtonReleaseMask | KeyPressMask
-		            | ExposureMask | SubstructureNotifyMask, &ev);
+		free(ev);
+		ev = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS
+		            | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, &ev);
 
 		if (scr->tab_pick_payload != payload) {
-			cancelled = True;
+			cancelled = true;
 			break;
 		}
 
-		switch (ev.type) {
-		case ButtonPress:
-			if (ev.xbutton.button > Button3) {
-				cancelled = True;
-				done = True;
+		switch ((ev->response_type & 0x7f)) {
+		case XCB_BUTTON_PRESS:
+			if ((((xcb_button_press_event_t *)ev)->detail) > XCB_BUTTON_INDEX_3) {
+				cancelled = true;
+				done = true;
 				break;
 			}
-			child = ev.xbutton.subwindow;
-			if (child == None)
-				XQueryPointer(dpy, scr->root_win, &root, &child,
+			child = (((xcb_button_press_event_t *)ev)->child);
+			if (child == XCB_NONE)
+				wXQueryPointer(xconn, scr->root_win, &root, &child,
 				              &rx, &ry, &wx, &wy, &mask);
-			if (child == None || child == scr->root_win) {
-				cancelled = True;
-				done = True;
+			if (child == XCB_NONE || child == scr->root_win) {
+				cancelled = true;
+				done = true;
 				break;
 			}
 			target = wWindowFor(child);
-			done = True;
+			done = true;
 			break;
-		case KeyPress:
-			ks = wXkbKeycodeToKeysym(ev.xkey.keycode, 0);
-			if (ks == XK_Escape) {
-				cancelled = True;
-				done = True;
+		case XCB_KEY_PRESS:
+			ks = wXkbKeycodeToKeysym((((xcb_key_press_event_t *)ev)->detail), 0);
+			if (ks == XKB_KEY_Escape) {
+				cancelled = true;
+				done = true;
 			}
 			break;
 		default:
 			/* Expose and the SubstructureNotify family, the latter
 			 * so a payload or target unmanage is processed now
 			 * rather than queued behind the grab */
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			if (scr->tab_pick_payload != payload) {
-				cancelled = True;
-				done = True;
+				cancelled = true;
+				done = true;
 			}
 			break;
 		}
 	}
 
+	/* the final iteration's event is still owned here, including the
+	 * payload-mismatch break path */
+	free(ev);
+	ev = NULL;
+
 	scr->tab_pick_payload = NULL;
 
-	XUngrabKeyboard(dpy, CurrentTime);
-	XUngrabPointer(dpy, CurrentTime);
-	XSync(dpy, False);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXSync(xconn);
 
 	if (cancelled || !target || target == payload)
 		return;
@@ -992,24 +997,24 @@ void wGroupReorder(WWindowGroup *grp, WWindow *payload, int to_idx)
  * -------------------------------------------------------------------- */
 
 /*
- * Validate target as a drop destination for payload.  This is the
+ * Validate target as a drop destination for payload. This is the
  * tabability predicate plus the extra restrictions a drag drop needs:
  * same screen, currently visible on the active workspace, and not the
  * payload itself or already its peer.
  */
-static Bool wGroupIsDropTarget(WScreen *scr, WWindow *target, WWindow *payload)
+static bool wGroupIsDropTarget(WScreen *scr, WWindow *target, WWindow *payload)
 {
 	if (!target || target == payload)
-		return False;
+		return false;
 	if (target->screen_ptr != scr)
-		return False;
+		return false;
 	if (!wGroupIsTabable(target))
-		return False;
+		return false;
 	if (!WWIN_ON_WORKSPACE(target, scr->current_workspace))
-		return False;
+		return false;
 	if (wGroupIsInactiveMember(target))
-		return False;
-	return True;
+		return false;
+	return true;
 }
 
 /*
@@ -1021,14 +1026,14 @@ static Bool wGroupIsDropTarget(WScreen *scr, WWindow *target, WWindow *payload)
  */
 static WWindow *wGroupWindowUnder(WScreen *scr, WWindow *source, int rx, int ry)
 {
-	Window junk_root, junk_parent, *children;
+	xcb_window_t junk_root, junk_parent, *children;
 	WWindow *cand;
 	unsigned int n, i;
 	int fx, fy, fw, fh;
 
 	children = NULL;
-	if (!XQueryTree(dpy, scr->root_win, &junk_root, &junk_parent,
-	                &children, &n))
+	if (!wXQueryTree(xconn, scr->root_win, &junk_root, &junk_parent,
+	                 &children, &n))
 		return NULL;
 
 	cand = NULL;
@@ -1049,7 +1054,7 @@ static WWindow *wGroupWindowUnder(WScreen *scr, WWindow *source, int rx, int ry)
 	}
 
 	if (children)
-		XFree(children);
+		wfree(children);
 	return cand;
 }
 
@@ -1080,7 +1085,7 @@ static void wGroupTearOffAt(WScreen *scr, WWindow *payload, int rx, int ry)
 {
 	WWindowGroup *grp;
 	int idx, i;
-	Bool was_active;
+	bool was_active;
 
 	grp = payload->tab_group;
 	if (!grp) {
@@ -1107,7 +1112,7 @@ static void wGroupTearOffAt(WScreen *scr, WWindow *payload, int rx, int ry)
 			survivor->tab_group = NULL;
 			survivor->tab_group_index = -1;
 			if (was_active)
-				wGroupRevealMember(scr, survivor, False);
+				wGroupRevealMember(scr, survivor, false);
 			wGroupUpdateTitlebar(survivor);
 			wGroupNotifyState(survivor);
 		}
@@ -1116,7 +1121,7 @@ static void wGroupTearOffAt(WScreen *scr, WWindow *payload, int rx, int ry)
 		if (was_active) {
 			if (grp->active_index >= grp->member_count)
 				grp->active_index = grp->member_count - 1;
-			wGroupRevealMember(scr, grp->members[grp->active_index], False);
+			wGroupRevealMember(scr, grp->members[grp->active_index], false);
 		} else if (idx < grp->active_index) {
 			grp->active_index--;
 		}
@@ -1125,30 +1130,30 @@ static void wGroupTearOffAt(WScreen *scr, WWindow *payload, int rx, int ry)
 
 	wGroupUpdateTitlebar(payload);
 	wWindowMove(payload, rx, ry);
-	wGroupRevealMember(scr, payload, True);
+	wGroupRevealMember(scr, payload, true);
 	wRaiseFrame(payload->frame->core);
 }
 
-Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
+bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 {
 	WScreen *scr;
 	WWindow *target, *hover;
 	WWindowGroup *src_grp, *dst_grp;
-	XEvent event;
-	KeySym ks;
+	xcb_generic_event_t *event = NULL;
+	xkb_keysym_t ks;
 	int orig_rx, orig_ry, rx, ry;
 	int outline_w, outline_h, title_h;
 	int drop_seg;
-	Bool started, done, cancelled, over_target;
+	bool started, done, cancelled, over_target;
 
 	if (!source || !payload || !source->frame || !payload->frame)
-		return False;
+		return false;
 
 	scr = source->screen_ptr;
 	src_grp = payload->tab_group;
 
-	orig_rx = ev->xbutton.x_root;
-	orig_ry = ev->xbutton.y_root;
+	orig_rx = ((xcb_button_press_event_t *)ev)->root_x;
+	orig_ry = ((xcb_button_press_event_t *)ev)->root_y;
 	rx = orig_rx;
 	ry = orig_ry;
 
@@ -1159,48 +1164,57 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 	outline_h = (int)source->frame->core->height;
 	title_h = (int)source->frame->top_width;
 
-	if (XGrabPointer(dpy, scr->root_win, False,
-	                 ButtonMotionMask | PointerMotionMask | ButtonReleaseMask
-	                 | ButtonPressMask,
-	                 GrabModeAsync, GrabModeAsync, scr->root_win,
-	                 wPreferences.cursor[WCUR_MOVE], CurrentTime) != GrabSuccess)
-		return False;
-	XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync,
-	              CurrentTime);
+	if (wXGrabPointer(xconn, scr->root_win, false,
+	                 XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
+	                 | XCB_EVENT_MASK_BUTTON_PRESS,
+	                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, scr->root_win,
+	                 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
+		return false;
+	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+	              XCB_CURRENT_TIME);
 
 	scr->tab_drag_payload = payload;
 	scr->tab_drag_source = source;
-	started = False;
-	done = False;
-	cancelled = False;
-	over_target = False;
+	started = false;
+	done = false;
+	cancelled = false;
+	over_target = false;
 
 	while (!done) {
-		WMMaskEvent(dpy, ButtonMotionMask | PointerMotionMask
-		            | ButtonReleaseMask | ButtonPressMask | KeyPressMask
-		            | ExposureMask, &event);
+		free(event);
+		event = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION
+		            | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_KEY_PRESS
+		            | XCB_EVENT_MASK_EXPOSURE, &event);
 
 		/* the payload or the source frame may have been unmanaged
 		 * while the modal loop was waiting on the next event,
 		 * wUnmanageWindow() clears the matching latch in that case */
 		if (scr->tab_drag_payload != payload
 		    || scr->tab_drag_source != source) {
-			cancelled = True;
+			cancelled = true;
+			free(event);
+			event = NULL;
 			break;
 		}
 
-		switch (event.type) {
-		case MotionNotify:
-			while (WXEvqTakeMask(dpy, ButtonMotionMask
-			                       | PointerMotionMask, None, &event))
-				;
-			rx = event.xmotion.x_root;
-			ry = event.xmotion.y_root;
+		switch ((event->response_type & 0x7f)) {
+		case XCB_MOTION_NOTIFY: {
+			/* drain to the newest queued motion, keep that one */
+			xcb_generic_event_t *nev;
+
+			while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+			                       | XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &nev)) {
+				free(event);
+				event = nev;
+			}
+			rx = (((xcb_motion_notify_event_t *)event)->root_x);
+			ry = (((xcb_motion_notify_event_t *)event)->root_y);
 			if (!started) {
 				if (abs(rx - orig_rx) < MOVE_THRESHOLD
 				    && abs(ry - orig_ry) < MOVE_THRESHOLD)
 					break;
-				started = True;
+				started = true;
 			}
 			/* Hover feedback: when the pointer enters a valid
 			 * attach area the wireframe snaps onto that frame and
@@ -1210,12 +1224,12 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 			hover = wGroupDropTargetAt(scr, source, payload, rx, ry);
 			if ((hover != NULL) != over_target) {
 				over_target = (hover != NULL);
-				XChangeActivePointerGrab(dpy, ButtonMotionMask
-				        | PointerMotionMask | ButtonReleaseMask
-				        | ButtonPressMask,
+				wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+				        | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
+				        | XCB_EVENT_MASK_BUTTON_PRESS,
 				        wPreferences.cursor[over_target
 				                ? WCUR_SELECT : WCUR_MOVE],
-				        CurrentTime);
+				        XCB_CURRENT_TIME);
 			}
 			wWireframeBegin(scr);
 			if (hover)
@@ -1230,39 +1244,43 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 				        outline_w, outline_h, title_h, 0, 1);
 			wWireframeCommit(scr);
 			break;
+		}
 
-		case ButtonPress:
+		case XCB_BUTTON_PRESS:
 			break;
 
-		case ButtonRelease:
-			if (event.xbutton.button != ev->xbutton.button)
+		case XCB_BUTTON_RELEASE:
+			if ((((xcb_button_press_event_t *)event)->detail) != ((xcb_button_press_event_t *)ev)->detail)
 				break;
-			rx = event.xbutton.x_root;
-			ry = event.xbutton.y_root;
-			done = True;
+			rx = (((xcb_button_press_event_t *)event)->root_x);
+			ry = (((xcb_button_press_event_t *)event)->root_y);
+			done = true;
 			break;
 
-		case KeyPress:
-			ks = wXkbKeycodeToKeysym(event.xkey.keycode, 0);
-			if (ks == XK_Escape) {
-				cancelled = True;
-				done = True;
+		case XCB_KEY_PRESS:
+			ks = wXkbKeycodeToKeysym((((xcb_key_press_event_t *)event)->detail), 0);
+			if (ks == XKB_KEY_Escape) {
+				cancelled = true;
+				done = true;
 			}
 			break;
 
-		case Expose:
-			WMHandleEvent(&event);
+		case XCB_EXPOSE:
+			WMHandleEvent(event);
 			break;
 
 		default:
 			break;
 		}
+
+		free(event);
+		event = NULL;
 	}
 
 	wWireframeHide(scr);
-	XUngrabKeyboard(dpy, CurrentTime);
-	XUngrabPointer(dpy, CurrentTime);
-	XSync(dpy, False);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXSync(xconn);
 
 	/* Clear the latch before any attach/detach/reorder so a callee that
 	 * happens to dissolve the source group does not see a stale payload
@@ -1270,8 +1288,10 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 	scr->tab_drag_payload = NULL;
 	scr->tab_drag_source = NULL;
 
-	if (cancelled || !started)
+	if (cancelled || !started) {
 		return started;
+	}
+
 
 	/* The payload may have lost its group while the loop ran. */
 	if (src_grp && payload->tab_group != src_grp)
@@ -1289,7 +1309,7 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 		                                    rx - source->frame_x);
 		if (drop_seg >= 0 && drop_seg != payload->tab_group_index)
 			wGroupReorder(src_grp, payload, drop_seg);
-		return True;
+		return true;
 	}
 
 	if (target) {
@@ -1300,7 +1320,7 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 				                rx - target->frame_x);
 			if (drop_seg >= 0)
 				wGroupReorder(src_grp, payload, drop_seg);
-			return True;
+			return true;
 		}
 		dst_grp = target->tab_group;
 		if (!dst_grp) {
@@ -1311,12 +1331,12 @@ Bool wGroupDragTab(WWindow *source, WWindow *payload, XEvent *ev)
 		 * needed, src_grp may dissolve as a side effect. */
 		wGroupAttach(dst_grp, payload);
 		wGroupSetActive(dst_grp, payload->tab_group_index);
-		return True;
+		return true;
 	}
 
 	/* No valid target: tear the payload off at the outline position. */
 	wGroupTearOffAt(scr, payload, rx - outline_w / 2, ry - title_h / 2);
-	return True;
+	return true;
 }
 
 /* --------------------------------------------------------------------
@@ -1376,7 +1396,7 @@ void wGroupRestoreMember(WWindow *wwin)
 
 	/* the saved member must still satisfy the structural part of the
 	 * tabable predicate, a class change or a no_titlebar attribute
-	 * applied since the session was saved disqualifies it.  The
+	 * applied since the session was saved disqualifies it. The
 	 * miniaturized flag is allowed because every member of a group
 	 * iconified at save time carries it and the post-manage iconify
 	 * step has already given each one its own miniwindow, which
@@ -1461,7 +1481,7 @@ void wGroupRestoreForget(WWindow *wwin)
 /*
  * When the AutoTabGroup attribute is set for a window's class, attach the
  * new window to the first visible tab group on its workspace that already
- * contains a member with the same wm_class string.  Session restore takes
+ * contains a member with the same wm_class string. Session restore takes
  * priority: if wwin arrived with a restore_tab_gid we leave it for
  * wGroupRestoreMember() and do nothing here.
  */

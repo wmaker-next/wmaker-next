@@ -31,7 +31,7 @@
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 
-static Bool syslog_initialized = False;
+static bool syslog_initialized = false;
 
 
 static void syslog_open(const char *prog_name)
@@ -43,7 +43,7 @@ static void syslog_open(const char *prog_name)
 
 	options = LOG_PID;
 	openlog(prog_name, options, LOG_DAEMON);
-	syslog_initialized = True;
+	syslog_initialized = true;
 }
 
 static void syslog_message(int prio, const char *prog_name, const char *msg)
@@ -59,7 +59,7 @@ void w_syslog_close(void)
 {
 	if (syslog_initialized) {
 		closelog();
-		syslog_initialized = False;
+		syslog_initialized = false;
 	}
 }
 #endif
@@ -142,4 +142,3 @@ void __wmessage(const char *func, const char *file, int line, int type, const ch
 
 	wfree(buf);
 }
-

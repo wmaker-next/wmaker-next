@@ -57,12 +57,12 @@ typedef void cb_add_menu_entry(WMMenuEntry *entry);
  */
 void  parse_locale(const char *what, char **env_lang, char **env_ctry, char **env_enc, char **env_mod);
 char *find_terminal_emulator(void);
-Bool fileInPath(const char *file);
+bool fileInPath(const char *file);
 
 /* implemented parsers
  */
 void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback);
 void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback);
-Bool wmconfig_validate_file(const char *filename, const struct stat *st, int tflags, struct FTW *ftw);
+bool wmconfig_validate_file(const char *filename, const struct stat *st, int tflags, struct FTW *ftw);
 
 #endif  /* WMMENUGEN_H */

@@ -6,6 +6,7 @@
  */
 
 #include "wconfig.h"
+#include <stdbool.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +29,7 @@ char *getselection(WScreen *scr)
 }
 
 /* stub: not exercised in these tests */
-char *getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced)
+char *getuserinput(WScreen *scr, const char *line, int *ptr, bool advanced)
 {
 	(void)scr; (void)line; (void)ptr; (void)advanced;
 	return NULL;

@@ -23,10 +23,11 @@
 
 #include <wraster.h>
 #include <WINGs/WUtil.h>
-#include <X11/Xlib.h>
+#include <xcb/xcb.h>
+#include <stdbool.h>
 #include <stdint.h>
 
-#define WINGS_H_VERSION  20230226
+#define WINGS_H_VERSION  20260902
 
 
 #ifdef __cplusplus
@@ -486,9 +487,9 @@ typedef struct {
 /* All indentation and tab markers are _relative_ to the left margin marker */
 
 
-typedef void WMEventProc(XEvent *event, void *clientData);
+typedef void WMEventProc(xcb_generic_event_t *event, void *clientData);
 
-typedef void WMEventHook(XEvent *event);
+typedef void WMEventHook(xcb_generic_event_t *event);
 
 /* self is set to the widget from where the callback is being called and
  * clientData to the data set to with WMSetClientData() */
@@ -499,7 +500,7 @@ typedef void WMAction2(void *self, void *clientData);
 
 
 /* delegate method like stuff */
-typedef void WMListDrawProc(WMList *lPtr, int index, Drawable d, char *text,
+typedef void WMListDrawProc(WMList *lPtr, int index, xcb_drawable_t d, char *text,
                             int state, WMRect *rect);
 
 
@@ -544,10 +545,10 @@ typedef struct WMTextFieldDelegate {
     void (*didEndEditing)(struct WMTextFieldDelegate *self,
                           WMNotification *notif);
 
-    Bool (*shouldBeginEditing)(struct WMTextFieldDelegate *self,
+    bool (*shouldBeginEditing)(struct WMTextFieldDelegate *self,
                                WMTextField *tPtr);
 
-    Bool (*shouldEndEditing)(struct WMTextFieldDelegate *self,
+    bool (*shouldEndEditing)(struct WMTextFieldDelegate *self,
                              WMTextField *tPtr);
 } WMTextFieldDelegate;
 
@@ -555,7 +556,7 @@ typedef struct WMTextFieldDelegate {
 typedef struct WMTextDelegate {
     void *data;
 
-    Bool (*didDoubleClickOnPicture)(struct WMTextDelegate *self,
+    bool (*didDoubleClickOnPicture)(struct WMTextDelegate *self,
                                     void *description);
 
 } WMTextDelegate;
@@ -571,7 +572,7 @@ typedef struct WMTabViewDelegate {
     void (*didSelectItem)(struct WMTabViewDelegate *self, WMTabView *tabView,
                           WMTabViewItem *item);
 
-    Bool (*shouldSelectItem)(struct WMTabViewDelegate *self, WMTabView *tabView,
+    bool (*shouldSelectItem)(struct WMTabViewDelegate *self, WMTabView *tabView,
                              WMTabViewItem *item);
 
     void (*willSelectItem)(struct WMTabViewDelegate *self, WMTabView *tabView,
@@ -581,15 +582,15 @@ typedef struct WMTabViewDelegate {
 
 
 
-typedef void WMSelectionCallback(WMView *view, Atom selection, Atom target,
-                                 Time timestamp, void *cdata, WMData *data);
+typedef void WMSelectionCallback(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+                                 xcb_timestamp_t timestamp, void *cdata, WMData *data);
 
 
 typedef struct WMSelectionProcs {
-    WMData* (*convertSelection)(WMView *view, Atom selection, Atom target,
-                                void *cdata, Atom *type);
-    void (*selectionLost)(WMView *view, Atom selection, void *cdata);
-    void (*selectionDone)(WMView *view, Atom selection, Atom target,
+    WMData* (*convertSelection)(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+                                void *cdata, xcb_atom_t *type);
+    void (*selectionLost)(WMView *view, xcb_atom_t selection, void *cdata);
+    void (*selectionDone)(WMView *view, xcb_atom_t selection, xcb_atom_t target,
                           void *cdata);
 } WMSelectionProcs;
 
@@ -605,9 +606,9 @@ typedef struct W_DragSourceProcs {
     WMArray* (*dropDataTypes)(WMView *self);
     WMDragOperationType (*wantedDropOperation)(WMView *self);
     WMArray* (*askedOperations)(WMView *self);
-    Bool (*acceptDropOperation)(WMView *self, WMDragOperationType operation);
+    bool (*acceptDropOperation)(WMView *self, WMDragOperationType operation);
     void (*beganDrag)(WMView *self, WMPoint *point);
-    void (*endedDrag)(WMView *self, WMPoint *point, Bool deposited);
+    void (*endedDrag)(WMView *self, WMPoint *point, bool deposited);
     WMData* (*fetchDragData)(WMView *self, char *type);
     /*Bool (*ignoreModifierKeysWhileDragging)(WMView *view);*/
 } WMDragSourceProcs;
@@ -621,7 +622,7 @@ typedef struct W_DragDestinationProcs {
     WMDragOperationType (*allowedOperation)(WMView *self,
                                             WMDragOperationType request,
                                             WMArray *sourceDataTypes);
-    Bool (*inspectDropData)(WMView *self, WMArray *dropData);
+    bool (*inspectDropData)(WMView *self, WMArray *dropData);
     void (*performDragOperation)(WMView *self, WMArray *dropData,
                                  WMArray *operations, WMPoint *dropLocation);
     void (*concludeDragOperation)(WMView *self);
@@ -662,12 +663,12 @@ char* WMPathForResourceOfType(const char *resource, const char *ext);
 
 WMScreen* WMOpenScreen(const char *display);
 
-WMScreen* WMCreateScreenWithRContext(Display *display, int screen,
+WMScreen* WMCreateScreenWithRContext(xcb_connection_t *display, int screen,
                                      RContext *context);
 
-WMScreen* WMCreateScreen(Display *display, int screen);
+WMScreen* WMCreateScreen(xcb_connection_t *display, int screen);
 
-WMScreen* WMCreateSimpleApplicationScreen(Display *display);
+WMScreen* WMCreateSimpleApplicationScreen(xcb_connection_t *display, int screen);
 
 _wings_noreturn void WMScreenMainLoop(WMScreen *scr);
 
@@ -677,7 +678,7 @@ void WMRunModalLoop(WMScreen *scr, WMView *view);
 
 RContext* WMScreenRContext(WMScreen *scr);
 
-Display* WMScreenDisplay(WMScreen *scr);
+xcb_connection_t* WMScreenDisplay(WMScreen *scr);
 
 int WMScreenDepth(WMScreen *scr);
 
@@ -702,103 +703,98 @@ WMPixmap* WMGetApplicationIconPixmap(WMScreen *app);
 /* If color==NULL it will use the default color for panels: ae/aa/ae */
 WMPixmap* WMCreateApplicationIconBlendedPixmap(WMScreen *scr, const RColor *color);
 
-void WMSetApplicationIconWindow(WMScreen *scr, Window window);
+void WMSetApplicationIconWindow(WMScreen *scr, xcb_window_t window);
 
 /* ---[ WINGs/wevent.c ]-------------------------------------------------- */
 
 WMEventHook* WMHookEventHandler(WMEventHook *handler);
 
-int WMHandleEvent(XEvent *event);
+int WMHandleEvent(xcb_generic_event_t *event);
 
-Bool WMScreenPending(WMScreen *scr);
+bool WMScreenPending(WMScreen *scr);
 
-void WMCreateEventHandler(WMView *view, unsigned long mask,
+void WMCreateEventHandler(WMView *view, uint32_t mask,
                           WMEventProc *eventProc, void *clientData);
 
-void WMDeleteEventHandler(WMView *view, unsigned long mask,
+void WMDeleteEventHandler(WMView *view, uint32_t mask,
                           WMEventProc *eventProc, void *clientData);
 
-int WMIsDoubleClick(XEvent *event);
+int WMIsDoubleClick(xcb_generic_event_t *event);
 
-/*int WMIsTripleClick(XEvent *event);*/
+/*int WMIsTripleClick(xcb_generic_event_t *event);*/
 
-void WMNextEvent(Display *dpy, XEvent *event);
+void WMNextEvent(xcb_connection_t *dpy, xcb_generic_event_t **event);
 
-void WMMaskEvent(Display *dpy, long mask, XEvent *event);
+void WMMaskEvent(xcb_connection_t *dpy, uint32_t mask, xcb_generic_event_t **event);
 
 void WMSetViewNextResponder(WMView *view, WMView *responder);
 
 /* ---[ WINGs/wxevq.c ]--------------------------------------------------- */
 
-/* internal pending-event queue ahead of dispatch.  Until the caller
- * flips ownership the queue is fed by XNextEvent so the WXEvqTake*
- * operations are exact stand-ins for the XCheck* family on the WINGs
- * queue.  WXEvqFlipToXcb() sets XCBOwnsEventQueue and the drain step
- * becomes xcb_poll_for_event() plus W_CookXcbEvent(), nothing else
- * changes.  Processes that want to keep protocol XIM (WPrefs) simply
- * never call the flip. */
+/* internal pending-event queue ahead of dispatch, fed by
+ * xcb_poll_for_event() on the connection the queue operation receives
+ * (the connection registers itself on the first drain, one queue per
+ * process), so the WXEvqTake* operations are exact stand-ins for the
+ * XCheck* family on the WINGs queue and every consumer sees
+ * xcb_generic_event_t.
+ *
+ * Ownership: events handed out by WXEvqNext / WXEvqTakeMask /
+ * WXEvqTakeTyped / WMNextEvent / WMMaskEvent are owned by the caller,
+ * free() them exactly once when done. WMHandleEvent() only borrows the
+ * buffer it is given: it never frees it and never substitutes a
+ * different buffer (motion/expose compression collapses matching
+ * queued successors inside WMNextEvent()/WMMaskEvent(), so the
+ * surviving event is what the fetcher handed out). Every
+ * event-fetching loop therefore frees below its dispatch call, exactly
+ * once. WXEvqPeek() lends a pointer the queue still
+ * owns, valid until the next queue mutation. WXEvqPutBack() takes
+ * ownership of what it is given. */
 
-/* The cooker fills the variant struct for core events and the xany
- * prefix for extension events so dispatch on type, serial and window
- * keeps working, then copies the 32 wire bytes into .wire so any
- * consumer can cast it to the matching xcb_*_event_t struct.  This
- * struct overlays XEvent (long pad[24]) and shares the XAnyEvent
- * prefix, .wire sits in the pad slack past every variant (the
- * largest, XCrossingEvent, is 104 bytes on LP64 well below the
- * sizeof(XEvent)-32 = 160 byte offset, asserted in wxecook.c) so the
- * cooked fields and the raw bytes coexist.  .wire is 8-byte aligned
- * on LP64 so the cast is alignment-safe for every xcb event struct. */
-typedef struct {
-    int type;
-    unsigned long serial;
-    Bool send_event;
-    Display *display;
-    Window window;
-    unsigned char wirepad_[sizeof(XEvent) - sizeof(XAnyEvent) - 32];
-    unsigned char wire[32];
-} WXWireEvent;
-
-typedef void WXEvqErrorHook(Display *dpy, unsigned int error_code,
+typedef void WXEvqErrorHook(xcb_connection_t *dpy, unsigned int error_code,
                             unsigned int major_opcode, unsigned int minor_opcode,
                             unsigned long resource_id, unsigned long serial);
 
-void WXEvqFlipToXcb(Display *dpy);
-
-Bool WXEvqXcbOwned(void);
+typedef void WXEvqDeadHook(xcb_connection_t *dpy);
 
 void WXEvqSetErrorHook(WXEvqErrorHook *hook);
 
-Bool WXEvqPending(Display *dpy);
+/* Hook invoked when the connection dies (xcb_connection_has_error()).
+ * Xlib's IO-error handler used to die here. */
+void WXEvqSetDeadHook(WXEvqDeadHook *hook);
 
-Bool WXEvqNext(Display *dpy, XEvent *event_ret);
+bool WXEvqPending(xcb_connection_t *dpy);
 
-Bool WXEvqPeek(Display *dpy, XEvent *event_ret);
+bool WXEvqNext(xcb_connection_t *dpy, xcb_generic_event_t **event_ret);
 
-void WXEvqPutBack(const XEvent *event);
+bool WXEvqPeek(xcb_connection_t *dpy, xcb_generic_event_t **event_ret);
 
-Bool WXEvqTakeMask(Display *dpy, long mask, Window window, XEvent *event_ret);
+void WXEvqPutBack(xcb_generic_event_t *event);
 
-Bool WXEvqTakeTyped(Display *dpy, int type, Window window, XEvent *event_ret);
+bool WXEvqTakeMask(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window,
+                   xcb_generic_event_t **event_ret);
 
-int WXEvqDropRange(Display *dpy, unsigned long begin, unsigned long end,
-                   long mask);
+bool WXEvqTakeTyped(xcb_connection_t *dpy, int type, xcb_window_t window,
+                    xcb_generic_event_t **event_ret);
+
+int WXEvqDropRange(xcb_connection_t *dpy, unsigned long begin, unsigned long end,
+                   uint32_t mask);
 
 void WXEvqClear(void);
 
 
-void WMRelayToNextResponder(WMView *view, XEvent *event);
+void WMRelayToNextResponder(WMView *view, xcb_generic_event_t *event);
 
 
 /* ---[ WINGs/selection.c ]----------------------------------------------- */
 
 
-Bool WMCreateSelectionHandler(WMView *view, Atom selection, Time timestamp,
+bool WMCreateSelectionHandler(WMView *view, xcb_atom_t selection, xcb_timestamp_t timestamp,
                               WMSelectionProcs *procs, void *cdata);
 
-void WMDeleteSelectionHandler(WMView *view, Atom selection, Time timestamp);
+void WMDeleteSelectionHandler(WMView *view, xcb_atom_t selection, xcb_timestamp_t timestamp);
 
-Bool WMRequestSelection(WMView *view, Atom selection, Atom target,
-                        Time timestamp, WMSelectionCallback *callback,
+bool WMRequestSelection(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+                        xcb_timestamp_t timestamp, WMSelectionCallback *callback,
                         void *cdata);
 
 
@@ -823,9 +819,9 @@ void WMReleaseViewDragImage(WMView* view);
 
 void WMSetViewDragSourceProcs(WMView *view, WMDragSourceProcs *procs);
 
-Bool WMIsDraggingFromView(WMView *view);
+bool WMIsDraggingFromView(WMView *view);
 
-void WMDragImageFromView(WMView *view, XEvent *event);
+void WMDragImageFromView(WMView *view, xcb_generic_event_t *event);
 
 /* Create a drag handler, associating drag event masks with dragEventProc */
 void WMCreateDragHandler(WMView *view, WMEventProc *dragEventProc, void *clientData);
@@ -847,7 +843,7 @@ void WMSetViewDragDestinationProcs(WMView *view, WMDragDestinationProcs *procs);
 
 /* ---[ WINGs/wfont.c ]--------------------------------------------------- */
 
-Bool WMIsAntialiasingEnabled(WMScreen *scrPtr);
+bool WMIsAntialiasingEnabled(WMScreen *scrPtr);
 
 WMFont* WMCreateFont(WMScreen *scrPtr, const char *fontName);
 
@@ -875,10 +871,10 @@ WMFont* WMSystemFontOfSize(WMScreen *scrPtr, int size);
 
 WMFont* WMBoldSystemFontOfSize(WMScreen *scrPtr, int size);
 
-void WMDrawString(WMScreen *scr, Drawable d, WMColor *color, WMFont *font,
+void WMDrawString(WMScreen *scr, xcb_drawable_t d, WMColor *color, WMFont *font,
                   int x, int y, const char *text, int length);
 
-void WMDrawImageString(WMScreen *scr, Drawable d, WMColor *color,
+void WMDrawImageString(WMScreen *scr, xcb_drawable_t d, WMColor *color,
                        WMColor *background, WMFont *font, int x, int y,
                        const char *text, int length);
 
@@ -888,24 +884,24 @@ int WMWidthOfString(WMFont *font, const char *text, int length);
  * on d never needs a synchronous geometry read. Called from the
  * window create and resize chokepoints, callers that create Pixmaps
  * ad hoc may call it too. */
-void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d,
+void WMScreenNoteDrawableSize(WMScreen *scr, xcb_drawable_t d,
                               unsigned width, unsigned height);
 
 /* Same, but width/height are logical units and the cache records the
  * derived device size plus a scaled flag so WCairoBeginForDrawable()
  * on d applies cairo_scale(uiScale). */
-void WMScreenNoteDrawableSizeScaled(WMScreen *scr, Drawable d,
+void WMScreenNoteDrawableSizeScaled(WMScreen *scr, xcb_drawable_t d,
                                     unsigned width, unsigned height);
 
 /* Create a screen-depth server pixmap at logical width x height scaled
  * to device size and record it as scaled, so WCairoBeginForDrawable()
  * on it works in logical units. Pair with WMScreenAbandonDrawable() +
- * XFreePixmap(). */
-Pixmap W_CreateScaledPixmap(WMScreen *scr, unsigned width, unsigned height);
+ * wXFreePixmap(). */
+xcb_pixmap_t W_CreateScaledPixmap(WMScreen *scr, unsigned int width, unsigned int height);
 
 /* Drop any per-screen render state pointing at d before the caller
  * destroys d, so the next paint does not reuse a stale cache entry. */
-void WMScreenAbandonDrawable(WMScreen *scr, Drawable d);
+void WMScreenAbandonDrawable(WMScreen *scr, xcb_drawable_t d);
 
 /* Detach every cached WMFont for this screen so the next WMCreateFont re-opens
  * under the current antialiasedText flag. Holders keep valid references. */
@@ -915,7 +911,7 @@ void WMFlushFontCache(WMScreen *scr);
 void WMReloadConfiguration(void);
 
 /* Current antialiasedText flag (re-read by WMReloadConfiguration). */
-Bool WMGetAntialiasedText(void);
+bool WMGetAntialiasedText(void);
 
 /* ---[ WINGs/wpixmap.c ]------------------------------------------------- */
 
@@ -924,10 +920,10 @@ WMPixmap* WMRetainPixmap(WMPixmap *pixmap);
 void WMReleasePixmap(WMPixmap *pixmap);
 
 WMPixmap* WMCreatePixmap(WMScreen *scrPtr, int width, int height, int depth,
-                         Bool masked);
+                         bool masked);
 
-WMPixmap* WMCreatePixmapFromXPixmaps(WMScreen *scrPtr, Pixmap pixmap,
-                                     Pixmap mask, int width, int height,
+WMPixmap* WMCreatePixmapFromXPixmaps(WMScreen *scrPtr, xcb_pixmap_t pixmap,
+                                     xcb_pixmap_t mask, int width, int height,
                                      int depth);
 
 WMPixmap* WMCreatePixmapFromRImage(WMScreen *scrPtr, RImage *image,
@@ -950,11 +946,11 @@ WMPixmap* WMCreateScaledBlendedPixmapFromFile(WMScreen *scrPtr, const char *file
                                               unsigned int width,
                                               unsigned int height);
 
-void WMDrawPixmap(WMPixmap *pixmap, Drawable d, int x, int y);
+void WMDrawPixmap(WMPixmap *pixmap, xcb_drawable_t d, int x, int y);
 
-Pixmap WMGetPixmapXID(WMPixmap *pixmap);
+xcb_pixmap_t WMGetPixmapXID(WMPixmap *pixmap);
 
-Pixmap WMGetPixmapMaskXID(WMPixmap *pixmap);
+xcb_pixmap_t WMGetPixmapMaskXID(WMPixmap *pixmap);
 
 WMPixmap* WMGetSystemPixmap(WMScreen *scr, int image);
 
@@ -971,7 +967,7 @@ WMColor* WMWhiteColor(WMScreen *scr);
 
 WMPixel WMColorPixel(WMColor *color);
 
-void WMPaintColorSwatch(WMColor *color, Drawable d, int x, int y,
+void WMPaintColorSwatch(WMColor *color, xcb_drawable_t d, int x, int y,
                         unsigned int width, unsigned int height);
 
 void WMReleaseColor(WMColor *color);
@@ -980,13 +976,13 @@ WMColor* WMRetainColor(WMColor *color);
 
 WMColor* WMCreateRGBColor(WMScreen *scr, unsigned short red,
                           unsigned short green, unsigned short blue,
-                          Bool exact);
+                          bool exact);
 
 WMColor* WMCreateRGBAColor(WMScreen *scr, unsigned short red,
                            unsigned short green, unsigned short blue,
-                           unsigned short alpha, Bool exact);
+                           unsigned short alpha, bool exact);
 
-WMColor* WMCreateNamedColor(WMScreen *scr, const char *name, Bool exact);
+WMColor* WMCreateNamedColor(WMScreen *scr, const char *name, bool exact);
 
 RColor WMGetRColorFromColor(WMColor *color);
 
@@ -1014,7 +1010,7 @@ void WMUnmapWidget(WMWidget *w);
 
 void WMMapWidget(WMWidget *w);
 
-Bool WMWidgetIsMapped(WMWidget *w);
+bool WMWidgetIsMapped(WMWidget *w);
 
 void WMRaiseWidget(WMWidget *w);
 
@@ -1050,15 +1046,15 @@ unsigned int WMWidgetWidth(WMWidget *w);
 
 unsigned int WMWidgetHeight(WMWidget *w);
 
-Window WMWidgetXID(WMWidget *w);
+xcb_window_t WMWidgetXID(WMWidget *w);
 
 void WMRedisplayWidget(WMWidget *w);
 
 /* ---[ WINGs/wview.c ]--------------------------------------------------- */
 
-Window WMViewXID(WMView *view);
+xcb_window_t WMViewXID(WMView *view);
 
-void WMSetViewNotifySizeChanges(WMView *view, Bool flag);
+void WMSetViewNotifySizeChanges(WMView *view, bool flag);
 
 void WMSetViewExpandsToParent(WMView *view, int topOffs, int leftOffs,
                               int rightOffs, int bottomOffs);
@@ -1090,7 +1086,7 @@ void WMSetBalloonTextColor(WMScreen *scr, WMColor *color);
 
 void WMSetBalloonDelay(WMScreen *scr, int delay);
 
-void WMSetBalloonEnabled(WMScreen *scr, Bool flag);
+void WMSetBalloonEnabled(WMScreen *scr, bool flag);
 
 
 /* ---[ WINGs/wwindow.c ]------------------------------------------------- */
@@ -1133,7 +1129,7 @@ void WMSetWindowResizeIncrements(WMWindow *win, unsigned wIncr, unsigned hIncr);
 
 void WMSetWindowLevel(WMWindow *win, int level);
 
-void WMSetWindowDocumentEdited(WMWindow *win, Bool flag);
+void WMSetWindowDocumentEdited(WMWindow *win, bool flag);
 
 void WMCloseWindow(WMWindow *win);
 
@@ -1188,11 +1184,11 @@ int WMGetButtonSelected(WMButton *bPtr);
 
 void WMSetButtonBordered(WMButton *bPtr, int isBordered);
 
-void WMSetButtonEnabled(WMButton *bPtr, Bool flag);
+void WMSetButtonEnabled(WMButton *bPtr, bool flag);
 
 int WMGetButtonEnabled(WMButton *bPtr);
 
-void WMSetButtonImageDimsWhenDisabled(WMButton *bPtr, Bool flag);
+void WMSetButtonImageDimsWhenDisabled(WMButton *bPtr, bool flag);
 
 void WMSetButtonTag(WMButton *bPtr, int tag);
 
@@ -1200,7 +1196,7 @@ void WMGroupButtons(WMButton *bPtr, WMButton *newMember);
 
 void WMPerformButtonClick(WMButton *bPtr);
 
-void WMSetButtonContinuous(WMButton *bPtr, Bool flag);
+void WMSetButtonContinuous(WMButton *bPtr, bool flag);
 
 void WMSetButtonPeriodicDelay(WMButton *bPtr, float delay, float interval);
 
@@ -1208,7 +1204,7 @@ void WMSetButtonPeriodicDelay(WMButton *bPtr, float delay, float interval);
 
 WMLabel* WMCreateLabel(WMWidget *parent);
 
-void WMSetLabelWraps(WMLabel *lPtr, Bool flag);
+void WMSetLabelWraps(WMLabel *lPtr, bool flag);
 
 void WMSetLabelImage(WMLabel *lPtr, WMPixmap *image);
 
@@ -1233,9 +1229,9 @@ void WMSetLabelTextColor(WMLabel *lPtr, WMColor *color);
 /*! In markup mode the label's caption is parsed as Pango markup
  *  (<b>, <i>, <span foreground=...>, ...). Any non-literal string must be
  *  escaped with g_markup_escape_text() before being set. */
-void WMSetLabelUseMarkup(WMLabel *lPtr, Bool flag);
+void WMSetLabelUseMarkup(WMLabel *lPtr, bool flag);
 
-Bool WMGetLabelUseMarkup(WMLabel *lPtr);
+bool WMGetLabelUseMarkup(WMLabel *lPtr);
 
 /*! Equivalent to WMSetLabelUseMarkup(lPtr, True) followed by
  *  WMSetLabelText(lPtr, markup). WMGetLabelText() still returns the raw
@@ -1277,15 +1273,15 @@ void WMSetTextFieldFont(WMTextField *tPtr, WMFont *font);
 
 WMFont* WMGetTextFieldFont(WMTextField *tPtr);
 
-void WMSetTextFieldBordered(WMTextField *tPtr, Bool bordered);
+void WMSetTextFieldBordered(WMTextField *tPtr, bool bordered);
 
-void WMSetTextFieldBeveled(WMTextField *tPtr, Bool flag);
+void WMSetTextFieldBeveled(WMTextField *tPtr, bool flag);
 
-Bool WMGetTextFieldEditable(WMTextField *tPtr);
+bool WMGetTextFieldEditable(WMTextField *tPtr);
 
-void WMSetTextFieldEditable(WMTextField *tPtr, Bool flag);
+void WMSetTextFieldEditable(WMTextField *tPtr, bool flag);
 
-void WMSetTextFieldSecure(WMTextField *tPtr, Bool flag);
+void WMSetTextFieldSecure(WMTextField *tPtr, bool flag);
 
 void WMSelectTextFieldRange(WMTextField *tPtr, WMRange range);
 
@@ -1329,9 +1325,9 @@ extern const char *WMScrollerDidScrollNotification;
 
 WMList* WMCreateList(WMWidget *parent);
 
-void WMSetListAllowMultipleSelection(WMList *lPtr, Bool flag);
+void WMSetListAllowMultipleSelection(WMList *lPtr, bool flag);
 
-void WMSetListAllowEmptySelection(WMList *lPtr, Bool flag);
+void WMSetListAllowEmptySelection(WMList *lPtr, bool flag);
 
 #define WMAddListItem(lPtr, text) WMInsertListItem((lPtr), -1, (text))
 
@@ -1397,9 +1393,9 @@ void WMSetListBottomPosition(WMList *lPtr, int row);
 
 int WMGetListPosition(WMList *lPtr);
 
-Bool WMListAllowsMultipleSelection(WMList *lPtr);
+bool WMListAllowsMultipleSelection(WMList *lPtr);
 
-Bool WMListAllowsEmptySelection(WMList *lPtr);
+bool WMListAllowsEmptySelection(WMList *lPtr);
 
 
 extern const char *WMListDidScrollNotification;
@@ -1409,13 +1405,13 @@ extern const char *WMListSelectionDidChangeNotification;
 
 WMBrowser* WMCreateBrowser(WMWidget *parent);
 
-void WMSetBrowserAllowMultipleSelection(WMBrowser *bPtr, Bool flag);
+void WMSetBrowserAllowMultipleSelection(WMBrowser *bPtr, bool flag);
 
-void WMSetBrowserAllowEmptySelection(WMBrowser *bPtr, Bool flag);
+void WMSetBrowserAllowEmptySelection(WMBrowser *bPtr, bool flag);
 
 void WMSetBrowserPathSeparator(WMBrowser *bPtr, const char *separator);
 
-void WMSetBrowserTitled(WMBrowser *bPtr, Bool flag);
+void WMSetBrowserTitled(WMBrowser *bPtr, bool flag);
 
 void WMLoadBrowserColumnZero(WMBrowser *bPtr);
 
@@ -1427,7 +1423,7 @@ void WMSetBrowserMaxVisibleColumns(WMBrowser *bPtr, int columns);
 
 void WMSetBrowserColumnTitle(WMBrowser *bPtr, int column, const char *title);
 
-WMListItem* WMInsertBrowserItem(WMBrowser *bPtr, int column, int row, const char *text, Bool isBranch);
+WMListItem* WMInsertBrowserItem(WMBrowser *bPtr, int column, int row, const char *text, bool isBranch);
 
 void WMSortBrowserColumn(WMBrowser *bPtr, int column);
 
@@ -1467,24 +1463,24 @@ WMList* WMGetBrowserListInColumn(WMBrowser *bPtr, int column);
 
 void WMSetBrowserDelegate(WMBrowser *bPtr, WMBrowserDelegate *delegate);
 
-Bool WMBrowserAllowsMultipleSelection(WMBrowser *bPtr);
+bool WMBrowserAllowsMultipleSelection(WMBrowser *bPtr);
 
-Bool WMBrowserAllowsEmptySelection(WMBrowser *bPtr);
+bool WMBrowserAllowsEmptySelection(WMBrowser *bPtr);
 
 void WMSetBrowserHasScroller(WMBrowser *bPtr, int hasScroller);
 
 /* ---[ WINGs/wmenuitem.c ]----------------------------------------------- */
 
 
-Bool WMMenuItemIsSeparator(WMMenuItem *item);
+bool WMMenuItemIsSeparator(WMMenuItem *item);
 
 WMMenuItem* WMCreateMenuItem(void);
 
 void WMDestroyMenuItem(WMMenuItem *item);
 
-Bool WMGetMenuItemEnabled(WMMenuItem *item);
+bool WMGetMenuItemEnabled(WMMenuItem *item);
 
-void WMSetMenuItemEnabled(WMMenuItem *item, Bool flag);
+void WMSetMenuItemEnabled(WMMenuItem *item, bool flag);
 
 char* WMGetMenuItemShortcut(WMMenuItem *item);
 
@@ -1543,9 +1539,9 @@ WMPopUpButton* WMCreatePopUpButton(WMWidget *parent);
 void WMSetPopUpButtonAction(WMPopUpButton *sPtr, WMAction *action,
                             void *clientData);
 
-void WMSetPopUpButtonPullsDown(WMPopUpButton *bPtr, Bool flag);
+void WMSetPopUpButtonPullsDown(WMPopUpButton *bPtr, bool flag);
 
-void WMSetPopUpButtonMenuAutoWidth(WMPopUpButton *bPtr, Bool flag);
+void WMSetPopUpButtonMenuAutoWidth(WMPopUpButton *bPtr, bool flag);
 
 WMMenuItem* WMAddPopUpButtonItem(WMPopUpButton *bPtr, const char *title);
 
@@ -1554,9 +1550,9 @@ WMMenuItem* WMInsertPopUpButtonItem(WMPopUpButton *bPtr, int index,
 
 void WMRemovePopUpButtonItem(WMPopUpButton *bPtr, int index);
 
-void WMSetPopUpButtonItemEnabled(WMPopUpButton *bPtr, int index, Bool flag);
+void WMSetPopUpButtonItemEnabled(WMPopUpButton *bPtr, int index, bool flag);
 
-Bool WMGetPopUpButtonItemEnabled(WMPopUpButton *bPtr, int index);
+bool WMGetPopUpButtonItemEnabled(WMPopUpButton *bPtr, int index);
 
 void WMSetPopUpButtonSelectedItem(WMPopUpButton *bPtr, int index);
 
@@ -1571,9 +1567,9 @@ WMMenuItem* WMGetPopUpButtonMenuItem(WMPopUpButton *bPtr, int index);
 
 int WMGetPopUpButtonNumberOfItems(WMPopUpButton *bPtr);
 
-void WMSetPopUpButtonEnabled(WMPopUpButton *bPtr, Bool flag);
+void WMSetPopUpButtonEnabled(WMPopUpButton *bPtr, bool flag);
 
-Bool WMGetPopUpButtonEnabled(WMPopUpButton *bPtr);
+bool WMGetPopUpButtonEnabled(WMPopUpButton *bPtr);
 
 int WMSelectPopUpButtonPreviousItem(WMPopUpButton *bPtr);
 
@@ -1594,9 +1590,9 @@ void WMRemoveMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr, int inde
 void WMRemoveAllMultiSelectPopUpButtonItems(WMMultiSelectPopUpButton *bPtr);
 
 void WMSetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr,
-					    int index, Bool flag);
+					    int index, bool flag);
 
-Bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index);
+bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index);
 
 int WMGetMultiSelectPopUpButtonNumberOfItems(WMMultiSelectPopUpButton *bPtr);
 
@@ -1606,9 +1602,9 @@ char *WMGetMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr, int index)
 WMMenuItem *WMGetMultiSelectPopUpButtonMenuItem(WMMultiSelectPopUpButton *bPtr,
 						int index);
 
-void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, Bool flag);
+void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, bool flag);
 
-Bool WMGetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr);
+bool WMGetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr);
 
 void WMSetMultiSelectPopUpButtonCaption(WMMultiSelectPopUpButton *bPtr,
 					const char *text);
@@ -1665,7 +1661,7 @@ void WMSetColorWellColor(WMColorWell *cPtr, WMColor *color);
 
 WMColor* WMGetColorWellColor(WMColorWell *cPtr);
 
-void WSetColorWellBordered(WMColorWell *cPtr, Bool flag);
+void WSetColorWellBordered(WMColorWell *cPtr, bool flag);
 
 
 extern const char *WMColorWellDidChangeNotification;
@@ -1678,9 +1674,9 @@ WMScrollView* WMCreateScrollView(WMWidget *parent);
 void WMResizeScrollViewContent(WMScrollView *sPtr, unsigned int width,
                                unsigned int height);
 
-void WMSetScrollViewHasHorizontalScroller(WMScrollView *sPtr, Bool flag);
+void WMSetScrollViewHasHorizontalScroller(WMScrollView *sPtr, bool flag);
 
-void WMSetScrollViewHasVerticalScroller(WMScrollView *sPtr, Bool flag);
+void WMSetScrollViewHasVerticalScroller(WMScrollView *sPtr, bool flag);
 
 void WMSetScrollViewContentView(WMScrollView *sPtr, WMView *view);
 
@@ -1714,7 +1710,7 @@ void WMSetSliderMaxValue(WMSlider *slider, int value);
 
 void WMSetSliderValue(WMSlider *slider, int value);
 
-void WMSetSliderContinuous(WMSlider *slider, Bool flag);
+void WMSetSliderContinuous(WMSlider *slider, bool flag);
 
 void WMSetSliderAction(WMSlider *slider, WMAction *action, void *data);
 
@@ -1722,18 +1718,18 @@ void WMSetSliderKnobThickness(WMSlider *sPtr, int thickness);
 
 void WMSetSliderImage(WMSlider *sPtr, WMPixmap *pixmap);
 
-void WMSetSliderEnabled(WMSlider *sPtr, Bool flag);
+void WMSetSliderEnabled(WMSlider *sPtr, bool flag);
 
-Bool WMGetSliderEnabled(WMSlider *sPtr);
+bool WMGetSliderEnabled(WMSlider *sPtr);
 
 /* ---[ WINGs/wsplitview.c ]---------------------------------------------- */
 
 
 WMSplitView* WMCreateSplitView(WMWidget *parent);
 
-Bool WMGetSplitViewVertical(WMSplitView *sPtr);
+bool WMGetSplitViewVertical(WMSplitView *sPtr);
 
-void WMSetSplitViewVertical(WMSplitView *sPtr, Bool flag);
+void WMSetSplitViewVertical(WMSplitView *sPtr, bool flag);
 
 int WMGetSplitViewSubviewsCount(WMSplitView *sPtr); /* ??? remove ??? */
 
@@ -1767,7 +1763,7 @@ WMRulerMargins* WMGetRulerMargins(WMRuler *rPtr);
 
 void WMSetRulerMargins(WMRuler *rPtr, WMRulerMargins margins);
 
-Bool WMIsMarginEqualToMargin(WMRulerMargins *aMargin, WMRulerMargins *anotherMargin);
+bool WMIsMarginEqualToMargin(WMRulerMargins *aMargin, WMRulerMargins *anotherMargin);
 
 int WMGetGrabbedRulerMargin(WMRuler *rPtr);
 
@@ -1798,33 +1794,33 @@ void WMFreezeText(WMText *tPtr);
 
 void WMThawText(WMText *tPtr);
 
-int WMScrollText(WMText *tPtr, int amount);
+bool WMScrollText(WMText *tPtr, int amount);
 
-int WMPageText(WMText *tPtr, Bool direction);
+bool WMPageText(WMText *tPtr, bool direction);
 
-void WMSetTextHasHorizontalScroller(WMText *tPtr, Bool shouldhave);
+void WMSetTextHasHorizontalScroller(WMText *tPtr, bool shouldhave);
 
-void WMSetTextHasVerticalScroller(WMText *tPtr, Bool shouldhave);
+void WMSetTextHasVerticalScroller(WMText *tPtr, bool shouldhave);
 
-void WMSetTextHasRuler(WMText *tPtr, Bool shouldhave);
+void WMSetTextHasRuler(WMText *tPtr, bool shouldhave);
 
-void WMShowTextRuler(WMText *tPtr, Bool show);
+void WMShowTextRuler(WMText *tPtr, bool show);
 
-int WMGetTextRulerShown(WMText *tPtr);
+bool WMGetTextRulerShown(WMText *tPtr);
 
-void WMSetTextEditable(WMText *tPtr, Bool editable);
+void WMSetTextEditable(WMText *tPtr, bool editable);
 
 int WMGetTextEditable(WMText *tPtr);
 
-void WMSetTextUsesMonoFont(WMText *tPtr, Bool mono);
+void WMSetTextUsesMonoFont(WMText *tPtr, bool mono);
 
-int WMGetTextUsesMonoFont(WMText *tPtr);
+bool WMGetTextUsesMonoFont(WMText *tPtr);
 
-void WMSetTextIndentNewLines(WMText *tPtr, Bool indent);
+void WMSetTextIndentNewLines(WMText *tPtr, bool indent);
 
-void WMSetTextIgnoresNewline(WMText *tPtr, Bool ignore);
+void WMSetTextIgnoresNewline(WMText *tPtr, bool ignore);
 
-int WMGetTextIgnoresNewline(WMText *tPtr);
+bool WMGetTextIgnoresNewline(WMText *tPtr);
 
 void WMSetTextDefaultFont(WMText *tPtr, WMFont *font);
 
@@ -1875,11 +1871,11 @@ int WMGetTextSelectionUnderlined(WMText *tPtr);
 
 void WMSetTextAlignment(WMText *tPtr, WMAlignment alignment);
 
-Bool WMFindInTextStream(WMText *tPtr, const char *needle, Bool direction,
-                        Bool caseSensitive);
+bool WMFindInTextStream(WMText *tPtr, const char *needle, bool direction,
+                        bool caseSensitive);
 
 /* Warning: replacement can be modified by the function */
-Bool WMReplaceTextSelection(WMText *tPtr, char *replacement);
+bool WMReplaceTextSelection(WMText *tPtr, char *replacement);
 
 
 /* parser related stuff... use only if implementing a new parser */
@@ -1927,7 +1923,7 @@ WMTabView* WMCreateTabView(WMWidget *parent);
 
 void WMSetTabViewType(WMTabView *tPtr, WMTabViewType type);
 
-void WMSetTabViewEnabled(WMTabView *tPtr, Bool flag);
+void WMSetTabViewEnabled(WMTabView *tPtr, bool flag);
 
 void WMSetTabViewFont(WMTabView *tPtr, WMFont *font);
 
@@ -1961,7 +1957,7 @@ void WMSetTabViewDelegate(WMTabView *tPtr, WMTabViewDelegate *delegate);
 
 WMTabViewItem* WMCreateTabViewItemWithIdentifier(int identifier);
 
-void WMSetTabViewItemEnabled(WMTabViewItem *tPtr, Bool flag);
+void WMSetTabViewItemEnabled(WMTabViewItem *tPtr, bool flag);
 
 int WMGetTabViewItemIdentifier(WMTabViewItem *item);
 
@@ -1982,15 +1978,15 @@ WMBox* WMCreateBox(WMWidget *parent);
 
 void WMSetBoxBorderWidth(WMBox *box, unsigned width);
 
-void WMAddBoxSubview(WMBox *bPtr, WMView *view, Bool expand, Bool fill,
+void WMAddBoxSubview(WMBox *bPtr, WMView *view, bool expand, bool fill,
                      int minSize, int maxSize, int space);
 
-void WMAddBoxSubviewAtEnd(WMBox *bPtr, WMView *view, Bool expand, Bool fill,
+void WMAddBoxSubviewAtEnd(WMBox *bPtr, WMView *view, bool expand, bool fill,
                           int minSize, int maxSize, int space);
 
 void WMRemoveBoxSubview(WMBox *bPtr, WMView *view);
 
-void WMSetBoxHorizontal(WMBox *box, Bool flag);
+void WMSetBoxHorizontal(WMBox *box, bool flag);
 
 /* ---[ WINGs/wpanel.c ]-------------------------------------------------- */
 
@@ -2035,11 +2031,11 @@ WMOpenPanel* WMGetOpenPanel(WMScreen *scrPtr);
 
 WMSavePanel* WMGetSavePanel(WMScreen *scrPtr);
 
-void WMSetFilePanelCanChooseDirectories(WMFilePanel *panel, Bool flag);
+void WMSetFilePanelCanChooseDirectories(WMFilePanel *panel, bool flag);
 
-void WMSetFilePanelCanChooseFiles(WMFilePanel *panel, Bool flag);
+void WMSetFilePanelCanChooseFiles(WMFilePanel *panel, bool flag);
 
-void WMSetFilePanelAutoCompletion(WMFilePanel *panel, Bool flag);
+void WMSetFilePanelAutoCompletion(WMFilePanel *panel, bool flag);
 
 void WMSetFilePanelDirectory(WMFilePanel *panel, const char *path);
 

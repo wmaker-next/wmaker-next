@@ -2,7 +2,7 @@
  *
  *  WPrefs - Window Maker Preferences Program
  *
- *  Copyright (c) 2014-2023 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *  Copyright (c) 1998-2003 Alfredo K. Kojima
  *  Copyright (c) 2009-2026 Window Maker Team
  *
@@ -204,9 +204,9 @@ typedef struct _Panel {
 
 /* Resolve the {unchecked, checked} string pair for an OPTION_WMAKER_ALT
  * key from the schema enum table, with the schema default as the
- * unchecked value.  Works only for exactly-two-value enums, which is
+ * unchecked value. Works only for exactly-two-value enums, which is
  * all this row class is meant for. */
-static Bool altPairForKey(const char *key, const char *pair[2])
+static bool altPairForKey(const char *key, const char *pair[2])
 {
 	const WConfigEnum *e = wConfigSchemaEnumTable(key);
 	const char *def = wConfigSchemaDefault(key);
@@ -214,7 +214,7 @@ static Bool altPairForKey(const char *key, const char *pair[2])
 
 	pair[0] = pair[1] = NULL;
 	if (!e || !def)
-		return False;
+		return false;
 
 	for (; e->string; e++) {
 		if (e->is_alias)
@@ -249,7 +249,7 @@ static void changeIntTextfield(void *data, int delta)
 	WMSetTextFieldText(textfield, buffer);
 }
 
-static void scrollViewWheelHandler(XEvent *event, void *data)
+static void scrollViewWheelHandler(xcb_generic_event_t *event, void *data)
 {
 	_Panel *panel = (_Panel *) data;
 	int amount, viewH, contentH, newY, maxY;
@@ -259,20 +259,20 @@ static void scrollViewWheelHandler(XEvent *event, void *data)
 	if (!panel || !panel->sv || !panel->frame)
 		return;
 
-	if (event->type != ButtonPress)
+	if ((event->response_type & 0x7f) != XCB_BUTTON_PRESS)
 		return;
 
-	if (event->xbutton.button != WINGsConfiguration.mouseWheelUp &&
-		event->xbutton.button != WINGsConfiguration.mouseWheelDown)
+	if (((xcb_button_press_event_t *)event)->detail != WINGsConfiguration.mouseWheelUp &&
+		((xcb_button_press_event_t *)event)->detail != WINGsConfiguration.mouseWheelDown)
 		return;
 
 	rect = WMGetScrollViewVisibleRect(panel->sv);
 	viewH = rect.size.height;
 	contentH = WMWidgetHeight(panel->frame);
 
-	if (event->xbutton.state & ControlMask) {
+	if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 		amount = viewH; /* page */
-	} else if (event->xbutton.state & ShiftMask) {
+	} else if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 		amount = 1; /* line */
 	} else {
 		amount = viewH / 3; /* default */
@@ -280,7 +280,7 @@ static void scrollViewWheelHandler(XEvent *event, void *data)
 			amount = 1;
 	}
 
-	if (event->xbutton.button == WINGsConfiguration.mouseWheelUp)
+	if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp)
 		amount = -amount;
 
 	newY = rect.pos.y + amount;
@@ -302,8 +302,8 @@ static void scrollViewRealizeObserver(void *self, WMNotification *not)
 {
 	(void) not;
 	_Panel *panel = (_Panel *) self;
-	Display *dpy = NULL;
-	Window viewport_win = 0;
+	xcb_connection_t *dpy = NULL;
+	xcb_window_t viewport_win = 0;
 	WMView *frameView;
 
 	if (!panel || !panel->frame)
@@ -328,17 +328,17 @@ static void scrollViewRealizeObserver(void *self, WMNotification *not)
 	if (!dpy || viewport_win == 0)
 		return;
 
-	XGrabButton(dpy, WINGsConfiguration.mouseWheelUp, AnyModifier, viewport_win,
-				True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, WINGsConfiguration.mouseWheelDown, AnyModifier, viewport_win,
-				True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+	wXGrabButton(dpy, WINGsConfiguration.mouseWheelUp, XCB_MOD_MASK_ANY, viewport_win,
+				true, XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
+	wXGrabButton(dpy, WINGsConfiguration.mouseWheelDown, XCB_MOD_MASK_ANY, viewport_win,
+				true, XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
 }
 
 static void scrollViewPrepareForClose(Panel *p)
 {
 	_Panel *panel = (_Panel *) p;
-	Display *dpy = NULL;
-	Window viewport_win = 0;
+	xcb_connection_t *dpy = NULL;
+	xcb_window_t viewport_win = 0;
 
 	if (!panel)
 		return;
@@ -360,8 +360,8 @@ static void scrollViewPrepareForClose(Panel *p)
 	}
 
 	if (dpy && viewport_win != 0) {
-		XUngrabButton(dpy, WINGsConfiguration.mouseWheelUp, AnyModifier, viewport_win);
-		XUngrabButton(dpy, WINGsConfiguration.mouseWheelDown, AnyModifier, viewport_win);
+		wXUngrabButton(dpy, WINGsConfiguration.mouseWheelUp, XCB_MOD_MASK_ANY, viewport_win);
+		wXUngrabButton(dpy, WINGsConfiguration.mouseWheelDown, XCB_MOD_MASK_ANY, viewport_win);
 	}
 
 	WMRemoveNotificationObserver(panel);
@@ -436,8 +436,8 @@ static void createPanel(Panel *p)
 	WMResizeWidget(sv, 500, 215);
 	WMMoveWidget(sv, 12, 10);
 	WMSetScrollViewRelief(sv, WRSunken);
-	WMSetScrollViewHasVerticalScroller(sv, True);
-	WMSetScrollViewHasHorizontalScroller(sv, False);
+	WMSetScrollViewHasVerticalScroller(sv, true);
+	WMSetScrollViewHasHorizontalScroller(sv, false);
 
 	f = WMCreateFrame(panel->box);
 	WMResizeWidget(f, 495, wlengthof(expert_options) * 25 + 8);
@@ -482,7 +482,7 @@ static void createPanel(Panel *p)
 			break;
 
 		case OPTION_WMGLOBAL_ON:
-			state = GetWMGlobalBoolForKey(expert_options[i].op_name, True);
+			state = GetWMGlobalBoolForKey(expert_options[i].op_name, true);
 			break;
 
 		case OPTION_WMAKER_INT:
@@ -537,7 +537,7 @@ static void createPanel(Panel *p)
 			wwarning("expert_options[%d].class = %d, this should not happen\n",
 				i, expert_options[i].class);
 #endif
-			state = False;
+			state = false;
 			break;
 		}
 		if (expert_options[i].class != OPTION_WMAKER_INT)
@@ -549,7 +549,7 @@ static void createPanel(Panel *p)
 	/* keep references for the wheel handler and register it */
 	panel->sv = sv;
 	panel->frame = f;
-	WMCreateEventHandler(WMWidgetView(sv), ButtonPressMask, scrollViewWheelHandler, panel);
+	WMCreateEventHandler(WMWidgetView(sv), XCB_EVENT_MASK_BUTTON_PRESS, scrollViewWheelHandler, panel);
 	WMAddNotificationObserver(scrollViewRealizeObserver, panel, WMViewRealizedNotification, WMWidgetView(sv));
 	WMRealizeWidget(panel->box);
 }

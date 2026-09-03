@@ -23,8 +23,6 @@
 #include <cairo.h>
 #include <WINGs/WINGsP.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -58,9 +56,9 @@
 #define CACHE_ICON_PATH "/CachedPixmaps"
 #define ICON_BORDER 3
 
-static void miniwindowExpose(WObjDescriptor *desc, XEvent *event);
-static void miniwindowMouseDown(WObjDescriptor *desc, XEvent *event);
-static void miniwindowDblClick(WObjDescriptor *desc, XEvent *event);
+static void miniwindowExpose(WObjDescriptor *desc, xcb_generic_event_t *event);
+static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event);
+static void miniwindowDblClick(WObjDescriptor *desc, xcb_generic_event_t *event);
 
 static WIcon *icon_create_core(WScreen *scr, int coord_x, int coord_y);
 
@@ -90,7 +88,7 @@ static void appearanceObserver(void *self, WMNotification *notif)
 
 	/* so that the appicon expose handlers will paint the appicon specific
 	 * stuff */
-	XClearArea(dpy, icon->core->window, 0, 0, icon->core->width, icon->core->height, True);
+	xcb_clear_area(xconn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
 }
 
 static void tileObserver(void *self, WMNotification *notif)
@@ -102,14 +100,14 @@ static void tileObserver(void *self, WMNotification *notif)
 
 	update_icon_pixmap(icon);
 
-	XClearArea(dpy, icon->core->window, 0, 0, 1, 1, True);
+	xcb_clear_area(xconn, true, icon->core->window, 0, 0, 1, 1);
 }
 
 /************************************/
 
-static int getSize(Drawable d, unsigned int *w, unsigned int *h, unsigned int *dep)
+static int getSize(xcb_drawable_t d, unsigned int *w, unsigned int *h, unsigned int *dep)
 {
-	if (d == None) {
+	if (d == XCB_NONE) {
 		if (w)
 			*w = 0;
 		if (h)
@@ -119,11 +117,17 @@ static int getSize(Drawable d, unsigned int *w, unsigned int *h, unsigned int *d
 		return 0;
 	}
 
-	Window rjunk;
-	int xjunk, yjunk;
-	unsigned int bjunk;
+	WXGeometry geom;
 
-	return XGetGeometry(dpy, d, &rjunk, &xjunk, &yjunk, w, h, &bjunk, dep);
+	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, d), &geom))
+		return 0;
+	if (w)
+		*w = geom.width;
+	if (h)
+		*h = geom.height;
+	if (dep)
+		*dep = geom.depth;
+	return 1;
 }
 
 WIcon *icon_create_for_wwindow(WWindow *wwin)
@@ -134,7 +138,7 @@ WIcon *icon_create_for_wwindow(WWindow *wwin)
 	icon = icon_create_core(scr, wwin->icon_x, wwin->icon_y);
 
 	icon->owner = wwin;
-	if (wwin->wm_hints && (wwin->wm_hints->flags & IconWindowHint)) {
+	if (wwin->wm_hints && (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_ICON_WINDOW)) {
 		if (wwin->client_win == wwin->main_window) {
 			WApplication *wapp;
 			/* do not let miniwindow steal app-icon's icon window */
@@ -209,7 +213,7 @@ static WIcon *icon_create_core(WScreen *scr, int coord_x, int coord_y)
 	/* Icon image */
 	icon->file = NULL;
 	icon->file_image = NULL;
-	icon->icon_win = None;
+	icon->icon_win = XCB_NONE;
 
 	return icon;
 }
@@ -231,17 +235,17 @@ void wIconDestroy(WIcon *icon)
 			x = icon->owner->icon_x;
 			y = icon->owner->icon_y;
 		}
-		XUnmapWindow(dpy, icon->icon_win);
-		XReparentWindow(dpy, icon->icon_win, scr->root_win, x, y);
+		xcb_unmap_window(xconn, icon->icon_win);
+		xcb_reparent_window(xconn, icon->icon_win, scr->root_win, x, y);
 	}
 	if (icon->icon_name)
 		wfree(icon->icon_name);
 
 	if (icon->pixmap)
-		XFreePixmap(dpy, icon->pixmap);
+		xcb_free_pixmap(xconn, icon->pixmap);
 
 	if (icon->mini_preview)
-		XFreePixmap(dpy, icon->mini_preview);
+		xcb_free_pixmap(xconn, icon->mini_preview);
 
 	unset_icon_image(icon);
 
@@ -249,7 +253,7 @@ void wIconDestroy(WIcon *icon)
 	wfree(icon);
 }
 
-static void drawIconTitleBackground(WScreen *scr, Pixmap pixmap, int height)
+static void drawIconTitleBackground(WScreen *scr, xcb_pixmap_t pixmap, int height)
 {
 	WTexSolid *tex = scr->icon_title_texture;
 	int isz = w_global.config->icon_size;
@@ -305,7 +309,7 @@ static void drawIconSelection(WIcon *icon)
 static void icon_update_pixmap(WIcon *icon, RImage *image)
 {
 	RImage *tile;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	int x, y, sx, sy;
 	unsigned w, h;
 	int theight = 0;
@@ -384,7 +388,7 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 
 void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 {
-	Bool from_client = True;
+	bool from_client = true;
 
 	if (!icon || !wwin)
 		return;
@@ -416,9 +420,9 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 	}
 
 	if (!icon->icon_name)
-		if (!wGetIconName(dpy, wwin->client_win, &icon->icon_name)) {
+		if (!wGetIconName(xconn, wwin->client_win, &icon->icon_name)) {
 			icon->icon_name = wNETWMGetWindowName(wwin->client_win);
-			from_client = False;
+			from_client = false;
 		}
 
 	/* publish _NET_WM_VISIBLE_ICON_NAME when we fall back to a name
@@ -429,7 +433,14 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 
 int wIconEffectiveSize(void)
 {
-	int size = w_global.config->icon_size;
+	int size;
+
+	/* the forked crash monitor runs this dialog path before any
+	 * domain was loaded, fall back to the schema defaults */
+	if (!w_global.config)
+		return 48;
+
+	size = w_global.config->icon_size;
 
 	if (w_global.config->enforce_icon_margin) {
 		size = (int)((double)w_global.config->icon_size * 0.75 + 0.5);
@@ -582,7 +593,7 @@ static RImage *get_wwindow_image_from_wmhints(WWindow *wwin)
 {
 	WXWMHints *hints = wwin->wm_hints;
 
-	if (!hints || !(hints->flags & IconPixmapHint) || hints->icon_pixmap == None)
+	if (!hints || !(hints->flags & XCB_ICCCM_WM_HINT_ICON_PIXMAP) || hints->icon_pixmap == XCB_NONE)
 		return NULL;
 
 	/* the pixmap and mask XIDs come from a manage-time property and
@@ -594,8 +605,8 @@ static RImage *get_wwindow_image_from_wmhints(WWindow *wwin)
 		wwin->wm_hints_icon_image =
 			RCreateImageFromDrawable(wwin->screen_ptr->rcontext,
 						 hints->icon_pixmap,
-						 (hints->flags & IconMaskHint)
-						 ? hints->icon_mask : None);
+						 (hints->flags & XCB_ICCCM_WM_HINT_ICON_MASK)
+						 ? hints->icon_mask : XCB_NONE);
 
 	return RRetainImage(wwin->wm_hints_icon_image);
 }
@@ -618,14 +629,14 @@ RImage *wWindowGetIconImage(WWindow *wwin)
 	if (!WFLAGP(wwin, always_user_icon)) {
 		if (wwin->net_icon_image)
 			return RRetainImage(wwin->net_icon_image);
-		if (wwin->wm_hints && (wwin->wm_hints->flags & IconPixmapHint)) {
+		if (wwin->wm_hints && (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_ICON_PIXMAP)) {
 			image = get_wwindow_image_from_wmhints(wwin);
 			if (image)
 				return image;
 		}
 	}
 
-	file = get_icon_filename(wwin->wm_instance, wwin->wm_class, NULL, False);
+	file = get_icon_filename(wwin->wm_instance, wwin->wm_class, NULL, false);
 	if (file) {
 		image = get_rimage_from_file(wwin->screen_ptr, file,
 					     wIconEffectiveSize());
@@ -779,7 +790,7 @@ void wIconResumeBlink(WScreen *scr)
 	}
 }
 
-void wIconSetHighlited(WIcon *icon, Bool flag)
+void wIconSetHighlited(WIcon *icon, bool flag)
 {
 	if (icon->highlighted == flag)
 		return;
@@ -800,7 +811,7 @@ void wIconSelect(WIcon *icon)
 			drawIconSelection(icon);
 	} else {
 		WMDeleteTimerHandlerPtr(&icon->handlerID);
-		XClearArea(dpy, icon->core->window, 0, 0, icon->core->width, icon->core->height, True);
+		xcb_clear_area(xconn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
 	}
 }
 
@@ -833,7 +844,7 @@ static void resize_icon(WIcon *icon, const char *wm_instance,
 		return;
 
 	isize = w_global.config->icon_size;
-	XResizeWindow(dpy, icon->core->window, isize, isize);
+	xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
 	icon->core->width = isize;
 	icon->core->height = isize;
 	WMScreenNoteDrawableSize(icon->core->screen_ptr->wmscreen,
@@ -879,7 +890,7 @@ void set_icon_image_from_image(WIcon *icon, RImage *image)
 
 void set_icon_minipreview(WIcon *icon, RImage *image)
 {
-	Pixmap tmp;
+	xcb_pixmap_t tmp;
 	RImage *scaled_mini_preview;
 	WScreen *scr = icon->core->screen_ptr;
 
@@ -887,8 +898,8 @@ void set_icon_minipreview(WIcon *icon, RImage *image)
 	                                  w_global.config->minipreview_size - 2 * MINIPREVIEW_BORDER);
 
 	if (RConvertImage(scr->rcontext, scaled_mini_preview, &tmp)) {
-		if (icon->mini_preview != None)
-			XFreePixmap(dpy, icon->mini_preview);
+		if (icon->mini_preview != XCB_NONE)
+			xcb_free_pixmap(xconn, icon->mini_preview);
 		icon->mini_preview = tmp;
 	}
 	RReleaseImage(scaled_mini_preview);
@@ -904,13 +915,13 @@ void wIconUpdate(WIcon *icon)
 	if (wwin && WFLAGP(wwin, always_user_icon)) {
 		/* Forced use user_icon */
 		get_rimage_icon_from_user_icon(icon);
-	} else if (icon->icon_win != None) {
+	} else if (icon->icon_win != XCB_NONE) {
 		/* Get the Pixmap from the WIcon */
 		get_rimage_icon_from_icon_win(icon);
 	} else if (wwin && wwin->net_icon_image) {
 		/* Use _NET_WM_ICON icon */
 		get_rimage_icon_from_x11(icon);
-	} else if (wwin && wwin->wm_hints && (wwin->wm_hints->flags & IconPixmapHint)) {
+	} else if (wwin && wwin->wm_hints && (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_ICON_PIXMAP)) {
 		/* Get the Pixmap from the wm_hints, else, from the user */
 		unset_icon_image(icon);
 		icon->file_image = get_rimage_icon_from_wm_hints(icon);
@@ -926,25 +937,25 @@ void wIconUpdate(WIcon *icon)
 
 void update_icon_pixmap(WIcon *icon)
 {
-	if (icon->pixmap != None)
-		XFreePixmap(dpy, icon->pixmap);
+	if (icon->pixmap != XCB_NONE)
+		xcb_free_pixmap(xconn, icon->pixmap);
 
-	icon->pixmap = None;
+	icon->pixmap = XCB_NONE;
 
 	/* Create the pixmap */
 	if (icon->file_image)
 		icon_update_pixmap(icon, icon->file_image);
 
 	/* If dockapp, put inside the icon */
-	if (icon->icon_win != None) {
+	if (icon->icon_win != XCB_NONE) {
 		/* file_image is NULL, because is docked app */
 		icon_update_pixmap(icon, NULL);
 		set_dockapp_in_icon(icon);
 	}
 
 	/* No pixmap, set default background */
-	if (icon->pixmap != None)
-		XSetWindowBackgroundPixmap(dpy, icon->core->window, icon->pixmap);
+	if (icon->pixmap != XCB_NONE)
+		xcb_change_window_attributes(xconn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ icon->pixmap });
 
 	/* Paint it */
 	wIconPaint(icon);
@@ -1000,7 +1011,7 @@ static void get_rimage_icon_from_icon_win(WIcon *icon)
 /* Set the dockapp in the WIcon */
 static void set_dockapp_in_icon(WIcon *icon)
 {
-	XWindowAttributes attr;
+	WXWindowAttributes attr;
 	WScreen *scr = icon->core->screen_ptr;
 	unsigned int w, h, d;
 
@@ -1014,26 +1025,24 @@ static void set_dockapp_in_icon(WIcon *icon)
 	}
 
 	/* Set the background pixmap */
-	XSetWindowBackgroundPixmap(dpy, icon->core->window, scr->icon_tile_pixmap);
+	xcb_change_window_attributes(xconn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ scr->icon_tile_pixmap });
 
 	/* Set the icon border */
-	XSetWindowBorderWidth(dpy, icon->icon_win, 0);
+	xcb_configure_window(xconn, icon->icon_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 	/* Put the dock application in the icon */
-	XReparentWindow(dpy, icon->icon_win, icon->core->window,
-			(w_global.config->icon_size - w) / 2,
-			(w_global.config->icon_size - h) / 2);
+	xcb_reparent_window(xconn, icon->icon_win, icon->core->window, (w_global.config->icon_size - w) / 2, (w_global.config->icon_size - h) / 2);
 
 	/* Show it and save */
-	XMapWindow(dpy, icon->icon_win);
-	XAddToSaveSet(dpy, icon->icon_win);
+	xcb_map_window(xconn, icon->icon_win);
+	xcb_change_save_set(xconn, XCB_SET_MODE_INSERT, icon->icon_win);
 
 	/* Needed to move the icon clicking on the application part */
-	if ((XGetWindowAttributes(dpy, icon->icon_win, &attr)) &&
-	    (attr.all_event_masks & ButtonPressMask))
-		wHackedGrabButton(Button1, MOD_MASK, icon->core->window, True,
-				  ButtonPressMask, GrabModeSync, GrabModeAsync,
-				  None, wPreferences.cursor[WCUR_ARROW]);
+	if ((wXGetWindowAttributes(xconn, icon->icon_win, &attr, NULL)) &&
+	    (attr.all_event_masks & XCB_EVENT_MASK_BUTTON_PRESS))
+		wHackedGrabButton(XCB_BUTTON_INDEX_1, MOD_MASK, icon->core->window, true,
+				  XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC,
+				  XCB_NONE, wPreferences.cursor[WCUR_ARROW]);
 }
 
 /* Get the RImage from the XWindow wm_hints */
@@ -1054,7 +1063,7 @@ RImage *get_rimage_icon_from_wm_hints(WIcon *icon)
 	if (!image) {
 		/* RCreateImageFromDrawable already issued a GetGeometry on
 		 * the pixmap, a NULL here means it was bad or empty */
-		wwin->wm_hints->flags &= ~IconPixmapHint;
+		wwin->wm_hints->flags &= ~XCB_ICCCM_WM_HINT_ICON_PIXMAP;
 		return NULL;
 	}
 
@@ -1093,7 +1102,7 @@ void wIconPaint(WIcon *icon)
 	if (!icon || !icon->core || !icon->core->screen_ptr)
 		return;
 
-	XClearWindow(dpy, icon->core->window);
+	xcb_clear_area(xconn, 0, icon->core->window, 0, 0, 0, 0);
 
 	update_icon_title(icon);
 
@@ -1103,7 +1112,7 @@ void wIconPaint(WIcon *icon)
 
 /******************************************************************/
 
-static void miniwindowExpose(WObjDescriptor *desc, XEvent *event)
+static void miniwindowExpose(WObjDescriptor *desc, xcb_generic_event_t *event)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) event;
@@ -1111,7 +1120,7 @@ static void miniwindowExpose(WObjDescriptor *desc, XEvent *event)
 	wIconPaint(desc->parent);
 }
 
-static void miniwindowDblClick(WObjDescriptor *desc, XEvent *event)
+static void miniwindowDblClick(WObjDescriptor *desc, xcb_generic_event_t *event)
 {
 	WIcon *icon = desc->parent;
 
@@ -1123,16 +1132,16 @@ static void miniwindowDblClick(WObjDescriptor *desc, XEvent *event)
 	wDeiconifyWindow(icon->owner);
 }
 
-static void miniwindowMouseDown(WObjDescriptor *desc, XEvent *event)
+static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event)
 {
 	WIcon *icon = desc->parent;
 	WWindow *wwin = icon->owner;
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 	int x = wwin->icon_x, y = wwin->icon_y;
-	int dx = event->xbutton.x, dy = event->xbutton.y;
+	int dx = ((xcb_button_press_event_t *)event)->event_x, dy = ((xcb_button_press_event_t *)event)->event_y;
 	int grabbed = 0;
-	int clickButton = event->xbutton.button;
-	Bool hasMoved = False;
+	int clickButton = ((xcb_button_press_event_t *)event)->detail;
+	bool hasMoved = false;
 
 	if (WCHECK_STATE(WSTATE_MODAL))
 		return;
@@ -1142,78 +1151,81 @@ static void miniwindowMouseDown(WObjDescriptor *desc, XEvent *event)
 		return;
 	}
 
-	if (event->xbutton.button == Button1) {
-		if (event->xbutton.state & MOD_MASK)
+	if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
+		if (((xcb_button_press_event_t *)event)->state & MOD_MASK)
 			wLowerFrame(icon->core);
 		else
 			wRaiseFrame(icon->core);
-		if (event->xbutton.state & ShiftMask) {
+		if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 			wIconSelect(icon);
 			wSelectWindow(icon->owner, !wwin->flags.selected);
 		}
-	} else if (event->xbutton.button == Button3) {
+	} else if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_3) {
 		WObjDescriptor *desc;
 
-		OpenMiniwindowMenu(wwin, event->xbutton.x_root, event->xbutton.y_root);
+		OpenMiniwindowMenu(wwin, ((xcb_button_press_event_t *)event)->root_x, ((xcb_button_press_event_t *)event)->root_y);
 
 		/* allow drag select of menu */
 		desc = &wwin->screen_ptr->window_menu->menu->descriptor;
-		event->xbutton.send_event = True;
+		event->response_type |= 0x80;
 		(*desc->handle_mousedown) (desc, event);
 
 		return;
 	}
 
-	if (XGrabPointer(dpy, icon->core->window, False, ButtonMotionMask
-			 | ButtonReleaseMask | ButtonPressMask, GrabModeAsync,
-			 GrabModeAsync, None, None, CurrentTime) != GrabSuccess) {
+	if (wXGrabPointer(xconn, icon->core->window, false, XCB_EVENT_MASK_BUTTON_MOTION
+			 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
+			 XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 	}
 	while (1) {
-		WMMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask | ButtonPressMask
-			    | ButtonMotionMask | ExposureMask, &ev);
-		switch (ev.type) {
-		case Expose:
-			WMHandleEvent(&ev);
+		free(ev);
+		ev = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
+			    | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE, &ev);
+		switch ((ev->response_type & 0x7f)) {
+		case XCB_EXPOSE:
+			WMHandleEvent(ev);
 			break;
 
-		case MotionNotify:
-			hasMoved = True;
+		case XCB_MOTION_NOTIFY:
+			hasMoved = true;
 			if (!grabbed) {
-				if (abs(dx - ev.xmotion.x) >= MOVE_THRESHOLD
-				    || abs(dy - ev.xmotion.y) >= MOVE_THRESHOLD) {
-					XChangeActivePointerGrab(dpy, ButtonMotionMask
-								 | ButtonReleaseMask | ButtonPressMask,
-								 wPreferences.cursor[WCUR_MOVE], CurrentTime);
+				if (abs(dx - (((xcb_motion_notify_event_t *)ev)->event_x)) >= MOVE_THRESHOLD
+				    || abs(dy - (((xcb_motion_notify_event_t *)ev)->event_y)) >= MOVE_THRESHOLD) {
+					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 					grabbed = 1;
 				} else {
 					break;
 				}
 			}
-			x = ev.xmotion.x_root - dx;
-			y = ev.xmotion.y_root - dy;
-			XMoveWindow(dpy, icon->core->window, x, y);
+			x = (((xcb_motion_notify_event_t *)ev)->root_x) - dx;
+			y = (((xcb_motion_notify_event_t *)ev)->root_y) - dy;
+			xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 			break;
 
-		case ButtonPress:
+		case XCB_BUTTON_PRESS:
 			break;
 
-		case ButtonRelease:
-			if (ev.xbutton.button != clickButton)
+		case XCB_BUTTON_RELEASE:
+			if ((((xcb_button_press_event_t *)ev)->detail) != clickButton)
 				break;
 
 			if (wwin->icon_x != x || wwin->icon_y != y)
 				wwin->flags.icon_moved = 1;
 
-			XMoveWindow(dpy, icon->core->window, x, y);
+			xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
 			wwin->icon_x = x;
 			wwin->icon_y = y;
-			XUngrabPointer(dpy, CurrentTime);
+			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 
 			if (w_global.config->auto_arrange_icons)
-				wArrangeIcons(wwin->screen_ptr, True);
+				wArrangeIcons(wwin->screen_ptr, true);
 			if (w_global.config->single_click && !hasMoved)
 				miniwindowDblClick(desc, event);
+			free(ev);
 			return;
 
 		}
@@ -1224,7 +1236,7 @@ void set_icon_image_from_database(WIcon *icon, const char *wm_instance, const ch
 {
 	char *file = NULL;
 
-	file = get_icon_filename(wm_instance, wm_class, command, False);
+	file = get_icon_filename(wm_instance, wm_class, command, false);
 	if (file) {
 		/* removeAppIconFor() calls this on a docked icon that may
 		 * still hold the live _NET_WM_ICON image and its cache path,

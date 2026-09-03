@@ -24,7 +24,7 @@
 
 #include <WINGs/WXProp.h>
 
-WXCookie wMWMReqClientHints(Window window);
+WXCookie wMWMReqClientHints(xcb_window_t window);
 void wMWMRcvClientHints(WWindow *wwin, WXCookie ck);
 
 #endif

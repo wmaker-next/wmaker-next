@@ -32,7 +32,6 @@
 #include <errno.h>
 #include <sys/wait.h>
 
-#include <X11/Xlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
@@ -49,18 +48,19 @@
 #include "event.h"
 #include "wxkb.h"
 #include "ipc.h"
+#include <WINGs/WINGsP.h>
 
 /* ------------------------------------------------------------------ *
  * dispatch table                                                     *
  *                                                                    *
- * One slot per response_type & 0x7f.  Core events register at fixed *
- * indices, extension events at xext.*.event_base.  WMHandleEvent()  *
+ * One slot per response_type & 0x7f. Core events register at fixed  *
+ * indices, extension events at xext.*.event_base. WMHandleEvent()   *
  * is hooked as the WINGs extraEventHandler so events on WINGs view  *
  * windows go through the WINGs widget path and only events on       *
  * non-view windows (root, frames, client windows, dock and clip     *
- * tiles) reach the table via DispatchEvent().  The wire bytes are   *
- * carried inside the XEvent at WXWireEvent.wire so they survive the *
- * trip through WMHandleEvent and the modal loops' default arms.     *
+ * tiles) reach the table via DispatchEvent(). The event is the raw   *
+ * wire buffer end to end, so the same pointer survives the trip      *
+ * through WMHandleEvent and the modal loops' default arms.           *
  * ------------------------------------------------------------------ */
 
 static WEventHandler w_event_handler[128];
@@ -255,18 +255,17 @@ void wSaveTimestamp(const xcb_generic_event_t *xe)
  *                                                                    *
  * The opaque-move loop issues an XMoveWindow per MotionNotify and    *
  * each one generates Enter/Leave on whatever the frame edge sweeps   *
- * over.  Rather than draining the queue by event type after the      *
+ * over. Rather than draining the queue by event type after the       *
  * ButtonRelease (which can swallow a legitimate crossing that        *
  * arrived in the same read), the caller brackets the burst with a    *
  * pair of xcb_no_operation()s, the [begin,end) sequence range is     *
  * recorded in a small ring, and the crossing handlers drop any       *
- * event whose serial falls inside it.  xcb_no_operation() forces     *
- * the socket back from Xlib so the returned sequence is correct      *
- * regardless of whether the bracketed requests went via Xlib or      *
- * xcb.  This is awesome's client_ignore_enterleave_events()          *
- * pattern without the server grab, which is fine for the move loop   *
- * since the active pointer grab already prevents user-driven         *
- * crossings on other windows.                                        *
+ * event whose serial falls inside it. The no-op request is a         *
+ * sequence marker: every request issued between the two no-ops       *
+ * gets a serial inside the recorded range. No server grab is         *
+ * taken, which is fine for the move loop since the active            *
+ * pointer grab already prevents user-driven crossings on             *
+ * other windows.                                                      *
  * ------------------------------------------------------------------ */
 
 unsigned long wEventIgnoreCrossingBegin(void)
@@ -287,22 +286,22 @@ void wEventIgnoreCrossingEnd(unsigned long begin)
 	/* anything already drained into the WINGs queue can go now,
 	 * late arrivals are caught by wEventCrossingIgnored() at
 	 * dispatch time so no XSync is needed */
-	WXEvqDropRange(dpy, begin, end, EnterWindowMask | LeaveWindowMask);
+	WXEvqDropRange(xconn, begin, end, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW);
 }
 
-Bool wEventCrossingIgnored(unsigned long sequence)
+bool wEventCrossingIgnored(unsigned long sequence)
 {
 	unsigned int i;
 
 	for (i = 0; i < wlengthof(w_global.ignore_crossing.range); i++) {
 		if (sequence >= w_global.ignore_crossing.range[i].begin &&
 		    sequence <  w_global.ignore_crossing.range[i].end)
-			return True;
+			return true;
 	}
-	return False;
+	return false;
 }
 
-void wDisplaySetOff(Bool off, WDisplayPowerSource source)
+void wDisplaySetOff(bool off, WDisplayPowerSource source)
 {
 	static const char *src_name[] = { "ipc", "randr", "screensaver" };
 	WApplication *wapp;
@@ -378,9 +377,8 @@ void wRefreshKeybindings(void)
 	wRereadKeybindings();
 }
 
-void DispatchEvent(XEvent *event)
+void DispatchEvent(xcb_generic_event_t *event)
 {
-	const xcb_generic_event_t *xe;
 	WEventHandler h;
 	unsigned int type;
 
@@ -395,14 +393,14 @@ void DispatchEvent(XEvent *event)
 		 * executed inside here, or we can get in a infinite
 		 * recursive loop.
 		 */
-		Shutdown(WSExitMode, True);
+		Shutdown(WSExitMode, true);
 
 	} else if (WCHECK_STATE(WSTATE_NEED_RESTART)) {
 		WCHANGE_STATE(WSTATE_RESTARTING);
 
-		Shutdown(WSRestartPreparationMode, False);
+		Shutdown(WSRestartPreparationMode, false);
 		/* received SIGUSR1 */
-		Restart(NULL, True);
+		Restart(NULL, true);
 	} else if (WCHECK_STATE(WSTATE_NEED_REREAD)) {
 		WCHANGE_STATE(WSTATE_NORMAL);
 		wDefaultsCheckDomains(NULL);
@@ -413,19 +411,16 @@ void DispatchEvent(XEvent *event)
 	if (!event)
 		return;
 
-	xe = (const xcb_generic_event_t *)((WXWireEvent *)event)->wire;
-	type = xe->response_type & 0x7f;
-	wSaveTimestamp(xe);
+	type = event->response_type & 0x7f;
+	wSaveTimestamp(event);
 
-	/* the wire bytes are zero for events that did not come off the
-	 * xcb stream (the @im=local compose replay XPutBackEvent path),
-	 * those are KeyPress events targeted at a WINGs textfield so
-	 * WMHandleEvent has already dispatched them by the time we are
-	 * called and the table is correctly skipped */
+	/* events are the raw wire buffers the queue drained, handlers
+	 * reached from the modal loops' WMHandleEvent default arms see
+	 * the same buffer the main loop would dispatch */
 	if (type < wlengthof(w_event_handler)) {
 		h = w_event_handler[type];
 		if (h)
-			(*h)(xe, event);
+			(*h)(event);
 	}
 }
 
@@ -537,7 +532,7 @@ static void handle_inotify_events(void)
 	/*
 	 * Read off the queued events
 	 * queue overflow is not checked (IN_Q_OVERFLOW). In practise this should
-	 * not occur; the block is on Xevents, but a config file change will normally
+	 * not occur, the block is on Xevents, but a config file change will normally
 	 * occur as a result of an Xevent - so the event queue should never have more than
 	 * a few entries before a read().
 	 */
@@ -682,7 +677,7 @@ static void commitPendingStacking(void *unused)
 
 noreturn void EventLoop(void)
 {
-	XEvent event;
+	xcb_generic_event_t *event = NULL;
 
 #ifdef HAVE_INOTIFY
 	/* register the inotify fd with the WINGs input-handler set so it
@@ -699,40 +694,44 @@ noreturn void EventLoop(void)
 	WMSetPrepareHook(commitPendingStacking, NULL);
 
 	for (;;) {
-		WMNextEvent(dpy, &event);	/* Blocks here */
-		WMHandleEvent(&event);
+		WMNextEvent(xconn, &event);	/* Blocks here */
+		WMHandleEvent(event);
+		free(event);
 	}
 }
 
 void ProcessPendingEvents(void)
 {
-	XEvent event;
+	xcb_generic_event_t *event = NULL;
 
 	/* drain everything currently readable, then dispatch only that
 	 * snapshot so a handler that round-trips and generates more
 	 * traffic cannot turn this into an unbounded loop, the NULL dpy
 	 * makes WXEvqNext pop without re-draining */
-	XSync(dpy, False);
-	WXEvqPending(dpy);
+	wXSync(xconn);
+	WXEvqPending(xconn);
 
-	while (WXEvqNext(NULL, &event))
-		WMHandleEvent(&event);
+	while (WXEvqNext(NULL, &event)) {
+		W_XEvqCompressPop(&event);
+		WMHandleEvent(event);
+		free(event);
+	}
 
 	commitPendingStacking(NULL);
 }
 
-Bool IsDoubleClick(WScreen *scr, XEvent *event)
+bool IsDoubleClick(WScreen *scr, xcb_generic_event_t *event)
 {
 	if ((scr->last_click_time > 0) &&
-	    (event->xbutton.time - scr->last_click_time <= w_global.config->double_click_time)
-	    && (event->xbutton.button == scr->last_click_button)
-	    && (event->xbutton.window == scr->last_click_window)) {
+	    (((xcb_button_press_event_t *)event)->time - scr->last_click_time <= w_global.config->double_click_time)
+	    && (((xcb_button_press_event_t *)event)->detail == scr->last_click_button)
+	    && (((xcb_button_press_event_t *)event)->event == scr->last_click_window)) {
 
 		scr->flags.next_click_is_not_double = 1;
 		scr->last_click_time = 0;
-		scr->last_click_window = event->xbutton.window;
+		scr->last_click_window = ((xcb_button_press_event_t *)event)->event;
 
-		return True;
+		return true;
 	}
-	return False;
+	return false;
 }

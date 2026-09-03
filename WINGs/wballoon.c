@@ -3,7 +3,6 @@
 #include "WINGsP.h"
 
 #ifdef USE_XSHAPE
-#include <X11/Xlib-xcb.h>
 #include <xcb/shape.h>
 #endif
 
@@ -22,7 +21,7 @@ typedef struct W_Balloon {
 
 	int delay;
 
-	Window forWindow;	/* window for which the balloon
+	xcb_window_t forWindow;	/* window for which the balloon
 				 * is being show in the moment */
 
 	struct {
@@ -42,7 +41,7 @@ typedef struct W_Balloon {
 
 static void destroyBalloon(Balloon * bPtr);
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
 static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *text);
 
@@ -61,7 +60,7 @@ struct W_Balloon *W_CreateBalloon(WMScreen * scr)
 
 	bPtr->textColor = WMRetainColor(bPtr->view->screen->black);
 
-	WMCreateEventHandler(bPtr->view, StructureNotifyMask, handleEvents, bPtr);
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, bPtr);
 
 	W_ResizeView(bPtr->view, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 	bPtr->flags.alignment = DEFAULT_ALIGNMENT;
@@ -127,7 +126,7 @@ void WMSetBalloonDelay(WMScreen * scr, int delay)
 	scr->balloon->delay = delay;
 }
 
-void WMSetBalloonEnabled(WMScreen * scr, Bool flag)
+void WMSetBalloonEnabled(WMScreen * scr, bool flag)
 {
 	scr->balloon->flags.enabled = ((flag == 0) ? 0 : 1);
 
@@ -153,7 +152,7 @@ void W_BalloonHandleLeaveView(WMView * view)
 		}
 		WMDeleteTimerHandlerPtr(&bPtr->timer);
 
-		bPtr->forWindow = None;
+		bPtr->forWindow = XCB_NONE;
 	}
 }
 
@@ -169,7 +168,7 @@ static void showBalloon(void *data)
 	WMView *view = (WMView *) data;
 	Balloon *bPtr = view->screen->balloon;
 	int x, y;
-	Window foo;
+	xcb_window_t foo;
 
 	bPtr->timer = NULL;
 
@@ -177,7 +176,7 @@ static void showBalloon(void *data)
 	if (!text)
 		return;
 
-	XTranslateCoordinates(view->screen->display, view->window, view->screen->rootWin, 0, 0, &x, &y, &foo);
+	wXTranslateCoordinates(view->screen->display, view->window, view->screen->rootWin, 0, 0, &x, &y, &foo);
 
 	if (!bPtr->view->flags.realized)
 		W_RealizeView(bPtr->view);
@@ -228,11 +227,11 @@ void W_BalloonHandleEnterView(WMView * view)
 static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *text)
 {
 	WMScreen *scr = bPtr->view->screen;
-	Display *dpy = WMScreenDisplay(scr);
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
 	int width;
 	int height;
-	Pixmap pixmap;
-	Pixmap mask;
+	xcb_pixmap_t pixmap;
+	xcb_pixmap_t mask;
 	WMFont *font = bPtr->font ? bPtr->font : scr->normalFont;
 	int textHeight;
 	int side = 0;
@@ -260,7 +259,7 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 
 	width += 16;
 
-	textHeight = W_GetTextHeight(font, text, width, False);
+	textHeight = W_GetTextHeight(font, text, width, false);
 
 	height = textHeight + 4;
 
@@ -299,31 +298,31 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 
 	W_PaintText(bPtr->view, pixmap, font, 8, ty + (height - textHeight) / 2,
 		    width, bPtr->flags.alignment,
-		    bPtr->textColor ? bPtr->textColor : scr->black, False, text, strlen(text));
+		    bPtr->textColor ? bPtr->textColor : scr->black, false, text, strlen(text));
 
-	XSetWindowBackgroundPixmap(dpy, bPtr->view->window, pixmap);
+	xcb_change_window_attributes(dpy, bPtr->view->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 	W_ResizeView(bPtr->view, width, height + SPACE);
 
-	XFreePixmap(dpy, pixmap);
+	xcb_free_pixmap(dpy, pixmap);
 
 #ifdef USE_XSHAPE
-	xcb_shape_mask(XGetXCBConnection(dpy), XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_shape_mask(dpy, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       bPtr->view->window, 0, 0, mask);
 #endif
-	XFreePixmap(dpy, mask);
+	xcb_free_pixmap(dpy, mask);
 
 	W_MoveView(bPtr->view, bx, by);
 
 	W_MapView(bPtr->view);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Balloon *bPtr = (Balloon *) data;
 
-	switch (event->type) {
-	case DestroyNotify:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_DESTROY_NOTIFY:
 		destroyBalloon(bPtr);
 		break;
 	}

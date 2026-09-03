@@ -63,7 +63,7 @@ static void repaintFrame(Frame * fPtr)
 	W_View *view = fPtr->view;
 	W_Screen *scrPtr = view->screen;
 
-	XClearWindow(scrPtr->display, view->window);
+	xcb_clear_area(scrPtr->display, 0, view->window, 0, 0, 0, 0);
 	paintFrame(fPtr);
 }
 
@@ -75,7 +75,7 @@ static void paintFrame(Frame * fPtr)
 	cairo_t *cr;
 	int tx, ty, tw, th, tlen;
 	int fy, fh;
-	Bool drawTitle;
+	bool drawTitle;
 
 	if (fPtr->caption != NULL) {
 		th = WMFontHeight(font);
@@ -133,10 +133,10 @@ static void paintFrame(Frame * fPtr)
 
 		tx = (view->size.width - tw) / 2;
 
-		drawTitle = True;
+		drawTitle = true;
 	} else {
 		tw = tx = 0;
-		drawTitle = False;
+		drawTitle = false;
 	}
 
 	cr = WCairoBeginForDrawable(scrPtr, view->window);
@@ -169,19 +169,19 @@ static void paintFrame(Frame * fPtr)
 	WCairoEnd(cr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Frame *fPtr = (Frame *) data;
 
 	CHECK_CLASS(data, WC_Frame);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count == 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count == 0)
 			paintFrame(fPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyFrame(fPtr);
 		break;
 	}
@@ -214,7 +214,7 @@ WMFrame *WMCreateFrame(WMWidget * parent)
 	fPtr->view->self = fPtr;
 	fPtr->textColor = WMRetainColor(fPtr->view->screen->black);
 
-	WMCreateEventHandler(fPtr->view, ExposureMask | StructureNotifyMask, handleEvents, fPtr);
+	WMCreateEventHandler(fPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, fPtr);
 
 	fPtr->flags.relief = DEFAULT_RELIEF;
 	fPtr->flags.titlePosition = DEFAULT_TITLE_POSITION;

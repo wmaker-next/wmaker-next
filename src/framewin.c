@@ -19,8 +19,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -64,8 +62,8 @@ struct WFrameTexCache {
 	int width, height;
 	int extra;                /* title: (nleft<<4)|nright, resizebar: cwidth */
 	/* value */
-	Pixmap title;
-	Pixmap buttons[WTB_ROLE_COUNT];   /* positional: [0..nleft-1] then [nleft..nleft+nright-1] */
+	xcb_pixmap_t title;
+	xcb_pixmap_t buttons[WTB_ROLE_COUNT];   /* positional: [0..nleft-1] then [nleft..nleft+nright-1] */
 	int nbuttons;
 	int refcount;
 	struct WFrameTexCache *next;
@@ -83,15 +81,15 @@ static const struct {
 	int flag_shift;
 	short dontfit_k_new;
 	short dontfit_k_old;
-	Bool from_xpm;
-	Bool is_drawn;
+	bool from_xpm;
+	bool is_drawn;
 } wtb_role_info[WTB_ROLE_COUNT] = {
-	[WTB_MINIATURIZE] = { 1, 4, 3, True,  False },
-	[WTB_CLOSE]       = { 2, 2, 2, True,  False },
-	[WTB_MAXIMIZE]    = { 8, 4, 3, True,  False },
-	[WTB_ICON]        = { 9, 0, 0, False, True  },
+	[WTB_MINIATURIZE] = { 1, 4, 3, true,  false },
+	[WTB_CLOSE]       = { 2, 2, 2, true,  false },
+	[WTB_MAXIMIZE]    = { 8, 4, 3, true,  false },
+	[WTB_ICON]        = { 9, 0, 0, false, true  },
 #ifdef XKB_BUTTON_HINT
-	[WTB_LANGUAGE]    = { 6, 4, 3, False, False },
+	[WTB_LANGUAGE]    = { 6, 4, 3, false, false },
 #endif
 };
 
@@ -289,16 +287,16 @@ static void release_title_set(WFrameWindow *fwin, int state)
 
 	texcache_release(&title_tex_cache, fwin->title_cache[state]);
 	fwin->title_cache[state] = NULL;
-	fwin->title_back[state] = None;
+	fwin->title_back[state] = XCB_NONE;
 	for (r = 0; r < WTB_ROLE_COUNT; r++)
-		fwin->button_back[r][state] = None;
+		fwin->button_back[r][state] = XCB_NONE;
 }
 
 static void release_resizebar_set(WFrameWindow *fwin)
 {
 	texcache_release(&resize_tex_cache, fwin->resizebar_cache);
 	fwin->resizebar_cache = NULL;
-	fwin->resizebar_back[0] = None;
+	fwin->resizebar_back[0] = XCB_NONE;
 }
 
 /*
@@ -313,13 +311,12 @@ static void updateResizebarCursors(WFrameWindow *fwin)
 	static const int rcursor[3] = {
 		WCUR_BOTTOMLEFTRESIZE, WCUR_VERTICALRESIZE, WCUR_BOTTOMRIGHTRESIZE
 	};
-	XSetWindowAttributes attr;
 	int cw, w, h, geom[3][2], i;
 
 	if (!fwin->resizebar) {
 		/* children went with the parent on XDestroyWindow */
 		for (i = 0; i < 3; i++)
-			fwin->resizebar_cursor[i] = None;
+			fwin->resizebar_cursor[i] = XCB_NONE;
 		return;
 	}
 
@@ -331,28 +328,29 @@ static void updateResizebarCursors(WFrameWindow *fwin)
 	geom[2][0] = w - cw;  geom[2][1] = cw;
 
 	for (i = 0; i < 3; i++) {
-		if (fwin->resizebar_cursor[i] == None) {
-			attr.cursor = wPreferences.cursor[rcursor[i]];
-			fwin->resizebar_cursor[i] =
-				XCreateWindow(dpy, fwin->resizebar->window, 0, 0, 1, h, 0,
-					      0, InputOnly, CopyFromParent, CWCursor, &attr);
+		if (fwin->resizebar_cursor[i] == XCB_NONE) {
+			fwin->resizebar_cursor[i] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, fwin->resizebar_cursor[i],
+					  fwin->resizebar->window, 0, 0, 1, h, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  XCB_CW_CURSOR,
+					  (const uint32_t[]){ wPreferences.cursor[rcursor[i]] });
 		}
 		if (geom[i][1] > 0) {
-			XMoveResizeWindow(dpy, fwin->resizebar_cursor[i],
-					  geom[i][0], 0, geom[i][1], h);
-			XMapWindow(dpy, fwin->resizebar_cursor[i]);
+			xcb_configure_window(xconn, fwin->resizebar_cursor[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ geom[i][0], 0, geom[i][1], h });
+			xcb_map_window(xconn, fwin->resizebar_cursor[i]);
 		} else {
-			XUnmapWindow(dpy, fwin->resizebar_cursor[i]);
+			xcb_unmap_window(xconn, fwin->resizebar_cursor[i]);
 		}
 	}
 }
 
-static void handleExpose(WObjDescriptor * desc, XEvent * event);
-static void handleButtonExpose(WObjDescriptor * desc, XEvent * event);
+static void handleExpose(WObjDescriptor * desc, xcb_generic_event_t * event);
+static void handleButtonExpose(WObjDescriptor * desc, xcb_generic_event_t * event);
 
-static void buttonMouseDown(WObjDescriptor * desc, XEvent * event);
-static void titlebarMouseDown(WObjDescriptor * desc, XEvent * event);
-static void resizebarMouseDown(WObjDescriptor * desc, XEvent * event);
+static void buttonMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event);
+static void titlebarMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event);
+static void resizebarMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event);
 
 static void checkTitleSize(WFrameWindow * fwin);
 static void updateTexture(WFrameWindow *fwin);
@@ -366,7 +364,7 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	int middle = height - fwin->top_width - fwin->bottom_width;
 	int inner_h;
 	unsigned long pixel;
-	XRectangle rectangles[4];
+	xcb_rectangle_t rectangles[4];
 	int nrects = 0;
 
 	if (fwin->flags.is_client_window_frame && fwin->child)
@@ -387,8 +385,8 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	else
 		return;
 
-	XSetWindowBackground(dpy, fwin->core->window, pixel);
-	XSetForeground(dpy, fwin->inner_border_gc, pixel);
+	xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
+	xcb_change_gc(xconn, fwin->inner_border_gc, XCB_GC_FOREGROUND, (const uint32_t[]){ pixel });
 
 	if (il > 0) {
 		rectangles[nrects].x = 0;
@@ -420,8 +418,8 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	}
 
 	if (nrects > 0)
-		XFillRectangles(dpy, fwin->core->window, fwin->inner_border_gc,
-				rectangles, nrects);
+		xcb_poly_fill_rectangle(xconn, fwin->core->window, fwin->inner_border_gc,
+					nrects, rectangles);
 }
 
 static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, int y, int h);
@@ -436,7 +434,7 @@ static void updateTitlebar(WFrameWindow * fwin);
  * nothing outlives the paint. Used for the titlebar app-icon blit
  * where the source is already an RConvertImageMask() pair and there is
  * no RImage to reach through RImageCairoSurface(). */
-static void maskedBlit(cairo_t *cr, RContext *rc, Pixmap image, Pixmap mask,
+static void maskedBlit(cairo_t *cr, RContext *rc, xcb_pixmap_t image, xcb_pixmap_t mask,
 		       int iw, int ih, int x, int y)
 {
 	cairo_surface_t *isurf, *msurf;
@@ -444,7 +442,7 @@ static void maskedBlit(cairo_t *cr, RContext *rc, Pixmap image, Pixmap mask,
 	isurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)image,
 					 rc->xvisual, iw, ih);
 	cairo_set_source_surface(cr, isurf, x, y);
-	if (mask != None) {
+	if (mask != XCB_NONE) {
 		msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 							    (xcb_pixmap_t)mask, iw, ih);
 		cairo_mask_surface(cr, msurf, x, y);
@@ -458,7 +456,7 @@ static void maskedBlit(cairo_t *cr, RContext *rc, Pixmap image, Pixmap mask,
 
 static void allocFrameBorderPixel(WFrameWindow *fwin, WMColor *color, unsigned long **pixel)
 {
-	XColor xcol;
+	WXColor xcol;
 	char *desc;
 
 	/* this is called on every wFrameWindowUpdateBorders, drop the
@@ -503,7 +501,7 @@ WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 				 int width, int height, int flags,
 				 WTexture ** title_texture, WTexture ** resize_texture,
 				 WMColor ** color, WMFont ** font,
-				 int depth, Visual *visual, Colormap colormap)
+				 int depth, xcb_visualtype_t *visual, xcb_colormap_t colormap)
 {
 	WFrameWindow *fwin;
 
@@ -531,7 +529,8 @@ WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 
 	fwin->core = wCoreCreateTopLevel(scr, x, y, width, height, (flags & WFF_BORDER)
 					 ? scr->frame_border_width : 0, fwin->depth, fwin->visual, fwin->colormap, scr->frame_border_pixel);
-	fwin->inner_border_gc = XCreateGC(dpy, fwin->core->window, 0, NULL);
+	fwin->inner_border_gc = xcb_generate_id(xconn);
+	xcb_create_gc(xconn, fwin->inner_border_gc, fwin->core->window, 0, NULL);
 
 	/* setup stacking information */
 	fwin->core->stacking = wmalloc(sizeof(WStacking));
@@ -645,19 +644,19 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				}
 				fwin->buttons[r] = wCoreCreate(parent, 0, 0, bsize, bsize);
 				if (w_global.config->new_style == TS_OLD)
-					XSetWindowBackground(dpy, fwin->buttons[r]->window,
-							     scr->widget_texture->normal.pixel);
+					xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->normal.pixel });
 				else if (w_global.config->new_style == TS_NEXT)
-					XSetWindowBackground(dpy, fwin->buttons[r]->window,
-							     scr->widget_texture->dark.pixel);
+					xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->dark.pixel });
 
 				k = TS_NEW_GEOM(w_global.config->new_style)
 					? wtb_role_info[r].dontfit_k_new
 					: wtb_role_info[r].dontfit_k_old;
-				if (width < theight * k)
+				if (width < theight * k) {
 					setRoleBit(fwin->flags.button_dont_fit, r, 1);
-				else
-					XMapRaised(dpy, fwin->buttons[r]->window);
+				} else {
+					xcb_configure_window(xconn, fwin->buttons[r]->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+					xcb_map_window(xconn, fwin->buttons[r]->window);
+				}
 			}
 
 			layoutButtonGeometry(fwin, width, bsize, theight);
@@ -665,7 +664,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			if (TS_NEW_GEOM(w_global.config->new_style))
 				updateTitlebar(fwin);
 
-			XMapRaised(dpy, fwin->titlebar->window);
+			xcb_configure_window(xconn, fwin->titlebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_map_window(xconn, fwin->titlebar->window);
 
 			fwin->flags.need_texture_remake = 1;
 		}
@@ -687,8 +687,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 					fwin->resizebar_corner_width = 0;
 			}
 
-			XMapWindow(dpy, fwin->resizebar->window);
-			XLowerWindow(dpy, fwin->resizebar->window);
+			xcb_map_window(xconn, fwin->resizebar->window);
+			xcb_configure_window(xconn, fwin->resizebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 			updateResizebarCursors(fwin);
 
 			fwin->flags.need_texture_remake = 1;
@@ -713,11 +713,10 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		wFrameWindowResize(fwin, width, height + fwin->top_width + fwin->bottom_width + iv);
 
 	if (flags & WFF_BORDER)
-		XSetWindowBorderWidth(dpy, fwin->core->window,
-				      (fwin->flags.is_client_window_frame && fwin->child)
-				      ? wFrameBorderWidth((WWindow *)fwin->child) : scr->frame_border_width);
+		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ (fwin->flags.is_client_window_frame && fwin->child)
+				      ? wFrameBorderWidth((WWindow *)fwin->child) : scr->frame_border_width });
 	else
-		XSetWindowBorderWidth(dpy, fwin->core->window, 0);
+		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 	/* setup object descriptors */
 	if (fwin->titlebar) {
@@ -763,15 +762,15 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 	if (flags & WFF_SELECTED) {
 		if (fwin->selected_border_pixel)
-			XSetWindowBorder(dpy, fwin->core->window, *fwin->selected_border_pixel);
+			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->selected_border_pixel });
 	}
 	else {
 		if (fwin->flags.state == WS_FOCUSED) {
 			if (fwin->focused_border_pixel)
-				XSetWindowBorder(dpy, fwin->core->window, *fwin->focused_border_pixel);
+				xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
 		} else {
 			if (fwin->border_pixel)
-				XSetWindowBorder(dpy, fwin->core->window, *fwin->border_pixel);
+				xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
 		}
 
 		if (fwin->flags.is_client_window_frame && (iv + ih) > 0)
@@ -783,17 +782,19 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 {
 	int i;
 
-	if (fwin->inner_border_gc)
-		XFreeGC(dpy, fwin->inner_border_gc);
+	if (fwin->inner_border_gc) {
+		xcb_free_gc(xconn, fwin->inner_border_gc);
+		fwin->inner_border_gc = 0;
+	}
 
 	for (i = 0; i < WTB_ROLE_COUNT; i++)
 		if (fwin->buttons[i])
 			wCoreDestroy(fwin->buttons[i]);
 
-	if (fwin->titlebar_icon != None)
-		XFreePixmap(dpy, fwin->titlebar_icon);
-	if (fwin->titlebar_icon_mask != None)
-		XFreePixmap(dpy, fwin->titlebar_icon_mask);
+	if (fwin->titlebar_icon != XCB_NONE)
+		xcb_free_pixmap(xconn, fwin->titlebar_icon);
+	if (fwin->titlebar_icon_mask != XCB_NONE)
+		xcb_free_pixmap(xconn, fwin->titlebar_icon_mask);
 
 	if (fwin->resizebar)
 		wCoreDestroy(fwin->resizebar);
@@ -833,10 +834,10 @@ void wFrameWindowChangeState(WFrameWindow * fwin, int state)
 
 	if (fwin->flags.state == WS_FOCUSED) {
 		if (fwin->focused_border_pixel)
-			XSetWindowBorder(dpy, fwin->core->window, *fwin->focused_border_pixel);
+			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
 	} else {
 		if (fwin->border_pixel)
-			XSetWindowBorder(dpy, fwin->core->window, *fwin->border_pixel);
+			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
 	}
 	wFrameWindowPaint(fwin);
 }
@@ -861,9 +862,8 @@ static void wFrameWindowBlinkRefresh(WFrameWindow *fwin)
 	    && !((WWindow *)fwin->child)->flags.selected
 	    && fwin->border_pixel && fwin->focused_border_pixel
 	    && *fwin->border_pixel != *fwin->focused_border_pixel)
-		XSetWindowBorder(dpy, fwin->core->window,
-				 state == WS_FOCUSED ? *fwin->focused_border_pixel
-						      : *fwin->border_pixel);
+		xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ state == WS_FOCUSED ? *fwin->focused_border_pixel
+						      : *fwin->border_pixel });
 
 	wFrameWindowPaint(fwin);
 }
@@ -930,7 +930,7 @@ static void redrawTitlebar(WFrameWindow *fwin)
 {
 	if (!fwin->titlebar)
 		return;
-	XClearWindow(dpy, fwin->titlebar->window);
+	xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 	checkTitleSize(fwin);
 	wFrameWindowPaint(fwin);
 }
@@ -949,7 +949,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 			continue;
 		}
 		if (fwin->buttons[r])
-			XUnmapWindow(dpy, fwin->buttons[r]->window);
+			xcb_unmap_window(xconn, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 1);
 	}
 
@@ -963,7 +963,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
-			XClearWindow(dpy, fwin->titlebar->window);
+			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
@@ -985,7 +985,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 			continue;
 		}
 		if (fwin->buttons[r] && !dontFit(fwin, r))
-			XMapWindow(dpy, fwin->buttons[r]->window);
+			xcb_map_window(xconn, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 0);
 	}
 
@@ -999,7 +999,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
-			XClearWindow(dpy, fwin->titlebar->window);
+			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
@@ -1012,15 +1012,15 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
 {
 	WScreen *scr = fwin->screen_ptr;
 	RImage *scaled;
-	Pixmap pix = None, mask = None;
+	xcb_pixmap_t pix = XCB_NONE, mask = XCB_NONE;
 	int sz;
 
-	if (fwin->titlebar_icon != None)
-		XFreePixmap(dpy, fwin->titlebar_icon);
-	if (fwin->titlebar_icon_mask != None)
-		XFreePixmap(dpy, fwin->titlebar_icon_mask);
-	fwin->titlebar_icon = None;
-	fwin->titlebar_icon_mask = None;
+	if (fwin->titlebar_icon != XCB_NONE)
+		xcb_free_pixmap(xconn, fwin->titlebar_icon);
+	if (fwin->titlebar_icon_mask != XCB_NONE)
+		xcb_free_pixmap(xconn, fwin->titlebar_icon_mask);
+	fwin->titlebar_icon = XCB_NONE;
+	fwin->titlebar_icon_mask = XCB_NONE;
 	fwin->titlebar_icon_size = 0;
 
 	if (!fwin->titlebar) {
@@ -1050,10 +1050,10 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
 		/* RConvertImageMask() can fail before writing *pixmap, or
 		 * after writing *pixmap but before *mask, both locals
 		 * started at None so the conditional frees are safe */
-		if (pix != None)
-			XFreePixmap(dpy, pix);
-		if (mask != None)
-			XFreePixmap(dpy, mask);
+		if (pix != XCB_NONE)
+			xcb_free_pixmap(xconn, pix);
+		if (mask != XCB_NONE)
+			xcb_free_pixmap(xconn, mask);
 		RReleaseImage(scaled);
 		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
 		redrawTitlebar(fwin);
@@ -1073,13 +1073,13 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
  * with an optional RBEV_RAISED2 bevel on the (bx,0,bw,height) span.
  * Returns None when the texture has no pattern equivalent so the
  * caller falls back to the RImage renderer. */
-static Pixmap paintTextureSlice(WScreen *scr, cairo_pattern_t *pat,
+static xcb_pixmap_t paintTextureSlice(WScreen *scr, cairo_pattern_t *pat,
 				int width, int height, int bx, int bw, int bevel)
 {
 	RContext *rc = scr->rcontext;
 	cairo_surface_t *surf;
 	cairo_t *cr;
-	Pixmap pix;
+	xcb_pixmap_t pix;
 
 	pix = xcb_generate_id(rc->xc);
 	xcb_create_pixmap(rc->xc, rc->xdepth, pix, rc->xscreen->root, width, height);
@@ -1102,16 +1102,16 @@ static Pixmap paintTextureSlice(WScreen *scr, cairo_pattern_t *pat,
 static void
 renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	      int bwidth, int bheight, int nleft, int nright,
-	      Pixmap * title, Pixmap slices[])
+	      xcb_pixmap_t * title, xcb_pixmap_t slices[])
 {
 	RImage *img, *sub, *mimg;
 	cairo_pattern_t *pat;
 	cairo_matrix_t m;
 	int x, w, i, bevel;
 
-	*title = None;
+	*title = XCB_NONE;
 	for (i = 0; i < nleft + nright; i++)
-		slices[i] = None;
+		slices[i] = XCB_NONE;
 
 	pat = wTextureCairoPattern(texture, width, height);
 	if (pat) {
@@ -1244,7 +1244,7 @@ static void resizebarGrips(cairo_t *cr, int width, int height, int cwidth)
 }
 
 static void
-renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height, int cwidth, Pixmap * pmap)
+renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height, int cwidth, xcb_pixmap_t * pmap)
 {
 	RImage *img;
 	RColor light;
@@ -1253,7 +1253,7 @@ renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height,
 	cairo_surface_t *surf;
 	cairo_t *cr;
 
-	*pmap = None;
+	*pmap = XCB_NONE;
 
 	pat = wTextureCairoPattern(texture, width, height);
 	if (pat) {
@@ -1314,28 +1314,27 @@ static void updateTexture(WFrameWindow * fwin)
 	i = frameEffectiveState(fwin);
 	if (fwin->titlebar) {
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
-			XSetWindowBackgroundPixmap(dpy, fwin->titlebar->window, fwin->title_back[i]);
+			xcb_change_window_attributes(xconn, fwin->titlebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->title_back[i] });
 			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r] && fwin->button_back[r][i])
-						XSetWindowBackgroundPixmap(dpy, fwin->buttons[r]->window,
-									   fwin->button_back[r][i]);
+						xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->button_back[r][i] });
 			}
 		} else {
 			pixel = fwin->title_texture[i]->solid.normal.pixel;
-			XSetWindowBackground(dpy, fwin->titlebar->window, pixel);
+			xcb_change_window_attributes(xconn, fwin->titlebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
 			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r])
-						XSetWindowBackground(dpy, fwin->buttons[r]->window, pixel);
+						xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
 			}
 		}
-		XClearWindow(dpy, fwin->titlebar->window);
+		xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
 			if (!fwin->buttons[r])
 				continue;
-			XClearWindow(dpy, fwin->buttons[r]->window);
+			xcb_clear_area(xconn, 0, fwin->buttons[r]->window, 0, 0, 0, 0);
 			handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
 		}
 	}
@@ -1430,12 +1429,11 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 
 		/* this part should be in updateTexture() */
 		if (fwin->resizebar_texture[0]->any.type != WTEX_SOLID)
-			XSetWindowBackgroundPixmap(dpy, fwin->resizebar->window, fwin->resizebar_back[0]);
+			xcb_change_window_attributes(xconn, fwin->resizebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->resizebar_back[0] });
 		else
-			XSetWindowBackground(dpy, fwin->resizebar->window,
-					     fwin->resizebar_texture[0]->solid.normal.pixel);
+			xcb_change_window_attributes(xconn, fwin->resizebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ fwin->resizebar_texture[0]->solid.normal.pixel });
 
-		XClearWindow(dpy, fwin->resizebar->window);
+		xcb_clear_area(xconn, 0, fwin->resizebar->window, 0, 0, 0, 0);
 	}
 }
 
@@ -1552,7 +1550,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 		int lofs = 6, rofs = 6;
 		int titlelen;
 		int r, all_visible = 1;
-		int icon_visible = buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != None;
+		int icon_visible = buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != XCB_NONE;
 		int icon_x = 0;
 
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
@@ -1661,8 +1659,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			 * OVER-blend the AA fringe onto itself, so restore
 			 * the window background under the text span first
 			 * and the draw stays idempotent */
-			XClearArea(dpy, fwin->titlebar->window,
-				   x - 1, y, w + 2, h, False);
+			xcb_clear_area(xconn, false, fwin->titlebar->window, x - 1, y, w + 2, h);
 			WMDrawString(scr->wmscreen, fwin->titlebar->window,
 				     fwin->title_color[state], *fwin->font,
 				     x, y, title, titlelen);
@@ -1690,7 +1687,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
  * they read as unfocused tabs.
  *
  * Segment edges are stored in fwin->tab_seg_x[0..n] for the click
- * hit-test in window.c.  Returns 1 when segments were drawn, 0 when the
+ * hit-test in window.c. Returns 1 when segments were drawn, 0 when the
  * frame is not the active member of a multi-member group or
  * TabsInTitlebar is off so the caller continues into the single-title
  * renderer.
@@ -1797,7 +1794,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 		 * the AA-rendered label onto its previous self */
 		seg_tex = fwin->title_texture[seg_state];
 		if (seg_tex->any.type != WTEX_SOLID
-		    && fwin->title_back[seg_state] != None) {
+		    && fwin->title_back[seg_state] != XCB_NONE) {
 			back = cairo_xcb_surface_create(rc->xc,
 					(xcb_drawable_t)fwin->title_back[seg_state],
 					rc->xvisual, fwin->titlebar->width, th);
@@ -1843,7 +1840,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 		tw = sw - 6;
 
 		isz = mframe ? (int)mframe->titlebar_icon_size : 0;
-		if (show_icon && mframe && mframe->titlebar_icon != None
+		if (show_icon && mframe && mframe->titlebar_icon != XCB_NONE
 		    && isz > 0 && sw >= isz * 2) {
 			iy = (th - isz) / 2;
 			maskedBlit(cr, rc, mframe->titlebar_icon,
@@ -1911,14 +1908,14 @@ void wFrameWindowRepaintTitle(WFrameWindow *fwin)
 	redrawTitlebar(fwin);
 }
 
-static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height, Bool dontMove)
+static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height, bool dontMove)
 {
 	int resizedHorizontally = 0;
 
 	if (dontMove)
-		XResizeWindow(dpy, fwin->core->window, width, height);
+		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
 	else
-		XMoveResizeWindow(dpy, fwin->core->window, x, y, width, height);
+		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x, y, width, height });
 
 	if (fwin->core->width != width) {
 		fwin->flags.need_texture_remake = 1;
@@ -1943,11 +1940,11 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 			fits = (width >= fwin->top_width * k);
 			if (!fits && !dontFit(fwin, r)) {
 				if (!hideButton(fwin, r))
-					XUnmapWindow(dpy, fwin->buttons[r]->window);
+					xcb_unmap_window(xconn, fwin->buttons[r]->window);
 				setRoleBit(fwin->flags.button_dont_fit, r, 1);
 			} else if (fits && dontFit(fwin, r)) {
 				if (!hideButton(fwin, r))
-					XMapWindow(dpy, fwin->buttons[r]->window);
+					xcb_map_window(xconn, fwin->buttons[r]->window);
 				setRoleBit(fwin->flags.button_dont_fit, r, 0);
 			}
 		}
@@ -1960,7 +1957,7 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 		/* child button cores get an Expose from map/unmap, the
 		 * drawn icon does not so force a repaint when it flips */
 		if (drawn_role_changed) {
-			XClearWindow(dpy, fwin->titlebar->window);
+			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 	}
@@ -1987,12 +1984,12 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 
 void wFrameWindowConfigure(WFrameWindow * fwin, int x, int y, int width, int height)
 {
-	reconfigure(fwin, x, y, width, height, False);
+	reconfigure(fwin, x, y, width, height, false);
 }
 
 void wFrameWindowResize(WFrameWindow * fwin, int width, int height)
 {
-	reconfigure(fwin, 0, 0, width, height, True);
+	reconfigure(fwin, 0, 0, width, height, true);
 }
 
 int wFrameWindowChangeTitle(WFrameWindow *fwin, const char *new_title)
@@ -2018,16 +2015,16 @@ int wFrameWindowChangeTitle(WFrameWindow *fwin, const char *new_title)
 
 #ifdef XKB_BUTTON_HINT
 
-static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, Pixmap *pixmaps, int count)
+static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, xcb_pixmap_t *pixmaps, int count)
 {
 	int i;
 	for (i = 0; i < count; i++) {
-		WPixmap *wp = wPixmapCreate(pixmaps[i], None);
+		WPixmap *wp = wPixmapCreate(pixmaps[i], XCB_NONE);
 		if (!wp) {
 			int j;
-			XFreePixmap(dpy, pixmaps[i]);
+			xcb_free_pixmap(xconn, pixmaps[i]);
 			for (j = i + 1; j < count; j++)
-				XFreePixmap(dpy, pixmaps[j]);
+				xcb_free_pixmap(xconn, pixmaps[j]);
 			return 0;
 		}
 		wp->client_owned = 0;
@@ -2042,13 +2039,13 @@ static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, Pixmap *pixma
 /* left half of tmp[i] is the normal-state background, right half the
  * pushed state, then the language label centred in each half */
 static void paintLanguageHalf(cairo_t *cr, RContext *rc, int x, int kw, int kh,
-			      Pixmap back, const XColor *fill,
+			      xcb_pixmap_t back, const WXColor *fill,
 			      WMColor *text, WMFont *font, const char *label,
 			      int tx, int ty)
 {
 	cairo_surface_t *bs;
 
-	if (back != None) {
+	if (back != XCB_NONE) {
 		bs = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)back,
 					      rc->xvisual, kw + 1, kh + 1);
 		cairo_set_source_surface(cr, bs, x - 1, -1);
@@ -2070,15 +2067,15 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	WCoreWindow *button = fwin->buttons[WTB_LANGUAGE];
 	WMFont *small;
 	WMColor *silver, *ntext, *ptext;
-	const XColor *nfill, *pfill;
-	Pixmap nback;
+	const WXColor *nfill, *pfill;
+	xcb_pixmap_t nback;
 	cairo_surface_t *surf;
 	cairo_t *cr;
 	int i, count, small_px, text_width, text_height, tx, ty;
 	int border_thickness = 3;
 	int key_width, key_height;
 	int group_index;
-	Pixmap tmp[2];		/* focused, unfocused */
+	xcb_pixmap_t tmp[2];		/* focused, unfocused */
 
 	if (!fwin->flags.titlebar || fwin->core->descriptor.parent_type != WCLASS_WINDOW)
 		return;
@@ -2109,14 +2106,14 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	ty = (key_height - text_height) / 2;
 
 	for (i = 0; i < count; i++) {
-		tmp[i] = XCreatePixmap(dpy, button->window,
-				       2 * key_width, key_height, scr->w_depth);
+		tmp[i] = xcb_generate_id(xconn);
+		xcb_create_pixmap(xconn, scr->w_depth, tmp[i], button->window, 2 * key_width, key_height);
 		WMScreenNoteDrawableSize(scr->wmscreen, tmp[i], 2 * key_width, key_height);
 
-		nback = None;
+		nback = XCB_NONE;
 		if (TS_NEW_GEOM(w_global.config->new_style)) {
 			if (fwin->title_texture[i]->any.type != WTEX_SOLID
-			    && fwin->title_back[i] != None)
+			    && fwin->title_back[i] != XCB_NONE)
 				nback = fwin->button_back[WTB_LANGUAGE][i];
 			nfill = &fwin->title_texture[i]->solid.normal;
 			ntext = fwin->title_color[i];
@@ -2130,7 +2127,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 		} else {
 			if (!silver)
 				silver = WMCreateRGBColor(scr->wmscreen, 0xc0c0,
-							  0xc0c0, 0xc0c0, True);
+							  0xc0c0, 0xc0c0, true);
 			nfill = pfill = &scr->widget_texture->dark;
 			ntext = ptext = silver;
 		}
@@ -2140,7 +2137,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 		cr = cairo_create(surf);
 		paintLanguageHalf(cr, rc, 0, key_width, key_height, nback, nfill,
 				  ntext, small, fwin->language_label, tx, ty);
-		paintLanguageHalf(cr, rc, key_width, key_width, key_height, None, pfill,
+		paintLanguageHalf(cr, rc, key_width, key_width, key_height, XCB_NONE, pfill,
 				  ptext, small, fwin->language_label, tx, ty);
 		cairo_destroy(cr);
 		cairo_surface_flush(surf);
@@ -2157,13 +2154,13 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 
 /*********************************************************************/
 
-static void handleExpose(WObjDescriptor * desc, XEvent * event)
+static void handleExpose(WObjDescriptor * desc, xcb_generic_event_t * event)
 {
 	WFrameWindow *fwin = (WFrameWindow *) desc->parent;
 
-	if (fwin->titlebar && fwin->titlebar->window == event->xexpose.window)
+	if (fwin->titlebar && fwin->titlebar->window == ((xcb_expose_event_t *)event)->window)
 		fwin->flags.repaint_only_titlebar = 1;
-	if (fwin->resizebar && fwin->resizebar->window == event->xexpose.window)
+	if (fwin->resizebar && fwin->resizebar->window == ((xcb_expose_event_t *)event)->window)
 		fwin->flags.repaint_only_resizebar = 1;
 	wFrameWindowPaint(fwin);
 	fwin->flags.repaint_only_titlebar = 0;
@@ -2191,7 +2188,7 @@ static void checkTitleSize(WFrameWindow * fwin)
 			if (!wtb_role_info[r].is_drawn && buttonVisible(fwin, r))
 				width -= fwin->buttons[r]->width + 3;
 	}
-	if (buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != None)
+	if (buttonVisible(fwin, WTB_ICON) && fwin->titlebar_icon != XCB_NONE)
 		width -= fwin->titlebar_icon_size + 3;
 
 	if (WSCALE(fwin->screen_ptr, WMWidthOfString(*fwin->font, fwin->title, strlen(fwin->title))) > width)
@@ -2234,7 +2231,7 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 	}
 
 	if (!pushed || w_global.config->new_style == TS_FLAT)
-		XClearWindow(dpy, button->window);
+		xcb_clear_area(xconn, 0, button->window, 0, 0, 0, 0);
 
 	cr = WCairoBeginForDrawable(scr->wmscreen, button->window);
 	if (!cr)
@@ -2309,7 +2306,7 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 			cairo_set_source_surface(cr, isurf, x - left, y);
 		}
 
-		if (image->mask != None) {
+		if (image->mask != XCB_NONE) {
 			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 					(xcb_pixmap_t)image->mask,
 					image->width, image->height);
@@ -2325,7 +2322,7 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 	WCairoEnd(cr);
 }
 
-static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
+static void handleButtonExpose(WObjDescriptor * desc, xcb_generic_event_t * event)
 {
 	WFrameWindow *fwin = (WFrameWindow *) desc->parent;
 	WCoreWindow *button = (WCoreWindow *) desc->self;
@@ -2352,17 +2349,17 @@ static void handleButtonExpose(WObjDescriptor * desc, XEvent * event)
 			paintButton(button, fwin->title_texture[state],
 				    fwin->title_color[state],
 				    fwin->languagebutton_image[lb_index],
-				    False, False);
+				    false, false);
 		}
 		return;
 	}
 #endif
 	paintButton(button, fwin->title_texture[state],
 		    fwin->title_color[state],
-		    fwin->button_image[r], False, wtb_role_info[r].from_xpm);
+		    fwin->button_image[r], false, wtb_role_info[r].from_xpm);
 }
 
-static void titlebarMouseDown(WObjDescriptor * desc, XEvent * event)
+static void titlebarMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 {
 	WFrameWindow *fwin = desc->parent;
 	WCoreWindow *titlebar = desc->self;
@@ -2376,7 +2373,7 @@ static void titlebarMouseDown(WObjDescriptor * desc, XEvent * event)
 	}
 }
 
-static void resizebarMouseDown(WObjDescriptor * desc, XEvent * event)
+static void resizebarMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 {
 	WFrameWindow *fwin = desc->parent;
 	WCoreWindow *resizebar = desc->self;
@@ -2385,16 +2382,16 @@ static void resizebarMouseDown(WObjDescriptor * desc, XEvent * event)
 		(*fwin->on_mousedown_resizebar) (resizebar, fwin->child, event);
 }
 
-static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
+static void buttonMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 {
 	WFrameWindow *fwin = desc->parent;
 	WCoreWindow *button = desc->self;
 	WPixmap *image;
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 	int r, done = 0, execute = 1, from_xpm;
 	WTexture *texture;
 	WMColor *color;
-	int clickButton = event->xbutton.button;
+	int clickButton = ((xcb_button_press_event_t *)event)->detail;
 
 	for (r = 0; r < WTB_ROLE_COUNT; r++)
 		if (button == fwin->buttons[r])
@@ -2426,36 +2423,39 @@ static void buttonMouseDown(WObjDescriptor * desc, XEvent * event)
 
 	color = fwin->title_color[frameEffectiveState(fwin)];
 	texture = fwin->title_texture[frameEffectiveState(fwin)];
-	paintButton(button, texture, color, image, True, from_xpm);
+	paintButton(button, texture, color, image, true, from_xpm);
 
 	while (!done) {
-		WMMaskEvent(dpy, LeaveWindowMask | EnterWindowMask | ButtonReleaseMask
-			    | ButtonPressMask | ExposureMask, &ev);
-		switch (ev.type) {
-		case LeaveNotify:
+		free(ev);
+		ev = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_BUTTON_RELEASE
+			    | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
+		switch ((ev->response_type & 0x7f)) {
+		case XCB_LEAVE_NOTIFY:
 			execute = 0;
-			paintButton(button, texture, color, image, False, from_xpm);
+			paintButton(button, texture, color, image, false, from_xpm);
 			break;
 
-		case EnterNotify:
+		case XCB_ENTER_NOTIFY:
 			execute = 1;
-			paintButton(button, texture, color, image, True, from_xpm);
+			paintButton(button, texture, color, image, true, from_xpm);
 			break;
 
-		case ButtonPress:
+		case XCB_BUTTON_PRESS:
 			break;
 
-		case ButtonRelease:
-			if (ev.xbutton.button == clickButton)
+		case XCB_BUTTON_RELEASE:
+			if ((((xcb_button_press_event_t *)ev)->detail) == clickButton)
 				done = 1;
 			break;
 
 		default:
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 		}
 	}
-	paintButton(button, texture, color, image, False, from_xpm);
+	paintButton(button, texture, color, image, false, from_xpm);
 
 	if (execute && fwin->on_click_button[r])
-		(*fwin->on_click_button[r]) (button, fwin->child, &ev);
+		(*fwin->on_click_button[r]) (button, fwin->child, ev);
+	free(ev);
 }

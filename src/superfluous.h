@@ -22,7 +22,7 @@
 
 #include "dock.h"
 
-void DoKaboom(WScreen *scr, Window win, int x, int y);
-Pixmap MakeGhostIcon(WScreen *scr, Drawable drawable);
+void DoKaboom(WScreen *scr, xcb_window_t win, int x, int y);
+xcb_pixmap_t MakeGhostIcon(WScreen *scr, xcb_drawable_t drawable);
 void DoWindowBirth(WWindow *wwin);
 #endif

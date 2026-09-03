@@ -18,7 +18,7 @@
 #include "wconfig.h"
 #include "osdep.h"
 
-static Bool getProcStatFields(pid_t pid, int *ppid, int *pgrp, int *tpgid)
+static bool getProcStatFields(pid_t pid, int *ppid, int *pgrp, int *tpgid)
 {
 	char path[64], line[4096];
 	char *rparen, *rest;
@@ -28,23 +28,23 @@ static Bool getProcStatFields(pid_t pid, int *ppid, int *pgrp, int *tpgid)
 	snprintf(path, sizeof(path), "/proc/%d/stat", (int)pid);
 	f = fopen(path, "r");
 	if (!f)
-		return False;
+		return false;
 
 	if (!fgets(line, sizeof(line), f)) {
 		fclose(f);
-		return False;
+		return false;
 	}
 	fclose(f);
 
 	rparen = strrchr(line, ')');
 	if (!rparen)
-		return False;
+		return false;
 
 	rest = rparen + 1;
 	while (*rest == ' ')
 		rest++;
 	if (*rest == '\0')
-		return False;
+		return false;
 
 	/* Skip state. Remaining fields start at ppid, pgrp, session, tty_nr, tpgid. */
 	rest++;
@@ -52,7 +52,7 @@ static Bool getProcStatFields(pid_t pid, int *ppid, int *pgrp, int *tpgid)
 		rest++;
 
 	if (sscanf(rest, "%d %d %*d %*d %d", &scan_ppid, &scan_pgrp, &scan_tpgid) != 3)
-		return False;
+		return false;
 
 	if (ppid)
 		*ppid = scan_ppid;
@@ -61,7 +61,7 @@ static Bool getProcStatFields(pid_t pid, int *ppid, int *pgrp, int *tpgid)
 	if (tpgid)
 		*tpgid = scan_tpgid;
 
-	return True;
+	return true;
 }
 
 static const char *baseName(const char *path)
@@ -81,7 +81,7 @@ static const char *baseName(const char *path)
  * returns 0 for failure, in which case argc := 0 and argv := NULL
  * returns 1 for success
  */
-Bool GetCommandForPid(int pid, char ***argv, int *argc)
+bool GetCommandForPid(int pid, char ***argv, int *argc)
 {
 	static char buf[_POSIX_ARG_MAX];
 	int fd, i, j;
@@ -100,7 +100,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 			break;
 		if (errno == EINTR)
 			continue;
-		return False;
+		return false;
 	}
 
 	while (1) {
@@ -110,7 +110,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 		if (errno == EINTR)
 			continue;
 		close(fd);
-		return False;
+		return false;
 	}
 	close(fd);
 
@@ -120,7 +120,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 			(*argc)++;
 
 	if (*argc == 0)
-		return False;
+		return false;
 
 	*argv = (char **)wmalloc(sizeof(char *) * (*argc + 1 /* term. null ptr */));
 	(*argv)[0] = buf;
@@ -137,7 +137,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 	/* the list of arguments must be terminated by a null pointer */
 	(*argv)[j] = NULL;
-	return True;
+	return true;
 }
 
 /*
@@ -145,19 +145,19 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
  * Returns True if 'ancestor' is a parent (or grandparent, ...) of 'pid'
  * by walking /proc/<pid>/stat up the process tree.
  */
-Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 {
 	int ppid;
 
 	while (pid > 1) {
 		ppid = 0;
 		if (!getProcStatFields(pid, &ppid, NULL, NULL))
-			return False;
+			return false;
 		if ((pid_t)ppid == ancestor)
-			return True;
+			return true;
 		pid = (pid_t)ppid;
 	}
-	return False;
+	return false;
 }
 
 /*

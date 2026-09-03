@@ -56,7 +56,7 @@ typedef struct WWorkspace {
 void wWorkspaceMake(WScreen *scr, int count);
 int wWorkspaceNew(WScreen *scr);
 int wGetWorkspaceNumber(WScreen *scr, const char *value);
-Bool wWorkspaceDelete(WScreen *scr, int workspace);
+bool wWorkspaceDelete(WScreen *scr, int workspace);
 void wAutoRemoveEmptyWorkspaces(WScreen *scr);
 void wWorkspaceChange(WScreen *scr, int workspace);
 /* Pointer-initiated variants set w_global.pointer_driven_change so the warp
@@ -65,13 +65,13 @@ void wWorkspaceChangeFromPointer(WScreen *scr, int workspace);
 void wWorkspaceRelativeChangeFromPointer(WScreen *scr, int amount);
 void wWorkspaceDirectionalChangeFromPointer(WScreen *scr, int dcol, int drow);
 void wWorkspaceForceChange(WScreen *scr, int workspace);
-WMenu *wWorkspaceMenuMake(WScreen *scr, Bool titled);
+WMenu *wWorkspaceMenuMake(WScreen *scr, bool titled);
 void wWorkspaceMenuUpdate(WScreen *scr, WMenu *menu);
 void wWorkspaceSaveState(WScreen *scr, WMPropList *old_state);
 void wWorkspaceRestoreState(WScreen *scr);
 void wWorkspaceRename(WScreen *scr, int workspace, const char *name);
 void wWorkspaceRelativeChange(WScreen *scr, int amount);
-Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col);
+bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col);
 int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow);
 void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow);
 
@@ -80,9 +80,9 @@ int wWorkspaceForHead(WScreen *scr, int head);
 int wWorkspaceRelativeHeadTarget(WScreen *scr, int head, int amount);
 int wHeadShowingWorkspace(WScreen *scr, int workspace);
 int wWorkspaceDefaultForHead(WScreen *scr, int head);
-Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head);
-Bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head);
-Bool wWindowIsVisibleOnAnyHead(struct WWindow *wwin);
+bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head);
+bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head);
+bool wWindowIsVisibleOnAnyHead(struct WWindow *wwin);
 void wWorkspaceSetCurrentHead(WScreen *scr, int head);
 void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head);
 void wWorkspaceLoadOutputPins(WScreen *scr, WMPropList *wmaker_dict);
@@ -99,7 +99,7 @@ void wWorkspaceReconcileHeads(WScreen *scr);
  * src/wconfigmodel.c without src/vdesk.c) can still see it as a plain
  * symbol. The runtime-reload branch in wconfigmodel.c calls
  * wWorkspaceUpdateEdge(), declared in vdesk.h. */
-extern XContext wVEdgeContext;
+extern WMHashTable *wVEdgeTable;
 #endif
 
 #endif

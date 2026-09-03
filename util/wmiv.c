@@ -17,12 +17,13 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/randr.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-x11.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 #include <wraster.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -70,19 +71,9 @@
 
 /* CHUNK size for INCR (bytes). Tune if desired. */
 #include "clip-common.h"
+#include "xcconn.h"
 
 #define CLIPBOARD_PASTE_TIMEOUT_MS 5000
-
-/* Bool/True/False were provided by <X11/Xlib.h> via <WINGs/WINGsP.h>;
- * with the xcb port only <X11/X.h> (via <wraster.h>) is pulled in, which
- * does not define them, so provide the same definitions here */
-typedef int Bool;
-#ifndef True
-#define True 1
-#endif
-#ifndef False
-#define False 0
-#endif
 
 xcb_connection_t *xc;
 int screen_num;
@@ -90,10 +81,10 @@ xcb_window_t root_window;
 xcb_window_t win;
 RContext *ctx;
 RImage *img;
-Pixmap pix;
+xcb_pixmap_t pix;
 
 /* XDND drag-out support */
-static Bool button1_pressed = False;
+static bool button1_pressed = false;
 static int drag_start_x, drag_start_y;
 static int drag_threshold = 5; /* pixels */
 
@@ -125,15 +116,15 @@ int max_height = 0;
 /* Archive support */
 static char *temp_dir = NULL;
 static char *paste_temp_dir = NULL;
-static Bool is_archive = False;
+static bool is_archive = false;
 
-Bool fullscreen_flag = False;
-Bool focus = True;
-Bool back_from_fullscreen = False;
-Bool ignore_unknown_file_format = False;
+bool fullscreen_flag = false;
+bool focus = true;
+bool back_from_fullscreen = false;
+bool ignore_unknown_file_format = false;
 
 #ifdef HAVE_PTHREAD
-Bool slideshow_flag = False;
+bool slideshow_flag = false;
 int slideshow_delay = 5;
 pthread_t tid = 0;
 #endif
@@ -196,7 +187,7 @@ static unsigned char *clipboard_png_data = NULL;
 static size_t clipboard_png_size = 0;
 static unsigned char *clipboard_jpeg_data = NULL;
 static size_t clipboard_jpeg_size = 0;
-static Bool we_own_clipboard = False;
+static bool we_own_clipboard = false;
 
 static ClipIncrSend incr;
 
@@ -485,11 +476,11 @@ static xcb_atom_t intern_atom(const char *name)
 	return atom;
 }
 
-static Bool get_cardinal(xcb_window_t w, xcb_atom_t prop, uint32_t *out)
+static bool get_cardinal(xcb_window_t w, xcb_atom_t prop, uint32_t *out)
 {
 	xcb_get_property_cookie_t ck;
 	xcb_get_property_reply_t *rep;
-	Bool ok = False;
+	bool ok = false;
 
 	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_CARDINAL, 0, 1);
 	rep = xcb_get_property_reply(xc, ck, NULL);
@@ -497,17 +488,17 @@ static Bool get_cardinal(xcb_window_t w, xcb_atom_t prop, uint32_t *out)
 	if (rep && rep->type == XCB_ATOM_CARDINAL && rep->format == 32 &&
 	    rep->value_len >= 1) {
 		*out = ((uint32_t *)xcb_get_property_value(rep))[0];
-		ok = True;
+		ok = true;
 	}
 	free(rep);
 	return ok;
 }
 
-static Bool get_cardinal_n(xcb_window_t w, xcb_atom_t prop, uint32_t *out, int n)
+static bool get_cardinal_n(xcb_window_t w, xcb_atom_t prop, uint32_t *out, int n)
 {
 	xcb_get_property_cookie_t ck;
 	xcb_get_property_reply_t *rep;
-	Bool ok = False;
+	bool ok = false;
 
 	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_CARDINAL, 0, n);
 	rep = xcb_get_property_reply(xc, ck, NULL);
@@ -516,7 +507,7 @@ static Bool get_cardinal_n(xcb_window_t w, xcb_atom_t prop, uint32_t *out, int n
 	    rep->value_len >= (uint32_t)n) {
 		memcpy(out, xcb_get_property_value(rep), sizeof(uint32_t) * n);
 
-		ok = True;
+		ok = true;
 	}
 	free(rep);
 	return ok;
@@ -666,7 +657,7 @@ static void cleanup_temp_dir(void)
 		free(temp_dir);
 		temp_dir = NULL;
 	}
-	is_archive = False;
+	is_archive = false;
 }
 
 static void cleanup_paste_temp_dir(void)
@@ -682,16 +673,16 @@ static void cleanup_paste_temp_dir(void)
 
 /*
 	Check if file has archive extension
-	Returns True if it is an archive, False otherwise
+	Returns true if it is an archive, false otherwise
 */
-static Bool has_suffix_ci(const char *s, const char *suffix)
+static bool has_suffix_ci(const char *s, const char *suffix)
 {
 	size_t sl = strlen(s), xl = strlen(suffix);
 
 	return sl >= xl && strcasecmp(s + sl - xl, suffix) == 0;
 }
 
-static Bool is_archive_file(const char *filename)
+static bool is_archive_file(const char *filename)
 {
 	static const char *exts[] = {
 		".cbz", ".zip", ".cbr", ".rar", ".cbt", ".cb7", ".7z",
@@ -701,18 +692,18 @@ static Bool is_archive_file(const char *filename)
 
 	for (i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
 		if (has_suffix_ci(filename, exts[i]))
-			return True;
-	return False;
+			return true;
+	return false;
 }
 
 #ifdef HAVE_LIBARCHIVE
 
-static Bool archive_entry_path_is_safe(const char *path)
+static bool archive_entry_path_is_safe(const char *path)
 {
 	const char *component;
 
 	if (!path || path[0] == '\0' || path[0] == '/' || path[0] == '\\')
-		return False;
+		return false;
 
 	component = path;
 	while (*component) {
@@ -725,14 +716,14 @@ static Bool archive_entry_path_is_safe(const char *path)
 		length = slash - component;
 		if ((length == 1 && component[0] == '.') ||
 		    (length == 2 && component[0] == '.' && component[1] == '.'))
-			return False;
+			return false;
 
 		if (*slash == '\0')
 			break;
 		component = slash + 1;
 	}
 
-	return True;
+	return true;
 }
 
 /*
@@ -997,14 +988,14 @@ static char *extract_archive(const char *filename)
 		char *result_dir = strdup(image_dir);
 
 		free(image_dir);
-		is_archive = True;
+		is_archive = true;
 		return result_dir;
 	}
 
 	if (image_dir)
 		free(image_dir);
 
-	is_archive = True;
+	is_archive = true;
 	return strdup(temp_dir);
 #else
 	(void) filename;
@@ -1058,16 +1049,21 @@ static void free_clipboard_data(void)
 static void send_selection_notify(xcb_selection_request_event_t *req,
 				  xcb_atom_t property)
 {
-	xcb_selection_notify_event_t ev;
+	/* the union zeroes the full 32 wire bytes: xcb_send_event
+	 * copies 32 bytes and the typed struct is only 24 */
+	union {
+		xcb_selection_notify_event_t ev;
+		char buf[32];
+	} u;
 
-	memset(&ev, 0, sizeof(ev));
-	ev.response_type = XCB_SELECTION_NOTIFY;
-	ev.time = req->time;
-	ev.requestor = req->requestor;
-	ev.selection = req->selection;
-	ev.target = req->target;
-	ev.property = property;
-	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
+	memset(&u, 0, sizeof(u));
+	u.ev.response_type = XCB_SELECTION_NOTIFY;
+	u.ev.time = req->time;
+	u.ev.requestor = req->requestor;
+	u.ev.selection = req->selection;
+	u.ev.target = req->target;
+	u.ev.property = property;
+	xcb_send_event(xc, 0, req->requestor, 0, u.buf);
 	xcb_flush(xc);
 }
 
@@ -1150,10 +1146,10 @@ static void copy_current_image_to_clipboard(void)
 	if (selection_owner(clipboard_atom) != win) {
 		fprintf(stderr, "Error: failed to own clipboard selection\n");
 		free_clipboard_data();
-		we_own_clipboard = False;
+		we_own_clipboard = false;
 		return;
 	}
-	we_own_clipboard = True;
+	we_own_clipboard = true;
 	xcb_flush(xc);
 
 	if (WMIV_DEBUG)
@@ -1260,7 +1256,7 @@ static void handle_selection_clear(xcb_selection_clear_event_t *ev)
 		return;
 	clip_incr_send_cancel(xc, &incr);
 	if (we_own_clipboard) {
-		we_own_clipboard = False;
+		we_own_clipboard = false;
 		free_clipboard_data();
 	}
 }
@@ -1317,7 +1313,7 @@ static void dispatch_clipboard_service_event(xcb_generic_event_t *event)
 	}
 }
 
-static Bool wait_for_clipboard_event(wmiv_event_pred pred, void *arg,
+static bool wait_for_clipboard_event(wmiv_event_pred pred, void *arg,
 				     xcb_generic_event_t **out, int timeout_ms)
 {
 	struct timespec deadline;
@@ -1338,15 +1334,15 @@ static Bool wait_for_clipboard_event(wmiv_event_pred pred, void *arg,
 
 		*out = wmiv_q_take_if(pred, arg);
 		if (*out)
-			return True;
+			return true;
 
 		if (xcb_connection_has_error(xc))
-			return False;
+			return false;
 
 		int remaining = wmiv_deadline_remaining_ms(&deadline);
 
 		if (remaining <= 0)
-			return False;
+			return false;
 
 		struct pollfd pfd;
 
@@ -1359,16 +1355,16 @@ static Bool wait_for_clipboard_event(wmiv_event_pred pred, void *arg,
 		if (rc < 0) {
 			if (errno == EINTR)
 				continue;
-			return False;
+			return false;
 		}
 		if (rc == 0)
-			return False;
+			return false;
 		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
-			return False;
+			return false;
 	}
 }
 
-static Bool request_clipboard_selection(xcb_atom_t selection, xcb_atom_t target,
+static bool request_clipboard_selection(xcb_atom_t selection, xcb_atom_t target,
 		xcb_atom_t property, xcb_timestamp_t timestamp,
 		xcb_selection_notify_event_t *out)
 {
@@ -1385,7 +1381,7 @@ static Bool request_clipboard_selection(xcb_atom_t selection, xcb_atom_t target,
 
 	if (!wait_for_clipboard_event(clipboard_selection_notify_matches,
 			&wait, &event, CLIPBOARD_PASTE_TIMEOUT_MS)) {
-		return False;
+		return false;
 	}
 
 	*out = *(xcb_selection_notify_event_t *)event;
@@ -1810,7 +1806,7 @@ int merge_with_background(RImage *i)
 	if (i) {
 		RImage *back;
 
-		back = RCreateImage(i->width, i->height, True);
+		back = RCreateImage(i->width, i->height, true);
 		if (back) {
 			int opaq = 255;
 			int x = 0, y = 0;
@@ -1896,9 +1892,9 @@ RImage *draw_failed_image(void)
 	geo = xcb_get_geometry_reply(xc, ck, NULL);
 
 	if (win && geo)
-		failed_image = RCreateImage(geo->width, geo->height, False);
+		failed_image = RCreateImage(geo->width, geo->height, false);
 	else
-		failed_image = RCreateImage(50, 50, False);
+		failed_image = RCreateImage(50, 50, false);
 	free(geo);
 	if (!failed_image)
 		return NULL;
@@ -1946,11 +1942,11 @@ RImage *draw_failed_image(void)
 int full_screen(void)
 {
 	if (fullscreen_flag) {
-		fullscreen_flag = False;
+		fullscreen_flag = false;
 		zoom_factor = 0;
-		back_from_fullscreen = True;
+		back_from_fullscreen = true;
 	} else {
-		fullscreen_flag = True;
+		fullscreen_flag = true;
 		zoom_factor = 1000;
 		RReleaseImage(img);
 		img = load_oriented_image(ctx, current_link->data, 0);
@@ -2514,7 +2510,7 @@ static xcb_atom_t wmiv_xdnd_pick_type(const xcb_atom_t *types, size_t count)
 	return XCB_ATOM_NONE;
 }
 
-static void wmiv_xdnd_send_status(Bool accept)
+static void wmiv_xdnd_send_status(bool accept)
 {
 	send_client_message(xdnd_target.source, 0,
 			    xdnd_target.source, atom_XdndStatus,
@@ -2524,7 +2520,7 @@ static void wmiv_xdnd_send_status(Bool accept)
 			    accept ? (uint32_t)atom_XdndActionCopy : 0);
 }
 
-static void wmiv_xdnd_send_finished(Bool ok)
+static void wmiv_xdnd_send_finished(bool ok)
 {
 	send_client_message(xdnd_target.source, 0,
 			    xdnd_target.source, atom_XdndFinished,
@@ -2549,15 +2545,15 @@ static int wmiv_xdnd_is_selnotify(const xcb_generic_event_t *ev, void *arg)
 
 /* bounded wait for the XdndSelection SelectionNotify so a hostile or
  * crashed source cannot wedge the main loop indefinitely */
-static Bool wmiv_xdnd_wait_selnotify(xcb_selection_notify_event_t *out)
+static bool wmiv_xdnd_wait_selnotify(xcb_selection_notify_event_t *out)
 {
 	xcb_generic_event_t *ev = wmiv_q_match(wmiv_xdnd_is_selnotify, NULL, 2000);
 
 	if (!ev)
-		return False;
+		return false;
 	*out = *(xcb_selection_notify_event_t *)ev;
 	free(ev);
-	return True;
+	return true;
 }
 
 static int wmiv_xdnd_is_drag_reply(const xcb_generic_event_t *ev, void *arg)
@@ -2644,7 +2640,7 @@ static int wmiv_xdnd_handle_message(xcb_client_message_event_t *ev, unsigned cha
 
 		if ((xcb_window_t)ev->data.data32[0] != xdnd_target.source ||
 		    xdnd_target.want_type == XCB_ATOM_NONE) {
-			wmiv_xdnd_send_finished(False);
+			wmiv_xdnd_send_finished(false);
 			xdnd_target.source = 0;
 			return 0;
 		}
@@ -2657,14 +2653,14 @@ static int wmiv_xdnd_handle_message(xcb_client_message_event_t *ev, unsigned cha
 		/* wait for the source to deliver the converted selection,
 		 * bounded so an unresponsive source cannot block us */
 		if (!wmiv_xdnd_wait_selnotify(&sn)) {
-			wmiv_xdnd_send_finished(False);
+			wmiv_xdnd_send_finished(false);
 			xdnd_target.source = 0;
 			xdnd_target.want_type = XCB_ATOM_NONE;
 			return 0;
 		}
 
 		if (sn.property == XCB_ATOM_NONE) {
-			wmiv_xdnd_send_finished(False);
+			wmiv_xdnd_send_finished(false);
 			xdnd_target.source = 0;
 			return 0;
 		}
@@ -2722,11 +2718,11 @@ static char *wmiv_build_drag_uri(void)
 	return uri;
 }
 
-static Bool get_atom_prop(xcb_window_t w, xcb_atom_t prop, xcb_atom_t *out)
+static bool get_atom_prop(xcb_window_t w, xcb_atom_t prop, xcb_atom_t *out)
 {
 	xcb_get_property_cookie_t ck;
 	xcb_get_property_reply_t *rep;
-	Bool ok = False;
+	bool ok = false;
 
 	ck = xcb_get_property(xc, 0, w, prop, XCB_ATOM_ATOM, 0, 1);
 	rep = xcb_get_property_reply(xc, ck, NULL);
@@ -2734,7 +2730,7 @@ static Bool get_atom_prop(xcb_window_t w, xcb_atom_t prop, xcb_atom_t *out)
 	if (rep && rep->type == XCB_ATOM_ATOM && rep->format == 32 &&
 	    rep->value_len >= 1) {
 		*out = ((xcb_atom_t *)xcb_get_property_value(rep))[0];
-		ok = True;
+		ok = true;
 	}
 	free(rep);
 	return ok;
@@ -2811,7 +2807,7 @@ static void wmiv_xdnd_send_drop(xcb_window_t target, xcb_timestamp_t t)
 static void initiate_file_drag(void)
 {
 	xcb_window_t target = 0;
-	Bool target_accepts = False;
+	bool target_accepts = false;
 	xcb_grab_pointer_cookie_t gck;
 	xcb_grab_pointer_reply_t *grep;
 
@@ -2863,7 +2859,7 @@ static void initiate_file_drag(void)
 				if (target != 0)
 					wmiv_xdnd_send_leave(target);
 				target = over;
-				target_accepts = False;
+				target_accepts = false;
 				if (target != 0)
 					wmiv_xdnd_send_enter(target);
 			}
@@ -2988,7 +2984,7 @@ static void init_xkb(void)
 	for (xkb_keycode_t kc = min_kc; kc <= max_kc; kc++) {
 		n = xkb_keymap_key_get_syms_by_level(xkb_keymap, kc, 0, 0, &syms);
 
-		if (n > 0 && syms[0] == XK_Right) {
+		if (n > 0 && syms[0] == XKB_KEY_Right) {
 			right_keycode = kc;
 			break;
 		}
@@ -3006,7 +3002,6 @@ int main(int argc, char **argv)
 	char *reading_filename = "";
 	int file_i;
 	int quit = 0;
-	xcb_screen_iterator_t iter;
 	xcb_screen_t *screen;
 	uint32_t event_mask;
 	uint32_t values[2];
@@ -3065,7 +3060,7 @@ int main(int argc, char **argv)
 			printf("%s version %s\n", APPNAME, VERSION);
 			return EXIT_SUCCESS;
 		case 'i':
-			ignore_unknown_file_format = True;
+			ignore_unknown_file_format = true;
 			break;
 		case '?':
 			return EXIT_FAILURE;
@@ -3079,22 +3074,15 @@ int main(int argc, char **argv)
 	/* Register cleanup function for temporary directory */
 	atexit(cleanup_temp_dir);
 #endif
-	xc = xcb_connect(NULL, &screen_num);
+	xc = xcconn_open(NULL, APPNAME, 0, &screen_num);
 
-	if (xcb_connection_has_error(xc)) {
-		fprintf(stderr, "Error: can't open display\n");
-		xcb_disconnect(xc);
-
+	if (!xc) {
 		linked_list_free(&list);
 		return EXIT_FAILURE;
 	}
 
 	/* Get screen info */
-	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
-
-	for (int i = 0; i < screen_num; i++)
-		xcb_screen_next(&iter);
-	screen = iter.data;
+	screen = xcconn_screen(xc, screen_num);
 
 	root_window = screen->root;
 	max_width = screen->width_in_pixels;
@@ -3170,11 +3158,7 @@ int main(int argc, char **argv)
 	merge_with_background(img);
 
 	/* Create window */
-	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
-
-	for (int i = 0; i < screen_num; i++)
-		xcb_screen_next(&iter);
-	screen = iter.data;
+	screen = xcconn_screen(xc, screen_num);
 	event_mask = XCB_EVENT_MASK_KEY_PRESS |
 		     XCB_EVENT_MASK_STRUCTURE_NOTIFY |
 		     XCB_EVENT_MASK_EXPOSURE |
@@ -3268,7 +3252,7 @@ int main(int argc, char **argv)
 	resize_window(win, img->width, img->height);
 	redraw_window(0);
 	/* Flush all pending requests and wait for the server to process them,
-	 * then discard the accumulated events — this replaces XSync(dpy, True) */
+	 * then discard the accumulated events — the XSync(true) shape */
 	xcb_flush(xc);
 	free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
 	wmiv_q_drain_to(XCB_CONFIGURE_NOTIFY);
@@ -3297,7 +3281,7 @@ int main(int argc, char **argv)
 				linked_list_free(&list);
 				linked_list_init(&list);
 
-				Bool find_one_file = False;
+				bool find_one_file = false;
 
 				while (ptr != NULL) {
 					if (strstr(ptr, handled_uri_header) == ptr) {
@@ -3310,7 +3294,7 @@ int main(int argc, char **argv)
 						/* drag-and-drop file name format as per the spec is encoded as an URI */
 						wmiv_xdnd_decode_uri(tmp_file);
 						if (connect_dir(tmp_file, &list))
-							find_one_file = True;
+							find_one_file = true;
 					}
 					ptr = strtok(NULL, filename_separator);
 				}
@@ -3363,12 +3347,12 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (rt == XCB_FOCUS_IN) {
-			focus = True;
+			focus = true;
 			free(ev);
 			continue;
 		}
 		if (rt == XCB_FOCUS_OUT) {
-			focus = False;
+			focus = false;
 			free(ev);
 			continue;
 		}
@@ -3408,7 +3392,7 @@ int main(int argc, char **argv)
 					else {
 						/* back from fullscreen mode, maybe img was rotated */
 						tmp2 = img;
-						back_from_fullscreen = False;
+						back_from_fullscreen = false;
 						clear_window(win);
 					}
 					merge_with_background(tmp2);
@@ -3444,7 +3428,7 @@ int main(int argc, char **argv)
 			switch (be->detail) {
 			case 1: {
 				/* Store button press for potential drag operation */
-				button1_pressed = True;
+				button1_pressed = true;
 				drag_start_x = be->event_x;
 				drag_start_y = be->event_y;
 			}
@@ -3470,7 +3454,7 @@ int main(int argc, char **argv)
 
 			if (be->detail == 1 && button1_pressed) {
 				/* Button released without dragging - treat as click for image navigation */
-				button1_pressed = False;
+				button1_pressed = false;
 				if (focus) {
 					if (img && (drag_start_x > img->width/2))
 						change_image(NEXT);
@@ -3490,7 +3474,7 @@ int main(int argc, char **argv)
 
 			if (abs(dx) > drag_threshold || abs(dy) > drag_threshold) {
 				/* Start drag operation */
-				button1_pressed = False;
+				button1_pressed = false;
 				if (current_link && current_link->data) {
 					initiate_file_drag();
 				}
@@ -3504,46 +3488,46 @@ int main(int argc, char **argv)
 
 			keysym = keycode_to_keysym(ke->detail, level);
 #ifdef HAVE_PTHREAD
-			if (keysym != XK_Right)
-				slideshow_flag = False;
+			if (keysym != XKB_KEY_Right)
+				slideshow_flag = false;
 #endif
 			/* Detect Ctrl+C: state contains ControlMask */
-			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XK_c || keysym == XK_C)) {
+			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XKB_KEY_c || keysym == XKB_KEY_C)) {
 				copy_current_image_to_clipboard();
 				free(ev);
 				continue;
 			}
-			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XK_v || keysym == XK_V)) {
+			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XKB_KEY_v || keysym == XKB_KEY_V)) {
 				paste_clipboard_image();
 				free(ev);
 				continue;
 			}
 
 			switch (keysym) {
-			case XK_Right:
+			case XKB_KEY_Right:
 				change_image(NEXT);
 				break;
-			case XK_Left:
+			case XKB_KEY_Left:
 				change_image(PREV);
 				break;
-			case XK_Up:
+			case XKB_KEY_Up:
 				if (current_link) {
 				current_link = list.last;
 				change_image(NEXT);
 				}
 				break;
-			case XK_Down:
+			case XKB_KEY_Down:
 				if (current_link) {
 				current_link = list.first;
 				change_image(PREV);
 				}
 				break;
 #ifdef HAVE_PTHREAD
-			case XK_F5:
-			case XK_d:
+			case XKB_KEY_F5:
+			case XKB_KEY_d:
 				if (!tid) {
 					if (current_link && !slideshow_flag) {
-						slideshow_flag = True;
+						slideshow_flag = true;
 						pthread_create(&tid, NULL, &slideshow, NULL);
 					} else {
 						fprintf(stderr, "Error: can't start slideshow\n");
@@ -3551,10 +3535,10 @@ int main(int argc, char **argv)
 				}
 				break;
 #endif
-			case XK_q:
+			case XKB_KEY_q:
 				quit = 1;
 				break;
-			case XK_Escape:
+			case XKB_KEY_Escape:
 				if (!fullscreen_flag) {
 					zoom_factor = -0.2f;
 					zoom_in();
@@ -3562,20 +3546,20 @@ int main(int argc, char **argv)
 					full_screen();
 				}
 				break;
-			case XK_plus:
+			case XKB_KEY_plus:
 				zoom_in();
 				break;
-			case XK_minus:
+			case XKB_KEY_minus:
 				zoom_out();
 				break;
-			case XK_F11:
-			case XK_f:
+			case XKB_KEY_F11:
+			case XKB_KEY_f:
 				full_screen();
 				break;
-			case XK_r:
+			case XKB_KEY_r:
 				rotate_image_right();
 				break;
-			case XK_l:
+			case XKB_KEY_l:
 				rotate_image_left();
 				break;
 			}

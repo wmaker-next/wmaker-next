@@ -38,6 +38,8 @@ wmaker_SOURCES = 	\
 	cmdexpand.c \
 	calc.c \
 	calc.h \
+	geometry.c \
+	geometry.h \
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
@@ -199,12 +201,11 @@ wmaker_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la\
 	$(top_builddir)/WINGs/libWUtil.la\
 	$(top_builddir)/wrlib/libwraster.la\
-	@XLFLAGS@ \
 	@STARTUP_NOTIFICATION_LIBS@ \
 	@XSMP_LIBS@ \
 	@XCB_LIBS@ \
 	@XCB_SCREENSAVER_LIBS@ \
+	@XRES_LIBS@ \
 	@CAIRO_LIBS@ \
-	@XLIBS@ \
 	@LIBM@ \
 	@INTLIBS@

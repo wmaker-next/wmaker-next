@@ -105,15 +105,15 @@ static void createPanel(Panel * p)
 		panel->scrB[i] = WMCreateCustomButton(panel->scrF, WBBStateChangeMask);
 		WMResizeWidget(panel->scrB[i], 40, 40);
 		WMMoveWidget(panel->scrB[i], 15 + (40 * i), 30);
-		WMSetButtonBordered(panel->scrB[i], False);
+		WMSetButtonBordered(panel->scrB[i], false);
 		WMSetButtonImagePosition(panel->scrB[i], WIPImageOnly);
 		if (i > 0) {
 			WMGroupButtons(panel->scrB[0], panel->scrB[i]);
 		}
 		snprintf(buf, sizeof(buf), SPEED_IMAGE, i);
-		SetButtonImageFromFile(scr, panel->scrB[i], buf, False);
+		SetButtonImageFromFile(scr, panel->scrB[i], buf, false);
 		snprintf(buf, sizeof(buf), SPEED_IMAGE_S, i);
-		SetButtonImageFromFile(scr, panel->scrB[i], buf, True);
+		SetButtonImageFromFile(scr, panel->scrB[i], buf, true);
 	}
 
 	WMMapSubwidgets(panel->scrF);
@@ -129,12 +129,12 @@ static void createPanel(Panel * p)
 	WMResizeWidget(panel->alinB, 48, 48);
 	WMMoveWidget(panel->alinB, 56, 25);
 	WMSetButtonImagePosition(panel->alinB, WIPImageOnly);
-	SetButtonImageFromFile(scr, panel->alinB, MENU_ALIGN1, False);
+	SetButtonImageFromFile(scr, panel->alinB, MENU_ALIGN1, false);
 	panel->aliyB = WMCreateButton(panel->aliF, WBTOnOff);
 	WMResizeWidget(panel->aliyB, 48, 48);
 	WMMoveWidget(panel->aliyB, 120, 25);
 	WMSetButtonImagePosition(panel->aliyB, WIPImageOnly);
-	SetButtonImageFromFile(scr, panel->aliyB, MENU_ALIGN2, False);
+	SetButtonImageFromFile(scr, panel->aliyB, MENU_ALIGN2, false);
 	WMGroupButtons(panel->alinB, panel->aliyB);
 
 	WMMapSubwidgets(panel->aliF);

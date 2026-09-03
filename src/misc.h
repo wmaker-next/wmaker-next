@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2013-2023 Window Maker Team
+ *  Copyright (c) 2013-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,45 +20,48 @@
 #ifndef WMMISC_H_
 #define WMMISC_H_
 
+#include <xkbcommon/xkbcommon.h>
+
 #include "defaults.h"
 #include "keybind.h"
 #include "appicon.h"
 
 #define M_QUICK 1
 
-Bool wFetchName(Display *dpy, Window win, char **winname);
-Bool wGetIconName(Display *dpy, Window win, char **iconname);
-Bool UpdateDomainFile(WDDomain * domain);
-Bool wMaskEventTimed(Display *dpy, long mask, Window window, XEvent *ev, int timeout_ms);
+bool wFetchName(xcb_connection_t *dpy, xcb_window_t win, char **winname);
+bool wGetIconName(xcb_connection_t *dpy, xcb_window_t win, char **iconname);
+bool UpdateDomainFile(WDDomain * domain);
+bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms);
 
-void move_window(Window win, int from_x, int from_y, int to_x, int to_y);
-void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int to_y);
+void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y);
+void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y);
 void ParseWindowName(WMPropList *value, char **winstance, char **wclass, const char *where);
 
-static inline void slide_window(Window win, int from_x, int from_y, int to_x, int to_y)
+static inline void slide_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y)
 {
 	slide_windows(&win, 1, from_x, from_y, to_x, to_y);
 }
 
 /* Helper is a 'wmsetbg' subprocess with sets the background for the current workspace */
-Bool start_bg_helper(WScreen *scr);
+bool start_bg_helper(WScreen *scr);
 void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg);
 
 char *ShrinkString(WMFont *font, const char *string, int width);
 char *FindImage(const char *paths, const char *file);
 char *ExpandOptions(WScreen * scr, const char *cmdline);
 char *getselection(WScreen *scr);
-char *getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced);
+char *getuserinput(WScreen *scr, const char *line, int *ptr, bool advanced);
 void ExecuteInputCommand(WScreen *scr, const char *cmdline);
 void ExecuteExitCommand(WScreen *scr, long quickmode);
 char *GetShortcutString(const char *text);
-Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, size_t bufsz);
-char *GetShortcutLabelForKeycode(unsigned int modifiers, KeyCode keycode);
+bool GetCanonicalShortcutLabel(unsigned int modifiers, xkb_keysym_t ksym, char *buf, size_t bufsz);
+char *GetShortcutLabelForKeycode(unsigned int modifiers, xcb_keycode_t keycode);
 char *GetShortcutKey(WShortKey key);
 char *EscapeWM_CLASS(const char *name, const char *class);
 char *StrConcatDot(const char *a, const char *b);
-char *GetCommandForWindow(Window win);
+char *GetCommandForWindow(xcb_window_t win);
 WMPoint wGetCenter(WScreen *scr, int width, int height);
 int WMStrEqual(const char *x, const char *y);
 int WMPLGetBool(WMPropList *value);
+xcb_visualtype_t *wVisualForId(WScreen *scr, xcb_visualid_t vid);
 #endif

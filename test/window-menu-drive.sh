@@ -25,7 +25,7 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$*" | tee -a "$LOG"; exit 1; }
 skip() { printf 'SKIP: %s\n' "$*" | tee -a "$LOG"; exit 77; }
 
-for tool in Xephyr xdpyinfo xdotool xterm xprop xwininfo; do
+for tool in Xvfb Xephyr xdpyinfo xdotool xterm xprop xwininfo; do
     command -v "$tool" >/dev/null 2>&1 || skip "$tool not found"
 done
 
@@ -96,7 +96,18 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
 }
 EOF
 
-Xephyr "$DPY" -screen 1280x800 -ac >>"$LOG" 2>&1 &
+# Xephyr is a nested server: on the session display its host pointer
+# tracks the live mouse and can override the XTEST warps the drive
+# sends. Run it on a private headless parent whose virtual pointer
+# only moves when Xephyr mirrors a warp.
+PARENT_DISPLAY=${WINDOW_MENU_DRIVE_PARENT_DISPLAY:-":$(( ${DPY#:} + 1 ))"}
+Xvfb "$PARENT_DISPLAY" -screen 0 2400x1600x24 -ac >>"$LOG" 2>&1 &
+XVFB_PARENT_PID=$!
+echo "$XVFB_PARENT_PID" >> "$PIDFILE"
+wait_for 40 sh -c "kill -0 $XVFB_PARENT_PID 2>/dev/null && DISPLAY=$PARENT_DISPLAY xdpyinfo >/dev/null 2>&1" \
+    || fail "parent Xvfb failed to start"
+
+Xephyr "$DPY" -display "$PARENT_DISPLAY" -screen 1280x800 -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 wait_for 40 sh -c "DISPLAY=$DPY xdpyinfo >/dev/null 2>&1" \

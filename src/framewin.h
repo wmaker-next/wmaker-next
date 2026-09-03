@@ -70,11 +70,11 @@ typedef struct WFrameWindow {
     short resizebar_corner_width;
 
     WCoreWindow *resizebar;	       /* bottom resizebar */
-    Window resizebar_cursor[3];	       /* InputOnly per-region hover cursors */
+    xcb_window_t resizebar_cursor[3];	       /* InputOnly per-region hover cursors */
 
-    Pixmap title_back[4];	       /* focused, unfocused, pfocused, tab-inactive */
-    Pixmap resizebar_back[3];	       /* any, None, None */
-    Pixmap button_back[WTB_ROLE_COUNT][4];
+    xcb_pixmap_t title_back[4];	       /* focused, unfocused, pfocused, tab-inactive */
+    xcb_pixmap_t resizebar_back[3];	       /* any, None, None */
+    xcb_pixmap_t button_back[WTB_ROLE_COUNT][4];
     /* cache entries the Pixmaps above are borrowed from, the Pixmaps are
      * not owned by this frame and must be released through the cache,
      * never via XFreePixmap directly */
@@ -89,8 +89,8 @@ typedef struct WFrameWindow {
     /* Icon role draws on the titlebar surface instead of owning a
      * button core, the scaled pixmap and its 1-bit clip mask are
      * cached here and refreshed by wFrameWindowSetIcon() */
-    Pixmap titlebar_icon;
-    Pixmap titlebar_icon_mask;
+    xcb_pixmap_t titlebar_icon;
+    xcb_pixmap_t titlebar_icon_mask;
     short titlebar_icon_size;
 
     union WTexture **title_texture;
@@ -100,9 +100,9 @@ typedef struct WFrameWindow {
 
     char *title;		       /* window name (title) */
 
-    /* Tab-group segmented titlebar.  tab_seg_x holds tab_seg_count + 1
+    /* Tab-group segmented titlebar. tab_seg_x holds tab_seg_count + 1
      * x-edges in titlebar-core coordinates, so segment i covers
-     * [tab_seg_x[i], tab_seg_x[i+1]).  Filled by wFrameWindowPaint()
+     * [tab_seg_x[i], tab_seg_x[i+1]). Filled by wFrameWindowPaint()
      * when this frame's owner is the active member of a tab group and
      * TabsInTitlebar is on, cleared to tab_seg_count = 0 otherwise so
      * the hit-test helper returns -1. */
@@ -119,13 +119,13 @@ typedef struct WFrameWindow {
     void *child;
 
     /* callbacks */
-    void (*on_click_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, XEvent *event);
-    void (*on_dblclick_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, XEvent *event);
+    void (*on_click_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, xcb_generic_event_t *event);
+    void (*on_dblclick_button[WTB_ROLE_COUNT])(WCoreWindow *sender, void *data, xcb_generic_event_t *event);
 
-    void (*on_mousedown_titlebar)(WCoreWindow *sender, void *data, XEvent *event);
-    void (*on_dblclick_titlebar)(WCoreWindow *sender, void *data, XEvent *event);
+    void (*on_mousedown_titlebar)(WCoreWindow *sender, void *data, xcb_generic_event_t *event);
+    void (*on_dblclick_titlebar)(WCoreWindow *sender, void *data, xcb_generic_event_t *event);
 
-    void (*on_mousedown_resizebar)(WCoreWindow *sender, void *data, XEvent *event);
+    void (*on_mousedown_resizebar)(WCoreWindow *sender, void *data, xcb_generic_event_t *event);
 
     struct {
         unsigned int state:2;	       /* 3 possible states */
@@ -161,9 +161,9 @@ typedef struct WFrameWindow {
         unsigned int incomplete_title:1;
     } flags;
     int depth;
-    Visual *visual;
-    Colormap colormap;
-	GC inner_border_gc;
+    xcb_visualtype_t *visual;
+    xcb_colormap_t colormap;
+	xcb_gcontext_t inner_border_gc;
     unsigned long *border_pixel;
     unsigned long *focused_border_pixel;
     unsigned long *selected_border_pixel;
@@ -178,7 +178,7 @@ wFrameWindowCreate(WScreen *scr, int wlevel, int x, int y,
                    union WTexture **title_texture,
                    union WTexture **resize_texture,
                    WMColor **color, WMFont **font,
-                   int depth, Visual *visual, Colormap colormap);
+                   int depth, xcb_visualtype_t *visual, xcb_colormap_t colormap);
 
 void wFrameWindowUpdateBorders(WFrameWindow *fwin, int flags);
 

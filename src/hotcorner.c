@@ -21,7 +21,6 @@
 #include "wconfig.h"
 
 #include <stdlib.h>
-#include <X11/Xlib.h>
 
 #include "WindowMaker.h"
 #include "screen.h"
@@ -44,7 +43,7 @@ static void destroy_windows(WScreen *scr)
 	int i;
 
 	for (i = 0; i < scr->hot_corner_win_count; i++)
-		XDestroyWindow(dpy, scr->hot_corner_win[i]);
+		xcb_destroy_window(xconn, scr->hot_corner_win[i]);
 	if (scr->hot_corner_win)
 		wfree(scr->hot_corner_win);
 	scr->hot_corner_win = NULL;
@@ -59,7 +58,6 @@ static void destroy_windows(WScreen *scr)
  */
 void wHotCornersUpdate(WScreen *scr)
 {
-	XSetWindowAttributes attribs;
 	int heads, want, edge, h, i;
 
 	if (!scr)
@@ -80,16 +78,17 @@ void wHotCornersUpdate(WScreen *scr)
 
 	if (want != scr->hot_corner_win_count) {
 		destroy_windows(scr);
-		scr->hot_corner_win = wmalloc(sizeof(Window) * want);
+		scr->hot_corner_win = wmalloc(sizeof(xcb_window_t) * want);
 		scr->hot_corner_win_count = want;
 
-		attribs.override_redirect = True;
-		attribs.event_mask = EnterWindowMask | LeaveWindowMask;
-		for (i = 0; i < want; i++)
-			scr->hot_corner_win[i] =
-			    XCreateWindow(dpy, scr->root_win, -10, -10, 1, 1, 0, 0,
-					  InputOnly, CopyFromParent,
-					  CWOverrideRedirect | CWEventMask, &attribs);
+		for (i = 0; i < want; i++) {
+			scr->hot_corner_win[i] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->hot_corner_win[i],
+					  scr->root_win, -10, -10, 1, 1, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
+					  (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW });
+		}
 	}
 
 	/* four windows per head laid out as TL, TR, BL, BR so that
@@ -110,9 +109,8 @@ void wHotCornersUpdate(WScreen *scr)
 		x[3] = r.pos.x + r.size.width  - e; y[3] = r.pos.y + r.size.height - e;
 
 		for (i = 0; i < 4; i++) {
-			XMoveResizeWindow(dpy, scr->hot_corner_win[h * 4 + i],
-					  x[i], y[i], e, e);
-			XMapWindow(dpy, scr->hot_corner_win[h * 4 + i]);
+			xcb_configure_window(xconn, scr->hot_corner_win[h * 4 + i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x[i], y[i], e, e });
+			xcb_map_window(xconn, scr->hot_corner_win[h * 4 + i]);
 		}
 	}
 
@@ -130,10 +128,10 @@ void wHotCornersRaise(WScreen *scr)
 	int i;
 
 	for (i = 0; i < scr->hot_corner_win_count; i++)
-		XRaiseWindow(dpy, scr->hot_corner_win[i]);
+		xcb_configure_window(xconn, scr->hot_corner_win[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 }
 
-int wHotCornerForWindow(WScreen *scr, Window w)
+int wHotCornerForWindow(WScreen *scr, xcb_window_t w)
 {
 	int i;
 

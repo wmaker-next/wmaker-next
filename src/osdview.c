@@ -63,7 +63,7 @@ struct W_OSDView {
 	unsigned fixed_size:1;
 };
 
-static void handleEvents(XEvent *event, void *clientData);
+static void handleEvents(xcb_generic_event_t *event, void *clientData);
 static void paint(WOSDView *osd);
 
 #ifdef USE_XSHAPE
@@ -158,16 +158,17 @@ WOSDView *WCreateOSDView(WMScreen *scr)
 	if (scr->rcontext->xvisual_argb && scr->compositor_running)
 		osd->view->flags.argb = 1;
 
-	/* The Floating MoveDisplay/ResizeDisplay mode XMoveWindow()s this
-	 * window on every motion step while the non-opaque move/resize loop
-	 * holds XGrabServer(), so client repaints for the area it vacates are
+	/* The Floating MoveDisplay/ResizeDisplay mode moves this window
+	 * (wMouseMoveWindow) on every motion step while the non-opaque
+	 * move/resize loop
+	 * holds wXGrabServer(), so client repaints for the area it vacates are
 	 * blocked and a blue trail accumulates over any window the pointer
 	 * crosses. With save_under the X server restores the obscured pixels
 	 * itself on each move so no client repaint is needed under the grab,
 	 * the window is small and never resized so the saved pixmap cost is
 	 * negligible, and under a compositor save_under is a no-op. */
-	osd->view->attribFlags |= CWSaveUnder;
-	osd->view->attribs.save_under = True;
+	osd->view->attribFlags |= XCB_CW_SAVE_UNDER;
+	osd->view->attribs.save_under = true;
 
 	osd->font = WMSystemFontOfSize(scr, 12);
 	if (!osd->font) {
@@ -176,10 +177,10 @@ WOSDView *WCreateOSDView(WMScreen *scr)
 		return NULL;
 	}
 
-	osd->bgColor = WMCreateRGBColor(scr, 0x3333, 0x6666, 0x9999, True);
+	osd->bgColor = WMCreateRGBColor(scr, 0x3333, 0x6666, 0x9999, true);
 	osd->color = WMWhiteColor(scr);
 
-	WMCreateEventHandler(osd->view, ExposureMask, handleEvents, osd);
+	WMCreateEventHandler(osd->view, XCB_EVENT_MASK_EXPOSURE, handleEvents, osd);
 
 	WMSetWidgetBackgroundColor(osd, osd->bgColor);
 
@@ -238,9 +239,9 @@ void WSetOSDViewText(WOSDView *osd, const char *text)
 	paint(osd);
 }
 
-void WSetOSDViewTransparent(WOSDView *osd, Bool transparent)
+void WSetOSDViewTransparent(WOSDView *osd, bool transparent)
 {
-	osd->transparent = transparent != False;
+	osd->transparent = transparent != false;
 	if (W_VIEW_MAPPED(osd->view))
 		paint(osd);
 }
@@ -327,12 +328,12 @@ static void paint(WOSDView *osd)
 #endif
 }
 
-static void handleEvents(XEvent *event, void *clientData)
+static void handleEvents(xcb_generic_event_t *event, void *clientData)
 {
 	WOSDView *osd = (WOSDView *)clientData;
 
-	switch (event->type) {
-	case Expose:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
 		paint(osd);
 		break;
 	}

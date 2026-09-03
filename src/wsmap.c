@@ -2,7 +2,7 @@
  *
  *  Window Maker window manager
  *
- *  Copyright (c) 2014-2023 Window Maker Team - David Maciejak
+ *  Copyright (c) 2014-2026 Window Maker Team - David Maciejak
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ void wWorkspaceMapUpdate(WScreen *scr)
 {
 	RImage *mini_preview;
 
-	mini_preview = RCreateImageFromDrawable(scr->rcontext, scr->root_win, None);
+	mini_preview = RCreateImageFromDrawable(scr->rcontext, scr->root_win, XCB_NONE);
 	if (mini_preview) {
 		RImage *tmp = scr->workspaces[scr->current_workspace]->map;
 
@@ -104,16 +104,16 @@ static void workspace_map_destroy(WWorkspaceMap *wsmap)
 	WMUnmapWidget(wsmap->win);
 
 	if (wsmap->win) {
-		Window info_win = wsmap->scr->info_window;
+		xcb_window_t info_win = wsmap->scr->info_window;
 
-		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
 				    w_global.atom.wm.ignore_focus_events,
-				    True, 0, 0, 0, 0);
+				    true, 0, 0, 0, 0);
 		WMUnmapWidget(wsmap->win);
 
-		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
 				    w_global.atom.wm.ignore_focus_events,
-				    False, 0, 0, 0, 0);
+				    false, 0, 0, 0, 0);
 		WMDestroyWidget(wsmap->win);
 
 		if (frame_bg_focused)
@@ -133,13 +133,13 @@ static void selected_workspace_callback(WMWidget *w, void *data)
 		int workspace_id = atoi(WMGetButtonText(click_button));
 
 		wWorkspaceChangeFromPointer(wsmap->scr, workspace_id);
-		w_global.process_workspacemap_event = False;
+		w_global.process_workspacemap_event = false;
 	}
 }
 
 static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 {
-	Pixmap pixmap, mask;
+	xcb_pixmap_t pixmap, mask;
 
 	if (wPreferences.wsmbackTexture->any.type == WTEX_PIXMAP) {
 		RImage *tmp = wTextureRenderImage(wPreferences.wsmbackTexture, wsmap->wswidth, wsmap->wsheight, WREL_FLAT);
@@ -153,7 +153,7 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 		if (!pixmap)
 			return;
 
-		XSetWindowBackgroundPixmap(dpy, WMWidgetXID(wsmap->win), pixmap);
+		xcb_change_window_attributes(xconn, WMWidgetXID(wsmap->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 #ifdef USE_XSHAPE
 		if (mask && w_global.xext.shape.supported)
@@ -162,9 +162,9 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 #endif
 
 		if (pixmap)
-			XFreePixmap(dpy, pixmap);
+			xcb_free_pixmap(xconn, pixmap);
 		if (mask)
-			XFreePixmap(dpy, mask);
+			xcb_free_pixmap(xconn, mask);
 	}
 }
 
@@ -393,7 +393,7 @@ static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_a
 							wPreferences.wsmbackTexture->any.color.red,
 							wPreferences.wsmbackTexture->any.color.green,
 							wPreferences.wsmbackTexture->any.color.blue,
-							False);
+							false);
 		WMSetWidgetBackgroundColor(wsmap->win, tmp);
 		WMReleaseColor(tmp);
 	}
@@ -421,48 +421,50 @@ static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_a
 
 static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 {
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 	int modifiers;
-	KeyCode escKey = wXkbKeysymToKeycode(XK_Escape);
+	xcb_keycode_t escKey = wXkbKeysymToKeycode(XKB_KEY_Escape);
 
-	XGrabKeyboard(dpy, WMWidgetXID(wsmap->win), False, GrabModeAsync, GrabModeAsync, CurrentTime);
-	XGrabPointer(dpy, WMWidgetXID(wsmap->win), True,
-	             ButtonMotionMask | ButtonReleaseMask | ButtonPressMask,
-	             GrabModeAsync, GrabModeAsync, WMWidgetXID(wsmap->win), None, CurrentTime);
+	wXGrabKeyboard(xconn, WMWidgetXID(wsmap->win), false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabPointer(xconn, WMWidgetXID(wsmap->win), true,
+	             XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+	             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, WMWidgetXID(wsmap->win), XCB_NONE, XCB_CURRENT_TIME);
 
-	w_global.process_workspacemap_event = True;
+	w_global.process_workspacemap_event = true;
 	while (w_global.process_workspacemap_event) {
-		WMMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask | PointerMotionMask |
-		             ButtonPressMask | ButtonReleaseMask | EnterWindowMask | FocusChangeMask, &ev);
+		free(ev);
+		ev = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION |
+		             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE, &ev);
 
-		modifiers = ev.xkey.state & w_global.shortcut.modifiers_mask;
+		modifiers = (((xcb_key_press_event_t *)ev)->state) & w_global.shortcut.modifiers_mask;
 
-		switch (ev.type) {
+		switch ((ev->response_type & 0x7f)) {
 			WMScreen *wmscr;
 			WMColor *black;
 
-		case KeyPress:
-			if (ev.xkey.keycode == escKey || (wKeyBindings[WKBD_WORKSPACEMAP].keycode != 0 &&
-			                                  wKeyBindings[WKBD_WORKSPACEMAP].keycode == ev.xkey.keycode &&
+		case XCB_KEY_PRESS:
+			if ((((xcb_key_press_event_t *)ev)->detail) == escKey || (wKeyBindings[WKBD_WORKSPACEMAP].keycode != 0 &&
+			                                  wKeyBindings[WKBD_WORKSPACEMAP].keycode == (((xcb_key_press_event_t *)ev)->detail) &&
 			                                  wKeyBindings[WKBD_WORKSPACEMAP].modifier == modifiers)) {
-				w_global.process_workspacemap_event = False;
+				w_global.process_workspacemap_event = false;
 			} else {
-				KeySym ks = wXkbKeycodeToKeysym(ev.xkey.keycode, 0);
+				xkb_keysym_t ks = wXkbKeycodeToKeysym((((xcb_key_press_event_t *)ev)->detail), 0);
 
-				if (ks == XK_Left)
+				if (ks == XKB_KEY_Left)
 					wWorkspaceDirectionalChange(wsmap->scr, -1, 0);
-				else if (ks == XK_Right)
+				else if (ks == XKB_KEY_Right)
 					wWorkspaceDirectionalChange(wsmap->scr, 1, 0);
-				else if (ks == XK_Up)
+				else if (ks == XKB_KEY_Up)
 					wWorkspaceDirectionalChange(wsmap->scr, 0, -1);
-				else if (ks == XK_Down)
+				else if (ks == XKB_KEY_Down)
 					wWorkspaceDirectionalChange(wsmap->scr, 0, 1);
 				refresh_mini_workspace(wsmap, wsmap_array);
 			}
 			break;
 
-		case ButtonPress:
-			switch (ev.xbutton.button) {
+		case XCB_BUTTON_PRESS:
+			switch ((((xcb_button_press_event_t *)ev)->detail)) {
 			case Button6:
 				wWorkspaceDirectionalChangeFromPointer(wsmap->scr, -1, 0);
 				refresh_mini_workspace(wsmap, wsmap_array);
@@ -472,11 +474,11 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 				refresh_mini_workspace(wsmap, wsmap_array);
 				break;
 			default:
-				WMHandleEvent(&ev);
+				WMHandleEvent(ev);
 			}
 			break;
 
-		case  FocusIn:
+		case  XCB_FOCUS_IN:
 			wmscr = wsmap->scr->wmscreen;
 			black = WMBlackColor(wmscr);
 			const char *text = "?";
@@ -496,17 +498,21 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 				}
 				WMReleasePixmap(icon);
 			}
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			break;
 
 		default:
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			break;
 		}
+
+		free(ev);
+		ev = NULL;
 	}
 
-	XUngrabPointer(dpy, CurrentTime);
-	XUngrabKeyboard(dpy, CurrentTime);
+	free(ev);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
 
 	workspace_map_destroy(wsmap);
 }

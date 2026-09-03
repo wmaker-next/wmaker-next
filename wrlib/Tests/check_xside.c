@@ -12,8 +12,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 
 #include "wraster.h"
 
@@ -37,26 +35,26 @@ static void check_pixel(RImage *img, int x, int y, int er, int eg, int eb, const
 
 int main(void)
 {
-	Display *dpy;
+	xcb_connection_t *xc;
+	int sn;
 	RContext *ctx;
 	RImage *src, *back, *back2;
 	RXImage *rx;
-	Pixmap pix, mask;
+	xcb_pixmap_t pix, mask;
 	RColor red = { 0xff, 0x00, 0x00, 0xff };
 	RColor grn = { 0x00, 0xff, 0x00, 0xff };
 	RColor blu = { 0x00, 0x00, 0xff, 0xff };
 	RColor wht = { 0xff, 0xff, 0xff, 0xff };
 	unsigned char *p;
 	int x, y;
-	xcb_connection_t *xc;
 	RContext *xctx;
 
-	dpy = XOpenDisplay(NULL);
-	if (!dpy) {
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "SKIP: no display\n");
 		return 77;
 	}
-	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), NULL);
+	ctx = RCreateContextXCB(xc, sn, NULL);
 	if (!ctx) {
 		fprintf(stderr, "SKIP: RCreateContext failed (%s)\n", RMessageForError(RErrorCode));
 		return 77;
@@ -87,9 +85,9 @@ int main(void)
 		fprintf(stderr, "FAIL: RConvertImage (%s)\n", RMessageForError(RErrorCode));
 		return 1;
 	}
-	XSync(dpy, 0);
+	xcb_flush(xc);
 
-	back = RCreateImageFromDrawable(ctx, pix, None);
+	back = RCreateImageFromDrawable(ctx, pix, XCB_NONE);
 	if (!back) {
 		fprintf(stderr, "FAIL: RCreateImageFromDrawable (%s)\n", RMessageForError(RErrorCode));
 		return 1;
@@ -127,7 +125,7 @@ int main(void)
 		fprintf(stderr, "FAIL: RConvertImageMask (%s)\n", RMessageForError(RErrorCode));
 		return 1;
 	}
-	XSync(dpy, 0);
+	xcb_flush(xc);
 	back2 = RCreateImageFromDrawable(ctx, pix, mask);
 	if (!back2 || back2->format != RRGBAFormat) {
 		fprintf(stderr, "FAIL: RCreateImageFromDrawable+mask\n");
@@ -148,8 +146,7 @@ int main(void)
 	RDestroyContext(ctx);
 
 	/* second RCreateContextXCB on the same connection still round-trips */
-	xc = XGetXCBConnection(dpy);
-	xctx = RCreateContextXCB(xc, DefaultScreen(dpy), NULL);
+	xctx = RCreateContextXCB(xc, sn, NULL);
 	if (!xctx) {
 		fprintf(stderr, "FAIL: RCreateContextXCB\n");
 		return 1;
@@ -160,7 +157,7 @@ int main(void)
 		check_failures++;
 	} else {
 		xcb_flush(xc);
-		back = RCreateImageFromDrawable(xctx, pix, None);
+		back = RCreateImageFromDrawable(xctx, pix, XCB_NONE);
 		if (back) {
 			check_pixel(back, 8, 6, 0x00, 0xff, 0x00, "xcb-ctx");
 			RReleaseImage(back);
@@ -171,7 +168,7 @@ int main(void)
 	RReleaseImage(src);
 	RDestroyContext(xctx);
 
-	XCloseDisplay(dpy);
+	xcb_disconnect(xc);
 
 	return check_report("check_xside");
 }

@@ -44,7 +44,9 @@ static WMMultiSelectPopUpButton *testMultiSelectPopUp(WMWidget *parent)
 
 int main(int argc, char **argv)
 {
-	Display *dpy = XOpenDisplay("");
+	xcb_connection_t *xc;
+	int sn;
+	xcb_connection_t *xc;
 	WMScreen *scr;
 	WMWindow *win;
 	MyWidget *thing;
@@ -53,12 +55,15 @@ int main(int argc, char **argv)
 
 	WMInitializeApplication("Test", &argc, argv);
 
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		wfatal("could not open display");
 		exit(1);
 	}
 
-	scr = WMCreateSimpleApplicationScreen(dpy);
+	scr = WMCreateSimpleApplicationScreen(xc, sn);
 
 	/* init our widget */
 	InitMyWidget(scr);

@@ -24,7 +24,7 @@
 #   no   - do not detect, disable support
 #   auto - detect, disable if not found
 #
-# When found, USE_XRES is defined, xcb-res is appended to XLIBS, and
+# When found, USE_XRES is defined, -lxcb-res lands in XRES_LIBS, and
 # info is appended to 'supported_xext'.
 # When not found, info is appended to 'unsupported'.
 AC_DEFUN_ONCE([WM_XEXT_CHECK_XRES],
@@ -33,14 +33,10 @@ AC_DEFUN_ONCE([WM_XEXT_CHECK_XRES],
     [PKG_CHECK_MODULES([XRES], [xcb-res],
         [AC_DEFINE([USE_XRES], [1],
                    [defined when xcb-res is available for server-side PID query])
-         supported_xext="$supported_xext XRes"
-         XLIBS="$XLIBS $XRES_LIBS"
-         AC_SUBST([XRES_CFLAGS])],
+         supported_xext="$supported_xext XRes"],
         [AS_IF([test "x$enable_res" = "xyes"],
             [AC_MSG_ERROR([xcb-res is required (use --disable-res to skip): $XRES_PKG_ERRORS])],
-            [unsupported="$unsupported XRes"
-             XRES_CFLAGS=
-             AC_SUBST([XRES_CFLAGS])])])
+            [unsupported="$unsupported XRes"])])
     ])
 ]) dnl AC_DEFUN
 

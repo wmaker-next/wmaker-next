@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2013 Window Maker Team
+ *  Copyright (c) 2013-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 typedef void (WDeathHandler)(pid_t pid, unsigned int status, void *cdata);
 
 noreturn void EventLoop(void);
-void DispatchEvent(XEvent *event);
+void DispatchEvent(xcb_generic_event_t *event);
 void ProcessPendingEvents(void);
 WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
 			      const char *source, int slot);
@@ -46,17 +46,18 @@ void wInotifyCleanup(void);
  * inotify is unavailable, no-op stubs when !HAVE_INOTIFY */
 int wInotifyAddWatch(const char *path, unsigned mask, void (*cb)(void));
 void wInotifyRemoveWatch(int wd);
-Bool IsDoubleClick(WScreen *scr, XEvent *event);
+bool IsDoubleClick(WScreen *scr, xcb_generic_event_t *event);
 
 /* per-protocol handlers in event_client.c, event_input.c, event_root.c
  * and event_ext.c are dispatched from a table indexed by
- * response_type & 0x7f.  Each handler reads the typed xcb struct via
- * xe for its own logic, the cooked ev is now only for the
- * WObjDescriptor.handle_*(desc, XEvent *) callback surface and
- * WMHandleEvent().  The wire bytes travel inside ev via
- * WXWireEvent.wire so a handler reached from a modal loop's
- * WMHandleEvent default arm has them too. */
-typedef void (*WEventHandler)(const xcb_generic_event_t *xe, XEvent *ev);
+ * response_type & 0x7f. The event is the raw wire buffer, handlers
+ * cast it to the matching xcb_*_event_t and the same pointer reaches
+ * the WObjDescriptor.handle_*(desc, xcb_generic_event_t *) callbacks
+ * and WMHandleEvent() from a modal loop's default arm. Handlers may
+ * rewrite fields in place (the internal-window client_leader redirect
+ * in handleKeyPress does), the buffer stays owned by the dispatch
+ * loop. */
+typedef void (*WEventHandler)(xcb_generic_event_t *event);
 
 void wEventRegisterHandler(unsigned int response_type, WEventHandler h);
 void wEventInitDispatch(void);
@@ -75,15 +76,15 @@ void wEventExtRegister(void);
 void wSaveTimestamp(const xcb_generic_event_t *xe);
 
 /* Bracket a request burst whose generated Enter/Leave events must not
- * reach the crossing handlers.  Begin() returns the sequence of an
+ * reach the crossing handlers. Begin() returns the sequence of an
  * xcb_no_operation issued now; End() issues a closing no-op, records
  * the [begin,end) pair in the w_global.ignore_crossing ring for
  * dispatch-time filtering, and sweeps anything already drained into
- * the WINGs queue via WXEvqDropRange().  Ignored() is the
+ * the WINGs queue via WXEvqDropRange(). Ignored() is the
  * dispatch-time predicate. */
 unsigned long wEventIgnoreCrossingBegin(void);
 void wEventIgnoreCrossingEnd(unsigned long begin);
-Bool wEventCrossingIgnored(unsigned long sequence);
+bool wEventCrossingIgnored(unsigned long sequence);
 
 /* the keysym-to-keycode resolution and named-modifier masks may have
  * shifted, re-derive every WShortKey from its config string and
@@ -122,7 +123,7 @@ typedef enum {
  * IPC event, and for non-IPC sources spawn the configured
  * DisplayOffCommand or DisplayOnCommand, called from the IPC
  * `display-power' verb and from RandR / MIT-SCREEN-SAVER notify */
-void wDisplaySetOff(Bool off, WDisplayPowerSource source);
+void wDisplaySetOff(bool off, WDisplayPowerSource source);
 
 /* called from the signal handler, status is the raw waitpid() value */
 void NotifyDeadProcess(pid_t pid, int wait_status);

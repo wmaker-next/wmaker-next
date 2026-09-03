@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ extern void WMInitializeApplication(const char *applicationName, int *argc, char
 extern void WMReleaseApplication(void);
 /* internal loop driver, declared in WINGsP.h, used here to test that the
  * X-fd-style watcher actually keeps ev_run(EVRUN_ONCE) blocking */
-extern Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
+extern bool W_HandleInputEvents(bool waitForInput, int inputfd);
 
 #include "check_common.h"
 
@@ -394,10 +395,10 @@ static void test_inputfd_blocks(void)
 	int fds[2];
 	pid_t kid;
 	double t0, dt;
-	Bool ret;
+	bool ret;
 	int status;
 
-	/* W_HandleInputEvents(True, fd) with no other referenced watchers
+	/* W_HandleInputEvents(true, fd) with no other referenced watchers
 	 * must block on fd until it becomes readable, this is the
 	 * WMNextEvent() path with ConnectionNumber(dpy) substituted by a
 	 * pipe, an unref'd X-fd watcher would make ev_run(EVRUN_ONCE)
@@ -416,10 +417,10 @@ static void test_inputfd_blocks(void)
 	close(fds[1]);
 
 	t0 = mono_now();
-	ret = W_HandleInputEvents(True, fds[0]);
+	ret = W_HandleInputEvents(true, fds[0]);
 	dt = mono_now() - t0;
 
-	CHECK(ret == True);
+	CHECK(ret == true);
 	/* blocked for roughly the child's delay, generous lower bound for
 	 * scheduler jitter, upper bound catches a hang */
 	CHECK(dt >= 0.04);

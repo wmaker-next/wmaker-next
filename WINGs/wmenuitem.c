@@ -31,12 +31,12 @@ WMMenuItem *WMGetSeparatorMenuItem(void)
 	return NULL;
 }
 
-Bool WMMenuItemIsSeparator(WMMenuItem * item)
+bool WMMenuItemIsSeparator(WMMenuItem * item)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) item;
 
-	return False;
+	return false;
 }
 
 WMMenuItem *WMCreateMenuItem(void)
@@ -71,12 +71,12 @@ void WMDestroyMenuItem(WMMenuItem * item)
 		WMReleasePixmap(item->mixedStateImage);
 }
 
-Bool WMGetMenuItemEnabled(WMMenuItem * item)
+bool WMGetMenuItemEnabled(WMMenuItem * item)
 {
 	return item->flags.enabled;
 }
 
-void WMSetMenuItemEnabled(WMMenuItem * item, Bool flag)
+void WMSetMenuItemEnabled(WMMenuItem * item, bool flag)
 {
 	item->flags.enabled = ((flag == 0) ? 0 : 1);
 }
@@ -219,7 +219,7 @@ WMMenu *WMGetMenuItemSubmenu(WMMenuItem * item)
 	return item->submenu;
 }
 
-Bool WMGetMenuItemHasSubmenu(WMMenuItem * item)
+bool WMGetMenuItemHasSubmenu(WMMenuItem * item)
 {
 	return item->submenu != NULL;
 }

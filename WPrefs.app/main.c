@@ -23,8 +23,7 @@
 
 #include <assert.h>
 
-#include <X11/Xlocale.h>
-#include <X11/XKBlib.h>
+#include <locale.h>
 
 #include <sys/wait.h>
 #include <unistd.h>
@@ -46,7 +45,7 @@ struct {
 static pid_t DeadChildren[MAX_DEATHS];
 static int DeadChildrenCount = 0;
 
-static noreturn void wAbort(Bool foo)
+static noreturn void wAbort(int foo)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -80,10 +79,12 @@ void AddDeadChildHandler(pid_t pid, void (*handler) (void *), void *data)
 
 int main(int argc, char **argv)
 {
-	Display *dpy;
+	/* Parameter not used, but tell the compiler that it is ok
+	 * (static so the address is stable for the connection lifetime) */
+	static xcb_connection_t *xc;
 	WMScreen *scr;
 	char *path;
-	int i;
+	int i, sn;
 	char *display_name = "";
 
 	wsetabort(wAbort);
@@ -134,34 +135,29 @@ int main(int argc, char **argv)
 		bindtextdomain("WPrefs", LOCALEDIR);
 	bind_textdomain_codeset("WPrefs", "UTF-8");
 	textdomain("WPrefs");
-
-	if (!XSupportsLocale()) {
-		wwarning(_("X server does not support locale"));
-	}
-	if (XSetLocaleModifiers("") == NULL) {
-		wwarning(_("cannot set locale modifiers"));
-	}
 #endif
 
-	dpy = XOpenDisplay(display_name);
-	if (!dpy) {
-		wfatal(_("could not open display %s"), XDisplayName(display_name));
+	xc = xcb_connect(display_name, &sn);
+	if (xcb_connection_has_error(xc)) {
+		wfatal(_("could not open display %s"),
+		       display_name[0] ? display_name : getenv("DISPLAY"));
 		exit(0);
 	}
-	scr = WMCreateScreen(dpy, DefaultScreen(dpy));
+
+	scr = WMCreateScreen(xc, sn);
 	if (!scr) {
 		wfatal(_("could not initialize application"));
 		exit(0);
 	}
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	Initialize(scr);
 
 	while (1) {
-		XEvent event;
+		xcb_generic_event_t *event = NULL;
 
-		WMNextEvent(dpy, &event);
+		WMNextEvent(xc, &event);
 
 		while (DeadChildrenCount-- > 0) {
 			int i;
@@ -176,6 +172,7 @@ int main(int argc, char **argv)
 		}
 		DeadChildrenCount = 0;
 
-		WMHandleEvent(&event);
+		WMHandleEvent(event);
+		free(event);
 	}
 }

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
 #include <WINGs/WUtil.h>
 #include <inttypes.h>
@@ -50,7 +51,9 @@ noreturn void quit(WMWidget * self, void *data)
 
 int main(int argc, char **argv)
 {
-	Display *dpy;
+	xcb_connection_t *xc;
+	int sn;
+	static xcb_connection_t *xc;
 	WMWindow *win;
 	WMScreen *scr;
 	WMButton *lab, *l0 = NULL;
@@ -60,13 +63,15 @@ int main(int argc, char **argv)
 
 	WMInitializeApplication("FontView", &argc, argv);
 
-	dpy = XOpenDisplay("");
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		wfatal("can't open display");
 		exit(0);
 	}
 
-	scr = WMCreateSimpleApplicationScreen(dpy);
+	scr = WMCreateSimpleApplicationScreen(xc, sn);
 
 	win = WMCreateWindow(scr, "main");
 	WMResizeWidget(win, 20 * 33, 20 + 20 * 9);

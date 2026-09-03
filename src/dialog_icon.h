@@ -23,7 +23,7 @@
 
 #include "screen.h"
 
-Bool wIconChooserDialog(WScreen *scr, char **file, const char *instance,
+bool wIconChooserDialog(WScreen *scr, char **file, const char *instance,
 			const char *class, WWindow *for_window);
 
 #endif

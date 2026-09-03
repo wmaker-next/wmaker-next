@@ -3,12 +3,11 @@
 
 #include "WINGsP.h"
 
-#include <X11/Xutil.h>
 
 #include "GNUstep.h"
 
 
-void WMSetApplicationIconWindow(WMScreen * scr, Window window)
+void WMSetApplicationIconWindow(WMScreen * scr, xcb_window_t window)
 {
 	scr->applicationIconWindow = window;
 
@@ -16,7 +15,7 @@ void WMSetApplicationIconWindow(WMScreen * scr, Window window)
 		WXWMHints *hints;
 
 		hints = WXGetWMHints(scr->display, scr->groupLeader);
-		hints->flags |= IconWindowHint;
+		hints->flags |= XCB_ICCCM_WM_HINT_ICON_WINDOW;
 		hints->icon_window = window;
 
 		WXSetWMHints(scr->display, scr->groupLeader, hints);
@@ -62,9 +61,9 @@ void WMSetApplicationIconPixmap(WMScreen * scr, WMPixmap * icon)
 		WXWMHints *hints;
 
 		hints = WXGetWMHints(scr->display, scr->groupLeader);
-		hints->flags |= IconPixmapHint | IconMaskHint;
-		hints->icon_pixmap = (icon != NULL ? icon->pixmap : None);
-		hints->icon_mask = (icon != NULL ? icon->mask : None);
+		hints->flags |= XCB_ICCCM_WM_HINT_ICON_PIXMAP | XCB_ICCCM_WM_HINT_ICON_MASK;
+		hints->icon_pixmap = (icon != NULL ? icon->pixmap : XCB_NONE);
+		hints->icon_mask = (icon != NULL ? icon->mask : XCB_NONE);
 
 		WXSetWMHints(scr->display, scr->groupLeader, hints);
 		wfree(hints);
@@ -99,17 +98,21 @@ WMPixmap *WMCreateApplicationIconBlendedPixmap(WMScreen * scr, const RColor * co
 	return pix;
 }
 
-void WMSetApplicationHasAppIcon(WMScreen * scr, Bool flag)
+void WMSetApplicationHasAppIcon(WMScreen * scr, bool flag)
 {
 	scr->aflags.hasAppIcon = ((flag == 0) ? 0 : 1);
 }
 
 void W_InitApplication(WMScreen * scr)
 {
-	Window leader;
+	xcb_window_t leader;
 	WXWMHints *hints;
 
-	leader = XCreateSimpleWindow(scr->display, scr->rootWin, -1, -1, 1, 1, 0, 0, 0);
+	leader = xcb_generate_id(scr->display);
+	xcb_create_window(scr->display, XCB_COPY_FROM_PARENT, leader,
+			  scr->rootWin, -1, -1, 1, 1, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0 });
 
 	if (!scr->aflags.simpleApplication) {
 		WXSetWMClass(scr->display, leader, "groupLeader", WMApplication.applicationName);
@@ -118,7 +121,7 @@ void W_InitApplication(WMScreen * scr)
 
 		hints = WXAllocWMHints();
 
-		hints->flags = WindowGroupHint;
+		hints->flags = XCB_ICCCM_WM_HINT_WINDOW_GROUP;
 		hints->window_group = leader;
 
 		/* This code will never actually be reached, because to have
@@ -127,10 +130,10 @@ void W_InitApplication(WMScreen * scr)
 		 * -Dan
 		 */
 		if (scr->applicationIconPixmap) {
-			hints->flags |= IconPixmapHint;
+			hints->flags |= XCB_ICCCM_WM_HINT_ICON_PIXMAP;
 			hints->icon_pixmap = scr->applicationIconPixmap->pixmap;
 			if (scr->applicationIconPixmap->mask) {
-				hints->flags |= IconMaskHint;
+				hints->flags |= XCB_ICCCM_WM_HINT_ICON_MASK;
 				hints->icon_mask = scr->applicationIconPixmap->mask;
 			}
 		}

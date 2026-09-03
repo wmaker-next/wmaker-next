@@ -25,7 +25,6 @@
 
 #include "screen.h"
 #include "window.h"
-#include <X11/Xlib.h>
 #include <WINGs/WXProp.h>
 
 /*
@@ -52,48 +51,48 @@ void wNETWMInitStuff(WScreen *scr);
 void wNETWMCleanup(WScreen *scr);
 void wNETWMFlushClientLists(WScreen *scr);
 void wNETWMUpdateWorkarea(WScreen *scr);
-Bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area);
+bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area);
 void wNETWMCheckInitialClientState(WWindow *wwin);
 void wNETWMCheckInitialFrameState(WWindow *wwin);
 void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck);
 void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity);
-Bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event);
+bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event);
 
-void wNETWMReqClientHints(Window window, WNETWMHintCookies *ck);
-void wNETWMReqInitialStateCookies(Window window, WNETWMInitialCookies *ck);
+void wNETWMReqClientHints(xcb_window_t window, WNETWMHintCookies *ck);
+void wNETWMReqInitialStateCookies(xcb_window_t window, WNETWMInitialCookies *ck);
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace);
-WXCookie wNETWMReqWindowName(Window window);
-void wNETWMCheckClientHintChange(WWindow *wwin, Atom atom);
-void wNETWMUpdateActions(WWindow *wwin, Bool del);
+WXCookie wNETWMReqWindowName(xcb_window_t window);
+void wNETWMCheckClientHintChange(WWindow *wwin, xcb_atom_t atom);
+void wNETWMUpdateActions(WWindow *wwin, bool del);
 void wNETWMUpdateDesktop(WScreen *scr);
 void wNETWMUpdateCurrentDesktop(WScreen *scr);
 void wNETWMShowingDesktopToggle(WScreen *scr);
 void wNETWMShowingDesktopForgetWindow(WScreen *scr, WWindow *wwin);
 void wNETWMPositionSplash(WWindow *wwin, int *x, int *y, int width, int height);
-int wNETWMGetPidForWindow(Window window);
-WXCookie wNETWMReqPid(Window window);
-Bool wNETWMIsPingProtocol(Atom protocol);
-void wNETWMPingWindow(WWindow *wwin, Time timestamp);
+int wNETWMGetPidForWindow(xcb_window_t window);
+WXCookie wNETWMReqPid(xcb_window_t window);
+bool wNETWMIsPingProtocol(xcb_atom_t protocol);
+void wNETWMPingWindow(WWindow *wwin, xcb_timestamp_t timestamp);
 void wNETWMCancelPing(WWindow *wwin);
-WWindow *wNETWMUserTimeWindowFor(Window window);
+WWindow *wNETWMUserTimeWindowFor(xcb_window_t window);
 void wNETWMUserTimeNotify(WWindow *wwin);
 void wNETWMDetachUserTimeWindow(WWindow *wwin);
-Bool wNETWMShouldStealFocus(WWindow *wwin);
-void wNETWMBumpUserTime(WScreen *scr, Time ts);
+bool wNETWMShouldStealFocus(WWindow *wwin);
+void wNETWMBumpUserTime(WScreen *scr, xcb_timestamp_t ts);
 void wNETWMUpdateDesktopLayout(WScreen *scr);
-void wNETWMCheckRootHintChange(WScreen *scr, Atom atom);
-Bool wNETWMIsSyncRequestProtocol(Atom protocol);
+void wNETWMCheckRootHintChange(WScreen *scr, xcb_atom_t atom);
+bool wNETWMIsSyncRequestProtocol(xcb_atom_t protocol);
 void wNETWMSyncRequestSetup(WWindow *wwin);
 void wNETWMSyncRequestDestroy(WWindow *wwin);
 void wNETWMSyncRequestSend(WWindow *wwin);
-Bool wNETWMSyncRequestPending(WWindow *wwin);
-Bool wNETWMSyncRequestHandleAlarm(XEvent *event);
+bool wNETWMSyncRequestPending(WWindow *wwin);
+bool wNETWMSyncRequestHandleAlarm(xcb_generic_event_t *event);
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr);
-char *wNETWMGetIconName(Window window);
-char *wNETWMGetWindowName(Window window);
+char *wNETWMGetIconName(xcb_window_t window);
+char *wNETWMGetWindowName(xcb_window_t window);
 void wNETWMUpdateVisibleName(WWindow *wwin, const char *visible, const char *client_name);
 void wNETWMUpdateVisibleIconName(WWindow *wwin, const char *visible, const char *client_name);
 void wNETFrameExtents(WWindow *wwin);
 void wNETCleanupFrameExtents(WWindow *wwin);
-RImage *get_window_image_from_x11(Window window);
+RImage *get_window_image_from_x11(xcb_window_t window);
 #endif

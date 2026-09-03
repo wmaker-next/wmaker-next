@@ -19,8 +19,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,7 +39,7 @@
 static void bevelImage(RImage * image, int relief);
 static RImage * get_texture_image(WScreen *scr, const char *pixmap_file);
 
-WTexSolid *wTextureMakeSolid(WScreen * scr, XColor * color)
+WTexSolid *wTextureMakeSolid(WScreen * scr, WXColor * color)
 {
 	WTexSolid *texture;
 
@@ -136,7 +134,7 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 
 	if (CANFREE(texture->any.color.pixel))
 		colors[count++] = texture->any.color.pixel;
-	if (count > 0 && scr->w_visual->class != TrueColor) {
+	if (count > 0 && scr->w_visual->_class != XCB_VISUAL_CLASS_TRUE_COLOR) {
 		uint32_t pixels[wlengthof(colors)];
 
 		/* ignore error from buggy servers that don't know how
@@ -147,9 +145,9 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 		 * the wire is 32-bit */
 		for (i = 0; i < count; i++)
 			pixels[i] = (uint32_t)colors[i];
-		free(xcb_request_check(xconn,
-			xcb_free_colors_checked(xconn, scr->w_colormap, 0,
-						count, pixels)));
+		(void) WXCheckVoid(xconn,
+				   xcb_free_colors_checked(xconn, scr->w_colormap, 0,
+							   count, pixels));
 	}
 	wfree(texture);
 #undef CANFREE
@@ -232,7 +230,7 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 	return texture;
 }
 
-WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file, XColor *color)
+WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file, WXColor *color)
 {
 	WTexPixmap *texture;
 	RImage *image;
@@ -313,7 +311,7 @@ RImage *wTextureRenderImage(WTexture * texture, int width, int height, int relie
 
 	switch (texture->any.type) {
 	case WTEX_SOLID:
-		image = RCreateImage(width, height, False);
+		image = RCreateImage(width, height, false);
 
 		color1.red = texture->solid.normal.red >> 8;
 		color1.green = texture->solid.normal.green >> 8;
@@ -415,7 +413,7 @@ RImage *wTextureRenderImage(WTexture * texture, int width, int height, int relie
 
 		wwarning(_("could not render texture: %s"), RMessageForError(RErrorCode));
 
-		image = RCreateImage(width, height, False);
+		image = RCreateImage(width, height, false);
 		if (image == NULL) {
 			wwarning(_("could not allocate image buffer"));
 			return NULL;
@@ -638,7 +636,7 @@ static void bevelImage(RImage * image, int relief)
 
 void wDrawBevel(cairo_t *cr, unsigned width, unsigned height, WTexSolid *texture, int relief)
 {
-	const XColor *light, *dim, *dark;
+	const WXColor *light, *dim, *dark;
 	int nx;
 
 	if (relief == WREL_FLAT)

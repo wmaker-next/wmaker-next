@@ -102,7 +102,7 @@ xt_client() {
 }
 
 # get_windows entry for one XID. Proplist output is a single line and
-# bare-identifier values are unquoted, so match id = 0x...; and rely on
+# bare-identifier values are unquoted, so match id = 0x..., and rely on
 # the test only ever managing one client at a time.
 win_entry() {
     msg get_windows 2>/dev/null | grep -F "id = $1;"

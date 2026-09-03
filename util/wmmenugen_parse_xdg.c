@@ -71,10 +71,10 @@ typedef struct {
 static void  getKey(char **target, const char *line);
 static void  getStringValue(char **target, const char *line);
 static void  getLocalizedStringValue(char **target, const char *line, int *match_level);
-static int   getBooleanValue(const char *line);
+static bool getBooleanValue(const char *line);
 static void  getMenuHierarchyFor(char **xdgmenuspec);
-static int   compare_matchlevel(int *current_level, const char *found_locale);
-static Bool  xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wmentry);
+static bool compare_matchlevel(int *current_level, const char *found_locale);
+static bool  xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wmentry);
 static char *parse_xdg_exec(char *exec);
 static void  init_xdg_storage(XDGMenuEntry *xdg);
 static void  init_wm_storage(WMMenuEntry *wm);
@@ -198,13 +198,13 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 
 /* coerce an xdg entry type into a wm entry type
  */
-static Bool xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wm)
+static bool xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wm)
 {
 	char *p;
 
 	/* Exec or TryExec is mandatory */
 	if (!(xdg->Exec || xdg->TryExec))
-		return False;
+		return false;
 
 	/* if there's no Name, use the first word of Exec or TryExec
 	 */
@@ -226,7 +226,7 @@ static Bool xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wm)
 	else { /* xdg->Exec */
 		wm->CmdLine = parse_xdg_exec(xdg->Exec);
 		if (!wm->CmdLine)
-			return False;
+			return false;
 	}
 
 	wm->SubMenu = xdg->Category;
@@ -234,20 +234,20 @@ static Bool xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wm)
 	if (wm->CmdLine != xdg->TryExec)
 		wm->Flags |= F_FREE_CMD_LINE;
 
-	return True;
+	return true;
 }
 
 static char *parse_xdg_exec(char *exec)
 {
 	char *cmd_line, *dst, *src;
-	Bool quoted = False;
+	bool quoted = false;
 
 	cmd_line = wstrdup(exec);
 
 	for (dst = src = cmd_line; *src; src++) {
 		if (quoted) {
 			if (*src == '"')
-				quoted = False;
+				quoted = false;
 			else if (*src == '\\')
 				switch (*++src) {
 				case '"':
@@ -263,7 +263,7 @@ static char *parse_xdg_exec(char *exec)
 				*dst++ = *src;
 		} else {
 			if (*src == '"')
-				quoted = True;
+				quoted = true;
 			else if (*src == '%') {
 				src++;
 				if (*src == '\0')
@@ -458,13 +458,13 @@ static void getLocalizedStringValue(char **target, const char *line, int *match_
 }
 
 /* get a boolean value from line */
-static Bool getBooleanValue(const char *line)
+static bool getBooleanValue(const char *line)
 {
 	char *p;
 	int ret;
 
 	getStringValue(&p, line);
-	ret = strcmp(p, "true") == 0 ? True : False;
+	ret = strcmp(p, "true") == 0 ? true : false;
 	wfree(p);
 
 	return ret;
@@ -473,7 +473,7 @@ static Bool getBooleanValue(const char *line)
 /* perform locale matching by implementing the algorithm specified in
  * xdg desktop entry specification, section "localized values for keys".
  */
-static Bool compare_matchlevel(int *current_level, const char *found_locale)
+static bool compare_matchlevel(int *current_level, const char *found_locale)
 {
 	/* current key locale */
 	char *key_lang, *key_ctry, *key_enc, *key_mod;
@@ -491,7 +491,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 		wfree(key_ctry);
 		wfree(key_enc);
 		wfree(key_mod);
-		return False;
+		return false;
 	}
 
 	if (!env_mod && key_mod) {
@@ -503,7 +503,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 		wfree(key_ctry);
 		wfree(key_enc);
 		wfree(key_mod);
-		return False;
+		return false;
 	}
 
 	if (!env_ctry && key_ctry) {
@@ -515,7 +515,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 		wfree(key_ctry);
 		wfree(key_enc);
 		wfree(key_mod);
-		return False;
+		return false;
 	}
 
 	/* LC_MESSAGES value: lang_COUNTRY@MODIFIER */
@@ -529,7 +529,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else if (key_lang && key_ctry &&	/* lang_COUNTRY */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_ctry, key_ctry) == 0 &&
@@ -539,7 +539,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else if (key_lang && key_mod &&	/* lang@MODIFIER */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_mod,  key_mod) == 0 &&
@@ -549,7 +549,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else if (key_lang &&			/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
@@ -558,13 +558,13 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else {
 			wfree(key_lang);
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return False;
+			return false;
 		}
 	}
 
@@ -579,7 +579,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else if (key_lang &&			/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
@@ -588,13 +588,13 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else {
 			wfree(key_lang);
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return False;
+			return false;
 		}
 	}
 
@@ -609,7 +609,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else if (key_lang &&			/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
@@ -618,13 +618,13 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else {
 			wfree(key_lang);
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return False;
+			return false;
 		}
 	}
 
@@ -638,13 +638,13 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return True;
+			return true;
 		} else {
 			wfree(key_lang);
 			wfree(key_ctry);
 			wfree(key_enc);
 			wfree(key_mod);
-			return False;
+			return false;
 		}
 	}
 
@@ -654,7 +654,7 @@ static Bool compare_matchlevel(int *current_level, const char *found_locale)
 	wfree(key_ctry);
 	wfree(key_enc);
 	wfree(key_mod);
-	return False;
+	return false;
 }
 
 /* get the (first) xdg main category from a list of categories

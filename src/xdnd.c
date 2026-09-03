@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2014-2015 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
 
 #include <WINGs/WXProp.h>
 
@@ -37,56 +35,41 @@
 #include "workspace.h"
 
 
-/*
- * Each row is the file-static Atom variable and its X atom name. The
- * list is expanded twice, once into the static Atom declarations and
- * once into the name/target table for the batched XInternAtoms() call,
- * so the two cannot drift out of step.
- */
-#define XDND_ATOMS(_) \
-	_(_XA_XdndAware,                 "XdndAware") \
-	_(_XA_XdndEnter,                 "XdndEnter") \
-	_(_XA_XdndLeave,                 "XdndLeave") \
-	_(_XA_XdndDrop,                  "XdndDrop") \
-	_(_XA_XdndPosition,              "XdndPosition") \
-	_(_XA_XdndStatus,                "XdndStatus") \
-	_(_XA_XdndActionCopy,            "XdndActionCopy") \
-	_(_XA_XdndSelection,             "XdndSelection") \
-	_(_XA_XdndFinished,              "XdndFinished") \
-	_(_XA_XdndTypeList,              "XdndTypeList") \
-	_(_XA_WINDOWMAKER_XDNDEXCHANGE,  "_WINDOWMAKER_XDNDEXCHANGE") \
-	_(supported_typelist,            "text/uri-list")
+static xcb_atom_t _XA_XdndAware;
+static xcb_atom_t _XA_XdndEnter;
+static xcb_atom_t _XA_XdndLeave;
+static xcb_atom_t _XA_XdndDrop;
+static xcb_atom_t _XA_XdndPosition;
+static xcb_atom_t _XA_XdndStatus;
+static xcb_atom_t _XA_XdndActionCopy;
+static xcb_atom_t _XA_XdndSelection;
+static xcb_atom_t _XA_XdndFinished;
+static xcb_atom_t _XA_XdndTypeList;
+static xcb_atom_t _XA_WINDOWMAKER_XDNDEXCHANGE;
+static xcb_atom_t supported_typelist;
 
-#define XDND_ATOM_DECL(var, name)	static Atom var;
-XDND_ATOMS(XDND_ATOM_DECL)
-#undef XDND_ATOM_DECL
-
-static Atom selected_typelist;
-static Window xdnd_requestor = None;
+static xcb_atom_t selected_typelist;
+static xcb_window_t xdnd_requestor = XCB_NONE;
 
 void wXDNDInitializeAtoms(void)
 {
-#define XDND_ATOM_ROW(var, name)	{ name, &var },
-	static const struct { char *name; Atom *atom; } table[] = {
-		XDND_ATOMS(XDND_ATOM_ROW)
-	};
-#undef XDND_ATOM_ROW
-	char *names[wlengthof(table)];
-	Atom atoms[wlengthof(table)];
-	int i;
-
-	for (i = 0; i < wlengthof(table); ++i)
-		names[i] = table[i].name;
-
-	XInternAtoms(dpy, names, wlengthof(table), False, atoms);
-
-	for (i = 0; i < wlengthof(table); ++i)
-		*table[i].atom = atoms[i];
+	_XA_XdndAware = wx_static_atoms[W_ATOM_XDND_AWARE];
+	_XA_XdndEnter = wx_static_atoms[W_ATOM_XDND_ENTER];
+	_XA_XdndLeave = wx_static_atoms[W_ATOM_XDND_LEAVE];
+	_XA_XdndDrop = wx_static_atoms[W_ATOM_XDND_DROP];
+	_XA_XdndPosition = wx_static_atoms[W_ATOM_XDND_POSITION];
+	_XA_XdndStatus = wx_static_atoms[W_ATOM_XDND_STATUS];
+	_XA_XdndActionCopy = wx_static_atoms[W_ATOM_XDND_ACTION_COPY];
+	_XA_XdndSelection = wx_static_atoms[W_ATOM_XDND_SELECTION];
+	_XA_XdndFinished = wx_static_atoms[W_ATOM_XDND_FINISHED];
+	_XA_XdndTypeList = wx_static_atoms[W_ATOM_XDND_TYPE_LIST];
+	_XA_WINDOWMAKER_XDNDEXCHANGE = wx_static_atoms[W_ATOM_WINDOWMAKER_XDNDEXCHANGE];
+	supported_typelist = wx_static_atoms[W_ATOM_TEXT_URI_LIST];
 }
 
-void wXDNDMakeAwareness(Window window)
+void wXDNDMakeAwareness(xcb_window_t window)
 {
-	WXSetAtom(dpy, window, _XA_XdndAware, (Atom)XDND_VERSION);
+	WXSetAtom(xconn, window, _XA_XdndAware, (xcb_atom_t)XDND_VERSION);
 }
 
 static size_t wXDNDQuotedLength(const char *string)
@@ -119,37 +102,37 @@ static void wXDNDAppendQuoted(char **dest, const char *string)
 	*dest = p;
 }
 
-Bool wXDNDProcessSelection(XEvent *event)
+bool wXDNDProcessSelection(xcb_generic_event_t *event)
 {
-	WScreen *scr = wScreenForWindow(event->xselection.requestor);
+	WScreen *scr = wScreenForWindow(((xcb_selection_notify_event_t *)event)->requestor);
 	char *retain;
 	char *delme = NULL;
-	Window selowner = XGetSelectionOwner(dpy, _XA_XdndSelection);
+	xcb_window_t selowner = wXGetSelectionOwner(xconn, _XA_XdndSelection);
 
 	if (!scr)
-		return False;
+		return false;
 
 	/* only act on the conversion we requested in the XdndDrop handler,
 	 * a forged SelectionNotify must match every field we passed to
-	 * XConvertSelection() including the requestor window we own */
-	if (xdnd_requestor != None &&
-	    event->xselection.requestor == xdnd_requestor &&
-	    event->xselection.selection == _XA_XdndSelection &&
-	    event->xselection.target == selected_typelist &&
-	    event->xselection.property == _XA_WINDOWMAKER_XDNDEXCHANGE) {
-		delme = WXRcvString(dpy,
-				    WXReqString8(dpy, xdnd_requestor,
+	 * wXConvertSelection() including the requestor window we own */
+	if (xdnd_requestor != XCB_NONE &&
+	    ((xcb_selection_notify_event_t *)event)->requestor == xdnd_requestor &&
+	    ((xcb_selection_notify_event_t *)event)->selection == _XA_XdndSelection &&
+	    ((xcb_selection_notify_event_t *)event)->target == selected_typelist &&
+	    ((xcb_selection_notify_event_t *)event)->property == _XA_WINDOWMAKER_XDNDEXCHANGE) {
+		delme = WXRcvString(xconn,
+				    WXReqString8(xconn, xdnd_requestor,
 						 _XA_WINDOWMAKER_XDNDEXCHANGE,
 						 selected_typelist),
 				    NULL);
-		XDeleteProperty(dpy, xdnd_requestor, _XA_WINDOWMAKER_XDNDEXCHANGE);
+		wXDeleteProperty(xconn, xdnd_requestor, _XA_WINDOWMAKER_XDNDEXCHANGE);
 	}
-	xdnd_requestor = None;
-	selected_typelist = None;
+	xdnd_requestor = XCB_NONE;
+	selected_typelist = XCB_NONE;
 
 	/*send finished */
-	WXSendClientMessage(dpy, selowner, 0, selowner, _XA_XdndFinished,
-			    event->xselection.requestor, 0, 0, 0, 0);
+	WXSendClientMessage(xconn, selowner, 0, selowner, _XA_XdndFinished,
+			    ((xcb_selection_notify_event_t *)event)->requestor, 0, 0, 0, 0);
 
 	/*process dropping */
 	if (delme) {
@@ -227,26 +210,26 @@ Bool wXDNDProcessSelection(XEvent *event)
 		}
 	}
 
-	return True;
+	return true;
 }
 
-static Bool isAwareXDND(Window window)
+static bool isAwareXDND(xcb_window_t window)
 {
-	Atom version;
+	xcb_atom_t version;
 
 	if (!window)
-		return False;
-	return WXGetAtom(dpy, window, _XA_XdndAware, &version);
+		return false;
+	return WXGetAtom(xconn, window, _XA_XdndAware, &version);
 }
 
-static Bool acceptXDND(Window window)
+static bool acceptXDND(xcb_window_t window)
 {
 	WScreen *scr = wScreenForWindow(window);
 	WDock *dock;
 	int icon_pos, i;
 
 	if (!scr)
-		return False;
+		return false;
 
 	icon_pos = -1;
 	dock = scr->dock;
@@ -272,7 +255,7 @@ static Bool acceptXDND(Window window)
 		}
 	}
 	if (icon_pos < 0)
-		return False;
+		return false;
 
 	/* the main dock/clip tile accepts a single dropped path so a
 	 * launcher can be created in the next free slot */
@@ -280,22 +263,22 @@ static Bool acceptXDND(Window window)
 		return dock->icon_count < dock->max_icons;
 
 	if (isAwareXDND(dock->icon_array[icon_pos]->icon->icon_win))
-		return False;
+		return false;
 
 	if (dock->icon_array[icon_pos]->dnd_command != NULL)
-		return True;
+		return true;
 
-	return False;
+	return false;
 }
 
-static void wXDNDGetTypeList(Display *dpy, Window window)
+static void wXDNDGetTypeList(xcb_window_t window)
 {
-	Atom *typelist;
+	xcb_atom_t *typelist;
 	size_t i, count;
 
-	typelist = WXGetAtomList(dpy, window, _XA_XdndTypeList, 1024, &count);
+	typelist = WXGetAtomList(xconn, window, _XA_XdndTypeList, 1024, &count);
 	if (!typelist) {
-		wwarning(_("wXDNDGetTypeList failed = %ld"), _XA_XdndTypeList);
+		wwarning(_("wXDNDGetTypeList failed = %u"), _XA_XdndTypeList);
 		return;
 	}
 
@@ -308,18 +291,18 @@ static void wXDNDGetTypeList(Display *dpy, Window window)
 	wfree(typelist);
 }
 
-Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
+bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
 {
 	/* every XDND client message carries 32-bit data fields */
 	if (event->format != 32)
-		return False;
+		return false;
 
 	if (event->type == _XA_XdndEnter) {
 		int i;
 
 		/* reset so a previous drag's negotiated type does not leak
 		 * into XdndPosition/XdndDrop for this one */
-		selected_typelist = None;
+		selected_typelist = XCB_NONE;
 
 		if (XDND_ENTER_THREE_TYPES(event)) {
 			for (i = 0; i < 3; i++) {
@@ -329,31 +312,31 @@ Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
 				}
 			}
 		} else {
-			wXDNDGetTypeList(dpy, XDND_ENTER_SOURCE_WIN(event));
+			wXDNDGetTypeList(XDND_ENTER_SOURCE_WIN(event));
 		}
-		return True;
+		return true;
 	} else if (event->type == _XA_XdndLeave) {
-		selected_typelist = None;
-		xdnd_requestor = None;
-		return True;
+		selected_typelist = XCB_NONE;
+		xdnd_requestor = XCB_NONE;
+		return true;
 	} else if (event->type == _XA_XdndDrop) {
 		if (selected_typelist == supported_typelist &&
-		    XDND_DROP_SOURCE_WIN(event) == XGetSelectionOwner(dpy, _XA_XdndSelection)) {
+		    XDND_DROP_SOURCE_WIN(event) == wXGetSelectionOwner(xconn, _XA_XdndSelection)) {
 			xdnd_requestor = event->window;
-			XConvertSelection(dpy, _XA_XdndSelection, selected_typelist,
-					  _XA_WINDOWMAKER_XDNDEXCHANGE, xdnd_requestor, CurrentTime);
+			wXConvertSelection(xconn, _XA_XdndSelection, selected_typelist,
+					  _XA_WINDOWMAKER_XDNDEXCHANGE, xdnd_requestor, XCB_CURRENT_TIME);
 		} else {
-			selected_typelist = None;
+			selected_typelist = XCB_NONE;
 		}
-		return True;
+		return true;
 	} else if (event->type == _XA_XdndPosition) {
-		Window srcwin = XDND_POSITION_SOURCE_WIN(event);
+		xcb_window_t srcwin = XDND_POSITION_SOURCE_WIN(event);
 		if (selected_typelist == supported_typelist) {
 			long flags = (acceptXDND(event->window) ? 0x1L : 0L) | 0x2L;
-			WXSendClientMessage(dpy, srcwin, 0, srcwin, _XA_XdndStatus,
+			WXSendClientMessage(xconn, srcwin, 0, srcwin, _XA_XdndStatus,
 					    event->window, flags, 0, 0, _XA_XdndActionCopy);
 		}
-		return True;
+		return true;
 	}
-	return False;
+	return false;
 }

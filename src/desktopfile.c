@@ -115,13 +115,13 @@ void wDesktopExecStrip(char *exec)
 		*--dst = 0;
 }
 
-static Bool keyIsTrue(const char *v)
+static bool keyIsTrue(const char *v)
 {
 	return strcmp(v, "true") == 0 || strcmp(v, "True") == 0 ||
 	       strcmp(v, "1") == 0;
 }
 
-Bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
+bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
 {
 	FILE *fp;
 	char line[4096];
@@ -133,7 +133,7 @@ Bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
 
 	fp = fopen(path, "r");
 	if (!fp)
-		return False;
+		return false;
 
 	while (fgets(line, sizeof(line), fp)) {
 		char *eol = strpbrk(line, "\r\n");
@@ -211,11 +211,11 @@ Bool wDesktopEntryRead(const char *path, WDesktopEntry *out)
 
 	if (!out->exec || !out->exec[0]) {
 		wDesktopEntryFree(out);
-		return False;
+		return false;
 	}
 
 	wDesktopExecStrip(out->exec);
-	return True;
+	return true;
 }
 
 void wDesktopEntryFree(WDesktopEntry *e)
@@ -306,7 +306,7 @@ struct iconScanState {
 	int score;
 };
 
-static Bool scanHicolorDir(const char *base, void *ctx)
+static bool scanHicolorDir(const char *base, void *ctx)
 {
 	struct iconScanState *st = ctx;
 	char dir[PATH_MAX];
@@ -317,7 +317,7 @@ static Bool scanHicolorDir(const char *base, void *ctx)
 	snprintf(dir, sizeof(dir), "%s/hicolor", base);
 	dp = opendir(dir);
 	if (!dp)
-		return True;
+		return true;
 	while ((de = readdir(dp))) {
 #ifdef USE_SVG
 		if (strcmp(de->d_name, "scalable") == 0) {
@@ -342,17 +342,17 @@ static Bool scanHicolorDir(const char *base, void *ctx)
 		probeThemeIcon(dir, st->name, sc, &st->best, &st->score);
 	}
 	closedir(dp);
-	return True;
+	return true;
 }
 
-static Bool scanPixmapDir(const char *base, void *ctx)
+static bool scanPixmapDir(const char *base, void *ctx)
 {
 	struct iconScanState *st = ctx;
 
 	/* legacy pixmaps directory, no size encoded so rank below any
 	 * sized hicolor hit but above nothing */
 	probeThemeIcon(base, st->name, 1 << 16, &st->best, &st->score);
-	return True;
+	return true;
 }
 
 char *wXDGFindThemeIcon(const char *name, const char *context,
@@ -409,20 +409,20 @@ static char *asciiFold(const char *s)
 	return out;
 }
 
-static Bool tryExecAvailable(const char *try_exec)
+static bool tryExecAvailable(const char *try_exec)
 {
 	char *found;
 
 	if (!try_exec || !try_exec[0])
-		return True;
+		return true;
 	if (try_exec[0] == '/')
 		return access(try_exec, X_OK) == 0;
 	found = wfindfile(getenv("PATH"), try_exec);
 	if (found) {
 		wfree(found);
-		return True;
+		return true;
 	}
-	return False;
+	return false;
 }
 
 static void appCacheIndexMime(WXDGApp *a, char *mimetypes)
@@ -526,46 +526,46 @@ static void scanAppDir(const char *dir, const char *idprefix)
 	closedir(dp);
 }
 
-static Bool scanAppRoot(const char *dir, void *ctx)
+static bool scanAppRoot(const char *dir, void *ctx)
 {
 	struct stat st;
 
 	(void)ctx;
 
 	if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
-		return True;
+		return true;
 	if (app_dir_count < XDG_MAX_APP_DIRS) {
 		app_dir_path[app_dir_count] = wstrdup(dir);
 		app_dir_mtime[app_dir_count] = st.st_mtime;
 		app_dir_count++;
 	}
 	scanAppDir(dir, "");
-	return True;
+	return true;
 }
 
 struct mtimeCheck {
 	int idx;
-	Bool stale;
+	bool stale;
 };
 
-static Bool checkAppRoot(const char *dir, void *ctx)
+static bool checkAppRoot(const char *dir, void *ctx)
 {
 	struct mtimeCheck *mc = ctx;
 	struct stat st;
 
 	if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
-		return True;
+		return true;
 	/* an existing applications directory must line up with what
 	 * the previous scan recorded, in the same order, with the same
 	 * mtime, otherwise the cache is stale */
 	if (mc->idx >= app_dir_count ||
 	    strcmp(dir, app_dir_path[mc->idx]) != 0 ||
 	    st.st_mtime != app_dir_mtime[mc->idx]) {
-		mc->stale = True;
-		return False;
+		mc->stale = true;
+		return false;
 	}
 	mc->idx++;
-	return True;
+	return true;
 }
 
 static int compareXDGApp(const void *a, const void *b)
@@ -582,10 +582,10 @@ WMArray *wXDGAppList(void)
 
 	if (app_cache) {
 		mc.idx = 0;
-		mc.stale = False;
+		mc.stale = false;
 		wXDGForEachDataDir("applications", checkAppRoot, &mc);
 		if (mc.idx != app_dir_count)
-			mc.stale = True;
+			mc.stale = true;
 		if (!mc.stale)
 			return app_cache;
 		wXDGAppListInvalidate();
@@ -774,7 +774,7 @@ static int compareMimeMagic(const void *a, const void *b)
  * kept which covers PDF, PNG, ELF, gzip, zip, JPEG, '#!' and the
  * other common signatures without implementing the nested-rule
  * tree */
-static Bool loadMimeMagic(const char *dir, void *ctx)
+static bool loadMimeMagic(const char *dir, void *ctx)
 {
 	FILE *fp;
 	char path[PATH_MAX], type[256], hdr[16];
@@ -787,11 +787,11 @@ static Bool loadMimeMagic(const char *dir, void *ctx)
 	snprintf(path, sizeof(path), "%s/magic", dir);
 	fp = fopen(path, "rb");
 	if (!fp)
-		return True;
+		return true;
 	if (fread(hdr, 1, 12, fp) != 12 ||
 	    memcmp(hdr, "MIME-Magic\0\n", 12) != 0) {
 		fclose(fp);
-		return True;
+		return true;
 	}
 	c = getc(fp);
 	while (c == '[') {
@@ -861,7 +861,7 @@ static Bool loadMimeMagic(const char *dir, void *ctx)
 	}
 out:
 	fclose(fp);
-	return True;
+	return true;
 }
 
 static const char *mimeMagicSniff(const char *path)
@@ -885,7 +885,7 @@ static const char *mimeMagicSniff(const char *path)
 	return NULL;
 }
 
-static Bool loadMimeGlobs(const char *dir, void *ctx)
+static bool loadMimeGlobs(const char *dir, void *ctx)
 {
 	FILE *fp;
 	char path[PATH_MAX], line[512];
@@ -897,7 +897,7 @@ static Bool loadMimeGlobs(const char *dir, void *ctx)
 	snprintf(path, sizeof(path), "%s/globs2", dir);
 	fp = fopen(path, "r");
 	if (!fp)
-		return True;
+		return true;
 	while (fgets(line, sizeof(line), fp)) {
 		p = strpbrk(line, "\r\n");
 		if (p)
@@ -926,7 +926,7 @@ static Bool loadMimeGlobs(const char *dir, void *ctx)
 		mimeGlobAdd(glob + 2, type, weight, cs);
 	}
 	fclose(fp);
-	return True;
+	return true;
 }
 
 const char *wXDGMimeTypeForPath(const char *path)
@@ -1046,29 +1046,29 @@ static void loadAssocFile(const char *path, int kind)
 	fclose(fp);
 }
 
-static Bool loadConfigAssoc(const char *path, void *ctx)
+static bool loadConfigAssoc(const char *path, void *ctx)
 {
 	loadAssocFile(path, *(int *)ctx);
-	return True;
+	return true;
 }
 
-static Bool loadDataAssoc(const char *dir, void *ctx)
+static bool loadDataAssoc(const char *dir, void *ctx)
 {
 	char path[PATH_MAX];
 
 	snprintf(path, sizeof(path), "%s/mimeapps.list", dir);
 	loadAssocFile(path, *(int *)ctx);
-	return True;
+	return true;
 }
 
-static Bool loadMimeCache(const char *dir, void *ctx)
+static bool loadMimeCache(const char *dir, void *ctx)
 {
 	char path[PATH_MAX];
 
 	(void)ctx;
 	snprintf(path, sizeof(path), "%s/mimeinfo.cache", dir);
 	loadAssocFile(path, ASSOC_CACHE);
-	return True;
+	return true;
 }
 
 const char *wXDGDefaultAppFor(const char *mimetype)
@@ -1282,7 +1282,7 @@ static int doc_root_wd[XDG_MAX_DOC_ROOTS];
 static int doc_root_count;
 static int doc_depth_cached, doc_max_cached;
 static char *doc_extra_cached;
-static Bool doc_watch_dirty;
+static bool doc_watch_dirty;
 
 static int (*doc_watch_add)(const char *, unsigned, void (*)(void));
 static void (*doc_watch_remove)(int);
@@ -1300,7 +1300,7 @@ static void docWatchFired(void)
 	/* defer the rebuild to the next wXDGDocList() call so a
 	 * burst of moves only rescans once and the scan happens on
 	 * the dialog path rather than inside the inotify handler */
-	doc_watch_dirty = True;
+	doc_watch_dirty = true;
 }
 
 static void freeXDGDoc(void *item)
@@ -1437,7 +1437,7 @@ WMArray *wXDGDocList(char **extra_roots, int n_extra,
 
 	doc_cache = WMCreateArrayWithDestructor(64, freeXDGDoc);
 	doc_root_count = 0;
-	doc_watch_dirty = False;
+	doc_watch_dirty = false;
 	doc_depth_cached = depth;
 	doc_max_cached = max_files;
 	doc_extra_cached = extra_key;

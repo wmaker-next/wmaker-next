@@ -44,7 +44,7 @@ typedef struct WDesktopEntry {
 /* fills *out from the [Desktop Entry] group of path, returns True when
  * a non-empty Exec= was found, *out fields are zeroed first so a False
  * return needs no wDesktopEntryFree() */
-Bool wDesktopEntryRead(const char *path, WDesktopEntry *out);
+bool wDesktopEntryRead(const char *path, WDesktopEntry *out);
 
 /* frees the malloc'd fields of *e, does not free e itself */
 void wDesktopEntryFree(WDesktopEntry *e);
@@ -55,7 +55,7 @@ void wDesktopExecStrip(char *exec);
 
 /* called once per XDG data directory, dir has suffix appended and no
  * trailing slash, return False to stop the walk early */
-typedef Bool (*WXDGDirFn)(const char *dir, void *ctx);
+typedef bool (*WXDGDirFn)(const char *dir, void *ctx);
 
 /* calls fn with $XDG_DATA_HOME/suffix (fallback ~/.local/share/suffix)
  * then each $XDG_DATA_DIRS element + /suffix in order (fallback

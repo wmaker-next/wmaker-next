@@ -40,9 +40,6 @@
 #include <WINGs/WUtil.h>
 #include <WINGs/WINGsP.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-
 #include <pango/pango.h>
 
 #include <stdint.h>
@@ -54,6 +51,7 @@
 
 #include "wmglyph-data/wmglyph_data.h"
 #include "wmglyph_icon.h"
+#include "xcconn.h"
 
 #define WIN_W (25 * CELL_W + 23)	/* 25 columns + scrollview relief(3) + vscroller(20) */
 #define WIN_H 480
@@ -71,7 +69,7 @@
 #define PAGE_BTN_W 64
 
 typedef struct {
-	Display *dpy;
+	xcb_connection_t *conn;
 	WMScreen *scr;
 
 	WMWindow *win;
@@ -94,13 +92,13 @@ typedef struct {
 	WMColor *selBg;
 	WMColor *lineColor;
 
-	Atom utf8Atom;
-	Atom targetsAtom;
-	Atom clipboardAtom;
+	xcb_atom_t utf8Atom;
+	xcb_atom_t targetsAtom;
+	xcb_atom_t clipboardAtom;
 
 	char selBuf[8];
 	int selLen;
-	Bool ownsSel;
+	bool ownsSel;
 	int selectedCp;
 
 	int currentBlock;
@@ -156,11 +154,14 @@ static uint32_t utf8_decode(const char *buf, int len)
 	}
 }
 
-static WMData *convertSelection(WMView *view, Atom selection, Atom target, void *cdata, Atom *type)
+static WMData *convertSelection(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+				void *cdata, xcb_atom_t *type)
 {
 	GlyphApp *app = (GlyphApp *)cdata;
 	WMData *data;
-	Atom atoms[3];
+	/* format-32 property payload: selection.c sizes format-32
+	 * items as sizeof(long) (the LP64 contract) */
+	unsigned long atoms[3];
 	uint32_t cp;
 	char latin1;
 
@@ -173,8 +174,8 @@ static WMData *convertSelection(WMView *view, Atom selection, Atom target, void 
 		*type = target;
 		return data;
 	}
-	if (target == XA_STRING) {
-		/* The ICCCM defines XA_STRING as Latin-1. Refuse
+	if (target == XCB_ATOM_STRING) {
+		/* The ICCCM defines XCB_ATOM_STRING as Latin-1. Refuse
 		 * codepoints above U+00FF instead of serving mojibake.
 		 * The requestor gets a conversion failure and can ask
 		 * for UTF8_STRING instead. */
@@ -184,26 +185,26 @@ static WMData *convertSelection(WMView *view, Atom selection, Atom target, void 
 		latin1 = (char)cp;
 		data = WMCreateDataWithBytes(&latin1, 1);
 		WMSetDataFormat(data, 8);
-		*type = XA_STRING;
+		*type = XCB_ATOM_STRING;
 		return data;
 	}
 	if (target == app->targetsAtom) {
 		atoms[0] = app->targetsAtom;
 		atoms[1] = app->utf8Atom;
-		atoms[2] = XA_STRING;
+		atoms[2] = XCB_ATOM_STRING;
 		data = WMCreateDataWithBytes(atoms, sizeof(atoms));
 		WMSetDataFormat(data, 32);
-		*type = XA_ATOM;
+		*type = XCB_ATOM_ATOM;
 		return data;
 	}
 	return NULL;
 }
 
-static void selectionLost(WMView *view, Atom selection, void *cdata)
+static void selectionLost(WMView *view, xcb_atom_t selection, void *cdata)
 {
 	(void)view;
 	(void)selection;
-	((GlyphApp *)cdata)->ownsSel = False;
+	((GlyphApp *)cdata)->ownsSel = false;
 }
 
 static WMSelectionProcs selProcs = {
@@ -219,7 +220,7 @@ static void rebuildVisible(GlyphApp *app)
 
 	for (int i = 0; i < wmglyph_char_count; i++) {
 		const struct WmglyphChar *c = &wmglyph_chars[i];
-		Bool match = True;
+		bool match = true;
 		if (qLen > 0) {
 			match = (strcasestr(c->name, app->searchQuery) != NULL);
 		} else if (app->currentBlock >= 0) {
@@ -290,10 +291,10 @@ static int gridHeightFor(GlyphApp *app, int gridW)
 	return h;
 }
 
-static void paintGrid(XEvent *event, void *data)
+static void paintGrid(xcb_generic_event_t *event, void *data)
 {
 	GlyphApp *app = (GlyphApp *)data;
-	if (event->type != Expose)
+	if ((event->response_type & 0x7f) != XCB_EXPOSE)
 		return;
 
 	/* Resize the content to fit the scroll on first paint, once the
@@ -302,7 +303,7 @@ static void paintGrid(XEvent *event, void *data)
 		refreshGrid(app);
 	}
 
-	Drawable d = WMWidgetXID(app->grid);
+	xcb_drawable_t d = WMWidgetXID(app->grid);
 	int cols = app->gridCols;
 	if (cols < 1) cols = 1;
 	int pageStart = app->page * app->pageSize;
@@ -385,20 +386,21 @@ static void paintGrid(XEvent *event, void *data)
 	}
 }
 
-static void onButtonPress(XEvent *event, void *data)
+static void onButtonPress(xcb_generic_event_t *event, void *data)
 {
 	GlyphApp *app = (GlyphApp *)data;
-	if (event->type != ButtonPress)
+	if ((event->response_type & 0x7f) != XCB_BUTTON_PRESS)
 		return;
 
 	/* Mouse wheel scrolls the grid (buttons 4/5). */
-	if (event->xbutton.button == 4 || event->xbutton.button == 5) {
+	if (((xcb_button_press_event_t *)event)->detail == 4
+	    || ((xcb_button_press_event_t *)event)->detail == 5) {
 		int contentH = (int)WMWidgetHeight(app->grid);
 		WMRect vis = WMGetScrollViewVisibleRect(app->scroll);
 		int maxScroll = contentH - vis.size.height;
 		if (maxScroll <= 0)
 			return;
-		int dy = (event->xbutton.button == 5) ? CELL_H * 3 : -CELL_H * 3;
+		int dy = (((xcb_button_press_event_t *)event)->detail == 5) ? CELL_H * 3 : -CELL_H * 3;
 		int newY = vis.pos.y + dy;
 		if (newY < 0)
 			newY = 0;
@@ -408,8 +410,8 @@ static void onButtonPress(XEvent *event, void *data)
 		return;
 	}
 
-	int x = event->xbutton.x;
-	int y = event->xbutton.y;
+	int x = ((xcb_button_press_event_t *)event)->event_x;
+	int y = ((xcb_button_press_event_t *)event)->event_y;
 	int cols = app->gridCols;
 	if (cols < 1) cols = 1;
 	int pageStart = app->page * app->pageSize;
@@ -430,13 +432,13 @@ static void onButtonPress(XEvent *event, void *data)
 		 * paste gets served once per stale handler. */
 		WMView *view = WMWidgetView(app->grid);
 		if (app->ownsSel) {
-			WMDeleteSelectionHandler(view, XA_PRIMARY, CurrentTime);
-			WMDeleteSelectionHandler(view, app->clipboardAtom, CurrentTime);
-			app->ownsSel = False;
+			WMDeleteSelectionHandler(view, XCB_ATOM_PRIMARY, XCB_CURRENT_TIME);
+			WMDeleteSelectionHandler(view, app->clipboardAtom, XCB_CURRENT_TIME);
+			app->ownsSel = false;
 		}
-		if (WMCreateSelectionHandler(view, XA_PRIMARY, event->xbutton.time, &selProcs, app)
-		    && WMCreateSelectionHandler(view, app->clipboardAtom, event->xbutton.time, &selProcs, app)) {
-			app->ownsSel = True;
+		if (WMCreateSelectionHandler(view, XCB_ATOM_PRIMARY, ((xcb_button_press_event_t *)event)->time, &selProcs, app)
+		    && WMCreateSelectionHandler(view, app->clipboardAtom, ((xcb_button_press_event_t *)event)->time, &selProcs, app)) {
+			app->ownsSel = true;
 		}
 
 		const char *blockName = wmglyph_blocks[wmglyph_chars[charIdx].block].name;
@@ -453,7 +455,7 @@ static void onButtonPress(XEvent *event, void *data)
 		g_free(escName);
 	}
 
-	XClearArea(app->dpy, WMWidgetXID(app->grid), 0, 0, 0, 0, True);
+	wXClearArea(app->conn, WMWidgetXID(app->grid), 0, 0, 0, 0, true);
 }
 
 static void refreshGrid(GlyphApp *app)
@@ -475,7 +477,7 @@ static void refreshGrid(GlyphApp *app)
 	if (contentH < visH)
 		contentH = visH;
 	WMResizeWidget(app->grid, (unsigned)gridW, (unsigned)contentH);
-	XClearArea(app->dpy, WMWidgetXID(app->grid), 0, 0, 0, 0, True);
+	wXClearArea(app->conn, WMWidgetXID(app->grid), 0, 0, 0, 0, true);
 }
 
 static void changePage(GlyphApp *app, int delta)
@@ -599,13 +601,12 @@ int main(int argc, char **argv)
 
 	WMInitializeApplication("wmglyph", &argc, argv);
 
-	Display *dpy = XOpenDisplay("");
-	if (!dpy) {
-		fprintf(stderr, "wmglyph: cannot open display\n");
-		exit(1);
-	}
-	app.dpy = dpy;
-	app.scr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	xcb_connection_t *xc;
+	int sn;
+
+	xc = xcconn_open(NULL, "wmglyph", 1, &sn);
+	app.conn = xc;
+	app.scr = WMCreateScreen(xc, sn);
 
 	/* Application icon: load the embedded XPM through wraster and set
 	 * it both as the WINGs appicon (WMHints on the group leader, used by
@@ -617,14 +618,14 @@ int main(int argc, char **argv)
 		RReleaseImage(icon);
 	}
 
-	app.utf8Atom = XInternAtom(dpy, "UTF8_STRING", False);
-	app.targetsAtom = XInternAtom(dpy, "TARGETS", False);
-	app.clipboardAtom = XInternAtom(dpy, "CLIPBOARD", False);
+	app.utf8Atom = wx_static_atoms[W_ATOM_UTF8_STRING];
+	app.targetsAtom = wx_static_atoms[W_ATOM_TARGETS];
+	app.clipboardAtom = wx_static_atoms[W_ATOM_CLIPBOARD];
 
 	app.fg = WMBlackColor(app.scr);
 	app.cellBg = WMWhiteColor(app.scr);
 	app.panelBg = WMGrayColor(app.scr);
-	app.selBg = WMCreateRGBColor(app.scr, 0x3030, 0x5050, 0xA0A0, False);
+	app.selBg = WMCreateRGBColor(app.scr, 0x3030, 0x5050, 0xA0A0, false);
 	app.selFg = WMWhiteColor(app.scr);
 	app.lineColor = WMDarkGrayColor(app.scr);
 
@@ -645,14 +646,14 @@ int main(int argc, char **argv)
 	WMSetWindowCloseAction(app.win, quit, &app);
 
 	app.vbox = WMCreateBox(app.win);
-	WMSetBoxHorizontal(app.vbox, False);
+	WMSetBoxHorizontal(app.vbox, false);
 	WMResizeWidget(app.vbox, WIN_W, WIN_H);
 	WMSetViewExpandsToParent(WMWidgetView(app.vbox), 0, 0, 0, 0);
 
 	/* Search field */
 	app.search = WMCreateTextField(app.vbox);
 	WMSetTextFieldText(app.search, "");
-	WMAddBoxSubview(app.vbox, WMWidgetView(app.search), False, True, SEARCH_H, SEARCH_H, 2);
+	WMAddBoxSubview(app.vbox, WMWidgetView(app.search), false, true, SEARCH_H, SEARCH_H, 2);
 
 	/* Category dropdown */
 	app.category = WMCreatePopUpButton(app.vbox);
@@ -660,13 +661,13 @@ int main(int argc, char **argv)
 		WMAddPopUpButtonItem(app.category, wmglyph_blocks[i].name);
 	}
 	WMSetPopUpButtonAction(app.category, onCategoryChanged, &app);
-	WMAddBoxSubview(app.vbox, WMWidgetView(app.category), False, True, CATEGORY_H, CATEGORY_H, 2);
+	WMAddBoxSubview(app.vbox, WMWidgetView(app.category), false, true, CATEGORY_H, CATEGORY_H, 2);
 
 	/* Scrollable grid */
 	app.scroll = WMCreateScrollView(app.vbox);
 	WMSetScrollViewRelief(app.scroll, WRSunken);
-	WMSetScrollViewHasVerticalScroller(app.scroll, True);
-	WMSetScrollViewHasHorizontalScroller(app.scroll, False);
+	WMSetScrollViewHasVerticalScroller(app.scroll, true);
+	WMSetScrollViewHasHorizontalScroller(app.scroll, false);
 
 	app.grid = WMCreateFrame(app.vbox);
 	WMSetFrameRelief(app.grid, WRFlat);
@@ -674,35 +675,35 @@ int main(int argc, char **argv)
 	WMResizeWidget(app.grid, 100, 100);
 	WMMapWidget(app.grid);
 	WMSetScrollViewContentView(app.scroll, WMWidgetView(app.grid));
-	WMAddBoxSubview(app.vbox, WMWidgetView(app.scroll), True, True, 0, 0, 0);
+	WMAddBoxSubview(app.vbox, WMWidgetView(app.scroll), true, true, 0, 0, 0);
 
 	/* Status bar with pager buttons */
 	app.statusBox = WMCreateBox(app.vbox);
-	WMSetBoxHorizontal(app.statusBox, True);
+	WMSetBoxHorizontal(app.statusBox, true);
 
 	app.status = WMCreateLabel(app.statusBox);
 	WMSetLabelRelief(app.status, WRSunken);
 	WMSetLabelFont(app.status, app.smallFont);
 	WMSetLabelText(app.status, "Click a glyph to copy it to the selection.");
-	WMSetLabelUseMarkup(app.status, True);
-	WMAddBoxSubview(app.statusBox, WMWidgetView(app.status), True, True, 0, 0, 0);
+	WMSetLabelUseMarkup(app.status, true);
+	WMAddBoxSubview(app.statusBox, WMWidgetView(app.status), true, true, 0, 0, 0);
 
 	app.prevBtn = WMCreateCommandButton(app.statusBox);
 	WMSetButtonText(app.prevBtn, "< Prev");
 	WMSetButtonAction(app.prevBtn, onPagePrev, &app);
-	WMSetButtonEnabled(app.prevBtn, False);
-	WMAddBoxSubview(app.statusBox, WMWidgetView(app.prevBtn), False, True, PAGE_BTN_W, PAGE_BTN_W, 1);
+	WMSetButtonEnabled(app.prevBtn, false);
+	WMAddBoxSubview(app.statusBox, WMWidgetView(app.prevBtn), false, true, PAGE_BTN_W, PAGE_BTN_W, 1);
 
 	app.nextBtn = WMCreateCommandButton(app.statusBox);
 	WMSetButtonText(app.nextBtn, "Next >");
 	WMSetButtonAction(app.nextBtn, onPageNext, &app);
-	WMSetButtonEnabled(app.nextBtn, False);
-	WMAddBoxSubview(app.statusBox, WMWidgetView(app.nextBtn), False, True, PAGE_BTN_W, PAGE_BTN_W, 1);
+	WMSetButtonEnabled(app.nextBtn, false);
+	WMAddBoxSubview(app.statusBox, WMWidgetView(app.nextBtn), false, true, PAGE_BTN_W, PAGE_BTN_W, 1);
 
-	WMAddBoxSubview(app.vbox, WMWidgetView(app.statusBox), False, True, STATUS_H, STATUS_H, 2);
+	WMAddBoxSubview(app.vbox, WMWidgetView(app.statusBox), false, true, STATUS_H, STATUS_H, 2);
 
-	WMCreateEventHandler(WMWidgetView(app.grid), ExposureMask, paintGrid, &app);
-	WMCreateEventHandler(WMWidgetView(app.grid), ButtonPressMask, onButtonPress, &app);
+	WMCreateEventHandler(WMWidgetView(app.grid), XCB_EVENT_MASK_EXPOSURE, paintGrid, &app);
+	WMCreateEventHandler(WMWidgetView(app.grid), XCB_EVENT_MASK_BUTTON_PRESS, onButtonPress, &app);
 
 	WMAddNotificationObserver(onSearchChanged, &app, WMTextDidChangeNotification, app.search);
 	WMAddNotificationObserver(onScrollViewResized, &app, WMViewSizeDidChangeNotification, WMWidgetView(app.scroll));

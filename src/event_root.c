@@ -24,11 +24,9 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
@@ -54,17 +52,16 @@
 #include "startup_notify.h"
 
 
-static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleClientMessage(xcb_generic_event_t *ev)
 {
-	const xcb_client_message_event_t *e = (const xcb_client_message_event_t *)xe;
+	const xcb_client_message_event_t *e = (const xcb_client_message_event_t *)ev;
 	WWindow *wwin;
 	WObjDescriptor *desc;
 
-	(void) ev;
 
 	/* handle transition from Normal to Iconic state */
 	if (e->type == w_global.atom.wm.change_state
-	    && e->format == 32 && e->data.data32[0] == IconicState) {
+	    && e->format == 32 && e->data.data32[0] == XCB_ICCCM_WM_STATE_ICONIC) {
 
 		wwin = wWindowFor(e->window);
 		if (!wwin)
@@ -78,9 +75,9 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 			return;
 
 		if (e->data.data32[1] == 1) {	/* starting */
-			wColormapAllowClientInstallation(scr, True);
+			wColormapAllowClientInstallation(scr, true);
 		} else {	/* stopping */
-			wColormapAllowClientInstallation(scr, False);
+			wColormapAllowClientInstallation(scr, false);
 		}
 	} else if (e->type == w_global.atom.wmaker.command) {
 
@@ -164,7 +161,7 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 		if (!scr)
 			return;
 		scr->flags.ignore_focus_events = e->data.data32[0] ? 1 : 0;
-	} else if (wStartupNotifyProcessXcbEvent(xe)) {
+	} else if (wStartupNotifyProcessXcbEvent(ev)) {
 		/* _NET_STARTUP_INFO{,_BEGIN}, consumed by libsn */
 	} else if (wNETWMProcessClientMessage(e)) {
 		/* do nothing */
@@ -176,9 +173,9 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 		/* an unrecognised ClientMessage that landed on an icon
 		 * frame is forwarded to the reparented icon_window so a
 		 * client speaking a private protocol to what it thinks is
-		 * its own icon still receives it, xcb_send_event takes the
-		 * 32 wire bytes verbatim so copy and rewrite .window */
-		if (XFindContext(dpy, e->window, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
+		 * its own icon still receives it */
+		desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->window);
+		if (desc != NULL) {
 			struct WIcon *icon = NULL;
 			xcb_client_message_event_t fwd;
 
@@ -191,20 +188,21 @@ static void handleClientMessage(const xcb_generic_event_t *xe, XEvent *ev)
 				if (wwin->client_win != e->window) {
 					fwd = *e;
 					fwd.window = wwin->client_win;
-					xcb_send_event(xconn, 0, wwin->client_win,
-						       0, (const char *)&fwd);
+					WXSendEvent32(xconn, &fwd, sizeof(fwd), 0,
+						      wwin->client_win, 0);
 				}
 			}
 		}
 	}
 }
 
-static void handleColormapNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleColormapNotify(xcb_generic_event_t *ev)
 {
-	const xcb_colormap_notify_event_t *e = (const xcb_colormap_notify_event_t *)xe;
+	const xcb_colormap_notify_event_t *e = (const xcb_colormap_notify_event_t *)ev;
 	WWindow *wwin;
 	WScreen *scr;
-	Bool reinstall = False;
+	bool reinstall = false;
+	xcb_generic_event_t *owned = NULL;
 
 	wwin = wWindowFor(e->window);
 	if (!wwin)
@@ -221,7 +219,7 @@ static void handleColormapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 				if (wwin == scr->cmap_window && wwin->cmap_window_no == 0)
 					scr->current_colormap = e->colormap;
 
-				reinstall = True;
+				reinstall = true;
 			} else if (e->state == XCB_COLORMAP_STATE_UNINSTALLED &&
 				   scr->current_colormap == e->colormap) {
 
@@ -234,24 +232,30 @@ static void handleColormapNotify(const xcb_generic_event_t *xe, XEvent *ev)
 				   scr->current_colormap == e->colormap) {
 
 				/* someone has put our colormap back */
-				reinstall = False;
+				reinstall = false;
 			}
 		}
-	} while (WXEvqTakeTyped(dpy, ColormapNotify, None, ev)
-		 && (e = (const xcb_colormap_notify_event_t *)((WXWireEvent *)ev)->wire,
+
+		/* the event this iteration processed is fully handled,
+		 * hand it back before the condition takes the next one */
+		if (owned) {
+			free(owned);
+			owned = NULL;
+		}
+	} while (WXEvqTakeTyped(xconn, XCB_COLORMAP_NOTIFY, XCB_NONE, &owned)
+		 && (e = (const xcb_colormap_notify_event_t *)owned,
 		     (wwin = wWindowFor(e->window)) || 1));
 
-	if (reinstall && scr->current_colormap != None) {
+	if (reinstall && scr->current_colormap != XCB_NONE) {
 		if (!scr->flags.colormap_stuff_blocked)
-			XInstallColormap(dpy, scr->current_colormap);
+			xcb_install_colormap(xconn, scr->current_colormap);
 	}
 }
 
-static void handleVisibilityNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleVisibilityNotify(xcb_generic_event_t *ev)
 {
-	const xcb_visibility_notify_event_t *e = (const xcb_visibility_notify_event_t *)xe;
+	const xcb_visibility_notify_event_t *e = (const xcb_visibility_notify_event_t *)ev;
 	WWindow *wwin;
-	(void) ev;
 
 	wwin = wWindowFor(e->window);
 	if (!wwin)
@@ -260,33 +264,30 @@ static void handleVisibilityNotify(const xcb_generic_event_t *xe, XEvent *ev)
 }
 
 #ifdef USE_DOCK_XDND
-static void handleSelectionNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleSelectionNotify(xcb_generic_event_t *ev)
 {
-	(void) xe;
 	wXDNDProcessSelection(ev);
 }
 #endif
 
-static void handleSelectionRequest(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleSelectionRequest(xcb_generic_event_t *ev)
 {
 #ifdef USE_ICCCM_WMREPLACE
-	const xcb_selection_request_event_t *e = (const xcb_selection_request_event_t *)xe;
-	static Atom atom_version = None;
+	const xcb_selection_request_event_t *e = (const xcb_selection_request_event_t *)ev;
 	WScreen *scr;
-	XSelectionEvent notify;
-	(void) ev;
+	xcb_selection_notify_event_t notify;
 
 	/*
 	 * This event must be sent to the slection requester to not block him
 	 *
 	 * We create it with the answer 'there is no selection' by default
 	 */
-	notify.type = SelectionNotify;
-	notify.display = dpy;
+	memset(&notify, 0, sizeof(notify));
+	notify.response_type = XCB_SELECTION_NOTIFY;
 	notify.requestor = e->requestor;
 	notify.selection = e->selection;
 	notify.target = e->target;
-	notify.property = None; /* This says that there is no selection */
+	notify.property = XCB_NONE; /* This says that there is no selection */
 	notify.time = e->time;
 
 	scr = wScreenForWindow(e->owner);
@@ -299,11 +300,8 @@ static void handleSelectionRequest(const xcb_generic_event_t *xe, XEvent *ev)
 	if (e->selection != scr->sn_atom)
 		goto not_our_selection;
 
-	if (atom_version == None)
-		atom_version = XInternAtom(dpy, "VERSION", False);
-
-	if (e->target == atom_version) {
-		static const long icccm_version[] = { 2, 0 };
+	if (e->target == wx_static_atoms[W_ATOM_VERSION]) {
+		static const uint32_t icccm_version[] = { 2, 0 };
 
 		/*
 		 * This protocol is defined in ICCCM 2.0:
@@ -318,30 +316,35 @@ static void handleSelectionRequest(const xcb_generic_event_t *xe, XEvent *ev)
 		 */
 		notify.property = (e->property == XCB_NONE) ? e->target : e->property;
 
-		XChangeProperty(dpy, e->requestor, notify.property,
-		                XA_INTEGER, 32, PropModeReplace,
-		                (unsigned char *) icccm_version, wlengthof(icccm_version));
+		WXSetFormat32N(xconn, e->requestor, notify.property,
+			       XCB_ATOM_INTEGER, icccm_version,
+			       wlengthof(icccm_version));
 	}
 
  not_our_selection:
-	if (notify.property == None)
-		wwarning("received SelectionRequest(%s) for target=\"%s\" from requestor 0x%lX but we have no answer",
-		         XGetAtomName(dpy, e->selection), XGetAtomName(dpy, e->target), (long) e->requestor);
+	if (notify.property == XCB_NONE) {
+		char *selname = wXGetAtomName(xconn, e->selection);
+		char *tgtname = wXGetAtomName(xconn, e->target);
 
-	/* Send the answer to the requestor */
-	XSendEvent(dpy, e->requestor, False, 0L, (XEvent *) &notify);
+		wwarning("received SelectionRequest(%s) for target=\"%s\" from requestor 0x%lX but we have no answer",
+		         selname ? selname : "?", tgtname ? tgtname : "?", (long) e->requestor);
+		free(selname);
+		free(tgtname);
+	}
+
+	/* Send the answer to the requestor, the wire-shaped event built
+	 * above goes out unpropagated with no event mask */
+	WXSendEvent32(xconn, &notify, sizeof(notify), 0, e->requestor, 0);
 #else
-	(void) xe;
 	(void) ev;
 #endif
 }
 
-static void handleSelectionClear(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleSelectionClear(xcb_generic_event_t *ev)
 {
 #ifdef USE_ICCCM_WMREPLACE
-	const xcb_selection_clear_event_t *e = (const xcb_selection_clear_event_t *)xe;
+	const xcb_selection_clear_event_t *e = (const xcb_selection_clear_event_t *)ev;
 	WScreen *scr = wScreenForWindow(e->owner);
-	(void) ev;
 
 	if (!scr)
 		return;
@@ -350,9 +353,8 @@ static void handleSelectionClear(const xcb_generic_event_t *xe, XEvent *ev)
 		return;
 
 	wmessage(_("another window manager is replacing us!"));
-	Shutdown(WSExitMode, True);
+	Shutdown(WSExitMode, true);
 #else
-	(void) xe;
 	(void) ev;
 #endif
 }

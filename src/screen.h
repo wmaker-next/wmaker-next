@@ -52,7 +52,7 @@ typedef struct WReservedArea {
     int right_start, right_end;        /* y span of the right strut, root relative and inclusive */
     int top_start, top_end;            /* x span of the top strut, root relative and inclusive */
     int bottom_start, bottom_end;      /* x span of the bottom strut, root relative and inclusive */
-    Window window;
+    xcb_window_t window;
     struct WReservedArea *next;
 } WReservedArea;
 
@@ -82,9 +82,9 @@ typedef enum {
  */
 typedef struct _WScreen {
     int	screen;			       /* screen number */
-    Window info_window;		       /* for our window manager info stuff */
+    xcb_window_t info_window;		       /* for our window manager info stuff */
 #ifdef USE_ICCCM_WMREPLACE
-    Atom sn_atom;		       /* window manager selection */
+    xcb_atom_t sn_atom;		       /* window manager selection */
 #endif
 
     int scr_width;		       /* size of the screen */
@@ -95,24 +95,24 @@ typedef struct _WScreen {
      * without a per-read accessor call. */
     double ui_scale;
 
-    Window root_win;		       /* root window of screen */
+    xcb_window_t root_win;		       /* root window of screen */
     int  depth;			       /* depth of the default visual */
-    Colormap colormap;		       /* root colormap */
+    xcb_colormap_t colormap;		       /* root colormap */
     int root_colormap_install_count;
     struct WWindow *original_cmap_window; /* colormap before installing
                                            * root colormap temporarily */
     struct WWindow *cmap_window;
-    Colormap current_colormap;
+    xcb_colormap_t current_colormap;
 
-    Window w_win;		       /* window to use as drawable
+    xcb_window_t w_win;		       /* window to use as drawable
                                         * for new GCs, pixmaps etc. */
-    Visual *w_visual;
+    xcb_visualtype_t *w_visual;
     int  w_depth;
-    Colormap w_colormap;	       /* our colormap */
+    xcb_colormap_t w_colormap;	       /* our colormap */
 
     WXineramaInfo xine_info;
 
-    Window no_focus_win;	       /* window to get focus when nobody
+    xcb_window_t no_focus_win;	       /* window to get focus when nobody
                                         * else can do it */
 
     struct WWindow *focused_window;    /* window that has the focus
@@ -163,10 +163,10 @@ typedef struct _WScreen {
 
 #ifdef VIRTUAL_DESKTOP
     /* Edge InputOnly windows for viewport edge-scroll panning. Created
-     * and destroyed by wWorkspaceUpdateEdge(). The XContext wVEdgeContext
+     * and destroyed by wWorkspaceUpdateEdge(). The wVEdgeTable hash
      * maps each edge window to its direction handler. */
     int virtual_nr_edges;
-    Window *virtual_edges;
+    xcb_window_t *virtual_edges;
 #endif
 
     /* Per-head independent workspace state. With PerHeadWorkspaces off
@@ -179,7 +179,7 @@ typedef struct _WScreen {
     int last_active_head;                  /* head of last focused/pointer event */
     char *head_output_name[WM_MAX_HEADS];  /* RandR output name per active head, or NULL */
 
-    Time net_last_user_time;	       /* newest _NET_WM_USER_TIME observed,
+    xcb_timestamp_t net_last_user_time;	       /* newest _NET_WM_USER_TIME observed,
 					* used to deny focus to windows that
 					* map with an older user-activity
 					* timestamp */
@@ -219,7 +219,7 @@ typedef struct _WScreen {
     WMPixel light_pixel;
     WMPixel dark_pixel;
 
-    Pixmap transp_stipple;	       /* for making holes in icon masks for
+    xcb_pixmap_t transp_stipple;	       /* for making holes in icon masks for
                                         * transparent icon simulation */
     WMFont *title_font;		       /* default font for the titlebars */
     WMFont *menu_title_font;	       /* font for menu titlebars */
@@ -234,7 +234,7 @@ typedef struct _WScreen {
 	/* AntialiasedText (WMGLOBAL) value the screen's fonts were last opened
 	 * under; wConfigApplyAntialiasedText() compares it against the current
 	 * WINGsConfiguration.antialiasedText to detect a live change. */
-	Bool antialiased_text_applied;
+	bool antialiased_text_applied;
 
     WMColor *select_color;
     WMColor *select_text_color;
@@ -315,7 +315,7 @@ typedef struct _WScreen {
     struct WDock *dock;		       /* the application dock */
     struct WMenu *dock_pos_menu;       /* Dock position menu */
     struct WPixmap *dock_dots;	       /* 3 dots for the Dock */
-    Window dock_shadow;		       /* shadow for dock buttons */
+    xcb_window_t dock_shadow;		       /* shadow for dock buttons */
     struct WAppIcon *clip_icon;        /* The clip main icon, or the dock's, if they are merged */
     struct WMenu *clip_menu;           /* Menu for clips */
     struct WMenu *clip_submenu;        /* Workspace list for clips */
@@ -337,7 +337,7 @@ typedef struct _WScreen {
     struct RImage *icon_tile;
     struct RImage *clip_tile;          /* tile with arrows to change workspace */
     struct RImage *drawer_tile;        /* tile for a drawer (tile + arrow) */
-    Pixmap icon_tile_pixmap;		/* For app supplied icons */
+    xcb_pixmap_t icon_tile_pixmap;		/* For app supplied icons */
 
     struct RImage *def_icon_rimage;	/* Default RImage icon */
 
@@ -355,8 +355,8 @@ typedef struct _WScreen {
     WMPropList *session_state;
 
     /* for double-click detection */
-    Time last_click_time;
-    Window last_click_window;
+    xcb_timestamp_t last_click_time;
+    xcb_window_t last_click_window;
     int last_click_button;
 
     /* balloon help data */
@@ -370,17 +370,17 @@ typedef struct _WScreen {
     WMHandlerID layout_osd_timer;
 
     /* mini screenshot data */
-    Window mini_screenshot;
+    xcb_window_t mini_screenshot;
     time_t mini_screenshot_timeout;
     WMHandlerID mini_screenshot_timer;
 
     /* for raise-delay */
     WMHandlerID autoRaiseTimer;
-    Window autoRaiseWindow;	       /* window that is scheduled to be
+    xcb_window_t autoRaiseWindow;	       /* window that is scheduled to be
                                         * raised */
     /* for hot-corners delay */
     WMHandlerID hot_corner_timer;
-    Window *hot_corner_win;            /* 4 per head, InputOnly, topmost */
+    xcb_window_t *hot_corner_win;            /* 4 per head, InputOnly, topmost */
     int hot_corner_win_count;
 
     int mapped_menu_count;             /* WMenu with flags.mapped set, gates
@@ -444,7 +444,7 @@ struct WConfigChanges;
 
 WScreen *wScreenInit(int screen_number, const struct WConfig *config,
                      const struct WConfigChanges *changes);
-void wScreenSaveState(WScreen *scr, Bool preserve_session);
+void wScreenSaveState(WScreen *scr, bool preserve_session);
 void wScreenRestoreState(WScreen *scr);
 
 int wScreenBringInside(WScreen *scr, int *x, int *y, int width, int height);
@@ -453,8 +453,8 @@ void ScreenCapture(WScreen *scr, int mode);
 
 /* in startup.c */
 WScreen *wScreenWithNumber(int i);
-WScreen *wScreenForRootWindow(Window window);   /* window must be valid */
-WScreen *wScreenForWindow(Window window);   /* slower than above functions */
+WScreen *wScreenForRootWindow(xcb_window_t window);   /* window must be valid */
+WScreen *wScreenForWindow(xcb_window_t window);   /* slower than above functions */
 
 void wScreenDestroy(WScreen *scr);
 void wScreenApplyIconSize(WScreen *scr);

@@ -158,7 +158,7 @@ RImage *RCreateImageFromRXImage(RContext *context, RXImage *image, RXImage *mask
 	return r_unpack_ximage(context, image->ximg, mask ? mask->ximg : NULL);
 }
 
-RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap mask)
+RImage *RCreateImageFromDrawable(RContext * context, xcb_drawable_t drawable, xcb_pixmap_t mask)
 {
 	RImage *image;
 	xcb_image_t *pimg, *mimg;
@@ -166,7 +166,7 @@ RImage *RCreateImageFromDrawable(RContext * context, Drawable drawable, Pixmap m
 	xcb_get_geometry_reply_t *dgeom, *mgeom = NULL;
 	unsigned int w, h, mask_w, mask_h;
 
-	assert(drawable != None);
+	assert(drawable != XCB_NONE);
 
 	dck = xcb_get_geometry(context->xc, drawable);
 	if (mask)

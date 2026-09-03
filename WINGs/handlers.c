@@ -78,14 +78,14 @@ static InputHandler *inputHandler;
  * still holds */
 static int dispatching;
 
-/* lazily-started watcher on ConnectionNumber(dpy), see W_HandleInputEvents */
+/* lazily-started watcher on the X connection fd, see W_HandleInputEvents */
 static ev_io w_xfd_watcher;
 static int w_xfd = -1;
 
 /* set only by input trampolines and the X-fd watcher, never by timer or
  * idle callbacks, so W_HandleInputEvents() keeps returning False when it
  * woke only because a timer expired (the old select() arm did the same) */
-static Bool input_fired;
+static bool input_fired;
 
 /* single-slot per-iteration hook run from prepareTrampoline just before
  * each poll, lets an application apply deferred server-side state (e.g.
@@ -221,7 +221,7 @@ static void timerTrampoline(struct ev_loop *loop, ev_timer *w, int revents)
 	 * watcher before invoking us, nothing to do */
 }
 
-static WMHandlerID addTimer(int milliseconds, WMCallback *callback, void *cdata, Bool persistent)
+static WMHandlerID addTimer(int milliseconds, WMCallback *callback, void *cdata, bool persistent)
 {
 	struct ev_loop *loop = W_EventLoop();
 	TimerHandler *h;
@@ -249,12 +249,12 @@ static WMHandlerID addTimer(int milliseconds, WMCallback *callback, void *cdata,
 
 WMHandlerID WMAddTimerHandler(int milliseconds, WMCallback *callback, void *cdata)
 {
-	return addTimer(milliseconds, callback, cdata, False);
+	return addTimer(milliseconds, callback, cdata, false);
 }
 
 WMHandlerID WMAddPersistentTimerHandler(int milliseconds, WMCallback *callback, void *cdata)
 {
-	return addTimer(milliseconds, callback, cdata, True);
+	return addTimer(milliseconds, callback, cdata, true);
 }
 
 void WMDeleteTimerHandler(WMHandlerID handlerID)
@@ -414,7 +414,7 @@ static void inputTrampoline(struct ev_loop *loop, ev_io *w, int revents)
 	if ((revents & EV_WRITE) && (h->mask & WIWriteMask))
 		mask |= WIWriteMask;
 
-	input_fired = True;
+	input_fired = true;
 
 	if (mask && h->callback) {
 		h->firing = 1;
@@ -479,12 +479,12 @@ static void xfdTrampoline(struct ev_loop *loop, ev_io *w, int revents)
 	(void)w;
 	(void)revents;
 
-	input_fired = True;
-	/* hand control back to WMNextEvent() so it drains Xlib's queue */
+	input_fired = true;
+	/* hand control back to WMNextEvent() so it drains the xcb event queue */
 	ev_break(loop, EVBREAK_ONE);
 }
 
-Bool W_HandleInputEvents(Bool waitForInput, int inputfd)
+bool W_HandleInputEvents(bool waitForInput, int inputfd)
 {
 	struct ev_loop *loop = W_EventLoop();
 
@@ -506,7 +506,7 @@ Bool W_HandleInputEvents(Bool waitForInput, int inputfd)
 	 * next one is due, with idles it runs them and returns, with input
 	 * or the X fd it polls, the prepare/check watchers flush the ASAP
 	 * and WhenIdle notification queues either side of the poll */
-	input_fired = False;
+	input_fired = false;
 
 	dispatching++;
 	ev_run(loop, waitForInput ? EVRUN_ONCE : EVRUN_NOWAIT);

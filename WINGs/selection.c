@@ -1,8 +1,26 @@
+/*
+ *  WINGs X selection ownership and request handling
+ *
+ *  Copyright (c) 1997-2003 Alfredo K. Kojima
+ *  Copyright (c) 2026 Window Maker Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include <stdlib.h>
 #include <poll.h>
 
-#include <X11/Xatom.h>
 
 #include "WINGsP.h"
 #include "WINGs/WXProp.h"
@@ -20,8 +38,8 @@ const char *WMSelectionOwnerDidChangeNotification = "WMSelectionOwnerDidChange";
 
 typedef struct SelectionHandler {
 	WMView *view;
-	Atom selection;
-	Time timestamp;
+	xcb_atom_t selection;
+	xcb_timestamp_t timestamp;
 	WMSelectionProcs procs;
 	void *data;
 
@@ -33,9 +51,9 @@ typedef struct SelectionHandler {
 
 typedef struct SelectionCallback {
 	WMView *view;
-	Atom selection;
-	Atom target;
-	Time timestamp;
+	xcb_atom_t selection;
+	xcb_atom_t target;
+	xcb_timestamp_t timestamp;
 	WMSelectionCallback *callback;
 	void *data;
 
@@ -49,45 +67,37 @@ static WMArray *selCallbacks = NULL;
 
 static WMArray *selHandlers = NULL;
 
-static Bool gotXError = False;
-
-void WMDeleteSelectionHandler(WMView * view, Atom selection, Time timestamp)
+void WMDeleteSelectionHandler(WMView * view, xcb_atom_t selection, xcb_timestamp_t timestamp)
 {
 	SelectionHandler *handler;
-	Display *dpy = W_VIEW_SCREEN(view)->display;
-	Window win = W_VIEW_DRAWABLE(view);
+	xcb_connection_t *dpy = W_VIEW_SCREEN(view)->display;
+	xcb_window_t win = W_VIEW_DRAWABLE(view);
 	WMArrayIterator iter;
 
 	if (!selHandlers)
 		return;
 
-	/*//printf("deleting selection handler for %d", win); */
-
 	WM_ITERATE_ARRAY(selHandlers, handler, iter) {
-		if (handler->view == view && (handler->selection == selection || selection == None)
-		    && (handler->timestamp == timestamp || timestamp == CurrentTime)) {
+		if (handler->view == view && (handler->selection == selection || selection == XCB_NONE)
+		    && (handler->timestamp == timestamp || timestamp == XCB_CURRENT_TIME)) {
 
 			if (handler->flags.done_pending) {
 				handler->flags.delete_pending = 1;
-				/*//puts(": postponed because still pending"); */
 				return;
 			}
-			/*//printf(": found & removed"); */
 			WMRemoveFromArray(selHandlers, handler);
 			break;
 		}
 	}
 
-	/*//printf("\n"); */
-
-	XGrabServer(dpy);
-	if (XGetSelectionOwner(dpy, selection) == win) {
-		XSetSelectionOwner(dpy, selection, None, timestamp);
+	wXGrabServer(dpy);
+	if (wXGetSelectionOwner(dpy, selection) == win) {
+		wXSetSelectionOwner(dpy, selection, XCB_NONE, timestamp);
 	}
-	XUngrabServer(dpy);
+	wXUngrabServer(dpy);
 }
 
-static void WMDeleteSelectionCallback(WMView * view, Atom selection, Time timestamp)
+static void WMDeleteSelectionCallback(WMView * view, xcb_atom_t selection, xcb_timestamp_t timestamp)
 {
 	SelectionCallback *handler;
 	WMArrayIterator iter;
@@ -96,8 +106,8 @@ static void WMDeleteSelectionCallback(WMView * view, Atom selection, Time timest
 		return;
 
 	WM_ITERATE_ARRAY(selCallbacks, handler, iter) {
-		if (handler->view == view && (handler->selection == selection || selection == None)
-		    && (handler->timestamp == timestamp || timestamp == CurrentTime)) {
+		if (handler->view == view && (handler->selection == selection || selection == XCB_NONE)
+		    && (handler->timestamp == timestamp || timestamp == XCB_CURRENT_TIME)) {
 
 			if (handler->flags.done_pending) {
 				handler->flags.delete_pending = 1;
@@ -109,65 +119,87 @@ static void WMDeleteSelectionCallback(WMView * view, Atom selection, Time timest
 	}
 }
 
-static int handleXError(Display * dpy, XErrorEvent * ev)
+/* Pure core of writeSelection's format-32 arm: a format-32 WMData is
+ * an array of longs (an item is sizeof(long) bytes on LP64), the wire
+ * wants one uint32 per item. The repack is truncating on a trailing
+ * partial long, matching the byte-length-aware sizing. Returns the
+ * item count and a wmalloc'd array (free with wfree()), 0 with *out
+ * NULL when there is nothing to send. */
+size_t W_XSelectionFormat32Repack(const unsigned char *bytes, size_t len, uint32_t **out)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) dpy;
-	(void) ev;
+	const long *l = (const long *) bytes;
+	size_t n = len / sizeof(long);
+	size_t i;
 
-	gotXError = True;
-
-	return 1;
+	*out = NULL;
+	if (n == 0)
+		return 0;
+	*out = wmalloc(n * sizeof(uint32_t));
+	for (i = 0; i < n; i++)
+		(*out)[i] = (uint32_t) l[i];
+	return n;
 }
 
-static Bool writeSelection(Display * dpy, Window requestor, Atom property, Atom type, WMData * data)
+static bool writeSelection(xcb_connection_t * dpy, xcb_window_t requestor, xcb_atom_t property, xcb_atom_t type, WMData * data)
 {
-	static void *oldHandler;
-	int format, bpi;
+	int format;
 
 	format = WMGetDataFormat(data);
 	/* X selections only carry format 8, 16 or 32, anything else is a
-	 * caller bug and would make bpi zero below */
+	 * caller bug and would make the element size zero below */
 	if (format != 8 && format != 16 && format != 32)
 		format = 8;
 
-	/* Xlib stores format-32 items as longs (8 bytes on LP64), not 4 */
-	bpi = (format == 32) ? sizeof(long) : format / 8;
+	if (format == 32) {
+		/* Xlib stores format-32 items as longs (an item is 8
+		 * bytes on LP64), the wire wants one uint32 per item,
+		 * repack so the LP64 sizing stays byte-length aware */
+		uint32_t *v;
+		size_t n = W_XSelectionFormat32Repack(WMDataBytes(data),
+						      WMGetDataLength(data), &v);
+		bool ok = WXCheckVoid(dpy,
+				      xcb_change_property_checked(dpy, XCB_PROP_MODE_REPLACE,
+								  requestor, property, type,
+								  32, n, v));
 
-	/* printf("write to %x: %s\n", requestor, XGetAtomName(dpy, property)); */
+		wfree(v);
+		return ok;
+	}
 
-	oldHandler = XSetErrorHandler(handleXError);
+	{
+		const unsigned char *bytes = WMDataBytes(data);
+		size_t len = WMGetDataLength(data);
+		size_t n = len / (size_t)(format / 8);
 
-	gotXError = False;
-
-	XChangeProperty(dpy, requestor, property, type, format, PropModeReplace,
-			WMDataBytes(data), WMGetDataLength(data) / bpi);
-
-	XFlush(dpy);
-
-	XSetErrorHandler(oldHandler);
-
-	return !gotXError;
+		if (!WXCheckVoid(dpy,
+				 xcb_change_property_checked(dpy, XCB_PROP_MODE_REPLACE,
+							     requestor, property, type,
+							     format, n, bytes)))
+			return false;
+	}
+	xcb_flush(dpy);
+	return true;
 }
 
-static void notifySelection(XEvent * event, Atom prop)
+static void notifySelection(xcb_generic_event_t * event, xcb_atom_t prop)
 {
-	WXSendSelectionNotify(event->xany.display, &event->xselectionrequest, prop);
+	WXSendSelectionNotify(W_XEvqConnection(),
+			      (const xcb_selection_request_event_t *)event, prop);
 }
 
-static void handleRequestEvent(XEvent * event)
+static void handleRequestEvent(xcb_generic_event_t * event)
 {
 	SelectionHandler *handler;
 	WMArrayIterator iter;
 	WMArray *copy;
-	Bool handledRequest;
+	bool handledRequest;
 
 	WM_ITERATE_ARRAY(selHandlers, handler, iter) {
 
-		switch (event->type) {
-		case SelectionClear:
+		switch ((event->response_type & 0x7f)) {
+		case XCB_SELECTION_CLEAR:
 			if (W_VIEW_DRAWABLE(handler->view)
-			    != event->xselectionclear.window) {
+			    != ((xcb_selection_clear_event_t *)event)->owner) {
 				break;
 			}
 
@@ -178,52 +210,52 @@ static void handleRequestEvent(XEvent * event)
 			handler->flags.delete_pending = 1;
 			break;
 
-		case SelectionRequest:
-			if (W_VIEW_DRAWABLE(handler->view) != event->xselectionrequest.owner) {
+		case XCB_SELECTION_REQUEST:
+			if (W_VIEW_DRAWABLE(handler->view) != ((xcb_selection_request_event_t *)event)->owner) {
 				break;
 			}
 
 			if (handler->procs.convertSelection != NULL
-			    && handler->selection == event->xselectionrequest.selection) {
-				Atom atom;
+			    && handler->selection == ((xcb_selection_request_event_t *)event)->selection) {
+				xcb_atom_t atom;
 				WMData *data;
-				Atom prop;
+				xcb_atom_t prop;
 
 				/* they're requesting for something old.. maybe another handler
 				 * can handle it */
-				if (event->xselectionrequest.time < handler->timestamp
-				    && event->xselectionrequest.time != CurrentTime) {
+				if (((xcb_selection_request_event_t *)event)->time < handler->timestamp
+				    && ((xcb_selection_request_event_t *)event)->time != XCB_CURRENT_TIME) {
 					break;
 				}
 
-				handledRequest = False;
+				handledRequest = false;
 
 				handler->flags.done_pending = 1;
 
 				data = handler->procs.convertSelection(handler->view,
 								       handler->selection,
-								       event->xselectionrequest.target,
+								       ((xcb_selection_request_event_t *)event)->target,
 								       handler->data, &atom);
 
-				prop = event->xselectionrequest.property;
+				prop = ((xcb_selection_request_event_t *)event)->property;
 				/* obsolete clients that don't set the property field */
-				if (prop == None)
-					prop = event->xselectionrequest.target;
+				if (prop == XCB_NONE)
+					prop = ((xcb_selection_request_event_t *)event)->target;
 
 				if (data) {
-					if (writeSelection(event->xselectionrequest.display,
-							   event->xselectionrequest.requestor, prop, atom, data)) {
-						handledRequest = True;
+					if (writeSelection(W_XEvqConnection(),
+							   ((xcb_selection_request_event_t *)event)->requestor, prop, atom, data)) {
+						handledRequest = true;
 					}
 					WMReleaseData(data);
 				}
 
-				notifySelection(event, (handledRequest == True ? prop : None));
+				notifySelection(event, (handledRequest == true ? prop : XCB_NONE));
 
 				if (handler->procs.selectionDone != NULL) {
 					handler->procs.selectionDone(handler->view,
 								     handler->selection,
-								     event->xselectionrequest.target,
+								     ((xcb_selection_request_event_t *)event)->target,
 								     handler->data);
 				}
 
@@ -233,121 +265,180 @@ static void handleRequestEvent(XEvent * event)
 		}
 	}
 
-	/* delete handlers */
-	copy = WMDuplicateArray(selHandlers);
-	WM_ITERATE_ARRAY(copy, handler, iter) {
-		if (handler && handler->flags.delete_pending) {
-			WMDeleteSelectionHandler(handler->view, handler->selection, handler->timestamp);
+	/* delete handlers. A screen that never owned a selection has no
+	 * array and a forged SelectionRequest would otherwise deref
+	 * NULL here, so guard the duplicate */
+	if (selHandlers) {
+		copy = WMDuplicateArray(selHandlers);
+		WM_ITERATE_ARRAY(copy, handler, iter) {
+			if (handler && handler->flags.delete_pending) {
+				WMDeleteSelectionHandler(handler->view, handler->selection, handler->timestamp);
+			}
+		}
+		WMFreeArray(copy);
+	}
+}
+
+/* status codes kept from the Xlib XGetWindowProperty contract the
+ * INCR/INCR-less read paths below were written against */
+enum {
+	WXPropSuccess = 0,
+	WXPropBadAlloc = 1
+};
+
+/* XGetWindowProperty shim over xcb_get_property: the returned buffer
+ * keeps the Xlib LP64 shape (format-32 items widened to unsigned long,
+ * 8 and 16 bit items raw), is malloc()ed and released with free().
+ * Returns WXPropSuccess or WXPropBadAlloc on a wire failure. */
+static int xgetprop(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t prop, long offset, long length,
+		    bool del, xcb_atom_t req_type, xcb_atom_t *rtype, int *bits,
+		    unsigned long *len, unsigned long *bytes, unsigned char **data)
+{
+	xcb_get_property_cookie_t ck;
+	xcb_get_property_reply_t *rep;
+
+	ck = xcb_get_property(dpy, del, win, prop, req_type,
+			      offset, length);
+	rep = xcb_get_property_reply(dpy, ck, NULL);
+	if (!rep)
+		return WXPropBadAlloc;
+
+	*rtype = rep->type;
+	*bits = rep->format;
+	*len = rep->value_len;
+	*bytes = rep->bytes_after;
+	*data = NULL;
+
+	if (rep->value_len > 0) {
+		if (rep->format == 32) {
+			/* the wire packs one uint32 per item, the callers
+			 * below keep treating format-32 data as one long
+			 * per item (the Xlib LP64 shape) */
+			const uint32_t *wire = xcb_get_property_value(rep);
+			unsigned long *out = malloc(rep->value_len
+						    * sizeof(unsigned long));
+			uint32_t i;
+
+			if (!out) {
+				free(rep);
+				return WXPropBadAlloc;
+			}
+			for (i = 0; i < rep->value_len; i++)
+				out[i] = wire[i];
+			*data = (unsigned char *) out;
+		} else {
+			size_t n = xcb_get_property_value_length(rep);
+
+			*data = malloc(n);
+			if (!*data) {
+				free(rep);
+				return WXPropBadAlloc;
+			}
+			memcpy(*data, xcb_get_property_value(rep), n);
 		}
 	}
-	WMFreeArray(copy);
+	free(rep);
+	return WXPropSuccess;
 }
 
-static Atom incrAtom(Display *dpy)
-{
-	static Atom atom;
-
-	if (atom == None)
-		atom = XInternAtom(dpy, "INCR", False);
-	return atom;
-}
-
-static Bool waitPropertyNewValue(Display *dpy, Window win, Atom where)
+static bool waitPropertyNewValue(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t where)
 {
 	struct pollfd pfd;
-	XEvent ev;
+	xcb_generic_event_t *ev;
 	int waited = 0;
 
-	pfd.fd = ConnectionNumber(dpy);
+	pfd.fd = xcb_get_file_descriptor(dpy);
 	pfd.events = POLLIN;
 
 	for (;;) {
-		while (XCheckTypedWindowEvent(dpy, win, PropertyNotify, &ev)) {
-			if (ev.xproperty.atom == where &&
-			    ev.xproperty.state == PropertyNewValue)
-				return True;
+		/* take the property events from the WINGs queue so the
+		 * drain is not flipped and non-matching events stay
+		 * queued for the normal dispatch after we return */
+		while (WXEvqTakeTyped(dpy, XCB_PROPERTY_NOTIFY, win, &ev)) {
+			const xcb_property_notify_event_t *pe =
+				(const xcb_property_notify_event_t *)ev;
+
+			if (pe->atom == where && pe->state == XCB_PROPERTY_NEW_VALUE) {
+				free(ev);
+				return true;
+			}
+			free(ev);
 		}
 		if (waited >= INCR_CHUNK_TIMEOUT_MS)
-			return False;
-		XFlush(dpy);
-		if (poll(&pfd, 1, 100) > 0) {
-			/* pull whatever arrived into Xlib's queue so the
-			 * XCheckTypedWindowEvent above can see it, anything
-			 * that is not our PropertyNotify stays queued for
-			 * the normal WINGs dispatch after we return */
-			XEventsQueued(dpy, QueuedAfterReading);
-		}
+			return false;
+		wXFlush(dpy);
+		poll(&pfd, 1, 100);
 		waited += 100;
 	}
 }
 
-static WMData *readIncrSelection(Display *dpy, Window win, Atom where)
+static WMData *readIncrSelection(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t where)
 {
-	XWindowAttributes attr;
+	WXWindowAttributes attr;
 	WMData *wdata = NULL;
 	unsigned char *chunk;
-	Atom rtype;
+	xcb_atom_t rtype;
 	int bits, chunk_bits = 0;
 	unsigned long len, bytes;
 	long old_mask;
 	size_t total = 0;
-	Bool failed = False;
+	bool failed = false;
 
 	/* the requestor window is a WINGs view that may not have asked
 	 * for PropertyNotify, add it for the duration of the transfer
 	 * and restore the previous mask afterwards so the view's normal
 	 * event handling is unaffected */
-	if (!XGetWindowAttributes(dpy, win, &attr))
+	if (!wXGetWindowAttributes(dpy, win, &attr, NULL))
 		return NULL;
 	old_mask = attr.your_event_mask;
-	XSelectInput(dpy, win, old_mask | PropertyChangeMask);
+	xcb_change_window_attributes(dpy, win, XCB_CW_EVENT_MASK, (const uint32_t[]){ old_mask | XCB_EVENT_MASK_PROPERTY_CHANGE });
 
 	/* deleting the INCR property tells the owner we are ready for
 	 * the first chunk */
-	XDeleteProperty(dpy, win, where);
+	wXDeleteProperty(dpy, win, where);
 
 	wdata = WMCreateDataWithCapacity(0);
 
 	while (!failed) {
 		if (!waitPropertyNewValue(dpy, win, where)) {
-			failed = True;
+			failed = true;
 			break;
 		}
 		chunk = NULL;
-		if (XGetWindowProperty(dpy, win, where, 0,
-				       (long)(MAX_SELECTION_SIZE / 4), True,
-				       AnyPropertyType, &rtype, &bits, &len,
-				       &bytes, &chunk) != Success) {
-			failed = True;
+		if (xgetprop(dpy, win, where, 0,
+			     (long)(MAX_SELECTION_SIZE / 4), true,
+			     XCB_ATOM_ANY, &rtype, &bits, &len,
+			     &bytes, &chunk) != WXPropSuccess) {
+			failed = true;
 			break;
 		}
-		if (rtype == None || (bits != 8 && bits != 16 && bits != 32) ||
+		if (rtype == XCB_NONE || (bits != 8 && bits != 16 && bits != 32) ||
 		    bytes != 0) {
 			if (chunk)
-				XFree(chunk);
-			failed = True;
+				free(chunk);
+			failed = true;
 			break;
 		}
 		if (len == 0) {
 			/* zero-length chunk terminates the transfer */
 			if (chunk)
-				XFree(chunk);
+				free(chunk);
 			break;
 		}
-		/* Xlib stores format-32 items as longs, not 4 bytes */
+		/* format-32 replies are LP64 longs, not 4-byte units */
 		len *= (bits == 32) ? sizeof(long) : (size_t)(bits / 8);
 		if (len > MAX_SELECTION_SIZE || total > MAX_SELECTION_SIZE - len) {
-			XFree(chunk);
-			failed = True;
+			free(chunk);
+			failed = true;
 			break;
 		}
 		WMAppendDataBytes(wdata, chunk, (unsigned)len);
 		total += len;
 		chunk_bits = bits;
-		XFree(chunk);
+		free(chunk);
 	}
 
-	XSelectInput(dpy, win, old_mask);
+	xcb_change_window_attributes(dpy, win, XCB_CW_EVENT_MASK, (const uint32_t[]){ old_mask });
 
 	if (failed || total == 0) {
 		WMReleaseData(wdata);
@@ -357,11 +448,11 @@ static WMData *readIncrSelection(Display *dpy, Window win, Atom where)
 	return wdata;
 }
 
-static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expected_type)
+static WMData *getSelectionData(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t where, xcb_atom_t expected_type)
 {
 	WMData *wdata;
 	unsigned char *data;
-	Atom rtype;
+	xcb_atom_t rtype;
 	int bits, bpi;
 	unsigned long len, bytes;
 	long want;
@@ -369,21 +460,21 @@ static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expec
 	/* probe the property first so an INCR placeholder or an oversized
 	 * direct value can be handled before committing to a fixed-length
 	 * read */
-	if (XGetWindowProperty(dpy, win, where, 0, 0, False, AnyPropertyType,
-			       &rtype, &bits, &len, &bytes, &data) != Success) {
+	if (xgetprop(dpy, win, where, 0, 0, false, XCB_ATOM_ANY,
+		     &rtype, &bits, &len, &bytes, &data) != WXPropSuccess) {
 		return NULL;
 	}
 	if (data)
-		XFree(data);
+		free(data);
 
-	if (rtype == None)
+	if (rtype == XCB_NONE)
 		return NULL;
 
-	if (rtype == incrAtom(dpy))
+	if (rtype == wx_static_atoms[W_ATOM_INCR])
 		return readIncrSelection(dpy, win, where);
 
 	if (bytes > MAX_SELECTION_SIZE) {
-		XDeleteProperty(dpy, win, where);
+		wXDeleteProperty(dpy, win, where);
 		return NULL;
 	}
 
@@ -391,8 +482,8 @@ static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expec
 	if (want == 0)
 		want = 1;
 
-	if (XGetWindowProperty(dpy, win, where, 0, want, True, expected_type,
-			       &rtype, &bits, &len, &bytes, &data) != Success) {
+	if (xgetprop(dpy, win, where, 0, want, true, expected_type,
+		     &rtype, &bits, &len, &bytes, &data) != WXPropSuccess) {
 		return NULL;
 	}
 
@@ -402,22 +493,23 @@ static WMData *getSelectionData(Display *dpy, Window win, Atom where, Atom expec
 	 * comes back as len == 0 with bytes_after set, which the bytes != 0
 	 * test rejects, so the callback is never handed data of a type it
 	 * did not ask for. */
-	if (rtype == None || (bits != 8 && bits != 16 && bits != 32) || bytes != 0) {
+	if (rtype == XCB_NONE || (bits != 8 && bits != 16 && bits != 32) || bytes != 0) {
 		if (data)
-			XFree(data);
+			free(data);
 		return NULL;
 	}
 
-	/* Xlib stores format-32 items as longs (8 bytes on LP64), not 4 */
+	/* xgetprop keeps the Xlib shape: format-32 items are longs (8
+	 * bytes on LP64), not 4 */
 	bpi = (bits == 32) ? sizeof(long) : bits / 8;
 
-	wdata = WMCreateDataWithBytesNoCopy(data, len * bpi, (void *) XFree);
+	wdata = WMCreateDataWithBytesNoCopy(data, len * bpi, free);
 	WMSetDataFormat(wdata, bits);
 
 	return wdata;
 }
 
-static void handleNotifyEvent(XEvent * event)
+static void handleNotifyEvent(xcb_generic_event_t * event)
 {
 	SelectionCallback *handler;
 	WMArrayIterator iter;
@@ -426,19 +518,19 @@ static void handleNotifyEvent(XEvent * event)
 
 	WM_ITERATE_ARRAY(selCallbacks, handler, iter) {
 
-		if (W_VIEW_DRAWABLE(handler->view) != event->xselection.requestor
-		    || handler->selection != event->xselection.selection
-		    || handler->target != event->xselection.target) {
+		if (W_VIEW_DRAWABLE(handler->view) != ((xcb_selection_notify_event_t *)event)->requestor
+		    || handler->selection != ((xcb_selection_notify_event_t *)event)->selection
+		    || handler->target != ((xcb_selection_notify_event_t *)event)->target) {
 			continue;
 		}
 		handler->flags.done_pending = 1;
 
-		if (event->xselection.property == None) {
+		if (((xcb_selection_notify_event_t *)event)->property == XCB_NONE) {
 			data = NULL;
 		} else {
-			data = getSelectionData(event->xselection.display,
-						event->xselection.requestor,
-						event->xselection.property,
+			data = getSelectionData(W_XEvqConnection(),
+						((xcb_selection_notify_event_t *)event)->requestor,
+						((xcb_selection_notify_event_t *)event)->property,
 						handler->target);
 		}
 
@@ -452,14 +544,17 @@ static void handleNotifyEvent(XEvent * event)
 		handler->flags.delete_pending = 1;
 	}
 
-	/* delete callbacks */
-	copy = WMDuplicateArray(selCallbacks);
-	WM_ITERATE_ARRAY(copy, handler, iter) {
-		if (handler && handler->flags.delete_pending) {
-			WMDeleteSelectionCallback(handler->view, handler->selection, handler->timestamp);
+	/* delete callbacks, same forged-event guard: no array means
+	 * nothing was ever registered */
+	if (selCallbacks) {
+		copy = WMDuplicateArray(selCallbacks);
+		WM_ITERATE_ARRAY(copy, handler, iter) {
+			if (handler && handler->flags.delete_pending) {
+				WMDeleteSelectionCallback(handler->view, handler->selection, handler->timestamp);
+			}
 		}
+		WMFreeArray(copy);
 	}
-	WMFreeArray(copy);
 }
 
 /*
@@ -492,40 +587,26 @@ void W_ClearSelectionsForView(WMView *view)
 	}
 }
 
-void W_HandleSelectionEvent(XEvent * event)
+void W_HandleSelectionEvent(xcb_generic_event_t * event)
 {
-	/*//printf("%d received selection ", event->xany.window); */
-	/*//switch(event->type) {
-	   case SelectionNotify:
-	   puts("notify"); break;
-	   case SelectionRequest:
-	   puts("request"); break;
-	   case SelectionClear:
-	   puts("clear"); break;
-	   default:
-	   puts("unknown"); break;
-	   } */
-
-	if (event->type == SelectionNotify) {
+	if ((event->response_type & 0x7f) == XCB_SELECTION_NOTIFY) {
 		handleNotifyEvent(event);
 	} else {
 		handleRequestEvent(event);
 	}
 }
 
-Bool WMCreateSelectionHandler(WMView * view, Atom selection, Time timestamp, WMSelectionProcs * procs, void *cdata)
+bool WMCreateSelectionHandler(WMView * view, xcb_atom_t selection, xcb_timestamp_t timestamp, WMSelectionProcs * procs, void *cdata)
 {
 	SelectionHandler *handler;
-	Display *dpy = W_VIEW_SCREEN(view)->display;
+	xcb_connection_t *dpy = W_VIEW_SCREEN(view)->display;
 
-	XSetSelectionOwner(dpy, selection, W_VIEW_DRAWABLE(view), timestamp);
-	if (XGetSelectionOwner(dpy, selection) != W_VIEW_DRAWABLE(view)) {
-		return False;
+	wXSetSelectionOwner(dpy, selection, W_VIEW_DRAWABLE(view), timestamp);
+	if (wXGetSelectionOwner(dpy, selection) != W_VIEW_DRAWABLE(view)) {
+		return false;
 	}
 
-	WMPostNotificationName(WMSelectionOwnerDidChangeNotification, (void *)selection, (void *)view);
-
-	/*//printf("created selection handler for %d\n", W_VIEW_DRAWABLE(view)); */
+	WMPostNotificationName(WMSelectionOwnerDidChangeNotification, (void *)(uintptr_t) selection, (void *)(uintptr_t) view);
 
 	handler = wmalloc(sizeof(SelectionHandler));
 	handler->view = view;
@@ -533,7 +614,6 @@ Bool WMCreateSelectionHandler(WMView * view, Atom selection, Time timestamp, WMS
 	handler->timestamp = timestamp;
 	handler->procs = *procs;
 	handler->data = cdata;
-	memset(&handler->flags, 0, sizeof(handler->flags));
 
 	if (selHandlers == NULL) {
 		selHandlers = WMCreateArrayWithDestructor(4, wfree);
@@ -541,21 +621,21 @@ Bool WMCreateSelectionHandler(WMView * view, Atom selection, Time timestamp, WMS
 
 	WMAddToArray(selHandlers, handler);
 
-	return True;
+	return true;
 }
 
-Bool
-WMRequestSelection(WMView * view, Atom selection, Atom target, Time timestamp,
+bool
+WMRequestSelection(WMView * view, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp,
 		   WMSelectionCallback * callback, void *cdata)
 {
 	SelectionCallback *handler;
 
-	if (XGetSelectionOwner(W_VIEW_SCREEN(view)->display, selection) == None)
-		return False;
+	if (wXGetSelectionOwner(W_VIEW_SCREEN(view)->display, selection) == XCB_NONE)
+		return false;
 
-	if (!XConvertSelection(W_VIEW_SCREEN(view)->display, selection, target,
+	if (!wXConvertSelection(W_VIEW_SCREEN(view)->display, selection, target,
 			       W_VIEW_SCREEN(view)->clipboardAtom, W_VIEW_DRAWABLE(view), timestamp)) {
-		return False;
+		return false;
 	}
 
 	handler = wmalloc(sizeof(SelectionCallback));
@@ -572,5 +652,5 @@ WMRequestSelection(WMView * view, Atom selection, Atom target, Time timestamp,
 
 	WMAddToArray(selCallbacks, handler);
 
-	return True;
+	return true;
 }

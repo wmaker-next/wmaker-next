@@ -31,15 +31,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
-#include <X11/Xutil.h>
 
-/* Xlocale.h and locale.h are the same if X_LOCALE is undefind in wconfig.h,
- * and if X_LOCALE is defined, X's locale emulating functions will be used.
- * See Xlocale.h for more information.
- */
-#include <X11/Xlocale.h>
+#include <locale.h>
 
 /*
  * When built with --enable-asan, suppress LeakSanitizer reports for
@@ -98,8 +91,9 @@ struct wmaker_global_variables w_global;
 
 /* general info */
 
-Display *dpy;
+/* the connection owner, opened in real_main() */
 xcb_connection_t *xconn;
+int dflt_screen;
 
 char *ProgName;
 
@@ -132,7 +126,7 @@ static char **Arguments;
 
 static int ArgCount;
 
-static Bool multiHead = True;
+static bool multiHead = true;
 
 static int *wVisualID = NULL;
 static int wVisualID_len = 0;
@@ -251,8 +245,10 @@ static int initWVisualID(const char *user_str)
 
 noreturn void Exit(int status)
 {
-	if (dpy)
-		XCloseDisplay(dpy);
+	if (xconn) {
+		xcb_disconnect(xconn);
+		xconn = NULL;
+	}
 
 	wXDGAppListInvalidate();
 	wXDGMimeInvalidate();
@@ -263,7 +259,7 @@ noreturn void Exit(int status)
 	exit(status);
 }
 
-void Restart(char *manager, Bool abortOnFailure)
+void Restart(char *manager, bool abortOnFailure)
 {
 	char *prog = NULL;
 	char *argv[MAX_RESTART_ARGS];
@@ -278,9 +274,9 @@ void Restart(char *manager, Bool abortOnFailure)
 			}
 		}
 	}
-	if (dpy) {
-		XCloseDisplay(dpy);
-		dpy = NULL;
+	if (xconn) {
+		xcb_disconnect(xconn);
+		xconn = NULL;
 	}
 	if (!prog) {
 		execvp(Arguments[0], Arguments);
@@ -301,17 +297,17 @@ void SetupEnvironment(WScreen * scr)
 	if (multiHead) {
 		int len = strlen(DisplayName) + 64;
 		tmp = wmalloc(len);
-		snprintf(tmp, len, "DISPLAY=%s", XDisplayName(DisplayName));
+		snprintf(tmp, len, "DISPLAY=%s", DisplayName);
 
 		/* Search from the end to be compatible with ipv6 address */
 		ptr = strrchr(tmp, ':');
 		if (ptr == NULL) {
-			static Bool message_already_displayed = False;
+			static bool message_already_displayed = false;
 
 			if (!message_already_displayed)
 				wwarning(_("the display name has an unexpected syntax: \"%s\""),
-				         XDisplayName(DisplayName));
-			message_already_displayed = True;
+				         DisplayName);
+			message_already_displayed = true;
 		} else {
 			/* If found, remove the screen specification from the display variable */
 			ptr = strchr(ptr, '.');
@@ -320,7 +316,7 @@ void SetupEnvironment(WScreen * scr)
 		}
 		snprintf(buf, sizeof(buf), ".%i", scr->screen);
 		if (wstrlcat(tmp, buf, len) >= (size_t)len)
-			wwarning(_("the display name is too long: \"%s\""), XDisplayName(DisplayName));
+			wwarning(_("the display name is too long: \"%s\""), DisplayName);
 		putenv(tmp);
 	}
 
@@ -416,11 +412,11 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
  *
  *----------------------------------------------------------------------
  */
-Bool RelaunchWindow(WWindow *wwin)
+bool RelaunchWindow(WWindow *wwin)
 {
 	if (! wwin || ! wwin->client_win) {
 		werror("no window to relaunch");
-		return False;
+		return false;
 	}
 
 	char **argv = NULL;
@@ -434,13 +430,13 @@ Bool RelaunchWindow(WWindow *wwin)
 #else
 		werror("cannot relaunch the application because no WM_COMMAND property is set");
 #endif
-		return False;
+		return false;
 	} else
 		wtokensplit(command, &argv, &argc);
 
 	if (!argc) {
 		wfree(command);
-		return False;
+		return false;
 	}
 
 	argv = wrealloc(argv, (argc + 1) * sizeof(*argv));
@@ -461,7 +457,7 @@ Bool RelaunchWindow(WWindow *wwin)
 
 		wtokenfree(argv, argc);
 		wfree(command);
-		return False;
+		return false;
 	} else {
 		_tuple *data = wmalloc(sizeof(_tuple));
 
@@ -475,7 +471,7 @@ Bool RelaunchWindow(WWindow *wwin)
 		wtokenfree(argv, argc);
 	}
 
-	return True;
+	return true;
 }
 
 /*
@@ -485,7 +481,7 @@ Bool RelaunchWindow(WWindow *wwin)
  *
  *----------------------------------------------------------------------
  */
-noreturn void wAbort(Bool dumpCore)
+noreturn void wAbort(int dumpCore)
 {
 	int i;
 	WScreen *scr;
@@ -628,10 +624,10 @@ int main(int argc, char **argv)
 	memset(&w_global, 0, sizeof(w_global));
 	w_global.program.state = WSTATE_NORMAL;
 	w_global.program.signal_state = WSTATE_NORMAL;
-	w_global.timestamp.last_event = CurrentTime;
-	w_global.timestamp.focus_change = CurrentTime;
-	w_global.ignore_workspace_change = False;
-	w_global.restore_focus_repair = False;
+	w_global.timestamp.last_event = XCB_CURRENT_TIME;
+	w_global.timestamp.focus_change = XCB_CURRENT_TIME;
+	w_global.ignore_workspace_change = false;
+	w_global.restore_focus_repair = false;
 	w_global.shortcut.modifiers_mask = 0xff;
 #ifdef HAVE_INOTIFY
 	w_global.inotify.fd_event_queue = -1;
@@ -677,7 +673,14 @@ int main(int argc, char **argv)
 		}
 	}
 
-	DisplayName = XDisplayName(DisplayName);
+	/* resolve a missing -display argument against the environment,
+	 * the client-side half of the XDisplayName() contract */
+	if (!DisplayName) {
+		const char *env = getenv("DISPLAY");
+
+		DisplayName = wstrdup(env ? env : "");
+	}
+	w_global.display_name = DisplayName;
 	setenv("DISPLAY", DisplayName, 1);
 
 	/* Let xdg-open, portal backends and toolkit theme pickers identify the
@@ -695,6 +698,7 @@ static int real_main(int argc, char **argv)
 	int i;
 	char *pos;
 	int d, s;
+	xcb_screen_t *xscr;
 	const char *sm_client_id = NULL;
 
 	setlocale(LC_ALL, "");
@@ -835,14 +839,6 @@ static int real_main(int argc, char **argv)
 	bind_textdomain_codeset(MENU_TEXTDOMAIN, "UTF-8");
 #endif
 	textdomain("WindowMaker");
-
-	if (!XSupportsLocale()) {
-		wwarning(_("X server does not support locale"));
-	}
-
-	if (XSetLocaleModifiers("") == NULL) {
-		wwarning(_("cannot set locale modifiers"));
-	}
 #endif
 
 	if (w_global.locale) {
@@ -857,25 +853,24 @@ static int real_main(int argc, char **argv)
 		w_global.locale = locale;
 	}
 
-	/* open display */
-	dpy = XOpenDisplay(DisplayName);
-	if (dpy == NULL) {
-		wfatal(_("could not open display \"%s\""), XDisplayName(DisplayName));
+	/* open display; an empty resolved name means DISPLAY was unset,
+	 * xcb_connect("") would silently target :0 so keep the open
+	 * failure contract */
+	if (DisplayName[0] == '\0') {
+		wfatal(_("could not open display \"%s\""), DisplayName);
 		exit(1);
 	}
 
-	if (fcntl(ConnectionNumber(dpy), F_SETFD, FD_CLOEXEC) < 0) {
+	xconn = xcb_connect(DisplayName, &dflt_screen);
+	if (xcb_connection_has_error(xconn)) {
+		wfatal(_("could not open display \"%s\""), DisplayName);
+		exit(1);
+	}
+
+	if (fcntl(xcb_get_file_descriptor(xconn), F_SETFD, FD_CLOEXEC) < 0) {
 		werror("error setting close-on-exec flag for X connection");
 		exit(1);
 	}
-
-	xconn = XGetXCBConnection(dpy);
-
-	/* hand event-queue ownership to xcb so the WINGs event queue
-	 * reads xcb_poll_for_event(), Xlib keeps issuing requests on
-	 * the same socket and _XReply still collects errors for them
-	 * via pending_requests so the existing trap brackets work */
-	WXEvqFlipToXcb(dpy);
 
 	if (getWVisualID(0) < 0) {
 		/*
@@ -885,7 +880,8 @@ static int real_main(int argc, char **argv)
 		 *   This is required to avoid all sort of corruptions when
 		 * composite is enabled, and at a depth other than 24.
 		 */
-		setWVisualID(0, (int)DefaultVisual(dpy, DefaultScreen(dpy))->visualid);
+		xscr = wXScreenOf(xconn, dflt_screen);
+		setWVisualID(0, (int)xscr->root_visual);
         }
 
 	/* check if the user specified a complete display name (with screen).
@@ -896,15 +892,12 @@ static int real_main(int argc, char **argv)
 		pos = NULL;
 
 	if (pos && sscanf(pos, ":%i.%i", &d, &s) == 2)
-		multiHead = False;
-
-	DisplayName = XDisplayName(DisplayName);
-	setenv("DISPLAY", DisplayName, 1);
+		multiHead = false;
 
 	StartUp(!multiHead);
 
 	if (w_global.screen_count == 1)
-		multiHead = False;
+		multiHead = false;
 
 	wXSMPConnect(argc, argv, sm_client_id);
 

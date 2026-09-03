@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include "WindowMaker.h"
 #include "screen.h"
@@ -61,15 +59,16 @@ static void notifyStackChange(WCoreWindow * frame, char *detail)
  */
 void RemakeStackList(WScreen * scr)
 {
-	Window *windows;
+	xcb_window_t *windows;
 	unsigned int nwindows;
-	Window junkr, junkp;
+	xcb_window_t junkr, junkp;
 	WCoreWindow *frame;
 	WCoreWindow *tmp;
+	void *key;
 	int level;
 	int i, c;
 
-	if (!XQueryTree(dpy, scr->root_win, &junkr, &junkp, &windows, &nwindows)) {
+	if (!wXQueryTree(xconn, scr->root_win, &junkr, &junkp, &windows, &nwindows)) {
 		wwarning(_("could not get window list!!"));
 		return;
 	} else {
@@ -78,8 +77,9 @@ void RemakeStackList(WScreen * scr)
 		/* verify list integrity */
 		c = 0;
 		for (i = 0; i < nwindows; i++) {
-			if (XFindContext(dpy, windows[i], w_global.context.stack, (XPointer *) & frame)
-			    == XCNOENT) {
+			if (!WMHashGetItemAndKey(w_global.context.stack,
+						 (void *)(uintptr_t) windows[i],
+						 (void **)&frame, &key)) {
 				continue;
 			}
 			if (!frame)
@@ -93,7 +93,7 @@ void RemakeStackList(WScreen * scr)
 			frame->stacking->above = NULL;
 			WMSetInBag(scr->stacking_list, level, frame);
 		}
-		XFree(windows);
+		wfree(windows);
 		scr->window_count = c;
 	}
 
@@ -110,7 +110,7 @@ void RemakeStackList(WScreen * scr)
  * This is the flush point for the deferred restack: the mutators below
  * only update the internal list and set scr->flags.need_restack, and
  * one call per event-loop iteration (from EventLoop's prepare hook)
- * applies the whole batch as a single XRestackWindows. The
+ * applies the whole batch as a single wXRestackWindows. The
  * WMNResetStacking notification is posted here, once per batch.
  *
  * Side effects:
@@ -121,7 +121,7 @@ void CommitStacking(WScreen * scr)
 {
 	WCoreWindow *tmp;
 	int nwindows, i;
-	Window *windows;
+	xcb_window_t *windows;
 	WMBagIterator iter;
 
 	scr->flags.need_restack = 0;
@@ -129,7 +129,7 @@ void CommitStacking(WScreen * scr)
 	nwindows = scr->window_count;
 	if (nwindows == 0)
 		return;
-	windows = wmalloc(sizeof(Window) * nwindows);
+	windows = wmalloc(sizeof(xcb_window_t) * nwindows);
 
 	i = 0;
 	WM_ETARETI_BAG(scr->stacking_list, tmp, iter) {
@@ -138,7 +138,7 @@ void CommitStacking(WScreen * scr)
 			tmp = tmp->stacking->under;
 		}
 	}
-	XRestackWindows(dpy, windows, i);
+	wXRestackWindows(xconn, windows, i);
 	wfree(windows);
 	wHotCornersRaise(scr);
 #ifdef VIRTUAL_DESKTOP
@@ -312,7 +312,7 @@ void AddToStackList(WCoreWindow * frame)
 	WCoreWindow *trans = NULL;
 
 	frame->screen_ptr->window_count++;
-	XSaveContext(dpy, frame->window, w_global.context.stack, (XPointer) frame);
+	WMHashInsert(w_global.context.stack, (void *)(uintptr_t) frame->window, frame);
 	curtop = WMGetFromBag(scr->stacking_list, index);
 
 	/* first window in this level */
@@ -444,11 +444,15 @@ void MoveInStackListUnder(WCoreWindow * prev, WCoreWindow * frame)
 void RemoveFromStackList(WCoreWindow * frame)
 {
 	int index = frame->stacking->window_level;
+	void *gone;
+	void *key;
 
-	if (XDeleteContext(dpy, frame->window, w_global.context.stack) == XCNOENT) {
+	if (!WMHashGetItemAndKey(w_global.context.stack, (void *)(uintptr_t) frame->window,
+				 (void **)&gone, &key)) {
 		wwarning("RemoveFromStackingList(): window not in list ");
 		return;
 	}
+	WMHashRemove(w_global.context.stack, (void *)(uintptr_t) frame->window);
 	/* remove from the window stack list */
 	if (frame->stacking->under)
 		frame->stacking->under->stacking->above = frame->stacking->above;

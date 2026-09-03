@@ -47,7 +47,7 @@
  * Returns True if 'ancestor' is a parent (or grandparent, ...) of 'pid'
  * by walking the process tree via the OS-native process info interface.
  */
-Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 {
 #if defined( OPENBSD )
 	char kvmerr[_POSIX2_LINE_MAX];
@@ -60,18 +60,18 @@ Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 
 		kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, kvmerr);
 		if (!kd)
-			return False;
+			return false;
 		kp = kvm_getprocs(kd, KERN_PROC_PID, (int)pid, sizeof(*kp), &procs);
 		if (kp && procs > 0)
 			ppid = (pid_t)kp[0].p_ppid;
 		kvm_close(kd);
 		if (ppid < 0)
-			return False;
+			return false;
 		if (ppid == ancestor)
-			return True;
+			return true;
 		pid = ppid;
 	}
-	return False;
+	return false;
 #elif defined( NETBSD )
 	while (pid > 1) {
 		struct kinfo_proc2 kp;
@@ -81,13 +81,13 @@ Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 		pid_t ppid;
 
 		if (sysctl(mib, 6, &kp, &count, NULL, 0) == -1 || count == 0)
-			return False;
+			return false;
 		ppid = (pid_t)kp.p_ppid;
 		if (ppid == ancestor)
-			return True;
+			return true;
 		pid = ppid;
 	}
-	return False;
+	return false;
 #elif defined( FREEBSD ) || defined( DRAGONFLYBSD )
 	while (pid > 1) {
 		struct kinfo_proc kp;
@@ -96,21 +96,21 @@ Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 		pid_t ppid;
 
 		if (sysctl(mib, 4, &kp, &count, NULL, 0) == -1 || count == 0)
-			return False;
+			return false;
 #  if defined( FREEBSD )
 		ppid = (pid_t)kp.ki_ppid;
 #  else /* DRAGONFLYBSD */
 		ppid = (pid_t)kp.kp_ppid;
 #  endif
 		if (ppid == ancestor)
-			return True;
+			return true;
 		pid = ppid;
 	}
-	return False;
+	return false;
 #else
 	(void)ancestor;
 	(void)pid;
-	return False;
+	return false;
 #endif
 }
 
@@ -325,7 +325,7 @@ pid_t FindDescendantPidByCmdName(pid_t parent, const char *cmd)
  * storage (`args') to easily be made static, which means some memory bytes
  * are sacrificed to save hoops of memory management.
  */
-Bool GetCommandForPid(int pid, char ***argv, int *argc)
+bool GetCommandForPid(int pid, char ***argv, int *argc)
 {
 	/*
 	 * it just returns failure if the sysctl calls fail; since there's
@@ -357,7 +357,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 		count = sizeof(argmax);
 		if (sysctl(mib, 2, &argmax, &count, NULL, 0) == -1)
-			return False;
+			return false;
 	}
 
 	/* if argmax is still 0, something went very seriously wrong */
@@ -371,19 +371,19 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 	/* kvm descriptor */
 	kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, kvmerr);
 	if (kd == NULL)
-		return False;
+		return false;
 
 	procs = 0;
 	/* the process we are interested in */
 	kp = kvm_getprocs(kd, KERN_PROC_PID, pid, sizeof(*kp), &procs);
 	if (kp == NULL || procs == 0)
 		/* if kvm_getprocs() bombs out or does not find the process */
-		return False;
+		return false;
 
 	/* get its argv */
 	nargv = kvm_getargv(kd, kp, 0);
 	if (nargv == NULL)
-		return False;
+		return false;
 
 	/* flatten nargv into args */
 	count = 0;
@@ -422,7 +422,7 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 	/* canary */
 	*args = 0;
 	if (sysctl(mib, 4, args, &count, NULL, 0) == -1 || *args == 0)
-		return False;
+		return false;
 
 	/* args is a flattened series of null-terminated strings */
 	for (i = 0; i < count; i++)
@@ -445,5 +445,5 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 
 	/* the list of arguments must be terminated by a null pointer */
 	(*argv)[j] = NULL;
-	return True;
+	return true;
 }

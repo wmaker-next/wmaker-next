@@ -53,13 +53,13 @@ static const struct {
 	const char *label;
 	const char *balloon_msg;
 } appicon_bouncing[] = {
-	{ "DoNotMakeAppIconsBounce",   False, N_("Disable AppIcon bounce"),
+	{ "DoNotMakeAppIconsBounce",   false, N_("Disable AppIcon bounce"),
 	  N_("By default, the AppIcon bounces when the application is launched") },
 
-	{ "BounceAppIconsWhenUrgent",  True,  N_("Bounce when the application wants attention"),
+	{ "BounceAppIconsWhenUrgent",  true,  N_("Bounce when the application wants attention"),
 	  NULL },
 
-	{ "RaiseAppIconsWhenBouncing", False, N_("Raise AppIcon when bouncing"),
+	{ "RaiseAppIconsWhenBouncing", false, N_("Raise AppIcon when bouncing"),
 	  N_("Otherwise you will not see it bouncing if\nthere is a window in front of the AppIcon") }
 };
 
@@ -155,7 +155,7 @@ static void showData(_Panel * panel)
 
 static void storeData(_Panel * panel)
 {
-	Bool lr, tb;
+	bool lr, tb;
 	int i;
 
 	wm_enum_popup_store(panel->sizeP, resize_display,
@@ -244,7 +244,7 @@ static void createPanel(Panel * p)
 		WMSetButtonText(panel->bounceB[i], _(appicon_bouncing[i].label));
 
 		if (appicon_bouncing[i].default_value)
-			WMSetButtonSelected(panel->bounceB[i], True);
+			WMSetButtonSelected(panel->bounceB[i], true);
 
 		if (appicon_bouncing[i].balloon_msg)
 			WMSetBalloonTextForView(_(appicon_bouncing[i].balloon_msg),

@@ -200,7 +200,7 @@ int wIPCSendStringArray(int fd, uint32_t type, const char *const *items, int cou
 		WMAddToPLArray(arr, s);
 		WMReleasePropList(s);
 	}
-	body = WMGetPropListDescription(arr, False);
+	body = WMGetPropListDescription(arr, false);
 	WMReleasePropList(arr);
 
 	rc = wIPCSend(fd, type, body, strlen(body));
@@ -273,7 +273,7 @@ WMPropList *wIPCCommand(const char *display, const char *cmd)
 	WMReleasePropList(verb);
 	outer = WMCreatePLArray(inner, NULL);
 	WMReleasePropList(inner);
-	body = WMGetPropListDescription(outer, False);
+	body = WMGetPropListDescription(outer, false);
 	WMReleasePropList(outer);
 
 	ok = (wIPCSend(fd, WIPC_COMMAND, body, strlen(body)) == 0);

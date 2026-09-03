@@ -26,23 +26,23 @@ wdread_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 bin_PROGRAMS += wmclipd
-wmclipd_CFLAGS = @XCB_CFLAGS@ @XLFLAGS@
-wmclipd_SOURCES = wmclipd.c clip-common.c clip-common.h
+wmclipd_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@
+wmclipd_SOURCES = wmclipd.c clip-common.c clip-common.h xcconn.c xcconn.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XCB_LIBS@ @XLFLAGS@ @XLIBS@ $(liblist)
+	@XCB_LIBS@ $(liblist)
 
 if BUILD_WMLOCK
 bin_PROGRAMS += wmlock
-wmlock_SOURCES = wmlock.c
-wmlock_CFLAGS = @XCB_CFLAGS@ @XCB_DPMS_CFLAGS@
+wmlock_SOURCES = wmlock.c xcconn.c xcconn.h
+wmlock_CFLAGS = @XCB_CFLAGS@ @XCB_DPMS_CFLAGS@ @CAIRO_CFLAGS@
 wmlock_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @XCB_DPMS_LIBS@ @PAM_LIBS@ $(liblist)
+	@XCB_LIBS@ @XCB_DPMS_LIBS@ @PAM_LIBS@ $(liblist)
 if HAVE_PAM
 pamconfdir = $(sysconfdir)/pam.d
 dist_pamconf_DATA = pam.d/wmlock
@@ -59,19 +59,24 @@ wmsoundd_LDADD = \
 	@WSOUND_LIBS@ $(liblist)
 endif
 
-wxcopy_LDADD = @XLFLAGS@ @XLIBS@
+wxcopy_CFLAGS = @XCB_CORE_CFLAGS@
+wxcopy_SOURCES = wxcopy.c xcconn.c xcconn.h
+wxcopy_LDADD = @XCB_CORE_LIBS@
 
-wxpaste_LDADD = @XLFLAGS@ @XLIBS@
+wxpaste_CFLAGS = @XCB_CORE_CFLAGS@
+wxpaste_SOURCES = wxpaste.c clip-common.c clip-common.h xcconn.c xcconn.h
+wxpaste_LDADD = @XCB_CORE_LIBS@
 
 getstyle_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 getstyle_SOURCES = getstyle.c fontconv.c common.h
 
 setstyle_LDADD = \
+	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@XLFLAGS@ @XLIBS@ $(liblist)
+	@XCB_LIBS@ $(liblist)
 
-setstyle_SOURCES = setstyle.c fontconv.c common.h
+setstyle_SOURCES = setstyle.c fontconv.c common.h xcconn.c xcconn.h
 
 convertfonts_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
@@ -81,28 +86,31 @@ seticons_LDADD= $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 geticonset_LDADD= $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
-wmagnify_CFLAGS = @CAIRO_CFLAGS@
+wmagnify_CFLAGS = @CAIRO_CFLAGS@ @WRASTER_XCB_CFLAGS@
+wmagnify_SOURCES = wmagnify.c xcconn.c xcconn.h
 wmagnify_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @CAIRO_LIBS@ @INTLIBS@
+	@XCB_LIBS@ @WRASTER_XCB_LIBS@ @CAIRO_LIBS@ @INTLIBS@
 
 wmglyph_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @CAIRO_LIBS@ @INTLIBS@
+	@XCB_LIBS@ @CAIRO_LIBS@ @INTLIBS@
 
-wmglyph_SOURCES = wmglyph.c wmglyph-data/wmglyph_data.c wmglyph-data/wmglyph_data.h wmglyph_icon.h
+wmglyph_SOURCES = wmglyph.c wmglyph-data/wmglyph_data.c wmglyph-data/wmglyph_data.h wmglyph_icon.h \
+	xcconn.c xcconn.h
 wmglyph_CFLAGS = -I$(srcdir)/wmglyph-data @CAIRO_CFLAGS@ @FONTCONFIG_CFLAGS@
 
-wmsetbg_CFLAGS = @CAIRO_CFLAGS@
+wmsetbg_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@
+wmsetbg_SOURCES = wmsetbg.c xcconn.c xcconn.h
 wmsetbg_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XLFLAGS@ @XLIBS@ @XCB_LIBS@ @CAIRO_LIBS@ @INTLIBS@
+	@XCB_LIBS@ @CAIRO_LIBS@ @INTLIBS@
 
 wmgenmenu_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
@@ -126,7 +134,7 @@ wmiv_LDADD = \
 	@CAIRO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@
 
-wmiv_SOURCES = wmiv.c wmiv_icon.h clip-common.c clip-common.h
+wmiv_SOURCES = wmiv.c wmiv_icon.h clip-common.c clip-common.h xcconn.c xcconn.h
 
 CLEANFILES = wmaker.inst
 

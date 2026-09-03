@@ -5,7 +5,7 @@
 # half/corner/fullscreen maximize on ButtonRelease.
 #
 # edge-snap-drive.sh covers the edge-snap IPC *actions*
-# (MoveToEdge/GrowToEdge/ShrinkToEdge); edge-finder-drive.sh covers
+# (MoveToEdge/GrowToEdge/ShrinkToEdge), edge-finder-drive.sh covers
 # the old EdgeResistance/Attraction path (with WindowSnapping=NO).
 # Neither reaches the WindowSnapping-gated path exercised here.
 set -u

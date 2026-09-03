@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2014-2023 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,9 +24,9 @@
 #include "wconfig.h"
 #include <assert.h>
 #include <limits.h>
-#include <X11/Xutil.h>
 #include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
+#include <WINGs/WXCore.h>
 #include "keytree.h"
 #include "wconfigmodel.h"
 
@@ -82,11 +82,11 @@ enum {
 typedef struct WObjDescriptor {
 	void *self;                        /* the object that will be called */
 	/* event handlers */
-	void (*handle_expose)(struct WObjDescriptor *sender, XEvent *event);
-	void (*handle_mousedown)(struct WObjDescriptor *sender, XEvent *event);
-	void (*handle_motionnotify)(struct WObjDescriptor *sender, XEvent *event);
-	void (*handle_enternotify)(struct WObjDescriptor *sender, XEvent *event);
-	void (*handle_leavenotify)(struct WObjDescriptor *sender, XEvent *event);
+	void (*handle_expose)(struct WObjDescriptor *sender, xcb_generic_event_t *event);
+	void (*handle_mousedown)(struct WObjDescriptor *sender, xcb_generic_event_t *event);
+	void (*handle_motionnotify)(struct WObjDescriptor *sender, xcb_generic_event_t *event);
+	void (*handle_enternotify)(struct WObjDescriptor *sender, xcb_generic_event_t *event);
+	void (*handle_leavenotify)(struct WObjDescriptor *sender, xcb_generic_event_t *event);
 
 	WClassType parent_type;            /* type code of the parent */
 	void *parent;                      /* parent object (WWindow or WMenu) */
@@ -283,16 +283,15 @@ extern struct WPreferences {
 	} flags;                                      /* internal flags */
 
 	/* Map table between w_cursor and actual X id */
-	Cursor cursor[WCUR_LAST];
+	xcb_cursor_t cursor[WCUR_LAST];
 
 } wPreferences;
 
-/****** Global Variables  ******/
-extern Display	*dpy;
-/* the shared xcb connection underneath dpy, set once in real_main()
- * via XGetXCBConnection() so per-protocol modules issuing xcb-shape,
- * xcb-randr and xcb-sync requests do not each re-derive it */
+/****** Global Variables ******/
+/* the connection owner, opened in real_main(); the screen number comes
+ * from the display name parse in real_main() */
 extern xcb_connection_t	*xconn;
+extern int dflt_screen;
 
 extern struct wmaker_global_variables {
 	/* Tracking of the state of the program */
@@ -304,24 +303,29 @@ extern struct wmaker_global_variables {
 	/* locale to use. NULL==POSIX or C */
 	const char *locale;
 
+	/* the display name the connection was opened on, the
+	 * DisplayString(dpy) stand-in for the IPC socket path and the
+	 * root-menu DISPLAY macro */
+	const char *display_name;
+
 	/* Tracking of X events timestamps */
 	struct {
 		/* ts of the last event we received */
-		Time last_event;
+		xcb_timestamp_t last_event;
 
-		/* ts on the last time we did XSetInputFocus() */
-		Time focus_change;
+		/* ts on the last time we did wXSetInputFocus() */
+		xcb_timestamp_t focus_change;
 
 	} timestamp;
 
 	/* Sequence-range Enter/Leave suppression: a small ring of
 	 * [begin,end) request-sequence brackets recorded around request
 	 * bursts that move/map/unmap windows (interactive drag, snap,
-	 * workspace settle).  handleEnterNotify/handleLeaveNotify drop
+	 * workspace settle). handleEnterNotify/handleLeaveNotify drop
 	 * any crossing whose serial falls inside a recorded range, so
 	 * the spurious crossings those requests generate cannot drive
 	 * focus-follows-mouse, auto-raise or the dock/clip enter
-	 * handlers.  Slots start zeroed so [0,0) matches nothing. */
+	 * handlers. Slots start zeroed so [0,0) matches nothing. */
 	struct {
 		struct {
 			unsigned long begin;
@@ -350,24 +354,24 @@ extern struct wmaker_global_variables {
 	 * this variable is used to prevent workspace switch while certain
 	 * operations are ongoing.
 	 */
-	Bool ignore_workspace_change;
+	bool ignore_workspace_change;
 
 	/* Set while the focus-repair timer re-asserts focus so the
 	 * AutoMiniaturize/AutoHide-on-unfocus hook stays out of the
 	 * focus it steals from during the repair burst. */
-	Bool restore_focus_repair;
+	bool restore_focus_repair;
 
 	/* Set around a pointer-initiated switch so the PointerFollowsMonitor and
 	 * PointerFollowsFocus warps are skipped. Toggled by the
 	 * wWorkspaceChangeFromPointer wrappers, read by the force-change warp. */
-	Bool pointer_driven_change;
+	bool pointer_driven_change;
 
 	/*
 	 * Process WorkspaceMap Event:
 	 * this variable is set when the Workspace Map window is being displayed,
 	 * it is mainly used to avoid re-opening another one at the same time
 	 */
-	Bool process_workspacemap_event;
+	bool process_workspacemap_event;
 
 	/*
 	 * Display power state:
@@ -378,7 +382,7 @@ extern struct wmaker_global_variables {
 	 * `display-power' IPC verb, RandR all-outputs-off detection and
 	 * the MIT-SCREEN-SAVER notify event, see wDisplaySetOff().
 	 */
-	Bool display_off;
+	bool display_off;
 
 #ifdef HAVE_INOTIFY
 	struct {
@@ -393,90 +397,90 @@ extern struct wmaker_global_variables {
 
 		/* Window-Manager related */
 		struct {
-			Atom state;
-			Atom change_state;
-			Atom protocols;
-			Atom take_focus;
-			Atom delete_window;
-			Atom save_yourself;
-			Atom client_leader;
-			Atom colormap_windows;
-			Atom colormap_notify;
-			Atom motif_wm_hints;
-			Atom ignore_focus_events;
-			Atom window_role;
+			xcb_atom_t state;
+			xcb_atom_t change_state;
+			xcb_atom_t protocols;
+			xcb_atom_t take_focus;
+			xcb_atom_t delete_window;
+			xcb_atom_t save_yourself;
+			xcb_atom_t client_leader;
+			xcb_atom_t colormap_windows;
+			xcb_atom_t colormap_notify;
+			xcb_atom_t motif_wm_hints;
+			xcb_atom_t ignore_focus_events;
+			xcb_atom_t window_role;
 		} wm;
 
 		/* GNUStep related */
 		struct {
-			Atom wm_attr;
-			Atom wm_miniaturize_window;
-			Atom wm_hide_app;
-			Atom wm_resizebar;
-			Atom titlebar_state;
+			xcb_atom_t wm_attr;
+			xcb_atom_t wm_miniaturize_window;
+			xcb_atom_t wm_hide_app;
+			xcb_atom_t wm_resizebar;
+			xcb_atom_t titlebar_state;
 		} gnustep;
 
 		/* Destkop-environment related */
 		struct {
-			Atom gtk_object_path;
+			xcb_atom_t gtk_object_path;
 		} desktop;
 
 		/* WindowMaker specific */
 		struct {
-			Atom menu;
-			Atom wm_protocols;
-			Atom state;
+			xcb_atom_t menu;
+			xcb_atom_t wm_protocols;
+			xcb_atom_t state;
 
-			Atom wm_function;
-			Atom noticeboard;
-			Atom command;
+			xcb_atom_t wm_function;
+			xcb_atom_t noticeboard;
+			xcb_atom_t command;
 
-			Atom icon_size;
-			Atom icon_tile;
-			Atom mark_key;
-			Atom tab_group;
+			xcb_atom_t icon_size;
+			xcb_atom_t icon_tile;
+			xcb_atom_t mark_key;
+			xcb_atom_t tab_group;
 		} wmaker;
 
 	} atom;
 
-	/* X Contexts */
+	/* window -> descriptor tables (the XContext replacements) */
 	struct {
-		XContext client_win;
-		XContext app_win;
-		XContext stack;
+		WMHashTable *client_win;
+		WMHashTable *app_win;
+		WMHashTable *stack;
 	} context;
 
 	/* X Extensions */
 	struct {
 #ifdef USE_XSHAPE
 		struct {
-			Bool supported;
+			bool supported;
 			int event_base;
 		} shape;
 #endif
 
 		struct {
-			Bool supported;
+			bool supported;
 			int event_base;
 		} xkb;
 
 #ifdef USE_RANDR
 		struct {
-			Bool supported;
+			bool supported;
 			int event_base;
 		} randr;
 #endif
 
 #ifdef USE_XSYNC
 		struct {
-			Bool supported;
+			bool supported;
 			int event_base;
 		} xsync;
 #endif
 
 #ifdef USE_XCB_SCREENSAVER
 		struct {
-			Bool supported;
+			bool supported;
 			int event_base;
 		} screensaver;
 #endif
@@ -502,7 +506,7 @@ extern struct wmaker_global_variables {
 		 *
 		 * curpos == NULL  : idle, no active chain.
 		 * curpos != NULL  : inside a chain; curpos points to the last matched
-		 *                   internal node in wKeyTreeRoot.  The next expected
+		 *                   internal node in wKeyTreeRoot. The next expected
 		 *                   key is one of curpos->first_child's siblings.
 		 */
 		WKeyNode    *curpos;

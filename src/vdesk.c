@@ -40,7 +40,7 @@
 #include "layout.h"
 
 typedef struct _delay_configure {
-	Window *wins;
+	xcb_window_t *wins;
 	int count;
 	WMHandlerID timer;
 } _delay_configure;
@@ -80,7 +80,7 @@ void wVdeskUpdateGeometry(WScreen *scr, int workspace)
 
 	for (head = 0; head < heads; ++head) {
 		WMRect rect = wGetRectForHead(scr, head);
-		WArea area = wGetUsableAreaForHead(scr, head, NULL, False);
+		WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 		strut[head][0] = area.x1 - rect.pos.x;
 		strut[head][1] = rect.pos.x + rect.size.width - area.x2;
 		strut[head][2] = area.y1 - rect.pos.y;
@@ -135,41 +135,41 @@ void wVdeskUpdateGeometry(WScreen *scr, int workspace)
 	wfree(strut);
 }
 
-Bool wVdeskPerHeadBlocked(WScreen *scr, int workspace)
+bool wVdeskPerHeadBlocked(WScreen *scr, int workspace)
 {
 	if (w_global.config->per_head_workspaces)
-		return True;
+		return true;
 
 	if (workspace >= 0 && workspace < scr->workspace_count
 	    && scr->workspaces[workspace]->head_name_count > 0)
-		return True;
+		return true;
 
-	return False;
+	return false;
 }
 
-Bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
+bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
 {
-	Bool adjust_flag = False;
+	bool adjust_flag = false;
 	int diff_x, diff_y;
 	int old_view_x, old_view_y;
 	int64_t max_x, max_y;
 	int j;
-	Bool seen;
+	bool seen;
 	static _delay_configure delay_configure = { NULL, 0, NULL };
 	WWorkspace *wptr;
 	WWindow *wwin;
 
 	if (!w_global.config->vdesk_enable)
-		return False;
+		return false;
 
 	if (workspace < 0 || workspace >= scr->workspace_count)
-		return False;
+		return false;
 
 	if (scr->workspaces[workspace]->layout != WLAYOUT_FLOAT)
-		return False;
+		return false;
 
 	if (wVdeskPerHeadBlocked(scr, workspace))
-		return False;
+		return false;
 
 	wptr = scr->workspaces[workspace];
 
@@ -199,7 +199,7 @@ Bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
 	diff_x = old_view_x - view_x;
 	diff_y = old_view_y - view_y;
 	if (!diff_x && !diff_y)
-		return False;
+		return false;
 
 	wptr->view_x = view_x;
 	wptr->view_y = view_y;
@@ -215,21 +215,21 @@ Bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
 			wwin->frame_x += diff_x;
 			wwin->frame_y += diff_y;
 			wWindowMove(wwin, wwin->frame_x, wwin->frame_y);
-			adjust_flag = True;
+			adjust_flag = true;
 
 			/* the delayed notify reads the final geometry, so
 			 * a window moved again before the fire needs no
 			 * second entry and no second timer */
-			seen = False;
+			seen = false;
 			for (j = 0; j < delay_configure.count; j++) {
 				if (delay_configure.wins[j] == wwin->client_win) {
-					seen = True;
+					seen = true;
 					break;
 				}
 			}
 			if (!seen) {
 				delay_configure.wins = wrealloc(delay_configure.wins,
-					sizeof(Window) * (delay_configure.count + 1));
+					sizeof(xcb_window_t) * (delay_configure.count + 1));
 				delay_configure.wins[delay_configure.count++] = wwin->client_win;
 			}
 		}
@@ -253,10 +253,10 @@ Bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
 
 #define updateMinimum(l,p,ml,mp) do { if (cmp(l) && (l)<(ml)) { (ml)=(l); (mp)=(p); } } while(0)
 
-static Bool cmp_gez(int i) { return (i >= 0); }
-static Bool cmp_gz(int i)  { return (i > 0); }
+static bool cmp_gez(int i) { return (i >= 0); }
+static bool cmp_gz(int i)  { return (i > 0); }
 
-static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, Bool (*cmp)(int))
+static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, bool (*cmp)(int))
 {
 	WMPoint closest = wmkpoint(0, 0);
 	int closest_len = INT_MAX;
@@ -275,7 +275,7 @@ static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, Bool (*cmp)(int))
 				int len;
 				int x1, x2, y1, y2;
 				int head = wGetHeadForWindow(wwin);
-				WArea area = wGetUsableAreaForHead(scr, head, NULL, False);
+				WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 				WMPoint p;
 
 				x1 = wwin->frame_x - area.x1;
@@ -330,7 +330,7 @@ void wVdeskCenter(WScreen *scr, WWindow *wwin)
 	if (!wwin || scr->workspaces[scr->current_workspace]->layout != WLAYOUT_FLOAT)
 		return;
 	head = wGetHeadForWindow(wwin);
-	area = wGetUsableAreaForHead(scr, head, NULL, False);
+	area = wGetUsableAreaForHead(scr, head, NULL, false);
 	cx = wwin->frame_x + wwin->frame->core->width / 2
 		- (area.x1 + (area.x2 - area.x1) / 2);
 	cy = wwin->frame_y + wwin->frame->core->height / 2
@@ -346,12 +346,12 @@ void wVdeskPin(WScreen *scr, WWindow *wwin)
 	CommitStacking(scr);
 }
 
-void wVdeskDragPan(WScreen *scr, XEvent *event)
+void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 {
-	Bool done = False;
+	bool done = false;
 	int last_x, last_y;
 	int x, y;
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 
 	/* A tiled workspace cannot pan because wLayoutApply would snap
 	 * windows back to tiled positions, destroying the pan. Also
@@ -368,29 +368,33 @@ void wVdeskDragPan(WScreen *scr, XEvent *event)
 	 * PointerMotionMask (not ButtonMotionMask) matches the edge-scroll
 	 * grab in wVdeskMouseMoveDesktop: it selects all motion events
 	 * during the grab, which is what a free-form drag needs. */
-	if (XGrabPointer(dpy, event->xbutton.root, False,
-			 PointerMotionMask | ButtonReleaseMask,
-			 GrabModeAsync, GrabModeAsync,
-			 None, wPreferences.cursor[WCUR_MOVE], CurrentTime) != GrabSuccess)
+	if (wXGrabPointer(xconn, ((xcb_button_press_event_t *)event)->root, false,
+			 XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE,
+			 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+			 XCB_NONE, wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
 		return;
 	/* Discard the ButtonPress that brought us here and any stale motion
 	 * so the first WMMaskEvent below is a fresh sample. Mirrors the
 	 * edge-scroll grab at wVdeskMouseMoveDesktop. */
-	XFlush(dpy);
-	while (WXEvqTakeMask(dpy, PointerMotionMask | ButtonPressMask, None, &ev))
-		;
+	wXFlush(xconn);
+	while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
+		free(ev);
+		ev = NULL;
+	}
 
-	last_x = event->xbutton.x_root;
-	last_y = event->xbutton.y_root;
+	last_x = ((xcb_button_press_event_t *)event)->root_x;
+	last_y = ((xcb_button_press_event_t *)event)->root_y;
 
 	while (!done) {
-		WMMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &ev);
+		free(ev);
+		ev = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
 
-		if (ev.type == MotionNotify) {
-			int dx = ev.xmotion.x_root - last_x;
-			int dy = ev.xmotion.y_root - last_y;
-			last_x = ev.xmotion.x_root;
-			last_y = ev.xmotion.y_root;
+		if ((ev->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
+			int dx = (((xcb_motion_notify_event_t *)ev)->root_x) - last_x;
+			int dy = (((xcb_motion_notify_event_t *)ev)->root_y) - last_y;
+			last_x = (((xcb_motion_notify_event_t *)ev)->root_x);
+			last_y = (((xcb_motion_notify_event_t *)ev)->root_y);
 
 			if (dx != 0 || dy != 0) {
 				/* Window-move model: pan = move windows by -diff,
@@ -403,12 +407,14 @@ void wVdeskDragPan(WScreen *scr, XEvent *event)
 				wVdeskSetViewport(scr, scr->current_workspace,
 						  x - dx, y - dy);
 			}
-		} else if (ev.type == ButtonRelease) {
-			done = True;
+		} else if ((ev->response_type & 0x7f) == XCB_BUTTON_RELEASE) {
+			done = true;
 		}
 	}
+	free(ev);
+	ev = NULL;
 
-	XUngrabPointer(dpy, CurrentTime);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 }
 
 /* Inactivity timeout for the edge-pan modal loop: a DPMS-wake EnterNotify
@@ -417,22 +423,22 @@ void wVdeskDragPan(WScreen *scr, XEvent *event)
 
 static void panIdleTimeout(void *data)
 {
-	*(Bool *)data = True;
+	*(bool *)data = true;
 }
 
-void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
+void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 {
-	static int lock = False;
-	Bool done = False;
-	Bool moved = True;
-	Bool timed_out = False;
+	static int lock = false;
+	bool done = false;
+	bool moved = true;
+	bool timed_out = false;
 	WMHandlerID pan_idle_timer = NULL;
-	WScreen *scr = wScreenForRootWindow(event->xcrossing.root);
-	WMPoint old_pos = wmkpoint(event->xcrossing.x_root, event->xcrossing.y_root);
+	WScreen *scr = wScreenForRootWindow(((xcb_enter_notify_event_t *)event)->root);
+	WMPoint old_pos = wmkpoint(((xcb_enter_notify_event_t *)event)->root_x, ((xcb_enter_notify_event_t *)event)->root_y);
 	WMPoint step;
 	int x, y;
 	int resisted = 0;
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 	int head;
 	WMRect head_rect;
 	WMPoint center;
@@ -447,29 +453,31 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 
 	if (lock)
 		return;
-	lock = True;
+	lock = true;
 
 	if (scr->workspaces[scr->current_workspace]->layout != WLAYOUT_FLOAT)
 		goto exit;
 
-	if (XGrabPointer(dpy, event->xcrossing.window, False,
-			 PointerMotionMask, GrabModeAsync, GrabModeAsync,
-			 scr->root_win, wPreferences.cursor[WCUR_EMPTY], CurrentTime) != GrabSuccess) {
+	if (wXGrabPointer(xconn, ((xcb_enter_notify_event_t *)event)->event, false,
+			 XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+			 scr->root_win, wPreferences.cursor[WCUR_EMPTY], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		step = vec_scale2(direction, w_global.config->vedge_hscrollspeed,
 				  w_global.config->vedge_vscrollspeed);
 		x = scr->workspaces[scr->current_workspace]->view_x;
 		y = scr->workspaces[scr->current_workspace]->view_y;
 		if (wVdeskSetViewport(scr, scr->current_workspace, x + step.x, y + step.y)) {
 			step = vec_scale(direction, 2);
-			XWarpPointer(dpy, None, scr->root_win, 0, 0, 0, 0,
-				     event->xcrossing.x_root - step.x,
-				     event->xcrossing.y_root - step.y);
+			wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
+				     ((xcb_enter_notify_event_t *)event)->root_x - step.x,
+				     ((xcb_enter_notify_event_t *)event)->root_y - step.y);
 		}
 		goto exit;
 	}
-	XFlush(dpy);
-	while (WXEvqTakeMask(dpy, PointerMotionMask | ButtonPressMask, None, &ev))
-		;
+	wXFlush(xconn);
+	while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
+		free(ev);
+		ev = NULL;
+	}
 
 	if (old_pos.x < head_rect.pos.x)
 		old_pos.x = head_rect.pos.x;
@@ -484,15 +492,20 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 					    panIdleTimeout, &timed_out);
 	while (!done && !timed_out) {
 		if (moved) {
-			XWarpPointer(dpy, None, scr->root_win, 0, 0, 0, 0,
+			wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
 				     center.x, center.y);
-			moved = False;
+			moved = false;
 		}
-		/* Inlined WMMaskEvent that also aborts when the idle timer fires. */
+		/* Inlined WMMaskEvent that also aborts when the idle timer
+		 * fires, each iteration owns one event */
+		free(ev);
+		ev = NULL;
 		while (!timed_out &&
-		       !WXEvqTakeMask(dpy, PointerMotionMask, None, &ev))
-			W_HandleInputEvents(True, ConnectionNumber(dpy));
+		       !WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &ev))
+			W_HandleInputEvents(true, xcb_get_file_descriptor(xconn));
 		if (timed_out) {
+			free(ev);
+			ev = NULL;
 			/* the one-shot timer already fired and was swept */
 			pan_idle_timer = NULL;
 			break;
@@ -501,15 +514,15 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 		pan_idle_timer = WMAddTimerHandler(VDESK_PAN_IDLE_MS,
 						  panIdleTimeout, &timed_out);
 
-		if (ev.type == MotionNotify) {
+		if ((ev->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
 			int step_len;
-			step = wmkpoint(ev.xmotion.x_root - center.x,
-					ev.xmotion.y_root - center.y);
+			step = wmkpoint((((xcb_motion_notify_event_t *)ev)->root_x) - center.x,
+					(((xcb_motion_notify_event_t *)ev)->root_y) - center.y);
 			step_len = vec_dot(step, direction);
 			if (step_len < 0) {
-				done = True;
+				done = true;
 			} else if (step_len > 0) {
-				Bool do_move = True;
+				bool do_move = true;
 				int resist = w_global.config->vedge_resistance;
 				WMPoint closest;
 				int closest_len = INT_MAX;
@@ -535,7 +548,7 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 					y = scr->workspaces[scr->current_workspace]->view_y;
 					wVdeskSetViewport(scr, scr->current_workspace,
 							  x + step.x, y + step.y);
-					moved = True;
+					moved = true;
 				}
 			}
 		}
@@ -543,12 +556,14 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 	WMDeleteTimerHandlerPtr(&pan_idle_timer);
 
 	step = vec_add(old_pos, vec_scale(direction, -1));
-	XWarpPointer(dpy, None, scr->root_win, 0, 0, 0, 0, step.x, step.y);
-	XUngrabPointer(dpy, CurrentTime);
+	wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0, step.x, step.y);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 
  exit:
+	free(ev);
+	ev = NULL;
 	WMDeleteTimerHandlerPtr(&pan_idle_timer);
-	lock = False;
+	lock = false;
 }
 
 #define LEFT_EDGE   0x01
@@ -557,31 +572,30 @@ void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction)
 #define BOTTOM_EDGE 0x08
 #define ALL_EDGES   0x0F
 
-XContext wVEdgeContext = 0;
+WMHashTable *wVEdgeTable = NULL;
 
-static void vdHandleEnter_u(XEvent *event) { wVdeskMouseMoveDesktop(event, VEC_UP); }
-static void vdHandleEnter_d(XEvent *event) { wVdeskMouseMoveDesktop(event, VEC_DOWN); }
-static void vdHandleEnter_l(XEvent *event) { wVdeskMouseMoveDesktop(event, VEC_LEFT); }
-static void vdHandleEnter_r(XEvent *event) { wVdeskMouseMoveDesktop(event, VEC_RIGHT); }
+static void vdHandleEnter_u(xcb_generic_event_t *event) { wVdeskMouseMoveDesktop(event, VEC_UP); }
+static void vdHandleEnter_d(xcb_generic_event_t *event) { wVdeskMouseMoveDesktop(event, VEC_DOWN); }
+static void vdHandleEnter_l(xcb_generic_event_t *event) { wVdeskMouseMoveDesktop(event, VEC_LEFT); }
+static void vdHandleEnter_r(xcb_generic_event_t *event) { wVdeskMouseMoveDesktop(event, VEC_RIGHT); }
 
 static void createEdges(WScreen *scr)
 {
 	int i, j;
-	int vmask;
-	XSetWindowAttributes attribs;
+	uint32_t vmask;
 	int heads = wXineramaHeads(scr);
 	int *hasEdges;
 	int thickness = WMAX(1, (int)w_global.config->vedge_bordersize);
 	int nr_edges = 0;
 	int max_edges = 4 * heads;
 	int head;
-	Window *edges;
+	xcb_window_t *edges;
 
 	if (scr->virtual_edges)
 		return;
 
 	hasEdges = wmalloc(sizeof(int) * heads);
-	edges = wmalloc(sizeof(Window) * max_edges);
+	edges = wmalloc(sizeof(xcb_window_t) * max_edges);
 
 	for (i = 0; i < heads; ++i)
 		hasEdges[i] = ALL_EDGES;
@@ -617,48 +631,54 @@ static void createEdges(WScreen *scr)
 
 	wNETWMUpdateDesktop(scr);
 
-	if (wVEdgeContext == 0)
-		wVEdgeContext = XUniqueContext();
+	if (wVEdgeTable == NULL)
+		wVEdgeTable = WMCreateHashTable(WMIntHashCallbacks);
 
-	vmask = CWEventMask | CWOverrideRedirect;
-	attribs.event_mask = (EnterWindowMask | LeaveWindowMask | VisibilityChangeMask);
-	attribs.override_redirect = True;
+	vmask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK;
 
 	for (head = 0; head < wXineramaHeads(scr); ++head) {
 		WMRect rect = wGetRectForHead(scr, head);
 
 		if (hasEdges[head] & TOP_EDGE) {
-			edges[nr_edges] =
-				XCreateWindow(dpy, scr->root_win, rect.pos.x, rect.pos.y,
-					      rect.size.width, thickness, 0,
-					      CopyFromParent, InputOnly, CopyFromParent, vmask, &attribs);
-			XSaveContext(dpy, edges[nr_edges], wVEdgeContext, (XPointer) vdHandleEnter_u);
+			edges[nr_edges] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+					  scr->root_win, rect.pos.x, rect.pos.y,
+					  rect.size.width, thickness, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
+			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_u);
 			++nr_edges;
 		}
 		if (hasEdges[head] & BOTTOM_EDGE) {
-			edges[nr_edges] =
-				XCreateWindow(dpy, scr->root_win, rect.pos.x,
-					      rect.pos.y + rect.size.height - thickness,
-					      rect.size.width, thickness, 0,
-					      CopyFromParent, InputOnly, CopyFromParent, vmask, &attribs);
-			XSaveContext(dpy, edges[nr_edges], wVEdgeContext, (XPointer) vdHandleEnter_d);
+			edges[nr_edges] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+					  scr->root_win, rect.pos.x,
+					  rect.pos.y + rect.size.height - thickness,
+					  rect.size.width, thickness, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
+			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_d);
 			++nr_edges;
 		}
 		if (hasEdges[head] & LEFT_EDGE) {
-			edges[nr_edges] =
-				XCreateWindow(dpy, scr->root_win, rect.pos.x, rect.pos.y,
-					      thickness, rect.size.height, 0,
-					      CopyFromParent, InputOnly, CopyFromParent, vmask, &attribs);
-			XSaveContext(dpy, edges[nr_edges], wVEdgeContext, (XPointer) vdHandleEnter_l);
+			edges[nr_edges] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+					  scr->root_win, rect.pos.x, rect.pos.y,
+					  thickness, rect.size.height, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
+			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_l);
 			++nr_edges;
 		}
 		if (hasEdges[head] & RIGHT_EDGE) {
-			edges[nr_edges] =
-				XCreateWindow(dpy, scr->root_win,
-					      rect.pos.x + rect.size.width - thickness, rect.pos.y,
-					      thickness, rect.size.height, 0,
-					      CopyFromParent, InputOnly, CopyFromParent, vmask, &attribs);
-			XSaveContext(dpy, edges[nr_edges], wVEdgeContext, (XPointer) vdHandleEnter_r);
+			edges[nr_edges] = xcb_generate_id(xconn);
+			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+					  scr->root_win,
+					  rect.pos.x + rect.size.width - thickness, rect.pos.y,
+					  thickness, rect.size.height, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
+			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_r);
 			++nr_edges;
 		}
 	}
@@ -667,7 +687,7 @@ static void createEdges(WScreen *scr)
 	scr->virtual_edges = edges;
 
 	for (i = 0; i < scr->virtual_nr_edges; ++i)
-		XMapWindow(dpy, scr->virtual_edges[i]);
+		xcb_map_window(xconn, scr->virtual_edges[i]);
 	wWorkspaceRaiseEdge(scr);
 
 	wfree(hasEdges);
@@ -681,9 +701,9 @@ static void destroyEdges(WScreen *scr)
 		return;
 
 	for (i = 0; i < scr->virtual_nr_edges; ++i) {
-		XDeleteContext(dpy, scr->virtual_edges[i], wVEdgeContext);
-		XUnmapWindow(dpy, scr->virtual_edges[i]);
-		XDestroyWindow(dpy, scr->virtual_edges[i]);
+		WMHashRemove(wVEdgeTable, (void *)(uintptr_t) scr->virtual_edges[i]);
+		xcb_unmap_window(xconn, scr->virtual_edges[i]);
+		xcb_destroy_window(xconn, scr->virtual_edges[i]);
 	}
 
 	wfree(scr->virtual_edges);
@@ -708,10 +728,10 @@ void wWorkspaceRaiseEdge(WScreen *scr)
 
 	if (toggle) {
 		for (i = 0; i < scr->virtual_nr_edges; ++i)
-			XRaiseWindow(dpy, scr->virtual_edges[i]);
+			xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	} else {
 		for (i = scr->virtual_nr_edges - 1; i >= 0; --i)
-			XRaiseWindow(dpy, scr->virtual_edges[i]);
+			xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	}
 	toggle ^= 1;
 }
@@ -720,7 +740,7 @@ void wWorkspaceLowerEdge(WScreen *scr)
 {
 	int i;
 	for (i = 0; i < scr->virtual_nr_edges; ++i)
-		XLowerWindow(dpy, scr->virtual_edges[i]);
+		xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 }
 
 #endif /* VIRTUAL_DESKTOP */

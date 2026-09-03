@@ -42,7 +42,7 @@ typedef struct {
 	int	 Flags;
 } WMConfigMenuEntry;
 
-static Bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm);
+static bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm);
 static void parse_wmconfig_line(char **label, char **key, char **value, const char *line);
 static void init_wmconfig_storage(WMConfigMenuEntry **wmc);
 
@@ -145,24 +145,24 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 /* an example to illustrate validateFilename.
  * with wmconfig, no special handling is needed
  */
-Bool wmconfig_validate_file(const char *filename, const struct stat *st, int tflags, struct FTW *ftw)
+bool wmconfig_validate_file(const char *filename, const struct stat *st, int tflags, struct FTW *ftw)
 {
 	(void)filename;
 	(void)st;
 	(void)tflags;
 	(void)ftw;
 
-	return True;
+	return true;
 #if 0	/* not dead code, example */
 
 	/* or we could have gone intro extremes */
 	char *base_name;
-	Bool ret;
+	bool ret;
 
 	(void)tflags;
 
 	base_name = wstrdup(filename + ftw->base);
-	ret = True;
+	ret = true;
 
 	if (!S_ISREG(st->st_mode) ||				/* not a regular file */
 	    (st->st_uid != 0 && st->st_uid != getuid()) ||	/* bad guy injected this file */
@@ -170,7 +170,7 @@ Bool wmconfig_validate_file(const char *filename, const struct stat *st, int tfl
 	    st->st_size >= 128 * 131072	||			/* no one writes wmconfig files > 128K */
 	    st->st_size == 0 ||					/* nor empty ones */
 	    ftw->level > 16)					/* how did we get this deep? */
-		ret = False;
+		ret = false;
 
 	wfree(base_name);
 
@@ -229,7 +229,7 @@ static void parse_wmconfig_line(char **label, char **key, char **value, const ch
 }
 
 /* normalize and convert one wmconfig-format entry to wm format */
-static Bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
+static bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 {
 	char *p;
 	size_t slen;
@@ -238,7 +238,7 @@ static Bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 	if (!((*wmc)->Exec &&
 	     *(*wmc)->Exec &&
 	     fileInPath((*wmc)->Exec)))
-		return False;
+		return false;
 
 	/* normalize Exec: wmconfig tends to stick an ampersand
 	 * at the end of everything, which we don't need */
@@ -281,7 +281,7 @@ static Bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 	(*wm)->SubMenu = (*wmc)->Category;
 	(*wm)->Flags = (*wmc)->Flags;
 
-	return True;
+	return true;
 }
 
 static void init_wmconfig_storage(WMConfigMenuEntry **wmc)

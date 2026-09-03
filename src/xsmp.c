@@ -113,6 +113,9 @@ static void ice_input_cb(int fd, int mask, void *data)
 	}
 }
 
+/* ice_watch and cb_save_yourself sit on libICE/libSM ABI function
+ * pointers, so their flag parameters must spell X11's Bool (int),
+ * not C99 bool. */
 static void ice_watch(IceConn conn, IcePointer data, Bool opening,
 		      IcePointer *watch_data)
 {
@@ -246,13 +249,13 @@ static void save_phase2(SmcConn conn, SmPointer data)
 			continue;
 		if (!w_global.config->save_session_on_exit)
 			wSessionSaveState(scr);
-		wScreenSaveState(scr, False);
+		wScreenSaveState(scr, false);
 	}
 
 	/* SmRestartCommand carries the client id, and WMState is a fixed
 	 * per-user path, so nothing about the restart line changes across
 	 * checkpoints and the initial publish_properties() stays valid. */
-	SmcSaveYourselfDone(conn, True);
+	SmcSaveYourselfDone(conn, true);
 }
 
 static void cb_save_yourself(SmcConn conn, SmPointer data, int save_type,
@@ -279,7 +282,7 @@ static void cb_die(SmcConn conn, SmPointer data)
 	/* external=True: the client set was checkpointed in phase 2 and
 	 * peers may already be exiting, carry the on-disk Applications
 	 * forward rather than re-snapshotting a draining window list. */
-	Shutdown(WSExitMode, True);
+	Shutdown(WSExitMode, true);
 }
 
 static void cb_save_complete(SmcConn conn, SmPointer data)
@@ -335,21 +338,21 @@ void wXSMPConnect(int argc, char **argv, const char *previous_id)
 	publish_properties();
 }
 
-Bool wXSMPConnected(void)
+bool wXSMPConnected(void)
 {
 	return sm_conn != NULL;
 }
 
-Bool wXSMPRequestShutdown(Bool save_state)
+bool wXSMPRequestShutdown(bool save_state)
 {
 	if (!sm_conn)
-		return False;
+		return false;
 
 	SmcRequestSaveYourself(sm_conn, save_state ? SmSaveBoth : SmSaveGlobal,
-			       True, SmInteractStyleAny, False, True);
+			       true, SmInteractStyleAny, false, true);
 	if (sm_ice_conn)
 		IceFlush(sm_ice_conn);
-	return True;
+	return true;
 }
 
 void wXSMPDisconnect(void)

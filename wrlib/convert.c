@@ -173,7 +173,7 @@ static RXImage *image2Bitmap(RContext * ctx, RImage * image, int threshold)
 	return ximg;
 }
 
-int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
+int RConvertImage(RContext * context, RImage * image, xcb_pixmap_t * pixmap)
 {
 	RXImage *ximg = NULL;
 
@@ -195,7 +195,7 @@ int RConvertImage(RContext * context, RImage * image, Pixmap * pixmap)
 	return 1;
 }
 
-int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixmap * mask, int threshold)
+int RConvertImageMask(RContext * context, RImage * image, xcb_pixmap_t * pixmap, xcb_pixmap_t * mask, int threshold)
 {
 	xcb_gcontext_t gc;
 	uint32_t gcvals[3];
@@ -210,7 +210,7 @@ int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixma
 		return 0;
 
 	if (image->format == RRGBFormat) {
-		*mask = None;
+		*mask = XCB_NONE;
 		return 1;
 	}
 
@@ -235,7 +235,7 @@ int RConvertImageMask(RContext * context, RImage * image, Pixmap * pixmap, Pixma
 	return 1;
 }
 
-int RGetClosestXColor(RContext * context, const RColor * color, unsigned long *pixel)
+int RGetClosestXColor(RContext * context, const RColor * color, uint32_t *pixel)
 {
 	unsigned short rmask, gmask, bmask;
 	unsigned short roffs, goffs, boffs;

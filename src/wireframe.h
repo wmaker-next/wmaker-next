@@ -46,7 +46,7 @@ void wWireframeAddOutline(WScreen *scr, int x, int y, int width, int height,
  * iconify animations, points are in root coordinates and the array
  * is copied so the caller may reuse it, the no-XShape fallback path
  * skips polylines since callers are cosmetic-only animations */
-void wWireframeAddPolyline(WScreen *scr, const XPoint *pts, int npts);
+void wWireframeAddPolyline(WScreen *scr, const xcb_point_t *pts, int npts);
 
 void wWireframeCommit(WScreen *scr);
 void wWireframeHide(WScreen *scr);

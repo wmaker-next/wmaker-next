@@ -38,7 +38,7 @@ W_ViewDelegate _ProgressIndicatorDelegate = {
 
 static void destroyProgressIndicator(ProgressIndicator * pPtr);
 static void paintProgressIndicator(ProgressIndicator * pPtr);
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
 WMProgressIndicator *WMCreateProgressIndicator(WMWidget * parent)
 {
@@ -58,7 +58,7 @@ WMProgressIndicator *WMCreateProgressIndicator(WMWidget * parent)
 
 	pPtr->view->delegate = &_ProgressIndicatorDelegate;
 
-	WMCreateEventHandler(pPtr->view, ExposureMask | StructureNotifyMask, handleEvents, pPtr);
+	WMCreateEventHandler(pPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, pPtr);
 
 	W_ResizeView(pPtr->view, DEFAULT_PROGRESS_INDICATOR_WIDTH, DEFAULT_PROGRESS_INDICATOR_HEIGHT);
 
@@ -234,19 +234,19 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 	WCairoEnd(cr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	ProgressIndicator *pPtr = (ProgressIndicator *) data;
 
 	CHECK_CLASS(data, WC_ProgressIndicator);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintProgressIndicator(pPtr);
 		break;
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyProgressIndicator(pPtr);
 		break;
 	}

@@ -18,9 +18,6 @@
  */
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #ifdef USE_XSHAPE
 #include <xcb/shape.h>
 #endif
@@ -56,8 +53,8 @@
  */
 void wClientRestore(WWindow * wwin)
 {
-	XSetWindowBorderWidth(dpy, wwin->client_win, wwin->old_border_width);
-	XReparentWindow(dpy, wwin->client_win, wwin->screen_ptr->root_win, wwin->frame_x, wwin->frame_y);
+	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wwin->old_border_width });
+	xcb_reparent_window(xconn, wwin->client_win, wwin->screen_ptr->root_win, wwin->frame_x, wwin->frame_y);
 
 	/* don't let the window get iconified after restart */
 	/*
@@ -77,7 +74,7 @@ void wClientRestore(WWindow * wwin)
  * WWindow.state variable.
  *----------------------------------------------------------------------
  */
-void wClientSetState(WWindow * wwin, int state, Window icon_win)
+void wClientSetState(WWindow * wwin, int state, xcb_window_t icon_win)
 {
 	uint32_t data[2];
 
@@ -86,7 +83,7 @@ void wClientSetState(WWindow * wwin, int state, Window icon_win)
 	data[0] = (uint32_t)state;
 	data[1] = (uint32_t)icon_win;
 
-	WXSetFormat32N(dpy, wwin->client_win, w_global.atom.wm.state,
+	WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wm.state,
 		       w_global.atom.wm.state, data, 2);
 }
 
@@ -102,41 +99,41 @@ void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
 
 	switch (wwin->normal_hints->win_gravity) {
 	default:
-	case ForgetGravity:
-	case CenterGravity:
-	case StaticGravity:
+	case XCB_GRAVITY_BIT_FORGET:
+	case XCB_GRAVITY_CENTER:
+	case XCB_GRAVITY_STATIC:
 		*ofs_x = 0;
 		*ofs_y = 0;
 		break;
-	case NorthWestGravity:
+	case XCB_GRAVITY_NORTH_WEST:
 		*ofs_x = -1;
 		*ofs_y = -1;
 		break;
-	case NorthGravity:
+	case XCB_GRAVITY_NORTH:
 		*ofs_x = 0;
 		*ofs_y = -1;
 		break;
-	case NorthEastGravity:
+	case XCB_GRAVITY_NORTH_EAST:
 		*ofs_x = 1;
 		*ofs_y = -1;
 		break;
-	case WestGravity:
+	case XCB_GRAVITY_WEST:
 		*ofs_x = -1;
 		*ofs_y = 0;
 		break;
-	case EastGravity:
+	case XCB_GRAVITY_EAST:
 		*ofs_x = 1;
 		*ofs_y = 0;
 		break;
-	case SouthWestGravity:
+	case XCB_GRAVITY_SOUTH_WEST:
 		*ofs_x = -1;
 		*ofs_y = 1;
 		break;
-	case SouthGravity:
+	case XCB_GRAVITY_SOUTH:
 		*ofs_x = 0;
 		*ofs_y = 1;
 		break;
-	case SouthEastGravity:
+	case XCB_GRAVITY_SOUTH_EAST:
 		*ofs_x = 1;
 		*ofs_y = 1;
 		break;
@@ -145,7 +142,7 @@ void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
 
 void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 {
-	XWindowChanges xwc;
+	WXWindowChanges xwc;
 	int nx, ny, nwidth, nheight;
 	int ofs_x, ofs_y;
 
@@ -160,7 +157,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		xwc.border_width = xcre->border_width;
 		xwc.stack_mode = xcre->stack_mode;
 		xwc.sibling = xcre->sibling;
-		XConfigureWindow(dpy, xcre->window, xcre->value_mask, &xwc);
+		wXConfigureWindow(xconn, xcre->window, xcre->value_mask, &xwc);
 		return;
 	}
 #ifdef USE_XSHAPE
@@ -174,12 +171,12 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		free(sr);
 	}
 #endif
-	if (xcre->value_mask & CWStackMode) {
+	if (xcre->value_mask & XCB_CONFIG_WINDOW_STACK_MODE) {
 		WObjDescriptor *desc;
 		WWindow *sibling;
 
-		if ((xcre->value_mask & CWSibling) &&
-		    (XFindContext(dpy, xcre->sibling, w_global.context.client_win, (XPointer *) & desc) == XCSUCCESS)
+		if ((xcre->value_mask & XCB_CONFIG_WINDOW_SIBLING) &&
+		    (desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) xcre->sibling)) != NULL
 		    && (desc->parent_type == WCLASS_WINDOW)) {
 			sibling = desc->parent;
 			xwc.sibling = sibling->frame->core->window;
@@ -196,21 +193,21 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		if (wwin->screen_ptr->flags.need_restack)
 			CommitStacking(wwin->screen_ptr);
 
-		XConfigureWindow(dpy, wwin->frame->core->window,
-				 xcre->value_mask & (CWSibling | CWStackMode), &xwc);
+		wXConfigureWindow(xconn, wwin->frame->core->window,
+				  xcre->value_mask & (XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE), &xwc);
 		/* fix stacking order */
 		RemakeStackList(wwin->screen_ptr);
 	}
 
 	wClientGetGravityOffsets(wwin, &ofs_x, &ofs_y);
 
-	if (xcre->value_mask & CWBorderWidth) {
+	if (xcre->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
 		wwin->old_border_width = xcre->border_width;
 	}
 
 	if (!wwin->flags.shaded) {
 		/* If the window is shaded, wrong height will be set for the window */
-		if (xcre->value_mask & CWX) {
+		if (xcre->value_mask & XCB_CONFIG_WINDOW_X) {
 			nx = xcre->x;
 			/* Subtracting the border makes the window shift by 1 pixel -Dan */
 			/*if (HAS_BORDER(wwin)) {
@@ -220,7 +217,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 			nx = wwin->frame_x;
 		}
 
-		if (xcre->value_mask & CWY) {
+		if (xcre->value_mask & XCB_CONFIG_WINDOW_Y) {
 			ny = xcre->y - ((ofs_y < 0) ? 0 : wwin->frame->top_width);
 			/* Subtracting the border makes the window shift by 1 pixel -Dan */
 			/*if (HAS_BORDER(wwin)) {
@@ -230,18 +227,18 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 			ny = wwin->frame_y;
 		}
 
-		if (xcre->value_mask & CWWidth)
+		if (xcre->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			nwidth = xcre->width;
 		else
 			nwidth = wwin->frame->core->width;
 
-		if (xcre->value_mask & CWHeight)
+		if (xcre->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
 			nheight = xcre->height;
 		else
 			nheight = wwin->frame->core->height - wwin->frame->top_width - wwin->frame->bottom_width;
 
 		/* Don't overwrite the saved geometry unnecessarily. */
-		if (!(xcre->value_mask & (CWX | CWY | CWWidth | CWHeight)))
+		if (!(xcre->value_mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT)))
 			return;
 
 		if (nwidth != wwin->old_geometry.width)
@@ -253,7 +250,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 
 		/* Ignore tiny position adjustments from client ConfigureRequests to prevent
 		 * window jitters (e.g., VirtualBox sending incremental 1-2px corrections). */
-		if (wwin->flags.mapped && !wwin->moveresize.active && (xcre->value_mask & (CWX | CWY))) {
+		if (wwin->flags.mapped && !wwin->moveresize.active && (xcre->value_mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y))) {
 			int dx = abs(nx - wwin->frame_x);
 			int dy = abs(ny - wwin->frame_y);
 
@@ -272,19 +269,19 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 	}
 }
 
-void wClientSendProtocol(WWindow * wwin, Atom protocol, Time time)
+void wClientSendProtocol(WWindow * wwin, xcb_atom_t protocol, xcb_timestamp_t time)
 {
-	WXSendClientMessage(dpy, wwin->client_win, NoEventMask,
+	WXSendClientMessage(xconn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
 			    wwin->client_win, w_global.atom.wm.protocols,
 			    (long)protocol, (long)time, 0, 0, 0);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 void wClientKill(WWindow * wwin)
 {
-	XKillClient(dpy, wwin->client_win);
+	xcb_kill_client(xconn, wwin->client_win);
 
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 /*
@@ -298,18 +295,18 @@ void wClientKill(WWindow * wwin)
  * 	Depends on the changed property.
  *----------------------------------------------------------------------
  */
-void wClientCheckProperty(WWindow *wwin, Atom atom)
+void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 {
-	XWindowAttributes attribs;
+	WXWindowAttributes attribs;
 	WXWMHints *new_hints;
 	int i, g1, g2;
 	char *tmp = NULL;
 
 	switch (atom) {
-	case XA_WM_NAME:
+	case XCB_ATOM_WM_NAME:
 		if (!wwin->flags.net_has_title) {
 			/* window title was changed */
-			if (!wFetchName(dpy, wwin->client_win, &tmp)) {
+			if (!wFetchName(xconn, wwin->client_win, &tmp)) {
 				wWindowUpdateName(wwin, NULL);
 			} else {
 				wWindowUpdateName(wwin, tmp);
@@ -319,7 +316,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		}
 		break;
 
-	case XA_WM_ICON_NAME:
+	case XCB_ATOM_WM_ICON_NAME:
 		/* Title has changed, update the icon title */
 		if (wwin->icon) {
 			wIconChangeTitle(wwin->icon, wwin);
@@ -327,11 +324,11 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		}
 		break;
 
-	case XA_WM_COMMAND:
+	case XCB_ATOM_WM_COMMAND:
 		if (wwin->wm_command)
 			wfree(wwin->wm_command);
 		wwin->wm_command = GetCommandForWindow(wwin->client_win);
-		if (wwin->main_window != None) {
+		if (wwin->main_window != XCB_NONE) {
 			WApplication *wapp = wApplicationOf(wwin->main_window);
 			char *command;
 
@@ -347,10 +344,10 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		}
 		break;
 
-	case XA_WM_HINTS:
+	case XCB_ATOM_WM_HINTS:
 		/* WM_HINTS */
 
-		new_hints = WXGetWMHints(dpy, wwin->client_win);
+		new_hints = WXGetWMHints(xconn, wwin->client_win);
 
 		/* group leader update
 		 *
@@ -378,14 +375,14 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		 * 5 - destroy application
 		 * 6 - create application
 		 */
-		if (new_hints && (new_hints->flags & WindowGroupHint)
-		    && new_hints->window_group != None) {
+		if (new_hints && (new_hints->flags & XCB_ICCCM_WM_HINT_WINDOW_GROUP)
+		    && new_hints->window_group != XCB_NONE) {
 			g2 = 1;
 		} else {
 			g2 = 0;
 		}
-		if (wwin->wm_hints && (wwin->wm_hints->flags & WindowGroupHint)
-		    && wwin->wm_hints->window_group != None) {
+		if (wwin->wm_hints && (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_WINDOW_GROUP)
+		    && wwin->wm_hints->window_group != XCB_NONE) {
 			g1 = 1;
 		} else {
 			g1 = 0;
@@ -439,7 +436,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		case 3:
 			wApplicationDestroy(wApplicationOf(wwin->main_window));
 			wwin->main_window = wwin->client_leader;
-			wwin->group_id = None;
+			wwin->group_id = XCB_NONE;
 			wApplicationCreate(wwin);
 			break;
 
@@ -456,8 +453,8 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 			/* 5 - destroy application */
 		case 5:
 			wApplicationDestroy(wApplicationOf(wwin->main_window));
-			wwin->main_window = None;
-			wwin->group_id = None;
+			wwin->main_window = XCB_NONE;
+			wwin->group_id = XCB_NONE;
 			break;
 
 			/* 6 - create application */
@@ -473,8 +470,8 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 
 		if (wwin->wm_hints) {
 			/* update icon */
-			if ((wwin->wm_hints->flags & IconPixmapHint)
-			    || (wwin->wm_hints->flags & IconWindowHint)) {
+			if ((wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_ICON_PIXMAP)
+			    || (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_ICON_WINDOW)) {
 				if (!WFLAGP(wwin, always_user_icon)) {
 					WApplication *wapp;
 					if (wwin->flags.miniaturized && wwin->icon)
@@ -488,7 +485,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 				}
 			}
 
-			if (wwin->wm_hints->flags & UrgencyHint)
+			if (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_X_URGENCY)
 				wwin->flags.urgent = 1;
 			else
 				wwin->flags.urgent = 0;
@@ -497,32 +494,32 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 		/*} else if (wwin->fake_group!=NULL) {
 			wwin->group_id = wwin->fake_group->leader; */
 		} else {
-			wwin->group_id = None;
+			wwin->group_id = XCB_NONE;
 		}
 		break;
 
-	case XA_WM_NORMAL_HINTS:
+	case XCB_ATOM_WM_NORMAL_HINTS:
 		/* normal (geometry) hints */
 		{
 			int foo;
 			unsigned bar;
 
-			if (XGetWindowAttributes(dpy, wwin->client_win, &attribs) != 0)
-				wClientGetNormalHints(wwin, &attribs, False,
-						      WXReqNormalHints(dpy, wwin->client_win),
+			if (wXGetWindowAttributes(xconn, wwin->client_win, &attribs, NULL))
+				wClientGetNormalHints(wwin, &attribs, false,
+						      WXReqNormalHints(xconn, wwin->client_win),
 						      &foo, &foo, &bar, &bar);
 			/* TODO: should we check for consistency of the current
 			 * size against the new geometry hints? */
 		}
 		break;
 
-	case XA_WM_TRANSIENT_FOR:
+	case XCB_ATOM_WM_TRANSIENT_FOR:
 		{
-			Window new_owner;
+			xcb_window_t new_owner;
 			WWindow *owner;
 
-			if (!WXGetTransientFor(dpy, wwin->client_win, &new_owner)) {
-				new_owner = None;
+			if (!WXGetTransientFor(xconn, wwin->client_win, &new_owner)) {
+				new_owner = XCB_NONE;
 			} else {
 				if (new_owner == 0 || new_owner == wwin->client_win) {
 					new_owner = wwin->screen_ptr->root_win;
@@ -548,7 +545,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 					}
 				}
 				wwin->transient_for = new_owner;
-				if (new_owner == None) {
+				if (new_owner == XCB_NONE) {
 					if (WFLAGP(wwin, no_miniaturizable)) {
 						wwin->client_flags.no_miniaturizable = 0;
 						wwin->client_flags.no_miniaturize_button = 0;
@@ -601,14 +598,14 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 							foo->client_flags.shared_appicon = 0;
 							foo->fake_group = NULL;
 
-							if (foo->group_id != None)
+							if (foo->group_id != XCB_NONE)
 								foo->main_window = foo->group_id;
-							else if (foo->client_leader != None)
+							else if (foo->client_leader != XCB_NONE)
 								foo->main_window = foo->client_leader;
 							else if (WFLAGP(foo, emulate_appicon))
 								foo->main_window = foo->client_win;
 							else
-								foo->main_window = None;
+								foo->main_window = XCB_NONE;
 
 							if (foo->main_window)
 								wApplicationCreate(foo);
@@ -616,18 +613,18 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
 						foo = foo->prev;
 					}
 
-					if (fPtr->leader != None)
-						XDestroyWindow(dpy, fPtr->leader);
+					if (fPtr->leader != XCB_NONE)
+						xcb_destroy_window(xconn, fPtr->leader);
 					fPtr->retainCount = 0;
-					fPtr->leader = None;
-					fPtr->origLeader = None;
+					fPtr->leader = XCB_NONE;
+					fPtr->origLeader = XCB_NONE;
 
 					wapp = wApplicationOf(wwin->main_window);
 					if (wapp) {
 						wapp->menu = wAppMenuGet(scr, wwin->main_window);
 					}
 					if (w_global.config->auto_arrange_icons) {
-						wArrangeIcons(wwin->screen_ptr, True);
+						wArrangeIcons(wwin->screen_ptr, true);
 					}
 				} else {
 					wapp->menu = wAppMenuGet(wwin->screen_ptr, wwin->main_window);
@@ -663,7 +660,7 @@ void wClientCheckProperty(WWindow *wwin, Atom atom)
  *----------------------------------------------------------------------
  */
 void
-wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometry,
+wClientGetNormalHints(WWindow * wwin, WXWindowAttributes * wattribs, bool geometry,
 		      WXCookie normal_ck,
 		      int *x, int *y, unsigned *width, unsigned *height)
 {
@@ -682,18 +679,18 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 	*width = wattribs->width;
 	*height = wattribs->height;
 
-	if (!(wwin->normal_hints->flags & PWinGravity)) {
-		wwin->normal_hints->win_gravity = NorthWestGravity;
+	if (!(wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY)) {
+		wwin->normal_hints->win_gravity = XCB_GRAVITY_NORTH_WEST;
 	}
-	if (!(wwin->normal_hints->flags & PMinSize)) {
+	if (!(wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)) {
 		wwin->normal_hints->min_width = MIN_WINDOW_SIZE;
 		wwin->normal_hints->min_height = MIN_WINDOW_SIZE;
 	}
-	if (!(wwin->normal_hints->flags & PBaseSize)) {
+	if (!(wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE)) {
 		wwin->normal_hints->base_width = 0;
 		wwin->normal_hints->base_height = 0;
 	}
-	if (!(wwin->normal_hints->flags & PMaxSize)) {
+	if (!(wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)) {
 		wwin->normal_hints->max_width = wwin->screen_ptr->scr_width * 2;
 		wwin->normal_hints->max_height = wwin->screen_ptr->scr_height * 2;
 	}
@@ -711,7 +708,7 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 	if (wwin->normal_hints->max_height < wwin->normal_hints->min_height)
 		wwin->normal_hints->max_height = wwin->normal_hints->min_height;
 
-	if (!(wwin->normal_hints->flags & PResizeInc)) {
+	if (!(wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_RESIZE_INC)) {
 		wwin->normal_hints->width_inc = 1;
 		wwin->normal_hints->height_inc = 1;
 	} else {
@@ -721,16 +718,16 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 			wwin->normal_hints->height_inc = 1;
 	}
 
-	if (wwin->normal_hints->flags & PAspect) {
-		if (wwin->normal_hints->min_aspect.x < 1)
-			wwin->normal_hints->min_aspect.x = 1;
-		if (wwin->normal_hints->min_aspect.y < 1)
-			wwin->normal_hints->min_aspect.y = 1;
+	if (wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_ASPECT) {
+		if (wwin->normal_hints->min_aspect_num < 1)
+			wwin->normal_hints->min_aspect_num = 1;
+		if (wwin->normal_hints->min_aspect_den < 1)
+			wwin->normal_hints->min_aspect_den = 1;
 
-		if (wwin->normal_hints->max_aspect.x < 1)
-			wwin->normal_hints->max_aspect.x = 1;
-		if (wwin->normal_hints->max_aspect.y < 1)
-			wwin->normal_hints->max_aspect.y = 1;
+		if (wwin->normal_hints->max_aspect_num < 1)
+			wwin->normal_hints->max_aspect_num = 1;
+		if (wwin->normal_hints->max_aspect_den < 1)
+			wwin->normal_hints->max_aspect_den = 1;
 	}
 
 	if (wwin->normal_hints->min_height > wwin->normal_hints->max_height) {
@@ -740,28 +737,28 @@ wClientGetNormalHints(WWindow * wwin, XWindowAttributes * wattribs, Bool geometr
 		wwin->normal_hints->min_width = wwin->normal_hints->max_width;
 	}
 #ifdef IGNORE_PPOSITION
-	wwin->normal_hints->flags &= ~PPosition;
+	wwin->normal_hints->flags &= ~XCB_ICCCM_SIZE_HINT_P_POSITION;
 #endif
 
 	if (pre_icccm && !wwin->screen_ptr->flags.startup && geometry) {
-		if (wwin->normal_hints->flags & (USPosition | PPosition)) {
+		if (wwin->normal_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION)) {
 			*x = wwin->normal_hints->x;
 			*y = wwin->normal_hints->y;
 		}
-		if (wwin->normal_hints->flags & (USSize | PSize)) {
+		if (wwin->normal_hints->flags & (XCB_ICCCM_SIZE_HINT_US_SIZE | XCB_ICCCM_SIZE_HINT_P_SIZE)) {
 			*width = wwin->normal_hints->width;
 			*height = wwin->normal_hints->height;
 		}
 	}
 }
 
-WXCookie wClientReqColormapWindows(Window window)
+WXCookie wClientReqColormapWindows(xcb_window_t window)
 {
 	/* Xlib's XGetWMColormapWindows() interns WM_COLORMAP_WINDOWS on
 	 * every call, the atom is in the cold-boot batch so read the
 	 * property directly and let wManagePrefetch() pipeline it */
-	return WXReqFormat32(dpy, window, w_global.atom.wm.colormap_windows,
-			     XA_WINDOW, 64);
+	return WXReqFormat32(xconn, window, w_global.atom.wm.colormap_windows,
+			     XCB_ATOM_WINDOW, 64);
 }
 
 void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck)
@@ -771,7 +768,7 @@ void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck)
 	if (wwin->cmap_windows)
 		wfree(wwin->cmap_windows);
 
-	wwin->cmap_windows = WXRcvWindowList(dpy, ck, &count);
+	wwin->cmap_windows = WXRcvWindowList(xconn, ck, &count);
 	wwin->cmap_window_no = wwin->cmap_windows ? (int)count : 0;
 }
 

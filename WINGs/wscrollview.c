@@ -26,8 +26,8 @@ typedef struct W_ScrollView {
 static void destroyScrollView(ScrollView * sPtr);
 
 static void paintScrollView(ScrollView * sPtr);
-static void handleEvents(XEvent * event, void *data);
-static void handleViewportEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleViewportEvents(xcb_generic_event_t * event, void *data);
 static void resizeScrollView(W_ViewDelegate *self, WMView *view);
 static void updateScrollerProportion(ScrollView *sPtr);
 
@@ -64,8 +64,8 @@ WMScrollView *WMCreateScrollView(WMWidget * parent)
 
 	sPtr->viewport->flags.mapWhenRealized = 1;
 
-	WMCreateEventHandler(sPtr->view, StructureNotifyMask | ExposureMask, handleEvents, sPtr);
-	WMCreateEventHandler(sPtr->viewport, SubstructureNotifyMask, handleViewportEvents, sPtr);
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_EXPOSURE, handleEvents, sPtr);
+	WMCreateEventHandler(sPtr->viewport, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, handleViewportEvents, sPtr);
 
 	sPtr->lineScroll = 4;
 
@@ -392,7 +392,7 @@ WMScroller *WMGetScrollViewVerticalScroller(WMScrollView * sPtr)
 	return sPtr->vScroller;
 }
 
-void WMSetScrollViewHasHorizontalScroller(WMScrollView * sPtr, Bool flag)
+void WMSetScrollViewHasHorizontalScroller(WMScrollView * sPtr, bool flag)
 {
 	if (flag) {
 		if (sPtr->flags.hasHScroller)
@@ -424,7 +424,7 @@ void WMSetScrollViewHasHorizontalScroller(WMScrollView * sPtr, Bool flag)
 	}
 }
 
-void WMSetScrollViewHasVerticalScroller(WMScrollView * sPtr, Bool flag)
+void WMSetScrollViewHasVerticalScroller(WMScrollView * sPtr, bool flag)
 {
 	if (flag) {
 		if (sPtr->flags.hasVScroller)
@@ -529,31 +529,31 @@ static void updateScrollerProportion(ScrollView * sPtr)
 	applyScrollerValues(sPtr);
 }
 
-static void handleViewportEvents(XEvent * event, void *data)
+static void handleViewportEvents(xcb_generic_event_t * event, void *data)
 {
 	ScrollView *sPtr = (ScrollView *) data;
 
-	if (sPtr->contentView && event->xconfigure.window == sPtr->contentView->window)
+	if (sPtr->contentView && ((xcb_configure_notify_event_t *)event)->window == sPtr->contentView->window)
 		updateScrollerProportion(sPtr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	ScrollView *sPtr = (ScrollView *) data;
 
 	CHECK_CLASS(data, WC_ScrollView);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
-		if (event->xexpose.serial == 0)	/* means it's artificial */
+		if (event->full_sequence == 0)	/* means it's artificial */
 			W_RedisplayView(sPtr->contentView);
 		else
 			paintScrollView(sPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyScrollView(sPtr);
 		break;
 

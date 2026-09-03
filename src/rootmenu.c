@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
  *  Copyright (c) 1998-2003 Dan Pascu
- *  Copyright (c) 2014-2023 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,9 +35,6 @@
 #include <dirent.h>
 #include <errno.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 
 #include "WindowMaker.h"
 #include "actions.h"
@@ -70,14 +67,14 @@ typedef struct Shortcut {
 	struct Shortcut *next;
 
 	int modifier;
-	KeyCode keycode;
+	xcb_keycode_t keycode;
 	WMenuEntry *entry;
 	WMenu *menu;
 
 	/* Key-chain support */
 	int chain_length;
 	unsigned int *chain_modifiers;   /* heap-allocated, NULL for single keys */
-	KeyCode *chain_keycodes;    /* heap-allocated, NULL for single keys */
+	xcb_keycode_t *chain_keycodes;    /* heap-allocated, NULL for single keys */
 } Shortcut;
 
 static Shortcut *shortcutList = NULL;
@@ -195,7 +192,7 @@ static void shutdownCommand(WMenu * menu, WMenuEntry * entry)
 
 	if (result != R_CANCEL) {
 		if (!wXSMPRequestShutdown(w_global.config->save_session_on_exit))
-			Shutdown(WSKillMode, False);
+			Shutdown(WSKillMode, false);
 	}
 #undef R_CLOSE
 #undef R_CANCEL
@@ -209,9 +206,9 @@ static void restartCommand(WMenu * menu, WMenuEntry * entry)
 	(void) menu;
 	(void) entry;
 
-	Shutdown(WSRestartPreparationMode, False);
-	Restart((char *)entry->clientdata, False);
-	Restart(NULL, True);
+	Shutdown(WSRestartPreparationMode, false);
+	Restart((char *)entry->clientdata, false);
+	Restart(NULL, true);
 }
 
 static void refreshCommand(WMenu * menu, WMenuEntry * entry)
@@ -227,7 +224,7 @@ static void arrangeIconsCommand(WMenu * menu, WMenuEntry * entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) entry;
 
-	wArrangeIcons(menu->frame->screen_ptr, True);
+	wArrangeIcons(menu->frame->screen_ptr, true);
 }
 
 static void showAllCommand(WMenu * menu, WMenuEntry * entry)
@@ -262,7 +259,7 @@ static void saveSessionCommand(WMenu * menu, WMenuEntry * entry)
 	if (!w_global.config->save_session_on_exit)
 		wSessionSaveState(menu->frame->screen_ptr);
 
-	wScreenSaveState(menu->frame->screen_ptr, False);
+	wScreenSaveState(menu->frame->screen_ptr, false);
 }
 
 static void clearSessionCommand(WMenu * menu, WMenuEntry * entry)
@@ -271,7 +268,7 @@ static void clearSessionCommand(WMenu * menu, WMenuEntry * entry)
 	(void) entry;
 
 	wSessionClearState(menu->frame->screen_ptr);
-	wScreenSaveState(menu->frame->screen_ptr, False);
+	wScreenSaveState(menu->frame->screen_ptr, false);
 }
 
 static void infoPanelCommand(WMenu * menu, WMenuEntry * entry)
@@ -342,7 +339,7 @@ void wRootMenuInsertIntoTree(void)
 
 	for (ptr = shortcutList; ptr != NULL; ptr = ptr->next) {
 		unsigned int *mods;
-		KeyCode *keys;
+		xcb_keycode_t *keys;
 		int len, j;
 		WKeyNode *leaf;
 
@@ -351,7 +348,7 @@ void wRootMenuInsertIntoTree(void)
 
 		len  = (ptr->chain_length > 1) ? ptr->chain_length : 1;
 		mods = wmalloc(len * sizeof(unsigned int));
-		keys = wmalloc(len * sizeof(KeyCode));
+		keys = wmalloc(len * sizeof(xcb_keycode_t));
 		mods[0] = ptr->modifier;
 		keys[0] = ptr->keycode;
 
@@ -372,20 +369,20 @@ void wRootMenuInsertIntoTree(void)
 	}
 }
 
-void wRootMenuBindShortcuts(Window window)
+void wRootMenuBindShortcuts(xcb_window_t window)
 {
 	Shortcut *ptr;
 
 	ptr = shortcutList;
 	while (ptr) {
-		if (ptr->modifier != AnyModifier) {
-			XGrabKey(dpy, ptr->keycode, ptr->modifier | LockMask,
-				 window, True, GrabModeAsync, GrabModeAsync);
+		if (ptr->modifier != XCB_MOD_MASK_ANY) {
+			wXGrabKey(xconn, ptr->keycode, ptr->modifier | XCB_MOD_MASK_LOCK,
+				 window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #ifdef NUMLOCK_HACK
-			wHackedGrabKey(ptr->keycode, ptr->modifier, window, True, GrabModeAsync, GrabModeAsync);
+			wHackedGrabKey(ptr->keycode, ptr->modifier, window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #endif
 		}
-		XGrabKey(dpy, ptr->keycode, ptr->modifier, window, True, GrabModeAsync, GrabModeAsync);
+		wXGrabKey(xconn, ptr->keycode, ptr->modifier, window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 		ptr = ptr->next;
 	}
 }
@@ -397,7 +394,7 @@ static void rebindKeygrabs(WScreen * scr)
 	wwin = scr->focused_window;
 
 	while (wwin != NULL) {
-		XUngrabKey(dpy, AnyKey, AnyModifier, wwin->frame->core->window);
+		wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 
 		if (!WFLAGP(wwin, no_bind_keys)) {
 			wWindowSetKeyGrabs(wwin);
@@ -436,7 +433,7 @@ static void removeShortcutsForMenu(WMenu * menu)
 	menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
 }
 
-static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu *menu, WMenuEntry *entry)
+static bool addShortcut(const char *file, const char *shortcutDefinition, WMenu *menu, WMenuEntry *entry)
 {
 	Shortcut *ptr;
 	char buf[MAX_SHORTCUT_LENGTH];
@@ -453,8 +450,8 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 	step = 0;
 	token = strtok_r(buf, " ", &saveptr);
 	while (token != NULL) {
-		KeySym ksym;
-		KeyCode kcode;
+		xkb_keysym_t ksym;
+		xcb_keycode_t kcode;
 		unsigned int mod = 0;
 		char tmp[MAX_SHORTCUT_LENGTH];
 		char *b, *k;
@@ -469,18 +466,18 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 			if (m < 0) {
 				wwarning(_("%s: invalid key modifier \"%s\""), file, b);
 				freeShortcut(ptr);
-				return False;
+				return false;
 			}
 			mod |= m;
 			b = k + 1;
 		}
 
 		ksym = wXkbKeysymFromName(b);
-		if (ksym == NoSymbol) {
+		if (ksym == XKB_KEY_NoSymbol) {
 			wwarning(_("%s: invalid kbd shortcut specification \"%s\" for entry %s"),
 					 file, shortcutDefinition, entry->text);
 			freeShortcut(ptr);
-			return False;
+			return false;
 		}
 
 		kcode = wXkbKeysymToKeycode(ksym);
@@ -488,7 +485,7 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 			wwarning(_("%s: invalid key in shortcut \"%s\" for entry %s"),
 					 file, shortcutDefinition, entry->text);
 			freeShortcut(ptr);
-			return False;
+			return false;
 		}
 
 		if (step == 0) {
@@ -498,7 +495,7 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 			ptr->chain_modifiers = wrealloc(ptr->chain_modifiers,
 			                                step * sizeof(unsigned int));
 			ptr->chain_keycodes  = wrealloc(ptr->chain_keycodes,
-			                                step * sizeof(KeyCode));
+			                                step * sizeof(xcb_keycode_t));
 			ptr->chain_modifiers[step - 1] = mod;
 			ptr->chain_keycodes[step - 1]  = kcode;
 		}
@@ -516,7 +513,7 @@ static Bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 
 	menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
 
-	return True;
+	return true;
 }
 
 static char *next_token(char *line, char **next)
@@ -835,7 +832,7 @@ static WMenuEntry *addWorkspaceMenu(WScreen *scr, WMenu *menu, const char *title
 	} else {
 		scr->flags.added_workspace_menu = 1;
 
-		wsmenu = wWorkspaceMenuMake(scr, True);
+		wsmenu = wWorkspaceMenuMake(scr, true);
 		wsmenu->on_destroy = cleanupWorkspaceMenu;
 
 		scr->workspace_menu = wsmenu;
@@ -866,7 +863,7 @@ static WMenuEntry *addWindowsMenu(WScreen *scr, WMenu *menu, const char *title)
 	} else {
 		scr->flags.added_windows_menu = 1;
 
-		wwmenu = wMenuCreate(scr, _("Window List"), False);
+		wwmenu = wMenuCreate(scr, _("Window List"), false);
 		wwmenu->on_destroy = cleanupWindowsMenu;
 		scr->switch_menu = wwmenu;
 		wwin = scr->focused_window;
@@ -886,7 +883,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 {
 	WScreen *scr;
 	WMenuEntry *entry = NULL;
-	Bool shortcutOk = False;
+	bool shortcutOk = false;
 
 	if (!menu)
 		return NULL;
@@ -902,7 +899,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 			if (!path) {
 				path = wstrdup(params);
 			}
-			dummy = wMenuCreate(scr, title, False);
+			dummy = wMenuCreate(scr, title, false);
 			dummy->on_destroy = removeShortcutsForMenu;
 			entry = wMenuAddCallback(menu, title, constructMenu, path);
 			entry->free_cdata = wfree;
@@ -919,7 +916,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 			if (!path)
 				path = wstrdup(params);
 
-			dummy = wMenuCreate(scr, title, False);
+			dummy = wMenuCreate(scr, title, false);
 			dummy->on_destroy = removeShortcutsForMenu;
 			entry = wMenuAddCallback(menu, title, constructPLMenuFromPipe, path);
 			entry->free_cdata = wfree;
@@ -931,7 +928,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		else {
 			entry = wMenuAddCallback(menu, title, execCommand, wstrconcat("exec ", params));
 			entry->free_cdata = wfree;
-			shortcutOk = True;
+			shortcutOk = true;
 		}
 	} else if (strcmp(command, "SHEXEC") == 0) {
 		if (!params)
@@ -939,7 +936,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		else {
 			entry = wMenuAddCallback(menu, title, execCommand, wstrdup(params));
 			entry->free_cdata = wfree;
-			shortcutOk = True;
+			shortcutOk = true;
 		}
 	} else if (strcmp(command, "EXIT") == 0) {
 
@@ -948,7 +945,7 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		else
 			entry = wMenuAddCallback(menu, title, exitCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "SHUTDOWN") == 0) {
 
 		if (params && strcmp(params, "QUICK") == 0)
@@ -956,52 +953,52 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		else
 			entry = wMenuAddCallback(menu, title, shutdownCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "REFRESH") == 0) {
 		entry = wMenuAddCallback(menu, title, refreshCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "WORKSPACE_MENU") == 0) {
 		entry = addWorkspaceMenu(scr, menu, title);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "WINDOWS_MENU") == 0) {
 		entry = addWindowsMenu(scr, menu, title);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "ARRANGE_ICONS") == 0) {
 		entry = wMenuAddCallback(menu, title, arrangeIconsCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "HIDE_OTHERS") == 0) {
 		entry = wMenuAddCallback(menu, title, hideOthersCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "MINIATURIZE_OTHERS") == 0) {
 		entry = wMenuAddCallback(menu, title, miniaturizeOthersCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "SHOW_ALL") == 0) {
 		entry = wMenuAddCallback(menu, title, showAllCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "RESTART") == 0) {
 		entry = wMenuAddCallback(menu, title, restartCommand, params ? wstrdup(params) : NULL);
 		entry->free_cdata = wfree;
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "SAVE_SESSION") == 0) {
 		entry = wMenuAddCallback(menu, title, saveSessionCommand, NULL);
 
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "CLEAR_SESSION") == 0) {
 		entry = wMenuAddCallback(menu, title, clearSessionCommand, NULL);
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "INFO_PANEL") == 0) {
 		entry = wMenuAddCallback(menu, title, infoPanelCommand, NULL);
-		shortcutOk = True;
+		shortcutOk = true;
 	} else if (strcmp(command, "LEGAL_PANEL") == 0) {
 		entry = wMenuAddCallback(menu, title, legalPanelCommand, NULL);
-		shortcutOk = True;
+		shortcutOk = true;
 	} else {
 		wwarning(_("%s:unknown command \"%s\" in menu config."), file_name, command);
 
@@ -1059,10 +1056,10 @@ static WMenu *parseCascade(WScreen * scr, WMenu * menu, WMenuParser parser, int 
 
 			/* start submenu */
 
-			cascade = wMenuCreate(scr, M_(title), False);
+			cascade = wMenuCreate(scr, M_(title), false);
 			cascade->on_destroy = removeShortcutsForMenu;
 			if (!parseCascade(scr, cascade, parser, depth + 1)) {
-				wMenuDestroy(cascade, True);
+				wMenuDestroy(cascade, true);
 			} else {
 				wMenuEntrySetCascade(menu, wMenuAddCallback(menu, M_(title), NULL, NULL), cascade);
 			}
@@ -1100,10 +1097,10 @@ static WMenu *readMenu(WScreen *scr, const char *flat_file, FILE *file)
 			break;
 		}
 		if (strcasecmp(command, "MENU") == 0) {
-			menu = wMenuCreate(scr, M_(title), True);
+			menu = wMenuCreate(scr, M_(title), true);
 			menu->on_destroy = removeShortcutsForMenu;
 			if (!parseCascade(scr, menu, parser, 0)) {
-				wMenuDestroy(menu, True);
+				wMenuDestroy(menu, true);
 				menu = NULL;
 			}
 			freeline(title, command, params, shortcut);
@@ -1274,34 +1271,36 @@ static int myCompare(const void *d1, const void *d2)
 /***** Preset some macro for file parser *****/
 static void menu_parser_register_macros(WMenuParser parser)
 {
-	Visual *visual;
+	xcb_screen_t *xscr;
+	xcb_visualtype_t *visual;
 	char buf[32];
 
 	// Used to return CPP verion, now returns wmaker's version
 	WMenuParserRegisterSimpleMacro(parser, "__VERSION__", VERSION);
 
 	// All macros below were historically defined by WindowMaker
-	visual = DefaultVisual(dpy, DefaultScreen(dpy));
-	snprintf(buf, sizeof(buf), "%d", visual->class);
+	xscr = wXScreenOf(xconn, dflt_screen);
+	visual = wXDefaultVisualType(xconn, dflt_screen);
+	snprintf(buf, sizeof(buf), "%d", visual->_class);
 	WMenuParserRegisterSimpleMacro(parser, "VISUAL", buf);
 
-	snprintf(buf, sizeof(buf), "%d", DefaultDepth(dpy, DefaultScreen(dpy)) );
+	snprintf(buf, sizeof(buf), "%d", xscr->root_depth);
 	WMenuParserRegisterSimpleMacro(parser, "DEPTH", buf);
 
-	snprintf(buf, sizeof(buf), "%d", WidthOfScreen(DefaultScreenOfDisplay(dpy)) );
+	snprintf(buf, sizeof(buf), "%d", xscr->width_in_pixels);
 	WMenuParserRegisterSimpleMacro(parser, "SCR_WIDTH", buf);
 
-	snprintf(buf, sizeof(buf), "%d", HeightOfScreen(DefaultScreenOfDisplay(dpy)) );
+	snprintf(buf, sizeof(buf), "%d", xscr->height_in_pixels);
 	WMenuParserRegisterSimpleMacro(parser, "SCR_HEIGHT", buf);
 
-	WMenuParserRegisterSimpleMacro(parser, "DISPLAY", XDisplayName(DisplayString(dpy)) );
+	WMenuParserRegisterSimpleMacro(parser, "DISPLAY", w_global.display_name);
 
 	WMenuParserRegisterSimpleMacro(parser, "WM_VERSION", "\"" VERSION "\"");
 }
 
 /************  Menu Configuration From Directory   *************/
 
-static Bool isFilePackage(const char *file)
+static bool isFilePackage(const char *file)
 {
 	int l;
 
@@ -1311,9 +1310,9 @@ static Bool isFilePackage(const char *file)
 	l = strlen(file);
 
 	if (l > 7 && strcmp(&(file[l - 7]), ".themed") == 0) {
-		return True;
+		return true;
 	} else {
-		return False;
+		return false;
 	}
 }
 
@@ -1373,7 +1372,7 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 				werror(_("%s:could not stat file \"%s\" in menu directory"),
 					  path[i], dentry->d_name);
 			} else {
-				Bool isFilePack = False;
+				bool isFilePack = false;
 
 				data = NULL;
 				if (S_ISDIR(stat_buf.st_mode)
@@ -1420,7 +1419,7 @@ static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **path, co
 	WMSortArray(dirs, myCompare);
 	WMSortArray(files, myCompare);
 
-	menu = wMenuCreate(scr, M_(title), False);
+	menu = wMenuCreate(scr, M_(title), false);
 	menu->on_destroy = removeShortcutsForMenu;
 
 	WM_ITERATE_ARRAY(dirs, data, iter) {
@@ -1542,7 +1541,7 @@ static WMenu *makeDefaultMenu(WScreen * scr)
 {
 	WMenu *menu = NULL;
 
-	menu = wMenuCreate(scr, _("Commands"), True);
+	menu = wMenuCreate(scr, _("Commands"), true);
 	wMenuAddCallback(menu, M_("XTerm"), execCommand, "xterm");
 	wMenuAddCallback(menu, M_("rxvt"), execCommand, "rxvt");
 	wMenuAddCallback(menu, _("Restart"), restartCommand, NULL);
@@ -1576,7 +1575,7 @@ static WMenu *configureMenuAtDepth(WScreen *scr, WMPropList *definition, int dep
 	if (WMIsPLString(definition)) {
 		struct stat stat_buf;
 		char *path = NULL;
-		Bool menu_is_default = False;
+		bool menu_is_default = false;
 
 		/* menu definition is a string. Probably a path, so parse the file */
 
@@ -1589,7 +1588,7 @@ static WMenu *configureMenuAtDepth(WScreen *scr, WMPropList *definition, int dep
 
 		if (!path) {
 			path = wfindfile(DEF_CONFIG_PATHS, DEF_MENU_FILE);
-			menu_is_default = True;
+			menu_is_default = true;
 		}
 
 		if (!path) {
@@ -1641,14 +1640,14 @@ static WMenu *configureMenuAtDepth(WScreen *scr, WMPropList *definition, int dep
 
 	elem = WMGetFromPLArray(definition, 0);
 	if (!WMIsPLString(elem)) {
-		tmp = WMGetPropListDescription(elem, False);
+		tmp = WMGetPropListDescription(elem, false);
 		wwarning(_("%s:format error in root menu configuration \"%s\""), "WMRootMenu", tmp);
 		wfree(tmp);
 		return NULL;
 	}
 	mtitle = WMGetFromPLString(elem);
 
-	menu = wMenuCreate(scr, M_(mtitle), False);
+	menu = wMenuCreate(scr, M_(mtitle), false);
 	menu->on_destroy = removeShortcutsForMenu;
 
 	for (i = 1; i < count; i++) {
@@ -1701,7 +1700,7 @@ static WMenu *configureMenuAtDepth(WScreen *scr, WMPropList *definition, int dep
 		continue;
 
  error:
-		tmp = WMGetPropListDescription(elem, False);
+		tmp = WMGetPropListDescription(elem, false);
 		wwarning(_("%s:format error in root menu configuration \"%s\""), "WMRootMenu", tmp);
 		wfree(tmp);
 	}
@@ -1747,7 +1746,7 @@ void wRootMenuReparse(WScreen *scr)
 
 	if (menu) {
 		if (scr->root_menu)
-			wMenuDestroy(scr->root_menu, True);
+			wMenuDestroy(scr->root_menu, true);
 		scr->root_menu = menu;
 	}
 
@@ -1795,7 +1794,7 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 			wRaiseFrame(menu->frame->core);
 
 			if (keyboard)
-				wMenuMapAt(menu, 0, 0, True);
+				wMenuMapAt(menu, 0, 0, true);
 			else
 				wMenuMapCopyAt(menu, x - menu->frame->core->width / 2, y);
 		}
@@ -1844,7 +1843,7 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 	} else {
 		/* new root menu */
 		if (scr->root_menu) {
-			wMenuDestroy(scr->root_menu, True);
+			wMenuDestroy(scr->root_menu, true);
 		}
 		scr->root_menu = menu;
 	}

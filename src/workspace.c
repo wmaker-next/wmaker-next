@@ -19,8 +19,6 @@
  */
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -135,30 +133,30 @@ int wHeadShowingWorkspace(WScreen *scr, int workspace)
  * wHeadForOutputName() (RandR connector name, or "#N" head index when
  * the head has no RandR name). A workspace pinned only to outputs that
  * are currently absent is allowed on no head. */
-Bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head)
+bool wWorkspaceIsAllowedOnHead(WScreen *scr, int workspace, int head)
 {
 	WWorkspace *ws;
 	int i;
 
 	if (workspace < 0 || workspace >= scr->workspace_count)
-		return False;
+		return false;
 	ws = scr->workspaces[workspace];
 	if (ws->head_name_count == 0)
-		return True;
+		return true;
 
 	for (i = 0; i < ws->head_name_count; i++) {
 		if (wHeadForOutputName(scr, ws->head_names[i]) == head)
-			return True;
+			return true;
 	}
-	return False;
+	return false;
 }
 
-Bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head)
+bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head)
 {
 	if (!w_global.config->per_head_workspaces)
 		return workspace == scr->current_workspace;
 	if (head < 0 || head >= wHeadCount(scr))
-		return False;
+		return false;
 	return scr->head_workspace[head] == workspace;
 }
 
@@ -166,15 +164,15 @@ Bool wWorkspaceIsVisibleOnHead(WScreen *scr, int workspace, int head)
  * when omnipresent, or when its workspace is the active workspace on
  * the window's effective head. When the same workspace is active on
  * several heads the window still maps only on its own head. */
-Bool wWindowIsVisibleOnAnyHead(WWindow *wwin)
+bool wWindowIsVisibleOnAnyHead(WWindow *wwin)
 {
 	WScreen *scr;
 	int head;
 
 	if (!wwin || !wwin->frame)
-		return False;
+		return false;
 	if (IS_OMNIPRESENT(wwin))
-		return True;
+		return true;
 
 	scr = wwin->screen_ptr;
 	if (!w_global.config->per_head_workspaces)
@@ -183,8 +181,8 @@ Bool wWindowIsVisibleOnAnyHead(WWindow *wwin)
 	head = wWindowEffectiveHead(wwin);
 	if (head >= 0 && head < wHeadCount(scr)
 	    && WWIN_ON_WORKSPACE(wwin, scr->head_workspace[head]))
-		return True;
-	return False;
+		return true;
+	return false;
 }
 
 /* Update last_active_head, mirror current_workspace, and republish
@@ -291,7 +289,7 @@ int wWorkspaceNew(WScreen *scr)
 		wWorkspaceMenuUpdate(scr, scr->clip_ws_menu);
 		wNETWMUpdateDesktop(scr);
 		WMPostNotificationName(WMNWorkspaceCreated, scr, (void *)(uintptr_t) (scr->workspace_count - 1));
-		XFlush(dpy);
+		wXFlush(xconn);
 
 		return scr->workspace_count - 1;
 	}
@@ -299,7 +297,7 @@ int wWorkspaceNew(WScreen *scr)
 	return -1;
 }
 
-Bool wWorkspaceDelete(WScreen * scr, int workspace)
+bool wWorkspaceDelete(WScreen * scr, int workspace)
 {
 	WWindow *tmp;
 	WWorkspace **list;
@@ -308,7 +306,7 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 	int i, j;
 
 	if (workspace <= 0)
-		return False;
+		return false;
 
 	/* verify if workspace is in use by some window, a multi-member
 	 * window that also lives elsewhere is not a blocker */
@@ -319,7 +317,7 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 			snprintf(buf, sizeof(buf), _("Workspace \"%s\" in use; cannot delete"),
 				 scr->workspaces[workspace]->name);
 			wMessageDialog(scr, _("Error"), buf, _("OK"), NULL, NULL);
-			return False;
+			return false;
 		}
 		tmp = tmp->prev;
 	}
@@ -437,7 +435,7 @@ Bool wWorkspaceDelete(WScreen * scr, int workspace)
 		wWorkspaceSetCurrentHead(scr, wGetActiveHead(scr));
 	}
 
-	return True;
+	return true;
 }
 
 /* Auto-destroy trailing empty workspaces. A workspace is empty when no
@@ -504,7 +502,7 @@ static void fadeWorkspaceName(void *data)
 	scr->workspace_name_fade_step++;
 	WSetOSDViewAlpha(scr->workspace_name_osd,
 			 1.0 - (double)scr->workspace_name_fade_step / WORKSPACE_NAME_FADE_STEPS);
-	XFlush(dpy);
+	wXFlush(xconn);
 	scr->workspace_name_timer =
 		WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, fadeWorkspaceName, scr);
 }
@@ -525,7 +523,7 @@ static void showWorkspaceName(WScreen *scr, int workspace)
 			w_global.config->workspace_name_display_position,
 			WORKSPACE_NAME_DISPLAY_PADDING);
 	WMMapWidget(scr->workspace_name_osd);
-	XRaiseWindow(dpy, WMWidgetXID(scr->workspace_name_osd));
+	xcb_configure_window(xconn, WMWidgetXID(scr->workspace_name_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 
 	/* solid for WORKSPACE_NAME_DELAY, then a ten-step alpha ramp to
 	 * zero at WORKSPACE_NAME_FADE_DELAY per step. Under a compositor
@@ -561,24 +559,24 @@ void wWorkspaceChange(WScreen *scr, int workspace)
  * decision in wWorkspaceForceChange[OnHead] skips recentering the pointer. */
 void wWorkspaceChangeFromPointer(WScreen *scr, int workspace)
 {
-	Bool prev = w_global.pointer_driven_change;
-	w_global.pointer_driven_change = True;
+	bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = true;
 	wWorkspaceChange(scr, workspace);
 	w_global.pointer_driven_change = prev;
 }
 
 void wWorkspaceRelativeChangeFromPointer(WScreen *scr, int amount)
 {
-	Bool prev = w_global.pointer_driven_change;
-	w_global.pointer_driven_change = True;
+	bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = true;
 	wWorkspaceRelativeChange(scr, amount);
 	w_global.pointer_driven_change = prev;
 }
 
 void wWorkspaceDirectionalChangeFromPointer(WScreen *scr, int dcol, int drow)
 {
-	Bool prev = w_global.pointer_driven_change;
-	w_global.pointer_driven_change = True;
+	bool prev = w_global.pointer_driven_change;
+	w_global.pointer_driven_change = true;
 	wWorkspaceDirectionalChange(scr, dcol, drow);
 	w_global.pointer_driven_change = prev;
 }
@@ -621,16 +619,16 @@ int wWorkspaceRelativeHeadTarget(WScreen *scr, int head, int amount)
 
 /* Occupied = a non-omnipresent window has the workspace bit, iconic counts.
  * Same test as wAutoRemoveEmptyWorkspaces. */
-static Bool workspace_is_occupied(WScreen *scr, int workspace)
+static bool workspace_is_occupied(WScreen *scr, int workspace)
 {
 	WWindow *tmp;
 
 	if (workspace < 0 || workspace >= scr->workspace_count)
-		return False;
+		return false;
 	for (tmp = scr->focused_window; tmp; tmp = tmp->prev)
 		if (!IS_OMNIPRESENT(tmp) && (WWIN_WS_MASK(tmp) & WS_BIT(workspace)))
-			return True;
-	return False;
+			return true;
+	return false;
 }
 
 /* Occupied-only walk of wWorkspaceRelativeHeadTarget (head < 0 = any head).
@@ -730,7 +728,7 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
  * _NET_DESKTOP_LAYOUT grid, with (0,0) always meaning top-left on screen
  * regardless of the pager's starting corner, return False when the index
  * is outside the grid */
-Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
+bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
 {
 	int rows = scr->net_desktop_layout.rows;
 	int cols = scr->net_desktop_layout.cols;
@@ -738,7 +736,7 @@ Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
 	int r, c;
 
 	if (rows < 1 || cols < 1 || index < 0 || index >= rows * cols)
-		return False;
+		return false;
 
 	if (scr->net_desktop_layout.orientation == 1) {
 		c = index / rows;
@@ -754,7 +752,7 @@ Bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
 
 	*row = r;
 	*col = c;
-	return True;
+	return true;
 }
 
 /* inverse of wWorkspaceLayoutPosition, screen-relative (row, col) back to
@@ -952,7 +950,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 						if (!w_global.config->sticky_icons &&
 						    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 							tmp->icon->mapped = 1;
-							XMapWindow(dpy, tmp->icon->core->window);
+							xcb_map_window(xconn, tmp->icon->core->window);
 						}
 					}
 				}
@@ -964,7 +962,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		{
 			tmp = toUnmap[--toUnmapCount];
 			if (tmp->flags.miniaturized) {
-				XUnmapWindow(dpy, tmp->icon->core->window);
+				xcb_unmap_window(xconn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {
 				wWindowUnmap(tmp);
@@ -992,12 +990,12 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		 */
 		if (foc != NULL) {
 			WWindow *parse;
-			Bool found;
+			bool found;
 
-			found = False;
+			found = false;
 			for (parse = scr->focused_window; parse != NULL; parse = parse->prev) {
 				if (parse == foc) {
-					found = True;
+					found = true;
 					break;
 				}
 			}
@@ -1019,11 +1017,11 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		} else {
 			unsigned int mask;
 			int foo;
-			Window bar, win;
+			xcb_window_t bar, win;
 			WWindow *tmp;
 
 			tmp = NULL;
-			if (XQueryPointer(dpy, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask)) {
+			if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask)) {
 				tmp = wWindowFor(win);
 			}
 
@@ -1052,7 +1050,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	 * This can be avoided if appicons are also workspace specific.
 	 */
 	if (!w_global.config->sticky_icons)
-		wArrangeIcons(scr, False);
+		wArrangeIcons(scr, false);
 
 	if (scr->dock)
 		wAppIconPaint(scr->dock->icon_array[0]);
@@ -1060,8 +1058,8 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	if (!wPreferences.flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
 						scr->workspaces[workspace]->clip->auto_raise_lower)) {
 		/* to handle enter notify. This will also */
-		XUnmapWindow(dpy, scr->clip_icon->icon->core->window);
-		XMapWindow(dpy, scr->clip_icon->icon->core->window);
+		xcb_unmap_window(xconn, scr->clip_icon->icon->core->window);
+		xcb_map_window(xconn, scr->clip_icon->icon->core->window);
 	}
 	else if (scr->clip_icon != NULL) {
 		wClipIconPaint(scr->clip_icon);
@@ -1074,7 +1072,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 	wSoundPlay(scr, WSOUND_WORKSPACE);
 
-	/*   XSync(dpy, False); */
+	/*   wXSync(xconn); */
 }
 
 /* If the target workspace is pinned to several outputs, switching it on
@@ -1164,7 +1162,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		toUnmap = wmalloc(toUnmapSize * sizeof(WWindow *));
 
 		while (tmp) {
-			Bool visible = wWindowIsVisibleOnAnyHead(tmp);
+			bool visible = wWindowIsVisibleOnAnyHead(tmp);
 
 			if (!visible && !tmp->flags.selected) {
 				if (((tmp->flags.mapped || tmp->flags.shaded) &&
@@ -1193,7 +1191,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 					if (!w_global.config->sticky_icons &&
 					    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 						tmp->icon->mapped = 1;
-						XMapWindow(dpy, tmp->icon->core->window);
+						xcb_map_window(xconn, tmp->icon->core->window);
 					}
 				}
 				/* Prefer a focus candidate on the initiating head */
@@ -1208,7 +1206,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		while (toUnmapCount > 0) {
 			tmp = toUnmap[--toUnmapCount];
 			if (tmp->flags.miniaturized) {
-				XUnmapWindow(dpy, tmp->icon->core->window);
+				xcb_unmap_window(xconn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {
 				wWindowUnmap(tmp);
@@ -1222,10 +1220,10 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 
 		if (foc != NULL) {
 			WWindow *parse;
-			Bool found = False;
+			bool found = false;
 			for (parse = scr->focused_window; parse != NULL; parse = parse->prev) {
 				if (parse == foc) {
-					found = True;
+					found = true;
 					break;
 				}
 			}
@@ -1246,10 +1244,10 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		} else {
 			unsigned int mask;
 			int foo;
-			Window bar, win;
+			xcb_window_t bar, win;
 			WWindow *ptmp = NULL;
 
-			if (XQueryPointer(dpy, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+			if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 				ptmp = wWindowFor(win);
 			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY) {
 				wSetFocusTo(scr, foc);
@@ -1265,15 +1263,15 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 	}
 
 	if (!w_global.config->sticky_icons)
-		wArrangeIcons(scr, False);
+		wArrangeIcons(scr, false);
 
 	if (scr->dock)
 		wAppIconPaint(scr->dock->icon_array[0]);
 
 	if (!wPreferences.flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
 						scr->workspaces[workspace]->clip->auto_raise_lower)) {
-		XUnmapWindow(dpy, scr->clip_icon->icon->core->window);
-		XMapWindow(dpy, scr->clip_icon->icon->core->window);
+		xcb_unmap_window(xconn, scr->clip_icon->icon->core->window);
+		xcb_map_window(xconn, scr->clip_icon->icon->core->window);
 	} else if (scr->clip_icon != NULL) {
 		wClipIconPaint(scr->clip_icon);
 	}
@@ -1298,7 +1296,7 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 		return;
 
 	for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
-		Bool visible = wWindowIsVisibleOnAnyHead(tmp);
+		bool visible = wWindowIsVisibleOnAnyHead(tmp);
 
 		if (tmp->flags.hidden)
 			continue;
@@ -1309,7 +1307,7 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
 			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 				tmp->icon->mapped = 1;
-				XMapWindow(dpy, tmp->icon->core->window);
+				xcb_map_window(xconn, tmp->icon->core->window);
 			}
 		} else {
 			if ((tmp->flags.mapped || tmp->flags.shaded)
@@ -1317,7 +1315,7 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 				wWindowUnmap(tmp);
 			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
 			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
-				XUnmapWindow(dpy, tmp->icon->core->window);
+				xcb_unmap_window(xconn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			}
 		}
@@ -1636,12 +1634,12 @@ static void onMenuEntryEdited(WMenu * menu, WMenuEntry * entry)
 	wWorkspaceRename(menu->frame->screen_ptr, (long)entry->clientdata, tmp);
 }
 
-WMenu *wWorkspaceMenuMake(WScreen * scr, Bool titled)
+WMenu *wWorkspaceMenuMake(WScreen * scr, bool titled)
 {
 	WMenu *wsmenu;
 	WMenuEntry *entry;
 
-	wsmenu = wMenuCreate(scr, titled ? _("Workspaces") : NULL, False);
+	wsmenu = wMenuCreate(scr, titled ? _("Workspaces") : NULL, false);
 	if (!wsmenu) {
 		wwarning(_("could not create Workspace menu"));
 		return NULL;
@@ -1705,20 +1703,20 @@ void wWorkspaceMenuUpdate(WScreen * scr, WMenu * menu)
 
 	/* don't let user destroy current workspace */
 	if (scr->current_workspace == scr->workspace_count - 1)
-		wMenuSetEnabled(menu, MC_DESTROY_LAST, False);
+		wMenuSetEnabled(menu, MC_DESTROY_LAST, false);
 	else
-		wMenuSetEnabled(menu, MC_DESTROY_LAST, True);
+		wMenuSetEnabled(menu, MC_DESTROY_LAST, true);
 
 	/* back to last workspace */
 	if (scr->workspace_count && scr->last_workspace != scr->current_workspace)
-		wMenuSetEnabled(menu, MC_LAST_USED, True);
+		wMenuSetEnabled(menu, MC_LAST_USED, true);
 	else
-		wMenuSetEnabled(menu, MC_LAST_USED, False);
+		wMenuSetEnabled(menu, MC_LAST_USED, false);
 
 	tmp = menu->frame->top_width + 5;
 	/* if menu got unreachable, bring it to a visible place */
 	if (menu->frame_x < tmp - (int)menu->frame->core->width)
-		wMenuMove(menu, tmp - (int)menu->frame->core->width, menu->frame_y, False);
+		wMenuMove(menu, tmp - (int)menu->frame->core->width, menu->frame_y, false);
 
 	wMenuPaint(menu);
 }
@@ -1906,7 +1904,7 @@ void wWorkspaceRestoreState(WScreen *scr)
 				if (!aicon || !aicon->omnipresent)
 					continue;
 				aicon->omnipresent = 0;
-				if (wClipMakeIconOmnipresent(aicon, True) != WO_SUCCESS)
+				if (wClipMakeIconOmnipresent(aicon, true) != WO_SUCCESS)
 					continue;
 				if (i == 0)
 					continue;

@@ -488,5 +488,3 @@ static char *NEXT_ICONIFY_XPM[] = {
 #ifdef XKB_BUTTON_HINT
 #include "extend_pixmaps.h"
 #endif /* XKB_BUTTON_HINT */
-
-

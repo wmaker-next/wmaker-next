@@ -19,14 +19,13 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <wraster.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include "WindowMaker.h"
+#include <WINGs/WXProp.h>
 #include "pixmap.h"
 
 /*
@@ -81,15 +80,15 @@ WPixmap *wPixmapCreateFromXBMData(WScreen * scr, char *data, char *mask,
 	WPixmap *pix;
 
 	pix = wmalloc(sizeof(WPixmap));
-	pix->image = XCreatePixmapFromBitmapData(dpy, scr->w_win, data, width, height, fg, bg, scr->w_depth);
-	if (pix->image == None) {
+	pix->image = wXCreatePixmapFromBitmapData(xconn, scr->w_win, data, width, height, fg, bg, scr->w_depth);
+	if (pix->image == XCB_NONE) {
 		wfree(pix);
 		return NULL;
 	}
 	if (mask) {
-		pix->mask = XCreateBitmapFromData(dpy, scr->w_win, mask, width, height);
+		pix->mask = wXCreateBitmapFromData(xconn, scr->w_win, mask, width, height);
 	} else {
-		pix->mask = None;
+		pix->mask = XCB_NONE;
 	}
 	pix->width = width;
 	pix->height = height;
@@ -97,24 +96,22 @@ WPixmap *wPixmapCreateFromXBMData(WScreen * scr, char *data, char *mask,
 	return pix;
 }
 
-WPixmap *wPixmapCreate(Pixmap image, Pixmap mask)
+WPixmap *wPixmapCreate(xcb_pixmap_t image, xcb_pixmap_t mask)
 {
 	WPixmap *pix;
-	Window foo;
-	int bar;
-	unsigned int width, height, depth, baz;
+	WXGeometry geom;
 
 	pix = wmalloc(sizeof(WPixmap));
 	pix->image = image;
 	pix->mask = mask;
-	if (!XGetGeometry(dpy, image, &foo, &bar, &bar, &width, &height, &baz, &depth)) {
-		wwarning("XGetGeometry() failed during wPixmapCreate()");
+	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, (xcb_window_t) image), &geom)) {
+		wwarning("wXGetGeometry() failed during wPixmapCreate()");
 		wfree(pix);
 		return NULL;
 	}
-	pix->width = width;
-	pix->height = height;
-	pix->depth = depth;
+	pix->width = geom.width;
+	pix->height = geom.height;
+	pix->depth = geom.depth;
 	return pix;
 }
 
@@ -131,11 +128,11 @@ void wPixmapDestroy(WPixmap * pix)
 {
 	if (!pix->shared) {
 		if (pix->mask && !pix->client_owned_mask) {
-			XFreePixmap(dpy, pix->mask);
+			xcb_free_pixmap(xconn, pix->mask);
 		}
 
 		if (pix->image && !pix->client_owned) {
-			XFreePixmap(dpy, pix->image);
+			xcb_free_pixmap(xconn, pix->image);
 		}
 	}
 	wfree(pix);

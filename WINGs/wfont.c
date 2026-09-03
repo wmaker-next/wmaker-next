@@ -7,7 +7,6 @@
 
 #include <wraster.h>
 #include <assert.h>
-#include <X11/Xlocale.h>
 
 #include <fontconfig/fontconfig.h>
 
@@ -135,15 +134,15 @@ static char *xlfdToFcName(const char *xlfd)
 	return fname;
 }
 
-static Bool hasProperty(FcPattern * pattern, const char *property)
+static bool hasProperty(FcPattern * pattern, const char *property)
 {
 	FcValue val;
 
 	if (FcPatternGet(pattern, property, 0, &val) == FcResultMatch) {
-		return True;
+		return true;
 	}
 
-	return False;
+	return false;
 }
 
 static char *makeFontOfSize(const char *font, int size, const char *fallback)
@@ -285,7 +284,7 @@ void WMReleaseFont(WMFont * font)
 	}
 }
 
-Bool WMIsAntialiasingEnabled(WMScreen * scrPtr)
+bool WMIsAntialiasingEnabled(WMScreen * scrPtr)
 {
 	return scrPtr->antialiasedText;
 }
@@ -427,7 +426,7 @@ void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
 	W_ShowLayout(cr, font, font->layout, x, y);
 }
 
-void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, int x, int y, const char *text, int length)
+void WMDrawString(WMScreen * scr, xcb_drawable_t d, WMColor * color, WMFont * font, int x, int y, const char *text, int length)
 {
 	cairo_t *cr;
 
@@ -441,7 +440,7 @@ void WMDrawString(WMScreen * scr, Drawable d, WMColor * color, WMFont * font, in
 }
 
 void
-WMDrawImageString(WMScreen * scr, Drawable d, WMColor * color, WMColor * background,
+WMDrawImageString(WMScreen * scr, xcb_drawable_t d, WMColor * color, WMColor * background,
 		  WMFont * font, int x, int y, const char *text, int length)
 {
 	cairo_t *cr;

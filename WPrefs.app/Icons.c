@@ -165,7 +165,7 @@ static void showData(_Panel * panel)
 {
 	int i;
 	char *str;
-	Bool b;
+	bool b;
 
 	WMSetButtonSelected(panel->arrB, GetBoolForKey("AutoArrangeIcons"));
 	WMSetButtonSelected(panel->omnB, GetBoolForKey("StickyIcons"));
@@ -250,8 +250,8 @@ static void createPanel(Panel * p)
 	 * ratio as the screen.
 	 */
 	scr = WMWidgetScreen(panel->parent);
-	swidth = WidthOfScreen(DefaultScreenOfDisplay(WMScreenDisplay(scr)));
-	sheight = HeightOfScreen(DefaultScreenOfDisplay(WMScreenDisplay(scr)));
+	swidth = wXDisplayWidth(WMScreenDisplay(scr), scr->screen);
+	sheight = wXDisplayHeight(WMScreenDisplay(scr), scr->screen);
 
 	width = swidth * (122 - 15 * 2) / sheight;
 	if (width <= (240 - 15 * 2)) {
@@ -300,7 +300,7 @@ static void createPanel(Panel * p)
 		WMMoveWidget(panel->posB[i], x, y);
 	}
 
-	color = WMCreateRGBColor(WMWidgetScreen(panel->parent), 0x5100, 0x5100, 0x7100, True);
+	color = WMCreateRGBColor(WMWidgetScreen(panel->parent), 0x5100, 0x5100, 0x7100, true);
 	panel->posVF = WMCreateFrame(panel->posF);
 	WMResizeWidget(panel->posVF, width, height);
 	WMMoveWidget(panel->posVF, startx + 15, starty + 15);
@@ -430,9 +430,9 @@ static void storeData(_Panel * panel)
 
 	i = WMGetSliderValue(panel->minipreview.slider);
 	if (i <= minipreview_minimum_size) {
-		SetBoolForKey(False, "MiniwindowPreviewBalloons");
+		SetBoolForKey(false, "MiniwindowPreviewBalloons");
 	} else {
-		SetBoolForKey(True, "MiniwindowPreviewBalloons");
+		SetBoolForKey(true, "MiniwindowPreviewBalloons");
 		if (i < minipreview_maximum_size) {
 			/*
 			 * If the value is bigger, it means it was edited by the user manually

@@ -20,21 +20,21 @@
 #ifndef WMCLIENT_H_
 #define WMCLIENT_H_
 
-void wClientSetState(WWindow *wwin, int state, Window icon_win);
+void wClientSetState(WWindow *wwin, int state, xcb_window_t icon_win);
 
 void wClientRestore(WWindow *wwin);
 void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre);
 void wClientGetGravityOffsets(WWindow *wwin, int *ofs_x, int *ofs_y);
-void wClientSendProtocol(WWindow *wwin, Atom protocol, Time time);
+void wClientSendProtocol(WWindow *wwin, xcb_atom_t protocol, xcb_timestamp_t time);
 void wClientKill(WWindow *wwin);
-void wClientCheckProperty(WWindow *wwin, Atom atom);
+void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom);
 
 
-void wClientGetNormalHints(WWindow *wwin, XWindowAttributes *wattribs,
-                           Bool geometry, WXCookie normal_ck,
+void wClientGetNormalHints(WWindow *wwin, WXWindowAttributes *wattribs,
+                           bool geometry, WXCookie normal_ck,
                            int *x, int *y, unsigned *width,
                            unsigned *height);
-WXCookie wClientReqColormapWindows(Window window);
+WXCookie wClientReqColormapWindows(xcb_window_t window);
 void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck);
 void GetColormapWindows(WWindow *wwin);
 

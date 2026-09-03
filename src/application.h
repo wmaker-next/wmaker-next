@@ -26,7 +26,7 @@ typedef struct WApplication {
     struct WApplication *next;
     struct WApplication *prev;
 
-    Window main_window;		       /* ID of the group leader */
+    xcb_window_t main_window;		       /* ID of the group leader */
     struct WWindow *main_window_desc;  /* main (leader) window descriptor */
     WMenu *menu;		       /* application menu */
     struct WAppIcon *app_icon;
@@ -45,7 +45,7 @@ typedef struct WApplication {
 
 
 WApplication *wApplicationCreate(struct WWindow *wwin);
-WApplication *wApplicationOf(Window window);
+WApplication *wApplicationOf(xcb_window_t window);
 void wApplicationDestroy(WApplication *wapp);
 struct WWindow *wApplicationUrgentWindow(WApplication *wapp);
 

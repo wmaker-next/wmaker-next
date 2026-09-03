@@ -48,7 +48,7 @@ struct w_menu_parser {
 			skip states for each nested #if */
 		int depth;
 		struct {
-			Bool skip;
+			bool skip;
 			char name[8];
 			int line;
 		} stack[32];
@@ -68,7 +68,7 @@ struct w_parser_macro {
 	unsigned char value[MAXLINE * 4];
 };
 
-Bool menu_parser_skip_spaces_and_comments(WMenuParser parser);
+bool menu_parser_skip_spaces_and_comments(WMenuParser parser);
 
 void menu_parser_register_preset_macros(WMenuParser parser);
 

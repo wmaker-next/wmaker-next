@@ -33,11 +33,11 @@ static char *_ColorWellActivatedNotification = "_ColorWellActivatedNotification"
 static void destroyColorWell(ColorWell * cPtr);
 static void paintColorWell(ColorWell * cPtr);
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
-static void handleDragEvents(XEvent * event, void *data);
+static void handleDragEvents(xcb_generic_event_t * event, void *data);
 
-static void handleActionEvents(XEvent * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void willResizeColorWell(W_ViewDelegate * self, WMView * view, unsigned int *width, unsigned int *height);
 
@@ -51,7 +51,7 @@ W_ViewDelegate _ColorWellViewDelegate = {
 
 static WMArray *dropDataTypes(WMView * self);
 static WMDragOperationType wantedDropOperation(WMView * self);
-static Bool acceptDropOperation(WMView * self, WMDragOperationType operation);
+static bool acceptDropOperation(WMView * self, WMDragOperationType operation);
 static WMData *fetchDragData(WMView * self, char *type);
 
 static WMDragSourceProcs _DragSourceProcs = {
@@ -144,15 +144,15 @@ WMColorWell *WMCreateColorWell(WMWidget * parent)
 	}
 	cPtr->colorView->self = cPtr;
 
-	WMCreateEventHandler(cPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(cPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, cPtr);
 
-	WMCreateEventHandler(cPtr->colorView, ExposureMask, handleEvents, cPtr);
+	WMCreateEventHandler(cPtr->colorView, XCB_EVENT_MASK_EXPOSURE, handleEvents, cPtr);
 
 	WMCreateDragHandler(cPtr->colorView, handleDragEvents, cPtr);
 
-	WMCreateEventHandler(cPtr->view, ButtonPressMask, handleActionEvents, cPtr);
-	WMCreateEventHandler(cPtr->colorView, ButtonPressMask, handleActionEvents, cPtr);
+	WMCreateEventHandler(cPtr->view, XCB_EVENT_MASK_BUTTON_PRESS, handleActionEvents, cPtr);
+	WMCreateEventHandler(cPtr->colorView, XCB_EVENT_MASK_BUTTON_PRESS, handleActionEvents, cPtr);
 
 	cPtr->colorView->flags.mapWhenRealized = 1;
 
@@ -189,7 +189,7 @@ WMColor *WMGetColorWellColor(WMColorWell * cPtr)
 	return cPtr->color;
 }
 
-void WSetColorWellBordered(WMColorWell * cPtr, Bool flag)
+void WSetColorWellBordered(WMColorWell * cPtr, bool flag)
 {
 	flag = ((flag == 0) ? 0 : 1);
 	if (cPtr->flags.bordered != flag) {
@@ -240,20 +240,20 @@ static void paintColorWell(ColorWell * cPtr)
 				   2, 2, cPtr->colorView->size.width - 4, cPtr->colorView->size.height - 4);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	ColorWell *cPtr = (ColorWell *) data;
 
 	CHECK_CLASS(data, WC_ColorWell);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintColorWell(cPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyColorWell(cPtr);
 		break;
 
@@ -273,7 +273,7 @@ static WMDragOperationType wantedDropOperation(WMView * self)
 	return WDOperationCopy;
 }
 
-static Bool acceptDropOperation(WMView * self, WMDragOperationType operation)
+static bool acceptDropOperation(WMView * self, WMDragOperationType operation)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
@@ -298,7 +298,7 @@ static WMData *fetchDragData(WMView * self, char *type)
 static WMPixmap *makeDragPixmap(WMColorWell * cPtr)
 {
 	WMScreen *scr = cPtr->view->screen;
-	Pixmap pix;
+	xcb_pixmap_t pix;
 	cairo_t *cr;
 	int d;
 
@@ -316,14 +316,14 @@ static WMPixmap *makeDragPixmap(WMColorWell * cPtr)
 
 	/* the drag follower window is created at pixmap->width x height
 	 * with this as its background_pixmap, so hand back device size */
-	return WMCreatePixmapFromXPixmaps(scr, pix, None, d, d, scr->depth);
+	return WMCreatePixmapFromXPixmaps(scr, pix, XCB_NONE, d, d, scr->depth);
 }
 
-static void handleDragEvents(XEvent * event, void *data)
+static void handleDragEvents(xcb_generic_event_t * event, void *data)
 {
 	WMColorWell *cPtr = (ColorWell *) data;
 
-	if (event->type == ButtonPress && event->xbutton.button == Button1) {
+	if ((event->response_type & 0x7f) == XCB_BUTTON_PRESS && ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
 		/* initialise drag icon */
 		WMSetViewDragImage(cPtr->colorView, makeDragPixmap(cPtr));
 	}
@@ -331,7 +331,7 @@ static void handleDragEvents(XEvent * event, void *data)
 	WMDragImageFromView(cPtr->colorView, event);
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	WMColorWell *cPtr = (ColorWell *) data;
 	WMScreen *scr = WMWidgetScreen(cPtr);
@@ -372,7 +372,7 @@ static void destroyColorWell(ColorWell * cPtr)
 	wfree(cPtr);
 }
 
-static Bool dropIsOk(WMDragOperationType request, WMArray * sourceDataTypes)
+static bool dropIsOk(WMDragOperationType request, WMArray * sourceDataTypes)
 {
 	WMArrayIterator iter;
 	char *type;
@@ -380,12 +380,12 @@ static Bool dropIsOk(WMDragOperationType request, WMArray * sourceDataTypes)
 	if (request == WDOperationCopy) {
 		WM_ITERATE_ARRAY(sourceDataTypes, type, iter) {
 			if (type != NULL && strcmp(type, XDND_COLOR_DATA_TYPE) == 0) {
-				return True;
+				return true;
 			}
 		}
 	}
 
-	return False;
+	return false;
 }
 
 static WMArray *requiredDataTypes(WMView * self, WMDragOperationType request, WMArray * sourceDataTypes)
@@ -422,7 +422,7 @@ static void performDragOperation(WMView * self, WMArray * dropData, WMArray * op
 
 	if (data != NULL) {
 		colorName = (char *)WMDataBytes(data);
-		color = WMCreateNamedColor(W_VIEW_SCREEN(self), colorName, True);
+		color = WMCreateNamedColor(W_VIEW_SCREEN(self), colorName, true);
 		WMSetColorWellColor(self->self, color);
 		WMReleaseColor(color);
 	}

@@ -22,10 +22,10 @@ libExtraWINGs_la_SOURCES = 	\
 
 AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(top_srcdir)/WINGs \
 	-I$(top_builddir)/WINGs \
-	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @HEADER_SEARCH_PATH@
+	-DRESOURCE_PATH=\"$(datadir)/WINGs\" @HEADER_SEARCH_PATH@ @CAIRO_CFLAGS@
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@INTLIBS@ @XLIBS@
+	@INTLIBS@ @XCB_LIBS@ @CAIRO_LIBS@
 
 tableview_LDADD = wtableview.o wtabledelegates.o $(LDADD)

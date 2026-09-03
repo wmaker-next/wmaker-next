@@ -65,17 +65,17 @@ int  wXkbGetGroup(void);
 /* ---[ lock-modifier grab fan-out ]--------------------------------------
  *
  * Issue the XGrabKey/XGrabButton for every CapsLock x NumLock x ScrollLock
- * combination so a binding still matches with any of those latched.  Moved
+ * combination so a binding still matches with any of those latched. Moved
  * here from startup.c so the masks are read from the same place that
  * resolves them.
  */
 #ifdef NUMLOCK_HACK
-void wHackedGrabKey(int keycode, unsigned int modifiers, Window grab_window,
-		    Bool owner_events, int pointer_mode, int keyboard_mode);
+void wHackedGrabKey(int keycode, unsigned int modifiers, xcb_window_t grab_window,
+		    bool owner_events, int pointer_mode, int keyboard_mode);
 #endif
 void wHackedGrabButton(unsigned int button, unsigned int modifiers,
-		       Window grab_window, Bool owner_events,
+		       xcb_window_t grab_window, bool owner_events,
 		       unsigned int event_mask, int pointer_mode,
-		       int keyboard_mode, Window confine_to, Cursor cursor);
+		       int keyboard_mode, xcb_window_t confine_to, xcb_cursor_t cursor);
 
 #endif /* WMWXKB_H */

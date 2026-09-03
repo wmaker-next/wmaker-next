@@ -26,7 +26,7 @@
 /* Global trie root */
 WKeyNode *wKeyTreeRoot = NULL;
 
-WKeyNode *wKeyTreeFind(WKeyNode *siblings, unsigned int mod, KeyCode key)
+WKeyNode *wKeyTreeFind(WKeyNode *siblings, unsigned int mod, xcb_keycode_t key)
 {
 	WKeyNode *p = siblings;
 
@@ -38,7 +38,7 @@ WKeyNode *wKeyTreeFind(WKeyNode *siblings, unsigned int mod, KeyCode key)
 	return NULL;
 }
 
-WKeyNode *wKeyTreeInsert(WKeyNode **root, unsigned int *mods, KeyCode *keys, int nkeys)
+WKeyNode *wKeyTreeInsert(WKeyNode **root, unsigned int *mods, xcb_keycode_t *keys, int nkeys)
 {
 	WKeyNode **slot = root;
 	WKeyNode *parent = NULL;

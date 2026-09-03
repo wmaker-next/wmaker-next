@@ -1,16 +1,15 @@
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
 #include "wraster.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "tile.xpm"
-Display *dpy;
-Window win;
+xcb_connection_t *xc;
+xcb_window_t win;
 RContext *ctx;
 RImage *img;
-Pixmap pix;
+xcb_pixmap_t pix;
 
 #define MAX(a,b) (a)>(b) ? (a) : (b)
 
@@ -19,14 +18,16 @@ int main(int argc, char **argv)
 	RContextAttributes attr;
 	float a;
 
-	dpy = XOpenDisplay("");
-	if (!dpy) {
+	int sn;
+
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		puts("can't open display");
 		exit(1);
 	}
 
 	attr.flags = 0;
-	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), &attr);
+	ctx = RCreateContextXCB(xc, sn, &attr);
 
 	if (argc < 2)
 		img = RGetImageFromXPMData(ctx, image_name);
@@ -37,10 +38,16 @@ int main(int argc, char **argv)
 		puts(RMessageForError(RErrorCode));
 		exit(1);
 	}
-	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 10, 10,
-				  MAX(img->width, img->height), MAX(img->height, img->width), 0, 0, 0);
-	XMapRaised(dpy, win);
-	XFlush(dpy);
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, XCB_COPY_FROM_PARENT, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, MAX(img->width, img->height), MAX(img->height, img->width),
+			  0, XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  0, NULL);
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_flush(xc);
 
 	a = 0;
 	while (1) {
@@ -55,11 +62,13 @@ int main(int argc, char **argv)
 		}
 		RReleaseImage(tmp);
 
-		XSetWindowBackgroundPixmap(dpy, win, pix);
-		XFreePixmap(dpy, pix);
-		XClearWindow(dpy, win);
-		XSync(dpy, 0);
+		xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP,
+					     (uint32_t[]) { pix });
+		xcb_free_pixmap(xc, pix);
+		xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+		xcb_flush(xc);
 		usleep(50000);
 	}
+	xcb_disconnect(xc);
 	exit(0);
 }

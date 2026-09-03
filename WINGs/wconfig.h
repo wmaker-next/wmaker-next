@@ -36,4 +36,3 @@
 
 
 #endif /* WINGS_CONFIG_H_ */
-

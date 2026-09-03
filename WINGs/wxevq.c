@@ -4,17 +4,14 @@
  *
  *  Sits between the X connection and dispatch so WMNextEvent /
  *  WMMaskEvent and the modal loops in src/ can take, peek and put back
- *  without depending on Xlib's own queue.  Until WXEvqFlipToXcb() is
- *  called the queue is filled by XNextEvent so the WXEvq* operations
- *  are exact behavioural stand-ins for XCheckMaskEvent /
- *  XCheckTypedEvent / XCheckTypedWindowEvent / XCheckWindowEvent /
- *  XPeekEvent / XPutBackEvent.  After the flip, drain() reads
- *  xcb_poll_for_event() and W_CookXcbEvent() field-copies each wire
- *  event into an XEvent so every consumer keeps its existing
- *  signature, errors (response_type 0) go to the registered
- *  WXEvqErrorHook instead of being enqueued.  Processes that want to
- *  keep libX11's protocol-XIM transport (WPrefs) never call the flip
- *  and stay on the XNextEvent path.
+ *  without an extra queue. The queue stores raw xcb_generic_event_t
+ *  events fed straight from xcb_poll_for_event() on the connection
+ *  the queue operations receive (registered on the first
+ *  drain, one queue per process). The delivery operations hand the
+ *  malloc'd buffer to the caller (owned), Peek lends the queue's
+ *  pointer, PutBack takes ownership of what it is given. Errors
+ *  (response_type 0) go to the registered WXEvqErrorHook instead of
+ *  being enqueued.
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -25,22 +22,27 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
-#include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
+#include <xcb/xproto.h>
 
 #include "WINGsP.h"
 
-/* set by WXEvqFlipToXcb(), NULL while Xlib owns the event queue */
+/* the connection the queue drains from, registered by the first drain
+ * from the connection the queue operation received, NULL only in the
+ * headless unit tests which inject events through W_XEvqPutRaw() */
 static xcb_connection_t *evq_conn;
+static xcb_connection_t *evq_dpy;
 static WXEvqErrorHook *evq_error_hook;
+static WXEvqDeadHook *evq_dead_hook;
 
 typedef struct WXEvqNode {
-	XEvent ev;
 	struct WXEvqNode *next;
+	xcb_generic_event_t *xe;	/* malloc'd wire event, owned by the queue */
 } WXEvqNode;
 
-/* one queue per process, libWINGs has always assumed a single Display */
+/* one queue per process, libWINGs has always assumed a single xcb_connection_t */
 static WXEvqNode *evq_head;
 static WXEvqNode *evq_tail;
 
@@ -52,57 +54,101 @@ static WXEvqNode *evq_tail;
 static const unsigned long eventMasks[] = {
 	0,
 	0,
-	KeyPressMask,			/* KeyPress */
-	KeyReleaseMask,			/* KeyRelease */
-	ButtonPressMask,		/* ButtonPress */
-	ButtonReleaseMask,		/* ButtonRelease */
-	PointerMotionMask | PointerMotionHintMask | ButtonMotionMask
-	    | Button1MotionMask | Button2MotionMask | Button3MotionMask
-	    | Button4MotionMask | Button5MotionMask,
+	XCB_EVENT_MASK_KEY_PRESS,			/* KeyPress */
+	XCB_EVENT_MASK_KEY_RELEASE,			/* KeyRelease */
+	XCB_EVENT_MASK_BUTTON_PRESS,		/* ButtonPress */
+	XCB_EVENT_MASK_BUTTON_RELEASE,		/* ButtonRelease */
+	XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_POINTER_MOTION_HINT | XCB_EVENT_MASK_BUTTON_MOTION
+	    | XCB_EVENT_MASK_BUTTON_1_MOTION | XCB_EVENT_MASK_BUTTON_2_MOTION | XCB_EVENT_MASK_BUTTON_3_MOTION
+	    | XCB_EVENT_MASK_BUTTON_4_MOTION | XCB_EVENT_MASK_BUTTON_5_MOTION,
 					/* MotionNotify */
-	EnterWindowMask,		/* EnterNotify */
-	LeaveWindowMask,		/* LeaveNotify */
-	FocusChangeMask,		/* FocusIn */
-	FocusChangeMask,		/* FocusOut */
-	KeymapStateMask,		/* KeymapNotify */
-	ExposureMask,			/* Expose */
-	ExposureMask,			/* GraphicsExpose */
-	ExposureMask,			/* NoExpose */
-	VisibilityChangeMask,		/* VisibilityNotify */
-	SubstructureNotifyMask,		/* CreateNotify */
-	StructureNotifyMask,		/* DestroyNotify */
-	StructureNotifyMask,		/* UnmapNotify */
-	StructureNotifyMask,		/* MapNotify */
-	SubstructureRedirectMask,	/* MapRequest */
-	StructureNotifyMask,		/* ReparentNotify */
-	StructureNotifyMask,		/* ConfigureNotify */
-	SubstructureRedirectMask,	/* ConfigureRequest */
-	StructureNotifyMask,		/* GravityNotify */
-	ResizeRedirectMask,		/* ResizeRequest */
-	StructureNotifyMask,		/* CirculateNotify */
-	SubstructureRedirectMask,	/* CirculateRequest */
-	PropertyChangeMask,		/* PropertyNotify */
+	XCB_EVENT_MASK_ENTER_WINDOW,		/* EnterNotify */
+	XCB_EVENT_MASK_LEAVE_WINDOW,		/* LeaveNotify */
+	XCB_EVENT_MASK_FOCUS_CHANGE,		/* FocusIn */
+	XCB_EVENT_MASK_FOCUS_CHANGE,		/* FocusOut */
+	XCB_EVENT_MASK_KEYMAP_STATE,		/* KeymapNotify */
+	XCB_EVENT_MASK_EXPOSURE,			/* Expose */
+	XCB_EVENT_MASK_EXPOSURE,			/* GraphicsExpose */
+	XCB_EVENT_MASK_EXPOSURE,			/* NoExpose */
+	XCB_EVENT_MASK_VISIBILITY_CHANGE,		/* VisibilityNotify */
+	XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,		/* CreateNotify */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* DestroyNotify */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* UnmapNotify */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* MapNotify */
+	XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,	/* MapRequest */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* ReparentNotify */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* ConfigureNotify */
+	XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,	/* ConfigureRequest */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* GravityNotify */
+	XCB_EVENT_MASK_RESIZE_REDIRECT,		/* ResizeRequest */
+	XCB_EVENT_MASK_STRUCTURE_NOTIFY,		/* CirculateNotify */
+	XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,	/* CirculateRequest */
+	XCB_EVENT_MASK_PROPERTY_CHANGE,		/* PropertyNotify */
 	0,				/* SelectionClear */
 	0,				/* SelectionRequest */
 	0,				/* SelectionNotify */
-	ColormapChangeMask,		/* ColormapNotify */
+	XCB_EVENT_MASK_COLOR_MAP_CHANGE,		/* ColormapNotify */
 	ClientMessageMask,		/* ClientMessage */
 	0,				/* MappingNotify */
 };
 
-unsigned long W_MaskForEventType(int type)
+uint32_t W_MaskForEventType(int type)
 {
 	if (type < 0 || (size_t)type >= wlengthof(eventMasks))
 		return 0;
 	return eventMasks[type];
 }
 
+/* the field that used to land in XEvent's xany.window sits at wire
+ * offset 12 for the key/button/motion/crossing family (after time and
+ * root), at offset 8 for the selection family (they carry a leading
+ * time field, xany.window aliases the owner/requestor) and at the
+ * first body slot for every other windowed core event; KeymapNotify
+ * and MappingNotify carry none. Extension events have no window
+ * either (offset 4 is a timestamp or a pad), so they are never
+ * window-matched and reach their owning module unfiltered */
+static int eventWindowWireOffset(int type)
+{
+	switch (type) {
+	case XCB_KEY_PRESS:
+	case XCB_KEY_RELEASE:
+	case XCB_BUTTON_PRESS:
+	case XCB_BUTTON_RELEASE:
+	case XCB_MOTION_NOTIFY:
+	case XCB_ENTER_NOTIFY:
+	case XCB_LEAVE_NOTIFY:
+		return 12;
+	case XCB_SELECTION_CLEAR:
+	case XCB_SELECTION_REQUEST:
+	case XCB_SELECTION_NOTIFY:
+		return 8;
+	case XCB_KEYMAP_NOTIFY:
+	case XCB_MAPPING_NOTIFY:
+		return -1;
+	default:
+		if (type >= wlengthof(eventMasks))
+			return -1;
+		return 4;
+	}
+}
+
+/* the window the dispatchers match on, the xany.window equivalent for
+ * a wire event */
+xcb_window_t W_EventWindow(const xcb_generic_event_t *xe)
+{
+	uint32_t w;
+	int off;
+
+	off = eventWindowWireOffset(xe->response_type & 0x7f);
+	if (off < 0)
+		return XCB_NONE;
+	memcpy(&w, (const unsigned char *)xe + off, sizeof(w));
+	return w;
+}
+
 static WXEvqNode *allocNode(void)
 {
-	WXEvqNode *n = wmalloc(sizeof(*n));
-
-	n->next = NULL;
-	return n;
+	return wmalloc(sizeof(WXEvqNode));
 }
 
 static void appendNode(WXEvqNode *n)
@@ -114,23 +160,17 @@ static void appendNode(WXEvqNode *n)
 	evq_tail = n;
 }
 
-void WXEvqFlipToXcb(Display *dpy)
+/* queue one raw xcb event, taking ownership of the malloc'd buffer
+ * (xcb_poll_for_event allocation, free()d by the queue when delivered
+ * or dropped), drain()'s xcb branch and the check_evq seam both come
+ * through here */
+void W_XEvqPutRaw(void *xe_)
 {
-	if (evq_conn)
-		return;
-	evq_conn = XGetXCBConnection(dpy);
-	/* from here on Xlib's _XReadEvents and _XEventsQueued return
-	 * immediately, _XReply still picks up errors for Xlib-issued
-	 * requests because xcb_io.c require_socket() passes
-	 * XCB_REQUEST_CHECKED and _XSend() tracks every sequence, so
-	 * the existing XSetErrorHandler trap brackets keep working and
-	 * Xlib never enqueues a server event behind our back */
-	XSetEventQueueOwner(dpy, XCBOwnsEventQueue);
-}
+	xcb_generic_event_t *xe = xe_;
+	WXEvqNode *n = allocNode();
 
-Bool WXEvqXcbOwned(void)
-{
-	return evq_conn != NULL;
+	n->xe = xe;
+	appendNode(n);
 }
 
 void WXEvqSetErrorHook(WXEvqErrorHook *hook)
@@ -138,49 +178,50 @@ void WXEvqSetErrorHook(WXEvqErrorHook *hook)
 	evq_error_hook = hook;
 }
 
+/* The hook for a connection that died (xcb_connection_has_error()).
+ * Xlib's IO-error handler used to die here; the owner of the
+ * connection decides how (wmaker shuts down cleanly). */
+void WXEvqSetDeadHook(WXEvqDeadHook *hook)
+{
+	evq_dead_hook = hook;
+}
+
+/* the connection the queue drains from, the display pointer that used
+ * to travel in the cooked event's xany prefix */
+xcb_connection_t *W_XEvqConnection(void)
+{
+	return evq_dpy;
+}
+
+/* ---- drain ------------------------------------------------------------ */
+
 /* pull every event currently readable on the connection into the
  * internal queue, the dpy==NULL case lets the unit test exercise the
  * queue operations on synthetic events with no X server */
-static void drain(Display *dpy)
+static void drain(xcb_connection_t *dpy)
 {
-	WXEvqNode *n;
 	xcb_generic_event_t *xe;
 
 	if (!dpy)
 		return;
 
+	/* the connection registers itself on the first drain, the caller
+	 * that owns the queue is the connection owner */
 	if (!evq_conn) {
-		/* queue not flipped, XPending flushes the output buffer
-		 * and reads the socket so this matches what XCheckMaskEvent
-		 * and friends would have buffered */
-		while (XPending(dpy)) {
-			n = allocNode();
-			XNextEvent(dpy, &n->ev);
-			appendNode(n);
-		}
-		/* WMNextEvent and WMMaskEvent no longer XSync before
-		 * blocking, and XPending on a dead connection returns 0
-		 * without tripping the IO-error handler while the X fd
-		 * stays readable on EOF, so the caller would spin, route
-		 * through _XReply via one XSync so the registered
-		 * XIOErrorHandler fires and the process exits the way it
-		 * always has, _XIOError never returns */
-		if (xcb_connection_has_error(XGetXCBConnection(dpy)))
-			XSync(dpy, False);
-		return;
+		evq_conn = dpy;
+		evq_dpy = dpy;
+		if (!evq_conn)
+			return;
 	}
 
-	/* flush Xlib's outgoing buffer the same way XCheckMaskEvent
-	 * would have, Xlib routes the write through the shared xcb
-	 * socket so request ordering against xcb-issued requests holds */
-	XFlush(dpy);
+	/* flush the outgoing buffer the same way XCheckMaskEvent would
+	 * have pushed its requests, so events answering them are
+	 * readable on the poll below */
+	wXFlush(dpy);
 
 	while ((xe = xcb_poll_for_event(evq_conn)) != NULL) {
 		if ((xe->response_type & 0x7f) == 0) {
-			/* in-stream error from an xcb-issued reply-less
-			 * request, Xlib-issued errors are still collected
-			 * by _XReply via the pending_requests list so
-			 * never reach here */
+			/* in-stream error from a reply-less xcb request */
 			xcb_generic_error_t *err = (xcb_generic_error_t *)xe;
 			if (evq_error_hook)
 				(*evq_error_hook)(dpy, err->error_code,
@@ -189,32 +230,23 @@ static void drain(Display *dpy)
 			free(xe);
 			continue;
 		}
-		n = allocNode();
-		W_CookXcbEvent(dpy, xe, &n->ev);
-		appendNode(n);
-		free(xe);
+		W_XEvqPutRaw(xe);
 	}
 
-	/* recover anything libX11 internals XPutBackEvent()ed onto
-	 * Xlib's own queue, the @im=local compose-abort replay being
-	 * the one known producer, those are already-cooked XEvents so
-	 * append them as-is, XQLength reads dpy->qlen directly so sees
-	 * them where XPending would return 0 under XCBOwnsEventQueue,
-	 * and XNextEvent dequeues without a socket read while qlen>0 */
-	while (XQLength(dpy)) {
-		n = allocNode();
-		XNextEvent(dpy, &n->ev);
-		appendNode(n);
+	/* dead-connection guard: xcb_poll_for_event returns NULL on a
+	 * closed socket without raising anything, so this is the one
+	 * place a lost connection surfaces. The registered hook dies
+	 * (the connection owner decides how); with no hook installed
+	 * there is nothing to hand the failure to, so exit. */
+	if (xcb_connection_has_error(evq_conn)) {
+		if (evq_dead_hook)
+			(*evq_dead_hook)(dpy);
+		else
+			exit(1);
 	}
-
-	/* same dead-connection guard as the Xlib branch above,
-	 * xcb_poll_for_event returns NULL on a closed socket without
-	 * raising anything */
-	if (xcb_connection_has_error(evq_conn))
-		XSync(dpy, False);
 }
 
-Bool WXEvqPending(Display *dpy)
+bool WXEvqPending(xcb_connection_t *dpy)
 {
 	drain(dpy);
 	return evq_head != NULL;
@@ -223,8 +255,9 @@ Bool WXEvqPending(Display *dpy)
 /* pop the head event into *event_ret, draining first so an event that
  * arrived since the last queue inspection is not missed, returns False
  * with *event_ret untouched when the connection has nothing for us, in
- * which case the caller blocks on the X fd via W_HandleInputEvents() */
-Bool WXEvqNext(Display *dpy, XEvent *event_ret)
+ * which case the caller blocks on the X fd via W_HandleInputEvents().
+ * The malloc'd wire buffer becomes the caller's responsibility. */
+bool WXEvqNext(xcb_connection_t *dpy, xcb_generic_event_t **event_ret)
 {
 	WXEvqNode *n;
 
@@ -233,48 +266,50 @@ Bool WXEvqNext(Display *dpy, XEvent *event_ret)
 
 	n = evq_head;
 	if (!n)
-		return False;
+		return false;
 
 	evq_head = n->next;
 	if (!evq_head)
 		evq_tail = NULL;
 
-	*event_ret = n->ev;
+	*event_ret = n->xe;
 	wfree(n);
-	return True;
+	return true;
 }
 
-/* copy the head event without removing it, all three callers in the
- * tree (motion compression in wevent.c, dragsource.c, wcolorpanel.c)
- * peek inside a while-WXEvqPending loop so the queue is known
- * non-empty, the Bool return keeps that contract explicit instead of
- * mirroring XPeekEvent's blocking semantics */
-Bool WXEvqPeek(Display *dpy, XEvent *event_ret)
+/* lend the head event without removing it, the pointer stays owned by
+ * the queue and is valid until the next queue mutation, all three
+ * callers in the tree (motion compression in wevent.c, dragsource.c,
+ * wcolorpanel.c) peek inside a while-WXEvqPending loop so the queue is
+ * known non-empty, the Bool return keeps that contract explicit
+ * instead of mirroring XPeekEvent's blocking semantics */
+bool WXEvqPeek(xcb_connection_t *dpy, xcb_generic_event_t **event_ret)
 {
 	drain(dpy);
 
 	if (!evq_head)
-		return False;
+		return false;
 
-	*event_ret = evq_head->ev;
-	return True;
+	*event_ret = evq_head->xe;
+	return true;
 }
 
 /* push *event onto the head of the queue so the next WXEvqNext or
  * matching take returns it first, no drain since this is a pure local
- * insert and the caller has just pulled the event it is putting back */
-void WXEvqPutBack(const XEvent *event)
+ * insert and the caller has just pulled the event it is putting back,
+ * ownership of the malloc'd buffer moves to the queue */
+void WXEvqPutBack(xcb_generic_event_t *event)
 {
 	WXEvqNode *n = allocNode();
 
-	n->ev = *event;
+	n->xe = event;
 	n->next = evq_head;
 	evq_head = n;
 	if (!evq_tail)
 		evq_tail = n;
 }
 
-static Bool takeMatching(WXEvqNode **pp, XEvent *event_ret)
+static bool takeMatching(WXEvqNode **pp, xcb_generic_event_t **event_ret)
 {
 	WXEvqNode *n = *pp;
 
@@ -288,50 +323,54 @@ static Bool takeMatching(WXEvqNode **pp, XEvent *event_ret)
 			t = t->next;
 		evq_tail = t;
 	}
-	*event_ret = n->ev;
+	*event_ret = n->xe;
 	wfree(n);
-	return True;
+	return true;
 }
 
 /* unlink and return the first queued event whose type maps to a bit in
  * mask, restricted to window when window!=None, leaving every other
  * event in arrival order, this is XCheckMaskEvent (window==None) and
- * XCheckWindowEvent (window set) on the internal queue */
-Bool WXEvqTakeMask(Display *dpy, long mask, Window window, XEvent *event_ret)
+ * XCheckWindowEvent (window set) on the internal queue, the taken
+ * event becomes the caller's responsibility */
+bool WXEvqTakeMask(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window,
+                   xcb_generic_event_t **event_ret)
 {
 	WXEvqNode **pp;
 
 	drain(dpy);
 
 	for (pp = &evq_head; *pp; pp = &(*pp)->next) {
-		XEvent *e = &(*pp)->ev;
-		if ((W_MaskForEventType(e->type) & mask) == 0)
+		xcb_generic_event_t *e = (*pp)->xe;
+		if ((W_MaskForEventType(e->response_type & 0x7f) & mask) == 0)
 			continue;
-		if (window != None && e->xany.window != window)
+		if (window != XCB_NONE && W_EventWindow(e) != window)
 			continue;
 		return takeMatching(pp, event_ret);
 	}
-	return False;
+	return false;
 }
 
 /* unlink and return the first queued event of the given type,
  * restricted to window when window!=None, this is XCheckTypedEvent
- * (window==None) and XCheckTypedWindowEvent (window set) */
-Bool WXEvqTakeTyped(Display *dpy, int type, Window window, XEvent *event_ret)
+ * (window==None) and XCheckTypedWindowEvent (window set), the taken
+ * event becomes the caller's responsibility */
+bool WXEvqTakeTyped(xcb_connection_t *dpy, int type, xcb_window_t window,
+                    xcb_generic_event_t **event_ret)
 {
 	WXEvqNode **pp;
 
 	drain(dpy);
 
 	for (pp = &evq_head; *pp; pp = &(*pp)->next) {
-		XEvent *e = &(*pp)->ev;
-		if (e->type != type)
+		xcb_generic_event_t *e = (*pp)->xe;
+		if ((e->response_type & 0x7f) != type)
 			continue;
-		if (window != None && e->xany.window != window)
+		if (window != XCB_NONE && W_EventWindow(e) != window)
 			continue;
 		return takeMatching(pp, event_ret);
 	}
-	return False;
+	return false;
 }
 
 /* drop every queued event whose type maps to a bit in mask and whose
@@ -340,7 +379,7 @@ Bool WXEvqTakeTyped(Display *dpy, int type, Window window, XEvent *event_ret)
  * begin = NextRequest(dpy) before the map/unmap burst and end after,
  * then call this once instead of looping XCheckTypedEvent and risking
  * a swallow of a legitimate crossing that arrived in the same read */
-int WXEvqDropRange(Display *dpy, unsigned long begin, unsigned long end, long mask)
+int WXEvqDropRange(xcb_connection_t *dpy, unsigned long begin, unsigned long end, uint32_t mask)
 {
 	WXEvqNode **pp = &evq_head;
 	WXEvqNode *last = NULL;
@@ -350,9 +389,11 @@ int WXEvqDropRange(Display *dpy, unsigned long begin, unsigned long end, long ma
 
 	while (*pp) {
 		WXEvqNode *n = *pp;
-		if (n->ev.xany.serial >= begin && n->ev.xany.serial < end &&
-		    (W_MaskForEventType(n->ev.type) & mask)) {
+		unsigned long serial = n->xe->full_sequence;
+		if (serial >= begin && serial < end &&
+		    (W_MaskForEventType(n->xe->response_type & 0x7f) & mask)) {
 			*pp = n->next;
+			free(n->xe);
 			wfree(n);
 			dropped++;
 		} else {
@@ -370,6 +411,7 @@ void WXEvqClear(void)
 
 	while ((n = evq_head) != NULL) {
 		evq_head = n->next;
+		free(n->xe);
 		wfree(n);
 	}
 	evq_tail = NULL;

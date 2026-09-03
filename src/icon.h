@@ -36,7 +36,7 @@ typedef struct WIcon {
 	WWindow 	*owner;		/* owner window */
 	char 		*icon_name;	/* the icon name hint */
 
-	Window 		icon_win;	/* client suplied icon window */
+	xcb_window_t 		icon_win;	/* client supplied icon window */
 
 	char		*file;		/* the file with the icon image */
 	RImage 		*file_image;	/* the image from the file */
@@ -49,8 +49,8 @@ typedef struct WIcon {
 	unsigned int 	mapped:1;
 	unsigned int	highlighted:1;
 
-	Pixmap 		pixmap;
-	Pixmap		mini_preview;
+	xcb_pixmap_t 		pixmap;
+	xcb_pixmap_t		mini_preview;
 
 	WMHandlerID	handlerID;	/* timer handler ID for cycling select
 					 * color */
@@ -80,7 +80,7 @@ char *get_name_for_instance_class(const char *wm_instance, const char *wm_class)
 const char *wGetIconCacheDir(void);
 
 void wIconResumeBlink(WScreen *scr);
-void wIconSetHighlited(WIcon *icon, Bool flag);
+void wIconSetHighlited(WIcon *icon, bool flag);
 void set_icon_image_from_image(WIcon *icon, RImage *image);
 void set_icon_minipreview(WIcon *icon, RImage *image);
 

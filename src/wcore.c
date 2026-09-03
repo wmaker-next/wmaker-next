@@ -19,8 +19,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,40 +34,42 @@
  * Returns:
  * 	The created window.
  *--------------------------------------------------------------------- */
-WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width, int height, int bwidth, int depth, Visual *visual, Colormap colormap, WMPixel border_pixel)
+WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width, int height, int bwidth, int depth, xcb_visualtype_t *visual, xcb_colormap_t colormap, WMPixel border_pixel)
 {
 	WCoreWindow *core;
-	int vmask;
-	XSetWindowAttributes attribs;
+	uint32_t vals[6];
+	uint32_t xvmask;
+	int nv;
 
 	core = wmalloc(sizeof(WCoreWindow));
 
-	vmask = CWBorderPixel | CWCursor | CWEventMask | CWOverrideRedirect | CWColormap;
-	attribs.override_redirect = True;
-	attribs.cursor = wPreferences.cursor[WCUR_NORMAL];
-	attribs.background_pixmap = None;
-	attribs.background_pixel = screen->black_pixel;
-	attribs.border_pixel = border_pixel;
-	attribs.event_mask = SubstructureRedirectMask | ButtonPressMask |
-			     ButtonReleaseMask | ButtonMotionMask |
-			     ExposureMask | EnterWindowMask | LeaveWindowMask;
-
-	attribs.colormap = colormap;
-
+	xvmask = XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK
+	       | XCB_CW_COLORMAP | XCB_CW_CURSOR;
+	nv = 0;
+	vals[nv++] = border_pixel;
+	vals[nv++] = true;
 	if (w_global.config->use_saveunders) {
-		vmask |= CWSaveUnder;
-		attribs.save_under = True;
+		xvmask |= XCB_CW_SAVE_UNDER;
+		vals[nv++] = true;
 	}
+	vals[nv++] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_BUTTON_PRESS |
+		     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_MOTION |
+		     XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW;
+	vals[nv++] = colormap;
+	vals[nv++] = wPreferences.cursor[WCUR_NORMAL];
 
-	core->window = XCreateWindow(dpy, screen->root_win, x, y, width, height,
-				     bwidth, depth, CopyFromParent, visual, vmask, &attribs);
+	core->window = xcb_generate_id(xconn);
+	xcb_create_window(xconn, depth, core->window, screen->root_win, x, y, width, height,
+			  bwidth, XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+			  visual ? visual->visual_id : XCB_COPY_FROM_PARENT,
+			  xvmask, vals);
 	core->width = width;
 	core->height = height;
 	core->screen_ptr = screen;
 	core->descriptor.self = core;
 
-	XClearWindow(dpy, core->window);
-	XSaveContext(dpy, core->window, w_global.context.client_win, (XPointer) & core->descriptor);
+	xcb_clear_area(xconn, 0, core->window, 0, 0, 0, 0);
+	WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) core->window, &core->descriptor);
 	WMScreenNoteDrawableSize(screen->wmscreen, core->window, width, height);
 
 	return core;
@@ -92,27 +92,26 @@ WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width, int h
 WCoreWindow *wCoreCreate(WCoreWindow *parent, int x, int y, int width, int height)
 {
 	WCoreWindow *core;
-	int vmask;
-	XSetWindowAttributes attribs;
 
 	core = wmalloc(sizeof(WCoreWindow));
 
-	vmask = CWBorderPixel | CWCursor | CWEventMask | CWColormap;
-	attribs.cursor = wPreferences.cursor[WCUR_NORMAL];
-	attribs.background_pixmap = None;
-	attribs.background_pixel = parent->screen_ptr->black_pixel;
-	attribs.event_mask = WCORE_CHILD_EVENT_MASK;
-	attribs.colormap = parent->screen_ptr->w_colormap;
-	core->window = XCreateWindow(dpy, parent->window, x, y, width, height, 0,
-			  parent->screen_ptr->w_depth, CopyFromParent,
-			  parent->screen_ptr->w_visual, vmask, &attribs);
+	core->window = xcb_generate_id(xconn);
+	xcb_create_window(xconn, parent->screen_ptr->w_depth, core->window, parent->window,
+			  x, y, width, height, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+			  parent->screen_ptr->w_visual->visual_id,
+			  XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP | XCB_CW_CURSOR,
+			  (const uint32_t[]){ parent->screen_ptr->black_pixel,
+					      WCORE_CHILD_EVENT_MASK,
+					      parent->screen_ptr->w_colormap,
+					      wPreferences.cursor[WCUR_NORMAL] });
 
 	core->width = width;
 	core->height = height;
 	core->screen_ptr = parent->screen_ptr;
 	core->descriptor.self = core;
 
-	XSaveContext(dpy, core->window, w_global.context.client_win, (XPointer) & core->descriptor);
+	WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) core->window, &core->descriptor);
 	WMScreenNoteDrawableSize(core->screen_ptr->wmscreen, core->window, width, height);
 	return core;
 }
@@ -128,17 +127,17 @@ void wCoreDestroy(WCoreWindow * core)
 	if (core->screen_ptr && core->screen_ptr->wmscreen)
 		WMScreenAbandonDrawable(core->screen_ptr->wmscreen, core->window);
 
-	XDeleteContext(dpy, core->window, w_global.context.client_win);
-	XDestroyWindow(dpy, core->window);
+	WMHashRemove(w_global.context.client_win, (void *)(uintptr_t) core->window);
+	xcb_destroy_window(xconn, core->window);
 	wfree(core);
 }
 
 void wCoreConfigure(WCoreWindow * core, int req_x, int req_y, int req_w, int req_h)
 {
-	XWindowChanges xwc;
+	WXWindowChanges xwc;
 	unsigned int mask;
 
-	mask = CWX | CWY;
+	mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
 	xwc.x = req_x;
 	xwc.y = req_y;
 
@@ -149,7 +148,7 @@ void wCoreConfigure(WCoreWindow * core, int req_x, int req_y, int req_w, int req
 		req_h = core->height;
 
 	if (req_w != core->width || req_h != core->height) {
-		mask |= CWWidth | CWHeight;
+		mask |= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
 		xwc.width = req_w;
 		xwc.height = req_h;
 		core->width = req_w;
@@ -157,5 +156,5 @@ void wCoreConfigure(WCoreWindow * core, int req_x, int req_y, int req_w, int req
 		WMScreenNoteDrawableSize(core->screen_ptr->wmscreen, core->window,
 					 req_w, req_h);
 	}
-	XConfigureWindow(dpy, core->window, mask, &xwc);
+	wXConfigureWindow(xconn, core->window, mask, &xwc);
 }

@@ -2,6 +2,7 @@
  *  WindowMaker miscellaneous functions
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
+ *  Copyright (c) 2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,10 +18,6 @@
  *  along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <X11/Xlib.h>
-#include <stdlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -29,9 +26,6 @@
 #include "xutil.h"
 
 #include <WINGs/WUtil.h>
-#if 0
-static Atom Clipboard = 0;
-#endif
 
 static const char *requestCodes[] = {
 	"DUMMY",
@@ -157,14 +151,42 @@ static const char *requestCodes[] = {
 	"X_NoOperation"
 };
 
-void FormatXError(Display *dpy, unsigned int error_code, unsigned int major,
+/* the core error descriptions, the XErrorDB stand-in for XGetErrorText()
+ * which needed a Display; extension errors beyond the core set have no
+ * static table and print by number */
+static const char *const coreErrorNames[] = {
+	"BadRequest (invalid request code or no such operation)",
+	"BadValue (integer parameter out of range for operation)",
+	"BadWindow (invalid Window parameter)",
+	"BadPixmap (invalid Pixmap parameter)",
+	"BadAtom (invalid Atom parameter)",
+	"BadCursor (invalid Cursor parameter)",
+	"BadFont (invalid Font parameter)",
+	"BadMatch (invalid parameter attributes)",
+	"BadDrawable (invalid Pixmap or Window parameter)",
+	"BadAccess (attempt to use private resource invalid)",
+	"BadAlloc (insufficient resources for operation)",
+	"BadColor (invalid Colormap parameter)",
+	"BadGC (invalid GContext parameter)",
+	"BadIDChoice (invalid resource ID chosen for this connection)",
+	"BadName (invalid or unknown Font or Color name)",
+	"BadLength (request too long or internal length error)",
+	"BadImplementation (server does not implement operation)"
+};
+
+void FormatXError(unsigned int error_code, unsigned int major,
 		  unsigned int minor, unsigned long resource_id,
 		  unsigned long serial, char *buffer, int size)
 {
 	int i, p;
 
-	XGetErrorText(dpy, error_code, buffer, size);
-	i = strlen(buffer);
+	if (error_code >= 1 && error_code <= wlengthof(coreErrorNames))
+		p = snprintf(buffer, size, "%s", coreErrorNames[error_code - 1]);
+	else
+		p = snprintf(buffer, size, "error code %u", error_code);
+	if (p < 0)
+		return;
+	i = p;
 	if (i > size - 100)
 		return;
 	buffer += i;

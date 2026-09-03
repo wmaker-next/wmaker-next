@@ -249,12 +249,12 @@ enum {
 
 typedef struct WShortKey {
     unsigned int modifier;   /* leader (or only) key modifier - always valid */
-    KeyCode keycode;    /* leader (or only) key code - always valid */
+    xcb_keycode_t keycode;    /* leader (or only) key code - always valid */
 
 	/* Key-chain support */
     int chain_length;
     unsigned int *chain_modifiers;   /* heap-allocated, NULL for single keys */
-    KeyCode *chain_keycodes;    /* heap-allocated, NULL for single keys */
+    xcb_keycode_t *chain_keycodes;    /* heap-allocated, NULL for single keys */
 } WShortKey;
 
 /* ---[ Global Variables ]------------------------------------------------ */

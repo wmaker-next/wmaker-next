@@ -2,7 +2,6 @@
 #include "WINGsP.h"
 #include "wconfig.h"
 
-#include <X11/Xlocale.h>
 
 _WINGsConfiguration WINGsConfiguration;
 
@@ -17,15 +16,15 @@ static unsigned getButtonWithName(const char *name, unsigned defaultButton)
 	if (strncmp(name, "Button", 6) == 0 && strlen(name) == 7) {
 		switch (name[6]) {
 		case '1':
-			return Button1;
+			return XCB_BUTTON_INDEX_1;
 		case '2':
-			return Button2;
+			return XCB_BUTTON_INDEX_2;
 		case '3':
-			return Button3;
+			return XCB_BUTTON_INDEX_3;
 		case '4':
-			return Button4;
+			return XCB_BUTTON_INDEX_4;
 		case '5':
-			return Button5;
+			return XCB_BUTTON_INDEX_5;
 		default:
 			break;
 		}
@@ -37,7 +36,7 @@ static unsigned getButtonWithName(const char *name, unsigned defaultButton)
 void W_ReadConfigurations(void)
 {
 	WMUserDefaults *defaults;
-	Bool aaIsSet = False;
+	bool aaIsSet = false;
 
 	memset(&WINGsConfiguration, 0, sizeof(_WINGsConfiguration));
 
@@ -56,7 +55,7 @@ void W_ReadConfigurations(void)
 
 		val = WMGetUDObjectForKey(defaults, "AntialiasedText");
 		if (val && WMIsPLString(val) && WMGetFromPLString(val)) {
-			aaIsSet = True;
+			aaIsSet = true;
 			WINGsConfiguration.antialiasedText =
 				WMGetUDBoolForKey(defaults, "AntialiasedText");
 		}
@@ -68,23 +67,23 @@ void W_ReadConfigurations(void)
 
 		buttonName = WMGetUDStringForKey(defaults, "MouseWheelUp");
 		if (buttonName) {
-			button = getButtonWithName(buttonName, Button4);
+			button = getButtonWithName(buttonName, XCB_BUTTON_INDEX_4);
 		} else {
-			button = Button4;
+			button = XCB_BUTTON_INDEX_4;
 		}
 		WINGsConfiguration.mouseWheelUp = button;
 
 		buttonName = WMGetUDStringForKey(defaults, "MouseWheelDown");
 		if (buttonName) {
-			button = getButtonWithName(buttonName, Button5);
+			button = getButtonWithName(buttonName, XCB_BUTTON_INDEX_5);
 		} else {
-			button = Button5;
+			button = XCB_BUTTON_INDEX_5;
 		}
 		WINGsConfiguration.mouseWheelDown = button;
 
 		if (WINGsConfiguration.mouseWheelDown == WINGsConfiguration.mouseWheelUp) {
-			WINGsConfiguration.mouseWheelUp = Button4;
-			WINGsConfiguration.mouseWheelDown = Button5;
+			WINGsConfiguration.mouseWheelUp = XCB_BUTTON_INDEX_4;
+			WINGsConfiguration.mouseWheelDown = XCB_BUTTON_INDEX_5;
 		}
 
 		WINGsConfiguration.defaultFontSize = WMGetUDIntegerForKey(defaults, "DefaultFontSize");
@@ -100,7 +99,7 @@ void W_ReadConfigurations(void)
 		WINGsConfiguration.defaultFontSize = DEFAULT_FONT_SIZE;
 	}
 	if (!aaIsSet) {
-		WINGsConfiguration.antialiasedText = True;
+		WINGsConfiguration.antialiasedText = true;
 	}
 	if (!WINGsConfiguration.floppyPath) {
 		WINGsConfiguration.floppyPath = wstrdup(FLOPPY_PATH);
@@ -109,10 +108,10 @@ void W_ReadConfigurations(void)
 		WINGsConfiguration.doubleClickDelay = 250;
 	}
 	if (WINGsConfiguration.mouseWheelUp == 0) {
-		WINGsConfiguration.mouseWheelUp = Button4;
+		WINGsConfiguration.mouseWheelUp = XCB_BUTTON_INDEX_4;
 	}
 	if (WINGsConfiguration.mouseWheelDown == 0) {
-		WINGsConfiguration.mouseWheelDown = Button5;
+		WINGsConfiguration.mouseWheelDown = XCB_BUTTON_INDEX_5;
 	}
 
 }
@@ -132,7 +131,7 @@ void W_setconf_doubleClickDelay(int value)
 	WINGsConfiguration.doubleClickDelay = value;
 }
 
-Bool WMGetAntialiasedText(void)
+bool WMGetAntialiasedText(void)
 {
 	return WINGsConfiguration.antialiasedText;
 }

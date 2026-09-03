@@ -63,7 +63,7 @@ void wLayoutRestore(struct _WScreen *scr, int workspace);
 
 /* Mark the window opted-out and, when opting back in, drop maximized state
  * so it re-enters the layout cleanly. Calls wLayoutApply(). */
-void wLayoutSetWindowTiled(struct WWindow *wwin, Bool tiled);
+void wLayoutSetWindowTiled(struct WWindow *wwin, bool tiled);
 
 /* Change the workspace layout, restoring old geometries when going to
  * WLAYOUT_FLOAT and re-applying otherwise. */

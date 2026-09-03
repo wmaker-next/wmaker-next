@@ -58,8 +58,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -176,7 +174,7 @@ static unsigned getHex(WMPropList * value)
 static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 {
 	WScreen *scr = wwin->screen_ptr;
-	Window win;
+	xcb_window_t win;
 	int i;
 	unsigned mask;
 	char *class, *instance, *command = NULL, buffer[512];
@@ -187,7 +185,7 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 	WMPropList *dock, *shortcut;
 	WMPropList *mark_key_pl = NULL;
 
-	if (wwin->orig_main_window != None && wwin->orig_main_window != wwin->client_win)
+	if (wwin->orig_main_window != XCB_NONE && wwin->orig_main_window != wwin->client_win)
 		win = wwin->orig_main_window;
 	else
 		win = wwin->client_win;
@@ -383,10 +381,10 @@ void wSessionSaveState(WScreen * scr)
 
 	while (wwin) {
 		WApplication *wapp = wApplicationOf(wwin->main_window);
-		Window appId = wwin->orig_main_window;
+		xcb_window_t appId = wwin->orig_main_window;
 
-		if ((wwin->transient_for == None || wwin->transient_for == wwin->screen_ptr->root_win)
-		    && (WMGetFirstInArray(wapp_list, (void *)appId) == WANotFound
+		if ((wwin->transient_for == XCB_NONE || wwin->transient_for == wwin->screen_ptr->root_win)
+		    && (WMGetFirstInArray(wapp_list, (void *)(uintptr_t) appId) == WANotFound
 			|| WFLAGP(wwin, shared_appicon))
 		    && !WFLAGP(wwin, dont_save_session)) {
 			/* A entry for this application was not yet saved. Save one. */
@@ -399,7 +397,7 @@ void wSessionSaveState(WScreen * scr)
 				 * application list, so no multiple entries for the same
 				 * application are saved.
 				 */
-				WMAddToArray(wapp_list, (void *)appId);
+				WMAddToArray(wapp_list, (void *)(uintptr_t) appId);
 			}
 		}
 		wwin = wwin->prev;
@@ -445,7 +443,7 @@ static WWindow *findManagedWindow(WScreen *scr, const char *instance,
 
 	while (wwin) {
 		if (!wwin->flags.internal_window &&
-		    (wwin->transient_for == None ||
+		    (wwin->transient_for == XCB_NONE ||
 		     wwin->transient_for == wwin->screen_ptr->root_win) &&
 		    WMStrEqual(instance, wwin->wm_instance) &&
 		    WMStrEqual(class, wwin->wm_class) &&
@@ -639,7 +637,7 @@ void wSessionRestoreState(WScreen *scr)
 	if (!scr->session_state)
 		return;
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	apps = WMGetFromPLDictionary(scr->session_state, sApplications);
 	if (!apps)
@@ -740,7 +738,7 @@ void wSessionRestoreState(WScreen *scr)
 			wfree(class);
 	}
 	/* clean up */
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 }
 
 void wSessionRestoreLastWorkspace(WScreen * scr)
@@ -754,7 +752,7 @@ void wSessionRestoreLastWorkspace(WScreen * scr)
 	if (!scr->session_state)
 		return;
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	wks = WMGetFromPLDictionary(scr->session_state, sWorkspace);
 	if (!wks || !WMIsPLString(wks))
@@ -766,7 +764,7 @@ void wSessionRestoreLastWorkspace(WScreen * scr)
 		return;
 
 	/* clean up */
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	/* Get the workspace number for the workspace name */
 	w = wGetWorkspaceNumber(scr, value);
@@ -791,7 +789,7 @@ void wSessionQueueSavedState(WScreen *scr)
 	if (!scr->session_state)
 		return;
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	apps = WMGetFromPLDictionary(scr->session_state, sApplications);
 	if (!apps)
@@ -832,7 +830,7 @@ next:
 	}
 
 cleanup:
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 }
 
 /* Remove unmatched (pid=0) saved states queued by wSessionQueueSavedState

@@ -74,22 +74,22 @@ void wDockRaise(WDock *dock);
 void wDockRaiseLower(WDock *dock);
 void wDockSaveState(WScreen *scr, WMPropList *old_state);
 
-Bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, Bool update_icon);
-Bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y,
+bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon);
+bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y,
                    int *ret_x, int *ret_y, int redocking);
-Bool wDockFindFreeSlot(WDock *dock, int *req_x, int *req_y);
+bool wDockFindFreeSlot(WDock *dock, int *req_x, int *req_y);
 void wDockDetach(WDock *dock, WAppIcon *icon);
-Bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, int y);
+bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, int y);
 void wDockReattachIcon(WDock *dock, WAppIcon *icon, int x, int y);
 
 void wSlideAppicons(WAppIcon **appicons, int n, int to_the_left);
-void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, Bool redocking);
+void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking);
 
 void wDockFinishLaunch(WAppIcon *icon);
-void wDockTrackWindowLaunch(WDock *dock, Window window, const char *wm_instance,
+void wDockTrackWindowLaunch(WDock *dock, xcb_window_t window, const char *wm_instance,
 			    const char *wm_class, const char *command,
 			    pid_t client_pid);
-WAppIcon *wDockFindIconForWindow(WDock *dock, Window window);
+WAppIcon *wDockFindIconForWindow(WDock *dock, xcb_window_t window);
 void wDockDoAutoLaunch(WDock *dock, int workspace);
 void wDockLaunchWithState(WAppIcon *btn, WSavedState *state);
 void wDockSwap(WDock *dock);
@@ -97,7 +97,7 @@ void wDockApplyIconSize(WScreen *scr);
 void wClipSnapToHead(WDock *clip);
 
 #ifdef USE_DOCK_XDND
-int wDockReceiveDNDDrop(WScreen *scr, XEvent *event);
+int wDockReceiveDNDDrop(WScreen *scr, xcb_generic_event_t *event);
 #endif
 
 void wClipIconPaint(WAppIcon *aicon);

@@ -1,5 +1,6 @@
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <cairo.h>
 #include <WINGs/WINGsP.h>
@@ -44,7 +45,7 @@ typedef struct {
 typedef struct {
 	WMButton *widget;
 	WMTableView *table;
-	Bool state;
+	bool state;
 	WMColor *back;
 	WMColor *selBack;
 } BooleanSwitchData;
@@ -54,8 +55,8 @@ static char *SelectionColor = "#bbbbcc";
 /* one cell interior inset by one pixel from the grid line, filled in
  * the row-state background then clipped so text or the pixmap glyph
  * cannot overrun into the neighbouring cell */
-static cairo_t *cellBegin(WMScreen *scr, Drawable d, WMColor *back,
-			  WMColor *selBack, WMRect rect, Bool selected)
+static cairo_t *cellBegin(WMScreen *scr, xcb_drawable_t d, WMColor *back,
+			  WMColor *selBack, WMRect rect, bool selected)
 {
 	cairo_t *cr;
 
@@ -71,8 +72,8 @@ static cairo_t *cellBegin(WMScreen *scr, Drawable d, WMColor *back,
 }
 
 static void
-stringDraw(WMScreen * scr, Drawable d, WMColor *back, WMColor *selBack,
-	   WMColor *textColor, WMFont *font, void *data, WMRect rect, Bool selected)
+stringDraw(WMScreen * scr, xcb_drawable_t d, WMColor *back, WMColor *selBack,
+	   WMColor *textColor, WMFont *font, void *data, WMRect rect, bool selected)
 {
 	cairo_t *cr;
 	int x, y;
@@ -87,8 +88,8 @@ stringDraw(WMScreen * scr, Drawable d, WMColor *back, WMColor *selBack,
 	WCairoEnd(cr);
 }
 
-static void pixmapDraw(WMScreen *scr, Drawable d, WMColor *back, WMColor *selBack,
-		       WMPixmap *pixmap, WMRect rect, Bool selected)
+static void pixmapDraw(WMScreen *scr, xcb_drawable_t d, WMColor *back, WMColor *selBack,
+		       WMPixmap *pixmap, WMRect rect, bool selected)
 {
 	cairo_t *cr;
 	WMSize size;
@@ -108,24 +109,24 @@ static void pixmapDraw(WMScreen *scr, Drawable d, WMColor *back, WMColor *selBac
 
 /* ---------------------------------------------------------------------- */
 
-static void SECellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void SECellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringEditorData *strdata = (StringEditorData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), False);
+		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), false);
 }
 
-static void selectedSECellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedSECellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringEditorData *strdata = (StringEditorData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), True);
+		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), true);
 }
 
 static void beginSECellEdit(WMTableColumnDelegate * self, WMTableColumn * column, int row)
@@ -163,7 +164,7 @@ WMTableColumnDelegate *WTCreateStringEditorDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -177,7 +178,7 @@ WMTableColumnDelegate *WTCreateStringEditorDelegate(WMTableView * parent)
 
 /* ---------------------------------------------------------------------- */
 
-static void ESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void ESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	EnumSelectorData *strdata = (EnumSelectorData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -185,10 +186,10 @@ static void ESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, 
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   strdata->options[i], WMTableViewRectForCell(table, column, row), False);
+		   strdata->options[i], WMTableViewRectForCell(table, column, row), false);
 }
 
-static void selectedESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedESCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	EnumSelectorData *strdata = (EnumSelectorData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -196,7 +197,7 @@ static void selectedESCellPainter(WMTableColumnDelegate * self, WMTableColumn * 
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   strdata->options[i], WMTableViewRectForCell(table, column, row), True);
+		   strdata->options[i], WMTableViewRectForCell(table, column, row), true);
 }
 
 static void beginESCellEdit(WMTableColumnDelegate * self, WMTableColumn * column, int row)
@@ -237,7 +238,7 @@ WMTableColumnDelegate *WTCreateEnumSelectorDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
 	data->textColor = WMBlackColor(scr);
 	data->count = 0;
 	data->options = NULL;
@@ -270,7 +271,7 @@ void WTSetEnumSelectorOptions(WMTableColumnDelegate * delegate, char **options, 
 
 /* ---------------------------------------------------------------------- */
 
-static void BSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void BSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	BooleanSwitchData *strdata = (BooleanSwitchData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -280,14 +281,14 @@ static void BSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, 
 	if (i) {
 		pixmapDraw(scr, d,
 			   strdata->back, strdata->selBack, WMGetSystemPixmap(scr, WSICheckMark),
-			   WMTableViewRectForCell(table, column, row), False);
+			   WMTableViewRectForCell(table, column, row), false);
 	} else {
 		pixmapDraw(scr, d,
-			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), False);
+			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), false);
 	}
 }
 
-static void selectedBSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedBSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	BooleanSwitchData *strdata = (BooleanSwitchData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -297,10 +298,10 @@ static void selectedBSCellPainter(WMTableColumnDelegate * self, WMTableColumn * 
 	if (i) {
 		pixmapDraw(scr, d,
 			   strdata->back, strdata->selBack, WMGetSystemPixmap(scr, WSICheckMark),
-			   WMTableViewRectForCell(table, column, row), True);
+			   WMTableViewRectForCell(table, column, row), true);
 	} else {
 		pixmapDraw(scr, d,
-			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), True);
+			   strdata->back, strdata->selBack, NULL, WMTableViewRectForCell(table, column, row), true);
 	}
 }
 
@@ -342,7 +343,7 @@ WMTableColumnDelegate *WTCreateBooleanSwitchDelegate(WMTableView * parent)
 	WMSetButtonAltImage(data->widget, WMGetSystemPixmap(scr, WSICheckMark));
 
 	data->table = parent;
-	color = WMCreateNamedColor(scr, SelectionColor, False);
+	color = WMCreateNamedColor(scr, SelectionColor, false);
 	WMSetWidgetBackgroundColor(data->widget, color);
 	data->back = WMWhiteColor(scr);
 	data->selBack = color;
@@ -358,24 +359,24 @@ WMTableColumnDelegate *WTCreateBooleanSwitchDelegate(WMTableView * parent)
 
 /* ---------------------------------------------------------------------- */
 
-static void SCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void SCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringData *strdata = (StringData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), False);
+		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), false);
 }
 
-static void selectedSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringData *strdata = (StringData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
 
 	stringDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack, strdata->textColor, strdata->font,
-		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), True);
+		   WMTableViewDataForCell(table, column, row), WMTableViewRectForCell(table, column, row), true);
 }
 
 WMTableColumnDelegate *WTCreateStringDelegate(WMTableView * parent)
@@ -387,7 +388,7 @@ WMTableColumnDelegate *WTCreateStringDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -401,7 +402,7 @@ WMTableColumnDelegate *WTCreateStringDelegate(WMTableView * parent)
 
 /* ---------------------------------------------------------------------- */
 
-static void PCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void PCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringData *strdata = (StringData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -409,10 +410,10 @@ static void PCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, i
 	pixmapDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack,
 		   (WMPixmap *) WMTableViewDataForCell(table, column, row),
-		   WMTableViewRectForCell(table, column, row), False);
+		   WMTableViewRectForCell(table, column, row), false);
 }
 
-static void selectedPCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedPCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
 	StringData *strdata = (StringData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -420,7 +421,7 @@ static void selectedPCellPainter(WMTableColumnDelegate * self, WMTableColumn * c
 	pixmapDraw(WMWidgetScreen(table), d,
 		   strdata->back, strdata->selBack,
 		   (WMPixmap *) WMTableViewDataForCell(table, column, row),
-		   WMTableViewRectForCell(table, column, row), True);
+		   WMTableViewRectForCell(table, column, row), true);
 }
 
 WMTableColumnDelegate *WTCreatePixmapDelegate(WMTableView * table)
@@ -431,7 +432,7 @@ WMTableColumnDelegate *WTCreatePixmapDelegate(WMTableView * table)
 
 	data->table = table;
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
 
 	delegate->data = data;
 	delegate->drawCell = PCellPainter;
@@ -444,7 +445,7 @@ WMTableColumnDelegate *WTCreatePixmapDelegate(WMTableView * table)
 
 /* ---------------------------------------------------------------------- */
 
-static void drawPSCell(WMTableColumnDelegate * self, Drawable d, WMTableColumn * column, int row, Bool selected)
+static void drawPSCell(WMTableColumnDelegate * self, xcb_drawable_t d, WMTableColumn * column, int row, bool selected)
 {
 	StringData *strdata = (StringData *) self->data;
 	WMTableView *table = WMGetTableColumnTableView(column);
@@ -479,14 +480,14 @@ static void drawPSCell(WMTableColumnDelegate * self, Drawable d, WMTableColumn *
 		   strdata->textColor, strdata->font, str, rect, selected);
 }
 
-static void PSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void PSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
-	drawPSCell(self, d, column, row, False);
+	drawPSCell(self, d, column, row, false);
 }
 
-static void selectedPSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, Drawable d)
+static void selectedPSCellPainter(WMTableColumnDelegate * self, WMTableColumn * column, int row, xcb_drawable_t d)
 {
-	drawPSCell(self, d, column, row, True);
+	drawPSCell(self, d, column, row, true);
 }
 
 WMTableColumnDelegate *WTCreatePixmapStringDelegate(WMTableView * parent)
@@ -498,7 +499,7 @@ WMTableColumnDelegate *WTCreatePixmapStringDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, False);
+	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;

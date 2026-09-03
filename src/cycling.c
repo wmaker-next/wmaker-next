@@ -3,6 +3,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 2000-2003 Alfredo K. Kojima
+ *  Copyright (c) 2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,9 +25,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "WindowMaker.h"
 #include "GNUstep.h"
@@ -51,34 +50,34 @@
 
 static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 {
-	Window swwin = wSwitchPanelGetWindow(swpanel);
+	xcb_window_t swwin = wSwitchPanelGetWindow(swpanel);
 
 	if (wwin->flags.mapped || wwin->flags.shaded) {
-		if (swwin != None) {
-			Window win[2];
+		if (swwin != XCB_NONE) {
+			xcb_window_t win[2];
 
 			win[0] = swwin;
 			win[1] = wwin->frame->core->window;
 
-			XRestackWindows(dpy, win, 2);
+			wXRestackWindows(xconn, win, 2);
 		} else
-			XRaiseWindow(dpy, wwin->frame->core->window);
+			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 		wHotCornersRaise(wwin->screen_ptr);
 	}
 }
 
 /* base-level letter keysym of a keycode, or NoSymbol */
-static int cycle_letter(KeyCode keycode)
+static int cycle_letter(xcb_keycode_t keycode)
 {
 	xkb_keysym_t ks = wXkbKeycodeToKeysym(keycode, 0);
 
-	if ((ks >= XK_a && ks <= XK_z) || (ks >= XK_A && ks <= XK_Z))
+	if ((ks >= XKB_KEY_a && ks <= XKB_KEY_z) || (ks >= XKB_KEY_A && ks <= XKB_KEY_Z))
 		return (int) ks;
-	return NoSymbol;
+	return XKB_KEY_NoSymbol;
 }
 
 static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
-				       WSwitchPanel *swpanel, WScreen *scr, Bool esc_cancel)
+				       WSwitchPanel *swpanel, WScreen *scr, bool esc_cancel)
 {
 	if (!newFocused)
 		return oldFocused;
@@ -100,42 +99,42 @@ static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
 	return oldFocused;
 }
 
-void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
+void StartWindozeCycle(WWindow *wwin, xcb_generic_event_t *event, bool next, CycleMode mode)
 {
 
 	WShortKey binding, fwd_binding, bwd_binding;
 	WSwitchPanel    *swpanel       = NULL;
-	WScreen         *scr           = wScreenForRootWindow(event->xkey.root);
-	KeyCode         leftKey        = wXkbKeysymToKeycode(XK_Left);
-	KeyCode         rightKey       = wXkbKeysymToKeycode(XK_Right);
-	KeyCode         upKey         = wXkbKeysymToKeycode(XK_Up);
-	KeyCode         downKey       = wXkbKeysymToKeycode(XK_Down);
-	KeyCode         graveKey      = wXkbKeysymToKeycode(XK_grave);
-	KeyCode         homeKey        = wXkbKeysymToKeycode(XK_Home);
-	KeyCode         endKey         = wXkbKeysymToKeycode(XK_End);
-	KeyCode         shiftLKey      = wXkbKeysymToKeycode(XK_Shift_L);
-	KeyCode         shiftRKey      = wXkbKeysymToKeycode(XK_Shift_R);
-	KeyCode         ctrlLKey       = wXkbKeysymToKeycode(XK_Control_L);
-	KeyCode         ctrlRKey       = wXkbKeysymToKeycode(XK_Control_R);
-	KeyCode         altLKey        = wXkbKeysymToKeycode(XK_Alt_L);
-	KeyCode         altRKey        = wXkbKeysymToKeycode(XK_Alt_R);
-	KeyCode         superLKey      = wXkbKeysymToKeycode(XK_Super_L);
-	KeyCode         superRKey      = wXkbKeysymToKeycode(XK_Super_R);
-	KeyCode         metaLKey       = wXkbKeysymToKeycode(XK_Meta_L);
-	KeyCode         metaRKey      = wXkbKeysymToKeycode(XK_Meta_R);
-	KeyCode         hyperLKey      = wXkbKeysymToKeycode(XK_Hyper_L);
-	KeyCode         hyperRKey      = wXkbKeysymToKeycode(XK_Hyper_R);
-	KeyCode         escapeKey      = wXkbKeysymToKeycode(XK_Escape);
-	KeyCode         returnKey      = wXkbKeysymToKeycode(XK_Return);
-	Bool            esc_cancel     = False;
-	Bool            somethingElse  = False;
-	Bool            done           = False;
-	Bool            autoDrilled    = False;
-	Bool            hasModifier;
+	WScreen         *scr           = wScreenForRootWindow(((xcb_key_press_event_t *)event)->root);
+	xcb_keycode_t         leftKey        = wXkbKeysymToKeycode(XKB_KEY_Left);
+	xcb_keycode_t         rightKey       = wXkbKeysymToKeycode(XKB_KEY_Right);
+	xcb_keycode_t         upKey         = wXkbKeysymToKeycode(XKB_KEY_Up);
+	xcb_keycode_t         downKey       = wXkbKeysymToKeycode(XKB_KEY_Down);
+	xcb_keycode_t         graveKey      = wXkbKeysymToKeycode(XKB_KEY_grave);
+	xcb_keycode_t         homeKey        = wXkbKeysymToKeycode(XKB_KEY_Home);
+	xcb_keycode_t         endKey         = wXkbKeysymToKeycode(XKB_KEY_End);
+	xcb_keycode_t         shiftLKey      = wXkbKeysymToKeycode(XKB_KEY_Shift_L);
+	xcb_keycode_t         shiftRKey      = wXkbKeysymToKeycode(XKB_KEY_Shift_R);
+	xcb_keycode_t         ctrlLKey       = wXkbKeysymToKeycode(XKB_KEY_Control_L);
+	xcb_keycode_t         ctrlRKey       = wXkbKeysymToKeycode(XKB_KEY_Control_R);
+	xcb_keycode_t         altLKey        = wXkbKeysymToKeycode(XKB_KEY_Alt_L);
+	xcb_keycode_t         altRKey        = wXkbKeysymToKeycode(XKB_KEY_Alt_R);
+	xcb_keycode_t         superLKey      = wXkbKeysymToKeycode(XKB_KEY_Super_L);
+	xcb_keycode_t         superRKey      = wXkbKeysymToKeycode(XKB_KEY_Super_R);
+	xcb_keycode_t         metaLKey       = wXkbKeysymToKeycode(XKB_KEY_Meta_L);
+	xcb_keycode_t         metaRKey      = wXkbKeysymToKeycode(XKB_KEY_Meta_R);
+	xcb_keycode_t         hyperLKey      = wXkbKeysymToKeycode(XKB_KEY_Hyper_L);
+	xcb_keycode_t         hyperRKey      = wXkbKeysymToKeycode(XKB_KEY_Hyper_R);
+	xcb_keycode_t         escapeKey      = wXkbKeysymToKeycode(XKB_KEY_Escape);
+	xcb_keycode_t         returnKey      = wXkbKeysymToKeycode(XKB_KEY_Return);
+	bool            esc_cancel     = false;
+	bool            somethingElse  = false;
+	bool            done           = false;
+	bool            autoDrilled    = false;
+	bool            hasModifier;
 	int             modifiers;
 	WWindow         *newFocused;
 	WWindow         *oldFocused;
-	XEvent          ev;
+	xcb_generic_event_t *ev = NULL;
 
 
 	if (!wwin)
@@ -159,7 +158,7 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 
 	hasModifier = (binding.modifier != 0);
 	if (hasModifier)
-		XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+		wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	scr->flags.doing_alt_tab = 1;
 
@@ -168,11 +167,11 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 
 	if (swpanel) {
 		if (wwin->flags.mapped && !w_global.config->panel_only_open)
-			newFocused = wSwitchPanelSelectNext(swpanel, !next, True, mode, STRIP_MAIN);
+			newFocused = wSwitchPanelSelectNext(swpanel, !next, true, mode, STRIP_MAIN);
 		else
-			newFocused = wSwitchPanelSelectFirst(swpanel, False, STRIP_MAIN);
+			newFocused = wSwitchPanelSelectFirst(swpanel, false, STRIP_MAIN);
 
-		oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+		oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 	} else {
 		if (wWindowIsVisibleOnAnyHead(wwin))
 			newFocused = wwin;
@@ -181,211 +180,220 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 	}
 
 	while (hasModifier && !done) {
-		long eventMask = KeyPressMask | KeyReleaseMask | ExposureMask
-				 | PointerMotionMask | ButtonReleaseMask | EnterWindowMask;
-		Bool gotEvent;
+		long eventMask = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE
+				 | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW;
+		bool gotEvent;
 
 		if (!swpanel)
 			break;
 
+		free(ev);
+		ev = NULL;
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = wMaskEventTimed(dpy, eventMask, None, &ev, AUTO_DRILL_DELAY);
+			gotEvent = wMaskEventTimed(xconn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = wMaskEventTimed(dpy, eventMask, None, &ev, -1);
+			gotEvent = wMaskEventTimed(xconn, eventMask, XCB_NONE, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {
 				newFocused = wSwitchPanelPreviewDrill(swpanel);
-				autoDrilled = True;
+				autoDrilled = true;
 			}
 			continue;
 		}
 
 		/* mask to the modifier bits the bindings actually use, so stray
 		 * CapsLock/NumLock bits don't break the comparison */
-		modifiers = ev.xkey.state & (fwd_binding.modifier | bwd_binding.modifier | ShiftMask);
+		modifiers = (((xcb_key_press_event_t *)ev)->state) & (fwd_binding.modifier | bwd_binding.modifier | XCB_MOD_MASK_SHIFT);
 
-		switch (ev.type) {
-		case KeyPress:
-			if ((fwd_binding.keycode == ev.xkey.keycode
+		switch ((ev->response_type & 0x7f)) {
+		case XCB_KEY_PRESS:
+			if ((fwd_binding.keycode == (((xcb_key_press_event_t *)ev)->detail)
 			     && fwd_binding.modifier == modifiers)
-			    || (mode != CYCLE_GROUP && ev.xkey.keycode == rightKey)) {
+			    || (mode != CYCLE_GROUP && (((xcb_key_press_event_t *)ev)->detail) == rightKey)) {
 
-				newFocused = wSwitchPanelSelectNext(swpanel, False, ev.xkey.keycode != rightKey, mode, STRIP_MAIN);
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+				newFocused = wSwitchPanelSelectNext(swpanel, false, (((xcb_key_press_event_t *)ev)->detail) != rightKey, mode, STRIP_MAIN);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				if (mode == CYCLE_GROUP && (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel))) {
 					newFocused = wSwitchPanelRefreshSub(swpanel);
-					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				}
-				autoDrilled = False;
+				autoDrilled = false;
 
-			} else if ((bwd_binding.keycode == ev.xkey.keycode
+			} else if ((bwd_binding.keycode == (((xcb_key_press_event_t *)ev)->detail)
 				    && bwd_binding.modifier == modifiers)
-				   || (mode != CYCLE_GROUP && ev.xkey.keycode == leftKey)) {
+				   || (mode != CYCLE_GROUP && (((xcb_key_press_event_t *)ev)->detail) == leftKey)) {
 
-				newFocused = wSwitchPanelSelectNext(swpanel, True, ev.xkey.keycode != leftKey, mode, STRIP_MAIN);
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+				newFocused = wSwitchPanelSelectNext(swpanel, true, (((xcb_key_press_event_t *)ev)->detail) != leftKey, mode, STRIP_MAIN);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				if (mode == CYCLE_GROUP && (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel))) {
 					newFocused = wSwitchPanelRefreshSub(swpanel);
-					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				}
-				autoDrilled = False;
+				autoDrilled = false;
 
-			} else if (mode == CYCLE_GROUP && (ev.xkey.keycode == rightKey || ev.xkey.keycode == leftKey)) {
+			} else if (mode == CYCLE_GROUP && ((((xcb_key_press_event_t *)ev)->detail) == rightKey || (((xcb_key_press_event_t *)ev)->detail) == leftKey)) {
 
 				/* Arrows act on the focused strip: sub when drilled, main
 				 * otherwise. On the main strip they switch groups, on the
 				 * sub strip they cycle the drilled group's windows. */
 				Strip s = wSwitchPanelIsDrilled(swpanel) ? STRIP_SUB : STRIP_MAIN;
 
-				newFocused = wSwitchPanelSelectNext(swpanel, ev.xkey.keycode == leftKey, False, mode, s);
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+				newFocused = wSwitchPanelSelectNext(swpanel, (((xcb_key_press_event_t *)ev)->detail) == leftKey, false, mode, s);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				if (s == STRIP_MAIN && (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel))) {
 					newFocused = wSwitchPanelRefreshSub(swpanel);
-					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				}
-				autoDrilled = False;
+				autoDrilled = false;
 
-			} else if (ev.xkey.keycode == homeKey || ev.xkey.keycode == endKey) {
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == homeKey || (((xcb_key_press_event_t *)ev)->detail) == endKey) {
 
 				Strip s = wSwitchPanelIsDrilled(swpanel) ? STRIP_SUB : STRIP_MAIN;
 
-				newFocused = wSwitchPanelSelectFirst(swpanel, ev.xkey.keycode != homeKey, s);
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+				newFocused = wSwitchPanelSelectFirst(swpanel, (((xcb_key_press_event_t *)ev)->detail) != homeKey, s);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				if (s == STRIP_MAIN) {
 					if (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel)) {
 						newFocused = wSwitchPanelRefreshSub(swpanel);
-						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 					}
-					autoDrilled = False;
+					autoDrilled = false;
 				}
 
-			} else if (ev.xkey.keycode == escapeKey) {
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == escapeKey) {
 
 				/* Focus the first window of the swpanel, despite the 'False' */
-				newFocused = wSwitchPanelSelectFirst(swpanel, False, STRIP_MAIN);
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, True);
-				esc_cancel = True;
-				done = True;
+				newFocused = wSwitchPanelSelectFirst(swpanel, false, STRIP_MAIN);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, true);
+				esc_cancel = true;
+				done = true;
 
-			} else if (ev.xkey.keycode == returnKey) {
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == returnKey) {
 
 				/* Close the switch panel without eating the keypress */
-				done = True;
+				done = true;
 
 			} else if (mode == CYCLE_GROUP
-				   && (ev.xkey.keycode == graveKey || ev.xkey.keycode == downKey)) {
+				   && ((((xcb_key_press_event_t *)ev)->detail) == graveKey || (((xcb_key_press_event_t *)ev)->detail) == downKey)) {
 
 				if (wSwitchPanelIsDrilled(swpanel)) {
-					int back = (modifiers & ShiftMask) != 0;
+					int back = (modifiers & XCB_MOD_MASK_SHIFT) != 0;
 
 					/* CYCLE_GROUP sub-strip entries all
 					 * share the group class, so the
 					 * class-skip is a no-op here. */
-					newFocused = wSwitchPanelSelectNext(swpanel, back, False, CYCLE_GROUP, STRIP_SUB);
+					newFocused = wSwitchPanelSelectNext(swpanel, back, false, CYCLE_GROUP, STRIP_SUB);
 				} else {
 					/* transition from preview to drilled */
 					if (wSwitchPanelIsDrillPreview(swpanel))
 						wSwitchPanelUndrill(swpanel);
 					newFocused = wSwitchPanelDrill(swpanel);
 				}
-				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 
-			} else if (mode == CYCLE_GROUP && ev.xkey.keycode == upKey) {
+			} else if (mode == CYCLE_GROUP && (((xcb_key_press_event_t *)ev)->detail) == upKey) {
 
 				if (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel)) {
 					newFocused = wSwitchPanelUndrill(swpanel);
-					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 				}
-				autoDrilled = True;
+				autoDrilled = true;
 
-			} else if (ev.xkey.keycode != shiftLKey && ev.xkey.keycode != shiftRKey &&
-				   ev.xkey.keycode != ctrlLKey && ev.xkey.keycode != ctrlRKey &&
-				   ev.xkey.keycode != altLKey && ev.xkey.keycode != altRKey &&
-				   ev.xkey.keycode != superLKey && ev.xkey.keycode != superRKey &&
-				   ev.xkey.keycode != metaLKey && ev.xkey.keycode != metaRKey &&
-				   ev.xkey.keycode != hyperLKey && ev.xkey.keycode != hyperRKey) {
-				int letter = cycle_letter(ev.xkey.keycode);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) != shiftLKey && (((xcb_key_press_event_t *)ev)->detail) != shiftRKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != ctrlLKey && (((xcb_key_press_event_t *)ev)->detail) != ctrlRKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != altLKey && (((xcb_key_press_event_t *)ev)->detail) != altRKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != superLKey && (((xcb_key_press_event_t *)ev)->detail) != superRKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != metaLKey && (((xcb_key_press_event_t *)ev)->detail) != metaRKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != hyperLKey && (((xcb_key_press_event_t *)ev)->detail) != hyperRKey) {
+				int letter = cycle_letter((((xcb_key_press_event_t *)ev)->detail));
 
-				if (letter != NoSymbol) {
-					int back = (modifiers & ShiftMask) != 0;
+				if (letter != XKB_KEY_NoSymbol) {
+					int back = (modifiers & XCB_MOD_MASK_SHIFT) != 0;
 					Strip s = wSwitchPanelIsDrilled(swpanel) ? STRIP_SUB : STRIP_MAIN;
 
 					newFocused = wSwitchPanelSelectByKey(swpanel, letter, back, s);
 					if (newFocused)
-						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 					if (s == STRIP_MAIN) {
 						if (wSwitchPanelIsDrilled(swpanel) || wSwitchPanelIsDrillPreview(swpanel)) {
 							newFocused = wSwitchPanelRefreshSub(swpanel);
-							oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+							oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 						}
-						autoDrilled = False;
+						autoDrilled = false;
 					}
 				} else {
-					somethingElse = True;
-					done = True;
+					somethingElse = true;
+					done = true;
 				}
 			}
 			break;
 
-		case KeyRelease:
-			if (ev.xkey.keycode == shiftLKey || ev.xkey.keycode == shiftRKey)
+		case XCB_KEY_RELEASE:
+			if ((((xcb_key_press_event_t *)ev)->detail) == shiftLKey || (((xcb_key_press_event_t *)ev)->detail) == shiftRKey)
 				if (w_global.config->strict_windoze_cycle)
 					break;
 
-			if (ev.xkey.keycode == leftKey || ev.xkey.keycode == rightKey)
+			if ((((xcb_key_press_event_t *)ev)->detail) == leftKey || (((xcb_key_press_event_t *)ev)->detail) == rightKey)
 				break;
 
-			if (ev.xkey.keycode == downKey || ev.xkey.keycode == upKey)
+			if ((((xcb_key_press_event_t *)ev)->detail) == downKey || (((xcb_key_press_event_t *)ev)->detail) == upKey)
 				break;
 
-			if (mode == CYCLE_GROUP && ev.xkey.keycode == graveKey)
+			if (mode == CYCLE_GROUP && (((xcb_key_press_event_t *)ev)->detail) == graveKey)
 				break;
 
-			if (ev.xkey.keycode == returnKey)
+			if ((((xcb_key_press_event_t *)ev)->detail) == returnKey)
 				break;
 
 			/* a lookup letter's release is part of the consumed keystroke */
-			if (cycle_letter(ev.xkey.keycode) != NoSymbol)
+			if (cycle_letter((((xcb_key_press_event_t *)ev)->detail)) != XKB_KEY_NoSymbol)
 				break;
 
-			if (ev.xkey.keycode != binding.keycode)
-				done = True;
+			if ((((xcb_key_press_event_t *)ev)->detail) != binding.keycode)
+				done = true;
 
 			break;
 
-		case EnterNotify:
+		case XCB_ENTER_NOTIFY:
 
 			/* ignore unwanted EnterNotify's */
 			break;
 
-		case LeaveNotify:
-		case MotionNotify:
+		case XCB_LEAVE_NOTIFY:
+		case XCB_MOTION_NOTIFY:
 
-		case ButtonRelease:
+		case XCB_BUTTON_RELEASE:
 			{
 				WWindow *tmp;
-				tmp = wSwitchPanelHandleEvent(swpanel, &ev);
+				tmp = wSwitchPanelHandleEvent(swpanel, ev);
 				if (tmp) {
 					newFocused = tmp;
-					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, False);
+					oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
 					if (!wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel))
-						autoDrilled = False;
+						autoDrilled = false;
 
-					if (ev.type == ButtonRelease)
-						done = True;
+					if ((ev->response_type & 0x7f) == XCB_BUTTON_RELEASE)
+						done = true;
 				}
 			}
 			break;
 
 		default:
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			break;
+		}
+
+		/* the somethingElse event is re-dispatched after the loop;
+		 * keep its buffer until then */
+		if (!somethingElse) {
+			free(ev);
+			ev = NULL;
 		}
 	}
 
 	if (hasModifier)
-		XUngrabKeyboard(dpy, CurrentTime);
+		wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
 
 	if (swpanel)
 		wSwitchPanelDestroy(swpanel);
@@ -404,6 +412,8 @@ void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode)
 
 	scr->flags.doing_alt_tab = 0;
 
-	if (somethingElse)
-		WMHandleEvent(&ev);
+	if (somethingElse) {
+		WMHandleEvent(ev);
+		free(ev);
+	}
 }

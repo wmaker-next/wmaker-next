@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2014 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,14 @@
  *  with this program; if not, write to the Free Software Foundation
  */
 
+#include <stdbool.h>
 #ifndef _XDND_H_
 #define _XDND_H_
 
 void wXDNDInitializeAtoms(void);
-Bool wXDNDProcessSelection(XEvent *event);
-Bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event);
-void wXDNDMakeAwareness(Window window);
+bool wXDNDProcessSelection(xcb_generic_event_t *event);
+bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event);
+void wXDNDMakeAwareness(xcb_window_t window);
 
 #ifndef XDND_VERSION
 #define XDND_VERSION 3L

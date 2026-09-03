@@ -62,12 +62,12 @@ static const cairo_user_data_key_t wcairo_cs_key;
  * the flag fits a 32-bit uintptr. */
 #define DRAWABLE_SIZE_SCALED_BIT ((uintptr_t)1u << 31)
 
-static void noteDrawableSize(WMScreen *scr, Drawable d, unsigned width,
-			     unsigned height, int scaled)
+static void noteDrawableSize(WMScreen *scr, xcb_drawable_t d, unsigned int width,
+			     unsigned int height, int scaled)
 {
 	uintptr_t packed;
 
-	if (!scr || !scr->drawableSize || d == None)
+	if (!scr || !scr->drawableSize || d == XCB_NONE)
 		return;
 
 	packed = ((uintptr_t)(width & 0x7fff) << 16) | (height & 0xffff);
@@ -76,12 +76,12 @@ static void noteDrawableSize(WMScreen *scr, Drawable d, unsigned width,
 	WMHashInsert(scr->drawableSize, (const void *)(uintptr_t)d, (void *)packed);
 }
 
-void WMScreenNoteDrawableSize(WMScreen *scr, Drawable d, unsigned width, unsigned height)
+void WMScreenNoteDrawableSize(WMScreen *scr, xcb_drawable_t d, unsigned int width, unsigned int height)
 {
 	noteDrawableSize(scr, d, width, height, 0);
 }
 
-void WMScreenNoteDrawableSizeScaled(WMScreen *scr, Drawable d, unsigned width, unsigned height)
+void WMScreenNoteDrawableSizeScaled(WMScreen *scr, xcb_drawable_t d, unsigned int width, unsigned int height)
 {
 	int dw, dh;
 
@@ -90,29 +90,30 @@ void WMScreenNoteDrawableSizeScaled(WMScreen *scr, Drawable d, unsigned width, u
 	noteDrawableSize(scr, d, dw, dh, scr->uiScale > 1.0001);
 }
 
-Pixmap W_CreateScaledPixmap(WMScreen *scr, unsigned width, unsigned height)
+xcb_pixmap_t W_CreateScaledPixmap(WMScreen *scr, unsigned int width, unsigned int height)
 {
-	Pixmap p;
+	xcb_pixmap_t p;
 	int dw, dh;
 
 	dw = (int)(width * scr->uiScale + 0.5);
 	dh = (int)(height * scr->uiScale + 0.5);
-	p = XCreatePixmap(scr->display, scr->rootWin, dw > 0 ? dw : 1,
-			  dh > 0 ? dh : 1, scr->depth);
+	p = xcb_generate_id(scr->display);
+	xcb_create_pixmap(scr->display, scr->depth, p, scr->rootWin,
+			  dw > 0 ? dw : 1, dh > 0 ? dh : 1);
 	noteDrawableSize(scr, p, dw, dh, scr->uiScale > 1.0001);
 	return p;
 }
 
-void WMScreenAbandonDrawable(WMScreen *scr, Drawable d)
+void WMScreenAbandonDrawable(WMScreen *scr, xcb_drawable_t d)
 {
-	if (!scr || d == None)
+	if (!scr || d == XCB_NONE)
 		return;
 
 	if (scr->drawableSize)
 		WMHashRemove(scr->drawableSize, (const void *)(uintptr_t)d);
 }
 
-static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h, int *scaled)
+static int lookupDrawableSize(W_Screen *scr, xcb_drawable_t d, int *w, int *h, int *scaled)
 {
 	xcb_connection_t *xc;
 	xcb_get_geometry_reply_t *geom;
@@ -146,7 +147,7 @@ static int lookupDrawableSize(W_Screen *scr, Drawable d, int *w, int *h, int *sc
 
 /* ---- surface lifecycle ----------------------------------------------- */
 
-WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d, int width, int height, int flags)
+WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, xcb_drawable_t d, int width, int height, int flags)
 {
 	WCairoSurface *cs;
 	RContext *rc;
@@ -217,7 +218,7 @@ cairo_t *WCairoBegin(WCairoSurface *cs)
  * WMDrawString). Creates a surface for the duration of one paint, size
  * pulled from the cache above so there is no round trip on the window
  * path. WCairoEnd() destroys both the cairo_t and its surface. */
-cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
+cairo_t *WCairoBeginForDrawable(W_Screen *scr, xcb_drawable_t d)
 {
 	cairo_surface_t *surface;
 	cairo_t *cr;
@@ -242,7 +243,7 @@ cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d)
  * drawable in one SOURCE-operator paint. Drop-in replacement for the
  * XCreatePixmap + draw + XCopyArea + XFreePixmap pattern the widget
  * paint paths used to avoid flicker on a full repaint. */
-cairo_t *WCairoBeginBuffered(W_Screen *scr, Drawable d)
+cairo_t *WCairoBeginBuffered(W_Screen *scr, xcb_drawable_t d)
 {
 	WCairoSurface *cs;
 	int w, h, scaled, flags;
@@ -311,7 +312,7 @@ void WCairoSetSourceRColor(cairo_t *cr, const RColor *color)
 			      color->alpha / 255.0);
 }
 
-void WCairoSetSourceXColor(cairo_t *cr, const XColor *color)
+void WCairoSetSourceXColor(cairo_t *cr, const WXColor *color)
 {
 	cairo_set_source_rgb(cr,
 			     color->red   / 65535.0,
@@ -368,7 +369,7 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
  * When only cr is scaled and src is a raw device-px pixmap the CTM
  * up-scale is what places a 1x thumbnail correctly on a 2x canvas, so
  * that case is left alone. */
-void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int srcH,
+void WCairoPaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
 		     int sx, int sy, int w, int h, int dx, int dy)
 {
 	RContext *rc = scr->rcontext;
@@ -405,8 +406,8 @@ void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int src
  * rectangle, close. Drop-in for the XCreateGC + XCopyArea + XFreeGC
  * pattern used by preview compositors that shuffle rendered pixmaps
  * between scratch surfaces. */
-void WCairoCopyArea(W_Screen *scr, Drawable src, int srcW, int srcH,
-		    int sx, int sy, int w, int h, Drawable dst, int dx, int dy)
+void WCairoCopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
+		    int sx, int sy, int w, int h, xcb_drawable_t dst, int dx, int dy)
 {
 	cairo_t *cr;
 
@@ -431,7 +432,7 @@ void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
 
 	if (pix->depth == 1) {
 		ps = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-							 (xcb_pixmap_t)pix->pixmap,
+							 pix->pixmap,
 							 pix->width, pix->height);
 		cairo_set_source_rgb(cr, 0, 0, 0);
 	} else {
@@ -440,9 +441,9 @@ void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
 		cairo_set_source_surface(cr, ps, x, y);
 	}
 
-	if (pix->mask != None) {
+	if (pix->mask != XCB_NONE) {
 		ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-							 (xcb_pixmap_t)pix->mask,
+							 pix->mask,
 							 pix->width, pix->height);
 		cairo_mask_surface(cr, ms, x, y);
 		cairo_surface_destroy(ms);
@@ -560,7 +561,7 @@ void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
 			 double bx, double by, double bw, double bh,
 			 int side, double tail_len,
 			 WMColor *fill, WMColor *border,
-			 Pixmap *content, Pixmap *mask)
+			 xcb_pixmap_t *content, xcb_pixmap_t *mask)
 {
 	RContext *rc = scr->rcontext;
 	cairo_surface_t *ms, *ps;
@@ -575,7 +576,7 @@ void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
 	 * path solid, stroke widens by half a pixel so the content
 	 * outline is not clipped by the shape edge */
 	ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-						 (xcb_pixmap_t)*mask, width, height);
+						 *mask, width, height);
 	cr = cairo_create(ms);
 	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 	cairo_set_source_rgba(cr, 0, 0, 0, 0);
@@ -618,12 +619,12 @@ int W_ScreenCheckCompositor(W_Screen *scr)
 	xcb_connection_t *xc;
 	xcb_get_selection_owner_reply_t *owner;
 	char name[32];
-	Atom sel;
+	xcb_atom_t sel;
 	int running;
 
 	xc = scr->rcontext->xc;
 	snprintf(name, sizeof(name), "_NET_WM_CM_S%d", scr->screen);
-	sel = XInternAtom(scr->display, name, False);
+	sel = WXInternAtom(scr->display, name);
 
 	owner = xcb_get_selection_owner_reply(xc,
 			xcb_get_selection_owner(xc, (xcb_atom_t)sel), NULL);

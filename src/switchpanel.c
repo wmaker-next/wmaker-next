@@ -68,8 +68,8 @@ struct SwitchPanel {
 	int subCurrent;
 	int subFirstVisible;
 	int subVisibleCount;
-	Bool drilled;
-	Bool drillPreview;
+	bool drilled;
+	bool drillPreview;
 	int subHeightExtra;
 
 	WMLabel *label;
@@ -129,53 +129,53 @@ static int canReceiveFocus(WWindow *wwin)
 	return 1;
 }
 
-static Bool sameWindowClass(WWindow *wwin, WWindow *curwin)
+static bool sameWindowClass(WWindow *wwin, WWindow *curwin)
 {
 	if (!wwin->wm_class || !curwin->wm_class)
-		return False;
+		return false;
 	if (strcmp(wwin->wm_class, curwin->wm_class))
-		return False;
+		return false;
 
-	return True;
+	return true;
 }
 
-static Bool modalReachableThroughParent(WWindow *ref, WWindow *wwin, int include_unmapped, CycleMode mode)
+static bool modalReachableThroughParent(WWindow *ref, WWindow *wwin, int include_unmapped, CycleMode mode)
 {
 	WWindow *parent;
 
 	if (!wwin->flags.net_modal)
-		return False;
-	if (wwin->transient_for == None || wwin->transient_for == ref->screen_ptr->root_win)
-		return False;
+		return false;
+	if (wwin->transient_for == XCB_NONE || wwin->transient_for == ref->screen_ptr->root_win)
+		return false;
 
 	parent = wWindowFor(wwin->transient_for);
 	if (!parent || parent == wwin)
-		return False;
+		return false;
 
 	/* Keep this predicate in sync with makeWindowListArray()'s list filter. */
 	if (WFLAGP(parent, skip_switchpanel))
-		return False;
+		return false;
 	if (canReceiveFocus(parent) == 0)
-		return False;
+		return false;
 	if (!(parent->flags.mapped || parent->flags.shaded || include_unmapped))
-		return False;
+		return false;
 	/* A modal belongs to its parent's group for both non-flat modes. */
 	if (mode != CYCLE_FLAT && !sameWindowClass(ref, parent))
-		return False;
+		return false;
 
-	return True;
+	return true;
 }
 
-static Bool classAlreadyInArray(WMArray *windows, WWindow *wwin)
+static bool classAlreadyInArray(WMArray *windows, WWindow *wwin)
 {
 	int j;
 	WWindow *rep;
 
 	WM_ITERATE_ARRAY(windows, rep, j) {
 		if (sameWindowClass(rep, wwin))
-			return True;
+			return true;
 	}
-	return False;
+	return false;
 }
 
 static int compareCreationOrder(const void *a, const void *b)
@@ -239,20 +239,20 @@ static WMArray *makeWindowFlagsArray(int count)
 	return flags;
 }
 
-static Bool isGroupDrillable(WWindow *rep)
+static bool isGroupDrillable(WWindow *rep)
 {
 	WMArray *sub;
 	int n;
 
 	if (!rep)
-		return False;
+		return false;
 	sub = makeWindowListArray(rep, wPreferences.swtileImage != NULL, CYCLE_CLASS_ONLY);
 	n = WMGetArrayItemCount(sub);
 	WMFreeArray(sub);
 	return n > 1;
 }
 
-static void changeImage(WSwitchPanel *panel, int idecks, int selected, Bool dim, Bool force, Strip strip)
+static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim, bool force, Strip strip)
 {
 	WMArray *winArr = *windows_of(panel, strip);
 	WMArray *iconArr = *icons_of(panel, strip);
@@ -291,7 +291,7 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, Bool dim,
 		RImage *tile;
 		WMPoint pos;
 		int bg_y;
-		Pixmap p;
+		xcb_pixmap_t p;
 
 		if (canReceiveFocus(WMGetFromArray(winArr, idecks)) < 0)
 			opaq = 50;
@@ -331,9 +331,9 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, Bool dim,
 					   opaq);
 
 		RConvertImage(panel->scr->rcontext, back, &p);
-		XSetWindowBackgroundPixmap(dpy, WMWidgetXID(icon), p);
-		XClearWindow(dpy, WMWidgetXID(icon));
-		XFreePixmap(dpy, p);
+		xcb_change_window_attributes(xconn, WMWidgetXID(icon), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ p });
+		xcb_clear_area(xconn, 0, WMWidgetXID(icon), 0, 0, 0, 0);
+		xcb_free_pixmap(xconn, p);
 	}
 
 	if (!panel->bg && !panel->tile && selected)
@@ -386,7 +386,7 @@ static void scrollIcons(WSwitchPanel *panel, int delta, Strip strip)
 	int nfirst = *firstVisible + delta;
 	int i;
 	int count = WMGetArrayItemCount(winArr);
-	Bool dim;
+	bool dim;
 
 	if (!iconBox || count <= visibleCount)
 		return;
@@ -407,7 +407,7 @@ static void scrollIcons(WSwitchPanel *panel, int delta, Strip strip)
 		if (i == *current)
 			continue;
 		dim = ((int) (uintptr_t) WMGetFromArray(flagArr, i) & ICON_DIM);
-		changeImage(panel, i, 0, dim, True, strip);
+		changeImage(panel, i, 0, dim, true, strip);
 	}
 }
 
@@ -507,13 +507,13 @@ static RImage *getTileArrow(void)
 
 static void apply_panel_bg(WSwitchPanel *panel)
 {
-	Pixmap pixmap, mask;
+	xcb_pixmap_t pixmap, mask;
 
 	if (!panel->bg || !panel->win)
 		return;
 
 	RConvertImageMask(panel->scr->rcontext, panel->bg, &pixmap, &mask, 250);
-	XSetWindowBackgroundPixmap(dpy, WMWidgetXID(panel->win), pixmap);
+	xcb_change_window_attributes(xconn, WMWidgetXID(panel->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 #ifdef USE_XSHAPE
 	if (mask && w_global.xext.shape.supported)
@@ -521,10 +521,10 @@ static void apply_panel_bg(WSwitchPanel *panel)
 			       WMWidgetXID(panel->win), 0, 0, mask);
 #endif
 	if (pixmap)
-		XFreePixmap(dpy, pixmap);
+		xcb_free_pixmap(xconn, pixmap);
 
 	if (mask)
-		XFreePixmap(dpy, mask);
+		xcb_free_pixmap(xconn, mask);
 }
 
 static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip strip)
@@ -555,7 +555,7 @@ static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip 
 			}
 		}
 
-		XClearWindow(dpy, WMWidgetXID(panel->win));
+		xcb_clear_area(xconn, 0, WMWidgetXID(panel->win), 0, 0, 0, 0);
 		if (ntitle)
 			WMDrawString(panel->scr->wmscreen,
 				     WMWidgetXID(panel->win),
@@ -662,14 +662,14 @@ WWindow *wSwitchPanelUndrill(WSwitchPanel *panel)
 			apply_panel_bg(panel);
 		}
 	}
-	panel->drilled = False;
-	panel->drillPreview = False;
+	panel->drilled = false;
+	panel->drillPreview = false;
 	if (panel->win && rep)
 		drawTitle(panel, panel->current, panelLabelForWindow(panel, rep), STRIP_MAIN);
 	return rep;
 }
 
-static WWindow *show_sub_strip(WSwitchPanel *panel, Bool set_drilled)
+static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 {
 	WWindow *rep, *firstSub;
 	int pw, ph, newHeight, i;
@@ -698,8 +698,8 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, Bool set_drilled)
 			WMRealizeWidget(panel->subBox);
 			WMMapSubwidgets(panel->subBox);
 			WM_ITERATE_ARRAY(panel->subWindows, rep, i)
-				changeImage(panel, i, 0, False, True, STRIP_SUB);
-			changeImage(panel, panel->subCurrent, 0, False, False, STRIP_SUB);
+				changeImage(panel, i, 0, false, true, STRIP_SUB);
+			changeImage(panel, panel->subCurrent, 0, false, false, STRIP_SUB);
 		}
 		return WMGetFromArray(panel->windows, panel->current);
 	}
@@ -733,8 +733,8 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, Bool set_drilled)
 		WMMapWidget(panel->subViewport);
 
 		WM_ITERATE_ARRAY(panel->subWindows, rep, i)
-			changeImage(panel, i, 0, False, True, STRIP_SUB);
-		changeImage(panel, panel->subCurrent, set_drilled, False, False, STRIP_SUB);
+			changeImage(panel, i, 0, false, true, STRIP_SUB);
+		changeImage(panel, panel->subCurrent, set_drilled, false, false, STRIP_SUB);
 
 		/* grow panel only when sub-strip was not visible */
 		if (!panel->drilled && !panel->drillPreview) {
@@ -753,7 +753,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, Bool set_drilled)
 	}
 
 	if (set_drilled)
-		panel->drilled = True;
+		panel->drilled = true;
 	if (panel->win)
 		drawTitle(panel, panel->subCurrent, panelLabelForWindow(panel, firstSub), STRIP_SUB);
 	return firstSub;
@@ -761,7 +761,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, Bool set_drilled)
 
 WWindow *wSwitchPanelDrill(WSwitchPanel *panel)
 {
-	return show_sub_strip(panel, True);
+	return show_sub_strip(panel, true);
 }
 
 WWindow *wSwitchPanelPreviewDrill(WSwitchPanel *panel)
@@ -776,10 +776,10 @@ WWindow *wSwitchPanelPreviewDrill(WSwitchPanel *panel)
 			return wSwitchPanelUndrill(panel);
 		return rep;
 	}
-	firstSub = show_sub_strip(panel, False);
+	firstSub = show_sub_strip(panel, false);
 	if (!firstSub)
 		return rep;
-	panel->drillPreview = True;
+	panel->drillPreview = true;
 	return rep;
 }
 
@@ -788,16 +788,16 @@ WWindow *wSwitchPanelRefreshSub(WSwitchPanel *panel)
 	if (!panel->drilled && !panel->drillPreview)
 		return NULL;
 	if (panel->drilled)
-		return show_sub_strip(panel, True);
-	return show_sub_strip(panel, False);
+		return show_sub_strip(panel, true);
+	return show_sub_strip(panel, false);
 }
 
-Bool wSwitchPanelIsDrilled(WSwitchPanel *panel)
+bool wSwitchPanelIsDrilled(WSwitchPanel *panel)
 {
 	return panel->drilled;
 }
 
-Bool wSwitchPanelIsDrillPreview(WSwitchPanel *panel)
+bool wSwitchPanelIsDrillPreview(WSwitchPanel *panel)
 {
 	return panel->drillPreview;
 }
@@ -915,7 +915,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 	WMRealizeWidget(panel->win);
 
 	WM_ITERATE_ARRAY(panel->windows, wwin, i) {
-		changeImage(panel, i, 0, False, True, STRIP_MAIN);
+		changeImage(panel, i, 0, false, true, STRIP_MAIN);
 	}
 
 	apply_panel_bg(panel);
@@ -926,7 +926,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 
 	panel->current = WMGetFirstInArray(panel->windows, curwin);
 	if (panel->current >= 0)
-		changeImage(panel, panel->current, 1, False, False, STRIP_MAIN);
+		changeImage(panel, panel->current, 1, false, false, STRIP_MAIN);
 
 	WMMapWidget(panel->win);
 
@@ -939,16 +939,16 @@ void wSwitchPanelDestroy(WSwitchPanel *panel)
 	RImage *image;
 
 	if (panel->win) {
-		Window info_win = panel->scr->info_window;
+		xcb_window_t info_win = panel->scr->info_window;
 
-		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
 				    w_global.atom.wm.ignore_focus_events,
-				    True, 0, 0, 0, 0);
+				    true, 0, 0, 0, 0);
 		WMUnmapWidget(panel->win);
 
-		WXSendClientMessage(dpy, info_win, EnterWindowMask, info_win,
+		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
 				    w_global.atom.wm.ignore_focus_events,
-				    False, 0, 0, 0, 0);
+				    false, 0, 0, 0, 0);
 	}
 
 	if (panel->images) {
@@ -1017,16 +1017,16 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 	int count = WMGetArrayItemCount(winArr);
 	int orig = *current;
 	int i;
-	Bool dim = False;
+	bool dim = false;
 
 	if (count == 0)
 		return NULL;
 
 	if (!w_global.config->cycle_ignore_minimized)
-		ignore_minimized = False;
+		ignore_minimized = false;
 
 	if (ignore_minimized && canReceiveFocus(WMGetFromArray(winArr, (count + *current) % count)) < 0)
-		ignore_minimized = False;
+		ignore_minimized = false;
 
 	curwin = WMGetFromArray(winArr, orig);
 	do {
@@ -1050,11 +1050,11 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 		if (i == *current)
 			continue;
 		if (mode != CYCLE_CLASS_ONLY || sameWindowClass(tmpwin, curwin))
-			changeImage(panel, i, 0, False, False, strip);
+			changeImage(panel, i, 0, false, false, strip);
 		else {
 			if (i == orig)
-				dim = True;
-			changeImage(panel, i, 0, True, False, strip);
+				dim = true;
+			changeImage(panel, i, 0, true, false, strip);
 		}
 
 	}
@@ -1067,8 +1067,8 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 	if (panel->win) {
 		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
 		if (*current != orig)
-			changeImage(panel, orig, 0, dim, False, strip);
-		changeImage(panel, *current, 1, False, False, strip);
+			changeImage(panel, orig, 0, dim, false, strip);
+		changeImage(panel, *current, 1, false, false, strip);
 	}
 
 	return wwin;
@@ -1097,7 +1097,7 @@ WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back, Strip strip)
 
 	if (panel->win) {
 		for (WMArrayFirst(winArr, &(i)); (i) != WANotFound; WMArrayNext(winArr, &(i)))
-			changeImage(panel, i, i == *current, False, False, strip);
+			changeImage(panel, i, i == *current, false, false, strip);
 
 		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
 	}
@@ -1150,7 +1150,7 @@ WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, St
 	/* re-render — mirrors wSwitchPanelSelectFirst, no dimming */
 	if (panel->win) {
 		for (WMArrayFirst(winArr, &(i)); (i) != WANotFound; WMArrayNext(winArr, &(i)))
-			changeImage(panel, i, i == *current, False, False, strip);
+			changeImage(panel, i, i == *current, false, false, strip);
 	}
 
 	if (*current < *firstVisible)
@@ -1160,13 +1160,13 @@ WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, St
 
 	if (panel->win) {
 		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
-		changeImage(panel, *current, 1, False, False, strip);
+		changeImage(panel, *current, 1, false, false, strip);
 	}
 
 	return wwin;
 }
 
-WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
+WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, xcb_generic_event_t *event)
 {
 	WMArray *winArr;
 	WMFrame *icon;
@@ -1179,9 +1179,9 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
 	if (!panel->win)
 		return NULL;
 
-	if (event->type == MotionNotify) {
+	if ((event->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
 		WM_ITERATE_ARRAY(panel->icons, icon, i) {
-			if (WMWidgetXID(icon) == event->xmotion.window) {
+			if (WMWidgetXID(icon) == ((xcb_motion_notify_event_t *)event)->event) {
 				focus = i;
 				strip = STRIP_MAIN;
 				break;
@@ -1189,7 +1189,7 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
 		}
 		if (focus < 0 && panel->subIcons) {
 			WM_ITERATE_ARRAY(panel->subIcons, icon, i) {
-				if (WMWidgetXID(icon) == event->xmotion.window) {
+				if (WMWidgetXID(icon) == ((xcb_motion_notify_event_t *)event)->event) {
 					focus = i;
 					strip = STRIP_SUB;
 					break;
@@ -1203,7 +1203,7 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
 		if (*current != focus) {
 			winArr = *windows_of(panel, strip);
 			WM_ITERATE_ARRAY(winArr, wwin, i)
-				changeImage(panel, i, i == focus, False, False, strip);
+				changeImage(panel, i, i == focus, false, false, strip);
 			*current = focus;
 
 			wwin = WMGetFromArray(winArr, focus);
@@ -1217,10 +1217,10 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, XEvent *event)
 	return NULL;
 }
 
-Window wSwitchPanelGetWindow(WSwitchPanel *swpanel)
+xcb_window_t wSwitchPanelGetWindow(WSwitchPanel *swpanel)
 {
 	if (!swpanel->win)
-		return None;
+		return XCB_NONE;
 
 	return WMWidgetXID(swpanel->win);
 }

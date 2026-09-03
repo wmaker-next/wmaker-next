@@ -39,9 +39,7 @@
 #define PATH_MAX DEFAULT_PATH_MAX
 #endif
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include <wraster.h>
 
@@ -132,22 +130,22 @@ static WConfigUpdateCallback setCursor;
  * inotify path makes this matter: four wdwrite calls in a row fire
  * four reload checks, with second-granularity mtime only the first
  * compared newer and the rest were silently dropped */
-static Bool domain_file_changed(WDDomain *db)
+static bool domain_file_changed(WDDomain *db)
 {
 	struct stat st;
 
 	if (stat(db->path, &st) < 0)
-		return False;
+		return false;
 	if (st.st_mtim.tv_sec < db->timestamp.tv_sec)
-		return False;
+		return false;
 	if (st.st_mtim.tv_sec == db->timestamp.tv_sec &&
 	    st.st_mtim.tv_nsec <= db->timestamp.tv_nsec)
-		return False;
+		return false;
 	db->timestamp = st.st_mtim;
-	return True;
+	return true;
 }
 
-static WMPropList *readGlobalDomain(const char *domainName, Bool requireDictionary)
+static WMPropList *readGlobalDomain(const char *domainName, bool requireDictionary)
 {
 	WMPropList *globalDict = NULL;
 	char path[PATH_MAX];
@@ -233,7 +231,7 @@ void wDefaultsMergeGlobalMenus(WDDomain * menuDomain)
 	menuDomain->dictionary = menu;
 }
 
-WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
+WDDomain *wDefaultsInitDomain(const char *domain, bool requireDictionary)
 {
 	WDDomain *db;
 	static int inited = 0;
@@ -241,7 +239,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 
 	if (!inited) {
 		inited = 1;
-		WMPLSetCaseSensitive(False);
+		WMPLSetCaseSensitive(false);
 	}
 
 	db = wmalloc(sizeof(WDDomain));
@@ -266,7 +264,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
 
 	if (shared_dict && db->dictionary && WMIsPLDictionary(shared_dict) &&
 	    WMIsPLDictionary(db->dictionary)) {
-		WMMergePLDictionaries(shared_dict, db->dictionary, True);
+		WMMergePLDictionaries(shared_dict, db->dictionary, true);
 		WMReleasePropList(db->dictionary);
 		db->dictionary = shared_dict;
 	} else if (!db->dictionary) {
@@ -286,7 +284,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, Bool requireDictionary)
  * file is missing or not a dictionary. */
 static WMPropList *reload_domain_dict(WDDomain *domain, const char *name)
 {
-	WMPropList *shared = readGlobalDomain(name, True);
+	WMPropList *shared = readGlobalDomain(name, true);
 	WMPropList *dict = WMReadPropListFromFile(domain->path);
 
 	if (!dict) {
@@ -304,7 +302,7 @@ static WMPropList *reload_domain_dict(WDDomain *domain, const char *name)
 		return NULL;
 	}
 	if (shared) {
-		WMMergePLDictionaries(shared, dict, True);
+		WMMergePLDictionaries(shared, dict, true);
 		WMReleasePropList(dict);
 		dict = shared;
 	}
@@ -353,7 +351,7 @@ void wDefaultsCheckDomains(void* arg)
 		/* WMWindowAttributes outer keys are X11 instance.class strings
 		 * and are case-sensitive, keep "xterm" and "XTerm" distinct
 		 * while reading and merging the global and user files */
-		WMPLSetCaseSensitive(True);
+		WMPLSetCaseSensitive(true);
 		dict = reload_domain_dict(w_global.domain.window_attr, "WMWindowAttributes");
 		if (dict) {
 			if (w_global.domain.window_attr->dictionary)
@@ -373,7 +371,7 @@ void wDefaultsCheckDomains(void* arg)
 				}
 			}
 		}
-		WMPLSetCaseSensitive(False);
+		WMPLSetCaseSensitive(false);
 	}
 
 	if (domain_file_changed(w_global.domain.root_menu)) {
@@ -501,7 +499,7 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 				wWindowApplyInnerBorder(wwin);
 				wwin = wwin->prev;
 			}
-			XFlush(dpy);
+			wXFlush(xconn);
 		}
 	}
 }
@@ -512,7 +510,7 @@ void wReadKeybindings(WScreen *scr, WMPropList *dict)
 	WConfig *owned_config = NULL;
 	const WConfigEntry *schema;
 	size_t i, count;
-	Bool keybindings_changed = False;
+	bool keybindings_changed = false;
 
 	config = w_global.config;
 	if (!config) {
@@ -524,7 +522,7 @@ void wReadKeybindings(WScreen *scr, WMPropList *dict)
 	count = wConfigSchemaCount();
 	for (i = 0; i < count; i++) {
 		const WConfigKeyBinding *binding;
-		Bool binding_changed = False;
+		bool binding_changed = false;
 
 		if (schema[i].type != WCFG_KEY_BINDING)
 			continue;
@@ -593,7 +591,7 @@ void wKeyTreeRebuild(WScreen *scr)
 	for (i = 0; i < WKBD_LAST; i++) {
 		WShortKey *k = &wKeyBindings[i];
 		WKeyAction *act;
-		KeyCode *keys;
+		xcb_keycode_t *keys;
 		WKeyNode *leaf;
 		int len, j;
 		unsigned int *mods;
@@ -607,7 +605,7 @@ void wKeyTreeRebuild(WScreen *scr)
 
 		len  = (k->chain_length > 1) ? k->chain_length : 1;
 		mods = wmalloc(len * sizeof(unsigned int));
-		keys = wmalloc(len * sizeof(KeyCode));
+		keys = wmalloc(len * sizeof(xcb_keycode_t));
 		mods[0] = k->modifier;
 		keys[0] = k->keycode;
 
@@ -649,34 +647,34 @@ void wKeyTreeRebuild(WScreen *scr)
  * (function <lib> <function> ...)
  */
 
-static Bool pl_array_xcolor(WScreen *scr, WMPropList *pl, int idx, XColor *out)
+static bool pl_array_xcolor(WScreen *scr, WMPropList *pl, int idx, WXColor *out)
 {
 	WMPropList *elem;
 	const char *val;
 
 	elem = WMGetFromPLArray(pl, idx);
 	if (!elem || !WMIsPLString(elem))
-		return False;
+		return false;
 	val = WMGetFromPLString(elem);
 
 	if (!wParseColor(scr->w_colormap, val, out)) {
 		wwarning(_("\"%s\" is not a valid color name"), val);
-		return False;
+		return false;
 	}
-	return True;
+	return true;
 }
 
-static Bool pl_array_rcolor(WScreen *scr, WMPropList *pl, int idx, RColor *out)
+static bool pl_array_rcolor(WScreen *scr, WMPropList *pl, int idx, RColor *out)
 {
-	XColor xcolor;
+	WXColor xcolor;
 
 	if (!pl_array_xcolor(scr, pl, idx, &xcolor))
-		return False;
+		return false;
 	out->alpha = 255;
 	out->red = xcolor.red >> 8;
 	out->green = xcolor.green >> 8;
 	out->blue = xcolor.blue >> 8;
-	return True;
+	return true;
 }
 
 static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
@@ -696,7 +694,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 	val = WMGetFromPLString(elem);
 
 	if (strcasecmp(val, "solid") == 0) {
-		XColor color;
+		WXColor color;
 
 		if (nelem != 2)
 			return NULL;
@@ -766,7 +764,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 
 	} else if (strcasecmp(val, "mhgradient") == 0
 		   || strcasecmp(val, "mvgradient") == 0 || strcasecmp(val, "mdgradient") == 0) {
-		XColor color;
+		WXColor color;
 		RColor **colors;
 		int i, count;
 		int type;
@@ -804,7 +802,7 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 		texture = (WTexture *) wTextureMakeMGradient(scr, type, colors);
 	} else if (strcasecmp(val, "spixmap") == 0 ||
 		   strcasecmp(val, "cpixmap") == 0 || strcasecmp(val, "tpixmap") == 0) {
-		XColor color;
+		WXColor color;
 		int type;
 
 		if (nelem != 3)
@@ -881,12 +879,12 @@ static WTexture *parse_texture(WScreen *scr, WMPropList *pl)
 	return texture;
 }
 
-static Bool parseOneKey(const char *key, const char *token,
-			unsigned int *out_mod, KeyCode *out_code)
+static bool parseOneKey(const char *key, const char *token,
+			unsigned int *out_mod, xcb_keycode_t *out_code)
 {
 	char tmp[MAX_SHORTCUT_LENGTH];
 	char *b, *k;
-	KeySym ksym;
+	xkb_keysym_t ksym;
 
 	wstrlcpy(tmp, token, MAX_SHORTCUT_LENGTH);
 	b = tmp;
@@ -898,28 +896,28 @@ static Bool parseOneKey(const char *key, const char *token,
 		mod = wXModifierFromKey(b);
 		if (mod < 0) {
 			wwarning(_("%s: invalid key modifier \"%s\""), key, b);
-			return False;
+			return false;
 		}
 		*out_mod |= mod;
 		b = k + 1;
 	}
 
 	ksym = wXkbKeysymFromName(b);
-	if (ksym == NoSymbol) {
+	if (ksym == XKB_KEY_NoSymbol) {
 		wwarning(_("%s: invalid kbd shortcut specification \"%s\""), key, token);
-		return False;
+		return false;
 	}
 
 	*out_code = wXkbKeysymToKeycode(ksym);
 	if (*out_code == 0) {
 		wwarning(_("%s: invalid key in shortcut \"%s\""), key, token);
-		return False;
+		return false;
 	}
 
-	return True;
+	return true;
 }
 
-static Bool parse_shortcut_spec(const char *key, const char *spec,
+static bool parse_shortcut_spec(const char *key, const char *spec,
 				WShortKey *shortcut)
 {
 	char buf[MAX_SHORTCUT_LENGTH];
@@ -929,12 +927,12 @@ static Bool parse_shortcut_spec(const char *key, const char *spec,
 	memset(shortcut, 0, sizeof(*shortcut));
 	if (!spec || strcasecmp(spec, "NONE") == 0) {
 		shortcut->chain_length = 1;
-		return True;
+		return true;
 	}
 
 	if (strlen(spec) >= sizeof(buf)) {
 		wwarning(_("%s: kbd shortcut specification is too long"), key);
-		return False;
+		return false;
 	}
 	wstrlcpy(buf, spec, sizeof(buf));
 
@@ -942,11 +940,11 @@ static Bool parse_shortcut_spec(const char *key, const char *spec,
 	token = strtok_r(buf, " ", &saveptr);
 	while (token != NULL) {
 		unsigned int mod;
-		KeyCode kcode;
+		xcb_keycode_t kcode;
 
 		if (!parseOneKey(key, token, &mod, &kcode)) {
 			wShortKeyFree(shortcut);
-			return False;
+			return false;
 		}
 
 		if (step == 0) {
@@ -956,7 +954,7 @@ static Bool parse_shortcut_spec(const char *key, const char *spec,
 			shortcut->chain_modifiers = wrealloc(shortcut->chain_modifiers,
 							    step * sizeof(unsigned int));
 			shortcut->chain_keycodes = wrealloc(shortcut->chain_keycodes,
-							  step * sizeof(KeyCode));
+							  step * sizeof(xcb_keycode_t));
 			shortcut->chain_modifiers[step - 1] = mod;
 			shortcut->chain_keycodes[step - 1] = kcode;
 		}
@@ -965,112 +963,109 @@ static Bool parse_shortcut_spec(const char *key, const char *spec,
 	}
 
 	shortcut->chain_length = (step > 1) ? step : 1;
-	return True;
+	return true;
 }
 
-# include <X11/cursorfont.h>
 typedef struct {
 	const char *name;
-	int id;
 } WCursorLookup;
 
-#define CURSOR_ID_NONE	(XC_num_glyphs)
 
 static const WCursorLookup cursor_table[] = {
-	{"X_cursor", XC_X_cursor},
-	{"arrow", XC_arrow},
-	{"based_arrow_down", XC_based_arrow_down},
-	{"based_arrow_up", XC_based_arrow_up},
-	{"boat", XC_boat},
-	{"bogosity", XC_bogosity},
-	{"bottom_left_corner", XC_bottom_left_corner},
-	{"bottom_right_corner", XC_bottom_right_corner},
-	{"bottom_side", XC_bottom_side},
-	{"bottom_tee", XC_bottom_tee},
-	{"box_spiral", XC_box_spiral},
-	{"center_ptr", XC_center_ptr},
-	{"circle", XC_circle},
-	{"clock", XC_clock},
-	{"coffee_mug", XC_coffee_mug},
-	{"cross", XC_cross},
-	{"cross_reverse", XC_cross_reverse},
-	{"crosshair", XC_crosshair},
-	{"diamond_cross", XC_diamond_cross},
-	{"dot", XC_dot},
-	{"dotbox", XC_dotbox},
-	{"double_arrow", XC_double_arrow},
-	{"draft_large", XC_draft_large},
-	{"draft_small", XC_draft_small},
-	{"draped_box", XC_draped_box},
-	{"exchange", XC_exchange},
-	{"fleur", XC_fleur},
-	{"gobbler", XC_gobbler},
-	{"gumby", XC_gumby},
-	{"hand1", XC_hand1},
-	{"hand2", XC_hand2},
-	{"heart", XC_heart},
-	{"icon", XC_icon},
-	{"iron_cross", XC_iron_cross},
-	{"left_ptr", XC_left_ptr},
-	{"left_side", XC_left_side},
-	{"left_tee", XC_left_tee},
-	{"leftbutton", XC_leftbutton},
-	{"ll_angle", XC_ll_angle},
-	{"lr_angle", XC_lr_angle},
-	{"man", XC_man},
-	{"middlebutton", XC_middlebutton},
-	{"mouse", XC_mouse},
-	{"pencil", XC_pencil},
-	{"pirate", XC_pirate},
-	{"plus", XC_plus},
-	{"question_arrow", XC_question_arrow},
-	{"right_ptr", XC_right_ptr},
-	{"right_side", XC_right_side},
-	{"right_tee", XC_right_tee},
-	{"rightbutton", XC_rightbutton},
-	{"rtl_logo", XC_rtl_logo},
-	{"sailboat", XC_sailboat},
-	{"sb_down_arrow", XC_sb_down_arrow},
-	{"sb_h_double_arrow", XC_sb_h_double_arrow},
-	{"sb_left_arrow", XC_sb_left_arrow},
-	{"sb_right_arrow", XC_sb_right_arrow},
-	{"sb_up_arrow", XC_sb_up_arrow},
-	{"sb_v_double_arrow", XC_sb_v_double_arrow},
-	{"shuttle", XC_shuttle},
-	{"sizing", XC_sizing},
-	{"spider", XC_spider},
-	{"spraycan", XC_spraycan},
-	{"star", XC_star},
-	{"target", XC_target},
-	{"tcross", XC_tcross},
-	{"top_left_arrow", XC_top_left_arrow},
-	{"top_left_corner", XC_top_left_corner},
-	{"top_right_corner", XC_top_right_corner},
-	{"top_side", XC_top_side},
-	{"top_tee", XC_top_tee},
-	{"trek", XC_trek},
-	{"ul_angle", XC_ul_angle},
-	{"umbrella", XC_umbrella},
-	{"ur_angle", XC_ur_angle},
-	{"watch", XC_watch},
-	{"xterm", XC_xterm},
-	{NULL, CURSOR_ID_NONE}
+	{"X_cursor"},
+	{"arrow"},
+	{"based_arrow_down"},
+	{"based_arrow_up"},
+	{"boat"},
+	{"bogosity"},
+	{"bottom_left_corner"},
+	{"bottom_right_corner"},
+	{"bottom_side"},
+	{"bottom_tee"},
+	{"box_spiral"},
+	{"center_ptr"},
+	{"circle"},
+	{"clock"},
+	{"coffee_mug"},
+	{"cross"},
+	{"cross_reverse"},
+	{"crosshair"},
+	{"diamond_cross"},
+	{"dot"},
+	{"dotbox"},
+	{"double_arrow"},
+	{"draft_large"},
+	{"draft_small"},
+	{"draped_box"},
+	{"exchange"},
+	{"fleur"},
+	{"gobbler"},
+	{"gumby"},
+	{"hand1"},
+	{"hand2"},
+	{"heart"},
+	{"icon"},
+	{"iron_cross"},
+	{"left_ptr"},
+	{"left_side"},
+	{"left_tee"},
+	{"leftbutton"},
+	{"ll_angle"},
+	{"lr_angle"},
+	{"man"},
+	{"middlebutton"},
+	{"mouse"},
+	{"pencil"},
+	{"pirate"},
+	{"plus"},
+	{"question_arrow"},
+	{"right_ptr"},
+	{"right_side"},
+	{"right_tee"},
+	{"rightbutton"},
+	{"rtl_logo"},
+	{"sailboat"},
+	{"sb_down_arrow"},
+	{"sb_h_double_arrow"},
+	{"sb_left_arrow"},
+	{"sb_right_arrow"},
+	{"sb_up_arrow"},
+	{"sb_v_double_arrow"},
+	{"shuttle"},
+	{"sizing"},
+	{"spider"},
+	{"spraycan"},
+	{"star"},
+	{"target"},
+	{"tcross"},
+	{"top_left_arrow"},
+	{"top_left_corner"},
+	{"top_right_corner"},
+	{"top_side"},
+	{"top_tee"},
+	{"trek"},
+	{"ul_angle"},
+	{"umbrella"},
+	{"ur_angle"},
+	{"watch"},
+	{"xterm"},
+	{NULL}
 };
 
-static void check_bitmap_status(int status, const char *filename, Pixmap bitmap)
+static void check_bitmap_status(WXBitmapStatus status, const char *filename, xcb_pixmap_t bitmap)
 {
 	switch (status) {
-	case BitmapOpenFailed:
+	case WXBitmapOpenFailed:
 		wwarning(_("failed to open bitmap file \"%s\""), filename);
 		break;
-	case BitmapFileInvalid:
+	case WXBitmapFileInvalid:
 		wwarning(_("\"%s\" is not a valid bitmap file"), filename);
 		break;
-	case BitmapNoMemory:
+	case WXBitmapNoMemory:
 		wwarning(_("out of memory reading bitmap file \"%s\""), filename);
 		break;
-	case BitmapSuccess:
-		XFreePixmap(dpy, bitmap);
+	case WXBitmapSuccess:
+		xcb_free_pixmap(xconn, bitmap);
 		break;
 	}
 }
@@ -1080,7 +1075,7 @@ static void check_bitmap_status(int status, const char *filename, Pixmap bitmap)
  * (builtin, <cursor_name>)
  * (bitmap, <cursor_bitmap>, <cursor_mask>)
  */
-static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
+static int parse_cursor(WScreen *scr, WMPropList *pl, xcb_cursor_t *cursor)
 {
 	WMPropList *elem;
 	char *val;
@@ -1099,10 +1094,9 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 
 	if (strcasecmp(val, "none") == 0) {
 		status = 1;
-		*cursor = None;
+		*cursor = XCB_NONE;
 	} else if (strcasecmp(val, "builtin") == 0) {
 		int i;
-		int cursor_id = CURSOR_ID_NONE;
 
 		if (nelem != 2) {
 			wwarning(_("bad number of arguments in cursor specification"));
@@ -1114,28 +1108,32 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 		}
 		val = WMGetFromPLString(elem);
 
+		/* the glyph names coincide with the theme cursor names, so
+		 * wXLoadCursor matches the builtin name against the theme
+		 * and falls back to the core cursor font */
 		for (i = 0; cursor_table[i].name != NULL; i++) {
 			if (strcasecmp(val, cursor_table[i].name) == 0) {
-				cursor_id = cursor_table[i].id;
+				*cursor = wXLoadCursor(xconn, 0, cursor_table[i].name);
+				if (*cursor == XCB_CURSOR_NONE) {
+					wwarning(_("could not load cursor \"%s\""), cursor_table[i].name);
+					*cursor = XCB_NONE;
+				}
+				status = 1;
 				break;
 			}
 		}
-		if (CURSOR_ID_NONE == cursor_id) {
+		if (status != 1)
 			wwarning(_("unknown builtin cursor name \"%s\""), val);
-		} else {
-			*cursor = XCreateFontCursor(dpy, cursor_id);
-			status = 1;
-		}
 	} else if (strcasecmp(val, "bitmap") == 0) {
 		char *bitmap_name;
 		char *mask_name;
-		int bitmap_status;
+		WXBitmapStatus bitmap_status;
 		int mask_status;
-		Pixmap bitmap;
-		Pixmap mask;
+		xcb_pixmap_t bitmap;
+		xcb_pixmap_t mask;
 		unsigned int w, h;
 		int x, y;
-		XColor fg, bg;
+		WXColor fg, bg;
 
 		if (nelem != 3) {
 			wwarning(_("bad number of arguments in cursor specification"));
@@ -1163,14 +1161,14 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 			wwarning(_("could not find cursor bitmap file \"%s\""), val);
 			return (status);
 		}
-		mask_status = XReadBitmapFile(dpy, scr->w_win, mask_name, &w, &h, &mask, &x, &y);
-		bitmap_status = XReadBitmapFile(dpy, scr->w_win, bitmap_name, &w, &h, &bitmap, &x, &y);
-		if ((BitmapSuccess == bitmap_status) && (BitmapSuccess == mask_status)) {
+		mask_status = wXReadBitmapFile(xconn, scr->w_win, mask_name, &w, &h, &mask, &x, &y);
+		bitmap_status = wXReadBitmapFile(xconn, scr->w_win, bitmap_name, &w, &h, &bitmap, &x, &y);
+		if ((WXBitmapSuccess == bitmap_status) && (WXBitmapSuccess == mask_status)) {
 			fg.pixel = scr->black_pixel;
 			bg.pixel = scr->white_pixel;
-			XQueryColor(dpy, scr->w_colormap, &fg);
-			XQueryColor(dpy, scr->w_colormap, &bg);
-			*cursor = XCreatePixmapCursor(dpy, bitmap, mask, &fg, &bg, x, y);
+			wXQueryColor(xconn, scr->w_colormap, &fg);
+			wXQueryColor(xconn, scr->w_colormap, &bg);
+			*cursor = wXCreatePixmapCursor(xconn, bitmap, mask, &fg, &bg, x, y);
 			status = 1;
 		}
 		check_bitmap_status(bitmap_status, bitmap_name, bitmap);
@@ -1181,13 +1179,13 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, Cursor *cursor)
 	return (status);
 }
 
-static Bool resource_retry_default(WScreen *scr, int used_default,
+static bool resource_retry_default(WScreen *scr, int used_default,
 				   const char *default_spec)
 {
 	return scr && scr->flags.startup && !used_default && default_spec;
 }
 
-static Bool resource_array_first_is(WMPropList *pl, const char *expected)
+static bool resource_array_first_is(WMPropList *pl, const char *expected)
 {
 	WMPropList *item;
 
@@ -1430,7 +1428,7 @@ unsigned int wConfigApplyColorSpec(WScreen *scr, const char *key,
 	WConfigUpdateCallback *update;
 	const char *candidate;
 	void *extra_data;
-	XColor color;
+	WXColor color;
 	int used_default;
 
 	if (!scr)
@@ -1518,7 +1516,7 @@ unsigned int wConfigApplyCursorSpec(WScreen *scr, const char *key,
 				    const char *default_spec)
 {
 	const char *candidate;
-	Cursor cursor;
+	xcb_cursor_t cursor;
 	WMPropList *pl;
 	int cursor_index;
 	int used_default;
@@ -1596,7 +1594,7 @@ void wConfigApplyTabDragModifier(const char *spec)
 	wPreferences.tab_drag_modifier_mask = (unsigned int)mask;
 }
 
-static Bool workspace_background_spec_valid(const char *key, int target,
+static bool workspace_background_spec_valid(const char *key, int target,
 					    WMPropList *value)
 {
 	WMPropList *elem;
@@ -1607,7 +1605,7 @@ static Bool workspace_background_spec_valid(const char *key, int target,
 		elem = WMGetFromPLArray(value, 0);
 		if (!elem || !WMIsPLString(elem)) {
 			wwarning(_("Wrong type for workspace background. Should be a texture type."));
-			return False;
+			return false;
 		}
 	}
 
@@ -1618,15 +1616,15 @@ static Bool workspace_background_spec_valid(const char *key, int target,
 				wwarning(_("Wrong type for background of workspace %i. Should be a texture."),
 					 i);
 		}
-		return True;
+		return true;
 	}
 
 	if (target != WCFG_BACKGROUND_WORKSPACE) {
 		wwarning(_("Invalid background target for key \"%s\""), key);
-		return False;
+		return false;
 	}
 
-	return True;
+	return true;
 }
 
 unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
@@ -1674,7 +1672,7 @@ again:
 /* ---------------- value setting functions --------------- */
 static int setIconTile(WScreen *scr, void *tdata, void *foo)
 {
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	RImage *img;
 	WTexture ** texture = tdata;
 	int reset = 0;
@@ -1695,7 +1693,7 @@ static int setIconTile(WScreen *scr, void *tdata, void *foo)
 	if (scr->icon_tile) {
 		reset = 1;
 		RReleaseImage(scr->icon_tile);
-		XFreePixmap(dpy, scr->icon_tile_pixmap);
+		xcb_free_pixmap(xconn, scr->icon_tile_pixmap);
 	}
 
 	scr->icon_tile = img;
@@ -1836,7 +1834,7 @@ static int setLargeDisplayFont(WScreen *scr, void *tdata, void *foo)
 
 static int setHightlight(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -1844,7 +1842,7 @@ static int setHightlight(WScreen *scr, void *tdata, void *foo)
 	if (scr->select_color)
 		WMReleaseColor(scr->select_color);
 
-	scr->select_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->select_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -1853,7 +1851,7 @@ static int setHightlight(WScreen *scr, void *tdata, void *foo)
 
 static int setHightlightText(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -1861,7 +1859,7 @@ static int setHightlightText(WScreen *scr, void *tdata, void *foo)
 	if (scr->select_text_color)
 		WMReleaseColor(scr->select_text_color);
 
-	scr->select_text_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->select_text_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -1870,7 +1868,7 @@ static int setHightlightText(WScreen *scr, void *tdata, void *foo)
 
 static int setClipTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 	long widx = (long) extra_data;
 
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -1878,7 +1876,7 @@ static int setClipTitleColor(WScreen *scr, void *tdata, void *extra_data)
 	if (scr->clip_title_color[widx])
 		WMReleaseColor(scr->clip_title_color[widx]);
 
-	scr->clip_title_color[widx] = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->clip_title_color[widx] = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 	wFreeColor(scr, color->pixel);
 
 	return REFRESH_ICON_TITLE_COLOR;
@@ -1886,7 +1884,7 @@ static int setClipTitleColor(WScreen *scr, void *tdata, void *extra_data)
 
 static int setWTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 	long widx = (long) extra_data;
 
 	if (scr->window_title_color[widx])
@@ -1900,7 +1898,7 @@ static int setWTitleColor(WScreen *scr, void *tdata, void *extra_data)
 	}
 
 	scr->window_title_color[widx] =
-	    WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	    WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -1909,7 +1907,7 @@ static int setWTitleColor(WScreen *scr, void *tdata, void *extra_data)
 
 static int setMenuTitleColor(WScreen *scr, void *tdata, void *extra_data)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) extra_data;
@@ -1917,7 +1915,7 @@ static int setMenuTitleColor(WScreen *scr, void *tdata, void *extra_data)
 	if (scr->menu_title_color[0])
 		WMReleaseColor(scr->menu_title_color[0]);
 
-	scr->menu_title_color[0] = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->menu_title_color[0] = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -1926,7 +1924,7 @@ static int setMenuTitleColor(WScreen *scr, void *tdata, void *extra_data)
 
 static int setMenuTextColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -1934,7 +1932,7 @@ static int setMenuTextColor(WScreen *scr, void *tdata, void *foo)
 	if (scr->mtext_color)
 		WMReleaseColor(scr->mtext_color);
 
-	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	if (WMColorPixel(scr->dtext_color) == WMColorPixel(scr->mtext_color)) {
 		WMSetColorAlpha(scr->dtext_color, 0x7fff);
@@ -1949,7 +1947,7 @@ static int setMenuTextColor(WScreen *scr, void *tdata, void *foo)
 
 static int setMenuDisabledColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -1957,7 +1955,7 @@ static int setMenuDisabledColor(WScreen *scr, void *tdata, void *foo)
 	if (scr->dtext_color)
 		WMReleaseColor(scr->dtext_color);
 
-	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	if (WMColorPixel(scr->dtext_color) == WMColorPixel(scr->mtext_color)) {
 		WMSetColorAlpha(scr->dtext_color, 0x7fff);
@@ -1972,14 +1970,14 @@ static int setMenuDisabledColor(WScreen *scr, void *tdata, void *foo)
 
 static int setIconTitleColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
 	if (scr->icon_title_color)
 		WMReleaseColor(scr->icon_title_color);
-	scr->icon_title_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->icon_title_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -1988,7 +1986,7 @@ static int setIconTitleColor(WScreen *scr, void *tdata, void *foo)
 
 static int setIconTitleBack(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -2003,14 +2001,14 @@ static int setIconTitleBack(WScreen *scr, void *tdata, void *foo)
 
 static int setFrameBorderColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
 	if (scr->frame_border_color)
 		WMReleaseColor(scr->frame_border_color);
-	scr->frame_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -2019,14 +2017,14 @@ static int setFrameBorderColor(WScreen *scr, void *tdata, void *foo)
 
 static int setFrameFocusedBorderColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
 	if (scr->frame_focused_border_color)
 		WMReleaseColor(scr->frame_focused_border_color);
-	scr->frame_focused_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_focused_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -2035,14 +2033,14 @@ static int setFrameFocusedBorderColor(WScreen *scr, void *tdata, void *foo)
 
 static int setFrameSelectedBorderColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
 	if (scr->frame_selected_border_color)
 		WMReleaseColor(scr->frame_selected_border_color);
-	scr->frame_selected_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_selected_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 
 	wFreeColor(scr, color->pixel);
 
@@ -2051,13 +2049,13 @@ static int setFrameSelectedBorderColor(WScreen *scr, void *tdata, void *foo)
 
 static int setFrameInnerBorderColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	(void) foo;
 
 	if (scr->frame_inner_border_color)
 		WMReleaseColor(scr->frame_inner_border_color);
-	scr->frame_inner_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_inner_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 	scr->frame_inner_border_pixel = WMColorPixel(scr->frame_inner_border_color);
 	wFreeColor(scr, color->pixel);
 
@@ -2066,13 +2064,13 @@ static int setFrameInnerBorderColor(WScreen *scr, void *tdata, void *foo)
 
 static int setFrameInnerFocusedBorderColor(WScreen *scr, void *tdata, void *foo)
 {
-	XColor *color = tdata;
+	WXColor *color = tdata;
 
 	(void) foo;
 
 	if (scr->frame_inner_focused_border_color)
 		WMReleaseColor(scr->frame_inner_focused_border_color);
-	scr->frame_inner_focused_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, True);
+	scr->frame_inner_focused_border_color = WMCreateRGBColor(scr->wmscreen, color->red, color->green, color->blue, true);
 	scr->frame_inner_focused_border_pixel = WMColorPixel(scr->frame_inner_focused_border_color);
 	wFreeColor(scr, color->pixel);
 
@@ -2114,7 +2112,7 @@ static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)
 	for (i = 0; i < WMGetPropListItemCount(value); i++) {
 		val = WMGetFromPLArray(value, i);
 		if (val && WMIsPLArray(val) && WMGetPropListItemCount(val) > 0) {
-			str = WMGetPropListDescription(val, False);
+			str = WMGetPropListDescription(val, false);
 
 			SendHelperMessage(scr, 'S', i + 1, str);
 
@@ -2148,7 +2146,7 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 			SendHelperMessage(scr, 'U', 0, NULL);
 		} else {
 			/* set the default workspace background to this one */
-			str = WMGetPropListDescription(value, False);
+			str = WMGetPropListDescription(value, false);
 			if (str) {
 				SendHelperMessage(scr, 'S', 0, str);
 				wfree(str);
@@ -2161,7 +2159,7 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 		char *text;
 		pid_t pid;
 
-		text = WMGetPropListDescription(value, False);
+		text = WMGetPropListDescription(value, false);
 		if (text) {
 			if (w_global.config->smooth_workspace_back)
 				pid = wspawnvp_setup((char *[]){ "wmsetbg", "-S", "-p", text, NULL },
@@ -2302,7 +2300,7 @@ static int setMenuTextBack(WScreen *scr, void *tdata, void *foo)
 	return REFRESH_MENU_TEXTURE;
 }
 
-static Bool shortcut_values_equal(const WShortKey *old_key,
+static bool shortcut_values_equal(const WShortKey *old_key,
 				  const WShortKey *new_key)
 {
 	int count;
@@ -2310,20 +2308,20 @@ static Bool shortcut_values_equal(const WShortKey *old_key,
 	if (old_key->modifier != new_key->modifier ||
 	    old_key->keycode != new_key->keycode ||
 	    old_key->chain_length != new_key->chain_length)
-		return False;
+		return false;
 
 	if (new_key->chain_length <= 1)
-		return True;
+		return true;
 
 	if (!old_key->chain_modifiers || !old_key->chain_keycodes ||
 	    !new_key->chain_modifiers || !new_key->chain_keycodes)
-		return False;
+		return false;
 
 	count = new_key->chain_length - 1;
 	return memcmp(old_key->chain_modifiers, new_key->chain_modifiers,
 		      count * sizeof(unsigned int)) == 0 &&
 	    memcmp(old_key->chain_keycodes, new_key->chain_keycodes,
-		   count * sizeof(KeyCode)) == 0;
+		   count * sizeof(xcb_keycode_t)) == 0;
 }
 
 static void store_key_binding(int binding_index, const WShortKey *shortcut)
@@ -2336,11 +2334,11 @@ static void store_key_binding(int binding_index, const WShortKey *shortcut)
 		wKeyBindings[binding_index].chain_modifiers =
 		    wmalloc(count * sizeof(unsigned int));
 		wKeyBindings[binding_index].chain_keycodes =
-		    wmalloc(count * sizeof(KeyCode));
+		    wmalloc(count * sizeof(xcb_keycode_t));
 		memcpy(wKeyBindings[binding_index].chain_modifiers,
 		       shortcut->chain_modifiers, count * sizeof(unsigned int));
 		memcpy(wKeyBindings[binding_index].chain_keycodes,
-		       shortcut->chain_keycodes, count * sizeof(KeyCode));
+		       shortcut->chain_keycodes, count * sizeof(xcb_keycode_t));
 	} else {
 		wKeyBindings[binding_index].chain_modifiers = NULL;
 		wKeyBindings[binding_index].chain_keycodes = NULL;
@@ -2356,7 +2354,7 @@ static void regrab_focused_window_keys(WScreen *scr)
 
 	wwin = scr->focused_window;
 	while (wwin != NULL) {
-		XUngrabKey(dpy, AnyKey, AnyModifier, wwin->frame->core->window);
+		wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 		if (!WFLAGP(wwin, no_bind_keys))
 			wWindowSetKeyGrabs(wwin);
 		wwin = wwin->prev;
@@ -2371,7 +2369,7 @@ void wRegrabWindowMouseGrabs(WScreen *scr)
 		return;
 
 	/* scr->focused_window heads the full managed-window list. wWindow-
-	 * ResetMouseGrabs starts by XUngrabButton(AnyButton, AnyModifier) on
+	 * ResetMouseGrabs starts by wXUngrabButton(AnyButton, AnyModifier) on
 	 * the client window so it self-clears before re-issuing the
 	 * modifier-bound button grabs that depend on MOD_MASK. */
 	wwin = scr->focused_window;
@@ -2397,13 +2395,13 @@ static unsigned int key_binding_refresh_mask(int binding_index)
 unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 				    int binding_index, const char *spec,
 				    const char *default_spec,
-				    Bool *binding_changed)
+				    bool *binding_changed)
 {
 	WShortKey shortcut;
-	Bool changed;
+	bool changed;
 
 	if (binding_changed)
-		*binding_changed = False;
+		*binding_changed = false;
 	if (binding_index < 0 || binding_index >= WKBD_LAST)
 		return 0;
 
@@ -2642,19 +2640,19 @@ void wConfigApplyHotCornerActions(WScreen *scr,
 
 static int setCursor(WScreen *scr, void *tdata, void *extra_data)
 {
-	Cursor *cursor = tdata;
+	xcb_cursor_t *cursor = tdata;
 	long widx = (long) extra_data;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 
-	if (wPreferences.cursor[widx] != None) {
-		XFreeCursor(dpy, wPreferences.cursor[widx]);
+	if (wPreferences.cursor[widx] != XCB_NONE) {
+		xcb_free_cursor(xconn, wPreferences.cursor[widx]);
 	}
 
 	wPreferences.cursor[widx] = *cursor;
 
-	if (widx == WCUR_ROOT && *cursor != None) {
-		XDefineCursor(dpy, scr->root_win, *cursor);
+	if (widx == WCUR_ROOT && *cursor != XCB_NONE) {
+		wXDefineCursor(xconn, scr->root_win, *cursor);
 	}
 
 	return 0;

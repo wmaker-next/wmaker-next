@@ -59,10 +59,6 @@
 
 #ifdef USER_MENU
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xproto.h>
-#include <X11/Xatom.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -83,12 +79,29 @@ typedef struct {
 	int key_no;
 } WUserMenuData;
 
+static void sendKeyWire(WScreen *scr, xcb_window_t window, uint8_t response_type,
+			xcb_keycode_t keycode, uint16_t state)
+{
+	xcb_key_press_event_t ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.response_type = response_type;
+	ev.detail = keycode;
+	ev.root = scr->root_win;
+	ev.event = window;
+	ev.child = XCB_NONE;
+	ev.state = state;
+	ev.same_screen = 1;
+	WXSendEvent32(xconn, &ev, sizeof(ev), 0, window,
+		      response_type == XCB_KEY_PRESS ?
+		      XCB_EVENT_MASK_KEY_PRESS : XCB_EVENT_MASK_KEY_RELEASE);
+}
+
 static void notifyClient(WMenu *menu, WMenuEntry *entry)
 {
-	XEvent event;
 	WUserMenuData *data = entry->clientdata;
 	WScreen *scr = data->screen;
-	Window window;
+	xcb_window_t window;
 	int i;
 
 	(void) menu;
@@ -96,24 +109,10 @@ static void notifyClient(WMenu *menu, WMenuEntry *entry)
 	window = scr->focused_window->client_win;
 
 	for (i = 0; i < data->key_no; i++) {
-		event.xkey.type = KeyPress;
-		event.xkey.display = dpy;
-		event.xkey.window = window;
-		event.xkey.root = DefaultRootWindow(dpy);
-		event.xkey.subwindow = (Window) None;
-		event.xkey.x = 0x0;
-		event.xkey.y = 0x0;
-		event.xkey.x_root = 0x0;
-		event.xkey.y_root = 0x0;
-		event.xkey.keycode = data->key[i].keycode;
-		event.xkey.state = data->key[i].modifier;
-		event.xkey.same_screen = True;
-		event.xkey.time = CurrentTime;
-		if (XSendEvent(dpy, window, False, KeyPressMask, &event)) {
-			event.xkey.type = KeyRelease;
-			event.xkey.time = CurrentTime;
-			XSendEvent(dpy, window, True, KeyReleaseMask, &event);
-		}
+		sendKeyWire(scr, window, XCB_KEY_PRESS, data->key[i].keycode,
+			    data->key[i].modifier);
+		sendKeyWire(scr, window, XCB_KEY_RELEASE, data->key[i].keycode,
+			    data->key[i].modifier);
 	}
 }
 
@@ -129,7 +128,7 @@ static void removeUserMenudata(void *menudata)
 static WUserMenuData *convertShortcuts(WScreen *scr, WMPropList *shortcut)
 {
 	WUserMenuData *data;
-	KeySym ksym;
+	xkb_keysym_t ksym;
 	char *k, buf[MAX_SHORTCUT_LENGTH], *b;
 	int keycount, i, j, mod;
 
@@ -170,7 +169,7 @@ static WUserMenuData *convertShortcuts(WScreen *scr, WMPropList *shortcut)
 		}
 
 		ksym = wXkbKeysymFromName(b);
-		if (ksym == NoSymbol)
+		if (ksym == XKB_KEY_NoSymbol)
 			continue;
 
 		data->key[j].keycode = wXkbKeysymToKeycode(ksym);
@@ -217,7 +216,7 @@ static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum, int depth)
 		return NULL;
 
 	mtitle = WMGetFromPLString(elem);
-	menu = wMenuCreateForApp(scr, mtitle, True);
+	menu = wMenuCreateForApp(scr, mtitle, true);
 
 	for (i = 1; i < count; i++) {
 		elem = WMGetFromPLArray(plum, i);

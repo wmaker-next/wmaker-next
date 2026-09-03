@@ -22,8 +22,7 @@
 #include "WPrefs.h"
 #include "enumchoices.h"
 
-#include <X11/Xutil.h>
-#include <X11/XKBlib.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -130,7 +129,7 @@ static void setMouseAccel(WMScreen * scr, float accel, int threshold)
 	d = 10;
 	n = accel * d;
 
-	XChangePointerControl(WMScreenDisplay(scr), True, True, n, d, threshold);
+	wXChangePointerControl(WMScreenDisplay(scr), true, true, n, d, threshold);
 }
 
 static void speedChange(WMWidget * w, void *data)
@@ -190,13 +189,13 @@ static void toggle_disabling_of_mouse_actions(WMWidget *w, void *client_data)
 {
 	WMButton *button = (WMButton *) w;
 	Panel *panel = (Panel *) client_data;
-	Bool do_enable;
+	bool do_enable;
 	int i;
 
 	if (WMGetButtonSelected(button))
-		do_enable = False;
+		do_enable = false;
 	else
-		do_enable = True;
+		do_enable = true;
 
 	for (i = 0; i < wlengthof(panel->mouse_action); i++)
 		WMSetPopUpButtonEnabled(panel->mouse_action[i].popup, do_enable);
@@ -248,11 +247,11 @@ static int getWheelAction(const char *str)
 	return -1;
 }
 
-static void getMouseParameters(Display * dpy, float *accel, int *thre)
+static void getMouseParameters(xcb_connection_t * dpy, float *accel, int *thre)
 {
 	int n, d;
 
-	XGetPointerControl(dpy, &n, &d, thre);
+	wXGetPointerControl(dpy, &n, &d, thre);
 
 	*accel = (float)n / (float)d;
 }
@@ -264,7 +263,8 @@ static void showData(_Panel * panel)
 	int a = -1, b = -1;
 	float accel;
 	char buffer[32];
-	Display *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
+	xcb_connection_t *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
+	int sn = WMWidgetScreen(panel->parent)->screen;
 
 	for (i = 0; i < wlengthof(button_list); i++) {
 		int action;
@@ -287,7 +287,7 @@ static void showData(_Panel * panel)
 	toggle_disabling_of_mouse_actions(panel->disaB, panel);
 
 	 /**/ getMouseParameters(dpy, &accel, &a);
-	panel->maxThreshold = WidthOfScreen(DefaultScreenOfDisplay(dpy));
+	panel->maxThreshold = wXDisplayWidth(dpy, sn);
 	if (a > panel->maxThreshold) {
 		panel->maxThreshold = a;
 	}
@@ -315,7 +315,7 @@ static void showData(_Panel * panel)
 	 /**/ str = GetStringForKey("ModifierKey");
 	if (!str)
 		str = "mod1";
-	a = ModifierFromKey(dpy, str);
+	a = ModifierFromKey(WMWidgetScreen(panel->parent), str);
 
 	if (a != -1) {
 		str = modifierNames[a];
@@ -343,47 +343,55 @@ static void showData(_Panel * panel)
 
 static void fillModifierPopUp(WMPopUpButton * pop)
 {
-	XModifierKeymap *mapping;
-	Display *dpy = WMScreenDisplay(WMWidgetScreen(pop));
+	xcb_connection_t *xc = WMScreenDisplay(WMWidgetScreen(pop));
+	xcb_get_modifier_mapping_reply_t *mapping;
+	xcb_keycode_t *codes;
 	int i, j;
 	char *str;
 	char buffer[64];
 
-	mapping = XGetModifierMapping(dpy);
+	mapping = xcb_get_modifier_mapping_reply(xc, xcb_get_modifier_mapping(xc),
+						 NULL);
 
-	if (!mapping || mapping->max_keypermod == 0) {
+	if (!mapping || mapping->keycodes_per_modifier == 0) {
 		WMAddPopUpButtonItem(pop, "Mod1");
 		WMAddPopUpButtonItem(pop, "Mod2");
 		WMAddPopUpButtonItem(pop, "Mod3");
 		WMAddPopUpButtonItem(pop, "Mod4");
 		WMAddPopUpButtonItem(pop, "Mod5");
 		wwarning(_("could not retrieve keyboard modifier mapping"));
+		free(mapping);
 		return;
 	}
 
+	codes = xcb_get_modifier_mapping_keycodes(mapping);
 	for (j = 0; j < 8; j++) {
 		int idx;
 		char *array[8];
 		int a;
-		KeySym ksym;
+		xkb_keysym_t ksym;
 		int k;
 		char *ptr;
 		char *tmp;
 
-		a = 0;
-		memset(array, 0, sizeof(char *) * 8);
-		for (i = 0; i < mapping->max_keypermod; i++) {
-			idx = i + j * mapping->max_keypermod;
-			if (mapping->modifiermap[idx] != 0) {
-				int l;
-				for (l = 0; l < 4; l++) {
-					ksym = W_KeycodeToKeysym(dpy, mapping->modifiermap[idx], l);
-					if (ksym != NoSymbol)
-						break;
-				}
-				if (ksym != NoSymbol)
-					str = XKeysymToString(ksym);
-				else
+			a = 0;
+			memset(array, 0, sizeof(char *) * 8);
+			for (i = 0; i < mapping->keycodes_per_modifier; i++) {
+				idx = i + j * mapping->keycodes_per_modifier;
+				if (codes[idx] != 0) {
+					/* outlives the str = ksname borrow
+					 * in the branch below */
+					char ksname[64];
+					int l;
+					for (l = 0; l < 2; l++) {
+						ksym = W_XkbKeysymForKeycode(WMWidgetScreen(pop), codes[idx], l);
+						if (ksym != XKB_KEY_NoSymbol)
+							break;
+					}
+				if (ksym != XKB_KEY_NoSymbol) {
+					xkb_keysym_get_name(ksym, ksname, sizeof(ksname));
+					str = ksname;
+				} else
 					str = NULL;
 				if (str && !strstr(str, "_Lock") && !strstr(str, "Shift")
 				    && !strstr(str, "Control")) {
@@ -424,7 +432,7 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 	}
 
 	if (mapping)
-		XFreeModifiermap(mapping);
+		free(mapping);
 }
 
 static void createPanel(Panel * p)
@@ -473,7 +481,7 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->speedS, 58, 30);
 	WMSetSliderMinValue(panel->speedS, 0);
 	WMSetSliderMaxValue(panel->speedS, 40);
-	WMSetSliderContinuous(panel->speedS, False);
+	WMSetSliderContinuous(panel->speedS, false);
 	WMSetSliderAction(panel->speedS, speedChange, panel);
 
 	panel->acceL = WMCreateLabel(panel->speedF);
@@ -528,16 +536,16 @@ static void createPanel(Panel * p)
 		panel->ddelaB[i] = WMCreateCustomButton(panel->ddelaF, WBBStateChangeMask);
 		WMResizeWidget(panel->ddelaB[i], 25, 25);
 		WMMoveWidget(panel->ddelaB[i], 18 + (40 * i), 18);
-		WMSetButtonBordered(panel->ddelaB[i], False);
+		WMSetButtonBordered(panel->ddelaB[i], false);
 		WMSetButtonImagePosition(panel->ddelaB[i], WIPImageOnly);
 		WMSetButtonAction(panel->ddelaB[i], doubleClick, panel);
 		if (i > 0) {
 			WMGroupButtons(panel->ddelaB[0], panel->ddelaB[i]);
 		}
 		snprintf(buf, sizeof(buf), DELAY_ICON, i + 1);
-		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, False);
+		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, false);
 		snprintf(buf, sizeof(buf), DELAY_ICON_S, i + 1);
-		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, True);
+		SetButtonImageFromFile(scr, panel->ddelaB[i], buf, true);
 	}
 
 	panel->tester = CreateDoubleTest(panel->ddelaF, _("Test"));

@@ -22,8 +22,8 @@
 #include "screen.h"
 
 typedef struct WPixmap {
-    Pixmap image;		       /* icon image */
-    Pixmap mask;		       /* icon mask */
+    xcb_pixmap_t image;	       /* icon image */
+    xcb_pixmap_t mask;	       /* icon mask */
     int width, height;		       /* size of pixmap */
     int depth;			       /* depth of pixmap */
     unsigned int shared:1;	       /* if pixmaps should be kept
@@ -37,7 +37,7 @@ typedef struct WPixmap {
 } WPixmap;
 
 
-WPixmap *wPixmapCreate(Pixmap image, Pixmap mask);
+WPixmap *wPixmapCreate(xcb_pixmap_t image, xcb_pixmap_t mask);
 
 WPixmap *wPixmapCreateFromXPMData(WScreen *scr, char **data);
 

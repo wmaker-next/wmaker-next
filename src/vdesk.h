@@ -43,13 +43,13 @@ typedef struct _WScreen WScreen;
  *
  * Returns True if any window moved, False if the viewport was unchanged
  * or the workspace is not pannable. */
-Bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y);
+bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y);
 
 /* Per-head guard. True when the viewport must stay inert:
  * per_head_workspaces is on, or the workspace is output-pinned via
  * WorkspaceOutputs (head_names non-empty). workspace = -1 checks only the
  * screen-level per_head_workspaces flag. */
-Bool wVdeskPerHeadBlocked(WScreen *scr, int workspace);
+bool wVdeskPerHeadBlocked(WScreen *scr, int workspace);
 
 /* Recompute the finite desktop extent (vdesk_w/h) from the extents of all
  * non-sticky windows on the workspace, anchoring the origin at negative
@@ -77,19 +77,18 @@ void wVdeskCenter(WScreen *scr, WWindow *wwin);
 void wVdeskPin(WScreen *scr, WWindow *wwin);
 
 /* Pointer edge-scroll. Called from handleEnterNotify when the cursor
- * enters an edge InputOnly window (looked up via wVEdgeContext). Ported
+ * enters an edge InputOnly window (looked up via wVEdgeTable). Ported
  * from the deleted 2010 vdMouseMoveDesktop. The XEvent is the EnterNotify
  * that triggered the call. The loop runs in the geometry of the head
  * whose sentinel fired, so it pans on that head only. */
-void wVdeskMouseMoveDesktop(XEvent *event, WMPoint direction);
+void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction);
 
 /* Pointer drag-pan. Called from executeButtonAction when the user binds
- * a root-window mouse button to the VirtualDesktopPan action. The XEvent
- * is the ButtonPress that triggered the call. XGrabPointer flips the
+ * a root-window mouse button to the VirtualDesktopPan action. The xcb_generic_event_t * is the ButtonPress that triggered the call. XGrabPointer flips the
  * cursor to WCUR_MOVE. MotionNotify deltas feed wVdeskSetViewport until
  * ButtonRelease. Drag-pan is inherently smooth (one SetViewport per
  * MotionNotify, no tween). */
-void wVdeskDragPan(WScreen *scr, XEvent *event);
+void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event);
 
 /* Edge InputOnly window lifecycle. wWorkspaceUpdateEdge() creates the
  * edge windows when vdesk_enable is on and destroys them when it is off.

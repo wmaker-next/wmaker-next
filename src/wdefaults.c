@@ -30,9 +30,7 @@
 #include <regex.h>
 #include <sys/types.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include <wraster.h>
 
@@ -392,8 +390,8 @@ static char *subst_env_in_pattern(const char *pattern)
 {
 	size_t cap, len, i;
 	char *out;
-	Bool in_bracket = False;
-	Bool bracket_first = False;
+	bool in_bracket = false;
+	bool bracket_first = false;
 	char class_term = '\0';
 
 	if (!pattern)
@@ -417,7 +415,7 @@ static char *subst_env_in_pattern(const char *pattern)
 						out = wrealloc(out, cap);
 					}
 					class_term = '\0';
-					bracket_first = False;
+					bracket_first = false;
 					continue;
 				}
 				out[len++] = c;
@@ -431,7 +429,7 @@ static char *subst_env_in_pattern(const char *pattern)
 					 pattern[i + 1] == '.' ||
 					 pattern[i + 1] == '=')) {
 				class_term = pattern[i + 1];
-				bracket_first = False;
+				bracket_first = false;
 				out[len++] = c;
 				if (len + 1 >= cap) {
 					cap *= 2;
@@ -440,7 +438,7 @@ static char *subst_env_in_pattern(const char *pattern)
 				continue;
 			}
 			if (c == ']' && !bracket_first) {
-				in_bracket = False;
+				in_bracket = false;
 				out[len++] = c;
 				if (len + 1 >= cap) {
 					cap *= 2;
@@ -456,7 +454,7 @@ static char *subst_env_in_pattern(const char *pattern)
 				}
 				continue;
 			}
-			bracket_first = False;
+			bracket_first = false;
 			out[len++] = c;
 			if (len + 1 >= cap) {
 				cap *= 2;
@@ -466,8 +464,8 @@ static char *subst_env_in_pattern(const char *pattern)
 		}
 
 		if (c == '[') {
-			in_bracket = True;
-			bracket_first = True;
+			in_bracket = true;
+			bracket_first = true;
 			class_term = '\0';
 			out[len++] = c;
 			if (len + 1 >= cap) {
@@ -540,7 +538,7 @@ static int compile_one(regex_t *re, const char *pattern)
 
 /* Compile all present Match* predicates of one rule. Returns True on
  * success, False (with a wwarning per bad pattern) if any compile failed. */
-static Bool compile_rule_predicates(WDynamicRule *r, WMPropList *rule)
+static bool compile_rule_predicates(WDynamicRule *r, WMPropList *rule)
 {
 	struct {
 		WMPropList *key;
@@ -549,7 +547,7 @@ static Bool compile_rule_predicates(WDynamicRule *r, WMPropList *rule)
 		const char *name;
 	} p[7];
 	int k;
-	Bool bad = False;
+	bool bad = false;
 
 	p[0].key = AMatchClass;       p[0].re = &r->re_class;       p[0].flag = REGEX_MATCH_CLASS;       p[0].name = "Class";
 	p[1].key = AMatchInstance;    p[1].re = &r->re_instance;    p[1].flag = REGEX_MATCH_INSTANCE;   p[1].name = "Instance";
@@ -568,11 +566,11 @@ static Bool compile_rule_predicates(WDynamicRule *r, WMPropList *rule)
 				r->compiled  |= p[k].flag;
 			} else {
 				wwarning("DynamicRules: bad Match%s pattern", p[k].name);
-				bad = True;
+				bad = true;
 			}
 		} else if (m) {
 			wwarning("DynamicRules: Match%s is not a string", p[k].name);
-			bad = True;
+			bad = true;
 		}
 	}
 	return !bad;
@@ -617,7 +615,7 @@ static void free_dynamic_rules(void)
 	dynamic_rule_count = 0;
 }
 
-Bool wDefaultHasDynamicRules(void)
+bool wDefaultHasDynamicRules(void)
 {
 	return dynamic_rule_count > 0;
 }
@@ -641,7 +639,7 @@ void wWindowAttrsReload(void)
 	/* both the outer instance.class key and the inner attribute keys
 	 * are matched case-sensitively, same as the original per-call
 	 * proplist walk */
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	keys = WMGetPLDictionaryKeys(dict);
 	count = keys ? WMGetPropListItemCount(keys) : 0;
@@ -706,7 +704,7 @@ void wWindowAttrsReload(void)
 		}
 	}
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 }
 
 static const WWindowAttrs *attrs_lookup(const char *key)
@@ -722,7 +720,7 @@ static const WWindowAttrs *attrs_lookup(const char *key)
  * precedence order. Returns the number of levels filled (up to 4),
  * level[0] is the highest-precedence match. */
 static int attrs_lookup_levels(const char *instance, const char *class,
-			       Bool useGlobalDefault, const WWindowAttrs *level[4])
+			       bool useGlobalDefault, const WWindowAttrs *level[4])
 {
 	int n = 0;
 
@@ -849,13 +847,13 @@ static const WWindowAttrs *attrs_lookup_dynamic(const char *title,
 		    (!machine || regexec(&r->re_machine, machine, 0, NULL, 0) != 0))
 			continue;
 		if (r->has_match & REGEX_MATCH_WINDOW_TYPE) {
-			Bool matched = False;
+			bool matched = false;
 
 			for (j = 0; j < window_type_count; j++) {
 				if (window_types[j] &&
 				    regexec(&r->re_window_type, window_types[j],
 					    0, NULL, 0) == 0) {
-					matched = True;
+					matched = true;
 					break;
 				}
 			}
@@ -874,7 +872,7 @@ static void fill_attrs_with_title(const char *instance, const char *class,
 				 const char * const *window_types,
 				 int window_type_count,
 				 WWindowAttributes *attr, WWindowAttributes *mask,
-				 Bool useGlobalDefault, Bool useDynamic)
+				 bool useGlobalDefault, bool useDynamic)
 {
 	const WWindowAttrs *level[4];
 	const WWindowAttrs *re;
@@ -904,10 +902,10 @@ static void fill_attrs_with_title(const char *instance, const char *class,
 
 void wDefaultFillAttributes(const char *instance, const char *class,
 			    WWindowAttributes *attr, WWindowAttributes *mask,
-			    Bool useGlobalDefault)
+			    bool useGlobalDefault)
 {
 	fill_attrs_with_title(instance, class, NULL, NULL, NULL, NULL, NULL, 0,
-			      attr, mask, useGlobalDefault, False);
+			      attr, mask, useGlobalDefault, false);
 }
 
 /*
@@ -923,7 +921,7 @@ void wDefaultFillAttributes(const char *instance, const char *class,
 void wDefaultFillAttributesForWindow(const WWindow *wwin,
 				     WWindowAttributes *attr,
 				     WWindowAttributes *mask,
-				     Bool useGlobalDefault)
+				     bool useGlobalDefault)
 {
 	const char *title = wwin->wm_title ? wwin->wm_title : NULL;
 
@@ -931,7 +929,7 @@ void wDefaultFillAttributesForWindow(const WWindow *wwin,
 			      wwin->wm_role, wwin->wm_command, wwin->wm_machine,
 			      (const char * const *)wwin->wm_type_names,
 			      wwin->wm_type_count,
-			      attr, mask, useGlobalDefault, True);
+			      attr, mask, useGlobalDefault, true);
 }
 
 /*
@@ -949,8 +947,8 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 	WMPropList *dict, *attr, *value, *user_dict, *user_attr;
 	WMPropList *keys[3];
 	WMPropList *match_key = NULL, *match_attr = NULL;
-	Bool from_user = False;
-	Bool persist;
+	bool from_user = false;
+	bool persist;
 	int i, nkeys = 0;
 
 	if (!db || !db->dictionary || !file_name || file_name[0] == '\0')
@@ -967,14 +965,14 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 	if (file_name[0] == '/') {
 		if (access(file_name, F_OK) < 0 && errno != ENOENT)
 			return;
-		persist = True;
+		persist = true;
 	} else {
-		persist = False;
+		persist = false;
 	}
 
 	dict = db->dictionary;
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	/* same empty-is-absent rule as attrs_lookup_levels() */
 	if (instance && !*instance)
@@ -1020,7 +1018,7 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 			user_attr = WMGetFromPLDictionary(user_dict, match_key);
 			if (user_attr && WMIsPLDictionary(user_attr) &&
 			    WMGetFromPLDictionary(user_attr, AIcon))
-				from_user = True;
+				from_user = true;
 		}
 		WMReleasePropList(user_dict);
 	}
@@ -1038,7 +1036,7 @@ out:
 	for (i = 0; i < nkeys; i++)
 		WMReleasePropList(keys[i]);
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 }
 
 /* Search the icon cache directory for an icon. When file_name is given
@@ -1073,13 +1071,13 @@ char *find_in_icon_cache(const char *file_name,
 
 /* Get the file name of the image, using instance and class */
 char *get_icon_filename(const char *winstance, const char *wclass, const char *command,
-			Bool default_icon)
+			bool default_icon)
 {
 	char *file_name;
 	char *file_path;
 
 	/* Look up the per-app icon file name, using instance and class */
-	file_name = wDefaultGetIconFile(winstance, wclass, False);
+	file_name = wDefaultGetIconFile(winstance, wclass, false);
 
 	/* Check if the file really exists in the disk */
 	if (file_name)
@@ -1102,7 +1100,7 @@ char *get_icon_filename(const char *winstance, const char *wclass, const char *c
 	 * then include the .app icons and re-do the search. */
 	if (!file_path && command) {
 		wApplicationExtractDirPackIcon(command, winstance, wclass);
-		file_name = wDefaultGetIconFile(winstance, wclass, False);
+		file_name = wDefaultGetIconFile(winstance, wclass, false);
 		if (file_name) {
 			file_path = FindImage(w_global.config->icon_path, file_name);
 			if (!file_path)
@@ -1197,7 +1195,7 @@ char *get_default_image_path(void)
 	char *path = NULL, *file = NULL;
 
 	/* Get the default icon */
-	file = wDefaultGetIconFile(NULL, NULL, True);
+	file = wDefaultGetIconFile(NULL, NULL, true);
 	if (file)
 		path = FindImage(w_global.config->icon_path, file);
 
@@ -1235,20 +1233,20 @@ RImage *get_icon_image(WScreen *scr, const char *winstance, const char *wclass, 
 	RImage *image;
 
 	/* Get the file name of the image, using instance and class */
-	file_name = get_icon_filename(winstance, wclass, NULL, True);
+	file_name = get_icon_filename(winstance, wclass, NULL, true);
 	image = get_rimage_from_file(scr, file_name, max_size);
 	wfree(file_name);
 
 	return image;
 }
 
-Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
+bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 			       const char *class, uint64_t *out_mask)
 {
 	const WWindowAttrs *level[4];
 	int n, i, j;
 
-	n = attrs_lookup_levels(instance, class, True, level);
+	n = attrs_lookup_levels(instance, class, true, level);
 	for (i = 0; i < n; i++) {
 		const WWindowAttrs *a = level[i];
 
@@ -1263,7 +1261,7 @@ Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 			}
 			if (mask) {
 				*out_mask = mask;
-				return True;
+				return true;
 			}
 		}
 	}
@@ -1276,11 +1274,11 @@ Bool wDefaultGetStartWorkspaces(WScreen *scr, const char *instance,
 
 			if (w >= 0 && w < MAX_WORKSPACES) {
 				*out_mask = WS_BIT(w);
-				return True;
+				return true;
 			}
 		}
 	}
-	return False;
+	return false;
 }
 
 void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
@@ -1289,56 +1287,56 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 	const WWindowAttrs *level[4];
 	const WWindowAttrs *re = NULL;
 	int n, i;
-	Bool resolved_any = False;
+	bool resolved_any = false;
 
-	n = attrs_lookup_levels(instance, class, True, level);
+	n = attrs_lookup_levels(instance, class, true, level);
 	for (i = 0; i < n; i++) {
 		const WWindowAttrs *a = level[i];
 
 		if ((a->frame_set & WATTR_FRAME_BORDER_WIDTH) && !wwin->frame_border.frame_border_width_set) {
 			wwin->frame_border.frame_border_width = a->frame_border_width;
 			wwin->frame_border.frame_border_width_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_WIDTH) && !wwin->frame_border.frame_inner_border_width_set) {
 			wwin->frame_border.frame_inner_border_width = a->frame_inner_border_width;
 			wwin->frame_border.frame_inner_border_width_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_SIDES) && !wwin->frame_border.frame_inner_border_sides_set) {
 			wwin->frame_border.frame_inner_border_sides = a->frame_inner_border_sides;
 			wwin->frame_border.frame_inner_border_sides_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_BORDER_COLOR) && !wwin->frame_border.frame_border_color_set) {
 			wwin->frame_border.frame_border_color = (a->frame_border_color_spec && a->frame_border_color_spec[0])
-				? WMCreateNamedColor(scr->wmscreen, a->frame_border_color_spec, True) : NULL;
+				? WMCreateNamedColor(scr->wmscreen, a->frame_border_color_spec, true) : NULL;
 			wwin->frame_border.frame_border_color_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_FOCUSED_BORDER_COLOR) && !wwin->frame_border.frame_focused_border_color_set) {
 			wwin->frame_border.frame_focused_border_color = (a->frame_focused_border_color_spec && a->frame_focused_border_color_spec[0])
-				? WMCreateNamedColor(scr->wmscreen, a->frame_focused_border_color_spec, True) : NULL;
+				? WMCreateNamedColor(scr->wmscreen, a->frame_focused_border_color_spec, true) : NULL;
 			wwin->frame_border.frame_focused_border_color_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_SELECTED_BORDER_COLOR) && !wwin->frame_border.frame_selected_border_color_set) {
 			wwin->frame_border.frame_selected_border_color = (a->frame_selected_border_color_spec && a->frame_selected_border_color_spec[0])
-				? WMCreateNamedColor(scr->wmscreen, a->frame_selected_border_color_spec, True) : NULL;
+				? WMCreateNamedColor(scr->wmscreen, a->frame_selected_border_color_spec, true) : NULL;
 			wwin->frame_border.frame_selected_border_color_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_INNER_BORDER_COLOR) && !wwin->frame_border.frame_inner_border_color_set) {
 			wwin->frame_border.frame_inner_border_color = (a->frame_inner_border_color_spec && a->frame_inner_border_color_spec[0])
-				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_border_color_spec, True) : NULL;
+				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_border_color_spec, true) : NULL;
 			wwin->frame_border.frame_inner_border_color_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if ((a->frame_set & WATTR_FRAME_INNER_FOCUSED_BORDER_COLOR) && !wwin->frame_border.frame_inner_focused_border_color_set) {
 			wwin->frame_border.frame_inner_focused_border_color = (a->frame_inner_focused_border_color_spec && a->frame_inner_focused_border_color_spec[0])
-				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_focused_border_color_spec, True) : NULL;
+				? WMCreateNamedColor(scr->wmscreen, a->frame_inner_focused_border_color_spec, true) : NULL;
 			wwin->frame_border.frame_inner_focused_border_color_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 	}
 
@@ -1354,17 +1352,17 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 		if (re->frame_set & WATTR_FRAME_BORDER_WIDTH) {
 			wwin->frame_border.frame_border_width = re->frame_border_width;
 			wwin->frame_border.frame_border_width_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if (re->frame_set & WATTR_FRAME_INNER_BORDER_WIDTH) {
 			wwin->frame_border.frame_inner_border_width = re->frame_inner_border_width;
 			wwin->frame_border.frame_inner_border_width_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 		if (re->frame_set & WATTR_FRAME_INNER_BORDER_SIDES) {
 			wwin->frame_border.frame_inner_border_sides = re->frame_inner_border_sides;
 			wwin->frame_border.frame_inner_border_sides_set = 1;
-			resolved_any = True;
+			resolved_any = true;
 		}
 #define OVERLAY_COLOR(spec_field, mask_bit, target_field, set_field) \
 	do { \
@@ -1372,9 +1370,9 @@ void wDefaultFillFrameBorders(WScreen *scr, const char *instance,
 			if (wwin->frame_border.target_field) \
 				WMReleaseColor(wwin->frame_border.target_field); \
 			wwin->frame_border.target_field = (re->spec_field && re->spec_field[0]) \
-				? WMCreateNamedColor(scr->wmscreen, re->spec_field, True) : NULL; \
+				? WMCreateNamedColor(scr->wmscreen, re->spec_field, true) : NULL; \
 			wwin->frame_border.set_field = 1; \
-			resolved_any = True; \
+			resolved_any = true; \
 		} \
 	} while (0)
 		OVERLAY_COLOR(frame_border_color_spec, WATTR_FRAME_BORDER_COLOR,
@@ -1398,7 +1396,7 @@ const char *wDefaultGetStartGeometry(const char *instance, const char *class)
 	const WWindowAttrs *level[4];
 	int n, i;
 
-	n = attrs_lookup_levels(instance, class, True, level);
+	n = attrs_lookup_levels(instance, class, true, level);
 	for (i = 0; i < n; i++) {
 		const char *spec = level[i]->start_geometry_spec;
 
@@ -1416,7 +1414,7 @@ const char *wDefaultGetMarkKeyForWindow(const WWindow *wwin)
 	const WWindowAttrs *level[4];
 	int n, i;
 
-	n = attrs_lookup_levels(wwin->wm_instance, wwin->wm_class, True, level);
+	n = attrs_lookup_levels(wwin->wm_instance, wwin->wm_class, true, level);
 	for (i = 0; i < n; i++) {
 		if (level[i]->mark_key_spec != NULL) {
 			result = level[i]->mark_key_spec;
@@ -1438,7 +1436,7 @@ const char *wDefaultGetMarkKeyForWindow(const WWindow *wwin)
 /* Get the name of the Icon File. If default_icon is True, then, default value included.
  * The returned pointer is owned by the attrs cache, do not free it and do
  * not keep it across a domain reload or a wDefaultChangeIcon() call. */
-char *wDefaultGetIconFile(const char *instance, const char *class, Bool default_icon)
+char *wDefaultGetIconFile(const char *instance, const char *class, bool default_icon)
 {
 	const WWindowAttrs *level[4];
 	int n, i;
@@ -1467,7 +1465,7 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 			return;
 	}
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	/* same empty-is-absent rule as attrs_lookup_levels() */
 	if (instance && !*instance)
@@ -1506,7 +1504,7 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 	if (attr != NULL) {
 		if (WMIsPLDictionary(attr)) {
 			if (icon_value != NULL && !same)
-				WMMergePLDictionaries(attr, icon_value, False);
+				WMMergePLDictionaries(attr, icon_value, false);
 			else
 				WMRemoveFromPLDictionary(attr, AIcon);
 		}
@@ -1521,7 +1519,7 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 	if (icon_value)
 		WMReleasePropList(icon_value);
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	wWindowAttrsReload();
 }
@@ -1533,7 +1531,7 @@ void wDefaultPurgeInfo(const char *instance, const char *class)
 
 	init_wdefaults();
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	buffer = StrConcatDot(instance, class);
 	key = WMCreatePLString(buffer);
@@ -1552,5 +1550,5 @@ void wDefaultPurgeInfo(const char *instance, const char *class)
 
 	wfree(buffer);
 	WMReleasePropList(key);
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 }

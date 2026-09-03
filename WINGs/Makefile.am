@@ -12,7 +12,7 @@ lib_LTLIBRARIES = libWUtil.la libWINGs.la
 
 
 LDADD= libWUtil.la libWINGs.la $(top_builddir)/wrlib/libwraster.la @INTLIBS@
-libWINGs_la_LIBADD = libWUtil.la $(top_builddir)/wrlib/libwraster.la @XLIBS@ @XCB_LIBS@ @XCB_IMDKIT_LIBS@ @FCLIBS@ @LIBM@ @CAIRO_LIBS@
+libWINGs_la_LIBADD = libWUtil.la $(top_builddir)/wrlib/libwraster.la @XCB_LIBS@ @XCB_IMDKIT_LIBS@ @FCLIBS@ @LIBM@ @CAIRO_LIBS@
 libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@ @INTLIBS@
 
 EXTRA_DIST = BUGS make-rgb
@@ -28,6 +28,7 @@ libWINGs_la_SOURCES = 	\
 	selection.c \
 	wxprop.c \
 	wxhints.c \
+	wxcore.c \
 	wappresource.c \
 	wballoon.c \
 	wbox.c \
@@ -39,7 +40,7 @@ libWINGs_la_SOURCES = 	\
 	wcolorwell.c \
 	wconfig.h \
 	wxevq.c \
-	wxecook.c \
+	wxkb.c \
 	wevent.c \
 	wfilepanel.c \
 	wframe.c \

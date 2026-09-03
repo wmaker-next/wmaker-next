@@ -2,14 +2,15 @@
 #define _WINGSP_H_
 
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
 #include <pango/pango.h>
+#include <xkbcommon/xkbcommon.h>
+
+#include <stdbool.h>
 
 #include <WINGs/WINGs.h>
 #include <WINGs/WXProp.h>
 #include <WINGs/WXHints.h>
+#include <WINGs/WXCore.h>
 
 #if WINGS_H_VERSION < 20041030
 #error There_is_an_old_WINGs.h_file_somewhere_in_your_system._Please_remove_it.
@@ -36,7 +37,7 @@ typedef struct _WINGsConfiguration {
     char *systemFont;
     char *boldSystemFont;
     int  defaultFontSize;
-    Bool antialiasedText;
+    bool antialiasedText;
     char *floppyPath;
     unsigned doubleClickDelay;
     unsigned mouseWheelUp;
@@ -58,10 +59,10 @@ extern struct W_Application WMApplication;
 
 typedef struct W_DraggingInfo {
     unsigned char protocolVersion; /* version supported on the other side */
-    Time timestamp;
+    xcb_timestamp_t timestamp;
 
-    Atom sourceAction;
-    Atom destinationAction;
+    xcb_atom_t sourceAction;
+    xcb_atom_t destinationAction;
 
     struct W_DragSourceInfo* sourceInfo;    /* infos needed by source */
     struct W_DragDestinationInfo* destInfo; /* infos needed by destination */
@@ -81,28 +82,26 @@ typedef struct W_FocusInfo {
 } W_FocusInfo;
 
 typedef struct W_Screen {
-    Display *display;
+    xcb_connection_t *display;
     int screen;
     int depth;
 
-    Colormap colormap;
+    xcb_colormap_t colormap;
 
-    Visual *visual;
-    /* libX11 handle for rcontext->xvisual_argb, resolved once in
-     * WMCreateScreenWithRContext() so W_RealizeView() can pass it to
-     * XCreateWindow() without an XGetVisualInfo round trip per view.
+    xcb_visualtype_t *visual;
+    /* visual for rcontext->xvisual_argb, resolved once in
+     * WMCreateScreenWithRContext() so W_RealizeView() can pass its id
+     * to xcb_create_window() without a per-view setup walk.
      * NULL when the server has no depth-32 TrueColor visual. */
-    Visual *visual_argb;
+    xcb_visualtype_t *visual_argb;
 
-    Time lastEventTime;
+    xcb_timestamp_t lastEventTime;
 
-    Window rootWin;
+    xcb_window_t rootWin;
 
     W_View *rootView;
 
     RContext *rcontext;
-
-    struct W_IMContext *imctx;
 
     /* Drawable -> packed (width<<16 | height), fed from the four
      * create/resize chokepoints so cairo surface acquisition never
@@ -126,11 +125,11 @@ typedef struct W_Screen {
 
     RImage *applicationIconImage;      /* image (can have alpha channel) */
     W_Pixmap *applicationIconPixmap; /* pixmap - no alpha channel */
-    Window applicationIconWindow;
+    xcb_window_t applicationIconWindow;
 
     struct W_Window *windowList;       /* list of windows in the app */
 
-    Window groupLeader;                /* the leader of the application */
+    xcb_window_t groupLeader;                /* the leader of the application */
                                        /* also used for other things */
 
     struct W_SelectionHandlers *selectionHandlerList;
@@ -147,7 +146,7 @@ typedef struct W_Screen {
 
     struct W_ColorPanel *sharedColorPanel;
 
-    Pixmap stipple;
+    xcb_pixmap_t stipple;
 
     W_View *dragSourceView;
     W_DraggingInfo dragInfo;
@@ -164,7 +163,7 @@ typedef struct W_Screen {
 
     WMHashTable *fontCache;
 
-    Bool antialiasedText;
+    bool antialiasedText;
 
     unsigned int ignoredModifierMask; /* modifiers to ignore when typing txt */
 
@@ -225,51 +224,51 @@ typedef struct W_Screen {
 
     W_Pixmap *defaultObjectIcon;
 
-    Cursor defaultCursor;
+    xcb_cursor_t defaultCursor;
 
-    Cursor textCursor;
+    xcb_cursor_t textCursor;
 
-    Cursor invisibleCursor;
+    xcb_cursor_t invisibleCursor;
 
-    Atom attribsAtom;              /* GNUstepWindowAttributes */
+    xcb_atom_t attribsAtom;              /* GNUstepWindowAttributes */
 
-    Atom deleteWindowAtom;         /* WM_DELETE_WINDOW */
+    xcb_atom_t deleteWindowAtom;         /* WM_DELETE_WINDOW */
 
-    Atom protocolsAtom;            /* _XA_WM_PROTOCOLS */
+    xcb_atom_t protocolsAtom;            /* _XA_WM_PROTOCOLS */
 
-    Atom clipboardAtom;            /* CLIPBOARD */
+    xcb_atom_t clipboardAtom;            /* CLIPBOARD */
 
-    Atom xdndAwareAtom;            /* XdndAware */
-    Atom xdndSelectionAtom;
-    Atom xdndEnterAtom;
-    Atom xdndLeaveAtom;
-    Atom xdndPositionAtom;
-    Atom xdndDropAtom;
-    Atom xdndFinishedAtom;
-    Atom xdndTypeListAtom;
-    Atom xdndActionListAtom;
-    Atom xdndActionDescriptionAtom;
-    Atom xdndStatusAtom;
+    xcb_atom_t xdndAwareAtom;            /* XdndAware */
+    xcb_atom_t xdndSelectionAtom;
+    xcb_atom_t xdndEnterAtom;
+    xcb_atom_t xdndLeaveAtom;
+    xcb_atom_t xdndPositionAtom;
+    xcb_atom_t xdndDropAtom;
+    xcb_atom_t xdndFinishedAtom;
+    xcb_atom_t xdndTypeListAtom;
+    xcb_atom_t xdndActionListAtom;
+    xcb_atom_t xdndActionDescriptionAtom;
+    xcb_atom_t xdndStatusAtom;
 
-    Atom xdndActionCopy;
-    Atom xdndActionMove;
-    Atom xdndActionLink;
-    Atom xdndActionAsk;
-    Atom xdndActionPrivate;
+    xcb_atom_t xdndActionCopy;
+    xcb_atom_t xdndActionMove;
+    xcb_atom_t xdndActionLink;
+    xcb_atom_t xdndActionAsk;
+    xcb_atom_t xdndActionPrivate;
 
-    Atom wmIconDragOffsetAtom;
+    xcb_atom_t wmIconDragOffsetAtom;
 
-    Atom wmStateAtom;              /* WM_STATE */
+    xcb_atom_t wmStateAtom;              /* WM_STATE */
 
-    Atom utf8String;
+    xcb_atom_t utf8String;
 
-    Atom netwmName;
-    Atom netwmIconName;
-    Atom netwmIcon;
+    xcb_atom_t netwmName;
+    xcb_atom_t netwmIconName;
+    xcb_atom_t netwmIcon;
 
     /* stuff for detecting double-clicks */
-    Time lastClickTime;            /* time of last mousedown event */
-    Window lastClickWindow;        /* window of the last mousedown */
+    xcb_timestamp_t lastClickTime;            /* time of last mousedown event */
+    xcb_window_t lastClickWindow;        /* window of the last mousedown */
 
     struct W_View *modalView;
     unsigned modalLoop:1;
@@ -285,8 +284,18 @@ typedef struct W_Screen {
     W_Pixmap *tristateButtonImageTri;
 
     /* xcb event-queue path: xcb-imdkit handle and xkb compose fallback */
-    void *xcbim;          /* xcb_xim_t *, non-NULL when WXEvqXcbOwned() and xcb-imdkit built */
+    void *xcbim;          /* xcb_xim_t *, non-NULL once the IM path is initialised */
     void *compose_state;  /* xkb_compose_state *, dead-key fallback when xcbxic == 0 */
+    unsigned im_open:1;   /* xcbim reached XIM_OPEN_DONE (again) after connect/reconnect */
+    void *ic_inflight;    /* winputmethod.c: create_ic request currently on the wire */
+    unsigned ic_inflight_gone:1; /* ic_inflight's view died; ignore its reply callback */
+    void *ic_destroy_pend;  /* winputmethod.c: destroy_ic requests waiting for the wire */
+    unsigned ic_destroy_inflight:1; /* a destroy_ic request is on the wire */
+
+    /* per-screen xkbcommon keyboard state (wxkb.c), initialised by
+     * W_InitXkb() on xcb-queue screens and refreshed from the XKB
+     * events WMHandleEvent() routes through W_XkbHandleEvent() */
+    void *xkb;
 
 } W_Screen;
 
@@ -305,45 +314,45 @@ typedef struct W_DragOperationItem {
     char* text;
 } W_DragOperationItem;
 
-typedef void* W_DndState(WMView *destView, XClientMessageEvent *event,
+typedef void* W_DndState(WMView *destView, xcb_client_message_event_t *event,
                          WMDraggingInfo *info);
 
 typedef struct W_DragSourceInfo {
     WMView *sourceView;
-    Window destinationWindow;
+    xcb_window_t destinationWindow;
     W_DndState *state;
     WMSelectionProcs *selectionProcs;
-    Window icon;
+    xcb_window_t icon;
     WMPoint imageLocation;
     WMPoint mouseOffset; /* mouse pos in icon */
-    Cursor dragCursor;
+    xcb_cursor_t dragCursor;
     WMRect noPositionMessageZone;
-    Atom firstThreeTypes[3];
+    xcb_atom_t firstThreeTypes[3];
 } W_DragSourceInfo;
 
 typedef struct W_DragDestinationInfo {
     WMView *destView;
     WMView *xdndAwareView;
-    Window sourceWindow;
+    xcb_window_t sourceWindow;
     W_DndState *state;
-    Bool sourceActionChanged;
+    bool sourceActionChanged;
     WMArray *sourceTypes;
     WMArray *requiredTypes;
-    Bool typeListAvailable;
+    bool typeListAvailable;
     WMArray *dropDatas;
 } W_DragDestinationInfo;
 
 /* -- Functions -- */
 
-void W_HandleDNDClientMessage(WMView *toplevel, XClientMessageEvent *event);
+void W_HandleDNDClientMessage(WMView *toplevel, xcb_client_message_event_t *event);
 
-Atom W_OperationToAction(WMScreen *scr, WMDragOperationType operation);
+xcb_atom_t W_OperationToAction(WMScreen *scr, WMDragOperationType operation);
 
-WMDragOperationType W_ActionToOperation(WMScreen *scr, Atom action);
+WMDragOperationType W_ActionToOperation(WMScreen *scr, xcb_atom_t action);
 
 void W_FreeDragOperationItem(void* item);
 
-Bool W_SendDnDClientMessage(Display *dpy, Window win, Atom message,
+bool W_SendDnDClientMessage(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t message,
                             unsigned long data1, unsigned long data2,
                             unsigned long data3, unsigned long data4,
                             unsigned long data5);
@@ -352,23 +361,23 @@ void W_DragSourceStartTimer(WMDraggingInfo *info);
 
 void W_DragSourceStopTimer(void);
 
-void W_DragSourceStateHandler(WMDraggingInfo *info, XClientMessageEvent *event);
+void W_DragSourceStateHandler(WMDraggingInfo *info, xcb_client_message_event_t *event);
 
 void W_DragDestinationStartTimer(WMDraggingInfo *info);
 
 void W_DragDestinationStopTimer(void);
 
 void W_DragDestinationStoreEnterMsgInfo(WMDraggingInfo *info, WMView *toplevel,
-                                        XClientMessageEvent *event);
+                                        xcb_client_message_event_t *event);
 
 void W_DragDestinationStorePositionMsgInfo(WMDraggingInfo *info,
                                            WMView *toplevel,
-                                           XClientMessageEvent *event);
+                                           xcb_client_message_event_t *event);
 
 void W_DragDestinationCancelDropOnEnter(WMView *toplevel, WMDraggingInfo *info);
 
 void W_DragDestinationStateHandler(WMDraggingInfo *info,
-                                   XClientMessageEvent *event);
+                                   xcb_client_message_event_t *event);
 
 void W_DragDestinationInfoClear(WMDraggingInfo *info);
 
@@ -377,21 +386,35 @@ void W_FreeViewXdndPart(WMView *view);
 
 /* ---[ handlers.c ]------------------------------------------------------ */
 
-Bool W_HandleInputEvents(Bool waitForInput, int inputfd);
+bool W_HandleInputEvents(bool waitForInput, int inputfd);
 
 void W_EventLoopShutdown(void);
 
 
 /* ---[ wxevq.c ]--------------------------------------------------------- */
 
-unsigned long W_MaskForEventType(int type);
+uint32_t W_MaskForEventType(int type);
 
 
-/* ---[ wxecook.c ]------------------------------------------------------- */
+/* queue a raw xcb event, taking ownership (free()d by the queue when
+ * delivered or dropped), drain() and the check_evq seam both come
+ * through here; void * so this header does not pull xcb.h into every
+ * WINGs source */
+void W_XEvqPutRaw(void *xe);
 
-/* xcb_generic_event_t * passed as void * so this header does not pull
- * xcb.h into every WINGs source */
-void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out);
+/* the pop-time motion/expose compression the fetchers apply, for
+ * ProcessPendingEvents' raw WXEvqNext pops which skip re-draining;
+ * void * so callers need no xcb.h for the slot */
+void W_XEvqCompressPop(void *slot);
+
+/* the window the dispatchers match on, the xany.window equivalent for
+ * a wire event */
+xcb_window_t W_EventWindow(const xcb_generic_event_t *xe);
+
+/* the connection the queue drains from, registered by the first drain
+ * from the connection the queue operation received, answers the display
+ * pointer that used to travel inside the cooked event's xany prefix */
+xcb_connection_t *W_XEvqConnection(void);
 
 
 /* ---[ notification.c ]-------------------------------------------------- */
@@ -407,9 +430,15 @@ void W_FlushIdleNotificationQueue(void);
 
 /* ---[ selection.c ]----------------------------------------------------- */
 
-void W_HandleSelectionEvent(XEvent *event);
+void W_HandleSelectionEvent(xcb_generic_event_t *event);
 
 void W_ClearSelectionsForView(WMView *view);
+
+/* pure core of writeSelection's format-32 arm for the headless tests:
+ * the Xlib LP64 contract, a format-32 WMData is a long[] (item size
+ * sizeof(long)), repacked to one uint32 per item on the wire */
+size_t W_XSelectionFormat32Repack(const unsigned char *bytes, size_t len,
+                                  uint32_t **out);
 
 
 /* ---[ wapplication.c ]-------------------------------------------------- */
@@ -425,7 +454,7 @@ typedef struct W_Application {
 
 void W_InitApplication(WMScreen *scr);
 
-Bool W_ApplicationInitialized(void);
+bool W_ApplicationInitialized(void);
 
 
 /* ---[ wballoon.c ]------------------------------------------------------ */
@@ -464,7 +493,7 @@ enum {
 
 /* one per Drawable that paints, cached lazily on the owning W_View or
  * WCoreWindow. flags is a bitmask of the WCairo* values above. */
-WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, Drawable d,
+WCairoSurface *WCairoSurfaceCreate(W_Screen *scr, xcb_drawable_t d,
                                    int width, int height, int flags);
 void WCairoSurfaceResize(WCairoSurface *cs, int width, int height);
 void WCairoSurfaceDestroy(WCairoSurface *cs);
@@ -472,16 +501,16 @@ void WCairoSurfaceDestroy(WCairoSurface *cs);
 cairo_t *WCairoBegin(WCairoSurface *cs);
 /* transient path for a bare Drawable, size from the drawableSize
  * cache with an xcb_get_geometry fallback on miss */
-cairo_t *WCairoBeginForDrawable(W_Screen *scr, Drawable d);
+cairo_t *WCairoBeginForDrawable(W_Screen *scr, xcb_drawable_t d);
 /* same but into a client-side image buffer that WCairoEnd() blits in
  * one go, replacing the XCreatePixmap + draw + XCopyArea pattern */
-cairo_t *WCairoBeginBuffered(W_Screen *scr, Drawable d);
+cairo_t *WCairoBeginBuffered(W_Screen *scr, xcb_drawable_t d);
 /* flushes the target surface, warns on cairo error, destroys cr */
 void WCairoEnd(cairo_t *cr);
 
 void WCairoSetSourceColor(cairo_t *cr, WMColor *color);
 void WCairoSetSourceRColor(cairo_t *cr, const RColor *color);
-void WCairoSetSourceXColor(cairo_t *cr, const XColor *color);
+void WCairoSetSourceXColor(cairo_t *cr, const WXColor *color);
 
 /* the FillStippled 50% checkerboard in darkGray, masked over whatever
  * fill sits below (the widget-slot and progress-bar interiors) */
@@ -495,11 +524,11 @@ void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pixmap, int x, int y);
 /* copy a w x h rectangle from (sx, sy) on a screen-depth server
  * drawable src (whose full extents are srcW x srcH) onto the caller's
  * cairo target at (dx, dy) */
-void WCairoPaintArea(cairo_t *cr, W_Screen *scr, Drawable src, int srcW, int srcH,
+void WCairoPaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
                      int sx, int sy, int w, int h, int dx, int dy);
 /* one-shot server-side copy: open a transient cr on dst, blit, close */
-void WCairoCopyArea(W_Screen *scr, Drawable src, int srcW, int srcH,
-                    int sx, int sy, int w, int h, Drawable dst, int dx, int dy);
+void WCairoCopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
+                    int sx, int sy, int w, int h, xcb_drawable_t dst, int dx, int dy);
 
 /* fill the target with the view's background: an explicit WMColor if
  * given, else the view's background pixmap tiled, else its backColor */
@@ -522,7 +551,7 @@ void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
                          double bx, double by, double bw, double bh,
                          int side, double tail_len,
                          WMColor *fill, WMColor *border,
-                         Pixmap *content, Pixmap *mask);
+                         xcb_pixmap_t *content, xcb_pixmap_t *mask);
 
 /* refresh scr->compositor_running from the _NET_WM_CM_Sn owner */
 int W_ScreenCheckCompositor(W_Screen *scr);
@@ -533,7 +562,7 @@ int W_ScreenCheckCompositor(W_Screen *scr);
 struct W_Color {
     struct W_Screen *screen;
 
-    XColor color;
+    WXColor color;
     unsigned short alpha;
     short refCount;
     struct {
@@ -617,21 +646,107 @@ void W_UnFocusIC(WMView *view);
 
 void W_SetPreeditPositon(W_View *view, int x, int y);
 
-int W_LookupString(W_View *view, XKeyPressedEvent *event, char *buffer,
-                   int buflen, KeySym *keysym, Status *status);
+/* W_LookupString()'s status contract, the XLookupNone/XLookupChars/
+ * XLookupKeySym/XLookupBoth values under project spellings. */
+typedef enum {
+    WX_LOOKUP_NONE = 1,
+    WX_LOOKUP_CHARS = 2,
+    WX_LOOKUP_KEYSYM = 3,
+    WX_LOOKUP_BOTH = 4
+} WXLookupStatus;
 
-KeySym W_KeycodeToKeysym(Display *display, KeyCode keycode, int index);
+int W_LookupString(W_View *view, const xcb_key_press_event_t *event,
+                   char *buffer,
+                   int buflen, xkb_keysym_t *keysym, WXLookupStatus *status);
+
+/* keysym of a key event, no compose involvement, for the
+ * navigation-only classifications (Escape/Return/Shift checks)
+ * in wpanel.c, wtext.c, wtextfield.c and wmlock.c */
+xkb_keysym_t W_EventKeysym(W_Screen *scr, const xcb_key_press_event_t *event);
 
 /* xcb-path helpers: called from wevent.c and wtextfield.c */
-Bool W_IMFilterEventGlobal(Display *dpy, XEvent *event);
-Bool W_IMForwardKey(W_View *view, XEvent *event);
+bool W_IMFilterEventGlobal(xcb_generic_event_t *event);
+bool W_IMForwardKey(W_View *view, xcb_generic_event_t *event);
 /* compose helper exposed for unit tests */
-int W_IMComposeKey(void *compose_state, KeySym ksym, char *buf, int buflen, KeySym *sym_out);
+int W_IMComposeKey(void *compose_state, xkb_keysym_t ksym, char *buf, int buflen, xkb_keysym_t *sym_out);
+
+
+/* ---[ wxkb.c ]---------------------------------------------------------- */
+
+/* load the per-screen xkbcommon stack (context, keymap, state, compose)
+ * via xkb_x11_* and select the XKB events the refresh arm in
+ * WMHandleEvent() consumes; no-op when the server has no XKB */
+void W_InitXkb(W_Screen *scr);
+
+/* release the per-screen xkbcommon stack and remove the screen from
+ * W_XkbHandleEvent()'s walk, no-op without a live stack */
+void W_DeinitXkb(W_Screen *scr);
+
+/* XKB extension event pump, called from WMHandleEvent() before view
+ * lookup, returns True when the event was an XKB event this screen
+ * selected for */
+bool W_XkbHandleEvent(xcb_generic_event_t *event);
+
+/* the screen's struct xkb_state *, NULL when W_InitXkb() did not run
+ * or failed; W_LookupString()'s xcb arm and the unit tests feed this
+ * to W_XkbLookupString() */
+void *W_XkbStateOf(W_Screen *scr);
+
+/* the modifier slot each named modifier is bound to (the Xlib
+ * ShiftMapIndex..Mod5MapIndex columns), -1 when unbound */
+typedef struct WXModifierSlots {
+	int alt, meta, super, hyper, mode_switch;
+	int numlock, scrolllock;
+} WXModifierSlots;
+
+/* the named-modifier bindings of a connection against a keymap, the
+ * one classification every modifier walk shares */
+void W_XkbModifierSlots(xcb_connection_t *xc, struct xkb_keymap *keymap,
+			WXModifierSlots *slots);
+
+/* first keysym at `level` across the screen's keymap layouts,
+ * XKB_KEY_NoSymbol when no layout carries one at that level */
+xkb_keysym_t W_XkbKeysymForKeycode(W_Screen *scr, xcb_keycode_t kc, int level);
+
+/* recompute the screen's ignoredModifierMask and altModifierMask from
+ * its keymap, at screen creation and on every XKB keymap reload */
+void W_UpdateScreenModifierMasks(W_Screen *scr);
+
+/* XKeysymToKeycode equivalent against the screen's xkb keymap, 0 when
+ * the keymap does not carry the keysym (or no xkb stack exists). */
+xcb_keycode_t W_KeysymToKeycode(W_Screen *scr, xkb_keysym_t keysym);
+
+/* keymap-only core of W_KeysymToKeycode for the headless tests. */
+xcb_keycode_t W_XkbKeysymToKeycode(void *keymap, xkb_keysym_t keysym);
+
+/* Xutil.h's IsModifierKey against xkbcommon keysyms: Shift_L..Hyper_R. */
+bool W_IsModifierKey(xkb_keysym_t keysym);
+
+/* ---[ wxhints.c, the client-side text-property codec ]------------------- */
+
+/* Latin-1 bytes to UTF-8, wmalloc()ed. */
+char *W_Latin1ToUtf8(const unsigned char *in, size_t len);
+
+/* one decoded UTF-8 character: stores the codepoint and returns its
+ * byte length, 0 on a malformed sequence */
+int W_Utf8Next(const unsigned char *s, size_t len, unsigned int *cp);
+
+/* UTF-8 to Latin-1 bytes when every codepoint fits, NULL otherwise
+ * (the STRING encoding contract); wmalloc()ed. */
+char *W_Utf8ToLatin1(const char *s, size_t len, size_t *outlen);
+
+/* xcb-path lookup core shared with W_LookupString(), state and compose
+ * state passed in void * so the unit tests can drive it without a
+ * server */
+int W_XkbLookupString(void *xkb_state, void *compose_state,
+                      const xcb_key_press_event_t *event,
+                      char *buffer, int buflen,
+                      xkb_keysym_t *keysym, WXLookupStatus *status);
 
 
 /* ---[ wmisc.c ]--------------------------------------------------------- */
 
-void W_DrawRelief(W_Screen *scr, Drawable d, int x, int y, unsigned int width,
+void W_DrawRelief(W_Screen *scr, xcb_drawable_t d, int x, int y, unsigned int width,
                   unsigned int height, WMReliefType relief);
 
 /* draw the same bevel onto a live cairo_t so a caller that already
@@ -656,7 +771,7 @@ void W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
                       int width, WMAlignment alignment, WMColor *color,
                       int wrap, const char *text, int length);
 
-void W_PaintText(W_View *view, Drawable d, WMFont *font,  int x, int y,
+void W_PaintText(W_View *view, xcb_drawable_t d, WMFont *font,  int x, int y,
                  int width, WMAlignment alignment, WMColor *color,
                  int wrap, const char *text, int length);
 
@@ -667,8 +782,8 @@ int W_GetTextHeight(WMFont *font, const char *text, int width, int wrap);
 
 struct W_Pixmap {
     struct W_Screen *screen;
-    Pixmap pixmap;
-    Pixmap mask;
+    xcb_pixmap_t pixmap;
+    xcb_pixmap_t mask;
     unsigned short width;
     unsigned short height;
     short depth;
@@ -694,7 +809,7 @@ struct W_View {
 
     W_ViewDelegate *delegate;
 
-    Window window;
+    xcb_window_t window;
 
     WMSize size;
 
@@ -718,8 +833,8 @@ struct W_View {
 
     WMArray *eventHandlers;            /* event handlers for this window */
 
-    unsigned long attribFlags;
-    XSetWindowAttributes attribs;
+    uint32_t attribFlags;
+    WXSetWindowAttributes attribs;
 
     void *hangedData;                  /* data holder for user program */
 
@@ -727,16 +842,15 @@ struct W_View {
     WMPixmap *backImage;
 
 
-    Cursor cursor;
+    xcb_cursor_t cursor;
 
-    Atom *droppableTypes;
+    xcb_atom_t *droppableTypes;
     struct W_DragSourceProcs      *dragSourceProcs;
     struct W_DragDestinationProcs *dragDestinationProcs;
     WMPixmap *dragImage;
     int helpContext;
 
-    XIC xic;          /* Xlib input context (non-xcb path) */
-    uint16_t xcbxic;  /* xcb_xic_t when WXEvqXcbOwned(); 0 = not created */
+    uint16_t xcbxic;  /* xcb_xic_t once the IM server created it; 0 = not created */
     uint32_t xcbxic_fwd_mask; /* forward_event_mask from xcb-imdkit set_event_mask */
 
     struct {
@@ -762,6 +876,10 @@ struct W_View {
         unsigned int pendingRelease5:1;
         unsigned int xdndHintSet:1;
 
+        /* this view asked for an IM input context (winputmethod.c);
+         * retried by the reconnect walk when the IM opens late */
+        unsigned int xcbxic_wanted:1;
+
         /* create the window on screen->visual_argb at depth 32 with
          * rcontext->cmap_argb. Set before realize by widgets that
          * paint their whole surface through cairo and want a working
@@ -785,7 +903,7 @@ struct W_View {
 
 /* -- Functions -- */
 
-W_View *W_GetViewForXWindow(Display *display, Window window);
+W_View *W_GetViewForXWindow(xcb_window_t window);
 
 W_View *W_CreateView(W_View *parent);
 
@@ -829,13 +947,12 @@ void W_SetViewBackgroundColor(W_View *view, WMColor *color);
 
 void W_SetViewBackgroundPixmap(W_View *view, WMPixmap *pix);
 
-void W_SetViewCursor(W_View *view, Cursor cursor);
+void W_SetViewCursor(W_View *view, xcb_cursor_t cursor);
 
 void W_SetFocusOfTopLevel(W_View *toplevel, W_View *view);
 
 W_View *W_FocusedViewOfToplevel(W_View *view);
 
-void W_DispatchMessage(W_View *target, XEvent *event);
 
 /* ---[ UTF-8 helpers ]--------------------------------------------------- */
 

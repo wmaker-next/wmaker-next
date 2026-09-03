@@ -1,7 +1,6 @@
 
 #include "WINGsP.h"
 
-#include <X11/Xresource.h>
 
 /* the notifications about views */
 
@@ -15,36 +14,41 @@ const char *WMViewRealizedNotification = "WMViewRealizedNotification";
 #define VDEV(scr, v) ((int)((v) * (scr)->uiScale + 0.5))
 
 #define EVENT_MASK  \
-    KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask| \
-    EnterWindowMask|LeaveWindowMask|PointerMotionMask|ExposureMask| \
-    VisibilityChangeMask|FocusChangeMask|PropertyChangeMask|\
-    SubstructureNotifyMask|SubstructureRedirectMask
+    XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE| \
+    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_EXPOSURE| \
+    XCB_EVENT_MASK_VISIBILITY_CHANGE|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|\
+    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
 
-static const XSetWindowAttributes defAtts = {
-	None,			/* background_pixmap */
+static const WXSetWindowAttributes defAtts = {
+	XCB_NONE,			/* background_pixmap */
 	0,			/* background_pixel */
-	CopyFromParent,		/* border_pixmap */
+	XCB_COPY_FROM_PARENT,		/* border_pixmap */
 	0,			/* border_pixel */
-	ForgetGravity,		/* bit_gravity */
-	ForgetGravity,		/* win_gravity */
-	NotUseful,		/* backing_store */
+	XCB_GRAVITY_BIT_FORGET,		/* bit_gravity */
+	XCB_GRAVITY_BIT_FORGET,		/* win_gravity */
+	XCB_BACKING_STORE_NOT_USEFUL,		/* backing_store */
 	(unsigned)~0,		/* backing_planes */
 	0,			/* backing_pixel */
-	False,			/* save_under */
+	false,			/* save_under */
 	EVENT_MASK,		/* event_mask */
 	0,			/* do_not_propagate_mask */
-	False,			/* override_redirect */
-	None,			/* colormap */
-	None			/* cursor */
+	false,			/* override_redirect */
+	XCB_NONE,			/* colormap */
+	XCB_NONE,			/* cursor */
+	NULL			/* visual */
 };
 
-static XContext ViewContext = 0;	/* context for views */
+static WMHashTable *ViewTable = NULL;	/* window -> view map */
 
-W_View *W_GetViewForXWindow(Display * display, Window window)
+W_View *W_GetViewForXWindow(xcb_window_t window)
 {
 	W_View *view;
 
-	if (XFindContext(display, window, ViewContext, (XPointer *) & view) == 0) {
+	if (ViewTable == NULL)
+		return NULL;
+
+	view = WMHashGet(ViewTable, (void *)(uintptr_t) window);
+	if (view != NULL) {
 		return view;
 	}
 	return NULL;
@@ -94,19 +98,19 @@ static W_View *createView(W_Screen * screen, W_View * parent)
 {
 	W_View *view;
 
-	if (ViewContext == 0)
-		ViewContext = XUniqueContext();
+	if (ViewTable == NULL)
+		ViewTable = WMCreateHashTable(WMIntHashCallbacks);
 
 	view = wmalloc(sizeof(W_View));
 	view->screen = screen;
 
 	if (parent != NULL) {
 		/* attributes are not valid for root window */
-		view->attribFlags = CWEventMask | CWBitGravity;
+		view->attribFlags = XCB_CW_EVENT_MASK | XCB_CW_BIT_GRAVITY;
 		view->attribs = defAtts;
 
-                view->attribFlags |= CWBackPixel | CWColormap | CWBorderPixel | CWBackPixmap;
-                view->attribs.background_pixmap = None;
+                view->attribFlags |= XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP | XCB_CW_BORDER_PIXEL | XCB_CW_BACK_PIXMAP;
+                view->attribs.background_pixmap = XCB_NONE;
 		view->attribs.background_pixel = W_PIXEL(screen->gray);
 		view->attribs.border_pixel = W_PIXEL(screen->black);
 		view->attribs.colormap = screen->colormap;
@@ -115,8 +119,6 @@ static W_View *createView(W_Screen * screen, W_View * parent)
 
 		adoptChildView(parent, view);
 	}
-
-	view->xic = 0;
 
 	view->refCount = 1;
 
@@ -142,8 +144,8 @@ W_View *W_CreateRootView(W_Screen * screen)
 	view->flags.mapped = 1;
 	view->flags.root = 1;
 
-	view->size.width = WidthOfScreen(ScreenOfDisplay(screen->display, screen->screen));
-	view->size.height = HeightOfScreen(ScreenOfDisplay(screen->display, screen->screen));
+	view->size.width = wXDisplayWidth(screen->display, screen->screen);
+	view->size.height = wXDisplayHeight(screen->display, screen->screen);
 
 	return view;
 }
@@ -157,7 +159,7 @@ W_View *W_CreateTopView(W_Screen * screen)
 		return NULL;
 
 	view->flags.topLevel = 1;
-	view->attribs.event_mask |= StructureNotifyMask;
+	view->attribs.event_mask |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
 	return view;
 }
@@ -171,21 +173,22 @@ W_View *W_CreateUnmanagedTopView(W_Screen * screen)
 		return NULL;
 
 	view->flags.topLevel = 1;
-	view->attribs.event_mask |= StructureNotifyMask;
+	view->attribs.event_mask |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
-	view->attribFlags |= CWOverrideRedirect;
-	view->attribs.override_redirect = True;
+	view->attribFlags |= XCB_CW_OVERRIDE_REDIRECT;
+	view->attribs.override_redirect = true;
 
 	return view;
 }
 
 void W_RealizeView(W_View * view)
 {
-	Window parentWID;
-	Display *dpy = view->screen->display;
+	xcb_window_t parentWID;
+	xcb_connection_t *dpy = view->screen->display;
 	W_View *ptr;
-	Visual *visual;
+	xcb_visualtype_t *visual;
 	int depth;
+	uint32_t vals[15];
 
 	assert(view->size.width > 0);
 	assert(view->size.height > 0);
@@ -219,21 +222,23 @@ void W_RealizeView(W_View * view)
 			view->attribs.colormap = view->screen->rcontext->cmap_argb;
 			view->attribs.border_pixel = 0;
 			view->attribs.background_pixel = 0;
-			view->attribFlags &= ~CWBackPixmap;
+			view->attribFlags &= ~XCB_CW_BACK_PIXMAP;
 		} else {
 			view->flags.argb = 0;
 		}
 
 		parentWID = view->parent->window;
-		view->window = XCreateWindow(dpy, parentWID,
-					     VDEV(view->screen, view->pos.x),
-					     VDEV(view->screen, view->pos.y),
-					     VDEV(view->screen, view->size.width),
-					     VDEV(view->screen, view->size.height), 0,
-					     depth, InputOutput,
-					     visual, view->attribFlags, &view->attribs);
+		view->window = xcb_generate_id(dpy);
+		xcb_create_window(dpy, depth, view->window, parentWID,
+				  VDEV(view->screen, view->pos.x),
+				  VDEV(view->screen, view->pos.y),
+				  VDEV(view->screen, view->size.width),
+				  VDEV(view->screen, view->size.height), 0,
+				  XCB_WINDOW_CLASS_INPUT_OUTPUT,
+				  visual ? visual->visual_id : XCB_COPY_FROM_PARENT,
+				  wXWindowAttrValues(&view->attribs, view->attribFlags, vals), vals);
 
-		XSaveContext(dpy, view->window, ViewContext, (XPointer) view);
+		WMHashInsert(ViewTable, (void *)(uintptr_t) view->window, view);
 		WMScreenNoteDrawableSizeScaled(view->screen, view->window,
 					       view->size.width, view->size.height);
 
@@ -258,7 +263,7 @@ void W_RealizeView(W_View * view)
 
 void W_ReparentView(W_View * view, W_View * newParent, int x, int y)
 {
-	Display *dpy = view->screen->display;
+	xcb_connection_t *dpy = view->screen->display;
 
 	assert(!view->flags.topLevel);
 
@@ -267,8 +272,7 @@ void W_ReparentView(W_View * view, W_View * newParent, int x, int y)
 
 	if (view->flags.realized) {
 		if (newParent->flags.realized) {
-			XReparentWindow(dpy, view->window, newParent->window,
-					VDEV(view->screen, x), VDEV(view->screen, y));
+			xcb_reparent_window(dpy, view->window, newParent->window, VDEV(view->screen, x), VDEV(view->screen, y));
 		} else {
 			wwarning("trying to reparent realized view to unrealized parent");
 			return;
@@ -282,21 +286,21 @@ void W_ReparentView(W_View * view, W_View * newParent, int x, int y)
 void W_RaiseView(W_View * view)
 {
 	if (W_VIEW_REALIZED(view))
-		XRaiseWindow(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view));
+		wXRaiseWindow(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view));
 }
 
 void W_LowerView(W_View * view)
 {
 	if (W_VIEW_REALIZED(view))
-		XLowerWindow(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view));
+		wXLowerWindow(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view));
 }
 
 void W_MapView(W_View * view)
 {
 	if (!view->flags.mapped) {
 		if (view->flags.realized) {
-			XMapRaised(view->screen->display, view->window);
-			XFlush(view->screen->display);
+			wXMapRaised(view->screen->display, view->window);
+			wXFlush(view->screen->display);
 			view->flags.mapped = 1;
 		} else {
 			view->flags.mapWhenRealized = 1;
@@ -310,8 +314,8 @@ void W_MapView(W_View * view)
  */
 void W_MapSubviews(W_View * view)
 {
-	XMapSubwindows(view->screen->display, view->window);
-	XFlush(view->screen->display);
+	wXMapSubwindows(view->screen->display, view->window);
+	wXFlush(view->screen->display);
 
 	view = view->childrenList;
 	while (view) {
@@ -323,8 +327,8 @@ void W_MapSubviews(W_View * view)
 
 void W_UnmapSubviews(W_View * view)
 {
-	XUnmapSubwindows(view->screen->display, view->window);
-	XFlush(view->screen->display);
+	wXUnmapSubwindows(view->screen->display, view->window);
+	wXFlush(view->screen->display);
 
 	view = view->childrenList;
 	while (view) {
@@ -340,8 +344,8 @@ void W_UnmapView(W_View * view)
 	if (!view->flags.mapped)
 		return;
 
-	XUnmapWindow(view->screen->display, view->window);
-	XFlush(view->screen->display);
+	xcb_unmap_window(view->screen->display, view->window);
+	wXFlush(view->screen->display);
 
 	view->flags.mapped = 0;
 }
@@ -415,12 +419,12 @@ static void destroyView(W_View * view)
 	W_CallDestroyHandlers(view);
 
 	if (view->flags.realized) {
-		XDeleteContext(view->screen->display, view->window, ViewContext);
+		WMHashRemove(ViewTable, (void *)(uintptr_t) view->window);
 		WMScreenAbandonDrawable(view->screen, view->window);
 
 		/* if parent is being destroyed, it will die naturaly */
 		if (!view->flags.parentDying || view->flags.topLevel)
-			XDestroyWindow(view->screen->display, view->window);
+			xcb_destroy_window(view->screen->display, view->window);
 	}
 
 	/* remove self from parent's children list */
@@ -470,10 +474,9 @@ void W_MoveView(W_View * view, int x, int y)
 		 * device pixels already, so only child-view positions are
 		 * scaled inside their (scaled) parent */
 		if (view->flags.topLevel)
-			XMoveWindow(view->screen->display, view->window, x, y);
+			xcb_configure_window(view->screen->display, view->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 		else
-			XMoveWindow(view->screen->display, view->window,
-				    VDEV(view->screen, x), VDEV(view->screen, y));
+			xcb_configure_window(view->screen->display, view->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ VDEV(view->screen, x), VDEV(view->screen, y) });
 	}
 	view->pos.x = x;
 	view->pos.y = y;
@@ -500,8 +503,7 @@ void W_ResizeView(W_View * view, unsigned int width, unsigned int height)
 	/*shrinked = width < view->size.width || height < view->size.height; */
 
 	if (view->flags.realized) {
-		XResizeWindow(view->screen->display, view->window,
-			      VDEV(view->screen, width), VDEV(view->screen, height));
+		xcb_configure_window(view->screen->display, view->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ VDEV(view->screen, width), VDEV(view->screen, height) });
 		WMScreenNoteDrawableSizeScaled(view->screen, view->window, width, height);
 	}
 	view->size.width = width;
@@ -511,26 +513,24 @@ void W_ResizeView(W_View * view, unsigned int width, unsigned int height)
 		(*view->delegate->didResize) (view->delegate, view);
 	}
 
-	/* // TODO. replace in WINGs code, with the didResize delegate */
 	if (view->flags.notifySizeChanged)
 		WMPostNotificationName(WMViewSizeDidChangeNotification, view, NULL);
 }
 
 void W_RedisplayView(W_View * view)
 {
-	XEvent ev;
+	xcb_generic_event_t *wire;
 
 	if (!view->flags.mapped)
 		return;
 
-	ev.xexpose.type = Expose;
-	ev.xexpose.display = view->screen->display;
-	ev.xexpose.window = view->window;
-	ev.xexpose.count = 0;
+	/* synthesized expose, WMHandleEvent borrows it through dispatch */
+	wire = W_SynthEvent(XCB_EXPOSE);
+	((xcb_expose_event_t *)wire)->window = view->window;
+	((xcb_expose_event_t *)wire)->count = 0;
 
-	ev.xexpose.serial = 0;
-
-	WMHandleEvent(&ev);
+	WMHandleEvent(wire);
+	free(wire);
 }
 
 void W_SetViewBackgroundColor(W_View * view, WMColor * color)
@@ -539,12 +539,12 @@ void W_SetViewBackgroundColor(W_View * view, WMColor * color)
 		WMReleaseColor(view->backColor);
 	view->backColor = WMRetainColor(color);
 
-	view->attribFlags |= CWBackPixel;
-	view->attribFlags &= ~CWBackPixmap;
+	view->attribFlags |= XCB_CW_BACK_PIXEL;
+	view->attribFlags &= ~XCB_CW_BACK_PIXMAP;
 	view->attribs.background_pixel = W_PIXEL(color);
 	if (view->flags.realized) {
-		XSetWindowBackground(view->screen->display, view->window, W_PIXEL(color));
-		XClearWindow(view->screen->display, view->window);
+		xcb_change_window_attributes(view->screen->display, view->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ W_PIXEL(color) });
+		xcb_clear_area(view->screen->display, 0, view->window, 0, 0, 0, 0);
 	}
 }
 
@@ -557,22 +557,22 @@ void W_SetViewBackgroundPixmap(W_View *view, WMPixmap *pix)
 		WMReleasePixmap(view->backImage);
 	view->backImage = WMRetainPixmap(pix);
 
-	view->attribFlags |= CWBackPixmap;
-	view->attribFlags &= ~CWBackPixel;
+	view->attribFlags |= XCB_CW_BACK_PIXMAP;
+	view->attribFlags &= ~XCB_CW_BACK_PIXEL;
 	view->attribs.background_pixmap = pix->pixmap;
 	if (view->flags.realized) {
-		XSetWindowBackgroundPixmap(view->screen->display, view->window, pix->pixmap);
-		XClearWindow(view->screen->display, view->window);
+		xcb_change_window_attributes(view->screen->display, view->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix->pixmap });
+		xcb_clear_area(view->screen->display, 0, view->window, 0, 0, 0, 0);
 	}
 }
 
-void W_SetViewCursor(W_View * view, Cursor cursor)
+void W_SetViewCursor(W_View * view, xcb_cursor_t cursor)
 {
 	view->cursor = cursor;
 	if (W_VIEW_REALIZED(view)) {
-		XDefineCursor(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view), cursor);
+		wXDefineCursor(W_VIEW_DISPLAY(view), W_VIEW_DRAWABLE(view), cursor);
 	} else {
-		view->attribFlags |= CWCursor;
+		view->attribFlags |= XCB_CW_CURSOR;
 		view->attribs.cursor = cursor;
 	}
 }
@@ -592,10 +592,27 @@ W_View *W_FocusedViewOfToplevel(W_View * view)
 	return info->focused;
 }
 
+/* synthesize a Focus{In,Out} wire event and dispatch it to the view's
+ * handlers */
+static void WSendFocusEvent(W_View * target, int type)
+{
+	xcb_generic_event_t *wire;
+
+	if (target->window == XCB_NONE)
+		return;
+
+	wire = W_SynthEvent(type);
+	((xcb_focus_in_event_t *)wire)->event = target->window;
+	((xcb_focus_in_event_t *)wire)->mode = XCB_NOTIFY_MODE_NORMAL;
+	((xcb_focus_in_event_t *)wire)->detail = XCB_NOTIFY_DETAIL_NONE;
+
+	WMHandleEvent(wire);
+	free(wire);
+}
+
 void W_SetFocusOfTopLevel(W_View * toplevel, W_View * view)
 {
 	WMScreen *scr = toplevel->screen;
-	XEvent event;
 	W_FocusInfo *info;
 
 	for (info = scr->focusInfo; info != NULL; info = info->next)
@@ -616,34 +633,13 @@ void W_SetFocusOfTopLevel(W_View * toplevel, W_View * view)
 		 * focus-info node, so info must not be written through
 		 * after the callback */
 		info->focused = view;
-		if (old) {
-			event.xfocus.mode = NotifyNormal;
-			event.xfocus.detail = NotifyDetailNone;
-			event.xfocus.type = FocusOut;
-			W_DispatchMessage(old, &event);
-		}
+		if (old)
+			WSendFocusEvent(old, XCB_FOCUS_OUT);
 	}
 	if (view) {
 		/* simulate FocusIn event */
-		event.xfocus.mode = NotifyNormal;
-		event.xfocus.detail = NotifyDetailNone;
-		event.xfocus.type = FocusIn;
-		W_DispatchMessage(view, &event);
+		WSendFocusEvent(view, XCB_FOCUS_IN);
 	}
-}
-
-void W_DispatchMessage(W_View * target, XEvent * event)
-{
-	if (target->window == None)
-		return;
-	event->xclient.window = target->window;
-	event->xclient.display = target->screen->display;
-
-	WMHandleEvent(event);
-	/*
-	   XSendEvent(target->screen->display, target->window, False,
-	   SubstructureNotifyMask, event);
-	 */
 }
 
 WMView *W_RetainView(WMView * view)
@@ -677,12 +673,12 @@ WMPoint WMGetViewPosition(WMView * view)
 	return view->pos;
 }
 
-void WMSetViewNotifySizeChanges(WMView * view, Bool flag)
+void WMSetViewNotifySizeChanges(WMView * view, bool flag)
 {
 	view->flags.notifySizeChanged = ((flag == 0) ? 0 : 1);
 }
 
-Window WMViewXID(WMView * view)
+xcb_window_t WMViewXID(WMView * view)
 {
 	return view->window;
 }
@@ -690,20 +686,23 @@ Window WMViewXID(WMView * view)
 WMPoint WMGetViewScreenPosition(WMView * view)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
-	Window foo;
+	xcb_window_t foo;
 	int x, y, topX, topY;
-	unsigned int bar;
+	WXGeometry geo;
 	WMView *topView;
 
 	topView = view;
 	while (topView->parent && topView->parent != scr->rootView)
 		topView = topView->parent;
 
-	if (!XGetGeometry(scr->display, W_VIEW_DRAWABLE(topView), &foo, &topX, &topY, &bar, &bar, &bar, &bar)) {
+	if (!WXRcvGeometry(scr->display, WXReqGeometry(scr->display, W_VIEW_DRAWABLE(topView)), &geo)) {
 		topX = topY = 0;
+	} else {
+		topX = geo.x;
+		topY = geo.y;
 	}
 
-	XTranslateCoordinates(scr->display, W_VIEW_DRAWABLE(view), scr->rootWin, 0, 0, &x, &y, &foo);
+	wXTranslateCoordinates(scr->display, W_VIEW_DRAWABLE(view), scr->rootWin, 0, 0, &x, &y, &foo);
 
 	return wmkpoint(x - topX, y - topY);
 }
@@ -728,7 +727,7 @@ void WMSetViewExpandsToParent(WMView * view, int leftOffs, int topOffs, int righ
 	view->rightOffs = rightOffs;
 
 	WMAddNotificationObserver(resizedParent, view, WMViewSizeDidChangeNotification, view->parent);
-	WMSetViewNotifySizeChanges(view->parent, True);
+	WMSetViewNotifySizeChanges(view->parent, true);
 
 	W_MoveView(view, leftOffs, topOffs);
 	W_ResizeView(view, size.width - (leftOffs + rightOffs), size.height - (topOffs + bottomOffs));

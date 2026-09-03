@@ -30,6 +30,13 @@ for seed in "$HOME/GNUstep/Defaults" \
         break
     fi
 done
+# the session may inherit the live desktop's whole wmaker environment
+# (WMAKER_USER_XDG flips the defaults layout, WMAKER_IPC_SOCKET points at
+# the real IPC socket) — drop every one of them so the drive and the tools
+# it runs stay on the legacy layout of the isolated $WMHOME
+unset WMAKER_USER_ROOT WMAKER_USER_XDG WMAKER_USER_DATA WMAKER_USER_CACHE \
+      WMAKER_IPC_SOCKET WMAKER_BIN_NAME XDG_CONFIG_HOME XDG_DATA_HOME \
+      XDG_CACHE_HOME
 export WMAKER_USER_ROOT="$WMHOME"
 
 cleanup() {
@@ -152,8 +159,24 @@ if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set ASAN_DRIVE_DISPLAY to a free one" >&2
     exit 1
 fi
-note "start Xephyr $DPY"
-Xephyr "$DPY" -screen 1280x800 -ac >/tmp/xephyr93.log 2>&1 &
+# Xephyr is a nested server: on the session display its host pointer
+# tracks the live mouse and can override the XTEST warps the drive
+# sends. Run it on a private headless parent whose virtual pointer
+# only moves when Xephyr mirrors a warp.
+PARENT_DISPLAY=${ASAN_DRIVE_PARENT_DISPLAY:-":$(( ${DPY#:} + 1 ))"}
+Xvfb "$PARENT_DISPLAY" -screen 0 2400x1600x24 -ac >/dev/null 2>&1 &
+XVFB_PARENT_PID=$!
+echo "$XVFB_PARENT_PID" >> "$PIDFILE"
+xvfb_parent_ready() {
+    kill -0 "$XVFB_PARENT_PID" 2>/dev/null || { echo "parent Xvfb exited early" >&2; exit 1; }
+    DISPLAY=$PARENT_DISPLAY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xvfb_parent_ready || { echo "parent Xvfb failed to start" >&2; exit 1; }
+
+note "start Xephyr $DPY on parent $PARENT_DISPLAY"
+# -noreset: like Xvfb, Xephyr resets when the last client disconnects and
+# every property write and root background vanishes
+Xephyr "$DPY" -display "$PARENT_DISPLAY" -screen 1280x800 -ac -noreset >/tmp/xephyr93.log 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {

@@ -27,10 +27,10 @@
  * titlebar buttons, menu body). Exposed so callers that want extra
  * events on a single core window can OR them in via XSelectInput
  * without duplicating the base set. */
-#define WCORE_CHILD_EVENT_MASK  (KeyPressMask | KeyReleaseMask | \
-				 ButtonPressMask | ButtonReleaseMask | \
-				 ButtonMotionMask | ExposureMask | \
-				 EnterWindowMask | LeaveWindowMask)
+#define WCORE_CHILD_EVENT_MASK  (XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | \
+				 XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | \
+				 XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE | \
+				 XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW)
 
 typedef struct WStacking {
 	struct _WCoreWindow *above;
@@ -40,7 +40,7 @@ typedef struct WStacking {
 } WStacking;
 
 typedef struct _WCoreWindow {
-	Window window;
+	xcb_window_t window;
 	int width;			/* size of the window */
 	int height;
 	WScreen *screen_ptr;		/* ptr to screen of the window */
@@ -51,7 +51,7 @@ typedef struct _WCoreWindow {
 
 WCoreWindow *wCoreCreateTopLevel(WScreen *screen, int x, int y, int width,
 				 int height, int bwidth,
-				 int depth, Visual *visual, Colormap colormap,
+				 int depth, xcb_visualtype_t *visual, xcb_colormap_t colormap,
 				 WMPixel border_pixel);
 
 WCoreWindow *wCoreCreate(WCoreWindow *parent, int x, int y,

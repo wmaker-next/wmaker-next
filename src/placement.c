@@ -20,7 +20,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,7 +46,7 @@
     wPreferences.window_place_origin.y)
 
 /* Returns True if it is an icon and is in this workspace */
-static Bool
+static bool
 iconPosition(WCoreWindow *wcore, int sx1, int sy1, int sx2, int sy2,
 	     int workspace, int *retX, int *retY)
 {
@@ -114,7 +113,7 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	int isize = w_global.config->icon_size;
 	int done = 0;
 	WMBagIterator iter;
-	WArea area = wGetUsableAreaForHead(scr, head, NULL, False);
+	WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 
 	/* Do not place icons under the dock. */
 	if (scr->dock) {
@@ -303,14 +302,14 @@ static void set_width_height(WWindow *wwin, unsigned int *width, unsigned int *h
 	}
 }
 
-static Bool
-window_overlaps(WWindow *win, int x, int y, int w, int h, Bool ignore_sunken)
+static bool
+window_overlaps(WWindow *win, int x, int y, int w, int h, bool ignore_sunken)
 {
 	int tw, th, tx, ty;
 
 	if (ignore_sunken &&
 	    win->frame->core->stacking->window_level < WMNormalLevel) {
-		return False;
+		return false;
 	}
 
 	tw = win->frame->core->width;
@@ -328,30 +327,30 @@ window_overlaps(WWindow *win, int x, int y, int w, int h, Bool ignore_sunken)
 	     (win->flags.shaded &&
 	      wWindowIsVisibleOnAnyHead(win) &&
 	      !(win->flags.miniaturized || win->flags.hidden)))) {
-		return True;
+		return true;
 	}
 
-	return False;
+	return false;
 }
 
-static Bool
-screen_has_space(WScreen *scr, int x, int y, int w, int h, Bool ignore_sunken)
+static bool
+screen_has_space(WScreen *scr, int x, int y, int w, int h, bool ignore_sunken)
 {
 	WWindow *focused = scr->focused_window, *i;
 
 	for (i = focused; i; i = i->next) {
 		if (window_overlaps(i, x, y, w, h, ignore_sunken)) {
-			return False;
+			return false;
 		}
 	}
 
 	for (i = focused; i; i = i->prev) {
 		if (window_overlaps(i, x, y, w, h, ignore_sunken)) {
-			return False;
+			return false;
 		}
 	}
 
-	return True;
+	return true;
 }
 
 static void
@@ -415,7 +414,7 @@ smartPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned int width,
 	*y_ret = min_isect_y;
 }
 
-static Bool
+static bool
 center_place_window(WWindow *wwin, int *x_ret, int *y_ret,
 		 unsigned int width, unsigned int height, WArea usableArea)
 {
@@ -426,18 +425,18 @@ center_place_window(WWindow *wwin, int *x_ret, int *y_ret,
 	sheight = usableArea.y2 - usableArea.y1;
 
 	if (width > swidth || height > sheight)
-		return False;
+		return false;
 
 	*x_ret = (usableArea.x1 + usableArea.x2 - width) / 2;
 	*y_ret = (usableArea.y1 + usableArea.y2 - height) / 2;
 
-	return True;
+	return true;
 }
 
-static Bool
+static bool
 autoPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret,
 		unsigned int width, unsigned int height,
-		Bool ignore_sunken, WArea usableArea)
+		bool ignore_sunken, WArea usableArea)
 {
 	WScreen *scr = wwin->screen_ptr;
 	int x, y;
@@ -449,10 +448,10 @@ autoPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret,
 
 	/* try placing at center first */
 	if (center_place_window(wwin, &x, &y, width, height, usableArea) &&
-	    screen_has_space(scr, x, y, width, height, False)) {
+	    screen_has_space(scr, x, y, width, height, false)) {
 		*x_ret = x;
 		*y_ret = y;
-		return True;
+		return true;
 	}
 
 	/* this was based on fvwm2's smart placement */
@@ -462,12 +461,12 @@ autoPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret,
 					     width, height, ignore_sunken)) {
 				*x_ret = x;
 				*y_ret = y;
-				return True;
+				return true;
 			}
 		}
 	}
 
-	return False;
+	return false;
 }
 
 static void
@@ -526,7 +525,7 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 	else
 		head = wGetHeadForPointerLocation(scr);
 
-	WArea usableArea = wGetUsableAreaForHead(scr, head, NULL, True);
+	WArea usableArea = wGetUsableAreaForHead(scr, head, NULL, true);
 
 	switch (w_global.config->window_placement) {
 	case WPM_MANUAL:
@@ -543,9 +542,9 @@ void PlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned width, unsigned
 		/* Fall through. */
 
 	case WPM_AUTO:
-		if (autoPlaceWindow(wwin, x_ret, y_ret, width, height, False, usableArea)) {
+		if (autoPlaceWindow(wwin, x_ret, y_ret, width, height, false, usableArea)) {
 			break;
-		} else if (autoPlaceWindow(wwin, x_ret, y_ret, width, height, True, usableArea)) {
+		} else if (autoPlaceWindow(wwin, x_ret, y_ret, width, height, true, usableArea)) {
 			break;
 		}
 		/* there isn't a break here, because if we fail, it should fall

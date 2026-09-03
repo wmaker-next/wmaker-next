@@ -150,7 +150,7 @@ static const char *plist_string_or_default(const WConfigEntry *entry,
 	return entry->default_value;
 }
 
-static Bool parse_long_strict(const char *str, long *out)
+static bool parse_long_strict(const char *str, long *out)
 {
 	char *end;
 	long value;
@@ -158,57 +158,57 @@ static Bool parse_long_strict(const char *str, long *out)
 	errno = 0;
 	value = strtol(str, &end, 0);
 	if (errno != 0 || end == str)
-		return False;
+		return false;
 	while (isspace((unsigned char)*end))
 		end++;
 	if (*end != '\0')
-		return False;
+		return false;
 
 	*out = value;
-	return True;
+	return true;
 }
 
-static Bool parse_bool(const WConfigEntry *entry, const char *str, int *out)
+static bool parse_bool(const WConfigEntry *entry, const char *str, int *out)
 {
 	long value;
 
 	if (((str[0] == 'y' || str[0] == 'Y') && str[1] == '\0') ||
 	    strcasecmp(str, "YES") == 0) {
 		*out = 1;
-		return True;
+		return true;
 	}
 	if (((str[0] == 'n' || str[0] == 'N') && str[1] == '\0') ||
 	    strcasecmp(str, "NO") == 0) {
 		*out = 0;
-		return True;
+		return true;
 	}
 	if (parse_long_strict(str, &value)) {
 		*out = (value != 0);
-		return True;
+		return true;
 	}
 
 	wwarning(_("can't convert \"%s\" to boolean for key \"%s\""),
 		 str, entry->key);
-	return False;
+	return false;
 }
 
-static Bool parse_int(const WConfigEntry *entry, const char *str, int *out)
+static bool parse_int(const WConfigEntry *entry, const char *str, int *out)
 {
 	long value;
 
 	if (!parse_long_strict(str, &value)) {
 		wwarning(_("can't convert \"%s\" to integer for key \"%s\""),
 			 str, entry->key);
-		return False;
+		return false;
 	}
 	if (value < entry->min_value || value > entry->max_value) {
 		wwarning(_("integer value \"%s\" for key \"%s\" is outside [%d..%d]"),
 			 str, entry->key, entry->min_value, entry->max_value);
-		return False;
+		return false;
 	}
 
 	*out = (int)value;
-	return True;
+	return true;
 }
 
 static void enum_values_description(const WConfigEnum *values, char *buffer,
@@ -228,7 +228,7 @@ static void enum_values_description(const WConfigEnum *values, char *buffer,
 	}
 }
 
-static Bool parse_enum(const WConfigEntry *entry, const char *str, int *out)
+static bool parse_enum(const WConfigEntry *entry, const char *str, int *out)
 {
 	const WConfigEnum *v;
 	char buffer[256];
@@ -236,17 +236,17 @@ static Bool parse_enum(const WConfigEntry *entry, const char *str, int *out)
 	for (v = entry->enum_values; v && v->string != NULL; v++) {
 		if (strcasecmp(v->string, str) == 0) {
 			*out = v->value;
-			return True;
+			return true;
 		}
 	}
 
 	enum_values_description(entry->enum_values, buffer, sizeof(buffer));
 	wwarning(_("wrong option value for key \"%s\"; got \"%s\", should be one of %s."),
 		 entry->key, str, buffer);
-	return False;
+	return false;
 }
 
-static Bool parse_value(const WConfigEntry *entry, const char *str, int *out)
+static bool parse_value(const WConfigEntry *entry, const char *str, int *out)
 {
 	switch (entry->type) {
 	case WCFG_BOOL:
@@ -270,7 +270,7 @@ static Bool parse_value(const WConfigEntry *entry, const char *str, int *out)
 		break;
 	}
 
-	return False;
+	return false;
 }
 
 static void store_numeric_value(WConfig *config, const WConfigEntry *entry,
@@ -310,7 +310,7 @@ static void store_numeric_value(WConfig *config, const WConfigEntry *entry,
 	}
 }
 
-static Bool parse_numeric_entry(WConfig *config, const WConfigEntry *entry,
+static bool parse_numeric_entry(WConfig *config, const WConfigEntry *entry,
 				WMPropList *value)
 {
 	const char *str;
@@ -320,27 +320,27 @@ static Bool parse_numeric_entry(WConfig *config, const WConfigEntry *entry,
 	if (!parse_value(entry, str, &parsed)) {
 		warn_using_default(entry);
 		if (!parse_value(entry, entry->default_value, &parsed))
-			return False;
+			return false;
 	}
 
 	store_numeric_value(config, entry, parsed);
-	return True;
+	return true;
 }
 
-static Bool parse_string_plist(const WConfigEntry *entry, WMPropList *value,
+static bool parse_string_plist(const WConfigEntry *entry, WMPropList *value,
 			       char **out)
 {
 	if (!value || !WMIsPLString(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be String."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	*out = wstrdup(WMGetFromPLString(value));
-	return True;
+	return true;
 }
 
-static Bool parse_path_list_plist(const WConfigEntry *entry, WMPropList *value,
+static bool parse_path_list_plist(const WConfigEntry *entry, WMPropList *value,
 				  char **out)
 {
 	WMPropList *item;
@@ -351,14 +351,14 @@ static Bool parse_path_list_plist(const WConfigEntry *entry, WMPropList *value,
 	if (!value || !WMIsPLArray(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be an array of paths."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	count = WMGetPropListItemCount(value);
 	if (count < 1) {
 		wwarning(_("Incorrect number of elements in array for key \"%s\"."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	for (i = 0; i < count; i++) {
@@ -368,11 +368,11 @@ static Bool parse_path_list_plist(const WConfigEntry *entry, WMPropList *value,
 		if (!item || !WMIsPLString(item)) {
 			wwarning(_("Wrong value for key \"%s\". Should be an array of paths."),
 				 entry->key);
-			return False;
+			return false;
 		}
 		item_len = strlen(WMGetFromPLString(item));
 		if (SIZE_MAX - len < item_len + 1)
-			return False;
+			return false;
 		len += item_len + 1;
 	}
 
@@ -390,10 +390,10 @@ static Bool parse_path_list_plist(const WConfigEntry *entry, WMPropList *value,
 	*ptr = '\0';
 
 	*out = result;
-	return True;
+	return true;
 }
 
-static Bool parse_coord_plist(const WConfigEntry *entry, WMPropList *value,
+static bool parse_coord_plist(const WConfigEntry *entry, WMPropList *value,
 			      WConfigCoord *out)
 {
 	WMPropList *elem_x, *elem_y;
@@ -402,12 +402,12 @@ static Bool parse_coord_plist(const WConfigEntry *entry, WMPropList *value,
 	if (!value || !WMIsPLArray(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be Coordinate."),
 			 entry->key);
-		return False;
+		return false;
 	}
 	if (WMGetPropListItemCount(value) != 2) {
 		wwarning(_("Incorrect number of elements in array for key \"%s\"."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	elem_x = WMGetFromPLArray(value, 0);
@@ -415,18 +415,18 @@ static Bool parse_coord_plist(const WConfigEntry *entry, WMPropList *value,
 	if (!elem_x || !elem_y || !WMIsPLString(elem_x) || !WMIsPLString(elem_y)) {
 		wwarning(_("Wrong value for key \"%s\". Should be Coordinate."),
 			 entry->key);
-		return False;
+		return false;
 	}
 	if (!parse_long_strict(WMGetFromPLString(elem_x), &x) ||
 	    !parse_long_strict(WMGetFromPLString(elem_y), &y) ||
 	    x < INT_MIN || x > INT_MAX || y < INT_MIN || y > INT_MAX) {
 		wwarning(_("can't convert array to integers for \"%s\"."), entry->key);
-		return False;
+		return false;
 	}
 
 	out->x = (int)x;
 	out->y = (int)y;
-	return True;
+	return true;
 }
 
 static void string_array_clear(WConfigStringArray *array)
@@ -445,7 +445,7 @@ static void string_array_clear(WConfigStringArray *array)
 	array->items = NULL;
 }
 
-static Bool parse_string_array_plist(const WConfigEntry *entry, WMPropList *value,
+static bool parse_string_array_plist(const WConfigEntry *entry, WMPropList *value,
 				     WConfigStringArray *out)
 {
 	WMPropList *item;
@@ -454,24 +454,24 @@ static Bool parse_string_array_plist(const WConfigEntry *entry, WMPropList *valu
 	if (!value || !WMIsPLArray(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be an array of strings."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	if (entry->min_value < 0 || entry->min_value > entry->max_value)
-		return False;
+		return false;
 
 	expected = (size_t)entry->min_value;
 	count = (size_t)WMGetPropListItemCount(value);
 	if (count < expected || count > (size_t)entry->max_value) {
 		wwarning(_("Incorrect number of elements in array for key \"%s\"."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	out->count = count;
 	if (count == 0) {
 		out->items = NULL;
-		return True;
+		return true;
 	}
 	out->items = wmalloc(count * sizeof(char *));
 	memset(out->items, 0, count * sizeof(char *));
@@ -481,12 +481,12 @@ static Bool parse_string_array_plist(const WConfigEntry *entry, WMPropList *valu
 			wwarning(_("Wrong value for key \"%s\". Should be an array of strings."),
 				 entry->key);
 			string_array_clear(out);
-			return False;
+			return false;
 		}
 		out->items[i] = wstrdup(WMGetFromPLString(item));
 	}
 
-	return True;
+	return true;
 }
 
 static void switch_panel_images_clear(WConfigSwitchPanelImages *images)
@@ -506,31 +506,31 @@ static void switch_panel_images_clear(WConfigSwitchPanelImages *images)
 	images->center_height = 0;
 }
 
-static Bool plist_string_at(WMPropList *array, int index, const char **out)
+static bool plist_string_at(WMPropList *array, int index, const char **out)
 {
 	WMPropList *item;
 
 	item = WMGetFromPLArray(array, index);
 	if (!item || !WMIsPLString(item))
-		return False;
+		return false;
 	*out = WMGetFromPLString(item);
-	return True;
+	return true;
 }
 
-static Bool plist_int_at(WMPropList *array, int index, int *out)
+static bool plist_int_at(WMPropList *array, int index, int *out)
 {
 	const char *str;
 	long value;
 
 	if (!plist_string_at(array, index, &str))
-		return False;
+		return false;
 	if (!parse_long_strict(str, &value) || value < INT_MIN || value > INT_MAX)
-		return False;
+		return false;
 	*out = (int)value;
-	return True;
+	return true;
 }
 
-static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
+static bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 					    WMPropList *value,
 					    WConfigSwitchPanelImages *out)
 {
@@ -540,32 +540,32 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 	if (!value || !WMIsPLArray(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be an array."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	count = WMGetPropListItemCount(value);
 	if (count == 0)
-		return True;
+		return true;
 
 	if (count != 1 && count != 3 && count != 4 && count != 5) {
 		wwarning(_("Invalid number of arguments for option \"%s\""),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	if (!plist_string_at(value, 0, &tile)) {
 		wwarning(_("Invalid arguments for option \"%s\""), entry->key);
-		return False;
+		return false;
 	}
 	out->tile = wstrdup(tile);
 
 	if (count == 1)
-		return True;
+		return true;
 
 	if (!plist_string_at(value, 1, &background)) {
 		wwarning(_("Invalid arguments for option \"%s\""), entry->key);
 		switch_panel_images_clear(out);
-		return False;
+		return false;
 	}
 	out->background = wstrdup(background);
 
@@ -573,7 +573,7 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 	if (count == 3) {
 		if (plist_string_at(value, 2, &tile_arrow))
 			out->tile_arrow = wstrdup(tile_arrow);
-		return True;
+		return true;
 	}
 
 	/* (tile, background, center_width, center_height) — legacy 4-element */
@@ -582,11 +582,11 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 		    !plist_int_at(value, 3, &center_height)) {
 			wwarning(_("Invalid arguments for option \"%s\""), entry->key);
 			switch_panel_images_clear(out);
-			return False;
+			return false;
 		}
 		out->center_width = center_width;
 		out->center_height = center_height;
-		return True;
+		return true;
 	}
 
 	/* (tile, background, tile_arrow, center_width, center_height) */
@@ -595,47 +595,47 @@ static Bool parse_switch_panel_images_plist(const WConfigEntry *entry,
 	    !plist_int_at(value, 4, &center_height)) {
 		wwarning(_("Invalid arguments for option \"%s\""), entry->key);
 		switch_panel_images_clear(out);
-		return False;
+		return false;
 	}
 	out->tile_arrow = wstrdup(tile_arrow);
 	out->center_width = center_width;
 	out->center_height = center_height;
-	return True;
+	return true;
 }
 
-static Bool parse_key_binding_plist(const WConfigEntry *entry, WMPropList *value,
+static bool parse_key_binding_plist(const WConfigEntry *entry, WMPropList *value,
 				    WConfigKeyBinding *out)
 {
 	if (!value || !WMIsPLString(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be Key spec."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	out->spec = wstrdup(WMGetFromPLString(value));
-	return True;
+	return true;
 }
 
-static Bool parse_string_resource_spec_plist(const WConfigEntry *entry,
+static bool parse_string_resource_spec_plist(const WConfigEntry *entry,
 					     WMPropList *value,
 					     WConfigResourceSpec *out)
 {
 	if (!value || !WMIsPLString(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be String."),
 			 entry->key);
-		return False;
+		return false;
 	}
 	if (entry->type == WCFG_COLOR_SPEC && entry->default_value[0] != '\0' &&
 	    WMGetFromPLString(value)[0] == '\0') {
 		wwarning(_("Empty color for key \"%s\"."), entry->key);
-		return False;
+		return false;
 	}
 
 	out->spec = wstrdup(WMGetFromPLString(value));
-	return True;
+	return true;
 }
 
-static Bool plist_first_string_equals(WMPropList *array, const char *expected)
+static bool plist_first_string_equals(WMPropList *array, const char *expected)
 {
 	WMPropList *item;
 
@@ -644,7 +644,7 @@ static Bool plist_first_string_equals(WMPropList *array, const char *expected)
 	    strcasecmp(WMGetFromPLString(item), expected) == 0;
 }
 
-static Bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
+static bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
 					    WMPropList *value,
 					    WConfigResourceSpec *out)
 {
@@ -653,7 +653,7 @@ static Bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
 	if (!value || !WMIsPLArray(value)) {
 		wwarning(_("Wrong option format for key \"%s\". Should be an array."),
 			 entry->key);
-		return False;
+		return false;
 	}
 
 	if (entry->type == WCFG_TEXTURE_SPEC &&
@@ -661,7 +661,7 @@ static Bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
 	    !plist_first_string_equals(value, "solid")) {
 		wwarning(_("Wrong option format for key \"%s\". Should be %s."),
 			 entry->key, "Solid Texture");
-		return False;
+		return false;
 	}
 
 	if (entry->type == WCFG_BACKGROUND_SPEC) {
@@ -672,7 +672,7 @@ static Bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
 
 			if (!item || !WMIsPLString(item)) {
 				wwarning(_("Wrong type for workspace background. Should be a texture type."));
-				return False;
+				return false;
 			}
 		} else if (entry->min_value == WCFG_BACKGROUND_WORKSPACE_SPECIFIC) {
 			for (i = count - 1; i >= 0; i--) {
@@ -685,14 +685,14 @@ static Bool parse_plist_resource_spec_plist(const WConfigEntry *entry,
 		}
 	}
 
-	desc = WMGetPropListDescription(value, False);
+	desc = WMGetPropListDescription(value, false);
 	if (!desc)
-		return False;
+		return false;
 	out->spec = desc;
-	return True;
+	return true;
 }
 
-static Bool parse_owned_plist_value(WConfig *config, const WConfigEntry *entry,
+static bool parse_owned_plist_value(WConfig *config, const WConfigEntry *entry,
 				    WMPropList *value)
 {
 	char *base = (char *)config + entry->offset;
@@ -729,14 +729,14 @@ static Bool parse_owned_plist_value(WConfig *config, const WConfigEntry *entry,
 		break;
 	}
 
-	return False;
+	return false;
 }
 
-static Bool parse_plist_with_default(WConfig *config, const WConfigEntry *entry,
+static bool parse_plist_with_default(WConfig *config, const WConfigEntry *entry,
 				     WMPropList *value)
 {
 	WMPropList *default_value = NULL;
-	Bool parsed;
+	bool parsed;
 
 	if (!value) {
 		default_value = entry_default_plist(entry);
@@ -750,7 +750,7 @@ static Bool parse_plist_with_default(WConfig *config, const WConfigEntry *entry,
 		warn_using_default(entry);
 		default_value = entry_default_plist(entry);
 		if (!default_value)
-			return False;
+			return false;
 
 		parsed = parse_owned_plist_value(config, entry, default_value);
 	}
@@ -760,7 +760,7 @@ static Bool parse_plist_with_default(WConfig *config, const WConfigEntry *entry,
 	return parsed;
 }
 
-static Bool parse_entry(WConfig *config, const WConfigEntry *entry,
+static bool parse_entry(WConfig *config, const WConfigEntry *entry,
 			WMPropList *value)
 {
 	switch (entry->type) {
@@ -783,7 +783,7 @@ static Bool parse_entry(WConfig *config, const WConfigEntry *entry,
 		return parse_plist_with_default(config, entry, value);
 	}
 
-	return False;
+	return false;
 }
 
 WConfig *wConfigCreateDefault(void)
@@ -964,28 +964,28 @@ WConfig *wConfigClone(const WConfig *src)
 	return dst;
 }
 
-static Bool string_values_equal(const char *old_value, const char *new_value)
+static bool string_values_equal(const char *old_value, const char *new_value)
 {
 	if (!old_value || !new_value)
 		return old_value == new_value;
 	return strcmp(old_value, new_value) == 0;
 }
 
-static Bool string_array_values_equal(const WConfigStringArray *old_array,
+static bool string_array_values_equal(const WConfigStringArray *old_array,
 				      const WConfigStringArray *new_array)
 {
 	size_t i;
 
 	if (old_array->count != new_array->count)
-		return False;
+		return false;
 	for (i = 0; i < old_array->count; i++)
 		if (!string_values_equal(old_array->items[i], new_array->items[i]))
-			return False;
+			return false;
 
-	return True;
+	return true;
 }
 
-static Bool switch_panel_images_equal(const WConfigSwitchPanelImages *old_images,
+static bool switch_panel_images_equal(const WConfigSwitchPanelImages *old_images,
 				      const WConfigSwitchPanelImages *new_images)
 {
 	return string_values_equal(old_images->tile, new_images->tile) &&
@@ -995,7 +995,7 @@ static Bool switch_panel_images_equal(const WConfigSwitchPanelImages *old_images
 	    old_images->center_height == new_images->center_height;
 }
 
-static Bool entry_values_equal(const WConfig *old_config,
+static bool entry_values_equal(const WConfig *old_config,
 			       const WConfig *new_config,
 			       const WConfigEntry *entry)
 {
@@ -1041,17 +1041,17 @@ static Bool entry_values_equal(const WConfig *old_config,
 		return memcmp(old_base, new_base, entry->size) == 0;
 	}
 
-	return False;
+	return false;
 }
 
-Bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
+bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
 		 WConfigChanges *changes)
 {
 	const WConfigEntry *schema;
 	size_t i, count;
 
 	if (!new_config || !changes)
-		return False;
+		return false;
 
 	memset(changes->changed, 0, sizeof(changes->changed));
 	schema = wConfigSchema();
@@ -1063,13 +1063,13 @@ Bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
 		}
 	}
 
-	return True;
+	return true;
 }
 
-Bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key)
+bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key)
 {
 	if (!changes)
-		return True;
+		return true;
 	return (changes->changed[WCFG_CHANGE_WORD(key)] & WCFG_CHANGE_BIT(key)) != 0;
 }
 
@@ -1131,16 +1131,16 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 				 const WConfig *new_config,
 				 const WConfigChanges *changes)
 {
-	Bool update_usable_area = False;
-	Bool update_root_mask = False;
-	Bool update_hot_corners = False;
-	Bool arrange_all_icons = False;
-	Bool sticky_icons_changed = False;
-	Bool keybindings_changed = False;
-	Bool workspace_back_force = False;
-	Bool workspace_back_requested;
-	Bool workspace_back_actual;
-	Bool pixmap_path_changed;
+	bool update_usable_area = false;
+	bool update_root_mask = false;
+	bool update_hot_corners = false;
+	bool arrange_all_icons = false;
+	bool sticky_icons_changed = false;
+	bool keybindings_changed = false;
+	bool workspace_back_force = false;
+	bool workspace_back_requested;
+	bool workspace_back_actual;
+	bool pixmap_path_changed;
 	unsigned int refresh;
 	const WConfigEntry *schema;
 	size_t i, count;
@@ -1159,11 +1159,11 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	pixmap_path_changed = wConfigChangesHas(changes, WCFG_KEY_PIXMAP_PATH);
 
 	if (wConfigChangesHas(changes, WCFG_KEY_ICON_POSITION)) {
-		update_usable_area = True;
-		arrange_all_icons = True;
+		update_usable_area = true;
+		arrange_all_icons = true;
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_STICKY_ICONS))
-		sticky_icons_changed = True;
+		sticky_icons_changed = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WRAP_APPICONS_IN_DOCK))
 		wPreferences.flags.wrap_appicons_in_dock =
 		    new_config->wrap_appicons_in_dock;
@@ -1179,19 +1179,19 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 			wDockSwap(scr->dock);
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_DOCK))
-		update_usable_area = True;
+		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_ICONS))
-		update_usable_area = True;
+		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNERS)) {
-		update_root_mask = True;
-		update_hot_corners = True;
+		update_root_mask = true;
+		update_hot_corners = true;
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_EDGE))
-		update_hot_corners = True;
+		update_hot_corners = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER))
-		update_usable_area = True;
+		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER_SIZE))
-		update_usable_area = True;
+		update_usable_area = true;
 #ifdef VIRTUAL_DESKTOP
 	if (wConfigChangesHas(changes, WCFG_KEY_ENABLE_VIRTUAL_DESKTOP) ||
 	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_BORDERSIZE) ||
@@ -1202,7 +1202,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 #endif
 	if (wConfigChangesHas(changes, WCFG_KEY_SCROLLABLE_MENUS))
-		update_root_mask = True;
+		update_root_mask = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_KEYCHAIN_DISPLAY_POSITION) && scr)
 		wRefreshKeyChainOSD(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_DOUBLE_CLICK_TIME))
@@ -1227,7 +1227,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	    !string_values_equal(old_config->workspace_back.spec,
 				 new_config->workspace_back.spec);
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_SPECIFIC_BACK)) {
-		Bool helper_needed = scr && !scr->flags.backimage_helper_launched;
+		bool helper_needed = scr && !scr->flags.backimage_helper_launched;
 
 		refresh |= wConfigApplyWorkspaceBackgroundSpec(scr,
 		    "WorkspaceSpecificBack", WCFG_BACKGROUND_WORKSPACE_SPECIFIC,
@@ -1277,8 +1277,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		refresh |= wConfigForceReapplyIconBack(scr);
 		wIconResizeAll(scr);
 		wDockApplyIconSize(scr);
-		update_usable_area = True;
-		arrange_all_icons = True;
+		update_usable_area = true;
+		arrange_all_icons = true;
 	}
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_DISABLE_MINIWINDOWS))
 		wRefreshMiniwindows(scr);
@@ -1302,7 +1302,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	for (i = 0; i < count; i++) {
 		const WConfigResourceSpec *spec;
-		Bool changed;
+		bool changed;
 
 		changed = wConfigChangesHas(changes, schema[i].config_key);
 		/* Texture and cursor specs may reference pixmap files by name,
@@ -1313,7 +1313,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		 * repaints. */
 		if (pixmap_path_changed && (schema[i].type == WCFG_TEXTURE_SPEC ||
 					    schema[i].type == WCFG_CURSOR_SPEC))
-			changed = True;
+			changed = true;
 		if (!changed)
 			continue;
 
@@ -1358,7 +1358,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 
 	for (i = 0; i < count; i++) {
 		const WConfigKeyBinding *binding;
-		Bool binding_changed = False;
+		bool binding_changed = false;
 
 		if (schema[i].type != WCFG_KEY_BINDING ||
 		    !wConfigChangesHas(changes, schema[i].config_key))
@@ -1385,10 +1385,10 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	if (scr && update_usable_area)
 		wScreenUpdateUsableArea(scr);
 	if (scr && arrange_all_icons)
-		wArrangeIcons(scr, True);
+		wArrangeIcons(scr, true);
 	if (scr && sticky_icons_changed && scr->workspaces) {
 		wWorkspaceForceChange(scr, scr->current_workspace);
-		wArrangeIcons(scr, False);
+		wArrangeIcons(scr, false);
 	}
 	if (scr && update_root_mask)
 		wScreenUpdateRootEventMask(scr);
@@ -1576,7 +1576,7 @@ unsigned int wConfigForceReapplyFonts(WScreen *scr)
  * WM-side fonts so the new flag takes effect without a restart. */
 unsigned int wConfigApplyAntialiasedText(WScreen *scr)
 {
-	Bool current;
+	bool current;
 	unsigned int refresh;
 
 	if (!scr || !scr->wmscreen)

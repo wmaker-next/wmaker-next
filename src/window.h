@@ -32,8 +32,8 @@
 #include "application.h"
 
 /* not defined in my X11 headers */
-#ifndef UrgencyHint
-#define UrgencyHint (1L << 8)
+#ifndef XCB_ICCCM_WM_HINT_X_URGENCY
+#define XCB_ICCCM_WM_HINT_X_URGENCY (1L << 8)
 #endif
 
 
@@ -44,9 +44,9 @@
 #define BORDER_ALL	(1|2|4|8)
 
 
-#define CLIENT_EVENTS (StructureNotifyMask | PropertyChangeMask\
-    | EnterWindowMask | LeaveWindowMask | ColormapChangeMask \
-    | FocusChangeMask | VisibilityChangeMask)
+#define CLIENT_EVENTS (XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE\
+    | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_COLOR_MAP_CHANGE \
+    | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_VISIBILITY_CHANGE)
 
 typedef enum {
     WFM_PASSIVE, WFM_NO_INPUT, WFM_LOCALLY_ACTIVE, WFM_GLOBALLY_ACTIVE
@@ -184,15 +184,15 @@ typedef struct {
  */
 typedef struct WFakeGroupLeader {
     char *identifier;
-    Window leader;
-    Window origLeader;
+    xcb_window_t leader;
+    xcb_window_t origLeader;
     int retainCount;
 } WFakeGroupLeader;
 
 
 /*
  * Tab-grouping: multiple windows share one on-screen slot, only the active
- * member's frame is visible at a time.  Members share the same position.
+ * member's frame is visible at a time. Members share the same position.
  */
 typedef struct WWindowGroup {
     struct WWindow **members;   /* heap array of WWindow* */
@@ -256,7 +256,7 @@ typedef struct WWindow {
 
 	/* client window info */
 	short old_border_width;			/* original border width of client_win*/
-	Window client_win;			/* the window we're managing */
+	xcb_window_t client_win;			/* the window we're managing */
 	WObjDescriptor client_descriptor;	/* dummy descriptor for client */
 	WMHandlerID urgent_blink_timer;	/* armed while the titlebar blinks
 						 * its urgency phase */
@@ -276,7 +276,7 @@ typedef struct WWindow {
 	char *wm_title;			/* current window title, kept in sync by
 						 * wWindowUpdateName() so the dynamic-rule
 						 * lookup has a stable source without a frame */
-	Atom *wm_types;			/* full _NET_WM_WINDOW_TYPE atom list as
+	xcb_atom_t *wm_types;			/* full _NET_WM_WINDOW_TYPE atom list as
 						 * advertised by the client (read once) */
 	int wm_type_count;
 	char **wm_type_names;		/* XGetAtomName() result per wm_types[],
@@ -286,22 +286,22 @@ typedef struct WWindow {
 
 	int state;				/* state as in ICCCM */
 
-	Window transient_for;			/* WM_TRANSIENT_FOR */
+	xcb_window_t transient_for;			/* WM_TRANSIENT_FOR */
 
 	WFakeGroupLeader *fake_group;		/* Fake group leader for grouping into
 						 * a single appicon */
-	Window group_id;			/* the leader window of the group */
-	Window client_leader;			/* WM_CLIENT_LEADER if not
+	xcb_window_t group_id;			/* the leader window of the group */
+	xcb_window_t client_leader;			/* WM_CLIENT_LEADER if not
 						 * internal_window */
 
-	Window main_window;			/* main window for the application */
-	Window orig_main_window;		/* original main window of application.
+	xcb_window_t main_window;			/* main window for the application */
+	xcb_window_t orig_main_window;		/* original main window of application.
 						 * used for the shared appicon thing */
 
-	Colormap colormap;			/* client colormap, kept in sync
+	xcb_colormap_t colormap;			/* client colormap, kept in sync
 						 * by ColormapNotify */
 	int cmap_window_no;
-	Window *cmap_windows;
+	xcb_window_t *cmap_windows;
 
 	int last_head;				/* last reliable Xinerama head, used for
 						 * per-head workspace visibility when the
@@ -327,7 +327,7 @@ typedef struct WWindow {
 	 * wWindowDestroy */
 	struct {
 		void *timer;			/* WMHandlerID, NULL when idle */
-		Time timestamp;			/* cookie carried in data.l[1] */
+		xcb_timestamp_t timestamp;			/* cookie carried in data.l[1] */
 		int pid;			/* _NET_WM_PID cached on manage,
 						 * 0 when absent or remote */
 		short term_sent;		/* SIGTERM already sent, next
@@ -337,9 +337,9 @@ typedef struct WWindow {
 	/* _NET_WM_USER_TIME, used for focus-stealing prevention on map.
 	 * net_user_time_win is the indirected property carrier when the
 	 * client sets _NET_WM_USER_TIME_WINDOW, or None for the toplevel. */
-	Time net_user_time;
+	xcb_timestamp_t net_user_time;
 	short net_user_time_set;
-	Window net_user_time_win;
+	xcb_window_t net_user_time_win;
 	long net_user_time_win_mask;		/* our previous event mask on
 						 * the helper, restored on
 						 * detach so a hostile XID
@@ -450,7 +450,7 @@ typedef struct WWindow {
 	int icon_w, icon_h;
 	RImage *net_icon_image;			/* Window Image */
 	RImage *wm_hints_icon_image;		/* lazy decode of WM_HINTS icon_pixmap */
-	Atom type;
+	xcb_atom_t type;
 	char *mark_key_label;		/* Vim-like Window Marking */
 
 	/* window swallowing: terminals with swallow_child hide themselves
@@ -581,10 +581,10 @@ typedef struct WWindowState {
 typedef void* WMagicNumber;
 
 /*
- * Batched property prefetch for managing a window.  wManagePrefetch()
+ * Batched property prefetch for managing a window. wManagePrefetch()
  * issues every WXReq* in one burst so the replies arrive in a single
  * server round-trip, and consumers in wManageWindow() and the helpers
- * it calls receive individual cookies via WXRcv*.  wManageDiscard()
+ * it calls receive individual cookies via WXRcv*. wManageDiscard()
  * releases any cookie that was not consumed (already-consumed or
  * never-issued sequence numbers are harmless to discard).
  */
@@ -635,7 +635,7 @@ typedef struct {
     WNETWMInitialCookies netwm_initial;
 } WManageCookies;
 
-void wManagePrefetch(Window window, WManageCookies *ck);
+void wManagePrefetch(xcb_window_t window, WManageCookies *ck);
 void wManageDiscard(WManageCookies *ck);
 
 void wWindowDestroy(WWindow *wwin);
@@ -646,14 +646,14 @@ void wWindowSetShape(WWindow *wwin);
 void wWindowClearShape(WWindow *wwin);
 #endif
 
-WWindow *wManageWindow(WScreen *scr, Window window,
-		       const XWindowAttributes *prefetched_attrs);
+WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
+		       const WXWindowAttributes *prefetched_attrs);
 
-void wUnmanageWindow(WWindow *wwin, Bool restore, Bool destroyed);
+void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed);
 
 void wWindowSingleFocus(WWindow *wwin);
-void wWindowFocusPrev(WWindow *wwin, Bool inSameWorkspace);
-void wWindowFocusNext(WWindow *wwin, Bool inSameWorkspace);
+void wWindowFocusPrev(WWindow *wwin, bool inSameWorkspace);
+void wWindowFocusNext(WWindow *wwin, bool inSameWorkspace);
 void wWindowFocus(WWindow *wwin, WWindow *owin);
 void wWindowUnfocus(WWindow *wwin);
 
@@ -673,7 +673,7 @@ void wWindowSnapToHead(WWindow *wwin);
 
 void wWindowSynthConfigureNotify(WWindow *wwin);
 
-WWindow *wWindowFor(Window window);
+WWindow *wWindowFor(xcb_window_t window);
 
 
 void wWindowConfigureBorders(WWindow *wwin);
@@ -695,7 +695,7 @@ void wWindowSetKeyGrabs(WWindow *wwin);
 
 void wWindowResetMouseGrabs(WWindow *wwin);
 
-WWindow *wManageInternalWindow(WScreen *scr, Window window, Window owner,
+WWindow *wManageInternalWindow(WScreen *scr, xcb_window_t window, xcb_window_t owner,
                                const char *title, int x, int y,
                                int width, int height);
 
@@ -707,7 +707,7 @@ void wWindowMap(WWindow *wwin);
 
 void wWindowUnmap(WWindow *wwin);
 
-pid_t wGetWindowPid(Window win);
+pid_t wGetWindowPid(xcb_window_t win);
 
 void wWindowDeleteSavedStatesForPID(pid_t pid);
 void wWindowDeleteUnmatchedSavedStates(void);
@@ -715,16 +715,16 @@ void wWindowDeleteUnmatchedSavedStates(void);
 WMagicNumber wWindowAddSavedState(const char *instance, const char *class, const char *command,
                                   pid_t pid, WSavedState *state);
 
-WMagicNumber wWindowGetSavedState(Window win);
+WMagicNumber wWindowGetSavedState(xcb_window_t win);
 
 void wWindowDeleteSavedState(WMagicNumber id);
 
-Bool wWindowCommandsMatch(const char *saved, const char *current);
+bool wWindowCommandsMatch(const char *saved, const char *current);
 
-Bool wWindowIsFullyCovered(WWindow *wwin);
-Bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured);
+bool wWindowIsFullyCovered(WWindow *wwin);
+bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured);
 
-void wWindowSetOmnipresent(WWindow *wwin, Bool flag);
+void wWindowSetOmnipresent(WWindow *wwin, bool flag);
 
 /* Vim-like window marking management */
 void wWindowSetMark(WWindow *wwin, const char *label);

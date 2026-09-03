@@ -8,119 +8,214 @@
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
- *  Run by `make check`. The queue operations are exercised on synthetic
- *  XEvent values with no Display open (every WXEvq* call drains nothing
- *  when dpy==NULL), so this test needs the X client headers and link
- *  but no X server. Exit status 0 on pass, non-zero on the first
- *  failing assertion with the file and line printed to stderr.
+ *  Run by `make check`. The queue operations are exercised on
+ *  hand-rolled raw xcb events injected through W_XEvqPutRaw, with no
+ *  Display open (every WXEvq* call drains nothing when dpy==NULL), so
+ *  this test needs the X client headers and link but no X server.
+ *  Events handed out by the queue are owned by the caller, each
+ *  delivered event is freed exactly once.  Exit status 0 on pass,
+ *  non-zero on the first failing assertion with the file and line
+ *  printed to stderr.
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <WINGs/WINGs.h>
 
-extern void W_CookXcbEvent(Display *dpy, void *xcb_ev, XEvent *out);
+extern void W_XEvqPutRaw(void *xcb_ev);
+extern xcb_window_t W_EventWindow(const xcb_generic_event_t *xe);
 
 #include "check_common.h"
 
-static XEvent mk(int type, Window win, unsigned long serial)
+/* build a 36-byte xcb event the way xcb_poll_for_event returns it
+ * (32 wire bytes + full_sequence), callers fill the typed fields */
+static xcb_generic_event_t *mkraw(int type, unsigned long seq)
 {
-	XEvent e;
+	xcb_generic_event_t *xe = malloc(sizeof(*xe));
 
-	memset(&e, 0, sizeof(e));
-	e.type = type;
-	e.xany.window = win;
-	e.xany.serial = serial;
+	memset(xe, 0, sizeof(*xe));
+	xe->response_type = type;
+	xe->full_sequence = seq;
+	return xe;
+}
+
+/* the dispatch window sits at wire offset 12 for the
+ * key/button/motion/crossing family, at 8 for the selection family
+ * (they carry a leading time field) and at the first body slot for
+ * the rest, mirroring W_EventWindow's table */
+static void setwin(xcb_generic_event_t *e, int type, uint32_t win)
+{
+	switch (type) {
+	case XCB_KEY_PRESS:
+	case XCB_KEY_RELEASE:
+	case XCB_BUTTON_PRESS:
+	case XCB_BUTTON_RELEASE:
+	case XCB_MOTION_NOTIFY:
+	case XCB_ENTER_NOTIFY:
+	case XCB_LEAVE_NOTIFY:
+		((xcb_key_press_event_t *)e)->event = win;
+		break;
+	case XCB_SELECTION_REQUEST:
+		((xcb_selection_request_event_t *)e)->owner = win;
+		break;
+	case XCB_SELECTION_NOTIFY:
+		((xcb_selection_notify_event_t *)e)->requestor = win;
+		break;
+	case XCB_SELECTION_CLEAR:
+		((xcb_selection_clear_event_t *)e)->owner = win;
+		break;
+	default:
+		((xcb_expose_event_t *)e)->window = win;
+		break;
+	}
+}
+
+static xcb_generic_event_t *push(int type, uint32_t win, unsigned long seq)
+{
+	xcb_generic_event_t *e = mkraw(type, seq);
+
+	setwin(e, type, win);
+	W_XEvqPutRaw(e);
 	return e;
 }
 
-static void push(int type, Window win, unsigned long serial)
-{
-	XEvent e = mk(type, win, serial);
-	/* WXEvqPutBack pushes at the head, so build a FIFO by pushing in
-	 * reverse, the helper below does that for readability */
-	WXEvqPutBack(&e);
-}
-
 /* fill the queue head-to-tail in the order given, callers list events
- * in arrival order and this pushes them back-to-front */
-static void load(const XEvent *evs, int n)
+ * in arrival order */
+static void load(int t0, uint32_t w0, unsigned long s0,
+                 int t1, uint32_t w1, unsigned long s1,
+                 int t2, uint32_t w2, unsigned long s2,
+                 int t3, uint32_t w3, unsigned long s3,
+                 int t4, uint32_t w4, unsigned long s4)
 {
-	int i;
-
 	WXEvqClear();
-	for (i = n - 1; i >= 0; i--)
-		WXEvqPutBack(&evs[i]);
+	push(t0, w0, s0);
+	if (t1)
+		push(t1, w1, s1);
+	if (t2)
+		push(t2, w2, s2);
+	if (t3)
+		push(t3, w3, s3);
+	if (t4)
+		push(t4, w4, s4);
 }
 
 /* ---- FIFO order ------------------------------------------------------ */
 
 static void test_fifo_order(void)
 {
-	XEvent in[3] = {
-		mk(KeyPress, 10, 1),
-		mk(Expose,   11, 2),
-		mk(KeyPress, 12, 3),
-	};
-	XEvent e;
+	xcb_generic_event_t *e;
 
-	load(in, 3);
+	load(XCB_KEY_PRESS, 10, 1, XCB_EXPOSE, 11, 2, XCB_KEY_PRESS, 12, 3, 0, 0, 0, 0, 0, 0);
 
 	CHECK(WXEvqPending(NULL));
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress && e.xany.window == 10);
-	CHECK(WXEvqNext(NULL, &e) && e.type == Expose   && e.xany.window == 11);
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress && e.xany.window == 12);
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 1
+	      && W_EventWindow(e) == 10);
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 2
+	      && W_EventWindow(e) == 11);
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 3
+	      && W_EventWindow(e) == 12);
 	CHECK(!WXEvqNext(NULL, &e));
+	CHECK(!WXEvqPending(NULL));
+	free(e);
+}
+
+/* ---- selection events: the xany.window alias is the owner/requestor
+ *      at wire offset 8, never the leading timestamp ------------------- */
+
+static void test_selection_windows(void)
+{
+	xcb_generic_event_t *e;
+
+	WXEvqClear();
+	e = mkraw(XCB_SELECTION_REQUEST, 1);
+	((xcb_selection_request_event_t *)e)->time = 12345;
+	((xcb_selection_request_event_t *)e)->owner = 31;
+	W_XEvqPutRaw(e);
+	e = mkraw(XCB_SELECTION_NOTIFY, 2);
+	((xcb_selection_notify_event_t *)e)->time = 67890;
+	((xcb_selection_notify_event_t *)e)->requestor = 32;
+	W_XEvqPutRaw(e);
+	e = mkraw(XCB_SELECTION_CLEAR, 3);
+	((xcb_selection_clear_event_t *)e)->time = 9876;
+	((xcb_selection_clear_event_t *)e)->owner = 33;
+	W_XEvqPutRaw(e);
+
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_SELECTION_REQUEST
+	      && W_EventWindow(e) == 31);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_SELECTION_NOTIFY
+	      && W_EventWindow(e) == 32);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_SELECTION_CLEAR
+	      && W_EventWindow(e) == 33);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 }
 
-/* ---- put-back at head ------------------------------------------------ */
+/* ---- put-back at head, ownership to the queue ------------------------- */
 
 static void test_putback_head(void)
 {
-	XEvent e;
+	xcb_generic_event_t *e;
 
 	WXEvqClear();
-	push(Expose, 20, 1);
-	/* queue is now [Expose/20], put back a KeyPress on top */
-	e = mk(KeyPress, 21, 2);
-	WXEvqPutBack(&e);
+	push(XCB_EXPOSE, 20, 1);
+	/* queue is now [XCB_EXPOSE/20], put back a XCB_KEY_PRESS on top */
+	e = mkraw(XCB_KEY_PRESS, 2);
+	((xcb_key_press_event_t *)e)->event = 21;
+	WXEvqPutBack(e);
 
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress && e.xany.window == 21);
-	CHECK(WXEvqNext(NULL, &e) && e.type == Expose   && e.xany.window == 20);
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 2
+	      && W_EventWindow(e) == 21);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 1
+	      && W_EventWindow(e) == 20);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 
 	/* put-back onto an empty queue must set both head and tail so a
-	 * later append (via a second put-back of something behind it)
-	 * does not lose the node, exercise by put-back then put-back */
+	 * later append does not lose the node */
 	WXEvqClear();
-	e = mk(KeyPress, 30, 1);
-	WXEvqPutBack(&e);
-	e = mk(Expose, 31, 2);
-	WXEvqPutBack(&e);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.window == 31);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.window == 30);
+	e = mkraw(XCB_KEY_PRESS, 1);
+	((xcb_key_press_event_t *)e)->event = 30;
+	WXEvqPutBack(e);
+	e = mkraw(XCB_EXPOSE, 2);
+	((xcb_expose_event_t *)e)->window = 31;
+	WXEvqPutBack(e);
+	CHECK(WXEvqNext(NULL, &e) && W_EventWindow(e) == 31);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && W_EventWindow(e) == 30);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 }
 
-/* ---- peek is non-destructive ----------------------------------------- */
+/* ---- peek is non-destructive and lends, not hands over ---------------- */
 
 static void test_peek(void)
 {
-	XEvent in[2] = { mk(KeyPress, 40, 1), mk(Expose, 41, 2) };
-	XEvent e;
+	xcb_generic_event_t *e;
 
-	load(in, 2);
+	load(XCB_KEY_PRESS, 40, 1, XCB_EXPOSE, 41, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
-	CHECK(WXEvqPeek(NULL, &e) && e.type == KeyPress && e.xany.window == 40);
-	/* still there */
-	CHECK(WXEvqPeek(NULL, &e) && e.type == KeyPress && e.xany.window == 40);
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress);
-	CHECK(WXEvqNext(NULL, &e) && e.type == Expose);
+	CHECK(WXEvqPeek(NULL, &e) && e->full_sequence == 1);
+	/* still there, and the same buffer the next op hands over */
+	CHECK(WXEvqPeek(NULL, &e) && e->full_sequence == 1);
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 1);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 2);
+	free(e);
 
 	WXEvqClear();
 	CHECK(!WXEvqPeek(NULL, &e));
@@ -130,44 +225,62 @@ static void test_peek(void)
 
 static void test_take_typed(void)
 {
-	XEvent in[5] = {
-		mk(KeyPress,   50, 1),
-		mk(Expose,     51, 2),
-		mk(Expose,     52, 3),
-		mk(ButtonPress,51, 4),
-		mk(Expose,     53, 5),
-	};
-	XEvent e;
+	xcb_generic_event_t *e;
 
-	load(in, 5);
+	load(XCB_KEY_PRESS, 50, 1, XCB_EXPOSE, 51, 2, XCB_EXPOSE, 52, 3, 0, 0, 0, 0, 0, 0);
+	push(XCB_BUTTON_PRESS, 51, 4);
+	push(XCB_EXPOSE, 53, 5);
 
-	/* any-window typed take returns the first Expose and leaves the
+	/* any-window typed take returns the first XCB_EXPOSE and leaves the
 	 * other two in place in arrival order */
-	CHECK(WXEvqTakeTyped(NULL, Expose, None, &e) && e.xany.window == 51);
-	CHECK(WXEvqTakeTyped(NULL, Expose, None, &e) && e.xany.window == 52);
+	CHECK(WXEvqTakeTyped(NULL, XCB_EXPOSE, XCB_NONE, &e) && W_EventWindow(e) == 51);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqTakeTyped(NULL, XCB_EXPOSE, XCB_NONE, &e) && W_EventWindow(e) == 52);
+	free(e);
 
-	/* window-restricted take skips the remaining Expose at 53 and
+	/* window-restricted take skips the remaining XCB_EXPOSE at 53 and
 	 * fails for window 51 */
-	CHECK(!WXEvqTakeTyped(NULL, Expose, 51, &e));
-	CHECK(WXEvqTakeTyped(NULL, Expose, 53, &e) && e.xany.serial == 5);
+	CHECK(!WXEvqTakeTyped(NULL, XCB_EXPOSE, 51, &e));
+	CHECK(WXEvqTakeTyped(NULL, XCB_EXPOSE, 53, &e) && e->full_sequence == 5);
+	free(e);
 
 	/* the non-matching events are still there in order */
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress    && e.xany.serial == 1);
-	CHECK(WXEvqNext(NULL, &e) && e.type == ButtonPress && e.xany.serial == 4);
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_KEY_PRESS
+	      && e->full_sequence == 1);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_BUTTON_PRESS
+	      && e->full_sequence == 4);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 
 	/* tail-unlink case: take the last node and verify a subsequent
 	 * put-back-then-next round-trips, which would fail if evq_tail
 	 * were left dangling */
-	load(in, 5);
-	CHECK(WXEvqTakeTyped(NULL, Expose, 53, &e) && e.xany.serial == 5);
-	e = mk(FocusIn, 99, 9);
-	WXEvqPutBack(&e);
-	CHECK(WXEvqNext(NULL, &e) && e.type == FocusIn);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 1);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 2);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 3);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 4);
+	load(XCB_KEY_PRESS, 50, 1, XCB_EXPOSE, 51, 2, XCB_EXPOSE, 52, 3, 0, 0, 0, 0, 0, 0);
+	push(XCB_BUTTON_PRESS, 51, 4);
+	push(XCB_EXPOSE, 53, 5);
+	CHECK(WXEvqTakeTyped(NULL, XCB_EXPOSE, 53, &e) && e->full_sequence == 5);
+	free(e);
+	e = mkraw(XCB_FOCUS_IN, 9);
+	WXEvqPutBack(e);
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_FOCUS_IN);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 1);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 2);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 3);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 4);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 }
 
@@ -175,28 +288,31 @@ static void test_take_typed(void)
 
 static void test_take_mask(void)
 {
-	XEvent in[4] = {
-		mk(EnterNotify,  60, 1),
-		mk(MotionNotify, 60, 2),
-		mk(KeyPress,     60, 3),
-		mk(MotionNotify, 61, 4),
-	};
-	XEvent e;
+	xcb_generic_event_t *e;
 
-	load(in, 4);
+	load(XCB_ENTER_NOTIFY, 60, 1, XCB_MOTION_NOTIFY, 60, 2, XCB_KEY_PRESS, 60, 3, 0, 0, 0, 0, 0, 0);
+	push(XCB_MOTION_NOTIFY, 61, 4);
 
-	/* ButtonMotionMask maps to MotionNotify only, the EnterNotify at
+	/* XCB_EVENT_MASK_BUTTON_MOTION maps to XCB_MOTION_NOTIFY only, the XCB_ENTER_NOTIFY at
 	 * the head must be skipped not consumed */
-	CHECK(WXEvqTakeMask(NULL, ButtonMotionMask, None, &e)
-	      && e.type == MotionNotify && e.xany.serial == 2);
+	CHECK(WXEvqTakeMask(NULL, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &e)
+	      && (e->response_type & 0x7f) == XCB_MOTION_NOTIFY
+	      && e->full_sequence == 2);
+	free(e);
 	/* window-restricted */
-	CHECK(WXEvqTakeMask(NULL, ButtonMotionMask, 61, &e)
-	      && e.xany.serial == 4);
-	CHECK(!WXEvqTakeMask(NULL, ButtonMotionMask, None, &e));
+	CHECK(WXEvqTakeMask(NULL, XCB_EVENT_MASK_BUTTON_MOTION, 61, &e)
+	      && e->full_sequence == 4);
+	free(e);
+	e = NULL;
+	CHECK(!WXEvqTakeMask(NULL, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &e));
 
 	/* what is left, in order */
-	CHECK(WXEvqNext(NULL, &e) && e.type == EnterNotify);
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress);
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_ENTER_NOTIFY);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_KEY_PRESS);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 }
 
@@ -204,162 +320,103 @@ static void test_take_mask(void)
 
 static void test_drop_range(void)
 {
-	XEvent in[6] = {
-		mk(EnterNotify, 70, 100),
-		mk(LeaveNotify, 70, 101),
-		mk(KeyPress,    70, 102),
-		mk(EnterNotify, 71, 103),
-		mk(LeaveNotify, 71, 200),	/* outside [100,200) */
-		mk(EnterNotify, 72, 104),
-	};
-	XEvent e;
+	xcb_generic_event_t *e;
 	int dropped;
 
-	load(in, 6);
+	load(XCB_ENTER_NOTIFY, 70, 100, XCB_LEAVE_NOTIFY, 70, 101, XCB_KEY_PRESS, 70, 102, 0, 0, 0, 0, 0, 0);
+	push(XCB_ENTER_NOTIFY, 71, 103);
+	push(XCB_LEAVE_NOTIFY, 71, 200);	/* outside [100,200) */
+	push(XCB_ENTER_NOTIFY, 72, 104);
 
 	dropped = WXEvqDropRange(NULL, 100, 200,
-				 EnterWindowMask | LeaveWindowMask);
-	/* serials 100,101,103,104 match mask+range, 102 is KeyPress so
+				 XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW);
+	/* serials 100,101,103,104 match mask+range, 102 is XCB_KEY_PRESS so
 	 * survives the mask, 200 is at the upper bound so survives the
 	 * half-open range */
 	CHECK(dropped == 4);
-	CHECK(WXEvqNext(NULL, &e) && e.type == KeyPress    && e.xany.serial == 102);
-	CHECK(WXEvqNext(NULL, &e) && e.type == LeaveNotify && e.xany.serial == 200);
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_KEY_PRESS
+	      && e->full_sequence == 102);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_LEAVE_NOTIFY
+	      && e->full_sequence == 200);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 
 	/* dropping the tail must leave evq_tail correct for a following
 	 * put-back, which appendNode would corrupt if tail dangled */
-	load(in, 6);
+	load(XCB_ENTER_NOTIFY, 70, 100, XCB_LEAVE_NOTIFY, 70, 101, XCB_KEY_PRESS, 70, 102, 0, 0, 0, 0, 0, 0);
+	push(XCB_ENTER_NOTIFY, 71, 103);
+	push(XCB_LEAVE_NOTIFY, 71, 200);
+	push(XCB_ENTER_NOTIFY, 72, 104);
 	dropped = WXEvqDropRange(NULL, 104, 105,
-				 EnterWindowMask | LeaveWindowMask);
+				 XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW);
 	CHECK(dropped == 1);
-	e = mk(FocusIn, 99, 999);
-	WXEvqPutBack(&e);
-	CHECK(WXEvqNext(NULL, &e) && e.type == FocusIn);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 100);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 101);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 102);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 103);
-	CHECK(WXEvqNext(NULL, &e) && e.xany.serial == 200);
+	e = mkraw(XCB_FOCUS_IN, 999);
+	WXEvqPutBack(e);
+	CHECK(WXEvqNext(NULL, &e) && (e->response_type & 0x7f) == XCB_FOCUS_IN);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 100);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 101);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 102);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 103);
+	free(e);
+	e = NULL;
+	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 200);
+	free(e);
+	e = NULL;
 	CHECK(!WXEvqPending(NULL));
 }
 
-/* ---- xcb wire-to-XEvent cooker --------------------------------------- */
+/* ---- extension events: no wire window, never window-matched ---------- */
 
-/* hand-roll a 36-byte xcb event (32 wire bytes + full_sequence) and
- * verify W_CookXcbEvent fills the matching XEvent fields, this is the
- * code path drain() takes after WXEvqFlipToXcb so getting it wrong
- * would mis-route every event in the window manager */
-static void test_cook(void)
+static void test_extension_no_window(void)
 {
-	xcb_generic_event_t raw;
-	XEvent o;
+	xcb_generic_event_t *e;
 
-	/* ButtonPress with the send_event bit set: detail/state/window
-	 * map to button/state/window, root/child swap to root/subwindow,
-	 * event_x/y to x/y and root_x/y to x_root/y_root */
-	xcb_button_press_event_t *bp = (xcb_button_press_event_t *)&raw;
-	memset(&raw, 0, sizeof(raw));
-	bp->response_type = XCB_BUTTON_PRESS | 0x80;
-	bp->detail = 3;
-	bp->time = 0x12345678;
-	bp->root = 0x111; bp->event = 0x222; bp->child = 0x333;
-	bp->root_x = -5; bp->root_y = 7;
-	bp->event_x = 10; bp->event_y = 20;
-	bp->state = 0x0104;
-	bp->same_screen = 1;
-	raw.full_sequence = 0xabcd1234;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.type == ButtonPress);
-	CHECK(o.xany.send_event == True);
-	CHECK(o.xany.serial == 0xabcd1234);
-	CHECK(o.xbutton.window == 0x222 && o.xany.window == 0x222);
-	CHECK(o.xbutton.root == 0x111 && o.xbutton.subwindow == 0x333);
-	CHECK(o.xbutton.x == 10 && o.xbutton.y == 20);
-	CHECK(o.xbutton.x_root == -5 && o.xbutton.y_root == 7);
-	CHECK(o.xbutton.button == 3 && o.xbutton.state == 0x0104);
-	CHECK(o.xbutton.time == 0x12345678 && o.xbutton.same_screen == True);
+	WXEvqClear();
+	/* an XKB-shaped classic extension event: the offset-4 word is the
+	 * timestamp, a real view XID parked there must never be read as
+	 * the dispatch window */
+	e = mkraw(0x55, 7);
+	((xcb_key_press_event_t *)e)->root = 10;
+	((xcb_key_press_event_t *)e)->event = 71;
+	W_XEvqPutRaw(e);
 
-	/* EnterNotify: same_screen and focus share one wire byte */
-	xcb_enter_notify_event_t *en = (xcb_enter_notify_event_t *)&raw;
-	memset(&raw, 0, sizeof(raw));
-	en->response_type = XCB_ENTER_NOTIFY;
-	en->detail = XCB_NOTIFY_DETAIL_INFERIOR;
-	en->mode = XCB_NOTIFY_MODE_GRAB;
-	en->event = 0x444;
-	en->same_screen_focus = 0x03;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.type == EnterNotify && !o.xany.send_event);
-	CHECK(o.xcrossing.window == 0x444);
-	CHECK(o.xcrossing.detail == NotifyInferior);
-	CHECK(o.xcrossing.mode == NotifyGrab);
-	CHECK(o.xcrossing.same_screen == True && o.xcrossing.focus == True);
-	en->same_screen_focus = 0x02;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.xcrossing.same_screen == True && o.xcrossing.focus == False);
+	CHECK(W_EventWindow(e) == XCB_NONE);
 
-	/* ConfigureRequest: stack_mode is in the detail byte not a body
-	 * field, sibling renames to above, value_mask widens to long */
-	xcb_configure_request_event_t *cr = (xcb_configure_request_event_t *)&raw;
-	memset(&raw, 0, sizeof(raw));
-	cr->response_type = XCB_CONFIGURE_REQUEST;
-	cr->stack_mode = XCB_STACK_MODE_BELOW;
-	cr->parent = 0x10; cr->window = 0x20; cr->sibling = 0x30;
-	cr->x = -1; cr->y = -2; cr->width = 640; cr->height = 480;
-	cr->border_width = 2;
-	cr->value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_STACK_MODE;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.type == ConfigureRequest);
-	CHECK(o.xconfigurerequest.parent == 0x10 && o.xany.window == 0x10);
-	CHECK(o.xconfigurerequest.window == 0x20);
-	CHECK(o.xconfigurerequest.above == 0x30);
-	CHECK(o.xconfigurerequest.detail == Below);
-	CHECK(o.xconfigurerequest.x == -1 && o.xconfigurerequest.height == 480);
-	CHECK(o.xconfigurerequest.value_mask == (CWX | CWStackMode));
+	/* the queue does not window-match extension events even when the
+	 * offset-4 word happens to name a live window */
+	CHECK(!WXEvqTakeTyped(NULL, 0x55, 10, &e));
+	CHECK(!WXEvqTakeMask(NULL, XCB_EVENT_MASK_KEY_PRESS, 10, &e));
 
-	/* ClientMessage format 32: data32 is uint32_t[5], data.l is
-	 * long[5], element-wise widening must preserve all five */
-	xcb_client_message_event_t *cm = (xcb_client_message_event_t *)&raw;
-	memset(&raw, 0, sizeof(raw));
-	cm->response_type = XCB_CLIENT_MESSAGE;
-	cm->format = 32;
-	cm->window = 0x55; cm->type = 0x66;
-	cm->data.data32[0] = 0xdeadbeef;
-	cm->data.data32[4] = 0x7fffffff;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.type == ClientMessage && o.xclient.format == 32);
-	CHECK(o.xclient.window == 0x55 && o.xclient.message_type == 0x66);
-	CHECK((unsigned long)o.xclient.data.l[0] == 0xdeadbeef);
-	CHECK(o.xclient.data.l[4] == 0x7fffffff);
+	/* ... and core-type takes do not flush it either */
+	CHECK(!WXEvqTakeTyped(NULL, XCB_KEY_PRESS, 71, &e));
 
-	/* extension event: type past LASTEvent falls through to the
-	 * WXWireEvent overlay, xany.window is whatever sits at wire
-	 * offset 4 and the 32 wire bytes are copied verbatim */
-	memset(&raw, 0, sizeof(raw));
-	raw.response_type = 64;
-	raw.full_sequence = 999;
-	((unsigned char *)&raw)[1]  = 0xab;
-	((unsigned char *)&raw)[4]  = 0x21;
-	((unsigned char *)&raw)[5]  = 0x43;
-	((unsigned char *)&raw)[6]  = 0x65;
-	((unsigned char *)&raw)[7]  = 0x87;
-	((unsigned char *)&raw)[20] = 0x01;
-	W_CookXcbEvent(NULL, &raw, &o);
-	CHECK(o.type == 64 && o.xany.serial == 999);
-	CHECK(o.xany.window == 0x87654321);
-	CHECK(((WXWireEvent *)&o)->wire[1]  == 0xab);
-	CHECK(((WXWireEvent *)&o)->wire[20] == 0x01);
+	CHECK(WXEvqNext(NULL, &e));
+	free(e);
+	e = NULL;
+	CHECK(!WXEvqPending(NULL));
 }
 
 int main(void)
 {
 	test_fifo_order();
+	test_selection_windows();
 	test_putback_head();
 	test_peek();
 	test_take_typed();
 	test_take_mask();
 	test_drop_range();
-	test_cook();
+	test_extension_no_window();
 
 	WXEvqClear();
 

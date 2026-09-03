@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1998-2003 Alfredo K. Kojima
- *  Copyright (c) 2014-2016 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #ifdef BALLOON_TEXT
 
 #include <stdio.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #ifdef SHAPED_BALLOON
 #include <xcb/shape.h>
 #endif
@@ -49,20 +47,20 @@
 
 
 typedef struct _WBalloon {
-	Window window;
+	xcb_window_t window;
 
 #ifdef SHAPED_BALLOON
 #endif
 	int prevType;
 
-	Window objectWindow;
+	xcb_window_t objectWindow;
 	char *text;
 	int h;
 
 	WMHandlerID timer;
 
-	Pixmap contents;
-	Pixmap mini_preview;
+	xcb_pixmap_t contents;
+	xcb_pixmap_t mini_preview;
 
 	char mapped;
 	char ignoreTimer;
@@ -140,12 +138,13 @@ static void drawMultiLineString(WScreen *scr, cairo_t *cr, WMColor *color, WMFon
  * unfocused-title texture colour (or gray if no title texture is set),
  * returned with a live cairo_t so the caller adds text and thumbnail
  * on top and calls WCairoEnd() itself */
-static Pixmap makeBackground(WScreen *scr, int width, int height, cairo_t **crp)
+static xcb_pixmap_t makeBackground(WScreen *scr, int width, int height, cairo_t **crp)
 {
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	cairo_t *cr;
 
-	pixmap = XCreatePixmap(dpy, scr->root_win, width, height, scr->w_depth);
+	pixmap = xcb_generate_id(xconn);
+	xcb_create_pixmap(xconn, scr->w_depth, pixmap, scr->root_win, width, height);
 	WMScreenNoteDrawableSize(scr->wmscreen, pixmap, width, height);
 	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
 	if (scr->window_title_texture[0])
@@ -161,8 +160,8 @@ static void freeContents(WScreen *scr)
 {
 	if (scr->balloon->contents) {
 		WMScreenAbandonDrawable(scr->wmscreen, scr->balloon->contents);
-		XFreePixmap(dpy, scr->balloon->contents);
-		scr->balloon->contents = None;
+		xcb_free_pixmap(xconn, scr->balloon->contents);
+		scr->balloon->contents = XCB_NONE;
 	}
 }
 
@@ -175,8 +174,8 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 {
 	int width;
 	int height;
-	Pixmap pixmap;
-	Pixmap mask;
+	xcb_pixmap_t pixmap;
+	xcb_pixmap_t mask;
 	WMFont *font = scr->info_text_font;
 	cairo_t *cr;
 	int side = 0;
@@ -225,15 +224,16 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	drawMultiLineString(scr, cr, scr->black, font, 8, ty + 2, text, strlen(text));
 	WCairoEnd(cr);
 
-	XSetWindowBackgroundPixmap(dpy, scr->balloon->window, pixmap);
+	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 	scr->balloon->contents = pixmap;
 
-	XResizeWindow(dpy, scr->balloon->window, width, height + SPACE);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height + SPACE });
 	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       scr->balloon->window, 0, 0, mask);
-	XFreePixmap(dpy, mask);
-	XMoveWindow(dpy, scr->balloon->window, bx, by);
-	XMapRaised(dpy, scr->balloon->window);
+	xcb_free_pixmap(xconn, mask);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by });
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xconn, scr->balloon->window);
 
 	scr->balloon->mapped = 1;
 }
@@ -243,7 +243,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 {
 	int width;
 	int height;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	WMFont *font = scr->info_text_font;
 	cairo_t *cr;
 
@@ -269,12 +269,13 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	drawMultiLineString(scr, cr, scr->window_title_color[0], font, 4, 2, text, strlen(text));
 	WCairoEnd(cr);
 
-	XResizeWindow(dpy, scr->balloon->window, width, height);
-	XMoveWindow(dpy, scr->balloon->window, x, y);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
-	XSetWindowBackgroundPixmap(dpy, scr->balloon->window, pixmap);
-	XClearWindow(dpy, scr->balloon->window);
-	XMapRaised(dpy, scr->balloon->window);
+	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+	xcb_clear_area(xconn, 0, scr->balloon->window, 0, 0, 0, 0);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xconn, scr->balloon->window);
 
 	scr->balloon->contents = pixmap;
 
@@ -282,10 +283,10 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 }
 #endif				/* !SHAPED_BALLOON */
 
-static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixmap mini_preview)
+static void show_minipreview(WScreen *scr, int x, int y, const char *title, xcb_pixmap_t mini_preview)
 {
 	RContext *rc = scr->rcontext;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	WMFont *font = scr->info_text_font;
 	cairo_surface_t *psurf;
 	cairo_t *cr;
@@ -348,13 +349,14 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       scr->balloon->window, 0, 0, XCB_PIXMAP_NONE);
 #endif
-	XResizeWindow(dpy, scr->balloon->window, width, height);
-	XMoveWindow(dpy, scr->balloon->window, x, y);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
-	XSetWindowBackgroundPixmap(dpy, scr->balloon->window, pixmap);
+	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
-	XClearWindow(dpy, scr->balloon->window);
-	XMapRaised(dpy, scr->balloon->window);
+	xcb_clear_area(xconn, 0, scr->balloon->window, 0, 0, 0, 0);
+	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xconn, scr->balloon->window);
 
 
 	scr->balloon->contents = pixmap;
@@ -365,18 +367,22 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, Pixm
 static void showBalloon(WScreen *scr)
 {
 	int x, y;
-	Window foow;
-	unsigned foo, w;
+	unsigned int w;
+	WXGeometry geom;
 
 	scr->balloon->timer = NULL;
 	scr->balloon->ignoreTimer = 1;
 
-	if (!XGetGeometry(dpy, scr->balloon->objectWindow, &foow, &x, &y, &w, &foo, &foo, &foo)) {
+	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, scr->balloon->objectWindow), &geom)) {
 		scr->balloon->prevType = 0;
 		return;
 	}
 
-	if (w_global.config->miniwin_preview_balloon && scr->balloon->mini_preview != None)
+	x = geom.x;
+	y = geom.y;
+	w = geom.width;
+
+	if (w_global.config->miniwin_preview_balloon && scr->balloon->mini_preview != XCB_NONE)
 		/* used to display either the mini-preview alone or the mini-preview with the title */
 		show_minipreview(scr, x, y, scr->balloon->text, scr->balloon->mini_preview);
 	else
@@ -416,7 +422,7 @@ static void miniwindowBalloon(WObjDescriptor *object)
 
 	if ((scr->balloon->prevType == object->parent_type || scr->balloon->prevType == WCLASS_APPICON)
 	    && scr->balloon->ignoreTimer) {
-		XUnmapWindow(dpy, scr->balloon->window);
+		xcb_unmap_window(xconn, scr->balloon->window);
 		showBalloon(scr);
 	} else {
 		scr->balloon->timer = WMAddTimerHandler(BALLOON_DELAY, (WMCallback *) showBalloon, scr);
@@ -501,7 +507,7 @@ static void appiconBalloon(WObjDescriptor *object)
 	scr->balloon->objectWindow = aicon->icon->core->window;
 	if ((scr->balloon->prevType == object->parent_type || scr->balloon->prevType == WCLASS_MINIWINDOW)
 	    && scr->balloon->ignoreTimer) {
-		XUnmapWindow(dpy, scr->balloon->window);
+		xcb_unmap_window(xconn, scr->balloon->window);
 		showBalloon(scr);
 	} else {
 		scr->balloon->timer = WMAddTimerHandler(BALLOON_DELAY, (WMCallback *) showBalloon, scr);
@@ -511,26 +517,22 @@ static void appiconBalloon(WObjDescriptor *object)
 void wBalloonInitialize(WScreen *scr)
 {
 	WBalloon *bal;
-	XSetWindowAttributes attribs;
-	unsigned long vmask;
 
 	bal = wmalloc(sizeof(WBalloon));
 
 	scr->balloon = bal;
 
-	vmask = CWSaveUnder | CWOverrideRedirect | CWColormap | CWBackPixel | CWBorderPixel;
-	attribs.save_under = True;
-	attribs.override_redirect = True;
-	attribs.colormap = scr->w_colormap;
-	attribs.background_pixel = scr->icon_back_texture->normal.pixel;
-	attribs.border_pixel = 0;	/* do not care */
-
-	bal->window = XCreateWindow(dpy, scr->root_win, 1, 1, 10, 10, 1,
-				    scr->w_depth, CopyFromParent, scr->w_visual, vmask, &attribs);
+	bal->window = xcb_generate_id(xconn);
+	xcb_create_window(xconn, scr->w_depth, bal->window, scr->root_win, 1, 1, 10, 10, 1,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, scr->w_visual->visual_id,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT
+			  | XCB_CW_SAVE_UNDER | XCB_CW_COLORMAP,
+			  (const uint32_t[]){ scr->icon_back_texture->normal.pixel, 0, true, true,
+					      scr->w_colormap });
 #if 0
 	/* select EnterNotify to so that the balloon will be unmapped
 	 * when the pointer is moved over it */
-	XSelectInput(dpy, bal->window, EnterWindowMask);
+	xcb_change_window_attributes(xconn, bal->window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_ENTER_WINDOW });
 #endif
 }
 
@@ -548,7 +550,7 @@ void wBalloonEnteredObject(WScreen *scr, WObjDescriptor *object)
 		wfree(scr->balloon->text);
 	scr->balloon->text = NULL;
 
-	scr->balloon->mini_preview = None;
+	scr->balloon->mini_preview = XCB_NONE;
 
 	if (!object) {
 		wBalloonHide(scr);
@@ -584,7 +586,7 @@ void wBalloonHide(WScreen *scr)
 {
 	if (scr) {
 		if (scr->balloon->mapped) {
-			XUnmapWindow(dpy, scr->balloon->window);
+			xcb_unmap_window(xconn, scr->balloon->window);
 			scr->balloon->mapped = 0;
 		} else {
 			WMDeleteTimerHandlerPtr(&scr->balloon->timer);

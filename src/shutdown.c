@@ -23,9 +23,6 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xlib-xcb.h>
 
 #include "WindowMaker.h"
 #include "window.h"
@@ -65,7 +62,7 @@ static void wipeDesktop(WScreen * scr);
  * Applications/Workspace forward instead of regenerating them.
  *----------------------------------------------------------------------
  */
-void Shutdown(WShutdownMode mode, Bool external)
+void Shutdown(WShutdownMode mode, bool external)
 {
 	int i;
 
@@ -123,7 +120,7 @@ void Shutdown(WShutdownMode mode, Bool external)
 					kill(scr->helper_pid, SIGKILL);
 				/* restart re-execs wmaker only, clients stay
 				 * mapped, so the window list is trustworthy */
-				wScreenSaveState(scr, False);
+				wScreenSaveState(scr, false);
 				RestoreDesktop(scr);
 				wScreenDestroy(scr);
 			}
@@ -157,12 +154,12 @@ static void restoreWindows(WMBag * bag, WMBagIterator iter)
 		next = core->stacking->above;
 
 		if (core->descriptor.parent_type == WCLASS_WINDOW) {
-			Window window;
+			xcb_window_t window;
 
 			wwin = core->descriptor.parent;
 			window = wwin->client_win;
-			wUnmanageWindow(wwin, !wwin->flags.internal_window, False);
-			XMapWindow(dpy, window);
+			wUnmanageWindow(wwin, !wwin->flags.internal_window, false);
+			xcb_map_window(xconn, window);
 		}
 		core = next;
 	}
@@ -187,26 +184,26 @@ void RestoreDesktop(WScreen * scr)
 		scr->helper_pid = 0;
 	}
 
-	XGrabServer(dpy);
+	wXGrabServer(xconn);
 	wDestroyInspectorPanels();
 
 	/* reparent windows back to the root window, keeping the stacking order */
 	restoreWindows(scr->stacking_list, NULL);
 
-	XUngrabServer(dpy);
-	XSetInputFocus(dpy, PointerRoot, RevertToParent, CurrentTime);
+	wXUngrabServer(xconn);
+	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	wColormapInstallForWindow(scr, NULL);
 	PropCleanUp(scr->root_win);
 	wNETWMCleanup(scr);
-	XSync(dpy, 0);
+	wXSync(xconn);
 }
 
 /*
  *----------------------------------------------------------------------
  * wipeDesktop--
  * 	Kills every client on a screen. Managed windows get
- * WM_DELETE_WINDOW where they advertised it, then a root XQueryTree
- * sweep XKillClient()s every top-level that is not one of our own
+ * WM_DELETE_WINDOW where they advertised it, then a root wXQueryTree
+ * sweep xcb_kill_client()s every top-level that is not one of our own
  * so override-redirect and withdrawn clients do not survive the
  * session kill.
  *
@@ -218,10 +215,10 @@ void RestoreDesktop(WScreen * scr)
 static void wipeDesktop(WScreen * scr)
 {
 	WWindow *wwin;
-	Window root, parent;
-	Window *children;
+	xcb_window_t root, parent;
+	xcb_window_t *children;
 	unsigned int nchildren, i;
-	const xcb_setup_t *setup = xcb_get_setup(XGetXCBConnection(dpy));
+	const xcb_setup_t *setup = xcb_get_setup(xconn);
 	uint32_t own_base = setup->resource_id_base;
 	uint32_t own_mask = setup->resource_id_mask;
 
@@ -244,14 +241,14 @@ static void wipeDesktop(WScreen * scr)
 	 * Override-redirect panels, withdrawn clients and anything
 	 * else that never had a WWindow would otherwise outlive the
 	 * session kill. */
-	if (XQueryTree(dpy, scr->root_win, &root, &parent, &children, &nchildren)) {
+	if (wXQueryTree(xconn, scr->root_win, &root, &parent, &children, &nchildren)) {
 		for (i = 0; i < nchildren; i++) {
 			if (((uint32_t)children[i] & ~own_mask) != own_base)
-				XKillClient(dpy, children[i]);
+				xcb_kill_client(xconn, children[i]);
 		}
 		if (children)
-			XFree(children);
+			wfree(children);
 	}
 
-	XSync(dpy, False);
+	wXSync(xconn);
 }

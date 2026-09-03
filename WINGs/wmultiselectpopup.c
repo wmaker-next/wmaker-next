@@ -2,7 +2,7 @@
 
 #include "wconfig.h"
 
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "WINGsP.h"
 
@@ -21,7 +21,7 @@ typedef struct W_MultiSelectPopUpButton {
 
 	WMView *menuView;	/* override redirect popup menu */
 
-	Pixmap menuPixmap;	/* background pixmap for menuView, freed on destroy */
+	xcb_pixmap_t menuPixmap;	/* background pixmap for menuView, freed on destroy */
 
 	WMHandlerID timer;	/* for autoscroll */
 
@@ -47,8 +47,8 @@ typedef struct W_MultiSelectPopUpButton {
 static void destroyMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr);
 static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr);
 
-static void handleEvents(XEvent *event, void *data);
-static void handleActionEvents(XEvent *event, void *data);
+static void handleEvents(xcb_generic_event_t *event, void *data);
+static void handleActionEvents(xcb_generic_event_t *event, void *data);
 
 static void resizeMenu(MultiSelectPopUpButton *bPtr);
 static char *buildCaption(MultiSelectPopUpButton *bPtr);
@@ -70,13 +70,13 @@ WMMultiSelectPopUpButton *WMCreateMultiSelectPopUpButton(WMWidget *parent)
 	}
 	bPtr->view->self = bPtr;
 
-	WMCreateEventHandler(bPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, bPtr);
 
 	W_ResizeView(bPtr->view, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 	bPtr->caption = wstrdup(DEFAULT_CAPTION);
 
-	WMCreateEventHandler(bPtr->view, ButtonPressMask | ButtonReleaseMask,
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE,
 			     handleActionEvents, bPtr);
 
 	bPtr->flags.enabled = 1;
@@ -89,9 +89,9 @@ WMMultiSelectPopUpButton *WMCreateMultiSelectPopUpButton(WMWidget *parent)
 
 	W_ResizeView(bPtr->menuView, bPtr->view->size.width, 1);
 
-	WMCreateEventHandler(bPtr->menuView, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask | PointerMotionMask
-			     | KeyPressMask | ExposureMask, handleActionEvents, bPtr);
+	WMCreateEventHandler(bPtr->menuView, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION
+			     | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_EXPOSURE, handleActionEvents, bPtr);
 
 	return bPtr;
 }
@@ -151,7 +151,7 @@ void WMRemoveMultiSelectPopUpButtonItem(WMMultiSelectPopUpButton *bPtr, int inde
 		paintMultiSelectPopUpButton(bPtr);
 }
 
-void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, Bool flag)
+void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, bool flag)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
 	bPtr->flags.enabled = ((flag == 0) ? 0 : 1);
@@ -159,7 +159,7 @@ void WMSetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr, Bool fla
 		paintMultiSelectPopUpButton(bPtr);
 }
 
-Bool WMGetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr)
+bool WMGetMultiSelectPopUpButtonEnabled(WMMultiSelectPopUpButton *bPtr)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
 	return bPtr->flags.enabled;
@@ -175,13 +175,13 @@ void WMSetMultiSelectPopUpButtonCaption(WMMultiSelectPopUpButton *bPtr, const ch
 		paintMultiSelectPopUpButton(bPtr);
 }
 
-void WMSetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index, Bool flag)
+void WMSetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index, bool flag)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
 	WMSetMenuItemEnabled(WMGetFromArray(bPtr->items, index), (flag ? 1 : 0));
 }
 
-Bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index)
+bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
 	return WMGetMenuItemEnabled(WMGetFromArray(bPtr->items, index));
@@ -324,7 +324,7 @@ static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 				 (bPtr->view->size.height - WMFontHeight(scr->normalFont)) / 2,
 				 bPtr->view->size.width - 20, WALeft,
 				 bPtr->flags.enabled ? scr->black : scr->darkGray,
-				 False, caption, strlen(caption));
+				 false, caption, strlen(caption));
 	}
 
 	ind = scr->popUpIndicator;
@@ -336,20 +336,20 @@ static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 	wfree(caption);
 }
 
-static void handleEvents(XEvent *event, void *data)
+static void handleEvents(xcb_generic_event_t *event, void *data)
 {
 	MultiSelectPopUpButton *bPtr = (MultiSelectPopUpButton *)data;
 
 	CHECK_CLASS(data, WC_MultiSelectPopUpButton);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintMultiSelectPopUpButton(bPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyMultiSelectPopUpButton(bPtr);
 		break;
 	}
@@ -393,14 +393,14 @@ static void paintMenuEntry(MultiSelectPopUpButton *bPtr, int index, int highligh
 
 	W_PaintTextCairo(cr, scr->normalFont, CHECK_INDENT,
 			 index * itemHeight + yo, width, WALeft, scr->black,
-			 False, title, strlen(title));
+			 false, title, strlen(title));
 
 	WCairoEnd(cr);
 }
 
-static Pixmap makeMenuPixmap(MultiSelectPopUpButton *bPtr)
+static xcb_pixmap_t makeMenuPixmap(MultiSelectPopUpButton *bPtr)
 {
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	W_Screen *scr = bPtr->view->screen;
 	WMMenuItem *item;
 	WMArrayIterator iter;
@@ -434,7 +434,7 @@ static Pixmap makeMenuPixmap(MultiSelectPopUpButton *bPtr)
 
 		W_PaintTextCairo(cr, scr->normalFont, CHECK_INDENT,
 				 i * itemHeight + yo, width, WALeft, color,
-				 False, text, strlen(text));
+				 false, text, strlen(text));
 
 		i++;
 	}
@@ -455,7 +455,7 @@ static void resizeMenu(MultiSelectPopUpButton *bPtr)
 static void popUpMenu(MultiSelectPopUpButton *bPtr)
 {
 	W_Screen *scr = bPtr->view->screen;
-	Window dummyW;
+	xcb_window_t dummyW;
 	int scrHeight = scr->rootView->size.height;
 	int x, y;
 
@@ -470,7 +470,7 @@ static void popUpMenu(MultiSelectPopUpButton *bPtr)
 		resizeMenu(bPtr);
 	}
 
-	XTranslateCoordinates(scr->display, bPtr->view->window, scr->rootWin,
+	wXTranslateCoordinates(scr->display, bPtr->view->window, scr->rootWin,
 			      0, 0, &x, &y, &dummyW);
 
 	y += bPtr->view->size.height;
@@ -488,29 +488,29 @@ static void popUpMenu(MultiSelectPopUpButton *bPtr)
 
 	W_MoveView(bPtr->menuView, x, y);
 
-	if (bPtr->menuPixmap != None)
-		XFreePixmap(scr->display, bPtr->menuPixmap);
+	if (bPtr->menuPixmap != XCB_NONE)
+		xcb_free_pixmap(scr->display, bPtr->menuPixmap);
 	bPtr->menuPixmap = makeMenuPixmap(bPtr);
-	XSetWindowBackgroundPixmap(scr->display, bPtr->menuView->window, bPtr->menuPixmap);
-	XClearWindow(scr->display, bPtr->menuView->window);
+	xcb_change_window_attributes(scr->display, bPtr->menuView->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ bPtr->menuPixmap });
+	xcb_clear_area(scr->display, 0, bPtr->menuView->window, 0, 0, 0, 0);
 
 	W_MapView(bPtr->menuView);
 
 	/* trigger a full expose so the Expose handler repaints every entry
 	 * with the current checkmark state */
-	XClearWindow(scr->display, bPtr->menuView->window);
+	xcb_clear_area(scr->display, 0, bPtr->menuView->window, 0, 0, 0, 0);
 
 	bPtr->highlightedItem = -1;
 
-	XGrabKeyboard(scr->display, bPtr->menuView->window, False,
-		      GrabModeAsync, GrabModeAsync, CurrentTime);
+	wXGrabKeyboard(scr->display, bPtr->menuView->window, false,
+		      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 }
 
 static void popDownMenu(MultiSelectPopUpButton *bPtr)
 {
 	W_Screen *scr = bPtr->view->screen;
 
-	XUngrabKeyboard(scr->display, CurrentTime);
+	wXUngrabKeyboard(scr->display, XCB_CURRENT_TIME);
 	W_UnmapView(bPtr->menuView);
 	bPtr->flags.insideMenu = 0;
 	bPtr->highlightedItem = -1;
@@ -550,7 +550,7 @@ static void autoScroll(void *data)
 		if (oldItem != bPtr->highlightedItem) {
 			WMMenuItem *item;
 
-			paintMenuEntry(bPtr, oldItem, False);
+			paintMenuEntry(bPtr, oldItem, false);
 			if (bPtr->highlightedItem >= 0 &&
 			    bPtr->highlightedItem < WMGetArrayItemCount(bPtr->items)) {
 				item = WMGetMultiSelectPopUpButtonMenuItem(bPtr, bPtr->highlightedItem);
@@ -566,7 +566,7 @@ static void autoScroll(void *data)
 	}
 }
 
-static void handleActionEvents(XEvent *event, void *data)
+static void handleActionEvents(xcb_generic_event_t *event, void *data)
 {
 	MultiSelectPopUpButton *bPtr = (MultiSelectPopUpButton *)data;
 	int oldItem;
@@ -578,37 +578,39 @@ static void handleActionEvents(XEvent *event, void *data)
 	if (WMGetArrayItemCount(bPtr->items) < 1)
 		return;
 
-	switch (event->type) {
-	case Expose:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
 		itemHeight = bPtr->view->size.height;
 		n = WMGetArrayItemCount(bPtr->items);
-		first = event->xexpose.y / itemHeight;
-		last = (event->xexpose.y + event->xexpose.height - 1) / itemHeight;
+		first = ((xcb_expose_event_t *)event)->y / itemHeight;
+		last = (((xcb_expose_event_t *)event)->y
+			+ (int)((xcb_expose_event_t *)event)->height - 1) / itemHeight;
 		if (last > n - 1)
 			last = n - 1;
 		for (i = first; i <= last; i++)
 			paintMenuEntry(bPtr, i, i == bPtr->highlightedItem);
 		break;
 
-	case LeaveNotify:
+	case XCB_LEAVE_NOTIFY:
 		bPtr->flags.insideMenu = 0;
 		if (bPtr->menuView->flags.mapped)
-			paintMenuEntry(bPtr, bPtr->highlightedItem, False);
+			paintMenuEntry(bPtr, bPtr->highlightedItem, false);
 		bPtr->highlightedItem = -1;
 		break;
 
-	case EnterNotify:
+	case XCB_ENTER_NOTIFY:
 		bPtr->flags.insideMenu = 1;
 		break;
 
-	case KeyPress:
+	case XCB_KEY_PRESS:
 		if (bPtr->menuView->flags.mapped) {
-			KeySym ksym;
+			xkb_keysym_t ksym;
 
-			XLookupString(&event->xkey, NULL, 0, &ksym, NULL);
-			if (ksym == XK_Escape) {
+			ksym = W_EventKeysym(W_VIEW_SCREEN(bPtr->view),
+					     (const xcb_key_press_event_t *)event);
+			if (ksym == XKB_KEY_Escape) {
 				WMDeleteTimerHandlerPtr(&bPtr->timer);
-				XUngrabPointer(bPtr->view->screen->display, CurrentTime);
+				wXUngrabPointer(bPtr->view->screen->display, XCB_CURRENT_TIME);
 				popDownMenu(bPtr);
 				if (bPtr->view->flags.mapped)
 					paintMultiSelectPopUpButton(bPtr);
@@ -616,14 +618,14 @@ static void handleActionEvents(XEvent *event, void *data)
 		}
 		break;
 
-	case MotionNotify:
+	case XCB_MOTION_NOTIFY:
 		if (bPtr->flags.insideMenu) {
 			oldItem = bPtr->highlightedItem;
-			bPtr->highlightedItem = event->xmotion.y / bPtr->view->size.height;
+			bPtr->highlightedItem = ((xcb_motion_notify_event_t *)event)->event_y / bPtr->view->size.height;
 			if (oldItem != bPtr->highlightedItem) {
 				WMMenuItem *item;
 
-				paintMenuEntry(bPtr, oldItem, False);
+				paintMenuEntry(bPtr, oldItem, false);
 				if (bPtr->highlightedItem >= 0 &&
 				    bPtr->highlightedItem < WMGetArrayItemCount(bPtr->items)) {
 					item = WMGetMultiSelectPopUpButtonMenuItem(bPtr, bPtr->highlightedItem);
@@ -633,8 +635,8 @@ static void handleActionEvents(XEvent *event, void *data)
 				}
 			}
 
-			if (event->xmotion.y_root >= scrHeight - 1 || event->xmotion.y_root <= 1) {
-				bPtr->scrollStartY = event->xmotion.y_root;
+			if (((xcb_motion_notify_event_t *)event)->root_y >= scrHeight - 1 || ((xcb_motion_notify_event_t *)event)->root_y <= 1) {
+				bPtr->scrollStartY = ((xcb_motion_notify_event_t *)event)->root_y;
 				if (!bPtr->timer)
 					autoScroll(bPtr);
 			} else {
@@ -643,12 +645,12 @@ static void handleActionEvents(XEvent *event, void *data)
 		}
 		break;
 
-	case ButtonPress:
+	case XCB_BUTTON_PRESS:
 		if (!bPtr->flags.enabled)
 			break;
 
-		if (event->xbutton.button == WINGsConfiguration.mouseWheelUp ||
-		    event->xbutton.button == WINGsConfiguration.mouseWheelDown)
+		if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp ||
+		    ((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelDown)
 			break;
 
 		if (bPtr->menuView->flags.mapped) {
@@ -656,8 +658,8 @@ static void handleActionEvents(XEvent *event, void *data)
 			 * multi-select session): just update the highlight
 			 * without re-popping or re-grabbing */
 			if (bPtr->flags.insideMenu && bPtr->highlightedItem >= 0)
-				paintMenuEntry(bPtr, bPtr->highlightedItem, False);
-			bPtr->highlightedItem = event->xbutton.y / bPtr->view->size.height;
+				paintMenuEntry(bPtr, bPtr->highlightedItem, false);
+			bPtr->highlightedItem = ((xcb_button_press_event_t *)event)->event_y / bPtr->view->size.height;
 			if (bPtr->highlightedItem >= 0 &&
 			    bPtr->highlightedItem < WMGetArrayItemCount(bPtr->items)) {
 				WMMenuItem *item = WMGetMultiSelectPopUpButtonMenuItem(bPtr, bPtr->highlightedItem);
@@ -673,16 +675,16 @@ static void handleActionEvents(XEvent *event, void *data)
 		bPtr->highlightedItem = -1;
 		bPtr->flags.insideMenu = 1;
 		bPtr->flags.armed = 1;
-		XGrabPointer(bPtr->view->screen->display, bPtr->menuView->window,
-			     False, ButtonPressMask | ButtonReleaseMask | PointerMotionMask
-			     | EnterWindowMask | LeaveWindowMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+		wXGrabPointer(bPtr->view->screen->display, bPtr->menuView->window,
+			     false, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
 		break;
 
-	case ButtonRelease:
+	case XCB_BUTTON_RELEASE:
 		WMDeleteTimerHandlerPtr(&bPtr->timer);
 
-		if (event->xbutton.button == WINGsConfiguration.mouseWheelUp ||
-		    event->xbutton.button == WINGsConfiguration.mouseWheelDown)
+		if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp ||
+		    ((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelDown)
 			break;
 
 		/* the release that opened the menu must not toggle anything */
@@ -701,15 +703,13 @@ static void handleActionEvents(XEvent *event, void *data)
 				W_Screen *scr = bPtr->view->screen;
 
 				WMSetMenuItemState(item, state);
-				paintMenuEntry(bPtr, bPtr->highlightedItem, True);
+				paintMenuEntry(bPtr, bPtr->highlightedItem, true);
 				/* refresh the menu background pixmap so a later
 				 * expose reflects the new checkmark state */
-				if (bPtr->menuPixmap != None)
-					XFreePixmap(scr->display, bPtr->menuPixmap);
+				if (bPtr->menuPixmap != XCB_NONE)
+					xcb_free_pixmap(scr->display, bPtr->menuPixmap);
 				bPtr->menuPixmap = makeMenuPixmap(bPtr);
-				XSetWindowBackgroundPixmap(scr->display,
-							   bPtr->menuView->window,
-							   bPtr->menuPixmap);
+				xcb_change_window_attributes(scr->display, bPtr->menuView->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ bPtr->menuPixmap });
 				paintMultiSelectPopUpButton(bPtr);
 				if (bPtr->action)
 					(*bPtr->action)(bPtr, bPtr->clientData);
@@ -718,7 +718,7 @@ static void handleActionEvents(XEvent *event, void *data)
 		}
 
 		/* release outside the menu, or on a disabled item: close */
-		XUngrabPointer(bPtr->view->screen->display, CurrentTime);
+		wXUngrabPointer(bPtr->view->screen->display, XCB_CURRENT_TIME);
 		popDownMenu(bPtr);
 		paintMultiSelectPopUpButton(bPtr);
 		break;
@@ -735,8 +735,8 @@ static void destroyMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 	if (bPtr->caption)
 		wfree(bPtr->caption);
 
-	if (bPtr->menuPixmap != None)
-		XFreePixmap(bPtr->view->screen->display, bPtr->menuPixmap);
+	if (bPtr->menuPixmap != XCB_NONE)
+		wXFreePixmap(bPtr->view->screen->display, bPtr->menuPixmap);
 
 	W_DestroyView(bPtr->menuView);
 

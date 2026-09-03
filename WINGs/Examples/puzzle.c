@@ -1,6 +1,8 @@
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
 #include <stdint.h>
 
@@ -16,16 +18,16 @@ int MoveCount;
 
 int WinSize = 120;
 
-Bool CheckWin(void)
+bool CheckWin(void)
 {
 	int i;
 
 	for (i = 0; i < Size * Size - 1; i++) {
 		if (Map[i] != i)
-			return False;
+			return false;
 	}
 
-	return True;
+	return true;
 }
 
 void MoveButton(int button, int x, int y)
@@ -33,7 +35,7 @@ void MoveButton(int button, int x, int y)
 	WMMoveWidget(Button[button], x * (WinSize / Size), y * (WinSize / Size));
 }
 
-Bool SlideButton(int button)
+bool SlideButton(int button)
 {
 	int x = 0, y = 0, done = 0;
 
@@ -66,9 +68,9 @@ Bool SlideButton(int button)
 		MoveButton(button, x, y + 1);
 		MAP(x, y + 1) = button;
 	} else {
-		return False;
+		return false;
 	}
-	return True;
+	return true;
 }
 
 #define SWAP(a,b) {int tmp; tmp=a; a=b; b=tmp;}
@@ -120,9 +122,11 @@ void ResetGame(void)
 			SWAP(MAP(ox, oy), MAP(x, y));
 
 			while (WXEvqPending(WMScreenDisplay(WMWidgetScreen(win)))) {
-				XEvent ev;
+				xcb_generic_event_t *ev = NULL;
+
 				WMNextEvent(WMScreenDisplay(WMWidgetScreen(win)), &ev);
-				WMHandleEvent(&ev);
+				WMHandleEvent(ev);
+				free(ev);
 			}
 			ox = x;
 			oy = y;
@@ -172,19 +176,23 @@ static void resizeObserver(void *self, WMNotification * notif)
 
 int main(int argc, char **argv)
 {
-	Display *dpy;
+	xcb_connection_t *xc;
+	int sn;
+	static xcb_connection_t *xc;
 	WMScreen *scr;
 	int x, y, i;
 
 	WMInitializeApplication("Puzzle", &argc, argv);
 
-	dpy = XOpenDisplay("");
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		printf("could not open display\n");
 		exit(1);
 	}
 
-	scr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	scr = WMCreateScreen(xc, sn);
 
 	win = WMCreateWindow(scr, "puzzle");
 	WMResizeWidget(win, WinSize, WinSize);
@@ -192,7 +200,7 @@ int main(int argc, char **argv)
 	WMSetWindowMinSize(win, 80, 80);
 	WMSetWindowAspectRatio(win, 2, 2, 2, 2);
 	WMSetWindowResizeIncrements(win, Size, Size);
-	WMSetViewNotifySizeChanges(WMWidgetView(win), True);
+	WMSetViewNotifySizeChanges(WMWidgetView(win), true);
 	WMAddNotificationObserver(resizeObserver, NULL, WMViewSizeDidChangeNotification, WMWidgetView(win));
 
 	for (i = y = 0; y < Size && i < Size * Size - 1; y++) {
@@ -208,7 +216,7 @@ int main(int argc, char **argv)
 
 			RHSVtoRGB(&hsv, &col);
 
-			color = WMCreateRGBColor(scr, col.red << 8, col.green << 8, col.blue << 8, False);
+			color = WMCreateRGBColor(scr, col.red << 8, col.green << 8, col.blue << 8, false);
 
 			MAP(x, y) = i;
 			Button[i] = WMCreateButton(win, WBTMomentaryLight);

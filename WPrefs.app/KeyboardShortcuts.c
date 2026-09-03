@@ -18,13 +18,11 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "config.h"		/* for HAVE_XCONVERTCASE */
-
 #include "WPrefs.h"
 #include <ctype.h>
 
-#include <X11/keysym.h>
-#include <X11/XKBlib.h>
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 typedef struct _Panel {
 	WMBox *box;
@@ -52,7 +50,7 @@ typedef struct _Panel {
 	WMColor *gray;
 	WMFont *font;
 
-	Bool capturing;
+	bool capturing;
 	char **shortcuts;
 	int actionCount;
 } _Panel;
@@ -251,180 +249,53 @@ static struct keyOption {
 #endif				/* XKB_MODELOCK */
 };
 
-#ifndef HAVE_XCONVERTCASE
-/* from Xlib */
 
-static void XConvertCase(register KeySym sym, KeySym * lower, KeySym * upper)
+
+static int NumLockMask(W_Screen *scr)
 {
-	*lower = sym;
-	*upper = sym;
-	switch (sym >> 8) {
-	case 0:		/* Latin 1 */
-		if ((sym >= XK_A) && (sym <= XK_Z))
-			*lower += (XK_a - XK_A);
-		else if ((sym >= XK_a) && (sym <= XK_z))
-			*upper -= (XK_a - XK_A);
-		else if ((sym >= XK_Agrave) && (sym <= XK_Odiaeresis))
-			*lower += (XK_agrave - XK_Agrave);
-		else if ((sym >= XK_agrave) && (sym <= XK_odiaeresis))
-			*upper -= (XK_agrave - XK_Agrave);
-		else if ((sym >= XK_Ooblique) && (sym <= XK_Thorn))
-			*lower += (XK_oslash - XK_Ooblique);
-		else if ((sym >= XK_oslash) && (sym <= XK_thorn))
-			*upper -= (XK_oslash - XK_Ooblique);
-		break;
-	case 1:		/* Latin 2 */
-		/* Assume the KeySym is a legal value (ignore discontinuities) */
-		if (sym == XK_Aogonek)
-			*lower = XK_aogonek;
-		else if (sym >= XK_Lstroke && sym <= XK_Sacute)
-			*lower += (XK_lstroke - XK_Lstroke);
-		else if (sym >= XK_Scaron && sym <= XK_Zacute)
-			*lower += (XK_scaron - XK_Scaron);
-		else if (sym >= XK_Zcaron && sym <= XK_Zabovedot)
-			*lower += (XK_zcaron - XK_Zcaron);
-		else if (sym == XK_aogonek)
-			*upper = XK_Aogonek;
-		else if (sym >= XK_lstroke && sym <= XK_sacute)
-			*upper -= (XK_lstroke - XK_Lstroke);
-		else if (sym >= XK_scaron && sym <= XK_zacute)
-			*upper -= (XK_scaron - XK_Scaron);
-		else if (sym >= XK_zcaron && sym <= XK_zabovedot)
-			*upper -= (XK_zcaron - XK_Zcaron);
-		else if (sym >= XK_Racute && sym <= XK_Tcedilla)
-			*lower += (XK_racute - XK_Racute);
-		else if (sym >= XK_racute && sym <= XK_tcedilla)
-			*upper -= (XK_racute - XK_Racute);
-		break;
-	case 2:		/* Latin 3 */
-		/* Assume the KeySym is a legal value (ignore discontinuities) */
-		if (sym >= XK_Hstroke && sym <= XK_Hcircumflex)
-			*lower += (XK_hstroke - XK_Hstroke);
-		else if (sym >= XK_Gbreve && sym <= XK_Jcircumflex)
-			*lower += (XK_gbreve - XK_Gbreve);
-		else if (sym >= XK_hstroke && sym <= XK_hcircumflex)
-			*upper -= (XK_hstroke - XK_Hstroke);
-		else if (sym >= XK_gbreve && sym <= XK_jcircumflex)
-			*upper -= (XK_gbreve - XK_Gbreve);
-		else if (sym >= XK_Cabovedot && sym <= XK_Scircumflex)
-			*lower += (XK_cabovedot - XK_Cabovedot);
-		else if (sym >= XK_cabovedot && sym <= XK_scircumflex)
-			*upper -= (XK_cabovedot - XK_Cabovedot);
-		break;
-	case 3:		/* Latin 4 */
-		/* Assume the KeySym is a legal value (ignore discontinuities) */
-		if (sym >= XK_Rcedilla && sym <= XK_Tslash)
-			*lower += (XK_rcedilla - XK_Rcedilla);
-		else if (sym >= XK_rcedilla && sym <= XK_tslash)
-			*upper -= (XK_rcedilla - XK_Rcedilla);
-		else if (sym == XK_ENG)
-			*lower = XK_eng;
-		else if (sym == XK_eng)
-			*upper = XK_ENG;
-		else if (sym >= XK_Amacron && sym <= XK_Umacron)
-			*lower += (XK_amacron - XK_Amacron);
-		else if (sym >= XK_amacron && sym <= XK_umacron)
-			*upper -= (XK_amacron - XK_Amacron);
-		break;
-	case 6:		/* Cyrillic */
-		/* Assume the KeySym is a legal value (ignore discontinuities) */
-		if (sym >= XK_Serbian_DJE && sym <= XK_Serbian_DZE)
-			*lower -= (XK_Serbian_DJE - XK_Serbian_dje);
-		else if (sym >= XK_Serbian_dje && sym <= XK_Serbian_dze)
-			*upper += (XK_Serbian_DJE - XK_Serbian_dje);
-		else if (sym >= XK_Cyrillic_YU && sym <= XK_Cyrillic_HARDSIGN)
-			*lower -= (XK_Cyrillic_YU - XK_Cyrillic_yu);
-		else if (sym >= XK_Cyrillic_yu && sym <= XK_Cyrillic_hardsign)
-			*upper += (XK_Cyrillic_YU - XK_Cyrillic_yu);
-		break;
-	case 7:		/* Greek */
-		/* Assume the KeySym is a legal value (ignore discontinuities) */
-		if (sym >= XK_Greek_ALPHAaccent && sym <= XK_Greek_OMEGAaccent)
-			*lower += (XK_Greek_alphaaccent - XK_Greek_ALPHAaccent);
-		else if (sym >= XK_Greek_alphaaccent && sym <= XK_Greek_omegaaccent &&
-			 sym != XK_Greek_iotaaccentdieresis && sym != XK_Greek_upsilonaccentdieresis)
-			*upper -= (XK_Greek_alphaaccent - XK_Greek_ALPHAaccent);
-		else if (sym >= XK_Greek_ALPHA && sym <= XK_Greek_OMEGA)
-			*lower += (XK_Greek_alpha - XK_Greek_ALPHA);
-		else if (sym >= XK_Greek_alpha && sym <= XK_Greek_omega && sym != XK_Greek_finalsmallsigma)
-			*upper -= (XK_Greek_alpha - XK_Greek_ALPHA);
-		break;
-	case 0x14:		/* Armenian */
-		if (sym >= XK_Armenian_AYB && sym <= XK_Armenian_fe) {
-			*lower = sym | 1;
-			*upper = sym & ~1;
-		}
-		break;
-	}
-}
-#endif
+	WXModifierSlots slots;
+	void *state = W_XkbStateOf(scr);
 
-static int NumLockMask(Display *dpy)
-{
-	int i, mask;
-	XModifierKeymap *map;
-	static int mask_table[8] = {
-		ShiftMask, LockMask, ControlMask, Mod1Mask,
-		Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
-	};
-	KeyCode numlock_keycode = XKeysymToKeycode(dpy, XK_Num_Lock);
-
-	if (numlock_keycode == NoSymbol)
-		return 0;
-
-	map = XGetModifierMapping(dpy);
-	if (!map)
-		return 0;
-
-	mask = 0;
-	for (i = 0; i < 8 * map->max_keypermod; i++) {
-		if (map->modifiermap[i] == numlock_keycode && mask == 0) {
-			mask = mask_table[i/map->max_keypermod];
-			break;
-		}
-	}
-
-	if (map)
-		XFreeModifiermap(map);
-
-	return mask;
+	W_XkbModifierSlots(WMScreenDisplay(scr),
+			   state ? xkb_state_get_keymap(state) : NULL, &slots);
+	return slots.numlock >= 0 ? 1 << slots.numlock : 0;
 }
 
 /* Append the modifier prefix and key name to the keybuf */
 static void build_key_combo(unsigned int xkstate, const char *keyname,
                              unsigned int numlock_mask, char keybuf[64])
 {
-	if (xkstate & ControlMask)
+	if (xkstate & XCB_MOD_MASK_CONTROL)
 		wstrlcat(keybuf, "Control+", 64);
-	if (xkstate & ShiftMask)
+	if (xkstate & XCB_MOD_MASK_SHIFT)
 		wstrlcat(keybuf, "Shift+", 64);
-	if ((numlock_mask != Mod1Mask) && (xkstate & Mod1Mask))
+	if ((numlock_mask != XCB_MOD_MASK_1) && (xkstate & XCB_MOD_MASK_1))
 		wstrlcat(keybuf, "Mod1+", 64);
-	if ((numlock_mask != Mod2Mask) && (xkstate & Mod2Mask))
+	if ((numlock_mask != XCB_MOD_MASK_2) && (xkstate & XCB_MOD_MASK_2))
 		wstrlcat(keybuf, "Mod2+", 64);
-	if ((numlock_mask != Mod3Mask) && (xkstate & Mod3Mask))
+	if ((numlock_mask != XCB_MOD_MASK_3) && (xkstate & XCB_MOD_MASK_3))
 		wstrlcat(keybuf, "Mod3+", 64);
-	if ((numlock_mask != Mod4Mask) && (xkstate & Mod4Mask))
+	if ((numlock_mask != XCB_MOD_MASK_4) && (xkstate & XCB_MOD_MASK_4))
 		wstrlcat(keybuf, "Mod4+", 64);
-	if ((numlock_mask != Mod5Mask) && (xkstate & Mod5Mask))
+	if ((numlock_mask != XCB_MOD_MASK_5) && (xkstate & XCB_MOD_MASK_5))
 		wstrlcat(keybuf, "Mod5+", 64);
 	wstrlcat(keybuf, keyname, 64);
 }
 
 static void keychainTimeout(void *data)
 {
-	*(Bool *)data = True;
+	*(bool *)data = true;
 }
 
-static Bool waitForKeychainEvent(Display *dpy, int timeout_ms)
+static bool waitForKeychainEvent(xcb_connection_t *dpy, int timeout_ms)
 {
-	Bool fired = False;
+	bool fired = false;
 	WMHandlerID timer;
 
 	timer = WMAddTimerHandler(timeout_ms, keychainTimeout, &fired);
 	while (!fired && !WXEvqPending(dpy)) {
-		XFlush(dpy);
-		W_HandleInputEvents(True, ConnectionNumber(dpy));
+		wXFlush(dpy);
+		W_HandleInputEvents(true, xcb_get_file_descriptor(dpy));
 	}
 
 	if (!fired)
@@ -439,17 +310,18 @@ static Bool waitForKeychainEvent(Display *dpy, int timeout_ms)
  * each key press for another key in the chain,
  * and returns the full key specification string.
  */
-char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case)
+char *capture_shortcut(W_Screen *scr, bool *capturing, bool convert_case)
 {
-	XEvent ev;
-	KeySym ksym, lksym, uksym;
+	xcb_generic_event_t *ev = NULL;
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
+	xkb_keysym_t ksym, uksym;
 	/* Large enough for several chained chords */
 	char buffer[512];
 	char keybuf[64];
 	char *key;
 	unsigned int numlock_mask;
-	Bool have_key = False;
-	Bool chain_mode;
+	bool have_key = false;
+	bool chain_mode;
 	int timeout_ms;
 
 	timeout_ms = GetIntegerForKey("KeychainTimeoutDelay");
@@ -460,30 +332,35 @@ char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case)
 
 	/* ---- Phase 1: capture the first key (blocking) ---- */
 	while (*capturing) {
-		XAllowEvents(dpy, AsyncKeyboard, CurrentTime);
+		wXAllowEvents(dpy, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
 		WMNextEvent(dpy, &ev);
-		if (ev.type == KeyPress && ev.xkey.keycode != 0) {
-			numlock_mask = NumLockMask(dpy);
+		if ((ev->response_type & 0x7f) == XCB_KEY_PRESS && (((xcb_key_press_event_t *)ev)->detail) != 0) {
+			numlock_mask = NumLockMask(scr);
 
 			/* conditional mask check to get numeric keypad keys */
-			ksym = W_KeycodeToKeysym(dpy, ev.xkey.keycode, ev.xkey.state & numlock_mask?1:0);
+			ksym = W_XkbKeysymForKeycode(scr, (((xcb_key_press_event_t *)ev)->detail), (((xcb_key_press_event_t *)ev)->state) & numlock_mask?1:0);
 
-			if (!IsModifierKey(ksym)) {
+			if (!W_IsModifierKey(ksym)) {
+				char ksname[64];
+
 				if (convert_case) {
-					XConvertCase(ksym, &lksym, &uksym);
-					key = XKeysymToString(uksym);
+					uksym = xkb_keysym_to_upper(ksym);
+					xkb_keysym_get_name(uksym, ksname, sizeof(ksname));
 				} else {
-					key = XKeysymToString(ksym);
+					xkb_keysym_get_name(ksym, ksname, sizeof(ksname));
 				}
+				key = ksname;
 
 				keybuf[0] = '\0';
-				build_key_combo(ev.xkey.state, key, numlock_mask, keybuf);
+				build_key_combo((((xcb_key_press_event_t *)ev)->state), key, numlock_mask, keybuf);
 				wstrlcat(buffer, keybuf, sizeof(buffer));
-				have_key = True;
+				have_key = true;
 				break;
 			}
 		}
-		WMHandleEvent(&ev);
+		WMHandleEvent(ev);
+		free(ev);
+		ev = NULL;
 	}
 
 	/* ---- Phase 2: collect additional chain keys with timeout ---- */
@@ -492,30 +369,40 @@ char *capture_shortcut(Display *dpy, Bool *capturing, Bool convert_case)
 		if (!WXEvqPending(dpy) && !waitForKeychainEvent(dpy, timeout_ms))
 			break;  /* timeout: the chain is complete */
 
-		XAllowEvents(dpy, AsyncKeyboard, CurrentTime);
+		free(ev);
+		ev = NULL;
+		wXAllowEvents(dpy, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
 		WMNextEvent(dpy, &ev);
-		if (ev.type == KeyPress && ev.xkey.keycode != 0) {
-			numlock_mask = NumLockMask(dpy);
-			ksym = W_KeycodeToKeysym(dpy, ev.xkey.keycode,
-			                         ev.xkey.state & numlock_mask ? 1 : 0);
+		if ((ev->response_type & 0x7f) == XCB_KEY_PRESS && (((xcb_key_press_event_t *)ev)->detail) != 0) {
+			numlock_mask = NumLockMask(scr);
+			ksym = W_XkbKeysymForKeycode(scr, (((xcb_key_press_event_t *)ev)->detail),
+			                            (((xcb_key_press_event_t *)ev)->state) & numlock_mask ? 1 : 0);
 
-			if (!IsModifierKey(ksym)) {
+			if (!W_IsModifierKey(ksym)) {
+				char ksname[64];
+
 				if (convert_case) {
-					XConvertCase(ksym, &lksym, &uksym);
-					key = XKeysymToString(uksym);
+					uksym = xkb_keysym_to_upper(ksym);
+					xkb_keysym_get_name(uksym, ksname, sizeof(ksname));
 				} else {
-					key = XKeysymToString(ksym);
+					xkb_keysym_get_name(ksym, ksname, sizeof(ksname));
 				}
+				key = ksname;
 
 				keybuf[0] = '\0';
-				build_key_combo(ev.xkey.state, key, numlock_mask, keybuf);
+				build_key_combo((((xcb_key_press_event_t *)ev)->state), key, numlock_mask, keybuf);
 				wstrlcat(buffer, " ", sizeof(buffer));
 				wstrlcat(buffer, keybuf, sizeof(buffer));
 			}
 		} else {
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 		}
+		free(ev);
+		ev = NULL;
 	}
+
+	/* WMNextEvent hands us the popped event, so release the last one */
+	free(ev);
 
 	if (!have_key || !*capturing)
 		return NULL;
@@ -557,7 +444,7 @@ static int isKeySet(_Panel *panel, char *keystr)
 static void captureClick(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
-	Display *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
+	xcb_connection_t *dpy = WMScreenDisplay(WMWidgetScreen(panel->parent));
 	char *shortcut;
 
 	if (!panel->capturing) {
@@ -565,8 +452,8 @@ static void captureClick(WMWidget * w, void *data)
 		WMSetButtonText(w, _("Cancel"));
 		WMSetLabelText(panel->instructionsL,
 			       _("Press the desired shortcut key(s) or click Cancel to stop capturing."));
-		XGrabKeyboard(dpy, WMWidgetXID(panel->parent), True, GrabModeAsync, GrabModeAsync, CurrentTime);
-		shortcut = capture_shortcut(dpy, &panel->capturing, 1);
+		wXGrabKeyboard(dpy, WMWidgetXID(panel->parent), true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+		shortcut = capture_shortcut(WMWidgetScreen(panel->parent), &panel->capturing, 1);
 		if (shortcut) {
 			int key_idx = -1;
 			int row = WMGetListSelectedItemRow(panel->actLs);
@@ -599,7 +486,7 @@ static void captureClick(WMWidget * w, void *data)
 	panel->capturing = 0;
 	WMSetButtonText(w, _("Capture"));
 	WMSetLabelText(panel->instructionsL, _("Click on Capture to interactively define the shortcut key(s)."));
-	XUngrabKeyboard(dpy, CurrentTime);
+	wXUngrabKeyboard(dpy, XCB_CURRENT_TIME);
 }
 
 static void clearShortcut(WMWidget * w, void *data)
@@ -676,7 +563,7 @@ static void showData(_Panel * panel)
 	WMRedisplayWidget(panel->actLs);
 }
 
-static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect)
+static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect)
 {
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
@@ -791,7 +678,7 @@ static void createPanel(Panel * p)
 	WMResizeWidget(panel->instructionsL, 160, 55);
 	WMMoveWidget(panel->instructionsL, 9, 140);
 	WMSetLabelTextAlignment(panel->instructionsL, WACenter);
-	WMSetLabelWraps(panel->instructionsL, True);
+	WMSetLabelWraps(panel->instructionsL, true);
 	WMSetLabelText(panel->instructionsL, _("Click on Capture to interactively define the shortcut key."));
 
 	WMMapSubwidgets(panel->shoF);

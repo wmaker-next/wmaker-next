@@ -125,7 +125,7 @@ wm_running() {
 }
 
 start_replaced() {
-	# $1 = extra args, e.g. "--replace"; echoes nothing, records PID_*
+	# $1 = extra args, e.g. "--replace", echoes nothing, records PID_*
 	LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 	DISPLAY=$DPY \
 	"$ROOT/src/.libs/wmaker" --for-real "$@" >>"$LOG" 2>&1 &

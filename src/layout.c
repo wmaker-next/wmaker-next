@@ -192,7 +192,7 @@ int wLayoutCompute(WLayout layout, WArea usable,
 #include "stacking.h"
 #include "xinerama.h"
 
-static Bool window_is_tileable(WWindow *wwin, int workspace)
+static bool window_is_tileable(WWindow *wwin, int workspace)
 {
 	/* Multi-member windows are tiled by every member workspace's
 	 * layout, the frame is recomputed on each switch and the single
@@ -200,22 +200,22 @@ static Bool window_is_tileable(WWindow *wwin, int workspace)
 	 * so two layouts never contend for it. Omnipresent windows still
 	 * float so a sticky panel is never packed into a stack. */
 	if (!wwin->frame || !WWIN_ON_WORKSPACE(wwin, workspace))
-		return False;
+		return false;
 	if (IS_OMNIPRESENT(wwin))
-		return False;
+		return false;
 	if (wwin->flags.miniaturized || wwin->flags.hidden
 	    || wwin->flags.shaded || wwin->flags.fullscreen)
-		return False;
+		return false;
 	if (WFLAGP(wwin, no_resizable) || WFLAGP(wwin, no_movable))
-		return False;
+		return false;
 	if (WFLAGP(wwin, no_tiling) || wwin->flags.no_tiling)
-		return False;
-	if (wwin->transient_for != None
+		return false;
+	if (wwin->transient_for != XCB_NONE
 	    && wwin->transient_for != wwin->screen_ptr->root_win)
-		return False;
+		return false;
 	if (WFLAGP(wwin, floating) || WFLAGP(wwin, sunken))
-		return False;
-	return True;
+		return false;
+	return true;
 }
 
 /* Fill wins[] (caller-sized to at least the workspace population) with the
@@ -299,7 +299,7 @@ void wLayoutApply(WScreen *scr, int workspace)
 		n = collect_tileable(scr, workspace, head, wins, WLAYOUT_MAX_TILEABLE);
 		if (n == 0)
 			continue;
-		usable = wGetUsableAreaForHead(scr, head, NULL, True);
+		usable = wGetUsableAreaForHead(scr, head, NULL, true);
 		if (!wLayoutCompute(ws->layout, usable, ws->master_count,
 				    ws->master_ratio, n, out))
 			continue;
@@ -343,7 +343,7 @@ void wLayoutSetWorkspace(WScreen *scr, int workspace, WLayout layout)
 			       (void *)(uintptr_t)workspace);
 }
 
-void wLayoutSetWindowTiled(WWindow *wwin, Bool tiled)
+void wLayoutSetWindowTiled(WWindow *wwin, bool tiled)
 {
 	WScreen *scr;
 

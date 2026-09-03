@@ -21,8 +21,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
+#include <xcb/xcb.h>
+#include <xcb/xproto.h>
+
+#include "xcconn.h"
 
 #include "../src/wconfig.h"
 
@@ -44,19 +46,21 @@ static void print_help(void)
 	puts("  -v, --version                   output version information and exit");
 }
 
-static int errorHandler(Display * dpy, XErrorEvent * err)
+/* The old ignore-all-errors trap: the requests must not abort the
+ * tool, so each one-way is checked and the error discarded. */
+static void checked_discard(xcb_connection_t *c, xcb_void_cookie_t ck)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) dpy;
-	(void) err;
+	xcb_generic_error_t *err;
 
-	/* ignore all errors */
-	return 0;
+	err = xcb_request_check(c, ck);
+	if (err)
+		free(err);
 }
 
 int main(int argc, char **argv)
 {
-	Display *dpy;
+	xcb_connection_t *c;
+	xcb_window_t root;
 	int i;
 	int buffer = -1;
 	char *filename = NULL;
@@ -125,60 +129,40 @@ int main(int argc, char **argv)
 		}
 	}
 
-	dpy = XOpenDisplay(display_name);
-	XSetErrorHandler(errorHandler);
-	if (!dpy) {
-		fprintf(stderr, "%s: could not open display \"%s\"\n", prog_name, XDisplayName(display_name));
-		exit(1);
-	}
+	c = xcconn_open(display_name, prog_name, 1, NULL);
+	/* Xlib's XStoreBuffer always addresses screen 0's root */
+	root = xcconn_root(c, 0);
 
 	if (buffer < 0) {
-		Atom *rootWinProps;
+		xcb_atom_t cutbufs[8];
+		xcb_list_properties_cookie_t pck;
+		xcb_list_properties_reply_t *prep;
 		int exists[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-		int i, count;
+
+		for (i = 0; i < 8; i++)
+			cutbufs[i] = XCB_ATOM_CUT_BUFFER0 + i;
 
 		/* Create missing CUT_BUFFERs */
-		rootWinProps = XListProperties(dpy, DefaultRootWindow(dpy), &count);
-		for (i = 0; i < count; i++) {
-			switch (rootWinProps[i]) {
-			case XA_CUT_BUFFER0:
-				exists[0] = 1;
-				break;
-			case XA_CUT_BUFFER1:
-				exists[1] = 1;
-				break;
-			case XA_CUT_BUFFER2:
-				exists[2] = 1;
-				break;
-			case XA_CUT_BUFFER3:
-				exists[3] = 1;
-				break;
-			case XA_CUT_BUFFER4:
-				exists[4] = 1;
-				break;
-			case XA_CUT_BUFFER5:
-				exists[5] = 1;
-				break;
-			case XA_CUT_BUFFER6:
-				exists[6] = 1;
-				break;
-			case XA_CUT_BUFFER7:
-				exists[7] = 1;
-				break;
-			default:
-				break;
+		pck = xcb_list_properties(c, root);
+		prep = xcb_list_properties_reply(c, pck, NULL);
+		if (prep) {
+			xcb_atom_t *props = xcb_list_properties_atoms(prep);
+			int count = xcb_list_properties_atoms_length(prep);
+
+			for (i = 0; i < count; i++) {
+				if (props[i] >= XCB_ATOM_CUT_BUFFER0 &&
+				    props[i] <= XCB_ATOM_CUT_BUFFER7)
+					exists[props[i] - XCB_ATOM_CUT_BUFFER0] = 1;
 			}
-		}
-		if (rootWinProps) {
-			XFree(rootWinProps);
+			free(prep);
 		}
 		for (i = 0; i < 8; i++) {
-			if (!exists[i]) {
-				XStoreBuffer(dpy, "", 0, i);
-			}
+			if (!exists[i])
+				checked_discard(c, xcb_change_property_checked(c, XCB_PROP_MODE_REPLACE,
+						root, cutbufs[i], XCB_ATOM_STRING, 8, 0, ""));
 		}
 
-		XRotateBuffers(dpy, 1);
+		checked_discard(c, xcb_rotate_properties_checked(c, root, 8, 1, cutbufs));
 		buffer = 0;
 	}
 
@@ -233,13 +217,37 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (clear_selection) {
-		XSetSelectionOwner(dpy, XA_PRIMARY, None, CurrentTime);
+	/* the read-error signal is ferror(), not ambient errno: the
+	 * display open leaves errno dirty, so a successful copy must
+	 * not depend on it */
+	if (ferror(file)) {
+		fprintf(stderr, "%s: error reading %s\n", prog_name,
+		        filename ? filename : "stdin");
+		exit(1);
 	}
+
+	if (clear_selection)
+		checked_discard(c, xcb_set_selection_owner_checked(c, XCB_NONE, XCB_ATOM_PRIMARY,
+							XCB_CURRENT_TIME));
 	if (buf) {
-		XStoreBuffer(dpy, buf, (int)l, buffer);
+		/* the whole payload rides in one ChangeProperty, so the
+		 * server's maximum request length caps what can be stored */
+		if (l > (size_t)xcb_get_maximum_request_length(c) * 4 - 1024) {
+			fprintf(stderr,
+				"%s: %lu bytes exceed the server's maximum request length\n",
+			        prog_name, (unsigned long)l);
+			exit(1);
+		}
+		checked_discard(c, xcb_change_property_checked(c, XCB_PROP_MODE_REPLACE, root,
+				XCB_ATOM_CUT_BUFFER0 + buffer, XCB_ATOM_STRING, 8,
+				(uint32_t) l, buf));
+		if (xcb_connection_has_error(c)) {
+			fprintf(stderr, "%s: connection failed while storing the cut buffer\n",
+			        prog_name);
+			exit(1);
+		}
 	}
-	XFlush(dpy);
-	XCloseDisplay(dpy);
-	exit(buf == NULL || errno != 0);
+	xcb_flush(c);
+	xcb_disconnect(c);
+	exit(buf == NULL);
 }

@@ -50,7 +50,7 @@ typedef struct WAppIcon {
 	char *wm_class;
 	char *wm_instance;
 	pid_t pid;			 /* for apps launched from the dock */
-	Window main_window;
+	xcb_window_t main_window;
 	struct WDock *dock;		 /* In which dock is docked. */
 	struct _AppSettingsPanel *panel; /* Settings Panel */
 	unsigned int docked:1;
@@ -75,12 +75,12 @@ typedef struct WAppIcon {
 
 WAppIcon *wAppIconCreateForDock(WScreen *scr, const char *command, const char *wm_instance,
 				const char *wm_class, int tile);
-Bool wHandleAppIconMove(WAppIcon *aicon, XEvent *event);
+bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event);
 
 void wAppIconDestroy(WAppIcon *aicon);
 void wAppIconPaint(WAppIcon *aicon);
-void wAppIconPaintDockDots(WScreen *scr, Window win, int width);
-void wAppIconPaintLaunching(WScreen *scr, Window win);
+void wAppIconPaintDockDots(WScreen *scr, xcb_window_t win, int width);
+void wAppIconPaintLaunching(WScreen *scr, xcb_window_t win);
 void wAppIconMove(WAppIcon *aicon, int x, int y);
 void create_appicon_for_application(WApplication *wapp, WWindow *wwin);
 void removeAppIconFor(WApplication * wapp);
@@ -90,6 +90,6 @@ void unpaint_app_icon(WApplication *wapp);
 void wApplicationExtractDirPackIcon(const char *path, const char *wm_instance,
 				    const char *wm_class);
 
-void appIconMouseDown(WObjDescriptor * desc, XEvent * event);
+void appIconMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event);
 
 #endif

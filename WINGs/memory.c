@@ -39,11 +39,11 @@
 #include <gc/gc.h>
 #endif /* USE_BOEHM_GC */
 
-#ifndef False
-# define False 0
+#ifndef false
+# define false 0
 #endif
-#ifndef True
-# define True 1
+#ifndef true
+# define true 1
 #endif
 
 static void defaultHandler(int bla)
@@ -101,7 +101,7 @@ void *wmalloc(size_t size)
 			} else {
 				wfatal("virtual memory exhausted");
 				Aborting = 1;
-				wAbort(False);
+				wAbort(false);
 			}
 		}
 	}
@@ -140,7 +140,7 @@ void *wrealloc(void *ptr, size_t newsize)
 				} else {
 					wfatal("virtual memory exhausted");
 					Aborting = 1;
-					wAbort(False);
+					wAbort(false);
 				}
 			}
 		}

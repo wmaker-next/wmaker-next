@@ -14,7 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-Display *dpy;
+xcb_connection_t *xc;
+int sn;
+xcb_connection_t *xc;
 
 /* Test samples showing different capabilities */
 static const char *sampleTexts[] = {
@@ -29,16 +31,16 @@ static const char *sampleTexts[] = {
 	NULL
 };
 
-void paintSamples(XEvent *event, void *data)
+void paintSamples(xcb_generic_event_t *event, void *data)
 {
 	WMFrame *frame = (WMFrame *)data;
-	Window win = WMWidgetXID(frame);
+	xcb_window_t win = WMWidgetXID(frame);
 	int width = WMWidgetWidth(frame);
 	int height = WMWidgetHeight(frame);
 	WMScreen *scr = WMWidgetScreen(frame);
 
 	/* Only paint on Expose events */
-	if (event->type != Expose)
+	if ((event->response_type & 0x7f) != XCB_EXPOSE)
 		return;
 
 	WMFont *fonts[6];
@@ -52,9 +54,9 @@ void paintSamples(XEvent *event, void *data)
 	};
 
 	WMColor *black = WMBlackColor(scr);
-	WMColor *blue = WMCreateRGBColor(scr, 0x2020, 0x4080, 0xC0C0, False);
-	WMColor *darkGreen = WMCreateRGBColor(scr, 0x2020, 0x8080, 0x2020, False);
-	WMColor *bg = WMCreateRGBColor(scr, 0xF0F0, 0xF0F0, 0xF0F0, False);
+	WMColor *blue = WMCreateRGBColor(scr, 0x2020, 0x4080, 0xC0C0, false);
+	WMColor *darkGreen = WMCreateRGBColor(scr, 0x2020, 0x8080, 0x2020, false);
+	WMColor *bg = WMCreateRGBColor(scr, 0xF0F0, 0xF0F0, 0xF0F0, false);
 	int y = 10;
 	int i;
 
@@ -137,7 +139,7 @@ void testMainWindow(WMScreen *scr)
 	WMSetFrameRelief(frame, WRFlat);
 
 	/* Set up expose event handler */
-	WMCreateEventHandler(WMWidgetView(frame), ExposureMask,
+	WMCreateEventHandler(WMWidgetView(frame), XCB_EVENT_MASK_EXPOSURE,
 	                     paintSamples, frame);
 
 	WMMapSubwidgets(win);
@@ -158,7 +160,7 @@ void testSizeComparison(WMScreen *scr)
 	WMSetWindowCloseAction(win, NULL, NULL);
 
 	vbox = WMCreateBox(win);
-	WMSetBoxHorizontal(vbox, False);
+	WMSetBoxHorizontal(vbox, false);
 	WMResizeWidget(vbox, 600, 600);
 
 	/* Title */
@@ -167,7 +169,7 @@ void testSizeComparison(WMScreen *scr)
 	WMSetLabelFont(label, WMBoldSystemFontOfSize(scr, 18));
 	WMSetLabelTextAlignment(label, WACenter);
 	WMResizeWidget(label, 600, 40);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 40, 0, 5);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 40, 0, 5);
 
 	/* Size samples */
 	for (i = 8; i <= 36; i += 2) {
@@ -180,7 +182,7 @@ void testSizeComparison(WMScreen *scr)
 		WMSetLabelText(label, text);
 		WMSetLabelFont(label, font);
 		WMResizeWidget(label, 600, i + 10);
-		WMAddBoxSubview(vbox, WMWidgetView(label), False, True, i + 10, 0, 2);
+		WMAddBoxSubview(vbox, WMWidgetView(label), false, true, i + 10, 0, 2);
 
 		/* Don't release font - WMLabel takes ownership */
 	}
@@ -223,7 +225,7 @@ void testUnicode(WMScreen *scr)
 	WMSetWindowCloseAction(win, NULL, NULL);
 
 	vbox = WMCreateBox(win);
-	WMSetBoxHorizontal(vbox, False);
+	WMSetBoxHorizontal(vbox, false);
 	WMResizeWidget(vbox, 500, 500);
 
 	/* Title */
@@ -232,7 +234,7 @@ void testUnicode(WMScreen *scr)
 	WMSetLabelFont(label, WMBoldSystemFontOfSize(scr, 16));
 	WMSetLabelTextAlignment(label, WACenter);
 	WMResizeWidget(label, 500, 35);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 35, 0, 5);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 35, 0, 5);
 
 	font = WMSystemFontOfSize(scr, 14);
 
@@ -242,7 +244,7 @@ void testUnicode(WMScreen *scr)
 		WMSetLabelText(label, unicodeTests[i]);
 		WMSetLabelFont(label, font);
 		WMResizeWidget(label, 500, 28);
-		WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 28, 0, 2);
+		WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 28, 0, 2);
 	}
 
 	WMMapSubwidgets(vbox);
@@ -252,7 +254,7 @@ void testUnicode(WMScreen *scr)
 }
 
 static WMLabel *makeMarkupLabel(WMWidget *parent, const char *markup,
-				int width, int height, Bool wrap,
+				int width, int height, bool wrap,
 				WMAlignment align, WMFont *font)
 {
 	WMLabel *label = WMCreateLabel(parent);
@@ -283,7 +285,7 @@ void testMarkup(WMScreen *scr)
 	WMSetWindowCloseAction(win, NULL, NULL);
 
 	vbox = WMCreateBox(win);
-	WMSetBoxHorizontal(vbox, False);
+	WMSetBoxHorizontal(vbox, false);
 	WMResizeWidget(vbox, 640, 520);
 
 	font = WMSystemFontOfSize(scr, 14);
@@ -293,53 +295,53 @@ void testMarkup(WMScreen *scr)
 	WMSetLabelText(label, "1. Plain: Hello World (no markup)");
 	WMSetLabelFont(label, font);
 	WMResizeWidget(label, 640, 25);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 25, 0, 4);
 
 	/* 2. Bold + italic, wrap at small width so span crosses a line */
 	label = makeMarkupLabel(vbox,
 		"2. <b>Bold</b> and <i>italic</i> wrapped around the line boundary",
-		200, 50, True, WALeft, font);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 50, 0, 4);
+		200, 50, true, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 50, 0, 4);
 
 	/* 3. Per-span foreground colors */
 	label = makeMarkupLabel(vbox,
 		"3. mix <span foreground=\"red\">red</span> and <span foreground=\"blue\">blue</span>",
-		640, 25, False, WALeft, font);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+		640, 25, false, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 25, 0, 4);
 
 	/* 4. Mixed font sizes (vertical centering via pixel_size) */
 	label = makeMarkupLabel(vbox,
 		"4. <span font=\"Sans 24\">big</span> small",
-		640, 40, False, WALeft, font);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 40, 0, 4);
+		640, 40, false, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 40, 0, 4);
 
 	/* 5. Malformed markup - must render verbatim, not blank, emit wwarning */
 	label = makeMarkupLabel(vbox,
 		"5. a < b > c (malformed, renders verbatim)",
-		640, 25, False, WALeft, font);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+		640, 25, false, WALeft, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 25, 0, 4);
 
 	/* 6. noWrap center-aligned mixed weight - alignment parity */
 	label = makeMarkupLabel(vbox,
 		"6. <b>center</b> <i>noWrap</i> aligned",
-		640, 25, False, WACenter, font);
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 25, 0, 4);
+		640, 25, false, WACenter, font);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 25, 0, 4);
 
 	/* 7. Image at WIPLeft under markup - text block offsets past image */
 	logo = WMCreatePixmapFromFile(scr, "logo.xpm");
 	if (logo) {
 		label = makeMarkupLabel(vbox,
 			"7. <b>image</b> + <i>markup</i> text",
-			640, 60, False, WALeft, font);
+			640, 60, false, WALeft, font);
 		WMSetLabelImage(label, logo);
 		WMSetLabelImagePosition(label, WIPLeft);
 		WMReleasePixmap(logo);
 	} else {
 		label = makeMarkupLabel(vbox,
 			"7. <b>image</b> + <i>markup</i> text (logo.xpm not found)",
-			640, 60, False, WALeft, font);
+			640, 60, false, WALeft, font);
 	}
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 60, 0, 4);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 60, 0, 4);
 
 	WMReleaseFont(font);
 
@@ -355,13 +357,15 @@ int main(int argc, char **argv)
 
 	WMInitializeApplication("FontTest", &argc, argv);
 
-	dpy = XOpenDisplay("");
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		fprintf(stderr, "Could not open display\n");
 		exit(1);
 	}
 
-	scr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	scr = WMCreateScreen(xc, sn);
 
 	printf("\n=================================================\n");
 	printf("WINGs Font Rendering Test\n");

@@ -39,8 +39,8 @@ typedef struct W_MyWidget {
 static void destroyMyWidget(_MyWidget * mPtr);
 static void paintMyWidget(_MyWidget * mPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 /*
  * Delegates
@@ -109,15 +109,15 @@ MyWidget *CreateMyWidget(WMWidget * parent)
 	/*
 	 * Intercept some events for our widget, so that we can handle them.
 	 */
-	WMCreateEventHandler(mPtr->view, ExposureMask	/* this allows us to know when we should paint */
-			     | StructureNotifyMask,	/* this allows us to know things like when we are destroyed */
+	WMCreateEventHandler(mPtr->view, XCB_EVENT_MASK_EXPOSURE	/* this allows us to know when we should paint */
+			     | XCB_EVENT_MASK_STRUCTURE_NOTIFY,	/* this allows us to know things like when we are destroyed */
 			     handleEvents, mPtr);
 
 	/*
 	 * Intercept some other events. This could be merged with the above
 	 * call, but we separate for more organization.
 	 */
-	WMCreateEventHandler(mPtr->view, ButtonPressMask, handleActionEvents, mPtr);
+	WMCreateEventHandler(mPtr->view, XCB_EVENT_MASK_BUTTON_PRESS, handleActionEvents, mPtr);
 
 	return mPtr;
 }
@@ -135,38 +135,37 @@ static void paintMyWidget(_MyWidget * mPtr)
 		color = WMWhiteColor(scr);
 
 		W_PaintText(mPtr->view, mPtr->view->window, scr->normalFont, 0, 0,
-			    mPtr->view->size.width, WACenter, color, False, mPtr->text, strlen(mPtr->text));
+			    mPtr->view->size.width, WACenter, color, false, mPtr->text, strlen(mPtr->text));
 
 		WMReleaseColor(color);
 	}
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	_MyWidget *mPtr = (_MyWidget *) data;
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch (event->response_type & 0x7f) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintMyWidget(mPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyMyWidget(mPtr);
 		break;
 
 	}
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	_MyWidget *mPtr = (_MyWidget *) data;
 
-	switch (event->type) {
-	case ButtonPress:
-		XBell(mPtr->view->screen->display, 100);
-		XBell(mPtr->view->screen->display, 100);
+	switch (event->response_type & 0x7f) {
+	case XCB_BUTTON_PRESS:
+		wXBell(mPtr->view->screen->display, 100);
 		break;
 	}
 }

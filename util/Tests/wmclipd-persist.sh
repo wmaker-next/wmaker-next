@@ -216,3 +216,18 @@ stop_pid "$WMCLIPD_PID"
 [ ! -e "$NOSTATE_HOME/.local/state" ] ||
 	fail "default run created state under HOME"
 printf 'PASS: default run without --persist creates no state file\n'
+
+# An X disconnect must save the history too: the dead hook unwinds the
+# main loop through the graceful shutdown instead of dying unsaved.
+HIST_DISC="$RUNTIME/hist-disc"
+start_wmclipd --persist --history-file "$HIST_DISC"
+serve_primary 2048
+wait_for 50 log_has "history: added entry" ||
+	fail "disconnect capture was not recorded"
+stop_pid "$SOURCE_PID"
+kill "$XVFB_PID"
+wait_for 30 log_has "history: saved 1 entry to $HIST_DISC" ||
+	fail "X disconnect did not save the history"
+wait_for 30 pid_gone "$WMCLIPD_PID" ||
+	fail "daemon did not exit after the X disconnect"
+printf 'PASS: X disconnect saved the history\n'

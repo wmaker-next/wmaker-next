@@ -52,4 +52,3 @@ void SetTexturePanelCancelAction(TexturePanel *panel, WMCallback *action,
 void SetTexturePanelPixmapPath(TexturePanel *panel, WMPropList *array);
 
 #endif
-

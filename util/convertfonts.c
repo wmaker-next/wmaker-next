@@ -81,13 +81,16 @@ int main(int argc, char **argv)
 	WMPropList *style, *key, *val;
 	char *file = NULL, *oldfont, *newfont;
 	struct stat st;
-	Bool keepXLFD = False;
+	bool keepXLFD = false;
 	int i, ch;
+	/* getopt_long's flag slot is an int *, the bool spelling does
+	 * not fit it */
+	int keep_xlfd = 0;
 
 	struct option longopts[] = {
 		{ "version",	no_argument,	NULL,		'v' },
 		{ "help",	no_argument,	NULL,		'h' },
-		{ "keep-xlfd",	no_argument,	&keepXLFD,	True },
+		{ "keep-xlfd",	no_argument,	&keep_xlfd,	1 },
 		{ NULL,		0,		NULL,		0 }
 	};
 
@@ -107,6 +110,9 @@ int main(int argc, char **argv)
 				print_help(0, 1);
 				/* NOTREACHED */
 		}
+
+	/* getopt_long fills the flag slot during the parse loop above */
+	keepXLFD = keep_xlfd;
 
 	argc -= optind;
 	argv += optind;
@@ -130,7 +136,7 @@ int main(int argc, char **argv)
 	/* this contradicts big time with getstyle */
 	setlocale(LC_ALL, "");
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	style = WMReadPropListFromFile(file);
 	if (!style) {

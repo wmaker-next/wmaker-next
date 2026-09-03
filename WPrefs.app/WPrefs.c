@@ -23,7 +23,6 @@
 #include "WPrefs.h"
 #include <assert.h>
 #include <unistd.h>
-#include <X11/Xatom.h>
 #include <WINGs/WXProp.h>
 
 #ifdef HAVE_STDNORETURN
@@ -71,7 +70,7 @@ static char *WMSoundDBPath;
 /* installed global WMSound domain. Read-only */
 static WMPropList *WMSoundGlobalDB;
 
-static Bool TIFFOK = False;
+static bool TIFFOK = false;
 
 #define INITIALIZED_PANEL	(1<<0)
 
@@ -109,11 +108,11 @@ static WMPropList *effectiveValue(WMPropList *dict, WMPropList *key)
  * changed. Fall back to GlobalDB on both sides so a key the compress step
  * dropped (because it matched the global default) does not read as a fresh
  * addition on the next save. */
-static Bool changedStartupOnlyKey(WMPropList *before, WMPropList *after)
+static bool changedStartupOnlyKey(WMPropList *before, WMPropList *after)
 {
 	WMPropList *keys, *key, *v1, *v2;
 	int i, n, side;
-	Bool hit = False;
+	bool hit = false;
 
 	for (side = 0; side < 2 && !hit; side++) {
 		WMPropList *dict = side ? before : after;
@@ -131,7 +130,7 @@ static Bool changedStartupOnlyKey(WMPropList *before, WMPropList *after)
 			if (v1 == v2)
 				continue;
 			if (!v1 || !v2 || !WMIsPropListEqualTo(v1, v2))
-				hit = True;
+				hit = true;
 		}
 		WMReleasePropList(keys);
 	}
@@ -216,7 +215,7 @@ static void save(WMWidget * w, void *data)
 	 * reachable, e.g. talking to an older Window Maker; that channel
 	 * only accepts Reconfigure, so a restart request degrades to the
 	 * live-apply subset and the frozen keys wait for a manual restart */
-	WXSendWmakerCommand(WMScreenDisplay(WMWidgetScreen(w)), "Reconfigure");
+	WXSendWmakerCommandXC(WMScreenDisplay(WMWidgetScreen(w)), WMWidgetScreen(w)->screen, "Reconfigure");
 }
 
 static void undo(WMWidget * w, void *data)
@@ -266,7 +265,7 @@ static void prepareForClose(void)
 static void toggleBalloons(WMWidget *w, void *data)
 {
 	WMUserDefaults *udb = WMGetStandardUserDefaults();
-	Bool flag;
+	bool flag;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) w;
@@ -285,7 +284,7 @@ static void createMainWindow(WMScreen * scr)
 	WMFont *font;
 	char buffer[128];
 	WMUserDefaults *udb;
-	Bool flag;
+	bool flag;
 
 	WPrefs.win = WMCreateWindow(scr, "wprefs");
 	WMResizeWidget(WPrefs.win, 520, 390);
@@ -299,8 +298,8 @@ static void createMainWindow(WMScreen * scr)
 	WMResizeWidget(WPrefs.scrollV, 500, 87);
 	WMMoveWidget(WPrefs.scrollV, 10, 10);
 	WMSetScrollViewRelief(WPrefs.scrollV, WRSunken);
-	WMSetScrollViewHasHorizontalScroller(WPrefs.scrollV, True);
-	WMSetScrollViewHasVerticalScroller(WPrefs.scrollV, False);
+	WMSetScrollViewHasHorizontalScroller(WPrefs.scrollV, true);
+	WMSetScrollViewHasVerticalScroller(WPrefs.scrollV, false);
 	scroller = WMGetScrollViewHorizontalScroller(WPrefs.scrollV);
 	WMSetScrollerArrowsPosition(scroller, WSANone);
 
@@ -519,7 +518,7 @@ void CreateImages(WMScreen *scr, RContext *rc, RImage *xis, const char *file,
 }
 
 
-void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, Bool alt)
+void SetButtonImageFromFile(WMScreen *scr, WMButton *btn, const char *file, bool alt)
 {
 	WMPixmap *icon;
 	char *path;
@@ -617,13 +616,13 @@ void Initialize(WMScreen * scr)
 	char **list;
 	int i;
 	char *path;
-	Atom net_wm_pid;
-	Display *dpy = WMScreenDisplay(scr);
+	xcb_atom_t net_wm_pid;
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
 
 	list = RSupportedFileFormats();
 	for (i = 0; list[i] != NULL; i++) {
 		if (strcmp(list[i], "TIFF") == 0) {
-			TIFFOK = True;
+			TIFFOK = true;
 			break;
 		}
 	}
@@ -650,15 +649,15 @@ void Initialize(WMScreen * scr)
 
 	WMRealizeWidget(WPrefs.win);
 
-	net_wm_pid = XInternAtom(dpy, "_NET_WM_PID", False);
+	net_wm_pid = wx_static_atoms[W_ATOM_NET_WM_PID];
 	WXSetCardinal(dpy, WMWidgetXID(WPrefs.win), net_wm_pid, (uint32_t)getpid());
 
 	WMSetWindowMiniwindowImage(WPrefs.win, WMGetApplicationIconImage(scr));
 
 	WMMapWidget(WPrefs.win);
-	XFlush(WMScreenDisplay(scr));
+	wXFlush(WMScreenDisplay(scr));
 	WMSetLabelText(WPrefs.statusL, _("Loading Window Maker configuration files..."));
-	XFlush(WMScreenDisplay(scr));
+	wXFlush(WMScreenDisplay(scr));
 	loadConfigurations(scr, WPrefs.win);
 	loadSoundDomain(scr, WPrefs.win);
 
@@ -945,7 +944,7 @@ int GetIntegerForKey(const char *defaultName)
 	return value;
 }
 
-Bool GetBoolForKey(const char *defaultName)
+bool GetBoolForKey(const char *defaultName)
 {
 	int value;
 	char *str;
@@ -953,18 +952,18 @@ Bool GetBoolForKey(const char *defaultName)
 	str = GetStringForKey(defaultName);
 
 	if (!str)
-		return False;
+		return false;
 
 	if (sscanf(str, "%i", &value) == 1 && value != 0)
-		return True;
+		return true;
 
 	if (strcasecmp(str, "YES") == 0)
-		return True;
+		return true;
 
 	if (strcasecmp(str, "Y") == 0)
-		return True;
+		return true;
 
-	return False;
+	return false;
 }
 
 void SetIntegerForKey(int value, const char *defaultName)
@@ -998,7 +997,7 @@ static WMUserDefaults *wmGlobalDefaults(void)
 	return defaults;
 }
 
-Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback)
+bool GetWMGlobalBoolForKey(const char *defaultName, bool fallback)
 {
 	WMUserDefaults *defaults = wmGlobalDefaults();
 
@@ -1007,7 +1006,7 @@ Bool GetWMGlobalBoolForKey(const char *defaultName, Bool fallback)
 	return WMGetUDBoolForKey(defaults, defaultName);
 }
 
-void SetWMGlobalBoolForKey(Bool value, const char *defaultName)
+void SetWMGlobalBoolForKey(bool value, const char *defaultName)
 {
 	WMUserDefaults *defaults = wmGlobalDefaults();
 
@@ -1015,7 +1014,7 @@ void SetWMGlobalBoolForKey(Bool value, const char *defaultName)
 	WMSaveUserDefaults(defaults);
 }
 
-void SetBoolForKey(Bool value, const char *defaultName)
+void SetBoolForKey(bool value, const char *defaultName)
 {
 	static WMPropList *yes = NULL, *no = NULL;
 
@@ -1101,7 +1100,7 @@ void wm_enum_popup_store(WMPopUpButton *popup, const wm_enum_choice *table,
 		SetStringForKey(table[i].db_value, key_name);
 }
 
-Bool GetDefaultBoolForKey(const char *defaultName)
+bool GetDefaultBoolForKey(const char *defaultName)
 {
 	const char *def = wConfigSchemaDefault(defaultName);
 

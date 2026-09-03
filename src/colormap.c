@@ -25,18 +25,18 @@
 #include "wconfig.h"
 
 #include "WindowMaker.h"
-#include <X11/Xatom.h>
 
 #include "window.h"
 #include "framewin.h"
 #include "colormap.h"
+#include "misc.h"
 
 
 void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 {
 	int i;
-	XWindowAttributes attributes;
-	Colormap cmap;
+	WXWindowAttributes attributes;
+	xcb_colormap_t cmap;
 	int done = 0;
 
 	scr->cmap_window = wwin;
@@ -49,14 +49,14 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 	/* install colormap for all windows of the client */
 	if (wwin && wwin->cmap_window_no > 0 && wwin->cmap_windows) {
 		for (i = wwin->cmap_window_no - 1; i >= 0; i--) {
-			Window w;
+			xcb_window_t w;
 
 			w = wwin->cmap_windows[i];
 			if (w == wwin->client_win)
 				done = 1;
 
-			XGetWindowAttributes(dpy, w, &attributes);
-			if (attributes.colormap == None)
+			wXGetWindowAttributes(xconn, w, &attributes, NULL);
+			if (attributes.colormap == XCB_NONE)
 				attributes.colormap = scr->colormap;
 
 			if (scr->current_colormap != attributes.colormap) {
@@ -67,7 +67,7 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 				 * So, we can't install any colormaps.
 				 */
 				if (!scr->flags.colormap_stuff_blocked)
-					XInstallColormap(dpy, attributes.colormap);
+					xcb_install_colormap(xconn, attributes.colormap);
 			}
 		}
 	}
@@ -79,19 +79,19 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 		 * the screen default by definition, so neither needs a
 		 * round-trip here */
 		cmap = wwin ? wwin->colormap : scr->colormap;
-		if (cmap == None)
+		if (cmap == XCB_NONE)
 			cmap = scr->colormap;
 
 		if (scr->current_colormap != cmap) {
 			scr->current_colormap = cmap;
 			if (!scr->flags.colormap_stuff_blocked)
-				XInstallColormap(dpy, cmap);
+				xcb_install_colormap(xconn, cmap);
 		}
 	}
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
-void wColormapAllowClientInstallation(WScreen * scr, Bool starting)
+void wColormapAllowClientInstallation(WScreen * scr, bool starting)
 {
 	scr->flags.colormap_stuff_blocked = starting;
 	/*
@@ -100,7 +100,7 @@ void wColormapAllowClientInstallation(WScreen * scr, Bool starting)
 	 * stuff.
 	 */
 	if (!starting) {
-		XInstallColormap(dpy, scr->current_colormap);
-		XFlush(dpy);
+		xcb_install_colormap(xconn, scr->current_colormap);
+		wXFlush(xconn);
 	}
 }

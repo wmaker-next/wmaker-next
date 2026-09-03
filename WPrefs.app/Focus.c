@@ -149,7 +149,7 @@ static void raiseTextChanged(void *observerData, WMNotification * notification)
 
 	if (panel->raiseDelaySelected) {
 		for (i = 0; i < 5; i++) {
-			WMSetButtonSelected(panel->raisB[i], False);
+			WMSetButtonSelected(panel->raisB[i], false);
 		}
 		panel->raiseDelaySelected = 0;
 	}
@@ -176,18 +176,18 @@ static void createPanel(Panel * p)
 
 	box = WMCreateBox(panel->kfocF);
 	WMSetViewExpandsToParent(WMWidgetView(box), 10, 15, 10, 10);
-	WMSetBoxHorizontal(box, False);
+	WMSetBoxHorizontal(box, false);
 
 	panel->kfocB[0] = WMCreateRadioButton(box);
 	WMSetButtonText(panel->kfocB[0], _("Manual:  Click on the window to set "
 	                                   "keyboard input focus"));
-	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[0]), True, True, 20, 0, 0);
+	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[0]), true, true, 20, 0, 0);
 
 	panel->kfocB[1] = WMCreateRadioButton(box);
 	WMGroupButtons(panel->kfocB[0], panel->kfocB[1]);
 	WMSetButtonText(panel->kfocB[1], _("Auto:  Set keyboard input focus to "
 	                                   "the window under the mouse pointer"));
-	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[1]), True, True, 20, 0, 0);
+	WMAddBoxSubview(box, WMWidgetView(panel->kfocB[1]), true, true, 20, 0, 0);
 
 	WMMapSubwidgets(box);
 	WMMapWidget(box);
@@ -231,15 +231,15 @@ static void createPanel(Panel * p)
 		panel->raisB[i] = WMCreateCustomButton(panel->raisF, WBBStateChangeMask);
 		WMResizeWidget(panel->raisB[i], 25, 25);
 		WMMoveWidget(panel->raisB[i], 12 + (30 * i), 25);
-		WMSetButtonBordered(panel->raisB[i], False);
+		WMSetButtonBordered(panel->raisB[i], false);
 		WMSetButtonImagePosition(panel->raisB[i], WIPImageOnly);
 		WMSetButtonAction(panel->raisB[i], pushDelayButton, panel);
 		if (i > 0)
 			WMGroupButtons(panel->raisB[0], panel->raisB[i]);
 		snprintf(buf, sizeof(buf), DELAY_ICON, i);
-		SetButtonImageFromFile(scr, panel->raisB[i], buf, False);
+		SetButtonImageFromFile(scr, panel->raisB[i], buf, false);
 		snprintf(buf, sizeof(buf), DELAY_ICON_S, i);
-		SetButtonImageFromFile(scr, panel->raisB[i], buf, True);
+		SetButtonImageFromFile(scr, panel->raisB[i], buf, true);
 	}
 
 	panel->raisT = WMCreateTextField(panel->raisF);

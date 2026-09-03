@@ -1,3 +1,22 @@
+/*
+ *  WINGs widget core: screens, widget lifecycle and defaults
+ *
+ *  Copyright (c) 1997-2003 Alfredo K. Kojima
+ *  Copyright (c) 2026 Window Maker Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include <cairo-xcb.h>
 
@@ -5,13 +24,8 @@
 #include "wconfig.h"
 
 #include <fontconfig/fontconfig.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib-xcb.h>
-#include <X11/keysym.h>
-#include <X11/cursorfont.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
-#include <X11/Xlocale.h>
 
 /********** data ************/
 
@@ -393,7 +407,7 @@ static WMColor *pickCellColor(W_Screen *screen, char c, unsigned char *mask_cell
 static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height, int masked)
 {
 	RContext *rc = sPtr->rcontext;
-	Pixmap pixmap, mask = None;
+	xcb_pixmap_t pixmap, mask = XCB_NONE;
 	cairo_surface_t *img, *m, *ps;
 	cairo_t *cr;
 	unsigned char *row, *mrow;
@@ -425,7 +439,9 @@ static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height,
 	}
 	cairo_surface_mark_dirty(img);
 
-	pixmap = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, sPtr->depth);
+	pixmap = xcb_generate_id(sPtr->display);
+	xcb_create_pixmap(sPtr->display, sPtr->depth, pixmap,
+			  W_DRAWABLE(sPtr), width, height);
 	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pixmap,
 				      rc->xvisual, width, height);
 	cr = cairo_create(ps);
@@ -438,7 +454,9 @@ static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height,
 
 	if (masked) {
 		cairo_surface_mark_dirty(m);
-		mask = XCreatePixmap(sPtr->display, W_DRAWABLE(sPtr), width, height, 1);
+		mask = xcb_generate_id(sPtr->display);
+		xcb_create_pixmap(sPtr->display, 1, mask,
+				  W_DRAWABLE(sPtr), width, height);
 		ps = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 							 (xcb_pixmap_t)mask, width, height);
 		cr = cairo_create(ps);
@@ -457,7 +475,7 @@ static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height,
 #define T_WINGS_IMAGES_FILE  RESOURCE_PATH"/Images.tiff"
 #define X_WINGS_IMAGES_FILE  RESOURCE_PATH"/Images.xpm"
 
-static Bool loadPixmaps(WMScreen * scr)
+static bool loadPixmaps(WMScreen * scr)
 {
 	RImage *image, *tmp;
 	RColor gray;
@@ -476,7 +494,7 @@ static Bool loadPixmaps(WMScreen * scr)
 		image = RLoadImage(scr->rcontext, X_WINGS_IMAGES_FILE, 0);
 	if (!image) {
 		wwarning(_("WINGs: could not load widget images file: %s"), RMessageForError(RErrorCode));
-		return False;
+		return false;
 	}
 	/* home icon */
 	/* make it have a gray background */
@@ -563,26 +581,30 @@ static Bool loadPixmaps(WMScreen * scr)
 
 	RReleaseImage(image);
 
-	return True;
+	return true;
 }
 
 WMScreen *WMOpenScreen(const char *display)
 {
-	Display *dpy = XOpenDisplay(display);
+	xcb_connection_t *xc;
+	int sn;
 
-	if (!dpy) {
-		wwarning(_("WINGs: could not open display %s"), XDisplayName(display));
+	xc = xcb_connect(display, &sn);
+	if (xcb_connection_has_error(xc)) {
+		wwarning(_("WINGs: could not open display %s"),
+			 display ? display : getenv("DISPLAY"));
+		xcb_disconnect(xc);
 		return NULL;
 	}
 
-	return WMCreateSimpleApplicationScreen(dpy);
+	return WMCreateSimpleApplicationScreen(xc, sn);
 }
 
-WMScreen *WMCreateSimpleApplicationScreen(Display * display)
+WMScreen *WMCreateSimpleApplicationScreen(xcb_connection_t * display, int screen)
 {
 	WMScreen *scr;
 
-	scr = WMCreateScreen(display, DefaultScreen(display));
+	scr = WMCreateScreen(display, screen);
 
 	scr->aflags.hasAppIcon = 0;
 	scr->aflags.simpleApplication = 1;
@@ -590,62 +612,46 @@ WMScreen *WMCreateSimpleApplicationScreen(Display * display)
 	return scr;
 }
 
-WMScreen *WMCreateScreen(Display * display, int screen)
+WMScreen *WMCreateScreen(xcb_connection_t * display, int screen)
 {
 	return WMCreateScreenWithRContext(display, screen,
-			RCreateContextXCB(XGetXCBConnection(display), screen, NULL));
+			RCreateContextXCB(display, screen, NULL));
 }
 
-WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * context)
+/* the two masks every keyboard path shares: what the grab fan-out
+ * drops and which bit the widgets read as Alt */
+void W_UpdateScreenModifierMasks(W_Screen *scrPtr)
+{
+	WXModifierSlots slots;
+	struct xkb_keymap *keymap;
+	unsigned int altMask, metaMask;
+
+	keymap = scrPtr->xkb ? xkb_state_get_keymap(W_XkbStateOf(scrPtr))
+			     : NULL;
+	W_XkbModifierSlots(scrPtr->display, keymap, &slots);
+
+	altMask = slots.alt >= 0 ? 1u << slots.alt : 0;
+	metaMask = slots.meta >= 0 ? 1u << slots.meta : 0;
+
+	scrPtr->ignoredModifierMask =
+		(slots.numlock >= 0 ? 1u << slots.numlock : 0)
+		| (slots.scrolllock >= 0 ? 1u << slots.scrolllock : 0)
+		| XCB_MOD_MASK_LOCK;
+	scrPtr->altModifierMask = altMask ? altMask
+		: (metaMask ? metaMask : XCB_MOD_MASK_1);
+}
+
+WMScreen *WMCreateScreenWithRContext(xcb_connection_t * display, int screen, RContext * context)
 {
 	W_Screen *scrPtr;
-	XVisualInfo vtempl, *vinfo;
-	int nret;
 	static int initialized = 0;
-	static char *atomNames[] = {
-		"_GNUSTEP_WM_ATTR",
-		"WM_DELETE_WINDOW",
-		"WM_PROTOCOLS",
-		"CLIPBOARD",
-		"XdndAware",
-		"XdndSelection",
-		"XdndEnter",
-		"XdndLeave",
-		"XdndPosition",
-		"XdndDrop",
-		"XdndFinished",
-		"XdndTypeList",
-		"XdndActionList",
-		"XdndActionDescription",
-		"XdndStatus",
-		"XdndActionCopy",
-		"XdndActionMove",
-		"XdndActionLink",
-		"XdndActionAsk",
-		"XdndActionPrivate",
-		"_WINGS_DND_MOUSE_OFFSET",
-		"WM_STATE",
-		"UTF8_STRING",
-		"_NET_WM_NAME",
-		"_NET_WM_ICON_NAME",
-		"_NET_WM_ICON",
-	};
-	Atom atoms[wlengthof(atomNames)];
 	int i;
-	Atom *rootWinProps;
 	int exists[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	int count;
-	XModifierKeymap *modmap;
-	KeyCode nlock, slock;
-	KeyCode altl, altr, metal, metar;
-	static int mask_table[8] = {
-		ShiftMask, LockMask, ControlMask, Mod1Mask,
-		Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask
-	};
-	unsigned int numLockMask = 0, scrollLockMask = 0;
-	unsigned int altMask = 0, metaMask = 0;
-	XColor bla;
-	Pixmap blank;
+	xcb_list_properties_cookie_t pck;
+	xcb_list_properties_reply_t *prep;
+	int plen;
+	WXColor bla;
+	xcb_pixmap_t blank;
 
 	if (!initialized) {
 
@@ -670,22 +676,15 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	scrPtr->depth = context->depth;
 	scrPtr->lastEventTime = 0;
 	scrPtr->colormap = context->cmap;
-	/* wraster only exposes the xcb visualtype now, so resolve the
-	 * libX11 Visual* WINGs hands to XCreateWindow here */
-	vtempl.visualid = context->xvisual->visual_id;
-	vinfo = XGetVisualInfo(display, VisualIDMask, &vtempl, &nret);
-	scrPtr->visual = vinfo ? vinfo[0].visual : DefaultVisual(display, screen);
-	if (vinfo)
-		XFree(vinfo);
-	if (context->xvisual_argb) {
-		vtempl.visualid = context->xvisual_argb->visual_id;
-		vinfo = XGetVisualInfo(display, VisualIDMask, &vtempl, &nret);
-		scrPtr->visual_argb = vinfo ? vinfo[0].visual : NULL;
-		if (vinfo)
-			XFree(vinfo);
-	}
+	/* wraster picked the visualtype on the xcb side, keep it */
+	scrPtr->visual = wXVisualTypeForID(display, context->xvisual->visual_id);
+	if (scrPtr->visual == NULL)
+		scrPtr->visual = wXDefaultVisualType(display, screen);
+	if (context->xvisual_argb)
+		scrPtr->visual_argb = wXVisualTypeForID(display,
+						context->xvisual_argb->visual_id);
 
-	scrPtr->rootWin = RootWindow(display, screen);
+	scrPtr->rootWin = wXRootWindow(display, screen);
 
 	/* WMCreateFont() calls FcNameParse() before anything else has
 	 * initialised fontconfig (XftFontOpenName used to do it as a
@@ -698,86 +697,59 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	WMScreenReadUIScale(scrPtr);
 
 	/* Create missing CUT_BUFFERs */
-	rootWinProps = XListProperties(display, scrPtr->rootWin, &count);
-	for (i = 0; i < count; i++) {
-		switch (rootWinProps[i]) {
-		case XA_CUT_BUFFER0:
-			exists[0] = 1;
-			break;
-		case XA_CUT_BUFFER1:
-			exists[1] = 1;
-			break;
-		case XA_CUT_BUFFER2:
-			exists[2] = 1;
-			break;
-		case XA_CUT_BUFFER3:
-			exists[3] = 1;
-			break;
-		case XA_CUT_BUFFER4:
-			exists[4] = 1;
-			break;
-		case XA_CUT_BUFFER5:
-			exists[5] = 1;
-			break;
-		case XA_CUT_BUFFER6:
-			exists[6] = 1;
-			break;
-		case XA_CUT_BUFFER7:
-			exists[7] = 1;
-			break;
-		default:
-			break;
+	pck = xcb_list_properties(display, scrPtr->rootWin);
+	prep = xcb_list_properties_reply(display, pck, NULL);
+	if (prep) {
+		const xcb_atom_t *props = xcb_list_properties_atoms(prep);
+
+		plen = xcb_list_properties_atoms_length(prep);
+
+		for (i = 0; i < plen; i++) {
+			switch (props[i]) {
+			case XCB_ATOM_CUT_BUFFER0:
+				exists[0] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER1:
+				exists[1] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER2:
+				exists[2] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER3:
+				exists[3] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER4:
+				exists[4] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER5:
+				exists[5] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER6:
+				exists[6] = 1;
+				break;
+			case XCB_ATOM_CUT_BUFFER7:
+				exists[7] = 1;
+				break;
+			default:
+				break;
+			}
 		}
-	}
-	if (rootWinProps) {
-		XFree(rootWinProps);
+		free(prep);
 	}
 	for (i = 0; i < 8; i++) {
 		if (!exists[i]) {
-			XStoreBuffer(display, "", 0, i);
+			wXStoreBuffer(display, screen, "", 0, i);
 		}
 	}
 
 	scrPtr->ignoredModifierMask = 0;
 	scrPtr->altModifierMask = 0;
 
-	nlock = XKeysymToKeycode(display, XK_Num_Lock);
-	slock = XKeysymToKeycode(display, XK_Scroll_Lock);
-	altl = XKeysymToKeycode(display, XK_Alt_L);
-	altr = XKeysymToKeycode(display, XK_Alt_R);
-	metal = XKeysymToKeycode(display, XK_Meta_L);
-	metar = XKeysymToKeycode(display, XK_Meta_R);
+	/* load the xkbcommon keymap first so the modifier classification
+	 * can resolve the lock-key keycodes against it */
+	W_InitXkb(scrPtr);
 
-	/*
-	 * Find out the masks for the NumLock and ScrollLock modifiers,
-	 * so that we can bind the grabs for when they are enabled too.
-	 * Also resolve which mask the Alt (or, failing that, Meta) keys
-	 * generate so widgets do not have to hard-code Mod1Mask.
-	 */
-	modmap = XGetModifierMapping(display);
-
-	if (modmap != NULL && modmap->max_keypermod > 0) {
-		for (i = 0; i < 8 * modmap->max_keypermod; i++) {
-			KeyCode kc = modmap->modifiermap[i];
-
-			if (kc == 0)
-				continue;
-			if (kc == nlock)
-				numLockMask = mask_table[i / modmap->max_keypermod];
-			else if (kc == slock)
-				scrollLockMask = mask_table[i / modmap->max_keypermod];
-			if (kc == altl || kc == altr)
-				altMask |= mask_table[i / modmap->max_keypermod];
-			else if (kc == metal || kc == metar)
-				metaMask |= mask_table[i / modmap->max_keypermod];
-		}
-	}
-
-	if (modmap)
-		XFreeModifiermap(modmap);
-
-	scrPtr->ignoredModifierMask = numLockMask | scrollLockMask | LockMask;
-	scrPtr->altModifierMask = altMask ? altMask : (metaMask ? metaMask : Mod1Mask);
+	W_UpdateScreenModifierMasks(scrPtr);
 
 	/* initially allocate some colors */
 	WMWhiteColor(scrPtr);
@@ -785,8 +757,8 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 	WMGrayColor(scrPtr);
 	WMDarkGrayColor(scrPtr);
 
-	scrPtr->stipple = XCreateBitmapFromData(display, W_DRAWABLE(scrPtr),
-						STIPPLE_BITS, STIPPLE_WIDTH, STIPPLE_HEIGHT);
+	scrPtr->stipple = wXCreateBitmapFromData(display, W_DRAWABLE(scrPtr),
+						 STIPPLE_BITS, STIPPLE_WIDTH, STIPPLE_HEIGHT);
 
 	scrPtr->antialiasedText = WINGsConfiguration.antialiasedText;
 
@@ -804,117 +776,116 @@ WMScreen *WMCreateScreenWithRContext(Display * display, int screen, RContext * c
 		return NULL;
 	}
 
-	/* create input method stuff */
+	/* input method stuff, after the xkbcommon stack loaded above */
 	W_InitIM(scrPtr);
 
 	scrPtr->checkButtonImageOn = makePixmap(scrPtr, CHECK_BUTTON_ON,
-						CHECK_BUTTON_ON_WIDTH, CHECK_BUTTON_ON_HEIGHT, False);
+						CHECK_BUTTON_ON_WIDTH, CHECK_BUTTON_ON_HEIGHT, false);
 
 	scrPtr->checkButtonImageOff = makePixmap(scrPtr, CHECK_BUTTON_OFF,
-						 CHECK_BUTTON_OFF_WIDTH, CHECK_BUTTON_OFF_HEIGHT, False);
+						 CHECK_BUTTON_OFF_WIDTH, CHECK_BUTTON_OFF_HEIGHT, false);
 
 	scrPtr->radioButtonImageOn = makePixmap(scrPtr, RADIO_BUTTON_ON,
-						RADIO_BUTTON_ON_WIDTH, RADIO_BUTTON_ON_HEIGHT, False);
+						RADIO_BUTTON_ON_WIDTH, RADIO_BUTTON_ON_HEIGHT, false);
 
 	scrPtr->radioButtonImageOff = makePixmap(scrPtr, RADIO_BUTTON_OFF,
-						 RADIO_BUTTON_OFF_WIDTH, RADIO_BUTTON_OFF_HEIGHT, False);
+						 RADIO_BUTTON_OFF_WIDTH, RADIO_BUTTON_OFF_HEIGHT, false);
 
 	scrPtr->tristateButtonImageOn = makePixmap(scrPtr, TRISTATE_BUTTON_ON,
-	                                           TRISTATE_BUTTON_ON_WIDTH, TRISTATE_BUTTON_ON_HEIGHT, False);
+	                                           TRISTATE_BUTTON_ON_WIDTH, TRISTATE_BUTTON_ON_HEIGHT, false);
 
 	scrPtr->tristateButtonImageOff = makePixmap(scrPtr, TRISTATE_BUTTON_OFF,
-	                                            TRISTATE_BUTTON_OFF_WIDTH, TRISTATE_BUTTON_OFF_HEIGHT, False);
+	                                            TRISTATE_BUTTON_OFF_WIDTH, TRISTATE_BUTTON_OFF_HEIGHT, false);
 
 	scrPtr->tristateButtonImageTri = makePixmap(scrPtr, TRISTATE_BUTTON_TRI,
-	                                            TRISTATE_BUTTON_TRI_WIDTH, TRISTATE_BUTTON_TRI_HEIGHT, False);
+	                                            TRISTATE_BUTTON_TRI_WIDTH, TRISTATE_BUTTON_TRI_HEIGHT, false);
 
-	scrPtr->buttonArrow = makePixmap(scrPtr, BUTTON_ARROW, BUTTON_ARROW_WIDTH, BUTTON_ARROW_HEIGHT, False);
+	scrPtr->buttonArrow = makePixmap(scrPtr, BUTTON_ARROW, BUTTON_ARROW_WIDTH, BUTTON_ARROW_HEIGHT, false);
 
 	scrPtr->pushedButtonArrow = makePixmap(scrPtr, BUTTON_ARROW2,
-					       BUTTON_ARROW2_WIDTH, BUTTON_ARROW2_HEIGHT, False);
+					       BUTTON_ARROW2_WIDTH, BUTTON_ARROW2_HEIGHT, false);
 
 	scrPtr->scrollerDimple = makePixmap(scrPtr, SCROLLER_DIMPLE,
-					    SCROLLER_DIMPLE_WIDTH, SCROLLER_DIMPLE_HEIGHT, False);
+					    SCROLLER_DIMPLE_WIDTH, SCROLLER_DIMPLE_HEIGHT, false);
 
 	scrPtr->upArrow = makePixmap(scrPtr, SCROLLER_ARROW_UP,
-				     SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT, True);
+				     SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT, true);
 
 	scrPtr->downArrow = makePixmap(scrPtr, SCROLLER_ARROW_DOWN,
-				       SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT, True);
+				       SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT, true);
 
 	scrPtr->leftArrow = makePixmap(scrPtr, SCROLLER_ARROW_LEFT,
-				       SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT, True);
+				       SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT, true);
 
 	scrPtr->rightArrow = makePixmap(scrPtr, SCROLLER_ARROW_RIGHT,
-					SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT, True);
+					SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT, true);
 
 	scrPtr->hiUpArrow = makePixmap(scrPtr, HI_SCROLLER_ARROW_UP,
-				       SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT, True);
+				       SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT, true);
 
 	scrPtr->hiDownArrow = makePixmap(scrPtr, HI_SCROLLER_ARROW_DOWN,
-					 SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT, True);
+					 SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT, true);
 
 	scrPtr->hiLeftArrow = makePixmap(scrPtr, HI_SCROLLER_ARROW_LEFT,
-					 SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT, True);
+					 SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT, true);
 
 	scrPtr->hiRightArrow = makePixmap(scrPtr, HI_SCROLLER_ARROW_RIGHT,
-					  SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT, True);
+					  SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT, true);
 
 	scrPtr->popUpIndicator = makePixmap(scrPtr, POPUP_INDICATOR,
-					    POPUP_INDICATOR_WIDTH, POPUP_INDICATOR_HEIGHT, True);
+					    POPUP_INDICATOR_WIDTH, POPUP_INDICATOR_HEIGHT, true);
 
 	scrPtr->pullDownIndicator = makePixmap(scrPtr, PULLDOWN_INDICATOR,
-					       PULLDOWN_INDICATOR_WIDTH, PULLDOWN_INDICATOR_HEIGHT, True);
+					       PULLDOWN_INDICATOR_WIDTH, PULLDOWN_INDICATOR_HEIGHT, true);
 
-	scrPtr->checkMark = makePixmap(scrPtr, CHECK_MARK, CHECK_MARK_WIDTH, CHECK_MARK_HEIGHT, True);
+	scrPtr->checkMark = makePixmap(scrPtr, CHECK_MARK, CHECK_MARK_WIDTH, CHECK_MARK_HEIGHT, true);
 
 	loadPixmaps(scrPtr);
 
-	scrPtr->defaultCursor = XCreateFontCursor(display, XC_left_ptr);
+	scrPtr->defaultCursor = wXLoadCursor(display, screen, "left_ptr");
 
-	scrPtr->textCursor = XCreateFontCursor(display, XC_xterm);
+	scrPtr->textCursor = wXLoadCursor(display, screen, "xterm");
 
-	blank = XCreateBitmapFromData(display, W_DRAWABLE(scrPtr), "\0", 1, 1);
-	scrPtr->invisibleCursor = XCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
-	XFreePixmap(display, blank);
+	blank = wXCreateBitmapFromData(display, W_DRAWABLE(scrPtr), "\0", 1, 1);
+	scrPtr->invisibleCursor = wXCreatePixmapCursor(display, blank, blank, &bla, &bla, 0, 0);
+	wXFreePixmap(display, blank);
 
-	XInternAtoms(display, atomNames, wlengthof(atomNames), False, atoms);
+	WXStaticAtomsInit(display);
 
-	i = 0;
-	scrPtr->attribsAtom = atoms[i++];
+	scrPtr->attribsAtom = wx_static_atoms[W_ATOM_GNUSTEP_WM_ATTR];
 
-	scrPtr->deleteWindowAtom = atoms[i++];
+	scrPtr->deleteWindowAtom = wx_static_atoms[W_ATOM_WM_DELETE_WINDOW];
 
-	scrPtr->protocolsAtom = atoms[i++];
+	scrPtr->protocolsAtom = wx_static_atoms[W_ATOM_WM_PROTOCOLS];
 
-	scrPtr->clipboardAtom = atoms[i++];
+	scrPtr->clipboardAtom = wx_static_atoms[W_ATOM_CLIPBOARD];
 
-	scrPtr->xdndAwareAtom = atoms[i++];
-	scrPtr->xdndSelectionAtom = atoms[i++];
-	scrPtr->xdndEnterAtom = atoms[i++];
-	scrPtr->xdndLeaveAtom = atoms[i++];
-	scrPtr->xdndPositionAtom = atoms[i++];
-	scrPtr->xdndDropAtom = atoms[i++];
-	scrPtr->xdndFinishedAtom = atoms[i++];
-	scrPtr->xdndTypeListAtom = atoms[i++];
-	scrPtr->xdndActionListAtom = atoms[i++];
-	scrPtr->xdndActionDescriptionAtom = atoms[i++];
-	scrPtr->xdndStatusAtom = atoms[i++];
+	scrPtr->xdndAwareAtom = wx_static_atoms[W_ATOM_XDND_AWARE];
+	scrPtr->xdndSelectionAtom = wx_static_atoms[W_ATOM_XDND_SELECTION];
+	scrPtr->xdndEnterAtom = wx_static_atoms[W_ATOM_XDND_ENTER];
+	scrPtr->xdndLeaveAtom = wx_static_atoms[W_ATOM_XDND_LEAVE];
+	scrPtr->xdndPositionAtom = wx_static_atoms[W_ATOM_XDND_POSITION];
+	scrPtr->xdndDropAtom = wx_static_atoms[W_ATOM_XDND_DROP];
+	scrPtr->xdndFinishedAtom = wx_static_atoms[W_ATOM_XDND_FINISHED];
+	scrPtr->xdndTypeListAtom = wx_static_atoms[W_ATOM_XDND_TYPE_LIST];
+	scrPtr->xdndActionListAtom = wx_static_atoms[W_ATOM_XDND_ACTION_LIST];
+	scrPtr->xdndActionDescriptionAtom = wx_static_atoms[W_ATOM_XDND_ACTION_DESCRIPTION];
+	scrPtr->xdndStatusAtom = wx_static_atoms[W_ATOM_XDND_STATUS];
 
-	scrPtr->xdndActionCopy = atoms[i++];
-	scrPtr->xdndActionMove = atoms[i++];
-	scrPtr->xdndActionLink = atoms[i++];
-	scrPtr->xdndActionAsk = atoms[i++];
-	scrPtr->xdndActionPrivate = atoms[i++];
+	scrPtr->xdndActionCopy = wx_static_atoms[W_ATOM_XDND_ACTION_COPY];
+	scrPtr->xdndActionMove = wx_static_atoms[W_ATOM_XDND_ACTION_MOVE];
+	scrPtr->xdndActionLink = wx_static_atoms[W_ATOM_XDND_ACTION_LINK];
+	scrPtr->xdndActionAsk = wx_static_atoms[W_ATOM_XDND_ACTION_ASK];
+	scrPtr->xdndActionPrivate = wx_static_atoms[W_ATOM_XDND_ACTION_PRIVATE];
 
-	scrPtr->wmIconDragOffsetAtom = atoms[i++];
+	scrPtr->wmIconDragOffsetAtom = wx_static_atoms[W_ATOM_WINGS_DND_MOUSE_OFFSET];
 
-	scrPtr->wmStateAtom = atoms[i++];
+	scrPtr->wmStateAtom = wx_static_atoms[W_ATOM_WM_STATE];
 
-	scrPtr->utf8String = atoms[i++];
-	scrPtr->netwmName = atoms[i++];
-	scrPtr->netwmIconName = atoms[i++];
-	scrPtr->netwmIcon = atoms[i++];
+	scrPtr->utf8String = wx_static_atoms[W_ATOM_UTF8_STRING];
+	scrPtr->netwmName = wx_static_atoms[W_ATOM_NET_WM_NAME];
+	scrPtr->netwmIconName = wx_static_atoms[W_ATOM_NET_WM_ICON_NAME];
+	scrPtr->netwmIcon = wx_static_atoms[W_ATOM_NET_WM_ICON];
 
 	scrPtr->rootView = W_CreateRootView(scrPtr);
 
@@ -995,7 +966,7 @@ void WMMapSubwidgets(WMWidget * w)
 	/* make sure that subwidgets created after the parent was realized
 	 * are mapped too */
 	if (!W_VIEW(w)->flags.realized) {
-		makeChildrenAutomap(W_VIEW(w), True);
+		makeChildrenAutomap(W_VIEW(w), true);
 	} else {
 		W_MapSubviews(W_VIEW(w));
 	}
@@ -1004,7 +975,7 @@ void WMMapSubwidgets(WMWidget * w)
 void WMUnmapSubwidgets(WMWidget * w)
 {
 	if (!W_VIEW(w)->flags.realized) {
-		makeChildrenAutomap(W_VIEW(w), False);
+		makeChildrenAutomap(W_VIEW(w), false);
 	} else {
 		W_UnmapSubviews(W_VIEW(w));
 	}
@@ -1015,7 +986,7 @@ void WMUnmapWidget(WMWidget * w)
 	W_UnmapView(W_VIEW(w));
 }
 
-Bool WMWidgetIsMapped(WMWidget * w)
+bool WMWidgetIsMapped(WMWidget * w)
 {
 	return W_VIEW(w)->flags.mapped;
 }
@@ -1089,7 +1060,7 @@ unsigned int WMWidgetHeight(WMWidget * w)
 	return W_VIEW(w)->size.height;
 }
 
-Window WMWidgetXID(WMWidget * w)
+xcb_window_t WMWidgetXID(WMWidget * w)
 {
 	return W_VIEW(w)->window;
 }
@@ -1101,11 +1072,13 @@ WMScreen *WMWidgetScreen(WMWidget * w)
 
 void WMScreenMainLoop(WMScreen * scr)
 {
-	XEvent event;
+	xcb_generic_event_t *event = NULL;
 
 	while (1) {
 		WMNextEvent(scr->display, &event);
-		WMHandleEvent(&event);
+		WMHandleEvent(event);
+		free(event);
+		event = NULL;
 	}
 }
 
@@ -1125,17 +1098,18 @@ void WMRunModalLoop(WMScreen * scr, WMView * view)
 
 	scr->modalLoop = 1;
 	while (scr->modalLoop) {
-		XEvent event;
+		xcb_generic_event_t *event = NULL;
 
 		WMNextEvent(scr->display, &event);
-		WMHandleEvent(&event);
+		WMHandleEvent(event);
+		free(event);
 	}
 
 	scr->modalView = oldModalView;
 	scr->modalLoop = oldModalLoop;
 }
 
-Display *WMScreenDisplay(WMScreen * scr)
+xcb_connection_t *WMScreenDisplay(WMScreen * scr)
 {
 	return scr->display;
 }
@@ -1192,8 +1166,8 @@ void WMScreenReadUIScale(WMScreen *scr)
 	double d, s;
 
 	d = 0.0;
-	rm = WXGetLatin1String(scr->display, DefaultRootWindow(scr->display),
-			       XA_RESOURCE_MANAGER, NULL);
+	rm = WXGetLatin1String(scr->display, wXRootWindow(scr->display, scr->screen),
+			       XCB_ATOM_RESOURCE_MANAGER, NULL);
 	if (rm) {
 		val = findResourceValue(rm, "Xft.dpi");
 		if (val)

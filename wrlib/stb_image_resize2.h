@@ -6267,7 +6267,16 @@ static void stbir__resample_vertical_gather(stbir__info const * stbir_info, stbi
         inputs[ i ] = stbir__get_ring_buffer_scanline(stbir_info, split_info, k+i+contrib_n0 );
 
       // call the N scanlines at a time function (up to 8 scanlines of blending at once)
-      ((k==0)?stbir__vertical_gathers:stbir__vertical_gathers_continues)[cnt-1]( (vertical_first) ? decode_buffer : encode_buffer, vertical_coefficients + k, inputs, inputs[0] + width_times_channels );
+      // LOCAL PATCH (upstream v2.18 is identical here): direct if/else indexing keeps
+      // __builtin_object_size seeing the [8] bounds — through the ternary the arrays
+      // decay to pointers and -fsanitize=object-size reports a false "insufficient
+      // space" on every call, fatal under -fno-sanitize-recover. cnt-1 is 0..7 for
+      // both [8] arrays, so the rewrite is semantics-preserving. Re-apply after any
+      // upstream refresh until upstream changes this dispatch.
+      if ( k == 0 )
+        stbir__vertical_gathers[ cnt - 1 ]( (vertical_first) ? decode_buffer : encode_buffer, vertical_coefficients + k, inputs, inputs[0] + width_times_channels );
+      else
+        stbir__vertical_gathers_continues[ cnt - 1 ]( (vertical_first) ? decode_buffer : encode_buffer, vertical_coefficients + k, inputs, inputs[0] + width_times_channels );
       k += cnt;
       total -= cnt;
     } while ( total );

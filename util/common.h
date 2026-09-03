@@ -26,6 +26,6 @@
 #define UTIL_COMMON_H
 
 /* ---[ util/fontconv.c ]------------------------------------------------- */
-char *convertFont(char *font, Bool keepXLFD);
+char *convertFont(char *font, bool keepXLFD);
 
 #endif

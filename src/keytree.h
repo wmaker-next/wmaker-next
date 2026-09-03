@@ -21,7 +21,8 @@
 #ifndef WMKEYTREE_H
 #define WMKEYTREE_H
 
-#include <X11/Xlib.h>
+#include <xcb/xcb.h>
+
 
 /*
  * Each key in a binding sequence occupies one node in the trie.
@@ -53,7 +54,7 @@ typedef struct WKeyAction {
 
 typedef struct WKeyNode {
 	unsigned int  modifier;
-	KeyCode keycode;
+	xcb_keycode_t keycode;
 
 	WKeyAction *actions;   /* non-NULL only for leaf nodes (first_child == NULL) */
 
@@ -73,13 +74,13 @@ extern WKeyNode *wKeyTreeRoot;
  * Returns the leaf node (caller must set its type/payload).
  * Returns NULL if nkeys <= 0.
  */
-WKeyNode *wKeyTreeInsert(WKeyNode **root, unsigned int *mods, KeyCode *keys, int nkeys);
+WKeyNode *wKeyTreeInsert(WKeyNode **root, unsigned int *mods, xcb_keycode_t *keys, int nkeys);
 
 /*
  * Find the first sibling in the list starting at 'siblings' that matches
  * (mod, key). Returns NULL if not found.
  */
-WKeyNode *wKeyTreeFind(WKeyNode *siblings, unsigned int mod, KeyCode key);
+WKeyNode *wKeyTreeFind(WKeyNode *siblings, unsigned int mod, xcb_keycode_t key);
 
 /*
  * Recursively free the entire subtree rooted at 'node'.

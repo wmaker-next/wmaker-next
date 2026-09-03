@@ -28,9 +28,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #ifdef USE_RANDR
 #include "randr.h"
 #endif
@@ -86,10 +83,10 @@
  * at this selection, and menuMouseDown() relies on that grab carrying
  * motion to highlight entries as the pointer moves over the root menu
  * opened from that press */
-#define EVENT_MASK (LeaveWindowMask|EnterWindowMask|PropertyChangeMask\
-    |SubstructureNotifyMask \
-    |SubstructureRedirectMask|ButtonPressMask|ButtonReleaseMask\
-    |ButtonMotionMask|KeyPressMask|KeyReleaseMask)
+#define EVENT_MASK (XCB_EVENT_MASK_LEAVE_WINDOW|XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_PROPERTY_CHANGE\
+    |XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY \
+    |XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE\
+    |XCB_EVENT_MASK_BUTTON_MOTION|XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE)
 
 #ifdef USE_ICCCM_WMREPLACE
 #define REPLACE_WM_TIMEOUT 15
@@ -127,12 +124,11 @@ static void make_keys(void)
  *  - when ok, it sets the selection ownership to ourself, so another window manager
  * may ask us to shut down (this is handled in "event.c")
  */
-static Bool replace_existing_wm(WScreen *scr)
+static bool replace_existing_wm(WScreen *scr)
 {
 #ifdef USE_ICCCM_WMREPLACE
 	char atomName[16];
-	xcb_generic_error_t *err;
-	Window wm;
+	xcb_window_t wm;
 	uint32_t mask;
 	unsigned long current_time;
 	int ret;
@@ -141,20 +137,20 @@ static Bool replace_existing_wm(WScreen *scr)
 	ret = snprintf(atomName, sizeof(atomName), "WM_S%d", scr->screen);
 	if (ret < 0 || ret == sizeof(atomName)) {
 		werror("out of memory trying to allocate window manager selection atom for screen %d", scr->screen);
-		return False;
+		return false;
 	}
 
-	scr->sn_atom = XInternAtom(dpy, atomName, False);
+	scr->sn_atom = WXInternAtom(xconn, atomName);
 	if (! scr->sn_atom)
-		return False;
+		return false;
 
 	/* Check if an existing window manager owns the selection */
-	wm = XGetSelectionOwner(dpy, scr->sn_atom);
+	wm = wXGetSelectionOwner(xconn, scr->sn_atom);
 	if (wm) {
 		if (!wPreferences.flags.replace) {
 			wmessage(_("another window manager is running"));
 			wwarning(_("use the --replace flag to replace it"));
-			return False;
+			return false;
 		}
 
 		/* watch for the outgoing WM's selection-owner window to
@@ -162,30 +158,31 @@ static Bool replace_existing_wm(WScreen *scr)
 		 * GetSelectionOwner and here so a BadWindow means there
 		 * is nothing to wait for */
 		mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-		err = xcb_request_check(xconn,
-			xcb_change_window_attributes_checked(xconn, wm,
-				XCB_CW_EVENT_MASK, &mask));
-		if (err) {
-			free(err);
-			wm = None;
-		}
+		if (!WXCheckVoid(xconn,
+				 xcb_change_window_attributes_checked(xconn, wm,
+								      XCB_CW_EVENT_MASK, &mask)))
+			wm = XCB_NONE;
 	}
 #endif
 
 	/* for our window manager info notice board and the selection owner */
-	scr->info_window = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, 10, 10, 0, 0, 0);
+	scr->info_window = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->info_window, scr->root_win, 0, 0, 10, 10, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
 #ifdef USE_ICCCM_WMREPLACE
 	/* Try to acquire the selection */
-	current_time = CurrentTime;
-	ret = XSetSelectionOwner(dpy, scr->sn_atom, scr->info_window, current_time);
-	if (ret == BadAtom || ret == BadWindow)
-		return False;
+	current_time = XCB_CURRENT_TIME;
+	if (!WXCheckVoid(xconn,
+			 xcb_set_selection_owner_checked(xconn, scr->info_window,
+							  scr->sn_atom, current_time)))
+		return false;
 
 	/* Wait for other window manager to exit */
 	if (wm) {
 		struct timespec deadline, now;
-		XEvent event;
+		xcb_generic_event_t *event = NULL;
 		int remain;
 
 		wmessage(_("waiting %ds for other window manager to exit"), (int)REPLACE_WM_TIMEOUT);
@@ -200,28 +197,28 @@ static Bool replace_existing_wm(WScreen *scr)
 			if (remain < 0)
 				remain = 0;
 
-			if (!wMaskEventTimed(dpy, StructureNotifyMask, wm, &event, remain)) {
+			if (!wMaskEventTimed(xconn, XCB_EVENT_MASK_STRUCTURE_NOTIFY, wm, &event, remain)) {
 				wwarning(_("other window manager hasn't exited!"));
-				return False;
+				return false;
 			}
 
-			if (event.type == DestroyNotify)
+			if ((event->response_type & 0x7f) == XCB_DESTROY_NOTIFY)
 				break;
 		}
 
 		wmessage(_("replacing the other window manager"));
 	}
 
-	if (XGetSelectionOwner(dpy, scr->sn_atom) != scr->info_window)
-		return False;
+	if (wXGetSelectionOwner(xconn, scr->sn_atom) != scr->info_window)
+		return false;
 
-	WXSendClientMessage(dpy, scr->root_win, StructureNotifyMask,
+	WXSendClientMessage(xconn, scr->root_win, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
 			    scr->root_win, scr->sn_atom,
 			    (long)current_time, (long)scr->sn_atom,
 			    (long)scr->info_window, 0, 0);
 #endif
 
-	return True;
+	return true;
 }
 
 /*
@@ -367,7 +364,7 @@ static WPixmap *make3Dots(WScreen *scr)
 {
 	RContext *rc = scr->rcontext;
 	WPixmap *wpix;
-	Pixmap pix, mask;
+	xcb_pixmap_t pix, mask;
 	cairo_surface_t *surf;
 	cairo_t *cr;
 	int isize, m, dy, i;
@@ -376,7 +373,8 @@ static WPixmap *make3Dots(WScreen *scr)
 	m = get_dot_mult();
 	dy = isize - 6 * m;
 
-	pix = XCreatePixmap(dpy, scr->w_win, isize, isize, scr->w_depth);
+	pix = xcb_generate_id(xconn);
+	xcb_create_pixmap(xconn, scr->w_depth, pix, scr->w_win, isize, isize);
 	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
 					rc->xvisual, isize, isize);
 	cr = cairo_create(surf);
@@ -388,7 +386,8 @@ static WPixmap *make3Dots(WScreen *scr)
 	cairo_surface_flush(surf);
 	cairo_surface_destroy(surf);
 
-	mask = XCreatePixmap(dpy, scr->w_win, isize, isize, 1);
+	mask = xcb_generate_id(xconn);
+	xcb_create_pixmap(xconn, 1, mask, scr->w_win, isize, isize);
 	surf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 						   (xcb_pixmap_t)mask, isize, isize);
 	cr = cairo_create(surf);
@@ -414,8 +413,8 @@ static void allocDefaultColors(WScreen *scr)
 	scr->menu_title_color[0] = WMRetainColor(scr->white);
 
 	/* don't retain scr->black here because we may alter its alpha */
-	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
-	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, True);
+	scr->mtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, true);
+	scr->dtext_color = WMCreateRGBColor(scr->wmscreen, 0, 0, 0, true);
 }
 
 static void createPixmaps(WScreen * scr)
@@ -462,15 +461,17 @@ static void createPixmaps(WScreen * scr)
 
 static void publishIconSizes(WScreen *scr)
 {
-	XIconSize icon_size[1];
+	/* WM_ICON_SIZES wire form: min_w, min_h, max_w, max_h, w_inc, h_inc */
+	uint32_t icon_size[6];
 
-	icon_size[0].min_width = 8;
-	icon_size[0].min_height = 8;
-	icon_size[0].max_width = w_global.config->icon_size - 4;
-	icon_size[0].max_height = w_global.config->icon_size - 4;
-	icon_size[0].width_inc = 1;
-	icon_size[0].height_inc = 1;
-	XSetIconSizes(dpy, scr->root_win, icon_size, 1);
+	icon_size[0] = 8;
+	icon_size[1] = 8;
+	icon_size[2] = w_global.config->icon_size - 4;
+	icon_size[3] = w_global.config->icon_size - 4;
+	icon_size[4] = 1;
+	icon_size[5] = 1;
+	WXSetFormat32N(xconn, scr->root_win, XCB_ATOM_WM_ICON_SIZE,
+		       XCB_ATOM_WM_ICON_SIZE, icon_size, 6);
 }
 
 /* Re-derive every per-screen object whose geometry was baked from
@@ -484,10 +485,10 @@ void wScreenApplyIconSize(WScreen *scr)
 	isize = w_global.config->icon_size;
 	publishIconSizes(scr);
 
-	/* dock_shadow is XMoveResizeWindow()'d to the current icon size at
+	/* dock_shadow is wXMoveResizeWindow()'d to the current icon size at
 	 * the start of every drag so it self-heals, but resize it now so
 	 * the stale size never shows up before the first drag */
-	XResizeWindow(dpy, scr->dock_shadow, isize, isize);
+	xcb_configure_window(xconn, scr->dock_shadow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
 
 	/* the running-app dot indicator pixmap and its shape mask are
 	 * sized icon_size x icon_size with the dots positioned by
@@ -526,33 +527,29 @@ void create_logo_image(WScreen *scr)
  */
 static void createInternalWindows(WScreen * scr)
 {
-	int vmask;
-	XSetWindowAttributes attribs;
 
 	/* InputOnly window to get the focus when no other window can get it */
-	vmask = CWEventMask | CWOverrideRedirect;
-	attribs.event_mask = KeyPressMask | FocusChangeMask;
-	attribs.override_redirect = True;
-	scr->no_focus_win = XCreateWindow(dpy, scr->root_win, -10, -10, 4, 4, 0, 0,
-					  InputOnly, CopyFromParent, vmask, &attribs);
-	XSelectInput(dpy, scr->no_focus_win, KeyPressMask | KeyReleaseMask);
-	XMapWindow(dpy, scr->no_focus_win);
+	scr->no_focus_win = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->no_focus_win, scr->root_win, -10, -10, 4, 4, 0,
+			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+			  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
+			  (const uint32_t[]){ true, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_FOCUS_CHANGE });
+	xcb_change_window_attributes(xconn, scr->no_focus_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE });
+	xcb_map_window(xconn, scr->no_focus_win);
 
-	XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
+	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 
 	/* shadow window for dock buttons */
-	vmask = CWBorderPixel | CWBackPixmap | CWBackPixel | CWCursor | CWSaveUnder | CWOverrideRedirect;
-	attribs.border_pixel = scr->black_pixel;
-	attribs.save_under = True;
-	attribs.override_redirect = True;
-	attribs.background_pixmap = None;
-	attribs.background_pixel = scr->white_pixel;
-	attribs.cursor = wPreferences.cursor[WCUR_NORMAL];
-	vmask |= CWColormap;
-	attribs.colormap = scr->w_colormap;
-	scr->dock_shadow =
-	    XCreateWindow(dpy, scr->root_win, 0, 0, w_global.config->icon_size,
-			  w_global.config->icon_size, 0, scr->w_depth, CopyFromParent, scr->w_visual, vmask, &attribs);
+	scr->dock_shadow = xcb_generate_id(xconn);
+	xcb_create_window(xconn, scr->w_depth, scr->dock_shadow, scr->root_win, 0, 0,
+			  w_global.config->icon_size, w_global.config->icon_size, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, scr->w_visual->visual_id,
+			  XCB_CW_BACK_PIXMAP | XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL
+			  | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_COLORMAP
+			  | XCB_CW_CURSOR,
+			  (const uint32_t[]){ XCB_BACK_PIXMAP_NONE, scr->white_pixel, scr->black_pixel,
+					      true, true, scr->w_colormap,
+					      wPreferences.cursor[WCUR_NORMAL] });
 
 	scr->mini_screenshot_timeout = 0;
 }
@@ -578,11 +575,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 {
 	WScreen *scr;
 	RContextAttributes rattr = {};
-	xcb_generic_error_t *xerr;
+	xcb_screen_t *xscr;
 	uint32_t event_mask;
-	int i, nret;
-	XColor xcol;
-	XVisualInfo vtempl, *vinfo;
+	int i;
+	WXColor xcol;
 	char *desc;
 
 	scr = wmalloc(sizeof(WScreen));
@@ -591,12 +587,13 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* initialize globals */
 	scr->screen = screen_number;
-	scr->root_win = RootWindow(dpy, screen_number);
-	scr->depth = DefaultDepth(dpy, screen_number);
-	scr->colormap = DefaultColormap(dpy, screen_number);
+	xscr = wXScreenOf(xconn, screen_number);
+	scr->root_win = xscr->root;
+	scr->depth = xscr->root_depth;
+	scr->colormap = xscr->default_colormap;
 
-	scr->scr_width = WidthOfScreen(ScreenOfDisplay(dpy, screen_number));
-	scr->scr_height = HeightOfScreen(ScreenOfDisplay(dpy, screen_number));
+	scr->scr_width = xscr->width_in_pixels;
+	scr->scr_height = xscr->height_in_pixels;
 
 	wInitXinerama(scr);
 
@@ -619,7 +616,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* Do we need to replace an existing window manager? */
 	if (!replace_existing_wm(scr)) {
-		XDestroyWindow(dpy, scr->info_window);
+		xcb_destroy_window(xconn, scr->info_window);
 		wfree(scr);
 		return NULL;
 	}
@@ -635,12 +632,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	 * unmapped, and XKB event selection is per-device so wXkbInit()
 	 * has already done it */
 	event_mask = EVENT_MASK;
-	xerr = xcb_request_check(xconn,
-		xcb_change_window_attributes_checked(xconn, scr->root_win,
-						      XCB_CW_EVENT_MASK,
-						      &event_mask));
-	if (xerr) {
-		free(xerr);
+	if (!WXCheckVoid(xconn,
+			 xcb_change_window_attributes_checked(xconn, scr->root_win,
+							      XCB_CW_EVENT_MASK,
+							      &event_mask))) {
 		wfree(scr);
 		return NULL;
 	}
@@ -659,7 +654,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 					     XCB_SCREENSAVER_EVENT_NOTIFY_MASK);
 #endif
 
-	XDefineCursor(dpy, scr->root_win, wPreferences.cursor[WCUR_ROOT]);
+	wXDefineCursor(xconn, scr->root_win, wPreferences.cursor[WCUR_ROOT]);
 
 	/* screen descriptor for raster graphic library */
 	rattr.flags = 0;
@@ -678,17 +673,13 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	scr->w_win = scr->rcontext->drawable;
 	scr->w_depth = scr->rcontext->depth;
 	scr->w_colormap = scr->rcontext->cmap;
-	/* wraster picked the visual on the xcb side, so resolve the
-	 * matching libX11 Visual* here for the Xlib drawing that still
-	 * runs in src/ until the cairo-xcb rewrite lands */
-	vtempl.visualid = scr->rcontext->xvisual->visual_id;
-	vinfo = XGetVisualInfo(dpy, VisualIDMask, &vtempl, &nret);
-	scr->w_visual = vinfo ? vinfo[0].visual : DefaultVisual(dpy, screen_number);
-	if (vinfo)
-		XFree(vinfo);
+	/* wraster picked the visual on the xcb side, keep its visualtype */
+	scr->w_visual = scr->rcontext->xvisual ?
+		wXVisualTypeForID(xconn, scr->rcontext->xvisual->visual_id)
+		: wXDefaultVisualType(xconn, screen_number);
 
 	/* create screen descriptor for WINGs */
-	scr->wmscreen = WMCreateScreenWithRContext(dpy, screen_number, scr->rcontext);
+	scr->wmscreen = WMCreateScreenWithRContext(xconn, screen_number, scr->rcontext);
 	scr->ui_scale = WMScreenUIScale(scr->wmscreen);
 
 	if (!scr->wmscreen) {
@@ -764,8 +755,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	PropSetWMakerProtocols(scr->root_win);
 
 	/* setup our noticeboard */
-	WXSetWindow(dpy, scr->info_window, w_global.atom.wmaker.noticeboard, scr->info_window);
-	WXSetWindow(dpy, scr->root_win, w_global.atom.wmaker.noticeboard, scr->info_window);
+	WXSetWindow(xconn, scr->info_window, w_global.atom.wmaker.noticeboard, scr->info_window);
+	WXSetWindow(xconn, scr->root_win, w_global.atom.wmaker.noticeboard, scr->info_window);
 
 #ifdef BALLOON_TEXT
 	/* initialize balloon text stuff */
@@ -784,7 +775,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	WMRealizeWidget(scr->keychain_osd);
 
 	scr->workspace_name_osd = WCreateOSDView(scr->wmscreen);
-	WSetOSDViewTransparent(scr->workspace_name_osd, True);
+	WSetOSDViewTransparent(scr->workspace_name_osd, true);
 	if (scr->workspace_name_font)
 		WSetOSDViewFont(scr->workspace_name_osd, scr->workspace_name_font);
 	WMRealizeWidget(scr->workspace_name_osd);
@@ -808,9 +799,9 @@ void wScreenUpdateRootEventMask(WScreen *scr)
 	long mask = EVENT_MASK;
 
 	if (w_global.config->scrollable_menus && scr->mapped_menu_count > 0)
-		mask |= PointerMotionMask;
+		mask |= XCB_EVENT_MASK_POINTER_MOTION;
 
-	XSelectInput(dpy, scr->root_win, mask);
+	xcb_change_window_attributes(xconn, scr->root_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ mask });
 }
 
 void wScreenUpdateUsableArea(WScreen *scr)
@@ -888,7 +879,7 @@ void wScreenUpdateUsableArea(WScreen *scr)
 	}
 
 	if (w_global.config->auto_arrange_icons)
-		wArrangeIcons(scr, True);
+		wArrangeIcons(scr, true);
 
 	/* publish the recomputed usable area as _NET_WORKAREA so pagers
 	 * and toolkits see strut changes, not only workspace-count ones */
@@ -902,7 +893,7 @@ void wScreenRestoreState(WScreen * scr)
 	WMPropList *state;
 	char *path;
 
-	OpenRootMenu(scr, -10000, -10000, False);
+	OpenRootMenu(scr, -10000, -10000, false);
 	wMenuUnmap(scr->root_menu);
 
 	make_keys();
@@ -958,7 +949,7 @@ void wScreenRestoreState(WScreen * scr)
 	wScreenUpdateUsableArea(scr);
 }
 
-void wScreenSaveState(WScreen *scr, Bool preserve_session)
+void wScreenSaveState(WScreen *scr, bool preserve_session)
 {
 	WWindow *wwin;
 	char *str;
@@ -986,7 +977,7 @@ void wScreenSaveState(WScreen *scr, Bool preserve_session)
 	}
 	scr->session_state = WMCreatePLDictionary(NULL, NULL);
 
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 
 	/* save dock state to file */
 	if (!wPreferences.flags.nodock) {
@@ -1029,7 +1020,7 @@ void wScreenSaveState(WScreen *scr, Bool preserve_session)
 	}
 
 	/* clean up */
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	wMenuSaveState(scr);
 
@@ -1149,7 +1140,7 @@ int wScreenKeepInside(WScreen * scr, int *x, int *y, int width, int height)
 
 static RImage *imageCaptureArea(WScreen *scr)
 {
-	XEvent event;
+	xcb_generic_event_t *event = NULL;
 	RXImage *ximg;
 	RImage *img;
 	int quit = 0;
@@ -1158,26 +1149,28 @@ static RImage *imageCaptureArea(WScreen *scr)
 	int w = 0, h = 0;
 	int x = xp, y = yp;
 
-	if (XGrabPointer(dpy, scr->root_win, False, ButtonMotionMask
-			| ButtonReleaseMask | ButtonPressMask, GrabModeAsync,
-			GrabModeAsync, None, wPreferences.cursor[WCUR_CAPTURE], CurrentTime) != Success) {
+	if (wXGrabPointer(xconn, scr->root_win, false, XCB_EVENT_MASK_BUTTON_MOTION
+			| XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
+			XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_CAPTURE], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		return NULL;
 	}
-	XGrabKeyboard(dpy, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	while (!quit) {
-		WMMaskEvent(dpy, ButtonReleaseMask | PointerMotionMask | ButtonPressMask
-			    | KeyPressMask | ExposureMask, &event);
+		free(event);
+		event = NULL;
+		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+			    | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_EXPOSURE, &event);
 
-		switch (event.type) {
-		case ButtonPress:
-			if (event.xbutton.button == Button1) {
-				xp = event.xbutton.x_root;
-				yp = event.xbutton.y_root;
+		switch ((event->response_type & 0x7f)) {
+		case XCB_BUTTON_PRESS:
+			if ((((xcb_button_press_event_t *)event)->detail) == XCB_BUTTON_INDEX_1) {
+				xp = (((xcb_button_press_event_t *)event)->root_x);
+				yp = (((xcb_button_press_event_t *)event)->root_y);
 			}
 			break;
-		case ButtonRelease:
-			if (event.xbutton.button == Button1) {
+		case XCB_BUTTON_RELEASE:
+			if ((((xcb_button_press_event_t *)event)->detail) == XCB_BUTTON_INDEX_1) {
 				quit = 1;
 				if (w > 0 && h > 0) {
 					/* save_under is only a hint, when the server
@@ -1187,11 +1180,18 @@ static RImage *imageCaptureArea(WScreen *scr)
 					 * capture border is repainted content not a
 					 * cleared 3 px strip */
 					wWireframeHide(scr);
-					XSync(dpy, False);
-					while (WXEvqTakeMask(dpy, ExposureMask, None, &event))
-						WMHandleEvent(&event);
-					XUngrabKeyboard(dpy, CurrentTime);
-					XUngrabPointer(dpy, CurrentTime);
+					wXSync(xconn);
+					/* drop the in-hand release event before
+					 * the drain overwrites it */
+					free(event);
+					event = NULL;
+					while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
+						WMHandleEvent(event);
+						free(event);
+						event = NULL;
+					}
+					wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+					wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 					ximg = RGetXImage(scr->rcontext, scr->root_win, x, y, w, h);
 					if (!ximg)
 						return NULL;
@@ -1201,19 +1201,19 @@ static RImage *imageCaptureArea(WScreen *scr)
 				}
 			}
 			break;
-		case MotionNotify:
+		case XCB_MOTION_NOTIFY:
 			/* drop stale root MotionNotify still queued from before
 			 * the grab, otherwise the rectangle anchors at (-1,-1) */
 			if (xp < 0)
 				break;
-			x = event.xmotion.x_root;
+			x = (((xcb_motion_notify_event_t *)event)->root_x);
 			if (x < xp) {
 				w = xp - x;
 			} else {
 				w = x - xp;
 				x = xp;
 			}
-			y = event.xmotion.y_root;
+			y = (((xcb_motion_notify_event_t *)event)->root_y);
 			if (y < yp) {
 				h = yp - y;
 			} else {
@@ -1224,19 +1224,20 @@ static RImage *imageCaptureArea(WScreen *scr)
 			wWireframeAddOutline(scr, x, y, w, h, 0, 0, 0);
 			wWireframeCommit(scr);
 			break;
-		case KeyPress:
-			if (wXkbKeycodeToKeysym(event.xkey.keycode, 0) == XK_Escape)
+		case XCB_KEY_PRESS:
+			if (wXkbKeycodeToKeysym((((xcb_key_press_event_t *)event)->detail), 0) == XKB_KEY_Escape)
 				quit = 1;
 			break;
 		default:
-			WMHandleEvent(&event);
+			WMHandleEvent(event);
 			break;
 		}
 	}
 
+	free(event);
 	wWireframeHide(scr);
-	XUngrabKeyboard(dpy, CurrentTime);
-	XUngrabPointer(dpy, CurrentTime);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 	return NULL;
 }
 
@@ -1247,36 +1248,39 @@ static void hideMiniScreenshot(void *data)
 	if (time(NULL) < scr->mini_screenshot_timeout) {
 		scr->mini_screenshot_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideMiniScreenshot, scr);
 	} else {
-		XWindowAttributes attr;
+		WXWindowAttributes attr;
 
 		WMDeleteTimerHandler(scr->mini_screenshot_timer);
-		if (XGetWindowAttributes(dpy, scr->mini_screenshot, &attr))
+		if (wXGetWindowAttributes(xconn, scr->mini_screenshot, &attr, NULL))
 			slide_window(scr->mini_screenshot, attr.x, attr.y, attr.x + attr.width, attr.y);
-		XUnmapWindow(dpy, scr->mini_screenshot);
-		XDestroyWindow(dpy, scr->mini_screenshot);
+		xcb_unmap_window(xconn, scr->mini_screenshot);
+		xcb_destroy_window(xconn, scr->mini_screenshot);
 		scr->mini_screenshot_timeout = 0;
 	}
 }
 
 static void showMiniScreenshot(WScreen *scr, RImage *img)
 {
-	Pixmap pix;
+	xcb_pixmap_t pix;
 	int x = scr->scr_width - img->width - 20;
 	int y = scr->scr_height - img->height - 20;
 
 	if (!scr->mini_screenshot_timeout) {
-		Window win;
+		xcb_window_t win;
 
-		win = XCreateSimpleWindow(dpy, scr->root_win, x, y,
-			img->width, img->height, scr->frame_border_width, 0, 0);
+		win = xcb_generate_id(xconn);
+		xcb_create_window(xconn, XCB_COPY_FROM_PARENT, win, scr->root_win, x, y, img->width, img->height, 0,
+				  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+				  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 		scr->mini_screenshot = win;
 	}
 	RConvertImage(scr->rcontext, img, &pix);
-	XSetWindowBackgroundPixmap(dpy, scr->mini_screenshot, pix);
-	XFreePixmap(dpy, pix);
-	XClearWindow(dpy, scr->mini_screenshot);
-	XMapRaised(dpy, scr->mini_screenshot);
-	XFlush(dpy);
+	xcb_change_window_attributes(xconn, scr->mini_screenshot, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix });
+	xcb_free_pixmap(xconn, pix);
+	xcb_clear_area(xconn, 0, scr->mini_screenshot, 0, 0, 0, 0);
+	xcb_configure_window(xconn, scr->mini_screenshot, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xconn, scr->mini_screenshot);
+	wXFlush(xconn);
 
 	scr->mini_screenshot_timeout = time(NULL) + 2;
 	scr->mini_screenshot_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideMiniScreenshot, scr);
@@ -1356,7 +1360,7 @@ void ScreenCapture(WScreen *scr, int mode)
 				 * we can take screenshot of the out of screen window
 				 */
 				if (wwin->focus_mode >= WFM_LOCALLY_ACTIVE) {
-					img = RCreateImageFromDrawable(scr->rcontext, wwin->client_win, None);
+					img = RCreateImageFromDrawable(scr->rcontext, wwin->client_win, XCB_NONE);
 				}
 				else {
 					/* we will only capture the visible window part */
@@ -1391,7 +1395,7 @@ void ScreenCapture(WScreen *scr, int mode)
 			break;
 		default:
 			/* PRINT_SCREEN*/
-			img = RCreateImageFromDrawable(scr->rcontext, scr->root_win, None);
+			img = RCreateImageFromDrawable(scr->rcontext, scr->root_win, XCB_NONE);
 	}
 
 	if (img) {

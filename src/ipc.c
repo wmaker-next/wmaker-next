@@ -130,7 +130,7 @@ static char *ipc_server_path(WScreen *scr)
 	char *path;
 	size_t len;
 
-	dpyname = DisplayString(dpy);
+	dpyname = w_global.display_name;
 	if (!dpyname || !*dpyname)
 		dpyname = ":0";
 
@@ -281,7 +281,7 @@ static void ipc_reply(struct WIPCClient *c, uint32_t type, WMPropList *pl)
 	size_t len = 0;
 
 	if (pl) {
-		body = WMGetPropListDescription(pl, False);
+		body = WMGetPropListDescription(pl, false);
 		len = strlen(body);
 	}
 	ipc_queue(c, type, body, len);
@@ -357,7 +357,7 @@ void wIPCBroadcast(WScreen *scr, uint32_t ev, WMPropList *pl)
 	if (ev >= WIPC_EV_COUNT)
 		return;
 	if (pl) {
-		body = WMGetPropListDescription(pl, False);
+		body = WMGetPropListDescription(pl, false);
 		len = strlen(body);
 	}
 	ipc_broadcast_buf(scr, ev, body, len);
@@ -512,7 +512,7 @@ static verb_rc verb_workspace(WScreen *scr, WMPropList *args,
 		}
 		wWorkspaceChange(scr, (int)n);
 	}
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -561,7 +561,7 @@ static verb_rc verb_dock_launch(WScreen *scr, WMPropList *args,
 	/* same path a double-click or auto-launch takes, so the death
 	 * handler is registered with source=dock and slot=yindex */
 	wDockLaunchWithState(btn, NULL);
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -582,7 +582,7 @@ static verb_rc verb_show_desktop(WScreen *scr, WMPropList *args,
 	(void)err;
 	(void)reply;
 	wNETWMShowingDesktopToggle(scr);
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -592,11 +592,11 @@ static verb_rc verb_arrange_icons(WScreen *scr, WMPropList *args,
 	(void)args;
 	(void)err;
 	(void)reply;
-	wArrangeIcons(scr, True);
+	wArrangeIcons(scr, true);
 	return VERB_OK;
 }
 
-static int parse_xid(WMPropList *args, Window *out, char **err)
+static int parse_xid(WMPropList *args, xcb_window_t *out, char **err)
 {
 	WMPropList *a;
 	unsigned long v;
@@ -616,7 +616,7 @@ static int parse_xid(WMPropList *args, Window *out, char **err)
 		*err = wstrdup("invalid window id");
 		return 0;
 	}
-	*out = (Window)v;
+	*out = (xcb_window_t)v;
 	return 1;
 }
 
@@ -624,7 +624,7 @@ static verb_rc verb_window_workspace(WScreen *scr, WMPropList *args,
 				     char **err, WMPropList **reply)
 {
 	WMPropList *a;
-	Window xid;
+	xcb_window_t xid;
 	WWindow *wwin;
 	const char *spec;
 	const char *number;
@@ -664,7 +664,7 @@ static verb_rc verb_window_workspace(WScreen *scr, WMPropList *args,
 static verb_rc verb_hide_app(WScreen *scr, WMPropList *args,
 			     char **err, WMPropList **reply)
 {
-	Window xid;
+	xcb_window_t xid;
 	WWindow *wwin;
 	WApplication *wapp;
 
@@ -686,7 +686,7 @@ static verb_rc verb_hide_app(WScreen *scr, WMPropList *args,
 static verb_rc verb_hide_others(WScreen *scr, WMPropList *args,
 				char **err, WMPropList **reply)
 {
-	Window xid;
+	xcb_window_t xid;
 	WWindow *wwin;
 
 	(void)scr;
@@ -721,9 +721,9 @@ static verb_rc verb_display_power(WScreen *scr, WMPropList *args,
 	}
 	arg = WMGetFromPLString(a);
 	if (strcasecmp(arg, "on") == 0) {
-		wDisplaySetOff(False, WDisplayPowerSourceIPC);
+		wDisplaySetOff(false, WDisplayPowerSourceIPC);
 	} else if (strcasecmp(arg, "off") == 0) {
-		wDisplaySetOff(True, WDisplayPowerSourceIPC);
+		wDisplaySetOff(true, WDisplayPowerSourceIPC);
 	} else {
 		*err = wstrdup("display-power: argument must be on|off");
 		return VERB_FAIL;
@@ -736,7 +736,7 @@ static WMPropList *build_version(WScreen *scr)
 	WMPropList *d = WMCreatePLDictionary(NULL, NULL);
 
 	pl_dict_put(d, "version", pl_string(VERSION));
-	pl_dict_put(d, "display", pl_string(DisplayString(dpy)));
+	pl_dict_put(d, "display", pl_string(w_global.display_name));
 	pl_dict_put(d, "screen", pl_int(scr->screen));
 	pl_dict_put(d, "pid", pl_int(getpid()));
 	pl_dict_put(d, "socket", pl_string(scr->ipc_path));
@@ -788,7 +788,7 @@ static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 			       "(tiled or no change)");
 		return VERB_FAIL;
 	}
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 #endif
@@ -838,7 +838,7 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 		wLayoutApply(scr, (int)widx);
 	else
 		wLayoutSetWorkspace(scr, (int)widx, wLayoutFromName(WMGetFromPLString(a)));
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -867,7 +867,7 @@ static verb_rc verb_workspace_new(WScreen *scr, WMPropList *args,
 	}
 	if (n > 0)
 		wWorkspaceMake(scr, (int)n);
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -911,14 +911,14 @@ static verb_rc verb_workspace_delete(WScreen *scr, WMPropList *args,
 		*err = wstrdup("workspace-delete: workspace in use");
 		return VERB_FAIL;
 	}
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
 static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
 				 char **err, WMPropList **reply)
 {
-	Window xid;
+	xcb_window_t xid;
 	WWindow *wwin;
 
 	(void)scr;
@@ -937,7 +937,7 @@ static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
 	wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
 			    w_global.timestamp.last_event);
 	wNETWMPingWindow(wwin, w_global.timestamp.last_event);
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -972,7 +972,7 @@ static verb_rc verb_move_to_edge(WScreen *scr, WMPropList *args,
 {
 	WWindow *wwin;
 	int dir;
-	Bool snap = True;
+	bool snap = true;
 
 	(void)reply;
 	wwin = scr->focused_window;
@@ -994,7 +994,7 @@ static verb_rc verb_move_to_edge(WScreen *scr, WMPropList *args,
 			const char *s = WMGetFromPLString(a);
 
 			if (strcasecmp(s, "nosnap") == 0)
-				snap = False;
+				snap = false;
 		}
 	}
 	wMoveToEdge(wwin, dir, snap);
@@ -1057,7 +1057,7 @@ static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,
 	WMPropList *ev;
 	const char *name;
 	size_t i;
-	Bool valid = False;
+	bool valid = false;
 
 	(void)reply;
 	ev = WMGetFromPLArray(args, 1);
@@ -1072,7 +1072,7 @@ static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,
 	}
 	for (i = 0; i < sizeof(sound_event_names) / sizeof(sound_event_names[0]); i++)
 		if (strcmp(name, sound_event_names[i]) == 0) {
-			valid = True;
+			valid = true;
 			break;
 		}
 	if (!valid) {
@@ -1080,7 +1080,7 @@ static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,
 		return VERB_FAIL;
 	}
 	wIPCEmitSound(scr, name);
-	XSync(dpy, False);
+	wXSync(xconn);
 	return VERB_OK;
 }
 
@@ -1233,7 +1233,7 @@ static void handle_subscribe(struct WIPCClient *c, const char *body)
 		tick = WMCreatePLDictionary(NULL, NULL);
 		pl_dict_put(tick, "first", pl_bool(1));
 		pl_dict_put(tick, "payload", pl_string(""));
-		tbody = WMGetPropListDescription(tick, False);
+		tbody = WMGetPropListDescription(tick, false);
 		ipc_queue(c, WIPC_EVENT_BIT | WIPC_EV_TICK,
 			  tbody, strlen(tbody));
 		wfree(tbody);
@@ -1483,9 +1483,9 @@ static void ipc_read_cb(int fd, int mask, void *data)
 			/* wIPCServerStop() runs from Shutdown() and does the
 			 * final drain, so the success reply queued above is
 			 * delivered there */
-			Shutdown(mode, False);
+			Shutdown(mode, false);
 			if (mode == WSRestartPreparationMode)
-				Restart(wm, False);
+				Restart(wm, false);
 			wfree(wm);
 			return;
 		}

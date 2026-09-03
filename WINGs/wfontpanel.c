@@ -213,7 +213,7 @@ WMFontPanel *WMGetFontPanel(WMScreen * scr)
 	WMSetWindowTitle(panel->win, _("Font Panel"));
 	WMResizeWidget(panel->win, DEF_WIDTH, DEF_HEIGHT);
 	WMSetWindowMinSize(panel->win, MIN_WIDTH, MIN_HEIGHT);
-	WMSetViewNotifySizeChanges(WMWidgetView(panel->win), True);
+	WMSetViewNotifySizeChanges(WMWidgetView(panel->win), true);
 
 	WMSetWindowCloseAction(panel->win, closeWindow, panel);
 
@@ -225,11 +225,11 @@ WMFontPanel *WMGetFontPanel(WMScreen * scr)
 
 	panel->upperF = WMCreateFrame(panel->win);
 	WMSetFrameRelief(panel->upperF, WRFlat);
-	WMSetViewNotifySizeChanges(WMWidgetView(panel->upperF), True);
+	WMSetViewNotifySizeChanges(WMWidgetView(panel->upperF), true);
 	panel->lowerF = WMCreateFrame(panel->win);
 	/*    WMSetWidgetBackgroundColor(panel->lowerF, WMBlackColor(scr)); */
 	WMSetFrameRelief(panel->lowerF, WRFlat);
-	WMSetViewNotifySizeChanges(WMWidgetView(panel->lowerF), True);
+	WMSetViewNotifySizeChanges(WMWidgetView(panel->lowerF), true);
 
 	WMAddSplitViewSubview(panel->split, W_VIEW(panel->upperF));
 	WMAddSplitViewSubview(panel->split, W_VIEW(panel->lowerF));
@@ -310,7 +310,7 @@ WMFontPanel *WMGetFontPanel(WMScreen * scr)
 	WMMapSubwidgets(panel->win);
 
 	/* nothing to revert to until WMSetFontPanelFont() supplies a baseline */
-	WMSetButtonEnabled(panel->revertB, False);
+	WMSetButtonEnabled(panel->revertB, false);
 
 	arrangeLowerFrame(panel);
 
@@ -375,7 +375,7 @@ void WMSetFontPanelFont(WMFontPanel * panel, const char *fontName)
 	if (panel->revertFontName)
 		wfree(panel->revertFontName);
 	panel->revertFontName = wstrdup(fontName);
-	WMSetButtonEnabled(panel->revertB, True);
+	WMSetButtonEnabled(panel->revertB, true);
 
 	selectFontByName(panel, fontName);
 }

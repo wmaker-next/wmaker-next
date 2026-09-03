@@ -1,6 +1,6 @@
 
+#include <locale.h>
 #include <unistd.h>
-#include <X11/Xlocale.h>
 
 #include "WINGsP.h"
 #include "wconfig.h"
@@ -11,7 +11,7 @@ struct W_Application WMApplication;
 
 const char *_WINGS_progname = NULL;
 
-Bool W_ApplicationInitialized(void)
+bool W_ApplicationInitialized(void)
 {
 	return _WINGS_progname != NULL;
 }

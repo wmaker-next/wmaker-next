@@ -1,6 +1,6 @@
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
+#include <stdbool.h>
+#include <xcb/xcb.h>
 #include "wraster.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-Display *dpy;
+xcb_connection_t *xc;
 RContext *ctx;
 char *ProgName;
 
@@ -20,15 +20,20 @@ void testDraw()
 	RColor cdelta;
 	RSegment segs[20];
 	int i, x, y;
-	XSetWindowAttributes val;
-	Pixmap pix, back;
-	Window win;
+	uint32_t val[2];
+	xcb_pixmap_t pix, back;
+	xcb_window_t win;
 
-	val.background_pixel = ctx->black;
-	val.colormap = ctx->cmap;
-	win = XCreateWindow(dpy, DefaultRootWindow(dpy), 10, 10, 128, 256,
-			    0, ctx->depth, InputOutput, ctx->visual, CWColormap | CWBackPixel, &val);
-	back = XCreatePixmap(ctx->dpy, ctx->drawable, 128, 256, ctx->depth);
+	val[0] = ctx->black;
+	val[1] = ctx->cmap;
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, ctx->depth, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, 128, 256, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP, val);
+	back = pix = xcb_generate_id(xc);
+	xcb_create_pixmap(xc, ctx->depth, pix, ctx->drawable, 128, 256);
 
 	/* Dark blue tile gradient */
 	from.red = 0x28;
@@ -54,7 +59,7 @@ void testDraw()
 	tile = RRenderGradient(64, 64, &from, &to, RGRD_DIAGONAL);
 	img = RCloneImage(tile);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 0, 0);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 0, 0);
 
 	/* Read the image, and combine it with the tile. Put it as a sample
 	 * in the second slot, and also save a copy for later use. */
@@ -67,7 +72,7 @@ void testDraw()
 	RReleaseImage(icon);
 	tmp = img;
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 64, 0);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 64, 0);
 
 	img = RCloneImage(tile);
 
@@ -83,7 +88,7 @@ void testDraw()
 	}
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 0, 64);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 0, 64);
 
 	RReleaseImage(img);
 	img = RCloneImage(tile);
@@ -98,7 +103,7 @@ void testDraw()
 	}
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 64, 64);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 64, 64);
 
 	RReleaseImage(img);
 	img = RCloneImage(tile);
@@ -128,7 +133,7 @@ void testDraw()
 	RDrawSegments(img, &segs[9], 7, &color);
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 0, 128);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 0, 128);
 
 	RReleaseImage(img);
 	img = RCloneImage(tile);
@@ -139,7 +144,7 @@ void testDraw()
 	ROperateSegments(img, RAddOperation, segs, 16, &cdelta);
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 64, 128);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 64, 128);
 
 	RReleaseImage(img);
 
@@ -172,7 +177,7 @@ void testDraw()
 	}
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 0, 192);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 0, 192);
 
 	RReleaseImage(img);
 
@@ -189,27 +194,34 @@ void testDraw()
 	}
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 64, 192);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 64, 192);
 
-	XSetWindowBackgroundPixmap(dpy, win, back);
-	XMapRaised(dpy, win);
-	XClearWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP, (uint32_t[]) { back });
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+	xcb_flush(xc);
 }
 
 void testBevel()
 {
 	RImage *img, *tile;
 	RColor color, from, to;
-	XSetWindowAttributes val;
-	Pixmap pix, back;
-	Window win;
+	uint32_t val[2];
+	xcb_pixmap_t pix, back;
+	xcb_window_t win;
 
-	val.background_pixel = ctx->black;
-	val.colormap = ctx->cmap;
-	win = XCreateWindow(dpy, DefaultRootWindow(dpy), 10, 10, 140, 140,
-			    0, ctx->depth, InputOutput, ctx->visual, CWColormap | CWBackPixel, &val);
-	back = XCreatePixmap(ctx->dpy, ctx->drawable, 140, 140, ctx->depth);
+	val[0] = ctx->black;
+	val[1] = ctx->cmap;
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, ctx->depth, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, 140, 140, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP, val);
+	back = pix = xcb_generate_id(xc);
+	xcb_create_pixmap(xc, ctx->depth, pix, ctx->drawable, 140, 140);
 
 	/* Standard gray tile gradient */
 	from.red = 0xa6;
@@ -232,14 +244,14 @@ void testBevel()
 	   to.alpha = 0xff; */
 
 	/* Create Background */
-	img = RCreateImage(140, 140, True);
+	img = RCreateImage(140, 140, true);
 	color.red = 0x28;
 	color.green = 0x45;
 	color.blue = 0x69;
 	color.alpha = 0xff;
 	RClearImage(img, &color);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 140, 140, 0, 0);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 140, 140, 0, 0);
 	RReleaseImage(img);
 
 	tile = RRenderGradient(64, 64, &from, &to, RGRD_DIAGONAL);
@@ -247,47 +259,55 @@ void testBevel()
 	img = RCloneImage(tile);
 	RBevelImage(img, RBEV_SUNKEN);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 3, 3);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 3, 3);
 	RReleaseImage(img);
 
 	img = RCloneImage(tile);
 	RBevelImage(img, RBEV_RAISED);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 73, 3);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 73, 3);
 	RReleaseImage(img);
 
 	img = RCloneImage(tile);
 	RBevelImage(img, RBEV_RAISED2);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 3, 73);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 3, 73);
 	RReleaseImage(img);
 
 	img = RCloneImage(tile);
 	RBevelImage(img, RBEV_RAISED3);
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 73, 73);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 73, 73);
 	RReleaseImage(img);
 
-	XSetWindowBackgroundPixmap(dpy, win, back);
-	XMapRaised(dpy, win);
-	XClearWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP, (uint32_t[]) { back });
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+	xcb_flush(xc);
 }
 
 void testScale()
 {
 	RImage *image;
 	RImage *scaled;
-	XSetWindowAttributes val;
-	Pixmap pix;
-	Window win;
+	uint32_t val[2];
+	xcb_pixmap_t pix;
+	xcb_window_t win;
 
-	val.background_pixel = ctx->black;
-	val.colormap = ctx->cmap;
-	win = XCreateWindow(dpy, DefaultRootWindow(dpy), 10, 10, 140, 140,
-			    0, ctx->depth, InputOutput, ctx->visual, CWColormap | CWBackPixel, &val);
-	XStoreName(dpy, win, "Scale");
-	pix = XCreatePixmap(ctx->dpy, ctx->drawable, 140, 140, ctx->depth);
+	val[0] = ctx->black;
+	val[1] = ctx->cmap;
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, ctx->depth, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, 140, 140, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP, val);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, win, XCB_ATOM_WM_NAME,
+			    XCB_ATOM_STRING, 8, 5, (const void *)"Scale");
+	pix = xcb_generate_id(xc);
+	xcb_create_pixmap(xc, ctx->depth, pix, ctx->drawable, 140, 140);
 
 	image = RLoadImage(ctx, "ballot_box.xpm", 0);
 	if (!image) {
@@ -299,10 +319,12 @@ void testScale()
 
 	RReleaseImage(image);
 	RConvertImage(ctx, scaled, &pix);
-	XSetWindowBackgroundPixmap(dpy, win, pix);
-	XMapRaised(dpy, win);
-	XClearWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP, (uint32_t[]) { pix });
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+	xcb_flush(xc);
 }
 
 void testRotate()
@@ -310,9 +332,9 @@ void testRotate()
 
 	RImage *image;
 	RImage *rotated;
-	XSetWindowAttributes val;
-	Pixmap pix;
-	Window win;
+	uint32_t val[2];
+	xcb_pixmap_t pix;
+	xcb_window_t win;
 
 	image = RLoadImage(ctx, "ballot_box.xpm", 0);
 	if (!image) {
@@ -322,21 +344,29 @@ void testRotate()
 
 	image = RScaleImage(image, 90, 180);
 
-	val.background_pixel = ctx->black;
-	val.colormap = ctx->cmap;
-	win = XCreateWindow(dpy, DefaultRootWindow(dpy), 10, 10, image->height,
-			    image->width, 0, ctx->depth, InputOutput, ctx->visual, CWColormap | CWBackPixel, &val);
-	XStoreName(dpy, win, "Rotate");
-	pix = XCreatePixmap(ctx->dpy, ctx->drawable, image->height, image->width, ctx->depth);
+	val[0] = ctx->black;
+	val[1] = ctx->cmap;
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, ctx->depth, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, image->height, image->width, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP, val);
+		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, win, XCB_ATOM_WM_NAME,
+			    XCB_ATOM_STRING, 8, 6, (const void *)"Rotate");
+	pix = xcb_generate_id(xc);
+	xcb_create_pixmap(xc, ctx->depth, pix, ctx->drawable, image->height, image->width);
 
 	rotated = RRotateImage(image, 90.0);
 
 	RReleaseImage(image);
 	RConvertImage(ctx, rotated, &pix);
-	XSetWindowBackgroundPixmap(dpy, win, pix);
-	XMapRaised(dpy, win);
-	XClearWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP, (uint32_t[]) { pix });
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+	xcb_flush(xc);
 }
 
 void drawClip()
@@ -345,15 +375,20 @@ void drawClip()
 	RColor color, from, to, tmp;
 	RColor cdelta, cdelta1;
 	RSegment segs[20];
-	XSetWindowAttributes val;
-	Pixmap pix, back;
-	Window win;
+	uint32_t val[2];
+	xcb_pixmap_t pix, back;
+	xcb_window_t win;
 
-	val.background_pixel = ctx->black;
-	val.colormap = ctx->cmap;
-	win = XCreateWindow(dpy, DefaultRootWindow(dpy), 10, 10, 64, 64,
-			    0, ctx->depth, InputOutput, ctx->visual, CWColormap | CWBackPixel, &val);
-	back = XCreatePixmap(ctx->dpy, ctx->drawable, 64, 64, ctx->depth);
+	val[0] = ctx->black;
+	val[1] = ctx->cmap;
+	win = xcb_generate_id(xc);
+	xcb_create_window(xc, ctx->depth, win,
+			  xcb_setup_roots_iterator(xcb_get_setup(xc)).data->root,
+			  10, 10, 64, 64, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP, val);
+	back = pix = xcb_generate_id(xc);
+	xcb_create_pixmap(xc, ctx->depth, pix, ctx->drawable, 64, 64);
 
 	/* Standard gray tile gradient */
 	from.red = 0xa6;
@@ -459,13 +494,15 @@ void drawClip()
 #endif
 
 	RConvertImage(ctx, img, &pix);
-	XCopyArea(dpy, pix, back, ctx->copy_gc, 0, 0, 64, 64, 0, 0);
+	xcb_copy_area(xc, pix, back, ctx->copy_xgc, 0, 0, 64, 64, 0, 0);
 	RReleaseImage(img);
 
-	XSetWindowBackgroundPixmap(dpy, win, back);
-	XMapRaised(dpy, win);
-	XClearWindow(dpy, win);
-	XFlush(dpy);
+	xcb_change_window_attributes(xc, win, XCB_CW_BACK_PIXMAP, (uint32_t[]) { back });
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_STACK_MODE,
+			     (uint32_t[]) { XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xc, win);
+	xcb_clear_area(xc, 0, win, 0, 0, 0, 0);
+	xcb_flush(xc);
 }
 
 void benchmark()
@@ -482,7 +519,7 @@ void benchmark()
 	gettimeofday(&timev, NULL);
 	t1 = (double)timev.tv_sec + (((double)timev.tv_usec) / 1000000);
 
-	img = RCreateImage(1024, 768, True);
+	img = RCreateImage(1024, 768, true);
 
 	gettimeofday(&timev, NULL);
 	t2 = (double)timev.tv_sec + (((double)timev.tv_usec) / 1000000);
@@ -561,6 +598,7 @@ void benchmark()
 int main(int argc, char **argv)
 {
 	RContextAttributes attr;
+	int sn;
 	int visualID = -1;
 
 	(void) argc;
@@ -571,8 +609,8 @@ int main(int argc, char **argv)
 	else
 		ProgName++;
 
-	dpy = XOpenDisplay("");
-	if (!dpy) {
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		puts("can't open display");
 		exit(1);
 	}
@@ -584,7 +622,7 @@ int main(int argc, char **argv)
 		attr.visualid = visualID;
 	}
 
-	ctx = RCreateContextXCB(XGetXCBConnection(dpy), DefaultScreen(dpy), &attr);
+	ctx = RCreateContextXCB(xc, sn, &attr);
 
 	if (!ctx) {
 		printf("could not initialize graphics library context: %s\n", RMessageForError(RErrorCode));

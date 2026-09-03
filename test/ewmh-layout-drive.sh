@@ -80,7 +80,7 @@ finish() {
 	[ "$FAILED" -eq 0 ]
 }
 
-for tool in Xephyr xdotool wmctrl xprop xdpyinfo xwininfo; do
+for tool in Xvfb Xephyr xdotool wmctrl xprop xdpyinfo xwininfo; do
 	command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
 done
 [ -x "$ROOT/src/.libs/wmaker" ] || skip_all "src/.libs/wmaker not built"
@@ -646,11 +646,25 @@ if run_x xdpyinfo >/dev/null 2>&1; then
 	exit 1
 fi
 
-note "start Xephyr $DPY"
+# Xephyr is a nested server: on the session display its host pointer
+# tracks the live mouse and can override the XTEST warps the drive
+# sends. Run it on a private headless parent whose virtual pointer
+# only moves when Xephyr mirrors a warp.
+PARENT_DISPLAY=${EWMH_LAYOUT_DRIVE_PARENT_DISPLAY:-":$(( ${DPY#:} + 1 ))"}
+Xvfb "$PARENT_DISPLAY" -screen 0 2400x1600x24 -ac >>"$LOG" 2>&1 &
+XVFB_PARENT_PID=$!
+echo "$XVFB_PARENT_PID" >> "$PIDFILE"
+xvfb_parent_ready() {
+	kill -0 "$XVFB_PARENT_PID" 2>/dev/null || fatal "parent Xvfb exited early"
+	DISPLAY=$PARENT_DISPLAY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xvfb_parent_ready || fatal "parent Xvfb failed to start"
+
+note "start Xephyr $DPY on parent $PARENT_DISPLAY"
 # two Xinerama heads side by side so the _NET_ACTIVE_WINDOW same-head
 # gate can be exercised, head 0 is the original 1024x768 at 0,0 so the
 # single-head checks are unaffected
-Xephyr "$DPY" +xinerama -screen 1024x768 -screen 1024x768 -ac >>"$LOG" 2>&1 &
+Xephyr "$DPY" -display "$PARENT_DISPLAY" +xinerama -screen 1024x768 -screen 1024x768 -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {

@@ -20,8 +20,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -51,7 +49,7 @@
 #define URGENT_BOUNCE_DELAY	3000
 
 
-void DoKaboom(WScreen * scr, Window win, int x, int y)
+void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 {
 #ifdef NORMAL_ICON_KABOOM
 	RContext *rc = scr->rcontext;
@@ -72,7 +70,7 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 	 * on the first Composite, so skip the decoration then just as
 	 * the previous XGetImage fallback effectively did. */
 	if (rc->xdepth != scr->depth) {
-		XUnmapWindow(dpy, win);
+		xcb_unmap_window(xconn, win);
 		return;
 	}
 
@@ -88,7 +86,7 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 	cairo_surface_destroy(ws);
 	if (cairo_surface_status(snap) != CAIRO_STATUS_SUCCESS) {
 		cairo_surface_destroy(snap);
-		XUnmapWindow(dpy, win);
+		xcb_unmap_window(xconn, win);
 		return;
 	}
 
@@ -112,23 +110,22 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 		}
 	}
 
-	XUnmapWindow(dpy, win);
+	xcb_unmap_window(xconn, win);
 
 	j = k;
 	while (k > 0) {
-		XEvent foo;
+		xcb_generic_event_t *foo = NULL;
 
-		if (WXEvqTakeTyped(dpy, ButtonPress, None, &foo)) {
-			WXEvqPutBack(&foo);
-			XClearWindow(dpy, scr->root_win);
+		if (WXEvqTakeTyped(xconn, XCB_BUTTON_PRESS, XCB_NONE, &foo)) {
+			WXEvqPutBack(foo);
+			xcb_clear_area(xconn, 0, scr->root_win, 0, 0, 0, 0);
 			break;
 		}
 
 		for (i = 0; i < j; i++) {
 			if (ax[i] >= 0) {
 				int _px = px[i] >> KAB_PRECISION;
-				XClearArea(dpy, scr->root_win, _px, py[i],
-					   ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE, False);
+				xcb_clear_area(xconn, false, scr->root_win, _px, py[i], ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE);
 				px[i] += pvx[i];
 				py[i] += pvy[i];
 				_px = px[i] >> KAB_PRECISION;
@@ -148,7 +145,7 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 		}
 
 		cairo_surface_flush(root);
-		XFlush(dpy);
+		wXFlush(xconn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z * 2);
 	}
 
@@ -158,18 +155,18 @@ void DoKaboom(WScreen * scr, Window win, int x, int y)
 #endif	/* NORMAL_ICON_KABOOM */
 }
 
-Pixmap MakeGhostIcon(WScreen * scr, Drawable drawable)
+xcb_pixmap_t MakeGhostIcon(WScreen * scr, xcb_drawable_t drawable)
 {
 	RImage *back;
 	RColor color;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 
 	if (!drawable)
-		return None;
+		return XCB_NONE;
 
-	back = RCreateImageFromDrawable(scr->rcontext, drawable, None);
+	back = RCreateImageFromDrawable(scr->rcontext, drawable, XCB_NONE);
 	if (!back)
-		return None;
+		return XCB_NONE;
 
 	color.red = 0xff;
 	color.green = 0xff;
@@ -223,7 +220,7 @@ static void doAppBounce(void *arg)
 reinit:
 	if (data->wapp->refcount > 1) {
 		if (w_global.config->raise_appicons_when_bouncing)
-			XRaiseWindow(dpy, aicon->icon->core->window);
+			xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 
 		const double ticks = BOUNCE_HZ * BOUNCE_LENGTH;
 		const double s = sqrt(BOUNCE_HEIGHT)/(ticks/2);
@@ -240,28 +237,23 @@ reinit:
 
 			switch (data->dir) {
 			case 0: /* left, bounce to right */
-				XMoveWindow(dpy, aicon->icon->core->window,
-					    aicon->x_pos + (int)offset, aicon->y_pos);
+				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos + (int)offset, aicon->y_pos });
 				break;
 			case 1: /* right, bounce to left */
-				XMoveWindow(dpy, aicon->icon->core->window,
-					    aicon->x_pos - (int)offset, aicon->y_pos);
+				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos - (int)offset, aicon->y_pos });
 				break;
 			case 2: /* top, bounce down */
-				XMoveWindow(dpy, aicon->icon->core->window,
-					    aicon->x_pos, aicon->y_pos + (int)offset);
+				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos + (int)offset });
 				break;
 			case 3: /* bottom, bounce up */
-				XMoveWindow(dpy, aicon->icon->core->window,
-					    aicon->x_pos, aicon->y_pos - (int)offset);
+				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos - (int)offset });
 				break;
 			}
 			return;
 		}
 	}
 
-	XMoveWindow(dpy, aicon->icon->core->window,
-			aicon->x_pos, aicon->y_pos);
+	xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos });
 	aicon->icon->core->screen_ptr->flags.need_restack = 1;
 	data->wapp->flags.bouncing = 0;
 	WMDeleteTimerHandler(data->timer);

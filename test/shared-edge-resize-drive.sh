@@ -6,7 +6,7 @@
 # and clears the maximize state of both on release.
 #
 # The pairs are created with the WindowSnapping drag-to-edge path
-# (left/right and top/bottom halves); the seam is dragged through
+# (left/right and top/bottom halves), the seam is dragged through
 # _NET_WM_MOVERESIZE plus real button-motion, mirroring how a client
 # initiates an interactive resize.
 set -u
@@ -224,7 +224,7 @@ drag_snap() {
 # one axis is grabbed), then hold a button so the loop's ButtonMotion
 # filter sees the moves. The message goes first with button=0: wmaker
 # grabs the pointer itself and a press held before it would make the
-# grab fail with AlreadyGrabbed; pressing after arming feeds the modal
+# grab fail with AlreadyGrabbed, pressing after arming feeds the modal
 # loop its motion events without disturbing the grab.
 seam_drag() {
 	sd_xid=$1; sd_dir=$2; sd_px=$3; sd_py=$4; sdd_dx=$5; sd_dy=$6

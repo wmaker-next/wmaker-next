@@ -215,7 +215,7 @@ check "A flagged _NET_WM_STATE_HIDDEN after hide-application" is_hidden "$XA"
 # only A's app is hidden, B is untouched
 check "B still visible after hide-application A" not_hidden "$XB"
 
-# capture _NET_CLIENT_LIST snapshot; hidden windows stay managed and
+# capture _NET_CLIENT_LIST snapshot, hidden windows stay managed and
 # listed, this is the ordering/membership sanity gate
 hide_after_hide=$(net_client_list)
 check "A still in _NET_CLIENT_LIST when hidden" \

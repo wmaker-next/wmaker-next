@@ -17,11 +17,11 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red,
  * or in the other colors allocated by WINGs.
  */
 
-static int allocPixel(WMScreen *scr, XColor *xcolor)
+static int allocPixel(WMScreen *scr, WXColor *xcolor)
 {
 	RColor rcolor;
 
-	if (scr->rcontext->vclass == TrueColor) {
+	if (scr->rcontext->vclass == XCB_VISUAL_CLASS_TRUE_COLOR) {
 		/* AllocColor on a TrueColor colormap is a server round-trip
 		 * that returns the value RGetClosestXColor computes locally
 		 * from the visual masks, so derive the pixel here. */
@@ -32,14 +32,14 @@ static int allocPixel(WMScreen *scr, XColor *xcolor)
 		return RGetClosestXColor(scr->rcontext, &rcolor, &xcolor->pixel);
 	}
 
-	return XAllocColor(scr->display, scr->colormap, xcolor);
+	return wXAllocColor(scr->display, scr->colormap, xcolor);
 }
 
 static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned short green,
 			       unsigned short blue, unsigned short alpha)
 {
 	WMColor *color;
-	XColor xcolor;
+	WXColor xcolor;
 	RColor rcolor;
 
 	rcolor.red = red >> 8;
@@ -50,12 +50,11 @@ static WMColor *findCloseColor(WMScreen * scr, unsigned short red, unsigned shor
 	xcolor.red = red;
 	xcolor.green = green;
 	xcolor.blue = blue;
-	xcolor.flags = DoRed | DoGreen | DoBlue;
 	if (!RGetClosestXColor(scr->rcontext, &rcolor, &xcolor.pixel))
 		return NULL;
 
-	if (scr->rcontext->vclass != TrueColor &&
-	    !XAllocColor(scr->display, scr->colormap, &xcolor))
+	if (scr->rcontext->vclass != XCB_VISUAL_CLASS_TRUE_COLOR &&
+	    !wXAllocColor(scr->display, scr->colormap, &xcolor))
 		return NULL;
 
 	color = wmalloc(sizeof(WMColor));
@@ -73,12 +72,11 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red, unsigned sho
 				unsigned short blue, unsigned short alpha)
 {
 	WMColor *color;
-	XColor xcolor;
+	WXColor xcolor;
 
 	xcolor.red = red;
 	xcolor.green = green;
 	xcolor.blue = blue;
-	xcolor.flags = DoRed | DoGreen | DoBlue;
 	if (!allocPixel(scr, &xcolor))
 		return NULL;
 
@@ -94,7 +92,7 @@ static WMColor *createRGBAColor(WMScreen * scr, unsigned short red, unsigned sho
 }
 
 WMColor *WMCreateRGBColor(WMScreen * scr, unsigned short red, unsigned short green,
-			  unsigned short blue, Bool exact)
+			  unsigned short blue, bool exact)
 {
 	WMColor *color = NULL;
 
@@ -120,7 +118,7 @@ RColor WMGetRColorFromColor(WMColor * color)
 }
 
 WMColor *WMCreateRGBAColor(WMScreen * scr, unsigned short red, unsigned short green,
-			   unsigned short blue, unsigned short alpha, Bool exact)
+			   unsigned short blue, unsigned short alpha, bool exact)
 {
 	WMColor *color = NULL;
 
@@ -133,16 +131,16 @@ WMColor *WMCreateRGBAColor(WMScreen * scr, unsigned short red, unsigned short gr
 	return color;
 }
 
-WMColor *WMCreateNamedColor(WMScreen * scr, const char *name, Bool exact)
+WMColor *WMCreateNamedColor(WMScreen * scr, const char *name, bool exact)
 {
 	WMColor *color;
-	XColor xcolor;
+	WXColor xcolor;
 
-	if (!XParseColor(scr->display, scr->colormap, name, &xcolor))
+	if (!wXParseColor(scr->display, scr->colormap, name, &xcolor))
 		return NULL;
 
-	if (scr->visual->class == TrueColor)
-		exact = True;
+	if (scr->visual->_class == XCB_VISUAL_CLASS_TRUE_COLOR)
+		exact = true;
 
 	if (!exact || !(color = createRGBAColor(scr, xcolor.red, xcolor.green, xcolor.blue, 0xffff))) {
 		color = findCloseColor(scr, xcolor.red, xcolor.green, xcolor.blue, 0xffff);
@@ -164,8 +162,8 @@ void WMReleaseColor(WMColor * color)
 	color->refCount--;
 
 	if (color->refCount < 1) {
-		if (color->screen->rcontext->vclass != TrueColor)
-			XFreeColors(color->screen->display, color->screen->colormap, &(color->color.pixel), 1, 0);
+		if (color->screen->rcontext->vclass != XCB_VISUAL_CLASS_TRUE_COLOR)
+			wXFreeColors(color->screen->display, color->screen->colormap, &(color->color.pixel), 1, 0);
 		wfree(color);
 	}
 }
@@ -175,7 +173,7 @@ void WMSetColorAlpha(WMColor * color, unsigned short alpha)
 	color->alpha = alpha;
 }
 
-void WMPaintColorSwatch(WMColor * color, Drawable d, int x, int y, unsigned int width, unsigned int height)
+void WMPaintColorSwatch(WMColor * color, xcb_drawable_t d, int x, int y, unsigned int width, unsigned int height)
 {
 	cairo_t *cr;
 
@@ -197,7 +195,7 @@ WMPixel WMColorPixel(WMColor * color)
 WMColor *WMWhiteColor(WMScreen * scr)
 {
 	if (!scr->white) {
-		scr->white = WMCreateRGBColor(scr, 0xffff, 0xffff, 0xffff, True);
+		scr->white = WMCreateRGBColor(scr, 0xffff, 0xffff, 0xffff, true);
 		if (!scr->white->flags.exact)
 			wwarning(_("could not allocate %s color"), _("white"));
 	}
@@ -207,7 +205,7 @@ WMColor *WMWhiteColor(WMScreen * scr)
 WMColor *WMBlackColor(WMScreen * scr)
 {
 	if (!scr->black) {
-		scr->black = WMCreateRGBColor(scr, 0, 0, 0, True);
+		scr->black = WMCreateRGBColor(scr, 0, 0, 0, true);
 		if (!scr->black->flags.exact)
 			wwarning(_("could not allocate %s color"), _("black"));
 	}
@@ -217,7 +215,7 @@ WMColor *WMBlackColor(WMScreen * scr)
 WMColor *WMGrayColor(WMScreen * scr)
 {
 	if (!scr->gray) {
-		scr->gray = WMCreateRGBColor(scr, 0xaeba, 0xaaaa, 0xaeba, True);
+		scr->gray = WMCreateRGBColor(scr, 0xaeba, 0xaaaa, 0xaeba, true);
 		if (!scr->gray->flags.exact)
 			wwarning(_("could not allocate %s color"), _("gray"));
 	}
@@ -227,7 +225,7 @@ WMColor *WMGrayColor(WMScreen * scr)
 WMColor *WMDarkGrayColor(WMScreen * scr)
 {
 	if (!scr->darkGray) {
-		scr->darkGray = WMCreateRGBColor(scr, 0x5144, 0x5555, 0x5144, True);
+		scr->darkGray = WMCreateRGBColor(scr, 0x5144, 0x5555, 0x5144, true);
 		if (!scr->darkGray->flags.exact)
 			wwarning(_("could not allocate %s color"), _("dark gray"));
 	}

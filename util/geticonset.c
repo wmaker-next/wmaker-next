@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 	} else {
-		char *desc = WMGetPropListDescription(iconset, True);
+		char *desc = WMGetPropListDescription(iconset, true);
 		puts(desc ? desc : "");
 		wfree(desc);
 	}

@@ -23,8 +23,8 @@ typedef struct W_DoubleTest {
 static void destroyDoubleTest(_DoubleTest * dPtr);
 static void paintDoubleTest(_DoubleTest * dPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 /* our widget class ID */
 static W_Class DoubleTestClass = 0;
@@ -69,11 +69,11 @@ DoubleTest *CreateDoubleTest(WMWidget * parent, const char *text)
 
 	dPtr->text = wstrdup(text);
 
-	WMCreateEventHandler(dPtr->view, ExposureMask	/* this allows us to know when we should paint */
-			     | StructureNotifyMask,	/* this allows us to know things like when we are destroyed */
+	WMCreateEventHandler(dPtr->view, XCB_EVENT_MASK_EXPOSURE	/* this allows us to know when we should paint */
+			     | XCB_EVENT_MASK_STRUCTURE_NOTIFY,	/* this allows us to know things like when we are destroyed */
 			     handleEvents, dPtr);
 
-	WMCreateEventHandler(dPtr->view, ButtonPressMask, handleActionEvents, dPtr);
+	WMCreateEventHandler(dPtr->view, XCB_EVENT_MASK_BUTTON_PRESS, handleActionEvents, dPtr);
 
 	return dPtr;
 }
@@ -86,7 +86,7 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 		WMPaintColorSwatch(scr->white, dPtr->view->window,
 				   0, 0, dPtr->view->size.width, dPtr->view->size.height);
 	} else {
-		XClearWindow(scr->display, dPtr->view->window);
+		wXClearArea(scr->display, dPtr->view->window, 0, 0, 0, 0, false);
 	}
 
 	W_DrawRelief(scr, dPtr->view->window, 0, 0, dPtr->view->size.width,
@@ -97,22 +97,22 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 		y = (dPtr->view->size.height - scr->normalFont->height) / 2;
 		W_PaintText(dPtr->view, dPtr->view->window, scr->normalFont,
 			    dPtr->on, dPtr->on + y, dPtr->view->size.width, WACenter,
-			    scr->black, False, dPtr->text, strlen(dPtr->text));
+			    scr->black, false, dPtr->text, strlen(dPtr->text));
 	}
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	_DoubleTest *dPtr = (_DoubleTest *) data;
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintDoubleTest(dPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyDoubleTest(dPtr);
 		break;
 
@@ -130,12 +130,12 @@ static void deactivate(void *data)
 	dPtr->timer = NULL;
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	_DoubleTest *dPtr = (_DoubleTest *) data;
 
-	switch (event->type) {
-	case ButtonPress:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_BUTTON_PRESS:
 		if (WMIsDoubleClick(event)) {
 			if (dPtr->timer)
 				WMDeleteTimerHandler(dPtr->timer);

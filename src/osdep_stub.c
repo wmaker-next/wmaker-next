@@ -6,7 +6,7 @@
 #include "wconfig.h"
 #include "osdep.h"
 
-Bool GetCommandForPid(int pid, char ***argv, int *argc)
+bool GetCommandForPid(int pid, char ***argv, int *argc)
 {
 	static int notified = 0;
 
@@ -32,16 +32,16 @@ Bool GetCommandForPid(int pid, char ***argv, int *argc)
 	*argv = NULL;
 	*argc = 0;
 
-	return False;
+	return false;
 }
 
 
-Bool IsProcessAncestor(pid_t ancestor, pid_t pid)
+bool IsProcessAncestor(pid_t ancestor, pid_t pid)
 {
 	(void)ancestor;
 	(void)pid;
 
-	return False;
+	return false;
 }
 
 

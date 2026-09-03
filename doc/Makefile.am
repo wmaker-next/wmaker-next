@@ -102,12 +102,8 @@ wdwrite-args:
 		--program "$(top_builddir)/util/wdwrite" --man-page "$(top_srcdir)/doc/wdwrite.1"
 
 wmclipd-args:
-if HAVE_XFIXES
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmclipd" --man-page "$(top_srcdir)/doc/wmclipd.1"
-else
-	@echo "  SKIP     wmclipd-args (built without XFixes)"
-endif
 
 wmakermsg-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \

@@ -3,6 +3,7 @@
  */
 
 #include "wconfig.h"
+#include <stdbool.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,10 +63,10 @@ char *StrConcatDot(const char *a, const char *b)
 	return buf;
 }
 
-Bool UpdateDomainFile(WDDomain *domain)
+bool UpdateDomainFile(WDDomain *domain)
 {
 	(void)domain;
-	return True;
+	return true;
 }
 
 void wApplicationExtractDirPackIcon(const char *path, const char *wm_instance,
@@ -143,9 +144,9 @@ static void set_attr_dict(const char *desc)
 		WMReleasePropList(test_db.dictionary);
 	/* instance.class outer keys are case-sensitive in X11, parse the
 	 * test domain that way so "xterm" and "XTerm" stay distinct */
-	WMPLSetCaseSensitive(True);
+	WMPLSetCaseSensitive(true);
 	test_db.dictionary = desc ? WMCreatePropListFromDescription(desc) : NULL;
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 	CHECK(!desc || test_db.dictionary != NULL);
 	w_global.domain.window_attr = &test_db;
 	wWindowAttrsReload();
@@ -161,7 +162,7 @@ static void test_global_default(void)
 
 	memset(&attr, 0xff, sizeof(attr));
 	memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, True);
+	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, true);
 	/* useGlobalDefault writes every flag to its No default and marks
 	 * every flag as defined */
 	CHECK(attr.no_titlebar == 0);
@@ -173,7 +174,7 @@ static void test_global_default(void)
 
 	memset(&attr, 0, sizeof(attr));
 	memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, False);
+	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, false);
 	/* without useGlobalDefault nothing is defined for an empty domain */
 	CHECK(mask.no_titlebar == 0);
 	CHECK(mask.floating == 0);
@@ -194,7 +195,7 @@ static void test_precedence(void)
 
 	memset(&attr, 0, sizeof(attr));
 	memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, True);
+	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, true);
 	/* instance.class > instance > class > "*" */
 	CHECK(attr.omnipresent == 0);   /* overridden by instance.class */
 	CHECK(attr.no_border == 1);     /* from instance.class */
@@ -207,7 +208,7 @@ static void test_precedence(void)
 	/* without the global default, "*" must not contribute */
 	memset(&attr, 0, sizeof(attr));
 	memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, False);
+	wDefaultFillAttributes("xterm", "XTerm", &attr, &mask, false);
 	CHECK(attr.omnipresent == 0);
 	CHECK(mask.omnipresent == 1);   /* instance.class set it */
 	CHECK(attr.no_titlebar == 0);   /* class set NO */
@@ -216,7 +217,7 @@ static void test_precedence(void)
 
 	/* an unrelated window only sees "*" with useGlobalDefault */
 	memset(&attr, 0, sizeof(attr));
-	wDefaultFillAttributes("urxvt", "URxvt", &attr, NULL, True);
+	wDefaultFillAttributes("urxvt", "URxvt", &attr, NULL, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(attr.floating == 1);
 	CHECK(attr.omnipresent == 1);
@@ -235,25 +236,25 @@ static void test_icon_and_workspace(void)
 		      " \"xterm.XTerm\" = { NoTitlebar = YES; };"
 		      "}");
 
-	icon = wDefaultGetIconFile("xterm", "XTerm", False);
+	icon = wDefaultGetIconFile("xterm", "XTerm", false);
 	CHECK(icon && strcmp(icon, "class.png") == 0);
-	icon = wDefaultGetIconFile("xterm", NULL, False);
+	icon = wDefaultGetIconFile("xterm", NULL, false);
 	CHECK(icon == NULL);
-	icon = wDefaultGetIconFile("xterm", NULL, True);
+	icon = wDefaultGetIconFile("xterm", NULL, true);
 	CHECK(icon && strcmp(icon, "any.png") == 0);
-	icon = wDefaultGetIconFile(NULL, NULL, True);
+	icon = wDefaultGetIconFile(NULL, NULL, true);
 	CHECK(icon && strcmp(icon, "any.png") == 0);
 
 	/* singular StartWorkspace falls back through the plural getter as a
 	 * 1-bit mask (xterm=ws2->bit1, XTerm=ws4->bit3, urxvt via "*"=ws4->bit3) */
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == WS_BIT(1));
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, NULL, "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, NULL, "XTerm", &mask) == true);
 	CHECK(mask == WS_BIT(3));
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == true);
 	CHECK(mask == WS_BIT(3));
 }
 
@@ -266,46 +267,46 @@ static void test_start_workspaces_plural(void)
 		" XTerm = { StartWorkspaces = (\"2\", \"4\"); };"
 		"}");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == (WS_BIT(1) | WS_BIT(3)));
 
 	/* a single-element array is a 1-bit mask */
 	set_attr_dict("{ XTerm = { StartWorkspaces = (\"3\"); }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == WS_BIT(2));
 
 	/* empty array = no hint */
 	set_attr_dict("{ XTerm = { StartWorkspaces = (); }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == false);
 
 	/* singular-only falls back to a 1-bit mask */
 	set_attr_dict("{ XTerm = { StartWorkspace = 3; }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == WS_BIT(2));
 
 	/* plural takes precedence over singular in the same entry */
 	set_attr_dict("{ XTerm = { StartWorkspace = 3; StartWorkspaces = (\"1\"); }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == WS_BIT(0));
 
 	/* a name that resolves to nothing yields no hint */
 	set_attr_dict("{ XTerm = { StartWorkspaces = (\"nonexistent\"); }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == false);
 
 	/* no key at all = no hint */
 	set_attr_dict("{ XTerm = { NoTitlebar = YES; }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == False);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == false);
 
 	/* "*" global default supplies the singular fallback */
 	set_attr_dict("{ \"*\" = { StartWorkspace = 2; }; }");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "urxvt", "URxvt", &mask) == true);
 	CHECK(mask == WS_BIT(1));
 
 	/* instance.class plural wins over class singular */
@@ -314,7 +315,7 @@ static void test_start_workspaces_plural(void)
 		" \"xterm.XTerm\" = { StartWorkspaces = (\"1\", \"2\"); };"
 		"}");
 	mask = 0;
-	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == True);
+	CHECK(wDefaultGetStartWorkspaces(NULL, "xterm", "XTerm", &mask) == true);
 	CHECK(mask == (WS_BIT(0) | WS_BIT(1)));
 }
 
@@ -324,15 +325,15 @@ static void test_change_icon_reloads_cache(void)
 
 	set_attr_dict("{ \"xterm.XTerm\" = { Icon = \"old.png\"; }; }");
 
-	icon = wDefaultGetIconFile("xterm", "XTerm", False);
+	icon = wDefaultGetIconFile("xterm", "XTerm", false);
 	CHECK(icon && strcmp(icon, "old.png") == 0);
 
 	wDefaultChangeIcon("xterm", "XTerm", "new.png");
-	icon = wDefaultGetIconFile("xterm", "XTerm", False);
+	icon = wDefaultGetIconFile("xterm", "XTerm", false);
 	CHECK(icon && strcmp(icon, "new.png") == 0);
 
 	wDefaultChangeIcon("xterm", "XTerm", NULL);
-	icon = wDefaultGetIconFile("xterm", "XTerm", False);
+	icon = wDefaultGetIconFile("xterm", "XTerm", false);
 	CHECK(icon == NULL);
 }
 
@@ -353,26 +354,26 @@ static void test_empty_class(void)
 		      "}");
 
 	memset(&attr, 0, sizeof(attr));
-	wDefaultFillAttributes("", "XTerm", &attr, NULL, True);
+	wDefaultFillAttributes("", "XTerm", &attr, NULL, true);
 	CHECK(attr.no_titlebar == 0);     /* class entry, not "*" */
 	CHECK(attr.floating == 1);        /* class entry */
 	CHECK(attr.no_border == 0);       /* ".XTerm" must NOT match */
 	CHECK(attr.omnipresent == 0);     /* "" must NOT match */
 
 	memset(&attr, 0, sizeof(attr));
-	wDefaultFillAttributes("", "", &attr, NULL, True);
+	wDefaultFillAttributes("", "", &attr, NULL, true);
 	CHECK(attr.no_titlebar == 1);     /* falls through to "*" */
 	CHECK(attr.omnipresent == 0);     /* "" must NOT match */
 
-	icon = wDefaultGetIconFile("", "", True);
+	icon = wDefaultGetIconFile("", "", true);
 	CHECK(icon && strcmp(icon, "any.png") == 0);   /* not "dot.png" */
-	icon = wDefaultGetIconFile("", "", False);
+	icon = wDefaultGetIconFile("", "", false);
 	CHECK(icon == NULL);
 
 	/* writing under ("","") goes to "*", and ("","XTerm") to "XTerm",
 	 * symmetric with the read side */
 	wDefaultChangeIcon("", "XTerm", "class.png");
-	icon = wDefaultGetIconFile(NULL, "XTerm", False);
+	icon = wDefaultGetIconFile(NULL, "XTerm", false);
 	CHECK(icon && strcmp(icon, "class.png") == 0);
 }
 
@@ -383,11 +384,11 @@ static void test_case_sensitivity(void)
 	set_attr_dict("{ XTerm = { NoTitlebar = YES; }; }");
 
 	memset(&attr, 0, sizeof(attr));
-	wDefaultFillAttributes(NULL, "XTerm", &attr, NULL, True);
+	wDefaultFillAttributes(NULL, "XTerm", &attr, NULL, true);
 	CHECK(attr.no_titlebar == 1);
 
 	memset(&attr, 0, sizeof(attr));
-	wDefaultFillAttributes(NULL, "xterm", &attr, NULL, True);
+	wDefaultFillAttributes(NULL, "xterm", &attr, NULL, true);
 	CHECK(attr.no_titlebar == 0);
 }
 
@@ -423,7 +424,7 @@ static void test_hicolor_fallback(void)
 	reset_icon_stubs();
 	xdg_match_name = "myapp";
 	xdg_return_path = "/hicolor/myapp.png";
-	path = get_icon_filename("myapp", "myapp", NULL, False);
+	path = get_icon_filename("myapp", "myapp", NULL, false);
 	CHECK_STR(path, "/hicolor/myapp.png");
 	wfree(path);
 	CHECK(xdg_call_count >= 1);
@@ -435,7 +436,7 @@ static void test_hicolor_fallback(void)
 	findimage_return = "/user/user.png";
 	xdg_match_name = "myapp";
 	xdg_return_path = "/hicolor/myapp.png";
-	path = get_icon_filename("myapp", "myapp", NULL, False);
+	path = get_icon_filename("myapp", "myapp", NULL, false);
 	CHECK_STR(path, "/user/user.png");
 	wfree(path);
 	/* user Icon= resolved before any hicolor lookup */
@@ -449,17 +450,17 @@ static void test_hicolor_fallback(void)
 	/* literal "MyApp" misses */
 	xdg_match_name = "myapp";
 	xdg_return_path = "/hicolor/myapp.png";
-	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	path = get_icon_filename(NULL, "MyApp", NULL, false);
 	CHECK_STR(path, "/hicolor/myapp.png");
 	wfree(path);
 
 	/* case 4: nothing resolves -> NULL, not the default icon when
-	 * default_icon is False; and the generic default icon when True
+	 * default_icon is false; and the generic default icon when true
 	 * (here get_default_image_path also calls FindImage, which is NULL,
-	 *  so even True returns NULL) */
+	 *  so even true returns NULL) */
 	set_attr_dict("{}");
 	reset_icon_stubs();
-	path = get_icon_filename("x", "X", NULL, False);
+	path = get_icon_filename("x", "X", NULL, false);
 	CHECK(path == NULL);
 }
 
@@ -480,7 +481,7 @@ static void test_hicolor_enforce_margin(void)
 	reset_icon_stubs();
 	xdg_match_name = "MyApp";
 	xdg_return_path = "/hicolor/myapp.png";
-	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	path = get_icon_filename(NULL, "MyApp", NULL, false);
 	CHECK_STR(path, "/hicolor/myapp.png");
 	wfree(path);
 	CHECK(xdg_last_want == 48);
@@ -490,7 +491,7 @@ static void test_hicolor_enforce_margin(void)
 	reset_icon_stubs();
 	xdg_match_name = "MyApp";
 	xdg_return_path = "/hicolor/myapp.png";
-	path = get_icon_filename(NULL, "MyApp", NULL, False);
+	path = get_icon_filename(NULL, "MyApp", NULL, false);
 	CHECK_STR(path, "/hicolor/myapp.png");
 	wfree(path);
 	CHECK(xdg_last_want == 64);
@@ -547,38 +548,38 @@ static void test_dynamic_single_predicate(void)
 
 	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(mask.no_titlebar == 1);
 
 	w = make_wwin("xterm", NULL, NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.floating == 1);
 
 	w = make_wwin(NULL, NULL, "watching YouTube", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.skip_window_list == 1);
 
 	w = make_wwin(NULL, NULL, NULL, "browser", NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_border == 1);
 
 	w = make_wwin(NULL, NULL, NULL, NULL, "/usr/bin/firefox", NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.omnipresent == 1);
 
 	w = make_wwin(NULL, NULL, NULL, NULL, NULL, "build-cluster", NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_focusable == 1);
 
 	w = make_wwin("urxvt", "URxvt", "plain", "term", "urxvt", "laptop", NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 	CHECK(attr.floating == 0);
 	CHECK(attr.skip_window_list == 0);
@@ -602,19 +603,19 @@ static void test_dynamic_multi_predicate_and(void)
 
 	w = make_wwin(NULL, "Firefox", "watching YouTube", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(attr.floating == 1);
 
 	w = make_wwin(NULL, "Firefox", "about:blank", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 	CHECK(attr.floating == 0);
 
 	w = make_wwin(NULL, "Chrome", "watching YouTube", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 	CHECK(attr.floating == 0);
 }
@@ -635,7 +636,7 @@ static void test_dynamic_first_match_wins(void)
 
 	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(attr.no_border == 0);
 }
@@ -653,7 +654,7 @@ static void test_dynamic_empty_block_rejected(void)
 
 	w = make_wwin("urxvt", "URxvt", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	set_attr_dict("{"
@@ -663,7 +664,7 @@ static void test_dynamic_empty_block_rejected(void)
 		      "}");
 	w = make_wwin(NULL, "x", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 }
 
@@ -685,7 +686,7 @@ static void test_dynamic_missing_attributes_no_pollution(void)
 	/* rule 2 matches on instance, class is unrelated */
 	w = make_wwin("bar", "Other", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(mask.no_titlebar == 1);
 
@@ -693,7 +694,7 @@ static void test_dynamic_missing_attributes_no_pollution(void)
 	 * instance must not get the attributes either */
 	w = make_wwin("notbar", "Foo", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 }
 
@@ -713,7 +714,7 @@ static void test_dynamic_malformed_regex_skipped(void)
 
 	w = make_wwin(NULL, "Firefox", NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 	CHECK(attr.no_border == 1);
 }
@@ -739,17 +740,17 @@ static void test_dynamic_window_type_multi(void)
 
 	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, types_a, 2);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.floating == 1);
 
 	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, types_b, 1);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.floating == 0);
 
 	w = make_wwin(NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.floating == 0);
 }
 
@@ -769,18 +770,18 @@ static void test_dynamic_reeval_and_reversion(void)
 
 	w = make_wwin("xterm", "XTerm", "Special Edit", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	memset(&base_attr, 0, sizeof(base_attr));
 	memset(&base_mask, 0, sizeof(base_mask));
-	wDefaultFillAttributes("xterm", "XTerm", &base_attr, &base_mask, False);
+	wDefaultFillAttributes("xterm", "XTerm", &base_attr, &base_mask, false);
 	CHECK(base_attr.no_titlebar == 1);
 	CHECK(base_mask.no_titlebar == 1);
 
 	w = make_wwin("xterm", "XTerm", "Plain", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 
 	set_attr_dict("{"
@@ -791,12 +792,12 @@ static void test_dynamic_reeval_and_reversion(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "Special Edit", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 
 	w = make_wwin(NULL, NULL, "Plain", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 }
 
@@ -816,12 +817,12 @@ static void test_dynamic_env_substitution(void)
 
 	w = make_wwin(NULL, NULL, "bar", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 
 	w = make_wwin(NULL, NULL, "baz", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	setenv("WM_TEST_FOO", "a.b*c", 1);
@@ -833,15 +834,15 @@ static void test_dynamic_env_substitution(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "a.b*c", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "abc", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 	w = make_wwin(NULL, NULL, "axbxc", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	setenv("WM_TEST_HOST", "build-1.example.com", 1);
@@ -853,11 +854,11 @@ static void test_dynamic_env_substitution(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "user@build-1.example.com: ~", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "user@other-host: ~", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	unsetenv("WM_TEST_UNSET");
@@ -869,11 +870,11 @@ static void test_dynamic_env_substitution(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "x", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	set_attr_dict("{"
@@ -884,18 +885,18 @@ static void test_dynamic_env_substitution(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "ab", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "abc", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	setenv("WM_TEST_HOME", "/home", 1);
 	set_attr_dict("{"
 		      " \"*\" = { Icon = \"$_WM_TEST_HOME/myicon.png\"; };"
 		      "}");
-	icon = wDefaultGetIconFile(NULL, NULL, True);
+	icon = wDefaultGetIconFile(NULL, NULL, true);
 
 	CHECK_STR(icon, "$_WM_TEST_HOME/myicon.png");
 
@@ -919,11 +920,11 @@ static void test_dynamic_env_bracket_passthrough(void)
 
 	w = make_wwin(NULL, NULL, "$", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	/* []]: ] at first position is literal, so $_WM_TEST_FOO
@@ -937,11 +938,11 @@ static void test_dynamic_env_bracket_passthrough(void)
 	/* unsubstituted set is ], $, _, W, M, T, E, S, F, O */
 	w = make_wwin(NULL, NULL, "]", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	/* [^]]: ] right after ^ is literal. Without the fix ^
@@ -957,11 +958,11 @@ static void test_dynamic_env_bracket_passthrough(void)
 	 * If substituted (bug) it becomes [^]abc] which excludes "a" */
 	w = make_wwin(NULL, NULL, "a", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "]", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	/* [[:alpha:]$_WM_TEST_FOO]: the ] in :] is part of the
@@ -976,11 +977,11 @@ static void test_dynamic_env_bracket_passthrough(void)
 		      "}");
 	w = make_wwin(NULL, NULL, "$", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	w = make_wwin(NULL, NULL, "!", NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	unsetenv("WM_TEST_FOO");
@@ -1079,7 +1080,7 @@ static void test_dynamic_title_cap(void)
 	long_title[sizeof(long_title) - 1] = '\0';
 	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 0);
 
 	/* same length, marker placed inside the first 512 bytes:
@@ -1090,7 +1091,7 @@ static void test_dynamic_title_cap(void)
 	long_title[sizeof(long_title) - 1] = '\0';
 	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 	CHECK(mask.no_titlebar == 1);
 
@@ -1101,7 +1102,7 @@ static void test_dynamic_title_cap(void)
 	long_title[DYNRULE_MAX_TITLE_LEN] = '\0';
 	w = make_wwin(NULL, NULL, long_title, NULL, NULL, NULL, NULL, 0);
 	memset(&attr, 0xff, sizeof(attr)); memset(&mask, 0, sizeof(mask));
-	wDefaultFillAttributesForWindow(&w, &attr, &mask, True);
+	wDefaultFillAttributesForWindow(&w, &attr, &mask, true);
 	CHECK(attr.no_titlebar == 1);
 }
 

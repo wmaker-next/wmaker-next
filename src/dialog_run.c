@@ -21,8 +21,7 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -70,9 +69,9 @@ typedef struct RunVariant {
 	int rank;	/* sort band, lower first */
 	int score;	/* match quality, higher first within a band */
 	time_t mtime;	/* recency tiebreak within the document band */
-	Bool replace;	/* True: text replaces the current word */
+	bool replace;	/* True: text replaces the current word */
 	RunVariantAction action;
-	Window focus_xid;	/* client_win of a window row, re-resolved at use */
+	xcb_window_t focus_xid;	/* client_win of a window row, re-resolved at use */
 	int target_workspace;
 } RunVariant;
 
@@ -109,15 +108,15 @@ typedef struct _WMInputPanelWithHistory {
 	WMHashTable *dropIcons;	/* icon_hint -> WMPixmap*, panel-owned */
 	int dropItemH;
 	int dropIconSize;
-	Bool dropMapped;
-	Bool filtering;		/* regenerate variants on every edit */
-	Bool rerun;		/* re-enter the modal loop after Escape */
+	bool dropMapped;
+	bool filtering;		/* regenerate variants on every edit */
+	bool rerun;		/* re-enter the modal loop after Escape */
 	char *accepted_key;	/* frec_key of the variant Return picked */
 	WMArray *outer_variants;/* saved during an open-with sub-cycle */
 	int outer_varpos;
 } WMInputPanelWithHistory;
 
-static RunVariant *makeVariant(char *text, char *label, int rank, Bool replace)
+static RunVariant *makeVariant(char *text, char *label, int rank, bool replace)
 {
 	RunVariant *v;
 
@@ -469,7 +468,7 @@ static void ScanFiles(const char *dir, const char *prefix, WMArray *result)
 					if (sb.st_mode & S_IFDIR)
 						suffix = wstrappend(suffix, "/");
 					WMAddToArray(result, makeVariant(suffix, NULL,
-									 RUN_RANK_PATH, False));
+									 RUN_RANK_PATH, false));
 				}
 				wfree(fullfilename);
 			}
@@ -481,7 +480,7 @@ static void ScanFiles(const char *dir, const char *prefix, WMArray *result)
 /* match needle against a candidate according to RunDialogMatching,
  * returns False on no match, else writes the rank-band offset (0
  * for a prefix hit, 1 otherwise) and a higher-is-better score */
-static Bool matchName(const char *needle, const char *hay_fold,
+static bool matchName(const char *needle, const char *hay_fold,
 		      const char *hay_orig, int *band, int *score)
 {
 	const char *hit;
@@ -489,28 +488,28 @@ static Bool matchName(const char *needle, const char *hay_fold,
 	switch (w_global.config->run_matching) {
 	case RUN_MATCH_PREFIX:
 		if (strncmp(hay_fold, needle, strlen(needle)) != 0)
-			return False;
+			return false;
 		*band = 0;
 		*score = 0;
-		return True;
+		return true;
 	case RUN_MATCH_FUZZY:
 		*score = wFuzzyScore(needle, hay_fold, hay_orig);
 		if (*score < 0)
-			return False;
+			return false;
 		*band = strncmp(hay_fold, needle, strlen(needle)) == 0 ? 0 : 1;
-		return True;
+		return true;
 	case RUN_MATCH_SUBSTRING:
 	default:
 		hit = strstr(hay_fold, needle);
 		if (!hit)
-			return False;
+			return false;
 		*band = (hit == hay_fold) ? 0 : 1;
 		*score = (hit == hay_fold) ? 1 : 0;
-		return True;
+		return true;
 	}
 }
 
-static Bool matchExecName(const char *needle, const char *exec,
+static bool matchExecName(const char *needle, const char *exec,
 			  int *band, int *score)
 {
 	char name[256], fold[256];
@@ -518,7 +517,7 @@ static Bool matchExecName(const char *needle, const char *exec,
 	size_t i, n;
 
 	if (!exec)
-		return False;
+		return false;
 	while (*exec == ' ' || *exec == '\t')
 		exec++;
 	start = exec;
@@ -535,7 +534,7 @@ static Bool matchExecName(const char *needle, const char *exec,
 
 	n = (size_t)(exec - start);
 	if (n == 0 || n >= sizeof(name))
-		return False;
+		return false;
 	memcpy(name, start, n);
 	name[n] = 0;
 	base = strrchr(name, '/');
@@ -545,7 +544,7 @@ static Bool matchExecName(const char *needle, const char *exec,
 		base = name;
 	n = strlen(base);
 	if (n == 0)
-		return False;
+		return false;
 	for (i = 0; i < n; i++)
 		fold[i] = tolower((unsigned char)base[i]);
 	fold[n] = 0;
@@ -588,7 +587,7 @@ static void matchXDGApps(const char *word, WMArray *result)
 			continue;
 		}
 		v = makeVariant(wstrdup(a->exec), makeAppLabel(a),
-				RUN_RANK_APP_PREFIX + band, True);
+				RUN_RANK_APP_PREFIX + band, true);
 		v->frec_key = a->id;
 		v->score = score + frecencyBonus(a->id);
 		if (a->icon)
@@ -652,10 +651,10 @@ static void matchPathDir(const char *dir, const char *word,
 			if (de->d_name[strlen(word)] == '\0')
 				continue;
 			v = makeVariant(wstrdup(de->d_name + strlen(word)),
-					NULL, RUN_RANK_PATH, False);
+					NULL, RUN_RANK_PATH, false);
 		} else {
 			v = makeVariant(wstrdup(de->d_name), NULL,
-					RUN_RANK_PATH + 1, True);
+					RUN_RANK_PATH + 1, true);
 		}
 		v->score = score;
 		v->icon_hint = wstrdup("mimetypes:application-x-executable");
@@ -719,7 +718,7 @@ static void matchDocuments(const char *word, WMArray *result)
 			label = wstrappend(label, dir);
 		}
 		wfree(dir);
-		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX + band, True);
+		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX + band, true);
 		v->frec_key = d->path;
 		v->score = score + frecencyBonus(d->path);
 		v->mtime = d->mtime;
@@ -752,7 +751,7 @@ static RunVariant *makeCalcVariant(const char *result, const char *err)
 		label = wstrconcat("= ! ", err);
 	else
 		label = wstrconcat("= ", result);
-	v = makeVariant(wstrdup(""), label, RUN_RANK_CALC, False);
+	v = makeVariant(wstrdup(""), label, RUN_RANK_CALC, false);
 	v->icon_hint = wstrdup(CALC_ICON);
 	v->action = RUN_ACTION_DISMISS;
 	return v;
@@ -779,18 +778,18 @@ static void matchCalc(const char *expr, WMArray *result)
 	((w)->wm_gnustep_attr->window_level == WMMainMenuWindowLevel || \
 	 (w)->wm_gnustep_attr->window_level == WMSubmenuWindowLevel))
 
-static Bool ws_in_scope(WWindow *wwin, const int *scope, int count)
+static bool ws_in_scope(WWindow *wwin, const int *scope, int count)
 {
 	int i;
 
 	if (count == 0)
-		return True;
+		return true;
 	if (count < 0)	/* requested scope matched nothing */
-		return False;
+		return false;
 	for (i = 0; i < count; i++)
 		if (WWIN_ON_WORKSPACE(wwin, scope[i]))
-			return True;
-	return False;
+			return true;
+	return false;
 }
 
 static int resolve_ws_scope(WScreen *scr, const char *ws, int *out, int max)
@@ -852,7 +851,7 @@ static RunVariant *makeWindowVariant(WWindow *wwin, int rank, int score)
 		snprintf(tag, sizeof(tag), "  [%s%s]", wsname, plus);
 	}
 	label = wstrconcat(title, tag);
-	v = makeVariant(wstrdup(""), label, rank, False);
+	v = makeVariant(wstrdup(""), label, rank, false);
 	snprintf(hint, sizeof(hint), "win:0x%lx", (unsigned long)wwin->client_win);
 	v->icon_hint = wstrdup(hint);
 	v->score = score;
@@ -965,7 +964,7 @@ static RunVariant *makeWorkspaceVariant(int ws_index, int rank, int score)
 		return NULL;
 	name = scr->workspaces[ws_index]->name;
 	text = wstrconcat("@", name ? name : "");
-	v = makeVariant(text, wstrdup(name ? name : ""), rank, True);
+	v = makeVariant(text, wstrdup(name ? name : ""), rank, true);
 	v->score = score;
 	v->action = RUN_ACTION_SWITCH_WORKSPACE;
 	v->target_workspace = ws_index;
@@ -1019,7 +1018,7 @@ static void matchWorkspaces(const char *needle, WMArray *result)
 
 static WMArray *GenerateVariants(const char *complete, int *word_off)
 {
-	Bool firstWord = True;
+	bool firstWord = true;
 	WMArray *variants = NULL;
 	const char *start, *pos = NULL, *path = NULL;
 	char *tmp = NULL, *dir = NULL, *prefix = NULL;
@@ -1037,7 +1036,7 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		pos = strrchr(complete, ' ');
 		if (pos != NULL) {
 			complete = pos + 1;
-			firstWord = False;
+			firstWord = false;
 		}
 	}
 	*word_off = complete - start;
@@ -1061,7 +1060,7 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		wfree(prefix);
 	} else if (*complete == '~') {
 		WMAddToArray(variants, makeVariant(wstrdup("/"), NULL,
-						   RUN_RANK_PATH, False));
+						   RUN_RANK_PATH, false));
 	} else if (firstWord && *complete == '?') {
 		if (w_global.config->run_doc_search)
 			matchDocuments(complete + 1, variants);
@@ -1177,17 +1176,17 @@ static int dropIconMiss;
 
 /* Same faded-icon rule as the window list panel: unmapped windows that
  * are shaded, miniaturized or hidden wash out against the tile */
-static Bool rowIconIsFaded(WWindow *wwin)
+static bool rowIconIsFaded(WWindow *wwin)
 {
 	if (wwin->flags.mapped)
-		return False;
+		return false;
 	if (wGroupIsInactiveMember(wwin))
-		return True;
+		return true;
 	if (!wwin->flags.shaded && !wwin->flags.miniaturized &&
 	    !wwin->flags.hidden && !w_global.config->cycle_all_workspaces)
-		return False;
+		return false;
 
-	return True;
+	return true;
 }
 
 static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
@@ -1200,7 +1199,7 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 	RImage *image;
 	WWindow *wwin = NULL;
 	int opaq = 255;
-	Bool is_win;
+	bool is_win;
 
 	if (!hint || !hint[0])
 		return NULL;
@@ -1290,7 +1289,7 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 				RImage *flat;
 
 				flat = RCreateImage(image->width, image->height,
-						    False);
+						    false);
 				if (flat) {
 					RFillImage(flat, &color);
 					RCombineAreaWithOpaqueness(flat, image,
@@ -1319,7 +1318,7 @@ static WMPixmap *loadRowIcon(WMInputPanelWithHistory *p, const char *hint,
 	return pix;
 }
 
-static void drawCandidate(WMList *lPtr, int index, Drawable d,
+static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 			  char *text, int state, WMRect *rect)
 {
 	WMInputPanelWithHistory *p = WMGetHangedData(lPtr);
@@ -1423,7 +1422,6 @@ static void candidateActivate(WMWidget *w, void *cdata)
 static void createDropList(WMInputPanelWithHistory *p)
 {
 	WMScreen *wscr = p->scr->wmscreen;
-	XSetWindowAttributes attr;
 	int wmScaleWidth, wmScaleHeight;
 
 	WMGetScaleBaseFromSystemFont(wscr, &wmScaleWidth, &wmScaleHeight);
@@ -1443,7 +1441,7 @@ static void createDropList(WMInputPanelWithHistory *p)
 
 	p->dropList = WMCreateList(p->dropWin);
 	WMHangData(p->dropList, p);
-	WMSetListAllowEmptySelection(p->dropList, False);
+	WMSetListAllowEmptySelection(p->dropList, false);
 	WMSetListUserDrawItemHeight(p->dropList, p->dropItemH);
 	WMSetListUserDrawProc(p->dropList, drawCandidate);
 	WMSetListAction(p->dropList, candidateClicked, p);
@@ -1457,10 +1455,9 @@ static void createDropList(WMInputPanelWithHistory *p)
 
 	/* override-redirect so wmaker does not try to manage it,
 	 * and save-under so the area below repaints cheaply */
-	attr.override_redirect = True;
-	attr.save_under = True;
-	XChangeWindowAttributes(dpy, WMWidgetXID(p->dropWin),
-				CWOverrideRedirect | CWSaveUnder, &attr);
+	xcb_change_window_attributes(xconn, WMWidgetXID(p->dropWin),
+				     XCB_CW_SAVE_UNDER | XCB_CW_OVERRIDE_REDIRECT,
+				     (const uint32_t[]){ true, true });
 }
 
 static void placeDropList(WMInputPanelWithHistory *p, int rows)
@@ -1498,11 +1495,11 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 	ow = w + 2 * bw;
 
 	if (bw > 0) {
-		XSetWindowBorderWidth(dpy, WMWidgetXID(p->dropWin), bw);
+		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ bw });
 		if (bpixel)
-			XSetWindowBorder(dpy, WMWidgetXID(p->dropWin), *bpixel);
+			xcb_change_window_attributes(xconn, WMWidgetXID(p->dropWin), XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *bpixel });
 	} else {
-		XSetWindowBorderWidth(dpy, WMWidgetXID(p->dropWin), 0);
+		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 	}
 
 	h = rows * p->dropItemH + 4;
@@ -1510,7 +1507,7 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 	y = fy + fh + 8;
 
 	head = wGetHeadForWindow(p->wwin);
-	ua = wGetUsableAreaForHead(p->scr, head, NULL, True);
+	ua = wGetUsableAreaForHead(p->scr, head, NULL, true);
 	if (y + h > ua.y2 && fy - h - 8 >= ua.y1)
 		y = fy - h - 8;
 	else if (y + h > ua.y2)
@@ -1525,12 +1522,12 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 	WMMoveWidget(p->dropWin, x, y);
 }
 
-static Bool prefixIsModal(const WMInputPanelWithHistory *p)
+static bool prefixIsModal(const WMInputPanelWithHistory *p)
 {
 	const char *w;
 
 	if (!p->prefix || p->word_off >= (int)strlen(p->prefix))
-		return False;
+		return false;
 	w = p->prefix + p->word_off;
 	return p->word_off == 0 && (*w == '=' || *w == '#' || *w == '@');
 }
@@ -1566,19 +1563,19 @@ static void refreshDropList(WMInputPanelWithHistory *p)
 	}
 	if (!p->dropMapped) {
 		WMMapWidget(p->dropWin);
-		XRaiseWindow(dpy, WMWidgetXID(p->dropWin));
-		p->dropMapped = True;
+		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		p->dropMapped = true;
 	}
-	p->filtering = True;
+	p->filtering = true;
 }
 
 static void hideDropList(WMInputPanelWithHistory *p)
 {
 	if (p->dropMapped) {
 		WMUnmapWidget(p->dropWin);
-		p->dropMapped = False;
+		p->dropMapped = false;
 	}
-	p->filtering = False;
+	p->filtering = false;
 }
 
 /* Keep the completion popup glued to the dialog on move/resize. */
@@ -1681,7 +1678,7 @@ static void stepVariant(WMInputPanelWithHistory *p, int dir)
 	}
 }
 
-static Bool enterOpenWith(WMInputPanelWithHistory *p)
+static bool enterOpenWith(WMInputPanelWithHistory *p)
 {
 	RunVariant *cur, *v;
 	WMArray *handlers, *sub;
@@ -1691,14 +1688,14 @@ static Bool enterOpenWith(WMInputPanelWithHistory *p)
 	int i, n;
 
 	if (p->outer_variants || !p->variants || p->varpos <= 0)
-		return False;
+		return false;
 	cur = WMGetFromArray(p->variants, p->varpos - 1);
 	if (!cur->doc_path || !cur->doc_mime)
-		return False;
+		return false;
 	handlers = wXDGAppsForMime(cur->doc_mime);
 	n = WMGetArrayItemCount(handlers);
 	if (n < 2)
-		return False;
+		return false;
 
 	base = strrchr(cur->doc_path, '/');
 	base = base ? base + 1 : cur->doc_path;
@@ -1708,7 +1705,7 @@ static Bool enterOpenWith(WMInputPanelWithHistory *p)
 		label = wstrconcat(base, " \xe2\x80\x94 ");
 		label = wstrappend(label, a->name);
 		v = makeVariant(wXDGAppOpenCommand(a, cur->doc_path),
-				label, RUN_RANK_DOC_PREFIX, True);
+				label, RUN_RANK_DOC_PREFIX, true);
 		v->frec_key = cur->doc_path;
 		if (a->icon)
 			v->icon_hint = a->icon[0] == '/'
@@ -1722,42 +1719,42 @@ static Bool enterOpenWith(WMInputPanelWithHistory *p)
 	p->varpos = 0;
 	stepVariant(p, 1);
 	refreshDropList(p);
-	return True;
+	return true;
 }
 
-static Bool leaveOpenWith(WMInputPanelWithHistory *p)
+static bool leaveOpenWith(WMInputPanelWithHistory *p)
 {
 	if (!p->outer_variants)
-		return False;
+		return false;
 	WMFreeArray(p->variants);
 	p->variants = p->outer_variants;
 	p->varpos = p->outer_varpos;
 	p->outer_variants = NULL;
 	applyVariant(p);
 	refreshDropList(p);
-	return True;
+	return true;
 }
 
-static void handleHistoryKeyPress(XEvent * event, void *clientData)
+static void handleHistoryKeyPress(xcb_generic_event_t * event, void *clientData)
 {
 	char *text;
 	unsigned pos;
 	WMInputPanelWithHistory *p = (WMInputPanelWithHistory *) clientData;
 	RunVariant *av;
 	WWindow *twin;
-	KeySym ksym;
-	Bool wasFiltering;
+	xkb_keysym_t ksym;
+	bool wasFiltering;
 
-	ksym = wXkbKeycodeToKeysym(event->xkey.keycode, 0);
+	ksym = wXkbKeycodeToKeysym(((xcb_key_press_event_t *)event)->detail, 0);
 
 	switch (ksym) {
-	case XK_Shift_L:
-	case XK_Shift_R:
-	case XK_Control_L:
-	case XK_Control_R:
+	case XKB_KEY_Shift_L:
+	case XKB_KEY_Shift_R:
+	case XKB_KEY_Control_L:
+	case XKB_KEY_Control_R:
 		/* bare modifier presses neither cycle nor reset */
 		return;
-	case XK_Up:
+	case XKB_KEY_Up:
 		if (p->dropMapped) {
 			stepVariant(p, -1);
 			return;
@@ -1769,7 +1766,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			WMSetTextFieldText(p->panel->text, WMGetFromArray(p->history, p->histpos));
 		}
 		break;
-	case XK_Down:
+	case XKB_KEY_Down:
 		if (p->dropMapped) {
 			stepVariant(p, 1);
 			return;
@@ -1779,7 +1776,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			WMSetTextFieldText(p->panel->text, WMGetFromArray(p->history, p->histpos));
 		}
 		break;
-	case XK_Right:
+	case XKB_KEY_Right:
 		/* the text field has already moved the cursor by the
 		 * time this handler runs, applyVariant() will rewrite
 		 * the field and cursor so that does not matter, when
@@ -1790,13 +1787,13 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			return;
 		}
 		break;
-	case XK_Left:
+	case XKB_KEY_Left:
 		if (p->dropMapped) {
 			leaveOpenWith(p);
 			return;
 		}
 		break;
-	case XK_Escape:
+	case XKB_KEY_Escape:
 		if (p->dropMapped || p->filtering) {
 			/* the text field has already processed Escape
 			 * and broken the modal loop by the time this
@@ -1810,12 +1807,12 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			}
 			hideDropList(p);
 			resetVariants(p);
-			p->rerun = True;
+			p->rerun = true;
 			return;
 		}
 		break;
-	case XK_Return:
-	case XK_KP_Enter:
+	case XKB_KEY_Return:
+	case XKB_KEY_KP_Enter:
 		if (p->variants && p->varpos > 0) {
 			av = WMGetFromArray(p->variants, p->varpos - 1);
 			if (av->frec_key) {
@@ -1845,13 +1842,13 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 		}
 		hideDropList(p);
 		break;
-	case XK_ISO_Left_Tab:
+	case XKB_KEY_ISO_Left_Tab:
 		if (p->variants) {
 			stepVariant(p, -1);
 			return;
 		}
 		break;
-	case XK_Tab:
+	case XKB_KEY_Tab:
 		if (!p->variants) {
 			text = WMGetTextFieldText(p->panel->text);
 			pos = WMGetTextFieldCursorPosition(p->panel->text);
@@ -1862,7 +1859,7 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 			p->varpos = 0;
 			stepVariant(p, 1);
 			refreshDropList(p);
-		} else if (event->xkey.state & ShiftMask) {
+		} else if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 			stepVariant(p, -1);
 		} else {
 			stepVariant(p, 1);
@@ -1878,8 +1875,8 @@ static void handleHistoryKeyPress(XEvent * event, void *clientData)
 	 * the variant set from the edited text and keep the popup
 	 * tracking it, this is the narrow-as-you-type behaviour
 	 * and is cheap because the source caches do no I/O */
-	if (wasFiltering && ksym != XK_Escape && ksym != XK_Return &&
-	    ksym != XK_KP_Enter && ksym != XK_Up && ksym != XK_Down) {
+	if (wasFiltering && ksym != XKB_KEY_Escape && ksym != XKB_KEY_Return &&
+	    ksym != XKB_KEY_KP_Enter && ksym != XKB_KEY_Up && ksym != XKB_KEY_Down) {
 		text = WMGetTextFieldText(p->panel->text);
 		pos = WMGetTextFieldCursorPosition(p->panel->text);
 		p->prefix = wstrndup(text, pos);
@@ -1905,7 +1902,7 @@ static int widenInputDialog(WScreen *scr, WMInputPanel *panel)
 		max_w = nat_w;
 
 	head = wGetHeadForPointerLocation(scr);
-	ua = wGetUsableAreaForHead(scr, head, NULL, True);
+	ua = wGetUsableAreaForHead(scr, head, NULL, true);
 	target_w = (ua.x2 - ua.x1) * 40 / 100;
 	if (target_w < nat_w)
 		target_w = nat_w;
@@ -1943,7 +1940,7 @@ static int widenInputDialog(WScreen *scr, WMInputPanel *panel)
 int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, const char *name, char **text)
 {
 	WWindow *wwin;
-	Window parent;
+	xcb_window_t parent;
 	char *result;
 	WMPoint center;
 	WMInputPanelWithHistory *p;
@@ -1957,16 +1954,19 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	p->history = LoadHistory(filename, w_global.config->history_lines);
 	mergeCalcHistory(p->history);
 	p->scr = scr;
-	WMCreateEventHandler(WMWidgetView(p->panel->text), KeyPressMask, handleHistoryKeyPress, p);
+	WMCreateEventHandler(WMWidgetView(p->panel->text), XCB_EVENT_MASK_KEY_PRESS, handleHistoryKeyPress, p);
 	widenInputDialog(scr, p->panel);
 	pwidth = WMWidgetWidth(p->panel->win);
 	pheight = WMWidgetHeight(p->panel->win);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XReparentWindow(dpy, WMWidgetXID(p->panel->win), parent, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
+	xcb_reparent_window(xconn, WMWidgetXID(p->panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, NULL, center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
 
 	wwin->client_leader = WMWidgetXID(p->panel->win);
 	p->wwin = wwin;
@@ -1979,7 +1979,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	wWindowMap(wwin);
 
 	do {
-		p->rerun = False;
+		p->rerun = false;
 		WMRunModalLoop(WMWidgetScreen(p->panel->win),
 			       WMWidgetView(p->panel->win));
 		/* the panel's own Escape handler clicked the Cancel
@@ -2019,7 +2019,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 		result = NULL;
 	wfree(p->accepted_key);
 
-	wUnmanageWindow(wwin, False, False);
+	wUnmanageWindow(wwin, false, false);
 
 	destroyDropList(p);
 	resetVariants(p);
@@ -2028,14 +2028,14 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	wfree(p);
 	wfree(filename);
 
-	XDestroyWindow(dpy, parent);
+	xcb_destroy_window(xconn, parent);
 
 	if (result == NULL)
-		return False;
+		return false;
 
 	if (*text)
 		wfree(*text);
 	*text = result;
 
-	return True;
+	return true;
 }

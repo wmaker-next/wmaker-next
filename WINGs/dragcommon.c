@@ -6,13 +6,13 @@
 #define XDND_DEST_INFO(dragInfo) dragInfo->destInfo
 #define XDND_DEST_VIEW(dragInfo) dragInfo->destInfo->destView
 
-static Bool _WindowExists;
+static bool _WindowExists;
 
-Atom W_OperationToAction(WMScreen * scr, WMDragOperationType operation)
+xcb_atom_t W_OperationToAction(WMScreen * scr, WMDragOperationType operation)
 {
 	switch (operation) {
 	case WDOperationNone:
-		return None;
+		return XCB_NONE;
 
 	case WDOperationCopy:
 		return scr->xdndActionCopy;
@@ -30,11 +30,11 @@ Atom W_OperationToAction(WMScreen * scr, WMDragOperationType operation)
 		return scr->xdndActionPrivate;
 
 	default:
-		return None;
+		return XCB_NONE;
 	}
 }
 
-WMDragOperationType W_ActionToOperation(WMScreen * scr, Atom action)
+WMDragOperationType W_ActionToOperation(WMScreen * scr, xcb_atom_t action)
 {
 	if (action == scr->xdndActionCopy) {
 		return WDOperationCopy;
@@ -51,7 +51,7 @@ WMDragOperationType W_ActionToOperation(WMScreen * scr, Atom action)
 	} else if (action == scr->xdndActionPrivate) {
 		return WDOperationPrivate;
 
-	} else if (action == None) {
+	} else if (action == XCB_NONE) {
 
 		return WDOperationNone;
 	} else {
@@ -91,60 +91,44 @@ char *WMGetDragOperationItemText(WMDragOperationItem * item)
 	return ((W_DragOperationItem *) item)->text;
 }
 
-static int handleNoWindowXError(Display * dpy, XErrorEvent * errEvt)
+static bool windowExists(xcb_connection_t * dpy, xcb_window_t win)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) dpy;
+	WXWindowAttributes attr;
 
-	if (errEvt->error_code == BadWindow || errEvt->error_code == BadDrawable) {
-		_WindowExists = False;
-		return Success;
-	}
+	_WindowExists = true;
 
-	return errEvt->error_code;
-}
+	/* can generate BadDrawable or BadWindow, consumed by the WXProp
+	 * reader (returns False), no handler bracket needed */
+	if (!wXGetWindowAttributes(dpy, win, &attr, NULL))
+		_WindowExists = false;
 
-static Bool windowExists(Display * dpy, Window win)
-{
-	void *previousErrorHandler;
-	XWindowAttributes attr;
-
-	XSynchronize(dpy, True);
-	previousErrorHandler = XSetErrorHandler(handleNoWindowXError);
-	_WindowExists = True;
-
-	/* can generate BadDrawable or BadWindow */
-	XGetWindowAttributes(dpy, win, &attr);
-
-	XSetErrorHandler(previousErrorHandler);
-	XSynchronize(dpy, False);
 	return _WindowExists;
 }
 
-Bool
-W_SendDnDClientMessage(Display * dpy, Window win, Atom message,
+bool
+W_SendDnDClientMessage(xcb_connection_t * dpy, xcb_window_t win, xcb_atom_t message,
 		       unsigned long data0,
 		       unsigned long data1, unsigned long data2, unsigned long data3, unsigned long data4)
 {
 #ifdef XDND_DEBUG
-	char *msgName = XGetAtomName(dpy, message);
+	char *msgName = wXGetAtomName(dpy, message);
 
 	printf("sending message %s ... ", msgName);
-	XFree(msgName);
+	free(msgName);
 #endif
 
 	if (!windowExists(dpy, win)) {
-		wwarning(_("target %lu for XDND message no longer exists"), win);
-		return False;	/* message not sent */
+		wwarning(_("target %lu for XDND message no longer exists"), (unsigned long)win);
+		return false;	/* message not sent */
 	}
 
 	WXSendClientMessage(dpy, win, 0, win, message, data0, data1, data2, data3, data4);
-	XFlush(dpy);
+	wXFlush(dpy);
 
 #ifdef XDND_DEBUG
 	printf("sent\n");
 #endif
-	return True;		/* message sent */
+	return true;		/* message sent */
 }
 
 static void handleLeaveMessage(WMDraggingInfo * info)
@@ -159,11 +143,11 @@ static void handleLeaveMessage(WMDraggingInfo * info)
 	}
 }
 
-void W_HandleDNDClientMessage(WMView * toplevel, XClientMessageEvent * event)
+void W_HandleDNDClientMessage(WMView * toplevel, xcb_client_message_event_t * event)
 {
 	WMScreen *scr = W_VIEW_SCREEN(toplevel);
 	WMDraggingInfo *info = &scr->dragInfo;
-	Atom messageType = event->message_type;
+	xcb_atom_t messageType = event->type;
 #ifdef XDND_DEBUG
 	char *msgTypeName;
 #endif
@@ -174,7 +158,7 @@ void W_HandleDNDClientMessage(WMView * toplevel, XClientMessageEvent * event)
 		return;
 
 #ifdef XDND_DEBUG
-	msgTypeName = XGetAtomName(scr->display, messageType);
+	msgTypeName = wXGetAtomName(scr->display, messageType);
 	if (msgTypeName != NULL)
 		printf("event type = %s\n", msgTypeName);
 	else
@@ -190,7 +174,7 @@ void W_HandleDNDClientMessage(WMView * toplevel, XClientMessageEvent * event)
 
 	/* Messages from source to destination */
 	if (messageType == scr->xdndEnterAtom) {
-		Bool positionSent = (XDND_DEST_INFO(info) != NULL);
+		bool positionSent = (XDND_DEST_INFO(info) != NULL);
 
 		W_DragDestinationStopTimer();
 		W_DragDestinationStoreEnterMsgInfo(info, toplevel, event);

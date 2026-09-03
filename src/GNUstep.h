@@ -22,7 +22,8 @@
 #ifndef WMGNUSTEP_H_
 #define WMGNUSTEP_H_
 
-#include <X11/Xproto.h>
+#include <stdint.h>
+
 
 
 #define GNUSTEP_WM_MINIATURIZE_WINDOW "_GNUSTEP_WM_MINIATURIZE_WINDOW"
@@ -80,15 +81,15 @@ enum {
 
 
 typedef struct {
-    CARD32 flags;
-    CARD32 window_style;
-    CARD32 window_level;
-    CARD32 reserved;
-    Pixmap miniaturize_pixmap;	       /* pixmap for miniaturize button */
-    Pixmap close_pixmap;	       /* pixmap for close button */
-    Pixmap miniaturize_mask;	       /* miniaturize pixmap mask */
-    Pixmap close_mask;		       /* close pixmap mask */
-    CARD32 extra_flags;
+    uint32_t flags;
+    uint32_t window_style;
+    uint32_t window_level;
+    uint32_t reserved;
+    xcb_pixmap_t miniaturize_pixmap;	       /* pixmap for miniaturize button */
+    xcb_pixmap_t close_pixmap;	       /* pixmap for close button */
+    xcb_pixmap_t miniaturize_mask;	       /* miniaturize pixmap mask */
+    xcb_pixmap_t close_mask;		       /* close pixmap mask */
+    uint32_t extra_flags;
 } GNUstepWMAttributes;
 
 #define GSWindowStyleAttr 	(1<<0)
@@ -109,4 +110,3 @@ typedef struct {
 #define WMFHideApplication		12
 
 #endif
-

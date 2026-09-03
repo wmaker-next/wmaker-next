@@ -233,7 +233,7 @@ WMTreeNode *WMFindInTreeWithDepthLimit(WMTreeNode * aTree, WMMatchDataProc * mat
 	return findNodeInTree(aTree, match, cdata, limit);
 }
 
-void WMTreeWalk(WMTreeNode * aNode, WMTreeWalkProc * walk, void *data, Bool DepthFirst)
+void WMTreeWalk(WMTreeNode * aNode, WMTreeWalkProc * walk, void *data, bool DepthFirst)
 {
 	int i;
 	WMTreeNode *leaf;

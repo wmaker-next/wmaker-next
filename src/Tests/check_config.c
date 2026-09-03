@@ -1,8 +1,9 @@
 /*
- * check_config - tests for the typed Window Maker config slice.
+ * check_config - tests for the typed xcb_window_t Maker config slice.
  */
 
 #include "wconfig.h"
+#include <stdbool.h>
 
 #include <limits.h>
 #include <stdint.h>
@@ -58,7 +59,7 @@ static int screen_apply_icon_size;
 static int icon_resize_all;
 static int dock_apply_icon_size;
 static int aa_flush_count;
-static Bool aa_current;
+static bool aa_current;
 static int texture_spec_updates;
 static int font_spec_updates;
 static int color_spec_updates;
@@ -121,7 +122,7 @@ double WMScreenUIScale(WMScreen *scr)
 	return 1.0;
 }
 
-void wArrangeIcons(WScreen *scr, Bool arrangeAll)
+void wArrangeIcons(WScreen *scr, bool arrangeAll)
 {
 	(void)scr;
 	if (arrangeAll)
@@ -246,9 +247,9 @@ void wConfigApplyModifierKey(const char *spec, const char *default_spec)
 	modifier_key_updates++;
 	replace_test_string(&last_modifier_key_spec, candidate);
 	if (candidate && strcmp(candidate, "Mod4") == 0)
-		wPreferences.modifier_mask = Mod4Mask;
+		wPreferences.modifier_mask = XCB_MOD_MASK_4;
 	else if (candidate && strcmp(candidate, "Mod1") == 0)
-		wPreferences.modifier_mask = Mod1Mask;
+		wPreferences.modifier_mask = XCB_MOD_MASK_1;
 }
 
 void wConfigApplyTabDragModifier(const char *spec)
@@ -256,7 +257,7 @@ void wConfigApplyTabDragModifier(const char *spec)
 	if (!spec || spec[0] == '\0' || strcmp(spec, "None") == 0)
 		wPreferences.tab_drag_modifier_mask = 0;
 	else if (strcmp(spec, "Shift") == 0)
-		wPreferences.tab_drag_modifier_mask = ShiftMask;
+		wPreferences.tab_drag_modifier_mask = XCB_MOD_MASK_SHIFT;
 }
 
 unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
@@ -337,7 +338,7 @@ void wConfigApplyHotCornerActions(WScreen *scr,
 unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 				    int binding_index, const char *spec,
 				    const char *default_spec,
-				    Bool *binding_changed)
+				    bool *binding_changed)
 {
 	(void)scr;
 	(void)key;
@@ -348,7 +349,7 @@ unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 	if (binding_index >= 0 && binding_index < WKBD_LAST)
 		key_binding_seen[binding_index]++;
 	if (binding_changed) {
-		*binding_changed = True;
+		*binding_changed = true;
 		key_binding_changed_updates++;
 	}
 	if ((binding_index >= WKBD_WORKSPACE1 && binding_index <= WKBD_WORKSPACE10) ||
@@ -380,7 +381,7 @@ void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
 	replace_test_string(&last_helper_msg, msg);
 }
 
-Bool WMGetAntialiasedText(void)
+bool WMGetAntialiasedText(void)
 {
 	return aa_current;
 }
@@ -658,25 +659,25 @@ static WMPropList *schema_default_plist(const WConfigEntry *entry)
  * are build-conditional. The .in file omits those keys so the
  * per-build schema default applies at runtime, and this test accepts
  * their absence rather than requiring one build's value. */
-static Bool schema_default_is_build_conditional(const WConfigEntry *entry)
+static bool schema_default_is_build_conditional(const WConfigEntry *entry)
 {
 	/* DEF_TITLEBAR_LEFT depends on XKB_BUTTON_HINT */
 	if (strcmp(entry->key, "TitlebarLeft") == 0)
-		return True;
-	return False;
+		return true;
+	return false;
 }
 
-static Bool is_non_schema_defaults_key(const char *key)
+static bool is_non_schema_defaults_key(const char *key)
 {
 	(void)key;
 #ifndef USE_RANDR
 	if (strcmp(key, "HotplugMonitor") == 0)
-		return True;
+		return true;
 #endif
 #ifndef KEEP_XKB_LOCK_STATUS
 	if (strcmp(key, "KbdModeLock") == 0 ||
 	    strcmp(key, "ToggleKbdModeKey") == 0)
-		return True;
+		return true;
 #endif
 #ifndef VIRTUAL_DESKTOP
 	if (strcmp(key, "EnableVirtualDesktop") == 0 ||
@@ -692,10 +693,10 @@ static Bool is_non_schema_defaults_key(const char *key)
 	    strcmp(key, "VirtualDesktopHomeKey") == 0 ||
 	    strcmp(key, "VirtualDesktopCenterKey") == 0 ||
 	    strcmp(key, "VirtualDesktopPinKey") == 0)
-		return True;
+		return true;
 #endif
 
-	return False;
+	return false;
 }
 
 static size_t expected_schema_field_size(const WConfigEntry *entry)
@@ -994,9 +995,9 @@ static void test_defaults_file_matches_schema(void)
 
 		expected = schema_default_plist(&schema[i]);
 		if (!expected || !WMIsPropListEqualTo(value, expected)) {
-			char *actual_desc = WMGetPropListDescription(value, False);
+			char *actual_desc = WMGetPropListDescription(value, false);
 			char *expected_desc = expected ?
-			    WMGetPropListDescription(expected, False) : NULL;
+			    WMGetPropListDescription(expected, false) : NULL;
 
 			fprintf(stderr,
 				"WindowMaker.in default mismatch for %s: got %s, expected %s\n",
@@ -1031,7 +1032,7 @@ static void test_defaults_file_matches_schema(void)
 			if (!wConfigEntryForKey(key) && !is_non_schema_defaults_key(key)) {
 				fprintf(stderr,
 					"WindowMaker.in has non-schema default key %s\n", key);
-				CHECK(False);
+				CHECK(false);
 			}
 		}
 		WMReleasePropList(keys);
@@ -2231,7 +2232,7 @@ static void test_modifier_key_live_apply(void)
 	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(modifier_key_updates == 1);
 	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
-	CHECK(wPreferences.modifier_mask == Mod4Mask);
+	CHECK(wPreferences.modifier_mask == XCB_MOD_MASK_4);
 	CHECK(regrab_mouse_grabs == 1);
 
 out:
@@ -2274,7 +2275,7 @@ static void test_antialiased_text_live_apply(void)
 	screen.wmscreen = (WMScreen *)&wmscreen_dummy;
 	wConfigCacheWindowMaker(NULL);
 
-	/* applied == current (both False after reset) -> no flush */
+	/* applied == current (both false after reset) -> no flush */
 	screen.antialiased_text_applied = aa_current;
 	font_spec_updates = 0;
 	aa_flush_count = 0;
@@ -2285,13 +2286,13 @@ static void test_antialiased_text_live_apply(void)
 	CHECK(screen.antialiased_text_applied == aa_current);
 
 	/* WMGLOBAL AntialiasedText flipped on -> flush + re-apply fonts */
-	aa_current = True;
+	aa_current = true;
 	font_spec_updates = 0;
 	aa_flush_count = 0;
 	refresh = wConfigApplyAntialiasedText(&screen);
 	CHECK(aa_flush_count == 1);
 	CHECK(font_spec_updates == 6);
-	CHECK(screen.antialiased_text_applied == True);
+	CHECK(screen.antialiased_text_applied == true);
 	CHECK(refresh != 0);
 
 	/* second call with no further change -> no-op */
@@ -2768,7 +2769,7 @@ static void test_titlebar_layout_build(void)
 
 int main(void)
 {
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	test_schema_integrity();
 	test_unchanged_diff();

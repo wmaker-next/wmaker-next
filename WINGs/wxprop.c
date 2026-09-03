@@ -8,30 +8,24 @@
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
- *  All requests go through the xcb connection underlying the caller's
- *  Display* (XGetXCBConnection).  Xlib retains ownership of the event
- *  queue, so callers using XNextEvent/XCheckTypedEvent are unaffected.
- *  Because libX11 routes its own writes through the same xcb socket,
- *  request ordering between Xlib calls and these helpers is preserved
- *  without explicit cross-flushing.
+ *  All requests go through the caller's xcb connection and share its
+ *  single output buffer and sequence numbering, request ordering
+ *  with any other user of the connection is inherent.
  *
- *  Readers come in two layers.  WXReq* queues a GetProperty request and
+ *  Readers come in two layers. WXReq* queues a GetProperty request and
  *  returns an opaque WXCookie without blocking, WXRcv* blocks for that
  *  cookie's reply, validates format/count, and decodes into the caller's
- *  output.  The synchronous WXGet* convenience wrappers compose the two.
+ *  output. The synchronous WXGet* convenience wrappers compose the two.
  *  Replies are requested with the error pointer set to NULL: a BadWindow
  *  on a vanished client is consumed by xcb and the helper simply returns
- *  False/NULL.  Writers, delete and send_event are reply-less and
- *  therefore asynchronous, any error reaches the event stream and is
- *  dispatched through the existing Xlib error handler.
+ *  false/NULL. Writers, delete and send_event are reply-less and
+ *  therefore asynchronous, an error arrives on the event stream as
+ *  a response_type 0 event for the connection's error hook.
  */
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
-#include <X11/Xatom.h>
-#include <xcb/xcb.h>
+#include <WINGs/WXCore.h>
 #include <xcb/xproto.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,9 +38,9 @@
  * Use a generous default that still bounds hostile properties. */
 #define WX_MAX_PROP_QUADS 0x00400000u   /* 4 Mi 32-bit units = 16 MiB */
 
-static inline xcb_connection_t *wx_conn(Display *dpy)
+static inline xcb_connection_t *wx_conn(xcb_connection_t *dpy)
 {
-	return XGetXCBConnection(dpy);
+	return dpy;
 }
 
 static inline xcb_get_property_cookie_t wx_xck(WXCookie ck)
@@ -55,34 +49,18 @@ static inline xcb_get_property_cookie_t wx_xck(WXCookie ck)
 	return xck;
 }
 
-static xcb_atom_t wx_utf8_string(Display *dpy)
-{
-	static Display *cached_dpy = NULL;
-	static xcb_atom_t cached = XCB_ATOM_NONE;
-
-	/* key the cache on the display so a second connection re-interns,
-	 * libWINGs is used by tools that may open more than one */
-	if (dpy != cached_dpy) {
-		cached = (xcb_atom_t)XInternAtom(dpy, "UTF8_STRING", False);
-		cached_dpy = dpy;
-	}
-	return cached;
-}
-
-/* ---- request half --------------------------------------------------- */
-
-static WXCookie wx_req(Display *dpy, Window w, Atom prop, Atom type, uint32_t len)
+static WXCookie wx_req(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop,
+		       xcb_atom_t type, uint32_t len)
 {
 	xcb_get_property_cookie_t xck;
 	WXCookie ck;
 
-	xck = xcb_get_property(wx_conn(dpy), 0, (xcb_window_t)w,
-			       (xcb_atom_t)prop, (xcb_atom_t)type, 0, len);
+	xck = xcb_get_property(dpy, 0, w, prop, type, 0, len);
 	ck.seq = xck.sequence;
 	return ck;
 }
 
-WXCookie WXReqFormat32(Display *dpy, Window w, Atom prop, Atom type, size_t max)
+WXCookie WXReqFormat32(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type, size_t max)
 {
 	uint32_t len;
 
@@ -93,22 +71,22 @@ WXCookie WXReqFormat32(Display *dpy, Window w, Atom prop, Atom type, size_t max)
 	return wx_req(dpy, w, prop, type, len);
 }
 
-WXCookie WXReqString8(Display *dpy, Window w, Atom prop, Atom type)
+WXCookie WXReqString8(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type)
 {
 	return wx_req(dpy, w, prop, type, WX_MAX_PROP_QUADS);
 }
 
-WXCookie WXReqExists(Display *dpy, Window w, Atom prop)
+WXCookie WXReqExists(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop)
 {
-	return wx_req(dpy, w, prop, AnyPropertyType, 0);
+	return wx_req(dpy, w, prop, XCB_ATOM_ANY, 0);
 }
 
-void WXFlush(Display *dpy)
+void WXFlush(xcb_connection_t *dpy)
 {
 	xcb_flush(wx_conn(dpy));
 }
 
-void WXDiscard(Display *dpy, WXCookie ck)
+void WXDiscard(xcb_connection_t *dpy, WXCookie ck)
 {
 	xcb_discard_reply(wx_conn(dpy), ck.seq);
 }
@@ -116,7 +94,7 @@ void WXDiscard(Display *dpy, WXCookie ck)
 /* ---- reply half: validating fetch ----------------------------------- */
 
 /*
- * Collect the reply for a cookie and validate format/count.  On success
+ * Collect the reply for a cookie and validate format/count. On success
  * returns the xcb reply (caller in this file free()s it) and sets *nitems.
  * Returns NULL if the property is absent, the server reported an error,
  * or the actual format/count do not match what was requested.
@@ -127,7 +105,7 @@ void WXDiscard(Display *dpy, WXCookie ck)
  * explicitly so string readers (which pass min_items 0) still see NULL on
  * a wrong-type property instead of an empty string.
  */
-static xcb_get_property_reply_t *wx_rcv_raw(Display *dpy, WXCookie ck,
+static xcb_get_property_reply_t *wx_rcv_raw(xcb_connection_t *dpy, WXCookie ck,
 					    int req_fmt, uint32_t min_items,
 					    uint32_t *nitems)
 {
@@ -162,7 +140,7 @@ static xcb_get_property_reply_t *wx_rcv_raw(Display *dpy, WXCookie ck,
 
 /* ---- reply half: format-32 ------------------------------------------ */
 
-Bool WXRcvFormat32N(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
+bool WXRcvFormat32N(xcb_connection_t *dpy, WXCookie ck, uint32_t *out, size_t n)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
@@ -171,34 +149,34 @@ Bool WXRcvFormat32N(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
 	 * larger than the request cap cannot have been satisfied anyway */
 	if (n > WX_MAX_PROP_QUADS) {
 		WXDiscard(dpy, ck);
-		return False;
+		return false;
 	}
 
 	r = wx_rcv_raw(dpy, ck, 32, (uint32_t)n, &nitems);
 	if (!r)
-		return False;
+		return false;
 
 	memcpy(out, xcb_get_property_value(r), n * sizeof(uint32_t));
 	free(r);
-	return True;
+	return true;
 }
 
-Bool WXRcvCardinal(Display *dpy, WXCookie ck, uint32_t *out)
+bool WXRcvCardinal(xcb_connection_t *dpy, WXCookie ck, uint32_t *out)
 {
 	return WXRcvFormat32N(dpy, ck, out, 1);
 }
 
-Bool WXRcvCardinalSigned(Display *dpy, WXCookie ck, int32_t *out)
+bool WXRcvCardinalSigned(xcb_connection_t *dpy, WXCookie ck, int32_t *out)
 {
 	return WXRcvFormat32N(dpy, ck, (uint32_t *)out, 1);
 }
 
-Bool WXRcvCardinalN(Display *dpy, WXCookie ck, uint32_t *out, size_t n)
+bool WXRcvCardinalN(xcb_connection_t *dpy, WXCookie ck, uint32_t *out, size_t n)
 {
 	return WXRcvFormat32N(dpy, ck, out, n);
 }
 
-uint32_t *WXRcvFormat32List(Display *dpy, WXCookie ck, size_t *count)
+uint32_t *WXRcvFormat32List(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
@@ -216,67 +194,67 @@ uint32_t *WXRcvFormat32List(Display *dpy, WXCookie ck, size_t *count)
 	return dst;
 }
 
-uint32_t *WXRcvCardinalList(Display *dpy, WXCookie ck, size_t *count)
+uint32_t *WXRcvCardinalList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	return WXRcvFormat32List(dpy, ck, count);
 }
 
-Bool WXRcvAtom(Display *dpy, WXCookie ck, Atom *out)
+bool WXRcvAtom(xcb_connection_t *dpy, WXCookie ck, xcb_atom_t *out)
 {
 	uint32_t v;
 
 	if (!WXRcvFormat32N(dpy, ck, &v, 1))
-		return False;
-	*out = (Atom)v;
-	return True;
+		return false;
+	*out = (xcb_atom_t)v;
+	return true;
 }
 
-Atom *WXRcvAtomList(Display *dpy, WXCookie ck, size_t *count)
+xcb_atom_t *WXRcvAtomList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
 	const uint32_t *src;
-	Atom *dst;
+	xcb_atom_t *dst;
 
 	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc(sizeof(Atom) * (nitems ? nitems : 1));
+	dst = wmalloc(sizeof(xcb_atom_t) * (nitems ? nitems : 1));
 	src = xcb_get_property_value(r);
 	for (i = 0; i < nitems; i++)
-		dst[i] = (Atom)src[i];
+		dst[i] = (xcb_atom_t)src[i];
 	free(r);
 
 	*count = nitems;
 	return dst;
 }
 
-Bool WXRcvWindow(Display *dpy, WXCookie ck, Window *out)
+bool WXRcvWindow(xcb_connection_t *dpy, WXCookie ck, xcb_window_t *out)
 {
 	uint32_t v;
 
 	if (!WXRcvFormat32N(dpy, ck, &v, 1))
-		return False;
-	*out = (Window)v;
-	return True;
+		return false;
+	*out = (xcb_window_t)v;
+	return true;
 }
 
-Window *WXRcvWindowList(Display *dpy, WXCookie ck, size_t *count)
+xcb_window_t *WXRcvWindowList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
 	const uint32_t *src;
-	Window *dst;
+	xcb_window_t *dst;
 
 	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc(sizeof(Window) * (nitems ? nitems : 1));
+	dst = wmalloc(sizeof(xcb_window_t) * (nitems ? nitems : 1));
 	src = xcb_get_property_value(r);
 	for (i = 0; i < nitems; i++)
-		dst[i] = (Window)src[i];
+		dst[i] = (xcb_window_t)src[i];
 	free(r);
 
 	*count = nitems;
@@ -285,7 +263,7 @@ Window *WXRcvWindowList(Display *dpy, WXCookie ck, size_t *count)
 
 /* ---- reply half: format-8 strings ----------------------------------- */
 
-char *WXRcvString(Display *dpy, WXCookie ck, size_t *len)
+char *WXRcvString(xcb_connection_t *dpy, WXCookie ck, size_t *len)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems;
@@ -306,14 +284,14 @@ char *WXRcvString(Display *dpy, WXCookie ck, size_t *len)
 	return dst;
 }
 
-Bool WXRcvExists(Display *dpy, WXCookie ck)
+bool WXRcvExists(xcb_connection_t *dpy, WXCookie ck)
 {
 	xcb_get_property_reply_t *r;
-	Bool exists;
+	bool exists;
 
 	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
-		return False;
+		return false;
 	exists = (r->type != XCB_ATOM_NONE);
 	free(r);
 	return exists;
@@ -321,7 +299,7 @@ Bool WXRcvExists(Display *dpy, WXCookie ck)
 
 /* ---- window attributes / geometry ----------------------------------- */
 
-WXCookie WXReqWindowAttributes(Display *dpy, Window w)
+WXCookie WXReqWindowAttributes(xcb_connection_t *dpy, xcb_window_t w)
 {
 	xcb_get_window_attributes_cookie_t xck =
 		xcb_get_window_attributes(wx_conn(dpy), (xcb_window_t)w);
@@ -330,7 +308,7 @@ WXCookie WXReqWindowAttributes(Display *dpy, Window w)
 	return ck;
 }
 
-WXCookie WXReqGeometry(Display *dpy, Window w)
+WXCookie WXReqGeometry(xcb_connection_t *dpy, xcb_window_t w)
 {
 	xcb_get_geometry_cookie_t xck =
 		xcb_get_geometry(wx_conn(dpy), (xcb_drawable_t)w);
@@ -339,7 +317,7 @@ WXCookie WXReqGeometry(Display *dpy, Window w)
 	return ck;
 }
 
-Bool WXRcvWindowAttributes(Display *dpy, WXCookie ck, WXWindowAttributes *out)
+bool WXRcvWindowAttributes(xcb_connection_t *dpy, WXCookie ck, WXWindowAttrReply *out)
 {
 	xcb_get_window_attributes_cookie_t xck;
 	xcb_get_window_attributes_reply_t *r;
@@ -347,7 +325,7 @@ Bool WXRcvWindowAttributes(Display *dpy, WXCookie ck, WXWindowAttributes *out)
 	xck.sequence = ck.seq;
 	r = xcb_get_window_attributes_reply(wx_conn(dpy), xck, NULL);
 	if (!r)
-		return False;
+		return false;
 
 	out->override_redirect = r->override_redirect;
 	out->map_state         = r->map_state;
@@ -357,10 +335,10 @@ Bool WXRcvWindowAttributes(Display *dpy, WXCookie ck, WXWindowAttributes *out)
 	out->all_event_masks   = r->all_event_masks;
 	out->your_event_mask   = r->your_event_mask;
 	free(r);
-	return True;
+	return true;
 }
 
-Bool WXRcvGeometry(Display *dpy, WXCookie ck, WXGeometry *out)
+bool WXRcvGeometry(xcb_connection_t *dpy, WXCookie ck, WXGeometry *out)
 {
 	xcb_get_geometry_cookie_t xck;
 	xcb_get_geometry_reply_t *r;
@@ -368,7 +346,7 @@ Bool WXRcvGeometry(Display *dpy, WXCookie ck, WXGeometry *out)
 	xck.sequence = ck.seq;
 	r = xcb_get_geometry_reply(wx_conn(dpy), xck, NULL);
 	if (!r)
-		return False;
+		return false;
 
 	out->root         = r->root;
 	out->x            = r->x;
@@ -378,76 +356,76 @@ Bool WXRcvGeometry(Display *dpy, WXCookie ck, WXGeometry *out)
 	out->border_width = r->border_width;
 	out->depth        = r->depth;
 	free(r);
-	return True;
+	return true;
 }
 
 /* ---- synchronous readers -------------------------------------------- */
 
-Bool WXGetFormat32N(Display *dpy, Window w, Atom prop, Atom type,
+bool WXGetFormat32N(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type,
 		    uint32_t *out, size_t n)
 {
 	return WXRcvFormat32N(dpy, WXReqFormat32(dpy, w, prop, type, n), out, n);
 }
 
-Bool WXGetCardinal(Display *dpy, Window w, Atom prop, uint32_t *out)
+bool WXGetCardinal(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, uint32_t *out)
 {
-	return WXRcvCardinal(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, 1), out);
+	return WXRcvCardinal(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_CARDINAL, 1), out);
 }
 
-Bool WXGetCardinalSigned(Display *dpy, Window w, Atom prop, int32_t *out)
+bool WXGetCardinalSigned(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, int32_t *out)
 {
-	return WXRcvCardinalSigned(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, 1), out);
+	return WXRcvCardinalSigned(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_CARDINAL, 1), out);
 }
 
-Bool WXGetCardinalN(Display *dpy, Window w, Atom prop, uint32_t *out, size_t n)
+bool WXGetCardinalN(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, uint32_t *out, size_t n)
 {
-	return WXRcvCardinalN(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, n), out, n);
+	return WXRcvCardinalN(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_CARDINAL, n), out, n);
 }
 
-uint32_t *WXGetCardinalList(Display *dpy, Window w, Atom prop,
+uint32_t *WXGetCardinalList(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop,
 			    size_t max, size_t *count)
 {
-	return WXRcvCardinalList(dpy, WXReqFormat32(dpy, w, prop, XA_CARDINAL, max), count);
+	return WXRcvCardinalList(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_CARDINAL, max), count);
 }
 
-Bool WXGetAtom(Display *dpy, Window w, Atom prop, Atom *out)
+bool WXGetAtom(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t *out)
 {
-	return WXRcvAtom(dpy, WXReqFormat32(dpy, w, prop, XA_ATOM, 1), out);
+	return WXRcvAtom(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_ATOM, 1), out);
 }
 
-Atom *WXGetAtomList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+xcb_atom_t *WXGetAtomList(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, size_t max, size_t *count)
 {
-	return WXRcvAtomList(dpy, WXReqFormat32(dpy, w, prop, XA_ATOM, max), count);
+	return WXRcvAtomList(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_ATOM, max), count);
 }
 
-Bool WXGetWindow(Display *dpy, Window w, Atom prop, Window *out)
+bool WXGetWindow(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_window_t *out)
 {
-	return WXRcvWindow(dpy, WXReqFormat32(dpy, w, prop, XA_WINDOW, 1), out);
+	return WXRcvWindow(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_WINDOW, 1), out);
 }
 
-Window *WXGetWindowList(Display *dpy, Window w, Atom prop, size_t max, size_t *count)
+xcb_window_t *WXGetWindowList(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, size_t max, size_t *count)
 {
-	return WXRcvWindowList(dpy, WXReqFormat32(dpy, w, prop, XA_WINDOW, max), count);
+	return WXRcvWindowList(dpy, WXReqFormat32(dpy, w, prop, XCB_ATOM_WINDOW, max), count);
 }
 
-char *WXGetUTF8String(Display *dpy, Window w, Atom prop, size_t *len)
+char *WXGetUTF8String(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, size_t *len)
 {
-	return WXRcvString(dpy, WXReqString8(dpy, w, prop, (Atom)wx_utf8_string(dpy)), len);
+	return WXRcvString(dpy, WXReqString8(dpy, w, prop, wx_static_atoms[W_ATOM_UTF8_STRING]), len);
 }
 
-char *WXGetLatin1String(Display *dpy, Window w, Atom prop, size_t *len)
+char *WXGetLatin1String(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, size_t *len)
 {
-	return WXRcvString(dpy, WXReqString8(dpy, w, prop, XA_STRING), len);
+	return WXRcvString(dpy, WXReqString8(dpy, w, prop, XCB_ATOM_STRING), len);
 }
 
-Bool WXPropExists(Display *dpy, Window w, Atom prop)
+bool WXPropExists(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop)
 {
 	return WXRcvExists(dpy, WXReqExists(dpy, w, prop));
 }
 
 /* ---- format-32 writers ---------------------------------------------- */
 
-static inline void wx_set32(Display *dpy, Window w, Atom prop, Atom type,
+static inline void wx_set32(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type,
 			    const uint32_t *v, size_t n)
 {
 	xcb_change_property(wx_conn(dpy), XCB_PROP_MODE_REPLACE,
@@ -455,29 +433,29 @@ static inline void wx_set32(Display *dpy, Window w, Atom prop, Atom type,
 			    (xcb_atom_t)type, 32, (uint32_t)n, v);
 }
 
-void WXSetCardinal(Display *dpy, Window w, Atom prop, uint32_t v)
+void WXSetCardinal(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, uint32_t v)
 {
-	wx_set32(dpy, w, prop, XA_CARDINAL, &v, 1);
+	wx_set32(dpy, w, prop, XCB_ATOM_CARDINAL, &v, 1);
 }
 
-void WXSetCardinalN(Display *dpy, Window w, Atom prop, const uint32_t *v, size_t n)
+void WXSetCardinalN(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, const uint32_t *v, size_t n)
 {
-	wx_set32(dpy, w, prop, XA_CARDINAL, v, n);
+	wx_set32(dpy, w, prop, XCB_ATOM_CARDINAL, v, n);
 }
 
-void WXSetFormat32N(Display *dpy, Window w, Atom prop, Atom type,
+void WXSetFormat32N(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type,
 		    const uint32_t *v, size_t n)
 {
 	wx_set32(dpy, w, prop, type, v, n);
 }
 
-void WXSetAtom(Display *dpy, Window w, Atom prop, Atom v)
+void WXSetAtom(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t v)
 {
 	uint32_t a = (uint32_t)v;
-	wx_set32(dpy, w, prop, XA_ATOM, &a, 1);
+	wx_set32(dpy, w, prop, XCB_ATOM_ATOM, &a, 1);
 }
 
-void WXSetAtomN(Display *dpy, Window w, Atom prop, const Atom *v, size_t n)
+void WXSetAtomN(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, const xcb_atom_t *v, size_t n)
 {
 	uint32_t *buf;
 	size_t i;
@@ -485,17 +463,17 @@ void WXSetAtomN(Display *dpy, Window w, Atom prop, const Atom *v, size_t n)
 	buf = wmalloc(sizeof(uint32_t) * (n ? n : 1));
 	for (i = 0; i < n; i++)
 		buf[i] = (uint32_t)v[i];
-	wx_set32(dpy, w, prop, XA_ATOM, buf, n);
+	wx_set32(dpy, w, prop, XCB_ATOM_ATOM, buf, n);
 	wfree(buf);
 }
 
-void WXSetWindow(Display *dpy, Window w, Atom prop, Window v)
+void WXSetWindow(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_window_t v)
 {
 	uint32_t win = (uint32_t)v;
-	wx_set32(dpy, w, prop, XA_WINDOW, &win, 1);
+	wx_set32(dpy, w, prop, XCB_ATOM_WINDOW, &win, 1);
 }
 
-void WXSetWindowN(Display *dpy, Window w, Atom prop, const Window *v, size_t n)
+void WXSetWindowN(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, const xcb_window_t *v, size_t n)
 {
 	uint32_t *buf;
 	size_t i;
@@ -503,25 +481,25 @@ void WXSetWindowN(Display *dpy, Window w, Atom prop, const Window *v, size_t n)
 	buf = wmalloc(sizeof(uint32_t) * (n ? n : 1));
 	for (i = 0; i < n; i++)
 		buf[i] = (uint32_t)v[i];
-	wx_set32(dpy, w, prop, XA_WINDOW, buf, n);
+	wx_set32(dpy, w, prop, XCB_ATOM_WINDOW, buf, n);
 	wfree(buf);
 }
 
-void WXSetUTF8String(Display *dpy, Window w, Atom prop, const char *s, size_t len)
+void WXSetUTF8String(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, const char *s, size_t len)
 {
 	xcb_change_property(wx_conn(dpy), XCB_PROP_MODE_REPLACE,
 			    (xcb_window_t)w, (xcb_atom_t)prop,
-			    wx_utf8_string(dpy), 8, (uint32_t)len, s);
+			    wx_static_atoms[W_ATOM_UTF8_STRING], 8, (uint32_t)len, s);
 }
 
-void WXSetLatin1String(Display *dpy, Window w, Atom prop, const char *s, size_t len)
+void WXSetLatin1String(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, const char *s, size_t len)
 {
 	xcb_change_property(wx_conn(dpy), XCB_PROP_MODE_REPLACE,
 			    (xcb_window_t)w, (xcb_atom_t)prop,
 			    XCB_ATOM_STRING, 8, (uint32_t)len, s);
 }
 
-void WXSetFormat8(Display *dpy, Window w, Atom prop, Atom type,
+void WXSetFormat8(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop, xcb_atom_t type,
 		  const unsigned char *data, size_t len)
 {
 	xcb_change_property(wx_conn(dpy), XCB_PROP_MODE_REPLACE,
@@ -529,15 +507,15 @@ void WXSetFormat8(Display *dpy, Window w, Atom prop, Atom type,
 			    (xcb_atom_t)type, 8, (uint32_t)len, data);
 }
 
-void WXDeleteProperty(Display *dpy, Window w, Atom prop)
+void WXDeleteProperty(xcb_connection_t *dpy, xcb_window_t w, xcb_atom_t prop)
 {
 	xcb_delete_property(wx_conn(dpy), (xcb_window_t)w, (xcb_atom_t)prop);
 }
 
 /* ---- ClientMessage --------------------------------------------------- */
 
-void WXSendClientMessage(Display *dpy, Window dest, long event_mask,
-			 Window about, Atom message_type,
+void WXSendClientMessage(xcb_connection_t *dpy, xcb_window_t dest, long event_mask,
+			 xcb_window_t about, xcb_atom_t message_type,
 			 long l0, long l1, long l2, long l3, long l4)
 {
 	xcb_client_message_event_t ev;
@@ -553,6 +531,6 @@ void WXSendClientMessage(Display *dpy, Window dest, long event_mask,
 	ev.data.data32[3] = (uint32_t)l3;
 	ev.data.data32[4] = (uint32_t)l4;
 
-	xcb_send_event(wx_conn(dpy), 0, (xcb_window_t)dest,
-		       (uint32_t)event_mask, (const char *)&ev);
+	WXSendEvent32(wx_conn(dpy), &ev, sizeof(ev), 0, (xcb_window_t)dest,
+		      (uint32_t)event_mask);
 }

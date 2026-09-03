@@ -39,7 +39,7 @@ static void paintLabel(Label * lPtr);
 static PangoLayout *labelCreateLayout(Label *lPtr);
 static void labelApplyText(Label *lPtr);
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
 WMLabel *WMCreateLabel(WMWidget * parent)
 {
@@ -58,7 +58,7 @@ WMLabel *WMCreateLabel(WMWidget * parent)
 
 	lPtr->textColor = WMRetainColor(lPtr->view->screen->black);
 
-	WMCreateEventHandler(lPtr->view, ExposureMask | StructureNotifyMask, handleEvents, lPtr);
+	WMCreateEventHandler(lPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, lPtr);
 
 	W_ResizeView(lPtr->view, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 	lPtr->flags.alignment = DEFAULT_ALIGNMENT;
@@ -172,7 +172,7 @@ void WMSetLabelTextColor(WMLabel * lPtr, WMColor * color)
 	}
 }
 
-void WMSetLabelWraps(WMLabel * lPtr, Bool flag)
+void WMSetLabelWraps(WMLabel * lPtr, bool flag)
 {
 	flag = ((flag == 0) ? 0 : 1);
 	if (lPtr->flags.noWrap != !flag) {
@@ -182,7 +182,7 @@ void WMSetLabelWraps(WMLabel * lPtr, Bool flag)
 	}
 }
 
-void WMSetLabelUseMarkup(WMLabel *lPtr, Bool flag)
+void WMSetLabelUseMarkup(WMLabel *lPtr, bool flag)
 {
 	flag = (flag != 0);
 	if (lPtr->flags.useMarkup != flag) {
@@ -197,7 +197,7 @@ void WMSetLabelUseMarkup(WMLabel *lPtr, Bool flag)
 	}
 }
 
-Bool WMGetLabelUseMarkup(WMLabel *lPtr)
+bool WMGetLabelUseMarkup(WMLabel *lPtr)
 {
 	return lPtr->flags.useMarkup;
 }
@@ -205,7 +205,7 @@ Bool WMGetLabelUseMarkup(WMLabel *lPtr)
 void WMSetLabelMarkup(WMLabel *lPtr, const char *markup)
 {
 	if (!lPtr->flags.useMarkup)
-		WMSetLabelUseMarkup(lPtr, True);
+		WMSetLabelUseMarkup(lPtr, true);
 	if (!markup)
 		markup = "";
 	WMSetLabelText(lPtr, markup);
@@ -268,20 +268,20 @@ static void paintLabel(Label * lPtr)
 			NULL, 0);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Label *lPtr = (Label *) data;
 
 	CHECK_CLASS(data, WC_Label);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintLabel(lPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyLabel(lPtr);
 		break;
 	}

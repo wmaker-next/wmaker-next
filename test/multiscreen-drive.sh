@@ -6,7 +6,7 @@
 # to every screen. A deliberately broken texture spec in the domain
 # exercises the startup realisation-failure fallback on each screen.
 #
-# Xvfb provides two screens on one display (:N.0 and :N.1); wmaker is
+# Xvfb provides two screens on one display (:N.0 and :N.1), wmaker is
 # started with a screen-less DISPLAY so it manages both.
 set -u
 

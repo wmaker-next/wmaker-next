@@ -20,10 +20,10 @@
 #ifndef WMRESOURCES_H_
 #define WMRESOURCES_H_
 
-int wParseColor(Colormap colormap, const char *spec, XColor *color);
-int wAllocColor(WScreen *scr, Colormap colormap, XColor *color);
-int wGetColorForColormap(WScreen *scr, Colormap colormap, const char *color_name, XColor *color);
-int wGetColor(WScreen *scr, const char *color_name, XColor *color);
+int wParseColor(xcb_colormap_t colormap, const char *spec, WXColor *color);
+int wAllocColor(WScreen *scr, xcb_colormap_t colormap, WXColor *color);
+int wGetColorForColormap(WScreen *scr, xcb_colormap_t colormap, const char *color_name, WXColor *color);
+int wGetColor(WScreen *scr, const char *color_name, WXColor *color);
 void wFreeColor(WScreen *scr, unsigned long pixel);
 
 #endif

@@ -213,14 +213,14 @@ WMData *WMGetSubdataWithRange(WMData * aData, WMRange aRange)
 
 /* Testing data */
 
-Bool WMIsDataEqualToData(WMData * aData, WMData * anotherData)
+bool WMIsDataEqualToData(WMData * aData, WMData * anotherData)
 {
 	if (aData->length != anotherData->length)
-		return False;
+		return false;
 	else if (!aData->bytes && !anotherData->bytes)	/* both are empty */
-		return True;
+		return true;
 	else if (!aData->bytes || !anotherData->bytes)	/* one of them is empty */
-		return False;
+		return false;
 	return (memcmp(aData->bytes, anotherData->bytes, aData->length) == 0);
 }
 

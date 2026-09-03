@@ -7,10 +7,13 @@
  */
 #include <config.h>
 
-#include <X11/Xproto.h>
-#include <X11/Xutil.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_image.h>
+
+#include "xcconn.h"
 
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 #include <wraster.h>
 #include <cairo-xcb.h>
 #include <stdlib.h>
@@ -27,7 +30,7 @@
 int refreshrate = 200;
 
 typedef struct {
-	Drawable d;
+	xcb_drawable_t d;
 	int width, height;
 	int rwidth, rheight;	/* size of window in real pixels */
 	int magfactor;
@@ -46,8 +49,8 @@ typedef struct {
 	WMButton *newB;
 
 	int x, y;
-	Bool frozen;
-	Bool markPointerHotspot;
+	bool frozen;
+	bool markPointerHotspot;
 
 	WMHandlerID tid;
 } BufferData;
@@ -56,10 +59,15 @@ static BufferData *newWindow(int magfactor);
 
 int windowCount = 0;
 
-Display *dpy, *vdpy;
+static xcb_connection_t *xconn;
+static int xsn;
+/* the connection the magnified image is read from: a second
+ * connection with -vdisplay, xconn otherwise */
+static xcb_connection_t *vconn;
+static int vsn;
 WMScreen *scr;
 static int rshift, gshift, bshift;
-static unsigned long rmask, gmask, bmask;
+static uint32_t rmask, gmask, bmask;
 WMColor *cursorColor1;
 WMColor *cursorColor2;
 
@@ -80,12 +88,12 @@ static BufferData *makeBufferData(WMWindow * win, WMLabel * label, int width, in
 	data->win = win;
 	data->label = label;
 
-	data->pixmap = WMCreatePixmap(scr, width, height, WMScreenDepth(scr), False);
+	data->pixmap = WMCreatePixmap(scr, width, height, WMScreenDepth(scr), false);
 	WMSetLabelImage(data->label, data->pixmap);
 
 	data->d = WMGetPixmapXID(data->pixmap);
 
-	data->frozen = False;
+	data->frozen = false;
 
 	data->width = width / magfactor;
 	data->height = height / magfactor;
@@ -104,13 +112,13 @@ static void resizeBufferData(BufferData * data, int width, int height, int magfa
 	WMResizeWidget(data->label, width, height);
 
 	WMReleasePixmap(data->pixmap);
-	data->pixmap = WMCreatePixmap(scr, width, height, WMScreenDepth(scr), False);
+	data->pixmap = WMCreatePixmap(scr, width, height, WMScreenDepth(scr), false);
 	WMSetLabelImage(data->label, data->pixmap);
 
 	data->d = WMGetPixmapXID(data->pixmap);
 }
 
-static int mask_shift(unsigned long m)
+static int mask_shift(uint32_t m)
 {
 	int s = 0;
 
@@ -132,10 +140,10 @@ static int mask_shift(unsigned long m)
  * endian 0xRRGGBB per pixel) using the source visual's channel masks.
  * The result is a data->width x data->height buffer with the off-screen
  * border already black, so the caller can paint the whole thing. */
-static void unpack_image(BufferData *data, XImage *im, int xoffs, int yoffs,
-			 uint32_t *out, int stride)
+static void unpack_image(BufferData *data, xcb_image_t *im, int xoffs, int yoffs,
+			uint32_t *out, int stride)
 {
-	unsigned long p;
+	uint32_t p;
 	uint32_t *row;
 	int x, y;
 
@@ -143,11 +151,11 @@ static void unpack_image(BufferData *data, XImage *im, int xoffs, int yoffs,
 		row = (uint32_t *)((unsigned char *)out + y * stride);
 		for (x = 0; x < data->width; x++) {
 			if (x < xoffs || y < yoffs ||
-			    x >= xoffs + im->width || y >= yoffs + im->height) {
+			    x >= xoffs + (int)im->width || y >= yoffs + (int)im->height) {
 				row[x] = 0;
 				continue;
 			}
-			p = XGetPixel(im, x - xoffs, y - yoffs);
+			p = xcb_image_get_pixel(im, x - xoffs, y - yoffs);
 #define SH(v, s) ((s) >= 0 ? ((v) >> (s)) : ((v) << -(s)))
 			row[x] = (SH(p & rmask, rshift) & 0xff) << 16 |
 				 (SH(p & gmask, gshift) & 0xff) << 8 |
@@ -162,12 +170,13 @@ static void updateImage(BufferData * data, int rx, int ry)
 	int gx, gy, gw, gh;
 	int xoffs, yoffs;
 	int stride;
-	XImage *image;
+	xcb_image_t *image;
 	uint32_t *buf;
 	cairo_surface_t *ss, *ds;
 	cairo_pattern_t *pat;
 	cairo_t *cr;
 	RContext *rc;
+	const xcb_screen_t *vscr = wXScreenOf(vconn, vsn);
 
 	gw = data->width;
 	gh = data->height;
@@ -181,30 +190,37 @@ static void updateImage(BufferData * data, int rx, int ry)
 		gw += gx;
 		gx = 0;
 	}
-	if (gx + gw >= WidthOfScreen(DefaultScreenOfDisplay(vdpy))) {
-		gw = WidthOfScreen(DefaultScreenOfDisplay(vdpy)) - gx;
+	if (gx + gw >= (int)vscr->width_in_pixels) {
+		gw = (int)vscr->width_in_pixels - gx;
 	}
 	if (gy < 0) {
 		yoffs = abs(gy);
 		gh += gy;
 		gy = 0;
 	}
-	if (gy + gh >= HeightOfScreen(DefaultScreenOfDisplay(vdpy))) {
-		gh = HeightOfScreen(DefaultScreenOfDisplay(vdpy)) - gy;
+	if (gy + gh >= (int)vscr->height_in_pixels) {
+		gh = (int)vscr->height_in_pixels - gy;
 	}
 
-	image = XGetImage(vdpy, DefaultRootWindow(vdpy), gx, gy, gw, gh, AllPlanes, ZPixmap);
+	image = xcb_image_get(vconn, wXRootWindow(vconn, vsn),
+			      gx, gy, gw, gh, ~(uint32_t)0,
+			      XCB_IMAGE_FORMAT_Z_PIXMAP);
+	if (!image) {
+		/* Xlib died on the protocol error instead; skipping the
+		 * refresh keeps the window alive */
+		return;
+	}
 
 	stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, data->width);
 	buf = wmalloc(stride * data->height);
 	unpack_image(data, image, xoffs, yoffs, buf, stride);
-	XDestroyImage(image);
+	xcb_image_destroy(image);
 
 	rc = WMScreenRContext(scr);
 	ss = cairo_image_surface_create_for_data((unsigned char *)buf,
 						 CAIRO_FORMAT_RGB24,
 						 data->width, data->height, stride);
-	ds = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)data->d, rc->xvisual,
+	ds = cairo_xcb_surface_create(rc->xc, data->d, rc->xvisual,
 				      data->rwidth, data->rheight);
 	cr = cairo_create(ds);
 	cairo_scale(cr, data->magfactor, data->magfactor);
@@ -221,7 +237,7 @@ static void updateImage(BufferData * data, int rx, int ry)
 	wfree(buf);
 
 	if (data->markPointerHotspot && !data->frozen) {
-		XRectangle rects[4];
+		xcb_rectangle_t rects[4];
 
 		rects[0].x = (data->width / 2 - 3) * data->magfactor;
 		rects[0].y = (data->height / 2) * data->magfactor;
@@ -260,7 +276,7 @@ static void updateImage(BufferData * data, int rx, int ry)
 static void update(void *d)
 {
 	BufferData *data = (BufferData *) d;
-	Window win;
+	xcb_window_t win;
 	int rx, ry;
 	int bla;
 	unsigned ubla;
@@ -268,11 +284,10 @@ static void update(void *d)
 	if (data->frozen) {
 		rx = data->x;
 		ry = data->y;
-	} else {
-		XQueryPointer(dpy, DefaultRootWindow(dpy), &win, &win, &rx, &ry, &bla, &bla, &ubla);
+	} else if (wXQueryPointer(xconn, wXRootWindow(xconn, xsn), &win, &win,
+				 &rx, &ry, &bla, &bla, &ubla)) {
+		updateImage(data, rx, ry);
 	}
-	updateImage(data, rx, ry);
-
 	data->tid = WMAddTimerHandler(data->refreshrate, update, data);
 }
 
@@ -303,17 +318,22 @@ static void closeWindow(WMWidget * w, void *d)
 	}
 }
 
-static void keyHandler(XEvent * event, void *d)
+static void keyHandler(xcb_generic_event_t * event, void *d)
 {
 	BufferData *data = (BufferData *) d;
 	char buf[32];
-	KeySym ks;
+	xkb_keysym_t ks;
+	int n;
 	WMView *view = WMWidgetView(data->win);
 	WMSize size;
 
 	size = WMGetViewSize(view);
 
-	if (XLookupString(&event->xkey, buf, 31, &ks, NULL) > 0) {
+	n = W_LookupString(WMWidgetView(data->win),
+			   (const xcb_key_press_event_t *)event,
+			   buf, (int)sizeof(buf) - 1, &ks, NULL);
+	if (n > 0) {
+		buf[n] = '\0';
 		switch (buf[0]) {
 		case 'n':
 			newWindow(data->magfactor);
@@ -325,8 +345,11 @@ static void keyHandler(XEvent * event, void *d)
 		case ' ':
 			data->frozen = !data->frozen;
 			if (data->frozen) {
-				data->x = event->xkey.x_root;
-				data->y = event->xkey.y_root;
+				const xcb_key_press_event_t *ke =
+					(const xcb_key_press_event_t *)event;
+
+				data->x = ke->root_x;
+				data->y = ke->root_y;
 				snprintf(buf, sizeof(buf), "[Magnify %ix]", data->magfactor);
 			} else {
 				snprintf(buf, sizeof(buf), "Magnify %ix", data->magfactor);
@@ -367,7 +390,7 @@ static BufferData *newWindow(int magfactor)
 	WMResizeWidget(win, 300, 200);
 	snprintf(buf, sizeof(buf), "Magnify %ix", magfactor);
 	WMSetWindowTitle(win, buf);
-	WMSetViewNotifySizeChanges(WMWidgetView(win), True);
+	WMSetViewNotifySizeChanges(WMWidgetView(win), true);
 
 	label = WMCreateLabel(win);
 	WMResizeWidget(label, 300, 200);
@@ -377,7 +400,7 @@ static BufferData *newWindow(int magfactor)
 
 	data = makeBufferData(win, label, 300, 200, magfactor);
 
-	WMCreateEventHandler(WMWidgetView(win), KeyReleaseMask, keyHandler, data);
+	WMCreateEventHandler(WMWidgetView(win), XCB_EVENT_MASK_KEY_RELEASE, keyHandler, data);
 
 	WMAddNotificationObserver(resizedWindow, data, WMViewSizeDidChangeNotification, WMWidgetView(win));
 
@@ -398,7 +421,8 @@ int main(int argc, char **argv)
 	char *display = "";
 	char *vdisplay = NULL;
 	int magfactor = 2;
-	Visual *vis;
+	int sn;
+	xcb_visualtype_t *vis;
 
 	WMInitializeApplication("Magnify", &argc, argv);
 
@@ -451,23 +475,19 @@ int main(int argc, char **argv)
 		}
 	}
 
-	dpy = XOpenDisplay(display);
-	if (!dpy) {
-		puts("could not open display");
-		exit(1);
-	}
+	xconn = xcconn_open(display[0] ? display : NULL, argv[0], 1, &sn);
+	xsn = sn;
 
 	if (vdisplay) {
-		vdpy = XOpenDisplay(vdisplay);
-		if (!vdpy) {
-			puts("could not open display to be viewed");
-			exit(1);
-		}
+		vconn = xcconn_open(vdisplay[0] ? vdisplay : NULL, argv[0], 1, &vsn);
 	} else {
-		vdpy = dpy;
+		/* the old vdpy = dpy alias: magnify the same display
+		 * wmaker is shown on */
+		vconn = xconn;
+		vsn = xsn;
 	}
 
-	vis = DefaultVisual(vdpy, DefaultScreen(vdpy));
+	vis = wXDefaultVisualType(vconn, vsn);
 	rmask = vis->red_mask;
 	gmask = vis->green_mask;
 	bmask = vis->blue_mask;
@@ -475,10 +495,10 @@ int main(int argc, char **argv)
 	gshift = mask_shift(gmask);
 	bshift = mask_shift(bmask);
 
-	scr = WMCreateScreen(dpy, 0);
+	scr = WMCreateScreen(xconn, 0);
 
-	cursorColor1 = WMCreateNamedColor(scr, "#ff0000", False);
-	cursorColor2 = WMCreateNamedColor(scr, "#00ff00", False);
+	cursorColor1 = WMCreateNamedColor(scr, "#ff0000", false);
+	cursorColor2 = WMCreateNamedColor(scr, "#00ff00", false);
 
 	newWindow(magfactor);
 

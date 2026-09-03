@@ -43,7 +43,7 @@ void WSetOSDViewText(WOSDView *view, const char *text);
 
 /* Clear the background; use ARGB compositing when available and a shaped
  * text window as the fallback on non-composited displays. */
-void WSetOSDViewTransparent(WOSDView *view, Bool transparent);
+void WSetOSDViewTransparent(WOSDView *view, bool transparent);
 
 /* Whole-frame opacity in [0,1], repaints when mapped. Only visually
  * translucent when a compositor is running and the server offers a

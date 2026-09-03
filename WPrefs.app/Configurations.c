@@ -134,12 +134,12 @@ static void createPanel(Panel *p)
 		WMMoveWidget(panel->icoB[i], 2 + (40 * i), 14);
 		WMResizeWidget(panel->shaB[i], 40, 26);
 		WMMoveWidget(panel->shaB[i], 2 + (40 * i), 14);
-		WMSetButtonBordered(panel->icoB[i], False);
+		WMSetButtonBordered(panel->icoB[i], false);
 		WMSetButtonImagePosition(panel->icoB[i], WIPImageOnly);
 		if (i > 0) {
 			WMGroupButtons(panel->icoB[0], panel->icoB[i]);
 		}
-		WMSetButtonBordered(panel->shaB[i], False);
+		WMSetButtonBordered(panel->shaB[i], false);
 		WMSetButtonImagePosition(panel->shaB[i], WIPImageOnly);
 		if (i > 0) {
 			WMGroupButtons(panel->shaB[0], panel->shaB[i]);

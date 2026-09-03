@@ -36,6 +36,7 @@ POTFILES  = \
 	$(top_srcdir)/src/event_root.c \
 	$(top_srcdir)/src/event_ext.c \
 	$(top_srcdir)/src/framewin.c \
+	$(top_srcdir)/src/geometry.c \
 	$(top_srcdir)/src/geomview.c \
 	$(top_srcdir)/src/osdview.c \
 	$(top_srcdir)/src/hotcorner.c \

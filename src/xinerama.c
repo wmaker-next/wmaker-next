@@ -19,17 +19,13 @@
 
 #include "wconfig.h"
 
-/* Xlibint.h must precede any project header that pulls in Xlib.h, and it
- * leaks lowercase min/max macros which collide with WINGs, so undef them
- * immediately after the protocol header. */
-#include <X11/Xlibint.h>
-#include <X11/extensions/panoramiXproto.h>
-#undef min
-#undef max
+#include <string.h>
+
+#include <xcb/xcb.h>
+#include <xcb/xinerama.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "xinerama.h"
 
@@ -39,70 +35,56 @@
 #include "placement.h"
 #include "dock.h"
 
-/* Minor opcodes for the post-1.0 XINERAMA requests, these live in
- * libXinerama's private headers rather than panoramiXproto.h. */
-#define X_XineramaIsActive      4
-#define X_XineramaQueryScreens  5
-
-/* Speak the XINERAMA wire protocol directly so we do not link libXinerama.
- * RandR is the authoritative head source on real hardware and overwrites
+/* RandR is the authoritative head source on real hardware and overwrites
  * xine_info via wRandRInit(), but nested servers such as Xephyr +xinerama
  * expose a multi-head root that RandR cannot describe, so this query still
  * seeds the head list for the randr.c "keeping XINERAMA geometry" fallback
  * and for builds without RandR. */
 static int queryXineramaHeads(WMRect *out, int max_out)
 {
-	xXineramaIsActiveReq *areq;
-	xXineramaIsActiveReply arep;
-	xXineramaQueryScreensReq *sreq;
-	xXineramaQueryScreensReply srep;
-	int major_opcode, first_event, first_error;
-	int count = 0;
+	xcb_connection_t *xc = xconn;
+	xcb_query_extension_cookie_t qck;
+	xcb_query_extension_reply_t *qrep;
+	xcb_xinerama_is_active_cookie_t ick;
+	xcb_xinerama_is_active_reply_t *irep;
+	xcb_xinerama_query_screens_cookie_t sck;
+	xcb_xinerama_query_screens_reply_t *srep;
+	xcb_xinerama_screen_info_t *info;
+	int n, i, count = 0;
 
-	if (!XQueryExtension(dpy, PANORAMIX_PROTOCOL_NAME,
-			     &major_opcode, &first_event, &first_error))
-		return 0;
-
-	LockDisplay(dpy);
-	GetReq(XineramaIsActive, areq);
-	areq->reqType = major_opcode;
-	areq->panoramiXReqType = X_XineramaIsActive;
-	if (!_XReply(dpy, (xReply *)&arep, 0, xTrue))
-		arep.state = 0;
-	UnlockDisplay(dpy);
-	SyncHandle();
-
-	if (!arep.state)
-		return 0;
-
-	LockDisplay(dpy);
-	GetReq(XineramaQueryScreens, sreq);
-	sreq->reqType = major_opcode;
-	sreq->panoramiXReqType = X_XineramaQueryScreens;
-	if (!_XReply(dpy, (xReply *)&srep, 0, xFalse)) {
-		UnlockDisplay(dpy);
-		SyncHandle();
+	qck = xcb_query_extension(xc, 8, "XINERAMA");
+	qrep = xcb_query_extension_reply(xc, qck, NULL);
+	if (!qrep || !qrep->present) {
+		free(qrep);
 		return 0;
 	}
-	if (srep.number <= (CARD32)max_out
-	    && srep.length == srep.number * (sz_XineramaScreenInfo / 4)) {
-		CARD32 i;
+	free(qrep);
 
-		for (i = 0; i < srep.number; i++) {
-			xXineramaScreenInfo si;
+	ick = xcb_xinerama_is_active(xc);
+	irep = xcb_xinerama_is_active_reply(xc, ick, NULL);
+	if (!irep || !irep->state) {
+		free(irep);
+		return 0;
+	}
+	free(irep);
 
-			_XRead(dpy, (char *)&si, sz_XineramaScreenInfo);
-			out[i].pos.x = si.x_org;
-			out[i].pos.y = si.y_org;
-			out[i].size.width = si.width;
-			out[i].size.height = si.height;
+	sck = xcb_xinerama_query_screens(xc);
+	srep = xcb_xinerama_query_screens_reply(xc, sck, NULL);
+	if (!srep)
+		return 0;
+
+	n = xcb_xinerama_query_screens_screen_info_length(srep);
+	if (n <= max_out) {
+		info = xcb_xinerama_query_screens_screen_info(srep);
+		for (i = 0; i < n; i++) {
+			out[i].pos.x = info[i].x_org;
+			out[i].pos.y = info[i].y_org;
+			out[i].size.width = info[i].width;
+			out[i].size.height = info[i].height;
 		}
-		count = (int)srep.number;
-	} else {
-		_XEatDataWords(dpy, srep.length);
+		count = n;
 	}
-	UnlockDisplay(dpy);
-	SyncHandle();
+	free(srep);
 
 	return count;
 }
@@ -224,14 +206,14 @@ int wGetHeadForRect(WScreen * scr, WMRect rect)
 	return best;
 }
 
-Bool wWindowTouchesHead(WWindow * wwin, int head)
+bool wWindowTouchesHead(WWindow * wwin, int head)
 {
 	WScreen *scr;
 	WMRect rect;
 	int a;
 
 	if (!wwin || !wwin->frame)
-		return False;
+		return false;
 
 	scr = wwin->screen_ptr;
 	rect = wGetRectForHead(scr, head);
@@ -243,14 +225,14 @@ Bool wWindowTouchesHead(WWindow * wwin, int head)
 	return (a != 0);
 }
 
-Bool wAppIconTouchesHead(WAppIcon * aicon, int head)
+bool wAppIconTouchesHead(WAppIcon * aicon, int head)
 {
 	WScreen *scr;
 	WMRect rect;
 	int a;
 
 	if (!aicon || !aicon->icon)
-		return False;
+		return false;
 
 	scr = aicon->icon->core->screen_ptr;
 	rect = wGetRectForHead(scr, head);
@@ -451,14 +433,14 @@ int wGetHeadForPoint(WScreen * scr, WMPoint point)
 int wGetHeadForPointerLocation(WScreen * scr)
 {
 	WMPoint point;
-	Window bla;
+	xcb_window_t bla;
 	int ble;
 	unsigned int blo;
 
 	if (!scr->xine_info.count)
 		return scr->xine_info.primary_head;
 
-	if (!XQueryPointer(dpy, scr->root_win, &bla, &bla, &point.x, &point.y, &ble, &ble, &blo))
+	if (!wXQueryPointer(xconn, scr->root_win, &bla, &bla, &point.x, &point.y, &ble, &ble, &blo))
 		return scr->xine_info.primary_head;
 
 	return wGetHeadForPoint(scr, point);
@@ -484,7 +466,7 @@ WMRect wGetRectForHead(WScreen * scr, int head)
 	return rect;
 }
 
-WArea wGetUsableAreaForHead(WScreen * scr, int head, WArea * totalAreaPtr, Bool noicons)
+WArea wGetUsableAreaForHead(WScreen * scr, int head, WArea * totalAreaPtr, bool noicons)
 {
 	WArea totalArea, usableArea;
 	WMRect rect = wGetRectForHead(scr, head);

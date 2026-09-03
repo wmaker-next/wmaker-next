@@ -1,5 +1,4 @@
 
-#include <X11/Xmd.h>
 
 #include "wconfig.h"
 
@@ -7,7 +6,6 @@
 
 #include "GNUstep.h"
 
-#include <X11/Xatom.h>
 
 typedef struct W_Window {
 	W_Class widgetClass;
@@ -66,7 +64,7 @@ struct W_ViewDelegate _WindowViewDelegate = {
 
 static void destroyWindow(_Window * win);
 
-static void handleEvents(XEvent * event, void *clientData);
+static void handleEvents(xcb_generic_event_t * event, void *clientData);
 
 static void realizeWindow(WMWindow * win);
 
@@ -132,8 +130,8 @@ WMWindow *WMCreateWindowWithStyle(WMScreen * screen, const char *name, int style
 	win->nextPtr = screen->windowList;
 	screen->windowList = win;
 
-	WMCreateEventHandler(win->view, ExposureMask | StructureNotifyMask
-			     | ClientMessageMask | FocusChangeMask, handleEvents, win);
+	WMCreateEventHandler(win->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+			     | ClientMessageMask | XCB_EVENT_MASK_FOCUS_CHANGE, handleEvents, win);
 
 	W_ResizeView(win->view, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
@@ -230,8 +228,8 @@ void WMSetWindowTitle(WMWindow * win, const char *title)
 
 void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 {
-	Atom *atoms = NULL;
-	Atom *newAtoms;
+	xcb_atom_t *atoms = NULL;
+	xcb_atom_t *newAtoms;
 	size_t count;
 	WMScreen *scr = win->view->screen;
 
@@ -241,9 +239,9 @@ void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 			if (!atoms) {
 				count = 0;
 			}
-			newAtoms = wmalloc((count + 1) * sizeof(Atom));
+			newAtoms = wmalloc((count + 1) * sizeof(xcb_atom_t));
 			if (count > 0)
-				memcpy(newAtoms, atoms, count * sizeof(Atom));
+				memcpy(newAtoms, atoms, count * sizeof(xcb_atom_t));
 			newAtoms[count++] = scr->deleteWindowAtom;
 			WXSetWMProtocols(scr->display, win->view->window, newAtoms, count);
 			if (atoms)
@@ -254,7 +252,7 @@ void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 
 			atoms = WXGetWMProtocols(scr->display, win->view->window, &count);
 			if (atoms && count > 0) {
-				newAtoms = wmalloc((count - 1) * sizeof(Atom));
+				newAtoms = wmalloc((count - 1) * sizeof(xcb_atom_t));
 				ncount = 0;
 				for (i = 0; i < count; i++) {
 					if (atoms[i] != scr->deleteWindowAtom) {
@@ -312,41 +310,41 @@ static void setSizeHints(WMWindow * win)
 	hints->flags = 0;
 
 	if (win->flags.setPPos) {
-		hints->flags |= PPosition;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_P_POSITION;
 		hints->x = win->ppos.x;
 		hints->y = win->ppos.y;
 	}
 	if (win->flags.setUPos) {
-		hints->flags |= USPosition;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_US_POSITION;
 		hints->x = win->upos.x;
 		hints->y = win->upos.y;
 	}
 	if (win->minSize.width > 0 && win->minSize.height > 0) {
-		hints->flags |= PMinSize;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
 		hints->min_width = (int)(win->minSize.width * s + 0.5);
 		hints->min_height = (int)(win->minSize.height * s + 0.5);
 	}
 	if (win->maxSize.width > 0 && win->maxSize.height > 0) {
-		hints->flags |= PMaxSize;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_P_MAX_SIZE;
 		hints->max_width = (int)(win->maxSize.width * s + 0.5);
 		hints->max_height = (int)(win->maxSize.height * s + 0.5);
 	}
 	if (win->baseSize.width > 0 && win->baseSize.height > 0) {
-		hints->flags |= PBaseSize;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_BASE_SIZE;
 		hints->base_width = (int)(win->baseSize.width * s + 0.5);
 		hints->base_height = (int)(win->baseSize.height * s + 0.5);
 	}
 	if (win->resizeIncrement.width > 0 && win->resizeIncrement.height > 0) {
-		hints->flags |= PResizeInc;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_P_RESIZE_INC;
 		hints->width_inc = (int)(win->resizeIncrement.width * s + 0.5);
 		hints->height_inc = (int)(win->resizeIncrement.height * s + 0.5);
 	}
 	if (win->flags.setAspect) {
-		hints->flags |= PAspect;
-		hints->min_aspect.x = win->minAspect.x;
-		hints->min_aspect.y = win->minAspect.y;
-		hints->max_aspect.x = win->maxAspect.x;
-		hints->max_aspect.y = win->maxAspect.y;
+		hints->flags |= XCB_ICCCM_SIZE_HINT_P_ASPECT;
+		hints->min_aspect_num = win->minAspect.x;
+		hints->min_aspect_den = win->minAspect.y;
+		hints->max_aspect_num = win->maxAspect.x;
+		hints->max_aspect_den = win->maxAspect.y;
 	}
 
 	if (hints->flags) {
@@ -355,7 +353,7 @@ static void setSizeHints(WMWindow * win)
 	wfree(hints);
 }
 
-static void writeGNUstepWMAttr(WMScreen * scr, Window window, GNUstepWMAttributes * attr)
+static void writeGNUstepWMAttr(WMScreen * scr, xcb_window_t window, GNUstepWMAttributes * attr)
 {
 	uint32_t data[9];
 
@@ -399,7 +397,7 @@ static void realizeWindow(WMWindow * win)
 {
 	WXWMHints *hints;
 	WMScreen *scr = win->view->screen;
-	Atom atoms[4];
+	xcb_atom_t atoms[4];
 	int count;
 
 	WXSetWMClass(scr->display, win->view->window, win->wname, WMGetApplicationName());
@@ -407,15 +405,15 @@ static void realizeWindow(WMWindow * win)
 	hints = WXAllocWMHints();
 	hints->flags = 0;
 	if (!scr->aflags.simpleApplication) {
-		hints->flags |= WindowGroupHint;
+		hints->flags |= XCB_ICCCM_WM_HINT_WINDOW_GROUP;
 		hints->window_group = scr->groupLeader;
 	}
 	if (win->miniImage) {
-		hints->flags |= IconPixmapHint;
+		hints->flags |= XCB_ICCCM_WM_HINT_ICON_PIXMAP;
 		hints->icon_pixmap = WMGetPixmapXID(win->miniImage);
 		hints->icon_mask = WMGetPixmapMaskXID(win->miniImage);
-		if (hints->icon_mask != None) {
-			hints->flags |= IconMaskHint;
+		if (hints->icon_mask != XCB_NONE) {
+			hints->flags |= XCB_ICCCM_WM_HINT_ICON_MASK;
 		}
 	}
 	if (hints->flags != 0)
@@ -518,7 +516,7 @@ void WMSetWindowLevel(WMWindow * win, int level)
 		setWindowMakerHints(win);
 }
 
-void WMSetWindowDocumentEdited(WMWindow * win, Bool flag)
+void WMSetWindowDocumentEdited(WMWindow * win, bool flag)
 {
 	flag = ((flag == 0) ? 0 : 1);
 	if (win->flags.documentEdited != flag) {
@@ -558,11 +556,11 @@ void WMSetWindowMiniwindowPixmap(WMWindow * win, WMPixmap * pixmap)
 				hints->flags = 0;
 			}
 			if (pixmap) {
-				hints->flags |= IconPixmapHint;
+				hints->flags |= XCB_ICCCM_WM_HINT_ICON_PIXMAP;
 				hints->icon_pixmap = WMGetPixmapXID(pixmap);
 				hints->icon_mask = WMGetPixmapMaskXID(pixmap);
-				if (hints->icon_mask != None) {
-					hints->flags |= IconMaskHint;
+				if (hints->icon_mask != XCB_NONE) {
+					hints->flags |= XCB_ICCCM_WM_HINT_ICON_MASK;
 				}
 			}
 			WXSetWMHints(win->view->screen->display, win->view->window, hints);
@@ -594,19 +592,20 @@ void WMCloseWindow(WMWindow * win)
 	WMUnmapWidget(win);
 	/* withdraw the window */
 	if (win->view->flags.realized)
-		XWithdrawWindow(win->view->screen->display, win->view->window, win->view->screen->screen);
+		wXWithdrawWindow(win->view->screen->display, win->view->window,
+				 win->view->screen->screen);
 }
 
-static void handleEvents(XEvent * event, void *clientData)
+static void handleEvents(xcb_generic_event_t * event, void *clientData)
 {
 	_Window *win = (_Window *) clientData;
 	W_View *view = win->view;
 
-	switch (event->type) {
-	case ClientMessage:
-		if (event->xclient.message_type == win->view->screen->protocolsAtom
-		    && event->xclient.format == 32
-		    && event->xclient.data.l[0] == win->view->screen->deleteWindowAtom) {
+	switch ((event->response_type & 0x7f)) {
+	case XCB_CLIENT_MESSAGE:
+		if (((xcb_client_message_event_t *)event)->type == win->view->screen->protocolsAtom
+		    && ((xcb_client_message_event_t *)event)->format == 32
+		    && ((xcb_client_message_event_t *)event)->data.data32[0] == win->view->screen->deleteWindowAtom) {
 
 			if (win->closeAction) {
 				(*win->closeAction) (win, win->closeData);
@@ -627,31 +626,30 @@ static void handleEvents(XEvent * event, void *clientData)
 		 break;
 
 		 */
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyWindow(win);
 		break;
 
-	case ConfigureNotify:
-		if (event->xconfigure.width != view->size.width || event->xconfigure.height != view->size.height) {
+	case XCB_CONFIGURE_NOTIFY:
+		if (((xcb_configure_notify_event_t *)event)->width != view->size.width || ((xcb_configure_notify_event_t *)event)->height != view->size.height) {
 
-			view->size.width = event->xconfigure.width;
-			view->size.height = event->xconfigure.height;
+			view->size.width = ((xcb_configure_notify_event_t *)event)->width;
+			view->size.height = ((xcb_configure_notify_event_t *)event)->height;
 
 			if (view->flags.notifySizeChanged) {
 				WMPostNotificationName(WMViewSizeDidChangeNotification, view, NULL);
 			}
 		}
-		if (event->xconfigure.x != view->pos.x || event->xconfigure.y != view->pos.y) {
+		if (((xcb_configure_notify_event_t *)event)->x != view->pos.x || ((xcb_configure_notify_event_t *)event)->y != view->pos.y) {
 
-			if (event->xconfigure.send_event) {
-				view->pos.x = event->xconfigure.x;
-				view->pos.y = event->xconfigure.y;
+			if ((event->response_type & 0x80) != 0) {
+				view->pos.x = ((xcb_configure_notify_event_t *)event)->x;
+				view->pos.y = ((xcb_configure_notify_event_t *)event)->y;
 			} else {
-				Window foo;
+				xcb_window_t foo;
 
-				XTranslateCoordinates(view->screen->display,
-						      view->window, view->screen->rootWin,
-						      event->xconfigure.x, event->xconfigure.y,
+				wXTranslateCoordinates(view->screen->display, view->window, view->screen->rootWin,
+						      ((xcb_configure_notify_event_t *)event)->x, ((xcb_configure_notify_event_t *)event)->y,
 						      &view->pos.x, &view->pos.y, &foo);
 			}
 		}

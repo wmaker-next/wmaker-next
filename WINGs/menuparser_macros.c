@@ -75,9 +75,9 @@
    call-back function would not have the possibility to fail.
 */
 
-static Bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, char **argname);
+static bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, char **argname);
 
-static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
+static bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
                                         char *array[], char *buffer, ssize_t buffer_size);
 
 /* Free all used memory associated with parser's macros */
@@ -303,7 +303,7 @@ static inline char *mp_is_parameter(char *parse, const char *param) {
 
 	There is no need to keep track of the names of the parameters, so they are stored in
 	a temporary storage for the time of the macro parsing. */
-static Bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, char **arg)
+static bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, char **arg)
 {
 	unsigned char *wr_size;
 	unsigned char *wr;
@@ -346,7 +346,7 @@ static Bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, 
 				error_too_much_data:
 					WMenuParserError(parser, _("more content than supported for the macro \"%s\""),
 										  macro->name);
-					return False;
+					return false;
 				}
 			} while (isnamechr(*parser->rd));
 			if (isspace(*parser->rd)) {
@@ -376,7 +376,7 @@ static Bool menu_parser_read_macro_def(WMenuParser parser, WParserMacro *macro, 
 	wr_size[0] = (size_data >> 8) & 0xFF;
 	wr_size[1] =  size_data       & 0xFF;
 	*wr = 0xFF;
-	return True;
+	return true;
 }
 
 /* When a macro is being used in the file, this function will generate the
@@ -461,7 +461,7 @@ void menu_parser_expand_macro(WMenuParser parser, WParserMacro *macro)
 
 /* When reading a macro to be expanded (not being defined), that takes arguments,
 	this function parses the arguments being provided */
-static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
+static bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
 													 char *array[], char *buffer, ssize_t buffer_size)
 {
 	int arg;
@@ -469,7 +469,7 @@ static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
 	if (*parser->rd != '(') {
 		WMenuParserError(parser, _("macro \"%s\" needs parenthesis for arguments"),
 							  macro->name);
-		return False;
+		return false;
 	}
 	parser->rd++;
 
@@ -499,7 +499,7 @@ static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
 					if (buffer_size-- > 0) buffer++;
 				}
 				WMenuParserError(parser, _("missing closing quote or double-quote before end-of-line") );
-				return False;
+				return false;
 			found_end_of_string:
 				continue;
 			}
@@ -523,7 +523,7 @@ static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
 			if (arg >= macro->arg_count) {
 				WMenuParserError(parser, _("too many arguments for macro \"%s\", expected only %d"),
 									  macro->name, macro->arg_count);
-				return False;
+				return false;
 			}
 			continue;
 		}
@@ -532,18 +532,18 @@ static Bool menu_parser_read_macro_args(WMenuParser parser, WParserMacro *macro,
 	if (*parser->rd != ')') {
 		WMenuParserError(parser, _("premature end of line while searching for arguments to macro \"%s\""),
 							  macro->name);
-		return False;
+		return false;
 	}
 	parser->rd++;
 	if (arg < macro->arg_count) {
 		WMenuParserError(parser, _("not enough arguments for macro \"%s\", expected %d but got only %d"),
 							  macro->name, macro->arg_count, arg);
-		return False;
+		return false;
 	}
 	if (buffer_size < 0)
 		WMenuParserError(parser, _("too much data in parameter list of macro \"%s\", truncated"),
 							  macro->name);
-	return True;
+	return true;
 }
 
 /******************************************************************************/

@@ -5,8 +5,13 @@ AUTOMAKE_OPTIONS =
 # interactive demo programs, built on demand only (e.g. `make wtest`)
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
+# the demos' data files: logo.xpm/upbtn.xpm are #included at compile
+# time (wmquery/wmfile) and loaded at runtime (wtest/fonttest), the
+# dist tarball needs them
+EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
+
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im check_menuparser
+check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im check_menuparser check_wxparse check_xbm check_selection
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -21,11 +26,11 @@ check_handlers_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 check_ipc_SOURCES = check_ipc.c
 check_ipc_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
-# links libWINGs for the WXEvq* symbols and the X client libraries for
-# the XEvent type, but never opens a Display so make check stays X-free
+# links libWINGs for the WXEvq* symbols but never opens a Display so
+# make check stays X-free
 check_evq_SOURCES = check_evq.c
 check_evq_LDADD = $(top_builddir)/WINGs/libWINGs.la \
-	$(top_builddir)/WINGs/libWUtil.la @XLIBS@ @INTLIBS@
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 # unit tests for xcb-path IM: compose fallback and W_IMForwardKey logic,
 # never opens a Display or IM connection
@@ -35,15 +40,40 @@ check_im_CPPFLAGS = $(AM_CPPFLAGS) \
 	-I$(top_srcdir)/src
 check_im_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ @XLIBS@ @INTLIBS@
+	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ @INTLIBS@
+
+# unit tests for the client-side parsers: the text-property codec
+# (wxhints.c) and the numeric colour grammar (wxcore.c) run without a
+# connection, the property-level codec tests skip (77) without a display
+check_wxparse_SOURCES = check_wxparse.c
+check_wxparse_CPPFLAGS = $(AM_CPPFLAGS) \
+	-I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs
+check_wxparse_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @XCB_LIBS@ @INTLIBS@
 
 check_menuparser_SOURCES = check_menuparser.c
 check_menuparser_LDADD = $(top_builddir)/WINGs/libWINGs.la \
-	$(top_builddir)/WINGs/libWUtil.la @XLIBS@ @INTLIBS@
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+# unit tests for the XBM parser core (wxcore.c), no Display
+check_xbm_SOURCES = check_xbm.c
+check_xbm_CPPFLAGS = $(AM_CPPFLAGS) \
+	-I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs
+check_xbm_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+# unit tests for the selection format-32 repack core (selection.c),
+# no Display
+check_selection_SOURCES = check_selection.c
+check_selection_CPPFLAGS = $(AM_CPPFLAGS) \
+	-I$(top_srcdir)/WINGs/WINGs -I$(top_builddir)/WINGs/WINGs
+check_selection_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la \
-	@INTLIBS@ @XLIBS@
+	@INTLIBS@ @XCB_LIBS@
 
 
 testmywidget_SOURCES = testmywidget.c mywidget.c mywidget.h
@@ -52,9 +82,6 @@ fonttest_SOURCES = fonttest.c
 fonttest_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
 
 wtest_DEPENDENCIES = $(top_builddir)/WINGs/libWINGs.la
-
-
-EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 
 AM_CPPFLAGS = -I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	-I$(top_srcdir)/wrlib -I$(top_srcdir)/src -I$(top_srcdir)/test \

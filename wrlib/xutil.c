@@ -225,7 +225,7 @@ RXImage *RCreateXImage(RContext * context, int depth, unsigned width, unsigned h
 	}
 	rximg->ximg = xcb_image_create_native(context->xc, width, height,
 					      XCB_IMAGE_FORMAT_Z_PIXMAP,
-					      depth, NULL, 0, NULL);
+					      depth, NULL, (uint32_t)~0, NULL);
 	if (!rximg->ximg) {
 		free(rximg);
 		RErrorCode = RERR_XERROR;
@@ -287,7 +287,7 @@ void RDestroyXImage(RContext * context, RXImage * rximage)
 	free(rximage);
 }
 
-RXImage *RGetXImage(RContext * context, Drawable d, int x, int y, unsigned width, unsigned height)
+RXImage *RGetXImage(RContext * context, xcb_drawable_t d, int x, int y, unsigned int width, unsigned int height)
 {
 	RXImage *ximg;
 
@@ -339,7 +339,7 @@ void r_put_ximage(RContext *context, xcb_drawable_t d, xcb_gcontext_t gc, RXImag
 }
 
 void
-RPutXImage(RContext * context, Drawable d, xcb_gcontext_t gc, RXImage * ximage, int src_x,
+RPutXImage(RContext * context, xcb_drawable_t d, xcb_gcontext_t gc, RXImage * ximage, int src_x,
 	   int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
 {
 	r_put_ximage(context, d, gc, ximage,

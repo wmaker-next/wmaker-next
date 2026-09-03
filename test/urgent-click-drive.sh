@@ -13,7 +13,7 @@
 # iconify/deiconify round-trip, and turn off with the config key. The
 # blink phases are proven by pixel-comparing the test window's titlebar
 # crop against its own focused/unfocused reference crops (same window,
-# hence identical texture-cache pixmaps); a second window holds the
+# hence identical texture-cache pixmaps), a second window holds the
 # focus because a focused window rejects the demand.
 set -u
 
@@ -161,7 +161,7 @@ blink_px() {
 }
 
 # window ids of the viewable ICON_SIZE toplevel icons outside the dock
-# column; icon core windows carry no WM_NAME so identification is
+# column, icon core windows carry no WM_NAME so identification is
 # positional (a solo app before the focus holder exists)
 viewable_icons() {
     for uiw in $(DISPLAY=$DPY xwininfo -root -children 2>/dev/null \

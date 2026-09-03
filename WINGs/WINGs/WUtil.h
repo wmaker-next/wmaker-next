@@ -21,7 +21,7 @@
 #ifndef _WUTIL_H_
 #define _WUTIL_H_
 
-#include <X11/Xlib.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <sys/types.h>
 
@@ -152,7 +152,7 @@ typedef struct {
     /* NULL is pointer hash */
     unsigned 	(*hash)(const void *);
     /* NULL is pointer compare */
-    Bool	(*keyIsEqual)(const void *, const void *);
+    bool	(*keyIsEqual)(const void *, const void *);
     /* NULL does nothing */
     void*	(*retainKey)(const void *);
     /* NULL does nothing */
@@ -392,7 +392,7 @@ void* WMHashGet(WMHashTable *table, const void *key);
  * Use this when you need to perform your own custom retain/release mechanism
  * which requires access to the keys too.
  */
-Bool WMHashGetItemAndKey(WMHashTable *table, const void *key,
+bool WMHashGetItemAndKey(WMHashTable *table, const void *key,
                          void **retItem, void **retKey);
 
 /* put data in table, replacing already existing data and returning
@@ -413,7 +413,7 @@ void* WMNextHashEnumeratorKey(WMHashEnumerator *enumerator);
  * If there is no next element available it will return False and in this
  * case key and item will be undefined.
  */
-Bool WMNextHashEnumeratorItemAndKey(WMHashEnumerator *enumerator,
+bool WMNextHashEnumeratorItemAndKey(WMHashEnumerator *enumerator,
                                     void **item, void **key);
 
 
@@ -669,7 +669,7 @@ WMData* WMGetSubdataWithRange(WMData *aData, WMRange aRange);
 
 /* Testing data */
 
-Bool WMIsDataEqualToData(WMData *aData, WMData *anotherData);
+bool WMIsDataEqualToData(WMData *aData, WMData *anotherData);
 
 unsigned WMGetDataLength(WMData *aData);
 
@@ -740,7 +740,7 @@ WMTreeNode *WMFindInTreeWithDepthLimit(WMTreeNode * aTree, WMMatchDataProc * mat
 #define WMGetFirstInTree(aTree, cdata) WMFindInTree(aTree, NULL, cdata)
 
 /* Walk every node of aNode with `walk' */
-void WMTreeWalk(WMTreeNode *aNode, WMTreeWalkProc * walk, void *data, Bool DepthFirst);
+void WMTreeWalk(WMTreeNode *aNode, WMTreeWalkProc * walk, void *data, bool DepthFirst);
 
 /* ---[ WINGs/data.c ]---------------------------------------------------- */
 
@@ -792,7 +792,7 @@ void WMEnqueueCoalesceNotification(WMNotificationQueue *queue,
 
 /* Property Lists handling */
 
-void WMPLSetCaseSensitive(Bool caseSensitive);
+void WMPLSetCaseSensitive(bool caseSensitive);
 
 WMPropList* WMCreatePLString(const char *str);
 
@@ -832,25 +832,25 @@ void WMRemoveFromPLDictionary(WMPropList *plist, WMPropList *key);
  * the values with the same keys from dest, keeping all values with keys
  * only present in dest unchanged */
 WMPropList* WMMergePLDictionaries(WMPropList *dest, WMPropList *source,
-                                  Bool recursive);
+                                  bool recursive);
 
 /* It will remove all key/value pairs from dest for which there is an
  * identical key/value present in source. Entires only present in dest, or
  * which have different values in dest than in source will be preserved. */
 WMPropList* WMSubtractPLDictionaries(WMPropList *dest, WMPropList *source,
-                                     Bool recursive);
+                                     bool recursive);
 
 int WMGetPropListItemCount(WMPropList *plist);
 
-Bool WMIsPLString(WMPropList *plist);
+bool WMIsPLString(WMPropList *plist);
 
-Bool WMIsPLData(WMPropList *plist);
+bool WMIsPLData(WMPropList *plist);
 
-Bool WMIsPLArray(WMPropList *plist);
+bool WMIsPLArray(WMPropList *plist);
 
-Bool WMIsPLDictionary(WMPropList *plist);
+bool WMIsPLDictionary(WMPropList *plist);
 
-Bool WMIsPropListEqualTo(WMPropList *plist, WMPropList *other);
+bool WMIsPropListEqualTo(WMPropList *plist, WMPropList *other);
 
 /* Returns a reference. Do not free it! */
 char* WMGetFromPLString(WMPropList *plist);
@@ -889,13 +889,13 @@ WMPropList* WMDeepCopyPropList(WMPropList *plist);
 WMPropList* WMCreatePropListFromDescription(const char *desc);
 
 /* Free the returned string when you no longer need it */
-char* WMGetPropListDescription(WMPropList *plist, Bool indented);
+char* WMGetPropListDescription(WMPropList *plist, bool indented);
 
 WMPropList* WMReadPropListFromFile(const char *file);
 
 WMPropList* WMReadPropListFromPipe(const char *command);
 
-Bool WMWritePropListToFile(WMPropList *plist, const char *path);
+bool WMWritePropListToFile(WMPropList *plist, const char *path);
 
 /* ---[ WINGs/userdefaults.c ]-------------------------------------------- */
 
@@ -933,7 +933,7 @@ void WMSynchronizeUserDefaults(WMUserDefaults *database);
 
 void WMSaveUserDefaults(WMUserDefaults *database);
 
-void WMEnableUDPeriodicSynchronization(WMUserDefaults *database, Bool enable);
+void WMEnableUDPeriodicSynchronization(WMUserDefaults *database, bool enable);
 
 /* Returns a WMPropList array with all the keys in the user defaults database.
  * Free the array with WMReleasePropList() when no longer needed.
@@ -954,7 +954,7 @@ int WMGetUDIntegerForKey(WMUserDefaults *database, const char *defaultName);
 
 float WMGetUDFloatForKey(WMUserDefaults *database, const char *defaultName);
 
-Bool WMGetUDBoolForKey(WMUserDefaults *database, const char *defaultName);
+bool WMGetUDBoolForKey(WMUserDefaults *database, const char *defaultName);
 
 void WMSetUDStringForKey(WMUserDefaults *database, const char *value,
                          const char *defaultName);
@@ -965,7 +965,7 @@ void WMSetUDIntegerForKey(WMUserDefaults *database, int value,
 void WMSetUDFloatForKey(WMUserDefaults *database, float value,
                         const char *defaultName);
 
-void WMSetUDBoolForKey(WMUserDefaults *database, Bool value,
+void WMSetUDBoolForKey(WMUserDefaults *database, bool value,
                        const char *defaultName);
 
 WMPropList* WMGetUDSearchList(WMUserDefaults *database);
@@ -990,7 +990,7 @@ void WMenuParserError(WMenuParser parser, const char *msg, ...)
 
 const char *WMenuParserGetFilename(WMenuParser parser);
 
-Bool WMenuParserGetLine(WMenuParser parser, char **title, char **command, char **parameter, char **shortcut);
+bool WMenuParserGetLine(WMenuParser parser, char **title, char **command, char **parameter, char **shortcut);
 
 void WMenuParserDelete(WMenuParser parser);
 

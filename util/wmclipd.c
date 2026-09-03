@@ -30,19 +30,19 @@
 #include <xcb/xcb.h>
 #include <xcb/xfixes.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 #include <xcb/xtest.h>
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
 #include <WINGs/WINGs.h>
 #include <WINGs/WXProp.h>
+#include <WINGs/WINGsP.h>
 #include <wraster.h>
 
 #include "config.h"
 #include "clip-common.h"
+#include "xcconn.h"
 
 #define IPC_RECONNECT_MS   1000
 #define SELECTION_WAIT_MS  1000
@@ -101,7 +101,7 @@ typedef struct {
 
 static const char *prog;
 static xcb_connection_t *xc;
-static Display *dpy;
+static int screen_num = 0;
 static xcb_window_t owner_window;
 static xcb_window_t root_window;
 static int xfixes_first_event;
@@ -209,6 +209,15 @@ static void debug_log(const char *fmt, ...)
 	vfprintf(stderr, fmt, args);
 	va_end(args);
 	fputc('\n', stderr);
+}
+
+/* lost X connection: unwind through the graceful shutdown */
+static void clip_dead_hook(xcb_connection_t *dconn)
+{
+	(void)dconn;
+
+	debug_log("X connection lost");
+	running = 0;
 }
 
 static char *debug_atom_name(xcb_atom_t atom)
@@ -593,7 +602,7 @@ static void history_free_entry(ClipHistoryEntry *e)
 	wfree(e);
 }
 
-/* True if utf8 starts with a combining mark (Mn/Mc/Me). Only the
+/* true if utf8 starts with a combining mark (Mn/Mc/Me). Only the
  * dedicated combining blocks are checked. */
 static int first_cp_is_combining(const char *utf8)
 {
@@ -1690,8 +1699,8 @@ static void send_selection_notify(xcb_selection_request_event_t *req,
 	ev.selection = req->selection;
 	ev.target = req->target;
 	ev.property = property;
-	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
-	XFlush(dpy);
+	WXSendEvent32(xc, &ev, sizeof(ev), 0, req->requestor, 0);
+	wXFlush(xc);
 }
 
 static void handle_selection_request(xcb_selection_request_event_t *req)
@@ -1899,21 +1908,20 @@ static void handle_x_event(xcb_generic_event_t *ev)
 	}
 }
 
-static void dispatch_xevent(XEvent *xev)
+static void dispatch_xevent(xcb_generic_event_t **xev)
 {
-	uint8_t rt = (uint8_t)xev->type;
-	xcb_generic_event_t *wire;
+	uint8_t rt = (uint8_t)((*xev)->response_type & 0x7f);
 
 	if (rt == (uint8_t)(xfixes_first_event + XCB_XFIXES_SELECTION_NOTIFY) ||
-	    rt == SelectionRequest || rt == SelectionClear ||
-	    rt == PropertyNotify || rt == DestroyNotify) {
-		wire = (xcb_generic_event_t *)((WXWireEvent *)xev)->wire;
-		handle_x_event(wire);
+	    rt == XCB_SELECTION_REQUEST || rt == XCB_SELECTION_CLEAR ||
+	    rt == XCB_PROPERTY_NOTIFY || rt == XCB_DESTROY_NOTIFY) {
+		handle_x_event(*xev);
 		return;
 	}
 
+	/* WMHandleEvent only borrows the event, the caller frees it */
 	if (popup_wscr)
-		WMHandleEvent(xev);
+		WMHandleEvent(*xev);
 }
 
 static char *file_uri_from_path(const char *path)
@@ -2189,74 +2197,34 @@ static int handle_ipc_frame(int fd)
 
 static void intern_atoms(void)
 {
-	struct {
-		const char *name;
-		xcb_atom_t *out;
-	} list[] = {
-		{ "CLIPBOARD",                   &atom_clipboard },
-		{ "TARGETS",                     &atom_targets },
-		{ "INCR",                        &atom_incr },
-		{ "UTF8_STRING",                 &atom_utf8 },
-		{ "TEXT",                        &atom_text },
-		{ "COMPOUND_TEXT",               &atom_compound_text },
-		{ "image/png",                   &atom_png },
-		{ "image/jpeg",                  &atom_jpeg },
-		{ "text/uri-list",               &atom_uri_list },
-		{ "text/plain",                  &atom_text_plain },
-		{ "text/plain;charset=utf-8",    &atom_text_plain_utf8 },
-		{ "WMCLIPD_SELECTION",           &atom_wmclipd_property },
-	};
-	xcb_intern_atom_cookie_t cookies[sizeof(list) / sizeof(list[0])];
-	xcb_intern_atom_reply_t *rep;
-	size_t i;
+	WXStaticAtomsInit(xc);
 
-	for (i = 0; i < sizeof(list) / sizeof(list[0]); i++)
-		cookies[i] = xcb_intern_atom(xc, 0,
-					     strlen(list[i].name),
-					     list[i].name);
+	atom_clipboard = wx_static_atoms[W_ATOM_CLIPBOARD];
+	atom_targets = wx_static_atoms[W_ATOM_TARGETS];
+	atom_incr = wx_static_atoms[W_ATOM_INCR];
+	atom_utf8 = wx_static_atoms[W_ATOM_UTF8_STRING];
+	atom_text = wx_static_atoms[W_ATOM_TEXT];
+	atom_compound_text = wx_static_atoms[W_ATOM_COMPOUND_TEXT];
+	atom_uri_list = wx_static_atoms[W_ATOM_TEXT_URI_LIST];
 
-	for (i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
-		rep = xcb_intern_atom_reply(xc, cookies[i], NULL);
-		if (rep) {
-			*list[i].out = rep->atom;
-			free(rep);
-		}
-	}
+	/* wmclipd's own clipboard vocabulary, interned locally */
+	atom_png = WXInternAtom(xc, "image/png");
+	atom_jpeg = WXInternAtom(xc, "image/jpeg");
+	atom_text_plain = WXInternAtom(xc, "text/plain");
+	atom_text_plain_utf8 = WXInternAtom(xc, "text/plain;charset=utf-8");
+	atom_wmclipd_property = WXInternAtom(xc, "WMCLIPD_SELECTION");
 
 	atom_primary = XCB_ATOM_PRIMARY;
 }
 
 static int init_x11(void)
 {
-	int screen_num;
-	xcb_screen_iterator_t iter;
-	xcb_screen_t *screen;
 	uint32_t mask;
 
-	dpy = XOpenDisplay(NULL);
-	if (!dpy) {
-		fprintf(stderr, "%s: cannot open X display\n", prog);
+	xc = xcconn_open(NULL, prog, 0, &screen_num);
+	if (!xc)
 		return 0;
-	}
-	xc = XGetXCBConnection(dpy);
-	if (xcb_connection_has_error(xc)) {
-		fprintf(stderr, "%s: cannot open X display\n", prog);
-		XCloseDisplay(dpy);
-		dpy = NULL;
-		xc = NULL;
-		return 0;
-	}
-	/* hand event-queue ownership to xcb so the WINGs event queue
-	 * reads xcb_poll_for_event(), Xlib keeps issuing requests on
-	 * the same socket */
-	WXEvqFlipToXcb(dpy);
-
-	screen_num = DefaultScreen(dpy);
-	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
-	for (; screen_num > 0; screen_num--)
-		xcb_screen_next(&iter);
-	screen = iter.data;
-	root_window = screen->root;
+	root_window = xcconn_root(xc, screen_num);
 
 	intern_atoms();
 
@@ -2570,7 +2538,7 @@ static WMPixmap *load_thumbnail(ClipHistoryEntry *e)
 	return pix;
 }
 
-static void draw_history_entry(WMList *lPtr, int index, Drawable d,
+static void draw_history_entry(WMList *lPtr, int index, xcb_drawable_t d,
 			       char *text, int state, WMRect *rect)
 {
 	WMListItem *item;
@@ -2672,25 +2640,24 @@ static void draw_history_entry(WMList *lPtr, int index, Drawable d,
 
 static void get_work_area(int *ax, int *ay, int *aw, int *ah)
 {
-	Atom net_workarea, net_current_desktop;
+	xcb_atom_t net_workarea = wx_static_atoms[W_ATOM_NET_WORKAREA];
+	xcb_atom_t net_current_desktop = wx_static_atoms[W_ATOM_NET_CURRENT_DESKTOP];
 	uint32_t desktop = 0;
 	size_t count;
 	uint32_t *areas;
 
 	*ax = 0;
 	*ay = 0;
-	*aw = DisplayWidth(dpy, DefaultScreen(dpy));
-	*ah = DisplayHeight(dpy, DefaultScreen(dpy));
+	*aw = (int)wXDisplayWidth(xc, screen_num);
+	*ah = (int)wXDisplayHeight(xc, screen_num);
 
-	net_workarea = XInternAtom(dpy, "_NET_WORKAREA", True);
-	net_current_desktop = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", True);
-	if (net_workarea == None)
+	if (net_workarea == XCB_NONE)
 		return;
 
-	if (net_current_desktop != None)
-		WXGetCardinal(dpy, (Window)root_window, net_current_desktop, &desktop);
+	if (net_current_desktop != XCB_NONE)
+		WXGetCardinal(xc, root_window, net_current_desktop, &desktop);
 
-	areas = WXGetCardinalList(dpy, (Window)root_window, net_workarea,
+	areas = WXGetCardinalList(xc, root_window, net_workarea,
 				  1024, &count);
 	if (areas && ((uint64_t)desktop + 1) * 4 <= count) {
 		*ax = (int)areas[desktop * 4];
@@ -2703,13 +2670,8 @@ static void get_work_area(int *ax, int *ay, int *aw, int *ah)
 
 static void place_popup(int rows)
 {
-	int rx, ry, wx, wy;
-	unsigned int mask;
-	Window root, child;
+	int rx, ry;
 	int ax, ay, aw, ah;
-
-	XQueryPointer(dpy, (Window)root_window, &root, &child,
-		      &rx, &ry, &wx, &wy, &mask);
 
 	get_work_area(&ax, &ay, &aw, &ah);
 
@@ -2723,8 +2685,14 @@ static void place_popup(int rows)
 	if (popup_h > ah)
 		popup_h = ah;
 
-	popup_x = rx - popup_w / 2;
-	popup_y = ry - popup_item_h / 2;
+	if (wXQueryPointer(xc, root_window, NULL, NULL,
+			   &rx, &ry, NULL, NULL, NULL)) {
+		popup_x = rx - popup_w / 2;
+		popup_y = ry - popup_item_h / 2;
+	} else {
+		popup_x = ax + (aw - popup_w) / 2;
+		popup_y = ay + (ah - popup_h) / 2;
+	}
 
 	if (popup_x < ax)
 		popup_x = ax;
@@ -2760,7 +2728,7 @@ static void hide_popup(void)
 {
 	if (popup_mapped) {
 		WMUnmapWidget(popup_win);
-		XFlush(dpy);
+		wXFlush(xc);
 		popup_mapped = 0;
 	}
 }
@@ -2789,20 +2757,22 @@ static void activate_entry(int row)
 		return;
 	e = history.entries[row];
 	copy_entry_to_buffer(e, &clipboard_buffer);
-	/* Use Xlib to set the selection owner so the Xlib/XCB bridge
-	 * flushes the request through the shared connection immediately,
-	 * rather than xcb_flush which may race with Xlib's buffered
-	 * output. Claim both CLIPBOARD and PRIMARY for text entries so
-	 * that terminals which paste from either selection on
-	 * Shift+Insert receive the activated content. */
-	XSetSelectionOwner(dpy, atom_clipboard, owner_window, CurrentTime);
+	/* wXSetSelectionOwner is a one-way xcb request, so the trailing
+	 * wXFlush below pushes it out immediately (the old Xlib call
+	 * flushed through the shared socket in one go). Claim both
+	 * CLIPBOARD and PRIMARY for text entries so that terminals
+	 * which paste from either selection on Shift+Insert receive
+	 * the activated content. */
+	wXSetSelectionOwner(xc, atom_clipboard, owner_window,
+			    XCB_CURRENT_TIME);
 	if (is_text_atom(e->type)) {
 		copy_entry_to_buffer(e, &primary_buffer);
-		XSetSelectionOwner(dpy, atom_primary, owner_window, CurrentTime);
+		wXSetSelectionOwner(xc, atom_primary, owner_window,
+				    XCB_CURRENT_TIME);
 		primary_buffer.owns = 1;
 		primary_buffer.timestamp = XCB_TIME_CURRENT_TIME;
 	}
-	XFlush(dpy);
+	wXFlush(xc);
 	clipboard_buffer.owns = 1;
 	clipboard_buffer.timestamp = XCB_TIME_CURRENT_TIME;
 	debug_log("activated history entry %d", row);
@@ -2810,7 +2780,7 @@ static void activate_entry(int row)
 
 static void ensure_popup(void)
 {
-	XSetWindowAttributes attr;
+	uint32_t attr[2];
 	int wmScaleW, wmScaleH;
 	static int app_inited = 0;
 
@@ -2824,7 +2794,7 @@ static void ensure_popup(void)
 		app_inited = 1;
 	}
 
-	popup_wscr = WMCreateScreen(dpy, DefaultScreen(dpy));
+	popup_wscr = WMCreateScreen(xc, screen_num);
 	if (!popup_wscr) {
 		debug_log("cannot create WINGs screen for popup");
 		return;
@@ -2850,7 +2820,7 @@ static void ensure_popup(void)
 
 	popup_list = WMCreateList(popup_win);
 	WMHangData(popup_list, NULL);
-	WMSetListAllowEmptySelection(popup_list, False);
+	WMSetListAllowEmptySelection(popup_list, false);
 	WMSetListUserDrawItemHeight(popup_list, (unsigned short)popup_item_h);
 	WMSetListUserDrawProc(popup_list, draw_history_entry);
 	WMSetListAction(popup_list, popup_list_action, NULL);
@@ -2859,32 +2829,39 @@ static void ensure_popup(void)
 	WMMapSubwidgets(popup_win);
 	WMRealizeWidget(popup_win);
 
-	attr.override_redirect = True;
-	attr.save_under = True;
-	XChangeWindowAttributes(dpy, WMWidgetXID(popup_win),
-				CWOverrideRedirect | CWSaveUnder, &attr);
+	/* ascending CW_ bit order: override_redirect (bit 9), save_under
+	 * (bit 10) */
+	attr[0] = 1;	/* override_redirect */
+	attr[1] = 1;	/* save_under */
+	xcb_change_window_attributes(xc, WMWidgetXID(popup_win),
+				     XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER,
+				     attr);
 }
 
 static int modifier_is_down(void)
 {
 	char keys[32];
 	unsigned int i;
-
-	XQueryKeymap(dpy, keys);
-
-	struct {
-		KeySym sym;
-	} mods[] = {
-		{ XK_Super_L }, { XK_Super_R },
-		{ XK_Alt_L }, { XK_Alt_R },
-		{ XK_Control_L }, { XK_Control_R },
-		{ XK_Shift_L }, { XK_Shift_R },
-		{ XK_Meta_L }, { XK_Meta_R },
+	xcb_query_keymap_cookie_t kck;
+	xcb_query_keymap_reply_t *krep;
+	static const xkb_keysym_t mods[] = {
+		XKB_KEY_Super_L, XKB_KEY_Super_R,
+		XKB_KEY_Alt_L, XKB_KEY_Alt_R,
+		XKB_KEY_Control_L, XKB_KEY_Control_R,
+		XKB_KEY_Shift_L, XKB_KEY_Shift_R,
+		XKB_KEY_Meta_L, XKB_KEY_Meta_R,
 	};
 
+	kck = xcb_query_keymap(xc);
+	krep = xcb_query_keymap_reply(xc, kck, NULL);
+	if (!krep)
+		return 0;
+	memcpy(keys, krep->keys, sizeof(keys));
+	free(krep);
+
 	for (i = 0; i < sizeof(mods) / sizeof(mods[0]); i++) {
-		unsigned int code = XKeysymToKeycode(dpy, mods[i].sym);
-		if (code > 0 && code < 256 && (keys[code >> 3] & (1 << (code & 7))))
+		xcb_keycode_t code = W_KeysymToKeycode(popup_wscr, mods[i]);
+		if (code > 0 && (keys[code >> 3] & (1 << (code & 7))))
 			return 1;
 	}
 	return 0;
@@ -2935,19 +2912,22 @@ static int have_xtest(void)
 
 /* Send a paste keystroke to the target window. XTest injects at the
  * server level so events appear as real hardware keypresses (no
- * send_event flag), which terminals like xterm accept. XSendEvent is
- * the fallback for servers without XTest. */
-static void send_paste_key(Window target, KeyCode key, unsigned int modifiers)
+ * send_event flag), which terminals like xterm accept. xcb_send_event
+ * is the fallback for servers without XTest. */
+static void send_paste_key(xcb_window_t target, xcb_keycode_t key,
+			   unsigned int modifiers)
 {
 	if (have_xtest()) {
 		/* press modifier, press key, release key, release modifier */
-		if (modifiers & ShiftMask) {
-			KeyCode shift = XKeysymToKeycode(dpy, XK_Shift_L);
+		if (modifiers & XCB_MOD_MASK_SHIFT) {
+			xcb_keycode_t shift = W_KeysymToKeycode(popup_wscr,
+							 XKB_KEY_Shift_L);
 			xcb_test_fake_input(xc, XCB_KEY_PRESS, shift,
 					    XCB_CURRENT_TIME, 0, 0, 0, 0);
 		}
-		if (modifiers & ControlMask) {
-			KeyCode ctrl = XKeysymToKeycode(dpy, XK_Control_L);
+		if (modifiers & XCB_MOD_MASK_CONTROL) {
+			xcb_keycode_t ctrl = W_KeysymToKeycode(popup_wscr,
+							 XKB_KEY_Control_L);
 			xcb_test_fake_input(xc, XCB_KEY_PRESS, ctrl,
 					    XCB_CURRENT_TIME, 0, 0, 0, 0);
 		}
@@ -2955,52 +2935,58 @@ static void send_paste_key(Window target, KeyCode key, unsigned int modifiers)
 				    XCB_CURRENT_TIME, 0, 0, 0, 0);
 		xcb_test_fake_input(xc, XCB_KEY_RELEASE, key,
 				    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		if (modifiers & ControlMask) {
-			KeyCode ctrl = XKeysymToKeycode(dpy, XK_Control_L);
+		if (modifiers & XCB_MOD_MASK_CONTROL) {
+			xcb_keycode_t ctrl = W_KeysymToKeycode(popup_wscr,
+							 XKB_KEY_Control_L);
 			xcb_test_fake_input(xc, XCB_KEY_RELEASE, ctrl,
 					    XCB_CURRENT_TIME, 0, 0, 0, 0);
 		}
-		if (modifiers & ShiftMask) {
-			KeyCode shift = XKeysymToKeycode(dpy, XK_Shift_L);
+		if (modifiers & XCB_MOD_MASK_SHIFT) {
+			xcb_keycode_t shift = W_KeysymToKeycode(popup_wscr,
+							 XKB_KEY_Shift_L);
 			xcb_test_fake_input(xc, XCB_KEY_RELEASE, shift,
 					    XCB_CURRENT_TIME, 0, 0, 0, 0);
 		}
 		xcb_flush(xc);
 	} else {
-		XEvent kev;
+		union {
+			xcb_key_press_event_t k;
+			char buf[32];
+		} kev;
 
 		memset(&kev, 0, sizeof(kev));
-		kev.type = KeyPress;
-		kev.xkey.display = dpy;
-		kev.xkey.window = target;
-		kev.xkey.root = (Window)root_window;
-		kev.xkey.time = CurrentTime;
-		kev.xkey.keycode = key;
-		kev.xkey.state = modifiers;
-		XSendEvent(dpy, target, True, KeyPressMask, &kev);
+		kev.k.response_type = XCB_KEY_PRESS;
+		kev.k.event = target;
+		kev.k.root = root_window;
+		kev.k.time = XCB_CURRENT_TIME;
+		kev.k.detail = key;
+		kev.k.state = modifiers;
+		xcb_send_event(xc, 1, target, XCB_EVENT_MASK_KEY_PRESS, kev.buf);
 
-		kev.type = KeyRelease;
-		XSendEvent(dpy, target, True, KeyReleaseMask, &kev);
+		kev.k.response_type = XCB_KEY_RELEASE;
+		xcb_send_event(xc, 1, target, XCB_EVENT_MASK_KEY_RELEASE,
+			       kev.buf);
 
-		XFlush(dpy);
+		xcb_flush(xc);
 	}
 }
 
 static void show_clipboard_popup(void)
 {
-	KeyCode vKey, upKey, downKey, homeKey, endKey, pgupKey, pgdnKey;
-	KeyCode returnKey, escapeKey, shiftLKey, shiftRKey;
-	KeyCode jKey, kKey, pKey, delKey;
-	Bool done = False, esc_cancel = False, commit = False;
-	Bool release_commits;
+	xcb_keycode_t vKey, upKey, downKey, homeKey, endKey, pgupKey, pgdnKey;
+	xcb_keycode_t returnKey, escapeKey, shiftLKey, shiftRKey;
+	xcb_keycode_t jKey, kKey, pKey, delKey;
+	bool done = false, esc_cancel = false, commit = false;
+	bool release_commits;
 	int commit_row = -1;
 	int i;
 	int row, nrows;
 	int rx, ry;
-	XEvent ev;
-	Window focus_save = None;
-	int focus_revert = RevertToPointerRoot;
-	Window focus_target = None;
+	xcb_generic_event_t *ev = NULL;
+	xcb_window_t focus_save = XCB_NONE;
+	xcb_window_t focus_target = XCB_NONE;
+	xcb_get_input_focus_cookie_t fck;
+	xcb_get_input_focus_reply_t *frep;
 
 	if (popup_active)
 		return;
@@ -3018,55 +3004,63 @@ static void show_clipboard_popup(void)
 
 	refresh_popup_list();
 	WMMapWidget(popup_win);
-	XRaiseWindow(dpy, WMWidgetXID(popup_win));
-	XFlush(dpy);
+	wXRaiseWindow(xc, WMWidgetXID(popup_win));
+	wXFlush(xc);
 	popup_mapped = 1;
 
-	vKey = XKeysymToKeycode(dpy, XK_v);
-	upKey = XKeysymToKeycode(dpy, XK_Up);
-	downKey = XKeysymToKeycode(dpy, XK_Down);
-	homeKey = XKeysymToKeycode(dpy, XK_Home);
-	endKey = XKeysymToKeycode(dpy, XK_End);
-	pgupKey = XKeysymToKeycode(dpy, XK_Prior);
-	pgdnKey = XKeysymToKeycode(dpy, XK_Next);
-	returnKey = XKeysymToKeycode(dpy, XK_Return);
-	escapeKey = XKeysymToKeycode(dpy, XK_Escape);
-	shiftLKey = XKeysymToKeycode(dpy, XK_Shift_L);
-	shiftRKey = XKeysymToKeycode(dpy, XK_Shift_R);
-	jKey = XKeysymToKeycode(dpy, XK_j);
-	kKey = XKeysymToKeycode(dpy, XK_k);
-	pKey = XKeysymToKeycode(dpy, XK_p);
-	delKey = XKeysymToKeycode(dpy, XK_Delete);
+	vKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_v);
+	upKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Up);
+	downKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Down);
+	homeKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Home);
+	endKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_End);
+	pgupKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Prior);
+	pgdnKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Next);
+	returnKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Return);
+	escapeKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Escape);
+	shiftLKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Shift_L);
+	shiftRKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Shift_R);
+	jKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_j);
+	kKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_k);
+	pKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_p);
+	delKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Delete);
 
-	release_commits = modifier_is_down() ? True : False;
+	release_commits = modifier_is_down();
 
 	/* Save the currently focused window so we can send a Ctrl+V
 	 * paste keystroke to it after committing the selection. */
-	XGetInputFocus(dpy, &focus_save, &focus_revert);
+	fck = xcb_get_input_focus(xc);
+	frep = xcb_get_input_focus_reply(xc, fck, NULL);
+	if (frep) {
+		focus_save = frep->focus;
+		free(frep);
+	}
 	focus_target = focus_save;
 
 	/* The wmaker keybinding uses a passive XGrabKey that stays active
 	 * while the modifier (e.g. Super) is held. Retry until the user
 	 * releases it, then our active grab can take over. */
 	for (i = 0; i < 100; i++) {
-		int gkr = XGrabKeyboard(dpy, (Window)root_window, False,
-					GrabModeAsync, GrabModeAsync,
-					CurrentTime);
-		if (gkr == GrabSuccess)
+		int gkr = wXGrabKeyboard(xc, root_window, false,
+					 XCB_GRAB_MODE_ASYNC,
+					 XCB_GRAB_MODE_ASYNC,
+					 XCB_CURRENT_TIME);
+		if (gkr == WXGrabSuccess)
 			break;
 		usleep(10000);
 	}
 	if (i >= 100) {
 		debug_log("keyboard grab failed after retry");
-		release_commits = False;
+		release_commits = false;
 	} else
 		debug_log("keyboard grab succeeded after %d retries", i);
-	XGrabPointer(dpy, (Window)root_window, True,
-		     ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-		     GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+	wXGrabPointer(xc, root_window, true,
+		      XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+		      | XCB_EVENT_MASK_POINTER_MOTION,
+		      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+		      XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
 
 	while (!done && running) {
-		XEvent sev;
+		xcb_generic_event_t *sev = NULL;
 
 		/* Extract only selection/property/destroy events that
 		 * WMMaskEvent would strand (they don't match its mask).
@@ -3074,97 +3068,108 @@ static void show_clipboard_popup(void)
 		 * WMMaskEvent to return. Include XFixes selection-notify so
 		 * clipboard changes made while the popup is open reach the
 		 * history instead of being silently dropped. */
-		while (WXEvqTakeTyped(dpy, SelectionRequest, None, &sev))
+		while (WXEvqTakeTyped(xc, XCB_SELECTION_REQUEST, XCB_NONE, &sev)) {
 			dispatch_xevent(&sev);
-		while (WXEvqTakeTyped(dpy, SelectionClear, None, &sev))
+			free(sev);
+		}
+		while (WXEvqTakeTyped(xc, XCB_SELECTION_CLEAR, XCB_NONE, &sev)) {
 			dispatch_xevent(&sev);
-		while (WXEvqTakeTyped(dpy, PropertyNotify, None, &sev))
+			free(sev);
+		}
+		while (WXEvqTakeTyped(xc, XCB_PROPERTY_NOTIFY, XCB_NONE, &sev)) {
 			dispatch_xevent(&sev);
-		while (WXEvqTakeTyped(dpy, DestroyNotify, None, &sev))
+			free(sev);
+		}
+		while (WXEvqTakeTyped(xc, XCB_DESTROY_NOTIFY, XCB_NONE, &sev)) {
 			dispatch_xevent(&sev);
+			free(sev);
+		}
 		if (run_clipboard) {
 			int xfixes_type = xfixes_first_event + XCB_XFIXES_SELECTION_NOTIFY;
-			while (WXEvqTakeTyped(dpy, xfixes_type, None, &sev))
+			while (WXEvqTakeTyped(xc, xfixes_type, XCB_NONE, &sev)) {
 				dispatch_xevent(&sev);
+				free(sev);
+			}
 		}
 
-		WMMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask
-			    | PointerMotionMask | ButtonPressMask
-			    | ButtonReleaseMask | EnterWindowMask, &ev);
+		WMMaskEvent(xc, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
+			    | XCB_EVENT_MASK_EXPOSURE
+			    | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW, &ev);
 
-		switch (ev.type) {
-		case KeyPress:
+		switch ((ev->response_type & 0x7f)) {
+		case XCB_KEY_PRESS:
 			row = WMGetListSelectedItemRow(popup_list);
 			nrows = WMGetListNumberOfRows(popup_list);
 
-			if (ev.xkey.keycode == vKey) {
+			if ((((xcb_key_press_event_t *)ev)->detail) == vKey) {
 				if (row < 0)
 					row = 0;
 				else
 					row = (row + 1) % nrows;
 				WMSelectListItem(popup_list, row);
 				WMSetListPosition(popup_list, row);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == downKey ||
-				   ev.xkey.keycode == jKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == downKey ||
+				   (((xcb_key_press_event_t *)ev)->detail) == jKey) {
 				if (row < 0)
 					row = 0;
 				else
 					row = (row + 1) % nrows;
 				WMSelectListItem(popup_list, row);
 				WMSetListPosition(popup_list, row);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == upKey ||
-				   ev.xkey.keycode == kKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == upKey ||
+				   (((xcb_key_press_event_t *)ev)->detail) == kKey) {
 				if (row < 0)
 					row = nrows - 1;
 				else
 					row = row > 0 ? row - 1 : nrows - 1;
 				WMSelectListItem(popup_list, row);
 				WMSetListPosition(popup_list, row);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == homeKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == homeKey) {
 				WMSelectListItem(popup_list, 0);
 				WMSetListPosition(popup_list, 0);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == endKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == endKey) {
 				WMSelectListItem(popup_list, nrows - 1);
 				WMSetListPosition(popup_list, nrows - 1);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == pgupKey ||
-				   ev.xkey.keycode == pgdnKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == pgupKey ||
+				   (((xcb_key_press_event_t *)ev)->detail) == pgdnKey) {
 				int vis = popup_h / popup_item_h;
 				if (vis < 1)
 					vis = 1;
-				if (ev.xkey.keycode == pgupKey)
+				if ((((xcb_key_press_event_t *)ev)->detail) == pgupKey)
 					row = row > vis ? row - vis : 0;
 				else
 					row = row + vis < nrows ? row + vis : nrows - 1;
 				WMSelectListItem(popup_list, row);
 				WMSetListPosition(popup_list, row);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == pKey) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == pKey) {
 				history_toggle_pin(row);
 				WMRedisplayWidget(popup_list);
-				XFlush(dpy);
-			} else if (ev.xkey.keycode == delKey &&
-				   (ev.xkey.state & ShiftMask)) {
+				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == delKey &&
+			   ((((xcb_key_press_event_t *)ev)->state) & XCB_MOD_MASK_SHIFT)) {
 				history_clear_non_pinned();
 				if (history.count == 0) {
-					done = True;
-					esc_cancel = True;
+					done = true;
+					esc_cancel = true;
 				} else {
 					refresh_popup_list();
 					WMMapWidget(popup_win);
-					XFlush(dpy);
+					wXFlush(xc);
 				}
-			} else if (ev.xkey.keycode == delKey) {
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == delKey) {
 				int next_row = row;
 
 				history_remove_entry(row);
 				if (history.count == 0) {
-					done = True;
-					esc_cancel = True;
+					done = true;
+					esc_cancel = true;
 				} else {
 					if (next_row >= history.count)
 						next_row = history.count - 1;
@@ -3172,79 +3177,83 @@ static void show_clipboard_popup(void)
 					WMSelectListItem(popup_list, next_row);
 					WMSetListPosition(popup_list, next_row);
 					WMMapWidget(popup_win);
-					XFlush(dpy);
+					wXFlush(xc);
 				}
-			} else if (ev.xkey.keycode == returnKey) {
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == returnKey) {
 				commit_row = row;
-				commit = True;
-				done = True;
-			} else if (ev.xkey.keycode == escapeKey) {
-				done = True;
-				esc_cancel = True;
-			} else if (ev.xkey.keycode != shiftLKey &&
-				   ev.xkey.keycode != shiftRKey) {
+				commit = true;
+				done = true;
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == escapeKey) {
+				done = true;
+				esc_cancel = true;
+			} else if ((((xcb_key_press_event_t *)ev)->detail) != shiftLKey &&
+				   (((xcb_key_press_event_t *)ev)->detail) != shiftRKey) {
 				commit_row = row;
-				commit = True;
-				done = True;
+				commit = true;
+				done = true;
 			}
 			break;
-		case KeyRelease:
+		case XCB_KEY_RELEASE:
 			if (!release_commits)
 				break;
-			if (ev.xkey.keycode == vKey ||
-			    ev.xkey.keycode == upKey ||
-			    ev.xkey.keycode == downKey ||
-			    ev.xkey.keycode == homeKey ||
-			    ev.xkey.keycode == endKey ||
-			    ev.xkey.keycode == pgupKey ||
-			    ev.xkey.keycode == pgdnKey ||
-			    ev.xkey.keycode == returnKey ||
-			    ev.xkey.keycode == escapeKey ||
-			    ev.xkey.keycode == jKey ||
-			    ev.xkey.keycode == kKey ||
-			    ev.xkey.keycode == pKey ||
-			    ev.xkey.keycode == delKey ||
-			    ev.xkey.keycode == shiftLKey ||
-			    ev.xkey.keycode == shiftRKey)
+			if ((((xcb_key_press_event_t *)ev)->detail) == vKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == upKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == downKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == homeKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == endKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == pgupKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == pgdnKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == returnKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == escapeKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == jKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == kKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == pKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == delKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == shiftLKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == shiftRKey)
 				break;
 			row = WMGetListSelectedItemRow(popup_list);
 			commit_row = row;
-			commit = True;
-			done = True;
+			commit = true;
+			done = true;
 			break;
-		case ButtonPress:
-			rx = ev.xbutton.x_root; ry = ev.xbutton.y_root;
+		case XCB_BUTTON_PRESS:
+			rx = (((xcb_button_press_event_t *)ev)->root_x); ry = (((xcb_button_press_event_t *)ev)->root_y);
 			if (rx < popup_x || rx >= popup_x + popup_w ||
 			    ry < popup_y || ry >= popup_y + popup_h) {
-				done = True;
-				esc_cancel = True;
+				done = true;
+				esc_cancel = true;
 			} else {
 				popup_clicked_row = -1;
-				WMHandleEvent(&ev);
+				WMHandleEvent(ev);
 			}
 			break;
-		case ButtonRelease:
-			WMHandleEvent(&ev);
+		case XCB_BUTTON_RELEASE:
+			WMHandleEvent(ev);
 			if (popup_clicked_row >= 0) {
 				commit_row = popup_clicked_row;
-				commit = True;
-				done = True;
+				commit = true;
+				done = true;
 			}
 			break;
-		case MotionNotify:
-		case Expose:
-			WMHandleEvent(&ev);
+		case XCB_MOTION_NOTIFY:
+		case XCB_EXPOSE:
+			WMHandleEvent(ev);
 			break;
 		default:
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			break;
 		}
+
+		free(ev);
+		ev = NULL;
 	}
 
-	XUngrabPointer(dpy, CurrentTime);
-	XUngrabKeyboard(dpy, CurrentTime);
+	free(ev);
+	wXUngrabPointer(xc, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(xc, XCB_CURRENT_TIME);
 	hide_popup();
-	XFlush(dpy);
+	wXFlush(xc);
 
 	if (commit && !esc_cancel && commit_row >= 0 && commit_row < history.count) {
 		activate_entry(commit_row);
@@ -3258,25 +3267,27 @@ static void show_clipboard_popup(void)
 		 * Shift+Insert, the standard X11 paste shortcut that works in
 		 * both terminals and GUI apps; Ctrl+V in a terminal enters
 		 * readline's quoted-insert mode rather than pasting. */
-		if (focus_target != None && focus_target != PointerRoot &&
+		if (focus_target != XCB_NONE &&
+		    focus_target != XCB_INPUT_FOCUS_POINTER_ROOT &&
 		    focus_target != WMWidgetXID(popup_win)) {
 			ClipHistoryEntry *ce = history.entries[commit_row];
 			int is_image = is_image_atom(ce->type);
 
-			XSetInputFocus(dpy, focus_target, RevertToPointerRoot, CurrentTime);
-			XFlush(dpy);
+			xcb_set_input_focus(xc, XCB_INPUT_FOCUS_POINTER_ROOT,
+					    focus_target, XCB_CURRENT_TIME);
+			wXFlush(xc);
 
 			if (is_image) {
-				KeyCode v_kc = XKeysymToKeycode(dpy, XK_v);
+				xcb_keycode_t v_kc = W_KeysymToKeycode(popup_wscr, XKB_KEY_v);
 				if (v_kc > 0) {
-					send_paste_key(focus_target, v_kc, ControlMask);
+					send_paste_key(focus_target, v_kc, XCB_MOD_MASK_CONTROL);
 					debug_log("sent Ctrl+V paste to 0x%x",
 						  (unsigned int)focus_target);
 				}
 			} else {
-				KeyCode insert_kc = XKeysymToKeycode(dpy, XK_Insert);
+				xcb_keycode_t insert_kc = W_KeysymToKeycode(popup_wscr, XKB_KEY_Insert);
 				if (insert_kc > 0) {
-					send_paste_key(focus_target, insert_kc, ShiftMask);
+					send_paste_key(focus_target, insert_kc, XCB_MOD_MASK_SHIFT);
 					debug_log("sent Shift+Insert paste to 0x%x",
 						  (unsigned int)focus_target);
 				}
@@ -3293,7 +3304,7 @@ int main(int argc, char **argv)
 	struct pollfd fds[2];
 	int parse_rc, nfds, x_index, ipc_index, rc, timeout;
 	long long next_ipc_connect = 0, now;
-	XEvent xev;
+	xcb_generic_event_t *xev = NULL;
 
 	prog = argv[0];
 	parse_rc = parse_args(argc, argv);
@@ -3312,6 +3323,8 @@ int main(int argc, char **argv)
 	if (!init_x11())
 		return 1;
 
+	WXEvqSetDeadHook(clip_dead_hook);
+
 	history.capacity = history_capacity;
 	history_load();
 
@@ -3323,10 +3336,11 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	while (running) {
-		while (WXEvqPending(dpy)) {
-			if (!WXEvqNext(dpy, &xev))
+		while (WXEvqPending(xc)) {
+			if (!WXEvqNext(xc, &xev))
 				break;
 			dispatch_xevent(&xev);
+			free(xev);
 		}
 		if (xcb_connection_has_error(xc))
 			break;
@@ -3396,10 +3410,11 @@ int main(int argc, char **argv)
 		}
 
 		if (fds[x_index].revents & POLLIN) {
-			while (WXEvqPending(dpy)) {
-				if (!WXEvqNext(dpy, &xev))
+			while (WXEvqPending(xc)) {
+				if (!WXEvqNext(xc, &xev))
 					break;
 				dispatch_xevent(&xev);
+				free(xev);
 			}
 		}
 		if (fds[x_index].revents & (POLLERR | POLLHUP | POLLNVAL))
@@ -3435,7 +3450,7 @@ int main(int argc, char **argv)
 	clip_incr_send_cancel(xc, &incr);
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
-	if (dpy)
-		XCloseDisplay(dpy);
+	if (xc)
+		xcb_disconnect(xc);
 	return 0;
 }

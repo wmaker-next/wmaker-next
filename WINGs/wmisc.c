@@ -83,7 +83,7 @@ W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
 }
 
 void
-W_DrawRelief(W_Screen * scr, Drawable d, int x, int y, unsigned int width,
+W_DrawRelief(W_Screen * scr, xcb_drawable_t d, int x, int y, unsigned int width,
 	     unsigned int height, WMReliefType relief)
 {
 	cairo_t *cr;
@@ -226,7 +226,7 @@ W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
 }
 
 void
-W_PaintText(W_View * view, Drawable d, WMFont * font, int x, int y,
+W_PaintText(W_View * view, xcb_drawable_t d, WMFont * font, int x, int y,
 	    int width, WMAlignment alignment, WMColor * color, int wrap,
 	    const char *text, int length)
 {

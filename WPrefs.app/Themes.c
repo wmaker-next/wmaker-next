@@ -87,7 +87,7 @@ static pid_t downloadFile(WMScreen * scr, _Panel * panel, const char *file)
 		return pid;
 	}
 
-	close(ConnectionNumber(WMScreenDisplay(scr)));
+	close(xcb_get_file_descriptor(wXConnection(WMScreenDisplay(scr))));
 
 	exit(1);
 }

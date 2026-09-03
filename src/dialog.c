@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
  *  Copyright (c) 1998-2003 Dan Pascu
- *  Copyright (c) 2014-2023 Window Maker Team
+ *  Copyright (c) 2014-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -53,7 +52,7 @@
 int wMessageDialog(WScreen *scr, const char *title, const char *message, const char *defBtn, const char *altBtn, const char *othBtn)
 {
 	WMAlertPanel *panel;
-	Window parent;
+	xcb_window_t parent;
 	WWindow *wwin;
 	int result;
 	WMPoint center;
@@ -65,12 +64,15 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 	pwidth = WMWidgetWidth(panel->win);
 	pheight = WMWidgetHeight(panel->win);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, NULL, center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
 	wwin->client_leader = WMWidgetXID(panel->win);
 
 	WMMapWidget(panel->win);
@@ -83,11 +85,11 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 
 	WMUnmapWidget(panel->win);
 
-	wUnmanageWindow(wwin, False, False);
+	wUnmanageWindow(wwin, false, false);
 
 	WMDestroyAlertPanel(panel);
 
-	XDestroyWindow(dpy, parent);
+	xcb_destroy_window(xconn, parent);
 
 	return result;
 }
@@ -104,7 +106,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 {
 	WMAlertPanel *panel;
 	WMButton *saveSessionBtn;
-	Window parent;
+	xcb_window_t parent;
 	WWindow *wwin;
 	WMPoint center;
 	int result;
@@ -117,18 +119,21 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	/* add save session button */
 	saveSessionBtn = WMCreateSwitchButton(panel->hbox);
 	WMSetButtonAction(saveSessionBtn, toggleSaveSession, NULL);
-	WMAddBoxSubview(panel->hbox, WMWidgetView(saveSessionBtn), False, True, pwidth / 2, 0, 0);
+	WMAddBoxSubview(panel->hbox, WMWidgetView(saveSessionBtn), false, true, pwidth / 2, 0, 0);
 	WMSetButtonText(saveSessionBtn, _("Save workspace state"));
 	WMSetButtonSelected(saveSessionBtn, w_global.config->save_session_on_exit);
 	WMRealizeWidget(saveSessionBtn);
 	WMMapWidget(saveSessionBtn);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, NULL, center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
 
 	wwin->client_leader = WMWidgetXID(panel->win);
 
@@ -142,11 +147,11 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 
 	WMUnmapWidget(panel->win);
 
-	wUnmanageWindow(wwin, False, False);
+	wUnmanageWindow(wwin, false, false);
 
 	WMDestroyAlertPanel(panel);
 
-	XDestroyWindow(dpy, parent);
+	xcb_destroy_window(xconn, parent);
 
 	return result;
 }
@@ -155,7 +160,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 int wInputDialog(WScreen *scr, const char *title, const char *message, char **text)
 {
 	WWindow *wwin;
-	Window parent;
+	xcb_window_t parent;
 	WMInputPanel *panel;
 	char *result;
 	WMPoint center;
@@ -167,11 +172,14 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	pwidth = WMWidgetWidth(panel->win);
 	pheight = WMWidgetHeight(panel->win);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, NULL, center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
 
 	wwin->client_leader = WMWidgetXID(panel->win);
 
@@ -186,20 +194,20 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	else
 		result = NULL;
 
-	wUnmanageWindow(wwin, False, False);
+	wUnmanageWindow(wwin, false, false);
 
 	WMDestroyInputPanel(panel);
 
-	XDestroyWindow(dpy, parent);
+	xcb_destroy_window(xconn, parent);
 
 	if (result == NULL)
-		return False;
+		return false;
 
 	if (*text)
 		wfree(*text);
 	*text = result;
 
-	return True;
+	return true;
 }
 /*
  ***********************************************************************
@@ -227,7 +235,7 @@ typedef struct {
 
 static InfoPanel *infoPanel = NULL;
 
-static void destroyInfoPanel(WCoreWindow *foo, void *data, XEvent *event)
+static void destroyInfoPanel(WCoreWindow *foo, void *data, xcb_generic_event_t *event)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -235,7 +243,7 @@ static void destroyInfoPanel(WCoreWindow *foo, void *data, XEvent *event)
 	(void) event;
 
 	WMUnmapWidget(infoPanel);
-	wUnmanageWindow(infoPanel->wwin, False, False);
+	wUnmanageWindow(infoPanel->wwin, false, false);
 	WMDestroyWidget(infoPanel->win);
 	wfree(infoPanel);
 	infoPanel = NULL;
@@ -302,7 +310,7 @@ void wShowInfoPanel(WScreen *scr)
 	 * the surrounding format text, so gcc -Wformat-truncation does not
 	 * flag the "Running on: %s (%s)" line below */
 	char buffer[640];
-	Window parent;
+	xcb_window_t parent;
 	WWindow *wwin;
 	WMPoint center;
 	char **strl;
@@ -408,7 +416,7 @@ void wShowInfoPanel(WScreen *scr)
 	WMMoveWidget(panel->versionL, WMScaleX(30), WMScaleY(95));
 	WMSetLabelTextAlignment(panel->versionL, WARight);
 	WMSetLabelText(panel->versionL, buffer);
-	WMSetLabelWraps(panel->versionL, False);
+	WMSetLabelWraps(panel->versionL, false);
 
 	panel->copyrL = WMCreateLabel(panel->win);
 	WMResizeWidget(panel->copyrL, WMScaleX(360), WMScaleY(60));
@@ -437,7 +445,7 @@ void wShowInfoPanel(WScreen *scr)
 	}
 
 	snprintf(buffer, sizeof(buffer), _("Using visual 0x%x: %s %ibpp "),
-		 (unsigned)scr->w_visual->visualid, visuals[scr->w_visual->class], scr->w_depth);
+		 (unsigned int)scr->w_visual->visual_id, visuals[scr->w_visual->_class], scr->w_depth);
 	strbuf = wstrappend(strbuf, buffer);
 
 	switch (scr->w_depth) {
@@ -552,14 +560,17 @@ void wShowInfoPanel(WScreen *scr)
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	WMMapWidget(panel->win);
 
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, _("Info"), center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Info"), center.x, center.y, pwidth, pheight);
 
 	WSETUFLAG(wwin, no_closable, 0);
 	WSETUFLAG(wwin, no_close_button, 0);
@@ -592,7 +603,7 @@ typedef struct {
 
 static LegalPanel *legalPanel = NULL;
 
-static void destroyLegalPanel(WCoreWindow * foo, void *data, XEvent * event)
+static void destroyLegalPanel(WCoreWindow * foo, void *data, xcb_generic_event_t * event)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
@@ -601,7 +612,7 @@ static void destroyLegalPanel(WCoreWindow * foo, void *data, XEvent * event)
 
 	WMUnmapWidget(legalPanel->win);
 	WMDestroyWidget(legalPanel->win);
-	wUnmanageWindow(legalPanel->wwin, False, False);
+	wUnmanageWindow(legalPanel->wwin, false, false);
 	wfree(legalPanel);
 	legalPanel = NULL;
 }
@@ -609,7 +620,7 @@ static void destroyLegalPanel(WCoreWindow * foo, void *data, XEvent * event)
 void wShowLegalPanel(WScreen *scr)
 {
 	LegalPanel *panel;
-	Window parent;
+	xcb_window_t parent;
 	WWindow *wwin;
 	WMPoint center;
 	int wmScaleWidth, wmScaleHeight;
@@ -637,7 +648,7 @@ void wShowLegalPanel(WScreen *scr)
 	WMSetFrameTitle(panel->frame, NULL);
 
 	panel->licenseL = WMCreateLabel(panel->frame);
-	WMSetLabelWraps(panel->licenseL, True);
+	WMSetLabelWraps(panel->licenseL, true);
 	WMResizeWidget(panel->licenseL, pwidth - (4 * WMScaleX(10)), pheight - (4 * WMScaleY(10)));
 	WMMoveWidget(panel->licenseL, WMScaleX(8), WMScaleY(8));
 	WMSetLabelTextAlignment(panel->licenseL, WALeft);
@@ -657,10 +668,13 @@ void wShowLegalPanel(WScreen *scr)
 	WMMapSubwidgets(panel->win);
 	WMMapSubwidgets(panel->frame);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 	center = wGetCenter(scr, pwidth, pheight);
-	wwin = wManageInternalWindow(scr, parent, None, _("Legal"), center.x, center.y, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Legal"), center.x, center.y, pwidth, pheight);
 
 	WSETUFLAG(wwin, no_closable, 0);
 	WSETUFLAG(wwin, no_close_button, 0);
@@ -676,4 +690,3 @@ void wShowLegalPanel(WScreen *scr)
 	wWindowMap(wwin);
 	legalPanel = panel;
 }
-

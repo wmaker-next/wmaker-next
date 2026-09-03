@@ -210,9 +210,9 @@ typedef struct _Panel {
 
 	WMAlignment titleAlignment;
 
-	Pixmap preview;
-	Pixmap previewNoText;
-	Pixmap previewBack;
+	xcb_pixmap_t preview;
+	xcb_pixmap_t previewNoText;
+	xcb_pixmap_t previewBack;
 
 	char *fprefix;
 } _Panel;
@@ -221,7 +221,7 @@ typedef struct {
 	char *title;
 	char *texture;
 	WMPropList *prop;
-	Pixmap preview;
+	xcb_pixmap_t preview;
 
 	char *path;
 
@@ -453,9 +453,9 @@ enum {
 static void str2rcolor(WMScreen *scr, const char *name, RColor *color)
 {
 	RContext *rc = WMScreenRContext(scr);
-	XColor xcolor;
+	WXColor xcolor;
 
-	if (XParseColor(WMScreenDisplay(scr), rc->cmap, name, &xcolor) != 0) {
+	if (wXParseColor(WMScreenDisplay(scr), rc->cmap, name, &xcolor)) {
 		color->alpha = 255;
 		color->red = xcolor.red >> 8;
 		color->green = xcolor.green >> 8;
@@ -553,12 +553,12 @@ static void drawMenuBevel(RImage * img)
 	}
 }
 
-static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int height, const char *path, int border)
+static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int width, int height, const char *path, int border)
 {
 	char *type;
 	RImage *image = NULL;
 	RImage *timage = NULL;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 	RContext *rc = WMScreenRContext(scr);
 	char *str;
 	RColor rcolor;
@@ -566,7 +566,7 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 	type = WMGetFromPLString(WMGetFromPLArray(texture, 0));
 
 	if (!type)
-		return None;
+		return XCB_NONE;
 	if (strcasecmp(&type[1], "pixmap") == 0 ||
 	    (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T')) {
 		char *path;
@@ -594,7 +594,7 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 
 		str2rcolor(scr,str, &rcolor);
 
-		image = RCreateImage(width, height, False);
+		image = RCreateImage(width, height, false);
 		RClearImage(image, &rcolor);
 	} else if (strcasecmp(type, "igradient") == 0) {
 		int t1, t2;
@@ -739,12 +739,12 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 		default:
 			wwarning(_("type '%s' is not a supported type for a texture"), type);
 			RReleaseImage(timage);
-			return None;
+			return XCB_NONE;
 		}
 	}
 
 	if (!image)
-		return None;
+		return XCB_NONE;
 
 	if (path) {
 		dumpRImage(path, image);
@@ -767,23 +767,23 @@ static Pixmap renderTexture(WMScreen * scr, WMPropList * texture, int width, int
 	return pixmap;
 }
 
-static Pixmap renderMenu(_Panel * panel, WMPropList * texture, int width, int iheight)
+static xcb_pixmap_t renderMenu(_Panel * panel, WMPropList * texture, int width, int iheight)
 {
 	WMScreen *scr = WMWidgetScreen(panel->parent);
-	Display *dpy = WMScreenDisplay(scr);
-	Pixmap pix, tmp;
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
+	xcb_pixmap_t pix, tmp;
 	int i;
 
 	switch (panel->menuStyle) {
 	case MSTYLE_NORMAL:
 		tmp = renderTexture(scr, texture, width, iheight, NULL, RBEV_RAISED2);
 
-		pix = XCreatePixmap(dpy, tmp, width, iheight * 4, WMScreenDepth(scr));
+		pix = wXCreatePixmap(dpy, tmp, width, iheight * 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, pix, width, iheight * 4);
 		for (i = 0; i < 4; i++)
 			WCairoCopyArea(scr, tmp, width, iheight,
 				       0, 0, width, iheight, pix, 0, iheight * i);
-		XFreePixmap(dpy, tmp);
+		wXFreePixmap(dpy, tmp);
 		break;
 	case MSTYLE_SINGLE:
 		pix = renderTexture(scr, texture, width, iheight * 4, NULL, MENU_BEVEL);
@@ -792,7 +792,7 @@ static Pixmap renderMenu(_Panel * panel, WMPropList * texture, int width, int ih
 		pix = renderTexture(scr, texture, width, iheight * 4, NULL, RBEV_RAISED2);
 		break;
 	default:
-		pix = None;
+		pix = XCB_NONE;
 	}
 
 	return pix;
@@ -802,7 +802,7 @@ static void renderPreview(_Panel *panel, int part, int relief)
 {
 	WMListItem *item;
 	TextureListItem *titem;
-	Pixmap pix;
+	xcb_pixmap_t pix;
 	WMScreen *scr = WMWidgetScreen(panel->box);
 	int w, h, x, y;
 
@@ -819,33 +819,33 @@ static void renderPreview(_Panel *panel, int part, int relief)
 	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
 	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
-	XFreePixmap(WMScreenDisplay(scr), pix);
+	wXFreePixmap(WMScreenDisplay(scr), pix);
 }
 
 static void updatePreviewBox(_Panel * panel, int elements)
 {
 	WMScreen *scr = WMWidgetScreen(panel->parent);
-	Display *dpy = WMScreenDisplay(scr);
-	Pixmap pix;
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
+	xcb_pixmap_t pix;
 	int colorUpdate = 0;
 
-	if (panel->preview == None) {
+	if (panel->preview == XCB_NONE) {
 		WMPixmap *p;
 
-		panel->previewNoText = XCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						     PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
-		panel->previewBack = XCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						   PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
+		panel->previewNoText = wXCreatePixmap(dpy, WMWidgetXID(panel->parent),
+						      PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
+		panel->previewBack = wXCreatePixmap(dpy, WMWidgetXID(panel->parent),
+						    PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->previewNoText, PREVIEW_WIDTH, PREVIEW_HEIGHT);
 		WMScreenNoteDrawableSize(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT);
 
-		p = WMCreatePixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr), False);
+		p = WMCreatePixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr), false);
 		panel->preview = WMGetPixmapXID(p);
 		WMSetLabelImage(panel->prevL, p);
 		WMReleasePixmap(p);
 	}
 	if  (elements & (1 << PBACKGROUND)) {
-		Pixmap tmp;
+		xcb_pixmap_t tmp;
 		TextureListItem *titem;
 		WMListItem *item;
 
@@ -860,7 +860,7 @@ static void updatePreviewBox(_Panel * panel, int elements)
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewNoText, 0, 0);
 		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewBack, 0, 0);
-		XFreePixmap(dpy, tmp);
+		wXFreePixmap(dpy, tmp);
 	}
 
 	if (elements & (1 << PFOCUSED)) {
@@ -901,7 +901,7 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
 		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
-		XFreePixmap(dpy, pix);
+		wXFreePixmap(dpy, pix);
 
 		colorUpdate |= 1 << MITEM_COL | 1 << MDISAB_COL |
 			1 << MHIGH_COL | 1 << MHIGHT_COL |
@@ -970,7 +970,7 @@ static void okNewTexture(void *data)
 
 	prop = GetTexturePanelTexture(panel->texturePanel);
 
-	str = WMGetPropListDescription(prop, False);
+	str = WMGetPropListDescription(prop, false);
 
 	titem->title = name;
 	titem->prop = prop;
@@ -1011,7 +1011,7 @@ static void okEditTexture(void *data)
 
 	prop = GetTexturePanelTexture(panel->texturePanel);
 
-	str = WMGetPropListDescription(prop, False);
+	str = WMGetPropListDescription(prop, false);
 
 	WMReleasePropList(titem->prop);
 	titem->prop = prop;
@@ -1021,7 +1021,7 @@ static void okEditTexture(void *data)
 	wfree(titem->texture);
 	titem->texture = str;
 
-	XFreePixmap(WMScreenDisplay(WMWidgetScreen(panel->texLs)), titem->preview);
+	wXFreePixmap(WMScreenDisplay(WMWidgetScreen(panel->texLs)), titem->preview);
 	titem->preview = renderTexture(WMWidgetScreen(panel->texLs), titem->prop,
 				       TEXPREV_WIDTH, TEXPREV_HEIGHT, titem->path, 0);
 
@@ -1117,7 +1117,7 @@ static void deleteTexture(WMWidget * w, void *data)
 	wfree(titem);
 
 	WMRemoveListItem(panel->texLs, row);
-	WMSetButtonEnabled(panel->delB, False);
+	WMSetButtonEnabled(panel->delB, false);
 }
 
 static void extractTexture(WMWidget * w, void *data)
@@ -1128,8 +1128,8 @@ static void extractTexture(WMWidget * w, void *data)
 	WMScreen *scr = WMWidgetScreen(w);
 
 	opanel = WMGetOpenPanel(scr);
-	WMSetFilePanelCanChooseDirectories(opanel, False);
-	WMSetFilePanelCanChooseFiles(opanel, True);
+	WMSetFilePanelCanChooseDirectories(opanel, false);
+	WMSetFilePanelCanChooseFiles(opanel, true);
 
 	if (WMRunModalFilePanelForDirectory(opanel, panel->parent, wgethomedir(), _("Select File"), NULL)) {
 		path = WMGetFilePanelFileName(opanel);
@@ -1168,7 +1168,7 @@ static void changePage(WMWidget * w, void *data)
 	WMRedisplayWidget(panel->prevL);
 }
 
-static void previewClick(XEvent * event, void *clientData)
+static void previewClick(xcb_generic_event_t * event, void *clientData)
 {
 	_Panel *panel = (_Panel *) clientData;
 	int i;
@@ -1176,10 +1176,10 @@ static void previewClick(XEvent * event, void *clientData)
 	switch (panel->oldTabItem) {
 	case 0:
 		for (i = 0; i < wlengthof(textureOptions); i++) {
-			if (event->xbutton.x >= textureOptions[i].preview.pos.x &&
-			    event->xbutton.y >= textureOptions[i].preview.pos.y &&
-			    event->xbutton.x < textureOptions[i].preview.pos.x + textureOptions[i].preview.size.width &&
-			    event->xbutton.y < textureOptions[i].preview.pos.y + textureOptions[i].preview.size.height) {
+			if (((xcb_button_press_event_t *)event)->event_x >= textureOptions[i].preview.pos.x &&
+			    ((xcb_button_press_event_t *)event)->event_y >= textureOptions[i].preview.pos.y &&
+			    ((xcb_button_press_event_t *)event)->event_x < textureOptions[i].preview.pos.x + textureOptions[i].preview.size.width &&
+			    ((xcb_button_press_event_t *)event)->event_y < textureOptions[i].preview.pos.y + textureOptions[i].preview.size.height) {
 
 				WMSetPopUpButtonSelectedItem(panel->secP, i);
 				changePage(panel->secP, panel);
@@ -1189,10 +1189,10 @@ static void previewClick(XEvent * event, void *clientData)
 		break;
 	case 1:
 		for (i = 0; i < WMGetPopUpButtonNumberOfItems(panel->colP); i++) {
-			if (event->xbutton.x >= colorOptions[i].preview.pos.x &&
-			    event->xbutton.y >= colorOptions[i].preview.pos.y &&
-			    event->xbutton.x < colorOptions[i].preview.pos.x + colorOptions[i].preview.size.width &&
-			    event->xbutton.y < colorOptions[i].preview.pos.y + colorOptions[i].preview.size.height) {
+			if (((xcb_button_press_event_t *)event)->event_x >= colorOptions[i].preview.pos.x &&
+			    ((xcb_button_press_event_t *)event)->event_y >= colorOptions[i].preview.pos.y &&
+			    ((xcb_button_press_event_t *)event)->event_x < colorOptions[i].preview.pos.x + colorOptions[i].preview.size.width &&
+			    ((xcb_button_press_event_t *)event)->event_y < colorOptions[i].preview.pos.y + colorOptions[i].preview.size.height) {
 
 				/*
 				 * yuck kluge: the entry #7 is HighlightTextColor which does not have actually a
@@ -1229,9 +1229,9 @@ static void textureClick(WMWidget * w, void *data)
 	titem = (TextureListItem *) item->clientData;
 
 	if (titem->current) {
-		WMSetButtonEnabled(panel->delB, False);
+		WMSetButtonEnabled(panel->delB, false);
 	} else {
-		WMSetButtonEnabled(panel->delB, True);
+		WMSetButtonEnabled(panel->delB, true);
 	}
 }
 
@@ -1273,7 +1273,7 @@ static void textureDoubleClick(WMWidget * w, void *data)
 		updatePreviewBox(panel, 1 << section);
 }
 
-static void paintListItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect)
+static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect)
 {
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
@@ -1326,41 +1326,41 @@ static void paintListItem(WMList * lPtr, int index, Drawable d, char *text, int 
 	WMReleaseColor(black);
 }
 
-static Pixmap loadRImage(WMScreen * scr, const char *path)
+static xcb_pixmap_t loadRImage(WMScreen * scr, const char *path)
 {
 	FILE *f;
 	RImage *image;
 	int w, h, d, cnt;
 	size_t read_size;
-	Pixmap pixmap;
+	xcb_pixmap_t pixmap;
 
 	f = fopen(path, "rb");
 	if (!f)
-		return None;
+		return XCB_NONE;
 
 	cnt = fscanf(f, "%02x%02x%1x", &w, &h, &d);
 	if (cnt != 3) {
 		wwarning(_("could not read size of image from '%s', ignoring"), path);
 		fclose(f);
-		return None;
+		return XCB_NONE;
 	}
 	if (d < 3 || d > 4) {
 		wwarning(_("image \"%s\" has an invalid depth of %d, ignoring"), path, d);
 		fclose(f);
-		return None;
+		return XCB_NONE;
 	}
 	image = RCreateImage(w, h, d == 4);
 	if (image == NULL) {
 		wwarning(_("could not create RImage for \"%s\": %s"),
 		         path, RMessageForError(RErrorCode));
 		fclose(f);
-		return None;
+		return XCB_NONE;
 	}
 	read_size = w * h * d;
 	if (fread(image->data, 1, read_size, f) == read_size)
 		RConvertImage(WMScreenRContext(scr), image, &pixmap);
 	else
-		pixmap = None;
+		pixmap = XCB_NONE;
 
 	fclose(f);
 
@@ -1391,7 +1391,7 @@ static void fillTextureList(WMList * lPtr)
 
 		titem->title = wstrdup(WMGetFromPLString(WMGetFromPLArray(texture, 0)));
 		titem->prop = WMRetainPropList(WMGetFromPLArray(texture, 1));
-		titem->texture = WMGetPropListDescription(titem->prop, False);
+		titem->texture = WMGetPropListDescription(titem->prop, false);
 		titem->selectedFor = 0;
 		titem->path = wstrdup(WMGetFromPLString(WMGetFromPLArray(texture, 2)));
 
@@ -1415,7 +1415,7 @@ static void fillColorList(_Panel * panel)
 	list = WMGetUDObjectForKey(udb, "ColorList");
 	if (!list) {
 		for (i = 0; i < wlengthof(sample_colors); i++) {
-			color = WMCreateNamedColor(scr, sample_colors[i], False);
+			color = WMCreateNamedColor(scr, sample_colors[i], false);
 			if (!color)
 				continue;
 			WMSetColorWellColor(panel->sampW[i], color);
@@ -1428,7 +1428,7 @@ static void fillColorList(_Panel * panel)
 			c = WMGetFromPLArray(list, i);
 			if (!c || !WMIsPLString(c))
 				continue;
-			color = WMCreateNamedColor(scr, WMGetFromPLString(c), False);
+			color = WMCreateNamedColor(scr, WMGetFromPLString(c), false);
 			if (!color)
 				continue;
 			WMSetColorWellColor(panel->sampW[i], color);
@@ -1527,8 +1527,8 @@ paintText(cairo_t *cr, WMColor *color, WMFont *font,
 static void updateColorPreviewBox(_Panel * panel, int elements)
 {
 	WMScreen *scr = WMWidgetScreen(panel->box);
-	Display *dpy = WMScreenDisplay(scr);
-	Pixmap d, pnot;
+	xcb_connection_t *dpy = WMScreenDisplay(scr);
+	xcb_pixmap_t d, pnot;
 	cairo_t *crd, *crn;
 
 	d = panel->preview;
@@ -1644,11 +1644,11 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		v = hsv.value * 16 / 10;
 		hsv.value = (v > 255 ? 255 : v);
 		RHSVtoRGB(&hsv, &rgb);
-		light = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, False);
+		light = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, false);
 
 		hsv2.value = hsv2.value / 2;
 		RHSVtoRGB(&hsv2, &rgb);
-		dim = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, False);
+		dim = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, false);
 
 		crd = WCairoBeginForDrawable(scr, d);
 		WCairoSetSourceColor(crd, panel->colors[ICONB_COL]);
@@ -1675,7 +1675,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 	}
 
 	if (elements & (1 << CLIP_COL) || elements & (1 << CCLIP_COL)) {
-		Pixmap pix;
+		xcb_pixmap_t pix;
 		RColor black;
 		RColor dark;
 		RColor light;
@@ -1688,7 +1688,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		titem = (TextureListItem *) item->clientData;
 
 		pix = renderTexture(scr, titem->prop, 64, 64, NULL, titem->ispixmap ? 0 : RBEV_RAISED3);
-		tile = RCreateImageFromDrawable(WMScreenRContext(scr), pix, None);
+		tile = RCreateImageFromDrawable(WMScreenRContext(scr), pix, XCB_NONE);
 
 		black.alpha = 255;
 		black.red = black.green = black.blue = 0;
@@ -1724,7 +1724,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 
 		crd = WCairoBeginForDrawable(scr, d);
 		WCairoPaintArea(crd, scr, pix, 64, 64, 0, 0, 64, 64, 155, 130);
-		XFreePixmap(dpy, pix);
+		wXFreePixmap(dpy, pix);
 
 		/* top right arrow */
 		px[0] = 155 + 64 - 5 - (23 - 15);
@@ -1885,7 +1885,7 @@ static void createPanel(Panel * p)
 	WMSetLabelRelief(panel->prevL, WRSunken);
 	WMSetLabelImagePosition(panel->prevL, WIPImageOnly);
 
-	WMCreateEventHandler(WMWidgetView(panel->prevL), ButtonPressMask, previewClick, panel);
+	WMCreateEventHandler(WMWidgetView(panel->prevL), XCB_EVENT_MASK_BUTTON_PRESS, previewClick, panel);
 
 	/* tabview */
 
@@ -1955,7 +1955,7 @@ static void createPanel(Panel * p)
 
 	WMSetBalloonTextForView(_("Extract texture(s) from a theme or a style file."), WMWidgetView(panel->ripB));
 
-	WMSetButtonEnabled(panel->ripB, False);
+	WMSetButtonEnabled(panel->ripB, false);
 
 	panel->editB = WMCreateCommandButton(panel->texF);
 	WMResizeWidget(panel->editB, 57, 39);
@@ -1974,7 +1974,7 @@ static void createPanel(Panel * p)
 	WMSetButtonImagePosition(panel->delB, WIPAbove);
 	WMSetButtonText(panel->delB, _("Delete"));
 	SetButtonAlphaImage(scr, panel->delB, TDEL_FILE);
-	WMSetButtonEnabled(panel->delB, False);
+	WMSetButtonEnabled(panel->delB, false);
 	WMSetButtonAction(panel->delB, deleteTexture, panel);
 	WMSetBalloonTextForView(_("Delete the highlighted texture."), WMWidgetView(panel->delB));
 
@@ -2028,7 +2028,7 @@ static void createPanel(Panel * p)
 			panel->sampW[i] = WMCreateColorWell(panel->colF);
 			WMResizeWidget(panel->sampW[i], widget_size, widget_size);
 			WMMoveWidget(panel->sampW[i], offset_x + x * widget_size, offset_y + y * widget_size);
-			WSetColorWellBordered(panel->sampW[i], False);
+			WSetColorWellBordered(panel->sampW[i], false);
 			if (++x >= nb_x) {
 				y++;
 				x = 0;
@@ -2059,7 +2059,7 @@ static void createPanel(Panel * p)
 		WMMoveWidget(panel->mstyB[i], 15 + i * 65, 20);
 		WMSetButtonImagePosition(panel->mstyB[i], WIPImageOnly);
 		WMSetButtonAction(panel->mstyB[i], menuStyleCallback, panel);
-		SetButtonImageFromFile(scr, panel->mstyB[i], menu_style[i].file_name, False);
+		SetButtonImageFromFile(scr, panel->mstyB[i], menu_style[i].file_name, false);
 	}
 	WMGroupButtons(panel->mstyB[0], panel->mstyB[1]);
 	WMGroupButtons(panel->mstyB[0], panel->mstyB[2]);
@@ -2116,7 +2116,7 @@ static void setupTextureFor(WMList *list, const char *key, const char *defValue,
 	} else {
 		WMRetainPropList(titem->prop);
 	}
-	titem->texture = WMGetPropListDescription((WMPropList *) titem->prop, False);
+	titem->texture = WMGetPropListDescription((WMPropList *) titem->prop, false);
 	titem->current = 1;
 	titem->selectedFor = 1 << index;
 
@@ -2164,8 +2164,8 @@ static void showData(_Panel * panel)
 		if (!str)
 			str = colorOptions[i].default_value;
 
-		if (!(color = WMCreateNamedColor(WMWidgetScreen(panel->box), str, False))) {
-			color = WMCreateNamedColor(WMWidgetScreen(panel->box), "#000000", False);
+		if (!(color = WMCreateNamedColor(WMWidgetScreen(panel->box), str, false))) {
+			color = WMCreateNamedColor(WMWidgetScreen(panel->box), "#000000", false);
 		}
 
 		panel->colors[i] = color;
@@ -2179,8 +2179,8 @@ static void showData(_Panel * panel)
 	}
 	updatePreviewBox(panel, EVERYTHING);
 
-	WMSetButtonSelected(panel->mstyB[panel->menuStyle], True);
-	WMSetButtonSelected(panel->taliB[panel->titleAlignment], True);
+	WMSetButtonSelected(panel->mstyB[panel->menuStyle], true);
+	WMSetButtonSelected(panel->taliB[panel->titleAlignment], true);
 }
 
 static void storeData(_Panel * panel)

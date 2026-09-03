@@ -37,7 +37,7 @@ typedef struct WEditMenuDelegate {
                          WEditMenuItem*);
     void (*itemDeselected)(struct WEditMenuDelegate*, WEditMenu*,
                            WEditMenuItem*);
-    Bool (*shouldRemoveItem)(struct WEditMenuDelegate*, WEditMenu*,
+    bool (*shouldRemoveItem)(struct WEditMenuDelegate*, WEditMenu*,
                              WEditMenuItem*);
 } WEditMenuDelegate;
 
@@ -45,7 +45,7 @@ typedef struct WEditMenuDelegate {
 
 
 WEditMenuItem *WCreateEditMenuItem(WMWidget *parent, const char *title,
-                                   Bool isTitle);
+                                   bool isTitle);
 
 
 char *WGetEditMenuItemTitle(WEditMenuItem *item);
@@ -74,7 +74,7 @@ void WSetEditMenuTitle(WEditMenu *mPtr, const char *title);
 
 char *WGetEditMenuTitle(WEditMenu *mPtr);
 
-void WSetEditMenuAcceptsDrop(WEditMenu *mPtr, Bool flag);
+void WSetEditMenuAcceptsDrop(WEditMenu *mPtr, bool flag);
 
 void WSetEditMenuSubmenu(WEditMenu *mPtr, WEditMenuItem *item,
                          WEditMenu *submenu);
@@ -84,11 +84,11 @@ WEditMenu *WGetEditMenuSubmenu(WEditMenuItem *item);
 
 void WRemoveEditMenuItem(WEditMenu *mPtr, WEditMenuItem *item);
 
-void WSetEditMenuSelectable(WEditMenu *mPtr, Bool flag);
+void WSetEditMenuSelectable(WEditMenu *mPtr, bool flag);
 
-void WSetEditMenuEditable(WEditMenu *mPtr, Bool flag);
+void WSetEditMenuEditable(WEditMenu *mPtr, bool flag);
 
-void WSetEditMenuIsFactory(WEditMenu *mPtr, Bool flag);
+void WSetEditMenuIsFactory(WEditMenu *mPtr, bool flag);
 
 void WSetEditMenuMinSize(WEditMenu *mPtr, WMSize size);
 
@@ -98,7 +98,7 @@ WMPoint WGetEditMenuLocationForSubmenu(WEditMenu *mPtr, WEditMenu *submenu);
 
 void WTearOffEditMenu(WEditMenu *menu, WEditMenu *submenu);
 
-Bool WEditMenuIsTornOff(WEditMenu *mPtr);
+bool WEditMenuIsTornOff(WEditMenu *mPtr);
 
 
 void WEditMenuHide(WEditMenu *menu);
@@ -109,4 +109,3 @@ void WEditMenuShowAt(WEditMenu *menu, int x, int y);
 
 
 #endif
-

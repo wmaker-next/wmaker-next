@@ -67,8 +67,8 @@ typedef struct W_SplitView {
 static void destroySplitView(WMSplitView * sPtr);
 static void paintSplitView(WMSplitView * sPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void getConstraints(WMSplitView * sPtr, int index, int *minSize, int *maxSize)
 {
@@ -213,15 +213,15 @@ static int getTotalSize(WMSplitView * sPtr)
 	return (totSize - DIVIDER_THICKNESS);
 }
 
-static Bool distributeOffsetEqually(WMSplitView * sPtr, int offset)
+static bool distributeOffsetEqually(WMSplitView * sPtr, int offset)
 {
 	W_SplitViewSubview *p;
 	int i, count, sizeChanged, forced;
 
 	if ((count = _GetSubviewsCount()) < 1)
-		return (True);
+		return (true);
 
-	forced = False;
+	forced = false;
 	while (offset != 0) {
 		sizeChanged = 0;
 		for (i = 0; i < count && offset != 0; i++) {
@@ -245,20 +245,20 @@ static Bool distributeOffsetEqually(WMSplitView * sPtr, int offset)
 				p->maxSize = MAX_SUBVIEW_SIZE;
 			}
 			offset = 0;
-			forced = True;
+			forced = true;
 		}
 	}
 
 	return (forced);
 }
 
-static Bool distributeOffsetFormEnd(WMSplitView * sPtr, int offset)
+static bool distributeOffsetFormEnd(WMSplitView * sPtr, int offset)
 {
 	W_SplitViewSubview *p;
 	int i, count, sizeTmp;
 
 	if ((count = _GetSubviewsCount()) < 1)
-		return (True);
+		return (true);
 
 	for (i = count - 1; i >= 0 && offset != 0; i--) {
 		p = _GetPSubviewStructAt(i);
@@ -392,7 +392,7 @@ static void paintSplitView(WMSplitView * sPtr)
 	if (!sPtr->view->flags.mapped || !sPtr->view->flags.realized)
 		return;
 
-	XClearWindow(scr->display, sPtr->view->window);
+	xcb_clear_area(scr->display, 0, sPtr->view->window, 0, 0, 0, 0);
 
 	count = _GetSubviewsCount();
 	if (count == 0)
@@ -486,7 +486,7 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 {
 	int divider, pos, ofs, done, dragging;
 	int i, count;
-	XEvent ev;
+	xcb_generic_event_t *ev = NULL;
 	WMScreen *scr;
 	int minCoord, maxCoord, coord;
 
@@ -530,18 +530,20 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 	done = 0;
 	dragging = 0;
 	while (!done) {
-		WMMaskEvent(scr->display, ButtonMotionMask | ButtonReleaseMask | ExposureMask, &ev);
+		WMMaskEvent(scr->display, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE, &ev);
 
-		coord = (sPtr->flags.vertical) ? ev.xmotion.x : ev.xmotion.y;
+		coord = (sPtr->flags.vertical)
+			? ((xcb_motion_notify_event_t *)ev)->event_x
+			: ((xcb_motion_notify_event_t *)ev)->event_y;
 
-		switch (ev.type) {
-		case ButtonRelease:
+		switch (ev->response_type & 0x7f) {
+		case XCB_BUTTON_RELEASE:
 			done = 1;
 			if (dragging)
 				drawDragingRectangle(sPtr, pos);
 			break;
 
-		case MotionNotify:
+		case XCB_MOTION_NOTIFY:
 			if (dragging)
 				drawDragingRectangle(sPtr, pos);
 			if (coord - ofs < minCoord)
@@ -555,9 +557,12 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 			break;
 
 		default:
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 			break;
 		}
+
+		free(ev);
+		ev = NULL;
 	}
 
 	/* the view was retained above, so even if a handler marked it
@@ -590,34 +595,34 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 	W_ReleaseView(sPtr->view);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	WMSplitView *sPtr = (WMSplitView *) data;
 
 	CHECK_CLASS(data, WC_SplitView);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintSplitView(sPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroySplitView(sPtr);
 		break;
 	}
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 
 	CHECK_CLASS(data, WC_SplitView);
 
-	switch (event->type) {
-	case ButtonPress:
-		if (event->xbutton.button == Button1)
-			dragDivider(data, event->xbutton.x, event->xbutton.y);
+	switch ((event->response_type & 0x7f)) {
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1)
+			dragDivider(data, ((xcb_button_press_event_t *)event)->event_x, ((xcb_button_press_event_t *)event)->event_y);
 		break;
 	}
 }
@@ -645,13 +650,13 @@ WMSplitView *WMCreateSplitView(WMWidget * parent)
 	}
 	sPtr->view->self = sPtr;
 
-	WMSetViewNotifySizeChanges(sPtr->view, True);
+	WMSetViewNotifySizeChanges(sPtr->view, true);
 
-	WMCreateEventHandler(sPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, sPtr);
 
-	WMCreateEventHandler(sPtr->view, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask, handleActionEvents, sPtr);
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW, handleActionEvents, sPtr);
 
 	WMAddNotificationObserver(handleViewResized, sPtr, WMViewSizeDidChangeNotification, sPtr->view);
 
@@ -775,14 +780,14 @@ int WMGetSplitViewSubviewsCount(WMSplitView * sPtr)
 	return (_GetSubviewsCount());
 }
 
-Bool WMGetSplitViewVertical(WMSplitView * sPtr)
+bool WMGetSplitViewVertical(WMSplitView * sPtr)
 {
 	CHECK_CLASS(sPtr, WC_SplitView);
 
 	return (sPtr->flags.vertical == 1);
 }
 
-void WMSetSplitViewVertical(WMSplitView * sPtr, Bool flag)
+void WMSetSplitViewVertical(WMSplitView * sPtr, bool flag)
 {
 	int vertical;
 

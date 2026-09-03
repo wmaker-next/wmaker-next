@@ -79,7 +79,7 @@ static void buttonClick(WMWidget *widget, void *p_panel);
 
 static char *getCurrentFileName(WMFilePanel * panel);
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
 static WMBrowserDelegate browserDelegate = {
 	NULL,			/* data */
@@ -89,7 +89,7 @@ static WMBrowserDelegate browserDelegate = {
 	NULL			/* willScroll */
 };
 
-static int closestListItem(WMList * list, const char *text, Bool exact)
+static int closestListItem(WMList * list, const char *text, bool exact)
 {
 	WMListItem *item;
 	WMArray *items = WMGetListItems(list);
@@ -126,9 +126,9 @@ static void textChangedObserver(void *observerData, WMNotification * notificatio
 	textEvent = (uintptr_t)WMGetNotificationClientData(notification);
 
 	if (panel->flags.autoCompletion && textEvent != WMDeleteTextEvent)
-		i = closestListItem(list, text, False);
+		i = closestListItem(list, text, false);
 	else
-		i = closestListItem(list, text, True);
+		i = closestListItem(list, text, true);
 
 	WMSelectListItem(list, i);
 	if (i >= 0 && panel->flags.autoCompletion) {
@@ -173,7 +173,7 @@ static WMFilePanel *makeFilePanel(WMScreen * scrPtr, const char *name, const cha
 	WMResizeWidget(fPtr->win, PWIDTH, PHEIGHT);
 	WMSetWindowTitle(fPtr->win, "");
 
-	WMCreateEventHandler(WMWidgetView(fPtr->win), StructureNotifyMask, handleEvents, fPtr);
+	WMCreateEventHandler(WMWidgetView(fPtr->win), XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, fPtr);
 	WMSetWindowMinSize(fPtr->win, PWIDTH, PHEIGHT);
 
 	fPtr->iconLabel = WMCreateLabel(fPtr->win);
@@ -202,7 +202,7 @@ static WMFilePanel *makeFilePanel(WMScreen * scrPtr, const char *name, const cha
 	WMSetFrameRelief(fPtr->line, WRGroove);
 
 	fPtr->browser = WMCreateBrowser(fPtr->win);
-	WMSetBrowserAllowEmptySelection(fPtr->browser, True);
+	WMSetBrowserAllowEmptySelection(fPtr->browser, true);
 	WMSetBrowserDelegate(fPtr->browser, &browserDelegate);
 	WMSetBrowserAction(fPtr->browser, browserClick, fPtr);
 	WMSetBrowserDoubleAction(fPtr->browser, browserDClick, fPtr);
@@ -275,7 +275,7 @@ static WMFilePanel *makeFilePanel(WMScreen * scrPtr, const char *name, const cha
 	WMSetButtonImage(fPtr->unmountButton, scrPtr->unmountIcon);
 	WMSetButtonAltImage(fPtr->unmountButton, scrPtr->altUnmountIcon);
 	WMSetButtonAction(fPtr->unmountButton, goUnmount, fPtr);
-	WMSetButtonEnabled(fPtr->unmountButton, False);
+	WMSetButtonEnabled(fPtr->unmountButton, false);
 
 	WMRealizeWidget(fPtr->win);
 	WMMapSubwidgets(fPtr->win);
@@ -384,7 +384,7 @@ WMRunModalFilePanelForDirectory(WMFilePanel * panel, WMWindow * owner, const cha
 	 */
 	WMCloseWindow(panel->win);
 
-	return (panel->flags.canceled ? False : True);
+	return (panel->flags.canceled ? false : true);
 }
 
 void WMSetFilePanelDirectory(WMFilePanel * panel, const char *path)
@@ -411,17 +411,17 @@ void WMSetFilePanelDirectory(WMFilePanel * panel, const char *path)
 	}
 }
 
-void WMSetFilePanelCanChooseDirectories(WMFilePanel * panel, Bool flag)
+void WMSetFilePanelCanChooseDirectories(WMFilePanel * panel, bool flag)
 {
 	panel->flags.canChooseDirectories = ((flag == 0) ? 0 : 1);
 }
 
-void WMSetFilePanelCanChooseFiles(WMFilePanel * panel, Bool flag)
+void WMSetFilePanelCanChooseFiles(WMFilePanel * panel, bool flag)
 {
 	panel->flags.canChooseFiles = ((flag == 0) ? 0 : 1);
 }
 
-void WMSetFilePanelAutoCompletion(WMFilePanel * panel, Bool flag)
+void WMSetFilePanelAutoCompletion(WMFilePanel * panel, bool flag)
 {
 	panel->flags.autoCompletion = ((flag == 0) ? 0 : 1);
 }
@@ -779,15 +779,15 @@ static void goHome(WMWidget *widget, void *p_panel)
 	WMSetFilePanelDirectory(panel, home);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	W_FilePanel *pPtr = (W_FilePanel *) data;
 	W_View *view = WMWidgetView(pPtr->win);
 
-	if (event->type == ConfigureNotify) {
-		if (event->xconfigure.width != view->size.width || event->xconfigure.height != view->size.height) {
-			unsigned int newWidth = event->xconfigure.width;
-			unsigned int newHeight = event->xconfigure.height;
+	if ((event->response_type & 0x7f) == XCB_CONFIGURE_NOTIFY) {
+		if (((xcb_configure_notify_event_t *)event)->width != view->size.width || ((xcb_configure_notify_event_t *)event)->height != view->size.height) {
+			unsigned int newWidth = ((xcb_configure_notify_event_t *)event)->width;
+			unsigned int newHeight = ((xcb_configure_notify_event_t *)event)->height;
 			int newColumnCount;
 
 			W_ResizeView(view, newWidth, newHeight);
@@ -841,7 +841,7 @@ static char *getCurrentFileName(WMFilePanel * panel)
 }
 
 
-static Bool validOpenFile(WMFilePanel * panel)
+static bool validOpenFile(WMFilePanel * panel)
 {
 	WMListItem *item;
 	int col, haveFile = 0;
@@ -855,19 +855,19 @@ static Bool validOpenFile(WMFilePanel * panel)
 	item = WMGetBrowserSelectedItemInColumn(panel->browser, col);
 	if (item) {
 		if (item->isBranch && !panel->flags.canChooseDirectories && !haveFile)
-			return False;
+			return false;
 		else if (!item->isBranch && !panel->flags.canChooseFiles)
-			return False;
+			return false;
 		else
-			return True;
+			return true;
 	} else {
 		/* we compute for / here */
 		if (!panel->flags.canChooseDirectories && !haveFile)
-			return False;
+			return false;
 		else
-			return True;
+			return true;
 	}
-	return True;
+	return true;
 }
 
 static void buttonClick(WMWidget *widget, void *p_panel)

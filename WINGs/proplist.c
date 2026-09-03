@@ -58,7 +58,7 @@ static WMPropList *getPLArray(PLData * pldata);
 static WMPropList *getPLDictionary(PLData * pldata);
 static WMPropList *getPropList(PLData * pldata);
 
-typedef Bool(*isEqualFunc) (const void *, const void *);
+typedef bool(*isEqualFunc) (const void *, const void *);
 
 static const WMHashTableCallbacks WMPropListHashCallbacks = {
 	hashPropList,
@@ -67,7 +67,7 @@ static const WMHashTableCallbacks WMPropListHashCallbacks = {
 	NULL
 };
 
-static Bool caseSensitive = True;
+static bool caseSensitive = true;
 
 #define BUFFERSIZE           8192
 #define MAX_PROPLIST_DEPTH   512
@@ -138,7 +138,7 @@ static unsigned hashPropList(const void *param)
 
 	default:
 		wwarning(_("Only string or data is supported for a proplist dictionary key"));
-		wassertrv(False, 0);
+		wassertrv(false, 0);
 		break;
 	}
 
@@ -171,7 +171,7 @@ static WMPropList *retainPropListByCount(WMPropList * plist, int count)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertrv(false, NULL);
 		break;
 	}
 
@@ -221,7 +221,7 @@ static void releasePropListByCount(WMPropList * plist, int count)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertr(False);
+		wassertr(false);
 		break;
 	}
 }
@@ -492,7 +492,7 @@ static void appendDescription(StringBuffer *sb, WMPropList *plist)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertr(False);
+		wassertr(false);
 		break;
 	}
 }
@@ -555,7 +555,7 @@ static void appendIndentedDescription(StringBuffer *sb, WMPropList *plist, int l
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertr(False);
+		wassertr(false);
 		break;
 	}
 }
@@ -814,7 +814,7 @@ static WMPropList *getPLData(PLData * pldata)
 
 static WMPropList *getPLArray(PLData * pldata)
 {
-	Bool first = True;
+	bool first = true;
 	int ok = 1;
 	int c;
 	WMPropList *array, *obj;
@@ -838,7 +838,7 @@ static WMPropList *getPLArray(PLData * pldata)
 		} else {
 			pldata->pos--;
 		}
-		first = False;
+		first = false;
 
 		obj = getPropList(pldata);
 		if (!obj) {
@@ -1000,7 +1000,7 @@ static WMPropList *getPropList(PLData * pldata)
 	return plist;
 }
 
-void WMPLSetCaseSensitive(Bool caseSensitiveness)
+void WMPLSetCaseSensitive(bool caseSensitiveness)
 {
 	caseSensitive = caseSensitiveness;
 }
@@ -1151,7 +1151,7 @@ WMPropList *WMRetainPropList(WMPropList * plist)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertrv(false, NULL);
 		break;
 	}
 
@@ -1201,7 +1201,7 @@ void WMReleasePropList(WMPropList * plist)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertr(False);
+		wassertr(false);
 		break;
 	}
 }
@@ -1277,7 +1277,7 @@ void WMRemoveFromPLDictionary(WMPropList * plist, WMPropList * key)
 	}
 }
 
-WMPropList *WMMergePLDictionaries(WMPropList * dest, WMPropList * source, Bool recursive)
+WMPropList *WMMergePLDictionaries(WMPropList * dest, WMPropList * source, bool recursive)
 {
 	WMPropList *key, *value, *dvalue;
 	WMHashEnumerator e;
@@ -1292,7 +1292,7 @@ WMPropList *WMMergePLDictionaries(WMPropList * dest, WMPropList * source, Bool r
 		if (recursive && value->type == WPLDictionary) {
 			dvalue = WMHashGet(dest->d.dict, key);
 			if (dvalue && dvalue->type == WPLDictionary) {
-				WMMergePLDictionaries(dvalue, value, True);
+				WMMergePLDictionaries(dvalue, value, true);
 			} else {
 				WMPutInPLDictionary(dest, key, value);
 			}
@@ -1304,7 +1304,7 @@ WMPropList *WMMergePLDictionaries(WMPropList * dest, WMPropList * source, Bool r
 	return dest;
 }
 
-WMPropList *WMSubtractPLDictionaries(WMPropList * dest, WMPropList * source, Bool recursive)
+WMPropList *WMSubtractPLDictionaries(WMPropList * dest, WMPropList * source, bool recursive)
 {
 	WMPropList *key, *value, *dvalue;
 	WMHashEnumerator e;
@@ -1330,7 +1330,7 @@ WMPropList *WMSubtractPLDictionaries(WMPropList * dest, WMPropList * source, Boo
 		if (WMIsPropListEqualTo(value, dvalue)) {
 			WMRemoveFromPLDictionary(dest, key);
 		} else if (recursive && value->type == WPLDictionary && dvalue->type == WPLDictionary) {
-			WMSubtractPLDictionaries(dvalue, value, True);
+			WMSubtractPLDictionaries(dvalue, value, true);
 		}
 	}
 
@@ -1349,53 +1349,53 @@ int WMGetPropListItemCount(WMPropList * plist)
 		return (int)WMCountHashTable(plist->d.dict);
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, 0);
+		wassertrv(false, 0);
 		break;
 	}
 
 	return 0;
 }
 
-Bool WMIsPLString(WMPropList * plist)
+bool WMIsPLString(WMPropList * plist)
 {
 	if (plist)
 		return (plist->type == WPLString);
 	else
-		return False;
+		return false;
 }
 
-Bool WMIsPLData(WMPropList * plist)
+bool WMIsPLData(WMPropList * plist)
 {
 	if (plist)
 		return (plist->type == WPLData);
 	else
-		return False;
+		return false;
 }
 
-Bool WMIsPLArray(WMPropList * plist)
+bool WMIsPLArray(WMPropList * plist)
 {
 	if (plist)
 		return (plist->type == WPLArray);
 	else
-		return False;
+		return false;
 }
 
-Bool WMIsPLDictionary(WMPropList * plist)
+bool WMIsPLDictionary(WMPropList * plist)
 {
 	if (plist)
 		return (plist->type == WPLDictionary);
 	else
-		return False;
+		return false;
 }
 
-Bool WMIsPropListEqualTo(WMPropList * plist, WMPropList * other)
+bool WMIsPropListEqualTo(WMPropList * plist, WMPropList * other)
 {
 	WMPropList *key1, *item1, *item2;
 	WMHashEnumerator enumerator;
 	int n, i;
 
 	if (plist->type != other->type)
-		return False;
+		return false;
 
 	switch (plist->type) {
 	case WPLString:
@@ -1409,31 +1409,31 @@ Bool WMIsPropListEqualTo(WMPropList * plist, WMPropList * other)
 	case WPLArray:
 		n = WMGetArrayItemCount(plist->d.array);
 		if (n != WMGetArrayItemCount(other->d.array))
-			return False;
+			return false;
 		for (i = 0; i < n; i++) {
 			item1 = WMGetFromArray(plist->d.array, i);
 			item2 = WMGetFromArray(other->d.array, i);
 			if (!WMIsPropListEqualTo(item1, item2))
-				return False;
+				return false;
 		}
-		return True;
+		return true;
 	case WPLDictionary:
 		if (WMCountHashTable(plist->d.dict) != WMCountHashTable(other->d.dict))
-			return False;
+			return false;
 		enumerator = WMEnumerateHashTable(plist->d.dict);
 		while (WMNextHashEnumeratorItemAndKey(&enumerator, (void **)&item1, (void **)&key1)) {
 			item2 = WMHashGet(other->d.dict, key1);
 			if (!item2 || !item1 || !WMIsPropListEqualTo(item1, item2))
-				return False;
+				return false;
 		}
-		return True;
+		return true;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, False);
+		wassertrv(false, false);
 		break;
 	}
 
-	return False;
+	return false;
 }
 
 char *WMGetFromPLString(WMPropList * plist)
@@ -1548,7 +1548,7 @@ WMPropList *WMShallowCopyPropList(WMPropList * plist)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertrv(false, NULL);
 		break;
 	}
 
@@ -1592,7 +1592,7 @@ WMPropList *WMDeepCopyPropList(WMPropList * plist)
 		break;
 	default:
 		wwarning(_("Used proplist functions on non-WMPropLists objects"));
-		wassertrv(False, NULL);
+		wassertrv(false, NULL);
 		break;
 	}
 
@@ -1636,7 +1636,7 @@ WMPropList *WMCreatePropListFromDescription(const char *desc)
 	return plist;
 }
 
-char *WMGetPropListDescription(WMPropList * plist, Bool indented)
+char *WMGetPropListDescription(WMPropList * plist, bool indented)
 {
 	StringBuffer sb;
 
@@ -1763,7 +1763,7 @@ WMPropList *WMReadPropListFromPipe(const char *command)
 
 /* TODO: review this function's code */
 
-Bool WMWritePropListToFile(WMPropList * plist, const char *path)
+bool WMWritePropListToFile(WMPropList * plist, const char *path)
 {
 	char *thePath = NULL;
 	char *desc;
@@ -1773,7 +1773,7 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
 #endif
 
 	if (!wmkdirhier(path))
-		return False;
+		return false;
 
 	/* Use the path name of the destination file as a prefix for the
 	 * mkstemp() call so that we can be sure that both files are on
@@ -1813,7 +1813,7 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
 		goto failure;
 	}
 
-	desc = WMGetPropListDescription(plist, True);
+	desc = WMGetPropListDescription(plist, true);
 
 	if (fprintf(theFile, "%s\n", desc) != strlen(desc) + 1) {
 		werror(_("writing to file: %s failed"), thePath);
@@ -1831,7 +1831,7 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
 	}
 
 	/* If we used a temporary file, we still need to rename() it be the
-	 * real file.  Also, we need to try to retain the file attributes of
+	 * real file. Also, we need to try to retain the file attributes of
 	 * the original file we are overwriting (if we are) */
 	if (rename(thePath, path) != 0) {
 		werror(_("rename ('%s' to '%s') failed"), thePath, path);
@@ -1839,12 +1839,12 @@ Bool WMWritePropListToFile(WMPropList * plist, const char *path)
 	}
 
 	wfree(thePath);
-	return True;
+	return true;
 
  failure:
 	unlink(thePath);
 	wfree(thePath);
-	return False;
+	return false;
 }
 
 /*

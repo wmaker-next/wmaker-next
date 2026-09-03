@@ -20,9 +20,7 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -91,7 +89,7 @@ static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 		/* nothing configured, preview the global default app icon
 		 * so the borderless button is not an invisible click area */
 		wfree(file);
-		file = wDefaultGetIconFile(NULL, NULL, True);
+		file = wDefaultGetIconFile(NULL, NULL, true);
 		file = file ? wstrdup(file) : NULL;
 	}
 	if (!file)
@@ -138,8 +136,8 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 
 	panel->choosingIcon = 1;
 
-	WMSetButtonEnabled(panel->browseBtn, False);
-	WMSetButtonEnabled(panel->iconBtn, False);
+	WMSetButtonEnabled(panel->browseBtn, false);
+	WMSetButtonEnabled(panel->iconBtn, false);
 
 	result = wIconChooserDialog(panel->wwin->screen_ptr, &file,
 				    panel->editedIcon->wm_instance, panel->editedIcon->wm_class,
@@ -152,8 +150,8 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 			updateSettingsPanelIcon(panel);
 		}
 
-		WMSetButtonEnabled(panel->browseBtn, True);
-		WMSetButtonEnabled(panel->iconBtn, True);
+		WMSetButtonEnabled(panel->browseBtn, true);
+		WMSetButtonEnabled(panel->iconBtn, true);
 	} else {
 		/* kluge for the case, the user asked to close the panel before
 		 * the icon chooser */
@@ -230,11 +228,11 @@ static void panelBtnCallback(WMWidget * self, void *data)
 	DestroyDockAppSettingsPanel(panel);
 }
 
-static void keyPressHandler(XEvent *event, void *data)
+static void keyPressHandler(xcb_generic_event_t *event, void *data)
 {
 	AppSettingsPanel *panel = (AppSettingsPanel *) data;
 
-	if (wXkbKeycodeToKeysym(event->xkey.keycode, 0) == XK_Escape)
+	if (wXkbKeycodeToKeysym(((xcb_key_press_event_t *)event)->detail, 0) == XKB_KEY_Escape)
 		WMPerformButtonClick(panel->cancelBtn);
 }
 
@@ -242,7 +240,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 {
 	AppSettingsPanel *panel;
 	WScreen *scr = aicon->icon->core->screen_ptr;
-	Window parent;
+	xcb_window_t parent;
 	WMFont *font;
 	int x, y;
 	WMBox *vbox;
@@ -292,7 +290,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMResizeWidget(panel->win, pwidth, pheight);
 
 	/* Escape anywhere in the panel closes it */
-	WMCreateEventHandler(WMWidgetView(panel->win), KeyPressMask, keyPressHandler, panel);
+	WMCreateEventHandler(WMWidgetView(panel->win), XCB_EVENT_MASK_KEY_PRESS, keyPressHandler, panel);
 
 	/* clickable icon preview, also reachable from the Browse button so
 	 * keyboard-only users keep a path to the chooser */
@@ -300,7 +298,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMResizeWidget(panel->iconBtn, iconSize, iconSize);
 	WMMoveWidget(panel->iconBtn, WMScaleX(10), WMScaleY(10) + (headerH - iconSize) / 2);
 	WMSetButtonImagePosition(panel->iconBtn, WIPImageOnly);
-	WMSetButtonBordered(panel->iconBtn, False);
+	WMSetButtonBordered(panel->iconBtn, false);
 	WMSetButtonAction(panel->iconBtn, chooseIconCallback, panel);
 	WMSetBalloonTextForView(_("Click to choose an icon"), WMWidgetView(panel->iconBtn));
 
@@ -341,7 +339,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 		WMSetLabelTextAlignment(panel->commentLabel, WALeft);
 		WMSetLabelFont(panel->commentLabel, font);
 		WMSetLabelTextColor(panel->commentLabel, grey);
-		WMSetLabelWraps(panel->commentLabel, True);
+		WMSetLabelWraps(panel->commentLabel, true);
 		WMSetLabelText(panel->commentLabel, aicon->comment);
 		WMReleaseFont(font);
 		WMReleaseColor(grey);
@@ -352,18 +350,18 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMMoveWidget(vbox, WMScaleX(10), headerH + 2 * WMScaleY(10));
 
 	panel->autoLaunchBtn = WMCreateSwitchButton(vbox);
-	WMAddBoxSubview(vbox, WMWidgetView(panel->autoLaunchBtn), False, True, WMScaleY(20), WMScaleY(20), WMScaleY(2));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->autoLaunchBtn), false, true, WMScaleY(20), WMScaleY(20), WMScaleY(2));
 	WMSetButtonText(panel->autoLaunchBtn, _("Start when Window Maker is started"));
 	WMSetButtonSelected(panel->autoLaunchBtn, aicon->auto_launch);
 
 	panel->lockBtn = WMCreateSwitchButton(vbox);
-	WMAddBoxSubview(vbox, WMWidgetView(panel->lockBtn), False, True, WMScaleY(20), WMScaleY(20), WMScaleY(5));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->lockBtn), false, true, WMScaleY(20), WMScaleY(20), WMScaleY(5));
 	WMSetButtonText(panel->lockBtn, _("Lock (prevent accidental removal)"));
 	WMSetButtonSelected(panel->lockBtn, aicon->lock);
 
 	panel->commandFrame = WMCreateFrame(vbox);
 	WMSetFrameTitle(panel->commandFrame, _("Application path and arguments"));
-	WMAddBoxSubview(vbox, WMWidgetView(panel->commandFrame), False, True, WMScaleY(50), WMScaleY(50), WMScaleY(5));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->commandFrame), false, true, WMScaleY(50), WMScaleY(50), WMScaleY(5));
 
 	panel->commandField = WMCreateTextField(panel->commandFrame);
 	WMResizeWidget(panel->commandField, WMScaleX(260), WMScaleY(20));
@@ -374,7 +372,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	panel->pasteCommandFrame = WMCreateFrame(vbox);
 	WMSetFrameTitle(panel->pasteCommandFrame, _("Command for middle-click launch"));
-	WMAddBoxSubview(vbox, WMWidgetView(panel->pasteCommandFrame), False, True, WMScaleY(70), WMScaleY(70), WMScaleY(5));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->pasteCommandFrame), false, true, WMScaleY(70), WMScaleY(70), WMScaleY(5));
 
 	panel->pasteCommandField = WMCreateTextField(panel->pasteCommandFrame);
 	WMResizeWidget(panel->pasteCommandField, WMScaleX(260), WMScaleY(20));
@@ -390,7 +388,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	panel->dndCommandFrame = WMCreateFrame(vbox);
 	WMSetFrameTitle(panel->dndCommandFrame, _("Command for dragged and dropped files"));
-	WMAddBoxSubview(vbox, WMWidgetView(panel->dndCommandFrame), False, True, WMScaleY(70), WMScaleY(70), WMScaleY(5));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->dndCommandFrame), false, true, WMScaleY(70), WMScaleY(70), WMScaleY(5));
 
 	panel->dndCommandField = WMCreateTextField(panel->dndCommandFrame);
 	WMResizeWidget(panel->dndCommandField, WMScaleX(260), WMScaleY(20));
@@ -403,7 +401,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMSetTextFieldText(panel->dndCommandField, aicon->dnd_command);
 	WMSetLabelText(panel->dndCommandLabel, _("%d will be replaced with the file name"));
 #else
-	WMSetTextFieldEditable(panel->dndCommandField, False);
+	WMSetTextFieldEditable(panel->dndCommandField, false);
 	WMSetLabelText(panel->dndCommandLabel, _("XDnD support was not compiled in"));
 
 	WMSetFrameTitleColor(panel->dndCommandFrame, WMDarkGrayColor(scr->wmscreen));
@@ -413,12 +411,12 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	panel->iconFrame = WMCreateFrame(vbox);
 	WMSetFrameTitle(panel->iconFrame, _("Icon Image"));
-	WMAddBoxSubview(vbox, WMWidgetView(panel->iconFrame), False, True, WMScaleY(50), WMScaleY(50), WMScaleY(10));
+	WMAddBoxSubview(vbox, WMWidgetView(panel->iconFrame), false, true, WMScaleY(50), WMScaleY(50), WMScaleY(10));
 
 	panel->iconField = WMCreateTextField(panel->iconFrame);
 	WMResizeWidget(panel->iconField, WMScaleX(180), WMScaleY(20));
 	WMMoveWidget(panel->iconField, WMScaleX(10), WMScaleY(20));
-	WMSetTextFieldText(panel->iconField, wDefaultGetIconFile(aicon->wm_instance, aicon->wm_class, False));
+	WMSetTextFieldText(panel->iconField, wDefaultGetIconFile(aicon->wm_instance, aicon->wm_class, false));
 
 	panel->browseBtn = WMCreateCommandButton(panel->iconFrame);
 	WMResizeWidget(panel->browseBtn, WMScaleX(70), WMScaleY(24));
@@ -427,18 +425,18 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	WMSetButtonAction(panel->browseBtn, chooseIconCallback, panel);
 
 	hbox = WMCreateBox(vbox);
-	WMSetBoxHorizontal(hbox, True);
-	WMAddBoxSubview(vbox, WMWidgetView(hbox), False, True, WMScaleY(24), WMScaleY(24), 0);
+	WMSetBoxHorizontal(hbox, true);
+	WMAddBoxSubview(vbox, WMWidgetView(hbox), false, true, WMScaleY(24), WMScaleY(24), 0);
 
 	panel->okBtn = WMCreateCommandButton(hbox);
 	WMSetButtonText(panel->okBtn, _("OK"));
 	WMSetButtonAction(panel->okBtn, panelBtnCallback, panel);
-	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->okBtn), False, True, WMScaleX(80), WMScaleX(80), 0);
+	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->okBtn), false, true, WMScaleX(80), WMScaleX(80), 0);
 
 	panel->cancelBtn = WMCreateCommandButton(hbox);
 	WMSetButtonText(panel->cancelBtn, _("Cancel"));
 	WMSetButtonAction(panel->cancelBtn, panelBtnCallback, panel);
-	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->cancelBtn), False, True, WMScaleX(80), WMScaleX(80), 5);
+	WMAddBoxSubviewAtEnd(hbox, WMWidgetView(panel->cancelBtn), false, true, WMScaleX(80), WMScaleX(80), 5);
 
 	WMMapSubwidgets(hbox);
 
@@ -454,9 +452,12 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	updateSettingsPanelIcon(panel);
 
-	parent = XCreateSimpleWindow(dpy, scr->root_win, 0, 0, pwidth, pheight, 0, 0, 0);
+	parent = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	XReparentWindow(dpy, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	/*
 	 * make things relative to head
@@ -478,7 +479,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 		x = rect.pos.x + (rect.size.width - pwidth) / 2;
 	}
 
-	panel->wwin = wManageInternalWindow(scr, parent, None,
+	panel->wwin = wManageInternalWindow(scr, parent, XCB_NONE,
 					    _("Docked Application Settings"), x, y, pwidth, pheight);
 
 	panel->wwin->client_leader = WMWidgetXID(panel->win);
@@ -493,9 +494,9 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 {
 	if (!panel->destroyed) {
-		XUnmapWindow(dpy, panel->wwin->client_win);
-		XReparentWindow(dpy, panel->wwin->client_win, panel->wwin->screen_ptr->root_win, 0, 0);
-		wUnmanageWindow(panel->wwin, False, False);
+		xcb_unmap_window(xconn, panel->wwin->client_win);
+		xcb_reparent_window(xconn, panel->wwin->client_win, panel->wwin->screen_ptr->root_win, 0, 0);
+		wUnmanageWindow(panel->wwin, false, false);
 	}
 
 	panel->destroyed = 1;
@@ -513,7 +514,7 @@ void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 
 	WMDestroyWidget(panel->win);
 
-	XDestroyWindow(dpy, panel->parent);
+	xcb_destroy_window(xconn, panel->parent);
 
 	panel->editedIcon->panel = NULL;
 

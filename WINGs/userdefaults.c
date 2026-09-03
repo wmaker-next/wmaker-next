@@ -242,11 +242,11 @@ void w_save_defaults_changes(void)
 /* set to save changes in defaults when program is exited */
 static void registerSaveOnExit(void)
 {
-	static Bool registeredSaveOnExit = False;
+	static bool registeredSaveOnExit = false;
 
 	if (!registeredSaveOnExit) {
 		atexit(w_save_defaults_changes);
-		registeredSaveOnExit = True;
+		registeredSaveOnExit = true;
 	}
 }
 
@@ -267,48 +267,48 @@ static void synchronizeUserDefaults(void *foo)
 #ifndef HAVE_INOTIFY
 static void addSynchronizeTimerHandler(void)
 {
-	static Bool initialized = False;
+	static bool initialized = false;
 
 	if (!initialized) {
 		WMAddPersistentTimerHandler(UD_SYNC_INTERVAL,
 		    synchronizeUserDefaults, NULL);
-		initialized = True;
+		initialized = true;
 	}
 }
 #endif
 
-void WMEnableUDPeriodicSynchronization(WMUserDefaults * database, Bool enable)
+void WMEnableUDPeriodicSynchronization(WMUserDefaults * database, bool enable)
 {
 	database->dontSync = !enable;
 }
 
 void WMSynchronizeUserDefaults(WMUserDefaults * database)
 {
-	Bool fileIsNewer = False, release = False, notify = False;
+	bool fileIsNewer = false, release = false, notify = false;
 	WMPropList *plF, *key;
 	char *path;
 	struct stat stbuf;
 
 	if (!database->path) {
 		path = wdefaultspathfordomain(WMGetApplicationName());
-		release = True;
+		release = true;
 	} else {
 		path = database->path;
 	}
 
 	if (stat(path, &stbuf) >= 0 && stbuf.st_mtime > database->timestamp)
-		fileIsNewer = True;
+		fileIsNewer = true;
 
 	if (database->appDomain && (database->dirty || fileIsNewer)) {
 		if (database->dirty && fileIsNewer) {
 			plF = WMReadPropListFromFile(path);
 			if (plF) {
-				plF = WMMergePLDictionaries(plF, database->appDomain, False);
+				plF = WMMergePLDictionaries(plF, database->appDomain, false);
 				WMReleasePropList(database->appDomain);
 				database->appDomain = plF;
 				key = database->searchList[0];
 				WMPutInPLDictionary(database->defaults, key, plF);
-				notify = True;
+				notify = true;
 			} else {
 				/* something happened with the file. just overwrite it */
 				wwarning(_("cannot read domain from file '%s' when syncing"), path);
@@ -323,7 +323,7 @@ void WMSynchronizeUserDefaults(WMUserDefaults * database)
 				database->appDomain = plF;
 				key = database->searchList[0];
 				WMPutInPLDictionary(database->defaults, key, plF);
-				notify = True;
+				notify = true;
 			} else {
 				/* something happened with the file. just overwrite it */
 				wwarning(_("cannot read domain from file '%s' when syncing"), path);
@@ -351,11 +351,11 @@ void WMSaveUserDefaults(WMUserDefaults * database)
 	if (database->appDomain) {
 		struct stat stbuf;
 		char *path;
-		Bool release = False;
+		bool release = false;
 
 		if (!database->path) {
 			path = wdefaultspathfordomain(WMGetApplicationName());
-			release = True;
+			release = true;
 		} else {
 			path = database->path;
 		}
@@ -638,7 +638,7 @@ float WMGetUDFloatForKey(WMUserDefaults * database, const char *defaultName)
 	return value;
 }
 
-Bool WMGetUDBoolForKey(WMUserDefaults * database, const char *defaultName)
+bool WMGetUDBoolForKey(WMUserDefaults * database, const char *defaultName)
 {
 	WMPropList *val;
 	int value;
@@ -647,25 +647,25 @@ Bool WMGetUDBoolForKey(WMUserDefaults * database, const char *defaultName)
 	val = WMGetUDObjectForKey(database, defaultName);
 
 	if (!val)
-		return False;
+		return false;
 
 	if (!WMIsPLString(val))
-		return False;
+		return false;
 
 	str = WMGetFromPLString(val);
 	if (!str)
-		return False;
+		return false;
 
 	if (sscanf(str, "%i", &value) == 1 && value != 0)
-		return True;
+		return true;
 
 	if (strcasecmp(str, "YES") == 0)
-		return True;
+		return true;
 
 	if (strcasecmp(str, "Y") == 0)
-		return True;
+		return true;
 
-	return False;
+	return false;
 }
 
 void WMSetUDIntegerForKey(WMUserDefaults * database, int value, const char *defaultName)
@@ -702,7 +702,7 @@ void WMSetUDFloatForKey(WMUserDefaults * database, float value, const char *defa
 	WMReleasePropList(object);
 }
 
-void WMSetUDBoolForKey(WMUserDefaults * database, Bool value, const char *defaultName)
+void WMSetUDBoolForKey(WMUserDefaults * database, bool value, const char *defaultName)
 {
 	static WMPropList *yes = NULL, *no = NULL;
 

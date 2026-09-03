@@ -2,7 +2,7 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2013 Window Maker Team
+ *  Copyright (c) 2013-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,6 @@
 
 #include "switchpanel.h"
 
-void StartWindozeCycle(WWindow *wwin, XEvent *event, Bool next, CycleMode mode);
+void StartWindozeCycle(WWindow *wwin, xcb_generic_event_t *event, bool next, CycleMode mode);
 
 #endif /* WMCYCLING_H */

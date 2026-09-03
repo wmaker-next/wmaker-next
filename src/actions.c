@@ -22,8 +22,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -86,9 +84,9 @@ static struct {
 #define UNSHADE         0
 #define SHADE           1
 
-static int compareTimes(Time t1, Time t2)
+static int compareTimes(xcb_timestamp_t t1, xcb_timestamp_t t2)
 {
-	Time diff;
+	xcb_timestamp_t diff;
 	if (t1 == t2)
 		return 0;
 	diff = t1 - t2;
@@ -96,9 +94,9 @@ static int compareTimes(Time t1, Time t2)
 }
 
 #ifdef USE_ANIMATIONS
-static void shade_animate(WWindow *wwin, Bool what);
+static void shade_animate(WWindow *wwin, bool what);
 #else
-static inline void shade_animate(WWindow *wwin, Bool what)
+static inline void shade_animate(WWindow *wwin, bool what)
 {
 	/*
 	 * This function is empty on purpose, so tell the compiler
@@ -111,18 +109,17 @@ static inline void shade_animate(WWindow *wwin, Bool what)
 
 static void focusRestoredWindow(void *data)
 {
-	Window client_win = (Window)(uintptr_t)data;
+	xcb_window_t client_win = (xcb_window_t)(uintptr_t)data;
 	WWindow *wwin = wWindowFor(client_win);
 
 	if (!wwin || !wwin->flags.mapped)
 		return;
 
 	wRaiseFrame(wwin->frame->core);
-	XSetInputFocus(dpy, wwin->screen_ptr->no_focus_win,
-		       RevertToParent, CurrentTime);
-	w_global.restore_focus_repair = True;
+	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, wwin->screen_ptr->no_focus_win, XCB_CURRENT_TIME);
+	w_global.restore_focus_repair = true;
 	wSetFocusTo(wwin->screen_ptr, wwin);
-	w_global.restore_focus_repair = False;
+	w_global.restore_focus_repair = false;
 }
 
 /*
@@ -144,7 +141,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 	WWindow *old_focused;
 	WWindow *focused = scr->focused_window;
-	Time timestamp = w_global.timestamp.last_event;
+	xcb_timestamp_t timestamp = w_global.timestamp.last_event;
 	WApplication *oapp = NULL, *napp = NULL;
 	int wasfocused;
 
@@ -178,9 +175,9 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		oapp = wApplicationOf(old_focused->main_window);
 
 	if (wwin == NULL) {
-		Window old_client = old_focused ? old_focused->client_win : None;
+		xcb_window_t old_client = old_focused ? old_focused->client_win : XCB_NONE;
 
-		XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
+		xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 		if (old_focused)
 			wWindowUnfocus(old_focused);
 
@@ -191,7 +188,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 				wApplicationDeactivate(oapp);
 		}
 
-		WMPostNotificationName(WMNChangedFocus, NULL, (void *)True);
+		WMPostNotificationName(WMNChangedFocus, NULL, (void *)true);
 		return;
 	}
 
@@ -213,11 +210,11 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		/* set input focus */
 		switch (wwin->focus_mode) {
 		case WFM_NO_INPUT:
-			XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
+			xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 			break;
 		case WFM_PASSIVE:
 		case WFM_LOCALLY_ACTIVE:
-			XSetInputFocus(dpy, wwin->client_win, RevertToParent, CurrentTime);
+			xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, wwin->client_win, XCB_CURRENT_TIME);
 			break;
 		case WFM_GLOBALLY_ACTIVE:
 			break;
@@ -226,9 +223,9 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		if (wwin->protocols.TAKE_FOCUS)
 			wClientSendProtocol(wwin, w_global.atom.wm.take_focus, timestamp);
 
-		XFlush(dpy);
+		wXFlush(xconn);
 	} else {
-		XSetInputFocus(dpy, scr->no_focus_win, RevertToParent, CurrentTime);
+		xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 	}
 
 	if (WFLAGP(wwin, no_focusable))
@@ -282,7 +279,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (w_global.config->per_head_workspaces)
 		wWorkspaceSetCurrentHead(scr, wWindowEffectiveHead(wwin));
 
-	XFlush(dpy);
+	wXFlush(xconn);
 	old_scr = scr;
 }
 
@@ -387,7 +384,7 @@ void wShadeWindow(WWindow *wwin)
 	if (wwin->flags.shaded)
 		return;
 
-	XLowerWindow(dpy, wwin->client_win);
+	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 	wSoundPlay(wwin->screen_ptr, WSOUND_SHADE);
 	shade_animate(wwin, SHADE);
 
@@ -395,9 +392,9 @@ void wShadeWindow(WWindow *wwin)
 	wwin->flags.shaded = 1;
 	wwin->flags.mapped = 0;
 	/* prevent window withdrawal when getting UnmapNotify */
-	XSelectInput(dpy, wwin->client_win, wwin->event_mask & ~StructureNotifyMask);
-	XUnmapWindow(dpy, wwin->client_win);
-	XSelectInput(dpy, wwin->client_win, wwin->event_mask);
+	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+	xcb_unmap_window(xconn, wwin->client_win);
+	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
 
 	/* for the client it's just like iconification */
 	wFrameWindowResize(wwin->frame, wwin->frame->core->width, wwin->frame->top_width - 1);
@@ -432,7 +429,7 @@ void wUnshadeWindow(WWindow *wwin)
 
 	wwin->flags.shaded = 0;
 	wwin->flags.mapped = 1;
-	XMapWindow(dpy, wwin->client_win);
+	xcb_map_window(xconn, wwin->client_win);
 	wSoundPlay(wwin->screen_ptr, WSOUND_UNSHADE);
 
 	shade_animate(wwin, UNSHADE);
@@ -443,7 +440,7 @@ void wUnshadeWindow(WWindow *wwin)
 	wFrameWindowResize(wwin->frame, wwin->frame->core->width,
 				wwin->frame->top_width + wwin->client.height
 				+ wwin->frame->bottom_width + iv);
-	XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
+	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 	wFrameInnerBorderClientOrigin(wwin, wwin->frame_x, wwin->frame_y,
 				      &wwin->client.x, &wwin->client.y);
 
@@ -483,7 +480,7 @@ static void remember_geometry(WWindow *wwin, int *x, int *y, int *w, int *h)
 {
 	WMRect old_geom_rect;
 	int old_head;
-	Bool same_head;
+	bool same_head;
 
 	old_geom_rect = wmkrect(wwin->old_geometry.x, wwin->old_geometry.y, wwin->old_geometry.width, wwin->old_geometry.height);
 	old_head = wGetHeadForRect(wwin->screen_ptr, old_geom_rect);
@@ -525,7 +522,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	unsigned int maximus_width = 0;
 	unsigned int maximus_height = 0;
 	WArea usableArea, totalArea;
-	Bool has_border = 1;
+	bool has_border = 1;
 	int adj_size;
 	WScreen *scr = wwin->screen_ptr;
 
@@ -557,7 +554,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 		head = wGetHeadForPointerLocation(scr);
 	}
 
-	usableArea = wGetUsableAreaForHead(scr, head, &totalArea, True);
+	usableArea = wGetUsableAreaForHead(scr, head, &totalArea, true);
 
 	/* Only save directions, not kbd or xinerama hints */
 	directions &= (MAX_HORIZONTAL | MAX_VERTICAL | MAX_LEFTHALF | MAX_RIGHTHALF | MAX_TOPHALF | MAX_BOTTOMHALF | MAX_MAXIMUS | MAX_CENTRAL);
@@ -924,8 +921,8 @@ void moveBetweenHeads(WWindow *wwin, int direction)
 		totalArea.x2 = scr->scr_width;
 		totalArea.y2 = scr->scr_height;
 
-		oldHeadArea = wGetUsableAreaForHead(scr, head, &totalArea, True);
-		destHeadArea = wGetUsableAreaForHead(scr, destHead, &totalArea, True);
+		oldHeadArea = wGetUsableAreaForHead(scr, head, &totalArea, true);
+		destHeadArea = wGetUsableAreaForHead(scr, destHead, &totalArea, true);
 
 		offsetX = wwin->frame_x - oldHeadArea.x1;
 		offsetY = wwin->frame_y - oldHeadArea.y1;
@@ -957,7 +954,7 @@ void moveBetweenHeads(WWindow *wwin, int direction)
 	return;
 }
 
-void wMoveToEdge(WWindow *wwin, int direction, Bool snap_to_windows)
+void wMoveToEdge(WWindow *wwin, int direction, bool snap_to_windows)
 {
 	WScreen *scr = wwin->screen_ptr;
 	int head = wGetHeadForWindow(wwin);
@@ -977,7 +974,7 @@ void wMoveToEdge(WWindow *wwin, int direction, Bool snap_to_windows)
 	    || wwin->flags.fullscreen || wwin->flags.maximized)
 		return;
 
-	usable = wGetUsableAreaForHead(scr, head, &total, True);
+	usable = wGetUsableAreaForHead(scr, head, &total, true);
 
 	switch (direction) {
 	case DIRECTION_LEFT:
@@ -1056,7 +1053,7 @@ cross_head:
 	if (dest_head < 0 || dest_head == head)
 		return;
 
-	dest_usable = wGetUsableAreaForHead(scr, dest_head, &dest_total, True);
+	dest_usable = wGetUsableAreaForHead(scr, dest_head, &dest_total, true);
 
 	switch (direction) {
 	case DIRECTION_LEFT:
@@ -1107,7 +1104,7 @@ void wGrowToEdge(WWindow *wwin, int direction)
 	if (wwin->flags.shaded)
 		wUnshadeWindow(wwin);
 
-	usable = wGetUsableAreaForHead(scr, head, &total, True);
+	usable = wGetUsableAreaForHead(scr, head, &total, true);
 	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
 	ih = il + ir;
 	iv = it + ib;
@@ -1484,7 +1481,7 @@ void wFullscreenWindow(WWindow *wwin)
 	if (wwin->flags.fullscreen)
 		return;
 
-	wwin->flags.fullscreen = True;
+	wwin->flags.fullscreen = true;
 
 	wWindowConfigureBorders(wwin);
 
@@ -1513,7 +1510,7 @@ void wUnfullscreenWindow(WWindow *wwin)
 	if (!wwin->flags.fullscreen)
 		return;
 
-	wwin->flags.fullscreen = False;
+	wwin->flags.fullscreen = false;
 
 	if (wwin->frame->core->stacking->window_level == WMFullscreenLevel) {
 		if (WFLAGP(wwin, sunken)) {
@@ -1564,7 +1561,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 #define FRAMES (MINIATURIZE_ANIMATION_FRAMES_F)
 	float cx, cy, cw, ch;
 	float xstep, ystep, wstep, hstep;
-	XPoint points[5];
+	xcb_point_t points[5];
 	float dx, dch, midy;
 	float angle, final_angle, delta;
 
@@ -1602,7 +1599,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 		wWireframeBegin(scr);
 		wWireframeAddPolyline(scr, points, 5);
 		wWireframeCommit(scr);
-		XFlush(dpy);
+		wXFlush(xconn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_F);
 
 		cx += xstep;
@@ -1614,7 +1611,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 
 	}
 	wWireframeHide(scr);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 #undef FRAMES
@@ -1625,7 +1622,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 #define FRAMES (MINIATURIZE_ANIMATION_FRAMES_T)
 	float cx, cy, cw, ch;
 	float xstep, ystep, wstep, hstep;
-	XPoint points[5];
+	xcb_point_t points[5];
 	float angle, final_angle, a, d, delta;
 
 	x += w / 2;
@@ -1666,7 +1663,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 		wWireframeBegin(scr);
 		wWireframeAddPolyline(scr, points, 5);
 		wWireframeCommit(scr);
-		XFlush(dpy);
+		wXFlush(xconn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_T);
 
 		cx += xstep;
@@ -1678,7 +1675,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 
 	}
 	wWireframeHide(scr);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 #undef FRAMES
@@ -1707,7 +1704,7 @@ static void animateResizeZoom(WScreen *scr, int x, int y, int w, int h, int fx, 
 			wWireframeAddOutline(scr, (int)cx[j], (int)cy[j],
 					     (int)cw[j], (int)ch[j], 0, 0, 0);
 		wWireframeCommit(scr);
-		XFlush(dpy);
+		wXFlush(xconn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z);
 
 		for (j = 0; j < FRAMES; j++) {
@@ -1763,11 +1760,13 @@ void animateResize(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 
 static void flushExpose(void)
 {
-	XEvent tmpev;
+	xcb_generic_event_t *tmpev = NULL;
 
-	while (WXEvqTakeTyped(dpy, Expose, None, &tmpev))
-		WMHandleEvent(&tmpev);
-	XSync(dpy, 0);
+	while (WXEvqTakeTyped(xconn, XCB_EXPOSE, XCB_NONE, &tmpev)) {
+		WMHandleEvent(tmpev);
+		free(tmpev);
+	}
+	wXSync(xconn);
 }
 
 static void unmapTransientsFor(WWindow *wwin)
@@ -1784,11 +1783,11 @@ static void unmapTransientsFor(WWindow *wwin)
 			if (!tmp->flags.shaded)
 				wWindowUnmap(tmp);
 			else
-				XUnmapWindow(dpy, tmp->frame->core->window);
+				xcb_unmap_window(xconn, tmp->frame->core->window);
 			/*
 			   if (!tmp->flags.shaded)
 			 */
-			wClientSetState(tmp, IconicState, None);
+			wClientSetState(tmp, XCB_ICCCM_WM_STATE_ICONIC, XCB_NONE);
 
 			WMPostNotificationName(WMNChangedState, tmp, "iconify-transient");
 		}
@@ -1810,12 +1809,12 @@ static void mapTransientsFor(WWindow *wwin)
 			if (!tmp->flags.shaded)
 				wWindowMap(tmp);
 			else
-				XMapWindow(dpy, tmp->frame->core->window);
+				xcb_map_window(xconn, tmp->frame->core->window);
 			tmp->flags.semi_focused = 0;
 			/*
 			   if (!tmp->flags.shaded)
 			 */
-			wClientSetState(tmp, NormalState, None);
+			wClientSetState(tmp, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 
 			WMPostNotificationName(WMNChangedState, tmp, "iconify-transient");
 		}
@@ -1828,12 +1827,12 @@ static WWindow *recursiveTransientFor(WWindow *wwin)
 	int i;
 
 	if (!wwin)
-		return None;
+		return XCB_NONE;
 
 	/* hackish way to detect transient_for cycle */
 	i = wwin->screen_ptr->window_count + 1;
 
-	while (wwin && wwin->transient_for != None && i > 0) {
+	while (wwin && wwin->transient_for != XCB_NONE && i > 0) {
 		wwin = wWindowFor(wwin->transient_for);
 		i--;
 	}
@@ -1878,7 +1877,7 @@ static int getAnimationGeometry(WWindow *wwin, int *ix, int *iy, int *iw, int *i
 
 void wIconifyWindow(WWindow *wwin)
 {
-	XWindowAttributes attribs;
+	WXWindowAttributes attribs;
 	int present;
 
 	/* a tab group is one user-visible unit, only the active member
@@ -1888,13 +1887,13 @@ void wIconifyWindow(WWindow *wwin)
 	if (wGroupIsInactiveMember(wwin))
 		wwin = wwin->tab_group->members[wwin->tab_group->active_index];
 
-	if (!XGetWindowAttributes(dpy, wwin->client_win, &attribs))
+	if (!wXGetWindowAttributes(xconn, wwin->client_win, &attribs, NULL))
 		return; /* the window doesn't exist anymore */
 
 	if (wwin->flags.miniaturized)
 		return; /* already miniaturized */
 
-	if (wwin->transient_for != None && wwin->transient_for != wwin->screen_ptr->root_win) {
+	if (wwin->transient_for != XCB_NONE && wwin->transient_for != wwin->screen_ptr->root_win) {
 		WWindow *owner = wWindowFor(wwin->transient_for);
 
 		if (owner && owner->flags.miniaturized)
@@ -1906,9 +1905,9 @@ void wIconifyWindow(WWindow *wwin)
 	/* if the window is in another workspace, simplify process */
 	if (present) {
 		/* icon creation may take a while */
-		XGrabPointer(dpy, wwin->screen_ptr->root_win, False,
-			     ButtonMotionMask | ButtonReleaseMask, GrabModeAsync,
-			     GrabModeAsync, None, None, CurrentTime);
+		wXGrabPointer(xconn, wwin->screen_ptr->root_win, false,
+			     XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+			     XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
 	}
 
 	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
@@ -1924,10 +1923,10 @@ void wIconifyWindow(WWindow *wwin)
 			RXImage *pimg;
 			unsigned int w, h;
 			int x, y;
-			Window baz;
+			xcb_window_t baz;
 
-			XRaiseWindow(dpy, wwin->frame->core->window);
-			XTranslateCoordinates(dpy, wwin->client_win, wwin->screen_ptr->root_win, 0, 0, &x, &y, &baz);
+			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			wXTranslateCoordinates(xconn, wwin->client_win, wwin->screen_ptr->root_win, 0, 0, &x, &y, &baz);
 
 			w = attribs.width;
 			h = attribs.height;
@@ -1953,7 +1952,7 @@ void wIconifyWindow(WWindow *wwin)
 					if (wwin->frame->title) {
 						title = wwin->frame->title;
 					} else {
-						snprintf(title_buf, sizeof(title_buf), "(id=0x%lx)", wwin->client_win);
+						snprintf(title_buf, sizeof(title_buf), "(id=0x%x)", wwin->client_win);
 						title = title_buf;
 					}
 					wwarning(_("creation of mini-preview failed for window \"%s\""), title);
@@ -1974,16 +1973,16 @@ void wIconifyWindow(WWindow *wwin)
 		int ix, iy, iw, ih;
 #endif
 		wSoundPlay(wwin->screen_ptr, WSOUND_ICONIFY);
-		XUngrabPointer(dpy, CurrentTime);
+		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
 		wWindowUnmap(wwin);
 		/* let all Expose events arrive so that we can repaint
 		 * something before the animation starts (and the server is grabbed) */
-		XSync(dpy, 0);
+		wXSync(xconn);
 
 		if (w_global.config->disable_miniwindows || wwin->flags.net_handle_icon)
-			wClientSetState(wwin, IconicState, None);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, XCB_NONE);
 		else
-			wClientSetState(wwin, IconicState, wwin->icon->icon_win);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, wwin->icon->icon_win);
 
 		flushExpose();
 #ifdef USE_ANIMATIONS
@@ -1998,16 +1997,16 @@ void wIconifyWindow(WWindow *wwin)
 		 * the correct state */
 		if (w_global.config->disable_miniwindows || wwin->flags.net_handle_icon
 		    || !wwin->icon)
-			wClientSetState(wwin, IconicState, None);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, XCB_NONE);
 		else
-			wClientSetState(wwin, IconicState, wwin->icon->icon_win);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, wwin->icon->icon_win);
 	}
 
 	wwin->flags.skip_next_animation = 0;
 
 	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
 		if (wWindowIsVisibleOnAnyHead(wwin) || w_global.config->sticky_icons)
-			XMapWindow(dpy, wwin->icon->core->window);
+			xcb_map_window(xconn, wwin->icon->core->window);
 
 		AddToStackList(wwin->icon->core);
 		wLowerFrame(wwin->icon->core);
@@ -2041,7 +2040,7 @@ void wIconifyWindow(WWindow *wwin)
 		if (!wwin->screen_ptr->flags.startup &&
 		    !wwin->flags.restore_iconified) {
 			/* Catch up with events not processed while animation was running */
-			Window clientwin = wwin->client_win;
+			xcb_window_t clientwin = wwin->client_win;
 
 			ProcessPendingEvents();
 
@@ -2065,14 +2064,14 @@ void wIconifyWindow(WWindow *wwin)
 		wGroupSyncMiniaturize(wwin);
 
 	if (w_global.config->auto_arrange_icons)
-		wArrangeIcons(wwin->screen_ptr, True);
+		wArrangeIcons(wwin->screen_ptr, true);
 
 	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
 }
 
 void wDeiconifyWindow(WWindow *wwin)
 {
-	Bool was_shaded;
+	bool was_shaded;
 	/* deiconify always targets the active tab so it finds the
 	 * miniwindow and maps the right frame, wWindowSingleFocus()
 	 * has already promoted any explicitly requested member */
@@ -2080,7 +2079,7 @@ void wDeiconifyWindow(WWindow *wwin)
 		wwin = wwin->tab_group->members[wwin->tab_group->active_index];
 
 	/* Let's avoid changing workspace while deiconifying */
-	w_global.ignore_workspace_change = True;
+	w_global.ignore_workspace_change = true;
 
 	/* we're hiding for show_desktop */
 	int netwm_hidden = wwin->flags.net_show_desktop &&
@@ -2092,11 +2091,11 @@ void wDeiconifyWindow(WWindow *wwin)
 		wWindowChangeWorkspace(wwin, wwin->screen_ptr->current_workspace);
 
 	if (!wwin->flags.miniaturized) {
-		w_global.ignore_workspace_change = False;
+		w_global.ignore_workspace_change = false;
 		return;
 	}
 
-	if (wwin->transient_for != None && wwin->transient_for != wwin->screen_ptr->root_win) {
+	if (wwin->transient_for != XCB_NONE && wwin->transient_for != wwin->screen_ptr->root_win) {
 		WWindow *owner = recursiveTransientFor(wwin);
 
 		if (owner && owner->flags.miniaturized) {
@@ -2104,7 +2103,7 @@ void wDeiconifyWindow(WWindow *wwin)
 			wSetFocusTo(wwin->screen_ptr, wwin);
 			warpPointerToFocusedWindow(wwin);
 			wRaiseFrame(wwin->frame->core);
-			w_global.ignore_workspace_change = False;
+			w_global.ignore_workspace_change = false;
 			return;
 		}
 	}
@@ -2125,7 +2124,7 @@ void wDeiconifyWindow(WWindow *wwin)
 			if (wwin->icon->selected)
 				wIconSelect(wwin->icon);
 
-			XUnmapWindow(dpy, wwin->icon->core->window);
+			xcb_unmap_window(xconn, wwin->icon->core->window);
 		}
 	}
 
@@ -2142,14 +2141,14 @@ void wDeiconifyWindow(WWindow *wwin)
 				      wwin->frame->core->width, wwin->frame->core->height);
 #endif
 		wwin->flags.skip_next_animation = 0;
-		XGrabServer(dpy);
+		wXGrabServer(xconn);
 		if (!wwin->flags.shaded)
-			XMapWindow(dpy, wwin->client_win);
+			xcb_map_window(xconn, wwin->client_win);
 
-		XMapWindow(dpy, wwin->frame->core->window);
+		xcb_map_window(xconn, wwin->frame->core->window);
 		wRaiseFrame(wwin->frame->core);
 		if (!wwin->flags.shaded)
-			wClientSetState(wwin, NormalState, None);
+			wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 
 		mapTransientsFor(wwin);
 	}
@@ -2164,7 +2163,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	}
 
 	if (!netwm_hidden) {
-		XUngrabServer(dpy);
+		wXUngrabServer(xconn);
 
 		wSetFocusTo(wwin->screen_ptr, wwin);
 		warpPointerToFocusedWindow(wwin);
@@ -2173,7 +2172,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	}
 
 	if (w_global.config->auto_arrange_icons)
-		wArrangeIcons(wwin->screen_ptr, True);
+		wArrangeIcons(wwin->screen_ptr, true);
 
 	WMPostNotificationName(WMNChangedState, wwin, "iconify");
 
@@ -2188,7 +2187,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	if (!netwm_hidden && !was_shaded)
 		wSoundPlay(wwin->screen_ptr, WSOUND_DEICONIFY);
 
-	w_global.ignore_workspace_change = False;
+	w_global.ignore_workspace_change = false;
 
 	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
 }
@@ -2203,7 +2202,7 @@ void wDeiconifyWindow(WWindow *wwin)
 void wRefreshMiniwindows(WScreen *scr)
 {
 	WWindow *wwin;
-	Bool disabled;
+	bool disabled;
 
 	disabled = w_global.config->disable_miniwindows;
 	wwin = scr->focused_window;
@@ -2212,13 +2211,13 @@ void wRefreshMiniwindows(WScreen *scr)
 		    && !wGroupIsInactiveMember(wwin)) {
 			if (disabled && wwin->icon) {
 				if (wwin->icon->mapped)
-					XUnmapWindow(dpy, wwin->icon->core->window);
+					xcb_unmap_window(xconn, wwin->icon->core->window);
 				RemoveFromStackList(wwin->icon->core);
 				wIconDestroy(wwin->icon);
 				wwin->icon = NULL;
 			} else if (!disabled && !wwin->icon) {
-				wwin->flags.miniaturized = False;
-				wwin->flags.skip_next_animation = True;
+				wwin->flags.miniaturized = false;
+				wwin->flags.skip_next_animation = true;
 				wIconifyWindow(wwin);
 			}
 		}
@@ -2226,14 +2225,14 @@ void wRefreshMiniwindows(WScreen *scr)
 	}
 
 	if (!disabled && w_global.config->auto_arrange_icons)
-		wArrangeIcons(scr, True);
+		wArrangeIcons(scr, true);
 }
 
 void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate)
 {
 	if (wwin->flags.miniaturized) {
 		if (wwin->icon) {
-			XUnmapWindow(dpy, wwin->icon->core->window);
+			xcb_unmap_window(xconn, wwin->icon->core->window);
 			wwin->icon->mapped = 0;
 		}
 		wwin->flags.hidden = 1;
@@ -2248,7 +2247,7 @@ void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate
 	wwin->flags.hidden = 1;
 	wWindowUnmap(wwin);
 
-	wClientSetState(wwin, IconicState, icon ? icon->icon_win : None);
+	wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, icon ? icon->icon_win : XCB_NONE);
 	flushExpose();
 	wSoundPlay(wwin->screen_ptr, WSOUND_HIDE);
 
@@ -2349,12 +2348,12 @@ void wHideOtherApplications(WWindow *awin)
 		    && !wwin->flags.internal_window
 		    && wGetWindowOfInspectorForWindow(wwin) != awin && !WFLAGP(wwin, no_hide_others)) {
 
-			if (wwin->main_window == None || WFLAGP(wwin, no_appicon)) {
+			if (wwin->main_window == XCB_NONE || WFLAGP(wwin, no_appicon)) {
 				if (!WFLAGP(wwin, no_miniaturizable)) {
 					wwin->flags.skip_next_animation = 1;
 					wIconifyWindow(wwin);
 				}
-			} else if (wwin->main_window != None && awin->main_window != wwin->main_window) {
+			} else if (wwin->main_window != XCB_NONE && awin->main_window != wwin->main_window) {
 				tapp = wApplicationOf(wwin->main_window);
 				if (tapp) {
 					tapp->flags.skip_next_animation = 1;
@@ -2402,7 +2401,7 @@ void wMiniaturizeOtherApplications(WWindow *awin)
 		    && !WFLAGP(wwin, no_miniaturizable)
 		    && !WFLAGP(wwin, no_hide_others)
 		    && wGetWindowOfInspectorForWindow(wwin) != awin
-		    && !(awin->main_window != None && wwin->main_window == awin->main_window)) {
+		    && !(awin->main_window != XCB_NONE && wwin->main_window == awin->main_window)) {
 			wwin->flags.skip_next_animation = 1;
 			wIconifyWindow(wwin);
 		}
@@ -2484,7 +2483,7 @@ void wHideApplication(WApplication *wapp)
 			if (wapp->app_icon) {
 				wHideWindow(wlist, wapp->app_icon->icon,
 					   wapp->app_icon->x_pos, wapp->app_icon->y_pos, animate);
-				animate = False;
+				animate = false;
 			}
 		}
 		wlist = wlist->prev;
@@ -2507,7 +2506,7 @@ void wHideApplication(WApplication *wapp)
 	wapp->flags.hidden = 1;
 
 	if (w_global.config->auto_arrange_icons)
-		wArrangeIcons(scr, True);
+		wArrangeIcons(scr, true);
 
 #ifdef HIDDENDOT
 	if (wapp->app_icon)
@@ -2545,9 +2544,9 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 	wwin->flags.skip_next_animation = 0;
 	if (wwin->screen_ptr->current_workspace == WWIN_PRIMARY_WS(wwin)
 	    && !wGroupIsInactiveMember(wwin)) {
-		XMapWindow(dpy, wwin->client_win);
-		XMapWindow(dpy, wwin->frame->core->window);
-		wClientSetState(wwin, NormalState, None);
+		xcb_map_window(xconn, wwin->client_win);
+		xcb_map_window(xconn, wwin->frame->core->window);
+		wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 		wwin->flags.mapped = 1;
 		wRaiseFrame(wwin->frame->core);
 	}
@@ -2559,13 +2558,13 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 	WMPostNotificationName(WMNChangedState, wwin, "hide");
 }
 
-void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurrentWS)
+void wUnhideApplication(WApplication *wapp, bool miniwindows, bool bringToCurrentWS)
 {
 	WScreen *scr;
 	WWindow *wlist, *next;
 	WWindow *focused = NULL;
 	WWindow *target = NULL;
-	Window clientwin = None;
+	xcb_window_t clientwin = XCB_NONE;
 	int animate;
 
 	if (!wapp)
@@ -2599,10 +2598,10 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 
 						PlaceIcon(scr, &x, &y, wGetHeadForWindow(wlist));
 						if (wlist->icon_x != x || wlist->icon_y != y)
-							XMoveWindow(dpy, wlist->icon->core->window, x, y);
+							xcb_configure_window(xconn, wlist->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 						wlist->icon_x = x;
 						wlist->icon_y = y;
-						XMapWindow(dpy, wlist->icon->core->window);
+						xcb_map_window(xconn, wlist->icon->core->window);
 						wlist->icon->mapped = 1;
 					}
 					wRaiseFrame(wlist->icon->core);
@@ -2620,7 +2619,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				if (WWIN_PRIMARY_WS(wlist) == scr->current_workspace
 				    && !wGroupIsInactiveMember(wlist)) {
 					wRaiseFrame(wlist->frame->core);
-					XMapWindow(dpy, wlist->frame->core->window);
+					xcb_map_window(xconn, wlist->frame->core->window);
 					if (miniwindows)
 						wUnshadeWindow(wlist);
 				}
@@ -2631,7 +2630,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 				wUnhideWindow(wlist, ai ? ai->icon : NULL,
 					     ai ? ai->x_pos : 0, ai ? ai->y_pos : 0,
 					     animate, bringToCurrentWS);
-				animate = False;
+				animate = false;
 			} else {
 				if (bringToCurrentWS && WWIN_PRIMARY_WS(wlist) != scr->current_workspace)
 					wWindowChangeWorkspace(wlist, scr->current_workspace);
@@ -2668,7 +2667,7 @@ void wUnhideApplication(WApplication *wapp, Bool miniwindows, Bool bringToCurren
 
 	wapp->last_focused = NULL;
 	if (w_global.config->auto_arrange_icons)
-		wArrangeIcons(scr, True);
+		wArrangeIcons(scr, true);
 
 #ifdef HIDDENDOT
 	if (wapp->app_icon)
@@ -2691,7 +2690,7 @@ void wShowAllWindows(WScreen *scr)
 			} else if (wwin->flags.hidden) {
 				wapp = wApplicationOf(wwin->main_window);
 				if (wapp) {
-					wUnhideApplication(wapp, False, False);
+					wUnhideApplication(wapp, false, false);
 				} else {
 					wwin->flags.skip_next_animation = 1;
 					wDeiconifyWindow(wwin);
@@ -2707,20 +2706,19 @@ void wShowAllWindows(WScreen *scr)
 
 void wRefreshDesktop(WScreen *scr)
 {
-	Window win;
-	XSetWindowAttributes attr;
+	xcb_window_t win;
 
-	attr.backing_store = NotUseful;
-	attr.save_under = False;
-	win = XCreateWindow(dpy, scr->root_win, 0, 0, scr->scr_width,
-			    scr->scr_height, 0, CopyFromParent, CopyFromParent,
-			    (Visual *) CopyFromParent, CWBackingStore | CWSaveUnder, &attr);
-	XMapRaised(dpy, win);
-	XDestroyWindow(dpy, win);
-	XFlush(dpy);
+	win = xcb_generate_id(xconn);
+	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, win, scr->root_win, 0, 0, scr->scr_width,
+			  scr->scr_height, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACKING_STORE | XCB_CW_SAVE_UNDER, (const uint32_t[]){ XCB_BACKING_STORE_NOT_USEFUL, false });
+	xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(xconn, win);
+	xcb_destroy_window(xconn, win);
+	wXFlush(xconn);
 }
 
-void wArrangeIcons(WScreen *scr, Bool arrangeAll)
+void wArrangeIcons(WScreen *scr, bool arrangeAll)
 {
 	WWindow *wwin;
 	WAppIcon *aicon;
@@ -2745,7 +2743,7 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 	vars = (struct HeadVars *)wmalloc(sizeof(struct HeadVars) * heads);
 
 	for (head = 0; head < heads; ++head) {
-		WArea area = wGetUsableAreaForHead(scr, head, NULL, False);
+		WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 		WMRect rect;
 
 		if (scr->dock) {
@@ -2868,19 +2866,19 @@ void wArrangeIcons(WScreen *scr, Bool arrangeAll)
 	wfree(vars);
 }
 
-void wSelectWindow(WWindow *wwin, Bool flag)
+void wSelectWindow(WWindow *wwin, bool flag)
 {
 	WScreen *scr = wwin->screen_ptr;
 
 	if (flag) {
 		wwin->flags.selected = 1;
 		if (wwin->frame->selected_border_pixel)
-			XSetWindowBorder(dpy, wwin->frame->core->window, *wwin->frame->selected_border_pixel);
+			xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->selected_border_pixel });
 		else
-			XSetWindowBorder(dpy, wwin->frame->core->window, scr->white_pixel);
+			xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->white_pixel });
 
 		if (!HAS_BORDER(wwin))
-			XSetWindowBorderWidth(dpy, wwin->frame->core->window, wFrameBorderWidth(wwin));
+			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wFrameBorderWidth(wwin) });
 
 		if (!scr->selected_windows)
 			scr->selected_windows = WMCreateArray(4);
@@ -2889,18 +2887,18 @@ void wSelectWindow(WWindow *wwin, Bool flag)
 		wwin->flags.selected = 0;
 		if (wwin->flags.focused) {
 			if (wwin->frame->focused_border_pixel)
-				XSetWindowBorder(dpy, wwin->frame->core->window, *wwin->frame->focused_border_pixel);
+				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->focused_border_pixel });
 			else
-				XSetWindowBorder(dpy, wwin->frame->core->window, scr->frame_focused_border_pixel);
+				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_focused_border_pixel });
 		} else {
 			if (wwin->frame->border_pixel)
-				XSetWindowBorder(dpy, wwin->frame->core->window, *wwin->frame->border_pixel);
+				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->border_pixel });
 			else
-				XSetWindowBorder(dpy, wwin->frame->core->window, scr->frame_border_pixel);
+				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_border_pixel });
 		}
 
 		if (!HAS_BORDER(wwin))
-			XSetWindowBorderWidth(dpy, wwin->frame->core->window, 0);
+			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 		if (scr->selected_windows)
 			WMRemoveFromArray(scr->selected_windows, wwin);
@@ -2937,7 +2935,7 @@ void wMakeWindowVisible(WWindow *wwin)
 		if (app) {
 			/* trick to get focus to this window */
 			app->last_focused = wwin;
-			wUnhideApplication(app, False, False);
+			wUnhideApplication(app, false, false);
 		}
 	}
 	if (wwin->flags.miniaturized) {
@@ -2954,11 +2952,11 @@ void movePointerToWindowCenter(WWindow *wwin)
 	if (!w_global.config->pointer_with_half_max_windows)
 		return;
 
-	XSelectInput(dpy, wwin->client_win, wwin->event_mask);
-	XWarpPointer(dpy, None, wwin->screen_ptr->root_win, 0, 0, 0, 0,
+	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+	wXWarpPointer(xconn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
 			wwin->frame_x + wwin->client.width / 2,
 			wwin->frame_y + wwin->client.height / 2);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 /* Focusable client window under the pointer, or NULL if on the root.
@@ -2967,10 +2965,10 @@ WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude)
 {
 	unsigned int mask;
 	int foo;
-	Window bar, win;
+	xcb_window_t bar, win;
 	WWindow *tmp;
 
-	if (!XQueryPointer(dpy, scr->root_win, &bar, &win,
+	if (!wXQueryPointer(xconn, scr->root_win, &bar, &win,
 			   &foo, &foo, &foo, &foo, &mask))
 		return NULL;
 
@@ -3000,7 +2998,7 @@ WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude)
  */
 void warpPointerToFocusedWindow(WWindow *wwin)
 {
-	Window root_ret, win_ret;
+	xcb_window_t root_ret, win_ret;
 	int rx, ry, wx, wy;
 	unsigned int mask;
 	int fx, fy, fw, fh;
@@ -3021,14 +3019,14 @@ void warpPointerToFocusedWindow(WWindow *wwin)
 	fy = wwin->frame_y;
 	fw = (int)wwin->frame->core->width;
 	fh = (int)wwin->frame->core->height;
-	if (XQueryPointer(dpy, wwin->screen_ptr->root_win, &root_ret, &win_ret,
+	if (wXQueryPointer(xconn, wwin->screen_ptr->root_win, &root_ret, &win_ret,
 			 &rx, &ry, &wx, &wy, &mask)
 	    && rx >= fx && rx < fx + fw && ry >= fy && ry < fy + fh)
 		return;
 
-	XWarpPointer(dpy, None, wwin->screen_ptr->root_win, 0, 0, 0, 0,
+	wXWarpPointer(xconn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
 			fx + fw / 2, fy + fh / 2);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 /*
@@ -3066,8 +3064,8 @@ void warpPointerToMonitor(WScreen *scr)
 		cy = scr->scr_height / 2;
 	}
 
-	XWarpPointer(dpy, None, scr->root_win, 0, 0, 0, 0, cx, cy);
-	XFlush(dpy);
+	wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0, cx, cy);
+	wXFlush(xconn);
 }
 
 /*
@@ -3127,10 +3125,10 @@ void warpPointerToNextMonitor(WScreen *scr)
 		return;
 
 	rect = wGetRectForHead(target, next);
-	XWarpPointer(dpy, None, target->root_win, 0, 0, 0, 0,
+	wXWarpPointer(xconn, XCB_NONE, target->root_win, 0, 0, 0, 0,
 			rect.pos.x + (int)rect.size.width / 2,
 			rect.pos.y + (int)rect.size.height / 2);
-	XFlush(dpy);
+	wXFlush(xconn);
 }
 
 /*
@@ -3138,7 +3136,7 @@ void warpPointerToNextMonitor(WScreen *scr)
  * or unshading (what = UNSHADE).
  */
 #ifdef USE_ANIMATIONS
-static void shade_animate(WWindow *wwin, Bool what)
+static void shade_animate(WWindow *wwin, bool what)
 {
 	int y, s, w, h;
 	int il, it;
@@ -3161,9 +3159,9 @@ static void shade_animate(WWindow *wwin, Bool what)
 			w = wwin->frame->core->width;
 			y = wwin->frame->top_width;
 			while (h > wwin->frame->top_width + 1) {
-				XMoveWindow(dpy, wwin->client_win, il, y);
-				XResizeWindow(dpy, wwin->frame->core->window, w, h);
-				XFlush(dpy);
+				xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
+				xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
+				wXFlush(xconn);
 
 				if (time(NULL) - time0 > MAX_ANIMATION_TIME)
 					break;
@@ -3175,7 +3173,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 				h -= s;
 				y -= s;
 			}
-			XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
+			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 		}
 		break;
 
@@ -3186,12 +3184,12 @@ static void shade_animate(WWindow *wwin, Bool what)
 		if (s < 1)
 			s = 1;
 		w = wwin->frame->core->width;
-		XMoveWindow(dpy, wwin->client_win, il, y);
+		xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
 		if (s > 0) {
 			while (h < wwin->client.height + wwin->frame->top_width + wwin->frame->bottom_width) {
-				XResizeWindow(dpy, wwin->frame->core->window, w, h);
-				XMoveWindow(dpy, wwin->client_win, il, y);
-				XFlush(dpy);
+				xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
+				xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
+				wXFlush(xconn);
 				if (SHADE_DELAY > 0)
 					wusleep(SHADE_DELAY * 2000L / 3);
 				else
@@ -3203,7 +3201,7 @@ static void shade_animate(WWindow *wwin, Bool what)
 					break;
 			}
 		}
-		XMoveWindow(dpy, wwin->client_win, il, wwin->frame->top_width + it);
+		xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 		break;
 	}
 }

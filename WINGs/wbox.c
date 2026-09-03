@@ -27,7 +27,7 @@ typedef struct W_Box {
 
 static void destroyBox(Box * bPtr);
 
-static void handleEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
 
 static void didResize(struct W_ViewDelegate *, WMView *);
 
@@ -58,7 +58,7 @@ WMBox *WMCreateBox(WMWidget * parent)
 
 	bPtr->subviews = WMCreateArrayWithDestructor(2, wfree);
 
-	WMCreateEventHandler(bPtr->view, StructureNotifyMask, handleEvents, bPtr);
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, bPtr);
 
 	WMResizeWidget(bPtr, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
@@ -157,7 +157,7 @@ void WMSetBoxBorderWidth(WMBox * box, unsigned width)
 	}
 }
 
-void WMAddBoxSubview(WMBox * bPtr, WMView * view, Bool expand, Bool fill, int minSize, int maxSize, int space)
+void WMAddBoxSubview(WMBox * bPtr, WMView * view, bool expand, bool fill, int minSize, int maxSize, int space)
 {
 	SubviewItem *subView;
 
@@ -175,7 +175,7 @@ void WMAddBoxSubview(WMBox * bPtr, WMView * view, Bool expand, Bool fill, int mi
 	rearrange(bPtr);
 }
 
-void WMAddBoxSubviewAtEnd(WMBox * bPtr, WMView * view, Bool expand, Bool fill, int minSize, int maxSize, int space)
+void WMAddBoxSubviewAtEnd(WMBox * bPtr, WMView * view, bool expand, bool fill, int minSize, int maxSize, int space)
 {
 	SubviewItem *subView;
 
@@ -205,7 +205,7 @@ void WMRemoveBoxSubview(WMBox * bPtr, WMView * view)
 	}
 }
 
-void WMSetBoxHorizontal(WMBox * box, Bool flag)
+void WMSetBoxHorizontal(WMBox * box, bool flag)
 {
 	/* make sure flag is either 0 or 1 no matter what true value was passed */
 	flag = ((flag == 0) ? 0 : 1);
@@ -229,18 +229,18 @@ static void didResize(struct W_ViewDelegate *delegate, WMView * view)
 	rearrange(view->self);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Box *bPtr = (Box *) data;
 
 	CHECK_CLASS(data, WC_Box);
 
-	switch (event->type) {
-	case DestroyNotify:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_DESTROY_NOTIFY:
 		destroyBox(bPtr);
 		break;
 
-	case ConfigureNotify:
+	case XCB_CONFIGURE_NOTIFY:
 		rearrange(bPtr);
 		break;
 	}

@@ -74,7 +74,7 @@ typedef struct WMenu {
 	/* decorations */
 	struct WFrameWindow *frame;
 	WCoreWindow *menu;		       /* the window menu */
-	Pixmap menu_texture_data;
+	xcb_pixmap_t menu_texture_data;
 	struct WMenuTexCache *menu_texture_cache;  /* entry the Pixmap above is
 						    * borrowed from, or NULL when
 						    * this menu owns it directly */
@@ -141,7 +141,7 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu);
 WMenu *wMenuCreateForApp(WScreen *screen, const char *title, int main_menu);
 void wMenuMap(WMenu *menu);
 void wMenuMapAt(WMenu *menu, int x, int y, int keyboard);
-#define wMenuMapCopyAt(menu, x, y) wMenuMapAt((menu)->brother, (x), (y), False)
+#define wMenuMapCopyAt(menu, x, y) wMenuMapAt((menu)->brother, (x), (y), false)
 void wMenuUnmap(WMenu *menu);
 void wMenuSetEnabled(WMenu *menu, int index, int enable);
 void wMenuSetHidden(WMenu *menu, int index, int hidden);

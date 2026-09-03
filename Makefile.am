@@ -220,8 +220,7 @@ configure-documentation:
 		--ignore-prg 'disable-libtool-lock,with-pic,with-gnu-ld,with-sysroot # for libtool' \
 		--ignore-prg 'runstatedir #new in autoconf 2.70, backported in Debian' \
 		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
-		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
-		--ignore-prg 'with-x # no use, it would not work without X'
+		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-'
 
 .PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive run bench
 
@@ -231,14 +230,18 @@ configure-documentation:
 # on demand. Each driver still does its own per-tool `command -v` check
 # and exits 77 (SKIP) when something it needs is missing, the
 # AM_CONDITIONAL only short-circuits the obvious "no Xvfb at all" case.
-DRIVE_TESTS = test/ipc-drive.sh test/ipc-verbs-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/restart-drift-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/window-menu-drive.sh test/dock-drop-drive.sh test/xsmp-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh test/layout-drive.sh test/switchpanel-drive.sh test/wsmask-drive.sh test/workspace-drive.sh test/mouse-button-drive.sh test/disable-ws-mouse-drive.sh test/cycle-workspaces-drive.sh test/wmsetbg-drive.sh test/last-workspace-restore-drive.sh test/iconsize-reflow-drive.sh test/edge-finder-drive.sh test/edge-snap-drive.sh test/snapping-drive.sh test/restore-iconic-drive.sh test/show-desktop-drive.sh test/skip-empty-workspaces-drive.sh test/sound-drive.sh test/multiscreen-drive.sh test/replace-drive.sh test/shared-edge-resize-drive.sh test/urgent-click-drive.sh test/dockapp-drive.sh test/appmenu-drive.sh
+DRIVE_TESTS = test/ipc-drive.sh test/ipc-verbs-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/restart-drift-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/window-menu-drive.sh test/dock-drop-drive.sh test/xsmp-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh test/layout-drive.sh test/switchpanel-drive.sh test/wsmask-drive.sh test/workspace-drive.sh test/mouse-button-drive.sh test/disable-ws-mouse-drive.sh test/cycle-workspaces-drive.sh test/wmsetbg-drive.sh test/last-workspace-restore-drive.sh test/iconsize-reflow-drive.sh test/edge-finder-drive.sh test/edge-snap-drive.sh test/snapping-drive.sh test/restore-iconic-drive.sh test/show-desktop-drive.sh test/skip-empty-workspaces-drive.sh test/sound-drive.sh test/multiscreen-drive.sh test/replace-drive.sh test/shared-edge-resize-drive.sh test/urgent-click-drive.sh test/dockapp-drive.sh test/appmenu-drive.sh test/crash-dialog-drive.sh
 DRIVE_SUBDIRS = util/Tests
+
+# wmaker spawns helper tools such as wmsetbg by name, so the freshly
+# built binaries must win the PATH lookup over any installed copy
+DRIVE_PATH = $(abs_top_builddir)/src/.libs:$(abs_top_builddir)/util/.libs:$(abs_top_builddir)/WPrefs.app/.libs
 
 check-drive:
 if HAVE_XVFB
 	@fail=0; for t in $(DRIVE_TESTS); do \
 	  echo "=== $$t ==="; \
-	  "$(top_srcdir)/$$t"; rc=$$?; \
+	  PATH="$(DRIVE_PATH):$$PATH" "$(top_srcdir)/$$t"; rc=$$?; \
 	  case $$rc in \
 	    0)  echo "PASS  $$t" ;; \
 	    77) echo "SKIP  $$t" ;; \
@@ -247,7 +250,7 @@ if HAVE_XVFB
 	done; \
 	for d in $(DRIVE_SUBDIRS); do \
 	  echo "=== $$d/check-drive ==="; \
-	  $(MAKE) -C "$$d" check-drive; rc=$$?; \
+	  PATH="$(DRIVE_PATH):$$PATH" $(MAKE) -C "$$d" check-drive; rc=$$?; \
 	  case $$rc in \
 	    0)  echo "PASS  $$d/check-drive" ;; \
 	    *)  echo "FAIL  $$d/check-drive (rc=$$rc)"; fail=1 ;; \

@@ -1,5 +1,6 @@
 
 #include <WINGs/WINGs.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include "wtableview.h"
@@ -84,8 +85,6 @@ int main(int argc, char **argv)
 
 	scr = WMOpenScreen(NULL);
 
-	XSynchronize(WMScreenDisplay(scr), 1);
-
 	win = WMCreateWindow(scr, "eweq");
 	WMResizeWidget(win, 400, 200);
 	WMMapWidget(win);
@@ -118,7 +117,7 @@ int main(int argc, char **argv)
 
 	colDeleg = WTCreateBooleanSwitchDelegate(table);
 
-	col = WMCreateTableColumn("Bool");
+	col = WMCreateTableColumn("bool");
 	WMSetTableColumnWidth(col, 50);
 	WMAddTableViewColumn(table, col);
 	WMSetTableColumnDelegate(col, colDeleg);

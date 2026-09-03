@@ -135,7 +135,7 @@ static char *mapSlantToName(str * slant)
 	}
 }
 
-static char *xlfdToFc(const char *xlfd, const char *useFamily, Bool keepXLFD)
+static char *xlfdToFc(const char *xlfd, const char *useFamily, bool keepXLFD)
 {
 	str *tokens, *family, *weight, *slant;
 	char *name, buf[64];
@@ -186,7 +186,7 @@ static char *xlfdToFc(const char *xlfd, const char *useFamily, Bool keepXLFD)
 }
 
 /* return converted font (if conversion is needed) else the original font */
-char *convertFont(char *font, Bool keepXLFD)
+char *convertFont(char *font, bool keepXLFD)
 {
 	if (font[0] == '-') {
 		if (MB_CUR_MAX < 2) {

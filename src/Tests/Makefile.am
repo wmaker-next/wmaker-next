@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout check_geometry check_xlibfree check_xerror
 TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS = @CAIRO_CFLAGS@
@@ -14,7 +14,9 @@ AM_CPPFLAGS = $(DFLAGS) \
 	@HEADER_SEARCH_PATH@
 
 AM_TESTS_ENVIRONMENT = \
-	CHECK_DESKTOPFILE_SRCDIR='$(srcdir)'; export CHECK_DESKTOPFILE_SRCDIR;
+	CHECK_DESKTOPFILE_SRCDIR='$(srcdir)'; export CHECK_DESKTOPFILE_SRCDIR; \
+	CHECK_XLIBFREE_TOP='$(top_builddir)'; export CHECK_XLIBFREE_TOP; \
+	CHECK_XLIBFREE_SRC='$(top_srcdir)'; export CHECK_XLIBFREE_SRC;
 
 EXTRA_DIST = \
 	xdg/share/mime/globs2 \
@@ -80,6 +82,25 @@ check_calc_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@ \
 	@LIBM@
+
+check_geometry_SOURCES = \
+	check_geometry.c \
+	../geometry.c
+
+check_geometry_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_xlibfree_SOURCES = \
+	check_xlibfree.c
+
+check_xerror_SOURCES = \
+	check_xerror.c \
+	../xutil.c
+
+check_xerror_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
 
 check_xsmp_SOURCES = \
 	check_xsmp.c

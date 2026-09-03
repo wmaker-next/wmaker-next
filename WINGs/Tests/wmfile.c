@@ -48,7 +48,9 @@ _Noreturn void usage(void)
 
 int main(int argc, char **argv)
 {
-	Display *dpy = XOpenDisplay("");
+	xcb_connection_t *xc;
+	int sn;
+	xcb_connection_t *xc;
 	WMScreen *scr;
 	WMPixmap *pixmap;
 	WMOpenPanel *oPanel;
@@ -58,7 +60,10 @@ int main(int argc, char **argv)
 	int ch;
 	int panelType = OPEN_PANEL_TYPE;
 
-	if (!dpy) {
+	/* xcb_connect(NULL, ...) reads $DISPLAY exactly like libX11's
+	 * XOpenDisplay("") did */
+	xc = xcb_connect(NULL, &sn);
+	if (xcb_connection_has_error(xc)) {
 		puts("could not open display");
 		exit(1);
 	}
@@ -85,7 +90,7 @@ int main(int argc, char **argv)
 	for (; optind < argc; optind++)
 		usage();
 
-	scr = WMCreateSimpleApplicationScreen(dpy);
+	scr = WMCreateSimpleApplicationScreen(xc, sn);
 
 	pixmap = WMCreatePixmapFromXPMData(scr, GNUSTEP_XPM);
 	WMSetApplicationIconPixmap(scr, pixmap);
@@ -93,14 +98,14 @@ int main(int argc, char **argv)
 	if (panelType == SAVE_PANEL_TYPE) {
 		sPanel = WMGetSavePanel(scr);
 		if (WMRunModalFilePanelForDirectory(sPanel, NULL, initial,
-						    title, NULL) == True)
+						    title, NULL) == true)
 			printf("%s\n", WMGetFilePanelFileName(sPanel));
 		else
 			printf("\n");
 	} else {
 		oPanel = WMGetOpenPanel(scr);
 		if (WMRunModalFilePanelForDirectory(oPanel, NULL, initial,
-						   title, NULL) == True)
+						   title, NULL) == true)
 			printf("%s\n", WMGetFilePanelFileName(oPanel));
 		else
 			printf("\n");

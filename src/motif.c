@@ -20,8 +20,6 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -158,9 +156,9 @@ static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 	}
 }
 
-WXCookie wMWMReqClientHints(Window window)
+WXCookie wMWMReqClientHints(xcb_window_t window)
 {
-	return WXReqFormat32(dpy, window, w_global.atom.wm.motif_wm_hints,
+	return WXReqFormat32(xconn, window, w_global.atom.wm.motif_wm_hints,
 			     w_global.atom.wm.motif_wm_hints, 5);
 }
 
@@ -171,7 +169,7 @@ static int rcvMWMHints(WXCookie ck, MWMHints *mwmhints)
 
 	mwmhints->flags = 0;
 
-	data = WXRcvFormat32List(dpy, ck, &n);
+	data = WXRcvFormat32List(xconn, ck, &n);
 	if (!data)
 		return 0;
 	if (n < 4) {

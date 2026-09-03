@@ -22,14 +22,14 @@
 
 #include <sys/types.h>
 
-Bool GetCommandForPid(int pid, char ***argv, int *argc);
+bool GetCommandForPid(int pid, char ***argv, int *argc);
 
 /*
  * Walk /proc/<pid>/stat up the process tree to check if 'ancestor'
  * is a parent (or grandparent, ...) of 'pid'. Linux-only; stubs on
  * other platforms return False.
  */
-Bool IsProcessAncestor(pid_t ancestor, pid_t pid);
+bool IsProcessAncestor(pid_t ancestor, pid_t pid);
 
 /*
  * Read /proc/<pid>/stat to determine whether the process was started

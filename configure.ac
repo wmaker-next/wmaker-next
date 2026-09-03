@@ -2,7 +2,7 @@ dnl ============================================================================
 dnl
 dnl Window Maker autoconf input
 dnl
-AC_COPYRIGHT([Copyright (c) 2001-2023 The Window Maker Team])
+AC_COPYRIGHT([Copyright (c) 2001-2026 The Window Maker Team])
 dnl
 dnl ============================================================================
 dnl
@@ -53,7 +53,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
 dnl We need the EXTRA_xxx_DEPENDENCIES keyword in Makefiles which have been
-dnl introduced in the version 1.11.3; because the 1.12 was realeased shortly
+dnl introduced in the version 1.11.3, because the 1.12 was realeased shortly
 dnl after, we just ask for it
 AM_INIT_AUTOMAKE([1.12 silent-rules subdir-objects -Wno-portability])
 
@@ -92,14 +92,14 @@ WRASTER_VERSION=$WRASTER_CURRENT:$WRASTER_REVISION:$WRASTER_AGE
 AC_SUBST(WRASTER_VERSION)
 dnl
 dnl libWINGs
-WINGS_CURRENT=6
+WINGS_CURRENT=7
 WINGS_REVISION=0
-WINGS_AGE=3
+WINGS_AGE=0
 WINGS_VERSION=$WINGS_CURRENT:$WINGS_REVISION:$WINGS_AGE
 AC_SUBST(WINGS_VERSION)
 dnl
 dnl libWUtil
-WUTIL_CURRENT=5
+WUTIL_CURRENT=6
 WUTIL_REVISION=0
 WUTIL_AGE=0
 WUTIL_VERSION=$WUTIL_CURRENT:$WUTIL_REVISION:$WUTIL_AGE
@@ -467,7 +467,7 @@ AC_SEARCH_LIBS([strerror], [cposix])
 dnl libev drives the WINGs event loop (timer, idle and input handlers).
 dnl Probe pkg-config first: distro packages land in /usr/local on DragonFly
 dnl where the base compiler does not search by default. libev ships a .pc
-dnl on Linux and the BSD package collections; fall back to header + library
+dnl on Linux and the BSD package collections, fall back to header + library
 dnl probes for installations without one, keeping the result out of the
 dnl global LIBS so only libWUtil links it.
 LIBEV_LIBS=
@@ -583,45 +583,9 @@ dnl ===========================================
 dnl 		Stuff that uses X
 dnl ===========================================
 
-AC_PATH_XTRA
-
-AS_IF([test "x$no_x" = "xyes"],
-    [AC_MSG_ERROR([The path for the X11 files not found!
-Make sure you have X and its headers and libraries (the -devel packages
-in Linux) installed.])])
-
-X_LIBRARY_PATH=$x_libraries
-XCFLAGS="$X_CFLAGS"
-XLFLAGS="$X_LIBS"
-XLIBS="-lX11 $X_EXTRA_LIBS"
-
-dnl On systems where X11 lives outside the default compiler search path
-dnl (OpenBSD /usr/X11R6, NetBSD /usr/X11R7) the WM_XEXT_CHECK_* and
-dnl WM_IMGFMT_CHECK_* probes need the AC_PATH_XTRA result in CPPFLAGS and
-dnl LDFLAGS to find X headers and libraries, on Linux and FreeBSD both are
-dnl empty so this is a no-op there
-CPPFLAGS="$CPPFLAGS $XCFLAGS"
-LDFLAGS="$LDFLAGS $XLFLAGS"
-
-lib_search_path="$lib_search_path $XLFLAGS"
-inc_search_path="$inc_search_path $XCFLAGS"
-
-AC_SUBST(X_LIBRARY_PATH)
-
-
-dnl Decide which locale function to use, setlocale() or _Xsetlocale()
-dnl by MANOME Tomonori
-dnl ===========================================
-WM_I18N_XLOCALE
-
-
-
-dnl Check whether XConvertCase() exist
-dnl ==================================
-AC_CHECK_LIB([X11], [XConvertCase],
-    [AC_DEFINE([HAVE_XCONVERTCASE], [1],
-        [define if your X server has XConvertCase() (set by configure)])],
-    [], [$XLFLAGS $XLIBS])
+dnl The X connection is xcb-only (libxcb through pkg-config below);
+dnl there is no libX11 and no AC_PATH_XTRA, the image-library probes
+dnl link plain system libraries.
 
 
 dnl XKB keyboard language status
@@ -701,7 +665,7 @@ WM_XEXT_CHECK_XSHAPE
 
 dnl Virtual desktop (viewport panning over a desktop larger than the screen)
 dnl ======================================================
-dnl VIRTUAL_DESKTOP symbol; default-on so the code is compiled in by
+dnl VIRTUAL_DESKTOP symbol, default-on so the code is compiled in by
 dnl default and `make check` exercises it. The feature remains opt-in at
 dnl runtime via EnableVirtualDesktop (default "NO" in config-schema-def.h);
 dnl --disable-virtual-desktop is the escape hatch for a smaller binary or
@@ -775,7 +739,7 @@ FCLIBS=$FONTCONFIG_LIBS
 AC_SUBST(FCLIBS)
 
 
-dnl XCB (with Xlib bridge) for the typed property/ICCCM layer
+dnl XCB for the typed property/ICCCM layer
 dnl =========================================================
 dnl xcb-icccm 0.3.8 renamed every public symbol from xcb_* to xcb_icccm_*,
 dnl wxhints.c uses the new names so reject the older API at configure time
@@ -784,15 +748,21 @@ dnl install pkgsrc xcb-util-wm and put /usr/pkg/lib/pkgconfig first)
 dnl xcb-randr/shape/sync/xkb provide the typed extension event structs that
 dnl src/event.c and src/wmspec.c read after the WINGs queue flips to xcb,
 dnl all four ship in the libxcb tarball so the version floor is shared.
+dnl the plain xcb module gets its own 1.15 floor: the queue and put-back
+dnl sites read xcb_generic_event_t.full_sequence (full 32-bit serials),
+dnl 1.14 headers lack the field and would fail with a confusing error
 dnl xkbcommon and xkbcommon-x11 own the keymap and keyboard state in
 dnl src/wxkb.c so the resolver no longer reads the libX11 cache, both ship
 dnl in the libxkbcommon tarball with the X11 module needing 0.4.1 for
 dnl xkb_x11_setup_xkb_extension
 dnl xcb-xtest drives wmclipd's paste keystroke injection without the libXtst
 dnl Xlib binding, keeping the clipboard daemon off libX11's XTest wrapper.
+dnl xcb-xinerama is the generated module for the head fallback in
+dnl src/xinerama.c (servers exposing Xinerama without a RandR description,
+dnl e.g. nested servers, and builds without RandR).
 WM_REQUIRE_DEP([XCB],
-    [xcb xcb-icccm >= 0.3.8 x11-xcb xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xkbcommon xkbcommon-x11 >= 0.4.1],
-    [libxcb, x11-xcb, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest and xkbcommon/-x11 are required])
+    [xcb >= 1.15 xcb-icccm >= 0.3.8 xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xcb-xinerama xcb-cursor xkbcommon xkbcommon-x11 >= 0.4.1],
+    [libxcb >= 1.15, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest/xinerama, xcb-cursor and xkbcommon/-x11 are required])
 dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
 dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so
 dnl ask pkg-config where the >= 0.3.8 module actually lives and search that
@@ -803,6 +773,12 @@ AS_IF([test -n "$wm_xcb_icccm_libdir"],
     [LDFLAGS="-L$wm_xcb_icccm_libdir $LDFLAGS"])
 AC_SUBST(XCB_CFLAGS)
 AC_SUBST(XCB_LIBS)
+
+dnl Core xcb only, for the standalone clients (wxcopy/wxpaste and the
+dnl wrlib demo tools) that must not inherit the full extension set.
+PKG_CHECK_MODULES([XCB_CORE], [xcb])
+AC_SUBST(XCB_CORE_CFLAGS)
+AC_SUBST(XCB_CORE_LIBS)
 
 
 dnl Cairo rendering and PangoCairo text layout (required)
@@ -861,43 +837,21 @@ AC_SUBST(WRASTER_CAIRO_CFLAGS)
 AC_SUBST(WRASTER_CAIRO_LIBS)
 
 
-dnl xcb-imdkit: optional XIM protocol IM client for WINGs text fields
-dnl Restores fcitx5/ibus input after the xcb event-queue flip, without it
-dnl xkb_compose_state still handles dead-key / Compose sequences.
+dnl xcb-imdkit: XIM protocol IM client for WINGs text fields
+dnl Required since the Xlib event-queue path retired: fcitx5/ibus input
+dnl rides the xcb_xim_t client and xkb_compose_state stays as the
+dnl fallback for when no IM server answers.
 dnl =====================================================================
-WM_OPTIONAL_DEP([XCB_IMDKIT], [xcb-imdkit >= 1.0.3], [have_xcb_imdkit],
-    [with], [xcb-imdkit],
-    [--without-xcb-imdkit],
-    [disable xcb-imdkit IM support in WINGs (compose/dead-keys still work)],
-    [AC_DEFINE([HAVE_XCB_IMDKIT], [1],
-               [defined when xcb-imdkit >= 1.0.3 is available for WINGs IM support])],
-    [xcb-imdkit],
-    [HAVE_XCB_IMDKIT])
+WM_REQUIRE_DEP([XCB_IMDKIT], [xcb-imdkit >= 1.0.3],
+    [xcb-imdkit (>= 1.0.3) is required for WINGs input-method support])
+AC_SUBST(XCB_IMDKIT_CFLAGS)
+AC_SUBST(XCB_IMDKIT_LIBS)
 
 
-dnl xcb-keysyms is used only by the wmclipd clipboard test client
-dnl (util/Tests/wmclipd_cliptest.c) to synthesise Ctrl+V; the daemon and
-dnl the window manager do not need it, so probe softly and drop that one
-dnl test when the module is absent.
+dnl XFixes selection notifications: wmclipd's clipboard-manager mode
+dnl rides the xcb-xfixes module, already a hard dependency of the XCB
+dnl list above, so there is no separate probe or option for it.
 dnl =====================================================================
-WM_OPTIONAL_DEP([XCBKEYSYMS], [xcb-keysyms], [have_xcb_keysyms],
-    [with], [xcb-keysyms],
-    [--without-xcb-keysyms],
-    [skip building the wmclipd clipboard test client (needs xcb-keysyms)],
-    [],
-    [],
-    [USE_XCB_KEYSYMS])
-
-
-dnl XFixes selection notifications, used by wmclipd clipboard-manager mode
-dnl =====================================================================
-WM_OPTIONAL_DEP([XFIXES], [xfixes], [have_xfixes],
-    [with], [xfixes],
-    [--without-xfixes],
-    [disable XFixes support and wmclipd],
-    [supported_xext="$supported_xext XFixes"],
-    [XFixes],
-    [HAVE_XFIXES])
 
 
 dnl wmlock screen locker, needs PAM (Linux/FreeBSD/NetBSD) or bsd_auth (OpenBSD)
@@ -933,7 +887,7 @@ AS_IF([test "x$enable_wmlock" != xno],
      dnl xcb-dpms ships in the libxcb tarball but distros split it into a
      dnl separate -dev package, so probe softly and let wmlock compile out
      dnl the monitor blanking when it is absent
-     PKG_CHECK_MODULES([XCB_DPMS], [x11-xcb xcb-dpms],
+     PKG_CHECK_MODULES([XCB_DPMS], [xcb-dpms],
         [AC_DEFINE([HAVE_XCB_DPMS], [1],
                    [defined when xcb-dpms is available so wmlock can force monitor power level])],
         [XCB_DPMS_CFLAGS=
@@ -981,10 +935,6 @@ WM_OPTIONAL_DEP([XSMP], [sm ice], [enable_xsmp],
 dnl ==============================================
 dnl         Graphic Format Libraries
 dnl ==============================================
-
-AC_SUBST(XLFLAGS)
-AC_SUBST(XLIBS)
-AC_SUBST(X_EXTRA_LIBS)
 
 dnl ===============================================
 dnl 		End of stuff that uses X
@@ -1381,7 +1331,7 @@ AS_IF([test "x$LINGUAS" != "x"],
     ])
 
 
-dnl This is for Emacs.  I'm lazy, I know... (nicolai)
+dnl This is for Emacs. I'm lazy, I know... (nicolai)
 dnl ================================================
 dnl Local Variables:
 dnl compile-command: "autoconf"

@@ -138,14 +138,14 @@ static const char * const pixmap_string_options[] = {
 	NULL
 };
 
-static Bool isPixmapStringOption(const char *option)
+static bool isPixmapStringOption(const char *option)
 {
 	int i;
 
 	for (i = 0; pixmap_string_options[i] != NULL; i++)
 		if (strcasecmp(option, pixmap_string_options[i]) == 0)
-			return True;
-	return False;
+			return true;
+	return false;
 }
 
 /* table of style related fonts */
@@ -183,17 +183,17 @@ static noreturn void print_help(int print_usage, int exitval)
 	exit(exitval);
 }
 
-static Bool isFontOption(const char *option)
+static bool isFontOption(const char *option)
 {
 	int i;
 
 	for (i = 0; font_options[i] != NULL; i++) {
 		if (strcasecmp(option, font_options[i]) == 0) {
-			return True;
+			return true;
 		}
 	}
 
-	return False;
+	return false;
 }
 
 static void findCopyFile(const char *dir, const char *file)
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	path = wdefaultspathfordomain("WindowMaker");
 
@@ -405,7 +405,7 @@ int main(int argc, char **argv)
 	val = WMReadPropListFromFile(path);
 	wfree(path);
 	if (val) {
-		WMMergePLDictionaries(val, prop, True);
+		WMMergePLDictionaries(val, prop, true);
 		WMReleasePropList(prop);
 		prop = val;
 	}
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
 				char *newfont, *oldfont;
 
 				oldfont = WMGetFromPLString(val);
-				newfont = convertFont(oldfont, False);
+				newfont = convertFont(oldfont, false);
 				/* newfont is a reference to old if conversion is not needed */
 				if (newfont != oldfont) {
 					WMReleasePropList(val);
@@ -484,7 +484,7 @@ int main(int argc, char **argv)
 				return 1;
 			}
 		} else {
-			char *desc = WMGetPropListDescription(style, True);
+			char *desc = WMGetPropListDescription(style, true);
 			puts(desc ? desc : "");
 			wfree(desc);
 		}

@@ -18,9 +18,6 @@
  */
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,6 +34,7 @@
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WINGsP.h>
+#include <WINGs/WXProp.h>
 #include <wraster.h>
 
 #include "window.h"
@@ -64,14 +62,14 @@
 static void UnescapeWM_CLASS(const char *str, char **name, char **class);
 
 /* XFetchName Wrapper */
-Bool wFetchName(Display *dpy, Window win, char **winname)
+bool wFetchName(xcb_connection_t *dpy, xcb_window_t win, char **winname)
 {
 	*winname = WXGetWMName(dpy, win);
 	return *winname != NULL;
 }
 
 /* XGetIconName Wrapper */
-Bool wGetIconName(Display *dpy, Window win, char **iconname)
+bool wGetIconName(xcb_connection_t *dpy, xcb_window_t win, char **iconname)
 {
 	*iconname = WXGetWMIconName(dpy, win);
 	return *iconname != NULL;
@@ -119,53 +117,54 @@ int WMPLGetBool(WMPropList *value)
  * mask, restricted to window when window != None, blocking on poll()
  * between queue checks. True if an event was taken, False on timeout
  * or poll error. */
-Bool wMaskEventTimed(Display *dpy, long mask, Window window, XEvent *ev, int timeout_ms)
+bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms)
 {
 	struct pollfd pfd;
 	int ret;
 
 	while (!WXEvqTakeMask(dpy, mask, window, ev)) {
-		pfd.fd = ConnectionNumber(dpy);
+		pfd.fd = xcb_get_file_descriptor(dpy);
 		pfd.events = POLLIN;
 		ret = poll(&pfd, 1, timeout_ms);
 		if (ret < 0) {
 			if (errno == EINTR)
 				continue;
-			return False;
+			return false;
 		}
 		if (ret == 0)
-			return False;
-		XFlush(dpy);
+			return false;
+		wXFlush(dpy);
 	}
-	return True;
+	return true;
 }
 
 static void eatExpose(void)
 {
-	XEvent event, foo;
+	xcb_generic_event_t *event = NULL, *foo = NULL;
 
 	/* compress all expose events into a single one */
 
-	if (WXEvqTakeMask(dpy, ExposureMask, None, &event)) {
+	if (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
 		/* ignore other exposure events for this window */
-		while (WXEvqTakeMask(dpy, ExposureMask, event.xexpose.window, &foo)) ;
+		while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, (((xcb_expose_event_t *)event)->window), &foo))
+			free(foo);
 		/* eat exposes for other windows */
 		eatExpose();
 
-		event.xexpose.count = 0;
-		WXEvqPutBack(&event);
+		(((xcb_expose_event_t *)event)->count) = 0;
+		WXEvqPutBack(event);
 	}
 }
 
-void move_window(Window win, int from_x, int from_y, int to_x, int to_y)
+void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y)
 {
 #ifdef USE_ANIMATIONS
 	if (w_global.config->no_animations || w_global.display_off)
-		XMoveWindow(dpy, win, to_x, to_y);
+		xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
 	else
 		slide_window(win, from_x, from_y, to_x, to_y);
 #else
-	XMoveWindow(dpy, win, to_x, to_y);
+	xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
 
 	/* Tell the compiler it is normal that those parameters are not used in this case */
 	(void) from_x;
@@ -176,11 +175,11 @@ void move_window(Window win, int from_x, int from_y, int to_x, int to_y)
 /* wins is an array of Window, sorted from left to right, the first is
  * going to be moved from (from_x,from_y) to (to_x,to_y) and the
  * following windows are going to be offset by (ICON_SIZE*i,0) */
-void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int to_y)
+void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y)
 {
 	time_t time0 = time(NULL);
 	float dx, dy, x = from_x, y = from_y, px, py;
-	Bool is_dx_nul, is_dy_nul;
+	bool is_dx_nul, is_dy_nul;
 	int dx_is_bigger = 0, dx_int, dy_int;
 	int slide_delay, slide_steps, slide_slowdown;
 	int i;
@@ -255,9 +254,9 @@ void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int t
 		}
 
 		for (i = 0; i < n; i++) {
-			XMoveWindow(dpy, wins[i], (int)x + i * ICON_SIZE, (int)y);
+			xcb_configure_window(xconn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ (int)x + i * ICON_SIZE, (int)y });
 		}
-		XFlush(dpy);
+		wXFlush(xconn);
 		if (slide_delay > 0) {
 			wusleep(slide_delay * 1000L);
 		} else {
@@ -267,10 +266,10 @@ void slide_windows(Window wins[], int n, int from_x, int from_y, int to_x, int t
 			break;
 	}
 	for (i = 0; i < n; i++) {
-		XMoveWindow(dpy, wins[i], to_x + i * ICON_SIZE, to_y);
+		xcb_configure_window(xconn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x + i * ICON_SIZE, to_y });
 	}
 
-	XSync(dpy, 0);
+	wXSync(xconn);
 	/* compress expose events */
 	eatExpose();
 }
@@ -378,106 +377,101 @@ char *FindImage(const char *paths, const char *file)
 	return path;
 }
 
-static char *getTextSelection(WScreen * screen, Atom selection)
+static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
+{
+	char *data;
+	size_t len;
+	struct timespec now, deadline;
+	int timeout = 0;
+	xcb_generic_event_t *ev = NULL;
+	xcb_atom_t clipboard = wx_static_atoms[W_ATOM_CLIPBOARD];
+
+	WXDeleteProperty(xconn, screen->info_window, clipboard);
+
+	wXConvertSelection(xconn, selection, XCB_ATOM_STRING, clipboard, screen->info_window, XCB_CURRENT_TIME);
+
+	/* bound the wait with a local monotonic deadline so a hostile
+	 * or hung selection owner cannot stall us, this loop never
+	 * re-enters the WINGs event loop so a WINGs timer would not
+	 * fire here (WM-2026-20) */
+	clock_gettime(CLOCK_MONOTONIC, &deadline);
+	deadline.tv_sec += 1;
+
+	while (!WXEvqTakeTyped(xconn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		if (now.tv_sec > deadline.tv_sec ||
+		    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
+			timeout = 1;
+			break;
+		}
+		wusleep(10000);
+	}
+
+	if (timeout) {
+		wwarning("selection retrieval timed out");
+		return NULL;
+	}
+
+	/* nobody owns the selection or the current owner has
+	 * nothing to do with what we need */
+	if ((((xcb_selection_notify_event_t *)ev)->property) == XCB_NONE) {
+		free(ev);
+		return NULL;
+	}
+
+	free(ev);
+
+	data = WXGetLatin1String(xconn, screen->info_window, clipboard, &len);
+	if (!data) {
+		wwarning("invalid data in text selection");
+		return NULL;
+	}
+	return data;
+}
+
+static char *getTextSelection(WScreen * screen, xcb_atom_t selection)
 {
 	int buffer = -1;
 
 	switch (selection) {
-	case XA_CUT_BUFFER0:
+	case XCB_ATOM_CUT_BUFFER0:
 		buffer = 0;
 		break;
-	case XA_CUT_BUFFER1:
+	case XCB_ATOM_CUT_BUFFER1:
 		buffer = 1;
 		break;
-	case XA_CUT_BUFFER2:
+	case XCB_ATOM_CUT_BUFFER2:
 		buffer = 2;
 		break;
-	case XA_CUT_BUFFER3:
+	case XCB_ATOM_CUT_BUFFER3:
 		buffer = 3;
 		break;
-	case XA_CUT_BUFFER4:
+	case XCB_ATOM_CUT_BUFFER4:
 		buffer = 4;
 		break;
-	case XA_CUT_BUFFER5:
+	case XCB_ATOM_CUT_BUFFER5:
 		buffer = 5;
 		break;
-	case XA_CUT_BUFFER6:
+	case XCB_ATOM_CUT_BUFFER6:
 		buffer = 6;
 		break;
-	case XA_CUT_BUFFER7:
+	case XCB_ATOM_CUT_BUFFER7:
 		buffer = 7;
 		break;
 	}
-	if (buffer >= 0) {
-		char *data;
-		int size;
+	if (buffer >= 0)
+		return wXFetchBuffer(xconn, dflt_screen, NULL, buffer);
 
-		data = XFetchBuffer(dpy, &size, buffer);
-		if (data) {
-			char *copy = wstrndup(data, size);
-			XFree(data);
-			return copy;
-		}
-		return NULL;
-	} else {
-		char *data;
-		size_t len;
-		struct timespec now, deadline;
-		int timeout = 0;
-		XEvent ev;
-		static Atom clipboard = 0;
-
-		if (!clipboard)
-			clipboard = XInternAtom(dpy, "CLIPBOARD", False);
-
-		WXDeleteProperty(dpy, screen->info_window, clipboard);
-
-		XConvertSelection(dpy, selection, XA_STRING, clipboard, screen->info_window, CurrentTime);
-
-		/* bound the wait with a local monotonic deadline so a hostile
-		 * or hung selection owner cannot stall us, this loop never
-		 * re-enters the WINGs event loop so a WINGs timer would not
-		 * fire here (WM-2026-20) */
-		clock_gettime(CLOCK_MONOTONIC, &deadline);
-		deadline.tv_sec += 1;
-
-		while (!WXEvqTakeTyped(dpy, SelectionNotify, screen->info_window, &ev)) {
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			if (now.tv_sec > deadline.tv_sec ||
-			    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
-				timeout = 1;
-				break;
-			}
-			wusleep(10000);
-		}
-
-		if (timeout) {
-			wwarning("selection retrieval timed out");
-			return NULL;
-		}
-
-		/* nobody owns the selection or the current owner has
-		 * nothing to do with what we need */
-		if (ev.xselection.property == None) {
-			return NULL;
-		}
-
-		data = WXGetLatin1String(dpy, screen->info_window, clipboard, &len);
-		if (!data) {
-			wwarning("invalid data in text selection");
-			return NULL;
-		}
-		return data;
-	}
+	return getClipboardSelection(screen, selection);
 }
 
 char *getselection(WScreen * scr)
 {
 	char *tmp;
 
-	tmp = getTextSelection(scr, XA_PRIMARY);
+	tmp = getTextSelection(scr, XCB_ATOM_PRIMARY);
 	if (!tmp)
-		tmp = getTextSelection(scr, XA_CUT_BUFFER0);
+		tmp = getTextSelection(scr, XCB_ATOM_CUT_BUFFER0);
 	return tmp;
 }
 
@@ -506,7 +500,7 @@ parseuserinputpart(const char *line, int *ptr, const char *endchars)
 }
 
 char*
-getuserinput(WScreen *scr, const char *line, int *ptr, Bool advanced)
+getuserinput(WScreen *scr, const char *line, int *ptr, bool advanced)
 {
 	char *ret = NULL, *title = NULL, *prompt = NULL, *name = NULL;
 	char *dTitle, *dMsg;
@@ -576,7 +570,7 @@ void ExecuteExitCommand(WScreen *scr, long quickmode)
 	}
 	if (result == R_EXIT) {
 		if (!wXSMPRequestShutdown(w_global.config->save_session_on_exit))
-			Shutdown(WSExitMode, False);
+			Shutdown(WSExitMode, false);
 	}
 
 #undef R_EXIT
@@ -590,15 +584,15 @@ void ExecuteInputCommand(WScreen *scr, const char *cmdline)
 
 	cmd = ExpandOptions(scr, cmdline);
 	if (cmd) {
-		XGrabPointer(dpy, scr->root_win, True, 0,
-		     GrabModeAsync, GrabModeAsync, None, wPreferences.cursor[WCUR_WAIT], CurrentTime);
-		XSync(dpy, False);
+		wXGrabPointer(xconn, scr->root_win, true, 0,
+		     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_WAIT], XCB_CURRENT_TIME);
+		wXSync(xconn);
 
 		ExecuteShellCommand(scr, cmd);
 		wfree(cmd);
 
-		XUngrabPointer(dpy, CurrentTime);
-		XSync(dpy, False);
+		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXSync(xconn);
 	}
 }
 
@@ -622,23 +616,23 @@ void ParseWindowName(WMPropList *value, char **winstance, char **wclass, const c
 	UnescapeWM_CLASS(name, winstance, wclass);
 }
 
-Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, size_t bufsz)
+bool GetCanonicalShortcutLabel(unsigned int modifiers, xkb_keysym_t ksym, char *buf, size_t bufsz)
 {
 	static const struct { unsigned int mask; const char *name; } mt[] = {
-		{ ShiftMask,   "Shift+"   },
-		{ ControlMask, "Control+" },
-		{ Mod1Mask,    "Mod1+"    },
-		{ Mod2Mask,    "Mod2+"    },
-		{ Mod3Mask,    "Mod3+"    },
-		{ Mod4Mask,    "Mod4+"    },
-		{ Mod5Mask,    "Mod5+"    },
+		{ XCB_MOD_MASK_SHIFT,   "Shift+"   },
+		{ XCB_MOD_MASK_CONTROL, "Control+" },
+		{ XCB_MOD_MASK_1,    "Mod1+"    },
+		{ XCB_MOD_MASK_2,    "Mod2+"    },
+		{ XCB_MOD_MASK_3,    "Mod3+"    },
+		{ XCB_MOD_MASK_4,    "Mod4+"    },
+		{ XCB_MOD_MASK_5,    "Mod5+"    },
 		{ 0, NULL }
 	};
 	char kname[64];
 	size_t i;
 
 	if (wXkbKeysymName(ksym, kname, sizeof(kname)) < 0)
-		return False;
+		return false;
 
 	buf[0] = '\0';
 	for (i = 0; mt[i].mask; i++) {
@@ -647,12 +641,12 @@ Bool GetCanonicalShortcutLabel(unsigned int modifiers, KeySym ksym, char *buf, s
 	}
 	wstrlcat(buf, kname, bufsz);
 
-	return True;
+	return true;
 }
 
 /* Convert a canonical keysym name (as produced by wXkbKeysymName, e.g.
  * "odiaeresis", "plus", "0x010000e0") to its printable UTF-8 glyph for
- * display purposes.  Returns 'name' unchanged when there is no printable
+ * display purposes. Returns 'name' unchanged when there is no printable
  * form (function keys, dead keys, control characters, space, ...).
  * 'buf' must be at least 8 bytes. */
 static const char *keysym_name_to_display(const char *name, char *buf, size_t bufsz)
@@ -714,7 +708,7 @@ char *GetShortcutString(const char *shortcut)
 	return buffer;
 }
 
-char *GetShortcutLabelForKeycode(unsigned int modifiers, KeyCode keycode)
+char *GetShortcutLabelForKeycode(unsigned int modifiers, xcb_keycode_t keycode)
 {
 	char buf[MAX_SHORTCUT_LENGTH];
 
@@ -906,7 +900,7 @@ static void bg_helper_pre_exec(void *data)
 	close(setup->read_fd);
 }
 
-Bool start_bg_helper(WScreen *scr)
+bool start_bg_helper(WScreen *scr)
 {
 	pid_t pid;
 	int filedes[2];
@@ -916,7 +910,7 @@ Bool start_bg_helper(WScreen *scr)
 	if (pipe(filedes) < 0) {
 		werror(_("%s failed, can't set workspace specific background image (%s)"),
 		       "pipe()", strerror(errno));
-		return False;
+		return false;
 	}
 
 	helper_argv[0] = "wmsetbg";
@@ -935,7 +929,7 @@ Bool start_bg_helper(WScreen *scr)
 	if (pid < 0) {
 		close(filedes[0]);
 		close(filedes[1]);
-		return False;
+		return false;
 	} else {
 		/* We don't need this side of the pipe in the parent process */
 		close(filedes[0]);
@@ -950,7 +944,7 @@ Bool start_bg_helper(WScreen *scr)
 
 		wAddDeathHandler(pid, track_bg_helper_death, scr, "helper", -1);
 
-		return True;
+		return true;
 	}
 }
 
@@ -992,12 +986,12 @@ void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
 	wfree(buffer);
 }
 
-Bool UpdateDomainFile(WDDomain * domain)
+bool UpdateDomainFile(WDDomain * domain)
 {
 	struct stat stbuf;
 	char path[PATH_MAX];
 	WMPropList *shared_dict, *dict;
-	Bool result, freeDict = False;
+	bool result, freeDict = false;
 
 	dict = domain->dictionary;
 	if (WMIsPLDictionary(domain->dictionary)) {
@@ -1007,9 +1001,9 @@ Bool UpdateDomainFile(WDDomain * domain)
 			shared_dict = WMReadPropListFromFile(path);
 			if (shared_dict) {
 				if (WMIsPLDictionary(shared_dict)) {
-					freeDict = True;
+					freeDict = true;
 					dict = WMDeepCopyPropList(domain->dictionary);
-					WMSubtractPLDictionaries(dict, shared_dict, True);
+					WMSubtractPLDictionaries(dict, shared_dict, true);
 				}
 				WMReleasePropList(shared_dict);
 			}
@@ -1043,12 +1037,12 @@ char *StrConcatDot(const char *a, const char *b)
 	return str;
 }
 
-static char *getCommandForWindow(Window win, int elements)
+static char *getCommandForWindow(xcb_window_t win, int elements)
 {
 	char **argv, *command = NULL;
 	int argc;
 
-	if (WXGetCommand(dpy, win, &argv, &argc)) {
+	if (WXGetCommand(xconn, win, &argv, &argc)) {
 		if (argc > 0 && argv != NULL) {
 			if (elements == 0)
 				elements = argc;
@@ -1067,7 +1061,7 @@ static char *getCommandForWindow(Window win, int elements)
 }
 
 /* Free result when done */
-char *GetCommandForWindow(Window win)
+char *GetCommandForWindow(xcb_window_t win)
 {
 	return getCommandForWindow(win, 0);
 }
@@ -1076,4 +1070,14 @@ char *GetCommandForWindow(Window win)
 WMPoint wGetCenter(WScreen *scr, int width, int height)
 {
 	return wGetPointToCenterRectInHead(scr, wGetHeadForPointerLocation(scr), width, height);
+}
+
+xcb_visualtype_t *wVisualForId(WScreen *scr, xcb_visualid_t vid)
+{
+	/* almost every client uses the screen's default visual, so try
+	 * that first before walking the full visual list */
+	if (scr && scr->w_visual && scr->w_visual->visual_id == vid)
+		return scr->w_visual;
+
+	return wXVisualTypeForID(xconn, (xcb_visualid_t) vid);
 }

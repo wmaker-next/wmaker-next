@@ -13,6 +13,7 @@
  */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -32,7 +33,7 @@ static void test_roundtrip(const char *desc)
 	if (!a)
 		return;
 
-	out = WMGetPropListDescription(a, False);
+	out = WMGetPropListDescription(a, false);
 	CHECK(out != NULL);
 
 	b = WMCreatePropListFromDescription(out);
@@ -55,7 +56,7 @@ static void test_indented_roundtrip(const char *desc)
 	if (!a)
 		return;
 
-	out1 = WMGetPropListDescription(a, True);
+	out1 = WMGetPropListDescription(a, true);
 	CHECK(out1 != NULL);
 
 	b = out1 ? WMCreatePropListFromDescription(out1) : NULL;
@@ -64,7 +65,7 @@ static void test_indented_roundtrip(const char *desc)
 
 	/* a second indented pass over the re-parsed tree must be
 	 * byte-identical, the writer is idempotent */
-	out2 = b ? WMGetPropListDescription(b, True) : NULL;
+	out2 = b ? WMGetPropListDescription(b, true) : NULL;
 	CHECK(out2 && strcmp(out1, out2) == 0);
 
 	wfree(out1);
@@ -82,7 +83,7 @@ static void test_indented_array_layout(void)
 
 	/* a short array stays on one line in indented output */
 	small = WMCreatePropListFromDescription("(a, b, c)");
-	out = WMGetPropListDescription(small, True);
+	out = WMGetPropListDescription(small, true);
 	CHECK(out && strchr(out, '\n') == NULL);
 	CHECK(out && strcmp(out, "(a, b, c)") == 0);
 	wfree(out);
@@ -97,14 +98,14 @@ static void test_indented_array_layout(void)
 		WMAddToPLArray(wide, elem);
 		WMReleasePropList(elem);
 	}
-	out = WMGetPropListDescription(wide, True);
+	out = WMGetPropListDescription(wide, true);
 	CHECK(out && out[0] == '(' && out[1] == '\n');
 	CHECK(out && strstr(out, ",\n  entry") != NULL);
 	CHECK(out && out[strlen(out) - 1] == ')');
 	wfree(out);
 
 	/* and the compact form of the same wide array round-trips */
-	out = WMGetPropListDescription(wide, False);
+	out = WMGetPropListDescription(wide, false);
 	CHECK(out && strchr(out, '\n') == NULL);
 	small = WMCreatePropListFromDescription(out);
 	CHECK(small && WMIsPropListEqualTo(wide, small));
@@ -121,7 +122,7 @@ static void test_string_escape(void)
 
 	/* a string with characters that must be quoted/escaped on output */
 	s = WMCreatePLString("path/with \"quote\" and \\backslash");
-	out = WMGetPropListDescription(s, False);
+	out = WMGetPropListDescription(s, false);
 	CHECK(out != NULL);
 
 	r = WMCreatePropListFromDescription(out);
@@ -288,7 +289,7 @@ static void test_utf8_roundtrip(void)
 	char *desc;
 
 	orig = WMCreatePLString(input);
-	desc = WMGetPropListDescription(orig, False);
+	desc = WMGetPropListDescription(orig, false);
 
 	CHECK(desc != NULL);
 	/* multibyte chars must pass through, not become \3nn octal runs */
@@ -313,7 +314,7 @@ static void check_escaped_roundtrip(const char *label, const char *input)
 
 	(void)label;
 	orig = WMCreatePLString(input);
-	desc = WMGetPropListDescription(orig, False);
+	desc = WMGetPropListDescription(orig, false);
 
 	/* invalid sequences must be octal-escaped, not passed through raw */
 	CHECK(strchr(desc, '\\') != NULL);
@@ -340,7 +341,7 @@ static void test_merge_subtract(void)
 	if (!dest || !src)
 		return;
 
-	CHECK(WMMergePLDictionaries(dest, src, True) == dest);
+	CHECK(WMMergePLDictionaries(dest, src, true) == dest);
 
 	want = WMCreatePropListFromDescription(
 		"{ a = 1; b = new; c = 3; nest = { x = 1; y = 22; z = 9; }; }");
@@ -349,7 +350,7 @@ static void test_merge_subtract(void)
 
 	/* subtract removes only keys whose values match, recursing into
 	 * nested dictionaries */
-	WMSubtractPLDictionaries(dest, src, True);
+	WMSubtractPLDictionaries(dest, src, true);
 
 	kc = WMCreatePLString("c");
 	CHECK(WMGetFromPLDictionary(dest, kc) == NULL);
@@ -363,7 +364,7 @@ static void test_merge_subtract(void)
 	WMReleasePropList(src);
 
 	/* subtracting a dictionary from itself empties it */
-	WMSubtractPLDictionaries(dest, dest, False);
+	WMSubtractPLDictionaries(dest, dest, false);
 	CHECK(WMGetPropListItemCount(dest) == 0);
 
 	WMReleasePropList(dest);

@@ -2,7 +2,7 @@
 # Regression gate for the root-menu Button3 path: a press on the root
 # window maps the menu and must fall through into menuMouseDown() so the
 # entry under the pointer is highlighted while the button is held and
-# its callback runs on release.  executeButtonAction() repoints
+# its callback runs on release. executeButtonAction() repoints
 # event->xbutton.window at the just-mapped menu frame so the descriptor
 # lookup in handleButtonPress() resolves to the menu, that lookup must
 # therefore read the cooked event field, not the immutable xcb wire copy
@@ -66,7 +66,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
 EOF
 # A two-entry root menu, both entries are EXEC so a release on the first
 # one is observable as a sentinel file without depending on any external
-# program.  The second entry exists only as the unhighlighted control row
+# program. The second entry exists only as the unhighlighted control row
 # for the pixel comparison.
 cat >"$WMHOME/Defaults/WMRootMenu" <<EOF
 ("Root",

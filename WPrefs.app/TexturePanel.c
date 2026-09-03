@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include <X11/Xlib.h>
 
 #include <cairo.h>
 #include <WINGs/WINGs.h>
@@ -54,7 +53,7 @@ typedef struct _TexturePanel {
 
     /*-- Gradient --*/
 
-	Pixmap gimage;
+	xcb_pixmap_t gimage;
 
 	/* colors */
 	WMFrame *gcolF;
@@ -267,7 +266,7 @@ static void updateSGradButtons(TexturePanel *panel)
 
 /*********** Gradient ************/
 
-static void updateSVSlider(WMSlider *sPtr, Bool saturation, WMFont *font, RHSVColor *hsv)
+static void updateSVSlider(WMSlider *sPtr, bool saturation, WMFont *font, RHSVColor *hsv)
 {
 	RImage *image;
 	WMPixmap *pixmap;
@@ -399,14 +398,14 @@ static void sliderChangeCallback(WMWidget *w, void *data)
 
 	if (w == panel->ghueS) {
 		updateHueSlider(panel->ghueS, panel->listFont, &hsv);
-		updateSVSlider(panel->gsatS, True, panel->listFont, &hsv);
-		updateSVSlider(panel->gvalS, False, panel->listFont, &hsv);
+		updateSVSlider(panel->gsatS, true, panel->listFont, &hsv);
+		updateSVSlider(panel->gvalS, false, panel->listFont, &hsv);
 	} else if (w == panel->gsatS) {
 		updateHueSlider(panel->ghueS, panel->listFont, &hsv);
-		updateSVSlider(panel->gvalS, False, panel->listFont, &hsv);
+		updateSVSlider(panel->gvalS, false, panel->listFont, &hsv);
 	} else {
 		updateHueSlider(panel->ghueS, panel->listFont, &hsv);
-		updateSVSlider(panel->gsatS, True, panel->listFont, &hsv);
+		updateSVSlider(panel->gsatS, true, panel->listFont, &hsv);
 	}
 
 	if (rows == 0)
@@ -421,8 +420,8 @@ static void sliderChangeCallback(WMWidget *w, void *data)
 	}
 	colors[i] = NULL;
 
-	if (panel->gimage != None)
-		XFreePixmap(WMScreenDisplay(scr), panel->gimage);
+	if (panel->gimage != XCB_NONE)
+		wXFreePixmap(WMScreenDisplay(scr), panel->gimage);
 
 	image = RRenderMultiGradient(30, i * WMGetListItemHeight(panel->gcolL), colors, RVerticalGradient);
 	RConvertImage(WMScreenRContext(scr), image, &panel->gimage);
@@ -435,7 +434,7 @@ static void sliderChangeCallback(WMWidget *w, void *data)
 	updateGradButtons(panel);
 }
 
-static void paintGradListItem(WMList *lPtr, int index, Drawable d, char *text, int state, WMRect *rect)
+static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect *rect)
 {
 	TexturePanel *panel = (TexturePanel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
@@ -586,13 +585,13 @@ static void updateImage(TexturePanel *panel, const char *path)
 			WMRunAlertPanel(scr, panel->win, _("Error"), message, _("OK"), NULL, NULL);
 
 			if (!panel->image)
-				WMSetButtonEnabled(panel->okB, False);
+				WMSetButtonEnabled(panel->okB, false);
 
 			wfree(message);
 			return;
 		}
 
-		WMSetButtonEnabled(panel->okB, True);
+		WMSetButtonEnabled(panel->okB, true);
 
 		if (panel->image)
 			RReleaseImage(panel->image);
@@ -624,8 +623,8 @@ static void browseImageCallback(WMWidget *w, void *data)
 	static char *ipath;
 
 	opanel = WMGetOpenPanel(scr);
-	WMSetFilePanelCanChooseDirectories(opanel, False);
-	WMSetFilePanelCanChooseFiles(opanel, True);
+	WMSetFilePanelCanChooseDirectories(opanel, false);
+	WMSetFilePanelCanChooseFiles(opanel, true);
 
 	if (!ipath)
 		ipath = wstrdup(wgethomedir());
@@ -711,7 +710,7 @@ static void changeTypeCallback(WMWidget *w, void *data)
 	switch (newType) {
 	case TYPE_SGRADIENT:
 		updateSGradButtons(panel);
-		WMSetButtonEnabled(panel->okB, True);
+		WMSetButtonEnabled(panel->okB, true);
 		break;
 	case TYPE_GRADIENT:
 		updateGradButtons(panel);
@@ -723,7 +722,7 @@ static void changeTypeCallback(WMWidget *w, void *data)
 		WMSetButtonEnabled(panel->okB, panel->image != NULL);
 		break;
 	default:
-		WMSetButtonEnabled(panel->okB, True);
+		WMSetButtonEnabled(panel->okB, true);
 		break;
 	}
 }
@@ -735,12 +734,12 @@ static void changeTypeCallback(WMWidget *w, void *data)
  */
 void ShowTexturePanel(TexturePanel *panel)
 {
-	Display *dpy = WMScreenDisplay(WMWidgetScreen(panel->win));
-	Screen *scr = DefaultScreenOfDisplay(dpy);
+	xcb_connection_t *dpy = WMScreenDisplay(WMWidgetScreen(panel->win));
+	int sn = WMWidgetScreen(panel->win)->screen;
 
 	WMSetWindowInitialPosition(panel->win,
-				   (WidthOfScreen(scr) - WMWidgetWidth(panel->win)) / 2,
-				   (HeightOfScreen(scr) - WMWidgetHeight(panel->win)) / 2);
+				   (wXDisplayWidth(dpy, sn) - WMWidgetWidth(panel->win)) / 2,
+				   (wXDisplayHeight(dpy, sn) - WMWidgetHeight(panel->win)) / 2);
 	WMMapWidget(panel->win);
 }
 
@@ -791,7 +790,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->defcW, color);
 
@@ -807,7 +806,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->tcol1W, color);
 
@@ -818,7 +817,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->tcol2W, color);
 
@@ -853,7 +852,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->tcol1W, color);
 
@@ -864,7 +863,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->tcol2W, color);
 
@@ -905,7 +904,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			str = "black";
 		else
 			str = WMGetFromPLString(p);
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 
 		WMSetColorWellColor(panel->defcW, color);
 
@@ -913,7 +912,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 
 		for (i = 2; i < WMGetPropListItemCount(texture); i++) {
 			RColor *rgb;
-			XColor xcolor;
+			WXColor xcolor;
 
 			p = WMGetFromPLArray(texture, i);
 			if (!p)
@@ -921,7 +920,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 			else
 				str = WMGetFromPLString(p);
 
-			XParseColor(WMScreenDisplay(scr), WMScreenRContext(scr)->cmap, str, &xcolor);
+			wXParseColor(WMScreenDisplay(scr), WMScreenRContext(scr)->cmap, str, &xcolor);
 
 			rgb = wmalloc(sizeof(RColor));
 			rgb->red = xcolor.red >> 8;
@@ -972,7 +971,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 
 		p = WMGetFromPLArray(texture, 2);
 		str = p ? WMGetFromPLString(p) : "black";
-		color = WMCreateNamedColor(scr, str, False);
+		color = WMCreateNamedColor(scr, str, false);
 		WMSetColorWellColor(panel->defcW, color);
 		WMReleaseColor(color);
 
@@ -1001,7 +1000,7 @@ void SetTexturePanelTexture(TexturePanel *panel, const char *name, WMPropList *t
 	return;
 
  bad_texture:
-	str = WMGetPropListDescription(texture, False);
+	str = WMGetPropListDescription(texture, false);
 	wwarning(_("error creating texture %s"), str);
 	wfree(str);
 
@@ -1151,7 +1150,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 	TexturePanel *panel;
 	WMScreen *scr = WMWidgetScreen(keyWindow);
 	WMPixmap *pixmap;
-	Pixmap p;
+	xcb_pixmap_t p;
 	WMColor *color;
 
 	panel = wmalloc(sizeof(TexturePanel));
@@ -1242,7 +1241,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 		WMPixmap *pixmap;
 		WMColor *color;
 
-		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), False);
+		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), false);
 		color = WMDarkGrayColor(scr);
 		WMPaintColorSwatch(color, WMGetPixmapXID(pixmap), 0, 0, 130, 16);
 		WMReleaseColor(color);
@@ -1263,7 +1262,7 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 		WMPixmap *pixmap;
 		WMColor *color;
 
-		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), False);
+		pixmap = WMCreatePixmap(scr, 130, 16, WMScreenDepth(scr), false);
 		color = WMDarkGrayColor(scr);
 		WMPaintColorSwatch(color, WMGetPixmapXID(pixmap), 0, 0, 130, 16);
 		WMReleaseColor(color);
@@ -1350,12 +1349,12 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 	WMMoveWidget(panel->topaS, 15, 20);
 	WMSetSliderMaxValue(panel->topaS, 255);
 	WMSetSliderValue(panel->topaS, 200);
-	WMSetSliderContinuous(panel->topaS, False);
+	WMSetSliderContinuous(panel->topaS, false);
 	WMSetSliderAction(panel->topaS, opaqChangeCallback, panel);
 
 	WMMapSubwidgets(panel->topaF);
 
-	pixmap = WMCreatePixmap(scr, 155, 18, WMScreenDepth(scr), False);
+	pixmap = WMCreatePixmap(scr, 155, 18, WMScreenDepth(scr), false);
 	p = WMGetPixmapXID(pixmap);
 
 	color = WMDarkGrayColor(scr);
@@ -1390,8 +1389,8 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 	WMResizeWidget(panel->imageV, 165, 115);
 	WMMoveWidget(panel->imageV, 15, 20);
 	WMSetScrollViewRelief(panel->imageV, WRSunken);
-	WMSetScrollViewHasHorizontalScroller(panel->imageV, True);
-	WMSetScrollViewHasVerticalScroller(panel->imageV, True);
+	WMSetScrollViewHasHorizontalScroller(panel->imageV, true);
+	WMSetScrollViewHasVerticalScroller(panel->imageV, true);
 	WMSetScrollViewContentView(panel->imageV, WMWidgetView(panel->imageL));
 
 	panel->browB = WMCreateCommandButton(panel->imageF);
@@ -1471,86 +1470,3 @@ TexturePanel *CreateTexturePanel(WMWindow *keyWindow)
 
 	return panel;
 }
-
-/*
- *--------------------------------------------------------------------------
- * Test stuff
- *--------------------------------------------------------------------------
- */
-
-#if 0
-
-char *ProgName = "test";
-
-void testOKButton(WMWidget *self, void *data)
-{
-	char *test;
-	Display *dpy;
-	Window win;
-	Pixmap pix;
-	RImage *image;
-
-	TexturePanel *panel = (TexturePanel *) data;
-	/* test = GetTexturePanelTextureString(panel); */
-
-	wwarning(test);
-
-	dpy = WMScreenDisplay(WMWidgetScreen(panel->okB));
-	win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 10, 10, 250, 250, 0, 0, 0);
-	XMapRaised(dpy, win);
-	XFlush(dpy);
-
-	/* image = RenderTexturePanelTexture(panel, 250, 250); */
-
-	RConvertImage(WMScreenRContext(WMWidgetScreen(panel->okB)), image, &pix);
-
-	WCairoCopyArea(WMWidgetScreen(panel->okB), pix, image->width, image->height,
-		       0, 0, image->width, image->height, win, 0, 0);
-
-	wfree(test);
-
-}
-
-void testCancelButton(WMWidget *self, void *data)
-{
-	wwarning("Exiting test....");
-	exit(0);
-}
-
-void wAbort(void)
-{
-	exit(1);
-}
-
-int main(int argc, char **argv)
-{
-	TexturePanel *panel;
-
-	Display *dpy = XOpenDisplay("");
-	WMScreen *scr;
-
-	/* char *test; */
-
-	WMInitializeApplication("Test", &argc, argv);
-
-	if (!dpy) {
-		wfatal("could not open display");
-		exit(1);
-	}
-
-	scr = WMCreateSimpleApplicationScreen(dpy);
-
-	panel = CreateTexturePanel(scr);
-
-	SetTexturePanelOkAction(panel, (WMAction *) testOKButton, panel);
-	SetTexturePanelCancelAction(panel, (WMAction *) testCancelButton, panel);
-
-	SetTexturePanelTexture(panel, "pinky",
-			       WMCreatePropListFromDescription("(mdgradient, pink, red, blue, yellow)"));
-
-	ShowTexturePanel(panel);
-
-	WMScreenMainLoop(scr);
-	return 0;
-}
-#endif

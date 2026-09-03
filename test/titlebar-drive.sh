@@ -39,7 +39,7 @@ fail() { printf 'FAIL: %s\n' "$*" | tee -a "$LOG"; exit 1; }
 skip() { printf 'SKIP: %s\n' "$*" | tee -a "$LOG"; exit 77; }
 xdo()  { DISPLAY=$DPY xdotool "$@"; }
 
-for tool in Xephyr xdotool xterm xprop xwininfo import; do
+for tool in Xvfb Xephyr xdotool xterm xprop xwininfo import; do
     command -v "$tool" >/dev/null 2>&1 || skip "$tool not found"
 done
 ${CC:-cc} -std=c99 "$ROOT/test/ewmh-client.c" -o "$ECLIENT" -lX11 >>"$LOG" 2>&1 \
@@ -81,12 +81,26 @@ if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set TITLEBAR_DRIVE_DISPLAY to a free one" >&2
     exit 1
 fi
-note "start Xephyr $DPY"
+# Xephyr is a nested server: on the session display its host pointer
+# tracks the live mouse and can override the XTEST warps the drive
+# sends. Run it on a private headless parent whose virtual pointer
+# only moves when Xephyr mirrors a warp.
+PARENT_DISPLAY=${TITLEBAR_DRIVE_PARENT_DISPLAY:-":$(( ${DPY#:} + 1 ))"}
+Xvfb "$PARENT_DISPLAY" -screen 0 2400x1600x24 -ac >>"$LOG" 2>&1 &
+XVFB_PARENT_PID=$!
+echo "$XVFB_PARENT_PID" >> "$PIDFILE"
+xvfb_parent_ready() {
+    kill -0 "$XVFB_PARENT_PID" 2>/dev/null || fail "parent Xvfb exited early"
+    DISPLAY=$PARENT_DISPLAY xdpyinfo >/dev/null 2>&1
+}
+wait_for 40 xvfb_parent_ready || fail "parent Xvfb failed to start"
+
+note "start Xephyr $DPY on parent $PARENT_DISPLAY"
 # -noreset keeps Xephyr from resetting between the per-style wmaker
 # restarts, on hosts where /tmp/.X11-unix is not sticky-1777 Xephyr
 # listens on the abstract socket only and the next wmaker races the
 # reset with a "could not open display" fatal
-Xephyr "$DPY" -screen ${W}x${H} -noreset -ac >>"$LOG" 2>&1 &
+Xephyr "$DPY" -display "$PARENT_DISPLAY" -screen ${W}x${H} -noreset -ac >>"$LOG" 2>&1 &
 XEPHYR_PID=$!
 echo "$XEPHYR_PID" >> "$PIDFILE"
 xephyr_ready() {

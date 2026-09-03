@@ -22,12 +22,13 @@
 #include "wconfig.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
+
+#include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
 #include "window.h"
@@ -85,7 +86,7 @@ static void chainTimeoutCallback(void *data)
 
 	w_global.shortcut.chain_timeout_handler = NULL;
 	hideChainOSD(scr);
-	XUngrabKeyboard(dpy, CurrentTime);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
 	w_global.shortcut.curpos = NULL;
 }
 
@@ -110,7 +111,7 @@ void wCancelKeyChain(WScreen *scr)
 {
 	wCancelChainTimer();
 	hideChainOSD(scr);
-	XUngrabKeyboard(dpy, CurrentTime);
+	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
 	w_global.shortcut.curpos = NULL;
 }
 
@@ -135,12 +136,12 @@ static void formatChainPosition(WKeyNode *pos, char *buf, size_t bufsz)
 	WKeyNode *path[CHAIN_OSD_MAX_STEPS];
 	WKeyNode *node;
 	int depth, i;
-	Bool truncated = False;
+	bool truncated = false;
 
 	depth = 0;
 	for (node = pos; node != NULL; node = node->parent) {
 		if (depth == CHAIN_OSD_MAX_STEPS) {
-			truncated = True;
+			truncated = true;
 			break;
 		}
 		path[depth++] = node;
@@ -189,7 +190,7 @@ static void showChainOSD(WScreen *scr)
 	wPlaceOSDOnHead(scr, scr->keychain_osd,
 			w_global.config->keychain_display_position, CHAIN_OSD_PAD);
 	WMMapWidget(scr->keychain_osd);
-	XRaiseWindow(dpy, WMWidgetXID(scr->keychain_osd));
+	xcb_configure_window(xconn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 }
 
 void wRefreshKeyChainOSD(WScreen *scr)
@@ -224,7 +225,7 @@ static void flashLayoutOSD(WScreen *scr, const char *text)
 	wPlaceOSDOnHead(scr, scr->keychain_osd,
 			w_global.config->keychain_display_position, CHAIN_OSD_PAD);
 	WMMapWidget(scr->keychain_osd);
-	XRaiseWindow(dpy, WMWidgetXID(scr->keychain_osd));
+	xcb_configure_window(xconn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	scr->layout_osd_timer = WMAddTimerHandler(800, hideLayoutOSD, scr);
 }
 
@@ -273,9 +274,9 @@ static WWindow *windowUnderPointer(WScreen *scr)
 {
 	unsigned int mask;
 	int foo;
-	Window bar, win;
+	xcb_window_t bar, win;
 
-	if (XQueryPointer(dpy, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+	if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 		return wWindowFor(win);
 	return NULL;
 }
@@ -288,13 +289,13 @@ static int CheckFullScreenWindowFocused(WScreen *scr)
 		return 0;
 }
 
-static void startMarkCapture(WScreen *scr, Display *d, WMarkCaptureMode mode)
+static void startMarkCapture(WScreen *scr, xcb_connection_t *d, WMarkCaptureMode mode)
 {
 	scr->flags.mark_capture_mode = mode;
-	XGrabKeyboard(d, scr->root_win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+	wXGrabKeyboard(d, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 }
 
-static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent *event)
+static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, xcb_generic_event_t *event)
 {
 	short widx;
 	int i;
@@ -305,24 +306,23 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	switch (command) {
 
 	case WKBD_ROOTMENU:
-		/*OpenRootMenu(scr, event->xkey.x_root, event->xkey.y_root, True); */
 		if (!CheckFullScreenWindowFocused(scr)) {
 			WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
 			OpenRootMenu(scr, rect.pos.x + rect.size.width / 2, rect.pos.y + rect.size.height / 2,
-				     True);
+				     true);
 		}
 		break;
 	case WKBD_WINDOWLIST:
 		if (!CheckFullScreenWindowFocused(scr)) {
 			WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
 			OpenSwitchMenu(scr, rect.pos.x + rect.size.width / 2, rect.pos.y + rect.size.height / 2,
-				       True);
+				       true);
 		}
 		break;
 
 	case WKBD_WINDOWMENU:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
-			OpenWindowMenu(wwin, wwin->frame_x, wwin->frame_y + wwin->frame->top_width, True);
+			OpenWindowMenu(wwin, wwin->frame_x, wwin->frame_y + wwin->frame->top_width, true);
 		break;
 	case WKBD_MINIATURIZEALL:
 		CloseWindowMenu(scr);
@@ -334,7 +334,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			CloseWindowMenu(scr);
 
 			if (wwin->protocols.MINIATURIZE_WINDOW)
-				wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window, event->xbutton.time);
+				wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window, ((xcb_button_press_event_t *)event)->time);
 			else {
 				wIconifyWindow(wwin);
 			}
@@ -543,25 +543,25 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	case WKBD_MOVE_TO_EDGE_LEFT:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
 			CloseWindowMenu(scr);
-			wMoveToEdge(wwin, DIRECTION_LEFT, True);
+			wMoveToEdge(wwin, DIRECTION_LEFT, true);
 		}
 		break;
 	case WKBD_MOVE_TO_EDGE_RIGHT:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
 			CloseWindowMenu(scr);
-			wMoveToEdge(wwin, DIRECTION_RIGHT, True);
+			wMoveToEdge(wwin, DIRECTION_RIGHT, true);
 		}
 		break;
 	case WKBD_MOVE_TO_EDGE_UP:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
 			CloseWindowMenu(scr);
-			wMoveToEdge(wwin, DIRECTION_UP, True);
+			wMoveToEdge(wwin, DIRECTION_UP, true);
 		}
 		break;
 	case WKBD_MOVE_TO_EDGE_DOWN:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
 			CloseWindowMenu(scr);
-			wMoveToEdge(wwin, DIRECTION_DOWN, True);
+			wMoveToEdge(wwin, DIRECTION_DOWN, true);
 		}
 		break;
 	case WKBD_GROW_TO_EDGE_LEFT:
@@ -616,8 +616,8 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && !WFLAGP(wwin, no_closable)) {
 			CloseWindowMenu(scr);
 			if (wwin->protocols.DELETE_WINDOW) {
-				wClientSendProtocol(wwin, w_global.atom.wm.delete_window, event->xkey.time);
-				wNETWMPingWindow(wwin, event->xkey.time);
+				wClientSendProtocol(wwin, w_global.atom.wm.delete_window, ((xcb_key_press_event_t *)event)->time);
+				wNETWMPingWindow(wwin, ((xcb_key_press_event_t *)event)->time);
 			}
 		}
 		break;
@@ -633,11 +633,11 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_FOCUSNEXT:
-		StartWindozeCycle(wwin, event, True, CYCLE_FLAT);
+		StartWindozeCycle(wwin, event, true, CYCLE_FLAT);
 		break;
 
 	case WKBD_FOCUSPREV:
-		StartWindozeCycle(wwin, event, False, CYCLE_FLAT);
+		StartWindozeCycle(wwin, event, false, CYCLE_FLAT);
 		break;
 
 	case WKBD_FOCUSLEFT:
@@ -657,19 +657,19 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_GROUPWINDOWNEXT:
-		StartWindozeCycle(wwin, event, True, CYCLE_CLASS_ONLY);
+		StartWindozeCycle(wwin, event, true, CYCLE_CLASS_ONLY);
 		break;
 
 	case WKBD_GROUPWINDOWPREV:
-		StartWindozeCycle(wwin, event, False, CYCLE_CLASS_ONLY);
+		StartWindozeCycle(wwin, event, false, CYCLE_CLASS_ONLY);
 		break;
 
 	case WKBD_GROUPNEXT:
-		StartWindozeCycle(wwin, event, True, CYCLE_GROUP);
+		StartWindozeCycle(wwin, event, true, CYCLE_GROUP);
 		break;
 
 	case WKBD_GROUPPREV:
-		StartWindozeCycle(wwin, event, False, CYCLE_GROUP);
+		StartWindozeCycle(wwin, event, false, CYCLE_GROUP);
 		break;
 
 	case WKBD_GROUPTAB_NEXT:
@@ -857,7 +857,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 				wMakeWindowVisible(swin);
 
 				if (count > 1)
-					wSelectWindow(swin, True);
+					wSelectWindow(swin, true);
 			}
 
 			/* rotate the order of windows, to create a cycling effect */
@@ -879,10 +879,10 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 			}
 
 			wSelectWindow(wwin, !wwin->flags.selected);
-			XFlush(dpy);
+			wXFlush(xconn);
 			wusleep(3000);
 			wSelectWindow(wwin, !wwin->flags.selected);
-			XFlush(dpy);
+			wXFlush(xconn);
 
 		} else if (wwin && scr->selected_windows && WMGetArrayItemCount(scr->selected_windows)) {
 
@@ -997,7 +997,7 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 
 	case WKBD_MARK_SET:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
-			startMarkCapture(scr, dpy, MARK_CAPTURE_SET);
+			startMarkCapture(scr, xconn, MARK_CAPTURE_SET);
 		break;
 
 	case WKBD_MARK_UNSET:
@@ -1006,16 +1006,16 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 		break;
 
 	case WKBD_MARK_BRING:
-		startMarkCapture(scr, dpy, MARK_CAPTURE_BRING);
+		startMarkCapture(scr, xconn, MARK_CAPTURE_BRING);
 		break;
 
 	case WKBD_MARK_JUMP:
-		startMarkCapture(scr, dpy, MARK_CAPTURE_JUMP);
+		startMarkCapture(scr, xconn, MARK_CAPTURE_JUMP);
 		break;
 
 	case WKBD_MARK_SWAP:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
-			startMarkCapture(scr, dpy, MARK_CAPTURE_SWAP);
+			startMarkCapture(scr, xconn, MARK_CAPTURE_SWAP);
 		break;
 #ifdef VIRTUAL_DESKTOP
 	case WKBD_VDESK_LEFT:
@@ -1043,9 +1043,9 @@ static void dispatchWKBDCommand(int command, WScreen *scr, WWindow *wwin, XEvent
 	}
 }
 
-static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleKeyPress(xcb_generic_event_t *ev)
 {
-	const xcb_key_press_event_t *e = (const xcb_key_press_event_t *)xe;
+	const xcb_key_press_event_t *e = (const xcb_key_press_event_t *)ev;
 	WScreen *scr = wScreenForRootWindow(e->root);
 	WWindow *wwin;
 	WKeyNode  *siblings;
@@ -1068,31 +1068,31 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 	* ------------------------------------------------------------ */
 	if (scr->flags.mark_capture_mode != MARK_CAPTURE_IDLE) {
 		int capture_mode = scr->flags.mark_capture_mode;
-		KeySym cap_ksym;
+		xkb_keysym_t cap_ksym;
 		char label[MAX_SHORTCUT_LENGTH];
 
 		/* Skip modifier-only keypresses */
 		cap_ksym = wXkbKeycodeToKeysym(e->detail, 0);
-		if (cap_ksym == NoSymbol || IsModifierKey(cap_ksym))
+		if (cap_ksym == XKB_KEY_NoSymbol || W_IsModifierKey(cap_ksym))
 			return;
 
 		/* Real key received: exit capture mode and release grab */
 		scr->flags.mark_capture_mode = MARK_CAPTURE_IDLE;
-		XUngrabKeyboard(dpy, CurrentTime);
+		wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
 
 		if (!GetCanonicalShortcutLabel(modifiers, cap_ksym, label, sizeof(label)))
 			wstrlcpy(label, "?", sizeof(label));
 
 		if (capture_mode == MARK_CAPTURE_SET) {
 			WWindow *target = scr->focused_window;
-			Bool conflict = False;
+			bool conflict = false;
 			int i;
 
 			/* Conflict check against static wmaker bindings */
 			for (i = 0; i < WKBD_LAST; i++) {
 				if (wKeyBindings[i].keycode == e->detail && wKeyBindings[i].modifier == modifiers) {
 					wwarning("window mark: '%s' is already a wmaker binding, mark not assigned", label);
-					conflict = True;
+					conflict = true;
 					break;
 				}
 			}
@@ -1103,7 +1103,7 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 				while (tw) {
 					if (tw != target && tw->mark_key_label != NULL && strcmp(tw->mark_key_label, label) == 0) {
 						wwarning("window mark: label '%s' is already used by another window, mark not assigned", label);
-						conflict = True;
+						conflict = true;
 						break;
 					}
 					tw = tw->prev;
@@ -1247,8 +1247,8 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 			}
 			dontLoop++;
 			if (wwin && wwin->flags.internal_window &&
-				wwin->client_leader != None) {
-				ev->xany.window = wwin->client_leader;
+				wwin->client_leader != XCB_NONE) {
+				((xcb_key_press_event_t *)ev)->event = wwin->client_leader;
 				WMHandleEvent(ev);
 			}
 			dontLoop--;
@@ -1259,8 +1259,8 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 		if (match->first_child != NULL) {
 			/* Internal node: enter chain mode */
 			w_global.shortcut.curpos = match;
-			XGrabKeyboard(dpy, scr->root_win, False,
-							GrabModeAsync, GrabModeAsync, CurrentTime);
+			wXGrabKeyboard(xconn, scr->root_win, false,
+							XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 			wStartChainTimer(scr);
 			showChainOSD(scr);
 
@@ -1288,12 +1288,12 @@ static void handleKeyPress(const xcb_generic_event_t *xe, XEvent *ev)
 static void executeWheelAction(WScreen *scr, int button, int action)
 {
 	WWindow *wwin;
-	Bool next_direction;
+	bool next_direction;
 
-	if (button == Button5 || button == Button6)
-		next_direction = False;
+	if (button == XCB_BUTTON_INDEX_5 || button == Button6)
+		next_direction = false;
 	else
-		next_direction = True;
+		next_direction = true;
 
 	switch (action) {
 	case WA_SWITCH_WORKSPACES:
@@ -1306,14 +1306,14 @@ static void executeWheelAction(WScreen *scr, int button, int action)
 	case WA_SWITCH_WINDOWS:
 		wwin = scr->focused_window;
 		if (next_direction)
-			wWindowFocusNext(wwin, True);
+			wWindowFocusNext(wwin, true);
 		else
-			wWindowFocusPrev(wwin, True);
+			wWindowFocusPrev(wwin, true);
 		break;
 	}
 }
 
-static void executeButtonAction(WScreen *scr, XEvent *event, int action)
+static void executeButtonAction(WScreen *scr, xcb_generic_event_t *event, int action)
 {
 	WWindow *wwin;
 
@@ -1325,7 +1325,7 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 			WMenu *menu = scr->root_menu;
 			WMPropList *definition;
 			if (scr->root_menu) {
-				wMenuDestroy(menu, True);
+				wMenuDestroy(menu, true);
 				scr->root_menu = NULL;
 				definition = w_global.domain.root_menu->dictionary;
 				menu = configureMenu(scr, definition);
@@ -1334,22 +1334,22 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 		}
 		break;
 	case WA_OPEN_APPMENU:
-		OpenRootMenu(scr, event->xbutton.x_root, event->xbutton.y_root, False);
+		OpenRootMenu(scr, ((xcb_button_press_event_t *)event)->root_x, ((xcb_button_press_event_t *)event)->root_y, false);
 		/* ugly hack */
 		if (scr->root_menu) {
 			if (scr->root_menu->brother->flags.mapped)
-				event->xbutton.window = scr->root_menu->brother->frame->core->window;
+				((xcb_button_press_event_t *)event)->event = scr->root_menu->brother->frame->core->window;
 			else
-				event->xbutton.window = scr->root_menu->frame->core->window;
+				((xcb_button_press_event_t *)event)->event = scr->root_menu->frame->core->window;
 		}
 		break;
 	case WA_OPEN_WINLISTMENU:
-		OpenSwitchMenu(scr, event->xbutton.x_root, event->xbutton.y_root, False);
+		OpenSwitchMenu(scr, ((xcb_button_press_event_t *)event)->root_x, ((xcb_button_press_event_t *)event)->root_y, false);
 		if (scr->switch_menu) {
 			if (scr->switch_menu->brother->flags.mapped)
-				event->xbutton.window = scr->switch_menu->brother->frame->core->window;
+				((xcb_button_press_event_t *)event)->event = scr->switch_menu->brother->frame->core->window;
 			else
-				event->xbutton.window = scr->switch_menu->frame->core->window;
+				((xcb_button_press_event_t *)event)->event = scr->switch_menu->frame->core->window;
 		}
 		break;
 	case WA_MOVE_PREVWORKSPACE:
@@ -1360,11 +1360,11 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 		break;
 	case WA_MOVE_PREVWINDOW:
 		wwin = scr->focused_window;
-		wWindowFocusPrev(wwin, True);
+		wWindowFocusPrev(wwin, true);
 		break;
 	case WA_MOVE_NEXTWINDOW:
 		wwin = scr->focused_window;
-		wWindowFocusNext(wwin, True);
+		wWindowFocusNext(wwin, true);
 		break;
 #ifdef VIRTUAL_DESKTOP
 	case WA_VIRTUAL_DESKTOP_PAN:
@@ -1374,9 +1374,9 @@ static void executeButtonAction(WScreen *scr, XEvent *event, int action)
 	}
 }
 
-static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleButtonPress(xcb_generic_event_t *ev)
 {
-	const xcb_button_press_event_t *e = (const xcb_button_press_event_t *)xe;
+	const xcb_button_press_event_t *e = (const xcb_button_press_event_t *)ev;
 	WObjDescriptor *desc;
 	WScreen *scr;
 
@@ -1389,19 +1389,19 @@ static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
 #endif
 
 	if (!w_global.config->disable_root_mouse && e->event == scr->root_win) {
-		if (e->detail == Button1 && w_global.config->mouse_button1 != WA_NONE) {
+		if (e->detail == XCB_BUTTON_INDEX_1 && w_global.config->mouse_button1 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button1);
-		} else if (e->detail == Button2 && w_global.config->mouse_button2 != WA_NONE) {
+		} else if (e->detail == XCB_BUTTON_INDEX_2 && w_global.config->mouse_button2 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button2);
-		} else if (e->detail == Button3 && w_global.config->mouse_button3 != WA_NONE) {
+		} else if (e->detail == XCB_BUTTON_INDEX_3 && w_global.config->mouse_button3 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button3);
 		} else if (e->detail == Button8 && w_global.config->mouse_button8 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button8);
 		} else if (e->detail == Button9 && w_global.config->mouse_button9 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button9);
-		} else if (e->detail == Button4 && w_global.config->mouse_wheel_scroll != WA_NONE) {
+		} else if (e->detail == XCB_BUTTON_INDEX_4 && w_global.config->mouse_wheel_scroll != WA_NONE) {
 			executeWheelAction(scr, e->detail, w_global.config->mouse_wheel_scroll);
-		} else if (e->detail == Button5 && w_global.config->mouse_wheel_scroll != WA_NONE) {
+		} else if (e->detail == XCB_BUTTON_INDEX_5 && w_global.config->mouse_wheel_scroll != WA_NONE) {
 			executeWheelAction(scr, e->detail, w_global.config->mouse_wheel_scroll);
 		} else if (e->detail == Button6 && w_global.config->mouse_wheel_tilt != WA_NONE) {
 			executeWheelAction(scr, e->detail, w_global.config->mouse_wheel_tilt);
@@ -1410,36 +1410,37 @@ static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
 		}
 	}
 
-	/* executeButtonAction() may have repointed ev->xbutton.window at the
+	/* executeButtonAction() may have repointed ((xcb_button_press_event_t *)ev)->event at the
 	 * frame of the menu it just mapped so this lookup resolves to the
 	 * menu descriptor and reaches menuMouseDown(), the wire bytes in e
 	 * are read-only so the lookup must read the cooked event */
-	desc = NULL;
-	if (XFindContext(dpy, ev->xbutton.subwindow, w_global.context.client_win, (XPointer *)&desc) == XCNOENT) {
-		if (XFindContext(dpy, ev->xbutton.window, w_global.context.client_win, (XPointer *)&desc) == XCNOENT) {
-			XAllowEvents(dpy, AsyncPointer, CurrentTime);
+	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->child);
+	if (desc == NULL) {
+		desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->event);
+		if (desc == NULL) {
+			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 			return;
 		}
 	}
 
 	if (desc->parent_type == WCLASS_WINDOW) {
-		XFlush(dpy);
+		wXFlush(xconn);
 
-		if (e->state & ( MOD_MASK | ControlMask )) {
-			XAllowEvents(dpy, AsyncPointer, CurrentTime);
+		if (e->state & ( MOD_MASK | XCB_MOD_MASK_CONTROL )) {
+			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 		} else {
 			if (w_global.config->ignore_focus_click) {
-				XAllowEvents(dpy, AsyncPointer, CurrentTime);
+				wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 			}
-			XAllowEvents(dpy, ReplayPointer, CurrentTime);
+			wXAllowEvents(xconn, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
 		}
-		XFlush(dpy);
+		wXFlush(xconn);
 	} else if (desc->parent_type == WCLASS_APPICON
 		   || desc->parent_type == WCLASS_MINIWINDOW || desc->parent_type == WCLASS_DOCK_ICON) {
 		if (e->state & MOD_MASK) {
-			XFlush(dpy);
-			XAllowEvents(dpy, AsyncPointer, CurrentTime);
-			XFlush(dpy);
+			wXFlush(xconn);
+			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
+			wXFlush(xconn);
 		}
 	}
 
@@ -1457,12 +1458,13 @@ static void handleButtonPress(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 }
 
-static void handleMotionNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleMotionNotify(xcb_generic_event_t *ev)
 {
-	const xcb_motion_notify_event_t *e = (const xcb_motion_notify_event_t *)xe;
+	const xcb_motion_notify_event_t *e = (const xcb_motion_notify_event_t *)ev;
 	WObjDescriptor *desc = NULL;
 
-	if (XFindContext(dpy, e->event, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
+	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	if (desc != NULL) {
 		if (desc->handle_motionnotify)
 			(*desc->handle_motionnotify) (desc, ev);
 	}
@@ -1507,33 +1509,35 @@ static void raiseWindow(WScreen *scr)
 	if (!wwin->flags.destroyed && wwin->flags.focused) {
 		wRaiseFrame(wwin->frame->core);
 		/* this is needed or a race condition will occur */
-		XSync(dpy, False);
+		wXSync(xconn);
 	}
 }
 
-static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleEnterNotify(xcb_generic_event_t *ev)
 {
-	const xcb_enter_notify_event_t *e = (const xcb_enter_notify_event_t *)xe;
+	const xcb_enter_notify_event_t *e = (const xcb_enter_notify_event_t *)ev;
 	WWindow *wwin;
 	WObjDescriptor *desc = NULL;
-	XEvent peek;
+	xcb_generic_event_t *peek = NULL;
 	WScreen *scr = wScreenForRootWindow(e->root);
 #ifdef VIRTUAL_DESKTOP
-	void (*vdHandler)(XEvent *) = NULL;
+	void (*vdHandler)(xcb_generic_event_t *) = NULL;
 #endif
 
-	/* xany.serial carries full_sequence (set by the cooker), the
-	 * 32-byte wire copy at xe does not reach offset 32 so
-	 * xe->full_sequence cannot be read here */
-	if (wEventCrossingIgnored(ev->xany.serial))
+	/* full_sequence is in bounds on a queue-drained event, libxcb
+	 * sizes the buffer past the 32 wire bytes and fills it there */
+	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
 
-	if (WXEvqTakeTyped(dpy, LeaveNotify, e->event, &peek)) {
-		/* already left the window... */
-		wSaveTimestamp((const xcb_generic_event_t *)((WXWireEvent *)&peek)->wire);
-		if (peek.xcrossing.mode == e->mode && peek.xcrossing.detail == e->detail) {
+	if (WXEvqTakeTyped(xconn, XCB_LEAVE_NOTIFY, e->event, &peek)) {
+		/* already left the window..., the lookahead is consumed
+		 * either way */
+		wSaveTimestamp(peek);
+		if ((((xcb_enter_notify_event_t *)peek)->mode) == e->mode && (((xcb_enter_notify_event_t *)peek)->detail) == e->detail) {
+			free(peek);
 			return;
 		}
+		free(peek);
 	}
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL) {
@@ -1545,14 +1549,16 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 
 #ifdef VIRTUAL_DESKTOP
-	if (XFindContext(dpy, e->event, wVEdgeContext, (XPointer *)&vdHandler) != XCNOENT
-	    && vdHandler != NULL) {
+	vdHandler = (wVEdgeTable != NULL) ?
+		WMHashGet(wVEdgeTable, (void *)(uintptr_t) e->event) : NULL;
+	if (vdHandler != NULL) {
 		(*vdHandler)(ev);
 		return;
 	}
 #endif
 
-	if (XFindContext(dpy, e->event, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
+	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	if (desc != NULL) {
 		if (desc->handle_enternotify)
 			(*desc->handle_enternotify) (desc, ev);
 	}
@@ -1570,7 +1576,7 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	} else {
 		/* set auto raise timer even if in focus-follows-mouse mode
 		 * and the event is for the frame window, even if the window
-		 * has focus already.  useful if you move the pointer from a focused
+		 * has focus already. Useful if you move the pointer from a focused
 		 * window to the root window and back pretty fast
 		 *
 		 * set focus if in focus-follows-mouse mode and the event
@@ -1600,8 +1606,8 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 
 	if (e->event == e->root
-	    && e->detail == NotifyNormal
-	    && e->detail != NotifyInferior && w_global.config->focus_mode != WKF_CLICK) {
+	    && e->detail == XCB_NOTIFY_MODE_NORMAL
+	    && e->detail != XCB_NOTIFY_DETAIL_INFERIOR && w_global.config->focus_mode != WKF_CLICK) {
 
 		wSetFocusTo(scr, scr->focused_window);
 	}
@@ -1610,13 +1616,13 @@ static void handleEnterNotify(const xcb_generic_event_t *xe, XEvent *ev)
 #endif
 }
 
-static void handleLeaveNotify(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleLeaveNotify(xcb_generic_event_t *ev)
 {
-	const xcb_leave_notify_event_t *e = (const xcb_leave_notify_event_t *)xe;
+	const xcb_leave_notify_event_t *e = (const xcb_leave_notify_event_t *)ev;
 	WObjDescriptor *desc = NULL;
 	WScreen *scr = wScreenForRootWindow(e->root);
 
-	if (wEventCrossingIgnored(ev->xany.serial))
+	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL &&
@@ -1625,22 +1631,24 @@ static void handleLeaveNotify(const xcb_generic_event_t *xe, XEvent *ev)
 		return;
 	}
 
-	if (XFindContext(dpy, e->event, w_global.context.client_win, (XPointer *) & desc) != XCNOENT) {
+	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	if (desc != NULL) {
 		if (desc->handle_leavenotify)
 			(*desc->handle_leavenotify) (desc, ev);
 	}
 }
 
-static void handleFocusIn(const xcb_generic_event_t *xe, XEvent *ev)
+static void handleFocusIn(xcb_generic_event_t *ev)
 {
 	const xcb_focus_in_event_t *e;
 	WWindow *wwin;
-	(void) xe;
+	xcb_generic_event_t *junk = NULL;
 
 	/* applications that like stealing the focus, only the last
 	 * FocusIn currently queued matters */
-	while (WXEvqTakeTyped(dpy, FocusIn, None, ev)) ;
-	e = (const xcb_focus_in_event_t *)((WXWireEvent *)ev)->wire;
+	while (WXEvqTakeTyped(xconn, XCB_FOCUS_IN, XCB_NONE, &junk))
+		free(junk);
+	e = (const xcb_focus_in_event_t *)ev;
 
 	if (e->mode == XCB_NOTIFY_MODE_UNGRAB
 	    || e->mode == XCB_NOTIFY_MODE_GRAB
@@ -1661,15 +1669,6 @@ static void handleFocusIn(const xcb_generic_event_t *xe, XEvent *ev)
 	}
 }
 
-static void handleMappingNotify(const xcb_generic_event_t *xe, XEvent *ev)
-{
-	const xcb_mapping_notify_event_t *e = (const xcb_mapping_notify_event_t *)xe;
-	(void) ev;
-
-	if (e->request == XCB_MAPPING_KEYBOARD || e->request == XCB_MAPPING_MODIFIER)
-		wRefreshKeybindings();
-}
-
 void wEventInputRegister(void)
 {
 	wEventRegisterHandler(XCB_KEY_PRESS, handleKeyPress);
@@ -1678,5 +1677,4 @@ void wEventInputRegister(void)
 	wEventRegisterHandler(XCB_ENTER_NOTIFY, handleEnterNotify);
 	wEventRegisterHandler(XCB_LEAVE_NOTIFY, handleLeaveNotify);
 	wEventRegisterHandler(XCB_FOCUS_IN, handleFocusIn);
-	wEventRegisterHandler(XCB_MAPPING_NOTIFY, handleMappingNotify);
 }

@@ -267,7 +267,7 @@ static int clipLineInRectangle(int xmin, int ymin, int xmax, int ymax, int *x1, 
 		} else if (ocode & RIG) {
 			y = *y1 + (*y2 - *y1) * (xmax - *x1) / (*x2 - *x1);
 			x = xmax;
-		} else {	/* //if (ocode & LEF) { */
+		} else {	/* the only remaining out-code is LEF */
 			y = *y1 + (*y2 - *y1) * (xmax - *x1) / (*x2 - *x1);
 			x = xmin;
 		}

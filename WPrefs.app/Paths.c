@@ -165,9 +165,9 @@ static void browseForFile(WMWidget * w, void *data)
 
 	filePanel = WMGetOpenPanel(WMWidgetScreen(w));
 
-	WMSetFilePanelCanChooseFiles(filePanel, False);
+	WMSetFilePanelCanChooseFiles(filePanel, false);
 
-	if (WMRunModalFilePanelForDirectory(filePanel, panel->parent, "/", _("Select directory"), NULL) == True) {
+	if (WMRunModalFilePanelForDirectory(filePanel, panel->parent, "/", _("Select directory"), NULL) == true) {
 		char *str = WMGetFilePanelFileName(filePanel);
 
 		if (str) {
@@ -203,7 +203,7 @@ static void browseForFile(WMWidget * w, void *data)
 	}
 }
 
-static void paintItem(WMList * lPtr, int index, Drawable d, char *text, int state, WMRect * rect)
+static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect)
 {
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
@@ -271,7 +271,7 @@ static void createPanel(Panel * p)
 	panel->white = WMWhiteColor(scr);
 	panel->black = WMBlackColor(scr);
 	panel->gray = WMGrayColor(scr);
-	panel->red = WMCreateRGBColor(scr, 0xffff, 0, 0, True);
+	panel->red = WMCreateRGBColor(scr, 0xffff, 0, 0, true);
 	panel->font = WMSystemFontOfSize(scr, 12);
 
 	panel->box = WMCreateBox(panel->parent);

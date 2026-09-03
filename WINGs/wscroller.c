@@ -76,8 +76,8 @@ static void destroyScroller(Scroller * sPtr);
 static void paintScroller(Scroller * sPtr);
 
 static void willResizeScroller(W_ViewDelegate * self, WMView * view, unsigned int *width, unsigned int *height);
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void handleMotion(Scroller * sPtr, int mouseX, int mouseY);
 
@@ -107,14 +107,14 @@ WMScroller *WMCreateScroller(WMWidget * parent)
 
 	sPtr->flags.documentFullyVisible = 1;
 
-	WMCreateEventHandler(sPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, sPtr);
 
 	W_ResizeView(sPtr->view, SCROLLER_WIDTH, SCROLLER_WIDTH);
 	sPtr->flags.arrowsPosition = DEFAULT_ARROWS_POSITION;
 
-	WMCreateEventHandler(sPtr->view, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask | ButtonMotionMask, handleActionEvents, sPtr);
+	WMCreateEventHandler(sPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_BUTTON_MOTION, handleActionEvents, sPtr);
 
 	sPtr->flags.hitPart = WSNoPart;
 
@@ -229,9 +229,9 @@ static void blitPixmap(cairo_t *cr, W_Screen *scr, W_Pixmap *pix, int x, int y)
 	psurf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
 					 rc->xvisual, pix->width, pix->height);
 	cairo_set_source_surface(cr, psurf, x, y);
-	if (pix->mask != None) {
+	if (pix->mask != XCB_NONE) {
 		msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-					(xcb_pixmap_t)pix->mask,
+					pix->mask,
 					pix->width, pix->height);
 		cairo_mask_surface(cr, msurf, x, y);
 		cairo_surface_destroy(msurf);
@@ -404,19 +404,19 @@ static void paintScroller(Scroller * sPtr)
 	WCairoEnd(cr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Scroller *sPtr = (Scroller *) data;
 
 	CHECK_CLASS(data, WC_Scroller);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count == 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count == 0)
 			paintScroller(sPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyScroller(sPtr);
 		break;
 	}
@@ -662,7 +662,7 @@ static void handleMotion(Scroller * sPtr, int mouseX, int mouseY)
 	} else {
 		int part;
 
-		part = locatePointInScroller(sPtr, mouseX, mouseY, False);
+		part = locatePointInScroller(sPtr, mouseX, mouseY, false);
 
 		sPtr->flags.hitPart = part;
 
@@ -694,7 +694,7 @@ static void autoScroll(void *clientData)
 	W_ReleaseView(view);
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	Scroller *sPtr = (Scroller *) data;
 	int wheelDecrement, wheelIncrement;
@@ -707,17 +707,17 @@ static void handleActionEvents(XEvent * event, void *data)
 	id = sPtr->flags.incrDown;
 	dd = sPtr->flags.decrDown;
 
-	switch (event->type) {
-	case EnterNotify:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_ENTER_NOTIFY:
 		break;
 
-	case LeaveNotify:
+	case XCB_LEAVE_NOTIFY:
 		WMDeleteTimerHandlerPtr(&sPtr->timerID);
 		sPtr->flags.incrDown = 0;
 		sPtr->flags.decrDown = 0;
 		break;
 
-	case ButtonPress:
+	case XCB_BUTTON_PRESS:
 		if (sPtr->flags.documentFullyVisible)
 			break;
 
@@ -729,10 +729,10 @@ static void handleActionEvents(XEvent * event, void *data)
 			wheelIncrement = WINGsConfiguration.mouseWheelDown;
 		}
 
-		if (event->xbutton.button == wheelDecrement) {
-			if (event->xbutton.state & ControlMask) {
+		if (((xcb_button_press_event_t *)event)->detail == wheelDecrement) {
+			if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 				sPtr->flags.hitPart = WSDecrementPage;
-			} else if (event->xbutton.state & ShiftMask) {
+			} else if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 				sPtr->flags.hitPart = WSDecrementLine;
 			} else {
 				sPtr->flags.hitPart = WSDecrementWheel;
@@ -743,10 +743,10 @@ static void handleActionEvents(XEvent * event, void *data)
 				WMPostNotificationName(WMScrollerDidScrollNotification, sPtr, NULL);
 				W_ReleaseView(sPtr->view);
 			}
-		} else if (event->xbutton.button == wheelIncrement) {
-			if (event->xbutton.state & ControlMask) {
+		} else if (((xcb_button_press_event_t *)event)->detail == wheelIncrement) {
+			if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 				sPtr->flags.hitPart = WSIncrementPage;
-			} else if (event->xbutton.state & ShiftMask) {
+			} else if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 				sPtr->flags.hitPart = WSIncrementLine;
 			} else {
 				sPtr->flags.hitPart = WSIncrementWheel;
@@ -758,9 +758,9 @@ static void handleActionEvents(XEvent * event, void *data)
 				W_ReleaseView(sPtr->view);
 			}
 		} else {
-			handlePush(sPtr, event->xbutton.x, event->xbutton.y,
-				   (event->xbutton.state & sPtr->view->screen->altModifierMask)
-				   || event->xbutton.button == Button2);
+			handlePush(sPtr, ((xcb_button_press_event_t *)event)->event_x, ((xcb_button_press_event_t *)event)->event_y,
+				   (((xcb_button_press_event_t *)event)->state & sPtr->view->screen->altModifierMask)
+				   || ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_2);
 			/* continue scrolling if pushed on the buttons */
 			if (sPtr->flags.hitPart == WSIncrementLine || sPtr->flags.hitPart == WSDecrementLine) {
 				sPtr->timerID = WMAddTimerHandler(AUTOSCROLL_INITIAL_DELAY, autoScroll, sPtr);
@@ -768,7 +768,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case ButtonRelease:
+	case XCB_BUTTON_RELEASE:
 		if (sPtr->flags.draggingKnob) {
 			if (sPtr->action) {
 				W_RetainView(sPtr->view);
@@ -783,8 +783,8 @@ static void handleActionEvents(XEvent * event, void *data)
 		sPtr->flags.draggingKnob = 0;
 		break;
 
-	case MotionNotify:
-		handleMotion(sPtr, event->xbutton.x, event->xbutton.y);
+	case XCB_MOTION_NOTIFY:
+		handleMotion(sPtr, ((xcb_button_press_event_t *)event)->event_x, ((xcb_button_press_event_t *)event)->event_y);
 		if (sPtr->timerID && sPtr->flags.hitPart != WSIncrementLine
 		    && sPtr->flags.hitPart != WSDecrementLine) {
 			WMDeleteTimerHandler(sPtr->timerID);

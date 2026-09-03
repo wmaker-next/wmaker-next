@@ -57,25 +57,25 @@
 typedef struct {
     short type;			       /* type of texture */
     char subtype;		       /* subtype of the texture */
-    XColor color;		       /* default background color */
+    WXColor color;		       /* default background color */
 } WTexAny;
 
 
 typedef struct WTexSolid {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
-    XColor light;
-    XColor dim;
-    XColor dark;
+    WXColor light;
+    WXColor dim;
+    WXColor dark;
 } WTexSolid;
 
 
 typedef struct WTexGradient {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
     RColor color1;
     RColor color2;
@@ -85,7 +85,7 @@ typedef struct WTexGradient {
 typedef struct WTexMGradient {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
     RColor **colors;
 } WTexMGradient;
@@ -94,7 +94,7 @@ typedef struct WTexMGradient {
 typedef struct WTexIGradient {
     short type;
     char dummy;
-    XColor normal;
+    WXColor normal;
 
     RColor colors1[2];
     RColor colors2[2];
@@ -106,7 +106,7 @@ typedef struct WTexIGradient {
 typedef struct WTexPixmap {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
     struct RImage *pixmap;
 } WTexPixmap;
@@ -114,7 +114,7 @@ typedef struct WTexPixmap {
 typedef struct WTexTGradient {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
     RColor color1;
     RColor color2;
@@ -125,7 +125,7 @@ typedef struct WTexTGradient {
 typedef struct WTexFunction {
     short type;
     char subtype;
-    XColor normal;
+    WXColor normal;
 
     void *handle;
     RImage *(*render) (int, char**, int, int, int);
@@ -145,13 +145,13 @@ typedef union WTexture {
 } WTexture;
 
 
-WTexSolid *wTextureMakeSolid(WScreen*, XColor*);
+WTexSolid *wTextureMakeSolid(WScreen*, WXColor*);
 WTexGradient *wTextureMakeGradient(WScreen*, int, const RColor*, const RColor*);
 WTexMGradient *wTextureMakeMGradient(WScreen*, int, RColor**);
 WTexTGradient *wTextureMakeTGradient(WScreen*, int, const RColor*, const RColor*, const char *, int);
 WTexIGradient *wTextureMakeIGradient(WScreen*, int, const RColor[2], int, const RColor[2]);
 WTexPixmap *wTextureMakePixmap(WScreen *scr, int style, const char *pixmap_file,
-                               XColor *color);
+                               WXColor *color);
 void wTextureDestroy(WScreen*, WTexture*);
 struct RImage *wTextureRenderImage(WTexture*, int, int, int);
 
@@ -173,11 +173,15 @@ void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h);
 void wTextureCairoMenuBevel(cairo_t *cr, int x, int y, int w, int h);
 
 
-void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, Pixmap *tdata,
+void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, xcb_pixmap_t *tdata,
                            int repaint);
 
 
-#define FREE_PIXMAP(p) if ((p)!=None) XFreePixmap(dpy, (p)), (p)=None
+#define FREE_PIXMAP(p) do {				\
+	if ((p) != XCB_NONE)				\
+		wXFreePixmap(xconn, (p));		\
+	(p) = XCB_NONE;					\
+} while (0)
 
 /* WREL_RAISED / WREL_ICON bevel in a WTexSolid's own light/dim/dark
  * colours (opaque strokes, unlike wTextureCairoBevel's translucent

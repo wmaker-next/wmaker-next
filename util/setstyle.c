@@ -33,7 +33,6 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <X11/Xlib.h>
 
 #ifdef HAVE_STDNORETURN
 #include <stdnoreturn.h>
@@ -42,10 +41,12 @@
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
 #include <WINGs/WXProp.h>
+#include <WINGs/WXCore.h>
 
 #include "../src/wconfig.h"
 
 #include "common.h"
+#include "xcconn.h"
 
 #define MAX_OPTIONS 128
 
@@ -81,33 +82,30 @@ static const char *prog_name;
 int ignoreFonts = 0;
 int ignoreCursors = 0;
 
-Display *dpy;
-
-
-static Bool isCursorOption(const char *option)
+static bool isCursorOption(const char *option)
 {
 	int i;
 
 	for (i = 0; CursorOptions[i] != NULL; i++) {
 		if (strcasecmp(option, CursorOptions[i]) == 0) {
-			return True;
+			return true;
 		}
 	}
 
-	return False;
+	return false;
 }
 
-static Bool isFontOption(const char *option)
+static bool isFontOption(const char *option)
 {
 	int i;
 
 	for (i = 0; FontOptions[i] != NULL; i++) {
 		if (strcasecmp(option, FontOptions[i]) == 0) {
-			return True;
+			return true;
 		}
 	}
 
-	return False;
+	return false;
 }
 
 /* prepend prefix and a separator to the string at arr[idx], leaving the
@@ -125,14 +123,14 @@ static const char * const pixmap_string_options[] = {
 	NULL
 };
 
-static Bool isPixmapStringOption(const char *option)
+static bool isPixmapStringOption(const char *option)
 {
 	int i;
 
 	for (i = 0; pixmap_string_options[i] != NULL; i++)
 		if (strcasecmp(option, pixmap_string_options[i]) == 0)
-			return True;
-	return False;
+			return true;
+	return false;
 }
 
 static void prefixPathInArray(WMPropList *arr, int idx, const char *prefix)
@@ -271,25 +269,12 @@ static WMPropList *getColor(WMPropList * texture)
 
 		c1 = WMGetFromPLArray(texture, 1);
 		c2 = WMGetFromPLArray(texture, 2);
-		if (!dpy) {
-			if (sscanf(WMGetFromPLString(c1), "#%2x%2x%2x", &r1, &g1, &b1) == 3
-			    && sscanf(WMGetFromPLString(c2), "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
-				snprintf(buffer, sizeof(buffer), "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
-				return WMCreatePLString(buffer);
-			} else {
-				value = c1;
-			}
-		} else {
-			XColor color1;
-			XColor color2;
-
-			XParseColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), WMGetFromPLString(c1), &color1);
-			XParseColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), WMGetFromPLString(c2), &color2);
-
-			snprintf(buffer, sizeof(buffer), "#%02x%02x%02x",
-				(color1.red + color2.red) >> 9,
-				(color1.green + color2.green) >> 9, (color1.blue + color2.blue) >> 9);
+		if (sscanf(WMGetFromPLString(c1), "#%2x%2x%2x", &r1, &g1, &b1) == 3
+		    && sscanf(WMGetFromPLString(c2), "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
+			snprintf(buffer, sizeof(buffer), "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
 			return WMCreatePLString(buffer);
+		} else {
+			value = c1;
 		}
 	} else if (strcasecmp(str, "mdgradient") == 0
 		   || strcasecmp(str, "mhgradient") == 0 || strcasecmp(str, "mvgradient") == 0) {
@@ -359,7 +344,7 @@ static void hackStyle(WMPropList * style)
 				value = WMGetFromPLDictionary(style, tmp);
 				if (value) {
 					oldfont = WMGetFromPLString(value);
-					newfont = convertFont(oldfont, False);
+					newfont = convertFont(oldfont, false);
 					if (newfont != oldfont) {
 						value = WMCreatePLString(newfont);
 						WMPutInPLDictionary(style, tmp, value);
@@ -483,7 +468,7 @@ int main(int argc, char **argv)
 
 	file = argv[0];
 
-	WMPLSetCaseSensitive(False);
+	WMPLSetCaseSensitive(false);
 
 	style = NULL;
 	path = wdefaultspathfordomain("WindowMaker");
@@ -563,7 +548,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	WMMergePLDictionaries(prop, style, True);
+	WMMergePLDictionaries(prop, style, true);
 	WMReleasePropList(style);
 	style = NULL;
 
@@ -582,10 +567,15 @@ int main(int argc, char **argv)
 
 	/* fall back to the legacy X ClientMessage when no IPC socket is
 	 * reachable, e.g. talking to an older Window Maker */
-	dpy = XOpenDisplay("");
-	if (dpy) {
-		WXSendWmakerCommand(dpy, "Reconfigure");
-		XCloseDisplay(dpy);
+	{
+		xcb_connection_t *xc;
+		int sn;
+
+		xc = xcconn_open(NULL, NULL, 0, &sn);
+		if (xc) {
+			WXSendWmakerCommandXC(xc, sn, "Reconfigure");
+			xcb_disconnect(xc);
+		}
 	}
 
 	return 0;

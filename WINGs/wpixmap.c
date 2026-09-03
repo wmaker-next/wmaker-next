@@ -19,14 +19,14 @@ void WMReleasePixmap(WMPixmap * pixmap)
 
 	if (pixmap->refCount < 1) {
 		if (pixmap->pixmap)
-			XFreePixmap(pixmap->screen->display, pixmap->pixmap);
+			wXFreePixmap(pixmap->screen->display, pixmap->pixmap);
 		if (pixmap->mask)
-			XFreePixmap(pixmap->screen->display, pixmap->mask);
+			wXFreePixmap(pixmap->screen->display, pixmap->mask);
 		wfree(pixmap);
 	}
 }
 
-WMPixmap *WMCreatePixmap(WMScreen * scrPtr, int width, int height, int depth, Bool masked)
+WMPixmap *WMCreatePixmap(WMScreen * scrPtr, int width, int height, int depth, bool masked)
 {
 	WMPixmap *pixPtr;
 
@@ -37,17 +37,21 @@ WMPixmap *WMCreatePixmap(WMScreen * scrPtr, int width, int height, int depth, Bo
 	pixPtr->depth = depth;
 	pixPtr->refCount = 1;
 
-	pixPtr->pixmap = XCreatePixmap(scrPtr->display, W_DRAWABLE(scrPtr), width, height, depth);
+	pixPtr->pixmap = xcb_generate_id(scrPtr->display);
+	xcb_create_pixmap(scrPtr->display, depth, pixPtr->pixmap,
+			  W_DRAWABLE(scrPtr), width, height);
 	if (masked) {
-		pixPtr->mask = XCreatePixmap(scrPtr->display, W_DRAWABLE(scrPtr), width, height, 1);
+		pixPtr->mask = xcb_generate_id(scrPtr->display);
+		xcb_create_pixmap(scrPtr->display, 1, pixPtr->mask,
+				  W_DRAWABLE(scrPtr), width, height);
 	} else {
-		pixPtr->mask = None;
+		pixPtr->mask = XCB_NONE;
 	}
 
 	return pixPtr;
 }
 
-WMPixmap *WMCreatePixmapFromXPixmaps(WMScreen * scrPtr, Pixmap pixmap, Pixmap mask,
+WMPixmap *WMCreatePixmapFromXPixmaps(WMScreen * scrPtr, xcb_pixmap_t pixmap, xcb_pixmap_t mask,
 				     int width, int height, int depth)
 {
 	WMPixmap *pixPtr;
@@ -83,7 +87,7 @@ WMPixmap *WMCreatePixmapFromFile(WMScreen * scrPtr, const char *fileName)
 WMPixmap *WMCreatePixmapFromRImage(WMScreen * scrPtr, RImage * image, int threshold)
 {
 	WMPixmap *pixPtr;
-	Pixmap pixmap, mask;
+	xcb_pixmap_t pixmap, mask;
 
 	if (image == NULL)
 		return NULL;
@@ -179,16 +183,16 @@ WMPixmap *WMCreatePixmapFromXPMData(WMScreen * scrPtr, char **data)
 	return pixPtr;
 }
 
-Pixmap WMGetPixmapXID(WMPixmap * pixmap)
+xcb_pixmap_t WMGetPixmapXID(WMPixmap * pixmap)
 {
-	wassertrv(pixmap != NULL, None);
+	wassertrv(pixmap != NULL, XCB_NONE);
 
 	return pixmap->pixmap;
 }
 
-Pixmap WMGetPixmapMaskXID(WMPixmap * pixmap)
+xcb_pixmap_t WMGetPixmapMaskXID(WMPixmap * pixmap)
 {
-	wassertrv(pixmap != NULL, None);
+	wassertrv(pixmap != NULL, XCB_NONE);
 
 	return pixmap->mask;
 }
@@ -249,7 +253,7 @@ WMPixmap *WMGetSystemPixmap(WMScreen * scr, int image)
 	}
 }
 
-void WMDrawPixmap(WMPixmap * pixmap, Drawable d, int x, int y)
+void WMDrawPixmap(WMPixmap * pixmap, xcb_drawable_t d, int x, int y)
 {
 	cairo_t *cr;
 

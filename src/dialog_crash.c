@@ -21,8 +21,7 @@
 
 #include "wconfig.h"
 
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include <stdio.h>
 
@@ -55,30 +54,30 @@ typedef struct _CrashPanel {
 
 	WMButton *okB;		/* ok button */
 
-	Bool done;		/* if finished with this dialog */
+	bool done;		/* if finished with this dialog */
 	int action;		/* what to do after */
 
-	KeyCode retKey;
-	KeyCode upKey;
-	KeyCode downKey;
+	xcb_keycode_t retKey;
+	xcb_keycode_t upKey;
+	xcb_keycode_t downKey;
 
 } CrashPanel;
 
-static void handleKeyPress(XEvent * event, void *clientData)
+static void handleKeyPress(xcb_generic_event_t * event, void *clientData)
 {
 	CrashPanel *panel = (CrashPanel *) clientData;
 
-	if (event->xkey.keycode == panel->retKey) {
+	if (((xcb_key_press_event_t *)event)->detail == panel->retKey) {
 		WMPerformButtonClick(panel->okB);
 		return;
 	}
 
-	if (event->xkey.keycode == panel->upKey) {
+	if (((xcb_key_press_event_t *)event)->detail == panel->upKey) {
 		WMSelectPopUpButtonPreviousItem(panel->whatP);
 		return;
 	}
 
-	if (event->xkey.keycode == panel->downKey) {
+	if (((xcb_key_press_event_t *)event)->detail == panel->downKey) {
 		WMSelectPopUpButtonNextItem(panel->whatP);
 		return;
 	}
@@ -91,7 +90,7 @@ static void okButtonCallback(void *self, void *clientData)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 
-	panel->done = True;
+	panel->done = true;
 }
 
 static void setCrashAction(void *self, void *clientData)
@@ -109,7 +108,7 @@ static WMPixmap *getWindowMakerIconImage(WMScreen *scr)
 	char *path = NULL;
 
 	/* Get the Logo icon, without the default icon */
-	path = get_icon_filename("Logo", "WMPanel", NULL, False);
+	path = get_icon_filename("Logo", "WMPanel", NULL, false);
 
 	if (path) {
 		RColor gray;
@@ -139,11 +138,11 @@ int wShowCrashingDialogPanel(int whatSig)
 	int action;
 	char buf[256];
 
-	screen_no = DefaultScreen(dpy);
-	scr_width = WidthOfScreen(ScreenOfDisplay(dpy, screen_no));
-	scr_height = HeightOfScreen(ScreenOfDisplay(dpy, screen_no));
+	screen_no = dflt_screen;
+	scr_width = wXDisplayWidth(xconn, screen_no);
+	scr_height = wXDisplayHeight(xconn, screen_no);
 
-	scr = WMCreateScreen(dpy, screen_no);
+	scr = WMCreateScreen(xconn, screen_no);
 	if (!scr) {
 		werror(_("cannot open connection for crashing dialog panel. Aborting."));
 		return WMAbort;
@@ -151,9 +150,9 @@ int wShowCrashingDialogPanel(int whatSig)
 
 	panel = wmalloc(sizeof(CrashPanel));
 
-	panel->retKey = XKeysymToKeycode(dpy, XK_Return);
-	panel->upKey = XKeysymToKeycode(dpy, XK_Up);
-	panel->downKey = XKeysymToKeycode(dpy, XK_Down);
+	panel->retKey = W_KeysymToKeycode(scr, XKB_KEY_Return);
+	panel->upKey = W_KeysymToKeycode(scr, XKB_KEY_Up);
+	panel->downKey = W_KeysymToKeycode(scr, XKB_KEY_Down);
 
 	panel->win = WMCreateWindow(scr, "crashingDialog");
 	WMResizeWidget(panel->win, PWIDTH, PHEIGHT);
@@ -197,7 +196,7 @@ int wShowCrashingDialogPanel(int whatSig)
 	           " Please fill the included BUGFORM and report it to %s."),
 	         PACKAGE_BUGREPORT);
 	WMSetLabelText(panel->note2L, buf);
-	WMSetLabelWraps(panel->note2L, True);
+	WMSetLabelWraps(panel->note2L, true);
 
 	panel->whatF = WMCreateFrame(panel->win);
 	WMResizeWidget(panel->whatF, PWIDTH - 20, 50);
@@ -207,7 +206,7 @@ int wShowCrashingDialogPanel(int whatSig)
 	panel->whatP = WMCreatePopUpButton(panel->whatF);
 	WMResizeWidget(panel->whatP, PWIDTH - 20 - 70, 20);
 	WMMoveWidget(panel->whatP, 35, 20);
-	WMSetPopUpButtonPullsDown(panel->whatP, False);
+	WMSetPopUpButtonPullsDown(panel->whatP, false);
 	WMSetPopUpButtonText(panel->whatP, _("Select action"));
 	WMAddPopUpButtonItem(panel->whatP, _("Abort and leave a core file"));
 	WMAddPopUpButtonItem(panel->whatP, _("Restart Window Maker"));
@@ -229,20 +228,21 @@ int wShowCrashingDialogPanel(int whatSig)
 
 	panel->done = 0;
 
-	WMCreateEventHandler(WMWidgetView(panel->win), KeyPressMask, handleKeyPress, panel);
+	WMCreateEventHandler(WMWidgetView(panel->win), XCB_EVENT_MASK_KEY_PRESS, handleKeyPress, panel);
 
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 
 	WMMapWidget(panel->win);
 
-	XSetInputFocus(dpy, WMWidgetXID(panel->win), RevertToParent, CurrentTime);
+	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, WMWidgetXID(panel->win), XCB_CURRENT_TIME);
 
 	while (!panel->done) {
-		XEvent event;
+		xcb_generic_event_t *event = NULL;
 
-		WMNextEvent(dpy, &event);
-		WMHandleEvent(&event);
+		WMNextEvent(xconn, &event);
+		WMHandleEvent(event);
+		free(event);
 	}
 
 	action = panel->action;

@@ -65,7 +65,7 @@ static void paintTabView(TabView * tPtr);
 
 static void W_SetTabViewItemParent(WMTabViewItem * item, WMTabView * parent);
 
-static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, Bool enabled);
+static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, bool enabled);
 
 static void W_UnmapTabViewItem(WMTabViewItem * item);
 
@@ -133,24 +133,24 @@ static int countVisibleTabs(TabView * tPtr, int first)
 	return i - first;
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	TabView *tPtr = (TabView *) data;
 
 	CHECK_CLASS(data, WC_TabView);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintTabView(tPtr);
 		break;
 
-	case ButtonPress:
+	case XCB_BUTTON_PRESS:
 		if (tPtr->flags.enabled) {
 			WMTabViewItem *item = WMTabViewItemAtPoint(tPtr,
-								   event->xbutton.x,
-								   event->xbutton.y);
+								   ((xcb_button_press_event_t *)event)->event_x,
+								   ((xcb_button_press_event_t *)event)->event_y);
 			/*if (item && !item->flags.enabled)
 			   break; */
 
@@ -160,12 +160,12 @@ static void handleEvents(XEvent * event, void *data)
 				int redraw = 0;
 				int lastVisible = tPtr->firstVisible + tPtr->visibleTabs - 1;
 
-				if (event->xbutton.x < BUTTONED_SIDE_OFFSET) {
+				if (((xcb_button_press_event_t *)event)->event_x < BUTTONED_SIDE_OFFSET) {
 					if (tPtr->firstVisible > 0) {
 						redraw = 1;
 						tPtr->firstVisible--;
 					}
-				} else if (event->xbutton.x > positionOfTab(tPtr, lastVisible)) {
+				} else if (((xcb_button_press_event_t *)event)->event_x > positionOfTab(tPtr, lastVisible)) {
 
 					if (lastVisible < tPtr->itemCount - 1) {
 						redraw = 1;
@@ -180,7 +180,7 @@ static void handleEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyTabView(tPtr);
 		break;
 	}
@@ -202,8 +202,8 @@ WMTabView *WMCreateTabView(WMWidget * parent)
 	tPtr->view->self = tPtr;
 	tPtr->view->delegate = &delegate;
 
-	tPtr->lightGray = WMCreateRGBColor(scr, 0xd9d9, 0xd9d9, 0xd9d9, False);
-	tPtr->tabColor = WMCreateRGBColor(scr, 0x8420, 0x8420, 0x8420, False);
+	tPtr->lightGray = WMCreateRGBColor(scr, 0xd9d9, 0xd9d9, 0xd9d9, false);
+	tPtr->tabColor = WMCreateRGBColor(scr, 0x8420, 0x8420, 0x8420, false);
 
 	tPtr->font = WMRetainFont(scr->normalFont);
 
@@ -212,7 +212,7 @@ WMTabView *WMCreateTabView(WMWidget * parent)
 	tPtr->flags.uniformTabs = 0;
 	tPtr->flags.enabled = 1;
 
-	WMCreateEventHandler(tPtr->view, ExposureMask | StructureNotifyMask | ButtonPressMask, handleEvents, tPtr);
+	WMCreateEventHandler(tPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_BUTTON_PRESS, handleEvents, tPtr);
 
 	WMResizeWidget(tPtr, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
@@ -243,7 +243,7 @@ void WMAddItemInTabView(WMTabView * tPtr, WMTabViewItem * item)
 	WMInsertItemInTabView(tPtr, tPtr->itemCount, item);
 }
 
-void WMSetTabViewEnabled(WMTabView * tPtr, Bool flag)
+void WMSetTabViewEnabled(WMTabView * tPtr, bool flag)
 {
 	tPtr->flags.enabled = ((flag == 0) ? 0 : 1);
 	if (W_VIEW_REALIZED(tPtr->view))
@@ -329,23 +329,23 @@ void WMRemoveTabViewItem(WMTabView * tPtr, WMTabViewItem * item)
 		(*tPtr->delegate->didChangeNumberOfItems) (tPtr->delegate, tPtr);
 }
 
-static Bool isInside(int x, int y, int width, int height, int px, int py)
+static bool isInside(int x, int y, int width, int height, int px, int py)
 {
 	if (py >= y + height - 3 && py <= y + height && px >= x + py - (y + height - 3)
 	    && px <= x + width - (py - (y + height - 3))) {
 
-		return True;
+		return true;
 	}
 	if (py >= y + 3 && py < y + height - 3
 	    && px >= x + 3 + ((y + 3) - py) * 3 / 7 && px <= x + width - 3 - ((y + 3) - py) * 3 / 7) {
 
-		return True;
+		return true;
 	}
 	if (py >= y && py < y + 3 && px >= x + 7 + py - y && px <= x + width - 7 - (py - y)) {
 
-		return True;
+		return true;
 	}
-	return False;
+	return false;
 }
 
 WMTabViewItem *WMTabViewItemAtPoint(WMTabView * tPtr, int x, int y)
@@ -556,7 +556,7 @@ static void drawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
 }
 
 static void drawTab(TabView *tPtr, cairo_t *cr, int x, int y,
-		    unsigned width, unsigned height, Bool selected)
+		    unsigned int width, unsigned int height, bool selected)
 {
 	WMScreen *scr = W_VIEW(tPtr)->screen;
 	WMColor *hi = selected ? scr->white : tPtr->lightGray;
@@ -651,25 +651,25 @@ static void paintTabView(TabView * tPtr)
 
 		if (moreAtRight) {
 			drawTab(tPtr, cr, positionOfTab(tPtr, first + count), 0,
-				W_VIEW_WIDTH(tPtr->view), theight, False);
+				W_VIEW_WIDTH(tPtr->view), theight, false);
 		}
 		for (i = first + count - 1; i >= first; i--) {
 			if (!selectedIsVisible || i != tPtr->selectedItem) {
 				twidth = W_TabViewItemTabWidth(tPtr->items[i]);
 
-				drawTab(tPtr, cr, positionOfTab(tPtr, i), 0, twidth, theight, False);
+				drawTab(tPtr, cr, positionOfTab(tPtr, i), 0, twidth, theight, false);
 			}
 		}
 		if (moreAtLeft) {
 			drawTab(tPtr, cr, positionOfTab(tPtr, 0) - 2 * BUTTONED_SIDE_OFFSET,
-				0, BUTTONED_SIDE_OFFSET * 4, theight, False);
+				0, BUTTONED_SIDE_OFFSET * 4, theight, false);
 		}
 
 		if (selectedIsVisible) {
 			int idx = tPtr->selectedItem;
 
 			drawTab(tPtr, cr, positionOfTab(tPtr, idx),
-				0, W_TabViewItemTabWidth(tPtr->items[idx]), theight, True);
+				0, W_TabViewItemTabWidth(tPtr->items[idx]), theight, true);
 
 			tLine(cr, scr->white, 0, theight - 1,
 			      positionOfTab(tPtr, idx), theight - 1);
@@ -782,7 +782,7 @@ static void W_SetTabViewItemParent(WMTabViewItem * item, WMTabView * parent)
 	item->tabView = parent;
 }
 
-static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, Bool enabled)
+static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, bool enabled)
 {
 	WMScreen *scr = W_VIEW(item->tabView)->screen;
 
@@ -852,7 +852,7 @@ WMTabViewItem *WMCreateTabViewItem(int identifier, const char *label)
 	return item;
 }
 
-void WMSetTabViewItemEnabled(WMTabViewItem * tPtr, Bool flag)
+void WMSetTabViewItemEnabled(WMTabViewItem * tPtr, bool flag)
 {
 	tPtr->flags.enabled = ((flag == 0) ? 0 : 1);
 	if (tPtr->tabView && W_VIEW_REALIZED(tPtr->tabView->view))

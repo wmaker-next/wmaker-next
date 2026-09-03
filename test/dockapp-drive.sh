@@ -111,7 +111,7 @@ icon_candidates() {
 }
 
 # first viewable 64x64 root child outside the dock column (the floating
-# appicon); the docked tiles and the withdrawn leader windows are
+# appicon), the docked tiles and the withdrawn leader windows are
 # excluded
 floating_icon() {
 	icon_candidates | while read -r w x y; do
@@ -206,7 +206,7 @@ ${CC:-cc} -std=gnu11 "$ROOT/test/dockapp-client.c" -o "$HELPER" -lX11 >>"$LOG" 2
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 # dock enabled, clip/drawers off so the positional appicon scan sees
-# only dockapp icons; an empty-ish WindowMaker domain stops the
+# only dockapp icons, an empty-ish WindowMaker domain stops the
 # first-run installer
 cat > "$WMHOME/Defaults/WindowMaker" <<'EOF'
 {
@@ -392,7 +392,7 @@ if [ -n "${DOCKAPP_BIN:-}" ] && command -v "$DOCKAPP_BIN" >/dev/null 2>&1; then
 	check "real dockapp appicon appeared" wait_for 60 appicon_appeared
 	AICON3=$FLOATING
 	if [ -n "$AICON3" ]; then
-		# identify the leader by its WithdrawnState WM_HINTS; xprop
+		# identify the leader by its WithdrawnState WM_HINTS, xprop
 		# spells state 0 "Initial state is Don't Care State."
 		REAL_LEADER=
 		for w in $(DISPLAY=$DPY xwininfo -root -children 2>/dev/null \
@@ -408,7 +408,7 @@ if [ -n "${DOCKAPP_BIN:-}" ] && command -v "$DOCKAPP_BIN" >/dev/null 2>&1; then
 		else
 			record_fail "real dockapp leader not found"
 		fi
-		# the icon window id comes from the leader's WM_HINTS; a
+		# the icon window id comes from the leader's WM_HINTS, a
 		# foreign dockapp's icon window need not be 64x64 (wmclock
 		# is 54x57), so assert the appicon swallowed exactly that
 		# child whatever its size

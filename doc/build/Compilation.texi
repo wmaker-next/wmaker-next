@@ -120,13 +120,13 @@ Patches to make it work on other platforms are welcome.
 
 The following software is required to use @sc{Window Maker}:
 @itemize -
-@item X11R6.x
+@item an @emph{X server} speaking the @emph{X11} protocol
 
-Window Maker can be compiled in older versions of @emph{X}, like @emph{X11R5} (@emph{Solaris})
-or @emph{X11R4} (@emph{OpenWindows}) but it will not work 100% correctly.
-In such servers there will not be application icons and you'll have trouble using the dock.
-Upgrading the client libraries (@emph{Xlib}, @emph{Xt}, etc.) will help if you can't upgrade
-the server.
+@sc{Window Maker} is a pure @emph{xcb} client and links no @emph{Xlib}.
+Any server implementing the X11 protocol and the standard extensions
+(@emph{RENDER}, @emph{SHAPE}, @emph{RandR}, @emph{MIT-SHM}, @emph{SYNC},
+@emph{XKB}, @emph{XFixes}, @emph{XTest}, @emph{Xinerama}) is supported,
+including nested servers such as @emph{Xvfb} and @emph{Xephyr}.
 @end itemize
 
 @noindent The following is required to build @sc{Window Maker}:
@@ -136,7 +136,21 @@ the server.
 @itemize
 @item @emph{gcc} (or some other ANSI C compiler, supporting some C99 extensions)
 @item @emph{glibc} development files (usually @file{glibc-devel} in Linux distributions)
-@item @emph{X} development files (@file{XFree86-devel} or something similar)
+@end itemize
+
+@item the @emph{xcb} client stack
+
+@itemize -
+@item @emph{libxcb} with the utility modules @emph{xcb-icccm} 0.3.8 or newer,
+@emph{xcb-randr}, @emph{xcb-shape}, @emph{xcb-sync}, @emph{xcb-xkb},
+@emph{xcb-xfixes}, @emph{xcb-xtest}, @emph{xcb-xinerama} and
+@emph{xcb-cursor} (Debian/Ubuntu package them as @file{libxcb-*-dev},
+Fedora/SUSE as @file{xcb-util-*})
+@item @emph{xkbcommon} and @emph{xkbcommon-x11} 0.4.1 or newer, which own
+the keymap and keyboard state (packaged as @file{libxkbcommon-dev} and
+@file{libxkbcommon-x11-dev} on Debian/Ubuntu)
+@item @emph{xcb-shm} and @emph{xcb-image}, the @emph{wraster}
+put-image and bitmap conversion path
 @end itemize
 
 @item @emph{fontconfig} and @emph{freetype2}
@@ -165,6 +179,14 @@ Drives the WINGs/WUtil event loop (timers, idle and input handlers).
 Packaged as @file{libev-dev} on Debian/Ubuntu, @file{libev-devel} on Fedora and SUSE,
 and @file{libev} in the FreeBSD, OpenBSD, NetBSD and DragonFly package collections.
 Sources: @uref{http://software.schmorp.de/pkg/libev.html}
+
+@item @emph{xcb-imdkit} 1.0.3 or newer
+
+Lets @sc{Window Maker}'s own text fields (the run dialog, the icon chooser, the
+window inspector) talk to fcitx5/ibus over the xcb connection so CJK and other
+input methods work; when no input-method server answers, those fields fall back
+to the xkbcommon compose table, so dead keys and the Compose key still work.
+Packaged as @file{xcb-imdkit-dev} on Debian/Ubuntu.
 
 @end itemize
 
@@ -541,24 +563,14 @@ The @option{-I} flag must precede each paths, like:
 
 @subsection X11 and Extensions
 
-@command{configure} will try to detect automatically the compilation paths for X11 headers and
-libraries, and which X Extensions support can be enabled.
+@command{configure} finds the X connection through @emph{pkg-config} (@command{libxcb}
+and its extension modules), so there are no X path options; which X Extensions support
+can be enabled is detected automatically.
 if you explicitly provide @option{--enable-@emph{FEATURE}} then it will break with an error message
 if the extension cannot be used;
 if you specify @option{--disable-@emph{FEATURE}} then it will not check for the extension.
 
 @table @option
-@item  --x-includes=@i{DIR}
-@itemx --x-libraries=@i{DIR}
-@emph{Autoconf}'s option to specify search paths for @emph{X11},
-for the case were it would not have been able to detect it automatically.
-
-@item --disable-xlocale
-If you activated support for Native Languages, then @emph{X11} may use a hack to also configure its
-locale support when the program configure the locale for itself.
-The @command{configure} script detects if the @emph{Xlib} supports this or not;
-this options explicitly disable this initialisation mechanism.
-
 @item --enable-modelock
 XKB language status lock support. If you don't know what it is you probably don't need it.
 The default is to not enable it.
@@ -586,9 +598,9 @@ When enabled Window Maker checkpoints @file{WMState} in the phase-2 SaveYourself
 user-initiated exit off to the session manager for an orderly logout, when disabled or when no
 session manager is running the local shutdown path is used unchanged.
 
-@item --without-xfixes
-Disables use of the @emph{XFixes} extension. This also disables building @command{wmclipd},
-whose clipboard-manager mode depends on XFixes selection owner notifications.
+@command{wmclipd} is built whenever the X libraries are; its
+clipboard-manager mode uses the @emph{xcb-xfixes} module, part of the
+required xcb dependency set, so there is no separate option for it.
 
 @item --without-xcb-screensaver
 Do not use the @emph{MIT-SCREEN-SAVER} extension. With it the window manager receives a
@@ -607,18 +619,6 @@ root cursor and exporting @env{DESKTOP_STARTUP_ID} to the child) and monitors
 @code{_NET_STARTUP_ID} on newly mapped windows so that a slow-starting application launched
 while you kept typing elsewhere does not steal focus and lands on the workspace it was
 launched from.
-
-@item --without-xcb-imdkit
-Do not link against @emph{xcb-imdkit}. With the library present @sc{Window Maker}'s own text
-fields (the run dialog, the icon chooser, the window inspector) talk to fcitx5/ibus over the
-xcb connection so CJK and other input methods work; without it those fields fall back to the
-xkbcommon compose table, so dead keys and the Compose key still work but no input-method
-server is consulted.
-
-@item --without-xcb-keysyms
-Do not build the @command{wmclipd} clipboard test client in @file{util/Tests}, which is the
-only consumer of the @emph{xcb-keysyms} library (it synthesises Ctrl+V key presses during the
-clipboard integration tests). The @command{wmclipd} daemon itself does not use the library.
 
 @item --disable-randr
 Disable use of the @emph{RandR} extension for live multi-monitor reconfiguration. With RandR

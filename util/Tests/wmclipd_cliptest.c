@@ -2,7 +2,9 @@
  * Test X client for wmclipd selection handling.
  *
  * It can publish deterministic image/png data on PRIMARY and read image/png
- * back from CLIPBOARD, including INCR transfers in both directions.
+ * back from CLIPBOARD, including INCR transfers in both directions. It can
+ * also own PRIMARY and serve XA_STRING text, which is what the plain
+ * xcb paste clients (wxpaste) request.
  */
 
 #include <stdio.h>
@@ -12,10 +14,13 @@
 #include <sys/stat.h>
 
 #include <xcb/xcb.h>
-#include <xcb/xcb_keysyms.h>
-#include <X11/keysym.h>
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-x11.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "clip-common.h"
+#include "xcconn.h"
+#include <WINGs/WXCore.h>
 
 #define CHUNK_SIZE 32768
 
@@ -32,6 +37,8 @@ static xcb_atom_t atom_property;
 static unsigned char *payload;
 static size_t payload_len;
 
+static int serve_text_mode;
+
 static ClipIncrSend transfer;
 
 static void send_selection_notify(xcb_selection_request_event_t *req,
@@ -46,7 +53,7 @@ static void send_selection_notify(xcb_selection_request_event_t *req,
 	ev.selection = req->selection;
 	ev.target = req->target;
 	ev.property = property;
-	xcb_send_event(xc, 0, req->requestor, 0, (const char *)&ev);
+	WXSendEvent32(xc, &ev, sizeof(ev), 0, req->requestor, 0);
 	xcb_flush(xc);
 }
 
@@ -58,10 +65,22 @@ static void serve_request(xcb_selection_request_event_t *req, int use_incr)
 
 	if (req->target == atom_targets) {
 		targets[0] = atom_targets;
-		targets[1] = atom_png;
+		targets[1] = serve_text_mode ? XCB_ATOM_STRING : atom_png;
 		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
 				    property, XCB_ATOM_ATOM, 32, 2, targets);
 		send_selection_notify(req, property);
+		return;
+	}
+
+	if (serve_text_mode) {
+		if (req->target == XCB_ATOM_STRING) {
+			xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
+					    property, XCB_ATOM_STRING, 8,
+					    payload_len, payload);
+			send_selection_notify(req, property);
+		} else {
+			send_selection_notify(req, XCB_ATOM_NONE);
+		}
 		return;
 	}
 
@@ -100,7 +119,7 @@ static xcb_window_t selection_owner(xcb_atom_t selection)
 	return owner;
 }
 
-static int serve_selection(xcb_atom_t selection, int use_incr)
+static int serve_selection(xcb_atom_t selection, int use_incr, const char *ready)
 {
 	xcb_generic_event_t *ev;
 
@@ -110,6 +129,10 @@ static int serve_selection(xcb_atom_t selection, int use_incr)
 	if (selection_owner(selection) != win) {
 		fprintf(stderr, "failed to own selection\n");
 		return 3;
+	}
+	if (ready) {
+		printf("%s\n", ready);
+		fflush(stdout);
 	}
 
 	for (;;) {
@@ -186,20 +209,75 @@ static int serve_primary(int use_incr, size_t bytes)
 {
 	if (!make_deterministic_payload(bytes))
 		return 2;
-	return serve_selection(atom_primary, use_incr);
+	return serve_selection(atom_primary, use_incr, NULL);
 }
 
 static int serve_clipboard_file(const char *path, int use_incr)
 {
 	if (!load_payload_file(path))
 		return 2;
-	return serve_selection(atom_clipboard, use_incr);
+	return serve_selection(atom_clipboard, use_incr, NULL);
+}
+
+static int serve_string(const char *text)
+{
+	payload_len = strlen(text);
+	payload = malloc(payload_len ? payload_len : 1);
+	if (!payload) {
+		perror("malloc");
+		return 2;
+	}
+	memcpy(payload, text, payload_len);
+	serve_text_mode = 1;
+	return serve_selection(atom_primary, 0, "owning PRIMARY, serving STRING");
+}
+
+static xcb_keycode_t keycode_for_keysym(xcb_connection_t *c, xkb_keysym_t want)
+{
+	xcb_keycode_t found = 0;
+	struct xkb_context *ctx;
+	struct xkb_keymap *keymap;
+	xkb_keycode_t kc, min_kc, max_kc;
+	const xkb_keysym_t *syms;
+	int dev, n;
+
+	if (!xkb_x11_setup_xkb_extension(c,
+					 XKB_X11_MIN_MAJOR_XKB_VERSION,
+					 XKB_X11_MIN_MINOR_XKB_VERSION,
+					 XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
+					 NULL, NULL, NULL, NULL))
+		return 0;
+	ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	if (!ctx)
+		return 0;
+	dev = xkb_x11_get_core_keyboard_device_id(c);
+	if (dev < 0) {
+		xkb_context_unref(ctx);
+		return 0;
+	}
+	keymap = xkb_x11_keymap_new_from_device(ctx, c, dev,
+						XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (!keymap) {
+		xkb_context_unref(ctx);
+		return 0;
+	}
+	min_kc = xkb_keymap_min_keycode(keymap);
+	max_kc = xkb_keymap_max_keycode(keymap);
+	for (kc = min_kc; kc <= max_kc; kc++) {
+		n = xkb_keymap_key_get_syms_by_level(keymap, kc, 0, 0, &syms);
+		if (n > 0 && syms[0] == want) {
+			found = (xcb_keycode_t)kc;
+			break;
+		}
+	}
+	xkb_keymap_unref(keymap);
+	xkb_context_unref(ctx);
+	return found;
 }
 
 static int send_ctrl_v(const char *window_id)
 {
-	xcb_key_symbols_t *syms;
-	xcb_keycode_t *keycodes;
+	xcb_keycode_t keycode;
 	xcb_key_press_event_t ev;
 	xcb_window_t target;
 
@@ -207,19 +285,13 @@ static int send_ctrl_v(const char *window_id)
 	if (target == 0)
 		return 2;
 
-	syms = xcb_key_symbols_alloc(xc);
-
-	if (!syms)
-		return 3;
-	keycodes = xcb_key_symbols_get_keycode(syms, XK_v);
-	xcb_key_symbols_free(syms);
-
-	if (!keycodes)
+	keycode = keycode_for_keysym(xc, XKB_KEY_v);
+	if (!keycode)
 		return 3;
 
 	memset(&ev, 0, sizeof(ev));
 	ev.response_type = XCB_KEY_PRESS;
-	ev.detail = keycodes[0];
+	ev.detail = keycode;
 	ev.root = root_window;
 	ev.event = target;
 	ev.root_x = 1;
@@ -230,16 +302,12 @@ static int send_ctrl_v(const char *window_id)
 	ev.same_screen = 1;
 	ev.time = XCB_TIME_CURRENT_TIME;
 
-	free(keycodes);
-
 	xcb_set_input_focus(xc, target, XCB_INPUT_FOCUS_PARENT,
 			    XCB_TIME_CURRENT_TIME);
-	xcb_send_event(xc, 0, target, XCB_EVENT_MASK_KEY_PRESS,
-		       (const char *)&ev);
+	WXSendEvent32(xc, &ev, sizeof(ev), 0, target, XCB_EVENT_MASK_KEY_PRESS);
 
 	ev.response_type = XCB_KEY_RELEASE;
-	xcb_send_event(xc, 0, target, XCB_EVENT_MASK_KEY_RELEASE,
-		       (const char *)&ev);
+	WXSendEvent32(xc, &ev, sizeof(ev), 0, target, XCB_EVENT_MASK_KEY_RELEASE);
 	xcb_flush(xc);
 
 	return 0;
@@ -267,7 +335,7 @@ static int read_clipboard(void)
 		if (wait_ms < 0)
 			wait_ms = 0;
 		if (!clip_wait_event(xc, &ev, wait_ms)) {
-			fprintf(stderr, "timed out waiting for SelectionNotify\n");
+			fprintf(stderr, "timed out waiting for XCB_SELECTION_NOTIFY\n");
 			return 4;
 		}
 		if ((ev->response_type & 0x7f) == XCB_SELECTION_NOTIFY)
@@ -301,31 +369,17 @@ static int read_clipboard(void)
 
 static int init_x11(void)
 {
-	int screen_num;
-	xcb_screen_iterator_t iter;
-	xcb_screen_t *screen;
 	xcb_intern_atom_cookie_t cookies[5];
 	xcb_intern_atom_reply_t *rep;
 	uint32_t mask;
+	int screen_num;
 	int i = 0;
 
-	xc = xcb_connect(NULL, &screen_num);
-
-	if (xcb_connection_has_error(xc)) {
-		fprintf(stderr, "cannot open display\n");
-		xcb_disconnect(xc);
-
-		xc = NULL;
+	xc = xcconn_open(NULL, "wmclipd_cliptest", 0, &screen_num);
+	if (!xc)
 		return 0;
-	}
 
-	iter = xcb_setup_roots_iterator(xcb_get_setup(xc));
-
-	for (; screen_num > 0; screen_num--)
-		xcb_screen_next(&iter);
-
-	screen = iter.data;
-	root_window = screen->root;
+	root_window = xcconn_root(xc, screen_num);
 
 	cookies[i++] = xcb_intern_atom(xc, 0, strlen("CLIPBOARD"), "CLIPBOARD");
 	cookies[i++] = xcb_intern_atom(xc, 0, strlen("TARGETS"), "TARGETS");
@@ -378,12 +432,14 @@ int main(int argc, char **argv)
 		return serve_clipboard_file(argv[2], 0);
 	if (argc >= 3 && strcmp(argv[1], "serve-clipboard-file-incr") == 0)
 		return serve_clipboard_file(argv[2], 1);
+	if (argc >= 2 && strcmp(argv[1], "serve-string") == 0)
+		return serve_string(argc >= 3 ? argv[2] : "wmclipd cliptest");
 	if (argc >= 3 && strcmp(argv[1], "send-ctrl-v") == 0)
 		return send_ctrl_v(argv[2]);
 	if (argc >= 2 && strcmp(argv[1], "read-clipboard") == 0)
 		return read_clipboard();
 
-	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|send-ctrl-v|read-clipboard [arg]\n",
+	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|serve-string|send-ctrl-v|read-clipboard [arg]\n",
 		argv[0]);
 	return 2;
 }

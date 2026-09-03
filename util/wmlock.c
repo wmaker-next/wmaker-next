@@ -35,12 +35,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include <xcb/xcb.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #ifdef HAVE_XCB_DPMS
-#include <X11/Xlib-xcb.h>
 #include <xcb/dpms.h>
 #endif
 
@@ -63,6 +61,12 @@
 
 #include <wraster.h>
 #include <WINGs/WINGs.h>
+#include <WINGs/WXCore.h>
+/* W_EventWindow and W_EventKeysym live in the private header, wmlock
+ * drains the WINGs queue directly */
+#include <WINGs/WINGsP.h>
+
+#include "xcconn.h"
 
 /* explicit_bzero is in glibc, musl, FreeBSD and OpenBSD, NetBSD only has
  * explicit_memset, and anything older has neither, so wrap whichever the
@@ -93,19 +97,19 @@ static void scrub(void *p, size_t n)
 #define CLOCK_GAP             24
 
 struct cover {
-	Window root;
-	Window win;
-	Pixmap bg;
+	xcb_window_t root;
+	xcb_window_t win;
+	xcb_pixmap_t bg;
 };
 
 static const char *prog;
 static int verbose;
 
-static Display *dpy;
+static xcb_connection_t *xc;
 static int nscreens;
 static struct cover *covers;
 
-static Window focus_save_win;
+static xcb_window_t focus_save_win;
 static int focus_save_revert;
 
 #ifdef __linux__
@@ -142,7 +146,6 @@ static int bg_bright;
 static int dpms_capable;
 static int dpms_forced_off;
 #ifdef HAVE_XCB_DPMS
-static xcb_connection_t *xc;
 static int dpms_was_enabled;
 #endif
 
@@ -167,13 +170,6 @@ static void diag(const char *fmt, ...)
 
 static void fatal(const char *fmt, ...)
 	__attribute__((format(printf, 1, 2))) __attribute__((noreturn));
-
-static int focus_save_errhandler(Display *d, XErrorEvent *e)
-{
-	(void)d;
-	(void)e;
-	return 0;
-}
 
 static void fatal(const char *fmt, ...)
 {
@@ -279,18 +275,18 @@ static int authenticate(const char *user)
 #endif
 }
 
-static Pixmap make_background(RContext *rc, Window root, int *bright)
+static xcb_pixmap_t make_background(RContext *rc, xcb_window_t root, int *bright)
 {
 	RImage *rim;
-	Pixmap pix;
+	xcb_pixmap_t pix;
 	long sum;
 	int n, step, x, y, w, h, x0, y0, x1, y1, row, off;
 
-	pix = None;
+	pix = XCB_NONE;
 	*bright = 0;
-	rim = RCreateImageFromDrawable(rc, root, None);
+	rim = RCreateImageFromDrawable(rc, root, XCB_NONE);
 	if (!rim)
-		return None;
+		return XCB_NONE;
 
 	RGrayscaleImage(rim);
 	if (!RStackBlurImage(rim, BLUR_RADIUS))
@@ -315,17 +311,19 @@ static Pixmap make_background(RContext *rc, Window root, int *bright)
 		*bright = (sum / n) > 128;
 
 	if (!RConvertImage(rc, rim, &pix))
-		pix = None;
+		pix = XCB_NONE;
 	RReleaseImage(rim);
 	return pix;
 }
 
 static int create_covers(WMScreen *scr)
 {
-	XSetWindowAttributes wa;
-	XColor black;
-	Cursor invisible;
-	Pixmap bit;
+	WXSetWindowAttributes wa;
+	WXColor black;
+	xcb_cursor_t invisible;
+	xcb_pixmap_t bit;
+	uint32_t vals[15];
+	uint32_t mask;
 	RContext *rc;
 	int i, w, h;
 	char curs[8];
@@ -338,46 +336,57 @@ static int create_covers(WMScreen *scr)
 		return 0;
 
 	for (i = 0; i < nscreens; i++) {
-		covers[i].root = RootWindow(dpy, i);
-		w = DisplayWidth(dpy, i);
-		h = DisplayHeight(dpy, i);
+		const xcb_screen_t *xscr = wXScreenOf(xc, i);
 
-		wa.override_redirect = True;
-		wa.background_pixel = BlackPixel(dpy, i);
-		wa.event_mask = KeyPressMask | KeyReleaseMask | ExposureMask |
-				VisibilityChangeMask | StructureNotifyMask;
+		covers[i].root = wXRootWindow(xc, i);
+		w = wXDisplayWidth(xc, i);
+		h = wXDisplayHeight(xc, i);
 
-		covers[i].win = XCreateWindow(dpy, covers[i].root, 0, 0,
-					      (unsigned)w, (unsigned)h, 0,
-					      CopyFromParent, CopyFromParent,
-					      CopyFromParent,
-					      CWOverrideRedirect | CWBackPixel | CWEventMask,
-					      &wa);
+		wa.override_redirect = true;
+		wa.background_pixel = xscr->black_pixel;
+		wa.event_mask = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+				XCB_EVENT_MASK_EXPOSURE |
+				XCB_EVENT_MASK_VISIBILITY_CHANGE |
+				XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+
+		covers[i].win = xcb_generate_id(xc);
+		xcb_create_window(xc, XCB_COPY_FROM_PARENT,
+				  covers[i].win, covers[i].root, 0, 0,
+				  (unsigned int)w, (unsigned int)h, 0,
+				  XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+				  XCB_COPY_FROM_PARENT,
+				  wXWindowAttrValues(&wa,
+				      XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
+				      XCB_CW_EVENT_MASK, vals), vals);
 
 		/* the WINGs RContext is bound to screen 0, only that one can
 		 * use the wrlib pipeline for the blurred snapshot, the rest
 		 * stay solid black */
 		if (i == 0) {
 			covers[i].bg = make_background(rc, covers[i].root, &bg_bright);
-			if (covers[i].bg != None)
-				XSetWindowBackgroundPixmap(dpy, covers[i].win, covers[i].bg);
+			if (covers[i].bg != XCB_NONE)
+				xcb_change_window_attributes(xc, covers[i].win,
+							     XCB_CW_BACK_PIXMAP,
+							     &covers[i].bg);
 		}
 
 		/* hide the cursor on this cover */
-		bit = XCreateBitmapFromData(dpy, covers[i].win, curs, 8, 8);
+		bit = wXCreateBitmapFromData(xc, covers[i].win, curs, 8, 8);
 		memset(&black, 0, sizeof(black));
-		invisible = XCreatePixmapCursor(dpy, bit, bit, &black, &black, 0, 0);
-		XDefineCursor(dpy, covers[i].win, invisible);
-		XFreePixmap(dpy, bit);
-		XFreeCursor(dpy, invisible);
+		invisible = wXCreatePixmapCursor(xc, bit, bit, &black, &black, 0, 0);
+		wXDefineCursor(xc, covers[i].win, invisible);
+		wXFreePixmap(xc, bit);
+		xcb_free_cursor(xc, invisible);
 
 		/* StructureNotify on the root delivers the ConfigureNotify
 		 * RandR emits on every screen-size change, so the cover can
 		 * be resized without linking libXrandr or registering an
 		 * extension wire-to-event converter, SubstructureNotify is
 		 * for the raise_covers() restack watch */
-		XSelectInput(dpy, covers[i].root,
-			     StructureNotifyMask | SubstructureNotifyMask);
+		mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+		       XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+		xcb_change_window_attributes(xc, covers[i].root,
+					     XCB_CW_EVENT_MASK, &mask);
 	}
 	return 1;
 }
@@ -388,24 +397,27 @@ static int grab_inputs(void)
 
 	kb = pt = -1;
 	for (i = 0; i < GRAB_TRIES; i++) {
-		if (kb != GrabSuccess)
-			kb = XGrabKeyboard(dpy, covers[0].win, True,
-					   GrabModeAsync, GrabModeAsync, CurrentTime);
-		if (pt != GrabSuccess)
-			pt = XGrabPointer(dpy, covers[0].win, False,
-					  ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-					  GrabModeAsync, GrabModeAsync,
-					  None, None, CurrentTime);
-		if (kb == GrabSuccess && pt == GrabSuccess)
+		if (kb != WXGrabSuccess)
+			kb = wXGrabKeyboard(xc, covers[0].win, true,
+					    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+					    XCB_CURRENT_TIME);
+		if (pt != WXGrabSuccess)
+			pt = wXGrabPointer(xc, covers[0].win, false,
+					  XCB_EVENT_MASK_BUTTON_PRESS |
+					  XCB_EVENT_MASK_BUTTON_RELEASE |
+					  XCB_EVENT_MASK_POINTER_MOTION,
+					  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+					  XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
+		if (kb == WXGrabSuccess && pt == WXGrabSuccess)
 			return 1;
-		if ((kb != GrabSuccess && kb != AlreadyGrabbed) ||
-		    (pt != GrabSuccess && pt != AlreadyGrabbed))
+		if ((kb != WXGrabSuccess && kb != WXGrabAlreadyGrabbed) ||
+		    (pt != WXGrabSuccess && pt != WXGrabAlreadyGrabbed))
 			break;
 		usleep(GRAB_WAIT_US);
 	}
-	if (kb != GrabSuccess)
+	if (kb != WXGrabSuccess)
 		fprintf(stderr, "%s: cannot grab keyboard\n", prog);
-	if (pt != GrabSuccess)
+	if (pt != WXGrabSuccess)
 		fprintf(stderr, "%s: cannot grab pointer\n", prog);
 	return 0;
 }
@@ -415,10 +427,10 @@ static void raise_covers(void)
 	int i;
 
 	for (i = 0; i < nscreens; i++)
-		XRaiseWindow(dpy, covers[i].win);
+		wXRaiseWindow(xc, covers[i].win);
 }
 
-static int is_cover(Window w)
+static int is_cover(xcb_window_t w)
 {
 	int i;
 
@@ -436,12 +448,10 @@ static void dpms_init(void)
 	xcb_dpms_info_reply_t *ir;
 	xcb_generic_error_t *err;
 
-	xc = XGetXCBConnection(dpy);
-
-	/* Xlib still owns the event queue here, sending an extension
-	 * request whose major opcode resolves to 0 because the extension
-	 * is absent puts an error on the wire that desyncs Xlib's reply
-	 * tracking, so check presence before issuing any DPMS request */
+	/* an extension request whose major opcode resolves to 0 because
+	 * the extension is absent poisons the whole connection (libxcb
+	 * refuses the request: XCB_CONN_ERROR on every later reply),
+	 * so check presence before issuing any DPMS request */
 	ext = xcb_get_extension_data(xc, &xcb_dpms_id);
 	if (!ext || !ext->present) {
 		diag("DPMS extension not present");
@@ -521,8 +531,8 @@ static void draw_clock(void)
 	if (strcmp(key, clock_shown) == 0)
 		return;
 
-	sw = DisplayWidth(dpy, 0);
-	sh = DisplayHeight(dpy, 0);
+	sw = wXDisplayWidth(xc, 0);
+	sh = wXDisplayHeight(xc, 0);
 	th = (int)WMFontHeight(font_time);
 	dh = (int)WMFontHeight(font_date);
 	tw = WMWidthOfString(font_time, tbuf, (int)strlen(tbuf));
@@ -530,12 +540,12 @@ static void draw_clock(void)
 	total = th + CLOCK_GAP + dh;
 	y = (sh - total) / 2;
 
-	XClearWindow(dpy, covers[0].win);
+	wXClearArea(xc, covers[0].win, 0, 0, 0, 0, false);
 	WMDrawString(wscr, covers[0].win, col_clock, font_time,
 		     (sw - tw) / 2, y, tbuf, (int)strlen(tbuf));
 	WMDrawString(wscr, covers[0].win, col_clock, font_date,
 		     (sw - dw) / 2, y + th + CLOCK_GAP, dp, (int)strlen(dp));
-	XFlush(dpy);
+	wXFlush(xc);
 
 	snprintf(clock_shown, sizeof(clock_shown), "%s", key);
 }
@@ -552,10 +562,10 @@ static void enter_idle(void)
 static void leave_idle(void)
 {
 	idle_mode = 0;
-	XClearWindow(dpy, covers[0].win);
+	wXClearArea(xc, covers[0].win, 0, 0, 0, 0, false);
 	WMMapWidget(panel->win);
 	WMSetFocusToWidget(panel->text);
-	XFlush(dpy);
+	wXFlush(xc);
 }
 
 static void idle_tick(void *data)
@@ -598,16 +608,15 @@ static void note_activity(void)
 
 static void run_lock(WMScreen *scr, const char *user)
 {
-	Window pwin;
-	XEvent ev;
-	KeySym ks;
+	xcb_window_t pwin;
+	xcb_generic_event_t *ev = NULL;
 	char *txt;
 	char msg[128];
 	int sw, sh, pw, ph, fails, woke;
 
 	wscr = scr;
-	sw = DisplayWidth(dpy, 0);
-	sh = DisplayHeight(dpy, 0);
+	sw = wXDisplayWidth(xc, 0);
+	sh = wXDisplayHeight(xc, 0);
 
 	font_time = WMSystemFontOfSize(scr, CLOCK_TIME_SIZE);
 	font_date = WMSystemFontOfSize(scr, CLOCK_DATE_SIZE);
@@ -616,7 +625,7 @@ static void run_lock(WMScreen *scr, const char *user)
 	panel = WMCreateInputPanel(scr, NULL, "Screen Locked",
 				   "Type your password and press Return:",
 				   "", "Unlock", NULL);
-	WMSetTextFieldSecure(panel->text, True);
+	WMSetTextFieldSecure(panel->text, true);
 	WMRealizeWidget(panel->win);
 
 	pwin = WMWidgetXID(panel->win);
@@ -625,7 +634,8 @@ static void run_lock(WMScreen *scr, const char *user)
 
 	/* place the panel inside the cover so stacking is never a question,
 	 * the cover already has override_redirect so the WM never sees it */
-	XReparentWindow(dpy, pwin, covers[0].win, (sw - pw) / 2, (sh - ph) / 2);
+	xcb_reparent_window(xc, pwin, covers[0].win,
+			    (int16_t)((sw - pw) / 2), (int16_t)((sh - ph) / 2));
 	panel->result = WAPROther;
 
 	last_activity = time(NULL);
@@ -637,31 +647,40 @@ static void run_lock(WMScreen *scr, const char *user)
 	}
 	idle_timer = WMAddPersistentTimerHandler(1000, idle_tick, NULL);
 
-	XSync(dpy, False);
+	wXSync(xc);
 	fails = 0;
 
 	for (;;) {
-		/* WMHandleEvent drains the Xlib queue into the WINGs
-		 * internal pending list during Expose compression, so a
-		 * bare XNextEvent here would lose any event queued behind
-		 * a panel Expose, go through WMNextEvent which reads that
-		 * list first */
-		WMNextEvent(dpy, &ev);
+		/* each iteration owns one event, continue paths and the
+		 * bottom of the body both hand it back here */
+		free(ev);
+		ev = NULL;
 
-		if (ev.type == ConfigureNotify) {
+		/* WMHandleEvent drains the WINGs internal pending list
+		 * during Expose compression, so a bare xcb_wait_for_event
+		 * here would lose any event queued behind a panel Expose,
+		 * go through WMNextEvent which reads that list first */
+		WMNextEvent(xc, &ev);
+
+		if ((ev->response_type & 0x7f) == XCB_CONFIGURE_NOTIFY) {
 			int i;
+			WXWindowChanges wc;
 
 			for (i = 0; i < nscreens; i++) {
-				if (covers[i].root != ev.xconfigure.window)
+				if (covers[i].root != (((xcb_configure_notify_event_t *)ev)->window))
 					continue;
-				XResizeWindow(dpy, covers[i].win,
-					      (unsigned)ev.xconfigure.width,
-					      (unsigned)ev.xconfigure.height);
-				XClearWindow(dpy, covers[i].win);
+				wc.width = ((xcb_configure_notify_event_t *)ev)->width;
+				wc.height = ((xcb_configure_notify_event_t *)ev)->height;
+				wXConfigureWindow(xc, covers[i].win,
+						  XCB_CONFIG_WINDOW_WIDTH |
+						  XCB_CONFIG_WINDOW_HEIGHT, &wc);
+				wXClearArea(xc, covers[i].win, 0, 0, 0, 0, false);
 				if (i == 0) {
-					XMoveWindow(dpy, pwin,
-						    (ev.xconfigure.width - pw) / 2,
-						    (ev.xconfigure.height - ph) / 2);
+					wc.x = (((xcb_configure_notify_event_t *)ev)->width - pw) / 2;
+					wc.y = (((xcb_configure_notify_event_t *)ev)->height - ph) / 2;
+					wXConfigureWindow(xc, pwin,
+							  XCB_CONFIG_WINDOW_X |
+							  XCB_CONFIG_WINDOW_Y, &wc);
 					clock_shown[0] = '\0';
 					if (idle_mode)
 						draw_clock();
@@ -673,20 +692,22 @@ static void run_lock(WMScreen *scr, const char *user)
 			 * the WINGs panel needs its own */
 		}
 
-		if (ev.type == KeyPress || ev.type == KeyRelease) {
+		if ((ev->response_type & 0x7f) == XCB_KEY_PRESS || (ev->response_type & 0x7f) == XCB_KEY_RELEASE) {
 			/* the keyboard grab delivers everything to the
 			 * cover, intercept Escape ourselves and forward the
 			 * rest to the panel so the WINGs text field handles
 			 * editing and Return triggers the default button */
 			note_activity();
 			woke = 0;
-			if (idle_mode && ev.type == KeyPress) {
+			if (idle_mode && (ev->response_type & 0x7f) == XCB_KEY_PRESS) {
 				leave_idle();
 				woke = 1;
 			}
-			if (ev.type == KeyPress) {
-				ks = XLookupKeysym(&ev.xkey, 0);
-				if (ks == XK_Escape) {
+			if ((ev->response_type & 0x7f) == XCB_KEY_PRESS) {
+				xkb_keysym_t ks = W_EventKeysym(wscr,
+						(const xcb_key_press_event_t *)ev);
+
+				if (ks == XKB_KEY_Escape) {
 					WMSetTextFieldText(panel->text, "");
 					continue;
 				}
@@ -694,22 +715,22 @@ static void run_lock(WMScreen *scr, const char *user)
 				 * prompt would submit an empty password and
 				 * count a failure, swallow it so the first
 				 * Return only wakes */
-				if (woke && (ks == XK_Return || ks == XK_KP_Enter))
+				if (woke && (ks == XKB_KEY_Return || ks == XKB_KEY_KP_Enter))
 					continue;
 			}
 			if (idle_mode)
 				continue;
-			ev.xany.window = pwin;
-			WMHandleEvent(&ev);
-		} else if (ev.type == VisibilityNotify || ev.type == MapNotify ||
-			   ev.type == ConfigureNotify) {
-			if (is_cover(ev.xany.window))
+			((xcb_key_press_event_t *)ev)->event = pwin;
+			WMHandleEvent(ev);
+		} else if ((ev->response_type & 0x7f) == XCB_VISIBILITY_NOTIFY || (ev->response_type & 0x7f) == XCB_MAP_NOTIFY ||
+			   (ev->response_type & 0x7f) == XCB_CONFIGURE_NOTIFY) {
+			if (is_cover(W_EventWindow(ev)))
 				raise_covers();
 			else
-				WMHandleEvent(&ev);
-		} else if (ev.type == ButtonPress || ev.type == ButtonRelease ||
-			   ev.type == MotionNotify) {
-			/* pointer is grabbed with owner_events False so every
+				WMHandleEvent(ev);
+		} else if ((ev->response_type & 0x7f) == XCB_BUTTON_PRESS || (ev->response_type & 0x7f) == XCB_BUTTON_RELEASE ||
+			   (ev->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
+			/* pointer is grabbed with owner_events false so every
 			 * pointer event lands on the cover, the panel itself
 			 * stays keyboard-only but motion or a click counts as
 			 * activity for the idle clock and DPMS wake */
@@ -717,19 +738,19 @@ static void run_lock(WMScreen *scr, const char *user)
 			if (idle_mode)
 				leave_idle();
 			continue;
-		} else if (ev.type == Expose) {
-			if (ev.xexpose.window == covers[0].win) {
-				if (idle_mode && ev.xexpose.count == 0) {
+		} else if ((ev->response_type & 0x7f) == XCB_EXPOSE) {
+			if ((((xcb_expose_event_t *)ev)->window) == covers[0].win) {
+				if (idle_mode && (((xcb_expose_event_t *)ev)->count) == 0) {
 					clock_shown[0] = '\0';
 					draw_clock();
 				}
 			} else {
-				WMHandleEvent(&ev);
+				WMHandleEvent(ev);
 			}
 		} else {
 			/* focus, property and the rest go to WINGs if it
 			 * owns the window, otherwise drop them */
-			WMHandleEvent(&ev);
+			WMHandleEvent(ev);
 		}
 
 		if (panel->result != WAPRDefault)
@@ -753,7 +774,7 @@ static void run_lock(WMScreen *scr, const char *user)
 		 * to the server first and tell the user what is happening */
 		if (panel->mLbl)
 			WMSetLabelText(panel->mLbl, "Authenticating...");
-		XSync(dpy, False);
+		wXSync(xc);
 
 		if (authenticate(user)) {
 			scrub(password, sizeof(password));
@@ -766,8 +787,8 @@ static void run_lock(WMScreen *scr, const char *user)
 			 "Authentication failed (%d). Try again:", fails);
 		if (panel->mLbl)
 			WMSetLabelText(panel->mLbl, msg);
-		XBell(dpy, 100);
-		XSync(dpy, False);
+		wXBell(xc, 100);
+		wXSync(xc);
 	}
 
 	WMDeleteTimerHandler(idle_timer);
@@ -784,18 +805,18 @@ static void cleanup(void)
 #ifdef __linux__
 	vt_lock(0);
 #endif
-	if (!dpy)
+	if (xc == NULL)
 		return;
 	if (dpms_forced_off)
 		dpms_force(0);
-	XUngrabKeyboard(dpy, CurrentTime);
-	XUngrabPointer(dpy, CurrentTime);
+	wXUngrabKeyboard(xc, XCB_CURRENT_TIME);
+	wXUngrabPointer(xc, XCB_CURRENT_TIME);
 	if (covers) {
 		for (i = 0; i < nscreens; i++) {
-			if (covers[i].bg != None)
-				XFreePixmap(dpy, covers[i].bg);
-			if (covers[i].win != None)
-				XDestroyWindow(dpy, covers[i].win);
+			if (covers[i].bg != XCB_NONE)
+				wXFreePixmap(xc, covers[i].bg);
+			if (covers[i].win != XCB_NONE)
+				xcb_destroy_window(xc, covers[i].win);
 		}
 		free(covers);
 		covers = NULL;
@@ -806,16 +827,19 @@ static void cleanup(void)
 		pamh = NULL;
 	}
 #endif
-	if (focus_save_win != None) {
-		int (*old_handler)(Display *dpy, XErrorEvent *ev);
-
-		XSync(dpy, False);
-		old_handler = XSetErrorHandler(focus_save_errhandler);
-		XSetInputFocus(dpy, focus_save_win, focus_save_revert, CurrentTime);
-		XSync(dpy, False);
-		XSetErrorHandler(old_handler);
+	if (focus_save_win != XCB_NONE) {
+		wXSync(xc);
+		/* the XSetErrorHandler trap that used to swallow the
+		 * focus_save restore errors (the cover may already be
+		 * gone) becomes a checked request with the error
+		 * discarded, the §2.4 rule */
+		(void) WXCheckVoid(xc,
+				   xcb_set_input_focus_checked(xc, focus_save_revert,
+							       focus_save_win,
+							       XCB_CURRENT_TIME));
+		wXSync(xc);
 	}
-	XSync(dpy, False);
+	wXSync(xc);
 }
 
 static void usage(int status) __attribute__((noreturn));
@@ -842,6 +866,8 @@ static void usage(int status)
 
 int main(int argc, char **argv)
 {
+	int sn = 0;
+
 	enum {
 		OPT_NO_IDLE_CLOCK = 256,
 		OPT_IDLE_TIMEOUT,
@@ -854,6 +880,8 @@ int main(int argc, char **argv)
 	struct passwd *pw;
 	const char *user;
 	int ch, i;
+	xcb_get_input_focus_cookie_t ck;
+	xcb_get_input_focus_reply_t *rep;
 	struct option longopts[] = {
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "no-idle-clock",  no_argument,       NULL, OPT_NO_IDLE_CLOCK },
@@ -941,13 +969,23 @@ int main(int argc, char **argv)
 #endif
 
 	WMInitializeApplication("wmlock", &argc, argv);
-	scr = WMOpenScreen(NULL);
-	if (!scr)
-		fatal("cannot open display");
-	dpy = WMScreenDisplay(scr);
-	nscreens = ScreenCount(dpy);
 
-	XGetInputFocus(dpy, &focus_save_win, &focus_save_revert);
+	xc = xcconn_open(NULL, NULL, 0, &sn);
+	if (!xc)
+		fatal("cannot open display");
+
+	scr = WMCreateSimpleApplicationScreen(xc, sn);
+	if (!scr)
+		fatal("cannot initialize application");
+	nscreens = wXScreenCount(xc);
+
+	ck = xcb_get_input_focus(xc);
+	rep = xcb_get_input_focus_reply(xc, ck, NULL);
+	if (rep) {
+		focus_save_win = rep->focus;
+		focus_save_revert = rep->revert_to;
+		free(rep);
+	}
 
 	dpms_init();
 	atexit(cleanup);
@@ -956,14 +994,14 @@ int main(int argc, char **argv)
 		fatal("out of memory");
 
 	/* the grab target must be viewable, map screen 0 first and sync
-	 * so the server has it before XGrabKeyboard runs */
-	XMapRaised(dpy, covers[0].win);
-	XSync(dpy, False);
+	 * so the server has it before the keyboard grab runs */
+	wXMapRaised(xc, covers[0].win);
+	wXSync(xc);
 	if (!grab_inputs())
 		return 1;
 	for (i = 1; i < nscreens; i++)
-		XMapRaised(dpy, covers[i].win);
-	XSync(dpy, False);
+		wXMapRaised(xc, covers[i].win);
+	wXSync(xc);
 
 #ifdef __linux__
 	vt_lock(1);

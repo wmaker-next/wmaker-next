@@ -2,10 +2,7 @@
 #include "wconfig.h"
 #include "WINGsP.h"
 
-#include <X11/Xatom.h>
-#include <X11/cursorfont.h>
 #ifdef USE_XSHAPE
-#include <X11/Xlib-xcb.h>
 #include <xcb/shape.h>
 #endif
 
@@ -34,9 +31,9 @@
 
 static WMHandlerID dndSourceTimer = NULL;
 
-static void *idleState(WMView * srcView, XClientMessageEvent * event, WMDraggingInfo * info);
-static void *dropAllowedState(WMView * srcView, XClientMessageEvent * event, WMDraggingInfo * info);
-static void *finishDropState(WMView * srcView, XClientMessageEvent * event, WMDraggingInfo * info);
+static void *idleState(WMView * srcView, xcb_client_message_event_t * event, WMDraggingInfo * info);
+static void *dropAllowedState(WMView * srcView, xcb_client_message_event_t * event, WMDraggingInfo * info);
+static void *finishDropState(WMView * srcView, xcb_client_message_event_t * event, WMDraggingInfo * info);
 
 #ifdef XDND_DEBUG
 static const char *stateName(W_DndState * state)
@@ -62,18 +59,18 @@ static WMScreen *sourceScreen(WMDraggingInfo * info)
 	return W_VIEW_SCREEN(XDND_SOURCE_VIEW(info));
 }
 
-static void endDragProcess(WMDraggingInfo * info, Bool deposited)
+static void endDragProcess(WMDraggingInfo * info, bool deposited)
 {
 	WMView *view = XDND_SOURCE_VIEW(info);
 	WMScreen *scr = W_VIEW_SCREEN(XDND_SOURCE_VIEW(info));
 
 	/* free selection handler while view exists */
-	WMDeleteSelectionHandler(view, scr->xdndSelectionAtom, CurrentTime);
+	WMDeleteSelectionHandler(view, scr->xdndSelectionAtom, XCB_CURRENT_TIME);
 	wfree(XDND_SELECTION_PROCS(info));
 
-	if (XDND_DRAG_CURSOR(info) != None) {
-		XFreeCursor(scr->display, XDND_DRAG_CURSOR(info));
-		XDND_DRAG_CURSOR(info) = None;
+	if (XDND_DRAG_CURSOR(info) != XCB_NONE) {
+		xcb_free_cursor(scr->display, XDND_DRAG_CURSOR(info));
+		XDND_DRAG_CURSOR(info) = XCB_NONE;
 	}
 
 	if (view->dragSourceProcs->endedDrag != NULL) {
@@ -90,7 +87,7 @@ static void endDragProcess(WMDraggingInfo * info, Bool deposited)
 static void initDragCursor(WMDraggingInfo * info)
 {
 	WMScreen *scr = sourceScreen(info);
-	XColor cursorFgColor, cursorBgColor;
+	WXColor cursorFgColor, cursorBgColor;
 
 	/* green */
 	cursorFgColor.red = 0x4500;
@@ -102,29 +99,29 @@ static void initDragCursor(WMDraggingInfo * info)
 	cursorBgColor.green = 0xffff;
 	cursorBgColor.blue = 0xffff;
 
-	XDND_DRAG_CURSOR(info) = XCreateFontCursor(scr->display, XC_left_ptr);
-	XRecolorCursor(scr->display, XDND_DRAG_CURSOR(info), &cursorFgColor, &cursorBgColor);
+	XDND_DRAG_CURSOR(info) = wXLoadCursor(scr->display, 0, "left_ptr");
+	wXRecolorCursor(scr->display, XDND_DRAG_CURSOR(info), &cursorFgColor, &cursorBgColor);
 
-	XFlush(scr->display);
+	wXFlush(scr->display);
 }
 
-static void recolorCursor(WMDraggingInfo * info, Bool dropIsAllowed)
+static void recolorCursor(WMDraggingInfo * info, bool dropIsAllowed)
 {
 	WMScreen *scr = sourceScreen(info);
 
 	if (dropIsAllowed) {
-		XDefineCursor(scr->display, scr->rootWin, XDND_DRAG_CURSOR(info));
+		wXDefineCursor(scr->display, scr->rootWin, XDND_DRAG_CURSOR(info));
 	} else {
-		XDefineCursor(scr->display, scr->rootWin, scr->defaultCursor);
+		wXDefineCursor(scr->display, scr->rootWin, scr->defaultCursor);
 	}
 
-	XFlush(scr->display);
+	wXFlush(scr->display);
 }
 
 /* ----- end of drag cursor ----- */
 
 /* ----- selection procs ----- */
-static WMData *convertSelection(WMView * view, Atom selection, Atom target, void *cdata, Atom * type)
+static WMData *convertSelection(WMView * view, xcb_atom_t selection, xcb_atom_t target, void *cdata, xcb_atom_t * type)
 {
 	WMScreen *scr;
 	WMData *data;
@@ -135,7 +132,7 @@ static WMData *convertSelection(WMView * view, Atom selection, Atom target, void
 	(void) cdata;
 
 	scr = W_VIEW_SCREEN(view);
-	typeName = XGetAtomName(scr->display, target);
+	typeName = wXGetAtomName(scr->display, target);
 
 	*type = target;
 
@@ -146,12 +143,12 @@ static WMData *convertSelection(WMView * view, Atom selection, Atom target, void
 	}
 
 	if (typeName != NULL)
-		XFree(typeName);
+		free(typeName);
 
 	return data;
 }
 
-static void selectionLost(WMView * view, Atom selection, void *cdata)
+static void selectionLost(WMView * view, xcb_atom_t selection, void *cdata)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) view;
@@ -161,7 +158,7 @@ static void selectionLost(WMView * view, Atom selection, void *cdata)
 	wwarning(_("XDND selection lost during drag operation..."));
 }
 
-static void selectionDone(WMView * view, Atom selection, Atom target, void *cdata)
+static void selectionDone(WMView * view, xcb_atom_t selection, xcb_atom_t target, void *cdata)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) view;
@@ -178,12 +175,13 @@ static void selectionDone(WMView * view, Atom selection, Atom target, void *cdat
 
 /* ----- visual part ----- */
 
-static Window makeDragIcon(WMScreen * scr, WMPixmap * pixmap)
+static xcb_window_t makeDragIcon(WMScreen * scr, WMPixmap * pixmap)
 {
-	Window window;
+	xcb_window_t window;
 	WMSize size;
 	unsigned long flags;
-	XSetWindowAttributes attribs;
+	WXSetWindowAttributes attribs;
+	uint32_t vals[15];
 
 	if (!pixmap) {
 		pixmap = scr->defaultObjectIcon;
@@ -191,18 +189,22 @@ static Window makeDragIcon(WMScreen * scr, WMPixmap * pixmap)
 
 	size = WMGetPixmapSize(pixmap);
 
-	flags = CWSaveUnder | CWBackPixmap | CWOverrideRedirect | CWColormap;
-	attribs.save_under = True;
+	flags = XCB_CW_SAVE_UNDER | XCB_CW_BACK_PIXMAP | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
+	attribs.save_under = true;
 	attribs.background_pixmap = pixmap->pixmap;
-	attribs.override_redirect = True;
+	attribs.override_redirect = true;
 	attribs.colormap = scr->colormap;
 
-	window = XCreateWindow(scr->display, scr->rootWin, 0, 0, size.width,
-			       size.height, 0, scr->depth, InputOutput, scr->visual, flags, &attribs);
+	window = xcb_generate_id(scr->display);
+	xcb_create_window(scr->display, scr->depth, window, scr->rootWin,
+			  0, 0, size.width, size.height, 0,
+			  XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			  scr->visual->visual_id,
+			  wXWindowAttrValues(&attribs, flags, vals), vals);
 
 #ifdef USE_XSHAPE
 	if (pixmap->mask) {
-		xcb_shape_mask(XGetXCBConnection(scr->display), XCB_SHAPE_SO_SET,
+		xcb_shape_mask(scr->display, XCB_SHAPE_SO_SET,
 			       XCB_SHAPE_SK_BOUNDING, window, 0, 0, pixmap->mask);
 	}
 #endif
@@ -210,7 +212,7 @@ static Window makeDragIcon(WMScreen * scr, WMPixmap * pixmap)
 	return window;
 }
 
-static void slideWindow(Display * dpy, Window win, int srcX, int srcY, int dstX, int dstY)
+static void slideWindow(xcb_connection_t * dpy, xcb_window_t win, int srcX, int srcY, int dstX, int dstY)
 {
 	double x, y, dx, dy;
 	int i;
@@ -225,8 +227,8 @@ static void slideWindow(Display * dpy, Window win, int srcX, int srcY, int dstX,
 	dy = (double)(dstY - srcY) / iterations;
 
 	for (i = 0; i <= iterations; i++) {
-		XMoveWindow(dpy, win, x, y);
-		XFlush(dpy);
+		xcb_configure_window(dpy, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+		wXFlush(dpy);
 
 		wusleep(800);
 
@@ -261,66 +263,64 @@ static int getInitialDragImageCoord(int viewCoord, int mouseCoord, int viewSize,
 
 }
 
-static void initDragImagePos(WMView * view, WMDraggingInfo * info, XEvent * event)
+static void initDragImagePos(WMView * view, WMDraggingInfo * info, xcb_generic_event_t * event)
 {
 	WMSize iconSize = WMGetPixmapSize(view->dragImage);
 	WMSize viewSize = WMGetViewSize(view);
 	WMPoint viewPos;
-	Window foo;
+	xcb_window_t foo;
 
-	XTranslateCoordinates(W_VIEW_SCREEN(view)->display,
-			      WMViewXID(view), W_VIEW_SCREEN(view)->rootWin,
+	wXTranslateCoordinates(W_VIEW_SCREEN(view)->display, WMViewXID(view), W_VIEW_SCREEN(view)->rootWin,
 			      0, 0, &(viewPos.x), &(viewPos.y), &foo);
 
 	/* set icon pos */
 	XDND_DRAG_ICON_POS(info).x =
-	    getInitialDragImageCoord(viewPos.x, event->xmotion.x_root, viewSize.width, iconSize.width);
+	    getInitialDragImageCoord(viewPos.x, ((xcb_motion_notify_event_t *)event)->root_x, viewSize.width, iconSize.width);
 
 	XDND_DRAG_ICON_POS(info).y =
-	    getInitialDragImageCoord(viewPos.y, event->xmotion.y_root, viewSize.height, iconSize.height);
+	    getInitialDragImageCoord(viewPos.y, ((xcb_motion_notify_event_t *)event)->root_y, viewSize.height, iconSize.height);
 
 	/* set mouse offset relative to icon */
-	XDND_MOUSE_OFFSET(info).x = event->xmotion.x_root - XDND_DRAG_ICON_POS(info).x;
-	XDND_MOUSE_OFFSET(info).y = event->xmotion.y_root - XDND_DRAG_ICON_POS(info).y;
+	XDND_MOUSE_OFFSET(info).x = ((xcb_motion_notify_event_t *)event)->root_x - XDND_DRAG_ICON_POS(info).x;
+	XDND_MOUSE_OFFSET(info).y = ((xcb_motion_notify_event_t *)event)->root_y - XDND_DRAG_ICON_POS(info).y;
 }
 
 static void refreshDragImage(WMView * view, WMDraggingInfo * info)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
 
-	XMoveWindow(scr->display, XDND_DRAG_ICON(info), XDND_DRAG_ICON_POS(info).x, XDND_DRAG_ICON_POS(info).y);
+	xcb_configure_window(scr->display, XDND_DRAG_ICON(info), XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ XDND_DRAG_ICON_POS(info).x, XDND_DRAG_ICON_POS(info).y });
 }
 
-static void startDragImage(WMView * view, WMDraggingInfo * info, XEvent * event)
+static void startDragImage(WMView * view, WMDraggingInfo * info, xcb_generic_event_t * event)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
 
 	XDND_DRAG_ICON(info) = makeDragIcon(scr, view->dragImage);
 	initDragImagePos(view, info, event);
 	refreshDragImage(view, info);
-	XMapRaised(scr->display, XDND_DRAG_ICON(info));
+	wXMapRaised(scr->display, XDND_DRAG_ICON(info));
 
 	initDragCursor(info);
 }
 
-static void endDragImage(WMDraggingInfo * info, Bool slideBack)
+static void endDragImage(WMDraggingInfo * info, bool slideBack)
 {
 	WMView *view = XDND_SOURCE_VIEW(info);
-	Display *dpy = W_VIEW_SCREEN(view)->display;
+	xcb_connection_t *dpy = W_VIEW_SCREEN(view)->display;
 
 	if (slideBack) {
 		WMPoint toLocation;
-		Window foo;
+		xcb_window_t foo;
 
-		XTranslateCoordinates(W_VIEW_SCREEN(view)->display,
-				      WMViewXID(view), W_VIEW_SCREEN(view)->rootWin,
+		wXTranslateCoordinates(W_VIEW_SCREEN(view)->display, WMViewXID(view), W_VIEW_SCREEN(view)->rootWin,
 				      0, 0, &(toLocation.x), &(toLocation.y), &foo);
 
 		slideWindow(dpy, XDND_DRAG_ICON(info),
 			    XDND_DRAG_ICON_POS(info).x, XDND_DRAG_ICON_POS(info).y, toLocation.x, toLocation.y);
 	}
 
-	XDestroyWindow(dpy, XDND_DRAG_ICON(info));
+	xcb_destroy_window(dpy, XDND_DRAG_ICON(info));
 }
 
 /* ----- end of visual part ----- */
@@ -328,26 +328,26 @@ static void endDragImage(WMDraggingInfo * info, Bool slideBack)
 /* ----- messages ----- */
 
 /* send a DnD message to the destination window */
-static Bool
-sendDnDClientMessage(WMDraggingInfo * info, Atom message,
+static bool
+sendDnDClientMessage(WMDraggingInfo * info, xcb_atom_t message,
 		     unsigned long data1, unsigned long data2, unsigned long data3, unsigned long data4)
 {
-	Display *dpy = sourceScreen(info)->display;
-	Window srcWin = WMViewXID(XDND_SOURCE_VIEW(info));
-	Window destWin = XDND_DEST_WIN(info);
+	xcb_connection_t *dpy = sourceScreen(info)->display;
+	xcb_window_t srcWin = WMViewXID(XDND_SOURCE_VIEW(info));
+	xcb_window_t destWin = XDND_DEST_WIN(info);
 
 	if (!W_SendDnDClientMessage(dpy, destWin, message, srcWin, data1, data2, data3, data4)) {
 		/* drop failed */
-		recolorCursor(info, False);
-		endDragImage(info, True);
-		endDragProcess(info, False);
-		return False;
+		recolorCursor(info, false);
+		endDragImage(info, true);
+		endDragProcess(info, false);
+		return false;
 	}
 
-	return True;
+	return true;
 }
 
-static Bool sendEnterMessage(WMDraggingInfo * info)
+static bool sendEnterMessage(WMDraggingInfo * info)
 {
 	WMScreen *scr = sourceScreen(info);
 	unsigned long version;
@@ -365,7 +365,7 @@ static Bool sendEnterMessage(WMDraggingInfo * info)
 				    XDND_3_TYPES(info)[0], XDND_3_TYPES(info)[1], XDND_3_TYPES(info)[2]);
 }
 
-static Bool sendPositionMessage(WMDraggingInfo * info, WMPoint * mousePos)
+static bool sendPositionMessage(WMDraggingInfo * info, WMPoint * mousePos)
 {
 	WMScreen *scr = sourceScreen(info);
 	WMRect *noPosZone = &(XDND_NO_POS_ZONE(info));
@@ -381,7 +381,7 @@ static Bool sendPositionMessage(WMDraggingInfo * info, WMPoint * mousePos)
 		}
 
 		/* Nothing to send, always succeed */
-		return True;
+		return true;
 
 	}
 
@@ -392,14 +392,14 @@ static Bool sendPositionMessage(WMDraggingInfo * info, WMPoint * mousePos)
 				    XDND_TIMESTAMP(info), XDND_SOURCE_ACTION(info));
 }
 
-static Bool sendLeaveMessage(WMDraggingInfo * info)
+static bool sendLeaveMessage(WMDraggingInfo * info)
 {
 	WMScreen *scr = sourceScreen(info);
 
 	return sendDnDClientMessage(info, scr->xdndLeaveAtom, 0, 0, 0, 0);
 }
 
-static Bool sendDropMessage(WMDraggingInfo * info)
+static bool sendDropMessage(WMDraggingInfo * info)
 {
 	WMScreen *scr = sourceScreen(info);
 
@@ -408,10 +408,10 @@ static Bool sendDropMessage(WMDraggingInfo * info)
 
 /* ----- end of messages ----- */
 
-static Atom *getTypeAtomList(WMScreen * scr, WMView * view, int *count)
+static xcb_atom_t *getTypeAtomList(WMScreen * scr, WMView * view, int *count)
 {
 	WMArray *types;
-	Atom *typeAtoms;
+	xcb_atom_t *typeAtoms;
 	int i;
 
 	types = view->dragSourceProcs->dropDataTypes(view);
@@ -419,9 +419,9 @@ static Atom *getTypeAtomList(WMScreen * scr, WMView * view, int *count)
 	if (types != NULL) {
 		*count = WMGetArrayItemCount(types);
 		if (*count > 0) {
-			typeAtoms = wmalloc((*count) * sizeof(Atom));
+			typeAtoms = wmalloc((*count) * sizeof(xcb_atom_t));
 			for (i = 0; i < *count; i++) {
-				typeAtoms[i] = XInternAtom(scr->display, WMGetFromArray(types, i), False);
+				typeAtoms[i] = WXInternAtom(scr->display, WMGetFromArray(types, i));
 			}
 
 			/* WMFreeArray(types); */
@@ -432,15 +432,15 @@ static Atom *getTypeAtomList(WMScreen * scr, WMView * view, int *count)
 	}
 
 	*count = 1;
-	typeAtoms = wmalloc(sizeof(Atom));
-	*typeAtoms = None;
+	typeAtoms = wmalloc(sizeof(xcb_atom_t));
+	*typeAtoms = XCB_NONE;
 
 	return typeAtoms;
 }
 
 static void registerDropTypes(WMScreen * scr, WMView * view, WMDraggingInfo * info)
 {
-	Atom *typeList;
+	xcb_atom_t *typeList;
 	int i, count;
 
 	typeList = getTypeAtomList(scr, view, &count);
@@ -450,7 +450,7 @@ static void registerDropTypes(WMScreen * scr, WMView * view, WMDraggingInfo * in
 		XDND_3_TYPES(info)[i] = typeList[i];
 
 	for (; i < 3; i++)
-		XDND_3_TYPES(info)[i] = None;
+		XDND_3_TYPES(info)[i] = XCB_NONE;
 
 	/* store the entire type list */
 	WXSetAtomN(scr->display, WMViewXID(view), scr->xdndTypeListAtom, typeList, count);
@@ -458,12 +458,12 @@ static void registerDropTypes(WMScreen * scr, WMView * view, WMDraggingInfo * in
 
 static void registerOperationList(WMScreen * scr, WMView * view, WMArray * operationArray)
 {
-	Atom *actionList;
+	xcb_atom_t *actionList;
 	WMDragOperationType operation;
 	int count = WMGetArrayItemCount(operationArray);
 	int i;
 
-	actionList = wmalloc(sizeof(Atom) * count);
+	actionList = wmalloc(sizeof(xcb_atom_t) * count);
 
 	for (i = 0; i < count; i++) {
 		operation = WMGetDragOperationItemType(WMGetFromArray(operationArray, i));
@@ -480,7 +480,7 @@ static void registerDescriptionList(WMScreen * scr, WMView * view, WMArray * ope
 	int i;
 	int size = 0;
 
-	/* size of XA_STRING info */
+	/* size of XCB_ATOM_STRING info */
 	for (i = 0; i < count; i++) {
 		size += strlen(WMGetDragOperationItemText(WMGetFromArray(operationArray, i))) + 1 /* NULL */;
 	}
@@ -521,14 +521,14 @@ static void initSourceDragInfo(WMView * sourceView, WMDraggingInfo * info)
 	XDND_SOURCE_INFO(info) = (W_DragSourceInfo *) wmalloc(sizeof(W_DragSourceInfo));
 
 	XDND_SOURCE_VIEW(info) = sourceView;
-	XDND_DEST_WIN(info) = None;
-	XDND_DRAG_ICON(info) = None;
+	XDND_DEST_WIN(info) = XCB_NONE;
+	XDND_DRAG_ICON(info) = XCB_NONE;
 
 	XDND_SOURCE_ACTION(info) = W_OperationToAction(W_VIEW_SCREEN(sourceView),
 						       sourceView->dragSourceProcs->
 						       wantedDropOperation(sourceView));
 
-	XDND_DEST_ACTION(info) = None;
+	XDND_DEST_ACTION(info) = XCB_NONE;
 
 	XDND_SOURCE_STATE(info) = idleState;
 
@@ -564,13 +564,13 @@ static WMDragOperationType defWantedDropOperation(WMView * self)
  static WMArray*
  defAskedOperations(WMView *self); */
 
-static Bool defAcceptDropOperation(WMView * self, WMDragOperationType allowedOperation)
+static bool defAcceptDropOperation(WMView * self, WMDragOperationType allowedOperation)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 	(void) allowedOperation;
 
-	return False;
+	return false;
 }
 
 static void defBeganDrag(WMView * self, WMPoint * point)
@@ -580,7 +580,7 @@ static void defBeganDrag(WMView * self, WMPoint * point)
 	(void) point;
 }
 
-static void defEndedDrag(WMView * self, WMPoint * point, Bool deposited)
+static void defEndedDrag(WMView * self, WMPoint * point, bool deposited)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
@@ -632,55 +632,55 @@ void WMSetViewDragSourceProcs(WMView * view, WMDragSourceProcs * procs)
 		view->dragSourceProcs->fetchDragData = defFetchDragData;
 }
 
-static Bool isXdndAware(WMScreen * scr, Window win)
+static bool isXdndAware(WMScreen * scr, xcb_window_t win)
 {
-	Atom winXdndVersion;
+	xcb_atom_t winXdndVersion;
 
-	if (win == None)
-		return False;
+	if (win == XCB_NONE)
+		return false;
 
 	return WXGetAtom(scr->display, win, scr->xdndAwareAtom, &winXdndVersion);
 }
 
-static Window *windowChildren(Display * dpy, Window win, unsigned *nchildren)
+static xcb_window_t *windowChildren(xcb_connection_t * dpy, xcb_window_t win, unsigned int *nchildren)
 {
-	Window *children;
-	Window foo, bar;
+	xcb_window_t *children;
+	xcb_window_t foo, bar;
 
-	if (!XQueryTree(dpy, win, &foo, &bar, &children, nchildren)) {
+	if (!wXQueryTree(dpy, win, &foo, &bar, &children, nchildren)) {
 		*nchildren = 0;
 		return NULL;
 	} else
 		return children;
 }
 
-static Window lookForAwareWindow(WMScreen * scr, WMPoint * mousePos, Window win)
+static xcb_window_t lookForAwareWindow(WMScreen * scr, WMPoint * mousePos, xcb_window_t win)
 {
 	int tmpx, tmpy;
-	Window child;
+	xcb_window_t child;
 
 	/* Since xdnd v3, only the toplevel window should be aware */
 	if (isXdndAware(scr, win))
 		return win;
 
 	/* inspect child under pointer */
-	if (XTranslateCoordinates(scr->display, scr->rootWin, win, mousePos->x, mousePos->y, &tmpx, &tmpy, &child)) {
-		if (child == None)
-			return None;
+	if (wXTranslateCoordinates(scr->display, scr->rootWin, win, mousePos->x, mousePos->y, &tmpx, &tmpy, &child)) {
+		if (child == XCB_NONE)
+			return XCB_NONE;
 		else
 			return lookForAwareWindow(scr, mousePos, child);
 	}
 
-	return None;
+	return XCB_NONE;
 }
 
-static Window findDestination(WMDraggingInfo * info, WMPoint * mousePos)
+static xcb_window_t findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 {
 	WMScreen *scr = sourceScreen(info);
 	unsigned nchildren;
-	Window *children = windowChildren(scr->display, scr->rootWin, &nchildren);
+	xcb_window_t *children = windowChildren(scr->display, scr->rootWin, &nchildren);
 	int i;
-	XWindowAttributes attr;
+	WXWindowAttributes attr;
 
 	if (isXdndAware(scr, scr->rootWin))
 		return scr->rootWin;
@@ -695,13 +695,13 @@ static Window findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 
 	if (i < 0) {
 		/* root window has no child under drag icon, and is not xdnd aware. */
-		return None;
+		return XCB_NONE;
 	}
 
 	/* inspecting children, from upper to lower */
 	for (; i >= 0; i--) {
-		if (XGetWindowAttributes(scr->display, children[i], &attr)
-		    && attr.map_state == IsViewable
+		if (wXGetWindowAttributes(scr->display, children[i], &attr, NULL)
+		    && attr.map_state == XCB_MAP_STATE_VIEWABLE
 		    && mousePos->x >= attr.x
 		    && mousePos->y >= attr.y
 		    && mousePos->x < attr.x + attr.width && mousePos->y < attr.y + attr.height) {
@@ -710,15 +710,15 @@ static Window findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 	}
 
 	/* No child window under drag pointer */
-	return None;
+	return XCB_NONE;
 }
 
 static void storeDestinationProtocolVersion(WMDraggingInfo * info)
 {
-	Atom winXdndVersion;
+	xcb_atom_t winXdndVersion;
 	WMScreen *scr = W_VIEW_SCREEN(XDND_SOURCE_VIEW(info));
 
-	wassertr(XDND_DEST_WIN(info) != None);
+	wassertr(XDND_DEST_WIN(info) != XCB_NONE);
 
 	if (WXGetAtom(scr->display, XDND_DEST_WIN(info), scr->xdndAwareAtom, &winXdndVersion)) {
 		XDND_DEST_VERSION(info) = (unsigned char)winXdndVersion;
@@ -728,7 +728,7 @@ static void storeDestinationProtocolVersion(WMDraggingInfo * info)
 	}
 }
 
-static void initMotionProcess(WMView * view, WMDraggingInfo * info, XEvent * event, WMPoint * startLocation)
+static void initMotionProcess(WMView * view, WMDraggingInfo * info, xcb_generic_event_t * event, WMPoint * startLocation)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
 
@@ -737,9 +737,9 @@ static void initMotionProcess(WMView * view, WMDraggingInfo * info, XEvent * eve
 	XDND_SELECTION_PROCS(info)->convertSelection = convertSelection;
 	XDND_SELECTION_PROCS(info)->selectionLost = selectionLost;
 	XDND_SELECTION_PROCS(info)->selectionDone = selectionDone;
-	XDND_TIMESTAMP(info) = event->xmotion.time;
+	XDND_TIMESTAMP(info) = ((xcb_motion_notify_event_t *)event)->time;
 
-	if (!WMCreateSelectionHandler(view, scr->xdndSelectionAtom, CurrentTime, XDND_SELECTION_PROCS(info), NULL)) {
+	if (!WMCreateSelectionHandler(view, scr->xdndSelectionAtom, XCB_CURRENT_TIME, XDND_SELECTION_PROCS(info), NULL)) {
 		wwarning(_("could not get ownership of XDND selection"));
 		return;
 	}
@@ -756,7 +756,7 @@ static void initMotionProcess(WMView * view, WMDraggingInfo * info, XEvent * eve
 
 static void processMotion(WMDraggingInfo * info, WMPoint * mousePos)
 {
-	Window newDestination;
+	xcb_window_t newDestination;
 
 	if (!XDND_SOURCE_VIEW_STORED(info))
 		return;
@@ -766,25 +766,25 @@ static void processMotion(WMDraggingInfo * info, WMPoint * mousePos)
 	W_DragSourceStopTimer();
 
 	if (newDestination != XDND_DEST_WIN(info)) {
-		recolorCursor(info, False);
+		recolorCursor(info, false);
 
-		if (XDND_DEST_WIN(info) != None) {
+		if (XDND_DEST_WIN(info) != XCB_NONE) {
 			/* leaving a xdnd window */
 			sendLeaveMessage(info);
 		}
 
 		XDND_DEST_WIN(info) = newDestination;
-		XDND_DEST_ACTION(info) = None;
+		XDND_DEST_ACTION(info) = XCB_NONE;
 		XDND_NO_POS_ZONE(info).size.width = 0;
 		XDND_NO_POS_ZONE(info).size.height = 0;
 
-		if (newDestination != None) {
+		if (newDestination != XCB_NONE) {
 			/* entering a xdnd window */
 			XDND_SOURCE_STATE(info) = idleState;
 			storeDestinationProtocolVersion(info);
 
 			if (!sendEnterMessage(info)) {
-				XDND_DEST_WIN(info) = None;
+				XDND_DEST_WIN(info) = XCB_NONE;
 				return;
 			}
 
@@ -793,9 +793,9 @@ static void processMotion(WMDraggingInfo * info, WMPoint * mousePos)
 			XDND_SOURCE_STATE(info) = NULL;
 		}
 	} else {
-		if (XDND_DEST_WIN(info) != None) {
+		if (XDND_DEST_WIN(info) != XCB_NONE) {
 			if (!sendPositionMessage(info, mousePos)) {
-				XDND_DEST_WIN(info) = None;
+				XDND_DEST_WIN(info) = XCB_NONE;
 				return;
 			}
 
@@ -804,27 +804,27 @@ static void processMotion(WMDraggingInfo * info, WMPoint * mousePos)
 	}
 }
 
-static Bool processButtonRelease(WMDraggingInfo * info)
+static bool processButtonRelease(WMDraggingInfo * info)
 {
 	if (XDND_SOURCE_STATE(info) == dropAllowedState) {
 		/* begin drop */
 		W_DragSourceStopTimer();
 
 		if (!sendDropMessage(info))
-			return False;
+			return false;
 
 		W_DragSourceStartTimer(info);
-		return True;
+		return true;
 	} else {
-		if (XDND_DEST_WIN(info) != None)
+		if (XDND_DEST_WIN(info) != XCB_NONE)
 			sendLeaveMessage(info);
 
 		W_DragSourceStopTimer();
-		return False;
+		return false;
 	}
 }
 
-Bool WMIsDraggingFromView(WMView * view)
+bool WMIsDraggingFromView(WMView * view)
 {
 	WMDraggingInfo *info = &W_VIEW_SCREEN(view)->dragInfo;
 
@@ -832,55 +832,55 @@ Bool WMIsDraggingFromView(WMView * view)
 	/* return W_VIEW_SCREEN(view)->dragInfo.sourceInfo != NULL; */
 }
 
-void WMDragImageFromView(WMView * view, XEvent * event)
+void WMDragImageFromView(WMView * view, xcb_generic_event_t * event)
 {
 	WMDraggingInfo *info = &W_VIEW_SCREEN(view)->dragInfo;
 	WMPoint mouseLocation;
 
-	switch (event->type) {
-	case ButtonPress:
-		if (event->xbutton.button == Button1) {
-			XEvent nextEvent;
+	switch ((event->response_type & 0x7f)) {
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
+			xcb_generic_event_t *nextEvent = NULL;
 
 			/* XPeekEvent blocked until the next event was readable
 			 * and left it at the head of the queue, do the same on
 			 * the WINGs queue so a slow drag start (button down,
 			 * no motion buffered yet) is still recognised */
-			WMNextEvent(event->xbutton.display, &nextEvent);
-			WXEvqPutBack(&nextEvent);
+			WMNextEvent(W_XEvqConnection(), &nextEvent);
+			WXEvqPutBack(nextEvent);
 
 			/* Initialize only if a drag really begins (avoid clicks) */
-			if (nextEvent.type == MotionNotify) {
+			if ((nextEvent->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
 				initSourceDragInfo(view, info);
 			}
 		}
 
 		break;
 
-	case ButtonRelease:
+	case XCB_BUTTON_RELEASE:
 		if (WMIsDraggingFromView(view)) {
-			Bool dropBegan = processButtonRelease(info);
+			bool dropBegan = processButtonRelease(info);
 
-			recolorCursor(info, False);
+			recolorCursor(info, false);
 			if (dropBegan) {
-				endDragImage(info, False);
+				endDragImage(info, false);
 				XDND_SOURCE_STATE(info) = finishDropState;
 			} else {
 				/* drop failed */
-				endDragImage(info, True);
-				endDragProcess(info, False);
+				endDragImage(info, true);
+				endDragProcess(info, false);
 			}
 		}
 		break;
 
-	case MotionNotify:
+	case XCB_MOTION_NOTIFY:
 		if (WMIsDraggingFromView(view)) {
-			mouseLocation = wmkpoint(event->xmotion.x_root, event->xmotion.y_root);
+			mouseLocation = wmkpoint(((xcb_motion_notify_event_t *)event)->root_x, ((xcb_motion_notify_event_t *)event)->root_y);
 
 			if (abs(XDND_DRAG_ICON_POS(info).x - mouseLocation.x) >=
 			    MIN_X_MOVE_OFFSET
 			    || abs(XDND_DRAG_ICON_POS(info).y - mouseLocation.y) >= MIN_Y_MOVE_OFFSET) {
-				if (XDND_DRAG_ICON(info) == None) {
+				if (XDND_DRAG_ICON(info) == XCB_NONE) {
 					initMotionProcess(view, info, event, &mouseLocation);
 					startDragImage(view, info, event);
 				} else {
@@ -898,7 +898,7 @@ void WMDragImageFromView(WMView * view, XEvent * event)
 
 /* Minimal mouse events handler: no right or double-click detection,
  only drag is supported */
-static void dragImageHandler(XEvent * event, void *cdata)
+static void dragImageHandler(xcb_generic_event_t * event, void *cdata)
 {
 	WMView *view = (WMView *) cdata;
 
@@ -908,30 +908,34 @@ static void dragImageHandler(XEvent * event, void *cdata)
 /* ----- source states ----- */
 
 #ifdef XDND_DEBUG
-static void traceStatusMsg(Display * dpy, XClientMessageEvent * statusEvent)
+static void traceStatusMsg(xcb_connection_t * dpy, xcb_client_message_event_t * statusEvent)
 {
 	printf("Xdnd status message:\n");
 
-	if (statusEvent->data.l[1] & 0x2UL)
+	if (statusEvent->data.data32[1] & 0x2UL)
 		printf("\tsend position on every move\n");
 	else {
 		int x, y, w, h;
-		x = statusEvent->data.l[2] >> 16;
-		y = statusEvent->data.l[2] & 0xFFFFL;
-		w = statusEvent->data.l[3] >> 16;
-		h = statusEvent->data.l[3] & 0xFFFFL;
+		x = statusEvent->data.data32[2] >> 16;
+		y = statusEvent->data.data32[2] & 0xFFFFL;
+		w = statusEvent->data.data32[3] >> 16;
+		h = statusEvent->data.data32[3] & 0xFFFFL;
 
 		printf("\tsend position out of ((%d,%d) , (%d,%d))\n", x, y, x + w, y + h);
 	}
 
-	if (statusEvent->data.l[1] & 0x1L)
-		printf("\tallowed action: %s\n", XGetAtomName(dpy, statusEvent->data.l[4]));
+	if (statusEvent->data.data32[1] & 0x1L)
+		{
+			char *actname = wXGetAtomName(dpy, statusEvent->data.data32[4]);
+			printf("\tallowed action: %s\n", actname ? actname : "?");
+			free(actname);
+		}
 	else
 		printf("\tno action allowed\n");
 }
 #endif
 
-static void storeDropAction(WMDraggingInfo * info, Atom destAction)
+static void storeDropAction(WMDraggingInfo * info, xcb_atom_t destAction)
 {
 	WMView *sourceView = XDND_SOURCE_VIEW(info);
 	WMScreen *scr = W_VIEW_SCREEN(sourceView);
@@ -941,13 +945,13 @@ static void storeDropAction(WMDraggingInfo * info, Atom destAction)
 								     W_ActionToOperation(scr, destAction)))
 			XDND_DEST_ACTION(info) = destAction;
 		else
-			XDND_DEST_ACTION(info) = None;
+			XDND_DEST_ACTION(info) = XCB_NONE;
 	} else {
 		XDND_DEST_ACTION(info) = destAction;
 	}
 }
 
-static void storeStatusMessageInfos(WMDraggingInfo * info, XClientMessageEvent * statusEvent)
+static void storeStatusMessageInfos(WMDraggingInfo * info, xcb_client_message_event_t * statusEvent)
 {
 	WMRect *noPosZone = &(XDND_NO_POS_ZONE(info));
 
@@ -956,43 +960,43 @@ static void storeStatusMessageInfos(WMDraggingInfo * info, XClientMessageEvent *
 	traceStatusMsg(sourceScreen(info)->display, statusEvent);
 #endif
 
-	if (statusEvent->data.l[1] & 0x2UL) {
+	if (statusEvent->data.data32[1] & 0x2UL) {
 		/* bit 1 set: destination wants position messages on every move */
 		noPosZone->size.width = 0;
 		noPosZone->size.height = 0;
 	} else {
 		/* don't send another position message while in given rectangle */
-		noPosZone->pos.x = statusEvent->data.l[2] >> 16;
-		noPosZone->pos.y = statusEvent->data.l[2] & 0xFFFFL;
-		noPosZone->size.width = statusEvent->data.l[3] >> 16;
-		noPosZone->size.height = statusEvent->data.l[3] & 0xFFFFL;
+		noPosZone->pos.x = statusEvent->data.data32[2] >> 16;
+		noPosZone->pos.y = statusEvent->data.data32[2] & 0xFFFFL;
+		noPosZone->size.width = statusEvent->data.data32[3] >> 16;
+		noPosZone->size.height = statusEvent->data.data32[3] & 0xFFFFL;
 	}
 
-	if ((statusEvent->data.l[1] & 0x1L) || statusEvent->data.l[4] != None) {
+	if ((statusEvent->data.data32[1] & 0x1L) || statusEvent->data.data32[4] != XCB_NONE) {
 		/* destination accept drop */
-		storeDropAction(info, statusEvent->data.l[4]);
+		storeDropAction(info, statusEvent->data.data32[4]);
 	} else {
-		XDND_DEST_ACTION(info) = None;
+		XDND_DEST_ACTION(info) = XCB_NONE;
 	}
 }
 
-static void *idleState(WMView * view, XClientMessageEvent * event, WMDraggingInfo * info)
+static void *idleState(WMView * view, xcb_client_message_event_t * event, WMDraggingInfo * info)
 {
 	WMScreen *scr;
-	Atom destMsg = event->message_type;
+	xcb_atom_t destMsg = event->type;
 
 	scr = W_VIEW_SCREEN(view);
 
 	if (destMsg == scr->xdndStatusAtom) {
 		storeStatusMessageInfos(info, event);
 
-		if (XDND_DEST_ACTION(info) != None) {
-			recolorCursor(info, True);
+		if (XDND_DEST_ACTION(info) != XCB_NONE) {
+			recolorCursor(info, true);
 			W_DragSourceStartTimer(info);
 			return dropAllowedState;
 		} else {
 			/* drop denied */
-			recolorCursor(info, False);
+			recolorCursor(info, false);
 			return idleState;
 		}
 	}
@@ -1005,17 +1009,17 @@ static void *idleState(WMView * view, XClientMessageEvent * event, WMDraggingInf
 	return idleState;
 }
 
-static void *dropAllowedState(WMView * view, XClientMessageEvent * event, WMDraggingInfo * info)
+static void *dropAllowedState(WMView * view, xcb_client_message_event_t * event, WMDraggingInfo * info)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
-	Atom destMsg = event->message_type;
+	xcb_atom_t destMsg = event->type;
 
 	if (destMsg == scr->xdndStatusAtom) {
 		storeStatusMessageInfos(info, event);
 
-		if (XDND_DEST_ACTION(info) == None) {
+		if (XDND_DEST_ACTION(info) == XCB_NONE) {
 			/* drop denied */
-			recolorCursor(info, False);
+			recolorCursor(info, false);
 			return idleState;
 		}
 	}
@@ -1024,13 +1028,13 @@ static void *dropAllowedState(WMView * view, XClientMessageEvent * event, WMDrag
 	return dropAllowedState;
 }
 
-static void *finishDropState(WMView * view, XClientMessageEvent * event, WMDraggingInfo * info)
+static void *finishDropState(WMView * view, xcb_client_message_event_t * event, WMDraggingInfo * info)
 {
 	WMScreen *scr = W_VIEW_SCREEN(view);
-	Atom destMsg = event->message_type;
+	xcb_atom_t destMsg = event->type;
 
 	if (destMsg == scr->xdndFinishedAtom) {
-		endDragProcess(info, True);
+		endDragProcess(info, true);
 		return NULL;
 	}
 
@@ -1049,11 +1053,11 @@ static void dragSourceResponseTimeOut(void *source)
 	wwarning(_("delay for drag destination response expired"));
 	sendLeaveMessage(info);
 
-	recolorCursor(info, False);
+	recolorCursor(info, false);
 	if (XDND_SOURCE_STATE(info) == finishDropState) {
 		/* drop failed */
-		endDragImage(info, True);
-		endDragProcess(info, False);
+		endDragImage(info, true);
+		endDragProcess(info, false);
 	} else {
 		XDND_SOURCE_STATE(info) = idleState;
 	}
@@ -1074,7 +1078,7 @@ void W_DragSourceStartTimer(WMDraggingInfo * info)
 
 /* ----- End of Destination timer ----- */
 
-void W_DragSourceStateHandler(WMDraggingInfo * info, XClientMessageEvent * event)
+void W_DragSourceStateHandler(WMDraggingInfo * info, xcb_client_message_event_t * event)
 {
 	WMView *view;
 	W_DndState *newState;
@@ -1122,13 +1126,13 @@ void WMReleaseViewDragImage(WMView * view)
 void WMCreateDragHandler(WMView * view, WMEventProc * dragEventProc, void *clientData)
 {
 	WMCreateEventHandler(view,
-			     ButtonPressMask | ButtonReleaseMask | Button1MotionMask, dragEventProc, clientData);
+			     XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_1_MOTION, dragEventProc, clientData);
 }
 
 void WMDeleteDragHandler(WMView * view, WMEventProc * dragEventProc, void *clientData)
 {
 	WMDeleteEventHandler(view,
-			     ButtonPressMask | ButtonReleaseMask | Button1MotionMask, dragEventProc, clientData);
+			     XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_1_MOTION, dragEventProc, clientData);
 }
 
 /* set default drag handler for view */

@@ -101,7 +101,7 @@
 	R("smart",   N_("Smart")) \
 	R("center",  N_("Center"))
 
-/* Expert.c, key "TabAttachArea".  Surfaced as an OPTION_WMAKER_ALT
+/* Expert.c, key "TabAttachArea". Surfaced as an OPTION_WMAKER_ALT
  * checkbox that reads the value pair from the schema directly, this
  * table is here only so check_wprefs_schema asserts the enum stays
  * two-valued. */

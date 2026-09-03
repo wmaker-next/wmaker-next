@@ -40,7 +40,7 @@ static WMTreeNode *findPositionInMenu(const char *submenu);
 
 
 typedef void fct_parse_menufile(const char *file, cb_add_menu_entry *addWMMenuEntryCallback);
-typedef Bool fct_validate_filename(const char *filename, const struct stat *st, int tflags, struct FTW *ftw);
+typedef bool fct_validate_filename(const char *filename, const struct stat *st, int tflags, struct FTW *ftw);
 
 
 static WMArray *plMenuNodes;
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 	}
 
 	WMSortTree(menu, menuSortFunc);
-	WMTreeWalk(menu, assemblePLMenuFunc, &previousDepth, True);
+	WMTreeWalk(menu, assemblePLMenuFunc, &previousDepth, true);
 
 	i = WMGetArrayItemCount(plMenuNodes);
 	if (i > 2) { /* more than one submenu unprocessed is almost certainly an error */
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 		WMAddToArray(plMenuNodes, first);
 	}
 
-	puts(WMGetPropListDescription((WMPropList *)WMGetFromArray(plMenuNodes, 0), True));
+	puts(WMGetPropListDescription((WMPropList *)WMGetFromArray(plMenuNodes, 0), true));
 
 	return 0;
 }

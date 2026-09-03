@@ -35,7 +35,7 @@ typedef struct W_List {
 
 	WMScroller *vScroller;
 
-	Pixmap doubleBuffer;
+	xcb_pixmap_t doubleBuffer;
 
 	char *typeahead;
 	int typeaheadLen;
@@ -61,8 +61,8 @@ typedef struct W_List {
 static void destroyList(List * lPtr);
 static void paintList(List * lPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void updateScroller(void *data);
 static void scrollForwardSelecting(void *data);
@@ -97,7 +97,7 @@ static void updateDoubleBufferPixmap(WMList * lPtr)
 
 	if (lPtr->doubleBuffer) {
 		WMScreenAbandonDrawable(scr, lPtr->doubleBuffer);
-		XFreePixmap(scr->display, lPtr->doubleBuffer);
+		xcb_free_pixmap(scr->display, lPtr->doubleBuffer);
 	}
 	lPtr->doubleBuffer = W_CreateScaledPixmap(scr, view->size.width, lPtr->itemHeight);
 }
@@ -140,12 +140,12 @@ WMList *WMCreateList(WMWidget * parent)
 
 	lPtr->view->delegate = &_ListViewDelegate;
 
-	WMCreateEventHandler(lPtr->view, ExposureMask | StructureNotifyMask
+	WMCreateEventHandler(lPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 			     | ClientMessageMask, handleEvents, lPtr);
 
-	WMCreateEventHandler(lPtr->view, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask | ButtonMotionMask
-			     | KeyPressMask, handleActionEvents, lPtr);
+	WMCreateEventHandler(lPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_BUTTON_MOTION
+			     | XCB_EVENT_MASK_KEY_PRESS, handleActionEvents, lPtr);
 
 	lPtr->itemHeight = WMFontHeight(scrPtr->normalFont) + 1;
 
@@ -169,12 +169,12 @@ WMList *WMCreateList(WMWidget * parent)
 	return lPtr;
 }
 
-void WMSetListAllowMultipleSelection(WMList * lPtr, Bool flag)
+void WMSetListAllowMultipleSelection(WMList * lPtr, bool flag)
 {
 	lPtr->flags.allowMultipleSelection = ((flag == 0) ? 0 : 1);
 }
 
-void WMSetListAllowEmptySelection(WMList * lPtr, Bool flag)
+void WMSetListAllowEmptySelection(WMList * lPtr, bool flag)
 {
 	lPtr->flags.allowEmptySelection = ((flag == 0) ? 0 : 1);
 }
@@ -382,12 +382,12 @@ int WMGetListPosition(WMList * lPtr)
 	return lPtr->topItem;
 }
 
-Bool WMListAllowsMultipleSelection(WMList * lPtr)
+bool WMListAllowsMultipleSelection(WMList * lPtr)
 {
 	return lPtr->flags.allowMultipleSelection;
 }
 
-Bool WMListAllowsEmptySelection(WMList * lPtr)
+bool WMListAllowsEmptySelection(WMList * lPtr)
 {
 	return lPtr->flags.allowEmptySelection;
 }
@@ -463,7 +463,7 @@ static void paintItem(List * lPtr, int index)
 	W_Screen *scr = view->screen;
 	int width, height, x, y, tlen;
 	WMListItem *itemPtr;
-	Drawable d = lPtr->doubleBuffer;
+	xcb_drawable_t d = lPtr->doubleBuffer;
 	WMColor *back;
 	WMRect rect;
 	int flags;
@@ -500,7 +500,7 @@ static void paintItem(List * lPtr, int index)
 		cairo_rectangle(cr, 0, 0, width, height);
 		cairo_fill(cr);
 		W_PaintTextCairo(cr, scr->normalFont, 4, 0, width, WALeft,
-				 scr->black, False, itemPtr->text, tlen);
+				 scr->black, false, itemPtr->text, tlen);
 		WCairoEnd(cr);
 	}
 
@@ -529,9 +529,7 @@ static void paintList(List * lPtr)
 		if (lPtr->topItem + lPtr->fullFitLines + lPtr->flags.dontFitAll > itemCount) {
 
 			lim = itemCount - lPtr->topItem;
-			XClearArea(scrPtr->display, lPtr->view->window, 19,
-				   2 + lim * lPtr->itemHeight, lPtr->view->size.width - 21,
-				   lPtr->view->size.height - lim * lPtr->itemHeight - 3, False);
+			xcb_clear_area(scrPtr->display, false, lPtr->view->window, 19, 2 + lim * lPtr->itemHeight, lPtr->view->size.width - 21, lPtr->view->size.height - lim * lPtr->itemHeight - 3);
 		} else {
 			lim = lPtr->fullFitLines + lPtr->flags.dontFitAll;
 		}
@@ -539,7 +537,7 @@ static void paintList(List * lPtr)
 			paintItem(lPtr, i);
 		}
 	} else {
-		XClearWindow(scrPtr->display, lPtr->view->window);
+		xcb_clear_area(scrPtr->display, 0, lPtr->view->window, 0, 0, 0, 0);
 	}
 	W_DrawRelief(scrPtr, lPtr->view->window, 0, 0, lPtr->view->size.width, lPtr->view->size.height, WRSunken);
 }
@@ -641,20 +639,20 @@ static void scrollBackwardSelecting(void *data)
 	lPtr->selectID = WMAddTimerHandler(SCROLL_DELAY, scrollBackwardSelecting, lPtr);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	List *lPtr = (List *) data;
 
 	CHECK_CLASS(data, WC_List);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintList(lPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyList(lPtr);
 		break;
 
@@ -1026,7 +1024,7 @@ static void typeaheadTimeout(void *data)
 	}
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	List *lPtr = (List *) data;
 	WMScreen *scr = lPtr->view->screen;
@@ -1034,46 +1032,46 @@ static void handleActionEvents(XEvent * event, void *data)
 	int topItem = lPtr->topItem;
 	static int lastClicked = -1, prevItem = -1;
 	char buffer[16];
-	KeySym ksym;
-	Status status;
+	xkb_keysym_t ksym;
+	WXLookupStatus status;
 	int len;
-	XWindowAttributes wattr;
+	WXWindowAttributes wattr;
 
 	CHECK_CLASS(data, WC_List);
 
-	switch (event->type) {
-	case ButtonRelease:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_BUTTON_RELEASE:
 		/* Ignore mouse wheel events, they're not "real" button events */
-		if (event->xbutton.button == WINGsConfiguration.mouseWheelUp ||
-		    event->xbutton.button == WINGsConfiguration.mouseWheelDown) {
+		if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp ||
+		    ((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelDown) {
 			break;
 		}
 
 		lPtr->flags.buttonPressed = 0;
 		WMDeleteTimerHandlerPtr(&lPtr->selectID);
-		tmp = getItemIndexAt(lPtr, event->xbutton.y);
+		tmp = getItemIndexAt(lPtr, ((xcb_button_press_event_t *)event)->event_y);
 
 		if (tmp >= 0) {
 			if (lPtr->action)
 				(*lPtr->action) (lPtr, lPtr->clientData);
 		}
 
-		if (!(event->xbutton.state & ShiftMask))
+		if (!(((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT))
 			lastClicked = prevItem = tmp;
 
 		break;
 
-	case EnterNotify:
+	case XCB_ENTER_NOTIFY:
 		WMDeleteTimerHandlerPtr(&lPtr->selectID);
 		WMSetFocusToWidget(lPtr);
 		break;
 
-	case LeaveNotify:
+	case XCB_LEAVE_NOTIFY:
 		height = WMWidgetHeight(lPtr);
 		if (lPtr->flags.buttonPressed && !lPtr->selectID) {
-			if (event->xcrossing.y >= height) {
+			if (((xcb_enter_notify_event_t *)event)->event_y >= height) {
 				lPtr->selectID = WMAddTimerHandler(SCROLL_DELAY, scrollForwardSelecting, lPtr);
-			} else if (event->xcrossing.y <= 0) {
+			} else if (((xcb_enter_notify_event_t *)event)->event_y <= 0) {
 				lPtr->selectID = WMAddTimerHandler(SCROLL_DELAY, scrollBackwardSelecting, lPtr);
 			}
 		}
@@ -1082,30 +1080,30 @@ static void handleActionEvents(XEvent * event, void *data)
 			WMSetFocusToWidget(parentWidget);
 		break;
 
-	case ButtonPress:
-		if (event->xbutton.x <= WMWidgetWidth(lPtr->vScroller))
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->event_x <= WMWidgetWidth(lPtr->vScroller))
 			break;
-		if (event->xbutton.button == WINGsConfiguration.mouseWheelDown ||
-		    event->xbutton.button == WINGsConfiguration.mouseWheelUp) {
+		if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelDown ||
+		    ((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp) {
 			int amount = 0;
 
-			if (event->xbutton.state & ControlMask) {
+			if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 				amount = lPtr->fullFitLines - (1 - lPtr->flags.dontFitAll) - 1;
-			} else if (event->xbutton.state & ShiftMask) {
+			} else if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 				amount = 1;
 			} else {
 				amount = lPtr->fullFitLines / 3;
 				if (amount == 0)
 					amount++;
 			}
-			if (event->xbutton.button == WINGsConfiguration.mouseWheelUp)
+			if (((xcb_button_press_event_t *)event)->detail == WINGsConfiguration.mouseWheelUp)
 				amount = -amount;
 
 			scrollByAmount(lPtr, amount);
 			break;
 		}
 
-		tmp = getItemIndexAt(lPtr, event->xbutton.y);
+		tmp = getItemIndexAt(lPtr, ((xcb_button_press_event_t *)event)->event_y);
 		lPtr->flags.buttonPressed = 1;
 
 		if (tmp >= 0) {
@@ -1115,7 +1113,7 @@ static void handleActionEvents(XEvent * event, void *data)
 					(*lPtr->doubleAction) (lPtr, lPtr->doubleClientData);
 			} else {
 				if (!lPtr->flags.allowMultipleSelection) {
-					if (event->xbutton.state & ControlMask) {
+					if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 						toggleItemSelection(lPtr, tmp);
 					} else {
 						WMSelectListItem(lPtr, tmp);
@@ -1124,9 +1122,9 @@ static void handleActionEvents(XEvent * event, void *data)
 					WMRange range;
 					WMListItem *lastSel;
 
-					if (event->xbutton.state & ControlMask) {
+					if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 						toggleItemSelection(lPtr, tmp);
-					} else if (event->xbutton.state & ShiftMask) {
+					} else if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						if (WMGetArrayItemCount(lPtr->selectedItems) == 0) {
 							WMSelectListItem(lPtr, tmp);
 						} else {
@@ -1148,27 +1146,27 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 		}
 
-		if (!(event->xbutton.state & ShiftMask))
+		if (!(((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT))
 			lastClicked = prevItem = tmp;
 
 		break;
 
-	case MotionNotify:
+	case XCB_MOTION_NOTIFY:
 		height = WMWidgetHeight(lPtr);
-		if (lPtr->selectID && event->xmotion.y > 0 && event->xmotion.y < height) {
+		if (lPtr->selectID && ((xcb_motion_notify_event_t *)event)->event_y > 0 && ((xcb_motion_notify_event_t *)event)->event_y < height) {
 			WMDeleteTimerHandler(lPtr->selectID);
 			lPtr->selectID = NULL;
 		}
 		if (lPtr->flags.buttonPressed && !lPtr->selectID) {
-			if (event->xmotion.y <= 0) {
+			if (((xcb_motion_notify_event_t *)event)->event_y <= 0) {
 				lPtr->selectID = WMAddTimerHandler(SCROLL_DELAY, scrollBackwardSelecting, lPtr);
 				break;
-			} else if (event->xmotion.y >= height) {
+			} else if (((xcb_motion_notify_event_t *)event)->event_y >= height) {
 				lPtr->selectID = WMAddTimerHandler(SCROLL_DELAY, scrollForwardSelecting, lPtr);
 				break;
 			}
 
-			tmp = getItemIndexAt(lPtr, event->xmotion.y);
+			tmp = getItemIndexAt(lPtr, ((xcb_motion_notify_event_t *)event)->event_y);
 			if (tmp >= 0 && tmp != prevItem) {
 				if (lPtr->flags.allowMultipleSelection) {
 					WMRange range;
@@ -1187,14 +1185,14 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case KeyPress:
-		if (event->xkey.state & (ControlMask | scr->altModifierMask))
+	case XCB_KEY_PRESS:
+		if (((xcb_key_press_event_t *)event)->state & (XCB_MOD_MASK_CONTROL | scr->altModifierMask))
 			break;
 
-		if (!(XGetWindowAttributes(scr->display, lPtr->view->window, &wattr) && wattr.map_state == IsViewable))
+		if (!(wXGetWindowAttributes(scr->display, lPtr->view->window, &wattr, NULL) && wattr.map_state == XCB_MAP_STATE_VIEWABLE))
 			break;
 
-		len = W_LookupString(lPtr->view, &event->xkey, buffer, (int)sizeof(buffer) - 1, &ksym, &status);
+		len = W_LookupString(lPtr->view, (const xcb_key_press_event_t *)event, buffer, (int)sizeof(buffer) - 1, &ksym, &status);
 		if (len < 0)
 			break;
 		if (len > (int)sizeof(buffer) - 1)
@@ -1204,7 +1202,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 		/* Handle navigation keys */
 		switch (ksym) {
-		case XK_Up: {
+		case XKB_KEY_Up: {
 			int newRow;
 			int itemCount = WMGetArrayItemCount(lPtr->items);
 			int cur = WMGetListSelectedItemRow(lPtr);
@@ -1223,7 +1221,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 			if (newRow != cur && itemCount > 0) {
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1258,7 +1256,7 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			break;
 		}
-		case XK_Down: {
+		case XKB_KEY_Down: {
 			int newRow;
 			int itemCount = WMGetArrayItemCount(lPtr->items);
 			int cur = WMGetListSelectedItemRow(lPtr);
@@ -1277,7 +1275,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 			if (newRow != cur && itemCount > 0) {
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1320,7 +1318,7 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			break;
 		}
-		case XK_Page_Up: {
+		case XKB_KEY_Page_Up: {
 			int newRow;
 			int page = lPtr->fullFitLines > 0 ? lPtr->fullFitLines : 1;
 			int cur = WMGetListSelectedItemRow(lPtr);
@@ -1333,7 +1331,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 			if (newRow != cur) {
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1366,7 +1364,7 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			break;
 		}
-		case XK_Page_Down: {
+		case XKB_KEY_Page_Down: {
 			int newRow;
 			int page = lPtr->fullFitLines > 0 ? lPtr->fullFitLines : 1;
 			int itemCount = WMGetArrayItemCount(lPtr->items);
@@ -1380,7 +1378,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 			if (newRow != cur && itemCount > 0) {
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1423,12 +1421,12 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			break;
 		}
-		case XK_Home: {
+		case XKB_KEY_Home: {
 			int itemCount = WMGetArrayItemCount(lPtr->items);
 			if (itemCount > 0) {
 				int newRow = 0;
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1461,12 +1459,12 @@ static void handleActionEvents(XEvent * event, void *data)
 			}
 			break;
 		}
-		case XK_End: {
+		case XKB_KEY_End: {
 			int itemCount = WMGetArrayItemCount(lPtr->items);
 			if (itemCount > 0) {
 				int newRow = itemCount - 1;
 				if (lPtr->flags.allowMultipleSelection) {
-					if (event->xkey.state & ShiftMask) {
+					if (((xcb_key_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) {
 						WMRange range;
 						int anchor = WMGetListSelectedItemRow(lPtr);
 						if (anchor == WLNotFound || WMGetArrayItemCount(lPtr->selectedItems) == 0) {
@@ -1507,7 +1505,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 
 		/* If we handled a navigation keysym, avoid falling through to typeahead logic */
-		if (ksym == XK_Up || ksym == XK_Down || ksym == XK_Page_Up || ksym == XK_Page_Down || ksym == XK_Home || ksym == XK_End)
+		if (ksym == XKB_KEY_Up || ksym == XKB_KEY_Down || ksym == XKB_KEY_Page_Up || ksym == XKB_KEY_Page_Down || ksym == XKB_KEY_Home || ksym == XKB_KEY_End)
 			break;
 
 		if (len <= 0)
@@ -1515,7 +1513,7 @@ static void handleActionEvents(XEvent * event, void *data)
 
 		buffer[len] = '\0';
 
-		if (ksym == XK_Escape) {
+		if (ksym == XKB_KEY_Escape) {
 			WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
 			if (lPtr->typeahead) {
 				lPtr->typeahead[0] = '\0';
@@ -1524,7 +1522,7 @@ static void handleActionEvents(XEvent * event, void *data)
 			break;
 		}
 
-		if (ksym == XK_BackSpace) {
+		if (ksym == XKB_KEY_BackSpace) {
 			if (lPtr->typeaheadLen > 0 && lPtr->typeahead) {
 				lPtr->typeaheadLen--;
 				lPtr->typeahead[lPtr->typeaheadLen] = '\0';
@@ -1605,7 +1603,7 @@ static void destroyList(List * lPtr)
 
 	if (lPtr->doubleBuffer) {
 		WMScreenAbandonDrawable(lPtr->view->screen, lPtr->doubleBuffer);
-		XFreePixmap(lPtr->view->screen->display, lPtr->doubleBuffer);
+		wXFreePixmap(lPtr->view->screen->display, lPtr->doubleBuffer);
 	}
 
 	if (lPtr->typeahead)

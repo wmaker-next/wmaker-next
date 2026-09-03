@@ -639,19 +639,19 @@ static void createPanel(Panel * p)
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 5, 2, 5, 5);
-	WMSetBoxHorizontal(panel->box, False);
+	WMSetBoxHorizontal(panel->box, false);
 	WMSetBoxBorderWidth(panel->box, 8);
 	WMMapWidget(panel->box);
 
 	hbox = WMCreateBox(panel->box);
-	WMSetBoxHorizontal(hbox, True);
-	WMAddBoxSubview(panel->box, WMWidgetView(hbox), False, True, 40, 22, 8);
+	WMSetBoxHorizontal(hbox, true);
+	WMAddBoxSubview(panel->box, WMWidgetView(hbox), false, true, 40, 22, 8);
 
 	vbox = WMCreateBox(hbox);
-	WMAddBoxSubview(hbox, WMWidgetView(vbox), False, True, 130, 0, 10);
-	WMSetBoxHorizontal(vbox, False);
+	WMAddBoxSubview(hbox, WMWidgetView(vbox), false, true, 130, 0, 10);
+	WMSetBoxHorizontal(vbox, false);
 	panel->optionP = WMCreatePopUpButton(vbox);
-	WMAddBoxSubviewAtEnd(vbox, WMWidgetView(panel->optionP), False, True, 20, 0, 8);
+	WMAddBoxSubviewAtEnd(vbox, WMWidgetView(panel->optionP), false, true, 20, 0, 8);
 	for (i = 0; i < wlengthof(fontOptions); i++)
 		WMAddPopUpButtonItem(panel->optionP, _(fontOptions[i].label));
 	WMSetPopUpButtonAction(panel->optionP, selectedOption, panel);
@@ -659,27 +659,27 @@ static void createPanel(Panel * p)
 	label = WMCreateLabel(hbox);
 	WMSetLabelText(label, _("Sample Text"));
 	WMSetLabelTextAlignment(label, WARight);
-	WMAddBoxSubview(hbox, WMWidgetView(label), False, True, 80, 0, 2);
+	WMAddBoxSubview(hbox, WMWidgetView(label), false, true, 80, 0, 2);
 
 	panel->sampleT = WMCreateTextField(hbox);
 	WMSetViewExpandsToParent(WMWidgetView(panel->sampleT), 10, 18, 10, 10);
 	WMSetTextFieldText(panel->sampleT, SAMPLE_TEXT);
-	WMAddBoxSubview(hbox, WMWidgetView(panel->sampleT), True, True, 60, 0, 0);
+	WMAddBoxSubview(hbox, WMWidgetView(panel->sampleT), true, true, 60, 0, 0);
 
 	hbox = WMCreateBox(panel->box);
-	WMSetBoxHorizontal(hbox, True);
-	WMAddBoxSubview(panel->box, WMWidgetView(hbox), True, True, 100, 0, 2);
+	WMSetBoxHorizontal(hbox, true);
+	WMAddBoxSubview(panel->box, WMWidgetView(hbox), true, true, 100, 0, 2);
 
 	vbox = WMCreateBox(hbox);
-	WMSetBoxHorizontal(vbox, False);
-	WMAddBoxSubview(hbox, WMWidgetView(vbox), False, True, 240, 20, 4);
+	WMSetBoxHorizontal(vbox, false);
+	WMAddBoxSubview(hbox, WMWidgetView(vbox), false, true, 240, 20, 4);
 
 	label = createListLabel(scr, vbox, _("Family"));
-	WMAddBoxSubview(vbox, WMWidgetView(label), False, True, 20, 0, 2);
+	WMAddBoxSubview(vbox, WMWidgetView(label), false, true, 20, 0, 2);
 
 	/* family */
 	panel->familyL = WMCreateList(vbox);
-	WMAddBoxSubview(vbox, WMWidgetView(panel->familyL), True, True, 0, 0, 0);
+	WMAddBoxSubview(vbox, WMWidgetView(panel->familyL), true, true, 0, 0, 0);
 	if (panel->fonts) {
 		WMListItem *item;
 		for (i = 0; i < panel->fonts->familyn; i++) {
@@ -692,29 +692,29 @@ static void createPanel(Panel * p)
 	WMSetListAction(panel->familyL, selectedFamily, panel);
 
 	vbox = WMCreateBox(hbox);
-	WMSetBoxHorizontal(vbox, False);
-	WMAddBoxSubview(hbox, WMWidgetView(vbox), True, True, 10, 0, 0);
+	WMSetBoxHorizontal(vbox, false);
+	WMAddBoxSubview(hbox, WMWidgetView(vbox), true, true, 10, 0, 0);
 
 	box = WMCreateBox(vbox);
-	WMSetBoxHorizontal(box, True);
-	WMAddBoxSubview(vbox, WMWidgetView(box), False, True, 20, 0, 2);
+	WMSetBoxHorizontal(box, true);
+	WMAddBoxSubview(vbox, WMWidgetView(box), false, true, 20, 0, 2);
 
 	label = createListLabel(scr, box, _("Style"));
-	WMAddBoxSubview(box, WMWidgetView(label), True, True, 20, 0, 4);
+	WMAddBoxSubview(box, WMWidgetView(label), true, true, 20, 0, 4);
 
 	label = createListLabel(scr, box, _("Size"));
-	WMAddBoxSubview(box, WMWidgetView(label), False, True, 60, 0, 0);
+	WMAddBoxSubview(box, WMWidgetView(label), false, true, 60, 0, 0);
 
 	box = WMCreateBox(vbox);
-	WMSetBoxHorizontal(box, True);
-	WMAddBoxSubview(vbox, WMWidgetView(box), True, True, 20, 0, 0);
+	WMSetBoxHorizontal(box, true);
+	WMAddBoxSubview(vbox, WMWidgetView(box), true, true, 20, 0, 0);
 
 	panel->styleL = WMCreateList(box);
-	WMAddBoxSubview(box, WMWidgetView(panel->styleL), True, True, 0, 0, 4);
+	WMAddBoxSubview(box, WMWidgetView(panel->styleL), true, true, 0, 0, 4);
 	WMSetListAction(panel->styleL, selected, panel);
 
 	panel->sizeL = WMCreateList(box);
-	WMAddBoxSubview(box, WMWidgetView(panel->sizeL), False, True, 60, 0, 0);
+	WMAddBoxSubview(box, WMWidgetView(panel->sizeL), false, true, 60, 0, 0);
 	for (i = 0; standardSizes[i]; i++) {
 		WMAddListItem(panel->sizeL, standardSizes[i]);
 	}

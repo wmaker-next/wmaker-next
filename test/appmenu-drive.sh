@@ -11,7 +11,7 @@
 #   2. round trip - hovering the "Info" cascade entry opens the
 #                 submenu (menuMotionNotify selectEntry), clicking
 #                 "Info Panel..." runs notifyClient which sends the
-#                 wmSelectItem ClientMessage back to the app; the
+#                 wmSelectItem ClientMessage back to the app, the
 #                 helper acks the tag in _WMENU_TEST_ACK and maps its
 #                 panel
 #   3. teardown - killing the helper destroys the app and its menu
@@ -107,7 +107,7 @@ window_viewable() {
 }
 
 # viewable 64x64 root children without subwindows (menu frames carry
-# the entry-list child); the dock/clip are disabled in this drive so
+# the entry-list child), the dock/clip are disabled in this drive so
 # the floating appicon is the only match
 floating_appicon() {
 	for w in $(DISPLAY=$DPY xwininfo -root -children 2>/dev/null \
@@ -134,7 +134,7 @@ appicon_count() {
 }
 
 # "absx absy rowh" of the entry-list child below the title of the menu
-# frame $1 with $2 visible entries; fails when the frame has none
+# frame $1 with $2 visible entries, fails when the frame has none
 menu_entry_list() {
 	DISPLAY=$DPY xwininfo -tree -id "$1" 2>/dev/null | awk -v n="$2" '
 		/^     0x/ {
@@ -201,7 +201,7 @@ ${CC:-cc} -std=gnu11 "$ROOT/test/appmenu-client.c" -o "$HELPER" -lX11 >>"$LOG" 2
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 # dock/clip/drawers off: nothing here needs them and the positional
-# appicon scan must see exactly one icon; AutoFocus off so the app
+# appicon scan must see exactly one icon, AutoFocus off so the app
 # menu can only map through the drive's explicit click-to-focus.
 # This also stops the first-run installer.
 cat > "$WMHOME/Defaults/WindowMaker" <<'EOF'
@@ -288,7 +288,7 @@ note "appicon: $AICON"
 
 check "log free of appmenu parse warnings" log_ok
 
-# click-to-focus the leader; the app menu maps on the focus path
+# click-to-focus the leader, the app menu maps on the focus path
 # (src/actions.c:266-267) and only ever exists as a wmaker-internal
 # root child, never in _NET_CLIENT_LIST. AutoFocus is off, so the menu
 # frame's viewability flips exactly at this click.

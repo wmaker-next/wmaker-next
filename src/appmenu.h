@@ -21,7 +21,7 @@
 #ifndef _WAPPMENU_H_
 #define _WAPPMENU_H_
 
-WMenu *wAppMenuGet(WScreen *scr, Window window);
+WMenu *wAppMenuGet(WScreen *scr, xcb_window_t window);
 void wAppMenuDestroy(WMenu *menu);
 
 void wAppMenuMap(WMenu *menu, WWindow *wwin);

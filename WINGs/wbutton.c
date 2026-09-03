@@ -79,7 +79,7 @@ typedef struct W_Button {
 #define DEFAULT_BUTTON_WIDTH	60
 #define DEFAULT_BUTTON_HEIGHT	24
 #define DEFAULT_BUTTON_ALIGNMENT	WACenter
-#define DEFAULT_BUTTON_IS_BORDERED	True
+#define DEFAULT_BUTTON_IS_BORDERED	true
 
 #define DEFAULT_RADIO_WIDTH	100
 #define DEFAULT_RADIO_HEIGHT	20
@@ -96,8 +96,8 @@ typedef struct W_Button {
 static void destroyButton(Button * bPtr);
 static void paintButton(Button * bPtr);
 
-static void handleEvents(XEvent * event, void *data);
-static void handleActionEvents(XEvent * event, void *data);
+static void handleEvents(xcb_generic_event_t * event, void *data);
+static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static char *WMPushedRadioNotification = "WMPushedRadioNotification";
 
@@ -134,10 +134,10 @@ WMButton *WMCreateCustomButton(WMWidget * parent, int behaviourMask)
 	bPtr->flags.enabled = 1;
 	bPtr->flags.dimsWhenDisabled = 1;
 
-	WMCreateEventHandler(bPtr->view, ExposureMask | StructureNotifyMask, handleEvents, bPtr);
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY, handleEvents, bPtr);
 
-	WMCreateEventHandler(bPtr->view, ButtonPressMask | ButtonReleaseMask
-			     | EnterWindowMask | LeaveWindowMask, handleActionEvents, bPtr);
+	WMCreateEventHandler(bPtr->view, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			     | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW, handleActionEvents, bPtr);
 
 	W_ResizeView(bPtr->view, DEFAULT_BUTTON_WIDTH, DEFAULT_BUTTON_HEIGHT);
 	bPtr->flags.alignment = DEFAULT_BUTTON_ALIGNMENT;
@@ -222,7 +222,7 @@ static void updateDisabledMask(WMButton * bPtr)
 {
 	WMScreen *scr = WMWidgetScreen(bPtr);
 	RContext *rc = scr->rcontext;
-	Display *dpy = scr->display;
+	xcb_connection_t *dpy = scr->display;
 	cairo_surface_t *ms, *stip, *imask;
 	cairo_pattern_t *pat;
 	cairo_t *cr;
@@ -232,8 +232,8 @@ static void updateDisabledMask(WMButton * bPtr)
 		return;
 
 	if (bPtr->dimage->mask) {
-		XFreePixmap(dpy, bPtr->dimage->mask);
-		bPtr->dimage->mask = None;
+		xcb_free_pixmap(dpy, bPtr->dimage->mask);
+		bPtr->dimage->mask = XCB_NONE;
 	}
 	if (!bPtr->flags.dimsWhenDisabled)
 		return;
@@ -245,16 +245,17 @@ static void updateDisabledMask(WMButton * bPtr)
 	 * DEST_IN so bits outside the shape go back to zero */
 	w = bPtr->dimage->width;
 	h = bPtr->dimage->height;
-	bPtr->dimage->mask = XCreatePixmap(dpy, scr->stipple, w, h, 1);
+	bPtr->dimage->mask = xcb_generate_id(dpy);
+	xcb_create_pixmap(dpy, 1, bPtr->dimage->mask, scr->stipple, w, h);
 	ms = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-						 (xcb_pixmap_t)bPtr->dimage->mask, w, h);
+						 bPtr->dimage->mask, w, h);
 	cr = cairo_create(ms);
 	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 	cairo_set_source_rgba(cr, 0, 0, 0, 0);
 	cairo_paint(cr);
 
 	stip = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-						   (xcb_pixmap_t)scr->stipple, 8, 8);
+						   scr->stipple, 8, 8);
 	pat = cairo_pattern_create_for_surface(stip);
 	cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
 	cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
@@ -266,7 +267,7 @@ static void updateDisabledMask(WMButton * bPtr)
 
 	if (bPtr->image->mask) {
 		imask = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
-							    (xcb_pixmap_t)bPtr->image->mask,
+							    bPtr->image->mask,
 							    bPtr->image->width,
 							    bPtr->image->height);
 		cairo_set_operator(cr, CAIRO_OPERATOR_DEST_IN);
@@ -293,14 +294,14 @@ void WMSetButtonImage(WMButton * bPtr, WMPixmap * image)
 	bPtr->image = WMRetainPixmap(image);
 
 	if (bPtr->dimage) {
-		bPtr->dimage->pixmap = None;
+		bPtr->dimage->pixmap = XCB_NONE;
 		WMReleasePixmap(bPtr->dimage);
 		bPtr->dimage = NULL;
 	}
 
 	if (image) {
 		bPtr->dimage = WMCreatePixmapFromXPixmaps(WMWidgetScreen(bPtr),
-							  image->pixmap, None,
+							  image->pixmap, XCB_NONE,
 							  image->width, image->height, image->depth);
 		updateDisabledMask(bPtr);
 	}
@@ -441,7 +442,7 @@ void WMSetButtonFont(WMButton * bPtr, WMFont * font)
 	bPtr->font = WMRetainFont(font);
 }
 
-void WMSetButtonEnabled(WMButton * bPtr, Bool flag)
+void WMSetButtonEnabled(WMButton * bPtr, bool flag)
 {
 	bPtr->flags.enabled = ((flag == 0) ? 0 : 1);
 
@@ -457,7 +458,7 @@ int WMGetButtonEnabled(WMButton * bPtr)
 	return bPtr->flags.enabled;
 }
 
-void WMSetButtonImageDimsWhenDisabled(WMButton * bPtr, Bool flag)
+void WMSetButtonImageDimsWhenDisabled(WMButton * bPtr, bool flag)
 {
 	bPtr->flags.dimsWhenDisabled = ((flag == 0) ? 0 : 1);
 
@@ -481,7 +482,7 @@ void WMPerformButtonClick(WMButton * bPtr)
 
 	if (bPtr->view->flags.mapped) {
 		paintButton(bPtr);
-		XFlush(WMScreenDisplay(WMWidgetScreen(bPtr)));
+		wXFlush(WMScreenDisplay(WMWidgetScreen(bPtr)));
 		wusleep(20000);
 	}
 
@@ -550,7 +551,7 @@ void WMGroupButtons(WMButton * bPtr, WMButton * newMember)
 	newMember->groupIndex = bPtr->groupIndex;
 }
 
-void WMSetButtonContinuous(WMButton * bPtr, Bool flag)
+void WMSetButtonContinuous(WMButton * bPtr, bool flag)
 {
 	bPtr->flags.continuous = ((flag == 0) ? 0 : 1);
 	WMDeleteTimerHandlerPtr(&bPtr->timer);
@@ -634,26 +635,26 @@ static void paintButton(Button * bPtr)
 		}
 	}
 
-	W_PaintTextAndImage(bPtr->view, True, textColor,
+	W_PaintTextAndImage(bPtr->view, true, textColor,
 			    (bPtr->font != NULL ? bPtr->font : scrPtr->normalFont),
 			    relief, caption, bPtr->flags.alignment, image,
 			    bPtr->flags.imagePosition, backColor, offset);
 }
 
-static void handleEvents(XEvent * event, void *data)
+static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	Button *bPtr = (Button *) data;
 
 	CHECK_CLASS(data, WC_Button);
 
-	switch (event->type) {
-	case Expose:
-		if (event->xexpose.count != 0)
+	switch ((event->response_type & 0x7f)) {
+	case XCB_EXPOSE:
+		if (((xcb_expose_event_t *)event)->count != 0)
 			break;
 		paintButton(bPtr);
 		break;
 
-	case DestroyNotify:
+	case XCB_DESTROY_NOTIFY:
 		destroyButton(bPtr);
 		break;
 	}
@@ -676,7 +677,7 @@ static void autoRepeat(void *data)
 	W_ReleaseView(bPtr->view);
 }
 
-static void handleActionEvents(XEvent * event, void *data)
+static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	Button *bPtr = (Button *) data;
 	int doclick = 0, dopaint = 0;
@@ -686,8 +687,8 @@ static void handleActionEvents(XEvent * event, void *data)
 	if (!bPtr->flags.enabled)
 		return;
 
-	switch (event->type) {
-	case EnterNotify:
+	switch ((event->response_type & 0x7f)) {
+	case XCB_ENTER_NOTIFY:
 		if (bPtr->groupIndex == 0) {
 			bPtr->flags.pushed = bPtr->flags.wasPushed;
 			if (bPtr->flags.pushed) {
@@ -697,7 +698,7 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case LeaveNotify:
+	case XCB_LEAVE_NOTIFY:
 		if (bPtr->groupIndex == 0) {
 			bPtr->flags.wasPushed = bPtr->flags.pushed;
 			if (bPtr->flags.pushed) {
@@ -708,8 +709,8 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case ButtonPress:
-		if (event->xbutton.button == Button1) {
+	case XCB_BUTTON_PRESS:
+		if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
 			static const unsigned int next_state[4] = { [0] = 1, [1] = 2, [2] = 0 };
 
 			bPtr->flags.prevSelected = bPtr->flags.selected;
@@ -733,8 +734,8 @@ static void handleActionEvents(XEvent * event, void *data)
 		}
 		break;
 
-	case ButtonRelease:
-		if (event->xbutton.button == Button1) {
+	case XCB_BUTTON_RELEASE:
+		if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
 			if (bPtr->flags.pushed) {
 				if (bPtr->groupIndex == 0 || (bPtr->flags.selected && bPtr->groupIndex > 0))
 					doclick = 1;
@@ -794,7 +795,7 @@ static void destroyButton(Button * bPtr)
 
 	if (bPtr->dimage) {
 		/* yuck.. kluge */
-		bPtr->dimage->pixmap = None;
+		bPtr->dimage->pixmap = XCB_NONE;
 
 		WMReleasePixmap(bPtr->dimage);
 	}

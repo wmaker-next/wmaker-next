@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <X11/Xlib.h>
 
 #include <WINGs/WUtil.h>
 
@@ -168,9 +167,9 @@ void wConfigDestroy(WConfig *config);
 /* Deep-copy a WConfig for independent modification and destruction */
 WConfig *wConfigClone(const WConfig *src);
 
-Bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
+bool wConfigDiff(const WConfig *old_config, const WConfig *new_config,
 		 WConfigChanges *changes);
-Bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key);
+bool wConfigChangesHas(const WConfigChanges *changes, WConfigKey key);
 
 void wConfigApplyStatic(const WConfig *config);
 unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
@@ -217,7 +216,7 @@ void wConfigApplyTabDragModifier(const char *spec);
 unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 				    int binding_index, const char *spec,
 				    const char *default_spec,
-				    Bool *binding_changed);
+				    bool *binding_changed);
 unsigned int wConfigApplyTextureSpec(WScreen *scr, const char *key,
 				     int target,
 				     const WConfigResourceSpec *spec,
