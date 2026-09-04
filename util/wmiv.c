@@ -2220,6 +2220,29 @@ int zoom_out(void)
 }
 
 /*
+	Reset the zoom to the actual image size
+	Returns EXIT_SUCCESS on success, EXIT_FAILURE on failure
+*/
+int zoom_reset(void)
+{
+	RImage *tmp;
+
+	if (fullscreen_flag) {
+		tmp = load_oriented_image(ctx, current_link->data, 0);
+		if (!tmp)
+			return EXIT_FAILURE;
+		RReleaseImage(img);
+		img = tmp;
+		zoom_factor = 0;
+		merge_with_background(img);
+		maximize_image();
+		return EXIT_SUCCESS;
+	}
+	zoom_factor = -0.2f;
+	return zoom_in();
+}
+
+/*
 	Load previous or next image
 	Arg: way which could be PREV or NEXT constant
 	Returns EXIT_SUCCESS on success, EXIT_FAILURE on failure
@@ -3046,6 +3069,7 @@ int main(int argc, char **argv)
 			"  [▾]            last image\n"
 			"  [Ctrl+C]       copy image to clipboard\n"
 			"  [Ctrl+V]       paste image from clipboard\n"
+			"  [Ctrl+0]       reset zoom\n"
 #ifdef HAVE_PTHREAD
 			"  [D]            start slideshow\n"
 #endif
@@ -3502,6 +3526,11 @@ int main(int argc, char **argv)
 				free(ev);
 				continue;
 			}
+			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && keysym == XKB_KEY_0) {
+				zoom_reset();
+				free(ev);
+				continue;
+			}
 
 			switch (keysym) {
 			case XKB_KEY_Right:
@@ -3539,12 +3568,10 @@ int main(int argc, char **argv)
 				quit = 1;
 				break;
 			case XKB_KEY_Escape:
-				if (!fullscreen_flag) {
-					zoom_factor = -0.2f;
-					zoom_in();
-				} else {
+				if (!fullscreen_flag)
+					zoom_reset();
+				else
 					full_screen();
-				}
 				break;
 			case XKB_KEY_plus:
 				zoom_in();
