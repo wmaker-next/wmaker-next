@@ -129,8 +129,10 @@ Command verbs (request type 0)
     workspace-new [count]
             create count (default 1) new workspaces
     workspace-delete N
-            delete workspace N (1-based). Rejected when the
-            workspace is in use by any non-omnipresent window
+            delete workspace N (0-based index; 0 is the first
+            workspace and can never be deleted). Rejected when some
+            non-omnipresent window has N as its only workspace;
+            windows spanning several workspaces are compacted instead
     window-close XID
             send WM_DELETE_WINDOW to the window and ping it
             via _NET_WM_PING

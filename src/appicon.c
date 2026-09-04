@@ -1121,10 +1121,10 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 				/* If docked (or tried to dock) to a auto_collapsing dock, unset
 				 * collapsed, so that wHandleAppIconMove doesn't collapse it
 				 * right away (the timer will take care of it) */
-			if (lastDock->auto_collapse)
-				collapsed = 0;
-			if (docked)
-				wSoundPlay(scr, WSOUND_DOCK);
+				if (lastDock->auto_collapse)
+					collapsed = 0;
+				if (docked)
+					wSoundPlay(scr, WSOUND_DOCK);
 			} else {
 				if (originalDock != NULL) { /* Detaching a docked appicon */
 					if (superfluous && !aicon->running && !w_global.config->no_animations) {

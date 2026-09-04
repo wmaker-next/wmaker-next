@@ -1068,8 +1068,8 @@ static void revertSettings(WMWidget *button, void *client_data)
 	WMSetButtonSelected(panel->autoTabGrpChk, WFLAGP(wwin, auto_tab_group));
 
 	/* Per-window auto-on-unfocus bits come straight from WWindow.flags
-	 * (restored from _WINDOWMAKER_STATE by wWindowSetupInitialAttributes,
-	 * or 0 on a fresh window). They are not in user_flags/defined_user_flags.
+	 * (restored from _WINDOWMAKER_STATE in wManageWindow, or 0 on a
+	 * fresh window). They are not in user_flags/defined_user_flags.
 	 * Hide wins over miniaturize (wWindowUnfocus), so when both are
 	 * restored set, clear the miniaturize one. */
 	WMSetButtonSelected(panel->autoMiniChk, wwin->flags.auto_miniaturize_on_unfocus);

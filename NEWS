@@ -1421,7 +1421,7 @@ Wallpaper-derived tonal palette (wmsetbg --dynamic-color)
 wrlib gains a bounded median-cut palette extractor
 (RExtractPalette) that derives a small set of swatches from the
 loaded wallpaper. wmsetbg --dynamic-color[=Auto|Light|Dark] tints
-every UI role from the seed hue at a fixed tone, Material You-style:
+every UI role from the seed hue at a fixed tone:
 surface fills use low saturation so a vivid wallpaper does not
 produce screaming titlebars, while the highlight accent uses full
 seed saturation. Monochrome wallpapers produce neutral grays. The

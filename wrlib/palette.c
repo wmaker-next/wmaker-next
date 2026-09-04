@@ -25,11 +25,12 @@
  * subset of the image pixels and returns up to DYNAMIC_PALETTE_SWATCHES
  * representative swatches sorted by population x chroma^2 so vivid
  * accents outrank large dark areas. RDeriveDynamicTheme()
- * maps those swatches onto a small set of UI framing roles using the
- * WCAG 2.x relative-luminance / contrast-ratio test to pick text
- * colours and a light or dark "ladder" of stepped variants, so that a
- * degenerate (e.g. all-black) wallpaper still yields distinct focused,
- * unfocused and per-owner chrome rather than collapsing to one colour.
+ * maps those swatches onto a small set of UI framing roles from a
+ * light or dark ladder of fixed tones (seed hue, surface saturation
+ * capped well below the accent's), so that a degenerate (e.g.
+ * all-black) wallpaper still yields distinct focused, unfocused and
+ * per-owner chrome rather than collapsing to one colour. The WCAG 2.x
+ * contrast helpers are exported for callers and unit-tested only.
  *
  * The functions are pure transforms on RImage pixel buffers and have no
  * X dependency, so they are unit-testable without a display.

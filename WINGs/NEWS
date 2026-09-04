@@ -8,6 +8,8 @@ struct W_DragDestinationInfo: new members added SIZE CHANGE
 
 <WINGs.h>
 WMGetTextFieldCursorPosition ADDED
+WMSetLabelUseMarkup ADDED
+WMGetLabelUseMarkup ADDED
 WMSetLabelMarkup ADDED
 WC_MultiSelectPopUpButton ADDED to enum
 typedef struct W_MultiSelectPopUpButton WMMultiSelectPopUpButton ADDED
