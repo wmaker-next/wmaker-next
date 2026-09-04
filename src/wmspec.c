@@ -2534,6 +2534,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 
 void wNETWMCheckClientHintChange(WWindow *wwin, xcb_atom_t atom)
 {
+	char *name = NULL, *tmp = NULL;
 #ifdef DEBUG_WMSPEC
 	wmessage("clientHintChange type %s", atom_name(atom));
 #endif
@@ -2547,10 +2548,27 @@ void wNETWMCheckClientHintChange(WWindow *wwin, xcb_atom_t atom)
 	} else if (atom == net_wm_window_type) {
 		updateWindowType(wwin);
 	} else if (atom == net_wm_name) {
-		char *name = wNETWMGetWindowName(wwin->client_win);
-		wWindowUpdateName(wwin, name);
-		if (name)
+		name = wNETWMGetWindowName(wwin->client_win);
+		/* an empty property counts as absent, like the icon name */
+		if (name && name[0] == '\0') {
 			wfree(name);
+			name = NULL;
+		}
+		if (name) {
+			wwin->flags.net_has_title = 1;
+			wWindowUpdateName(wwin, name);
+			wfree(name);
+		} else {
+			/* the UTF-8 title is gone, fall back to the legacy
+			 * title now, a WM_NAME notify may never arrive */
+			wwin->flags.net_has_title = 0;
+			if (!wFetchName(xconn, wwin->client_win, &tmp))
+				wWindowUpdateName(wwin, NULL);
+			else
+				wWindowUpdateName(wwin, tmp);
+			if (tmp)
+				wfree(tmp);
+		}
 	} else if (atom == net_wm_icon_name) {
 		if (wwin->icon) {
 			wIconChangeTitle(wwin->icon, wwin);

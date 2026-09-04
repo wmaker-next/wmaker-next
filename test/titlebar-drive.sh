@@ -255,6 +255,47 @@ count_button_children() {
     printf '%s\n' "$cn"
 }
 
+# cluster_extent SIDE : the right edge, relative to the frame, of the
+# rightmost mapped button core on that side, i.e. the span the centring
+# clamp must keep title-free. The old 3xTHEIGHT crop overhung the
+# TS_OLD/TS_NEXT cluster by about one button and caught the clamped
+# title's first glyph.
+cluster_extent() {
+    side=$1
+    frame=$(frame_top "$XTW")
+    set -- $(DISPLAY=$DPY xwininfo -id "$frame" \
+                 | awk '/Absolute upper-left X:/ {x=$4}
+                        /Width:/ && !w {w=$2}
+                        /Border width:/ {b=$3}
+                        END {print x+b, w}')
+    cfx=$1; cfw=$2
+    ce_max=0
+    for cw in $(DISPLAY=$DPY xwininfo -tree -id "$frame" 2>/dev/null \
+                    | awk -v th="$THEIGHT" '
+                        /^ *0x/ {
+                            g = $(NF-1)
+                            if (split(g, a, /[x+]/) < 4) next
+                            if (a[1]+0 != a[2]+0) next
+                            if (a[1]+0 <= 4 || a[1]+0 > th+0) next
+                            print $1
+                        }'); do
+        DISPLAY=$DPY xwininfo -id "$cw" 2>/dev/null \
+            | grep -q 'Map State: IsViewable' || continue
+        set -- $(DISPLAY=$DPY xwininfo -id "$cw" \
+                     | awk '/Absolute upper-left X:/ {x=$4}
+                            /Width:/ && !w {w=$2}
+                            END {print x, w}')
+        crel=$(($1 - cfx))
+        if [ "$side" = left ]; then
+            [ "$crel" -lt "$((cfw / 2))" ] || continue
+        else
+            [ "$crel" -ge "$((cfw / 2))" ] || continue
+        fi
+        [ $(($crel + $2)) -gt "$ce_max" ] && ce_max=$(($crel + $2))
+    done
+    printf '%s\n' "$ce_max"
+}
+
 button_mapped() {
     # is there a mapped button-sized child at x-offset $1 on the frame
     bx=$1
@@ -287,15 +328,19 @@ for style in new old next; do
     note "ok: [$style] 3 left / 0 right button cores"
 
     # centring clamp keeps a long title clear of the cluster, the
-    # cluster region must not change between short and long title
+    # cluster region must not change between short and long title, the
+    # crop ends at the measured right edge of the last left-side core
+    # so the free span the clamp legitimately fills stays out
+    clw=$(cluster_extent left)
+    [ "$clw" -gt 0 ] || fail "[$style] could not measure the cluster extent"
     xdo set_window --name "$(head -c 200 </dev/zero | tr '\0' X)" "$XTW"
     sleep 0.3
     DISPLAY=$DPY import -window root -crop \
-        "$((THEIGHT*3))x${THEIGHT}+${fx}+${fy}" \
+        "${clw}x${THEIGHT}+${fx}+${fy}" \
         +repage "png:$SHOTDIR/cluster-$style-long.png" >>"$LOG" 2>&1
     xdo set_window --name "xterm" "$XTW"; sleep 0.3
     DISPLAY=$DPY import -window root -crop \
-        "$((THEIGHT*3))x${THEIGHT}+${fx}+${fy}" \
+        "${clw}x${THEIGHT}+${fx}+${fy}" \
         +repage "png:$SHOTDIR/cluster-$style-short.png" >>"$LOG" 2>&1
     cmp -s "$SHOTDIR/cluster-$style-long.png" \
            "$SHOTDIR/cluster-$style-short.png" \
