@@ -1235,7 +1235,7 @@ bool WMGetLabelUseMarkup(WMLabel *lPtr);
 
 /*! Equivalent to WMSetLabelUseMarkup(lPtr, True) followed by
  *  WMSetLabelText(lPtr, markup). WMGetLabelText() still returns the raw
- *  stored string including tags. */
+ *  stored string including tags. Passing NULL clears the label. */
 void WMSetLabelMarkup(WMLabel *lPtr, const char *markup);
 
 /* ---[ WINGs/wframe.c ]-------------------------------------------------- */

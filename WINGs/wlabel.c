@@ -204,10 +204,12 @@ bool WMGetLabelUseMarkup(WMLabel *lPtr)
 
 void WMSetLabelMarkup(WMLabel *lPtr, const char *markup)
 {
+	if (!markup) {
+		WMSetLabelText(lPtr, NULL);
+		return;
+	}
 	if (!lPtr->flags.useMarkup)
 		WMSetLabelUseMarkup(lPtr, true);
-	if (!markup)
-		markup = "";
 	WMSetLabelText(lPtr, markup);
 }
 
