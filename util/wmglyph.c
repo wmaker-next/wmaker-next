@@ -653,6 +653,7 @@ int main(int argc, char **argv)
 	/* Search field */
 	app.search = WMCreateTextField(app.vbox);
 	WMSetTextFieldText(app.search, "");
+	WMSetTextFieldPlaceholder(app.search, "Search glyphs");
 	WMAddBoxSubview(app.vbox, WMWidgetView(app.search), false, true, SEARCH_H, SEARCH_H, 2);
 
 	/* Category dropdown */

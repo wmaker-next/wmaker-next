@@ -623,9 +623,9 @@ static void run_lock(WMScreen *scr, const char *user)
 	col_clock = bg_bright ? WMBlackColor(scr) : WMWhiteColor(scr);
 
 	panel = WMCreateInputPanel(scr, NULL, "Screen Locked",
-				   "Type your password and press Return:",
-				   "", "Unlock", NULL);
+				   "", "", "Unlock", NULL);
 	WMSetTextFieldSecure(panel->text, true);
+	WMSetTextFieldPlaceholder(panel->text, "Enter your password");
 	WMRealizeWidget(panel->win);
 
 	pwin = WMWidgetXID(panel->win);
