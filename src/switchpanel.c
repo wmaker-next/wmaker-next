@@ -488,7 +488,7 @@ static RImage *getTile(void)
 
 	stile = RScaleImage(wPreferences.swtileImage, icon_tile_size, icon_tile_size);
 	if (!stile)
-		return wPreferences.swtileImage;
+		return RRetainImage(wPreferences.swtileImage);
 
 	return stile;
 }
@@ -501,7 +501,7 @@ static RImage *getTileArrow(void)
 		return NULL;
 	scaled = RScaleImage(wPreferences.swtileArrowImage, icon_tile_size, icon_tile_size);
 	if (!scaled)
-		return wPreferences.swtileArrowImage;
+		return RRetainImage(wPreferences.swtileArrowImage);
 	return scaled;
 }
 
