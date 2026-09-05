@@ -221,7 +221,7 @@ RPalette *RExtractPalette(const RImage *image)
 	}
 
 	/* Sample pixels, at most PALETTE_SAMPLE_CAP. Skip transparent. */
-	stride = (total > PALETTE_SAMPLE_CAP) ? (total / PALETTE_SAMPLE_CAP) : 1;
+	stride = (total + PALETTE_SAMPLE_CAP - 1) / PALETTE_SAMPLE_CAP;
 	if (stride < 1)
 		stride = 1;
 	for (idx = 0; idx < total && npix < PALETTE_SAMPLE_CAP; idx += stride) {
