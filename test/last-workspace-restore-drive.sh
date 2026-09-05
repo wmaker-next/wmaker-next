@@ -60,6 +60,14 @@ current_desktop() {
 }
 desktop_is() { [ "$(current_desktop)" = "$1" ]; }
 
+# captures the restarted wmaker's pid into WMAKER_PID, fails when the
+# version reply carries none
+pid_rebind() {
+    WMAKER_PID=$(msg get_version 2>/dev/null \
+        | sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
+    [ -n "$WMAKER_PID" ]
+}
+
 for tool in Xvfb xdpyinfo xprop xterm; do
     command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
 done
@@ -122,9 +130,8 @@ note "wmakermsg restart"
 msg -q restart >>"$LOG" 2>&1
 sleep 0.5
 wait_for 120 ipc_ready || fatal "wmaker IPC did not re-bind after restart"
-WMAKER_PID=$(msg get_version 2>/dev/null \
-    | sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
-[ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
+wait_for 50 pid_rebind || fatal "wmaker pid not reported after restart"
+echo "$WMAKER_PID" >> "$PIDFILE"
 if wait_for 200 desktop_is 2; then
     ok "_NET_CURRENT_DESKTOP = 2 after restart"
 else
@@ -140,9 +147,8 @@ check "switched to desktop 0" desktop_is 0
 msg -q restart >>"$LOG" 2>&1
 sleep 0.5
 wait_for 120 ipc_ready || fatal "wmaker IPC did not re-bind after second restart"
-WMAKER_PID=$(msg get_version 2>/dev/null \
-    | sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
-[ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
+wait_for 50 pid_rebind || fatal "wmaker pid not reported after second restart"
+echo "$WMAKER_PID" >> "$PIDFILE"
 if wait_for 120 desktop_is 0; then
     ok "_NET_CURRENT_DESKTOP = 0 after second restart"
 else
