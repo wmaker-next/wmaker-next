@@ -979,6 +979,8 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	while (WXEvqPending(xconn)) {
 		xcb_generic_event_t *ev = NULL;
 		WMNextEvent(xconn, &ev);
+		if (!ev)
+			break;
 		WMHandleEvent(ev);
 		free(ev);
 	}

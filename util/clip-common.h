@@ -35,6 +35,10 @@ typedef struct xcb_destroy_notify_event_t    xcb_destroy_notify_event_t;
 #define CLIP_DEFAULT_DIRECT_LIMIT (64 * 1024)
 #define CLIP_DEFAULT_CHUNK_SIZE   (64 * 1024)
 
+/* Silence timeout for an outgoing INCR transfer, matching the
+ * per-chunk wait the receive side gives its sender. */
+#define CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS 5000
+
 /* Dispatch for events arriving during an INCR receive that are not the
  * awaited PropertyNotify. May be NULL. The dispatch takes ownership of
  * the event and must free it or retain it for later processing. */
@@ -85,6 +89,7 @@ typedef struct {
 	size_t		    offset;
 	size_t		    chunk_size;
 	uint32_t	    saved_event_mask;
+	long long	    last_progress_ms;
 } ClipIncrSend;
 
 /* Begin an INCR transfer in reply to `req`: capture the requestor's
@@ -110,6 +115,19 @@ int clip_incr_send_property_notify(xcb_connection_t *xc, ClipIncrSend *xfer,
  * Returns 1 if `ev` was consumed. */
 int clip_incr_send_destroy_notify(xcb_connection_t *xc, ClipIncrSend *xfer,
 				  const xcb_destroy_notify_event_t *ev);
+
+/* Cancel the transfer when it has made no progress for timeout_ms
+ * (now_ms is clip_monotonic_ms()). Covers a requestor that died
+ * between the attribute probe and the StructureNotify mask change,
+ * where no DestroyNotify can ever arrive. Returns 1 if it cancelled
+ * a transfer. */
+int clip_incr_send_check(xcb_connection_t *xc, ClipIncrSend *xfer,
+			 long long now_ms, long long timeout_ms);
+
+/* Consume an X protocol error: a resource_id matching the transfer's
+ * requestor cancels the transfer without touching the dead window.
+ * Returns 1 if the error was consumed. */
+int clip_incr_send_handle_error(ClipIncrSend *xfer, unsigned long resource_id);
 
 /* Cancel an active transfer and restore the requestor's event mask. */
 void clip_incr_send_cancel(xcb_connection_t *xc, ClipIncrSend *xfer);

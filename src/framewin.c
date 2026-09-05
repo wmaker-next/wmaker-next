@@ -2430,6 +2430,8 @@ static void buttonMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 		ev = NULL;
 		WMMaskEvent(xconn, XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_BUTTON_RELEASE
 			    | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
+		if (!ev)
+			break;
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_LEAVE_NOTIFY:
 			execute = 0;

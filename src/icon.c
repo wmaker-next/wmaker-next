@@ -1182,6 +1182,8 @@ static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event
 		ev = NULL;
 		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE, &ev);
+		if (!ev)
+			break;
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_EXPOSE:
 			WMHandleEvent(ev);

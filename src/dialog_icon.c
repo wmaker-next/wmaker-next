@@ -611,6 +611,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 		xcb_generic_event_t *event = NULL;
 
 		WMNextEvent(xconn, &event);
+		if (!event)
+			break;
 		WMHandleEvent(event);
 		free(event);
 	}

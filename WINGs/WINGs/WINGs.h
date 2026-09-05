@@ -38,22 +38,6 @@ extern "C" {
 #endif
 
 
-#ifdef __STDC_VERSION__
-# if __STDC_VERSION__ >= 201112L
-/*
- * Ideally, we would like to include the proper header to have 'noreturn' properly
- * defined (that's what is done for the rest of the code)
- * However, as we're a public API file we can't do that in a portable fashion, so
- * we just stick to plain STD C11 keyword
- */
-#  define _wings_noreturn _Noreturn
-# else
-#  define _wings_noreturn /**/
-# endif
-#else
-#define _wings_noreturn /**/
-#endif
-
 typedef unsigned long WMPixel;
 
 
@@ -670,7 +654,7 @@ WMScreen* WMCreateScreen(xcb_connection_t *display, int screen);
 
 WMScreen* WMCreateSimpleApplicationScreen(xcb_connection_t *display, int screen);
 
-_wings_noreturn void WMScreenMainLoop(WMScreen *scr);
+void WMScreenMainLoop(WMScreen *scr);
 
 void WMBreakModalLoop(WMScreen *scr);
 
@@ -748,7 +732,9 @@ void WMSetViewNextResponder(WMView *view, WMView *responder);
  * event-fetching loop therefore frees below its dispatch call, exactly
  * once. WXEvqPeek() lends a pointer the queue still
  * owns, valid until the next queue mutation. WXEvqPutBack() takes
- * ownership of what it is given. */
+ * ownership of what it is given. WMNextEvent()/WMMaskEvent() return
+ * *event == NULL when the connection has died (observable only to
+ * callers whose dead hook returns instead of exiting). */
 
 typedef void WXEvqErrorHook(xcb_connection_t *dpy, unsigned int error_code,
                             unsigned int major_opcode, unsigned int minor_opcode,
@@ -761,6 +747,13 @@ void WXEvqSetErrorHook(WXEvqErrorHook *hook);
 /* Hook invoked when the connection dies (xcb_connection_has_error()).
  * Xlib's IO-error handler used to die here. */
 void WXEvqSetDeadHook(WXEvqDeadHook *hook);
+
+/* Run the registered dead hook outside the queue's drain, for the
+ * fetchers where the error surfaces after W_HandleInputEvents marked
+ * it inside the blocked wait. A noreturn hook keeps NULL fetch
+ * results away from the consumers. With no hook installed this
+ * exits. */
+void WXEvqConnectionDead(xcb_connection_t *dpy);
 
 bool WXEvqPending(xcb_connection_t *dpy);
 
@@ -2077,10 +2070,6 @@ void W_setconf_doubleClickDelay(int value);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-
-
-/* These definitions are not meant to be seen outside this file */
-#undef _wings_noreturn
 
 
 #endif

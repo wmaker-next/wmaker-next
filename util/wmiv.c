@@ -3283,11 +3283,30 @@ int main(int argc, char **argv)
 
 	/* Main event loop */
 	while (!quit) {
-		xcb_generic_event_t *ev = wmiv_q_wait(-1);
+		xcb_generic_event_t *ev = wmiv_q_wait(incr.active ?
+			CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS : -1);
 
-		if (!ev)
+		if (!ev) {
+			if (xcb_connection_has_error(xc) || !incr.active)
+				break;
+			if (clip_incr_send_check(xc, &incr, clip_monotonic_ms(),
+						 CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS)) {
+				if (WMIV_DEBUG)
+					fprintf(stderr, "INCR: transfer stalled, cancelled\n");
+				continue;
+			}
 			break;
+		}
 		uint8_t rt = ev->response_type & 0x7f;
+
+		if (rt == 0) {
+			if (clip_incr_send_handle_error(&incr,
+					((xcb_generic_error_t *)ev)->resource_id) &&
+			    WMIV_DEBUG)
+				fprintf(stderr, "INCR: cancelled transfer, X error on requestor\n");
+			free(ev);
+			continue;
+		}
 
 		if (rt == XCB_CLIENT_MESSAGE) {
 			xcb_client_message_event_t *cm = (xcb_client_message_event_t *)ev;

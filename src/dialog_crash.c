@@ -241,6 +241,8 @@ int wShowCrashingDialogPanel(int whatSig)
 		xcb_generic_event_t *event = NULL;
 
 		WMNextEvent(xconn, &event);
+		if (!event)
+			break;
 		WMHandleEvent(event);
 		free(event);
 	}

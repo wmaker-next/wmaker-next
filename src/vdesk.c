@@ -389,6 +389,8 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 		free(ev);
 		ev = NULL;
 		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
+		if (!ev)
+			break;
 
 		if ((ev->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
 			int dx = (((xcb_motion_notify_event_t *)ev)->root_x) - last_x;

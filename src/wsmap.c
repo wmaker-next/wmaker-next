@@ -436,6 +436,8 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 		ev = NULL;
 		WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION |
 		             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE, &ev);
+		if (!ev)
+			break;
 
 		modifiers = (((xcb_key_press_event_t *)ev)->state) & w_global.shortcut.modifiers_mask;
 

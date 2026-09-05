@@ -1937,6 +1937,8 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 
 	while (panel->magnifyGlass->image) {
 		WMNextEvent(scr->display, &event);
+		if (!event)
+			break;
 
 		/* Pack motion events, keep only the newest */
 		while (WXEvqTakeTyped(scr->display, XCB_MOTION_NOTIFY, XCB_NONE, &ev)) {

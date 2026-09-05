@@ -531,6 +531,8 @@ static void dragDivider(WMSplitView * sPtr, int clickX, int clickY)
 	dragging = 0;
 	while (!done) {
 		WMMaskEvent(scr->display, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE, &ev);
+		if (!ev)
+			break;
 
 		coord = (sPtr->flags.vertical)
 			? ((xcb_motion_notify_event_t *)ev)->event_x

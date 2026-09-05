@@ -407,6 +407,29 @@ static void test_extension_no_window(void)
 	CHECK(!WXEvqPending(NULL));
 }
 
+/* the fetchers run the dead hook when the connection error surfaces
+ * outside drain(): a noreturn owner keeps NULL fetch results away from
+ * the consumers, a returning owner hands the NULL result to its
+ * loop's check instead, and with no hook installed the process
+ * exits like drain() does */
+static int dead_hook_calls;
+
+static void returning_dead_hook(xcb_connection_t *dpy)
+{
+	(void) dpy;
+	dead_hook_calls++;
+}
+
+static void test_connection_dead(void)
+{
+	WXEvqSetDeadHook(returning_dead_hook);
+	WXEvqConnectionDead(NULL);
+	CHECK(dead_hook_calls == 1);
+	WXEvqConnectionDead(NULL);
+	CHECK(dead_hook_calls == 2);
+	WXEvqSetDeadHook(NULL);
+}
+
 int main(void)
 {
 	test_fifo_order();
@@ -417,6 +440,7 @@ int main(void)
 	test_take_mask();
 	test_drop_range();
 	test_extension_no_window();
+	test_connection_dead();
 
 	WXEvqClear();
 

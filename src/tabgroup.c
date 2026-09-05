@@ -878,6 +878,9 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS
 		            | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, &ev);
 
+		if (!ev)
+			break;
+
 		if (scr->tab_pick_payload != payload) {
 			cancelled = true;
 			break;
@@ -1197,6 +1200,9 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 			event = NULL;
 			break;
 		}
+
+		if (!event)
+			break;
 
 		switch ((event->response_type & 0x7f)) {
 		case XCB_MOTION_NOTIFY: {

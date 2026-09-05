@@ -1208,6 +1208,8 @@ static int keyboardMenu(WMenu * menu)
 		wXAllowEvents(xconn, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
 		WMMaskEvent(xconn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, &event);
+		if (!event)
+			break;
 
 		switch ((event->response_type & 0x7f)) {
 		case XCB_KEY_PRESS:
@@ -1948,6 +1950,8 @@ void wMenuScroll(WMenu *menu)
 		free(ev);
 		ev = NULL;
 		WMNextEvent(xconn, &ev);
+		if (!ev)
+			break;
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_ENTER_NOTIFY:
 			WMHandleEvent(ev);
@@ -2248,6 +2252,8 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 		wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER | XCB_ALLOW_SYNC_POINTER, XCB_CURRENT_TIME);
 
 		WMMaskEvent(xconn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, &ev);
+		if (!ev)
+			break;
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_MOTION_NOTIFY:
 			smenu = findMenu(scr, &x, &y);
@@ -2603,6 +2609,8 @@ static void menuTitleMouseDown(WCoreWindow * sender, void *data, xcb_generic_eve
 		free(ev);
 		ev = NULL;
 		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
+		if (!ev)
+			break;
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_MOTION_NOTIFY:
 			if (started) {

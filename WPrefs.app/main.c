@@ -158,6 +158,8 @@ int main(int argc, char **argv)
 		xcb_generic_event_t *event = NULL;
 
 		WMNextEvent(xc, &event);
+		if (!event)
+			break;
 
 		while (DeadChildrenCount-- > 0) {
 			int i;

@@ -457,6 +457,17 @@ void WMNextEvent(xcb_connection_t * dpy, xcb_generic_event_t ** event)
 {
 	while (!WXEvqPending(dpy)) {
 		W_HandleInputEvents(true, xcb_get_file_descriptor(dpy));
+		if (xcb_connection_has_error(dpy)) {
+			/* the error can surface here, outside drain(): a
+			 * due timer or the prepare hook flushed requests
+			 * down the just-dead socket. Run the same dead
+			 * hook: a noreturn owner never hands the NULL to
+			 * a consumer, a returning owner hands the NULL
+			 * result to its loop's check instead. */
+			WXEvqConnectionDead(dpy);
+			*event = NULL;
+			return;
+		}
 	}
 
 	WXEvqNext(dpy, event);
@@ -470,8 +481,15 @@ void WMMaskEvent(xcb_connection_t * dpy, uint32_t mask, xcb_generic_event_t ** e
 	 * queue and returns the first match, the non-matching events
 	 * stay queued in arrival order for the next WMNextEvent or the
 	 * modal loop's WMHandleEvent default arm to dispatch */
+	*event = NULL;
 	while (!WXEvqTakeMask(dpy, mask, XCB_NONE, event)) {
 		W_HandleInputEvents(true, xcb_get_file_descriptor(dpy));
+		if (xcb_connection_has_error(dpy)) {
+			/* see WMNextEvent: run the dead hook before the
+			 * NULL result reaches a consumer */
+			WXEvqConnectionDead(dpy);
+			return;
+		}
 	}
 	if (*event)
 		*event = compressPoppedEvent(*event);

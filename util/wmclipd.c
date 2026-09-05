@@ -54,6 +54,7 @@
 #define CLIP_TTL_MIN_SECONDS     5
 #define CLIP_TTL_MAX_SECONDS     (365L * 24 * 60 * 60)
 #define CLIP_POPUP_TICK          "wmclipd-popup"
+#define CLIP_POPUP_POLL_MS       250
 #define CLIP_POPUP_PREVIEW_LEN   64
 #define CLIP_POPUP_PIN_CHAR      "\xF0\x9F\x93\x8C"  /* U+1F4CC pushpin */
 #define CLIP_POPUP_PIN_LEN       4
@@ -71,7 +72,6 @@ typedef struct {
 	xcb_atom_t type;
 	char *path;
 	char *uri;
-	xcb_timestamp_t timestamp;
 	int owns;
 } ClipBuffer;
 
@@ -80,13 +80,11 @@ typedef struct ClipHistoryEntry {
 	unsigned char *data;
 	size_t size;
 	xcb_atom_t type;
-	xcb_timestamp_t timestamp;
 	time_t wall_time;
 	long long mono_ms;
 	char *text_preview;
 	char *image_path;
 	char *uri;
-	int owns;
 	int pinned;
 	int width;
 	int height;
@@ -139,6 +137,9 @@ static long long primary_pending_deadline;
 
 static ClipHistory history;
 static int popup_active;
+/* set when history_add_from_buffer mutates the ring while the popup
+ * loop is running, so it can rebuild its list */
+static int popup_history_dirty;
 static int popup_ipc_fd = -1;
 static WMScreen *popup_wscr;
 static WMWindow *popup_win;
@@ -147,6 +148,8 @@ static int popup_mapped;
 static WMFont *popup_bold_font;
 static WMFont *popup_norm_font;
 static WMColor *popup_dim_color;
+static WMColor *popup_sel_color;
+static WMColor *popup_bg_color;
 static int popup_item_h;
 static int popup_icon_size;
 static WMHashTable *popup_thumbs;
@@ -156,7 +159,7 @@ static void handle_selection_clear(xcb_selection_clear_event_t *ev);
 static void handle_property_notify(xcb_property_notify_event_t *ev);
 static void handle_destroy_notify(xcb_destroy_notify_event_t *ev);
 static void show_clipboard_popup(void);
-static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts);
+static void history_add_from_buffer(const ClipBuffer *buf);
 static void history_evict_over_capacity(void);
 static void flush_primary_pending(void);
 
@@ -218,6 +221,25 @@ static void clip_dead_hook(xcb_connection_t *dconn)
 
 	debug_log("X connection lost");
 	running = 0;
+}
+
+/* X errors are the only signal a requestor can give when it dies
+ * between the attribute probe and the StructureNotify mask change */
+static void clip_error_hook(xcb_connection_t *dconn, unsigned int error_code,
+			    unsigned int major_opcode, unsigned int minor_opcode,
+			    unsigned long resource_id, unsigned long serial)
+{
+	(void)dconn;
+	(void)error_code;
+	(void)major_opcode;
+	(void)minor_opcode;
+	(void)serial;
+
+	if (clip_incr_send_handle_error(&incr, resource_id)) {
+		incr_source = NULL;
+		debug_log("cancelled INCR transfer: X error on requestor 0x%lx",
+			  resource_id);
+	}
 }
 
 static char *debug_atom_name(xcb_atom_t atom)
@@ -482,7 +504,6 @@ static int claim_selection(xcb_atom_t selection, ClipBuffer *buf,
 	}
 
 	buf->owns = 1;
-	buf->timestamp = timestamp;
 	debug_log("owning %s", debug_selection_name(selection));
 	return 1;
 }
@@ -557,11 +578,10 @@ static int capture_selection(xcb_atom_t selection, ClipBuffer *buf,
 		claim_selection(selection, buf, timestamp);
 	} else {
 		buf->owns = 0;
-		buf->timestamp = timestamp;
 		debug_log("cached %s without owning it",
 			  debug_selection_name(selection));
 	}
-	history_add_from_buffer(buf, timestamp);
+	history_add_from_buffer(buf);
 	return 1;
 }
 
@@ -735,7 +755,7 @@ static int history_entry_matches(const ClipHistoryEntry *e, const ClipBuffer *bu
 	return 1;
 }
 
-static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
+static void history_add_from_buffer(const ClipBuffer *buf)
 {
 	ClipHistoryEntry *e;
 	ClipHistoryEntry **new_entries;
@@ -748,8 +768,6 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	/* dedup consecutive identical entries */
 	if (history.count > 0 && history.entries[0] &&
 	    history_entry_matches(history.entries[0], buf)) {
-		history.entries[0]->timestamp = ts;
-		history.entries[0]->owns = buf->owns;
 		/* re-copying the same content restarts its TTL */
 		history.entries[0]->mono_ms = clip_monotonic_ms();
 		return;
@@ -759,10 +777,8 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	e->kind = buf->kind;
 	e->size = buf->size;
 	e->type = buf->type;
-	e->timestamp = ts;
 	e->wall_time = time(NULL);
 	e->mono_ms = clip_monotonic_ms();
-	e->owns = buf->owns;
 	e->pinned = 0;
 
 	if (buf->data && buf->size > 0) {
@@ -798,6 +814,7 @@ static void history_add_from_buffer(const ClipBuffer *buf, xcb_timestamp_t ts)
 	history.count++;
 
 	history_evict_over_capacity();
+	popup_history_dirty = 1;
 
 	debug_log("history: added entry (%d total)", history.count);
 }
@@ -1533,10 +1550,8 @@ static void history_load(void)
 		e->kind = (ContentKind)kind;
 		e->size = size;
 		e->type = type;
-		e->timestamp = 0;
 		e->wall_time = wall;
 		e->mono_ms = mono_now - age * 1000;
-		e->owns = 0;
 		e->pinned = pinned;
 		e->data = wmalloc(size);
 		memcpy(e->data, payload, size);
@@ -1586,8 +1601,7 @@ static int mirror_primary_to_clipboard(xcb_timestamp_t timestamp,
 	return claim_selection(atom_clipboard, &clipboard_buffer, timestamp);
 }
 
-static int mirror_clipboard_text_to_primary(xcb_timestamp_t timestamp,
-					    const char *reason)
+static int mirror_clipboard_text_to_primary(const char *reason)
 {
 	if (!is_text_atom(clipboard_buffer.type))
 		return 0;
@@ -1595,7 +1609,6 @@ static int mirror_clipboard_text_to_primary(xcb_timestamp_t timestamp,
 		return 0;
 
 	primary_buffer.owns = 0;
-	primary_buffer.timestamp = timestamp;
 	debug_log("mirroring CLIPBOARD text to PRIMARY cache (%s): %zu bytes",
 		  reason, primary_buffer.size);
 	return 1;
@@ -1848,8 +1861,7 @@ static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 		primary_owner = selection_owner(atom_primary);
 
 		if (primary_owner == source_owner)
-			mirror_clipboard_text_to_primary(ev->timestamp,
-							 "same source owner");
+			mirror_clipboard_text_to_primary("same source owner");
 	}
 }
 
@@ -2068,7 +2080,7 @@ static int publish_screenshot(const char *path)
 	clipboard_buffer.path = wstrdup(path);
 	clipboard_buffer.uri = file_uri_from_path(path);
 
-	history_add_from_buffer(&clipboard_buffer, XCB_TIME_CURRENT_TIME);
+	history_add_from_buffer(&clipboard_buffer);
 
 	return claim_selection(atom_clipboard, &clipboard_buffer,
 			       XCB_TIME_CURRENT_TIME);
@@ -2367,6 +2379,8 @@ static int parse_args(int argc, char **argv)
 		OPT_DEBUG,
 	};
 	int ch;
+	char *hend;
+	long long hval;
 	struct option longopts[] = {
 		{ "clipboard",     no_argument,       NULL, OPT_CLIPBOARD },
 		{ "screenshots",   no_argument,       NULL, OPT_SCREENSHOTS },
@@ -2390,9 +2404,16 @@ static int parse_args(int argc, char **argv)
 			run_screenshots = 1;
 			break;
 		case OPT_HISTORY:
-			history_capacity = atoi(optarg);
-			if (history_capacity < 0)
-				history_capacity = 0;
+			errno = 0;
+			hval = strtoll(optarg, &hend, 10);
+			if (*optarg == '\0' || *hend != '\0' ||
+			    errno == ERANGE || hval < 0 || hval > INT_MAX) {
+				fprintf(stderr,
+					"%s: invalid --history count '%s'\n",
+					prog, optarg);
+				return -1;
+			}
+			history_capacity = (int)hval;
 			if (history_capacity > CLIP_HISTORY_MAX_ENTRIES) {
 				fprintf(stderr,
 					"%s: --history %d exceeds the persist limit of %d; clamping\n",
@@ -2562,8 +2583,7 @@ static void draw_history_entry(WMList *lPtr, int index, xcb_drawable_t d,
 		return;
 	e = (ClipHistoryEntry *)item->clientData;
 
-	back = (state & WLDSSelected) ? WMWhiteColor(popup_wscr)
-				      : WMGrayColor(popup_wscr);
+	back = (state & WLDSSelected) ? popup_sel_color : popup_bg_color;
 	WMPaintColorSwatch(back, d, rect->pos.x, rect->pos.y,
 			   rect->size.width, rect->size.height);
 
@@ -2724,6 +2744,27 @@ static void refresh_popup_list(void)
 	WMSetListPosition(popup_list, 0);
 }
 
+static void refresh_popup_list_keep_selection(void)
+{
+	WMListItem *sel = WMGetListSelectedItem(popup_list);
+	ClipHistoryEntry *keep = sel ? sel->clientData : NULL;
+	int i, rows;
+
+	refresh_popup_list();
+	if (!keep)
+		return;
+	rows = WMGetListNumberOfRows(popup_list);
+	for (i = 0; i < rows; i++) {
+		WMListItem *it = WMGetListItem(popup_list, i);
+
+		if (it->clientData == keep) {
+			WMSelectListItem(popup_list, i);
+			WMSetListPosition(popup_list, i);
+			break;
+		}
+	}
+}
+
 static void hide_popup(void)
 {
 	if (popup_mapped) {
@@ -2749,7 +2790,7 @@ static void copy_entry_to_buffer(const ClipHistoryEntry *e, ClipBuffer *buf)
 		buf->uri = wstrdup(e->uri);
 }
 
-static void activate_entry(int row)
+static void activate_entry(int row, xcb_timestamp_t ts)
 {
 	ClipHistoryEntry *e;
 
@@ -2763,18 +2804,14 @@ static void activate_entry(int row)
 	 * CLIPBOARD and PRIMARY for text entries so that terminals
 	 * which paste from either selection on Shift+Insert receive
 	 * the activated content. */
-	wXSetSelectionOwner(xc, atom_clipboard, owner_window,
-			    XCB_CURRENT_TIME);
+	wXSetSelectionOwner(xc, atom_clipboard, owner_window, ts);
 	if (is_text_atom(e->type)) {
 		copy_entry_to_buffer(e, &primary_buffer);
-		wXSetSelectionOwner(xc, atom_primary, owner_window,
-				    XCB_CURRENT_TIME);
+		wXSetSelectionOwner(xc, atom_primary, owner_window, ts);
 		primary_buffer.owns = 1;
-		primary_buffer.timestamp = XCB_TIME_CURRENT_TIME;
 	}
 	wXFlush(xc);
 	clipboard_buffer.owns = 1;
-	clipboard_buffer.timestamp = XCB_TIME_CURRENT_TIME;
 	debug_log("activated history entry %d", row);
 }
 
@@ -2809,6 +2846,8 @@ static void ensure_popup(void)
 	if (!popup_norm_font)
 		popup_norm_font = WMSystemFontOfSize(popup_wscr, 11);
 	popup_dim_color = WMDarkGrayColor(popup_wscr);
+	popup_sel_color = WMWhiteColor(popup_wscr);
+	popup_bg_color = WMGrayColor(popup_wscr);
 	popup_item_h = WMFontHeight(popup_bold_font) +
 		       WMFontHeight(popup_norm_font) + 6;
 	popup_icon_size = popup_item_h - 4;
@@ -2982,6 +3021,8 @@ static void show_clipboard_popup(void)
 	int i;
 	int row, nrows;
 	int rx, ry;
+	xcb_timestamp_t commit_ts = XCB_CURRENT_TIME;
+	struct pollfd pfd;
 	xcb_generic_event_t *ev = NULL;
 	xcb_window_t focus_save = XCB_NONE;
 	xcb_window_t focus_target = XCB_NONE;
@@ -3092,10 +3133,32 @@ static void show_clipboard_popup(void)
 			}
 		}
 
+		if (popup_history_dirty) {
+			popup_history_dirty = 0;
+			refresh_popup_list_keep_selection();
+		}
+
+		/* bounded wait so a SIGTERM that only clears `running`
+		 * unwedges the popup instead of blocking forever in
+		 * WMMaskEvent */
+		if (!WXEvqPending(xc)) {
+			pfd.fd = xcb_get_file_descriptor(xc);
+			pfd.events = POLLIN;
+			pfd.revents = 0;
+			if (poll(&pfd, 1, CLIP_POPUP_POLL_MS) < 0 && errno != EINTR)
+				done = true;
+			continue;
+		}
+
 		WMMaskEvent(xc, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
 			    | XCB_EVENT_MASK_EXPOSURE
 			    | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW, &ev);
+
+		if (!ev) {
+			done = true;
+			break;
+		}
 
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_KEY_PRESS:
@@ -3181,6 +3244,7 @@ static void show_clipboard_popup(void)
 				}
 			} else if ((((xcb_key_press_event_t *)ev)->detail) == returnKey) {
 				commit_row = row;
+				commit_ts = ((xcb_key_press_event_t *)ev)->time;
 				commit = true;
 				done = true;
 			} else if ((((xcb_key_press_event_t *)ev)->detail) == escapeKey) {
@@ -3189,6 +3253,7 @@ static void show_clipboard_popup(void)
 			} else if ((((xcb_key_press_event_t *)ev)->detail) != shiftLKey &&
 				   (((xcb_key_press_event_t *)ev)->detail) != shiftRKey) {
 				commit_row = row;
+				commit_ts = ((xcb_key_press_event_t *)ev)->time;
 				commit = true;
 				done = true;
 			}
@@ -3214,6 +3279,7 @@ static void show_clipboard_popup(void)
 				break;
 			row = WMGetListSelectedItemRow(popup_list);
 			commit_row = row;
+			commit_ts = ((xcb_key_release_event_t *)ev)->time;
 			commit = true;
 			done = true;
 			break;
@@ -3232,6 +3298,7 @@ static void show_clipboard_popup(void)
 			WMHandleEvent(ev);
 			if (popup_clicked_row >= 0) {
 				commit_row = popup_clicked_row;
+				commit_ts = ((xcb_button_release_event_t *)ev)->time;
 				commit = true;
 				done = true;
 			}
@@ -3256,7 +3323,7 @@ static void show_clipboard_popup(void)
 	wXFlush(xc);
 
 	if (commit && !esc_cancel && commit_row >= 0 && commit_row < history.count) {
-		activate_entry(commit_row);
+		activate_entry(commit_row, commit_ts);
 
 		/* Simulate a paste into the previously focused window using
 		 * XTest (real keypresses, not synthetic events). For image
@@ -3274,7 +3341,7 @@ static void show_clipboard_popup(void)
 			int is_image = is_image_atom(ce->type);
 
 			xcb_set_input_focus(xc, XCB_INPUT_FOCUS_POINTER_ROOT,
-					    focus_target, XCB_CURRENT_TIME);
+					    focus_target, commit_ts);
 			wXFlush(xc);
 
 			if (is_image) {
@@ -3324,6 +3391,7 @@ int main(int argc, char **argv)
 		return 1;
 
 	WXEvqSetDeadHook(clip_dead_hook);
+	WXEvqSetErrorHook(clip_error_hook);
 
 	history.capacity = history_capacity;
 	history_load();
@@ -3349,6 +3417,14 @@ int main(int argc, char **argv)
 		    clip_monotonic_ms() >= primary_pending_deadline)
 			flush_primary_pending();
 		history_expire_entries();
+
+		if (incr.active &&
+		    clip_incr_send_check(xc, &incr, clip_monotonic_ms(),
+					 CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS)) {
+			incr_source = NULL;
+			debug_log("cancelled INCR transfer: no progress in %d ms",
+				  (int)CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS);
+		}
 
 		now = clip_monotonic_ms();
 		if ((run_screenshots || history_enabled) &&
@@ -3387,6 +3463,12 @@ int main(int argc, char **argv)
 
 			if (timeout < 0 || dl_ms < timeout)
 				timeout = dl_ms;
+		}
+		if (incr.active) {
+			int st_ms = (int)CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS;
+
+			if (timeout < 0 || st_ms < timeout)
+				timeout = st_ms;
 		}
 		if (history_enabled) {
 			long long dl = history_next_expiry(now);

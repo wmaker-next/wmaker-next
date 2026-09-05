@@ -695,6 +695,8 @@ noreturn void EventLoop(void)
 
 	for (;;) {
 		WMNextEvent(xconn, &event);	/* Blocks here */
+		if (!event)
+			continue;
 		WMHandleEvent(event);
 		free(event);
 	}

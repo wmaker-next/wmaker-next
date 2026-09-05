@@ -145,7 +145,11 @@ wait_for 30 log_has "history: saved 2 entries to $HIST" ||
 [ -f "$HIST" ] || fail "state file was not created"
 [ "$(head -c 8 "$HIST")" = "WMCLPHST" ] ||
 	fail "state file does not start with the WMCLPHST magic"
-[ "$(stat -c %a "$HIST")" = "600" ] ||
+perms=$(stat -c %a "$HIST" 2>/dev/null || stat -f %Lp "$HIST" 2>/dev/null)
+if [ -z "$perms" ]; then
+	skip_all "stat cannot report file modes"
+fi
+[ "$perms" = "600" ] ||
 	fail "state file is not mode 0600"
 printf 'PASS: clean exit saved 2 entries to the state file\n'
 

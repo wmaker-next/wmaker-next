@@ -847,6 +847,11 @@ void WMDragImageFromView(WMView * view, xcb_generic_event_t * event)
 			 * the WINGs queue so a slow drag start (button down,
 			 * no motion buffered yet) is still recognised */
 			WMNextEvent(W_XEvqConnection(), &nextEvent);
+			if (!nextEvent)
+				/* dead connection: no drag can start, the
+				 * modal loop's next fetch runs the dead
+				 * hook */
+				break;
 			WXEvqPutBack(nextEvent);
 
 			/* Initialize only if a drag really begins (avoid clicks) */

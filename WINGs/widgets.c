@@ -1076,6 +1076,8 @@ void WMScreenMainLoop(WMScreen * scr)
 
 	while (1) {
 		WMNextEvent(scr->display, &event);
+		if (!event)
+			break;
 		WMHandleEvent(event);
 		free(event);
 		event = NULL;
@@ -1101,6 +1103,8 @@ void WMRunModalLoop(WMScreen * scr, WMView * view)
 		xcb_generic_event_t *event = NULL;
 
 		WMNextEvent(scr->display, &event);
+		if (!event)
+			break;
 		WMHandleEvent(event);
 		free(event);
 	}

@@ -85,6 +85,13 @@ start_wmclipd()
 		fail "wmclipd did not start"
 }
 
+for tool in Xvfb xdpyinfo awk grep; do
+	command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
+done
+
+[ -x "$WMCLIPD" ] || skip_all "wmclipd not built"
+[ -x "$CLIPTEST" ] || skip_all "wmclipd_cliptest not built"
+
 # A valid duration with no display fails at runtime (exit 1), a
 # malformed one at parse time (exit 2). DISPLAY is removed so the
 # daemon cannot attach to the caller's display and hang.
@@ -117,13 +124,6 @@ check_arg 1d 1
 check_arg 1h30m 1
 check_arg 365d 1
 printf 'PASS: --ttl argument validation\n'
-
-for tool in Xvfb xdpyinfo awk grep; do
-	command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
-done
-
-[ -x "$WMCLIPD" ] || skip_all "wmclipd not built"
-[ -x "$CLIPTEST" ] || skip_all "wmclipd_cliptest not built"
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	skip_all "display $DPY is already in use"

@@ -263,6 +263,7 @@ int clip_incr_send_start(xcb_connection_t *xc, ClipIncrSend *xfer,
 	xfer->offset = 0;
 	xfer->chunk_size = chunk_size > 0 ? chunk_size : CLIP_DEFAULT_CHUNK_SIZE;
 	xfer->saved_event_mask = attr->your_event_mask;
+	xfer->last_progress_ms = clip_monotonic_ms();
 
 	mask = attr->your_event_mask |
 	       XCB_EVENT_MASK_PROPERTY_CHANGE |
@@ -317,6 +318,25 @@ int clip_incr_send_property_notify(xcb_connection_t *xc, ClipIncrSend *xfer,
 			    xfer->data + xfer->offset);
 	xcb_flush(xc);
 	xfer->offset += to_send;
+	xfer->last_progress_ms = clip_monotonic_ms();
+	return 1;
+}
+
+int clip_incr_send_check(xcb_connection_t *xc, ClipIncrSend *xfer,
+			 long long now_ms, long long timeout_ms)
+{
+	if (!xfer->active || now_ms - xfer->last_progress_ms < timeout_ms)
+		return 0;
+	clip_incr_send_cancel(xc, xfer);
+	return 1;
+}
+
+int clip_incr_send_handle_error(ClipIncrSend *xfer, unsigned long resource_id)
+{
+	if (!xfer->active || resource_id != xfer->requestor)
+		return 0;
+	/* the window is gone, do not restore its event mask */
+	memset(xfer, 0, sizeof(*xfer));
 	return 1;
 }
 

@@ -186,6 +186,20 @@ void WXEvqSetDeadHook(WXEvqDeadHook *hook)
 	evq_dead_hook = hook;
 }
 
+/* Run the dead hook outside drain(): the connection error can surface
+ * in the fetchers after W_HandleInputEvents marked it inside the
+ * blocked wait. The connection owner's hook decides how to die
+ * (wmaker's is noreturn, the daemons' hooks return and their loops
+ * check the NULL fetch result). With no hook installed there is
+ * nothing to hand the failure to, so exit the same way drain() does. */
+void WXEvqConnectionDead(xcb_connection_t *dpy)
+{
+	if (evq_dead_hook)
+		(*evq_dead_hook)(dpy);
+	else
+		exit(1);
+}
+
 /* the connection the queue drains from, the display pointer that used
  * to travel in the cooked event's xany prefix */
 xcb_connection_t *W_XEvqConnection(void)
