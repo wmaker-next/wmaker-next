@@ -149,18 +149,27 @@ static int cmp_ppix(const ppix *pa, const ppix *pb, int channel)
 	return va - vb;
 }
 
-/* BSD qsort_r and macOS take the context before the comparator and
-   pass it as the comparator's first parameter. glibc and NetBSD pass
-   it as the comparator's last parameter. */
-#if defined( FREEBSD ) || defined( DRAGONFLYBSD ) || \
-    defined( OPENBSD ) || defined( __APPLE__ )
+/* glibc and NetBSD pass the context as the comparator's last
+   parameter, FreeBSD and macOS pass it first. When the libc has no
+   qsort_r, plain qsort runs with a file-scope context. */
+#if defined(HAVE_QSORT_R_GNU)
+#define QSORT_R_CTX_LAST 1
+#elif defined(HAVE_QSORT_R_BSD)
 #define QSORT_R_CTX_FIRST 1
+#else
+#define QSORT_R_PLAIN 1
 #endif
 
 #ifdef QSORT_R_CTX_FIRST
 static int cmp_ppix_thunk(void *ctx, const void *a, const void *b)
 {
 	return cmp_ppix((const ppix *)a, (const ppix *)b, *(const int *)ctx);
+}
+#elif defined(QSORT_R_PLAIN)
+static int qsort_channel;
+static int cmp_ppix_plain(const void *a, const void *b)
+{
+	return cmp_ppix((const ppix *)a, (const ppix *)b, qsort_channel);
 }
 #else
 static int cmp_ppix_r(const void *a, const void *b, void *ctx)
@@ -269,10 +278,14 @@ RPalette *RExtractPalette(const RImage *image)
 			break;
 		b = &buck[best];
 		mid = b->n / 2;
+#if defined(QSORT_R_CTX_FIRST)
 		qsort_r(b->p, b->n, sizeof(ppix),
-#ifdef QSORT_R_CTX_FIRST
 			&best_channel, cmp_ppix_thunk);
-#else
+#elif defined(QSORT_R_PLAIN)
+		qsort_channel = best_channel;
+		qsort(b->p, b->n, sizeof(ppix), cmp_ppix_plain);
+#elif defined(QSORT_R_CTX_LAST)
+		qsort_r(b->p, b->n, sizeof(ppix),
 			cmp_ppix_r, &best_channel);
 #endif
 		buck[nb].p = b->p + mid;

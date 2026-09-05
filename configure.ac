@@ -464,6 +464,32 @@ AC_CHECK_FUNCS(gethostname strcasecmp strncasecmp \
 AC_CHECK_DECLS([SHM_ANON], [], [], [[#include <sys/mman.h>]])
 AC_SEARCH_LIBS([strerror], [cposix])
 
+dnl qsort_r argument order varies: glibc and NetBSD pass the comparator
+dnl last, FreeBSD and macOS pass the context first, and OpenBSD has no
+dnl qsort_r at all. Probe the signature at compile time with warnings
+dnl as errors, so the incompatible-pointer warning of the wrong order
+dnl fails the probe, and fall back to plain qsort when neither matches.
+qsort_werror_save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror"
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <stdlib.h>
+static int cmp(const void *a, const void *b, void *ctx) { (void)a; (void)b; (void)ctx; return 0; }]],
+[[int ctx = 0; int arr[2] = {0, 1};
+qsort_r(arr, 2, sizeof(int), cmp, &ctx);]])],
+    [AC_DEFINE([HAVE_QSORT_R_GNU], [1], [Define if qsort_r takes the comparator last (glibc, NetBSD)])],
+    [])
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[#include <stdlib.h>
+static int cmp(void *ctx, const void *a, const void *b) { (void)a; (void)b; (void)ctx; return 0; }]],
+[[int ctx = 0; int arr[2] = {0, 1};
+qsort_r(arr, 2, sizeof(int), &ctx, cmp);]])],
+    [AC_DEFINE([HAVE_QSORT_R_BSD], [1], [Define if qsort_r takes the context before the comparator (FreeBSD, macOS)])],
+    [])
+CFLAGS="$qsort_werror_save_CFLAGS"
+
 dnl libev drives the WINGs event loop (timer, idle and input handlers).
 dnl Probe pkg-config first: distro packages land in /usr/local on DragonFly
 dnl where the base compiler does not search by default. libev ships a .pc
