@@ -3,6 +3,24 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Per-window "skip window list" and "skip switch panel" toggles
+--------------------------------------------------------------
+
+The window menu's Options submenu gains two new entries, "Skip window
+list" and "Skip switch panel", which hide the window they are toggled
+on from the window list and from the switch panel (Alt-Tab) without
+touching other windows of the same application. Until now those
+attributes could only be set from the window Inspector, where "Save"
+writes them under the window specification (instance, class or all
+windows), so hiding a single window of an application while it runs
+was impossible. Like "Keep on top" and "Keep at bottom" the menu
+toggles are live only: they affect the window they are invoked on and
+are deliberately not saved, because the session restores entries by
+instance, class and command, which cannot tell two windows of the same
+application apart, so a saved value could land on a window the user
+never chose. The Inspector keeps working as before and remains the way
+to make the setting permanent for an application.
+
 Xlib is gone, everything runs on xcb
 -------------------------------------
 

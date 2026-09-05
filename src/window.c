@@ -382,7 +382,7 @@ void wManagePrefetch(xcb_window_t window, WManageCookies *ck)
 	ck->appmenu   = WXReqExists(xconn, window, w_global.atom.wmaker.menu);
 	ck->gtk       = WXReqExists(xconn, window, w_global.atom.desktop.gtk_object_path);
 	ck->saved_state = WXReqFormat32(xconn, window, w_global.atom.wmaker.state,
-					w_global.atom.wmaker.state, 14);
+					w_global.atom.wmaker.state, WSAVED_STATE_SLOTS);
 	ck->mark_key  = WXReqString8(xconn, window, w_global.atom.wmaker.mark_key, XCB_ATOM_STRING);
 	ck->tab_group = WXReqFormat32(xconn, window, w_global.atom.wmaker.tab_group,
 				      w_global.atom.wmaker.tab_group, 3);
@@ -3982,7 +3982,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 
 void wWindowSaveState(WWindow *wwin)
 {
-	uint32_t data[14];
+	uint32_t data[WSAVED_STATE_SLOTS];
 	int i;
 
 	memset(data, 0, sizeof(data));
@@ -4016,7 +4016,7 @@ void wWindowSaveState(WWindow *wwin)
 	data[13] = wwin->flags.auto_miniaturize_on_unfocus;
 
 	WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wmaker.state,
-		       w_global.atom.wmaker.state, data, 14);
+		       w_global.atom.wmaker.state, data, WSAVED_STATE_SLOTS);
 
 	if (wwin->tab_group != NULL) {
 		uint32_t tab[3];
@@ -4045,9 +4045,11 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 	size_t len, count;
 
 	/* Accept the pre-mask 10-slot layout, the 12-slot layout, and the
-	 * current 14-slot one so a restart from an older binary still recovers
-	 * primary workspace, the mask defaults to 0 (derived from primary),
-	 * and the auto-on-unfocus bits default to 0 (per-window, off). */
+	 * current WSAVED_STATE_SLOTS-slot one so a restart from an older
+	 * binary still recovers primary workspace, the mask defaults to 0
+	 * (derived from primary), and the auto-on-unfocus bits default to 0
+	 * (per-window, off). Quads past the current layout, written by a
+	 * newer or older binary, are ignored. */
 	data = WXRcvFormat32List(xconn, state_ck, &count);
 	if (!data || count < 10) {
 		wfree(data);

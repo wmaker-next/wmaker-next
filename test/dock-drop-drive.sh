@@ -251,8 +251,10 @@ window_managed() {
 }
 window_gone() { ! window_managed; }
 notxterm_pid() {
+	# the id must be picked from fields that are order-agnostic, the
+	# get_windows dict print order is not stable across releases
 	notx_id=$(msg get_windows 2>/dev/null \
-		| sed -n 's/.*id = \(0x[0-9a-f]*\);class = NotXTerm.*/\1/p')
+		| sed -n '/class = NotXTerm/{s/.*id = \(0x[0-9a-f]*\).*/\1/p;}')
 	[ -n "$notx_id" ] || return 1
 	DISPLAY=$DPY xprop -id "$notx_id" _NET_WM_PID 2>/dev/null \
 		| awk '/CARDINAL/{print $NF}'
@@ -296,7 +298,7 @@ check "tile reset after child exit, second launch maps a window" \
 NOTX_PID=$(notxterm_pid)
 echo "$NOTX_PID" >> "$PIDFILE"
 kill "$NOTX_PID" 2>/dev/null
-wait_for 50 window_gone
+check "second NotXTerm window unmanaged after kill" wait_for 50 window_gone
 
 msg exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID"

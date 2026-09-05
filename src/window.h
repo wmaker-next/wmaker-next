@@ -536,6 +536,9 @@ WMColor *wFrameInnerFocusedBorderColor(const WWindow *wwin);
 # endif
 #endif
 
+/* _WINDOWMAKER_STATE quad count, shared by save and prefetch */
+#define WSAVED_STATE_SLOTS 14
+
 /*
  * Changes to this must update wWindowSaveState/getSavedState
  */

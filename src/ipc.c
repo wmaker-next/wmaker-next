@@ -1280,6 +1280,8 @@ static void handle_get_windows(struct WIPCClient *c)
 		pl_dict_put(d, "class", pl_string(wwin->wm_class));
 		pl_dict_put(d, "instance", pl_string(wwin->wm_instance));
 		pl_dict_put(d, "title", pl_string(wwin->frame ? wwin->frame->title : NULL));
+		pl_dict_put(d, "skip_window_list", pl_bool(WFLAGP(wwin, skip_window_list)));
+		pl_dict_put(d, "skip_switch_panel", pl_bool(WFLAGP(wwin, skip_switchpanel)));
 		pl_dict_put(d, "workspace", pl_int(wwin->frame ? WWIN_PRIMARY_WS(wwin) : 0));
 		if (wwin->frame) {
 			WMPropList *wl = WMCreatePLArray(NULL);

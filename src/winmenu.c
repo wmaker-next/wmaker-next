@@ -44,6 +44,7 @@
 #include "icon.h"
 #include "xinerama.h"
 #include "winmenu.h"
+#include "switchmenu.h"
 #include "tabgroup.h"
 
 
@@ -115,13 +116,17 @@ enum
 {
 	WO_KEEP_ON_TOP,
 	WO_KEEP_AT_BOTTOM,
-	WO_OMNIPRESENT
+	WO_OMNIPRESENT,
+	WO_SKIP_WINDOW_LIST,
+	WO_SKIP_SWITCH_PANEL
 };
 
 static const char *const menu_options_entries[] = {
-	[WO_KEEP_ON_TOP]    = N_("Keep on top"),
-	[WO_KEEP_AT_BOTTOM] = N_("Keep at bottom"),
-	[WO_OMNIPRESENT]    = N_("Omnipresent")
+	[WO_KEEP_ON_TOP]         = N_("Keep on top"),
+	[WO_KEEP_AT_BOTTOM]      = N_("Keep at bottom"),
+	[WO_OMNIPRESENT]         = N_("Omnipresent"),
+	[WO_SKIP_WINDOW_LIST]    = N_("Skip window list"),
+	[WO_SKIP_SWITCH_PANEL]   = N_("Skip switch panel")
 };
 
 /*
@@ -152,6 +157,7 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin);
 static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 {
 	WWindow *wwin = (WWindow *) entry->clientdata;
+	int skip;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
@@ -173,6 +179,18 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 
 	case WO_OMNIPRESENT:
 		wWindowSetOmnipresent(wwin, !IS_OMNIPRESENT(wwin));
+		break;
+
+	case WO_SKIP_WINDOW_LIST:
+		skip = !WFLAGP(wwin, skip_window_list);
+		WSETUFLAG(wwin, skip_window_list, skip);
+		UpdateSwitchMenu(wwin->screen_ptr, wwin,
+				 skip ? ACTION_REMOVE : ACTION_ADD);
+		break;
+
+	case WO_SKIP_SWITCH_PANEL:
+		WSETUFLAG(wwin, skip_switchpanel,
+			  !WFLAGP(wwin, skip_switchpanel));
 		break;
 	}
 }
@@ -566,6 +584,14 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin)
 	smenu->entries[WO_OMNIPRESENT]->clientdata = wwin;
 	smenu->entries[WO_OMNIPRESENT]->flags.indicator_on = IS_OMNIPRESENT(wwin);
 	wMenuEntrySetShortcutText(smenu->entries[WO_OMNIPRESENT], GetShortcutKey(wKeyBindings[WKBD_OMNIPRESENT]));
+
+	smenu->entries[WO_SKIP_WINDOW_LIST]->clientdata = wwin;
+	smenu->entries[WO_SKIP_WINDOW_LIST]->flags.indicator_on =
+	    WFLAGP(wwin, skip_window_list);
+
+	smenu->entries[WO_SKIP_SWITCH_PANEL]->clientdata = wwin;
+	smenu->entries[WO_SKIP_SWITCH_PANEL]->flags.indicator_on =
+	    WFLAGP(wwin, skip_switchpanel);
 
 	smenu->flags.realized = 0;
 	wMenuRealize(smenu);
