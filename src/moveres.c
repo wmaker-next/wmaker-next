@@ -1927,10 +1927,6 @@ bool find_nearest_edge(WWindow *self, int head, int workspace,
 	default:
 		return false;
 	}
-		break;
-	default:
-		return false;
-	}
 
 	dist = decreasing ? (from_offset - best) : (best - from_offset);
 	if (dist < 0)

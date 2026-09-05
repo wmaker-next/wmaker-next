@@ -619,11 +619,12 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	if (panel->result) {
 		char *defaultPath, *wantedPath;
+		WMListItem *sel;
 
-		/* check if the file the user selected is not the one that
-		 * would be loaded by default with the current search path */
-		*file = WMGetListSelectedItem(panel->iconList)->text;
-		if (**file == 0) {
+		sel = WMGetListSelectedItem(panel->iconList);
+		/* copy out of the list, the item owns its text buffer */
+		*file = (sel && sel->text) ? wstrdup(sel->text) : NULL;
+		if (!*file || **file == 0) {
 			wfree(*file);
 			*file = NULL;
 		} else {
@@ -632,9 +633,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 			if (defaultPath) {
 				/* if the file is not the default, use full path */
 				if (strcmp(wantedPath, defaultPath) != 0) {
+					wfree(*file);
 					*file = wstrdup(wantedPath);
-				} else {
-					*file = wstrdup(*file);
 				}
 				wfree(defaultPath);
 			}
