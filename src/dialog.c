@@ -329,6 +329,9 @@ void wShowInfoPanel(WScreen *scr)
 	time_t s;
 	struct tm *current_time;
 	struct utsname uts;
+#if defined(HAVE_MALLOC_H) && defined(HAVE_MALLINFO2)
+	struct mallinfo2 ma;
+#endif
 
 	s = time(NULL);
 	if (s) {
@@ -470,28 +473,26 @@ void wShowInfoPanel(WScreen *scr)
 	}
 
 #if defined(HAVE_MALLOC_H) && defined(HAVE_MALLINFO2)
-	{
-		struct mallinfo2 ma = mallinfo2();
-		snprintf(buffer, sizeof(buffer),
+	ma = mallinfo2();
+	snprintf(buffer, sizeof(buffer),
 #ifdef DEBUG
-					_("Total memory allocated: %lu kB (in use: %lu kB, %lu free chunks)\n"),
+				_("Total memory allocated: %lu kB (in use: %lu kB, %lu free chunks)\n"),
 #else
-					_("Total memory allocated: %lu kB (in use: %lu kB)\n"),
+				_("Total memory allocated: %lu kB (in use: %lu kB)\n"),
 #endif
-					(ma.arena + ma.hblkhd) / 1024,
-					(ma.uordblks + ma.hblkhd) / 1024
+				(ma.arena + ma.hblkhd) / 1024,
+				(ma.uordblks + ma.hblkhd) / 1024
 #ifdef DEBUG
-					/*
-					 * This information is representative of the memory
-					 * fragmentation. In ideal case it should be 1, but
-					 * that is never possible
-					 */
-					, ma.ordblks
+				/*
+				 * This information is representative of the memory
+				 * fragmentation. In ideal case it should be 1, but
+				 * that is never possible
+				 */
+				, ma.ordblks
 #endif
-					);
+				);
 
-		strbuf = wstrappend(strbuf, buffer);
-	}
+	strbuf = wstrappend(strbuf, buffer);
 #endif
 
 	strbuf = wstrappend(strbuf, _("Image formats: "));
