@@ -1387,7 +1387,6 @@ static void derive_dynamic_colors(RContext *rc, const char *domain,
 			c.red = xcol.red >> 8;
 			c.green = xcol.green >> 8;
 			c.blue = xcol.blue >> 8;
-			c.alpha = 255;
 			image = RCreateImage(1, 1, 0);
 			if (image) {
 				image->data[0] = c.red;

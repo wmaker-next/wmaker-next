@@ -2588,7 +2588,6 @@ static void draw_history_entry(WMList *lPtr, int index, xcb_drawable_t d,
 			   rect->size.width, rect->size.height);
 
 	ix = rect->pos.x + 2;
-	iy = rect->pos.y + 2;
 
 	thumb = load_thumbnail(e);
 	if (thumb) {
@@ -3155,10 +3154,8 @@ static void show_clipboard_popup(void)
 			    | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW, &ev);
 
-		if (!ev) {
-			done = true;
+		if (!ev)
 			break;
-		}
 
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_KEY_PRESS:

@@ -898,8 +898,8 @@ void moveBetweenHeads(WWindow *wwin, int direction)
 	int destHead = -1;
 
 	unsigned int new_width, new_height;
-	int offsetX, newX = 0;
-	int offsetY, newY = 0;
+	int offsetX, newX;
+	int offsetY, newY;
 	WArea totalArea, oldHeadArea, destHeadArea;
 	WScreen *scr = wwin->screen_ptr;
 
@@ -2564,7 +2564,7 @@ void wUnhideApplication(WApplication *wapp, bool miniwindows, bool bringToCurren
 	WWindow *wlist, *next;
 	WWindow *focused = NULL;
 	WWindow *target = NULL;
-	xcb_window_t clientwin = XCB_NONE;
+	xcb_window_t clientwin;
 	int animate;
 
 	if (!wapp)

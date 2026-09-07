@@ -1190,7 +1190,7 @@ char *wXFetchBuffer(xcb_connection_t *dpy, int screen, int *nbytes, int buffer)
 	xcb_get_property_cookie_t ck;
 	xcb_get_property_reply_t *rep;
 	char *out = NULL;
-	int n = 0;
+	int n;
 
 	if (nbytes)
 		*nbytes = 0;

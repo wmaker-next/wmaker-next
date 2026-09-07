@@ -656,7 +656,7 @@ const char *WMSetBrowserPath(WMBrowser * bPtr, const char *path)
 
 	/* WMLoadBrowserColumnZero must be call first */
 	if (!bPtr->flags.loaded) {
-		return false;
+		return NULL;
 	}
 
 	removeColumn(bPtr, 1);

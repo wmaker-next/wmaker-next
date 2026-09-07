@@ -218,7 +218,6 @@ WTexMGradient *wTextureMakeMGradient(WScreen * scr, int style, RColor ** colors)
 		wfree(texture);
 		return NULL;
 	}
-	i--;
 	texture->normal.red = (colors[0]->red << 8);
 	texture->normal.green = (colors[0]->green << 8);
 	texture->normal.blue = (colors[0]->blue << 8);

@@ -2733,7 +2733,7 @@ void wMenuSaveState(WScreen * scr)
 
 static bool getMenuPath(WMenu * menu, char *buffer, int bufSize)
 {
-	bool ok = true;
+	bool ok;
 	int len = 0;
 
 	if (!menu->flags.titled || !menu->frame->title[0])

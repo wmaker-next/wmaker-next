@@ -64,7 +64,6 @@ void RemakeStackList(WScreen * scr)
 	xcb_window_t junkr, junkp;
 	WCoreWindow *frame;
 	WCoreWindow *tmp;
-	void *key;
 	int level;
 	int i, c;
 
@@ -79,7 +78,7 @@ void RemakeStackList(WScreen * scr)
 		for (i = 0; i < nwindows; i++) {
 			if (!WMHashGetItemAndKey(w_global.context.stack,
 						 (void *)(uintptr_t) windows[i],
-						 (void **)&frame, &key)) {
+						 (void **)&frame, NULL)) {
 				continue;
 			}
 			if (!frame)
@@ -444,11 +443,9 @@ void MoveInStackListUnder(WCoreWindow * prev, WCoreWindow * frame)
 void RemoveFromStackList(WCoreWindow * frame)
 {
 	int index = frame->stacking->window_level;
-	void *gone;
-	void *key;
 
 	if (!WMHashGetItemAndKey(w_global.context.stack, (void *)(uintptr_t) frame->window,
-				 (void **)&gone, &key)) {
+				 NULL, NULL)) {
 		wwarning("RemoveFromStackingList(): window not in list ");
 		return;
 	}

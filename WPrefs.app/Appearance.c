@@ -1330,7 +1330,8 @@ static xcb_pixmap_t loadRImage(WMScreen * scr, const char *path)
 {
 	FILE *f;
 	RImage *image;
-	int w, h, d, cnt;
+	unsigned int w, h, d;
+	int cnt;
 	size_t read_size;
 	xcb_pixmap_t pixmap;
 
@@ -1345,7 +1346,7 @@ static xcb_pixmap_t loadRImage(WMScreen * scr, const char *path)
 		return XCB_NONE;
 	}
 	if (d < 3 || d > 4) {
-		wwarning(_("image \"%s\" has an invalid depth of %d, ignoring"), path, d);
+		wwarning(_("image \"%s\" has an invalid depth of %u, ignoring"), path, d);
 		fclose(f);
 		return XCB_NONE;
 	}

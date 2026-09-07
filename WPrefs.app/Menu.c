@@ -234,7 +234,7 @@ static void browseForFile(WMWidget * self, void *clientData)
 	oldprog = wtrimspace(text);
 	wfree(text);
 
-	if (oldprog[0] == 0 || oldprog[0] != '/') {
+	if (oldprog[0] != '/') {
 		wfree(oldprog);
 		oldprog = wstrdup("/");
 	} else {

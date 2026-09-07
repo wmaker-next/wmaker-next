@@ -985,7 +985,6 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	int window_level;
 	int wm_state;
 	int foo;
-	xcb_visualid_t vid;
 	int il, ir, it, ib;
 	int workspace = -1;
 	uint64_t restored_ws_mask = 0;
@@ -1014,7 +1013,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	 * existence check, so no XSync between the two. */
 	if (prefetched_attrs) {
 		wattribs = *prefetched_attrs;
-	} else if (!wXGetWindowAttributes(xconn, window, &wattribs, &vid)
+	} else if (!wXGetWindowAttributes(xconn, window, &wattribs, NULL)
 		   || wattribs.visual == NULL) {
 		wXUngrabServer(xconn);
 		return NULL;

@@ -222,7 +222,7 @@ configure-documentation:
 		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
 		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive run bench
+.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-cppcheck run bench
 
 # Integration drivers under test/ start a private X server and run the
 # just-built window manager inside it. They are deliberately not part
@@ -260,6 +260,17 @@ else
 	@echo "Xvfb was not found at configure time, install it and re-run configure"
 	@echo "to use the integration drivers under test/"
 endif
+
+# cppcheck gate over the analyzer-relevant sources, on demand like
+# check-drive. test/run-cppcheck.sh exits 77 when cppcheck is missing
+# and nonzero when a finding survives test/cppcheck-suppressions.
+check-cppcheck:
+	@$(top_srcdir)/test/run-cppcheck.sh; rc=$$?; \
+	case $$rc in \
+	  0)  echo "PASS  check-cppcheck" ;; \
+	  77) echo "SKIP  check-cppcheck (cppcheck not installed)" ;; \
+	  *)  echo "FAIL  check-cppcheck (rc=$$rc)" ;; \
+	esac; exit $$rc
 
 # Print the wrlib pixel-loop micro-benchmark, the cold-boot reply
 # count and per-managed-window cost from xtrace, and the idle and

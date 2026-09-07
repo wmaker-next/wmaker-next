@@ -281,11 +281,9 @@ static void update(void *d)
 	int bla;
 	unsigned ubla;
 
-	if (data->frozen) {
-		rx = data->x;
-		ry = data->y;
-	} else if (wXQueryPointer(xconn, wXRootWindow(xconn, xsn), &win, &win,
-				 &rx, &ry, &bla, &bla, &ubla)) {
+	if (!data->frozen
+	    && wXQueryPointer(xconn, wXRootWindow(xconn, xsn), &win, &win,
+			      &rx, &ry, &bla, &bla, &ubla)) {
 		updateImage(data, rx, ry);
 	}
 	data->tid = WMAddTimerHandler(data->refreshrate, update, data);

@@ -1809,7 +1809,7 @@ int merge_with_background(RImage *i)
 		back = RCreateImage(i->width, i->height, true);
 		if (back) {
 			int opaq = 255;
-			int x = 0, y = 0;
+			int x, y;
 
 			RFillImage(back, &lightGray);
 			for (x = 0; x <= i->width; x += 8) {

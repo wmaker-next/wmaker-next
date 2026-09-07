@@ -4058,7 +4058,7 @@ static void iconDblClick(WObjDescriptor *desc, xcb_generic_event_t *event)
 	WAppIcon *btn = desc->parent;
 	WDock *dock = btn->dock;
 	WApplication *wapp = NULL;
-	int unhideHere = 0;
+	int unhideHere;
 	WWindow *uwin;
 
 	if (btn->icon->owner && !(((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL)) {
@@ -5288,9 +5288,7 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 			COMPLAIN("Position");
 
 		/* check position sanity */
-		if (x != scr->dock->x_pos) {
-			x = scr->dock->x_pos;
-		}
+		x = scr->dock->x_pos;
 		y_index = (y - scr->dock->y_pos) / ICON_SIZE;
 		if (y_index >= scr->dock->max_icons) {
 			/* Here we should do something more intelligent, since it

@@ -285,7 +285,7 @@ static int utf8_find_char_start(const char *string, int pos)
 
 char *ShrinkString(WMFont *font, const char *string, int width)
 {
-	int w, w1 = 0;
+	int w, w1;
 	int p;
 	char *pos;
 	char *text;
