@@ -790,6 +790,8 @@ bool WMRequestSelection(WMView *view, xcb_atom_t selection, xcb_atom_t target,
                         xcb_timestamp_t timestamp, WMSelectionCallback *callback,
                         void *cdata);
 
+void WMCancelSelectionRequests(WMView *view);
+
 
 extern const char *WMSelectionOwnerDidChangeNotification;
 

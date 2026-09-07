@@ -587,6 +587,21 @@ void W_ClearSelectionsForView(WMView *view)
 	}
 }
 
+void WMCancelSelectionRequests(WMView *view)
+{
+	SelectionCallback *cb;
+	int i;
+
+	if (!selCallbacks)
+		return;
+
+	for (i = WMGetArrayItemCount(selCallbacks) - 1; i >= 0; i--) {
+		cb = WMGetFromArray(selCallbacks, i);
+		if (cb && cb->view == view && !cb->flags.done_pending)
+			WMDeleteFromArray(selCallbacks, i);
+	}
+}
+
 void W_HandleSelectionEvent(xcb_generic_event_t * event)
 {
 	if ((event->response_type & 0x7f) == XCB_SELECTION_NOTIFY) {

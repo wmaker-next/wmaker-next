@@ -67,6 +67,8 @@ typedef struct W_TextField {
 
 	WMHandlerID timerID;	/* for cursor blinking */
 
+	WMHandlerID pasteTimer;	/* for the awaited SelectionNotify */
+
 	struct {
 		WMAlignment alignment:2;
 
@@ -1013,22 +1015,74 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 	}
 }
 
-static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp, void *cdata, WMData *data)
+/* paste chain: UTF8 first, CLIPBOARD before PRIMARY, cut buffer last.
+ * The step index rides the callback cdata. */
+static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+		      xcb_timestamp_t timestamp, void *cdata, WMData *data);
+
+static bool pasteTarget(TextField *tPtr, unsigned step, xcb_timestamp_t timestamp)
+{
+	bool clipboard = (step < 2);
+	bool utf8 = (step & 1) == 0;
+	xcb_atom_t selection = clipboard ? tPtr->view->screen->clipboardAtom
+					 : XCB_ATOM_PRIMARY;
+	xcb_atom_t target = utf8 ? tPtr->view->screen->utf8String
+				 : XCB_ATOM_STRING;
+
+	return WMRequestSelection(tPtr->view, selection, target, timestamp,
+				  pasteText, (void *)(uintptr_t) step);
+}
+
+static void pasteSelectionTimeout(void *cdata)
+{
+	TextField *tPtr = (TextField *) cdata;
+
+	tPtr->pasteTimer = NULL;
+	/* a hung selection owner must not block the field's input, nor
+	 * may a late notify insert after the timeout */
+	tPtr->flags.waitingSelection = 0;
+	WMCancelSelectionRequests(tPtr->view);
+}
+
+static void armPasteTimer(TextField *tPtr)
+{
+	WMDeleteTimerHandlerPtr(&tPtr->pasteTimer);
+	tPtr->pasteTimer = WMAddTimerHandler(2000, pasteSelectionTimeout, tPtr);
+}
+
+static bool pasteCutBuffer(TextField *tPtr)
+{
+	char *text;
+	int n;
+
+	text = wXFetchBuffer(tPtr->view->screen->display, tPtr->view->screen->screen, &n, 0);
+	if (text == NULL)
+		return false;
+
+	WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
+	wfree(text);
+	/* the caller skips the selection recompute on a synchronous
+	 * paste, so clear it here like the async path leaves it */
+	tPtr->selection.count = 0;
+	tPtr->selection.position = tPtr->cursorPosition;
+	return true;
+}
+
+static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target,
+		      xcb_timestamp_t timestamp, void *cdata, WMData *data)
 {
 	TextField *tPtr = (TextField *) view->self;
-	char *str;
+	uintptr_t step = (uintptr_t) cdata;
+	unsigned len, fmt;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) selection;
 	(void) target;
-	(void) timestamp;
-	(void) cdata;
 
 	tPtr->flags.waitingSelection = 0;
+	WMDeleteTimerHandlerPtr(&tPtr->pasteTimer);
 
 	if (data != NULL) {
-		unsigned len, fmt;
-
 		fmt = WMGetDataFormat(data);
 		len = WMGetDataLength(data);
 
@@ -1044,16 +1098,12 @@ static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target, xcb
 			wfree(tmp);
 			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
 		}
-	} else {
-		int n;
-
-		str = wXFetchBuffer(tPtr->view->screen->display, tPtr->view->screen->screen, &n, 0);
-
-		if (str != NULL) {
-			WMInsertTextFieldText(tPtr, str, tPtr->cursorPosition);
-			wfree(str);
-			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
-		}
+	} else if (step < 3 && pasteTarget(tPtr, step + 1, timestamp)) {
+		/* the owner refused this target, continue down the chain */
+		tPtr->flags.waitingSelection = 1;
+		armPasteTimer(tPtr);
+	} else if (pasteCutBuffer(tPtr)) {
+		NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
 	}
 }
 
@@ -1065,40 +1115,30 @@ static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target, xcb
  * first. */
 static bool requestPaste(TextField *tPtr, xcb_timestamp_t timestamp, bool tryClipboardFirst, bool deleteSelection)
 {
-	char *text;
-	int n;
 	bool deleted = false;
+	unsigned step, last = 3;
 
 	if (deleteSelection && tPtr->selection.count) {
 		WMDeleteTextFieldRange(tPtr, tPtr->selection);
 		deleted = true;
 	}
 
-	if ((tryClipboardFirst
-	     && WMRequestSelection(tPtr->view, tPtr->view->screen->clipboardAtom,
-				   XCB_ATOM_STRING, timestamp, pasteText, NULL))
-	    || WMRequestSelection(tPtr->view, XCB_ATOM_PRIMARY, XCB_ATOM_STRING,
-				  timestamp, pasteText, NULL)) {
-		tPtr->flags.waitingSelection = 1;
-		/* The selection was deleted but the paste is async: post the
-		 * change notification now so delegates see the deletion even
-		 * if the async paste later fails. */
-		if (deleted)
-			NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
-			       (void *)WMDeleteTextEvent);
-		return false;
+	for (step = (tryClipboardFirst ? 0 : 2); step <= last; step++) {
+		if (pasteTarget(tPtr, step, timestamp)) {
+			tPtr->flags.waitingSelection = 1;
+			armPasteTimer(tPtr);
+			/* The selection was deleted but the paste is async:
+			 * post the change notification now so delegates see
+			 * the deletion even if the async paste later fails. */
+			if (deleted)
+				NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
+				       (void *)WMDeleteTextEvent);
+			return false;
+		}
 	}
 
-	text = wXFetchBuffer(tPtr->view->screen->display, tPtr->view->screen->screen, &n, 0);
-	if (text) {
-		WMInsertTextFieldText(tPtr, text, tPtr->cursorPosition);
-		wfree(text);
-		/* the caller skips the selection recompute on a synchronous
-		 * paste, so clear it here like the async path leaves it */
-		tPtr->selection.count = 0;
-		tPtr->selection.position = tPtr->cursorPosition;
+	if (pasteCutBuffer(tPtr))
 		return true;
-	}
 
 	return deleted;
 }
@@ -1793,6 +1833,8 @@ static void destroyTextField(TextField * tPtr)
 {
 	if (tPtr->timerID)
 		WMDeleteTimerHandler(tPtr->timerID);
+
+	WMDeleteTimerHandlerPtr(&tPtr->pasteTimer);
 
 	W_DestroyIC(tPtr->view);
 
