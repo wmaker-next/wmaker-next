@@ -278,6 +278,7 @@ typedef struct InspectorPanel {
 	unsigned int done:1;
 	unsigned int destroyed:1;
 	unsigned int choosingIcon:1;
+	char *applied_icon_file;
 } InspectorPanel;
 
 static InspectorPanel *panelList = NULL;
@@ -403,6 +404,8 @@ static void freeInspector(InspectorPanel *panel)
 
 	WMDestroyWidget(panel->win);
 	xcb_destroy_window(xconn, panel->parent);
+	if (panel->applied_icon_file)
+		wfree(panel->applied_icon_file);
 	wfree(panel);
 }
 
@@ -808,12 +811,17 @@ static void applySettings(WMWidget *button, void *client_data)
 	const char *old_icon_file;
 	int i;
 
+	/* the gate below compares the field against the icon the app icon
+	 * last SHOWED, not the domain: after Y over a saved X and Apply,
+	 * typing X back must re-apply even though the domain still says X */
+	old_icon_file = panel->applied_icon_file ? panel->applied_icon_file
+			: wDefaultGetIconFile(wwin->wm_instance, wwin->wm_class, false);
+
 	old_skip_window_list = WFLAGP(wwin, skip_window_list);
 	old_omnipresent = WFLAGP(wwin, omnipresent);
 	old_no_bind_keys = WFLAGP(wwin, no_bind_keys);
 	old_no_bind_mouse = WFLAGP(wwin, no_bind_mouse);
 	old_always_user_icon = WFLAGP(wwin, always_user_icon);
-	old_icon_file = wDefaultGetIconFile(wwin->wm_instance, wwin->wm_class, false);
 
 	showIconFor(WMWidgetScreen(button), panel, NULL, NULL, USE_TEXT_FIELD);
 
@@ -983,6 +991,10 @@ static void applySettings(WMWidget *button, void *client_data)
 				if (wwin->icon)
 					wIconChangeImageFile(wwin->icon, file);
 			}
+
+			if (panel->applied_icon_file)
+				wfree(panel->applied_icon_file);
+			panel->applied_icon_file = file ? wstrdup(file) : NULL;
 		}
 
 		if (file)
