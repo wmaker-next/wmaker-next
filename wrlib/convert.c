@@ -19,6 +19,7 @@
  */
 
 #include <config.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +84,15 @@ static unsigned short *computeTable(unsigned short mask)
 	return tmp->table;
 }
 
+/* the host byte order in the X11 LSBFirst/MSBFirst encoding */
+static xcb_image_order_t host_byte_order(void)
+{
+	static const uint32_t probe = 1;
+
+	return *(const uint8_t *)&probe ? XCB_IMAGE_ORDER_LSB_FIRST
+					: XCB_IMAGE_ORDER_MSB_FIRST;
+}
+
 static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 {
 	RXImage *ximg;
@@ -94,6 +104,7 @@ static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 	unsigned char *ptr = image->data;
 	uint32_t r, g, b, pixel;
 	uint8_t *row;
+	bool swap;
 	int x, y;
 
 	ximg = RCreateXImage(ctx, ctx->depth, image->width, image->height);
@@ -110,13 +121,12 @@ static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 	gmask = ctx->xvisual->green_mask >> goffs;
 	bmask = ctx->xvisual->blue_mask >> boffs;
 
-	/* The 24-bit TrueColor / 32 bpp native ZPixmap case is what every
-	 * current server reports, so it gets a direct stride packer that
-	 * writes one uint32_t per pixel into xi->data. xcb_image_create_native
-	 * picked the server's byte order so a host-order store is correct on
-	 * a local connection and xcb_image_put converts on a remote one. The
-	 * generic arm covers 15/16 bpp visuals via xcb_image_put_pixel which
-	 * handles unit/byte/bit order for any native format. */
+	swap = host_byte_order() != xi->byte_order;
+
+	/* 32 bpp TrueColor: direct stride packer. The image carries the
+	 * server's byte order and xcb_image_put sends the buffer verbatim,
+	 * so a mismatched server order is byteswapped. The generic arm
+	 * covers 15/16 bpp via xcb_image_put_pixel. */
 	if (rmask == 0xff && gmask == 0xff && bmask == 0xff && xi->bpp == 32) {
 		for (y = 0; y < image->height; y++) {
 			row = xi->data + (size_t)y * xi->stride;
@@ -124,6 +134,11 @@ static RXImage *image2TrueColor(RContext * ctx, RImage * image)
 				pixel = ((uint32_t)ptr[0] << roffs)
 				      | ((uint32_t)ptr[1] << goffs)
 				      | ((uint32_t)ptr[2] << boffs);
+				if (swap)
+					pixel = ((pixel & 0x000000ffu) << 24)
+					      | ((pixel & 0x0000ff00u) << 8)
+					      | ((pixel & 0x00ff0000u) >> 8)
+					      | (pixel >> 24);
 				((uint32_t *)row)[x] = pixel;
 			}
 		}
