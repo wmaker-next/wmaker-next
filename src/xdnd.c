@@ -34,6 +34,11 @@
 #include "xdnd.h"
 #include "workspace.h"
 
+/* the URI split is the only unbounded loop over a hostile payload and
+ * no real drag carries more than a few hundred entries, while the
+ * dock consumption only needs the first one */
+#define XDND_MAX_URI_ENTRIES 256
+
 
 static xcb_atom_t _XA_XdndAware;
 static xcb_atom_t _XA_XdndEnter;
@@ -158,6 +163,11 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 			}
 			if (retain[length] == '\n') {
 				if (retain[length + 1] != '\0') {
+					if (WMGetArrayItemCount(items) >= XDND_MAX_URI_ENTRIES) {
+						wwarning("dropping the URI list after %d entries",
+							 XDND_MAX_URI_ENTRIES);
+						break;
+					}
 					tmp = wstrdup(&retain[length + 1]);
 					if (!strncmp(tmp, "file://", 7)) {
 						WXDndDecodeURI(&tmp[7]);
@@ -171,12 +181,14 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 			}
 		}
 		/* final one */
-		tmp = wstrdup(retain);
-		if (!strncmp(tmp, "file://", 7)) {
-			WXDndDecodeURI(&tmp[7]);
-			total_size += wXDNDQuotedLength(&tmp[7]);
+		if (WMGetArrayItemCount(items) < XDND_MAX_URI_ENTRIES) {
+			tmp = wstrdup(retain);
+			if (!strncmp(tmp, "file://", 7)) {
+				WXDndDecodeURI(&tmp[7]);
+				total_size += wXDNDQuotedLength(&tmp[7]);
+			}
+			WMAddToArray(items, tmp);
 		}
-		WMAddToArray(items, tmp);
 		wfree(retain);
 
 		/* now pack new string */
