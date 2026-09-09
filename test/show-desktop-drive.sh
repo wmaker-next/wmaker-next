@@ -162,7 +162,53 @@ sleep 1
 check "window 1 is restored after toggle" window_is_normal "$W1"
 check "window 2 is restored after toggle" window_is_normal "$W2"
 
-# --- 4. EWMH ClientMessage coexists with IPC path --------------------------
+# --- 4. the focus-migrated window is swept too ------------------------------
+# With three windows focused T3->T2->T1 and the pointer parked over T1,
+# iconifying T3 hands focus to T1 under click focus and wSetFocusTo
+# moves it to the chain head, unlinking it from the middle; a sweep
+# that walks and iconifies in one pass resumes from the stale prev
+# snapshot and leaves T1 mapped while _NET_SHOWING_DESKTOP is 1.
+if command -v wmctrl >/dev/null 2>&1; then
+	note "three-window sweep with the pointer over the oldest-focused window"
+	DISPLAY=$DPY xterm -title "sd-3" -geometry 100x100+300+350 -e 'sleep 600' >>"$LOG" 2>&1 &
+	XT3=$!
+	echo "$XT3" >> "$PIDFILE"
+	wait_for 60 sh -c 'DISPLAY='"$DPY"' xdotool search --name "^sd-3$" 2>/dev/null | grep -q .' \
+	    || fatal "xterm sd-3 did not map"
+	W3=$(DISPLAY=$DPY xdotool search --name "^sd-3$" 2>/dev/null | tail -n 1)
+	[ -n "$W3" ] || fatal "could not find the sd-3 window id"
+	DISPLAY=$DPY wmctrl -ia "$W1"; sleep 0.3
+	DISPLAY=$DPY wmctrl -ia "$W2"; sleep 0.3
+	DISPLAY=$DPY wmctrl -ia "$W3"; sleep 0.3
+	set -- $(DISPLAY=$DPY xwininfo -id "$W1" | awk \
+	    '/Absolute upper-left X/{x=$NF} /Absolute upper-left Y/{y=$NF}
+	     /Width:/{w=$NF} /Height:/{h=$NF} END{print x+w/2, y+h/2}')
+	DISPLAY=$DPY xdotool mousemove "$1" "$2"
+	sleep 0.2
+	DISPLAY=$DPY wmctrl -ia "$W3"
+	sleep 0.3
+
+	msg -q show-desktop || fail "show-desktop rejected on the three-window leg"
+	wait_for 30 showing_is 1
+	check "three-window leg sets showing desktop" showing_is 1
+	wait_for 30 sh -c 'DISPLAY='"$DPY"' xprop -id '"$W1"' WM_STATE 2>/dev/null | grep -q "Iconic$"'
+	check "the focus-migrated window is iconic after show-desktop" window_is_iconic "$W1"
+	check "window 2 is iconic" window_is_iconic "$W2"
+	check "window 3 is iconic" window_is_iconic "$W3"
+
+	msg -q show-desktop || fail "show-desktop toggle rejected on the three-window leg"
+	wait_for 30 showing_is 0
+	sleep 1
+	check "the focus-migrated window is restored" window_is_normal "$W1"
+	check "window 2 is restored" window_is_normal "$W2"
+	check "window 3 is restored" window_is_normal "$W3"
+else
+	note "wmctrl not installed, skipping the focus-migration sweep leg"
+	XT3=""
+	W3=""
+fi
+
+# --- 5. EWMH ClientMessage coexists with IPC path --------------------------
 # Use wmctrl -k which sends a real _NET_SHOWING_DESKTOP ClientMessage
 # (xprop -set only changes the property, WM needs the ClientMessage)
 if command -v wmctrl >/dev/null 2>&1; then
@@ -183,7 +229,7 @@ else
 	note "wmctrl not installed, skipping EWMH cross-path test"
 fi
 
-# --- 5. Each press toggles -------------------------------------------------
+# --- 6. Each press toggles -------------------------------------------------
 note "toggle cycle: off -> on -> off -> on"
 msg -q show-desktop >/dev/null
 wait_for 30 showing_is 1
@@ -199,6 +245,7 @@ wait_for 30 showing_is 0
 check "fourth press toggles off" showing_is 0
 
 # --- teardown ----------------------------------------------------------------
+if [ -n "${XT3:-}" ]; then kill "$XT3" 2>/dev/null; fi
 kill "$XT1" "$XT2" 2>/dev/null
 note "show-desktop drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"

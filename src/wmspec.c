@@ -734,27 +734,29 @@ static void wNETWMShowingDesktop(WScreen *scr, bool show)
 {
 	if (show && scr->netdata->show_desktop == NULL) {
 		WWindow *tmp, **wins;
-		int i = 0;
+		int i, n = 0;
 
 		wins = (WWindow **) wmalloc(sizeof(WWindow *) * (scr->window_count + 1));
 
-		tmp = scr->focused_window;
-		while (tmp) {
-			WWindow *next = tmp->prev;
-
+		/* collect the pass first and iconify afterwards: iconifying
+		 * the focused window hands focus to the window under the
+		 * pointer under click focus, and wSetFocusTo moves that
+		 * window to the chain head, unlinking it from the middle
+		 * and rewiring the neighbours' prev links, so walking and
+		 * iconifying in one pass would resume from a stale link
+		 * and skip the migrated window */
+		for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
 			if (!tmp->flags.hidden && !tmp->flags.miniaturized
 			    && !tmp->flags.internal_window
-			    && !WFLAGP(tmp, skip_window_list)) {
-
-				wins[i++] = tmp;
-				tmp->flags.skip_next_animation = 1;
-				tmp->flags.net_show_desktop = 1;
-				wIconifyWindow(tmp);
-			}
-
-			tmp = next;
+			    && !WFLAGP(tmp, skip_window_list))
+				wins[n++] = tmp;
 		}
-		wins[i++] = NULL;
+		for (i = 0; i < n; i++) {
+			wins[i]->flags.skip_next_animation = 1;
+			wins[i]->flags.net_show_desktop = 1;
+			wIconifyWindow(wins[i]);
+		}
+		wins[n] = NULL;
 
 		scr->netdata->show_desktop = wins;
 		updateShowDesktop(scr, true);
