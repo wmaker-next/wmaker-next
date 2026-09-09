@@ -215,7 +215,7 @@ static void killCallback(WMenu *menu, WMenuEntry *entry)
 	WScreen *scr = menu->menu->screen_ptr;
 	WAppIcon *icon;
 	WFakeGroupLeader *fPtr;
-	char *buffer, *shortname, **argv;
+	char *buffer, *shortname, **argv = NULL;
 	int argc;
 
 	if (!WCHECK_STATE(WSTATE_NORMAL))
@@ -230,11 +230,16 @@ static void killCallback(WMenu *menu, WMenuEntry *entry)
 	WCHANGE_STATE(WSTATE_MODAL);
 
 	/* strip away dir names */
-	shortname = basename(icon->command);
+	if (icon->command)
+		shortname = basename(icon->command);
+	else if (icon->wm_instance && icon->wm_instance[0])
+		shortname = icon->wm_instance;
+	else
+		shortname = _("application");
 	/* separate out command options */
 	wtokensplit(shortname, &argv, &argc);
 
-	buffer = wstrconcat(argv[0],
+	buffer = wstrconcat(argc > 0 ? argv[0] : shortname,
 			    _(" will be forcibly closed.\n"
 			      "Any unsaved changes will be lost.\n" "Please confirm."));
 

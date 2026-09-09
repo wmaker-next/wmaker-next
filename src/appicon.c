@@ -643,9 +643,11 @@ static void killCallback(WMenu * menu, WMenuEntry * entry)
 
 	assert(entry->clientdata != NULL);
 
-	shortname = basename(wapp->app_icon->wm_instance);
+	shortname = (wapp->app_icon && wapp->app_icon->wm_instance)
+		    ? basename(wapp->app_icon->wm_instance)
+		    : _("application");
 
-	buffer = wstrconcat(wapp->app_icon ? shortname : NULL,
+	buffer = wstrconcat(shortname,
 			    _(" will be forcibly closed.\n"
 			      "Any unsaved changes will be lost.\n" "Please confirm."));
 
