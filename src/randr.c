@@ -306,8 +306,8 @@ static void wRandR_BringAllWindowsInside(WScreen *scr)
 			continue;
 
 		bw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
-		wx = wwin->frame_x - bw;
-		wy = wwin->frame_y - bw;
+		wx = wwin->frame_x;
+		wy = wwin->frame_y;
 		ww = (int)wwin->frame->core->width  + 2 * bw;
 		wh = (int)wwin->frame->core->height + 2 * bw;
 

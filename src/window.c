@@ -3654,13 +3654,13 @@ void wWindowSnapToHead(WWindow *wwin)
 {
 #ifdef USE_RANDR
 	int bw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
-	int rx = wwin->frame_x - bw;
-	int ry = wwin->frame_y - bw;
+	int rx = wwin->frame_x;
+	int ry = wwin->frame_y;
 
 	if (wScreenBringInside(wwin->screen_ptr, &rx, &ry,
 	                       wwin->frame->core->width  + 2 * bw,
 	                       wwin->frame->core->height + 2 * bw))
-		wWindowMove(wwin, rx + bw, ry + bw);
+		wWindowMove(wwin, rx, ry);
 #else
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) wwin;
