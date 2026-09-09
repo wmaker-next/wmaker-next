@@ -177,7 +177,71 @@ DH=$((NH - CH))
     || fail "resize: width changed on a middle-segment drag ($CW -> $NW)"
 note "ok: resizebar drag grew client height by $DH"
 
+# --- 3. undecorated client drag (chrome-like) -------------------------------
+note "move an undecorated client through Alt+Button1 on the client area"
+# chrome publishes _MOTIF_WM_HINTS with decorations=0 before mapping, so
+# wmaker manages the window with no titlebar, no resizebar, no buttons
+# and no border. The only grabbable surface is the client area and the
+# only plain-pointer move is Alt+Button1, which is what this locks in.
+MOTH="$RUNTIME/mothints-client"
+${CC:-cc} -std=gnu11 "$ROOT/test/mothints-client.c" -o "$MOTH" -lX11 >>"$LOG" 2>&1 \
+    || fail "could not build test/mothints-client.c"
+DISPLAY=$DPY env MOTH_GEOM="400x300+300+300" "$MOTH" >>"$LOG" 2>&1 &
+MOTPID=$!
+echo "$MOTPID" >> "$PIDFILE"
+moth_mapped() {
+    MOTW=$(DISPLAY=$DPY xdotool search --class mothints 2>/dev/null | tail -n 1)
+    [ -n "$MOTW" ]
+}
+wait_for 40 moth_mapped || fail "undecorated client did not map"
+sleep 0.3
+
+EXT=$(DISPLAY=$DPY xprop -id "$MOTW" _NET_FRAME_EXTENTS | sed 's/.*= //; s/,//g')
+set -- $EXT
+[ "$1" = "0" ] && [ "$2" = "0" ] && [ "$3" = "0" ] && [ "$4" = "0" ] \
+    || fail "client is not undecorated, _NET_FRAME_EXTENTS = $1,$2,$3,$4"
+note "ok: _NET_FRAME_EXTENTS is 0,0,0,0"
+
+# the wireframe release path applies the outline delta on ButtonRelease
+# instead of following every motion, that is where a window can land
+# away from where the user dropped it
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "$ROOT/util/.libs/wdwrite" WindowMaker OpaqueMove NO >>"$LOG" 2>&1 \
+    || fail "could not write OpaqueMove NO"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" -s "$RUNTIME/wmaker/ipc._${DPY#*:}""_0" \
+    -q reconfigure >>"$LOG" 2>&1 \
+    || fail "could not reconfigure after the OpaqueMove flip"
+sleep 0.3
+
+moth_geom() {
+    DISPLAY=$DPY xwininfo -id "$MOTW" | awk \
+        '/Absolute upper-left X/{x=$NF} /Absolute upper-left Y/{y=$NF}
+         /Width:/{w=$NF} /Height:/{h=$NF} END{print x,y,w,h}'
+}
+set -- $(moth_geom)
+MX=$1; MY=$2; MW=$3; MH=$4
+MDX=123; MDY=87
+MGX=$((MX + MW/2)); MGY=$((MY + MH/2))
+xdo mousemove "$MGX" "$MGY"
+xdo keydown alt
+xdo mousedown 1
+xdo mousemove $((MGX + MDX/3))  $((MGY + MDY/3))
+xdo mousemove $((MGX + 2*MDX/3)) $((MGY + 2*MDY/3))
+xdo mousemove $((MGX + MDX))   $((MGY + MDY))
+xdo mouseup 1
+xdo keyup alt
+sleep 0.4
+
+set -- $(moth_geom)
+NX=$1; NY=$2
+[ "$((NX - MX))" = "$MDX" ] && [ "$((NY - MY))" = "$MDY" ] \
+    || fail "undecorated move: expected delta ($MDX,$MDY) got ($((NX - MX)),$((NY - MY)))"
+note "ok: Alt+Button1 drag moved the undecorated client by ($MDX,$MDY)"
+
 # --- teardown --------------------------------------------------------------
+kill "$MOTPID" 2>/dev/null
+wait_for 30 pid_gone "$MOTPID"
 kill "$XTPID" 2>/dev/null
 wait_for 30 pid_gone "$XTPID"
 kill -TERM "$WMAKER_PID" 2>/dev/null
