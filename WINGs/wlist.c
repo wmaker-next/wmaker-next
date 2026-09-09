@@ -40,6 +40,9 @@ typedef struct W_List {
 	char *typeahead;
 	int typeaheadLen;
 
+	int lastClicked;	/* anchor for double-click and range selection */
+	int prevItem;		/* last item seen by the motion handler */
+
 	struct {
 		unsigned int allowMultipleSelection:1;
 		unsigned int allowEmptySelection:1;
@@ -49,6 +52,7 @@ typedef struct W_List {
 		unsigned int redrawPending:1;
 		unsigned int buttonPressed:1;
 		unsigned int buttonWasPressed:1;
+		unsigned int doubleClick:1;	/* press fired doubleAction */
 	} flags;
 } List;
 
@@ -128,6 +132,8 @@ WMList *WMCreateList(WMWidget * parent)
 	lPtr->typeahead = NULL;
 	lPtr->typeaheadLen = 0;
 	lPtr->typeaheadID = NULL;
+	lPtr->lastClicked = -1;
+	lPtr->prevItem = -1;
 
 	lPtr->widgetClass = WC_List;
 
@@ -1030,7 +1036,6 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 	WMScreen *scr = lPtr->view->screen;
 	int tmp, height;
 	int topItem = lPtr->topItem;
-	static int lastClicked = -1, prevItem = -1;
 	char buffer[16];
 	xkb_keysym_t ksym;
 	WXLookupStatus status;
@@ -1051,13 +1056,14 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 		WMDeleteTimerHandlerPtr(&lPtr->selectID);
 		tmp = getItemIndexAt(lPtr, ((xcb_button_press_event_t *)event)->event_y);
 
-		if (tmp >= 0) {
+		if (tmp >= 0 && !lPtr->flags.doubleClick) {
 			if (lPtr->action)
 				(*lPtr->action) (lPtr, lPtr->clientData);
 		}
+		lPtr->flags.doubleClick = 0;
 
 		if (!(((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT))
-			lastClicked = prevItem = tmp;
+			lPtr->lastClicked = lPtr->prevItem = tmp;
 
 		break;
 
@@ -1105,10 +1111,12 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 
 		tmp = getItemIndexAt(lPtr, ((xcb_button_press_event_t *)event)->event_y);
 		lPtr->flags.buttonPressed = 1;
+		lPtr->flags.doubleClick = 0;
 
 		if (tmp >= 0) {
-			if (tmp == lastClicked && WMIsDoubleClick(event)) {
+			if (tmp == lPtr->lastClicked && WMIsDoubleClick(event)) {
 				WMSelectListItem(lPtr, tmp);
+				lPtr->flags.doubleClick = 1;
 				if (lPtr->doubleAction)
 					(*lPtr->doubleAction) (lPtr, lPtr->doubleClientData);
 			} else {
@@ -1128,7 +1136,7 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 						if (WMGetArrayItemCount(lPtr->selectedItems) == 0) {
 							WMSelectListItem(lPtr, tmp);
 						} else {
-							lastSel = WMGetFromArray(lPtr->items, lastClicked);
+							lastSel = WMGetFromArray(lPtr->items, lPtr->lastClicked);
 							range.position = WMGetFirstInArray(lPtr->items, lastSel);
 							if (tmp >= range.position)
 								range.count = tmp - range.position + 1;
@@ -1147,7 +1155,7 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 		}
 
 		if (!(((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT))
-			lastClicked = prevItem = tmp;
+			lPtr->lastClicked = lPtr->prevItem = tmp;
 
 		break;
 
@@ -1167,21 +1175,21 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 			}
 
 			tmp = getItemIndexAt(lPtr, ((xcb_motion_notify_event_t *)event)->event_y);
-			if (tmp >= 0 && tmp != prevItem) {
+			if (tmp >= 0 && tmp != lPtr->prevItem) {
 				if (lPtr->flags.allowMultipleSelection) {
 					WMRange range;
 
-					range.position = lastClicked;
-					if (tmp >= lastClicked)
-						range.count = tmp - lastClicked + 1;
+					range.position = lPtr->lastClicked;
+					if (tmp >= lPtr->lastClicked)
+						range.count = tmp - lPtr->lastClicked + 1;
 					else
-						range.count = tmp - lastClicked - 1;
+						range.count = tmp - lPtr->lastClicked - 1;
 					WMSetListSelectionToRange(lPtr, range);
 				} else {
 					WMSelectListItem(lPtr, tmp);
 				}
 			}
-			prevItem = tmp;
+			lPtr->prevItem = tmp;
 		}
 		break;
 
@@ -1237,11 +1245,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 
 				/* Ensure visibility */
@@ -1291,11 +1299,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 
 				/* Ensure visibility */
@@ -1347,11 +1355,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 				if (newRow < lPtr->topItem) {
 					lPtr->topItem = newRow;
@@ -1394,11 +1402,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 
 				/* Ensure visibility */
@@ -1442,11 +1450,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 				if (newRow < lPtr->topItem) {
 					lPtr->topItem = newRow;
@@ -1480,11 +1488,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 					} else {
 						WMRange range = { .position = newRow, .count = 1 };
 						WMSetListSelectionToRange(lPtr, range);
-						lastClicked = newRow;
+						lPtr->lastClicked = newRow;
 					}
 				} else {
 					WMSelectListItem(lPtr, newRow);
-					lastClicked = newRow;
+					lPtr->lastClicked = newRow;
 				}
 
 				/* Ensure the last item is fully visible */

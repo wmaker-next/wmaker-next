@@ -166,13 +166,13 @@ void testBox(WMScreen * scr)
 static void singleClick(WMWidget * self, void *data)
 {
 	(void)self;
-	(void)data;
+	WMSetLabelText((WMLabel *) data, "Single click");
 }
 
 static void doubleClick(WMWidget * self, void *data)
 {
-	(void)data;
 	WMSelectAllListItems((WMList *) self);
+	WMSetLabelText((WMLabel *) data, "Double click");
 }
 
 static void listSelectionObserver(void *observer, WMNotification * notification)
@@ -249,7 +249,6 @@ void testList(WMScreen * scr)
 	WMSetListAction(mlist, singleClick, mlabel);
 	WMSetListDoubleAction(mlist, doubleClick, mlabel);
 
-	WMAddNotificationObserver(listSelectionObserver, label, WMListSelectionDidChangeNotification, list);
 	WMAddNotificationObserver(listSelectionObserver, mlabel, WMListSelectionDidChangeNotification, mlist);
 
 	WMRealizeWidget(win);
@@ -358,7 +357,7 @@ void testGradientButtons(WMScreen * scr)
 	WMSetButtonText(btn, "Button");
 	WMSetButtonTextColor(btn, color);
 
-	WMSetBalloonTextForView("Este é outro balão.", WMWidgetView(btn));
+	WMSetBalloonTextForView("Este ï¿½ outro balï¿½o.", WMWidgetView(btn));
 
 	WMReleaseColor(color);
 	color = WMCreateNamedColor(scr, "orange", true);
@@ -934,7 +933,6 @@ int main(int argc, char **argv)
 {
 	xcb_connection_t *xc;
 	int sn;
-	xcb_connection_t *xc;
 	WMScreen *scr;
 	WMPixmap *pixmap;
 
