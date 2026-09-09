@@ -1003,7 +1003,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 				foc = NULL;
 		}
 
-		if (scr->focused_window->flags.mapped && !foc) {
+		if (scr->focused_window && scr->focused_window->flags.mapped && !foc) {
 			foc = scr->focused_window;
 		}
 		if (w_global.config->focus_mode == WKF_CLICK) {
@@ -1231,7 +1231,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 				foc = NULL;
 		}
 
-		if (scr->focused_window->flags.mapped && !foc)
+		if (scr->focused_window && scr->focused_window->flags.mapped && !foc)
 			foc = scr->focused_window;
 		if (w_global.config->focus_mode == WKF_CLICK) {
 			wSetFocusTo(scr, foc);
