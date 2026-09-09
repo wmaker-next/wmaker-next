@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <poll.h>
+#include <time.h>
 
 
 #include "WINGsP.h"
@@ -33,6 +34,11 @@
 
 /* How long to wait for the next INCR chunk before giving up. */
 #define INCR_CHUNK_TIMEOUT_MS 5000
+
+/* How long the whole INCR transfer may take regardless of the chunk
+ * cadence: a per-gap timeout alone lets an owner dribble one byte just
+ * under the gap forever while the caller's event loop is blocked. */
+#define INCR_TOTAL_TIMEOUT_MS 30000
 
 const char *WMSelectionOwnerDidChangeNotification = "WMSelectionOwnerDidChange";
 
@@ -383,6 +389,7 @@ static WMData *readIncrSelection(xcb_connection_t *dpy, xcb_window_t win, xcb_at
 	long old_mask;
 	size_t total = 0;
 	bool failed = false;
+	struct timespec started;
 
 	/* the requestor window is a WINGs view that may not have asked
 	 * for PropertyNotify, add it for the duration of the transfer
@@ -397,9 +404,22 @@ static WMData *readIncrSelection(xcb_connection_t *dpy, xcb_window_t win, xcb_at
 	 * the first chunk */
 	wXDeleteProperty(dpy, win, where);
 
+	clock_gettime(CLOCK_MONOTONIC, &started);
+
 	wdata = WMCreateDataWithCapacity(0);
 
 	while (!failed) {
+		struct timespec now;
+		long elapsed_ms;
+
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		elapsed_ms = (long)(now.tv_sec - started.tv_sec) * 1000
+			   + (now.tv_nsec - started.tv_nsec) / 1000000;
+		if (elapsed_ms > INCR_TOTAL_TIMEOUT_MS) {
+			wwarning("gave up on the INCR selection after %ld ms", elapsed_ms);
+			failed = true;
+			break;
+		}
 		if (!waitPropertyNewValue(dpy, win, where)) {
 			failed = true;
 			break;
