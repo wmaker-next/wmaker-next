@@ -1644,7 +1644,7 @@ static int changeTextureForWorkspace(const char *domain, char *texture, int work
 	}
 
 	j = WMGetPropListItemCount(array);
-	if (workspace >= j) {
+	if (workspace > j || j == 0) {
 		WMPropList *empty;
 
 		empty = WMCreatePLArray(NULL, NULL);
@@ -1822,7 +1822,8 @@ int main(int argc, char **argv)
 				wfatal("too few arguments for %s", argv[i - 1]);
 				quit(1);
 			}
-			if (sscanf(argv[i], "%i", &workspace) != 1) {
+			if (sscanf(argv[i], "%i", &workspace) != 1 || workspace < 0
+			    || workspace >= WORKSPACE_COUNT) {
 				wfatal("bad value for workspace number: \"%s\"", argv[i]);
 				quit(1);
 			}
