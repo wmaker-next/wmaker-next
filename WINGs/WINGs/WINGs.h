@@ -1519,14 +1519,6 @@ void WMSetMenuItemMixedStatePixmap(WMMenuItem *item, WMPixmap *pixmap);
 
 WMPixmap* WMGetMenuItemMixedStatePixmap(WMMenuItem *item);
 
-/*void WMSetMenuItemSubmenu(WMMenuItem *item, WMMenu *submenu);
-
-
-WMMenu* WMGetMenuItemSubmenu(WMMenuItem *item);
-
-Bool WMGetMenuItemHasSubmenu(WMMenuItem *item);
-*/
-
 /* ---[ WINGs/wpopupbutton.c ]-------------------------------------------- */
 
 WMPopUpButton* WMCreatePopUpButton(WMWidget *parent);

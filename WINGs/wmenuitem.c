@@ -12,8 +12,6 @@ typedef struct W_MenuItem {
 	WMAction *action;
 	void *data;
 
-	struct W_Menu *submenu;
-
 	void *object;
 
 	WMPixmap *onStateImage;
@@ -207,20 +205,3 @@ WMPixmap *WMGetMenuItemMixedStatePixmap(WMMenuItem * item)
 {
 	return item->mixedStateImage;
 }
-
-#if 0
-void WMSetMenuItemSubmenu(WMMenuItem * item, WMMenu * submenu)
-{
-	item->submenu = submenu;
-}
-
-WMMenu *WMGetMenuItemSubmenu(WMMenuItem * item)
-{
-	return item->submenu;
-}
-
-bool WMGetMenuItemHasSubmenu(WMMenuItem * item)
-{
-	return item->submenu != NULL;
-}
-#endif
