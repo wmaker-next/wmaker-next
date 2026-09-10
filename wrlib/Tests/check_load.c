@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include <config.h>
 #include <wraster.h>
@@ -626,6 +628,124 @@ static void test_svg(void)
 #endif
 }
 
+/* 8x8 solid P6, write_sample() returns a shared static buffer */
+static void write_ppm(char *path, size_t pathlen, const char *name,
+		      unsigned char r, unsigned char g, unsigned char b)
+{
+	unsigned char blob[16 + 8 * 8 * 3];
+	size_t n, i;
+
+	n = (size_t)snprintf((char *)blob, sizeof(blob), "P6\n8 8\n255\n");
+	for (i = 0; i < 8 * 8; i++) {
+		blob[n++] = r;
+		blob[n++] = g;
+		blob[n++] = b;
+	}
+	snprintf(path, pathlen, "%s", write_sample(name, blob, n));
+}
+
+/* Decode cache tests. RReleaseCache() forces init_cache() to re-read
+ * the pinned environment (it snapshots lazily) */
+static void test_cache(void)
+{
+	char pa[256], pb[256], pc[256], pd[256];
+	char oe_buf[32], op_buf[32];
+	struct stat st;
+	struct timespec touch[2];
+	RImage *img, *img2;
+	const char *oe, *op;
+
+	oe = getenv("RIMAGE_CACHE");
+	op = getenv("RIMAGE_CACHE_SIZE");
+	snprintf(oe_buf, sizeof(oe_buf), "%s", oe ? oe : "");
+	snprintf(op_buf, sizeof(op_buf), "%s", op ? op : "");
+	setenv("RIMAGE_CACHE", "3", 1);
+	setenv("RIMAGE_CACHE_SIZE", "4096", 1);
+	RReleaseCache();
+
+	/* a hit returns an equal-content copy whose mutation does not
+	 * leak into the next fetch */
+	write_ppm(pa, sizeof(pa), "cache-a.ppm", 255, 0, 0);
+	img = load_noctx(pa);
+	CHECK(img != NULL && img->width == 8 && img->height == 8);
+	CHECK(img && img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+	img2 = load_noctx(pa);
+	CHECK(img2 != NULL);
+	CHECK(img2 && img2->data[0] == 255 && img2->data[1] == 0 && img2->data[2] == 0);
+	RReleaseImage(img2);
+	if (img) {
+		img->data[0] = 0;
+		img->data[2] = 255;
+		RReleaseImage(img);
+	}
+	img = load_noctx(pa);
+	CHECK(img != NULL);
+	CHECK(img && img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+	RReleaseImage(img);
+
+	/* same-second rewrite must invalidate: the file keeps tv_sec and
+	 * only tv_nsec moves, which a seconds-granularity compare would
+	 * happily return stale */
+	write_ppm(pb, sizeof(pb), "cache-b.ppm", 0, 255, 0);
+	img = load_noctx(pb);
+	CHECK(img != NULL);
+	CHECK(img && img->data[0] == 0 && img->data[1] == 255 && img->data[2] == 0);
+	RReleaseImage(img);
+	CHECK(stat(pb, &st) == 0);
+	write_ppm(pb, sizeof(pb), "cache-b.ppm", 0, 0, 255);
+	touch[0].tv_sec = st.st_mtim.tv_sec;
+	touch[0].tv_nsec = st.st_mtim.tv_nsec ? st.st_mtim.tv_nsec - 1 : 1;
+	touch[1] = touch[0];
+	CHECK(utimensat(AT_FDCWD, pb, touch, 0) == 0);
+	img = load_noctx(pb);
+	CHECK(img != NULL);
+	CHECK(img && img->data[0] == 0 && img->data[1] == 0 && img->data[2] == 255);
+	RReleaseImage(img);
+
+	/* cycle the LRU past the three-entry bound, then re-verify each
+	 * still decodes to its own content (sanitizers watch the frees) */
+	write_ppm(pc, sizeof(pc), "cache-c.ppm", 128, 0, 128);
+	write_ppm(pd, sizeof(pd), "cache-d.ppm", 0, 128, 128);
+	img = load_noctx(pc);
+	CHECK(img != NULL && img->data[0] == 128);
+	RReleaseImage(img);
+	img = load_noctx(pd);
+	CHECK(img != NULL && img->data[0] == 0 && img->data[2] == 128);
+	RReleaseImage(img);
+	img = load_noctx(pc);
+	CHECK(img != NULL && img->data[0] == 128);
+	RReleaseImage(img);
+	img = load_noctx(pa);
+	CHECK(img != NULL && img->data[0] == 255 && img->data[2] == 0);
+	RReleaseImage(img);
+
+	/* RReleaseCache() drops everything and a reload decodes clean */
+	RReleaseCache();
+	img = load_noctx(pa);
+	CHECK(img != NULL);
+	CHECK(img && img->data[0] == 255 && img->data[1] == 0 && img->data[2] == 0);
+	RReleaseImage(img);
+
+	/* a vanished file evicts its own entries and keeps failing */
+	img = load_noctx(pc);
+	CHECK(img != NULL && img->data[0] == 128);
+	RReleaseImage(img);
+	unlink(pc);
+	img = load_noctx(pc);
+	CHECK(img == NULL);
+
+	/* restore the caller's cache environment */
+	if (oe)
+		setenv("RIMAGE_CACHE", oe_buf, 1);
+	else
+		unsetenv("RIMAGE_CACHE");
+	if (op)
+		setenv("RIMAGE_CACHE_SIZE", op_buf, 1);
+	else
+		unsetenv("RIMAGE_CACHE_SIZE");
+	RReleaseCache();
+}
+
 int main(void)
 {
 	srcdir = getenv("srcdir");
@@ -644,6 +764,7 @@ int main(void)
 	test_xpm_transparent();
 	test_xpm_extended();
 	test_svg();
+	test_cache();
 
 	/* best-effort cleanup */
 	(void)wspawnvp_wait((char *[]){"rm", "-rf", tmpdir, NULL});

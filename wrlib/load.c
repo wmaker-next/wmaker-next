@@ -86,12 +86,12 @@ unsigned char *RReadWholeFile(const char *path, size_t *out_size)
 typedef struct RCachedImage {
 	RImage *image;
 	char *file;
-	time_t last_modif;	/* last time file was modified */
+	struct timespec last_modif;	/* nanosecond mtime from st_mtim */
 	time_t last_use;	/* last time image was used */
-	/* requested render size for vector formats, 0 for raster so a
-	 * cache lookup for foo.svg at 48x48 does not return the 128x128
-	 * render from an earlier caller */
+	/* cache key: render size for vector formats, 0 for raster */
 	unsigned width, height;
+	/* frame index for multi-frame formats, 0 elsewhere */
+	int index;
 } RCachedImage;
 
 static char *copy_cache_filename(const char *file)
@@ -112,7 +112,7 @@ static char *copy_cache_filename(const char *file)
  */
 static int RImageCacheSize = -1;
 
-#define IMAGE_CACHE_DEFAULT_NBENTRIES	  8
+#define IMAGE_CACHE_DEFAULT_NBENTRIES	  32
 #define IMAGE_CACHE_MAXIMUM_NBENTRIES	256
 
 /*
@@ -120,7 +120,7 @@ static int RImageCacheSize = -1;
  */
 static int RImageCacheMaxImage = -1;	/* 0 = any size */
 
-#define IMAGE_CACHE_DEFAULT_MAXPIXELS	(64 * 64)
+#define IMAGE_CACHE_DEFAULT_MAXPIXELS	(256 * 256)
 #define IMAGE_CACHE_MAXIMUM_MAXPIXELS	(256 * 256)
 
 
@@ -239,6 +239,8 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 	RImage *image = NULL;
 	int i;
 	struct stat st;
+	WRImgFormat fmt;
+	unsigned key_w = 0, key_h = 0;
 
 #ifndef USE_SVG
 	(void)width;
@@ -250,13 +252,40 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 	if (RImageCacheSize < 0)
 		init_cache();
 
-	if (RImageCacheSize > 0) {
+	fmt = identFile(file);
+	if (fmt == IM_ERROR) {
+		/* the file is gone, drop anything cached for it */
+		if (RImageCacheSize > 0 && RImageCache) {
+			for (i = 0; i < RImageCacheSize; i++) {
+				if (RImageCache[i].file
+				    && strcmp(file, RImageCache[i].file) == 0) {
+					free(RImageCache[i].file);
+					RImageCache[i].file = NULL;
+					RReleaseImage(RImageCache[i].image);
+				}
+			}
+		}
+		return NULL;
+	}
+
+#ifdef USE_SVG
+	/* only SVG consumes the render size */
+	if (fmt == IM_SVG) {
+		key_w = width;
+		key_h = height;
+	}
+#endif
+
+	if (RImageCacheSize > 0 && RImageCache) {
 
 		for (i = 0; i < RImageCacheSize; i++) {
 			if (RImageCache[i].file && strcmp(file, RImageCache[i].file) == 0
-			    && RImageCache[i].width == width && RImageCache[i].height == height) {
+			    && RImageCache[i].width == key_w && RImageCache[i].height == key_h
+			    && RImageCache[i].index == index) {
 
-				if (stat(file, &st) == 0 && st.st_mtime == RImageCache[i].last_modif) {
+				if (stat(file, &st) == 0
+				    && st.st_mtim.tv_sec == RImageCache[i].last_modif.tv_sec
+				    && st.st_mtim.tv_nsec == RImageCache[i].last_modif.tv_nsec) {
 					RImageCache[i].last_use = time(NULL);
 
 					return RCloneImage(RImageCache[i].image);
@@ -270,9 +299,7 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 		}
 	}
 
-	switch (identFile(file)) {
-	case IM_ERROR:
-		return NULL;
+	switch (fmt) {
 
 	case IM_UNKNOWN:
 		/* TGA, PSD and PIC have no usable magic for identFile(),
@@ -343,7 +370,7 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 	}
 
 	/* store image in cache */
-	if (RImageCacheSize > 0 && image &&
+	if (RImageCacheSize > 0 && RImageCache && image &&
 	    (RImageCacheMaxImage == 0 || RImageCacheMaxImage >= image->width * image->height)) {
 		time_t oldest = time(NULL);
 		int oldest_idx = 0;
@@ -351,7 +378,8 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 
 		if (stat(file, &st) != 0) {
 			/* If we can't get the info, at least use a valid time to reduce risk of problems */
-			st.st_mtime = oldest;
+			st.st_mtim.tv_sec = oldest;
+			st.st_mtim.tv_nsec = 0;
 		}
 
 		for (i = 0; i < RImageCacheSize; i++) {
@@ -360,10 +388,11 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 				if (!RImageCache[i].file)
 					break;
 				RImageCache[i].image = RCloneImage(image);
-				RImageCache[i].last_modif = st.st_mtime;
+				RImageCache[i].last_modif = st.st_mtim;
 				RImageCache[i].last_use = time(NULL);
-				RImageCache[i].width = width;
-				RImageCache[i].height = height;
+				RImageCache[i].width = key_w;
+				RImageCache[i].height = key_h;
+				RImageCache[i].index = index;
 				done = 1;
 				break;
 			} else {
@@ -384,10 +413,11 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 			RReleaseImage(RImageCache[oldest_idx].image);
 			RImageCache[oldest_idx].file = cache_file;
 			RImageCache[oldest_idx].image = RCloneImage(image);
-			RImageCache[oldest_idx].last_modif = st.st_mtime;
+			RImageCache[oldest_idx].last_modif = st.st_mtim;
 			RImageCache[oldest_idx].last_use = time(NULL);
-			RImageCache[oldest_idx].width = width;
-			RImageCache[oldest_idx].height = height;
+			RImageCache[oldest_idx].width = key_w;
+			RImageCache[oldest_idx].height = key_h;
+			RImageCache[oldest_idx].index = index;
 		}
 	}
 

@@ -358,6 +358,13 @@ cairo_pattern_t *RMultiGradientCairoPattern(RGradientStyle style,
 void RShutdown(void);
 
 /*
+ * Drop every cached decoded image (see RLoadImage) so a later load
+ * re-reads and re-decodes the files. Callers use it when the set of
+ * icon/theme files changes underneath, e.g. on a config reload.
+ */
+void RReleaseCache(void);
+
+/*
  * Returns a NULL terminated array of strings containing the
  * supported formats, such as: TIFF, XPM, PNG, JPEG, PPM, GIF
  * Do not free the returned data.

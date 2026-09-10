@@ -364,11 +364,12 @@ static void addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwi
 			wapp->app_icon->icon && wapp->app_icon->icon->file_image)
 		image = RRetainImage(wapp->app_icon->icon->file_image);
 
-	/* get_icon_image() includes the default icon image */
+	/* get_icon_image() falls back to the default icon image. The
+	 * final size is requested directly so an SVG decodes sharp */
 	if (!image)
-		image = get_icon_image(panel->scr, wwin->wm_instance, wwin->wm_class, icon_tile_size);
+		image = get_icon_image(panel->scr, wwin->wm_instance, wwin->wm_class, icon_size);
 
-	/* We must resize the icon size (~64) to the switch panel icon size (~48) */
+	/* _NET_WM_ICON and appicon sources can exceed the tile */
 	image = wIconValidateIconSize(image, icon_size);
 
 	WMAddToArray(*images_of(panel, strip), image);

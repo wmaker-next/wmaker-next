@@ -625,6 +625,9 @@ void wWindowAttrsReload(void)
 	WMPropList *dict, *keys, *rules_array;
 	int i, count, rcount, j;
 
+	/* icon lookups must re-decode after the reload */
+	RReleaseCache();
+
 	init_wdefaults();
 	free_attrs_cache();
 	free_dynamic_rules();

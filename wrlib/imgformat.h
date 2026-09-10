@@ -125,10 +125,5 @@ int RSaveJPEG(RImage *image, const char *filename, char *title);
 int RSaveRawJPEG(RImage *image, char *title, unsigned char **out_buf, size_t *out_size);
 #endif
 
-/*
- * Function to terminate properly
- */
-void RReleaseCache(void);
-
 
 #endif
