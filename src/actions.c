@@ -2936,6 +2936,10 @@ void wMakeWindowVisible(WWindow *wwin)
 			/* trick to get focus to this window */
 			app->last_focused = wwin;
 			wUnhideApplication(app, false, false);
+		} else if (!wwin->flags.miniaturized) {
+			/* no application to ride, and the miniaturized
+			 * case recovers through the deiconify below */
+			wUnhideWindow(wwin, NULL, 0, 0, false, false);
 		}
 	}
 	if (wwin->flags.miniaturized) {
