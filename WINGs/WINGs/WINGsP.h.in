@@ -768,10 +768,6 @@ void W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
                       int width, WMAlignment alignment, WMColor *color,
                       int wrap, const char *text, int length);
 
-void W_PaintText(W_View *view, xcb_drawable_t d, WMFont *font,  int x, int y,
-                 int width, WMAlignment alignment, WMColor *color,
-                 int wrap, const char *text, int length);
-
 int W_GetTextHeight(WMFont *font, const char *text, int width, int wrap);
 
 

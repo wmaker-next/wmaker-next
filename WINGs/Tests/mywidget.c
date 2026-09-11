@@ -129,13 +129,19 @@ static void paintMyWidget(_MyWidget * mPtr)
 {
 	W_Screen *scr = mPtr->view->screen;
 	WMColor *color;
+	cairo_t *cr;
 
 	if (mPtr->text) {
 
 		color = WMWhiteColor(scr);
 
-		W_PaintText(mPtr->view, mPtr->view->window, scr->normalFont, 0, 0,
-			    mPtr->view->size.width, WACenter, color, false, mPtr->text, strlen(mPtr->text));
+		cr = WCairoBeginForDrawable(scr, mPtr->view->window);
+		if (cr) {
+			W_PaintTextCairo(cr, scr->normalFont, 0, 0,
+					 mPtr->view->size.width, WACenter, color, false,
+					 mPtr->text, strlen(mPtr->text));
+			WCairoEnd(cr);
+		}
 
 		WMReleaseColor(color);
 	}

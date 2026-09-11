@@ -239,6 +239,7 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 	int bx, by;
 	const char *ptr, *ptr2;
 	int tw;
+	cairo_t *cr;
 
 	ptr2 = ptr = text;
 	width = 0;
@@ -296,9 +297,14 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 			    | ((side & RIGHT) ? WCairoBalloonRight : 0),
 			    SPACE, scr->white, scr->black, &pixmap, &mask);
 
-	W_PaintText(bPtr->view, pixmap, font, 8, ty + (height - textHeight) / 2,
-		    width, bPtr->flags.alignment,
-		    bPtr->textColor ? bPtr->textColor : scr->black, false, text, strlen(text));
+	cr = WCairoBeginForDrawable(bPtr->view->screen, pixmap);
+	if (cr) {
+		W_PaintTextCairo(cr, font, 8, ty + (height - textHeight) / 2,
+				 width, bPtr->flags.alignment,
+				 bPtr->textColor ? bPtr->textColor : scr->black, false,
+				 text, strlen(text));
+		WCairoEnd(cr);
+	}
 
 	xcb_change_window_attributes(dpy, bPtr->view->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 

@@ -100,9 +100,13 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 	if (dPtr->text) {
 		int y;
 		y = (dPtr->view->size.height - scr->normalFont->height) / 2;
-		W_PaintText(dPtr->view, dPtr->view->window, scr->normalFont,
-			    dPtr->on, dPtr->on + y, dPtr->view->size.width, WACenter,
-			    scr->black, false, dPtr->text, strlen(dPtr->text));
+		cr = WCairoBeginForDrawable(scr, dPtr->view->window);
+		if (cr) {
+			W_PaintTextCairo(cr, scr->normalFont,
+					 dPtr->on, dPtr->on + y, dPtr->view->size.width, WACenter,
+					 scr->black, false, dPtr->text, strlen(dPtr->text));
+			WCairoEnd(cr);
+		}
 	}
 }
 

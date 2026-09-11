@@ -212,21 +212,6 @@ W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
 	}
 }
 
-void
-W_PaintText(W_View * view, xcb_drawable_t d, WMFont * font, int x, int y,
-	    int width, WMAlignment alignment, WMColor * color, int wrap,
-	    const char *text, int length)
-{
-	cairo_t *cr;
-
-	cr = WCairoBeginForDrawable(view->screen, d);
-	if (!cr)
-		return;
-	W_PaintTextCairo(cr, font, x, y, width, alignment, color,
-			 wrap, text, length);
-	WCairoEnd(cr);
-}
-
 static void
 paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 		  WMReliefType relief, const char *text,
