@@ -256,11 +256,17 @@ bool wVdeskSetViewport(WScreen *scr, int workspace, int view_x, int view_y)
 static bool cmp_gez(int i) { return (i >= 0); }
 static bool cmp_gz(int i)  { return (i > 0); }
 
-static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, bool (*cmp)(int))
+/* closest window-edge corner in the pan direction; no qualifying window
+ * yields (0,0) with *found false, not an edge at distance 0 */
+static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, bool (*cmp)(int),
+			     bool *found)
 {
 	WMPoint closest = wmkpoint(0, 0);
 	int closest_len = INT_MAX;
 	WWindow *wwin;
+
+	if (found)
+		*found = false;
 
 	for (wwin = scr->focused_window; wwin; wwin = wwin->prev) {
 		if (WWIN_ON_WORKSPACE(wwin, scr->current_workspace)) {
@@ -295,6 +301,9 @@ static WMPoint getClosestEdge(WScreen *scr, WMPoint direction, bool (*cmp)(int))
 		}
 	}
 
+	if (found)
+		*found = closest_len != INT_MAX;
+
 	return closest;
 }
 
@@ -307,7 +316,7 @@ void wVdeskKeyboardMoveDesktop(WScreen *scr, WMPoint direction)
 	if (scr->workspaces[scr->current_workspace]->layout != WLAYOUT_FLOAT)
 		return;
 
-	edge = getClosestEdge(scr, direction, cmp_gz);
+	edge = getClosestEdge(scr, direction, cmp_gz, NULL);
 	len = vec_dot(edge, direction);
 	step = vec_scale(direction, len);
 	x = scr->workspaces[scr->current_workspace]->view_x;
@@ -525,12 +534,17 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 				done = true;
 			} else if (step_len > 0) {
 				bool do_move = true;
+				bool found_edge = false;
 				int resist = w_global.config->vedge_resistance;
 				WMPoint closest;
 				int closest_len = INT_MAX;
 				if (resist) {
-					closest = getClosestEdge(scr, direction, cmp_gez);
+					closest = getClosestEdge(scr, direction, cmp_gez, &found_edge);
 					closest_len = vec_dot(direction, closest);
+					/* no qualifying window: no resistance,
+					 * nothing to attract to */
+					if (!found_edge)
+						closest_len = INT_MAX;
 				}
 				if (!closest_len) {
 					resisted += step_len;
