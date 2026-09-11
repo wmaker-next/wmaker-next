@@ -121,7 +121,7 @@ static void drawMultiLineString(WScreen *scr, cairo_t *cr, WMColor *color, WMFon
 
 	while (*p && p - text < len) {
 		if (*p == '\n') {
-			WMDrawStringCairo(cr, color, font, x, y + l * height, pb, pos);
+			W_DrawString(cr, color, font, x, y + l * height, pb, pos);
 			l++;
 			pos = 0;
 			pb = p + 1;
@@ -131,7 +131,7 @@ static void drawMultiLineString(WScreen *scr, cairo_t *cr, WMColor *color, WMFon
 		p++;
 	}
 	if (pos > 0)
-		WMDrawStringCairo(cr, color, font, x, y + l * height, pb, pos);
+		W_DrawString(cr, color, font, x, y + l * height, pb, pos);
 }
 
 /* fresh background pixmap for the balloon window filled with the

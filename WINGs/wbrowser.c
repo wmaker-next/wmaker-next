@@ -245,7 +245,7 @@ static void drawTitleOfColumn(WMBrowser * bPtr, int column)
 	WCairoSetSourceColor(cr, scr->darkGray);
 	cairo_rectangle(cr, x, 0, bPtr->columnSize.width, bPtr->titleHeight);
 	cairo_fill(cr);
-	W_DrawReliefCairo(cr, scr, x, 0, bPtr->columnSize.width, bPtr->titleHeight, WRSunken);
+	W_DrawRelief(cr, scr, x, 0, bPtr->columnSize.width, bPtr->titleHeight, WRSunken);
 
 	if (column < bPtr->usedColumnCount && bPtr->titles[column]) {
 		titleLen = strlen(bPtr->titles[column]);
@@ -255,13 +255,13 @@ static void drawTitleOfColumn(WMBrowser * bPtr, int column)
 			titleBuf = createTruncatedString(scr->boldFont,
 							 bPtr->titles[column],
 							 &titleLen, widthC);
-			W_PaintTextCairo(cr, scr->boldFont, x,
+			W_PaintText(cr, scr->boldFont, x,
 					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
 					 bPtr->columnSize.width, WACenter, scr->white,
 					 false, titleBuf, titleLen);
 			wfree(titleBuf);
 		} else {
-			W_PaintTextCairo(cr, scr->boldFont, x,
+			W_PaintText(cr, scr->boldFont, x,
 					 (bPtr->titleHeight - WMFontHeight(scr->boldFont)) / 2,
 					 bPtr->columnSize.width, WACenter, scr->white,
 					 false, bPtr->titles[column], titleLen);
@@ -512,11 +512,11 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 		textLen = strlen(text);
 		if (WMWidthOfString(font, text, textLen) > widthC) {
 			textBuf = createTruncatedString(font, text, &textLen, widthC);
-			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
+			W_PaintText(cr, font, x + 4, y, widthC, WALeft,
 					 scr->black, false, textBuf, textLen);
 			wfree(textBuf);
 		} else {
-			W_PaintTextCairo(cr, font, x + 4, y, widthC, WALeft,
+			W_PaintText(cr, font, x + 4, y, widthC, WALeft,
 					 scr->black, false, text, textLen);
 		}
 	}
@@ -870,7 +870,7 @@ static void paintBrowser(WMBrowser * bPtr)
 	cr = WCairoBeginForDrawable(bPtr->view->screen, bPtr->view->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, bPtr->view->screen, 0,
+	W_DrawRelief(cr, bPtr->view->screen, 0,
 			  bPtr->view->size.height - SCROLLER_WIDTH - 2, bPtr->view->size.width, 22, WRSunken);
 	WCairoEnd(cr);
 

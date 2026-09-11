@@ -1090,7 +1090,7 @@ static xcb_pixmap_t paintTextureSlice(WScreen *scr, cairo_pattern_t *pat,
 	cairo_set_source(cr, pat);
 	cairo_paint(cr);
 	if (bevel)
-		wTextureCairoBevel(cr, bx, 0, bw, height);
+		wTextureBevel(cr, bx, 0, bw, height);
 	cairo_destroy(cr);
 	cairo_surface_flush(surf);
 	cairo_surface_destroy(surf);
@@ -1113,7 +1113,7 @@ renderTexture(WScreen * scr, WTexture * texture, int width, int height,
 	for (i = 0; i < nleft + nright; i++)
 		slices[i] = XCB_NONE;
 
-	pat = wTextureCairoPattern(texture, width, height);
+	pat = wTexturePattern(texture, width, height);
 	if (pat) {
 		bevel = (w_global.config->new_style == TS_NEW);
 		if (TS_NEW_GEOM(w_global.config->new_style)) {
@@ -1255,7 +1255,7 @@ renderResizebarTexture(WScreen * scr, WTexture * texture, int width, int height,
 
 	*pmap = XCB_NONE;
 
-	pat = wTextureCairoPattern(texture, width, height);
+	pat = wTexturePattern(texture, width, height);
 	if (pat) {
 		*pmap = paintTextureSlice(scr, pat, width, height, 0, 0, 0);
 		cairo_pattern_destroy(pat);
@@ -1859,7 +1859,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 			cairo_save(cr);
 			cairo_rectangle(cr, tx, y, tw, h);
 			cairo_clip(cr);
-			WMDrawStringCairo(cr, fwin->title_color[col_state],
+			W_DrawString(cr, fwin->title_color[col_state],
 					  *fwin->font, tx, y, txt, len);
 			cairo_restore(cr);
 		}
@@ -2057,7 +2057,7 @@ static void paintLanguageHalf(cairo_t *cr, RContext *rc, int x, int kw, int kh,
 		cairo_rectangle(cr, x, 0, kw, kh);
 		cairo_fill(cr);
 	}
-	WMDrawStringCairo(cr, text, font, x + tx, ty, label, strlen(label));
+	W_DrawString(cr, text, font, x + tx, ty, label, strlen(label));
 }
 
 void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)

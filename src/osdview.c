@@ -308,7 +308,7 @@ static void paint(WOSDView *osd)
 	}
 
 	if (!osd->transparent)
-		W_DrawReliefCairo(cr, W_VIEW_SCREEN(osd->view), 0, 0, w, h, WRSimple);
+		W_DrawRelief(cr, W_VIEW_SCREEN(osd->view), 0, 0, w, h, WRSimple);
 
 	if (osd->alpha < 1.0) {
 		/* scale the whole opaque frame by alpha in place: DEST_IN

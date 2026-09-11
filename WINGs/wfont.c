@@ -222,7 +222,7 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	 * PangoFcFontMap, so pango_fc_font_description_from_pattern()
 	 * below resolves against the same fontconfig configuration the
 	 * previous Xft path used. The description stays at the requested
-	 * logical size, WMDrawStringCairo() applies uiScale at paint time
+	 * logical size, W_DrawString() applies uiScale at paint time
 	 * so WMFontHeight()/WMWidthOfString() return logical px and mix
 	 * correctly with logical view->size in widget layout. */
 	fontmap = pango_cairo_font_map_get_default();
@@ -418,7 +418,7 @@ void W_ShowLayout(cairo_t *cr, WMFont *font, PangoLayout *layout, int x, int y)
 	}
 }
 
-void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
+void W_DrawString(cairo_t *cr, WMColor *color, WMFont *font,
 		       int x, int y, const char *text, int length)
 {
 	setLayoutText(font->layout, text, length);
@@ -435,7 +435,7 @@ void WMDrawString(WMScreen * scr, xcb_drawable_t d, WMColor * color, WMFont * fo
 	cr = WCairoBeginForDrawable(scr, d);
 	if (!cr)
 		return;
-	WMDrawStringCairo(cr, color, font, x, y, text, length);
+	W_DrawString(cr, color, font, x, y, text, length);
 	WCairoEnd(cr);
 }
 

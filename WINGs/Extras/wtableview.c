@@ -1158,7 +1158,7 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 		cr = WCairoBeginForDrawable(scr, W_VIEW_DRAWABLE(table->view));
 		if (!cr)
 			break;
-		W_DrawReliefCairo(cr, scr, 0, 0,
+		W_DrawRelief(cr, scr, 0, 0,
 				  W_VIEW_WIDTH(table->view), W_VIEW_HEIGHT(table->view), WRSunken);
 		WCairoEnd(cr);
 		break;

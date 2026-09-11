@@ -459,7 +459,7 @@ static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *t
 				30, WMGetListNumberOfRows(lPtr) * height,
 				0, height * index, 30, height, x + 5, y);
 
-	WMDrawStringCairo(cr, black, panel->listFont, x + 40, y + 1, text, strlen(text));
+	W_DrawString(cr, black, panel->listFont, x + 40, y + 1, text, strlen(text));
 	WCairoEnd(cr);
 
 	WMReleaseColor(white);

@@ -153,7 +153,7 @@ static void paintFrame(Frame * fPtr)
 		cairo_rectangle(cr, tx, ty, tw, th);
 		cairo_clip(cr);
 	}
-	W_DrawReliefCairo(cr, scrPtr, 0, fy, view->size.width, fh, fPtr->flags.relief);
+	W_DrawRelief(cr, scrPtr, 0, fy, view->size.width, fh, fPtr->flags.relief);
 	cairo_restore(cr);
 
 	if (drawTitle) {
@@ -162,7 +162,7 @@ static void paintFrame(Frame * fPtr)
 		WCairoSetSourceColor(cr, view->backColor);
 		cairo_rectangle(cr, tx, ty, tw, th);
 		cairo_fill(cr);
-		WMDrawStringCairo(cr, fPtr->textColor ? fPtr->textColor : scrPtr->black,
+		W_DrawString(cr, fPtr->textColor ? fPtr->textColor : scrPtr->black,
 				  font, tx, ty, fPtr->caption, tlen);
 	}
 

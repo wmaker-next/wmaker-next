@@ -346,10 +346,10 @@ static void paintPopUpButton(PopUpButton * bPtr)
 	WCairoSetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
-	W_DrawReliefCairo(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
+	W_DrawRelief(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
 
 	if (caption) {
-		W_PaintTextCairo(cr, scr->normalFont, 6,
+		W_PaintText(cr, scr->normalFont, 6,
 				 (bPtr->view->size.height - WMFontHeight(scr->normalFont)) / 2,
 				 bPtr->view->size.width, WALeft,
 				 bPtr->flags.enabled ? scr->black : scr->darkGray,
@@ -413,9 +413,9 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 
 	title = WMGetPopUpButtonItem(bPtr, index);
 
-	W_DrawReliefCairo(cr, scr, 0, index * itemHeight, width, itemHeight, WRRaised);
+	W_DrawRelief(cr, scr, 0, index * itemHeight, width, itemHeight, WRRaised);
 
-	W_PaintTextCairo(cr, scr->normalFont, 6,
+	W_PaintText(cr, scr->normalFont, 6,
 			 index * itemHeight + yo, width, WALeft, scr->black,
 			 false, title, strlen(title));
 
@@ -453,11 +453,11 @@ static xcb_pixmap_t makeMenuPixmap(PopUpButton * bPtr)
 	WM_ITERATE_ARRAY(bPtr->items, item, iter) {
 		text = WMGetMenuItemTitle(item);
 
-		W_DrawReliefCairo(cr, scr, 0, i * itemHeight, width, itemHeight, WRRaised);
+		W_DrawRelief(cr, scr, 0, i * itemHeight, width, itemHeight, WRRaised);
 
 		color = WMGetMenuItemEnabled(item) ? scr->black : scr->darkGray;
 
-		W_PaintTextCairo(cr, scr->normalFont, 6,
+		W_PaintText(cr, scr->normalFont, 6,
 				 i * itemHeight + yo, width, WALeft, color,
 				 false, text, strlen(text));
 

@@ -199,7 +199,7 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 	cr = WCairoBeginForDrawable(scr, win);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scr, 0, 0, w + 1, h, WRRaised);
+	W_DrawRelief(cr, scr, 0, 0, w + 1, h, WRRaised);
 	WCairoEnd(cr);
 
 	WMDrawString(scr, win, color, font, 5, 3, iPtr->label, strlen(iPtr->label));
@@ -811,7 +811,7 @@ static void paintMenu(WEditMenu * mPtr)
 	cr = WCairoBeginForDrawable(scr, W_VIEW_DRAWABLE(view));
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW_WIDTH(view), W_VIEW_HEIGHT(view), WRSimple);
+	W_DrawRelief(cr, scr, 0, 0, W_VIEW_WIDTH(view), W_VIEW_HEIGHT(view), WRSimple);
 	WCairoEnd(cr);
 }
 

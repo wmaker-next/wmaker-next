@@ -154,7 +154,7 @@ static void paintRuler(Ruler * rPtr)
 	WCairoSetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
-	WMDrawStringCairo(cr, rPtr->fg, rPtr->font,
+	W_DrawString(cr, rPtr->fg, rPtr->font,
 			  rPtr->margins.left + 2, 26, _("0   inches"), 10);
 
 	/* marker ticks */
@@ -167,7 +167,7 @@ static void paintRuler(Ruler * rPtr)
 		cairo_stroke(cr);
 		if (i != 0 && i % 8 == 0) {
 			snprintf(c, sizeof(c), "%hu", ++j);
-			WMDrawStringCairo(cr, rPtr->fg, rPtr->font,
+			W_DrawString(cr, rPtr->fg, rPtr->font,
 					  rPtr->margins.left + 2 + m, 26, c, 2);
 			WCairoSetSourceColor(cr, rPtr->fg);
 		}

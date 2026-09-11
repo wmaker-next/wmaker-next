@@ -1315,10 +1315,10 @@ static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text
 	else if (titem->selectedFor)
 		WCairoPaintPixmap(cr, panel->offLed, x + TEXPREV_WIDTH + 10, y + 6);
 
-	WMDrawStringCairo(cr, black, panel->boldFont,
+	W_DrawString(cr, black, panel->boldFont,
 			  x + TEXPREV_WIDTH + 22, y + 2, titem->title, strlen(titem->title));
 
-	WMDrawStringCairo(cr, black, panel->smallFont,
+	W_DrawString(cr, black, panel->smallFont,
 			  x + TEXPREV_WIDTH + 14, y + 18, titem->texture, strlen(titem->texture));
 	WCairoEnd(cr);
 
@@ -1522,7 +1522,7 @@ paintText(cairo_t *cr, WMColor *color, WMFont *font,
 		x += (w - WMWidthOfString(font, text, l)) / 2;
 		break;
 	}
-	WMDrawStringCairo(cr, color, font, x, y + (h - WMFontHeight(font)) / 2, text, l);
+	W_DrawString(cr, color, font, x, y + (h - WMFontHeight(font)) / 2, text, l);
 }
 
 static void updateColorPreviewBox(_Panel * panel, int elements)

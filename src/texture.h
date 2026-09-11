@@ -162,15 +162,15 @@ typedef struct _cairo cairo_t;
  * wTextureRenderImage(texture, width, height, WREL_FLAT). NULL for the
  * variants with no direct pattern equivalent (interwoven, textured
  * gradient, plugin) so callers fall back to the RImage path. */
-cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height);
+cairo_pattern_t *wTexturePattern(WTexture *texture, int width, int height);
 
 /* the RBEV_RAISED2 highlight/shadow lines as translucent strokes on
  * top of an already-painted background */
-void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h);
+void wTextureBevel(cairo_t *cr, int x, int y, int w, int h);
 
 /* the WREL_MENUENTRY bevel: +highlight top/left, -dim right and inner
  * bottom, opaque black separator on the bottom edge */
-void wTextureCairoMenuBevel(cairo_t *cr, int x, int y, int w, int h);
+void wTextureMenuBevel(cairo_t *cr, int x, int y, int w, int h);
 
 
 void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, xcb_pixmap_t *tdata,
@@ -184,7 +184,7 @@ void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, xcb_pixmap_t
 } while (0)
 
 /* WREL_RAISED / WREL_ICON bevel in a WTexSolid's own light/dim/dark
- * colours (opaque strokes, unlike wTextureCairoBevel's translucent
+ * colours (opaque strokes, unlike wTextureBevel's translucent
  * add/subtract), used on the solid-texture titlebar and button paths */
 void wDrawBevel(cairo_t *cr, unsigned width, unsigned height,
                 WTexSolid *texture, int relief);

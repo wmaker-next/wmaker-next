@@ -879,7 +879,7 @@ static void paintTextField(TextField * tPtr)
 		cairo_rectangle(cr, bd, bd, view->size.width - 2 * bd,
 				view->size.height - 2 * bd);
 		cairo_clip(cr);
-		WMDrawStringCairo(cr, color, tPtr->font, tx, ty,
+		W_DrawString(cr, color, tPtr->font, tx, ty,
 				  &(text[tPtr->viewPosition]),
 				  tPtr->textLen - tPtr->viewPosition);
 
@@ -902,7 +902,7 @@ static void paintTextField(TextField * tPtr)
 					WMWidthOfString(tPtr->font, &(text[count]), count2),
 					WMFontHeight(tPtr->font));
 			cairo_fill(cr);
-			WMDrawStringCairo(cr, color, tPtr->font, rx, ty,
+			W_DrawString(cr, color, tPtr->font, rx, ty,
 					  &(text[count]), count2);
 		}
 		cairo_restore(cr);
@@ -930,7 +930,7 @@ static void paintTextField(TextField * tPtr)
 		cairo_rectangle(cr, bd, bd, view->size.width - 2 * bd,
 				view->size.height - 2 * bd);
 		cairo_clip(cr);
-		WMDrawStringCairo(cr, screen->darkGray, tPtr->font,
+		W_DrawString(cr, screen->darkGray, tPtr->font,
 				  px, tPtr->offsetWidth,
 				  tPtr->placeholderText,
 				  strlen(tPtr->placeholderText));

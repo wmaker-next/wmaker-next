@@ -498,7 +498,7 @@ static void paintScrollView(ScrollView * sPtr)
 	cr = WCairoBeginForDrawable(sPtr->view->screen, sPtr->view->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, sPtr->view->screen, 0, 0,
+	W_DrawRelief(cr, sPtr->view->screen, 0, 0,
 			  sPtr->view->size.width, sPtr->view->size.height, sPtr->flags.relief);
 	WCairoEnd(cr);
 }

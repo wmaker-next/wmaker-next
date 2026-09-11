@@ -93,7 +93,7 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 	cr = WCairoBeginForDrawable(scr, dPtr->view->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scr, 0, 0, dPtr->view->size.width,
+	W_DrawRelief(cr, scr, 0, 0, dPtr->view->size.width,
 			  dPtr->view->size.height, dPtr->on ? WRSunken : WRRaised);
 	WCairoEnd(cr);
 
@@ -102,7 +102,7 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 		y = (dPtr->view->size.height - scr->normalFont->height) / 2;
 		cr = WCairoBeginForDrawable(scr, dPtr->view->window);
 		if (cr) {
-			W_PaintTextCairo(cr, scr->normalFont,
+			W_PaintText(cr, scr->normalFont,
 					 dPtr->on, dPtr->on + y, dPtr->view->size.width, WACenter,
 					 scr->black, false, dPtr->text, strlen(dPtr->text));
 			WCairoEnd(cr);

@@ -137,7 +137,7 @@ static void paintMyWidget(_MyWidget * mPtr)
 
 		cr = WCairoBeginForDrawable(scr, mPtr->view->window);
 		if (cr) {
-			W_PaintTextCairo(cr, scr->normalFont, 0, 0,
+			W_PaintText(cr, scr->normalFont, 0, 0,
 					 mPtr->view->size.width, WACenter, color, false,
 					 mPtr->text, strlen(mPtr->text));
 			WCairoEnd(cr);

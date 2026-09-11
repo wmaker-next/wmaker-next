@@ -291,7 +291,7 @@ static void paintArrow(WMScroller *sPtr, cairo_t *cr, int part)
 		cairo_rectangle(cr, bx + 1, by + 1, BUTTON_SIZE - 2, BUTTON_SIZE - 2);
 		cairo_fill(cr);
 	}
-	W_DrawReliefCairo(cr, scr, bx, by, BUTTON_SIZE, BUTTON_SIZE, WRRaised);
+	W_DrawRelief(cr, scr, bx, by, BUTTON_SIZE, BUTTON_SIZE, WRRaised);
 	blitPixmap(cr, scr, arrow,
 		   bx + (BUTTON_SIZE - arrow->width) / 2,
 		   by + (BUTTON_SIZE - arrow->height) / 2);
@@ -364,7 +364,7 @@ static void paintScroller(Scroller * sPtr)
 			WCairoStippleFill(cr, scr, ofs, 2, (int)knobP, view->size.height - 4);
 
 			/* knob */
-			W_DrawReliefCairo(cr, scr, ofs + (int)knobP, 2,
+			W_DrawRelief(cr, scr, ofs + (int)knobP, 2,
 					  (int)knobL, view->size.height - 4, WRRaised);
 			blitPixmap(cr, scr, scr->scrollerDimple,
 				   ofs + (int)knobP + ((int)knobL - scr->scrollerDimple->width - 1) / 2,
@@ -382,7 +382,7 @@ static void paintScroller(Scroller * sPtr)
 						  view->size.width - 4, (int)knobP);
 
 			/* knob */
-			W_DrawReliefCairo(cr, scr, 2, ofs + (int)knobP,
+			W_DrawRelief(cr, scr, 2, ofs + (int)knobP,
 					  view->size.width - 4, (int)knobL, WRRaised);
 			blitPixmap(cr, scr, scr->scrollerDimple,
 				   (view->size.width - scr->scrollerDimple->width - 1) / 2,

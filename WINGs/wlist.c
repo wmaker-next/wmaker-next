@@ -505,7 +505,7 @@ static void paintItem(List * lPtr, int index)
 		WCairoSetSourceColor(cr, back);
 		cairo_rectangle(cr, 0, 0, width, height);
 		cairo_fill(cr);
-		W_PaintTextCairo(cr, scr->normalFont, 4, 0, width, WALeft,
+		W_PaintText(cr, scr->normalFont, 4, 0, width, WALeft,
 				 scr->black, false, itemPtr->text, tlen);
 		WCairoEnd(cr);
 	}
@@ -517,7 +517,7 @@ static void paintItem(List * lPtr, int index)
 			0, 0, width, height, x, y);
 
 	if ((index - lPtr->topItem + lPtr->fullFitLines) * lPtr->itemHeight > lPtr->view->size.height - 2)
-		W_DrawReliefCairo(cr, scr, 0, 0,
+		W_DrawRelief(cr, scr, 0, 0,
 				  lPtr->view->size.width, lPtr->view->size.height, WRSunken);
 	WCairoEnd(cr);
 }
@@ -549,7 +549,7 @@ static void paintList(List * lPtr)
 	cr = WCairoBeginForDrawable(scrPtr, lPtr->view->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scrPtr, 0, 0, lPtr->view->size.width, lPtr->view->size.height, WRSunken);
+	W_DrawRelief(cr, scrPtr, 0, 0, lPtr->view->size.width, lPtr->view->size.height, WRSunken);
 	WCairoEnd(cr);
 }
 

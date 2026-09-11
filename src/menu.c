@@ -582,7 +582,7 @@ static xcb_pixmap_t renderTexture(WMenu * menu)
 	height = (w_global.config->menu_style == MS_NORMAL)
 		 ? menu->entry_height : menu->menu->height + 1;
 
-	pat = wTextureCairoPattern(texture, width, height);
+	pat = wTexturePattern(texture, width, height);
 	if (pat) {
 		pix = xcb_generate_id(rc->xc);
 		xcb_create_pixmap(rc->xc, rc->xdepth, pix,
@@ -601,15 +601,15 @@ static xcb_pixmap_t renderTexture(WMenu * menu)
 			int s;
 
 			for (s = 0; s + 1 < vc; s++)
-				wTextureCairoMenuBevel(cr, 0,
+				wTextureMenuBevel(cr, 0,
 						       s * menu->entry_height,
 						       width, menu->entry_height + 1);
 			if (vc > 0)
-				wTextureCairoMenuBevel(cr, 0,
+				wTextureMenuBevel(cr, 0,
 						       (vc - 1) * menu->entry_height,
 						       width, menu->entry_height);
 		} else if (w_global.config->menu_style == MS_NORMAL) {
-			wTextureCairoMenuBevel(cr, 0, 0, width, height);
+			wTextureMenuBevel(cr, 0, 0, width, height);
 		}
 
 		cairo_destroy(cr);
@@ -995,7 +995,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		x += entry->icon->width + 4;
 	}
 
-	WMDrawStringCairo(cr, color, scr->menu_entry_font,
+	W_DrawString(cr, color, scr->menu_entry_font,
 			  x, 3 + y + w_global.config->menu_text_clearance,
 			  entry->text, strlen(entry->text));
 
@@ -1097,7 +1097,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	if (entry->rtext && entry->cascade < 0) {
 		tw = WSCALE(scr, WMWidthOfString(scr->menu_entry_font, entry->rtext, strlen(entry->rtext)));
 
-		WMDrawStringCairo(cr, color, scr->menu_entry_font, w - 6 - tw,
+		W_DrawString(cr, color, scr->menu_entry_font, w - 6 - tw,
 				  y + 3 + w_global.config->menu_text_clearance,
 				  entry->rtext, strlen(entry->rtext));
 	}

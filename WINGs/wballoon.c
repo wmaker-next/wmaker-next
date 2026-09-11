@@ -299,7 +299,7 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 
 	cr = WCairoBeginForDrawable(bPtr->view->screen, pixmap);
 	if (cr) {
-		W_PaintTextCairo(cr, font, 8, ty + (height - textHeight) / 2,
+		W_PaintText(cr, font, 8, ty + (height - textHeight) / 2,
 				 width, bPtr->flags.alignment,
 				 bPtr->textColor ? bPtr->textColor : scr->black, false,
 				 text, strlen(text));

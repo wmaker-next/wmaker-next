@@ -251,7 +251,7 @@ static void makeKnobPixmap(Slider * sPtr)
 	cairo_paint(cr);
 
 	if (sPtr->knobThickness < 10) {
-		W_DrawReliefCairo(cr, scr, 0, 0, w, h, WRRaised);
+		W_DrawRelief(cr, scr, 0, 0, w, h, WRRaised);
 	} else if (sPtr->flags.vertical) {
 		kLine(cr, scr->white,    0, 0, 0, h - 3);
 		kLine(cr, scr->white,    1, 0, 1, h - 3);

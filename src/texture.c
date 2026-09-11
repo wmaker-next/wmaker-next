@@ -471,7 +471,7 @@ RImage *wTextureRenderImage(WTexture * texture, int width, int height, int relie
  * theme in the tree. The caller owns the returned reference and must
  * cairo_pattern_destroy() it.
  */
-cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height)
+cairo_pattern_t *wTexturePattern(WTexture *texture, int width, int height)
 {
 	cairo_pattern_t *pat;
 	cairo_surface_t *surf;
@@ -548,7 +548,7 @@ cairo_pattern_t *wTextureCairoPattern(WTexture *texture, int width, int height)
  * translucent lines lighten/darken whatever gradient sits below,
  * matching RBevelImage's add/subtract-80 arithmetic closely enough
  * for a titlebar-height band. */
-void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h)
+void wTextureBevel(cairo_t *cr, int x, int y, int w, int h)
 {
 	cairo_save(cr);
 	cairo_set_line_width(cr, 1.0);
@@ -578,7 +578,7 @@ void wTextureCairoBevel(cairo_t *cr, int x, int y, int w, int h)
 /* WREL_MENUENTRY bevel as translucent strokes: +80 highlight on top
  * and left, -40 dim on right and inner-bottom, opaque black bottom
  * separator. Matches bevelImage() below for the RImage fallback. */
-void wTextureCairoMenuBevel(cairo_t *cr, int x, int y, int w, int h)
+void wTextureMenuBevel(cairo_t *cr, int x, int y, int w, int h)
 {
 	cairo_save(cr);
 	cairo_set_line_width(cr, 1.0);

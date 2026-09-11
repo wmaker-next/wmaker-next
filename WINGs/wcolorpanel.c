@@ -567,7 +567,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
 					 false, _("Brightness"), strlen(_("Brightness")));
 			WCairoEnd(cr);
 		}
@@ -646,7 +646,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
 					 false, _("Red"), strlen(_("Red")));
 			WCairoEnd(cr);
 		}
@@ -682,7 +682,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
 					 false, _("Green"), strlen(_("Green")));
 			WCairoEnd(cr);
 		}
@@ -718,7 +718,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
 					 false, _("Blue"), strlen(_("Blue")));
 			WCairoEnd(cr);
 		}
@@ -798,7 +798,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
 					 false, _("Cyan"), strlen(_("Cyan")));
 			WCairoEnd(cr);
 		}
@@ -834,7 +834,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
 					 false, _("Magenta"), strlen(_("Magenta")));
 			WCairoEnd(cr);
 		}
@@ -871,7 +871,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
 					 false, _("Yellow"), strlen(_("Yellow")));
 			WCairoEnd(cr);
 		}
@@ -910,7 +910,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	if (pixmap) {
 		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
 					 false, _("Black"), strlen(_("Black")));
 			WCairoEnd(cr);
 		}
@@ -2996,7 +2996,7 @@ static void hsbUpdateBrightnessGradient(W_ColorPanel * panel)
 	if (sliderPxmp) {
 		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft, scr->white,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scr->white,
 					 false, _("Brightness"), strlen(_("Brightness")));
 			WCairoEnd(cr);
 		}
@@ -3034,7 +3034,7 @@ static void hsbUpdateSaturationGradient(W_ColorPanel * panel)
 	if (sliderPxmp) {
 		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft,
 					 from.hsv.value < 128 ? scr->white : scr->black, false,
 					 _("Saturation"), strlen(_("Saturation")));
 			WCairoEnd(cr);
@@ -3074,7 +3074,7 @@ static void hsbUpdateHueGradient(W_ColorPanel * panel)
 	if (sliderPxmp) {
 		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
 		if (cr) {
-			W_PaintTextCairo(cr, panel->font12, 2, 0, 100, WALeft,
+			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft,
 					 hsvcolor.value < 128 ? scr->white : scr->black, false,
 					 _("Hue"), strlen(_("Hue")));
 			WCairoEnd(cr);
@@ -3605,7 +3605,7 @@ static void colorListPaintItem(WMList * lPtr, int index, xcb_drawable_t d, char 
 	cairo_rectangle(cr, x, y, 15, height);
 	cairo_fill(cr);
 
-	WMDrawStringCairo(cr, scr->black, panel->font12, x + 18, y, text, strlen(text));
+	W_DrawString(cr, scr->black, panel->font12, x + 18, y, text, strlen(text));
 	WCairoEnd(cr);
 }
 

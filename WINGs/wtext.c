@@ -741,7 +741,7 @@ static void paintText(Text * tPtr)
 			len = tb->sections[s].end - tb->sections[s].begin;
 			text = &(tb->text[tb->sections[s].begin]);
 			y = tb->sections[s].y - tPtr->vpos;
-			WMDrawStringCairo(cr, color, font, tb->sections[s].x - tPtr->hpos, y, text, len);
+			W_DrawString(cr, color, font, tb->sections[s].x - tPtr->hpos, y, text, len);
 
 			if (!tPtr->flags.monoFont && tb->underlined) {
 				hLine(cr, color,
@@ -831,7 +831,7 @@ static void paintText(Text * tPtr)
 			0, 0, tPtr->visible.w, tPtr->visible.h,
 			tPtr->visible.x, tPtr->visible.y);
 
-	W_DrawReliefCairo(cr, scr, 0, 0, tPtr->view->size.width, tPtr->view->size.height, tPtr->flags.relief);
+	W_DrawRelief(cr, scr, 0, 0, tPtr->view->size.width, tPtr->view->size.height, tPtr->flags.relief);
 
 	if (tPtr->ruler && tPtr->flags.rulerShown) {
 		cairo_set_line_width(cr, 1.0);

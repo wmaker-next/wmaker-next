@@ -234,13 +234,13 @@ static void paintColorWell(ColorWell * cPtr)
 	cr = WCairoBeginForDrawable(scr, cPtr->view->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scr, 0, 0, cPtr->view->size.width, cPtr->view->size.height, WRRaised);
+	W_DrawRelief(cr, scr, 0, 0, cPtr->view->size.width, cPtr->view->size.height, WRRaised);
 	WCairoEnd(cr);
 
 	cr = WCairoBeginForDrawable(scr, cPtr->colorView->window);
 	if (!cr)
 		return;
-	W_DrawReliefCairo(cr, scr, 0, 0,
+	W_DrawRelief(cr, scr, 0, 0,
 			  cPtr->colorView->size.width, cPtr->colorView->size.height, WRSunken);
 	WCairoEnd(cr);
 

@@ -715,12 +715,12 @@ static void paintTabView(TabView * tPtr)
 		break;
 
 	case WTNoTabsBevelBorder:
-		W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
+		W_DrawRelief(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
 				  W_VIEW(tPtr)->size.height, WRRaised);
 		break;
 
 	case WTNoTabsLineBorder:
-		W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
+		W_DrawRelief(cr, scr, 0, 0, W_VIEW(tPtr)->size.width,
 				  W_VIEW(tPtr)->size.height, WRSimple);
 		break;
 
@@ -789,7 +789,7 @@ static void W_DrawLabel(WMTabViewItem *item, cairo_t *cr, WMRect rect, bool enab
 	if (!item->label)
 		return;
 
-	WMDrawStringCairo(cr, enabled ? scr->black : scr->darkGray,
+	W_DrawString(cr, enabled ? scr->black : scr->darkGray,
 			  item->tabView->font, rect.pos.x, rect.pos.y,
 			  item->label, strlen(item->label));
 }

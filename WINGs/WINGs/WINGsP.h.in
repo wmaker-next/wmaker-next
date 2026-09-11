@@ -606,7 +606,7 @@ typedef struct W_Font {
 /* WMDrawString onto a caller-owned cairo_t so a paint pass that
  * already has one open (segment overlay + text, WINGs widget interior
  * + label) folds the pango_cairo_show_layout into the same context */
-void WMDrawStringCairo(cairo_t *cr, WMColor *color, WMFont *font,
+void W_DrawString(cairo_t *cr, WMColor *color, WMFont *font,
                        int x, int y, const char *text, int length);
 
 void W_ShowLayout(cairo_t *cr, WMFont *font, PangoLayout *layout,
@@ -749,7 +749,7 @@ int W_XkbLookupString(void *xkb_state, void *compose_state,
 /* draw the same bevel onto a live cairo_t so a caller that already
  * has one open (WOSDView, wframe.c after it sets a clip) folds the
  * relief into its own paint pass */
-void W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
+void W_DrawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
                        unsigned int width, unsigned int height,
                        WMReliefType relief);
 
@@ -764,7 +764,7 @@ void W_PaintTextAndImageMarkup(W_View *view, int wrap, WMColor *textColor,
                                WMImagePosition position, WMColor *backColor,
                                int ofs, PangoLayout *markupLayout);
 
-void W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
+void W_PaintText(cairo_t *cr, WMFont *font, int x, int y,
                       int width, WMAlignment alignment, WMColor *color,
                       int wrap, const char *text, int length);
 

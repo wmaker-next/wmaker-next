@@ -317,10 +317,10 @@ static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 	WCairoSetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
-	W_DrawReliefCairo(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
+	W_DrawRelief(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
 
 	if (caption && caption[0]) {
-		W_PaintTextCairo(cr, scr->normalFont, 6,
+		W_PaintText(cr, scr->normalFont, 6,
 				 (bPtr->view->size.height - WMFontHeight(scr->normalFont)) / 2,
 				 bPtr->view->size.width - 20, WALeft,
 				 bPtr->flags.enabled ? scr->black : scr->darkGray,
@@ -386,12 +386,12 @@ static void paintMenuEntry(MultiSelectPopUpButton *bPtr, int index, int highligh
 
 	title = WMGetMultiSelectPopUpButtonItem(bPtr, index);
 
-	W_DrawReliefCairo(cr, scr, 0, index * itemHeight, width, itemHeight, WRRaised);
+	W_DrawRelief(cr, scr, 0, index * itemHeight, width, itemHeight, WRRaised);
 
 	if (WMGetMenuItemState(WMGetFromArray(bPtr->items, index)))
 		paintCheckmark(cr, index * itemHeight, itemHeight);
 
-	W_PaintTextCairo(cr, scr->normalFont, CHECK_INDENT,
+	W_PaintText(cr, scr->normalFont, CHECK_INDENT,
 			 index * itemHeight + yo, width, WALeft, scr->black,
 			 false, title, strlen(title));
 
@@ -425,14 +425,14 @@ static xcb_pixmap_t makeMenuPixmap(MultiSelectPopUpButton *bPtr)
 	WM_ITERATE_ARRAY(bPtr->items, item, iter) {
 		text = WMGetMenuItemTitle(item);
 
-		W_DrawReliefCairo(cr, scr, 0, i * itemHeight, width, itemHeight, WRRaised);
+		W_DrawRelief(cr, scr, 0, i * itemHeight, width, itemHeight, WRRaised);
 
 		if (WMGetMenuItemState(item))
 			paintCheckmark(cr, i * itemHeight, itemHeight);
 
 		color = WMGetMenuItemEnabled(item) ? scr->black : scr->darkGray;
 
-		W_PaintTextCairo(cr, scr->normalFont, CHECK_INDENT,
+		W_PaintText(cr, scr->normalFont, CHECK_INDENT,
 				 i * itemHeight + yo, width, WALeft, color,
 				 false, text, strlen(text));
 

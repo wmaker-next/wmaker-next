@@ -20,7 +20,7 @@ static void hvLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 }
 
 void
-W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
+W_DrawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
 		  unsigned int width, unsigned int height, WMReliefType relief)
 {
 	WMColor *bgc, *wgc, *lgc, *dgc;
@@ -150,7 +150,7 @@ int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 	int h;
 	int fheight = WMFontHeight(font);
 
-	/* account lines exactly like W_PaintTextCairo does */
+	/* account lines exactly like W_PaintText does */
 	h = 0;
 	while (length > 0) {
 		count = fitText(ptr, font, width, wrap);
@@ -173,7 +173,7 @@ int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 }
 
 void
-W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
+W_PaintText(cairo_t *cr, WMFont *font, int x, int y,
 		 int width, WMAlignment alignment, WMColor *color, int wrap,
 		 const char *text, int length)
 {
@@ -194,7 +194,7 @@ W_PaintTextCairo(cairo_t *cr, WMFont *font, int x, int y,
 		else
 			line_x = x + (width - line_width) / 2;
 
-		WMDrawStringCairo(cr, color, font, line_x, y, ptr, count);
+		W_DrawString(cr, color, font, line_x, y, ptr, count);
 
 		if (ptr[count] != '\n')
 			y += fheight;
@@ -323,13 +323,13 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 			}
 		} else if (text != NULL) {
 			textHeight = W_GetTextHeight(font, text, w - 8, wrap);
-			W_PaintTextCairo(cr, font, x + ofs + 4, y + ofs + (h - textHeight) / 2,
+			W_PaintText(cr, font, x + ofs + 4, y + ofs + (h - textHeight) / 2,
 					 w - 8, alignment, textColor, wrap, text, strlen(text));
 		}
 	}
 
 	/* draw relief */
-	W_DrawReliefCairo(cr, screen, 0, 0, view->size.width, view->size.height, relief);
+	W_DrawRelief(cr, screen, 0, 0, view->size.width, view->size.height, relief);
 
 	WCairoEnd(cr);
 }

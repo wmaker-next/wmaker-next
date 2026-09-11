@@ -84,7 +84,7 @@ stringDraw(WMScreen * scr, xcb_drawable_t d, WMColor *back, WMColor *selBack,
 	cr = cellBegin(scr, d, back, selBack, rect, selected);
 	if (!cr)
 		return;
-	WMDrawStringCairo(cr, textColor, font, x, y, data, strlen(data));
+	W_DrawString(cr, textColor, font, x, y, data, strlen(data));
 	WCairoEnd(cr);
 }
 

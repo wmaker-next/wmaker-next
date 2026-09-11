@@ -314,10 +314,10 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 
 	for (i = -1; i < 2; i++)
 		for (j = -1; j < 2; j++)
-			WMDrawStringCairo(cr, scr->white, panel->normalfont,
+			W_DrawString(cr, scr->white, panel->normalfont,
 					  ofx + i, ofy + j, text, tlen);
 
-	WMDrawStringCairo(cr, scr->black, panel->normalfont, ofx, ofy, text, tlen);
+	W_DrawString(cr, scr->black, panel->normalfont, ofx, ofy, text, tlen);
 	WCairoEnd(cr);
 
 	WMReleasePixmap(pixmap);

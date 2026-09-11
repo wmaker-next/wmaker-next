@@ -1355,10 +1355,10 @@ static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 	line1 = v->label ? v->label : text;
 	line2 = v->label ? v->text : NULL;
 	fh = WMFontHeight(p->dropBold);
-	WMDrawStringCairo(cr, p->scr->black, p->dropBold,
+	W_DrawString(cr, p->scr->black, p->dropBold,
 			  tx, rect->pos.y + 2, line1, strlen(line1));
 	if (line2)
-		WMDrawStringCairo(cr, p->dropDim, p->dropNorm,
+		W_DrawString(cr, p->dropDim, p->dropNorm,
 				  tx, rect->pos.y + 2 + fh,
 				  line2, strlen(line2));
 	WCairoEnd(cr);
