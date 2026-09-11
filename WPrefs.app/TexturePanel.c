@@ -450,12 +450,12 @@ static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *t
 	y = rect->pos.y;
 
 	cr = WCairoBeginForDrawable(scr, d);
-	WCairoSetSourceColor(cr, (state & WLDSSelected) ? white : gray);
+	W_SetSourceColor(cr, (state & WLDSSelected) ? white : gray);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 
 	if (panel->gimage)
-		WCairoPaintArea(cr, scr, panel->gimage,
+		W_PaintArea(cr, scr, panel->gimage,
 				30, WMGetListNumberOfRows(lPtr) * height,
 				0, height * index, 30, height, x + 5, y);
 

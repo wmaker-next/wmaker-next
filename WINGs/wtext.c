@@ -624,7 +624,7 @@ static bool updateStartForCurrentTextBlock(Text * tPtr, int x, int y, int *dir, 
 
 static void hLine(cairo_t *cr, WMColor *c, int x1, int x2, int y)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y + 0.5);
 	cairo_stroke(cr);
@@ -652,11 +652,11 @@ static void paintText(Text * tPtr)
 		return;
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-	WCairoSetSourceColor(cr, tPtr->bgColor);
+	W_SetSourceColor(cr, tPtr->bgColor);
 	cairo_paint(cr);
 
 	if (tPtr->bgPixmap) {
-		WCairoPaintPixmap(cr, tPtr->bgPixmap,
+		W_PaintPixmap(cr, tPtr->bgPixmap,
 				  (tPtr->visible.w - tPtr->visible.x - tPtr->bgPixmap->width) / 2,
 				  (tPtr->visible.h - tPtr->visible.y - tPtr->bgPixmap->height) / 2);
 	}
@@ -732,7 +732,7 @@ static void paintText(Text * tPtr)
 			if (tPtr->flags.ownsSelection) {
 				if (sectionWasSelected(tPtr, tb, &rect, s)) {
 					tb->selected = true;
-					WCairoSetSourceColor(cr, scr->gray);
+					W_SetSourceColor(cr, scr->gray);
 					cairo_rectangle(cr, rect.x, rect.y, rect.width, rect.height);
 					cairo_fill(cr);
 				}
@@ -789,7 +789,7 @@ static void paintText(Text * tPtr)
 					h = WMWidgetHeight(tb->d.widget) + 1;
 
 				} else {
-					WCairoPaintPixmap(cr, tb->d.pixmap,
+					W_PaintPixmap(cr, tb->d.pixmap,
 							  tb->sections[0].x - tPtr->hpos,
 							  tb->sections[0].y - tPtr->vpos);
 					h = tb->d.pixmap->height + 1;
@@ -799,7 +799,7 @@ static void paintText(Text * tPtr)
 				if (tPtr->flags.ownsSelection) {
 					if (sectionWasSelected(tPtr, tb, &rect, 0)) {
 						tb->selected = true;
-						WCairoStippleFill(cr, scr, rect.x, rect.y,
+						W_StippleFill(cr, scr, rect.x, rect.y,
 								  rect.width, rect.height);
 					}
 				}
@@ -817,7 +817,7 @@ static void paintText(Text * tPtr)
  _copy_area:
 	if (tPtr->flags.editable && tPtr->flags.cursorShown && tPtr->cursor.x != -23 && tPtr->flags.focused) {
 		y = tPtr->cursor.y - tPtr->vpos;
-		WCairoSetSourceColor(cr, tPtr->fgColor);
+		W_SetSourceColor(cr, tPtr->fgColor);
 		cairo_move_to(cr, tPtr->cursor.x + 0.5, y + 0.5);
 		cairo_line_to(cr, tPtr->cursor.x + 0.5, y + tPtr->cursor.h + 0.5);
 		cairo_stroke(cr);
@@ -827,7 +827,7 @@ static void paintText(Text * tPtr)
 	cr = WCairoBeginForDrawable(scr, win);
 	if (!cr)
 		return;
-	WCairoPaintArea(cr, scr, tPtr->db, tPtr->visible.w, tPtr->visible.h,
+	W_PaintArea(cr, scr, tPtr->db, tPtr->visible.w, tPtr->visible.h,
 			0, 0, tPtr->visible.w, tPtr->visible.h,
 			tPtr->visible.x, tPtr->visible.y);
 

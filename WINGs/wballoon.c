@@ -290,7 +290,7 @@ static void showText(Balloon * bPtr, int x, int y, int w, int h, const char *tex
 		by = y - (height + SPACE);
 		ty = 0;
 	}
-	WCairoRenderBalloon(scr, width, height + SPACE,
+	W_RenderBalloon(scr, width, height + SPACE,
 			    0.5, ((side & BOTTOM) ? 0 : SPACE) + 0.5,
 			    width - 1, height - 1,
 			    ((side & BOTTOM) ? WCairoBalloonBottom : 0)

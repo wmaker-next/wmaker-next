@@ -1337,7 +1337,7 @@ static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 	back = (state & WLDSSelected) ? p->scr->white : p->scr->gray;
 
 	cr = WCairoBeginForDrawable(wscr, d);
-	WCairoSetSourceColor(cr, back);
+	W_SetSourceColor(cr, back);
 	cairo_rectangle(cr, rect->pos.x, rect->pos.y,
 			rect->size.width, rect->size.height);
 	cairo_fill(cr);
@@ -1347,7 +1347,7 @@ static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 	if (icon) {
 		isz = WMGetPixmapSize(icon);
 		iy = rect->pos.y + (p->dropItemH - isz.height) / 2;
-		WCairoPaintPixmap(cr, icon,
+		W_PaintPixmap(cr, icon,
 				  rect->pos.x + 2 +
 				  (p->dropIconSize - isz.width) / 2, iy);
 	}

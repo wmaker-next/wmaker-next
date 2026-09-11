@@ -215,15 +215,15 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 		cairo_t *cr = WCairoBeginForDrawable(scr, win);
 
 		cairo_set_line_width(cr, 1.0);
-		WCairoSetSourceColor(cr, scr->darkGray);
+		W_SetSourceColor(cr, scr->darkGray);
 		cairo_move_to(cr, w - 11 + 0.5, 6 + 0.5);
 		cairo_line_to(cr, w - 6 + 0.5, h / 2 - 1 + 0.5);
 		cairo_stroke(cr);
-		WCairoSetSourceColor(cr, scr->white);
+		W_SetSourceColor(cr, scr->white);
 		cairo_move_to(cr, w - 11 + 0.5, h - 8 + 0.5);
 		cairo_line_to(cr, w - 6 + 0.5, h / 2 - 1 + 0.5);
 		cairo_stroke(cr);
-		WCairoSetSourceColor(cr, scr->black);
+		W_SetSourceColor(cr, scr->black);
 		cairo_move_to(cr, w - 12 + 0.5, 6 + 0.5);
 		cairo_line_to(cr, w - 12 + 0.5, h - 8 + 0.5);
 		cairo_stroke(cr);

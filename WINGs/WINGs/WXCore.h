@@ -17,7 +17,7 @@
 #include <xcb/xcb.h>
 
 /* Colour value, the Xlib XColor 16-bit component convention (wXParseColor
- * and wXAllocColor fill it, WCairoSetSourceXColor consumes it). */
+ * and wXAllocColor fill it, W_SetSourceXColor consumes it). */
 typedef struct {
 	uint32_t pixel;		/* server pixel value */
 	uint16_t red, green, blue;

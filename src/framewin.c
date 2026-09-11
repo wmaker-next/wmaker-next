@@ -1507,7 +1507,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			cairo_set_line_width(cr, 1.0);
 			cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-			WCairoSetSourceXColor(cr, &texture->dim);
+			W_SetSourceXColor(cr, &texture->dim);
 			cairo_move_to(cr, 0.5, 0.5);
 			cairo_line_to(cr, w + 0.5, 0.5);
 			cairo_move_to(cr, cw + 0.5, 2.5);
@@ -1516,7 +1516,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			cairo_line_to(cr, w - cw - 1.5, h + 0.5);
 			cairo_stroke(cr);
 
-			WCairoSetSourceXColor(cr, &texture->light);
+			W_SetSourceXColor(cr, &texture->light);
 			cairo_move_to(cr, 0.5, 1.5);
 			cairo_line_to(cr, w + 0.5, 1.5);
 			cairo_move_to(cr, cw + 1.5, 2.5);
@@ -1529,7 +1529,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			cairo_move_to(cr, 0.5, 1.5);
 			cairo_line_to(cr, 0.5, h - 0.5);
 			cairo_stroke(cr);
-			WCairoSetSourceXColor(cr, &texture->dim);
+			W_SetSourceXColor(cr, &texture->dim);
 			cairo_move_to(cr, w - 0.5, 2.5);
 			cairo_line_to(cr, w - 0.5, h - 0.5);
 			cairo_move_to(cr, 1.5, h - 0.5);
@@ -1803,14 +1803,14 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 			cairo_fill(cr);
 			cairo_surface_destroy(back);
 		} else {
-			WCairoSetSourceXColor(cr, &seg_tex->solid.normal);
+			W_SetSourceXColor(cr, &seg_tex->solid.normal);
 			cairo_rectangle(cr, sx, 0, sw, th);
 			cairo_fill(cr);
 			/* restore the top/bottom relief lines the fill just
 			 * overpainted, interior side edges are the separator
 			 * lines drawn below, the outermost segments redraw
 			 * the titlebar's own left/right bevel */
-			WCairoSetSourceXColor(cr, &seg_tex->solid.light);
+			W_SetSourceXColor(cr, &seg_tex->solid.light);
 			cairo_move_to(cr, sx + 0.5, 0.5);
 			cairo_line_to(cr, sx + sw - 0.5, 0.5);
 			if (sx == 0) {
@@ -1818,7 +1818,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 				cairo_line_to(cr, 0.5, th - 1.5);
 			}
 			cairo_stroke(cr);
-			WCairoSetSourceXColor(cr, &seg_tex->solid.dim);
+			W_SetSourceXColor(cr, &seg_tex->solid.dim);
 			cairo_move_to(cr, sx + 0.5, th - 1.5);
 			cairo_line_to(cr, sx + sw - 0.5, th - 1.5);
 			if (sx + sw >= (int)fwin->titlebar->width) {
@@ -1826,7 +1826,7 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 				cairo_line_to(cr, sx + sw - 1.5, th - 1.5);
 			}
 			cairo_stroke(cr);
-			WCairoSetSourceXColor(cr, &seg_tex->solid.dark);
+			W_SetSourceXColor(cr, &seg_tex->solid.dark);
 			cairo_move_to(cr, sx + 0.5, th - 0.5);
 			cairo_line_to(cr, sx + sw - 0.5, th - 0.5);
 			if (sx + sw >= (int)fwin->titlebar->width) {
@@ -1870,11 +1870,11 @@ static int paintTabSegments(WFrameWindow *fwin, int state, int lofs, int rofs, i
 	 * reads on both gradient and solid backgrounds */
 	for (i = 1; i < n; i++) {
 		sx = fwin->tab_seg_x[i];
-		WCairoSetSourceColor(cr, scr->darkGray);
+		W_SetSourceColor(cr, scr->darkGray);
 		cairo_move_to(cr, sx - 0.5, 1.5);
 		cairo_line_to(cr, sx - 0.5, th - 1.5);
 		cairo_stroke(cr);
-		WCairoSetSourceColor(cr, scr->gray);
+		W_SetSourceColor(cr, scr->gray);
 		cairo_move_to(cr, sx + 0.5, 1.5);
 		cairo_line_to(cr, sx + 0.5, th - 1.5);
 		cairo_stroke(cr);
@@ -2053,7 +2053,7 @@ static void paintLanguageHalf(cairo_t *cr, RContext *rc, int x, int kw, int kh,
 		cairo_fill(cr);
 		cairo_surface_destroy(bs);
 	} else {
-		WCairoSetSourceXColor(cr, fill);
+		W_SetSourceXColor(cr, fill);
 		cairo_rectangle(cr, x, 0, kw, kh);
 		cairo_fill(cr);
 	}
@@ -2294,11 +2294,11 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 
 		if (stencil) {
 			if (!TS_NEW_GEOM(w_global.config->new_style))
-				WCairoSetSourceColor(cr, scr->darkGray);
+				W_SetSourceColor(cr, scr->darkGray);
 			else if (pushed)
 				cairo_set_source_rgb(cr, 0, 0, 0);
 			else
-				WCairoSetSourceColor(cr, color);
+				W_SetSourceColor(cr, color);
 		} else {
 			isurf = cairo_xcb_surface_create(rc->xc,
 					(xcb_drawable_t)image->image, rc->xvisual,

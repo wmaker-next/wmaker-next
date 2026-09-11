@@ -319,7 +319,7 @@ static void fillArrow(cairo_t *cr, WMColor *color,
 		      double x0, double y0, double x1, double y1,
 		      double x2, double y2)
 {
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	cairo_move_to(cr, x0, y0);
 	cairo_line_to(cr, x1, y1);
 	cairo_line_to(cr, x2, y2);

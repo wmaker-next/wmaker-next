@@ -314,7 +314,7 @@ static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 		wfree(caption);
 		return;
 	}
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	W_DrawRelief(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
@@ -328,7 +328,7 @@ static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr)
 	}
 
 	ind = scr->popUpIndicator;
-	WCairoPaintPixmap(cr, ind,
+	W_PaintPixmap(cr, ind,
 			 bPtr->view->size.width - ind->width - 4,
 			 (bPtr->view->size.height - ind->height) / 2);
 
@@ -378,9 +378,9 @@ static void paintMenuEntry(MultiSelectPopUpButton *bPtr, int index, int highligh
 	 * selection box. Both repaint the checkmark and text from the current
 	 * item state, since the selection can change while the menu stays open */
 	if (highlight)
-		WCairoSetSourceColor(cr, scr->white);
+		W_SetSourceColor(cr, scr->white);
 	else
-		WCairoSetSourceColor(cr, scr->gray);
+		W_SetSourceColor(cr, scr->gray);
 	cairo_rectangle(cr, 1, index * itemHeight + 1, width - 3, itemHeight - 3);
 	cairo_fill(cr);
 
@@ -418,7 +418,7 @@ static xcb_pixmap_t makeMenuPixmap(MultiSelectPopUpButton *bPtr)
 	pixmap = W_CreateScaledPixmap(scr, width, height);
 
 	cr = WCairoBeginForDrawable(scr, pixmap);
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	i = 0;

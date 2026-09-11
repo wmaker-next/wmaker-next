@@ -794,7 +794,7 @@ static void paintCursor(TextField * tPtr)
 
 static void reliefLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -803,7 +803,7 @@ static void reliefLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 static void drawRelief(cairo_t *cr, W_Screen *scr, int width, int height, bool beveled)
 {
 	if (!beveled) {
-		WCairoSetSourceColor(cr, scr->darkGray);
+		W_SetSourceColor(cr, scr->darkGray);
 		cairo_rectangle(cr, 0.5, 0.5, width - 1, height - 1);
 		cairo_stroke(cr);
 		return;
@@ -853,7 +853,7 @@ static void paintTextField(TextField * tPtr)
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	WCairoSetSourceColor(cr, screen->white);
+	W_SetSourceColor(cr, screen->white);
 	cairo_paint(cr);
 
 	if (tPtr->textLen > 0) {
@@ -897,7 +897,7 @@ static void paintTextField(TextField * tPtr)
 			rx = tx + WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]),
 			                          count - tPtr->viewPosition);
 
-			WCairoSetSourceColor(cr, screen->gray);
+			W_SetSourceColor(cr, screen->gray);
 			cairo_rectangle(cr, rx, ty,
 					WMWidthOfString(tPtr->font, &(text[count]), count2),
 					WMFontHeight(tPtr->font));

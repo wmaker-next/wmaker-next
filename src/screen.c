@@ -350,11 +350,11 @@ static int get_dot_mult(void)
  * the mask half is a plain rectangle so only these six cells show */
 static void draw_dot(cairo_t *cr, WScreen *scr, int x, int y, int m)
 {
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_rectangle(cr, x, y, 2 * m, m);
 	cairo_rectangle(cr, x, y + m, m, m);
 	cairo_fill(cr);
-	WCairoSetSourceColor(cr, scr->white);
+	W_SetSourceColor(cr, scr->white);
 	cairo_rectangle(cr, x + 2 * m, y, m, m);
 	cairo_rectangle(cr, x + m, y + m, 2 * m, m);
 	cairo_fill(cr);
@@ -378,7 +378,7 @@ static WPixmap *make3Dots(WScreen *scr)
 	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
 					rc->xvisual, isize, isize);
 	cr = cairo_create(surf);
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_paint(cr);
 	for (i = 0; i < 3; i++)
 		draw_dot(cr, scr, (4 + 5 * i) * m, dy, m);

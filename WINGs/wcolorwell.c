@@ -315,9 +315,9 @@ static WMPixmap *makeDragPixmap(WMColorWell * cPtr)
 	d = (int)(16 * scr->uiScale + 0.5);
 
 	cr = WCairoBeginForDrawable(scr, pix);
-	WCairoSetSourceColor(cr, cPtr->color);
+	W_SetSourceColor(cr, cPtr->color);
 	cairo_paint(cr);
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_set_line_width(cr, 1.0);
 	cairo_rectangle(cr, 0.5, 0.5, 15, 15);
 	cairo_stroke(cr);

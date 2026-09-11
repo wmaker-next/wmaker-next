@@ -242,7 +242,7 @@ static void drawTitleOfColumn(WMBrowser * bPtr, int column)
 	cr = WCairoBeginForDrawable(scr, bPtr->view->window);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, scr->darkGray);
+	W_SetSourceColor(cr, scr->darkGray);
 	cairo_rectangle(cr, x, 0, bPtr->columnSize.width, bPtr->titleHeight);
 	cairo_fill(cr);
 	W_DrawRelief(cr, scr, x, 0, bPtr->columnSize.width, bPtr->titleHeight, WRSunken);
@@ -502,7 +502,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 	cr = WCairoBeginForDrawable(scr, d);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, backColor);
+	W_SetSourceColor(cr, backColor);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 
@@ -525,15 +525,15 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 		lineColor = ((state & WLDSSelected) ? scr->gray : scr->white);
 		cairo_set_line_width(cr, 1.0);
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-		WCairoSetSourceColor(cr, scr->darkGray);
+		W_SetSourceColor(cr, scr->darkGray);
 		cairo_move_to(cr, x + width - 10.5, y + 3.5);
 		cairo_line_to(cr, x + width - 5.5, y + height / 2 + 0.5);
 		cairo_stroke(cr);
-		WCairoSetSourceColor(cr, lineColor);
+		W_SetSourceColor(cr, lineColor);
 		cairo_move_to(cr, x + width - 10.5, y + height - 4.5);
 		cairo_line_to(cr, x + width - 5.5, y + height / 2 + 0.5);
 		cairo_stroke(cr);
-		WCairoSetSourceColor(cr, scr->black);
+		W_SetSourceColor(cr, scr->black);
 		cairo_move_to(cr, x + width - 11.5, y + 3.5);
 		cairo_line_to(cr, x + width - 11.5, y + height - 4.5);
 		cairo_stroke(cr);

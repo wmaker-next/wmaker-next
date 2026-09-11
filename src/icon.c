@@ -265,17 +265,17 @@ static void drawIconTitleBackground(WScreen *scr, xcb_pixmap_t pixmap, int heigh
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	WCairoSetSourceXColor(cr, &tex->normal);
+	W_SetSourceXColor(cr, &tex->normal);
 	cairo_rectangle(cr, 0, 0, isz, height + 1);
 	cairo_fill(cr);
 
-	WCairoSetSourceXColor(cr, &tex->light);
+	W_SetSourceXColor(cr, &tex->light);
 	cairo_move_to(cr, 0.5, height + 1.5);
 	cairo_line_to(cr, 0.5, 0.5);
 	cairo_line_to(cr, isz + 0.5, 0.5);
 	cairo_stroke(cr);
 
-	WCairoSetSourceXColor(cr, &tex->dim);
+	W_SetSourceXColor(cr, &tex->dim);
 	cairo_move_to(cr, isz - 0.5, 0.5);
 	cairo_line_to(cr, isz - 0.5, height + 1.5);
 	cairo_stroke(cr);

@@ -420,7 +420,7 @@ static void paintSplitView(WMSplitView * sPtr)
 		else
 			y += p->size;
 
-		WCairoPaintPixmap(cr, dimple, x, y);
+		W_PaintPixmap(cr, dimple, x, y);
 
 		if (sPtr->flags.vertical)
 			x += DIVIDER_THICKNESS;

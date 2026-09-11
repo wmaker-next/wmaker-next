@@ -260,6 +260,6 @@ void WMDrawPixmap(WMPixmap * pixmap, xcb_drawable_t d, int x, int y)
 	cr = WCairoBeginForDrawable(pixmap->screen, d);
 	if (!cr)
 		return;
-	WCairoPaintPixmap(cr, pixmap, x, y);
+	W_PaintPixmap(cr, pixmap, x, y);
 	WCairoEnd(cr);
 }

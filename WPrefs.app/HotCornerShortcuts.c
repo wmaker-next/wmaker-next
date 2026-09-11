@@ -360,7 +360,7 @@ static void createPanel(Panel * p)
 
 		panel->quarter[0] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[0], qw - 4, qh - 4);
-		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+		W_CopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       1, 1, qw - 3, qh - 3, panel->quarter[0], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[0], WMGetPixmapMaskXID(panel->icon),
 						   qw - 4, qh - 4, WMScreenDepth(scr));
@@ -381,7 +381,7 @@ static void createPanel(Panel * p)
 
 		panel->quarter[1] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[1], qw - 4, qh - 4);
-		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+		W_CopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       qw + 3, 1, qw - 1, qh - 1, panel->quarter[1], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[1], WMGetPixmapMaskXID(panel->icon),
 						   qw - 4, qh - 4, WMScreenDepth(scr));
@@ -402,7 +402,7 @@ static void createPanel(Panel * p)
 
 		panel->quarter[2] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[2], qw - 4, qh - 4);
-		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+		W_CopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       1, qh + 3, qw - 1, qh - 1, panel->quarter[2], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[2], WMGetPixmapMaskXID(panel->icon),
 						   qw - 4, qh - 4, WMScreenDepth(scr));
@@ -422,7 +422,7 @@ static void createPanel(Panel * p)
 
 		panel->quarter[3] = wXCreatePixmap(scr->display, WMWidgetXID(panel->parent), qw - 4, qh - 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, panel->quarter[3], qw - 4, qh - 4);
-		WCairoCopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
+		W_CopyArea(scr, WMGetPixmapXID(panel->icon), panel->icon->width, panel->icon->height,
 			       qw + 3, qh + 3, qw - 1, qh - 1, panel->quarter[3], 0, 0);
 		nicon = WMCreatePixmapFromXPixmaps(scr, panel->quarter[3], WMGetPixmapMaskXID(panel->icon),
 						   qw - 4, qh - 4, WMScreenDepth(scr));

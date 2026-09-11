@@ -13,7 +13,7 @@
  * both axes lands a width-1 stroke on exactly the same pixels. */
 static void hvLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -31,7 +31,7 @@ W_DrawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
 
 	switch (relief) {
 	case WRSimple:
-		WCairoSetSourceColor(cr, scr->black);
+		W_SetSourceColor(cr, scr->black);
 		cairo_rectangle(cr, x + 0.5, y + 0.5, width - 1, height - 1);
 		cairo_stroke(cr);
 		cairo_restore(cr);
@@ -229,7 +229,7 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 	if (!cr)
 		return;
 
-	WCairoPaintViewBackground(cr, view, backColor);
+	W_PaintViewBackground(cr, view, backColor);
 
 	if (relief == WRFlat) {
 		x = 0;
@@ -285,13 +285,13 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 		ix += ofs;
 		iy += ofs;
 
-		WCairoPaintPixmap(cr, image, ix, iy);
+		W_PaintPixmap(cr, image, ix, iy);
 	}
 
 	/* draw text */
 	if (position != WIPImageOnly) {
 		if (markupLayout) {
-			WCairoSetSourceColor(cr, textColor);
+			W_SetSourceColor(cr, textColor);
 			if (wrap) {
 				PangoAlignment pa;
 

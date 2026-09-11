@@ -151,14 +151,14 @@ static void paintRuler(Ruler * rPtr)
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	W_DrawString(cr, rPtr->fg, rPtr->font,
 			  rPtr->margins.left + 2, 26, _("0   inches"), 10);
 
 	/* marker ticks */
-	WCairoSetSourceColor(cr, rPtr->fg);
+	W_SetSourceColor(cr, rPtr->fg);
 	i = j = m = 0;
 	w = rPtr->view->size.width - rPtr->margins.left;
 	while (m < w) {
@@ -169,7 +169,7 @@ static void paintRuler(Ruler * rPtr)
 			snprintf(c, sizeof(c), "%hu", ++j);
 			W_DrawString(cr, rPtr->fg, rPtr->font,
 					  rPtr->margins.left + 2 + m, 26, c, 2);
-			WCairoSetSourceColor(cr, rPtr->fg);
+			W_SetSourceColor(cr, rPtr->fg);
 		}
 		m = (++i) * 10;
 	}
@@ -299,7 +299,7 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 				cr = WCairoBeginForDrawable(rPtr->pview->screen,
 							    rPtr->pview->window);
 				if (cr) {
-					WCairoSetSourceColor(cr, rPtr->pview->screen->darkGray);
+					W_SetSourceColor(cr, rPtr->pview->screen->darkGray);
 					cairo_set_line_width(cr, 1.0);
 					cairo_move_to(cr, rPtr->motion + 1.5, 40);
 					cairo_line_to(cr, rPtr->motion + 1.5,

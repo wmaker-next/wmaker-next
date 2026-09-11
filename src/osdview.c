@@ -290,7 +290,7 @@ static void paint(WOSDView *osd)
 	if (osd->transparent)
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 	else
-		WCairoSetSourceColor(cr, osd->bgColor);
+		W_SetSourceColor(cr, osd->bgColor);
 	cairo_paint(cr);
 	cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
@@ -300,7 +300,7 @@ static void paint(WOSDView *osd)
 		 * cheap same-string set */
 		pango_layout_set_text(osd->font->layout, osd->text, -1);
 		pango_cairo_update_layout(cr, osd->font->layout);
-		WCairoSetSourceColor(cr, osd->color);
+		W_SetSourceColor(cr, osd->color);
 		cairo_move_to(cr,
 			      (w - osd->text_size.width) / 2,
 			      (h - osd->text_size.height) / 2);

@@ -152,7 +152,7 @@ static void didResizeProgressIndicator(W_ViewDelegate * self, WMView * view)
 
 static void hLine(cairo_t *cr, WMColor *c, double x1, double y, double x2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y + 0.5);
 	cairo_stroke(cr);
@@ -160,7 +160,7 @@ static void hLine(cairo_t *cr, WMColor *c, double x1, double y, double x2)
 
 static void vLine(cairo_t *cr, WMColor *c, double x, double y1, double y2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -182,7 +182,7 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	/* Calculate size of Progress to draw and paint ticks */
@@ -195,7 +195,7 @@ static void paintProgressIndicator(ProgressIndicator * pPtr)
 		w = size.width - 3;
 
 	if (w > 0) {
-		WCairoStippleFill(cr, scr, 2, 1, w, h);
+		W_StippleFill(cr, scr, 2, 1, w, h);
 
 		/* Draw Progress Marks */
 		i = (5.0 * unit);

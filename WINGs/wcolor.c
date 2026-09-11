@@ -180,7 +180,7 @@ void WMPaintColorSwatch(WMColor * color, xcb_drawable_t d, int x, int y, unsigne
 	cr = WCairoBeginForDrawable(color->screen, d);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 	WCairoEnd(cr);

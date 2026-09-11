@@ -343,7 +343,7 @@ static void paintPopUpButton(PopUpButton * bPtr)
 	cr = WCairoBeginBuffered(scr, bPtr->view->window);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	W_DrawRelief(cr, scr, 0, 0, bPtr->view->size.width, bPtr->view->size.height, WRRaised);
@@ -357,7 +357,7 @@ static void paintPopUpButton(PopUpButton * bPtr)
 	}
 
 	ind = bPtr->flags.pullsDown ? scr->pullDownIndicator : scr->popUpIndicator;
-	WCairoPaintPixmap(cr, ind,
+	W_PaintPixmap(cr, ind,
 			  bPtr->view->size.width - ind->width - 4,
 			  (bPtr->view->size.height - ind->height) / 2);
 
@@ -407,7 +407,7 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 	cr = WCairoBeginForDrawable(scr, bPtr->menuView->window);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, scr->white);
+	W_SetSourceColor(cr, scr->white);
 	cairo_rectangle(cr, 1, index * itemHeight + 1, width - 3, itemHeight - 3);
 	cairo_fill(cr);
 
@@ -420,7 +420,7 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 			 false, title, strlen(title));
 
 	if (!bPtr->flags.pullsDown && index == bPtr->selectedItemIndex)
-		WCairoPaintPixmap(cr, scr->popUpIndicator,
+		W_PaintPixmap(cr, scr->popUpIndicator,
 				  width - scr->popUpIndicator->width - 4,
 				  index * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
 	WCairoEnd(cr);
@@ -446,7 +446,7 @@ static xcb_pixmap_t makeMenuPixmap(PopUpButton * bPtr)
 	pixmap = W_CreateScaledPixmap(scr, width, height);
 
 	cr = WCairoBeginForDrawable(scr, pixmap);
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	i = 0;
@@ -462,7 +462,7 @@ static xcb_pixmap_t makeMenuPixmap(PopUpButton * bPtr)
 				 false, text, strlen(text));
 
 		if (!bPtr->flags.pullsDown && i == bPtr->selectedItemIndex)
-			WCairoPaintPixmap(cr, scr->popUpIndicator,
+			W_PaintPixmap(cr, scr->popUpIndicator,
 					  width - scr->popUpIndicator->width - 4,
 					  i * itemHeight + (itemHeight - scr->popUpIndicator->height) / 2);
 

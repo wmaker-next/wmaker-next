@@ -1105,7 +1105,7 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	 * wheelframe MUST be mapped.
 	 * Created at logical*uiScale device pixels so the hard-edged
 	 * marker stays crisp when it lands on a scaled W_View, the
-	 * scaled bit lets WCairoPaintArea() identity-blit it. */
+	 * scaled bit lets W_PaintArea() identity-blit it. */
 	panel->selectionImg = W_CreateScaledPixmap(scrPtr, 4, 4);
 	cr = WCairoBeginForDrawable(scrPtr, panel->selectionImg);
 	if (cr) {
@@ -2326,7 +2326,7 @@ static void wheelRender(W_ColorPanel * panel)
 	/* Check if backimage exists. If it doesn't, allocate and fill it */
 	if (!panel->selectionBackImg) {
 		panel->selectionBackImg = W_CreateScaledPixmap(scr, 4, 4);
-		WCairoCopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+		W_CopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
 			 panel->colx - 2, panel->coly - 2, 4, 4,
 			 panel->selectionBackImg, 0, 0);
 		/* -2 is hot spot correction */
@@ -2343,12 +2343,12 @@ static void wheelPaint(W_ColorPanel * panel)
 {
 	W_Screen *scr = WMWidgetScreen(panel->win);
 
-	WCairoCopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+	W_CopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
 		 0, 0, colorWheelSize + 4, colorWheelSize + 4,
 		 panel->wheelView->window, 0, 0);
 
 	/* Draw selection image */
-	WCairoCopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
 		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 }
 
@@ -2459,11 +2459,11 @@ static void wheelUpdateSelection(W_ColorPanel * panel)
 	panel->lastChanged = WMWheelModeColorPanel;
 
 	/* Redraw color selector (and make a backup of the part it will cover) */
-	WCairoCopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
+	W_CopyArea(scr, panel->wheelImg, colorWheelSize + 4, colorWheelSize + 4,
 		 panel->colx - 2, panel->coly - 2, 4, 4,
 		 panel->selectionBackImg, 0, 0);
 	/* "-2" is correction for hotspot location */
-	WCairoCopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
 		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 	/* see above */
 }
@@ -2472,7 +2472,7 @@ static void wheelUndrawSelection(W_ColorPanel * panel)
 {
 	W_Screen *scr = WMWidgetScreen(panel->win);
 
-	WCairoCopyArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
 		 panel->wheelView->window, panel->colx - 2, panel->coly - 2);
 	/* see above */
 }
@@ -3151,7 +3151,7 @@ static void customSetPalette(W_ColorPanel * panel)
 				       customPaletteWidth, customPaletteHeight);
 	RReleaseImage(scaledImg);
 
-	WCairoCopyArea(scr, image, customPaletteWidth, customPaletteHeight,
+	W_CopyArea(scr, image, customPaletteWidth, customPaletteHeight,
 		 0, 0, customPaletteWidth, customPaletteHeight,
 		 panel->customPaletteContentView->window, 0, 0);
 
@@ -3159,10 +3159,10 @@ static void customSetPalette(W_ColorPanel * panel)
 	if (!panel->selectionBackImg)
 		panel->selectionBackImg = W_CreateScaledPixmap(scr, 4, 4);
 
-	WCairoCopyArea(scr, image, customPaletteWidth, customPaletteHeight,
+	W_CopyArea(scr, image, customPaletteWidth, customPaletteHeight,
 		 panel->palx - 2, panel->paly - 2, 4, 4,
 		 panel->selectionBackImg, 0, 0);
-	WCairoCopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
 		 panel->customPaletteContentView->window,
 		 panel->palx - 2, panel->paly - 2);
 	WMScreenAbandonDrawable(scr, image);
@@ -3178,7 +3178,7 @@ static void customPalettePositionSelection(W_ColorPanel * panel, int x, int y)
 	unsigned long ofs;
 
 	/* undraw selection */
-	WCairoCopyArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionBackImg, 4, 4, 0, 0, 4, 4,
 		 panel->customPaletteContentView->window,
 		 panel->palx - 2, panel->paly - 2);
 
@@ -3196,11 +3196,11 @@ static void customPalettePositionSelection(W_ColorPanel * panel, int x, int y)
 	panel->lastChanged = WMCustomPaletteModeColorPanel;
 
 	/* Redraw color selector (and make a backup of the part it will cover) */
-	WCairoCopyArea(scr, panel->customPaletteContentView->window,
+	W_CopyArea(scr, panel->customPaletteContentView->window,
 		 customPaletteWidth, customPaletteHeight,
 		 panel->palx - 2, panel->paly - 2, 4, 4,
 		 panel->selectionBackImg, 0, 0);	/* "-2" is correction for hotspot location */
-	WCairoCopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
+	W_CopyArea(scr, panel->selectionImg, 4, 4, 0, 0, 4, 4,
 		 panel->customPaletteContentView->window,
 		 panel->palx - 2, panel->paly - 2);	/* see above */
 }
@@ -3596,7 +3596,7 @@ static void colorListPaintItem(WMList * lPtr, int index, xcb_drawable_t d, char 
 	if (!cr)
 		return;
 
-	WCairoSetSourceColor(cr, (state & WLDSSelected) ? scr->white : view->backColor);
+	W_SetSourceColor(cr, (state & WLDSSelected) ? scr->white : view->backColor);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 

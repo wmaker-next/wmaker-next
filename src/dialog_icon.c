@@ -285,11 +285,11 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	}
 
 	cr = WCairoBeginForDrawable(wmscr, d);
-	WCairoSetSourceColor(cr, back);
+	W_SetSourceColor(cr, back);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 
-	WCairoSetSourceColor(cr, scr->white);
+	W_SetSourceColor(cr, scr->white);
 	cairo_rectangle(cr, x, y + height - 1, width, 1);
 	cairo_fill(cr);
 
@@ -303,7 +303,7 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 			size.width > 100 ? 100 : size.width,
 			size.height > 64 ? 64 : size.height);
 	cairo_clip(cr);
-	WCairoPaintPixmap(cr, pixmap, x + (width - size.width) / 2, y + 2);
+	W_PaintPixmap(cr, pixmap, x + (width - size.width) / 2, y + 2);
 	cairo_restore(cr);
 
 	fheight = WMFontHeight(panel->normalfont);

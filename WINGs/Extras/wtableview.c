@@ -832,7 +832,7 @@ static void drawGrid(WMTableView * table, WMRect rect)
 	cr = WCairoBeginForDrawable(scr, d);
 	if (!cr)
 		return;
-	WCairoSetSourceColor(cr, table->gridColor);
+	W_SetSourceColor(cr, table->gridColor);
 
 	y1 = 0;
 	y2 = W_VIEW_HEIGHT(table->tableView);

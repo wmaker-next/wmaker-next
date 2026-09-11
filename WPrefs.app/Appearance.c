@@ -781,7 +781,7 @@ static xcb_pixmap_t renderMenu(_Panel * panel, WMPropList * texture, int width, 
 		pix = wXCreatePixmap(dpy, tmp, width, iheight * 4, WMScreenDepth(scr));
 		WMScreenNoteDrawableSize(scr, pix, width, iheight * 4);
 		for (i = 0; i < 4; i++)
-			WCairoCopyArea(scr, tmp, width, iheight,
+			W_CopyArea(scr, tmp, width, iheight,
 				       0, 0, width, iheight, pix, 0, iheight * i);
 		wXFreePixmap(dpy, tmp);
 		break;
@@ -816,8 +816,8 @@ static void renderPreview(_Panel *panel, int part, int relief)
 
 	pix = renderTexture(scr, titem->prop, w, h, NULL, relief);
 
-	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
-	WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
+	W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
+	W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
 	wXFreePixmap(WMScreenDisplay(scr), pix);
 }
@@ -854,11 +854,11 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		titem = (TextureListItem *) item->clientData;
 		tmp = renderTexture(scr, titem->prop, PREVIEW_WIDTH, PREVIEW_HEIGHT, NULL, 0);
 
-		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+		W_CopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->preview, 0, 0);
-		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+		W_CopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewNoText, 0, 0);
-		WCairoCopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
+		W_CopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewBack, 0, 0);
 		wXFreePixmap(dpy, tmp);
 	}
@@ -898,8 +898,8 @@ static void updatePreviewBox(_Panel * panel, int elements)
 
 		pix = renderMenu(panel, titem->prop, w, h / 4);
 
-		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
-		WCairoCopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
+		W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
+		W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
 		wXFreePixmap(dpy, pix);
 
@@ -1156,7 +1156,7 @@ static void changePage(WMWidget * w, void *data)
 		WMSetListPosition(panel->texLs, panel->textureIndex[section] - 2);
 	}
 
-	WCairoCopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+	W_CopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 		       textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y,
 		       22, 22, panel->preview,
 		       textureOptions[panel->oldsection].hand.x, textureOptions[panel->oldsection].hand.y);
@@ -1301,19 +1301,19 @@ static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text
 	y = rect->pos.y;
 
 	cr = WCairoBeginForDrawable(scr, d);
-	WCairoSetSourceColor(cr, back);
+	W_SetSourceColor(cr, back);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 
 	if (titem->preview)
-		WCairoPaintArea(cr, scr, titem->preview, TEXPREV_WIDTH, TEXPREV_HEIGHT,
+		W_PaintArea(cr, scr, titem->preview, TEXPREV_WIDTH, TEXPREV_HEIGHT,
 				0, 0, TEXPREV_WIDTH, TEXPREV_HEIGHT, x + 5, y + 5);
 
 	tmp = WMGetPopUpButtonSelectedItem(panel->secP);
 	if ((tmp >= 0) && ((1 << tmp) & titem->selectedFor))
-		WCairoPaintPixmap(cr, panel->onLed, x + TEXPREV_WIDTH + 10, y + 6);
+		W_PaintPixmap(cr, panel->onLed, x + TEXPREV_WIDTH + 10, y + 6);
 	else if (titem->selectedFor)
-		WCairoPaintPixmap(cr, panel->offLed, x + TEXPREV_WIDTH + 10, y + 6);
+		W_PaintPixmap(cr, panel->offLed, x + TEXPREV_WIDTH + 10, y + 6);
 
 	W_DrawString(cr, black, panel->boldFont,
 			  x + TEXPREV_WIDTH + 22, y + 2, titem->title, strlen(titem->title));
@@ -1451,7 +1451,7 @@ static void changeColorPage(WMWidget * w, void *data)
 		return;
 
 	if (panel->preview)
-		WCairoCopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_CopyArea(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 			       colorOptions[panel->oldcsection].hand.x,
 			       colorOptions[panel->oldcsection].hand.y, 22, 22, panel->preview,
 			       colorOptions[panel->oldcsection].hand.x,
@@ -1477,7 +1477,7 @@ static void changeColorPage(WMWidget * w, void *data)
  * 1px stroke on pixel centres so it matches the previous XDrawLine. */
 static void strokeFrameBorder(cairo_t *cr, WMColor *color)
 {
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	cairo_set_line_width(cr, 1.0);
 	cairo_rectangle(cr, 29 + 0.5, 39 + 0.5, 190, 20);
 	cairo_rectangle(cr, 29 + 0.5, 69 + 0.5, 190, 20);
@@ -1494,7 +1494,7 @@ static void strokeFrameBorder(cairo_t *cr, WMColor *color)
 
 static void fillClipArrow(cairo_t *cr, WMColor *color, double *px, double *py)
 {
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	cairo_set_line_width(cr, 1.0);
 	cairo_move_to(cr, px[0] + 0.5, py[0] + 0.5);
 	cairo_line_to(cr, px[1] + 0.5, py[1] + 0.5);
@@ -1538,14 +1538,14 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 	crn = WCairoBeginForDrawable(scr, pnot);
 
 	if (elements & (1 << FTITLE_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 10, 190, 20, 30, 10);
 		paintText(crd, panel->colors[FTITLE_COL],
 			  panel->boldFont, 30, 10, 190, 20,
 			  panel->titleAlignment, _("Focused Window"));
 	}
 	if (elements & (1 << UTITLE_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 40, 190, 20, 30, 40);
 		paintText(crd, panel->colors[UTITLE_COL],
 			  panel->boldFont, 30, 40, 190, 20,
@@ -1553,7 +1553,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 			  _("Unfocused Window"));
 	}
 	if (elements & (1 << OTITLE_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 70, 190, 20, 30, 70);
 		paintText(crd, panel->colors[OTITLE_COL],
 			  panel->boldFont, 30, 70, 190, 20,
@@ -1561,36 +1561,36 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 			  _("Owner of Focused Window"));
 	}
 	if (elements & (1 << MTITLE_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 120, 90, 20, 30, 120);
 		paintText(crd, panel->colors[MTITLE_COL],
 			  panel->boldFont, 30, 120, 90, 20, WALeft,
 			  _("Menu Title"));
 	}
 	if (elements & (1 << MITEM_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 140, 90, 20, 30, 140);
 		paintText(crd, panel->colors[MITEM_COL],
 			  panel->normalFont, 30, 140, 90, 20, WALeft,
 			  _("Normal Item"));
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 200, 90, 20, 30, 200);
 		paintText(crd, panel->colors[MITEM_COL],
 			  panel->normalFont, 30, 200, 90, 20, WALeft,
 			  _("Normal Item"));
 	}
 	if (elements & (1 << MDISAB_COL)) {
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 160, 90, 20, 30, 160);
 		paintText(crd, panel->colors[MDISAB_COL],
 			  panel->normalFont, 30, 160, 90, 20, WALeft,
 			  _("Disabled Item"));
 	}
 	if (elements & (1 << MHIGH_COL)) {
-		WCairoSetSourceColor(crd, panel->colors[MHIGH_COL]);
+		W_SetSourceColor(crd, panel->colors[MHIGH_COL]);
 		cairo_rectangle(crd, 31, 181, 87, 17);
 		cairo_fill(crd);
-		WCairoSetSourceColor(crn, panel->colors[MHIGH_COL]);
+		W_SetSourceColor(crn, panel->colors[MHIGH_COL]);
 		cairo_rectangle(crn, 31, 181, 87, 17);
 		cairo_fill(crn);
 		elements |= 1 << MHIGHT_COL;
@@ -1599,7 +1599,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		/* the highlight fill on crn above must reach the server
 		 * before this reads pnot back through a fresh surface */
 		cairo_surface_flush(cairo_get_target(crn));
-		WCairoPaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
 				30, 180, 90, 20, 30, 180);
 		paintText(crd, panel->colors[MHIGHT_COL],
 			  panel->normalFont, 30, 180, 90, 20, WALeft,
@@ -1611,11 +1611,11 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 	}
 
 	if (elements & (1 << FFBORDER_COL)) {
-		WCairoSetSourceColor(crn, panel->colors[FFBORDER_COL]);
+		W_SetSourceColor(crn, panel->colors[FFBORDER_COL]);
 		cairo_set_line_width(crn, 1.0);
 		cairo_rectangle(crn, 29 + 0.5, 9 + 0.5, 190, 20);
 		cairo_stroke(crn);
-		WCairoSetSourceColor(crd, panel->colors[FFBORDER_COL]);
+		W_SetSourceColor(crd, panel->colors[FFBORDER_COL]);
 		cairo_set_line_width(crd, 1.0);
 		cairo_rectangle(crd, 29 + 0.5, 9 + 0.5, 190, 20);
 		cairo_stroke(crd);
@@ -1652,16 +1652,16 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		dim = WMCreateRGBColor(scr, rgb.red << 8, rgb.green << 8, rgb.blue << 8, false);
 
 		crd = WCairoBeginForDrawable(scr, d);
-		WCairoSetSourceColor(crd, panel->colors[ICONB_COL]);
+		W_SetSourceColor(crd, panel->colors[ICONB_COL]);
 		cairo_rectangle(crd, 156, 131, 62, 11);
 		cairo_fill(crd);
 		cairo_set_line_width(crd, 1.0);
-		WCairoSetSourceColor(crd, light);
+		W_SetSourceColor(crd, light);
 		cairo_move_to(crd, 155 + 0.5, 143);
 		cairo_line_to(crd, 155 + 0.5, 130 + 0.5);
 		cairo_line_to(crd, 218,       130 + 0.5);
 		cairo_stroke(crd);
-		WCairoSetSourceColor(crd, dim);
+		W_SetSourceColor(crd, dim);
 		cairo_move_to(crd, 218 + 0.5, 130);
 		cairo_line_to(crd, 218 + 0.5, 143);
 		cairo_stroke(crd);
@@ -1724,7 +1724,7 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		RReleaseImage(tile);
 
 		crd = WCairoBeginForDrawable(scr, d);
-		WCairoPaintArea(crd, scr, pix, 64, 64, 0, 0, 64, 64, 155, 130);
+		W_PaintArea(crd, scr, pix, 64, 64, 0, 0, 64, 64, 155, 130);
 		wXFreePixmap(dpy, pix);
 
 		/* top right arrow */

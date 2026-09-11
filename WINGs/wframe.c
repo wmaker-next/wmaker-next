@@ -159,7 +159,7 @@ static void paintFrame(Frame * fPtr)
 	if (drawTitle) {
 		/* fill backColor under the caption first so a repeat paint
 		 * without an XClearWindow does not thicken the AA fringe */
-		WCairoSetSourceColor(cr, view->backColor);
+		W_SetSourceColor(cr, view->backColor);
 		cairo_rectangle(cr, tx, ty, tw, th);
 		cairo_fill(cr);
 		W_DrawString(cr, fPtr->textColor ? fPtr->textColor : scrPtr->black,

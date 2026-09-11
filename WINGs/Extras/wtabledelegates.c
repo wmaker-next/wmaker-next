@@ -65,7 +65,7 @@ static cairo_t *cellBegin(WMScreen *scr, xcb_drawable_t d, WMColor *back,
 		return NULL;
 	cairo_rectangle(cr, rect.pos.x + 1, rect.pos.y + 1,
 			rect.size.width - 1, rect.size.height - 1);
-	WCairoSetSourceColor(cr, selected ? selBack : back);
+	W_SetSourceColor(cr, selected ? selBack : back);
 	cairo_fill_preserve(cr);
 	cairo_clip(cr);
 	return cr;
@@ -102,7 +102,7 @@ static void pixmapDraw(WMScreen *scr, xcb_drawable_t d, WMColor *back, WMColor *
 		size = WMGetPixmapSize(pixmap);
 		x = rect.pos.x + (rect.size.width - size.width) / 2;
 		y = rect.pos.y + (rect.size.height - size.height) / 2;
-		WCairoPaintPixmap(cr, pixmap, x, y);
+		W_PaintPixmap(cr, pixmap, x, y);
 	}
 	WCairoEnd(cr);
 }

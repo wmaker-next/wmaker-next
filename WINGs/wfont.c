@@ -422,7 +422,7 @@ void W_DrawString(cairo_t *cr, WMColor *color, WMFont *font,
 		       int x, int y, const char *text, int length)
 {
 	setLayoutText(font->layout, text, length);
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	W_ShowLayout(cr, font, font->layout, x, y);
 }
 
@@ -455,11 +455,11 @@ WMDrawImageString(WMScreen * scr, xcb_drawable_t d, WMColor * color, WMColor * b
 	setLayoutText(font->layout, text, length);
 	pango_layout_get_pixel_size(font->layout, &width, NULL);
 
-	WCairoSetSourceColor(cr, background);
+	W_SetSourceColor(cr, background);
 	cairo_rectangle(cr, x, y, width, font->height);
 	cairo_fill(cr);
 
-	WCairoSetSourceColor(cr, color);
+	W_SetSourceColor(cr, color);
 	W_ShowLayout(cr, font, font->layout, x, y);
 
 	WCairoEnd(cr);

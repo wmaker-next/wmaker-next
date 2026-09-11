@@ -218,7 +218,7 @@ void WMSetSliderAction(WMSlider * slider, WMAction * action, void *data)
 
 static void kLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -247,7 +247,7 @@ static void makeKnobPixmap(Slider * sPtr)
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 
 	if (sPtr->knobThickness < 10) {
@@ -342,25 +342,25 @@ static void paintSlider(Slider * sPtr)
 	if (sPtr->backPixmap) {
 		WMSize psz = WMGetPixmapSize(sPtr->backPixmap);
 
-		WCairoPaintArea(cr, scr, WMGetPixmapXID(sPtr->backPixmap),
+		W_PaintArea(cr, scr, WMGetPixmapXID(sPtr->backPixmap),
 				psz.width, psz.height, 0, 0,
 				psz.width, psz.height, 1, 1);
 	} else {
-		WCairoSetSourceColor(cr, scr->gray);
+		W_SetSourceColor(cr, scr->gray);
 		cairo_paint(cr);
-		WCairoStippleFill(cr, scr, 0, 0, size.width, size.height);
+		W_StippleFill(cr, scr, 0, 0, size.width, size.height);
 	}
 
 	if (sPtr->flags.vertical) {
 		pos = (MAXV != MINV) ? (size.height - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		kw = size.width - 2;
 		kh = sPtr->knobThickness;
-		WCairoPaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, 1, pos);
+		W_PaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, 1, pos);
 	} else {
 		pos = (MAXV != MINV) ? (size.width - 2 - sPtr->knobThickness) * (POSV - MINV) / (MAXV - MINV) + 1 : 1;
 		kw = sPtr->knobThickness;
 		kh = size.height - 2;
-		WCairoPaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, pos, 1);
+		W_PaintArea(cr, scr, sPtr->knobPixmap, kw, kh, 0, 0, kw, kh, pos, 1);
 	}
 
 	kLine(cr, scr->black, 0, 0, 0, size.height - 1);
@@ -369,7 +369,7 @@ static void paintSlider(Slider * sPtr)
 	kLine(cr, scr->white, 0, size.height - 1, size.width - 1, size.height - 1);
 
 	if (!sPtr->flags.enabled) {
-		WCairoSetSourceColor(cr, scr->gray);
+		W_SetSourceColor(cr, scr->gray);
 		cairo_set_source_rgba(cr, 0.5, 0.5, 0.5, 0.5);
 		cairo_paint(cr);
 	}

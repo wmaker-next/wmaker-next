@@ -875,7 +875,7 @@ void wMenuDestroy(WMenu * menu, int recurse)
  * lands on a single device pixel row */
 static void hvLine(cairo_t *cr, const WXColor *c, int x1, int y1, int x2, int y2)
 {
-	WCairoSetSourceXColor(cr, c);
+	W_SetSourceXColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -949,7 +949,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		return;
 
 	if (selected) {
-		WCairoSetSourceColor(cr, scr->select_color);
+		W_SetSourceColor(cr, scr->select_color);
 		cairo_rectangle(cr, 1, y + 1, w - 2, h - 3);
 		cairo_fill(cr);
 	}
@@ -1004,11 +1004,11 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		 * so integer endpoints keep the diagonals looking as before */
 		cairo_set_line_width(cr, 1.0);
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-		WCairoSetSourceXColor(cr, &aux->dim);
+		W_SetSourceXColor(cr, &aux->dim);
 		cairo_move_to(cr, w - 11, y + 6);
 		cairo_line_to(cr, w - 6, y + h / 2 - 1);
 		cairo_stroke(cr);
-		WCairoSetSourceXColor(cr, &aux->light);
+		W_SetSourceXColor(cr, &aux->light);
 		cairo_move_to(cr, w - 11, y + h - 8);
 		cairo_line_to(cr, w - 6, y + h / 2 - 1);
 		cairo_stroke(cr);
@@ -1083,7 +1083,7 @@ static void paintEntry(WMenu * menu, int index, int selected)
 			/* the indicator is a shape-only glyph: fill the text
 			 * colour through its mask so it tracks the selected
 			 * and disabled states like the label does */
-			WCairoSetSourceColor(cr, color);
+			W_SetSourceColor(cr, color);
 			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 								    (xcb_pixmap_t)indicator->mask,
 								    iw, ih);

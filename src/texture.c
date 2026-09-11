@@ -655,28 +655,28 @@ void wDrawBevel(cairo_t *cr, unsigned width, unsigned height, WTexSolid *texture
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
 		/* inner bottom-right shadow */
-		WCairoSetSourceXColor(cr, nx ? dark : dim);
+		W_SetSourceXColor(cr, nx ? dark : dim);
 		cairo_move_to(cr, 1.5, height - 1.5);
 		cairo_line_to(cr, width - 1.5, height - 1.5);
 		cairo_line_to(cr, width - 1.5, 1.5);
 		cairo_stroke(cr);
 
 		/* outer bottom-right */
-		WCairoSetSourceXColor(cr, nx ? light : dark);
+		W_SetSourceXColor(cr, nx ? light : dark);
 		cairo_move_to(cr, 0.5, height - 0.5);
 		cairo_line_to(cr, width - 0.5, height - 0.5);
 		cairo_line_to(cr, width - 0.5, 0.5);
 		cairo_stroke(cr);
 
 		/* top-left highlight */
-		WCairoSetSourceXColor(cr, nx ? dark : light);
+		W_SetSourceXColor(cr, nx ? dark : light);
 		cairo_move_to(cr, 0.5, height - 1.5);
 		cairo_line_to(cr, 0.5, 0.5);
 		cairo_line_to(cr, width - 1.5, 0.5);
 		cairo_stroke(cr);
 
 		if (relief == WREL_ICON) {
-			WCairoSetSourceXColor(cr, light);
+			W_SetSourceXColor(cr, light);
 			cairo_move_to(cr, 1.5, height - 1.5);
 			cairo_line_to(cr, 1.5, 1.5);
 			cairo_line_to(cr, width - 1.5, 1.5);

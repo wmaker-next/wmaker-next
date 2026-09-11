@@ -294,7 +294,7 @@ void WCairoEnd(cairo_t *cr)
 
 /* ---- source colour helpers ------------------------------------------- */
 
-void WCairoSetSourceColor(cairo_t *cr, WMColor *color)
+void W_SetSourceColor(cairo_t *cr, WMColor *color)
 {
 	cairo_set_source_rgba(cr,
 			      color->color.red   / 65535.0,
@@ -303,7 +303,7 @@ void WCairoSetSourceColor(cairo_t *cr, WMColor *color)
 			      color->alpha       / 65535.0);
 }
 
-void WCairoSetSourceRColor(cairo_t *cr, const RColor *color)
+void W_SetSourceRColor(cairo_t *cr, const RColor *color)
 {
 	cairo_set_source_rgba(cr,
 			      color->red   / 255.0,
@@ -312,7 +312,7 @@ void WCairoSetSourceRColor(cairo_t *cr, const RColor *color)
 			      color->alpha / 255.0);
 }
 
-void WCairoSetSourceXColor(cairo_t *cr, const WXColor *color)
+void W_SetSourceXColor(cairo_t *cr, const WXColor *color)
 {
 	cairo_set_source_rgb(cr,
 			     color->red   / 65535.0,
@@ -327,7 +327,7 @@ void WCairoSetSourceXColor(cairo_t *cr, const WXColor *color)
  * client-side image surface (not the server-side scr->stipple bitmap)
  * so a WCairoBuffered target masks with pixman rather than reading
  * back from the X server. */
-void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
+void W_StippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 {
 	static cairo_pattern_t *pat;
 	cairo_surface_t *stip;
@@ -350,7 +350,7 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 	cairo_save(cr);
 	cairo_rectangle(cr, x, y, w, h);
 	cairo_clip(cr);
-	WCairoSetSourceColor(cr, scr->darkGray);
+	W_SetSourceColor(cr, scr->darkGray);
 	cairo_mask(cr, pat);
 	cairo_restore(cr);
 }
@@ -369,7 +369,7 @@ void WCairoStippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
  * When only cr is scaled and src is a raw device-px pixmap the CTM
  * up-scale is what places a 1x thumbnail correctly on a 2x canvas, so
  * that case is left alone. */
-void WCairoPaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
+void W_PaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
 		     int sx, int sy, int w, int h, int dx, int dy)
 {
 	RContext *rc = scr->rcontext;
@@ -406,7 +406,7 @@ void WCairoPaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, i
  * rectangle, close. Drop-in for the XCreateGC + XCopyArea + XFreeGC
  * pattern used by preview compositors that shuffle rendered pixmaps
  * between scratch surfaces. */
-void WCairoCopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
+void W_CopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
 		    int sx, int sy, int w, int h, xcb_drawable_t dst, int dx, int dy)
 {
 	cairo_t *cr;
@@ -414,7 +414,7 @@ void WCairoCopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
 	cr = WCairoBeginForDrawable(scr, dst);
 	if (!cr)
 		return;
-	WCairoPaintArea(cr, scr, src, srcW, srcH, sx, sy, w, h, dx, dy);
+	W_PaintArea(cr, scr, src, srcW, srcH, sx, sy, w, h, dx, dy);
 	WCairoEnd(cr);
 }
 
@@ -425,7 +425,7 @@ void WCairoCopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
  * callers want. When the pixmap has a depth-1 mask it is wrapped
  * for_bitmap and used as the cairo mask so only the shape lands,
  * otherwise a rectangle at the pixmap extents bounds the fill. */
-void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
+void W_PaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
 {
 	RContext *rc = pix->screen->rcontext;
 	cairo_surface_t *ps, *ms;
@@ -461,14 +461,14 @@ void WCairoPaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
  * tiled with EXTEND_REPEAT so it matches what the server would show,
  * else the view's background WMColor. Shared by W_PaintTextAndImage
  * and any per-widget buffered painter that starts from a bare row. */
-void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor)
+void W_PaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor)
 {
 	RContext *rc = view->screen->rcontext;
 	cairo_surface_t *bg;
 	cairo_pattern_t *pat;
 
 	if (backColor) {
-		WCairoSetSourceColor(cr, backColor);
+		W_SetSourceColor(cr, backColor);
 		cairo_paint(cr);
 	} else if (view->backImage) {
 		bg = cairo_xcb_surface_create(rc->xc,
@@ -483,7 +483,7 @@ void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor)
 		cairo_pattern_destroy(pat);
 		cairo_surface_destroy(bg);
 	} else {
-		WCairoSetSourceColor(cr, view->backColor ? view->backColor
+		W_SetSourceColor(cr, view->backColor ? view->backColor
 							 : view->screen->gray);
 		cairo_paint(cr);
 	}
@@ -497,7 +497,7 @@ void WCairoPaintViewBackground(cairo_t *cr, W_View *view, WMColor *backColor)
  * WCairoBalloonBottom / WCairoBalloonRight naming which corner the
  * tail points from, tail_len is the tail's protrusion past the body
  * edge. */
-void WCairoBalloonPath(cairo_t *cr, double x, double y, double w, double h,
+void W_BalloonPath(cairo_t *cr, double x, double y, double w, double h,
 		       int side, double tail_len)
 {
 	double r, w1, base0, base1, apex, edge;
@@ -557,7 +557,7 @@ void WCairoBalloonPath(cairo_t *cr, double x, double y, double w, double h,
  * ShapeBounding and a fresh depth-N pixmap for the window background,
  * both width x height (which already includes the tail-length pad).
  * Caller draws text on top of *content and frees both. */
-void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
+void W_RenderBalloon(W_Screen *scr, unsigned int width, unsigned int height,
 			 double bx, double by, double bw, double bh,
 			 int side, double tail_len,
 			 WMColor *fill, WMColor *border,
@@ -582,7 +582,7 @@ void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
 	cairo_set_source_rgba(cr, 0, 0, 0, 0);
 	cairo_paint(cr);
 	cairo_set_source_rgba(cr, 0, 0, 0, 1);
-	WCairoBalloonPath(cr, bx, by, bw, bh, side, tail_len);
+	W_BalloonPath(cr, bx, by, bw, bh, side, tail_len);
 	cairo_fill_preserve(cr);
 	cairo_set_line_width(cr, 1.0);
 	cairo_stroke(cr);
@@ -597,12 +597,12 @@ void WCairoRenderBalloon(W_Screen *scr, unsigned width, unsigned height,
 	ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)*content,
 				      rc->xvisual, width, height);
 	cr = cairo_create(ps);
-	WCairoSetSourceColor(cr, border);
+	W_SetSourceColor(cr, border);
 	cairo_paint(cr);
-	WCairoBalloonPath(cr, bx, by, bw, bh, side, tail_len);
-	WCairoSetSourceColor(cr, fill);
+	W_BalloonPath(cr, bx, by, bw, bh, side, tail_len);
+	W_SetSourceColor(cr, fill);
 	cairo_fill_preserve(cr);
-	WCairoSetSourceColor(cr, border);
+	W_SetSourceColor(cr, border);
 	cairo_set_line_width(cr, 1.0);
 	cairo_stroke(cr);
 	cairo_destroy(cr);

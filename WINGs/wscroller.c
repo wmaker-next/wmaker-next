@@ -287,7 +287,7 @@ static void paintArrow(WMScroller *sPtr, cairo_t *cr, int part)
 	}
 
 	if (down) {
-		WCairoSetSourceColor(cr, scr->white);
+		W_SetSourceColor(cr, scr->white);
 		cairo_rectangle(cr, bx + 1, by + 1, BUTTON_SIZE - 2, BUTTON_SIZE - 2);
 		cairo_fill(cr);
 	}
@@ -332,9 +332,9 @@ static void paintScroller(Scroller * sPtr)
 	if (!cr)
 		return;
 
-	WCairoSetSourceColor(cr, scr->gray);
+	W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_set_line_width(cr, 1.0);
 	cairo_rectangle(cr, 0.5, 0.5, view->size.width - 1, view->size.height - 1);
 	cairo_stroke(cr);
@@ -345,7 +345,7 @@ static void paintScroller(Scroller * sPtr)
 		length = view->size.height - 4;
 
 	if (sPtr->flags.documentFullyVisible) {
-		WCairoStippleFill(cr, scr, 2, 2, view->size.width - 4, view->size.height - 4);
+		W_StippleFill(cr, scr, 2, 2, view->size.width - 4, view->size.height - 4);
 	} else {
 		ofs = 2;
 		if (sPtr->flags.arrowsPosition == WSAMaxEnd) {
@@ -361,7 +361,7 @@ static void paintScroller(Scroller * sPtr)
 
 		if (sPtr->flags.horizontal) {
 			/* before */
-			WCairoStippleFill(cr, scr, ofs, 2, (int)knobP, view->size.height - 4);
+			W_StippleFill(cr, scr, ofs, 2, (int)knobP, view->size.height - 4);
 
 			/* knob */
 			W_DrawRelief(cr, scr, ofs + (int)knobP, 2,
@@ -372,13 +372,13 @@ static void paintScroller(Scroller * sPtr)
 
 			/* after */
 			if ((int)(knobP + knobL) < length)
-				WCairoStippleFill(cr, scr,
+				W_StippleFill(cr, scr,
 						  ofs + (int)(knobP + knobL), 2,
 						  length - (int)(knobP + knobL), view->size.height - 4);
 		} else {
 			/* before */
 			if (knobP > 0.0F)
-				WCairoStippleFill(cr, scr, 2, ofs,
+				W_StippleFill(cr, scr, 2, ofs,
 						  view->size.width - 4, (int)knobP);
 
 			/* knob */
@@ -390,7 +390,7 @@ static void paintScroller(Scroller * sPtr)
 
 			/* after */
 			if ((int)(knobP + knobL) < length)
-				WCairoStippleFill(cr, scr,
+				W_StippleFill(cr, scr,
 						  2, ofs + (int)(knobP + knobL),
 						  view->size.width - 4, length - (int)(knobP + knobL));
 		}

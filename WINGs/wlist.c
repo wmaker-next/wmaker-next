@@ -502,7 +502,7 @@ static void paintItem(List * lPtr, int index)
 	} else {
 		back = (itemPtr->selected ? scr->white : view->backColor);
 		cr = WCairoBeginForDrawable(scr, d);
-		WCairoSetSourceColor(cr, back);
+		W_SetSourceColor(cr, back);
 		cairo_rectangle(cr, 0, 0, width, height);
 		cairo_fill(cr);
 		W_PaintText(cr, scr->normalFont, 4, 0, width, WALeft,
@@ -513,7 +513,7 @@ static void paintItem(List * lPtr, int index)
 	/* the buffer is view->size.width wide but only the row area right
 	 * of the scroller strip is copied onto the on-screen window */
 	cr = WCairoBeginForDrawable(scr, view->window);
-	WCairoPaintArea(cr, scr, d, view->size.width, height,
+	W_PaintArea(cr, scr, d, view->size.width, height,
 			0, 0, width, height, x, y);
 
 	if ((index - lPtr->topItem + lPtr->fullFitLines) * lPtr->itemHeight > lPtr->view->size.height - 2)

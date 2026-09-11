@@ -148,9 +148,9 @@ static xcb_pixmap_t makeBackground(WScreen *scr, int width, int height, cairo_t 
 	WMScreenNoteDrawableSize(scr->wmscreen, pixmap, width, height);
 	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
 	if (scr->window_title_texture[0])
-		WCairoSetSourceXColor(cr, &scr->window_title_texture[0]->any.color);
+		W_SetSourceXColor(cr, &scr->window_title_texture[0]->any.color);
 	else
-		WCairoSetSourceColor(cr, scr->gray);
+		W_SetSourceColor(cr, scr->gray);
 	cairo_paint(cr);
 	*crp = cr;
 	return pixmap;
@@ -213,7 +213,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 		by = y - (height + SPACE);
 		ty = 0;
 	}
-	WCairoRenderBalloon(scr->wmscreen, width, height + SPACE,
+	W_RenderBalloon(scr->wmscreen, width, height + SPACE,
 			    0.5, ((side & BOTTOM) ? 0 : SPACE) + 0.5,
 			    width - 1, height - 1,
 			    ((side & BOTTOM) ? WCairoBalloonBottom : 0)

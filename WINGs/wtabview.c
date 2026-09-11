@@ -536,7 +536,7 @@ static void recalcTabWidth(TabView * tPtr)
 
 static void tLine(cairo_t *cr, WMColor *c, int x1, int y1, int x2, int y2)
 {
-	WCairoSetSourceColor(cr, c);
+	W_SetSourceColor(cr, c);
 	cairo_move_to(cr, x1 + 0.5, y1 + 0.5);
 	cairo_line_to(cr, x2 + 0.5, y2 + 0.5);
 	cairo_stroke(cr);
@@ -574,14 +574,14 @@ static void drawTab(TabView *tPtr, cairo_t *cr, int x, int y,
 	tx[7] = x + width - (selected ? 0 : 1);
 	ty[7] = y + height - (selected ? 0 : 1);
 
-	WCairoSetSourceColor(cr, selected ? scr->gray : tPtr->tabColor);
+	W_SetSourceColor(cr, selected ? scr->gray : tPtr->tabColor);
 	cairo_move_to(cr, tx[0], ty[0]);
 	for (k = 1; k < 8; k++)
 		cairo_line_to(cr, tx[k], ty[k]);
 	cairo_close_path(cr);
 	cairo_fill(cr);
 
-	WCairoSetSourceColor(cr, hi);
+	W_SetSourceColor(cr, hi);
 	cairo_move_to(cr, tx[0] + 0.5, ty[0] + 0.5);
 	for (k = 1; k <= 4; k++)
 		cairo_line_to(cr, tx[k] + 0.5, ty[k] + 0.5);
@@ -589,7 +589,7 @@ static void drawTab(TabView *tPtr, cairo_t *cr, int x, int y,
 
 	tLine(cr, scr->darkGray, tx[4], ty[4], tx[5], ty[5]);
 
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_move_to(cr, tx[5] + 0.5, ty[5] + 0.5);
 	cairo_line_to(cr, tx[6] + 0.5, ty[6] + 0.5);
 	cairo_line_to(cr, tx[7] + 0.5, ty[7] + 0.5);
@@ -600,10 +600,10 @@ static void drawTab(TabView *tPtr, cairo_t *cr, int x, int y,
 
 static void paintDot(cairo_t *cr, W_Screen *scr, int x, int y)
 {
-	WCairoSetSourceColor(cr, scr->black);
+	W_SetSourceColor(cr, scr->black);
 	cairo_rectangle(cr, x, y, 2, 2);
 	cairo_fill(cr);
-	WCairoSetSourceColor(cr, scr->white);
+	W_SetSourceColor(cr, scr->white);
 	cairo_rectangle(cr, x, y, 1, 1);
 	cairo_fill(cr);
 }
@@ -632,7 +632,7 @@ static void paintTabView(TabView * tPtr)
 		ty = 2;
 		theight = tPtr->tabHeight;
 
-		WCairoSetSourceColor(cr, W_VIEW(tPtr)->backColor);
+		W_SetSourceColor(cr, W_VIEW(tPtr)->backColor);
 		cairo_rectangle(cr, 0, 0, W_VIEW(tPtr)->size.width, theight);
 		cairo_fill(cr);
 
