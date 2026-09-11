@@ -718,8 +718,9 @@ int W_LookupString(W_View *view, const xcb_key_press_event_t *event, char *buffe
 	if (view->xcbxic || (event->response_type & 0x7f) != XCB_KEY_PRESS)
 		compose = NULL;
 
-	/* state is NULL when the server has no XKB, W_XkbLookupString
-	 * answers XLookupNone for that */
+	/* state is NULL only when the xkb stack never came up at all
+	 * (no server XKB and no fallback), W_XkbLookupString answers
+	 * XLookupNone for that */
 	return W_XkbLookupString(state, compose, event,
 				 buffer, buflen,
 				 keysym, status);

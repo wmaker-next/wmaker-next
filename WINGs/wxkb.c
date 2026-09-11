@@ -6,7 +6,8 @@
  *  the modifier state is tracked from XCB_XKB_STATE_NOTIFY. The
  *  refresh is driven by W_XkbHandleEvent() from WMHandleEvent()'s
  *  extension pass, so the same event stream feeds the wmaker-side and
- *  the WINGs-side states.
+ *  the WINGs-side states. A server without XKB falls back to an
+ *  RMLVO keymap tracked from the core key stream.
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -75,6 +76,40 @@ static int loadKeymap(W_XkbState *xk, xcb_connection_t *xc)
 	return 1;
 }
 
+/* the RMLVO fallback for a server without XKB, the default evdev
+ * keycodes match the core ones */
+static int loadKeymapFallback(W_XkbState *xk)
+{
+	struct xkb_rule_names names = { NULL, NULL, NULL, NULL, NULL };
+	struct xkb_keymap *new_keymap;
+	struct xkb_state *new_state;
+
+	new_keymap = xkb_keymap_new_from_names(xk->ctx, &names,
+					       XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (!new_keymap)
+		return 0;
+
+	new_state = xkb_state_new(new_keymap);
+	if (!new_state) {
+		xkb_keymap_unref(new_keymap);
+		return 0;
+	}
+
+	xkb_state_unref(xk->state);
+	xkb_keymap_unref(xk->keymap);
+	xk->keymap = new_keymap;
+	xk->state = new_state;
+	return 1;
+}
+
+static void freeUnpublishedStack(W_Screen *scr, W_XkbState *xk)
+{
+	xkb_compose_state_unref(scr->compose_state);
+	scr->compose_state = NULL;
+	xkb_context_unref(xk->ctx);
+	wfree(xk);
+}
+
 void W_InitXkb(W_Screen *scr)
 {
 	W_XkbState *xk;
@@ -89,15 +124,6 @@ void W_InitXkb(W_Screen *scr)
 
 	xk = wmalloc(sizeof(W_XkbState));
 	xc = scr->display;
-
-	if (!xkb_x11_setup_xkb_extension(xc,
-					 XKB_X11_MIN_MAJOR_XKB_VERSION,
-					 XKB_X11_MIN_MINOR_XKB_VERSION,
-					 XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
-					 NULL, NULL, &xk->base_event, NULL)) {
-		wfree(xk);
-		return;
-	}
 
 	xk->ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (!xk->ctx) {
@@ -119,13 +145,41 @@ void W_InitXkb(W_Screen *scr)
 		xkb_compose_table_unref(table);
 	}
 
+	if (!xkb_x11_setup_xkb_extension(xc,
+					 XKB_X11_MIN_MAJOR_XKB_VERSION,
+					 XKB_X11_MIN_MINOR_XKB_VERSION,
+					 XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
+					 NULL, NULL, &xk->base_event, NULL)) {
+		wwarning(_("the X server has no XKB extension, "
+			   "falling back to a best-effort keymap"));
+		if (loadKeymapFallback(xk)) {
+			scr->xkb = xk;
+			/* base_event 0: tracked from core keys in
+			 * W_XkbHandleEvent(), no XKB subscription */
+			for (i = 0; i < MAX_XKB_SCREENS; i++) {
+				if (!xkb_screens[i]) {
+					xkb_screens[i] = scr;
+					break;
+				}
+			}
+		} else {
+			wwarning(_("could not build a fallback keymap, "
+				   "text field input is unavailable"));
+			freeUnpublishedStack(scr, xk);
+		}
+		return;
+	}
+
 	xk->device_id = xkb_x11_get_core_keyboard_device_id(xc);
 	if (xk->device_id < 0 || !loadKeymap(xk, xc)) {
 		wwarning(_("could not load the XKB keymap from the X server, "
-			   "text field input is unavailable"));
-		xkb_context_unref(xk->ctx);
-		wfree(xk);
-		return;
+			   "falling back to a best-effort keymap"));
+		if (!loadKeymapFallback(xk)) {
+			wwarning(_("could not build a fallback keymap, "
+				   "text field input is unavailable"));
+			freeUnpublishedStack(scr, xk);
+			return;
+		}
 	}
 
 	/* affectWhich == want with details == NULL asks for every
@@ -191,7 +245,11 @@ bool W_XkbHandleEvent(xcb_generic_event_t *event)
 {
 	const xcb_xkb_new_keyboard_notify_event_t *ne =
 		(const xcb_xkb_new_keyboard_notify_event_t *)event;
+	const xcb_key_press_event_t *ke =
+		(const xcb_key_press_event_t *)event;
+	W_XkbState *xk;
 	W_Screen *scr;
+	int type = event->response_type & 0x7f;
 	bool matched = false;
 	int i;
 
@@ -200,8 +258,21 @@ bool W_XkbHandleEvent(xcb_generic_event_t *event)
 		if (!scr || scr->display != W_XEvqConnection())
 			continue;
 
-		if ((event->response_type & 0x7f) !=
-		    ((W_XkbState *)scr->xkb)->base_event)
+		xk = scr->xkb;
+		if (!xk)
+			continue;
+
+		if (xk->base_event == 0) {
+			/* no extension: the state rides the server's
+			 * effective modifier mask on every press, the
+			 * focus windows select no KeyRelease */
+			if (type == XCB_KEY_PRESS)
+				xkb_state_update_mask(xk->state, ke->state,
+						      0, 0, 0, 0, 0);
+			continue;
+		}
+
+		if (type != xk->base_event)
 			continue;
 
 		if (ne->xkbType == XCB_XKB_STATE_NOTIFY) {
@@ -227,9 +298,9 @@ bool W_XkbHandleEvent(xcb_generic_event_t *event)
 
 /* ---[ lookup core ]----------------------------------------------------- */
 
-/* the screen's struct xkb_state *, NULL before W_InitXkb() or when the
- * server has no XKB; W_LookupString()'s xcb arm and the unit tests
- * feed this to W_XkbLookupString() */
+/* the screen's struct xkb_state *, NULL before W_InitXkb() or when
+ * even the fallback keymap failed. W_LookupString()'s xcb arm and the
+ * unit tests feed this to W_XkbLookupString() */
 void *W_XkbStateOf(W_Screen *scr)
 {
 	W_XkbState *xk = scr->xkb;
