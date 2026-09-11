@@ -229,11 +229,20 @@ static void willResizeColorWell(W_ViewDelegate * self, WMView * view, unsigned i
 static void paintColorWell(ColorWell * cPtr)
 {
 	W_Screen *scr = cPtr->view->screen;
+	cairo_t *cr;
 
-	W_DrawRelief(scr, cPtr->view->window, 0, 0, cPtr->view->size.width, cPtr->view->size.height, WRRaised);
+	cr = WCairoBeginForDrawable(scr, cPtr->view->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, 0, 0, cPtr->view->size.width, cPtr->view->size.height, WRRaised);
+	WCairoEnd(cr);
 
-	W_DrawRelief(scr, cPtr->colorView->window, 0, 0,
-		     cPtr->colorView->size.width, cPtr->colorView->size.height, WRSunken);
+	cr = WCairoBeginForDrawable(scr, cPtr->colorView->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, 0, 0,
+			  cPtr->colorView->size.width, cPtr->colorView->size.height, WRSunken);
+	WCairoEnd(cr);
 
 	if (cPtr->color)
 		WMPaintColorSwatch(cPtr->color, cPtr->colorView->window,

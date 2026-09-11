@@ -1151,11 +1151,16 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 {
 	WMTableView *table = (WMTableView *) data;
 	WMScreen *scr = WMWidgetScreen(table);
+	cairo_t *cr;
 
 	switch (event->response_type & 0x7f) {
 	case XCB_EXPOSE:
-		W_DrawRelief(scr, W_VIEW_DRAWABLE(table->view), 0, 0,
-			     W_VIEW_WIDTH(table->view), W_VIEW_HEIGHT(table->view), WRSunken);
+		cr = WCairoBeginForDrawable(scr, W_VIEW_DRAWABLE(table->view));
+		if (!cr)
+			break;
+		W_DrawReliefCairo(cr, scr, 0, 0,
+				  W_VIEW_WIDTH(table->view), W_VIEW_HEIGHT(table->view), WRSunken);
+		WCairoEnd(cr);
 		break;
 	}
 }

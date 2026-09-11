@@ -862,12 +862,17 @@ static void loadColumn(WMBrowser * bPtr, int column)
 static void paintBrowser(WMBrowser * bPtr)
 {
 	int i;
+	cairo_t *cr;
 
 	if (!bPtr->view->flags.mapped)
 		return;
 
-	W_DrawRelief(bPtr->view->screen, bPtr->view->window, 0,
-		     bPtr->view->size.height - SCROLLER_WIDTH - 2, bPtr->view->size.width, 22, WRSunken);
+	cr = WCairoBeginForDrawable(bPtr->view->screen, bPtr->view->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, bPtr->view->screen, 0,
+			  bPtr->view->size.height - SCROLLER_WIDTH - 2, bPtr->view->size.width, 22, WRSunken);
+	WCairoEnd(cr);
 
 	if (bPtr->flags.isTitled) {
 		for (i = 0; i < bPtr->maxVisibleColumns; i++) {

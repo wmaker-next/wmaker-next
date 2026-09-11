@@ -184,6 +184,7 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 	int w = W_VIEW(iPtr)->size.width;
 	int h = W_VIEW(iPtr)->size.height;
 	WMFont *font = (iPtr->flags.isTitle ? scr->boldFont : scr->normalFont);
+	cairo_t *cr;
 
 	if (!iPtr->view->flags.realized)
 		return;
@@ -195,7 +196,11 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 
 	wXClearArea(scr->display, win, 0, 0, 0, 0, false);
 
-	W_DrawRelief(scr, win, 0, 0, w + 1, h, WRRaised);
+	cr = WCairoBeginForDrawable(scr, win);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, 0, 0, w + 1, h, WRRaised);
+	WCairoEnd(cr);
 
 	WMDrawString(scr, win, color, font, 5, 3, iPtr->label, strlen(iPtr->label));
 
@@ -800,9 +805,14 @@ static void selectItem(WEditMenu * menu, WEditMenuItem * item)
 static void paintMenu(WEditMenu * mPtr)
 {
 	W_View *view = mPtr->view;
+	WMScreen *scr = W_VIEW_SCREEN(view);
+	cairo_t *cr;
 
-	W_DrawRelief(W_VIEW_SCREEN(view), W_VIEW_DRAWABLE(view), 0, 0,
-		     W_VIEW_WIDTH(view), W_VIEW_HEIGHT(view), WRSimple);
+	cr = WCairoBeginForDrawable(scr, W_VIEW_DRAWABLE(view));
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, 0, 0, W_VIEW_WIDTH(view), W_VIEW_HEIGHT(view), WRSimple);
+	WCairoEnd(cr);
 }
 
 static void handleEvents(xcb_generic_event_t * event, void *data)

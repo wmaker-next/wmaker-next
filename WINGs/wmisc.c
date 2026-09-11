@@ -82,19 +82,6 @@ W_DrawReliefCairo(cairo_t *cr, W_Screen *scr, int x, int y,
 	cairo_restore(cr);
 }
 
-void
-W_DrawRelief(W_Screen * scr, xcb_drawable_t d, int x, int y, unsigned int width,
-	     unsigned int height, WMReliefType relief)
-{
-	cairo_t *cr;
-
-	cr = WCairoBeginForDrawable(scr, d);
-	if (!cr)
-		return;
-	W_DrawReliefCairo(cr, scr, x, y, width, height, relief);
-	WCairoEnd(cr);
-}
-
 static int findNextWord(const char *text, int limit)
 {
 	int pos, len;

@@ -81,6 +81,7 @@ DoubleTest *CreateDoubleTest(WMWidget * parent, const char *text)
 static void paintDoubleTest(_DoubleTest * dPtr)
 {
 	W_Screen *scr = dPtr->view->screen;
+	cairo_t *cr;
 
 	if (dPtr->active) {
 		WMPaintColorSwatch(scr->white, dPtr->view->window,
@@ -89,8 +90,12 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 		wXClearArea(scr->display, dPtr->view->window, 0, 0, 0, 0, false);
 	}
 
-	W_DrawRelief(scr, dPtr->view->window, 0, 0, dPtr->view->size.width,
-		     dPtr->view->size.height, dPtr->on ? WRSunken : WRRaised);
+	cr = WCairoBeginForDrawable(scr, dPtr->view->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scr, 0, 0, dPtr->view->size.width,
+			  dPtr->view->size.height, dPtr->on ? WRSunken : WRRaised);
+	WCairoEnd(cr);
 
 	if (dPtr->text) {
 		int y;

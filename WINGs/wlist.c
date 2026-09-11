@@ -526,6 +526,7 @@ static void paintList(List * lPtr)
 {
 	W_Screen *scrPtr = lPtr->view->screen;
 	int i, lim, itemCount;
+	cairo_t *cr;
 
 	if (!lPtr->view->flags.mapped)
 		return;
@@ -545,7 +546,11 @@ static void paintList(List * lPtr)
 	} else {
 		xcb_clear_area(scrPtr->display, 0, lPtr->view->window, 0, 0, 0, 0);
 	}
-	W_DrawRelief(scrPtr, lPtr->view->window, 0, 0, lPtr->view->size.width, lPtr->view->size.height, WRSunken);
+	cr = WCairoBeginForDrawable(scrPtr, lPtr->view->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, scrPtr, 0, 0, lPtr->view->size.width, lPtr->view->size.height, WRSunken);
+	WCairoEnd(cr);
 }
 
 #if 0

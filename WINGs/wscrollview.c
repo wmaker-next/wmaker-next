@@ -493,8 +493,14 @@ void WMSetScrollViewRelief(WMScrollView * sPtr, WMReliefType type)
 
 static void paintScrollView(ScrollView * sPtr)
 {
-	W_DrawRelief(sPtr->view->screen, sPtr->view->window, 0, 0,
-		     sPtr->view->size.width, sPtr->view->size.height, sPtr->flags.relief);
+	cairo_t *cr;
+
+	cr = WCairoBeginForDrawable(sPtr->view->screen, sPtr->view->window);
+	if (!cr)
+		return;
+	W_DrawReliefCairo(cr, sPtr->view->screen, 0, 0,
+			  sPtr->view->size.width, sPtr->view->size.height, sPtr->flags.relief);
+	WCairoEnd(cr);
 }
 
 static void updateScrollerProportion(ScrollView * sPtr)

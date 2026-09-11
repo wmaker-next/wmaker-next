@@ -746,9 +746,6 @@ int W_XkbLookupString(void *xkb_state, void *compose_state,
 
 /* ---[ wmisc.c ]--------------------------------------------------------- */
 
-void W_DrawRelief(W_Screen *scr, xcb_drawable_t d, int x, int y, unsigned int width,
-                  unsigned int height, WMReliefType relief);
-
 /* draw the same bevel onto a live cairo_t so a caller that already
  * has one open (WOSDView, wframe.c after it sets a clip) folds the
  * relief into its own paint pass */
