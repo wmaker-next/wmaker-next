@@ -67,6 +67,8 @@ void WMDestroyMenuItem(WMMenuItem * item)
 
 	if (item->mixedStateImage)
 		WMReleasePixmap(item->mixedStateImage);
+
+	wfree(item);
 }
 
 bool WMGetMenuItemEnabled(WMMenuItem * item)
