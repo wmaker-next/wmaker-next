@@ -577,6 +577,17 @@ static inline int getChar(PLData * pldata)
 	return c;
 }
 
+/* Last non-space byte before from, or 0 at the start of the data. */
+static int prevNonSpaceChar(PLData *pldata, int from)
+{
+	int i = from - 1;
+
+	while (i >= 0 && isspace((unsigned char)pldata->ptr[i]))
+		i--;
+
+	return i >= 0 ? (unsigned char)pldata->ptr[i] : 0;
+}
+
 static inline int getNonSpaceChar(PLData * pldata)
 {
 	int c;
@@ -589,7 +600,30 @@ static inline int getNonSpaceChar(PLData * pldata)
 		pldata->pos++;
 		if (c == '\n') {
 			pldata->lineNumber++;
-		} else if (!isspace(c)) {
+		} else if (isspace(c)) {
+			continue;
+		} else if (c == '/' && pldata->ptr[pldata->pos] == '/'
+			   && prevNonSpaceChar(pldata, pldata->pos - 1) != '=') {
+			while (pldata->ptr[pldata->pos] != 0 &&
+			       pldata->ptr[pldata->pos] != '\n')
+				pldata->pos++;
+		} else if (c == '/' && pldata->ptr[pldata->pos] == '*'
+			   && prevNonSpaceChar(pldata, pldata->pos - 1) != '=') {
+			pldata->pos++;
+			while (pldata->ptr[pldata->pos] != 0) {
+				if (pldata->ptr[pldata->pos] == '\n') {
+					pldata->lineNumber++;
+					pldata->pos++;
+					continue;
+				}
+				if (pldata->ptr[pldata->pos] == '*' &&
+				    pldata->ptr[pldata->pos + 1] == '/') {
+					pldata->pos += 2;
+					break;
+				}
+				pldata->pos++;
+			}
+		} else {
 			break;
 		}
 	}

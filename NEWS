@@ -3,6 +3,15 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Comments in defaults files
+--------------------------
+
+The defaults file reader now skips C-style comments, so both block
+comments (/* ... */) and line comments (// to end of line) may be used
+to document keys in the WMGLOBAL template and in user domain files.
+Comments are not recognized inside quoted strings, and an unterminated
+block comment still rejects the file.
+
 Configurable WINGs system colors
 --------------------------------
 

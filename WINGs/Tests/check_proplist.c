@@ -135,6 +135,77 @@ static void test_string_escape(void)
 	WMReleasePropList(r);
 }
 
+static void test_comments(void)
+{
+	WMPropList *dict, *key, *val;
+
+	/* the shipped WMGLOBAL template documents keys in C-style
+	 * comments between tokens, the reader must skip them */
+	dict = WMCreatePropListFromDescription(
+		"{\n"
+		"  /* block comment\n"
+		"   * spanning lines */\n"
+		"  key = value; // line comment\n"
+		"  /* another */ num = 1; /* tail */\n"
+		"}");
+	CHECK(dict != NULL);
+	if (dict) {
+		key = WMCreatePLString("key");
+		val = WMGetFromPLDictionary(dict, key);
+		CHECK(val != NULL && WMIsPLString(val));
+		CHECK(val && strcmp(WMGetFromPLString(val), "value") == 0);
+		WMReleasePropList(key);
+		WMReleasePropList(dict);
+	}
+
+	/* a trailing comment after the top-level value is not garbage */
+	dict = WMCreatePropListFromDescription("{ k = v; } // done\n");
+	CHECK(dict != NULL);
+	WMReleasePropList(dict);
+
+	/* comments are not recognized inside quoted strings */
+	dict = WMCreatePropListFromDescription("{ url = \"http://x/*y\"; }");
+	CHECK(dict != NULL);
+	if (dict) {
+		key = WMCreatePLString("url");
+		val = WMGetFromPLDictionary(dict, key);
+		CHECK(val != NULL && WMIsPLString(val));
+		CHECK(val && strcmp(WMGetFromPLString(val), "http://x/*y") == 0);
+		WMReleasePropList(key);
+		WMReleasePropList(dict);
+	}
+
+	/* a lone slash between stringable characters is part of the
+	 * unquoted token, not a comment start */
+	dict = WMCreatePropListFromDescription("{ path = /usr/bin; }");
+	CHECK(dict != NULL);
+	if (dict) {
+		key = WMCreatePLString("path");
+		val = WMGetFromPLDictionary(dict, key);
+		CHECK(val != NULL && WMIsPLString(val));
+		CHECK(val && strcmp(WMGetFromPLString(val), "/usr/bin") == 0);
+		WMReleasePropList(key);
+		WMReleasePropList(dict);
+	}
+
+	/* a value beginning with // is data, not a comment, since the
+	 * previous non-space character is = */
+	dict = WMCreatePropListFromDescription("{ url = //server/share; }");
+	CHECK(dict != NULL);
+	if (dict) {
+		key = WMCreatePLString("url");
+		val = WMGetFromPLDictionary(dict, key);
+		CHECK(val != NULL && WMIsPLString(val));
+		CHECK(val && strcmp(WMGetFromPLString(val), "//server/share") == 0);
+		WMReleasePropList(key);
+		WMReleasePropList(dict);
+	}
+
+	/* an unterminated block comment ends the parse cleanly */
+	dict = WMCreatePropListFromDescription("{ k = v; /* no end");
+	CHECK(dict == NULL);
+}
+
 static void test_recursion_limit(void)
 {
 	char *deep;
@@ -438,6 +509,7 @@ int main(void)
 	test_merge_subtract();
 	test_copy_depth();
 	test_string_escape();
+	test_comments();
 	test_utf8_roundtrip();
 	test_invalid_high_byte();
 	test_recursion_limit();
