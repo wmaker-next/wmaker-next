@@ -169,6 +169,7 @@ AS_IF([test "x$asan" = "xyes"],
           LDFLAGS="$wm_save_LDFLAGS"
           AC_MSG_ERROR([--enable-asan was given but the compiler does not support -fsanitize=address,undefined])])
     ])
+AM_CONDITIONAL([HAVE_ASAN], [test "x$asan" = "xyes"])
 
 
 dnl Native CPU Optimizations Option

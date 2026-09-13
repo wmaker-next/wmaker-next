@@ -1,0 +1,74 @@
+# Valgrind suppressions for `make memcheck`.
+#
+# wmaker intentionally does not tear down process-lifetime resources
+# before exit: the screen render context, the per-screen fonts, the
+# workspace menu and the switch-panel font are kept until the process
+# dies. Those allocations, and the caches that fontconfig, pango, glib,
+# gobject and expat keep for their own process lifetime, are therefore
+# reported as lost. Match on the library frame rather than a full wmaker
+# call path so these stay valid across source changes and do not hide a
+# regression in a different caller.
+#
+# A new leak whose stack does not pass through one of these libraries is
+# not suppressed and fails the run.
+
+# libxcb hands writev an X request buffer whose padding bytes are
+# uninitialised inside its own 21 KiB connection buffer. The bytes written
+# to the socket are well-defined; this is a library false positive.
+{
+   libxcb-writev-padding
+   Memcheck:Param
+   writev(vector[0])
+   ...
+   obj:*/libxcb.so*
+   ...
+}
+
+# fontconfig keeps its parsed configuration (FcInit) and every FcPattern
+# and font set it builds for the process lifetime.
+{
+   fontconfig-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libfontconfig.so*
+   ...
+}
+
+# pango caches font maps, contexts and layout metrics per screen.
+{
+   pango-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libpango*.so*
+   ...
+}
+
+# glib/gobject keep type-system bookkeeping and per-thread allocations.
+{
+   glib-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libglib-2.0.so*
+   ...
+}
+{
+   gobject-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libgobject-2.0.so*
+   ...
+}
+
+# expat, reachable through fontconfig's XML config parser.
+{
+   expat-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libexpat.so*
+   ...
+}

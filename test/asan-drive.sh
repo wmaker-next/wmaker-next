@@ -9,6 +9,16 @@
 # 'mktemp -d' are accepted on every target listed in section 16.
 set -u
 
+# `make asan` runs this through the build system, so exit 77 (SKIP)
+# rather than fail when a required X tool is absent
+for _t in Xvfb Xephyr xdotool wmctrl xterm xdpyinfo xprop; do
+    command -v "$_t" >/dev/null 2>&1 || {
+        printf '%s not installed\n' "$_t" >&2
+        exit 77
+    }
+done
+unset _t
+
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DPY=${ASAN_DRIVE_DISPLAY:-:93}
 LOG=/tmp/wmaker-asan.log
