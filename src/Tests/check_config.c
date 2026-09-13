@@ -60,6 +60,7 @@ static int icon_resize_all;
 static int dock_apply_icon_size;
 static int aa_flush_count;
 static bool aa_current;
+static int system_color_refreshes;
 static int texture_spec_updates;
 static int font_spec_updates;
 static int color_spec_updates;
@@ -404,6 +405,13 @@ WMFont *WMBoldSystemFontOfSize(WMScreen *scr, int size)
 	return NULL;
 }
 
+bool WMRefreshSystemColors(WMScreen *scr)
+{
+	(void)scr;
+	system_color_refreshes++;
+	return true;
+}
+
 void wRefreshKeyChainOSD(WScreen *scr)
 {
 	(void)scr;
@@ -430,6 +438,7 @@ static void reset_phase4_counters(void)
 	dock_apply_icon_size = 0;
 	aa_flush_count = 0;
 	aa_current = 0;
+	system_color_refreshes = 0;
 	urgent_blink_calls = 0;
 	texture_spec_updates = 0;
 	font_spec_updates = 0;
@@ -2306,6 +2315,32 @@ static void test_antialiased_text_live_apply(void)
 	wConfigClearWindowMaker();
 }
 
+/* A WMGLOBAL system-color change contributes the system-color refresh bit
+ * so wReadDefaults posts the appearance notifications and repainted
+ * surfaces stop referencing the freed pseudocolor cells. */
+static void test_system_color_refresh_mask(void)
+{
+	WScreen screen;
+	unsigned int refresh;
+	static char wmscreen_dummy;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+
+	/* no WMScreen yet -> no bit, no refresh */
+	refresh = wConfigApplySystemColors(&screen);
+	CHECK(refresh == 0);
+	CHECK(system_color_refreshes == 0);
+
+	screen.wmscreen = (WMScreen *)&wmscreen_dummy;
+	refresh = wConfigApplySystemColors(&screen);
+	CHECK(refresh == WCFG_REFRESH_SYSTEM_COLOR);
+	CHECK(system_color_refreshes == 1);
+
+	refresh = wConfigApplySystemColors(NULL);
+	CHECK(refresh == 0);
+	CHECK(system_color_refreshes == 1);
+}
 
 static void test_runtime_apply_phase7(void)
 {
@@ -2798,6 +2833,7 @@ int main(void)
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();
 	test_antialiased_text_live_apply();
+	test_system_color_refresh_mask();
 	test_deleted_key_keeps_current();
 	test_string_array_range();
 	test_titlebar_layout_build();

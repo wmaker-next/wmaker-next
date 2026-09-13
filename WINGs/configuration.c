@@ -47,6 +47,10 @@ void W_ReadConfigurations(void)
 		WMPropList *val;
 		unsigned button;
 
+		/* WMGetStandardUserDefaults() caches the WMGLOBAL dictionary,
+		 * so a reload would keep seeing the first-read values */
+		WMReloadUserDefaultsGlobalDomain();
+
 		str = WMGetUDStringForKey(defaults, "SystemFont");
 		WINGsConfiguration.systemFont = str ? wstrdup(str) : NULL;
 
@@ -87,6 +91,30 @@ void W_ReadConfigurations(void)
 		}
 
 		WINGsConfiguration.defaultFontSize = WMGetUDIntegerForKey(defaults, "DefaultFontSize");
+
+		str = WMGetUDStringForKey(defaults, "DefaultBackColor");
+		WINGsConfiguration.defaultBackColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "DarkGrayColor");
+		WINGsConfiguration.darkGrayColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "TabColor");
+		WINGsConfiguration.tabColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "TabLightColor");
+		WINGsConfiguration.tabLightColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "SelectionColor");
+		WINGsConfiguration.selectionColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "GridColor");
+		WINGsConfiguration.gridColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "TextFieldBackColor");
+		WINGsConfiguration.textFieldBackColor = str ? wstrdup(str) : NULL;
+
+		str = WMGetUDStringForKey(defaults, "SelectedBackColor");
+		WINGsConfiguration.selectedBackColor = str ? wstrdup(str) : NULL;
 	}
 
 	if (!WINGsConfiguration.systemFont) {
@@ -126,6 +154,46 @@ unsigned W_getconf_mouseWheelDown(void)
 	return WINGsConfiguration.mouseWheelDown;
 }
 
+const char *W_getconf_defaultBackColor(void)
+{
+	return WINGsConfiguration.defaultBackColor;
+}
+
+const char *W_getconf_darkGrayColor(void)
+{
+	return WINGsConfiguration.darkGrayColor;
+}
+
+const char *W_getconf_tabColor(void)
+{
+	return WINGsConfiguration.tabColor;
+}
+
+const char *W_getconf_tabLightColor(void)
+{
+	return WINGsConfiguration.tabLightColor;
+}
+
+const char *W_getconf_selectionColor(void)
+{
+	return WINGsConfiguration.selectionColor;
+}
+
+const char *W_getconf_gridColor(void)
+{
+	return WINGsConfiguration.gridColor;
+}
+
+const char *W_getconf_textFieldBackColor(void)
+{
+	return WINGsConfiguration.textFieldBackColor;
+}
+
+const char *W_getconf_selectedBackColor(void)
+{
+	return WINGsConfiguration.selectedBackColor;
+}
+
 void W_setconf_doubleClickDelay(int value)
 {
 	WINGsConfiguration.doubleClickDelay = value;
@@ -136,12 +204,33 @@ bool WMGetAntialiasedText(void)
 	return WINGsConfiguration.antialiasedText;
 }
 
+static bool confStringChanged(const char *old, const char *current)
+{
+	if (!old || !current)
+		return old != current;
+
+	return strcmp(old, current) != 0;
+}
+
 void WMReloadConfiguration(void)
 {
 	/* W_ReadConfigurations() memsets WINGsConfiguration, so release the
 	 * heap strings it owns first to avoid leaking them on every reload
 	 * (AntialiasedText, DefaultFontSize and the numeric fields are not
 	 * heap-allocated). */
+	char *colorKeys[8];
+	bool colorsChanged;
+	int i;
+
+	colorKeys[0] = WINGsConfiguration.defaultBackColor;
+	colorKeys[1] = WINGsConfiguration.darkGrayColor;
+	colorKeys[2] = WINGsConfiguration.tabColor;
+	colorKeys[3] = WINGsConfiguration.tabLightColor;
+	colorKeys[4] = WINGsConfiguration.selectionColor;
+	colorKeys[5] = WINGsConfiguration.gridColor;
+	colorKeys[6] = WINGsConfiguration.textFieldBackColor;
+	colorKeys[7] = WINGsConfiguration.selectedBackColor;
+
 	if (WINGsConfiguration.systemFont) {
 		wfree(WINGsConfiguration.systemFont);
 		WINGsConfiguration.systemFont = NULL;
@@ -154,5 +243,23 @@ void WMReloadConfiguration(void)
 		wfree(WINGsConfiguration.floppyPath);
 		WINGsConfiguration.floppyPath = NULL;
 	}
+
 	W_ReadConfigurations();
+
+	/* the stash stays valid until here, so the change check runs
+	 * before the release */
+	colorsChanged =
+	    confStringChanged(colorKeys[0], WINGsConfiguration.defaultBackColor) ||
+	    confStringChanged(colorKeys[1], WINGsConfiguration.darkGrayColor) ||
+	    confStringChanged(colorKeys[2], WINGsConfiguration.tabColor) ||
+	    confStringChanged(colorKeys[3], WINGsConfiguration.tabLightColor) ||
+	    confStringChanged(colorKeys[4], WINGsConfiguration.selectionColor) ||
+	    confStringChanged(colorKeys[5], WINGsConfiguration.gridColor) ||
+	    confStringChanged(colorKeys[6], WINGsConfiguration.textFieldBackColor) ||
+	    confStringChanged(colorKeys[7], WINGsConfiguration.selectedBackColor);
+	if (colorsChanged)
+		W_ConfigColorsChanged();
+
+	for (i = 0; i < 8; i++)
+		wfree(colorKeys[i]);
 }

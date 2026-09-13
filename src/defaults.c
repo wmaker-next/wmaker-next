@@ -123,6 +123,7 @@ static WConfigUpdateCallback setCursor;
 #define REFRESH_WORKSPACE_MENU WCFG_REFRESH_WORKSPACE_MENU
 #define REFRESH_FRAME_BORDER WCFG_REFRESH_FRAME_BORDER
 #define REFRESH_INNER_BORDER WCFG_REFRESH_INNER_BORDER
+#define REFRESH_SYSTEM_COLOR WCFG_REFRESH_SYSTEM_COLOR
 
 /* stat() the user file behind a domain and tell whether it changed since
  * the last successful read, comparing the POSIX-2008 st_mtim so two
@@ -441,7 +442,7 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 			foo |= WTextureSettings;
 		if (needs_refresh & REFRESH_MENU_TITLE_FONT)
 			foo |= WFontSettings;
-		if (needs_refresh & REFRESH_MENU_TITLE_COLOR)
+		if (needs_refresh & (REFRESH_MENU_TITLE_COLOR | REFRESH_SYSTEM_COLOR))
 			foo |= WColorSettings;
 		if (foo)
 			WMPostNotificationName(WNMenuTitleAppearanceSettingsChanged, NULL,
@@ -452,7 +453,7 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 			foo |= WTextureSettings;
 		if (needs_refresh & REFRESH_MENU_FONT)
 			foo |= WFontSettings;
-		if (needs_refresh & REFRESH_MENU_COLOR)
+		if (needs_refresh & (REFRESH_MENU_COLOR | REFRESH_SYSTEM_COLOR))
 			foo |= WColorSettings;
 		if (foo)
 			WMPostNotificationName(WNMenuAppearanceSettingsChanged, NULL, (void *)(uintptr_t) foo);
@@ -462,7 +463,7 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 			foo |= WFontSettings;
 		if (needs_refresh & REFRESH_WINDOW_TEXTURES)
 			foo |= WTextureSettings;
-		if (needs_refresh & REFRESH_WINDOW_TITLE_COLOR)
+		if (needs_refresh & (REFRESH_WINDOW_TITLE_COLOR | REFRESH_SYSTEM_COLOR))
 			foo |= WColorSettings;
 		if (foo)
 			WMPostNotificationName(WNWindowAppearanceSettingsChanged, NULL, (void *)(uintptr_t) foo);

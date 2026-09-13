@@ -42,6 +42,14 @@ typedef struct _WINGsConfiguration {
     unsigned doubleClickDelay;
     unsigned mouseWheelUp;
     unsigned mouseWheelDown;
+    char *defaultBackColor;
+    char *darkGrayColor;
+    char *tabColor;
+    char *tabLightColor;
+    char *selectionColor;
+    char *gridColor;
+    char *textFieldBackColor;
+    char *selectedBackColor;
 } _WINGsConfiguration;
 
 extern const char *_WINGS_progname;
@@ -156,6 +164,8 @@ typedef struct W_Screen {
     W_Color *black;
     W_Color *gray;
     W_Color *darkGray;
+    W_Color *textFieldBack;
+    W_Color *selectedBack;
 
     struct W_Font *normalFont;
 
@@ -297,6 +307,9 @@ typedef struct W_Screen {
      * events WMHandleEvent() routes through W_XkbHandleEvent() */
     void *xkb;
 
+    /* config generation of the system colors, see wcolor.c */
+    unsigned colorGen;
+
 } W_Screen;
 
 #define W_DRAWABLE(scr)		(scr)->rcontext->drawable
@@ -305,6 +318,11 @@ typedef struct W_Screen {
 /* ---[ configuration.c ]------------------------------------------------- */
 
 void W_ReadConfigurations(void);
+void W_ConfigColorsChanged(void);
+void W_RefreshGlyphPixmaps(W_Screen *scr);
+WMColor *W_TextFieldBackColor(W_Screen *scr);
+WMColor *W_SelectedBackColor(W_Screen *scr);
+void WMReloadUserDefaultsGlobalDomain(void);
 
 
 /* ---[ drag*.c ]--------------------------------------------------------- */

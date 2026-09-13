@@ -1382,6 +1382,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	 * under the new flag and re-apply the WM-side font pointers. */
 	refresh |= wConfigApplyAntialiasedText(scr);
 
+	refresh |= wConfigApplySystemColors(scr);
+
 	if (scr && update_usable_area)
 		wScreenUpdateUsableArea(scr);
 	if (scr && arrange_all_icons)
@@ -1604,4 +1606,12 @@ unsigned int wConfigApplyAntialiasedText(WScreen *scr)
 	scr->info_text_font = WMBoldSystemFontOfSize(scr->wmscreen, 12);
 
 	return refresh;
+}
+
+unsigned int wConfigApplySystemColors(WScreen *scr)
+{
+	if (!scr || !scr->wmscreen)
+		return 0;
+
+	return WMRefreshSystemColors(scr->wmscreen) ? WCFG_REFRESH_SYSTEM_COLOR : 0;
 }

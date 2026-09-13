@@ -192,6 +192,36 @@ WMPixel WMColorPixel(WMColor * color)
 }
 
 /* "system" colors */
+
+/* generation counter bumped by WMReloadConfiguration() when a color
+ * key string changed; screens compare it to detect stale colors */
+static unsigned int configColorGen;
+
+void W_ConfigColorsChanged(void)
+{
+	configColorGen++;
+}
+
+static WMColor *createSystemColor(WMScreen *scr, const char *spec, const char *key,
+				  const char *name, unsigned short red,
+				  unsigned short green, unsigned short blue)
+{
+	WMColor *color = NULL;
+
+	if (spec) {
+		color = WMCreateNamedColor(scr, spec, false);
+		if (!color)
+			wwarning(_("could not parse color \"%s\" for %s"), spec, key);
+	}
+	if (!color) {
+		color = WMCreateRGBColor(scr, red, green, blue, true);
+		if (!color->flags.exact)
+			wwarning(_("could not allocate %s color"), name);
+	}
+
+	return color;
+}
+
 WMColor *WMWhiteColor(WMScreen * scr)
 {
 	if (!scr->white) {
@@ -215,9 +245,9 @@ WMColor *WMBlackColor(WMScreen * scr)
 WMColor *WMGrayColor(WMScreen * scr)
 {
 	if (!scr->gray) {
-		scr->gray = WMCreateRGBColor(scr, 0xaeba, 0xaaaa, 0xaeba, true);
-		if (!scr->gray->flags.exact)
-			wwarning(_("could not allocate %s color"), _("gray"));
+		scr->gray = createSystemColor(scr, WINGsConfiguration.defaultBackColor,
+					      "DefaultBackColor", _("gray"),
+					      0xaeba, 0xaaaa, 0xaeba);
 	}
 	return WMRetainColor(scr->gray);
 }
@@ -225,11 +255,90 @@ WMColor *WMGrayColor(WMScreen * scr)
 WMColor *WMDarkGrayColor(WMScreen * scr)
 {
 	if (!scr->darkGray) {
-		scr->darkGray = WMCreateRGBColor(scr, 0x5144, 0x5555, 0x5144, true);
-		if (!scr->darkGray->flags.exact)
-			wwarning(_("could not allocate %s color"), _("dark gray"));
+		scr->darkGray = createSystemColor(scr, WINGsConfiguration.darkGrayColor,
+						   "DarkGrayColor", _("dark gray"),
+						   0x5144, 0x5555, 0x5144);
 	}
 	return WMRetainColor(scr->darkGray);
+}
+
+WMColor *W_TextFieldBackColor(WMScreen *scr)
+{
+	if (!scr->textFieldBack) {
+		scr->textFieldBack = createSystemColor(scr, WINGsConfiguration.textFieldBackColor,
+						       "TextFieldBackColor", _("white"),
+						       0xffff, 0xffff, 0xffff);
+	}
+	return WMRetainColor(scr->textFieldBack);
+}
+
+WMColor *W_SelectedBackColor(WMScreen *scr)
+{
+	if (!scr->selectedBack) {
+		scr->selectedBack = createSystemColor(scr, WINGsConfiguration.selectedBackColor,
+						       "SelectedBackColor", _("white"),
+						       0xffff, 0xffff, 0xffff);
+	}
+	return WMRetainColor(scr->selectedBack);
+}
+
+static void refreshSystemColor(WMScreen *scr, WMColor **colorp, const char *spec,
+			       const char *key, unsigned short red,
+			       unsigned short green, unsigned short blue)
+{
+	WMColor *color = *colorp;
+	WXColor xcolor;
+	bool parsed = false;
+
+	if (!color)
+		return;
+
+	if (spec)
+		parsed = wXParseColor(scr->display, scr->colormap, spec, &xcolor);
+	if (!parsed) {
+		if (spec)
+			wwarning(_("could not parse color \"%s\" for %s"), spec, key);
+		xcolor.red = red;
+		xcolor.green = green;
+		xcolor.blue = blue;
+	}
+
+	if (scr->rcontext->vclass != XCB_VISUAL_CLASS_TRUE_COLOR) {
+		/* allocate the replacement first so a failed alloc
+		 * keeps the current color untouched */
+		WXColor tmp = xcolor;
+
+		if (!allocPixel(scr, &tmp))
+			return;
+		wXFreeColors(scr->display, scr->colormap, &color->color.pixel, 1, 0);
+		xcolor = tmp;
+	} else {
+		if (!allocPixel(scr, &xcolor))
+			return;
+	}
+
+	color->color = xcolor;
+	color->alpha = 0xffff;
+	color->flags.exact = 1;
+}
+
+bool WMRefreshSystemColors(WMScreen *scr)
+{
+	if (scr->colorGen == configColorGen)
+		return false;
+
+	refreshSystemColor(scr, &scr->gray, WINGsConfiguration.defaultBackColor,
+			   "DefaultBackColor", 0xaeba, 0xaaaa, 0xaeba);
+	refreshSystemColor(scr, &scr->darkGray, WINGsConfiguration.darkGrayColor,
+			   "DarkGrayColor", 0x5144, 0x5555, 0x5144);
+	refreshSystemColor(scr, &scr->textFieldBack, WINGsConfiguration.textFieldBackColor,
+			   "TextFieldBackColor", 0xffff, 0xffff, 0xffff);
+	refreshSystemColor(scr, &scr->selectedBack, WINGsConfiguration.selectedBackColor,
+			   "SelectedBackColor", 0xffff, 0xffff, 0xffff);
+
+	scr->colorGen = configColorGen;
+
+	return true;
 }
 
 unsigned short WMRedComponentOfColor(WMColor * color)

@@ -125,6 +125,7 @@ enum {
 	WCFG_REFRESH_ICON_TITLE_BACK = 1u << 13,
 	WCFG_REFRESH_WORKSPACE_MENU = 1u << 14,
 	WCFG_REFRESH_INNER_BORDER = 1u << 15,
+	WCFG_REFRESH_SYSTEM_COLOR = 1u << 16,
 	WCFG_REFRESH_FRAME_BORDER = WCFG_REFRESH_MENU_FONT | WCFG_REFRESH_WINDOW_FONT
 };
 
@@ -194,6 +195,9 @@ unsigned int wConfigForceReapplyIconBack(WScreen *scr);
  * from wDefaultsCheckDomains, and on a change detach the WINGs font cache
  * and re-open WM-side fonts. Returns the font refresh mask. */
 unsigned int wConfigApplyAntialiasedText(WScreen *scr);
+/* Re-apply the WMGLOBAL system colors in place. Returns the system-color
+ * refresh bit when a refresh was applied, 0 otherwise. */
+unsigned int wConfigApplySystemColors(WScreen *scr);
 
 void wConfigCacheWindowMaker(WMPropList *dict);
 void wConfigAdoptWindowMaker(WConfig *config);

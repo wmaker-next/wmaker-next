@@ -368,6 +368,29 @@ void WMSaveUserDefaults(WMUserDefaults * database)
 	}
 }
 
+void WMReloadUserDefaultsGlobalDomain(void)
+{
+	UserDefaults *database = sharedUserDefaults;
+	WMPropList *key, *dom;
+	char *path;
+
+	while (database && database->path != NULL)
+		database = database->next;
+	if (!database)
+		return;
+
+	key = WMCreatePLString("WMGLOBAL");
+	path = wdefaultspathfordomain("WMGLOBAL");
+	dom = WMReadPropListFromFile(path);
+	wfree(path);
+	if (!dom)
+		dom = WMCreatePLDictionary(NULL, NULL);
+
+	WMPutInPLDictionary(database->defaults, key, dom);
+	WMReleasePropList(dom);
+	WMReleasePropList(key);
+}
+
 WMUserDefaults *WMGetStandardUserDefaults(void)
 {
 	WMUserDefaults *defaults;
@@ -431,8 +454,10 @@ WMUserDefaults *WMGetStandardUserDefaults(void)
 	if (!domain)
 		domain = WMCreatePLDictionary(NULL, NULL);
 
-	if (domain)
+	if (domain) {
 		WMPutInPLDictionary(defaults->defaults, key, domain);
+		WMReleasePropList(domain);
+	}
 
 	/* terminate list */
 	defaults->searchList[2] = NULL;

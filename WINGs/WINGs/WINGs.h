@@ -908,6 +908,26 @@ void WMReloadConfiguration(void);
 /* Current antialiasedText flag (re-read by WMReloadConfiguration). */
 bool WMGetAntialiasedText(void);
 
+/* Configured WINGs system colors from WMGLOBAL (X11 color name or
+ * #rrggbb), NULL when the key is not set. The built-in fallbacks apply
+ * then: gray #AEAAAE, dark gray #515551, tab light #D9D9D9, tab
+ * #848484, selection #bbbbcc, grid #cccccc. */
+const char *W_getconf_defaultBackColor(void);
+const char *W_getconf_darkGrayColor(void);
+const char *W_getconf_tabColor(void);
+const char *W_getconf_tabLightColor(void);
+const char *W_getconf_selectionColor(void);
+const char *W_getconf_gridColor(void);
+const char *W_getconf_textFieldBackColor(void);
+const char *W_getconf_selectedBackColor(void);
+
+/* Re-apply the configured gray/darkGray system colors to this screen in
+ * place when the WMGLOBAL color keys changed since they were last
+ * applied. Call this after WMReloadConfiguration(). Colors not yet
+ * allocated on the screen pick the new values when they are. Returns
+ * true when a refresh was applied (the caller should repaint). */
+bool WMRefreshSystemColors(WMScreen *scr);
+
 /* ---[ WINGs/wpixmap.c ]------------------------------------------------- */
 
 WMPixmap* WMRetainPixmap(WMPixmap *pixmap);
