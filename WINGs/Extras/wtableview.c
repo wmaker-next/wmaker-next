@@ -532,7 +532,15 @@ WMTableView *WMCreateTableView(WMWidget * parent)
 
 	table->tableView->flags.dontCompressExpose = 1;
 
-	table->gridColor = WMCreateNamedColor(scr, "#cccccc", false);
+	const char *gridSpec = WINGsConfiguration.gridColor ? WINGsConfiguration.gridColor : "#cccccc";
+
+	table->gridColor = WMCreateNamedColor(scr, gridSpec, false);
+	if (!table->gridColor) {
+		if (WINGsConfiguration.gridColor)
+			wwarning(_("could not parse color \"%s\" for GridColor"),
+				 WINGsConfiguration.gridColor);
+		table->gridColor = WMCreateNamedColor(scr, "#cccccc", false);
+	}
 	/*   table->gridColor = WMGrayColor(scr); */
 
 	table->backColor = WMWhiteColor(scr);

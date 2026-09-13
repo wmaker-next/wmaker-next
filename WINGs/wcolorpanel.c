@@ -2267,6 +2267,7 @@ static void wheelRender(W_ColorPanel * panel)
 	RImage *scaled;
 	unsigned char *ptr;
 	RColor gray;
+	WMColor *sysgray;
 	unsigned long ofs = 0;
 	double s = scr->uiScale;
 	/*unsigned char     shift = getShift(sizeof(unsigned char)); */
@@ -2280,8 +2281,9 @@ static void wheelRender(W_ColorPanel * panel)
 	ptr = image->data;
 
 	/* TODO Make this transparent istead of gray */
-	gray.red = gray.blue = 0xae;
-	gray.green = 0xaa;
+	sysgray = WMGrayColor(scr);
+	gray = WMGetRColorFromColor(sysgray);
+	WMReleaseColor(sysgray);
 
 	for (y = 0; y < colorWheelSize + 4; y++) {
 		for (x = 0; x < colorWheelSize + 4; x++) {

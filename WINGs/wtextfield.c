@@ -379,7 +379,7 @@ WMTextField *WMCreateTextField(WMWidget * parent)
 	tPtr->view->attribFlags |= XCB_CW_CURSOR;
 	tPtr->view->attribs.cursor = tPtr->view->screen->textCursor;
 
-	W_SetViewBackgroundColor(tPtr->view, tPtr->view->screen->white);
+	W_SetViewBackgroundColor(tPtr->view, W_TextFieldBackColor(tPtr->view->screen));
 
 	tPtr->text = wmalloc(MIN_TEXT_BUFFER);
 	tPtr->textLen = 0;
@@ -853,7 +853,7 @@ static void paintTextField(TextField * tPtr)
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
 
-	W_SetSourceColor(cr, screen->white);
+	W_SetSourceColor(cr, screen->textFieldBack);
 	cairo_paint(cr);
 
 	if (tPtr->textLen > 0) {

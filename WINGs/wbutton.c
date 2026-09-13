@@ -594,7 +594,7 @@ static void paintButton(Button * bPtr)
 
 	if (bPtr->flags.selected) {
 		if (bPtr->flags.stateLight) {
-			backColor = scrPtr->white;
+			backColor = scrPtr->selectedBack;
 			textColor = scrPtr->black;
 		}
 
@@ -621,7 +621,7 @@ static void paintButton(Button * bPtr)
 			offset = 1;
 		}
 		if (bPtr->flags.pushLight) {
-			backColor = scrPtr->white;
+			backColor = scrPtr->selectedBack;
 			textColor = scrPtr->black;
 		}
 

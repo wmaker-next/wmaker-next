@@ -14,6 +14,7 @@ typedef struct W_List {
 
 	WMArray *items;		/* list of WMListItem */
 	WMArray *selectedItems;	/* list of selected WMListItems */
+	WMColor *selColor;
 
 	short itemHeight;
 
@@ -157,6 +158,7 @@ WMList *WMCreateList(WMWidget * parent)
 
 	lPtr->items = WMCreateArrayWithDestructor(4, releaseItem);
 	lPtr->selectedItems = WMCreateArray(4);
+	lPtr->selColor = W_SelectedBackColor(scrPtr);
 
 	/* create the vertical scroller */
 	lPtr->vScroller = WMCreateScroller(lPtr);
@@ -500,7 +502,7 @@ static void paintItem(List * lPtr, int index)
 		if (lPtr->draw)
 			(*lPtr->draw) (lPtr, index, d, itemPtr->text, flags, &rect);
 	} else {
-		back = (itemPtr->selected ? scr->white : view->backColor);
+		back = (itemPtr->selected ? lPtr->selColor : view->backColor);
 		cr = WCairoBeginForDrawable(scr, d);
 		W_SetSourceColor(cr, back);
 		cairo_rectangle(cr, 0, 0, width, height);
@@ -1607,6 +1609,9 @@ static void destroyList(List * lPtr)
 	WMDeleteTimerHandlerPtr(&lPtr->selectID);
 
 	WMDeleteTimerHandlerPtr(&lPtr->typeaheadID);
+
+	if (lPtr->selColor)
+		WMReleaseColor(lPtr->selColor);
 
 	if (lPtr->selectedItems)
 		WMFreeArray(lPtr->selectedItems);

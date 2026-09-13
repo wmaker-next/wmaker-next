@@ -374,11 +374,12 @@ static void paintMenuEntry(MultiSelectPopUpButton *bPtr, int index, int highligh
 	if (!cr)
 		return;
 
-	/* unhighlight paints the gray menu background, highlight paints a white
-	 * selection box. Both repaint the checkmark and text from the current
-	 * item state, since the selection can change while the menu stays open */
+	/* unhighlight paints the gray menu background, highlight paints the
+	 * selection color. Both repaint the checkmark and text from the
+	 * current item state, since the selection can change while the menu
+	 * stays open */
 	if (highlight)
-		W_SetSourceColor(cr, scr->white);
+		W_SetSourceColor(cr, scr->selectedBack);
 	else
 		W_SetSourceColor(cr, scr->gray);
 	cairo_rectangle(cr, 1, index * itemHeight + 1, width - 3, itemHeight - 3);

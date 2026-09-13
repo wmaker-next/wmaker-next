@@ -80,15 +80,16 @@ WMPixmap *WMCreateApplicationIconBlendedPixmap(WMScreen * scr, const RColor * co
 	WMPixmap *pix;
 
 	if (scr->applicationIconImage) {
-		static const RColor gray = {
-			/* red   */ 0xAE,
-			/* green */ 0xAA,
-			/* blue  */ 0xAE,
-			/* alpha */ 0xFF
-		};
+		RColor gray;
 
-		if (!color)
+		if (!color) {
+			WMColor *sysgray = WMGrayColor(scr);
+
+			gray = WMGetRColorFromColor(sysgray);
+			WMReleaseColor(sysgray);
+
 			color = &gray;
+		}
 
 		pix = WMCreateBlendedPixmapFromRImage(scr, scr->applicationIconImage, color);
 	} else {

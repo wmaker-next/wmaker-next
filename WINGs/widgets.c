@@ -378,6 +378,12 @@ static int userWidgetCount = 0;
 
 /*****  end data  ******/
 
+typedef struct GlyphPixmapRef {
+	WMPixmap **image;
+	char **data;
+	int width, height;
+} GlyphPixmapRef;
+
 /* pick the four-tone bevel palette entry for one glyph cell and, when
  * the char is '=', clear the matching mask alpha byte so that cell is
  * outside the shape. Returns the WMColor to write into the image. */
@@ -472,6 +478,97 @@ static WMPixmap *makePixmap(W_Screen * sPtr, char **data, int width, int height,
 	return WMCreatePixmapFromXPixmaps(sPtr, pixmap, mask, width, height, sPtr->depth);
 }
 
+/* re-render a glyph into its existing server pixmap so every widget
+ * holding the WMPixmap sees the new system colors on its next repaint
+ * (the shapes and masks are color-independent) */
+static void refreshGlyphPixmap(W_Screen *sPtr, WMPixmap *pm, char **data,
+			       int width, int height)
+{
+	cairo_surface_t *img, *ps;
+	cairo_t *cr;
+	unsigned char *row;
+	int stride, x, y;
+	WMColor *c;
+
+	img = cairo_image_surface_create(CAIRO_FORMAT_RGB24, width, height);
+	stride = cairo_image_surface_get_stride(img);
+	for (y = 0; y < height; y++) {
+		row = cairo_image_surface_get_data(img) + y * stride;
+		for (x = 0; x < width; x++) {
+			c = pickCellColor(sPtr, data[y][x], NULL);
+			row[4 * x + 0] = c->color.blue >> 8;
+			row[4 * x + 1] = c->color.green >> 8;
+			row[4 * x + 2] = c->color.red >> 8;
+		}
+	}
+	cairo_surface_mark_dirty(img);
+
+	ps = cairo_xcb_surface_create(sPtr->rcontext->xc, pm->pixmap,
+				      sPtr->rcontext->xvisual, width, height);
+	cr = cairo_create(ps);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_surface(cr, img, 0, 0);
+	cairo_paint(cr);
+	cairo_destroy(cr);
+	cairo_surface_flush(ps);
+	cairo_surface_destroy(ps);
+	cairo_surface_destroy(img);
+}
+
+void W_RefreshGlyphPixmaps(W_Screen *sPtr)
+{
+	GlyphPixmapRef refs[] = {
+		{ &sPtr->checkButtonImageOn, CHECK_BUTTON_ON,
+		  CHECK_BUTTON_ON_WIDTH, CHECK_BUTTON_ON_HEIGHT },
+		{ &sPtr->checkButtonImageOff, CHECK_BUTTON_OFF,
+		  CHECK_BUTTON_OFF_WIDTH, CHECK_BUTTON_OFF_HEIGHT },
+		{ &sPtr->radioButtonImageOn, RADIO_BUTTON_ON,
+		  RADIO_BUTTON_ON_WIDTH, RADIO_BUTTON_ON_HEIGHT },
+		{ &sPtr->radioButtonImageOff, RADIO_BUTTON_OFF,
+		  RADIO_BUTTON_OFF_WIDTH, RADIO_BUTTON_OFF_HEIGHT },
+		{ &sPtr->tristateButtonImageOn, TRISTATE_BUTTON_ON,
+		  TRISTATE_BUTTON_ON_WIDTH, TRISTATE_BUTTON_ON_HEIGHT },
+		{ &sPtr->tristateButtonImageOff, TRISTATE_BUTTON_OFF,
+		  TRISTATE_BUTTON_OFF_WIDTH, TRISTATE_BUTTON_OFF_HEIGHT },
+		{ &sPtr->tristateButtonImageTri, TRISTATE_BUTTON_TRI,
+		  TRISTATE_BUTTON_TRI_WIDTH, TRISTATE_BUTTON_TRI_HEIGHT },
+		{ &sPtr->buttonArrow, BUTTON_ARROW,
+		  BUTTON_ARROW_WIDTH, BUTTON_ARROW_HEIGHT },
+		{ &sPtr->pushedButtonArrow, BUTTON_ARROW2,
+		  BUTTON_ARROW2_WIDTH, BUTTON_ARROW2_HEIGHT },
+		{ &sPtr->scrollerDimple, SCROLLER_DIMPLE,
+		  SCROLLER_DIMPLE_WIDTH, SCROLLER_DIMPLE_HEIGHT },
+		{ &sPtr->upArrow, SCROLLER_ARROW_UP,
+		  SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT },
+		{ &sPtr->downArrow, SCROLLER_ARROW_DOWN,
+		  SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT },
+		{ &sPtr->leftArrow, SCROLLER_ARROW_LEFT,
+		  SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT },
+		{ &sPtr->rightArrow, SCROLLER_ARROW_RIGHT,
+		  SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT },
+		{ &sPtr->hiUpArrow, HI_SCROLLER_ARROW_UP,
+		  SCROLLER_ARROW_UP_WIDTH, SCROLLER_ARROW_UP_HEIGHT },
+		{ &sPtr->hiDownArrow, HI_SCROLLER_ARROW_DOWN,
+		  SCROLLER_ARROW_DOWN_WIDTH, SCROLLER_ARROW_DOWN_HEIGHT },
+		{ &sPtr->hiLeftArrow, HI_SCROLLER_ARROW_LEFT,
+		  SCROLLER_ARROW_LEFT_WIDTH, SCROLLER_ARROW_LEFT_HEIGHT },
+		{ &sPtr->hiRightArrow, HI_SCROLLER_ARROW_RIGHT,
+		  SCROLLER_ARROW_RIGHT_WIDTH, SCROLLER_ARROW_RIGHT_HEIGHT },
+		{ &sPtr->popUpIndicator, POPUP_INDICATOR,
+		  POPUP_INDICATOR_WIDTH, POPUP_INDICATOR_HEIGHT },
+		{ &sPtr->pullDownIndicator, PULLDOWN_INDICATOR,
+		  PULLDOWN_INDICATOR_WIDTH, PULLDOWN_INDICATOR_HEIGHT },
+		{ &sPtr->checkMark, CHECK_MARK, CHECK_MARK_WIDTH, CHECK_MARK_HEIGHT },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(refs) / sizeof(refs[0]); i++) {
+		if (*refs[i].image)
+			refreshGlyphPixmap(sPtr, *refs[i].image, refs[i].data,
+					   refs[i].width, refs[i].height);
+	}
+}
+
 #define T_WINGS_IMAGES_FILE  RESOURCE_PATH"/Images.tiff"
 #define X_WINGS_IMAGES_FILE  RESOURCE_PATH"/Images.xpm"
 
@@ -480,10 +577,11 @@ static bool loadPixmaps(WMScreen * scr)
 	RImage *image, *tmp;
 	RColor gray;
 	RColor white;
+	WMColor *sysgray;
 
-	gray.red = 0xae;
-	gray.green = 0xaa;
-	gray.blue = 0xae;
+	sysgray = WMGrayColor(scr);
+	gray = WMGetRColorFromColor(sysgray);
+	WMReleaseColor(sysgray);
 
 	white.red = 0xff;
 	white.green = 0xff;
@@ -799,6 +897,11 @@ WMScreen *WMCreateScreenWithRContext(xcb_connection_t * display, int screen, RCo
 
 	scrPtr->tristateButtonImageTri = makePixmap(scrPtr, TRISTATE_BUTTON_TRI,
 	                                            TRISTATE_BUTTON_TRI_WIDTH, TRISTATE_BUTTON_TRI_HEIGHT, false);
+
+	/* allocate the two widget colors now so paint paths (popup menu
+	 * highlights) can read the screen fields without a NULL check */
+	WMReleaseColor(W_TextFieldBackColor(scrPtr));
+	WMReleaseColor(W_SelectedBackColor(scrPtr));
 
 	scrPtr->buttonArrow = makePixmap(scrPtr, BUTTON_ARROW, BUTTON_ARROW_WIDTH, BUTTON_ARROW_HEIGHT, false);
 

@@ -338,6 +338,8 @@ bool WMRefreshSystemColors(WMScreen *scr)
 
 	scr->colorGen = configColorGen;
 
+	W_RefreshGlyphPixmaps(scr);
+
 	return true;
 }
 

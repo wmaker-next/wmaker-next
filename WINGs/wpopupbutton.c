@@ -407,7 +407,7 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 	cr = WCairoBeginForDrawable(scr, bPtr->menuView->window);
 	if (!cr)
 		return;
-	W_SetSourceColor(cr, scr->white);
+	W_SetSourceColor(cr, scr->selectedBack);
 	cairo_rectangle(cr, 1, index * itemHeight + 1, width - 3, itemHeight - 3);
 	cairo_fill(cr);
 

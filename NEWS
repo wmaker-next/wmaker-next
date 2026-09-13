@@ -3,6 +3,39 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Configurable WINGs system colors
+--------------------------------
+
+The WMGLOBAL domain gains eight color keys that override the hard-coded
+WINGs system colors, so the chrome of every WINGs-based application
+(WPrefs, the workspace menu, the switch panel, the info panel) can be
+themed from one file without touching any code. Edit the domain file
+(~/GNUstep/Defaults/WMGLOBAL, or ~/.config/WindowMaker/WMGLOBAL) and
+add the keys with X11 color names or #rrggbb values:
+
+  DefaultBackColor - the default widget surface (the gray chrome) and
+    most relief lines derived from it
+  DarkGrayColor   - disabled text and the sunken relief lines
+  TabColor        - the tab view's tab surface
+  TabLightColor   - the tab view's light edge
+  SelectionColor  - the table view's selected row
+  GridColor       - the table view's grid lines
+  TextFieldBackColor - the text input field surface
+  SelectedBackColor - the background of selected states: the selected
+    list row, the popup menu highlight and the pressed or lit button
+
+For example:
+
+  DefaultBackColor = "#303030";
+  DarkGrayColor = "#1f1f1f";
+
+Values fall back to the built-in grays when unset or unparseable.
+Window Maker watches the domain and re-applies changed colors to its
+WINGs windows live, in place, without restarting. Standalone WINGs
+applications pick the keys up at their next start. The shipped
+WMGLOBAL template documents the keys as commented-out examples with
+their fallbacks.
+
 Per-window "skip window list" and "skip switch panel" toggles
 --------------------------------------------------------------
 

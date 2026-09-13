@@ -3,6 +3,8 @@
 
 #include "WINGsP.h"
 
+#include "wconfig.h"
+
 typedef struct W_TabView {
 	W_Class widgetClass;
 	W_View *view;
@@ -186,6 +188,22 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 	}
 }
 
+static WMColor *createTabColor(WMScreen *scr, const char *spec, const char *key,
+			       unsigned short red, unsigned short green, unsigned short blue)
+{
+	WMColor *color = NULL;
+
+	if (spec) {
+		color = WMCreateNamedColor(scr, spec, false);
+		if (!color)
+			wwarning(_("could not parse color \"%s\" for %s"), spec, key);
+	}
+	if (!color)
+		color = WMCreateRGBColor(scr, red, green, blue, false);
+
+	return color;
+}
+
 WMTabView *WMCreateTabView(WMWidget * parent)
 {
 	TabView *tPtr;
@@ -202,8 +220,10 @@ WMTabView *WMCreateTabView(WMWidget * parent)
 	tPtr->view->self = tPtr;
 	tPtr->view->delegate = &delegate;
 
-	tPtr->lightGray = WMCreateRGBColor(scr, 0xd9d9, 0xd9d9, 0xd9d9, false);
-	tPtr->tabColor = WMCreateRGBColor(scr, 0x8420, 0x8420, 0x8420, false);
+	tPtr->lightGray = createTabColor(scr, WINGsConfiguration.tabLightColor,
+					 "TabLightColor", 0xd9d9, 0xd9d9, 0xd9d9);
+	tPtr->tabColor = createTabColor(scr, WINGsConfiguration.tabColor,
+					"TabColor", 0x8420, 0x8420, 0x8420);
 
 	tPtr->font = WMRetainFont(scr->normalFont);
 

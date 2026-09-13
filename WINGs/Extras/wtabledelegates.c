@@ -50,7 +50,10 @@ typedef struct {
 	WMColor *selBack;
 } BooleanSwitchData;
 
-static char *SelectionColor = "#bbbbcc";
+static const char *selectionColorName(void)
+{
+	return WINGsConfiguration.selectionColor ? WINGsConfiguration.selectionColor : "#bbbbcc";
+}
 
 /* one cell interior inset by one pixel from the grid line, filled in
  * the row-state background then clipped so text or the pixmap glyph
@@ -164,7 +167,7 @@ WMTableColumnDelegate *WTCreateStringEditorDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
+	data->selBack = WMCreateNamedColor(scr, selectionColorName(), false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -238,7 +241,7 @@ WMTableColumnDelegate *WTCreateEnumSelectorDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
+	data->selBack = WMCreateNamedColor(scr, selectionColorName(), false);
 	data->textColor = WMBlackColor(scr);
 	data->count = 0;
 	data->options = NULL;
@@ -343,7 +346,7 @@ WMTableColumnDelegate *WTCreateBooleanSwitchDelegate(WMTableView * parent)
 	WMSetButtonAltImage(data->widget, WMGetSystemPixmap(scr, WSICheckMark));
 
 	data->table = parent;
-	color = WMCreateNamedColor(scr, SelectionColor, false);
+	color = WMCreateNamedColor(scr, selectionColorName(), false);
 	WMSetWidgetBackgroundColor(data->widget, color);
 	data->back = WMWhiteColor(scr);
 	data->selBack = color;
@@ -388,7 +391,7 @@ WMTableColumnDelegate *WTCreateStringDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
+	data->selBack = WMCreateNamedColor(scr, selectionColorName(), false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;
@@ -432,7 +435,7 @@ WMTableColumnDelegate *WTCreatePixmapDelegate(WMTableView * table)
 
 	data->table = table;
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
+	data->selBack = WMCreateNamedColor(scr, selectionColorName(), false);
 
 	delegate->data = data;
 	delegate->drawCell = PCellPainter;
@@ -499,7 +502,7 @@ WMTableColumnDelegate *WTCreatePixmapStringDelegate(WMTableView * parent)
 	data->table = parent;
 	data->font = WMSystemFontOfSize(scr, 12);
 	data->back = WMWhiteColor(scr);
-	data->selBack = WMCreateNamedColor(scr, SelectionColor, false);
+	data->selBack = WMCreateNamedColor(scr, selectionColorName(), false);
 	data->textColor = WMBlackColor(scr);
 
 	delegate->data = data;

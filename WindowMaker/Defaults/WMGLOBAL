@@ -7,4 +7,17 @@
   DoubleClickTime = 250;
   MouseWheelUp = Button4;
   MouseWheelDown = Button5;
+
+  /* WINGs chrome colors, X11 color names or #rrggbb. Commented out,
+   * the values shown are the built-in fallbacks. DefaultBackColor and
+   * DarkGrayColor restyle nearly every widget surface and relief line.
+   * The tab/selection/grid keys restyle the table view and tab view. */
+  /* DefaultBackColor = "#AEAAAE"; */
+  /* DarkGrayColor = "#515551"; */
+  /* TextFieldBackColor = "#FFFFFF"; */
+  /* SelectedBackColor = "#FFFFFF"; */
+  /* TabColor = "#848484"; */
+  /* TabLightColor = "#D9D9D9"; */
+  /* SelectionColor = "#bbbbcc"; */
+  /* GridColor = "#cccccc"; */
 }
