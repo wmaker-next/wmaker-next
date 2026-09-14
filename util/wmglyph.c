@@ -625,8 +625,13 @@ int main(int argc, char **argv)
 	app.fg = WMBlackColor(app.scr);
 	app.cellBg = WMWhiteColor(app.scr);
 	app.panelBg = WMGrayColor(app.scr);
-	app.selBg = WMCreateRGBColor(app.scr, 0x3030, 0x5050, 0xA0A0, false);
-	app.selFg = WMWhiteColor(app.scr);
+	if (W_getconf_selectedBackColor()) {
+		app.selBg = W_SelectedBackColor(app.scr);
+		app.selFg = WMBlackColor(app.scr);
+	} else {
+		app.selBg = WMDarkGrayColor(app.scr);
+		app.selFg = WMWhiteColor(app.scr);
+	}
 	app.lineColor = WMDarkGrayColor(app.scr);
 
 	app.font = WMCreateFont(app.scr, FONT_SPEC);

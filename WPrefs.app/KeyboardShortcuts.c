@@ -568,7 +568,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	WMColor *backColor = (state & WLDSSelected) ? panel->white : panel->gray;
+	WMColor *backColor = (state & WLDSSelected) ? WMGetListSelectionColor(lPtr) : panel->gray;
 
 	width = rect->size.width;
 	height = rect->size.height;

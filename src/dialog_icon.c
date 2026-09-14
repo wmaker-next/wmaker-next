@@ -247,6 +247,7 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	WMScreen *wmscr = WMWidgetScreen(panel->win);
 	RColor color;
 	cairo_t *cr;
+	bool selected;
 	int x, y, width, height, len;
 	int i, j;
 	int fheight, tlen, twidth;
@@ -263,7 +264,8 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	width = rect->size.width;
 	height = rect->size.height;
 
-	back = (state & WLDSSelected) ? scr->white : scr->gray;
+	selected = (state & WLDSSelected) != 0;
+	back = selected ? W_SelectedBackColor(wmscr) : scr->gray;
 
 	dirfile = wexpandpath(WMGetListSelectedItem(panel->dirList)->text);
 	len = strlen(dirfile) + strlen(text) + 4;
@@ -281,6 +283,8 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 
 	if (!pixmap) {
 		/*WMRemoveListItem(lPtr, index); */
+		if (selected)
+			WMReleaseColor(back);
 		return;
 	}
 
@@ -321,6 +325,8 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	WCairoEnd(cr);
 
 	WMReleasePixmap(pixmap);
+	if (selected)
+		WMReleaseColor(back);
 	/* I hope it is better to do not use cache / on my box it is fast nuff */
 	wXFlush(xconn);
 }

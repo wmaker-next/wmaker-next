@@ -283,6 +283,11 @@ void WMSetListUserDrawProc(WMList * lPtr, WMListDrawProc * proc)
 	lPtr->draw = proc;
 }
 
+WMColor *WMGetListSelectionColor(WMList *lPtr)
+{
+	return lPtr->selColor;
+}
+
 void WMSetListUserDrawItemHeight(WMList * lPtr, unsigned short height)
 {
 	assert(height > 0);

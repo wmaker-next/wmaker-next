@@ -438,7 +438,6 @@ static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *t
 {
 	TexturePanel *panel = (TexturePanel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	WMColor *white = WMWhiteColor(scr);
 	WMColor *black = WMBlackColor(scr);
 	WMColor *gray = WMGrayColor(scr);
 	int width, height, x, y;
@@ -450,7 +449,7 @@ static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *t
 	y = rect->pos.y;
 
 	cr = WCairoBeginForDrawable(scr, d);
-	W_SetSourceColor(cr, (state & WLDSSelected) ? white : gray);
+	W_SetSourceColor(cr, (state & WLDSSelected) ? WMGetListSelectionColor(lPtr) : gray);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 
@@ -462,7 +461,6 @@ static void paintGradListItem(WMList *lPtr, int index, xcb_drawable_t d, char *t
 	W_DrawString(cr, black, panel->listFont, x + 40, y + 1, text, strlen(text));
 	WCairoEnd(cr);
 
-	WMReleaseColor(white);
 	WMReleaseColor(black);
 	WMReleaseColor(gray);
 }

@@ -484,7 +484,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 	WMView *view = W_VIEW(lPtr);
 	W_Screen *scr = view->screen;
 	WMFont *font = ((state & WLDSIsBranch) ? scr->boldFont : scr->normalFont);
-	WMColor *backColor = ((state & WLDSSelected) ? scr->white : view->backColor);
+	WMColor *backColor = ((state & WLDSSelected) ? WMGetListSelectionColor(lPtr) : view->backColor);
 	WMColor *lineColor;
 	cairo_t *cr;
 	char *textBuf;

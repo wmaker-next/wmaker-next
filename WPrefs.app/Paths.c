@@ -51,7 +51,6 @@ typedef struct _Panel {
 
 	WMColor *red;
 	WMColor *black;
-	WMColor *white;
 	WMColor *gray;
 	WMFont *font;
 } _Panel;
@@ -208,7 +207,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 	int width, height, x, y;
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
-	WMColor *backColor = (state & WLDSSelected) ? panel->white : panel->gray;
+	WMColor *backColor = (state & WLDSSelected) ? WMGetListSelectionColor(lPtr) : panel->gray;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) index;
@@ -271,7 +270,6 @@ static void createPanel(Panel * p)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMTabViewItem *tab;
 
-	panel->white = WMWhiteColor(scr);
 	panel->black = WMBlackColor(scr);
 	panel->gray = WMGrayColor(scr);
 	panel->red = WMCreateRGBColor(scr, 0xffff, 0, 0, true);

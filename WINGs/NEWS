@@ -17,6 +17,7 @@ W_getconf_gridColor ADDED
 W_getconf_textFieldBackColor ADDED
 W_getconf_selectedBackColor ADDED
 WMRefreshSystemColors ADDED
+WMGetListSelectionColor ADDED
 WMGetTextFieldCursorPosition ADDED
 WMSetLabelUseMarkup ADDED
 WMGetLabelUseMarkup ADDED

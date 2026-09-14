@@ -2845,7 +2845,7 @@ static void ensure_popup(void)
 	if (!popup_norm_font)
 		popup_norm_font = WMSystemFontOfSize(popup_wscr, 11);
 	popup_dim_color = WMDarkGrayColor(popup_wscr);
-	popup_sel_color = WMWhiteColor(popup_wscr);
+	popup_sel_color = W_SelectedBackColor(popup_wscr);
 	popup_bg_color = WMGrayColor(popup_wscr);
 	popup_item_h = WMFontHeight(popup_bold_font) +
 		       WMFontHeight(popup_norm_font) + 6;

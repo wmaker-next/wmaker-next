@@ -1278,7 +1278,8 @@ static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text
 	_Panel *panel = (_Panel *) WMGetHangedData(lPtr);
 	WMScreen *scr = WMWidgetScreen(lPtr);
 	int width, height, x, y, tmp;
-	WMColor *back = (state & WLDSSelected) ? WMWhiteColor(scr) : WMGrayColor(scr);
+	bool selected = (state & WLDSSelected) != 0;
+	WMColor *back = selected ? WMGetListSelectionColor(lPtr) : WMGrayColor(scr);
 	WMListItem *item;
 	WMColor *black = WMBlackColor(scr);
 	TextureListItem *titem;
@@ -1290,7 +1291,8 @@ static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text
 	item = WMGetListItem(lPtr, index);
 	titem = (TextureListItem *) item->clientData;
 	if (!titem) {
-		WMReleaseColor(back);
+		if (!selected)
+			WMReleaseColor(back);
 		WMReleaseColor(black);
 		return;
 	}
@@ -1322,7 +1324,8 @@ static void paintListItem(WMList * lPtr, int index, xcb_drawable_t d, char *text
 			  x + TEXPREV_WIDTH + 14, y + 18, titem->texture, strlen(titem->texture));
 	WCairoEnd(cr);
 
-	WMReleaseColor(back);
+	if (!selected)
+		WMReleaseColor(back);
 	WMReleaseColor(black);
 }
 

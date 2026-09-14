@@ -1329,12 +1329,14 @@ static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 	WMSize isz;
 	cairo_t *cr;
 	const char *line1, *line2;
+	bool selected;
 	int fh, tx, iy;
 
 	(void)index;
 
 	v = WMGetListItem(lPtr, index)->clientData;
-	back = (state & WLDSSelected) ? p->scr->white : p->scr->gray;
+	selected = (state & WLDSSelected) != 0;
+	back = selected ? W_SelectedBackColor(wscr) : p->scr->gray;
 
 	cr = WCairoBeginForDrawable(wscr, d);
 	W_SetSourceColor(cr, back);
@@ -1362,6 +1364,9 @@ static void drawCandidate(WMList *lPtr, int index, xcb_drawable_t d,
 				  tx, rect->pos.y + 2 + fh,
 				  line2, strlen(line2));
 	WCairoEnd(cr);
+
+	if (selected)
+		WMReleaseColor(back);
 }
 
 static void hideDropList(WMInputPanelWithHistory *p);

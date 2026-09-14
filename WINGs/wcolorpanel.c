@@ -3598,7 +3598,7 @@ static void colorListPaintItem(WMList * lPtr, int index, xcb_drawable_t d, char 
 	if (!cr)
 		return;
 
-	W_SetSourceColor(cr, (state & WLDSSelected) ? scr->white : view->backColor);
+	W_SetSourceColor(cr, (state & WLDSSelected) ? WMGetListSelectionColor(lPtr) : view->backColor);
 	cairo_rectangle(cr, x, y, width, height);
 	cairo_fill(cr);
 

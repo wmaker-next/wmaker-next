@@ -1376,6 +1376,10 @@ void WMUnselectAllListItems(WMList *lPtr);
 
 void WMSetListUserDrawProc(WMList *lPtr, WMListDrawProc *proc);
 
+/* Background this list paints for a selected row (the WMGLOBAL
+ * SelectedBackColor, refreshed in place). Borrowed reference. */
+WMColor *WMGetListSelectionColor(WMList *lPtr);
+
 void WMSetListUserDrawItemHeight(WMList *lPtr, unsigned short height);
 
 int WMGetListItemHeight(WMList *lPtr);
