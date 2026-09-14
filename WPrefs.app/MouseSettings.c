@@ -425,7 +425,7 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 			wfree(tmp);
 		}
 
-		while (--a > 0) {
+		while (a--) {
 			if (array[a])
 				wfree(array[a]);
 		}
