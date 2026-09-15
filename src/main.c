@@ -358,11 +358,23 @@ static void shellCommandHandler(pid_t pid, unsigned int status, void *client_dat
 void LaunchChildSetup(void *data)
 {
 	struct LaunchSetup *s = data;
+	int fd;
 
 	SetupEnvironment(s->scr);
 #ifdef HAVE_SETSID
 	setsid();
 #endif
+
+	/* a chatty child must not block on the WM's undrained stderr */
+	fd = open("/dev/null", O_RDWR);
+	if (fd >= 0) {
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
+		if (fd > STDERR_FILENO)
+			close(fd);
+	}
+
 	wStartupLaunchSetupChild(s->sn);
 }
 
