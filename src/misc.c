@@ -588,7 +588,7 @@ void ExecuteInputCommand(WScreen *scr, const char *cmdline)
 		     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_WAIT], XCB_CURRENT_TIME);
 		wXSync(xconn);
 
-		ExecuteShellCommand(scr, cmd);
+		ExecuteShellCommandWithStartup(scr, cmd, false);
 		wfree(cmd);
 
 		wXUngrabPointer(xconn, XCB_CURRENT_TIME);

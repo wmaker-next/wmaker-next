@@ -378,7 +378,7 @@ void LaunchChildSetup(void *data)
 	wStartupLaunchSetupChild(s->sn);
 }
 
-void ExecuteShellCommand(WScreen *scr, const char *command)
+void ExecuteShellCommandWithStartup(WScreen *scr, const char *command, bool startup_notify)
 {
 	static char *shell = NULL;
 	struct LaunchSetup ls;
@@ -397,8 +397,8 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 	shell = "/bin/sh";
 
 	ls.scr = scr;
-	ls.sn = wStartupLaunchBegin(scr, command, command, NULL,
-				    scr->current_workspace, NULL);
+	ls.sn = startup_notify ? wStartupLaunchBegin(scr, command, command, NULL,
+						     scr->current_workspace, NULL) : NULL;
 
 	pid = wspawnvp_setup((char *[]){ shell, "-c", (char *)command, NULL },
 			     LaunchChildSetup, &ls);
@@ -415,6 +415,11 @@ void ExecuteShellCommand(WScreen *scr, const char *command)
 		wAddDeathHandler(pid, shellCommandHandler, data, "menu", -1);
 		wStartupLaunchSpawned(ls.sn, pid);
 	}
+}
+
+void ExecuteShellCommand(WScreen *scr, const char *command)
+{
+	ExecuteShellCommandWithStartup(scr, command, true);
 }
 
 /*

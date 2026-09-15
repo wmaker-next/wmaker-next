@@ -43,6 +43,7 @@ void Restart(char *manager, bool abortOnFailure);
 void SetupEnvironment(WScreen *scr);
 void LaunchChildSetup(void *data);
 void ExecuteShellCommand(WScreen *scr, const char *command);
+void ExecuteShellCommandWithStartup(WScreen *scr, const char *command, bool startup_notify);
 bool RelaunchWindow(WWindow *wwin);
 noreturn void wAbort(int dumpCore);
 void ExecExitScript(void);
