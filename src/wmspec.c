@@ -2434,6 +2434,8 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		int y_root = event->data.data32[1];
 		int button = event->data.data32[3];
 		unsigned int mask;
+		int grab;
+		int tries;
 
 		if (direction == _NET_WM_MOVERESIZE_CANCEL) {
 			if (wwin->moveresize.active) {
@@ -2484,11 +2486,31 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 			return true;
 		}
 
-		/* Grab the pointer for the operation */
-		if (wXGrabPointer(xconn, wwin->frame->core->window, false,
-								XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
-								XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-								XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess)
+		/* a CSD client can still hold its implicit grab here,
+		 * retry while the initiating button is down */
+		grab = wXGrabPointer(xconn, wwin->frame->core->window, false,
+				     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+				     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+				     XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
+		for (tries = 0; grab == WXGrabAlreadyGrabbed && tries < 15; tries++) {
+			unsigned int held;
+
+			if (!wXQueryPointerSameScreen(xconn, wwin->screen_ptr->root_win, &mask))
+				return true;
+			if (button >= 1 && button <= 3)
+				held = (unsigned int)(1 << (button + 7));
+			else
+				held = (1 << 8) | (1 << 9) | (1 << 10);
+			if (!(mask & held))
+				return true;
+
+			wusleep(10000);
+			grab = wXGrabPointer(xconn, wwin->frame->core->window, false,
+					     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+					     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+					     XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
+		}
+		if (grab != WXGrabSuccess)
 			return true;
 
 		/* Set up the move/resize state */

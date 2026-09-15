@@ -2506,8 +2506,93 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 			showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
 			break;
 
+		case XCB_BUTTON_RELEASE:
+			if (!wwin->moveresize.active
+			    && ((((xcb_button_press_event_t *)event)->detail) != ((xcb_button_press_event_t *)ev)->detail))
+				break;
+
+			/* a release carries root_x/root_y like a motion
+			 * event, use it as the last pointer sample so a
+			 * fling with no motion after the handoff still
+			 * resizes */
+			__attribute__((fallthrough));
 		case XCB_MOTION_NOTIFY:
-			if (started) {
+			if (started
+			    || abs(orig_x - (((xcb_motion_notify_event_t *)event)->root_x)) >= MOVE_THRESHOLD
+			    || abs(orig_y - (((xcb_motion_notify_event_t *)event)->root_y)) >= MOVE_THRESHOLD) {
+				if (!started) {
+					int tx, ty;
+					xcb_window_t junkw;
+					int flags;
+
+					wXTranslateCoordinates(xconn, root, wwin->frame->core->window,
+							      orig_x, orig_y, &tx, &ty, &junkw);
+
+					/* check if resizing through resizebar */
+					if (is_resizebar)
+						flags = RESIZEBAR;
+					else
+						flags = 0;
+
+					if (is_resizebar && ((((xcb_button_press_event_t *)ev)->state & XCB_MOD_MASK_SHIFT)
+							     || abs(orig_y - (((xcb_motion_notify_event_t *)event)->root_y)) < HRESIZE_THRESHOLD))
+						flags |= HCONSTRAIN;
+
+					/* a _NET_WM_MOVERESIZE resize names its
+					 * edge in the message, only derive one
+					 * from the position for WM-initiated
+					 * resizes */
+					if (!wwin->moveresize.active)
+						res = getResizeDirection(wwin, tx, ty, orig_y - (((xcb_motion_notify_event_t *)event)->root_y), flags);
+
+					if (res == (UP | LEFT))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+									 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+									 wPreferences.cursor[WCUR_TOPLEFTRESIZE], XCB_CURRENT_TIME);
+					else if (res == (UP | RIGHT))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_TOPRIGHTRESIZE], XCB_CURRENT_TIME);
+					else if (res == (DOWN | LEFT))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE], XCB_CURRENT_TIME);
+					else if (res == (DOWN | RIGHT))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE], XCB_CURRENT_TIME);
+					else if (res == DOWN || res == UP)
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
+					else if (res & (DOWN | UP))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
+					else if (res & (LEFT | RIGHT))
+						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
+								 wPreferences.cursor[WCUR_HORIZONRESIZE], XCB_CURRENT_TIME);
+
+					wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+
+					/* Draw the resize frame for the first time. */
+					mapGeometryDisplay(wwin, fx, fy, fw, fh);
+
+					started = 1;
+
+					if (w_global.config->shared_edge_resize) {
+						if (res & (LEFT | RIGHT))
+							shared_edge_pair_setup(&pair_x, wwin, 0,
+									       (res & RIGHT) ? 1 : -1,
+									       rx1, rx2, vert_border);
+						if (res & (UP | DOWN))
+							shared_edge_pair_setup(&pair_y, wwin, 1,
+									       (res & DOWN) ? 1 : -1,
+									       ry1, ry2, vert_border);
+					}
+				}
+
 				dw = 0;
 				dh = 0;
 
@@ -2546,80 +2631,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				if (pair_x.partner || pair_y.partner)
 					shared_edge_adjust(&pair_x, &pair_y,
 							   &fx, &fy, &fw, &fh);
-			} else if (abs(orig_x - (((xcb_motion_notify_event_t *)event)->root_x)) >= MOVE_THRESHOLD
-				   || abs(orig_y - (((xcb_motion_notify_event_t *)event)->root_y)) >= MOVE_THRESHOLD) {
-				int tx, ty;
-				xcb_window_t junkw;
-				int flags;
 
-				wXTranslateCoordinates(xconn, root, wwin->frame->core->window,
-						      orig_x, orig_y, &tx, &ty, &junkw);
-
-				/* check if resizing through resizebar */
-				if (is_resizebar)
-					flags = RESIZEBAR;
-				else
-					flags = 0;
-
-				if (is_resizebar && ((((xcb_button_press_event_t *)ev)->state & XCB_MOD_MASK_SHIFT)
-						     || abs(orig_y - (((xcb_motion_notify_event_t *)event)->root_y)) < HRESIZE_THRESHOLD))
-					flags |= HCONSTRAIN;
-
-				res = getResizeDirection(wwin, tx, ty, orig_y - (((xcb_motion_notify_event_t *)event)->root_y), flags);
-
-				if (res == (UP | LEFT))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_TOPLEFTRESIZE], XCB_CURRENT_TIME);
-				else if (res == (UP | RIGHT))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_TOPRIGHTRESIZE], XCB_CURRENT_TIME);
-				else if (res == (DOWN | LEFT))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE], XCB_CURRENT_TIME);
-				else if (res == (DOWN | RIGHT))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE], XCB_CURRENT_TIME);
-				else if (res == DOWN || res == UP)
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
-				else if (res & (DOWN | UP))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
-				else if (res & (LEFT | RIGHT))
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
-								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_HORIZONRESIZE], XCB_CURRENT_TIME);
-
-				wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
-
-				/* Draw the resize frame for the first time. */
-				mapGeometryDisplay(wwin, fx, fy, fw, fh);
-
-				if (!opaqueResize)
-					showResizeWireframe(wwin, fx, fy, fw, fh);
-
-				showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
-
-				started = 1;
-
-				if (w_global.config->shared_edge_resize) {
-					if (res & (LEFT | RIGHT))
-						shared_edge_pair_setup(&pair_x, wwin, 0,
-								       (res & RIGHT) ? 1 : -1,
-								       rx1, rx2, vert_border);
-					if (res & (UP | DOWN))
-						shared_edge_pair_setup(&pair_y, wwin, 1,
-								       (res & DOWN) ? 1 : -1,
-								       ry1, ry2, vert_border);
-				}
-			}
-			if (started) {
 				if (w_global.config->size_display == WDIS_FRAME_CENTER)
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
 
@@ -2647,18 +2659,14 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 						wNETWMSyncRequestSend(wwin);
 						wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
 					}
+
 					shared_edge_apply_motion(&pair_x);
 					shared_edge_apply_motion(&pair_y);
 					showGeometry(wwin, fx, fy, fx + fw, fy + fh, res);
-				};
+				}
 			}
-			break;
 
-		case XCB_BUTTON_PRESS:
-			break;
-
-		case XCB_BUTTON_RELEASE:
-			if (!wwin->moveresize.active && ((((xcb_button_press_event_t *)event)->detail) != ((xcb_button_press_event_t *)ev)->detail))
+			if ((event->response_type & 0x7f) != XCB_BUTTON_RELEASE)
 				break;
 
 			if (started) {
@@ -2705,6 +2713,9 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 
 			free(event);
 			return;
+
+		case XCB_BUTTON_PRESS:
+			break;
 
 		default:
 			WMHandleEvent(event);

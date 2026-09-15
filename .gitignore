@@ -207,6 +207,7 @@ AGENTS.md
 
 # Compiled ad hoc test clients the drive scripts build in-tree
 /test/mothints-client
+/test/mrs-client
 /test/appmenu-client
 /test/dockapp-client
 /test/ewmh-client

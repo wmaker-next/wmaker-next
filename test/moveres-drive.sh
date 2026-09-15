@@ -3,7 +3,10 @@
 # wMouseMoveWindow() and wMouseResizeWindow() modal WMMaskEvent loops
 # under Xvfb, those are the highest-traffic modal loops and the ones
 # the WINGs internal event queue must keep behaviourally identical, so
-# this is the regression gate for the queue intake change.
+# this is the regression gate for the queue intake change. Also drives
+# the _NET_WM_MOVERESIZE handoff a CSD client performs: the
+# press-position handoff, single-edge resize handoffs and the
+# grab-raced handoff.
 #
 # Runs against an isolated WMAKER_USER_ROOT and tracks every PID it
 # spawns, the live :0 wmaker is the same binary so no pkill.
@@ -177,6 +180,11 @@ DH=$((NH - CH))
     || fail "resize: width changed on a middle-segment drag ($CW -> $NW)"
 note "ok: resizebar drag grew client height by $DH"
 
+# the xterm spans a large area of the screen and would swallow the
+# pointer presses of the later CSD legs, retire it before those
+kill "$XTPID" 2>/dev/null
+wait_for 30 pid_gone "$XTPID"
+
 # --- 3. undecorated client drag (chrome-like) -------------------------------
 note "move an undecorated client through Alt+Button1 on the client area"
 # chrome publishes _MOTIF_WM_HINTS with decorations=0 before mapping, so
@@ -239,11 +247,164 @@ NX=$1; NY=$2
     || fail "undecorated move: expected delta ($MDX,$MDY) got ($((NX - MX)),$((NY - MY)))"
 note "ok: Alt+Button1 drag moved the undecorated client by ($MDX,$MDY)"
 
+# --- 4. EWMH-compliant _NET_WM_MOVERESIZE handoff ---------------------------
+note "move a CSD client through a press-anchored _NET_WM_MOVERESIZE"
+# A CSD client hands the drag to the WM by sending _NET_WM_MOVERESIZE
+# on the titlebar press with the press position in data32[0,1] and the
+# initiating button in data32[3], after releasing its implicit grab.
+# The move must track the pointer from the press position exactly.
+MRS="$RUNTIME/mrs-client"
+${CC:-cc} -std=gnu11 "$ROOT/test/mrs-client.c" -o "$MRS" -lX11 >>"$LOG" 2>&1 \
+    || fail "could not build test/mrs-client.c"
+DISPLAY=$DPY env MRS_GEOM="400x300+150+450" "$MRS" >>"$LOG" 2>&1 &
+MRSPID=$!
+echo "$MRSPID" >> "$PIDFILE"
+mrs_mapped() {
+    MRSW=$(DISPLAY=$DPY xdotool search --class MRSClient 2>/dev/null | tail -n 1)
+    [ -n "$MRSW" ]
+}
+wait_for 40 mrs_mapped || fail "press-mode MRS client did not map"
+sleep 0.3
+
+mrs_geom() {
+    DISPLAY=$DPY xwininfo -id "$MRSW" | awk \
+        '/Absolute upper-left X/{x=$NF} /Absolute upper-left Y/{y=$NF}
+         /Width:/{w=$NF} /Height:/{h=$NF} END{print x,y,w,h}'
+}
+set -- $(mrs_geom)
+RX=$1; RY=$2; RW=$3; RH=$4
+PDX=150; PDY=100
+PGX=$((RX + 80)); PGY=$((RY + 20))
+xdo mousemove "$PGX" "$PGY"
+xdo mousedown 1
+# settle so the client has sent the message and wmaker has entered the
+# move loop before the pointer moves, keeping the handoff deterministic
+xdo mousemove $((PGX + 25))  $((PGY + 20))
+xdo mousemove $((PGX + 75))  $((PGY + 60))
+xdo mousemove $((PGX + PDX)) $((PGY + PDY))
+xdo mouseup 1
+sleep 0.4
+
+set -- $(mrs_geom)
+NX=$1; NY=$2
+[ "$((NX - RX))" = "$PDX" ] && [ "$((NY - RY))" = "$PDY" ] \
+    || fail "press-mode MRS move: expected delta ($PDX,$PDY) got ($((NX - RX)),$((NY - RY)))"
+note "ok: press-anchored MRS moved the client by ($PDX,$PDY)"
+kill "$MRSPID" 2>/dev/null
+wait_for 30 pid_gone "$MRSPID"
+
+# --- 5. edge-specific _NET_WM_MOVERESIZE handoff -----------------------------
+note "resize a CSD client through a right-edge _NET_WM_MOVERESIZE"
+# A client that hands a single-edge resize over names that edge in the
+# message; the WM must stretch only that edge and leave the others and
+# the opposite corner pinned, a flick whose arming motion crosses the
+# window must not re-derive the direction from the pointer position.
+DISPLAY=$DPY env MRS_GEOM="400x300+400+200" MRS_RESIZE=1 \
+    "$MRS" >>"$LOG" 2>&1 &
+MRSPID=$!
+echo "$MRSPID" >> "$PIDFILE"
+wait_for 40 mrs_mapped || fail "resize-mode MRS client did not map"
+sleep 0.3
+
+set -- $(mrs_geom)
+RX=$1; RY=$2; RW=$3; RH=$4
+# grab inside the right-edge strip, then drag diagonally so a
+# position-derived direction would have moved the other edge too
+EGX=$((RX + RW - 4)); EGY=$((RY + 250))
+xdo mousemove "$EGX" "$EGY"
+xdo mousedown 1
+xdo mousemove $((EGX + 40)) $((EGY - 60))
+xdo mousemove $((EGX + 70)) $((EGY - 110))
+xdo mouseup 1
+sleep 0.4
+
+set -- $(mrs_geom)
+NX=$1; NY=$2; NW=$3; NH=$4
+[ "$((NX - RX))" = "0" ] && [ "$((NY - RY))" = "0" ] \
+    || fail "right-edge MRS resize: top-left moved by ($((NX - RX)),$((NY - RY))), must stay pinned"
+[ "$((NW - RW))" = "70" ] \
+    || fail "right-edge MRS resize: expected width +70 got $((NW - RW))"
+[ "$((NH - RH))" = "0" ] \
+    || fail "right-edge MRS resize: height changed by $((NH - RH)), a single-edge handoff must not stretch the other axis"
+note "ok: right-edge MRS resized the width by 70 and left the height pinned"
+kill "$MRSPID" 2>/dev/null
+wait_for 30 pid_gone "$MRSPID"
+
+# --- 6. one-fling _NET_WM_MOVERESIZE resize -----------------------------------
+note "resize a CSD client through a one-fling _NET_WM_MOVERESIZE"
+# The client sends the message on the press, the whole fling is then a
+# single motion between handoff and release. The loop must arm on that
+# motion and apply its travel, otherwise the arming pass discards it
+# and the release configures the original size: the flick resizes
+# nothing.
+DISPLAY=$DPY env MRS_GEOM="400x300+250+150" MRS_RESIZE=1 \
+    "$MRS" >>"$LOG" 2>&1 &
+MRSPID=$!
+echo "$MRSPID" >> "$PIDFILE"
+wait_for 40 mrs_mapped || fail "one-fling MRS client did not map"
+sleep 0.3
+
+set -- $(mrs_geom)
+RX=$1; RY=$2; RW=$3; RH=$4
+# press inside the right-edge strip, then one fling move and release
+# with no motion in between
+LGX=$((RX + RW - 4)); LGY=$((RY + 250))
+xdo mousemove "$LGX" "$LGY"
+xdo mousedown 1
+xdo mousemove $((LGX + 120)) $((LGY - 60))
+xdo mouseup 1
+sleep 0.4
+
+set -- $(mrs_geom)
+NX=$1; NY=$2; NW=$3; NH=$4
+[ "$((NX - RX))" = "0" ] && [ "$((NY - RY))" = "0" ] \
+    || fail "one-fling MRS resize: top-left moved by ($((NX - RX)),$((NY - RY))), must stay pinned"
+[ "$((NW - RW))" = "120" ] \
+    || fail "one-fling MRS resize: expected width +120 got $((NW - RW))"
+[ "$((NH - RH))" = "0" ] \
+    || fail "one-fling MRS resize: height changed by $((NH - RH)), a single-edge handoff must not stretch the other axis"
+note "ok: one-fling MRS resized the width by 120 with the release as the only settle"
+kill "$MRSPID" 2>/dev/null
+wait_for 30 pid_gone "$MRSPID"
+
+# --- 7. grab-raced _NET_WM_MOVERESIZE handoff --------------------------------
+note "move a CSD client whose MRS races the WM pointer grab"
+# A client can send the message from its button-press handler while
+# the implicit grab from that press is still held and only release it
+# later, so the WM's first XGrabPointer loses the race and the drag
+# dies before it started unless the WM retries while the button is
+# held.
+DISPLAY=$DPY env MRS_GEOM="400x300+550+250" MRS_HOLD_GRAB=1 \
+    "$MRS" >>"$LOG" 2>&1 &
+MRSPID=$!
+echo "$MRSPID" >> "$PIDFILE"
+wait_for 40 mrs_mapped || fail "hold-grab MRS client did not map"
+sleep 0.3
+
+set -- $(mrs_geom)
+RX=$1; RY=$2; RW=$3; RH=$4
+# press in the titlebar, then let the client hold its grab through the
+# send so the WM only takes over on a retry before the pointer moves
+HGX=$((RX + 80)); HGY=$((RY + 20))
+xdo mousemove "$HGX" "$HGY"
+xdo mousedown 1
+sleep 0.3
+xdo mousemove $((HGX + 60)) $((HGY + 30))
+xdo mousemove $((HGX + 130)) $((HGY + 70))
+xdo mouseup 1
+sleep 0.4
+
+set -- $(mrs_geom)
+NX=$1; NY=$2
+[ "$((NX - RX))" = "130" ] && [ "$((NY - RY))" = "70" ] \
+    || fail "hold-grab MRS move: expected delta (130,70) got ($((NX - RX)),$((NY - RY))), the WM lost the grab race"
+note "ok: grab-raced MRS retried through the held grab, moved by (130,70)"
+kill "$MRSPID" 2>/dev/null
+wait_for 30 pid_gone "$MRSPID"
+
 # --- teardown --------------------------------------------------------------
 kill "$MOTPID" 2>/dev/null
 wait_for 30 pid_gone "$MOTPID"
-kill "$XTPID" 2>/dev/null
-wait_for 30 pid_gone "$XTPID"
 kill -TERM "$WMAKER_PID" 2>/dev/null
 wait_for 50 pid_gone "$WMAKER_PID"
 
