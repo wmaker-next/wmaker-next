@@ -482,6 +482,141 @@ static void test_invalid_high_byte(void)
 	check_escaped_roundtrip("overlong-4", "x\360\200\200\200y");
 }
 
+static void check_json_str(const char *input, const char *want)
+{
+	WMPropList *pl;
+	char *js;
+
+	pl = WMCreatePLString(input);
+	js = WMGetPropListJSON(pl, false);
+	CHECK_STR(js, want);
+	wfree(js);
+	WMReleasePropList(pl);
+}
+
+static void check_json_pl(WMPropList *pl, const char *want)
+{
+	char *js;
+
+	js = WMGetPropListJSON(pl, false);
+	CHECK_STR(js, want);
+	wfree(js);
+}
+
+static void test_json_string(void)
+{
+	char *js;
+
+	js = WMGetPropListJSON(NULL, false);
+	CHECK_STR(js, "null");
+	wfree(js);
+
+	check_json_str("hello", "\"hello\"");
+	check_json_str("", "\"\"");
+	check_json_str("42", "\"42\"");
+	check_json_str("a\"b\\c", "\"a\\\"b\\\\c\"");
+	check_json_str("t\tn\rb\fu\vd\a", "\"t\\tn\\rb\\fu\\u000bd\\u0007\"");
+	check_json_str("\001\010\037", "\"\\u0001\\b\\u001f\"");
+	check_json_str("h\303\251 \346\274\242", "\"h\303\251 \346\274\242\"");
+	/* each invalid byte becomes one U+FFFD (ef bf bd) */
+	check_json_str("caf\351", "\"caf\357\277\275\"");
+	check_json_str("x\355\240\200y", "\"x\357\277\275\357\277\275\357\277\275y\"");
+}
+
+static void test_json_data(void)
+{
+	WMPropList *pl;
+
+	pl = WMCreatePLDataWithBytes((const unsigned char *)"Man", 3);
+	check_json_pl(pl, "\"TWFu\"");
+	WMReleasePropList(pl);
+
+	pl = WMCreatePLDataWithBytes((const unsigned char *)"Ma", 2);
+	check_json_pl(pl, "\"TWE=\"");
+	WMReleasePropList(pl);
+
+	pl = WMCreatePLDataWithBytes((const unsigned char *)"M", 1);
+	check_json_pl(pl, "\"TQ==\"");
+	WMReleasePropList(pl);
+
+	pl = WMCreatePLDataWithBytes((const unsigned char *)"", 0);
+	check_json_pl(pl, "\"\"");
+	WMReleasePropList(pl);
+}
+
+static void test_json_nesting(void)
+{
+	WMPropList *empty_arr, *empty_dict, *arr, *dict, *k, *v, *e;
+
+	empty_arr = WMCreatePLArray(NULL);
+	check_json_pl(empty_arr, "[]");
+	WMReleasePropList(empty_arr);
+
+	empty_dict = WMCreatePLDictionary(NULL, NULL);
+	check_json_pl(empty_dict, "{}");
+	WMReleasePropList(empty_dict);
+
+	arr = WMCreatePLArray(NULL);
+	e = WMCreatePLString("a");
+	WMAddToPLArray(arr, e);
+	WMReleasePropList(e);
+	e = WMCreatePLString("b");
+	WMAddToPLArray(arr, e);
+	WMReleasePropList(e);
+	check_json_pl(arr, "[\"a\",\"b\"]");
+	WMReleasePropList(arr);
+
+	/* keys are emitted sorted, not in insertion order */
+	dict = WMCreatePLDictionary(NULL, NULL);
+	k = WMCreatePLString("z");
+	v = WMCreatePLString("1");
+	WMPutInPLDictionary(dict, k, v);
+	WMReleasePropList(k);
+	WMReleasePropList(v);
+	k = WMCreatePLString("a");
+	v = WMCreatePLArray(NULL);
+	e = WMCreatePLString("x");
+	WMAddToPLArray(v, e);
+	WMReleasePropList(e);
+	WMPutInPLDictionary(dict, k, v);
+	WMReleasePropList(k);
+	WMReleasePropList(v);
+	check_json_pl(dict, "{\"a\":[\"x\"],\"z\":\"1\"}");
+	WMReleasePropList(dict);
+}
+
+static void test_json_indent(void)
+{
+	WMPropList *pl;
+	char *js;
+
+	pl = WMCreatePropListFromDescription("{ a = (x, y); b = { }; }");
+	CHECK(pl != NULL);
+	if (!pl)
+		return;
+
+	js = WMGetPropListJSON(pl, true);
+	CHECK_STR(js, "{\n  \"a\": [\n    \"x\",\n    \"y\"\n  ],\n  \"b\": {}\n}");
+	wfree(js);
+	WMReleasePropList(pl);
+}
+
+static void test_json_ipc_shape(void)
+{
+	WMPropList *pl;
+	char *js;
+
+	pl = WMCreatePropListFromDescription("({ id = \"0x1\"; }, { id = \"0x2\"; })");
+	CHECK(pl != NULL);
+	if (!pl)
+		return;
+
+	js = WMGetPropListJSON(pl, false);
+	CHECK_STR(js, "[{\"id\":\"0x1\"},{\"id\":\"0x2\"}]");
+	wfree(js);
+	WMReleasePropList(pl);
+}
+
 int main(void)
 {
 	char rootbuf[] = "/tmp/check_proplist_root_XXXXXX";
@@ -512,6 +647,11 @@ int main(void)
 	test_comments();
 	test_utf8_roundtrip();
 	test_invalid_high_byte();
+	test_json_string();
+	test_json_data();
+	test_json_nesting();
+	test_json_indent();
+	test_json_ipc_shape();
 	test_recursion_limit();
 	test_description_cap();
 	test_pipe_cap();

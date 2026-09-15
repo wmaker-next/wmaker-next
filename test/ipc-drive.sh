@@ -242,6 +242,68 @@ check "transport failure exits 1" [ $? -eq 1 ]
 msg get_version 2>/dev/null | grep -q "pid = $WMAKER_PID;"
 check "GET_VERSION reports wmaker pid" [ $? -eq 0 ]
 
+# ---- get_window_tree ------------------------------------------------------
+
+note "get_window_tree"
+if ! command -v xterm >/dev/null 2>&1; then
+	record_skip "get_window_tree row: xterm not installed"
+elif ! command -v xdotool >/dev/null 2>&1; then
+	record_skip "get_window_tree row: xdotool not installed"
+elif ! command -v python3 >/dev/null 2>&1; then
+	record_skip "get_window_tree row: python3 not installed"
+else
+	DISPLAY=$DPY xterm -class WTree -title wtree-1 -geometry 80x24+60+60 \
+		-e 'sleep 300' >>"$LOG" 2>&1 &
+	WT_PID=$!
+	echo "$WT_PID" >> "$PIDFILE"
+
+	wt_xid() { DISPLAY=$DPY xdotool search --name "^wtree-1$" 2>/dev/null | tail -n 1; }
+	wt_mapped() { [ -n "$(wt_xid)" ]; }
+	wait_for 60 wt_mapped || fatal "xterm for tree row did not map"
+	sleep 0.3
+	WT_HEX=$(printf '0x%x' "$(wt_xid)")
+
+	TREE=$(msg get_window_tree 2>/dev/null)
+	check "get_window_tree returns a body" [ -n "$TREE" ]
+
+	printf '%s' "$TREE" | python3 -m json.tool >/dev/null 2>&1
+	check "get_window_tree reply parses as JSON" [ $? -eq 0 ]
+
+	tree_shape() {
+		printf '%s' "$TREE" | python3 -c '
+import json, sys
+t = json.load(sys.stdin)
+xid = sys.argv[1]
+assert {"screen", "version", "workspace_count", "current_workspace",
+        "applications"} <= set(t)
+wins = [w for a in t["applications"] for w in a["windows"]]
+m = [w for w in wins if w["id"] == xid]
+assert len(m) == 1, m
+assert "frame" in m[0]
+assert "focused" in m[0]["state"]
+# the wire has no integer type, pl_int values arrive as strings
+assert int(m[0]["geometry"]["width"]) > 0
+assert int(m[0]["workspace"]) == 0
+assert int(m[0]["creation_id"]) > 0
+' "$WT_HEX"
+	}
+	check "tree lists $WT_HEX in exactly one application" tree_shape
+
+	# query while the client dies to exercise the teardown race
+	kill "$WT_PID"
+	wt_i=0
+	while [ "$wt_i" -lt 5 ]; do
+		msg get_window_tree >/dev/null 2>&1
+		sleep 0.1
+		wt_i=$((wt_i + 1))
+	done
+	wait_for 50 pid_gone "$WT_PID"
+
+	tree_without() { ! msg get_window_tree 2>/dev/null | grep -qF "$WT_HEX"; }
+	wait_for 50 tree_without
+	check "closed client gone from the tree" tree_without
+fi
+
 # ---- display-power verb, display_power event, DisplayOff/OnCommand ------
 
 note "display-power"

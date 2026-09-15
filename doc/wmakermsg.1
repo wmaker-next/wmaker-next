@@ -6,7 +6,7 @@ wmakermsg \- send commands to and receive events from Window Maker
 [\fB\-s\fR \fISOCKET\fR] [\fB\-q\fR] \fIVERB\fR [\fIARG\fR...]
 .br
 .B wmakermsg
-[\fB\-s\fR \fISOCKET\fR] \fBget_version\fR|\fBget_workspaces\fR|\fBget_windows\fR
+[\fB\-s\fR \fISOCKET\fR] \fBget_version\fR|\fBget_workspaces\fR|\fBget_windows\fR|\fBget_window_tree\fR
 .br
 .B wmakermsg
 [\fB\-s\fR \fISOCKET\fR] \fBsend_tick\fR \fIPAYLOAD\fR
@@ -34,6 +34,14 @@ and exit without connecting.
 .TP
 .B \-\-help
 Print a short usage summary and exit.
+.TP
+.B \-\-json
+Print the reply as JSON instead of property-list text. A reply that
+does not parse as a property list is printed to stderr and
+.B wmakermsg
+exits 1.
+.I get_window_tree
+implies this option.
 .TP
 .B \-m
 Monitor mode. Subscribe to the named event types and print one event per
@@ -71,6 +79,20 @@ selection\-ants timers disarm so an idle session reaches zero wakeups.
 Intended to be driven from a lid\-switch or screensaver hook, the
 window manager also flips this state itself on RandR output loss and
 on MIT\-SCREEN\-SAVER notify when those extensions are available.
+.SH TYPED REQUESTS
+The
+.IR get_version ,
+.IR get_workspaces ,
+.I get_windows
+requests return their respective snapshots as property-list text.
+The
+.I get_window_tree
+request returns the whole window-manager state (applications with
+their windows, tab groups, stacking, dock attachment, geometry and
+state flags) as JSON, and accepts no arguments.
+The
+.I send_tick
+request broadcasts a tick event carrying its payload argument.
 .SH EVENT TYPES
 .BR workspace ,
 .BR window ,

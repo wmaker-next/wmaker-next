@@ -43,6 +43,51 @@ Request types
                        reply:   {success=YES;}
                                 a tick event with first=NO carrying the
                                 decoded string is broadcast first
+    6  GET_WINDOW_TREE reply:   {screen=N; version="...";
+                                 workspace_count=N; current_workspace=N;
+                                 window_count=N;
+                                 applications=({
+                                   main_window="0x..."; hidden=YES|NO;
+                                   appicon={docked=YES|NO; dock="dock"|
+                                     "clip"|"drawer"; slot=N; running=
+                                     YES|NO; launching=YES|NO;
+                                     omnipresent=YES|NO;};
+                                   windows=({
+                                     id="0x..."; frame="0x..."; pid=N;
+                                     class="..."; instance="...";
+                                     role="..."; machine="...";
+                                     title="..."; types=("...", ...);
+                                     geometry={x=N; y=N; width=N;
+                                     height=N;};
+                                     workspace=N; workspaces=(N, ...);
+                                     layer=N; stacking=N;
+                                     transient_for="0x...";
+                                     group_leader="0x...";
+                                     client_leader="0x...";
+                                     tab_group={id=N; index=N;
+                                     active=YES|NO; size=N;};
+                                     creation_id=N;
+                                     state={focused=YES|NO; ...};},
+                                     ...);}, ...);}
+                                Every window appears in exactly one
+                                applications entry, leaderless windows
+                                under a synthetic entry whose
+                                main_window is the window's own id.
+                                frame, pid, transient_for, group_leader,
+                                client_leader and tab_group are omitted
+                                when absent. stacking is the index
+                                within the window's layer, topmost
+                                first. state carries the bools focused,
+                                semi_focused, mapped, miniaturized,
+                                hidden, shaded, fullscreen, tiled,
+                                urgent, dockapp, gnustep, omnipresent,
+                                skip_window_list, skip_switch_panel,
+                                modal, demands_attention plus a
+                                maximized array decoded from the
+                                maximize axes. When the reply would
+                                exceed the 1 MiB payload cap the server
+                                answers {error="..."; window_count=N;}
+                                instead of dropping the connection.
 
 Event types (type field = (1u<<31) | id)
 ----------------------------------------

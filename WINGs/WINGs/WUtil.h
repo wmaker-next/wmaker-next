@@ -891,6 +891,12 @@ WMPropList* WMCreatePropListFromDescription(const char *desc);
 /* Free the returned string when you no longer need it */
 char* WMGetPropListDescription(WMPropList *plist, bool indented);
 
+/* Serializes a property list to JSON, free the returned string when you
+ * no longer need it. A NULL plist becomes "null". Invalid UTF-8 in
+ * strings becomes U+FFFD. Data becomes a base64 string and dictionary
+ * keys are emitted sorted for deterministic output. */
+char *WMGetPropListJSON(WMPropList *plist, bool indented);
+
 WMPropList* WMReadPropListFromFile(const char *file);
 
 WMPropList* WMReadPropListFromPipe(const char *command);

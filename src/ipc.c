@@ -372,6 +372,23 @@ static WMPropList *pl_string(const char *s)
 	return WMCreatePLString(s ? s : "");
 }
 
+#define WIPC_TREE_FIELD_MAX 1024
+
+static WMPropList *pl_string_capped(const char *s)
+{
+	char buf[WIPC_TREE_FIELD_MAX + 1];
+	size_t n;
+
+	if (!s)
+		return pl_string(NULL);
+	n = strlen(s);
+	if (n > WIPC_TREE_FIELD_MAX)
+		n = WIPC_TREE_FIELD_MAX;
+	memcpy(buf, s, n);
+	buf[n] = '\0';
+	return WMCreatePLString(buf);
+}
+
 static WMPropList *pl_int(long v)
 {
 	char buf[32];
@@ -406,7 +423,11 @@ static WMPropList *pl_result(int ok, const char *err)
 
 static void pl_dict_put(WMPropList *d, const char *key, WMPropList *val)
 {
-	WMPropList *k = WMCreatePLString(key);
+	WMPropList *k;
+
+	if (!val)
+		return;
+	k = WMCreatePLString(key);
 	WMPutInPLDictionary(d, k, val);
 	WMReleasePropList(k);
 	WMReleasePropList(val);
@@ -1303,6 +1324,295 @@ static void handle_get_windows(struct WIPCClient *c)
 	WMReleasePropList(arr);
 }
 
+/* ---- get_window_tree -------------------------------------------------- */
+
+static const char *const dock_type_names[] = { "dock", "clip", "drawer" };
+
+static void tree_stack_index(WScreen *scr, WMHashTable *map)
+{
+	WMBagIterator it;
+	WCoreWindow *top, *frame;
+	int idx;
+
+	top = WMBagFirst(scr->stacking_list, &it);
+	while (it != NULL) {
+		idx = 0;
+		for (frame = top; frame != NULL; frame = frame->stacking->under) {
+			WMHashInsert(map, (const void *)(uintptr_t)frame->window,
+				     (const void *)(uintptr_t)(idx + 1));
+			idx++;
+		}
+		top = WMBagNext(scr->stacking_list, &it);
+	}
+}
+
+static void tree_put_state(WMPropList *d, WWindow *wwin)
+{
+	WMPropList *st, *axes, *item;
+
+	st = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(st, "focused", pl_bool(wwin->flags.focused));
+	pl_dict_put(st, "semi_focused", pl_bool(wwin->flags.semi_focused));
+	pl_dict_put(st, "mapped", pl_bool(wwin->flags.mapped));
+	pl_dict_put(st, "miniaturized", pl_bool(wwin->flags.miniaturized));
+	pl_dict_put(st, "hidden", pl_bool(wwin->flags.hidden));
+	pl_dict_put(st, "shaded", pl_bool(wwin->flags.shaded));
+	pl_dict_put(st, "fullscreen", pl_bool(wwin->flags.fullscreen));
+	pl_dict_put(st, "tiled", pl_bool(wwin->flags.tiled));
+	pl_dict_put(st, "urgent", pl_bool(wwin->flags.urgent));
+	pl_dict_put(st, "dockapp", pl_bool(wwin->flags.is_dockapp));
+	pl_dict_put(st, "gnustep", pl_bool(wwin->flags.is_gnustep));
+	pl_dict_put(st, "omnipresent", pl_bool(WFLAGP(wwin, omnipresent)));
+	pl_dict_put(st, "skip_window_list", pl_bool(WFLAGP(wwin, skip_window_list)));
+	pl_dict_put(st, "skip_switch_panel", pl_bool(WFLAGP(wwin, skip_switchpanel)));
+	pl_dict_put(st, "modal", pl_bool(wwin->flags.net_modal));
+	pl_dict_put(st, "demands_attention", pl_bool(wwin->flags.net_demands_attention));
+
+	axes = WMCreatePLArray(NULL);
+	if (wwin->flags.maximized & MAX_VERTICAL) {
+		item = pl_string("vertical");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_HORIZONTAL) {
+		item = pl_string("horizontal");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_LEFTHALF) {
+		item = pl_string("left_half");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_RIGHTHALF) {
+		item = pl_string("right_half");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_TOPHALF) {
+		item = pl_string("top_half");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_BOTTOMHALF) {
+		item = pl_string("bottom_half");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	if (wwin->flags.maximized & MAX_MAXIMUS) {
+		item = pl_string("maximus");
+		WMAddToPLArray(axes, item);
+		WMReleasePropList(item);
+	}
+	pl_dict_put(st, "maximized", axes);
+
+	pl_dict_put(d, "state", st);
+}
+
+static WMPropList *tree_appicon_dict(WAppIcon *aicon)
+{
+	WMPropList *d;
+
+	d = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(d, "docked", pl_bool(aicon->docked));
+	if (aicon->dock && aicon->dock->type >= 0
+	    && (size_t)aicon->dock->type < wlengthof(dock_type_names))
+		pl_dict_put(d, "dock", pl_string(dock_type_names[aicon->dock->type]));
+	pl_dict_put(d, "slot", pl_int(aicon->yindex));
+	pl_dict_put(d, "running", pl_bool(aicon->running));
+	pl_dict_put(d, "launching", pl_bool(aicon->launching));
+	pl_dict_put(d, "omnipresent", pl_bool(aicon->omnipresent));
+	return d;
+}
+
+static WMPropList *tree_window_dict(WWindow *wwin, WMHashTable *stack_idx,
+				    WMHashTable *group_ids)
+{
+	WMPropList *d, *t, *g, *wl, *wsi, *v;
+	void *m;
+	int i;
+	char xid[32];
+
+	d = WMCreatePLDictionary(NULL, NULL);
+
+	snprintf(xid, sizeof(xid), "0x%lx", (unsigned long)wwin->client_win);
+	pl_dict_put(d, "id", pl_string(xid));
+
+	if (wwin->frame) {
+		snprintf(xid, sizeof(xid), "0x%lx", (unsigned long)wwin->frame->core->window);
+		pl_dict_put(d, "frame", pl_string(xid));
+	}
+	if (wwin->client_pid)
+		pl_dict_put(d, "pid", pl_int((long)wwin->client_pid));
+
+	pl_dict_put(d, "class", pl_string_capped(wwin->wm_class));
+	pl_dict_put(d, "instance", pl_string_capped(wwin->wm_instance));
+	pl_dict_put(d, "role", pl_string_capped(wwin->wm_role));
+	pl_dict_put(d, "machine", pl_string_capped(wwin->wm_machine));
+	pl_dict_put(d, "title", pl_string_capped(wwin->frame ? wwin->frame->title : wwin->wm_title));
+
+	if (wwin->wm_type_names) {
+		t = WMCreatePLArray(NULL);
+		for (i = 0; i < wwin->wm_type_count; i++) {
+			if (!wwin->wm_type_names[i])
+				continue;
+			v = pl_string_capped(wwin->wm_type_names[i]);
+			WMAddToPLArray(t, v);
+			WMReleasePropList(v);
+		}
+		pl_dict_put(d, "types", t);
+	}
+
+	if (wwin->frame) {
+		g = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(g, "x", pl_int(wwin->frame_x));
+		pl_dict_put(g, "y", pl_int(wwin->frame_y));
+		pl_dict_put(g, "width", pl_int(wwin->frame->core->width));
+		pl_dict_put(g, "height", pl_int(wwin->frame->core->height));
+		pl_dict_put(d, "geometry", g);
+		pl_dict_put(d, "workspace", pl_int(WWIN_PRIMARY_WS(wwin)));
+
+		wl = WMCreatePLArray(NULL);
+		for (i = 0; i < wwin->screen_ptr->workspace_count; i++)
+			if (WWIN_WS_MASK(wwin) & WS_BIT(i)) {
+				wsi = pl_int(i);
+				WMAddToPLArray(wl, wsi);
+				WMReleasePropList(wsi);
+			}
+		pl_dict_put(d, "workspaces", wl);
+
+		pl_dict_put(d, "layer", pl_int(WINDOW_LEVEL(wwin)));
+		m = WMHashGet(stack_idx, (const void *)(uintptr_t)wwin->frame->core->window);
+		if (m)
+			pl_dict_put(d, "stacking", pl_int((long)(uintptr_t)m - 1));
+	}
+
+	if (wwin->transient_for != XCB_NONE) {
+		snprintf(xid, sizeof(xid), "0x%lx", (unsigned long)wwin->transient_for);
+		pl_dict_put(d, "transient_for", pl_string(xid));
+	}
+	if (wwin->group_id != XCB_NONE) {
+		snprintf(xid, sizeof(xid), "0x%lx", (unsigned long)wwin->group_id);
+		pl_dict_put(d, "group_leader", pl_string(xid));
+	}
+	if (wwin->client_leader != XCB_NONE) {
+		snprintf(xid, sizeof(xid), "0x%lx", (unsigned long)wwin->client_leader);
+		pl_dict_put(d, "client_leader", pl_string(xid));
+	}
+
+	if (wwin->tab_group) {
+		m = WMHashGet(group_ids, wwin->tab_group);
+		t = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(t, "id", pl_int(m ? (long)(uintptr_t)m : 0));
+		pl_dict_put(t, "index", pl_int(wwin->tab_group_index));
+		pl_dict_put(t, "active", pl_bool(wwin->tab_group->active_index ==
+						 wwin->tab_group_index));
+		pl_dict_put(t, "size", pl_int(wwin->tab_group->member_count));
+		pl_dict_put(d, "tab_group", t);
+	}
+
+	pl_dict_put(d, "creation_id", pl_int((long)wwin->creation_id));
+
+	tree_put_state(d, wwin);
+
+	return d;
+}
+
+static void handle_get_window_tree(struct WIPCClient *c)
+{
+	WScreen *scr = c->scr;
+	WMPropList *tree, *apps, *d, *windows, *orphan, *err, *ow, *id;
+	WMHashTable *stack_idx, *group_ids, *app_windows;
+	WApplication *wapp;
+	WWindowGroup *grp;
+	WWindow *wwin;
+	unsigned int n, win_count;
+	size_t len;
+	char *body;
+	char xid[32];
+
+	stack_idx = WMCreateHashTable(WMIntHashCallbacks);
+	group_ids = WMCreateHashTable(WMIntHashCallbacks);
+	app_windows = WMCreateHashTable(WMIntHashCallbacks);
+
+	tree_stack_index(scr, stack_idx);
+
+	n = 0;
+	for (grp = scr->window_groups; grp != NULL; grp = grp->next)
+		WMHashInsert(group_ids, grp, (const void *)(uintptr_t)(++n));
+
+	apps = WMCreatePLArray(NULL);
+
+	for (wapp = scr->wapp_list; wapp != NULL; wapp = wapp->next) {
+		d = WMCreatePLDictionary(NULL, NULL);
+		snprintf(xid, sizeof(xid), "0x%x", wapp->main_window);
+		pl_dict_put(d, "main_window", pl_string(xid));
+		pl_dict_put(d, "hidden", pl_bool(wapp->flags.hidden));
+		if (wapp->app_icon && wapp->app_icon->docked)
+			pl_dict_put(d, "appicon", tree_appicon_dict(wapp->app_icon));
+		windows = WMCreatePLArray(NULL);
+		pl_dict_put(d, "windows", windows);
+		WMHashInsert(app_windows, (const void *)(uintptr_t)wapp->main_window,
+			     windows);
+		WMAddToPLArray(apps, d);
+		WMReleasePropList(d);
+	}
+
+	orphan = WMCreatePLArray(NULL);
+	win_count = 0;
+	for (wwin = scr->focused_window; wwin != NULL; wwin = wwin->prev) {
+		d = tree_window_dict(wwin, stack_idx, group_ids);
+		windows = WMHashGet(app_windows, (const void *)(uintptr_t)wwin->main_window);
+		if (windows)
+			WMAddToPLArray(windows, d);
+		else
+			WMAddToPLArray(orphan, d);
+		WMReleasePropList(d);
+		win_count++;
+	}
+
+	for (n = 0; n < (unsigned int)WMGetPropListItemCount(orphan); n++) {
+		ow = WMGetFromPLArray(orphan, n);
+		id = WMGetFromPLDictionaryByName(ow, "id");
+
+		d = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(d, "main_window",
+			    pl_string(id ? WMGetFromPLString(id) : NULL));
+		windows = WMCreatePLArray(ow, NULL);
+		pl_dict_put(d, "windows", windows);
+		WMAddToPLArray(apps, d);
+		WMReleasePropList(d);
+	}
+	WMReleasePropList(orphan);
+
+	tree = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(tree, "screen", pl_int(scr->screen));
+	pl_dict_put(tree, "version", pl_string(VERSION));
+	pl_dict_put(tree, "workspace_count", pl_int(scr->workspace_count));
+	pl_dict_put(tree, "current_workspace", pl_int(scr->current_workspace));
+	pl_dict_put(tree, "window_count", pl_int(scr->window_count));
+	pl_dict_put(tree, "applications", apps);
+
+	body = WMGetPropListDescription(tree, false);
+	len = strlen(body);
+	if (len > WIPC_MAX_PAYLOAD) {
+		wfree(body);
+		err = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(err, "error", pl_string("window tree exceeds 1 MiB"));
+		pl_dict_put(err, "window_count", pl_int(win_count));
+		ipc_reply(c, WIPC_GET_WINDOW_TREE, err);
+		WMReleasePropList(err);
+	} else {
+		ipc_queue(c, WIPC_GET_WINDOW_TREE, body, len);
+		wfree(body);
+	}
+	WMReleasePropList(tree);
+
+	WMFreeHashTable(app_windows);
+	WMFreeHashTable(group_ids);
+	WMFreeHashTable(stack_idx);
+}
+
 static void handle_send_tick(struct WIPCClient *c, const char *body)
 {
 	WMPropList *r, *ev, *pl;
@@ -1347,6 +1657,9 @@ static void ipc_dispatch(struct WIPCClient *c, uint32_t type,
 		break;
 	case WIPC_GET_WINDOWS:
 		handle_get_windows(c);
+		break;
+	case WIPC_GET_WINDOW_TREE:
+		handle_get_window_tree(c);
 		break;
 	case WIPC_GET_VERSION:
 		r = build_version(c->scr);

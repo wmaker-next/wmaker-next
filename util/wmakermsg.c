@@ -30,7 +30,7 @@ static void usage(FILE *out)
 {
 	fprintf(out,
 		"Usage: %s [-s SOCKET] [-q] VERB [ARG...]\n"
-		"       %s [-s SOCKET] get_version|get_workspaces|get_windows\n"
+		"       %s [-s SOCKET] get_version|get_workspaces|get_windows|get_window_tree\n"
 		"       %s [-s SOCKET] send_tick PAYLOAD\n"
 		"       %s [-s SOCKET] -m EVENT [EVENT...]\n"
 		"       %s --get-socketpath\n",
@@ -39,6 +39,7 @@ static void usage(FILE *out)
 	      "  -s SOCKET          connect to SOCKET instead of the resolved path\n"
 	      "  -q                 suppress the reply body, exit status reflects success\n"
 	      "  -m                 subscribe to the named EVENT types and stream to stdout\n"
+	      "  --json             print the reply as JSON instead of proplist text\n"
 	      "  --get-socketpath   print the resolved socket path and exit\n"
 	      "  --help             show this message\n",
 	      out);
@@ -99,9 +100,9 @@ int main(int argc, char **argv)
 	const char *socket_path = NULL;
 	uint32_t req_type = WIPC_COMMAND;
 	uint32_t rtype, rlen;
-	WMPropList *outer, *inner, *s;
-	char *path, *body, *rbody;
-	int quiet = 0, monitor = 0;
+	WMPropList *outer, *inner, *s, *pl;
+	char *path, *body, *rbody, *js;
+	int quiet = 0, monitor = 0, json = 0;
 	int opt, fd, i, rc;
 
 	prog = argv[0];
@@ -116,6 +117,20 @@ int main(int argc, char **argv)
 		if (strcmp(argv[i], "--help") == 0) {
 			usage(stdout);
 			return 0;
+		}
+	}
+
+	/* --json is a long option handled here rather than through getopt,
+	 * so it can be removed from argv before option parsing; it may
+	 * appear anywhere on the command line */
+	for (i = 1; i < argc; ) {
+		if (strcmp(argv[i], "--json") == 0) {
+			json = 1;
+			memmove(argv + i, argv + i + 1,
+				sizeof(char *) * (size_t)(argc - i - 1));
+			argc--;
+		} else {
+			i++;
 		}
 	}
 
@@ -173,6 +188,10 @@ int main(int argc, char **argv)
 	} else if (strcmp(argv[0], "get_windows") == 0) {
 		req_type = WIPC_GET_WINDOWS;
 		body = wstrdup("");
+	} else if (strcmp(argv[0], "get_window_tree") == 0) {
+		req_type = WIPC_GET_WINDOW_TREE;
+		body = wstrdup("");
+		json = 1;
 	} else if (strcmp(argv[0], "send_tick") == 0) {
 		req_type = WIPC_SEND_TICK;
 		s = WMCreatePLString(argc > 1 ? argv[1] : "");
@@ -206,8 +225,23 @@ int main(int argc, char **argv)
 	}
 	close(fd);
 
-	if (!quiet && rlen)
-		printf("%s\n", rbody);
+	if (!quiet && rlen) {
+		if (json) {
+			pl = WMCreatePropListFromDescription(rbody);
+			if (!pl) {
+				fprintf(stderr, "%s: reply is not a valid proplist:\n%s\n",
+					prog, rbody);
+				wfree(rbody);
+				return 1;
+			}
+			js = WMGetPropListJSON(pl, false);
+			printf("%s\n", js);
+			wfree(js);
+			WMReleasePropList(pl);
+		} else {
+			printf("%s\n", rbody);
+		}
+	}
 
 	rc = 0;
 	if (req_type == WIPC_COMMAND && !reply_is_success(rbody))

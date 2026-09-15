@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Window tree introspection over IPC
+----------------------------------
+
+`wmakermsg get_window_tree` dumps the full window-manager state as a
+JSON tree: applications with their windows, tab-group membership and
+the active member, stacking level and index, dock/clip attachment and
+slot, frame geometry, client PID, and the complete state flags
+(focus, shade, hide, maximize axes, fullscreen, urgency, modality).
+The reply needs no X round-trips, so bars, switchers, session tools
+and test harnesses can read it with `wmakermsg get_window_tree | jq .`
+instead of scraping EWMH root properties. The new `--json` option
+converts any other reply (`get_windows`, `get_workspaces`, a command
+result) from property-list text to JSON as well, and is implied by
+`get_window_tree`.
+
 Comments in defaults files
 --------------------------
 

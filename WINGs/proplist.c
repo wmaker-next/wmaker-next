@@ -1687,6 +1687,204 @@ char *WMGetPropListDescription(WMPropList * plist, bool indented)
 	return sb.str;
 }
 
+static void appendJSONString(StringBuffer *sb, const char *str)
+{
+	const unsigned char *s;
+	unsigned char ch;
+	char esc[8];
+	int seq;
+
+	sbufAppendChar(sb, '"');
+	for (s = (const unsigned char *)str; (ch = *s) != 0; ) {
+		if (ch == '"') {
+			sbufAppend(sb, "\\\"");
+			s++;
+		} else if (ch == '\\') {
+			sbufAppend(sb, "\\\\");
+			s++;
+		} else if (ch < 0x20) {
+			switch (ch) {
+			case '\b':
+				sbufAppend(sb, "\\b");
+				break;
+			case '\f':
+				sbufAppend(sb, "\\f");
+				break;
+			case '\n':
+				sbufAppend(sb, "\\n");
+				break;
+			case '\r':
+				sbufAppend(sb, "\\r");
+				break;
+			case '\t':
+				sbufAppend(sb, "\\t");
+				break;
+			default:
+				snprintf(esc, sizeof(esc), "\\u%04x", ch);
+				sbufAppend(sb, esc);
+				break;
+			}
+			s++;
+		} else if (ch & 0x80) {
+			seq = utf8SeqLen(s);
+			if (seq > 0) {
+				sbufEnsure(sb, (size_t)seq);
+				memcpy(sb->str + sb->len, s, (size_t)seq);
+				sb->len += (size_t)seq;
+				s += seq;
+			} else {
+				/* invalid bytes become U+FFFD so the
+				 * output is always valid UTF-8 */
+				sbufAppend(sb, "\357\277\275");
+				s++;
+			}
+		} else {
+			sbufAppendChar(sb, (char)ch);
+			s++;
+		}
+	}
+	sbufAppendChar(sb, '"');
+}
+
+static void appendJSONData(StringBuffer *sb, WMPropList *plist)
+{
+	static const char b64[] =
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	const unsigned char *bytes;
+	size_t len, i;
+	unsigned int v;
+
+	sbufAppendChar(sb, '"');
+	bytes = WMDataBytes(plist->d.data);
+	len = (size_t)WMGetDataLength(plist->d.data);
+	for (i = 0; i < len; i += 3) {
+		v = (unsigned int)bytes[i] << 16;
+		if (i + 1 < len)
+			v |= (unsigned int)bytes[i + 1] << 8;
+		if (i + 2 < len)
+			v |= (unsigned int)bytes[i + 2];
+		sbufAppendChar(sb, b64[(v >> 18) & 0x3f]);
+		sbufAppendChar(sb, b64[(v >> 12) & 0x3f]);
+		sbufAppendChar(sb, (i + 1 < len) ? b64[(v >> 6) & 0x3f] : '=');
+		sbufAppendChar(sb, (i + 2 < len) ? b64[v & 0x3f] : '=');
+	}
+	sbufAppendChar(sb, '"');
+}
+
+static void jsonNewlineIndent(StringBuffer *sb, bool indented, int level)
+{
+	if (!indented)
+		return;
+	sbufAppendChar(sb, '\n');
+	sbufIndent(sb, 2 * level);
+}
+
+static int compareKeyStrings(const void *a, const void *b)
+{
+	const WMPropList *ka = *(WMPropList * const *)a;
+	const WMPropList *kb = *(WMPropList * const *)b;
+
+	return strcmp(ka->d.string, kb->d.string);
+}
+
+static void appendJSON(StringBuffer *sb, WMPropList *plist, bool indented, int level)
+{
+	WMPropList *key, *val, **keys;
+	WMHashEnumerator e;
+	unsigned int n, count;
+	size_t i;
+
+	if (level > MAX_PROPLIST_DEPTH) {
+		sbufAppend(sb, "null");
+		return;
+	}
+
+	switch (plist->type) {
+	case WPLString:
+		appendJSONString(sb, plist->d.string);
+		break;
+	case WPLData:
+		appendJSONData(sb, plist);
+		break;
+	case WPLArray:
+		n = (unsigned int)WMGetArrayItemCount(plist->d.array);
+		if (n == 0) {
+			sbufAppend(sb, "[]");
+			break;
+		}
+		sbufAppendChar(sb, '[');
+		for (i = 0; i < n; i++) {
+			if (i > 0)
+				sbufAppendChar(sb, ',');
+			jsonNewlineIndent(sb, indented, level + 1);
+			appendJSON(sb, WMGetFromArray(plist->d.array, i), indented, level + 1);
+		}
+		jsonNewlineIndent(sb, indented, level);
+		sbufAppendChar(sb, ']');
+		break;
+	case WPLDictionary:
+		/* keys are sorted for deterministic output. Non-string
+		 * keys cannot occur through the public API and are
+		 * skipped */
+		keys = NULL;
+		count = 0;
+		n = WMCountHashTable(plist->d.dict);
+		if (n > 0) {
+			keys = wmalloc(sizeof(WMPropList *) * n);
+			e = WMEnumerateHashTable(plist->d.dict);
+			while (WMNextHashEnumeratorItemAndKey(&e, (void **)&val, (void **)&key)) {
+				if (key->type != WPLString)
+					continue;
+				keys[count++] = key;
+			}
+			if (count > 1)
+				qsort(keys, count, sizeof(WMPropList *), compareKeyStrings);
+		}
+		if (count == 0) {
+			wfree(keys);
+			sbufAppend(sb, "{}");
+			break;
+		}
+		sbufAppendChar(sb, '{');
+		for (i = 0; i < count; i++) {
+			if (i > 0)
+				sbufAppendChar(sb, ',');
+			jsonNewlineIndent(sb, indented, level + 1);
+			appendJSONString(sb, keys[i]->d.string);
+			sbufAppendChar(sb, ':');
+			if (indented)
+				sbufAppendChar(sb, ' ');
+			val = WMHashGet(plist->d.dict, keys[i]);
+			appendJSON(sb, val, indented, level + 1);
+		}
+		wfree(keys);
+		jsonNewlineIndent(sb, indented, level);
+		sbufAppendChar(sb, '}');
+		break;
+	default:
+		wwarning(_("Used proplist functions on non-WMPropLists objects"));
+		wassertr(false);
+		break;
+	}
+}
+
+char *WMGetPropListJSON(WMPropList *plist, bool indented)
+{
+	StringBuffer sb;
+
+	sb.size = 256;
+	sb.len = 0;
+	sb.str = wmalloc(sb.size);
+
+	if (!plist)
+		sbufAppend(&sb, "null");
+	else
+		appendJSON(&sb, plist, indented, 0);
+
+	sb.str[sb.len] = '\0';
+	return sb.str;
+}
+
 WMPropList *WMReadPropListFromFile(const char *file)
 {
 	WMPropList *plist = NULL;
