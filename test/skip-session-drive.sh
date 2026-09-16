@@ -96,14 +96,14 @@ xterm_xids() {
 }
 # open the focused window's menu (WindowMenuKey) and walk to
 # Options > Skip window list (window_menu_entries index 11, options
-# index 3)
+# index 6)
 menu_toggle_skip_window_list() {
 	DISPLAY=$DPY xdotool key ctrl+Escape
 	sleep 0.4
 	DISPLAY=$DPY xdotool key --delay 150 \
 		Down Down Down Down Down Down Down Down Down Down Down Down Right
 	sleep 0.4
-	DISPLAY=$DPY xdotool key --delay 150 Down Down Down
+	DISPLAY=$DPY xdotool key --delay 150 Down Down Down Down Down Down
 	DISPLAY=$DPY xdotool key Return
 	sleep 0.3
 }

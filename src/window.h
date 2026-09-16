@@ -537,7 +537,7 @@ WMColor *wFrameInnerFocusedBorderColor(const WWindow *wwin);
 #endif
 
 /* _WINDOWMAKER_STATE quad count, shared by save and prefetch */
-#define WSAVED_STATE_SLOTS 14
+#define WSAVED_STATE_SLOTS 16
 
 /*
  * Changes to this must update wWindowSaveState/getSavedState
@@ -561,6 +561,8 @@ typedef struct WSavedState {
     int hidden;
     int auto_hide_on_unfocus;
     int auto_miniaturize_on_unfocus;
+    int no_movable_state;   /* user lock: 0 unset, 1 unlocked, 2 locked */
+    int no_resizable_state;
     int x;			       /* original geometry of the */
     int y;			       /* window if it's maximized */
     unsigned int w;

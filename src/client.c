@@ -145,6 +145,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 	WXWindowChanges xwc;
 	int nx, ny, nwidth, nheight;
 	int ofs_x, ofs_y;
+	uint32_t mask;
 
 	if (wwin == NULL) {
 		/*
@@ -206,8 +207,17 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 	}
 
 	if (!wwin->flags.shaded) {
+		/* locked against the user is locked against the client:
+		 * drop the geometry presence bits, before nx/ny so the
+		 * early return and jitter-suppression see the same mask */
+		mask = xcre->value_mask;
+		if (!IS_MOVABLE(wwin))
+			mask &= ~(XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y);
+		if (!IS_RESIZABLE(wwin))
+			mask &= ~(XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT);
+
 		/* If the window is shaded, wrong height will be set for the window */
-		if (xcre->value_mask & XCB_CONFIG_WINDOW_X) {
+		if (mask & XCB_CONFIG_WINDOW_X) {
 			nx = xcre->x;
 			/* Subtracting the border makes the window shift by 1 pixel -Dan */
 			/*if (HAS_BORDER(wwin)) {
@@ -217,7 +227,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 			nx = wwin->frame_x;
 		}
 
-		if (xcre->value_mask & XCB_CONFIG_WINDOW_Y) {
+		if (mask & XCB_CONFIG_WINDOW_Y) {
 			ny = xcre->y - ((ofs_y < 0) ? 0 : wwin->frame->top_width);
 			/* Subtracting the border makes the window shift by 1 pixel -Dan */
 			/*if (HAS_BORDER(wwin)) {
@@ -227,18 +237,18 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 			ny = wwin->frame_y;
 		}
 
-		if (xcre->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+		if (mask & XCB_CONFIG_WINDOW_WIDTH)
 			nwidth = xcre->width;
 		else
 			nwidth = wwin->frame->core->width;
 
-		if (xcre->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+		if (mask & XCB_CONFIG_WINDOW_HEIGHT)
 			nheight = xcre->height;
 		else
 			nheight = wwin->frame->core->height - wwin->frame->top_width - wwin->frame->bottom_width;
 
 		/* Don't overwrite the saved geometry unnecessarily. */
-		if (!(xcre->value_mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT)))
+		if (!(mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT)))
 			return;
 
 		if (nwidth != wwin->old_geometry.width)
@@ -250,7 +260,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 
 		/* Ignore tiny position adjustments from client ConfigureRequests to prevent
 		 * window jitters (e.g., VirtualBox sending incremental 1-2px corrections). */
-		if (wwin->flags.mapped && !wwin->moveresize.active && (xcre->value_mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y))) {
+		if (wwin->flags.mapped && !wwin->moveresize.active && (mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y))) {
 			int dx = abs(nx - wwin->frame_x);
 			int dy = abs(ny - wwin->frame_y);
 

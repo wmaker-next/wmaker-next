@@ -1404,6 +1404,10 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		wwin->flags.maximized = wstate->maximized;
 		wwin->flags.auto_hide_on_unfocus = wstate->auto_hide_on_unfocus;
 		wwin->flags.auto_miniaturize_on_unfocus = wstate->auto_miniaturize_on_unfocus;
+		if (wstate->no_movable_state)
+			WSETUFLAG(wwin, no_movable, wstate->no_movable_state - 1);
+		if (wstate->no_resizable_state)
+			WSETUFLAG(wwin, no_resizable, wstate->no_resizable_state - 1);
 		if (wwin->flags.maximized) {
 			wwin->old_geometry.x = wstate->x;
 			wwin->old_geometry.y = wstate->y;
@@ -4013,6 +4017,11 @@ void wWindowSaveState(WWindow *wwin)
 	 * survive warm restart without propagating to same-class siblings */
 	data[12] = wwin->flags.auto_hide_on_unfocus;
 	data[13] = wwin->flags.auto_miniaturize_on_unfocus;
+	/* user geometry locks, tri-state so a user-unlock of a
+	 * client-locked window survives too: 0 unset, 1 user-unlocked,
+	 * 2 user-locked */
+	data[14] = wwin->defined_user_flags.no_movable ? wwin->user_flags.no_movable + 1 : 0;
+	data[15] = wwin->defined_user_flags.no_resizable ? wwin->user_flags.no_resizable + 1 : 0;
 
 	WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wmaker.state,
 		       w_global.atom.wmaker.state, data, WSAVED_STATE_SLOTS);
@@ -4046,8 +4055,9 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 	/* Accept the pre-mask 10-slot layout, the 12-slot layout, and the
 	 * current WSAVED_STATE_SLOTS-slot one so a restart from an older
 	 * binary still recovers primary workspace, the mask defaults to 0
-	 * (derived from primary), and the auto-on-unfocus bits default to 0
-	 * (per-window, off). Quads past the current layout, written by a
+	 * (derived from primary), the auto-on-unfocus bits default to 0
+	 * (per-window, off), and the geometry locks default to 0 (not
+	 * user-defined). Quads past the current layout, written by a
 	 * newer or older binary, are ignored. */
 	data = WXRcvFormat32List(xconn, state_ck, &count);
 	if (!data || count < 10) {
@@ -4077,6 +4087,10 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 		(*state)->auto_hide_on_unfocus = data[12];
 	if (count >= 14)
 		(*state)->auto_miniaturize_on_unfocus = data[13];
+	if (count >= 15)
+		(*state)->no_movable_state = data[14];
+	if (count >= 16)
+		(*state)->no_resizable_state = data[15];
 	wfree(data);
 
 	(*state)->mark_key = WXRcvString(xconn, mark_ck, &len);

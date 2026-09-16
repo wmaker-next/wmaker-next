@@ -114,19 +114,23 @@ static const struct {
  */
 enum
 {
-	WO_KEEP_ON_TOP,
 	WO_KEEP_AT_BOTTOM,
+	WO_KEEP_ON_TOP,
+	WO_LOCK_POSITION,
+	WO_LOCK_SIZE,
 	WO_OMNIPRESENT,
-	WO_SKIP_WINDOW_LIST,
-	WO_SKIP_SWITCH_PANEL
+	WO_SKIP_SWITCH_PANEL,
+	WO_SKIP_WINDOW_LIST
 };
 
 static const char *const menu_options_entries[] = {
-	[WO_KEEP_ON_TOP]         = N_("Keep on top"),
 	[WO_KEEP_AT_BOTTOM]      = N_("Keep at bottom"),
+	[WO_KEEP_ON_TOP]         = N_("Keep on top"),
+	[WO_LOCK_POSITION]       = N_("Lock position"),
+	[WO_LOCK_SIZE]           = N_("Lock size"),
 	[WO_OMNIPRESENT]         = N_("Omnipresent"),
-	[WO_SKIP_WINDOW_LIST]    = N_("Skip window list"),
-	[WO_SKIP_SWITCH_PANEL]   = N_("Skip switch panel")
+	[WO_SKIP_SWITCH_PANEL]   = N_("Skip switch panel"),
+	[WO_SKIP_WINDOW_LIST]    = N_("Skip window list")
 };
 
 /*
@@ -163,13 +167,6 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 	(void) menu;
 
 	switch (entry->order) {
-	case WO_KEEP_ON_TOP:
-		if (wwin->frame->core->stacking->window_level != WMFloatingLevel)
-			ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
-		else
-			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
-		break;
-
 	case WO_KEEP_AT_BOTTOM:
 		if (wwin->frame->core->stacking->window_level != WMSunkenLevel)
 			ChangeStackingLevel(wwin->frame->core, WMSunkenLevel);
@@ -177,8 +174,33 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
 		break;
 
+	case WO_KEEP_ON_TOP:
+		if (wwin->frame->core->stacking->window_level != WMFloatingLevel)
+			ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
+		else
+			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+		break;
+
+	case WO_LOCK_POSITION:
+		WSETUFLAG(wwin, no_movable, !WFLAGP(wwin, no_movable));
+		wNETWMUpdateActions(wwin, false);
+		break;
+
+	case WO_LOCK_SIZE:
+		WSETUFLAG(wwin, no_resizable, !WFLAGP(wwin, no_resizable));
+		/* resizebar and maximize button key off IS_RESIZABLE() */
+		wWindowConfigureBorders(wwin);
+		wFrameWindowPaint(wwin->frame);
+		wNETWMUpdateActions(wwin, false);
+		break;
+
 	case WO_OMNIPRESENT:
 		wWindowSetOmnipresent(wwin, !IS_OMNIPRESENT(wwin));
+		break;
+
+	case WO_SKIP_SWITCH_PANEL:
+		WSETUFLAG(wwin, skip_switchpanel,
+			  !WFLAGP(wwin, skip_switchpanel));
 		break;
 
 	case WO_SKIP_WINDOW_LIST:
@@ -186,11 +208,6 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 		WSETUFLAG(wwin, skip_window_list, skip);
 		UpdateSwitchMenu(wwin->screen_ptr, wwin,
 				 skip ? ACTION_REMOVE : ACTION_ADD);
-		break;
-
-	case WO_SKIP_SWITCH_PANEL:
-		WSETUFLAG(wwin, skip_switchpanel,
-			  !WFLAGP(wwin, skip_switchpanel));
 		break;
 	}
 }
@@ -566,13 +583,6 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin)
 {
 	WMenu *smenu = menu->cascades[menu->entries[MC_OPTIONS]->cascade];
 
-	/* keep on top check */
-	smenu->entries[WO_KEEP_ON_TOP]->clientdata = wwin;
-	smenu->entries[WO_KEEP_ON_TOP]->flags.indicator_on =
-	    (wwin->frame->core->stacking->window_level == WMFloatingLevel) ? 1 : 0;
-	wMenuSetEnabled(smenu, WO_KEEP_ON_TOP, !wwin->flags.miniaturized);
-	wMenuEntrySetShortcutText(smenu->entries[WO_KEEP_ON_TOP], GetShortcutKey(wKeyBindings[WKBD_KEEP_ON_TOP]));
-
 	/* keep at bottom check */
 	smenu->entries[WO_KEEP_AT_BOTTOM]->clientdata = wwin;
 	smenu->entries[WO_KEEP_AT_BOTTOM]->flags.indicator_on =
@@ -580,18 +590,33 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin)
 	wMenuSetEnabled(smenu, WO_KEEP_AT_BOTTOM, !wwin->flags.miniaturized);
 	wMenuEntrySetShortcutText(smenu->entries[WO_KEEP_AT_BOTTOM], GetShortcutKey(wKeyBindings[WKBD_KEEP_AT_BOTTOM]));
 
+	/* keep on top check */
+	smenu->entries[WO_KEEP_ON_TOP]->clientdata = wwin;
+	smenu->entries[WO_KEEP_ON_TOP]->flags.indicator_on =
+	    (wwin->frame->core->stacking->window_level == WMFloatingLevel) ? 1 : 0;
+	wMenuSetEnabled(smenu, WO_KEEP_ON_TOP, !wwin->flags.miniaturized);
+	wMenuEntrySetShortcutText(smenu->entries[WO_KEEP_ON_TOP], GetShortcutKey(wKeyBindings[WKBD_KEEP_ON_TOP]));
+
+	smenu->entries[WO_LOCK_POSITION]->clientdata = wwin;
+	smenu->entries[WO_LOCK_POSITION]->flags.indicator_on =
+	    WFLAGP(wwin, no_movable);
+
+	smenu->entries[WO_LOCK_SIZE]->clientdata = wwin;
+	smenu->entries[WO_LOCK_SIZE]->flags.indicator_on =
+	    WFLAGP(wwin, no_resizable);
+
 	/* omnipresent check */
 	smenu->entries[WO_OMNIPRESENT]->clientdata = wwin;
 	smenu->entries[WO_OMNIPRESENT]->flags.indicator_on = IS_OMNIPRESENT(wwin);
 	wMenuEntrySetShortcutText(smenu->entries[WO_OMNIPRESENT], GetShortcutKey(wKeyBindings[WKBD_OMNIPRESENT]));
 
-	smenu->entries[WO_SKIP_WINDOW_LIST]->clientdata = wwin;
-	smenu->entries[WO_SKIP_WINDOW_LIST]->flags.indicator_on =
-	    WFLAGP(wwin, skip_window_list);
-
 	smenu->entries[WO_SKIP_SWITCH_PANEL]->clientdata = wwin;
 	smenu->entries[WO_SKIP_SWITCH_PANEL]->flags.indicator_on =
 	    WFLAGP(wwin, skip_switchpanel);
+
+	smenu->entries[WO_SKIP_WINDOW_LIST]->clientdata = wwin;
+	smenu->entries[WO_SKIP_WINDOW_LIST]->flags.indicator_on =
+	    WFLAGP(wwin, skip_window_list);
 
 	smenu->flags.realized = 0;
 	wMenuRealize(smenu);

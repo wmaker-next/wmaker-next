@@ -60,23 +60,29 @@ applications pick the keys up at their next start. The shipped
 WMGLOBAL template documents the keys as commented-out examples with
 their fallbacks.
 
-Per-window "skip window list" and "skip switch panel" toggles
---------------------------------------------------------------
+Per-window window-menu Options toggles
+--------------------------------------
 
-The window menu's Options submenu gains two new entries, "Skip window
-list" and "Skip switch panel", which hide the window they are toggled
-on from the window list and from the switch panel (Alt-Tab) without
-touching other windows of the same application. Until now those
-attributes could only be set from the window Inspector, where "Save"
-writes them under the window specification (instance, class or all
-windows), so hiding a single window of an application while it runs
-was impossible. Like "Keep on top" and "Keep at bottom" the menu
-toggles are live only: they affect the window they are invoked on and
-are deliberately not saved, because the session restores entries by
-instance, class and command, which cannot tell two windows of the same
-application apart, so a saved value could land on a window the user
-never chose. The Inspector keeps working as before and remains the way
-to make the setting permanent for an application.
+The window menu's Options submenu gains four new entries. "Skip window
+list" and "Skip switch panel" hide the window they are toggled on from
+the window list and from the switch panel (Alt-Tab), and "Lock
+position" and "Lock size" pin it against moving and resizing. A locked
+dimension also ignores the window's own ConfigureRequest for that axis,
+so a locked terminal that changes font no longer resizes itself.
+
+The skip attributes could previously only be set from the window
+Inspector, where "Save" writes them under the window specification
+(instance, class or all windows), so hiding a single window of an
+application while it runs was impossible. The lock flags could only be
+set by clients. The menu toggles are per-window: they affect the window
+they are invoked on and never touch other windows of the same
+application. Like "Keep on top" and "Keep at bottom" the skip toggles
+are live only. The locks survive a warm restart (`wmakermsg restart` or
+`--replace`) through the per-window state property. None of the four is
+written to the session file, which restores entries by instance, class
+and command and could hand the value to a sibling the user never chose.
+The Inspector keeps working as before and remains the way to make a
+setting permanent for an application.
 
 Xlib is gone, everything runs on xcb
 -------------------------------------
