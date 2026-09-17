@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Generic action IPC verb
+-----------------------
+
+`wmakermsg action NAME` runs any key-binding action by name, so scripts
+and daemons reach every action a key binding can trigger without a
+dedicated verb per action. The name is the short action form
+(NextWorkspace) or the config key (NextWorkspaceKey), optionally followed
+by a window id, and `wmakermsg info` now lists every accepted name. New
+window-manager actions go through `action` instead of new verbs.
+Hot-corner entries whose value matches an action name now run that action
+directly instead of shelling out, while unknown strings still run as
+shell commands.
+
 Window tree introspection over IPC
 ----------------------------------
 

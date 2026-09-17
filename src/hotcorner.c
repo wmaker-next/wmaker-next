@@ -26,15 +26,25 @@
 #include "screen.h"
 #include "xinerama.h"
 #include "main.h"
+#include "keybind.h"
 #include "hotcorner.h"
 
 
 static void hotCornerDelay(void *data)
 {
 	WScreen *scr = (WScreen *) data;
+	const char *cmd = NULL;
+	int command;
 
-	if (scr->flags.in_hot_corner && wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1])
-		ExecuteShellCommand(scr, wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1]);
+	if (scr->flags.in_hot_corner)
+		cmd = wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1];
+	if (cmd) {
+		command = wKeybindForAction(cmd);
+		if (command >= 0)
+			wKeybindDispatch(command, scr, scr->focused_window, NULL);
+		else
+			ExecuteShellCommand(scr, cmd);
+	}
 	WMDeleteTimerHandlerPtr(&scr->hot_corner_timer);
 }
 

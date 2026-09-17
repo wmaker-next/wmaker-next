@@ -45,6 +45,7 @@
 #include "defaults.h"
 #include "dock.h"
 #include "event.h"
+#include "keybind.h"
 #include "main.h"
 #include "shutdown.h"
 #include "workspace.h"
@@ -617,17 +618,17 @@ static verb_rc verb_arrange_icons(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
-static int parse_xid(WMPropList *args, xcb_window_t *out, char **err)
+static int parse_xid_arg(WMPropList *args, int idx, xcb_window_t *out, char **err)
 {
 	WMPropList *a;
 	unsigned long v;
 	char *end;
 
-	if (!args || WMGetPropListItemCount(args) < 2) {
+	if (!args || WMGetPropListItemCount(args) <= idx) {
 		*err = wstrdup("missing window id");
 		return 0;
 	}
-	a = WMGetFromPLArray(args, 1);
+	a = WMGetFromPLArray(args, idx);
 	if (!a || !WMIsPLString(a)) {
 		*err = wstrdup("window id must be a string");
 		return 0;
@@ -639,6 +640,11 @@ static int parse_xid(WMPropList *args, xcb_window_t *out, char **err)
 	}
 	*out = (xcb_window_t)v;
 	return 1;
+}
+
+static int parse_xid(WMPropList *args, xcb_window_t *out, char **err)
+{
+	return parse_xid_arg(args, 1, out, err);
 }
 
 static verb_rc verb_window_workspace(WScreen *scr, WMPropList *args,
@@ -768,10 +774,28 @@ static WMPropList *build_version(WScreen *scr)
 static verb_rc verb_info(WScreen *scr, WMPropList *args,
 			 char **err, WMPropList **reply)
 {
+	WMPropList *actions;
+	const char *action;
+	int i, n;
+
 	(void)args;
 	(void)err;
 	*reply = build_version(scr);
 	pl_dict_put(*reply, "success", pl_bool(1));
+
+	actions = WMCreatePLArray(NULL);
+	n = wKeybindActionCount();
+	for (i = 0; i < n; i++) {
+		WMPropList *s;
+
+		action = wKeybindActionName(i);
+		if (!action)
+			continue;
+		s = WMCreatePLString(action);
+		WMAddToPLArray(actions, s);
+		WMReleasePropList(s);
+	}
+	pl_dict_put(*reply, "actions", actions);
 	return VERB_OK;
 }
 
@@ -962,6 +986,52 @@ static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_action(WScreen *scr, WMPropList *args,
+			   char **err, WMPropList **reply)
+{
+	WMPropList *a;
+	const char *name;
+	xcb_window_t xid;
+	WWindow *wwin = scr->focused_window;
+	int command;
+
+	(void)reply;
+	if (!args || WMGetPropListItemCount(args) < 2) {
+		*err = wstrdup("action: missing action name");
+		return VERB_FAIL;
+	}
+	a = WMGetFromPLArray(args, 1);
+	if (!a || !WMIsPLString(a)) {
+		*err = wstrdup("action: missing action name");
+		return VERB_FAIL;
+	}
+	name = WMGetFromPLString(a);
+	command = wKeybindForAction(name);
+	if (command < 0) {
+		*err = wstrdup("unknown action");
+		return VERB_FAIL;
+	}
+	if (WMGetPropListItemCount(args) >= 3) {
+		if (!parse_xid_arg(args, 2, &xid, err))
+			return VERB_FAIL;
+		wwin = wWindowFor(xid);
+		if (!wwin) {
+			/* wmlib targets the group leader for Hide, which is
+			 * not a managed window */
+			WApplication *wapp = wApplicationOf(xid);
+
+			if (!wapp || !wapp->main_window_desc) {
+				*err = wstrdup("window not managed");
+				return VERB_FAIL;
+			}
+			wwin = wapp->main_window_desc;
+		}
+	}
+	wKeybindDispatch(command, scr, wwin, NULL);
+	wXSync(xconn);
+	return VERB_OK;
+}
+
 static int parse_edge_direction(WMPropList *args, int idx, int *dir, char **err)
 {
 	WMPropList *a;
@@ -1118,6 +1188,7 @@ static const struct {
 	{ "workspace-delete", verb_workspace_delete },
 	{ "window-workspace", verb_window_workspace },
 	{ "window-close",      verb_window_close },
+	{ "action",            verb_action },
 	{ "move-to-edge",     verb_move_to_edge },
 	{ "grow-to-edge",     verb_grow_to_edge },
 	{ "shrink-to-edge",   verb_shrink_to_edge },
@@ -1704,6 +1775,11 @@ static void ipc_read_cb(int fd, int mask, void *data)
 	char *body, *wm;
 
 	(void)mask;
+
+	/* a modal dispatch re-enters this callback, let the outer frame
+	 * drain the pending frame once busy clears */
+	if (c->busy)
+		return;
 
 	for (;;) {
 		if (c->hdr_got < WIPC_HEADER_LEN) {

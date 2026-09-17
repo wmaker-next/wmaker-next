@@ -65,8 +65,16 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
   HotCornerDelay = 100;
   HotCornerEdge = 10;
   HotCornerActions = ("touch $MARK/tl", "touch $MARK/tr",
-                      "touch $MARK/bl", "touch $MARK/br");
+                      "NextWorkspace", "touch $MARK/br");
   RootMenuKey = "Control+Shift+R";
+}
+EOF
+cat >"$WMHOME/Defaults/WMState" <<'EOF'
+{
+  Workspaces = (
+    { Name = "hotcorner-0"; },
+    { Name = "hotcorner-1"; }
+  );
 }
 EOF
 export WMAKER_USER_ROOT="$WMHOME"
@@ -150,7 +158,51 @@ wait_for 30 pid_gone "$XTPID"
 # the KeyPress lands on a window wmaker listens on
 sleep 0.3
 
-# --- 5. root PointerMotionMask gated on mapped menus ------------------------
+# --- 5. hot corner dispatches a built-in action -----------------------------
+# The bottom-left corner maps to NextWorkspace. Hitting it must change the
+# current workspace instead of spawning a shell, while the tl/tr/br corners
+# keep their touch(1) commands so the shell path stays covered.
+current_desktop() {
+    DISPLAY=$DPY xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed -n 's/.*= //p'
+}
+ws_changed() { [ -n "$(current_desktop)" ] && [ "$(current_desktop)" != "$1" ]; }
+note "bottom-left corner switches workspace"
+WS0=$(current_desktop)
+[ -n "$WS0" ] || fail "could not read _NET_CURRENT_DESKTOP"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+xdo mousemove 1 $((H-2))
+wait_for 30 ws_changed "$WS0" \
+    || fail "bottom-left corner did not switch workspace"
+note "ok: bottom-left corner switched workspace"
+
+# --- 6. a None corner is inert ----------------------------------------------
+# Rewire the bottom-left corner from NextWorkspace to None: hitting it
+# must change nothing (no workspace switch, no shell) and wmaker must
+# survive the NULL action entry.
+note "bottom-left corner set to None is inert"
+WS_NONE=$(current_desktop)
+cat >"$WMHOME/Defaults/WindowMaker" <<EOF
+{
+  HotCorners = YES;
+  HotCornerDelay = 100;
+  HotCornerEdge = 10;
+  HotCornerActions = ("touch $MARK/tl", "touch $MARK/tr",
+                      "None", "touch $MARK/br");
+  RootMenuKey = "Control+Shift+R";
+}
+EOF
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" -q reconfigure >>"$LOG" 2>&1 \
+    || fail "reconfigure after the None rewrite failed"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+xdo mousemove 1 $((H-2))
+sleep 0.5
+[ "$(current_desktop)" = "$WS_NONE" ] \
+    || fail "None corner switched the workspace"
+kill -0 "$WMAKER_PID" 2>/dev/null || fail "wmaker died on a None corner"
+note "ok: bottom-left None corner was inert"
+
+# --- 7. root PointerMotionMask gated on mapped menus ------------------------
 # ScrollableMenus is at its YES default (not in the WindowMaker domain
 # above), so an idle desktop must not select PointerMotion on root, it
 # only appears while a menu is mapped and goes again on close.

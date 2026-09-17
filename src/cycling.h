@@ -23,6 +23,6 @@
 
 #include "switchpanel.h"
 
-void StartWindozeCycle(WWindow *wwin, xcb_generic_event_t *event, bool next, CycleMode mode);
+void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode);
 
 #endif /* WMCYCLING_H */

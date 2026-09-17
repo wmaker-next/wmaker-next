@@ -99,6 +99,18 @@ net_client_list() {
 		| sed -n 's/.*_NET_CLIENT_LIST(WINDOW): //p' | tr ',' ' '
 }
 
+# _NET_CURRENT_DESKTOP as a bare number
+net_current_desktop() {
+	DISPLAY=$DPY xprop -root _NET_CURRENT_DESKTOP 2>/dev/null \
+		| sed -n 's/.*= //p'
+}
+
+# _NET_SHOWING_DESKTOP as a bare number (1 while show-desktop is active)
+net_showing_desktop() {
+	DISPLAY=$DPY xprop -root _NET_SHOWING_DESKTOP 2>/dev/null \
+		| sed -n 's/.*= //p'
+}
+
 # ----------------------------------------------------------------------
 
 for tool in Xvfb xdpyinfo xdotool xprop xterm; do
@@ -305,6 +317,80 @@ check "A _NET_WM_DESKTOP = 2 after move" wf_desktop_2
 msg -q workspace 0 >/dev/null 2>&1
 msg -q window-workspace "$XA_HEX" 0 >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
+
+# ---- action: generic keybind-action dispatch -------------------------------
+
+note "action generic verb"
+msg -q action >/dev/null 2>&1
+check "action with no name exits 2" [ $? -eq 2 ]
+msg -q action NoSuchThing >/dev/null 2>&1
+check "action unknown name exits 2" [ $? -eq 2 ]
+msg -q action KeychainCancel >/dev/null 2>&1
+check "action KeychainCancel (excluded row) exits 2" [ $? -eq 2 ]
+
+wf_ws0() { [ "$(net_current_desktop)" = "0" ]; }
+wait_for 30 wf_ws0
+
+ws_before=$(net_current_desktop)
+wf_ws_changed() { [ -n "$(net_current_desktop)" ] && [ "$(net_current_desktop)" != "$1" ]; }
+msg -q action NextWorkspace >/dev/null 2>&1
+check "action NextWorkspace exits 0" [ $? -eq 0 ]
+wait_for 30 wf_ws_changed "$ws_before"
+check "NextWorkspace moved to another workspace" wf_ws_changed "$ws_before"
+
+# the config-key spelling resolves to the same command
+ws_mid=$(net_current_desktop)
+msg -q action NextWorkspaceKey >/dev/null 2>&1
+check "action NextWorkspaceKey (spelling) exits 0" [ $? -eq 0 ]
+wait_for 30 wf_ws_changed "$ws_mid"
+check "NextWorkspaceKey moved to another workspace" wf_ws_changed "$ws_mid"
+
+note "action ShowDesktop"
+wait_for 30 wf_ws0
+wf_showing() { [ "$(net_showing_desktop)" = "1" ]; }
+wf_not_showing() { [ "$(net_showing_desktop)" != "1" ]; }
+msg -q action ShowDesktop >/dev/null 2>&1
+check "action ShowDesktop exits 0" [ $? -eq 0 ]
+wait_for 30 wf_showing
+check "_NET_SHOWING_DESKTOP set by ShowDesktop" wf_showing
+msg -q action ShowDesktop >/dev/null 2>&1
+wait_for 30 wf_not_showing
+check "_NET_SHOWING_DESKTOP cleared by ShowDesktop toggle" wf_not_showing
+
+note "action Miniaturize"
+DISPLAY=$DPY xdotool windowactivate "$XA" >/dev/null 2>&1
+sleep 0.3
+msg -q action Miniaturize >/dev/null 2>&1
+check "action Miniaturize (focused window) exits 0" [ $? -eq 0 ]
+msg -q show-all >/dev/null 2>&1
+wait_for 30 not_hidden "$XA"
+DISPLAY=$DPY xdotool windowactivate "$XA" >/dev/null 2>&1
+sleep 0.3
+msg -q action Miniaturize "$XA_HEX" >/dev/null 2>&1
+check "action Miniaturize with window id exits 0" [ $? -eq 0 ]
+wf_hidden() { is_hidden "$XA"; }
+wait_for 30 wf_hidden
+check "A hidden by action Miniaturize" wf_hidden
+msg -q action NoSuchThing "$XA_HEX" >/dev/null 2>&1
+check "action unknown name with window id exits 2" [ $? -eq 2 ]
+msg -q show-all >/dev/null 2>&1
+wait_for 30 not_hidden "$XA"
+
+note "info exposes the action-name list"
+INFO_OUT=$(msg info 2>/dev/null)
+check "info exits 0" [ $? -eq 0 ]
+ACT_TOKENS=$(printf '%s\n' "$INFO_OUT" \
+	| sed -n 's/.*actions = (\(.*\)).*/\1/p' \
+	| tr ',' '\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+	| grep -v '^$')
+ACT_TOTAL=$(printf '%s\n' "$ACT_TOKENS" | grep -c '^.')
+ACT_UNIQ=$(printf '%s\n' "$ACT_TOKENS" | sort -u | grep -c '^.')
+check "info actions list is non-empty" [ "$ACT_TOTAL" -gt 0 ]
+check "info actions list is duplicate-free" [ "$ACT_TOTAL" = "$ACT_UNIQ" ]
+info_has() { printf '%s\n' "$ACT_TOKENS" | grep -qx "$1"; }
+info_lacks_keychain() { ! info_has KeychainCancel; }
+check "info actions list contains NextWorkspace" info_has NextWorkspace
+check "info actions list excludes KeychainCancel" info_lacks_keychain
 
 # ---- shutdown ------------------------------------------------------------
 

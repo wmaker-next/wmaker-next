@@ -78,6 +78,7 @@ wmaker_SOURCES = 	\
 	icon.h \
 	ipc.c \
 	ipc.h \
+	keybind.c \
 	keybind.h \
 	keytree.c \
 	keytree.h \

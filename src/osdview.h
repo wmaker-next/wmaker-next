@@ -25,6 +25,10 @@ struct _WScreen;
 
 typedef struct W_OSDView WOSDView;
 
+/* Default gap in pixels between an OSD popup and its anchored edge,
+ * shared by the key-chain chord display and the layout flash display */
+#define WOSD_EDGE_PAD 8
+
 WOSDView *WCreateOSDView(WMScreen *scr);
 
 /* Override the 12pt system font used for the text and re-measure. The

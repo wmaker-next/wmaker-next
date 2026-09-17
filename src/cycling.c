@@ -99,12 +99,11 @@ static WWindow *change_focus_and_raise(WWindow *newFocused, WWindow *oldFocused,
 	return oldFocused;
 }
 
-void StartWindozeCycle(WWindow *wwin, xcb_generic_event_t *event, bool next, CycleMode mode)
+void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 {
 
 	WShortKey binding, fwd_binding, bwd_binding;
 	WSwitchPanel    *swpanel       = NULL;
-	WScreen         *scr           = wScreenForRootWindow(((xcb_key_press_event_t *)event)->root);
 	xcb_keycode_t         leftKey        = wXkbKeysymToKeycode(XKB_KEY_Left);
 	xcb_keycode_t         rightKey       = wXkbKeysymToKeycode(XKB_KEY_Right);
 	xcb_keycode_t         upKey         = wXkbKeysymToKeycode(XKB_KEY_Up);

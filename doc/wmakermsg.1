@@ -67,7 +67,23 @@ Connect to the given socket path instead of resolving one.
 .BR "hide\-application XID" ,
 .BR "hide\-others XID" ,
 .BR "display\-power on|off" ,
+.BR "action \fINAME\fR [\fIXID\fR]" ,
 .BR info .
+.PP
+The
+.B action
+verb runs a key\-binding action on the focused window, or on
+.I XID
+when given.
+.I NAME
+is either the short action name (for example
+.IR NextWorkspace )
+or its configuration key, as reported in the
+.I actions
+array of the
+.B info
+reply. An unknown action name is rejected with
+.IR "unknown action" .
 .PP
 The
 .B display\-power

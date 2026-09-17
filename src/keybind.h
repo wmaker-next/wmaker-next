@@ -21,7 +21,14 @@
 #ifndef WMKEYBIND_H
 #define WMKEYBIND_H
 
+#include <stdbool.h>
+
+#include <xcb/xcb.h>
+
 #define MAX_SHORTCUT_LENGTH 64
+
+struct _WScreen;
+struct WWindow;
 
 /* <X11/X.h> doesn't define these, even though XFree supports them */
 #ifndef Button6
@@ -264,5 +271,21 @@ extern WShortKey wKeyBindings[WKBD_LAST];
 /* ---[ Functions ]------------------------------------------------------- */
 
 void wShortKeyFree(WShortKey *key);
+
+/* Execute a single key-binding action. `event` may be NULL when the
+ * action is not driven by a key press (IPC, hot corners, gestures), and
+ * the dispatch then falls back to the last known event timestamp. */
+void wKeybindDispatch(int command, struct _WScreen *scr, struct WWindow *wwin,
+		      xcb_generic_event_t *event);
+
+/* Resolve an action name from the key-binding schema to its WKBD_*
+ * command index. Accepts the config key spelling ("NextWorkspaceKey")
+ * or the short action name ("NextWorkspace"). Returns -1 if unknown. */
+int wKeybindForAction(const char *name);
+
+/* Read-only, duplicate-free list of advertised action names, used by the
+ * IPC `info` verb so clients can validate names without executing them. */
+int wKeybindActionCount(void);
+const char *wKeybindActionName(int index);
 
 #endif /* WMKEYBIND_H */

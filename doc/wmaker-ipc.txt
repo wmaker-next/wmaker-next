@@ -181,6 +181,13 @@ Command verbs (request type 0)
     window-close XID
             send WM_DELETE_WINDOW to the window and ping it
             via _NET_WM_PING
+    action NAME [XID]
+            run the key-binding action NAME on the focused window, or on
+            XID when given. NAME is a key-binding action name from the
+            `info' actions list, either the short form (NextWorkspace) or
+            the config key (NextWorkspaceKey). Actions that execute a
+            configured shell command (LockScreen, Clipboard) run with
+            window-manager privileges
     display-power on|off
     play-sound EVENT
             emit a sound event on the IPC stream; EVENT is one of
@@ -190,6 +197,12 @@ Command verbs (request type 0)
             Requires the wmsoundd daemon to be subscribed to
             produce audio; the verb itself only emits the event
     info
+            reply carries the usual version fields plus an `actions'
+            array listing every action name that `action' accepts
+
+New window-manager actions are reached through `action' rather than a new
+verb. The per-action verbs above predate it and stay for compatibility.
 
 An unknown verb yields {success=NO; error="unknown command '...'";}
-and the connection stays open.
+and the connection stays open. An unknown `action' name yields
+{success=NO; error="unknown action";}.
