@@ -77,6 +77,7 @@ POTFILES  = \
 	$(top_srcdir)/src/wconfigmodel.c \
 	$(top_srcdir)/src/wcore.c \
 	$(top_srcdir)/src/wdefaults.c \
+	$(top_srcdir)/src/wdisplay.c \
 	$(top_srcdir)/src/window.c \
 	$(top_srcdir)/src/winmenu.c \
 	$(top_srcdir)/src/winspector.c \

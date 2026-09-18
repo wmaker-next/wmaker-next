@@ -240,161 +240,30 @@ typedef struct WCoord {
 } WCoord;
 
 /*
- * Runtime state and realised X resources that are not direct configuration
- * values. Plain configuration is read from w_global.config (struct WConfig),
- * the remaining fields here either combine config with command-line/runtime
- * state (flags), are derived from a config value (modifier_mask,
- * window_place_origin), or hold realised X-side objects whose lifetime is
- * tied to the screen rather than to a parsed value.
+ * Process-scoped runtime state not tied to the X connection.
+ * Connection-scoped state lives in WDisplay, plain config in w_global.config.
  */
 extern struct WPreferences {
 	WMArray *fallbackWMs;              /* fallback window manager list */
-
-	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to scr_width/height */
-
-	unsigned int modifier_mask;        /* mask to use as kbd modifier */
-	unsigned int tab_drag_modifier_mask; /* TabDragModifier parsed, 0 = disabled */
-	char *modifier_labels[7];          /* Names of the modifiers */
-	char *modifier_short_labels[9];    /* Short names of the modifiers */
-
-	unsigned int supports_tiff;        /* Use tiff files */
-
-	RImage *swtileImage;
-	RImage *swtileArrowImage;
-	RImage *swbackImage[9];
-
-	union WTexture *wsmbackTexture;
-
-	char *hot_corner_actions[4];       /* Action of each corner */
-
-	struct {
-#ifdef USE_ICCCM_WMREPLACE
-		unsigned int replace:1;               /* replace existing window manager */
-#endif
-		unsigned int nodock:1;                /* don't display the dock */
-		unsigned int noclip:1;                /* don't display the clip */
-		unsigned int clip_merged_in_dock:1;   /* disable clip, switch workspaces with dock */
-		unsigned int nodrawer:1;              /* don't use drawers */
-		unsigned int wrap_appicons_in_dock:1; /* Whether to wrap appicons when Dock is moved up and down */
-		unsigned int noupdates:1;             /* don't require ~/GNUstep (-static) */
-		unsigned int noautolaunch:1;          /* don't autolaunch apps */
-		unsigned int norestore:1;             /* don't restore session */
-		unsigned int restarting:2;
-	} flags;                                      /* internal flags */
-
-	/* Map table between w_cursor and actual X id */
-	xcb_cursor_t cursor[WCUR_LAST];
-
 } wPreferences;
 
-/****** Global Variables ******/
-/* the connection owner, opened in real_main(); the screen number comes
- * from the display name parse in real_main() */
-extern xcb_connection_t	*xconn;
-extern int dflt_screen;
+/*
+ * Connection-scoped runtime state. One instance, created in real_main().
+ * NULL in the monitor process.
+ */
+typedef struct WDisplay {
+	xcb_connection_t *conn;        /* attached by wDisplayAttach() */
+	int default_screen;
 
-extern struct wmaker_global_variables {
-	/* Tracking of the state of the program */
+	/* window -> object tables (the XContext replacements) */
 	struct {
-		wprog_state state;
-		wprog_state signal_state;
-	} program;
+		WMHashTable *client_win;
+		WMHashTable *app_win;
+		WMHashTable *stack;
+	} context;
 
-	/* locale to use. NULL==POSIX or C */
-	const char *locale;
-
-	/* the display name the connection was opened on, the
-	 * DisplayString(dpy) stand-in for the IPC socket path and the
-	 * root-menu DISPLAY macro */
-	const char *display_name;
-
-	/* Tracking of X events timestamps */
+	/* interned atoms */
 	struct {
-		/* ts of the last event we received */
-		xcb_timestamp_t last_event;
-
-		/* ts on the last time we did wXSetInputFocus() */
-		xcb_timestamp_t focus_change;
-
-	} timestamp;
-
-	/* Sequence-range Enter/Leave suppression: a small ring of
-	 * [begin,end) request-sequence brackets recorded around request
-	 * bursts that move/map/unmap windows (interactive drag, snap,
-	 * workspace settle). handleEnterNotify/handleLeaveNotify drop
-	 * any crossing whose serial falls inside a recorded range, so
-	 * the spurious crossings those requests generate cannot drive
-	 * focus-follows-mouse, auto-raise or the dock/clip enter
-	 * handlers. Slots start zeroed so [0,0) matches nothing. */
-	struct {
-		struct {
-			unsigned long begin;
-			unsigned long end;
-		} range[4];
-		unsigned int head;
-	} ignore_crossing;
-
-	/* Global Domains, for storing dictionaries */
-	struct {
-		/* Note: you must #include <defaults.h> if you want to use them */
-		struct WDDomain *wmaker;
-		struct WDDomain *window_attr;
-		struct WDDomain *root_menu;
-		struct WDDomain *wmglobal;
-	} domain;
-
-	/* Parsed WindowMaker domain currently applied to wPreferences. */
-	struct WConfig *config;
-
-	/* Screens related */
-	int screen_count;
-
-	/*
-	 * Ignore Workspace Change:
-	 * this variable is used to prevent workspace switch while certain
-	 * operations are ongoing.
-	 */
-	bool ignore_workspace_change;
-
-	/* Set while the focus-repair timer re-asserts focus so the
-	 * AutoMiniaturize/AutoHide-on-unfocus hook stays out of the
-	 * focus it steals from during the repair burst. */
-	bool restore_focus_repair;
-
-	/* Set around a pointer-initiated switch so the PointerFollowsMonitor and
-	 * PointerFollowsFocus warps are skipped. Toggled by the
-	 * wWorkspaceChangeFromPointer wrappers, read by the force-change warp. */
-	bool pointer_driven_change;
-
-	/*
-	 * Process WorkspaceMap Event:
-	 * this variable is set when the Workspace Map window is being displayed,
-	 * it is mainly used to avoid re-opening another one at the same time
-	 */
-	bool process_workspacemap_event;
-
-	/*
-	 * Display power state:
-	 * set when no output is showing the framebuffer (lid closed,
-	 * DPMS Off, screensaver active). Animation entry points and
-	 * recurring decorative timers short-circuit while this is set so
-	 * an idle session reaches zero wakeups. Toggled by the
-	 * `display-power' IPC verb, RandR all-outputs-off detection and
-	 * the MIT-SCREEN-SAVER notify event, see wDisplaySetOff().
-	 */
-	bool display_off;
-
-#ifdef HAVE_INOTIFY
-	struct {
-		int fd_event_queue;   /* Inotify's queue file descriptor */
-		int wd_defaults;   /* Watch Descriptor for the 'Defaults' configuration file */
-		WMHandlerID input_handler;
-	} inotify;
-#endif
-
-	/* definition for X Atoms */
-	struct {
-
 		/* Window-Manager related */
 		struct {
 			xcb_atom_t state;
@@ -443,14 +312,8 @@ extern struct wmaker_global_variables {
 
 	} atom;
 
-	/* window -> descriptor tables (the XContext replacements) */
-	struct {
-		WMHashTable *client_win;
-		WMHashTable *app_win;
-		WMHashTable *stack;
-	} context;
-
-	/* X Extensions */
+	/* extension presence/event-base (shape, xkb, randr, xsync,
+	 * screensaver) */
 	struct {
 #ifdef USE_XSHAPE
 		struct {
@@ -485,13 +348,131 @@ extern struct wmaker_global_variables {
 		} screensaver;
 #endif
 
-		/*
-		 * If no extension were activated, we would end up with an empty
-		 * structure, which old compilers may not appreciate, so let's
-		 * work around this with a simple:
-		 */
 		int dummy;
 	} xext;
+
+	/* last-event timestamps */
+	struct {
+		xcb_timestamp_t last_event;
+		xcb_timestamp_t focus_change;
+	} timestamp;
+
+	/* [begin,end) request-sequence brackets recorded around bursts
+	 * that move/map/unmap windows. Crossings inside a bracket are
+	 * dropped so they cannot drive focus/raise/dock handlers.
+	 * Zeroed slots match nothing. */
+	struct {
+		struct {
+			unsigned long begin;
+			unsigned long end;
+		} range[4];
+		unsigned int head;
+	} ignore_crossing;
+
+	struct _WScreen **screens;
+	int screen_count;
+
+	/* borrowed from w_global.config, synced at every assignment */
+	WConfig *config;
+
+	/* runtime half of wPreferences */
+	struct {
+#ifdef USE_ICCCM_WMREPLACE
+		unsigned int replace:1;               /* replace existing window manager */
+#endif
+		unsigned int nodock:1;                /* don't display the dock */
+		unsigned int noclip:1;                /* don't display the clip */
+		unsigned int clip_merged_in_dock:1;   /* disable clip, switch workspaces with dock */
+		unsigned int nodrawer:1;              /* don't use drawers */
+		unsigned int wrap_appicons_in_dock:1; /* Whether to wrap appicons when Dock is moved up and down */
+		unsigned int noupdates:1;             /* don't require ~/GNUstep (-static) */
+		unsigned int noautolaunch:1;          /* don't autolaunch apps */
+		unsigned int norestore:1;             /* don't restore session */
+		unsigned int restarting:2;
+	} flags;
+
+	xcb_cursor_t cursor[WCUR_LAST];
+
+	unsigned int modifier_mask;
+	unsigned int tab_drag_modifier_mask;
+	char *modifier_labels[7];
+	char *modifier_short_labels[9];
+	unsigned int supports_tiff;
+} WDisplay;
+
+/* the process singleton, NULL in the monitor process */
+extern WDisplay *wdisp;
+
+/****** Global Variables ******/
+extern struct wmaker_global_variables {
+	/* Tracking of the state of the program */
+	struct {
+		wprog_state state;
+		wprog_state signal_state;
+	} program;
+
+	/* locale to use. NULL==POSIX or C */
+	const char *locale;
+
+	/* the display name the connection was opened on, the
+	 * DisplayString(dpy) stand-in for the IPC socket path and the
+	 * root-menu DISPLAY macro */
+	const char *display_name;
+
+	/* Global Domains, for storing dictionaries */
+	struct {
+		/* Note: you must #include <defaults.h> if you want to use them */
+		struct WDDomain *wmaker;
+		struct WDDomain *window_attr;
+		struct WDDomain *root_menu;
+		struct WDDomain *wmglobal;
+	} domain;
+
+	/* Parsed WindowMaker domain currently applied to the runtime state. */
+	struct WConfig *config;
+
+	/*
+	 * Ignore Workspace Change:
+	 * this variable is used to prevent workspace switch while certain
+	 * operations are ongoing.
+	 */
+	bool ignore_workspace_change;
+
+	/* Set while the focus-repair timer re-asserts focus so the
+	 * AutoMiniaturize/AutoHide-on-unfocus hook stays out of the
+	 * focus it steals from during the repair burst. */
+	bool restore_focus_repair;
+
+	/* Set around a pointer-initiated switch so the PointerFollowsMonitor and
+	 * PointerFollowsFocus warps are skipped. Toggled by the
+	 * wWorkspaceChangeFromPointer wrappers, read by the force-change warp. */
+	bool pointer_driven_change;
+
+	/*
+	 * Process WorkspaceMap Event:
+	 * this variable is set when the Workspace Map window is being displayed,
+	 * it is mainly used to avoid re-opening another one at the same time
+	 */
+	bool process_workspacemap_event;
+
+	/*
+	 * Display power state:
+	 * set when no output is showing the framebuffer (lid closed,
+	 * DPMS Off, screensaver active). Animation entry points and
+	 * recurring decorative timers short-circuit while this is set so
+	 * an idle session reaches zero wakeups. Toggled by the
+	 * `display-power' IPC verb, RandR all-outputs-off detection and
+	 * the MIT-SCREEN-SAVER notify event, see wDisplaySetOff().
+	 */
+	bool display_off;
+
+#ifdef HAVE_INOTIFY
+	struct {
+		int fd_event_queue;   /* Inotify's queue file descriptor */
+		int wd_defaults;   /* Watch Descriptor for the 'Defaults' configuration file */
+		WMHandlerID input_handler;
+	} inotify;
+#endif
 
 	/* Keyboard and shortcuts */
 	struct {

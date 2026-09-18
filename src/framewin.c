@@ -329,18 +329,18 @@ static void updateResizebarCursors(WFrameWindow *fwin)
 
 	for (i = 0; i < 3; i++) {
 		if (fwin->resizebar_cursor[i] == XCB_NONE) {
-			fwin->resizebar_cursor[i] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, fwin->resizebar_cursor[i],
+			fwin->resizebar_cursor[i] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, fwin->resizebar_cursor[i],
 					  fwin->resizebar->window, 0, 0, 1, h, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  XCB_CW_CURSOR,
-					  (const uint32_t[]){ wPreferences.cursor[rcursor[i]] });
+					  (const uint32_t[]){ wdisp->cursor[rcursor[i]] });
 		}
 		if (geom[i][1] > 0) {
-			xcb_configure_window(xconn, fwin->resizebar_cursor[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ geom[i][0], 0, geom[i][1], h });
-			xcb_map_window(xconn, fwin->resizebar_cursor[i]);
+			xcb_configure_window(wdisp->conn, fwin->resizebar_cursor[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ geom[i][0], 0, geom[i][1], h });
+			xcb_map_window(wdisp->conn, fwin->resizebar_cursor[i]);
 		} else {
-			xcb_unmap_window(xconn, fwin->resizebar_cursor[i]);
+			xcb_unmap_window(wdisp->conn, fwin->resizebar_cursor[i]);
 		}
 	}
 }
@@ -385,8 +385,8 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	else
 		return;
 
-	xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
-	xcb_change_gc(xconn, fwin->inner_border_gc, XCB_GC_FOREGROUND, (const uint32_t[]){ pixel });
+	xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
+	xcb_change_gc(wdisp->conn, fwin->inner_border_gc, XCB_GC_FOREGROUND, (const uint32_t[]){ pixel });
 
 	if (il > 0) {
 		rectangles[nrects].x = 0;
@@ -418,7 +418,7 @@ static void paintInnerBorderStrips(WFrameWindow *fwin)
 	}
 
 	if (nrects > 0)
-		xcb_poly_fill_rectangle(xconn, fwin->core->window, fwin->inner_border_gc,
+		xcb_poly_fill_rectangle(wdisp->conn, fwin->core->window, fwin->inner_border_gc,
 					nrects, rectangles);
 }
 
@@ -529,8 +529,8 @@ WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 
 	fwin->core = wCoreCreateTopLevel(scr, x, y, width, height, (flags & WFF_BORDER)
 					 ? scr->frame_border_width : 0, fwin->depth, fwin->visual, fwin->colormap, scr->frame_border_pixel);
-	fwin->inner_border_gc = xcb_generate_id(xconn);
-	xcb_create_gc(xconn, fwin->inner_border_gc, fwin->core->window, 0, NULL);
+	fwin->inner_border_gc = xcb_generate_id(wdisp->conn);
+	xcb_create_gc(wdisp->conn, fwin->inner_border_gc, fwin->core->window, 0, NULL);
 
 	/* setup stacking information */
 	fwin->core->stacking = wmalloc(sizeof(WStacking));
@@ -644,9 +644,9 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				}
 				fwin->buttons[r] = wCoreCreate(parent, 0, 0, bsize, bsize);
 				if (w_global.config->new_style == TS_OLD)
-					xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->normal.pixel });
+					xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->normal.pixel });
 				else if (w_global.config->new_style == TS_NEXT)
-					xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->dark.pixel });
+					xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->widget_texture->dark.pixel });
 
 				k = TS_NEW_GEOM(w_global.config->new_style)
 					? wtb_role_info[r].dontfit_k_new
@@ -654,8 +654,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				if (width < theight * k) {
 					setRoleBit(fwin->flags.button_dont_fit, r, 1);
 				} else {
-					xcb_configure_window(xconn, fwin->buttons[r]->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-					xcb_map_window(xconn, fwin->buttons[r]->window);
+					xcb_configure_window(wdisp->conn, fwin->buttons[r]->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+					xcb_map_window(wdisp->conn, fwin->buttons[r]->window);
 				}
 			}
 
@@ -664,8 +664,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			if (TS_NEW_GEOM(w_global.config->new_style))
 				updateTitlebar(fwin);
 
-			xcb_configure_window(xconn, fwin->titlebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-			xcb_map_window(xconn, fwin->titlebar->window);
+			xcb_configure_window(wdisp->conn, fwin->titlebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_map_window(wdisp->conn, fwin->titlebar->window);
 
 			fwin->flags.need_texture_remake = 1;
 		}
@@ -687,8 +687,8 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 					fwin->resizebar_corner_width = 0;
 			}
 
-			xcb_map_window(xconn, fwin->resizebar->window);
-			xcb_configure_window(xconn, fwin->resizebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
+			xcb_map_window(wdisp->conn, fwin->resizebar->window);
+			xcb_configure_window(wdisp->conn, fwin->resizebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 			updateResizebarCursors(fwin);
 
 			fwin->flags.need_texture_remake = 1;
@@ -713,10 +713,10 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 		wFrameWindowResize(fwin, width, height + fwin->top_width + fwin->bottom_width + iv);
 
 	if (flags & WFF_BORDER)
-		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ (fwin->flags.is_client_window_frame && fwin->child)
+		xcb_configure_window(wdisp->conn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ (fwin->flags.is_client_window_frame && fwin->child)
 				      ? wFrameBorderWidth((WWindow *)fwin->child) : scr->frame_border_width });
 	else
-		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
+		xcb_configure_window(wdisp->conn, fwin->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 	/* setup object descriptors */
 	if (fwin->titlebar) {
@@ -762,15 +762,15 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 
 	if (flags & WFF_SELECTED) {
 		if (fwin->selected_border_pixel)
-			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->selected_border_pixel });
+			xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->selected_border_pixel });
 	}
 	else {
 		if (fwin->flags.state == WS_FOCUSED) {
 			if (fwin->focused_border_pixel)
-				xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
+				xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
 		} else {
 			if (fwin->border_pixel)
-				xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
+				xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
 		}
 
 		if (fwin->flags.is_client_window_frame && (iv + ih) > 0)
@@ -783,7 +783,7 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 	int i;
 
 	if (fwin->inner_border_gc) {
-		xcb_free_gc(xconn, fwin->inner_border_gc);
+		xcb_free_gc(wdisp->conn, fwin->inner_border_gc);
 		fwin->inner_border_gc = 0;
 	}
 
@@ -792,9 +792,9 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 			wCoreDestroy(fwin->buttons[i]);
 
 	if (fwin->titlebar_icon != XCB_NONE)
-		xcb_free_pixmap(xconn, fwin->titlebar_icon);
+		xcb_free_pixmap(wdisp->conn, fwin->titlebar_icon);
 	if (fwin->titlebar_icon_mask != XCB_NONE)
-		xcb_free_pixmap(xconn, fwin->titlebar_icon_mask);
+		xcb_free_pixmap(wdisp->conn, fwin->titlebar_icon_mask);
 
 	if (fwin->resizebar)
 		wCoreDestroy(fwin->resizebar);
@@ -834,10 +834,10 @@ void wFrameWindowChangeState(WFrameWindow * fwin, int state)
 
 	if (fwin->flags.state == WS_FOCUSED) {
 		if (fwin->focused_border_pixel)
-			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
+			xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->focused_border_pixel });
 	} else {
 		if (fwin->border_pixel)
-			xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
+			xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *fwin->border_pixel });
 	}
 	wFrameWindowPaint(fwin);
 }
@@ -862,7 +862,7 @@ static void wFrameWindowBlinkRefresh(WFrameWindow *fwin)
 	    && !((WWindow *)fwin->child)->flags.selected
 	    && fwin->border_pixel && fwin->focused_border_pixel
 	    && *fwin->border_pixel != *fwin->focused_border_pixel)
-		xcb_change_window_attributes(xconn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ state == WS_FOCUSED ? *fwin->focused_border_pixel
+		xcb_change_window_attributes(wdisp->conn, fwin->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ state == WS_FOCUSED ? *fwin->focused_border_pixel
 						      : *fwin->border_pixel });
 
 	wFrameWindowPaint(fwin);
@@ -930,7 +930,7 @@ static void redrawTitlebar(WFrameWindow *fwin)
 {
 	if (!fwin->titlebar)
 		return;
-	xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
+	xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 	checkTitleSize(fwin);
 	wFrameWindowPaint(fwin);
 }
@@ -949,7 +949,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 			continue;
 		}
 		if (fwin->buttons[r])
-			xcb_unmap_window(xconn, fwin->buttons[r]->window);
+			xcb_unmap_window(wdisp->conn, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 1);
 	}
 
@@ -963,7 +963,7 @@ void wFrameWindowHideButton(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
-			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
@@ -985,7 +985,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 			continue;
 		}
 		if (fwin->buttons[r] && !dontFit(fwin, r))
-			xcb_map_window(xconn, fwin->buttons[r]->window);
+			xcb_map_window(wdisp->conn, fwin->buttons[r]->window);
 		setRoleBit(fwin->flags.hide_button, r, 0);
 	}
 
@@ -999,7 +999,7 @@ void wFrameWindowShowButton(WFrameWindow * fwin, int flags)
 			updateTitlebar(fwin);
 		} else {
 			updateTitlebar(fwin);
-			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 		checkTitleSize(fwin);
@@ -1016,9 +1016,9 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
 	int sz;
 
 	if (fwin->titlebar_icon != XCB_NONE)
-		xcb_free_pixmap(xconn, fwin->titlebar_icon);
+		xcb_free_pixmap(wdisp->conn, fwin->titlebar_icon);
 	if (fwin->titlebar_icon_mask != XCB_NONE)
-		xcb_free_pixmap(xconn, fwin->titlebar_icon_mask);
+		xcb_free_pixmap(wdisp->conn, fwin->titlebar_icon_mask);
 	fwin->titlebar_icon = XCB_NONE;
 	fwin->titlebar_icon_mask = XCB_NONE;
 	fwin->titlebar_icon_size = 0;
@@ -1051,9 +1051,9 @@ void wFrameWindowSetIcon(WFrameWindow *fwin, RImage *image)
 		 * after writing *pixmap but before *mask, both locals
 		 * started at None so the conditional frees are safe */
 		if (pix != XCB_NONE)
-			xcb_free_pixmap(xconn, pix);
+			xcb_free_pixmap(wdisp->conn, pix);
 		if (mask != XCB_NONE)
-			xcb_free_pixmap(xconn, mask);
+			xcb_free_pixmap(wdisp->conn, mask);
 		RReleaseImage(scaled);
 		setRoleBit(fwin->flags.hide_button, WTB_ICON, 1);
 		redrawTitlebar(fwin);
@@ -1314,27 +1314,27 @@ static void updateTexture(WFrameWindow * fwin)
 	i = frameEffectiveState(fwin);
 	if (fwin->titlebar) {
 		if (fwin->title_texture[i]->any.type != WTEX_SOLID) {
-			xcb_change_window_attributes(xconn, fwin->titlebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->title_back[i] });
+			xcb_change_window_attributes(wdisp->conn, fwin->titlebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->title_back[i] });
 			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r] && fwin->button_back[r][i])
-						xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->button_back[r][i] });
+						xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->button_back[r][i] });
 			}
 		} else {
 			pixel = fwin->title_texture[i]->solid.normal.pixel;
-			xcb_change_window_attributes(xconn, fwin->titlebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
+			xcb_change_window_attributes(wdisp->conn, fwin->titlebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
 			if (TS_NEW_GEOM(w_global.config->new_style)) {
 				for (r = 0; r < WTB_ROLE_COUNT; r++)
 					if (fwin->buttons[r])
-						xcb_change_window_attributes(xconn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
+						xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
 			}
 		}
-		xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
+		xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
 			if (!fwin->buttons[r])
 				continue;
-			xcb_clear_area(xconn, 0, fwin->buttons[r]->window, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, fwin->buttons[r]->window, 0, 0, 0, 0);
 			handleButtonExpose(&fwin->buttons[r]->descriptor, NULL);
 		}
 	}
@@ -1429,11 +1429,11 @@ static void remakeTexture(WFrameWindow * fwin, int state)
 
 		/* this part should be in updateTexture() */
 		if (fwin->resizebar_texture[0]->any.type != WTEX_SOLID)
-			xcb_change_window_attributes(xconn, fwin->resizebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->resizebar_back[0] });
+			xcb_change_window_attributes(wdisp->conn, fwin->resizebar->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ fwin->resizebar_back[0] });
 		else
-			xcb_change_window_attributes(xconn, fwin->resizebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ fwin->resizebar_texture[0]->solid.normal.pixel });
+			xcb_change_window_attributes(wdisp->conn, fwin->resizebar->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ fwin->resizebar_texture[0]->solid.normal.pixel });
 
-		xcb_clear_area(xconn, 0, fwin->resizebar->window, 0, 0, 0, 0);
+		xcb_clear_area(wdisp->conn, 0, fwin->resizebar->window, 0, 0, 0, 0);
 	}
 }
 
@@ -1659,7 +1659,7 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			 * OVER-blend the AA fringe onto itself, so restore
 			 * the window background under the text span first
 			 * and the draw stays idempotent */
-			xcb_clear_area(xconn, false, fwin->titlebar->window, x - 1, y, w + 2, h);
+			xcb_clear_area(wdisp->conn, false, fwin->titlebar->window, x - 1, y, w + 2, h);
 			WMDrawString(scr->wmscreen, fwin->titlebar->window,
 				     fwin->title_color[state], *fwin->font,
 				     x, y, title, titlelen);
@@ -1913,9 +1913,9 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 	int resizedHorizontally = 0;
 
 	if (dontMove)
-		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
+		xcb_configure_window(wdisp->conn, fwin->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
 	else
-		xcb_configure_window(xconn, fwin->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x, y, width, height });
+		xcb_configure_window(wdisp->conn, fwin->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x, y, width, height });
 
 	if (fwin->core->width != width) {
 		fwin->flags.need_texture_remake = 1;
@@ -1940,11 +1940,11 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 			fits = (width >= fwin->top_width * k);
 			if (!fits && !dontFit(fwin, r)) {
 				if (!hideButton(fwin, r))
-					xcb_unmap_window(xconn, fwin->buttons[r]->window);
+					xcb_unmap_window(wdisp->conn, fwin->buttons[r]->window);
 				setRoleBit(fwin->flags.button_dont_fit, r, 1);
 			} else if (fits && dontFit(fwin, r)) {
 				if (!hideButton(fwin, r))
-					xcb_map_window(xconn, fwin->buttons[r]->window);
+					xcb_map_window(wdisp->conn, fwin->buttons[r]->window);
 				setRoleBit(fwin->flags.button_dont_fit, r, 0);
 			}
 		}
@@ -1957,7 +1957,7 @@ static void reconfigure(WFrameWindow * fwin, int x, int y, int width, int height
 		/* child button cores get an Expose from map/unmap, the
 		 * drawn icon does not so force a repaint when it flips */
 		if (drawn_role_changed) {
-			xcb_clear_area(xconn, 0, fwin->titlebar->window, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 			wFrameWindowPaint(fwin);
 		}
 	}
@@ -2022,9 +2022,9 @@ static int wFrameWindowSetLanguageButtonImages(WFrameWindow *fwin, xcb_pixmap_t 
 		WPixmap *wp = wPixmapCreate(pixmaps[i], XCB_NONE);
 		if (!wp) {
 			int j;
-			xcb_free_pixmap(xconn, pixmaps[i]);
+			xcb_free_pixmap(wdisp->conn, pixmaps[i]);
 			for (j = i + 1; j < count; j++)
-				xcb_free_pixmap(xconn, pixmaps[j]);
+				xcb_free_pixmap(wdisp->conn, pixmaps[j]);
 			return 0;
 		}
 		wp->client_owned = 0;
@@ -2106,8 +2106,8 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	ty = (key_height - text_height) / 2;
 
 	for (i = 0; i < count; i++) {
-		tmp[i] = xcb_generate_id(xconn);
-		xcb_create_pixmap(xconn, scr->w_depth, tmp[i], button->window, 2 * key_width, key_height);
+		tmp[i] = xcb_generate_id(wdisp->conn);
+		xcb_create_pixmap(wdisp->conn, scr->w_depth, tmp[i], button->window, 2 * key_width, key_height);
 		WMScreenNoteDrawableSize(scr->wmscreen, tmp[i], 2 * key_width, key_height);
 
 		nback = XCB_NONE;
@@ -2231,7 +2231,7 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 	}
 
 	if (!pushed || w_global.config->new_style == TS_FLAT)
-		xcb_clear_area(xconn, 0, button->window, 0, 0, 0, 0);
+		xcb_clear_area(wdisp->conn, 0, button->window, 0, 0, 0, 0);
 
 	cr = WCairoBeginForDrawable(scr->wmscreen, button->window);
 	if (!cr)
@@ -2428,7 +2428,7 @@ static void buttonMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 	while (!done) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_BUTTON_RELEASE
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_BUTTON_RELEASE
 			    | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
 		if (!ev)
 			break;

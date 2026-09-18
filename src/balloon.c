@@ -143,8 +143,8 @@ static xcb_pixmap_t makeBackground(WScreen *scr, int width, int height, cairo_t 
 	xcb_pixmap_t pixmap;
 	cairo_t *cr;
 
-	pixmap = xcb_generate_id(xconn);
-	xcb_create_pixmap(xconn, scr->w_depth, pixmap, scr->root_win, width, height);
+	pixmap = xcb_generate_id(wdisp->conn);
+	xcb_create_pixmap(wdisp->conn, scr->w_depth, pixmap, scr->root_win, width, height);
 	WMScreenNoteDrawableSize(scr->wmscreen, pixmap, width, height);
 	cr = WCairoBeginForDrawable(scr->wmscreen, pixmap);
 	if (scr->window_title_texture[0])
@@ -160,7 +160,7 @@ static void freeContents(WScreen *scr)
 {
 	if (scr->balloon->contents) {
 		WMScreenAbandonDrawable(scr->wmscreen, scr->balloon->contents);
-		xcb_free_pixmap(xconn, scr->balloon->contents);
+		xcb_free_pixmap(wdisp->conn, scr->balloon->contents);
 		scr->balloon->contents = XCB_NONE;
 	}
 }
@@ -224,16 +224,16 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	drawMultiLineString(scr, cr, scr->black, font, 8, ty + 2, text, strlen(text));
 	WCairoEnd(cr);
 
-	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+	xcb_change_window_attributes(wdisp->conn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 	scr->balloon->contents = pixmap;
 
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height + SPACE });
-	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height + SPACE });
+	xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       scr->balloon->window, 0, 0, mask);
-	xcb_free_pixmap(xconn, mask);
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by });
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-	xcb_map_window(xconn, scr->balloon->window);
+	xcb_free_pixmap(wdisp->conn, mask);
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by });
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(wdisp->conn, scr->balloon->window);
 
 	scr->balloon->mapped = 1;
 }
@@ -269,13 +269,13 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	drawMultiLineString(scr, cr, scr->window_title_color[0], font, 4, 2, text, strlen(text));
 	WCairoEnd(cr);
 
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
-	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
-	xcb_clear_area(xconn, 0, scr->balloon->window, 0, 0, 0, 0);
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-	xcb_map_window(xconn, scr->balloon->window);
+	xcb_change_window_attributes(wdisp->conn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+	xcb_clear_area(wdisp->conn, 0, scr->balloon->window, 0, 0, 0, 0);
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(wdisp->conn, scr->balloon->window);
 
 	scr->balloon->contents = pixmap;
 
@@ -346,17 +346,17 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, xcb_
 	WCairoEnd(cr);
 
 #ifdef SHAPED_BALLOON
-	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       scr->balloon->window, 0, 0, XCB_PIXMAP_NONE);
 #endif
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ width, height });
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
-	xcb_change_window_attributes(xconn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+	xcb_change_window_attributes(wdisp->conn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
-	xcb_clear_area(xconn, 0, scr->balloon->window, 0, 0, 0, 0);
-	xcb_configure_window(xconn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-	xcb_map_window(xconn, scr->balloon->window);
+	xcb_clear_area(wdisp->conn, 0, scr->balloon->window, 0, 0, 0, 0);
+	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(wdisp->conn, scr->balloon->window);
 
 
 	scr->balloon->contents = pixmap;
@@ -373,7 +373,7 @@ static void showBalloon(WScreen *scr)
 	scr->balloon->timer = NULL;
 	scr->balloon->ignoreTimer = 1;
 
-	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, scr->balloon->objectWindow), &geom)) {
+	if (!WXRcvGeometry(wdisp->conn, WXReqGeometry(wdisp->conn, scr->balloon->objectWindow), &geom)) {
 		scr->balloon->prevType = 0;
 		return;
 	}
@@ -422,7 +422,7 @@ static void miniwindowBalloon(WObjDescriptor *object)
 
 	if ((scr->balloon->prevType == object->parent_type || scr->balloon->prevType == WCLASS_APPICON)
 	    && scr->balloon->ignoreTimer) {
-		xcb_unmap_window(xconn, scr->balloon->window);
+		xcb_unmap_window(wdisp->conn, scr->balloon->window);
 		showBalloon(scr);
 	} else {
 		scr->balloon->timer = WMAddTimerHandler(BALLOON_DELAY, (WMCallback *) showBalloon, scr);
@@ -507,7 +507,7 @@ static void appiconBalloon(WObjDescriptor *object)
 	scr->balloon->objectWindow = aicon->icon->core->window;
 	if ((scr->balloon->prevType == object->parent_type || scr->balloon->prevType == WCLASS_MINIWINDOW)
 	    && scr->balloon->ignoreTimer) {
-		xcb_unmap_window(xconn, scr->balloon->window);
+		xcb_unmap_window(wdisp->conn, scr->balloon->window);
 		showBalloon(scr);
 	} else {
 		scr->balloon->timer = WMAddTimerHandler(BALLOON_DELAY, (WMCallback *) showBalloon, scr);
@@ -522,8 +522,8 @@ void wBalloonInitialize(WScreen *scr)
 
 	scr->balloon = bal;
 
-	bal->window = xcb_generate_id(xconn);
-	xcb_create_window(xconn, scr->w_depth, bal->window, scr->root_win, 1, 1, 10, 10, 1,
+	bal->window = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, scr->w_depth, bal->window, scr->root_win, 1, 1, 10, 10, 1,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, scr->w_visual->visual_id,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT
 			  | XCB_CW_SAVE_UNDER | XCB_CW_COLORMAP,
@@ -532,7 +532,7 @@ void wBalloonInitialize(WScreen *scr)
 #if 0
 	/* select EnterNotify to so that the balloon will be unmapped
 	 * when the pointer is moved over it */
-	xcb_change_window_attributes(xconn, bal->window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_ENTER_WINDOW });
+	xcb_change_window_attributes(wdisp->conn, bal->window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_ENTER_WINDOW });
 #endif
 }
 
@@ -586,7 +586,7 @@ void wBalloonHide(WScreen *scr)
 {
 	if (scr) {
 		if (scr->balloon->mapped) {
-			xcb_unmap_window(xconn, scr->balloon->window);
+			xcb_unmap_window(wdisp->conn, scr->balloon->window);
 			scr->balloon->mapped = 0;
 		} else {
 			WMDeleteTimerHandlerPtr(&scr->balloon->timer);

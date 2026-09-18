@@ -128,7 +128,7 @@ static WMPixmap *getWindowMakerIconImage(WMScreen *scr)
 #define PWIDTH	295
 #define PHEIGHT	345
 
-int wShowCrashingDialogPanel(int whatSig)
+int wShowCrashingDialogPanel(int whatSig, xcb_connection_t *conn, int screen)
 {
 	CrashPanel *panel;
 	WMScreen *scr;
@@ -138,11 +138,11 @@ int wShowCrashingDialogPanel(int whatSig)
 	int action;
 	char buf[256];
 
-	screen_no = dflt_screen;
-	scr_width = wXDisplayWidth(xconn, screen_no);
-	scr_height = wXDisplayHeight(xconn, screen_no);
+	screen_no = screen;
+	scr_width = wXDisplayWidth(conn, screen_no);
+	scr_height = wXDisplayHeight(conn, screen_no);
 
-	scr = WMCreateScreen(xconn, screen_no);
+	scr = WMCreateScreen(conn, screen_no);
 	if (!scr) {
 		werror(_("cannot open connection for crashing dialog panel. Aborting."));
 		return WMAbort;
@@ -235,12 +235,12 @@ int wShowCrashingDialogPanel(int whatSig)
 
 	WMMapWidget(panel->win);
 
-	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, WMWidgetXID(panel->win), XCB_CURRENT_TIME);
+	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_PARENT, WMWidgetXID(panel->win), XCB_CURRENT_TIME);
 
 	while (!panel->done) {
 		xcb_generic_event_t *event = NULL;
 
-		WMNextEvent(xconn, &event);
+		WMNextEvent(conn, &event);
 		if (!event)
 			break;
 		WMHandleEvent(event);

@@ -57,10 +57,10 @@ enum {
 
 static void sendMessage(xcb_window_t window, int what, int tag)
 {
-	WXSendClientMessage(xconn, window, XCB_EVENT_MASK_NO_EVENT, window,
-			    w_global.atom.wmaker.menu,
-			    w_global.timestamp.last_event, what, tag, 0, 0);
-	wXFlush(xconn);
+	WXSendClientMessage(wdisp->conn, window, XCB_EVENT_MASK_NO_EVENT, window,
+			    wdisp->atom.wmaker.menu,
+			    wdisp->timestamp.last_event, what, tag, 0, 0);
+	wXFlush(wdisp->conn);
 }
 
 static void notifyClient(WMenu * menu, WMenuEntry * entry)
@@ -219,7 +219,7 @@ WMenu *wAppMenuGet(WScreen * scr, xcb_window_t window)
 	char **slist;
 	WMenu *menu;
 
-	slist = WXGetTextPropertyList(xconn, window, w_global.atom.wmaker.menu, &count);
+	slist = WXGetTextPropertyList(wdisp->conn, window, wdisp->atom.wmaker.menu, &count);
 	if (!slist)
 		return NULL;
 	if (count < 1) {
@@ -258,9 +258,9 @@ static void mapmenus(WMenu * menu)
 	int i;
 
 	if (menu->flags.mapped)
-		xcb_map_window(xconn, menu->frame->core->window);
+		xcb_map_window(wdisp->conn, menu->frame->core->window);
 	if (menu->brother->flags.mapped)
-		xcb_map_window(xconn, menu->brother->frame->core->window);
+		xcb_map_window(wdisp->conn, menu->brother->frame->core->window);
 	for (i = 0; i < menu->cascade_no; i++) {
 		if (menu->cascades[i])
 			mapmenus(menu->cascades[i]);
@@ -296,9 +296,9 @@ static void unmapmenus(WMenu * menu)
 	int i;
 
 	if (menu->flags.mapped)
-		xcb_unmap_window(xconn, menu->frame->core->window);
+		xcb_unmap_window(wdisp->conn, menu->frame->core->window);
 	if (menu->brother->flags.mapped)
-		xcb_unmap_window(xconn, menu->brother->frame->core->window);
+		xcb_unmap_window(wdisp->conn, menu->brother->frame->core->window);
 	for (i = 0; i < menu->cascade_no; i++) {
 		if (menu->cascades[i])
 			unmapmenus(menu->cascades[i]);

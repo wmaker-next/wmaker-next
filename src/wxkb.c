@@ -80,7 +80,7 @@ static void resolveModifiers(void)
 	WXModifierSlots slots;
 	const char *warn;
 
-	W_XkbModifierSlots(xconn, keymap, &slots);
+	W_XkbModifierSlots(wdisp->conn, keymap, &slots);
 
 	/* a named modifier bound to the Shift, Lock or Control columns
 	 * can never work as a shortcut modifier */
@@ -148,7 +148,7 @@ static void resolveModifiers(void)
 
 static int loadKeymap(void)
 {
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 	struct xkb_keymap *new_keymap;
 	struct xkb_state *new_state;
 
@@ -172,7 +172,7 @@ static int loadKeymap(void)
 
 int wXkbInit(void)
 {
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 	uint16_t want, map_parts;
 	uint8_t base_event = 0;
 
@@ -182,12 +182,12 @@ int wXkbInit(void)
 					 XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
 					 NULL, NULL, &base_event, NULL)) {
 		wwarning(_("XKB extension is not supported by the X server"));
-		w_global.xext.xkb.supported = 0;
+		wdisp->xext.xkb.supported = 0;
 		return 0;
 	}
 
-	w_global.xext.xkb.supported = 1;
-	w_global.xext.xkb.event_base = base_event;
+	wdisp->xext.xkb.supported = 1;
+	wdisp->xext.xkb.event_base = base_event;
 
 	ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (!ctx)
@@ -424,8 +424,8 @@ const char *wXModifierToShortcutLabel(int mask)
 		if (mask == maps[i].mask) {
 			int idx = maps[i].label_index;
 			if (idx >= 0 && idx < 9
-			    && wPreferences.modifier_short_labels[idx])
-				return wPreferences.modifier_short_labels[idx];
+			    && wdisp->modifier_short_labels[idx])
+				return wdisp->modifier_short_labels[idx];
 			return maps[i].def;
 		}
 	}
@@ -466,7 +466,7 @@ const char *wXkbLayoutName(int idx)
  * has no reply so any error surfaces through the WXEvqErrorHook */
 void wXkbLockGroup(int group)
 {
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 
 	xcb_xkb_latch_lock_state(xc, XCB_XKB_ID_USE_CORE_KBD,
 				 0, 0, 1, group, 0, 0, 0);
@@ -476,7 +476,7 @@ void wXkbLockGroup(int group)
 /* current effective keyboard group, -1 if the round-trip failed */
 int wXkbGetGroup(void)
 {
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 	xcb_xkb_get_state_reply_t *r;
 	int group;
 
@@ -504,22 +504,22 @@ wHackedGrabKey(int keycode, unsigned int modifiers,
 	/* grab all combinations of the modifier with CapsLock, NumLock and
 	 * ScrollLock so a binding matches regardless of those latches */
 	if (NumLockMask)
-		wXGrabKey(xconn, keycode, modifiers | NumLockMask,
+		wXGrabKey(wdisp->conn, keycode, modifiers | NumLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (ScrollLockMask)
-		wXGrabKey(xconn, keycode, modifiers | ScrollLockMask,
+		wXGrabKey(wdisp->conn, keycode, modifiers | ScrollLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask && ScrollLockMask)
-		wXGrabKey(xconn, keycode, modifiers | NumLockMask | ScrollLockMask,
+		wXGrabKey(wdisp->conn, keycode, modifiers | NumLockMask | ScrollLockMask,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask)
-		wXGrabKey(xconn, keycode, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabKey(wdisp->conn, keycode, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (ScrollLockMask)
-		wXGrabKey(xconn, keycode, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabKey(wdisp->conn, keycode, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 	if (NumLockMask && ScrollLockMask)
-		wXGrabKey(xconn, keycode, modifiers | NumLockMask | ScrollLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabKey(wdisp->conn, keycode, modifiers | NumLockMask | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			 grab_window, owner_events, pointer_mode, keyboard_mode);
 }
 #endif
@@ -530,38 +530,38 @@ wHackedGrabButton(unsigned int button, unsigned int modifiers,
 		  unsigned int event_mask, int pointer_mode,
 		  int keyboard_mode, xcb_window_t confine_to, xcb_cursor_t cursor)
 {
-	wXGrabButton(xconn, button, modifiers, grab_window, owner_events,
+	wXGrabButton(wdisp->conn, button, modifiers, grab_window, owner_events,
 		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
 
 	if (modifiers == XCB_MOD_MASK_ANY)
 		return;
 
-	wXGrabButton(xconn, button, modifiers | XCB_MOD_MASK_LOCK, grab_window, owner_events,
+	wXGrabButton(wdisp->conn, button, modifiers | XCB_MOD_MASK_LOCK, grab_window, owner_events,
 		    event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
 
 #ifdef NUMLOCK_HACK
 	if (NumLockMask)
-		wXGrabButton(xconn, button, modifiers | NumLockMask,
+		wXGrabButton(wdisp->conn, button, modifiers | NumLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (ScrollLockMask)
-		wXGrabButton(xconn, button, modifiers | ScrollLockMask,
+		wXGrabButton(wdisp->conn, button, modifiers | ScrollLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask && ScrollLockMask)
-		wXGrabButton(xconn, button, modifiers | ScrollLockMask | NumLockMask,
+		wXGrabButton(wdisp->conn, button, modifiers | ScrollLockMask | NumLockMask,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask)
-		wXGrabButton(xconn, button, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabButton(wdisp->conn, button, modifiers | NumLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (ScrollLockMask)
-		wXGrabButton(xconn, button, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabButton(wdisp->conn, button, modifiers | ScrollLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 	if (NumLockMask && ScrollLockMask)
-		wXGrabButton(xconn, button, modifiers | ScrollLockMask | NumLockMask | XCB_MOD_MASK_LOCK,
+		wXGrabButton(wdisp->conn, button, modifiers | ScrollLockMask | NumLockMask | XCB_MOD_MASK_LOCK,
 			    grab_window, owner_events, event_mask, pointer_mode,
 			    keyboard_mode, confine_to, cursor);
 #endif /* NUMLOCK_HACK */

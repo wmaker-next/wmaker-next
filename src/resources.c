@@ -87,7 +87,7 @@ int wParseColor(xcb_colormap_t colormap, const char *spec, WXColor *color)
 		}
 	}
 
-	return wXParseColor(xconn, colormap, spec, color);
+	return wXParseColor(wdisp->conn, colormap, spec, color);
 }
 
 int wAllocColor(WScreen *scr, xcb_colormap_t colormap, WXColor *color)
@@ -102,7 +102,7 @@ int wAllocColor(WScreen *scr, xcb_colormap_t colormap, WXColor *color)
 		return true;
 	}
 
-	return wXAllocColor(xconn, colormap, color);
+	return wXAllocColor(wdisp->conn, colormap, color);
 }
 
 int wGetColorForColormap(WScreen *scr, xcb_colormap_t colormap, const char *color_name, WXColor *color)
@@ -133,6 +133,6 @@ void wFreeColor(WScreen * scr, unsigned long pixel)
 		uint32_t colors[1];
 
 		colors[0] = pixel;
-		wXFreeColors(xconn, scr->w_colormap, colors, 1, 0);
+		wXFreeColors(wdisp->conn, scr->w_colormap, colors, 1, 0);
 	}
 }

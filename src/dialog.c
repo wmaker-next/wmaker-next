@@ -64,12 +64,12 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 	pwidth = WMWidgetWidth(panel->win);
 	pheight = WMWidgetHeight(panel->win);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
@@ -89,7 +89,7 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 
 	WMDestroyAlertPanel(panel);
 
-	xcb_destroy_window(xconn, parent);
+	xcb_destroy_window(wdisp->conn, parent);
 
 	return result;
 }
@@ -125,12 +125,12 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	WMRealizeWidget(saveSessionBtn);
 	WMMapWidget(saveSessionBtn);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
@@ -151,7 +151,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 
 	WMDestroyAlertPanel(panel);
 
-	xcb_destroy_window(xconn, parent);
+	xcb_destroy_window(wdisp->conn, parent);
 
 	return result;
 }
@@ -172,11 +172,11 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	pwidth = WMWidgetWidth(panel->win);
 	pheight = WMWidgetHeight(panel->win);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
@@ -198,7 +198,7 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 
 	WMDestroyInputPanel(panel);
 
-	xcb_destroy_window(xconn, parent);
+	xcb_destroy_window(wdisp->conn, parent);
 
 	if (result == NULL)
 		return false;
@@ -561,12 +561,12 @@ void wShowInfoPanel(WScreen *scr)
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	WMMapWidget(panel->win);
 
@@ -669,11 +669,11 @@ void wShowLegalPanel(WScreen *scr)
 	WMMapSubwidgets(panel->win);
 	WMMapSubwidgets(panel->frame);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Legal"), center.x, center.y, pwidth, pheight);
 

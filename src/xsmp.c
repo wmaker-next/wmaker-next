@@ -243,7 +243,7 @@ static void save_phase2(SmcConn conn, SmPointer data)
 	 * SAVE_SESSION path: snapshot Applications explicitly when the
 	 * user has SaveSessionOnExit off, then let wScreenSaveState()
 	 * write WMState (it re-snapshots itself when the option is on). */
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (!scr)
 			continue;

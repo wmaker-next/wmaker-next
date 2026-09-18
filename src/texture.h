@@ -179,7 +179,7 @@ void wTexturePaintTitlebar(struct WWindow *wwin, WTexture *texture, xcb_pixmap_t
 
 #define FREE_PIXMAP(p) do {				\
 	if ((p) != XCB_NONE)				\
-		wXFreePixmap(xconn, (p));		\
+		wXFreePixmap(wdisp->conn, (p));		\
 	(p) = XCB_NONE;					\
 } while (0)
 

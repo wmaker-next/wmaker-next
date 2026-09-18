@@ -332,9 +332,9 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 	switch (entry->order) {
 	case MC_CLOSE:
 		/* send delete message */
-		wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-								  w_global.timestamp.last_event);
-		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+		wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+								  wdisp->timestamp.last_event);
+		wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 		break;
 
 	case MC_KILL:
@@ -355,8 +355,8 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 			wDeiconifyWindow(wwin);
 		} else {
 			if (wwin->protocols.MINIATURIZE_WINDOW) {
-				wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window,
-										  w_global.timestamp.last_event);
+				wClientSendProtocol(wwin, wdisp->atom.gnustep.wm_miniaturize_window,
+										  wdisp->timestamp.last_event);
 			} else {
 				wIconifyWindow(wwin);
 			}
@@ -462,10 +462,10 @@ static void makeShortcutCommand(WMenu * menu, WMenuEntry * entry)
 	}
 
 	wSelectWindow(wwin, !wwin->flags.selected);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 	wusleep(3000);
 	wSelectWindow(wwin, !wwin->flags.selected);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 static void updateWorkspaceMenu(WMenu * menu)

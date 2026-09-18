@@ -247,7 +247,7 @@ void wSaveTimestamp(const xcb_generic_event_t *xe)
 	}
 
 	if (t != 0)
-		w_global.timestamp.last_event = t;
+		wdisp->timestamp.last_event = t;
 }
 
 /* ------------------------------------------------------------------ *
@@ -270,32 +270,32 @@ void wSaveTimestamp(const xcb_generic_event_t *xe)
 
 unsigned long wEventIgnoreCrossingBegin(void)
 {
-	return xcb_no_operation(xconn).sequence;
+	return xcb_no_operation(wdisp->conn).sequence;
 }
 
 void wEventIgnoreCrossingEnd(unsigned long begin)
 {
-	unsigned long end = xcb_no_operation(xconn).sequence;
-	unsigned int i = w_global.ignore_crossing.head;
+	unsigned long end = xcb_no_operation(wdisp->conn).sequence;
+	unsigned int i = wdisp->ignore_crossing.head;
 
-	w_global.ignore_crossing.range[i].begin = begin;
-	w_global.ignore_crossing.range[i].end = end;
-	w_global.ignore_crossing.head =
-		(i + 1) % wlengthof(w_global.ignore_crossing.range);
+	wdisp->ignore_crossing.range[i].begin = begin;
+	wdisp->ignore_crossing.range[i].end = end;
+	wdisp->ignore_crossing.head =
+		(i + 1) % wlengthof(wdisp->ignore_crossing.range);
 
 	/* anything already drained into the WINGs queue can go now,
 	 * late arrivals are caught by wEventCrossingIgnored() at
 	 * dispatch time so no XSync is needed */
-	WXEvqDropRange(xconn, begin, end, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW);
+	WXEvqDropRange(wdisp->conn, begin, end, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW);
 }
 
 bool wEventCrossingIgnored(unsigned long sequence)
 {
 	unsigned int i;
 
-	for (i = 0; i < wlengthof(w_global.ignore_crossing.range); i++) {
-		if (sequence >= w_global.ignore_crossing.range[i].begin &&
-		    sequence <  w_global.ignore_crossing.range[i].end)
+	for (i = 0; i < wlengthof(wdisp->ignore_crossing.range); i++) {
+		if (sequence >= wdisp->ignore_crossing.range[i].begin &&
+		    sequence <  wdisp->ignore_crossing.range[i].end)
 			return true;
 	}
 	return false;
@@ -319,7 +319,7 @@ void wDisplaySetOff(bool off, WDisplayPowerSource source)
 	 * going dark needs no walk, only the resume path has to re-arm
 	 * whatever is still selected or still urgent */
 	if (!off) {
-		for (j = 0; j < w_global.screen_count; j++) {
+		for (j = 0; j < wdisp->screen_count; j++) {
 			scr = wScreenWithNumber(j);
 			if (!scr)
 				continue;
@@ -364,7 +364,7 @@ void wRereadKeybindings(void)
 {
 	int j;
 
-	for (j = 0; j < w_global.screen_count; j++) {
+	for (j = 0; j < wdisp->screen_count; j++) {
 		WScreen *scr = wScreenWithNumber(j);
 		if (scr)
 			wReadKeybindings(scr, w_global.domain.wmaker->dictionary);
@@ -572,7 +572,7 @@ static void handle_inotify_events(void)
 				   " been unmounted. Setting --static mode." " Any changes will not be saved."));
 			wInotifyCleanup();
 
-			wPreferences.flags.noupdates = 1;
+			wdisp->flags.noupdates = 1;
 		}
 		/* Only react when a known config file inside the Defaults directory is affected */
 		if (pevent->len > 0) {
@@ -609,7 +609,7 @@ static void handle_inotify_events(void)
 		if (fire_cb[j])
 			(*fire_cb[j])();
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		WScreen *scr = wScreenWithNumber(i);
 		if (scr)
 			wKeyTreeRebuild(scr);
@@ -668,7 +668,7 @@ static void commitPendingStacking(void *unused)
 
 	(void) unused;
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		WScreen *scr = wScreenWithNumber(i);
 		if (scr && scr->flags.need_restack)
 			CommitStacking(scr);
@@ -694,7 +694,7 @@ noreturn void EventLoop(void)
 	WMSetPrepareHook(commitPendingStacking, NULL);
 
 	for (;;) {
-		WMNextEvent(xconn, &event);	/* Blocks here */
+		WMNextEvent(wdisp->conn, &event);	/* Blocks here */
 		if (!event)
 			continue;
 		WMHandleEvent(event);
@@ -710,8 +710,8 @@ void ProcessPendingEvents(void)
 	 * snapshot so a handler that round-trips and generates more
 	 * traffic cannot turn this into an unbounded loop, the NULL dpy
 	 * makes WXEvqNext pop without re-draining */
-	wXSync(xconn);
-	WXEvqPending(xconn);
+	wXSync(wdisp->conn);
+	WXEvqPending(wdisp->conn);
 
 	while (WXEvqNext(NULL, &event)) {
 		W_XEvqCompressPop(&event);

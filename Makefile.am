@@ -54,7 +54,8 @@ EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
 	script/generate-po-from-template.sh \
 	script/generate-txt-from-texi.sh \
 	script/replace-ac-keywords.sh \
-	script/replace-generated-content.sh
+	script/replace-generated-content.sh \
+	script/wdisplay-census.sh
 
 
 .PHONY:	coverage-reset coverage

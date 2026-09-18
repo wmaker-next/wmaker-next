@@ -35,7 +35,7 @@ int PropRcvNormalHints(WXCookie ck, WXSizeHints *size_hints, int *pre_iccm)
 {
 	uint32_t supplied_hints;
 
-	if (!WXRcvNormalHints(xconn, ck, size_hints, &supplied_hints)) {
+	if (!WXRcvNormalHints(wdisp->conn, ck, size_hints, &supplied_hints)) {
 		return false;
 	}
 	if (supplied_hints == (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_US_SIZE | XCB_ICCCM_SIZE_HINT_P_POSITION | XCB_ICCCM_SIZE_HINT_P_SIZE | XCB_ICCCM_SIZE_HINT_P_MIN_SIZE | XCB_ICCCM_SIZE_HINT_P_MAX_SIZE
@@ -51,7 +51,7 @@ int PropRcvWMClass(WXCookie ck, char **wm_class, char **wm_instance)
 {
 	char *inst, *cls;
 
-	if (!WXRcvWMClass(xconn, ck, &inst, &cls)) {
+	if (!WXRcvWMClass(wdisp->conn, ck, &inst, &cls)) {
 		*wm_class = (char *)wintern("default");
 		*wm_instance = (char *)wintern("default");
 		return false;
@@ -65,7 +65,7 @@ int PropRcvWMClass(WXCookie ck, char **wm_class, char **wm_instance)
 
 int PropGetWMClass(xcb_window_t window, char **wm_class, char **wm_instance)
 {
-	return PropRcvWMClass(WXReqWMClass(xconn, window), wm_class, wm_instance);
+	return PropRcvWMClass(WXReqWMClass(wdisp->conn, window), wm_class, wm_instance);
 }
 
 void PropRcvProtocols(WXCookie ck, WProtocols *prots)
@@ -74,24 +74,24 @@ void PropRcvProtocols(WXCookie ck, WProtocols *prots)
 	size_t count, i;
 
 	memset(prots, 0, sizeof(WProtocols));
-	protocols = WXRcvWMProtocols(xconn, ck, &count);
+	protocols = WXRcvWMProtocols(wdisp->conn, ck, &count);
 	if (!protocols)
 		return;
 
 	for (i = 0; i < count; i++) {
-		if (protocols[i] == w_global.atom.wm.take_focus)
+		if (protocols[i] == wdisp->atom.wm.take_focus)
 			prots->TAKE_FOCUS = 1;
-		else if (protocols[i] == w_global.atom.wm.delete_window)
+		else if (protocols[i] == wdisp->atom.wm.delete_window)
 			prots->DELETE_WINDOW = 1;
-		else if (protocols[i] == w_global.atom.wm.save_yourself)
+		else if (protocols[i] == wdisp->atom.wm.save_yourself)
 			prots->SAVE_YOURSELF = 1;
 		else if (wNETWMIsPingProtocol(protocols[i]))
 			prots->NET_WM_PING = 1;
 		else if (wNETWMIsSyncRequestProtocol(protocols[i]))
 			prots->NET_WM_SYNC_REQUEST = 1;
-		else if (protocols[i] == w_global.atom.gnustep.wm_miniaturize_window)
+		else if (protocols[i] == wdisp->atom.gnustep.wm_miniaturize_window)
 			prots->MINIATURIZE_WINDOW = 1;
-		else if (protocols[i] == w_global.atom.gnustep.wm_hide_app)
+		else if (protocols[i] == wdisp->atom.gnustep.wm_hide_app)
 			prots->HIDE_APP = 1;
 	}
 	wfree(protocols);
@@ -99,14 +99,14 @@ void PropRcvProtocols(WXCookie ck, WProtocols *prots)
 
 void PropGetProtocols(xcb_window_t window, WProtocols *prots)
 {
-	PropRcvProtocols(WXReqWMProtocols(xconn, window), prots);
+	PropRcvProtocols(WXReqWMProtocols(wdisp->conn, window), prots);
 }
 
 int PropRcvGNUstepWMAttr(WXCookie ck, GNUstepWMAttributes **attr)
 {
 	uint32_t data[9];
 
-	if (!WXRcvFormat32N(xconn, ck, data, 9))
+	if (!WXRcvFormat32N(wdisp->conn, ck, data, 9))
 		return false;
 
 	*attr = wmalloc(sizeof(GNUstepWMAttributes));
@@ -125,9 +125,9 @@ int PropRcvGNUstepWMAttr(WXCookie ck, GNUstepWMAttributes **attr)
 
 int PropGetGNUstepWMAttr(xcb_window_t window, GNUstepWMAttributes **attr)
 {
-	return PropRcvGNUstepWMAttr(WXReqFormat32(xconn, window,
-				    w_global.atom.gnustep.wm_attr,
-				    w_global.atom.gnustep.wm_attr, 9), attr);
+	return PropRcvGNUstepWMAttr(WXReqFormat32(wdisp->conn, window,
+				    wdisp->atom.gnustep.wm_attr,
+				    wdisp->atom.gnustep.wm_attr, 9), attr);
 }
 
 void PropSetWMakerProtocols(xcb_window_t root)
@@ -135,11 +135,11 @@ void PropSetWMakerProtocols(xcb_window_t root)
 	xcb_atom_t protocols[3];
 	int count = 0;
 
-	protocols[count++] = w_global.atom.wmaker.menu;
-	protocols[count++] = w_global.atom.wmaker.wm_function;
-	protocols[count++] = w_global.atom.wmaker.noticeboard;
+	protocols[count++] = wdisp->atom.wmaker.menu;
+	protocols[count++] = wdisp->atom.wmaker.wm_function;
+	protocols[count++] = wdisp->atom.wmaker.noticeboard;
 
-	WXSetAtomN(xconn, root, w_global.atom.wmaker.wm_protocols, protocols, count);
+	WXSetAtomN(wdisp->conn, root, wdisp->atom.wmaker.wm_protocols, protocols, count);
 }
 
 void PropSetIconTileHint(WScreen * scr, RImage * image)
@@ -186,7 +186,7 @@ void PropSetIconTileHint(WScreen * scr, RImage * image)
 		}
 	}
 
-	WXSetFormat8(xconn, scr->info_window, w_global.atom.wmaker.icon_tile,
+	WXSetFormat8(wdisp->conn, scr->info_window, wdisp->atom.wmaker.icon_tile,
 		     imageAtom, tmp, image->width * image->height * 4 + 4);
 	wfree(tmp);
 
@@ -196,7 +196,7 @@ xcb_window_t PropRcvClientLeader(WXCookie ck)
 {
 	xcb_window_t leader;
 
-	if (!WXRcvWindow(xconn, ck, &leader))
+	if (!WXRcvWindow(wdisp->conn, ck, &leader))
 		return XCB_NONE;
 
 	return leader;
@@ -206,7 +206,7 @@ int PropRcvWindowState(WXCookie ck)
 {
 	uint32_t state;
 
-	if (!WXRcvFormat32N(xconn, ck, &state, 1))
+	if (!WXRcvFormat32N(wdisp->conn, ck, &state, 1))
 		return -1;
 
 	return (int)state;
@@ -214,7 +214,7 @@ int PropRcvWindowState(WXCookie ck)
 
 void PropCleanUp(xcb_window_t root)
 {
-	WXDeleteProperty(xconn, root, w_global.atom.wmaker.wm_protocols);
-	WXDeleteProperty(xconn, root, w_global.atom.wmaker.noticeboard);
-	WXDeleteProperty(xconn, root, XCB_ATOM_WM_ICON_SIZE);
+	WXDeleteProperty(wdisp->conn, root, wdisp->atom.wmaker.wm_protocols);
+	WXDeleteProperty(wdisp->conn, root, wdisp->atom.wmaker.noticeboard);
+	WXDeleteProperty(wdisp->conn, root, XCB_ATOM_WM_ICON_SIZE);
 }

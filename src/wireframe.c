@@ -93,8 +93,8 @@ static void createCairoWindow(WWireframe *wf)
 	/* background None: the server must not fill on map, expose, or a
 	 * ShapeBounding grow, otherwise it clears the bands to the
 	 * background pixel right after cairo has painted them */
-	wf->window = xcb_generate_id(xconn);
-	xcb_create_window(xconn, 32, wf->window, scr->root_win, 0, 0,
+	wf->window = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, 32, wf->window, scr->root_win, 0, 0,
 			  scr->scr_width, scr->scr_height, 0,
 			  XCB_WINDOW_CLASS_INPUT_OUTPUT,
 			  scr->wmscreen->visual_argb->visual_id,
@@ -104,12 +104,12 @@ static void createCairoWindow(WWireframe *wf)
 	wf->win_width = scr->scr_width;
 	wf->win_height = scr->scr_height;
 
-	wXSetClassHint(xconn, wf->window, "wireframe", "WindowMaker");
+	wXSetClassHint(wdisp->conn, wf->window, "wireframe", "WindowMaker");
 
 #ifdef USE_XSHAPE
 	/* empty ShapeInput so the band never eats pointer events, this is
 	 * orthogonal to whether ShapeBounding is used for the visual cut */
-	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT,
+	xcb_shape_rectangles(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT,
 			     XCB_CLIP_ORDERING_UNSORTED, wf->window, 0, 0, 0, NULL);
 #endif
 
@@ -131,7 +131,7 @@ static WWireframe *getWireframe(WScreen *scr)
 		 * as well. Without it fall through to the bars path. */
 		wf->use_cairo = scr->rcontext->xvisual_argb
 				&& scr->wmscreen->visual_argb
-				&& w_global.xext.shape.supported;
+				&& wdisp->xext.shape.supported;
 #endif
 		scr->wireframe = wf;
 	}
@@ -142,13 +142,13 @@ static WWireframe *getWireframe(WScreen *scr)
 	if (wf->window != XCB_NONE
 	    && (wf->win_width != scr->scr_width || wf->win_height != scr->scr_height)) {
 		WCairoSurfaceDestroy(wf->csurf);
-		xcb_destroy_window(xconn, wf->window);
+		xcb_destroy_window(wdisp->conn, wf->window);
 		wf->window = XCB_NONE;
 		wf->csurf = NULL;
 		wf->mapped = false;
 		wf->shaped = false;
 		if (wf->poly_mask != XCB_NONE) {
-			xcb_free_pixmap(xconn, wf->poly_mask);
+			xcb_free_pixmap(wdisp->conn, wf->poly_mask);
 			wf->poly_mask = XCB_NONE;
 		}
 	}
@@ -205,8 +205,8 @@ static void commitBars(WWireframe *wf, const xcb_rectangle_t *rects, int n)
 		h = rects[i].height > 2 ? rects[i].height - 2 : 1;
 
 		if (wf->bars[i] == XCB_NONE) {
-			wf->bars[i] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, wf->bars[i],
+			wf->bars[i] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, wf->bars[i],
 					  scr->root_win, rects[i].x, rects[i].y, w, h, 1,
 					  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
 					  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL
@@ -214,16 +214,16 @@ static void commitBars(WWireframe *wf, const xcb_rectangle_t *rects, int n)
 					  (const uint32_t[]){ scr->white_pixel, scr->black_pixel,
 							      true, true });
 		} else {
-			xcb_configure_window(xconn, wf->bars[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ rects[i].x, rects[i].y, w, h });
+			xcb_configure_window(wdisp->conn, wf->bars[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ rects[i].x, rects[i].y, w, h });
 		}
 		if (i >= wf->bars_mapped) {
-			xcb_configure_window(xconn, wf->bars[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-			xcb_map_window(xconn, wf->bars[i]);
+			xcb_configure_window(wdisp->conn, wf->bars[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_map_window(wdisp->conn, wf->bars[i]);
 		}
 	}
 
 	for (i = n; i < wf->bars_mapped; i++)
-		xcb_unmap_window(xconn, wf->bars[i]);
+		xcb_unmap_window(wdisp->conn, wf->bars[i]);
 	wf->bars_mapped = n;
 }
 
@@ -295,7 +295,7 @@ static void applyShapeBounding(WWireframe *wf)
 
 	op = XCB_SHAPE_SO_SET;
 	if (n > 0) {
-		xcb_shape_rectangles(xconn, op, XCB_SHAPE_SK_BOUNDING,
+		xcb_shape_rectangles(wdisp->conn, op, XCB_SHAPE_SK_BOUNDING,
 				     XCB_CLIP_ORDERING_UNSORTED,
 				     wf->window, 0, 0, n,
 				     (xcb_rectangle_t *)rects);
@@ -328,7 +328,7 @@ static void applyShapeBounding(WWireframe *wf)
 		cairo_surface_flush(ms);
 		cairo_surface_destroy(ms);
 
-		xcb_shape_mask(xconn, op, XCB_SHAPE_SK_BOUNDING,
+		xcb_shape_mask(wdisp->conn, op, XCB_SHAPE_SK_BOUNDING,
 			       wf->window, 0, 0, wf->poly_mask);
 	}
 	wf->shaped = true;
@@ -351,7 +351,7 @@ static void commitCairo(WWireframe *wf)
 	} else if (wf->shaped) {
 		/* a compositor started mid-session, drop the bounding shape
 		 * so the translucent interior fill shows */
-		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			       wf->window, 0, 0, XCB_NONE);
 		wf->shaped = false;
 	}
@@ -385,10 +385,10 @@ static void commitCairo(WWireframe *wf)
 	WCairoEnd(cr);
 
 	if (wf->mapped)
-		xcb_configure_window(xconn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		xcb_configure_window(wdisp->conn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	else {
-		xcb_configure_window(xconn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-		xcb_map_window(xconn, wf->window);
+		xcb_configure_window(wdisp->conn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		xcb_map_window(wdisp->conn, wf->window);
 		wf->mapped = true;
 	}
 }
@@ -483,13 +483,13 @@ void wWireframeHide(WScreen *scr)
 
 	if (wf->use_cairo) {
 		if (wf->mapped) {
-			xcb_unmap_window(xconn, wf->window);
+			xcb_unmap_window(wdisp->conn, wf->window);
 			wf->mapped = false;
 		}
 		return;
 	}
 
 	for (i = 0; i < wf->bars_mapped; i++)
-		xcb_unmap_window(xconn, wf->bars[i]);
+		xcb_unmap_window(wdisp->conn, wf->bars[i]);
 	wf->bars_mapped = 0;
 }

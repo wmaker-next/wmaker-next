@@ -37,7 +37,7 @@ static void hotCornerDelay(void *data)
 	int command;
 
 	if (scr->flags.in_hot_corner)
-		cmd = wPreferences.hot_corner_actions[scr->flags.in_hot_corner - 1];
+		cmd = scr->hot_corner_actions[scr->flags.in_hot_corner - 1];
 	if (cmd) {
 		command = wKeybindForAction(cmd);
 		if (command >= 0)
@@ -53,7 +53,7 @@ static void destroy_windows(WScreen *scr)
 	int i;
 
 	for (i = 0; i < scr->hot_corner_win_count; i++)
-		xcb_destroy_window(xconn, scr->hot_corner_win[i]);
+		xcb_destroy_window(wdisp->conn, scr->hot_corner_win[i]);
 	if (scr->hot_corner_win)
 		wfree(scr->hot_corner_win);
 	scr->hot_corner_win = NULL;
@@ -92,8 +92,8 @@ void wHotCornersUpdate(WScreen *scr)
 		scr->hot_corner_win_count = want;
 
 		for (i = 0; i < want; i++) {
-			scr->hot_corner_win[i] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->hot_corner_win[i],
+			scr->hot_corner_win[i] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, scr->hot_corner_win[i],
 					  scr->root_win, -10, -10, 1, 1, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
@@ -119,8 +119,8 @@ void wHotCornersUpdate(WScreen *scr)
 		x[3] = r.pos.x + r.size.width  - e; y[3] = r.pos.y + r.size.height - e;
 
 		for (i = 0; i < 4; i++) {
-			xcb_configure_window(xconn, scr->hot_corner_win[h * 4 + i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x[i], y[i], e, e });
-			xcb_map_window(xconn, scr->hot_corner_win[h * 4 + i]);
+			xcb_configure_window(wdisp->conn, scr->hot_corner_win[h * 4 + i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x[i], y[i], e, e });
+			xcb_map_window(wdisp->conn, scr->hot_corner_win[h * 4 + i]);
 		}
 	}
 
@@ -138,7 +138,7 @@ void wHotCornersRaise(WScreen *scr)
 	int i;
 
 	for (i = 0; i < scr->hot_corner_win_count; i++)
-		xcb_configure_window(xconn, scr->hot_corner_win[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		xcb_configure_window(wdisp->conn, scr->hot_corner_win[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 }
 
 int wHotCornerForWindow(WScreen *scr, xcb_window_t w)

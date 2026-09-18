@@ -3,6 +3,20 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Per-connection `WDisplay` context
+---------------------------------
+
+The window manager's connection-scoped runtime state now lives in a single
+`WDisplay` object (`src/wdisplay.c`) instead of the `w_global` struct and the
+`wPreferences` runtime fields: interned atoms, the window-to-object hash
+tables, extension bases, event timestamps, the crossing-suppression ring, the
+screen array, and the runtime flags, cursors and modifier state. `WScreen`
+gains a back-pointer to the context. This is an internal refactor with no
+user-visible change, except that the switch-panel/workspace-map textures and
+the clamped window-placement origin are now realised per screen, fixing a
+latent multi-screen bug where they were built from whichever screen applied
+the configuration last.
+
 Generic action IPC verb
 -----------------------
 

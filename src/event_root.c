@@ -60,7 +60,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 
 
 	/* handle transition from Normal to Iconic state */
-	if (e->type == w_global.atom.wm.change_state
+	if (e->type == wdisp->atom.wm.change_state
 	    && e->format == 32 && e->data.data32[0] == XCB_ICCCM_WM_STATE_ICONIC) {
 
 		wwin = wWindowFor(e->window);
@@ -68,7 +68,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 			return;
 		if (!wwin->flags.miniaturized)
 			wIconifyWindow(wwin);
-	} else if (e->type == w_global.atom.wm.colormap_notify && e->format == 32) {
+	} else if (e->type == wdisp->atom.wm.colormap_notify && e->format == 32) {
 		WScreen *scr = wScreenForRootWindow(e->window);
 
 		if (!scr)
@@ -79,7 +79,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 		} else {	/* stopping */
 			wColormapAllowClientInstallation(scr, false);
 		}
-	} else if (e->type == w_global.atom.wmaker.command) {
+	} else if (e->type == wdisp->atom.wmaker.command) {
 
 		char command[sizeof(e->data.data8) + 1];
 
@@ -102,7 +102,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 			wwarning(_("Got unknown command %s over the deprecated X channel"), command);
 		}
 
-	} else if (e->type == w_global.atom.wmaker.wm_function && e->format == 32) {
+	} else if (e->type == wdisp->atom.wmaker.wm_function && e->format == 32) {
 		WApplication *wapp;
 
 		/* the sender may target either the group leader (then
@@ -125,7 +125,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 				wHideApplication(wapp);
 			break;
 		}
-	} else if (e->type == w_global.atom.gnustep.wm_attr && e->format == 32) {
+	} else if (e->type == wdisp->atom.gnustep.wm_attr && e->format == 32) {
 		wwin = wWindowFor(e->window);
 		if (!wwin || !wwin->frame)
 			return;
@@ -141,7 +141,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 			}
 			break;
 		}
-	} else if (e->type == w_global.atom.gnustep.titlebar_state && e->format == 32) {
+	} else if (e->type == wdisp->atom.gnustep.titlebar_state && e->format == 32) {
 		wwin = wWindowFor(e->window);
 		if (!wwin || !wwin->frame)
 			return;
@@ -156,7 +156,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 			wFrameWindowChangeState(wwin->frame, WS_FOCUSED);
 			break;
 		}
-	} else if (e->type == w_global.atom.wm.ignore_focus_events && e->format == 32) {
+	} else if (e->type == wdisp->atom.wm.ignore_focus_events && e->format == 32) {
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (!scr)
 			return;
@@ -174,7 +174,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 		 * frame is forwarded to the reparented icon_window so a
 		 * client speaking a private protocol to what it thinks is
 		 * its own icon still receives it */
-		desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->window);
+		desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->window);
 		if (desc != NULL) {
 			struct WIcon *icon = NULL;
 			xcb_client_message_event_t fwd;
@@ -188,7 +188,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 				if (wwin->client_win != e->window) {
 					fwd = *e;
 					fwd.window = wwin->client_win;
-					WXSendEvent32(xconn, &fwd, sizeof(fwd), 0,
+					WXSendEvent32(wdisp->conn, &fwd, sizeof(fwd), 0,
 						      wwin->client_win, 0);
 				}
 			}
@@ -242,13 +242,13 @@ static void handleColormapNotify(xcb_generic_event_t *ev)
 			free(owned);
 			owned = NULL;
 		}
-	} while (WXEvqTakeTyped(xconn, XCB_COLORMAP_NOTIFY, XCB_NONE, &owned)
+	} while (WXEvqTakeTyped(wdisp->conn, XCB_COLORMAP_NOTIFY, XCB_NONE, &owned)
 		 && (e = (const xcb_colormap_notify_event_t *)owned,
 		     (wwin = wWindowFor(e->window)) || 1));
 
 	if (reinstall && scr->current_colormap != XCB_NONE) {
 		if (!scr->flags.colormap_stuff_blocked)
-			xcb_install_colormap(xconn, scr->current_colormap);
+			xcb_install_colormap(wdisp->conn, scr->current_colormap);
 	}
 }
 
@@ -316,15 +316,15 @@ static void handleSelectionRequest(xcb_generic_event_t *ev)
 		 */
 		notify.property = (e->property == XCB_NONE) ? e->target : e->property;
 
-		WXSetFormat32N(xconn, e->requestor, notify.property,
+		WXSetFormat32N(wdisp->conn, e->requestor, notify.property,
 			       XCB_ATOM_INTEGER, icccm_version,
 			       wlengthof(icccm_version));
 	}
 
  not_our_selection:
 	if (notify.property == XCB_NONE) {
-		char *selname = wXGetAtomName(xconn, e->selection);
-		char *tgtname = wXGetAtomName(xconn, e->target);
+		char *selname = wXGetAtomName(wdisp->conn, e->selection);
+		char *tgtname = wXGetAtomName(wdisp->conn, e->target);
 
 		wwarning("received SelectionRequest(%s) for target=\"%s\" from requestor 0x%lX but we have no answer",
 		         selname ? selname : "?", tgtname ? tgtname : "?", (long) e->requestor);
@@ -334,7 +334,7 @@ static void handleSelectionRequest(xcb_generic_event_t *ev)
 
 	/* Send the answer to the requestor, the wire-shaped event built
 	 * above goes out unpropagated with no event mask */
-	WXSendEvent32(xconn, &notify, sizeof(notify), 0, e->requestor, 0);
+	WXSendEvent32(wdisp->conn, &notify, sizeof(notify), 0, e->requestor, 0);
 #else
 	(void) ev;
 #endif

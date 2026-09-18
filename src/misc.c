@@ -144,9 +144,9 @@ static void eatExpose(void)
 
 	/* compress all expose events into a single one */
 
-	if (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
+	if (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
 		/* ignore other exposure events for this window */
-		while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, (((xcb_expose_event_t *)event)->window), &foo))
+		while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_EXPOSURE, (((xcb_expose_event_t *)event)->window), &foo))
 			free(foo);
 		/* eat exposes for other windows */
 		eatExpose();
@@ -160,11 +160,11 @@ void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y)
 {
 #ifdef USE_ANIMATIONS
 	if (w_global.config->no_animations || w_global.display_off)
-		xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
+		xcb_configure_window(wdisp->conn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
 	else
 		slide_window(win, from_x, from_y, to_x, to_y);
 #else
-	xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
+	xcb_configure_window(wdisp->conn, win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x, to_y });
 
 	/* Tell the compiler it is normal that those parameters are not used in this case */
 	(void) from_x;
@@ -254,9 +254,9 @@ void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x,
 		}
 
 		for (i = 0; i < n; i++) {
-			xcb_configure_window(xconn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ (int)x + i * ICON_SIZE, (int)y });
+			xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ (int)x + i * ICON_SIZE, (int)y });
 		}
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 		if (slide_delay > 0) {
 			wusleep(slide_delay * 1000L);
 		} else {
@@ -266,10 +266,10 @@ void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x,
 			break;
 	}
 	for (i = 0; i < n; i++) {
-		xcb_configure_window(xconn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x + i * ICON_SIZE, to_y });
+		xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x + i * ICON_SIZE, to_y });
 	}
 
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	/* compress expose events */
 	eatExpose();
 }
@@ -386,9 +386,9 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 	xcb_generic_event_t *ev = NULL;
 	xcb_atom_t clipboard = wx_static_atoms[W_ATOM_CLIPBOARD];
 
-	WXDeleteProperty(xconn, screen->info_window, clipboard);
+	WXDeleteProperty(wdisp->conn, screen->info_window, clipboard);
 
-	wXConvertSelection(xconn, selection, XCB_ATOM_STRING, clipboard, screen->info_window, XCB_CURRENT_TIME);
+	wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, clipboard, screen->info_window, XCB_CURRENT_TIME);
 
 	/* bound the wait with a local monotonic deadline so a hostile
 	 * or hung selection owner cannot stall us, this loop never
@@ -397,7 +397,7 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 	clock_gettime(CLOCK_MONOTONIC, &deadline);
 	deadline.tv_sec += 1;
 
-	while (!WXEvqTakeTyped(xconn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
+	while (!WXEvqTakeTyped(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
 		clock_gettime(CLOCK_MONOTONIC, &now);
 		if (now.tv_sec > deadline.tv_sec ||
 		    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
@@ -421,7 +421,7 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 
 	free(ev);
 
-	data = WXGetLatin1String(xconn, screen->info_window, clipboard, &len);
+	data = WXGetLatin1String(wdisp->conn, screen->info_window, clipboard, &len);
 	if (!data) {
 		wwarning("invalid data in text selection");
 		return NULL;
@@ -460,7 +460,7 @@ static char *getTextSelection(WScreen * screen, xcb_atom_t selection)
 		break;
 	}
 	if (buffer >= 0)
-		return wXFetchBuffer(xconn, dflt_screen, NULL, buffer);
+		return wXFetchBuffer(wdisp->conn, wdisp->default_screen, NULL, buffer);
 
 	return getClipboardSelection(screen, selection);
 }
@@ -584,15 +584,15 @@ void ExecuteInputCommand(WScreen *scr, const char *cmdline)
 
 	cmd = ExpandOptions(scr, cmdline);
 	if (cmd) {
-		wXGrabPointer(xconn, scr->root_win, true, 0,
-		     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_WAIT], XCB_CURRENT_TIME);
-		wXSync(xconn);
+		wXGrabPointer(wdisp->conn, scr->root_win, true, 0,
+		     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_WAIT], XCB_CURRENT_TIME);
+		wXSync(wdisp->conn);
 
 		ExecuteShellCommandWithStartup(scr, cmd, false);
 		wfree(cmd);
 
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
-		wXSync(xconn);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+		wXSync(wdisp->conn);
 	}
 }
 
@@ -1042,7 +1042,7 @@ static char *getCommandForWindow(xcb_window_t win, int elements)
 	char **argv, *command = NULL;
 	int argc;
 
-	if (WXGetCommand(xconn, win, &argv, &argc)) {
+	if (WXGetCommand(wdisp->conn, win, &argv, &argc)) {
 		if (argc > 0 && argv != NULL) {
 			if (elements == 0)
 				elements = argc;
@@ -1079,5 +1079,5 @@ xcb_visualtype_t *wVisualForId(WScreen *scr, xcb_visualid_t vid)
 	if (scr && scr->w_visual && scr->w_visual->visual_id == vid)
 		return scr->w_visual;
 
-	return wXVisualTypeForID(xconn, (xcb_visualid_t) vid);
+	return wXVisualTypeForID(wdisp->conn, (xcb_visualid_t) vid);
 }

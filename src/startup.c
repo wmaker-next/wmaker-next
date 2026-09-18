@@ -59,6 +59,7 @@
 #include "client.h"
 #include "main.h"
 #include "startup.h"
+#include "wdisplay.h"
 #include "dock.h"
 #include "workspace.h"
 #include "xinerama.h"
@@ -93,7 +94,6 @@
 #endif
 
 /***** Local *****/
-static WScreen **wScreen = NULL;
 static void manageAllWindows(WScreen * scr, int crashed);
 
 /* primary error path, in-stream errors from xcb-issued reply-less
@@ -141,7 +141,8 @@ static void lostXConnection(xcb_connection_t *dconn)
 {
 	(void) dconn;
 
-	xconn = NULL;
+	wdisp->conn = NULL;
+	wDisplayDestroy();
 	Exit(0);
 }
 
@@ -272,24 +273,24 @@ static RETSIGTYPE buryChild(int foo)
 
 WScreen *wScreenWithNumber(int i)
 {
-	assert(i < w_global.screen_count);
+	assert(i < wdisp->screen_count);
 
-	return wScreen[i];
+	return wdisp->screens[i];
 }
 
 WScreen *wScreenForRootWindow(xcb_window_t window)
 {
 	int i;
 
-	if (w_global.screen_count == 1)
-		return wScreen[0];
+	if (wdisp->screen_count == 1)
+		return wdisp->screens[0];
 
 	/* Since the number of heads will probably be small (normally 2),
 	 * it should be faster to use this than a hash table, because
 	 * of the overhead. */
-	for (i = 0; i < w_global.screen_count; i++)
-		if (wScreen[i]->root_win == window)
-			return wScreen[i];
+	for (i = 0; i < wdisp->screen_count; i++)
+		if (wdisp->screens[i]->root_win == window)
+			return wdisp->screens[i];
 
 	return wScreenForWindow(window);
 }
@@ -298,10 +299,10 @@ WScreen *wScreenForWindow(xcb_window_t window)
 {
 	WXWindowAttributes attr;
 
-	if (w_global.screen_count == 1)
-		return wScreen[0];
+	if (wdisp->screen_count == 1)
+		return wdisp->screens[0];
 
-	if (wXGetWindowAttributes(xconn, window, &attr, NULL))
+	if (wXGetWindowAttributes(wdisp->conn, window, &attr, NULL))
 		return wScreenForRootWindow(attr.root);
 
 	return NULL;
@@ -325,7 +326,7 @@ void StartUp(bool defaultScreenOnly)
 	char **formats;
 	xcb_pixmap_t cur;
 	WXColor black;
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 	const xcb_query_extension_reply_t *xer;
 #ifdef USE_XSYNC
 	xcb_sync_initialize_reply_t *syncr;
@@ -341,66 +342,62 @@ void StartUp(bool defaultScreenOnly)
 
 	memset(&wKeyBindings, 0, sizeof(wKeyBindings));
 
-	w_global.context.client_win = WMCreateHashTable(WMIntHashCallbacks);
-	w_global.context.app_win = WMCreateHashTable(WMIntHashCallbacks);
-	w_global.context.stack = WMCreateHashTable(WMIntHashCallbacks);
+	WXStaticAtomsInit(wdisp->conn);
 
-	WXStaticAtomsInit(xconn);
-
-	w_global.atom.wm.state = wx_static_atoms[W_ATOM_WM_STATE];
-	w_global.atom.wm.change_state = wx_static_atoms[W_ATOM_WM_CHANGE_STATE];
-	w_global.atom.wm.protocols = wx_static_atoms[W_ATOM_WM_PROTOCOLS];
-	w_global.atom.wm.take_focus = wx_static_atoms[W_ATOM_WM_TAKE_FOCUS];
-	w_global.atom.wm.delete_window = wx_static_atoms[W_ATOM_WM_DELETE_WINDOW];
-	w_global.atom.wm.save_yourself = wx_static_atoms[W_ATOM_WM_SAVE_YOURSELF];
-	w_global.atom.wm.client_leader = wx_static_atoms[W_ATOM_WM_CLIENT_LEADER];
-	w_global.atom.wm.colormap_windows = wx_static_atoms[W_ATOM_WM_COLORMAP_WINDOWS];
-	w_global.atom.wm.colormap_notify = wx_static_atoms[W_ATOM_WM_COLORMAP_NOTIFY];
-	w_global.atom.wm.motif_wm_hints = wx_static_atoms[W_ATOM_MOTIF_WM_HINTS];
-	w_global.atom.wm.ignore_focus_events = wx_static_atoms[W_ATOM_WM_IGNORE_FOCUS_EVENTS];
-	w_global.atom.wm.window_role = wx_static_atoms[W_ATOM_WM_WINDOW_ROLE];
-	w_global.atom.wmaker.menu = wx_static_atoms[W_ATOM_WINDOWMAKER_MENU];
-	w_global.atom.wmaker.state = wx_static_atoms[W_ATOM_WINDOWMAKER_STATE];
-	w_global.atom.wmaker.wm_protocols = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_PROTOCOLS];
-	w_global.atom.wmaker.wm_function = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_FUNCTION];
-	w_global.atom.wmaker.noticeboard = wx_static_atoms[W_ATOM_WINDOWMAKER_NOTICEBOARD];
-	w_global.atom.wmaker.command = wx_static_atoms[W_ATOM_WINDOWMAKER_COMMAND];
-	w_global.atom.wmaker.icon_size = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_SIZE];
-	w_global.atom.wmaker.icon_tile = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_TILE];
-	w_global.atom.wmaker.mark_key = wx_static_atoms[W_ATOM_WINDOWMAKER_MARK_KEY];
-	w_global.atom.wmaker.tab_group = wx_static_atoms[W_ATOM_WINDOWMAKER_TABGROUP];
-	w_global.atom.gnustep.wm_attr = wx_static_atoms[W_ATOM_GNUSTEP_WM_ATTR];
-	w_global.atom.gnustep.wm_miniaturize_window = wx_static_atoms[W_ATOM_GNUSTEP_WM_MINIATURIZE_WINDOW];
-	w_global.atom.gnustep.wm_hide_app = wx_static_atoms[W_ATOM_GNUSTEP_WM_HIDE_APP];
-	w_global.atom.gnustep.titlebar_state = wx_static_atoms[W_ATOM_GNUSTEP_TITLEBAR_STATE];
-	w_global.atom.desktop.gtk_object_path = wx_static_atoms[W_ATOM_GTK_APPLICATION_OBJECT_PATH];
+	wdisp->atom.wm.state = wx_static_atoms[W_ATOM_WM_STATE];
+	wdisp->atom.wm.change_state = wx_static_atoms[W_ATOM_WM_CHANGE_STATE];
+	wdisp->atom.wm.protocols = wx_static_atoms[W_ATOM_WM_PROTOCOLS];
+	wdisp->atom.wm.take_focus = wx_static_atoms[W_ATOM_WM_TAKE_FOCUS];
+	wdisp->atom.wm.delete_window = wx_static_atoms[W_ATOM_WM_DELETE_WINDOW];
+	wdisp->atom.wm.save_yourself = wx_static_atoms[W_ATOM_WM_SAVE_YOURSELF];
+	wdisp->atom.wm.client_leader = wx_static_atoms[W_ATOM_WM_CLIENT_LEADER];
+	wdisp->atom.wm.colormap_windows = wx_static_atoms[W_ATOM_WM_COLORMAP_WINDOWS];
+	wdisp->atom.wm.colormap_notify = wx_static_atoms[W_ATOM_WM_COLORMAP_NOTIFY];
+	wdisp->atom.wm.motif_wm_hints = wx_static_atoms[W_ATOM_MOTIF_WM_HINTS];
+	wdisp->atom.wm.ignore_focus_events = wx_static_atoms[W_ATOM_WM_IGNORE_FOCUS_EVENTS];
+	wdisp->atom.wm.window_role = wx_static_atoms[W_ATOM_WM_WINDOW_ROLE];
+	wdisp->atom.wmaker.menu = wx_static_atoms[W_ATOM_WINDOWMAKER_MENU];
+	wdisp->atom.wmaker.state = wx_static_atoms[W_ATOM_WINDOWMAKER_STATE];
+	wdisp->atom.wmaker.wm_protocols = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_PROTOCOLS];
+	wdisp->atom.wmaker.wm_function = wx_static_atoms[W_ATOM_WINDOWMAKER_WM_FUNCTION];
+	wdisp->atom.wmaker.noticeboard = wx_static_atoms[W_ATOM_WINDOWMAKER_NOTICEBOARD];
+	wdisp->atom.wmaker.command = wx_static_atoms[W_ATOM_WINDOWMAKER_COMMAND];
+	wdisp->atom.wmaker.icon_size = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_SIZE];
+	wdisp->atom.wmaker.icon_tile = wx_static_atoms[W_ATOM_WINDOWMAKER_ICON_TILE];
+	wdisp->atom.wmaker.mark_key = wx_static_atoms[W_ATOM_WINDOWMAKER_MARK_KEY];
+	wdisp->atom.wmaker.tab_group = wx_static_atoms[W_ATOM_WINDOWMAKER_TABGROUP];
+	wdisp->atom.gnustep.wm_attr = wx_static_atoms[W_ATOM_GNUSTEP_WM_ATTR];
+	wdisp->atom.gnustep.wm_miniaturize_window = wx_static_atoms[W_ATOM_GNUSTEP_WM_MINIATURIZE_WINDOW];
+	wdisp->atom.gnustep.wm_hide_app = wx_static_atoms[W_ATOM_GNUSTEP_WM_HIDE_APP];
+	wdisp->atom.gnustep.titlebar_state = wx_static_atoms[W_ATOM_GNUSTEP_TITLEBAR_STATE];
+	wdisp->atom.desktop.gtk_object_path = wx_static_atoms[W_ATOM_GTK_APPLICATION_OBJECT_PATH];
 
 #ifdef USE_DOCK_XDND
 	wXDNDInitializeAtoms();
 #endif
 
 	/* cursors */
-	wPreferences.cursor[WCUR_NORMAL] = XCB_NONE;	/* inherit from root */
-	wPreferences.cursor[WCUR_ROOT] = wXLoadCursor(xconn, 0, "left_ptr");
-	wPreferences.cursor[WCUR_ARROW] = wXLoadCursor(xconn, 0, "top_left_arrow");
-	wPreferences.cursor[WCUR_MOVE] = wXLoadCursor(xconn, 0, "fleur");
-	wPreferences.cursor[WCUR_RESIZE] = wXLoadCursor(xconn, 0, "sizing");
-	wPreferences.cursor[WCUR_TOPLEFTRESIZE] = wXLoadCursor(xconn, 0, "top_left_corner");
-	wPreferences.cursor[WCUR_TOPRIGHTRESIZE] = wXLoadCursor(xconn, 0, "top_right_corner");
-	wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE] = wXLoadCursor(xconn, 0, "bottom_left_corner");
-	wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE] = wXLoadCursor(xconn, 0, "bottom_right_corner");
-	wPreferences.cursor[WCUR_VERTICALRESIZE] = wXLoadCursor(xconn, 0, "sb_v_double_arrow");
-	wPreferences.cursor[WCUR_HORIZONRESIZE] = wXLoadCursor(xconn, 0, "sb_h_double_arrow");
-	wPreferences.cursor[WCUR_WAIT] = wXLoadCursor(xconn, 0, "watch");
-	wPreferences.cursor[WCUR_QUESTION] = wXLoadCursor(xconn, 0, "question_arrow");
-	wPreferences.cursor[WCUR_TEXT] = wXLoadCursor(xconn, 0, "xterm");
-	wPreferences.cursor[WCUR_SELECT] = wXLoadCursor(xconn, 0, "cross");
-	wPreferences.cursor[WCUR_CAPTURE] = wXLoadCursor(xconn, 0, "crosshair");
+	wdisp->cursor[WCUR_NORMAL] = XCB_NONE;	/* inherit from root */
+	wdisp->cursor[WCUR_ROOT] = wXLoadCursor(wdisp->conn, 0, "left_ptr");
+	wdisp->cursor[WCUR_ARROW] = wXLoadCursor(wdisp->conn, 0, "top_left_arrow");
+	wdisp->cursor[WCUR_MOVE] = wXLoadCursor(wdisp->conn, 0, "fleur");
+	wdisp->cursor[WCUR_RESIZE] = wXLoadCursor(wdisp->conn, 0, "sizing");
+	wdisp->cursor[WCUR_TOPLEFTRESIZE] = wXLoadCursor(wdisp->conn, 0, "top_left_corner");
+	wdisp->cursor[WCUR_TOPRIGHTRESIZE] = wXLoadCursor(wdisp->conn, 0, "top_right_corner");
+	wdisp->cursor[WCUR_BOTTOMLEFTRESIZE] = wXLoadCursor(wdisp->conn, 0, "bottom_left_corner");
+	wdisp->cursor[WCUR_BOTTOMRIGHTRESIZE] = wXLoadCursor(wdisp->conn, 0, "bottom_right_corner");
+	wdisp->cursor[WCUR_VERTICALRESIZE] = wXLoadCursor(wdisp->conn, 0, "sb_v_double_arrow");
+	wdisp->cursor[WCUR_HORIZONRESIZE] = wXLoadCursor(wdisp->conn, 0, "sb_h_double_arrow");
+	wdisp->cursor[WCUR_WAIT] = wXLoadCursor(wdisp->conn, 0, "watch");
+	wdisp->cursor[WCUR_QUESTION] = wXLoadCursor(wdisp->conn, 0, "question_arrow");
+	wdisp->cursor[WCUR_TEXT] = wXLoadCursor(wdisp->conn, 0, "xterm");
+	wdisp->cursor[WCUR_SELECT] = wXLoadCursor(wdisp->conn, 0, "cross");
+	wdisp->cursor[WCUR_CAPTURE] = wXLoadCursor(wdisp->conn, 0, "crosshair");
 
 	memset(&black, 0, sizeof(black));
-	cur = wXCreateBitmapFromData(xconn, wXRootWindow(xconn, 0), empty_bits, 16, 16);
-	wPreferences.cursor[WCUR_EMPTY] = wXCreatePixmapCursor(xconn, cur, cur, &black, &black, 0, 0);
-	xcb_free_pixmap(xconn, cur);
+	cur = wXCreateBitmapFromData(wdisp->conn, wXRootWindow(wdisp->conn, 0), empty_bits, 16, 16);
+	wdisp->cursor[WCUR_EMPTY] = wXCreatePixmapCursor(wdisp->conn, cur, cur, &black, &black, 0, 0);
+	xcb_free_pixmap(wdisp->conn, cur);
 
 	/* self-pipe so signal handlers can wake the main loop without
 	 * calling async-signal-unsafe functions from handler context */
@@ -542,22 +539,22 @@ void StartUp(bool defaultScreenOnly)
 
 #ifdef USE_XSHAPE
 	xer = xcb_get_extension_data(xc, &xcb_shape_id);
-	w_global.xext.shape.supported = xer && xer->present;
-	if (w_global.xext.shape.supported) {
-		w_global.xext.shape.event_base = xer->first_event;
+	wdisp->xext.shape.supported = xer && xer->present;
+	if (wdisp->xext.shape.supported) {
+		wdisp->xext.shape.event_base = xer->first_event;
 		free(xcb_shape_query_version_reply(xc, xcb_shape_query_version(xc), NULL));
 	}
 #endif
 
 #ifdef USE_XSYNC
 	xer = xcb_get_extension_data(xc, &xcb_sync_id);
-	w_global.xext.xsync.supported = 0;
+	wdisp->xext.xsync.supported = 0;
 	if (xer && xer->present) {
-		w_global.xext.xsync.event_base = xer->first_event;
+		wdisp->xext.xsync.event_base = xer->first_event;
 		syncr = xcb_sync_initialize_reply(xc,
 				xcb_sync_initialize(xc, XCB_SYNC_MAJOR_VERSION,
 						    XCB_SYNC_MINOR_VERSION), NULL);
-		w_global.xext.xsync.supported = syncr != NULL;
+		wdisp->xext.xsync.supported = syncr != NULL;
 		free(syncr);
 	}
 #endif
@@ -565,7 +562,7 @@ void StartUp(bool defaultScreenOnly)
 #ifdef USE_RANDR
 	xer = xcb_get_extension_data(xc, &xcb_randr_id);
 	if (xer && xer->present) {
-		w_global.xext.randr.event_base = xer->first_event;
+		wdisp->xext.randr.event_base = xer->first_event;
 		rrr = xcb_randr_query_version_reply(xc,
 				xcb_randr_query_version(xc, XCB_RANDR_MAJOR_VERSION,
 							XCB_RANDR_MINOR_VERSION), NULL);
@@ -575,9 +572,9 @@ void StartUp(bool defaultScreenOnly)
 		}
 	}
 	if (rrr && (rr_major > 1 || (rr_major == 1 && rr_minor >= 5))) {
-		w_global.xext.randr.supported = 1;
+		wdisp->xext.randr.supported = 1;
 	} else {
-		w_global.xext.randr.supported = 0;
+		wdisp->xext.randr.supported = 0;
 		if (!xer || !xer->present)
 			wwarning(_("RandR extension is not available"));
 		else if (!rrr)
@@ -591,9 +588,9 @@ void StartUp(bool defaultScreenOnly)
 
 #ifdef USE_XCB_SCREENSAVER
 	xer = xcb_get_extension_data(xc, &xcb_screensaver_id);
-	w_global.xext.screensaver.supported = xer && xer->present;
-	if (w_global.xext.screensaver.supported) {
-		w_global.xext.screensaver.event_base = xer->first_event;
+	wdisp->xext.screensaver.supported = xer && xer->present;
+	if (wdisp->xext.screensaver.supported) {
+		wdisp->xext.screensaver.event_base = xer->first_event;
 		free(xcb_screensaver_query_version_reply(xc,
 			xcb_screensaver_query_version(xc,
 				XCB_SCREENSAVER_MAJOR_VERSION,
@@ -603,20 +600,20 @@ void StartUp(bool defaultScreenOnly)
 
 	/* wXkbInit() negotiates XkbUseExtension, loads the keymap and state,
 	 * selects per-device events, derives the named-modifier and lock
-	 * masks, and writes w_global.xext.xkb and shortcut.modifiers_mask.
+	 * masks, and writes wdisp->xext.xkb and shortcut.modifiers_mask.
 	 * It runs before wScreenInit so wConfigApplyModifierKey and the
 	 * keybinding parser see the resolved Alt/Meta/Super masks, and
 	 * before wWindowSetKeyGrabs so the lock-mask grab fan-out is
 	 * correct on the first manage. */
 	wXkbInit();
 #ifdef KEEP_XKB_LOCK_STATUS
-	if (w_global.config->modelock && !w_global.xext.xkb.supported) {
+	if (w_global.config->modelock && !wdisp->xext.xkb.supported) {
 		wwarning(_("XKB is not supported. KbdModeLock is automatically disabled."));
 		w_global.config->modelock = 0;
 	}
 #endif
 
-	/* extension probes have filled w_global.xext.*.event_base, so the
+	/* extension probes have filled wdisp->xext.*.event_base, so the
 	 * per-protocol handler tables can register their slots now,
 	 * DispatchEvent() was hooked above as the WINGs extra event
 	 * handler so events on non-view windows reach the table */
@@ -625,18 +622,18 @@ void StartUp(bool defaultScreenOnly)
 	if (defaultScreenOnly)
 		max = 1;
 	else
-		max = wXScreenCount(xconn);
+		max = wXScreenCount(wdisp->conn);
 
-	wScreen = wmalloc(sizeof(WScreen *) * max);
+	wdisp->screens = wmalloc(sizeof(WScreen *) * max);
 
-	w_global.screen_count = 0;
+	wdisp->screen_count = 0;
 
 	/* Check if TIFF images are supported */
 	formats = RSupportedFileFormats();
 	if (formats) {
 		for (i = 0; formats[i] != NULL; i++) {
 			if (strcmp(formats[i], "TIFF") == 0) {
-				wPreferences.supports_tiff = 1;
+				wdisp->supports_tiff = 1;
 				break;
 			}
 		}
@@ -649,33 +646,33 @@ void StartUp(bool defaultScreenOnly)
 	/* manage the screens */
 	for (j = 0; j < max; j++) {
 		if (defaultScreenOnly || max == 1) {
-			wScreen[w_global.screen_count] = wScreenInit(dflt_screen, new_config, &changes);
-			if (!wScreen[w_global.screen_count]) {
+			wdisp->screens[wdisp->screen_count] = wScreenInit(wdisp->default_screen, new_config, &changes);
+			if (!wdisp->screens[wdisp->screen_count]) {
 				wfatal(_("it seems that there is already a window manager running"));
 				Exit(1);
 			}
 		} else {
-			wScreen[w_global.screen_count] = wScreenInit(j, new_config, &changes);
-			if (!wScreen[w_global.screen_count]) {
+			wdisp->screens[wdisp->screen_count] = wScreenInit(j, new_config, &changes);
+			if (!wdisp->screens[wdisp->screen_count]) {
 				wwarning(_("could not manage screen %i"), j);
 				continue;
 			}
 		}
-		w_global.screen_count++;
+		wdisp->screen_count++;
 	}
 
 	/* bind the per-screen IPC sockets before session restore and dock
 	 * auto-launch so spawned children inherit a live WMAKER_IPC_SOCKET */
-	for (j = 0; j < w_global.screen_count; j++)
-		wIPCServerStart(wScreen[j]);
+	for (j = 0; j < wdisp->screen_count; j++)
+		wIPCServerStart(wdisp->screens[j]);
 
 	InitializeSwitchMenu();
 
 	/* initialize/restore state for the screens */
-	for (j = 0; j < w_global.screen_count; j++) {
+	for (j = 0; j < wdisp->screen_count; j++) {
 		int lastDesktop;
 
-		lastDesktop = wNETWMGetCurrentDesktopFromHint(wScreen[j]);
+		lastDesktop = wNETWMGetCurrentDesktopFromHint(wdisp->screens[j]);
 
 		/* mark the screen as being brought up before OpenRootMenu()
 		 * runs from wScreenRestoreState(): with no readable WMRootMenu
@@ -684,53 +681,53 @@ void StartUp(bool defaultScreenOnly)
 		 * having returned, so wXSMPConnect(), execInitScript() and
 		 * inotifyWatchConfig() would never fire, manageAllWindows()
 		 * clears the flag once the initial adopt is done */
-		wScreen[j]->flags.startup = 1;
+		wdisp->screens[j]->flags.startup = 1;
 
-		wScreenRestoreState(wScreen[j]);
+		wScreenRestoreState(wdisp->screens[j]);
 
 		/* manage all windows that were already here before us */
-		if (!wPreferences.flags.nodock && wScreen[j]->dock)
-			wScreen[j]->last_dock = wScreen[j]->dock;
+		if (!wdisp->flags.nodock && wdisp->screens[j]->dock)
+			wdisp->screens[j]->last_dock = wdisp->screens[j]->dock;
 
 		/* Pre-load saved states from WMState so manageAllWindows can
 		 * match adopted windows against their saved state.
 		 * wSessionRestoreState runs after manageAllWindows. */
-		if (wPreferences.flags.restarting == 0 && !wPreferences.flags.norestore)
-			wSessionQueueSavedState(wScreen[j]);
+		if (wdisp->flags.restarting == 0 && !wdisp->flags.norestore)
+			wSessionQueueSavedState(wdisp->screens[j]);
 
-		manageAllWindows(wScreen[j], wPreferences.flags.restarting == 2);
+		manageAllWindows(wdisp->screens[j], wdisp->flags.restarting == 2);
 
-		if (wPreferences.flags.restarting == 0 && !wPreferences.flags.norestore)
+		if (wdisp->flags.restarting == 0 && !wdisp->flags.norestore)
 			wSessionCleanupUnmatchedSavedState();
 
 		/* restore saved menus */
-		wMenuRestoreState(wScreen[j]);
+		wMenuRestoreState(wdisp->screens[j]);
 
 		/* If we're not restarting, restore session */
-		if (wPreferences.flags.restarting == 0 && !wPreferences.flags.norestore)
-			wSessionRestoreState(wScreen[j]);
+		if (wdisp->flags.restarting == 0 && !wdisp->flags.norestore)
+			wSessionRestoreState(wdisp->screens[j]);
 
-		if (!wPreferences.flags.noautolaunch) {
+		if (!wdisp->flags.noautolaunch) {
 			/* auto-launch apps */
-			if (!wPreferences.flags.nodock && wScreen[j]->dock) {
-				wScreen[j]->last_dock = wScreen[j]->dock;
-				wDockDoAutoLaunch(wScreen[j]->dock, 0);
+			if (!wdisp->flags.nodock && wdisp->screens[j]->dock) {
+				wdisp->screens[j]->last_dock = wdisp->screens[j]->dock;
+				wDockDoAutoLaunch(wdisp->screens[j]->dock, 0);
 			}
 			/* auto-launch apps in clip */
-			if (!wPreferences.flags.noclip) {
+			if (!wdisp->flags.noclip) {
 				int i;
-				for (i = 0; i < wScreen[j]->workspace_count; i++) {
-					if (wScreen[j]->workspaces[i]->clip) {
-						wScreen[j]->last_dock = wScreen[j]->workspaces[i]->clip;
-						wDockDoAutoLaunch(wScreen[j]->workspaces[i]->clip, i);
+				for (i = 0; i < wdisp->screens[j]->workspace_count; i++) {
+					if (wdisp->screens[j]->workspaces[i]->clip) {
+						wdisp->screens[j]->last_dock = wdisp->screens[j]->workspaces[i]->clip;
+						wDockDoAutoLaunch(wdisp->screens[j]->workspaces[i]->clip, i);
 					}
 				}
 			}
 			/* auto-launch apps in drawers */
-			if (!wPreferences.flags.nodrawer) {
+			if (!wdisp->flags.nodrawer) {
 				WDrawerChain *dc;
-				for (dc = wScreen[j]->drawers; dc; dc = dc->next) {
-					wScreen[j]->last_dock = dc->adrawer;
+				for (dc = wdisp->screens[j]->drawers; dc; dc = dc->next) {
+					wdisp->screens[j]->last_dock = dc->adrawer;
 					wDockDoAutoLaunch(dc->adrawer, 0);
 				}
 			}
@@ -742,15 +739,15 @@ void StartUp(bool defaultScreenOnly)
 			 * HeadWorkspaces by wScreenRestoreState, just bring
 			 * each head to its workspace and set the mirror. */
 			int h;
-			for (h = 0; h < wHeadCount(wScreen[j]); h++)
-				wWorkspaceForceChangeOnHead(wScreen[j],
-					wScreen[j]->head_workspace[h], h);
-			wWorkspaceSetCurrentHead(wScreen[j],
-				wScreen[j]->xine_info.primary_head);
+			for (h = 0; h < wHeadCount(wdisp->screens[j]); h++)
+				wWorkspaceForceChangeOnHead(wdisp->screens[j],
+					wdisp->screens[j]->head_workspace[h], h);
+			wWorkspaceSetCurrentHead(wdisp->screens[j],
+				wdisp->screens[j]->xine_info.primary_head);
 		} else if (lastDesktop >= 0) {
-			wWorkspaceForceChange(wScreen[j], lastDesktop);
+			wWorkspaceForceChange(wdisp->screens[j], lastDesktop);
 		} else {
-			wSessionRestoreLastWorkspace(wScreen[j]);
+			wSessionRestoreLastWorkspace(wdisp->screens[j]);
 		}
 
 		/* the corner InputOnly windows were created and raised by
@@ -759,21 +756,20 @@ void StartUp(bool defaultScreenOnly)
 		 * XMapWindow and end up on top of them, so a corner that
 		 * happens to sit under the clip never receives EnterNotify,
 		 * restack the corner windows once everything is up */
-		wHotCornersRaise(wScreen[j]);
+		wHotCornersRaise(wdisp->screens[j]);
 	}
 
-	for (j = 0; j < w_global.screen_count; j++) {
-		wKeyTreeRebuild(wScreen[j]);
-	}
+	for (j = 0; j < wdisp->screen_count; j++)
+		wKeyTreeRebuild(wdisp->screens[j]);
 
-	if (w_global.screen_count == 0) {
+	if (wdisp->screen_count == 0) {
 		wfatal(_("could not manage any screen"));
 		Exit(1);
 	}
 
 #ifndef HAVE_INOTIFY
 	/* setup defaults file polling */
-	if (!wPreferences.flags.noupdates)
+	if (!wdisp->flags.noupdates)
 		WMAddTimerHandler(3000, wDefaultsCheckDomains, NULL);
 #endif
 
@@ -807,12 +803,12 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	unsigned int i, j;
 	WWindow *wwin;
 	WXCookie *hints_ck, *attr_ck, *geom_ck;
-	const xcb_setup_t *setup = xcb_get_setup(xconn);
+	const xcb_setup_t *setup = xcb_get_setup(wdisp->conn);
 	uint32_t own_base = setup->resource_id_base;
 	uint32_t own_mask = setup->resource_id_mask;
 
-	wXGrabServer(xconn);
-	wXQueryTree(xconn, scr->root_win, &root, &parent, &children, &nchildren);
+	wXGrabServer(wdisp->conn);
+	wXQueryTree(wdisp->conn, scr->root_win, &root, &parent, &children, &nchildren);
 
 	scr->flags.startup = 1;
 	/* one client-list rebuild per burst instead of two per window */
@@ -837,16 +833,16 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	attr_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
 	geom_ck  = wmalloc(sizeof(WXCookie) * (nchildren ? nchildren : 1));
 	for (i = 0; i < nchildren; i++) {
-		hints_ck[i] = WXReqWMHints(xconn, children[i]);
-		attr_ck[i]  = WXReqWindowAttributes(xconn, children[i]);
-		geom_ck[i]  = WXReqGeometry(xconn, children[i]);
+		hints_ck[i] = WXReqWMHints(wdisp->conn, children[i]);
+		attr_ck[i]  = WXReqWindowAttributes(wdisp->conn, children[i]);
+		geom_ck[i]  = WXReqGeometry(wdisp->conn, children[i]);
 	}
 
 	/* first remove all icon windows */
 	for (i = 0; i < nchildren; i++) {
 		WXWMHints *wmhints;
 
-		wmhints = WXRcvWMHints(xconn, hints_ck[i]);
+		wmhints = WXRcvWMHints(wdisp->conn, hints_ck[i]);
 		if (wmhints && (wmhints->flags & XCB_ICCCM_WM_HINT_ICON_WINDOW)) {
 			for (j = 0; j < nchildren; j++) {
 				if (children[j] == wmhints->icon_window) {
@@ -869,13 +865,13 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 		WXWindowAttributes wattribs;
 
 		if (children[i] == XCB_NONE) {
-			WXDiscard(xconn, attr_ck[i]);
-			WXDiscard(xconn, geom_ck[i]);
+			WXDiscard(wdisp->conn, attr_ck[i]);
+			WXDiscard(wdisp->conn, geom_ck[i]);
 			continue;
 		}
 
-		if (!WXRcvWindowAttributes(xconn, attr_ck[i], &xa)) {
-			WXDiscard(xconn, geom_ck[i]);
+		if (!WXRcvWindowAttributes(wdisp->conn, attr_ck[i], &xa)) {
+			WXDiscard(wdisp->conn, geom_ck[i]);
 			continue;
 		}
 
@@ -883,11 +879,11 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 		 * many wmaker-owned helper windows do not each cycle
 		 * XGrabServer/XUngrabServer inside wManageWindow */
 		if (xa.override_redirect || xa.map_state == XCB_MAP_STATE_UNVIEWABLE) {
-			WXDiscard(xconn, geom_ck[i]);
+			WXDiscard(wdisp->conn, geom_ck[i]);
 			continue;
 		}
 
-		if (!WXRcvGeometry(xconn, geom_ck[i], &xg))
+		if (!WXRcvGeometry(wdisp->conn, geom_ck[i], &xg))
 			continue;
 
 		/* assemble what wManageWindow and wClientGetNormalHints read
@@ -951,7 +947,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	}
 	wfree(attr_ck);
 	wfree(geom_ck);
-	wXUngrabServer(xconn);
+	wXUngrabServer(wdisp->conn);
 
 	scr->flags.manage_burst = 0;
 	wNETWMFlushClientLists(scr);
@@ -976,9 +972,9 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	scr->flags.startup = 0;
 	scr->flags.startup2 = 1;
 
-	while (WXEvqPending(xconn)) {
+	while (WXEvqPending(wdisp->conn)) {
 		xcb_generic_event_t *ev = NULL;
-		WMNextEvent(xconn, &ev);
+		WMNextEvent(wdisp->conn, &ev);
 		if (!ev)
 			break;
 		WMHandleEvent(ev);
@@ -993,7 +989,7 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 	} else {
 		wWorkspaceForceChange(scr, 0);
 	}
-	if (!wPreferences.flags.noclip)
+	if (!wdisp->flags.noclip)
 		wDockShowIcons(scr->workspaces[scr->current_workspace]->clip);
 	scr->flags.startup2 = 0;
 }

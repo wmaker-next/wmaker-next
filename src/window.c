@@ -78,7 +78,7 @@
 #endif
 #include "wmspec.h"
 
-#define MOD_MASK wPreferences.modifier_mask
+#define MOD_MASK wdisp->modifier_mask
 
 
 /***** Local Stuff *****/
@@ -142,7 +142,7 @@ static void appearanceObserver(void *self, WMNotification * notif)
 			wGroupRefreshTitles(wwin->tab_group);
 
 		if (wwin->frame->titlebar)
-			xcb_clear_area(xconn, 0, wwin->frame->titlebar->window, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, wwin->frame->titlebar->window, 0, 0, 0, 0);
 
 		wFrameWindowPaint(wwin->frame);
 	}
@@ -157,7 +157,7 @@ WWindow *wWindowFor(xcb_window_t window)
 	if (window == XCB_NONE)
 		return NULL;
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) window);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) window);
 	if (desc == NULL)
 		return NULL;
 
@@ -222,10 +222,10 @@ void wWindowDestroy(WWindow *wwin)
 	if (wwin->fake_group && wwin->fake_group->retainCount > 0) {
 		wwin->fake_group->retainCount--;
 		if (wwin->fake_group->retainCount == 0 && wwin->fake_group->leader != XCB_NONE) {
-			xcb_destroy_window(xconn, wwin->fake_group->leader);
+			xcb_destroy_window(wdisp->conn, wwin->fake_group->leader);
 			wwin->fake_group->leader = XCB_NONE;
 			wwin->fake_group->origLeader = XCB_NONE;
-			wXFlush(xconn);
+			wXFlush(wdisp->conn);
 		}
 	}
 
@@ -282,7 +282,7 @@ void wWindowDestroy(WWindow *wwin)
 	if (wwin->cmap_windows)
 		wfree(wwin->cmap_windows);
 
-	WMHashRemove(w_global.context.client_win, (void *)(uintptr_t) wwin->client_win);
+	WMHashRemove(wdisp->context.client_win, (void *)(uintptr_t) wwin->client_win);
 
 	if (wwin->frame)
 		wFrameWindowDestroy(wwin->frame);
@@ -357,35 +357,35 @@ static void setupGNUstepHints(WWindow *wwin, GNUstepWMAttributes *gs_hints)
 
 void wManagePrefetch(xcb_window_t window, WManageCookies *ck)
 {
-	ck->wm_state  = WXReqFormat32(xconn, window, w_global.atom.wm.state,
-				      w_global.atom.wm.state, 1);
+	ck->wm_state  = WXReqFormat32(wdisp->conn, window, wdisp->atom.wm.state,
+				      wdisp->atom.wm.state, 1);
 	ck->net_name  = wNETWMReqWindowName(window);
-	ck->name      = WXReqWMName(xconn, window);
-	ck->wclass    = WXReqWMClass(xconn, window);
-	ck->gnustep   = WXReqFormat32(xconn, window, w_global.atom.gnustep.wm_attr,
-				      w_global.atom.gnustep.wm_attr, 9);
-	ck->leader    = WXReqFormat32(xconn, window, w_global.atom.wm.client_leader,
+	ck->name      = WXReqWMName(wdisp->conn, window);
+	ck->wclass    = WXReqWMClass(wdisp->conn, window);
+	ck->gnustep   = WXReqFormat32(wdisp->conn, window, wdisp->atom.gnustep.wm_attr,
+				      wdisp->atom.gnustep.wm_attr, 9);
+	ck->leader    = WXReqFormat32(wdisp->conn, window, wdisp->atom.wm.client_leader,
 				      XCB_ATOM_WINDOW, 1);
-	ck->hints     = WXReqWMHints(xconn, window);
-	ck->protocols = WXReqWMProtocols(xconn, window);
-	ck->transient = WXReqTransientFor(xconn, window);
-	ck->normal    = WXReqNormalHints(xconn, window);
+	ck->hints     = WXReqWMHints(wdisp->conn, window);
+	ck->protocols = WXReqWMProtocols(wdisp->conn, window);
+	ck->transient = WXReqTransientFor(wdisp->conn, window);
+	ck->normal    = WXReqNormalHints(wdisp->conn, window);
 #ifdef USE_MWM_HINTS
 	ck->motif     = wMWMReqClientHints(window);
 #else
 	ck->motif.seq = 0;
 #endif
 	ck->cmap_windows = wClientReqColormapWindows(window);
-	ck->command   = WXReqCommand(xconn, window);
-	ck->role      = WXReqString8(xconn, window, w_global.atom.wm.window_role, XCB_ATOM_STRING);
+	ck->command   = WXReqCommand(wdisp->conn, window);
+	ck->role      = WXReqString8(wdisp->conn, window, wdisp->atom.wm.window_role, XCB_ATOM_STRING);
 	ck->pid       = wNETWMReqPid(window);
-	ck->appmenu   = WXReqExists(xconn, window, w_global.atom.wmaker.menu);
-	ck->gtk       = WXReqExists(xconn, window, w_global.atom.desktop.gtk_object_path);
-	ck->saved_state = WXReqFormat32(xconn, window, w_global.atom.wmaker.state,
-					w_global.atom.wmaker.state, WSAVED_STATE_SLOTS);
-	ck->mark_key  = WXReqString8(xconn, window, w_global.atom.wmaker.mark_key, XCB_ATOM_STRING);
-	ck->tab_group = WXReqFormat32(xconn, window, w_global.atom.wmaker.tab_group,
-				      w_global.atom.wmaker.tab_group, 3);
+	ck->appmenu   = WXReqExists(wdisp->conn, window, wdisp->atom.wmaker.menu);
+	ck->gtk       = WXReqExists(wdisp->conn, window, wdisp->atom.desktop.gtk_object_path);
+	ck->saved_state = WXReqFormat32(wdisp->conn, window, wdisp->atom.wmaker.state,
+					wdisp->atom.wmaker.state, WSAVED_STATE_SLOTS);
+	ck->mark_key  = WXReqString8(wdisp->conn, window, wdisp->atom.wmaker.mark_key, XCB_ATOM_STRING);
+	ck->tab_group = WXReqFormat32(wdisp->conn, window, wdisp->atom.wmaker.tab_group,
+				      wdisp->atom.wmaker.tab_group, 3);
 	wNETWMReqClientHints(window, &ck->netwm);
 	wNETWMReqInitialStateCookies(window, &ck->netwm_initial);
 }
@@ -402,13 +402,13 @@ void wManageDiscard(WManageCookies *ck)
 
 	for (i = 0; i < n; i++) {
 		if (p[i].seq)
-			WXDiscard(xconn, p[i]);
+			WXDiscard(wdisp->conn, p[i]);
 	}
 }
 
 static void discard_hints_from_gtk(WWindow *wwin, WXCookie ck)
 {
-	if (!WXRcvExists(xconn, ck))
+	if (!WXRcvExists(wdisp->conn, ck))
 		return;
 
 	/* If we're here, that means the Property exists. We don't care what is inside, it means it is a GTK-based application */
@@ -436,8 +436,8 @@ void wWindowSetupInitialAttributes(WWindow *wwin, WManageCookies *ck, int *level
 #ifdef USE_MWM_HINTS
 		local_ck.motif = wMWMReqClientHints(wwin->client_win);
 #endif
-		local_ck.gtk = WXReqExists(xconn, wwin->client_win,
-					   w_global.atom.desktop.gtk_object_path);
+		local_ck.gtk = WXReqExists(wdisp->conn, wwin->client_win,
+					   wdisp->atom.desktop.gtk_object_path);
 		wNETWMReqClientHints(wwin->client_win, &local_ck.netwm);
 		ck = &local_ck;
 		own_ck = true;
@@ -656,7 +656,7 @@ bool wWindowObscuresWindow(WWindow *wwin, WWindow *obscured)
 static pid_t getWindowPidXRes(xcb_window_t win)
 {
 #ifdef USE_XRES
-	xcb_connection_t *conn = xconn;
+	xcb_connection_t *conn = wdisp->conn;
 	xcb_res_client_id_spec_t spec;
 	xcb_res_query_client_ids_reply_t *reply;
 	xcb_res_client_id_value_iterator_t it;
@@ -789,8 +789,8 @@ static void wWindowUnswallow(WWindow *wwin)
 	parent->flags.hidden = 0;
 	parent->flags.skip_next_animation = 1;
 	if (wWindowIsVisibleOnAnyHead(parent)) {
-		xcb_map_window(xconn, parent->client_win);
-		xcb_map_window(xconn, parent->frame->core->window);
+		xcb_map_window(wdisp->conn, parent->client_win);
+		xcb_map_window(wdisp->conn, parent->frame->core->window);
 		wClientSetState(parent, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 		parent->flags.mapped = 1;
 		wRaiseFrame(parent->frame->core);
@@ -819,7 +819,7 @@ static void fixLeaderProperties(WWindow *wwin)
 	leaders[1] = wwin->group_id;
 
 	if (haveCommand && !wwin->wm_command) {
-		WXSetCommand(xconn, wwin->client_win, argv, argc);
+		WXSetCommand(wdisp->conn, wwin->client_win, argv, argc);
 		wwin->wm_command = wtokenjoin(argv, argc);
 	}
 
@@ -835,13 +835,13 @@ static void fixLeaderProperties(WWindow *wwin)
 		if (!window || window == wwin->client_win)
 			continue;
 
-		if (WXGetWMClass(xconn, window, &inst, &cls)) {
+		if (WXGetWMClass(wdisp->conn, window, &inst, &cls)) {
 			wfree(inst);
 			wfree(cls);
 		} else {
-			WXSetWMClass(xconn, window, wwin->wm_instance, wwin->wm_class);
+			WXSetWMClass(wdisp->conn, window, wwin->wm_instance, wwin->wm_class);
 		}
-		hints = WXGetWMHints(xconn, window);
+		hints = WXGetWMHints(wdisp->conn, window);
 		if (hints) {
 			wfree(hints);
 		} else if (wwin->wm_hints) {
@@ -850,7 +850,7 @@ static void fixLeaderProperties(WWindow *wwin)
 			clientHints = *wwin->wm_hints;
 			clientHints.window_group = window;
 			clientHints.flags |= XCB_ICCCM_WM_HINT_WINDOW_GROUP;
-			WXSetWMHints(xconn, window, &clientHints);
+			WXSetWMHints(wdisp->conn, window, &clientHints);
 		}
 
 		if (haveCommand) {
@@ -858,12 +858,12 @@ static void fixLeaderProperties(WWindow *wwin)
 			if (command)
 				wfree(command); /* command already set. nothing to do. */
 			else
-				WXSetCommand(xconn, window, argv, argc);
+				WXSetCommand(wdisp->conn, window, argv, argc);
 		}
 
 		/* Make sure we get notification when this window is destroyed */
-		if (wXGetWindowAttributes(xconn, window, &attr, NULL))
-			xcb_change_window_attributes(xconn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ attr.your_event_mask | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE });
+		if (wXGetWindowAttributes(wdisp->conn, window, &attr, NULL))
+			xcb_change_window_attributes(wdisp->conn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ attr.your_event_mask | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE });
 	}
 
 	if (haveCommand)
@@ -878,12 +878,12 @@ static xcb_window_t createFakeWindowGroupLeader(WScreen *scr, WWindow *wwin, xcb
 	int argc;
 	char **argv;
 
-	leader = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, leader, scr->root_win, 10, 10, 10, 10, 0,
+	leader = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, leader, scr->root_win, 10, 10, 10, 10, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 	/* set class hint */
-	WXSetWMClass(xconn, leader, instance, class);
+	WXSetWMClass(wdisp->conn, leader, instance, class);
 
 	/* inherit these from the original leader if available, when the
 	 * leader is the just-managed client window the values are already
@@ -893,7 +893,7 @@ static xcb_window_t createFakeWindowGroupLeader(WScreen *scr, WWindow *wwin, xcb
 		copy = *wwin->wm_hints;
 		hints = &copy;
 	} else {
-		hints = WXGetWMHints(xconn, win);
+		hints = WXGetWMHints(wdisp->conn, win);
 	}
 	if (!hints) {
 		hints = WXAllocWMHints();
@@ -902,7 +902,7 @@ static xcb_window_t createFakeWindowGroupLeader(WScreen *scr, WWindow *wwin, xcb
 	/* set window group leader to self */
 	hints->window_group = leader;
 	hints->flags |= XCB_ICCCM_WM_HINT_WINDOW_GROUP;
-	WXSetWMHints(xconn, leader, hints);
+	WXSetWMHints(wdisp->conn, leader, hints);
 	if (hints != &copy)
 		wfree(hints);
 
@@ -910,11 +910,11 @@ static xcb_window_t createFakeWindowGroupLeader(WScreen *scr, WWindow *wwin, xcb
 		if (wwin->wm_command) {
 			wtokensplit(wwin->wm_command, &argv, &argc);
 			if (argc > 0)
-				WXSetCommand(xconn, leader, argv, argc);
+				WXSetCommand(wdisp->conn, leader, argv, argc);
 			wtokenfree(argv, argc);
 		}
-	} else if (WXGetCommand(xconn, win, &argv, &argc) && argc > 0) {
-		WXSetCommand(xconn, leader, argv, argc);
+	} else if (WXGetCommand(wdisp->conn, win, &argv, &argc) && argc > 0) {
+		WXSetCommand(wdisp->conn, leader, argv, argc);
 		WXFreeStringList(argv, argc);
 	}
 
@@ -1004,7 +1004,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	int gx, gy;
 
 	/* mutex. */
-	wXGrabServer(xconn);
+	wXGrabServer(wdisp->conn);
 
 	/* make sure the window is still there. manageAllWindows() supplies
 	 * attributes it already batched across every child, the MapRequest
@@ -1013,15 +1013,15 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	 * existence check, so no XSync between the two. */
 	if (prefetched_attrs) {
 		wattribs = *prefetched_attrs;
-	} else if (!wXGetWindowAttributes(xconn, window, &wattribs, NULL)
+	} else if (!wXGetWindowAttributes(wdisp->conn, window, &wattribs, NULL)
 		   || wattribs.visual == NULL) {
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		return NULL;
 	}
 
 	/* if it's an override-redirect, ignore it */
 	if (wattribs.override_redirect) {
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		return NULL;
 	}
 
@@ -1034,7 +1034,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	/* if it's startup and the window is unmapped, don't manage it */
 	if (scr->flags.startup && wm_state < 0 && wattribs.map_state == XCB_MAP_STATE_UNMAPPED) {
 		wManageDiscard(&ck);
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		return NULL;
 	}
 
@@ -1045,24 +1045,24 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	wwin->flags.initializing = 1;
 	wwin->creation_id = ++scr->last_creation_id;
 
-	title = WXRcvString(xconn, ck.net_name, NULL);
+	title = WXRcvString(wdisp->conn, ck.net_name, NULL);
 	if (title)
 		wwin->flags.net_has_title = 1;
 	else
-		title = WXRcvWMName(xconn, ck.name);
+		title = WXRcvWMName(wdisp->conn, ck.name);
 
 	if (title)
 		wwin->wm_title = wstrdup(title);
 
-	WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) window, &wwin->client_descriptor);
+	WMHashInsert(wdisp->context.client_win, (void *)(uintptr_t) window, &wwin->client_descriptor);
 
 #ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported) {
+	if (wdisp->xext.shape.supported) {
 		xcb_shape_query_extents_reply_t *sr;
 
-		xcb_shape_select_input(xconn, window, 1);
-		sr = xcb_shape_query_extents_reply(xconn,
-				xcb_shape_query_extents(xconn, window), NULL);
+		xcb_shape_select_input(wdisp->conn, window, 1);
+		sr = xcb_shape_query_extents_reply(wdisp->conn,
+				xcb_shape_query_extents(wdisp->conn, window), NULL);
 		wwin->flags.shaped = sr ? sr->bounding_shaped : 0;
 		free(sr);
 	}
@@ -1071,13 +1071,13 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	/* Get hints and other information in properties */
 	PropRcvWMClass(ck.wclass, &wwin->wm_class, &wwin->wm_instance);
 
-	wwin->wm_role = WXRcvString(xconn, ck.role, NULL);
+	wwin->wm_role = WXRcvString(wdisp->conn, ck.role, NULL);
 	if (wwin->wm_role && wwin->wm_role[0] == '\0') {
 		wfree(wwin->wm_role);
 		wwin->wm_role = NULL;
 	}
 
-	if (WXRcvCommand(xconn, ck.command, &cmd_argv, &cmd_argc)) {
+	if (WXRcvCommand(wdisp->conn, ck.command, &cmd_argv, &cmd_argc)) {
 		if (cmd_argc > 0)
 			wwin->wm_command = wtokenjoin(cmd_argv, cmd_argc);
 		WXFreeStringList(cmd_argv, cmd_argc);
@@ -1100,19 +1100,19 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	 * round-trip. */
 	wwin->client_pid = getWindowPidXRes(window);
 	if (wwin->client_pid <= 0) {
-		if (WXRcvCardinal(xconn, ck.pid, &net_pid))
+		if (WXRcvCardinal(wdisp->conn, ck.pid, &net_pid))
 			wwin->client_pid = (pid_t)net_pid;
 		ck.pid.seq = 0;
 	}
 	wwin->event_mask = CLIENT_EVENTS;
 
-	xcb_change_window_attributes(xconn, window,
+	xcb_change_window_attributes(wdisp->conn, window,
 				     XCB_CW_EVENT_MASK | XCB_CW_SAVE_UNDER | XCB_CW_DONT_PROPAGATE,
 				     /* wire order is ascending CW_ bit:
 				      * save_under, event_mask, dont_propagate */
 				     (const uint32_t[]){ false, CLIENT_EVENTS,
 							 XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE });
-	xcb_configure_window(xconn, window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
+	xcb_configure_window(wdisp->conn, window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 	if (wwin->wm_class != NULL && strcmp(wwin->wm_class, "DockApp") != 0)
 		wwin->flags.fullscreen_monitors[0] = -1;
@@ -1133,7 +1133,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	if (wwin->client_leader != XCB_NONE)
 		wwin->main_window = wwin->client_leader;
 
-	wwin->wm_hints = WXRcvWMHints(xconn, ck.hints);
+	wwin->wm_hints = WXRcvWMHints(wdisp->conn, ck.hints);
 
 	if (wwin->wm_hints) {
 		if (wwin->wm_hints->flags & XCB_ICCCM_WM_HINT_STATE) {
@@ -1163,7 +1163,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 
 	PropRcvProtocols(ck.protocols, &wwin->protocols);
 
-	if (!WXRcvTransientFor(xconn, ck.transient, &wwin->transient_for)) {
+	if (!WXRcvTransientFor(wdisp->conn, ck.transient, &wwin->transient_for)) {
 		wwin->transient_for = XCB_NONE;
 	} else {
 		if (wwin->transient_for == XCB_NONE || wwin->transient_for == window) {
@@ -1189,7 +1189,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 			wfree(title);
 		wManageDiscard(&ck);
 		wWindowDestroy(wwin);
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		return NULL;
 	}
 
@@ -1219,11 +1219,11 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		 * client window, only re-read when main_window resolved to a
 		 * distinct group leader */
 		if (wwin->main_window == wwin->client_win) {
-			has_appmenu = WXRcvExists(xconn, ck.appmenu);
+			has_appmenu = WXRcvExists(wdisp->conn, ck.appmenu);
 			ck.appmenu.seq = 0;
 		} else {
-			has_appmenu = WXPropExists(xconn, wwin->main_window,
-						   w_global.atom.wmaker.menu);
+			has_appmenu = WXPropExists(wdisp->conn, wwin->main_window,
+						   wdisp->atom.wmaker.menu);
 		}
 		if (has_appmenu) {
 			WSETUFLAG(wwin, shared_appicon, 0);
@@ -1794,10 +1794,10 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	wwin->frame->on_dblclick_titlebar = titlebarDblClick;
 	wwin->frame->on_mousedown_resizebar = resizebarMouseDown;
 
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
 	wFrameInnerBorderWidths(wwin, &il, NULL, &it, NULL);
-	xcb_reparent_window(xconn, wwin->client_win, wwin->frame->core->window, il, wwin->frame->top_width + it);
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+	xcb_reparent_window(wdisp->conn, wwin->client_win, wwin->frame->core->window, il, wwin->frame->top_width + it);
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
 
 	wClientGetGravityOffsets(wwin, &gx, &gy);
 
@@ -1895,9 +1895,9 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	wwin->frame->core->descriptor.parent_type = WCLASS_WINDOW;
 
 	/* don't let windows go away if we die */
-	xcb_change_save_set(xconn, XCB_SET_MODE_INSERT, window);
+	xcb_change_save_set(wdisp->conn, XCB_SET_MODE_INSERT, window);
 
-	xcb_configure_window(xconn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
+	xcb_configure_window(wdisp->conn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 
 	/* if window is in this workspace and should be mapped, then  map it */
 	if (!wwin->flags.miniaturized && wWindowIsVisibleOnAnyHead(wwin)
@@ -1969,7 +1969,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	if (title)
 		wfree(title);
 
-	wXUngrabServer(xconn);
+	wXUngrabServer(wdisp->conn);
 
 	/* Final preparations before window is ready to go */
 	wFrameWindowChangeState(wwin->frame, WS_UNFOCUSED);
@@ -1987,7 +1987,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 			unsigned int bar;
 			xcb_window_t dummy;
 
-			if (wXQueryPointer(xconn, scr->root_win, &dummy, &dummy,
+			if (wXQueryPointer(wdisp->conn, scr->root_win, &dummy, &dummy,
 					  &px, &py, &foo, &foo, &bar) != false) {
 				same_screen = 1;
 				if (!w_global.config->auto_focus_across_heads && scr->xine_info.count > 1)
@@ -2109,7 +2109,7 @@ WWindow *wManageInternalWindow(WScreen *scr, xcb_window_t window, xcb_window_t o
 	wwin->frame->child = wwin;
 	wWindowConfigureBorders(wwin);
 
-	WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) window, &wwin->client_descriptor);
+	WMHashInsert(wdisp->context.client_win, (void *)(uintptr_t) window, &wwin->client_descriptor);
 
 	wwin->frame->flags.justification = w_global.config->title_justification;
 
@@ -2136,7 +2136,7 @@ WWindow *wManageInternalWindow(WScreen *scr, xcb_window_t window, xcb_window_t o
 	wwin->client.y += wwin->frame->top_width;
 
 	wFrameInnerBorderWidths(wwin, &il, NULL, &it, NULL);
-	xcb_reparent_window(xconn, wwin->client_win, wwin->frame->core->window, il, wwin->frame->top_width + it);
+	xcb_reparent_window(wdisp->conn, wwin->client_win, wwin->frame->core->window, il, wwin->frame->top_width + it);
 	wWindowConfigure(wwin, wwin->frame_x, wwin->frame_y, wwin->client.width, wwin->client.height);
 
 	/* setup the frame descriptor */
@@ -2144,8 +2144,8 @@ WWindow *wManageInternalWindow(WScreen *scr, xcb_window_t window, xcb_window_t o
 	wwin->frame->core->descriptor.parent = wwin;
 	wwin->frame->core->descriptor.parent_type = WCLASS_WINDOW;
 
-	xcb_configure_window(xconn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
-	xcb_map_subwindows(xconn, wwin->frame->core->window);
+	xcb_configure_window(wdisp->conn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
+	xcb_map_subwindows(wdisp->conn, wwin->frame->core->window);
 
 	/* setup stacking descriptor */
 	if (wwin->transient_for != XCB_NONE && wwin->transient_for != scr->root_win) {
@@ -2252,22 +2252,22 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 
 	if (!destroyed) {
 		if (!wwin->flags.internal_window)
-			xcb_change_save_set(xconn, XCB_SET_MODE_DELETE, wwin->client_win);
+			xcb_change_save_set(wdisp->conn, XCB_SET_MODE_DELETE, wwin->client_win);
 
 		/* If this is a leader window, we still need to listen for
 		 * DestroyNotify and PropertyNotify. */
 		if (wApplicationOf(wwin->client_win))
-			xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE });
+			xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE });
 		else
-			xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_NO_EVENT });
+			xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_NO_EVENT });
 
-		wXUngrabButton(xconn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
-		wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
+		wXUngrabButton(wdisp->conn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
+		wXUngrabKey(wdisp->conn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
 	}
 
-	xcb_unmap_window(xconn, frame->window);
+	xcb_unmap_window(wdisp->conn, frame->window);
 
-	xcb_unmap_window(xconn, wwin->client_win);
+	xcb_unmap_window(wdisp->conn, wwin->client_win);
 
 	/* deselect window */
 	wSelectWindow(wwin, false);
@@ -2277,7 +2277,7 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 	if (w_global.config->raise_delay)
 		WMDeleteTimerWithClientData(wwin->frame->core);
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 
 	/* reparent the window back to the root */
 	if (restore)
@@ -2336,7 +2336,7 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 			 * This way keybindings will not freeze.
 			 */
 			tmp = NULL;
-			if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+			if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 				tmp = wWindowFor(win);
 			if (tmp == wwin)
 				tmp = NULL;
@@ -2393,17 +2393,17 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 	wWindowDestroy(wwin);
 	wLayoutApply(scr, wwin_workspace);
 	wAutoRemoveEmptyWorkspaces(scr);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 void wWindowMap(WWindow *wwin)
 {
-	xcb_map_window(xconn, wwin->frame->core->window);
+	xcb_map_window(wdisp->conn, wwin->frame->core->window);
 	if (!wwin->flags.shaded) {
 		/* window will be remapped when getting MapNotify */
-		xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
-		xcb_map_window(xconn, wwin->client_win);
-		xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+		xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+		xcb_map_window(wdisp->conn, wwin->client_win);
+		xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
 
 		wwin->flags.mapped = 1;
 	}
@@ -2414,11 +2414,11 @@ void wWindowUnmap(WWindow *wwin)
 	wwin->flags.mapped = 0;
 
 	/* prevent window withdrawal when getting UnmapNotify */
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
-	xcb_unmap_window(xconn, wwin->client_win);
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+	xcb_unmap_window(wdisp->conn, wwin->client_win);
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
 
-	xcb_unmap_window(xconn, wwin->frame->core->window);
+	xcb_unmap_window(wdisp->conn, wwin->frame->core->window);
 }
 
 void wWindowSingleFocus(WWindow *wwin)
@@ -2870,7 +2870,7 @@ static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
 			WSETUFLAG(wwin, no_bind_keys, v);
 		if (WFLAGP(wwin, no_bind_keys) != old_no_bind_keys) {
 			if (WFLAGP(wwin, no_bind_keys))
-				wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
+				wXUngrabKey(wdisp->conn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 			else
 				wWindowSetKeyGrabs(wwin);
 		}
@@ -3215,7 +3215,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 				wapp->last_workspace = workspace;
 			if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 				if (wwin->icon) {
-					xcb_unmap_window(xconn, wwin->icon->core->window);
+					xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 					wwin->icon->mapped = 0;
 				}
 			} else if (wwin->flags.mapped || wwin->flags.shaded) {
@@ -3225,7 +3225,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 		} else if (!was_visible && now_visible) {
 			if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 				if (wwin->icon) {
-					xcb_map_window(xconn, wwin->icon->core->window);
+					xcb_map_window(wdisp->conn, wwin->icon->core->window);
 					wwin->icon->mapped = 1;
 				}
 			} else if (!wwin->flags.mapped
@@ -3257,7 +3257,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 
 			if (wwin->flags.miniaturized) {
 				if (wwin->icon) {
-					xcb_unmap_window(xconn, wwin->icon->core->window);
+					xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 					wwin->icon->mapped = 0;
 				}
 			} else {
@@ -3269,7 +3269,7 @@ void wWindowChangeWorkspace(WWindow *wwin, int workspace)
 		/* brought to current workspace. Map window */
 		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 			if (wwin->icon) {
-				xcb_map_window(xconn, wwin->icon->core->window);
+				xcb_map_window(wdisp->conn, wwin->icon->core->window);
 				wwin->icon->mapped = 1;
 			}
 		} else if (!wwin->flags.mapped && !(wwin->flags.miniaturized || wwin->flags.hidden)
@@ -3343,7 +3343,7 @@ void wWindowSetWorkspaceMask(WWindow *wwin, uint64_t mask, int primary)
 			wapp->last_workspace = primary;
 		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 			if (wwin->icon) {
-				xcb_unmap_window(xconn, wwin->icon->core->window);
+				xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 				wwin->icon->mapped = 0;
 			}
 		} else if (wwin->flags.mapped || wwin->flags.shaded) {
@@ -3353,7 +3353,7 @@ void wWindowSetWorkspaceMask(WWindow *wwin, uint64_t mask, int primary)
 	} else if (!was_visible && now_visible) {
 		if (wwin->flags.miniaturized && !w_global.config->sticky_icons) {
 			if (wwin->icon) {
-				xcb_map_window(xconn, wwin->icon->core->window);
+				xcb_map_window(wdisp->conn, wwin->icon->core->window);
 				wwin->icon->mapped = 1;
 			}
 		} else if (!wwin->flags.mapped
@@ -3470,9 +3470,9 @@ void wWindowSynthConfigureNotify(WWindow *wwin)
 		sevent.above_sibling = XCB_NONE;
 
 	sevent.override_redirect = false;
-	WXSendEvent32(xconn, &sevent, sizeof(sevent), 0, wwin->client_win,
+	WXSendEvent32(wdisp->conn, &sevent, sizeof(sevent), 0, wwin->client_win,
 		      XCB_EVENT_MASK_STRUCTURE_NOTIFY);
-	xcb_flush(xconn);
+	xcb_flush(wdisp->conn);
 }
 
 /*
@@ -3525,7 +3525,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		 * This will prevent the frame (that can have a different color)
 		 * to be exposed, causing flicker */
 		if (req_height > wwin->frame->core->height || req_width > wwin->frame->core->width)
-			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ req_width, req_height });
+			xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ req_width, req_height });
 
 		if (wwin->flags.shaded) {
 			wFrameWindowConfigure(wwin->frame, req_x, req_y,
@@ -3547,10 +3547,10 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		 * a GravityNotify with xev), leaving it at the wrong offset.
 		 */
 		if (wwin->normal_hints && wwin->normal_hints->win_gravity != XCB_GRAVITY_NORTH_WEST)
-			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+			xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 
 		if (!(req_height > wwin->frame->core->height || req_width > wwin->frame->core->width))
-			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ req_width, req_height });
+			xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ req_width, req_height });
 
 		wFrameInnerBorderClientOrigin(wwin, req_x, req_y,
 					      &wwin->client.x, &wwin->client.y);
@@ -3560,7 +3560,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 		if (req_x != wwin->frame_x || req_y != wwin->frame_y) {
 			wFrameInnerBorderClientOrigin(wwin, req_x, req_y,
 						      &wwin->client.x, &wwin->client.y);
-			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ req_x, req_y });
+			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ req_x, req_y });
 		}
 		/*
 		 * if the window is being moved but not resized
@@ -3572,7 +3572,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 	wwin->frame_x = req_x;
 	wwin->frame_y = req_y;
 #ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported && wwin->flags.shaped && resize)
+	if (wdisp->xext.shape.supported && wwin->flags.shaped && resize)
 		wWindowSetShape(wwin);
 #endif
 
@@ -3590,7 +3590,7 @@ void wWindowConfigure(WWindow *wwin, int req_x, int req_y, int req_width, int re
 	if (wwin->on_geometry_change)
 		wwin->on_geometry_change(wwin, wwin->geometry_data);
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /* req_x, req_y: new position of the frame */
@@ -3613,7 +3613,7 @@ void wWindowMove(WWindow *wwin, int req_x, int req_y)
 
 	wFrameInnerBorderClientOrigin(wwin, req_x, req_y, &wwin->client.x, &wwin->client.y);
 
-	xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ req_x, req_y });
+	xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ req_x, req_y });
 
 	wwin->frame_x = req_x;
 	wwin->frame_y = req_y;
@@ -3644,7 +3644,7 @@ void wWindowApplyInnerBorder(WWindow *wwin)
 	height = wwin->client.height + wwin->frame->top_width + wwin->frame->bottom_width + it + ib;
 
 	wFrameWindowConfigure(wwin->frame, wwin->frame_x, wwin->frame_y, width, height);
-	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+	xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 	wFrameInnerBorderClientOrigin(wwin, wwin->frame_x, wwin->frame_y,
 				     &wwin->client.x, &wwin->client.y);
 	wWindowSynthConfigureNotify(wwin);
@@ -3915,7 +3915,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 				newy = wwin->frame_y + oldh - wwin->frame->top_width;
 
 			wFrameInnerBorderWidths(wwin, &il, NULL, &it, NULL);
-			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+			xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 			wWindowConfigure(wwin, wwin->frame_x, newy, wwin->client.width, wwin->client.height);
 			/* the existing call below only fires when a hide
 			 * flag toggles, wWindowUpdateButtonImages itself
@@ -3977,7 +3977,7 @@ void wWindowConfigureBorders(WWindow *wwin)
 			wFrameWindowHideButton(wwin->frame, flags);
 
 #ifdef USE_XSHAPE
-		if (w_global.xext.shape.supported && wwin->flags.shaped)
+		if (wdisp->xext.shape.supported && wwin->flags.shaped)
 			wWindowSetShape(wwin);
 #endif
 	}
@@ -4023,8 +4023,8 @@ void wWindowSaveState(WWindow *wwin)
 	data[14] = wwin->defined_user_flags.no_movable ? wwin->user_flags.no_movable + 1 : 0;
 	data[15] = wwin->defined_user_flags.no_resizable ? wwin->user_flags.no_resizable + 1 : 0;
 
-	WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wmaker.state,
-		       w_global.atom.wmaker.state, data, WSAVED_STATE_SLOTS);
+	WXSetFormat32N(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.state,
+		       wdisp->atom.wmaker.state, data, WSAVED_STATE_SLOTS);
 
 	if (wwin->tab_group != NULL) {
 		uint32_t tab[3];
@@ -4032,17 +4032,17 @@ void wWindowSaveState(WWindow *wwin)
 		tab[0] = wGroupSessionId(wwin->screen_ptr, wwin->tab_group);
 		tab[1] = (uint32_t)wwin->tab_group_index;
 		tab[2] = (uint32_t)wwin->tab_group->active_index;
-		WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wmaker.tab_group,
-			       w_global.atom.wmaker.tab_group, tab, 3);
+		WXSetFormat32N(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.tab_group,
+			       wdisp->atom.wmaker.tab_group, tab, 3);
 	} else {
-		WXDeleteProperty(xconn, wwin->client_win, w_global.atom.wmaker.tab_group);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.tab_group);
 	}
 
 	if (wwin->mark_key_label != NULL)
-		WXSetLatin1String(xconn, wwin->client_win, w_global.atom.wmaker.mark_key,
+		WXSetLatin1String(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.mark_key,
 				  wwin->mark_key_label, strlen(wwin->mark_key_label));
 	else
-		WXDeleteProperty(xconn, wwin->client_win, w_global.atom.wmaker.mark_key);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.mark_key);
 }
 
 static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark_ck,
@@ -4059,15 +4059,15 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 	 * (per-window, off), and the geometry locks default to 0 (not
 	 * user-defined). Quads past the current layout, written by a
 	 * newer or older binary, are ignored. */
-	data = WXRcvFormat32List(xconn, state_ck, &count);
+	data = WXRcvFormat32List(wdisp->conn, state_ck, &count);
 	if (!data || count < 10) {
 		wfree(data);
-		WXDiscard(xconn, mark_ck);
-		WXDiscard(xconn, tab_ck);
+		WXDiscard(wdisp->conn, mark_ck);
+		WXDiscard(wdisp->conn, tab_ck);
 		return 0;
 	}
 
-	WXDeleteProperty(xconn, window, w_global.atom.wmaker.state);
+	WXDeleteProperty(wdisp->conn, window, wdisp->atom.wmaker.state);
 
 	*state = wmalloc(sizeof(WSavedState));
 
@@ -4093,15 +4093,15 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 		(*state)->no_resizable_state = data[15];
 	wfree(data);
 
-	(*state)->mark_key = WXRcvString(xconn, mark_ck, &len);
+	(*state)->mark_key = WXRcvString(wdisp->conn, mark_ck, &len);
 	if ((*state)->mark_key)
-		WXDeleteProperty(xconn, window, w_global.atom.wmaker.mark_key);
+		WXDeleteProperty(wdisp->conn, window, wdisp->atom.wmaker.mark_key);
 
-	if (WXRcvFormat32N(xconn, tab_ck, tab, 3)) {
+	if (WXRcvFormat32N(wdisp->conn, tab_ck, tab, 3)) {
 		(*state)->tab_group_gid = tab[0];
 		(*state)->tab_group_idx = (int)tab[1];
 		(*state)->tab_group_active = (int)tab[2];
-		WXDeleteProperty(xconn, window, w_global.atom.wmaker.tab_group);
+		WXDeleteProperty(wdisp->conn, window, wdisp->atom.wmaker.tab_group);
 	}
 
 	return 1;
@@ -4110,10 +4110,10 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 #ifdef USE_XSHAPE
 void wWindowClearShape(WWindow * wwin)
 {
-	xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 		       wwin->frame->core->window, 0, wwin->frame->top_width,
 		       XCB_PIXMAP_NONE);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 void wWindowSetShape(WWindow * wwin)
@@ -4136,8 +4136,8 @@ void wWindowSetShape(WWindow * wwin)
 		goto alt_code;
 
 	/* Get array of rectangles describing the shape mask */
-	gr = xcb_shape_get_rectangles_reply(xconn,
-			xcb_shape_get_rectangles(xconn, wwin->client_win,
+	gr = xcb_shape_get_rectangles_reply(wdisp->conn,
+			xcb_shape_get_rectangles(wdisp->conn, wwin->client_win,
 						 XCB_SHAPE_SK_BOUNDING), NULL);
 	if (!gr)
 		goto alt_code;
@@ -4176,10 +4176,10 @@ void wWindowSetShape(WWindow * wwin)
 	}
 
 	/* shape our frame window */
-	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_shape_rectangles(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			     XCB_CLIP_ORDERING_UNSORTED, wwin->frame->core->window,
 			     0, wwin->frame->top_width, count, urec);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 	free(urec);
 	return;
 
@@ -4201,16 +4201,16 @@ void wWindowSetShape(WWindow * wwin)
 		count++;
 	}
 	if (count > 0) {
-		xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		xcb_shape_rectangles(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 				     XCB_CLIP_ORDERING_UNSORTED,
 				     wwin->frame->core->window, 0, 0, count, rect);
 	}
-	xcb_shape_combine(xconn, count > 0 ? XCB_SHAPE_SO_UNION : XCB_SHAPE_SO_SET,
+	xcb_shape_combine(wdisp->conn, count > 0 ? XCB_SHAPE_SO_UNION : XCB_SHAPE_SO_SET,
 			  XCB_SHAPE_SK_BOUNDING, XCB_SHAPE_SK_BOUNDING,
 			  wwin->frame->core->window, il,
 			  wwin->frame->top_width + it,
 			  wwin->client_win);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 #endif				/* USE_XSHAPE */
 
@@ -4254,7 +4254,7 @@ void wWindowSetKeyGrabs(WWindow * wwin)
 			continue;
 
 		if (key->modifier != XCB_MOD_MASK_ANY) {
-			wXGrabKey(xconn, key->keycode, key->modifier | XCB_MOD_MASK_LOCK,
+			wXGrabKey(wdisp->conn, key->keycode, key->modifier | XCB_MOD_MASK_LOCK,
 				 wwin->frame->core->window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #ifdef NUMLOCK_HACK
 			/* Also grab all modifier combinations possible that include,
@@ -4265,7 +4265,7 @@ void wWindowSetKeyGrabs(WWindow * wwin)
 				       wwin->frame->core->window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #endif
 		}
-		wXGrabKey(xconn, key->keycode, key->modifier,
+		wXGrabKey(wdisp->conn, key->keycode, key->modifier,
 			 wwin->frame->core->window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 	}
 
@@ -4282,7 +4282,7 @@ void wWindowResetMouseGrabs(WWindow * wwin)
 	 * of the button itself. Must figure a way to fix that.
 	 */
 
-	wXUngrabButton(xconn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
+	wXUngrabButton(wdisp->conn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win);
 
 	if (!WFLAGP(wwin, no_bind_mouse)) {
 		/* grabs for Meta+drag */
@@ -4315,10 +4315,10 @@ void wWindowResetMouseGrabs(WWindow * wwin)
 	    && !wwin->flags.is_gnustep) {
 		/* the passive grabs to focus the window */
 		/* if (w_global.config->focus_mode == WKF_CLICK) */
-		wXGrabButton(xconn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win,
+		wXGrabButton(wdisp->conn, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, wwin->client_win,
 			    true, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
 	}
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 void wWindowUpdateGNUstepAttr(WWindow * wwin, GNUstepWMAttributes * attr)
@@ -4638,7 +4638,7 @@ static void resizebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_even
 		wRaiseFrame(wwin->frame->core);
 
 	if (((xcb_button_press_event_t *)event)->event != wwin->frame->resizebar->window) {
-		if (wXGrabPointer(xconn, wwin->frame->resizebar->window, true,
+		if (wXGrabPointer(wdisp->conn, wwin->frame->resizebar->window, true,
 				 XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
 				 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 			return;
@@ -4648,10 +4648,10 @@ static void resizebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_even
 	if (((xcb_button_press_event_t *)event)->state & MOD_MASK) {
 		/* move the window */
 		wMouseMoveWindow(wwin, event);
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	} else {
 		wMouseResizeWindow(wwin, event);
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	}
 }
 
@@ -4771,7 +4771,7 @@ static void frameMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event)
 
 	if (((xcb_button_press_event_t *)event)->state & MOD_MASK) {
 		/* move the window */
-		if (wXGrabPointer(xconn, wwin->client_win, false,
+		if (wXGrabPointer(wdisp->conn, wwin->client_win, false,
 				 XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
 				 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 			return;
@@ -4789,7 +4789,7 @@ static void frameMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event)
 		} else if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1 || ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_2) {
 			wMouseMoveWindow(wwin, event);
 		}
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	}
 }
 
@@ -4848,7 +4848,7 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_event
 	}
 
 	if (seg >= 0 && ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_1) {
-		unsigned int tdm = wPreferences.tab_drag_modifier_mask;
+		unsigned int tdm = wdisp->tab_drag_modifier_mask;
 
 		if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
 			/* close this member only, do not activate it first */
@@ -4902,7 +4902,7 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_event
 			return;
 		}
 		if (((xcb_button_press_event_t *)event)->event != wwin->frame->titlebar->window
-		    && wXGrabPointer(xconn, wwin->frame->titlebar->window, false,
+		    && wXGrabPointer(wdisp->conn, wwin->frame->titlebar->window, false,
 				    XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
 				    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 			return;
@@ -4911,13 +4911,13 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_event
 		/* move the window */
 		wMouseMoveWindow(wwin, event);
 
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	} else if (((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_3 && ((xcb_button_press_event_t *)event)->state == 0
 		   && !wwin->flags.internal_window && !WCHECK_STATE(WSTATE_MODAL)) {
 		WObjDescriptor *desc;
 
 		if (((xcb_button_press_event_t *)event)->event != wwin->frame->titlebar->window
-		    && wXGrabPointer(xconn, wwin->frame->titlebar->window, false,
+		    && wXGrabPointer(wdisp->conn, wwin->frame->titlebar->window, false,
 				    XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
 				    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 			return;
@@ -4933,14 +4933,14 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_event
 
 		/* allow drag select */
 		if (!wwin->screen_ptr->window_menu || !wwin->screen_ptr->window_menu->menu) {
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 			return;
 		}
 		desc = &wwin->screen_ptr->window_menu->menu->descriptor;
 		event->response_type |= 0x80;
 		(*desc->handle_mousedown) (desc, event);
 
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	}
 }
 
@@ -4970,9 +4970,9 @@ static void windowCloseClick(WCoreWindow *sender, void *data, xcb_generic_event_
 	} else {
 		if (wwin->protocols.DELETE_WINDOW && ((xcb_button_press_event_t *)event)->state == 0) {
 			/* send delete message */
-			wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-									  w_global.timestamp.last_event);
-			wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+			wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+									  wdisp->timestamp.last_event);
+			wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 		}
 	}
 }
@@ -4991,9 +4991,9 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, xcb_generic_eve
 
 	/* send delete message */
 	if (wwin->protocols.DELETE_WINDOW) {
-		wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-								  w_global.timestamp.last_event);
-		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+		wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+								  wdisp->timestamp.last_event);
+		wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 	} else {
 		wClientKill(wwin);
 	}
@@ -5013,7 +5013,7 @@ void wWindowGetLanguageLabel(int group_index, char *label)
 	/* _XKB_RULES_NAMES on the default root is a STRING property holding
 	 * five NUL-separated fields, rules\0model\0layout\0variant\0options,
 	 * walk to the third field then take the group_index-th comma token */
-	prop = WXGetLatin1String(xconn, wXRootWindow(xconn, dflt_screen),
+	prop = WXGetLatin1String(wdisp->conn, wXRootWindow(wdisp->conn, wdisp->default_screen),
 				 wx_static_atoms[W_ATOM_XKB_RULES_NAMES], &len);
 	if (!prop)
 		return;
@@ -5159,8 +5159,8 @@ static void windowIconifyClick(WCoreWindow *sender, void *data, xcb_generic_even
 		wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
 	} else if (((xcb_button_press_event_t *)event)->state == 0) {
 		if (wwin->protocols.MINIATURIZE_WINDOW)
-			wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window,
-					    w_global.timestamp.last_event);
+			wClientSendProtocol(wwin, wdisp->atom.gnustep.wm_miniaturize_window,
+					    wdisp->timestamp.last_event);
 		else
 			wIconifyWindow(wwin);
 	}

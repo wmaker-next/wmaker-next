@@ -140,14 +140,14 @@ static bool replace_existing_wm(WScreen *scr)
 		return false;
 	}
 
-	scr->sn_atom = WXInternAtom(xconn, atomName);
+	scr->sn_atom = WXInternAtom(wdisp->conn, atomName);
 	if (! scr->sn_atom)
 		return false;
 
 	/* Check if an existing window manager owns the selection */
-	wm = wXGetSelectionOwner(xconn, scr->sn_atom);
+	wm = wXGetSelectionOwner(wdisp->conn, scr->sn_atom);
 	if (wm) {
-		if (!wPreferences.flags.replace) {
+		if (!wdisp->flags.replace) {
 			wmessage(_("another window manager is running"));
 			wwarning(_("use the --replace flag to replace it"));
 			return false;
@@ -158,24 +158,24 @@ static bool replace_existing_wm(WScreen *scr)
 		 * GetSelectionOwner and here so a BadWindow means there
 		 * is nothing to wait for */
 		mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-		if (!WXCheckVoid(xconn,
-				 xcb_change_window_attributes_checked(xconn, wm,
+		if (!WXCheckVoid(wdisp->conn,
+				 xcb_change_window_attributes_checked(wdisp->conn, wm,
 								      XCB_CW_EVENT_MASK, &mask)))
 			wm = XCB_NONE;
 	}
 #endif
 
 	/* for our window manager info notice board and the selection owner */
-	scr->info_window = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->info_window, scr->root_win, 0, 0, 10, 10, 0,
+	scr->info_window = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, scr->info_window, scr->root_win, 0, 0, 10, 10, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
 #ifdef USE_ICCCM_WMREPLACE
 	/* Try to acquire the selection */
 	current_time = XCB_CURRENT_TIME;
-	if (!WXCheckVoid(xconn,
-			 xcb_set_selection_owner_checked(xconn, scr->info_window,
+	if (!WXCheckVoid(wdisp->conn,
+			 xcb_set_selection_owner_checked(wdisp->conn, scr->info_window,
 							  scr->sn_atom, current_time)))
 		return false;
 
@@ -197,7 +197,7 @@ static bool replace_existing_wm(WScreen *scr)
 			if (remain < 0)
 				remain = 0;
 
-			if (!wMaskEventTimed(xconn, XCB_EVENT_MASK_STRUCTURE_NOTIFY, wm, &event, remain)) {
+			if (!wMaskEventTimed(wdisp->conn, XCB_EVENT_MASK_STRUCTURE_NOTIFY, wm, &event, remain)) {
 				wwarning(_("other window manager hasn't exited!"));
 				return false;
 			}
@@ -209,10 +209,10 @@ static bool replace_existing_wm(WScreen *scr)
 		wmessage(_("replacing the other window manager"));
 	}
 
-	if (wXGetSelectionOwner(xconn, scr->sn_atom) != scr->info_window)
+	if (wXGetSelectionOwner(wdisp->conn, scr->sn_atom) != scr->info_window)
 		return false;
 
-	WXSendClientMessage(xconn, scr->root_win, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+	WXSendClientMessage(wdisp->conn, scr->root_win, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
 			    scr->root_win, scr->sn_atom,
 			    (long)current_time, (long)scr->sn_atom,
 			    (long)scr->info_window, 0, 0);
@@ -373,8 +373,8 @@ static WPixmap *make3Dots(WScreen *scr)
 	m = get_dot_mult();
 	dy = isize - 6 * m;
 
-	pix = xcb_generate_id(xconn);
-	xcb_create_pixmap(xconn, scr->w_depth, pix, scr->w_win, isize, isize);
+	pix = xcb_generate_id(wdisp->conn);
+	xcb_create_pixmap(wdisp->conn, scr->w_depth, pix, scr->w_win, isize, isize);
 	surf = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix,
 					rc->xvisual, isize, isize);
 	cr = cairo_create(surf);
@@ -386,8 +386,8 @@ static WPixmap *make3Dots(WScreen *scr)
 	cairo_surface_flush(surf);
 	cairo_surface_destroy(surf);
 
-	mask = xcb_generate_id(xconn);
-	xcb_create_pixmap(xconn, 1, mask, scr->w_win, isize, isize);
+	mask = xcb_generate_id(wdisp->conn);
+	xcb_create_pixmap(wdisp->conn, 1, mask, scr->w_win, isize, isize);
 	surf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 						   (xcb_pixmap_t)mask, isize, isize);
 	cr = cairo_create(surf);
@@ -470,7 +470,7 @@ static void publishIconSizes(WScreen *scr)
 	icon_size[3] = w_global.config->icon_size - 4;
 	icon_size[4] = 1;
 	icon_size[5] = 1;
-	WXSetFormat32N(xconn, scr->root_win, XCB_ATOM_WM_ICON_SIZE,
+	WXSetFormat32N(wdisp->conn, scr->root_win, XCB_ATOM_WM_ICON_SIZE,
 		       XCB_ATOM_WM_ICON_SIZE, icon_size, 6);
 }
 
@@ -488,7 +488,7 @@ void wScreenApplyIconSize(WScreen *scr)
 	/* dock_shadow is wXMoveResizeWindow()'d to the current icon size at
 	 * the start of every drag so it self-heals, but resize it now so
 	 * the stale size never shows up before the first drag */
-	xcb_configure_window(xconn, scr->dock_shadow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
+	xcb_configure_window(wdisp->conn, scr->dock_shadow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
 
 	/* the running-app dot indicator pixmap and its shape mask are
 	 * sized icon_size x icon_size with the dots positioned by
@@ -529,19 +529,19 @@ static void createInternalWindows(WScreen * scr)
 {
 
 	/* InputOnly window to get the focus when no other window can get it */
-	scr->no_focus_win = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, scr->no_focus_win, scr->root_win, -10, -10, 4, 4, 0,
+	scr->no_focus_win = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, scr->no_focus_win, scr->root_win, -10, -10, 4, 4, 0,
 			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 			  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
 			  (const uint32_t[]){ true, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_FOCUS_CHANGE });
-	xcb_change_window_attributes(xconn, scr->no_focus_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE });
-	xcb_map_window(xconn, scr->no_focus_win);
+	xcb_change_window_attributes(wdisp->conn, scr->no_focus_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE });
+	xcb_map_window(wdisp->conn, scr->no_focus_win);
 
-	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
+	xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 
 	/* shadow window for dock buttons */
-	scr->dock_shadow = xcb_generate_id(xconn);
-	xcb_create_window(xconn, scr->w_depth, scr->dock_shadow, scr->root_win, 0, 0,
+	scr->dock_shadow = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, scr->w_depth, scr->dock_shadow, scr->root_win, 0, 0,
 			  w_global.config->icon_size, w_global.config->icon_size, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, scr->w_visual->visual_id,
 			  XCB_CW_BACK_PIXMAP | XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL
@@ -549,7 +549,7 @@ static void createInternalWindows(WScreen * scr)
 			  | XCB_CW_CURSOR,
 			  (const uint32_t[]){ XCB_BACK_PIXMAP_NONE, scr->white_pixel, scr->black_pixel,
 					      true, true, scr->w_colormap,
-					      wPreferences.cursor[WCUR_NORMAL] });
+					      wdisp->cursor[WCUR_NORMAL] });
 
 	scr->mini_screenshot_timeout = 0;
 }
@@ -586,8 +586,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	scr->stacking_list = WMCreateTreeBag();
 
 	/* initialize globals */
+	scr->display = wdisp;
 	scr->screen = screen_number;
-	xscr = wXScreenOf(xconn, screen_number);
+	xscr = wXScreenOf(wdisp->conn, screen_number);
 	scr->root_win = xscr->root;
 	scr->depth = xscr->root_depth;
 	scr->colormap = xscr->default_colormap;
@@ -616,7 +617,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* Do we need to replace an existing window manager? */
 	if (!replace_existing_wm(scr)) {
-		xcb_destroy_window(xconn, scr->info_window);
+		xcb_destroy_window(wdisp->conn, scr->info_window);
 		wfree(scr);
 		return NULL;
 	}
@@ -632,8 +633,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	 * unmapped, and XKB event selection is per-device so wXkbInit()
 	 * has already done it */
 	event_mask = EVENT_MASK;
-	if (!WXCheckVoid(xconn,
-			 xcb_change_window_attributes_checked(xconn, scr->root_win,
+	if (!WXCheckVoid(wdisp->conn,
+			 xcb_change_window_attributes_checked(wdisp->conn, scr->root_win,
 							      XCB_CW_EVENT_MASK,
 							      &event_mask))) {
 		wfree(scr);
@@ -641,20 +642,20 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	}
 
 #ifdef USE_RANDR
-	if (w_global.xext.randr.supported)
-		xcb_randr_select_input(xconn, scr->root_win,
+	if (wdisp->xext.randr.supported)
+		xcb_randr_select_input(wdisp->conn, scr->root_win,
 				       XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE
 				       | XCB_RANDR_NOTIFY_MASK_CRTC_CHANGE
 				       | XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
 #endif
 
 #ifdef USE_XCB_SCREENSAVER
-	if (w_global.xext.screensaver.supported)
-		xcb_screensaver_select_input(xconn, scr->root_win,
+	if (wdisp->xext.screensaver.supported)
+		xcb_screensaver_select_input(wdisp->conn, scr->root_win,
 					     XCB_SCREENSAVER_EVENT_NOTIFY_MASK);
 #endif
 
-	wXDefineCursor(xconn, scr->root_win, wPreferences.cursor[WCUR_ROOT]);
+	wXDefineCursor(wdisp->conn, scr->root_win, wdisp->cursor[WCUR_ROOT]);
 
 	/* screen descriptor for raster graphic library */
 	rattr.flags = 0;
@@ -663,7 +664,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		rattr.visualid = getWVisualID(screen_number);
 	}
 
-	scr->rcontext = RCreateContextXCB(xconn, screen_number, &rattr);
+	scr->rcontext = RCreateContextXCB(wdisp->conn, screen_number, &rattr);
 	if (scr->rcontext == NULL) {
 		wfatal(_("can't create Context on screen %d, %s"),
 		       screen_number, RMessageForError(RErrorCode));
@@ -675,11 +676,11 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	scr->w_colormap = scr->rcontext->cmap;
 	/* wraster picked the visual on the xcb side, keep its visualtype */
 	scr->w_visual = scr->rcontext->xvisual ?
-		wXVisualTypeForID(xconn, scr->rcontext->xvisual->visual_id)
-		: wXDefaultVisualType(xconn, screen_number);
+		wXVisualTypeForID(wdisp->conn, scr->rcontext->xvisual->visual_id)
+		: wXDefaultVisualType(wdisp->conn, screen_number);
 
 	/* create screen descriptor for WINGs */
-	scr->wmscreen = WMCreateScreenWithRContext(xconn, screen_number, scr->rcontext);
+	scr->wmscreen = WMCreateScreenWithRContext(wdisp->conn, screen_number, scr->rcontext);
 	scr->ui_scale = WMScreenUIScale(scr->wmscreen);
 
 	if (!scr->wmscreen) {
@@ -755,8 +756,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	PropSetWMakerProtocols(scr->root_win);
 
 	/* setup our noticeboard */
-	WXSetWindow(xconn, scr->info_window, w_global.atom.wmaker.noticeboard, scr->info_window);
-	WXSetWindow(xconn, scr->root_win, w_global.atom.wmaker.noticeboard, scr->info_window);
+	WXSetWindow(wdisp->conn, scr->info_window, wdisp->atom.wmaker.noticeboard, scr->info_window);
+	WXSetWindow(wdisp->conn, scr->root_win, wdisp->atom.wmaker.noticeboard, scr->info_window);
 
 #ifdef BALLOON_TEXT
 	/* initialize balloon text stuff */
@@ -801,7 +802,7 @@ void wScreenUpdateRootEventMask(WScreen *scr)
 	if (w_global.config->scrollable_menus && scr->mapped_menu_count > 0)
 		mask |= XCB_EVENT_MASK_POINTER_MOTION;
 
-	xcb_change_window_attributes(xconn, scr->root_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ mask });
+	xcb_change_window_attributes(wdisp->conn, scr->root_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ mask });
 }
 
 void wScreenUpdateUsableArea(WScreen *scr)
@@ -898,7 +899,7 @@ void wScreenRestoreState(WScreen * scr)
 
 	make_keys();
 
-	if (w_global.screen_count == 1) {
+	if (wdisp->screen_count == 1) {
 		path = wdefaultspathfordomain("WMState");
 	} else {
 		char buf[16];
@@ -907,7 +908,7 @@ void wScreenRestoreState(WScreen * scr)
 	}
 	scr->session_state = WMReadPropListFromFile(path);
 	wfree(path);
-	if (!scr->session_state && w_global.screen_count > 1) {
+	if (!scr->session_state && wdisp->screen_count > 1) {
 		path = wdefaultspathfordomain("WMState");
 		scr->session_state = WMReadPropListFromFile(path);
 		wfree(path);
@@ -916,17 +917,17 @@ void wScreenRestoreState(WScreen * scr)
 	if (!scr->session_state)
 		scr->session_state = WMCreatePLDictionary(NULL, NULL);
 
-	if (!wPreferences.flags.nodock) {
+	if (!wdisp->flags.nodock) {
 		state = WMGetFromPLDictionary(scr->session_state, dDock);
 		scr->dock = wDockRestoreState(scr, state, WM_DOCK);
 	}
 
-	if (!wPreferences.flags.noclip) {
+	if (!wdisp->flags.noclip) {
 		state = WMGetFromPLDictionary(scr->session_state, dClip);
 		scr->clip_icon = wClipRestoreState(scr, state);
 	}
 
-	if (!wPreferences.flags.nodrawer) {
+	if (!wdisp->flags.nodrawer) {
 		if (!scr->dock->on_right_side) {
 			/* Drawer tile was created early in wScreenInit() -> wReadDefaults(). At
 			 * that time, scr->dock was NULL and the tile was created as if we were on
@@ -964,7 +965,7 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 		wwin = wwin->prev;
 	}
 
-	if (wPreferences.flags.noupdates)
+	if (wdisp->flags.noupdates)
 		return;
 
 	old_state = scr->session_state;
@@ -980,14 +981,14 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 	WMPLSetCaseSensitive(true);
 
 	/* save dock state to file */
-	if (!wPreferences.flags.nodock) {
+	if (!wdisp->flags.nodock) {
 		wDockSaveState(scr, old_state);
 	} else {
 		foo = WMGetFromPLDictionary(old_state, dDock);
 		if (foo != NULL)
 			WMPutInPLDictionary(scr->session_state, dDock, foo);
 	}
-	if (!wPreferences.flags.noclip) {
+	if (!wdisp->flags.noclip) {
 		wClipSaveState(scr);
 	} else {
 		foo = WMGetFromPLDictionary(old_state, dClip);
@@ -998,7 +999,7 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 	wWorkspaceSaveState(scr, old_state);
 	wWorkspaceSaveHeadState(scr);
 
-	if (!wPreferences.flags.nodrawer) {
+	if (!wdisp->flags.nodrawer) {
 		wDrawersSaveState(scr);
 	} else {
 		foo = WMGetFromPLDictionary(old_state, dDrawers);
@@ -1024,7 +1025,7 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 
 	wMenuSaveState(scr);
 
-	if (w_global.screen_count == 1) {
+	if (wdisp->screen_count == 1) {
 		str = wdefaultspathfordomain("WMState");
 	} else {
 		char buf[16];
@@ -1149,17 +1150,17 @@ static RImage *imageCaptureArea(WScreen *scr)
 	int w = 0, h = 0;
 	int x = xp, y = yp;
 
-	if (wXGrabPointer(xconn, scr->root_win, false, XCB_EVENT_MASK_BUTTON_MOTION
+	if (wXGrabPointer(wdisp->conn, scr->root_win, false, XCB_EVENT_MASK_BUTTON_MOTION
 			| XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
-			XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_CAPTURE], XCB_CURRENT_TIME) != WXGrabSuccess) {
+			XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_CAPTURE], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		return NULL;
 	}
-	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabKeyboard(wdisp->conn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	while (!quit) {
 		free(event);
 		event = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_EXPOSURE, &event);
 		if (!event)
 			break;
@@ -1182,18 +1183,18 @@ static RImage *imageCaptureArea(WScreen *scr)
 					 * capture border is repainted content not a
 					 * cleared 3 px strip */
 					wWireframeHide(scr);
-					wXSync(xconn);
+					wXSync(wdisp->conn);
 					/* drop the in-hand release event before
 					 * the drain overwrites it */
 					free(event);
 					event = NULL;
-					while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
+					while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &event)) {
 						WMHandleEvent(event);
 						free(event);
 						event = NULL;
 					}
-					wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
-					wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+					wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+					wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 					ximg = RGetXImage(scr->rcontext, scr->root_win, x, y, w, h);
 					if (!ximg)
 						return NULL;
@@ -1238,8 +1239,8 @@ static RImage *imageCaptureArea(WScreen *scr)
 
 	free(event);
 	wWireframeHide(scr);
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 	return NULL;
 }
 
@@ -1253,10 +1254,10 @@ static void hideMiniScreenshot(void *data)
 		WXWindowAttributes attr;
 
 		WMDeleteTimerHandler(scr->mini_screenshot_timer);
-		if (wXGetWindowAttributes(xconn, scr->mini_screenshot, &attr, NULL))
+		if (wXGetWindowAttributes(wdisp->conn, scr->mini_screenshot, &attr, NULL))
 			slide_window(scr->mini_screenshot, attr.x, attr.y, attr.x + attr.width, attr.y);
-		xcb_unmap_window(xconn, scr->mini_screenshot);
-		xcb_destroy_window(xconn, scr->mini_screenshot);
+		xcb_unmap_window(wdisp->conn, scr->mini_screenshot);
+		xcb_destroy_window(wdisp->conn, scr->mini_screenshot);
 		scr->mini_screenshot_timeout = 0;
 	}
 }
@@ -1270,19 +1271,19 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 	if (!scr->mini_screenshot_timeout) {
 		xcb_window_t win;
 
-		win = xcb_generate_id(xconn);
-		xcb_create_window(xconn, XCB_COPY_FROM_PARENT, win, scr->root_win, x, y, img->width, img->height, 0,
+		win = xcb_generate_id(wdisp->conn);
+		xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, win, scr->root_win, x, y, img->width, img->height, 0,
 				  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 				  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 		scr->mini_screenshot = win;
 	}
 	RConvertImage(scr->rcontext, img, &pix);
-	xcb_change_window_attributes(xconn, scr->mini_screenshot, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix });
-	xcb_free_pixmap(xconn, pix);
-	xcb_clear_area(xconn, 0, scr->mini_screenshot, 0, 0, 0, 0);
-	xcb_configure_window(xconn, scr->mini_screenshot, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-	xcb_map_window(xconn, scr->mini_screenshot);
-	wXFlush(xconn);
+	xcb_change_window_attributes(wdisp->conn, scr->mini_screenshot, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix });
+	xcb_free_pixmap(wdisp->conn, pix);
+	xcb_clear_area(wdisp->conn, 0, scr->mini_screenshot, 0, 0, 0, 0);
+	xcb_configure_window(wdisp->conn, scr->mini_screenshot, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(wdisp->conn, scr->mini_screenshot);
+	wXFlush(wdisp->conn);
 
 	scr->mini_screenshot_timeout = time(NULL) + 2;
 	scr->mini_screenshot_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideMiniScreenshot, scr);

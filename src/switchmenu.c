@@ -255,7 +255,7 @@ static void switchMenuTitle(WWindow *wwin, char *buf, size_t bufsz)
 	char *xname = NULL;
 
 	src = wwin->frame->title ? wwin->frame->title : DEF_WINDOW_TITLE;
-	if (wwin->tab_group && wFetchName(xconn, wwin->client_win, &xname) && xname)
+	if (wwin->tab_group && wFetchName(wdisp->conn, wwin->client_win, &xname) && xname)
 		src = xname;
 	snprintf(buf, bufsz, "%s", src);
 	if (xname)

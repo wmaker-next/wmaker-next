@@ -146,7 +146,7 @@ static void wGroupUpdateTitlebar(WWindow *wwin)
 		return;
 
 	xname = NULL;
-	if (!wFetchName(xconn, wwin->client_win, &xname) || !xname)
+	if (!wFetchName(wdisp->conn, wwin->client_win, &xname) || !xname)
 		base = DEF_WINDOW_TITLE;
 	else
 		base = xname;
@@ -217,9 +217,9 @@ static void wGroupRevealMember(WScreen *scr, WWindow *wwin, bool focus)
 	 * newly active member stays unmapped and only the membership state
 	 * is published, the existing miniwindow or app icon brings it back */
 	if (!wwin->flags.miniaturized && !wwin->flags.hidden) {
-		xcb_map_window(xconn, wwin->frame->core->window);
+		xcb_map_window(wdisp->conn, wwin->frame->core->window);
 		if (!wwin->flags.shaded) {
-			xcb_map_window(xconn, wwin->client_win);
+			xcb_map_window(wdisp->conn, wwin->client_win);
 			wwin->flags.mapped = 1;
 		}
 		if (focus)
@@ -333,7 +333,7 @@ void wGroupAttach(WWindowGroup *grp, WWindow *wwin)
 			wIconDestroy(wwin->icon);
 			wwin->icon = NULL;
 		}
-		xcb_unmap_window(xconn, wwin->frame->core->window);
+		xcb_unmap_window(wdisp->conn, wwin->frame->core->window);
 		wwin->flags.mapped = 0;
 		wGroupNotifyState(wwin);
 	}
@@ -483,16 +483,16 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 		return;
 	}
 
-	wXGrabServer(xconn);
+	wXGrabServer(wdisp->conn);
 
 	/*
 	 * Map and focus the incoming frame before unmapping the outgoing
 	 * one so X does not revert focus to the root in between.
 	 */
 	wWindowMove(nxt, x, y);
-	xcb_map_window(xconn, nxt->frame->core->window);
+	xcb_map_window(wdisp->conn, nxt->frame->core->window);
 	if (!nxt->flags.shaded)
-		xcb_map_window(xconn, nxt->client_win);
+		xcb_map_window(wdisp->conn, nxt->client_win);
 	nxt->flags.mapped = 1;
 
 	/*
@@ -505,10 +505,10 @@ void wGroupSetActive(WWindowGroup *grp, int idx)
 	grp->active_index = idx;
 	wSetFocusTo(scr, nxt);
 
-	xcb_unmap_window(xconn, cur->frame->core->window);
+	xcb_unmap_window(wdisp->conn, cur->frame->core->window);
 	cur->flags.mapped = 0;
 
-	wXUngrabServer(xconn);
+	wXUngrabServer(wdisp->conn);
 
 	wGroupNotifyState(cur);
 	wGroupNotifyState(nxt);
@@ -634,9 +634,9 @@ void wGroupSyncShade(WWindow *source)
 		peer->flags.shaded = shaded;
 		if (shaded) {
 			peer->flags.mapped = 0;
-			xcb_change_window_attributes(xconn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
-			xcb_unmap_window(xconn, peer->client_win);
-			xcb_change_window_attributes(xconn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask });
+			xcb_change_window_attributes(wdisp->conn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+			xcb_unmap_window(wdisp->conn, peer->client_win);
+			xcb_change_window_attributes(wdisp->conn, peer->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ peer->event_mask });
 			wFrameWindowResize(peer->frame, peer->frame->core->width,
 			                   peer->frame->top_width - 1);
 			peer->client.y = peer->frame_y - (int)peer->client.height
@@ -647,7 +647,7 @@ void wGroupSyncShade(WWindow *source)
 			                   + (int)peer->client.height
 			                   + peer->frame->bottom_width);
 			peer->client.y = peer->frame_y + (int)peer->frame->top_width;
-			xcb_map_window(xconn, peer->client_win);
+			xcb_map_window(wdisp->conn, peer->client_win);
 		}
 		wWindowSynthConfigureNotify(peer);
 		WMPostNotificationName(WMNChangedState, peer, "shade");
@@ -749,8 +749,8 @@ void wGroupCloseAll(WWindowGroup *grp)
 		if (!w)
 			continue;
 		if (w->protocols.DELETE_WINDOW)
-			wClientSendProtocol(w, w_global.atom.wm.delete_window,
-			                    w_global.timestamp.last_event);
+			wClientSendProtocol(w, wdisp->atom.wm.delete_window,
+					wdisp->timestamp.last_event);
 		else
 			wClientKill(w);
 	}
@@ -768,8 +768,8 @@ void wGroupCloseMember(WWindowGroup *grp, int idx)
 	if (!w)
 		return;
 	if (w->protocols.DELETE_WINDOW)
-		wClientSendProtocol(w, w_global.atom.wm.delete_window,
-				    w_global.timestamp.last_event);
+		wClientSendProtocol(w, wdisp->atom.wm.delete_window,
+				    wdisp->timestamp.last_event);
 	else
 		wClientKill(w);
 }
@@ -855,12 +855,12 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 	if (!payload || !wGroupIsTabable(payload))
 		return;
 
-	if (wXGrabPointer(xconn, scr->root_win, false,
+	if (wXGrabPointer(wdisp->conn, scr->root_win, false,
 	                 XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE,
 	                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, scr->root_win,
-	                 wPreferences.cursor[WCUR_SELECT], XCB_CURRENT_TIME) != WXGrabSuccess)
+			wdisp->cursor[WCUR_SELECT], XCB_CURRENT_TIME) != WXGrabSuccess)
 		return;
-	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabKeyboard(wdisp->conn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	/* latch the payload so wUnmanageWindow() can knock it out if the
 	 * client exits while the pick loop is waiting on the user, the
@@ -875,7 +875,7 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 	while (!done) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS
 		            | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, &ev);
 
 		if (!ev)
@@ -895,7 +895,7 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 			}
 			child = (((xcb_button_press_event_t *)ev)->child);
 			if (child == XCB_NONE)
-				wXQueryPointer(xconn, scr->root_win, &root, &child,
+				wXQueryPointer(wdisp->conn, scr->root_win, &root, &child,
 				              &rx, &ry, &wx, &wy, &mask);
 			if (child == XCB_NONE || child == scr->root_win) {
 				cancelled = true;
@@ -932,9 +932,9 @@ void wGroupPickAndAttach(WScreen *scr, WWindow *payload)
 
 	scr->tab_pick_payload = NULL;
 
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
-	wXSync(xconn);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+	wXSync(wdisp->conn);
 
 	if (cancelled || !target || target == payload)
 		return;
@@ -1035,7 +1035,7 @@ static WWindow *wGroupWindowUnder(WScreen *scr, WWindow *source, int rx, int ry)
 	int fx, fy, fw, fh;
 
 	children = NULL;
-	if (!wXQueryTree(xconn, scr->root_win, &junk_root, &junk_parent,
+	if (!wXQueryTree(wdisp->conn, scr->root_win, &junk_root, &junk_parent,
 	                 &children, &n))
 		return NULL;
 
@@ -1167,13 +1167,13 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 	outline_h = (int)source->frame->core->height;
 	title_h = (int)source->frame->top_width;
 
-	if (wXGrabPointer(xconn, scr->root_win, false,
+	if (wXGrabPointer(wdisp->conn, scr->root_win, false,
 	                 XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
 	                 | XCB_EVENT_MASK_BUTTON_PRESS,
 	                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, scr->root_win,
-	                 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
+			wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
 		return false;
-	wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+	wXGrabKeyboard(wdisp->conn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 	              XCB_CURRENT_TIME);
 
 	scr->tab_drag_payload = payload;
@@ -1186,7 +1186,7 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 	while (!done) {
 		free(event);
 		event = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION
 		            | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_KEY_PRESS
 		            | XCB_EVENT_MASK_EXPOSURE, &event);
 
@@ -1209,7 +1209,7 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 			/* drain to the newest queued motion, keep that one */
 			xcb_generic_event_t *nev;
 
-			while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+			while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 			                       | XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &nev)) {
 				free(event);
 				event = nev;
@@ -1230,10 +1230,10 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 			hover = wGroupDropTargetAt(scr, source, payload, rx, ry);
 			if ((hover != NULL) != over_target) {
 				over_target = (hover != NULL);
-				wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+				wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 				        | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
 				        | XCB_EVENT_MASK_BUTTON_PRESS,
-				        wPreferences.cursor[over_target
+					wdisp->cursor[over_target
 				                ? WCUR_SELECT : WCUR_MOVE],
 				        XCB_CURRENT_TIME);
 			}
@@ -1284,9 +1284,9 @@ bool wGroupDragTab(WWindow *source, WWindow *payload, xcb_generic_event_t *ev)
 	}
 
 	wWireframeHide(scr);
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
-	wXSync(xconn);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+	wXSync(wdisp->conn);
 
 	/* Clear the latch before any attach/detach/reorder so a callee that
 	 * happens to dissolve the source group does not see a stale payload

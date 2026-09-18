@@ -246,7 +246,7 @@ static bool isGroupDrillable(WWindow *rep)
 
 	if (!rep)
 		return false;
-	sub = makeWindowListArray(rep, wPreferences.swtileImage != NULL, CYCLE_CLASS_ONLY);
+	sub = makeWindowListArray(rep, rep->screen_ptr->swtileImage != NULL, CYCLE_CLASS_ONLY);
 	n = WMGetArrayItemCount(sub);
 	WMFreeArray(sub);
 	return n > 1;
@@ -265,7 +265,7 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 	int desired = 0;
 
 	/* This whole function is a no-op if we aren't drawing the panel */
-	if (!wPreferences.swtileImage)
+	if (!panel->scr->swtileImage)
 		return;
 
 	icon = WMGetFromArray(iconArr, idecks);
@@ -331,9 +331,9 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 					   opaq);
 
 		RConvertImage(panel->scr->rcontext, back, &p);
-		xcb_change_window_attributes(xconn, WMWidgetXID(icon), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ p });
-		xcb_clear_area(xconn, 0, WMWidgetXID(icon), 0, 0, 0, 0);
-		xcb_free_pixmap(xconn, p);
+		xcb_change_window_attributes(wdisp->conn, WMWidgetXID(icon), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ p });
+		xcb_clear_area(wdisp->conn, 0, WMWidgetXID(icon), 0, 0, 0, 0);
+		xcb_free_pixmap(wdisp->conn, p);
 	}
 
 	if (!panel->bg && !panel->tile && selected)
@@ -475,34 +475,34 @@ static RImage *assemblePuzzleImage(RImage **images, int width, int height)
 	return img;
 }
 
-static RImage *createBackImage(int width, int height)
+static RImage *createBackImage(WScreen *scr, int width, int height)
 {
-	return assemblePuzzleImage(wPreferences.swbackImage, width, height);
+	return assemblePuzzleImage(scr->swbackImage, width, height);
 }
 
-static RImage *getTile(void)
+static RImage *getTile(WScreen *scr)
 {
 	RImage *stile;
 
-	if (!wPreferences.swtileImage)
+	if (!scr->swtileImage)
 		return NULL;
 
-	stile = RScaleImage(wPreferences.swtileImage, icon_tile_size, icon_tile_size);
+	stile = RScaleImage(scr->swtileImage, icon_tile_size, icon_tile_size);
 	if (!stile)
-		return RRetainImage(wPreferences.swtileImage);
+		return RRetainImage(scr->swtileImage);
 
 	return stile;
 }
 
-static RImage *getTileArrow(void)
+static RImage *getTileArrow(WScreen *scr)
 {
 	RImage *scaled;
 
-	if (!wPreferences.swtileArrowImage)
+	if (!scr->swtileArrowImage)
 		return NULL;
-	scaled = RScaleImage(wPreferences.swtileArrowImage, icon_tile_size, icon_tile_size);
+	scaled = RScaleImage(scr->swtileArrowImage, icon_tile_size, icon_tile_size);
 	if (!scaled)
-		return RRetainImage(wPreferences.swtileArrowImage);
+		return RRetainImage(scr->swtileArrowImage);
 	return scaled;
 }
 
@@ -514,18 +514,18 @@ static void apply_panel_bg(WSwitchPanel *panel)
 		return;
 
 	RConvertImageMask(panel->scr->rcontext, panel->bg, &pixmap, &mask, 250);
-	xcb_change_window_attributes(xconn, WMWidgetXID(panel->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+	xcb_change_window_attributes(wdisp->conn, WMWidgetXID(panel->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 #ifdef USE_XSHAPE
-	if (mask && w_global.xext.shape.supported)
-		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	if (mask && wdisp->xext.shape.supported)
+		xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			       WMWidgetXID(panel->win), 0, 0, mask);
 #endif
 	if (pixmap)
-		xcb_free_pixmap(xconn, pixmap);
+		xcb_free_pixmap(wdisp->conn, pixmap);
 
 	if (mask)
-		xcb_free_pixmap(xconn, mask);
+		xcb_free_pixmap(wdisp->conn, mask);
 }
 
 static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip strip)
@@ -556,7 +556,7 @@ static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip 
 			}
 		}
 
-		xcb_clear_area(xconn, 0, WMWidgetXID(panel->win), 0, 0, 0, 0);
+		xcb_clear_area(wdisp->conn, 0, WMWidgetXID(panel->win), 0, 0, 0, 0);
 		if (ntitle)
 			WMDrawString(panel->scr->wmscreen,
 				     WMWidgetXID(panel->win),
@@ -615,7 +615,7 @@ static WWindow *populate_sub_strip(WSwitchPanel *panel, WWindow *groupRep)
 	int subCount, i;
 
 	free_sub_strip(panel);
-	panel->subWindows = makeWindowListArray(groupRep, wPreferences.swtileImage != NULL, CYCLE_CLASS_ONLY);
+	panel->subWindows = makeWindowListArray(groupRep, panel->scr->swtileImage != NULL, CYCLE_CLASS_ONLY);
 	subCount = WMGetArrayItemCount(panel->subWindows);
 	if (subCount == 0) {
 		WMFreeArray(panel->subWindows);
@@ -659,7 +659,7 @@ WWindow *wSwitchPanelUndrill(WSwitchPanel *panel)
 			WMMoveWidget(panel->label, border_space, border_space + icon_tile_size + 5);
 		if (panel->bg) {
 			RReleaseImage(panel->bg);
-			panel->bg = createBackImage(pw, origHeight);
+			panel->bg = createBackImage(panel->scr, pw, origHeight);
 			apply_panel_bg(panel);
 		}
 	}
@@ -747,7 +747,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 				WMMoveWidget(panel->label, border_space, border_space + icon_tile_size + 5 + panel->subHeightExtra);
 			if (panel->bg) {
 				RReleaseImage(panel->bg);
-				panel->bg = createBackImage(pw, newHeight);
+				panel->bg = createBackImage(panel->scr, pw, newHeight);
 				apply_panel_bg(panel);
 			}
 		}
@@ -822,7 +822,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 
 	panel->scr = scr;
 	panel->mode = mode;
-	panel->windows = makeWindowListArray(curwin, wPreferences.swtileImage != NULL, mode);
+	panel->windows = makeWindowListArray(curwin, panel->scr->swtileImage != NULL, mode);
 	count = WMGetArrayItemCount(panel->windows);
 	if (count)
 		panel->flags = makeWindowFlagsArray(count);
@@ -843,16 +843,16 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 
 	panel->visibleCount = iconsThatFitCount;
 
-	if (!wPreferences.swtileImage)
+	if (!panel->scr->swtileImage)
 		return panel;
 
 	height = label_height + icon_tile_size;
 
 	panel->tileTmp = RCreateImage(icon_tile_size, icon_tile_size, 1);
-	panel->tile = getTile();
-	panel->tileArrow = getTileArrow();
-	if (panel->tile && wPreferences.swbackImage[8])
-		panel->bg = createBackImage(width + 2 * border_space, height + 2 * border_space);
+	panel->tile = getTile(panel->scr);
+	panel->tileArrow = getTileArrow(panel->scr);
+	if (panel->tile && panel->scr->swbackImage[8])
+		panel->bg = createBackImage(panel->scr, width + 2 * border_space, height + 2 * border_space);
 
 	if (!panel->tileTmp || !panel->tile) {
 		if (panel->bg)
@@ -942,13 +942,13 @@ void wSwitchPanelDestroy(WSwitchPanel *panel)
 	if (panel->win) {
 		xcb_window_t info_win = panel->scr->info_window;
 
-		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
-				    w_global.atom.wm.ignore_focus_events,
+		WXSendClientMessage(wdisp->conn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
+				    wdisp->atom.wm.ignore_focus_events,
 				    true, 0, 0, 0, 0);
 		WMUnmapWidget(panel->win);
 
-		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
-				    w_global.atom.wm.ignore_focus_events,
+		WXSendClientMessage(wdisp->conn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
+				    wdisp->atom.wm.ignore_focus_events,
 				    false, 0, 0, 0, 0);
 	}
 

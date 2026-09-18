@@ -39,19 +39,17 @@
 
 static int showCrashDialog(int sig)
 {
+	xcb_connection_t *conn;
 	int crashAction;
 	int scrnum;
 
-	xconn = xcb_connect(NULL, &scrnum);
-	if (!xcb_connection_has_error(xconn)) {
-		dflt_screen = scrnum;
-		wXGrabServer(xconn);
-		crashAction = wShowCrashingDialogPanel(sig);
-		xcb_disconnect(xconn);
-		xconn = NULL;
+	conn = xcb_connect(NULL, &scrnum);
+	if (!xcb_connection_has_error(conn)) {
+		wXGrabServer(conn);
+		crashAction = wShowCrashingDialogPanel(sig, conn, scrnum);
+		xcb_disconnect(conn);
 	} else {
-		xcb_disconnect(xconn);
-		xconn = NULL;
+		xcb_disconnect(conn);
 		werror(_("cannot open connection for crashing dialog panel. Aborting."));
 		crashAction = WMAbort;
 	}

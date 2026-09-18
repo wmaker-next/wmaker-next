@@ -59,9 +59,9 @@ static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 			win[0] = swwin;
 			win[1] = wwin->frame->core->window;
 
-			wXRestackWindows(xconn, win, 2);
+			wXRestackWindows(wdisp->conn, win, 2);
 		} else
-			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 		wHotCornersRaise(wwin->screen_ptr);
 	}
 }
@@ -157,7 +157,7 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 
 	hasModifier = (binding.modifier != 0);
 	if (hasModifier)
-		wXGrabKeyboard(xconn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+		wXGrabKeyboard(wdisp->conn, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	scr->flags.doing_alt_tab = 1;
 
@@ -189,9 +189,9 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 		free(ev);
 		ev = NULL;
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = wMaskEventTimed(xconn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
+			gotEvent = wMaskEventTimed(wdisp->conn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = wMaskEventTimed(xconn, eventMask, XCB_NONE, &ev, -1);
+			gotEvent = wMaskEventTimed(wdisp->conn, eventMask, XCB_NONE, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {
@@ -392,7 +392,7 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 	}
 
 	if (hasModifier)
-		wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+		wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 
 	if (swpanel)
 		wSwitchPanelDestroy(swpanel);

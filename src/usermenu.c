@@ -92,7 +92,7 @@ static void sendKeyWire(WScreen *scr, xcb_window_t window, uint8_t response_type
 	ev.child = XCB_NONE;
 	ev.state = state;
 	ev.same_screen = 1;
-	WXSendEvent32(xconn, &ev, sizeof(ev), 0, window,
+	WXSendEvent32(wdisp->conn, &ev, sizeof(ev), 0, window,
 		      response_type == XCB_KEY_PRESS ?
 		      XCB_EVENT_MASK_KEY_PRESS : XCB_EVENT_MASK_KEY_RELEASE);
 }

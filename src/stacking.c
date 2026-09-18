@@ -67,7 +67,7 @@ void RemakeStackList(WScreen * scr)
 	int level;
 	int i, c;
 
-	if (!wXQueryTree(xconn, scr->root_win, &junkr, &junkp, &windows, &nwindows)) {
+	if (!wXQueryTree(wdisp->conn, scr->root_win, &junkr, &junkp, &windows, &nwindows)) {
 		wwarning(_("could not get window list!!"));
 		return;
 	} else {
@@ -76,7 +76,7 @@ void RemakeStackList(WScreen * scr)
 		/* verify list integrity */
 		c = 0;
 		for (i = 0; i < nwindows; i++) {
-			if (!WMHashGetItemAndKey(w_global.context.stack,
+			if (!WMHashGetItemAndKey(wdisp->context.stack,
 						 (void *)(uintptr_t) windows[i],
 						 (void **)&frame, NULL)) {
 				continue;
@@ -137,7 +137,7 @@ void CommitStacking(WScreen * scr)
 			tmp = tmp->stacking->under;
 		}
 	}
-	wXRestackWindows(xconn, windows, i);
+	wXRestackWindows(wdisp->conn, windows, i);
 	wfree(windows);
 	wHotCornersRaise(scr);
 #ifdef VIRTUAL_DESKTOP
@@ -311,7 +311,7 @@ void AddToStackList(WCoreWindow * frame)
 	WCoreWindow *trans = NULL;
 
 	frame->screen_ptr->window_count++;
-	WMHashInsert(w_global.context.stack, (void *)(uintptr_t) frame->window, frame);
+	WMHashInsert(wdisp->context.stack, (void *)(uintptr_t) frame->window, frame);
 	curtop = WMGetFromBag(scr->stacking_list, index);
 
 	/* first window in this level */
@@ -444,12 +444,12 @@ void RemoveFromStackList(WCoreWindow * frame)
 {
 	int index = frame->stacking->window_level;
 
-	if (!WMHashGetItemAndKey(w_global.context.stack, (void *)(uintptr_t) frame->window,
+	if (!WMHashGetItemAndKey(wdisp->context.stack, (void *)(uintptr_t) frame->window,
 				 NULL, NULL)) {
 		wwarning("RemoveFromStackingList(): window not in list ");
 		return;
 	}
-	WMHashRemove(w_global.context.stack, (void *)(uintptr_t) frame->window);
+	WMHashRemove(wdisp->context.stack, (void *)(uintptr_t) frame->window);
 	/* remove from the window stack list */
 	if (frame->stacking->under)
 		frame->stacking->under->stacking->above = frame->stacking->above;

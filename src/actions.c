@@ -116,7 +116,7 @@ static void focusRestoredWindow(void *data)
 		return;
 
 	wRaiseFrame(wwin->frame->core);
-	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, wwin->screen_ptr->no_focus_win, XCB_CURRENT_TIME);
+	xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, wwin->screen_ptr->no_focus_win, XCB_CURRENT_TIME);
 	w_global.restore_focus_repair = true;
 	wSetFocusTo(wwin->screen_ptr, wwin);
 	w_global.restore_focus_repair = false;
@@ -141,11 +141,11 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 	WWindow *old_focused;
 	WWindow *focused = scr->focused_window;
-	xcb_timestamp_t timestamp = w_global.timestamp.last_event;
+	xcb_timestamp_t timestamp = wdisp->timestamp.last_event;
 	WApplication *oapp = NULL, *napp = NULL;
 	int wasfocused;
 
-	if (scr->flags.ignore_focus_events || compareTimes(w_global.timestamp.focus_change, timestamp) > 0)
+	if (scr->flags.ignore_focus_events || compareTimes(wdisp->timestamp.focus_change, timestamp) > 0)
 		return;
 
 	/* if the target window has a mapped modal transient, redirect focus
@@ -169,7 +169,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 
 	old_focused = old_scr->focused_window;
 
-	w_global.timestamp.focus_change = timestamp;
+	wdisp->timestamp.focus_change = timestamp;
 
 	if (old_focused)
 		oapp = wApplicationOf(old_focused->main_window);
@@ -177,7 +177,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (wwin == NULL) {
 		xcb_window_t old_client = old_focused ? old_focused->client_win : XCB_NONE;
 
-		xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
+		xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 		if (old_focused)
 			wWindowUnfocus(old_focused);
 
@@ -210,22 +210,22 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		/* set input focus */
 		switch (wwin->focus_mode) {
 		case WFM_NO_INPUT:
-			xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
+			xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 			break;
 		case WFM_PASSIVE:
 		case WFM_LOCALLY_ACTIVE:
-			xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, wwin->client_win, XCB_CURRENT_TIME);
+			xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, wwin->client_win, XCB_CURRENT_TIME);
 			break;
 		case WFM_GLOBALLY_ACTIVE:
 			break;
 		}
 
 		if (wwin->protocols.TAKE_FOCUS)
-			wClientSendProtocol(wwin, w_global.atom.wm.take_focus, timestamp);
+			wClientSendProtocol(wwin, wdisp->atom.wm.take_focus, timestamp);
 
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 	} else {
-		xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
+		xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 	}
 
 	if (WFLAGP(wwin, no_focusable))
@@ -279,7 +279,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (w_global.config->per_head_workspaces)
 		wWorkspaceSetCurrentHead(scr, wWindowEffectiveHead(wwin));
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 	old_scr = scr;
 }
 
@@ -384,7 +384,7 @@ void wShadeWindow(WWindow *wwin)
 	if (wwin->flags.shaded)
 		return;
 
-	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
+	xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 	wSoundPlay(wwin->screen_ptr, WSOUND_SHADE);
 	shade_animate(wwin, SHADE);
 
@@ -392,9 +392,9 @@ void wShadeWindow(WWindow *wwin)
 	wwin->flags.shaded = 1;
 	wwin->flags.mapped = 0;
 	/* prevent window withdrawal when getting UnmapNotify */
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
-	xcb_unmap_window(xconn, wwin->client_win);
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask & ~XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+	xcb_unmap_window(wdisp->conn, wwin->client_win);
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
 
 	/* for the client it's just like iconification */
 	wFrameWindowResize(wwin->frame, wwin->frame->core->width, wwin->frame->top_width - 1);
@@ -429,7 +429,7 @@ void wUnshadeWindow(WWindow *wwin)
 
 	wwin->flags.shaded = 0;
 	wwin->flags.mapped = 1;
-	xcb_map_window(xconn, wwin->client_win);
+	xcb_map_window(wdisp->conn, wwin->client_win);
 	wSoundPlay(wwin->screen_ptr, WSOUND_UNSHADE);
 
 	shade_animate(wwin, UNSHADE);
@@ -440,7 +440,7 @@ void wUnshadeWindow(WWindow *wwin)
 	wFrameWindowResize(wwin->frame, wwin->frame->core->width,
 				wwin->frame->top_width + wwin->client.height
 				+ wwin->frame->bottom_width + iv);
-	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+	xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 	wFrameInnerBorderClientOrigin(wwin, wwin->frame_x, wwin->frame_y,
 				      &wwin->client.x, &wwin->client.y);
 
@@ -1599,7 +1599,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 		wWireframeBegin(scr);
 		wWireframeAddPolyline(scr, points, 5);
 		wWireframeCommit(scr);
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_F);
 
 		cx += xstep;
@@ -1611,7 +1611,7 @@ static void animateResizeFlip(WScreen *scr, int x, int y, int w, int h, int fx, 
 
 	}
 	wWireframeHide(scr);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 #undef FRAMES
@@ -1663,7 +1663,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 		wWireframeBegin(scr);
 		wWireframeAddPolyline(scr, points, 5);
 		wWireframeCommit(scr);
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_T);
 
 		cx += xstep;
@@ -1675,7 +1675,7 @@ animateResizeTwist(WScreen *scr, int x, int y, int w, int h, int fx, int fy, int
 
 	}
 	wWireframeHide(scr);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 #undef FRAMES
@@ -1704,7 +1704,7 @@ static void animateResizeZoom(WScreen *scr, int x, int y, int w, int h, int fx, 
 			wWireframeAddOutline(scr, (int)cx[j], (int)cy[j],
 					     (int)cw[j], (int)ch[j], 0, 0, 0);
 		wWireframeCommit(scr);
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z);
 
 		for (j = 0; j < FRAMES; j++) {
@@ -1762,11 +1762,11 @@ static void flushExpose(void)
 {
 	xcb_generic_event_t *tmpev = NULL;
 
-	while (WXEvqTakeTyped(xconn, XCB_EXPOSE, XCB_NONE, &tmpev)) {
+	while (WXEvqTakeTyped(wdisp->conn, XCB_EXPOSE, XCB_NONE, &tmpev)) {
 		WMHandleEvent(tmpev);
 		free(tmpev);
 	}
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 }
 
 static void unmapTransientsFor(WWindow *wwin)
@@ -1783,7 +1783,7 @@ static void unmapTransientsFor(WWindow *wwin)
 			if (!tmp->flags.shaded)
 				wWindowUnmap(tmp);
 			else
-				xcb_unmap_window(xconn, tmp->frame->core->window);
+				xcb_unmap_window(wdisp->conn, tmp->frame->core->window);
 			/*
 			   if (!tmp->flags.shaded)
 			 */
@@ -1809,7 +1809,7 @@ static void mapTransientsFor(WWindow *wwin)
 			if (!tmp->flags.shaded)
 				wWindowMap(tmp);
 			else
-				xcb_map_window(xconn, tmp->frame->core->window);
+				xcb_map_window(wdisp->conn, tmp->frame->core->window);
 			tmp->flags.semi_focused = 0;
 			/*
 			   if (!tmp->flags.shaded)
@@ -1887,7 +1887,7 @@ void wIconifyWindow(WWindow *wwin)
 	if (wGroupIsInactiveMember(wwin))
 		wwin = wwin->tab_group->members[wwin->tab_group->active_index];
 
-	if (!wXGetWindowAttributes(xconn, wwin->client_win, &attribs, NULL))
+	if (!wXGetWindowAttributes(wdisp->conn, wwin->client_win, &attribs, NULL))
 		return; /* the window doesn't exist anymore */
 
 	if (wwin->flags.miniaturized)
@@ -1905,7 +1905,7 @@ void wIconifyWindow(WWindow *wwin)
 	/* if the window is in another workspace, simplify process */
 	if (present) {
 		/* icon creation may take a while */
-		wXGrabPointer(xconn, wwin->screen_ptr->root_win, false,
+		wXGrabPointer(wdisp->conn, wwin->screen_ptr->root_win, false,
 			     XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
 			     XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
 	}
@@ -1925,8 +1925,8 @@ void wIconifyWindow(WWindow *wwin)
 			int x, y;
 			xcb_window_t baz;
 
-			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-			wXTranslateCoordinates(xconn, wwin->client_win, wwin->screen_ptr->root_win, 0, 0, &x, &y, &baz);
+			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			wXTranslateCoordinates(wdisp->conn, wwin->client_win, wwin->screen_ptr->root_win, 0, 0, &x, &y, &baz);
 
 			w = attribs.width;
 			h = attribs.height;
@@ -1973,11 +1973,11 @@ void wIconifyWindow(WWindow *wwin)
 		int ix, iy, iw, ih;
 #endif
 		wSoundPlay(wwin->screen_ptr, WSOUND_ICONIFY);
-		wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+		wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 		wWindowUnmap(wwin);
 		/* let all Expose events arrive so that we can repaint
 		 * something before the animation starts (and the server is grabbed) */
-		wXSync(xconn);
+		wXSync(wdisp->conn);
 
 		if (w_global.config->disable_miniwindows || wwin->flags.net_handle_icon)
 			wClientSetState(wwin, XCB_ICCCM_WM_STATE_ICONIC, XCB_NONE);
@@ -2006,7 +2006,7 @@ void wIconifyWindow(WWindow *wwin)
 
 	if (!w_global.config->disable_miniwindows && !wwin->flags.net_handle_icon) {
 		if (wWindowIsVisibleOnAnyHead(wwin) || w_global.config->sticky_icons)
-			xcb_map_window(xconn, wwin->icon->core->window);
+			xcb_map_window(wdisp->conn, wwin->icon->core->window);
 
 		AddToStackList(wwin->icon->core);
 		wLowerFrame(wwin->icon->core);
@@ -2124,7 +2124,7 @@ void wDeiconifyWindow(WWindow *wwin)
 			if (wwin->icon->selected)
 				wIconSelect(wwin->icon);
 
-			xcb_unmap_window(xconn, wwin->icon->core->window);
+			xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 		}
 	}
 
@@ -2141,11 +2141,11 @@ void wDeiconifyWindow(WWindow *wwin)
 				      wwin->frame->core->width, wwin->frame->core->height);
 #endif
 		wwin->flags.skip_next_animation = 0;
-		wXGrabServer(xconn);
+		wXGrabServer(wdisp->conn);
 		if (!wwin->flags.shaded)
-			xcb_map_window(xconn, wwin->client_win);
+			xcb_map_window(wdisp->conn, wwin->client_win);
 
-		xcb_map_window(xconn, wwin->frame->core->window);
+		xcb_map_window(wdisp->conn, wwin->frame->core->window);
 		wRaiseFrame(wwin->frame->core);
 		if (!wwin->flags.shaded)
 			wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
@@ -2163,7 +2163,7 @@ void wDeiconifyWindow(WWindow *wwin)
 	}
 
 	if (!netwm_hidden) {
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 
 		wSetFocusTo(wwin->screen_ptr, wwin);
 		warpPointerToFocusedWindow(wwin);
@@ -2211,7 +2211,7 @@ void wRefreshMiniwindows(WScreen *scr)
 		    && !wGroupIsInactiveMember(wwin)) {
 			if (disabled && wwin->icon) {
 				if (wwin->icon->mapped)
-					xcb_unmap_window(xconn, wwin->icon->core->window);
+					xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 				RemoveFromStackList(wwin->icon->core);
 				wIconDestroy(wwin->icon);
 				wwin->icon = NULL;
@@ -2232,7 +2232,7 @@ void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate
 {
 	if (wwin->flags.miniaturized) {
 		if (wwin->icon) {
-			xcb_unmap_window(xconn, wwin->icon->core->window);
+			xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 			wwin->icon->mapped = 0;
 		}
 		wwin->flags.hidden = 1;
@@ -2439,8 +2439,8 @@ void wRequestHideApplication(WApplication *wapp, WWindow *via)
 		}
 	}
 	if (via) {
-		wClientSendProtocol(via, w_global.atom.gnustep.wm_hide_app,
-				    w_global.timestamp.last_event);
+		wClientSendProtocol(via, wdisp->atom.gnustep.wm_hide_app,
+				    wdisp->timestamp.last_event);
 		return;
 	}
 	if (wapp && wapp->main_window_desc
@@ -2544,8 +2544,8 @@ void wUnhideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y,
 	wwin->flags.skip_next_animation = 0;
 	if (wwin->screen_ptr->current_workspace == WWIN_PRIMARY_WS(wwin)
 	    && !wGroupIsInactiveMember(wwin)) {
-		xcb_map_window(xconn, wwin->client_win);
-		xcb_map_window(xconn, wwin->frame->core->window);
+		xcb_map_window(wdisp->conn, wwin->client_win);
+		xcb_map_window(wdisp->conn, wwin->frame->core->window);
 		wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 		wwin->flags.mapped = 1;
 		wRaiseFrame(wwin->frame->core);
@@ -2598,10 +2598,10 @@ void wUnhideApplication(WApplication *wapp, bool miniwindows, bool bringToCurren
 
 						PlaceIcon(scr, &x, &y, wGetHeadForWindow(wlist));
 						if (wlist->icon_x != x || wlist->icon_y != y)
-							xcb_configure_window(xconn, wlist->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+							xcb_configure_window(wdisp->conn, wlist->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 						wlist->icon_x = x;
 						wlist->icon_y = y;
-						xcb_map_window(xconn, wlist->icon->core->window);
+						xcb_map_window(wdisp->conn, wlist->icon->core->window);
 						wlist->icon->mapped = 1;
 					}
 					wRaiseFrame(wlist->icon->core);
@@ -2619,7 +2619,7 @@ void wUnhideApplication(WApplication *wapp, bool miniwindows, bool bringToCurren
 				if (WWIN_PRIMARY_WS(wlist) == scr->current_workspace
 				    && !wGroupIsInactiveMember(wlist)) {
 					wRaiseFrame(wlist->frame->core);
-					xcb_map_window(xconn, wlist->frame->core->window);
+					xcb_map_window(wdisp->conn, wlist->frame->core->window);
 					if (miniwindows)
 						wUnshadeWindow(wlist);
 				}
@@ -2708,14 +2708,14 @@ void wRefreshDesktop(WScreen *scr)
 {
 	xcb_window_t win;
 
-	win = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, win, scr->root_win, 0, 0, scr->scr_width,
+	win = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, win, scr->root_win, 0, 0, scr->scr_width,
 			  scr->scr_height, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACKING_STORE | XCB_CW_SAVE_UNDER, (const uint32_t[]){ XCB_BACKING_STORE_NOT_USEFUL, false });
-	xcb_configure_window(xconn, win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
-	xcb_map_window(xconn, win);
-	xcb_destroy_window(xconn, win);
-	wXFlush(xconn);
+	xcb_configure_window(wdisp->conn, win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_map_window(wdisp->conn, win);
+	xcb_destroy_window(wdisp->conn, win);
+	wXFlush(wdisp->conn);
 }
 
 void wArrangeIcons(WScreen *scr, bool arrangeAll)
@@ -2873,12 +2873,12 @@ void wSelectWindow(WWindow *wwin, bool flag)
 	if (flag) {
 		wwin->flags.selected = 1;
 		if (wwin->frame->selected_border_pixel)
-			xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->selected_border_pixel });
+			xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->selected_border_pixel });
 		else
-			xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->white_pixel });
+			xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->white_pixel });
 
 		if (!HAS_BORDER(wwin))
-			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wFrameBorderWidth(wwin) });
+			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wFrameBorderWidth(wwin) });
 
 		if (!scr->selected_windows)
 			scr->selected_windows = WMCreateArray(4);
@@ -2887,18 +2887,18 @@ void wSelectWindow(WWindow *wwin, bool flag)
 		wwin->flags.selected = 0;
 		if (wwin->flags.focused) {
 			if (wwin->frame->focused_border_pixel)
-				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->focused_border_pixel });
+				xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->focused_border_pixel });
 			else
-				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_focused_border_pixel });
+				xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_focused_border_pixel });
 		} else {
 			if (wwin->frame->border_pixel)
-				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->border_pixel });
+				xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *wwin->frame->border_pixel });
 			else
-				xcb_change_window_attributes(xconn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_border_pixel });
+				xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window, XCB_CW_BORDER_PIXEL, (const uint32_t[]){ scr->frame_border_pixel });
 		}
 
 		if (!HAS_BORDER(wwin))
-			xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
+			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 		if (scr->selected_windows)
 			WMRemoveFromArray(scr->selected_windows, wwin);
@@ -2956,11 +2956,11 @@ void movePointerToWindowCenter(WWindow *wwin)
 	if (!w_global.config->pointer_with_half_max_windows)
 		return;
 
-	xcb_change_window_attributes(xconn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
-	wXWarpPointer(xconn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
+	xcb_change_window_attributes(wdisp->conn, wwin->client_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->event_mask });
+	wXWarpPointer(wdisp->conn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
 			wwin->frame_x + wwin->client.width / 2,
 			wwin->frame_y + wwin->client.height / 2);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /* Focusable client window under the pointer, or NULL if on the root.
@@ -2972,7 +2972,7 @@ WWindow *wWindowUnderPointerForFocus(WScreen *scr, WWindow *exclude)
 	xcb_window_t bar, win;
 	WWindow *tmp;
 
-	if (!wXQueryPointer(xconn, scr->root_win, &bar, &win,
+	if (!wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win,
 			   &foo, &foo, &foo, &foo, &mask))
 		return NULL;
 
@@ -3023,14 +3023,14 @@ void warpPointerToFocusedWindow(WWindow *wwin)
 	fy = wwin->frame_y;
 	fw = (int)wwin->frame->core->width;
 	fh = (int)wwin->frame->core->height;
-	if (wXQueryPointer(xconn, wwin->screen_ptr->root_win, &root_ret, &win_ret,
+	if (wXQueryPointer(wdisp->conn, wwin->screen_ptr->root_win, &root_ret, &win_ret,
 			 &rx, &ry, &wx, &wy, &mask)
 	    && rx >= fx && rx < fx + fw && ry >= fy && ry < fy + fh)
 		return;
 
-	wXWarpPointer(xconn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
+	wXWarpPointer(wdisp->conn, XCB_NONE, wwin->screen_ptr->root_win, 0, 0, 0, 0,
 			fx + fw / 2, fy + fh / 2);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /*
@@ -3068,8 +3068,8 @@ void warpPointerToMonitor(WScreen *scr)
 		cy = scr->scr_height / 2;
 	}
 
-	wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0, cx, cy);
-	wXFlush(xconn);
+	wXWarpPointer(wdisp->conn, XCB_NONE, scr->root_win, 0, 0, 0, 0, cx, cy);
+	wXFlush(wdisp->conn);
 }
 
 /*
@@ -3094,7 +3094,7 @@ void warpPointerToNextMonitor(WScreen *scr)
 		return;
 
 	total = 0;
-	for (i = 0; i < w_global.screen_count; i++)
+	for (i = 0; i < wdisp->screen_count; i++)
 		total += wHeadCount(wScreenWithNumber(i));
 
 	if (total <= 1)
@@ -3102,7 +3102,7 @@ void warpPointerToNextMonitor(WScreen *scr)
 
 	/* flat index of the monitor the pointer is currently on */
 	current = 0;
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		if (wScreenWithNumber(i) == scr) {
 			h = wGetHeadForPointerLocation(scr);
 			if (h < 0 || h >= wHeadCount(scr))
@@ -3117,7 +3117,7 @@ void warpPointerToNextMonitor(WScreen *scr)
 
 	/* map the flat index back to a (screen, head) pair */
 	target = NULL;
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		target = wScreenWithNumber(i);
 		h = wHeadCount(target);
 		if (next < h)
@@ -3129,10 +3129,10 @@ void warpPointerToNextMonitor(WScreen *scr)
 		return;
 
 	rect = wGetRectForHead(target, next);
-	wXWarpPointer(xconn, XCB_NONE, target->root_win, 0, 0, 0, 0,
+	wXWarpPointer(wdisp->conn, XCB_NONE, target->root_win, 0, 0, 0, 0,
 			rect.pos.x + (int)rect.size.width / 2,
 			rect.pos.y + (int)rect.size.height / 2);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /*
@@ -3163,9 +3163,9 @@ static void shade_animate(WWindow *wwin, bool what)
 			w = wwin->frame->core->width;
 			y = wwin->frame->top_width;
 			while (h > wwin->frame->top_width + 1) {
-				xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
-				xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
-				wXFlush(xconn);
+				xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
+				xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
+				wXFlush(wdisp->conn);
 
 				if (time(NULL) - time0 > MAX_ANIMATION_TIME)
 					break;
@@ -3177,7 +3177,7 @@ static void shade_animate(WWindow *wwin, bool what)
 				h -= s;
 				y -= s;
 			}
-			xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+			xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 		}
 		break;
 
@@ -3188,12 +3188,12 @@ static void shade_animate(WWindow *wwin, bool what)
 		if (s < 1)
 			s = 1;
 		w = wwin->frame->core->width;
-		xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
+		xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
 		if (s > 0) {
 			while (h < wwin->client.height + wwin->frame->top_width + wwin->frame->bottom_width) {
-				xcb_configure_window(xconn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
-				xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
-				wXFlush(xconn);
+				xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ w, h });
+				xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, y });
+				wXFlush(wdisp->conn);
 				if (SHADE_DELAY > 0)
 					wusleep(SHADE_DELAY * 2000L / 3);
 				else
@@ -3205,7 +3205,7 @@ static void shade_animate(WWindow *wwin, bool what)
 					break;
 			}
 		}
-		xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
+		xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ il, wwin->frame->top_width + it });
 		break;
 	}
 }

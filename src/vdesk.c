@@ -377,16 +377,16 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 	 * PointerMotionMask (not ButtonMotionMask) matches the edge-scroll
 	 * grab in wVdeskMouseMoveDesktop: it selects all motion events
 	 * during the grab, which is what a free-form drag needs. */
-	if (wXGrabPointer(xconn, ((xcb_button_press_event_t *)event)->root, false,
+	if (wXGrabPointer(wdisp->conn, ((xcb_button_press_event_t *)event)->root, false,
 			 XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE,
 			 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-			 XCB_NONE, wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
+			 XCB_NONE, wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME) != WXGrabSuccess)
 		return;
 	/* Discard the ButtonPress that brought us here and any stale motion
 	 * so the first WMMaskEvent below is a fresh sample. Mirrors the
 	 * edge-scroll grab at wVdeskMouseMoveDesktop. */
-	wXFlush(xconn);
-	while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
+	wXFlush(wdisp->conn);
+	while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
 		free(ev);
 		ev = NULL;
 	}
@@ -397,7 +397,7 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 	while (!done) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
 		if (!ev)
 			break;
 
@@ -425,7 +425,7 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 	free(ev);
 	ev = NULL;
 
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 }
 
 /* Inactivity timeout for the edge-pan modal loop: a DPMS-wake EnterNotify
@@ -469,23 +469,23 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 	if (scr->workspaces[scr->current_workspace]->layout != WLAYOUT_FLOAT)
 		goto exit;
 
-	if (wXGrabPointer(xconn, ((xcb_enter_notify_event_t *)event)->event, false,
+	if (wXGrabPointer(wdisp->conn, ((xcb_enter_notify_event_t *)event)->event, false,
 			 XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-			 scr->root_win, wPreferences.cursor[WCUR_EMPTY], XCB_CURRENT_TIME) != WXGrabSuccess) {
+			 scr->root_win, wdisp->cursor[WCUR_EMPTY], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		step = vec_scale2(direction, w_global.config->vedge_hscrollspeed,
 				  w_global.config->vedge_vscrollspeed);
 		x = scr->workspaces[scr->current_workspace]->view_x;
 		y = scr->workspaces[scr->current_workspace]->view_y;
 		if (wVdeskSetViewport(scr, scr->current_workspace, x + step.x, y + step.y)) {
 			step = vec_scale(direction, 2);
-			wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
+			wXWarpPointer(wdisp->conn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
 				     ((xcb_enter_notify_event_t *)event)->root_x - step.x,
 				     ((xcb_enter_notify_event_t *)event)->root_y - step.y);
 		}
 		goto exit;
 	}
-	wXFlush(xconn);
-	while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
+	wXFlush(wdisp->conn);
+	while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS, XCB_NONE, &ev)) {
 		free(ev);
 		ev = NULL;
 	}
@@ -503,7 +503,7 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 					    panIdleTimeout, &timed_out);
 	while (!done && !timed_out) {
 		if (moved) {
-			wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
+			wXWarpPointer(wdisp->conn, XCB_NONE, scr->root_win, 0, 0, 0, 0,
 				     center.x, center.y);
 			moved = false;
 		}
@@ -512,8 +512,8 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 		free(ev);
 		ev = NULL;
 		while (!timed_out &&
-		       !WXEvqTakeMask(xconn, XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &ev))
-			W_HandleInputEvents(true, xcb_get_file_descriptor(xconn));
+		       !WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &ev))
+			W_HandleInputEvents(true, xcb_get_file_descriptor(wdisp->conn));
 		if (timed_out) {
 			free(ev);
 			ev = NULL;
@@ -572,8 +572,8 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 	WMDeleteTimerHandlerPtr(&pan_idle_timer);
 
 	step = vec_add(old_pos, vec_scale(direction, -1));
-	wXWarpPointer(xconn, XCB_NONE, scr->root_win, 0, 0, 0, 0, step.x, step.y);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	wXWarpPointer(wdisp->conn, XCB_NONE, scr->root_win, 0, 0, 0, 0, step.x, step.y);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 
  exit:
 	free(ev);
@@ -656,8 +656,8 @@ static void createEdges(WScreen *scr)
 		WMRect rect = wGetRectForHead(scr, head);
 
 		if (hasEdges[head] & TOP_EDGE) {
-			edges[nr_edges] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+			edges[nr_edges] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
 					  scr->root_win, rect.pos.x, rect.pos.y,
 					  rect.size.width, thickness, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
@@ -666,8 +666,8 @@ static void createEdges(WScreen *scr)
 			++nr_edges;
 		}
 		if (hasEdges[head] & BOTTOM_EDGE) {
-			edges[nr_edges] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+			edges[nr_edges] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
 					  scr->root_win, rect.pos.x,
 					  rect.pos.y + rect.size.height - thickness,
 					  rect.size.width, thickness, 0,
@@ -677,8 +677,8 @@ static void createEdges(WScreen *scr)
 			++nr_edges;
 		}
 		if (hasEdges[head] & LEFT_EDGE) {
-			edges[nr_edges] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+			edges[nr_edges] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
 					  scr->root_win, rect.pos.x, rect.pos.y,
 					  thickness, rect.size.height, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
@@ -687,8 +687,8 @@ static void createEdges(WScreen *scr)
 			++nr_edges;
 		}
 		if (hasEdges[head] & RIGHT_EDGE) {
-			edges[nr_edges] = xcb_generate_id(xconn);
-			xcb_create_window(xconn, XCB_COPY_FROM_PARENT, edges[nr_edges],
+			edges[nr_edges] = xcb_generate_id(wdisp->conn);
+			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
 					  scr->root_win,
 					  rect.pos.x + rect.size.width - thickness, rect.pos.y,
 					  thickness, rect.size.height, 0,
@@ -703,7 +703,7 @@ static void createEdges(WScreen *scr)
 	scr->virtual_edges = edges;
 
 	for (i = 0; i < scr->virtual_nr_edges; ++i)
-		xcb_map_window(xconn, scr->virtual_edges[i]);
+		xcb_map_window(wdisp->conn, scr->virtual_edges[i]);
 	wWorkspaceRaiseEdge(scr);
 
 	wfree(hasEdges);
@@ -718,8 +718,8 @@ static void destroyEdges(WScreen *scr)
 
 	for (i = 0; i < scr->virtual_nr_edges; ++i) {
 		WMHashRemove(wVEdgeTable, (void *)(uintptr_t) scr->virtual_edges[i]);
-		xcb_unmap_window(xconn, scr->virtual_edges[i]);
-		xcb_destroy_window(xconn, scr->virtual_edges[i]);
+		xcb_unmap_window(wdisp->conn, scr->virtual_edges[i]);
+		xcb_destroy_window(wdisp->conn, scr->virtual_edges[i]);
 	}
 
 	wfree(scr->virtual_edges);
@@ -744,10 +744,10 @@ void wWorkspaceRaiseEdge(WScreen *scr)
 
 	if (toggle) {
 		for (i = 0; i < scr->virtual_nr_edges; ++i)
-			xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_configure_window(wdisp->conn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	} else {
 		for (i = scr->virtual_nr_edges - 1; i >= 0; --i)
-			xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_configure_window(wdisp->conn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	}
 	toggle ^= 1;
 }
@@ -756,7 +756,7 @@ void wWorkspaceLowerEdge(WScreen *scr)
 {
 	int i;
 	for (i = 0; i < scr->virtual_nr_edges; ++i)
-		xcb_configure_window(xconn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
+		xcb_configure_window(wdisp->conn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 }
 
 #endif /* VIRTUAL_DESKTOP */

@@ -62,7 +62,7 @@ static void handleShapeNotify(xcb_generic_event_t *ev)
 	/* extension events carry no wire window, so the run is
 	 * compared on the typed affected_window field, and only the
 	 * bounding neighbours with the same shaped flag compress */
-	while (WXEvqPeek(xconn, &peek)) {
+	while (WXEvqPeek(wdisp->conn, &peek)) {
 		const xcb_shape_notify_event_t *ne =
 			(const xcb_shape_notify_event_t *)peek;
 
@@ -71,7 +71,7 @@ static void handleShapeNotify(xcb_generic_event_t *ev)
 		    || ne->shape_kind != XCB_SHAPE_SK_BOUNDING
 		    || ne->shaped != shaped)
 			break;
-		WXEvqNext(xconn, &owned);
+		WXEvqNext(wdisp->conn, &owned);
 		free(owned);
 	}
 
@@ -100,7 +100,7 @@ static void handleXkbIndicatorStateNotify(void)
 	int group;
 	int i;
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		wwin = scr->focused_window;
 		if (wwin && wwin->flags.focused) {
@@ -213,29 +213,29 @@ static void handleSyncAlarm(xcb_generic_event_t *ev)
 void wEventExtRegister(void)
 {
 #ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported)
-		wEventRegisterHandler(w_global.xext.shape.event_base + XCB_SHAPE_NOTIFY,
+	if (wdisp->xext.shape.supported)
+		wEventRegisterHandler(wdisp->xext.shape.event_base + XCB_SHAPE_NOTIFY,
 				      handleShapeNotify);
 #endif
 #ifdef USE_XSYNC
-	if (w_global.xext.xsync.supported)
-		wEventRegisterHandler(w_global.xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY,
+	if (wdisp->xext.xsync.supported)
+		wEventRegisterHandler(wdisp->xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY,
 				      handleSyncAlarm);
 #endif
 #ifdef USE_RANDR
-	if (w_global.xext.randr.supported) {
-		wEventRegisterHandler(w_global.xext.randr.event_base + XCB_RANDR_SCREEN_CHANGE_NOTIFY,
+	if (wdisp->xext.randr.supported) {
+		wEventRegisterHandler(wdisp->xext.randr.event_base + XCB_RANDR_SCREEN_CHANGE_NOTIFY,
 				      handleRandRScreenChange);
-		wEventRegisterHandler(w_global.xext.randr.event_base + XCB_RANDR_NOTIFY,
+		wEventRegisterHandler(wdisp->xext.randr.event_base + XCB_RANDR_NOTIFY,
 				      handleRandRNotify);
 	}
 #endif
 #ifdef USE_XCB_SCREENSAVER
-	if (w_global.xext.screensaver.supported)
-		wEventRegisterHandler(w_global.xext.screensaver.event_base
+	if (wdisp->xext.screensaver.supported)
+		wEventRegisterHandler(wdisp->xext.screensaver.event_base
 				      + XCB_SCREENSAVER_NOTIFY,
 				      handleScreenSaverNotify);
 #endif
-	if (w_global.xext.xkb.supported)
-		wEventRegisterHandler(w_global.xext.xkb.event_base, handleXkbEvent);
+	if (wdisp->xext.xkb.supported)
+		wEventRegisterHandler(wdisp->xext.xkb.event_base, handleXkbEvent);
 }

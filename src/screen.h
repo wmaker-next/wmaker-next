@@ -81,6 +81,7 @@ typedef enum {
  * each WScreen is saved into a context associated with its root window
  */
 typedef struct _WScreen {
+	struct WDisplay *display;
     int	screen;			       /* screen number */
     xcb_window_t info_window;		       /* for our window manager info stuff */
 #ifdef USE_ICCCM_WMREPLACE
@@ -340,6 +341,14 @@ typedef struct _WScreen {
     xcb_pixmap_t icon_tile_pixmap;		/* For app supplied icons */
 
     struct RImage *def_icon_rimage;	/* Default RImage icon */
+
+	/* per-screen realised switch-panel/placement state */
+	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to this screen */
+	struct RImage *swtileImage;
+	struct RImage *swtileArrowImage;
+	struct RImage *swbackImage[9];
+	union WTexture *wsmbackTexture;
+	char *hot_corner_actions[4];       /* Action of each corner */
 
     struct WDialogData *dialog_data;
 

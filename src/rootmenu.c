@@ -376,13 +376,13 @@ void wRootMenuBindShortcuts(xcb_window_t window)
 	ptr = shortcutList;
 	while (ptr) {
 		if (ptr->modifier != XCB_MOD_MASK_ANY) {
-			wXGrabKey(xconn, ptr->keycode, ptr->modifier | XCB_MOD_MASK_LOCK,
+			wXGrabKey(wdisp->conn, ptr->keycode, ptr->modifier | XCB_MOD_MASK_LOCK,
 				 window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #ifdef NUMLOCK_HACK
 			wHackedGrabKey(ptr->keycode, ptr->modifier, window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 #endif
 		}
-		wXGrabKey(xconn, ptr->keycode, ptr->modifier, window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+		wXGrabKey(wdisp->conn, ptr->keycode, ptr->modifier, window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 		ptr = ptr->next;
 	}
 }
@@ -394,7 +394,7 @@ static void rebindKeygrabs(WScreen * scr)
 	wwin = scr->focused_window;
 
 	while (wwin != NULL) {
-		wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
+		wXUngrabKey(wdisp->conn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 
 		if (!WFLAGP(wwin, no_bind_keys)) {
 			wWindowSetKeyGrabs(wwin);
@@ -1279,8 +1279,8 @@ static void menu_parser_register_macros(WMenuParser parser)
 	WMenuParserRegisterSimpleMacro(parser, "__VERSION__", VERSION);
 
 	// All macros below were historically defined by WindowMaker
-	xscr = wXScreenOf(xconn, dflt_screen);
-	visual = wXDefaultVisualType(xconn, dflt_screen);
+	xscr = wXScreenOf(wdisp->conn, wdisp->default_screen);
+	visual = wXDefaultVisualType(wdisp->conn, wdisp->default_screen);
 	snprintf(buf, sizeof(buf), "%d", visual->_class);
 	WMenuParserRegisterSimpleMacro(parser, "VISUAL", buf);
 

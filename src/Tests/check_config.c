@@ -25,6 +25,9 @@ void wWorkspaceUpdateEdge(WScreen *scr) { (void)scr; }
 
 struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
+
+static WDisplay test_display;
+WDisplay *wdisp = &test_display;
 static int usable_area_updates;
 static int root_mask_updates;
 static int double_click_delay;
@@ -248,17 +251,17 @@ void wConfigApplyModifierKey(const char *spec, const char *default_spec)
 	modifier_key_updates++;
 	replace_test_string(&last_modifier_key_spec, candidate);
 	if (candidate && strcmp(candidate, "Mod4") == 0)
-		wPreferences.modifier_mask = XCB_MOD_MASK_4;
+		wdisp->modifier_mask = XCB_MOD_MASK_4;
 	else if (candidate && strcmp(candidate, "Mod1") == 0)
-		wPreferences.modifier_mask = XCB_MOD_MASK_1;
+		wdisp->modifier_mask = XCB_MOD_MASK_1;
 }
 
 void wConfigApplyTabDragModifier(const char *spec)
 {
 	if (!spec || spec[0] == '\0' || strcmp(spec, "None") == 0)
-		wPreferences.tab_drag_modifier_mask = 0;
+		wdisp->tab_drag_modifier_mask = 0;
 	else if (strcmp(spec, "Shift") == 0)
-		wPreferences.tab_drag_modifier_mask = XCB_MOD_MASK_SHIFT;
+		wdisp->tab_drag_modifier_mask = XCB_MOD_MASK_SHIFT;
 }
 
 unsigned int wConfigApplyWorkspaceBackgroundSpec(WScreen *scr, const char *key,
@@ -303,7 +306,7 @@ void wConfigApplyModifierKeyLabels(WScreen *scr,
 	(void)scr;
 	modifier_label_updates++;
 	for (i = 0; i < 7; i++) {
-		replace_test_string(&wPreferences.modifier_labels[i],
+		replace_test_string(&wdisp->modifier_labels[i],
 				    labels && i < labels->count ? labels->items[i] : NULL);
 	}
 }
@@ -317,7 +320,7 @@ void wConfigApplyModifierKeyShortLabels(WScreen *scr,
 	modifier_short_label_updates++;
 	for (i = 0; i < 9; i++) {
 		const char *value = labels && i < labels->count ? labels->items[i] : NULL;
-		replace_test_string(&wPreferences.modifier_short_labels[i],
+		replace_test_string(&wdisp->modifier_short_labels[i],
 				    value && value[0] != '\0' ? value : NULL);
 	}
 }
@@ -331,7 +334,9 @@ void wConfigApplyHotCornerActions(WScreen *scr,
 	hot_corner_updates++;
 	for (i = 0; i < 4; i++) {
 		const char *value = actions && i < actions->count ? actions->items[i] : NULL;
-		replace_test_string(&wPreferences.hot_corner_actions[i],
+		if (!scr)
+			continue;
+		replace_test_string(&scr->hot_corner_actions[i],
 				    value && strcasecmp(value, "None") != 0 ? value : NULL);
 	}
 }
@@ -482,15 +487,21 @@ static unsigned int apply_runtime_defaults_for_test(WScreen *scr,
 static void reset_preferences(void)
 {
 	wConfigClearWindowMaker();
-	for (size_t i = 0; i < 7; i++)
-		if (wPreferences.modifier_labels[i])
-			wfree(wPreferences.modifier_labels[i]);
-	for (size_t i = 0; i < 9; i++)
-		if (wPreferences.modifier_short_labels[i])
-			wfree(wPreferences.modifier_short_labels[i]);
-	for (size_t i = 0; i < 4; i++)
-		if (wPreferences.hot_corner_actions[i])
-			wfree(wPreferences.hot_corner_actions[i]);
+	for (size_t i = 0; i < 7; i++) {
+		if (wdisp->modifier_labels[i]) {
+			wfree(wdisp->modifier_labels[i]);
+			wdisp->modifier_labels[i] = NULL;
+		}
+	}
+	for (size_t i = 0; i < 9; i++) {
+		if (wdisp->modifier_short_labels[i]) {
+			wfree(wdisp->modifier_short_labels[i]);
+			wdisp->modifier_short_labels[i] = NULL;
+		}
+	}
+	memset(&wdisp->flags, 0, sizeof(wdisp->flags));
+	wdisp->modifier_mask = 0;
+	wdisp->tab_drag_modifier_mask = 0;
 	memset(&wPreferences, 0, sizeof(wPreferences));
 	reset_phase4_counters();
 }
@@ -1349,17 +1360,17 @@ static void test_static_apply(void)
 		return;
 
 	wConfigApplyStaticDefaults(dict);
-	CHECK(wPreferences.flags.nodock == 1);
-	CHECK(wPreferences.flags.nodrawer == 1);
-	CHECK(wPreferences.flags.noclip == 1);
-	CHECK(wPreferences.flags.clip_merged_in_dock == 1);
+	CHECK(wdisp->flags.nodock == 1);
+	CHECK(wdisp->flags.nodrawer == 1);
+	CHECK(wdisp->flags.noclip == 1);
+	CHECK(wdisp->flags.clip_merged_in_dock == 1);
 	CHECK(w_global.config->disable_miniwindows == 1);
 	CHECK(w_global.config->enable_workspace_pager == 1);
 	CHECK(w_global.config->switch_panel_icon_size == 48);
 	/* ModifierKey is now resolved on the runtime path (after wXkbInit),
 	 * so wConfigApplyStatic no longer touches the modifier mask. */
 	CHECK(modifier_key_updates == 0);
-	CHECK(wPreferences.modifier_mask == 0);
+	CHECK(wdisp->modifier_mask == 0);
 
 	wConfigClearWindowMaker();
 	WMReleasePropList(dict);
@@ -1665,9 +1676,9 @@ static void test_runtime_apply(void)
 	CHECK(strcmp(w_global.config->pixmap_path, "/new/pix:/new/bg") == 0);
 	CHECK(strcmp(w_global.config->icon_path, "/new/icons:/new/more") == 0);
 	CHECK(w_global.config->sticky_icons == 1);
-	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
-	CHECK(wPreferences.window_place_origin.x == 300);
-	CHECK(wPreferences.window_place_origin.y == 0);
+	CHECK(wdisp->flags.wrap_appicons_in_dock == 0);
+	CHECK(screen.window_place_origin.x == 300);
+	CHECK(screen.window_place_origin.y == 0);
 	CHECK(w_global.config->keep_dock_on_primary_head == 1);
 	CHECK(strcmp(w_global.config->screenshot_filename_template, "shot_%S") == 0);
 	CHECK(w_global.config->menu_style == MS_FLAT);
@@ -1825,18 +1836,18 @@ static void test_runtime_apply_phase4(void)
 
 	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(hot_corner_updates == 1);
-	CHECK(strcmp(wPreferences.hot_corner_actions[0], "OpenRootMenu") == 0);
-	CHECK(wPreferences.hot_corner_actions[1] == NULL);
-	CHECK(strcmp(wPreferences.hot_corner_actions[2], "Run") == 0);
+	CHECK(strcmp(screen.hot_corner_actions[0], "OpenRootMenu") == 0);
+	CHECK(screen.hot_corner_actions[1] == NULL);
+	CHECK(strcmp(screen.hot_corner_actions[2], "Run") == 0);
 	CHECK(switch_panel_updates == 1);
 	CHECK(strcmp(switch_panel_tile, "tile.png") == 0);
 	CHECK(strcmp(switch_panel_background, "back.png") == 0);
 	CHECK(switch_panel_center_width == 12);
 	CHECK(switch_panel_center_height == 13);
 	CHECK(modifier_label_updates == 1);
-	CHECK(strcmp(wPreferences.modifier_labels[0], "S+") == 0);
+	CHECK(strcmp(wdisp->modifier_labels[0], "S+") == 0);
 	CHECK(modifier_short_label_updates == 1);
-	CHECK(strcmp(wPreferences.modifier_short_labels[8], "A") == 0);
+	CHECK(strcmp(wdisp->modifier_short_labels[8], "A") == 0);
 	CHECK(key_binding_updates == 2);
 	CHECK(key_binding_seen[WKBD_ROOTMENU] == 1);
 	CHECK(key_binding_seen[WKBD_WORKSPACE1] == 1);
@@ -1845,6 +1856,9 @@ static void test_runtime_apply_phase4(void)
 	CHECK(refresh == WCFG_REFRESH_WORKSPACE_MENU);
 
 out:
+	for (size_t i = 0; i < 4; i++)
+		if (screen.hot_corner_actions[i])
+			wfree(screen.hot_corner_actions[i]);
 	if (old_dict)
 		WMReleasePropList(old_dict);
 	if (new_dict)
@@ -2241,7 +2255,7 @@ static void test_modifier_key_live_apply(void)
 	apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(modifier_key_updates == 1);
 	CHECK(strcmp(last_modifier_key_spec, "Mod4") == 0);
-	CHECK(wPreferences.modifier_mask == XCB_MOD_MASK_4);
+	CHECK(wdisp->modifier_mask == XCB_MOD_MASK_4);
 	CHECK(regrab_mouse_grabs == 1);
 
 out:
@@ -2500,12 +2514,16 @@ static void test_empty_color_uses_default(void)
 static void test_deleted_key_keeps_current(void)
 {
 	WMPropList *old_dict, *new_dict;
+	WScreen screen;
 	unsigned int refresh;
 
 	reset_preferences();
-	wPreferences.flags.wrap_appicons_in_dock = 0;
-	wPreferences.window_place_origin.x = 123;
-	wPreferences.window_place_origin.y = 45;
+	memset(&screen, 0, sizeof(screen));
+	screen.scr_width = 900;
+	screen.scr_height = 600;
+	screen.window_place_origin.x = 123;
+	screen.window_place_origin.y = 45;
+	wdisp->flags.wrap_appicons_in_dock = 0;
 
 	old_dict = dict_from_desc("{ HotCornerActions = (OpenRootMenu, None, Run, Workspace1); "
 				  "WorkspaceSpecificBack = ((solid, black)); "
@@ -2545,7 +2563,7 @@ static void test_deleted_key_keeps_current(void)
 	if (!old_dict || !new_dict)
 		goto out;
 
-	refresh = apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
 	CHECK(w_global.config->auto_focus == 1);
 	CHECK(w_global.config->wrap_menus == 1);
 	CHECK(w_global.config->align_menus == 1);
@@ -2561,9 +2579,9 @@ static void test_deleted_key_keeps_current(void)
 	CHECK(strcmp(w_global.config->pixmap_path, "/keep/pix:/keep/bg") == 0);
 	CHECK(strcmp(w_global.config->icon_path, "/keep/icons") == 0);
 	CHECK(w_global.config->sticky_icons == 1);
-	CHECK(wPreferences.flags.wrap_appicons_in_dock == 0);
-	CHECK(wPreferences.window_place_origin.x == 123);
-	CHECK(wPreferences.window_place_origin.y == 45);
+	CHECK(wdisp->flags.wrap_appicons_in_dock == 0);
+	CHECK(screen.window_place_origin.x == 123);
+	CHECK(screen.window_place_origin.y == 45);
 	CHECK(w_global.config->keep_dock_on_primary_head == 1);
 	CHECK(strcmp(w_global.config->screenshot_filename_template, "keep_%S") == 0);
 	CHECK(w_global.config->menu_style == MS_FLAT);

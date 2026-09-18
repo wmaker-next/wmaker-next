@@ -452,12 +452,12 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	updateSettingsPanelIcon(panel);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	/*
 	 * make things relative to head
@@ -494,8 +494,8 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 {
 	if (!panel->destroyed) {
-		xcb_unmap_window(xconn, panel->wwin->client_win);
-		xcb_reparent_window(xconn, panel->wwin->client_win, panel->wwin->screen_ptr->root_win, 0, 0);
+		xcb_unmap_window(wdisp->conn, panel->wwin->client_win);
+		xcb_reparent_window(wdisp->conn, panel->wwin->client_win, panel->wwin->screen_ptr->root_win, 0, 0);
 		wUnmanageWindow(panel->wwin, false, false);
 	}
 
@@ -514,7 +514,7 @@ void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 
 	WMDestroyWidget(panel->win);
 
-	xcb_destroy_window(xconn, panel->parent);
+	xcb_destroy_window(wdisp->conn, panel->parent);
 
 	panel->editedIcon->panel = NULL;
 

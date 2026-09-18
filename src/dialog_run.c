@@ -1460,7 +1460,7 @@ static void createDropList(WMInputPanelWithHistory *p)
 
 	/* override-redirect so wmaker does not try to manage it,
 	 * and save-under so the area below repaints cheaply */
-	xcb_change_window_attributes(xconn, WMWidgetXID(p->dropWin),
+	xcb_change_window_attributes(wdisp->conn, WMWidgetXID(p->dropWin),
 				     XCB_CW_SAVE_UNDER | XCB_CW_OVERRIDE_REDIRECT,
 				     (const uint32_t[]){ true, true });
 }
@@ -1500,11 +1500,11 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 	ow = w + 2 * bw;
 
 	if (bw > 0) {
-		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ bw });
+		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ bw });
 		if (bpixel)
-			xcb_change_window_attributes(xconn, WMWidgetXID(p->dropWin), XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *bpixel });
+			xcb_change_window_attributes(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CW_BORDER_PIXEL, (const uint32_t[]){ *bpixel });
 	} else {
-		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
+		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 	}
 
 	h = rows * p->dropItemH + 4;
@@ -1568,7 +1568,7 @@ static void refreshDropList(WMInputPanelWithHistory *p)
 	}
 	if (!p->dropMapped) {
 		WMMapWidget(p->dropWin);
-		xcb_configure_window(xconn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 		p->dropMapped = true;
 	}
 	p->filtering = true;
@@ -1964,11 +1964,11 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	pwidth = WMWidgetWidth(p->panel->win);
 	pheight = WMWidgetHeight(p->panel->win);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
-	xcb_reparent_window(xconn, WMWidgetXID(p->panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(p->panel->win), parent, 0, 0);
 
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, NULL, center.x, center.y, pwidth, pheight);
@@ -2033,7 +2033,7 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	wfree(p);
 	wfree(filename);
 
-	xcb_destroy_window(xconn, parent);
+	xcb_destroy_window(wdisp->conn, parent);
 
 	if (result == NULL)
 		return false;

@@ -80,7 +80,7 @@ void Shutdown(WShutdownMode mode, bool external)
 #ifdef HAVE_INOTIFY
 		wInotifyCleanup();
 #endif
-		for (i = 0; i < w_global.screen_count; i++) {
+		for (i = 0; i < wdisp->screen_count; i++) {
 			WScreen *scr;
 
 			scr = wScreenWithNumber(i);
@@ -105,7 +105,7 @@ void Shutdown(WShutdownMode mode, bool external)
 		break;
 
 	case WSRestartPreparationMode:
-		for (i = 0; i < w_global.screen_count; i++) {
+		for (i = 0; i < wdisp->screen_count; i++) {
 			WScreen *scr;
 
 #ifdef HAVE_INOTIFY
@@ -159,7 +159,7 @@ static void restoreWindows(WMBag * bag, WMBagIterator iter)
 			wwin = core->descriptor.parent;
 			window = wwin->client_win;
 			wUnmanageWindow(wwin, !wwin->flags.internal_window, false);
-			xcb_map_window(xconn, window);
+			xcb_map_window(wdisp->conn, window);
 		}
 		core = next;
 	}
@@ -184,18 +184,18 @@ void RestoreDesktop(WScreen * scr)
 		scr->helper_pid = 0;
 	}
 
-	wXGrabServer(xconn);
+	wXGrabServer(wdisp->conn);
 	wDestroyInspectorPanels();
 
 	/* reparent windows back to the root window, keeping the stacking order */
 	restoreWindows(scr->stacking_list, NULL);
 
-	wXUngrabServer(xconn);
-	xcb_set_input_focus(xconn, XCB_INPUT_FOCUS_PARENT, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+	wXUngrabServer(wdisp->conn);
+	xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	wColormapInstallForWindow(scr, NULL);
 	PropCleanUp(scr->root_win);
 	wNETWMCleanup(scr);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 }
 
 /*
@@ -218,7 +218,7 @@ static void wipeDesktop(WScreen * scr)
 	xcb_window_t root, parent;
 	xcb_window_t *children;
 	unsigned int nchildren, i;
-	const xcb_setup_t *setup = xcb_get_setup(xconn);
+	const xcb_setup_t *setup = xcb_get_setup(wdisp->conn);
 	uint32_t own_base = setup->resource_id_base;
 	uint32_t own_mask = setup->resource_id_mask;
 
@@ -229,8 +229,8 @@ static void wipeDesktop(WScreen * scr)
 	wwin = scr->focused_window;
 	while (wwin) {
 		if (wwin->protocols.DELETE_WINDOW)
-			wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-									  w_global.timestamp.last_event);
+			wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+									  wdisp->timestamp.last_event);
 		else
 			wClientKill(wwin);
 		wwin = wwin->prev;
@@ -241,14 +241,14 @@ static void wipeDesktop(WScreen * scr)
 	 * Override-redirect panels, withdrawn clients and anything
 	 * else that never had a WWindow would otherwise outlive the
 	 * session kill. */
-	if (wXQueryTree(xconn, scr->root_win, &root, &parent, &children, &nchildren)) {
+	if (wXQueryTree(wdisp->conn, scr->root_win, &root, &parent, &children, &nchildren)) {
 		for (i = 0; i < nchildren; i++) {
 			if (((uint32_t)children[i] & ~own_mask) != own_base)
-				xcb_kill_client(xconn, children[i]);
+				xcb_kill_client(wdisp->conn, children[i]);
 		}
 		if (children)
 			wfree(children);
 	}
 
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 }

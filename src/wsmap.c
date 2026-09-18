@@ -106,13 +106,13 @@ static void workspace_map_destroy(WWorkspaceMap *wsmap)
 	if (wsmap->win) {
 		xcb_window_t info_win = wsmap->scr->info_window;
 
-		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
-				    w_global.atom.wm.ignore_focus_events,
+		WXSendClientMessage(wdisp->conn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
+				    wdisp->atom.wm.ignore_focus_events,
 				    true, 0, 0, 0, 0);
 		WMUnmapWidget(wsmap->win);
 
-		WXSendClientMessage(xconn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
-				    w_global.atom.wm.ignore_focus_events,
+		WXSendClientMessage(wdisp->conn, info_win, XCB_EVENT_MASK_ENTER_WINDOW, info_win,
+				    wdisp->atom.wm.ignore_focus_events,
 				    false, 0, 0, 0, 0);
 		WMDestroyWidget(wsmap->win);
 
@@ -141,8 +141,8 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 {
 	xcb_pixmap_t pixmap, mask;
 
-	if (wPreferences.wsmbackTexture->any.type == WTEX_PIXMAP) {
-		RImage *tmp = wTextureRenderImage(wPreferences.wsmbackTexture, wsmap->wswidth, wsmap->wsheight, WREL_FLAT);
+	if (wsmap->scr->wsmbackTexture->any.type == WTEX_PIXMAP) {
+		RImage *tmp = wTextureRenderImage(wsmap->scr->wsmbackTexture, wsmap->wswidth, wsmap->wsheight, WREL_FLAT);
 
 		if (!tmp)
 			return;
@@ -153,18 +153,18 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 		if (!pixmap)
 			return;
 
-		xcb_change_window_attributes(xconn, WMWidgetXID(wsmap->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
+		xcb_change_window_attributes(wdisp->conn, WMWidgetXID(wsmap->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 #ifdef USE_XSHAPE
-		if (mask && w_global.xext.shape.supported)
-			xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		if (mask && wdisp->xext.shape.supported)
+			xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 				       WMWidgetXID(wsmap->win), 0, 0, mask);
 #endif
 
 		if (pixmap)
-			xcb_free_pixmap(xconn, pixmap);
+			xcb_free_pixmap(wdisp->conn, pixmap);
 		if (mask)
-			xcb_free_pixmap(xconn, mask);
+			xcb_free_pixmap(wdisp->conn, mask);
 	}
 }
 
@@ -388,11 +388,11 @@ static WWorkspaceMap *create_workspace_map(WScreen *scr, W_WorkspaceMap *wsmap_a
 	configure_workspace_grid(wsmap);
 	wsmap->win = WMCreateWindow(scr->wmscreen, "wsmap");
 
-	if (wPreferences.wsmbackTexture->any.type == WTEX_SOLID) {
+	if (wsmap->scr->wsmbackTexture->any.type == WTEX_SOLID) {
 		WMColor *tmp = WMCreateRGBColor(scr->wmscreen,
-							wPreferences.wsmbackTexture->any.color.red,
-							wPreferences.wsmbackTexture->any.color.green,
-							wPreferences.wsmbackTexture->any.color.blue,
+							wsmap->scr->wsmbackTexture->any.color.red,
+							wsmap->scr->wsmbackTexture->any.color.green,
+							wsmap->scr->wsmbackTexture->any.color.blue,
 							false);
 		WMSetWidgetBackgroundColor(wsmap->win, tmp);
 		WMReleaseColor(tmp);
@@ -425,8 +425,8 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 	int modifiers;
 	xcb_keycode_t escKey = wXkbKeysymToKeycode(XKB_KEY_Escape);
 
-	wXGrabKeyboard(xconn, WMWidgetXID(wsmap->win), false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
-	wXGrabPointer(xconn, WMWidgetXID(wsmap->win), true,
+	wXGrabKeyboard(wdisp->conn, WMWidgetXID(wsmap->win), false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabPointer(wdisp->conn, WMWidgetXID(wsmap->win), true,
 	             XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
 	             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, WMWidgetXID(wsmap->win), XCB_NONE, XCB_CURRENT_TIME);
 
@@ -434,7 +434,7 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 	while (w_global.process_workspacemap_event) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION |
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION |
 		             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE, &ev);
 		if (!ev)
 			break;
@@ -513,8 +513,8 @@ static void handle_event(WWorkspaceMap *wsmap, W_WorkspaceMap *wsmap_array)
 	}
 
 	free(ev);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 
 	workspace_map_destroy(wsmap);
 }

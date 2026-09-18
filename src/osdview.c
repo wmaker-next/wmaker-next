@@ -76,7 +76,7 @@ static void applyTextShape(WOSDView *osd, int width, int height)
 	int x, y;
 
 	if (!osd->transparent || osd->view->flags.argb) {
-		xcb_shape_mask(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+		xcb_shape_mask(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			       W_VIEW_DRAWABLE(osd->view), 0, 0, XCB_NONE);
 		return;
 	}
@@ -122,10 +122,10 @@ static void applyTextShape(WOSDView *osd, int width, int height)
 		}
 	}
 
-	xcb_shape_rectangles(xconn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	xcb_shape_rectangles(wdisp->conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
 			     3, W_VIEW_DRAWABLE(osd->view),
 			     0, 0, rectangle_count, rectangles);
-	xcb_flush(xconn);
+	xcb_flush(wdisp->conn);
 	wfree(rectangles);
 	cairo_surface_destroy(surface);
 }

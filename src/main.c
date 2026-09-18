@@ -69,6 +69,7 @@ const char *__lsan_default_suppressions(void)
 #include "event.h"
 #include "ipc.h"
 #include "startup.h"
+#include "wdisplay.h"
 #include "menu.h"
 #include "keybind.h"
 #include "wxkb.h"
@@ -90,10 +91,6 @@ const char *__lsan_default_suppressions(void)
 struct wmaker_global_variables w_global;
 
 /* general info */
-
-/* the connection owner, opened in real_main() */
-xcb_connection_t *xconn;
-int dflt_screen;
 
 char *ProgName;
 
@@ -144,7 +141,7 @@ static void play_startup_sound(void *data)
 	WScreen *scr;
 
 	(void)data;
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (scr)
 			wSoundPlay(scr, WSOUND_STARTUP);
@@ -245,9 +242,9 @@ static int initWVisualID(const char *user_str)
 
 noreturn void Exit(int status)
 {
-	if (xconn) {
-		xcb_disconnect(xconn);
-		xconn = NULL;
+	if (wdisp && wdisp->conn) {
+		xcb_disconnect(wdisp->conn);
+		wdisp->conn = NULL;
 	}
 
 	wXDGAppListInvalidate();
@@ -256,6 +253,9 @@ noreturn void Exit(int status)
 	RShutdown(); /* wrlib clean exit */
 	wutil_shutdown();  /* WUtil clean-up */
 
+	/* last, so wAbort can still reach wdisp during teardown */
+	wDisplayDestroy();
+
 	exit(status);
 }
 
@@ -263,6 +263,7 @@ void Restart(char *manager, bool abortOnFailure)
 {
 	char *prog = NULL;
 	char *argv[MAX_RESTART_ARGS];
+	xcb_connection_t *conn;
 	int i;
 
 	if (manager && manager[0] != 0) {
@@ -274,9 +275,10 @@ void Restart(char *manager, bool abortOnFailure)
 			}
 		}
 	}
-	if (xconn) {
-		xcb_disconnect(xconn);
-		xconn = NULL;
+	if (wdisp && wdisp->conn) {
+		conn = wdisp->conn;
+		wDisplayDestroy();
+		xcb_disconnect(conn);
 	}
 	if (!prog) {
 		execvp(Arguments[0], Arguments);
@@ -503,7 +505,7 @@ noreturn void wAbort(int dumpCore)
 	int i;
 	WScreen *scr;
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; wdisp && i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (scr)
 			RestoreDesktop(scr);
@@ -641,8 +643,6 @@ int main(int argc, char **argv)
 	memset(&w_global, 0, sizeof(w_global));
 	w_global.program.state = WSTATE_NORMAL;
 	w_global.program.signal_state = WSTATE_NORMAL;
-	w_global.timestamp.last_event = XCB_CURRENT_TIME;
-	w_global.timestamp.focus_change = XCB_CURRENT_TIME;
 	w_global.ignore_workspace_change = false;
 	w_global.restore_focus_repair = false;
 	w_global.shortcut.modifiers_mask = 0xff;
@@ -715,6 +715,8 @@ static int real_main(int argc, char **argv)
 	int i;
 	char *pos;
 	int d, s;
+	int dflt;
+	xcb_connection_t *conn;
 	xcb_screen_t *xscr;
 	const char *sm_client_id = NULL;
 
@@ -739,31 +741,33 @@ static int real_main(int argc, char **argv)
 	else
 		ProgName++;
 
+	wDisplayCreate();
+
 	if (argc > 1) {
 		for (i = 1; i < argc; i++) {
 			if (strcmp(argv[i], "-nocpp") == 0 || strcmp(argv[i], "--no-cpp") == 0) {
 				wwarning(_("option \"%s\" is deprecated, please remove it from your script"), argv[i]);
 			} else if (strcmp(argv[i], "--for-real") == 0) {
-				wPreferences.flags.restarting = 0;
+				wdisp->flags.restarting = 0;
 			} else if (strcmp(argv[i], "--for-real=") == 0) {
-				wPreferences.flags.restarting = 1;
+				wdisp->flags.restarting = 1;
 			} else if (strcmp(argv[i], "--for-real-") == 0) {
-				wPreferences.flags.restarting = 2;
+				wdisp->flags.restarting = 2;
 			} else if (strcmp(argv[i], "-no-autolaunch") == 0
 				   || strcmp(argv[i], "--no-autolaunch") == 0) {
-				wPreferences.flags.noautolaunch = 1;
+				wdisp->flags.noautolaunch = 1;
 			} else if (strcmp(argv[i], "-dont-restore") == 0 || strcmp(argv[i], "--dont-restore") == 0) {
-				wPreferences.flags.norestore = 1;
+				wdisp->flags.norestore = 1;
 			} else if (strcmp(argv[i], "-nodock") == 0 || strcmp(argv[i], "--no-dock") == 0) {
-				wPreferences.flags.nodock = 1;
-				wPreferences.flags.nodrawer = 1;
+				wdisp->flags.nodock = 1;
+				wdisp->flags.nodrawer = 1;
 			} else if (strcmp(argv[i], "-noclip") == 0 || strcmp(argv[i], "--no-clip") == 0) {
-				wPreferences.flags.noclip = 1;
+				wdisp->flags.noclip = 1;
 			} else if (strcmp(argv[i], "-nodrawer") == 0 || strcmp(argv[i], "--no-drawer") == 0) {
-				wPreferences.flags.nodrawer = 1;
+				wdisp->flags.nodrawer = 1;
 #ifdef USE_ICCCM_WMREPLACE
 			} else if (strcmp(argv[i], "-replace") == 0 || strcmp(argv[i], "--replace") == 0) {
-				wPreferences.flags.replace = 1;
+				wdisp->flags.replace = 1;
 #endif
 			} else if (strcmp(argv[i], "-version") == 0 || strcmp(argv[i], "--version") == 0) {
 				printf("Window Maker %s\n", VERSION);
@@ -803,10 +807,10 @@ static int real_main(int argc, char **argv)
 				}
 				sm_client_id = argv[i];
 			} else if (strcmp(argv[i], "-static") == 0 || strcmp(argv[i], "--static") == 0) {
-				wPreferences.flags.noupdates = 1;
+				wdisp->flags.noupdates = 1;
 			} else if (strcmp(argv[i], "--no-polling") == 0) {
 #ifndef HAVE_INOTIFY
-				wPreferences.flags.noupdates = 1;
+				wdisp->flags.noupdates = 1;
 #else
 				wmessage(_("your version of Window Maker was compiled with INotify support, so \"--no-polling\" has no effect"));
 #endif
@@ -821,7 +825,7 @@ static int real_main(int argc, char **argv)
 		}
 	}
 
-	if (!wPreferences.flags.noupdates) {
+	if (!wdisp->flags.noupdates) {
 		/* check existence of Defaults DB directory */
 		check_defaults();
 	}
@@ -878,13 +882,15 @@ static int real_main(int argc, char **argv)
 		exit(1);
 	}
 
-	xconn = xcb_connect(DisplayName, &dflt_screen);
-	if (xcb_connection_has_error(xconn)) {
+	conn = xcb_connect(DisplayName, &dflt);
+	if (xcb_connection_has_error(conn)) {
 		wfatal(_("could not open display \"%s\""), DisplayName);
 		exit(1);
 	}
 
-	if (fcntl(xcb_get_file_descriptor(xconn), F_SETFD, FD_CLOEXEC) < 0) {
+	wDisplayAttach(conn, dflt);
+
+	if (fcntl(xcb_get_file_descriptor(conn), F_SETFD, FD_CLOEXEC) < 0) {
 		werror("error setting close-on-exec flag for X connection");
 		exit(1);
 	}
@@ -897,7 +903,7 @@ static int real_main(int argc, char **argv)
 		 *   This is required to avoid all sort of corruptions when
 		 * composite is enabled, and at a depth other than 24.
 		 */
-		xscr = wXScreenOf(xconn, dflt_screen);
+		xscr = wXScreenOf(conn, dflt);
 		setWVisualID(0, (int)xscr->root_visual);
         }
 
@@ -913,7 +919,7 @@ static int real_main(int argc, char **argv)
 
 	StartUp(!multiHead);
 
-	if (w_global.screen_count == 1)
+	if (wdisp->screen_count == 1)
 		multiHead = false;
 
 	wXSMPConnect(argc, argv, sm_client_id);

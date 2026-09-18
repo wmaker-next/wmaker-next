@@ -72,15 +72,15 @@ static WWindow *makeMainWindow(WScreen *scr, xcb_window_t window, WWindow *src)
 		 * which covers PropertyChange and StructureNotify, the fake
 		 * leader is fresh so select here */
 		if (window != src->client_win)
-			xcb_change_window_attributes(xconn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+			xcb_change_window_attributes(wdisp->conn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
 	} else {
-		if (!wXGetWindowAttributes(xconn, window, &attr, NULL)) {
+		if (!wXGetWindowAttributes(wdisp->conn, window, &attr, NULL)) {
 			wWindowDestroy(wwin);
 			return NULL;
 		}
-		wwin->wm_hints = WXGetWMHints(xconn, window);
+		wwin->wm_hints = WXGetWMHints(wdisp->conn, window);
 		PropGetWMClass(window, &wwin->wm_class, &wwin->wm_instance);
-		xcb_change_window_attributes(xconn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ attr.your_event_mask | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
+		xcb_change_window_attributes(wdisp->conn, window, XCB_CW_EVENT_MASK, (const uint32_t[]){ attr.your_event_mask | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY });
 	}
 
 	wDefaultFillAttributes(wwin->wm_instance, wwin->wm_class, &wwin->user_flags,
@@ -95,7 +95,7 @@ WApplication *wApplicationOf(xcb_window_t window)
 
 	if (window == XCB_NONE)
 		return NULL;
-	wapp = WMHashGet(w_global.context.app_win, (void *)(uintptr_t) window);
+	wapp = WMHashGet(wdisp->context.app_win, (void *)(uintptr_t) window);
 	if (wapp == NULL)
 		return NULL;
 	return wapp;
@@ -159,7 +159,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 		src = NULL;
 
 	/* check if the window is valid */
-	if (!src && !WXRcvGeometry(xconn, WXReqGeometry(xconn, main_window), &xg))
+	if (!src && !WXRcvGeometry(wdisp->conn, WXReqGeometry(wdisp->conn, main_window), &xg))
 		return NULL;
 
 	wapp = wmalloc(sizeof(WApplication));
@@ -202,7 +202,7 @@ WApplication *wApplicationCreate(WWindow * wwin)
 	wapp->flags.emulated = WFLAGP(wapp->main_window_desc, emulate_appicon);
 
 	/* application descriptor */
-	WMHashInsert(w_global.context.app_win, (void *)(uintptr_t) main_window, wapp);
+	WMHashInsert(wdisp->context.app_win, (void *)(uintptr_t) main_window, wapp);
 
 	/* link into the per-screen application list, wApplicationDestroy
 	 * unlinks from here and the list keeps wapp reachable from
@@ -252,7 +252,7 @@ void wApplicationDestroy(WApplication *wapp)
 			wapp->prev->next = wapp->next;
 	}
 
-	WMHashRemove(w_global.context.app_win, (void *)(uintptr_t) wapp->main_window);
+	WMHashRemove(wdisp->context.app_win, (void *)(uintptr_t) wapp->main_window);
 	wAppMenuDestroy(wapp->menu);
 
 	/* Remove application icon */
@@ -264,7 +264,7 @@ void wApplicationDestroy(WApplication *wapp)
 	if (wwin) {
 		/* undelete client window descriptor that was deleted in
 		 * wWindowDestroy */
-		WMHashInsert(w_global.context.client_win, (void *)(uintptr_t) wwin->client_win,
+		WMHashInsert(wdisp->context.client_win, (void *)(uintptr_t) wwin->client_win,
 			     &wwin->client_descriptor);
 	}
 	wSoundPlay(scr, WSOUND_APPEXIT);

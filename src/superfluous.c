@@ -70,7 +70,7 @@ void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 	 * on the first Composite, so skip the decoration then just as
 	 * the previous XGetImage fallback effectively did. */
 	if (rc->xdepth != scr->depth) {
-		xcb_unmap_window(xconn, win);
+		xcb_unmap_window(wdisp->conn, win);
 		return;
 	}
 
@@ -86,7 +86,7 @@ void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 	cairo_surface_destroy(ws);
 	if (cairo_surface_status(snap) != CAIRO_STATUS_SUCCESS) {
 		cairo_surface_destroy(snap);
-		xcb_unmap_window(xconn, win);
+		xcb_unmap_window(wdisp->conn, win);
 		return;
 	}
 
@@ -110,22 +110,22 @@ void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 		}
 	}
 
-	xcb_unmap_window(xconn, win);
+	xcb_unmap_window(wdisp->conn, win);
 
 	j = k;
 	while (k > 0) {
 		xcb_generic_event_t *foo = NULL;
 
-		if (WXEvqTakeTyped(xconn, XCB_BUTTON_PRESS, XCB_NONE, &foo)) {
+		if (WXEvqTakeTyped(wdisp->conn, XCB_BUTTON_PRESS, XCB_NONE, &foo)) {
 			WXEvqPutBack(foo);
-			xcb_clear_area(xconn, 0, scr->root_win, 0, 0, 0, 0);
+			xcb_clear_area(wdisp->conn, 0, scr->root_win, 0, 0, 0, 0);
 			break;
 		}
 
 		for (i = 0; i < j; i++) {
 			if (ax[i] >= 0) {
 				int _px = px[i] >> KAB_PRECISION;
-				xcb_clear_area(xconn, false, scr->root_win, _px, py[i], ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE);
+				xcb_clear_area(wdisp->conn, false, scr->root_win, _px, py[i], ICON_KABOOM_PIECE_SIZE, ICON_KABOOM_PIECE_SIZE);
 				px[i] += pvx[i];
 				py[i] += pvy[i];
 				_px = px[i] >> KAB_PRECISION;
@@ -145,7 +145,7 @@ void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 		}
 
 		cairo_surface_flush(root);
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 		wusleep(MINIATURIZE_ANIMATION_DELAY_Z * 2);
 	}
 
@@ -220,7 +220,7 @@ static void doAppBounce(void *arg)
 reinit:
 	if (data->wapp->refcount > 1) {
 		if (w_global.config->raise_appicons_when_bouncing)
-			xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 
 		const double ticks = BOUNCE_HZ * BOUNCE_LENGTH;
 		const double s = sqrt(BOUNCE_HEIGHT)/(ticks/2);
@@ -237,23 +237,23 @@ reinit:
 
 			switch (data->dir) {
 			case 0: /* left, bounce to right */
-				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos + (int)offset, aicon->y_pos });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos + (int)offset, aicon->y_pos });
 				break;
 			case 1: /* right, bounce to left */
-				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos - (int)offset, aicon->y_pos });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos - (int)offset, aicon->y_pos });
 				break;
 			case 2: /* top, bounce down */
-				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos + (int)offset });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos + (int)offset });
 				break;
 			case 3: /* bottom, bounce up */
-				xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos - (int)offset });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos - (int)offset });
 				break;
 			}
 			return;
 		}
 	}
 
-	xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos });
+	xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos });
 	aicon->icon->core->screen_ptr->flags.need_restack = 1;
 	data->wapp->flags.bouncing = 0;
 	WMDeleteTimerHandler(data->timer);

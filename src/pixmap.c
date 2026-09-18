@@ -80,13 +80,13 @@ WPixmap *wPixmapCreateFromXBMData(WScreen * scr, char *data, char *mask,
 	WPixmap *pix;
 
 	pix = wmalloc(sizeof(WPixmap));
-	pix->image = wXCreatePixmapFromBitmapData(xconn, scr->w_win, data, width, height, fg, bg, scr->w_depth);
+	pix->image = wXCreatePixmapFromBitmapData(wdisp->conn, scr->w_win, data, width, height, fg, bg, scr->w_depth);
 	if (pix->image == XCB_NONE) {
 		wfree(pix);
 		return NULL;
 	}
 	if (mask) {
-		pix->mask = wXCreateBitmapFromData(xconn, scr->w_win, mask, width, height);
+		pix->mask = wXCreateBitmapFromData(wdisp->conn, scr->w_win, mask, width, height);
 	} else {
 		pix->mask = XCB_NONE;
 	}
@@ -104,7 +104,7 @@ WPixmap *wPixmapCreate(xcb_pixmap_t image, xcb_pixmap_t mask)
 	pix = wmalloc(sizeof(WPixmap));
 	pix->image = image;
 	pix->mask = mask;
-	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, (xcb_window_t) image), &geom)) {
+	if (!WXRcvGeometry(wdisp->conn, WXReqGeometry(wdisp->conn, (xcb_window_t) image), &geom)) {
 		wwarning("wXGetGeometry() failed during wPixmapCreate()");
 		wfree(pix);
 		return NULL;
@@ -128,11 +128,11 @@ void wPixmapDestroy(WPixmap * pix)
 {
 	if (!pix->shared) {
 		if (pix->mask && !pix->client_owned_mask) {
-			xcb_free_pixmap(xconn, pix->mask);
+			xcb_free_pixmap(wdisp->conn, pix->mask);
 		}
 
 		if (pix->image && !pix->client_owned) {
-			xcb_free_pixmap(xconn, pix->image);
+			xcb_free_pixmap(wdisp->conn, pix->image);
 		}
 	}
 	wfree(pix);

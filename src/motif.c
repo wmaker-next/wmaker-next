@@ -158,8 +158,8 @@ static void setupMWMHints(WWindow *wwin, MWMHints *mwm_hints)
 
 WXCookie wMWMReqClientHints(xcb_window_t window)
 {
-	return WXReqFormat32(xconn, window, w_global.atom.wm.motif_wm_hints,
-			     w_global.atom.wm.motif_wm_hints, 5);
+	return WXReqFormat32(wdisp->conn, window, wdisp->atom.wm.motif_wm_hints,
+			     wdisp->atom.wm.motif_wm_hints, 5);
 }
 
 static int rcvMWMHints(WXCookie ck, MWMHints *mwmhints)
@@ -169,7 +169,7 @@ static int rcvMWMHints(WXCookie ck, MWMHints *mwmhints)
 
 	mwmhints->flags = 0;
 
-	data = WXRcvFormat32List(xconn, ck, &n);
+	data = WXRcvFormat32List(wdisp->conn, ck, &n);
 	if (!data)
 		return 0;
 	if (n < 4) {

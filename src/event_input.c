@@ -65,7 +65,7 @@
 #include "wsound.h"
 
 
-#define MOD_MASK wPreferences.modifier_mask
+#define MOD_MASK wdisp->modifier_mask
 
 static void hideChainOSD(WScreen *scr);
 static void showChainOSD(WScreen *scr);
@@ -86,7 +86,7 @@ static void chainTimeoutCallback(void *data)
 
 	w_global.shortcut.chain_timeout_handler = NULL;
 	hideChainOSD(scr);
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 	w_global.shortcut.curpos = NULL;
 }
 
@@ -111,7 +111,7 @@ void wCancelKeyChain(WScreen *scr)
 {
 	wCancelChainTimer();
 	hideChainOSD(scr);
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 	w_global.shortcut.curpos = NULL;
 }
 
@@ -189,7 +189,7 @@ static void showChainOSD(WScreen *scr)
 	wPlaceOSDOnHead(scr, scr->keychain_osd,
 			w_global.config->keychain_display_position, WOSD_EDGE_PAD);
 	WMMapWidget(scr->keychain_osd);
-	xcb_configure_window(xconn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_configure_window(wdisp->conn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 }
 
 void wRefreshKeyChainOSD(WScreen *scr)
@@ -232,7 +232,7 @@ static void handleKeyPress(xcb_generic_event_t *ev)
 
 		/* Real key received: exit capture mode and release grab */
 		scr->flags.mark_capture_mode = MARK_CAPTURE_IDLE;
-		wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+		wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 
 		if (!GetCanonicalShortcutLabel(modifiers, cap_ksym, label, sizeof(label)))
 			wstrlcpy(label, "?", sizeof(label));
@@ -413,7 +413,7 @@ static void handleKeyPress(xcb_generic_event_t *ev)
 		if (match->first_child != NULL) {
 			/* Internal node: enter chain mode */
 			w_global.shortcut.curpos = match;
-			wXGrabKeyboard(xconn, scr->root_win, false,
+			wXGrabKeyboard(wdisp->conn, scr->root_win, false,
 							XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 			wStartChainTimer(scr);
 			showChainOSD(scr);
@@ -568,33 +568,33 @@ static void handleButtonPress(xcb_generic_event_t *ev)
 	 * frame of the menu it just mapped so this lookup resolves to the
 	 * menu descriptor and reaches menuMouseDown(), the wire bytes in e
 	 * are read-only so the lookup must read the cooked event */
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->child);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->child);
 	if (desc == NULL) {
-		desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->event);
+		desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) ((xcb_button_press_event_t *)ev)->event);
 		if (desc == NULL) {
-			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
+			wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 			return;
 		}
 	}
 
 	if (desc->parent_type == WCLASS_WINDOW) {
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 
 		if (e->state & ( MOD_MASK | XCB_MOD_MASK_CONTROL )) {
-			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
+			wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 		} else {
 			if (w_global.config->ignore_focus_click) {
-				wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
+				wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
 			}
-			wXAllowEvents(xconn, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
+			wXAllowEvents(wdisp->conn, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
 		}
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 	} else if (desc->parent_type == WCLASS_APPICON
 		   || desc->parent_type == WCLASS_MINIWINDOW || desc->parent_type == WCLASS_DOCK_ICON) {
 		if (e->state & MOD_MASK) {
-			wXFlush(xconn);
-			wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
-			wXFlush(xconn);
+			wXFlush(wdisp->conn);
+			wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_POINTER, XCB_CURRENT_TIME);
+			wXFlush(wdisp->conn);
 		}
 	}
 
@@ -617,7 +617,7 @@ static void handleMotionNotify(xcb_generic_event_t *ev)
 	const xcb_motion_notify_event_t *e = (const xcb_motion_notify_event_t *)ev;
 	WObjDescriptor *desc = NULL;
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->event);
 	if (desc != NULL) {
 		if (desc->handle_motionnotify)
 			(*desc->handle_motionnotify) (desc, ev);
@@ -663,7 +663,7 @@ static void raiseWindow(WScreen *scr)
 	if (!wwin->flags.destroyed && wwin->flags.focused) {
 		wRaiseFrame(wwin->frame->core);
 		/* this is needed or a race condition will occur */
-		wXSync(xconn);
+		wXSync(wdisp->conn);
 	}
 }
 
@@ -683,7 +683,7 @@ static void handleEnterNotify(xcb_generic_event_t *ev)
 	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
 
-	if (WXEvqTakeTyped(xconn, XCB_LEAVE_NOTIFY, e->event, &peek)) {
+	if (WXEvqTakeTyped(wdisp->conn, XCB_LEAVE_NOTIFY, e->event, &peek)) {
 		/* already left the window..., the lookahead is consumed
 		 * either way */
 		wSaveTimestamp(peek);
@@ -711,7 +711,7 @@ static void handleEnterNotify(xcb_generic_event_t *ev)
 	}
 #endif
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->event);
 	if (desc != NULL) {
 		if (desc->handle_enternotify)
 			(*desc->handle_enternotify) (desc, ev);
@@ -785,7 +785,7 @@ static void handleLeaveNotify(xcb_generic_event_t *ev)
 		return;
 	}
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->event);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->event);
 	if (desc != NULL) {
 		if (desc->handle_leavenotify)
 			(*desc->handle_leavenotify) (desc, ev);
@@ -800,7 +800,7 @@ static void handleFocusIn(xcb_generic_event_t *ev)
 
 	/* applications that like stealing the focus, only the last
 	 * FocusIn currently queued matters */
-	while (WXEvqTakeTyped(xconn, XCB_FOCUS_IN, XCB_NONE, &junk))
+	while (WXEvqTakeTyped(wdisp->conn, XCB_FOCUS_IN, XCB_NONE, &junk))
 		free(junk);
 	e = (const xcb_focus_in_event_t *)ev;
 

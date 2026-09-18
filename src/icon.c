@@ -52,7 +52,7 @@
 
 /**** Global variables ****/
 
-#define MOD_MASK wPreferences.modifier_mask
+#define MOD_MASK wdisp->modifier_mask
 #define CACHE_ICON_PATH "/CachedPixmaps"
 #define ICON_BORDER 3
 
@@ -88,7 +88,7 @@ static void appearanceObserver(void *self, WMNotification *notif)
 
 	/* so that the appicon expose handlers will paint the appicon specific
 	 * stuff */
-	xcb_clear_area(xconn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
+	xcb_clear_area(wdisp->conn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
 }
 
 static void tileObserver(void *self, WMNotification *notif)
@@ -100,7 +100,7 @@ static void tileObserver(void *self, WMNotification *notif)
 
 	update_icon_pixmap(icon);
 
-	xcb_clear_area(xconn, true, icon->core->window, 0, 0, 1, 1);
+	xcb_clear_area(wdisp->conn, true, icon->core->window, 0, 0, 1, 1);
 }
 
 /************************************/
@@ -119,7 +119,7 @@ static int getSize(xcb_drawable_t d, unsigned int *w, unsigned int *h, unsigned 
 
 	WXGeometry geom;
 
-	if (!WXRcvGeometry(xconn, WXReqGeometry(xconn, d), &geom))
+	if (!WXRcvGeometry(wdisp->conn, WXReqGeometry(wdisp->conn, d), &geom))
 		return 0;
 	if (w)
 		*w = geom.width;
@@ -235,17 +235,17 @@ void wIconDestroy(WIcon *icon)
 			x = icon->owner->icon_x;
 			y = icon->owner->icon_y;
 		}
-		xcb_unmap_window(xconn, icon->icon_win);
-		xcb_reparent_window(xconn, icon->icon_win, scr->root_win, x, y);
+		xcb_unmap_window(wdisp->conn, icon->icon_win);
+		xcb_reparent_window(wdisp->conn, icon->icon_win, scr->root_win, x, y);
 	}
 	if (icon->icon_name)
 		wfree(icon->icon_name);
 
 	if (icon->pixmap)
-		xcb_free_pixmap(xconn, icon->pixmap);
+		xcb_free_pixmap(wdisp->conn, icon->pixmap);
 
 	if (icon->mini_preview)
-		xcb_free_pixmap(xconn, icon->mini_preview);
+		xcb_free_pixmap(wdisp->conn, icon->mini_preview);
 
 	unset_icon_image(icon);
 
@@ -420,7 +420,7 @@ void wIconChangeTitle(WIcon *icon, WWindow *wwin)
 	}
 
 	if (!icon->icon_name)
-		if (!wGetIconName(xconn, wwin->client_win, &icon->icon_name)) {
+		if (!wGetIconName(wdisp->conn, wwin->client_win, &icon->icon_name)) {
 			icon->icon_name = wNETWMGetWindowName(wwin->client_win);
 			from_client = false;
 		}
@@ -811,7 +811,7 @@ void wIconSelect(WIcon *icon)
 			drawIconSelection(icon);
 	} else {
 		WMDeleteTimerHandlerPtr(&icon->handlerID);
-		xcb_clear_area(xconn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
+		xcb_clear_area(wdisp->conn, true, icon->core->window, 0, 0, icon->core->width, icon->core->height);
 	}
 }
 
@@ -844,7 +844,7 @@ static void resize_icon(WIcon *icon, const char *wm_instance,
 		return;
 
 	isize = w_global.config->icon_size;
-	xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
+	xcb_configure_window(wdisp->conn, icon->core->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ isize, isize });
 	icon->core->width = isize;
 	icon->core->height = isize;
 	WMScreenNoteDrawableSize(icon->core->screen_ptr->wmscreen,
@@ -899,7 +899,7 @@ void set_icon_minipreview(WIcon *icon, RImage *image)
 
 	if (RConvertImage(scr->rcontext, scaled_mini_preview, &tmp)) {
 		if (icon->mini_preview != XCB_NONE)
-			xcb_free_pixmap(xconn, icon->mini_preview);
+			xcb_free_pixmap(wdisp->conn, icon->mini_preview);
 		icon->mini_preview = tmp;
 	}
 	RReleaseImage(scaled_mini_preview);
@@ -938,7 +938,7 @@ void wIconUpdate(WIcon *icon)
 void update_icon_pixmap(WIcon *icon)
 {
 	if (icon->pixmap != XCB_NONE)
-		xcb_free_pixmap(xconn, icon->pixmap);
+		xcb_free_pixmap(wdisp->conn, icon->pixmap);
 
 	icon->pixmap = XCB_NONE;
 
@@ -955,7 +955,7 @@ void update_icon_pixmap(WIcon *icon)
 
 	/* No pixmap, set default background */
 	if (icon->pixmap != XCB_NONE)
-		xcb_change_window_attributes(xconn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ icon->pixmap });
+		xcb_change_window_attributes(wdisp->conn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ icon->pixmap });
 
 	/* Paint it */
 	wIconPaint(icon);
@@ -1025,24 +1025,24 @@ static void set_dockapp_in_icon(WIcon *icon)
 	}
 
 	/* Set the background pixmap */
-	xcb_change_window_attributes(xconn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ scr->icon_tile_pixmap });
+	xcb_change_window_attributes(wdisp->conn, icon->core->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ scr->icon_tile_pixmap });
 
 	/* Set the icon border */
-	xcb_configure_window(xconn, icon->icon_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
+	xcb_configure_window(wdisp->conn, icon->icon_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 
 	/* Put the dock application in the icon */
-	xcb_reparent_window(xconn, icon->icon_win, icon->core->window, (w_global.config->icon_size - w) / 2, (w_global.config->icon_size - h) / 2);
+	xcb_reparent_window(wdisp->conn, icon->icon_win, icon->core->window, (w_global.config->icon_size - w) / 2, (w_global.config->icon_size - h) / 2);
 
 	/* Show it and save */
-	xcb_map_window(xconn, icon->icon_win);
-	xcb_change_save_set(xconn, XCB_SET_MODE_INSERT, icon->icon_win);
+	xcb_map_window(wdisp->conn, icon->icon_win);
+	xcb_change_save_set(wdisp->conn, XCB_SET_MODE_INSERT, icon->icon_win);
 
 	/* Needed to move the icon clicking on the application part */
-	if ((wXGetWindowAttributes(xconn, icon->icon_win, &attr, NULL)) &&
+	if ((wXGetWindowAttributes(wdisp->conn, icon->icon_win, &attr, NULL)) &&
 	    (attr.all_event_masks & XCB_EVENT_MASK_BUTTON_PRESS))
 		wHackedGrabButton(XCB_BUTTON_INDEX_1, MOD_MASK, icon->core->window, true,
 				  XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC,
-				  XCB_NONE, wPreferences.cursor[WCUR_ARROW]);
+				  XCB_NONE, wdisp->cursor[WCUR_ARROW]);
 }
 
 /* Get the RImage from the XWindow wm_hints */
@@ -1102,7 +1102,7 @@ void wIconPaint(WIcon *icon)
 	if (!icon || !icon->core || !icon->core->screen_ptr)
 		return;
 
-	xcb_clear_area(xconn, 0, icon->core->window, 0, 0, 0, 0);
+	xcb_clear_area(wdisp->conn, 0, icon->core->window, 0, 0, 0, 0);
 
 	update_icon_title(icon);
 
@@ -1173,14 +1173,14 @@ static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event
 		return;
 	}
 
-	if (wXGrabPointer(xconn, icon->core->window, false, XCB_EVENT_MASK_BUTTON_MOTION
+	if (wXGrabPointer(wdisp->conn, icon->core->window, false, XCB_EVENT_MASK_BUTTON_MOTION
 			 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
 			 XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 	}
 	while (1) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE, &ev);
 		if (!ev)
 			break;
@@ -1194,9 +1194,9 @@ static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event
 			if (!grabbed) {
 				if (abs(dx - (((xcb_motion_notify_event_t *)ev)->event_x)) >= MOVE_THRESHOLD
 				    || abs(dy - (((xcb_motion_notify_event_t *)ev)->event_y)) >= MOVE_THRESHOLD) {
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+					wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 					grabbed = 1;
 				} else {
 					break;
@@ -1204,7 +1204,7 @@ static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event
 			}
 			x = (((xcb_motion_notify_event_t *)ev)->root_x) - dx;
 			y = (((xcb_motion_notify_event_t *)ev)->root_y) - dy;
-			xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+			xcb_configure_window(wdisp->conn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 			break;
 
 		case XCB_BUTTON_PRESS:
@@ -1217,11 +1217,11 @@ static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event
 			if (wwin->icon_x != x || wwin->icon_y != y)
 				wwin->flags.icon_moved = 1;
 
-			xcb_configure_window(xconn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+			xcb_configure_window(wdisp->conn, icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
 			wwin->icon_x = x;
 			wwin->icon_y = y;
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 
 			if (w_global.config->auto_arrange_icons)
 				wArrangeIcons(wwin->screen_ptr, true);

@@ -177,7 +177,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 				 const WConfig *new_config,
 				 const WConfigChanges *changes);
 
-/* Re-issue the passive button grabs that depend on wPreferences.modifier_mask
+/* Re-issue the passive button grabs that depend on wdisp->modifier_mask
  * for every managed window, after a live ModifierKey change. Key grabs use
  * the per-shortcut modifier and need no re-grab here. */
 void wRegrabWindowMouseGrabs(WScreen *scr);

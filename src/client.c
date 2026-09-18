@@ -53,8 +53,8 @@
  */
 void wClientRestore(WWindow * wwin)
 {
-	xcb_configure_window(xconn, wwin->client_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wwin->old_border_width });
-	xcb_reparent_window(xconn, wwin->client_win, wwin->screen_ptr->root_win, wwin->frame_x, wwin->frame_y);
+	xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ wwin->old_border_width });
+	xcb_reparent_window(wdisp->conn, wwin->client_win, wwin->screen_ptr->root_win, wwin->frame_x, wwin->frame_y);
 
 	/* don't let the window get iconified after restart */
 	/*
@@ -83,8 +83,8 @@ void wClientSetState(WWindow * wwin, int state, xcb_window_t icon_win)
 	data[0] = (uint32_t)state;
 	data[1] = (uint32_t)icon_win;
 
-	WXSetFormat32N(xconn, wwin->client_win, w_global.atom.wm.state,
-		       w_global.atom.wm.state, data, 2);
+	WXSetFormat32N(wdisp->conn, wwin->client_win, wdisp->atom.wm.state,
+		       wdisp->atom.wm.state, data, 2);
 }
 
 void wClientGetGravityOffsets(WWindow * wwin, int *ofs_x, int *ofs_y)
@@ -158,16 +158,16 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		xwc.border_width = xcre->border_width;
 		xwc.stack_mode = xcre->stack_mode;
 		xwc.sibling = xcre->sibling;
-		wXConfigureWindow(xconn, xcre->window, xcre->value_mask, &xwc);
+		wXConfigureWindow(wdisp->conn, xcre->window, xcre->value_mask, &xwc);
 		return;
 	}
 #ifdef USE_XSHAPE
-	if (w_global.xext.shape.supported) {
+	if (wdisp->xext.shape.supported) {
 		xcb_shape_query_extents_reply_t *sr;
 
-		xcb_shape_select_input(xconn, wwin->client_win, 1);
-		sr = xcb_shape_query_extents_reply(xconn,
-				xcb_shape_query_extents(xconn, wwin->client_win), NULL);
+		xcb_shape_select_input(wdisp->conn, wwin->client_win, 1);
+		sr = xcb_shape_query_extents_reply(wdisp->conn,
+				xcb_shape_query_extents(wdisp->conn, wwin->client_win), NULL);
 		wwin->flags.shaped = sr ? sr->bounding_shaped : 0;
 		free(sr);
 	}
@@ -177,7 +177,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		WWindow *sibling;
 
 		if ((xcre->value_mask & XCB_CONFIG_WINDOW_SIBLING) &&
-		    (desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) xcre->sibling)) != NULL
+		    (desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) xcre->sibling)) != NULL
 		    && (desc->parent_type == WCLASS_WINDOW)) {
 			sibling = desc->parent;
 			xwc.sibling = sibling->frame->core->window;
@@ -194,7 +194,7 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		if (wwin->screen_ptr->flags.need_restack)
 			CommitStacking(wwin->screen_ptr);
 
-		wXConfigureWindow(xconn, wwin->frame->core->window,
+		wXConfigureWindow(wdisp->conn, wwin->frame->core->window,
 				  xcre->value_mask & (XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE), &xwc);
 		/* fix stacking order */
 		RemakeStackList(wwin->screen_ptr);
@@ -281,17 +281,17 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 
 void wClientSendProtocol(WWindow * wwin, xcb_atom_t protocol, xcb_timestamp_t time)
 {
-	WXSendClientMessage(xconn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
-			    wwin->client_win, w_global.atom.wm.protocols,
+	WXSendClientMessage(wdisp->conn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
+			    wwin->client_win, wdisp->atom.wm.protocols,
 			    (long)protocol, (long)time, 0, 0, 0);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 void wClientKill(WWindow * wwin)
 {
-	xcb_kill_client(xconn, wwin->client_win);
+	xcb_kill_client(wdisp->conn, wwin->client_win);
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /*
@@ -316,7 +316,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 	case XCB_ATOM_WM_NAME:
 		if (!wwin->flags.net_has_title) {
 			/* window title was changed */
-			if (!wFetchName(xconn, wwin->client_win, &tmp)) {
+			if (!wFetchName(wdisp->conn, wwin->client_win, &tmp)) {
 				wWindowUpdateName(wwin, NULL);
 			} else {
 				wWindowUpdateName(wwin, tmp);
@@ -357,7 +357,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 	case XCB_ATOM_WM_HINTS:
 		/* WM_HINTS */
 
-		new_hints = WXGetWMHints(xconn, wwin->client_win);
+		new_hints = WXGetWMHints(wdisp->conn, wwin->client_win);
 
 		/* group leader update
 		 *
@@ -514,9 +514,9 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 			int foo;
 			unsigned bar;
 
-			if (wXGetWindowAttributes(xconn, wwin->client_win, &attribs, NULL))
+			if (wXGetWindowAttributes(wdisp->conn, wwin->client_win, &attribs, NULL))
 				wClientGetNormalHints(wwin, &attribs, false,
-						      WXReqNormalHints(xconn, wwin->client_win),
+						      WXReqNormalHints(wdisp->conn, wwin->client_win),
 						      &foo, &foo, &bar, &bar);
 			/* TODO: should we check for consistency of the current
 			 * size against the new geometry hints? */
@@ -528,7 +528,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 			xcb_window_t new_owner;
 			WWindow *owner;
 
-			if (!WXGetTransientFor(xconn, wwin->client_win, &new_owner)) {
+			if (!WXGetTransientFor(wdisp->conn, wwin->client_win, &new_owner)) {
 				new_owner = XCB_NONE;
 			} else {
 				if (new_owner == 0 || new_owner == wwin->client_win) {
@@ -573,7 +573,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 		break;
 
 	default:
-		if (atom == w_global.atom.wm.protocols) {
+		if (atom == wdisp->atom.wm.protocols) {
 
 			PropGetProtocols(wwin->client_win, &wwin->protocols);
 
@@ -582,12 +582,12 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 			if (wwin->frame)
 				wWindowUpdateButtonImages(wwin);
 
-		} else if (atom == w_global.atom.wm.colormap_windows) {
+		} else if (atom == wdisp->atom.wm.colormap_windows) {
 
 			GetColormapWindows(wwin);
 			wColormapInstallForWindow(wwin->screen_ptr, wwin);
 
-		} else if (atom == w_global.atom.wmaker.menu) {
+		} else if (atom == wdisp->atom.wmaker.menu) {
 			WApplication *wapp;
 
 			wapp = wApplicationOf(wwin->main_window);
@@ -624,7 +624,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 					}
 
 					if (fPtr->leader != XCB_NONE)
-						xcb_destroy_window(xconn, fPtr->leader);
+						xcb_destroy_window(wdisp->conn, fPtr->leader);
 					fPtr->retainCount = 0;
 					fPtr->leader = XCB_NONE;
 					fPtr->origLeader = XCB_NONE;
@@ -643,7 +643,7 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 				wSetFocusTo(wwin->screen_ptr, NULL);
 				wSetFocusTo(wwin->screen_ptr, wwin->screen_ptr->focused_window);
 			}
-		} else if (atom == w_global.atom.gnustep.wm_attr) {
+		} else if (atom == wdisp->atom.gnustep.wm_attr) {
 			GNUstepWMAttributes *attr;
 
 			PropGetGNUstepWMAttr(wwin->client_win, &attr);
@@ -767,7 +767,7 @@ WXCookie wClientReqColormapWindows(xcb_window_t window)
 	/* Xlib's XGetWMColormapWindows() interns WM_COLORMAP_WINDOWS on
 	 * every call, the atom is in the cold-boot batch so read the
 	 * property directly and let wManagePrefetch() pipeline it */
-	return WXReqFormat32(xconn, window, w_global.atom.wm.colormap_windows,
+	return WXReqFormat32(wdisp->conn, window, wdisp->atom.wm.colormap_windows,
 			     XCB_ATOM_WINDOW, 64);
 }
 
@@ -778,7 +778,7 @@ void wClientRcvColormapWindows(WWindow *wwin, WXCookie ck)
 	if (wwin->cmap_windows)
 		wfree(wwin->cmap_windows);
 
-	wwin->cmap_windows = WXRcvWindowList(xconn, ck, &count);
+	wwin->cmap_windows = WXRcvWindowList(wdisp->conn, ck, &count);
 	wwin->cmap_window_no = wwin->cmap_windows ? (int)count : 0;
 }
 

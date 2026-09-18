@@ -271,7 +271,7 @@ int wWorkspaceNew(WScreen *scr)
 			snprintf(wspace->name, name_length, new_name, scr->workspace_count);
 		}
 
-		if (!wPreferences.flags.noclip)
+		if (!wdisp->flags.noclip)
 			wspace->clip = wDockCreate(scr, WM_CLIP, NULL);
 
 		list = wmalloc(sizeof(WWorkspace *) * scr->workspace_count);
@@ -289,7 +289,7 @@ int wWorkspaceNew(WScreen *scr)
 		wWorkspaceMenuUpdate(scr, scr->clip_ws_menu);
 		wNETWMUpdateDesktop(scr);
 		WMPostNotificationName(WMNWorkspaceCreated, scr, (void *)(uintptr_t) (scr->workspace_count - 1));
-		wXFlush(xconn);
+		wXFlush(wdisp->conn);
 
 		return scr->workspace_count - 1;
 	}
@@ -346,7 +346,7 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 		tmp = tmp->prev;
 	}
 
-	if (!wPreferences.flags.noclip) {
+	if (!wdisp->flags.noclip) {
 		wDockDestroy(scr->workspaces[workspace]->clip);
 		scr->workspaces[workspace]->clip = NULL;
 	}
@@ -502,7 +502,7 @@ static void fadeWorkspaceName(void *data)
 	scr->workspace_name_fade_step++;
 	WSetOSDViewAlpha(scr->workspace_name_osd,
 			 1.0 - (double)scr->workspace_name_fade_step / WORKSPACE_NAME_FADE_STEPS);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 	scr->workspace_name_timer =
 		WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, fadeWorkspaceName, scr);
 }
@@ -523,7 +523,7 @@ static void showWorkspaceName(WScreen *scr, int workspace)
 			w_global.config->workspace_name_display_position,
 			WORKSPACE_NAME_DISPLAY_PADDING);
 	WMMapWidget(scr->workspace_name_osd);
-	xcb_configure_window(xconn, WMWidgetXID(scr->workspace_name_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_configure_window(wdisp->conn, WMWidgetXID(scr->workspace_name_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 
 	/* solid for WORKSPACE_NAME_DELAY, then a ten-step alpha ramp to
 	 * zero at WORKSPACE_NAME_FADE_DELAY per step. Under a compositor
@@ -950,7 +950,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 						if (!w_global.config->sticky_icons &&
 						    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 							tmp->icon->mapped = 1;
-							xcb_map_window(xconn, tmp->icon->core->window);
+							xcb_map_window(wdisp->conn, tmp->icon->core->window);
 						}
 					}
 				}
@@ -962,7 +962,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		{
 			tmp = toUnmap[--toUnmapCount];
 			if (tmp->flags.miniaturized) {
-				xcb_unmap_window(xconn, tmp->icon->core->window);
+				xcb_unmap_window(wdisp->conn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {
 				wWindowUnmap(tmp);
@@ -1021,9 +1021,8 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 			WWindow *tmp;
 
 			tmp = NULL;
-			if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask)) {
+			if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 				tmp = wWindowFor(win);
-			}
 
 			/* If there's a window under the pointer, focus it.
 			 * (we ate all other focus events above, so it's
@@ -1055,11 +1054,11 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	if (scr->dock)
 		wAppIconPaint(scr->dock->icon_array[0]);
 
-	if (!wPreferences.flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
+	if (!wdisp->flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
 						scr->workspaces[workspace]->clip->auto_raise_lower)) {
 		/* to handle enter notify. This will also */
-		xcb_unmap_window(xconn, scr->clip_icon->icon->core->window);
-		xcb_map_window(xconn, scr->clip_icon->icon->core->window);
+		xcb_unmap_window(wdisp->conn, scr->clip_icon->icon->core->window);
+		xcb_map_window(wdisp->conn, scr->clip_icon->icon->core->window);
 	}
 	else if (scr->clip_icon != NULL) {
 		wClipIconPaint(scr->clip_icon);
@@ -1072,7 +1071,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 	wSoundPlay(scr, WSOUND_WORKSPACE);
 
-	/*   wXSync(xconn); */
+	/*   wXSync(wdisp->conn); */
 }
 
 /* If the target workspace is pinned to several outputs, switching it on
@@ -1191,7 +1190,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 					if (!w_global.config->sticky_icons &&
 					    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 						tmp->icon->mapped = 1;
-						xcb_map_window(xconn, tmp->icon->core->window);
+						xcb_map_window(wdisp->conn, tmp->icon->core->window);
 					}
 				}
 				/* Prefer a focus candidate on the initiating head */
@@ -1206,7 +1205,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		while (toUnmapCount > 0) {
 			tmp = toUnmap[--toUnmapCount];
 			if (tmp->flags.miniaturized) {
-				xcb_unmap_window(xconn, tmp->icon->core->window);
+				xcb_unmap_window(wdisp->conn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {
 				wWindowUnmap(tmp);
@@ -1247,7 +1246,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 			xcb_window_t bar, win;
 			WWindow *ptmp = NULL;
 
-			if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+			if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 				ptmp = wWindowFor(win);
 			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY) {
 				wSetFocusTo(scr, foc);
@@ -1268,10 +1267,10 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 	if (scr->dock)
 		wAppIconPaint(scr->dock->icon_array[0]);
 
-	if (!wPreferences.flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
+	if (!wdisp->flags.noclip && (scr->workspaces[workspace]->clip->auto_collapse ||
 						scr->workspaces[workspace]->clip->auto_raise_lower)) {
-		xcb_unmap_window(xconn, scr->clip_icon->icon->core->window);
-		xcb_map_window(xconn, scr->clip_icon->icon->core->window);
+		xcb_unmap_window(wdisp->conn, scr->clip_icon->icon->core->window);
+		xcb_map_window(wdisp->conn, scr->clip_icon->icon->core->window);
 	} else if (scr->clip_icon != NULL) {
 		wClipIconPaint(scr->clip_icon);
 	}
@@ -1307,7 +1306,7 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
 			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
 				tmp->icon->mapped = 1;
-				xcb_map_window(xconn, tmp->icon->core->window);
+				xcb_map_window(wdisp->conn, tmp->icon->core->window);
 			}
 		} else {
 			if ((tmp->flags.mapped || tmp->flags.shaded)
@@ -1315,7 +1314,7 @@ void wWorkspaceReconcileHeads(WScreen *scr)
 				wWindowUnmap(tmp);
 			if (!w_global.config->sticky_icons && tmp->flags.miniaturized
 			    && !IS_OMNIPRESENT(tmp) && tmp->icon) {
-				xcb_unmap_window(xconn, tmp->icon->core->window);
+				xcb_unmap_window(wdisp->conn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			}
 		}
@@ -1749,7 +1748,7 @@ void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 			WMPutInPLDictionary(wks_state, dMasterRatio, pstr);
 			WMReleasePropList(pstr);
 		}
-		if (!wPreferences.flags.noclip) {
+		if (!wdisp->flags.noclip) {
 			pstr = wClipSaveWorkspaceState(scr, i);
 			WMPutInPLDictionary(wks_state, dClip, pstr);
 			WMReleasePropList(pstr);
@@ -1881,7 +1880,7 @@ void wWorkspaceRestoreState(WScreen *scr)
 #endif
 		}
 
-		if (!wPreferences.flags.noclip) {
+		if (!wdisp->flags.noclip) {
 			int added_omnipresent_icons = 0;
 
 			clip_state = WMGetFromPLDictionary(wks_state, dClip);

@@ -1030,7 +1030,7 @@ static void drop_stale_icon(const char *instance, const char *class, const char 
 	if (WMGetPropListItemCount(match_attr) == 0)
 		WMRemoveFromPLDictionary(dict, match_key);
 
-	if (persist && from_user && !wPreferences.flags.noupdates)
+	if (persist && from_user && !wdisp->flags.noupdates)
 		UpdateDomainFile(db);
 
 	wWindowAttrsReload();
@@ -1515,7 +1515,7 @@ void wDefaultChangeIcon(const char *instance, const char *class, const char *fil
 		WMPutInPLDictionary(dict, key, icon_value);
 	}
 
-	if (!wPreferences.flags.noupdates)
+	if (!wdisp->flags.noupdates)
 		UpdateDomainFile(db);
 
 	WMReleasePropList(key);

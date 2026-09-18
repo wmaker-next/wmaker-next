@@ -74,7 +74,7 @@ void wXDNDInitializeAtoms(void)
 
 void wXDNDMakeAwareness(xcb_window_t window)
 {
-	WXSetAtom(xconn, window, _XA_XdndAware, (xcb_atom_t)XDND_VERSION);
+	WXSetAtom(wdisp->conn, window, _XA_XdndAware, (xcb_atom_t)XDND_VERSION);
 }
 
 static size_t wXDNDQuotedLength(const char *string)
@@ -112,7 +112,7 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 	WScreen *scr = wScreenForWindow(((xcb_selection_notify_event_t *)event)->requestor);
 	char *retain;
 	char *delme = NULL;
-	xcb_window_t selowner = wXGetSelectionOwner(xconn, _XA_XdndSelection);
+	xcb_window_t selowner = wXGetSelectionOwner(wdisp->conn, _XA_XdndSelection);
 
 	if (!scr)
 		return false;
@@ -125,18 +125,18 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 	    ((xcb_selection_notify_event_t *)event)->selection == _XA_XdndSelection &&
 	    ((xcb_selection_notify_event_t *)event)->target == selected_typelist &&
 	    ((xcb_selection_notify_event_t *)event)->property == _XA_WINDOWMAKER_XDNDEXCHANGE) {
-		delme = WXRcvString(xconn,
-				    WXReqString8(xconn, xdnd_requestor,
+		delme = WXRcvString(wdisp->conn,
+				    WXReqString8(wdisp->conn, xdnd_requestor,
 						 _XA_WINDOWMAKER_XDNDEXCHANGE,
 						 selected_typelist),
 				    NULL);
-		wXDeleteProperty(xconn, xdnd_requestor, _XA_WINDOWMAKER_XDNDEXCHANGE);
+		wXDeleteProperty(wdisp->conn, xdnd_requestor, _XA_WINDOWMAKER_XDNDEXCHANGE);
 	}
 	xdnd_requestor = XCB_NONE;
 	selected_typelist = XCB_NONE;
 
 	/*send finished */
-	WXSendClientMessage(xconn, selowner, 0, selowner, _XA_XdndFinished,
+	WXSendClientMessage(wdisp->conn, selowner, 0, selowner, _XA_XdndFinished,
 			    ((xcb_selection_notify_event_t *)event)->requestor, 0, 0, 0, 0);
 
 	/*process dropping */
@@ -231,7 +231,7 @@ static bool isAwareXDND(xcb_window_t window)
 
 	if (!window)
 		return false;
-	return WXGetAtom(xconn, window, _XA_XdndAware, &version);
+	return WXGetAtom(wdisp->conn, window, _XA_XdndAware, &version);
 }
 
 static bool acceptXDND(xcb_window_t window)
@@ -288,7 +288,7 @@ static void wXDNDGetTypeList(xcb_window_t window)
 	xcb_atom_t *typelist;
 	size_t i, count;
 
-	typelist = WXGetAtomList(xconn, window, _XA_XdndTypeList, 1024, &count);
+	typelist = WXGetAtomList(wdisp->conn, window, _XA_XdndTypeList, 1024, &count);
 	if (!typelist) {
 		wwarning(_("wXDNDGetTypeList failed = %u"), _XA_XdndTypeList);
 		return;
@@ -333,9 +333,9 @@ bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
 		return true;
 	} else if (event->type == _XA_XdndDrop) {
 		if (selected_typelist == supported_typelist &&
-		    XDND_DROP_SOURCE_WIN(event) == wXGetSelectionOwner(xconn, _XA_XdndSelection)) {
+		    XDND_DROP_SOURCE_WIN(event) == wXGetSelectionOwner(wdisp->conn, _XA_XdndSelection)) {
 			xdnd_requestor = event->window;
-			wXConvertSelection(xconn, _XA_XdndSelection, selected_typelist,
+			wXConvertSelection(wdisp->conn, _XA_XdndSelection, selected_typelist,
 					  _XA_WINDOWMAKER_XDNDEXCHANGE, xdnd_requestor, XCB_CURRENT_TIME);
 		} else {
 			selected_typelist = XCB_NONE;
@@ -345,7 +345,7 @@ bool wXDNDProcessClientMessage(const xcb_client_message_event_t *event)
 		xcb_window_t srcwin = XDND_POSITION_SOURCE_WIN(event);
 		if (selected_typelist == supported_typelist) {
 			long flags = (acceptXDND(event->window) ? 0x1L : 0L) | 0x2L;
-			WXSendClientMessage(xconn, srcwin, 0, srcwin, _XA_XdndStatus,
+			WXSendClientMessage(wdisp->conn, srcwin, 0, srcwin, _XA_XdndStatus,
 					    event->window, flags, 0, 0, _XA_XdndActionCopy);
 		}
 		return true;

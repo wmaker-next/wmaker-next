@@ -55,7 +55,7 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 			if (w == wwin->client_win)
 				done = 1;
 
-			wXGetWindowAttributes(xconn, w, &attributes, NULL);
+			wXGetWindowAttributes(wdisp->conn, w, &attributes, NULL);
 			if (attributes.colormap == XCB_NONE)
 				attributes.colormap = scr->colormap;
 
@@ -67,7 +67,7 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 				 * So, we can't install any colormaps.
 				 */
 				if (!scr->flags.colormap_stuff_blocked)
-					xcb_install_colormap(xconn, attributes.colormap);
+					xcb_install_colormap(wdisp->conn, attributes.colormap);
 			}
 		}
 	}
@@ -85,10 +85,10 @@ void wColormapInstallForWindow(WScreen * scr, WWindow * wwin)
 		if (scr->current_colormap != cmap) {
 			scr->current_colormap = cmap;
 			if (!scr->flags.colormap_stuff_blocked)
-				xcb_install_colormap(xconn, cmap);
+				xcb_install_colormap(wdisp->conn, cmap);
 		}
 	}
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 void wColormapAllowClientInstallation(WScreen * scr, bool starting)
@@ -100,7 +100,7 @@ void wColormapAllowClientInstallation(WScreen * scr, bool starting)
 	 * stuff.
 	 */
 	if (!starting) {
-		xcb_install_colormap(xconn, scr->current_colormap);
-		wXFlush(xconn);
+		xcb_install_colormap(wdisp->conn, scr->current_colormap);
+		wXFlush(wdisp->conn);
 	}
 }

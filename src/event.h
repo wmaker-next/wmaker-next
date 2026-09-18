@@ -63,13 +63,13 @@ void wEventRegisterHandler(unsigned int response_type, WEventHandler h);
 void wEventInitDispatch(void);
 
 /* per-module registration, called once from wEventInitDispatch() after
- * the extension probes have filled w_global.xext.*.event_base */
+ * the extension probes have filled wdisp->xext.*.event_base */
 void wEventClientRegister(void);
 void wEventInputRegister(void);
 void wEventRootRegister(void);
 void wEventExtRegister(void);
 
-/* update w_global.timestamp.last_event from any timestamp-bearing
+/* update wdisp->timestamp.last_event from any timestamp-bearing
  * event, the dock XDND selection-completion side-effect that lived in
  * the old saveTimestamp() switch is now a proper SelectionNotify
  * handler in event_root.c */
@@ -78,7 +78,7 @@ void wSaveTimestamp(const xcb_generic_event_t *xe);
 /* Bracket a request burst whose generated Enter/Leave events must not
  * reach the crossing handlers. Begin() returns the sequence of an
  * xcb_no_operation issued now; End() issues a closing no-op, records
- * the [begin,end) pair in the w_global.ignore_crossing ring for
+ * the [begin,end) pair in the wdisp->ignore_crossing ring for
  * dispatch-time filtering, and sweeps anything already drained into
  * the WINGs queue via WXEvqDropRange(). Ignored() is the
  * dispatch-time predicate. */

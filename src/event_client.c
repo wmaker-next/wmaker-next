@@ -163,9 +163,9 @@ static void handleDestroyNotify(xcb_generic_event_t *ev)
 			if (fPtr->retainCount > 0) {
 				fPtr->retainCount--;
 				if (fPtr->retainCount == 0 && fPtr->leader != XCB_NONE) {
-					xcb_destroy_window(xconn, fPtr->leader);
+					xcb_destroy_window(wdisp->conn, fPtr->leader);
 					fPtr->leader = XCB_NONE;
-					wXFlush(xconn);
+					wXFlush(wdisp->conn);
 				}
 			}
 			fPtr->origLeader = XCB_NONE;
@@ -197,8 +197,8 @@ static void handleMapNotify(xcb_generic_event_t *ev)
 
 	wwin = wWindowFor(e->event);
 	if (wwin && wwin->client_win == e->event) {
-		state_ck = WXReqFormat32(xconn, e->event, w_global.atom.wm.state,
-					 w_global.atom.wm.state, 1);
+		state_ck = WXReqFormat32(wdisp->conn, e->event, wdisp->atom.wm.state,
+					 wdisp->atom.wm.state, 1);
 		wm_state = PropRcvWindowState(state_ck);
 		if (wm_state == XCB_ICCCM_WM_STATE_ICONIC && !wwin->flags.miniaturized)
 			wwin->flags.miniaturized = 1;
@@ -208,10 +208,10 @@ static void handleMapNotify(xcb_generic_event_t *ev)
 			}
 			/* else: keep iconic, skip wWindowMap + NormalState */
 		} else {
-			wXGrabServer(xconn);
+			wXGrabServer(wdisp->conn);
 			wWindowMap(wwin);
 			wClientSetState(wwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
-			wXUngrabServer(xconn);
+			wXUngrabServer(wdisp->conn);
 		}
 	}
 }
@@ -241,24 +241,24 @@ static void handleUnmapNotify(xcb_generic_event_t *ev)
 	    && !wwin->flags.miniaturized && !wwin->flags.hidden)
 		return;
 
-	wXGrabServer(xconn);
-	xcb_unmap_window(xconn, wwin->frame->core->window);
+	wXGrabServer(wdisp->conn);
+	xcb_unmap_window(wdisp->conn, wwin->frame->core->window);
 	wwin->flags.mapped = 0;
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	/* check if the window was destroyed */
-	if (WXEvqTakeTyped(xconn, XCB_DESTROY_NOTIFY, wwin->client_win, &peek)) {
+	if (WXEvqTakeTyped(wdisp->conn, XCB_DESTROY_NOTIFY, wwin->client_win, &peek)) {
 		/* DispatchEvent reaches wUnmanageWindow and the
 		 * WMNUnmanaged observers, which issue several X
 		 * round-trips; release the server grab first so other
 		 * clients are not stalled while we tear the window down */
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		DispatchEvent(peek);
 		free(peek);
 		peek = NULL;
 	} else {
 		bool reparented = false;
 
-		if (WXEvqTakeTyped(xconn, XCB_REPARENT_NOTIFY, wwin->client_win, &peek)) {
+		if (WXEvqTakeTyped(wdisp->conn, XCB_REPARENT_NOTIFY, wwin->client_win, &peek)) {
 			reparented = true;
 			free(peek);
 			peek = NULL;
@@ -269,7 +269,7 @@ static void handleUnmapNotify(xcb_generic_event_t *ev)
 		if (!reparented)
 			wClientSetState(wwin, XCB_ICCCM_WM_STATE_WITHDRAWN, XCB_NONE);
 
-		wXUngrabServer(xconn);
+		wXUngrabServer(wdisp->conn);
 		/* if the window was reparented, do not reparent it back to the
 		 * root window */
 		wUnmanageWindow(wwin, !reparented, false);
@@ -301,7 +301,7 @@ static void handlePropertyNotify(xcb_generic_event_t *ev)
 			 * change there re-reads for every managed screen */
 			if (e->atom == XCB_ATOM_RESOURCE_MANAGER) {
 				int i;
-				for (i = 0; i < w_global.screen_count; i++)
+				for (i = 0; i < wdisp->screen_count; i++)
 					WMScreenReadUIScale(wScreenWithNumber(i)->wmscreen);
 				return;
 			}
@@ -328,10 +328,10 @@ static void handleExpose(xcb_generic_event_t *ev)
 	WObjDescriptor *desc;
 	xcb_generic_event_t *junk = NULL;
 
-	while (WXEvqTakeTyped(xconn, XCB_EXPOSE, e->window, &junk))
+	while (WXEvqTakeTyped(wdisp->conn, XCB_EXPOSE, e->window, &junk))
 		free(junk);
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) e->window);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->window);
 	if (desc == NULL) {
 		return;
 	}

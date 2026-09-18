@@ -352,8 +352,8 @@ static void flushMotion(void)
 {
 	xcb_generic_event_t *ev = NULL;
 
-	wXSync(xconn);
-	while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &ev))
+	wXSync(wdisp->conn);
+	while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &ev))
 		free(ev);
 }
 
@@ -370,16 +370,16 @@ static void crossWorkspace(WScreen * scr, WWindow * wwin, int opaque_move, int n
 	wwin->flags.changing_workspace = 0;
 
 	if (rewind)
-		wXWarpPointer(xconn, XCB_NONE, XCB_NONE, 0, 0, 0, 0, scr->scr_width - 20, 0);
+		wXWarpPointer(wdisp->conn, XCB_NONE, XCB_NONE, 0, 0, 0, 0, scr->scr_width - 20, 0);
 	else
-		wXWarpPointer(xconn, XCB_NONE, XCB_NONE, 0, 0, 0, 0, -(scr->scr_width - 20), 0);
+		wXWarpPointer(wdisp->conn, XCB_NONE, XCB_NONE, 0, 0, 0, 0, -(scr->scr_width - 20), 0);
 
 	flushMotion();
 
 	if (!opaque_move) {
-		wXGrabPointer(xconn, scr->root_win, true, XCB_EVENT_MASK_POINTER_MOTION
+		wXGrabPointer(wdisp->conn, scr->root_win, true, XCB_EVENT_MASK_POINTER_MOTION
 			     | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
-			     XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
+			     XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 	}
 }
 
@@ -1211,16 +1211,16 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		ctrlmode = 1;
 	}
 
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	wusleep(10000);
-	wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	if (!wwin->flags.selected) {
 		wUnselectWindows(scr);
 	}
-	wXGrabPointer(xconn, scr->root_win, true, XCB_EVENT_MASK_POINTER_MOTION
+	wXGrabPointer(wdisp->conn, scr->root_win, true, XCB_EVENT_MASK_POINTER_MOTION
 		     | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
-		     XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_NORMAL], XCB_CURRENT_TIME);
+		     XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_NORMAL], XCB_CURRENT_TIME);
 
 
 
@@ -1246,7 +1246,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		free(event);
 		event = NULL;
 		do {
-			WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
+			WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
 				    | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &event);
 			if ((event->response_type & 0x7f) != XCB_EXPOSE)
 				break;
@@ -1259,7 +1259,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			showGeometry(wwin, src_x + off_x, src_y + off_y, src_x + off_x + ww, src_y + off_y + wh,
 				     0);
 
-		wXSync(xconn);
+		wXSync(wdisp->conn);
 
 		switch ((event->response_type & 0x7f)) {
 		case XCB_KEY_PRESS:
@@ -1392,7 +1392,7 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			WMHandleEvent(event);
 			free(event);
 			event = NULL;
-			while (WXEvqTakeTyped(xconn, XCB_EXPOSE, XCB_NONE, &event)) {
+			while (WXEvqTakeTyped(wdisp->conn, XCB_EXPOSE, XCB_NONE, &event)) {
 				WMHandleEvent(event);
 				free(event);
 				event = NULL;
@@ -1446,8 +1446,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			} else
 				WMUnmapWidget(scr->gview);
 
-			wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 
 			/* XKeyEvent and XButtonEvent share layout up to .time
 			 * so this reads correctly whichever ended the loop */
@@ -1547,7 +1547,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	}
 
 	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
-		xcb_change_window_attributes(xconn, wwin->frame->core->window,
+		xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window,
 					     XCB_CW_SAVE_UNDER, (const uint32_t[]){ true });
 	}
 
@@ -1570,7 +1570,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 
 			/* wXWarpPointer() doesn't seem to generate Motion events, so
 			 * we've got to simulate them */
-			wXQueryPointer(xconn, root, &junkw, &junkw, &rx, &ry, &junk, &junk, &junkm);
+			wXQueryPointer(wdisp->conn, root, &junkw, &junkw, &rx, &ry, &junk, &junk, &junkm);
 			((xcb_motion_notify_event_t *)event)->root_x = rx;
 			((xcb_motion_notify_event_t *)event)->root_y = ry;
 		} else {
@@ -1580,7 +1580,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 			free(event);
 			event = NULL;
 
-			WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_MOTION
+			WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_MOTION
 				    | XCB_EVENT_MASK_POINTER_MOTION_HINT
 				    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &event);
 
@@ -1589,7 +1589,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				 * the newest */
 				xcb_generic_event_t *nev;
 
-				while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &nev)) {
+				while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &nev)) {
 					free(event);
 					event = nev;
 				}
@@ -1676,11 +1676,11 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					}
 				}
 
-				wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+				wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 							 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-							 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
+							 wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 				started = 1;
-				wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+				wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 				if (!scr->selected_windows)
 					mapPositionDisplay(wwin, moveData.realX, moveData.realY,
@@ -1710,7 +1710,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 #ifndef CONFIGURE_WINDOW_WHILE_MOVING
 				wWindowSynthConfigureNotify(wwin);
 #endif
-				wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+				wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 				wwin->last_head = wGetHeadForWindow(wwin);
 				if (!opaqueMove) {
 					wWindowChangeWorkspace(wwin,
@@ -1737,7 +1737,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				}
 			}
 			if (wwin->moveresize.active) {
-				wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+				wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 				wwin->moveresize.active = 0;
 			}
 			/* the drag loop is modal so any MapRequest that arrived
@@ -1757,7 +1757,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	free(event);
 
 	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
-		xcb_change_window_attributes(xconn, wwin->frame->core->window,
+		xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window,
 					     XCB_CW_SAVE_UNDER, (const uint32_t[]){ false });
 	}
 
@@ -2478,7 +2478,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 		free(event);
 		event = NULL;
 
-		WMMaskEvent(xconn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_MOTION
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_MOTION
 			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION_HINT | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &event);
 
 		if ((event->response_type & 0x7f) == XCB_MOTION_NOTIFY) {
@@ -2489,7 +2489,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 			 * configure applies the current pointer position */
 			xcb_generic_event_t *nev;
 
-			while (WXEvqTakeMask(xconn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &nev)) {
+			while (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION, XCB_NONE, &nev)) {
 				free(event);
 				event = nev;
 			}
@@ -2525,7 +2525,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					xcb_window_t junkw;
 					int flags;
 
-					wXTranslateCoordinates(xconn, root, wwin->frame->core->window,
+					wXTranslateCoordinates(wdisp->conn, root, wwin->frame->core->window,
 							      orig_x, orig_y, &tx, &ty, &junkw);
 
 					/* check if resizing through resizebar */
@@ -2546,35 +2546,35 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 						res = getResizeDirection(wwin, tx, ty, orig_y - (((xcb_motion_notify_event_t *)event)->root_y), flags);
 
 					if (res == (UP | LEFT))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 									 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-									 wPreferences.cursor[WCUR_TOPLEFTRESIZE], XCB_CURRENT_TIME);
+									 wdisp->cursor[WCUR_TOPLEFTRESIZE], XCB_CURRENT_TIME);
 					else if (res == (UP | RIGHT))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_TOPRIGHTRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_TOPRIGHTRESIZE], XCB_CURRENT_TIME);
 					else if (res == (DOWN | LEFT))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_BOTTOMLEFTRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_BOTTOMLEFTRESIZE], XCB_CURRENT_TIME);
 					else if (res == (DOWN | RIGHT))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_BOTTOMRIGHTRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_BOTTOMRIGHTRESIZE], XCB_CURRENT_TIME);
 					else if (res == DOWN || res == UP)
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
 					else if (res & (DOWN | UP))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_VERTICALRESIZE], XCB_CURRENT_TIME);
 					else if (res & (LEFT | RIGHT))
-						wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+						wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_HORIZONRESIZE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_HORIZONRESIZE], XCB_CURRENT_TIME);
 
-					wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+					wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 					/* Draw the resize frame for the first time. */
 					mapGeometryDisplay(wwin, fx, fy, fw, fh);
@@ -2674,7 +2674,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 
 				wWireframeHide(scr);
 
-				wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+				wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 				WMUnmapWidget(scr->gview);
 
 				if (fw != original_fw)
@@ -2706,7 +2706,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				}
 			}
 			if (wwin->moveresize.active) {
-				wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+				wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 				wwin->moveresize.active = 0;
 			}
 			wNETWMBumpUserTime(scr, (((xcb_button_press_event_t *)event)->time));
@@ -2780,9 +2780,9 @@ void wSelectWindows(WScreen * scr, xcb_generic_event_t * ev)
 	int w = 0, h = 0;
 	int x = xp, y = yp;
 
-	if (wXGrabPointer(xconn, scr->root_win, false, XCB_EVENT_MASK_BUTTON_MOTION
+	if (wXGrabPointer(wdisp->conn, scr->root_win, false, XCB_EVENT_MASK_BUTTON_MOTION
 			 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
-			 XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_NORMAL], XCB_CURRENT_TIME) != WXGrabSuccess) {
+			 XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_NORMAL], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		return;
 	}
 
@@ -2792,7 +2792,7 @@ void wSelectWindows(WScreen * scr, xcb_generic_event_t * ev)
 		free(event);
 		event = NULL;
 
-		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_EXPOSURE, &event);
 
 		switch ((event->response_type & 0x7f)) {
@@ -2824,7 +2824,7 @@ void wSelectWindows(WScreen * scr, xcb_generic_event_t * ev)
 				break;
 
 			wWireframeHide(scr);
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 			selectWindowsInside(scr, x, y, x + w, y + h);
 			free(event);
 			return;
@@ -2850,8 +2850,8 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 	xcb_window_t junkw;
 	int junk;
 
-	if (wXGrabPointer(xconn, root, true, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
-			 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wPreferences.cursor[WCUR_NORMAL], XCB_CURRENT_TIME) != WXGrabSuccess) {
+	if (wXGrabPointer(wdisp->conn, root, true, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+			 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, wdisp->cursor[WCUR_NORMAL], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		*x_ret = 0;
 		*y_ret = 0;
 		return;
@@ -2871,8 +2871,8 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 	if (HAS_RESIZEBAR(wwin)) {
 		height += wwin->screen_ptr->resizebar_height;
 	}
-	wXGrabKeyboard(xconn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
-	wXQueryPointer(xconn, root, &junkw, &junkw, &x, &y, &junk, &junk, (unsigned int *)&junk);
+	wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXQueryPointer(wdisp->conn, root, &junkw, &junkw, &x, &y, &junk, &junk, (unsigned int *)&junk);
 	mapPositionDisplay(wwin, x - width / 2, y - h / 2, width, height);
 
 	showResizeWireframe(wwin, x - width / 2, y - h / 2, width, height);
@@ -2883,7 +2883,7 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 		free(event);
 		event = NULL;
 
-		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS, &event);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS, &event);
 
 		if (!checkMouseSamplingRate(&event))
 			continue;
@@ -2913,8 +2913,8 @@ void InteractivePlaceWindow(WWindow * wwin, int *x_ret, int *y_ret, unsigned wid
 			wWireframeHide(scr);
 			*x_ret = x - width / 2;
 			*y_ret = y - h / 2;
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
-			wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+			wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 			/* get rid of the geometry window */
 			WMUnmapWidget(scr->gview);
 			free(event);

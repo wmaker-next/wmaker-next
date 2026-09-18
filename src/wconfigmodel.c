@@ -1118,12 +1118,12 @@ void wConfigApplyStatic(const WConfig *config)
 	 * wXkbInit() during the first per-screen apply and can re-grab on a
 	 * live change. */
 	wConfigApplyTabDragModifier(config->tab_drag_modifier);
-	wPreferences.flags.nodock = wPreferences.flags.nodock || config->disable_dock;
-	wPreferences.flags.nodrawer = wPreferences.flags.nodrawer ||
-	    wPreferences.flags.nodock || config->disable_drawers;
-	wPreferences.flags.noclip = wPreferences.flags.noclip || config->disable_clip;
-	wPreferences.flags.clip_merged_in_dock = config->clip_merged_in_dock;
-	wPreferences.flags.noclip = wPreferences.flags.noclip ||
+	wdisp->flags.nodock = wdisp->flags.nodock || config->disable_dock;
+	wdisp->flags.nodrawer = wdisp->flags.nodrawer ||
+	    wdisp->flags.nodock || config->disable_drawers;
+	wdisp->flags.noclip = wdisp->flags.noclip || config->disable_clip;
+	wdisp->flags.clip_merged_in_dock = config->clip_merged_in_dock;
+	wdisp->flags.noclip = wdisp->flags.noclip ||
 	    config->clip_merged_in_dock;
 }
 
@@ -1165,14 +1165,14 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	if (wConfigChangesHas(changes, WCFG_KEY_STICKY_ICONS))
 		sticky_icons_changed = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WRAP_APPICONS_IN_DOCK))
-		wPreferences.flags.wrap_appicons_in_dock =
+		wdisp->flags.wrap_appicons_in_dock =
 		    new_config->wrap_appicons_in_dock;
-	if (wConfigChangesHas(changes, WCFG_KEY_WINDOW_PLACE_ORIGIN)) {
+	if (wConfigChangesHas(changes, WCFG_KEY_WINDOW_PLACE_ORIGIN) && scr) {
 		WConfigCoord coord = clamp_window_place_origin(scr,
 								 new_config->window_place_origin);
 
-		wPreferences.window_place_origin.x = coord.x;
-		wPreferences.window_place_origin.y = coord.y;
+		scr->window_place_origin.x = coord.x;
+		scr->window_place_origin.y = coord.y;
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_KEEP_DOCK_ON_PRIMARY_HEAD)) {
 		if (scr && scr->dock)
@@ -1258,7 +1258,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		/* Re-resolve the named modifier to a mask and re-issue the
 		 * passive button grabs that depend on it. Key grabs use the
 		 * per-shortcut modifier resolved from the binding spec, not
-		 * wPreferences.modifier_mask, so they need no re-grab here. */
+		 * wdisp->modifier_mask, so they need no re-grab here. */
 		wConfigApplyModifierKey(new_config->modifier_key, "Mod1");
 		if (scr)
 			wRegrabWindowMouseGrabs(scr);
@@ -1406,6 +1406,7 @@ void wConfigAdoptWindowMaker(WConfig *config)
 		return;
 	wConfigDestroy(w_global.config);
 	w_global.config = config;
+	wdisp->config = config;
 }
 
 void wConfigCacheWindowMaker(WMPropList *dict)
@@ -1418,6 +1419,7 @@ void wConfigClearWindowMaker(void)
 	/* Test teardown helper; production reloads adopt a replacement config. */
 	wConfigDestroy(w_global.config);
 	w_global.config = NULL;
+	wdisp->config = NULL;
 }
 
 void wConfigApplyStaticDefaults(WMPropList *dict)
@@ -1504,6 +1506,7 @@ unsigned int wConfigApplyRuntimeDefaults(WScreen *scr, WMPropList *new_dict)
 	old_config = w_global.config;
 	wConfigPrepareRuntimeDefaults(new_dict, old_config, new_config, &changes);
 	w_global.config = new_config;
+	wdisp->config = new_config;
 	refresh = wConfigApplyRuntime(scr, old_config, new_config, &changes);
 	wConfigDestroy(old_config);
 

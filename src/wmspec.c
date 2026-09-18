@@ -167,89 +167,89 @@ static xcb_atom_t net_startup_id;
  * The shared header owns the atom names.
  */
 #define WNET_ATOMS(_) \
-	_(net_supported,		W_ATOM_NET_SUPPORTED) \
-	_(net_client_list,		W_ATOM_NET_CLIENT_LIST) \
-	_(net_client_list_stacking,	W_ATOM_NET_CLIENT_LIST_STACKING) \
-	_(net_number_of_desktops,	W_ATOM_NET_NUMBER_OF_DESKTOPS) \
-	_(net_desktop_geometry,		W_ATOM_NET_DESKTOP_GEOMETRY) \
-	_(net_desktop_viewport,		W_ATOM_NET_DESKTOP_VIEWPORT) \
-	_(net_current_desktop,		W_ATOM_NET_CURRENT_DESKTOP) \
-	_(net_desktop_names,		W_ATOM_NET_DESKTOP_NAMES) \
-	_(net_active_window,		W_ATOM_NET_ACTIVE_WINDOW) \
-	_(net_workarea,			W_ATOM_NET_WORKAREA) \
-	_(net_supporting_wm_check,	W_ATOM_NET_SUPPORTING_WM_CHECK) \
-	_(net_virtual_roots,		W_ATOM_NET_VIRTUAL_ROOTS) \
-	_(net_desktop_layout,		W_ATOM_NET_DESKTOP_LAYOUT) \
-	_(net_showing_desktop,		W_ATOM_NET_SHOWING_DESKTOP) \
-	_(net_close_window,		W_ATOM_NET_CLOSE_WINDOW) \
-	_(net_moveresize_window,	W_ATOM_NET_MOVERESIZE_WINDOW) \
-	_(net_wm_moveresize,		W_ATOM_NET_WM_MOVERESIZE) \
-	_(net_restack_window,		W_ATOM_NET_RESTACK_WINDOW) \
-	_(net_request_frame_extents,	W_ATOM_NET_REQUEST_FRAME_EXTENTS) \
-	_(net_wm_name,			W_ATOM_NET_WM_NAME) \
-	_(net_wm_visible_name,		W_ATOM_NET_WM_VISIBLE_NAME) \
-	_(net_wm_icon_name,		W_ATOM_NET_WM_ICON_NAME) \
-	_(net_wm_visible_icon_name,	W_ATOM_NET_WM_VISIBLE_ICON_NAME) \
-	_(net_wm_desktop,		W_ATOM_NET_WM_DESKTOP) \
-	_(net_wm_fullscreen_monitors,	W_ATOM_NET_WM_FULLSCREEN_MONITORS) \
-	_(net_wm_window_type,		W_ATOM_NET_WM_WINDOW_TYPE) \
-	_(net_wm_window_type_desktop,	W_ATOM_NET_WM_WINDOW_TYPE_DESKTOP) \
-	_(net_wm_window_type_dock,	W_ATOM_NET_WM_WINDOW_TYPE_DOCK) \
-	_(net_wm_window_type_toolbar,	W_ATOM_NET_WM_WINDOW_TYPE_TOOLBAR) \
-	_(net_wm_window_type_menu,	W_ATOM_NET_WM_WINDOW_TYPE_MENU) \
-	_(net_wm_window_type_utility,	W_ATOM_NET_WM_WINDOW_TYPE_UTILITY) \
-	_(net_wm_window_type_splash,	W_ATOM_NET_WM_WINDOW_TYPE_SPLASH) \
-	_(net_wm_window_type_dialog,	W_ATOM_NET_WM_WINDOW_TYPE_DIALOG) \
-	_(net_wm_window_type_dropdown_menu, W_ATOM_NET_WM_WINDOW_TYPE_DROPDOWN_MENU) \
-	_(net_wm_window_type_popup_menu, W_ATOM_NET_WM_WINDOW_TYPE_POPUP_MENU) \
-	_(net_wm_window_type_tooltip,	W_ATOM_NET_WM_WINDOW_TYPE_TOOLTIP) \
-	_(net_wm_window_type_notification, W_ATOM_NET_WM_WINDOW_TYPE_NOTIFICATION) \
-	_(net_wm_window_type_combo,	W_ATOM_NET_WM_WINDOW_TYPE_COMBO) \
-	_(net_wm_window_type_dnd,	W_ATOM_NET_WM_WINDOW_TYPE_DND) \
-	_(net_wm_window_type_normal,	W_ATOM_NET_WM_WINDOW_TYPE_NORMAL) \
-	_(net_wm_state,			W_ATOM_NET_WM_STATE) \
-	_(net_wm_state_modal,		W_ATOM_NET_WM_STATE_MODAL) \
-	_(net_wm_state_sticky,		W_ATOM_NET_WM_STATE_STICKY) \
-	_(net_wm_state_maximized_vert,	W_ATOM_NET_WM_STATE_MAXIMIZED_VERT) \
-	_(net_wm_state_maximized_horz,	W_ATOM_NET_WM_STATE_MAXIMIZED_HORZ) \
-	_(net_wm_state_shaded,		W_ATOM_NET_WM_STATE_SHADED) \
-	_(net_wm_state_skip_taskbar,	W_ATOM_NET_WM_STATE_SKIP_TASKBAR) \
-	_(net_wm_state_skip_pager,	W_ATOM_NET_WM_STATE_SKIP_PAGER) \
-	_(net_wm_state_hidden,		W_ATOM_NET_WM_STATE_HIDDEN) \
-	_(net_wm_state_fullscreen,	W_ATOM_NET_WM_STATE_FULLSCREEN) \
-	_(net_wm_state_above,		W_ATOM_NET_WM_STATE_ABOVE) \
-	_(net_wm_state_below,		W_ATOM_NET_WM_STATE_BELOW) \
-	_(net_wm_state_focused,		W_ATOM_NET_WM_STATE_FOCUSED) \
-	_(net_wm_state_demands_attention, W_ATOM_NET_WM_STATE_DEMANDS_ATTENTION) \
-	_(net_wm_allowed_actions,	W_ATOM_NET_WM_ALLOWED_ACTIONS) \
-	_(net_wm_action_move,		W_ATOM_NET_WM_ACTION_MOVE) \
-	_(net_wm_action_resize,		W_ATOM_NET_WM_ACTION_RESIZE) \
-	_(net_wm_action_minimize,	W_ATOM_NET_WM_ACTION_MINIMIZE) \
-	_(net_wm_action_shade,		W_ATOM_NET_WM_ACTION_SHADE) \
-	_(net_wm_action_stick,		W_ATOM_NET_WM_ACTION_STICK) \
-	_(net_wm_action_maximize_horz,	W_ATOM_NET_WM_ACTION_MAXIMIZE_HORZ) \
-	_(net_wm_action_maximize_vert,	W_ATOM_NET_WM_ACTION_MAXIMIZE_VERT) \
-	_(net_wm_action_fullscreen,	W_ATOM_NET_WM_ACTION_FULLSCREEN) \
-	_(net_wm_action_change_desktop,	W_ATOM_NET_WM_ACTION_CHANGE_DESKTOP) \
-	_(net_wm_action_close,		W_ATOM_NET_WM_ACTION_CLOSE) \
-	_(net_wm_action_above,		W_ATOM_NET_WM_ACTION_ABOVE) \
-	_(net_wm_action_below,		W_ATOM_NET_WM_ACTION_BELOW) \
-	_(net_wm_strut,			W_ATOM_NET_WM_STRUT) \
-	_(net_wm_strut_partial,		W_ATOM_NET_WM_STRUT_PARTIAL) \
-	_(net_wm_icon_geometry,		W_ATOM_NET_WM_ICON_GEOMETRY) \
-	_(net_wm_icon,			W_ATOM_NET_WM_ICON) \
-	_(net_wm_pid,			W_ATOM_NET_WM_PID) \
-	_(net_wm_handled_icons,		W_ATOM_NET_WM_HANDLED_ICONS) \
-	_(net_wm_window_opacity,	W_ATOM_NET_WM_WINDOW_OPACITY) \
-	_(net_frame_extents,		W_ATOM_NET_FRAME_EXTENTS) \
-	_(net_wm_user_time,		W_ATOM_NET_WM_USER_TIME) \
-	_(net_wm_user_time_window,	W_ATOM_NET_WM_USER_TIME_WINDOW) \
-	_(net_wm_full_placement,	W_ATOM_NET_WM_FULL_PLACEMENT) \
-	_(net_wm_ping,			W_ATOM_NET_WM_PING) \
-	_(net_wm_sync_request,		W_ATOM_NET_WM_SYNC_REQUEST) \
-	_(net_wm_sync_request_counter,	W_ATOM_NET_WM_SYNC_REQUEST_COUNTER) \
-	_(utf8_string,			W_ATOM_UTF8_STRING) \
-	_(net_startup_id,		W_ATOM_NET_STARTUP_ID)
+	_(net_supported,		W_ATOM_NET_SUPPORTED); \
+	_(net_client_list,		W_ATOM_NET_CLIENT_LIST); \
+	_(net_client_list_stacking,	W_ATOM_NET_CLIENT_LIST_STACKING); \
+	_(net_number_of_desktops,	W_ATOM_NET_NUMBER_OF_DESKTOPS); \
+	_(net_desktop_geometry,		W_ATOM_NET_DESKTOP_GEOMETRY); \
+	_(net_desktop_viewport,		W_ATOM_NET_DESKTOP_VIEWPORT); \
+	_(net_current_desktop,		W_ATOM_NET_CURRENT_DESKTOP); \
+	_(net_desktop_names,		W_ATOM_NET_DESKTOP_NAMES); \
+	_(net_active_window,		W_ATOM_NET_ACTIVE_WINDOW); \
+	_(net_workarea,			W_ATOM_NET_WORKAREA); \
+	_(net_supporting_wm_check,	W_ATOM_NET_SUPPORTING_WM_CHECK); \
+	_(net_virtual_roots,		W_ATOM_NET_VIRTUAL_ROOTS); \
+	_(net_desktop_layout,		W_ATOM_NET_DESKTOP_LAYOUT); \
+	_(net_showing_desktop,		W_ATOM_NET_SHOWING_DESKTOP); \
+	_(net_close_window,		W_ATOM_NET_CLOSE_WINDOW); \
+	_(net_moveresize_window,	W_ATOM_NET_MOVERESIZE_WINDOW); \
+	_(net_wm_moveresize,		W_ATOM_NET_WM_MOVERESIZE); \
+	_(net_restack_window,		W_ATOM_NET_RESTACK_WINDOW); \
+	_(net_request_frame_extents,	W_ATOM_NET_REQUEST_FRAME_EXTENTS); \
+	_(net_wm_name,			W_ATOM_NET_WM_NAME); \
+	_(net_wm_visible_name,		W_ATOM_NET_WM_VISIBLE_NAME); \
+	_(net_wm_icon_name,		W_ATOM_NET_WM_ICON_NAME); \
+	_(net_wm_visible_icon_name,	W_ATOM_NET_WM_VISIBLE_ICON_NAME); \
+	_(net_wm_desktop,		W_ATOM_NET_WM_DESKTOP); \
+	_(net_wm_fullscreen_monitors,	W_ATOM_NET_WM_FULLSCREEN_MONITORS); \
+	_(net_wm_window_type,		W_ATOM_NET_WM_WINDOW_TYPE); \
+	_(net_wm_window_type_desktop,	W_ATOM_NET_WM_WINDOW_TYPE_DESKTOP); \
+	_(net_wm_window_type_dock,	W_ATOM_NET_WM_WINDOW_TYPE_DOCK); \
+	_(net_wm_window_type_toolbar,	W_ATOM_NET_WM_WINDOW_TYPE_TOOLBAR); \
+	_(net_wm_window_type_menu,	W_ATOM_NET_WM_WINDOW_TYPE_MENU); \
+	_(net_wm_window_type_utility,	W_ATOM_NET_WM_WINDOW_TYPE_UTILITY); \
+	_(net_wm_window_type_splash,	W_ATOM_NET_WM_WINDOW_TYPE_SPLASH); \
+	_(net_wm_window_type_dialog,	W_ATOM_NET_WM_WINDOW_TYPE_DIALOG); \
+	_(net_wm_window_type_dropdown_menu, W_ATOM_NET_WM_WINDOW_TYPE_DROPDOWN_MENU); \
+	_(net_wm_window_type_popup_menu, W_ATOM_NET_WM_WINDOW_TYPE_POPUP_MENU); \
+	_(net_wm_window_type_tooltip,	W_ATOM_NET_WM_WINDOW_TYPE_TOOLTIP); \
+	_(net_wm_window_type_notification, W_ATOM_NET_WM_WINDOW_TYPE_NOTIFICATION); \
+	_(net_wm_window_type_combo,	W_ATOM_NET_WM_WINDOW_TYPE_COMBO); \
+	_(net_wm_window_type_dnd,	W_ATOM_NET_WM_WINDOW_TYPE_DND); \
+	_(net_wm_window_type_normal,	W_ATOM_NET_WM_WINDOW_TYPE_NORMAL); \
+	_(net_wm_state,			W_ATOM_NET_WM_STATE); \
+	_(net_wm_state_modal,		W_ATOM_NET_WM_STATE_MODAL); \
+	_(net_wm_state_sticky,		W_ATOM_NET_WM_STATE_STICKY); \
+	_(net_wm_state_maximized_vert,	W_ATOM_NET_WM_STATE_MAXIMIZED_VERT); \
+	_(net_wm_state_maximized_horz,	W_ATOM_NET_WM_STATE_MAXIMIZED_HORZ); \
+	_(net_wm_state_shaded,		W_ATOM_NET_WM_STATE_SHADED); \
+	_(net_wm_state_skip_taskbar,	W_ATOM_NET_WM_STATE_SKIP_TASKBAR); \
+	_(net_wm_state_skip_pager,	W_ATOM_NET_WM_STATE_SKIP_PAGER); \
+	_(net_wm_state_hidden,		W_ATOM_NET_WM_STATE_HIDDEN); \
+	_(net_wm_state_fullscreen,	W_ATOM_NET_WM_STATE_FULLSCREEN); \
+	_(net_wm_state_above,		W_ATOM_NET_WM_STATE_ABOVE); \
+	_(net_wm_state_below,		W_ATOM_NET_WM_STATE_BELOW); \
+	_(net_wm_state_focused,		W_ATOM_NET_WM_STATE_FOCUSED); \
+	_(net_wm_state_demands_attention, W_ATOM_NET_WM_STATE_DEMANDS_ATTENTION); \
+	_(net_wm_allowed_actions,	W_ATOM_NET_WM_ALLOWED_ACTIONS); \
+	_(net_wm_action_move,		W_ATOM_NET_WM_ACTION_MOVE); \
+	_(net_wm_action_resize,		W_ATOM_NET_WM_ACTION_RESIZE); \
+	_(net_wm_action_minimize,	W_ATOM_NET_WM_ACTION_MINIMIZE); \
+	_(net_wm_action_shade,		W_ATOM_NET_WM_ACTION_SHADE); \
+	_(net_wm_action_stick,		W_ATOM_NET_WM_ACTION_STICK); \
+	_(net_wm_action_maximize_horz,	W_ATOM_NET_WM_ACTION_MAXIMIZE_HORZ); \
+	_(net_wm_action_maximize_vert,	W_ATOM_NET_WM_ACTION_MAXIMIZE_VERT); \
+	_(net_wm_action_fullscreen,	W_ATOM_NET_WM_ACTION_FULLSCREEN); \
+	_(net_wm_action_change_desktop,	W_ATOM_NET_WM_ACTION_CHANGE_DESKTOP); \
+	_(net_wm_action_close,		W_ATOM_NET_WM_ACTION_CLOSE); \
+	_(net_wm_action_above,		W_ATOM_NET_WM_ACTION_ABOVE); \
+	_(net_wm_action_below,		W_ATOM_NET_WM_ACTION_BELOW); \
+	_(net_wm_strut,			W_ATOM_NET_WM_STRUT); \
+	_(net_wm_strut_partial,		W_ATOM_NET_WM_STRUT_PARTIAL); \
+	_(net_wm_icon_geometry,		W_ATOM_NET_WM_ICON_GEOMETRY); \
+	_(net_wm_icon,			W_ATOM_NET_WM_ICON); \
+	_(net_wm_pid,			W_ATOM_NET_WM_PID); \
+	_(net_wm_handled_icons,		W_ATOM_NET_WM_HANDLED_ICONS); \
+	_(net_wm_window_opacity,	W_ATOM_NET_WM_WINDOW_OPACITY); \
+	_(net_frame_extents,		W_ATOM_NET_FRAME_EXTENTS); \
+	_(net_wm_user_time,		W_ATOM_NET_WM_USER_TIME); \
+	_(net_wm_user_time_window,	W_ATOM_NET_WM_USER_TIME_WINDOW); \
+	_(net_wm_full_placement,	W_ATOM_NET_WM_FULL_PLACEMENT); \
+	_(net_wm_ping,			W_ATOM_NET_WM_PING); \
+	_(net_wm_sync_request,		W_ATOM_NET_WM_SYNC_REQUEST); \
+	_(net_wm_sync_request_counter,	W_ATOM_NET_WM_SYNC_REQUEST_COUNTER); \
+	_(utf8_string,			W_ATOM_UTF8_STRING); \
+	_(net_startup_id,		W_ATOM_NET_STARTUP_ID);
 
 #define _NET_WM_STATE_ADD 1
 #define _NET_WM_STATE_TOGGLE 2
@@ -355,7 +355,7 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_pid;
 	atom[i++] = net_wm_ping;
 #ifdef USE_XSYNC
-	if (w_global.xext.xsync.supported) {
+	if (wdisp->xext.xsync.supported) {
 		atom[i++] = net_wm_sync_request;
 		atom[i++] = net_wm_sync_request_counter;
 	}
@@ -381,21 +381,21 @@ static void setSupportedHints(WScreen *scr)
 	atom[i++] = net_wm_icon_name;
 	atom[i++] = net_wm_visible_icon_name;
 
-	WXSetAtomN(xconn, scr->root_win, net_supported, atom, i);
+	WXSetAtomN(wdisp->conn, scr->root_win, net_supported, atom, i);
 
 	/* set supporting wm hint */
-	WXSetWindow(xconn, scr->root_win, net_supporting_wm_check, scr->info_window);
-	WXSetWindow(xconn, scr->info_window, net_supporting_wm_check, scr->info_window);
+	WXSetWindow(wdisp->conn, scr->root_win, net_supporting_wm_check, scr->info_window);
+	WXSetWindow(wdisp->conn, scr->info_window, net_supporting_wm_check, scr->info_window);
 
 	/* set _NET_WM_NAME on supporting window */
 	snprintf(wm_name, sizeof(wm_name), "WindowMaker %s", VERSION);
-	WXSetUTF8String(xconn, scr->info_window, net_wm_name, wm_name, strlen(wm_name));
+	WXSetUTF8String(wdisp->conn, scr->info_window, net_wm_name, wm_name, strlen(wm_name));
 
 	/* set _NET_WM_PID on supporting window */
-	WXSetCardinal(xconn, scr->info_window, net_wm_pid, (uint32_t)getpid());
+	WXSetCardinal(wdisp->conn, scr->info_window, net_wm_pid, (uint32_t)getpid());
 
 	/* set WM_CLASS on supporting window: instance\0class\0 */
-	WXSetLatin1String(xconn, scr->info_window, XCB_ATOM_WM_CLASS, wm_class, sizeof(wm_class));
+	WXSetLatin1String(wdisp->conn, scr->info_window, XCB_ATOM_WM_CLASS, wm_class, sizeof(wm_class));
 }
 
 void wNETWMUpdateDesktop(WScreen *scr)
@@ -429,8 +429,8 @@ void wNETWMUpdateDesktop(WScreen *scr)
 #endif
 	}
 
-	WXSetCardinalN(xconn, scr->root_win, net_desktop_geometry, sizes, 2);
-	WXSetCardinalN(xconn, scr->root_win, net_desktop_viewport, views, count);
+	WXSetCardinalN(wdisp->conn, scr->root_win, net_desktop_geometry, sizes, 2);
+	WXSetCardinalN(wdisp->conn, scr->root_win, net_desktop_viewport, views, count);
 
 	wfree(views);
 }
@@ -439,7 +439,7 @@ int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
 {
 	int32_t desktop;
 
-	if (WXGetCardinalSigned(xconn, scr->root_win, net_current_desktop, &desktop))
+	if (WXGetCardinalSigned(wdisp->conn, scr->root_win, net_current_desktop, &desktop))
 		return desktop;
 	return -1;
 }
@@ -562,7 +562,7 @@ static RImage *get_window_image_from_x11_ck(WXCookie ck)
 	size_t items;
 	uint32_t *property;
 
-	property = WXRcvCardinalList(xconn, ck, &items);
+	property = WXRcvCardinalList(wdisp->conn, ck, &items);
 	if (!property)
 		return NULL;
 
@@ -592,7 +592,7 @@ RImage *get_window_image_from_x11(xcb_window_t window)
 	 * arbitrarily large transient allocation by stuffing the
 	 * property. */
 	return get_window_image_from_x11_ck(
-		WXReqFormat32(xconn, window, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22));
+		WXReqFormat32(wdisp->conn, window, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22));
 }
 
 static void updateIconImageCk(WWindow *wwin, WXCookie icon_ck)
@@ -650,7 +650,7 @@ static void updateIconImageCk(WWindow *wwin, WXCookie icon_ck)
 static void updateIconImage(WWindow *wwin)
 {
 	updateIconImageCk(wwin,
-		WXReqFormat32(xconn, wwin->client_win, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22));
+		WXReqFormat32(wdisp->conn, wwin->client_win, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22));
 }
 
 static void updateWindowOpacityCk(WWindow *wwin, WXCookie ck)
@@ -658,22 +658,22 @@ static void updateWindowOpacityCk(WWindow *wwin, WXCookie ck)
 	uint32_t opacity;
 
 	if (!wwin->frame) {
-		WXDiscard(xconn, ck);
+		WXDiscard(wdisp->conn, ck);
 		return;
 	}
 
 	/* We don't care about this ourselves, but other programs need us to copy
 	 * this to the frame window. */
-	if (WXRcvCardinal(xconn, ck, &opacity))
-		WXSetCardinal(xconn, wwin->frame->core->window, net_wm_window_opacity, opacity);
+	if (WXRcvCardinal(wdisp->conn, ck, &opacity))
+		WXSetCardinal(wdisp->conn, wwin->frame->core->window, net_wm_window_opacity, opacity);
 	else
-		WXDeleteProperty(xconn, wwin->frame->core->window, net_wm_window_opacity);
+		WXDeleteProperty(wdisp->conn, wwin->frame->core->window, net_wm_window_opacity);
 }
 
 static void updateWindowOpacity(WWindow *wwin)
 {
 	updateWindowOpacityCk(wwin,
-		WXReqFormat32(xconn, wwin->client_win, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1));
+		WXReqFormat32(wdisp->conn, wwin->client_win, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1));
 }
 
 /* read and validate _NET_DESKTOP_LAYOUT off the root window. The spec
@@ -691,7 +691,7 @@ void wNETWMUpdateDesktopLayout(WScreen *scr)
 	scr->net_desktop_layout.cols = WMAX(1, scr->workspace_count);
 	scr->net_desktop_layout.rows = 1;
 
-	if (!WXGetCardinalN(xconn, scr->root_win, net_desktop_layout, v, 4))
+	if (!WXGetCardinalN(wdisp->conn, scr->root_win, net_desktop_layout, v, 4))
 		return;
 
 	/* the property is client-set on root, clamp before any signed
@@ -727,7 +727,7 @@ void wNETWMCheckRootHintChange(WScreen *scr, xcb_atom_t atom)
 
 static void updateShowDesktop(WScreen *scr, bool show)
 {
-	WXSetCardinal(xconn, scr->root_win, net_showing_desktop, show == true);
+	WXSetCardinal(wdisp->conn, scr->root_win, net_showing_desktop, show == true);
 }
 
 static void wNETWMShowingDesktop(WScreen *scr, bool show)
@@ -805,7 +805,7 @@ static const char *atom_name(xcb_atom_t atom)
 {
 	static char buf[2][64];
 	static int slot;
-	char *name = wXGetAtomName(xconn, atom);
+	char *name = wXGetAtomName(wdisp->conn, atom);
 	char *out = buf[slot ^= 1];
 
 	if (name) {
@@ -825,7 +825,7 @@ void wNETWMInitStuff(WScreen *scr)
 	wmessage("wNETWMInitStuff");
 #endif
 
-#define WNET_FILL_(var, id)	var = wx_static_atoms[id];
+#define WNET_FILL_(var, id)	var = wx_static_atoms[id]
 	WNET_ATOMS(WNET_FILL_)
 #undef WNET_FILL_
 
@@ -864,7 +864,7 @@ void wNETWMInitStuff(WScreen *scr)
 
 void wNETWMCleanup(WScreen *scr)
 {
-#define WNET_CLEAN_(var, id)	WXDeleteProperty(xconn, scr->root_win, var);
+#define WNET_CLEAN_(var, id)	WXDeleteProperty(wdisp->conn, scr->root_win, var)
 	WNET_ATOMS(WNET_CLEAN_)
 #undef WNET_CLEAN_
 }
@@ -875,7 +875,7 @@ void wNETWMUpdateActions(WWindow *wwin, bool del)
 	int i = 0;
 
 	if (del) {
-		WXDeleteProperty(xconn, wwin->client_win, net_wm_allowed_actions);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, net_wm_allowed_actions);
 		return;
 	}
 
@@ -914,7 +914,7 @@ void wNETWMUpdateActions(WWindow *wwin, bool del)
 	action[i++] = net_wm_action_above;
 	action[i++] = net_wm_action_below;
 
-	WXSetAtomN(xconn, wwin->client_win, net_wm_allowed_actions, action, i);
+	WXSetAtomN(wdisp->conn, wwin->client_win, net_wm_allowed_actions, action, i);
 }
 
 void wNETWMUpdateWorkarea(WScreen *scr)
@@ -974,7 +974,7 @@ void wNETWMUpdateWorkarea(WScreen *scr)
 		property_value[4 * i + 3] = total_usable.y2 - total_usable.y1;
 	}
 
-	WXSetCardinalN(xconn, scr->root_win, net_workarea, property_value, nb_workspace * 4);
+	WXSetCardinalN(wdisp->conn, scr->root_win, net_workarea, property_value, nb_workspace * 4);
 	wfree(property_value);
 }
 
@@ -1120,10 +1120,10 @@ static void updateClientList(WScreen *scr)
 		windows[count++] = wwin->client_win;
 		wwin = wwin->prev;
 	}
-	WXSetWindowN(xconn, scr->root_win, net_client_list, windows, count);
+	WXSetWindowN(wdisp->conn, scr->root_win, net_client_list, windows, count);
 
 	wfree(windows);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
@@ -1161,12 +1161,12 @@ static void updateClientListStacking(WScreen *scr, WWindow *wwin_excl)
 		client_list_reverse[i] = w;
 	}
 
-	WXSetWindowN(xconn, scr->root_win, net_client_list_stacking, client_list_reverse, client_count);
+	WXSetWindowN(wdisp->conn, scr->root_win, net_client_list_stacking, client_list_reverse, client_count);
 
 	wfree(client_list);
 	wfree(client_list_reverse);
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 /*
@@ -1186,12 +1186,12 @@ void wNETWMFlushClientLists(WScreen *scr)
 
 static void updateWorkspaceCount(WScreen *scr)
 {				/* changeable */
-	WXSetCardinal(xconn, scr->root_win, net_number_of_desktops, scr->workspace_count);
+	WXSetCardinal(wdisp->conn, scr->root_win, net_number_of_desktops, scr->workspace_count);
 }
 
 static void updateCurrentWorkspace(WScreen *scr)
 {				/* changeable */
-	WXSetCardinal(xconn, scr->root_win, net_current_desktop, scr->current_workspace);
+	WXSetCardinal(wdisp->conn, scr->root_win, net_current_desktop, scr->current_workspace);
 }
 
 /* Public wrapper so per-head focus changes can republish
@@ -1223,7 +1223,7 @@ static void updateWorkspaceNames(WScreen *scr)
 		len += (curr_size + 1);
 	}
 
-	WXSetUTF8String(xconn, scr->root_win, net_desktop_names, buf, len);
+	WXSetUTF8String(wdisp->conn, scr->root_win, net_desktop_names, buf, len);
 }
 
 static void updateFocusHint(WScreen *scr)
@@ -1235,24 +1235,24 @@ static void updateFocusHint(WScreen *scr)
 	else
 		window = scr->focused_window->client_win;
 
-	WXSetWindow(xconn, scr->root_win, net_active_window, window);
+	WXSetWindow(wdisp->conn, scr->root_win, net_active_window, window);
 }
 
 static void updateWorkspaceHint(WWindow *wwin, bool fake, bool del)
 {
 	if (del) {
-		WXDeleteProperty(xconn, wwin->client_win, net_wm_desktop);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, net_wm_desktop);
 	} else {
 		uint32_t l = ((fake || IS_OMNIPRESENT(wwin)) ? 0xffffffffu : (uint32_t)WWIN_PRIMARY_WS(wwin));
-		WXSetCardinal(xconn, wwin->client_win, net_wm_desktop, l);
+		WXSetCardinal(wdisp->conn, wwin->client_win, net_wm_desktop, l);
 	}
 }
 
 static void updateStateHint(WWindow *wwin, bool changedWorkspace, bool del)
 {				/* changeable */
 	if (del) {
-		WXDeleteProperty(xconn, wwin->client_win, net_wm_state);
-		WXDeleteProperty(xconn, wwin->client_win, net_wm_fullscreen_monitors);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, net_wm_state);
+		WXDeleteProperty(wdisp->conn, wwin->client_win, net_wm_fullscreen_monitors);
 	} else {
 		xcb_atom_t state[15];	/* nr of defined state atoms */
 		int i = 0;
@@ -1297,7 +1297,7 @@ static void updateStateHint(WWindow *wwin, bool changedWorkspace, bool del)
 		if (wwin->flags.net_demands_attention || wwin->flags.urgent)
 			state[i++] = net_wm_state_demands_attention;
 
-		WXSetAtomN(xconn, wwin->client_win, net_wm_state, state, i);
+		WXSetAtomN(wdisp->conn, wwin->client_win, net_wm_state, state, i);
 
 		if (wwin->flags.fullscreen && (wwin->flags.fullscreen_monitors[0] != -1)) {
 			uint32_t data[4];
@@ -1307,7 +1307,7 @@ static void updateStateHint(WWindow *wwin, bool changedWorkspace, bool del)
 			data[2] = wwin->flags.fullscreen_monitors[2];
 			data[3] = wwin->flags.fullscreen_monitors[3];
 
-			WXSetCardinalN(xconn, wwin->client_win, net_wm_fullscreen_monitors, data, 4);
+			WXSetCardinalN(wdisp->conn, wwin->client_win, net_wm_fullscreen_monitors, data, 4);
 		}
 	}
 }
@@ -1373,8 +1373,8 @@ static bool updateStrut(WScreen *scr, xcb_window_t w, bool adding)
 		 * _NET_WM_STRUT, and carries per-edge start/end spans so a
 		 * panel reserving only part of an edge does not steal that
 		 * edge on every head. */
-		partial = WXGetCardinalN(xconn, w, net_wm_strut_partial, strut, 12);
-		if (partial || WXGetCardinalN(xconn, w, net_wm_strut, strut, 4)) {
+		partial = WXGetCardinalN(wdisp->conn, w, net_wm_strut_partial, strut, 12);
+		if (partial || WXGetCardinalN(wdisp->conn, w, net_wm_strut, strut, 4)) {
 
 			area = makeReservedArea(scr, w, strut, partial);
 
@@ -1602,7 +1602,7 @@ static void removeIcon(WWindow *wwin)
 	if (wwin->icon == NULL)
 		return;
 	if (wwin->flags.miniaturized && wwin->icon->mapped) {
-		xcb_unmap_window(xconn, wwin->icon->core->window);
+		xcb_unmap_window(wdisp->conn, wwin->icon->core->window);
 		RemoveFromStackList(wwin->icon->core);
 		wIconDestroy(wwin->icon);
 		wwin->icon = NULL;
@@ -1772,7 +1772,7 @@ static void updateWindowType(WWindow *wwin)
 	size_t i, nitems;
 	xcb_atom_t *type;
 
-	type = WXGetAtomList(xconn, wwin->client_win, net_wm_window_type, 32, &nitems);
+	type = WXGetAtomList(wdisp->conn, wwin->client_win, net_wm_window_type, 32, &nitems);
 	if (type) {
 		for (i = 0; i < nitems; ++i) {
 			if (handleWindowType(wwin, type[i], &layer))
@@ -1799,10 +1799,10 @@ static void addStrutCk(WScreen *scr, xcb_window_t w, WXCookie strut, WXCookie st
 
 	/* consume both cookies on every path so callers do not have to,
 	 * _NET_WM_STRUT_PARTIAL takes precedence over the legacy strut */
-	if (WXRcvCardinalN(xconn, strut_partial, v, 12)) {
-		WXDiscard(xconn, strut);
+	if (WXRcvCardinalN(wdisp->conn, strut_partial, v, 12)) {
+		WXDiscard(wdisp->conn, strut);
 		partial = true;
-	} else if (WXRcvCardinalN(xconn, strut, v, 4)) {
+	} else if (WXRcvCardinalN(wdisp->conn, strut, v, 4)) {
 		partial = false;
 	} else {
 		return;
@@ -1815,30 +1815,30 @@ static void addStrutCk(WScreen *scr, xcb_window_t w, WXCookie strut, WXCookie st
 
 void wNETWMReqClientHints(xcb_window_t window, WNETWMHintCookies *ck)
 {
-	ck->desktop       = WXReqFormat32(xconn, window, net_wm_desktop, XCB_ATOM_CARDINAL, 1);
-	ck->state         = WXReqFormat32(xconn, window, net_wm_state, XCB_ATOM_ATOM, 1024);
-	ck->type          = WXReqFormat32(xconn, window, net_wm_window_type, XCB_ATOM_ATOM, 1024);
-	ck->strut         = WXReqFormat32(xconn, window, net_wm_strut, XCB_ATOM_CARDINAL, 4);
-	ck->strut_partial = WXReqFormat32(xconn, window, net_wm_strut_partial, XCB_ATOM_CARDINAL, 12);
+	ck->desktop       = WXReqFormat32(wdisp->conn, window, net_wm_desktop, XCB_ATOM_CARDINAL, 1);
+	ck->state         = WXReqFormat32(wdisp->conn, window, net_wm_state, XCB_ATOM_ATOM, 1024);
+	ck->type          = WXReqFormat32(wdisp->conn, window, net_wm_window_type, XCB_ATOM_ATOM, 1024);
+	ck->strut         = WXReqFormat32(wdisp->conn, window, net_wm_strut, XCB_ATOM_CARDINAL, 4);
+	ck->strut_partial = WXReqFormat32(wdisp->conn, window, net_wm_strut_partial, XCB_ATOM_CARDINAL, 12);
 }
 
 void wNETWMReqInitialStateCookies(xcb_window_t window, WNETWMInitialCookies *ck)
 {
-	ck->handled_icons = WXReqFormat32(xconn, window, net_wm_handled_icons, XCB_ATOM_CARDINAL, 1);
-	ck->icon_geom     = WXReqFormat32(xconn, window, net_wm_icon_geometry, XCB_ATOM_CARDINAL, 4);
-	ck->opacity       = WXReqFormat32(xconn, window, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1);
-	ck->user_time_win = WXReqFormat32(xconn, window, net_wm_user_time_window, XCB_ATOM_WINDOW, 1);
-	ck->user_time     = WXReqFormat32(xconn, window, net_wm_user_time, XCB_ATOM_CARDINAL, 1);
-	ck->startup_id    = WXReqString8(xconn, window, net_startup_id, utf8_string);
+	ck->handled_icons = WXReqFormat32(wdisp->conn, window, net_wm_handled_icons, XCB_ATOM_CARDINAL, 1);
+	ck->icon_geom     = WXReqFormat32(wdisp->conn, window, net_wm_icon_geometry, XCB_ATOM_CARDINAL, 4);
+	ck->opacity       = WXReqFormat32(wdisp->conn, window, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1);
+	ck->user_time_win = WXReqFormat32(wdisp->conn, window, net_wm_user_time_window, XCB_ATOM_WINDOW, 1);
+	ck->user_time     = WXReqFormat32(wdisp->conn, window, net_wm_user_time, XCB_ATOM_CARDINAL, 1);
+	ck->startup_id    = WXReqString8(wdisp->conn, window, net_startup_id, utf8_string);
 	/* icon last so its potentially large reply does not sit ahead of
 	 * the small ones in the server's output queue */
-	ck->icon          = WXReqFormat32(xconn, window, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22);
-	ck->machine       = WXReqString8(xconn, window, XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING);
+	ck->icon          = WXReqFormat32(wdisp->conn, window, net_wm_icon, XCB_ATOM_CARDINAL, 1u << 22);
+	ck->machine       = WXReqString8(wdisp->conn, window, XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING);
 }
 
 WXCookie wNETWMReqPid(xcb_window_t window)
 {
-	return WXReqFormat32(xconn, window, net_wm_pid, XCB_ATOM_CARDINAL, 1);
+	return WXReqFormat32(wdisp->conn, window, net_wm_pid, XCB_ATOM_CARDINAL, 1);
 }
 
 void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int *workspace)
@@ -1847,21 +1847,21 @@ void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int 
 	size_t i, nitems;
 	xcb_atom_t *atoms;
 
-	if (WXRcvCardinalSigned(xconn, ck->desktop, &desktop)) {
+	if (WXRcvCardinalSigned(wdisp->conn, ck->desktop, &desktop)) {
 		if (desktop == -1)
 			wwin->client_flags.omnipresent = 1;
 		else
 			*workspace = desktop;
 	}
 
-	atoms = WXRcvAtomList(xconn, ck->state, &nitems);
+	atoms = WXRcvAtomList(wdisp->conn, ck->state, &nitems);
 	if (atoms) {
 		for (i = 0; i < nitems; ++i)
 			doStateAtom(wwin, atoms[i], _NET_WM_STATE_ADD, true);
 		wfree(atoms);
 	}
 
-	atoms = WXRcvAtomList(xconn, ck->type, &nitems);
+	atoms = WXRcvAtomList(wdisp->conn, ck->type, &nitems);
 	if (atoms) {
 		/* Retain the advertised _NET_WM_WINDOW_TYPE list and its
 		 * resolved atom names on WWindow so the dynamic-rule
@@ -1895,7 +1895,7 @@ void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int 
 			memcpy(wwin->wm_types, atoms, sizeof(xcb_atom_t) * capped);
 			wwin->wm_type_names = wmalloc(sizeof(char *) * capped);
 			for (k = 0; k < capped; k++) {
-				char *nm = wXGetAtomName(xconn, atoms[k]);
+				char *nm = wXGetAtomName(wdisp->conn, atoms[k]);
 
 				wwin->wm_type_names[k] = nm; /* may be NULL */
 			}
@@ -1918,7 +1918,7 @@ void wNETWMRcvClientHints(WWindow *wwin, WNETWMHintCookies *ck, int *layer, int 
 
 WXCookie wNETWMReqWindowName(xcb_window_t window)
 {
-	return WXReqString8(xconn, window, net_wm_name, utf8_string);
+	return WXReqString8(wdisp->conn, window, net_wm_name, utf8_string);
 }
 
 static bool updateNetIconInfoCk(WWindow *wwin, WXCookie handled_ck, WXCookie geom_ck)
@@ -1928,14 +1928,14 @@ static bool updateNetIconInfoCk(WWindow *wwin, WXCookie handled_ck, WXCookie geo
 	bool hasState = false;
 	bool old_state = wwin->flags.net_handle_icon;
 
-	if (WXRcvCardinal(xconn, handled_ck, &handled)) {
+	if (WXRcvCardinal(wdisp->conn, handled_ck, &handled)) {
 		wwin->flags.net_handle_icon = (handled != 0);
 		hasState = true;
 	} else {
 		wwin->flags.net_handle_icon = false;
 	}
 
-	if (WXRcvCardinalN(xconn, geom_ck, geom, 4)) {
+	if (WXRcvCardinalN(wdisp->conn, geom_ck, geom, 4)) {
 #ifdef NETWM_PROPER
 		if (wwin->flags.net_handle_icon)
 #else
@@ -1969,8 +1969,8 @@ static bool updateNetIconInfoCk(WWindow *wwin, WXCookie handled_ck, WXCookie geo
 static bool updateNetIconInfo(WWindow *wwin)
 {
 	return updateNetIconInfoCk(wwin,
-		WXReqFormat32(xconn, wwin->client_win, net_wm_handled_icons, XCB_ATOM_CARDINAL, 1),
-		WXReqFormat32(xconn, wwin->client_win, net_wm_icon_geometry, XCB_ATOM_CARDINAL, 4));
+		WXReqFormat32(wdisp->conn, wwin->client_win, net_wm_handled_icons, XCB_ATOM_CARDINAL, 1),
+		WXReqFormat32(wdisp->conn, wwin->client_win, net_wm_icon_geometry, XCB_ATOM_CARDINAL, 4));
 }
 
 static void matchStartupNotification(WWindow *wwin, WNETWMInitialCookies *ck)
@@ -1980,13 +1980,13 @@ static void matchStartupNotification(WWindow *wwin, WNETWMInitialCookies *ck)
 	int sn_ws = -1;
 	pid_t pid;
 
-	sid = WXRcvString(xconn, ck->startup_id, NULL);
+	sid = WXRcvString(wdisp->conn, ck->startup_id, NULL);
 	if (!sid && wwin->main_window != XCB_NONE && wwin->main_window != wwin->client_win
 	    && !wwin->fake_group)
 		/* a real client-set group leader may carry the id when
 		 * the toplevel does not, but a wmaker-created fake leader
 		 * never does so skip that round-trip */
-		sid = WXGetUTF8String(xconn, wwin->main_window, net_startup_id, NULL);
+		sid = WXGetUTF8String(wdisp->conn, wwin->main_window, net_startup_id, NULL);
 
 	pid = wwin->client_pid;
 
@@ -2062,7 +2062,7 @@ void wNETWMCheckInitialClientState(WWindow *wwin)
 
 	wNETWMReqInitialStateCookies(wwin->client_win, &ck);
 	wNETWMCheckInitialClientStateCk(wwin, &ck);
-	WXDiscard(xconn, ck.opacity);
+	WXDiscard(wdisp->conn, ck.opacity);
 }
 
 void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity)
@@ -2077,7 +2077,7 @@ void wNETWMCheckInitialFrameStateCk(WWindow *wwin, WXCookie opacity)
 void wNETWMCheckInitialFrameState(WWindow *wwin)
 {
 	wNETWMCheckInitialFrameStateCk(wwin,
-		WXReqFormat32(xconn, wwin->client_win, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1));
+		WXReqFormat32(wdisp->conn, wwin->client_win, net_wm_window_opacity, XCB_ATOM_CARDINAL, 1));
 }
 
 static void handleDesktopNames(WScreen *scr)
@@ -2086,7 +2086,7 @@ static void handleDesktopNames(WScreen *scr)
 	size_t i, len;
 	int n;
 
-	data = WXGetUTF8String(xconn, scr->root_win, net_desktop_names, &len);
+	data = WXGetUTF8String(wdisp->conn, scr->root_win, net_desktop_names, &len);
 	if (data == NULL)
 		return;
 
@@ -2184,7 +2184,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 			handleDesktopNames(scr);
 			return true;
 
-		} else if (event->type == w_global.atom.wm.protocols
+		} else if (event->type == wdisp->atom.wm.protocols
 			   && (xcb_atom_t)event->data.data32[0] == net_wm_ping) {
 			/* client echoed our ping back to the root window,
 			 * data.l[2] is the client window per spec */
@@ -2222,8 +2222,8 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		extents[1] = scr->frame_border_width;
 		extents[2] = top + scr->frame_border_width;
 		extents[3] = scr->resizebar_height + scr->frame_border_width;
-		WXSetCardinalN(xconn, event->window, net_frame_extents, extents, 4);
-		wXFlush(xconn);
+		WXSetCardinalN(wdisp->conn, event->window, net_frame_extents, extents, 4);
+		wXFlush(wdisp->conn);
 		return true;
 	}
 
@@ -2310,9 +2310,9 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 	} else if (event->type == net_close_window) {
 		if (!WFLAGP(wwin, no_closable)) {
 			if (wwin->protocols.DELETE_WINDOW) {
-				wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-										  w_global.timestamp.last_event);
-				wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+				wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+										  wdisp->timestamp.last_event);
+				wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 			}
 		}
 		return true;
@@ -2447,7 +2447,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 				fake.root_x = x_root;
 				fake.root_y = y_root;
 				fake.detail = event->data.data32[3];
-				WXSendEvent32(xconn, &fake, sizeof(fake), 0,
+				WXSendEvent32(wdisp->conn, &fake, sizeof(fake), 0,
 					      wwin->frame->core->window,
 					      XCB_EVENT_MASK_BUTTON_RELEASE);
 			}
@@ -2462,7 +2462,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		 * that the pointer is on this screen (XQueryPointer's
 		 * cross-screen refusal, lost when the helper discarded
 		 * same_screen) */
-		if (!wXQueryPointerSameScreen(xconn, wwin->screen_ptr->root_win, &mask))
+		if (!wXQueryPointerSameScreen(wdisp->conn, wwin->screen_ptr->root_win, &mask))
 			return true;
 
 		if (button > 0) {
@@ -2488,14 +2488,14 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 
 		/* a CSD client can still hold its implicit grab here,
 		 * retry while the initiating button is down */
-		grab = wXGrabPointer(xconn, wwin->frame->core->window, false,
+		grab = wXGrabPointer(wdisp->conn, wwin->frame->core->window, false,
 				     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
 				     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 				     XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
 		for (tries = 0; grab == WXGrabAlreadyGrabbed && tries < 15; tries++) {
 			unsigned int held;
 
-			if (!wXQueryPointerSameScreen(xconn, wwin->screen_ptr->root_win, &mask))
+			if (!wXQueryPointerSameScreen(wdisp->conn, wwin->screen_ptr->root_win, &mask))
 				return true;
 			if (button >= 1 && button <= 3)
 				held = (unsigned int)(1 << (button + 7));
@@ -2505,7 +2505,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 				return true;
 
 			wusleep(10000);
-			grab = wXGrabPointer(xconn, wwin->frame->core->window, false,
+			grab = wXGrabPointer(wdisp->conn, wwin->frame->core->window, false,
 					     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
 					     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 					     XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
@@ -2586,7 +2586,7 @@ void wNETWMCheckClientHintChange(WWindow *wwin, xcb_atom_t atom)
 			/* the UTF-8 title is gone, fall back to the legacy
 			 * title now, a WM_NAME notify may never arrive */
 			wwin->flags.net_has_title = 0;
-			if (!wFetchName(xconn, wwin->client_win, &tmp))
+			if (!wFetchName(wdisp->conn, wwin->client_win, &tmp))
 				wWindowUpdateName(wwin, NULL);
 			else
 				wWindowUpdateName(wwin, tmp);
@@ -2614,7 +2614,7 @@ int wNETWMGetPidForWindow(xcb_window_t window)
 {
 	uint32_t pid;
 
-	if (WXGetCardinal(xconn, window, net_wm_pid, &pid))
+	if (WXGetCardinal(wdisp->conn, window, net_wm_pid, &pid))
 		return (int)pid;
 	return 0;
 }
@@ -2652,7 +2652,7 @@ static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck)
 	wwin->net_ping.pid = 0;
 
 	pid = (int)wwin->client_pid;
-	machine = WXRcvString(xconn, machine_ck, NULL);
+	machine = WXRcvString(wdisp->conn, machine_ck, NULL);
 	if (pid <= 0) {
 		wfree(machine);
 		return;
@@ -2714,7 +2714,7 @@ static void handlePingTimeout(void *cdata)
 			if (!wwin->net_ping.term_sent) {
 				kill((pid_t)pid, SIGTERM);
 				wwin->net_ping.term_sent = 1;
-				wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+				wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 			} else {
 				kill((pid_t)pid, SIGKILL);
 			}
@@ -2723,7 +2723,7 @@ static void handlePingTimeout(void *cdata)
 		}
 	} else {
 		/* Wait, ping again so a still-hung client re-prompts */
-		wNETWMPingWindow(wwin, w_global.timestamp.last_event);
+		wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
 	}
 	wrelease(wwin);
 }
@@ -2738,14 +2738,14 @@ void wNETWMPingWindow(WWindow *wwin, xcb_timestamp_t timestamp)
 		return;
 
 	if (timestamp == XCB_CURRENT_TIME)
-		timestamp = w_global.timestamp.last_event;
+		timestamp = wdisp->timestamp.last_event;
 	wwin->net_ping.timestamp = timestamp;
 
-	WXSendClientMessage(xconn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
-			    wwin->client_win, w_global.atom.wm.protocols,
+	WXSendClientMessage(wdisp->conn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
+			    wwin->client_win, wdisp->atom.wm.protocols,
 			    (long)net_wm_ping, (long)timestamp,
 			    (long)wwin->client_win, 0, 0);
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 
 	wwin->net_ping.timer =
 		WMAddTimerHandler(NET_WM_PING_TIMEOUT, handlePingTimeout, wwin);
@@ -2775,7 +2775,7 @@ static void readUserTime(WWindow *wwin)
 					     : wwin->client_win;
 	uint32_t ts;
 
-	if (WXGetCardinal(xconn, src, net_wm_user_time, &ts))
+	if (WXGetCardinal(wdisp->conn, src, net_wm_user_time, &ts))
 		applyUserTime(wwin, ts);
 }
 
@@ -2787,9 +2787,9 @@ static void readUserTimeCk(WWindow *wwin, WXCookie ck)
 	uint32_t ts;
 
 	if (wwin->net_user_time_win != XCB_NONE) {
-		WXDiscard(xconn, ck);
+		WXDiscard(wdisp->conn, ck);
 		readUserTime(wwin);
-	} else if (WXRcvCardinal(xconn, ck, &ts)) {
+	} else if (WXRcvCardinal(wdisp->conn, ck, &ts)) {
 		applyUserTime(wwin, ts);
 	}
 }
@@ -2802,7 +2802,7 @@ static void detachUserTimeWindow(WWindow *wwin)
 	/* restore exactly the mask we held before attaching, never blanket
 	 * NoEventMask, so a malicious XID cannot trick us into dropping
 	 * SubstructureRedirect on root or button grabs on a frame */
-	xcb_change_window_attributes(xconn, wwin->net_user_time_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->net_user_time_win_mask });
+	xcb_change_window_attributes(wdisp->conn, wwin->net_user_time_win, XCB_CW_EVENT_MASK, (const uint32_t[]){ wwin->net_user_time_win_mask });
 	wwin->net_user_time_win = XCB_NONE;
 	wwin->net_user_time_win_mask = 0;
 }
@@ -2819,18 +2819,18 @@ static bool isSafeUserTimeWindow(WWindow *wwin, xcb_window_t win, long *prev_mas
 
 	if (win == XCB_NONE || win == wwin->client_win)
 		return false;
-	if (WMHashGet(w_global.context.client_win, (void *)(uintptr_t) win) != NULL)
+	if (WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) win) != NULL)
 		return false;
 	if (user_time_table
 	    && WMHashGet(user_time_table, (void *)(uintptr_t) win) != NULL)
 		return false;
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (win == scr->root_win || win == scr->info_window || win == scr->no_focus_win
 		    || win == scr->dock_shadow || win == scr->mini_screenshot)
 			return false;
 	}
-	if (!wXGetWindowAttributes(xconn, win, &attr, NULL))
+	if (!wXGetWindowAttributes(wdisp->conn, win, &attr, NULL))
 		return false;
 	if (attr.your_event_mask != 0)
 		return false;
@@ -2845,9 +2845,9 @@ static void updateUserTimeWindow(WWindow *wwin, WXCookie *ck)
 	long prev_mask = 0;
 
 	if (ck)
-		WXRcvWindow(xconn, *ck, &win);
+		WXRcvWindow(wdisp->conn, *ck, &win);
 	else
-		WXGetWindow(xconn, wwin->client_win, net_wm_user_time_window, &win);
+		WXGetWindow(wdisp->conn, wwin->client_win, net_wm_user_time_window, &win);
 
 	if (win == wwin->net_user_time_win)
 		return;
@@ -2862,7 +2862,7 @@ static void updateUserTimeWindow(WWindow *wwin, WXCookie *ck)
 	wwin->net_user_time_win = win;
 	wwin->net_user_time_win_mask = prev_mask;
 	WMHashInsert(user_time_table, (void *)(uintptr_t) win, wwin);
-	xcb_change_window_attributes(xconn, win, XCB_CW_EVENT_MASK, (const uint32_t[]){ prev_mask | XCB_EVENT_MASK_PROPERTY_CHANGE });
+	xcb_change_window_attributes(wdisp->conn, win, XCB_CW_EVENT_MASK, (const uint32_t[]){ prev_mask | XCB_EVENT_MASK_PROPERTY_CHANGE });
 }
 
 WWindow *wNETWMUserTimeWindowFor(xcb_window_t window)
@@ -2911,7 +2911,7 @@ static WMHashTable *sync_alarm_table = NULL;
  * XSetErrorHandler trap bracket and the XSync that flanked it */
 static bool xsyncRequestFailed(xcb_void_cookie_t ck)
 {
-	return !WXCheckVoid(xconn, ck);
+	return !WXCheckVoid(wdisp->conn, ck);
 }
 
 void wNETWMSyncRequestSetup(WWindow *wwin)
@@ -2921,9 +2921,9 @@ void wNETWMSyncRequestSetup(WWindow *wwin)
 	xcb_sync_alarm_t alarm;
 	uint32_t counter;
 
-	if (!w_global.xext.xsync.supported || !wwin->protocols.NET_WM_SYNC_REQUEST)
+	if (!wdisp->xext.xsync.supported || !wwin->protocols.NET_WM_SYNC_REQUEST)
 		return;
-	if (!WXGetCardinal(xconn, wwin->client_win, net_wm_sync_request_counter, &counter)
+	if (!WXGetCardinal(wdisp->conn, wwin->client_win, net_wm_sync_request_counter, &counter)
 	    || counter == 0)
 		return;
 
@@ -2941,10 +2941,10 @@ void wNETWMSyncRequestSetup(WWindow *wwin)
 	v.delta.lo  = 1;
 	v.events    = 1;
 
-	alarm = xcb_generate_id(xconn);
+	alarm = xcb_generate_id(wdisp->conn);
 
-	if (xsyncRequestFailed(xcb_sync_set_counter_checked(xconn, counter, zero))
-	    || xsyncRequestFailed(xcb_sync_create_alarm_aux_checked(xconn, alarm,
+	if (xsyncRequestFailed(xcb_sync_set_counter_checked(wdisp->conn, counter, zero))
+	    || xsyncRequestFailed(xcb_sync_create_alarm_aux_checked(wdisp->conn, alarm,
 			XCB_SYNC_CA_COUNTER | XCB_SYNC_CA_VALUE_TYPE
 			| XCB_SYNC_CA_VALUE | XCB_SYNC_CA_TEST_TYPE
 			| XCB_SYNC_CA_DELTA | XCB_SYNC_CA_EVENTS, &v))) {
@@ -2970,8 +2970,8 @@ void wNETWMSyncRequestDestroy(WWindow *wwin)
 			WMHashRemove(sync_alarm_table, (void *)(uintptr_t) wwin->net_sync.alarm);
 		/* the alarm is wmaker-owned so the only failure is a race
 		 * with the server discarding it, ignore */
-		(void) WXCheckVoid(xconn,
-				   xcb_sync_destroy_alarm_checked(xconn, wwin->net_sync.alarm));
+		(void) WXCheckVoid(wdisp->conn,
+				   xcb_sync_destroy_alarm_checked(wdisp->conn, wwin->net_sync.alarm));
 		wwin->net_sync.alarm = 0;
 	}
 	wwin->net_sync.counter = 0;
@@ -2992,17 +2992,17 @@ void wNETWMSyncRequestSend(WWindow *wwin)
 	if (++wwin->net_sync.value_lo == 0)
 		wwin->net_sync.value_hi++;
 
-	WXSendClientMessage(xconn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
-			    wwin->client_win, w_global.atom.wm.protocols,
+	WXSendClientMessage(wdisp->conn, wwin->client_win, XCB_EVENT_MASK_NO_EVENT,
+			    wwin->client_win, wdisp->atom.wm.protocols,
 			    (long)net_wm_sync_request,
-			    (long)w_global.timestamp.last_event,
+			    (long)wdisp->timestamp.last_event,
 			    (long)wwin->net_sync.value_lo,
 			    (long)wwin->net_sync.value_hi, 0);
 
 	v.value.hi = (int32_t)wwin->net_sync.value_hi;
 	v.value.lo = wwin->net_sync.value_lo;
 
-	if (xsyncRequestFailed(xcb_sync_change_alarm_aux_checked(xconn,
+	if (xsyncRequestFailed(xcb_sync_change_alarm_aux_checked(wdisp->conn,
 			wwin->net_sync.alarm, XCB_SYNC_CA_VALUE, &v))) {
 		wwin->net_sync.disabled = 1;
 		wwin->net_sync.waiting = 0;
@@ -3018,8 +3018,8 @@ bool wNETWMSyncRequestHandleAlarm(xcb_generic_event_t *event)
 	xcb_sync_alarm_notify_event_t *ae;
 	WWindow *wwin;
 
-	if (!w_global.xext.xsync.supported
-	    || (event->response_type & 0x7f) != w_global.xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY)
+	if (!wdisp->xext.xsync.supported
+	    || (event->response_type & 0x7f) != wdisp->xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY)
 		return false;
 
 	ae = (xcb_sync_alarm_notify_event_t *)event;
@@ -3048,8 +3048,8 @@ bool wNETWMSyncRequestPending(WWindow *wwin)
 	if (!wwin->net_sync.waiting)
 		return false;
 
-	while (WXEvqTakeTyped(xconn,
-			      w_global.xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY,
+	while (WXEvqTakeTyped(wdisp->conn,
+			      wdisp->xext.xsync.event_base + XCB_SYNC_ALARM_NOTIFY,
 			      XCB_NONE, &ev)) {
 		wNETWMSyncRequestHandleAlarm(ev);
 		free(ev);
@@ -3146,12 +3146,12 @@ bool wNETWMShouldStealFocus(WWindow *wwin)
 
 char *wNETWMGetWindowName(xcb_window_t window)
 {
-	return WXGetUTF8String(xconn, window, net_wm_name, NULL);
+	return WXGetUTF8String(wdisp->conn, window, net_wm_name, NULL);
 }
 
 char *wNETWMGetIconName(xcb_window_t window)
 {
-	return WXGetUTF8String(xconn, window, net_wm_icon_name, NULL);
+	return WXGetUTF8String(wdisp->conn, window, net_wm_icon_name, NULL);
 }
 
 /*
@@ -3165,9 +3165,9 @@ static void updateVisibleNameProp(xcb_window_t window, xcb_atom_t prop,
 		return;
 
 	if (visible && (!client_name || strcmp(visible, client_name) != 0))
-		WXSetUTF8String(xconn, window, prop, visible, strlen(visible));
+		WXSetUTF8String(wdisp->conn, window, prop, visible, strlen(visible));
 	else
-		WXDeleteProperty(xconn, window, prop);
+		WXDeleteProperty(wdisp->conn, window, prop);
 }
 
 void wNETWMUpdateVisibleName(WWindow *wwin, const char *visible, const char *client_name)
@@ -3289,10 +3289,10 @@ void wNETFrameExtents(WWindow *wwin)
 		extents[3] += outer + ib;
 	}
 
-	WXSetCardinalN(xconn, wwin->client_win, net_frame_extents, extents, 4);
+	WXSetCardinalN(wdisp->conn, wwin->client_win, net_frame_extents, extents, 4);
 }
 
 void wNETCleanupFrameExtents(WWindow *wwin)
 {
-	WXDeleteProperty(xconn, wwin->client_win, net_frame_extents);
+	WXDeleteProperty(wdisp->conn, wwin->client_win, net_frame_extents);
 }

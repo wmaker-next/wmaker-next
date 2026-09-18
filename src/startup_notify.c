@@ -107,9 +107,9 @@ void wStartupNotifyUpdateCursor(WScreen *scr)
 {
 	xcb_cursor_t cur;
 
-	cur = wStartupNotifyAppStarting(scr) ? wPreferences.cursor[WCUR_WAIT]
-					     : wPreferences.cursor[WCUR_ROOT];
-	wXDefineCursor(xconn, scr->root_win, cur);
+	cur = wStartupNotifyAppStarting(scr) ? wdisp->cursor[WCUR_WAIT]
+					     : wdisp->cursor[WCUR_ROOT];
+	wXDefineCursor(wdisp->conn, scr->root_win, cur);
 }
 
 bool wStartupNotifyAppStarting(WScreen *scr)
@@ -138,7 +138,7 @@ void wStartupNotifyInit(WScreen *scr)
 		 * xcb_client_message_event_t and drops the cooked-event
 		 * dependency from the only ClientMessage consumer that does
 		 * not need it */
-		sn_dpy = sn_xcb_display_new(xconn, NULL, NULL);
+		sn_dpy = sn_xcb_display_new(wdisp->conn, NULL, NULL);
 		if (!sn_dpy)
 			return;
 	}
@@ -421,7 +421,7 @@ WStartupLaunch *wStartupLaunchBegin(WScreen *scr, const char *bin,
 	if (!ctx)
 		return NULL;
 
-	ts = w_global.timestamp.last_event;
+	ts = wdisp->timestamp.last_event;
 	if (name)
 		sn_launcher_context_set_name(ctx, name);
 	if (bin)
@@ -534,7 +534,7 @@ void wStartupNotifyForgetIcon(WAppIcon *btn)
 	if (!btn)
 		return;
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (!scr || !scr->sn)
 			continue;

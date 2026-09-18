@@ -85,8 +85,8 @@ static void copyOutputName(WRandROutput *o, const char *name, int len)
 
 static bool getResources(WScreen *scr, WRandRResources *sr)
 {
-	sr->reply = xcb_randr_get_screen_resources_current_reply(xconn,
-			xcb_randr_get_screen_resources_current(xconn, scr->root_win), NULL);
+	sr->reply = xcb_randr_get_screen_resources_current_reply(wdisp->conn,
+			xcb_randr_get_screen_resources_current(wdisp->conn, scr->root_win), NULL);
 	if (!sr->reply)
 		return false;
 
@@ -105,8 +105,8 @@ static int setCrtcConfig(WRandRResources *sr, xcb_randr_crtc_t crtc,
 	xcb_randr_set_crtc_config_reply_t *r;
 	int status;
 
-	r = xcb_randr_set_crtc_config_reply(xconn,
-			xcb_randr_set_crtc_config(xconn, crtc, XCB_CURRENT_TIME,
+	r = xcb_randr_set_crtc_config_reply(wdisp->conn,
+			xcb_randr_set_crtc_config(wdisp->conn, crtc, XCB_CURRENT_TIME,
 									  sr->timestamp, x, y, mode, rotation,
 									  noutput, outputs), NULL);
 	status = r ? r->status : XCB_RANDR_SET_CONFIG_FAILED;
@@ -142,8 +142,8 @@ static bool wRandR_ApplyToXinerama(WScreen *scr)
 	int max_x, max_y;
 	int i;
 
-	mr = xcb_randr_get_monitors_reply(xconn,
-			xcb_randr_get_monitors(xconn, scr->root_win, 1), NULL);
+	mr = xcb_randr_get_monitors_reply(wdisp->conn,
+			xcb_randr_get_monitors(wdisp->conn, scr->root_win, 1), NULL);
 
 	if (scr->randr_state)
 		((WRandRState *)scr->randr_state)->active_monitors = mr ? 0 : -1;
@@ -176,13 +176,13 @@ static bool wRandR_ApplyToXinerama(WScreen *scr)
 	for (i = 0; i < count; i++) {
 		name_ck[i].sequence = 0;
 		if (name_atom[i] != XCB_ATOM_NONE)
-			name_ck[i] = xcb_get_atom_name(xconn, name_atom[i]);
+			name_ck[i] = xcb_get_atom_name(wdisp->conn, name_atom[i]);
 	}
-	xcb_flush(xconn);
+	xcb_flush(wdisp->conn);
 	for (i = 0; i < count; i++) {
 		name_buf[i][0] = '\0';
 		name_rep = name_ck[i].sequence
-				 ? xcb_get_atom_name_reply(xconn, name_ck[i], NULL) : NULL;
+				 ? xcb_get_atom_name_reply(wdisp->conn, name_ck[i], NULL) : NULL;
 		if (name_rep) {
 			nlen = xcb_get_atom_name_name_length(name_rep);
 			if (nlen >= sizeof(name_buf[i]))
@@ -204,8 +204,8 @@ static bool wRandR_ApplyToXinerama(WScreen *scr)
 	 * instead of replacing it with an incomplete single-head fallback. */
 	root_w = scr->scr_width;
 	root_h = scr->scr_height;
-	gr = xcb_get_geometry_reply(xconn,
-			xcb_get_geometry(xconn, scr->root_win), NULL);
+	gr = xcb_get_geometry_reply(wdisp->conn,
+			xcb_get_geometry(wdisp->conn, scr->root_win), NULL);
 	if (gr) {
 		root_w = gr->width;
 		root_h = gr->height;
@@ -388,8 +388,8 @@ static bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
 				if (a->crtc == XCB_NONE || a->w == 0 || a->h == 0)
 					continue;
 
-				ci = xcb_randr_get_crtc_info_reply(xconn,
-						xcb_randr_get_crtc_info(xconn, a->crtc, sr->timestamp), NULL);
+				ci = xcb_randr_get_crtc_info_reply(wdisp->conn,
+						xcb_randr_get_crtc_info(wdisp->conn, a->crtc, sr->timestamp), NULL);
 				if (!ci)
 					continue;
 
@@ -411,11 +411,11 @@ static bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
 		/* Shrink the virtual framebuffer down to the compacted bounding box */
 		if (max_x > 0 && max_y > 0 &&
 			(max_x < scr->scr_width || max_y < scr->scr_height)) {
-			int mm_w = (int)((long)wXScreenOf(xconn, scr->screen)->width_in_millimeters
+			int mm_w = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->width_in_millimeters
 							  * max_x / scr->scr_width);
-			int mm_h = (int)((long)wXScreenOf(xconn, scr->screen)->height_in_millimeters
+			int mm_h = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->height_in_millimeters
 							  * max_y / scr->scr_height);
-			xcb_randr_set_screen_size(xconn, scr->root_win, max_x, max_y, mm_w, mm_h);
+			xcb_randr_set_screen_size(wdisp->conn, scr->root_win, max_x, max_y, mm_w, mm_h);
 		}
 	}
 
@@ -451,8 +451,8 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		if (!o->connected || o->crtc != XCB_NONE)
 			continue;
 
-		oi = xcb_randr_get_output_info_reply(xconn,
-				xcb_randr_get_output_info(xconn, o->xid, sr->timestamp), NULL);
+		oi = xcb_randr_get_output_info_reply(wdisp->conn,
+				xcb_randr_get_output_info(wdisp->conn, o->xid, sr->timestamp), NULL);
 		if (!oi)
 			continue;
 
@@ -472,8 +472,8 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 			xcb_randr_output_t *poss;
 			int npos, k;
 
-			ci = xcb_randr_get_crtc_info_reply(xconn,
-					xcb_randr_get_crtc_info(xconn, oi_crtcs[j], sr->timestamp), NULL);
+			ci = xcb_randr_get_crtc_info_reply(wdisp->conn,
+					xcb_randr_get_crtc_info(wdisp->conn, oi_crtcs[j], sr->timestamp), NULL);
 			if (!ci)
 				continue;
 
@@ -539,11 +539,11 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		new_vh = mode_h > scr->scr_height ? mode_h : scr->scr_height;
 
 		if (new_vw > scr->scr_width || new_vh > scr->scr_height) {
-			int mm_w = (int)((long)wXScreenOf(xconn, scr->screen)->width_in_millimeters
+			int mm_w = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->width_in_millimeters
 						  * new_vw / scr->scr_width);
-			int mm_h = (int)((long)wXScreenOf(xconn, scr->screen)->height_in_millimeters
+			int mm_h = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->height_in_millimeters
 						  * new_vh / scr->scr_height);
-			xcb_randr_set_screen_size(xconn, scr->root_win, new_vw, new_vh, mm_w, mm_h);
+			xcb_randr_set_screen_size(wdisp->conn, scr->root_win, new_vw, new_vh, mm_w, mm_h);
 		}
 
 		if (setCrtcConfig(sr, free_crtc, new_x, 0, best_mode, rotation,
@@ -590,8 +590,8 @@ static void wRandR_Update(WScreen *scr)
 			xcb_randr_get_output_info_reply_t *oi;
 			WRandROutput *found = NULL;
 
-			oi = xcb_randr_get_output_info_reply(xconn,
-					xcb_randr_get_output_info(xconn, sr.outputs[i], sr.timestamp), NULL);
+			oi = xcb_randr_get_output_info_reply(wdisp->conn,
+					xcb_randr_get_output_info(wdisp->conn, sr.outputs[i], sr.timestamp), NULL);
 			if (!oi)
 				continue;
 
@@ -624,8 +624,8 @@ static void wRandR_Update(WScreen *scr)
 				if (oi->crtc != XCB_NONE) {
 					xcb_randr_get_crtc_info_reply_t *ci;
 
-					ci = xcb_randr_get_crtc_info_reply(xconn,
-							xcb_randr_get_crtc_info(xconn, oi->crtc, sr.timestamp), NULL);
+					ci = xcb_randr_get_crtc_info_reply(wdisp->conn,
+							xcb_randr_get_crtc_info(wdisp->conn, oi->crtc, sr.timestamp), NULL);
 					if (ci) {
 						found->x = ci->x;
 						found->y = ci->y;
@@ -746,7 +746,7 @@ static void wRandR_Update(WScreen *scr)
 
 	/* Snap each workspace clip back onto a visible head if it ended up
 	 * outside the (now smaller or rearranged) virtual framebuffer */
-	if (!wPreferences.flags.noclip) {
+	if (!wdisp->flags.noclip) {
 		for (k = 0; k < scr->workspace_count; k++) {
 			WDock *clip = scr->workspaces[k]->clip;
 
@@ -790,7 +790,7 @@ void wRandRInit(WScreen *scr)
 {
 	WRandRState *state;
 
-	if (!w_global.xext.randr.supported)
+	if (!wdisp->xext.randr.supported)
 		return;
 
 	state = wmalloc(sizeof(WRandRState));

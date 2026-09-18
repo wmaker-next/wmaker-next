@@ -52,7 +52,7 @@
 #include "switchmenu.h"
 
 
-#define MOD_MASK wPreferences.modifier_mask
+#define MOD_MASK wdisp->modifier_mask
 
 #define MENU_SCROLL_STEP  menuScrollParameters[(int)w_global.config->menu_scroll_speed].steps
 #define MENU_SCROLL_DELAY menuScrollParameters[(int)w_global.config->menu_scroll_speed].delay
@@ -330,13 +330,13 @@ WMenu *wMenuCreate(WScreen *screen, const char *title, int main_menu)
 	/* Bare-hover highlight on a torn-off menu needs ungrabbed motion
 	 * on the entry pane, which the shared WCORE_CHILD_EVENT_MASK omits
 	 * so titlebars and resizebars stay wakeup-free while idle. */
-	xcb_change_window_attributes(xconn, menu->menu->window, XCB_CW_EVENT_MASK, (const uint32_t[]){ WCORE_CHILD_EVENT_MASK | XCB_EVENT_MASK_POINTER_MOTION });
+	xcb_change_window_attributes(wdisp->conn, menu->menu->window, XCB_CW_EVENT_MASK, (const uint32_t[]){ WCORE_CHILD_EVENT_MASK | XCB_EVENT_MASK_POINTER_MOTION });
 
 	menu->menu_texture_data = XCB_NONE;
 
-	xcb_map_window(xconn, menu->menu->window);
+	xcb_map_window(wdisp->conn, menu->menu->window);
 
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 
 	if (!brother) {
 		brother = 1;
@@ -692,15 +692,15 @@ static void updateTexture(WMenu * menu)
 				menu->menu_texture_data = renderTexture(menu);
 			}
 
-			xcb_change_window_attributes(xconn, menu->menu->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ menu->menu_texture_data });
-			xcb_clear_area(xconn, 0, menu->menu->window, 0, 0, 0, 0);
+			xcb_change_window_attributes(wdisp->conn, menu->menu->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ menu->menu_texture_data });
+			xcb_clear_area(wdisp->conn, 0, menu->menu->window, 0, 0, 0, 0);
 
-			xcb_change_window_attributes(xconn, menu->brother->menu->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ menu->menu_texture_data });
-			xcb_clear_area(xconn, 0, menu->brother->menu->window, 0, 0, 0, 0);
+			xcb_change_window_attributes(wdisp->conn, menu->brother->menu->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ menu->menu_texture_data });
+			xcb_clear_area(wdisp->conn, 0, menu->brother->menu->window, 0, 0, 0, 0);
 		}
 	} else {
-		xcb_change_window_attributes(xconn, menu->menu->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->menu_item_texture->any.color.pixel });
-		xcb_clear_area(xconn, 0, menu->menu->window, 0, 0, 0, 0);
+		xcb_change_window_attributes(wdisp->conn, menu->menu->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->menu_item_texture->any.color.pixel });
+		xcb_clear_area(wdisp->conn, 0, menu->menu->window, 0, 0, 0, 0);
 	}
 }
 
@@ -939,9 +939,9 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	 * selection fill, bevel, glyphs and text on top */
 	if (!selected) {
 		if (scr->menu_item_texture->any.type == WTEX_SOLID)
-			xcb_clear_area(xconn, false, win, 0, y + 1, w - 1, h - 3);
+			xcb_clear_area(wdisp->conn, false, win, 0, y + 1, w - 1, h - 3);
 		else
-			xcb_clear_area(xconn, false, win, 0, y, w, h);
+			xcb_clear_area(wdisp->conn, false, win, 0, y, w, h);
 	}
 
 	cr = WCairoBeginForDrawable(scr->wmscreen, win);
@@ -1192,7 +1192,7 @@ static int keyboardMenu(WMenu * menu)
 	if (menu->flags.editing)
 		return false;
 
-	wXGrabKeyboard(xconn, menu->frame->core->window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	wXGrabKeyboard(wdisp->conn, menu->frame->core->window, true, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 
 	if (menu->frame_y + menu->frame->top_width >= rect.pos.y + rect.size.height)
 		new_y = rect.pos.y + rect.size.height - menu->frame->top_width;
@@ -1205,8 +1205,8 @@ static int keyboardMenu(WMenu * menu)
 	while (!done && menu->flags.mapped) {
 		free(event);
 		event = NULL;
-		wXAllowEvents(xconn, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
-		WMMaskEvent(xconn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+		wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, &event);
 		if (!event)
 			break;
@@ -1278,13 +1278,13 @@ static int keyboardMenu(WMenu * menu)
 					if (entry->cascade >= 0 && menu->cascades
 					    && menu->cascades[entry->cascade]->entry_no > 0) {
 
-						wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+						wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 
 						selectEntry(menu->cascades[entry->cascade], 0);
 						if (!keyboardMenu(menu->cascades[entry->cascade]))
 							done = 1;
 
-						wXGrabKeyboard(xconn, menu->frame->core->window, true,
+						wXGrabKeyboard(wdisp->conn, menu->frame->core->window, true,
 							      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 					}
 				}
@@ -1325,7 +1325,7 @@ static int keyboardMenu(WMenu * menu)
 		event = NULL;
 	}
 
-	wXUngrabKeyboard(xconn, XCB_CURRENT_TIME);
+	wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 
 	if (done == 2 && menu->selected_entry >= 0) {
 		entry = menu->entries[menu->selected_entry];
@@ -1340,10 +1340,10 @@ static int keyboardMenu(WMenu * menu)
 
 		for (i = 0; i < MENU_BLINK_COUNT; i++) {
 			paintEntry(menu, sel, false);
-			wXSync(xconn);
+			wXSync(wdisp->conn);
 			wusleep(MENU_BLINK_DELAY);
 			paintEntry(menu, sel, true);
-			wXSync(xconn);
+			wXSync(wdisp->conn);
 			wusleep(MENU_BLINK_DELAY);
 		}
 #endif
@@ -1391,10 +1391,10 @@ void wMenuMapAt(WMenu * menu, int x, int y, int keyboard)
 				y = rect.pos.y + rect.size.height - MENUH(menu);
 		}
 
-		xcb_configure_window(xconn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+		xcb_configure_window(wdisp->conn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 		menu->frame_x = x;
 		menu->frame_y = y;
-		xcb_map_window(xconn, menu->frame->core->window);
+		xcb_map_window(wdisp->conn, menu->frame->core->window);
 		wRaiseFrame(menu->frame->core);
 		menu->flags.mapped = 1;
 		menuTrackMapped(menu, +1);
@@ -1415,9 +1415,9 @@ void wMenuMap(WMenu * menu)
 	if (menu->flags.app_menu && menu->parent == NULL) {
 		menu->frame_x = menu->frame->screen_ptr->app_menu_x;
 		menu->frame_y = menu->frame->screen_ptr->app_menu_y;
-		xcb_configure_window(xconn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ menu->frame_x, menu->frame_y });
+		xcb_configure_window(wdisp->conn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ menu->frame_x, menu->frame_y });
 	}
-	xcb_map_window(xconn, menu->frame->core->window);
+	xcb_map_window(wdisp->conn, menu->frame->core->window);
 	wRaiseFrame(menu->frame->core);
 	if (!menu->flags.mapped) {
 		menu->flags.mapped = 1;
@@ -1429,7 +1429,7 @@ void wMenuUnmap(WMenu * menu)
 {
 	int i;
 
-	xcb_unmap_window(xconn, menu->frame->core->window);
+	xcb_unmap_window(wdisp->conn, menu->frame->core->window);
 	if (menu->flags.titled && menu->flags.buttoned) {
 		wFrameWindowHideButton(menu->frame, WFF_CLOSE_BUTTON);
 	}
@@ -1621,18 +1621,18 @@ static WMenu *findMenu(WScreen * scr, int *x_ret, int *y_ret)
 	int x, y, wx, wy;
 	unsigned int mask;
 
-	wXQueryPointer(xconn, scr->root_win, &root_ret, &win, &x, &y, &wx, &wy, &mask);
+	wXQueryPointer(wdisp->conn, scr->root_win, &root_ret, &win, &x, &y, &wx, &wy, &mask);
 
 	if (win == XCB_NONE)
 		return NULL;
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) win);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) win);
 	if (desc == NULL)
 		return NULL;
 
 	if (desc->parent_type == WCLASS_MENU) {
 		menu = (WMenu *) desc->parent;
-		wXTranslateCoordinates(xconn, root_ret, menu->menu->window, wx, wy, x_ret, y_ret, &junk_win);
+		wXTranslateCoordinates(wdisp->conn, root_ret, menu->menu->window, wx, wy, x_ret, y_ret, &junk_win);
 		return menu;
 	}
 	return NULL;
@@ -1645,7 +1645,7 @@ static void closeCascade(WMenu * menu)
 	if (menu->flags.brother || (!menu->flags.buttoned && (!menu->flags.app_menu || menu->parent != NULL))) {
 
 		selectEntry(menu, -1);
-		wXSync(xconn);
+		wXSync(wdisp->conn);
 #if (MENU_BLINK_DELAY > 2)
 		wusleep(MENU_BLINK_DELAY / 2);
 #endif
@@ -1748,12 +1748,12 @@ WMenu *wMenuUnderPointer(WScreen * screen)
 	int dummy;
 	unsigned int mask;
 
-	wXQueryPointer(xconn, screen->root_win, &root_ret, &win, &dummy, &dummy, &dummy, &dummy, &mask);
+	wXQueryPointer(wdisp->conn, screen->root_win, &root_ret, &win, &dummy, &dummy, &dummy, &dummy, &mask);
 
 	if (win == XCB_NONE)
 		return NULL;
 
-	desc = WMHashGet(w_global.context.client_win, (void *)(uintptr_t) win);
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) win);
 	if (desc == NULL)
 		return NULL;
 
@@ -1768,7 +1768,7 @@ static void getPointerPosition(WScreen * scr, int *x, int *y)
 	int wx, wy;
 	unsigned int mask;
 
-	wXQueryPointer(xconn, scr->root_win, &root_ret, &win, x, y, &wx, &wy, &mask);
+	wXQueryPointer(wdisp->conn, scr->root_win, &root_ret, &win, x, y, &wx, &wy, &mask);
 }
 
 static void getScrollAmount(WMenu * menu, int *hamount, int *vamount)
@@ -1949,7 +1949,7 @@ void wMenuScroll(WMenu *menu)
 
 		free(ev);
 		ev = NULL;
-		WMNextEvent(xconn, &ev);
+		WMNextEvent(wdisp->conn, &ev);
 		if (!ev)
 			break;
 		switch ((ev->response_type & 0x7f)) {
@@ -2224,7 +2224,7 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 				event->response_type |= 0x80;
 				(*desc->handle_mousedown)(desc, event);
 
-				wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+				wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 				selectEntry(menu, -1);
 				return;
 			} else {
@@ -2249,9 +2249,9 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 
 		free(ev);
 		ev = NULL;
-		wXAllowEvents(xconn, XCB_ALLOW_ASYNC_POINTER | XCB_ALLOW_SYNC_POINTER, XCB_CURRENT_TIME);
+		wXAllowEvents(wdisp->conn, XCB_ALLOW_ASYNC_POINTER | XCB_ALLOW_SYNC_POINTER, XCB_CURRENT_TIME);
 
-		WMMaskEvent(xconn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, &ev);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, &ev);
 		if (!ev)
 			break;
 		switch ((ev->response_type & 0x7f)) {
@@ -2404,10 +2404,10 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 
 			for (i = 0; i < MENU_BLINK_COUNT; i++) {
 				paintEntry(menu, sel, false);
-				wXSync(xconn);
+				wXSync(wdisp->conn);
 				wusleep(MENU_BLINK_DELAY);
 				paintEntry(menu, sel, true);
-				wXSync(xconn);
+				wXSync(wdisp->conn);
 				wusleep(MENU_BLINK_DELAY);
 			}
 #endif
@@ -2423,7 +2423,7 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 			 * be executed twice, which is not good for things like
 			 * the root menu. So, ignore any clicks that were generated
 			 * while the entry was being executed */
-			while (WXEvqTakeTyped(xconn, XCB_BUTTON_PRESS, menu->menu->window, &ev))
+			while (WXEvqTakeTyped(wdisp->conn, XCB_BUTTON_PRESS, menu->menu->window, &ev))
 				free(ev);
 		} else if (entry->callback != NULL && entry->cascade < 0) {
 			selectEntry(menu, -1);
@@ -2466,7 +2466,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 
 	menu->frame_x = x;
 	menu->frame_y = y;
-	xcb_configure_window(xconn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+	xcb_configure_window(wdisp->conn, menu->frame->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 
 	if (submenus > 0 && menu->selected_entry >= 0) {
 		i = menu->entries[menu->selected_entry]->cascade;
@@ -2608,7 +2608,7 @@ static void menuTitleMouseDown(WCoreWindow * sender, void *data, xcb_generic_eve
 	while (1) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE, &ev);
 		if (!ev)
 			break;
 		switch ((ev->response_type & 0x7f)) {
@@ -2623,11 +2623,11 @@ static void menuTitleMouseDown(WCoreWindow * sender, void *data, xcb_generic_eve
 				if (abs((((xcb_motion_notify_event_t *)ev)->root_x) - dx) > MOVE_THRESHOLD
 				    || abs((((xcb_motion_notify_event_t *)ev)->root_y) - dy) > MOVE_THRESHOLD) {
 					started = true;
-					wXGrabPointer(xconn, menu->frame->titlebar->window, false,
+					wXGrabPointer(wdisp->conn, menu->frame->titlebar->window, false,
 						     XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
 						     | XCB_EVENT_MASK_BUTTON_PRESS,
 						     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE,
-						     wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
+						     wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 				}
 			}
 			break;
@@ -2638,7 +2638,7 @@ static void menuTitleMouseDown(WCoreWindow * sender, void *data, xcb_generic_eve
 		case XCB_BUTTON_RELEASE:
 			if ((((xcb_button_press_event_t *)ev)->detail) != ((xcb_button_press_event_t *)event)->detail)
 				break;
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 			free(ev);
 			return;
 

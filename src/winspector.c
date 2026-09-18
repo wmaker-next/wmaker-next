@@ -403,7 +403,7 @@ static void freeInspector(InspectorPanel *panel)
 		return;
 
 	WMDestroyWidget(panel->win);
-	xcb_destroy_window(xconn, panel->parent);
+	xcb_destroy_window(wdisp->conn, panel->parent);
 	if (panel->applied_icon_file)
 		wfree(panel->applied_icon_file);
 	wfree(panel);
@@ -896,7 +896,7 @@ static void applySettings(WMWidget *button, void *client_data)
 
 	if (WFLAGP(wwin, no_bind_keys) != old_no_bind_keys) {
 		if (WFLAGP(wwin, no_bind_keys))
-			wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
+			wXUngrabKey(wdisp->conn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 		else
 			wWindowSetKeyGrabs(wwin);
 	}
@@ -1182,16 +1182,16 @@ static void selectWindow(WMWidget *bPtr, void *data)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) bPtr;
 
-	if (wXGrabPointer(xconn, scr->root_win, true,
+	if (wXGrabPointer(wdisp->conn, scr->root_win, true,
 			 XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE,
-			 wPreferences.cursor[WCUR_SELECT], XCB_CURRENT_TIME) != WXGrabSuccess) {
+			 wdisp->cursor[WCUR_SELECT], XCB_CURRENT_TIME) != WXGrabSuccess) {
 		wwarning("could not grab mouse pointer");
 		return;
 	}
 
 	WMSetLabelText(panel->specLbl, _("Click in the window you wish to inspect."));
-	WMMaskEvent(xconn, XCB_EVENT_MASK_BUTTON_PRESS, &event);
-	wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+	WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_BUTTON_PRESS, &event);
+	wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 
 	iwin = wWindowFor(((xcb_button_press_event_t *)event)->child);
 	free(event);
@@ -1239,7 +1239,7 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	WMMoveWidget(panel->saveBtn, (2 * (btn_width + 10)) + 15, PHEIGHT - 40);
 	WMSetButtonText(panel->saveBtn, _("Save"));
 	WMResizeWidget(panel->saveBtn, btn_width, 28);
-	if (wPreferences.flags.noupdates || !(wwin->wm_class || wwin->wm_instance))
+	if (wdisp->flags.noupdates || !(wwin->wm_class || wwin->wm_instance))
 		WMSetButtonEnabled(panel->saveBtn, false);
 
 	panel->applyBtn = WMCreateCommandButton(panel->win);
@@ -1385,16 +1385,16 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 		changePage(panel->pagePopUp, panel);
 	}
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, PWIDTH, PHEIGHT, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, PWIDTH, PHEIGHT, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 	panel->parent = parent;
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	WMMapWidget(panel->win);
 
-	WXSetTransientFor(xconn, parent, wwin->client_win);
+	WXSetTransientFor(wdisp->conn, parent, wwin->client_win);
 
 	if (xpos == UNDEFINED_POS) {
 		x = wwin->frame_x + wwin->frame->core->width / 2;
@@ -1460,8 +1460,8 @@ void wUnhideInspectorForWindow(WWindow *wwin)
 
 	pwin->flags.hidden = 0;
 	pwin->flags.mapped = 1;
-	xcb_map_window(xconn, pwin->client_win);
-	xcb_map_window(xconn, pwin->frame->core->window);
+	xcb_map_window(wdisp->conn, pwin->client_win);
+	xcb_map_window(wdisp->conn, pwin->frame->core->window);
 	wClientSetState(pwin, XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE);
 }
 

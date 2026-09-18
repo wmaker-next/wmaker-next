@@ -90,7 +90,7 @@ static void flashLayoutOSD(WScreen *scr, const char *text)
 	wPlaceOSDOnHead(scr, scr->keychain_osd,
 			w_global.config->keychain_display_position, WOSD_EDGE_PAD);
 	WMMapWidget(scr->keychain_osd);
-	xcb_configure_window(xconn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	xcb_configure_window(wdisp->conn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	scr->layout_osd_timer = WMAddTimerHandler(800, hideLayoutOSD, scr);
 }
 
@@ -137,7 +137,7 @@ static WWindow *windowUnderPointer(WScreen *scr)
 	int foo;
 	xcb_window_t bar, win;
 
-	if (wXQueryPointer(xconn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+	if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
 		return wWindowFor(win);
 	return NULL;
 }
@@ -161,7 +161,7 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 	short widx;
 	int i;
 	xcb_timestamp_t ts = event ? ((xcb_key_press_event_t *)event)->time
-				   : w_global.timestamp.last_event;
+				   : wdisp->timestamp.last_event;
 #ifdef KEEP_XKB_LOCK_STATUS
 	int xkbgroup;
 #endif
@@ -197,7 +197,7 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 			CloseWindowMenu(scr);
 
 			if (wwin->protocols.MINIATURIZE_WINDOW)
-				wClientSendProtocol(wwin, w_global.atom.gnustep.wm_miniaturize_window, ts);
+				wClientSendProtocol(wwin, wdisp->atom.gnustep.wm_miniaturize_window, ts);
 			else {
 				wIconifyWindow(wwin);
 			}
@@ -479,7 +479,7 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && !WFLAGP(wwin, no_closable)) {
 			CloseWindowMenu(scr);
 			if (wwin->protocols.DELETE_WINDOW) {
-				wClientSendProtocol(wwin, w_global.atom.wm.delete_window, ts);
+				wClientSendProtocol(wwin, wdisp->atom.wm.delete_window, ts);
 				wNETWMPingWindow(wwin, ts);
 			}
 		}
@@ -742,10 +742,10 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 			}
 
 			wSelectWindow(wwin, !wwin->flags.selected);
-			wXFlush(xconn);
+			wXFlush(wdisp->conn);
 			wusleep(3000);
 			wSelectWindow(wwin, !wwin->flags.selected);
-			wXFlush(xconn);
+			wXFlush(wdisp->conn);
 
 		} else if (wwin && scr->selected_windows && WMGetArrayItemCount(scr->selected_windows)) {
 
@@ -829,11 +829,11 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		}
 		break;
 	case WKBD_CLIPRAISELOWER:
-		if (!wPreferences.flags.noclip)
+		if (!wdisp->flags.noclip)
 			wDockRaiseLower(scr->workspaces[scr->current_workspace]->clip);
 		break;
 	case WKBD_DOCKRAISELOWER:
-		if (!wPreferences.flags.nodock)
+		if (!wdisp->flags.nodock)
 			wDockRaiseLower(scr->dock);
 		break;
 #ifdef KEEP_XKB_LOCK_STATUS
@@ -860,7 +860,7 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 
 	case WKBD_MARK_SET:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
-			startMarkCapture(scr, xconn, MARK_CAPTURE_SET);
+			startMarkCapture(scr, wdisp->conn, MARK_CAPTURE_SET);
 		break;
 
 	case WKBD_MARK_UNSET:
@@ -869,16 +869,16 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		break;
 
 	case WKBD_MARK_BRING:
-		startMarkCapture(scr, xconn, MARK_CAPTURE_BRING);
+		startMarkCapture(scr, wdisp->conn, MARK_CAPTURE_BRING);
 		break;
 
 	case WKBD_MARK_JUMP:
-		startMarkCapture(scr, xconn, MARK_CAPTURE_JUMP);
+		startMarkCapture(scr, wdisp->conn, MARK_CAPTURE_JUMP);
 		break;
 
 	case WKBD_MARK_SWAP:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
-			startMarkCapture(scr, xconn, MARK_CAPTURE_SWAP);
+			startMarkCapture(scr, wdisp->conn, MARK_CAPTURE_SWAP);
 		break;
 #ifdef VIRTUAL_DESKTOP
 	case WKBD_VDESK_LEFT:

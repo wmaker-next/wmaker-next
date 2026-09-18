@@ -328,7 +328,7 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	if (selected)
 		WMReleaseColor(back);
 	/* I hope it is better to do not use cache / on my box it is fast nuff */
-	wXFlush(xconn);
+	wXFlush(wdisp->conn);
 }
 
 static void buttonCallback(void *self, void *clientData)
@@ -561,12 +561,12 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 
-	parent = xcb_generate_id(xconn);
-	xcb_create_window(xconn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 
-	xcb_reparent_window(xconn, WMWidgetXID(panel->win), parent, 0, 0);
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
 
 	if (prefix == NULL)
 		prefix = _("Icon Chooser");
@@ -603,7 +603,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	wwin->client_leader = WMWidgetXID(panel->win);
 
 	if (for_window)
-		WXSetTransientFor(xconn, parent, for_window->client_win);
+		WXSetTransientFor(wdisp->conn, parent, for_window->client_win);
 
 	/* put icon paths in the list */
 	listIconPaths(panel->dirList);
@@ -616,7 +616,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	while (!panel->done) {
 		xcb_generic_event_t *event = NULL;
 
-		WMNextEvent(xconn, &event);
+		WMNextEvent(wdisp->conn, &event);
 		if (!event)
 			break;
 		WMHandleEvent(event);
@@ -662,7 +662,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	/* destroy the chooser's X window before restoring focus, otherwise
 	 * the server delivers a trailing FocusIn that undoes the restore */
-	xcb_destroy_window(xconn, parent);
+	xcb_destroy_window(wdisp->conn, parent);
 
 	/* hand focus back to the opener. Clicking its WINGs widgets never
 	 * moves WM focus, so fall back to whoever held focus before if

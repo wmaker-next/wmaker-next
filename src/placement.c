@@ -40,10 +40,10 @@
 
 
 #define X_ORIGIN WMAX(usableArea.x1,\
-    wPreferences.window_place_origin.x)
+	scr->window_place_origin.x)
 
 #define Y_ORIGIN WMAX(usableArea.y1,\
-    wPreferences.window_place_origin.y)
+	scr->window_place_origin.y)
 
 /* Returns True if it is an icon and is in this workspace */
 static bool
@@ -357,6 +357,7 @@ static void
 smartPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret, unsigned int width,
 		 unsigned int height, WArea usableArea)
 {
+	WScreen *scr = wwin->screen_ptr;
 	int test_x = 0, test_y = Y_ORIGIN;
 	int from_x, to_x, from_y, to_y;
 	int sx;
@@ -488,6 +489,7 @@ cascadeWindow(WScreen *scr, WWindow *wwin, int *x_ret, int *y_ret,
 static void randomPlaceWindow(WWindow *wwin, int *x_ret, int *y_ret,
 		  unsigned int width, unsigned int height, WArea usableArea)
 {
+	WScreen *scr = wwin->screen_ptr;
 	int w, h;
 
 	set_width_height(wwin, &width, &height);

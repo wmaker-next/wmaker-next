@@ -145,8 +145,8 @@ void wTextureDestroy(WScreen * scr, WTexture * texture)
 		 * the wire is 32-bit */
 		for (i = 0; i < count; i++)
 			pixels[i] = (uint32_t)colors[i];
-		(void) WXCheckVoid(xconn,
-				   xcb_free_colors_checked(xconn, scr->w_colormap, 0,
+		(void) WXCheckVoid(wdisp->conn,
+				   xcb_free_colors_checked(wdisp->conn, scr->w_colormap, 0,
 							   count, pixels));
 	}
 	wfree(texture);

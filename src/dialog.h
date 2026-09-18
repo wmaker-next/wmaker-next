@@ -39,7 +39,7 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 
 void wShowInfoPanel(WScreen *scr);
 void wShowLegalPanel(WScreen *scr);
-int wShowCrashingDialogPanel(int whatSig);
+int wShowCrashingDialogPanel(int whatSig, xcb_connection_t *conn, int screen);
 
 
 #endif

@@ -346,7 +346,7 @@ static void ipc_broadcast_buf(WScreen *only, uint32_t ev,
 	WScreen *scr;
 	int i;
 
-	for (i = 0; i < w_global.screen_count; i++) {
+	for (i = 0; i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (!scr || (only && scr != only))
 			continue;
@@ -542,7 +542,7 @@ static verb_rc verb_workspace(WScreen *scr, WMPropList *args,
 		}
 		wWorkspaceChange(scr, (int)n);
 	}
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -591,7 +591,7 @@ static verb_rc verb_dock_launch(WScreen *scr, WMPropList *args,
 	/* same path a double-click or auto-launch takes, so the death
 	 * handler is registered with source=dock and slot=yindex */
 	wDockLaunchWithState(btn, NULL);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -612,7 +612,7 @@ static verb_rc verb_show_desktop(WScreen *scr, WMPropList *args,
 	(void)err;
 	(void)reply;
 	wNETWMShowingDesktopToggle(scr);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -841,7 +841,7 @@ static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 			       "(tiled or no change)");
 		return VERB_FAIL;
 	}
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 #endif
@@ -891,7 +891,7 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 		wLayoutApply(scr, (int)widx);
 	else
 		wLayoutSetWorkspace(scr, (int)widx, wLayoutFromName(WMGetFromPLString(a)));
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -920,7 +920,7 @@ static verb_rc verb_workspace_new(WScreen *scr, WMPropList *args,
 	}
 	if (n > 0)
 		wWorkspaceMake(scr, (int)n);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -964,7 +964,7 @@ static verb_rc verb_workspace_delete(WScreen *scr, WMPropList *args,
 		*err = wstrdup("workspace-delete: workspace in use");
 		return VERB_FAIL;
 	}
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -987,10 +987,10 @@ static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
 		*err = wstrdup("window not closable");
 		return VERB_FAIL;
 	}
-	wClientSendProtocol(wwin, w_global.atom.wm.delete_window,
-			    w_global.timestamp.last_event);
-	wNETWMPingWindow(wwin, w_global.timestamp.last_event);
-	wXSync(xconn);
+	wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
+			    wdisp->timestamp.last_event);
+	wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -1036,7 +1036,7 @@ static verb_rc verb_action(WScreen *scr, WMPropList *args,
 		}
 	}
 	wKeybindDispatch(command, scr, wwin, NULL);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -1179,7 +1179,7 @@ static verb_rc verb_play_sound(WScreen *scr, WMPropList *args,
 		return VERB_FAIL;
 	}
 	wIPCEmitSound(scr, name);
-	wXSync(xconn);
+	wXSync(wdisp->conn);
 	return VERB_OK;
 }
 
@@ -1883,8 +1883,13 @@ static void ipc_read_cb(int fd, int mask, void *data)
 			 * final drain, so the success reply queued above is
 			 * delivered there */
 			Shutdown(mode, false);
-			if (mode == WSRestartPreparationMode)
+			if (mode == WSRestartPreparationMode) {
 				Restart(wm, false);
+				/* the restart destroyed the display, so there
+				 * is no live loop to return to */
+				wfree(wm);
+				Exit(1);
+			}
 			wfree(wm);
 			return;
 		}

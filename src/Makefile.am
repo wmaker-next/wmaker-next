@@ -145,6 +145,8 @@ wmaker_SOURCES = 	\
 	wcore.h \
 	wdefaults.c \
 	wdefaults.h \
+	wdisplay.c \
+	wdisplay.h \
 	window.c \
 	window.h \
 	winmenu.c \

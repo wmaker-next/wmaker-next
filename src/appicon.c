@@ -65,7 +65,7 @@
  * using the classname/instancename
  */
 
-#define MOD_MASK       wPreferences.modifier_mask
+#define MOD_MASK       wdisp->modifier_mask
 #define ICON_SIZE      w_global.config->icon_size
 
 static void iconDblClick(WObjDescriptor * desc, xcb_generic_event_t * event);
@@ -89,7 +89,7 @@ void wApplicationExtractDirPackIcon(const char *path, const char *wm_instance, c
 		tmp_len = strlen(path) + strlen(".tiff") + 1;
 		tmp = wmalloc(tmp_len);
 
-		if (wPreferences.supports_tiff) {
+		if (wdisp->supports_tiff) {
 			snprintf(tmp, tmp_len, "%s.tiff", path);
 			if (access(tmp, R_OK) == 0)
 				iconPath = tmp;
@@ -131,7 +131,7 @@ WAppIcon *wAppIconCreateForDock(WScreen *scr, const char *command, const char *w
 	if (wm_instance)
 		aicon->wm_instance = (char *)wintern(wm_instance);
 
-	if (wPreferences.flags.clip_merged_in_dock && wm_class != NULL && strcmp(wm_class, "WMDock") == 0)
+	if (wdisp->flags.clip_merged_in_dock && wm_class != NULL && strcmp(wm_class, "WMDock") == 0)
 		tile = TILE_CLIP;
 	aicon->icon = icon_create_for_dock(scr, command, wm_instance, wm_class, tile);
 
@@ -199,7 +199,7 @@ void unpaint_app_icon(WApplication *wapp)
 	clip = scr->workspaces[scr->current_workspace]->clip;
 
 	if (!clip || !aicon->attracted || !clip->collapsed)
-		xcb_unmap_window(xconn, aicon->icon->core->window);
+		xcb_unmap_window(wdisp->conn, aicon->icon->core->window);
 
 	/* We want to avoid having it on the list  because otherwise
 	 * there will be a hole when the icons are arranged with
@@ -259,7 +259,7 @@ void paint_app_icon(WApplication *wapp)
 		add_to_appicon_list(scr, wapp->app_icon);
 
 	if (!attracting_dock || !wapp->app_icon->attracted || !attracting_dock->collapsed)
-		xcb_map_window(xconn, icon->core->window);
+		xcb_map_window(wdisp->conn, icon->core->window);
 
 	if (w_global.config->auto_arrange_icons && !wapp->app_icon->attracted)
 		wArrangeIcons(scr, true);
@@ -410,7 +410,7 @@ static void drawCorner(WIcon * icon)
 
 void wAppIconMove(WAppIcon * aicon, int x, int y)
 {
-	xcb_configure_window(xconn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+	xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 	aicon->x_pos = x;
 	aicon->y_pos = y;
 }
@@ -425,7 +425,7 @@ static void updateDockNumbers(WScreen *scr)
 	snprintf(ws_numbers, sizeof(ws_numbers), "%i [ %i ]", scr->current_workspace + 1, ((scr->current_workspace / 10) + 1));
 	length = strlen(ws_numbers);
 
-	xcb_clear_area(xconn, false, dicon->icon->core->window, 2, 2, 50, WSCALE(scr, WMFontHeight(scr->icon_title_font)) + 1);
+	xcb_clear_area(wdisp->conn, false, dicon->icon->core->window, 2, 2, 50, WSCALE(scr, WMFontHeight(scr->icon_title_font)) + 1);
 
 	WMDrawString(scr->wmscreen, dicon->icon->core->window, scr->black,
 		     scr->icon_title_font, 4, 3, ws_numbers, length);
@@ -803,7 +803,7 @@ void appIconMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 			return;
 
 		if ((event->response_type & 0x80) &&
-		    wXGrabPointer(xconn, aicon->icon->core->window, true, XCB_EVENT_MASK_BUTTON_MOTION
+		    wXGrabPointer(wdisp->conn, aicon->icon->core->window, true, XCB_EVENT_MASK_BUTTON_MOTION
 				 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
 				 XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 			wwarning("pointer grab failed for appicon menu");
@@ -855,7 +855,7 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	int oldY = y;
 	bool hasMoved = false;
 
-	if (wPreferences.flags.noupdates && originalDock != NULL)
+	if (wdisp->flags.noupdates && originalDock != NULL)
 		return false;
 
 	if (!(((xcb_button_press_event_t *)event)->state & MOD_MASK))
@@ -867,7 +867,7 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 			wLowerFrame(icon->core);
 	}
 
-	if (wXGrabPointer(xconn, icon->core->window, true, XCB_EVENT_MASK_BUTTON_MOTION
+	if (wXGrabPointer(wdisp->conn, icon->core->window, true, XCB_EVENT_MASK_BUTTON_MOTION
 			 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
 			 XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess) {
 		wwarning("Pointer grab failed in wHandleAppIconMove");
@@ -879,7 +879,7 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	}
 	else {
 		ondock = false;
-		if (wPreferences.flags.nodock && wPreferences.flags.noclip && wPreferences.flags.nodrawer)
+		if (wdisp->flags.nodock && wdisp->flags.noclip && wdisp->flags.nodrawer)
 			dockable = 0;
 		else
 			dockable = canBeDocked(icon->owner);
@@ -894,15 +894,15 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	i = 0;
 	if (originalDock != NULL)
 		allDocks[ i++ ] = originalDock;
-	/* Testing scr->drawers is enough, no need to test wPreferences.flags.nodrawer */
+	/* Testing scr->drawers is enough, no need to test wdisp->flags.nodrawer */
 	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
 		if (dc->adrawer != originalDock)
 			allDocks[ i++ ] = dc->adrawer;
 	}
-	if (!wPreferences.flags.nodock && scr->dock != originalDock)
+	if (!wdisp->flags.nodock && scr->dock != originalDock)
 		allDocks[ i++ ] = scr->dock;
 
-	if (!wPreferences.flags.noclip &&
+	if (!wdisp->flags.noclip &&
 	    originalDock != scr->workspaces[scr->current_workspace]->clip)
 		allDocks[ i++ ] = scr->workspaces[scr->current_workspace]->clip;
 
@@ -911,23 +911,23 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 
 	wins[0] = icon->core->window;
 	wins[1] = scr->dock_shadow;
-	wXRestackWindows(xconn, wins, 2);
-	xcb_configure_window(xconn, scr->dock_shadow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ aicon->x_pos, aicon->y_pos, ICON_SIZE, ICON_SIZE });
+	wXRestackWindows(wdisp->conn, wins, 2);
+	xcb_configure_window(wdisp->conn, scr->dock_shadow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ aicon->x_pos, aicon->y_pos, ICON_SIZE, ICON_SIZE });
 	if (superfluous) {
 		if (icon->pixmap != XCB_NONE)
 			ghost = MakeGhostIcon(scr, icon->pixmap);
 		else
 			ghost = MakeGhostIcon(scr, icon->core->window);
-		xcb_change_window_attributes(xconn, scr->dock_shadow, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ ghost });
-		xcb_clear_area(xconn, 0, scr->dock_shadow, 0, 0, 0, 0);
+		xcb_change_window_attributes(wdisp->conn, scr->dock_shadow, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ ghost });
+		xcb_clear_area(wdisp->conn, 0, scr->dock_shadow, 0, 0, 0, 0);
 	}
 	if (ondock)
-		xcb_map_window(xconn, scr->dock_shadow);
+		xcb_map_window(wdisp->conn, scr->dock_shadow);
 
 	while (1) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(xconn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
 			    | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_ENTER_WINDOW, &ev);
 		if (!ev)
 			break;
@@ -948,9 +948,9 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 			if (!grabbed) {
 				if (abs(ofs_x - (((xcb_motion_notify_event_t *)ev)->event_x)) >= MOVE_THRESHOLD
 				    || abs(ofs_y - (((xcb_motion_notify_event_t *)ev)->event_y)) >= MOVE_THRESHOLD) {
-					wXChangeActivePointerGrab(xconn, XCB_EVENT_MASK_BUTTON_MOTION
+					wXChangeActivePointerGrab(wdisp->conn, XCB_EVENT_MASK_BUTTON_MOTION
 								 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS,
-								 wPreferences.cursor[WCUR_MOVE], XCB_CURRENT_TIME);
+								 wdisp->cursor[WCUR_MOVE], XCB_CURRENT_TIME);
 					grabbed = 1;
 				} else {
 					break;
@@ -1023,16 +1023,16 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 				shad_x = lastDock->x_pos + ix*w_global.config->icon_size;
 				shad_y = lastDock->y_pos + iy*w_global.config->icon_size;
 
-				xcb_configure_window(xconn, scr->dock_shadow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ shad_x, shad_y });
+				xcb_configure_window(wdisp->conn, scr->dock_shadow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ shad_x, shad_y });
 
 				if (!ondock) {
-					xcb_map_window(xconn, scr->dock_shadow);
+					xcb_map_window(wdisp->conn, scr->dock_shadow);
 				}
 				ondock = 1;
 			} else {
 				lastDock = theNewDock; // i.e., NULL
 				if (ondock) {
-					xcb_unmap_window(xconn, scr->dock_shadow);
+					xcb_unmap_window(wdisp->conn, scr->dock_shadow);
 					/*
 					 * Leaving that weird comment for now.
 					 * But if we see no gap, there is no need to fill one!
@@ -1052,12 +1052,12 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 		case XCB_BUTTON_RELEASE:
 			if ((((xcb_button_press_event_t *)ev)->detail) != clickButton)
 				break;
-			wXUngrabPointer(xconn, XCB_CURRENT_TIME);
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 
 			bool docked = false;
 			if (ondock) {
 				slide_window(icon->core->window, x, y, shad_x, shad_y);
-				xcb_unmap_window(xconn, scr->dock_shadow);
+				xcb_unmap_window(wdisp->conn, scr->dock_shadow);
 				if (originalDock == NULL) { // docking an undocked appicon
 					docked = wDockAttachIcon(lastDock, aicon, ix, iy, false);
 					if (!docked) {
@@ -1162,8 +1162,8 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 			*/
 			if (superfluous) {
 				if (ghost != XCB_NONE)
-					xcb_free_pixmap(xconn, ghost);
-				xcb_change_window_attributes(xconn, scr->dock_shadow, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->white_pixel });
+					xcb_free_pixmap(wdisp->conn, ghost);
+				xcb_change_window_attributes(wdisp->conn, scr->dock_shadow, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->white_pixel });
 			}
 			if (showed_all_clips) {
 				int i;
@@ -1226,7 +1226,7 @@ static void wApplicationSaveIconPathFor(const char *iconPath, const char *wm_ins
 	WMPLSetCaseSensitive(false);
 
 	if (val) {
-		if (!wPreferences.flags.noupdates)
+		if (!wdisp->flags.noupdates)
 			UpdateDomainFile(w_global.domain.window_attr);
 		wWindowAttrsReload();
 	}

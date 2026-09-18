@@ -42,7 +42,7 @@
  * and for builds without RandR. */
 static int queryXineramaHeads(WMRect *out, int max_out)
 {
-	xcb_connection_t *xc = xconn;
+	xcb_connection_t *xc = wdisp->conn;
 	xcb_query_extension_cookie_t qck;
 	xcb_query_extension_reply_t *qrep;
 	xcb_xinerama_is_active_cookie_t ick;
@@ -440,7 +440,7 @@ int wGetHeadForPointerLocation(WScreen * scr)
 	if (!scr->xine_info.count)
 		return scr->xine_info.primary_head;
 
-	if (!wXQueryPointer(xconn, scr->root_win, &bla, &bla, &point.x, &point.y, &ble, &ble, &blo))
+	if (!wXQueryPointer(wdisp->conn, scr->root_win, &bla, &bla, &point.x, &point.y, &ble, &ble, &blo))
 		return scr->xine_info.primary_head;
 
 	return wGetHeadForPoint(scr, point);

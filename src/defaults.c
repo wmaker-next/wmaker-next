@@ -334,7 +334,8 @@ void wDefaultsCheckDomains(void* arg)
 			 * from wReadDefaults() read the new values
 			 * via w_global.config */
 			w_global.config = new_config;
-			for (i = 0; i < w_global.screen_count; i++) {
+			wdisp->config = new_config;
+			for (i = 0; i < wdisp->screen_count; i++) {
 				scr = wScreenWithNumber(i);
 				if (scr)
 					wReadDefaults(scr, old_config, new_config, &changes);
@@ -360,7 +361,7 @@ void wDefaultsCheckDomains(void* arg)
 
 			w_global.domain.window_attr->dictionary = dict;
 			wWindowAttrsReload();
-			for (i = 0; i < w_global.screen_count; i++) {
+			for (i = 0; i < wdisp->screen_count; i++) {
 				scr = wScreenWithNumber(i);
 				if (scr) {
 					wDefaultUpdateIcons(scr);
@@ -395,7 +396,7 @@ void wDefaultsCheckDomains(void* arg)
 		}
 
 		/* Rebuild the root menu (without mapping) so that shortcuts take effect immediately. */
-		for (i = 0; i < w_global.screen_count; i++) {
+		for (i = 0; i < wdisp->screen_count; i++) {
 			WScreen *s = wScreenWithNumber(i);
 			if (s)
 				wRootMenuReparse(s);
@@ -411,7 +412,7 @@ void wDefaultsCheckDomains(void* arg)
 		 * WM-side fonts, returning the font refresh mask that
 		 * wReadDefaults posts as appearance notifications. */
 		WMReloadConfiguration();
-		for (i = 0; i < w_global.screen_count; i++) {
+		for (i = 0; i < wdisp->screen_count; i++) {
 			scr = wScreenWithNumber(i);
 			if (scr) {
 				WConfigChanges no_changes;
@@ -500,7 +501,7 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 				wWindowApplyInnerBorder(wwin);
 				wwin = wwin->prev;
 			}
-			wXFlush(xconn);
+			wXFlush(wdisp->conn);
 		}
 	}
 }
@@ -555,7 +556,7 @@ void wDefaultUpdateIcons(WScreen *scr)
 		aicon = aicon->next;
 	}
 
-	if (!wPreferences.flags.noclip || wPreferences.flags.clip_merged_in_dock)
+	if (!wdisp->flags.noclip || wdisp->flags.clip_merged_in_dock)
 		wClipIconPaint(scr->clip_icon);
 
 	for (dc = scr->drawers; dc != NULL; dc = dc->next)
@@ -578,7 +579,7 @@ void wKeyTreeRebuild(WScreen *scr)
 	 * it references. wCancelKeyChain() also hides any visible prefix
 	 * OSD and ungrab the keyboard. */
 	if (w_global.shortcut.curpos != NULL) {
-		for (i = 0; i < w_global.screen_count; i++)
+		for (i = 0; i < wdisp->screen_count; i++)
 			wCancelKeyChain(wScreenWithNumber(i));
 	}
 
@@ -1066,7 +1067,7 @@ static void check_bitmap_status(WXBitmapStatus status, const char *filename, xcb
 		wwarning(_("out of memory reading bitmap file \"%s\""), filename);
 		break;
 	case WXBitmapSuccess:
-		xcb_free_pixmap(xconn, bitmap);
+		xcb_free_pixmap(wdisp->conn, bitmap);
 		break;
 	}
 }
@@ -1114,7 +1115,7 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, xcb_cursor_t *cursor)
 		 * and falls back to the core cursor font */
 		for (i = 0; cursor_table[i].name != NULL; i++) {
 			if (strcasecmp(val, cursor_table[i].name) == 0) {
-				*cursor = wXLoadCursor(xconn, 0, cursor_table[i].name);
+				*cursor = wXLoadCursor(wdisp->conn, 0, cursor_table[i].name);
 				if (*cursor == XCB_CURSOR_NONE) {
 					wwarning(_("could not load cursor \"%s\""), cursor_table[i].name);
 					*cursor = XCB_NONE;
@@ -1162,14 +1163,14 @@ static int parse_cursor(WScreen *scr, WMPropList *pl, xcb_cursor_t *cursor)
 			wwarning(_("could not find cursor bitmap file \"%s\""), val);
 			return (status);
 		}
-		mask_status = wXReadBitmapFile(xconn, scr->w_win, mask_name, &w, &h, &mask, &x, &y);
-		bitmap_status = wXReadBitmapFile(xconn, scr->w_win, bitmap_name, &w, &h, &bitmap, &x, &y);
+		mask_status = wXReadBitmapFile(wdisp->conn, scr->w_win, mask_name, &w, &h, &mask, &x, &y);
+		bitmap_status = wXReadBitmapFile(wdisp->conn, scr->w_win, bitmap_name, &w, &h, &bitmap, &x, &y);
 		if ((WXBitmapSuccess == bitmap_status) && (WXBitmapSuccess == mask_status)) {
 			fg.pixel = scr->black_pixel;
 			bg.pixel = scr->white_pixel;
-			wXQueryColor(xconn, scr->w_colormap, &fg);
-			wXQueryColor(xconn, scr->w_colormap, &bg);
-			*cursor = wXCreatePixmapCursor(xconn, bitmap, mask, &fg, &bg, x, y);
+			wXQueryColor(wdisp->conn, scr->w_colormap, &fg);
+			wXQueryColor(wdisp->conn, scr->w_colormap, &bg);
+			*cursor = wXCreatePixmapCursor(wdisp->conn, bitmap, mask, &fg, &bg, x, y);
 			status = 1;
 		}
 		check_bitmap_status(bitmap_status, bitmap_name, bitmap);
@@ -1572,7 +1573,7 @@ void wConfigApplyModifierKey(const char *spec, const char *default_spec)
 		return;
 	}
 
-	wPreferences.modifier_mask = mask;
+	wdisp->modifier_mask = mask;
 }
 
 void wConfigApplyTabDragModifier(const char *spec)
@@ -1580,7 +1581,7 @@ void wConfigApplyTabDragModifier(const char *spec)
 	int mask;
 
 	if (!spec || spec[0] == '\0' || strcasecmp(spec, "None") == 0) {
-		wPreferences.tab_drag_modifier_mask = 0;
+		wdisp->tab_drag_modifier_mask = 0;
 		return;
 	}
 
@@ -1588,11 +1589,11 @@ void wConfigApplyTabDragModifier(const char *spec)
 	if (mask < 0) {
 		wwarning(_("%s: modifier key %s is not valid"),
 			 "TabDragModifier", spec);
-		wPreferences.tab_drag_modifier_mask = 0;
+		wdisp->tab_drag_modifier_mask = 0;
 		return;
 	}
 
-	wPreferences.tab_drag_modifier_mask = (unsigned int)mask;
+	wdisp->tab_drag_modifier_mask = (unsigned int)mask;
 }
 
 static bool workspace_background_spec_valid(const char *key, int target,
@@ -1694,7 +1695,7 @@ static int setIconTile(WScreen *scr, void *tdata, void *foo)
 	if (scr->icon_tile) {
 		reset = 1;
 		RReleaseImage(scr->icon_tile);
-		xcb_free_pixmap(xconn, scr->icon_tile_pixmap);
+		xcb_free_pixmap(wdisp->conn, scr->icon_tile_pixmap);
 	}
 
 	scr->icon_tile = img;
@@ -1702,14 +1703,14 @@ static int setIconTile(WScreen *scr, void *tdata, void *foo)
 	/* put the icon in the noticeboard hint */
 	PropSetIconTileHint(scr, img);
 
-	if (!wPreferences.flags.noclip || wPreferences.flags.clip_merged_in_dock) {
+	if (!wdisp->flags.noclip || wdisp->flags.clip_merged_in_dock) {
 		if (scr->clip_tile) {
 			RReleaseImage(scr->clip_tile);
 		}
 		scr->clip_tile = wClipMakeTile(img);
 	}
 
-	if (!wPreferences.flags.nodrawer) {
+	if (!wdisp->flags.nodrawer) {
 		if (scr->drawer_tile) {
 			RReleaseImage(scr->drawer_tile);
 		}
@@ -2355,7 +2356,7 @@ static void regrab_focused_window_keys(WScreen *scr)
 
 	wwin = scr->focused_window;
 	while (wwin != NULL) {
-		wXUngrabKey(xconn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
+		wXUngrabKey(wdisp->conn, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, wwin->frame->core->window);
 		if (!WFLAGP(wwin, no_bind_keys))
 			wWindowSetKeyGrabs(wwin);
 		wwin = wwin->prev;
@@ -2431,10 +2432,10 @@ static int setWorkspaceMapBackground(WScreen *scr, void *tdata, void *foo)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) foo;
 
-	if (wPreferences.wsmbackTexture)
-		wTextureDestroy(scr, wPreferences.wsmbackTexture);
+	if (scr->wsmbackTexture)
+		wTextureDestroy(scr, scr->wsmbackTexture);
 
-	wPreferences.wsmbackTexture = *texture;
+	scr->wsmbackTexture = *texture;
 
 	return REFRESH_WINDOW_TEXTURES;
 }
@@ -2448,14 +2449,14 @@ static RImage *chopOffImage(RImage * image, int x, int y, int w, int h)
 	return img;
 }
 
-static void release_switch_panel_back_images(struct WPreferences *prefs)
+static void release_switch_panel_back_images(WScreen *scr)
 {
 	int i;
 
 	for (i = 0; i < 9; i++) {
-		if (prefs->swbackImage[i])
-			RReleaseImage(prefs->swbackImage[i]);
-		prefs->swbackImage[i] = NULL;
+		if (scr->swbackImage[i])
+			RReleaseImage(scr->swbackImage[i]);
+		scr->swbackImage[i] = NULL;
 	}
 }
 
@@ -2464,21 +2465,20 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 {
 	char *path;
 	RImage *bgimage;
-	struct WPreferences *prefs = &wPreferences;
-
-	if (!images || !images->tile) {
-		if (prefs->swtileImage)
-			RReleaseImage(prefs->swtileImage);
-		prefs->swtileImage = NULL;
-		if (prefs->swtileArrowImage)
-			RReleaseImage(prefs->swtileArrowImage);
-		prefs->swtileArrowImage = NULL;
-		release_switch_panel_back_images(prefs);
-		return;
-	}
 
 	if (!scr)
 		return;
+
+	if (!images || !images->tile) {
+		if (scr->swtileImage)
+			RReleaseImage(scr->swtileImage);
+		scr->swtileImage = NULL;
+		if (scr->swtileArrowImage)
+			RReleaseImage(scr->swtileArrowImage);
+		scr->swtileArrowImage = NULL;
+		release_switch_panel_back_images(scr);
+		return;
+	}
 
 	if (images->background) {
 		path = FindImage(w_global.config->pixmap_path, images->background);
@@ -2502,30 +2502,30 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 				    cwidth >= bgimage->width - 2 || cheight >= bgimage->height - 2) {
 					wwarning(_("Invalid split sizes for switch panel back image."));
 				} else {
-					release_switch_panel_back_images(prefs);
+					release_switch_panel_back_images(scr);
 					swidth = (bgimage->width - cwidth) / 2;
 					theight = (bgimage->height - cheight) / 2;
 
-					prefs->swbackImage[0] = chopOffImage(bgimage, 0, 0, swidth, theight);
-					prefs->swbackImage[1] = chopOffImage(bgimage, swidth, 0, cwidth, theight);
-					prefs->swbackImage[2] = chopOffImage(bgimage, swidth + cwidth, 0,
+					scr->swbackImage[0] = chopOffImage(bgimage, 0, 0, swidth, theight);
+					scr->swbackImage[1] = chopOffImage(bgimage, swidth, 0, cwidth, theight);
+					scr->swbackImage[2] = chopOffImage(bgimage, swidth + cwidth, 0,
 									     swidth, theight);
-					prefs->swbackImage[3] = chopOffImage(bgimage, 0, theight, swidth, cheight);
-					prefs->swbackImage[4] = chopOffImage(bgimage, swidth, theight,
+					scr->swbackImage[3] = chopOffImage(bgimage, 0, theight, swidth, cheight);
+					scr->swbackImage[4] = chopOffImage(bgimage, swidth, theight,
 									     cwidth, cheight);
-					prefs->swbackImage[5] = chopOffImage(bgimage, swidth + cwidth, theight,
+					scr->swbackImage[5] = chopOffImage(bgimage, swidth + cwidth, theight,
 									     swidth, cheight);
-					prefs->swbackImage[6] = chopOffImage(bgimage, 0, theight + cheight,
+					scr->swbackImage[6] = chopOffImage(bgimage, 0, theight + cheight,
 									     swidth, theight);
-					prefs->swbackImage[7] = chopOffImage(bgimage, swidth, theight + cheight,
+					scr->swbackImage[7] = chopOffImage(bgimage, swidth, theight + cheight,
 									     cwidth, theight);
-					prefs->swbackImage[8] =
+					scr->swbackImage[8] =
 					    chopOffImage(bgimage, swidth + cwidth, theight + cheight,
 							 swidth, theight);
 
 					for (i = 0; i < 9; i++) {
-						if (!prefs->swbackImage[i]) {
-							release_switch_panel_back_images(prefs);
+						if (!scr->swbackImage[i]) {
+							release_switch_panel_back_images(scr);
 							break;
 						}
 					}
@@ -2540,26 +2540,26 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		wwarning(_("Could not find image \"%s\" for option \"%s\""),
 			 images->tile, "SwitchPanelImages");
 	} else {
-		if (prefs->swtileImage)
-			RReleaseImage(prefs->swtileImage);
-		prefs->swtileImage = RLoadImage(scr->rcontext, path, 0);
-		if (!prefs->swtileImage)
+		if (scr->swtileImage)
+			RReleaseImage(scr->swtileImage);
+		scr->swtileImage = RLoadImage(scr->rcontext, path, 0);
+		if (!scr->swtileImage)
 			wwarning(_("Could not load image \"%s\" for option \"%s\""),
 				 path, "SwitchPanelImages");
 		wfree(path);
 	}
 
-	if (prefs->swtileArrowImage)
-		RReleaseImage(prefs->swtileArrowImage);
-	prefs->swtileArrowImage = NULL;
+	if (scr->swtileArrowImage)
+		RReleaseImage(scr->swtileArrowImage);
+	scr->swtileArrowImage = NULL;
 	if (images->tile_arrow) {
 		path = FindImage(w_global.config->pixmap_path, images->tile_arrow);
 		if (!path) {
 			wwarning(_("Could not find image \"%s\" for option \"%s\""),
 				 images->tile_arrow, "SwitchPanelImages");
 		} else {
-			prefs->swtileArrowImage = RLoadImage(scr->rcontext, path, 0);
-			if (!prefs->swtileArrowImage)
+			scr->swtileArrowImage = RLoadImage(scr->rcontext, path, 0);
+			if (!scr->swtileArrowImage)
 				wwarning(_("Could not load image \"%s\" for option \"%s\""),
 					 path, "SwitchPanelImages");
 			wfree(path);
@@ -2582,9 +2582,9 @@ void wConfigApplyModifierKeyLabels(WScreen *scr,
 		DestroyWindowMenu(scr);
 
 	for (i = 0; i < 7; i++) {
-		if (wPreferences.modifier_labels[i])
-			wfree(wPreferences.modifier_labels[i]);
-		wPreferences.modifier_labels[i] = wstrdup(labels->items[i]);
+		if (wdisp->modifier_labels[i])
+			wfree(wdisp->modifier_labels[i]);
+		wdisp->modifier_labels[i] = wstrdup(labels->items[i]);
 	}
 }
 
@@ -2603,14 +2603,14 @@ void wConfigApplyModifierKeyShortLabels(WScreen *scr,
 		DestroyWindowMenu(scr);
 
 	for (i = 0; i < 9; i++) {
-		if (wPreferences.modifier_short_labels[i])
-			wfree(wPreferences.modifier_short_labels[i]);
+		if (wdisp->modifier_short_labels[i])
+			wfree(wdisp->modifier_short_labels[i]);
 		if (labels->items[i][0] == '\0') {
 			wwarning(_("Invalid argument for option \"%s\" item %zu, cannot be empty"),
 				 "ModifierKeyShortLabels", i);
-			wPreferences.modifier_short_labels[i] = NULL;
+			wdisp->modifier_short_labels[i] = NULL;
 		} else {
-			wPreferences.modifier_short_labels[i] = wstrdup(labels->items[i]);
+			wdisp->modifier_short_labels[i] = wstrdup(labels->items[i]);
 		}
 	}
 }
@@ -2626,16 +2626,18 @@ void wConfigApplyHotCornerActions(WScreen *scr,
 		return;
 	}
 
-	if (scr)
-		DestroyWindowMenu(scr);
+	if (!scr)
+		return;
+
+	DestroyWindowMenu(scr);
 
 	for (i = 0; i < 4; i++) {
-		if (wPreferences.hot_corner_actions[i])
-			wfree(wPreferences.hot_corner_actions[i]);
+		if (scr->hot_corner_actions[i])
+			wfree(scr->hot_corner_actions[i]);
 		if (strcasecmp(actions->items[i], "NONE") != 0)
-			wPreferences.hot_corner_actions[i] = wstrdup(actions->items[i]);
+			scr->hot_corner_actions[i] = wstrdup(actions->items[i]);
 		else
-			wPreferences.hot_corner_actions[i] = NULL;
+			scr->hot_corner_actions[i] = NULL;
 	}
 }
 
@@ -2646,14 +2648,13 @@ static int setCursor(WScreen *scr, void *tdata, void *extra_data)
 
 	/* Parameter not used, but tell the compiler that it is ok */
 
-	if (wPreferences.cursor[widx] != XCB_NONE) {
-		xcb_free_cursor(xconn, wPreferences.cursor[widx]);
-	}
+	if (wdisp->cursor[widx] != XCB_NONE)
+		xcb_free_cursor(wdisp->conn, wdisp->cursor[widx]);
 
-	wPreferences.cursor[widx] = *cursor;
+	wdisp->cursor[widx] = *cursor;
 
 	if (widx == WCUR_ROOT && *cursor != XCB_NONE) {
-		wXDefineCursor(xconn, scr->root_win, *cursor);
+		wXDefineCursor(wdisp->conn, scr->root_win, *cursor);
 	}
 
 	return 0;

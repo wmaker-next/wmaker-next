@@ -21,6 +21,9 @@
 struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
 
+static WDisplay test_display;
+WDisplay *wdisp = &test_display;
+
 /* --- stubs for wdefaults.c externs not exercised here --- */
 
 /* controllable by get_icon_filename() fallback tests */
