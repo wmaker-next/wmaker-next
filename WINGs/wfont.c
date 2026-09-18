@@ -240,6 +240,9 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	font->layout = pango_layout_new(context);
 	pango_layout_set_font_description(font->layout, description);
 
+	font->wrapLayout = pango_layout_new(context);
+	pango_layout_set_font_description(font->wrapLayout, description);
+
 	/* WMFontHeight() and the callers that offset by font->y expect the
 	 * primary face's ascent+descent, matching what the previous
 	 * XftFontOpenName() path exposed via font->font->ascent/descent. */
@@ -276,6 +279,8 @@ void WMReleaseFont(WMFont * font)
 	if (font->refCount < 1) {
 		if (font->layout)
 			g_object_unref(font->layout);
+		if (font->wrapLayout)
+			g_object_unref(font->wrapLayout);
 		if (font->name) {
 			WMHashRemove(font->screen->fontCache, font->name);
 			wfree(font->name);

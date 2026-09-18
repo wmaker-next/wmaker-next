@@ -617,6 +617,7 @@ typedef struct W_Font {
     char *name;
 
     PangoLayout *layout;
+    PangoLayout *wrapLayout;	/* word/char-wrapped layout, disjoint from layout */
 } W_Font;
 
 #define W_FONTID(f)		(f)->font->fid

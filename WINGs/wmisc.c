@@ -82,94 +82,109 @@ W_DrawRelief(cairo_t *cr, W_Screen *scr, int x, int y,
 	cairo_restore(cr);
 }
 
-static int findNextWord(const char *text, int limit)
+/* Pango starts a new paragraph at several characters the old label
+ * code treated as plain text, so replace them with spaces to keep the
+ * historical line count. The replacement preserves byte offsets,
+ * which W_PaintText uses to slice the layout lines. */
+static bool lineSeparatorAt(const char *text, int length, int i, int *extra)
 {
-	int pos, len;
+	unsigned char c = (unsigned char)text[i];
 
-	len = strcspn(text, " \t\n\r");
-	pos = len + strspn(text + len, " \t\n\r");
-	if (pos > limit)
-		pos = limit;
-
-	return pos;
+	*extra = 0;
+	if (c == '\r' || c == '\v' || c == '\f')
+		return true;
+	if (c == 0xc2 && i + 1 < length
+	    && (unsigned char)text[i + 1] == 0x85) {
+		*extra = 1;
+		return true;
+	}
+	if (c == 0xe2 && i + 2 < length
+	    && (unsigned char)text[i + 1] == 0x80
+	    && ((unsigned char)text[i + 2] == 0xa8
+		|| (unsigned char)text[i + 2] == 0xa9)) {
+		*extra = 2;
+		return true;
+	}
+	return false;
 }
 
-static int fitText(const char *text, WMFont * font, int width, int wrap)
+static char *cleanLineSeparators(const char *text, int length)
 {
-	int i, w, beforecrlf, word1, word2;
+	char *copy = NULL;
+	int i, extra, j;
 
-	/* text length before first cr/lf */
-	beforecrlf = strcspn(text, "\n");
-
-	if (!wrap || beforecrlf == 0)
-		return beforecrlf;
-
-	w = WMWidthOfString(font, text, beforecrlf);
-	if (w <= width) {
-		/* text up to first crlf fits */
-		return beforecrlf;
+	for (i = 0; i < length; i++) {
+		if (!lineSeparatorAt(text, length, i, &extra))
+			continue;
+		copy = wmalloc(length + 1);
+		memcpy(copy, text, length);
+		copy[length] = '\0';
+		break;
 	}
 
-	word1 = 0;
-	while (1) {
-		word2 = word1 + findNextWord(text + word1, beforecrlf - word1);
-		if (word2 >= beforecrlf)
-			break;
-		w = WMWidthOfString(font, text, word2);
-		if (w > width)
-			break;
-		word1 = word2;
+	if (!copy)
+		return NULL;
+
+	for (i = 0; i < length; i++) {
+		if (!lineSeparatorAt(copy, length, i, &extra))
+			continue;
+		for (j = 0; j <= extra; j++)
+			copy[i + j] = ' ';
+		i += extra;
 	}
 
-	/* Advance character by character (not byte by byte) */
-	i = word1;
-	while (i < word2) {
-		int next_i = i + oneUTF8CharForward(text + i, word2 - i);
-		w = WMWidthOfString(font, text, next_i);
-		if (w > width)
-			break;
-		i = next_i;
-	}
+	return copy;
+}
 
-	/* keep words complete if possible */
-	if (!isspace(text[i]) && word1 > 0) {
-		i = word1;
-	} else if (isspace(text[i]) && i < beforecrlf) {
-		/* keep space on current row, so new row has next word in column 1 */
-		i++;
-	}
+static PangoLayout *setWrappedLayout(WMFont *font, const char *text,
+				     int length, int width, int wrap)
+{
+	PangoLayout *layout = font->wrapLayout;
 
-	return i;
+	if (!layout)
+		return NULL;
+
+	if (wrap && width > 0) {
+		pango_layout_set_width(layout, width * PANGO_SCALE);
+		pango_layout_set_wrap(layout, PANGO_WRAP_WORD_CHAR);
+	} else {
+		/* pango wraps per character at width 0 */
+		pango_layout_set_width(layout, -1);
+	}
+	pango_layout_set_text(layout, text, length);
+
+	return layout;
+}
+
+/* Pango counts a trailing '\n' as a final empty line, drop it. */
+static int wrappedLineCount(PangoLayout *layout, const char *text, int length)
+{
+	int lines = pango_layout_get_line_count(layout);
+
+	if (length == 0)
+		return 0;
+	if (lines > 0 && text[length - 1] == '\n')
+		lines--;
+
+	return lines;
 }
 
 int W_GetTextHeight(WMFont * font, const char *text, int width, int wrap)
 {
-	const char *ptr = text;
-	int count;
-	int length = strlen(text);
-	int h;
-	int fheight = WMFontHeight(font);
+	PangoLayout *layout;
+	char *clean;
+	int length;
 
-	/* account lines exactly like W_PaintText does */
-	h = 0;
-	while (length > 0) {
-		count = fitText(ptr, font, width, wrap);
+	wassertrv(font != NULL && text != NULL, 0);
 
-		if (ptr[count] != '\n')
-			h += fheight;
+	length = strlen(text);
+	clean = cleanLineSeparators(text, length);
+	layout = setWrappedLayout(font, clean ? clean : text, length, width, wrap);
+	wfree(clean);
+	if (!layout)
+		return 0;
 
-		while (ptr[count] && ptr[count] == '\n') {
-			h += fheight;
-			count++;
-		}
-
-		if (count == 0)
-			break;
-
-		ptr += count;
-		length -= count;
-	}
-	return h;
+	return wrappedLineCount(layout, text, length) * WMFontHeight(font);
 }
 
 void
@@ -177,16 +192,37 @@ W_PaintText(cairo_t *cr, WMFont *font, int x, int y,
 		 int width, WMAlignment alignment, WMColor *color, int wrap,
 		 const char *text, int length)
 {
-	const char *ptr = text;
-	int line_width;
-	int line_x;
-	int count;
+	PangoLayout *layout;
+	PangoLayoutIter *iter;
+	char *clean;
 	int fheight = WMFontHeight(font);
+	int lines, i;
 
-	while (length > 0) {
-		count = fitText(ptr, font, width, wrap);
+	if (length <= 0)
+		return;
 
-		line_width = WMWidthOfString(font, ptr, count);
+	wassertr(font != NULL && text != NULL);
+
+	clean = cleanLineSeparators(text, length);
+	if (clean)
+		text = clean;
+
+	layout = setWrappedLayout(font, text, length, width, wrap);
+	if (!layout) {
+		wfree(clean);
+		return;
+	}
+
+	lines = wrappedLineCount(layout, text, length);
+
+	iter = pango_layout_get_iter(layout);
+	for (i = 0; i < lines; i++) {
+		PangoLayoutLine *line = pango_layout_iter_get_line_readonly(iter);
+		int start = line->start_index;
+		int count = line->length;
+		int line_width = WMWidthOfString(font, text + start, count);
+		int line_x;
+
 		if (alignment == WALeft)
 			line_x = x;
 		else if (alignment == WARight)
@@ -194,22 +230,13 @@ W_PaintText(cairo_t *cr, WMFont *font, int x, int y,
 		else
 			line_x = x + (width - line_width) / 2;
 
-		W_DrawString(cr, color, font, line_x, y, ptr, count);
+		W_DrawString(cr, color, font, line_x, y, text + start, count);
 
-		if (ptr[count] != '\n')
-			y += fheight;
-
-		while (ptr[count] && ptr[count] == '\n') {
-			y += fheight;
-			count++;
-		}
-
-		if (count == 0)
-			break;
-
-		ptr += count;
-		length -= count;
+		y += fheight;
+		pango_layout_iter_next_line(iter);
 	}
+	pango_layout_iter_free(iter);
+	wfree(clean);
 }
 
 static void
