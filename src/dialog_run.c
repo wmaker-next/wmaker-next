@@ -51,6 +51,7 @@
 #include "application.h"
 #include "appicon.h"
 #include "icon.h"
+#include "event.h"
 
 typedef enum {
 	RUN_ACTION_EXEC = 0,
@@ -598,69 +599,166 @@ static void matchXDGApps(const char *word, WMArray *result)
 	}
 }
 
-static void matchPathDir(const char *dir, const char *word,
-			 const char *fold, WMHashTable *seen,
-			 WMArray *result)
+/* ---- $PATH executable index --------------------------------------
+ *
+ * matchPathDir used to opendir and stat every $PATH directory on
+ * every Tab and on every live-filter keystroke. Build the executable
+ * name set once instead, and invalidate it through inotify on the
+ * directories with a TTL as the fallback for missed events.
+ */
+
+#define RUN_PATH_INDEX_TTL 30
+#define RUN_PATH_WATCH_MAX 64
+/* IN_ATTRIB | IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO,
+ * expanded so this file needs no <sys/inotify.h> */
+#define RUN_PATH_WATCH_MASK (0x100u | 0x200u | 0x40u | 0x80u | 0x4u)
+
+static WMHashTable *path_index;
+static char *path_index_env;
+static time_t path_index_built;
+static bool path_index_dirty = true;
+static int path_wd[RUN_PATH_WATCH_MAX];
+static int path_wd_count;
+
+static void pathIndexInvalidated(void)
+{
+	path_index_dirty = true;
+}
+
+static void freePathIndex(void)
+{
+	int i;
+
+	if (path_index) {
+		WMFreeHashTable(path_index);
+		path_index = NULL;
+	}
+	if (path_index_env) {
+		wfree(path_index_env);
+		path_index_env = NULL;
+	}
+	for (i = 0; i < path_wd_count; i++)
+		wInotifyRemoveWatch(path_wd[i]);
+	path_wd_count = 0;
+}
+
+static void watchPathDir(const char *dir, WMHashTable *watched)
+{
+	int wd;
+
+	if (path_wd_count >= RUN_PATH_WATCH_MAX || WMHashGet(watched, dir))
+		return;
+	wd = wInotifyAddWatch(dir, RUN_PATH_WATCH_MASK, pathIndexInvalidated);
+	if (wd >= 0) {
+		path_wd[path_wd_count++] = wd;
+		WMHashInsert(watched, dir, watched);
+	}
+}
+
+static void scanPathIndexDir(const char *dir, WMHashTable *index)
 {
 	DIR *dp;
 	struct dirent *de;
 	struct stat sb;
-	RunVariant *v;
-	char namefold[256], *full;
-	size_t k, dlen;
-	int band, score;
+	char *full;
+	size_t dlen;
 
 	dp = opendir(dir);
 	if (!dp)
 		return;
 	while ((de = readdir(dp)) != NULL) {
 		dlen = strlen(de->d_name);
+		if (dlen == 0 || dlen >= 256)
+			continue;
+		/* first executable occurrence in PATH order wins */
+		if (WMHashGet(index, de->d_name))
+			continue;
+		full = wstrconcat(dir, "/");
+		full = wstrappend(full, de->d_name);
+		if (stat(full, &sb) == 0 && (sb.st_mode & 0111) &&
+		    !S_ISDIR(sb.st_mode))
+			WMHashInsert(index, de->d_name, index);
+		wfree(full);
+	}
+	closedir(dp);
+}
+
+static void buildPathIndex(void)
+{
+	WMHashTable *watched;
+	const char *pos, *next;
+	char *dir;
+
+	freePathIndex();
+
+	path_index = WMCreateHashTable(WMStringHashCallbacks);
+	path_index_env = wstrdup(getenv("PATH") ? getenv("PATH") : "");
+	watched = WMCreateHashTable(WMStringHashCallbacks);
+
+	pos = path_index_env;
+	while (pos && *pos) {
+		next = strchr(pos, ':');
+		if (next) {
+			dir = wstrndup(pos, next - pos);
+			pos = next + 1;
+		} else {
+			dir = wstrdup(pos);
+			pos = NULL;
+		}
+		if (dir[0] != '\0') {
+			watchPathDir(dir, watched);
+			scanPathIndexDir(dir, path_index);
+		}
+		wfree(dir);
+	}
+
+	WMFreeHashTable(watched);
+	path_index_built = time(NULL);
+	path_index_dirty = false;
+}
+
+static void matchPathIndex(const char *word, const char *fold, WMArray *result)
+{
+	WMHashEnumerator e;
+	const char *name;
+	RunVariant *v;
+	char namefold[256];
+	size_t k, dlen, wlen = strlen(word);
+	int band, score;
+
+	e = WMEnumerateHashTable(path_index);
+	while ((name = WMNextHashEnumeratorKey(&e)) != NULL) {
+		dlen = strlen(name);
 		if (dlen == 0 || dlen >= sizeof(namefold))
 			continue;
 		for (k = 0; k <= dlen; k++)
-			namefold[k] = tolower((unsigned char)de->d_name[k]);
-		if (!matchName(fold, namefold, de->d_name, &band, &score))
+			namefold[k] = tolower((unsigned char)name[k]);
+		if (!matchName(fold, namefold, name, &band, &score))
 			continue;
 		/* the suffix variant only works when the case the
 		 * user typed matches the binary on disk, otherwise
 		 * the rebuilt field would not run, so fall through
 		 * to a replacing variant carrying the real name */
-		if (band == 0 && strncmp(de->d_name, word, strlen(word)) != 0)
+		if (band == 0 && strncmp(name, word, wlen) != 0)
 			band = 1;
-		full = wstrconcat(dir, "/");
-		full = wstrappend(full, de->d_name);
-		if (stat(full, &sb) != 0 ||
-		    !(sb.st_mode & (S_IXOTH | S_IXGRP | S_IXUSR)) ||
-		    (sb.st_mode & S_IFDIR)) {
-			wfree(full);
-			continue;
-		}
-		wfree(full);
-		/* dedup across $PATH directories on the binary name
-		 * itself, not the variant text, so an XDG app whose
-		 * Exec= happens to equal a suffix cannot mask a hit */
-		if (WMHashGet(seen, de->d_name))
-			continue;
-		WMHashInsert(seen, de->d_name, seen);
 		/* a prefix hit stays a non-replacing suffix so the
 		 * pre-series Tab feel is preserved in every mode. An
 		 * exact name match completes to itself, which is the
 		 * no-op Tab already performs at varpos 0, so skip it
 		 * rather than show an empty row in the popup */
 		if (band == 0) {
-			if (de->d_name[strlen(word)] == '\0')
+			if (name[wlen] == '\0')
 				continue;
-			v = makeVariant(wstrdup(de->d_name + strlen(word)),
-					NULL, RUN_RANK_PATH, false);
+			v = makeVariant(wstrdup(name + wlen), NULL,
+					RUN_RANK_PATH, false);
 		} else {
-			v = makeVariant(wstrdup(de->d_name), NULL,
+			v = makeVariant(wstrdup(name), NULL,
 					RUN_RANK_PATH + 1, true);
 		}
 		v->score = score;
 		v->icon_hint = wstrdup("mimetypes:application-x-executable");
 		WMAddToArray(result, v);
 	}
-	closedir(dp);
 }
 
 static char *prettyDir(const char *path)
@@ -1020,11 +1118,10 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 {
 	bool firstWord = true;
 	WMArray *variants = NULL;
-	const char *start, *pos = NULL, *path = NULL;
+	const char *start, *pos = NULL, *pathenv = NULL;
 	char *tmp = NULL, *dir = NULL, *prefix = NULL;
 	char fold[256];
 	size_t i, flen;
-	WMHashTable *seen;
 
 	variants = WMCreateArrayWithDestructor(0, freeVariant);
 
@@ -1089,22 +1186,14 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 		fold[flen] = 0;
 		if (w_global.config->run_xdg_completion)
 			matchXDGApps(complete, variants);
-		seen = WMCreateHashTable(WMStringHashCallbacks);
-		path = flen ? getenv("PATH") : NULL;
-		while (path) {
-			pos = strchr(path, ':');
-			if (pos) {
-				tmp = wstrndup(path, pos - path);
-				path = pos + 1;
-			} else if (*path != '\0') {
-				tmp = wstrdup(path);
-				path = NULL;
-			} else
-				break;
-			matchPathDir(tmp, complete, fold, seen, variants);
-			wfree(tmp);
+		if (flen > 0) {
+			pathenv = getenv("PATH");
+			if (!path_index || path_index_dirty ||
+			    strcmp(path_index_env, pathenv ? pathenv : "") != 0 ||
+			    time(NULL) - path_index_built > RUN_PATH_INDEX_TTL)
+				buildPathIndex();
+			matchPathIndex(complete, fold, variants);
 		}
-		WMFreeHashTable(seen);
 		/* documents only when the command interpretation came
 		 * up empty so fir<Tab> does not have to wade through
 		 * firmware-notes.txt before reaching Firefox */
