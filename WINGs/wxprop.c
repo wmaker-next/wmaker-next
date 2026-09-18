@@ -8,6 +8,14 @@
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
  *  All requests go through the caller's xcb connection and share its
  *  single output buffer and sequence numbering, request ordering
  *  with any other user of the connection is inherent.

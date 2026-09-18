@@ -8,6 +8,14 @@
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
  *  Subscribes to Window Maker's WIPC sound event stream and plays the
  *  sound file mapped to each event in the WMSound defaults domain. Links
  *  libWUtil (proplist + WIPC), libsndfile and PipeWire, no X11.
