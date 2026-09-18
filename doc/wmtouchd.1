@@ -1,0 +1,265 @@
+.TH WMTOUCHD 1 "2026" "Window Maker"
+.SH NAME
+wmtouchd \- Window Maker touchpad gesture daemon
+.SH SYNOPSIS
+.B wmtouchd
+[\fB\-\-seat\fR\ \fINAME\fR] [\fB\-\-device\fR\ \fIPATH\fR]
+[\fB\-\-config\fR\ \fIFILE\fR] [\fB\-\-socket\fR\ \fIPATH\fR]
+.br
+.B wmtouchd
+\fB\-\-source-events\fR\ \fIFILE\fR [\fB\-\-config\fR\ \fIFILE\fR]
+.br
+.B wmtouchd
+\fB\-\-check\fR [\fB\-\-config\fR\ \fIFILE\fR] [\fB\-\-socket\fR\ \fIPATH\fR]
+.SH DESCRIPTION
+.B wmtouchd
+reads three- to five-finger touchpad swipes and two- to five-finger
+pinches through libinput and turns them into Window Maker actions. It
+links libinput, libudev and libWUtil, with no X11 dependency, and talks
+to the window manager over the same AF_UNIX socket used by
+.BR wmakermsg (1).
+.PP
+Each recognised gesture is delivered as the generic
+.B action
+IPC verb, so any action a key binding can trigger is reachable without
+teaching Window Maker anything about gestures. The gesture-to-action
+mapping lives in the
+.B WMTouch
+defaults domain, never in the
+.B WindowMaker
+domain. That domain maps gesture names to action names, for example:
+.PP
+.nf
+{
+    SwipeThreshold      = 60;
+    PinchThreshold      = 1.5;
+    ThreeFingerLeft     = "PrevWorkspace";
+    ThreeFingerRight    = "NextWorkspace";
+    ThreeFingerUp       = "ShowDesktop";
+    ThreeFingerDown     = "None";
+    ThreeFingerPinchOut = "Maximize";
+    ThreeFingerPinchIn  = "Miniaturize";
+}
+.fi
+.PP
+The action names are the key-binding action names shown by
+.B "wmakermsg info"
+(the config key without the trailing
+.IR Key ,
+for example
+.BR NextWorkspace ).
+A value of
+.BR None ,
+empty, or an absent key makes the gesture inert, so the daemon does
+nothing until the domain opts in.
+.PP
+Swipe deltas are in libinput gesture units, not screen pixels, and the
+unaccelerated accessors are used so
+.B SwipeThreshold
+does not depend on pointer speed. Deltas follow screen coordinates:
+positive
+.B dx
+is a swipe to the right and positive
+.B dy
+is a swipe toward the bottom edge of the touchpad, so an upward swipe
+reports negative
+.BR dy .
+.B SwipeAxisMargin
+(default 1.2) requires the dominant axis to exceed the other by that
+factor, otherwise the gesture fires nothing. The decision is made when
+the swipe ends, and a cancelled swipe is dropped.
+.PP
+A pinch is matched by its scale, the ratio of the current finger distance
+to the distance when the gesture began. When the pinch ends, a scale at or
+above
+.B PinchThreshold
+(default 1.5) fires the
+.B PinchOut
+direction, and a scale at or below its reciprocal fires
+.BR PinchIn .
+The action keys follow the same finger prefix and direction suffix, for
+example
+.B ThreeFingerPinchOut
+and
+.BR TwoFingerPinchIn ,
+so each finger count is bound separately. A cancelled pinch is dropped.
+The rotation angle libinput reports alongside a pinch is ignored, so a
+twist that keeps the finger distance constant fires nothing.
+.PP
+Reads are non-exclusive: the X pointer driver keeps working alongside
+the daemon, and nothing needs to be restored on exit.
+.PP
+If the Window Maker IPC socket is not present when
+.B wmtouchd
+starts, or the connection is dropped or refused, it retries with
+exponential backoff and gives up after 5 minutes, exiting with status 1.
+While disconnected, swipes are still recognised but dropped;
+.B \-\-verbose
+logs the connection attempts and each dropped action.
+.SH OPTIONS
+.TP
+.B \-\-check
+Read the configured action names and the window manager's action list
+over IPC, print
+.B OK
+or
+.B unknown
+for each row, and exit. It never executes an action, so validating a
+.B LockScreen
+binding does not lock the screen. Exits non-zero when a name is unknown
+or the window manager is unreachable.
+.TP
+.BI \-\-config " FILE"
+Load the
+.B WMTouch
+domain from
+.I FILE
+instead of the resolved defaults path.
+.TP
+.B \-\-debug
+Print runtime diagnostics to standard error. Same as
+.BR \-\-verbose .
+.TP
+.BI \-\-device " PATH"
+Watch a single input device given as a
+.I /dev/input/eventN
+path instead of the seat's udev devices. This mode does not follow
+hotplug.
+.TP
+.B \-\-help
+Print a short usage summary and exit.
+.TP
+.BI \-\-seat " NAME"
+Watch the libinput seat
+.I NAME
+instead of
+.BR seat0 .
+.TP
+.BI \-\-socket " PATH"
+Connect to
+.I PATH
+instead of the resolved IPC socket.
+.TP
+.BI \-\-source-events " FILE"
+Replay newline-separated gesture records from
+.IR FILE
+once instead of reading a device, then exit. A swipe is
+.BI "begin " N \fR,
+.BI "update " "N dx dy" \fR,
+.BI "end " N
+or
+.BI "cancel " N \fR,
+and a pinch is
+.BI "pinch-begin " N \fR,
+.BI "pinch-update " "N scale" \fR,
+.BI "pinch-end " N
+or
+.BI "pinch-cancel " N \fR.
+Blank lines and lines starting with
+.B #
+are ignored. This mode needs neither a seat nor input-device
+permissions.
+.TP
+.B \-\-verbose
+Print runtime diagnostics to standard error.
+.TP
+.B \-\-version
+Print version information and exit.
+.SH PERMISSIONS
+Reading input devices normally requires one of:
+.IP \(bu 2
+a logind-managed session, where systemd applies a uaccess ACL to the
+active seat's devices and a daemon autostarted from the session inherits
+it;
+.IP \(bu 2
+membership in the
+.B input
+group;
+.IP \(bu 2
+running as
+.BR root .
+.PP
+If
+.BR getfacl (1)
+shows no user entry on the touchpad's
+.I /dev/input/eventN
+node even though the session is the active one, logind is not applying
+uaccess ACLs on this setup. Prefer a device-scoped udev rule over the
+.B input
+group, which exposes every device, for example in
+.IR /etc/udev/rules.d/99-wmtouchd.rules :
+.PP
+.nf
+ACTION=="add", SUBSYSTEM=="input", ATTRS{idVendor}=="05ac",
+ATTRS{idProduct}=="0324", OWNER="\fIuser\fR", MODE="0600"
+.fi
+.PP
+Apply it with
+.B "udevadm control --reload"
+and
+.BR "udevadm trigger" ,
+or by replugging the device. Running under
+.BR sudo (8)
+also works, but its default env_reset strips the variables that locate
+the IPC socket, so pass
+.B WMAKER_IPC_SOCKET
+after
+.B sudo
+or use
+.BR "sudo -E" .
+.PP
+No polkit or D-Bus dependency is needed: the daemon does not monitor
+kernel uevents, hotplug is handled by re-polling the libinput file
+descriptor.
+.SH SIGNALS
+.TP
+.B SIGHUP
+Reload the
+.B WMTouch
+domain from disk.
+.TP
+.B SIGTERM , SIGINT
+Exit cleanly with status 0.
+.SH EXIT STATUS
+.TP
+.B 0
+Clean exit on
+.BR SIGTERM ,
+.BR SIGINT ,
+or after a
+.B \-\-source-events
+replay.
+.TP
+.B 1
+Startup failure, an unknown action in
+.BR \-\-check ,
+or give-up after 5 minutes without a usable IPC socket.
+.TP
+.B 2
+Invalid command line.
+.SH FILES
+.TP
+.I ~/.config/WindowMaker/WMTouch
+XDG location for the
+.B WMTouch
+defaults domain.
+.TP
+.I ~/GNUstep/Defaults/WMTouch
+Legacy location for the
+.B WMTouch
+defaults domain.
+.SH NOTES
+Swipes are recognised for three to five fingers: libinput classifies
+two-finger touchpad motion as scrolling, so pinch gestures are the only
+ones that start at two fingers. Rotate and hold gestures are ignored.
+.B \-\-verbose
+logs their finger count. Both a swipe and a pinch are resolved when the
+gesture ends, which is the only mode in this version.
+.PP
+In udev mode the libinput backend reports device add and remove as
+events during normal dispatch, so a USB touchpad added after startup is
+picked up without restarting the daemon.
+.SH "SEE ALSO"
+.BR wmaker (1),
+.BR wmakermsg (1),
+.BR wdwrite (1)

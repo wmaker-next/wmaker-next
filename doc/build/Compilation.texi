@@ -519,6 +519,11 @@ Control archive (@file{.tar}, @file{.zip}, @file{.cbz}, ...) support in @emph{wm
 Refuse use of the @file{libbsd} compatibility library in @emph{WINGs} utility library,
 even if your system provides it.
 
+@item --with-libinput=auto|yes|no
+Control the optional @command{wmtouchd} touchpad gesture daemon. @file{auto}
+detects libinput and libudev when available, @file{yes} requires them, and
+@file{no} disables the daemon.
+
 @item --disable-magick
 Disable @emph{ImageMagick's MagickWand} support in @emph{WRaster}, used to support for image formats.
 

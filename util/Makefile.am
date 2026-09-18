@@ -59,6 +59,16 @@ wmsoundd_LDADD = \
 	@WSOUND_LIBS@ $(liblist)
 endif
 
+if BUILD_WTOUCH
+bin_PROGRAMS += wmtouchd
+wmtouchd_SOURCES = wmtouchd.c wmtouch-core.c wmtouch-core.h
+wmtouchd_CFLAGS = @WTOUCH_CFLAGS@
+wmtouchd_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@WTOUCH_LIBS@ $(liblist)
+endif
+EXTRA_DIST += wmtouch-core.c wmtouch-core.h
+
 wxcopy_CFLAGS = @XCB_CORE_CFLAGS@
 wxcopy_SOURCES = wxcopy.c xcconn.c xcconn.h
 wxcopy_LDADD = @XCB_CORE_LIBS@

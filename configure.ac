@@ -315,6 +315,7 @@ supported_core=""
 supported_xext=""
 supported_gfx=""
 supported_sound=""
+supported_input=""
 
 
 dnl Platform-specific Makefile setup
@@ -1137,6 +1138,23 @@ WM_OPTIONAL_DEP([WSOUND], [libpipewire-0.3 sndfile], [have_pipewire],
     [BUILD_WSOUND])
 
 
+dnl ==============================================
+dnl         Touchpad gesture daemon (libinput + libudev)
+dnl ==============================================
+dnl wmaker learns nothing new about gestures: wmtouchd reads three- and
+dnl four-finger swipes via libinput and delivers them through the generic
+dnl `action NAME' IPC verb. Neither libinput nor libudev may enter wmaker,
+dnl libWINGs or libWUtil, only this optional util daemon.
+WM_OPTIONAL_DEP([WTOUCH], [libinput >= 1.19 libudev], [have_libinput],
+    [with], [libinput],
+    [--with-libinput@<:@=auto|yes|no@:>@],
+    [build the wmtouchd touchpad gesture daemon @<:@default=auto@:>@],
+    [AC_DEFINE([HAVE_LIBINPUT], [1], [Define if libinput is available])
+     supported_input="$supported_input wmtouchd"],
+    [wmtouchd],
+    [BUILD_WTOUCH])
+
+
 dnl
 dnl stdlib.h is checked here, because of conflict in jpeglib.h
 AC_CHECK_HEADERS(stdlib.h)
@@ -1318,6 +1336,7 @@ echo "Supported core features:            :$supported_core"
 echo "Supported X extensions:             :$supported_xext"
 echo "Supported graphic format libraries  :$supported_gfx"
 echo "Supported sound daemons             :$supported_sound"
+echo "Supported input daemons             :$supported_input"
 echo "Unsupported features                :$unsupported"
 echo "Cairo / PangoCairo rendering        : `$PKG_CONFIG --modversion cairo` / `$PKG_CONFIG --modversion pangocairo`"
 echo "Integration-test tools found        :$drive_tools"

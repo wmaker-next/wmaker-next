@@ -16,6 +16,34 @@ Hot-corner entries whose value matches an action name now run that action
 directly instead of shelling out, while unknown strings still run as
 shell commands.
 
+Touchpad gesture daemon
+-----------------------
+
+The new optional `wmtouchd` daemon (`configure --with-libinput`) reads
+three- to five-finger touchpad swipes and two- to five-finger pinches
+through libinput and delivers them through the `action` verb. The gesture-to-action mapping
+lives in the `WMTouch` defaults domain and is edited with `wdwrite`, for
+example:
+
+  {
+      SwipeThreshold      = 60;
+      PinchThreshold      = 1.5;
+      ThreeFingerLeft     = "PrevWorkspace";
+      ThreeFingerRight    = "NextWorkspace";
+      ThreeFingerUp       = "ShowDesktop";
+      ThreeFingerDown     = "None";
+      ThreeFingerPinchOut = "Maximize";
+      ThreeFingerPinchIn  = "Miniaturize";
+  }
+
+A gesture bound to `None`, empty, or an absent key does nothing, so the
+domain opts in per gesture; `wmtouchd --check` validates the names against
+the window manager without executing anything. It links libinput, libudev
+and libWUtil, never X11.
+Opening the touchpad needs device access for the user running the daemon:
+a logind uaccess ACL, the `input` group, or a udev rule on the device, as
+described in wmtouchd(1).
+
 Window tree introspection over IPC
 ----------------------------------
 

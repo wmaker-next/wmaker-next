@@ -71,6 +71,7 @@ util/wmclipd
 util/Tests/wmclipd_cliptest
 util/Tests/check_wmgenmenu
 util/Tests/check_wmakermsg
+util/Tests/check_wtouch
 util/wmgenmenu
 util/wmglyph
 util/wmiv
@@ -78,6 +79,7 @@ util/wmlock
 util/wmmenugen
 util/wmsetbg
 util/wmsoundd
+util/wmtouchd
 util/wmsetup
 util/wxcopy
 util/wxpaste

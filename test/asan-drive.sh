@@ -629,6 +629,12 @@ run_util seticons "$WMHOME/asan-icons"
 run_util wmgenmenu
 run_util wmsetbg -p '(solid, "#404040")'
 run_util convertfonts "$WMHOME/asan-style"
+if [ -x "$ROOT/util/.libs/wmtouchd" ]; then
+    printf 'begin 3\nupdate 3 80 0\nend 3\n' >"$WMHOME/asan-gestures"
+    printf '{ ThreeFingerRight = "NextWorkspace"; }\n' >"$WMHOME/asan-wmtouch"
+    run_util wmtouchd --source-events "$WMHOME/asan-gestures" \
+        --config "$WMHOME/asan-wmtouch"
+fi
 
 # --- resource realisation failures (resource_retry_default call sites) ------
 # After startup scr->flags.startup is clear, so an invalid spec must warn

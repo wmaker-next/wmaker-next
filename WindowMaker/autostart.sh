@@ -27,3 +27,10 @@
 # Requires DisableSound = NO in the WindowMaker domain and PipeWire.
 # The pgrep guard stops a second copy starting when Window Maker restarts.
 #pgrep -u "$(id -u)" -x wmsoundd >/dev/null 2>&1 || wmsoundd &
+
+# Uncomment to run the touchpad gesture daemon, which turns two- to
+# five-finger swipes and pinches into Window Maker actions from the WMTouch
+# defaults domain. See wmtouchd(1). Needs read access to the touchpad device: a
+# logind uaccess ACL, the input group, or a device udev rule.
+# The pgrep guard stops a second copy starting when Window Maker restarts.
+#pgrep -u "$(id -u)" -x wmtouchd >/dev/null 2>&1 || wmtouchd &

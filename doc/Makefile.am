@@ -16,6 +16,7 @@ dist_man_MANS = \
 	wmclipd.1 \
 	wmakermsg.1 \
 	wmsoundd.1 \
+	wmtouchd.1 \
 	wmgenmenu.1 \
 	wmglyph.1 \
 	wmiv.1 \
@@ -58,7 +59,7 @@ am__v_CHKOPTS_0 = @echo "  CHK      $@" ;
 am__v_CHKOPTS_1 =
 
 check-local: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmgenmenu-args wmglyph-args wmiv-args wmlock-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmtouchd-args wmgenmenu-args wmglyph-args wmiv-args wmlock-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 wmaker-args:
@@ -117,6 +118,14 @@ else
 	@echo "  SKIP     wmsoundd-args (built without PipeWire)"
 endif
 
+wmtouchd-args:
+if BUILD_WTOUCH
+	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
+		--program "$(top_builddir)/util/wmtouchd" --man-page "$(top_srcdir)/doc/wmtouchd.1"
+else
+	@echo "  SKIP     wmtouchd-args (built without libinput)"
+endif
+
 wmgenmenu-args:
 	$(AM_V_CHKOPTS)$(top_srcdir)/script/check-cmdline-options-doc.sh \
 		--program "$(top_builddir)/util/wmgenmenu" --man-page "$(top_srcdir)/doc/wmgenmenu.1"
@@ -154,7 +163,7 @@ wxpaste-args:
 		--program "$(top_builddir)/util/wxpaste" --man-page "$(top_srcdir)/doc/wxpaste.1"
 
 .PHONY: wmaker-args WPrefs-args wmagnify-args convertfonts-args geticonset-args getstyle-args seticons-args setstyle-args \
-	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmgenmenu-args wmglyph-args wmiv-args wmmenugen-args wmsetbg-args \
+	wdread-args wdwrite-args wmclipd-args wmakermsg-args wmsoundd-args wmtouchd-args wmgenmenu-args wmglyph-args wmiv-args wmmenugen-args wmsetbg-args \
 	wxcopy-args wxpaste-args
 
 

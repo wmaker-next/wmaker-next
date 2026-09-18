@@ -4,6 +4,8 @@ check_PROGRAMS = check_wmgenmenu check_wmakermsg
 TESTS = check_wmgenmenu check_wmakermsg
 DRIVE_TESTS =
 check_PROGRAMS += wmclipd_cliptest
+check_PROGRAMS += check_wtouch
+TESTS += check_wtouch
 DRIVE_TESTS += wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
 	wxcopy-wxpaste.sh
@@ -19,6 +21,9 @@ check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 check_wmakermsg_SOURCES = check_wmakermsg.c
 check_wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+check_wtouch_SOURCES = check_wtouch.c ../wmtouch-core.c ../wmtouch-core.h
+check_wtouch_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 EXTRA_DIST = wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
