@@ -1181,18 +1181,6 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	/* get geometry stuff */
 	wClientGetNormalHints(wwin, &wattribs, true, ck.normal, &x, &y, &width, &height);
 
-	/* Some applications create placeholder windows with 1x1 size
-	 * (e.g. VirtualBox internal windows). Don't manage those initial
-	 * 1x1 windows. */
-	if (width <= 1 && height <= 1 && !wwin->flags.is_dockapp) {
-		if (title)
-			wfree(title);
-		wManageDiscard(&ck);
-		wWindowDestroy(wwin);
-		wXUngrabServer(wdisp->conn);
-		return NULL;
-	}
-
 	/* get colormap windows */
 	wClientRcvColormapWindows(wwin, ck.cmap_windows);
 
