@@ -1,0 +1,79 @@
+/* Minimal placeholder-size client for test/tiny-window-drive.sh: maps a
+ * 1x1 top-level and then resizes it to its real geometry, the order qiv
+ * and similar clients use. The client window id is printed on stdout so
+ * the drive can locate the window before it is reparented.
+ *
+ * Environment knobs:
+ *   TINYWIN_NAME   title (default "tinywin")
+ *   TINYWIN_GEOM   final geometry (default "200x150+540+325")
+ *   TINYWIN_DELAY  microseconds between map and resize (default 200000)
+ */
+#define _POSIX_C_SOURCE 200809L
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(void)
+{
+	const char *name = getenv("TINYWIN_NAME");
+	const char *geom = getenv("TINYWIN_GEOM");
+	const char *delay = getenv("TINYWIN_DELAY");
+	unsigned long usec;
+	Display *dpy;
+	Window w;
+	Atom protos[2];
+	int scr;
+	unsigned int gw, gh;
+	int gx, gy;
+
+	if (!name || !*name)
+		name = "tinywin";
+	if (!geom || !*geom)
+		geom = "200x150+540+325";
+	usec = (delay && *delay) ? strtoul(delay, NULL, 0) : 200000UL;
+
+	dpy = XOpenDisplay(NULL);
+	if (!dpy) {
+		fprintf(stderr, "tinywin-client: cannot open display\n");
+		return 1;
+	}
+	scr = DefaultScreen(dpy);
+
+	if (XParseGeometry(geom, &gx, &gy, &gw, &gh) == 0) {
+		gx = 540;
+		gy = 325;
+		gw = 200;
+		gh = 150;
+	}
+
+	w = XCreateSimpleWindow(dpy, RootWindow(dpy, scr), gx, gy, 1, 1, 0,
+				BlackPixel(dpy, scr), WhitePixel(dpy, scr));
+
+	protos[0] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+	protos[1] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+	XSetWMProtocols(dpy, w, protos, 2);
+	XStoreName(dpy, w, name);
+
+	printf("0x%lx\n", (unsigned long)w);
+	fflush(stdout);
+
+	XMapWindow(dpy, w);
+	XFlush(dpy);
+	usleep((useconds_t)usec);
+
+	XMoveResizeWindow(dpy, w, gx, gy, gw, gh);
+	XFlush(dpy);
+
+	for (;;) {
+		XEvent ev;
+
+		XNextEvent(dpy, &ev);
+		if (ev.type == DestroyNotify)
+			break;
+	}
+	XCloseDisplay(dpy);
+	return 0;
+}
