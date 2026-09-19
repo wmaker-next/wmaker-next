@@ -61,10 +61,30 @@ Connect to the given socket path instead of resolving one.
 .BR kill\-session ,
 .BR "workspace next|prev|last|N" ,
 .BR "window\-workspace XID N|+N|\-N" ,
+.BR "set\-layout LAYOUT [workspace N] [master_count N] [master_ratio F]" ,
+.BR "set\-viewport X Y" ,
 .BR "dock\-launch SLOT" ,
+.BR "workspace\-new [count]" ,
+.BR "workspace\-delete N" ,
 .BR "display\-power on|off" ,
+.BR "play\-sound EVENT" ,
 .BR "action \fINAME\fR [\fIXID\fR]" ,
-.BR info .
+.BR info ,
+.BR "get\-keybinds [all]" .
+.PP
+The
+.B get\-keybinds
+verb lists the active key bindings as a
+.I keybinds
+array. Each row reports the short
+.IR action
+name, the configuration key, the raw configuration spec, a category and a
+human-readable description, and whether it is bound, plus the rendered
+display label for bound rows. By default unbound rows are omitted; pass
+.I all
+to include them. Use
+.B \-\-json
+to consume the reply as JSON.
 .PP
 The
 .B action

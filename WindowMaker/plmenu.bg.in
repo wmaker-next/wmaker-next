@@ -2,6 +2,7 @@
  ("Инфо",
   ("Информационен панел...", INFO_PANEL),
   ("Лицензионен панел...", LEGAL_PANEL),
+  ("Keyboard Shortcuts", KEYBIND_PANEL),
   ("Системна конзола", EXEC, "xconsole"),
   ("Натоварване на системата", SHEXEC, "xosview || xload"),
   ("Списък на процесите", EXEC, "xterm -e top"),

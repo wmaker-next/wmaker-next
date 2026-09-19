@@ -192,6 +192,9 @@ enum {
 	/* open the "find" dialog */
 	WKBD_RUN,
 
+	/* open the keyboard shortcuts panel */
+	WKBD_SHOWKEYBINDS,
+
 	/* open "exit" dialog */
 	WKBD_EXIT,
 
@@ -293,5 +296,24 @@ int wKeybindForAction(const char *name);
  * IPC `info` verb so clients can validate names without executing them. */
 int wKeybindActionCount(void);
 const char *wKeybindActionName(int index);
+
+/* One row of the active key-binding table, shared by the IPC
+ * `get-keybinds` verb and the shortcuts panel. */
+typedef struct WKeybindInfo {
+	const char *action;      /* short action name, e.g. "Hide" */
+	const char *config_key;  /* schema key, e.g. "HideKey" */
+	const char *spec;        /* raw config string, e.g. "Mod1+H" */
+	const char *category;    /* group heading, e.g. "Windows" */
+	const char *description; /* human-readable summary */
+	char *label;             /* rendered display label, NULL if unbound */
+	int bound;               /* nonzero when a shortcut is active */
+} WKeybindInfo;
+
+/* Collect the schema key-binding rows in schema order. When
+ * include_unbound is zero only rows with an active shortcut are
+ * returned. The returned array is owned by the caller and must be
+ * released with wKeybindFree(); *count receives the number of rows. */
+WKeybindInfo *wKeybindCollect(int include_unbound, int *count);
+void wKeybindFree(WKeybindInfo *items, int count);
 
 #endif /* WMKEYBIND_H */

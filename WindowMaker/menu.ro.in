@@ -108,6 +108,7 @@
 	"Informaţii" MENU
 		"Panou cu Informaţii" INFO_PANEL
 		"Panou cu Licenţa" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Consola Sistem" EXEC xconsole
 		"Încărcarea Sistemului" SHEXEC xosview || xload
 		"Lista Proceselor" EXEC xterm -e top

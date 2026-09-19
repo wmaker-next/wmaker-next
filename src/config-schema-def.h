@@ -770,6 +770,7 @@
 	_(WINDOW_RELAUNCH_KEY, "WindowRelaunchKey", "None", WKBD_RELAUNCH) \
 	_(SCREEN_SWITCH_KEY, "ScreenSwitchKey", "None", WKBD_SWITCH_SCREEN) \
 	_(RUN_KEY, "RunKey", "None", WKBD_RUN) \
+	_(SHOW_KEYBINDS_KEY, "ShowKeybindsKey", "None", WKBD_SHOWKEYBINDS) \
 	_(EXIT_KEY, "ExitKey", "None", WKBD_EXIT) \
 	_(SCREEN_CAPTURE_KEY, "ScreenCaptureKey", "None", WKBD_PRINTS) \
 	_(WINDOW_CAPTURE_KEY, "WindowCaptureKey", "None", WKBD_PRINTW) \

@@ -103,6 +103,7 @@
 	"情報" MENU
 		"Info パネル..." INFO_PANEL
 		"Legal パネル..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"システム負荷" SHEXEC xosview || xload
 		"プロセス一覧" EXEC xterm -e top
 		"マニュアルブラウザ" EXEC xman

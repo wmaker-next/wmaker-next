@@ -36,6 +36,7 @@
 	"Info" MENU
 		"Info Panel..." INFO_PANEL
 		"Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 //		"Xosview" EXEC xosview
 		"Top"	EXEC xterm -e top
 		"Manuál" EXEC xman

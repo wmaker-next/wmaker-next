@@ -16,7 +16,13 @@ libwconfigschema_la_SOURCES = \
 	config-schema.h \
 	config-schema-def.h \
 	config-schema-public.h \
-	config-values.h
+	config-values.h \
+	keybind-descriptions.h
+
+# keybind-descriptions.h holds localized strings; opt it in to the
+# translation-source consistency check (see po/check-local).
+wmaker_TRANSLATABLE_FILES = \
+	keybind-descriptions.h
 
 wmaker_SOURCES = 	\
 	GNUstep.h \

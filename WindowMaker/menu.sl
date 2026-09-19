@@ -105,6 +105,7 @@
 	"Informacije" MENU
 		"Informacije o programu..." INFO_PANEL
 		"Licenca..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Sistemska konzola" EXEC xconsole
 		"Obremenitev sistema" SHEXEC xosview || xload
 		"Seznam procesov" EXEC xterm -e top

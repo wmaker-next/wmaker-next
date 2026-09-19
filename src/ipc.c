@@ -735,6 +735,50 @@ static verb_rc verb_info(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
+static verb_rc verb_get_keybinds(WScreen *scr, WMPropList *args,
+				 char **err, WMPropList **reply)
+{
+	WMPropList *keybinds, *d;
+	WKeybindInfo *items;
+	int count, i, show_all = 0;
+
+	(void)scr;
+	if (args && WMGetPropListItemCount(args) >= 2) {
+		WMPropList *a = WMGetFromPLArray(args, 1);
+
+		if (a && WMIsPLString(a)) {
+			if (strcmp(WMGetFromPLString(a), "all") == 0)
+				show_all = 1;
+			else {
+				*err = wstrdup("get-keybinds: unknown argument");
+				return VERB_FAIL;
+			}
+		}
+	}
+
+	items = wKeybindCollect(show_all, &count);
+	keybinds = WMCreatePLArray(NULL);
+	for (i = 0; i < count; i++) {
+		d = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(d, "action", pl_string(items[i].action));
+		pl_dict_put(d, "config_key", pl_string(items[i].config_key));
+		pl_dict_put(d, "spec", pl_string(items[i].spec));
+		pl_dict_put(d, "category", pl_string(items[i].category));
+		pl_dict_put(d, "description", pl_string(items[i].description));
+		pl_dict_put(d, "bound", pl_bool(items[i].bound));
+		if (items[i].bound)
+			pl_dict_put(d, "binding", pl_string(items[i].label));
+		WMAddToPLArray(keybinds, d);
+		WMReleasePropList(d);
+	}
+	wKeybindFree(items, count);
+
+	*reply = WMCreatePLDictionary(NULL, NULL);
+	pl_dict_put(*reply, "success", pl_bool(1));
+	pl_dict_put(*reply, "keybinds", keybinds);
+	return VERB_OK;
+}
+
 #ifdef VIRTUAL_DESKTOP
 static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 				 char **err, WMPropList **reply)
@@ -1002,6 +1046,7 @@ static const struct {
 	{ "display-power",    verb_display_power },
 	{ "play-sound",       verb_play_sound },
 	{ "info",             verb_info },
+	{ "get-keybinds",     verb_get_keybinds },
 	{ NULL, NULL }
 };
 

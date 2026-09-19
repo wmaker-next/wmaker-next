@@ -40,6 +40,19 @@ The `show-desktop`, `grow-to-edge`, `shrink-to-edge`, `show-all`,
 `Hide`/`HideOthers`/`Close` actions now accept a window id to target a
 background window, matching the verbs they replace.
 
+Key bindings over IPC and a shortcuts panel
+-------------------------------------------
+
+`wmakermsg get-keybinds` lists every active key binding as a `keybinds`
+array. Each row gives the short action name that `action` accepts, the
+configuration key, the raw configuration spec, and whether the binding is
+active, plus the rendered display label for bound rows. Unbound rows are
+omitted by default and included with `get-keybinds all`. The same data
+drives a new non-modal `Keyboard Shortcuts` panel, opened from a root-menu
+`KEYBIND_PANEL` entry or the bindable `ShowKeybinds` action, so the panel
+appears in its own list. The panel is read-only; WPrefs remains the
+editor.
+
 Touchpad gesture daemon
 -----------------------
 

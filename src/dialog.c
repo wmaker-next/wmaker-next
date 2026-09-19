@@ -36,6 +36,8 @@
 
 #include <wraster.h>
 
+#include <cairo.h>
+
 #include <WINGs/WINGsP.h>
 
 #include "WindowMaker.h"
@@ -48,6 +50,7 @@
 #include "actions.h"
 #include "ipc.h"
 #include "defaults.h"
+#include "keybind.h"
 
 int wMessageDialog(WScreen *scr, const char *title, const char *message, const char *defBtn, const char *altBtn, const char *othBtn)
 {
@@ -690,4 +693,289 @@ void wShowLegalPanel(WScreen *scr)
 	WMMapWidget(panel->win);
 	wWindowMap(wwin);
 	legalPanel = panel;
+}
+
+/*
+ ***********************************************************************
+ * Keyboard Shortcuts Panel
+ ***********************************************************************
+ */
+
+typedef enum {
+	SHORTCUT_HEADER,
+	SHORTCUT_ROW
+} ShortcutRowType;
+
+typedef struct {
+	ShortcutRowType type;
+	const char *category;     /* header text */
+	const WKeybindInfo *info; /* bound row */
+	int stripe;               /* alternating background for rows */
+} ShortcutRow;
+
+typedef struct {
+	WScreen *scr;
+	WWindow *wwin;
+	WMWindow *win;
+	WMList *list;
+	WMFont *font;
+	WMFont *boldFont;
+	WKeybindInfo *items;
+	int count;
+	ShortcutRow *rows;
+	int rowCount;
+	WMColor *headerBack;
+	WMColor *headerFg;
+	WMColor *altBack;
+	WMColor *capBack;
+	WMColor *capBorder;
+	WMColor *textFg;
+} ShortcutsPanel;
+
+static ShortcutsPanel *shortcutsPanel;
+
+static int compareKeybindInfo(const void *a, const void *b)
+{
+	const WKeybindInfo *x = a;
+	const WKeybindInfo *y = b;
+	int c = strcasecmp(x->category, y->category);
+
+	if (c != 0)
+		return c;
+
+	return strcasecmp(x->description, y->description);
+}
+
+static void buildShortcutRows(ShortcutsPanel *panel)
+{
+	const char *lastCategory = NULL;
+	int i, stripe = 0;
+
+	if (panel->count > 1)
+		qsort(panel->items, panel->count, sizeof(*panel->items),
+		      compareKeybindInfo);
+
+	panel->rows = wmalloc(sizeof(*panel->rows) * (panel->count * 2 + 1));
+	panel->rowCount = 0;
+
+	for (i = 0; i < panel->count; i++) {
+		WKeybindInfo *info = &panel->items[i];
+
+		if (!lastCategory
+		    || strcmp(lastCategory, info->category) != 0) {
+			panel->rows[panel->rowCount].type = SHORTCUT_HEADER;
+			panel->rows[panel->rowCount].category = info->category;
+			panel->rows[panel->rowCount].info = NULL;
+			panel->rows[panel->rowCount].stripe = 0;
+			panel->rowCount++;
+			lastCategory = info->category;
+			stripe = 0;
+		}
+
+		panel->rows[panel->rowCount].type = SHORTCUT_ROW;
+		panel->rows[panel->rowCount].category = info->category;
+		panel->rows[panel->rowCount].info = info;
+		panel->rows[panel->rowCount].stripe = stripe;
+		panel->rowCount++;
+		stripe ^= 1;
+	}
+}
+
+static void destroyShortcutsPanel(WCoreWindow *foo, void *data,
+				  xcb_generic_event_t *event)
+{
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void)foo;
+	(void)data;
+	(void)event;
+
+	wKeybindFree(shortcutsPanel->items, shortcutsPanel->count);
+	wfree(shortcutsPanel->rows);
+	if (shortcutsPanel->font)
+		WMReleaseFont(shortcutsPanel->font);
+	if (shortcutsPanel->boldFont)
+		WMReleaseFont(shortcutsPanel->boldFont);
+	if (shortcutsPanel->headerBack)
+		WMReleaseColor(shortcutsPanel->headerBack);
+	if (shortcutsPanel->headerFg)
+		WMReleaseColor(shortcutsPanel->headerFg);
+	if (shortcutsPanel->altBack)
+		WMReleaseColor(shortcutsPanel->altBack);
+	if (shortcutsPanel->capBack)
+		WMReleaseColor(shortcutsPanel->capBack);
+	if (shortcutsPanel->capBorder)
+		WMReleaseColor(shortcutsPanel->capBorder);
+	if (shortcutsPanel->textFg)
+		WMReleaseColor(shortcutsPanel->textFg);
+	WMUnmapWidget(shortcutsPanel->win);
+	wUnmanageWindow(shortcutsPanel->wwin, false, false);
+	WMDestroyWidget(shortcutsPanel->win);
+	wfree(shortcutsPanel);
+	shortcutsPanel = NULL;
+}
+
+static void drawShortcutRow(WMList *lPtr, int index, xcb_drawable_t d,
+			    char *text, int state, WMRect *rect)
+{
+	ShortcutsPanel *panel = WMGetHangedData(lPtr);
+	W_Screen *screen = W_VIEW(lPtr)->screen;
+	ShortcutRow *row;
+	WMColor *back, *fg;
+	cairo_t *cr;
+	int textRight = 0;
+
+	(void)text;
+
+	if (!panel || index < 0 || index >= panel->rowCount)
+		return;
+
+	row = &panel->rows[index];
+
+	if (row->type == SHORTCUT_HEADER) {
+		back = panel->headerBack;
+		fg = panel->headerFg;
+	} else if (state & WLDSSelected) {
+		back = WMGetListSelectionColor(lPtr);
+		fg = panel->textFg;
+	} else {
+		back = row->stripe ? panel->altBack
+			: WMGetWidgetBackgroundColor(lPtr);
+		fg = panel->textFg;
+	}
+
+	cr = WCairoBeginForDrawable(screen, d);
+	if (!cr)
+		return;
+
+	W_SetSourceColor(cr, back);
+	cairo_rectangle(cr, 0, 0, rect->size.width, rect->size.height);
+	cairo_fill(cr);
+
+	if (row->type == SHORTCUT_HEADER) {
+		if (panel->boldFont) {
+			W_PaintText(cr, panel->boldFont, 8,
+				    (rect->size.height - WMFontHeight(panel->boldFont)) / 2,
+				    rect->size.width - 16, WALeft, fg, false,
+				    row->category, strlen(row->category));
+		}
+	} else if (panel->font) {
+		const WKeybindInfo *info = row->info;
+		int y = (rect->size.height - WMFontHeight(panel->font)) / 2;
+
+		textRight = rect->size.width - 8;
+
+		if (info->label) {
+			int len = strlen(info->label);
+			int capW = WMWidthOfString(panel->font, info->label, len) + 12;
+			int capH = rect->size.height - 6;
+			int capY = 3;
+			int capX = rect->size.width - capW - 8;
+
+			W_SetSourceColor(cr, panel->capBorder);
+			cairo_rectangle(cr, capX, capY, capW, capH);
+			cairo_fill(cr);
+			W_SetSourceColor(cr, panel->capBack);
+			cairo_rectangle(cr, capX + 1, capY + 1, capW - 2, capH - 2);
+			cairo_fill(cr);
+
+			W_PaintText(cr, panel->font, capX + 6,
+				    capY + (capH - WMFontHeight(panel->font)) / 2,
+				    capW - 12, WACenter, fg, false,
+				    info->label, len);
+
+			textRight = capX - 8;
+		}
+
+		if (textRight > 8)
+			W_PaintText(cr, panel->font, 8, y, textRight - 8,
+				    WALeft, fg, false, info->description,
+				    strlen(info->description));
+	}
+
+	WCairoEnd(cr);
+}
+
+void wShowShortcutsPanel(WScreen *scr)
+{
+	ShortcutsPanel *panel;
+	xcb_window_t parent;
+	WWindow *wwin;
+	WMPoint center;
+	int wmScaleWidth, wmScaleHeight;
+	int pwidth, pheight;
+	int i;
+
+	if (shortcutsPanel) {
+		if (shortcutsPanel->scr == scr) {
+			wRaiseFrame(shortcutsPanel->wwin->frame->core);
+			wSetFocusTo(scr, shortcutsPanel->wwin);
+		}
+		return;
+	}
+
+	panel = wmalloc(sizeof(ShortcutsPanel));
+	panel->scr = scr;
+	panel->win = WMCreateWindow(scr->wmscreen, "shortcuts");
+	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
+	pwidth = WMScaleX(560);
+	pheight = WMScaleY(460);
+	WMResizeWidget(panel->win, pwidth, pheight);
+
+	panel->font = WMSystemFontOfSize(scr->wmscreen, WMScaleY(11));
+	panel->boldFont = WMBoldSystemFontOfSize(scr->wmscreen, WMScaleY(11));
+
+	panel->headerBack = WMCreateRGBColor(scr->wmscreen, 0x3333, 0x3333, 0x3333, false);
+	panel->headerFg = WMWhiteColor(scr->wmscreen);
+	panel->altBack = WMCreateRGBColor(scr->wmscreen, 0xf2f2, 0xf2f2, 0xf2f2, false);
+	panel->capBack = WMCreateRGBColor(scr->wmscreen, 0xe6e6, 0xe6e6, 0xe6e6, false);
+	panel->capBorder = WMCreateRGBColor(scr->wmscreen, 0x9999, 0x9999, 0x9999, false);
+	panel->textFg = WMBlackColor(scr->wmscreen);
+
+	panel->list = WMCreateList(panel->win);
+	WMMoveWidget(panel->list, WMScaleX(10), WMScaleY(8));
+	WMResizeWidget(panel->list, pwidth - (2 * WMScaleX(10)),
+		       pheight - WMScaleY(16));
+	WMSetListAllowMultipleSelection(panel->list, false);
+	WMSetListAllowEmptySelection(panel->list, true);
+	WMSetListUserDrawProc(panel->list, drawShortcutRow);
+	if (panel->font)
+		WMSetListUserDrawItemHeight(panel->list,
+					    WMFontHeight(panel->font) + WMScaleY(6));
+	WMHangData(panel->list, panel);
+
+	panel->items = wKeybindCollect(0, &panel->count);
+	buildShortcutRows(panel);
+	for (i = 0; i < panel->rowCount; i++)
+		WMAddListItem(panel->list,
+			      panel->rows[i].type == SHORTCUT_HEADER
+			      ? panel->rows[i].category
+			      : panel->rows[i].info->action);
+
+	WMRealizeWidget(panel->win);
+	WMMapSubwidgets(panel->win);
+
+	parent = xcb_generate_id(wdisp->conn);
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
+			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
+			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
+	xcb_reparent_window(wdisp->conn, WMWidgetXID(panel->win), parent, 0, 0);
+	WMMapWidget(panel->win);
+
+	center = wGetCenter(scr, pwidth, pheight);
+	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Keyboard Shortcuts"),
+				     center.x, center.y, pwidth, pheight);
+
+	WSETUFLAG(wwin, no_closable, 0);
+	WSETUFLAG(wwin, no_close_button, 0);
+#ifdef XKB_BUTTON_HINT
+	wFrameWindowHideButton(wwin->frame, WFF_LANGUAGE_BUTTON);
+#endif
+	wWindowUpdateButtonImages(wwin);
+	wFrameWindowShowButton(wwin->frame, WFF_CLOSE_BUTTON);
+	wwin->frame->on_click_button[WTB_CLOSE] = destroyShortcutsPanel;
+
+	wWindowMap(wwin);
+
+	panel->wwin = wwin;
+	shortcutsPanel = panel;
 }

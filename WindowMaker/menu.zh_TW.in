@@ -106,6 +106,7 @@
 	"資訊" MENU
 		"資訊面板..." INFO_PANEL
 		"法律..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"系統主控台" EXEC xconsole
 		"系統負載" SHEXEC xosview || xload
 		"行程清單" EXEC xterm -e top

@@ -346,6 +346,14 @@ int main(int argc, char *argv[])
 	);
 	WMAddToPLArray(RMenu, L1Menu);
 
+	/* Root -> Keyboard Shortcuts */
+	L1Menu = WMCreatePLArray(
+		WMCreatePLString(_("Keyboard Shortcuts")),
+		WMCreatePLString("KEYBIND_PANEL"),
+		NULL
+	);
+	WMAddToPLArray(RMenu, L1Menu);
+
 	/* Root -> Restart Window Maker */
 	L1Menu = WMCreatePLArray(
 		WMCreatePLString(_("Restart Window Maker")),

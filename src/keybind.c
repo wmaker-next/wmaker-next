@@ -64,7 +64,10 @@
 #include "hotcorner.h"
 #include "wsound.h"
 
+#include "config-schema.h"
 #include "config-schema-def.h"
+#include "keybind-descriptions.h"
+#include "dialog.h"
 
 static void hideLayoutOSD(void *data)
 {
@@ -808,6 +811,10 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		ExecuteInputCommand(scr, _("exec %A(Find)"));
 		break;
 
+	case WKBD_SHOWKEYBINDS:
+		wShowShortcutsPanel(scr);
+		break;
+
 	case WKBD_EXIT:
 		/* quick mode is not allowed to prevent inadvertently call */
 		ExecuteExitCommand(scr, 0);
@@ -1039,4 +1046,113 @@ const char *wKeybindActionName(int index)
 	if (index < 0 || index >= actionShortCount)
 		return NULL;
 	return actionShortNames[index];
+}
+
+/* Grouping and description for every schema key-binding row, from the
+ * table shared with WPrefs so the two cannot drift. See
+ * keybind-descriptions.h. */
+static const struct {
+	const char *key;
+	const char *category;
+	const char *description;
+} keybindMeta[] = {
+#define KEYBIND_META(key, category, description) { key, category, description },
+	WCFG_KEYBIND_DESCRIPTIONS(KEYBIND_META)
+#undef KEYBIND_META
+	{ NULL, NULL, NULL }
+};
+
+static void keybindMetaFor(const char *key, const char **category,
+			   const char **description)
+{
+	size_t i;
+
+	for (i = 0; keybindMeta[i].key != NULL; i++) {
+		if (strcmp(keybindMeta[i].key, key) == 0) {
+			*category = _(keybindMeta[i].category);
+			*description = _(keybindMeta[i].description);
+			return;
+		}
+	}
+
+	*category = _("Other");
+	*description = NULL;
+}
+
+WKeybindInfo *wKeybindCollect(int include_unbound, int *count)
+{
+	const WConfigEntry *schema = wConfigSchema();
+	size_t schema_count = wConfigSchemaCount();
+	WKeybindInfo *items;
+	size_t i;
+	int n = 0, cap = 0;
+
+	*count = 0;
+
+	for (i = 0; i < schema_count; i++)
+		if (schema[i].type == WCFG_KEY_BINDING
+		    && schema[i].min_value != WKBD_KEYCHAIN_CANCEL)
+			cap++;
+
+	if (cap == 0)
+		return NULL;
+
+	items = wmalloc(sizeof(*items) * cap);
+
+	for (i = 0; i < schema_count; i++) {
+		const WConfigEntry *e = &schema[i];
+		WKeybindInfo *info;
+		WShortKey *key;
+		size_t len;
+		const char *name;
+
+		if (e->type != WCFG_KEY_BINDING
+		    || e->min_value == WKBD_KEYCHAIN_CANCEL
+		    || e->min_value < 0 || e->min_value >= WKBD_LAST)
+			continue;
+
+		key = &wKeyBindings[e->min_value];
+		info = &items[n];
+
+		len = strlen(e->key);
+		if (len > 3 && strcmp(e->key + len - 3, "Key") == 0)
+			len -= 3;
+
+		name = wstrndup(e->key, len);
+		info->action = name;
+		info->config_key = e->key;
+		info->spec = (w_global.config
+			      && w_global.config->key_bindings[e->min_value].spec)
+			? w_global.config->key_bindings[e->min_value].spec
+			: e->default_value;
+		keybindMetaFor(e->key, &info->category, &info->description);
+		if (!info->description)
+			info->description = info->action;
+		info->label = GetShortcutKey(*key);
+		info->bound = info->label != NULL;
+
+		if (!info->bound && !include_unbound) {
+			wfree((char *)name);
+			continue;
+		}
+
+		n++;
+	}
+
+	*count = n;
+	return items;
+}
+
+void wKeybindFree(WKeybindInfo *items, int count)
+{
+	int i;
+
+	if (!items)
+		return;
+
+	for (i = 0; i < count; i++) {
+		wfree(items[i].label);
+		wfree((char *)items[i].action);
+	}
+	wfree(items);
 }

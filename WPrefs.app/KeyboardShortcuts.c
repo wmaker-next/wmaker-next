@@ -19,6 +19,7 @@
  */
 
 #include "WPrefs.h"
+#include "keybind-descriptions.h"
 #include <ctype.h>
 
 #include <xkbcommon/xkbcommon.h>
@@ -57,202 +58,18 @@ typedef struct _Panel {
 
 #define ICON_FILE	"keyshortcuts"
 
-#define DIR_KEYS(stem, l, r, u, d) \
-	{ stem "LeftKey",  N_(l) }, \
-	{ stem "RightKey", N_(r) }, \
-	{ stem "UpKey",    N_(u) }, \
-	{ stem "DownKey",  N_(d) }
-
 /*
- * List of user definable shortcut keys
- * First parameter is the internal keyword known by WMaker
- * Second is the text displayed to the user
+ * List of user definable shortcut keys, from the table shared with the
+ * window manager so the two cannot drift. See
+ * ../src/keybind-descriptions.h. The list is sorted by title below.
  */
 static struct keyOption {
 	const char *key;
 	const char *title;
 } keyOptions[] = {
-	{ "RootMenuKey",    N_("Open applications menu") },
-	{ "WindowListKey",  N_("Open window list menu") },
-	{ "WindowMenuKey",  N_("Open window commands menu") },
-	{ "HideKey",        N_("Hide active application") },
-	{ "HideOthersKey",  N_("Hide other applications") },
-	{ "ShowDesktopKey", N_("Toggle show desktop (minimize/restore all)") },
-	{ "ShowAllKey",     N_("Show all windows") },
-	{ "ArrangeIconsKey", N_("Arrange icons") },
-	{ "MiniaturizeKey", N_("Miniaturize active window") },
-	{ "MiniaturizeAllKey", N_("Miniaturize all windows") },
-	{ "MiniaturizeOthersKey", N_("Miniaturize other windows") },
-	{ "CloseKey",       N_("Close active window") },
-	{ "MaximizeKey",    N_("Maximize active window") },
-	{ "VMaximizeKey",   N_("Maximize active window vertically") },
-	{ "HMaximizeKey",   N_("Maximize active window horizontally") },
-	{ "LHMaximizeKey",  N_("Maximize active window left half") },
-	{ "RHMaximizeKey",  N_("Maximize active window right half") },
-	{ "THMaximizeKey",  N_("Maximize active window top half") },
-	{ "BHMaximizeKey",  N_("Maximize active window bottom half") },
-	{ "TLCMaximizeKey", N_("Maximize active window top left corner") },
-	{ "TRCMaximizeKey", N_("Maximize active window top right corner") },
-	{ "BLCMaximizeKey", N_("Maximize active window bottom left corner") },
-	{ "BRCMaximizeKey", N_("Maximize active window bottom right corner") },
-	{ "MaximusKey",     N_("Tile active window") },
-	{ "LayoutCycleKey",     N_("Cycle workspace tiling layout") },
-	{ "LayoutCycleBackKey", N_("Cycle workspace tiling layout back") },
-	{ "LayoutAxisKey",      N_("Swap tiling layout axis") },
-	{ "LayoutFloatKey",     N_("Set workspace layout to float") },
-	{ "MasterCountIncKey",  N_("Increase layout master count") },
-	{ "MasterCountDecKey",  N_("Decrease layout master count") },
-	{ "MasterRatioIncKey",  N_("Increase layout master ratio") },
-	{ "MasterRatioDecKey",  N_("Decrease layout master ratio") },
-	{ "TilingToggleKey",    N_("Toggle tiling for active window") },
-	{ "TilingSwapMasterKey", N_("Swap active window into master") },
-	{ "ToggleFullscreenKey", N_("Toggle fullscreen for active window") },
-	{ "CenterKey",      N_("Center active window") },
-	{ "KeepOnTopKey",   N_("Toggle window on top status") },
-	{ "KeepAtBottomKey",N_("Toggle window at bottom status") },
-	{ "OmnipresentKey", N_("Toggle window omnipresent status") },
-	{ "RaiseKey",       N_("Raise active window") },
-	{ "LowerKey",       N_("Lower active window") },
-	{ "RaiseLowerKey",  N_("Raise/Lower window under mouse pointer") },
-	{ "ShadeKey",       N_("Shade active window") },
-	{ "MoveResizeKey",  N_("Move/Resize active window") },
-	/* Edge-snap actions */
-	DIR_KEYS("MoveToEdge",
-		 "Move active window to left edge",
-		 "Move active window to right edge",
-		 "Move active window to top edge",
-		 "Move active window to bottom edge"),
-	{ "MoveToEdgeLeftNoSnapKey",  N_("Move active window to left screen edge") },
-	{ "MoveToEdgeRightNoSnapKey", N_("Move active window to right screen edge") },
-	{ "MoveToEdgeUpNoSnapKey",    N_("Move active window to top screen edge") },
-	{ "MoveToEdgeDownNoSnapKey",  N_("Move active window to bottom screen edge") },
-	DIR_KEYS("GrowToEdge",
-		 "Grow active window to left edge",
-		 "Grow active window to right edge",
-		 "Grow active window to top edge",
-		 "Grow active window to bottom edge"),
-	DIR_KEYS("ShrinkToEdge",
-		 "Shrink active window from left edge",
-		 "Shrink active window from right edge",
-		 "Shrink active window from top edge",
-		 "Shrink active window from bottom edge"),
-	{ "SelectKey",      N_("Select active window") },
-	{ "FocusNextKey",   N_("Focus next window") },
-	{ "FocusPrevKey",   N_("Focus previous window") },
-	/* Directional window focus */
-	{ "FocusWindowLeftKey",  N_("Focus the window to the left") },
-	{ "FocusWindowRightKey", N_("Focus the window to the right") },
-	{ "FocusWindowUpKey",    N_("Focus the window above") },
-	{ "FocusWindowDownKey",  N_("Focus the window below") },
-	{ "GroupWindowNextKey",   N_("Focus next window in group") },
-	{ "GroupWindowPrevKey",   N_("Focus previous window in group") },
-	{ "GroupNextKey",   N_("Switch to next application group") },
-	{ "GroupPrevKey",   N_("Switch to previous application group") },
-
-	/* Titlebar tab grouping */
-	{ "GroupTabNextKey",   N_("Switch to next tab in group") },
-	{ "GroupTabPrevKey",   N_("Switch to previous tab in group") },
-	{ "GroupTabAttachKey", N_("Attach window as tab") },
-	{ "GroupTabDetachKey", N_("Detach tab from group") },
-
-	/* Vim-like Window Marking */
-	{ "MarkSetKey",   N_("Mark window: set mark") },
-	{ "MarkUnsetKey", N_("Mark window: unset mark") },
-	{ "MarkBringKey", N_("Mark window: bring marked window here") },
-	{ "MarkJumpKey",  N_("Mark window: jump to marked window") },
-	{ "MarkSwapKey",  N_("Mark window: swap with marked window") },
-
-	/* Workspace Related */
-	{ "WorkspaceMapKey",  N_("Open workspace pager") },
-	{ "NextWorkspaceKey", N_("Switch to next workspace") },
-	{ "PrevWorkspaceKey", N_("Switch to previous workspace") },
-	{ "LastWorkspaceKey", N_("Switch to last used workspace") },
-	{ "NextWorkspaceLayerKey", N_("Switch to next ten workspaces") },
-	{ "PrevWorkspaceLayerKey", N_("Switch to previous ten workspaces") },
-	{ "LeftWorkspaceKey",  N_("Switch to workspace on the left") },
-	{ "RightWorkspaceKey", N_("Switch to workspace on the right") },
-	{ "UpWorkspaceKey",    N_("Switch to workspace above") },
-	{ "DownWorkspaceKey",  N_("Switch to workspace below") },
-	{ "Workspace1Key",  N_("Switch to workspace 1") },
-	{ "Workspace2Key",  N_("Switch to workspace 2") },
-	{ "Workspace3Key",  N_("Switch to workspace 3") },
-	{ "Workspace4Key",  N_("Switch to workspace 4") },
-	{ "Workspace5Key",  N_("Switch to workspace 5") },
-	{ "Workspace6Key",  N_("Switch to workspace 6") },
-	{ "Workspace7Key",  N_("Switch to workspace 7") },
-	{ "Workspace8Key",  N_("Switch to workspace 8") },
-	{ "Workspace9Key",  N_("Switch to workspace 9") },
-	{ "Workspace10Key", N_("Switch to workspace 10") },
-	{ "MoveToNextWorkspaceKey",      N_("Move window to next workspace") },
-	{ "MoveToPrevWorkspaceKey",      N_("Move window to previous workspace") },
-	{ "MoveToLastWorkspaceKey",      N_("Move window to last used workspace") },
-	{ "MoveToNextWorkspaceLayerKey", N_("Move window to next ten workspaces") },
-	{ "MoveToPrevWorkspaceLayerKey", N_("Move window to previous ten workspaces") },
-	{ "MoveToLeftWorkspaceKey",  N_("Move window to workspace on the left") },
-	{ "MoveToRightWorkspaceKey", N_("Move window to workspace on the right") },
-	{ "MoveToUpWorkspaceKey",    N_("Move window to workspace above") },
-	{ "MoveToDownWorkspaceKey",  N_("Move window to workspace below") },
-	{ "MoveToWorkspace1Key",  N_("Move window to workspace 1") },
-	{ "MoveToWorkspace2Key",  N_("Move window to workspace 2") },
-	{ "MoveToWorkspace3Key",  N_("Move window to workspace 3") },
-	{ "MoveToWorkspace4Key",  N_("Move window to workspace 4") },
-	{ "MoveToWorkspace5Key",  N_("Move window to workspace 5") },
-	{ "MoveToWorkspace6Key",  N_("Move window to workspace 6") },
-	{ "MoveToWorkspace7Key",  N_("Move window to workspace 7") },
-	{ "MoveToWorkspace8Key",  N_("Move window to workspace 8") },
-	{ "MoveToWorkspace9Key",  N_("Move window to workspace 9") },
-	{ "MoveToWorkspace10Key", N_("Move window to workspace 10") },
-	{ "ToggleWorkspace1Key",  N_("Toggle window on workspace 1") },
-	{ "ToggleWorkspace2Key",  N_("Toggle window on workspace 2") },
-	{ "ToggleWorkspace3Key",  N_("Toggle window on workspace 3") },
-	{ "ToggleWorkspace4Key",  N_("Toggle window on workspace 4") },
-#ifdef VIRTUAL_DESKTOP
-	{ "VirtualEdgeLeftKey",  N_("Move VirtualDesktop to next left edge") },
-	{ "VirtualEdgeRightKey", N_("Move VirtualDesktop to next right edge") },
-	{ "VirtualEdgeUpKey",    N_("Move VirtualDesktop to next top edge") },
-	{ "VirtualEdgeDownKey",  N_("Move VirtualDesktop to next bottom edge") },
-	{ "VirtualDesktopHomeKey",   N_("Move VirtualDesktop to its origin") },
-	{ "VirtualDesktopCenterKey", N_("Center the focused window in the VirtualDesktop") },
-	{ "VirtualDesktopPinKey",    N_("Pin the focused window to the VirtualDesktop viewport") },
-#endif
-	{ "ToggleWorkspace5Key",  N_("Toggle window on workspace 5") },
-	{ "ToggleWorkspace6Key",  N_("Toggle window on workspace 6") },
-	{ "ToggleWorkspace7Key",  N_("Toggle window on workspace 7") },
-	{ "ToggleWorkspace8Key",  N_("Toggle window on workspace 8") },
-	{ "ToggleWorkspace9Key",  N_("Toggle window on workspace 9") },
-	{ "ToggleWorkspace10Key", N_("Toggle window on workspace 10") },
-
-	/* Window Selection */
-	{ "WindowShortcut1Key",  N_("Shortcut for window 1") },
-	{ "WindowShortcut2Key",  N_("Shortcut for window 2") },
-	{ "WindowShortcut3Key",  N_("Shortcut for window 3") },
-	{ "WindowShortcut4Key",  N_("Shortcut for window 4") },
-	{ "WindowShortcut5Key",  N_("Shortcut for window 5") },
-	{ "WindowShortcut6Key",  N_("Shortcut for window 6") },
-	{ "WindowShortcut7Key",  N_("Shortcut for window 7") },
-	{ "WindowShortcut8Key",  N_("Shortcut for window 8") },
-	{ "WindowShortcut9Key",  N_("Shortcut for window 9") },
-	{ "WindowShortcut10Key", N_("Shortcut for window 10") },
-
-	/* Head Selection */
-	{ "MoveTo12to6Head",     N_("Move to right/bottom/left/top head") },
-	{ "MoveTo6to12Head",    N_("Move to left/top/right/bottom head") },
-
-	/* Misc. */
-	{ "WindowRelaunchKey", N_("Launch new instance of application") },
-	{ "ScreenSwitchKey",   N_("Switch to next screen/monitor") },
-	{ "RunKey",            N_("Find application") },
-	{ "ExitKey",            N_("Exit Window Maker") },
-	{ "DockRaiseLowerKey", N_("Raise/Lower Dock") },
-	{ "ClipRaiseLowerKey", N_("Raise/Lower Clip") },
-	{ "ScreenCaptureKey", N_("Capture the entire screen") },
-	{ "WindowCaptureKey", N_("Capture a window") },
-	{ "PartialCaptureKey", N_("Capture a portion of the screen") },
-	{ "LockScreenKey",     N_("Lock screen") },
-	{ "ClipboardKey",      N_("Open clipboard history") }
-#ifdef XKB_MODELOCK
-	,{ "ToggleKbdModeKey", N_("Toggle keyboard language") }
-#endif				/* XKB_MODELOCK */
+#define KEYBIND_OPTION(key, category, description) { key, description },
+	WCFG_KEYBIND_DESCRIPTIONS(KEYBIND_OPTION)
+#undef KEYBIND_OPTION
 };
 
 

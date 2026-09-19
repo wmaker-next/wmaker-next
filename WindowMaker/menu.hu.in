@@ -111,6 +111,7 @@
 	"Infó" MENU
 		"Információs panel..." INFO_PANEL
 		"Jogi..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Rendszer konzol" EXEC xconsole
 		"Rendszer kihasználtság" SHEXEC xosview || xload
 		"Processz lista" EXEC xterm -e top

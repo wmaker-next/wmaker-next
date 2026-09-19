@@ -155,7 +155,8 @@ static char *commandNames[] = {
 	"CLEAR_SESSION",
 	"REFRESH",
 	"INFO_PANEL",
-	"LEGAL_PANEL"
+	"LEGAL_PANEL",
+	"KEYBIND_PANEL"
 };
 
 #define ICON_FILE	"menus"
@@ -740,6 +741,7 @@ static void createPanel(_Panel * p)
 	WMInsertListItem(panel->icommandL, 9, _("Refresh Screen"));
 	WMInsertListItem(panel->icommandL, 10, _("Open Info Panel"));
 	WMInsertListItem(panel->icommandL, 11, _("Open Copyright Panel"));
+	WMInsertListItem(panel->icommandL, 12, _("Open Keyboard Shortcuts Panel"));
 
 	panel->paramF = WMCreateFrame(panel->optionsF);
 	WMResizeWidget(panel->paramF, width, 50);
@@ -1005,6 +1007,8 @@ static ItemData *parseCommand(WMPropList * item)
 			cmd = 10;
 		} else if (strcmp(command, "LEGAL_PANEL") == 0) {
 			cmd = 11;
+		} else if (strcmp(command, "KEYBIND_PANEL") == 0) {
+			cmd = 12;
 		} else {
 			wwarning(_("unknown command '%s' in menu"), command);
 			wfree(data);

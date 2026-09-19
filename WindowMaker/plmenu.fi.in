@@ -4,6 +4,7 @@
 	"Tietoja",
 		("Tietoja...", INFO_PANEL),
 		("Laillista", LEGAL_PANEL),
+		("Keyboard Shortcuts", KEYBIND_PANEL),
 		(
 		"Järjestelmäkonsoli",
 		EXEC,

@@ -242,6 +242,73 @@ check "transport failure exits 1" [ $? -eq 1 ]
 msg get_version 2>/dev/null | grep -q "pid = $WMAKER_PID;"
 check "GET_VERSION reports wmaker pid" [ $? -eq 0 ]
 
+# ---- get-keybinds ---------------------------------------------------------
+
+note "get-keybinds"
+
+if ! command -v python3 >/dev/null 2>&1; then
+	record_skip "get-keybinds rows: python3 not installed"
+else
+	KB_JSON=$(msg --json get-keybinds 2>/dev/null)
+	KB_ALL_JSON=$(msg --json get-keybinds all 2>/dev/null)
+	INFO_JSON=$(msg --json info 2>/dev/null)
+
+	kb_shape() {
+		printf '%s' "$KB_JSON" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["success"] == "YES", d
+rows = d["keybinds"]
+assert rows, "empty keybinds"
+for r in rows:
+    assert {"action", "config_key", "spec", "category", "description",
+            "bound"} <= set(r), r
+    assert r["bound"] == "YES", r
+    assert r.get("binding"), r
+    assert r["category"] and r["description"], r
+'
+	}
+	check "get-keybinds default rows are bound and complete" kb_shape
+
+	kb_default_has() {
+		printf '%s' "$KB_JSON" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+sys.exit(0 if any(r["config_key"] == sys.argv[1] for r in d["keybinds"]) else 1)
+' "$1"
+	}
+	check "HideKey present by default" kb_default_has HideKey
+
+	kb_all_unbound() {
+		printf '%s' "$KB_ALL_JSON" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+r = [x for x in d["keybinds"] if x["config_key"] == sys.argv[1]]
+assert r, "missing " + sys.argv[1]
+r = r[0]
+assert r["bound"] == "NO", r
+assert "binding" not in r, r
+assert r["spec"] == "None", r
+' "$1"
+	}
+	check "CloseKey unbound under all without a binding key" kb_all_unbound CloseKey
+
+	kb_set_equal() {
+		printf '%s' "$INFO_JSON" | python3 -c '
+import json, sys
+info = json.load(sys.stdin)
+allb = json.loads(sys.argv[1])
+a = set(info["actions"])
+b = set(r["action"] for r in allb["keybinds"])
+assert a == b, (sorted(a - b), sorted(b - a))
+' "$KB_ALL_JSON"
+	}
+	check "info actions equal get-keybinds all actions" kb_set_equal
+
+	msg -q get-keybinds bogus >/dev/null 2>&1
+	check "get-keybinds bad-arg exits 2" [ $? -eq 2 ]
+fi
+
 # ---- get_window_tree ------------------------------------------------------
 
 note "get_window_tree"

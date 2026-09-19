@@ -44,6 +44,7 @@
 	"Info" MENU
 		"Info Panel..." INFO_PANEL
 		"Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
   		"Systemauslastung" SHEXEC xosview || xload
               	"Prozeßtabelle" EXEC xterm -e top
 		"Anleitungen" EXEC xman

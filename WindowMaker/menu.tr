@@ -89,6 +89,7 @@
 
 "Ana Menü" MENU
 	"Bilgi" MENU
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Copyright..." EXEC xmessage -center -font variable -title \
 	'WindowMaker 'WM_VERSION -file $WMAKER_USER_DATA/Copyright
 		"Sistem Konsolu" EXEC xconsole

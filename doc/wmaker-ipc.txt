@@ -170,6 +170,17 @@ Command verbs (request type 0)
     info
             reply carries the usual version fields plus an `actions'
             array listing every action name that `action' accepts
+    get-keybinds [all]
+            reply carries a `keybinds' array describing the active
+            key bindings. By default only bound actions are listed; `all'
+            also includes unbound rows. Each row is a dictionary with
+            `action' (the short name `action' accepts), `config_key' (the
+            schema key for config-file round trips), `spec' (the raw
+            config string, locale- and XKB-independent), `category' (the
+            group heading used by the shortcuts panel), `description' (a
+            human-readable summary) and `bound' (YES or NO). A bound row
+            also carries `binding', the rendered display label; an unbound
+            row has spec="None" and no `binding' key
 
 Window-manager actions are reached through `action'. Verbs listed above
 that duplicate an action stay only while they carry a capability it

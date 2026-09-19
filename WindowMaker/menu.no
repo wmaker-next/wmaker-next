@@ -100,6 +100,7 @@
 	"Info" MENU
 		"Lisens..." INFO_PANEL
 		"Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"System Belastning" SHEXEC xosview || xload
 		"Prosess Liste" EXEC xterm -e top
 		"Manual leser" EXEC stepman

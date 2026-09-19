@@ -122,6 +122,7 @@
 	"Informácie" MENU
 		"Panel Info" INFO_PANEL
 		"Panel Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Systémová konzola" EXEC xconsole
 		"Zaťaženie systému" SHEXEC xosview || xload
 		"Zoznam procesov" EXEC xterm -e top

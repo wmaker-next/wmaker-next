@@ -108,6 +108,7 @@
 	"Tietoja" MENU
 		"Tietoja..." INFO_PANEL
 		"Laillista" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Järjestelmäkonsoli" EXEC xconsole
 		"Järjestelmän rasitus" SHEXEC xosview || xload
 		"Prosessiluettelo" EXEC xterm -e top

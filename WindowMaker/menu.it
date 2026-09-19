@@ -45,6 +45,7 @@
 	"Informazioni" MENU
 		"Info Panel..." INFO_PANEL
 		"Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Carico del Sistema" SHEXEC xosview || xload
 		"Lista dei Processi" EXEC xterm -e top
 		"Ricerca Manuali" EXEC xman

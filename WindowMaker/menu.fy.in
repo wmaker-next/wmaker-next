@@ -115,6 +115,7 @@
 	"Ynfo" MENU
 		"Ynfopaniel" INFO_PANEL
 		"Juridyske ynfo" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Systeemconsole" EXEC xconsole
 		"Systeembelêsting" SHEXEC xosview || xload
 		"Proseslist" EXEC xterm -e top

@@ -105,6 +105,7 @@
 	"Info" MENU
 		"Informationsruta..." INFO_PANEL
 		"Licens..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Systemkonsoll" EXEC xconsole
 		"Systembelastning" SHEXEC xosview || xload
 		"Processlista" EXEC xterm -e top

@@ -4,6 +4,7 @@
         "Info",
                 ("Info Panel...", INFO_PANEL),
                 ("Ophavsret...", LEGAL_PANEL),
+                ("Keyboard Shortcuts", KEYBIND_PANEL),
                 (
                 "Systemkonsol",
                 EXEC,

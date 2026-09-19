@@ -99,6 +99,7 @@ static Shortcut *shortcutList = NULL;
  *
  * INFO_PANEL - shows the Info Panel
  * LEGAL_PANEL - shows the Legal info panel
+ * KEYBIND_PANEL - shows the Keyboard Shortcuts panel
  * SHUTDOWN [QUICK] - closes the X server [without confirmation]
  * REFRESH - forces the desktop to be repainted
  * EXIT [QUICK] - exit the window manager [without confirmation]
@@ -285,6 +286,14 @@ static void legalPanelCommand(WMenu * menu, WMenuEntry * entry)
 	(void) entry;
 
 	wShowLegalPanel(menu->frame->screen_ptr);
+}
+
+static void keybindPanelCommand(WMenu *menu, WMenuEntry *entry)
+{
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void)entry;
+
+	wShowShortcutsPanel(menu->frame->screen_ptr);
 }
 
 /********************************************************************/
@@ -998,6 +1007,9 @@ static WMenuEntry *addMenuEntry(WMenu *menu, const char *title, const char *shor
 		shortcutOk = true;
 	} else if (strcmp(command, "LEGAL_PANEL") == 0) {
 		entry = wMenuAddCallback(menu, title, legalPanelCommand, NULL);
+		shortcutOk = true;
+	} else if (strcmp(command, "KEYBIND_PANEL") == 0) {
+		entry = wMenuAddCallback(menu, title, keybindPanelCommand, NULL);
 		shortcutOk = true;
 	} else {
 		wwarning(_("%s:unknown command \"%s\" in menu config."), file_name, command);

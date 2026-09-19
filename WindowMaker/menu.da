@@ -103,6 +103,7 @@
         "Info" MENU
                 "Info Panel..." INFO_PANEL
                 "Copyright..." LEGAL_PANEL
+                "Keyboard Shortcuts" KEYBIND_PANEL
                 "Systemkonsol" EXEC xconsole
                 "Systembelastning" SHEXEC xosview || xload
                 "Procesliste" EXEC xterm -fg wheat -bg black -fn 6x10 -geometry 80x50 -e top

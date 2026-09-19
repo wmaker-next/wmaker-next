@@ -41,6 +41,7 @@
 "Menu Principal" MENU
 
 	"Informacion ..." MENU
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Copyright..." SHEXEC xmessage -center -font variable -title \
 	'WindowMaker 'WM_VERSION -file $WMAKER_USER_DATA/Copyright
 		"Carga del sistema" SHEXEC xosview || xload

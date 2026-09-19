@@ -42,6 +42,7 @@ POTFILES  = \
 	$(top_srcdir)/src/hotcorner.c \
 	$(top_srcdir)/src/icon.c \
 	$(top_srcdir)/src/ipc.c \
+	$(top_srcdir)/src/keybind-descriptions.h \
 	$(top_srcdir)/src/keybind.c \
 	$(top_srcdir)/src/keytree.c \
 	$(top_srcdir)/src/layout.c \
@@ -146,4 +147,5 @@ am__v_CHKTRANS_1 =
 check-local:
 	$(AM_V_CHKTRANS)$(top_srcdir)/script/check-translation-sources.sh \
 		"$(srcdir)" -s "$(top_srcdir)/src/Makefile.am" \
-		-v wmaker_SOURCES -v libwconfigschema_la_SOURCES
+		-v wmaker_SOURCES -v libwconfigschema_la_SOURCES \
+		-v wmaker_TRANSLATABLE_FILES

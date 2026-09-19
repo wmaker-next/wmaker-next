@@ -2,6 +2,7 @@
  ("Informaţii",
   ("Panou cu Informaţii", INFO_PANEL),
   ("Panou cu Licenţa", LEGAL_PANEL),
+  ("Keyboard Shortcuts", KEYBIND_PANEL),
   ("Consola Sistem", EXEC, "xconsole"),
   ("Încărcarea Sistemului", SHEXEC, "xosview || xload"),
   ("Lista de Procese", EXEC, "xterm -e top"),

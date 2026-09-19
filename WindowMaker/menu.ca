@@ -110,6 +110,7 @@
         "Informació" MENU
                 "Info Panel..." INFO_PANEL
                 "Legal..." LEGAL_PANEL
+                "Keyboard Shortcuts" KEYBIND_PANEL
                 "Consola del Sistema" EXEC xconsole
                 "Càrrega del Sistema" SHEXEC xosview || xload
                 "Llista de Processos" EXEC xterm -e top

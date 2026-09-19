@@ -118,6 +118,7 @@
 	"Πληροφορίες" MENU
 		"Σχετικά..." INFO_PANEL
 		"Νομικά..." LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Κονσόλα Συστήματος" EXEC xconsole
 		"Εργασία Συστήματος" SHEXEC xosview || xload
 		"Λίστα Εργασιών" EXEC xterm -e top

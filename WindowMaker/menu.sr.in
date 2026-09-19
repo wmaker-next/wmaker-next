@@ -115,6 +115,7 @@
 	"Информације" MENU
 		"Информациони панел" INFO_PANEL
 		"Права" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Системска конзола" EXEC xconsole
 		"Искоришћеност система" SHEXEC xosview || xload
 		"Листа процеса" EXEC xterm -e top

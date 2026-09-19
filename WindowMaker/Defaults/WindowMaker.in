@@ -352,6 +352,7 @@
 	WindowRelaunchKey = None;
 	ScreenSwitchKey = None;
 	RunKey = None;
+	ShowKeybindsKey = None;
 	ExitKey = None;
 	ScreenCaptureKey = None;
 	WindowCaptureKey = None;

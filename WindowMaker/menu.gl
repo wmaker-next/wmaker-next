@@ -45,6 +45,7 @@
 	"Información" MENU
 		"Info Panel..." INFO_PANEL
 		"Legal" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Carga do sistema" SHEXEC xosview || xload
 		"Lista de tarefas" EXEC rxvt -ls -fg white -bg black -fn vga -e top
 		"Manual" EXEC xman

@@ -2,6 +2,7 @@
  ("信息",
   ("信息面板...", INFO_PANEL),
   ("版权...", LEGAL_PANEL),
+  ("Keyboard Shortcuts", KEYBIND_PANEL),
   ("系统控制台", EXEC, "xconsole"),
   ("系统负载", SHEXEC, "xosview || xload"),
   ("进程列表", EXEC, "xterm -e top"),

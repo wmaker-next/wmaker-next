@@ -2,6 +2,7 @@
  ("Informacion",
   ("Panel de Informacion", INFO_PANEL),
   ("Legal", LEGAL_PANEL),
+  ("Keyboard Shortcuts", KEYBIND_PANEL),
   ("Consola", EXEC, "xconsole"),
   ("Carga del Sistema", SHEXEC, "xosview || xload"),
   ("Lista de Procesos", EXEC, "xterm -e top"),

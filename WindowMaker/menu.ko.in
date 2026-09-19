@@ -102,6 +102,7 @@
 	"정    보" MENU
 		"정보 패널" INFO_PANEL
 		"저작권 정보" LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"시스템 로드" SHEXEC xosview || xload
 		"매뉴얼 찾기" EXEC xman
 		"프로세스목록" EXEC xterm -e top

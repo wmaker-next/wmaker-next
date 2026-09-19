@@ -104,6 +104,7 @@
 	"Informacja" MENU
 		"Informacja o WMaker..." INFO_PANEL
 		"Legalność..."           LEGAL_PANEL
+		"Keyboard Shortcuts" KEYBIND_PANEL
 		"Konsola Systemu"        EXEC xconsole
 		"Obciążenie Systemu"     EXEC xosview || xload
 		"Lista Procesów"         EXEC ULUB_TERM -T "Lista Procesów" -e top

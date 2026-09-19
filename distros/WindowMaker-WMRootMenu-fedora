@@ -2,6 +2,7 @@
  ("Info",
   ("Info Panel", INFO_PANEL),
   ("Legal", LEGAL_PANEL),
+  ("Keyboard Shortcuts", KEYBIND_PANEL),
  ),
  ("Find...", SHEXEC, "%a(Find)"),
  ("Workspaces", WORKSPACE_MENU),
