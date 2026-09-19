@@ -130,25 +130,6 @@ Command verbs (request type 0)
     window-workspace XID +N|-N|N
             move (N), add (+N) or remove (-N) the window's workspace
             membership; N is a 0-based workspace index
-    move-to-edge left|right|up|down [snap|nosnap]
-            slide the focused window in the named direction until it
-            touches the screen edge. With snap (the default) it stops
-            first at the nearest intervening window edge; nosnap goes
-            straight to the screen edge. A window already at the screen
-            edge jumps to the adjacent head's near edge, keeping its
-            perpendicular position
-    grow-to-edge left|right|up|down
-            grow the focused window toward the named screen edge,
-            keeping the opposite edge fixed and stopping at the nearest
-            intervening window edge. Skipped when the window is
-            fullscreen or maximized; unshades a shaded window first.
-            Aborts when the result would shrink it or change nothing
-    shrink-to-edge left|right|up|down
-            shrink the focused window by up to half, keeping the named
-            edge fixed and moving the opposite edge inward, stopping
-            earlier at the nearest intervening window edge or the
-            size-hint minimum. Same skip and unshade behavior as
-            grow-to-edge; aborts when the final size is unchanged
     set-layout LAYOUT [workspace N] [master_count N] [master_ratio F]
             switch workspace N (current by default) to LAYOUT, which is
             one of float, tile, tileh, grid, monocle (case-insensitive);
@@ -162,15 +143,6 @@ Command verbs (request type 0)
             ([vdesk_x, vdesk_x + vdesk_w - scr_width] and the analogous
             Y range)
     dock-launch SLOT
-    show-all
-    show-desktop
-            toggle the EWMH "showing desktop" state: iconify all
-            non-skip windows across all workspaces and set
-            _NET_SHOWING_DESKTOP to 1, or restore the previously
-            iconified windows and set it to 0
-    arrange-icons
-    hide-application XID
-    hide-others XID
     workspace-new [count]
             create count (default 1) new workspaces
     workspace-delete N
@@ -178,14 +150,13 @@ Command verbs (request type 0)
             workspace and can never be deleted). Rejected when some
             non-omnipresent window has N as its only workspace;
             windows spanning several workspaces are compacted instead
-    window-close XID
-            send WM_DELETE_WINDOW to the window and ping it
-            via _NET_WM_PING
     action NAME [XID]
             run the key-binding action NAME on the focused window, or on
             XID when given. NAME is a key-binding action name from the
             `info' actions list, either the short form (NextWorkspace) or
-            the config key (NextWorkspaceKey). Actions that execute a
+            the config key (NextWorkspaceKey). The Hide, HideOthers and
+            Close actions target XID even when that window is not focused
+            or not on the current workspace. Actions that execute a
             configured shell command (LockScreen, Clipboard) run with
             window-manager privileges
     display-power on|off
@@ -200,8 +171,11 @@ Command verbs (request type 0)
             reply carries the usual version fields plus an `actions'
             array listing every action name that `action' accepts
 
-New window-manager actions are reached through `action' rather than a new
-verb. The per-action verbs above predate it and stay for compatibility.
+Window-manager actions are reached through `action'. Verbs listed above
+that duplicate an action stay only while they carry a capability it
+cannot express; the MoveToEdge, GrowToEdge, ShrinkToEdge, ShowAll,
+ArrangeIcons, Hide, HideOthers and Close actions replaced their former
+verbs.
 
 An unknown verb yields {success=NO; error="unknown command '...'";}
 and the connection stays open. An unknown `action' name yields

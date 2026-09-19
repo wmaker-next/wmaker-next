@@ -18,6 +18,8 @@
  *  License along with this library; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <sys/socket.h>
+#include <sys/time.h>
 #include <xcb/xcb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +31,8 @@
 #include "wipcreply.h"
 #include "WMaker.h"
 #include "app.h"
+
+#define IPC_REPLY_TIMEOUT_SECS 5
 
 static xcb_window_t findRootWindow(WMAppContext *app)
 {
@@ -42,15 +46,14 @@ static xcb_window_t findRootWindow(WMAppContext *app)
 	return iter.rem ? iter.data->root : XCB_NONE;
 }
 
-/* Primary path: the AF_UNIX IPC. hide-application/hide-others take the
- * group-leader XID as their only argument. Returns true when the
- * request was accepted, false on any transport or protocol failure so
- * the caller can fall back to the deprecated root-window message. */
-static int sendIPCCommand(const char *verb, xcb_window_t xid)
+/* Primary path: the AF_UNIX IPC. Returns true when the request was
+ * accepted, false on any transport or protocol failure so the caller
+ * can fall back to the deprecated root-window message. */
+static int sendIPCBody(const char *body)
 {
-	char body[64];
 	char *path, *rbuf = NULL;
 	uint32_t rtype = 0, rlen = 0;
+	struct timeval tv;
 	int fd, ok;
 
 	path = wIPCSocketPath(NULL);
@@ -59,7 +62,11 @@ static int sendIPCCommand(const char *verb, xcb_window_t xid)
 	if (fd < 0)
 		return 0;
 
-	snprintf(body, sizeof(body), "((%s %lu))", verb, (unsigned long)xid);
+	tv.tv_sec = IPC_REPLY_TIMEOUT_SECS;
+	tv.tv_usec = 0;
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
 	ok = (wIPCSend(fd, WIPC_COMMAND, body, strlen(body)) == 0);
 	if (ok) {
 		if (wIPCRecv(fd, &rtype, &rbuf, &rlen) == 0) {
@@ -73,6 +80,17 @@ static int sendIPCCommand(const char *verb, xcb_window_t xid)
 	close(fd);
 
 	return ok;
+}
+
+/* Hide requests go through the generic `action' verb with the
+ * group-leader XID as the target window. */
+static int sendIPCAction(const char *action, xcb_window_t xid)
+{
+	char body[96];
+
+	snprintf(body, sizeof(body), "((action %s %lu))", action,
+		 (unsigned long)xid);
+	return sendIPCBody(body);
 }
 
 static void sendLegacyFunc(WMAppContext *app, int code)
@@ -98,14 +116,14 @@ static void sendLegacyFunc(WMAppContext *app, int code)
 
 void WMHideApplication(WMAppContext *app)
 {
-	if (sendIPCCommand("hide-application", app->main_window))
+	if (sendIPCAction("Hide", app->main_window))
 		return;
 	sendLegacyFunc(app, WMFHideApplication);
 }
 
 void WMHideOthers(WMAppContext *app)
 {
-	if (sendIPCCommand("hide-others", app->main_window))
+	if (sendIPCAction("HideOthers", app->main_window))
 		return;
 	sendLegacyFunc(app, WMFHideOtherApplications);
 }

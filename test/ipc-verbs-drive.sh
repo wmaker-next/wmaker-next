@@ -1,12 +1,12 @@
 #!/bin/sh
-# Drive the IPC verbs that ipc-drive.sh skips: hide-application,
-# hide-others, show-all, arrange-icons, and a window-workspace smoke
+# Drive the IPC surface that ipc-drive.sh skips: action Hide,
+# action HideOthers, ShowAll, ArrangeIcons, and a window-workspace smoke
 # (deep +N/-N/N coverage lives in wsmask-drive.sh).
 #
-# Each verb is asserted via the EWMH atoms the WM-side handlers publish:
-#   hide-application / hide-others / show-all  -> _NET_WM_STATE_HIDDEN
+# Each is asserted via the EWMH atoms the WM-side handlers publish:
+#   action Hide / action HideOthers / ShowAll  -> _NET_WM_STATE_HIDDEN
 #   window-workspace                           -> _NET_WM_DESKTOP
-#   arrange-icons                              -> exit 0, wmaker alive,
+#   ArrangeIcons                              -> exit 0, wmaker alive,
 #                                                 _NET_CLIENT_LIST intact
 #
 # Harness conventions follow wsmask-drive.sh: private XDG_RUNTIME_DIR,
@@ -120,7 +120,7 @@ done
 [ -x "$WMAKERMSG" ] || skip_all "util/.libs/wmakermsg not built"
 
 # Dock/clip/drawers disabled so floating appicons are the only icon
-# surface and hide-application has a clean app_icon to animate to.
+# surface and action Hide has a clean app_icon to animate to.
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"
 cat > "$WMHOME/Defaults/WindowMaker" <<'EOF'
 {
@@ -182,9 +182,9 @@ note "spawn two xterm clients on workspace 0"
 # Distinct -class per xterm so each forms its own WApplication.
 # wmaker coalesces same-instance.class windows into one shared-appicon
 # fake group leader (window.c:1209), so two plain xterms ("xterm.XTerm")
-# are a single app and hide-application would hide both. Distinct classes
+# are a single app and action Hide would hide both. Distinct classes
 # (AppA/AppB) give distinct "xterm.AppA"/"xterm.AppB" identifiers so the
-# two apps are genuinely independent and hide-application/hide-others can
+# two apps are genuinely independent and action Hide/HideOthers can
 # be asserted against each other.
 DISPLAY=$DPY xterm -class AppA -title ipcverbs-A -geometry 80x24+50+50 -e 'sleep 300' >>"$LOG" 2>&1 &
 echo "$!" >> "$PIDFILE"
@@ -210,22 +210,19 @@ wait_for 30 not_hidden "$XA"
 check "A not hidden at baseline" not_hidden "$XA"
 check "B not hidden at baseline" not_hidden "$XB"
 
-# ---- hide-application -----------------------------------------------------
+# ---- action Hide ----------------------------------------------------------
 
-note "hide-application A"
-# missing xid arg
-msg -q hide-application >/dev/null 2>&1
-check "hide-application with no xid exits 2" [ $? -eq 2 ]
+note "action Hide on A"
 # unmanaged xid
-msg -q hide-application 0x1 >/dev/null 2>&1
-check "hide-application unmanaged xid exits 2" [ $? -eq 2 ]
-# happy path
-msg -q hide-application "$XA_HEX" >/dev/null 2>&1
-check "hide-application A exits 0" [ $? -eq 0 ]
+msg -q action Hide 0x1 >/dev/null 2>&1
+check "action Hide unmanaged xid exits 2" [ $? -eq 2 ]
+# explicit xid targets a background window
+msg -q action Hide "$XA_HEX" >/dev/null 2>&1
+check "action Hide A exits 0" [ $? -eq 0 ]
 wait_for 30 is_hidden "$XA"
-check "A flagged _NET_WM_STATE_HIDDEN after hide-application" is_hidden "$XA"
+check "A flagged _NET_WM_STATE_HIDDEN after action Hide" is_hidden "$XA"
 # only A's app is hidden, B is untouched
-check "B still visible after hide-application A" not_hidden "$XB"
+check "B still visible after action Hide A" not_hidden "$XB"
 
 # capture _NET_CLIENT_LIST snapshot, hidden windows stay managed and
 # listed, this is the ordering/membership sanity gate
@@ -233,53 +230,61 @@ hide_after_hide=$(net_client_list)
 check "A still in _NET_CLIENT_LIST when hidden" \
 	[ -n "$(echo "$hide_after_hide" | grep -F "$XA_HEX")" ]
 
-# ---- show-all reverses hide-application -----------------------------------
-
-note "show-all"
-msg -q show-all >/dev/null 2>&1
-check "show-all exits 0" [ $? -eq 0 ]
+# focused-window form (no xid)
+msg -q action ShowAll >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
-check "A no longer hidden after show-all" not_hidden "$XA"
-check "B still visible after show-all" not_hidden "$XB"
-
-# ---- hide-others ---------------------------------------------------------
-
-note "hide-others B"
-msg -q hide-others >/dev/null 2>&1
-check "hide-others with no xid exits 2" [ $? -eq 2 ]
-msg -q hide-others 0x1 >/dev/null 2>&1
-check "hide-others unmanaged xid exits 2" [ $? -eq 2 ]
-# A and B are separate WApplications (distinct WM_CLIENT_LEADER / main
-# windows), so hide-others(B) must hide A's app and leave B visible
-msg -q hide-others "$XB_HEX" >/dev/null 2>&1
-check "hide-others B exits 0" [ $? -eq 0 ]
+DISPLAY=$DPY xdotool windowactivate "$XA" >/dev/null 2>&1
+sleep 0.3
+msg -q action Hide >/dev/null 2>&1
+check "action Hide with no xid exits 0" [ $? -eq 0 ]
 wait_for 30 is_hidden "$XA"
-check "A hidden by hide-others B" is_hidden "$XA"
+check "A hidden by focused action Hide" is_hidden "$XA"
+
+# ---- ShowAll reverses Hide -----------------------------------------------
+
+note "ShowAll"
+msg -q action ShowAll >/dev/null 2>&1
+check "ShowAll exits 0" [ $? -eq 0 ]
+wait_for 30 not_hidden "$XA"
+check "A no longer hidden after ShowAll" not_hidden "$XA"
+check "B still visible after ShowAll" not_hidden "$XB"
+
+# ---- action HideOthers ----------------------------------------------------
+
+note "action HideOthers on B"
+msg -q action HideOthers 0x1 >/dev/null 2>&1
+check "action HideOthers unmanaged xid exits 2" [ $? -eq 2 ]
+# A and B are separate WApplications (distinct WM_CLIENT_LEADER / main
+# windows), so HideOthers(B) must hide A's app and leave B visible
+msg -q action HideOthers "$XB_HEX" >/dev/null 2>&1
+check "action HideOthers B exits 0" [ $? -eq 0 ]
+wait_for 30 is_hidden "$XA"
+check "A hidden by action HideOthers B" is_hidden "$XA"
 check "B (the referenced window) stays visible" not_hidden "$XB"
 
-# show-all to restore a clean state for the workspace rows
-msg -q show-all >/dev/null 2>&1
+# ShowAll to restore a clean state for the workspace rows
+msg -q action ShowAll >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
 
-# ---- arrange-icons --------------------------------------------------------
+# ---- ArrangeIcons --------------------------------------------------------
 
-note "arrange-icons"
-# Seed at least one appicon: hide-application A creates A's app_icon and
-# maps its icon, giving arrange-icons something to reposition.
-msg -q hide-application "$XA_HEX" >/dev/null 2>&1
+note "ArrangeIcons"
+# Seed at least one appicon: action Hide A creates A's app_icon and
+# maps its icon, giving ArrangeIcons something to reposition.
+msg -q action Hide "$XA_HEX" >/dev/null 2>&1
 wait_for 30 is_hidden "$XA"
 pre_arrange=$(net_client_list)
-msg -q arrange-icons >/dev/null 2>&1
-check "arrange-icons exits 0" [ $? -eq 0 ]
+msg -q action ArrangeIcons >/dev/null 2>&1
+check "ArrangeIcons exits 0" [ $? -eq 0 ]
 # idempotent: a second call must also succeed and not disturb membership
-msg -q arrange-icons >/dev/null 2>&1
-check "arrange-icons is idempotent (exit 0)" [ $? -eq 0 ]
-check "wmaker still alive after arrange-icons" ipc_ready
+msg -q action ArrangeIcons >/dev/null 2>&1
+check "ArrangeIcons is idempotent (exit 0)" [ $? -eq 0 ]
+check "wmaker still alive after ArrangeIcons" ipc_ready
 post_arrange=$(net_client_list)
-check "_NET_CLIENT_LIST unchanged across arrange-icons" \
+check "_NET_CLIENT_LIST unchanged across ArrangeIcons" \
 	[ "$pre_arrange" = "$post_arrange" ]
 # restore for the workspace rows
-msg -q show-all >/dev/null 2>&1
+msg -q action ShowAll >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
 
 # ---- window-workspace smoke ----------------------------------------------
@@ -312,7 +317,7 @@ wf_desktop_2() { [ "$(net_wm_desktop "$XA")" = "2" ]; }
 wait_for 30 wf_desktop_2
 check "A _NET_WM_DESKTOP = 2 after move" wf_desktop_2
 
-# bring A back to workspace 0 so the trailing show-all deiconifies on
+# bring A back to workspace 0 so the trailing ShowAll deiconifies on
 # the workspace the drive is viewing
 msg -q workspace 0 >/dev/null 2>&1
 msg -q window-workspace "$XA_HEX" 0 >/dev/null 2>&1
@@ -362,7 +367,7 @@ DISPLAY=$DPY xdotool windowactivate "$XA" >/dev/null 2>&1
 sleep 0.3
 msg -q action Miniaturize >/dev/null 2>&1
 check "action Miniaturize (focused window) exits 0" [ $? -eq 0 ]
-msg -q show-all >/dev/null 2>&1
+msg -q action ShowAll >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
 DISPLAY=$DPY xdotool windowactivate "$XA" >/dev/null 2>&1
 sleep 0.3
@@ -373,7 +378,7 @@ wait_for 30 wf_hidden
 check "A hidden by action Miniaturize" wf_hidden
 msg -q action NoSuchThing "$XA_HEX" >/dev/null 2>&1
 check "action unknown name with window id exits 2" [ $? -eq 2 ]
-msg -q show-all >/dev/null 2>&1
+msg -q action ShowAll >/dev/null 2>&1
 wait_for 30 not_hidden "$XA"
 
 note "info exposes the action-name list"
@@ -390,6 +395,9 @@ check "info actions list is duplicate-free" [ "$ACT_TOTAL" = "$ACT_UNIQ" ]
 info_has() { printf '%s\n' "$ACT_TOKENS" | grep -qx "$1"; }
 info_lacks_keychain() { ! info_has KeychainCancel; }
 check "info actions list contains NextWorkspace" info_has NextWorkspace
+check "info actions list contains ShowAll" info_has ShowAll
+check "info actions list contains ArrangeIcons" info_has ArrangeIcons
+check "info actions list contains MoveToEdgeLeftNoSnap" info_has MoveToEdgeLeftNoSnap
 check "info actions list excludes KeychainCancel" info_lacks_keychain
 
 # ---- shutdown ------------------------------------------------------------

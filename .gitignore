@@ -129,6 +129,8 @@ wrlib/Tests/check_image
 wrlib/Tests/check_palette
 wrlib/Tests/check_xside
 
+wmlib/check_wmlib
+
 WPrefs.app/WPrefs
 
 # These files are generated from make rules

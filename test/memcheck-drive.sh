@@ -155,7 +155,7 @@ x xdotool key Escape 2>/dev/null; sleep 1
 
 # --- window ops via default bindings ---------------------------------------
 x wmctrl -a memcheck-a 2>/dev/null; sleep 1
-x xdotool key alt+h 2>/dev/null; sleep 1; msg -q show-all >/dev/null 2>&1; sleep 1
+x xdotool key alt+h 2>/dev/null; sleep 1; msg -q action ShowAll >/dev/null 2>&1; sleep 1
 x xdotool key alt+m 2>/dev/null; sleep 1
 x xdotool key alt+Up 2>/dev/null; sleep 1
 x xdotool key alt+Down 2>/dev/null; sleep 1

@@ -22,6 +22,14 @@ libWMaker_la_SOURCES = 	\
 	menu.h		\
 	wipcreply.h
 
+check_PROGRAMS = check_wmlib
+TESTS = $(check_PROGRAMS)
+
+check_wmlib_SOURCES = check_wmlib.c
+check_wmlib_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/test
+check_wmlib_LDADD = libWMaker.la $(top_builddir)/WINGs/libWUtil.la \
+	@XCB_CORE_LIBS@ @INTLIBS@
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = wmlib.pc
 

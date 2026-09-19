@@ -204,13 +204,13 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		}
 		break;
 	case WKBD_HIDE:
-		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+		if (wwin) {
 			CloseWindowMenu(scr);
 			wRequestHideApplication(wApplicationOf(wwin->main_window), wwin);
 		}
 		break;
 	case WKBD_HIDE_OTHERS:
-		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+		if (wwin) {
 			CloseWindowMenu(scr);
 
 			wHideOtherApplications(wwin);
@@ -219,6 +219,12 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 	case WKBD_SHOW_DESKTOP:
 		CloseWindowMenu(scr);
 		wNETWMShowingDesktopToggle(scr);
+		break;
+	case WKBD_SHOWALL:
+		wShowAllWindows(scr);
+		break;
+	case WKBD_ARRANGEICONS:
+		wArrangeIcons(scr, true);
 		break;
 	case WKBD_MINIATURIZE_OTHERS:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
@@ -427,6 +433,30 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 			wMoveToEdge(wwin, DIRECTION_DOWN, true);
 		}
 		break;
+	case WKBD_MOVE_TO_EDGE_LEFT_NOSNAP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_LEFT, false);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_RIGHT_NOSNAP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_RIGHT, false);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_UP_NOSNAP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_UP, false);
+		}
+		break;
+	case WKBD_MOVE_TO_EDGE_DOWN_NOSNAP:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_MOVABLE(wwin)) {
+			CloseWindowMenu(scr);
+			wMoveToEdge(wwin, DIRECTION_DOWN, false);
+		}
+		break;
 	case WKBD_GROW_TO_EDGE_LEFT:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
 			CloseWindowMenu(scr);
@@ -476,12 +506,10 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		}
 		break;
 	case WKBD_CLOSE:
-		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && !WFLAGP(wwin, no_closable)) {
+		if (wwin && !WFLAGP(wwin, no_closable)) {
 			CloseWindowMenu(scr);
-			if (wwin->protocols.DELETE_WINDOW) {
-				wClientSendProtocol(wwin, wdisp->atom.wm.delete_window, ts);
-				wNETWMPingWindow(wwin, ts);
-			}
+			wClientSendProtocol(wwin, wdisp->atom.wm.delete_window, ts);
+			wNETWMPingWindow(wwin, ts);
 		}
 		break;
 	case WKBD_SELECT:

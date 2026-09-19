@@ -595,37 +595,6 @@ static verb_rc verb_dock_launch(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
-static verb_rc verb_show_all(WScreen *scr, WMPropList *args,
-			     char **err, WMPropList **reply)
-{
-	(void)args;
-	(void)err;
-	(void)reply;
-	wShowAllWindows(scr);
-	return VERB_OK;
-}
-
-static verb_rc verb_show_desktop(WScreen *scr, WMPropList *args,
-				 char **err, WMPropList **reply)
-{
-	(void)args;
-	(void)err;
-	(void)reply;
-	wNETWMShowingDesktopToggle(scr);
-	wXSync(wdisp->conn);
-	return VERB_OK;
-}
-
-static verb_rc verb_arrange_icons(WScreen *scr, WMPropList *args,
-				  char **err, WMPropList **reply)
-{
-	(void)args;
-	(void)err;
-	(void)reply;
-	wArrangeIcons(scr, true);
-	return VERB_OK;
-}
-
 static int parse_xid_arg(WMPropList *args, int idx, xcb_window_t *out, char **err)
 {
 	WMPropList *a;
@@ -693,47 +662,6 @@ static verb_rc verb_window_workspace(WScreen *scr, WMPropList *args,
 		wWindowRemoveFromWorkspace(wwin, (int)n);
 	else
 		wWindowChangeWorkspace(wwin, (int)n);
-	return VERB_OK;
-}
-
-static verb_rc verb_hide_app(WScreen *scr, WMPropList *args,
-			     char **err, WMPropList **reply)
-{
-	xcb_window_t xid;
-	WWindow *wwin;
-	WApplication *wapp;
-
-	(void)scr;
-	(void)reply;
-	if (!parse_xid(args, &xid, err))
-		return VERB_FAIL;
-	wwin = wWindowFor(xid);
-	if (!wwin) {
-		*err = wstrdup("window not managed");
-		return VERB_FAIL;
-	}
-	wapp = wApplicationOf(wwin->main_window);
-	if (wapp)
-		wHideApplication(wapp);
-	return VERB_OK;
-}
-
-static verb_rc verb_hide_others(WScreen *scr, WMPropList *args,
-				char **err, WMPropList **reply)
-{
-	xcb_window_t xid;
-	WWindow *wwin;
-
-	(void)scr;
-	(void)reply;
-	if (!parse_xid(args, &xid, err))
-		return VERB_FAIL;
-	wwin = wWindowFor(xid);
-	if (!wwin) {
-		*err = wstrdup("window not managed");
-		return VERB_FAIL;
-	}
-	wHideOtherApplications(wwin);
 	return VERB_OK;
 }
 
@@ -968,32 +896,6 @@ static verb_rc verb_workspace_delete(WScreen *scr, WMPropList *args,
 	return VERB_OK;
 }
 
-static verb_rc verb_window_close(WScreen *scr, WMPropList *args,
-				 char **err, WMPropList **reply)
-{
-	xcb_window_t xid;
-	WWindow *wwin;
-
-	(void)scr;
-	(void)reply;
-	if (!parse_xid(args, &xid, err))
-		return VERB_FAIL;
-	wwin = wWindowFor(xid);
-	if (!wwin) {
-		*err = wstrdup("window not managed");
-		return VERB_FAIL;
-	}
-	if (WFLAGP(wwin, no_closable)) {
-		*err = wstrdup("window not closable");
-		return VERB_FAIL;
-	}
-	wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
-			    wdisp->timestamp.last_event);
-	wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
-	wXSync(wdisp->conn);
-	return VERB_OK;
-}
-
 static verb_rc verb_action(WScreen *scr, WMPropList *args,
 			   char **err, WMPropList **reply)
 {
@@ -1037,110 +939,6 @@ static verb_rc verb_action(WScreen *scr, WMPropList *args,
 	}
 	wKeybindDispatch(command, scr, wwin, NULL);
 	wXSync(wdisp->conn);
-	return VERB_OK;
-}
-
-static int parse_edge_direction(WMPropList *args, int idx, int *dir, char **err)
-{
-	WMPropList *a;
-	const char *s;
-
-	a = WMGetFromPLArray(args, idx);
-	if (WMGetPropListItemCount(args) <= idx || a == NULL || !WMIsPLString(a)) {
-		*err = wstrdup("missing direction");
-		return 0;
-	}
-	s = WMGetFromPLString(a);
-	if (strcasecmp(s, "left") == 0)
-		*dir = DIRECTION_LEFT;
-	else if (strcasecmp(s, "right") == 0)
-		*dir = DIRECTION_RIGHT;
-	else if (strcasecmp(s, "up") == 0)
-		*dir = DIRECTION_UP;
-	else if (strcasecmp(s, "down") == 0)
-		*dir = DIRECTION_DOWN;
-	else {
-		*err = wstrdup("invalid direction (use left/right/up/down)");
-		return 0;
-	}
-	return 1;
-}
-
-static verb_rc verb_move_to_edge(WScreen *scr, WMPropList *args,
-				char **err, WMPropList **reply)
-{
-	WWindow *wwin;
-	int dir;
-	bool snap = true;
-
-	(void)reply;
-	wwin = scr->focused_window;
-	if (!wwin || !wwin->frame) {
-		*err = wstrdup("no focused window");
-		return VERB_FAIL;
-	}
-	if (!ISMAPPED(wwin) || !IS_MOVABLE(wwin)) {
-		*err = wstrdup("focused window is not mapped or not movable");
-		return VERB_FAIL;
-	}
-	if (!parse_edge_direction(args, 1, &dir, err))
-		return VERB_FAIL;
-	if (WMGetPropListItemCount(args) > 2) {
-		WMPropList *a;
-
-		a = WMGetFromPLArray(args, 2);
-		if (a && WMIsPLString(a)) {
-			const char *s = WMGetFromPLString(a);
-
-			if (strcasecmp(s, "nosnap") == 0)
-				snap = false;
-		}
-	}
-	wMoveToEdge(wwin, dir, snap);
-	return VERB_OK;
-}
-
-static verb_rc verb_grow_to_edge(WScreen *scr, WMPropList *args,
-				 char **err, WMPropList **reply)
-{
-	WWindow *wwin;
-	int dir;
-
-	(void)reply;
-	wwin = scr->focused_window;
-	if (!wwin || !wwin->frame) {
-		*err = wstrdup("no focused window");
-		return VERB_FAIL;
-	}
-	if (!ISMAPPED(wwin) || !IS_RESIZABLE(wwin)) {
-		*err = wstrdup("focused window is not mapped or not resizable");
-		return VERB_FAIL;
-	}
-	if (!parse_edge_direction(args, 1, &dir, err))
-		return VERB_FAIL;
-	wGrowToEdge(wwin, dir);
-	return VERB_OK;
-}
-
-static verb_rc verb_shrink_to_edge(WScreen *scr, WMPropList *args,
-				   char **err, WMPropList **reply)
-{
-	WWindow *wwin;
-	int dir;
-
-	(void)reply;
-	wwin = scr->focused_window;
-	if (!wwin || !wwin->frame) {
-		*err = wstrdup("no focused window");
-		return VERB_FAIL;
-	}
-	if (!ISMAPPED(wwin) || !IS_RESIZABLE(wwin)) {
-		*err = wstrdup("focused window is not mapped or not resizable");
-		return VERB_FAIL;
-	}
-	if (!parse_edge_direction(args, 1, &dir, err))
-		return VERB_FAIL;
-	wShrinkToEdge(wwin, dir);
 	return VERB_OK;
 }
 
@@ -1195,21 +993,12 @@ static const struct {
 	{ "workspace-new",    verb_workspace_new },
 	{ "workspace-delete", verb_workspace_delete },
 	{ "window-workspace", verb_window_workspace },
-	{ "window-close",      verb_window_close },
 	{ "action",            verb_action },
-	{ "move-to-edge",     verb_move_to_edge },
-	{ "grow-to-edge",     verb_grow_to_edge },
-	{ "shrink-to-edge",   verb_shrink_to_edge },
 	{ "set-layout",       verb_set_layout },
 #ifdef VIRTUAL_DESKTOP
 	{ "set-viewport",     verb_set_viewport },
 #endif
 	{ "dock-launch",      verb_dock_launch },
-	{ "show-all",         verb_show_all },
-	{ "show-desktop",     verb_show_desktop },
-	{ "arrange-icons",    verb_arrange_icons },
-	{ "hide-application", verb_hide_app },
-	{ "hide-others",      verb_hide_others },
 	{ "display-power",    verb_display_power },
 	{ "play-sound",       verb_play_sound },
 	{ "info",             verb_info },

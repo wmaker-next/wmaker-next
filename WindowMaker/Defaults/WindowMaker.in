@@ -215,6 +215,8 @@
 	HideKey = "Mod1+H";
 	HideOthersKey = None;
 	ShowDesktopKey = None;
+	ShowAllKey = None;
+	ArrangeIconsKey = None;
 	MoveResizeKey = None;
 	CloseKey = None;
 	MaximizeKey = None;
@@ -233,6 +235,10 @@
 	MoveToEdgeRightKey = None;
 	MoveToEdgeUpKey = None;
 	MoveToEdgeDownKey = None;
+	MoveToEdgeLeftNoSnapKey = None;
+	MoveToEdgeRightNoSnapKey = None;
+	MoveToEdgeUpNoSnapKey = None;
+	MoveToEdgeDownNoSnapKey = None;
 	GrowToEdgeLeftKey = None;
 	GrowToEdgeRightKey = None;
 	GrowToEdgeUpKey = None;

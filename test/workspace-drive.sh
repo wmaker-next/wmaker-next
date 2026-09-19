@@ -183,7 +183,7 @@ sleep 0.2
 [ "$(win_primary "$A")" = "2" ] || fail "A primary != 2"
 msg -q workspace 0 || fail "switch to ws 0 rejected"
 sleep 0.2
-msg -q -- window-close "$A" || fail "window-close A rejected"
+msg -q -- action Close "$A" || fail "action Close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # ws 2 and ws 1 both empty trailing -> reaped, ws 0 active kept -> count 1
 wait_count 1 || fail "close reaps: count $(ws_count) != 1"
@@ -242,7 +242,7 @@ sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
 # close B (on ws 0): A still holds ws 1 and ws 2 -> nothing reaped -> count 3
-msg -q -- window-close "$B" || fail "close B rejected"
+msg -q -- action Close "$B" || fail "close B rejected"
 xb_gone() { ! msg get_windows 2>/dev/null | grep -q -F "id = $B;"; }
 wait_for 30 xb_gone || fail "B did not close"
 wait_count 3 || fail "multi-membership: count $(ws_count) != 3 (B close should not reap)"
@@ -263,7 +263,7 @@ msg -q -- window-workspace "$A" 1 || fail "move A to ws 1"
 sleep 0.2
 msg -q workspace 1 || fail "switch to ws 1"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # ws 1 empty but it is the active workspace -> never destroyed -> count 2
 wait_count 2 || fail "active protection: count $(ws_count) != 2"
@@ -283,7 +283,7 @@ msg -q -- window-workspace "$A" 2 || fail "move A to ws 2"
 sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # ws 2 empty reaped, ws 1 empty but at min(2) -> kept -> count 2
 wait_count 2 || fail "min floor: count $(ws_count) != 2"
@@ -298,7 +298,7 @@ msg -q -- window-workspace "$A" 2 || fail "move A to ws 2"
 sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # disabled -> nothing reaped -> count 3
 wait_count 3 || fail "disabled: count $(ws_count) != 3"
@@ -313,7 +313,7 @@ msg -q -- window-workspace "$A" 2 || fail "move A to ws 2"
 sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 wait_count 3 || fail "disabled close: count $(ws_count) != 3"
 # enable at runtime via reconfigure
@@ -325,7 +325,7 @@ msg -q -- window-workspace "$A" 2 || fail "move A to ws 2"
 sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # auto-remove now ON with min 1: ws 2 and ws 1 both empty trailing -> reaped,
 # ws 0 active -> kept -> count 1
@@ -361,7 +361,7 @@ msg -q -- window-workspace "$A" 1 || fail "move A to ws 1"
 sleep 0.2
 msg -q workspace 0 || fail "switch to ws 0"
 sleep 0.2
-msg -q -- window-close "$A" || fail "close A rejected"
+msg -q -- action Close "$A" || fail "close A rejected"
 wait_for 30 no_windows || fail "A did not close"
 # ws 1 empty trailing reaped -> count 1
 wait_count 1 || fail "after close: count $(ws_count) != 1"

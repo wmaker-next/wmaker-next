@@ -1,8 +1,7 @@
 #!/bin/sh
-# Regression drive test for the three edge-snap actions (MoveToEdge,
-# GrowToEdge, ShrinkToEdge) via the IPC verbs move-to-edge,
-# grow-to-edge, shrink-to-edge. Asserts frame-outer geometry via
-# xwininfo and _NET_FRAME_EXTENTS.
+# Regression drive test for the edge-snap actions (MoveToEdge and its
+# NoSnap variants, GrowToEdge, ShrinkToEdge) through the IPC `action'
+# verb. Asserts frame-outer geometry via xwininfo and _NET_FRAME_EXTENTS.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -168,42 +167,42 @@ expect_rect() {
 # Section 1: MoveToEdge
 # =================================================================
 note "Section 1: MoveToEdge via IPC"
-note "move-to-edge left: window at x=200 should snap to x=0"
+note "MoveToEdgeLeft: window at x=200 should snap to x=0"
 
 W1=$(spawn_xt mte1 80x12+200+200)
 [ -n "$W1" ] || fatal "could not spawn mte1"
 activate "$W1"
 sleep 0.2
 
-msg -q move-to-edge left || fail "move-to-edge left rejected"
+msg -q action MoveToEdgeLeft || fail "MoveToEdge left rejected"
 sleep 0.3
 set -- $(frame_geom "$W1"); NX=$1; NY=$2; NW=$3; NH=$4
-note "after move-to-edge left: ($NX,$NY ${NW}x${NH})"
-check "move-to-edge left snapped to screen left (x~0)" [ "$NX" -ge 0 -a "$NX" -le "$SLACK" ]
+note "after MoveToEdge left: ($NX,$NY ${NW}x${NH})"
+check "MoveToEdge left snapped to screen left (x~0)" [ "$NX" -ge 0 -a "$NX" -le "$SLACK" ]
 
-note "move-to-edge right: should snap to right screen edge"
-msg -q move-to-edge right || fail "move-to-edge right rejected"
+note "MoveToEdge right: should snap to right screen edge"
+msg -q action MoveToEdgeRight || fail "MoveToEdge right rejected"
 sleep 0.3
 set -- $(frame_geom "$W1"); NX=$1; NY=$2; NW=$3; NH=$4
 RIGHT_EDGE=$((NX + NW))
-note "after move-to-edge right: ($NX,$NY ${NW}x${NH}) right=$RIGHT_EDGE"
-check "move-to-edge right snapped to screen right (~$W)" \
+note "after MoveToEdge right: ($NX,$NY ${NW}x${NH}) right=$RIGHT_EDGE"
+check "MoveToEdge right snapped to screen right (~$W)" \
 	[ "$((RIGHT_EDGE - W))" -ge $((0 - SLACK)) -a "$((RIGHT_EDGE - W))" -le "$SLACK" ]
 
-note "move-to-edge up: should snap to top screen edge"
-msg -q move-to-edge up || fail "move-to-edge up rejected"
+note "MoveToEdge up: should snap to top screen edge"
+msg -q action MoveToEdgeUp || fail "MoveToEdge up rejected"
 sleep 0.3
 set -- $(frame_geom "$W1"); NX=$1; NY=$2; NW=$3; NH=$4
-note "after move-to-edge up: ($NX,$NY ${NW}x${NH})"
-check "move-to-edge up snapped to screen top (y~0)" [ "$NY" -ge 0 -a "$NY" -le "$SLACK" ]
+note "after MoveToEdge up: ($NX,$NY ${NW}x${NH})"
+check "MoveToEdge up snapped to screen top (y~0)" [ "$NY" -ge 0 -a "$NY" -le "$SLACK" ]
 
-note "move-to-edge down: should snap to bottom screen edge"
-msg -q move-to-edge down || fail "move-to-edge down rejected"
+note "MoveToEdge down: should snap to bottom screen edge"
+msg -q action MoveToEdgeDown || fail "MoveToEdge down rejected"
 sleep 0.3
 set -- $(frame_geom "$W1"); NX=$1; NY=$2; NW=$3; NH=$4
 BOTTOM_EDGE=$((NY + NH))
-note "after move-to-edge down: ($NX,$NY ${NW}x${NH}) bottom=$BOTTOM_EDGE"
-check "move-to-edge down snapped to screen bottom (~$H)" \
+note "after MoveToEdge down: ($NX,$NY ${NW}x${NH}) bottom=$BOTTOM_EDGE"
+check "MoveToEdge down snapped to screen bottom (~$H)" \
 	[ "$((BOTTOM_EDGE - H))" -ge $((0 - SLACK)) -a "$((BOTTOM_EDGE - H))" -le "$SLACK" ]
 
 check "wmaker alive after MoveToEdge tests" ipc_ready
@@ -213,7 +212,7 @@ close_xt "$W1" "$XT_PID"
 # Section 1b: MoveToEdge with neighbor clamping (snap_to_windows)
 # =================================================================
 note "Section 1b: MoveToEdge clamps to neighbor window edge"
-note "obstacle at x=100, mover at x=700, move-to-edge left should stop at obstacle"
+note "obstacle at x=100, mover at x=700, MoveToEdge left should stop at obstacle"
 
 WOBS=$(spawn_xt obstacle 80x12+100+200)
 [ -n "$WOBS" ] || fatal "could not spawn obstacle"
@@ -227,12 +226,26 @@ note "obstacle frame: x=$OBS_X w=$OBS_W right=$OBS_R"
 activate "$WMTE"
 sleep 0.2
 
-msg -q move-to-edge left || fail "move-to-edge left with neighbor rejected"
+msg -q action MoveToEdgeLeft || fail "MoveToEdge left with neighbor rejected"
 sleep 0.3
 set -- $(frame_geom "$WMTE"); NX=$1; NY=$2; NW=$3; NH=$4
-note "mover after move-to-edge left: ($NX,$NY ${NW}x${NH}) expected ~$OBS_R"
-check "move-to-edge left stopped at obstacle right edge (~$OBS_R)" \
+note "mover after MoveToEdge left: ($NX,$NY ${NW}x${NH}) expected ~$OBS_R"
+check "MoveToEdge left stopped at obstacle right edge (~$OBS_R)" \
 	[ "$((NX - OBS_R))" -ge -3 -a "$((NX - OBS_R))" -le 3 ]
+
+note "MoveToEdgeLeftNoSnap: should ignore the obstacle and reach screen left"
+close_xt "$WMTE" "$XT_PID"
+WMTE=$(spawn_xt mte3 80x12+700+200)
+[ -n "$WMTE" ] || fatal "could not spawn mte3"
+activate "$WMTE"
+sleep 0.2
+msg -q action MoveToEdgeLeftNoSnap || fail "action MoveToEdgeLeftNoSnap rejected"
+sleep 0.3
+set -- $(frame_geom "$WMTE"); NX=$1
+note "mover after MoveToEdgeLeftNoSnap: x=$NX (obstacle right=$OBS_R)"
+check "MoveToEdgeLeftNoSnap reached screen left (x~0)" \
+	[ "$NX" -ge 0 -a "$NX" -le "$SLACK" ]
+check "MoveToEdgeLeftNoSnap passed the obstacle" [ "$NX" -lt "$OBS_R" ]
 
 check "wmaker alive after neighbor clamp test" ipc_ready
 close_xt "$WOBS" "$WOBS_PID"
@@ -252,7 +265,7 @@ set -- $(frame_geom "$W2"); OX=$1; OY=$2; OW=$3; OH=$4
 note "gte1 initial: ($OX,$OY ${OW}x$OH)"
 
 note "grow-to-edge right: should grow right edge to screen edge"
-msg -q grow-to-edge right || fail "grow-to-edge right rejected"
+msg -q action GrowToEdgeRight || fail "grow-to-edge right rejected"
 sleep 0.3
 set -- $(frame_geom "$W2"); NX=$1; NY=$2; NW=$3; NH=$4
 RIGHT_EDGE=$((NX + NW))
@@ -264,7 +277,7 @@ check "grow-to-edge right: right edge at screen (~$W)" \
 check "grow-to-edge right: width increased" [ "$NW" -gt "$OW" ]
 
 note "grow-to-edge down: should grow bottom edge to screen bottom"
-msg -q grow-to-edge down || fail "grow-to-edge down rejected"
+msg -q action GrowToEdgeDown || fail "grow-to-edge down rejected"
 sleep 0.3
 set -- $(frame_geom "$W2"); NX=$1; NY=$2; NW=$3; NH=$4
 BOTTOM_EDGE=$((NY + NH))
@@ -292,7 +305,7 @@ set -- $(frame_geom "$W3"); OX=$1; OY=$2; OW=$3; OH=$4
 note "ste1 initial: ($OX,$OY ${OW}x$OH)"
 
 note "shrink-to-edge left: left edge fixed, right edge moves in (max 50%)"
-msg -q shrink-to-edge left || fail "shrink-to-edge left rejected"
+msg -q action ShrinkToEdgeLeft || fail "shrink-to-edge left rejected"
 sleep 0.3
 set -- $(frame_geom "$W3"); NX=$1; NY=$2; NW=$3; NH=$4
 note "after shrink-to-edge left: ($NX,$NY ${NW}x${NH})"
@@ -302,7 +315,7 @@ check "shrink-to-edge left: width decreased" [ "$NW" -lt "$OW" ]
 check "shrink-to-edge left: width >= 50% of original" [ "$NW" -ge "$((OW / 2 - SLACK))" ]
 
 note "shrink-to-edge up: top edge fixed, bottom edge moves in (max 50%)"
-msg -q shrink-to-edge up || fail "shrink-to-edge up rejected"
+msg -q action ShrinkToEdgeUp || fail "shrink-to-edge up rejected"
 sleep 0.3
 set -- $(frame_geom "$W3"); NX=$1; NY=$2; NW=$3; NH=$4
 note "after shrink-to-edge up: ($NX,$NY ${NW}x${NH})"

@@ -631,6 +631,8 @@
 	_(HIDE_KEY, "HideKey", "Mod1+H", WKBD_HIDE) \
 	_(HIDE_OTHERS_KEY, "HideOthersKey", "None", WKBD_HIDE_OTHERS) \
 	_(SHOW_DESKTOP_KEY, "ShowDesktopKey", "None", WKBD_SHOW_DESKTOP) \
+	_(SHOW_ALL_KEY, "ShowAllKey", "None", WKBD_SHOWALL) \
+	_(ARRANGE_ICONS_KEY, "ArrangeIconsKey", "None", WKBD_ARRANGEICONS) \
 	_(MOVE_RESIZE_KEY, "MoveResizeKey", "None", WKBD_MOVERESIZE) \
 	_(CLOSE_KEY, "CloseKey", "None", WKBD_CLOSE) \
 	_(MAXIMIZE_KEY, "MaximizeKey", "None", WKBD_MAXIMIZE) \
@@ -649,6 +651,10 @@
 	_(MOVE_TO_EDGE_RIGHT_KEY, "MoveToEdgeRightKey", "None", WKBD_MOVE_TO_EDGE_RIGHT) \
 	_(MOVE_TO_EDGE_UP_KEY, "MoveToEdgeUpKey", "None", WKBD_MOVE_TO_EDGE_UP) \
 	_(MOVE_TO_EDGE_DOWN_KEY, "MoveToEdgeDownKey", "None", WKBD_MOVE_TO_EDGE_DOWN) \
+	_(MOVE_TO_EDGE_LEFT_NOSNAP_KEY, "MoveToEdgeLeftNoSnapKey", "None", WKBD_MOVE_TO_EDGE_LEFT_NOSNAP) \
+	_(MOVE_TO_EDGE_RIGHT_NOSNAP_KEY, "MoveToEdgeRightNoSnapKey", "None", WKBD_MOVE_TO_EDGE_RIGHT_NOSNAP) \
+	_(MOVE_TO_EDGE_UP_NOSNAP_KEY, "MoveToEdgeUpNoSnapKey", "None", WKBD_MOVE_TO_EDGE_UP_NOSNAP) \
+	_(MOVE_TO_EDGE_DOWN_NOSNAP_KEY, "MoveToEdgeDownNoSnapKey", "None", WKBD_MOVE_TO_EDGE_DOWN_NOSNAP) \
 	_(GROW_TO_EDGE_LEFT_KEY, "GrowToEdgeLeftKey", "None", WKBD_GROW_TO_EDGE_LEFT) \
 	_(GROW_TO_EDGE_RIGHT_KEY, "GrowToEdgeRightKey", "None", WKBD_GROW_TO_EDGE_RIGHT) \
 	_(GROW_TO_EDGE_UP_KEY, "GrowToEdgeUpKey", "None", WKBD_GROW_TO_EDGE_UP) \

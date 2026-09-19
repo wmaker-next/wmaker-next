@@ -145,7 +145,7 @@ check "baseline: showing desktop is 0" showing_is 0
 
 # --- 2. show-desktop on: iconify all, set _NET_SHOWING_DESKTOP -------------
 note "IPC show-desktop on"
-msg -q show-desktop || fail "show-desktop rejected"
+msg -q action ShowDesktop || fail "show-desktop rejected"
 wait_for 30 showing_is 1
 check "show-desktop sets _NET_SHOWING_DESKTOP to 1" showing_is 1
 wait_for 30 sh -c 'DISPLAY='"$DPY"' xprop -id '"$W1"' WM_STATE 2>/dev/null | grep -q "Iconic$"'
@@ -155,7 +155,7 @@ check "window 2 is iconic after show-desktop" window_is_iconic "$W2"
 
 # --- 3. show-desktop off: restore all, clear _NET_SHOWING_DESKTOP ----------
 note "IPC show-desktop off (toggle)"
-msg -q show-desktop || fail "show-desktop toggle rejected"
+msg -q action ShowDesktop || fail "show-desktop toggle rejected"
 wait_for 30 showing_is 0
 check "show-desktop toggle sets _NET_SHOWING_DESKTOP to 0" showing_is 0
 sleep 1
@@ -188,7 +188,7 @@ if command -v wmctrl >/dev/null 2>&1; then
 	DISPLAY=$DPY wmctrl -ia "$W3"
 	sleep 0.3
 
-	msg -q show-desktop || fail "show-desktop rejected on the three-window leg"
+	msg -q action ShowDesktop || fail "show-desktop rejected on the three-window leg"
 	wait_for 30 showing_is 1
 	check "three-window leg sets showing desktop" showing_is 1
 	wait_for 30 sh -c 'DISPLAY='"$DPY"' xprop -id '"$W1"' WM_STATE 2>/dev/null | grep -q "Iconic$"'
@@ -196,7 +196,7 @@ if command -v wmctrl >/dev/null 2>&1; then
 	check "window 2 is iconic" window_is_iconic "$W2"
 	check "window 3 is iconic" window_is_iconic "$W3"
 
-	msg -q show-desktop || fail "show-desktop toggle rejected on the three-window leg"
+	msg -q action ShowDesktop || fail "show-desktop toggle rejected on the three-window leg"
 	wait_for 30 showing_is 0
 	sleep 1
 	check "the focus-migrated window is restored" window_is_normal "$W1"
@@ -220,7 +220,7 @@ if command -v wmctrl >/dev/null 2>&1; then
 	check "window 1 iconic via EWMH path" window_is_iconic "$W1"
 
 	note "IPC toggle off after EWMH on"
-	msg -q show-desktop || fail "show-desktop toggle after EWMH rejected"
+	msg -q action ShowDesktop || fail "show-desktop toggle after EWMH rejected"
 	wait_for 30 showing_is 0
 	check "IPC toggle restores after EWMH on" showing_is 0
 	sleep 1
@@ -231,16 +231,16 @@ fi
 
 # --- 6. Each press toggles -------------------------------------------------
 note "toggle cycle: off -> on -> off -> on"
-msg -q show-desktop >/dev/null
+msg -q action ShowDesktop >/dev/null
 wait_for 30 showing_is 1
 check "first press turns showing on" showing_is 1
-msg -q show-desktop >/dev/null
+msg -q action ShowDesktop >/dev/null
 wait_for 30 showing_is 0
 check "second press toggles off" showing_is 0
-msg -q show-desktop >/dev/null
+msg -q action ShowDesktop >/dev/null
 wait_for 30 showing_is 1
 check "third press toggles on again" showing_is 1
-msg -q show-desktop >/dev/null
+msg -q action ShowDesktop >/dev/null
 wait_for 30 showing_is 0
 check "fourth press toggles off" showing_is 0
 

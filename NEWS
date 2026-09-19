@@ -30,6 +30,16 @@ Hot-corner entries whose value matches an action name now run that action
 directly instead of shelling out, while unknown strings still run as
 shell commands.
 
+The `show-desktop`, `grow-to-edge`, `shrink-to-edge`, `show-all`,
+`arrange-icons`, `move-to-edge`, `hide-application`, `hide-others` and
+`window-close` verbs are removed in favour of the `ShowDesktop`,
+`GrowToEdge{Left,Right,Up,Down}`, `ShrinkToEdge{Left,Right,Up,Down}`,
+`ShowAll`, `ArrangeIcons`, `MoveToEdge{Left,Right,Up,Down}`, `Hide`,
+`HideOthers` and `Close` actions, reached through `action`. The new
+`MoveToEdge*NoSnap` actions cover the former `nosnap` form, and the
+`Hide`/`HideOthers`/`Close` actions now accept a window id to target a
+background window, matching the verbs they replace.
+
 Touchpad gesture daemon
 -----------------------
 
