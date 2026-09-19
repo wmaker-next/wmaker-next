@@ -1314,10 +1314,11 @@ AC_CONFIG_FILES(
     util/Makefile util/po/Makefile util/Tests/Makefile
 
     dnl Misceleanous stuff
+    wmlib/Makefile
     test/Makefile
 
     dnl pkg-config metadata
-    wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc
+    wrlib/wrlib.pc WINGs/WINGs.pc WINGs/WUtil.pc wmlib/wmlib.pc
 )
 
 AC_OUTPUT

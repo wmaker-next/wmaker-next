@@ -181,17 +181,21 @@ chmod 755 %{buildroot}%{_datadir}/WindowMaker/autostart.sh \
 %{_libdir}/libWINGs.so.*
 %{_libdir}/libWUtil.so.*
 %{_libdir}/libwraster.so.*
+%{_libdir}/libWMaker.so.*
 %{_datadir}/WINGs/
 
 %files -n WINGs-next-devel
 %{_libdir}/libWINGs.so
 %{_libdir}/libWUtil.so
 %{_libdir}/libwraster.so
+%{_libdir}/libWMaker.so
 %{_libdir}/pkgconfig/WINGs.pc
 %{_libdir}/pkgconfig/WUtil.pc
 %{_libdir}/pkgconfig/wrlib.pc
+%{_libdir}/pkgconfig/wmlib.pc
 %{_includedir}/WINGs/
 %{_includedir}/wraster.h
+%{_includedir}/WMaker.h
 
 %changelog
 * Mon Jun 08 2026 David Maciejak <dmaciejak@fortinet.com> - 0.96.0-0.next.20260608.1

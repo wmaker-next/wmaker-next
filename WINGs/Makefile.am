@@ -8,12 +8,17 @@ DIST_SUBDIRS = $(SUBDIRS) Examples Extras
 libWINGs_la_LDFLAGS = -version-info @WINGS_VERSION@
 libWUtil_la_LDFLAGS = -version-info @WUTIL_VERSION@
 
+# the IPC transport, shared verbatim by libWUtil and the LGPL-only
+# wmlib; wipc.c must not reference libWUtil symbols
+noinst_LTLIBRARIES = libwipc.la
+libwipc_la_SOURCES = wipc.c
+
 lib_LTLIBRARIES = libWUtil.la libWINGs.la
 
 
 LDADD= libWUtil.la libWINGs.la $(top_builddir)/wrlib/libwraster.la @INTLIBS@
 libWINGs_la_LIBADD = libWUtil.la $(top_builddir)/wrlib/libwraster.la @XCB_LIBS@ @XCB_IMDKIT_LIBS@ @FCLIBS@ @LIBM@ @CAIRO_LIBS@
-libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@ @INTLIBS@
+libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@ @INTLIBS@ libwipc.la
 
 EXTRA_DIST = BUGS make-rgb
 
@@ -92,7 +97,7 @@ libWUtil_la_SOURCES = 	\
 	userdefaults.h \
 	usleep.c \
 	wapplication.c \
-	wipc.c \
+	wipccmd.c \
 	wconfig.h \
 	wutil.c
 

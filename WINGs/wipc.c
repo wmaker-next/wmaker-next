@@ -8,8 +8,11 @@
  *  License as published by the Free Software Foundation; either
  *  version 2 of the License, or (at your option) any later version.
  *
- *  Pure POSIX, no Xlib, no event loop, so wmakermsg and the util/
- *  text-mode tools link only -lWUtil.
+ *  Pure POSIX, no Xlib, no event loop, no libWUtil symbols, so the
+ *  transport builds into libWUtil, wmakermsg and the util/ text-mode
+ *  tools link only -lWUtil, and wmlib links it through the same
+ *  convenience archive without pulling the GPL proplist core into
+ *  the LGPL-only libWMaker.
  */
 
 #include "wconfig.h"
@@ -25,8 +28,44 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
+
+/* standalone allocation helpers mirroring wmalloc/wfree semantics
+ * (zero-initialised, abort on exhaustion) so this file does not
+ * reference libWUtil symbols */
+static void *xmalloc(size_t size)
+{
+	void *tmp = malloc(size);
+
+	if (tmp == NULL)
+		abort();
+	return memset(tmp, 0, size);
+}
+
+static void xfree(void *ptr)
+{
+	free(ptr);
+}
+
+static char *xstrdup(const char *str)
+{
+	size_t len = strlen(str) + 1;
+	char *copy = xmalloc(len);
+
+	memcpy(copy, str, len);
+	return copy;
+}
+
+static char *xstrconcat(const char *str1, const char *str2)
+{
+	size_t l1 = strlen(str1);
+	size_t len = l1 + strlen(str2) + 1;
+	char *str = xmalloc(len);
+
+	memcpy(str, str1, l1);
+	memcpy(str + l1, str2, len - l1);
+	return str;
+}
 
 /* canonical display key, every byte outside [A-Za-z0-9] becomes '_' and a
  * missing screen suffix is treated as ".0" so ":0" and ":0.0" both yield
@@ -45,13 +84,13 @@ static char *display_key(const char *display)
 	colon = strrchr(display, ':');
 	if (colon && !strchr(colon, '.')) {
 		len = strlen(display);
-		raw = wmalloc(len + 3);
+		raw = xmalloc(len + 3);
 		memcpy(raw, display, len);
 		raw[len] = '.';
 		raw[len + 1] = '0';
 		raw[len + 2] = '\0';
 	} else {
-		raw = wstrdup(display);
+		raw = xstrdup(display);
 	}
 
 	out = raw;
@@ -71,25 +110,25 @@ char *wIPCSocketPath(const char *display)
 
 	override = getenv("WMAKER_IPC_SOCKET");
 	if (override && *override)
-		return wstrdup(override);
+		return xstrdup(override);
 
 	key = display_key(display);
 
 	runtime = getenv("XDG_RUNTIME_DIR");
 	if (runtime && *runtime) {
-		dir = wstrconcat(runtime, "/wmaker");
+		dir = xstrconcat(runtime, "/wmaker");
 	} else {
 		snprintf(tmp, sizeof(tmp), "/tmp/wmaker-%lu",
 			 (unsigned long)getuid());
-		dir = wstrdup(tmp);
+		dir = xstrdup(tmp);
 	}
 
 	len = strlen(dir) + strlen(key) + 6;
-	path = wmalloc(len);
+	path = xmalloc(len);
 	snprintf(path, len, "%s/ipc.%s", dir, key);
 
-	wfree(dir);
-	wfree(key);
+	xfree(dir);
+	xfree(key);
 	return path;
 }
 
@@ -102,7 +141,6 @@ int wIPCConnect(const char *path)
 		errno = ENAMETOOLONG;
 		return -1;
 	}
-
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0)
 		return -1;
@@ -188,26 +226,6 @@ int wIPCSend(int fd, uint32_t type, const char *payload, size_t len)
 	return 0;
 }
 
-int wIPCSendStringArray(int fd, uint32_t type, const char *const *items, int count)
-{
-	WMPropList *arr, *s;
-	char *body;
-	int i, rc;
-
-	arr = WMCreatePLArray(NULL);
-	for (i = 0; i < count; i++) {
-		s = WMCreatePLString(items[i]);
-		WMAddToPLArray(arr, s);
-		WMReleasePropList(s);
-	}
-	body = WMGetPropListDescription(arr, false);
-	WMReleasePropList(arr);
-
-	rc = wIPCSend(fd, type, body, strlen(body));
-	wfree(body);
-	return rc;
-}
-
 int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 {
 	char hdr[WIPC_HEADER_LEN];
@@ -233,9 +251,9 @@ int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 		return -1;
 	}
 
-	buf = wmalloc((size_t)l + 1);
+	buf = xmalloc((size_t)l + 1);
 	if (l > 0 && readall(fd, buf, l) < 0) {
-		wfree(buf);
+		xfree(buf);
 		return -1;
 	}
 	buf[l] = '\0';
@@ -243,7 +261,7 @@ int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 	/* the payload feeds a NUL-terminated parser, an interior NUL would
 	 * let strlen-based callers diverge from the wire length */
 	if (memchr(buf, '\0', l) != NULL) {
-		wfree(buf);
+		xfree(buf);
 		errno = EPROTO;
 		return -1;
 	}
@@ -254,37 +272,3 @@ int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 	return 0;
 }
 
-WMPropList *wIPCCommand(const char *display, const char *cmd)
-{
-	WMPropList *verb, *inner, *outer, *reply;
-	char *path, *body, *rbuf;
-	uint32_t rtype, rlen;
-	int fd, ok;
-
-	reply = NULL;
-	path = wIPCSocketPath(display);
-	fd = wIPCConnect(path);
-	wfree(path);
-	if (fd < 0)
-		return NULL;
-
-	verb = WMCreatePLString(cmd);
-	inner = WMCreatePLArray(verb, NULL);
-	WMReleasePropList(verb);
-	outer = WMCreatePLArray(inner, NULL);
-	WMReleasePropList(inner);
-	body = WMGetPropListDescription(outer, false);
-	WMReleasePropList(outer);
-
-	ok = (wIPCSend(fd, WIPC_COMMAND, body, strlen(body)) == 0);
-	wfree(body);
-
-	if (ok && wIPCRecv(fd, &rtype, &rbuf, &rlen) == 0) {
-		if (rtype == WIPC_COMMAND && rlen > 0)
-			reply = WMCreatePropListFromDescription(rbuf);
-		wfree(rbuf);
-	}
-
-	close(fd);
-	return reply;
-}

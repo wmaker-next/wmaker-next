@@ -28,6 +28,7 @@ POTFILES  = \
 	$(top_srcdir)/WINGs/userdefaults.c \
 	$(top_srcdir)/WINGs/usleep.c \
 	$(top_srcdir)/WINGs/wapplication.c \
+	$(top_srcdir)/WINGs/wipccmd.c \
 	$(top_srcdir)/WINGs/wipc.c \
 	$(top_srcdir)/WINGs/wutil.c
 
