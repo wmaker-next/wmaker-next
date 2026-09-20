@@ -20,6 +20,8 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <limits.h>
+
 #include "WPrefs.h"
 
 /* This structure containts the list of all the check-buttons to display in the
@@ -233,19 +235,24 @@ static void changeIntTextfield(void *data, int delta)
 	WMTextField *textfield;
 	const char *key;
 	char *text, buffer[12];
-	int value;
+	long value;
 
 	textfield = (WMTextField *)data;
 	text = WMGetTextFieldText(textfield);
-	value = atoi(text);
+	value = strtol(text, NULL, 10);
 	wfree(text);
-	value += delta;
+	if (value > (long)INT_MAX - delta)
+		value = INT_MAX;
+	else if (value < (long)INT_MIN - delta)
+		value = INT_MIN;
+	else
+		value += delta;
 
 	key = (const char *) WMGetHangedData(textfield);
 	if (key)
-		value = wConfigSchemaClampInt(key, value);
+		value = wConfigSchemaClampInt(key, (int)value);
 
-	snprintf(buffer, sizeof(buffer), "%d", value);
+	snprintf(buffer, sizeof(buffer), "%d", (int)value);
 	WMSetTextFieldText(textfield, buffer);
 }
 
