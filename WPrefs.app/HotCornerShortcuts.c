@@ -75,6 +75,7 @@ static void updateControlsSensitivity(_Panel *panel)
 		WMSetTextFieldEditable(panel->hcactionsT[i], enabled);
 
 	WMSetLabelTextColor(panel->hceL, color);
+	WMReleaseColor(color);
 }
 
 static void hcToggledCallback(WMWidget *w, void *data)
