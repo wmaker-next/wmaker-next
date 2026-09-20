@@ -995,9 +995,8 @@ static int matchWindowFields(const char *fold, WWindow *wwin,
 	return 1;
 }
 
-static void matchWindows(const char *complete, WMArray *result)
+static void matchWindows(WScreen *scr, const char *complete, WMArray *result)
 {
-	WScreen *scr;
 	WWindow *wwin;
 	const char *needle, *hash;
 	char wsn[256], fold[256];
@@ -1005,7 +1004,6 @@ static void matchWindows(const char *complete, WMArray *result)
 	int scope_count = 0, band, score;
 	size_t i, nlen, wlen;
 
-	scr = wScreenWithNumber(0);
 	if (!scr)
 		return;
 	if (*complete == '@') {
@@ -1051,10 +1049,9 @@ static void matchWindows(const char *complete, WMArray *result)
 	}
 }
 
-static RunVariant *makeWorkspaceVariant(int ws_index, int rank, int score)
+static RunVariant *makeWorkspaceVariant(WScreen *scr, int ws_index, int rank, int score)
 {
 	RunVariant *v;
-	WScreen *scr = wScreenWithNumber(0);
 	const char *name;
 	char *text;
 
@@ -1069,22 +1066,20 @@ static RunVariant *makeWorkspaceVariant(int ws_index, int rank, int score)
 	return v;
 }
 
-static void matchWorkspaces(const char *needle, WMArray *result)
+static void matchWorkspaces(WScreen *scr, const char *needle, WMArray *result)
 {
-	WScreen *scr;
 	RunVariant *v;
 	int n, w, i;
 	char fold[256], ff[256];
 	int band, score;
 	size_t nlen, fl;
 
-	scr = wScreenWithNumber(0);
 	if (!scr || scr->workspace_count <= 0)
 		return;
 	if (needle && *needle && sscanf(needle, "%i", &n) == 1) {
 		w = n - 1;
 		if (w >= 0 && w < scr->workspace_count) {
-			v = makeWorkspaceVariant(w, RUN_RANK_WORKSPACE, 0);
+			v = makeWorkspaceVariant(scr, w, RUN_RANK_WORKSPACE, 0);
 			if (v)
 				WMAddToArray(result, v);
 			return;
@@ -1108,13 +1103,13 @@ static void matchWorkspaces(const char *needle, WMArray *result)
 			ff[k] = tolower((unsigned char)name[k]);
 		if (!matchName(fold, ff, name, &band, &score))
 			continue;
-		v = makeWorkspaceVariant(i, RUN_RANK_WORKSPACE + band, score);
+		v = makeWorkspaceVariant(scr, i, RUN_RANK_WORKSPACE + band, score);
 		if (v)
 			WMAddToArray(result, v);
 	}
 }
 
-static WMArray *GenerateVariants(const char *complete, int *word_off)
+static WMArray *GenerateVariants(WScreen *scr, const char *complete, int *word_off)
 {
 	bool firstWord = true;
 	WMArray *variants = NULL;
@@ -1166,17 +1161,17 @@ static WMArray *GenerateVariants(const char *complete, int *word_off)
 
 		if (hash) {
 			if (w_global.config->run_window_switcher)
-				matchWindows(complete, variants);
+				matchWindows(scr, complete, variants);
 		} else {
 			if (w_global.config->run_workspace_jumper)
-				matchWorkspaces(complete + 1, variants);
+				matchWorkspaces(scr, complete + 1, variants);
 		}
 	} else if (firstWord && *complete == '=') {
 		if (w_global.config->run_calc)
 			matchCalc(complete + 1, variants);
 	} else if (firstWord && *complete == '#') {
 		if (w_global.config->run_window_switcher)
-			matchWindows(complete, variants);
+			matchWindows(scr, complete, variants);
 	} else if (firstWord) {
 		flen = strlen(complete);
 		if (flen >= sizeof(fold))
@@ -1949,7 +1944,7 @@ static void handleHistoryKeyPress(xcb_generic_event_t * event, void *clientData)
 			p->prefix = wstrndup(text, pos);
 			p->suffix = wstrdup(text + pos);
 			wfree(text);
-			p->variants = GenerateVariants(p->prefix, &p->word_off);
+			p->variants = GenerateVariants(p->scr, p->prefix, &p->word_off);
 			p->varpos = 0;
 			stepVariant(p, 1);
 			refreshDropList(p);
@@ -1976,7 +1971,7 @@ static void handleHistoryKeyPress(xcb_generic_event_t * event, void *clientData)
 		p->prefix = wstrndup(text, pos);
 		p->suffix = wstrdup(text + pos);
 		wfree(text);
-		p->variants = GenerateVariants(p->prefix, &p->word_off);
+		p->variants = GenerateVariants(p->scr, p->prefix, &p->word_off);
 		p->varpos = 0;
 		refreshDropList(p);
 	}
