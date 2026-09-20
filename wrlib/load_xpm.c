@@ -504,7 +504,7 @@ static RImage *xpm_parse(struct xpm_line_source *src, int w, int h,
 
 		sym = 0;
 		for (j = 0; j < csize; j++)
-			sym |= (unsigned char)payload[j] << (8 * j);
+			sym |= (unsigned int)(unsigned char)payload[j] << (8 * j);
 		symbol_table[i].sym = sym;
 		symbol_table[i].idx = i;
 
@@ -547,7 +547,7 @@ static RImage *xpm_parse(struct xpm_line_source *src, int w, int h,
 			int l;
 
 			for (l = 0; l < csize; l++)
-				color |= (unsigned char)payload[j * csize + l] << (8 * l);
+				color |= (unsigned int)(unsigned char)payload[j * csize + l] << (8 * l);
 
 			k = xpm_symbol_lookup(symbol_table, ccount, color);
 
