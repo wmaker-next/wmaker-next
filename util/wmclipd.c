@@ -1365,7 +1365,7 @@ static void history_save(void)
 static void history_load(void)
 {
 	ClipHistoryEntry **loaded, *e;
-	unsigned char *buf;
+	unsigned char hdr[16], *buf;
 	const unsigned char *payload;
 	char *path, *imgpath, *uri, tname[CLIP_HISTORY_NAME_MAX];
 	struct stat st, pst;
@@ -1404,8 +1404,50 @@ static void history_load(void)
 	}
 
 	dlen = (size_t)st.st_size;
-	buf = wmalloc(dlen > 0 ? dlen : 1);
+	if (dlen < sizeof(hdr)) {
+		debug_log("history: %s has no valid header", path);
+		close(fd);
+		wfree(path);
+		return;
+	}
+
 	off = 0;
+	while (off < sizeof(hdr)) {
+		got = read(fd, hdr + off, sizeof(hdr) - off);
+		if (got < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (got == 0)
+			break;
+		off += (size_t)got;
+	}
+	if (off != sizeof(hdr) ||
+	    memcmp(hdr, CLIP_HISTORY_MAGIC, 8) != 0) {
+		debug_log("history: %s has no valid header", path);
+		close(fd);
+		wfree(path);
+		return;
+	}
+	if (get_u32(hdr + 8) != CLIP_HISTORY_VERSION) {
+		debug_log("history: %s has unsupported version %u",
+			  path, get_u32(hdr + 8));
+		close(fd);
+		wfree(path);
+		return;
+	}
+	n = (int)get_u32(hdr + 12);
+	if (n > CLIP_HISTORY_MAX_ENTRIES) {
+		debug_log("history: %s declares too many entries", path);
+		close(fd);
+		wfree(path);
+		return;
+	}
+
+	buf = wmalloc(dlen);
+	memcpy(buf, hdr, sizeof(hdr));
+	off = sizeof(hdr);
 	while (off < dlen) {
 		got = read(fd, buf + off, dlen - off);
 		if (got < 0) {
@@ -1418,27 +1460,6 @@ static void history_load(void)
 		off += (size_t)got;
 	}
 	close(fd);
-
-	if (dlen < 16 || memcmp(buf, CLIP_HISTORY_MAGIC, 8) != 0) {
-		debug_log("history: %s has no valid header", path);
-		wfree(buf);
-		wfree(path);
-		return;
-	}
-	if (get_u32(buf + 8) != CLIP_HISTORY_VERSION) {
-		debug_log("history: %s has unsupported version %u",
-			  path, get_u32(buf + 8));
-		wfree(buf);
-		wfree(path);
-		return;
-	}
-	n = (int)get_u32(buf + 12);
-	if (n > CLIP_HISTORY_MAX_ENTRIES) {
-		debug_log("history: %s declares too many entries", path);
-		wfree(buf);
-		wfree(path);
-		return;
-	}
 
 	loaded = wmalloc(sizeof(ClipHistoryEntry *) * (size_t)(n > 0 ? n : 1));
 	loaded_count = 0;
