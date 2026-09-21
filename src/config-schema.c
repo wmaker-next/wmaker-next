@@ -4,6 +4,7 @@
 
 #include "wconfig.h"
 
+#include <stdlib.h>
 #include <strings.h>
 
 #include "WindowMaker.h"
@@ -299,6 +300,17 @@ int wConfigSchemaClampInt(const char *key, int v)
 	if (v > e->max_value)
 		return e->max_value;
 	return v;
+}
+
+int wConfigSchemaParseInt(const char *key, const char *str)
+{
+	long value = strtol(str ? str : "", NULL, 10);
+
+	if (value > INT_MAX)
+		value = INT_MAX;
+	else if (value < INT_MIN)
+		value = INT_MIN;
+	return wConfigSchemaClampInt(key, (int)value);
 }
 
 int wConfigSchemaRequiresRestart(const char *key)

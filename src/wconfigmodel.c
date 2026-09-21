@@ -1210,9 +1210,13 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	if (scr) {
 		double uiscale = WMScreenUIScale(scr->wmscreen);
 
-		if (wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH))
-			scr->frame_border_width =
-			    (int)(new_config->frame_border_width * uiscale + 0.5);
+		if (wConfigChangesHas(changes, WCFG_KEY_FRAME_BORDER_WIDTH)) {
+			double scaled = new_config->frame_border_width * uiscale + 0.5;
+
+			if (scaled > 0xffff)
+				scaled = 0xffff;
+			scr->frame_border_width = (int)scaled;
+		}
 		if (!old_config) {
 			scr->resizebar_height =
 			    (int)(RESIZEBAR_HEIGHT * uiscale + 0.5);

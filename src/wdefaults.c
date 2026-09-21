@@ -42,6 +42,7 @@
 #include "workspace.h"
 #include "defaults.h"
 #include "desktopfile.h"
+#include "config-schema-public.h"
 #include "wdefaults.h"
 #include "icon.h"
 #include "misc.h"
@@ -241,7 +242,7 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 
 	str = get_entry_string(entry, "FrameBorderWidth");
 	if (str) {
-		attrs->frame_border_width = atoi(str);
+		attrs->frame_border_width = wConfigSchemaParseInt("FrameBorderWidth", str);
 		attrs->frame_set |= WATTR_FRAME_BORDER_WIDTH;
 	}
 	str = get_entry_string(entry, "FrameBorderColor");
@@ -261,7 +262,7 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 	}
 	str = get_entry_string(entry, "FrameInnerBorderWidth");
 	if (str) {
-		attrs->frame_inner_border_width = atoi(str);
+		attrs->frame_inner_border_width = wConfigSchemaParseInt("FrameInnerBorderWidth", str);
 		attrs->frame_set |= WATTR_FRAME_INNER_BORDER_WIDTH;
 	}
 	sides = WMGetFromPLDictionaryByName(entry, "FrameInnerBorderSides");

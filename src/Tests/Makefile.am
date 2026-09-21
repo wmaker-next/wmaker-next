@@ -43,6 +43,7 @@ check_wdefaults_SOURCES = \
 	../wdefaults.h
 
 check_wdefaults_LDADD = \
+	$(top_builddir)/src/libwconfigschema.la \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \

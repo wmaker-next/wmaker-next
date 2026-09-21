@@ -27,6 +27,12 @@ const char *wConfigSchemaDefault(const char *key);
  * returns v unchanged if the key is unknown. */
 int wConfigSchemaClampInt(const char *key, int v);
 
+/* Parse a decimal string and clamp it to the schema's [lo, hi] for an
+ * integer-typed key. Saturates at INT_MIN/INT_MAX before the schema
+ * clamp, so an oversized or malformed value cannot overflow the cast.
+ * A NULL string parses as 0. */
+int wConfigSchemaParseInt(const char *key, const char *str);
+
 /* Nonzero if this key is frozen for the session (WCFG_STARTUP_ONLY),
  * zero if it re-applies on reconfigure or the key is unknown. */
 int wConfigSchemaRequiresRestart(const char *key);

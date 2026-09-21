@@ -238,9 +238,11 @@ static void changeIntTextfield(void *data, int delta)
 	long value;
 
 	textfield = (WMTextField *)data;
+	key = (const char *) WMGetHangedData(textfield);
 	text = WMGetTextFieldText(textfield);
-	value = strtol(text, NULL, 10);
+	value = wConfigSchemaParseInt(key, text);
 	wfree(text);
+
 	if (value > (long)INT_MAX - delta)
 		value = INT_MAX;
 	else if (value < (long)INT_MIN - delta)
@@ -248,9 +250,7 @@ static void changeIntTextfield(void *data, int delta)
 	else
 		value += delta;
 
-	key = (const char *) WMGetHangedData(textfield);
-	if (key)
-		value = wConfigSchemaClampInt(key, (int)value);
+	value = wConfigSchemaClampInt(key, (int)value);
 
 	snprintf(buffer, sizeof(buffer), "%d", (int)value);
 	WMSetTextFieldText(textfield, buffer);
@@ -401,10 +401,8 @@ static void intTextFieldEndEditing(WMTextField *tPtr)
 		return;
 
 	text = WMGetTextFieldText(tPtr);
-	value = atoi(text);
+	value = wConfigSchemaParseInt(key, text);
 	wfree(text);
-
-	value = wConfigSchemaClampInt(key, value);
 	snprintf(buffer, sizeof(buffer), "%d", value);
 	WMSetTextFieldText(tPtr, buffer);
 }
@@ -601,14 +599,10 @@ static void storeDefaults(_Panel *panel)
 
 		case OPTION_WMAKER_INT:
 		{
-			char *text;
-			int value;
+			char *text = WMGetTextFieldText(panel->textfield[i]);
+			int value = wConfigSchemaParseInt(expert_options[i].op_name, text);
 
-			text = WMGetTextFieldText(panel->textfield[i]);
-			value = atoi(text);
 			wfree(text);
-
-			value = wConfigSchemaClampInt(expert_options[i].op_name, value);
 			SetIntegerForKey(value, expert_options[i].op_name);
 			break;
 		}
