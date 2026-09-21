@@ -3023,7 +3023,7 @@ static void show_clipboard_popup(void)
 	xcb_keycode_t returnKey, escapeKey, shiftLKey, shiftRKey;
 	xcb_keycode_t jKey, kKey, pKey, delKey;
 	bool done = false, esc_cancel = false, commit = false;
-	bool release_commits;
+	bool release_commits, chord_handoff;
 	int commit_row = -1;
 	int i;
 	int row, nrows;
@@ -3096,6 +3096,7 @@ static void show_clipboard_popup(void)
 			break;
 		usleep(10000);
 	}
+	chord_handoff = i > 0 && i < 100;
 	if (i >= 100) {
 		debug_log("keyboard grab failed after retry");
 		release_commits = false;
@@ -3106,6 +3107,13 @@ static void show_clipboard_popup(void)
 		      | XCB_EVENT_MASK_POINTER_MOTION,
 		      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 		      XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
+
+	/* a release during the handoff is delivered to wmaker, not to us */
+	if ((release_commits || chord_handoff) && !modifier_is_down()) {
+		commit_row = WMGetListSelectedItemRow(popup_list);
+		commit = true;
+		done = true;
+	}
 
 	while (!done && running) {
 		xcb_generic_event_t *sev = NULL;
@@ -3145,6 +3153,14 @@ static void show_clipboard_popup(void)
 			refresh_popup_list_keep_selection();
 		}
 
+		if (incr.active &&
+		    clip_incr_send_check(xc, &incr, clip_monotonic_ms(),
+					 CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS)) {
+			incr_source = NULL;
+			debug_log("cancelled INCR transfer: no progress in %d ms",
+				  (int)CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS);
+		}
+
 		/* bounded wait so a SIGTERM that only clears `running`
 		 * unwedges the popup instead of blocking forever in
 		 * WMMaskEvent */
@@ -3154,6 +3170,12 @@ static void show_clipboard_popup(void)
 			pfd.revents = 0;
 			if (poll(&pfd, 1, CLIP_POPUP_POLL_MS) < 0 && errno != EINTR)
 				done = true;
+			else if ((release_commits || chord_handoff) &&
+				 !modifier_is_down()) {
+				commit_row = WMGetListSelectedItemRow(popup_list);
+				commit = true;
+				done = true;
+			}
 			continue;
 		}
 
