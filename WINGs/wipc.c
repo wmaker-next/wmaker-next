@@ -25,6 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
@@ -132,6 +133,38 @@ char *wIPCSocketPath(const char *display)
 	return path;
 }
 
+/* the socket directory must be a real directory owned by us with no
+ * group or other access, matching the server-side check, so a local
+ * attacker cannot pre-create the predictable /tmp fallback and collect
+ * our frames. A missing directory is left to connect() to report. */
+static int socket_dir_ok(const char *path)
+{
+	const char *slash;
+	char *dir;
+	struct stat st;
+	size_t len;
+	int ok;
+
+	slash = strrchr(path, '/');
+	if (!slash) {
+		dir = xstrdup(".");
+	} else {
+		len = (size_t)(slash - path);
+		if (len == 0)
+			len = 1;
+		dir = xmalloc(len + 1);
+		memcpy(dir, path, len);
+	}
+
+	if (lstat(dir, &st) < 0)
+		ok = 1;
+	else
+		ok = S_ISDIR(st.st_mode) && st.st_uid == getuid() &&
+		     (st.st_mode & 077) == 0;
+	xfree(dir);
+	return ok;
+}
+
 int wIPCConnect(const char *path)
 {
 	struct sockaddr_un addr;
@@ -141,6 +174,11 @@ int wIPCConnect(const char *path)
 		errno = ENAMETOOLONG;
 		return -1;
 	}
+	if (!socket_dir_ok(path)) {
+		errno = EACCES;
+		return -1;
+	}
+
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0)
 		return -1;
