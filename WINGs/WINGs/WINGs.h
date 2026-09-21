@@ -567,7 +567,8 @@ typedef struct WMTabViewDelegate {
 
 
 typedef void WMSelectionCallback(WMView *view, xcb_atom_t selection, xcb_atom_t target,
-                                 xcb_timestamp_t timestamp, void *cdata, WMData *data);
+                                 xcb_timestamp_t timestamp, void *cdata, WMData *data,
+                                 bool refused);
 
 
 typedef struct WMSelectionProcs {

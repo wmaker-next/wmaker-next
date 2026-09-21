@@ -2356,7 +2356,7 @@ static void handleTextKeyPress(Text * tPtr, xcb_generic_event_t * event)
 	}
 }
 
-static void pasteText(WMView * view, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp, void *cdata, WMData * data)
+static void pasteText(WMView * view, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp, void *cdata, WMData * data, bool refused)
 {
 	Text *tPtr = (Text *) view->self;
 	char *text;
@@ -2366,6 +2366,7 @@ static void pasteText(WMView * view, xcb_atom_t selection, xcb_atom_t target, xc
 	(void) target;
 	(void) timestamp;
 	(void) cdata;
+	(void) refused;
 
 	tPtr->flags.waitingForSelection = 0;
 

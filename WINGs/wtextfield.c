@@ -1018,7 +1018,7 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 /* paste chain: UTF8 first, CLIPBOARD before PRIMARY, cut buffer last.
  * The step index rides the callback cdata. */
 static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target,
-		      xcb_timestamp_t timestamp, void *cdata, WMData *data);
+		      xcb_timestamp_t timestamp, void *cdata, WMData *data, bool refused);
 
 static bool pasteTarget(TextField *tPtr, unsigned step, xcb_timestamp_t timestamp)
 {
@@ -1069,7 +1069,7 @@ static bool pasteCutBuffer(TextField *tPtr)
 }
 
 static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target,
-		      xcb_timestamp_t timestamp, void *cdata, WMData *data)
+		      xcb_timestamp_t timestamp, void *cdata, WMData *data, bool refused)
 {
 	TextField *tPtr = (TextField *) view->self;
 	uintptr_t step = (uintptr_t) cdata;
@@ -1098,7 +1098,7 @@ static void pasteText(WMView *view, xcb_atom_t selection, xcb_atom_t target,
 			wfree(tmp);
 			NOTIFY(tPtr, didChange, WMTextDidChangeNotification, (void *)WMInsertTextEvent);
 		}
-	} else if (step < 3 && pasteTarget(tPtr, step + 1, timestamp)) {
+	} else if (refused && step < 3 && pasteTarget(tPtr, step + 1, timestamp)) {
 		/* the owner refused this target, continue down the chain */
 		tPtr->flags.waitingSelection = 1;
 		armPasteTimer(tPtr);

@@ -390,7 +390,7 @@ static void sendStatusMessage(WMView * destView, WMDraggingInfo * info, xcb_atom
 }
 
 static void
-storeDropData(WMView * destView, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp, void *cdata, WMData * data)
+storeDropData(WMView * destView, xcb_atom_t selection, xcb_atom_t target, xcb_timestamp_t timestamp, void *cdata, WMData * data, bool refused)
 {
 	WMScreen *scr = W_VIEW_SCREEN(destView);
 	WMDraggingInfo *info = &(scr->dragInfo);
@@ -401,6 +401,7 @@ storeDropData(WMView * destView, xcb_atom_t selection, xcb_atom_t target, xcb_ti
 	(void) target;
 	(void) timestamp;
 	(void) cdata;
+	(void) refused;
 
 	if (data != NULL)
 		dataToStore = WMRetainData(data);

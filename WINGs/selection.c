@@ -535,6 +535,7 @@ static void handleNotifyEvent(xcb_generic_event_t * event)
 	WMArrayIterator iter;
 	WMArray *copy;
 	WMData *data;
+	bool refused;
 
 	WM_ITERATE_ARRAY(selCallbacks, handler, iter) {
 
@@ -545,7 +546,8 @@ static void handleNotifyEvent(xcb_generic_event_t * event)
 		}
 		handler->flags.done_pending = 1;
 
-		if (((xcb_selection_notify_event_t *)event)->property == XCB_NONE) {
+		refused = (((xcb_selection_notify_event_t *)event)->property == XCB_NONE);
+		if (refused) {
 			data = NULL;
 		} else {
 			data = getSelectionData(W_XEvqConnection(),
@@ -555,7 +557,8 @@ static void handleNotifyEvent(xcb_generic_event_t * event)
 		}
 
 		(*handler->callback) (handler->view, handler->selection,
-				      handler->target, handler->timestamp, handler->data, data);
+				      handler->target, handler->timestamp, handler->data, data,
+				      refused);
 
 		if (data != NULL) {
 			WMReleaseData(data);
