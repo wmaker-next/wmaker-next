@@ -356,6 +356,28 @@ assert int(m[0]["creation_id"]) > 0
 	}
 	check "tree lists $WT_HEX in exactly one application" tree_shape
 
+	# an attacker-owned property must not balloon the serialized tree,
+	# the resolver caps each field at 1 KiB
+	if command -v xprop >/dev/null 2>&1; then
+		WT_LONG=$(python3 -c 'print("A" * 5000)')
+		DISPLAY=$DPY xprop -id "$WT_HEX" -f WM_NAME 8s -set WM_NAME "$WT_LONG"
+		tree_title_capped() {
+			msg get_window_tree 2>/dev/null | python3 -c '
+import json, sys
+t = json.load(sys.stdin)
+xid = sys.argv[1]
+wins = [w for a in t["applications"] for w in a["windows"]]
+m = [w for w in wins if w["id"] == xid]
+assert len(m) == 1, m
+assert len(m[0]["title"]) == 1024, len(m[0]["title"])
+' "$WT_HEX"
+		}
+		wait_for 50 tree_title_capped
+		check "get_window_tree truncates an oversized title at 1 KiB" tree_title_capped
+	else
+		record_skip "get_window_tree oversized title: xprop not installed"
+	fi
+
 	# query while the client dies to exercise the teardown race
 	kill "$WT_PID"
 	wt_i=0
@@ -369,6 +391,63 @@ assert int(m[0]["creation_id"]) > 0
 	tree_without() { ! msg get_window_tree 2>/dev/null | grep -qF "$WT_HEX"; }
 	wait_for 50 tree_without
 	check "closed client gone from the tree" tree_without
+fi
+
+# ---- pipelined modal action on one connection ---------------------------
+
+note "modal action pipeline"
+
+if ! command -v python3 >/dev/null 2>&1; then
+	record_skip "modal action pipeline: python3 not installed"
+elif ! command -v xdotool >/dev/null 2>&1; then
+	record_skip "modal action pipeline: xdotool not installed"
+else
+	PIPELINE_PY="$RUNTIME/ipc-pipeline.py"
+	PIPELINE_OUT="$RUNTIME/pipeline.out"
+	cat > "$PIPELINE_PY" <<'PYEOF'
+import socket, struct, sys, time
+
+sock_path = sys.argv[1]
+MAGIC = b"wmaker0\n"
+
+
+def frame(body):
+    data = body.encode()
+    return MAGIC + struct.pack("II", len(data), 0) + data
+
+
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect(sock_path)
+start = time.monotonic()
+# a modal action and a second frame pipelined on the same connection, the
+# modal blocks the first reply until the shell dismisses it
+s.sendall(frame("((action,RootMenu))"))
+s.sendall(frame("((info))"))
+s.settimeout(8)
+buf = b""
+try:
+    while buf.count(b"wmaker0\n") < 2:
+        chunk = s.recv(8192)
+        if not chunk:
+            break
+        buf += chunk
+except socket.timeout:
+    pass
+s.close()
+blocked = (time.monotonic() - start) >= 0.8
+print("first=%d second=%d blocked=%d" % (
+    b"{success = YES;}" in buf, b"display_off" in buf, blocked))
+PYEOF
+	python3 "$PIPELINE_PY" "$SOCKET" >"$PIPELINE_OUT" 2>&1 &
+	PIPE_PID=$!
+	echo "$PIPE_PID" >> "$PIDFILE"
+	sleep 1.2
+	DISPLAY=$DPY xdotool key Escape
+	wait_for 80 pid_gone "$PIPE_PID"
+	wait "$PIPE_PID" 2>/dev/null
+	PIPE_LINE=$(cat "$PIPELINE_OUT")
+	check "pipelined modal action answered and blocked" \
+		[ "$PIPE_LINE" = "first=1 second=1 blocked=1" ]
 fi
 
 # ---- display-power verb, display_power event, DisplayOff/OnCommand ------
