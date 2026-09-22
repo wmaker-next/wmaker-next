@@ -360,6 +360,9 @@ char *wXDGFindThemeIcon(const char *name, const char *context,
 {
 	struct iconScanState st;
 
+	if (!name || !context || strchr(name, '/') || strchr(context, '/'))
+		return NULL;
+
 	st.name = name;
 	st.context = context;
 	st.want = want_size;

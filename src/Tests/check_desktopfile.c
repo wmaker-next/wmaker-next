@@ -336,6 +336,12 @@ static void test_xdg_find_theme_icon(void)
 	got = wXDGFindThemeIcon("nope", "apps", 48);
 	CHECK(got == NULL);
 
+	mkicon(root, "secret.png");
+	got = wXDGFindThemeIcon("../../../../secret", "apps", 48);
+	CHECK(got == NULL);
+	got = wXDGFindThemeIcon("myapp", "../../apps", 48);
+	CHECK(got == NULL);
+
 #ifdef USE_SVG
 	/* a scalable hit with no competing raster */
 	got = wXDGFindThemeIcon("onlysvg", "apps", 128);
