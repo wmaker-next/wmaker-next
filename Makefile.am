@@ -234,27 +234,44 @@ configure-documentation:
 DRIVE_TESTS = test/ipc-drive.sh test/ipc-verbs-drive.sh test/ewmh-layout-drive.sh test/hot-corner-drive.sh test/osd-keychain-drive.sh test/moveres-drive.sh test/mwm-hints-drive.sh test/restart-drift-drive.sh test/rootmenu-drive.sh test/tabgroup-drive.sh test/titlebar-drive.sh test/titlebar-dblclick-drive.sh test/window-menu-drive.sh test/lock-geometry-drive.sh test/dock-drop-drive.sh test/xsmp-drive.sh test/idle-wakeups-drive.sh test/roundtrip-drive.sh test/layout-drive.sh test/switchpanel-drive.sh test/wsmask-drive.sh test/workspace-drive.sh test/mouse-button-drive.sh test/disable-ws-mouse-drive.sh test/cycle-workspaces-drive.sh test/wmsetbg-drive.sh test/last-workspace-restore-drive.sh test/iconsize-reflow-drive.sh test/edge-finder-drive.sh test/edge-snap-drive.sh test/snapping-drive.sh test/restore-iconic-drive.sh test/show-desktop-drive.sh test/skip-empty-workspaces-drive.sh test/sound-drive.sh test/multiscreen-drive.sh test/replace-drive.sh test/shared-edge-resize-drive.sh test/urgent-click-drive.sh test/dockapp-drive.sh test/appmenu-drive.sh test/crash-dialog-drive.sh test/title-fallback-drive.sh test/leaderless-hidden-drive.sh test/skip-session-drive.sh test/vdesk-phantom-pan-drive.sh test/wxkb-compose-fallback-drive.sh test/touch-drive.sh test/tiny-window-drive.sh test/wtest-drive.sh
 DRIVE_SUBDIRS = util/Tests
 
+# A wedged driver holding an X grab must fail the sweep instead of hanging
+# it. GNU timeout runs the driver in its own process group and signals the
+# whole group, so the private Xvfb and wmaker die with it, and -k escalates
+# to SIGKILL if a driver ignores SIGTERM. Drivers source
+# test/drive-common.sh, which routes the signal through their EXIT cleanup.
+# 900s is generous for the slowest driver (roundtrip self-caps at 360s).
+DRIVE_TIMEOUT ?= 900
+
 # wmaker spawns helper tools such as wmsetbg by name, so the freshly
 # built binaries must win the PATH lookup over any installed copy
 DRIVE_PATH = $(abs_top_builddir)/src/.libs:$(abs_top_builddir)/util/.libs:$(abs_top_builddir)/WPrefs.app/.libs
 
 check-drive:
 if HAVE_XVFB
-	@fail=0; for t in $(DRIVE_TESTS); do \
+	@fail=0; \
+	if command -v timeout >/dev/null 2>&1; then \
+	  DRIVE_TO="timeout -k 10 $(DRIVE_TIMEOUT)"; \
+	else \
+	  echo "NOTE: timeout(1) not found, drivers run without a hang guard"; \
+	  DRIVE_TO=; \
+	fi; \
+	for t in $(DRIVE_TESTS); do \
 	  echo "=== $$t ==="; \
-	  PATH="$(DRIVE_PATH):$$PATH" "$(top_srcdir)/$$t"; rc=$$?; \
+	  PATH="$(DRIVE_PATH):$$PATH" $$DRIVE_TO "$(top_srcdir)/$$t"; rc=$$?; \
 	  case $$rc in \
-	    0)  echo "PASS  $$t" ;; \
-	    77) echo "SKIP  $$t" ;; \
-	    *)  echo "FAIL  $$t (rc=$$rc)"; fail=1 ;; \
+	    0)   echo "PASS  $$t" ;; \
+	    77)  echo "SKIP  $$t" ;; \
+	    124) echo "FAIL  $$t (timed out after $(DRIVE_TIMEOUT)s)"; fail=1 ;; \
+	    *)   echo "FAIL  $$t (rc=$$rc)"; fail=1 ;; \
 	  esac; \
 	done; \
 	for d in $(DRIVE_SUBDIRS); do \
 	  echo "=== $$d/check-drive ==="; \
-	  PATH="$(DRIVE_PATH):$$PATH" $(MAKE) -C "$$d" check-drive; rc=$$?; \
+	  PATH="$(DRIVE_PATH):$$PATH" $$DRIVE_TO $(MAKE) -C "$$d" check-drive; rc=$$?; \
 	  case $$rc in \
-	    0)  echo "PASS  $$d/check-drive" ;; \
-	    *)  echo "FAIL  $$d/check-drive (rc=$$rc)"; fail=1 ;; \
+	    0)   echo "PASS  $$d/check-drive" ;; \
+	    124) echo "FAIL  $$d/check-drive (timed out after $(DRIVE_TIMEOUT)s)"; fail=1 ;; \
+	    *)   echo "FAIL  $$d/check-drive (rc=$$rc)"; fail=1 ;; \
 	  esac; \
 	done; exit $$fail
 else
