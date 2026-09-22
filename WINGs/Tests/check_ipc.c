@@ -1,6 +1,6 @@
 /*
  *  check_ipc - automated unit tests for the WIPC wire helpers in
- *  libWUtil (wIPCSocketPath, wIPCSend, wIPCRecv)
+ *  libWUtil (wIPCSocketPath, wIPCConnect, wIPCSend, wIPCRecv)
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -29,11 +29,14 @@
  */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <WINGs/WUtil.h>
@@ -297,6 +300,65 @@ static void test_demux(void)
 	close(sv[1]);
 }
 
+/* ---- socket-directory validation ------------------------------------ */
+
+/* wIPCConnect() refuses a socket whose directory is not a private
+ * directory owned by us, so a pre-created predictable fallback directory
+ * cannot collect command frames. A private directory with no socket must
+ * reach connect() and fail with ENOENT rather than the earlier EACCES. */
+static void test_socket_dir(void)
+{
+	char tmpl[] = "/tmp/check_ipc_dir_XXXXXX";
+	char priv[256], pub[256], missing[256], file[256];
+	char spath[320];
+	int fd;
+
+	if (!mkdtemp(tmpl))
+		return;
+
+	snprintf(priv, sizeof(priv), "%s/priv", tmpl);
+	snprintf(pub, sizeof(pub), "%s/pub", tmpl);
+	snprintf(missing, sizeof(missing), "%s/missing", tmpl);
+	snprintf(file, sizeof(file), "%s/file", tmpl);
+	CHECK(mkdir(priv, 0700) == 0);
+	CHECK(chmod(priv, 0700) == 0);
+	CHECK(mkdir(pub, 0755) == 0);
+	CHECK(chmod(pub, 0755) == 0);
+	fd = open(file, O_CREAT | O_WRONLY, 0600);
+	CHECK(fd >= 0);
+	if (fd >= 0)
+		close(fd);
+
+	/* private directory, no socket */
+	snprintf(spath, sizeof(spath), "%s/sock", priv);
+	errno = 0;
+	CHECK(wIPCConnect(spath) < 0);
+	CHECK(errno == ENOENT);
+
+	/* group/other-accessible directory is rejected before connect() */
+	snprintf(spath, sizeof(spath), "%s/sock", pub);
+	errno = 0;
+	CHECK(wIPCConnect(spath) < 0);
+	CHECK(errno == EACCES);
+
+	/* a regular file where the directory should be is rejected too */
+	snprintf(spath, sizeof(spath), "%s/sock", file);
+	errno = 0;
+	CHECK(wIPCConnect(spath) < 0);
+	CHECK(errno == EACCES);
+
+	/* a missing directory is left to connect() to report */
+	snprintf(spath, sizeof(spath), "%s/sock", missing);
+	errno = 0;
+	CHECK(wIPCConnect(spath) < 0);
+	CHECK(errno == ENOENT);
+
+	unlink(file);
+	rmdir(pub);
+	rmdir(priv);
+	rmdir(tmpl);
+}
+
 /* ---- header layout invariants --------------------------------------- */
 
 static void test_header_layout(void)
@@ -320,6 +382,7 @@ int main(void)
 	test_embedded_nul();
 	test_eof_mid_frame();
 	test_demux();
+	test_socket_dir();
 
 	wutil_shutdown();
 
