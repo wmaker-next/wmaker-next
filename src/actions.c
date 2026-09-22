@@ -2272,7 +2272,7 @@ void wHideWindow(WWindow *wwin, WIcon *icon, int icon_x, int icon_y, int animate
 void wHideAll(WScreen *scr)
 {
 	WWindow *wwin;
-	WWindow **windows;
+	xcb_window_t *ids;
 	WMenu *menu;
 	unsigned int wcount = 0;
 	int i;
@@ -2282,29 +2282,31 @@ void wHideAll(WScreen *scr)
 
 	menu = scr->switch_menu;
 
-	windows = wmalloc(sizeof(WWindow *));
+	ids = wmalloc(sizeof(xcb_window_t));
 
 	if (menu != NULL) {
 		for (i = 0; i < menu->entry_no; i++) {
-			windows[wcount] = (WWindow *) menu->entries[i]->clientdata;
+			wwin = (WWindow *) menu->entries[i]->clientdata;
+			ids[wcount] = wwin->client_win;
 			wcount++;
-			windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
+			ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
 		}
 	} else {
 		wwin = scr->focused_window;
 
 		while (wwin) {
-			windows[wcount] = wwin;
+			ids[wcount] = wwin->client_win;
 			wcount++;
-			windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
+			ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
 			wwin = wwin->prev;
 
 		}
 	}
 
 	for (i = 0; i < wcount; i++) {
-		wwin = windows[i];
-		if (WWIN_PRIMARY_WS(wwin) == scr->current_workspace
+		wwin = wWindowFor(ids[i]);
+		if (wwin
+		    && WWIN_PRIMARY_WS(wwin) == scr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
 		    && !wGroupIsInactiveMember(wwin)
@@ -2315,14 +2317,14 @@ void wHideAll(WScreen *scr)
 		}
 	}
 
-	wfree(windows);
+	wfree(ids);
 }
 
 void wHideOtherApplications(WWindow *awin)
 {
 	WWindow *wwin;
 	WApplication *tapp;
-	WWindow **windows;
+	xcb_window_t *ids;
 	unsigned int wcount = 0;
 	int i;
 
@@ -2331,17 +2333,20 @@ void wHideOtherApplications(WWindow *awin)
 
 	/* Snapshot the focus chain first: wIconifyWindow()/wHideApplication()
 	 * can rewire it via wSetFocusTo() focus migration, so walking it
-	 * live can skip the window that migrated to the head. */
-	windows = wmalloc(sizeof(WWindow *));
+	 * live can skip the window that migrated to the head. Client ids
+	 * are stored because wIconifyWindow() can free a window mid-sweep. */
+	ids = wmalloc(sizeof(xcb_window_t));
 	wwin = awin->screen_ptr->focused_window;
 	while (wwin) {
-		windows[wcount++] = wwin;
-		windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
+		ids[wcount++] = wwin->client_win;
+		ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
 		wwin = wwin->prev;
 	}
 
 	for (i = 0; i < wcount; i++) {
-		wwin = windows[i];
+		wwin = wWindowFor(ids[i]);
+		if (!wwin)
+			continue;
 		if (wwin != awin
 		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
@@ -2367,13 +2372,13 @@ void wHideOtherApplications(WWindow *awin)
 			}
 		}
 	}
-	wfree(windows);
+	wfree(ids);
 }
 
 void wMiniaturizeOtherApplications(WWindow *awin)
 {
 	WWindow *wwin;
-	WWindow **windows;
+	xcb_window_t *ids;
 	unsigned int wcount = 0;
 	int i;
 
@@ -2382,17 +2387,20 @@ void wMiniaturizeOtherApplications(WWindow *awin)
 
 	/* Snapshot the focus chain first: wIconifyWindow() can rewire it
 	 * via wSetFocusTo() focus migration, so walking it live can skip
-	 * the window that migrated to the head. */
-	windows = wmalloc(sizeof(WWindow *));
+	 * the window that migrated to the head. Client ids are stored
+	 * because wIconifyWindow() can free a window mid-sweep. */
+	ids = wmalloc(sizeof(xcb_window_t));
 	wwin = awin->screen_ptr->focused_window;
 	while (wwin) {
-		windows[wcount++] = wwin;
-		windows = wrealloc(windows, sizeof(WWindow *) * (wcount + 1));
+		ids[wcount++] = wwin->client_win;
+		ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
 		wwin = wwin->prev;
 	}
 
 	for (i = 0; i < wcount; i++) {
-		wwin = windows[i];
+		wwin = wWindowFor(ids[i]);
+		if (!wwin)
+			continue;
 		if (wwin != awin
 		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
@@ -2406,7 +2414,7 @@ void wMiniaturizeOtherApplications(WWindow *awin)
 			wIconifyWindow(wwin);
 		}
 	}
-	wfree(windows);
+	wfree(ids);
 }
 
 /*

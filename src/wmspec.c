@@ -734,9 +734,11 @@ static void wNETWMShowingDesktop(WScreen *scr, bool show)
 {
 	if (show && scr->netdata->show_desktop == NULL) {
 		WWindow *tmp, **wins;
+		xcb_window_t *ids;
 		int i, n = 0;
 
 		wins = (WWindow **) wmalloc(sizeof(WWindow *) * (scr->window_count + 1));
+		ids = (xcb_window_t *) wmalloc(sizeof(xcb_window_t) * (scr->window_count + 1));
 
 		/* collect the pass first and iconify afterwards: iconifying
 		 * the focused window hands focus to the window under the
@@ -744,22 +746,34 @@ static void wNETWMShowingDesktop(WScreen *scr, bool show)
 		 * window to the chain head, unlinking it from the middle
 		 * and rewiring the neighbours' prev links, so walking and
 		 * iconifying in one pass would resume from a stale link
-		 * and skip the migrated window */
+		 * and skip the migrated window. Re-resolve each id because
+		 * wIconifyWindow() can free a window via ProcessPendingEvents().
+		 * Publish the restore list first so a destroyed window is
+		 * pruned from it by wNETWMShowingDesktopForgetWindow() */
 		for (tmp = scr->focused_window; tmp; tmp = tmp->prev) {
 			if (!tmp->flags.hidden && !tmp->flags.miniaturized
 			    && !tmp->flags.internal_window
-			    && !WFLAGP(tmp, skip_window_list))
-				wins[n++] = tmp;
-		}
-		for (i = 0; i < n; i++) {
-			wins[i]->flags.skip_next_animation = 1;
-			wins[i]->flags.net_show_desktop = 1;
-			wIconifyWindow(wins[i]);
+			    && !WFLAGP(tmp, skip_window_list)) {
+				wins[n] = tmp;
+				ids[n] = tmp->client_win;
+				n++;
+			}
 		}
 		wins[n] = NULL;
 
 		scr->netdata->show_desktop = wins;
 		updateShowDesktop(scr, true);
+
+		for (i = 0; i < n; i++) {
+			WWindow *cand = wWindowFor(ids[i]);
+
+			if (!cand)
+				continue;
+			cand->flags.skip_next_animation = 1;
+			cand->flags.net_show_desktop = 1;
+			wIconifyWindow(cand);
+		}
+		wfree(ids);
 	} else if (scr->netdata->show_desktop != NULL) {
 		WWindow **tmp;
 		for (tmp = scr->netdata->show_desktop; *tmp; ++tmp) {
