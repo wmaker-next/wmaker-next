@@ -197,10 +197,10 @@ static void paintEditMenuItem(WEditMenuItem * iPtr)
 	wXClearArea(scr->display, win, 0, 0, 0, 0, false);
 
 	cr = WCairoBeginForDrawable(scr, win);
-	if (!cr)
-		return;
-	W_DrawRelief(cr, scr, 0, 0, w + 1, h, WRRaised);
-	WCairoEnd(cr);
+	if (cr) {
+		W_DrawRelief(cr, scr, 0, 0, w + 1, h, WRRaised);
+		WCairoEnd(cr);
+	}
 
 	WMDrawString(scr, win, color, font, 5, 3, iPtr->label, strlen(iPtr->label));
 

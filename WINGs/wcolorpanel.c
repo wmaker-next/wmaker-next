@@ -879,7 +879,6 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 		wwarning(_("Color Panel: Could not allocate memory"));
 	}
 
-
 	WMSetSliderImage(panel->cmykYellowS, pixmap);
 	WMReleasePixmap(pixmap);
 

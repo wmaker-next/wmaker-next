@@ -91,11 +91,11 @@ static void paintDoubleTest(_DoubleTest * dPtr)
 	}
 
 	cr = WCairoBeginForDrawable(scr, dPtr->view->window);
-	if (!cr)
-		return;
-	W_DrawRelief(cr, scr, 0, 0, dPtr->view->size.width,
-			  dPtr->view->size.height, dPtr->on ? WRSunken : WRRaised);
-	WCairoEnd(cr);
+	if (cr) {
+		W_DrawRelief(cr, scr, 0, 0, dPtr->view->size.width,
+				  dPtr->view->size.height, dPtr->on ? WRSunken : WRRaised);
+		WCairoEnd(cr);
+	}
 
 	if (dPtr->text) {
 		int y;

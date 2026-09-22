@@ -868,11 +868,11 @@ static void paintBrowser(WMBrowser * bPtr)
 		return;
 
 	cr = WCairoBeginForDrawable(bPtr->view->screen, bPtr->view->window);
-	if (!cr)
-		return;
-	W_DrawRelief(cr, bPtr->view->screen, 0,
-			  bPtr->view->size.height - SCROLLER_WIDTH - 2, bPtr->view->size.width, 22, WRSunken);
-	WCairoEnd(cr);
+	if (cr) {
+		W_DrawRelief(cr, bPtr->view->screen, 0,
+				  bPtr->view->size.height - SCROLLER_WIDTH - 2, bPtr->view->size.width, 22, WRSunken);
+		WCairoEnd(cr);
+	}
 
 	if (bPtr->flags.isTitled) {
 		for (i = 0; i < bPtr->maxVisibleColumns; i++) {
