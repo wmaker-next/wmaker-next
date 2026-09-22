@@ -1685,6 +1685,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 			width = wwin->start_geometry.width;
 		if (wwin->start_geometry.height > 0)
 			height = wwin->start_geometry.height;
+		wWindowConstrainSize(wwin, &width, &height);
 		if (wwin->start_geometry.x >= 0)
 			x = wwin->start_geometry.x;
 		else
@@ -1693,7 +1694,6 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 			y = wwin->start_geometry.y;
 		else
 			y = scr->scr_height - height + wwin->start_geometry.y;
-		wWindowConstrainSize(wwin, &width, &height);
 	}
 
 	/* Create frame, borders and do reparenting */
