@@ -233,6 +233,7 @@ static void domain_load(const char *override)
 		WMReleasePropList(g.domain);
 		g.domain = NULL;
 	}
+	wmTouchConfigFree(&g.cfg);
 	wmTouchConfigInit(&g.cfg);
 	if (path)
 		wfree(path);
