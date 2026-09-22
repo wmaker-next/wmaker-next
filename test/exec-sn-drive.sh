@@ -9,7 +9,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${EXEC_SN_DRIVE_DISPLAY:-:92}
+. "$ROOT/test/drive-common.sh"
+DPY=${EXEC_SN_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 RUNTIME=$(mktemp -d /tmp/exec-sn-drive.XXXXXX)
@@ -90,8 +91,8 @@ unset WMAKER_IPC_SOCKET
 
 # --- Xvfb ------------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    echo "display $DPY is already in use, set EXEC_SN_DRIVE_DISPLAY" >&1
-    exit 1
+    echo "display $DPY is already in use, set EXEC_SN_DRIVE_DISPLAY" >&2
+    exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -bs -ac >>"$LOG" 2>&1 &

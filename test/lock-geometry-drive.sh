@@ -28,7 +28,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${LOCK_GEOMETRY_DRIVE_DISPLAY:-:112}
+. "$ROOT/test/drive-common.sh"
+DPY=${LOCK_GEOMETRY_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 RUNTIME=$(mktemp -d /tmp/lock-geometry-drive.XXXXXX)
@@ -101,7 +102,7 @@ unset WMAKER_IPC_SOCKET WMAKER_USER_XDG
 # --- Xvfb ------------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set LOCK_GEOMETRY_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -bs -ac >>"$LOG" 2>&1 &

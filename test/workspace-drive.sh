@@ -6,7 +6,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${WORKSPACE_DRIVE_DISPLAY:-:110}
+. "$ROOT/test/drive-common.sh"
+DPY=${WORKSPACE_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/workspace-drive.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -58,7 +59,7 @@ unset WMAKER_IPC_SOCKET
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY already in use, set WORKSPACE_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 1024x768x24 -ac -noreset >>"$LOG" 2>&1 &

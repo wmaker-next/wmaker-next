@@ -5,7 +5,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${WINDOW_MENU_DRIVE_DISPLAY:-:97}
+. "$ROOT/test/drive-common.sh"
+DPY=${WINDOW_MENU_DRIVE_DISPLAY:-:$(drive_default_display)}
 PIDFILE=$(mktemp /tmp/window-menu-drive.pids.XXXXXX)
 WMHOME=$(mktemp -d /tmp/window-menu-drive-wmhome.XXXXXX)
 LOG=/tmp/window-menu-drive.log
@@ -84,7 +85,7 @@ xterm_frame() {
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set WINDOW_MENU_DRIVE_DISPLAY to a free one" >&2
-    exit 1
+    exit 77
 fi
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"

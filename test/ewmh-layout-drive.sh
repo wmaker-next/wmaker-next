@@ -3,7 +3,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${EWMH_LAYOUT_DRIVE_DISPLAY:-${EWMH_DRIVE_DISPLAY:-:95}}
+. "$ROOT/test/drive-common.sh"
+DPY=${EWMH_LAYOUT_DRIVE_DISPLAY:-${EWMH_DRIVE_DISPLAY:-:$(drive_default_display)}}
 PIDFILE=$(mktemp /tmp/ewmh-drive.pids.XXXXXX)
 WMHOME=$(mktemp -d /tmp/ewmh-drive-wmhome.XXXXXX)
 LOG=${EWMH_DRIVE_LOG:-/tmp/ewmh-layout-drive.log}
@@ -643,7 +644,7 @@ unset WMAKER_USER_XDG
 
 if run_x xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set EWMH_LAYOUT_DRIVE_DISPLAY to a free one" >&2
-	exit 1
+	exit 77
 fi
 
 # Xephyr is a nested server: on the session display its host pointer

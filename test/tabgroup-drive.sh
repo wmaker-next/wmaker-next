@@ -17,7 +17,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${TABGROUP_DRIVE_DISPLAY:-:93}
+. "$ROOT/test/drive-common.sh"
+DPY=${TABGROUP_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 PIDFILE=$(mktemp /tmp/tabgroup-drive.pids.XXXXXX)
@@ -211,7 +212,7 @@ wait_for 40 xvfb_parent_ready || fail "parent Xvfb failed to start"
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set TABGROUP_DRIVE_DISPLAY" >&2
-    exit 1
+    exit 77
 fi
 note "start Xephyr $DPY on parent $PARENT_DISPLAY"
 Xephyr "$DPY" -display "$PARENT_DISPLAY" -screen ${W}x${H} -ac >>"$LOG" 2>&1 &

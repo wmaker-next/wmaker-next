@@ -10,7 +10,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${SWITCHPANEL_DRIVE_DISPLAY:-:109}
+. "$ROOT/test/drive-common.sh"
+DPY=${SWITCHPANEL_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 PIDFILE=$(mktemp /tmp/switchpanel-drive.pids.XXXXXX)
@@ -126,7 +127,7 @@ EOF
 # --- Xephyr ----------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set SWITCHPANEL_DRIVE_DISPLAY" >&2
-    exit 1
+    exit 77
 fi
 # Xephyr is a nested server: on the session display its host pointer
 # tracks the live mouse and can override the XTEST warps the drive

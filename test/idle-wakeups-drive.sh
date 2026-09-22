@@ -22,7 +22,8 @@ set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
-DPY=${IDLE_DRIVE_DISPLAY:-:91}
+. "$ROOT/test/drive-common.sh"
+DPY=${IDLE_DRIVE_DISPLAY:-:$(drive_default_display)}
 WINDOW_S=${IDLE_DRIVE_WINDOW:-3}
 LIMIT=${IDLE_DRIVE_LIMIT:-15}
 PIDFILE=$(mktemp /tmp/idle-wakeups.pids.XXXXXX)
@@ -60,7 +61,7 @@ command -v Xvfb >/dev/null 2>&1 || { echo "SKIP: Xvfb not installed"; exit 77; }
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY already in use, set IDLE_DRIVE_DISPLAY" >&2
-    exit 1
+    exit 77
 fi
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"

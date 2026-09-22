@@ -18,7 +18,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${URGENT_DRIVE_DISPLAY:-:113}
+. "$ROOT/test/drive-common.sh"
+DPY=${URGENT_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-urgent-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -202,7 +203,7 @@ SHOTDIR="$RUNTIME/shots"
 mkdir -p "$SHOTDIR"
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    echo "display $DPY is already in use" >&2; exit 1
+    echo "display $DPY is already in use" >&2; exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${SCR_W}x${SCR_H}x24 -ac >>"$LOG" 2>&1 &

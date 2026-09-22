@@ -13,7 +13,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${LEADERLESS_HIDDEN_DRIVE_DISPLAY:-:116}
+. "$ROOT/test/drive-common.sh"
+DPY=${LEADERLESS_HIDDEN_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-leadhidden-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -142,7 +143,7 @@ EOF
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set LEADERLESS_HIDDEN_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"

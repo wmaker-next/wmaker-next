@@ -14,7 +14,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${TITLEBAR_DBL_DRIVE_DISPLAY:-:119}
+. "$ROOT/test/drive-common.sh"
+DPY=${TITLEBAR_DBL_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 RUNTIME=$(mktemp -d /tmp/wmaker-titlebardbl-test.XXXXXX)
@@ -199,7 +200,7 @@ ${CC:-cc} -std=gnu11 "$ROOT/test/mothints-client.c" -o "$MOTH" -lX11 >>"$LOG" 2>
     || fatal "could not build test/mothints-client.c"
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    echo "display $DPY is already in use" >&2; exit 1
+    echo "display $DPY is already in use" >&2; exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -ac >>"$LOG" 2>&1 &

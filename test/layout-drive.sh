@@ -6,7 +6,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${LAYOUT_DRIVE_DISPLAY:-:96}
+. "$ROOT/test/drive-common.sh"
+DPY=${LAYOUT_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1200
 H=800
 RUNTIME=$(mktemp -d /tmp/layout-drive.XXXXXX)
@@ -68,7 +69,7 @@ unset WMAKER_IPC_SOCKET
 # --- Xvfb ------------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set LAYOUT_DRIVE_DISPLAY" >&2
-    exit 1
+    exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -ac >>"$LOG" 2>&1 &

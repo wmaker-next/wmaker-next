@@ -12,7 +12,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${TOUCH_DRIVE_DISPLAY:-:95}
+. "$ROOT/test/drive-common.sh"
+DPY=${TOUCH_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-touch-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -178,7 +179,7 @@ pinch-end 3
 GESTURES
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-	echo "display $DPY is already in use" >&2; exit 1
+	echo "display $DPY is already in use" >&2; exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 1024x768x24 -ac >>"$LOG" 2>&1 &

@@ -13,7 +13,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${XSMP_DRIVE_DISPLAY:-:92}
+. "$ROOT/test/drive-common.sh"
+DPY=${XSMP_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/xsmp-drive.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -107,7 +108,7 @@ unset WMAKER_IPC_SOCKET
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set XSMP_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 
 # --- Xvfb ------------------------------------------------------------------

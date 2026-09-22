@@ -22,8 +22,9 @@ set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 WMAKERMSG="$ROOT/util/.libs/wmakermsg"
-REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:90}
-PROXY=${ROUNDTRIP_DRIVE_PROXY:-:89}
+. "$ROOT/test/drive-common.sh"
+REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:$(drive_default_display)}
+PROXY=${ROUNDTRIP_DRIVE_PROXY:-:$(drive_default_display 1)}
 LIMIT=${ROUNDTRIP_LIMIT:-360}
 TRACE=/tmp/roundtrip-drive.trace
 LOG=/tmp/roundtrip-drive.log
@@ -84,7 +85,7 @@ printf '("Test", ("XTerm", EXEC, "xterm"))\n' > "$WMHOME/Defaults/WMRootMenu"
 
 if DISPLAY=$REAL xdpyinfo >/dev/null 2>&1; then
     echo "display $REAL already in use, set ROUNDTRIP_DRIVE_DISPLAY" >&2
-    exit 1
+    exit 77
 fi
 
 Xvfb "$REAL" -screen 0 1280x800x24 -ac -nolisten tcp >>"$LOG" 2>&1 &

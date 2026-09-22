@@ -16,7 +16,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${MEMCHECK_DRIVE_DISPLAY:-:92}
+. "$ROOT/test/drive-common.sh"
+DPY=${MEMCHECK_DRIVE_DISPLAY:-:$(drive_default_display)}
 LOG=${MEMCHECK_DRIVE_LOG:-/tmp/wmaker-memcheck.valgrind.log}
 PIDFILE=/tmp/memcheck-drive.pids
 SUPPRESSIONS="$ROOT/test/memcheck-suppressions.txt"
@@ -62,7 +63,7 @@ msg() {
 }
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    die "display $DPY already in use, set MEMCHECK_DRIVE_DISPLAY"
+    echo "display $DPY already in use, set MEMCHECK_DRIVE_DISPLAY" >&2; exit 77
 fi
 
 Xvfb "$DPY" -screen 0 1280x800x24 -ac -noreset >/dev/null 2>&1 &

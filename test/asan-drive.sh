@@ -20,7 +20,8 @@ done
 unset _t
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${ASAN_DRIVE_DISPLAY:-:93}
+. "$ROOT/test/drive-common.sh"
+DPY=${ASAN_DRIVE_DISPLAY:-:$(drive_default_display)}
 LOG=/tmp/wmaker-asan.log
 PIDFILE=/tmp/asan-drive.pids
 # freshly built ASan-instrumented libWINGs/libWUtil/libwraster, not the
@@ -167,7 +168,7 @@ close_gui() {
 # listening on $DPY
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set ASAN_DRIVE_DISPLAY to a free one" >&2
-    exit 1
+    exit 77
 fi
 # Xephyr is a nested server: on the session display its host pointer
 # tracks the live mouse and can override the XTEST warps the drive

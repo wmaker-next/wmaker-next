@@ -11,7 +11,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${SNAPPING_DRIVE_DISPLAY:-:106}
+. "$ROOT/test/drive-common.sh"
+DPY=${SNAPPING_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 RUNTIME=$(mktemp -d /tmp/snapping-drive.XXXXXX)
@@ -111,7 +112,7 @@ EOF
 # --- Xvfb ----------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set SNAPPING_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -ac >>"$LOG" 2>&1 &

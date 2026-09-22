@@ -21,7 +21,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${EDGE_FINDER_DRIVE_DISPLAY:-:103}
+. "$ROOT/test/drive-common.sh"
+DPY=${EDGE_FINDER_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 RUNTIME=$(mktemp -d /tmp/edge-finder-drive.XXXXXX)
@@ -110,7 +111,7 @@ EOF
 # --- Xvfb ----------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set EDGE_FINDER_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 ${W}x${H}x24 -ac >>"$LOG" 2>&1 &

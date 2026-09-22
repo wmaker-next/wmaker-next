@@ -7,7 +7,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${HOTCORNER_DRIVE_DISPLAY:-:94}
+. "$ROOT/test/drive-common.sh"
+DPY=${HOTCORNER_DRIVE_DISPLAY:-:$(drive_default_display)}
 W=1280
 H=800
 PIDFILE=$(mktemp /tmp/hotcorner-drive.pids.XXXXXX)
@@ -83,7 +84,7 @@ unset WMAKER_USER_XDG
 # --- Xephyr -----------------------------------------------------------------
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
     echo "display $DPY is already in use, set HOTCORNER_DRIVE_DISPLAY to a free one" >&2
-    exit 1
+    exit 77
 fi
 # Xephyr is a nested server: on the session display its host pointer
 # tracks the live mouse and can override the XTEST warps the drive

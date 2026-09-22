@@ -11,7 +11,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${ZAPHOD_DRIVE_DISPLAY:-:106}
+. "$ROOT/test/drive-common.sh"
+DPY=${ZAPHOD_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-multiscr-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -94,7 +95,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
 EOF
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    echo "display $DPY is already in use" >&2; exit 1
+    echo "display $DPY is already in use" >&2; exit 77
 fi
 note "start Xvfb $DPY with two screens (Zaphod)"
 Xvfb "$DPY" -screen 0 1024x768x24 -screen 1 640x480x24 -ac >>"$LOG" 2>&1 &

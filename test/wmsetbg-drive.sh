@@ -5,7 +5,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${WMSETBG_DRIVE_DISPLAY:-:100}
+. "$ROOT/test/drive-common.sh"
+DPY=${WMSETBG_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-wmsetbg-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -94,7 +95,7 @@ cat >"$WMHOME/Defaults/WMState" <<'EOF'
 EOF
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-    echo "display $DPY is already in use" >&2; exit 1
+    echo "display $DPY is already in use" >&2; exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 1024x768x24 -ac >>"$LOG" 2>&1 &

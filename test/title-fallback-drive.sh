@@ -7,7 +7,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${TITLE_DRIVE_DISPLAY:-:112}
+. "$ROOT/test/drive-common.sh"
+DPY=${TITLE_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/title-drive.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -131,7 +132,7 @@ unset WMAKER_IPC_SOCKET
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY already in use, set TITLE_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 
 cat > "$PROBE" <<'EOF'

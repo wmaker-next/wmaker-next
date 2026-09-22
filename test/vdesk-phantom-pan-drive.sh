@@ -21,7 +21,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${VDESK_PHANTOM_DRIVE_DISPLAY:-:120}
+. "$ROOT/test/drive-common.sh"
+DPY=${VDESK_PHANTOM_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wmaker-vdphantom-test.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -106,7 +107,7 @@ win_abs_x() {
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY is already in use, set VDESK_PHANTOM_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 
 mkdir -p "$WMHOME/Defaults" "$WMHOME/Library/WindowMaker"

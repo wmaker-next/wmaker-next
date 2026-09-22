@@ -19,7 +19,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY_BASE=${WXKB_FB_DRIVE_DISPLAY:-:137}
+. "$ROOT/test/drive-common.sh"
+DPY_BASE=${WXKB_FB_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/wxkb-fb-drive.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -187,7 +188,7 @@ drive_leg() {
 	note "leg $_TAG: Xvfb $DPY"
 
 	if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
-		fatal "display $DPY is already in use, set WXKB_FB_DRIVE_DISPLAY"
+		echo "display $DPY is already in use, set WXKB_FB_DRIVE_DISPLAY" >&2; exit 77
 	fi
 
 	Xvfb "$DPY" -screen 0 1024x768x24 -ac >>"$LOG" 2>&1 &

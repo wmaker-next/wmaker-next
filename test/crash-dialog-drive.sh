@@ -17,7 +17,8 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DPY=${CRASH_DIALOG_DRIVE_DISPLAY:-:112}
+. "$ROOT/test/drive-common.sh"
+DPY=${CRASH_DIALOG_DRIVE_DISPLAY:-:$(drive_default_display)}
 RUNTIME=$(mktemp -d /tmp/crash-dialog-drive.XXXXXX)
 WMHOME="$RUNTIME/home"
 PIDFILE="$RUNTIME/pids"
@@ -60,7 +61,7 @@ command -v Xvfb    >/dev/null || { echo "SKIP: Xvfb not found"; exit 77; }
 
 if DISPLAY=$DPY xdpyinfo >/dev/null 2>&1; then
 	echo "display $DPY already in use, set CRASH_DIALOG_DRIVE_DISPLAY" >&2
-	exit 1
+	exit 77
 fi
 note "start Xvfb $DPY"
 Xvfb "$DPY" -screen 0 1024x768x24 -ac -noreset >>"$LOG" 2>&1 &
@@ -83,7 +84,12 @@ start_monitor() {
 	# real window manager itself, which is the process under test.
 	# setsid gives the monitor its own process group so cleanup can
 	# take a live dialog or a respawn race with one kill.
+	# handle_segv=0 keeps the sanitizer runtime from installing its
+	# own SEGV handler: that handler would turn the injected crash
+	# below into a clean exit and the monitor would never see
+	# WIFSIGNALED. Non-sanitizer builds ignore the variable.
 	setsid env LD_LIBRARY_PATH="$WMLIBS" DISPLAY="$DPY" \
+		ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0:handle_segv=0" \
 		XDG_RUNTIME_DIR="$RUNTIME" WMAKER_USER_ROOT="$WMHOME" \
 		"$ROOT/src/.libs/wmaker" >>"$LOG" 2>&1 &
 	echo $!
