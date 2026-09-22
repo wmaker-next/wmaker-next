@@ -178,12 +178,16 @@ void WMSetMultiSelectPopUpButtonCaption(WMMultiSelectPopUpButton *bPtr, const ch
 void WMSetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index, bool flag)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
+	if (index < 0 || index >= WMGetArrayItemCount(bPtr->items))
+		return;
 	WMSetMenuItemEnabled(WMGetFromArray(bPtr->items, index), (flag ? 1 : 0));
 }
 
 bool WMGetMultiSelectPopUpButtonItemEnabled(WMMultiSelectPopUpButton *bPtr, int index)
 {
 	CHECK_CLASS(bPtr, WC_MultiSelectPopUpButton);
+	if (index < 0 || index >= WMGetArrayItemCount(bPtr->items))
+		return false;
 	return WMGetMenuItemEnabled(WMGetFromArray(bPtr->items, index));
 }
 
