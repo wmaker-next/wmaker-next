@@ -523,6 +523,38 @@ PYEOF
     rm -f /tmp/icon-ids.txt
 fi
 
+# --- show-desktop sweep with a client dying mid-animation -------------------
+# wIconifyWindow() drains pending events after each animation, so a client
+# that exits during the sweep is freed by wUnmanageWindow(); the snapshot
+# must be re-resolved instead of dereferenced. ASan flags the stale read.
+note "show-desktop sweep with a client destroyed mid-sweep"
+if command -v wmctrl >/dev/null 2>&1; then
+    ASAN_LOG_MARK=$(wc -l < "$LOG")
+    SD_HEAD=$(xdo search --onlyvisible --pid "$XT2" 2>/dev/null | head -n 1)
+    SD_TAIL=$(xdo search --onlyvisible --pid "$XT1" 2>/dev/null | head -n 1)
+    if [ -n "$SD_HEAD" ] && [ -n "$SD_TAIL" ]; then
+        # head-first the sweep is SD_HEAD then SD_TAIL, so killing SD_TAIL
+        # just after the trigger lands its DestroyNotify in SD_HEAD's
+        # animation drain, before the sweep reaches the dead snapshot entry
+        xdo windowactivate "$SD_TAIL"; sleep 0.3
+        xdo windowactivate "$SD_HEAD"; sleep 0.3
+        DISPLAY=$DPY wmctrl -k on 2>/dev/null
+        sleep 0.05
+        kill "$XT1" 2>/dev/null
+        sleep 2
+        DISPLAY=$DPY wmctrl -k off 2>/dev/null
+        sleep 0.5
+        if tail -n +"$((ASAN_LOG_MARK + 1))" "$LOG" \
+                | grep -qE 'ERROR: AddressSanitizer|runtime error:'; then
+            warn "mid-sweep client destroy tripped a sanitizer report"
+        fi
+    else
+        note "  could not resolve the xterm window ids, skipping the mid-sweep leg"
+    fi
+else
+    note "  wmctrl not installed, skipping the mid-sweep destroy leg"
+fi
+
 # --- kill clients while managed (wUnmanageWindow path) ----------------------
 note "client deaths"
 kill "$XT2" 2>/dev/null; sleep 0.3

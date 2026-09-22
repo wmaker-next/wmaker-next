@@ -163,6 +163,17 @@ x xdotool key alt+Down 2>/dev/null; sleep 1
 x xdotool key alt+2 2>/dev/null; sleep 1
 x xdotool key alt+1 2>/dev/null; sleep 1
 
+# --- show-desktop sweep with a client dying mid-animation -------------------
+# wIconifyWindow() drains pending events after each animation, so a client
+# that exits during the sweep is freed by wUnmanageWindow(); the snapshot
+# must be re-resolved, not dereferenced (Valgrind flags the stale read).
+x wmctrl -a memcheck-b 2>/dev/null; sleep 1
+x wmctrl -a memcheck-a 2>/dev/null; sleep 1
+x wmctrl -k on 2>/dev/null; sleep 0.05
+x wmctrl -c memcheck-b 2>/dev/null
+sleep 3
+x wmctrl -k off 2>/dev/null; sleep 1
+
 # --- dialog client + teardown ----------------------------------------------
 spawn xmessage -geometry 400x150+300+200 "memcheck-dialog"
 sleep 3
