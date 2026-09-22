@@ -56,6 +56,7 @@ typedef struct WWorkspace {
 void wWorkspaceMake(WScreen *scr, int count);
 int wWorkspaceNew(WScreen *scr);
 int wGetWorkspaceNumber(WScreen *scr, const char *value);
+int wWorkspaceFindByName(WScreen *scr, const char *name);
 bool wWorkspaceDelete(WScreen *scr, int workspace);
 void wAutoRemoveEmptyWorkspaces(WScreen *scr);
 void wWorkspaceChange(WScreen *scr, int workspace);

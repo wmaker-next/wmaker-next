@@ -494,23 +494,12 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 	WMPropList *value;
 	char *tmp;
 	unsigned mask;
-	int i;
 
 	state->workspace = -1;
 	value = WMGetFromPLDictionary(win_state, sWorkspace);
 	if (value && WMIsPLString(value)) {
 		tmp = WMGetFromPLString(value);
-		if (sscanf(tmp, "%i", &state->workspace) != 1) {
-			state->workspace = -1;
-			for (i = 0; i < scr->workspace_count; i++) {
-				if (strcmp(scr->workspaces[i]->name, tmp) == 0) {
-					state->workspace = i;
-					break;
-				}
-			}
-		} else {
-			state->workspace--;
-		}
+		state->workspace = wGetWorkspaceNumber(scr, tmp);
 	}
 
 	value = WMGetFromPLDictionary(win_state, sWorkspaces);
@@ -520,16 +509,13 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 
 		for (j = 0; j < n; j++) {
 			WMPropList *e = WMGetFromPLArray(value, j);
+			int w;
 
 			if (!e || !WMIsPLString(e))
 				continue;
-			tmp = WMGetFromPLString(e);
-			for (i = 0; i < scr->workspace_count; i++) {
-				if (strcmp(scr->workspaces[i]->name, tmp) == 0) {
-					state->ws_mask |= WS_BIT(i);
-					break;
-				}
-			}
+			w = wWorkspaceFindByName(scr, WMGetFromPLString(e));
+			if (w >= 0)
+				state->ws_mask |= WS_BIT(w);
 		}
 	}
 
@@ -668,37 +654,27 @@ void wSessionRestoreState(WScreen *scr)
 		dock = NULL;
 		value = WMGetFromPLDictionary(win_info, sDock);
 		if (value && WMIsPLString(value) && (tmp = WMGetFromPLString(value)) != NULL) {
-			if (sscanf(tmp, "%i", &n) != 1) {
-				if (!strcasecmp(tmp, "DOCK"))
-					dock = scr->dock;
+			j = wWorkspaceFindByName(scr, tmp);
+			if (!strcasecmp(tmp, "DOCK")) {
+				dock = scr->dock;
+			} else if (j >= 0) {
+				dock = scr->workspaces[j]->clip;
+			} else if (sscanf(tmp, "%i", &n) != 1) {
+				/* Try the drawers */
+				WDrawerChain *dc;
 
-				/* Try the clips */
-				if (dock == NULL) {
-					for (j = 0; j < scr->workspace_count; j++) {
-						if (strcmp(scr->workspaces[j]->name, tmp) == 0) {
-							dock = scr->workspaces[j]->clip;
-							break;
-						}
-					}
-				}
-				if (dock == NULL) // Try the drawers
+				for (dc = scr->drawers; dc != NULL; dc = dc->next)
 				{
-					WDrawerChain *dc;
-					for (dc = scr->drawers; dc != NULL; dc = dc->next)
+					if (strcmp(dc->adrawer->icon_array[0]->wm_instance, tmp) == 0)
 					{
-						if (strcmp(dc->adrawer->icon_array[0]->wm_instance, tmp) == 0)
-						{
-							dock = dc->adrawer;
-							break;
-						}
+						dock = dc->adrawer;
+						break;
 					}
 				}
-			} else {
-				if (n == 0) {
-					dock = scr->dock;
-				} else if (n > 0 && n <= scr->workspace_count) {
-					dock = scr->workspaces[n - 1]->clip;
-				}
+			} else if (n == 0) {
+				dock = scr->dock;
+			} else if (n > 0 && n <= scr->workspace_count) {
+				dock = scr->workspaces[n - 1]->clip;
 			}
 		}
 
@@ -769,7 +745,7 @@ void wSessionRestoreLastWorkspace(WScreen * scr)
 	/* Get the workspace number for the workspace name */
 	w = wGetWorkspaceNumber(scr, value);
 
-	if (w != scr->current_workspace && w < scr->workspace_count)
+	if (w >= 0 && w != scr->current_workspace && w < scr->workspace_count)
 		wWorkspaceChange(scr, w);
 }
 

@@ -1567,6 +1567,17 @@ static void deleteWSCommand(WMenu *menu, WMenuEntry *entry)
 	wWorkspaceDelete(menu->frame->screen_ptr, menu->frame->screen_ptr->workspace_count - 1);
 }
 
+static bool workspace_name_taken(WScreen *scr, int workspace, const char *name)
+{
+	int i;
+
+	for (i = 0; i < scr->workspace_count; i++) {
+		if (i != workspace && strcmp(scr->workspaces[i]->name, name) == 0)
+			return true;
+	}
+	return false;
+}
+
 static void newWSCommand(WMenu *menu, WMenuEntry *foo)
 {
 	int ws;
@@ -1598,6 +1609,19 @@ void wWorkspaceRename(WScreen *scr, int workspace, const char *name)
 		wstrlcpy(buf, tmp, sizeof(buf));
 	}
 	wfree(tmp);
+
+	if (workspace_name_taken(scr, workspace, buf)) {
+		char base[MAX_WORKSPACENAME_WIDTH + 1];
+		int n;
+
+		wstrlcpy(base, buf, sizeof(base));
+		for (n = 2; n <= MAX_WORKSPACES; n++) {
+			snprintf(buf, sizeof(buf), "%.*s (%d)",
+				 MAX_WORKSPACENAME_WIDTH - 8, base, n);
+			if (!workspace_name_taken(scr, workspace, buf))
+				break;
+		}
+	}
 
 	/* update workspace */
 	wfree(scr->workspaces[workspace]->name);
@@ -1930,22 +1954,40 @@ void wWorkspaceRestoreState(WScreen *scr)
 	}
 }
 
+int wWorkspaceFindByName(WScreen *scr, const char *name)
+{
+	int i, found = -1;
+
+	if (!name)
+		return -1;
+	for (i = 0; i < scr->workspace_count; i++) {
+		if (strcmp(scr->workspaces[i]->name, name) == 0) {
+			if (found != -1)
+				return -1;
+			found = i;
+		}
+	}
+	return found;
+}
+
 /* Returns the workspace number for a given workspace name */
 int wGetWorkspaceNumber(WScreen *scr, const char *value)
 {
-        int w, i;
+	int w, i, found = -1;
 
-	if (sscanf(value, "%i", &w) != 1) {
-		w = -1;
-		for (i = 0; i < scr->workspace_count; i++) {
-			if (strcmp(scr->workspaces[i]->name, value) == 0) {
-				w = i;
-				break;
-			}
+	if (!value)
+		return -1;
+	for (i = 0; i < scr->workspace_count; i++) {
+		if (strcmp(scr->workspaces[i]->name, value) == 0) {
+			if (found != -1)
+				return -1;
+			found = i;
 		}
-	} else {
-		w--;
 	}
+	if (found != -1)
+		return found;
+	if (sscanf(value, "%i", &w) == 1 && w >= 1 && w <= scr->workspace_count)
+		return w - 1;
 
-	return w;
+	return -1;
 }
