@@ -257,6 +257,42 @@ static void test_wexpandpath(void)
 	wfree(p);
 }
 
+static void test_wpathdir(void)
+{
+	char *d;
+
+	/* no slash -> current directory */
+	d = wpathdir("file");
+	CHECK(d && strcmp(d, ".") == 0);
+	wfree(d);
+
+	d = wpathdir("");
+	CHECK(d && strcmp(d, ".") == 0);
+	wfree(d);
+
+	d = wpathdir(NULL);
+	CHECK(d && strcmp(d, ".") == 0);
+	wfree(d);
+
+	/* only the leading slash -> root */
+	d = wpathdir("/file");
+	CHECK(d && strcmp(d, "/") == 0);
+	wfree(d);
+
+	d = wpathdir("/");
+	CHECK(d && strcmp(d, "/") == 0);
+	wfree(d);
+
+	/* prefix before the last slash */
+	d = wpathdir("a/b");
+	CHECK(d && strcmp(d, "a") == 0);
+	wfree(d);
+
+	d = wpathdir("/a/b/c");
+	CHECK(d && strcmp(d, "/a/b") == 0);
+	wfree(d);
+}
+
 static int int_compare(const void *a, const void *b)
 {
 	return (int)(long)a - (int)(long)b;
@@ -533,6 +569,7 @@ int main(void)
 	test_wtoken();
 	test_wtrimspace();
 	test_wexpandpath();
+	test_wpathdir();
 	test_intern();
 	test_array();
 	test_bag();

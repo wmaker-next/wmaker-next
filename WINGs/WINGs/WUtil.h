@@ -230,6 +230,12 @@ char* wfindfileinarray(WMPropList* array, const char *file);
 
 char* wexpandpath(const char *path);
 
+/* Directory component of a file path, as a newly allocated string.
+ * The result is "." when the path has no slash, "/" when only the
+ * leading slash is present, and the prefix before the last slash
+ * otherwise. Free the returned string when you no longer need it. */
+char *wpathdir(const char *path);
+
 int wcopy_file(const char *toPath, const char *srcFile, const char *destFile);
 
 /* don't free the returned string */

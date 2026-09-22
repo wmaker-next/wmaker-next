@@ -446,7 +446,7 @@ static void domain_load(void)
  * rename()s a temporary file over the target, orphaning a file watch */
 static void inotify_watch_update(void)
 {
-	char *dir, *base;
+	char *dir;
 
 	if (g.inotify_fd < 0 || !g.domain_path)
 		return;
@@ -454,14 +454,7 @@ static void inotify_watch_update(void)
 		inotify_rm_watch(g.inotify_fd, g.inotify_wd);
 		g.inotify_wd = -1;
 	}
-	dir = wstrdup(g.domain_path);
-	base = strrchr(dir, '/');
-	if (!base)
-		strcpy(dir, ".");
-	else if (base == dir)
-		strcpy(dir, "/");
-	else
-		*base = '\0';
+	dir = wpathdir(g.domain_path);
 	g.inotify_wd = inotify_add_watch(g.inotify_fd, dir,
 					 IN_CLOSE_WRITE | IN_MOVED_TO);
 	wfree(dir);

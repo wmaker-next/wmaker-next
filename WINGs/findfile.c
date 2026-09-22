@@ -209,6 +209,22 @@ error:
 	return NULL;
 }
 
+char *wpathdir(const char *path)
+{
+	const char *slash;
+
+	if (!path || !*path)
+		return wstrdup(".");
+
+	slash = strrchr(path, '/');
+	if (!slash)
+		return wstrdup(".");
+	if (slash == path)
+		return wstrdup("/");
+
+	return wstrndup(path, (size_t)(slash - path));
+}
+
 /* return address of next char != tok or end of string whichever comes first */
 static const char *skipchar(const char *string, char tok)
 {
