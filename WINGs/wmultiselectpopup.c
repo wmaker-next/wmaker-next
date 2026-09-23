@@ -580,7 +580,9 @@ static void handleActionEvents(xcb_generic_event_t *event, void *data)
 
 	CHECK_CLASS(data, WC_MultiSelectPopUpButton);
 
-	if (WMGetArrayItemCount(bPtr->items) < 1)
+	if (WMGetArrayItemCount(bPtr->items) < 1
+	    && (event->response_type & 0x7f) != XCB_BUTTON_RELEASE
+	    && (event->response_type & 0x7f) != XCB_KEY_PRESS)
 		return;
 
 	switch ((event->response_type & 0x7f)) {
