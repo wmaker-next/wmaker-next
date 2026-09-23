@@ -774,6 +774,21 @@ static void merge_attrs(WWindowAttributes *attr, WWindowAttributes *mask,
 #undef WATTR_MERGE_ROW
 }
 
+static const char *cap_predicate(const char *s, char *buf, size_t bufsize)
+{
+	size_t len;
+
+	if (!s)
+		return NULL;
+	len = strnlen(s, bufsize);
+	if (len >= bufsize) {
+		memcpy(buf, s, bufsize - 1);
+		buf[bufsize - 1] = '\0';
+		return buf;
+	}
+	return s;
+}
+
 /*
  *----------------------------------------------------------------------
  * attrs_lookup_dynamic / fill_attrs_with_title--
@@ -794,6 +809,7 @@ static void merge_attrs(WWindowAttributes *attr, WWindowAttributes *mask,
  * so a rule with only MatchClass/MatchInstance still applies.
  *----------------------------------------------------------------------
  */
+
 static const WWindowAttrs *attrs_lookup_dynamic(const char *title,
 						const char *instance,
 						const char *class,
@@ -804,7 +820,11 @@ static const WWindowAttrs *attrs_lookup_dynamic(const char *title,
 						int window_type_count)
 {
 	char title_buf[DYNRULE_MAX_TITLE_LEN + 1];
-	size_t tlen;
+	char instance_buf[DYNRULE_MAX_PREDICATE_LEN + 1];
+	char class_buf[DYNRULE_MAX_PREDICATE_LEN + 1];
+	char role_buf[DYNRULE_MAX_PREDICATE_LEN + 1];
+	char command_buf[DYNRULE_MAX_PREDICATE_LEN + 1];
+	char machine_buf[DYNRULE_MAX_PREDICATE_LEN + 1];
 	int i, j;
 
 	if (!dynamic_rule_count)
@@ -818,16 +838,12 @@ static const WWindowAttrs *attrs_lookup_dynamic(const char *title,
 	if (class && !*class)
 		class = NULL;
 
-	/* Truncate the title once per call. The same capped value is
-	 * matched against every rule. */
-	if (title) {
-		tlen = strnlen(title, DYNRULE_MAX_TITLE_LEN + 1);
-		if (tlen > DYNRULE_MAX_TITLE_LEN) {
-			memcpy(title_buf, title, DYNRULE_MAX_TITLE_LEN);
-			title_buf[DYNRULE_MAX_TITLE_LEN] = '\0';
-			title = title_buf;
-		}
-	}
+	title = cap_predicate(title, title_buf, sizeof(title_buf));
+	instance = cap_predicate(instance, instance_buf, sizeof(instance_buf));
+	class = cap_predicate(class, class_buf, sizeof(class_buf));
+	role = cap_predicate(role, role_buf, sizeof(role_buf));
+	command = cap_predicate(command, command_buf, sizeof(command_buf));
+	machine = cap_predicate(machine, machine_buf, sizeof(machine_buf));
 
 	for (i = 0; i < dynamic_rule_count; i++) {
 		WDynamicRule *r = &dynamic_rules[i];

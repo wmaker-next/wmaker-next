@@ -152,4 +152,6 @@ bool wDefaultHasDynamicRules(void);
  * re-evaluation runs on every title change. */
 #define DYNRULE_MAX_TITLE_LEN 512
 
+#define DYNRULE_MAX_PREDICATE_LEN 512
+
 #endif /* WMWDEFAULTS_H_ */
