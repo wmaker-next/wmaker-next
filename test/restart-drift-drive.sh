@@ -172,6 +172,14 @@ msg() {
 	LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 		DISPLAY=$DPY "$WMAKERMSG" -s "$SOCKET" "$@"
 }
+# window stacking level from the get_window_tree reply (JSON, id as 0x%lx)
+win_layer() {
+	wl_id=$(printf '0x%x' "$1")
+	msg get_window_tree 2>/dev/null | sed 's/{"class"/\n{"class"/g' \
+		| grep -F "\"id\":\"$wl_id\"" \
+		| sed -n 's/.*"layer":"\([0-9-]*\)".*/\1/p'
+}
+win_layer_is() { [ "$(win_layer "$1")" = "$2" ]; }
 
 note "start wmaker"
 start_wmaker
@@ -300,6 +308,19 @@ assert_no_drift() {
 	record_pass "$ad_label frame stable at ($ad_cfx,$ad_cfy) (delta $ad_dx,$ad_dy)"
 }
 
+# --- per-window stacking level survives a warm restart ---------------------
+# Keep on top changes only the frame's stacking level and the checkmark
+# derives from that level, so the level is what must round-trip.
+note "toggle Keep on top on the NW xterm"
+DISPLAY=$DPY wmctrl -i -a "$(printf '0x%x' "$XTW")" >>"$LOG" 2>&1
+sleep 0.3
+msg action KeepOnTop "$XTW" >>"$LOG" 2>&1 || fatal "Keep on top action failed"
+wait_for 30 win_layer_is "$XTW" 3 \
+	|| fatal "Keep on top did not set the floating level (got $(win_layer "$XTW"))"
+wait_for 30 win_layer_is "$EWMHW" 0 \
+	|| fatal "Keep on top changed an unrelated window's level (got $(win_layer "$EWMHW"))"
+record_pass "Keep on top sets the floating level on the target only"
+
 # --- warm restart cycles ---------------------------------------------------
 cycle=0
 while [ "$cycle" -lt "$RESTARTS" ]; do
@@ -323,7 +344,47 @@ while [ "$cycle" -lt "$RESTARTS" ]; do
 	assert_no_drift "xterm cycle $cycle"      "$BASE_XT_FX" "$BASE_XT_FY" "$XT_FX" "$XT_FY"
 	assert_no_drift "south-grav cycle $cycle" "$BASE_EW_FX" "$BASE_EW_FY" "$EW_FX" "$EW_FY"
 	assert_no_drift "no-title cycle $cycle"  "$BASE_NT_FX" "$BASE_NT_FY" "$NT_FX" "$NT_FY"
+	if win_layer_is "$XTW" 3; then
+		record_pass "xterm keeps the floating level across cycle $cycle"
+	else
+		record_fail "xterm floating level lost in cycle $cycle (got $(win_layer "$XTW"))"
+	fi
+	if win_layer_is "$EWMHW" 0; then
+		record_pass "south-grav level unchanged across cycle $cycle"
+	else
+		record_fail "south-grav level changed in cycle $cycle (got $(win_layer "$EWMHW"))"
+	fi
 done
+
+# --- per-window decoration survives a warm restart -------------------------
+# The no-title client is live, so dropping the domain rule and warm
+# restarting must keep its NoTitlebar via the hint.
+note "delete the notitle domain rule, then warm restart"
+sed -i '/notitle\.XTerm/d' "$WMHOME/Defaults/WMWindowAttributes"
+msg -q restart >>"$LOG" 2>&1; rc=$?
+[ "$rc" -eq 0 ] || fatal "wmakermsg restart failed (rc=$rc)"
+wait_for 120 ipc_ready || fatal "IPC did not re-bind after the decoration restart"
+WMAKER_PID=$(msg get_version 2>/dev/null \
+	| sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
+[ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
+sleep 0.5
+NTRW=$(DISPLAY=$DPY xdotool search --name '^driftnotitle$' 2>/dev/null | tail -n 1)
+[ -n "$NTRW" ] || fatal "driftnotitle was lost across the decoration restart"
+XTRW=$(DISPLAY=$DPY xdotool search --name '^driftterm$' 2>/dev/null | tail -n 1)
+[ -n "$XTRW" ] || fatal "driftterm was lost across the decoration restart"
+NT_EXT=$(DISPLAY=$DPY xprop -id "$NTRW" _NET_FRAME_EXTENTS 2>/dev/null \
+	| sed 's/.*= //; s/,//g')
+XT_EXT=$(DISPLAY=$DPY xprop -id "$XTRW" _NET_FRAME_EXTENTS 2>/dev/null \
+	| sed 's/.*= //; s/,//g')
+set -- $NT_EXT
+NT_TOP=$3
+set -- $XT_EXT
+XT_TOP=$3
+[ -n "${NT_TOP:-}" ] && [ -n "${XT_TOP:-}" ] \
+	|| fatal "could not read frame extents after the decoration restart"
+[ "$NT_TOP" -lt "$XT_TOP" ] \
+	|| fatal "NoTitlebar reverted on warm restart (notitle-top=$NT_TOP xterm-top=$XT_TOP)"
+record_pass "NoTitlebar survived a warm restart with the domain rule removed"
 
 # --- cold session restore --------------------------------------------------
 note "cold session restore"
@@ -334,10 +395,9 @@ wait_for 30 pid_gone "$EWMHPID"
 wait_for 30 pid_gone "$NOTITLEPID"
 wait_for 30 pid_gone "$XTPID"
 
-# The cold restore must carry NoTitlebar from the session file rather than
-# depending on the default that was active when the window was first managed.
-sed -i '/notitle\.XTerm/d' "$WMHOME/Defaults/WMWindowAttributes"
-
+# The clients are killed and relaunched from the session (the domain rule
+# was dropped above), so the relaunched no-title client has no hint and
+# re-derives its decoration: the cold-relaunch loss is accepted.
 start_wmaker
 wait_for 120 wm_ready || fatal "wmaker did not come up for cold restore"
 wait_for 80 ipc_ready || fatal "wmaker IPC did not come up for cold restore"
@@ -361,7 +421,9 @@ set -- $XT_EXT
 XT_TOP=$3
 set -- $NT_EXT
 NT_TOP=$3
-[ "$NT_TOP" -lt "$XT_TOP" ] || fatal "NoTitlebar was not restored from the session"
+[ "$NT_TOP" -eq "$XT_TOP" ] \
+	|| fatal "NoTitlebar unexpectedly restored for a relaunched client (notitle-top=$NT_TOP xterm-top=$XT_TOP)"
+record_pass "relaunched client re-derives its decoration (per-window loss accepted)"
 assert_no_drift "xterm cold restore" "$BASE_XT_FX" "$BASE_XT_FY" "$XT_FX" "$XT_FY"
 assert_no_drift "no-title cold restore" "$BASE_NT_FX" "$BASE_NT_FY" "$NT_FX" "$NT_FY"
 

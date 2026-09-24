@@ -397,10 +397,10 @@ static void test_case_sensitivity(void)
 
 static void test_schema_count(void)
 {
-	/* uint32_t bitset, the static assert in wdefaults.c already
+	/* uint64_t bitset, the static assert in wdefaults.c already
 	 * covers the upper bound, this catches accidental empty list */
 	CHECK(WATTR_BOOL_COUNT >= 28);
-	CHECK(WATTR_BOOL_COUNT <= 32);
+	CHECK(WATTR_BOOL_COUNT <= 64);
 }
 
 static void reset_icon_stubs(void)

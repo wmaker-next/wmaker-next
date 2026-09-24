@@ -19,8 +19,8 @@
 # The menu is opened with WindowMenuKey (Control+Escape, keyboard mode),
 # which keyboard-grabs, so xdotool key navigates. A freshly mapped menu
 # has no preselection, so Down x12 lands on "Options" (rows 0..11, all
-# always visible), Right enters the cascade with "Keep at bottom" (row 0)
-# preselected, then Down x2/x3 reaches "Lock position"/"Lock size",
+# always visible), Right enters the cascade with "Auto-hide on unfocus"
+# (row 0) preselected, then Down x4/x5 reaches "Lock position"/"Lock size",
 # Return executes.
 #
 # Runs against an isolated WMAKER_USER_ROOT and XDG_RUNTIME_DIR, tracks
@@ -239,8 +239,8 @@ MOVED=$(geom)
 [ "$MOVED" != "$RESIZED" ] || fatal "control windowmove did not move the window"
 record_pass "control: free window moves and resizes"
 
-note "toggle Lock size (Options index 3)"
-toggle_option 3 || fatal "could not toggle Lock size"
+note "toggle Lock size (Options index 5)"
+toggle_option 5 || fatal "could not toggle Lock size"
 G0=$(geom)
 xdo windowsize "$XTW" 300 200
 sleep 0.6
@@ -258,8 +258,8 @@ else
 	record_fail "lock size: move was wrongly blocked"
 fi
 
-note "toggle Lock position (Options index 2)"
-toggle_option 2 || fatal "could not toggle Lock position"
+note "toggle Lock position (Options index 4)"
+toggle_option 4 || fatal "could not toggle Lock position"
 G1=$(geom)
 xdo windowmove "$XTW" 500 400
 xdo windowsize "$XTW" 640 480
@@ -288,8 +288,8 @@ else
 fi
 
 note "unlock both through the menu"
-toggle_option 2 || fatal "could not unlock Lock position"
-toggle_option 3 || fatal "could not unlock Lock size"
+toggle_option 4 || fatal "could not unlock Lock position"
+toggle_option 5 || fatal "could not unlock Lock size"
 focus_term
 xdo windowmove "$XTW" 200 160
 sleep 0.6
@@ -309,8 +309,8 @@ else
 fi
 
 note "session-file round-trip: re-lock both"
-toggle_option 2 || fatal "could not re-lock Lock position"
-toggle_option 3 || fatal "could not re-lock Lock size"
+toggle_option 4 || fatal "could not re-lock Lock position"
+toggle_option 5 || fatal "could not re-lock Lock size"
 G5=$(geom)
 xdo windowmove "$XTW" 300 300
 xdo windowsize "$XTW" 520 360

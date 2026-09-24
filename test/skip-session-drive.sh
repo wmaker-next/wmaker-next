@@ -6,15 +6,15 @@
 #      pinned as a user choice),
 #   3. the legacy _WINDOWMAKER_STATE skip slots written by an older
 #      binary are ignored without breaking the rest of the property,
-#   4. a window-menu toggle is live only, like Keep on top/Keep at
-#      bottom: it applies to the window while it runs, leaves the
-#      same-class sibling alone, and is never written to WMState
-#      (per-window menu flags used to ride the per-application session
-#      entry, whose (instance, class, command) matching cannot tell
-#      same-class siblings apart),
-#   5. after a cold start the flag is gone on every window: not
-#      restored, not leaked.
-# wmaker is cold-restarted between phases on the same display so the
+#   4. a window-menu toggle applies live to the window, leaves the
+#      same-class sibling alone, and is never written to the
+#      per-application WMState entry (whose (instance, class, command)
+#      matching cannot tell same-class siblings apart); it rides the
+#      client-owned _WINDOWMAKER_STATE property instead,
+#   5. that per-window property restores the toggle across a warm
+#      restart and a cold re-adopt (clients kept), while the same-class
+#      sibling stays clean.
+# wmaker is restarted between phases on the same display so the
 # saved WMState is consumed by wSessionRestoreState.
 set -u
 
@@ -97,14 +97,14 @@ xterm_xids() {
 }
 # open the focused window's menu (WindowMenuKey) and walk to
 # Options > Skip window list (window_menu_entries index 11, options
-# index 6)
+# index 8)
 menu_toggle_skip_window_list() {
 	DISPLAY=$DPY xdotool key ctrl+Escape
 	sleep 0.4
 	DISPLAY=$DPY xdotool key --delay 150 \
 		Down Down Down Down Down Down Down Down Down Down Down Down Right
 	sleep 0.4
-	DISPLAY=$DPY xdotool key --delay 150 Down Down Down Down Down Down
+	DISPLAY=$DPY xdotool key --delay 150 Down Down Down Down Down Down Down Down
 	DISPLAY=$DPY xdotool key Return
 	sleep 0.3
 }
@@ -307,8 +307,8 @@ else
 	record_pass "WMState entry has no SkipSwitchPanel key"
 fi
 
-# --- 4. a window-menu toggle is live only ------------------------------------
-note "phase 4: window-menu toggle is live only"
+# --- 4. a window-menu toggle is per-window, not in the WMState entry ---------
+note "phase 4: window-menu toggle is per-window, not in the WMState Applications entry"
 # two xterms with an identical WM_COMMAND, the same-class sibling pair
 # that used to inherit the flag through the per-application entry
 start_wmaker
@@ -336,6 +336,26 @@ else
 fi
 check "wmaker alive after the live toggle" wmaker_alive
 
+# --- 5. the per-window toggle survives a warm restart ------------------------
+note "phase 5: per-window skip toggle survives a warm restart"
+msg -q restart >>"$LOG" 2>&1 || fatal "wmakermsg restart failed"
+wait_for 80 ipc_ready || fatal "IPC did not re-bind after the warm restart"
+WMAKER_PID=$(msg get_version 2>/dev/null \
+	| sed -n 's/.*pid = \([0-9]*\);.*/\1/p')
+[ -n "$WMAKER_PID" ] && echo "$WMAKER_PID" >> "$PIDFILE"
+sleep 0.5
+if wait_for 40 win_skip_is "$XID_A" "YES"; then
+	record_pass "skip toggle restored on warm restart from _WINDOWMAKER_STATE"
+else
+	record_fail "skip toggle restored on warm restart (got $(win_skip "$XID_A"))"
+fi
+if wait_for 40 win_skip_is "$XID_B" "NO"; then
+	record_pass "warm restart leaves the same-class sibling clean"
+else
+	record_fail "warm restart leaves the same-class sibling clean (got $(win_skip "$XID_B"))"
+fi
+check "wmaker alive after the warm restart" ipc_ready
+
 stop_wmaker
 if grep -q 'SkipWindowList' "$WMSTATE"; then
 	record_fail "WMState entry has no SkipWindowList key"
@@ -348,8 +368,8 @@ else
 	record_pass "WMState entry has no SkipSwitchPanel key"
 fi
 
-# --- 5. the live flag is gone after a cold start, on every window -------------
-note "phase 5: no flag after cold start"
+# --- 6. the per-window toggle survives a cold re-adopt -----------------------
+note "phase 6: per-window skip toggle survives a cold re-adopt"
 start_wmaker
 if wait_for 50 win_entry "$XID_A" >/dev/null; then
 	record_pass "first xterm re-adopted on cold start"
@@ -361,10 +381,10 @@ if wait_for 50 win_entry "$XID_B" >/dev/null; then
 else
 	record_fail "second xterm re-adopted on cold start"
 fi
-if wait_for 40 win_skip_is "$XID_A" "NO"; then
-	record_pass "live flag not restored after cold start"
+if wait_for 40 win_skip_is "$XID_A" "YES"; then
+	record_pass "per-window flag restored on re-adopt from _WINDOWMAKER_STATE"
 else
-	record_fail "live flag not restored after cold start (got $(win_skip "$XID_A"))"
+	record_fail "per-window flag restored on re-adopt (got $(win_skip "$XID_A"))"
 fi
 if wait_for 40 win_skip_is "$XID_B" "NO"; then
 	record_pass "no flag leaked onto the same-class sibling"

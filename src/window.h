@@ -120,6 +120,8 @@ typedef struct {
                                         * on client area while window
                                         * is focused */
     unsigned int no_hide_others:1;     /* hide window when doing hideothers */
+    unsigned int auto_hide_on_unfocus:1;       /* hide when losing focus */
+    unsigned int auto_miniaturize_on_unfocus:1; /* miniaturize when losing focus */
     unsigned int no_appicon:1;	       /* make app icon */
 
     unsigned int shared_appicon:1;
@@ -378,12 +380,6 @@ typedef struct WWindow {
 		unsigned int miniaturized:1;
 		unsigned int hidden:1;
 		unsigned int shaded:1;
-		/* per-window auto-on-unfocus behaviour, set from the window
-		 * inspector and round-tripped through _WINDOWMAKER_STATE /
-		 * WMState Applications like shaded/hidden, never through the
-		 * per-class WMWindowAttributes domain */
-		unsigned int auto_hide_on_unfocus:1;
-		unsigned int auto_miniaturize_on_unfocus:1;
 		unsigned int maximized:10;
 		unsigned int old_maximized:10;
 		unsigned int fullscreen:1;
@@ -536,8 +532,10 @@ WMColor *wFrameInnerFocusedBorderColor(const WWindow *wwin);
 # endif
 #endif
 
-/* _WINDOWMAKER_STATE quad count, shared by save and prefetch */
-#define WSAVED_STATE_SLOTS 16
+/* _WINDOWMAKER_STATE quad count, shared by save and prefetch.
+ * Slots 16-23 carry the per-window menu state (stacking level and the
+ * decoration and skip tri-states) so it survives a warm restart. */
+#define WSAVED_STATE_SLOTS 24
 
 /*
  * Changes to this must update wWindowSaveState/getSavedState
@@ -560,9 +558,16 @@ typedef struct WSavedState {
     int no_border_set;
     int hidden;
     int auto_hide_on_unfocus;
+    int auto_hide_on_unfocus_set;
     int auto_miniaturize_on_unfocus;
+    int auto_miniaturize_on_unfocus_set;
     int no_movable_state;   /* user lock: 0 unset, 1 unlocked, 2 locked */
     int no_resizable_state;
+    int stacking_level;	       /* 0 unset, 1 normal, 2 floating, 3 sunken */
+    int skip_window_list;      /* user value, valid when _set is 1 */
+    int skip_window_list_set;
+    int skip_switchpanel;
+    int skip_switchpanel_set;
     int x;			       /* original geometry of the */
     int y;			       /* window if it's maximized */
     unsigned int w;

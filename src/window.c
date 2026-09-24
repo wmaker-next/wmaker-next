@@ -1324,26 +1324,6 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		win_state = (WWindowState *) wWindowGetSavedState(window);
 
 	if (win_state && !withdraw) {
-		if (win_state->state->no_titlebar_set ||
-		    win_state->state->no_resizebar_set ||
-		    win_state->state->no_close_button_set ||
-		    win_state->state->no_miniaturize_button_set ||
-		    win_state->state->no_border_set) {
-			if (win_state->state->no_titlebar_set) {
-				WSETUFLAG(wwin, no_titlebar, win_state->state->no_titlebar);
-				WSETUFLAG(wwin, no_shadeable, win_state->state->no_titlebar);
-			}
-			if (win_state->state->no_resizebar_set)
-				WSETUFLAG(wwin, no_resizebar, win_state->state->no_resizebar);
-			if (win_state->state->no_close_button_set)
-				WSETUFLAG(wwin, no_close_button, win_state->state->no_close_button);
-			if (win_state->state->no_miniaturize_button_set)
-				WSETUFLAG(wwin, no_miniaturize_button,
-					  win_state->state->no_miniaturize_button);
-			if (win_state->state->no_border_set)
-				WSETUFLAG(wwin, no_border, win_state->state->no_border);
-		}
-
 		if (win_state->state->hidden > 0)
 			wwin->flags.hidden = win_state->state->hidden;
 
@@ -1357,12 +1337,6 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 
 		if (win_state->state->maximized > 0)
 			wwin->flags.maximized = win_state->state->maximized;
-
-		if (win_state->state->auto_hide_on_unfocus > 0)
-			wwin->flags.auto_hide_on_unfocus = win_state->state->auto_hide_on_unfocus;
-
-		if (win_state->state->auto_miniaturize_on_unfocus > 0)
-			wwin->flags.auto_miniaturize_on_unfocus = win_state->state->auto_miniaturize_on_unfocus;
 
 		if (!IS_OMNIPRESENT(wwin)) {
 			int hint_ws;
@@ -1390,12 +1364,47 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		wwin->flags.hidden = wstate->hidden;
 		wwin->flags.miniaturized = wstate->miniaturized;
 		wwin->flags.maximized = wstate->maximized;
-		wwin->flags.auto_hide_on_unfocus = wstate->auto_hide_on_unfocus;
-		wwin->flags.auto_miniaturize_on_unfocus = wstate->auto_miniaturize_on_unfocus;
+		if (wstate->auto_hide_on_unfocus_set)
+			WSETUFLAG(wwin, auto_hide_on_unfocus, wstate->auto_hide_on_unfocus);
+		if (wstate->auto_miniaturize_on_unfocus_set)
+			WSETUFLAG(wwin, auto_miniaturize_on_unfocus,
+				  wstate->auto_miniaturize_on_unfocus);
 		if (wstate->no_movable_state)
 			WSETUFLAG(wwin, no_movable, wstate->no_movable_state - 1);
 		if (wstate->no_resizable_state)
 			WSETUFLAG(wwin, no_resizable, wstate->no_resizable_state - 1);
+		if (wstate->no_titlebar_set) {
+			WSETUFLAG(wwin, no_titlebar, wstate->no_titlebar);
+			WSETUFLAG(wwin, no_shadeable, wstate->no_titlebar);
+			/* a titlebar-less window cannot be shaded */
+			if (wstate->no_titlebar)
+				wwin->flags.shaded = 0;
+		}
+		if (wstate->no_resizebar_set)
+			WSETUFLAG(wwin, no_resizebar, wstate->no_resizebar);
+		if (wstate->no_close_button_set)
+			WSETUFLAG(wwin, no_close_button, wstate->no_close_button);
+		if (wstate->no_miniaturize_button_set)
+			WSETUFLAG(wwin, no_miniaturize_button, wstate->no_miniaturize_button);
+		if (wstate->no_border_set)
+			WSETUFLAG(wwin, no_border, wstate->no_border);
+		if (wstate->skip_window_list_set)
+			WSETUFLAG(wwin, skip_window_list, wstate->skip_window_list);
+		if (wstate->skip_switchpanel_set)
+			WSETUFLAG(wwin, skip_switchpanel, wstate->skip_switchpanel);
+		if (wstate->stacking_level) {
+			switch (wstate->stacking_level) {
+			case 1:
+				window_level = WMNormalLevel;
+				break;
+			case 2:
+				window_level = WMFloatingLevel;
+				break;
+			default:
+				window_level = WMSunkenLevel;
+				break;
+			}
+		}
 		if (wwin->flags.maximized) {
 			wwin->old_geometry.x = wstate->x;
 			wwin->old_geometry.y = wstate->y;
@@ -2587,9 +2596,9 @@ void wWindowUnfocus(WWindow *wwin)
 		 * window off-screen regardless of miniaturizability. NoMiniaturizable
 		 * (per-class) still vetoes the miniaturize branch, mirroring the
 		 * StartMiniaturized precedent at wManageWindow(). */
-		if (wwin->flags.auto_hide_on_unfocus)
+		if (WFLAGP(wwin, auto_hide_on_unfocus))
 			wHideWindow(wwin, NULL, 0, 0, 0);
-		else if (wwin->flags.auto_miniaturize_on_unfocus &&
+		else if (WFLAGP(wwin, auto_miniaturize_on_unfocus) &&
 			 !WFLAGP(wwin, no_miniaturizable)) {
 			xcb_window_t client = wwin->client_win;
 
@@ -4003,13 +4012,42 @@ void wWindowSaveState(WWindow *wwin)
 	data[11] = (uint32_t)(wwin->frame->ws_mask >> 32);
 	/* per-window auto-on-unfocus bits, modelled on shaded/hidden so they
 	 * survive warm restart without propagating to same-class siblings */
-	data[12] = wwin->flags.auto_hide_on_unfocus;
-	data[13] = wwin->flags.auto_miniaturize_on_unfocus;
+	data[12] = wwin->defined_user_flags.auto_hide_on_unfocus
+		? wwin->user_flags.auto_hide_on_unfocus + 1 : 0;
+	data[13] = wwin->defined_user_flags.auto_miniaturize_on_unfocus
+		? wwin->user_flags.auto_miniaturize_on_unfocus + 1 : 0;
 	/* user geometry locks, tri-state so a user-unlock of a
 	 * client-locked window survives too: 0 unset, 1 user-unlocked,
 	 * 2 user-locked */
 	data[14] = wwin->defined_user_flags.no_movable ? wwin->user_flags.no_movable + 1 : 0;
 	data[15] = wwin->defined_user_flags.no_resizable ? wwin->user_flags.no_resizable + 1 : 0;
+	/* per-window menu state so it survives a warm restart: stacking level
+	 * (plain levels only, so a GNUstep or modal level is not squashed)
+	 * and tri-state decoration and skip flags, 0 unset, 1 off, 2 on */
+	switch (wwin->frame->core->stacking->window_level) {
+	case WMNormalLevel:
+		data[16] = 1;
+		break;
+	case WMFloatingLevel:
+		data[16] = 2;
+		break;
+	case WMSunkenLevel:
+		data[16] = 3;
+		break;
+	default:
+		data[16] = 0;
+		break;
+	}
+	data[17] = wwin->defined_user_flags.no_titlebar ? wwin->user_flags.no_titlebar + 1 : 0;
+	data[18] = wwin->defined_user_flags.no_resizebar ? wwin->user_flags.no_resizebar + 1 : 0;
+	data[19] = wwin->defined_user_flags.no_close_button ? wwin->user_flags.no_close_button + 1 : 0;
+	data[20] = wwin->defined_user_flags.no_miniaturize_button
+		? wwin->user_flags.no_miniaturize_button + 1 : 0;
+	data[21] = wwin->defined_user_flags.no_border ? wwin->user_flags.no_border + 1 : 0;
+	data[22] = wwin->defined_user_flags.skip_window_list
+		? wwin->user_flags.skip_window_list + 1 : 0;
+	data[23] = wwin->defined_user_flags.skip_switchpanel
+		? wwin->user_flags.skip_switchpanel + 1 : 0;
 
 	WXSetFormat32N(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.state,
 		       wdisp->atom.wmaker.state, data, WSAVED_STATE_SLOTS);
@@ -4033,20 +4071,34 @@ void wWindowSaveState(WWindow *wwin)
 		WXDeleteProperty(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.mark_key);
 }
 
+/* Decode a tri-state _WINDOWMAKER_STATE slot: 0 unset, 1 off, 2 on. */
+static void decodeSavedTriState(uint32_t raw, int *value, int *is_set)
+{
+	if (raw == 0) {
+		*value = 0;
+		*is_set = 0;
+		return;
+	}
+	*value = raw > 2 ? 1 : (int)raw - 1;
+	*is_set = 1;
+}
+
 static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark_ck,
 			   WXCookie tab_ck, WSavedState **state)
 {
 	uint32_t *data;
 	uint32_t tab[3];
+	uint32_t raw;
 	size_t len, count;
 
-	/* Accept the pre-mask 10-slot layout, the 12-slot layout, and the
-	 * current WSAVED_STATE_SLOTS-slot one so a restart from an older
-	 * binary still recovers primary workspace, the mask defaults to 0
-	 * (derived from primary), the auto-on-unfocus bits default to 0
-	 * (per-window, off), and the geometry locks default to 0 (not
-	 * user-defined). Quads past the current layout, written by a
-	 * newer or older binary, are ignored. */
+	/* Accept the pre-mask 10-slot layout, the 12-slot layout, the
+	 * 16-slot layout, and the current WSAVED_STATE_SLOTS-slot one so a
+	 * restart from an older binary still recovers primary workspace, the
+	 * mask defaults to 0 (derived from primary), the auto-on-unfocus bits
+	 * default to 0 (per-window, off), the geometry locks default to 0 (not
+	 * user-defined), and the menu state defaults to unset (re-derive).
+	 * Quads past the current layout, written by a newer or older binary,
+	 * are ignored. */
 	data = WXRcvFormat32List(wdisp->conn, state_ck, &count);
 	if (!data || count < 10) {
 		wfree(data);
@@ -4072,13 +4124,34 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 	if (count >= 12)
 		(*state)->ws_mask = (uint64_t)data[10] | ((uint64_t)data[11] << 32);
 	if (count >= 13)
-		(*state)->auto_hide_on_unfocus = data[12];
+		decodeSavedTriState(data[12], &(*state)->auto_hide_on_unfocus,
+				    &(*state)->auto_hide_on_unfocus_set);
 	if (count >= 14)
-		(*state)->auto_miniaturize_on_unfocus = data[13];
+		decodeSavedTriState(data[13], &(*state)->auto_miniaturize_on_unfocus,
+				    &(*state)->auto_miniaturize_on_unfocus_set);
 	if (count >= 15)
 		(*state)->no_movable_state = data[14];
 	if (count >= 16)
 		(*state)->no_resizable_state = data[15];
+	raw = count >= 17 ? data[16] : 0;
+	(*state)->stacking_level = (raw >= 1 && raw <= 3) ? (int)raw : 0;
+	if (count >= 18)
+		decodeSavedTriState(data[17], &(*state)->no_titlebar, &(*state)->no_titlebar_set);
+	if (count >= 19)
+		decodeSavedTriState(data[18], &(*state)->no_resizebar, &(*state)->no_resizebar_set);
+	if (count >= 20)
+		decodeSavedTriState(data[19], &(*state)->no_close_button, &(*state)->no_close_button_set);
+	if (count >= 21)
+		decodeSavedTriState(data[20], &(*state)->no_miniaturize_button,
+				    &(*state)->no_miniaturize_button_set);
+	if (count >= 22)
+		decodeSavedTriState(data[21], &(*state)->no_border, &(*state)->no_border_set);
+	if (count >= 23)
+		decodeSavedTriState(data[22], &(*state)->skip_window_list,
+				    &(*state)->skip_window_list_set);
+	if (count >= 24)
+		decodeSavedTriState(data[23], &(*state)->skip_switchpanel,
+				    &(*state)->skip_switchpanel_set);
 	wfree(data);
 
 	(*state)->mark_key = WXRcvString(wdisp->conn, mark_ck, &len);

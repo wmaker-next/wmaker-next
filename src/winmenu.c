@@ -114,6 +114,8 @@ static const struct {
  */
 enum
 {
+	WO_AUTO_HIDE_ON_UNFOCUS,
+	WO_AUTO_MINIATURIZE_ON_UNFOCUS,
 	WO_KEEP_AT_BOTTOM,
 	WO_KEEP_ON_TOP,
 	WO_LOCK_POSITION,
@@ -124,6 +126,8 @@ enum
 };
 
 static const char *const menu_options_entries[] = {
+	[WO_AUTO_HIDE_ON_UNFOCUS]        = N_("Auto-hide on unfocus"),
+	[WO_AUTO_MINIATURIZE_ON_UNFOCUS] = N_("Auto-miniaturize on unfocus"),
 	[WO_KEEP_AT_BOTTOM]      = N_("Keep at bottom"),
 	[WO_KEEP_ON_TOP]         = N_("Keep on top"),
 	[WO_LOCK_POSITION]       = N_("Lock position"),
@@ -208,6 +212,20 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 		WSETUFLAG(wwin, skip_window_list, skip);
 		UpdateSwitchMenu(wwin->screen_ptr, wwin,
 				 skip ? ACTION_REMOVE : ACTION_ADD);
+		break;
+
+	case WO_AUTO_MINIATURIZE_ON_UNFOCUS:
+		WSETUFLAG(wwin, auto_miniaturize_on_unfocus,
+			  !WFLAGP(wwin, auto_miniaturize_on_unfocus));
+		if (WFLAGP(wwin, auto_miniaturize_on_unfocus))
+			WSETUFLAG(wwin, auto_hide_on_unfocus, 0);
+		break;
+
+	case WO_AUTO_HIDE_ON_UNFOCUS:
+		WSETUFLAG(wwin, auto_hide_on_unfocus,
+			  !WFLAGP(wwin, auto_hide_on_unfocus));
+		if (WFLAGP(wwin, auto_hide_on_unfocus))
+			WSETUFLAG(wwin, auto_miniaturize_on_unfocus, 0);
 		break;
 	}
 }
@@ -617,6 +635,14 @@ static void updateOptionsMenu(WMenu * menu, WWindow * wwin)
 	smenu->entries[WO_SKIP_WINDOW_LIST]->clientdata = wwin;
 	smenu->entries[WO_SKIP_WINDOW_LIST]->flags.indicator_on =
 	    WFLAGP(wwin, skip_window_list);
+
+	smenu->entries[WO_AUTO_MINIATURIZE_ON_UNFOCUS]->clientdata = wwin;
+	smenu->entries[WO_AUTO_MINIATURIZE_ON_UNFOCUS]->flags.indicator_on =
+	    WFLAGP(wwin, auto_miniaturize_on_unfocus);
+
+	smenu->entries[WO_AUTO_HIDE_ON_UNFOCUS]->clientdata = wwin;
+	smenu->entries[WO_AUTO_HIDE_ON_UNFOCUS]->flags.indicator_on =
+	    WFLAGP(wwin, auto_hide_on_unfocus);
 
 	smenu->flags.realized = 0;
 	wMenuRealize(smenu);

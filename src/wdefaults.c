@@ -47,8 +47,8 @@
 #include "icon.h"
 #include "misc.h"
 
-_Static_assert(WATTR_BOOL_COUNT <= 32,
-	       "WWindowAttrs bitset is uint32_t, raise the field width");
+_Static_assert(WATTR_BOOL_COUNT <= 64,
+	       "WWindowAttrs bitset is uint64_t, raise the field width");
 
 /*
  * Cache of parsed WMWindowAttributes entries, keyed by the proplist
@@ -61,7 +61,7 @@ static WMHashTable *attrs_cache;
  * writes every flag when useGlobalDefault is in effect */
 static const WWindowAttrs attrs_global_default = {
 	.value = 0,
-	.set = ~(uint32_t)0,
+	.set = ~(uint64_t)0,
 	.icon = NULL,
 	.start_workspace = NULL,
 	.start_workspaces = NULL,
@@ -205,9 +205,9 @@ static WWindowAttrs *parse_attrs_entry(WMPropList *entry)
 		value = WMGetFromPLDictionaryByName(entry, attr_bool_names[i]);
 		if (!value)
 			continue;
-		attrs->set |= (uint32_t)1 << i;
+		attrs->set |= (uint64_t)1 << i;
 		if (WMPLGetBool(value))
-			attrs->value |= (uint32_t)1 << i;
+			attrs->value |= (uint64_t)1 << i;
 	}
 
 	str = get_entry_string(entry, "Icon");
@@ -766,7 +766,7 @@ static void merge_attrs(WWindowAttributes *attr, WWindowAttributes *mask,
 			const WWindowAttrs *src)
 {
 #define WATTR_MERGE_ROW(K, name, flag) \
-	if (src->set & ((uint32_t)1 << WATTR_##K)) { \
+	if (src->set & ((uint64_t)1 << WATTR_##K)) { \
 		attr->flag = (src->value >> WATTR_##K) & 1u; \
 		if (mask) mask->flag = 1; \
 	}

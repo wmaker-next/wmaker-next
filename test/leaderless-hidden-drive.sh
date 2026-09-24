@@ -2,7 +2,8 @@
 # Drive hidden-window recovery through wMakeWindowVisible for a window
 # with no WApplication (no WM_HINTS window_group and no WM_CLIENT_LEADER,
 # so wApplicationOf() is NULL). The leaderless window gets its
-# auto-hide-on-unfocus flag from the WMState session entry; focusing a
+# auto-hide-on-unfocus flag from the per-class WMWindowAttributes domain,
+# focusing a
 # second window fires the AutoHideOnUnfocus hook, which hides it through
 # wHideWindow(NULL icon) - the only WM-side hide path that needs no
 # application. A pager-style _NET_ACTIVE_WINDOW request (wmctrl -a) then
@@ -154,17 +155,17 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'EOF'
   DisableDrawers = YES;
 }
 EOF
+cat >"$WMHOME/Defaults/WMWindowAttributes" <<'EOF'
+{
+  "lead.Lead" = { AutoHideOnUnfocus = Yes; };
+}
+EOF
 cat >"$WMHOME/Defaults/WMState" <<'EOF'
 {
   Workspaces = (
     { Name = "ws-0"; }
   );
   Applications = (
-    {
-      Name = "lead.Lead";
-      Command = "leadclient";
-      AutoHideOnUnfocus = Yes;
-    },
     {
       Name = "grpd.Grp";
       Command = "grpdclient";

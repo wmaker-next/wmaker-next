@@ -71,6 +71,8 @@
 	_(NO_TABBING,            "NoTabbing",            no_tabbing) \
 	_(AUTO_TAB_GROUP,        "AutoTabGroup",         auto_tab_group) \
 	_(NO_TILING,             "NoTiling",             no_tiling) \
+	_(AUTO_HIDE_ON_UNFOCUS,  "AutoHideOnUnfocus",    auto_hide_on_unfocus) \
+	_(AUTO_MINIATURIZE_ON_UNFOCUS, "AutoMiniaturizeOnUnfocus", auto_miniaturize_on_unfocus) \
 	WATTR_IF_XKB_BUTTON( \
 	_(NO_LANGUAGE_BUTTON,    "NoLanguageButton",     no_language_button) \
 	)
@@ -121,8 +123,8 @@ typedef enum {
 #define WATTR_FRAME_INNER_BORDER_SIDES  (1u << 7)
 
 typedef struct WWindowAttrs {
-	uint32_t value;
-	uint32_t set;
+	uint64_t value;
+	uint64_t set;
 	char *icon;
 	char *start_workspace;
 	char **start_workspaces;

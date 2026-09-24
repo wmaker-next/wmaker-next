@@ -86,8 +86,8 @@ static const struct {
 #undef WATTR_SPEC_ROW
 };
 
-_Static_assert(WATTR_BOOL_COUNT <= 32,
-	       "make_keys() coverage bitmask needs widening past uint32_t");
+_Static_assert(WATTR_BOOL_COUNT <= 64,
+	       "make_keys() coverage bitmask needs widening past uint64_t");
 
 static const struct InspectorAttr {
 	WWindowAttrKey attr;
@@ -122,6 +122,12 @@ static const struct InspectorAttr {
 
 	{ WATTR_OMNIPRESENT, N_("Omnipresent"),
 	  N_("Make window present in all workspaces.") },
+
+	{ WATTR_AUTO_MINIATURIZE_ON_UNFOCUS, N_("Auto-miniaturize on unfocus"),
+	  N_("Miniaturize the window automatically when it loses focus.") },
+
+	{ WATTR_AUTO_HIDE_ON_UNFOCUS, N_("Auto-hide on unfocus"),
+	  N_("Hide the window automatically when it loses focus.") },
 
 	{ WATTR_START_MINIATURIZED, N_("Start miniaturized"),
 	  N_("Make the window be automatically miniaturized when it's\n"
@@ -248,11 +254,6 @@ typedef struct InspectorPanel {
 	/* second page. attributes */
 	WMFrame *attrFrm;
 	WMButton *attrChk[sizeof(window_attribute) / sizeof(window_attribute[0])];
-	/* per-window (not per-class) auto-on-unfocus checkboxes, persist
-	 * via _WINDOWMAKER_STATE / WMState Applications, never via the
-	 * WMWindowAttributes domain */
-	WMButton *autoMiniChk;
-	WMButton *autoHideChk;
 
 	/* 3rd page. more attributes */
 	WMFrame *moreFrm;
@@ -309,14 +310,6 @@ static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int
 static void create_tab_icon_workspace(WWindow *wwin, InspectorPanel *panel);
 static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int frame_width);
 
-/* AutoHideOnUnfocus and AutoMiniaturizeOnUnfocus are mutually exclusive
- * at the dispatch level (hide wins, see wWindowUnfocus). Rather than
- * silently letting the user set both, the inspector greys out the other
- * checkbox when one is checked, mirroring the EmulateAppIcon /
- * SharedAppIcon mutual-exclusion pattern in create_tab_app_specific. */
-static void toggleAutoHideOnUnfocus(WMWidget *self, void *client_data);
-static void toggleAutoMiniaturizeOnUnfocus(WMWidget *self, void *client_data);
-
 /*
  * These 3 functions sets/clear/read the bit in a WWindowAttributes that
  * corresponds to a WWindowAttrKey. The one-bit mask comes from
@@ -362,7 +355,7 @@ static inline int get_attr_flag(const WWindowAttributes *from, WWindowAttrKey ke
 static void make_keys(void)
 {
 	int i;
-	uint32_t covered;
+	uint64_t covered;
 
 	if (pl_wattr[0] != NULL)
 		return;
@@ -375,15 +368,15 @@ static void make_keys(void)
 	 * one expected gap in the three per-panel tables; AutoTabGroup is
 	 * the page-0 Window Specification checkbox and is likewise handled
 	 * as a standalone button outside the table-driven pages */
-	covered = ((uint32_t)1 << WATTR_ALWAYS_USER_ICON) |
-	          ((uint32_t)1 << WATTR_AUTO_TAB_GROUP);
+	covered = ((uint64_t)1 << WATTR_ALWAYS_USER_ICON) |
+	    ((uint64_t)1 << WATTR_AUTO_TAB_GROUP);
 	for (i = 0; i < wlengthof(window_attribute); i++)
-		covered |= (uint32_t)1 << window_attribute[i].attr;
+		covered |= (uint64_t)1 << window_attribute[i].attr;
 	for (i = 0; i < wlengthof(advanced_option); i++)
-		covered |= (uint32_t)1 << advanced_option[i].attr;
+		covered |= (uint64_t)1 << advanced_option[i].attr;
 	for (i = 0; i < wlengthof(application_attr); i++)
-		covered |= (uint32_t)1 << application_attr[i].attr;
-	if (covered != (uint32_t)(~(uint32_t)0 >> (32 - WATTR_BOOL_COUNT)))
+		covered |= (uint64_t)1 << application_attr[i].attr;
+	if (covered != (~(uint64_t)0 >> (64 - WATTR_BOOL_COUNT)))
 		wwarning("inspector attribute tables out of sync with WATTR_BOOLS");
 
 	AIcon = WMCreatePLString("Icon");
@@ -808,6 +801,7 @@ static void applySettings(WMWidget *button, void *client_data)
 	WApplication *wapp = wApplicationOf(wwin->main_window);
 	int old_skip_window_list, old_omnipresent, old_no_bind_keys, old_no_bind_mouse;
 	int old_always_user_icon;
+	int hide_i = -1, mini_i = -1;
 	const char *old_icon_file;
 	int i;
 
@@ -833,6 +827,25 @@ static void applySettings(WMWidget *button, void *client_data)
 			clear_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 
 		set_attr_flag(&wwin->defined_user_flags, window_attribute[i].attr);
+
+		if (window_attribute[i].attr == WATTR_AUTO_HIDE_ON_UNFOCUS)
+			hide_i = i;
+		else if (window_attribute[i].attr == WATTR_AUTO_MINIATURIZE_ON_UNFOCUS)
+			mini_i = i;
+	}
+
+	/* hide wins over miniaturize (wWindowUnfocus), so keep the pair
+	 * exclusive rather than letting the user set both */
+	if (hide_i >= 0 && mini_i >= 0) {
+		if (WFLAGP(wwin, auto_hide_on_unfocus)) {
+			WSETUFLAG(wwin, auto_miniaturize_on_unfocus, 0);
+			WMSetButtonSelected(panel->attrChk[mini_i], 0);
+		} else if (WFLAGP(wwin, auto_miniaturize_on_unfocus)) {
+			WSETUFLAG(wwin, auto_hide_on_unfocus, 0);
+			WMSetButtonSelected(panel->attrChk[hide_i], 0);
+		}
+		WMSetButtonEnabled(panel->attrChk[mini_i], !WFLAGP(wwin, auto_hide_on_unfocus));
+		WMSetButtonEnabled(panel->attrChk[hide_i], !WFLAGP(wwin, auto_miniaturize_on_unfocus));
 	}
 
 	/* Attributes... --> Advanced Options */
@@ -847,22 +860,6 @@ static void applySettings(WMWidget *button, void *client_data)
 
 	WSETUFLAG(wwin, always_user_icon, WMGetButtonSelected(panel->alwChk));
 	WSETUFLAG(wwin, auto_tab_group, WMGetButtonSelected(panel->autoTabGrpChk));
-
-	/* Per-window auto-on-unfocus runtime bits. These are NOT per-class
-	 * WMWindowAttributes flags, so they bypass the WSETUFLAG pair and
-	 * set WWindow.flags directly. Save (below) persists them through
-	 * _WINDOWMAKER_STATE. */
-	wwin->flags.auto_miniaturize_on_unfocus = WMGetButtonSelected(panel->autoMiniChk);
-	wwin->flags.auto_hide_on_unfocus = WMGetButtonSelected(panel->autoHideChk);
-	if (wwin->flags.auto_hide_on_unfocus) {
-		wwin->flags.auto_miniaturize_on_unfocus = 0;
-		WMSetButtonSelected(panel->autoMiniChk, 0);
-	} else if (wwin->flags.auto_miniaturize_on_unfocus) {
-		wwin->flags.auto_hide_on_unfocus = 0;
-		WMSetButtonSelected(panel->autoHideChk, 0);
-	}
-	WMSetButtonEnabled(panel->autoMiniChk, !wwin->flags.auto_hide_on_unfocus);
-	WMSetButtonEnabled(panel->autoHideChk, !wwin->flags.auto_miniaturize_on_unfocus);
 
 	if (WFLAGP(wwin, no_titlebar) && wwin->flags.shaded)
 		wUnshadeWindow(wwin);
@@ -1078,23 +1075,6 @@ static void revertSettings(WMWidget *button, void *client_data)
 	}
 	WMSetButtonSelected(panel->alwChk, WFLAGP(wwin, always_user_icon));
 	WMSetButtonSelected(panel->autoTabGrpChk, WFLAGP(wwin, auto_tab_group));
-
-	/* Per-window auto-on-unfocus bits come straight from WWindow.flags
-	 * (restored from _WINDOWMAKER_STATE in wManageWindow, or 0 on a
-	 * fresh window). They are not in user_flags/defined_user_flags.
-	 * Hide wins over miniaturize (wWindowUnfocus), so when both are
-	 * restored set, clear the miniaturize one. */
-	WMSetButtonSelected(panel->autoMiniChk, wwin->flags.auto_miniaturize_on_unfocus);
-	WMSetButtonSelected(panel->autoHideChk, wwin->flags.auto_hide_on_unfocus);
-	if (wwin->flags.auto_hide_on_unfocus) {
-		wwin->flags.auto_miniaturize_on_unfocus = 0;
-		WMSetButtonSelected(panel->autoMiniChk, 0);
-	} else if (wwin->flags.auto_miniaturize_on_unfocus) {
-		wwin->flags.auto_hide_on_unfocus = 0;
-		WMSetButtonSelected(panel->autoHideChk, 0);
-	}
-	WMSetButtonEnabled(panel->autoMiniChk, !wwin->flags.auto_hide_on_unfocus);
-	WMSetButtonEnabled(panel->autoHideChk, !wwin->flags.auto_miniaturize_on_unfocus);
 
 	showIconFor(WMWidgetScreen(panel->alwChk), panel, wm_instance, wm_class, REVERT_TO_DEFAULT);
 
@@ -1481,129 +1461,116 @@ void wCloseInspectorForWindow(WWindow *wwin)
 	(*pwin->frame->on_click_button[WTB_CLOSE]) (NULL, pwin, NULL);
 }
 
+/* AutoHideOnUnfocus and AutoMiniaturizeOnUnfocus are mutually exclusive
+ * at the dispatch level (hide wins, see wWindowUnfocus), so grey out the
+ * other checkbox when one is checked */
 static void toggleAutoHideOnUnfocus(WMWidget *self, void *client_data)
 {
 	InspectorPanel *panel = (InspectorPanel *) client_data;
+	int i, other = -1;
+
+	for (i = 0; i < wlengthof(window_attribute); i++)
+		if (window_attribute[i].attr == WATTR_AUTO_MINIATURIZE_ON_UNFOCUS)
+			other = i;
+	if (other < 0)
+		return;
 	if (WMGetButtonSelected(self))
-		WMSetButtonSelected(panel->autoMiniChk, 0);
-	WMSetButtonEnabled(panel->autoMiniChk, !WMGetButtonSelected(self));
+		WMSetButtonSelected(panel->attrChk[other], 0);
+	WMSetButtonEnabled(panel->attrChk[other], !WMGetButtonSelected(self));
 }
 
 static void toggleAutoMiniaturizeOnUnfocus(WMWidget *self, void *client_data)
 {
 	InspectorPanel *panel = (InspectorPanel *) client_data;
+	int i, other = -1;
+
+	for (i = 0; i < wlengthof(window_attribute); i++)
+		if (window_attribute[i].attr == WATTR_AUTO_HIDE_ON_UNFOCUS)
+			other = i;
+	if (other < 0)
+		return;
 	if (WMGetButtonSelected(self))
-		WMSetButtonSelected(panel->autoHideChk, 0);
-	WMSetButtonEnabled(panel->autoHideChk, !WMGetButtonSelected(self));
+		WMSetButtonSelected(panel->attrChk[other], 0);
+	WMSetButtonEnabled(panel->attrChk[other], !WMGetButtonSelected(self));
 }
 
 static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, int frame_width)
 {
 	int i, j, tmp;
-	bool hide, mini;
-	/* Per-window auto-on-unfocus descriptors, laid out and sorted
-	 * alongside the WATTR rows so the page stays alphabetical. */
-	struct {
-		const char *caption;
-		const char *description;
-		WMButton **btn;
-		int flag;
-	} per_window[] = {
-		{ N_("Auto-miniaturize on unfocus"),
-		  N_("Miniaturize the window automatically when it loses focus."),
-		  &panel->autoMiniChk, wwin->flags.auto_miniaturize_on_unfocus },
-		{ N_("Auto-hide on unfocus"),
-		  N_("Hide the window automatically when it loses focus."),
-		  &panel->autoHideChk, wwin->flags.auto_hide_on_unfocus },
-	};
-	const int n_tbl = wlengthof(window_attribute);
-	const int n_pw = wlengthof(per_window);
-	const int n_total = n_tbl + n_pw;
-	/* Combined sort order: indices 0..n_tbl-1 are window_attribute[],
-	 * n_tbl..n_total-1 are per_window[]. */
-	int combined[sizeof(window_attribute) / sizeof(window_attribute[0]) + 2];
+	int hide_i = -1, mini_i = -1;
+	/* Indices into window_attribute[] laid out top-to-bottom, sorted by the
+	 * translated caption so the page stays alphabetical. attrChk[] remains
+	 * indexed by the original table position so the save/apply/revert loops
+	 * keep matching attrChk[i] with window_attribute[i].attr. */
+	int order[sizeof(window_attribute) / sizeof(window_attribute[0])];
 
 	panel->attrFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->attrFrm, _("Attributes"));
 	WMMoveWidget(panel->attrFrm, 15, 45);
 	/* Match moreFrm's height so both tab pages present the same frame
-	 * size. window_attribute[] has 12 entries (the XKB NO_LANGUAGE_BUTTON
-	 * is in advanced_option[], not here), plus 2 per-window auto-on-unfocus
-	 * checkboxes = 14 rows, so the XKB-tall frame just has more bottom
-	 * margin. */
+	 * size. window_attribute[] has 14 entries (the XKB NO_LANGUAGE_BUTTON
+	 * is in advanced_option[], not here), so the XKB-tall frame just has
+	 * more bottom margin. */
 #ifdef XKB_BUTTON_HINT
 	WMResizeWidget(panel->attrFrm, frame_width, 320);
 #else
 	WMResizeWidget(panel->attrFrm, frame_width, 300);
 #endif
 
-	for (i = 0; i < n_tbl; i++)
-		combined[i] = i;
-	for (i = 0; i < n_pw; i++)
-		combined[n_tbl + i] = n_tbl + i;
-
-	for (i = 1; i < n_total; i++) {
+	for (i = 0; i < wlengthof(window_attribute); i++)
+		order[i] = i;
+	for (i = 1; i < wlengthof(window_attribute); i++) {
 		for (j = i; j > 0; j--) {
-			const char *a, *b;
-			int ca = combined[j - 1], cb = combined[j];
+			const char *a = _(window_attribute[order[j - 1]].caption);
+			const char *b = _(window_attribute[order[j]].caption);
 
-			a = (ca < n_tbl) ? _(window_attribute[ca].caption)
-					 : _(per_window[ca - n_tbl].caption);
-			b = (cb < n_tbl) ? _(window_attribute[cb].caption)
-					 : _(per_window[cb - n_tbl].caption);
 			if (strcoll(a, b) <= 0)
 				break;
-			tmp = combined[j];
-			combined[j] = combined[j - 1];
-			combined[j - 1] = tmp;
+			tmp = order[j];
+			order[j] = order[j - 1];
+			order[j - 1] = tmp;
 		}
 	}
 
-	for (i = 0; i < n_total; i++) {
-		int c = combined[i];
+	for (i = 0; i < wlengthof(window_attribute); i++) {
+		int idx = order[i];
 		int y = 20 * (i + 1) - 4;
+		int is_userdef, flag;
 
-		if (c < n_tbl) {
-			int idx = c;
-			int is_userdef, flag;
+		is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[idx].attr);
+		if (is_userdef)
+			flag = get_attr_flag(&wwin->user_flags, window_attribute[idx].attr);
+		else
+			flag = get_attr_flag(&wwin->client_flags, window_attribute[idx].attr);
 
-			is_userdef = get_attr_flag(&wwin->defined_user_flags, window_attribute[idx].attr);
-			if (is_userdef)
-				flag = get_attr_flag(&wwin->user_flags, window_attribute[idx].attr);
-			else
-				flag = get_attr_flag(&wwin->client_flags, window_attribute[idx].attr);
-
-			panel->attrChk[idx] = WMCreateSwitchButton(panel->attrFrm);
-			WMMoveWidget(panel->attrChk[idx], 10, y);
-			WMResizeWidget(panel->attrChk[idx], frame_width - 15, 20);
-			WMSetButtonSelected(panel->attrChk[idx], flag);
-			WMSetButtonText(panel->attrChk[idx], _(window_attribute[idx].caption));
-			WMSetBalloonTextForView(_(window_attribute[idx].description),
-						WMWidgetView(panel->attrChk[idx]));
-		} else {
-			int p = c - n_tbl;
-
-			*per_window[p].btn = WMCreateSwitchButton(panel->attrFrm);
-			WMMoveWidget(*per_window[p].btn, 10, y);
-			WMResizeWidget(*per_window[p].btn, frame_width - 15, 20);
-			WMSetButtonSelected(*per_window[p].btn, per_window[p].flag);
-			WMSetButtonText(*per_window[p].btn, _(per_window[p].caption));
-			WMSetBalloonTextForView(_(per_window[p].description),
-						WMWidgetView(*per_window[p].btn));
-		}
+		panel->attrChk[idx] = WMCreateSwitchButton(panel->attrFrm);
+		WMMoveWidget(panel->attrChk[idx], 10, y);
+		WMResizeWidget(panel->attrChk[idx], frame_width - 15, 20);
+		WMSetButtonSelected(panel->attrChk[idx], flag);
+		WMSetButtonText(panel->attrChk[idx], _(window_attribute[idx].caption));
+		WMSetBalloonTextForView(_(window_attribute[idx].description),
+					WMWidgetView(panel->attrChk[idx]));
 	}
 
-	/* Hide wins over miniaturize at the dispatch level (wWindowUnfocus),
-	 * so when both are set clear the miniaturize checkbox. */
-	WMSetButtonAction(panel->autoHideChk, toggleAutoHideOnUnfocus, panel);
-	WMSetButtonAction(panel->autoMiniChk, toggleAutoMiniaturizeOnUnfocus, panel);
-	hide = wwin->flags.auto_hide_on_unfocus;
-	mini = wwin->flags.auto_miniaturize_on_unfocus;
+	/* grey out the opposite box so both cannot be set together */
+	for (i = 0; i < wlengthof(window_attribute); i++) {
+		if (window_attribute[i].attr == WATTR_AUTO_HIDE_ON_UNFOCUS)
+			hide_i = i;
+		else if (window_attribute[i].attr == WATTR_AUTO_MINIATURIZE_ON_UNFOCUS)
+			mini_i = i;
+	}
+	if (hide_i >= 0 && mini_i >= 0) {
+		bool hide = WFLAGP(wwin, auto_hide_on_unfocus);
+		bool mini = WFLAGP(wwin, auto_miniaturize_on_unfocus);
 
-	if (hide && mini)
-		WMSetButtonSelected(panel->autoMiniChk, 0);
-	WMSetButtonEnabled(panel->autoMiniChk, !hide);
-	WMSetButtonEnabled(panel->autoHideChk, !mini);
+		if (hide && mini)
+			WMSetButtonSelected(panel->attrChk[mini_i], 0);
+		WMSetButtonEnabled(panel->attrChk[mini_i], !hide);
+		WMSetButtonEnabled(panel->attrChk[hide_i], !mini);
+
+		WMSetButtonAction(panel->attrChk[hide_i], toggleAutoHideOnUnfocus, panel);
+		WMSetButtonAction(panel->attrChk[mini_i], toggleAutoMiniaturizeOnUnfocus, panel);
+	}
 }
 
 static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int frame_width)
