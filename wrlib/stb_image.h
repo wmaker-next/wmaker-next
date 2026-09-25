@@ -5969,6 +5969,15 @@ static void *stbi__tga_load(stbi__context *s, int *x, int *y, int *comp, int req
       //   load the data
       for (i=0; i < tga_width * tga_height; ++i)
       {
+         //   local patch: once the stream is exhausted the rest of the image
+         //   is zero-filled, so stop instead of grinding width*height get8()
+         //   calls on a truncated RLE file
+         if ( stbi__at_eof(s) )
+         {
+            memset( tga_data + i*tga_comp, 0, (size_t)(tga_width * tga_height - i) * tga_comp );
+            break;
+         }
+
          //   if I'm in RLE mode, do I need to get a RLE stbi__pngchunk?
          if ( tga_is_RLE )
          {
