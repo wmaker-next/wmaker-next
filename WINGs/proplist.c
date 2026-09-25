@@ -118,7 +118,7 @@ static unsigned hashPropList(const void *param)
 		key = plist->d.string;
 		len = WMIN(strlen(key), MaxHashLength);
 		for (i = 0; i < len; i++) {
-			ret ^= tolower(key[i]) << ctr;
+			ret ^= tolower((unsigned char)key[i]) << ctr;
 			ctr = (ctr + 1) % sizeof(char *);
 		}
 		/*while (*key) {
@@ -128,10 +128,10 @@ static unsigned hashPropList(const void *param)
 		break;
 
 	case WPLData:
-		key = WMDataBytes(plist->d.data);
+		key = (const char *)WMDataBytes(plist->d.data);
 		len = WMIN(WMGetDataLength(plist->d.data), MaxHashLength);
 		for (i = 0; i < len; i++) {
-			ret ^= key[i] << ctr;
+			ret ^= (unsigned char)key[i] << ctr;
 			ctr = (ctr + 1) % sizeof(char *);
 		}
 		break;
