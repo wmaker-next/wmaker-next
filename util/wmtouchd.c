@@ -72,7 +72,8 @@ static struct {
 
 	int ipc_fd;
 	int pending;
-	char *pending_name;
+	char **pending_names;
+	int pending_count;
 	long long pending_deadline;
 	int sync_replay;
 
@@ -323,90 +324,157 @@ static void on_signal(int sig)
 
 /* ---- IPC action delivery -------------------------------------------- */
 
-static char *action_payload(const char *name)
+/* Build the outer batch array with one ["action", name] command per
+ * chain element. handle_command() runs the batch in order. */
+static char *action_payload(const char *const *names, int count)
 {
 	WMPropList *inner, *outer, *s;
 	char *body;
+	int i;
 
-	inner = WMCreatePLArray(NULL);
-	s = WMCreatePLString("action");
-	WMAddToPLArray(inner, s);
-	WMReleasePropList(s);
-	s = WMCreatePLString(name);
-	WMAddToPLArray(inner, s);
-	WMReleasePropList(s);
-	outer = WMCreatePLArray(inner, NULL);
-	WMReleasePropList(inner);
+	outer = WMCreatePLArray(NULL);
+	for (i = 0; i < count; i++) {
+		inner = WMCreatePLArray(NULL);
+		s = WMCreatePLString("action");
+		WMAddToPLArray(inner, s);
+		WMReleasePropList(s);
+		s = WMCreatePLString(names[i]);
+		WMAddToPLArray(inner, s);
+		WMReleasePropList(s);
+		WMAddToPLArray(outer, inner);
+		WMReleasePropList(inner);
+	}
 	body = WMGetPropListDescription(outer, false);
 	WMReleasePropList(outer);
 	return body;
 }
 
+/* Drop any outstanding pending-reply wait */
+static void pending_clear(void)
+{
+	int i;
+
+	g.pending = 0;
+	for (i = 0; i < g.pending_count; i++)
+		wfree(g.pending_names[i]);
+	if (g.pending_names)
+		wfree(g.pending_names);
+	g.pending_names = NULL;
+	g.pending_count = 0;
+}
+
+/* Arm (or replace) the wait for the reply to one sent chain */
+static void pending_set(const char *const *names, int count)
+{
+	int i;
+
+	pending_clear();
+	if (count <= 0)
+		return;
+	g.pending_names = wmalloc((size_t)count * sizeof(char *));
+	for (i = 0; i < count; i++)
+		g.pending_names[i] = wstrdup(names[i]);
+	g.pending_count = count;
+	g.pending = 1;
+	g.pending_deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
+}
+
+/* NULL when the result dict reports success, otherwise the error text */
+static const char *reply_error(WMPropList *d)
+{
+	WMPropList *k, *v;
+	const char *err = "unknown";
+
+	if (!d || !WMIsPLDictionary(d))
+		return err;
+	k = WMCreatePLString("success");
+	v = WMGetFromPLDictionary(d, k);
+	WMReleasePropList(k);
+	if (v && WMIsPLString(v)
+	    && strcasecmp(WMGetFromPLString(v), "YES") == 0)
+		return NULL;
+	k = WMCreatePLString("error");
+	v = WMGetFromPLDictionary(d, k);
+	WMReleasePropList(k);
+	if (v && WMIsPLString(v) && *WMGetFromPLString(v))
+		err = WMGetFromPLString(v);
+	return err;
+}
+
+static void warn_failed(const char *name, const char *err)
+{
+	if (name)
+		warn_once(name, err);
+	else if (g.verbose)
+		fprintf(stderr, PROG ": action failed: %s\n",
+			err ? err : "unknown");
+}
+
+/* A batch reply is one result dict for a single-command send, or an
+ * array of per-command results in batch order for a chain. Each failed
+ * element is correlated with its name and warned once. */
 static void handle_reply(const char *body)
 {
-	WMPropList *d, *k, *v;
-	const char *err;
-	int ok;
+	WMPropList *d, *item;
+	const char *err, *name;
+	int i, n;
 
-	if (!body)
+	if (!body || !g.pending)
 		return;
 	d = WMCreatePropListFromDescription(body);
 	if (!d)
 		return;
 
-	k = WMCreatePLString("success");
-	v = WMGetFromPLDictionary(d, k);
-	WMReleasePropList(k);
-	ok = v && WMIsPLString(v)
-	     && strcasecmp(WMGetFromPLString(v), "YES") == 0;
-	if (!ok) {
-		err = NULL;
-		k = WMCreatePLString("error");
-		v = WMGetFromPLDictionary(d, k);
-		WMReleasePropList(k);
-		if (v && WMIsPLString(v))
-			err = WMGetFromPLString(v);
-		if (g.pending_name)
-			warn_once(g.pending_name, err);
-		else if (g.verbose)
-			fprintf(stderr, PROG ": action failed: %s\n",
-				err ? err : "unknown");
+	if (WMIsPLArray(d)) {
+		n = WMGetPropListItemCount(d);
+		for (i = 0; i < n; i++) {
+			item = WMGetFromPLArray(d, i);
+			err = reply_error(item);
+			if (!err)
+				continue;
+			name = i < g.pending_count ? g.pending_names[i] : NULL;
+			warn_failed(name, err);
+		}
+	} else {
+		err = reply_error(d);
+		if (err)
+			warn_failed(g.pending_count > 0
+				    ? g.pending_names[0] : NULL, err);
 	}
 	WMReleasePropList(d);
 }
 
-/* Send one action. If the previous reply is still outstanding the new
- * name supersedes it (debug-logged) and the old wait is abandoned. A
- * name whose reply never arrives within REPLY_TIMEOUT_MS is dropped
- * without touching the connection. */
-static void queue_action(const char *name)
+/* Send one action chain as a single ordered IPC batch. If the previous
+ * reply is still outstanding the new chain supersedes it (debug-logged)
+ * and the old wait is abandoned. A chain whose reply never arrives
+ * within REPLY_TIMEOUT_MS is dropped without touching the connection. */
+static void queue_action(const char *const *names, int count)
 {
 	char *body;
 
 	if (g.ipc_fd < 0) {
 		if (g.verbose)
 			fprintf(stderr, PROG ": no connection, dropping '%s'\n",
-				name);
+				names[0]);
 		return;
 	}
 	if (g.pending && g.verbose)
 		fprintf(stderr, PROG ": action '%s' superseded '%s'\n",
-			name, g.pending_name ? g.pending_name : "?");
-	if (g.pending_name)
-		wfree(g.pending_name);
-	g.pending_name = wstrdup(name);
-	g.pending = 1;
-	g.pending_deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
+			names[0],
+			g.pending_names ? g.pending_names[0] : "?");
+	pending_set(names, count);
 
-	body = action_payload(name);
+	body = action_payload(names, count);
 	if (body) {
 		if (wIPCSend(g.ipc_fd, WIPC_COMMAND, body, strlen(body)) < 0) {
 			if (g.verbose)
 				fprintf(stderr, PROG ": send failed: %s\n",
 					strerror(errno));
-			g.pending = 0;
+			pending_clear();
 		}
 		wfree(body);
+	} else {
+		pending_clear();
 	}
 }
 
@@ -442,29 +510,23 @@ static int read_reply_frame(void)
  * failed; a dropped event frame leaves it armed. */
 static void service_reply(void)
 {
-	if (read_reply_frame() != 0) {
-		g.pending = 0;
-		if (g.pending_name) {
-			wfree(g.pending_name);
-			g.pending_name = NULL;
-		}
-	}
+	if (read_reply_frame() != 0)
+		pending_clear();
 }
 
 /* Blocking send-and-wait used by the deterministic replay path only */
-static void send_action_sync(const char *name)
+static void send_action_sync(const char *const *names, int count)
 {
 	char *body;
 	long long deadline;
 
 	if (g.ipc_fd < 0)
 		return;
-	body = action_payload(name);
+	body = action_payload(names, count);
 	if (!body)
 		return;
 	if (wIPCSend(g.ipc_fd, WIPC_COMMAND, body, strlen(body)) >= 0) {
-		g.pending_name = wstrdup(name);
-		g.pending = 1;
+		pending_set(names, count);
 		deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
 		while (g.pending && monotonic_ms() < deadline) {
 			struct pollfd pfd = { .fd = g.ipc_fd, .events = POLLIN };
@@ -475,13 +537,9 @@ static void send_action_sync(const char *name)
 				service_reply();
 		}
 		if (g.pending && g.verbose)
-			fprintf(stderr, PROG ": no reply for '%s'\n", name);
-		g.pending = 0;
-		if (g.pending_name) {
-			wfree(g.pending_name);
-			g.pending_name = NULL;
-		}
+			fprintf(stderr, PROG ": no reply for '%s'\n", names[0]);
 	}
+	pending_clear();
 	wfree(body);
 }
 
@@ -489,19 +547,26 @@ static void send_action_sync(const char *name)
 
 static void deliver_gesture(enum WMGestureDirection dir)
 {
-	const char *name;
+	const char *const *names;
+	char joined[256];
+	int count, i, n;
 
 	if (dir == WMT_DIR_NONE)
 		return;
-	name = wmTouchConfigAction(&g.cfg, g.rec.fingers, dir);
-	if (g.verbose)
-		fprintf(stderr, PROG ": %d-finger %s -> %s\n", g.rec.fingers,
-			wmTouchDirectionName(dir), name ? name : "(none)");
-	if (name) {
+	count = wmTouchConfigActions(&g.cfg, g.rec.fingers, dir, &names);
+	if (g.verbose) {
+		n = snprintf(joined, sizeof(joined), "%d-finger %s -> ",
+			     g.rec.fingers, wmTouchDirectionName(dir));
+		for (i = 0; i < count && n < (int)sizeof(joined) - 1; i++)
+			n += snprintf(joined + n, sizeof(joined) - n, "%s%s",
+				      i ? ", " : "", names[i]);
+		fprintf(stderr, PROG ": %s\n", joined);
+	}
+	if (count) {
 		if (g.sync_replay)
-			send_action_sync(name);
+			send_action_sync(names, count);
 		else
-			queue_action(name);
+			queue_action(names, count);
 	}
 }
 
@@ -660,7 +725,7 @@ static void process_replay(const char *path)
 static int check_actions(const char *override, const char *socket_path)
 {
 	char *path, *body;
-	int fd, rc, f, d, i, unknown = 0, checked = 0;
+	int fd, rc, f, d, i, j, unknown = 0, checked = 0;
 	uint32_t type, len;
 	WMPropList *inner, *outer, *d_pl, *k, *arr, *s;
 
@@ -717,26 +782,30 @@ static int check_actions(const char *override, const char *socket_path)
 
 	for (f = 0; f < 4; f++) {
 		for (d = 0; d < WMT_DIR_COUNT; d++) {
-			const char *name = g.cfg.actions[f][d];
+			const char *const *names = NULL;
+			int count;
 
-			if (!name)
-				continue;
-			checked++;
-			rc = 0;
-			for (i = 0; i < WMGetPropListItemCount(arr); i++) {
-				WMPropList *item = WMGetFromPLArray(arr, i);
+			count = wmTouchConfigActions(&g.cfg, f + 2, d, &names);
+			for (i = 0; i < count; i++) {
+				const char *name = names[i];
 
-				if (item && WMIsPLString(item)
-				    && strcmp(WMGetFromPLString(item), name) == 0) {
-					rc = 1;
-					break;
+				checked++;
+				rc = 0;
+				for (j = 0; j < WMGetPropListItemCount(arr); j++) {
+					WMPropList *item = WMGetFromPLArray(arr, j);
+
+					if (item && WMIsPLString(item)
+					    && strcmp(WMGetFromPLString(item), name) == 0) {
+						rc = 1;
+						break;
+					}
 				}
-			}
-			if (rc)
-				printf("OK %s\n", name);
-			else {
-				printf("unknown action '%s'\n", name);
-				unknown = 1;
+				if (rc)
+					printf("OK %s\n", name);
+				else {
+					printf("unknown action '%s'\n", name);
+					unknown = 1;
+				}
 			}
 		}
 	}
@@ -750,11 +819,7 @@ static int check_actions(const char *override, const char *socket_path)
 
 static void drop_pending_reply(void)
 {
-	g.pending = 0;
-	if (g.pending_name) {
-		wfree(g.pending_name);
-		g.pending_name = NULL;
-	}
+	pending_clear();
 }
 
 static void drain_selfpipe(void)
@@ -778,7 +843,7 @@ static int event_loop(int fd, struct libinput *li)
 		if (g.pending && now >= g.pending_deadline) {
 			if (g.verbose)
 				fprintf(stderr, PROG ": dropping reply for '%s'\n",
-					g.pending_name ? g.pending_name : "?");
+					g.pending_names ? g.pending_names[0] : "?");
 			drop_pending_reply();
 		}
 
@@ -1125,8 +1190,7 @@ int main(int argc, char **argv)
 	if (g.domain_path)
 		wfree(g.domain_path);
 	warned_reset();
-	if (g.pending_name)
-		wfree(g.pending_name);
+	pending_clear();
 	close(g.selfpipe[0]);
 	close(g.selfpipe[1]);
 	return status;

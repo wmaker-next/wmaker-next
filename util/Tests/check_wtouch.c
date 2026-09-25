@@ -15,6 +15,17 @@
 #include "wmtouch-core.h"
 #include "check_common.h"
 
+/* first action of a gesture chain, or NULL when the gesture is inert */
+static const char *first_action(const WMTouchConfig *cfg, int fingers,
+				enum WMGestureDirection dir)
+{
+	const char *const *names = NULL;
+
+	if (wmTouchConfigActions(cfg, fingers, dir, &names) < 1)
+		return NULL;
+	return names[0];
+}
+
 static void feed(WMTouchRecognizer *r, const WMTouchConfig *cfg,
 		 enum WMGestureKind kind, int fingers, double dx, double dy)
 {
@@ -249,20 +260,20 @@ static void test_domain(void)
 	CHECK(cfg.swipe_threshold == 60);
 	CHECK(cfg.swipe_axis_margin > 2.4 && cfg.swipe_axis_margin < 2.6);
 	CHECK(cfg.pinch_threshold > 1.7 && cfg.pinch_threshold < 1.9);
-	CHECK_STR(wmTouchConfigAction(&cfg, 3, WMT_DIR_LEFT), "PrevWorkspace");
-	CHECK(wmTouchConfigAction(&cfg, 3, WMT_DIR_DOWN) == NULL);
-	CHECK(wmTouchConfigAction(&cfg, 3, WMT_DIR_RIGHT) == NULL);
-	CHECK_STR(wmTouchConfigAction(&cfg, 3, WMT_DIR_SPREAD), "Maximize");
-	CHECK_STR(wmTouchConfigAction(&cfg, 2, WMT_DIR_SPREAD), "Maximize");
+	CHECK_STR(first_action(&cfg, 3, WMT_DIR_LEFT), "PrevWorkspace");
+	CHECK(first_action(&cfg, 3, WMT_DIR_DOWN) == NULL);
+	CHECK(first_action(&cfg, 3, WMT_DIR_RIGHT) == NULL);
+	CHECK_STR(first_action(&cfg, 3, WMT_DIR_SPREAD), "Maximize");
+	CHECK_STR(first_action(&cfg, 2, WMT_DIR_SPREAD), "Maximize");
 	/* the TwoFingerLeft key above is not read: libinput has no
 	 * two-finger swipes */
-	CHECK(wmTouchConfigAction(&cfg, 2, WMT_DIR_LEFT) == NULL);
-	CHECK(wmTouchConfigAction(&cfg, 2, WMT_DIR_PINCH) == NULL);
-	CHECK(wmTouchConfigAction(&cfg, 3, WMT_DIR_PINCH) == NULL);
-	CHECK_STR(wmTouchConfigAction(&cfg, 4, WMT_DIR_PINCH), "Miniaturize");
-	CHECK_STR(wmTouchConfigAction(&cfg, 4, WMT_DIR_RIGHT), "NextWorkspace");
-	CHECK_STR(wmTouchConfigAction(&cfg, 5, WMT_DIR_DOWN), "ShowDesktop");
-	CHECK(wmTouchConfigAction(&cfg, 6, WMT_DIR_DOWN) == NULL);
+	CHECK(first_action(&cfg, 2, WMT_DIR_LEFT) == NULL);
+	CHECK(first_action(&cfg, 2, WMT_DIR_PINCH) == NULL);
+	CHECK(first_action(&cfg, 3, WMT_DIR_PINCH) == NULL);
+	CHECK_STR(first_action(&cfg, 4, WMT_DIR_PINCH), "Miniaturize");
+	CHECK_STR(first_action(&cfg, 4, WMT_DIR_RIGHT), "NextWorkspace");
+	CHECK_STR(first_action(&cfg, 5, WMT_DIR_DOWN), "ShowDesktop");
+	CHECK(first_action(&cfg, 6, WMT_DIR_DOWN) == NULL);
 	wmTouchConfigFree(&cfg);
 	WMReleasePropList(pl);
 
@@ -295,10 +306,78 @@ static void test_domain(void)
 	wmTouchConfigFromPropList(NULL, &cfg);
 	CHECK(cfg.swipe_threshold == WMTOUCH_DEFAULT_THRESHOLD);
 	CHECK(cfg.pinch_threshold > 1.4 && cfg.pinch_threshold < 1.6);
-	CHECK(wmTouchConfigAction(&cfg, 3, WMT_DIR_LEFT) == NULL);
-	CHECK(wmTouchConfigAction(&cfg, 4, WMT_DIR_UP) == NULL);
-	CHECK(wmTouchConfigAction(&cfg, 3, WMT_DIR_SPREAD) == NULL);
+	CHECK(first_action(&cfg, 3, WMT_DIR_LEFT) == NULL);
+	CHECK(first_action(&cfg, 4, WMT_DIR_UP) == NULL);
+	CHECK(first_action(&cfg, 3, WMT_DIR_SPREAD) == NULL);
 	wmTouchConfigFree(&cfg);
+}
+
+static void test_domain_chains(void)
+{
+	WMPropList *pl;
+	WMTouchConfig cfg;
+	const char *const *names;
+	char desc[1024];
+	int count, i, n;
+
+	/* an array value fires a chain, in array order */
+	pl = WMCreatePropListFromDescription(
+		"{ FourFingerRight = (MoveToNextWorkspace, NextWorkspace); }");
+	CHECK(pl != NULL);
+	wmTouchConfigInit(&cfg);
+	wmTouchConfigFromPropList(pl, &cfg);
+	count = wmTouchConfigActions(&cfg, 4, WMT_DIR_RIGHT, &names);
+	CHECK(count == 2);
+	CHECK(names != NULL);
+	CHECK_STR(names[0], "MoveToNextWorkspace");
+	CHECK_STR(names[1], "NextWorkspace");
+	CHECK(count > 0 && names[2] == NULL);
+	wmTouchConfigFree(&cfg);
+	WMReleasePropList(pl);
+
+	/* None and empty entries inside a chain are skipped and a
+	 * non-string element is ignored */
+	pl = WMCreatePropListFromDescription(
+		"{ FourFingerUp = (None, \"\", NextWorkspace, (A, B)); }");
+	CHECK(pl != NULL);
+	wmTouchConfigInit(&cfg);
+	wmTouchConfigFromPropList(pl, &cfg);
+	count = wmTouchConfigActions(&cfg, 4, WMT_DIR_UP, &names);
+	CHECK(count == 1);
+	CHECK(names != NULL);
+	CHECK_STR(names[0], "NextWorkspace");
+	wmTouchConfigFree(&cfg);
+	WMReleasePropList(pl);
+
+	/* an all-None chain is inert */
+	pl = WMCreatePropListFromDescription(
+		"{ FourFingerLeft = (None, None); }");
+	CHECK(pl != NULL);
+	wmTouchConfigInit(&cfg);
+	wmTouchConfigFromPropList(pl, &cfg);
+	CHECK(wmTouchConfigActions(&cfg, 4, WMT_DIR_LEFT, &names) == 0);
+	CHECK(names == NULL);
+	wmTouchConfigFree(&cfg);
+	WMReleasePropList(pl);
+
+	/* the chain is capped at WMTOUCH_MAX_ACTIONS entries */
+	n = snprintf(desc, sizeof(desc), "{ FourFingerDown = (");
+	CHECK(n > 0 && n < (int)sizeof(desc));
+	for (i = 0; i < WMTOUCH_MAX_ACTIONS + 4; i++)
+		n += snprintf(desc + n, sizeof(desc) - (size_t)n, "%s Action%d",
+			      i ? "," : "", i);
+	snprintf(desc + n, sizeof(desc) - (size_t)n, "); }");
+	pl = WMCreatePropListFromDescription(desc);
+	CHECK(pl != NULL);
+	wmTouchConfigInit(&cfg);
+	wmTouchConfigFromPropList(pl, &cfg);
+	count = wmTouchConfigActions(&cfg, 4, WMT_DIR_DOWN, &names);
+	CHECK(count == WMTOUCH_MAX_ACTIONS);
+	CHECK(names != NULL);
+	CHECK_STR(names[0], "Action0");
+	CHECK_STR(names[WMTOUCH_MAX_ACTIONS - 1], "Action15");
+	wmTouchConfigFree(&cfg);
+	WMReleasePropList(pl);
 }
 
 static void test_replay_parser(void)
@@ -344,6 +423,7 @@ int main(void)
 {
 	test_recognizer();
 	test_domain();
+	test_domain_chains();
 	test_replay_parser();
 	return check_report("wmtouch-core");
 }

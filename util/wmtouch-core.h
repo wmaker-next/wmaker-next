@@ -34,6 +34,10 @@
 #define WMTOUCH_DEFAULT_AXIS_MARGIN     1.2
 #define WMTOUCH_DEFAULT_PINCH_THRESHOLD 1.5
 
+/* cap on the per-gesture action chain, so a fat-fingered domain cannot
+ * make the daemon emit an unbounded IPC batch */
+#define WMTOUCH_MAX_ACTIONS 16
+
 enum WMGestureKind {
 	WMT_GESTURE_BEGIN,
 	WMT_GESTURE_UPDATE,
@@ -68,11 +72,18 @@ enum WMGestureDirection {
 #define WMT_DIR_COUNT 6
 
 typedef struct {
+	/* a gesture may fire a chain of actions, run in order as one IPC
+	 * batch. names is NULL and count 0 when None/absent */
+	char **names;
+	int count;
+} WMTouchAction;
+
+typedef struct {
 	int swipe_threshold;
 	double swipe_axis_margin;
 	double pinch_threshold;
-	/* actions[finger-2][direction] or NULL when None/absent */
-	char *actions[4][WMT_DIR_COUNT];
+	/* actions[finger-2][direction], empty when None/absent */
+	WMTouchAction actions[4][WMT_DIR_COUNT];
 } WMTouchConfig;
 
 typedef struct {
@@ -88,8 +99,13 @@ typedef struct {
 void wmTouchConfigInit(WMTouchConfig *cfg);
 void wmTouchConfigFromPropList(WMPropList *domain, WMTouchConfig *cfg);
 void wmTouchConfigFree(WMTouchConfig *cfg);
-const char *wmTouchConfigAction(const WMTouchConfig *cfg, int fingers,
-				enum WMGestureDirection dir);
+/* Returns the action chain for a gesture: the number of actions (0 when
+ * the gesture is None/absent) with *names pointing at the caller-owned,
+ * NULL-terminated config strings, valid until the next config load or
+ * free. */
+int wmTouchConfigActions(const WMTouchConfig *cfg, int fingers,
+			 enum WMGestureDirection dir,
+			 const char *const **names);
 
 /* Gesture state machine. Feed each event in order, the return value is
  * non-NONE only for the END event that decided a swipe. */

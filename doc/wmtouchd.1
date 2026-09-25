@@ -53,6 +53,20 @@ A value of
 empty, or an absent key makes the gesture inert, so the daemon does
 nothing until the domain opts in.
 .PP
+A gesture may also be bound to a chain of actions, given as an array
+that is run in order as one batched IPC command, for example:
+.PP
+.nf
+    FourFingerRight = (MoveToNextWorkspace, NextWorkspace);
+.fi
+.PP
+which moves the focused window to the next workspace and follows it.
+A chain holds at most 16 actions; entries that are
+.BR None ,
+empty, or not strings are skipped, and a chain that reduces to nothing
+is inert. If an action in the chain fails the rest still run, and each
+failed name is logged once.
+.PP
 Swipe deltas are in libinput gesture units, not screen pixels, and the
 unaccelerated accessors are used so
 .B SwipeThreshold

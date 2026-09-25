@@ -66,6 +66,63 @@ static bool is_none(const char *s)
 	return !s || !*s || strcasecmp(s, "None") == 0;
 }
 
+/* Append one action to a gesture chain unless it is None/empty or the
+ * chain is already at the cap. The name array stays NULL-terminated.
+ * Returns the new count. */
+static int chain_append(WMTouchAction *cell, const char *s)
+{
+	char **names;
+
+	if (is_none(s))
+		return cell->count;
+	if (cell->count >= WMTOUCH_MAX_ACTIONS)
+		return cell->count;
+	names = wrealloc(cell->names,
+			 (size_t)(cell->count + 2) * sizeof(char *));
+	cell->names = names;
+	cell->names[cell->count] = wstrdup(s);
+	cell->names[cell->count + 1] = NULL;
+	cell->count++;
+	return cell->count;
+}
+
+/* A gesture value is either one action-name string or an array of them
+ * forming a chain run in order. None/empty elements and non-string
+ * array entries are skipped, and the chain is capped at
+ * WMTOUCH_MAX_ACTIONS entries. */
+static void config_actions(WMPropList *domain, const char *key,
+			   WMTouchAction *cell)
+{
+	WMPropList *k, *v, *item;
+	const char *s;
+	int i, n;
+
+	if (!domain)
+		return;
+	k = WMCreatePLString(key);
+	v = WMGetFromPLDictionary(domain, k);
+	WMReleasePropList(k);
+	if (!v)
+		return;
+
+	if (WMIsPLString(v)) {
+		s = WMGetFromPLString(v);
+		if (!is_none(s))
+			chain_append(cell, s);
+		return;
+	}
+
+	if (!WMIsPLArray(v))
+		return;
+	n = WMGetPropListItemCount(v);
+	for (i = 0; i < n; i++) {
+		item = WMGetFromPLArray(v, i);
+		if (!item || !WMIsPLString(item))
+			continue;
+		chain_append(cell, WMGetFromPLString(item));
+	}
+}
+
 void wmTouchConfigInit(WMTouchConfig *cfg)
 {
 	if (!cfg)
@@ -78,24 +135,30 @@ void wmTouchConfigInit(WMTouchConfig *cfg)
 
 void wmTouchConfigFree(WMTouchConfig *cfg)
 {
-	int f, d;
+	int f, d, i;
 
 	if (!cfg)
 		return;
 	for (f = 0; f < 4; f++)
 		for (d = 0; d < WMT_DIR_COUNT; d++) {
-			if (cfg->actions[f][d])
-				wfree(cfg->actions[f][d]);
-			cfg->actions[f][d] = NULL;
+			WMTouchAction *cell = &cfg->actions[f][d];
+
+			for (i = 0; i < cell->count; i++)
+				wfree(cell->names[i]);
+			if (cell->names)
+				wfree(cell->names);
+			cell->names = NULL;
+			cell->count = 0;
 		}
 }
 
 void wmTouchConfigFromPropList(WMPropList *domain, WMTouchConfig *cfg)
 {
 	const char *s;
-	long threshold;
 	double margin;
+	long threshold;
 	int f, d;
+	char key[32];
 
 	if (!cfg)
 		return;
@@ -147,28 +210,28 @@ void wmTouchConfigFromPropList(WMPropList *domain, WMTouchConfig *cfg)
 
 	for (f = 0; f < 4; f++) {
 		for (d = 0; d < WMT_DIR_COUNT; d++) {
-			char key[32];
-
 			/* libinput has no two-finger swipes, so the
 			 * TwoFinger prefix has only the pinch pair */
 			if (f == 0 && d <= WMT_DIR_DOWN)
 				continue;
 			snprintf(key, sizeof(key), "%s%s", finger_prefix[f],
 				 direction_suffix[d]);
-			s = config_string(domain, key);
-			if (!is_none(s))
-				cfg->actions[f][d] = wstrdup(s);
+			config_actions(domain, key, &cfg->actions[f][d]);
 		}
 	}
 }
 
-const char *wmTouchConfigAction(const WMTouchConfig *cfg, int fingers,
-				enum WMGestureDirection dir)
+int wmTouchConfigActions(const WMTouchConfig *cfg, int fingers,
+			 enum WMGestureDirection dir,
+			 const char *const **names)
 {
+	const WMTouchAction *cell;
 	int f;
 
+	if (names)
+		*names = NULL;
 	if (!cfg || dir < 0 || dir >= WMT_DIR_COUNT)
-		return NULL;
+		return 0;
 	if (fingers == 2)
 		f = 0;
 	else if (fingers == 3)
@@ -178,8 +241,13 @@ const char *wmTouchConfigAction(const WMTouchConfig *cfg, int fingers,
 	else if (fingers == 5)
 		f = 3;
 	else
-		return NULL;
-	return cfg->actions[f][dir];
+		return 0;
+	cell = &cfg->actions[f][dir];
+	if (!cell->count)
+		return 0;
+	if (names)
+		*names = (const char *const *)cell->names;
+	return cell->count;
 }
 
 void wmTouchRecognizerInit(WMTouchRecognizer *r)

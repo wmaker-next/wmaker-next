@@ -7,6 +7,8 @@
 # swipe and a sub-threshold pinch fire nothing, a two-finger swipe is
 # inert because libinput never reports one, a typo'd name is logged
 # once, and `--check` reports the bad name without executing any action.
+# A four-finger swipe bound to an action chain fires both actions in
+# order as one IPC batch.
 #
 # Skips (77) when wmtouchd was not built, i.e. libinput is unavailable.
 set -u
@@ -22,6 +24,7 @@ EVLOG="$RUNTIME/events"
 DAEMONLOG="$RUNTIME/wmtouchd.log"
 CHECKLOG="$RUNTIME/check.log"
 GEST="$RUNTIME/gestures.txt"
+GEST2="$RUNTIME/gestures-chain.txt"
 WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 WMAKERMSG="$ROOT/util/.libs/wmakermsg"
 WDWRITE="$ROOT/util/.libs/wdwrite"
@@ -74,6 +77,13 @@ ipc_ready() { msg -q get_version >/dev/null 2>&1; }
 evlog_has() { grep -qF "$1" "$EVLOG" 2>/dev/null; }
 evlog_count() { grep -cF "$1" "$EVLOG" 2>/dev/null || true; }
 evlog_count_is() { [ "$(evlog_count "$1")" = "$2" ]; }
+evlog_line() { grep -n -m1 -F "$1" "$EVLOG" 2>/dev/null | cut -d: -f1; }
+
+wait_tick() {
+	wt_mark=$1
+	msg send_tick "$wt_mark" >/dev/null 2>&1 || return 1
+	wait_for 50 evlog_has "payload = \"$wt_mark\""
+}
 
 start_monitor() {
 	: > "$EVLOG"
@@ -136,6 +146,9 @@ LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 	DISPLAY=$DPY "$WDWRITE" WMTouch ThreeFingerPinchIn PrevWorkspace >>"$LOG" 2>&1
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 	DISPLAY=$DPY "$WDWRITE" WMTouch TwoFingerLeft PrevWorkspace >>"$LOG" 2>&1
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+	DISPLAY=$DPY "$WDWRITE" WMTouch FourFingerRight \
+	"(NextWorkspace, PrevWorkspace)" >>"$LOG" 2>&1
 [ -f "$WMHOME/Defaults/WMTouch" ] || fatal "wdwrite did not create the WMTouch domain"
 
 cat >"$GEST" <<'GESTURES'
@@ -228,9 +241,45 @@ CHECK_RC=$?
 check "--check exits non-zero on a bad name" [ "$CHECK_RC" -ne 0 ]
 check "--check reports the bad name" grep -qF "unknown action 'NoSuchThing'" "$CHECKLOG"
 check "--check accepts NextWorkspace" grep -qF "OK NextWorkspace" "$CHECKLOG"
+check "--check validates both names of a chain" grep -qF "OK PrevWorkspace" "$CHECKLOG"
 sleep 0.5
 check "--check fired no action" \
 	[ "$(evlog_count 'change = focus')" = "$WS_BEFORE" ]
+stop_monitor
+
+# ---- chained swipe: one gesture, two actions, in order -------------------
+
+note "chained swipe fires two actions in order"
+cat >"$GEST2" <<'GESTURES'
+# four-finger right is bound to the (NextWorkspace, PrevWorkspace) chain
+begin 4
+update 4 20 0
+update 4 200 0
+end 4
+GESTURES
+# start the chain from a known workspace: next lands on 1, prev back on 0
+msg -q workspace 0 >>"$LOG" 2>&1
+sleep 0.3
+start_monitor workspace || fatal "could not subscribe to workspace events"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+	DISPLAY=$DPY "$WTOUCHD" -v --config "$WMHOME/Defaults/WMTouch" \
+	--source-events "$GEST2" --socket "$SOCKET" >>"$DAEMONLOG" 2>&1 &
+TOUCHD_PID=$!
+echo "$TOUCHD_PID" >> "$PIDFILE"
+wait_for 50 evlog_count_is 'change = focus' 2 \
+	|| fail "expected two workspace events for the chained swipe"
+wait_tick "chain-done" || fail "tick fence after the chained swipe never arrived"
+WS1_LINE=$(evlog_line 'index = 1')
+WS2_LINE=$(evlog_line 'index = 0')
+TICK_LINE=$(evlog_line 'payload = "chain-done"')
+check "chained swipe fired exactly two workspace switches" \
+	[ "$(evlog_count 'change = focus')" = "2" ]
+check "chain ran NextWorkspace before PrevWorkspace" \
+	sh -c "[ '$WS1_LINE' -gt 0 ] && [ '$WS1_LINE' -lt '$WS2_LINE' ] && [ '$WS2_LINE' -lt '$TICK_LINE' ]"
+check "daemon logged the chain" \
+	grep -qF '4-finger Right -> NextWorkspace, PrevWorkspace' "$DAEMONLOG"
+kill "$TOUCHD_PID" 2>/dev/null
+wait_for 30 pid_gone "$TOUCHD_PID"
 stop_monitor
 
 msg -q exit >>"$LOG" 2>&1
