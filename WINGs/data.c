@@ -72,7 +72,8 @@ WMData *WMCreateDataWithBytes(const void *bytes, unsigned length)
 
 	aData = WMCreateDataWithCapacity(length);
 	aData->length = length;
-	memcpy(aData->bytes, bytes, length);
+	if (length > 0)
+		memcpy(aData->bytes, bytes, length);
 
 	return aData;
 }
@@ -259,7 +260,8 @@ void WMAppendDataBytes(WMData * aData, const void *bytes, unsigned length)
 		WMSetDataCapacity(aData, nextCapacity);
 		aData->growth = nextGrowth;
 	}
-	memcpy((unsigned char *)aData->bytes + oldLength, bytes, length);
+	if (length > 0)
+		memcpy((unsigned char *)aData->bytes + oldLength, bytes, length);
 	aData->length = newLength;
 }
 
