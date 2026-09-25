@@ -18,7 +18,6 @@
 
 #include "check_common.h"
 
-struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
 
 static WDisplay test_display;

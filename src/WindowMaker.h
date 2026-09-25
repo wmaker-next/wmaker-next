@@ -240,14 +240,6 @@ typedef struct WCoord {
 } WCoord;
 
 /*
- * Process-scoped runtime state not tied to the X connection.
- * Connection-scoped state lives in WDisplay, plain config in w_global.config.
- */
-extern struct WPreferences {
-	WMArray *fallbackWMs;              /* fallback window manager list */
-} wPreferences;
-
-/*
  * Connection-scoped runtime state. One instance, created in real_main().
  * NULL in the monitor process.
  */
@@ -375,7 +367,7 @@ typedef struct WDisplay {
 	/* borrowed from w_global.config, synced at every assignment */
 	WConfig *config;
 
-	/* runtime half of wPreferences */
+	/* runtime state shared by the command-line switches */
 	struct {
 #ifdef USE_ICCCM_WMREPLACE
 		unsigned int replace:1;               /* replace existing window manager */

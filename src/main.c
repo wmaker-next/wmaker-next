@@ -94,8 +94,6 @@ struct wmaker_global_variables w_global;
 
 char *ProgName;
 
-struct WPreferences wPreferences;
-
 WShortKey wKeyBindings[WKBD_LAST];
 
 /* notifications */
@@ -638,7 +636,6 @@ void ExecExitScript(void)
 int main(int argc, char **argv)
 {
 	int i_am_the_monitor, i;
-	char *alt;
 
 	memset(&w_global, 0, sizeof(w_global));
 	w_global.program.state = WSTATE_NORMAL;
@@ -653,21 +650,6 @@ int main(int argc, char **argv)
 
 	/* setup common stuff for the monitor and wmaker itself */
 	WMInitializeApplication("WindowMaker", &argc, argv);
-
-	memset(&wPreferences, 0, sizeof(wPreferences));
-
-	wPreferences.fallbackWMs = WMCreateArray(8);
-	alt = getenv("WINDOWMAKER_ALT_WM");
-	if (alt != NULL)
-		WMAddToArray(wPreferences.fallbackWMs, wstrdup(alt));
-
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("blackbox"));
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("metacity"));
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("fvwm"));
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("twm"));
-	WMAddToArray(wPreferences.fallbackWMs, NULL);
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("rxvt"));
-	WMAddToArray(wPreferences.fallbackWMs, wstrdup("xterm"));
 
 	i_am_the_monitor = 1;
 

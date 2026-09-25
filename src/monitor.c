@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <signal.h>
+#include <ctype.h>
 #include <sys/wait.h>
 #ifdef __FreeBSD__
 #include <sys/signal.h>
@@ -36,6 +37,36 @@
 #include "dialog.h"
 #include "main.h"
 
+
+static WMArray *fallback_wms;
+
+static bool isBlankString(const char *s)
+{
+	while (*s) {
+		if (!isspace((unsigned char)*s))
+			return false;
+		s++;
+	}
+	return true;
+}
+
+static void createFallbackWMs(void)
+{
+	char *alt;
+
+	fallback_wms = WMCreateArray(8);
+
+	alt = getenv("WINDOWMAKER_ALT_WM");
+	if (alt != NULL && !isBlankString(alt))
+		WMAddToArray(fallback_wms, wstrdup(alt));
+
+	WMAddToArray(fallback_wms, wstrdup("blackbox"));
+	WMAddToArray(fallback_wms, wstrdup("metacity"));
+	WMAddToArray(fallback_wms, wstrdup("fvwm"));
+	WMAddToArray(fallback_wms, wstrdup("twm"));
+	WMAddToArray(fallback_wms, wstrdup("rxvt"));
+	WMAddToArray(fallback_wms, wstrdup("xterm"));
+}
 
 static int showCrashDialog(int sig)
 {
@@ -59,8 +90,8 @@ static int showCrashDialog(int sig)
 
 		wmessage(_("trying to start alternate window manager..."));
 
-		for (i = 0; i < WMGetArrayItemCount(wPreferences.fallbackWMs); i++) {
-			Restart(WMGetFromArray(wPreferences.fallbackWMs, i), false);
+		for (i = 0; i < WMGetArrayItemCount(fallback_wms); i++) {
+			Restart(WMGetFromArray(fallback_wms, i), false);
 		}
 
 		wfatal(_("failed to start alternate window manager. Aborting."));
@@ -79,6 +110,8 @@ int MonitorLoop(int argc, char **argv)
 	int i, status;
 	time_t last_start;
 	bool error = false;
+
+	createFallbackWMs();
 
 	for (i = 0; i < argc; i++)
 		child_argv[i] = argv[i];

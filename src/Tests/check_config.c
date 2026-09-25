@@ -23,7 +23,6 @@
 void wWorkspaceUpdateEdge(WScreen *scr) { (void)scr; }
 #endif
 
-struct WPreferences wPreferences;
 struct wmaker_global_variables w_global;
 
 static WDisplay test_display;
@@ -502,7 +501,6 @@ static void reset_preferences(void)
 	memset(&wdisp->flags, 0, sizeof(wdisp->flags));
 	wdisp->modifier_mask = 0;
 	wdisp->tab_drag_modifier_mask = 0;
-	memset(&wPreferences, 0, sizeof(wPreferences));
 	reset_phase4_counters();
 }
 

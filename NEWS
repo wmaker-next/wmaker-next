@@ -15,7 +15,9 @@ gains a back-pointer to the context. This is an internal refactor with no
 user-visible change, except that the switch-panel/workspace-map textures and
 the clamped window-placement origin are now realised per screen, fixing a
 latent multi-screen bug where they were built from whichever screen applied
-the configuration last.
+the configuration last. The empty `wPreferences` shell is retired and the
+monitor's fallback window-manager list moved into `monitor.c`, its only
+consumer.
 
 Generic action IPC verb
 -----------------------
