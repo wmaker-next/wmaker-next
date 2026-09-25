@@ -3695,12 +3695,14 @@ static void stbir__cleanup_gathered_coefficients( stbir_edge edge, stbir__filter
 
 static int stbir__pack_coefficients( int num_contributors, stbir__contributors* contributors, float * coefficents, int coefficient_width, int widest, int row0, int row1 ) 
 {
-  #define STBIR_MOVE_1( dest, src ) { STBIR_NO_UNROLL(dest); ((stbir_uint32*)(dest))[0] = ((stbir_uint32*)(src))[0]; }
-  #define STBIR_MOVE_2( dest, src ) { STBIR_NO_UNROLL(dest); ((stbir_uint64*)(dest))[0] = ((stbir_uint64*)(src))[0]; }
+  // local patch: odd widest leaves the scalar dest 4-mod-8 aligned, so the
+  // multi-byte moves go through memcpy instead of uint64/uint32 casts
+  #define STBIR_MOVE_1( dest, src ) { STBIR_NO_UNROLL(dest); memcpy( dest, src, 4 ); }
+  #define STBIR_MOVE_2( dest, src ) { STBIR_NO_UNROLL(dest); memcpy( dest, src, 8 ); }
   #ifdef STBIR_SIMD
   #define STBIR_MOVE_4( dest, src ) { stbir__simdf t; STBIR_NO_UNROLL(dest); stbir__simdf_load( t, src ); stbir__simdf_store( dest, t ); }
   #else
-  #define STBIR_MOVE_4( dest, src ) { STBIR_NO_UNROLL(dest); ((stbir_uint64*)(dest))[0] = ((stbir_uint64*)(src))[0]; ((stbir_uint64*)(dest))[1] = ((stbir_uint64*)(src))[1]; }
+  #define STBIR_MOVE_4( dest, src ) { STBIR_NO_UNROLL(dest); memcpy( dest, src, 16 ); }
   #endif
 
   int row_end = row1 + 1;
@@ -7132,7 +7134,13 @@ static stbir__info * stbir__alloc_internal_mem_and_build_samplers( stbir__sample
   if ( ( !vertical->is_gather ) && ( alloc_ring_buffer_num_entries > conservative_split_output_size ) )
     alloc_ring_buffer_num_entries = conservative_split_output_size;
 
+  // local patch: only the non-separate-allocation arena path consumes the
+  // total, the separate path sizes each split's ring buffer directly
+#ifndef STBIR__SEPARATE_ALLOCATIONS
   ring_buffer_size = (size_t)alloc_ring_buffer_num_entries * (size_t)ring_buffer_length_bytes;
+#else
+  (void) ring_buffer_size;
+#endif
 
   // The vertical buffer is used differently, depending on whether we are scattering
   //   the vertical scanlines, or gathering them.
