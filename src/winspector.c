@@ -681,7 +681,7 @@ static void saveSettings(WMWidget *button, void *client_data)
 	buf1 = wmalloc(4);
 	snprintf(buf1, 4, "%s", (WMGetButtonSelected(panel->alwChk) != 0) ? "Yes" : "No");
 	value1 = WMCreatePLString(buf1);
-	different |= insertAttribute(dict, winDic, pl_wattr[WATTR_ALWAYS_USER_ICON], value1, flags);
+	different |= insertAttribute(dict, winDic, pl_wattr[WATTR_ALWAYS_USER_ICON], value1, flags | IS_BOOLEAN);
 	WMReleasePropList(value1);
 	wfree(buf1);
 
