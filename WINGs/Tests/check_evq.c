@@ -122,13 +122,15 @@ static void test_fifo_order(void)
 	CHECK(WXEvqPending(NULL));
 	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 1
 	      && W_EventWindow(e) == 10);
+	free(e);
 	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 2
 	      && W_EventWindow(e) == 11);
+	free(e);
 	CHECK(WXEvqNext(NULL, &e) && e->full_sequence == 3
 	      && W_EventWindow(e) == 12);
+	free(e);
 	CHECK(!WXEvqNext(NULL, &e));
 	CHECK(!WXEvqPending(NULL));
-	free(e);
 }
 
 /* ---- selection events: the xany.window alias is the owner/requestor
