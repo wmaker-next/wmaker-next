@@ -720,14 +720,22 @@ static void saveSettings(WMWidget *button, void *client_data)
 
 	flags |= IS_BOOLEAN;
 
-	/* Attributes... --> Window Attributes */
+	/* Attributes... --> Window Attributes. Hint-carried flags are
+	 * per-window state restored from _WINDOWMAKER_STATE, not chosen
+	 * here, so an unrelated Save must not publish them. */
 	for (i = 0; i < wlengthof(window_attribute); i++) {
+		if (get_attr_flag(&wwin->hint_flags, window_attribute[i].attr))
+			continue;
+
 		value = (WMGetButtonSelected(panel->attrChk[i]) != 0) ? Yes : No;
 		different |= insertAttribute(dict, winDic, pl_wattr[window_attribute[i].attr], value, flags);
 	}
 
-	/* Attributes... --> Advanced Options */
+	/* Attributes... --> Advanced Options, same hint-carried rule */
 	for (i = 0; i < wlengthof(advanced_option); i++) {
+		if (get_attr_flag(&wwin->hint_flags, advanced_option[i].attr))
+			continue;
+
 		value = (WMGetButtonSelected(panel->moreChk[i]) != 0) ? Yes : No;
 		different |= insertAttribute(dict, winDic, pl_wattr[advanced_option[i].attr], value, flags);
 	}
@@ -803,7 +811,7 @@ static void applySettings(WMWidget *button, void *client_data)
 	int old_always_user_icon;
 	int hide_i = -1, mini_i = -1;
 	const char *old_icon_file;
-	int i;
+	int i, val;
 
 	/* the gate below compares the field against the icon the app icon
 	 * last SHOWED, not the domain: after Y over a saved X and Apply,
@@ -821,7 +829,17 @@ static void applySettings(WMWidget *button, void *client_data)
 
 	/* Attributes... --> Window Attributes */
 	for (i = 0; i < wlengthof(window_attribute); i++) {
-		if (WMGetButtonSelected(panel->attrChk[i]))
+		val = WMGetButtonSelected(panel->attrChk[i]) != 0;
+
+		/* A checkbox that actually flips the flag makes the value
+		 * user-chosen, dropping the hint-carried mark. */
+		if (get_attr_flag(&wwin->user_flags, window_attribute[i].attr) != val) {
+			clear_attr_flag(&wwin->hint_flags, window_attribute[i].attr);
+			if (window_attribute[i].attr == WATTR_NO_TITLEBAR)
+				wwin->hint_flags.no_shadeable = 0;
+		}
+
+		if (val)
 			set_attr_flag(&wwin->user_flags, window_attribute[i].attr);
 		else
 			clear_attr_flag(&wwin->user_flags, window_attribute[i].attr);
@@ -850,7 +868,12 @@ static void applySettings(WMWidget *button, void *client_data)
 
 	/* Attributes... --> Advanced Options */
 	for (i = 0; i < wlengthof(advanced_option); i++) {
-		if (WMGetButtonSelected(panel->moreChk[i]))
+		val = WMGetButtonSelected(panel->moreChk[i]) != 0;
+
+		if (get_attr_flag(&wwin->user_flags, advanced_option[i].attr) != val)
+			clear_attr_flag(&wwin->hint_flags, advanced_option[i].attr);
+
+		if (val)
 			set_attr_flag(&wwin->user_flags, advanced_option[i].attr);
 		else
 			clear_attr_flag(&wwin->user_flags, advanced_option[i].attr);
@@ -1030,6 +1053,7 @@ static void revertSettings(WMWidget *button, void *client_data)
 	memset(&wwin->defined_user_flags, 0, sizeof(WWindowAttributes));
 	memset(&wwin->user_flags, 0, sizeof(WWindowAttributes));
 	memset(&wwin->client_flags, 0, sizeof(WWindowAttributes));
+	memset(&wwin->hint_flags, 0, sizeof(WWindowAttributes));
 
 	wWindowSetupInitialAttributes(wwin, NULL, &level, &workspace);
 

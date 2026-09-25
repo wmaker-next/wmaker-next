@@ -86,6 +86,11 @@ typedef enum {
 #define WSETUFLAG(wwin, FLAG, VAL)	(wwin)->user_flags.FLAG = (VAL),\
     (wwin)->defined_user_flags.FLAG = 1
 
+/* Restore a user flag from the saved-state hint and tag it as
+ * hint-carried, so the inspector does not persist it as a default. */
+#define WRESTOREHINTFLAG(wwin, FLAG, VAL)	WSETUFLAG(wwin, FLAG, VAL),\
+	(wwin)->hint_flags.FLAG = 1
+
 typedef struct {
     /* OpenStep */
     unsigned int no_titlebar:1;	       /* draw titlebar? */
@@ -242,6 +247,7 @@ typedef struct WWindow {
 	WWindowAttributes defined_user_flags;	/* mask for user_flags */
 	WWindowAttributes client_flags;		/* window attribute flags set by app
 						 * initialized with global defaults */
+	WWindowAttributes hint_flags;		/* user_flags bits restored from _WINDOWMAKER_STATE */
 
 	struct InspectorPanel *inspector;	/* pointer to attribute editor panel */
 

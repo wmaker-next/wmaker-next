@@ -1365,33 +1365,33 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		wwin->flags.miniaturized = wstate->miniaturized;
 		wwin->flags.maximized = wstate->maximized;
 		if (wstate->auto_hide_on_unfocus_set)
-			WSETUFLAG(wwin, auto_hide_on_unfocus, wstate->auto_hide_on_unfocus);
+			WRESTOREHINTFLAG(wwin, auto_hide_on_unfocus, wstate->auto_hide_on_unfocus);
 		if (wstate->auto_miniaturize_on_unfocus_set)
-			WSETUFLAG(wwin, auto_miniaturize_on_unfocus,
-				  wstate->auto_miniaturize_on_unfocus);
+			WRESTOREHINTFLAG(wwin, auto_miniaturize_on_unfocus,
+					  wstate->auto_miniaturize_on_unfocus);
 		if (wstate->no_movable_state)
-			WSETUFLAG(wwin, no_movable, wstate->no_movable_state - 1);
+			WRESTOREHINTFLAG(wwin, no_movable, wstate->no_movable_state - 1);
 		if (wstate->no_resizable_state)
-			WSETUFLAG(wwin, no_resizable, wstate->no_resizable_state - 1);
+			WRESTOREHINTFLAG(wwin, no_resizable, wstate->no_resizable_state - 1);
 		if (wstate->no_titlebar_set) {
-			WSETUFLAG(wwin, no_titlebar, wstate->no_titlebar);
-			WSETUFLAG(wwin, no_shadeable, wstate->no_titlebar);
+			WRESTOREHINTFLAG(wwin, no_titlebar, wstate->no_titlebar);
+			WRESTOREHINTFLAG(wwin, no_shadeable, wstate->no_titlebar);
 			/* a titlebar-less window cannot be shaded */
 			if (wstate->no_titlebar)
 				wwin->flags.shaded = 0;
 		}
 		if (wstate->no_resizebar_set)
-			WSETUFLAG(wwin, no_resizebar, wstate->no_resizebar);
+			WRESTOREHINTFLAG(wwin, no_resizebar, wstate->no_resizebar);
 		if (wstate->no_close_button_set)
-			WSETUFLAG(wwin, no_close_button, wstate->no_close_button);
+			WRESTOREHINTFLAG(wwin, no_close_button, wstate->no_close_button);
 		if (wstate->no_miniaturize_button_set)
-			WSETUFLAG(wwin, no_miniaturize_button, wstate->no_miniaturize_button);
+			WRESTOREHINTFLAG(wwin, no_miniaturize_button, wstate->no_miniaturize_button);
 		if (wstate->no_border_set)
-			WSETUFLAG(wwin, no_border, wstate->no_border);
+			WRESTOREHINTFLAG(wwin, no_border, wstate->no_border);
 		if (wstate->skip_window_list_set)
-			WSETUFLAG(wwin, skip_window_list, wstate->skip_window_list);
+			WRESTOREHINTFLAG(wwin, skip_window_list, wstate->skip_window_list);
 		if (wstate->skip_switchpanel_set)
-			WSETUFLAG(wwin, skip_switchpanel, wstate->skip_switchpanel);
+			WRESTOREHINTFLAG(wwin, skip_switchpanel, wstate->skip_switchpanel);
 		if (wstate->stacking_level) {
 			switch (wstate->stacking_level) {
 			case 1:
