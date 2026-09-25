@@ -57,6 +57,13 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data);
 
 static void resizeMenu(PopUpButton * bPtr);
 
+/* WMCreateArrayWithDestructor wants void(void *), WMDestroyMenuItem takes
+ * WMMenuItem *, so route the call through a matching signature. */
+static void destroyMenuItemData(void *data)
+{
+	WMDestroyMenuItem(data);
+}
+
 WMPopUpButton *WMCreatePopUpButton(WMWidget * parent)
 {
 	PopUpButton *bPtr;
@@ -83,7 +90,7 @@ WMPopUpButton *WMCreatePopUpButton(WMWidget * parent)
 
 	bPtr->flags.enabled = 1;
 
-	bPtr->items = WMCreateArrayWithDestructor(4, (WMFreeDataProc *) WMDestroyMenuItem);
+	bPtr->items = WMCreateArrayWithDestructor(4, destroyMenuItemData);
 
 	bPtr->selectedItemIndex = -1;
 

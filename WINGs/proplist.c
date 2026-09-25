@@ -58,11 +58,17 @@ static WMPropList *getPLArray(PLData * pldata);
 static WMPropList *getPLDictionary(PLData * pldata);
 static WMPropList *getPropList(PLData * pldata);
 
-typedef bool(*isEqualFunc) (const void *, const void *);
+/* WMIsPropListEqualTo takes WMPropList pointers, the hash table callback
+ * takes const void *, so route the call through a matching signature
+ * instead of casting the function pointer. */
+static bool plKeyIsEqual(const void *a, const void *b)
+{
+	return WMIsPropListEqualTo((WMPropList *) a, (WMPropList *) b);
+}
 
 static const WMHashTableCallbacks WMPropListHashCallbacks = {
 	hashPropList,
-	(isEqualFunc) WMIsPropListEqualTo,
+	plKeyIsEqual,
 	NULL,
 	NULL
 };

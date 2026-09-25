@@ -54,6 +54,13 @@ static void resizeMenu(MultiSelectPopUpButton *bPtr);
 static char *buildCaption(MultiSelectPopUpButton *bPtr);
 static void paintCheckmark(cairo_t *cr, int y, int itemHeight);
 
+/* WMCreateArrayWithDestructor wants void(void *), WMDestroyMenuItem takes
+ * WMMenuItem *, so route the call through a matching signature. */
+static void destroyMenuItemData(void *data)
+{
+	WMDestroyMenuItem(data);
+}
+
 WMMultiSelectPopUpButton *WMCreateMultiSelectPopUpButton(WMWidget *parent)
 {
 	MultiSelectPopUpButton *bPtr;
@@ -81,7 +88,7 @@ WMMultiSelectPopUpButton *WMCreateMultiSelectPopUpButton(WMWidget *parent)
 
 	bPtr->flags.enabled = 1;
 
-	bPtr->items = WMCreateArrayWithDestructor(4, (WMFreeDataProc *)WMDestroyMenuItem);
+	bPtr->items = WMCreateArrayWithDestructor(4, destroyMenuItemData);
 
 	bPtr->highlightedItem = -1;
 

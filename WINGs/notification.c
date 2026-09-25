@@ -94,6 +94,14 @@ typedef struct W_NotificationCenter {
 /* default (and only) center */
 static NotificationCenter *notificationCenter = NULL;
 
+/* WMCreateArrayWithDestructor wants void(void *), WMReleaseNotification
+ * takes WMNotification *, so route the call through a matching
+ * signature. */
+static void releaseNotificationData(void *data)
+{
+	WMReleaseNotification(data);
+}
+
 /* see the comment on NotificationObserver.dead */
 static int posting_depth;
 static NotificationObserver *dead_list;
@@ -427,8 +435,8 @@ WMNotificationQueue *WMCreateNotificationQueue(void)
 	NotificationQueue *queue;
 
 	queue = wmalloc(sizeof(NotificationQueue));
-	queue->asapQueue = WMCreateArrayWithDestructor(8, (WMFreeDataProc *) WMReleaseNotification);
-	queue->idleQueue = WMCreateArrayWithDestructor(8, (WMFreeDataProc *) WMReleaseNotification);
+	queue->asapQueue = WMCreateArrayWithDestructor(8, releaseNotificationData);
+	queue->idleQueue = WMCreateArrayWithDestructor(8, releaseNotificationData);
 	queue->next = notificationQueueList;
 
 	notificationQueueList = queue;

@@ -399,6 +399,19 @@ static bool compareStrings(const void *param1, const void *param2)
 typedef void *(*retainFunc) (const void *);
 typedef void (*releaseFunc) (const void *);
 
+/* wstrdup/wfree have char * signatures, the hash callbacks take const
+ * void *, so route them through matching trampolines rather than
+ * casting the function pointers. */
+static void *hashRetainString(const void *key)
+{
+	return wstrdup(key);
+}
+
+static void hashReleaseString(const void *key)
+{
+	wfree((void *) key);
+}
+
 const WMHashTableCallbacks WMIntHashCallbacks = {
 	NULL,
 	NULL,
@@ -409,8 +422,8 @@ const WMHashTableCallbacks WMIntHashCallbacks = {
 const WMHashTableCallbacks WMStringHashCallbacks = {
 	hashString,
 	compareStrings,
-	(retainFunc) wstrdup,
-	(releaseFunc) wfree
+	hashRetainString,
+	hashReleaseString
 };
 
 const WMHashTableCallbacks WMStringPointerHashCallbacks = {
