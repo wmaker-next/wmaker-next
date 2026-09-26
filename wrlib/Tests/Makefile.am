@@ -6,6 +6,18 @@ AUTOMAKE_OPTIONS =
 # standalone xcb clients like wxcopy/wxpaste (no libWINGs helpers)
 EXTRA_PROGRAMS = testdraw testgrad testrot view bench_image
 
+# libFuzzer harness for the libwraster decoders, built on demand only
+# (e.g. `make fuzz_wrlib`) and only under a clang sanitizer configure
+# (see WINGs/Tests/Makefile.am for the recipe; a magic-prefix selector
+# byte steers the payload into each format's identFile() branch, so the
+# harness stays on the public API)
+EXTRA_PROGRAMS += fuzz_wrlib
+
+fuzz_wrlib_SOURCES = fuzz_wrlib.c
+fuzz_wrlib_LDADD = $(top_builddir)/wrlib/libwraster.la \
+	$(top_builddir)/WINGs/libWUtil.la
+fuzz_wrlib_LDFLAGS = -fsanitize=fuzzer
+
 # automated decoder tests, run by `make check`
 check_PROGRAMS = check_load check_convolve check_image check_palette check_xside
 TESTS = $(check_PROGRAMS)
