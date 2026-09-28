@@ -36,15 +36,12 @@ static const wm_enum_choice icon_animation[] = {
  *     bit[2] is for Top or Bottom choice
  *     bit[1] is for Left or Right choice
  */
-static const char icon_position_dbvalue[][4] = {
-	/* 000: */ "tlv",
-	/* 001: */ "tlh",
-	/* 010: */ "trv",
-	/* 011: */ "trh",
-	/* 100: */ "blv",
-	/* 101: */ "blh",
-	/* 110: */ "brv",
-	/* 111: */ "brh"
+static const struct {
+	const char *db_value;
+} icon_position_dbvalue[] = {
+#define R(v, l) { v },
+	WPREFS_TABLE_icon_position(R)
+#undef R
 };
 
 typedef struct _Panel {
@@ -175,12 +172,12 @@ static void showData(_Panel * panel)
 	str = GetStringForKey("IconPosition");
 	if (str != NULL) {
 		for (i = 0; i < wlengthof(icon_position_dbvalue); i++)
-			if (strcmp(str, icon_position_dbvalue[i]) == 0) {
+			if (strcmp(str, icon_position_dbvalue[i].db_value) == 0) {
 				panel->iconPos = i;
 				goto found_position_value;
 			}
 		wwarning(_("bad value \"%s\" for option %s, using default \"%s\""),
-		         str, "IconPosition", icon_position_dbvalue[5]);
+			 str, "IconPosition", icon_position_dbvalue[5].db_value);
 	}
 	panel->iconPos = 5;
  found_position_value:
@@ -426,7 +423,7 @@ static void storeData(_Panel * panel)
 
 	SetIntegerForKey(WMGetPopUpButtonSelectedItem(panel->sizeP) * 8 + 24, "IconSize");
 
-	SetStringForKey(icon_position_dbvalue[panel->iconPos], "IconPosition");
+	SetStringForKey(icon_position_dbvalue[panel->iconPos].db_value, "IconPosition");
 
 	i = WMGetSliderValue(panel->minipreview.slider);
 	if (i <= minipreview_minimum_size) {

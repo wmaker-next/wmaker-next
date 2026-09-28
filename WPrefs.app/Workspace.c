@@ -63,6 +63,14 @@ static const struct {
 #undef R
 };
 
+/* The popup index is written as the enum value, so the table must keep
+ * the schema row order. Pinned by check_wprefs_schema. */
+static const wm_enum_choice display_position_choices[] = {
+#define R(v, l) { v, l },
+	WPREFS_TABLE_display_position(R)
+#undef R
+};
+
 #define ICON_FILE	"workspace"
 
 #define DONT_LINK_FILE	"dontlinkworkspaces"
@@ -238,14 +246,8 @@ static void createPanel(Panel * p)
 	panel->posP = WMCreatePopUpButton(panel->navF);
 	WMResizeWidget(panel->posP, 125, 20);
 	WMMoveWidget(panel->posP, 350, 153);
-	WMAddPopUpButtonItem(panel->posP, _("Disable"));
-	WMAddPopUpButtonItem(panel->posP, _("Center"));
-	WMAddPopUpButtonItem(panel->posP, _("Top"));
-	WMAddPopUpButtonItem(panel->posP, _("Bottom"));
-	WMAddPopUpButtonItem(panel->posP, _("Top/Left"));
-	WMAddPopUpButtonItem(panel->posP, _("Top/Right"));
-	WMAddPopUpButtonItem(panel->posP, _("Bottom/Left"));
-	WMAddPopUpButtonItem(panel->posP, _("Bottom/Right"));
+	for (i = 0; i < (int)wlengthof(display_position_choices); i++)
+		WMAddPopUpButtonItem(panel->posP, _(display_position_choices[i].label));
 
 	WMMapSubwidgets(panel->navF);
 

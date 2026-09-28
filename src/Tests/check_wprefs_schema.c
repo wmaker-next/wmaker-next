@@ -1,8 +1,11 @@
 /*
  * check_wprefs_schema - assert WPrefs enum-choice tables and the
  * WindowMaker config schema agree on every enum-typed key WPrefs
- * exposes.  Adding a value to config-schema-def.h without adding it to
- * WPrefs.app/enumchoices.h (or vice versa) fails make check.
+ * exposes. Adding a value to config-schema-def.h without adding it to
+ * WPrefs.app/enumchoices.h (or vice versa) fails make check, every
+ * schema enum key must be either offered by WPrefs or explicitly
+ * listed as having no UI, and keys whose UI stores a popup or radio
+ * index as the value are pinned to value == row position.
  */
 
 #include "wconfig.h"
@@ -11,7 +14,7 @@
 #include <string.h>
 #include <strings.h>
 
-#include "config-schema-public.h"
+#include "config-schema.h"
 
 /* enumchoices.h carries N_()-wrapped UI labels we discard here */
 #ifndef N_
@@ -81,6 +84,33 @@ static const struct choice wprefs_choices[] = {
 #define CUR_KEY "DefaultWorkspaceLayout"
 	WPREFS_TABLE_workspace_layouts(R2)
 #undef CUR_KEY
+#define CUR_KEY "FocusMode"
+	WPREFS_TABLE_focus_mode(R2)
+#undef CUR_KEY
+#define CUR_KEY "NewStyle"
+	WPREFS_TABLE_titlebar_mode(R2)
+#undef CUR_KEY
+#define CUR_KEY "ColormapMode"
+	WPREFS_TABLE_colormap_mode(R2)
+#undef CUR_KEY
+#define CUR_KEY "IconPosition"
+	WPREFS_TABLE_icon_position(R2)
+#undef CUR_KEY
+#define CUR_KEY "WorkspaceBorder"
+	WPREFS_TABLE_workspace_border(R2)
+#undef CUR_KEY
+#define CUR_KEY "WorkspaceNameDisplayPosition"
+	WPREFS_TABLE_display_position(R2)
+#undef CUR_KEY
+#define CUR_KEY "MenuScrollSpeed"
+	WPREFS_TABLE_speed(R2)
+#undef CUR_KEY
+#define CUR_KEY "IconSlideSpeed"
+	WPREFS_TABLE_speed(R2)
+#undef CUR_KEY
+#define CUR_KEY "ShadeSpeed"
+	WPREFS_TABLE_speed(R2)
+#undef CUR_KEY
 };
 
 #undef R2
@@ -89,7 +119,7 @@ static const struct choice wprefs_choices[] = {
 static const size_t wprefs_choice_count =
 	sizeof(wprefs_choices) / sizeof(wprefs_choices[0]);
 
-/* Schema values WPrefs deliberately does not offer.  Adding here needs
+/* Schema values WPrefs deliberately does not offer. Adding here needs
  * a reason, removing the underlying cause should remove the row. */
 static const struct choice wprefs_hidden[] = {
 	/* config-values.h marks WIS_RANDOM "secret" */
@@ -107,6 +137,28 @@ static int wprefs_hides(const char *key, const char *value)
 	return 0;
 }
 
+/* Enum-typed schema keys WPrefs deliberately offers no widget for.
+ * The coverage test below requires every schema enum key to be offered
+ * in the manifest or listed here, so a new key cannot appear without a
+ * decision about its WPrefs story. */
+static const char *const wprefs_no_ui[] = {
+	/* position of the keychain OSD, wdwrite only */
+	"KeychainDisplayPosition",
+	/* run-dialog text matching, dialog-side knob */
+	"RunDialogMatching",
+};
+
+/* Keys whose WPrefs UI stores the selected popup or radio index as the
+ * value, so the schema rows must keep value == row position. The
+ * owning widget is named per row. */
+static const char *const wprefs_positional[] = {
+	"DefaultWorkspaceLayout",	/* Workspace.c layout popup */
+	"WorkspaceNameDisplayPosition",	/* Workspace.c position popup */
+	"MenuScrollSpeed",		/* MenuPreferences.c speed radio */
+	"IconSlideSpeed",		/* Configurations.c speed radio */
+	"ShadeSpeed",			/* Configurations.c speed radio */
+};
+
 static int wprefs_offers(const char *key, const char *value)
 {
 	size_t i;
@@ -114,6 +166,26 @@ static int wprefs_offers(const char *key, const char *value)
 	for (i = 0; i < wprefs_choice_count; i++)
 		if (strcasecmp(wprefs_choices[i].key, key) == 0 &&
 		    strcasecmp(wprefs_choices[i].db_value, value) == 0)
+			return 1;
+	return 0;
+}
+
+static int wprefs_offers_any(const char *key)
+{
+	size_t i;
+
+	for (i = 0; i < wprefs_choice_count; i++)
+		if (strcmp(wprefs_choices[i].key, key) == 0)
+			return 1;
+	return 0;
+}
+
+static int wprefs_no_ui_has(const char *key)
+{
+	size_t i;
+
+	for (i = 0; i < sizeof(wprefs_no_ui) / sizeof(wprefs_no_ui[0]); i++)
+		if (strcasecmp(wprefs_no_ui[i], key) == 0)
 			return 1;
 	return 0;
 }
@@ -184,6 +256,61 @@ static void test_schema_values_in_wprefs(void)
 	}
 }
 
+/* Every schema enum key must be offered by WPrefs or listed as no-UI,
+ * so a new key cannot appear without a decision about its WPrefs
+ * story. */
+static void test_schema_enum_key_coverage(void)
+{
+	size_t i;
+
+	for (i = 0; i < wConfigSchemaCount(); i++) {
+		const WConfigEntry *e = &wConfigSchema()[i];
+
+		if (e->type != WCFG_ENUM)
+			continue;
+		if (wprefs_offers_any(e->key))
+			continue;
+		if (wprefs_no_ui_has(e->key))
+			continue;
+		fprintf(stderr,
+			"FAIL: schema enum key \"%s\" is neither offered by WPrefs nor marked no-UI\n",
+			e->key);
+		check_failures++;
+	}
+}
+
+/* The stored index must match the schema table row order. */
+static void test_popup_index_pins(void)
+{
+	size_t k;
+
+	for (k = 0; k < sizeof(wprefs_positional) / sizeof(wprefs_positional[0]); k++) {
+		const char *key = wprefs_positional[k];
+		const WConfigEnum *table = wConfigSchemaEnumTable(key);
+		const WConfigEnum *row;
+		int index = 0;
+
+		if (!table) {
+			fprintf(stderr, "FAIL: positional key \"%s\" has no enum table\n", key);
+			check_failures++;
+			continue;
+		}
+		for (row = table; row->string; row++, index++) {
+			if (row->is_alias) {
+				fprintf(stderr,
+					"FAIL: %s row \"%s\" is an alias, a popup index cannot select it\n",
+					key, row->string);
+				check_failures++;
+			} else if (row->value != index) {
+				fprintf(stderr,
+					"FAIL: %s row \"%s\" has value %d but the popup index is %d\n",
+					key, row->string, row->value, index);
+				check_failures++;
+			}
+		}
+	}
+}
+
 int main(void)
 {
 	CHECK(wprefs_choice_count > 0);
@@ -195,6 +322,8 @@ int main(void)
 
 	test_wprefs_values_in_schema();
 	test_schema_values_in_wprefs();
+	test_schema_enum_key_coverage();
+	test_popup_index_pins();
 
 	return check_report("check_wprefs_schema");
 }

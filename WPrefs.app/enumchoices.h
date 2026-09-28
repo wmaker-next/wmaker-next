@@ -26,6 +26,11 @@
  * wConfigSchemaEnumTable() in both directions, so adding a value to the
  * schema without adding it here fails make check.
  *
+ * A few panels key their widgets on schema enum values or hardcode the
+ * db strings instead of expanding a table. Their macros exist only so
+ * check_wprefs_schema pins the value set, and the owning panel is named
+ * in the comment.
+ *
  * Row shapes:
  *   R(db_value, label)           plain 2-column tables
  *   R(idx, db_value, aux)        designated-init tables, aux is label or
@@ -135,5 +140,69 @@
 	R("center",   N_("Center of screen")) \
 	R("floating", N_("Center of resized window")) \
 	R("none",     N_("Disabled"))
+
+/* Focus.c, key "FocusMode". The two radios key on the WKF_* numeric
+ * values, no string table to route. Rows pin the non-alias value set,
+ * the label column is not rendered. */
+#define WPREFS_TABLE_focus_mode(R) \
+	R("Manual", "click to focus") \
+	R("Sloppy", "focus follows mouse")
+
+/* Focus.c, key "ColormapMode". Same shape as FocusMode, WCM_* keyed. */
+#define WPREFS_TABLE_colormap_mode(R) \
+	R("Manual", "manually install colormaps") \
+	R("Auto", "automatically install colormaps")
+
+/* Configurations.c, key "NewStyle". The panel writes these strings from
+ * its four titlebar-style radios. */
+#define WPREFS_TABLE_titlebar_mode(R) \
+	R("new", "new style") \
+	R("old", "old style") \
+	R("next", "NeXT style") \
+	R("flat", "flat style")
+
+/* Icons.c, key "IconPosition". Expanded by Icons.c for the 8-way
+ * position grid. Rows are in grid order (the createPanel switch relies
+ * on it), not schema order. */
+#define WPREFS_TABLE_icon_position(R) \
+	R("tlv", "top left, vertical") \
+	R("tlh", "top left, horizontal") \
+	R("trv", "top right, vertical") \
+	R("trh", "top right, horizontal") \
+	R("blv", "bottom left, vertical") \
+	R("blh", "bottom left, horizontal") \
+	R("brv", "bottom right, vertical") \
+	R("brh", "bottom right, horizontal")
+
+/* Preferences.c, key "WorkspaceBorder". Written as a WB_* bitmask from
+ * two checkboxes, all four schema values are reachable. */
+#define WPREFS_TABLE_workspace_border(R) \
+	R("None", "no border") \
+	R("LeftRight", "left and right") \
+	R("TopBottom", "top and bottom") \
+	R("AllDirections", "all edges")
+
+/* Workspace.c, key "WorkspaceNameDisplayPosition" (KeychainDisplayPosition
+ * has no UI). The popup's selected index is written as the enum value,
+ * so rows must stay in value order. Pinned by check_wprefs_schema. */
+#define WPREFS_TABLE_display_position(R) \
+	R("none",        N_("Disable")) \
+	R("center",      N_("Center")) \
+	R("top",         N_("Top")) \
+	R("bottom",      N_("Bottom")) \
+	R("topleft",     N_("Top/Left")) \
+	R("topright",    N_("Top/Right")) \
+	R("bottomleft",  N_("Bottom/Left")) \
+	R("bottomright", N_("Bottom/Right"))
+
+/* Configurations.c (IconSlideSpeed, ShadeSpeed) and MenuPreferences.c
+ * (MenuScrollSpeed). The five-button radio index maps to SPEED_* through
+ * SetSpeedForKey(), so rows must stay in fast-to-slow value order. */
+#define WPREFS_TABLE_speed(R) \
+	R("UltraFast", "ultra fast") \
+	R("Fast", "fast") \
+	R("Medium", "medium") \
+	R("Slow", "slow") \
+	R("UltraSlow", "ultra slow")
 
 #endif /* WPREFS_ENUMCHOICES_H_ */
