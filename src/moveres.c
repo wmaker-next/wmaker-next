@@ -2030,6 +2030,113 @@ static int shared_edge_min_client_extent(WWindow *wwin, int horizontal)
 	return minv;
 }
 
+/* Allowed range for one client dimension of wwin while the other
+ * dimension is pinned at other: minimum and maximum size hints plus
+ * the PAspect span projected on the dragged axis. Upper bounds round
+ * down and lower bounds round up, so both stay exact in integers. */
+static void shared_edge_dim_range(WWindow *wwin, int horizontal, int other,
+				  int *lo, int *hi)
+{
+	int minv = 1;
+	int maxv = horizontal ? wwin->screen_ptr->scr_width * 2
+			      : wwin->screen_ptr->scr_height * 2;
+	int minax = -1, minay = -1, maxax = -1, maxay = -1;
+
+	if (wwin->normal_hints) {
+		if (horizontal) {
+			if (wwin->normal_hints->min_width > minv)
+				minv = wwin->normal_hints->min_width;
+			if (wwin->normal_hints->max_width < maxv)
+				maxv = wwin->normal_hints->max_width;
+		} else {
+			if (wwin->normal_hints->min_height > minv)
+				minv = wwin->normal_hints->min_height;
+			if (wwin->normal_hints->max_height < maxv)
+				maxv = wwin->normal_hints->max_height;
+		}
+		if (wwin->normal_hints->flags & XCB_ICCCM_SIZE_HINT_P_ASPECT) {
+			minax = wwin->normal_hints->min_aspect_num;
+			minay = wwin->normal_hints->min_aspect_den;
+			maxax = wwin->normal_hints->max_aspect_num;
+			maxay = wwin->normal_hints->max_aspect_den;
+		}
+	}
+
+	if (horizontal) {
+		if (maxax > 0 && !(maxax == 1 && maxay == 1)) {
+			int m = other * maxax / maxay;
+
+			if (m < maxv)
+				maxv = m;
+		}
+		if (minax > 0 && !(minax == 1 && minay == 1)) {
+			int m = (other * minax + minay - 1) / minay;
+
+			if (m > minv)
+				minv = m;
+		}
+	} else {
+		if (maxax > 0 && !(maxax == 1 && maxay == 1)) {
+			int m = (other * maxay + maxax - 1) / maxax;
+
+			if (m > minv)
+				minv = m;
+		}
+		if (minax > 0 && !(minax == 1 && minay == 1)) {
+			int m = other * minay / minax;
+
+			if (m < maxv)
+				maxv = m;
+		}
+	}
+
+	*lo = minv;
+	*hi = maxv;
+}
+
+/* Nearest value for one client dimension of wwin on its resize
+ * increment grid, inside [lo, hi]. Returns dim unchanged when the
+ * span holds no grid point, so the hard bounds win over the grid. */
+static int shared_edge_snap_dim(WWindow *wwin, int horizontal, int dim,
+				int lo, int hi)
+{
+	int base = 1, inc = 1;
+	int k, rem, floorv, ceilv;
+
+	if (wwin->normal_hints) {
+		base = horizontal ? wwin->normal_hints->base_width
+				  : wwin->normal_hints->base_height;
+		inc = horizontal ? wwin->normal_hints->width_inc
+				 : wwin->normal_hints->height_inc;
+		if (base == 0)
+			base = horizontal ? wwin->normal_hints->min_width
+					  : wwin->normal_hints->min_height;
+	}
+	if (inc < 1)
+		inc = 1;
+	if (base < 1)
+		base = 1;
+
+	k = (dim - base) / inc;
+	rem = (dim - base) % inc;
+	if (rem < 0) {
+		k--;
+		rem += inc;
+	}
+	floorv = base + k * inc;
+	ceilv = (rem > 0) ? floorv + inc : floorv;
+
+	if (floorv >= lo && floorv <= hi) {
+		if (ceilv >= lo && ceilv <= hi && ceilv - dim < dim - floorv)
+			return ceilv;
+		return floorv;
+	}
+	if (ceilv >= lo && ceilv <= hi)
+		return ceilv;
+
+	return dim;
+}
+
 /* Partner client geometry for a seam at the given coordinate. The far
  * edge stays fixed, the near edge follows the seam at the recorded
  * distance. Client dimensions come out through the partner's own
@@ -2235,54 +2342,118 @@ static void shared_edge_pair_setup(SharedEdgePair *p, WWindow *wwin,
 	shared_edge_partner_geometry(p, axis, seam0);
 }
 
-/* Slide each active seam to the grabbed window's moving edge, clamped
- * so neither window violates its minimum size, and recompute the
- * grabbed dimension accordingly. The axes are independent. */
+/* Slide each active seam to the grabbed window's moving edge, clamp
+ * so neither window violates its minimum size, then reconcile the
+ * dragged dimension of both windows with their size hints (minimum,
+ * maximum, aspect, resize increments) and recompute the grabbed
+ * dimension accordingly. The seam ends on the grabbed window's
+ * constrained edge. The partner keeps its far edge fixed and lets
+ * its near edge absorb the rounding, so it can sit up to one resize
+ * increment away from the seam. The axes are independent. */
 static void shared_edge_adjust(SharedEdgePair *pair_x, SharedEdgePair *pair_y,
+			       WWindow *wwin, int vert_border,
 			       int *fx, int *fy, int *fw, int *fh)
 {
 	SharedEdgePair *pairs[2];
-	int axes[2];
 	int i, seam;
 
 	pairs[0] = pair_x;
 	pairs[1] = pair_y;
-	axes[0] = 0;
-	axes[1] = 1;
 
 	for (i = 0; i < 2; i++) {
 		SharedEdgePair *p = pairs[i];
+		int origin, chrome, other;
+		int g, glo, ghi, dlo, dhi;
+		int praw, plo, phi, pfin;
 
 		if (!p->partner)
 			continue;
 
-		if (i == 0)
+		if (i == 0) {
+			origin = *fx;
+			chrome = 0;
+			other = *fh - vert_border;
 			seam = (p->side > 0) ? *fx + *fw : *fx;
-		else
+		} else {
+			origin = *fy;
+			chrome = vert_border;
+			other = *fw;
 			seam = (p->side > 0) ? *fy + *fh : *fy;
+		}
 
 		if (seam < p->clamp_lo)
 			seam = p->clamp_lo;
 		else if (seam > p->clamp_hi)
 			seam = p->clamp_hi;
 
-		if (i == 0) {
-			if (p->side > 0) {
-				*fw = seam - *fx;
-			} else {
-				*fx = seam;
-				*fw = p->fixed_near - seam;
-			}
+		/* grabbed dimension in the units wWindowConstrainSize
+		 * works in, bounded by the clamped seam range and the
+		 * window's own hints, then snapped to its resize grid */
+		if (p->side > 0) {
+			g = seam - origin - chrome;
+			glo = p->clamp_lo - origin - chrome;
+			ghi = p->clamp_hi - origin - chrome;
 		} else {
-			if (p->side > 0) {
-				*fh = seam - *fy;
-			} else {
-				*fy = seam;
-				*fh = p->fixed_near - seam;
-			}
+			g = p->fixed_near - seam - chrome;
+			glo = p->fixed_near - p->clamp_hi - chrome;
+			ghi = p->fixed_near - p->clamp_lo - chrome;
 		}
 
-		shared_edge_partner_geometry(p, axes[i], seam);
+		shared_edge_dim_range(wwin, i == 0, other, &dlo, &dhi);
+		glo = WMAX(glo, dlo);
+		ghi = WMIN(ghi, dhi);
+		if (glo > ghi) {
+			/* the paired hint sets cannot both hold, drop
+			 * the pairing and let the axis resize alone */
+			p->partner = NULL;
+			continue;
+		}
+
+		/* wWindowConstrainSize skips the resize increments for
+		 * maximized windows, so the snap does too */
+		if (!wwin->flags.maximized)
+			g = shared_edge_snap_dim(wwin, i == 0, g, glo, ghi);
+
+		if (p->side > 0)
+			seam = origin + g + chrome;
+		else
+			seam = p->fixed_near - g - chrome;
+
+		if (i == 0) {
+			*fw = g + chrome;
+			if (p->side < 0)
+				*fx = seam;
+		} else {
+			*fh = g + chrome;
+			if (p->side < 0)
+				*fy = seam;
+		}
+
+		/* partner geometry from the final seam, then the same
+		 * hint reconciliation on the partner's dimension. The
+		 * far edge stays put and the near edge takes the
+		 * rounding */
+		shared_edge_partner_geometry(p, i, seam);
+
+		praw = (i == 0) ? p->pw : p->ph;
+		shared_edge_dim_range(p->partner, i == 0,
+				      (i == 0) ? p->ph : p->pw, &plo, &phi);
+		if (!p->partner->flags.maximized)
+			pfin = shared_edge_snap_dim(p->partner, i == 0, praw, plo, phi);
+		else
+			pfin = praw;
+
+		if (pfin != praw) {
+			if (i == 0) {
+				if (p->side > 0)
+					p->px -= pfin - praw;
+				p->pw = pfin;
+			} else {
+				if (p->side > 0)
+					p->py -= pfin - praw;
+				p->ph = pfin;
+			}
+		}
 	}
 }
 
@@ -2629,8 +2800,8 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					fy = ry1;
 
 				if (pair_x.partner || pair_y.partner)
-					shared_edge_adjust(&pair_x, &pair_y,
-							   &fx, &fy, &fw, &fh);
+					shared_edge_adjust(&pair_x, &pair_y, wwin,
+							   vert_border, &fx, &fy, &fw, &fh);
 
 				if (w_global.config->size_display == WDIS_FRAME_CENTER)
 					moveGeometryDisplayCentered(scr, fx + fw / 2, fy + fh / 2);
