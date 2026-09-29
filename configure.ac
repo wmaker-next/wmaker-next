@@ -813,20 +813,14 @@ dnl Cairo rendering and PangoCairo text layout (required)
 dnl =====================================================
 dnl cairo-xcb draws onto the shared xcb connection resolved above and
 dnl pangocairo is the WINGs text render sink. cairo 1.16 is the floor for
-dnl a stable cairo-xcb backend and is in every maintained distribution.
+dnl a stable cairo-xcb backend and pango 1.44 is the floor for the
+dnl fontconfig module, both in every maintained distribution.
 dnl WINGs/wfont.c calls pango_fc_font_description_from_pattern() directly,
-dnl so the fontconfig module must be linked explicitly: some linkers
-dnl (DragonFly base binutils) do not resolve symbols through the
-dnl transitive libpangocairo -> libpangoft2 dependency chain. The module
-dnl is named pangofc-fontmap on pango < 1.44 and pangofc since.
-PANGOFC_MODULE=
-AS_IF([$PKG_CONFIG --exists pangofc-fontmap],
-    [PANGOFC_MODULE=pangofc-fontmap],
-    [AS_IF([$PKG_CONFIG --exists pangofc], [PANGOFC_MODULE=pangofc])])
-AS_IF([test -z "$PANGOFC_MODULE"],
-    [AC_MSG_ERROR([pangocairo is installed without a fontconfig module (pangofc or pangofc-fontmap) -- the pango installation cannot support WINGs text rendering])])
-WM_REQUIRE_DEP([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo $PANGOFC_MODULE],
-    [cairo (>= 1.16 with the xcb backend) and pangocairo are required])
+dnl so pangofc must be linked explicitly: some linkers (DragonFly base
+dnl binutils) do not resolve symbols through the transitive
+dnl libpangocairo -> libpangoft2 dependency chain.
+WM_REQUIRE_DEP([CAIRO], [cairo >= 1.16 cairo-xcb pangocairo >= 1.44 pangofc],
+    [cairo (>= 1.16 with the xcb backend) and pango (>= 1.44) are required])
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
 
