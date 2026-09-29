@@ -49,8 +49,9 @@ Request types
                                  applications=({
                                    main_window="0x..."; hidden=YES|NO;
                                    appicon={docked=YES|NO; dock="dock"|
-                                     "clip"|"drawer"; slot=N; running=
-                                     YES|NO; launching=YES|NO;
+                                     "clip"|"drawer"; slot=N; edge=
+                                     "left"|"right"|"top"|"bottom";
+                                     running=YES|NO; launching=YES|NO;
                                      omnipresent=YES|NO;};
                                    windows=({
                                      id="0x..."; frame="0x..."; pid=N;
@@ -143,6 +144,14 @@ Command verbs (request type 0)
             ([vdesk_x, vdesk_x + vdesk_w - scr_width] and the analogous
             Y range)
     dock-launch SLOT
+            launch the docked application at slot SLOT. The slot is the
+            dock's along-axis index: the Y cell of the main tile while
+            the dock sits on a vertical edge (left or right) and the X
+            cell once it is pinned to the top or the bottom. The same
+            along-axis index is reported in the child_exit event and in
+            the appicon dict of get-window-tree, whose edge field
+            (left, right, top or bottom) tells which axis the slot
+            counts on
     workspace-new [count]
             create count (default 1) new workspaces
     workspace-delete N

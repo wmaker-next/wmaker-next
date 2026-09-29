@@ -49,6 +49,7 @@
 #include "actions.h"
 #include "client.h"
 #include "appicon.h"
+#include "dock.h"
 #include "wmspec.h"
 #include "icon.h"
 #include "stacking.h"
@@ -442,6 +443,59 @@ int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
 	if (WXGetCardinalSigned(wdisp->conn, scr->root_win, net_current_desktop, &desktop))
 		return desktop;
 	return -1;
+}
+
+/* ---- dock edge reservation ------------------------------------------- */
+
+/*
+ * Publish the dock's reservation as _NET_WM_STRUT(_PARTIAL) on the info
+ * window so other clients honour it, and delete the properties when
+ * there is nothing to reserve. Wmaker's own placement keeps using
+ * wDockInsetArea(). The property is deliberately never fed through
+ * scr->netdata->strut, otherwise the inset would be applied twice.
+ * Only NoWindowOverDock=YES publishes, and the span is the head the
+ * dock is pinned to, so a dock on the right of head 0 does not reserve
+ * head 1.
+ */
+void wDockPublishStrut(WScreen *scr)
+{
+	WMRect rect;
+	uint32_t data[12];
+	uint32_t legacy[4];
+
+	if (!scr || !scr->netdata)
+		return;
+
+	if (!w_global.config->no_window_over_dock || !scr->dock || !scr->dock->icon_array[0]) {
+		wDockClearStrut(scr);
+		return;
+	}
+
+	if (w_global.config->keep_dock_on_primary_head)
+		rect = wGetRectForHead(scr, scr->xine_info.primary_head);
+	else
+		rect = wmkrect(0, 0, scr->scr_width, scr->scr_height);
+
+	wDockGeomStrut(rect, scr->scr_width, scr->scr_height, scr->dock->edge,
+		       w_global.config->icon_size + DOCK_EXTRA_SPACE, data);
+
+	legacy[0] = data[0];
+	legacy[1] = data[1];
+	legacy[2] = data[2];
+	legacy[3] = data[3];
+
+	/* the partial property takes precedence in our own reader */
+	WXSetCardinalN(wdisp->conn, scr->info_window, net_wm_strut_partial, data, 12);
+	WXSetCardinalN(wdisp->conn, scr->info_window, net_wm_strut, legacy, 4);
+}
+
+void wDockClearStrut(WScreen *scr)
+{
+	if (!scr || !scr->netdata)
+		return;
+
+	WXDeleteProperty(wdisp->conn, scr->info_window, net_wm_strut_partial);
+	WXDeleteProperty(wdisp->conn, scr->info_window, net_wm_strut);
 }
 
 static RImage *makeRImageFromARGBData(const uint32_t *data)

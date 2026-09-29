@@ -3,6 +3,31 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Dock orientation
+----------------
+
+The dock can be pinned to any of the four screen edges with the new
+`DockEdge` domain key (`Left`, `Right`, `Top` or `Bottom`, default
+`Right`) and the Dock position radios in WPrefs. A top or bottom dock is
+a NeXTSTEP-style shelf: a wide monitor no longer gives up a column of
+its width, and the icon yard rides one row above a bottom dock instead
+of losing a column. Dragging the dock to another edge snaps it there
+with hysteresis, `WMState` remembers the edge across restarts, drawers
+open perpendicular to the dock on every edge, and `PlaceIcon`,
+`wArrangeIcons` and the usable-area computation follow the dock's edge.
+
+With `NoWindowOverDock` set, the reservation is now also published to
+other clients as `_NET_WM_STRUT` and `_NET_WM_STRUT_PARTIAL` on the
+info window, covering only the head the dock touches. Wmaker's own
+placement keeps using its internal inset, and `_NET_WORKAREA` still does
+not include the dock.
+
+The `dock-launch SLOT` slot and the `child_exit` event slot are now the
+dock's along-axis index rather than always the Y cell: they equal the
+old value while the dock is on a left or right edge, and count along X
+on a top or bottom dock. The new `edge` field in the `appicon` dict of
+`get-window-tree` tells clients which axis the slot counts on.
+
 Per-connection `WDisplay` context
 ---------------------------------
 

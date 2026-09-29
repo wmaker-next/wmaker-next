@@ -63,6 +63,8 @@ wmaker_SOURCES = 	\
 	dialog_run.c \
 	dialog_run.h \
 	dock.c \
+	dockgeom.c \
+	dockgeom.h \
 	dockedapp.c \
 	dockedapp.h \
 	dock.h \

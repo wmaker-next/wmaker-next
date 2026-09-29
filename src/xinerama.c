@@ -485,25 +485,32 @@ WArea wGetUsableAreaForHead(WScreen * scr, int head, WArea * totalAreaPtr, bool 
 		usableArea = totalArea;
 
 	if (noicons) {
-		/* check if user wants dock covered */
-		if (scr->dock && w_global.config->no_window_over_dock && wAppIconTouchesHead(scr->dock->icon_array[0], head)) {
-			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
+		int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
+		int yard = w_global.config->icon_yard;
 
-			if (scr->dock->on_right_side)
-				usableArea.x2 -= offset;
-			else
-				usableArea.x1 += offset;
-		}
+		/* check if user wants dock covered */
+		if (scr->dock && w_global.config->no_window_over_dock && wAppIconTouchesHead(scr->dock->icon_array[0], head))
+			wDockInsetArea(scr, &usableArea);
 
 		/* check if icons are on the same side as dock, and adjust if not done already */
-		if (scr->dock && w_global.config->no_window_over_icons && !w_global.config->no_window_over_dock && (w_global.config->icon_yard & IY_VERT)) {
-			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
-
-			if (scr->dock->on_right_side && (w_global.config->icon_yard & IY_RIGHT))
-				usableArea.x2 -= offset;
-			/* can't use IY_LEFT in if, it's 0 ... */
-			if (!scr->dock->on_right_side && !(w_global.config->icon_yard & IY_RIGHT))
-				usableArea.x1 += offset;
+		if (scr->dock && w_global.config->no_window_over_icons && !w_global.config->no_window_over_dock) {
+			if (yard & IY_VERT) {
+				/* the yard's reserved edge is X, so it only
+				 * stacks up against a vertical dock */
+				if (scr->dock->edge == WDOCK_EDGE_RIGHT && (yard & IY_RIGHT))
+					usableArea.x2 -= offset;
+				/* can't use IY_LEFT in if, it's 0 ... */
+				if (scr->dock->edge == WDOCK_EDGE_LEFT && !(yard & IY_RIGHT))
+					usableArea.x1 += offset;
+			} else {
+				/* the yard's reserved edge is Y, so it only
+				 * stacks up against a horizontal dock */
+				if (scr->dock->edge == WDOCK_EDGE_TOP && (yard & IY_TOP))
+					usableArea.y1 += offset;
+				/* can't use IY_BOTTOM in if, it's 0 ... */
+				if (scr->dock->edge == WDOCK_EDGE_BOTTOM && !(yard & IY_TOP))
+					usableArea.y2 -= offset;
+			}
 		}
 	}
 

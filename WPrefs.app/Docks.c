@@ -19,6 +19,8 @@
  */
 
 #include "WPrefs.h"
+#include "enumchoices.h"
+#include "dockgeom.h"
 
 
 static const char *const clip_delay_frame_titles[] = {
@@ -44,11 +46,20 @@ static const struct {
 	const char *balloon_text;
 } dock_config[] = {
 	{ "DisableDock", "dock",
-	  N_("Disable/enable the application Dock (the\nvertical icon bar in the side of the screen).") },
+	  N_("Disable/enable the application Dock (the\nicon bar pinned to a screen edge).") },
 	{ "DisableClip", "clip",
 	  N_("Disable/enable the Clip (that thing with\na paper clip icon).") },
 	{ "DisableDrawers", "drawer",
 	  N_("Disable/enable Drawers (a dock that stores\napplication icons horizontally). The dock is required.") }
+};
+
+static const struct {
+	WDockEdge edge;
+	const char *label;
+} dock_edge_choices[] = {
+#define R(edge, db, label) { edge, label },
+	WPREFS_TABLE_dock_edge(R)
+#undef R
 };
 
 typedef struct _Panel {
@@ -70,6 +81,8 @@ typedef struct _Panel {
 
 	WMFrame *dockF;
 	WMButton *docksB[wlengthof_nocheck(dock_config)];
+	WMFrame *edgeF;
+	WMButton *edgeB[wlengthof_nocheck(dock_edge_choices)];
 } _Panel;
 
 #define ICON_FILE	"dockclipdrawersection"
@@ -269,6 +282,27 @@ static void createPanel(Panel *p)
 
 	WMMapSubwidgets(panel->dockF);
 
+	/***************** Dock position *****************/
+	panel->edgeF = WMCreateFrame(panel->box);
+	WMResizeWidget(panel->edgeF, 372, 54);
+	WMMoveWidget(panel->edgeF, 11, 230);
+	WMSetFrameTitle(panel->edgeF, _("Dock position"));
+
+	for (i = 0; i < wlengthof(dock_edge_choices); i++) {
+		panel->edgeB[i] = WMCreateRadioButton(panel->edgeF);
+		WMResizeWidget(panel->edgeB[i], 82, 20);
+		WMMoveWidget(panel->edgeB[i], 8 + 90 * i, 20);
+		WMSetButtonText(panel->edgeB[i], _(dock_edge_choices[i].label));
+		WMSetBalloonTextForView(_("The screen edge the Dock is pinned to. Apply moves a\n"
+					  "running Dock; dragging the Dock to another edge is\n"
+					  "kept for this session and overwritten on the next Apply."),
+					WMWidgetView(panel->edgeB[i]));
+		if (i > 0)
+			WMGroupButtons(panel->edgeB[0], panel->edgeB[i]);
+	}
+
+	WMMapSubwidgets(panel->edgeF);
+
 	if (xis)
 		RReleaseImage(xis);
 
@@ -293,11 +327,18 @@ static void storeData(_Panel *panel)
 	{
 		SetBoolForKey(!WMGetButtonSelected(panel->docksB[i]), dock_config[i].disable_key);
 	}
+	for (i = 0; i < wlengthof(dock_edge_choices); i++) {
+		if (WMGetButtonSelected(panel->edgeB[i])) {
+			SetEnumForKey(dock_edge_choices[i].edge, "DockEdge");
+			break;
+		}
+	}
 }
 
 static void showData(_Panel *panel)
 {
 	char *value;
+	WDockEdge edge;
 	int i;
 	for (i = 0; i < wlengthof(auto_delay); i++)
 	{
@@ -309,6 +350,9 @@ static void showData(_Panel *panel)
 	{
 		WMSetButtonSelected(panel->docksB[i], !GetBoolForKey(dock_config[i].disable_key));
 	}
+	edge = GetEnumForKey("DockEdge", WDOCK_EDGE_RIGHT);
+	for (i = 0; i < wlengthof(dock_edge_choices); i++)
+		WMSetButtonSelected(panel->edgeB[i], dock_edge_choices[i].edge == edge);
 }
 
 Panel *InitDocks(WMWidget *parent)

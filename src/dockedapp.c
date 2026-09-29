@@ -471,10 +471,24 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 		y = rect.pos.y + rect.size.height - pheight - 3 * WMScaleY(10);
 
 	if (aicon->dock && aicon->dock->type == WM_DOCK) {
-		if (aicon->dock->on_right_side)
+		switch (aicon->dock->edge) {
+		case WDOCK_EDGE_RIGHT:
 			x = rect.pos.x + rect.size.width / 2;
-		else
+			break;
+		case WDOCK_EDGE_LEFT:
 			x = rect.pos.x + rect.size.width / 2 - pwidth - WMScaleX(2);
+			break;
+		case WDOCK_EDGE_TOP:
+			/* inner half of the head is the lower one */
+			x = rect.pos.x + (rect.size.width - pwidth) / 2;
+			y = rect.pos.y + rect.size.height / 2;
+			break;
+		case WDOCK_EDGE_BOTTOM:
+		default:
+			x = rect.pos.x + (rect.size.width - pwidth) / 2;
+			y = rect.pos.y + rect.size.height / 2 - pheight - WMScaleY(2);
+			break;
+		}
 	} else {
 		x = rect.pos.x + (rect.size.width - pwidth) / 2;
 	}

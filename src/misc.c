@@ -172,17 +172,28 @@ void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y)
 #endif
 }
 
-/* wins is an array of Window, sorted from left to right, the first is
- * going to be moved from (from_x,from_y) to (to_x,to_y) and the
- * following windows are going to be offset by (ICON_SIZE*i,0) */
-void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y)
+/* wins is an array of Window, sorted along the stack axis, the first
+ * is going to be moved from (from_x,from_y) to (to_x,to_y) and the
+ * following windows are offset by one icon on that axis.
+ * Entries set to XCB_NONE are skipped. */
+void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y,
+		   char stack_axis)
 {
 	time_t time0 = time(NULL);
 	float dx, dy, x = from_x, y = from_y, px, py;
 	bool is_dx_nul, is_dy_nul;
 	int dx_is_bigger = 0, dx_int, dy_int;
 	int slide_delay, slide_steps, slide_slowdown;
+	int off_x, off_y;
 	int i;
+
+	if (stack_axis == 'y') {
+		off_x = 0;
+		off_y = ICON_SIZE;
+	} else {
+		off_x = ICON_SIZE;
+		off_y = 0;
+	}
 
 	/* animation parameters */
 	static const struct {
@@ -254,7 +265,9 @@ void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x,
 		}
 
 		for (i = 0; i < n; i++) {
-			xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ (int)x + i * ICON_SIZE, (int)y });
+			if (wins[i] == XCB_NONE)
+				continue;
+			xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ (int)x + i * off_x, (int)y + i * off_y });
 		}
 		wXFlush(wdisp->conn);
 		if (slide_delay > 0) {
@@ -266,7 +279,9 @@ void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x,
 			break;
 	}
 	for (i = 0; i < n; i++) {
-		xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x + i * ICON_SIZE, to_y });
+		if (wins[i] == XCB_NONE)
+			continue;
+		xcb_configure_window(wdisp->conn, wins[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ to_x + i * off_x, to_y + i * off_y });
 	}
 
 	wXSync(wdisp->conn);

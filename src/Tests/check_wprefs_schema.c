@@ -111,6 +111,9 @@ static const struct choice wprefs_choices[] = {
 #define CUR_KEY "ShadeSpeed"
 	WPREFS_TABLE_speed(R2)
 #undef CUR_KEY
+#define CUR_KEY "DockEdge"
+	WPREFS_TABLE_dock_edge(R3)
+#undef CUR_KEY
 };
 
 #undef R2

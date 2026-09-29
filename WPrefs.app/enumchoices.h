@@ -205,4 +205,12 @@
 	R("Slow", "slow") \
 	R("UltraSlow", "ultra slow")
 
+/* Docks.c, key "DockEdge". Rows are in schema order, the values are
+ * stored as the WDockEdge enumerators. */
+#define WPREFS_TABLE_dock_edge(R) \
+	R(WDOCK_EDGE_LEFT,   "Left",   N_("Left")) \
+	R(WDOCK_EDGE_RIGHT,  "Right",  N_("Right")) \
+	R(WDOCK_EDGE_TOP,    "Top",    N_("Top")) \
+	R(WDOCK_EDGE_BOTTOM, "Bottom", N_("Bottom"))
+
 #endif /* WPREFS_ENUMCHOICES_H_ */

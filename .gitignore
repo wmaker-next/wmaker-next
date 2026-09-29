@@ -116,6 +116,7 @@ WINGs/Extras/tableview
 src/Tests/check_calc
 src/Tests/check_xerror
 src/Tests/check_config
+src/Tests/check_dockgeom
 src/Tests/check_wdefaults
 src/Tests/check_wprefs_schema
 src/Tests/check_desktopfile

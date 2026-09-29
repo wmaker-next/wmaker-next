@@ -886,6 +886,10 @@ void wScreenUpdateUsableArea(WScreen *scr)
 	 * and toolkits see strut changes, not only workspace-count ones */
 	wNETWMUpdateWorkarea(scr);
 
+	/* the dock's own reservation is a local inset for wmaker's
+	 * placement, the EWMH property is for other clients */
+	wDockPublishStrut(scr);
+
 	wLayoutApply(scr, scr->current_workspace);
 }
 
@@ -928,7 +932,7 @@ void wScreenRestoreState(WScreen * scr)
 	}
 
 	if (!wdisp->flags.nodrawer) {
-		if (!scr->dock->on_right_side) {
+		if (scr->dock->edge != WDOCK_EDGE_RIGHT) {
 			/* Drawer tile was created early in wScreenInit() -> wReadDefaults(). At
 			 * that time, scr->dock was NULL and the tile was created as if we were on
 			 * the right side. If we aren't, redo it now. */

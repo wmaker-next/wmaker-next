@@ -14,6 +14,7 @@
 #include "WindowMaker.h"
 #include "screen.h"
 #include "window.h"
+#include "dockgeom.h"
 #include "config-schema.h"
 #include "wconfigmodel.h"
 
@@ -171,9 +172,16 @@ void wWorkspaceForceChange(WScreen *scr, int workspace)
 	workspace_force_last = workspace;
 }
 
-void wDockSwap(struct WDock *dock)
+void wDockReanchor(struct WDock *dock)
 {
 	(void)dock;
+	dock_swaps++;
+}
+
+void wDockSetEdge(struct WDock *dock, WDockEdge edge)
+{
+	(void)dock;
+	(void)edge;
 	dock_swaps++;
 }
 
@@ -816,6 +824,7 @@ static void test_defaults(void)
 	CHECK(config->window_place_origin.x == 64);
 	CHECK(config->window_place_origin.y == 0);
 	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
 	CHECK(config->menu_style == MS_NORMAL);
@@ -1389,6 +1398,7 @@ static void test_invalid_fallback(void)
 			      "WrapAppiconsInDock = maybe; "
 			      "WindowPlaceOrigin = (bad, 2); "
 			      "KeepDockOnPrimaryHead = maybe; "
+			      "DockEdge = nowhere; "
 			      "ScreenshotFilenameTemplate = (bad); "
 			      "MenuStyle = diagonal; TitleJustify = middle; "
 			      "WindowTitleExtendSpace = bad; "
@@ -1431,6 +1441,7 @@ static void test_invalid_fallback(void)
 	CHECK(config->window_place_origin.x == 64);
 	CHECK(config->window_place_origin.y == 0);
 	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
 	CHECK(config->menu_style == MS_NORMAL);
@@ -1968,6 +1979,44 @@ out:
 
 /* FocusMode is read per-event with no cached derivative, so unfreezing it
  * is enough: a runtime change must propagate to w_global.config. */
+/* DockEdge: each of the four names parses to its WDockEdge value and
+ * stores back as the same db string. */
+static void test_dock_edge_roundtrip(void)
+{
+	static const struct {
+		const char *name;
+		WDockEdge edge;
+	} cases[] = {
+		{ "Left",   WDOCK_EDGE_LEFT },
+		{ "Right",  WDOCK_EDGE_RIGHT },
+		{ "Top",    WDOCK_EDGE_TOP },
+		{ "Bottom", WDOCK_EDGE_BOTTOM },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		WMPropList *old_dict, *new_dict;
+
+		reset_preferences();
+		old_dict = dict_from_desc("{ DockEdge = Right; }");
+		new_dict = dict_from_desc("{ }");
+		if (old_dict && new_dict)
+			dict_put_string(new_dict, "DockEdge", cases[i].name);
+		if (!old_dict || !new_dict)
+			goto out;
+		apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+		CHECK(w_global.config->dock_edge == cases[i].edge);
+		CHECK(wConfigSchemaEnumTable("DockEdge") != NULL);
+
+out:
+		if (old_dict)
+			WMReleasePropList(old_dict);
+		if (new_dict)
+			WMReleasePropList(new_dict);
+	}
+	wConfigClearWindowMaker();
+}
+
 static void test_focus_mode_live_apply(void)
 {
 	WMPropList *old_dict, *new_dict;
@@ -2839,6 +2888,7 @@ int main(void)
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();
+	test_dock_edge_roundtrip();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
 	test_pixmap_path_live_apply();

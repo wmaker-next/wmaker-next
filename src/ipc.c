@@ -578,7 +578,7 @@ static verb_rc verb_dock_launch(WScreen *scr, WMPropList *args,
 	btn = NULL;
 	for (i = 0; i < scr->dock->max_icons; i++) {
 		if (scr->dock->icon_array[i] &&
-		    scr->dock->icon_array[i]->yindex == slot) {
+		    wDockIconSlot(scr->dock->icon_array[i]) == slot) {
 			btn = scr->dock->icon_array[i];
 			break;
 		}
@@ -1241,6 +1241,10 @@ static void handle_get_windows(struct WIPCClient *c)
 
 static const char *const dock_type_names[] = { "dock", "clip", "drawer" };
 
+static const char *const ipc_edge_names[] = {
+	"left", "right", "top", "bottom"
+};
+
 static void tree_stack_index(WScreen *scr, WMHashTable *map)
 {
 	WMBagIterator it;
@@ -1331,7 +1335,14 @@ static WMPropList *tree_appicon_dict(WAppIcon *aicon)
 	if (aicon->dock && aicon->dock->type >= 0
 	    && (size_t)aicon->dock->type < wlengthof(dock_type_names))
 		pl_dict_put(d, "dock", pl_string(dock_type_names[aicon->dock->type]));
-	pl_dict_put(d, "slot", pl_int(aicon->yindex));
+	/* the slot is the along-axis index on the dock, so a client can
+	 * tell a horizontal slot from a vertical one via edge */
+	pl_dict_put(d, "slot", pl_int(wDockIconSlot(aicon)));
+	if (aicon->dock && aicon->dock->type == WM_DOCK
+	    && aicon->dock->edge >= WDOCK_EDGE_LEFT
+	    && aicon->dock->edge <= WDOCK_EDGE_BOTTOM)
+		pl_dict_put(d, "edge",
+			    pl_string(ipc_edge_names[aicon->dock->edge]));
 	pl_dict_put(d, "running", pl_bool(aicon->running));
 	pl_dict_put(d, "launching", pl_bool(aicon->launching));
 	pl_dict_put(d, "omnipresent", pl_bool(aicon->omnipresent));

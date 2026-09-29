@@ -1090,18 +1090,19 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 							if (originalDock->type == WM_DRAWER) {
 								WAppIcon *aiconsToShift[ originalDock->icon_count ];
 								int j = 0;
+								int across = wDockAcrossIndex(aicon, originalDock->edge);
 
 								for (i = 0; i < originalDock->max_icons; i++) {
 									WAppIcon *ai = originalDock->icon_array[ i ];
 									if (ai && ai != aicon &&
-										abs(ai->xindex) >= abs(aicon->xindex))
+										abs(wDockAcrossIndex(ai, originalDock->edge)) >= abs(across))
 										aiconsToShift[j++] = ai;
 								}
-								if (j != originalDock->icon_count - abs(aicon->xindex) - 1)
+								if (j != originalDock->icon_count - abs(across) - 1)
 									// Trust this never happens?
 									wwarning("Shifting j=%d appicons (instead of %d!) to reinsert aicon at index %d.",
-										j, originalDock->icon_count - abs(aicon->xindex) - 1, aicon->xindex);
-								wSlideAppicons(aiconsToShift, j, originalDock->on_right_side);
+										j, originalDock->icon_count - abs(across) - 1, across);
+								wSlideAppiconsAcross(aiconsToShift, j, originalDock, true);
 								// Trust the appicon is inserted at exactly the same place, so its oldX/oldY are consistent with its "new" location?
 							}
 

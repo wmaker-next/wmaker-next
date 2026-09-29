@@ -52,6 +52,13 @@ void wNETWMCleanup(WScreen *scr);
 void wNETWMFlushClientLists(WScreen *scr);
 void wNETWMUpdateWorkarea(WScreen *scr);
 bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area);
+
+/* Publish or clear the dock's _NET_WM_STRUT(_PARTIAL) reservation on
+ * the info window. wDockPublishStrut() decides between the two from
+ * NoWindowOverDock and the dock presence, so callers can always call
+ * it. Never pushed into scr->netdata->strut. */
+void wDockPublishStrut(WScreen *scr);
+void wDockClearStrut(WScreen *scr);
 void wNETWMCheckInitialClientState(WWindow *wwin);
 void wNETWMCheckInitialFrameState(WWindow *wwin);
 void wNETWMCheckInitialClientStateCk(WWindow *wwin, WNETWMInitialCookies *ck);

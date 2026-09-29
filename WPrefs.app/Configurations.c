@@ -331,7 +331,7 @@ static void createPanel(Panel *p)
 	}
 	WMSetBalloonTextForView(_("Disable/enable `superfluous' features and\n"
 			  "animations. These include the `ghosting' of the\n"
-			  "dock when it's being moved to another side and\n"
+			  "dock when it's being moved to another edge and\n"
 			  "the explosion animation when undocking icons."), WMWidgetView(panel->supB));
 
 	panel->sfxB = WMCreateButton(panel->animF, WBTToggle);

@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include "WindowMaker.h"
+#include "dockgeom.h"
 #include "config-schema.h"
 
 #define FIELD(name) offsetof(WConfig, name), sizeof(((WConfig *)0)->name)
@@ -102,6 +103,14 @@ static const WConfigEnum menu_styles[] = {
 	{"normal", MS_NORMAL, 0},
 	{"singletexture", MS_SINGLE_TEXTURE, 0},
 	{"flat", MS_FLAT, 0},
+	{NULL, 0, 0}
+};
+
+static const WConfigEnum dock_edges[] = {
+	{"Left",   WDOCK_EDGE_LEFT,   0},
+	{"Right",  WDOCK_EDGE_RIGHT,  0},
+	{"Top",    WDOCK_EDGE_TOP,    0},
+	{"Bottom", WDOCK_EDGE_BOTTOM, 0},
 	{NULL, 0, 0}
 };
 

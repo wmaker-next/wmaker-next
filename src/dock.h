@@ -23,6 +23,7 @@
 #define WMDOCK_H_
 
 #include "appicon.h"
+#include "dockgeom.h"
 
 typedef struct WDock {
     WScreen *screen_ptr;
@@ -44,8 +45,11 @@ typedef struct WDock {
     WMagicNumber auto_lower_magic;
     unsigned int auto_collapse:1;      /* if clip auto-collapse itself */
     unsigned int auto_raise_lower:1;   /* if clip should raise/lower when
-                                        * entered/leaved */
-    unsigned int on_right_side:1;
+					* entered/leaved */
+    WDockEdge edge;		       /* the screen edge the dock is
+					* pinned to. Drawers copy it and
+					* open perpendicular to it. The
+					* clip does not lay out by it. */
     unsigned int collapsed:1;
     unsigned int mapped:1;
     unsigned int lowered:1;
@@ -82,7 +86,9 @@ void wDockDetach(WDock *dock, WAppIcon *icon);
 bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, int y);
 void wDockReattachIcon(WDock *dock, WAppIcon *icon, int x, int y);
 
-void wSlideAppicons(WAppIcon **appicons, int n, int to_the_left);
+void wSlideAppiconsDelta(WAppIcon **appicons, int n, int dx_cells, int dy_cells, char axis);
+void wSlideAppiconsAcross(WAppIcon **appicons, int n, const WDock *drawer,
+			  bool into_drawer);
 void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking);
 
 void wDockFinishLaunch(WAppIcon *icon);
@@ -92,9 +98,32 @@ void wDockTrackWindowLaunch(WDock *dock, xcb_window_t window, const char *wm_ins
 WAppIcon *wDockFindIconForWindow(WDock *dock, xcb_window_t window);
 void wDockDoAutoLaunch(WDock *dock, int workspace);
 void wDockLaunchWithState(WAppIcon *btn, WSavedState *state);
-void wDockSwap(WDock *dock);
+void wDockSetEdge(WDock *dock, WDockEdge edge);
+void wDockReanchor(WDock *dock);
 void wDockApplyIconSize(WScreen *scr);
 void wClipSnapToHead(WDock *clip);
+
+/* The slot reported over IPC and death handlers: the along-axis index
+ * for WM_DOCK icons, yindex elsewhere. */
+int wDockIconSlot(const WAppIcon *icon);
+
+/* Which stored index is the stacking index for this edge. Vertical:
+ * along is yindex, across is xindex. Horizontal: along is xindex,
+ * across is yindex. */
+int wDockAlongIndex(const WAppIcon *icon, WDockEdge edge);
+int wDockAcrossIndex(const WAppIcon *icon, WDockEdge edge);
+
+/* The screen-axis sign of an "into the screen" drawer step */
+int wDockAcrossSign(WDockEdge edge);
+
+/* Number of whole icons that fit on the anchor rect's along axis, the
+ * on-screen limit for snap, wrap and drawer restore. */
+int wDockAlongLimit(const WDock *dock);
+
+/* Shrink the area by the dock strip on the dock's edge, the whole
+ * head. The caller decides whether the inset applies and whether the
+ * dock touches the head in question. */
+void wDockInsetArea(WScreen *scr, WArea *area);
 
 #ifdef USE_DOCK_XDND
 int wDockReceiveDNDDrop(WScreen *scr, xcb_generic_event_t *event);

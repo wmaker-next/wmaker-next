@@ -742,7 +742,7 @@ static void wRandR_Update(WScreen *scr)
 		((scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
 		 scr->dock->x_pos < 0 ||
 		 scr->dock->x_pos >= scr->scr_width))
-		wDockSwap(scr->dock);
+		wDockReanchor(scr->dock);
 
 	/* Snap each workspace clip back onto a visible head if it ended up
 	 * outside the (now smaller or rearranged) virtual framebuffer */

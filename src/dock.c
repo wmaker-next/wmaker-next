@@ -51,6 +51,7 @@
 #include "stacking.h"
 #include "desktopfile.h"
 #include "dock.h"
+#include "wmspec.h"
 #include "dockedapp.h"
 #include "dialog.h"
 #include "main.h"
@@ -88,7 +89,7 @@ static WMPropList *dDisplayName, *dComment;
 static WMPropList *dDock, *dClip;
 static WMPropList *dAutoAttractIcons;
 
-static WMPropList *dPosition, *dApplications, *dLowered, *dCollapsed;
+static WMPropList *dPosition, *dApplications, *dLowered, *dCollapsed, *dEdge;
 
 static WMPropList *dAutoCollapse, *dAutoRaiseLower, *dOmnipresent;
 
@@ -129,8 +130,7 @@ static void removeDrawerCallback(WMenu *menu, WMenuEntry *entry);
 static void drawerAppendToChain(WScreen *scr, WDock *drawer);
 static char *findUniqueName(WScreen *scr, const char *instance_basename);
 static void addADrawerCallback(WMenu *menu, WMenuEntry *entry);
-static void swapDrawers(WScreen *scr, int new_x);
-static WDock* getDrawer(WScreen *scr, int y_index);
+static WDock *getDrawerAtAlong(WScreen *scr, int along);
 static int indexOfHole(WDock *drawer, WAppIcon *moving_aicon, int redocking);
 static void drawerConsolidateIcons(WDock *drawer);
 
@@ -160,6 +160,7 @@ static void make_keys(void)
 	dApplications = WMCreatePLString("Applications");
 	dLowered = WMCreatePLString("Lowered");
 	dCollapsed = WMCreatePLString("Collapsed");
+	dEdge = WMCreatePLString("Edge");
 	dAutoCollapse = WMCreatePLString("AutoCollapse");
 	dAutoRaiseLower = WMCreatePLString("AutoRaiseLower");
 	dAutoAttractIcons = WMCreatePLString("AutoAttractIcons");
@@ -813,27 +814,137 @@ static void unhideHereCallback(WMenu *menu, WMenuEntry *entry)
 	wUnhideApplication(wapp, false, true);
 }
 
-static int getDockXPosition(WScreen *scr, bool on_right_side)
+/* Anchor rect of the dock: the primary head under
+ * KeepDockOnPrimaryHead, the whole root window otherwise. */
+static WMRect dock_anchor_rect(WScreen *scr)
 {
-	int x;
+	if (w_global.config->keep_dock_on_primary_head)
+		return wGetRectForHead(scr, scr->xine_info.primary_head);
 
-	if (w_global.config->keep_dock_on_primary_head) {
-		WMRect rect;
+	return wmkrect(0, 0, scr->scr_width, scr->scr_height);
+}
 
-		rect = wGetRectForHead(scr, scr->xine_info.primary_head);
-		x = rect.pos.x;
-		if (on_right_side)
-			x += rect.size.width - ICON_SIZE - DOCK_EXTRA_SPACE;
-		else
-			x += DOCK_EXTRA_SPACE;
+/* Pinned coordinate of the dock's main tile for the edge, plus the
+ * default free-axis coordinate. The caller holding an along-axis
+ * coordinate overwrites the free axis afterwards. This is
+ * getDockXPosition() generalised to (x, y). */
+static void dock_origin(WScreen *scr, WDockEdge edge, int *x, int *y)
+{
+	wDockGeomOrigin(dock_anchor_rect(scr), edge, ICON_SIZE, DOCK_EXTRA_SPACE, x, y);
+}
+
+/* Clamp an (x, y) candidate inside the screen, then restore the pinned
+ * axis for the edge so the clamp cannot pull the dock off it. */
+static void dock_keep_on_edge(WScreen *scr, WDockEdge edge, int *x, int *y)
+{
+	int ox, oy;
+
+	dock_origin(scr, edge, &ox, &oy);
+	wScreenKeepInside(scr, x, y, ICON_SIZE, ICON_SIZE);
+	if (wDockEdgeHorizontal(edge))
+		*y = oy;
+	else
+		*x = ox;
+}
+
+/* Clamp an along-axis pixel coordinate so a run reaching neg_extent
+ * pixels behind and pos_extent pixels ahead of it stays inside the
+ * anchor rect */
+static int dock_clamp_along_pixel(WScreen *scr, WDockEdge edge, int along,
+				  int neg_extent, int pos_extent)
+{
+	WMRect rect = dock_anchor_rect(scr);
+	int lo, hi;
+
+	if (wDockEdgeHorizontal(edge)) {
+		lo = rect.pos.x + neg_extent;
+		hi = rect.pos.x + (int)rect.size.width - pos_extent;
 	} else {
-		if (on_right_side)
-			x = scr->scr_width - ICON_SIZE - DOCK_EXTRA_SPACE;
-		else
-			x = DOCK_EXTRA_SPACE;
+		lo = rect.pos.y + neg_extent;
+		hi = rect.pos.y + (int)rect.size.height - pos_extent;
 	}
 
-	return x;
+	if (hi < lo)
+		hi = lo;
+
+	if (along < lo)
+		along = lo;
+	else if (along > hi)
+		along = hi;
+
+	return along;
+}
+
+/* Which stored index is the stacking index for this edge. Vertical:
+ * along is yindex, across is xindex. Horizontal: along is xindex,
+ * across is yindex. */
+int wDockAlongIndex(const WAppIcon *icon, WDockEdge edge)
+{
+	return wDockEdgeHorizontal(edge) ? icon->xindex : icon->yindex;
+}
+
+int wDockAcrossIndex(const WAppIcon *icon, WDockEdge edge)
+{
+	return wDockEdgeHorizontal(edge) ? icon->yindex : icon->xindex;
+}
+
+/* The screen-axis sign of an "into the screen" drawer step: Left +1 on
+ * X, Right -1 on X, Top +1 on Y, Bottom -1 on Y. */
+int wDockAcrossSign(WDockEdge edge)
+{
+	char axis;
+	int sign;
+
+	wDockGeomAcrossSign(edge, &axis, &sign);
+	return sign;
+}
+
+/* Number of whole icons that fit on the anchor rect's along axis */
+int wDockAlongLimit(const WDock *dock)
+{
+	WMRect rect = dock_anchor_rect(dock->screen_ptr);
+	int len = wDockEdgeHorizontal(dock->edge) ?
+		  (int)rect.size.width : (int)rect.size.height;
+
+	return len / ICON_SIZE < 1 ? 1 : len / ICON_SIZE;
+}
+
+/* The slot reported over IPC and death handlers: the along-axis index
+ * for WM_DOCK icons, yindex elsewhere. */
+int wDockIconSlot(const WAppIcon *icon)
+{
+	if (!icon)
+		return 0;
+
+	if (icon->dock && icon->dock->type == WM_DOCK)
+		return wDockAlongIndex(icon, icon->dock->edge);
+
+	return icon->yindex;
+}
+
+void wDockInsetArea(WScreen *scr, WArea *area)
+{
+	int offset;
+
+	if (!scr->dock)
+		return;
+
+	offset = ICON_SIZE + DOCK_EXTRA_SPACE;
+
+	switch (scr->dock->edge) {
+	case WDOCK_EDGE_LEFT:
+		area->x1 += offset;
+		break;
+	case WDOCK_EDGE_RIGHT:
+		area->x2 -= offset;
+		break;
+	case WDOCK_EDGE_TOP:
+		area->y1 += offset;
+		break;
+	case WDOCK_EDGE_BOTTOM:
+		area->y2 -= offset;
+		break;
+	}
 }
 
 /* Name is only used when type == WM_DRAWER and when restoring a specific
@@ -858,7 +969,7 @@ static WAppIcon *mainIconCreate(WScreen *scr, int type, const char *name)
 		btn = wAppIconCreateForDock(scr, NULL, "Logo", "WMDock", TILE_NORMAL);
 		if (wdisp->flags.clip_merged_in_dock)
 			btn->icon->core->descriptor.handle_expose = clipIconExpose;
-		x_pos = getDockXPosition(scr, true);
+		dock_origin(scr, WDOCK_EDGE_RIGHT, &x_pos, NULL);
 		break;
 	case WM_DRAWER:
 		if (name == NULL)
@@ -1327,6 +1438,29 @@ static WMenu *dockMenuCreate(WScreen *scr, int type)
 	return menu;
 }
 
+/* Capacity of a dock or drawer: the widest screen axis in whole
+ * icons, so a dock that survives a resolution change or an edge
+ * switch keeps every icon in the array. */
+static int dock_capacity(WScreen *scr)
+{
+	int cap = WMAX(scr->scr_width, scr->scr_height) / w_global.config->icon_size;
+
+	return cap < 1 ? 1 : cap;
+}
+
+/* Grow the icon array to hold at least `need` slots. Shrinking never
+ * happens, matching the existing RandR behaviour. */
+static void dock_grow_array(WDock *dock, int need)
+{
+	if (need <= dock->max_icons)
+		return;
+
+	dock->icon_array = wrealloc(dock->icon_array, sizeof(WAppIcon *) * need);
+	memset(dock->icon_array + dock->max_icons, 0,
+	       (need - dock->max_icons) * sizeof(WAppIcon *));
+	dock->max_icons = need;
+}
+
 WDock *wDockCreate(WScreen *scr, int type, const char *name)
 {
 	WDock *dock;
@@ -1341,11 +1475,11 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 		dock->max_icons = DOCK_MAX_ICONS;
 		break;
 	case WM_DRAWER:
-		dock->max_icons = scr->scr_width / w_global.config->icon_size;
-		break;
 	case WM_DOCK:
 	default:
-		dock->max_icons = scr->scr_height / w_global.config->icon_size;
+		/* the widest axis, so an edge switch never needs a
+		 * realloc in the drag loop */
+		dock->max_icons = dock_capacity(scr);
 	}
 
 	/* a tiny screen or a large icon_size can yield 0, which
@@ -1365,9 +1499,9 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 	dock->type = type;
 	dock->icon_count = 1;
 	if (type == WM_DRAWER)
-		dock->on_right_side = scr->dock->on_right_side;
+		dock->edge = scr->dock->edge;
 	else
-		dock->on_right_side = 1;
+		dock->edge = WDOCK_EDGE_RIGHT;
 	dock->collapsed = 0;
 	dock->auto_collapse = 0;
 	dock->auto_collapse_magic = NULL;
@@ -1591,6 +1725,20 @@ static WMPropList *dockSaveState(WDock *dock)
 		WMPutInPLDictionary(dock_state, key, list);
 		WMReleasePropList(key);
 
+		if (wDockEdgeHorizontal(dock->edge)) {
+			snprintf(buffer, sizeof(buffer), "ApplicationsW%i",
+				 dock->screen_ptr->scr_width);
+			key = WMCreatePLString(buffer);
+			WMPutInPLDictionary(dock_state, key, list);
+			WMReleasePropList(key);
+		}
+
+		value = wDockEdgeName(dock->edge) ? WMCreatePLString(wDockEdgeName(dock->edge)) : NULL;
+		if (value) {
+			WMPutInPLDictionary(dock_state, dEdge, value);
+			WMReleasePropList(value);
+		}
+
 		snprintf(buffer, sizeof(buffer), "%i,%i", dock->x_pos, dock->y_pos);
 		value = WMCreatePLString(buffer);
 		WMPutInPLDictionary(dock_state, dPosition, value);
@@ -1681,7 +1829,8 @@ static bool getBooleanDockValue(WMPropList *value, WMPropList *key)
 	return false;
 }
 
-static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type, int index)
+static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type,
+				    int index, WDockEdge dock_edge)
 {
 	WAppIcon *aicon;
 	WMPropList *cmd, *value;
@@ -1776,7 +1925,12 @@ static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type, in
 		/* check position sanity */
 		/* *Very* incomplete section! */
 		if (type == WM_DOCK) {
-			aicon->xindex = 0;
+			/* dock icons stack on the along axis, the
+			 * across index is always zero */
+			if (wDockEdgeHorizontal(dock_edge))
+				aicon->yindex = 0;
+			else
+				aicon->xindex = 0;
 		}
 	} else {
 		aicon->yindex = index;
@@ -1846,6 +2000,7 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	WMPropList *value;
 	WMPropList *tmp;
 	WAppIcon *aicon, *old_top;
+	bool have_edge = false;
 	int count, i;
 	char buffer[64];
 
@@ -1855,6 +2010,21 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		return dock;
 
 	WMRetainPropList(dock_state);
+
+	/* restore the dock edge. A known name wins, an unknown one warns
+	 * and keeps the default so a typo cannot move the dock */
+	value = WMGetFromPLDictionary(dock_state, dEdge);
+	if (value && WMIsPLString(value)) {
+		WDockEdge edge;
+
+		if (wDockEdgeFromName(WMGetFromPLString(value), &edge)) {
+			dock->edge = edge;
+			have_edge = true;
+		} else {
+			wwarning(_("unknown dock edge \"%s\" in state info, keeping the current one"),
+				 WMGetFromPLString(value));
+		}
+	}
 
 	/* restore position */
 	value = WMGetFromPLDictionary(dock_state, dPosition);
@@ -1879,18 +2049,47 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 					dock->x_pos = scr->scr_width - ICON_SIZE;
 				}
 			} else {
-				int left, right, midpoint;
+				if (wDockEdgeHorizontal(dock->edge)) {
+					int ox, oy;
 
-				left = getDockXPosition(scr, false);
-				right = getDockXPosition(scr, true);
-				midpoint = (left + right) / 2;
+					/* pinned axis is Y, the stored
+					 * X is the along offset */
+					dock_origin(scr, dock->edge, &ox, &oy);
+					dock->y_pos = oy;
+					wScreenKeepInside(scr, &dock->x_pos, &oy,
+							  ICON_SIZE, ICON_SIZE);
+				} else if (have_edge) {
+					int ox, oy;
 
-				if (dock->x_pos < midpoint) {
-					dock->x_pos = left;
-					dock->on_right_side = 0;
+					/* pinned axis is X, the stored
+					 * Y is the along offset */
+					dock_origin(scr, dock->edge, &ox, &oy);
+					dock->x_pos = ox;
+					wScreenKeepInside(scr, &ox, &dock->y_pos,
+							  ICON_SIZE, ICON_SIZE);
 				} else {
-					dock->x_pos = right;
-					dock->on_right_side = 1;
+					/* A state file written before
+					 * the edge existed must not
+					 * snap to the nearest edge: a
+					 * right-side dock parked at
+					 * the top of a wide screen is
+					 * closer to the top edge than
+					 * to the right one. Keep the
+					 * X-midpoint test and never
+					 * look at Y. */
+					int left, right, midpoint;
+
+					dock_origin(scr, WDOCK_EDGE_LEFT, &left, NULL);
+					dock_origin(scr, WDOCK_EDGE_RIGHT, &right, NULL);
+					midpoint = (left + right) / 2;
+
+					if (dock->x_pos < midpoint) {
+						dock->edge = WDOCK_EDGE_LEFT;
+						dock->x_pos = left;
+					} else {
+						dock->edge = WDOCK_EDGE_RIGHT;
+						dock->x_pos = right;
+					}
 				}
 			}
 		}
@@ -1963,17 +2162,29 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 
 	/*
 	 * When saving, it saves the dock state in
-	 * Applications and Applicationsnnn
+	 * Applications and Applicationsnnn (or ApplicationsWnnn for a
+	 * horizontal dock).
 	 *
-	 * When loading, it will first try Applicationsnnn.
-	 * If it does not exist, use Applications as default.
+	 * When loading, it will first try Applicationsnnn (or the
+	 * width-keyed one when the edge is horizontal, so a stale
+	 * height-keyed list cannot win). If it does not exist, use
+	 * Applications as default.
 	 */
 
-	snprintf(buffer, sizeof(buffer), "Applications%i", scr->scr_height);
+	apps = NULL;
+	if (wDockEdgeHorizontal(dock->edge)) {
+		snprintf(buffer, sizeof(buffer), "ApplicationsW%i", scr->scr_width);
+		tmp = WMCreatePLString(buffer);
+		apps = WMGetFromPLDictionary(dock_state, tmp);
+		WMReleasePropList(tmp);
+	}
 
-	tmp = WMCreatePLString(buffer);
-	apps = WMGetFromPLDictionary(dock_state, tmp);
-	WMReleasePropList(tmp);
+	if (!apps) {
+		snprintf(buffer, sizeof(buffer), "Applications%i", scr->scr_height);
+		tmp = WMCreatePLString(buffer);
+		apps = WMGetFromPLDictionary(dock_state, tmp);
+		WMReleasePropList(tmp);
+	}
 
 	if (!apps)
 		apps = WMGetFromPLDictionary(dock_state, dApplications);
@@ -2001,7 +2212,8 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		}
 
 		value = WMGetFromPLArray(apps, i);
-		aicon = restore_icon_state(scr, value, type, dock->icon_count);
+		aicon = restore_icon_state(scr, value, type, dock->icon_count,
+					   dock->edge);
 
 		dock->icon_array[dock->icon_count] = aicon;
 
@@ -2225,24 +2437,25 @@ static bool launcherReadAppBundle(const char *path, const char *base,
 	return true;
 }
 
-static bool dockFindFreeYSlot(WDock *dock, int *y_pos)
+static bool dockFindFreeAlongSlot(WDock *dock, int *along)
 {
 	WScreen *scr = dock->screen_ptr;
-	int d, i, y, sign;
+	int d, i, a, sign;
 
 	for (d = 1; d < dock->max_icons; d++) {
 		for (sign = 1; sign >= -1; sign -= 2) {
-			y = sign * d;
+			a = sign * d;
 			for (i = 0; i < dock->max_icons; i++) {
 				if (dock->icon_array[i] &&
-				    dock->icon_array[i]->yindex == y)
+				    wDockAlongIndex(dock->icon_array[i], dock->edge) == a)
 					break;
 			}
 			if (i < dock->max_icons)
 				continue;
-			if (!onScreen(scr, dock->x_pos, dock->y_pos + y * ICON_SIZE))
+			if (!onScreen(scr, dock->x_pos + (wDockEdgeHorizontal(dock->edge) ? a * ICON_SIZE : 0),
+				      dock->y_pos + (wDockEdgeHorizontal(dock->edge) ? 0 : a * ICON_SIZE)))
 				continue;
-			*y_pos = y;
+			*along = a;
 			return true;
 		}
 	}
@@ -2288,8 +2501,13 @@ static bool dockLauncherFromDrop(WDock *dock, const char *path)
 		return false;
 
 	if (dock->type == WM_DOCK) {
-		if (!dockFindFreeYSlot(dock, &y))
-			got = false;
+		if (wDockEdgeHorizontal(dock->edge)) {
+			if (!dockFindFreeAlongSlot(dock, &x))
+				got = false;
+		} else {
+			if (!dockFindFreeAlongSlot(dock, &y))
+				got = false;
+		}
 	} else {
 		if (!wDockFindFreeSlot(dock, &x, &y))
 			got = false;
@@ -2777,6 +2995,20 @@ void wDockDetach(WDock *dock, WAppIcon *icon)
 		clipLeave(dock);
 }
 
+/* ret for a WM_DOCK/WM_DRAWER snap: across on the across axis, along
+ * on the along axis */
+static void dock_snap_ret(WDockEdge edge, int *ret_x, int *ret_y,
+			  int across, int along)
+{
+	if (wDockEdgeHorizontal(edge)) {
+		*ret_x = along;
+		*ret_y = across;
+	} else {
+		*ret_x = across;
+		*ret_y = along;
+	}
+}
+
 /*
  * returns the closest Dock slot index for the passed
  * coordinates.
@@ -2794,6 +3026,8 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 	int dx, dy;
 	int ex_x, ex_y;
 	int i, offset = ICON_SIZE / 2;
+	bool horiz;
+	int along, across, req_along;
 	WAppIcon *aicon = NULL;
 	WAppIcon *nicon = NULL;
 
@@ -2822,6 +3056,17 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 	if (!onScreen(scr, dx + ex_x * ICON_SIZE, dy + ex_y * ICON_SIZE))
 		return false;
 
+	horiz = wDockEdgeHorizontal(dock->edge);
+	if (horiz) {
+		along = ex_x;
+		across = ex_y;
+		req_along = req_x + offset - dx;
+	} else {
+		along = ex_y;
+		across = ex_x;
+		req_along = req_y + offset - dy;
+	}
+
 	switch (dock->type) {
 	case WM_DOCK:
 		/* We can return False right away if
@@ -2829,20 +3074,20 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 		 * - we are not right over it, and
 		 * - we are not the main tile of a drawer.
 		 * In the latter case, we are called from handleDockMove. */
-		if (icon->dock != dock && ex_x != 0 &&
+		if (icon->dock != dock && across != 0 &&
 			!(icon->dock && icon->dock->type == WM_DRAWER && icon == icon->dock->icon_array[0]))
 			return false;
 
-		if (!redocking && ex_x != 0)
+		if (!redocking && across != 0)
 			return false;
 
-		if (getDrawer(scr, ex_y)) /* Return false so that the drawer gets it. */
+		if (getDrawerAtAlong(scr, along)) /* Return false so that the drawer gets it. */
 			return false;
 
 		aicon = NULL;
 		for (i = 0; i < dock->max_icons; i++) {
 			nicon = dock->icon_array[i];
-			if (nicon && nicon->yindex == ex_y) {
+			if (nicon && wDockAlongIndex(nicon, dock->edge) == along) {
 				aicon = nicon;
 				break;
 			}
@@ -2859,17 +3104,16 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 			 * icon dragged to range of same slot
 			 * icon dragged to range of different icon
 			 */
-			if (abs(ex_x) > DOCK_DETTACH_THRESHOLD)
+			if (abs(across) > DOCK_DETTACH_THRESHOLD)
 				return false;
 
 			if (aicon == icon || !aicon) {
-				*ret_x = 0;
-				*ret_y = ex_y;
+				dock_snap_ret(dock->edge, ret_x, ret_y, 0, along);
 				return true;
 			}
 
 			/* start looking at the upper slot or lower? */
-			if (ex_y * ICON_SIZE < (req_y + offset - dy))
+			if (along * ICON_SIZE < req_along)
 				sig = 1;
 			else
 				sig = -1;
@@ -2880,12 +3124,13 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 				int j;
 
 				done = 1;
-				closest = sig * (i / 2) + ex_y;
+				closest = sig * (i / 2) + along;
 				/* check if this slot is fully on the screen and not used */
-				if (onScreen(scr, dx, dy + closest * ICON_SIZE)) {
+				if (onScreen(scr, dx + (horiz ? closest * ICON_SIZE : 0),
+						  dy + (horiz ? 0 : closest * ICON_SIZE))) {
 					for (j = 0; j < dock->max_icons; j++) {
 						if (dock->icon_array[j]
-							&& dock->icon_array[j]->yindex == closest) {
+							&& wDockAlongIndex(dock->icon_array[j], dock->edge) == closest) {
 							/* slot is used by someone else */
 							if (dock->icon_array[j] != icon)
 								done = 0;
@@ -2893,25 +3138,23 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 						}
 					}
 					/* slot is used by a drawer */
-					done = done && !getDrawer(scr, closest);
+					done = done && !getDrawerAtAlong(scr, closest);
 				}
 				else // !onScreen
 					done = 0;
 				sig = -sig;
 			}
 			if (done &&
-				((ex_y >= closest && ex_y - closest < DOCK_DETTACH_THRESHOLD + 1)
-					|| (ex_y < closest && closest - ex_y <= DOCK_DETTACH_THRESHOLD + 1))) {
-				*ret_x = 0;
-				*ret_y = closest;
+				((along >= closest && along - closest < DOCK_DETTACH_THRESHOLD + 1)
+					|| (along < closest && closest - along <= DOCK_DETTACH_THRESHOLD + 1))) {
+				dock_snap_ret(dock->edge, ret_x, ret_y, 0, closest);
 				return true;
 			}
 		} else {	/* !redocking */
 
 			/* if slot is free and the icon is close enough, return it */
-			if (!aicon && ex_x == 0) {
-				*ret_x = 0;
-				*ret_y = ex_y;
+			if (!aicon && across == 0) {
+				dock_snap_ret(dock->edge, ret_x, ret_y, 0, along);
 				return true;
 			}
 		}
@@ -2966,44 +3209,55 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 	case WM_DRAWER:
 	{
 		WAppIcon *aicons_to_shift[ dock->icon_count ];
-		int index_of_hole, j;
+		char axis;
+		int sign;
+		int index_of_hole;
+		int across = horiz ? ex_y : ex_x;
+		int j;
 
-		if (ex_y != 0 ||
-			abs(ex_x) - dock->icon_count > DOCK_DETTACH_THRESHOLD ||
-			(ex_x < 0 && !dock->on_right_side) ||
-			(ex_x > 0 &&  dock->on_right_side)) {
+		wDockGeomAcrossSign(dock->edge, &axis, &sign);
+
+		/* the along-of-dock cell must stay on the strip row, and
+		 * the across cell must point into the strip */
+		if ((horiz ? ex_x : ex_y) != 0 ||
+			abs(across) - dock->icon_count > DOCK_DETTACH_THRESHOLD ||
+			across * sign < 0) {
 			return false;
 		}
 
-		if (ex_x == 0)
-			ex_x = (dock->on_right_side ? -1 : 1);
+		if (across == 0)
+			across = sign;
 
-		/* "Reduce" ex_x but keep its sign */
+		/* "Reduce" across but keep its sign */
 		if (redocking) {
-			if (abs(ex_x) > dock->icon_count - 1) /* minus 1: do not take icon_array[0] into account */
-				ex_x = ex_x * (dock->icon_count - 1) / abs(ex_x); /* don't use *= ! */
+			if (abs(across) > dock->icon_count - 1) /* minus 1: do not take icon_array[0] into account */
+				across = across * (dock->icon_count - 1) / abs(across); /* don't use *= ! */
 		} else {
-			if (abs(ex_x) > dock->icon_count)
-				ex_x = ex_x * dock->icon_count / abs(ex_x);
+			if (abs(across) > dock->icon_count)
+				across = across * dock->icon_count / abs(across);
 		}
 		index_of_hole = indexOfHole(dock, icon, redocking);
 
 		/* Find the appicons between where icon was (index_of_hole) and where
-		 * it wants to be (ex_x) and slide them. */
+		 * it wants to be (across) and slide them. */
 		j = 0;
 		for (i = 1; i < dock->max_icons; i++) {
 			aicon = dock->icon_array[i];
 			if ((aicon != NULL) && (aicon != icon) &&
-				((ex_x <= aicon->xindex && aicon->xindex < index_of_hole) ||
-					(index_of_hole < aicon->xindex && aicon->xindex <= ex_x)))
+				((across <= wDockAcrossIndex(aicon, dock->edge) && wDockAcrossIndex(aicon, dock->edge) < index_of_hole) ||
+					(index_of_hole < wDockAcrossIndex(aicon, dock->edge) && wDockAcrossIndex(aicon, dock->edge) <= across)))
 				aicons_to_shift[ j++ ] = aicon;
 		}
-		assert(j == abs(ex_x - index_of_hole));
+		if (j != abs(across - index_of_hole))
+			/* the across set is not the expected [1..n]\{hole},
+			 * slide what was found rather than aborting */
+			wwarning("wDockSnapIcon: shifting %d appicons between %d and %d (expected %d)",
+				j, index_of_hole, across, abs(across - index_of_hole));
 
-		wSlideAppicons(aicons_to_shift, j, (index_of_hole < ex_x));
+		wSlideAppiconsAcross(aicons_to_shift, j, dock,
+				     (index_of_hole < across));
 
-		*ret_x = ex_x;
-		*ret_y = ex_y;
+		dock_snap_ret(dock->edge, ret_x, ret_y, across, 0);
 		return true;
 	}
 	}
@@ -3041,14 +3295,24 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 	int i, done = false;
 	int corner;
 	int ex = scr->scr_width, ey = scr->scr_height;
+	int sx = 0, sy = 0;
 	int extra_count = 0;
 
 	if (dock->type == WM_DRAWER) {
+		char axis;
+		int sign;
+
 		if (dock->icon_count >= dock->max_icons) { /* drawer is full */
 			return false;
 		}
-		*x_pos = dock->icon_count * (dock->on_right_side ? -1 : 1);
-		*y_pos = 0;
+		wDockGeomAcrossSign(dock->edge, &axis, &sign);
+		if (axis == 'x') {
+			*x_pos = dock->icon_count * sign;
+			*y_pos = 0;
+		} else {
+			*x_pos = 0;
+			*y_pos = dock->icon_count * sign;
+		}
 		return true;
 	}
 
@@ -3059,8 +3323,26 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 	if (dock->icon_count + extra_count >= dock->max_icons)
 		return false;
 
-	if (!wdisp->flags.nodock && scr->dock && scr->dock->on_right_side)
-		ex -= ICON_SIZE + DOCK_EXTRA_SPACE;
+	/* shrink the free rectangle on the dock's edge, so a clip sitting
+	 * in a corner does not treat the dock strip as a free border */
+	if (!wdisp->flags.nodock && scr->dock) {
+		int offset = ICON_SIZE + DOCK_EXTRA_SPACE;
+
+		switch (scr->dock->edge) {
+		case WDOCK_EDGE_RIGHT:
+			ex -= offset;
+			break;
+		case WDOCK_EDGE_LEFT:
+			sx += offset;
+			break;
+		case WDOCK_EDGE_TOP:
+			sy += offset;
+			break;
+		case WDOCK_EDGE_BOTTOM:
+			ey -= offset;
+			break;
+		}
+	}
 
 	if (ex < dock->x_pos)
 		ex = dock->x_pos;
@@ -3072,13 +3354,13 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 
 	/* check if clip is in a corner */
 	if (dock->type == WM_CLIP) {
-		if (dock->x_pos < 1 && dock->y_pos < 1)
+		if (dock->x_pos < sx + 1 && dock->y_pos < sy + 1)
 			corner = C_NE;
-		else if (dock->x_pos < 1 && dock->y_pos >= (ey - ICON_SIZE))
+		else if (dock->x_pos < sx + 1 && dock->y_pos >= (ey - ICON_SIZE))
 			corner = C_SE;
 		else if (dock->x_pos >= (ex - ICON_SIZE) && dock->y_pos >= (ey - ICON_SIZE))
 			corner = C_SW;
-		else if (dock->x_pos >= (ex - ICON_SIZE) && dock->y_pos < 1)
+		else if (dock->x_pos >= (ex - ICON_SIZE) && dock->y_pos < sy + 1)
 			corner = C_NW;
 		else
 			corner = C_NONE;
@@ -3296,16 +3578,10 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 	return done;
 }
 
-static void moveDock(WDock *dock, int new_x, int new_y)
+static void moveDockOne(WDock *dock, int new_x, int new_y)
 {
 	WAppIcon *btn;
-	WDrawerChain *dc;
 	int i;
-
-	if (dock->type == WM_DOCK) {
-		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next)
-			moveDock(dc->adrawer, new_x, dc->adrawer->y_pos - dock->y_pos + new_y);
-	}
 
 	dock->x_pos = new_x;
 	dock->y_pos = new_y;
@@ -3319,22 +3595,63 @@ static void moveDock(WDock *dock, int new_x, int new_y)
 	}
 }
 
+static void moveDock(WDock *dock, int new_x, int new_y)
+{
+	WDrawerChain *dc;
+
+	if (dock->type == WM_DOCK) {
+		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
+			WDock *drawer = dc->adrawer;
+
+			/* keep the drawer's along-axis offset from the
+			 * dock. A drawer does not slide independently
+			 * during a dock drag, it keeps its slot */
+			if (wDockEdgeHorizontal(dock->edge))
+				moveDock(drawer,
+					 drawer->x_pos - dock->x_pos + new_x,
+					 new_y);
+			else
+				moveDock(drawer, new_x,
+					 drawer->y_pos - dock->y_pos + new_y);
+		}
+	}
+
+	moveDockOne(dock, new_x, new_y);
+
+	/* the head under the dock can change during an along-axis slide,
+	 * the span is the full head so a pure slide of the pinned head
+	 * does not need a rewrite */
+	if (dock->type == WM_DOCK)
+		wDockPublishStrut(dock->screen_ptr);
+}
+
 /* Re-derive every dock, drawer and clip slot pixel position from
  * xindex/yindex against the current IconSize and re-anchor the dock
- * column against its screen edge. moveDock() already recurses into
- * every drawer when called on the dock and recomputes both axes, so
- * the only extra step is to re-derive the right-side anchor (which
- * was scr_width - ICON_SIZE) and walk the per-workspace clips.
- * dock->max_icons and the icon_array allocation are left untouched,
- * matching the existing RandR resize behaviour. */
+ * against its edge. moveDock() already recurses into every drawer when
+ * called on the dock and recomputes both axes, so the only extra step
+ * is to re-derive the pinned axis (which was scr_width - ICON_SIZE for
+ * a right dock) and walk the per-workspace clips. dock->max_icons and
+ * the icon_array allocation are grown when the screen grew, matching
+ * the "do not drop icons" rule. */
 void wDockApplyIconSize(WScreen *scr)
 {
 	int i;
+	WDrawerChain *dc;
 
-	if (scr->dock)
-		moveDock(scr->dock,
-			 getDockXPosition(scr, scr->dock->on_right_side),
-			 scr->dock->y_pos);
+	if (scr->dock) {
+		int x, y;
+
+		dock_grow_array(scr->dock, dock_capacity(scr));
+		for (dc = scr->drawers; dc != NULL; dc = dc->next)
+			dock_grow_array(dc->adrawer, dock_capacity(scr));
+
+		dock_origin(scr, scr->dock->edge, &x, &y);
+		if (wDockEdgeHorizontal(scr->dock->edge))
+			x = scr->dock->x_pos;
+		else
+			y = scr->dock->y_pos;
+		moveDock(scr->dock, x, y);
+	}
 
 	if (!wdisp->flags.noclip && scr->workspaces)
 		for (i = 0; i < scr->workspace_count; i++)
@@ -3344,24 +3661,333 @@ void wDockApplyIconSize(WScreen *scr)
 					 scr->workspaces[i]->clip->y_pos);
 }
 
-void wDockSwap(WDock *dock)
+/* Re-pin the dock at its current edge without changing it, e.g. after
+ * a KeepDockOnPrimaryHead toggle or a RandR reconfiguration. */
+void wDockReanchor(WDock *dock)
 {
 	WScreen *scr = dock->screen_ptr;
-	WAppIcon *btn;
-	int x, i;
+	int x, y;
 
-	x = getDockXPosition(scr, dock->on_right_side);
-	swapDrawers(scr, x);
-	dock->x_pos = x;
+	if (dock->type != WM_DOCK)
+		return;
+
+	dock_origin(scr, dock->edge, &x, &y);
+	if (wDockEdgeHorizontal(dock->edge))
+		x = dock->x_pos;
+	else
+		y = dock->y_pos;
+
+	moveDock(dock, x, y);
+	wScreenUpdateUsableArea(scr);
+}
+
+/* wDockGeomTranspose takes int pointers, the stored indices are
+ * shorts */
+static void dock_transpose_icon(WAppIcon *btn, WDockEdge from, WDockEdge to)
+{
+	int xi = btn->xindex, yi = btn->yindex;
+
+	wDockGeomTranspose(from, to, &xi, &yi);
+	btn->xindex = xi;
+	btn->yindex = yi;
+}
+
+/* The dock's along-axis footprint, in pixels, measured from the main
+ * tile: dock icons plus drawer main tiles on both sides of it (an
+ * icon can sit above or left of the main tile, at a negative along
+ * index). Drawer contents open across the edge and do not count. */
+static void dock_along_span(const WDock *dock, const int *drawer_off,
+			    int ndrawers, int *neg_out, int *pos_out)
+{
+	int neg = 0, pos = ICON_SIZE;
+	int i;
 
 	for (i = 0; i < dock->max_icons; i++) {
+		WAppIcon *btn = dock->icon_array[i];
+		int a, e;
+
+		if (!btn)
+			continue;
+		a = wDockAlongIndex(btn, dock->edge);
+		if (a >= 0) {
+			e = (a + 1) * ICON_SIZE;
+			if (e > pos)
+				pos = e;
+		} else {
+			e = -a * ICON_SIZE;
+			if (e > neg)
+				neg = e;
+		}
+	}
+	for (i = 0; i < ndrawers; i++) {
+		int cell = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+		int e;
+
+		if (cell >= 0) {
+			e = (cell + 1) * ICON_SIZE;
+			if (e > pos)
+				pos = e;
+		} else {
+			e = -cell * ICON_SIZE;
+			if (e > neg)
+				neg = e;
+		}
+	}
+	*neg_out = neg;
+	*pos_out = pos;
+}
+
+/* One entry of the along-axis compression pass: a dock icon or a
+ * drawer main tile, identified by its along cell and where to write
+ * the compressed value back */
+struct dock_along_slot {
+	int along;
+	int slot;
+	bool is_drawer;
+};
+
+/*
+ * Move the dock to another screen edge. The saved indices stay
+ * screen-axis cells. A vertical/horizontal switch transposes them, a
+ * switch within an axis only flips the across sign. The along layout
+ * is then fitted to the new side: the dock's own offset rescales to
+ * the same fraction of the usable run, and a layout that cannot fit
+ * the shorter side (the bottom edge is usually longer than the sides)
+ * has its along offsets compressed proportionally, so icons stay on
+ * screen instead of being pushed past it. The drawer strip follows
+ * the perpendicular axis and every drawer keeps its along-axis pixel
+ * offset from the dock. Icons that no longer fit the new on-screen
+ * run stay in the array, they are never dropped here: the next
+ * open-drawer slide pulls them toward the anchor until the strip is
+ * on screen, the same primitive as fill-the-gap. Do not "fix" an
+ * overhanging drawer by deleting icons.
+ */
+void wDockSetEdge(WDock *dock, WDockEdge new_edge)
+{
+	WScreen *scr = dock->screen_ptr;
+	WDockEdge old_edge = dock->edge;
+	WAppIcon *btn;
+	WDrawerChain *dc;
+	struct dock_along_slot *slots;
+	WMRect rect;
+	int *drawer_off;
+	int i, j, n, m, x, y, ox, oy, along;
+	int neg_pre, pos_pre, neg_new, pos_new;
+	int old_usable, new_usable;
+	int old_len, new_len, new_cells, min_along, max_along;
+	int pos_budget, neg_budget, num, den, cell, prev;
+
+	if (new_edge == dock->edge)
+		return;
+
+	dock_origin(scr, old_edge, &ox, &oy);
+	if (wDockEdgeHorizontal(old_edge))
+		along = dock->x_pos - ox;
+	else
+		along = dock->y_pos - oy;
+
+	/* remember each drawer's along-axis offset before anything moves */
+	n = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next)
+		n++;
+	drawer_off = wmalloc(sizeof(int) * (n > 0 ? n : 1));
+	i = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next, i++) {
+		if (wDockEdgeHorizontal(old_edge))
+			drawer_off[i] = dc->adrawer->x_pos - dock->x_pos;
+		else
+			drawer_off[i] = dc->adrawer->y_pos - dock->y_pos;
+	}
+
+	dock_along_span(dock, drawer_off, n, &neg_pre, &pos_pre);
+	rect = dock_anchor_rect(scr);
+	old_len = wDockEdgeHorizontal(old_edge) ?
+		(int)rect.size.width : (int)rect.size.height;
+	new_len = wDockEdgeHorizontal(new_edge) ?
+		(int)rect.size.width : (int)rect.size.height;
+	new_cells = new_len / ICON_SIZE;
+	if (new_cells < 1)
+		new_cells = 1;
+
+	/* how far along the edge the layout reaches, in cells */
+	min_along = 0;
+	max_along = 0;
+	for (i = 0; i < dock->max_icons; i++) {
 		btn = dock->icon_array[i];
-		if (btn) {
-			btn->x_pos = x;
-			xcb_configure_window(wdisp->conn, btn->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ btn->x_pos, btn->y_pos });
+		if (!btn)
+			continue;
+		cell = wDockAlongIndex(btn, old_edge);
+		if (cell < min_along)
+			min_along = cell;
+		if (cell > max_along)
+			max_along = cell;
+	}
+	for (i = 0; i < n; i++) {
+		cell = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+		if (cell < min_along)
+			min_along = cell;
+		if (cell > max_along)
+			max_along = cell;
+	}
+
+	/* a layout that cannot fit the new side is compressed: every
+	 * along offset maps onto the same fraction of the new run, so
+	 * wide bottom-edge gaps shrink instead of pushing the far icons
+	 * off the side edge. The main tile stays at cell 0, icons above
+	 * or left of it (negative along) compress toward it, the rest
+	 * away from it */
+	if (max_along - min_along >= new_cells) {
+		slots = wmalloc(sizeof(*slots) * (dock->max_icons + n));
+		m = 0;
+		for (i = 0; i < dock->max_icons; i++) {
+			btn = dock->icon_array[i];
+			if (!btn)
+				continue;
+			slots[m].along = wDockAlongIndex(btn, old_edge);
+			slots[m].slot = i;
+			slots[m].is_drawer = false;
+			m++;
+		}
+		for (i = 0; i < n; i++) {
+			slots[m].along = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+			slots[m].slot = i;
+			slots[m].is_drawer = true;
+			m++;
+		}
+		for (i = 1; i < m; i++) {
+			struct dock_along_slot tmp = slots[i];
+
+			j = i - 1;
+			while (j >= 0 && slots[j].along > tmp.along) {
+				slots[j + 1] = slots[j];
+				j--;
+			}
+			slots[j + 1] = tmp;
+		}
+		num = new_cells - 1;
+		den = max_along - min_along;
+		pos_budget = (num * (max_along - 0) + den / 2) / den;
+		neg_budget = num - pos_budget;
+		/* positives pack upward from the main tile */
+		prev = 0;
+		for (i = 0; i < m; i++) {
+			if (slots[i].along < 0)
+				continue;
+			if (slots[i].along == 0) {
+				prev = 0;
+				continue;
+			}
+			cell = (slots[i].along * pos_budget + (max_along - min_along) / 2)
+				/ den;
+			if (cell <= prev)
+				cell = prev + 1;
+			if (cell > new_cells - 1)
+				cell = new_cells - 1;
+			prev = cell;
+			if (slots[i].is_drawer)
+				drawer_off[slots[i].slot] = cell * ICON_SIZE;
+			else if (wDockEdgeHorizontal(old_edge))
+				dock->icon_array[slots[i].slot]->xindex = cell;
+			else
+				dock->icon_array[slots[i].slot]->yindex = cell;
+		}
+		/* negatives pack downward from the main tile */
+		prev = 0;
+		for (i = m - 1; i >= 0; i--) {
+			if (slots[i].along >= 0)
+				continue;
+			cell = -((-slots[i].along) * neg_budget + (max_along - min_along) / 2)
+				/ den;
+			if (cell >= prev)
+				cell = prev - 1;
+			if (cell < -(new_cells - 1))
+				cell = -(new_cells - 1);
+			prev = cell;
+			if (slots[i].is_drawer)
+				drawer_off[slots[i].slot] = cell * ICON_SIZE;
+			else if (wDockEdgeHorizontal(old_edge))
+				dock->icon_array[slots[i].slot]->xindex = cell;
+			else
+				dock->icon_array[slots[i].slot]->yindex = cell;
+		}
+		wfree(slots);
+	}
+
+	/* rescale the dock's own offset to the same fraction of the
+	 * usable run on the new side */
+	dock_along_span(dock, drawer_off, n, &neg_new, &pos_new);
+	old_usable = old_len - neg_pre - pos_pre;
+	new_usable = new_len - neg_new - pos_new;
+	if (old_usable > 0 && new_usable > 0)
+		along = (along * new_usable + old_usable / 2) / old_usable;
+
+	/* transpose the dock's icons, the main tile stays (0, 0) */
+	for (i = 0; i < dock->max_icons; i++) {
+		btn = dock->icon_array[i];
+		if (!btn)
+			continue;
+		dock_transpose_icon(btn, old_edge, new_edge);
+	}
+	dock->edge = new_edge;
+
+	/* the drawers open perpendicular to the new edge */
+	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
+		WDock *drawer = dc->adrawer;
+
+		for (i = 0; i < drawer->max_icons; i++) {
+			btn = drawer->icon_array[i];
+			if (!btn)
+				continue;
+			dock_transpose_icon(btn, old_edge, new_edge);
+		}
+		drawer->edge = new_edge;
+	}
+
+	dock_origin(scr, new_edge, &ox, &oy);
+	if (wDockEdgeHorizontal(new_edge)) {
+		x = dock_clamp_along_pixel(scr, new_edge, ox + along, neg_new, pos_new);
+		y = oy;
+	} else {
+		x = ox;
+		y = dock_clamp_along_pixel(scr, new_edge, oy + along, neg_new, pos_new);
+	}
+
+	i = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next, i++) {
+		WDock *drawer = dc->adrawer;
+		int dx, dy;
+
+		/* the drawer keeps its pixel offset from the dock, and
+		 * the clamp only has to fit the drawer's own tile: the
+		 * offset is part of the span the dock was clamped
+		 * with */
+		if (wDockEdgeHorizontal(new_edge)) {
+			dx = dock_clamp_along_pixel(scr, new_edge, x + drawer_off[i], 0, ICON_SIZE);
+			dy = y;
+		} else {
+			dx = x;
+			dy = dock_clamp_along_pixel(scr, new_edge, y + drawer_off[i], 0, ICON_SIZE);
+		}
+		moveDockOne(drawer, dx, dy);
+	}
+	wfree(drawer_off);
+
+	moveDockOne(dock, x, y);
+
+	/* the drawer tile bakes the arrow direction, rebuild it */
+	if (!wdisp->flags.nodrawer) {
+		if (scr->drawer_tile)
+			RReleaseImage(scr->drawer_tile);
+		scr->drawer_tile = wDrawerMakeTile(scr, scr->icon_tile);
+		for (dc = scr->drawers; dc != NULL; dc = dc->next) {
+			WAppIcon *main_tile = dc->adrawer->icon_array[0];
+
+			wIconUpdate(main_tile->icon);
+			wDrawerIconPaint(main_tile);
 		}
 	}
 
+	wArrangeIcons(scr, false);
 	wScreenUpdateUsableArea(scr);
 }
 
@@ -3463,7 +4089,7 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 				state->workspace = scr->current_workspace;
 		}
 		wWindowAddSavedState(btn->wm_instance, btn->wm_class, cmdline, pid, state);
-		wAddDeathHandler(pid, trackDeadProcess, btn->dock, "dock", btn->yindex);
+		wAddDeathHandler(pid, trackDeadProcess, btn->dock, "dock", wDockIconSlot(btn));
 	} else {
 		wStartupLaunchAbort(ls.sn);
 		if (state)
@@ -3881,6 +4507,7 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 	WApplication *wapp = NULL;
 	int index = 0;
 	int x_pos;
+	int y_pos;
 	int n_selected;
 	int appIsRunning = aicon->running && aicon->icon && aicon->icon->owner;
 
@@ -4041,14 +4668,45 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 		} else if (x_pos + dock->menu->frame->core->width > scr->scr_width - 2) {
 			x_pos = scr->scr_width - dock->menu->frame->core->width - 4;
 		}
+		y_pos = ((xcb_button_press_event_t *)event)->root_y + 2;
 	} else {
-		x_pos = dock->x_pos;
-		if (dock->on_right_side)
-			x_pos += ICON_SIZE + DOCK_EXTRA_SPACE
-				- dock->menu->frame->core->width - 3;
+		int menu_w = dock->menu->frame->core->width;
+		int menu_h = dock->menu->frame->core->height;
+		int gap = 3;
+
+		/* open away from the screen edge the dock is pinned to */
+		switch (dock->edge) {
+		case WDOCK_EDGE_RIGHT:
+			x_pos = dock->x_pos + ICON_SIZE + DOCK_EXTRA_SPACE - menu_w - gap;
+			y_pos = ((xcb_button_press_event_t *)event)->root_y + 2;
+			break;
+		case WDOCK_EDGE_LEFT:
+			x_pos = dock->x_pos + ICON_SIZE + DOCK_EXTRA_SPACE + gap;
+			y_pos = ((xcb_button_press_event_t *)event)->root_y + 2;
+			break;
+		case WDOCK_EDGE_TOP:
+			x_pos = ((xcb_button_press_event_t *)event)->root_x + 2;
+			y_pos = dock->y_pos + ICON_SIZE + DOCK_EXTRA_SPACE + gap;
+			break;
+		case WDOCK_EDGE_BOTTOM:
+		default:
+			x_pos = ((xcb_button_press_event_t *)event)->root_x + 2;
+			y_pos = dock->y_pos - menu_h - gap;
+			break;
+		}
+
+		if (x_pos < 0)
+			x_pos = 0;
+		else if (x_pos + menu_w > scr->scr_width - 2)
+			x_pos = scr->scr_width - menu_w - 4;
+
+		if (y_pos < 0)
+			y_pos = 0;
+		else if (y_pos + menu_h > scr->scr_height - 2)
+			y_pos = scr->scr_height - menu_h - 4;
 	}
 
-	wMenuMapAt(dock->menu, x_pos, ((xcb_button_press_event_t *)event)->root_y + 2, false);
+	wMenuMapAt(dock->menu, x_pos, y_pos, false);
 
 	/* allow drag select */
 	event->response_type |= 0x80;
@@ -4121,17 +4779,127 @@ static void iconDblClick(WObjDescriptor *desc, xcb_generic_event_t *event)
 	}
 }
 
+/* Edge under the pointer with one icon of hysteresis. The anchor head
+ * is the primary one under KeepDockOnPrimaryHead, matching the dock
+ * origin, the head under the pointer otherwise. */
+static WDockEdge wDockEdgeAtPointer(WScreen *scr, int px, int py, WDockEdge current)
+{
+	WMRect rect;
+	int head;
+
+	if (w_global.config->keep_dock_on_primary_head)
+		head = scr->xine_info.primary_head;
+	else
+		head = wGetHeadForPointerLocation(scr);
+
+	rect = wGetRectForHead(scr, head);
+
+	return wDockGeomNearestEdge(rect, px, py, current, ICON_SIZE);
+}
+
+/* Wrap the along index of the icons that ended off the visible run
+ * (WrapAppiconsInDock). The modulo is the along limit, not max_icons,
+ * so icons wrap inside the visible run rather than into the spare
+ * array tail. Drawer anchors wrap with the same index. */
+static void dock_wrap_icons(WScreen *scr, WDock *dock)
+{
+	WAppIcon *tmpaicon;
+	WDrawerChain *dc;
+	int run = wDockAlongLimit(dock) * ICON_SIZE;
+	int i, j, ok, new_pix, new_index;
+
+	for (i = 0; i < dock->max_icons; i++) {
+		tmpaicon = dock->icon_array[i];
+		if (tmpaicon == NULL)
+			continue;
+		if (onScreen(scr, tmpaicon->x_pos, tmpaicon->y_pos))
+			continue;
+		if (wDockEdgeHorizontal(dock->edge)) {
+			new_pix = (tmpaicon->x_pos + run) % run;
+			new_index = (new_pix - dock->x_pos) / ICON_SIZE;
+			if (!onScreen(scr, new_pix, tmpaicon->y_pos))
+				continue;
+			ok = 1;
+			for (j = 0; j < dock->max_icons; j++) {
+				if (dock->icon_array[j] != NULL &&
+				    wDockAlongIndex(dock->icon_array[j], dock->edge) == new_index) {
+					ok = 0;
+					break;
+				}
+			}
+			if (!ok || getDrawerAtAlong(scr, new_index) != NULL)
+				continue;
+			wDockReattachIcon(dock, tmpaicon, new_index, tmpaicon->yindex);
+		} else {
+			new_pix = (tmpaicon->y_pos + run) % run;
+			new_index = (new_pix - dock->y_pos) / ICON_SIZE;
+			if (!onScreen(scr, tmpaicon->x_pos, new_pix))
+				continue;
+			ok = 1;
+			for (j = 0; j < dock->max_icons; j++) {
+				if (dock->icon_array[j] != NULL &&
+				    wDockAlongIndex(dock->icon_array[j], dock->edge) == new_index) {
+					ok = 0;
+					break;
+				}
+			}
+			if (!ok || getDrawerAtAlong(scr, new_index) != NULL)
+				continue;
+			wDockReattachIcon(dock, tmpaicon, tmpaicon->xindex, new_index);
+		}
+	}
+
+	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
+		WAppIcon *main_tile = dc->adrawer->icon_array[0];
+
+		if (onScreen(scr, main_tile->x_pos, main_tile->y_pos))
+			continue;
+		if (wDockEdgeHorizontal(dock->edge)) {
+			new_pix = (main_tile->x_pos + run) % run;
+			new_index = (new_pix - dock->x_pos) / ICON_SIZE;
+			if (!onScreen(scr, new_pix, main_tile->y_pos))
+				continue;
+			ok = 1;
+			for (j = 0; j < dock->max_icons; j++) {
+				if (dock->icon_array[j] != NULL &&
+				    wDockAlongIndex(dock->icon_array[j], dock->edge) == new_index) {
+					ok = 0;
+					break;
+				}
+			}
+			if (!ok || getDrawerAtAlong(scr, new_index) != NULL)
+				continue;
+			moveDock(dc->adrawer, new_pix, dc->adrawer->y_pos);
+		} else {
+			new_pix = (main_tile->y_pos + run) % run;
+			new_index = (new_pix - dock->y_pos) / ICON_SIZE;
+			if (!onScreen(scr, main_tile->x_pos, new_pix))
+				continue;
+			ok = 1;
+			for (j = 0; j < dock->max_icons; j++) {
+				if (dock->icon_array[j] != NULL &&
+				    wDockAlongIndex(dock->icon_array[j], dock->edge) == new_index) {
+					ok = 0;
+					break;
+				}
+			}
+			if (!ok || getDrawerAtAlong(scr, new_index) != NULL)
+				continue;
+			moveDock(dc->adrawer, dc->adrawer->x_pos, new_pix);
+		}
+	}
+}
+
 static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *event)
 {
 	WScreen *scr = dock->screen_ptr;
 	int ofs_x = ((xcb_button_press_event_t *)event)->event_x, ofs_y = ((xcb_button_press_event_t *)event)->event_y;
 	WIcon *icon = aicon->icon;
 	WAppIcon *tmpaicon;
-	WDrawerChain *dc;
 	int x = aicon->x_pos, y = aicon->y_pos;;
 	int shad_x = x, shad_y = y;
 	xcb_generic_event_t *ev = NULL;
-	int grabbed = 0, done, previously_on_right, now_on_right, previous_x_pos, i, idx;
+	int grabbed = 0, done, i, idx;
 	xcb_pixmap_t ghost = XCB_NONE;
 	int superfluous = w_global.config->superfluous;	/* we catch it to avoid problems */
 
@@ -4158,8 +4926,6 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 		xcb_map_window(wdisp->conn, scr->dock_shadow);
 	}
 
-	previously_on_right = dock->on_right_side;
-	previous_x_pos = dock->x_pos;
 	done = 0;
 	while (!done) {
 		free(ev);
@@ -4199,79 +4965,27 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 				moveDock(dock, x, y);
 				break;
 			case WM_DOCK:
+			{
+				WDockEdge new_edge;
+
 				x = (((xcb_motion_notify_event_t *)ev)->root_x) - ofs_x;
 				y = (((xcb_motion_notify_event_t *)ev)->root_y) - ofs_y;
-				if (previously_on_right)
-				{
-					now_on_right = ((((xcb_motion_notify_event_t *)ev)->root_x) >= previous_x_pos - ICON_SIZE);
-				}
-				else
-				{
-					now_on_right = ((((xcb_motion_notify_event_t *)ev)->root_x) > previous_x_pos + ICON_SIZE * 2);
-				}
-				if (now_on_right != dock->on_right_side)
-				{
-					dock->on_right_side = now_on_right;
-					wDockSwap(dock);
+				new_edge = wDockEdgeAtPointer(scr,
+							      ((xcb_motion_notify_event_t *)ev)->root_x,
+							      ((xcb_motion_notify_event_t *)ev)->root_y,
+							      dock->edge);
+				if (new_edge != dock->edge) {
+					wDockSetEdge(dock, new_edge);
 					wArrangeIcons(scr, false);
 				}
-				// Also perform the vertical move
-				wScreenKeepInside(scr, &x, &y, ICON_SIZE, ICON_SIZE);
-				moveDock(dock, dock->x_pos, y);
+				/* the pinned axis stays on the edge, the
+				 * free axis follows the pointer */
+				dock_keep_on_edge(scr, dock->edge, &x, &y);
+				moveDock(dock, x, y);
 				if (wdisp->flags.wrap_appicons_in_dock)
-				{
-					for (i = 0; i < dock->max_icons; i++) {
-						int new_y, new_index, j, ok;
-
-						tmpaicon = dock->icon_array[i];
-						if (tmpaicon == NULL)
-							continue;
-						if (onScreen(scr, tmpaicon->x_pos, tmpaicon->y_pos))
-							continue;
-						new_y = (tmpaicon->y_pos + ICON_SIZE * dock->max_icons) % (ICON_SIZE * dock->max_icons);
-						new_index = (new_y - dock->y_pos) / ICON_SIZE;
-						if (!onScreen(scr, tmpaicon->x_pos, new_y))
-							continue;
-						ok = 1;
-						for (j = 0; j < dock->max_icons; j++)
-						{
-							if (dock->icon_array[j] != NULL &&
-								dock->icon_array[j]->yindex == new_index)
-							{
-								ok = 0;
-								break;
-							}
-						}
-						if (!ok || getDrawer(scr, new_index) != NULL)
-							continue;
-						wDockReattachIcon(dock, tmpaicon, tmpaicon->xindex, new_index);
-					}
-					for (dc = scr->drawers; dc != NULL; dc = dc->next)
-					{
-						int new_y, new_index, j, ok;
-						tmpaicon = dc->adrawer->icon_array[0];
-						if (onScreen(scr, tmpaicon->x_pos, tmpaicon->y_pos))
-							continue;
-						new_y = (tmpaicon->y_pos + ICON_SIZE * dock->max_icons) % (ICON_SIZE * dock->max_icons);
-						new_index = (new_y - dock->y_pos) / ICON_SIZE;
-						if (!onScreen(scr, tmpaicon->x_pos, new_y))
-							continue;
-						ok = 1;
-						for (j = 0; j < dock->max_icons; j++)
-						{
-							if (dock->icon_array[j] != NULL &&
-								dock->icon_array[j]->yindex == new_index)
-							{
-								ok = 0;
-								break;
-							}
-						}
-						if (!ok || getDrawer(scr, new_index) != NULL)
-							continue;
-						moveDock(dc->adrawer, tmpaicon->x_pos, new_y);
-					}
-				}
+					dock_wrap_icons(scr, dock);
 				break;
+			}
 			case WM_DRAWER:
 			{
 				WDock *real_dock = dock->screen_ptr->dock;
@@ -4298,42 +5012,57 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 			if ((((xcb_button_press_event_t *)ev)->detail) != ((xcb_button_press_event_t *)event)->detail)
 				break;
 			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
-			if (dock->type == WM_DRAWER) {
-				xcb_window_t wins[dock->icon_count];
-				int offset_index;
+				if (dock->type == WM_DRAWER) {
+					xcb_window_t wins[dock->icon_count];
+					char axis;
+					int sign, offset_index;
+					int from_x, from_y, to_x, to_y;
 
-				/*
-				 * When the dock is on the Right side, the index of the icons are negative to
-				 * reflect the fact that they are placed on the other side of the dock; we use
-				 * an offset here so we can have an always positive index for the storage in
-				 * the 'wins' array.
-				 */
-				if (dock->on_right_side)
-					offset_index = dock->icon_count - 1;
-				else
-					offset_index = 0;
+					wDockGeomAcrossSign(dock->edge, &axis, &sign);
 
-				for (i = 0; i < dock->max_icons; i++) {
-					tmpaicon = dock->icon_array[i];
-					if (tmpaicon == NULL)
-						continue;
-					idx = tmpaicon->xindex + offset_index;
-					if (idx < 0 || idx >= dock->icon_count) {
-						wwarning("handleDockMove: xindex %d out of range [0..%d]",
-							 idx, dock->icon_count - 1);
-						continue;
+					memset(wins, 0, sizeof(wins)); /* XCB_NONE, skipped by slide_windows */
+
+					/*
+					 * The across index of the icons is negative when the
+					 * drawer opens toward the negative axis (right dock
+					 * or bottom dock). Use an offset here so we can have
+					 * an always positive index for the storage in the
+					 * 'wins' array.
+					 */
+					offset_index = (sign < 0) ? dock->icon_count - 1 : 0;
+
+					for (i = 0; i < dock->max_icons; i++) {
+						tmpaicon = dock->icon_array[i];
+						if (tmpaicon == NULL)
+							continue;
+						idx = wDockAcrossIndex(tmpaicon, dock->edge) + offset_index;
+						if (idx < 0 || idx >= dock->icon_count) {
+							wwarning("handleDockMove: across index %d out of range [0..%d]",
+								 idx, dock->icon_count - 1);
+							continue;
+						}
+						wins[idx] = tmpaicon->icon->core->window;
 					}
-					wins[idx] = tmpaicon->icon->core->window;
+
+					/* the slide origin is the extreme
+					 * icon on the open side */
+					if (axis == 'x') {
+						from_x = (sign < 0) ? x - (dock->icon_count - 1) * ICON_SIZE : x;
+						to_x = (sign < 0) ? shad_x - (dock->icon_count - 1) * ICON_SIZE : shad_x;
+						from_y = y;
+						to_y = shad_y;
+					} else {
+						from_x = x;
+						to_x = shad_x;
+						from_y = (sign < 0) ? y - (dock->icon_count - 1) * ICON_SIZE : y;
+						to_y = (sign < 0) ? shad_y - (dock->icon_count - 1) * ICON_SIZE : shad_y;
+					}
+					slide_windows(wins, dock->icon_count,
+						      from_x, from_y, to_x, to_y, axis);
+					xcb_unmap_window(wdisp->conn, scr->dock_shadow);
+					moveDock(dock, shad_x, shad_y);
+					xcb_configure_window(wdisp->conn, scr->dock_shadow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ ICON_SIZE, ICON_SIZE });
 				}
-				slide_windows(wins, dock->icon_count,
-					(dock->on_right_side ? x - (dock->icon_count - 1) * ICON_SIZE : x),
-					y,
-					(dock->on_right_side ? shad_x - (dock->icon_count - 1) * ICON_SIZE : shad_x),
-					shad_y);
-				xcb_unmap_window(wdisp->conn, scr->dock_shadow);
-				moveDock(dock, shad_x, shad_y);
-				xcb_configure_window(wdisp->conn, scr->dock_shadow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ ICON_SIZE, ICON_SIZE });
-			}
 			done = 1;
 			break;
 		}
@@ -4829,7 +5558,7 @@ static void drawerIconExpose(WObjDescriptor *desc, xcb_generic_event_t *event)
 
 static int addADrawer(WScreen *scr)
 {
-	int i, y, sig, found_y;
+	int i, along, sig, found, ax, ay;
 	WDock *drawer, *dock = scr->dock;
 	WDrawerChain *dc;
 	char can_be_here[2 * dock->max_icons - 1];
@@ -4837,36 +5566,43 @@ static int addADrawer(WScreen *scr)
 	if (dock->icon_count + scr->drawer_count >= dock->max_icons)
 		return -1;
 
-	for (y = -dock->max_icons + 1; y < dock->max_icons; y++) {
-		can_be_here[y + dock->max_icons - 1] = true;
-	}
+	for (along = -dock->max_icons + 1; along < dock->max_icons; along++)
+		can_be_here[along + dock->max_icons - 1] = true;
 	for (i = 0; i < dock->max_icons; i++) {
 		if (dock->icon_array[i] != NULL) {
-			int idx = dock->icon_array[i]->yindex + dock->max_icons - 1;
+			int idx = wDockAlongIndex(dock->icon_array[i], dock->edge)
+				  + dock->max_icons - 1;
 			if (idx >= 0 && idx < 2 * dock->max_icons - 1)
 				can_be_here[idx] = false;
 		}
 	}
 	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
-		y = (int) ((dc->adrawer->y_pos - dock->y_pos) / ICON_SIZE);
-		can_be_here[y + dock->max_icons - 1] = false;
+		if (wDockEdgeHorizontal(dock->edge))
+			along = (int) ((dc->adrawer->x_pos - dock->x_pos) / ICON_SIZE);
+		else
+			along = (int) ((dc->adrawer->y_pos - dock->y_pos) / ICON_SIZE);
+		can_be_here[along + dock->max_icons - 1] = false;
 	}
 
-	found_y = false;
-	for (sig = 1; !found_y && sig > -2; sig -= 2) // 1, then -1
+	found = false;
+	for (sig = 1; !found && sig > -2; sig -= 2) // 1, then -1
 	{
-		for (y = sig; sig * y < dock->max_icons; y += sig)
+		for (along = sig; sig * along < dock->max_icons; along += sig)
 		{
-			if (can_be_here[y + dock->max_icons - 1] &&
-				onScreen(scr, dock->x_pos, dock->y_pos + y * ICON_SIZE))
+			ax = dock->x_pos + (wDockEdgeHorizontal(dock->edge) ?
+					    along * ICON_SIZE : 0);
+			ay = dock->y_pos + (wDockEdgeHorizontal(dock->edge) ?
+					    0 : along * ICON_SIZE);
+			if (can_be_here[along + dock->max_icons - 1] &&
+				onScreen(scr, ax, ay))
 			{
-				found_y = true;
+				found = true;
 				break;
 			}
 		}
 	}
 
-	if (!found_y)
+	if (!found)
 		/* This can happen even when dock->icon_count + scr->drawer_count
 		 * < dock->max_icons when the dock is not aligned on an
 		 * ICON_SIZE multiple, as some space is lost above and under it */
@@ -4879,8 +5615,13 @@ static int addADrawer(WScreen *scr)
 	else
 		ChangeStackingLevel(drawer->icon_array[0]->icon->core, WMNormalLevel);
 	drawer->auto_raise_lower = scr->dock->auto_raise_lower;
-	drawer->x_pos = dock->x_pos;
-	drawer->y_pos = dock->y_pos + ICON_SIZE * y;
+	if (wDockEdgeHorizontal(dock->edge)) {
+		drawer->x_pos = dock->x_pos + ICON_SIZE * along;
+		drawer->y_pos = dock->y_pos;
+	} else {
+		drawer->x_pos = dock->x_pos;
+		drawer->y_pos = dock->y_pos + ICON_SIZE * along;
+	}
 	drawer->icon_array[0]->xindex = 0;
 	drawer->icon_array[0]->yindex = 0;
 	drawer->icon_array[0]->x_pos = drawer->x_pos;
@@ -4930,7 +5671,12 @@ static void drawerDestroy(WDock *drawer)
 		if (!aicon) {
 			wwarning("drawerDestroy: icon_count==2 but no appicon found");
 		} else {
-			wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
+			/* the along-axis slot the drawer occupied */
+			if (wDockEdgeHorizontal(scr->dock->edge))
+				wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
+						(drawer->x_pos - scr->dock->x_pos) / ICON_SIZE, 0);
+			else
+				wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
 						0, (drawer->y_pos - scr->dock->y_pos) / ICON_SIZE);
 			xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ drawer->x_pos, drawer->y_pos });
 			xcb_map_window(wdisp->conn, aicon->icon->core->window);
@@ -4988,6 +5734,7 @@ void wDrawerIconPaint(WAppIcon *dicon)
 	WScreen *scr = dicon->icon->core->screen_ptr;
 	WMColor *color;
 	cairo_t *cr;
+	int c = ICON_SIZE / 2;
 
 	wIconPaint(dicon->icon);
 
@@ -4999,16 +5746,34 @@ void wDrawerIconPaint(WAppIcon *dicon)
 	cr = WCairoBeginForDrawable(scr->wmscreen, win);
 	if (!cr)
 		return;
-	if (dicon->dock->on_right_side)
+
+	/* the arrow points into the screen, at the drawer contents */
+	switch (dicon->dock->edge) {
+	case WDOCK_EDGE_RIGHT:
 		fillArrow(cr, color,
-			  10, ICON_SIZE / 2 - 5,
-			  10, ICON_SIZE / 2 + 5,
-			  5,  ICON_SIZE / 2);
-	else
+			  10, c - 5,
+			  10, c + 5,
+			  5,  c);
+		break;
+	case WDOCK_EDGE_LEFT:
 		fillArrow(cr, color,
-			  ICON_SIZE - 1 - 10, ICON_SIZE / 2 - 5,
-			  ICON_SIZE - 1 - 10, ICON_SIZE / 2 + 5,
-			  ICON_SIZE - 1 - 5,  ICON_SIZE / 2);
+			  ICON_SIZE - 1 - 10, c - 5,
+			  ICON_SIZE - 1 - 10, c + 5,
+			  ICON_SIZE - 1 - 5,  c);
+		break;
+	case WDOCK_EDGE_TOP:
+		fillArrow(cr, color,
+			  c - 5, ICON_SIZE - 1 - 10,
+			  c + 5, ICON_SIZE - 1 - 10,
+			  c, ICON_SIZE - 1 - 5);
+		break;
+	case WDOCK_EDGE_BOTTOM:
+		fillArrow(cr, color,
+			  c - 5, 10,
+			  c + 5, 10,
+			  c, 5);
+		break;
+	}
 	WCairoEnd(cr);
 }
 
@@ -5018,6 +5783,7 @@ RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile)
 	RImage *tile = RCloneImage(normalTile);
 	RColor dark;
 	RColor light;
+	int c, m = ICON_SIZE / 2;
 
 	dark.alpha = 0;
 	dark.red = dark.green = dark.blue = 60;
@@ -5025,67 +5791,56 @@ RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile)
 	light.alpha = 0;
 	light.red = light.green = light.blue = 80;
 
-	/* arrow bevel */
-	if (!scr->dock || scr->dock->on_right_side) {
-		ROperateLine(tile, RSubtractOperation, 11, ICON_SIZE / 2 - 7,
-			4, ICON_SIZE / 2, &dark);       /* / */
-		ROperateLine(tile, RSubtractOperation, 11, ICON_SIZE / 2 + 7,
-			4, ICON_SIZE / 2, &dark);       /* \ */
-		ROperateLine(tile, RAddOperation,      11, ICON_SIZE / 2 - 7,
-			11, ICON_SIZE / 2 + 7, &light); /* | */
-	}
-	else {
-		ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, ICON_SIZE / 2 - 7,
-			ICON_SIZE-1 - 4, ICON_SIZE / 2, &dark);      /* \ */
-		ROperateLine(tile, RAddOperation,      ICON_SIZE-1 - 11, ICON_SIZE / 2 + 7,
-			ICON_SIZE-1 - 4, ICON_SIZE / 2, &light);     /* / */
-		ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, ICON_SIZE / 2 - 7,
-			ICON_SIZE-1 - 11, ICON_SIZE / 2 + 7, &dark); /* | */
+	c = m;
+
+	/* arrow bevel pointing at the drawer contents */
+	if (!scr->dock) {
+		/* assume a right-side dock, the tile is built before the
+		 * dock exists */
+		ROperateLine(tile, RSubtractOperation, 11, c - 7,
+			4, c, &dark);       /* / */
+		ROperateLine(tile, RSubtractOperation, 11, c + 7,
+			4, c, &dark);       /* \ */
+		ROperateLine(tile, RAddOperation,      11, c - 7,
+			11, c + 7, &light); /* | */
+	} else {
+		switch (scr->dock->edge) {
+		case WDOCK_EDGE_LEFT:
+			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, c - 7,
+				ICON_SIZE-1 - 4, c, &dark);      /* \ */
+			ROperateLine(tile, RAddOperation,      ICON_SIZE-1 - 11, c + 7,
+				ICON_SIZE-1 - 4, c, &light);     /* / */
+			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, c - 7,
+				ICON_SIZE-1 - 11, c + 7, &dark); /* | */
+			break;
+		case WDOCK_EDGE_TOP:
+			ROperateLine(tile, RSubtractOperation, c - 7, ICON_SIZE-1 - 11,
+				c, ICON_SIZE-1 - 4, &dark);       /* \ */
+			ROperateLine(tile, RSubtractOperation, c + 7, ICON_SIZE-1 - 11,
+				c, ICON_SIZE-1 - 4, &dark);       /* / */
+			ROperateLine(tile, RAddOperation,      c - 7, ICON_SIZE-1 - 11,
+				c + 7, ICON_SIZE-1 - 11, &light); /* - */
+			break;
+		case WDOCK_EDGE_BOTTOM:
+			ROperateLine(tile, RSubtractOperation, c - 7, 11,
+				c, 4, &dark);       /* / */
+			ROperateLine(tile, RSubtractOperation, c + 7, 11,
+				c, 4, &dark);       /* \ */
+			ROperateLine(tile, RAddOperation,      c - 7, 11,
+				c + 7, 11, &light); /* - */
+			break;
+		case WDOCK_EDGE_RIGHT:
+		default:
+			ROperateLine(tile, RSubtractOperation, 11, c - 7,
+				4, c, &dark);       /* / */
+			ROperateLine(tile, RSubtractOperation, 11, c + 7,
+				4, c, &dark);       /* \ */
+			ROperateLine(tile, RAddOperation,      11, c - 7,
+				11, c + 7, &light); /* | */
+			break;
+		}
 	}
 	return tile;
-}
-
-
-static void swapDrawer(WDock *drawer, int new_x)
-{
-	int i;
-
-	drawer->on_right_side = drawer->screen_ptr->dock->on_right_side;
-	drawer->x_pos = new_x;
-
-	for (i = 0; i < drawer->max_icons; i++) {
-		WAppIcon *ai;
-
-		ai = drawer->icon_array[i];
-		if (ai == NULL)
-			continue;
-		if (drawer->on_right_side)
-			ai->xindex = -abs(ai->xindex);
-		else
-			ai->xindex = abs(ai->xindex);
-		ai->x_pos = new_x + ai->xindex * ICON_SIZE;
-
-		/* Update drawer's tile */
-		if (i == 0) {
-			wIconUpdate(ai->icon);
-			wDrawerIconPaint(ai);
-		}
-		xcb_configure_window(wdisp->conn, ai->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ ai->x_pos, ai->y_pos });
-	}
-}
-
-
-static void swapDrawers(WScreen *scr, int new_x)
-{
-	WDrawerChain *dc;
-
-	if (scr->drawer_tile)
-		RReleaseImage(scr->drawer_tile);
-
-	scr->drawer_tile = wDrawerMakeTile(scr, scr->icon_tile);
-
-	for (dc = scr->drawers; dc != NULL; dc = dc->next)
-		swapDrawer(dc->adrawer, new_x);
 }
 
 
@@ -5096,13 +5851,23 @@ int wIsADrawer(WAppIcon *aicon)
 }
 
 
-static WDock* getDrawer(WScreen *scr, int y_index)
+/* Find a drawer by the along-axis slot of its main tile relative to
+ * the dock */
+static WDock *getDrawerAtAlong(WScreen *scr, int along)
 {
 	WDrawerChain *dc;
 
 	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
-		if (dc->adrawer->y_pos - scr->dock->y_pos == y_index * ICON_SIZE)
-			return dc->adrawer;
+		WDock *drawer = dc->adrawer;
+		int delta;
+
+		if (wDockEdgeHorizontal(scr->dock->edge))
+			delta = drawer->x_pos - scr->dock->x_pos;
+		else
+			delta = drawer->y_pos - scr->dock->y_pos;
+
+		if (delta == along * ICON_SIZE)
+			return drawer;
 	}
 	return NULL;
 }
@@ -5120,24 +5885,24 @@ static int indexOfHole(WDock *drawer, WAppIcon *moving_aicon, int redocking)
 	/* Classic interview question...
 	 *
 	 * We have n-1 (n = drawer->icon_count-1 or drawer->icon_count, see
-	 * redocking) appicons, whose xindex are unique in [1..n]. One is missing:
-	 * that's where the ghost of the moving appicon is, that's what the
-	 * function should return.
+	 * redocking) appicons, whose across indices are unique in [1..n]. One
+	 * is missing: that's where the ghost of the moving appicon is, that's
+	 * what the function should return.
 	 *
 	 * We compute 1+2+...+n (this sum is equal to n*(n+1)/2), we subtract to
-	 * this sum the xindex of each of the n-1 appicons, and we get the correct
-	 * index! */
+	 * this sum the across index of each of the n-1 appicons, and we get the
+	 * correct index! */
 
 	if (redocking) {
 		index_of_hole = (drawer->icon_count - 1) * drawer->icon_count / 2;
 	} else {
 		index_of_hole = drawer->icon_count * (drawer->icon_count + 1) / 2;
 	}
-	index_of_hole *= (drawer->on_right_side ? -1 : 1);
+	index_of_hole *= wDockAcrossSign(drawer->edge);
 
 	for (i = 1; i < drawer->max_icons; i++) {
 		if (drawer->icon_array[i] && drawer->icon_array[i] != moving_aicon)
-			index_of_hole -= drawer->icon_array[i]->xindex;
+			index_of_hole -= wDockAcrossIndex(drawer->icon_array[i], drawer->edge);
 	}
 	/* wmessage(" Index of the moving appicon is %d (%sredocking)", index_of_hole, (redocking ? "" : "not ")); */
 	if (abs(index_of_hole) > abs(drawer->icon_count) - (redocking ? 1 : 0))
@@ -5150,33 +5915,67 @@ static int indexOfHole(WDock *drawer, WAppIcon *moving_aicon, int redocking)
 }
 
 
-void wSlideAppicons(WAppIcon **appicons, int n, int to_the_left)
+/* Slide n icons by (dx_cells, dy_cells) cells and restack them along
+ * the stack axis at the destination. The deltas are -1, 0 or +1. */
+void wSlideAppiconsDelta(WAppIcon **appicons, int n, int dx_cells, int dy_cells, char axis)
 {
 	int i;
-	int leftmost = -1, min_index = 9999, from_x = -1; // leftmost and from_x initialized to avoid warning
-	xcb_window_t wins[n];
+	int min_index = 9999, from_x = -1, from_y = -1, first = 0;
 	WAppIcon *aicon;
 
 	if (n < 1)
 		return;
 
+	xcb_window_t wins[n];
+
+	memset(wins, 0, sizeof(wins)); /* XCB_NONE, skipped by slide_windows */
+
 	for (i = 0; i < n; i++) {
+		int idx;
+
 		aicon = appicons[i];
-		aicon->xindex += (to_the_left ? -1 : +1);
-		if (aicon->xindex < min_index) {
-			min_index = aicon->xindex;
-			leftmost = i;
+		aicon->xindex += dx_cells;
+		aicon->yindex += dy_cells;
+		/* exactly one of the two changes, so this is the
+		 * along-the-drawer coordinate */
+		idx = aicon->xindex + aicon->yindex;
+		if (idx < min_index) {
+			min_index = idx;
+			first = i;
 			from_x = aicon->x_pos;
+			from_y = aicon->y_pos;
 		}
-		aicon->x_pos += (to_the_left ? -ICON_SIZE : +ICON_SIZE);
+		aicon->x_pos += dx_cells * ICON_SIZE;
+		aicon->y_pos += dy_cells * ICON_SIZE;
 	}
 
 	for (i = 0; i < n; i++) {
+		int idx;
+
 		aicon = appicons[i];
-		wins[aicon->xindex - min_index] = aicon->icon->core->window;
+		idx = aicon->xindex + aicon->yindex - min_index;
+		if (idx < 0 || idx >= n) {
+			wwarning("wSlideAppiconsDelta: index %d out of range [0..%d]",
+				 idx, n - 1);
+			continue;
+		}
+		wins[idx] = aicon->icon->core->window;
 	}
-	aicon = appicons[leftmost];
-	slide_windows(wins, n, from_x, aicon->y_pos, aicon->x_pos, aicon->y_pos);
+	aicon = appicons[first];
+	slide_windows(wins, n, from_x, from_y, aicon->x_pos, aicon->y_pos, axis);
+}
+
+void wSlideAppiconsAcross(WAppIcon **appicons, int n, const WDock *drawer,
+			  bool into_drawer)
+{
+	char axis;
+	int sign;
+
+	wDockGeomAcrossSign(drawer->edge, &axis, &sign);
+	if (axis == 'x')
+		wSlideAppiconsDelta(appicons, n, into_drawer ? sign : -sign, 0, axis);
+	else
+		wSlideAppiconsDelta(appicons, n, 0, into_drawer ? sign : -sign, axis);
 }
 
 
@@ -5190,7 +5989,7 @@ void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking)
 	for (i = 0; i < drawer->max_icons; i++) {
 		WAppIcon *ai = drawer->icon_array[i];
 		if (ai && ai != aicon &&
-			abs(ai->xindex) > abs(index_of_hole))
+			abs(wDockAcrossIndex(ai, drawer->edge)) > abs(index_of_hole))
 			aicons_to_shift[j++] = ai;
 	}
 	if (j != drawer->icon_count - abs(index_of_hole) - (redocking ? 1 : 0))
@@ -5198,7 +5997,7 @@ void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking)
 			index_of_hole,
 			drawer->icon_array[0] ? drawer->icon_array[0]->wm_instance : "(no main tile)",
 			j, drawer->icon_count - abs(index_of_hole) - (redocking ? 1 : 0));
-	wSlideAppicons(aicons_to_shift, j, !drawer->on_right_side);
+	wSlideAppiconsAcross(aicons_to_shift, j, drawer, false);
 }
 
 
@@ -5212,9 +6011,9 @@ static void drawerConsolidateIcons(WDock *drawer)
 		WAppIcon *ai = drawer->icon_array[i];
 		if (ai == NULL)
 			continue;
-		sum += abs(ai->xindex);
-		if (abs(ai->xindex) > maxRemaining)
-			maxRemaining = abs(ai->xindex);
+		sum += abs(wDockAcrossIndex(ai, drawer->edge));
+		if (abs(wDockAcrossIndex(ai, drawer->edge)) > maxRemaining)
+			maxRemaining = abs(wDockAcrossIndex(ai, drawer->edge));
 	}
 	while (sum != maxRemaining * (maxRemaining + 1) / 2) { // while there is a hole
 		WAppIcon *ai;
@@ -5227,7 +6026,7 @@ static void drawerConsolidateIcons(WDock *drawer)
 				WAppIcon *ai = drawer->icon_array[i];
 				if (ai == NULL)
 					continue;
-				if (abs(ai->xindex) == maxDeleted) {
+				if (abs(wDockAcrossIndex(ai, drawer->edge)) == maxDeleted) {
 					foundAppIconThere = true;
 					break;
 				}
@@ -5239,11 +6038,11 @@ static void drawerConsolidateIcons(WDock *drawer)
 		n = 0;
 		for (i = 0; i < drawer->max_icons; i++) {
 			ai = drawer->icon_array[i];
-			if (ai != NULL && abs(ai->xindex) > maxDeleted)
+			if (ai != NULL && abs(wDockAcrossIndex(ai, drawer->edge)) > maxDeleted)
 				aicons_to_shift[n++] = ai;
 		}
 		assert(n == maxRemaining - maxDeleted); // for the code review ;-)
-		wSlideAppicons(aicons_to_shift, n, !drawer->on_right_side);
+		wSlideAppiconsAcross(aicons_to_shift, n, drawer, false);
 		// Efficient beancounting
 		maxRemaining -= 1;
 		sum -= n;
@@ -5287,20 +6086,36 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 	if (!value || !WMIsPLString(value))
 		COMPLAIN("Position");
 	else {
-		int x, y, y_index;
+		int x, y, along_index;
+		int limit = wDockAlongLimit(scr->dock);
+
 		if (sscanf(WMGetFromPLString(value), "%i,%i", &x, &y) != 2)
 			COMPLAIN("Position");
 
-		/* check position sanity */
-		x = scr->dock->x_pos;
-		y_index = (y - scr->dock->y_pos) / ICON_SIZE;
-		if (y_index >= scr->dock->max_icons) {
-			/* Here we should do something more intelligent, since it
-			 * can happen even if the user hasn't hand-edited his
-			 * G/D/State file (but uses a lower resolution). */
-			y_index = scr->dock->max_icons - 1;
+		/* Ignore the stored perpendicular coordinate: the drawer
+		 * opens from the dock's current anchor and its along
+		 * offset is re-derived from the stored along pixel. */
+		if (wDockEdgeHorizontal(scr->dock->edge)) {
+			along_index = (x - scr->dock->x_pos) / ICON_SIZE;
+			if (along_index >= limit) {
+				/* Here we should do something more intelligent, since it
+				 * can happen even if the user hasn't hand-edited his
+				 * G/D/State file (but uses a lower resolution). */
+				along_index = limit - 1;
+			}
+			x = scr->dock->x_pos + along_index * ICON_SIZE;
+			y = scr->dock->y_pos;
+		} else {
+			along_index = (y - scr->dock->y_pos) / ICON_SIZE;
+			if (along_index >= limit) {
+				/* Here we should do something more intelligent, since it
+				 * can happen even if the user hasn't hand-edited his
+				 * G/D/State file (but uses a lower resolution). */
+				along_index = limit - 1;
+			}
+			y = scr->dock->y_pos + along_index * ICON_SIZE;
+			x = scr->dock->x_pos;
 		}
-		y = scr->dock->y_pos + y_index * ICON_SIZE;
 		moveDock(drawer, x, y);
 	}
 
@@ -5360,18 +6175,28 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 		}
 
 		value = WMGetFromPLArray(apps, i);
-		aicon = restore_icon_state(scr, value, WM_DRAWER, drawer->icon_count);
+		aicon = restore_icon_state(scr, value, WM_DRAWER, drawer->icon_count,
+					   drawer->edge);
 
 		drawer->icon_array[drawer->icon_count] = aicon;
 
 		if (aicon) {
-			/* don't trust the stored direction sign as the dock is
-			 * dynamically positioned depending on the screen size
-			 */
-			if (drawer->screen_ptr->dock->on_right_side)
-				aicon->xindex = -abs(aicon->xindex);
-			else
-				aicon->xindex = abs(aicon->xindex);
+			char axis;
+			int sign, mag;
+
+			/* don't trust the stored direction sign or axis:
+			 * the drawer opens where the dock's current edge
+			 * says, so re-derive the across index from the
+			 * magnitudes */
+			wDockGeomAcrossSign(drawer->edge, &axis, &sign);
+			mag = WMAX(abs(aicon->xindex), abs(aicon->yindex));
+			if (axis == 'x') {
+				aicon->xindex = sign * mag;
+				aicon->yindex = 0;
+			} else {
+				aicon->xindex = 0;
+				aicon->yindex = sign * mag;
+			}
 			aicon->dock = drawer;
 			aicon->x_pos = drawer->x_pos + (aicon->xindex * ICON_SIZE);
 			aicon->y_pos = drawer->y_pos + (aicon->yindex * ICON_SIZE);

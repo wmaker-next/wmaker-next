@@ -1176,7 +1176,11 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_KEEP_DOCK_ON_PRIMARY_HEAD)) {
 		if (scr && scr->dock)
-			wDockSwap(scr->dock);
+			wDockReanchor(scr->dock);
+	}
+	if (wConfigChangesHas(changes, WCFG_KEY_DOCK_EDGE)) {
+		if (scr && scr->dock)
+			wDockSetEdge(scr->dock, new_config->dock_edge);
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_DOCK))
 		update_usable_area = true;

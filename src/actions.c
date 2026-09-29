@@ -2754,14 +2754,8 @@ void wArrangeIcons(WScreen *scr, bool arrangeAll)
 		WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 		WMRect rect;
 
-		if (scr->dock) {
-			int offset = w_global.config->icon_size + DOCK_EXTRA_SPACE;
-
-			if (scr->dock->on_right_side)
-				area.x2 -= offset;
-			else
-				area.x1 += offset;
-		}
+		if (scr->dock)
+			wDockInsetArea(scr, &area);
 
 		rect = wmkrect(area.x1, area.y1, area.x2 - area.x1, area.y2 - area.y1);
 

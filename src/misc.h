@@ -34,12 +34,13 @@ bool UpdateDomainFile(WDDomain * domain);
 bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms);
 
 void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y);
-void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y);
+void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y,
+		   char stack_axis);
 void ParseWindowName(WMPropList *value, char **winstance, char **wclass, const char *where);
 
 static inline void slide_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y)
 {
-	slide_windows(&win, 1, from_x, from_y, to_x, to_y);
+	slide_windows(&win, 1, from_x, from_y, to_x, to_y, 'x');
 }
 
 /* Helper is a 'wmsetbg' subprocess with sets the background for the current workspace */
