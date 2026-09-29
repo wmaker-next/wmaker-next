@@ -78,6 +78,48 @@ uint32_t *WXRcvFormat32List  (xcb_connection_t *dpy, WXCookie ck, size_t *count)
 char     *WXRcvString        (xcb_connection_t *dpy, WXCookie ck, size_t *len);
 bool      WXRcvExists        (xcb_connection_t *dpy, WXCookie ck);
 
+/* --- Pure decode half --------------------------------------------------
+ *
+ * The validation and decode half of the readers above, decoupled from
+ * the connection so a fetched payload can be decoded offline (fuzz
+ * harnesses, unit tests). The WXRcv* readers fetch the reply, project
+ * it onto a WXPropValue and call the same WXDecode* functions, so the
+ * checked path and any offline caller share one decode.
+ *
+ * A WXPropValue mirrors what a GetProperty reply carries: the property
+ * type, the element format, how many bytes the server still holds, and
+ * the payload itself. Conventions match the WXRcv* twins: arrays are
+ * wmalloc()'d copies released with wfree().
+ */
+
+typedef struct {
+	xcb_atom_t type;
+	int format;             /* 8, 16 or 32 */
+	uint32_t bytes_after;
+	uint32_t value_len;     /* payload bytes */
+	const void *value;
+} WXPropValue;
+
+/* Validate a fetched payload the way the reply path does: reject an
+ * absent property (XCB_ATOM_NONE), a wrong format and a payload below
+ * min_items, including the truncated partial reply (empty payload with
+ * bytes_after > 0). On success *nitems counts items in the payload's
+ * own format. */
+bool WXPropValidate(const WXPropValue *v, int req_fmt, size_t min_items,
+		    uint32_t *nitems);
+
+/* Decode a format-32 payload into out[n], rejecting anything with fewer
+ * than n items. */
+bool WXDecodeFormat32N(const WXPropValue *v, uint32_t *out, size_t n);
+
+/* Decode a format-32 payload into a wmalloc'd array, *count set to the
+ * item count. */
+uint32_t *WXDecodeFormat32List(const WXPropValue *v, size_t *count);
+
+/* Decode a format-8 payload into a wmalloc'd NUL-terminated string,
+ * *len (may be NULL) set to the byte count without the terminator. */
+char *WXDecodeString(const WXPropValue *v, size_t *len);
+
 /* --- Window attributes / geometry (split-phase) -----------------------
  *
  * XGetWindowAttributes() is one Xlib call but two protocol requests

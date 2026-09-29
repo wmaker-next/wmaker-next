@@ -5,20 +5,25 @@ AUTOMAKE_OPTIONS =
 # interactive demo programs, built on demand only (e.g. `make wtest`)
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
-# libFuzzer harnesses for the property-list parser, built on demand
-# only (e.g. `make fuzz_proplist`) and only under a clang sanitizer
-# configure (-fsanitize=fuzzer comes from the per-program LDFLAGS, a
-# plain gcc build never links them). Recipe:
+# libFuzzer harnesses for the property-list parser and the WXProp
+# property decode core, built on demand only (e.g. `make fuzz_proplist`)
+# and only under a clang sanitizer configure (-fsanitize=fuzzer comes
+# from the per-program LDFLAGS, a plain gcc build never links them).
+# Recipe:
 #   ./configure CC=clang \
 #     CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=undefined -g -O1" \
 #     LDFLAGS="-fsanitize=address,undefined"
-#   make -C WINGs/Tests fuzz_proplist
+#   make -C WINGs/Tests fuzz_proplist fuzz_wxprop
 #   WINGs/Tests/fuzz_proplist corpus/ -fork=14 -ignore_crashes=1 -max_total_time=600
-EXTRA_PROGRAMS += fuzz_proplist
+EXTRA_PROGRAMS += fuzz_proplist fuzz_wxprop
 
 fuzz_proplist_SOURCES = fuzz_proplist.c
 fuzz_proplist_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 fuzz_proplist_LDFLAGS = -fsanitize=fuzzer
+
+fuzz_wxprop_SOURCES = fuzz_wxprop.c
+fuzz_wxprop_LDADD = $(top_builddir)/WINGs/libWINGs.la @INTLIBS@
+fuzz_wxprop_LDFLAGS = -fsanitize=fuzzer
 
 # the demos' data files: logo.xpm/upbtn.xpm are #included at compile
 # time (wmquery/wmfile) and loaded at runtime (wtest/fonttest), the

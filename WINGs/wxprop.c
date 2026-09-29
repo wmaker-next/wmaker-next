@@ -99,51 +99,85 @@ void WXDiscard(xcb_connection_t *dpy, WXCookie ck)
 	xcb_discard_reply(wx_conn(dpy), ck.seq);
 }
 
-/* ---- reply half: validating fetch ----------------------------------- */
+/* ---- pure decode half ------------------------------------------------ */
 
-/*
- * Collect the reply for a cookie and validate format/count. On success
- * returns the xcb reply (caller in this file free()s it) and sets *nitems.
- * Returns NULL if the property is absent, the server reported an error,
- * or the actual format/count do not match what was requested.
- *
- * The required type was already supplied to xcb_get_property(), so when it
- * does not match, the server returns the actual type and format with an
- * empty value and bytes_after set to the full length. Reject that case
- * explicitly so string readers (which pass min_items 0) still see NULL on
- * a wrong-type property instead of an empty string.
- */
-static xcb_get_property_reply_t *wx_rcv_raw(xcb_connection_t *dpy, WXCookie ck,
-					    int req_fmt, uint32_t min_items,
-					    uint32_t *nitems)
+bool WXPropValidate(const WXPropValue *v, int req_fmt, size_t min_items,
+		    uint32_t *nitems)
 {
-	xcb_get_property_reply_t *r;
 	uint32_t n;
 
-	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
-	if (!r)
-		return NULL;
+	if (!v || v->type == XCB_ATOM_NONE ||
+	    (req_fmt != 0 && v->format != req_fmt))
+		return false;
 
-	if (r->type == XCB_ATOM_NONE ||
-	    (req_fmt != 0 && r->format != req_fmt)) {
-		free(r);
-		return NULL;
-	}
-
-	if (r->format == 32)
-		n = (uint32_t)(xcb_get_property_value_length(r) / 4);
-	else if (r->format == 16)
-		n = (uint32_t)(xcb_get_property_value_length(r) / 2);
+	if (v->format == 32)
+		n = (uint32_t)(v->value_len / 4);
+	else if (v->format == 16)
+		n = (uint32_t)(v->value_len / 2);
 	else
-		n = (uint32_t)xcb_get_property_value_length(r);
+		n = v->value_len;
 
-	if (n < min_items || (n == 0 && r->bytes_after > 0)) {
-		free(r);
-		return NULL;
-	}
+	if (n < min_items || (n == 0 && v->bytes_after > 0))
+		return false;
 
 	*nitems = n;
-	return r;
+	return true;
+}
+
+/* Project a fetched GetProperty reply onto the connection-independent
+ * WXPropValue view. */
+static void wx_view(WXPropValue *v, const xcb_get_property_reply_t *r)
+{
+	v->type = r->type;
+	v->format = r->format;
+	v->bytes_after = r->bytes_after;
+	v->value_len = xcb_get_property_value_length(r);
+	v->value = xcb_get_property_value(r);
+}
+
+bool WXDecodeFormat32N(const WXPropValue *v, uint32_t *out, size_t n)
+{
+	uint32_t nitems;
+
+	if (!WXPropValidate(v, 32, n, &nitems))
+		return false;
+
+	if (n)
+		memcpy(out, v->value, n * sizeof(uint32_t));
+	return true;
+}
+
+uint32_t *WXDecodeFormat32List(const WXPropValue *v, size_t *count)
+{
+	uint32_t nitems;
+	uint32_t *dst;
+
+	if (!WXPropValidate(v, 32, 1, &nitems))
+		return NULL;
+
+	dst = wmalloc(sizeof(uint32_t) * nitems);
+	memcpy(dst, v->value, nitems * sizeof(uint32_t));
+
+	*count = nitems;
+	return dst;
+}
+
+char *WXDecodeString(const WXPropValue *v, size_t *len)
+{
+	uint32_t nitems;
+	char *dst;
+
+	if (!WXPropValidate(v, 8, 0, &nitems))
+		return NULL;
+
+	dst = wmalloc((size_t)nitems + 1);
+	if (nitems)
+		memcpy(dst, v->value, nitems);
+	dst[nitems] = '\0';
+
+	if (len)
+		*len = nitems;
+	return dst;
 }
 
 /* ---- reply half: format-32 ------------------------------------------ */
@@ -151,7 +185,8 @@ static xcb_get_property_reply_t *wx_rcv_raw(xcb_connection_t *dpy, WXCookie ck,
 bool WXRcvFormat32N(xcb_connection_t *dpy, WXCookie ck, uint32_t *out, size_t n)
 {
 	xcb_get_property_reply_t *r;
-	uint32_t nitems;
+	WXPropValue v;
+	bool ok;
 
 	/* keep the min_items check and the copy length in step, a size_t n
 	 * larger than the request cap cannot have been satisfied anyway */
@@ -160,13 +195,14 @@ bool WXRcvFormat32N(xcb_connection_t *dpy, WXCookie ck, uint32_t *out, size_t n)
 		return false;
 	}
 
-	r = wx_rcv_raw(dpy, ck, 32, (uint32_t)n, &nitems);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return false;
 
-	memcpy(out, xcb_get_property_value(r), n * sizeof(uint32_t));
+	wx_view(&v, r);
+	ok = WXDecodeFormat32N(&v, out, n);
 	free(r);
-	return true;
+	return ok;
 }
 
 bool WXRcvCardinal(xcb_connection_t *dpy, WXCookie ck, uint32_t *out)
@@ -187,18 +223,16 @@ bool WXRcvCardinalN(xcb_connection_t *dpy, WXCookie ck, uint32_t *out, size_t n)
 uint32_t *WXRcvFormat32List(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
-	uint32_t nitems;
+	WXPropValue v;
 	uint32_t *dst;
 
-	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc(sizeof(uint32_t) * (nitems ? nitems : 1));
-	memcpy(dst, xcb_get_property_value(r), nitems * sizeof(uint32_t));
+	wx_view(&v, r);
+	dst = WXDecodeFormat32List(&v, count);
 	free(r);
-
-	*count = nitems;
 	return dst;
 }
 
@@ -221,15 +255,23 @@ xcb_atom_t *WXRcvAtomList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
-	const uint32_t *src;
+	WXPropValue v;
 	xcb_atom_t *dst;
+	const uint32_t *src;
 
-	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc(sizeof(xcb_atom_t) * (nitems ? nitems : 1));
-	src = xcb_get_property_value(r);
+	wx_view(&v, r);
+	nitems = 0;
+	if (!WXPropValidate(&v, 32, 1, &nitems)) {
+		free(r);
+		return NULL;
+	}
+
+	dst = wmalloc(sizeof(xcb_atom_t) * nitems);
+	src = v.value;
 	for (i = 0; i < nitems; i++)
 		dst[i] = (xcb_atom_t)src[i];
 	free(r);
@@ -252,15 +294,23 @@ xcb_window_t *WXRcvWindowList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 {
 	xcb_get_property_reply_t *r;
 	uint32_t nitems, i;
-	const uint32_t *src;
+	WXPropValue v;
 	xcb_window_t *dst;
+	const uint32_t *src;
 
-	r = wx_rcv_raw(dpy, ck, 32, 1, &nitems);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc(sizeof(xcb_window_t) * (nitems ? nitems : 1));
-	src = xcb_get_property_value(r);
+	wx_view(&v, r);
+	nitems = 0;
+	if (!WXPropValidate(&v, 32, 1, &nitems)) {
+		free(r);
+		return NULL;
+	}
+
+	dst = wmalloc(sizeof(xcb_window_t) * nitems);
+	src = v.value;
 	for (i = 0; i < nitems; i++)
 		dst[i] = (xcb_window_t)src[i];
 	free(r);
@@ -274,21 +324,16 @@ xcb_window_t *WXRcvWindowList(xcb_connection_t *dpy, WXCookie ck, size_t *count)
 char *WXRcvString(xcb_connection_t *dpy, WXCookie ck, size_t *len)
 {
 	xcb_get_property_reply_t *r;
-	uint32_t nitems;
+	WXPropValue v;
 	char *dst;
 
-	r = wx_rcv_raw(dpy, ck, 8, 0, &nitems);
+	r = xcb_get_property_reply(wx_conn(dpy), wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
 
-	dst = wmalloc((size_t)nitems + 1);
-	if (nitems)
-		memcpy(dst, xcb_get_property_value(r), nitems);
-	dst[nitems] = '\0';
+	wx_view(&v, r);
+	dst = WXDecodeString(&v, len);
 	free(r);
-
-	if (len)
-		*len = nitems;
 	return dst;
 }
 
