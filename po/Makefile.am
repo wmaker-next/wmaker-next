@@ -15,6 +15,7 @@ POTFILES  = \
 	$(top_srcdir)/src/appicon.c \
 	$(top_srcdir)/src/application.c \
 	$(top_srcdir)/src/appmenu.c \
+	$(top_srcdir)/src/appmenuparse.c \
 	$(top_srcdir)/src/balloon.c \
 	$(top_srcdir)/src/calc.c \
 	$(top_srcdir)/src/client.c \
@@ -89,6 +90,7 @@ POTFILES  = \
 	$(top_srcdir)/src/wsound.c \
 	$(top_srcdir)/src/wxkb.c \
 	$(top_srcdir)/src/xdnd.c \
+	$(top_srcdir)/src/xdnduri.c \
 	$(top_srcdir)/src/xinerama.c \
 	$(top_srcdir)/src/xsmp.c \
 	$(top_srcdir)/src/xutil.c

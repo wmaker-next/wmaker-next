@@ -24,7 +24,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 
 #include <WINGs/WXProp.h>
@@ -32,12 +31,8 @@
 #include "WindowMaker.h"
 #include "dock.h"
 #include "xdnd.h"
+#include "xdnduri.h"
 #include "workspace.h"
-
-/* the URI split is the only unbounded loop over a hostile payload and
- * no real drag carries more than a few hundred entries, while the
- * dock consumption only needs the first one */
-#define XDND_MAX_URI_ENTRIES 256
 
 
 static xcb_atom_t _XA_XdndAware;
@@ -77,40 +72,9 @@ void wXDNDMakeAwareness(xcb_window_t window)
 	WXSetAtom(wdisp->conn, window, _XA_XdndAware, (xcb_atom_t)XDND_VERSION);
 }
 
-static size_t wXDNDQuotedLength(const char *string)
-{
-	size_t length = 3;
-
-	while (*string) {
-		if (*string == '"' || *string == '\\')
-			length++;
-		length++;
-		string++;
-	}
-
-	return length;
-}
-
-static void wXDNDAppendQuoted(char **dest, const char *string)
-{
-	char *p = *dest;
-
-	*p++ = ' ';
-	*p++ = '"';
-	while (*string) {
-		if (*string == '"' || *string == '\\')
-			*p++ = '\\';
-		*p++ = *string++;
-	}
-	*p++ = '"';
-	*p = '\0';
-	*dest = p;
-}
-
 bool wXDNDProcessSelection(xcb_generic_event_t *event)
 {
 	WScreen *scr = wScreenForWindow(((xcb_selection_notify_event_t *)event)->requestor);
-	char *retain;
 	char *delme = NULL;
 	xcb_window_t selowner = wXGetSelectionOwner(wdisp->conn, _XA_XdndSelection);
 
@@ -142,77 +106,27 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 	/*process dropping */
 	if (delme) {
 		WMArray *items;
-		WMArrayIterator iter;
-		int length, file_count = 0;
-		size_t total_size = 0;
-		char *tmp;
-		char *out;
+		size_t quoted;
+		int file_count = 0;
+		char *payload;
 		char *single_path = NULL;
 
-		scr->xdestring = delme;
 		items = WMCreateArray(4);
-		retain = wstrdup(scr->xdestring);
-		wfree(scr->xdestring);
+		payload = wstrdup(delme);
+		wfree(delme);
 
-		length = strlen(retain);
-
-		/* search in string */
-		while (length--) {
-			if (retain[length] == '\r') {	/* useless char, nuke it */
-				retain[length] = 0;
-			}
-			if (retain[length] == '\n') {
-				if (retain[length + 1] != '\0') {
-					if (WMGetArrayItemCount(items) >= XDND_MAX_URI_ENTRIES) {
-						wwarning("dropping the URI list after %d entries",
-							 XDND_MAX_URI_ENTRIES);
-						break;
-					}
-					tmp = wstrdup(&retain[length + 1]);
-					if (!strncmp(tmp, "file://", 7)) {
-						WXDndDecodeURI(&tmp[7]);
-						total_size += wXDNDQuotedLength(&tmp[7]);
-					}
-					WMAddToArray(items, tmp);
-					/* this is nonsense -- if (length)
-					   WMAppendArray(items, WMCreateArray(1)); */
-				}
-				retain[length] = 0;
-			}
-		}
-		/* final one */
-		if (WMGetArrayItemCount(items) < XDND_MAX_URI_ENTRIES) {
-			tmp = wstrdup(retain);
-			if (!strncmp(tmp, "file://", 7)) {
-				WXDndDecodeURI(&tmp[7]);
-				total_size += wXDNDQuotedLength(&tmp[7]);
-			}
-			WMAddToArray(items, tmp);
-		}
-		wfree(retain);
+		quoted = wXDNDParseURIList(payload, items);
+		wfree(payload);
 
 		/* now pack new string */
-		scr->xdestring = wmalloc(total_size + 1);
+		scr->xdestring = wmalloc(quoted + 1);
 		scr->xdestring[0] = 0;	/* empty string */
-		out = scr->xdestring;
-		WM_ETARETI_ARRAY(items, tmp, iter) {
-			/* only supporting file: URI objects */
-			if (!strncmp(tmp, "file://", 7)) {
-				wXDNDAppendQuoted(&out, &tmp[7]);
-				file_count++;
-				if (file_count == 1)
-					single_path = wstrdup(&tmp[7]);
-			}
-			wfree(tmp);
-		}
+		wXDNDJoinQuotedList(items, scr->xdestring, &file_count, &single_path);
 		WMFreeArray(items);
 		/* a lone file:// path is offered to the main dock/clip tile
 		 * as a candidate launcher, multi-file drops keep going through
 		 * the per-tile DropCommand only */
-		if (file_count == 1)
-			scr->xdndpath = single_path;
-		else
-			wfree(single_path);
+		scr->xdndpath = single_path;
 		if (scr->xdestring[0])
 			wDockReceiveDNDDrop(scr, event);
 		wfree(scr->xdestring);	/* this xdestring is not from Xlib (no XFree) */

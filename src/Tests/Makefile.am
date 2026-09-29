@@ -3,6 +3,24 @@ AUTOMAKE_OPTIONS = subdir-objects
 check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout check_geometry check_xlibfree check_xerror
 TESTS = $(check_PROGRAMS)
 
+# libFuzzer harnesses for the two X-bound parse cores extracted from
+# src/ (the WMMenu text protocol and the XDND uri-list split), built on
+# demand only under a clang sanitizer configure, same recipe as the
+# WINGs/Tests fuzzers:
+#   ./configure CC=clang \
+#     CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=undefined -g -O1" \
+#     LDFLAGS="-fsanitize=address,undefined"
+#   make -C src/Tests fuzz_appmenu fuzz_xdnduri
+EXTRA_PROGRAMS = fuzz_appmenu fuzz_xdnduri
+
+fuzz_appmenu_SOURCES = fuzz_appmenu.c ../appmenuparse.c
+fuzz_appmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+fuzz_appmenu_LDFLAGS = -fsanitize=fuzzer
+
+fuzz_xdnduri_SOURCES = fuzz_xdnduri.c ../xdnduri.c
+fuzz_xdnduri_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+fuzz_xdnduri_LDFLAGS = -fsanitize=fuzzer
+
 AM_CFLAGS = @CAIRO_CFLAGS@
 
 AM_CPPFLAGS = $(DFLAGS) \

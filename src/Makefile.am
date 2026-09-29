@@ -35,6 +35,8 @@ wmaker_SOURCES = 	\
 	application.h \
 	appmenu.c \
 	appmenu.h \
+	appmenuparse.c \
+	appmenuparse.h \
 	balloon.c \
 	balloon.h \
 	client.c \
@@ -136,6 +138,7 @@ wmaker_SOURCES = 	\
 	usermenu.c \
 	usermenu.h \
 	xdnd.h \
+	xdnduri.h \
 	xinerama.h \
 	xinerama.c \
 	xsmp.c \
@@ -173,7 +176,7 @@ wmaker_SOURCES = 	\
 	wsound.h
 
 if USE_DOCK_XDND
-wmaker_SOURCES += xdnd.c
+wmaker_SOURCES += xdnd.c xdnduri.c
 endif
 if USE_MWM_HINTS
 wmaker_SOURCES += motif.h motif.c

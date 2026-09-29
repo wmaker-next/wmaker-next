@@ -31,6 +31,7 @@
 #include "menu.h"
 #include "actions.h"
 #include "appmenu.h"
+#include "appmenuparse.h"
 #include "framewin.h"
 
 
@@ -40,19 +41,6 @@ typedef struct {
 	xcb_window_t window;
 } WAppMenuData;
 
-enum {
-	wmBeginMenu = 1,
-	wmEndMenu = 2,
-	wmNormalItem = 10,
-	wmDoubleItem = 11,
-	wmSubmenuItem = 12
-};
-
-enum {
-	wmSelectItem = 1
-};
-
-#define MAX_APPMENU_DEPTH 64
 #define MAX_APPMENU_ENTRIES 1024
 
 static void sendMessage(xcb_window_t window, int what, int tag)
@@ -70,153 +58,79 @@ static void notifyClient(WMenu * menu, WMenuEntry * entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
 
-	sendMessage(data->window, wmSelectItem, data->tag);
+	sendMessage(data->window, WAM_SELECT_ITEM, data->tag);
 }
 
-static WMenu *parseMenuCommandWithDepth(WScreen *scr, xcb_window_t win, char **slist,
-					int count, int *index, int depth)
+/* Build the WMenu for one parsed node. The node tree is already
+ * validated, the only failure left is menu-side allocation. */
+static WMenu *buildAppMenu(WScreen *scr, xcb_window_t win,
+			   const WAppMenuNode *node, bool is_main)
 {
+	const WAppMenuNode *child;
 	WMenu *menu;
-	int command;
-	int code, pos;
-	char title[300];
-	char rtext[300];
 
-	if (depth > MAX_APPMENU_DEPTH) {
-		wwarning(_("appmenu: menu nesting too deep in window %lx"), (unsigned long)win);
-		return NULL;
-	}
-
-	if (sscanf(slist[*index], "%i %i %n", &command, &code, &pos) < 2 || command != wmBeginMenu) {
-		wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"), slist[*index], (unsigned long)win);
-		return NULL;
-	}
-	if (wstrlcpy(title, &slist[*index][pos], sizeof(title)) >= sizeof(title)) {
-		wwarning(_("appmenu: menu command size exceeded in window %lx"), (unsigned long)win);
-		return NULL;
-	}
-	menu = wMenuCreateForApp(scr, title, *index == 1);
+	menu = wMenuCreateForApp(scr, node->title, is_main);
 	if (!menu)
 		return NULL;
-	*index += 1;
-	while (*index < count) {
-		int ecode, etag, enab;
 
-		if (sscanf(slist[*index], "%i", &command) != 1) {
-			wMenuDestroy(menu, true);
-			wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"), slist[*index], (unsigned long)win);
-			return NULL;
-		}
-
-		if (command == wmEndMenu) {
-			*index += 1;
-			break;
-
-		} else if (command == wmNormalItem || command == wmDoubleItem) {
+	for (child = node->first_child; child; child = child->next) {
+		if (child->kind == WAM_KIND_ITEM || child->kind == WAM_KIND_DOUBLE_ITEM) {
 			WAppMenuData *data;
 			WMenuEntry *entry;
 
-			if (command == wmNormalItem) {
-				if (sscanf(slist[*index], "%i %i %i %i %n",
-					   &command, &ecode, &etag, &enab, &pos) != 4 || ecode != code) {
-					wMenuDestroy(menu, true);
-					wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"),
-						 slist[*index], (unsigned long)win);
-					return NULL;
-				}
-				rtext[0] = 0;
-			} else {
-				if (sscanf(slist[*index], "%i %i %i %i %299s %n",
-					   &command, &ecode, &etag, &enab, rtext, &pos) != 5 || ecode != code) {
-					wMenuDestroy(menu, true);
-					wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"),
-						 slist[*index], (unsigned long)win);
-					return NULL;
-				}
-			}
-			if (wstrlcpy(title, &slist[*index][pos], sizeof(title)) >= sizeof(title)) {
-				wMenuDestroy(menu, true);
-				wwarning(_("appmenu: menu command size exceeded in window %lx"), (unsigned long)win);
-				return NULL;
-			}
 			data = malloc(sizeof(WAppMenuData));
 			if (data == NULL) {
-				wwarning(_("appmenu: out of memory creating menu for window %lx"), (unsigned long)win);
 				wMenuDestroy(menu, true);
+				wwarning(_("appmenu: out of memory creating menu for window %lx"),
+					 (unsigned long)win);
 				return NULL;
 			}
-			data->code = code;
-			data->tag = etag;
+			data->code = node->code;
+			data->tag = child->tag;
 			data->window = win;
-			entry = wMenuAddCallback(menu, title, notifyClient, data);
+			entry = wMenuAddCallback(menu, child->title, notifyClient, data);
 			if (!entry) {
 				wMenuDestroy(menu, true);
-				wwarning(_("appmenu: out of memory creating menu for window %lx"), (unsigned long)win);
+				wwarning(_("appmenu: out of memory creating menu for window %lx"),
+					 (unsigned long)win);
 				free(data);
 				return NULL;
 			}
-			if (rtext[0] != 0)
-				entry->rtext = wstrdup(rtext);
-			else
-				entry->rtext = NULL;
+			entry->rtext = child->rtext ? wstrdup(child->rtext) : NULL;
 			entry->free_cdata = free;
-			*index += 1;
 
-		} else if (command == wmSubmenuItem) {
-			int ncode;
-			WMenuEntry *entry;
+		} else if (child->kind == WAM_KIND_SUBMENU) {
 			WMenu *submenu;
+			WMenuEntry *entry;
 
-			if (sscanf(slist[*index], "%i %i %i %i %i %n",
-				   &command, &ecode, &etag, &enab, &ncode, &pos) != 5 || ecode != code) {
-				wMenuDestroy(menu, true);
-				wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"), slist[*index], (unsigned long)win);
-
-				return NULL;
-			}
-			if (wstrlcpy(title, &slist[*index][pos], sizeof(title)) >= sizeof(title)) {
-				wMenuDestroy(menu, true);
-				wwarning(_("appmenu: menu command size exceeded in window %lx"), (unsigned long)win);
-				return NULL;
-			}
-			*index += 1;
-
-			submenu = parseMenuCommandWithDepth(scr, win, slist, count, index, depth + 1);
+			submenu = buildAppMenu(scr, win, child->first_child, false);
 			if (!submenu) {
 				wMenuDestroy(menu, true);
 				return NULL;
 			}
 
-			entry = wMenuAddCallback(menu, title, NULL, NULL);
-
+			entry = wMenuAddCallback(menu, child->title, NULL, NULL);
 			if (!entry) {
 				wMenuDestroy(menu, true);
 				wMenuDestroy(submenu, true);
-				wwarning(_("appmenu: out of memory creating menu for window %lx"), (unsigned long)win);
+				wwarning(_("appmenu: out of memory creating menu for window %lx"),
+					 (unsigned long)win);
 				return NULL;
 			}
 
 			wMenuEntrySetCascade(menu, entry, submenu);
-
-		} else {
-			wMenuDestroy(menu, true);
-			wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"), slist[*index], (unsigned long)win);
-			return NULL;
 		}
 	}
 
 	return menu;
 }
 
-static WMenu *parseMenuCommand(WScreen *scr, xcb_window_t win, char **slist, int count, int *index)
-{
-	return parseMenuCommandWithDepth(scr, win, slist, count, index, 0);
-}
-
 WMenu *wAppMenuGet(WScreen * scr, xcb_window_t window)
 {
-	int count, i;
+	int count;
 	char **slist;
+	const char *bad;
+	WAppMenuNode *root;
 	WMenu *menu;
 
 	slist = WXGetTextPropertyList(wdisp->conn, window, wdisp->atom.wmaker.menu, &count);
@@ -231,18 +145,53 @@ WMenu *wAppMenuGet(WScreen * scr, xcb_window_t window)
 		WXFreeStringList(slist, count);
 		return NULL;
 	}
+	if (count < 2) {
+		/* a header line alone is not a menu, the old reader
+		 * walked one past the list here */
+		wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"),
+			 slist[0], (unsigned long)window);
+		WXFreeStringList(slist, count);
+		return NULL;
+	}
 	if (count > MAX_APPMENU_ENTRIES) {
 		wwarning(_("appmenu: too many menu entries (%d) in window %lx"), count, (unsigned long)window);
 		WXFreeStringList(slist, count);
 		return NULL;
 	}
 
-	i = 1;
-	menu = parseMenuCommand(scr, window, slist, count, &i);
-	if (menu)
-		menu->parent = NULL;
+	bad = NULL;
+	root = NULL;
+	switch (wAppMenuParse((const char *const *)slist + 1, count - 1, &bad, &root)) {
+	case WAPPMENU_OK:
+		menu = buildAppMenu(scr, window, root, true);
+		wAppMenuFreeNode(root);
+		break;
+	case WAPPMENU_BAD_ENTRY:
+		if (bad)
+			wwarning(_("appmenu: bad menu entry \"%s\" in window %lx"),
+				 bad, (unsigned long)window);
+		else
+			wwarning(_("appmenu: bad menu entry in window %lx"), (unsigned long)window);
+		menu = NULL;
+		break;
+	case WAPPMENU_TITLE_TOO_LONG:
+		wwarning(_("appmenu: menu command size exceeded in window %lx"), (unsigned long)window);
+		menu = NULL;
+		break;
+	case WAPPMENU_TOO_DEEP:
+		wwarning(_("appmenu: menu nesting too deep in window %lx"), (unsigned long)window);
+		menu = NULL;
+		break;
+	default:
+		wwarning(_("appmenu: unparsable menu in window %lx"), (unsigned long)window);
+		menu = NULL;
+		break;
+	}
 
 	WXFreeStringList(slist, count);
+
+	if (menu)
+		menu->parent = NULL;
 
 	return menu;
 }
