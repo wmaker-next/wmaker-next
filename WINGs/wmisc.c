@@ -249,7 +249,8 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 	W_Screen *screen = view->screen;
 	int ix, iy;
 	int x, y, w, h;
-	int textHeight;
+	int textHeight = 0;
+	int blockOfs = 0;
 	cairo_t *cr;
 
 	cr = WCairoBeginBuffered(screen, view->window);
@@ -268,6 +269,24 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 		y = 1;
 		w = view->size.width - 3;
 		h = view->size.height - 3;
+	}
+
+	/* WIPAbove: centre the icon+caption block vertically */
+	if (position == WIPAbove && image != NULL) {
+		if (markupLayout) {
+			if (wrap)
+				pango_layout_set_width(markupLayout, (w - 8) * PANGO_SCALE);
+			else
+				pango_layout_set_width(markupLayout, -1);
+			pango_layout_get_pixel_size(markupLayout, NULL, &textHeight);
+		} else if (text != NULL) {
+			textHeight = W_GetTextHeight(font, text, w - 8, wrap);
+		} else {
+			textHeight = 0;
+		}
+		blockOfs = (h - image->height - textHeight) / 2;
+		if (blockOfs < 0)
+			blockOfs = 0;
 	}
 
 	/* calc. image alignment */
@@ -303,9 +322,9 @@ paintTextAndImage(W_View *view, int wrap, WMColor *textColor, W_Font *font,
 		default:
 		case WIPAbove:
 			ix = (view->size.width - image->width) / 2;
-			iy = y;
-			y = image->height;
-			h -= image->height;
+			iy = y + blockOfs;
+			y = iy + image->height;
+			h = textHeight;
 			break;
 		}
 
