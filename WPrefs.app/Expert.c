@@ -27,8 +27,7 @@
 /* This structure containts the list of all the check-buttons to display in the
  * expert tab of the window with the corresponding information for effect.
  * Defaults for OPTION_WMAKER* keys come from the shared config schema.
- * OPTION_USERDEF goes to the WPrefs app domain, OPTION_WMGLOBAL_ON writes
- * to the user's WMGLOBAL and defaults to True when the key is absent.
+ * OPTION_USERDEF goes to the WPrefs app domain.
  * OPTION_WMAKER_ALT maps a checkbox onto a two-value enum key, the schema
  * default is written when unchecked and the other enum value when checked.
  */
@@ -40,7 +39,6 @@ static struct expert_option {
 		OPTION_WMAKER_ARRAY,
 		OPTION_WMAKER_ALT,
 		OPTION_USERDEF,
-		OPTION_WMGLOBAL_ON,
 		OPTION_WMAKER_INT
 	} class;
 
@@ -74,13 +72,6 @@ static struct expert_option {
 
 	{ N_("Blink the titlebar of windows that demand attention."),
 	  OPTION_WMAKER, "BlinkTitlebarWhenUrgent" },
-
-	/* AntialiasedText is a WMGLOBAL key read by WINGs/configuration.c,
-	 * not a WindowMaker-domain key, so the previous OPTION_WMAKER
-	 * classification wrote it to a domain nothing reads. WINGs treats
-	 * a missing key as enabled, hence the _ON default. */
-	{ N_("Smooth font edges (needs restart)."),
-	  OPTION_WMGLOBAL_ON, "AntialiasedText" },
 
 	{ N_("Cycle windows only on the active head."),
 	  OPTION_WMAKER, "CycleActiveHeadOnly" },
@@ -486,10 +477,6 @@ static void createPanel(Panel *p)
 			state = WMGetUDBoolForKey(udb, expert_options[i].op_name);
 			break;
 
-		case OPTION_WMGLOBAL_ON:
-			state = GetWMGlobalBoolForKey(expert_options[i].op_name, true);
-			break;
-
 		case OPTION_WMAKER_INT:
 		{
 			char tmp[12];
@@ -591,10 +578,6 @@ static void storeDefaults(_Panel *panel)
 
 		case OPTION_USERDEF:
 			WMSetUDBoolForKey(udb, WMGetButtonSelected(panel->swi[i]), expert_options[i].op_name);
-			break;
-
-		case OPTION_WMGLOBAL_ON:
-			SetWMGlobalBoolForKey(WMGetButtonSelected(panel->swi[i]), expert_options[i].op_name);
 			break;
 
 		case OPTION_WMAKER_INT:

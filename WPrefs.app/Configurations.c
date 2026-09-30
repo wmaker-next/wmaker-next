@@ -50,6 +50,7 @@ typedef struct _Panel {
 
 	WMFrame *smoF;
 	WMButton *smoB;
+	WMButton *aaB;
 } _Panel;
 
 #define ICON_FILE	"configs"
@@ -87,6 +88,7 @@ static void showData(_Panel *panel)
 	WMSetButtonSelected(panel->supB, GetBoolForKey("Superfluous"));
 	WMSetButtonSelected(panel->sfxB, !GetBoolForKey("DisableSound"));
 	WMSetButtonSelected(panel->smoB, GetBoolForKey("SmoothWorkspaceBack"));
+	WMSetButtonSelected(panel->aaB, GetWMGlobalBoolForKey("AntialiasedText", true));
 }
 
 static void createPanel(Panel *p)
@@ -181,12 +183,14 @@ static void createPanel(Panel *p)
 	panel->smoF = WMCreateFrame(panel->box);
 	WMResizeWidget(panel->smoF, 268, 100);
 	WMMoveWidget(panel->smoF, 237, 120);
-	WMSetFrameTitle(panel->smoF, _("Smooth Scaling"));
+	WMSetFrameTitle(panel->smoF, _("Smoothing"));
 
 	panel->smoB = WMCreateButton(panel->smoF, WBTToggle);
-	WMResizeWidget(panel->smoB, 64, 64);
-	WMMoveWidget(panel->smoB, 102, 23);
-	WMSetButtonImagePosition(panel->smoB, WIPImageOnly);
+	WMResizeWidget(panel->smoB, 76, 70);
+	WMMoveWidget(panel->smoB, 53, 20);
+	WMSetButtonFont(panel->smoB, font);
+	WMSetButtonText(panel->smoB, _("Images"));
+	WMSetButtonImagePosition(panel->smoB, WIPAbove);
 	path = LocateImage(SMOOTH_IMAGE);
 	if (path) {
 		RImage *image, *scaled;
@@ -197,7 +201,7 @@ static void createPanel(Panel *p)
 		if (!image)
 			goto skip_smooth_preview;
 
-		scaled = RScaleImage(image, 61, 61);
+		scaled = RScaleImage(image, 48, 48);
 		icon = WMCreatePixmapFromRImage(scr, scaled, 128);
 		RReleaseImage(scaled);
 		if (icon) {
@@ -205,7 +209,7 @@ static void createPanel(Panel *p)
 			WMReleasePixmap(icon);
 		}
 
-		scaled = RSmoothScaleImage(image, 61, 61);
+		scaled = RSmoothScaleImage(image, 48, 48);
 		icon = WMCreatePixmapFromRImage(scr, scaled, 128);
 		RReleaseImage(scaled);
 		if (icon) {
@@ -219,6 +223,24 @@ static void createPanel(Panel *p)
 	WMSetBalloonTextForView(_("Smooth scaled background images, neutralizing\n"
 				  "the `pixelization' effect. This will slow\n"
 				  "down loading of background images considerably."), WMWidgetView(panel->smoB));
+
+	panel->aaB = WMCreateButton(panel->smoF, WBTToggle);
+	WMResizeWidget(panel->aaB, 76, 70);
+	WMMoveWidget(panel->aaB, 139, 20);
+	WMSetButtonFont(panel->aaB, font);
+	WMSetButtonText(panel->aaB, _("Font edges"));
+	WMSetButtonImagePosition(panel->aaB, WIPAbove);
+	CreateImages(scr, rc, xis, "fonts", &altIcon, &icon);
+	if (icon) {
+		WMSetButtonImage(panel->aaB, icon);
+		WMReleasePixmap(icon);
+	}
+	if (altIcon) {
+		WMSetButtonAltImage(panel->aaB, altIcon);
+		WMReleasePixmap(altIcon);
+	}
+	WMSetBalloonTextForView(_("Render fonts with antialiased (smooth) edges.\n"
+			  "Applies to all WINGs applications immediately."), WMWidgetView(panel->aaB));
 
 	WMMapSubwidgets(panel->smoF);
 
@@ -394,6 +416,7 @@ static void storeData(_Panel *panel)
 	SetBoolForKey(WMGetButtonSelected(panel->supB), "Superfluous");
 	SetBoolForKey(!WMGetButtonSelected(panel->sfxB), "DisableSound");
 	SetBoolForKey(WMGetButtonSelected(panel->smoB), "SmoothWorkspaceBack");
+	SetWMGlobalBoolForKey(WMGetButtonSelected(panel->aaB), "AntialiasedText");
 }
 
 Panel *InitConfigurations(WMWidget *parent)
