@@ -1700,6 +1700,7 @@ int main(int argc, char **argv)
 	char *dyn_image = NULL;
 	char *dyn_color = NULL;
 	char *domain = "WindowMaker";
+	char *domain_dup = NULL;	/* owned copy once -D overrides the default */
 	int update = 0;
 	char *texture = NULL;
 	int workspace = -1;
@@ -1799,7 +1800,8 @@ int main(int argc, char **argv)
 				wfatal("too few arguments for %s", argv[i - 1]);
 				quit(1);
 			}
-			domain = wstrdup(argv[i]);
+			wfree(domain_dup);
+			domain = domain_dup = wstrdup(argv[i]);
 		} else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "-b") == 0
 			   || strcmp(argv[i], "--color") == 0
 			   || strcmp(argv[i], "--back-color") == 0) {
@@ -1993,6 +1995,7 @@ int main(int argc, char **argv)
 					wfree(gen_texture);
 				if (namedSpecs)
 					wfree(namedSpecs);
+				wfree(domain_dup);
 				RDestroyContext(rc);
 				WMReleaseApplication();
 				return update_status;
@@ -2029,6 +2032,7 @@ int main(int argc, char **argv)
 					      dynamic_color_mode);
 
 		if (update_status >= 0) {
+			wfree(domain_dup);
 			RDestroyContext(rc);
 			WMReleaseApplication();
 			return update_status;
@@ -2037,6 +2041,7 @@ int main(int argc, char **argv)
 
 	if (namedSpecs)
 		wfree(namedSpecs);
+	wfree(domain_dup);
 	RDestroyContext(rc);
 	WMReleaseApplication();
 	return 0;
