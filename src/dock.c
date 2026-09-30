@@ -1417,7 +1417,9 @@ static WMenu *dockMenuCreate(WScreen *scr, int type)
 
 	wMenuAddCallback(menu, _("Launch"), launchCallback, NULL);
 
-	wMenuAddCallback(menu, _("Unhide Here"), unhideHereCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Unhide Here"), unhideHereCallback, NULL);
+	wfree(entry->text);
+	entry->text = _("Unhide Here"); /* can be: Bring Here */
 
 	entry = wMenuAddCallback(menu, _("Hide"), hideCallback, NULL);
 	wfree(entry->text);

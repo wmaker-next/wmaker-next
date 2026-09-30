@@ -154,11 +154,13 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 					nout = realloc(out, olen);
 					if (!nout) {
 						wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%a", cmdline);
+						wfree(user_input);
 						goto error;
 					}
 					out = nout;
 					memcpy(out + optr, user_input, slen);
 					optr += slen;
+					wfree(user_input);
 				} else {
 					/* Not an error, but user has Canceled the dialog box.
 					 * This will make the command to not be performed. */

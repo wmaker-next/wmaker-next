@@ -352,19 +352,22 @@ static WMArray *LoadHistory(const char *filename, int max)
 static void SaveHistoryFiltered(WMArray *history, const char *filename, char prefix_char)
 {
 	int i;
-	WMPropList *plhistory;
+	WMPropList *plhistory, *item;
 	const char *s;
 
 	plhistory = WMCreatePLArray(NULL);
 	for (i = 0; i < WMGetArrayItemCount(history); ++i) {
 		s = WMGetFromArray(history, i);
 		if (prefix_char != 0) {
-			if (s[0] == prefix_char)
-				WMAddToPLArray(plhistory, WMCreatePLString(s));
+			if (s[0] != prefix_char)
+				continue;
 		} else {
-			if (s[0] != '=' || !w_global.config->run_calc)
-				WMAddToPLArray(plhistory, WMCreatePLString(s));
+			if (s[0] == '=' && w_global.config->run_calc)
+				continue;
 		}
+		item = WMCreatePLString(s);
+		WMAddToPLArray(plhistory, item);
+		WMReleasePropList(item);
 	}
 	WMWritePropListToFile(plhistory, filename);
 	WMReleasePropList(plhistory);

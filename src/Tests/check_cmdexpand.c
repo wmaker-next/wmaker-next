@@ -28,11 +28,19 @@ char *getselection(WScreen *scr)
 	return wstrdup("/test/selection/path");
 }
 
-/* stub: not exercised in these tests */
+/* stub: returns a heap string so the %a ownership transfer is testable;
+ * ASAN reports it as leaked if ExpandOptions fails to free it. A prompt
+ * containing "cancel" simulates the user aborting the dialog (NULL).
+ * Like the real getuserinput(), leave *ptr on the closing parenthesis. */
 char *getuserinput(WScreen *scr, const char *line, int *ptr, bool advanced)
 {
-	(void)scr; (void)line; (void)ptr; (void)advanced;
-	return NULL;
+	(void)scr;
+	(void)advanced;
+	while (line[*ptr] != '\0' && line[*ptr] != ')')
+		(*ptr)++;
+	if (strstr(line, "cancel") != NULL)
+		return NULL;
+	return wstrdup("typed input");
 }
 
 /* --- test fixture --- */
@@ -166,6 +174,45 @@ static void test_workspace(void)
 		free(out);
 }
 
+/* the string handed back by getuserinput() must be freed by
+ * ExpandOptions once it has been copied into the output */
+static void test_user_input(void)
+{
+	char *out;
+
+	reset_scr();
+	out = ExpandOptions(&scr, "app %a(Find)");
+	CHECK(out != NULL);
+	CHECK(out && strcmp(out, "app typed input") == 0);
+	if (out)
+		free(out);
+}
+
+/* each %a occurrence gets its own string from getuserinput(); none may
+ * be dropped when the pointer is overwritten by the next one */
+static void test_user_input_twice(void)
+{
+	char *out;
+
+	reset_scr();
+	out = ExpandOptions(&scr, "app %a(A) %a(B)");
+	CHECK(out != NULL);
+	CHECK(out && strcmp(out, "app typed input typed input") == 0);
+	if (out)
+		free(out);
+}
+
+/* a canceled prompt aborts the whole command: ExpandOptions returns
+ * NULL, still without leaking anything allocated before the cancel */
+static void test_user_input_canceled(void)
+{
+	char *out;
+
+	reset_scr();
+	out = ExpandOptions(&scr, "app %a(cancel me)");
+	CHECK(out == NULL);
+}
+
 int main(void)
 {
 	test_plain_text();
@@ -181,6 +228,9 @@ int main(void)
 #endif
 	test_escaped_percent();
 	test_workspace();
+	test_user_input();
+	test_user_input_twice();
+	test_user_input_canceled();
 
 	return check_report("check_cmdexpand");
 }
