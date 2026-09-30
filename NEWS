@@ -3,6 +3,22 @@ NEWS for veteran Window Maker users
 
 -- next
 
+HEIF image support
+------------------
+
+WRaster can now optionally load HEIF images when the libheif library
+(1.15 or newer) is available, detected automatically at configure time
+like the other format libraries and disableable with
+`configure --disable-heif`. One loader covers the whole ISO-BMFF image
+family: `.heic` files (HEVC coded), `.avif` files (AV1 coded) and the
+generic multi-image brands, so high-resolution root backgrounds and
+icon assets in modern formats work everywhere WRaster is used
+(`wmsetbg`, icons, themes, `wmiv`). Only the HEIF image file-type
+brands are recognised, so MP4 and other ISO-BMFF media files keep
+falling through to the unknown-format path. Multi-image files (as
+produced by iPhone bursts) load per frame like GIF and TIFF, and
+decoding honors the container's pixel aspect and rotation metadata.
+
 Dock orientation
 ----------------
 

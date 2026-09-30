@@ -248,6 +248,13 @@ For @emph{JXL} image support,
 The reference library from @emph{Google} for their image format,
 @uref{https://developers.google.com/speed/webp/download}
 
+@item @emph{libheif} 1.15 or newer
+
+For @emph{HEIF} image support, covering both @file{.heic} (HEVC coded) and
+@file{.avif} (AV1 coded) files. The actual decoding is delegated to the
+codec plugins installed with @emph{libheif}.
+@uref{https://github.com/strukturag/libheif}
+
 @item @emph{librsvg} 2.46 or newer
 
 For @emph{SVG} image support in @emph{WRaster} (rendered through cairo).
@@ -504,6 +511,9 @@ You can find more information about the libraries in the
 @table @option
 @item --enable-boehm-gc
 Never enabled by default, use Boehm GC instead of the default @emph{libc} @command{malloc()}
+
+@item --disable-heif
+Disable HEIF/AVIF support in @emph{WRaster}. When enabled use @file{libheif}.
 
 @item --disable-jpeg
 Disable JPEG support in @emph{WRaster} library; when enabled use @file{libjpeg}.

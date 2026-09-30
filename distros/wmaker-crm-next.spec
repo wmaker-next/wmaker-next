@@ -52,6 +52,7 @@ BuildRequires:  libjpeg-turbo-devel
 BuildRequires:  giflib-devel
 BuildRequires:  pkgconfig(libtiff-4)
 BuildRequires:  pkgconfig(libwebp)
+BuildRequires:  pkgconfig(libheif)
 BuildRequires:  pkgconfig(MagickWand)
 # wmiv archive support
 BuildRequires:  pkgconfig(libarchive)

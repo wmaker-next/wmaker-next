@@ -1039,6 +1039,19 @@ m4_divert_pop([INIT_PREPARE])dnl
 WM_IMGFMT_CHECK_WEBP
 
 
+dnl HEIF Support (HEIC and AVIF)
+dnl ===========================
+m4_divert_push([INIT_PREPARE])dnl
+AC_ARG_ENABLE([heif],
+    [AS_HELP_STRING([--disable-heif], [disable HEIF/AVIF support through libheif])],
+    [AS_CASE(["$enableval"],
+        [yes|no|auto], [],
+        [AC_MSG_ERROR([bad value $enableval for --enable-heif])] )],
+    [enable_heif=auto])
+m4_divert_pop([INIT_PREPARE])dnl
+WM_IMGFMT_CHECK_HEIF
+
+
 dnl SVG Support
 dnl ===========
 m4_divert_push([INIT_PREPARE])dnl

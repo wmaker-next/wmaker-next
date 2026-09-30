@@ -37,6 +37,7 @@ POTFILES  = \
 	$(top_srcdir)/wrlib/load_tiff.c	\
 	$(top_srcdir)/wrlib/load_xpm.c	\
 	$(top_srcdir)/wrlib/load_webp.c	\
+	$(top_srcdir)/wrlib/load_heif.c	\
 	$(top_srcdir)/wrlib/load_magick.c
 
 SUFFIXES = .po .mo

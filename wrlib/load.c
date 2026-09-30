@@ -166,6 +166,9 @@ static const struct {
 #ifdef USE_SVG
 	{ IM_SVG,     "SVG"  },
 #endif
+#ifdef USE_HEIF
+	{ IM_HEIF,    "HEIF" },
+#endif
 };
 #define WR_FORMAT_NAME_COUNT (sizeof(wr_format_names) / sizeof(wr_format_names[0]))
 
@@ -360,6 +363,12 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 		break;
 #endif				/* USE_SVG */
 
+#ifdef USE_HEIF
+	case IM_HEIF:
+		image = RLoadHEIF(file, index);
+		break;
+#endif				/* USE_HEIF */
+
 	case IM_PPM:
 		image = RLoadPPM(file);
 		break;
@@ -542,6 +551,30 @@ static WRImgFormat identFile(const char *path)
 	     || buffer[15] == 'L'    /* Simple File Format (Lossless) */
 	     || buffer[15] == 'X'))  /* Extended File Format */
 		return IM_WEBP;
+
+	/* check for HEIF (HEIC/AVIF): both are ISO-BMFF containers, the
+	 * "ftyp" box carries the primary brand at offset 8-11. Only the
+	 * HEIF image brands are accepted, so MP4 and other ISOBMFF files
+	 * (e.g. brand "isom") stay on the IM_UNKNOWN path. The brands
+	 * cover HEVC images ("heic", "heix", "hevc", "hevx", "heim",
+	 * "heis", "hevm", "hevs"), AV1 images ("avif", "avis") and the
+	 * generic multi-image brands ("mif1", "msf1", "mif2") that both
+	 * families may carry as primary brand. */
+	if (buffer[4] == 'f' && buffer[5] == 't' && buffer[6] == 'y' && buffer[7] == 'p') {
+		static const char *const heif_brands[] = {
+			"avif", "avis", "heic", "heix", "heim", "heis",
+			"hevc", "hevx", "hevm", "hevs", "mif1", "mif2", "msf1"
+		};
+		size_t i;
+
+		for (i = 0; i < sizeof(heif_brands) / sizeof(heif_brands[0]); i++) {
+			if (buffer[8]  == heif_brands[i][0] &&
+			    buffer[9]  == heif_brands[i][1] &&
+			    buffer[10] == heif_brands[i][2] &&
+			    buffer[11] == heif_brands[i][3])
+				return IM_HEIF;
+		}
+	}
 
 	return IM_UNKNOWN;
 }

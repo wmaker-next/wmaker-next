@@ -46,7 +46,8 @@ check_xside_LDADD = $(top_builddir)/wrlib/libwraster.la @WRASTER_XCB_LIBS@
 
 EXTRA_DIST = test.png tile.xpm ballot_box.xpm \
 	pnm-p1.pbm pnm-p2.pgm pnm-p3.ppm \
-	pnm-p4.pbm pnm-p5.pgm pnm-p6.ppm
+	pnm-p4.pbm pnm-p5.pgm pnm-p6.ppm \
+	heif-test.avif heif-test.heic
 
 AM_CPPFLAGS = -I$(top_srcdir)/wrlib -I$(top_srcdir)/WINGs -I$(srcdir)/.. -I$(top_srcdir)/test $(DFLAGS) @WRASTER_CAIRO_CFLAGS@ @HEADER_SEARCH_PATH@
 

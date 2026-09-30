@@ -212,6 +212,39 @@ AC_SUBST([RSVG_CFLAGS])dnl
 ])
 
 
+# WM_IMGFMT_CHECK_HEIF
+# --------------------
+#
+# Check for HEIF/HEIC/AVIF file support through 'libheif'
+# The check depends on variable 'enable_heif' being either:
+#   yes  - detect, fail if not found
+#   no   - do not detect, disable support
+#   auto - detect, disable if not found
+#
+# When found, append appropriate stuff in GFXLIBS, and append info to
+# the variable 'supported_gfx'
+# When not found, append info to variable 'unsupported'
+AC_DEFUN_ONCE([WM_IMGFMT_CHECK_HEIF],
+[AS_IF([test "x$enable_heif" = "xno"],
+    [unsupported="$unsupported HEIF"],
+    [PKG_CHECK_MODULES([HEIF], [libheif >= 1.15],
+        [wm_cv_imgfmt_heif=yes], [wm_cv_imgfmt_heif=no])
+     AS_IF([test "x$enable_heif$wm_cv_imgfmt_heif" = "xyesno"],
+        [AC_MSG_ERROR([explicit HEIF support requested but libheif >= 1.15 not found -- $HEIF_PKG_ERRORS])])
+     AS_IF([test "x$wm_cv_imgfmt_heif" = "xno"],
+        [unsupported="$unsupported HEIF"
+         enable_heif="no"],
+        [supported_gfx="$supported_gfx HEIF"
+         WM_APPEND_ONCE([$HEIF_LIBS], [GFXLIBS])dnl
+         AC_DEFINE([USE_HEIF], [1],
+             [defined when libheif is available for the HEIF loader])])dnl
+    ])
+AM_CONDITIONAL([USE_HEIF], [test "x$enable_heif" != "xno"])dnl
+AC_SUBST([HEIF_CFLAGS])dnl
+AC_SUBST([HEIF_LIBS])dnl
+])
+
+
 # WM_IMGFMT_CHECK_MAGICK
 # ----------------------
 #

@@ -57,6 +57,14 @@ static RImage *load_noctx_sized(const char *path, unsigned w, unsigned h)
 {
 	return RLoadImageAtSize(NULL, path, 0, w, h);
 }
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("nonnull-attribute")))
+#endif
+static RImage *load_noctx_index(const char *path, int index)
+{
+	return RLoadImageAtSize(NULL, path, index, 0, 0);
+}
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((no_sanitize("nonnull-attribute")))
 #endif
@@ -636,6 +644,76 @@ static void test_svg(void)
 #endif
 }
 
+/* HEIC/AVIF fixtures. Two 2x1 solid gray-128 images: gray is neutral in
+ * every YCbCr matrix and range convention, so a correct decode lands
+ * within a few units of 128 no matter which codec plugin decodes it.
+ * The fixture .heic carries primary brand "heix" and the .avif "avif",
+ * both must sniff as HEIF, while an MP4 "isom" ftyp must not. A missing
+ * HEVC/AV1 decoder plugin makes the decode a skip (printed, not failed)
+ * since the loader is only as able to decode as the libheif it links
+ * against. */
+static void heif_expect(const char *what, RImage *img)
+{
+	int bpp, last;
+
+	if (!img) {
+		fprintf(stderr, "SKIP %s: decode failed (%s); decoder codec missing?\n",
+			what, RMessageForError(RErrorCode));
+		return;
+	}
+	CHECK(img->width == 2);
+	CHECK(img->height == 1);
+
+	bpp = (img->format == RRGBAFormat) ? 4 : 3;
+	last = bpp;
+
+	CHECK(abs(img->data[0] - 128) <= 4);
+	CHECK(abs(img->data[1] - 128) <= 4);
+	CHECK(abs(img->data[2] - 128) <= 4);
+	CHECK(abs(img->data[last + 0] - 128) <= 4);
+	CHECK(abs(img->data[last + 1] - 128) <= 4);
+	CHECK(abs(img->data[last + 2] - 128) <= 4);
+	RReleaseImage(img);
+}
+
+static void test_heif(void)
+{
+	const char *p;
+	RImage *img;
+	/* a 24-byte ftyp box with MP4's primary brand "isom": ISO-BMFF
+	 * itself, but never a HEIF image (split so "ftyp" does not
+	 * extend the \x18 escape) */
+	static const char mp4[] = "\0\0\0\x18" "ftypisom\0\0\0\0isomiso2mp41";
+
+	p = write_sample("mp4.bin", mp4, sizeof(mp4) - 1);
+	CHECK(RGetImageFileFormat(p) == NULL);
+	CHECK(load_noctx(p) == NULL);
+
+#ifdef USE_HEIF
+	/* the committed fixtures sniff as HEIF regardless of what codecs
+	 * the linked libheif can actually decode */
+	p = fixture_path("heif-test.avif");
+	CHECK(RGetImageFileFormat(p) != NULL &&
+	      strcmp(RGetImageFileFormat(p), "HEIF") == 0);
+	p = fixture_path("heif-test.heic");
+	CHECK(RGetImageFileFormat(p) != NULL &&
+	      strcmp(RGetImageFileFormat(p), "HEIF") == 0);
+
+	/* decoded pixels: solid gray in both fixtures */
+	heif_expect("AVIF", load_noctx(fixture_path("heif-test.avif")));
+	heif_expect("HEIC", load_noctx(fixture_path("heif-test.heic")));
+
+	/* single-image files have no frame 1, only the primary image */
+	img = load_noctx_index(fixture_path("heif-test.heic"), 1);
+	CHECK(img == NULL);
+	if (img)
+		RReleaseImage(img);
+#else
+	(void)heif_expect;
+	(void)load_noctx_index;
+#endif
+}
+
 /* 8x8 solid P6, write_sample() returns a shared static buffer */
 static void write_ppm(char *path, size_t pathlen, const char *name,
 		      unsigned char r, unsigned char g, unsigned char b)
@@ -772,6 +850,7 @@ int main(void)
 	test_xpm_transparent();
 	test_xpm_extended();
 	test_svg();
+	test_heif();
 	test_cache();
 
 	/* best-effort cleanup */

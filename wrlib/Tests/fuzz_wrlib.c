@@ -33,6 +33,7 @@ enum {
 	MAGIC_JXL,
 	MAGIC_XPM,
 	MAGIC_PPM,
+	MAGIC_HEIF,		/* ISO-BMFF ftyp box, AVIF primary brand */
 	MAGIC_XPMDATA		/* RGetImageFromXPMData on in-memory lines */
 };
 
@@ -47,6 +48,7 @@ static const char *const magics[] = {
 	[MAGIC_JXL] = "\xff\x0a",
 	[MAGIC_XPM] = "/* XPM */\nstatic char *x[] = {\n",
 	[MAGIC_PPM] = "P6\n8 8\n255\n",
+	[MAGIC_HEIF] = "\0\0\0\x18ftypavif",
 	[MAGIC_XPMDATA] = NULL
 };
 
