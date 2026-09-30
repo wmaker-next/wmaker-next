@@ -217,10 +217,10 @@ configure-documentation:
 		--ignore-prg 'enable-dependency-tracking,disable-dependency-tracking # in INSTALL' \
 		--ignore-prg 'enable-shared,enable-static # should be in INSTALL' \
 		--ignore-prg 'disable-option-checking,enable-fast-install # should be in INSTALL' \
-		--ignore-prg 'disable-libtool-lock,with-pic,with-gnu-ld,with-sysroot # for libtool' \
+		--ignore-prg 'disable-libtool-lock,with-gnu-ld,with-sysroot # for libtool' \
 		--ignore-prg 'runstatedir #new in autoconf 2.70, backported in Debian' \
-		--ignore-prg 'with-aix-soname #new in libtool 2.4.4' \
-		--ignore-prg-optional 'enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-'
+		--ignore-prg-optional 'with-pic,with-aix-soname,enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
+		--ignore-prg-optional 'enable-cxx-stdlib #new in libtool 2.6.0'
 
 .PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-cppcheck memcheck asan run bench
 
