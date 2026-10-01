@@ -40,7 +40,7 @@ typedef enum {
 	LastInfo
 } InfoType;
 
-#define MAX_SECTION_SIZE 4
+#define MAX_SECTION_SIZE 6
 
 typedef struct _Panel {
 	WMBox *box;
@@ -60,6 +60,9 @@ typedef struct _Panel {
 	WMPixmap *markerPix[LastInfo];
 
 	WMPopUpButton *typeP;
+
+	WMLabel *loadDefaultL;
+	WMLabel *noteL;
 
 	WMWidget *itemPad[3];
 	int currentPad;
@@ -162,6 +165,8 @@ static char *commandNames[] = {
 #define ICON_FILE	"menus"
 
 static void showData(_Panel * panel);
+
+static void loadDefaultClicked(xcb_generic_event_t *event, void *data);
 
 static void updateMenuItem(_Panel * panel, WEditMenuItem * item, WMWidget * changedWidget);
 
@@ -354,7 +359,11 @@ static void createPanel(_Panel * p)
 	WMFont *bold = WMBoldSystemFontOfSize(scr, 12);
 	WMFont *font = WMSystemFontOfSize(scr, 12);
 	WMLabel *label;
-	int width;
+	WMLabel *ldPrefix, *ldSuffix;
+	xcb_cursor_t hand;
+	char *markup;
+	const char *prefix, *hot, *suffix;
+	int width, pwidth, ldw;
 	RImage *marker;
 	RColor mblack;
 	WMPixmap *pixm;
@@ -763,17 +772,60 @@ static void createPanel(_Panel * p)
 	WMSetButtonAction(panel->quickB, buttonClicked, panel);
 
 	label = WMCreateLabel(panel->optionsF);
-	WMResizeWidget(label, width + 5, FRAME_HEIGHT - 50);
-	WMMoveWidget(label, 7, 20);
-	WMSetLabelText(label,
-		       _("Instructions:\n\n"
-			 " - drag items from the left to the menu to add new items\n"
-			 " - drag items out of the menu to remove items\n"
-			 " - drag items in menu to change their position\n"
-			 " - drag items with Control pressed to copy them\n"
-			 " - double click in a menu item to change the label\n"
-			 " - click on a menu item to change related information"));
+	WMResizeWidget(label, width, 140);
+	WMMoveWidget(label, 10, 6);
+	WMSetLabelMarkup(label,
+			 _("<b>Instructions:</b>\n\n"
+			   " - drag items from the left to the menu to add new items\n"
+			   " - drag items out of the menu to remove items\n"
+			   " - drag items in menu to change their position\n"
+			   " - drag items with Control pressed to copy them\n"
+			   " - double click in a menu item to change the label\n"
+			   " - click on a menu item to change related information"));
 	WMMapWidget(label);
+
+	prefix = _(" - click ");
+	hot = _("Load Default");
+	suffix = _("to reset the menu to the shipped default");
+	pwidth = WMWidthOfString(scr->normalFont, prefix, strlen(prefix));
+	ldw = WMWidthOfString(scr->normalFont, hot, strlen(hot));
+
+	ldPrefix = WMCreateLabel(panel->optionsF);
+	WMResizeWidget(ldPrefix, pwidth, 18);
+	WMMoveWidget(ldPrefix, 10, 148);
+	WMSetLabelTextAlignment(ldPrefix, WALeft);
+	WMSetLabelText(ldPrefix, prefix);
+	WMMapWidget(ldPrefix);
+
+	/* label text paints with a 4px left inset */
+	panel->loadDefaultL = WMCreateLabel(panel->optionsF);
+	WMResizeWidget(panel->loadDefaultL, ldw + 5, 18);
+	WMMoveWidget(panel->loadDefaultL, 10 + pwidth, 148);
+	WMSetLabelTextAlignment(panel->loadDefaultL, WALeft);
+	markup = wmalloc(strlen(hot) + 8);
+	snprintf(markup, strlen(hot) + 8, "<u>%s</u>", hot);
+	WMSetLabelMarkup(panel->loadDefaultL, markup);
+	wfree(markup);
+	WMCreateEventHandler(WMWidgetView(panel->loadDefaultL),
+			     XCB_EVENT_MASK_BUTTON_PRESS, loadDefaultClicked, panel);
+	WMMapWidget(panel->loadDefaultL);
+
+	hand = wXLoadCursor(WMScreenDisplay(scr), 0, "hand2");
+	if (hand != XCB_CURSOR_NONE)
+		W_SetViewCursor(WMWidgetView(panel->loadDefaultL), hand);
+
+	ldSuffix = WMCreateLabel(panel->optionsF);
+	WMResizeWidget(ldSuffix, width - (10 + pwidth + ldw + 5), 18);
+	WMMoveWidget(ldSuffix, 10 + pwidth + ldw + 5, 148);
+	WMSetLabelTextAlignment(ldSuffix, WALeft);
+	WMSetLabelText(ldSuffix, suffix);
+	WMMapWidget(ldSuffix);
+
+	panel->noteL = WMCreateLabel(panel->optionsF);
+	WMResizeWidget(panel->noteL, width, 36);
+	WMMoveWidget(panel->noteL, 10, 170);
+	WMSetLabelTextAlignment(panel->noteL, WALeft);
+	WMMapWidget(panel->noteL);
 
 	WMRealizeWidget(panel->box);
 	WMMapSubwidgets(panel->box);
@@ -784,6 +836,10 @@ static void createPanel(_Panel * p)
 	changedItemPad(panel->typeP, panel);
 
 	panel->sections[NoInfo][0] = label;
+	panel->sections[NoInfo][1] = ldPrefix;
+	panel->sections[NoInfo][2] = panel->loadDefaultL;
+	panel->sections[NoInfo][3] = ldSuffix;
+	panel->sections[NoInfo][4] = panel->noteL;
 
 	panel->sections[ExecInfo][0] = panel->commandF;
 	panel->sections[ExecInfo][1] = panel->shortF;
@@ -1470,8 +1526,7 @@ static WMPropList *getDefaultMenu(_Panel * panel)
 
 static void showData(_Panel * panel)
 {
-	char *menuPath, *labelText;
-	char buf[1024];
+	char *menuPath, buf[1024];
 	WMPropList *pmenu, *title;
 	int depth = 0;
 
@@ -1557,12 +1612,9 @@ static void showData(_Panel * panel)
 	panel->menuPath = menuPath;
 
 	snprintf(buf, sizeof(buf),
-		 _("\n\nWhen saved, the menu will be written to the file\n\"%s\"."),
+		 _("When saved, the menu will be written to the file\n\"%s\"."),
 		 menuPath);
-	labelText = WMGetLabelText(panel->sections[NoInfo][0]);
-	labelText = wstrconcat(labelText, buf);
-	WMSetLabelText(panel->sections[NoInfo][0], labelText);
-	wfree(labelText);
+	WMSetLabelText(panel->noteL, buf);
 
 	buildMenuFromPL(panel, pmenu);
 
@@ -1798,54 +1850,38 @@ static void hideMenus(_Panel * panel)
 		WEditMenuHide(panel->menu);
 }
 
-static void undo(_Panel *panel)
+static WMPropList *shippedDefaultMenu(_Panel *panel)
 {
 	WMPropList *menu, *title;
-	char *label, buf[1024];
-	bool wasmapped;
-	WMPoint pos;
-
-	if (!panel->menu)
-		return;
-
-	wasmapped = WMWidgetIsMapped(panel->menu);
-
-	changeInfoType(panel, NULL, NoInfo);
-
-	panel->currentItem = NULL;
-	WMDestroyWidget(panel->menu);
-	panel->menu = NULL;
-
-	/* the user WMRootMenu file was removed by the reset, so the
-	 * editor rebuilds from the shipped default and writes back to
-	 * the domain path on the next save */
-	panel->dontSave = false;
-	wfree(panel->menuPath);
-	panel->menuPath = wdefaultspathfordomain("WMRootMenu");
 
 	menu = getDefaultMenu(panel);
-	if (!menu) {
-		title = WMCreatePLString("Applications");
-		menu = WMCreatePLArray(title, NULL);
-		WMReleasePropList(title);
+	if (menu)
+		return menu;
+
+	title = WMCreatePLString("Applications");
+	menu = WMCreatePLArray(title, NULL);
+	WMReleasePropList(title);
+
+	return menu;
+}
+
+static void replaceMenuTree(_Panel *panel, WMPropList *menu)
+{
+	WMPoint pos;
+	bool wasmapped = false;
+
+	if (panel->menu) {
+		wasmapped = WMWidgetIsMapped(panel->menu);
+
+		changeInfoType(panel, NULL, NoInfo);
+
+		panel->currentItem = NULL;
+		WMDestroyWidget(panel->menu);
+		panel->menu = NULL;
 	}
 
 	buildMenuFromPL(panel, menu);
 	WMReleasePropList(menu);
-
-	/* the destination note must not accumulate over rebuilds */
-	label = WMGetLabelText(panel->sections[NoInfo][0]);
-	label = strstr(label, "\n\nWhen saved");
-	if (label)
-		*label = 0;
-
-	snprintf(buf, sizeof(buf),
-		 _("\n\nWhen saved, the menu will be written to the file\n\"%s\"."),
-		 panel->menuPath ? panel->menuPath : "");
-	label = WMGetLabelText(panel->sections[NoInfo][0]);
-	label = wstrconcat(label, buf);
-	WMSetLabelText(panel->sections[NoInfo][0], label);
-	wfree(label);
 
 	pos = WMGetViewScreenPosition(WMWidgetView(panel->box));
 
@@ -1860,6 +1896,50 @@ static void undo(_Panel *panel)
 
 	if (!wasmapped)
 		WEditMenuHide(panel->menu);
+}
+
+static void loadDefaultClicked(xcb_generic_event_t *event, void *data)
+{
+	_Panel *panel = (_Panel *) data;
+	int res;
+
+	if (((event->response_type & 0x7f) != XCB_BUTTON_PRESS))
+		return;
+
+	if (((xcb_button_press_event_t *)event)->detail != 1)
+		return;
+
+	if (panel->dontSave || !panel->menu)
+		return;
+
+	res = WMRunAlertPanel(WMWidgetScreen(panel->parent), GetWindow(), _("Load Default"),
+			      _("This will replace the menu being edited with\n"
+				"the shipped default. The next Save writes it to\n"
+				"the current menu file."),
+			      _("Load Default"), _("Cancel"), NULL);
+	if (res != WAPRDefault)
+		return;
+
+	replaceMenuTree(panel, shippedDefaultMenu(panel));
+}
+
+static void undo(_Panel *panel)
+{
+	char buf[1024];
+
+	/* the user WMRootMenu file was removed by the reset, so the
+	 * editor rebuilds from the shipped default and writes back to
+	 * the domain path on the next save */
+	panel->dontSave = false;
+	wfree(panel->menuPath);
+	panel->menuPath = wdefaultspathfordomain("WMRootMenu");
+
+	replaceMenuTree(panel, shippedDefaultMenu(panel));
+
+	snprintf(buf, sizeof(buf),
+		 _("When saved, the menu will be written to the file\n\"%s\"."),
+		 panel->menuPath ? panel->menuPath : "");
+	WMSetLabelText(panel->noteL, buf);
 }
 
 Panel *InitMenu(WMWidget *parent)

@@ -3,6 +3,14 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Load Default in the menu editor
+-------------------------------
+
+The Applications Menu Definition panel gains a "Load Default" link in
+its instructions block. Clicking it, after confirmation, rebuilds the
+menu being edited from the shipped default menu file and the next
+Save writes the restored default to the menu file currently in use.
+
 Reset Defaults in the main window
 ---------------------------------
 
