@@ -2164,6 +2164,11 @@ static void showData(_Panel * panel)
 	for (i = 0; i < wlengthof(colorOptions); i++) {
 		WMColor *color;
 
+		/* showData doubles as the reset/revert refresh, drop the
+		 * previous page colors before reading the new ones */
+		if (panel->colors[i])
+			WMReleaseColor(panel->colors[i]);
+
 		str = GetStringForKey(colorOptions[i].key);
 		if (!str)
 			str = colorOptions[i].default_value;
@@ -2265,6 +2270,39 @@ static void prepareForClose(_Panel * panel)
 	WMSynchronizeUserDefaults(udb);
 }
 
+static void undo(_Panel *panel)
+{
+	int i;
+
+	/* Drop every list row so the per-option rows re-land at 0..7,
+	 * then rebuild from the cleared WindowMaker domain and the
+	 * untouched TextureList of the WPrefs app domain. */
+	i = WMGetListNumberOfRows(panel->texLs);
+	while (i > 0) {
+		WMListItem *item = WMGetListItem(panel->texLs, i - 1);
+		TextureListItem *titem = (TextureListItem *) item->clientData;
+
+		if (titem) {
+			wfree(titem->title);
+			wfree(titem->texture);
+			/* the texture file stays: the saved TextureList
+			 * still references it */
+			wfree(titem->path);
+			WMReleasePropList(titem->prop);
+			if (titem->preview)
+				wXFreePixmap(WMScreenDisplay(WMWidgetScreen(panel->texLs)),
+					     titem->preview);
+			wfree(titem);
+		}
+		WMRemoveListItem(panel->texLs, i - 1);
+		i--;
+	}
+
+	showData(panel);
+
+	fillTextureList(panel->texLs);
+}
+
 Panel *InitAppearance(WMWidget *parent)
 {
 	_Panel *panel;
@@ -2279,6 +2317,7 @@ Panel *InitAppearance(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
+	panel->callbacks.undoChanges = undo;
 	panel->callbacks.prepareForClose = prepareForClose;
 
 	AddSection(panel, ICON_FILE);

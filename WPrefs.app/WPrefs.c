@@ -45,6 +45,7 @@ typedef struct _WPrefs {
 	WMButton *closeBtn;
 	WMButton *undoBtn;
 	WMButton *undosBtn;
+	WMButton *resetBtn;
 
 	WMButton *balloonBtn;
 
@@ -80,6 +81,8 @@ static void loadSoundDomain(WMScreen *scr, WMWindow *mainw);
 static void savePanelData(Panel * panel);
 
 static void prepareForClose(void);
+
+static void resetDefaults(WMWidget *w, void *data);
 
 static noreturn void quit(WMWidget *w, void *data)
 {
@@ -250,6 +253,137 @@ static void undoAll(WMWidget * w, void *data)
 	}
 }
 
+/* Copy `path' to a `<path>.wprefs-backup' sibling so a reset is
+ * recoverable by hand. Returns true when the backup is in place or
+ * there was nothing to back up. */
+static bool backupUserFile(const char *path)
+{
+	char *bpath;
+	FILE *src, *dst;
+	char buf[4096];
+	size_t n;
+	bool ok = true;
+
+	if (!path || access(path, F_OK) != 0)
+		return true;
+
+	bpath = wstrconcat(path, ".wprefs-backup");
+
+	src = fopen(path, "rb");
+	dst = src ? fopen(bpath, "wb") : NULL;
+	if (!src || !dst) {
+		werror(_("could not back up %s as %s"), path, bpath);
+		ok = false;
+	}
+
+	while (ok && src && (n = fread(buf, 1, sizeof(buf), src)) > 0)
+		if (fwrite(buf, 1, n, dst) != n)
+			ok = false;
+
+	if (dst && fclose(dst) != 0)
+		ok = false;
+	if (src)
+		fclose(src);
+
+	wfree(bpath);
+	return ok;
+}
+
+/* Empty the WMGLOBAL domain both on disk and in WPrefs' cached
+ * WMUserDefaults, so later edits do not resurrect old keys. */
+static void clearWMGlobalDomain(char *path)
+{
+	WMUserDefaults *db;
+	WMPropList *keys;
+	int i, n;
+
+	if (!path)
+		return;
+
+	db = WMGetDefaultsFromPath(path);
+	keys = WMGetUDKeys(db);
+	if (keys) {
+		n = WMGetPropListItemCount(keys);
+		for (i = 0; i < n; i++)
+			WMRemoveUDObjectForKey(db, WMGetFromPLString(WMGetFromPLArray(keys, i)));
+		WMReleasePropList(keys);
+	}
+	WMSaveUserDefaults(db);
+	wfree(path);
+}
+
+static void resetDefaults(WMWidget *w, void *data)
+{
+	WMScreen *scr = WMWidgetScreen(w);
+	WMPropList *reply;
+	char *wmglobalPath, *rootmenuPath;
+	int res;
+
+	(void) data;
+
+	res = WMRunAlertPanel(scr, WPrefs.win, _("Reset Defaults"),
+			      _("This will discard the settings WPrefs manages\n"
+				"(WindowMaker, WMSound, WMGLOBAL and the Applications\n"
+				"Menu) and restore the shipped defaults. Session, dock\n"
+				"and per-window attributes are not touched.\n\n"
+				"Each replaced file is kept as a .wprefs-backup sibling."),
+			      _("Reset"), _("Cancel"), NULL);
+	if (res != WAPRDefault)
+		return;
+
+	wmglobalPath = wdefaultspathfordomain("WMGLOBAL");
+	rootmenuPath = wdefaultspathfordomain("WMRootMenu");
+
+	/* back up every user file before touching any of them, so a
+	 * failed backup leaves the originals untouched */
+	if (!backupUserFile(WindowMakerDBPath)
+	    || !backupUserFile(WMSoundDBPath)
+	    || !backupUserFile(wmglobalPath)
+	    || !backupUserFile(rootmenuPath)) {
+		WMRunAlertPanel(scr, WPrefs.win, _("Error"),
+				_("Could not back up the current settings.\n"
+				  "Nothing was changed."), _("OK"), NULL, NULL);
+		wfree(wmglobalPath);
+		wfree(rootmenuPath);
+		return;
+	}
+
+	/* WindowMaker domain: replaced by an empty dictionary */
+	WMReleasePropList(WindowMakerDB);
+	WindowMakerDB = WMCreatePLDictionary(NULL, NULL);
+
+	/* WMSound domain: dropped and removed, recreated on the next save */
+	if (WMSoundDB) {
+		WMReleasePropList(WMSoundDB);
+		WMSoundDB = NULL;
+	}
+	if (WMSoundDBPath)
+		unlink(WMSoundDBPath);
+
+	/* WMGLOBAL: emptied */
+	clearWMGlobalDomain(wmglobalPath);
+
+	/* WMRootMenu: removed so wmaker falls back to the shipped plmenu */
+	if (rootmenuPath)
+		unlink(rootmenuPath);
+	wfree(rootmenuPath);
+
+	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
+
+	/* every initialized panel re-reads the cleared dictionaries */
+	undoAll(NULL, NULL);
+
+	reply = wIPCCommand(NULL, "restart");
+	if (reply) {
+		WMReleasePropList(reply);
+		return;
+	}
+
+	/* fall back to the legacy X ClientMessage when no IPC socket is
+	 * reachable, that channel only accepts Reconfigure */
+	WXSendWmakerCommandXC(WMScreenDisplay(scr), scr->screen, "Reconfigure");
+}
+
 static void prepareForClose(void)
 {
 	int i;
@@ -319,6 +453,14 @@ static void createMainWindow(WMScreen * scr)
 	WMMoveWidget(WPrefs.undoBtn, 235, 350);
 	WMSetButtonText(WPrefs.undoBtn, _("Revert All"));
 	WMSetButtonAction(WPrefs.undoBtn, undoAll, NULL);
+
+	/* sits in the dead slot between the balloon-help switch and Save
+	 * and stays mapped even on the welcome screen */
+	WPrefs.resetBtn = WMCreateCommandButton(WPrefs.win);
+	WMResizeWidget(WPrefs.resetBtn, 90, 28);
+	WMMoveWidget(WPrefs.resetBtn, 219, 350);
+	WMSetButtonText(WPrefs.resetBtn, _("Reset Defaults"));
+	WMSetButtonAction(WPrefs.resetBtn, resetDefaults, NULL);
 
 	WPrefs.saveBtn = WMCreateCommandButton(WPrefs.win);
 	WMResizeWidget(WPrefs.saveBtn, 80, 28);

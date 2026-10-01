@@ -416,14 +416,65 @@ static int cmpExpertOptions(const void *v1, const void *v2)
 		return 1;
 	return 0;
 }
+static void showData(_Panel *panel)
+{
+	WMUserDefaults *udb = WMGetStandardUserDefaults();
+	int i, state;
+
+	for (i = 0; i < wlengthof(expert_options); i++) {
+		switch (expert_options[i].class) {
+		case OPTION_WMAKER:
+			if (GetStringForKey(expert_options[i].op_name))
+				state = GetBoolForKey(expert_options[i].op_name);
+			else
+				state = GetDefaultBoolForKey(expert_options[i].op_name);
+			WMSetButtonSelected(panel->swi[i], state);
+			break;
+
+		case OPTION_WMAKER_ARRAY: {
+				char *str = GetStringForKey(expert_options[i].op_name);
+				/* enabled unless explicitly set to "None" */
+				WMSetButtonSelected(panel->swi[i], !(str && strcasecmp(str, "None") == 0));
+			}
+			break;
+
+		case OPTION_WMAKER_ALT: {
+				const char *pair[2];
+				const char *str = GetStringForKey(expert_options[i].op_name);
+				state = altPairForKey(expert_options[i].op_name, pair) &&
+					str && strcasecmp(str, pair[1]) == 0;
+				WMSetButtonSelected(panel->swi[i], state);
+			}
+			break;
+
+		case OPTION_USERDEF:
+			WMSetButtonSelected(panel->swi[i], WMGetUDBoolForKey(udb, expert_options[i].op_name));
+			break;
+
+		case OPTION_WMAKER_INT:
+		{
+			char tmp[12];
+			int value;
+
+			if (GetStringForKey(expert_options[i].op_name))
+				value = GetIntegerForKey(expert_options[i].op_name);
+			else
+				value = GetDefaultIntegerForKey(expert_options[i].op_name);
+
+			snprintf(tmp, sizeof(tmp), "%d", value);
+			WMSetTextFieldText(panel->textfield[i], tmp);
+			break;
+		}
+		}
+	}
+}
 
 static void createPanel(Panel *p)
 {
 	_Panel *panel = (_Panel *) p;
 	WMScrollView *sv;
 	WMFrame *f;
-	WMUserDefaults *udb;
-	int i, state;
+	int i;
 
 	panel->box = WMCreateBox(panel->parent);
 	WMSetViewExpandsToParent(WMWidgetView(panel->box), 2, 2, 2, 2);
@@ -439,7 +490,6 @@ static void createPanel(Panel *p)
 	WMResizeWidget(f, 495, wlengthof(expert_options) * 25 + 8);
 	WMSetFrameRelief(f, WRFlat);
 
-	udb = WMGetStandardUserDefaults();
 	qsort(expert_options, wlengthof(expert_options), sizeof(expert_options[0]), cmpExpertOptions);
 	for (i = 0; i < wlengthof(expert_options); i++) {
 		if (expert_options[i].class != OPTION_WMAKER_INT) {
@@ -450,36 +500,7 @@ static void createPanel(Panel *p)
 			WMSetButtonText(panel->swi[i], _(expert_options[i].label));
 		}
 
-		switch (expert_options[i].class) {
-		case OPTION_WMAKER:
-			if (GetStringForKey(expert_options[i].op_name))
-				state = GetBoolForKey(expert_options[i].op_name);
-			else
-				state = GetDefaultBoolForKey(expert_options[i].op_name);
-			break;
-
-		case OPTION_WMAKER_ARRAY: {
-				char *str = GetStringForKey(expert_options[i].op_name);
-				/* enabled unless explicitly set to "None" */
-				state = !(str && strcasecmp(str, "None") == 0);
-			}
-			break;
-
-		case OPTION_WMAKER_ALT: {
-				const char *pair[2];
-				const char *str = GetStringForKey(expert_options[i].op_name);
-				state = altPairForKey(expert_options[i].op_name, pair) &&
-					str && strcasecmp(str, pair[1]) == 0;
-			}
-			break;
-
-		case OPTION_USERDEF:
-			state = WMGetUDBoolForKey(udb, expert_options[i].op_name);
-			break;
-
-		case OPTION_WMAKER_INT:
-		{
-			char tmp[12];
+		if (expert_options[i].class == OPTION_WMAKER_INT) {
 			WMButton *up, *down;
 			WMLabel *label;
 
@@ -502,7 +523,8 @@ static void createPanel(Panel *p)
 
 			up = WMCreateCommandButton(f);
 			WMSetButtonImage(up, WMGetSystemPixmap(WMWidgetScreen(up), WSIArrowUp));
-			WMSetButtonAltImage(up, WMGetSystemPixmap(WMWidgetScreen(up), WSIHighlightedArrowUp));
+			WMSetButtonAltImage(up,
+					    WMGetSystemPixmap(WMWidgetScreen(up), WSIHighlightedArrowUp));
 			WMSetButtonImagePosition(up, WIPImageOnly);
 			WMSetButtonAction(up, upButtonCallback, panel->textfield[i]);
 			WMResizeWidget(up, 16, 16);
@@ -512,28 +534,7 @@ static void createPanel(Panel *p)
 			WMSetLabelText(label, _(expert_options[i].label));
 			WMResizeWidget(label, FRAME_WIDTH - 99, 25);
 			WMMoveWidget(label, 85, 5 + i * 25);
-
-			if (GetStringForKey(expert_options[i].op_name))
-				state = GetIntegerForKey(expert_options[i].op_name);
-			else
-				state = GetDefaultIntegerForKey(expert_options[i].op_name);
-
-			snprintf(tmp, sizeof(tmp), "%d", state);
-			WMSetTextFieldText(panel->textfield[i], tmp);
-
-			break;
 		}
-
-		default:
-#ifdef DEBUG
-			wwarning("expert_options[%d].class = %d, this should not happen\n",
-				i, expert_options[i].class);
-#endif
-			state = false;
-			break;
-		}
-		if (expert_options[i].class != OPTION_WMAKER_INT)
-			WMSetButtonSelected(panel->swi[i], state);
 	}
 
 	WMMapSubwidgets(panel->box);
@@ -544,6 +545,8 @@ static void createPanel(Panel *p)
 	WMCreateEventHandler(WMWidgetView(sv), XCB_EVENT_MASK_BUTTON_PRESS, scrollViewWheelHandler, panel);
 	WMAddNotificationObserver(scrollViewRealizeObserver, panel, WMViewRealizedNotification, WMWidgetView(sv));
 	WMRealizeWidget(panel->box);
+
+	showData(panel);
 }
 
 static void storeDefaults(_Panel *panel)
@@ -608,6 +611,7 @@ Panel *InitExpert(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeDefaults;
+	panel->callbacks.undoChanges = showData;
 	panel->callbacks.prepareForClose = scrollViewPrepareForClose;
 
 	AddSection(panel, ICON_FILE);

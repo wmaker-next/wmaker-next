@@ -76,6 +76,12 @@ static void showData(_Panel * panel)
 	char *p;
 	int i;
 
+	/* showData doubles as the reset/revert refresh, so the lists
+	 * must be rebuilt from scratch on every call */
+	WMClearList(panel->icoL);
+	WMClearList(panel->pixL);
+	WMClearList(panel->sndL);
+
 	array = GetObjectForKey("IconPath");
 	if (!array || !WMIsPLArray(array)) {
 		if (array)
@@ -395,6 +401,7 @@ Panel *InitPaths(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
+	panel->callbacks.undoChanges = showData;
 
 	AddSection(panel, ICON_FILE);
 

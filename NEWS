@@ -3,6 +3,15 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Reset Defaults in the main window
+---------------------------------
+
+A Reset Defaults command button backs up the WindowMaker, WMSound,
+WMGLOBAL and WMRootMenu domain files as .wprefs-backup siblings,
+replaces them with the shipped defaults, refreshes every initialized
+preferences panel through its undo callback and restarts the window
+manager over IPC.
+
 HEIF image support
 ------------------
 

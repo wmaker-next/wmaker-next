@@ -1472,7 +1472,7 @@ static void showData(_Panel * panel)
 {
 	char *menuPath, *labelText;
 	char buf[1024];
-	WMPropList *pmenu;
+	WMPropList *pmenu, *title;
 	int depth = 0;
 
 	menuPath = wdefaultspathfordomain("WMRootMenu");
@@ -1544,7 +1544,9 @@ static void showData(_Panel * panel)
 			pmenu = getDefaultMenu(panel);
 
 			if (!pmenu) {
-				pmenu = WMCreatePLArray(WMCreatePLString("Applications"), NULL);
+				title = WMCreatePLString("Applications");
+				pmenu = WMCreatePLArray(title, NULL);
+				WMReleasePropList(title);
 			}
 		} else {
 			panel->dontSave = true;
@@ -1579,9 +1581,17 @@ static bool notblank(const char *s)
 	return false;
 }
 
+/* WMAddToPLArray retains the item, so a freshly created element must
+ * drop its creator reference right after the add */
+static void addAndReleasePL(WMPropList *array, WMPropList *elem)
+{
+	WMAddToPLArray(array, elem);
+	WMReleasePropList(elem);
+}
+
 static WMPropList *processData(const char *title, ItemData * data)
 {
-	WMPropList *item;
+	WMPropList *item, *str;
 	char *s1;
 	static WMPropList *pscut = NULL;
 	static WMPropList *pomenu = NULL;
@@ -1597,7 +1607,9 @@ static WMPropList *processData(const char *title, ItemData * data)
 		poplmenu = WMCreatePLString("OPEN_PLMENU");
 	}
 
-	item = WMCreatePLArray(WMCreatePLString(title), NULL);
+	str = WMCreatePLString(title);
+	item = WMCreatePLArray(str, NULL);
+	WMReleasePropList(str);
 
 	switch (data->type) {
 	case ExecInfo:
@@ -1612,34 +1624,34 @@ static WMPropList *processData(const char *title, ItemData * data)
 
 		if (notblank(data->param.exec.shortcut)) {
 			WMAddToPLArray(item, pscut);
-			WMAddToPLArray(item, WMCreatePLString(data->param.exec.shortcut));
+			addAndReleasePL(item, WMCreatePLString(data->param.exec.shortcut));
 		}
 
-		WMAddToPLArray(item, WMCreatePLString(s1));
-		WMAddToPLArray(item, WMCreatePLString(data->param.exec.command));
+		addAndReleasePL(item, WMCreatePLString(s1));
+		addAndReleasePL(item, WMCreatePLString(data->param.exec.command));
 		break;
 
 	case CommandInfo:
 		if (notblank(data->param.command.shortcut)) {
 			WMAddToPLArray(item, pscut);
-			WMAddToPLArray(item, WMCreatePLString(data->param.command.shortcut));
+			addAndReleasePL(item, WMCreatePLString(data->param.command.shortcut));
 		}
 
 		i = data->param.command.command;
 
-		WMAddToPLArray(item, WMCreatePLString(commandNames[i]));
+		addAndReleasePL(item, WMCreatePLString(commandNames[i]));
 
 		switch (i) {
 		case 3:
 		case 4:
 			if (data->param.command.parameter) {
-				WMAddToPLArray(item, WMCreatePLString(data->param.command.parameter));
+				addAndReleasePL(item, WMCreatePLString(data->param.command.parameter));
 			}
 			break;
 
 		case 6:	/* restart */
 			if (data->param.command.parameter) {
-				WMAddToPLArray(item, WMCreatePLString(data->param.command.parameter));
+				addAndReleasePL(item, WMCreatePLString(data->param.command.parameter));
 			}
 			break;
 		}
@@ -1659,7 +1671,7 @@ static WMPropList *processData(const char *title, ItemData * data)
 			s1 = wstrconcat("| ", data->param.pipe.command);
 		else
 			s1 = wstrconcat("|| ", data->param.pipe.command);
-		WMAddToPLArray(item, WMCreatePLString(s1));
+		addAndReleasePL(item, WMCreatePLString(s1));
 		wfree(s1);
 		break;
 
@@ -1667,7 +1679,7 @@ static WMPropList *processData(const char *title, ItemData * data)
 		if (!data->param.external.path)
 			goto return_null;
 		WMAddToPLArray(item, pomenu);
-		WMAddToPLArray(item, WMCreatePLString(data->param.external.path));
+		addAndReleasePL(item, WMCreatePLString(data->param.external.path));
 		break;
 
 	case DirectoryInfo:
@@ -1689,17 +1701,17 @@ static WMPropList *processData(const char *title, ItemData * data)
 			         data->param.directory.stripExt ? "-noext " : "",
 			         data->param.directory.directory, data->param.directory.command);
 
-			WMAddToPLArray(item, WMCreatePLString(tmp));
+			addAndReleasePL(item, WMCreatePLString(tmp));
 			wfree(tmp);
 		}
 		break;
 
 	case WSMenuInfo:
-		WMAddToPLArray(item, WMCreatePLString("WORKSPACE_MENU"));
+		addAndReleasePL(item, WMCreatePLString("WORKSPACE_MENU"));
 		break;
 
 	case WWindowListInfo:
-		WMAddToPLArray(item, WMCreatePLString("WINDOWS_MENU"));
+		addAndReleasePL(item, WMCreatePLString("WINDOWS_MENU"));
 		break;
 
 	default:
@@ -1718,14 +1730,15 @@ static WMPropList *processSubmenu(WEditMenu * menu)
 {
 	WEditMenuItem *item;
 	WMPropList *pmenu;
-	WMPropList *pl;
+	WMPropList *pl, *title;
 	char *s;
 	int i;
 
 	s = WGetEditMenuTitle(menu);
-	pl = WMCreatePLString(s);
+	title = WMCreatePLString(s);
 
-	pmenu = WMCreatePLArray(pl, NULL);
+	pmenu = WMCreatePLArray(title, NULL);
+	WMReleasePropList(title);
 
 	i = 0;
 	while ((item = WGetEditMenuItem(menu, i++))) {
@@ -1744,6 +1757,7 @@ static WMPropList *processSubmenu(WEditMenu * menu)
 			continue;
 
 		WMAddToPLArray(pmenu, pl);
+		WMReleasePropList(pl);
 	}
 
 	return pmenu;
@@ -1784,6 +1798,70 @@ static void hideMenus(_Panel * panel)
 		WEditMenuHide(panel->menu);
 }
 
+static void undo(_Panel *panel)
+{
+	WMPropList *menu, *title;
+	char *label, buf[1024];
+	bool wasmapped;
+	WMPoint pos;
+
+	if (!panel->menu)
+		return;
+
+	wasmapped = WMWidgetIsMapped(panel->menu);
+
+	changeInfoType(panel, NULL, NoInfo);
+
+	panel->currentItem = NULL;
+	WMDestroyWidget(panel->menu);
+	panel->menu = NULL;
+
+	/* the user WMRootMenu file was removed by the reset, so the
+	 * editor rebuilds from the shipped default and writes back to
+	 * the domain path on the next save */
+	panel->dontSave = false;
+	wfree(panel->menuPath);
+	panel->menuPath = wdefaultspathfordomain("WMRootMenu");
+
+	menu = getDefaultMenu(panel);
+	if (!menu) {
+		title = WMCreatePLString("Applications");
+		menu = WMCreatePLArray(title, NULL);
+		WMReleasePropList(title);
+	}
+
+	buildMenuFromPL(panel, menu);
+	WMReleasePropList(menu);
+
+	/* the destination note must not accumulate over rebuilds */
+	label = WMGetLabelText(panel->sections[NoInfo][0]);
+	label = strstr(label, "\n\nWhen saved");
+	if (label)
+		*label = 0;
+
+	snprintf(buf, sizeof(buf),
+		 _("\n\nWhen saved, the menu will be written to the file\n\"%s\"."),
+		 panel->menuPath ? panel->menuPath : "");
+	label = WMGetLabelText(panel->sections[NoInfo][0]);
+	label = wstrconcat(label, buf);
+	WMSetLabelText(panel->sections[NoInfo][0], label);
+	wfree(label);
+
+	pos = WMGetViewScreenPosition(WMWidgetView(panel->box));
+
+	if (pos.x < 200)
+		pos.x += FRAME_WIDTH + 20;
+	else
+		pos.x = 10;
+
+	pos.y = WMAX(pos.y - 100, 0);
+
+	WEditMenuShowAt(panel->menu, pos.x, pos.y);
+
+	if (!wasmapped)
+		WEditMenuHide(panel->menu);
+}
+
 Panel *InitMenu(WMWidget *parent)
 {
 	_Panel *panel;
@@ -1798,6 +1876,7 @@ Panel *InitMenu(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
+	panel->callbacks.undoChanges = undo;
 	panel->callbacks.showPanel = showMenus;
 	panel->callbacks.hidePanel = hideMenus;
 

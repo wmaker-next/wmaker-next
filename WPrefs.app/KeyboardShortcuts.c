@@ -552,6 +552,7 @@ Panel *InitKeyboardShortcuts(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
+	panel->callbacks.undoChanges = showData;
 
 	AddSection(panel, ICON_FILE);
 

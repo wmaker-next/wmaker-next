@@ -154,10 +154,16 @@ static void showData(_Panel * panel)
 	if (array && (!WMIsPLArray(array) || WMGetPropListItemCount(array) != sizeof(panel->hcactionsT) / sizeof(WMTextField *))) {
 		wwarning(_("invalid data in option HotCornerActions."));
 	} else {
-		if (array) {
-			for (i = 0; i < sizeof(panel->hcactionsT) / sizeof(WMTextField *); i++)
-				if (strcasecmp(WMGetFromPLString(WMGetFromPLArray(array, i)), "None") != 0)
-					WMSetTextFieldText(panel->hcactionsT[i], WMGetFromPLString(WMGetFromPLArray(array, i)));
+		/* an empty field stores "None", so a refresh must also
+		 * clear the fields whose value is None or missing */
+		for (i = 0; i < sizeof(panel->hcactionsT) / sizeof(WMTextField *); i++) {
+			const char *val = NULL;
+
+			if (array)
+				val = WMGetFromPLString(WMGetFromPLArray(array, i));
+
+			WMSetTextFieldText(panel->hcactionsT[i],
+					   (val && strcasecmp(val, "None") != 0) ? val : "");
 		}
 	}
 
@@ -468,6 +474,7 @@ Panel *InitHotCornerShortcuts(WMWidget *parent)
 
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
+	panel->callbacks.undoChanges = showData;
 	panel->callbacks.prepareForClose = prepareForClose;
 
 	AddSection(panel, ICON_FILE);
