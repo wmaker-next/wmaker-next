@@ -42,7 +42,9 @@ Request types
     5  SEND_TICK       payload: a single proplist string
                        reply:   {success=YES;}
                                 a tick event with first=NO carrying the
-                                decoded string is broadcast first
+                                decoded string is broadcast first. The
+                                first tick after a clipboard keybinding
+                                key press also carries keyed=YES
     6  GET_WINDOW_TREE reply:   {screen=N; version="...";
                                  workspace_count=N; current_workspace=N;
                                  window_count=N;
@@ -99,7 +101,7 @@ Event types (type field = (1u<<31) | id)
     3  child_exit  {pid=N; status=N; signal=N; wait_status=N;
                     source="dock"|"menu"|"helper"|"unknown"; slot=N;}
     4  dialog      {kind="message"|"input"|"crash"; title="..."; text="...";}
-    5  tick        {first=YES|NO; payload="...";}
+    5  tick        {first=YES|NO; payload="..."; keyed=YES|NO;}
     6  screenshot  {path="..."; mode="screen"|"window"|"partial";
                     screen=N; workspace=N;}
     7  display_power

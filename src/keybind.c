@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -157,6 +158,30 @@ static void startMarkCapture(WScreen *scr, xcb_connection_t *d, WMarkCaptureMode
 {
 	scr->flags.mark_capture_mode = mode;
 	wXGrabKeyboard(d, scr->root_win, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+}
+
+/* Dispatch time of the last key-press-triggered clipboard command, so
+ * the IPC tick broadcast can flag key-invoked popups even when the
+ * chord is already released by the time the helper reaches wmaker. The
+ * hint is one-shot, one key invocation marks one tick. */
+#define CLIPBOARD_KEY_HINT_MAX_AGE 5
+
+static time_t clipboard_key_time;
+
+static void note_clipboard_key_dispatch(void)
+{
+	clipboard_key_time = time(NULL);
+}
+
+bool wClipboardTakeKeyHint(void)
+{
+	time_t now = time(NULL);
+	bool recent = clipboard_key_time != (time_t)0 &&
+		      now >= clipboard_key_time &&
+		      now - clipboard_key_time <= CLIPBOARD_KEY_HINT_MAX_AGE;
+
+	clipboard_key_time = (time_t)0;
+	return recent;
 }
 
 void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_event_t *event)
@@ -842,8 +867,11 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 
 	case WKBD_CLIPBOARD:
 		if (w_global.config->clipboard_command &&
-		    w_global.config->clipboard_command[0])
+		    w_global.config->clipboard_command[0]) {
+			if (event)
+				note_clipboard_key_dispatch();
 			ExecuteShellCommand(scr, w_global.config->clipboard_command);
+		}
 		break;
 
 	case WKBD_NEXTWSLAYER:

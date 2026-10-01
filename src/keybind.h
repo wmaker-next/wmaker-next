@@ -292,6 +292,11 @@ void wKeybindDispatch(int command, struct _WScreen *scr, struct WWindow *wwin,
  * or the short action name ("NextWorkspace"). Returns -1 if unknown. */
 int wKeybindForAction(const char *name);
 
+/* True when the clipboard keybinding dispatched its command from a
+ * real key press within the last few seconds. Consumes the recorded
+ * dispatch, so one key invocation marks exactly one tick. */
+bool wClipboardTakeKeyHint(void);
+
 /* Read-only, duplicate-free list of advertised action names, used by the
  * IPC `info` verb so clients can validate names without executing them. */
 int wKeybindActionCount(void);

@@ -1552,6 +1552,8 @@ static void handle_send_tick(struct WIPCClient *c, const char *body)
 	ev = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(ev, "first", pl_bool(0));
 	pl_dict_put(ev, "payload", pl_string(payload));
+	if (wClipboardTakeKeyHint())
+		pl_dict_put(ev, "keyed", pl_bool(1));
 	wIPCBroadcast(NULL, WIPC_EV_TICK, ev);
 	WMReleasePropList(ev);
 	if (pl)

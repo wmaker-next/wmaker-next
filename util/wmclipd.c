@@ -145,6 +145,13 @@ static long long primary_pending_deadline;
 
 static ClipHistory history;
 static int popup_active;
+/* pending popup tick, coalesced because keyboard auto-repeat fires the
+ * binding repeatedly while the chord is held */
+static int popup_tick_pending;
+static bool popup_tick_keyed;
+/* end of the last popup, used to spot auto-repeat echoes of the same
+ * gesture that arrive after it closed */
+static long long popup_last_close_ms;
 /* set when history_add_from_buffer mutates the ring while the popup
  * loop is running, so it can rebuild its list */
 static int popup_history_dirty;
@@ -166,7 +173,7 @@ static void handle_selection_request(xcb_selection_request_event_t *req);
 static void handle_selection_clear(xcb_selection_clear_event_t *ev);
 static void handle_property_notify(xcb_property_notify_event_t *ev);
 static void handle_destroy_notify(xcb_destroy_notify_event_t *ev);
-static void show_clipboard_popup(void);
+static void show_clipboard_popup(bool keyed);
 static void history_add_from_buffer(const ClipBuffer *buf);
 static void history_evict_over_capacity(void);
 static void flush_primary_pending(void);
@@ -2136,11 +2143,12 @@ static char *screenshot_path_from_event(const char *body)
 	return path;
 }
 
-static char *tick_payload_from_event(const char *body)
+static char *tick_payload_from_event(const char *body, bool *keyed)
 {
 	WMPropList *pl, *key, *val;
 	char *payload = NULL;
 
+	*keyed = false;
 	pl = WMCreatePropListFromDescription(body);
 	if (!pl)
 		return NULL;
@@ -2151,6 +2159,12 @@ static char *tick_payload_from_event(const char *body)
 		WMReleasePropList(key);
 		if (val && WMIsPLString(val))
 			payload = wstrdup(WMGetFromPLString(val));
+		key = WMCreatePLString("keyed");
+		val = WMGetFromPLDictionary(pl, key);
+		WMReleasePropList(key);
+		if (val && WMIsPLString(val) &&
+		    strcmp(WMGetFromPLString(val), "YES") == 0)
+			*keyed = true;
 	}
 
 	WMReleasePropList(pl);
@@ -2221,12 +2235,14 @@ static int handle_ipc_frame(int fd)
 		}
 	} else if ((type & WIPC_EVENT_BIT) &&
 		   ((type & ~WIPC_EVENT_BIT) == WIPC_EV_TICK)) {
-		char *payload = tick_payload_from_event(body);
+		bool keyed = false;
+		char *payload = tick_payload_from_event(body, &keyed);
 		if (payload) {
 			if (strcmp(payload, CLIP_POPUP_TICK) == 0) {
-				debug_log("received clipboard popup tick");
-				if (!popup_active)
-					show_clipboard_popup();
+				debug_log("received clipboard popup tick%s",
+					  keyed ? " (keyed)" : "");
+				popup_tick_pending = 1;
+				popup_tick_keyed = popup_tick_keyed || keyed;
 			}
 			wfree(payload);
 		}
@@ -2953,6 +2969,25 @@ static void drain_popup_ipc(void)
 	}
 }
 
+static void service_popup_tick(void)
+{
+	bool keyed = popup_tick_keyed;
+
+	if (!popup_tick_pending || popup_active)
+		return;
+	popup_tick_pending = 0;
+	popup_tick_keyed = false;
+	/* a keyed tick with the modifier already up right after a keyed
+	 * popup closed is an auto-repeat echo of the same gesture */
+	if (keyed && popup_wscr && popup_last_close_ms &&
+	    clip_monotonic_ms() - popup_last_close_ms < 400 &&
+	    !modifier_is_down()) {
+		debug_log("dropped repeat echo of a committed popup tick");
+		return;
+	}
+	show_clipboard_popup(keyed);
+}
+
 static int xtest_available = -1;
 
 static int have_xtest(void)
@@ -3038,17 +3073,18 @@ static void send_paste_key(xcb_window_t target, xcb_keycode_t key,
 	}
 }
 
-static void show_clipboard_popup(void)
+static void show_clipboard_popup(bool keyed)
 {
 	xcb_keycode_t vKey, upKey, downKey, homeKey, endKey, pgupKey, pgdnKey;
 	xcb_keycode_t returnKey, escapeKey, shiftLKey, shiftRKey;
 	xcb_keycode_t jKey, kKey, pKey, delKey;
 	bool done = false, esc_cancel = false, commit = false;
-	bool release_commits, chord_handoff;
+	bool release_commits, chord_handoff, grab_failed;
 	int commit_row = -1;
 	int i;
 	int row, nrows;
 	int rx, ry;
+	long long last_mod_check = 0;
 	xcb_timestamp_t commit_ts = XCB_CURRENT_TIME;
 	struct pollfd pfd;
 	xcb_generic_event_t *ev = NULL;
@@ -3093,7 +3129,9 @@ static void show_clipboard_popup(void)
 	pKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_p);
 	delKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Delete);
 
-	release_commits = modifier_is_down();
+	/* a keyed tick means the chord was held at dispatch, even if it
+	 * was already released before the popup started */
+	release_commits = keyed || modifier_is_down();
 
 	/* Save the currently focused window so we can send a Ctrl+V
 	 * paste keystroke to it after committing the selection. */
@@ -3118,10 +3156,13 @@ static void show_clipboard_popup(void)
 		usleep(10000);
 	}
 	chord_handoff = i > 0 && i < 100;
-	if (i >= 100) {
-		debug_log("keyboard grab failed after retry");
-		release_commits = false;
-	} else
+	/* on grab failure keep release_commits, without a keyboard grab
+	 * no KEY_RELEASE is ever delivered so the keymap polling below
+	 * is the only way to notice the release */
+	grab_failed = i >= 100;
+	if (grab_failed)
+		debug_log("keyboard grab failed after retry, tracking release by keymap");
+	else
 		debug_log("keyboard grab succeeded after %d retries", i);
 	wXGrabPointer(xc, root_window, true,
 		      XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE
@@ -3138,6 +3179,20 @@ static void show_clipboard_popup(void)
 
 	while (!done && running) {
 		xcb_generic_event_t *sev = NULL;
+
+		/* without a keyboard grab no KEY_RELEASE is ever delivered
+		 * and an event stream would starve the poll check below,
+		 * so track the keymap here */
+		if (grab_failed && release_commits &&
+		    clip_monotonic_ms() - last_mod_check >= CLIP_POPUP_POLL_MS) {
+			last_mod_check = clip_monotonic_ms();
+			if (!modifier_is_down()) {
+				commit_row = WMGetListSelectedItemRow(popup_list);
+				commit = true;
+				done = true;
+				break;
+			}
+		}
 
 		/* Extract only selection/property/destroy events that
 		 * WMMaskEvent would strand (they don't match its mask).
@@ -3183,8 +3238,7 @@ static void show_clipboard_popup(void)
 		}
 
 		/* bounded wait so a SIGTERM that only clears `running`
-		 * unwedges the popup instead of blocking forever in
-		 * WMMaskEvent */
+		 * unwedges the popup instead of blocking forever */
 		if (!WXEvqPending(xc)) {
 			pfd.fd = xcb_get_file_descriptor(xc);
 			pfd.events = POLLIN;
@@ -3200,13 +3254,24 @@ static void show_clipboard_popup(void)
 			continue;
 		}
 
-		WMMaskEvent(xc, XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
-			    | XCB_EVENT_MASK_EXPOSURE
-			    | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
-			    | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW, &ev);
-
-		if (!ev)
-			break;
+		if (!WXEvqTakeMask(xc, XCB_EVENT_MASK_KEY_PRESS |
+				   XCB_EVENT_MASK_KEY_RELEASE |
+				   XCB_EVENT_MASK_EXPOSURE |
+				   XCB_EVENT_MASK_POINTER_MOTION |
+				   XCB_EVENT_MASK_BUTTON_PRESS |
+				   XCB_EVENT_MASK_BUTTON_RELEASE |
+				   XCB_EVENT_MASK_ENTER_WINDOW,
+				   XCB_NONE, &ev)) {
+			/* only events outside the mask are queued and
+			 * WMMaskEvent would block waiting for a match,
+			 * which may never come without a keyboard grab,
+			 * so dispatch one parked event instead */
+			if (WXEvqNext(xc, &sev)) {
+				WMHandleEvent(sev);
+				free(sev);
+			}
+			continue;
+		}
 
 		switch ((ev->response_type & 0x7f)) {
 		case XCB_KEY_PRESS:
@@ -3411,6 +3476,11 @@ static void show_clipboard_popup(void)
 	}
 
 	drain_popup_ipc();
+	/* drop ticks queued while the popup was open, they are repeat
+	 * echoes of the same gesture */
+	popup_tick_pending = 0;
+	popup_tick_keyed = false;
+	popup_last_close_ms = clip_monotonic_ms();
 	popup_active = 0;
 }
 
@@ -3569,6 +3639,7 @@ int main(int argc, char **argv)
 				popup_ipc_fd = -1;
 				next_ipc_connect = clip_monotonic_ms() + IPC_RECONNECT_MS;
 			}
+			service_popup_tick();
 		}
 	}
 
