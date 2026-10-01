@@ -126,7 +126,8 @@ WMAlertPanel *WMCreateAlertPanel(WMScreen * scrPtr, WMWindow * owner,
 	if (pwidth > scrPtr->rootView->size.width - 40)
 		pwidth = scrPtr->rootView->size.width - 40;
 
-	pheight = 64 + 2 * 5;		/* icon row */
+	pheight = 64 + 2 * 5		/* icon row */
+	    + 5 + 2 + 5;		/* divider line */
 	msgw = pwidth - 2 * 12 - 8;
 	msgh = 0;
 	if (msg) {
