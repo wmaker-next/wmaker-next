@@ -1087,11 +1087,13 @@ static void launchDockedApplication(WAppIcon *btn, bool withSelection)
 
 static void updateWorkspaceMenu(WMenu *menu, WAppIcon *icon)
 {
-	WScreen *scr = menu->frame->screen_ptr;
+	WScreen *scr;
 	int i;
 
 	if (!menu || !icon)
 		return;
+
+	scr = menu->frame->screen_ptr;
 
 	for (i = 0; i < scr->workspace_count; i++) {
 		if (i < menu->entry_no) {
