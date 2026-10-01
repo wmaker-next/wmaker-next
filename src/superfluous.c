@@ -336,10 +336,13 @@ void wAppBounce(WApplication *wapp)
 	if (!w_global.config->no_animations && !w_global.display_off
 		&& wapp->app_icon && !wapp->flags.bouncing
 		&& !w_global.config->do_not_make_appicons_bounce) {
+		AppBouncerData *data = (AppBouncerData *)malloc(sizeof(AppBouncerData));
+		if (!data)
+			return;
+
 		++wapp->refcount;
 		wapp->flags.bouncing = 1;
 
-		AppBouncerData *data = (AppBouncerData *)malloc(sizeof(AppBouncerData));
 		data->wapp = wapp;
 		data->count = data->pow = 0;
 		data->dir = bounceDirection(wapp->app_icon);
