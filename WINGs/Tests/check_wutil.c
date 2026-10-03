@@ -21,6 +21,7 @@
  */
 
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -220,6 +221,33 @@ static void test_wtrimspace(void)
 	wfree(s);
 
 	CHECK(wtrimspace(NULL) == NULL);
+}
+
+/* '.' must be the decimal separator regardless of LC_NUMERIC, since the
+ * numbers come from serialized IPC/state/config text */
+static void test_wstrtod(void)
+{
+	char *end;
+	double d;
+
+	d = wstrtod("0.7", &end);
+	CHECK(d == 0.7 && *end == '\0');
+
+	d = wstrtod("0.5x", &end);
+	CHECK(d == 0.5 && *end == 'x');
+
+	d = wstrtod(" 12.5", &end);
+	CHECK(d == 12.5 && *end == '\0');
+
+	/* ',' is not a decimal separator in the C locale */
+	d = wstrtod("0,7", &end);
+	CHECK(d == 0.0 && *end == ',');
+
+	d = wstrtod("abc", &end);
+	CHECK(d == 0.0 && strcmp(end, "abc") == 0);
+
+	CHECK(isnan(wstrtod("nan", &end)) && *end == '\0');
+	CHECK(isinf(wstrtod("-inf", &end)) && *end == '\0');
 }
 
 static void test_wexpandpath(void)
@@ -568,6 +596,7 @@ int main(void)
 	test_wshellquote();
 	test_wtoken();
 	test_wtrimspace();
+	test_wstrtod();
 	test_wexpandpath();
 	test_wpathdir();
 	test_intern();

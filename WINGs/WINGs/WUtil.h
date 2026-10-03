@@ -269,6 +269,12 @@ char* wstrappend(char *dst, const char *src);
 size_t wstrlcpy(char *, const char *, size_t);
 size_t wstrlcat(char *, const char *, size_t);
 
+/* Parse a floating-point number with the C locale: '.' is always the
+ * decimal separator, independent of LC_NUMERIC. Use for numbers read from
+ * or written to serialized formats (IPC, saved state, config). Like
+ * strtod, *end receives the first unconsumed character. */
+double wstrtod(const char *s, char **end);
+
 
 /* ---[ WINGs/intern.c ]-------------------------------------------------- */
 

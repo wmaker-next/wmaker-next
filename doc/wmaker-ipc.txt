@@ -137,7 +137,9 @@ Command verbs (request type 0)
             switch workspace N (current by default) to LAYOUT, which is
             one of float, tile, tileh, grid, monocle (case-insensitive);
             optional master_count and master_ratio tune the tiling
-            parameters of the same workspace
+            parameters of the same workspace. master_ratio must parse
+            fully as a finite number with '.' as the decimal separator,
+            otherwise the request is rejected
     set-viewport X Y
             pan the current floating workspace so its top-left world
             coordinate is (X, Y). Has no effect on a tiled workspace or

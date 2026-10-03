@@ -119,6 +119,19 @@ static void test_tile_ratio_clamp(void)
 	check_rects("tile ratio>max", WLAYOUT_TILE, 1, 1.5f, 2, hi);
 }
 
+/* a NaN ratio must fall back to the default split and never reach the
+ * undefined (int)(prim * NaN) conversion. Infinities clamp to the range. */
+static void test_tile_ratio_nonfinite(void)
+{
+	static const WLayoutRect def[] = {
+		{ 0, 0, 660, 800 }, { 660, 0, 540, 400 }, { 660, 400, 540, 400 }
+	};
+
+	check_rects("tile ratio nan", WLAYOUT_TILE, 1, (float)NAN, 3, def);
+	check_bounds("tile ratio inf", WLAYOUT_TILE, 1, INFINITY, 3);
+	check_bounds("tile ratio -inf", WLAYOUT_TILE, 1, -INFINITY, 3);
+}
+
 static void test_tile_h(void)
 {
 	static const WLayoutRect n3[] = {
@@ -185,6 +198,7 @@ int main(void)
 	test_float_and_empty();
 	test_tile();
 	test_tile_ratio_clamp();
+	test_tile_ratio_nonfinite();
 	test_tile_h();
 	test_grid();
 	test_monocle();

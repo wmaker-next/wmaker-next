@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
+#include <locale.h>
 #ifdef HAVE_BSD_STRING_H
 #include <bsd/string.h>
 #endif
@@ -432,4 +433,21 @@ char *wshellquote(const char *s)
 							/* input or so), but since these are relatively rare */
 							/* and short-lived strings, not sure if a trip to */
 							/* wstrdup+wfree worths the gain. */
+}
+
+/* Parse a floating-point number with the C locale, so '.' is always the
+ * decimal separator regardless of LC_NUMERIC. Use for numbers that cross
+ * a serialization boundary (IPC, saved state, config). Like strtod, *end
+ * receives the first unconsumed character. */
+double wstrtod(const char *s, char **end)
+{
+#if defined(HAVE_STRTOD_L) && defined(HAVE_NEWLOCALE)
+	static locale_t cloc;
+
+	if (!cloc)
+		cloc = newlocale(LC_NUMERIC_MASK, "C", NULL);
+	if (cloc)
+		return strtod_l(s, end, cloc);
+#endif
+	return strtod(s, end);
 }

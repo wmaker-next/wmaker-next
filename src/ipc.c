@@ -26,6 +26,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <float.h>
+#include <math.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
@@ -818,14 +820,50 @@ static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 }
 #endif
 
+static verb_rc set_layout_pairs(WScreen *scr, WMPropList *args, long *widx,
+				bool apply, char **err)
+{
+	WMPropList *k, *v;
+	char *end;
+	int i;
+
+	for (i = 2; i + 1 < WMGetPropListItemCount(args); i += 2) {
+		k = WMGetFromPLArray(args, i);
+		v = WMGetFromPLArray(args, i + 1);
+		if (!k || !WMIsPLString(k) || !v || !WMIsPLString(v))
+			continue;
+		if (strcmp(WMGetFromPLString(k), "workspace") == 0) {
+			*widx = strtol(WMGetFromPLString(v), &end, 10);
+			if (*end || *widx < 0 || *widx >= scr->workspace_count) {
+				*err = wstrdup("set-layout: invalid workspace index");
+				return VERB_FAIL;
+			}
+		} else if (strcmp(WMGetFromPLString(k), "master_count") == 0) {
+			if (apply)
+				scr->workspaces[*widx]->master_count =
+					(int)strtol(WMGetFromPLString(v), NULL, 10);
+		} else if (strcmp(WMGetFromPLString(k), "master_ratio") == 0) {
+			double ratio = wstrtod(WMGetFromPLString(v), &end);
+
+			if (end == WMGetFromPLString(v) || *end || !isfinite(ratio)
+			    || ratio < -(double)FLT_MAX || ratio > (double)FLT_MAX) {
+				*err = wstrdup("set-layout: invalid master_ratio");
+				return VERB_FAIL;
+			}
+			if (apply)
+				scr->workspaces[*widx]->master_ratio = (float)ratio;
+		}
+	}
+	return VERB_OK;
+}
+
 static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 			       char **err, WMPropList **reply)
 {
-	WMPropList *a, *k, *v;
+	WMPropList *a;
 	WWorkspace *ws;
 	long widx;
-	char *end;
-	int i;
+	verb_rc rc;
 
 	(void)reply;
 	if (!args || WMGetPropListItemCount(args) < 2) {
@@ -837,26 +875,16 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 		*err = wstrdup("set-layout: layout must be a string");
 		return VERB_FAIL;
 	}
+
 	widx = scr->current_workspace;
-	for (i = 2; i + 1 < WMGetPropListItemCount(args); i += 2) {
-		k = WMGetFromPLArray(args, i);
-		v = WMGetFromPLArray(args, i + 1);
-		if (!k || !WMIsPLString(k) || !v || !WMIsPLString(v))
-			continue;
-		if (strcmp(WMGetFromPLString(k), "workspace") == 0) {
-			widx = strtol(WMGetFromPLString(v), &end, 10);
-			if (*end || widx < 0 || widx >= scr->workspace_count) {
-				*err = wstrdup("set-layout: invalid workspace index");
-				return VERB_FAIL;
-			}
-		} else if (strcmp(WMGetFromPLString(k), "master_count") == 0) {
-			scr->workspaces[widx]->master_count =
-				(int)strtol(WMGetFromPLString(v), NULL, 10);
-		} else if (strcmp(WMGetFromPLString(k), "master_ratio") == 0) {
-			scr->workspaces[widx]->master_ratio =
-				(float)atof(WMGetFromPLString(v));
-		}
-	}
+	rc = set_layout_pairs(scr, args, &widx, false, err);
+	if (rc != VERB_OK)
+		return rc;
+	widx = scr->current_workspace;
+	rc = set_layout_pairs(scr, args, &widx, true, err);
+	if (rc != VERB_OK)
+		return rc;
+
 	ws = scr->workspaces[widx];
 	if (ws->layout == wLayoutFromName(WMGetFromPLString(a))
 	    && strcasecmp(WMGetFromPLString(a), "float") != 0)

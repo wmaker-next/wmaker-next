@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <locale.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -53,21 +52,6 @@ static void calc_seterr(Calc *c, const char *msg, const char *pos)
 		snprintf(c->err, sizeof(c->err), "%s", msg);
 	c->has_err = 1;
 	return;
-}
-
-/* Numbers are parsed with the C locale so the calculator always takes
-   '.' as the decimal separator, independent of LC_NUMERIC. */
-static double calc_strtod(const char *s, char **end)
-{
-#if defined( HAVE_STRTOD_L ) && defined( HAVE_NEWLOCALE )
-	static locale_t cloc;
-
-	if (!cloc)
-		cloc = newlocale(LC_NUMERIC_MASK, "C", NULL);
-	if (cloc)
-		return strtod_l(s, end, cloc);
-#endif
-	return strtod(s, end);
 }
 
 static void skip_ws(Calc *c)
@@ -173,7 +157,7 @@ static int parse_unary(Calc *c, double *out)
 	/* number */
 	if (isdigit((unsigned char)*c->p) || *c->p == '.') {
 		char *end;
-		v = calc_strtod(c->p, &end);
+		v = wstrtod(c->p, &end);
 		if (end == c->p) {
 			calc_seterr(c, "bad number", mark);
 			return 0;

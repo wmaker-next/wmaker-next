@@ -60,6 +60,8 @@ WLayout wLayoutFromName(const char *name)
 
 static float clamp_ratio(float r)
 {
+	if (isnan(r))
+		return WLAYOUT_RATIO_DEFAULT;
 	if (r < WLAYOUT_RATIO_MIN)
 		return WLAYOUT_RATIO_MIN;
 	if (r > WLAYOUT_RATIO_MAX)

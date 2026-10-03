@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <float.h>
+#include <math.h>
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -1825,6 +1827,8 @@ void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 void wWorkspaceRestoreState(WScreen *scr)
 {
 	WMPropList *parr, *pstr, *wks_state, *clip_state;
+	double ratio;
+	char *end;
 	int i, j;
 
 	make_keys();
@@ -1867,9 +1871,14 @@ void wWorkspaceRestoreState(WScreen *scr)
 				scr->workspaces[i]->master_count =
 					atoi(WMGetFromPLString(pstr));
 			pstr = WMGetFromPLDictionary(wks_state, dMasterRatio);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->master_ratio =
-					atof(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				ratio = wstrtod(WMGetFromPLString(pstr), &end);
+				if (end != WMGetFromPLString(pstr)
+				    && *end == '\0' && isfinite(ratio)
+				    && ratio >= -FLT_MAX && ratio <= FLT_MAX)
+					scr->workspaces[i]->master_ratio =
+						(float)ratio;
+			}
 #ifdef VIRTUAL_DESKTOP
 			/* Restore per-workspace viewport state by direct
 			 * field assignment, NOT wVdeskSetViewport: the saved

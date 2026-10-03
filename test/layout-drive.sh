@@ -182,6 +182,36 @@ expect_rect "tile master" "$(frame_geom "$W1")" 0 0 660 800
 expect_rect "tile stack0" "$(frame_geom "$W2")" 660 0 540 400
 expect_rect "tile stack1" "$(frame_geom "$W3")" 660 400 540 400
 
+# --- master_ratio tune ------------------------------------------------------
+note "set-layout tile master_ratio 0.7"
+msg -q set-layout tile master_ratio 0.7 || fail "set-layout master_ratio 0.7 rejected"
+sleep 0.3
+expect_rect "tile 0.7 master" "$(frame_geom "$W1")" 0 0 840 800
+expect_rect "tile 0.7 stack0" "$(frame_geom "$W2")" 840 0 360 400
+expect_rect "tile 0.7 stack1" "$(frame_geom "$W3")" 840 400 360 400
+
+# --- malformed master_ratio must be rejected --------------------------------
+note "set-layout tile master_ratio nan/inf/garbage"
+if msg -q set-layout tile master_ratio nan; then
+    fail "set-layout accepted master_ratio nan"
+fi
+if msg -q set-layout tile master_ratio inf; then
+    fail "set-layout accepted master_ratio inf"
+fi
+if msg -q set-layout tile master_ratio 0.5abc; then
+    fail "set-layout accepted master_ratio 0.5abc"
+fi
+msg get_workspaces | grep -q 'master_ratio = .\{0,1\}0\.70' \
+    || fail "rejected master_ratio changed the stored ratio"
+expect_rect "tile unchanged after rejects" "$(frame_geom "$W1")" 0 0 840 800
+
+note "set-layout rejection is atomic"
+if msg -q set-layout tile master_count 3 master_ratio nan; then
+    fail "set-layout accepted a compound request with an invalid ratio"
+fi
+msg get_workspaces | sed 's/^({//; s/},.*//' | grep -q 'master_count = 1' \
+    || fail "rejected set-layout changed master_count"
+
 # --- grid ------------------------------------------------------------------
 note "set-layout grid"
 msg -q set-layout grid || fail "set-layout grid rejected"
