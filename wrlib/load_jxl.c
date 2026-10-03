@@ -93,7 +93,7 @@ RImage *RLoadJXL(const char *file)
 			width = info.xsize;
 			height = info.ysize;
 
-			if (width < 1 || height < 1) {
+			if (!RImageDimensionsWithinLimits(width, height)) {
 				RErrorCode = RERR_BADIMAGEFILE;
 				goto error;
 			}
@@ -121,6 +121,13 @@ RImage *RLoadJXL(const char *file)
 
 			/* Determine buffer size */
 			if (JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) != JXL_DEC_SUCCESS) {
+				RErrorCode = RERR_BADIMAGEFILE;
+				goto error;
+			}
+
+			/* the copy length derives from the basic info, so
+			 * require the decoder's own size to cover it */
+			if (buffer_size < (size_t)width * height * (has_alpha ? 4 : 3)) {
 				RErrorCode = RERR_BADIMAGEFILE;
 				goto error;
 			}
