@@ -20,8 +20,6 @@
 
 #include "config.h"
 
-#include <limits.h>
-
 #ifdef USE_MAGICK
 /* MagickCore/pixel-accessor.h compares Quantum (float on the HDRI build)
  * with == and implicitly widens it to MagickRealType (double), neither
@@ -68,6 +66,21 @@ RImage *RLoadMagick(const char *file_name)
 	PixelSetColor(bg_wand, "none");
 	MagickSetBackgroundColor(m_wand, bg_wand);
 
+	/* Ping the header first so an oversize image is rejected before
+	 * the full decode allocates its pixel buffers */
+	if (!MagickPingImage(m_wand, file_name)) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		goto bye;
+	}
+
+	w = MagickGetImageWidth(m_wand);
+	h = MagickGetImageHeight(m_wand);
+
+	if (!RImageDimensionsWithinLimits(w, h)) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		goto bye;
+	}
+
 	/* Read the input image */
 	if (!MagickReadImage(m_wand, file_name)) {
 		RErrorCode = RERR_BADIMAGEFILE;
@@ -77,7 +90,7 @@ RImage *RLoadMagick(const char *file_name)
 	w = MagickGetImageWidth(m_wand);
 	h = MagickGetImageHeight(m_wand);
 
-	if (w == 0 || h == 0 || w > UINT_MAX || h > UINT_MAX) {
+	if (!RImageDimensionsWithinLimits(w, h)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto bye;
 	}
