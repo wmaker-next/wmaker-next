@@ -80,12 +80,23 @@ RImage *RLoadHEIF(const char *file, int index)
 		/* index 0 is the primary image, guaranteed to exist */
 		err = heif_context_get_primary_image_handle(ctx, &handle);
 	} else {
+		heif_item_id *ids;
+
 		nimages = heif_context_get_number_of_top_level_images(ctx);
 		if (index >= nimages) {
 			RErrorCode = RERR_BADINDEX;
 			goto error;
 		}
-		err = heif_context_get_image_handle(ctx, index, &handle);
+		ids = malloc((size_t)nimages * sizeof(*ids));
+		if (!ids) {
+			RErrorCode = RERR_NOMEMORY;
+			goto error;
+		}
+		/* the handle API takes item ids, not ordinals, and the
+		 * ids are not a dense 0..n-1 range */
+		heif_context_get_list_of_top_level_image_IDs(ctx, ids, nimages);
+		err = heif_context_get_image_handle(ctx, ids[index], &handle);
+		free(ids);
 	}
 	if (err.code) {
 		fprintf(stderr, _("wrlib: no image %d in HEIF file \"%s\": %s\n"),
