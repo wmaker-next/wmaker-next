@@ -2368,19 +2368,23 @@ static void shared_edge_adjust(SharedEdgePair *pair_x, SharedEdgePair *pair_y,
 		int origin, chrome, other;
 		int g, glo, ghi, dlo, dhi;
 		int praw, plo, phi, pfin;
+		int il, ir;
 
 		if (!p->partner)
 			continue;
 
+		wFrameInnerBorderWidths(wwin, &il, &ir, NULL, NULL);
 		if (i == 0) {
 			origin = *fx;
-			chrome = 0;
+			/* the loop's dimensions are frame-outer, the hint
+			 * reconciliation below works on the client extent */
+			chrome = il + ir;
 			other = *fh - vert_border;
 			seam = (p->side > 0) ? *fx + *fw : *fx;
 		} else {
 			origin = *fy;
 			chrome = vert_border;
-			other = *fw;
+			other = *fw - (il + ir);
 			seam = (p->side > 0) ? *fy + *fh : *fy;
 		}
 
@@ -2555,8 +2559,9 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	xcb_generic_event_t *event = NULL;
 	WScreen *scr = wwin->screen_ptr;
 	xcb_window_t root = scr->root_win;
-	int it = 0, ib = 0;
+	int il = 0, ir = 0, it = 0, ib = 0;
 	int vert_border = wwin->frame->top_width + wwin->frame->bottom_width;
+	int horz_border = 0;
 	int fw = wwin->frame->core->width;
 	int fh = wwin->frame->core->height;
 	int fx = wwin->frame_x;
@@ -2565,6 +2570,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	int orig_x, orig_y;
 	int started;
 	int dw, dh;
+	int cfw;
 	int rw = fw, rh = fh;
 	int rx1, ry1, rx2, ry2;
 	int res = 0;
@@ -2583,8 +2589,9 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	pair_y.partner = NULL;
 
 	if (HAS_BORDER(wwin))
-		wFrameInnerBorderWidths(wwin, NULL, NULL, &it, &ib);
+		wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
 	vert_border += it + ib;
+	horz_border = il + ir;
 
 	if (!IS_RESIZABLE(wwin))
 		return;
@@ -2791,7 +2798,11 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				fh = rh;
 				snapResizeGeometry(wwin, res, rx1, ry1, rx2, ry2, dw, dh, &fw, &fh);
 				fh -= vert_border;
-				wWindowConstrainSize(wwin, (unsigned int *)&fw, (unsigned int *)&fh);
+				/* the loop works in frame-outer units, the
+				 * constrain works on the client extent */
+				cfw = fw - horz_border;
+				wWindowConstrainSize(wwin, (unsigned int *)&cfw, (unsigned int *)&fh);
+				fw = cfw + horz_border;
 				fh += vert_border;
 				if (res & LEFT)
 					fx = rx2 - fw + 1;
@@ -2831,7 +2842,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					 * the client up */
 					if (!wNETWMSyncRequestPending(wwin)) {
 						wNETWMSyncRequestSend(wwin);
-						wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
+						wWindowConfigure(wwin, fx, fy, fw - horz_border, fh - vert_border);
 					}
 
 					shared_edge_apply_motion(&pair_x);
@@ -2857,7 +2868,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				if (fh != original_fh)
 					wwin->flags.maximized &= ~(MAX_VERTICAL | MAX_LEFTHALF | MAX_RIGHTHALF | MAX_MAXIMUS | MAX_CENTRAL);
 
-				wWindowConfigure(wwin, fx, fy, fw, fh - vert_border);
+				wWindowConfigure(wwin, fx, fy, fw - horz_border, fh - vert_border);
 				wWindowSynthConfigureNotify(wwin);
 
 				if (pair_x.partner) {
