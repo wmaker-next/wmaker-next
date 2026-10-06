@@ -115,8 +115,9 @@ void PlaceIcon(WScreen *scr, int *x_ret, int *y_ret, int head)
 	WMBagIterator iter;
 	WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 
-	/* Do not place icons under the dock. */
-	if (scr->dock)
+	/* Do not place icons under the dock, but only on the head(s)
+	 * its main tile actually touches. */
+	if (scr->dock && wAppIconTouchesHead(scr->dock->icon_array[0], head))
 		wDockInsetArea(scr, &area);
 
 	/* Find out screen boundaries. */

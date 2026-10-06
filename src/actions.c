@@ -2754,7 +2754,7 @@ void wArrangeIcons(WScreen *scr, bool arrangeAll)
 		WArea area = wGetUsableAreaForHead(scr, head, NULL, false);
 		WMRect rect;
 
-		if (scr->dock)
+		if (scr->dock && wAppIconTouchesHead(scr->dock->icon_array[0], head))
 			wDockInsetArea(scr, &area);
 
 		rect = wmkrect(area.x1, area.y1, area.x2 - area.x1, area.y2 - area.y1);
