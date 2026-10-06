@@ -113,18 +113,38 @@ int WMPLGetBool(WMPropList *value)
 	}
 }
 
+static long long monotonic_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 /* Wait up to timeout_ms (-1 waits forever) for an X event matching
  * mask, restricted to window when window != None, blocking on poll()
  * between queue checks. True if an event was taken, False on timeout
- * or poll error. */
+ * or poll error. Interruptions consume the deadline rather than
+ * restarting the full timeout. */
 bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms)
 {
 	struct pollfd pfd;
+	long long deadline;
 	int ret;
+
+	if (timeout_ms < 0)
+		deadline = -1;
+	else
+		deadline = monotonic_ms() + timeout_ms;
 
 	while (!WXEvqTakeMask(dpy, mask, window, ev)) {
 		pfd.fd = xcb_get_file_descriptor(dpy);
 		pfd.events = POLLIN;
+		if (deadline >= 0) {
+			timeout_ms = (int)(deadline - monotonic_ms());
+			if (timeout_ms <= 0)
+				return false;
+		}
 		ret = poll(&pfd, 1, timeout_ms);
 		if (ret < 0) {
 			if (errno == EINTR)
