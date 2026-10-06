@@ -302,6 +302,24 @@ static void restore_tiled_window(WWindow *wwin)
 	wWindowSynthConfigureNotify(wwin);
 }
 
+/* A layout change on a workspace nobody is looking at must not move
+ * the shared windows that are visible on another workspace, so the
+ * apply and restore passes only run for a workspace currently shown.
+ * The switch path re-applies (or restores) when the workspace becomes
+ * visible, a stored layout never applies before that. */
+static bool workspace_layout_visible(WScreen *scr, int workspace)
+{
+	int head;
+
+	if (!w_global.config->per_head_workspaces)
+		return workspace == scr->current_workspace;
+
+	for (head = 0; head < wXineramaHeads(scr); head++)
+		if (scr->head_workspace[head] == workspace)
+			return true;
+	return false;
+}
+
 void wLayoutApply(WScreen *scr, int workspace)
 {
 	WWorkspace *ws;
@@ -314,6 +332,8 @@ void wLayoutApply(WScreen *scr, int workspace)
 		return;
 	ws = scr->workspaces[workspace];
 	if (ws->layout == WLAYOUT_FLOAT)
+		return;
+	if (!workspace_layout_visible(scr, workspace))
 		return;
 
 	/* each head collects a subset of the workspace population, so one
@@ -346,6 +366,8 @@ void wLayoutRestore(WScreen *scr, int workspace)
 	WWindow *w;
 
 	if (!scr)
+		return;
+	if (!workspace_layout_visible(scr, workspace))
 		return;
 	for (w = scr->focused_window; w; w = w->prev) {
 		if (w->frame && WWIN_ON_WORKSPACE(w, workspace)

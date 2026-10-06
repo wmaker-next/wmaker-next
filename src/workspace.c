@@ -1068,7 +1068,10 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 	wScreenUpdateUsableArea(scr);
 	wNETWMUpdateDesktop(scr);
 	showWorkspaceName(scr, workspace);
-	wLayoutApply(scr, workspace);
+	if (scr->workspaces[workspace]->layout == WLAYOUT_FLOAT)
+		wLayoutRestore(scr, workspace);
+	else
+		wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 	wSoundPlay(scr, WSOUND_WORKSPACE);
@@ -1280,7 +1283,10 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 	wNETWMUpdateDesktop(scr);
 	wNETWMUpdateCurrentDesktop(scr);
 	showWorkspaceName(scr, workspace);
-	wLayoutApply(scr, workspace);
+	if (scr->workspaces[workspace]->layout == WLAYOUT_FLOAT)
+		wLayoutRestore(scr, workspace);
+	else
+		wLayoutApply(scr, workspace);
 
 	WMPostNotificationName(WMNWorkspaceChanged, scr, (void *)(uintptr_t) workspace);
 	wSoundPlay(scr, WSOUND_WORKSPACE);
