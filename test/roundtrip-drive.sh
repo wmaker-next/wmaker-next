@@ -5,9 +5,19 @@
 # total stays under ROUNDTRIP_LIMIT. The bulk of the count is the
 # pipelined InternAtom and per-screen prefetch batches (one round-trip
 # for many replies), the assertion catches a serial GetProperty or
-# XSync sneaking back into the manage path. The per-WINGs-screen
-# xkbcommon stack (WINGs/wxkb.c) mirrors src/wxkb.c and prefetches the
-# keymap once at boot on the same connection, worth ~7 replies.
+# XSync sneaking back into the manage path.
+#
+# The keymap prefetches (src/wxkb.c and its WINGs mirror) resolve every
+# keymap atom through one GetAtomName each. libxkbcommon's volume there
+# scales with the server keymap and the library version, not with
+# wmaker's own round-trip discipline, so those replies are excluded from
+# the asserted count (they stay in the histogram and the printed total).
+# libxkbcommon issues them while parsing the keymap it fetched, between
+# its XKB GetControls and GetState requests, so that window identifies
+# the replies to exclude; wmaker's own serial wXGetAtomName() calls stay
+# in the asserted budget. The window depends on libxkbcommon's request
+# order, not just its reply count, so a library change there can move
+# replies into or out of the exclusion.
 #
 # In bench mode (BENCH=1) five clients are also managed and the
 # per-window GetProperty and reply deltas are printed, no assertion.
@@ -25,7 +35,7 @@ WMAKERMSG="$ROOT/util/.libs/wmakermsg"
 . "$ROOT/test/drive-common.sh"
 REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:$(drive_default_display)}
 PROXY=${ROUNDTRIP_DRIVE_PROXY:-:$(drive_default_display 1)}
-LIMIT=${ROUNDTRIP_LIMIT:-360}
+LIMIT=${ROUNDTRIP_LIMIT:-250}
 TRACE=/tmp/roundtrip-drive.trace
 LOG=/tmp/roundtrip-drive.log
 BENCH=${BENCH:-0}
@@ -124,14 +134,33 @@ WMCONN=$(grep -m1 'SubstructureRedirect' "$TRACE" | sed -n 's/^\([0-9]\{3\}\):.*
 reply_count() {
     grep -c "^$WMCONN:>:.*: Reply to " "$TRACE"
 }
+atomname_count() {
+    grep -c "^$WMCONN:>:.*: Reply to GetAtomName:" "$TRACE"
+}
+# GetAtomName replies libxkbcommon asked for while parsing its keymap,
+# i.e. those answered between its XKB GetControls and GetState requests
+keymap_atomname_count() {
+    awk -v conn="$WMCONN" '
+        index($0, conn ":<:") == 1 \
+            && index($0, "XKEYBOARD-Request(135,6): GetControls") > 0 { ink = 1; next }
+        index($0, conn ":<:") == 1 \
+            && index($0, "XKEYBOARD-Request(135,4): GetState") > 0 { ink = 0; next }
+        ink && index($0, conn ":>:") == 1 \
+            && index($0, ": Reply to GetAtomName:") > 0 { n++ }
+        END { print n + 0 }
+    ' "$TRACE"
+}
 getprop_count() {
     grep -c "^$WMCONN:<:.*: GetProperty " "$TRACE"
 }
 
 COLD_REPLIES=$(reply_count)
+COLD_ATOMNAMES=$(atomname_count)
+COLD_KEYMAP_ATOMNAMES=$(keymap_atomname_count)
+COLD_COUNTED=$((COLD_REPLIES - COLD_KEYMAP_ATOMNAMES))
 COLD_GETPROP=$(getprop_count)
 
-note "cold-boot conn $WMCONN: replies=$COLD_REPLIES GetProperty=$COLD_GETPROP (limit replies<=$LIMIT)"
+note "cold-boot conn $WMCONN: replies=$COLD_REPLIES GetAtomName=$COLD_ATOMNAMES keymap=$COLD_KEYMAP_ATOMNAMES counted=$COLD_COUNTED GetProperty=$COLD_GETPROP (limit counted<=$LIMIT)"
 note "--- reply histogram ---"
 grep "^$WMCONN:>:.*: Reply to " "$TRACE" \
     | sed -E 's/.*Reply to ([A-Za-z0-9_:-]+).*/\1/' \
@@ -169,8 +198,8 @@ fi
 
 LD_LIBRARY_PATH="$WMLIBS" "$WMAKERMSG" -s "$SOCKET" -q exit >/dev/null 2>&1
 
-if [ "$COLD_REPLIES" -gt "$LIMIT" ]; then
-    fail "cold-boot reply count $COLD_REPLIES exceeds $LIMIT, a serial round-trip has regressed"
+if [ "$COLD_COUNTED" -gt "$LIMIT" ]; then
+    fail "cold-boot counted reply total $COLD_COUNTED (replies $COLD_REPLIES minus keymap GetAtomName $COLD_KEYMAP_ATOMNAMES) exceeds $LIMIT, a serial round-trip has regressed"
 fi
-note "ok: $COLD_REPLIES <= $LIMIT"
+note "ok: counted $COLD_COUNTED <= $LIMIT"
 exit 0
