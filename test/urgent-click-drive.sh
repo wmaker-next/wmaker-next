@@ -193,6 +193,14 @@ done
 [ -x "$ROOT/src/.libs/wmaker" ] || skip_all "src/.libs/wmaker not built"
 [ -x "$WMAKERMSG" ] || skip_all "util/.libs/wmakermsg not built"
 [ -x "$WDWRITE" ] || skip_all "util/.libs/wdwrite not built"
+# wmctrl passes unknown property names through as raw atom names, so the
+# demands_attention requests go through this EWMH sender instead
+UREQ=$(mktemp /tmp/urgent-req.XXXXXX)
+${CC:-cc} -std=gnu11 "$ROOT/test/urgent-req.c" -o "$UREQ" -lX11 >>"$LOG" 2>&1 \
+    || skip_all "could not build test/urgent-req.c (needs libX11 headers)"
+demand_attention() {
+    DISPLAY=$DPY "$UREQ" "$1" "$2"
+}
 
 export WMAKER_USER_ROOT="$WMHOME"
 unset WMAKER_USER_XDG
@@ -255,7 +263,7 @@ DISPLAY=$DPY wmctrl -i -r "$W1" -t 1 2>>"$LOG"
 msg -q workspace 0 >/dev/null
 sleep 0.5
 check "baseline: current desktop is 0" desktop_is 0
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$W1" 2>>"$LOG"
+demand_attention "$W1" add 2>>"$LOG"
 check "uc-1 advertises DEMANDS_ATTENTION" wait_for 30 has_demands_attention "$W1"
 
 dblclick_at "$ICON1"
@@ -269,7 +277,7 @@ msg -q workspace 0 >/dev/null
 sleep 0.5
 DISPLAY=$DPY xdotool windowminimize "$W1" >>"$LOG" 2>&1
 check "uc-1 is iconic" wait_for 30 window_state_is "$W1" Iconic
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$W1" 2>>"$LOG"
+demand_attention "$W1" add 2>>"$LOG"
 check "iconic uc-1 advertises DEMANDS_ATTENTION" wait_for 30 has_demands_attention "$W1"
 
 dblclick_at "$ICON1"
@@ -291,7 +299,7 @@ DISPLAY=$DPY wmctrl -i -a "$WBG" 2>>"$LOG"
 sleep 0.3
 check "baseline: uc-bg holds focus" active_is "$WBG"
 WS_BEFORE=$(current_desktop)
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$W1" 2>>"$LOG"
+demand_attention "$W1" add 2>>"$LOG"
 check "uc-1 advertises DEMANDS_ATTENTION again" wait_for 30 has_demands_attention "$W1"
 
 dblclick_at "$ICON1"
@@ -371,7 +379,7 @@ sleep 0.3
 DISPLAY=$DPY wmctrl -i -r "$WD" -t 1 2>>"$LOG"
 msg -q workspace 0 >/dev/null
 sleep 0.5
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WD" 2>>"$LOG"
+demand_attention "$WD" add 2>>"$LOG"
 check "docked uc-dock advertises DEMANDS_ATTENTION" wait_for 30 has_demands_attention "$WD"
 
 dblclick_at "$DOCK_TILE"
@@ -431,7 +439,7 @@ note "references captured"
 
 # a focused window rejects the demand, so the holder keeps the focus
 # while the test window advertises urgency
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+demand_attention "$WT" add 2>>"$LOG"
 check "test window advertises DEMANDS_ATTENTION" wait_for 30 has_demands_attention "$WT"
 BLINK_SAW_FOCUSED=0
 BLINK_SAW_UNFOCUSED=0
@@ -473,7 +481,7 @@ check "blink stopped after focus (frame stays focused)" [ "$BLINK_FOCUS_STABLE" 
 # iconify while urgent then deiconify: the blink resumes
 DISPLAY=$DPY wmctrl -i -a "$WF" 2>>"$LOG"
 sleep 0.3
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+demand_attention "$WT" add 2>>"$LOG"
 wait_for 30 has_demands_attention "$WT"
 DISPLAY=$DPY xdotool windowminimize "$WT" 2>>"$LOG"
 wait_for 30 window_state_is "$WT" Iconic
@@ -481,7 +489,7 @@ DISPLAY=$DPY wmctrl -i -a "$WT" 2>>"$LOG"
 wait_for 30 window_state_is "$WT" Normal
 DISPLAY=$DPY wmctrl -i -a "$WF" 2>>"$LOG"
 sleep 0.3
-DISPLAY=$DPY wmctrl -i -b add,demands_attention -r "$WT" 2>>"$LOG"
+demand_attention "$WT" add 2>>"$LOG"
 wait_for 30 has_demands_attention "$WT"
 BLINK_RESUMED=0
 i=0
