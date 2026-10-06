@@ -441,13 +441,30 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 }
 
 /* Auto-destroy trailing empty workspaces. A workspace is empty when no
- * non-omnipresent window carries its bit. The currently displayed
- * workspace (and, under PerHeadWorkspaces, every head's active
- * workspace) is never destroyed even if empty, so the user's view is
- * never yanked by an automatic sweep. Workspaces below
- * min_workspace_count are kept as a permanent floor. Only contiguous
- * empty workspaces at the end of the array are reaped, so the
- * numbering of workspaces still in use stays stable. */
+ * non-omnipresent window carries its bit and its clip holds no docked
+ * launchers, so the sweep never reaps a workspace out from under a
+ * launcher panel the user built. The currently displayed workspace
+ * (and, under PerHeadWorkspaces, every head's active workspace) is
+ * never destroyed even if empty, so the user's view is never yanked by
+ * an automatic sweep. Workspaces below min_workspace_count are kept as
+ * a permanent floor. Only contiguous empty workspaces at the end of
+ * the array are reaped, so the numbering of workspaces still in use
+ * stays stable. */
+
+/* A clip with icons beyond its main tile carries user content. */
+static bool workspace_clip_has_launchers(WScreen *scr, int workspace)
+{
+	WDock *clip = scr->workspaces[workspace]->clip;
+	int i;
+
+	if (!clip)
+		return false;
+	for (i = 1; i < clip->max_icons; i++)
+		if (clip->icon_array[i])
+			return true;
+	return false;
+}
+
 void wAutoRemoveEmptyWorkspaces(WScreen *scr)
 {
 	uint64_t active_mask;
@@ -470,6 +487,8 @@ void wAutoRemoveEmptyWorkspaces(WScreen *scr)
 		if (i < w_global.config->min_workspace_count)
 			break;
 		if (active_mask & WS_BIT(i))
+			break;
+		if (!wdisp->flags.noclip && workspace_clip_has_launchers(scr, i))
 			break;
 
 		tmp = scr->focused_window;
