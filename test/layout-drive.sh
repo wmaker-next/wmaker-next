@@ -3,6 +3,9 @@
 # set-layout tile via IPC, assert their frame-outer geometries against
 # the expected 0.55 master/stack split, cycle through grid and monocle,
 # then set-layout float and check the original geometries are restored.
+# Finally map a 131-window herd (past the former 128-window collection
+# cap) plus the three xterms and require every window to land in one of
+# the two tile columns.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -47,6 +50,9 @@ command -v xdotool >/dev/null || { echo "SKIP: xdotool not found"; exit 77; }
 command -v xterm   >/dev/null || { echo "SKIP: xterm not found"; exit 77; }
 [ -x "$ROOT/src/.libs/wmaker" ] || { echo "SKIP: wmaker not built"; exit 77; }
 [ -x "$WMAKERMSG" ] || { echo "SKIP: wmakermsg not built"; exit 77; }
+HERDCLIENT="$RUNTIME/tinywin-client"
+${CC:-cc} -std=gnu11 "$ROOT/test/tinywin-client.c" -o "$HERDCLIENT" -lX11 >>"$LOG" 2>&1 \
+    || { echo "SKIP: could not build tinywin-client.c (needs libX11 headers)"; exit 77; }
 
 msg() {
     LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
@@ -236,6 +242,50 @@ msg get_workspaces | grep -q 'layout = float' \
 expect_rect "float restore W1" "$(frame_geom "$W1")" $G1_ORIG 4
 expect_rect "float restore W2" "$(frame_geom "$W2")" $G2_ORIG 4
 expect_rect "float restore W3" "$(frame_geom "$W3")" $G3_ORIG 4
+
+# --- herd past the former 128-window collection cap -------------------------
+note "spawn 131-window herd"
+HERD=131
+hi=0
+while [ "$hi" -lt "$HERD" ]; do
+    TINYWIN_NAME=lxherd TINYWIN_GEOM=120x80+90+90 TINYWIN_DELAY=0 \
+        DISPLAY=$DPY "$HERDCLIENT" >>"$LOG" 2>&1 &
+    echo "$!" >> "$PIDFILE"
+    hi=$((hi + 1))
+done
+herd_ready() {
+    [ "$(DISPLAY=$DPY xdotool search --name '^lxherd$' 2>/dev/null | wc -l)" \
+        -ge "$HERD" ]
+}
+wait_for 600 herd_ready || fail "herd did not map"
+sleep 1
+
+note "set-layout tile over the herd"
+msg -q set-layout tile master_ratio 0.55 || fail "set-layout tile master_ratio 0.55 rejected"
+sleep 1
+
+# master column starts at x=0, the 0.55 stack column at x=660. Every
+# tiled window must sit on one of the two
+note "check every window landed in a tile column"
+masters=0
+stackers=0
+strays=0
+for hx in $(DISPLAY=$DPY xdotool search --name '^lxherd$' 2>/dev/null) \
+          $(xt_client lxa) $(xt_client lxb) $(xt_client lxc); do
+    set -- $(frame_geom "$hx")
+    hxx=$1
+    if [ "$hxx" -le 16 ]; then
+        masters=$((masters + 1))
+    elif [ "$hxx" -ge 644 ] && [ "$hxx" -le 676 ]; then
+        stackers=$((stackers + 1))
+    else
+        strays=$((strays + 1))
+        note "window $hx left at x=$hxx"
+    fi
+done
+[ "$strays" -eq 0 ] || fail "$strays of $((HERD + 3)) windows were left out of the tiling"
+[ "$masters" -eq 1 ] || fail "expected exactly one master column window, got $masters"
+note "ok: herd tiled, $masters master and $stackers stack windows"
 
 # --- teardown --------------------------------------------------------------
 kill -TERM "$WMAKER_PID" 2>/dev/null

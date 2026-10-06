@@ -220,9 +220,33 @@ static bool window_is_tileable(WWindow *wwin, int workspace)
 	return true;
 }
 
-/* Fill wins[] (caller-sized to at least the workspace population) with the
- * tileable windows on (workspace, head) in focus-MRU order and return the
- * count. head < 0 collects across every head. */
+/* Tileable and on the given head. head < 0 matches every head. */
+static bool window_tileable_on_head(WWindow *wwin, int workspace, int head)
+{
+	if (!window_is_tileable(wwin, workspace))
+		return false;
+	if (head >= 0 && wGetHeadForWindow(wwin) != head)
+		return false;
+	return true;
+}
+
+/* Number of tileable windows on (workspace, head). head < 0 counts
+ * across every head. */
+static int count_tileable(WScreen *scr, int workspace, int head)
+{
+	WWindow *w;
+	int n = 0;
+
+	for (w = scr->focused_window; w; w = w->prev) {
+		if (window_tileable_on_head(w, workspace, head))
+			n++;
+	}
+	return n;
+}
+
+/* Fill wins[] (sized to at least count_tileable(scr, workspace, head))
+ * with the tileable windows on (workspace, head) in focus-MRU order and
+ * return the count. head < 0 collects across every head. */
 static int collect_tileable(WScreen *scr, int workspace, int head,
 			    WWindow **wins, int max)
 {
@@ -230,11 +254,8 @@ static int collect_tileable(WScreen *scr, int workspace, int head,
 	int n = 0;
 
 	for (w = scr->focused_window; w && n < max; w = w->prev) {
-		if (!window_is_tileable(w, workspace))
-			continue;
-		if (head >= 0 && wGetHeadForWindow(w) != head)
-			continue;
-		wins[n++] = w;
+		if (window_tileable_on_head(w, workspace, head))
+			wins[n++] = w;
 	}
 	return n;
 }
@@ -281,15 +302,13 @@ static void restore_tiled_window(WWindow *wwin)
 	wWindowSynthConfigureNotify(wwin);
 }
 
-#define WLAYOUT_MAX_TILEABLE 128
-
 void wLayoutApply(WScreen *scr, int workspace)
 {
 	WWorkspace *ws;
-	WWindow *wins[WLAYOUT_MAX_TILEABLE];
-	WLayoutRect out[WLAYOUT_MAX_TILEABLE];
+	WWindow **wins;
+	WLayoutRect *out;
 	WArea usable;
-	int head, n, i;
+	int nwindows, n, i, head;
 
 	if (!scr || workspace < 0 || workspace >= scr->workspace_count)
 		return;
@@ -297,8 +316,16 @@ void wLayoutApply(WScreen *scr, int workspace)
 	if (ws->layout == WLAYOUT_FLOAT)
 		return;
 
+	/* each head collects a subset of the workspace population, so one
+	 * population-sized pair of arrays serves every head */
+	nwindows = count_tileable(scr, workspace, -1);
+	if (nwindows == 0)
+		return;
+	wins = wmalloc(nwindows * sizeof(WWindow *));
+	out = wmalloc(nwindows * sizeof(WLayoutRect));
+
 	for (head = 0; head < wXineramaHeads(scr); head++) {
-		n = collect_tileable(scr, workspace, head, wins, WLAYOUT_MAX_TILEABLE);
+		n = collect_tileable(scr, workspace, head, wins, nwindows);
 		if (n == 0)
 			continue;
 		usable = wGetUsableAreaForHead(scr, head, NULL, true);
@@ -310,6 +337,8 @@ void wLayoutApply(WScreen *scr, int workspace)
 		if (ws->layout == WLAYOUT_MONOCLE)
 			wRaiseFrame(wins[0]->frame->core);
 	}
+	wfree(wins);
+	wfree(out);
 }
 
 void wLayoutRestore(WScreen *scr, int workspace)
@@ -364,9 +393,6 @@ void wLayoutSetWindowTiled(WWindow *wwin, bool tiled)
 
 void wLayoutSwapMaster(WScreen *scr, int workspace, WWindow *wwin)
 {
-	WWindow *wins[WLAYOUT_MAX_TILEABLE];
-	int head, n;
-
 	if (!scr || !wwin || !wwin->frame)
 		return;
 	if (workspace < 0 || workspace >= scr->workspace_count)
@@ -376,9 +402,7 @@ void wLayoutSwapMaster(WScreen *scr, int workspace, WWindow *wwin)
 	/* the tileable list is built in focus-MRU order so the focused
 	 * window is already the head, a re-apply is what promotes it into
 	 * the master cell and demotes the previous master into the stack */
-	head = wGetHeadForWindow(wwin);
-	n = collect_tileable(scr, workspace, head, wins, WLAYOUT_MAX_TILEABLE);
-	if (n < 2)
+	if (count_tileable(scr, workspace, wGetHeadForWindow(wwin)) < 2)
 		return;
 	wLayoutApply(scr, workspace);
 }

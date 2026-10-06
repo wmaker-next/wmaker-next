@@ -14,13 +14,14 @@
 #include <X11/Xutil.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <time.h>
 
 int main(void)
 {
 	const char *name = getenv("TINYWIN_NAME");
 	const char *geom = getenv("TINYWIN_GEOM");
 	const char *delay = getenv("TINYWIN_DELAY");
+	struct timespec ts;
 	unsigned long usec;
 	Display *dpy;
 	Window w;
@@ -62,7 +63,9 @@ int main(void)
 
 	XMapWindow(dpy, w);
 	XFlush(dpy);
-	usleep((useconds_t)usec);
+	ts.tv_sec = 0;
+	ts.tv_nsec = (long)usec * 1000;
+	nanosleep(&ts, NULL);
 
 	XMoveResizeWindow(dpy, w, gx, gy, gw, gh);
 	XFlush(dpy);
