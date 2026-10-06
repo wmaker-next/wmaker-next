@@ -738,11 +738,18 @@ static void wRandR_Update(WScreen *scr)
 #endif
 
 	/* Move the dock if needed */
-	if (scr->dock &&
-		((scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
-		 scr->dock->x_pos < 0 ||
-		 scr->dock->x_pos >= scr->scr_width))
-		wDockReanchor(scr->dock);
+	if (scr->dock) {
+		/* grow the icon arrays so the freed along-axis space on
+		 * a screen growth can be filled with new icons, this
+		 * also re-pins the edge axis to the new geometry */
+		wDockApplyIconSize(scr);
+		if ((scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
+		    scr->dock->x_pos < 0 ||
+		    scr->dock->x_pos + w_global.config->icon_size > scr->scr_width ||
+		    scr->dock->y_pos < 0 ||
+		    scr->dock->y_pos + w_global.config->icon_size > scr->scr_height)
+			wDockReanchor(scr->dock);
+	}
 
 	/* Snap each workspace clip back onto a visible head if it ended up
 	 * outside the (now smaller or rearranged) virtual framebuffer */

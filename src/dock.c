@@ -3667,19 +3667,41 @@ void wDockApplyIconSize(WScreen *scr)
 
 /* Re-pin the dock at its current edge without changing it, e.g. after
  * a KeepDockOnPrimaryHead toggle or a RandR reconfiguration. */
+static void dock_along_span(const WDock *dock, const int *drawer_off,
+			    int ndrawers, int *neg_out, int *pos_out);
+
 void wDockReanchor(WDock *dock)
 {
 	WScreen *scr = dock->screen_ptr;
-	int x, y;
+	WDrawerChain *dc;
+	int *drawer_off;
+	int x, y, n, i, neg, pos;
 
 	if (dock->type != WM_DOCK)
 		return;
 
+	n = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next)
+		n++;
+	drawer_off = wmalloc(sizeof(int) * (n > 0 ? n : 1));
+	i = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next, i++) {
+		if (wDockEdgeHorizontal(dock->edge))
+			drawer_off[i] = dc->adrawer->x_pos - dock->x_pos;
+		else
+			drawer_off[i] = dc->adrawer->y_pos - dock->y_pos;
+	}
+
+	/* the preserved along offset must fit the anchor rect again,
+	 * a RandR shrink can leave the old pixel past its end */
+	dock_along_span(dock, drawer_off, n, &neg, &pos);
+	wfree(drawer_off);
+
 	dock_origin(scr, dock->edge, &x, &y);
 	if (wDockEdgeHorizontal(dock->edge))
-		x = dock->x_pos;
+		x = dock_clamp_along_pixel(scr, dock->edge, dock->x_pos, neg, pos);
 	else
-		y = dock->y_pos;
+		y = dock_clamp_along_pixel(scr, dock->edge, dock->y_pos, neg, pos);
 
 	moveDock(dock, x, y);
 	wScreenUpdateUsableArea(scr);
