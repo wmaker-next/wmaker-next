@@ -186,12 +186,12 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 		break;
 
 	case WO_LOCK_POSITION:
-		WSETUFLAG(wwin, no_movable, !WFLAGP(wwin, no_movable));
+		WSETPERWINDOWFLAG(wwin, no_movable, !WFLAGP(wwin, no_movable));
 		wNETWMUpdateActions(wwin, false);
 		break;
 
 	case WO_LOCK_SIZE:
-		WSETUFLAG(wwin, no_resizable, !WFLAGP(wwin, no_resizable));
+		WSETPERWINDOWFLAG(wwin, no_resizable, !WFLAGP(wwin, no_resizable));
 		/* resizebar and maximize button key off IS_RESIZABLE() */
 		wWindowConfigureBorders(wwin);
 		wFrameWindowPaint(wwin->frame);
@@ -203,29 +203,29 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 		break;
 
 	case WO_SKIP_SWITCH_PANEL:
-		WSETUFLAG(wwin, skip_switchpanel,
-			  !WFLAGP(wwin, skip_switchpanel));
+		WSETPERWINDOWFLAG(wwin, skip_switchpanel,
+				  !WFLAGP(wwin, skip_switchpanel));
 		break;
 
 	case WO_SKIP_WINDOW_LIST:
 		skip = !WFLAGP(wwin, skip_window_list);
-		WSETUFLAG(wwin, skip_window_list, skip);
+		WSETPERWINDOWFLAG(wwin, skip_window_list, skip);
 		UpdateSwitchMenu(wwin->screen_ptr, wwin,
 				 skip ? ACTION_REMOVE : ACTION_ADD);
 		break;
 
 	case WO_AUTO_MINIATURIZE_ON_UNFOCUS:
-		WSETUFLAG(wwin, auto_miniaturize_on_unfocus,
-			  !WFLAGP(wwin, auto_miniaturize_on_unfocus));
+		WSETPERWINDOWFLAG(wwin, auto_miniaturize_on_unfocus,
+				  !WFLAGP(wwin, auto_miniaturize_on_unfocus));
 		if (WFLAGP(wwin, auto_miniaturize_on_unfocus))
-			WSETUFLAG(wwin, auto_hide_on_unfocus, 0);
+			WSETPERWINDOWFLAG(wwin, auto_hide_on_unfocus, 0);
 		break;
 
 	case WO_AUTO_HIDE_ON_UNFOCUS:
-		WSETUFLAG(wwin, auto_hide_on_unfocus,
-			  !WFLAGP(wwin, auto_hide_on_unfocus));
+		WSETPERWINDOWFLAG(wwin, auto_hide_on_unfocus,
+				  !WFLAGP(wwin, auto_hide_on_unfocus));
 		if (WFLAGP(wwin, auto_hide_on_unfocus))
-			WSETUFLAG(wwin, auto_miniaturize_on_unfocus, 0);
+			WSETPERWINDOWFLAG(wwin, auto_miniaturize_on_unfocus, 0);
 		break;
 	}
 }

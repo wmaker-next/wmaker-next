@@ -597,6 +597,10 @@ void wWindowSetupInitialAttributes(WWindow *wwin, WManageCookies *ck, int *level
 		}
 	}
 
+	/* Everything the fill defined is domain-supplied, those values
+	 * re-derive at every manage so they never ride the hint. */
+	wwin->domain_flags = wwin->defined_user_flags;
+
 	if (own_ck)
 		wManageDiscard(ck);
 }
@@ -1360,38 +1364,45 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	/* if we're restarting, restore saved state (from hints).
 	 * This will overwrite previous */
 	if (getSavedStateCk(window, ck.saved_state, ck.mark_key, ck.tab_group, &wstate)) {
+		/* A per-window slot wins over the domain fill. A domain
+		 * snapshot only fills a flag the current fill left
+		 * undefined, so a domain edit wins while a deleted rule
+		 * keeps the live window stable. */
+#define WRESTORESLOT(FIELD, FLAG) \
+		do { \
+			if (wstate->FIELD##_set == 1 \
+			    || (wstate->FIELD##_set == 2 && !wwin->domain_flags.FLAG)) \
+				WRESTOREHINTFLAG(wwin, FLAG, wstate->FIELD); \
+		} while (0)
 		wwin->flags.shaded = wstate->shaded;
 		wwin->flags.hidden = wstate->hidden;
 		wwin->flags.miniaturized = wstate->miniaturized;
 		wwin->flags.maximized = wstate->maximized;
-		if (wstate->auto_hide_on_unfocus_set)
-			WRESTOREHINTFLAG(wwin, auto_hide_on_unfocus, wstate->auto_hide_on_unfocus);
-		if (wstate->auto_miniaturize_on_unfocus_set)
-			WRESTOREHINTFLAG(wwin, auto_miniaturize_on_unfocus,
-					  wstate->auto_miniaturize_on_unfocus);
-		if (wstate->no_movable_state)
-			WRESTOREHINTFLAG(wwin, no_movable, wstate->no_movable_state - 1);
-		if (wstate->no_resizable_state)
-			WRESTOREHINTFLAG(wwin, no_resizable, wstate->no_resizable_state - 1);
-		if (wstate->no_titlebar_set) {
+		WRESTORESLOT(auto_hide_on_unfocus, auto_hide_on_unfocus);
+		WRESTORESLOT(auto_miniaturize_on_unfocus, auto_miniaturize_on_unfocus);
+		if (wstate->no_movable_state
+		    && (wstate->no_movable_state <= 2 || !wwin->domain_flags.no_movable))
+			WRESTOREHINTFLAG(wwin, no_movable,
+					 (wstate->no_movable_state - 1) & 1);
+		if (wstate->no_resizable_state
+		    && (wstate->no_resizable_state <= 2 || !wwin->domain_flags.no_resizable))
+			WRESTOREHINTFLAG(wwin, no_resizable,
+					 (wstate->no_resizable_state - 1) & 1);
+		if (wstate->no_titlebar_set == 1
+		    || (wstate->no_titlebar_set == 2 && !wwin->domain_flags.no_titlebar)) {
 			WRESTOREHINTFLAG(wwin, no_titlebar, wstate->no_titlebar);
 			WRESTOREHINTFLAG(wwin, no_shadeable, wstate->no_titlebar);
-			/* a titlebar-less window cannot be shaded */
-			if (wstate->no_titlebar)
-				wwin->flags.shaded = 0;
 		}
-		if (wstate->no_resizebar_set)
-			WRESTOREHINTFLAG(wwin, no_resizebar, wstate->no_resizebar);
-		if (wstate->no_close_button_set)
-			WRESTOREHINTFLAG(wwin, no_close_button, wstate->no_close_button);
-		if (wstate->no_miniaturize_button_set)
-			WRESTOREHINTFLAG(wwin, no_miniaturize_button, wstate->no_miniaturize_button);
-		if (wstate->no_border_set)
-			WRESTOREHINTFLAG(wwin, no_border, wstate->no_border);
-		if (wstate->skip_window_list_set)
-			WRESTOREHINTFLAG(wwin, skip_window_list, wstate->skip_window_list);
-		if (wstate->skip_switchpanel_set)
-			WRESTOREHINTFLAG(wwin, skip_switchpanel, wstate->skip_switchpanel);
+		/* a titlebar-less window cannot be shaded */
+		if (WFLAGP(wwin, no_titlebar))
+			wwin->flags.shaded = 0;
+		WRESTORESLOT(no_resizebar, no_resizebar);
+		WRESTORESLOT(no_close_button, no_close_button);
+		WRESTORESLOT(no_miniaturize_button, no_miniaturize_button);
+		WRESTORESLOT(no_border, no_border);
+		WRESTORESLOT(skip_window_list, skip_window_list);
+		WRESTORESLOT(skip_switchpanel, skip_switchpanel);
+#undef WRESTORESLOT
 		if (wstate->stacking_level) {
 			switch (wstate->stacking_level) {
 			case 1:
@@ -2753,11 +2764,15 @@ static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
 	do { \
 		if (regex_mask.flag) { \
 			WSETUFLAG(wwin, flag, final_attr.flag); \
+			wwin->domain_flags.flag = 1; \
 		} else if (old_applied.flag) { \
-			if (base_mask.flag) \
+			if (base_mask.flag) { \
 				WSETUFLAG(wwin, flag, base_attr.flag); \
-			else \
+				wwin->domain_flags.flag = 1; \
+			} else { \
 				wwin->defined_user_flags.flag = 0; \
+				wwin->domain_flags.flag = 0; \
+			} \
 		} \
 	} while (0)
 	REAPPLY_FIELD(no_close_button);
@@ -2841,8 +2856,10 @@ static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
 			wwin->defined_user_flags.skip_window_list = 0;
 			v = WFLAGP(wwin, skip_window_list);
 		}
-		if (regex_mask.skip_window_list || base_mask.skip_window_list)
+		if (regex_mask.skip_window_list || base_mask.skip_window_list) {
 			WSETUFLAG(wwin, skip_window_list, v);
+			wwin->domain_flags.skip_window_list = 1;
+		}
 		if (WFLAGP(wwin, skip_window_list) != old_skip_window_list) {
 			UpdateSwitchMenu(wwin->screen_ptr, wwin,
 					 WFLAGP(wwin, skip_window_list) ? ACTION_REMOVE
@@ -4010,20 +4027,25 @@ void wWindowSaveState(WWindow *wwin)
 	}
 	data[10] = (uint32_t)(wwin->frame->ws_mask & 0xffffffffu);
 	data[11] = (uint32_t)(wwin->frame->ws_mask >> 32);
+	/* The tri-state slots are 0 unset, 1 off, 2 on for a per-window
+	 * value and 3 off, 4 on for a domain-supplied snapshot, which the
+	 * restore only applies where the current fill left the flag
+	 * undefined, so a domain edit wins but a deleted rule keeps the
+	 * live window stable across a warm restart. */
+#define WSAVED_TRISTATE(FLAG) \
+	(wwin->defined_user_flags.FLAG \
+	 ? wwin->user_flags.FLAG + 1 + (wwin->domain_flags.FLAG ? 2 : 0) : 0)
 	/* per-window auto-on-unfocus bits, modelled on shaded/hidden so they
 	 * survive warm restart without propagating to same-class siblings */
-	data[12] = wwin->defined_user_flags.auto_hide_on_unfocus
-		? wwin->user_flags.auto_hide_on_unfocus + 1 : 0;
-	data[13] = wwin->defined_user_flags.auto_miniaturize_on_unfocus
-		? wwin->user_flags.auto_miniaturize_on_unfocus + 1 : 0;
+	data[12] = WSAVED_TRISTATE(auto_hide_on_unfocus);
+	data[13] = WSAVED_TRISTATE(auto_miniaturize_on_unfocus);
 	/* user geometry locks, tri-state so a user-unlock of a
-	 * client-locked window survives too: 0 unset, 1 user-unlocked,
-	 * 2 user-locked */
-	data[14] = wwin->defined_user_flags.no_movable ? wwin->user_flags.no_movable + 1 : 0;
-	data[15] = wwin->defined_user_flags.no_resizable ? wwin->user_flags.no_resizable + 1 : 0;
+	 * client-locked window survives too */
+	data[14] = WSAVED_TRISTATE(no_movable);
+	data[15] = WSAVED_TRISTATE(no_resizable);
 	/* per-window menu state so it survives a warm restart: stacking level
 	 * (plain levels only, so a GNUstep or modal level is not squashed)
-	 * and tri-state decoration and skip flags, 0 unset, 1 off, 2 on */
+	 * and tri-state decoration and skip flags */
 	switch (wwin->frame->core->stacking->window_level) {
 	case WMNormalLevel:
 		data[16] = 1;
@@ -4038,16 +4060,14 @@ void wWindowSaveState(WWindow *wwin)
 		data[16] = 0;
 		break;
 	}
-	data[17] = wwin->defined_user_flags.no_titlebar ? wwin->user_flags.no_titlebar + 1 : 0;
-	data[18] = wwin->defined_user_flags.no_resizebar ? wwin->user_flags.no_resizebar + 1 : 0;
-	data[19] = wwin->defined_user_flags.no_close_button ? wwin->user_flags.no_close_button + 1 : 0;
-	data[20] = wwin->defined_user_flags.no_miniaturize_button
-		? wwin->user_flags.no_miniaturize_button + 1 : 0;
-	data[21] = wwin->defined_user_flags.no_border ? wwin->user_flags.no_border + 1 : 0;
-	data[22] = wwin->defined_user_flags.skip_window_list
-		? wwin->user_flags.skip_window_list + 1 : 0;
-	data[23] = wwin->defined_user_flags.skip_switchpanel
-		? wwin->user_flags.skip_switchpanel + 1 : 0;
+	data[17] = WSAVED_TRISTATE(no_titlebar);
+	data[18] = WSAVED_TRISTATE(no_resizebar);
+	data[19] = WSAVED_TRISTATE(no_close_button);
+	data[20] = WSAVED_TRISTATE(no_miniaturize_button);
+	data[21] = WSAVED_TRISTATE(no_border);
+	data[22] = WSAVED_TRISTATE(skip_window_list);
+	data[23] = WSAVED_TRISTATE(skip_switchpanel);
+#undef WSAVED_TRISTATE
 
 	WXSetFormat32N(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.state,
 		       wdisp->atom.wmaker.state, data, WSAVED_STATE_SLOTS);
@@ -4071,16 +4091,20 @@ void wWindowSaveState(WWindow *wwin)
 		WXDeleteProperty(wdisp->conn, wwin->client_win, wdisp->atom.wmaker.mark_key);
 }
 
-/* Decode a tri-state _WINDOWMAKER_STATE slot: 0 unset, 1 off, 2 on. */
+/* Decode a tri-state _WINDOWMAKER_STATE slot: 0 unset, 1 off, 2 on.
+ * Values 3 and 4 are a snapshot of a domain-supplied off/on, they only
+ * fill a flag the current domain fill left undefined. Anything past 4
+ * is corrupt and decodes to unset. *is_set is 0 unset, 1 per-window,
+ * 2 domain snapshot. */
 static void decodeSavedTriState(uint32_t raw, int *value, int *is_set)
 {
-	if (raw == 0) {
+	if (raw == 0 || raw > 4) {
 		*value = 0;
 		*is_set = 0;
 		return;
 	}
-	*value = raw > 2 ? 1 : (int)raw - 1;
-	*is_set = 1;
+	*value = (raw & 1) ? 0 : 1;
+	*is_set = (raw >= 3) ? 2 : 1;
 }
 
 static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark_ck,

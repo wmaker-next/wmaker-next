@@ -576,8 +576,8 @@ void wShowInfoPanel(WScreen *scr)
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Info"), center.x, center.y, pwidth, pheight);
 
-	WSETUFLAG(wwin, no_closable, 0);
-	WSETUFLAG(wwin, no_close_button, 0);
+	WSETPERWINDOWFLAG(wwin, no_closable, 0);
+	WSETPERWINDOWFLAG(wwin, no_close_button, 0);
 #ifdef XKB_BUTTON_HINT
 	wFrameWindowHideButton(wwin->frame, WFF_LANGUAGE_BUTTON);
 #endif
@@ -680,8 +680,8 @@ void wShowLegalPanel(WScreen *scr)
 	center = wGetCenter(scr, pwidth, pheight);
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Legal"), center.x, center.y, pwidth, pheight);
 
-	WSETUFLAG(wwin, no_closable, 0);
-	WSETUFLAG(wwin, no_close_button, 0);
+	WSETPERWINDOWFLAG(wwin, no_closable, 0);
+	WSETPERWINDOWFLAG(wwin, no_close_button, 0);
 	wWindowUpdateButtonImages(wwin);
 	wFrameWindowShowButton(wwin->frame, WFF_CLOSE_BUTTON);
 #ifdef XKB_BUTTON_HINT
@@ -965,8 +965,8 @@ void wShowShortcutsPanel(WScreen *scr)
 	wwin = wManageInternalWindow(scr, parent, XCB_NONE, _("Keyboard Shortcuts"),
 				     center.x, center.y, pwidth, pheight);
 
-	WSETUFLAG(wwin, no_closable, 0);
-	WSETUFLAG(wwin, no_close_button, 0);
+	WSETPERWINDOWFLAG(wwin, no_closable, 0);
+	WSETPERWINDOWFLAG(wwin, no_close_button, 0);
 #ifdef XKB_BUTTON_HINT
 	wFrameWindowHideButton(wwin->frame, WFF_LANGUAGE_BUTTON);
 #endif

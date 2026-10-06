@@ -856,10 +856,10 @@ static void applySettings(WMWidget *button, void *client_data)
 	 * exclusive rather than letting the user set both */
 	if (hide_i >= 0 && mini_i >= 0) {
 		if (WFLAGP(wwin, auto_hide_on_unfocus)) {
-			WSETUFLAG(wwin, auto_miniaturize_on_unfocus, 0);
+			WSETPERWINDOWFLAG(wwin, auto_miniaturize_on_unfocus, 0);
 			WMSetButtonSelected(panel->attrChk[mini_i], 0);
 		} else if (WFLAGP(wwin, auto_miniaturize_on_unfocus)) {
-			WSETUFLAG(wwin, auto_hide_on_unfocus, 0);
+			WSETPERWINDOWFLAG(wwin, auto_hide_on_unfocus, 0);
 			WMSetButtonSelected(panel->attrChk[hide_i], 0);
 		}
 		WMSetButtonEnabled(panel->attrChk[mini_i], !WFLAGP(wwin, auto_hide_on_unfocus));
@@ -881,13 +881,13 @@ static void applySettings(WMWidget *button, void *client_data)
 		set_attr_flag(&wwin->defined_user_flags, advanced_option[i].attr);
 	}
 
-	WSETUFLAG(wwin, always_user_icon, WMGetButtonSelected(panel->alwChk));
-	WSETUFLAG(wwin, auto_tab_group, WMGetButtonSelected(panel->autoTabGrpChk));
+	WSETPERWINDOWFLAG(wwin, always_user_icon, WMGetButtonSelected(panel->alwChk));
+	WSETPERWINDOWFLAG(wwin, auto_tab_group, WMGetButtonSelected(panel->autoTabGrpChk));
 
 	if (WFLAGP(wwin, no_titlebar) && wwin->flags.shaded)
 		wUnshadeWindow(wwin);
 
-	WSETUFLAG(wwin, no_shadeable, WFLAGP(wwin, no_titlebar));
+	WSETPERWINDOWFLAG(wwin, no_shadeable, WFLAGP(wwin, no_titlebar));
 
 	/*
 	 * Update the window level according to AlwaysOnTop/AlwaysOnBotton
@@ -966,7 +966,7 @@ static void applySettings(WMWidget *button, void *client_data)
 			wfree(file);
 
 			/* Change the flags */
-			WSETUFLAG(wwin, always_user_icon, 0);
+			WSETPERWINDOWFLAG(wwin, always_user_icon, 0);
 			WMSetButtonSelected(panel->alwChk, 0);
 		}
 

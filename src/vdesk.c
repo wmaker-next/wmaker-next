@@ -351,7 +351,7 @@ void wVdeskPin(WScreen *scr, WWindow *wwin)
 {
 	if (!wwin)
 		return;
-	WSETUFLAG(wwin, virtual_stick, !WFLAGP(wwin, virtual_stick));
+	WSETPERWINDOWFLAG(wwin, virtual_stick, !WFLAGP(wwin, virtual_stick));
 	CommitStacking(scr);
 }
 

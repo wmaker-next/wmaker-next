@@ -87,9 +87,16 @@ typedef enum {
     (wwin)->defined_user_flags.FLAG = 1
 
 /* Restore a user flag from the saved-state hint and tag it as
- * hint-carried, so the inspector does not persist it as a default. */
+ * hint-carried, so the inspector does not persist it as a default.
+ * The restored value is per-window, clear the domain tag so it
+ * re-saves. */
 #define WRESTOREHINTFLAG(wwin, FLAG, VAL)	WSETUFLAG(wwin, FLAG, VAL),\
-	(wwin)->hint_flags.FLAG = 1
+	(wwin)->hint_flags.FLAG = 1, (wwin)->domain_flags.FLAG = 0
+
+/* Set a per-window runtime override chosen from a menu or panel. The
+ * value is user state, not domain-derived, so it rides the hint. */
+#define WSETPERWINDOWFLAG(wwin, FLAG, VAL)	WSETUFLAG(wwin, FLAG, VAL),\
+	(wwin)->domain_flags.FLAG = 0
 
 typedef struct {
     /* OpenStep */
@@ -248,6 +255,8 @@ typedef struct WWindow {
 	WWindowAttributes client_flags;		/* window attribute flags set by app
 						 * initialized with global defaults */
 	WWindowAttributes hint_flags;		/* user_flags bits restored from _WINDOWMAKER_STATE */
+	WWindowAttributes domain_flags;		/* user_flags bits currently supplied by the
+						 * domain fill, they never ride the hint */
 
 	struct InspectorPanel *inspector;	/* pointer to attribute editor panel */
 
