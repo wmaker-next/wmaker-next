@@ -37,7 +37,13 @@ int clip_wait_event(xcb_connection_t *xc, xcb_generic_event_t **ev,
 		    int timeout_ms)
 {
 	struct pollfd pfd;
+	long long deadline;
 	int rc;
+
+	if (timeout_ms < 0)
+		deadline = -1;
+	else
+		deadline = clip_monotonic_ms() + timeout_ms;
 
 	for (;;) {
 		*ev = xcb_poll_for_event(xc);
@@ -46,6 +52,13 @@ int clip_wait_event(xcb_connection_t *xc, xcb_generic_event_t **ev,
 		if (xcb_connection_has_error(xc))
 			return 0;
 
+		if (deadline >= 0) {
+			/* an interruption must consume the deadline,
+			 * not restart the full timeout */
+			timeout_ms = (int)(deadline - clip_monotonic_ms());
+			if (timeout_ms <= 0)
+				return 0;
+		}
 		pfd.fd = xcb_get_file_descriptor(xc);
 		pfd.events = POLLIN;
 		pfd.revents = 0;
@@ -133,9 +146,11 @@ static unsigned char *receive_incr(xcb_connection_t *xc, xcb_window_t win,
 				  xcb_atom_t *type_out, size_t *len_out)
 {
 	unsigned char *data, *grown, *chunk;
+	long long deadline = 0, now;
 	size_t size, chunk_len;
 	xcb_atom_t chunk_type;
 	xcb_generic_event_t *ev;
+	int wait_ms;
 
 	*type_out = XCB_ATOM_NONE;
 	*len_out = 0;
@@ -149,8 +164,24 @@ static unsigned char *receive_incr(xcb_connection_t *xc, xcb_window_t win,
 	xcb_delete_property(xc, win, property);
 	xcb_flush(xc);
 
+	/* the chunk timeout is a deadline for the next chunk, events
+	 * dispatched below must not postpone it, only a received chunk
+	 * does */
+	if (chunk_timeout_ms >= 0)
+		deadline = clip_monotonic_ms() + chunk_timeout_ms;
+
 	for (;;) {
-		if (!clip_wait_event(xc, &ev, chunk_timeout_ms)) {
+		if (chunk_timeout_ms < 0) {
+			wait_ms = -1;
+		} else {
+			now = clip_monotonic_ms();
+			if (now >= deadline) {
+				free(data);
+				return NULL;
+			}
+			wait_ms = (int)(deadline - now);
+		}
+		if (!clip_wait_event(xc, &ev, wait_ms)) {
 			free(data);
 			return NULL;
 		}
@@ -185,6 +216,10 @@ static unsigned char *receive_incr(xcb_connection_t *xc, xcb_window_t win,
 			*len_out = size;
 			return data;
 		}
+
+		/* the sender is alive, the next chunk gets a fresh deadline */
+		if (chunk_timeout_ms >= 0)
+			deadline = clip_monotonic_ms() + chunk_timeout_ms;
 
 		if (*type_out == XCB_ATOM_NONE)
 			*type_out = chunk_type;
