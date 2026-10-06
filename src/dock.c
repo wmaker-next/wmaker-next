@@ -4039,6 +4039,14 @@ void wClipSnapToHead(WDock *clip)
 	/* Find the nearest remaining head to the clip's old position */
 	head = wGetRectForHead(scr, wGetHeadForRect(scr, rect));
 
+	/* a head that cannot hold the icon has no valid position for it,
+	 * leave the clip where wScreenKeepInside clamped it */
+	if (head.size.width < (unsigned int)ICON_SIZE
+	    || head.size.height < (unsigned int)ICON_SIZE) {
+		moveDock(clip, x, y);
+		return;
+	}
+
 	/* Compute fractional position within that head and clamp to [0..1] */
 	rel_x = (float)(clip->x_pos - head.pos.x) / (float)head.size.width;
 	rel_y = (float)(clip->y_pos - head.pos.y) / (float)head.size.height;
@@ -4048,8 +4056,8 @@ void wClipSnapToHead(WDock *clip)
 	if (rel_y < 0.0f) rel_y = 0.0f;
 	else if (rel_y > 1.0f) rel_y = 1.0f;
 
-	x = head.pos.x + (int)(rel_x * (head.size.width  - ICON_SIZE));
-	y = head.pos.y + (int)(rel_y * (head.size.height - ICON_SIZE));
+	x = head.pos.x + (int)(rel_x * (float)(head.size.width - (unsigned int)ICON_SIZE));
+	y = head.pos.y + (int)(rel_y * (float)(head.size.height - (unsigned int)ICON_SIZE));
 
 	moveDock(clip, x, y);
 }
