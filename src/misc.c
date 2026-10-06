@@ -412,51 +412,87 @@ char *FindImage(const char *paths, const char *file)
 	return path;
 }
 
+/* Selection reads rotate through these properties so a reply left
+ * over from a previous timed-out request cannot be consumed as the
+ * current one's result, the wait drops notifies naming another tag.
+ * The tags are interned on the first read: selection reads are rare,
+ * so the cold-boot round-trip budget does not want them at startup. */
+#define WMSEL_TAG_COUNT 4
+
+static xcb_atom_t wmsel_tag_atom(unsigned int slot)
+{
+	static xcb_atom_t tags[WMSEL_TAG_COUNT];
+	static bool inited;
+	char *names[WMSEL_TAG_COUNT];
+	char buf[32];
+	unsigned int i;
+
+	if (!inited) {
+		for (i = 0; i < WMSEL_TAG_COUNT; i++) {
+			snprintf(buf, sizeof(buf), "_WINDOWMAKER_SEL_TAG_%u", i);
+			names[i] = wstrdup(buf);
+		}
+		WXInternAtomBatch(wdisp->conn, names, WMSEL_TAG_COUNT, tags);
+		for (i = 0; i < WMSEL_TAG_COUNT; i++)
+			wfree(names[i]);
+		inited = true;
+	}
+	return tags[slot];
+}
+
 static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 {
+	static unsigned int sel_tag_rot;
+
+	xcb_selection_notify_event_t *sn;
+	xcb_generic_event_t *ev = NULL;
+	xcb_atom_t property;
 	char *data;
 	size_t len;
-	struct timespec now, deadline;
-	int timeout = 0;
-	xcb_generic_event_t *ev = NULL;
-	xcb_atom_t clipboard = wx_static_atoms[W_ATOM_CLIPBOARD];
+	long long deadline;
+	unsigned int slot;
 
-	WXDeleteProperty(wdisp->conn, screen->info_window, clipboard);
+	slot = sel_tag_rot++ % WMSEL_TAG_COUNT;
+	property = wmsel_tag_atom(slot);
 
-	wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, clipboard, screen->info_window, XCB_CURRENT_TIME);
+	WXDeleteProperty(wdisp->conn, screen->info_window, property);
+
+	wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, property, screen->info_window, XCB_CURRENT_TIME);
 
 	/* bound the wait with a local monotonic deadline so a hostile
 	 * or hung selection owner cannot stall us, this loop never
 	 * re-enters the WINGs event loop so a WINGs timer would not
 	 * fire here (WM-2026-20) */
-	clock_gettime(CLOCK_MONOTONIC, &deadline);
-	deadline.tv_sec += 1;
+	deadline = monotonic_ms() + 1000;
 
-	while (!WXEvqTakeTyped(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
-		clock_gettime(CLOCK_MONOTONIC, &now);
-		if (now.tv_sec > deadline.tv_sec ||
-		    (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
-			timeout = 1;
-			break;
+	for (;;) {
+		if (WXEvqTakeTyped(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
+			sn = (xcb_selection_notify_event_t *)ev;
+			/* only our own request's reply names our tag
+			 * property, a late reply from an earlier
+			 * timed-out request is dropped here */
+			if (sn->selection == selection && sn->target == XCB_ATOM_STRING
+			    && (sn->property == property || sn->property == XCB_NONE))
+				break;
+			free(ev);
+		} else {
+			if (monotonic_ms() >= deadline) {
+				wwarning("selection retrieval timed out");
+				return NULL;
+			}
+			wusleep(10000);
 		}
-		wusleep(10000);
-	}
-
-	if (timeout) {
-		wwarning("selection retrieval timed out");
-		return NULL;
 	}
 
 	/* nobody owns the selection or the current owner has
 	 * nothing to do with what we need */
-	if ((((xcb_selection_notify_event_t *)ev)->property) == XCB_NONE) {
+	if (sn->property == XCB_NONE) {
 		free(ev);
 		return NULL;
 	}
 
+	data = WXGetLatin1String(wdisp->conn, screen->info_window, property, &len);
 	free(ev);
-
-	data = WXGetLatin1String(wdisp->conn, screen->info_window, clipboard, &len);
 	if (!data) {
 		wwarning("invalid data in text selection");
 		return NULL;
