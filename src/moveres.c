@@ -1098,28 +1098,35 @@ static void showResizeWireframe(WWindow *wwin, int x, int y, int w, int h)
 
 static int get_snap_direction(WScreen *scr, int x, int y)
 {
+	WMPoint point;
+	WMRect head;
 	int edge, corner;
 
 	edge = w_global.config->snap_edge_detect;
 	corner = w_global.config->snap_corner_detect;
 
-	if (x < corner && y < corner)
+	/* snap against the head the pointer is on, the seam between two
+	 * heads is an edge of both of them, not the screen edge */
+	point = wmkpoint(x, y);
+	head = wGetRectForHead(scr, wGetHeadForPoint(scr, point));
+
+	if (x < head.pos.x + corner && y < head.pos.y + corner)
 		return SNAP_TOPLEFT;
-	if (x < corner && y >= scr->scr_height - corner)
+	if (x < head.pos.x + corner && y >= head.pos.y + (int)head.size.height - corner)
 		return SNAP_BOTTOMLEFT;
-	if (x < edge)
+	if (x < head.pos.x + edge)
 		return SNAP_LEFT;
 
-	if (x >= scr->scr_width - corner && y < corner)
+	if (x >= head.pos.x + (int)head.size.width - corner && y < head.pos.y + corner)
 		return SNAP_TOPRIGHT;
-	if (x >= scr->scr_width - corner && y >= scr->scr_height - corner)
+	if (x >= head.pos.x + (int)head.size.width - corner && y >= head.pos.y + (int)head.size.height - corner)
 		return SNAP_BOTTOMRIGHT;
-	if (x >= scr->scr_width - edge)
+	if (x >= head.pos.x + (int)head.size.width - edge)
 		return SNAP_RIGHT;
 
-	if (y < edge)
+	if (y < head.pos.y + edge)
 		return SNAP_TOP;
-	if (y >= scr->scr_height - edge)
+	if (y >= head.pos.y + (int)head.size.height - edge)
 		return SNAP_BOTTOM;
 	return SNAP_NONE;
 }
@@ -1607,28 +1614,24 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 			break;
 
 		case XCB_MOTION_NOTIFY:
-			if (started && IS_RESIZABLE(wwin) && w_global.config->window_snapping) {
-				int snap_direction;
-
-				snap_direction = get_snap_direction(scr, moveData.mouseX, moveData.mouseY);
-
-				if (!w_global.config->no_autowrap &&
-				    snap_direction != SNAP_TOP &&
-				    snap_direction != SNAP_BOTTOM)
-					snap_direction = SNAP_NONE;
-
-				/* moveData.mouseX/Y only advance once
-				 * updateWindowPosition() runs, which is itself
-				 * gated on started, so testing earlier just
-				 * keys off the press position */
-				moveData.snap = snap_direction;
-			}
-
 			if (started) {
 				updateWindowPosition(wwin, &moveData,
 						     scr->selected_windows == NULL
 						     && w_global.config->edge_resistance > 0,
 						     opaqueMove, (((xcb_motion_notify_event_t *)event)->root_x), (((xcb_motion_notify_event_t *)event)->root_y));
+
+				if (IS_RESIZABLE(wwin) && w_global.config->window_snapping) {
+					int snap_direction;
+
+					snap_direction = get_snap_direction(scr, moveData.mouseX, moveData.mouseY);
+
+					if (!w_global.config->no_autowrap &&
+					    snap_direction != SNAP_TOP &&
+					    snap_direction != SNAP_BOTTOM)
+						snap_direction = SNAP_NONE;
+
+					moveData.snap = snap_direction;
+				}
 
 				if (!warped && !w_global.config->no_autowrap) {
 					int oldWorkspace = scr->current_workspace;
