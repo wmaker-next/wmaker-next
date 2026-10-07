@@ -1182,6 +1182,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		if (scr && scr->dock)
 			wDockSetEdge(scr->dock, new_config->dock_edge);
 	}
+	if (wConfigChangesHas(changes, WCFG_KEY_WINDOW_GAP))
+		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_DOCK))
 		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_NO_WINDOW_OVER_ICONS))

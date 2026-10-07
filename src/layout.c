@@ -309,16 +309,16 @@ static void configure_into_cell(WWindow *wwin, WLayoutRect r)
 	apply_tiled_geometry(wwin, r.x, r.y, cw, ch);
 }
 
-/* Pack one column of tiled windows. Shares are measured from the real
- * frame footprints so the rounding size hints force on a client flows
- * down the column instead of leaving gaps. band is the column's
- * extent along the primary axis, and the return value is the column's
- * footprint along that axis. */
+/* Pack one column of tiled windows with window_gap between neighbours.
+ * Shares are measured from the real frame footprints so the rounding
+ * size hints force on a client flows down the column instead of
+ * leaving gaps. band is the column's extent along the primary axis,
+ * and the return value is the column's footprint along that axis. */
 static int pack_column(WWindow **wins, int cnt, bool pack_x,
-		       int bx, int by, int band, WArea area)
+		       int bx, int by, int band, WArea area, int gap)
 {
 	int pack_len = pack_x ? area.x2 - area.x1 : area.y2 - area.y1;
-	int avail = pack_len;
+	int avail = pack_len - gap * (cnt - 1);
 	int used = 0, wide = 0, fw, fh;
 	int il, ir, it, ib, fb, share, vw, vh, fx, fy, i;
 	unsigned int cw, ch;
@@ -332,13 +332,13 @@ static int pack_column(WWindow **wins, int cnt, bool pack_x,
 		if (pack_x) {
 			vw = share;
 			vh = band;
-			fx = bx + used;
+			fx = bx + used + i * gap;
 			fy = by;
 		} else {
 			vw = band;
 			vh = share;
 			fx = bx;
-			fy = by + used;
+			fy = by + used + i * gap;
 		}
 		tiled_client_size(wwin, vw, vh, &cw, &ch);
 		apply_tiled_geometry(wwin, fx, fy, cw, ch);
@@ -393,7 +393,7 @@ void wLayoutApply(WScreen *scr, int workspace)
 	WWindow **wins;
 	WLayoutRect *out;
 	WArea usable;
-	int nwindows, n, i, c, cols, rows, head, mc, band, used, cnt;
+	int nwindows, n, i, c, cols, rows, head, gap, mc, band, used, cnt;
 	bool pack_x;
 
 	if (!scr || workspace < 0 || workspace >= scr->workspace_count)
@@ -420,6 +420,7 @@ void wLayoutApply(WScreen *scr, int workspace)
 		if (!wLayoutCompute(ws->layout, usable, ws->master_count,
 				    ws->master_ratio, n, out))
 			continue;
+		gap = w_global.config->window_gap;
 		if (ws->layout == WLAYOUT_MONOCLE) {
 			for (i = 0; i < n; i++)
 				configure_into_cell(wins[i], out[i]);
@@ -430,31 +431,32 @@ void wLayoutApply(WScreen *scr, int workspace)
 			pack_x = (ws->layout == WLAYOUT_TILE_H);
 			mc = tile_master_count(ws->master_count, n);
 			if (mc > 0 && mc < n) {
-				band = pack_x ? out[0].h : out[0].w;
+				band = pack_x ? out[0].h - gap : out[0].w - gap;
 				used = pack_column(wins, mc, pack_x,
 						   usable.x1, usable.y1,
-						   band, usable);
+						   band, usable, gap);
 				band = (pack_x ? usable.y2 - usable.y1
-					: usable.x2 - usable.x1) - used;
+					: usable.x2 - usable.x1) - used - gap;
 				pack_column(wins + mc, n - mc, pack_x,
-					    pack_x ? usable.x1 : usable.x1 + used,
-					    pack_x ? usable.y1 + used : usable.y1,
-					    band, usable);
+					    pack_x ? usable.x1 : usable.x1 + used + gap,
+					    pack_x ? usable.y1 + used + gap : usable.y1,
+					    band, usable, gap);
 			} else {
 				pack_column(wins, n, pack_x, usable.x1, usable.y1,
 					    pack_x ? usable.y2 - usable.y1
 						   : usable.x2 - usable.x1,
-					    usable);
+					    usable, gap);
 			}
 		} else {
 			grid_cols_rows(n, &cols, &rows);
 			used = 0;
 			for (c = 0; c < cols; c++) {
 				cnt = (c == cols - 1) ? n - c * rows : rows;
-				band = (usable.x2 - usable.x1 - used) / (cols - c);
+				band = (usable.x2 - usable.x1 - used
+					- gap * (cols - 1)) / (cols - c);
 				used += pack_column(wins + c * rows, cnt, false,
-						    usable.x1 + used,
-						    usable.y1, band, usable);
+						    usable.x1 + used + c * gap,
+						    usable.y1, band, usable, gap);
 			}
 		}
 	}

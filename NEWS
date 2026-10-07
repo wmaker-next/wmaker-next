@@ -735,6 +735,17 @@ The IPC set-layout verb sets a workspace's layout from wmakermsg or
 scripts, get_workspaces reports each workspace's layout, master count
 and ratio, and the workspace event stream now includes layout changes.
 
+Tiled windows ignore geometry requests from the client itself: a
+ConfigureRequest carrying a new position or size is refused and
+answered with a configure event reporting the real cell geometry, so
+an application that resizes itself (a terminal's resize escape, a
+toolkit reflowing at startup) stays inside its cell instead of
+escaping the layout or corrupting the geometry restored on untile.
+The existing WindowGap option now also spaces the tile, tileh and
+grid cells: gaps sit between neighbouring windows and columns while
+the outer edges stay flush with the usable area (monocle stays
+gap-free), and changing the value re-flows the current workspace.
+
 Cairo and PangoCairo are now required build dependencies
 --------------------------------------------------------
 
