@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <time.h>
 
 #define TITLE_H 40
 #define EDGE_W 8
@@ -131,7 +131,7 @@ int main(void)
 				   SubstructureNotifyMask, &msg);
 			XFlush(dpy);
 			if (getenv("MRS_HOLD_GRAB"))
-				usleep(50000);
+				nanosleep(&(struct timespec){0, 50000000L}, NULL);
 			XUngrabPointer(dpy, CurrentTime);
 			XFlush(dpy);
 		}
