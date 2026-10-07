@@ -73,6 +73,23 @@ static float clamp_ratio(float r)
  * stacked evenly along the secondary axis inside it, remaining windows
  * stacked evenly in the leftover strip. horiz swaps the axes. A single
  * tileable window always gets the whole area regardless of master_count. */
+static int tile_master_count(int master_count, int n)
+{
+	if (master_count > n)
+		master_count = n;
+	if (master_count < 0)
+		master_count = 0;
+	return master_count;
+}
+
+static void grid_cols_rows(int n, int *cols, int *rows)
+{
+	*cols = 1;
+	while (*cols * *cols < n)
+		(*cols)++;
+	*rows = (n + *cols - 1) / *cols;
+}
+
 static void compute_tile(WArea a, int master_count, float master_ratio,
 			 int horiz, int n, WLayoutRect *out)
 {
@@ -82,10 +99,7 @@ static void compute_tile(WArea a, int master_count, float master_ratio,
 	int sec = horiz ? aw : ah;
 	int mprim, sy, sh, i, k;
 
-	if (master_count > n)
-		master_count = n;
-	if (master_count < 0)
-		master_count = 0;
+	master_count = tile_master_count(master_count, n);
 
 	if (master_count == 0)
 		mprim = 0;
@@ -126,10 +140,7 @@ static void compute_grid(WArea a, int n, WLayoutRect *out)
 	int ah = a.y2 - a.y1;
 	int cols, rows, i, c, r, cnt, cx, cw, cy, ch;
 
-	cols = 1;
-	while (cols * cols < n)
-		cols++;
-	rows = (n + cols - 1) / cols;
+	grid_cols_rows(n, &cols, &rows);
 
 	for (i = 0; i < n; i++) {
 		c = i / rows;
@@ -260,18 +271,9 @@ static int collect_tileable(WScreen *scr, int workspace, int head,
 	return n;
 }
 
-static void configure_into_cell(WWindow *wwin, WLayoutRect r)
+static void apply_tiled_geometry(WWindow *wwin, int x, int y,
+				 unsigned int cw, unsigned int ch)
 {
-	unsigned int cw, ch;
-	int bw, vh;
-
-	bw = HAS_BORDER(wwin) ? 2 * wFrameBorderWidth(wwin) : 0;
-	cw = (r.w > bw) ? r.w - bw : 1;
-	vh = r.h - wwin->frame->top_width - wwin->frame->bottom_width - bw;
-	ch = (vh > 0) ? vh : 1;
-
-	wWindowConstrainSize(wwin, &cw, &ch);
-
 	if (!wwin->flags.tiled) {
 		save_old_geometry(wwin, SAVE_GEOMETRY_ALL);
 		wwin->flags.tiled = 1;
@@ -281,8 +283,73 @@ static void configure_into_cell(WWindow *wwin, WLayoutRect r)
 		wwin->flags.old_maximized = 0;
 		wWindowUpdateButtonImages(wwin);
 	}
-	wWindowConfigure(wwin, r.x, r.y, (int)cw, (int)ch);
+	wWindowConfigure(wwin, x, y, (int)cw, (int)ch);
 	wWindowSynthConfigureNotify(wwin);
+}
+
+static void tiled_client_size(WWindow *wwin, int vw, int vh,
+			      unsigned int *cw, unsigned int *ch)
+{
+	int il, ir, it, ib, bw;
+
+	wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+	bw = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
+	vw -= il + ir + 2 * bw;
+	vh -= wwin->frame->top_width + wwin->frame->bottom_width + it + ib + 2 * bw;
+	*cw = (vw > 0) ? (unsigned int)vw : 1;
+	*ch = (vh > 0) ? (unsigned int)vh : 1;
+	wWindowConstrainSize(wwin, cw, ch);
+}
+
+static void configure_into_cell(WWindow *wwin, WLayoutRect r)
+{
+	unsigned int cw, ch;
+
+	tiled_client_size(wwin, r.w, r.h, &cw, &ch);
+	apply_tiled_geometry(wwin, r.x, r.y, cw, ch);
+}
+
+/* Pack one column of tiled windows. Shares are measured from the real
+ * frame footprints so the rounding size hints force on a client flows
+ * down the column instead of leaving gaps. band is the column's
+ * extent along the primary axis, and the return value is the column's
+ * footprint along that axis. */
+static int pack_column(WWindow **wins, int cnt, bool pack_x,
+		       int bx, int by, int band, WArea area)
+{
+	int pack_len = pack_x ? area.x2 - area.x1 : area.y2 - area.y1;
+	int avail = pack_len;
+	int used = 0, wide = 0, fw, fh;
+	int il, ir, it, ib, fb, share, vw, vh, fx, fy, i;
+	unsigned int cw, ch;
+	WWindow *wwin;
+
+	for (i = 0; i < cnt; i++) {
+		wwin = wins[i];
+		wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+		fb = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
+		share = (avail - used) / (cnt - i);
+		if (pack_x) {
+			vw = share;
+			vh = band;
+			fx = bx + used;
+			fy = by;
+		} else {
+			vw = band;
+			vh = share;
+			fx = bx;
+			fy = by + used;
+		}
+		tiled_client_size(wwin, vw, vh, &cw, &ch);
+		apply_tiled_geometry(wwin, fx, fy, cw, ch);
+		fw = (int)cw + il + ir + 2 * fb;
+		fh = (int)ch + wwin->frame->top_width + wwin->frame->bottom_width
+		     + it + ib + 2 * fb;
+		used += pack_x ? fw : fh;
+		if (wide < (pack_x ? fh : fw))
+			wide = pack_x ? fh : fw;
+	}
+	return wide;
 }
 
 static void restore_tiled_window(WWindow *wwin)
@@ -326,7 +393,8 @@ void wLayoutApply(WScreen *scr, int workspace)
 	WWindow **wins;
 	WLayoutRect *out;
 	WArea usable;
-	int nwindows, n, i, head;
+	int nwindows, n, i, c, cols, rows, head, mc, band, used, cnt;
+	bool pack_x;
 
 	if (!scr || workspace < 0 || workspace >= scr->workspace_count)
 		return;
@@ -352,10 +420,43 @@ void wLayoutApply(WScreen *scr, int workspace)
 		if (!wLayoutCompute(ws->layout, usable, ws->master_count,
 				    ws->master_ratio, n, out))
 			continue;
-		for (i = 0; i < n; i++)
-			configure_into_cell(wins[i], out[i]);
-		if (ws->layout == WLAYOUT_MONOCLE)
+		if (ws->layout == WLAYOUT_MONOCLE) {
+			for (i = 0; i < n; i++)
+				configure_into_cell(wins[i], out[i]);
 			wRaiseFrame(wins[0]->frame->core);
+			continue;
+		}
+		if (ws->layout == WLAYOUT_TILE || ws->layout == WLAYOUT_TILE_H) {
+			pack_x = (ws->layout == WLAYOUT_TILE_H);
+			mc = tile_master_count(ws->master_count, n);
+			if (mc > 0 && mc < n) {
+				band = pack_x ? out[0].h : out[0].w;
+				used = pack_column(wins, mc, pack_x,
+						   usable.x1, usable.y1,
+						   band, usable);
+				band = (pack_x ? usable.y2 - usable.y1
+					: usable.x2 - usable.x1) - used;
+				pack_column(wins + mc, n - mc, pack_x,
+					    pack_x ? usable.x1 : usable.x1 + used,
+					    pack_x ? usable.y1 + used : usable.y1,
+					    band, usable);
+			} else {
+				pack_column(wins, n, pack_x, usable.x1, usable.y1,
+					    pack_x ? usable.y2 - usable.y1
+						   : usable.x2 - usable.x1,
+					    usable);
+			}
+		} else {
+			grid_cols_rows(n, &cols, &rows);
+			used = 0;
+			for (c = 0; c < cols; c++) {
+				cnt = (c == cols - 1) ? n - c * rows : rows;
+				band = (usable.x2 - usable.x1 - used) / (cols - c);
+				used += pack_column(wins + c * rows, cnt, false,
+						    usable.x1 + used,
+						    usable.y1, band, usable);
+			}
+		}
 	}
 	wfree(wins);
 	wfree(out);
