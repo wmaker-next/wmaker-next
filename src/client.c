@@ -200,6 +200,13 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		RemakeStackList(wwin->screen_ptr);
 	}
 
+	if (wwin->flags.tiled) {
+		/* the layout owns the cell geometry, so reply with the
+		 * real geometry instead of honoring the request */
+		wWindowSynthConfigureNotify(wwin);
+		return;
+	}
+
 	wClientGetGravityOffsets(wwin, &ofs_x, &ofs_y);
 
 	if (xcre->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
