@@ -453,15 +453,17 @@ int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
  * there is nothing to reserve. Wmaker's own placement keeps using
  * wDockInsetArea(). The property is deliberately never fed through
  * scr->netdata->strut, otherwise the inset would be applied twice.
- * Only NoWindowOverDock=YES publishes, and the span is the head the
- * dock is pinned to, so a dock on the right of head 0 does not reserve
- * head 1.
+ * Only NoWindowOverDock=YES publishes, and the span is the head(s) the
+ * dock's main tile actually overlaps, so a dock on the right of head 0
+ * does not reserve head 1.
  */
 void wDockPublishStrut(WScreen *scr)
 {
-	WMRect rect;
+	WMRect rect, head, u;
 	uint32_t data[12];
 	uint32_t legacy[4];
+	bool any = false;
+	int h;
 
 	if (!scr || !scr->netdata)
 		return;
@@ -471,9 +473,19 @@ void wDockPublishStrut(WScreen *scr)
 		return;
 	}
 
-	if (w_global.config->keep_dock_on_primary_head)
-		rect = wGetRectForHead(scr, scr->xine_info.primary_head);
-	else
+	for (h = 0; h < wXineramaHeads(scr); h++) {
+		if (!wAppIconTouchesHead(scr->dock->icon_array[0], h))
+			continue;
+		head = wGetRectForHead(scr, h);
+		if (any) {
+			wGetRectUnion(&rect, &head, &u);
+			rect = u;
+		} else {
+			rect = head;
+			any = true;
+		}
+	}
+	if (!any)
 		rect = wmkrect(0, 0, scr->scr_width, scr->scr_height);
 
 	wDockGeomStrut(rect, scr->scr_width, scr->scr_height, scr->dock->edge,
