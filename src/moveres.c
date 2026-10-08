@@ -1544,15 +1544,6 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	if (!IS_MOVABLE(wwin))
 		return false;
 
-	if (wwin->flags.tiled) {
-		/* pop the window out of the layout in place so the drag
-		 * starts from where the user grabbed it, and let the
-		 * remaining tileable windows reflow into the freed cell */
-		wwin->flags.tiled = 0;
-		wwin->flags.no_tiling = 1;
-		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
-	}
-
 	if (w_global.config->opaque_move && !w_global.config->use_saveunders) {
 		xcb_change_window_attributes(wdisp->conn, wwin->frame->core->window,
 					     XCB_CW_SAVE_UNDER, (const uint32_t[]){ true });
@@ -1658,6 +1649,17 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 				 * until the ButtonRelease settle is then
 				 * dropped by sequence at dispatch time */
 				crossing_begin = wEventIgnoreCrossingBegin();
+
+				if (wwin->flags.tiled) {
+					/* pop the window out of the layout at
+					 * the first real motion, so the drag
+					 * starts from where the user grabbed
+					 * it and a plain click never ejects
+					 * the window from the layout */
+					wwin->flags.tiled = 0;
+					wwin->flags.no_tiling = 1;
+					wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+				}
 
 				if (wwin->flags.maximized) {
 					if (w_global.config->drag_maximized_window == DRAGMAX_RESTORE) {
@@ -2596,12 +2598,6 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 	if (!IS_RESIZABLE(wwin))
 		return;
 
-	if (wwin->flags.tiled) {
-		wwin->flags.tiled = 0;
-		wwin->flags.no_tiling = 1;
-		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
-	}
-
 #ifdef USE_XSYNC
 	/* a previous drag may have given up on this client, every new
 	 * interactive resize gets a fresh chance to keep up, and the last
@@ -2705,6 +2701,17 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					int tx, ty;
 					xcb_window_t junkw;
 					int flags;
+
+					if (wwin->flags.tiled) {
+						/* pop the window out of the
+						 * layout at the first real
+						 * motion so a plain click on
+						 * the resizebar never ejects
+						 * it */
+						wwin->flags.tiled = 0;
+						wwin->flags.no_tiling = 1;
+						wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+					}
 
 					wXTranslateCoordinates(wdisp->conn, root, wwin->frame->core->window,
 							      orig_x, orig_y, &tx, &ty, &junkw);

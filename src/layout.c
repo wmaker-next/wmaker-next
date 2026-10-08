@@ -228,6 +228,12 @@ static bool window_is_tileable(WWindow *wwin, int workspace)
 		return false;
 	if (WFLAGP(wwin, floating) || WFLAGP(wwin, sunken))
 		return false;
+	/* a tab group moves as one window through the peer sync, so only
+	 * the active member is tileable, packing an inactive member would
+	 * drag the group's visible frame into its cell */
+	if (wwin->tab_group
+	    && wwin->tab_group->active_index != wwin->tab_group_index)
+		return false;
 	return true;
 }
 
