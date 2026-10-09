@@ -48,6 +48,9 @@ int wLayoutCompute(WLayout layout, WArea usable,
                    int n, WLayoutRect *out);
 
 const char *wLayoutName(WLayout layout);
+/* human-readable label for menus and OSDs, untranslated (mark the
+ * literals with N_ in layout.c, translate at the use site) */
+const char *wLayoutDisplayName(WLayout layout);
 WLayout wLayoutFromName(const char *name);
 
 struct _WScreen;

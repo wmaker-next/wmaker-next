@@ -88,6 +88,9 @@ typedef struct WMenu {
 	short cascade_no;
 
 	short entry_no;		       /* number of entries */
+	short ws_entry_base;	       /* first workspace entry index
+					* (workspace menus, set by
+					* wWorkspaceMenuMake) */
 	short selected_entry;
 
 	short entry_height;		       /* height of each entry */

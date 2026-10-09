@@ -3,6 +3,18 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Workspace layout menu
+---------------------
+
+The Workspaces root menu gains a Layout submenu listing Float, Tile,
+Tile wide, Grid and Monocle. Picking an entry sets the tiling layout of
+the current workspace, exactly like the LayoutCycle, LayoutAxis and
+LayoutFloat key bindings or the `wmakermsg set-layout` command, and a
+diamond marks the layout the workspace currently uses. The marker
+follows workspace switches, so the same submenu always reflects the
+workspace you are on. The current-workspace marker in the Workspaces
+list itself, lost in an indicator-drawing rework, is drawn again.
+
 Load Default in the menu editor
 -------------------------------
 

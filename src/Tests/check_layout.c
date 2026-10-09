@@ -187,6 +187,13 @@ static void test_names(void)
 	CHECK_STR(wLayoutName(WLAYOUT_MONOCLE), "monocle");
 	CHECK_STR(wLayoutName(-1), "float");
 	CHECK_STR(wLayoutName(WLAYOUT_COUNT), "float");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_FLOAT), "Float");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_TILE), "Tile");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_TILE_H), "Tile wide");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_GRID), "Grid");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_MONOCLE), "Monocle");
+	CHECK_STR(wLayoutDisplayName(-1), "Float");
+	CHECK_STR(wLayoutDisplayName(WLAYOUT_COUNT), "Float");
 	CHECK(wLayoutFromName("Tile") == WLAYOUT_TILE);
 	CHECK(wLayoutFromName("MONOCLE") == WLAYOUT_MONOCLE);
 	CHECK(wLayoutFromName("nope") == WLAYOUT_FLOAT);

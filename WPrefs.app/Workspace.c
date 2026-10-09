@@ -251,13 +251,13 @@ static void createPanel(Panel * p)
 
 	WMMapSubwidgets(panel->navF);
 
-    /***************** Tiling Layout *****************/
+    /***************** Workspace Layout *****************/
 	panel->layF = WMCreateFrame(panel->box);
 	WMResizeWidget(panel->layF, 490, 42);
 	WMMoveWidget(panel->layF, 15, 187);
-	WMSetFrameTitle(panel->layF, _("Default Tiling Layout"));
+	WMSetFrameTitle(panel->layF, _("Default Workspace Layout"));
 	WMSetBalloonTextForView(
-		_("Tiling layout applied to newly created workspaces.\n"
+		_("Workspace layout applied to newly created workspaces.\n"
 		  "Existing workspaces keep whatever layout they were\n"
 		  "last set to. 'Float' is the ordinary unmanaged\n"
 		  "placement."),

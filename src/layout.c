@@ -38,11 +38,24 @@ static const char *layout_names[WLAYOUT_COUNT] = {
 	"float", "tile", "tileh", "grid", "monocle"
 };
 
+/* Human-readable labels, matching the WPrefs DefaultWorkspaceLayout
+ * wording. Translated at the use site. */
+static const char *const layout_display_names[WLAYOUT_COUNT] = {
+	N_("Float"), N_("Tile"), N_("Tile wide"), N_("Grid"), N_("Monocle")
+};
+
 const char *wLayoutName(WLayout layout)
 {
 	if (layout < 0 || layout >= WLAYOUT_COUNT)
 		return layout_names[WLAYOUT_FLOAT];
 	return layout_names[layout];
+}
+
+const char *wLayoutDisplayName(WLayout layout)
+{
+	if (layout < 0 || layout >= WLAYOUT_COUNT)
+		return layout_display_names[WLAYOUT_FLOAT];
+	return layout_display_names[layout];
 }
 
 WLayout wLayoutFromName(const char *name)

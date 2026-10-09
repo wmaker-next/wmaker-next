@@ -57,8 +57,9 @@ _Static_assert(MAX_WORKSPACES <= 64,
 
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
-/* index of the first workspace menu entry */
-#define MC_WORKSPACE1   3
+/* index of the first workspace menu entry, recorded per menu by
+ * wWorkspaceMenuMake: the Layout cascade shifts it on the titled menu */
+#define MC_WORKSPACE1(menu)	((menu)->ws_entry_base)
 
 #define WORKSPACE_NAME_DISPLAY_PADDING 32
 
@@ -1623,6 +1624,8 @@ void wWorkspaceRename(WScreen *scr, int workspace, const char *name)
 {
 	char buf[MAX_WORKSPACENAME_WIDTH + 1];
 	char *tmp;
+	WMenu *menu;
+	int idx;
 
 	if (workspace >= scr->workspace_count)
 		return;
@@ -1654,18 +1657,28 @@ void wWorkspaceRename(WScreen *scr, int workspace, const char *name)
 	wfree(scr->workspaces[workspace]->name);
 	scr->workspaces[workspace]->name = wstrdup(buf);
 
-	if (scr->clip_ws_menu) {
-		if (strcmp(scr->clip_ws_menu->entries[workspace + MC_WORKSPACE1]->text, buf) != 0) {
-			wfree(scr->clip_ws_menu->entries[workspace + MC_WORKSPACE1]->text);
-			scr->clip_ws_menu->entries[workspace + MC_WORKSPACE1]->text = wstrdup(buf);
-			wMenuRealize(scr->clip_ws_menu);
+	menu = scr->clip_ws_menu;
+	if (menu) {
+		idx = workspace + MC_WORKSPACE1(menu);
+		/* a clip menu can predate any workspace entry, in which
+		 * case the next wWorkspaceMenuUpdate copies fresh names */
+		if (idx < menu->entry_no) {
+			if (strcmp(menu->entries[idx]->text, buf) != 0) {
+				wfree(menu->entries[idx]->text);
+				menu->entries[idx]->text = wstrdup(buf);
+				wMenuRealize(menu);
+			}
 		}
 	}
-	if (scr->workspace_menu) {
-		if (strcmp(scr->workspace_menu->entries[workspace + MC_WORKSPACE1]->text, buf) != 0) {
-			wfree(scr->workspace_menu->entries[workspace + MC_WORKSPACE1]->text);
-			scr->workspace_menu->entries[workspace + MC_WORKSPACE1]->text = wstrdup(buf);
-			wMenuRealize(scr->workspace_menu);
+	menu = scr->workspace_menu;
+	if (menu) {
+		idx = workspace + MC_WORKSPACE1(menu);
+		if (idx < menu->entry_no) {
+			if (strcmp(menu->entries[idx]->text, buf) != 0) {
+				wfree(menu->entries[idx]->text);
+				menu->entries[idx]->text = wstrdup(buf);
+				wMenuRealize(menu);
+			}
 		}
 	}
 
@@ -1682,6 +1695,79 @@ static void onMenuEntryEdited(WMenu * menu, WMenuEntry * entry)
 
 	tmp = entry->text;
 	wWorkspaceRename(menu->frame->screen_ptr, (long)entry->clientdata, tmp);
+}
+
+static void cleanupLayoutMenu(WMenu *menu)
+{
+	if (menu->frame->screen_ptr->layout_menu == menu)
+		menu->frame->screen_ptr->layout_menu = NULL;
+}
+
+static void setLayoutCommand(WMenu *menu, WMenuEntry *entry)
+{
+	WScreen *scr = menu->frame->screen_ptr;
+
+	wLayoutSetWorkspace(scr, scr->current_workspace,
+			    (WLayout)(uintptr_t) entry->clientdata);
+}
+
+/* Mark the radio entry matching the current workspace's layout. */
+static void updateLayoutMenu(WScreen *scr)
+{
+	WMenu *menu = scr->layout_menu;
+	int i, current;
+
+	if (!menu)
+		return;
+
+	current = scr->workspaces[scr->current_workspace]->layout;
+	for (i = 0; i < WLAYOUT_COUNT; i++)
+		menu->entries[i]->flags.indicator_on = (i == current);
+	wMenuPaint(menu);
+}
+
+/* Layout changes also arrive from key bindings and IPC, so react to the
+ * notification instead of every call site. */
+static void obs_workspace_layout(void *self, WMNotification *notif)
+{
+	(void)self;
+	updateLayoutMenu(WMGetNotificationObject(notif));
+}
+
+static void addLayoutMenu(WScreen *scr, WMenu *wsmenu)
+{
+	static int sentinel;
+	static bool observer_added;
+	WMenu *menu;
+	WMenuEntry *entry;
+	int i;
+
+	menu = wMenuCreate(scr, _("Layout"), false);
+	if (!menu) {
+		wwarning(_("could not create Layout menu"));
+		return;
+	}
+	menu->on_destroy = cleanupLayoutMenu;
+
+	for (i = 0; i < WLAYOUT_COUNT; i++) {
+		entry = wMenuAddCallback(menu, _(wLayoutDisplayName(i)),
+					 setLayoutCommand,
+					 (void *)(uintptr_t) i);
+		entry->flags.indicator = 1;
+		entry->flags.indicator_type = MI_DIAMOND;
+	}
+	menu->flags.realized = 0;
+	wMenuRealize(menu);
+
+	entry = wMenuAddCallback(wsmenu, _("Layout"), NULL, NULL);
+	wMenuEntrySetCascade(wsmenu, entry, menu);
+	scr->layout_menu = menu;
+
+	if (!observer_added) {
+		observer_added = true;
+		WMAddNotificationObserver(obs_workspace_layout, &sentinel,
+					  WMNWorkspaceLayoutChanged, NULL);
+	}
 }
 
 WMenu *wWorkspaceMenuMake(WScreen * scr, bool titled)
@@ -1704,6 +1790,14 @@ WMenu *wWorkspaceMenuMake(WScreen * scr, bool titled)
 	entry = wMenuAddCallback(wsmenu, _("Last Used"), lastWSCommand, NULL);
 	entry->rtext = GetShortcutKey(wKeyBindings[WKBD_LASTWORKSPACE]);
 
+	if (titled)
+		addLayoutMenu(scr, wsmenu);
+
+	/* first workspace entry follows the fixed items and, on the
+	 * titled menu, the Layout cascade */
+	wsmenu->ws_entry_base = wsmenu->entry_no;
+	wsmenu->brother->ws_entry_base = wsmenu->entry_no;
+
 	return wsmenu;
 }
 
@@ -1718,37 +1812,38 @@ void wWorkspaceMenuUpdate(WScreen * scr, WMenu * menu)
 	if (!menu)
 		return;
 
-	if (menu->entry_no < scr->workspace_count + MC_WORKSPACE1) {
+	if (menu->entry_no < scr->workspace_count + MC_WORKSPACE1(menu)) {
 		/* new workspace(s) added */
-		i = scr->workspace_count - (menu->entry_no - MC_WORKSPACE1);
-		ws = menu->entry_no - MC_WORKSPACE1;
+		i = scr->workspace_count - (menu->entry_no - MC_WORKSPACE1(menu));
+		ws = menu->entry_no - MC_WORKSPACE1(menu);
 		while (i > 0) {
 			wstrlcpy(title, scr->workspaces[ws]->name, MAX_WORKSPACENAME_WIDTH);
 
 			entry = wMenuAddCallback(menu, title, switchWSCommand, (void *)ws);
 			entry->flags.indicator = 1;
+			entry->flags.indicator_type = MI_DIAMOND;
 			entry->flags.editable = 1;
 
 			i--;
 			ws++;
 		}
-	} else if (menu->entry_no > scr->workspace_count + MC_WORKSPACE1) {
+	} else if (menu->entry_no > scr->workspace_count + MC_WORKSPACE1(menu)) {
 		/* removed workspace(s) */
-		for (i = menu->entry_no - 1; i >= scr->workspace_count + MC_WORKSPACE1; i--)
+		for (i = menu->entry_no - 1; i >= scr->workspace_count + MC_WORKSPACE1(menu); i--)
 			wMenuRemoveItem(menu, i);
 	}
 
 	for (i = 0; i < scr->workspace_count; i++) {
 		/* workspace shortcut labels */
 		if (i / 10 == scr->current_workspace / 10)
-			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1],
+			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1(menu)],
 						  GetShortcutKey(wKeyBindings[WKBD_WORKSPACE1 + (i % 10)]));
 		else
-			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1], NULL);
+			wMenuEntrySetShortcutText(menu->entries[i + MC_WORKSPACE1(menu)], NULL);
 
-		menu->entries[i + MC_WORKSPACE1]->flags.indicator_on = 0;
+		menu->entries[i + MC_WORKSPACE1(menu)]->flags.indicator_on = 0;
 	}
-	menu->entries[scr->current_workspace + MC_WORKSPACE1]->flags.indicator_on = 1;
+	menu->entries[scr->current_workspace + MC_WORKSPACE1(menu)]->flags.indicator_on = 1;
 	wMenuRealize(menu);
 
 	/* don't let user destroy current workspace */
@@ -1768,6 +1863,7 @@ void wWorkspaceMenuUpdate(WScreen * scr, WMenu * menu)
 	if (menu->frame_x < tmp - (int)menu->frame->core->width)
 		wMenuMove(menu, tmp - (int)menu->frame->core->width, menu->frame_y, false);
 
+	updateLayoutMenu(scr);
 	wMenuPaint(menu);
 }
 
@@ -1855,6 +1951,7 @@ void wWorkspaceRestoreState(WScreen *scr)
 	double ratio;
 	char *end;
 	int i, j;
+	int ws_menu_base;
 
 	make_keys();
 
@@ -1877,8 +1974,10 @@ void wWorkspaceRestoreState(WScreen *scr)
 			wWorkspaceNew(scr);
 
 		if (scr->workspace_menu) {
-			wfree(scr->workspace_menu->entries[i + MC_WORKSPACE1]->text);
-			scr->workspace_menu->entries[i + MC_WORKSPACE1]->text =
+			ws_menu_base = MC_WORKSPACE1(scr->workspace_menu);
+
+			wfree(scr->workspace_menu->entries[i + ws_menu_base]->text);
+			scr->workspace_menu->entries[i + ws_menu_base]->text =
 				wstrndup(WMGetFromPLString(pstr), MAX_WORKSPACENAME_WIDTH);
 			scr->workspace_menu->flags.realized = 0;
 		}
