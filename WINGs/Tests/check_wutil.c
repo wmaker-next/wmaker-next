@@ -224,7 +224,11 @@ static void test_wtrimspace(void)
 }
 
 /* '.' must be the decimal separator regardless of LC_NUMERIC, since the
- * numbers come from serialized IPC/state/config text */
+ * numbers come from serialized IPC/state/config text. The exact
+ * comparisons are the point: wstrtod must yield the same double the
+ * compiler stores for the literal. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 static void test_wstrtod(void)
 {
 	char *end;
@@ -249,6 +253,7 @@ static void test_wstrtod(void)
 	CHECK(isnan(wstrtod("nan", &end)) && *end == '\0');
 	CHECK(isinf(wstrtod("-inf", &end)) && *end == '\0');
 }
+#pragma GCC diagnostic pop
 
 static void test_wexpandpath(void)
 {

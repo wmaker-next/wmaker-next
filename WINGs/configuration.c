@@ -204,6 +204,11 @@ bool WMGetAntialiasedText(void)
 	return WINGsConfiguration.antialiasedText;
 }
 
+const char *W_getconf_systemFont(void)
+{
+	return WINGsConfiguration.systemFont;
+}
+
 static bool confStringChanged(const char *old, const char *current)
 {
 	if (!old || !current)

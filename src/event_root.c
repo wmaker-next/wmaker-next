@@ -49,6 +49,7 @@
 #include "screen.h"
 #include "shutdown.h"
 #include "event.h"
+#include "xsettings.h"
 #include "startup_notify.h"
 
 
@@ -342,10 +343,14 @@ static void handleSelectionRequest(xcb_generic_event_t *ev)
 
 static void handleSelectionClear(xcb_generic_event_t *ev)
 {
-#ifdef USE_ICCCM_WMREPLACE
 	const xcb_selection_clear_event_t *e = (const xcb_selection_clear_event_t *)ev;
+#ifdef USE_ICCCM_WMREPLACE
 	WScreen *scr = wScreenForWindow(e->owner);
+#endif
 
+	wXSettingsSelectionClear(e);
+
+#ifdef USE_ICCCM_WMREPLACE
 	if (!scr)
 		return;
 
@@ -354,8 +359,6 @@ static void handleSelectionClear(xcb_generic_event_t *ev)
 
 	wmessage(_("another window manager is replacing us!"));
 	Shutdown(WSExitMode, true);
-#else
-	(void) ev;
 #endif
 }
 

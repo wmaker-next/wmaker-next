@@ -65,6 +65,7 @@
 #include "winmenu.h"
 #include "rootmenu.h"
 #include "osdview.h"
+#include "xsettings.h"
 
 typedef int (WConfigUpdateCallback)(WScreen *scr, void *tdata,
 				    void *extra_data);
@@ -504,6 +505,10 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 			wXFlush(wdisp->conn);
 		}
 	}
+
+	/* XSETTINGS follows the WM font and rendering configuration, the
+	 * refresh no-ops while the screen holds no XSETTINGS selection */
+	wXSettingsRefresh(scr);
 }
 
 void wReadKeybindings(WScreen *scr, WMPropList *dict)

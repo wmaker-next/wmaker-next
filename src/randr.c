@@ -35,6 +35,7 @@
 #include "workspace.h"
 #include "actions.h"
 #include "event.h"
+#include "xsettings.h"
 #include "hotcorner.h"
 #ifdef VIRTUAL_DESKTOP
 #include "vdesk.h"
@@ -765,6 +766,10 @@ static void wRandR_Update(WScreen *scr)
 	/* Refresh usable areas and EWMH hints */
 	wScreenUpdateUsableArea(scr);
 	wNETWMUpdateWorkarea(scr);
+
+	/* head geometry changed, republish XSETTINGS (a no-op when the
+	 * values did not move with the geometry) */
+	wXSettingsRefresh(scr);
 
 	/* Bring any windows that ended up in dead space to an active head */
 	wRandR_BringAllWindowsInside(scr);

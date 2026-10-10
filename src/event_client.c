@@ -38,6 +38,7 @@
 #include "wmspec.h"
 #include "screen.h"
 #include "event.h"
+#include "xsettings.h"
 #include "properties.h"
 
 
@@ -303,6 +304,9 @@ static void handlePropertyNotify(xcb_generic_event_t *ev)
 				int i;
 				for (i = 0; i < wdisp->screen_count; i++)
 					WMScreenReadUIScale(wScreenWithNumber(i)->wmscreen);
+				/* the UI scale the XSETTINGS payload derives
+				 * Xft/DPI from may have changed with it */
+				wXSettingsRefreshAll();
 				return;
 			}
 			wNETWMCheckRootHintChange(scr, e->atom);

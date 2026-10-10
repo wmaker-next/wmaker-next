@@ -94,6 +94,8 @@ POTFILES  = \
 	$(top_srcdir)/src/xdnduri.c \
 	$(top_srcdir)/src/xinerama.c \
 	$(top_srcdir)/src/xsmp.c \
+	$(top_srcdir)/src/xsettings.c \
+	$(top_srcdir)/src/xsettingswire.c \
 	$(top_srcdir)/src/xutil.c
 
 SUFFIXES = .po .mo

@@ -432,7 +432,9 @@ void WXInternAtomBatch(xcb_connection_t *dpy, char **names, int count, xcb_atom_
 	_(W_ATOM_TEXT_URI_LIST,			"text/uri-list") \
 	_(W_ATOM_VERSION,			"VERSION") \
 	_(W_ATOM_RGBA_IMAGE,			"_RGBA_IMAGE") \
-	_(W_ATOM_XKB_RULES_NAMES,		"_XKB_RULES_NAMES")
+	_(W_ATOM_XKB_RULES_NAMES,		"_XKB_RULES_NAMES") \
+	_(W_ATOM_XSETTINGS_SETTINGS,		"_XSETTINGS_SETTINGS") \
+	_(W_ATOM_MANAGER,			"MANAGER")
 
 #define WX_ATOM_ENUM_(id, name)	id,
 enum {

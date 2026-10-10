@@ -43,6 +43,7 @@
 #include "screen.h"
 #include "config-schema.h"
 #include "texture.h"
+#include "xsettings.h"
 #include "pixmap.h"
 #include "menu.h"
 #include "window.h"
@@ -738,6 +739,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	wNETWMInitStuff(scr);
 	wStartupNotifyInit(scr);
+
+	wXSettingsInit(scr);
 
 	/* create initial workspace */
 	wWorkspaceNew(scr);

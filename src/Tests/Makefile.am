@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout check_geometry check_dockgeom check_xlibfree check_xerror
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout check_geometry check_dockgeom check_xlibfree check_xerror check_xsettings
 TESTS = $(check_PROGRAMS)
 
 # libFuzzer harnesses for the two X-bound parse cores extracted from
@@ -133,6 +133,14 @@ check_xsmp_SOURCES = \
 	check_xsmp.c
 
 check_xsmp_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_xsettings_SOURCES = \
+	check_xsettings.c \
+	../xsettingswire.c
+
+check_xsettings_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
 

@@ -125,6 +125,7 @@ src/Tests/check_layout
 src/Tests/check_xsmp
 src/Tests/check_geometry
 src/Tests/check_xlibfree
+src/Tests/check_xsettings
 wrlib/Tests/bench_image
 wrlib/Tests/check_image
 wrlib/Tests/check_palette

@@ -909,6 +909,10 @@ void WMReloadConfiguration(void);
 /* Current antialiasedText flag (re-read by WMReloadConfiguration). */
 bool WMGetAntialiasedText(void);
 
+/* Configured WINGs system font from WMGLOBAL, the built-in "sans serif"
+ * when the key is not set. */
+const char *W_getconf_systemFont(void);
+
 /* Configured WINGs system colors from WMGLOBAL (X11 color name or
  * #rrggbb), NULL when the key is not set. The built-in fallbacks apply
  * then: gray #AEAAAE, dark gray #515551, tab light #D9D9D9, tab

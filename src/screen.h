@@ -413,6 +413,9 @@ typedef struct _WScreen {
 
     struct NetData *netdata;
 
+	struct WXSettings *xsettings;      /* XSETTINGS manager state, NULL
+					    * until wXSettingsInit() */
+
     int helper_fd;
     pid_t helper_pid;
 

@@ -36,6 +36,7 @@
 #include "event.h"
 #include "screen.h"
 #include "shutdown.h"
+#include "xsettings.h"
 #include "ipc.h"
 #include "xsmp.h"
 #include "wsound.h"
@@ -195,6 +196,7 @@ void RestoreDesktop(WScreen * scr)
 	wColormapInstallForWindow(scr, NULL);
 	PropCleanUp(scr->root_win);
 	wNETWMCleanup(scr);
+	wXSettingsShutdown(scr);
 	wXSync(wdisp->conn);
 }
 

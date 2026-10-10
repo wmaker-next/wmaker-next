@@ -145,6 +145,9 @@ wmaker_SOURCES = 	\
 	xinerama.c \
 	xsmp.c \
 	xsmp.h \
+	xsettings.h \
+	xsettingswire.c \
+	xsettings.c \
 	wxkb.c \
 	wxkb.h \
 	xutil.c \
