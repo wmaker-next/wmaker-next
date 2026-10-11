@@ -120,7 +120,7 @@ void parse_locale(const char *what, char **language, char **country, char **enco
 		*language = wstrdup(e);
 
 out:
-	free(e);
+	wfree(e);
 	return;
 
 }
