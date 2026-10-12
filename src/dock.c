@@ -51,6 +51,7 @@
 #include "stacking.h"
 #include "desktopfile.h"
 #include "dock.h"
+#include "dockslots.h"
 #include "wmspec.h"
 #include "dockedapp.h"
 #include "dialog.h"
@@ -2999,20 +3000,6 @@ void wDockDetach(WDock *dock, WAppIcon *icon)
 		clipLeave(dock);
 }
 
-/* ret for a WM_DOCK/WM_DRAWER snap: across on the across axis, along
- * on the along axis */
-static void dock_snap_ret(WDockEdge edge, int *ret_x, int *ret_y,
-			  int across, int along)
-{
-	if (wDockEdgeHorizontal(edge)) {
-		*ret_x = along;
-		*ret_y = across;
-	} else {
-		*ret_x = across;
-		*ret_y = along;
-	}
-}
-
 /*
  * returns the closest Dock slot index for the passed
  * coordinates.
@@ -3072,7 +3059,13 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 	}
 
 	switch (dock->type) {
-	case WM_DOCK:
+	case WM_DOCK: {
+		WDockSnapResult res;
+		bool icon_along[2 * DOCK_DETTACH_THRESHOLD + 1];
+		bool drawer_along[2 * DOCK_DETTACH_THRESHOLD + 1];
+		int th = DOCK_DETTACH_THRESHOLD;
+		int off;
+
 		/* We can return False right away if
 		 * - we do not come from this dock (which is a WM_DOCK),
 		 * - we are not right over it, and
@@ -3082,96 +3075,54 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 			!(icon->dock && icon->dock->type == WM_DRAWER && icon == icon->dock->icon_array[0]))
 			return false;
 
-		if (!redocking && across != 0)
-			return false;
+		memset(icon_along, 0, sizeof(icon_along));
+		memset(drawer_along, 0, sizeof(drawer_along));
 
-		if (getDrawerAtAlong(scr, along)) /* Return false so that the drawer gets it. */
-			return false;
+		/* mark the along-axis neighbourhood: slots not fully on
+		 * screen, slots taken by another appicon and slots taken
+		 * by a drawer */
+		for (off = -th; off <= th; off++) {
+			int a = along + off;
 
-		aicon = NULL;
+			if (!onScreen(scr, dx + (horiz ? a * ICON_SIZE : 0),
+				      dy + (horiz ? 0 : a * ICON_SIZE)))
+				icon_along[th + off] = true;
+		}
 		for (i = 0; i < dock->max_icons; i++) {
 			nicon = dock->icon_array[i];
-			if (nicon && wDockAlongIndex(nicon, dock->edge) == along) {
-				aicon = nicon;
-				break;
+			if (nicon && nicon != icon) {
+				int idx = wDockAlongIndex(nicon, dock->edge) - along + th;
+
+				if (idx >= 0 && idx <= 2 * th)
+					icon_along[idx] = true;
 			}
 		}
+		for (off = -th; off <= th; off++) {
+			if (getDrawerAtAlong(scr, along + off))
+				drawer_along[th + off] = true;
+		}
 
-		if (redocking) {
-			int sig, done, closest;
-
-			/* Possible cases when redocking:
-			 *
-			 * icon dragged out of range of any slot -> False
-			 * icon dragged on a drawer -> False (to open the drawer)
-			 * icon dragged to range of free slot
-			 * icon dragged to range of same slot
-			 * icon dragged to range of different icon
-			 */
-			if (abs(across) > DOCK_DETTACH_THRESHOLD)
-				return false;
-
-			if (aicon == icon || !aicon) {
-				dock_snap_ret(dock->edge, ret_x, ret_y, 0, along);
-				return true;
-			}
-
-			/* start looking at the upper slot or lower? */
-			if (along * ICON_SIZE < req_along)
-				sig = 1;
-			else
-				sig = -1;
-
-			done = 0;
-			/* look for closest free slot */
-			for (i = 0; i < (DOCK_DETTACH_THRESHOLD + 1) * 2 && !done; i++) {
-				int j;
-
-				done = 1;
-				closest = sig * (i / 2) + along;
-				/* check if this slot is fully on the screen and not used */
-				if (onScreen(scr, dx + (horiz ? closest * ICON_SIZE : 0),
-						  dy + (horiz ? 0 : closest * ICON_SIZE))) {
-					for (j = 0; j < dock->max_icons; j++) {
-						if (dock->icon_array[j]
-							&& wDockAlongIndex(dock->icon_array[j], dock->edge) == closest) {
-							/* slot is used by someone else */
-							if (dock->icon_array[j] != icon)
-								done = 0;
-							break;
-						}
-					}
-					/* slot is used by a drawer */
-					done = done && !getDrawerAtAlong(scr, closest);
-				}
-				else // !onScreen
-					done = 0;
-				sig = -sig;
-			}
-			if (done &&
-				((along >= closest && along - closest < DOCK_DETTACH_THRESHOLD + 1)
-					|| (along < closest && closest - along <= DOCK_DETTACH_THRESHOLD + 1))) {
-				dock_snap_ret(dock->edge, ret_x, ret_y, 0, closest);
-				return true;
-			}
-		} else {	/* !redocking */
-
-			/* if slot is free and the icon is close enough, return it */
-			if (!aicon && across == 0) {
-				dock_snap_ret(dock->edge, ret_x, ret_y, 0, along);
-				return true;
-			}
+		res = wDockSnapMainPure(dock->edge, ICON_SIZE, along, across,
+					req_along, redocking, th,
+					icon_along, drawer_along);
+		if (res.accepted) {
+			*ret_x = res.xindex;
+			*ret_y = res.yindex;
+			return true;
 		}
 		break;
+	}
 	case WM_CLIP:
 	{
 		int neighbours = 0;
 		int start, stop, k;
+		bool occupied_at = false;
+		bool occupied_by_self = false;
+		WDockSnapResult res;
 
 		start = icon->omnipresent ? 0 : scr->current_workspace;
 		stop = icon->omnipresent ? scr->workspace_count : start + 1;
 
-		aicon = NULL;
 		for (k = start; k < stop; k++) {
 			WDock *tmp = scr->workspaces[k]->clip;
 			if (!tmp)
@@ -3179,11 +3130,12 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 			for (i = 0; i < tmp->max_icons; i++) {
 				nicon = tmp->icon_array[i];
 				if (nicon && nicon->xindex == ex_x && nicon->yindex == ex_y) {
-					aicon = nicon;
+					occupied_at = true;
+					occupied_by_self = (nicon == icon);
 					break;
 				}
 			}
-			if (aicon)
+			if (occupied_at)
 				break;
 		}
 		for (k = start; k < stop; k++) {
@@ -3203,9 +3155,11 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 				break;
 		}
 
-		if (neighbours && (aicon == NULL || (redocking && aicon == icon))) {
-			*ret_x = ex_x;
-			*ret_y = ex_y;
+		res = wDockSnapClipPure(ex_x, ex_y, occupied_at, occupied_by_self,
+					neighbours, redocking);
+		if (res.accepted) {
+			*ret_x = res.xindex;
+			*ret_y = res.yindex;
 			return true;
 		}
 		break;
@@ -3215,53 +3169,51 @@ bool wDockSnapIcon(WDock *dock, WAppIcon *icon, int req_x, int req_y, int *ret_x
 		WAppIcon *aicons_to_shift[ dock->icon_count ];
 		char axis;
 		int sign;
-		int index_of_hole;
 		int across = horiz ? ex_y : ex_x;
+		int index_of_hole;
 		int j;
+		bool along_ok;
+		WDockSnapResult res;
 
 		wDockGeomAcrossSign(dock->edge, &axis, &sign);
 
 		/* the along-of-dock cell must stay on the strip row, and
-		 * the across cell must point into the strip */
-		if ((horiz ? ex_x : ex_y) != 0 ||
-			abs(across) - dock->icon_count > DOCK_DETTACH_THRESHOLD ||
-			across * sign < 0) {
+		 * the across cell must point into the strip. The hole
+		 * index is only consulted once these pass, exactly as
+		 * the original pre-checks did */
+		along_ok = ((horiz ? ex_x : ex_y) == 0) &&
+			   !(abs(across) - dock->icon_count > DOCK_DETTACH_THRESHOLD) &&
+			   (across * sign >= 0);
+
+		index_of_hole = along_ok ? indexOfHole(dock, icon, redocking) : 0;
+
+		res = wDockSnapDrawerPure(dock->edge, along_ok, across,
+					  dock->icon_count, index_of_hole,
+					  redocking);
+		if (!res.accepted)
 			return false;
-		}
 
-		if (across == 0)
-			across = sign;
-
-		/* "Reduce" across but keep its sign */
-		if (redocking) {
-			if (abs(across) > dock->icon_count - 1) /* minus 1: do not take icon_array[0] into account */
-				across = across * (dock->icon_count - 1) / abs(across); /* don't use *= ! */
-		} else {
-			if (abs(across) > dock->icon_count)
-				across = across * dock->icon_count / abs(across);
-		}
-		index_of_hole = indexOfHole(dock, icon, redocking);
-
-		/* Find the appicons between where icon was (index_of_hole) and where
-		 * it wants to be (across) and slide them. */
+		/* Find the appicons between where icon was (the hole) and
+		 * where it wants to be (the reduced across) and slide them. */
 		j = 0;
 		for (i = 1; i < dock->max_icons; i++) {
 			aicon = dock->icon_array[i];
 			if ((aicon != NULL) && (aicon != icon) &&
-				((across <= wDockAcrossIndex(aicon, dock->edge) && wDockAcrossIndex(aicon, dock->edge) < index_of_hole) ||
-					(index_of_hole < wDockAcrossIndex(aicon, dock->edge) && wDockAcrossIndex(aicon, dock->edge) <= across)))
+			    (wDockAcrossIndex(aicon, dock->edge) >= res.shift_start &&
+			     wDockAcrossIndex(aicon, dock->edge) < res.shift_start + res.shift_count))
 				aicons_to_shift[ j++ ] = aicon;
 		}
-		if (j != abs(across - index_of_hole))
+		if (j != res.shift_count)
 			/* the across set is not the expected [1..n]\{hole},
 			 * slide what was found rather than aborting */
 			wwarning("wDockSnapIcon: shifting %d appicons between %d and %d (expected %d)",
-				j, index_of_hole, across, abs(across - index_of_hole));
+				j, res.shift_start, res.shift_start + res.shift_count, res.shift_count);
 
 		wSlideAppiconsAcross(aicons_to_shift, j, dock,
-				     (index_of_hole < across));
+				     res.shift_into_drawer);
 
-		dock_snap_ret(dock->edge, ret_x, ret_y, across, 0);
+		*ret_x = res.xindex;
+		*ret_y = res.yindex;
 		return true;
 	}
 	}
@@ -3350,32 +3302,27 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 
 	if (ex < dock->x_pos)
 		ex = dock->x_pos;
-#define C_NONE 0
-#define C_NW 1
-#define C_NE 2
-#define C_SW 3
-#define C_SE 4
 
 	/* check if clip is in a corner */
 	if (dock->type == WM_CLIP) {
 		if (dock->x_pos < sx + 1 && dock->y_pos < sy + 1)
-			corner = C_NE;
+			corner = WDOCKSLOT_C_NE;
 		else if (dock->x_pos < sx + 1 && dock->y_pos >= (ey - ICON_SIZE))
-			corner = C_SE;
+			corner = WDOCKSLOT_C_SE;
 		else if (dock->x_pos >= (ex - ICON_SIZE) && dock->y_pos >= (ey - ICON_SIZE))
-			corner = C_SW;
+			corner = WDOCKSLOT_C_SW;
 		else if (dock->x_pos >= (ex - ICON_SIZE) && dock->y_pos < sy + 1)
-			corner = C_NW;
+			corner = WDOCKSLOT_C_NW;
 		else
-			corner = C_NONE;
+			corner = WDOCKSLOT_C_NONE;
 	} else {
-		corner = C_NONE;
+		corner = WDOCKSLOT_C_NONE;
 	}
 
 	/* If the clip is in the corner, use only slots that are in the border
 	 * of the screen */
-	if (corner != C_NONE) {
-		char *hmap, *vmap;
+	if (corner != WDOCKSLOT_C_NONE) {
+		unsigned char *hmap, *vmap;
 		int hcount, vcount;
 
 		hcount = WMIN(dock->max_icons, scr->scr_width / ICON_SIZE);
@@ -3385,7 +3332,7 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 
 		/* mark used positions */
 		switch (corner) {
-		case C_NE:
+		case WDOCKSLOT_C_NE:
 			for (i = 0; i < dock->max_icons; i++) {
 				btn = dock->icon_array[i];
 				if (!btn)
@@ -3404,7 +3351,7 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 					hmap[btn->xindex] = 1;
 			}
 			break;
-		case C_NW:
+		case WDOCKSLOT_C_NW:
 			for (i = 0; i < dock->max_icons; i++) {
 				btn = dock->icon_array[i];
 				if (!btn)
@@ -3423,7 +3370,7 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 					hmap[-btn->xindex] = 1;
 			}
 			break;
-		case C_SE:
+		case WDOCKSLOT_C_SE:
 			for (i = 0; i < dock->max_icons; i++) {
 				btn = dock->icon_array[i];
 				if (!btn)
@@ -3442,7 +3389,7 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 					hmap[btn->xindex] = 1;
 			}
 			break;
-		case C_SW:
+		case WDOCKSLOT_C_SW:
 		default:
 			for (i = 0; i < dock->max_icons; i++) {
 				btn = dock->icon_array[i];
@@ -3462,123 +3409,45 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 					hmap[-btn->xindex] = 1;
 			}
 		}
-		x = 0;
-		y = 0;
-		done = 0;
-		/* search a vacant slot */
-		for (i = 1; i < WMAX(vcount, hcount); i++) {
-			if (i < vcount && vmap[i] == 0) {
-				/* found a slot */
-				x = 0;
-				y = i;
-				done = 1;
-				break;
-			} else if (i < hcount && hmap[i] == 0) {
-				/* found a slot */
-				x = i;
-				y = 0;
-				done = 1;
-				break;
-			}
-		}
+		done = wDockFindCornerSlotPure(corner, hcount, vcount, hmap, vmap,
+					       x_pos, y_pos);
 		wfree(vmap);
 		wfree(hmap);
-		/* If found a slot, translate and return */
-		if (done) {
-			if (corner == C_NW || corner == C_NE)
-				*y_pos = y;
-			else
-				*y_pos = -y;
-
-			if (corner == C_NE || corner == C_SE)
-				*x_pos = x;
-			else
-				*x_pos = -x;
-
+		if (done)
 			return true;
-		}
 		/* else, try to find a slot somewhere else */
 	}
 
 	/* a map of mwidth x mwidth would be enough if we allowed icons to be
 	 * placed outside of screen */
-	mwidth = (int)ceil(sqrt(dock->max_icons));
-
-	/* In the worst case (the clip is in the corner of the screen),
-	 * the amount of icons that fit in the clip is smaller.
-	 * Double the map to get a safe value.
-	 */
-	mwidth += mwidth;
-
-	r = (mwidth - 1) / 2;
+	wDockSlotMapSize(dock->max_icons, &mwidth, &r);
 
 	slot_map = wmalloc(mwidth * mwidth);
-
-#define XY2OFS(x,y) (WMAX(abs(x),abs(y)) > r) ? 0 : (((y)+r)*(mwidth)+(x)+r)
 
 	/* mark used slots in the map. If the slot falls outside the map
 	 * (for example, when all icons are placed in line), ignore them. */
 	for (i = 0; i < dock->max_icons; i++) {
 		btn = dock->icon_array[i];
 		if (btn)
-			slot_map[XY2OFS(btn->xindex, btn->yindex)] = 1;
+			slot_map[wDockSlotMapIndex(mwidth, r, btn->xindex, btn->yindex)] = 1;
 	}
 
 	for (chain = scr->global_icons; chain != NULL; chain = chain->next)
-		slot_map[XY2OFS(chain->aicon->xindex, chain->aicon->yindex)] = 1;
+		slot_map[wDockSlotMapIndex(mwidth, r, chain->aicon->xindex, chain->aicon->yindex)] = 1;
 
-	/* Find closest slot from the center that is free by scanning the
-	 * map from the center to outward in circular passes.
-	 * This will not result in a neat layout, but will be optimal
-	 * in the sense that there will not be holes left.
-	 */
-	done = 0;
-	for (i = 1; i <= r && !done; i++) {
-		int tx, ty;
-
-		/* top and bottom parts of the ring */
-		for (x = -i; x <= i && !done; x++) {
-			tx = dock->x_pos + x * ICON_SIZE;
-			y = -i;
-			ty = dock->y_pos + y * ICON_SIZE;
-			if (slot_map[XY2OFS(x, y)] == 0 && onScreen(scr, tx, ty)) {
-				*x_pos = x;
-				*y_pos = y;
-				done = 1;
-				break;
-			}
-			y = i;
-			ty = dock->y_pos + y * ICON_SIZE;
-			if (slot_map[XY2OFS(x, y)] == 0 && onScreen(scr, tx, ty)) {
-				*x_pos = x;
-				*y_pos = y;
-				done = 1;
-				break;
-			}
-		}
-		/* left and right parts of the ring */
-		for (y = -i + 1; y <= i - 1; y++) {
-			ty = dock->y_pos + y * ICON_SIZE;
-			x = -i;
-			tx = dock->x_pos + x * ICON_SIZE;
-			if (slot_map[XY2OFS(x, y)] == 0 && onScreen(scr, tx, ty)) {
-				*x_pos = x;
-				*y_pos = y;
-				done = 1;
-				break;
-			}
-			x = i;
-			tx = dock->x_pos + x * ICON_SIZE;
-			if (slot_map[XY2OFS(x, y)] == 0 && onScreen(scr, tx, ty)) {
-				*x_pos = x;
-				*y_pos = y;
-				done = 1;
-				break;
-			}
+	/* mark the cells whose pixel position is not fully on screen, so
+	 * the pure scan can skip them without a server round trip */
+	for (y = -r; y <= r; y++) {
+		for (x = -r; x <= r; x++) {
+			if (!onScreen(scr, dock->x_pos + x * ICON_SIZE,
+				      dock->y_pos + y * ICON_SIZE))
+				slot_map[wDockSlotMapIndex(mwidth, r, x, y)] = 1;
 		}
 	}
+
+	done = wDockFindFreeSlotPure(mwidth, r, slot_map, x_pos, y_pos);
+
 	wfree(slot_map);
-#undef XY2OFS
 	return done;
 }
 

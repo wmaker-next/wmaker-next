@@ -65,6 +65,8 @@ wmaker_SOURCES = 	\
 	dock.c \
 	dockgeom.c \
 	dockgeom.h \
+	dockslots.c \
+	dockslots.h \
 	dockedapp.c \
 	dockedapp.h \
 	dock.h \
