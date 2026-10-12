@@ -129,6 +129,8 @@ wmaker_SOURCES = 	\
 	stacking.h \
 	stacklist.c \
 	stacklist.h \
+	wsplan.c \
+	wsplan.h \
 	startup.c \
 	startup.h \
 	startup_notify.c \

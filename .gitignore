@@ -128,6 +128,7 @@ src/Tests/check_xlibfree
 src/Tests/check_xsettings
 src/Tests/check_placecompute
 src/Tests/check_stacklist
+src/Tests/check_wsplan
 wrlib/Tests/bench_image
 wrlib/Tests/check_image
 wrlib/Tests/check_palette

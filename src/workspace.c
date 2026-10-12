@@ -46,6 +46,7 @@
 #include "xinerama.h"
 #include "event.h"
 #include "wsmap.h"
+#include "wsplan.h"
 #include "dialog.h"
 #include "tabgroup.h"
 #include "osdview.h"
@@ -545,6 +546,7 @@ static void showWorkspaceName(WScreen *scr, int workspace)
 			w_global.config->workspace_name_display_position,
 			WORKSPACE_NAME_DISPLAY_PADDING);
 	WMMapWidget(scr->workspace_name_osd);
+	/* OSD widget, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, WMWidgetXID(scr->workspace_name_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 
 	/* solid for WORKSPACE_NAME_DELAY, then a ten-step alpha ramp to
@@ -657,33 +659,18 @@ static bool workspace_is_occupied(WScreen *scr, int workspace)
  * ws_advance is suppressed: a freshly grown workspace is empty by definition. */
 static int wWorkspaceRelativeOccupiedTarget(WScreen *scr, int head, int amount)
 {
-	int n = scr->workspace_count;
-	int dir = (amount > 0) ? 1 : -1;
-	int w = (head >= 0) ? scr->head_workspace[head] : scr->current_workspace;
-	int steps;
+	bool occupied[MAX_WORKSPACES];
+	bool allowed[MAX_WORKSPACES];
+	int from_ws = (head >= 0) ? scr->head_workspace[head] : scr->current_workspace;
+	int i;
 
-	if (amount == 0 || n <= 0)
-		return -1;
-
-	for (steps = 0; steps < n + 1; steps++) {
-		w += dir;
-		if (w < 0) {
-			if (!w_global.config->ws_cycle)
-				return -1;
-			w = n - 1;
-		} else if (w >= n) {
-			if (!w_global.config->ws_cycle)
-				return -1;
-			w = 0;
-		}
-		if (workspace_is_occupied(scr, w) &&
-		    (head < 0 || wWorkspaceIsAllowedOnHead(scr, w, head))) {
-			amount -= dir;
-			if (amount == 0)
-				return w;
-		}
+	for (i = 0; i < scr->workspace_count && i < MAX_WORKSPACES; i++) {
+		occupied[i] = workspace_is_occupied(scr, i);
+		allowed[i] = (head < 0) ? true : wWorkspaceIsAllowedOnHead(scr, i, head);
 	}
-	return -1;
+
+	return wWsRelativeOccupiedTarget(scr->workspace_count, from_ws, amount,
+					 w_global.config->ws_cycle, occupied, allowed);
 }
 
 void wWorkspaceRelativeChange(WScreen * scr, int amount)
@@ -752,128 +739,111 @@ void wWorkspaceRelativeChange(WScreen * scr, int amount)
  * is outside the grid */
 bool wWorkspaceLayoutPosition(WScreen *scr, int index, int *row, int *col)
 {
-	int rows = scr->net_desktop_layout.rows;
-	int cols = scr->net_desktop_layout.cols;
-	int corner = scr->net_desktop_layout.corner;
-	int r, c;
-
-	if (rows < 1 || cols < 1 || index < 0 || index >= rows * cols)
-		return false;
-
-	if (scr->net_desktop_layout.orientation == 1) {
-		c = index / rows;
-		r = index % rows;
-	} else {
-		r = index / cols;
-		c = index % cols;
-	}
-	if (corner == 1 || corner == 2)
-		c = cols - 1 - c;
-	if (corner == 2 || corner == 3)
-		r = rows - 1 - r;
-
-	*row = r;
-	*col = c;
-	return true;
-}
-
-/* inverse of wWorkspaceLayoutPosition, screen-relative (row, col) back to
- * a workspace index */
-static int layoutIndex(WScreen *scr, int r, int c)
-{
-	int rows = scr->net_desktop_layout.rows;
-	int cols = scr->net_desktop_layout.cols;
-	int corner = scr->net_desktop_layout.corner;
-
-	if (corner == 1 || corner == 2)
-		c = cols - 1 - c;
-	if (corner == 2 || corner == 3)
-		r = rows - 1 - r;
-
-	if (scr->net_desktop_layout.orientation == 1)
-		return c * rows + r;
-	return r * cols + c;
+	return wWsLayoutPosition(scr->net_desktop_layout.rows,
+				 scr->net_desktop_layout.cols,
+				 scr->net_desktop_layout.orientation,
+				 scr->net_desktop_layout.corner,
+				 index, row, col);
 }
 
 int wWorkspaceNeighbour(WScreen *scr, int from, int dcol, int drow)
 {
-	int rows = scr->net_desktop_layout.rows;
-	int cols = scr->net_desktop_layout.cols;
-	int n = scr->workspace_count;
-	int r, c, to;
-
-	if (!wWorkspaceLayoutPosition(scr, from, &r, &c))
-		return -1;
-
-	c += dcol;
-	r += drow;
-
-	if (w_global.config->ws_cycle) {
-		c = ((c % cols) + cols) % cols;
-		r = ((r % rows) + rows) % rows;
-	} else if (c < 0 || c >= cols || r < 0 || r >= rows) {
-		return -1;
-	}
-
-	to = layoutIndex(scr, r, c);
-	if (to >= n) {
-		if (!w_global.config->ws_cycle)
-			return -1;
-		to %= n;
-	}
-	return to;
+	return wWsNeighbour(scr->net_desktop_layout.rows,
+			    scr->net_desktop_layout.cols,
+			    scr->net_desktop_layout.orientation,
+			    scr->net_desktop_layout.corner,
+			    scr->workspace_count,
+			    w_global.config->ws_cycle,
+			    from, dcol, drow);
 }
 
 void wWorkspaceDirectionalChange(WScreen *scr, int dcol, int drow)
 {
-	int from, to;
+	int to;
 
 	if (w_global.ignore_workspace_change)
 		return;
 
 	if (w_global.config->per_head_workspaces) {
 		int head = wGetActiveHead(scr);
-		int steps;
+		bool occupied[MAX_WORKSPACES];
+		bool allowed[MAX_WORKSPACES];
+		int i;
 
-		from = scr->head_workspace[head];
+		for (i = 0; i < scr->workspace_count && i < MAX_WORKSPACES; i++) {
+			occupied[i] = workspace_is_occupied(scr, i);
+			allowed[i] = wWorkspaceIsAllowedOnHead(scr, i, head);
+		}
+
 		/* Walk the layout in the requested direction until we land
 		 * on a workspace allowed on the active head, so a workspace
 		 * pinned to another output is skipped instead of swallowing
 		 * the keystroke. */
-		for (steps = 0; steps < scr->workspace_count; steps++) {
-			to = wWorkspaceNeighbour(scr, from, dcol, drow);
-			if (to < 0 || to == scr->head_workspace[head])
-				return;
-			if (wWorkspaceIsAllowedOnHead(scr, to, head) &&
-			    (!w_global.config->skip_empty_workspaces || workspace_is_occupied(scr, to))) {
-				wWorkspaceForceChangeOnHead(scr, to, head);
-				return;
-			}
-			from = to;
-		}
+		to = wWsDirectionalTarget(scr->net_desktop_layout.rows,
+					  scr->net_desktop_layout.cols,
+					  scr->net_desktop_layout.orientation,
+					  scr->net_desktop_layout.corner,
+					  scr->workspace_count,
+					  scr->head_workspace[head],
+					  dcol, drow,
+					  w_global.config->ws_cycle,
+					  w_global.config->skip_empty_workspaces,
+					  occupied, allowed);
+		if (to >= 0)
+			wWorkspaceForceChangeOnHead(scr, to, head);
 		return;
 	}
 
 	if (w_global.config->skip_empty_workspaces) {
-		int steps;
+		bool occupied[MAX_WORKSPACES];
+		bool allowed[MAX_WORKSPACES];
+		int i;
 
-		from = scr->current_workspace;
-		for (steps = 0; steps < scr->workspace_count; steps++) {
-			to = wWorkspaceNeighbour(scr, from, dcol, drow);
-			if (to < 0 || to == scr->current_workspace)
-				return;
-			if (workspace_is_occupied(scr, to)) {
-				wWorkspaceChange(scr, to);
-				return;
-			}
-			from = to;
+		for (i = 0; i < scr->workspace_count && i < MAX_WORKSPACES; i++) {
+			occupied[i] = workspace_is_occupied(scr, i);
+			allowed[i] = true;
 		}
+
+		to = wWsDirectionalTarget(scr->net_desktop_layout.rows,
+					  scr->net_desktop_layout.cols,
+					  scr->net_desktop_layout.orientation,
+					  scr->net_desktop_layout.corner,
+					  scr->workspace_count,
+					  scr->current_workspace,
+					  dcol, drow,
+					  w_global.config->ws_cycle,
+					  true, occupied, allowed);
+		if (to >= 0)
+			wWorkspaceChange(scr, to);
 		return;
 	}
 
 	to = wWorkspaceNeighbour(scr, scr->current_workspace, dcol, drow);
 	if (to >= 0)
 		wWorkspaceChange(scr, to);
+}
+
+/* reduce one window into the model's per-window decision inputs, run
+ * after the omnipresent retag so the pre-reduced state matches what
+ * the original loop saw */
+static void ws_reduce_win(WWindow *wwin, int to_ws, bool per_head, int head,
+			  WWsWinIn *in)
+{
+	memset(in, 0, sizeof(*in));
+	in->win = wwin;
+	in->omnipresent = IS_OMNIPRESENT(wwin);
+	in->on_target = per_head ? wWindowIsVisibleOnAnyHead(wwin)
+				 : WWIN_ON_WORKSPACE(wwin, to_ws);
+	in->selected = wwin->flags.selected;
+	in->changing_workspace = wwin->flags.changing_workspace;
+	in->mapped = wwin->flags.mapped;
+	in->shaded = wwin->flags.shaded;
+	in->miniaturized = wwin->flags.miniaturized;
+	in->hidden = wwin->flags.hidden;
+	in->has_icon = wwin->icon != NULL;
+	in->no_focusable = WFLAGP(wwin, no_focusable);
+	in->group_inactive_member = wGroupIsInactiveMember(wwin);
+	in->effective_head_matches = per_head && wWindowEffectiveHead(wwin) == head;
 }
 
 void wWorkspaceForceChange(WScreen * scr, int workspace)
@@ -918,6 +888,10 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		 * but will create annoyance for every other application
 		 */
 		while (tmp) {
+			WWsWinIn in;
+			WWsStep steps[WWS_MAX_STEPS];
+			int n, s;
+
 			/* Omnipresent windows track the new current workspace
 			 * as their primary. Any window already on the target
 			 * (omnipresent or a multi-member set that includes it)
@@ -930,53 +904,57 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 				if (wapp)
 					wapp->last_workspace = workspace;
 			}
-			if (WWIN_ON_WORKSPACE(tmp, workspace) && !foc2
-			    && (tmp->flags.mapped || tmp->flags.shaded)
-			    && !WFLAGP(tmp, no_focusable))
-				foc2 = tmp;
 
-			if (!WWIN_ON_WORKSPACE(tmp, workspace) && !tmp->flags.selected) {
-				/* defer unmap of windows (and per-workspace miniwindow
-				 * icons) not on this workspace until after the
-				 * destination workspace's windows have been mapped, so
-				 * the root background is never exposed mid-switch */
-				if (((tmp->flags.mapped || tmp->flags.shaded) &&
-				     !tmp->flags.changing_workspace) ||
-				    (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
-				     tmp->icon)) {
+			ws_reduce_win(tmp, workspace, false, 0, &in);
+			wWorkspaceWindowDecision(false, w_global.config->sticky_icons,
+						 &in, steps, WWS_MAX_STEPS, &n);
+
+			for (s = 0; s < n; s++) {
+				if (steps[s].focus_priority == WWS_FOCUS_FALLBACK && !foc2)
+					foc2 = tmp;
+
+				switch (steps[s].kind) {
+				case WWS_REMAP:
+					/* remap windows that are on this workspace */
+					wWindowMap(tmp);
+					if (steps[s].focus_priority == WWS_FOCUS_PRIMARY && !foc)
+						foc = tmp;
+					break;
+
+				case WWS_MAP_ICON:
+					tmp->icon->mapped = 1;
+					xcb_map_window(wdisp->conn, tmp->icon->core->window);
+					break;
+
+				case WWS_UNMAP:
+				case WWS_UNMAP_ICON:
+					/* defer unmap of windows (and per-workspace
+					 * miniwindow icons) not on this workspace until
+					 * after the destination workspace's windows have
+					 * been mapped, so the root background is never
+					 * exposed mid-switch */
 					if (toUnmapCount == toUnmapSize)
 					{
 						toUnmapSize *= 2;
 						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
 					}
 					toUnmap[toUnmapCount++] = tmp;
-				}
-			} else {
-				/* change selected windows' workspace */
-				if (tmp->flags.selected) {
-					wWindowChangeWorkspace(tmp, workspace);
-					if (!tmp->flags.miniaturized && !foc) {
+					break;
+
+				case WWS_KEEP:
+					if (steps[s].focus_priority == WWS_FOCUS_PRIMARY && !foc)
 						foc = tmp;
-					}
-				} else {
-					if (!tmp->flags.hidden) {
-						if (!(tmp->flags.mapped || tmp->flags.miniaturized)
-						    && !wGroupIsInactiveMember(tmp)) {
-							/* remap windows that are on this workspace */
-							wWindowMap(tmp);
-							if (!foc && !WFLAGP(tmp, no_focusable)) {
-								foc = tmp;
-							}
-						}
-						/* Also map miniwindow if not omnipresent */
-						if (!w_global.config->sticky_icons &&
-						    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
-							tmp->icon->mapped = 1;
-							xcb_map_window(wdisp->conn, tmp->icon->core->window);
-						}
-					}
+					break;
 				}
 			}
+
+			/* change selected windows' workspace. The move has
+			 * immediate visibility, map/unmap and group-sync
+			 * effects on later decisions, so it stays at its
+			 * traversal point */
+			if (tmp->flags.selected)
+				wWindowChangeWorkspace(tmp, workspace);
+
 			tmp = tmp->prev;
 		}
 
@@ -1186,44 +1164,50 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 		toUnmap = wmalloc(toUnmapSize * sizeof(WWindow *));
 
 		while (tmp) {
-			bool visible = wWindowIsVisibleOnAnyHead(tmp);
+			WWsWinIn in;
+			WWsStep steps[WWS_MAX_STEPS];
+			int n, s;
 
-			if (!visible && !tmp->flags.selected) {
-				if (((tmp->flags.mapped || tmp->flags.shaded) &&
-				     !IS_OMNIPRESENT(tmp) && !tmp->flags.changing_workspace) ||
-				    (!w_global.config->sticky_icons && tmp->flags.miniaturized &&
-				     tmp->icon && !IS_OMNIPRESENT(tmp))) {
+			ws_reduce_win(tmp, workspace, true, head, &in);
+			wWorkspaceWindowDecision(true, w_global.config->sticky_icons,
+						 &in, steps, WWS_MAX_STEPS, &n);
+
+			for (s = 0; s < n; s++) {
+				switch (steps[s].kind) {
+				case WWS_REMAP:
+					wWindowMap(tmp);
+					if (steps[s].focus_priority == WWS_FOCUS_PRIMARY && !foc)
+						foc = tmp;
+					break;
+
+				case WWS_MAP_ICON:
+					tmp->icon->mapped = 1;
+					xcb_map_window(wdisp->conn, tmp->icon->core->window);
+					break;
+
+				case WWS_UNMAP:
+				case WWS_UNMAP_ICON:
 					if (toUnmapCount == toUnmapSize) {
 						toUnmapSize *= 2;
 						toUnmap = wrealloc(toUnmap, toUnmapSize * sizeof(WWindow *));
 					}
 					toUnmap[toUnmapCount++] = tmp;
-				}
-			} else {
-				if (tmp->flags.selected) {
-					wWindowChangeWorkspace(tmp, workspace);
-					if (!tmp->flags.miniaturized && !foc)
+					break;
+
+				case WWS_KEEP:
+					if (steps[s].focus_priority == WWS_FOCUS_PRIMARY && !foc)
 						foc = tmp;
-				} else if (!tmp->flags.hidden) {
-					if (!(tmp->flags.mapped || tmp->flags.miniaturized)
-					    && !wGroupIsInactiveMember(tmp)) {
-						wWindowMap(tmp);
-						if (!foc && !WFLAGP(tmp, no_focusable)
-						    && wWindowEffectiveHead(tmp) == head)
-							foc = tmp;
-					}
-					if (!w_global.config->sticky_icons &&
-					    tmp->flags.miniaturized && !IS_OMNIPRESENT(tmp) && tmp->icon) {
-						tmp->icon->mapped = 1;
-						xcb_map_window(wdisp->conn, tmp->icon->core->window);
-					}
+					break;
 				}
-				/* Prefer a focus candidate on the initiating head */
-				if (!foc && (tmp->flags.mapped || tmp->flags.shaded)
-				    && !WFLAGP(tmp, no_focusable)
-				    && wWindowEffectiveHead(tmp) == head)
-					foc = tmp;
 			}
+
+			/* change selected windows' workspace. The move has
+			 * immediate visibility, map/unmap and group-sync
+			 * effects on later decisions, so it stays at its
+			 * traversal point */
+			if (tmp->flags.selected)
+				wWindowChangeWorkspace(tmp, workspace);
+
 			tmp = tmp->prev;
 		}
 
