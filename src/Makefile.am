@@ -129,6 +129,8 @@ wmaker_SOURCES = 	\
 	stacking.h \
 	stacklist.c \
 	stacklist.h \
+	focusmodel.c \
+	focusmodel.h \
 	wsplan.c \
 	wsplan.h \
 	startup.c \

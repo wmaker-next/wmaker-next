@@ -38,6 +38,7 @@
 #include "application.h"
 #include "actions.h"
 #include "stacking.h"
+#include "focusmodel.h"
 #include "appicon.h"
 #include "dock.h"
 #include "appmenu.h"
@@ -143,6 +144,9 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	WWindow *focused = scr->focused_window;
 	xcb_timestamp_t timestamp = wdisp->timestamp.last_event;
 	WApplication *oapp = NULL, *napp = NULL;
+	WFocusWinIn in;
+	WFocusPlan plan;
+	WWindow *modal_transient = NULL;
 	int wasfocused;
 
 	if (scr->flags.ignore_focus_events || compareTimes(wdisp->timestamp.focus_change, timestamp) > 0)
@@ -158,11 +162,25 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 			    tmp->transient_for == wwin->client_win &&
 			    !tmp->flags.miniaturized && !tmp->flags.hidden &&
 			    tmp->flags.mapped) {
-				wwin = tmp;
+				modal_transient = tmp;
 				break;
 			}
 		}
 	}
+
+	memset(&in, 0, sizeof(in));
+	if (wwin) {
+		in.win = wwin;
+		in.focusable = WFLAGP(wwin, no_focusable);
+		in.focus_mode = wwin->focus_mode;
+		in.takes_focus_proto = wwin->protocols.TAKE_FOCUS;
+		in.mapped = wwin->flags.mapped;
+	}
+	wFocusResolve(wwin ? &in : NULL, focused,
+		      modal_transient != NULL, modal_transient, &plan);
+
+	if (plan.redirect_to)
+		wwin = plan.redirect_win;
 
 	if (!old_scr)
 		old_scr = scr;
@@ -202,25 +220,24 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 	if (napp)
 		napp->last_workspace = WWIN_PRIMARY_WS(wwin);
 
-	if (wwin->flags.mapped && !WFLAGP(wwin, no_focusable)) {
+	if (plan.focus_path) {
 		/* install colormap if colormap mode is lock mode */
 		if (w_global.config->colormap_mode == WCM_CLICK)
 			wColormapInstallForWindow(scr, wwin);
 
 		/* set input focus */
-		switch (wwin->focus_mode) {
-		case WFM_NO_INPUT:
+		switch (plan.target) {
+		case WFOCUS_TARGET_NONEWIN:
 			xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, scr->no_focus_win, XCB_CURRENT_TIME);
 			break;
-		case WFM_PASSIVE:
-		case WFM_LOCALLY_ACTIVE:
+		case WFOCUS_TARGET_CLIENT:
 			xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, wwin->client_win, XCB_CURRENT_TIME);
 			break;
-		case WFM_GLOBALLY_ACTIVE:
+		case WFOCUS_TARGET_NOTHING:
 			break;
 		}
 
-		if (wwin->protocols.TAKE_FOCUS)
+		if (plan.send_take_focus)
 			wClientSendProtocol(wwin, wdisp->atom.wm.take_focus, timestamp);
 
 		wXFlush(wdisp->conn);
@@ -232,7 +249,7 @@ void wSetFocusTo(WScreen *scr, WWindow *wwin)
 		return;
 
 	/* if this is not the focused window focus it */
-	if (focused != wwin) {
+	if (plan.reorder_list) {
 		/* change the focus window list order */
 		if (wwin->prev)
 			wwin->prev->next = wwin->next;
@@ -303,8 +320,9 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 	WWindow *focused = scr->focused_window;
 	WWindow *best = NULL;
 	WWindow *candidate = NULL;
+	WFocusDirCandidate *cands;
 	int my_cx, my_cy;
-	long best_score = -1;
+	int n, i;
 
 	if (!focused || !focused->flags.mapped)
 		return;
@@ -313,11 +331,28 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 	my_cx = focused->frame_x + (int)focused->frame->core->width  / 2;
 	my_cy = focused->frame_y + (int)focused->frame->core->height / 2;
 
-	/* Iterate from most-recently-focused to least-recently-focused */
+	/* reduce the eligible candidates, iterating from most-recently-
+	 * focused to least-recently-focused */
+	n = 0;
 	for (candidate = focused->prev; candidate != NULL; candidate = candidate->prev) {
-		int his_cx, his_cy, distance, offset;
-		long score;
+		if (!candidate->flags.mapped)
+			continue;
+		if (WFLAGP(candidate, no_focusable))
+			continue;
+		if (!candidate->frame || !wWindowIsVisibleOnAnyHead(candidate))
+			continue;
 
+		/* ignore fully covered windows if cannot raised them */
+		if (!w_global.config->circ_raise && wWindowIsFullyCovered(candidate))
+			continue;
+
+		n++;
+	}
+
+	cands = wmalloc(sizeof(WFocusDirCandidate) * (n > 0 ? n : 1));
+
+	i = 0;
+	for (candidate = focused->prev; candidate != NULL; candidate = candidate->prev) {
 		if (!candidate->flags.mapped)
 			continue;
 		if (WFLAGP(candidate, no_focusable))
@@ -330,45 +365,14 @@ void wSetFocusToDirection(WScreen *scr, int direction)
 			continue;
 
 		/* relative centre of candidate */
-		his_cx = (candidate->frame_x - my_cx) + (int)candidate->frame->core->width  / 2;
-		his_cy = (candidate->frame_y - my_cy) + (int)candidate->frame->core->height / 2;
-
-		switch (direction) {
-		case DIRECTION_RIGHT:
-			distance = his_cx;
-			offset = his_cy < 0 ? -his_cy : his_cy;
-			break;
-		case DIRECTION_LEFT:
-			distance = -his_cx;
-			offset = his_cy < 0 ? -his_cy : his_cy;
-			break;
-		case DIRECTION_DOWN:
-			distance = his_cy;
-			offset = his_cx < 0 ? -his_cx : his_cx;
-			break;
-		case DIRECTION_UP:
-			distance = -his_cy;
-			offset = his_cx < 0 ? -his_cx : his_cx;
-			break;
-		default:
-			continue;
-		}
-
-		/* candidate must be strictly in the requested direction */
-		if (distance <= 0)
-			continue;
-
-		score = distance + offset;
-
-		/* heavy penalty for windows more than 45 degrees off-axis */
-		if (offset > distance)
-			score += 1000000L;
-
-		if (best_score < 0 || score < best_score) {
-			best = candidate;
-			best_score = score;
-		}
+		cands[i].win = candidate;
+		cands[i].rel_cx = (candidate->frame_x - my_cx) + (int)candidate->frame->core->width / 2;
+		cands[i].rel_cy = (candidate->frame_y - my_cy) + (int)candidate->frame->core->height / 2;
+		i++;
 	}
+
+	best = wFocusNearestInDirection(cands, n, direction);
+	wfree(cands);
 
 	if (best) {
 		if (w_global.config->circ_raise)
@@ -384,6 +388,9 @@ void wShadeWindow(WWindow *wwin)
 	if (wwin->flags.shaded)
 		return;
 
+	/* the client window is a frame child, not a stacked frame, direct
+	 * configure (same class as the framewin titlebar/resizebar
+	 * pushes) */
 	xcb_configure_window(wdisp->conn, wwin->client_win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 	wSoundPlay(wwin->screen_ptr, WSOUND_SHADE);
 	shade_animate(wwin, SHADE);
@@ -1925,7 +1932,10 @@ void wIconifyWindow(WWindow *wwin)
 			int x, y;
 			xcb_window_t baz;
 
-			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+			/* the frame must be on top for the capture, the
+			 * raise goes through the deferred stacking list */
+			wRaiseFrame(wwin->frame->core);
+			CommitStacking(wwin->screen_ptr);
 			wXTranslateCoordinates(wdisp->conn, wwin->client_win, wwin->screen_ptr->root_win, 0, 0, &x, &y, &baz);
 
 			w = attribs.width;
@@ -2721,6 +2731,8 @@ void wRefreshDesktop(WScreen *scr)
 			  scr->scr_height, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACKING_STORE | XCB_CW_SAVE_UNDER, (const uint32_t[]){ XCB_BACKING_STORE_NOT_USEFUL, false });
 	xcb_configure_window(wdisp->conn, win, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+	/* refresh-desktop overlay, unmapped again right away, never in
+	 * the stacking list, direct configure */
 	xcb_map_window(wdisp->conn, win);
 	xcb_destroy_window(wdisp->conn, win);
 	wXFlush(wdisp->conn);

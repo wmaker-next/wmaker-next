@@ -37,6 +37,7 @@ POTFILES  = \
 	$(top_srcdir)/src/event_input.c \
 	$(top_srcdir)/src/event_root.c \
 	$(top_srcdir)/src/event_ext.c \
+	$(top_srcdir)/src/focusmodel.c \
 	$(top_srcdir)/src/framewin.c \
 	$(top_srcdir)/src/geometry.c \
 	$(top_srcdir)/src/geomview.c \
