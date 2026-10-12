@@ -99,7 +99,11 @@ void DoKaboom(WScreen * scr, xcb_window_t win, int x, int y)
 			if (rand() % 2) {
 				ax[k] = i;
 				ay[k] = j;
-				px[k] = (x + i * ICON_KABOOM_PIECE_SIZE) << KAB_PRECISION;
+				/* a multiply, not a shift: the icon's x can
+				 * be negative after a RandR change and
+				 * shifting a negative value is undefined */
+				px[k] = (x + i * ICON_KABOOM_PIECE_SIZE)
+				    * (1 << KAB_PRECISION);
 				py[k] = y + j * ICON_KABOOM_PIECE_SIZE;
 				pvx[k] = rand() % (1 << (KAB_PRECISION + 3)) - (1 << (KAB_PRECISION + 3)) / 2;
 				pvy[k] = -15 - rand() % 7;
@@ -219,8 +223,11 @@ static void doAppBounce(void *arg)
 
 reinit:
 	if (data->wapp->refcount > 1) {
-		if (w_global.config->raise_appicons_when_bouncing)
-			xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		if (w_global.config->raise_appicons_when_bouncing) {
+			/* only update the stacking list, the event loop
+			 * flushes it once per iteration */
+			wRaiseFrame(aicon->icon->core);
+		}
 
 		const double ticks = BOUNCE_HZ * BOUNCE_LENGTH;
 		const double s = sqrt(BOUNCE_HEIGHT)/(ticks/2);
