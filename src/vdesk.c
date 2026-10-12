@@ -742,6 +742,8 @@ void wWorkspaceRaiseEdge(WScreen *scr)
 	if (!scr->virtual_edges)
 		return;
 
+	/* InputOnly edge windows, never in the stacking list, direct
+	 * configure */
 	if (toggle) {
 		for (i = 0; i < scr->virtual_nr_edges; ++i)
 			xcb_configure_window(wdisp->conn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });

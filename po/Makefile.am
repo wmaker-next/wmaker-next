@@ -68,6 +68,7 @@ POTFILES  = \
 	$(top_srcdir)/src/session.c \
 	$(top_srcdir)/src/shutdown.c \
 	$(top_srcdir)/src/stacking.c \
+	$(top_srcdir)/src/stacklist.c \
 	$(top_srcdir)/src/startup.c \
 	$(top_srcdir)/src/startup_notify.c \
 	$(top_srcdir)/src/superfluous.c \

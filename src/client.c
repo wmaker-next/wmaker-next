@@ -197,6 +197,9 @@ void wClientConfigure(WWindow *wwin, const xcb_configure_request_event_t *xcre)
 		wXConfigureWindow(wdisp->conn, wwin->frame->core->window,
 				  xcre->value_mask & (XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE), &xwc);
 		/* fix stacking order */
+		/* exemption: this is the client-requested configure relay,
+		 * not a wm-initiated restack, RemakeStackList() below
+		 * reconciles the list with what the server did */
 		RemakeStackList(wwin->screen_ptr);
 	}
 

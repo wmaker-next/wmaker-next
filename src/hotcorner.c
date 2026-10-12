@@ -137,6 +137,8 @@ void wHotCornersRaise(WScreen *scr)
 {
 	int i;
 
+	/* InputOnly corner windows, never in the stacking list, direct
+	 * configure */
 	for (i = 0; i < scr->hot_corner_win_count; i++)
 		xcb_configure_window(wdisp->conn, scr->hot_corner_win[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 }

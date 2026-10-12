@@ -1905,6 +1905,10 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	/* don't let windows go away if we die */
 	xcb_change_save_set(wdisp->conn, XCB_SET_MODE_INSERT, window);
 
+	/* server-side push-below of the fresh frame before it is mapped,
+	 * exemption: the stacking list keeps the frame where
+	 * AddToStackList() put it and the deferred flush enforces the
+	 * list, so this direct configure reorders nothing */
 	xcb_configure_window(wdisp->conn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 
 	/* if window is in this workspace and should be mapped, then  map it */
@@ -2152,6 +2156,9 @@ WWindow *wManageInternalWindow(WScreen *scr, xcb_window_t window, xcb_window_t o
 	wwin->frame->core->descriptor.parent = wwin;
 	wwin->frame->core->descriptor.parent_type = WCLASS_WINDOW;
 
+	/* server-side push-below of the fresh frame before the client is
+	 * reparented and mapped, exemption: same as the wManageWindow
+	 * path above, the stacking list is not reordered by this */
 	xcb_configure_window(wdisp->conn, window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 	xcb_map_subwindows(wdisp->conn, wwin->frame->core->window);
 

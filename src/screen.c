@@ -1288,6 +1288,7 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 	xcb_change_window_attributes(wdisp->conn, scr->mini_screenshot, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix });
 	xcb_free_pixmap(wdisp->conn, pix);
 	xcb_clear_area(wdisp->conn, 0, scr->mini_screenshot, 0, 0, 0, 0);
+	/* mini screenshot window, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, scr->mini_screenshot, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	xcb_map_window(wdisp->conn, scr->mini_screenshot);
 	wXFlush(wdisp->conn);

@@ -654,6 +654,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 				if (width < theight * k) {
 					setRoleBit(fwin->flags.button_dont_fit, r, 1);
 				} else {
+					/* frame child (button), not a frame, direct configure */
 					xcb_configure_window(wdisp->conn, fwin->buttons[r]->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 					xcb_map_window(wdisp->conn, fwin->buttons[r]->window);
 				}
@@ -664,6 +665,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			if (TS_NEW_GEOM(w_global.config->new_style))
 				updateTitlebar(fwin);
 
+			/* frame child (titlebar), not a frame, direct configure */
 			xcb_configure_window(wdisp->conn, fwin->titlebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 			xcb_map_window(wdisp->conn, fwin->titlebar->window);
 
@@ -688,6 +690,7 @@ void wFrameWindowUpdateBorders(WFrameWindow * fwin, int flags)
 			}
 
 			xcb_map_window(wdisp->conn, fwin->resizebar->window);
+			/* frame child (resizebar), not a frame, direct configure */
 			xcb_configure_window(wdisp->conn, fwin->resizebar->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_BELOW });
 			updateResizebarCursors(fwin);
 

@@ -18,6 +18,12 @@
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+/*
+ * Applier layer over the pure stacking-list primitives in stacklist.c.
+ * The list mutators here only build the context from the screen state
+ * and translate the model's need_restack into scr->flags.need_restack.
+ */
+
 #include "wconfig.h"
 
 #include <stdio.h>
@@ -30,6 +36,7 @@
 #include "actions.h"
 #include "properties.h"
 #include "stacking.h"
+#include "stacklist.h"
 #include "workspace.h"
 #include "hotcorner.h"
 #ifdef VIRTUAL_DESKTOP
@@ -42,6 +49,21 @@ static void notifyStackChange(WCoreWindow * frame, char *detail)
 	WWindow *wwin = wWindowFor(frame->window);
 
 	WMPostNotificationName(WMNChangedStacking, wwin, detail);
+}
+
+static void notifyStackReset(WCoreWindow *frame)
+{
+	WMPostNotificationName(WMNResetStacking, frame->screen_ptr, NULL);
+}
+
+static void stack_ctx(WStackCtx *ctx, WScreen *scr)
+{
+	ctx->levels = scr->stacking_list;
+	ctx->by_window = wdisp->context.stack;
+	ctx->window_count = &scr->window_count;
+	ctx->need_restack = 0;
+	ctx->changed_notify = notifyStackChange;
+	ctx->reset_notify = notifyStackReset;
 }
 
 /*
@@ -62,39 +84,17 @@ void RemakeStackList(WScreen * scr)
 	xcb_window_t *windows;
 	unsigned int nwindows;
 	xcb_window_t junkr, junkp;
-	WCoreWindow *frame;
-	WCoreWindow *tmp;
-	int level;
-	int i, c;
+	WStackCtx ctx;
 
 	if (!wXQueryTree(wdisp->conn, scr->root_win, &junkr, &junkp, &windows, &nwindows)) {
 		wwarning(_("could not get window list!!"));
 		return;
-	} else {
-		WMEmptyBag(scr->stacking_list);
-
-		/* verify list integrity */
-		c = 0;
-		for (i = 0; i < nwindows; i++) {
-			if (!WMHashGetItemAndKey(wdisp->context.stack,
-						 (void *)(uintptr_t) windows[i],
-						 (void **)&frame, NULL)) {
-				continue;
-			}
-			if (!frame)
-				continue;
-			c++;
-			level = frame->stacking->window_level;
-			tmp = WMGetFromBag(scr->stacking_list, level);
-			if (tmp)
-				tmp->stacking->above = frame;
-			frame->stacking->under = tmp;
-			frame->stacking->above = NULL;
-			WMSetInBag(scr->stacking_list, level, frame);
-		}
-		wfree(windows);
-		scr->window_count = c;
 	}
+
+	stack_ctx(&ctx, scr);
+	WMEmptyBag(scr->stacking_list);
+	wStackReconcile(&ctx, windows, (int) nwindows);
+	wfree(windows);
 
 	CommitStacking(scr);
 }
@@ -106,8 +106,8 @@ void RemakeStackList(WScreen * scr)
  * order in the internal window stacking lists. It does the opposite
  * of RemakeStackList().
  *
- * This is the flush point for the deferred restack: the mutators below
- * only update the internal list and set scr->flags.need_restack, and
+ * This is the flush point for the deferred restack: the mutators only
+ * update the internal list and set scr->flags.need_restack, and
  * one call per event-loop iteration (from EventLoop's prepare hook)
  * applies the whole batch as a single wXRestackWindows. The
  * WMNResetStacking notification is posted here, once per batch.
@@ -118,25 +118,20 @@ void RemakeStackList(WScreen * scr)
  */
 void CommitStacking(WScreen * scr)
 {
-	WCoreWindow *tmp;
-	int nwindows, i;
 	xcb_window_t *windows;
-	WMBagIterator iter;
+	int nwindows, i;
+	WStackCtx ctx;
 
 	scr->flags.need_restack = 0;
+
+	stack_ctx(&ctx, scr);
 
 	nwindows = scr->window_count;
 	if (nwindows == 0)
 		return;
 	windows = wmalloc(sizeof(xcb_window_t) * nwindows);
 
-	i = 0;
-	WM_ETARETI_BAG(scr->stacking_list, tmp, iter) {
-		while (tmp) {
-			windows[i++] = tmp->window;
-			tmp = tmp->stacking->under;
-		}
-	}
+	i = wStackCollectWindows(&ctx, windows, nwindows);
 	wXRestackWindows(wdisp->conn, windows, i);
 	wfree(windows);
 	wHotCornersRaise(scr);
@@ -161,45 +156,12 @@ void CommitStacking(WScreen * scr)
  */
 void wRaiseFrame(WCoreWindow * frame)
 {
-	WCoreWindow *wlist = frame;
-	int level = frame->stacking->window_level;
-	WScreen *scr = frame->screen_ptr;
+	WStackCtx ctx;
 
-	/* already on top */
-	if (frame->stacking->above == NULL) {
-		return;
-	}
-
-	/* insert it on top of other windows on the same level */
-	if (frame->stacking->under)
-		frame->stacking->under->stacking->above = frame->stacking->above;
-	if (frame->stacking->above)
-		frame->stacking->above->stacking->under = frame->stacking->under;
-
-	frame->stacking->above = NULL;
-	frame->stacking->under = WMGetFromBag(scr->stacking_list, level);
-	if (frame->stacking->under) {
-		frame->stacking->under->stacking->above = frame;
-	}
-	WMSetInBag(scr->stacking_list, level, frame);
-
-	/* raise transients under us from bottom to top
-	 * so that the order is kept */
- again:
-	wlist = frame->stacking->under;
-	while (wlist && wlist->stacking->under)
-		wlist = wlist->stacking->under;
-	while (wlist && wlist != frame) {
-		if (wlist->stacking->child_of == frame) {
-			wRaiseFrame(wlist);
-			goto again;
-		}
-		wlist = wlist->stacking->above;
-	}
-
-	scr->flags.need_restack = 1;
-
-	notifyStackChange(frame, "raise");
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackRaise(&ctx, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 void wRaiseLowerFrame(WCoreWindow * frame)
@@ -235,59 +197,12 @@ void wRaiseLowerFrame(WCoreWindow * frame)
 
 void wLowerFrame(WCoreWindow * frame)
 {
-	WScreen *scr = frame->screen_ptr;
-	WCoreWindow *wlist = frame;
-	int level = frame->stacking->window_level;
+	WStackCtx ctx;
 
-	/* already in bottom */
-	if (wlist->stacking->under == NULL) {
-		return;
-	}
-	/* can't lower transient below below its owner */
-	if (wlist->stacking->under == wlist->stacking->child_of) {
-		return;
-	}
-	/* remove from the list */
-	if (WMGetFromBag(scr->stacking_list, level) == frame) {
-		/* it was the top window */
-		WMSetInBag(scr->stacking_list, level, frame->stacking->under);
-		frame->stacking->under->stacking->above = NULL;
-	} else {
-		if (frame->stacking->under)
-			frame->stacking->under->stacking->above = frame->stacking->above;
-		if (frame->stacking->above)
-			frame->stacking->above->stacking->under = frame->stacking->under;
-	}
-	wlist = WMGetFromBag(scr->stacking_list, level);
-
-	/* look for place to put this window */
-	if (wlist) {
-		WCoreWindow *owner = frame->stacking->child_of;
-
-		if (owner != wlist) {
-			while (wlist->stacking->under) {
-				/* if this is a transient, it should not be placed under
-				 * its owner */
-				if (owner == wlist->stacking->under)
-					break;
-				wlist = wlist->stacking->under;
-			}
-		}
-	}
-	/* insert under the place found */
-	frame->stacking->above = wlist;
-	if (wlist) {
-		frame->stacking->under = wlist->stacking->under;
-		if (wlist->stacking->under)
-			wlist->stacking->under->stacking->above = frame;
-		wlist->stacking->under = frame;
-	} else {
-		frame->stacking->under = NULL;
-	}
-
-	scr->flags.need_restack = 1;
-
-	notifyStackChange(frame, "lower");
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackLower(&ctx, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 /*
@@ -305,51 +220,12 @@ void wLowerFrame(WCoreWindow * frame)
  */
 void AddToStackList(WCoreWindow * frame)
 {
-	WCoreWindow *curtop, *wlist;
-	int index = frame->stacking->window_level;
-	WScreen *scr = frame->screen_ptr;
-	WCoreWindow *trans = NULL;
+	WStackCtx ctx;
 
-	frame->screen_ptr->window_count++;
-	WMHashInsert(wdisp->context.stack, (void *)(uintptr_t) frame->window, frame);
-	curtop = WMGetFromBag(scr->stacking_list, index);
-
-	/* first window in this level */
-	if (curtop == NULL) {
-		WMSetInBag(scr->stacking_list, index, frame);
-		frame->stacking->above = NULL;
-		frame->stacking->under = NULL;
-		scr->flags.need_restack = 1;
-		return;
-	}
-
-	/* check if this is a transient owner */
-	wlist = curtop;
-	while (wlist) {
-		if (wlist->stacking->child_of == frame)
-			trans = wlist;
-		wlist = wlist->stacking->under;
-	}
-	/* trans will hold the transient in the lowest position
-	 * in stacking list */
-
-	frame->stacking->above = trans;
-	if (trans != NULL) {
-		/* window is owner of a transient.. put it below
-		 * the lowest transient */
-		frame->stacking->under = trans->stacking->under;
-		if (trans->stacking->under) {
-			trans->stacking->under->stacking->above = frame;
-		}
-		trans->stacking->under = frame;
-	} else {
-		/* window is not owner of transients.. just put it in the
-		 * top of other windows */
-		frame->stacking->under = curtop;
-		curtop->stacking->above = frame;
-		WMSetInBag(scr->stacking_list, index, frame);
-	}
-	scr->flags.need_restack = 1;
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackAdd(&ctx, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 /*
@@ -367,35 +243,12 @@ void AddToStackList(WCoreWindow * frame)
  */
 void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
 {
-	WCoreWindow *tmpw;
-	WScreen *scr = frame->screen_ptr;
-	int index;
+	WStackCtx ctx;
 
-	if (!next || frame->stacking->under == next)
-		return;
-
-	if (frame->stacking->window_level != next->stacking->window_level)
-		ChangeStackingLevel(frame, next->stacking->window_level);
-
-	index = frame->stacking->window_level;
-
-	tmpw = WMGetFromBag(scr->stacking_list, index);
-	if (tmpw == frame)
-		WMSetInBag(scr->stacking_list, index, frame->stacking->under);
-	if (frame->stacking->under)
-		frame->stacking->under->stacking->above = frame->stacking->above;
-	if (frame->stacking->above)
-		frame->stacking->above->stacking->under = frame->stacking->under;
-	if (next->stacking->above)
-		next->stacking->above->stacking->under = frame;
-	frame->stacking->under = next;
-	frame->stacking->above = next->stacking->above;
-	next->stacking->above = frame;
-	if (tmpw == next)
-		WMSetInBag(scr->stacking_list, index, frame);
-
-	/* WMNResetStacking rides the CommitStacking() flush */
-	scr->flags.need_restack = 1;
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackMoveAbove(&ctx, next, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 /*
@@ -413,70 +266,30 @@ void MoveInStackListAbove(WCoreWindow * next, WCoreWindow * frame)
  */
 void MoveInStackListUnder(WCoreWindow * prev, WCoreWindow * frame)
 {
-	WCoreWindow *tmpw;
-	int index;
-	WScreen *scr = frame->screen_ptr;
+	WStackCtx ctx;
 
-	if (!prev || frame->stacking->above == prev)
-		return;
-
-	if (frame->stacking->window_level != prev->stacking->window_level)
-		ChangeStackingLevel(frame, prev->stacking->window_level);
-
-	index = frame->stacking->window_level;
-
-	tmpw = WMGetFromBag(scr->stacking_list, index);
-	if (tmpw == frame)
-		WMSetInBag(scr->stacking_list, index, frame->stacking->under);
-	if (frame->stacking->under)
-		frame->stacking->under->stacking->above = frame->stacking->above;
-	if (frame->stacking->above)
-		frame->stacking->above->stacking->under = frame->stacking->under;
-	if (prev->stacking->under)
-		prev->stacking->under->stacking->above = frame;
-	frame->stacking->above = prev;
-	frame->stacking->under = prev->stacking->under;
-	prev->stacking->under = frame;
-	scr->flags.need_restack = 1;
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackMoveUnder(&ctx, prev, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 void RemoveFromStackList(WCoreWindow * frame)
 {
-	int index = frame->stacking->window_level;
+	WStackCtx ctx;
 
-	if (!WMHashGetItemAndKey(wdisp->context.stack, (void *)(uintptr_t) frame->window,
-				 NULL, NULL)) {
-		wwarning("RemoveFromStackingList(): window not in list ");
-		return;
-	}
-	WMHashRemove(wdisp->context.stack, (void *)(uintptr_t) frame->window);
-	/* remove from the window stack list */
-	if (frame->stacking->under)
-		frame->stacking->under->stacking->above = frame->stacking->above;
-	if (frame->stacking->above)
-		frame->stacking->above->stacking->under = frame->stacking->under;
-	else			/* this was the first window on the list */
-		WMSetInBag(frame->screen_ptr->stacking_list, index, frame->stacking->under);
-
-	frame->screen_ptr->window_count--;
-
-	WMPostNotificationName(WMNResetStacking, frame->screen_ptr, NULL);
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackRemove(&ctx, frame);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }
 
 void ChangeStackingLevel(WCoreWindow * frame, int new_level)
 {
-	int old_level;
+	WStackCtx ctx;
 
-	if (frame->stacking->window_level == new_level)
-		return;
-	old_level = frame->stacking->window_level;
-
-	RemoveFromStackList(frame);
-	frame->stacking->window_level = new_level;
-	AddToStackList(frame);
-	if (old_level > new_level) {
-		wRaiseFrame(frame);
-	} else {
-		wLowerFrame(frame);
-	}
+	stack_ctx(&ctx, frame->screen_ptr);
+	wStackChangeLevel(&ctx, frame, new_level);
+	if (ctx.need_restack)
+		frame->screen_ptr->flags.need_restack = 1;
 }

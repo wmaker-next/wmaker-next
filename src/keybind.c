@@ -94,6 +94,7 @@ static void flashLayoutOSD(WScreen *scr, const char *text)
 	wPlaceOSDOnHead(scr, scr->keychain_osd,
 			w_global.config->keychain_display_position, WOSD_EDGE_PAD);
 	WMMapWidget(scr->keychain_osd);
+	/* OSD widget, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, WMWidgetXID(scr->keychain_osd), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	scr->layout_osd_timer = WMAddTimerHandler(800, hideLayoutOSD, scr);
 }

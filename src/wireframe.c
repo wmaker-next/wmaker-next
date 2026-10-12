@@ -217,6 +217,7 @@ static void commitBars(WWireframe *wf, const xcb_rectangle_t *rects, int n)
 			xcb_configure_window(wdisp->conn, wf->bars[i], XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ rects[i].x, rects[i].y, w, h });
 		}
 		if (i >= wf->bars_mapped) {
+			/* wireframe bars, never in the stacking list, direct configure */
 			xcb_configure_window(wdisp->conn, wf->bars[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 			xcb_map_window(wdisp->conn, wf->bars[i]);
 		}
@@ -384,6 +385,7 @@ static void commitCairo(WWireframe *wf)
 
 	WCairoEnd(cr);
 
+	/* wireframe overlay, never in the stacking list, direct configure */
 	if (wf->mapped)
 		xcb_configure_window(wdisp->conn, wf->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	else {

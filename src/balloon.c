@@ -232,6 +232,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 		       scr->balloon->window, 0, 0, mask);
 	xcb_free_pixmap(wdisp->conn, mask);
 	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by });
+	/* tooltip balloon, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	xcb_map_window(wdisp->conn, scr->balloon->window);
 
@@ -274,6 +275,7 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 
 	xcb_change_window_attributes(wdisp->conn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 	xcb_clear_area(wdisp->conn, 0, scr->balloon->window, 0, 0, 0, 0);
+	/* tooltip balloon, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	xcb_map_window(wdisp->conn, scr->balloon->window);
 
@@ -355,6 +357,7 @@ static void show_minipreview(WScreen *scr, int x, int y, const char *title, xcb_
 	xcb_change_window_attributes(wdisp->conn, scr->balloon->window, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 	xcb_clear_area(wdisp->conn, 0, scr->balloon->window, 0, 0, 0, 0);
+	/* tooltip balloon, never in the stacking list, direct configure */
 	xcb_configure_window(wdisp->conn, scr->balloon->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	xcb_map_window(wdisp->conn, scr->balloon->window);
 

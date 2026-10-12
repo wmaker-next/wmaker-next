@@ -125,6 +125,8 @@ wmaker_SOURCES = 	\
 	switchpanel.h \
 	stacking.c \
 	stacking.h \
+	stacklist.c \
+	stacklist.h \
 	startup.c \
 	startup.h \
 	startup_notify.c \

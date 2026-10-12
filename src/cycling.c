@@ -60,8 +60,12 @@ static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 			win[1] = wwin->frame->core->window;
 
 			wXRestackWindows(wdisp->conn, win, 2);
-		} else
-			xcb_configure_window(wdisp->conn, wwin->frame->core->window, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+		} else {
+			/* the cycle raise goes through the deferred
+			 * stacking list */
+			wRaiseFrame(wwin->frame->core);
+			CommitStacking(wwin->screen_ptr);
+		}
 		wHotCornersRaise(wwin->screen_ptr);
 	}
 }

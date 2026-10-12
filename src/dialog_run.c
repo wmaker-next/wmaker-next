@@ -1655,6 +1655,7 @@ static void refreshDropList(WMInputPanelWithHistory *p)
 	}
 	if (!p->dropMapped) {
 		WMMapWidget(p->dropWin);
+		/* file drop widget, never in the stacking list, direct configure */
 		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 		p->dropMapped = true;
 	}
