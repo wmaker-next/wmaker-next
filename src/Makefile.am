@@ -107,6 +107,8 @@ wmaker_SOURCES = 	\
 	pixmap.h \
 	placement.c \
 	placement.h \
+	placecompute.c \
+	placecompute.h \
 	properties.c \
 	properties.h \
 	randr.c \

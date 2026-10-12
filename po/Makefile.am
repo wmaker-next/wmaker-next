@@ -59,6 +59,7 @@ POTFILES  = \
 	$(top_srcdir)/src/osdep_linux.c \
 	$(top_srcdir)/src/osdep_stub.c \
 	$(top_srcdir)/src/pixmap.c \
+	$(top_srcdir)/src/placecompute.c \
 	$(top_srcdir)/src/placement.c \
 	$(top_srcdir)/src/properties.c \
 	$(top_srcdir)/src/randr.c \
