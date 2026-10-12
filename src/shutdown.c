@@ -43,6 +43,7 @@
 
 
 static void wipeDesktop(WScreen * scr);
+static void restoreWindows(WScreen * scr);
 
 /*
  *----------------------------------------------------------------------
@@ -130,40 +131,55 @@ void Shutdown(WShutdownMode mode, bool external)
 	}
 }
 
-static void restoreWindows(WMBag * bag, WMBagIterator iter)
+/*
+ * Unmanaging a window frees its frame core and its miniwindow, and both
+ * are linked in the stacking chains being walked here, so no pointer
+ * into the list may be held across an unmanage. Walk the list once to
+ * collect the client window ids in visit order, then unmanage from the
+ * collected ids, re-resolving each window in case an earlier unmanage
+ * took a peer with it.
+ */
+static void restoreWindows(WScreen * scr)
 {
-	WCoreWindow *next;
 	WCoreWindow *core;
+	WMBagIterator iter;
 	WWindow *wwin;
+	xcb_window_t *windows;
+	int count, i, size;
 
-	if (iter == NULL) {
-		core = WMBagFirst(bag, &iter);
-	} else {
-		core = WMBagNext(bag, &iter);
-	}
+	size = scr->window_count > 0 ? scr->window_count : 1;
+	windows = wmalloc(sizeof(xcb_window_t) * (size_t) size);
+	count = 0;
 
-	if (core == NULL)
-		return;
+	for (core = WMBagLast(scr->stacking_list, &iter); core != NULL;
+	     core = WMBagPrevious(scr->stacking_list, &iter)) {
+		/* go to the end of the list */
+		while (core->stacking->under)
+			core = core->stacking->under;
 
-	restoreWindows(bag, iter);
-
-	/* go to the end of the list */
-	while (core->stacking->under)
-		core = core->stacking->under;
-
-	while (core) {
-		next = core->stacking->above;
-
-		if (core->descriptor.parent_type == WCLASS_WINDOW) {
-			xcb_window_t window;
+		for (; core != NULL; core = core->stacking->above) {
+			if (core->descriptor.parent_type != WCLASS_WINDOW)
+				continue;
 
 			wwin = core->descriptor.parent;
-			window = wwin->client_win;
-			wUnmanageWindow(wwin, !wwin->flags.internal_window, false);
-			xcb_map_window(wdisp->conn, window);
+			if (count == size) {
+				size *= 2;
+				windows = wrealloc(windows, sizeof(xcb_window_t) * (size_t) size);
+			}
+			windows[count++] = wwin->client_win;
 		}
-		core = next;
 	}
+
+	for (i = 0; i < count; i++) {
+		wwin = wWindowFor(windows[i]);
+		if (!wwin)
+			continue;
+
+		wUnmanageWindow(wwin, !wwin->flags.internal_window, false);
+		xcb_map_window(wdisp->conn, windows[i]);
+	}
+
+	wfree(windows);
 }
 
 /*
@@ -189,7 +205,7 @@ void RestoreDesktop(WScreen * scr)
 	wDestroyInspectorPanels();
 
 	/* reparent windows back to the root window, keeping the stacking order */
-	restoreWindows(scr->stacking_list, NULL);
+	restoreWindows(scr);
 
 	wXUngrabServer(wdisp->conn);
 	xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
