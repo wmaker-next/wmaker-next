@@ -49,6 +49,7 @@ EXTRA_DIST = TODO BUGS BUGFORM FAQ INSTALL \
 	script/check-cmdline-options-doc.sh \
 	script/check-manifest.sh \
 	script/check-translation-sources.sh \
+	script/option-matrix.sh \
 	script/generate-html-from-man.sh \
 	script/generate-mapfile-from-header.sh \
 	script/generate-po-from-template.sh \
@@ -222,7 +223,7 @@ configure-documentation:
 		--ignore-prg-optional 'with-pic,with-aix-soname,enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
 		--ignore-prg-optional 'enable-cxx-stdlib #new in libtool 2.6.0'
 
-.PHONY: configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-cppcheck memcheck asan run bench
+.PHONY:	configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-options check-cppcheck memcheck asan run bench
 
 # Integration drivers under test/ start a private X server and run the
 # just-built window manager inside it. They are deliberately not part
@@ -324,6 +325,22 @@ else
 	@echo "this build was not configured with --enable-asan"
 	@echo "re-run configure with --enable-asan to use 'make asan'"
 endif
+
+# compile-verify every configure feature toggle in both directions:
+# a minimal configuration with every optional feature disabled
+# compiles the #else branches the normal build never sees, a maximal
+# one turns the default-off code paths on. Each variant configures,
+# builds with -k so every broken file is reported, and runs make
+# check. The original configuration is restored and rebuilt at the
+# end, so this is safe to run on a working tree at any time. Requires
+# a configured tree, see script/option-matrix.sh for the toggle list.
+check-options:
+	@$(top_srcdir)/script/option-matrix.sh; rc=$$?; \
+	case $$rc in \
+	  0)  echo "PASS  check-options" ;; \
+	  2)  echo "SKIP  check-options (tree not configured)" ;; \
+	  *)  echo "FAIL  check-options (rc=$$rc)" ;; \
+	esac; exit $$rc
 
 # Print the wrlib pixel-loop micro-benchmark, the cold-boot reply
 # count and per-managed-window cost from xtrace, and the idle and
