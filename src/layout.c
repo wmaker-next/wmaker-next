@@ -291,16 +291,24 @@ static int collect_tileable(WScreen *scr, int workspace, int head,
 }
 
 static void apply_tiled_geometry(WWindow *wwin, int x, int y,
-				 unsigned int cw, unsigned int ch)
+				 unsigned int cw, unsigned int ch, bool full)
 {
+	int maxed;
+
 	if (!wwin->flags.tiled) {
-		save_old_geometry(wwin, SAVE_GEOMETRY_ALL);
+		if (!wwin->flags.maximized)
+			save_old_geometry(wwin, SAVE_GEOMETRY_ALL);
 		wwin->flags.tiled = 1;
 	}
-	if (wwin->flags.maximized) {
-		wwin->flags.maximized = 0;
+	/* a cell covering the whole usable area reports as maximized so
+	 * the window menu, titlebar button and _NET_WM_STATE match what
+	 * is on screen */
+	maxed = full ? (MAX_VERTICAL | MAX_HORIZONTAL) : 0;
+	if (wwin->flags.maximized != maxed || wwin->flags.old_maximized) {
 		wwin->flags.old_maximized = 0;
+		wwin->flags.maximized = maxed;
 		wWindowUpdateButtonImages(wwin);
+		WMPostNotificationName(WMNChangedState, wwin, "maximize");
 	}
 	wWindowConfigure(wwin, x, y, (int)cw, (int)ch);
 	wWindowSynthConfigureNotify(wwin);
@@ -320,12 +328,12 @@ static void tiled_client_size(WWindow *wwin, int vw, int vh,
 	wWindowConstrainSize(wwin, cw, ch);
 }
 
-static void configure_into_cell(WWindow *wwin, WLayoutRect r)
+static void configure_into_cell(WWindow *wwin, WLayoutRect r, bool full)
 {
 	unsigned int cw, ch;
 
 	tiled_client_size(wwin, r.w, r.h, &cw, &ch);
-	apply_tiled_geometry(wwin, r.x, r.y, cw, ch);
+	apply_tiled_geometry(wwin, r.x, r.y, cw, ch, full);
 }
 
 /* Pack one column of tiled windows with window_gap between neighbours.
@@ -340,6 +348,8 @@ static int pack_column(WWindow **wins, int cnt, bool pack_x,
 	int avail = pack_len - gap * (cnt - 1);
 	int used = 0, wide = 0, fw, fh;
 	int il, ir, it, ib, fb, share, vw, vh, fx, fy, i;
+	bool full = (cnt == 1 && band == (pack_x ? area.y2 - area.y1
+						  : area.x2 - area.x1));
 	unsigned int cw, ch;
 	WWindow *wwin;
 
@@ -360,7 +370,7 @@ static int pack_column(WWindow **wins, int cnt, bool pack_x,
 			fy = by + used + i * gap;
 		}
 		tiled_client_size(wwin, vw, vh, &cw, &ch);
-		apply_tiled_geometry(wwin, fx, fy, cw, ch);
+		apply_tiled_geometry(wwin, fx, fy, cw, ch, full);
 		fw = (int)cw + il + ir + 2 * fb;
 		fh = (int)ch + wwin->frame->top_width + wwin->frame->bottom_width
 		     + it + ib + 2 * fb;
@@ -379,6 +389,12 @@ static void restore_tiled_window(WWindow *wwin)
 	if (!wwin->flags.tiled)
 		return;
 	wwin->flags.tiled = 0;
+	if (wwin->flags.maximized || wwin->flags.old_maximized) {
+		wwin->flags.maximized = 0;
+		wwin->flags.old_maximized = 0;
+		wWindowUpdateButtonImages(wwin);
+		WMPostNotificationName(WMNChangedState, wwin, "maximize");
+	}
 	x = wwin->old_geometry.x;
 	y = wwin->old_geometry.y;
 	w = wwin->old_geometry.width ? wwin->old_geometry.width : wwin->client.width;
@@ -442,7 +458,7 @@ void wLayoutApply(WScreen *scr, int workspace)
 		gap = w_global.config->window_gap;
 		if (ws->layout == WLAYOUT_MONOCLE) {
 			for (i = 0; i < n; i++)
-				configure_into_cell(wins[i], out[i]);
+				configure_into_cell(wins[i], out[i], true);
 			wRaiseFrame(wins[0]->frame->core);
 			continue;
 		}
