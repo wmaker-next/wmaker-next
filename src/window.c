@@ -2329,17 +2329,34 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 		}
 
 		if (w_global.config->focus_mode == WKF_CLICK) {
-			/* A focused transient hands focus back to its owner;
-			 * otherwise focus the window under the pointer, or
-			 * clear to root when on the desktop, instead of
-			 * warping to an MRU pick. */
+			/* A focused transient hands focus back to its
+			 * owner. Otherwise the next window in the focus
+			 * list takes over, never the root. */
 			tmp = wWindowFor(wwin->transient_for);
 			if (tmp && (!tmp->flags.mapped || WFLAGP(tmp, no_focusable)))
 				tmp = NULL;
-			if (tmp)
-				newFocusedWindow = tmp;
-			else
-				newFocusedWindow = wWindowUnderPointerForFocus(scr, wwin);
+			if (!tmp) {
+				/* first pass skips windows hidden from the
+				 * window list, the second accepts any
+				 * focusable mapped window */
+				tmp = scr->focused_window;
+				while (tmp) {
+					if (!WFLAGP(tmp, no_focusable) && !WFLAGP(tmp, skip_window_list)
+					    && (tmp->flags.mapped || tmp->flags.shaded))
+						break;
+					tmp = tmp->prev;
+				}
+				if (!tmp) {
+					tmp = scr->focused_window;
+					while (tmp) {
+						if (!WFLAGP(tmp, no_focusable)
+						    && (tmp->flags.mapped || tmp->flags.shaded))
+							break;
+						tmp = tmp->prev;
+					}
+				}
+			}
+			newFocusedWindow = tmp;
 
 		} else if (w_global.config->focus_mode == WKF_SLOPPY) {
 			unsigned int mask;
@@ -2368,9 +2385,9 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 			if (wwin->flags.is_gnustep == 0)
 				wFrameWindowChangeState(owner->frame, WS_UNFOCUSED);
 		}
-		/* internal windows are wmaker-owned panels, their close must
-		 * not hand focus to whatever sits under the pointer.
-		 * Callers that want a specific successor set it themselves */
+		/* internal windows are wmaker-owned panels, their close
+		 * must not pull focus to another client. Callers that
+		 * want a specific successor set it themselves */
 		wSetFocusTo(scr, wwin->flags.internal_window ? NULL : newFocusedWindow);
 		if (!wwin->flags.internal_window && w_global.config->focus_mode == WKF_CLICK && newFocusedWindow)
 			wRaiseFrame(newFocusedWindow->frame->core);

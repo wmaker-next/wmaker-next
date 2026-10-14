@@ -2034,7 +2034,22 @@ void wIconifyWindow(WWindow *wwin)
 		    && w_global.config->focus_mode == WKF_CLICK) {
 			WWindow *tmp;
 
-			tmp = wWindowUnderPointerForFocus(wwin->screen_ptr, wwin);
+			/* the next window in the focus list takes over.
+			 * wwin itself and its unmapped transients are
+			 * skipped by the mapped check */
+			for (tmp = wwin->screen_ptr->focused_window; tmp; tmp = tmp->prev) {
+				if (tmp != wwin && !WFLAGP(tmp, no_focusable)
+				    && !WFLAGP(tmp, skip_window_list)
+				    && (tmp->flags.mapped || tmp->flags.shaded))
+					break;
+			}
+			if (!tmp) {
+				for (tmp = wwin->screen_ptr->focused_window; tmp; tmp = tmp->prev) {
+					if (tmp != wwin && !WFLAGP(tmp, no_focusable)
+					    && (tmp->flags.mapped || tmp->flags.shaded))
+						break;
+				}
+			}
 			wSetFocusTo(wwin->screen_ptr, tmp);
 			if (tmp)
 				wRaiseFrame(tmp->frame->core);

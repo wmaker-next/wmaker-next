@@ -589,8 +589,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	center = wGetCenter(scr, pwidth, pheight);
 
 	/* remember who owns focus so it can be restored on close,
-	 * wUnmanageWindow() would otherwise focus whatever sits under
-	 * the pointer */
+	 * wUnmanageWindow() would otherwise hand focus to the next
+	 * window in the focus list */
 	prevFocused = scr->focused_window;
 
 	wwin = wManageInternalWindow(scr, parent, for_window ? for_window->client_win : XCB_NONE,
