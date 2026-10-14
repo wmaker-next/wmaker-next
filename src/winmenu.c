@@ -34,6 +34,7 @@
 #include "client.h"
 #include "application.h"
 #include "keybind.h"
+#include "layout.h"
 #include "misc.h"
 #include "framewin.h"
 #include "workspace.h"
@@ -233,11 +234,18 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 static void execMaximizeCommand(WMenu * menu, WMenuEntry * entry)
 {
 	WWindow *wwin = (WWindow *) entry->clientdata;
+	int direction = menu_maximize_entries[entry->order].maxim_direction;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
 
-	handleMaximize(wwin, menu_maximize_entries[entry->order].maxim_direction);
+	if (direction == MAX_MAXIMUS
+	    && wwin->screen_ptr->workspaces[WWIN_PRIMARY_WS(wwin)]->layout != WLAYOUT_FLOAT) {
+		wLayoutSetWindowTiled(wwin, wwin->flags.no_tiling);
+		return;
+	}
+
+	handleMaximize(wwin, direction);
 }
 
 static const struct {
@@ -657,6 +665,14 @@ static void updateMaximizeMenu(WMenu * menu, WWindow * wwin)
 		smenu->entries[i]->clientdata = wwin;
 		wMenuEntrySetShortcutText(smenu->entries[i],
 					  GetShortcutKey(wKeyBindings[menu_maximize_entries[i].shortcut_idx]));
+		if (menu_maximize_entries[i].maxim_direction == MAX_MAXIMUS) {
+			wfree(smenu->entries[i]->text);
+			if (wwin->screen_ptr->workspaces[WWIN_PRIMARY_WS(wwin)]->layout != WLAYOUT_FLOAT
+			    && !wwin->flags.no_tiling)
+				smenu->entries[i]->text = wstrdup(_("Untiled"));
+			else
+				smenu->entries[i]->text = wstrdup(_("Tiled"));
+		}
 	}
 
 	smenu->flags.realized = 0;

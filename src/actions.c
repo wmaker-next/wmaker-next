@@ -1430,6 +1430,12 @@ void wUnmaximizeWindow(WWindow *wwin)
 	wWindowConfigure(wwin, x, y, w, h);
 	wWindowSynthConfigureNotify(wwin);
 
+	if (wwin->flags.tiled) {
+		wwin->flags.tiled = 0;
+		wwin->flags.no_tiling = 1;
+		wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
+	}
+
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
 	wSoundPlay(wwin->screen_ptr, WSOUND_UNMAXIMIZE);
 
