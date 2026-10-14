@@ -177,12 +177,8 @@ int RSaveRawPNG(RImage *img, char *title, unsigned char **out_buf, size_t *out_s
 	png_write_end(png_ptr, NULL);
 
 	/* Clean up structures */
-	if (png_info_ptr != NULL)
-		png_free_data(png_ptr, png_info_ptr, PNG_FREE_ALL, -1);
-	if (png_ptr != NULL)
-		png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-	if (png_row != NULL)
-		free(png_row);
+	png_destroy_write_struct(&png_ptr, &png_info_ptr);
+	free(png_row);
 
 	/* Return the buffer */
 	*out_buf = png_data.buffer;
