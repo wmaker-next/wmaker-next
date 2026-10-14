@@ -1,0 +1,4000 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Window Maker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 18:45-0400\n"
+"PO-Revision-Date: 2026-09-22 08:21+0200\n"
+"Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
+"Language-Team: Georgian <(nothing)>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.9\n"
+
+#: ../src/actions.c:1855
+#, c-format
+msgid "window \"%s\" has a severely broken WM_TRANSIENT_FOR hint"
+msgstr "ფანჯრას \"%s\" ძალიან დაზიანებული WM_TRANSIENT_FOR მინიშნება აქვს"
+
+#: ../src/actions.c:1976
+#, c-format
+msgid "creation of mini-preview failed for window \"%s\""
+msgstr "მინიატურის შექმნა ჩავარდა ფანჯრისთვის \"%s\""
+
+#: ../src/appicon.c:617 ../src/dialog_icon.c:109 ../src/dock.c:4345
+#: ../src/dockedapp.c:183 ../src/main.c:346 ../src/rootmenu.c:1846
+#: ../src/winspector.c:545 ../src/winspector.c:569 ../src/workspace.c:321
+msgid "Error"
+msgstr "შეცდომა"
+
+#: ../src/appicon.c:618
+msgid "Could not open specified icon file"
+msgstr "მითითებული ხატულის ფაილის გახსნა შეუძლებელია"
+
+#: ../src/appicon.c:619 ../src/dialog.c:174 ../src/dialog_crash.c:223
+#: ../src/dialog_icon.c:109 ../src/dialog_icon.c:545 ../src/dialog_run.c:2045
+#: ../src/dock.c:454 ../src/dock.c:461 ../src/dock.c:507 ../src/dock.c:4345
+#: ../src/dock.c:5625 ../src/dockedapp.c:184 ../src/dockedapp.c:432
+#: ../src/main.c:346 ../src/rootmenu.c:1849 ../src/winspector.c:545
+#: ../src/winspector.c:569 ../src/winspector.c:964 ../src/workspace.c:321
+msgid "OK"
+msgstr "დიახ"
+
+#: ../src/appicon.c:648 ../src/dock.c:240
+msgid "application"
+msgstr "აპლიკაცია"
+
+#: ../src/appicon.c:651 ../src/dock.c:245
+msgid ""
+" will be forcibly closed.\n"
+"Any unsaved changes will be lost.\n"
+"Please confirm."
+msgstr ""
+" ძალით დაიხურება.\n"
+"შეუნახავი ცვლილებები დაიკარგება.\n"
+"დაადასტურეთ."
+
+#: ../src/appicon.c:658 ../src/dock.c:263 ../src/winmenu.c:372
+msgid "Kill Application"
+msgstr "აპლიკაციის მოკვლა"
+
+#: ../src/appicon.c:659 ../src/dock.c:264 ../src/winmenu.c:375
+msgid "Yes"
+msgstr "დიახ"
+
+#: ../src/appicon.c:659 ../src/dock.c:264 ../src/winmenu.c:375
+msgid "No"
+msgstr "არა"
+
+#: ../src/appicon.c:684 ../src/dock.c:1423 ../src/dock.c:1425
+#: ../src/dock.c:4527
+msgid "Unhide Here"
+msgstr "აქ გამოჩენა"
+
+#. can be: Bring Here
+#: ../src/appicon.c:685 ../src/appicon.c:709 ../src/dock.c:1427
+#: ../src/dock.c:1429 ../src/dock.c:4539 ../src/winmenu.c:96
+msgid "Hide"
+msgstr "დამალვა"
+
+#: ../src/appicon.c:686 ../src/dock.c:1421 ../src/winmenu.c:105
+msgid "Launch"
+msgstr "გაშვება"
+
+#: ../src/appicon.c:687
+msgid "Set Icon..."
+msgstr "ხატულის დაყენება..."
+
+#: ../src/appicon.c:688 ../src/dock.c:1433 ../src/dock.c:1435
+#: ../src/dock.c:4557 ../src/rootmenu.c:184 ../src/winmenu.c:107
+msgid "Kill"
+msgstr "მოკვლა"
+
+#: ../src/appicon.c:707 ../src/dock.c:4537
+msgid "Unhide"
+msgstr "გამოჩენა"
+
+#: ../src/appmenu.c:84 ../src/appmenu.c:94 ../src/appmenu.c:116
+#, c-format
+msgid "appmenu: out of memory creating menu for window %lx"
+msgstr "appmenu: არასაკმარისი მეხსიერება მენიუს შექმნისას ფანჯრისთვის %lx"
+
+#: ../src/appmenu.c:144
+#, c-format
+msgid "appmenu: unknown version of WMMenu in window %lx: %s"
+msgstr "appmenu: WMMenu-ის უცნობი ვერსია ფანჯარაში %lx: %s"
+
+#. a header line alone is not a menu, the old reader
+#. * walked one past the list here
+#: ../src/appmenu.c:151 ../src/appmenu.c:171
+#, c-format
+msgid "appmenu: bad menu entry \"%s\" in window %lx"
+msgstr "appmenu: არასწორი მენიუს პუნქტი \"%s\" ფანჯარაში %lx"
+
+#: ../src/appmenu.c:157
+#, c-format
+msgid "appmenu: too many menu entries (%d) in window %lx"
+msgstr "appmenu: მენიუს ზედმეტად ბევრი პუნქტი (%d) ფანჯარაში %lx"
+
+#: ../src/appmenu.c:174
+#, c-format
+msgid "appmenu: bad menu entry in window %lx"
+msgstr "appmenu: დაზიანებული მენიუს პუნქტი ფანჯარაში %lx"
+
+#: ../src/appmenu.c:178
+#, c-format
+msgid "appmenu: menu command size exceeded in window %lx"
+msgstr "appmenu: მენიუს ბრძანების ზომა გადაცილებულია ფანჯარაში %lx"
+
+#: ../src/appmenu.c:182
+#, c-format
+msgid "appmenu: menu nesting too deep in window %lx"
+msgstr "appmenu: მენიუს ჩადგმა ზედმეტად ღრმაა ფანჯარაში %lx"
+
+#: ../src/appmenu.c:186
+#, c-format
+msgid "appmenu: unparsable menu in window %lx"
+msgstr "appmenu: დაუმუშავებელი მენიუ ფანჯარაში %lx"
+
+#: ../src/cmdexpand.c:69
+#, c-format
+msgid "out of memory during expansion of \"%s\""
+msgstr "არასაკმარისი მეხსიერება \"%s\"-ის გაფართოებისას"
+
+#: ../src/cmdexpand.c:122 ../src/cmdexpand.c:139 ../src/cmdexpand.c:156
+#: ../src/cmdexpand.c:183 ../src/cmdexpand.c:213
+#, c-format
+msgid "out of memory during expansion of '%s' for command \"%s\""
+msgstr "არასაკმარისი მეხსიერება \"%s\"-ის გაფართოებისას ბრძანებისთვის \"%s\""
+
+#: ../src/cmdexpand.c:202
+msgid "selection not available"
+msgstr "მონიშნული ხელმისაწვდომი არაა"
+
+#: ../src/config-schema.c:73
+#, c-format
+msgid "unknown titlebar button role \"%s\""
+msgstr "უცნობი სათაურის ზოლის ღილაკის როლი \"%s\""
+
+#: ../src/config-schema.c:78
+#, c-format
+msgid "duplicate titlebar button role \"%s\""
+msgstr "სათაურის ზოლის ღილაკის დუბლირებული როლი \"%s\""
+
+#: ../src/defaults.c:160
+#, c-format
+msgid "Domain %s (%s) of global defaults database is corrupted!"
+msgstr "გლობალური ნაგულისხმევების მონაცემთა ბაზის დომენი %s (%s) დაზიანებულია!"
+
+#: ../src/defaults.c:164
+#, c-format
+msgid "could not load domain %s from global defaults database"
+msgstr ""
+"გლობალური ნაგულისხმევების მონაცემთა ბაზიდან დომენის %s ჩატვირთვა შეუძლებელია"
+
+#: ../src/defaults.c:209 ../src/defaults.c:223
+#, c-format
+msgid "invalid global menu file %s"
+msgstr "გლობალური მენიუს არასწორი ფაილი %s"
+
+#: ../src/defaults.c:257 ../src/defaults.c:299 ../src/defaults.c:386
+#, c-format
+msgid "Domain %s (%s) of defaults database is corrupted!"
+msgstr "ნაგულისხმევების მონაცემთა ბაზის დომენი %s (%s) დაზიანებულია!"
+
+#: ../src/defaults.c:260 ../src/defaults.c:293 ../src/defaults.c:396
+#, c-format
+msgid "could not load domain %s from user defaults database"
+msgstr ""
+"მომხმარებლის ნაგულისხმევების მონაცემთა ბაზიდან დომენის %s ჩატვირთვა "
+"შეუძლებელია"
+
+#: ../src/defaults.c:668
+#, c-format
+msgid "\"%s\" is not a valid color name"
+msgstr "\"%s\" სწორი ფერის სახელი არაა"
+
+#: ../src/defaults.c:719 ../src/defaults.c:742
+msgid "bad number of arguments in gradient specification"
+msgstr "არგუმენტების არასწორი რაოდენობა გრადიენტის სპეციფიკაციაში"
+
+#: ../src/defaults.c:780
+msgid "too few arguments in multicolor gradient specification"
+msgstr "მეტისმეტად ცოტა არგუმენტი მრავალფერიანი გრადიენტის სპეციფიკაციაში"
+
+#: ../src/defaults.c:849
+msgid "bad number of arguments in textured gradient specification"
+msgstr ""
+"არგუმენტების არასწორი რაოდენობა ტექსტურების მქონე გრადიენტის სპეციფიკაციაში"
+
+#: ../src/defaults.c:866
+#, c-format
+msgid "bad opacity value for tgradient texture \"%s\". Should be [0..255]"
+msgstr ""
+"არასწორი გაუმჭვირვალობის მნიშვნელობა tgradient-ის ტექსტურისთვის \"%s\". უნდა "
+"ყოფილიყო [0..255]"
+
+#: ../src/defaults.c:883
+#, c-format
+msgid "invalid texture type %s"
+msgstr "არასწორი ტექსტურის ტიპი %s"
+
+#: ../src/defaults.c:905 ../src/rootmenu.c:476
+#, c-format
+msgid "%s: invalid key modifier \"%s\""
+msgstr "%s: არასწორი ღილაკის მოდიფიკატორი \"%s\""
+
+#: ../src/defaults.c:914
+#, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\""
+msgstr "%s: არასწორი კლავიატურის მალსახმობის სპეციფიკაცია \"%s\""
+
+#: ../src/defaults.c:920
+#, c-format
+msgid "%s: invalid key in shortcut \"%s\""
+msgstr "%s: არასწორი ღილაკი მალსახმობში \"%s\""
+
+#: ../src/defaults.c:941
+#, c-format
+msgid "%s: kbd shortcut specification is too long"
+msgstr "%s: კლავიატურის მალსახმობის სპეციფიკაცია ზედმეტად გრძელია"
+
+#: ../src/defaults.c:1066
+#, c-format
+msgid "failed to open bitmap file \"%s\""
+msgstr "გახსნის შეცდომა რასტრული ფაილისთვის \"%s\""
+
+#: ../src/defaults.c:1069
+#, c-format
+msgid "\"%s\" is not a valid bitmap file"
+msgstr "\"%s\" სწორი რასტრული ფაილი არაა"
+
+#: ../src/defaults.c:1072
+#, c-format
+msgid "out of memory reading bitmap file \"%s\""
+msgstr "არასაკმარისი მეხსიერება ბიტური რუკის ფაილის (%s) წაკითხვისას"
+
+#: ../src/defaults.c:1109 ../src/defaults.c:1146
+msgid "bad number of arguments in cursor specification"
+msgstr "არგუმენტების არასწორი რაოდენობა კურსორის სპეციფიკაციაში"
+
+#: ../src/defaults.c:1125
+#, c-format
+msgid "could not load cursor \"%s\""
+msgstr "კურსორის \"%s\" ჩატვირთვა შეუძლებელია"
+
+#: ../src/defaults.c:1133
+#, c-format
+msgid "unknown builtin cursor name \"%s\""
+msgstr "უცნობი ჩაშენებული კურსორის სახელი \"%s\""
+
+#: ../src/defaults.c:1156 ../src/defaults.c:1168
+#, c-format
+msgid "could not find cursor bitmap file \"%s\""
+msgstr "ვერ ვიპოვე კურსორის რასტრული ფაილი \"%s\""
+
+#: ../src/defaults.c:1211 ../src/defaults.c:1284 ../src/wconfigmodel.c:662
+#: ../src/wdefaults.c:150
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be %s."
+msgstr "არასწორი პარამეტრის ფორმატი გასაღებისთვის \"%s\". უნდა იყოს %s."
+
+#: ../src/defaults.c:1293
+#, c-format
+msgid "Error in texture specification for key \"%s\""
+msgstr "შეცდომა ტექსტურის სპეციფიკაციაში გასაღებისთვის \"%s\""
+
+#: ../src/defaults.c:1297 ../src/defaults.c:1356 ../src/defaults.c:1467
+#: ../src/defaults.c:1557 ../src/defaults.c:1666 ../src/defaults.c:2416
+#: ../src/wconfigmodel.c:136
+#, c-format
+msgid "using default \"%s\" instead"
+msgstr "სამაგიეროდ გამოიყენება ნაგულისხმევი \"%s\""
+
+#: ../src/defaults.c:1363
+msgid "could not load any usable font!!!"
+msgstr "გამოყენებადი ფონტების ჩატვირთვა შეუძლებელია!!!"
+
+#: ../src/defaults.c:1366
+#, c-format
+msgid "could not load font for key \"%s\""
+msgstr "შრიფტის ჩატვირთვა შეუძლებელია გასაღებისთვის \"%s\""
+
+#: ../src/defaults.c:1463
+#, c-format
+msgid "could not get color for key \"%s\""
+msgstr "ვერ მივიღე ფერი გასაღებისთვის \"%s\""
+
+#: ../src/defaults.c:1553
+#, c-format
+msgid "Error in cursor specification for key \"%s\""
+msgstr "შეცდომა კურსორის სპეციფიკაციაში გასაღებისთვის \"%s\""
+
+#: ../src/defaults.c:1576 ../src/defaults.c:1595
+#, c-format
+msgid "%s: modifier key %s is not valid"
+msgstr "%s: მოდიფიკატორი ღილაკი %s არასწორია"
+
+#: ../src/defaults.c:1614 ../src/wconfigmodel.c:674
+msgid "Wrong type for workspace background. Should be a texture type."
+msgstr "არასწორი ტიპი სამუშაო სივრცის ფონისთვის. უნდა ყოფილიყო ტექსტურის ტიპი."
+
+#: ../src/defaults.c:1623 ../src/wconfigmodel.c:682
+#, c-format
+msgid "Wrong type for background of workspace %i. Should be a texture."
+msgstr "არასწორი ფონის ტიპი სამუშაო სივრცისთვის %i. უნდა ყოფილიყო ტექსტურა."
+
+#: ../src/defaults.c:1630
+#, c-format
+msgid "Invalid background target for key \"%s\""
+msgstr "დაუშვებელი ფონის სამიზნე გასაღებისთვის \"%s\""
+
+#: ../src/defaults.c:1694
+msgid "could not render texture for icon background"
+msgstr "ხატულის ფონის ტექსტურის რენდერის შეცდომა"
+
+#: ../src/defaults.c:2178
+msgid "could not execute wmsetbg"
+msgstr "wmsetbg-ის გაშვება შეუძლებელია"
+
+#: ../src/defaults.c:2491 ../src/defaults.c:2545 ../src/defaults.c:2563
+#, c-format
+msgid "Could not find image \"%s\" for option \"%s\""
+msgstr "გამოსახულების \"%s\" პოვნა შეუძლებელია პარამეტრისთვის \"%s\""
+
+#: ../src/defaults.c:2496 ../src/defaults.c:2552 ../src/defaults.c:2568
+#, c-format
+msgid "Could not load image \"%s\" for option \"%s\""
+msgstr "გამოსახულების \"%s\" ჩატვირთვა შეუძლებელია პარამეტრისთვის \"%s\""
+
+#: ../src/defaults.c:2508
+msgid "Invalid split sizes for switch panel back image."
+msgstr "არასწორი გაყოფის ზომები პანელის უკანა გამოსახულების გადასართავად."
+
+#: ../src/defaults.c:2581
+#, c-format
+msgid "Value for option \"%s\" must be an array of 7 strings"
+msgstr "მნიშვნელობა პარამეტრისთვის \"%s\" 7 სტრიქონის მასივი უნდა იყოს"
+
+#: ../src/defaults.c:2602
+#, c-format
+msgid "Value for option \"%s\" must be an array of 9 strings"
+msgstr "მნიშვნელობა პარამეტრისთვის \"%s\" 9 სტრიქონის მასივი უნდა იყოს"
+
+#: ../src/defaults.c:2614
+#, c-format
+msgid "Invalid argument for option \"%s\" item %zu, cannot be empty"
+msgstr ""
+"დაუშვებელი არგუმენტი პარამეტრისთვის \"%s\", ელემენტი %zu, ცარიელი ვერ იქნება"
+
+#: ../src/defaults.c:2629
+#, c-format
+msgid "Value for option \"%s\" must be an array of 4 strings"
+msgstr "მნიშვნელობა პარამეტრისთვის \"%s\" 4 სტრიქონის მასივი უნდა იყოს"
+
+#: ../src/dialog.c:126
+msgid "Save workspace state"
+msgstr "სამუშაო სივრცის მდგომარეობის შენახვა"
+
+#: ../src/dialog.c:174 ../src/dialog_icon.c:552 ../src/dialog_run.c:2045
+#: ../src/dock.c:507 ../src/dock.c:5625 ../src/dockedapp.c:437
+#: ../src/misc.c:632 ../src/rootmenu.c:184
+msgid "Cancel"
+msgstr "გაუქმება"
+
+#: ../src/dialog.c:267
+msgid "no os-release file on the system"
+msgstr "სისტემაში os-release ფაილი არ არსებობს"
+
+#: ../src/dialog.c:417
+msgid "Window Manager for X"
+msgstr "ფანჯრების მმართველი X-სთვის"
+
+#: ../src/dialog.c:419
+#, c-format
+msgid "Version %s"
+msgstr "ვერსია %s"
+
+#: ../src/dialog.c:445 ../src/dialog.c:449
+#, c-format
+msgid "Running on: %s (%s)\n"
+msgstr "პლატფორმა: %s (%s)\n"
+
+#: ../src/dialog.c:453
+#, c-format
+msgid "Using visual 0x%x: %s %ibpp "
+msgstr "გამოიყენება ვიზუალი 0x%x: %s %ibpp "
+
+#: ../src/dialog.c:459
+msgid "(32 thousand colors)\n"
+msgstr "(32 ათასი ფერი)\n"
+
+#: ../src/dialog.c:462
+msgid "(64 thousand colors)\n"
+msgstr "(64 ათასი ფერი)\n"
+
+#: ../src/dialog.c:466
+msgid "(16 million colors)\n"
+msgstr "(16 მილიონი ფერი)\n"
+
+#: ../src/dialog.c:470
+msgid "(1 billion colors)\n"
+msgstr "(1 მილიარდი ფერი)\n"
+
+#: ../src/dialog.c:473
+#, c-format
+msgid "(%d colors)\n"
+msgstr "(%d ფერი)\n"
+
+#: ../src/dialog.c:482
+#, c-format
+msgid "Total memory allocated: %lu kB (in use: %lu kB, %lu free chunks)\n"
+msgstr ""
+"სულ გამოყოფილი მეხსიერაბ: %lu კბ (გამოყენებულია: %lu კბ, %lu თავისუფალი "
+"ფრაგმენტი)\n"
+
+#: ../src/dialog.c:484
+#, c-format
+msgid "Total memory allocated: %lu kB (in use: %lu kB)\n"
+msgstr "სულ გამოყოფილი მეხსიერაბ: %lu კბ (გამოყენებულია: %lu კბ)\n"
+
+#: ../src/dialog.c:501
+msgid "Image formats: "
+msgstr "სურათის ფორმატები: "
+
+#: ../src/dialog.c:511
+msgid ""
+"\n"
+"Additional support for: "
+msgstr ""
+"\n"
+"დამატებითი მხარდაჭერა: "
+
+#: ../src/dialog.c:530
+msgid "\n"
+msgstr "\n"
+
+#: ../src/dialog.c:532
+#, c-format
+msgid "%d head(s) found"
+msgstr "აღმოჩენილია %d თავაკი"
+
+#: ../src/dialog.c:532
+#, c-format
+msgid "%d head found"
+msgstr "ნაპოვნია %d თავი"
+
+#: ../src/dialog.c:577
+msgid "Info"
+msgstr "ინფორმაცია"
+
+#: ../src/dialog.c:660
+msgid ""
+"    Window Maker is free software; you can redistribute it and/or modify it "
+"under the terms of the GNU General Public License as published by the Free "
+"Software Foundation; either version 2 of the License, or (at your option) "
+"any later version.\n"
+"\n"
+"    Window Maker is distributed in the hope that it will be useful, but "
+"WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY "
+"or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for "
+"more details.\n"
+"\n"
+"    You should have received a copy of the GNU General Public License along "
+"with this program; if not, see <https://www.gnu.org/licenses/>."
+msgstr ""
+"    Window Maker is free software; you can redistribute it and/or modify it "
+"under the terms of the GNU General Public License as published by the Free "
+"Software Foundation; either version 2 of the License, or (at your option) "
+"any later version.\n"
+"\n"
+"    Window Maker is distributed in the hope that it will be useful, but "
+"WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY "
+"or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for "
+"more details.\n"
+"\n"
+"    You should have received a copy of the GNU General Public License along "
+"with this program; if not, see <https://www.gnu.org/licenses/>."
+
+#: ../src/dialog.c:681
+msgid "Legal"
+msgstr "იურიდიული ინფორმაცია"
+
+#: ../src/dialog.c:965
+msgid "Keyboard Shortcuts"
+msgstr "კლავიატურის მალსახმობები"
+
+#: ../src/dialog_crash.c:147 ../src/monitor.c:73
+msgid "cannot open connection for crashing dialog panel. Aborting."
+msgstr ""
+"ავარიული დიალოგის პანელისთვის კავშირის გახსნა შეუძლებელია. მუშაობა შეწყდება."
+
+#: ../src/dialog_crash.c:177
+msgid "Fatal error"
+msgstr "ფატალური შეცდომა"
+
+#: ../src/dialog_crash.c:187
+#, c-format
+msgid "Window Maker received signal %i."
+msgstr "Window Maker-მა მიიღო სიგნალი %i."
+
+#. Comment for the PO file: the %s is an email address
+#: ../src/dialog_crash.c:195
+#, c-format
+msgid ""
+" This fatal error occurred probably due to a bug. Please fill the included "
+"BUGFORM and report it to %s."
+msgstr ""
+" კოდში შეცდომის გამოა აღმოჩენილია ფატალური შეცდომა. შეავსეთ ჩასმული BUGFORM "
+"და გაუგზავნეთ ის %s."
+
+#: ../src/dialog_crash.c:204
+msgid "What do you want to do now?"
+msgstr "რისი გაკეთება გნებავთ ახლა?"
+
+#: ../src/dialog_crash.c:210
+msgid "Select action"
+msgstr "აირჩიეთ ქმედება"
+
+#: ../src/dialog_crash.c:211
+msgid "Abort and leave a core file"
+msgstr "შეწყვეტა და ბირთვის ფაილის დატოვება"
+
+#: ../src/dialog_crash.c:212
+msgid "Restart Window Maker"
+msgstr "Window Maker-ის გადატვირთვა"
+
+#: ../src/dialog_crash.c:213
+msgid "Start alternate window manager"
+msgstr "ფანჯრების სხვა მმართველის გაშვება"
+
+#: ../src/dialog_icon.c:107
+#, c-format
+msgid ""
+"Could not open directory \"%s\":\n"
+"%s"
+msgstr ""
+"ვერ გავხსენი საქაღალდე \"%s\":\n"
+"%s"
+
+#: ../src/dialog_icon.c:123
+#, c-format
+msgid "full path for file \"%s\" in \"%s\" is longer than %d bytes, skipped"
+msgstr ""
+"სრული ბილიკი ფაილისთვის \"%s\" \"%s\"-ში %d ბაიტზე გრძელია. გამოტოვებულია"
+
+#: ../src/dialog_icon.c:160
+msgid "Could not load image file "
+msgstr "გამოსახულების ჩატვირთვის შეცდომა ფაილიდან "
+
+#: ../src/dialog_icon.c:479
+msgid "Directories"
+msgstr "საქაღალდეები"
+
+#: ../src/dialog_icon.c:488
+msgid "Icons"
+msgstr "ხატულები"
+
+#: ../src/dialog_icon.c:521
+msgid "Preview"
+msgstr "მინიატურა"
+
+#: ../src/dialog_icon.c:534
+msgid "File Name:"
+msgstr "ფაილის სახელი:"
+
+#: ../src/dialog_icon.c:558
+msgid "Choose File"
+msgstr "ფაილის არჩევა"
+
+#: ../src/dialog_icon.c:572
+msgid "Icon Chooser"
+msgstr "ხატულას ამრჩევი"
+
+#: ../src/dialog_run.c:2046
+msgid "Search or enter command..."
+msgstr "მოძებნეთ ან შეიყვანეთ ბრძანება..."
+
+#: ../src/dock.c:192 ../src/menu.c:2189
+#, c-format
+msgid "Type the name for workspace %i:"
+msgstr "აკრიფეთ სახელი სამუშაო სივრცისთვის %i:"
+
+#: ../src/dock.c:193 ../src/dock.c:1387 ../src/dock.c:1389 ../src/dock.c:4439
+#: ../src/menu.c:2193
+msgid "Rename Workspace"
+msgstr "სამუშაო სივრცის სახელის გადარქმევა"
+
+#: ../src/dock.c:449 ../src/dock.c:456 ../src/winspector.c:964
+msgid "Warning"
+msgstr "გაფრთხილება"
+
+#: ../src/dock.c:450
+msgid ""
+"Some icons cannot be made omnipresent. Please make sure that no other icon "
+"is docked in the same positions on the other workspaces and the Clip is not "
+"full in some workspace."
+msgstr ""
+"ზოგიერთი ხატულა ყველგან ვერ გამოჩნდება. დარწმუნდით, რომ იგივე სხვა სამუშაო "
+"სივრცეების იგივე ადგილას სხვა ხატულები მიმაგრებული არაა და რომ კლიპი ზოგიერთ "
+"სამუშაო სივრცეში სავსე არაა."
+
+#: ../src/dock.c:457
+msgid ""
+"Icon cannot be made omnipresent. Please make sure that no other icon is "
+"docked in the same position on the other workspaces and the Clip is not full "
+"in some workspace."
+msgstr ""
+"ხატულა ყველგან ვერ გამოჩნდება. დარწმუნდით, რომ იგივე სხვა სამუშაო სივრცეების "
+"იგივე ადგილას სხვა ხატულები მიმაგრებული არაა და რომ კლიპი ზოგიერთ სამუშაო "
+"სივრცეში სავსე არაა."
+
+#: ../src/dock.c:505
+msgid "Workspace Clip"
+msgstr "სამუშაო სივრცის კლიპი"
+
+#: ../src/dock.c:505 ../src/dock.c:5623
+msgid "Drawer"
+msgstr "უჯრა"
+
+#: ../src/dock.c:506
+msgid "All selected icons will be removed!"
+msgstr "ყველა მონიშნული ხატულა წაიშლება!"
+
+#. can be: Unselect all icons
+#: ../src/dock.c:548 ../src/dock.c:1401 ../src/dock.c:1403 ../src/dock.c:4477
+msgid "Keep Icon"
+msgstr "ხატულის შენარჩუნება"
+
+#: ../src/dock.c:549 ../src/dock.c:2680 ../src/dock.c:2833
+msgid "Type the command used to launch the application"
+msgstr "აკრიფეთ ბრძანება აპლიკაციის გაშვებად"
+
+#: ../src/dock.c:1081
+#, c-format
+msgid "could not launch application %s"
+msgstr "გაშვების პრობლემა აპლიკაციისთვის %s"
+
+#: ../src/dock.c:1129
+msgid "could not create workspace submenu for Clip menu"
+msgstr "კლიპის მენიუსთვის სამუშაო სივრცის ქვემენიუს შექმნა შეუძლებელია"
+
+#: ../src/dock.c:1188
+msgid "could not create options submenu for Clip menu"
+msgstr "კლიპის მენიუში პარამეტრების ქვემენიუს შექმნა შეუძლებელია"
+
+#: ../src/dock.c:1192 ../src/dock.c:1339
+msgid "Keep on Top"
+msgstr "ყველაზე ზემოთ ჩვენება"
+
+#: ../src/dock.c:1197
+msgid "Collapsed"
+msgstr "აკეცილი"
+
+#: ../src/dock.c:1202
+msgid "Autocollapse"
+msgstr "ავტოჩამოშლა"
+
+#: ../src/dock.c:1207
+msgid "Autoraise"
+msgstr "ავტომატური ამოწევა"
+
+#: ../src/dock.c:1212
+msgid "Autoattract Icons"
+msgstr "ხატულების ავტომატური მიმაგრება"
+
+#: ../src/dock.c:1327
+msgid "could not create options submenu for dock position menu"
+msgstr ""
+"დოკის მდებარეობის მენიუსთვის ქვემენიუს პარამეტრების ქვემენიუს შექმნა "
+"შეუძლებელია"
+
+#: ../src/dock.c:1331
+msgid "Normal"
+msgstr "ნორმალური"
+
+#: ../src/dock.c:1335
+msgid "Auto raise & lower"
+msgstr "ავტომატური აწევა/დაწევა"
+
+#: ../src/dock.c:1363
+msgid "Dock position"
+msgstr "დოკის მდებარეობა"
+
+#: ../src/dock.c:1369
+msgid "Add a drawer"
+msgstr "უჯრის დამატება"
+
+#: ../src/dock.c:1373
+msgid "Clip Options"
+msgstr "კლიპის მორგება"
+
+#. if (type == WM_DRAWER)
+#: ../src/dock.c:1375
+msgid "Drawer options"
+msgstr "უჯრის მორგება"
+
+#: ../src/dock.c:1392
+msgid "Selected"
+msgstr "მონიშნული"
+
+#: ../src/dock.c:1397 ../src/dock.c:1399 ../src/dock.c:4467
+msgid "Select All Icons"
+msgstr "ყველა ხატულის მონიშვნა"
+
+#: ../src/dock.c:1406 ../src/dock.c:1408 ../src/dock.c:4487
+msgid "Move Icon To"
+msgstr "ხატულების გადატანა"
+
+#: ../src/dock.c:1414 ../src/dock.c:1416 ../src/dock.c:4501
+msgid "Remove Icon"
+msgstr "ხატულის წაშლა"
+
+#. can be: Remove Icons
+#: ../src/dock.c:1418
+msgid "Attract Icons"
+msgstr "ხატულების მიზიდვა"
+
+#. can be: Unhide
+#: ../src/dock.c:1431
+msgid "Settings..."
+msgstr "მორგება..."
+
+#: ../src/dock.c:1831 ../src/dock.c:1928
+#, c-format
+msgid "bad value in docked icon state info %s"
+msgstr "არასწორი მნიშვნელობა მიმაგრებული ხატულას მდგომარეობის ინფორმაციაში %s"
+
+#: ../src/dock.c:1956
+#, c-format
+msgid "bad value in dock state info:%s"
+msgstr "არასწორი მნიშვნელობა დოკის მდგომარეობის ინფორმაციაში:%s"
+
+#: ../src/dock.c:2029
+#, c-format
+msgid "unknown dock edge \"%s\" in state info, keeping the current one"
+msgstr "უცნობი დოკის კიდე \"%s\" მდგომარეობის ინფორმაციაში, ინახება მიმდინარე"
+
+#: ../src/dock.c:2215
+msgid "there are too many icons stored in dock. Ignoring what doesn't fit"
+msgstr ""
+"დოკში მეტისმეტად ბევრი ხატულაა დამახსოვრებული. რაც არ ეტევა, გამოტოვებული "
+"იქნება"
+
+#. icon->forced_dock = 1;
+#: ../src/dock.c:2679 ../src/dock.c:2832
+msgid "Dock Icon"
+msgstr "მიმაგრების ხატულა"
+
+#: ../src/dock.c:4343
+#, c-format
+msgid "Could not execute command \"%s\""
+msgstr "ბრძანება \"%s\" ვერ შესრულდა"
+
+#: ../src/dock.c:4445
+msgid "Toggle Omnipresent"
+msgstr "ყველგან წარმოდგენილობის გადართვა"
+
+#: ../src/dock.c:4450 ../src/winmenu.c:136 ../src/winspector.c:123
+msgid "Omnipresent"
+msgstr "ყველგან წარმოდგენილი"
+
+#: ../src/dock.c:4465
+msgid "Unselect All Icons"
+msgstr "ყველა ხატულას მონიშვნის გაუქმება"
+
+#: ../src/dock.c:4475
+msgid "Keep Icons"
+msgstr "ხატულების შენარჩუნება"
+
+#: ../src/dock.c:4485
+msgid "Move Icons To"
+msgstr "ხატულების გადატანა"
+
+#: ../src/dock.c:4499
+msgid "Remove Icons"
+msgstr "ხატულების წაშლა"
+
+#: ../src/dock.c:4529
+msgid "Bring Here"
+msgstr "აქ გადმოტანა"
+
+#: ../src/dock.c:4553
+msgid "Remove drawer"
+msgstr "უჯრის წაშლა"
+
+#: ../src/dock.c:5624
+msgid "All icons in this drawer will be detached!"
+msgstr "ამ უჯრაში არსებული ყველა ხატულა მოიხსნება!"
+
+#: ../src/dock.c:6074
+msgid "there are too many icons stored in drawer. Ignoring what doesn't fit"
+msgstr ""
+"უჯრაში მეტისმეტად ბევრი ხატულაა დამახსოვრებული. რომლებიც არ ეტევა, "
+"გამოტოვებული იქნება"
+
+#: ../src/dockedapp.c:102
+#, c-format
+msgid "could not find icon %s, used in a docked application"
+msgstr "მიმაგრებულ აპლიკაციაში გამოყენებული ხატულა %s აღმოჩენილი არაა"
+
+#: ../src/dockedapp.c:182
+#, c-format
+msgid "Could not open specified icon file: %s"
+msgstr "მითითებული ხატულას ფაილის გახსნა შეუძლებელია: %s"
+
+#: ../src/dockedapp.c:184
+msgid "Ignore"
+msgstr "იგნორი"
+
+#: ../src/dockedapp.c:303
+msgid "Click to choose an icon"
+msgstr "დააწკაპუნეთ ხატულის ასარჩევად"
+
+#: ../src/dockedapp.c:354
+msgid "Start when Window Maker is started"
+msgstr "გაშვება Window Maker-ის გაშვებისას"
+
+#: ../src/dockedapp.c:359
+msgid "Lock (prevent accidental removal)"
+msgstr "დაბლოკვა (შემთხვევითი წაშლის თავიდან აცილება)"
+
+#: ../src/dockedapp.c:363
+msgid "Application path and arguments"
+msgstr "აპლიკაციის ბილიკი და არგუმენტები"
+
+#: ../src/dockedapp.c:374
+msgid "Command for middle-click launch"
+msgstr "ბრძანება შუა წკაპით გასაშვებად"
+
+#: ../src/dockedapp.c:386
+#, c-format
+msgid "%s will be replaced with current selection"
+msgstr "%s ჩანაცვლდება მიმდინარე მონიშნულით"
+
+#: ../src/dockedapp.c:390
+msgid "Command for dragged and dropped files"
+msgstr "ბრძანება გადათრეული და დაყრილი ფაილებისთვის"
+
+#: ../src/dockedapp.c:402
+#, c-format
+msgid "%d will be replaced with the file name"
+msgstr "%d ფაილის სახელით ჩანაცვლდება"
+
+#: ../src/dockedapp.c:405
+msgid "XDnD support was not compiled in"
+msgstr "XDnD-ის მხარდაჭერა აგების დროს ჩაშენებული არ იყო"
+
+#: ../src/dockedapp.c:413
+msgid "Icon Image"
+msgstr "ხატულის გამოსახულება"
+
+#: ../src/dockedapp.c:424 ../src/winspector.c:1679
+msgid "Browse..."
+msgstr "პოვნა..."
+
+#: ../src/dockedapp.c:497
+msgid "Docked Application Settings"
+msgstr "დოკში არსებული აპლიკაციის მორგება"
+
+#: ../src/event.c:491
+msgid "Inotify: Reading config files in defaults database."
+msgstr ""
+"Inotify: კონფიგურაციის ფაილების წაკითხვა ნაგულისხმევების მონაცემთა ბაზაში."
+
+#: ../src/event.c:543
+#, c-format
+msgid "read problem when trying to get INotify event: %s"
+msgstr "წაკითხვის პრობლემა INotify-ის მოვლენის მიღების მცდელობისას: %s"
+
+#: ../src/event.c:566
+msgid ""
+"the defaults database has been deleted! Restart Window Maker to create the "
+"database with the default settings"
+msgstr ""
+"ნაგულისხმევების მონაცემთა ბაზა წაიშალა! გადატვირთეთ Window Maker მონაცემთა "
+"ბაზის შესაქმნელად ნაგულისხმევი პარამეტრებით"
+
+#: ../src/event.c:571
+msgid ""
+"the unit containing the defaults database has been unmounted. Setting --"
+"static mode. Any changes will not be saved."
+msgstr ""
+"ერთეული, რომელიც ნაგულისხმევების მონაცემთა ბაზას შეიცავდა, მოხსნილია. "
+"დაყენებული იქნება რეჟიმი --static. შეტანილი ცვლილებების შენახვა არ მოხდება."
+
+#: ../src/event_root.c:100
+msgid "Got Reconfigure command over the deprecated X channel, use wmakermsg"
+msgstr ""
+"მიღებულია Reconfigure ბრძანება მოძველებული X არხით, გამოიყენეთ wmakermsg"
+
+#: ../src/event_root.c:103
+#, c-format
+msgid "Got unknown command %s over the deprecated X channel"
+msgstr "მიღებულია უცნობი ბრძანება %s მოძველებული X არხით"
+
+#: ../src/event_root.c:360
+msgid "another window manager is replacing us!"
+msgstr "სხვა ფანჯრების მმართველი აპირებს, ჩაგვანაცვლოს!"
+
+#: ../src/framewin.c:1160 ../src/framewin.c:1279 ../src/menu.c:627
+#: ../src/texture.c:413
+#, c-format
+msgid "could not render texture: %s"
+msgstr "რენდერის შეცდომა ტექსტურისთვის: %s"
+
+#: ../src/framewin.c:1179 ../src/framewin.c:1191 ../src/framewin.c:1203
+#: ../src/framewin.c:1211 ../src/framewin.c:1217 ../src/icon.c:374
+#: ../src/menu.c:654
+#, c-format
+msgid "error rendering image:%s"
+msgstr "გამოსახულების რენდერის შეცდომა:%s"
+
+#: ../src/framewin.c:1307
+#, c-format
+msgid "error rendering image: %s"
+msgstr "გამოსახულების რენდერის შეცდომა: %s"
+
+#: ../src/keybind-descriptions.h:21 ../src/keybind-descriptions.h:22
+#: ../src/keybind-descriptions.h:23 ../src/keybind-descriptions.h:24
+#: ../src/keybind-descriptions.h:25 ../src/keybind-descriptions.h:26
+#: ../src/keybind-descriptions.h:27
+msgid "Virtual Desktop"
+msgstr "ვირტუალური დესკტოპი"
+
+#: ../src/keybind-descriptions.h:21
+msgid "Move VirtualDesktop to next left edge"
+msgstr "ვირტუალური დესკტოპის მარცხენა კიდეზე გადაადგილება"
+
+#: ../src/keybind-descriptions.h:21
+msgid "VirtualEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:22
+msgid "Move VirtualDesktop to next right edge"
+msgstr "ვირტუალური დესკტოპის მარჯვენა კიდეზე გადაადგილება"
+
+#: ../src/keybind-descriptions.h:22
+msgid "VirtualEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:23
+msgid "Move VirtualDesktop to next top edge"
+msgstr "ვირტუალური დესკტოპის ზედა კიდეზე გადაადგილება"
+
+#: ../src/keybind-descriptions.h:23
+msgid "VirtualEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:24
+msgid "Move VirtualDesktop to next bottom edge"
+msgstr "ვირტუალური დესკტოპის ქვედა კიდეზე გადაადგილება"
+
+#: ../src/keybind-descriptions.h:24
+msgid "VirtualEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:25
+msgid "Move VirtualDesktop to its origin"
+msgstr "ვირტუალური დესკტოპის საწყის წერტილში დაბრუნება"
+
+#: ../src/keybind-descriptions.h:25
+msgid "VirtualDesktopHomeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:26
+msgid "Center the focused window in the VirtualDesktop"
+msgstr "ფოკუსირებული ფანჯრის ცენტრში მოთავსება ვირტუალურ დესკტოპზე"
+
+#: ../src/keybind-descriptions.h:26
+msgid "VirtualDesktopCenterKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:27
+msgid "Pin the focused window to the VirtualDesktop viewport"
+msgstr "ფოკუსირებული ფანჯრის დამაგრება ვირტუალური დესკტოპის ვიუპორტზე"
+
+#: ../src/keybind-descriptions.h:27
+msgid "VirtualDesktopPinKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:34 ../src/keybind-descriptions.h:196
+#: ../src/keybind-descriptions.h:197 ../src/keybind-descriptions.h:198
+#: ../src/keybind-descriptions.h:199 ../src/keybind-descriptions.h:200
+msgid "Session & Misc"
+msgstr "სესია და სხვა"
+
+#: ../src/keybind-descriptions.h:34
+msgid "Toggle keyboard language"
+msgstr "კლავიატურის ენის გადართვა"
+
+#: ../src/keybind-descriptions.h:34
+msgid "ToggleKbdModeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:40 ../src/keybind-descriptions.h:41
+#: ../src/keybind-descriptions.h:42
+msgid "Menus"
+msgstr "მენიუები"
+
+#: ../src/keybind-descriptions.h:40
+msgid "Open applications menu"
+msgstr "აპლიკაციების მენიუს გახსნა"
+
+#: ../src/keybind-descriptions.h:40
+msgid "RootMenuKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:41
+msgid "Open window list menu"
+msgstr "ფანჯრების სიის მენიუს გახსნა"
+
+#: ../src/keybind-descriptions.h:41
+msgid "WindowListKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:42
+msgid "Open window commands menu"
+msgstr "ფანჯრის ბრძანებების მენიუს გახსნა"
+
+#: ../src/keybind-descriptions.h:42
+msgid "WindowMenuKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:44 ../src/keybind-descriptions.h:45
+#: ../src/keybind-descriptions.h:46 ../src/keybind-descriptions.h:47
+#: ../src/keybind-descriptions.h:48 ../src/keybind-descriptions.h:49
+msgid "Dock & Screen"
+msgstr "დოკი და ეკრანი"
+
+#: ../src/keybind-descriptions.h:44
+msgid "Raise/Lower Dock"
+msgstr "დოკის აწევა/დაწევა"
+
+#: ../src/keybind-descriptions.h:44
+msgid "DockRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:45
+msgid "Raise/Lower Clip"
+msgstr "სამაგრის აწევა/დაწევა"
+
+#: ../src/keybind-descriptions.h:45
+msgid "ClipRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:46
+msgid "Switch to next screen/monitor"
+msgstr "შემდეგ ეკრანზე/მონიტორზე გადართვა"
+
+#: ../src/keybind-descriptions.h:46
+msgid "ScreenSwitchKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:47
+msgid "Capture the entire screen"
+msgstr "მთელი ეკრანის აღბეჭდვა"
+
+#: ../src/keybind-descriptions.h:47
+msgid "ScreenCaptureKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:48
+msgid "Capture a window"
+msgstr "ფანჯრის აღბეჭდვა"
+
+#: ../src/keybind-descriptions.h:48
+msgid "WindowCaptureKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:49
+msgid "Capture a portion of the screen"
+msgstr "ეკრანის ნაწილის აღბეჭდვა"
+
+#: ../src/keybind-descriptions.h:49
+msgid "PartialCaptureKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:51 ../src/keybind-descriptions.h:52
+#: ../src/keybind-descriptions.h:53 ../src/keybind-descriptions.h:54
+#: ../src/keybind-descriptions.h:55 ../src/keybind-descriptions.h:56
+#: ../src/keybind-descriptions.h:57 ../src/keybind-descriptions.h:58
+#: ../src/keybind-descriptions.h:59 ../src/keybind-descriptions.h:60
+#: ../src/keybind-descriptions.h:61 ../src/keybind-descriptions.h:62
+#: ../src/keybind-descriptions.h:63 ../src/keybind-descriptions.h:64
+#: ../src/keybind-descriptions.h:65 ../src/keybind-descriptions.h:66
+#: ../src/keybind-descriptions.h:67 ../src/keybind-descriptions.h:68
+#: ../src/keybind-descriptions.h:69 ../src/keybind-descriptions.h:70
+#: ../src/keybind-descriptions.h:71 ../src/keybind-descriptions.h:72
+#: ../src/keybind-descriptions.h:73 ../src/keybind-descriptions.h:74
+#: ../src/keybind-descriptions.h:75 ../src/keybind-descriptions.h:76
+#: ../src/keybind-descriptions.h:77 ../src/keybind-descriptions.h:78
+#: ../src/keybind-descriptions.h:79 ../src/keybind-descriptions.h:80
+#: ../src/keybind-descriptions.h:81 ../src/keybind-descriptions.h:82
+#: ../src/keybind-descriptions.h:83 ../src/keybind-descriptions.h:84
+#: ../src/keybind-descriptions.h:85 ../src/keybind-descriptions.h:86
+#: ../src/keybind-descriptions.h:87 ../src/keybind-descriptions.h:88
+#: ../src/keybind-descriptions.h:89 ../src/keybind-descriptions.h:90
+#: ../src/keybind-descriptions.h:91 ../src/keybind-descriptions.h:92
+#: ../src/keybind-descriptions.h:93 ../src/keybind-descriptions.h:94
+#: ../src/keybind-descriptions.h:95 ../src/keybind-descriptions.h:96
+#: ../src/keybind-descriptions.h:97 ../src/keybind-descriptions.h:98
+#: ../src/keybind-descriptions.h:99 ../src/keybind-descriptions.h:100
+#: ../src/keybind-descriptions.h:101 ../src/switchmenu.c:165
+msgid "Windows"
+msgstr "ფანჯრები"
+
+#: ../src/keybind-descriptions.h:51
+msgid "Miniaturize active window"
+msgstr "აქტიური ფანჯრის მინიატურიზაცია"
+
+#: ../src/keybind-descriptions.h:51
+msgid "MiniaturizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:52
+msgid "Miniaturize all windows"
+msgstr "ყველა ფანჯრის მინიატურიზაცია"
+
+#: ../src/keybind-descriptions.h:52
+msgid "MiniaturizeAllKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:53
+msgid "Miniaturize other windows"
+msgstr "სხვა ფანჯრების მინიატურიზაცია"
+
+#: ../src/keybind-descriptions.h:53
+msgid "MiniaturizeOthersKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:54
+msgid "Hide active application"
+msgstr "აქტიური აპლიკაციის დამალვა"
+
+#: ../src/keybind-descriptions.h:54
+msgid "HideKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:55
+msgid "Hide other applications"
+msgstr "სხვა აპლიკაციების დამალვა"
+
+#: ../src/keybind-descriptions.h:55
+msgid "HideOthersKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:56
+msgid "Toggle show desktop (minimize/restore all)"
+msgstr "სამუშაო მაგიდის ჩვენების გადართვა (ყველას ჩაკეცვა/აღდგენა)"
+
+#: ../src/keybind-descriptions.h:56
+msgid "ShowDesktopKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:57
+msgid "Show all windows"
+msgstr "ყველა ფანჯრის ჩვენება"
+
+#: ../src/keybind-descriptions.h:57
+msgid "ShowAllKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:58
+msgid "Arrange icons"
+msgstr "ხატულების დალაგება"
+
+#: ../src/keybind-descriptions.h:58
+msgid "ArrangeIconsKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:59
+msgid "Move/Resize active window"
+msgstr "აქტიური ფანჯრის გადატანა/ზომის შეცვლა"
+
+#: ../src/keybind-descriptions.h:59
+msgid "MoveResizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:60
+msgid "Close active window"
+msgstr "აქტიური ფანჯრის დახურვა"
+
+#: ../src/keybind-descriptions.h:60
+msgid "CloseKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:61
+msgid "Maximize active window"
+msgstr "აქტიური ფანჯრის გადიდება"
+
+#: ../src/keybind-descriptions.h:61
+msgid "MaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:62
+msgid "Maximize active window vertically"
+msgstr "აქტიური ფანჯრის ვერტიკალურად გადიდება"
+
+#: ../src/keybind-descriptions.h:62
+msgid "VMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:63
+msgid "Maximize active window horizontally"
+msgstr "აქტიური ფანჯრის ჰორიზონტალურად გადიდება"
+
+#: ../src/keybind-descriptions.h:63
+msgid "HMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:64
+msgid "Maximize active window left half"
+msgstr "აქტიური ფანჯრის გადიდება მარცხენა ნახევარზე"
+
+#: ../src/keybind-descriptions.h:64
+msgid "LHMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:65
+msgid "Maximize active window right half"
+msgstr "აქტიური ფანჯრის გადიდება მარჯვენა ნახევარზე"
+
+#: ../src/keybind-descriptions.h:65
+msgid "RHMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:66
+msgid "Maximize active window top half"
+msgstr "აქტიური ფანჯრის გადიდება ზედა ნახევარზე"
+
+#: ../src/keybind-descriptions.h:66
+msgid "THMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:67
+msgid "Maximize active window bottom half"
+msgstr "აქტიური ფანჯრის გადიდება ქვედა ნახევარზე"
+
+#: ../src/keybind-descriptions.h:67
+msgid "BHMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:68
+msgid "Maximize active window top left corner"
+msgstr "აქტიური ფანჯრის გადიდება ზედა მარცხენა კუთხეში"
+
+#: ../src/keybind-descriptions.h:68
+msgid "TLCMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:69
+msgid "Maximize active window top right corner"
+msgstr "აქტიური ფანჯრის გადიდება ზედა მარჯვენა კუთხეში"
+
+#: ../src/keybind-descriptions.h:69
+msgid "TRCMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:70
+msgid "Maximize active window bottom left corner"
+msgstr "აქტიური ფანჯრის გადიდება ქვედა მარცხენა კუთხეში"
+
+#: ../src/keybind-descriptions.h:70
+msgid "BLCMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:71
+msgid "Maximize active window bottom right corner"
+msgstr "აქტიური ფანჯრის გადიდება ქვედა მარჯვენა კუთხეში"
+
+#: ../src/keybind-descriptions.h:71
+msgid "BRCMaximizeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:72
+msgid "Tile active window"
+msgstr "აქტიური ფანჯრის მოზაიკაში მოთავსება"
+
+#: ../src/keybind-descriptions.h:72
+msgid "MaximusKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:73
+msgid "Move active window to left edge"
+msgstr "აქტიური ფანჯრის მარცხენა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:73
+msgid "MoveToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:74
+msgid "Move active window to right edge"
+msgstr "აქტიური ფანჯრის მარჯვენა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:74
+msgid "MoveToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:75
+msgid "Move active window to top edge"
+msgstr "აქტიური ფანჯრის ზედა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:75
+msgid "MoveToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:76
+msgid "Move active window to bottom edge"
+msgstr "აქტიური ფანჯრის ქვედა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:76
+msgid "MoveToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:77
+msgid "Move active window to left screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის მარცხენა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:77
+msgid "MoveToEdgeLeftNoSnapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:78
+msgid "Move active window to right screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის მარჯვენა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:78
+msgid "MoveToEdgeRightNoSnapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:79
+msgid "Move active window to top screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის ზედა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:79
+msgid "MoveToEdgeUpNoSnapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:80
+msgid "Move active window to bottom screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის ქვედა კიდეზე გადატანა"
+
+#: ../src/keybind-descriptions.h:80
+msgid "MoveToEdgeDownNoSnapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:81
+msgid "Grow active window to left edge"
+msgstr "აქტიური ფანჯრის გაზრდა მარცხენა კიდემდე"
+
+#: ../src/keybind-descriptions.h:81
+msgid "GrowToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:82
+msgid "Grow active window to right edge"
+msgstr "აქტიური ფანჯრის გაზრდა მარჯვენა კიდემდე"
+
+#: ../src/keybind-descriptions.h:82
+msgid "GrowToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:83
+msgid "Grow active window to top edge"
+msgstr "აქტიური ფანჯრის გაზრდა ზედა კიდემდე"
+
+#: ../src/keybind-descriptions.h:83
+msgid "GrowToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:84
+msgid "Grow active window to bottom edge"
+msgstr "აქტიური ფანჯრის გაზრდა ქვედა კიდემდე"
+
+#: ../src/keybind-descriptions.h:84
+msgid "GrowToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:85
+msgid "Shrink active window from left edge"
+msgstr "აქტიური ფანჯრის შემცირება მარცხენა კიდიდან"
+
+#: ../src/keybind-descriptions.h:85
+msgid "ShrinkToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:86
+msgid "Shrink active window from right edge"
+msgstr "აქტიური ფანჯრის შემცირება მარჯვენა კიდიდან"
+
+#: ../src/keybind-descriptions.h:86
+msgid "ShrinkToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:87
+msgid "Shrink active window from top edge"
+msgstr "აქტიური ფანჯრის შემცირება ზედა კიდიდან"
+
+#: ../src/keybind-descriptions.h:87
+msgid "ShrinkToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:88
+msgid "Shrink active window from bottom edge"
+msgstr "აქტიური ფანჯრის შემცირება ქვედა კიდიდან"
+
+#: ../src/keybind-descriptions.h:88
+msgid "ShrinkToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:89
+msgid "Toggle fullscreen for active window"
+msgstr "აქტიური ფანჯრის სრულ ეკრანზე გადართვა"
+
+#: ../src/keybind-descriptions.h:89
+msgid "ToggleFullscreenKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:90
+msgid "Center active window"
+msgstr "აქტიური ფანჯრის ცენტრში მოთავსება"
+
+#: ../src/keybind-descriptions.h:90
+msgid "CenterKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:91
+msgid "Toggle window on top status"
+msgstr "ფანჯრის ზემოთ ყოფნის გადართვა"
+
+#: ../src/keybind-descriptions.h:91
+msgid "KeepOnTopKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:92
+msgid "Toggle window at bottom status"
+msgstr "ფანჯრის ქვემოთ ყოფნის გადართვა"
+
+#: ../src/keybind-descriptions.h:92
+msgid "KeepAtBottomKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:93
+msgid "Toggle window omnipresent status"
+msgstr "ფანჯრის ყველგან წარმოდგენილობის გადართვა"
+
+#: ../src/keybind-descriptions.h:93
+msgid "OmnipresentKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:94
+msgid "Raise active window"
+msgstr "აქტიური ფანჯრის აწევა"
+
+#: ../src/keybind-descriptions.h:94
+msgid "RaiseKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:95
+msgid "Lower active window"
+msgstr "აქტიური ფანჯრის დაწევა"
+
+#: ../src/keybind-descriptions.h:95
+msgid "LowerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:96
+msgid "Raise/Lower window under mouse pointer"
+msgstr "მაუსის მაჩვენებლის ქვეშ მყოფი ფანჯრის აწევა/დაწევა"
+
+#: ../src/keybind-descriptions.h:96
+msgid "RaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:97
+msgid "Shade active window"
+msgstr "აქტიური ფანჯრის დაჩრდილვა"
+
+#: ../src/keybind-descriptions.h:97
+msgid "ShadeKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:98
+msgid "Select active window"
+msgstr "აქტიური ფანჯრის არჩევა"
+
+#: ../src/keybind-descriptions.h:98
+msgid "SelectKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:99
+msgid "Launch new instance of application"
+msgstr "აპლიკაციის ახალი ასლის გაშვება"
+
+#: ../src/keybind-descriptions.h:99
+msgid "WindowRelaunchKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:100
+msgid "Move to right/bottom/left/top head"
+msgstr "მარჯვენა/ქვედა/მარცხენა/ზედა მონიტორზე გადატანა"
+
+#: ../src/keybind-descriptions.h:100
+msgid "MoveTo12to6Head"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:101
+msgid "Move to left/top/right/bottom head"
+msgstr "მარცხენა/ზედა/მარჯვენა/ქვედა მონიტორზე გადატანა"
+
+#: ../src/keybind-descriptions.h:101
+msgid "MoveTo6to12Head"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:103 ../src/keybind-descriptions.h:104
+#: ../src/keybind-descriptions.h:105 ../src/keybind-descriptions.h:106
+#: ../src/keybind-descriptions.h:107 ../src/keybind-descriptions.h:108
+#: ../src/keybind-descriptions.h:109 ../src/keybind-descriptions.h:110
+#: ../src/keybind-descriptions.h:111 ../src/keybind-descriptions.h:112
+msgid "Window Shortcuts"
+msgstr "ფანჯრის მალსახმობები"
+
+#: ../src/keybind-descriptions.h:103
+msgid "Shortcut for window 1"
+msgstr "მალსახმობი ფანჯრისთვის 1"
+
+#: ../src/keybind-descriptions.h:103
+msgid "WindowShortcut1Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:104
+msgid "Shortcut for window 2"
+msgstr "მალსახმობი ფანჯრისთვის 2"
+
+#: ../src/keybind-descriptions.h:104
+msgid "WindowShortcut2Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:105
+msgid "Shortcut for window 3"
+msgstr "მალსახმობი ფანჯრისთვის 3"
+
+#: ../src/keybind-descriptions.h:105
+msgid "WindowShortcut3Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:106
+msgid "Shortcut for window 4"
+msgstr "მალსახმობი ფანჯრისთვის 4"
+
+#: ../src/keybind-descriptions.h:106
+msgid "WindowShortcut4Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:107
+msgid "Shortcut for window 5"
+msgstr "მალსახმობი ფანჯრისთვის 5"
+
+#: ../src/keybind-descriptions.h:107
+msgid "WindowShortcut5Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:108
+msgid "Shortcut for window 6"
+msgstr "მალსახმობი ფანჯრისთვის 6"
+
+#: ../src/keybind-descriptions.h:108
+msgid "WindowShortcut6Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:109
+msgid "Shortcut for window 7"
+msgstr "მალსახმობი ფანჯრისთვის 7"
+
+#: ../src/keybind-descriptions.h:109
+msgid "WindowShortcut7Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:110
+msgid "Shortcut for window 8"
+msgstr "მალსახმობი ფანჯრისთვის 8"
+
+#: ../src/keybind-descriptions.h:110
+msgid "WindowShortcut8Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:111
+msgid "Shortcut for window 9"
+msgstr "მალსახმობი ფანჯრისთვის 9"
+
+#: ../src/keybind-descriptions.h:111
+msgid "WindowShortcut9Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:112
+msgid "Shortcut for window 10"
+msgstr "მალსახმობი ფანჯრისთვის 10"
+
+#: ../src/keybind-descriptions.h:112
+msgid "WindowShortcut10Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:114 ../src/keybind-descriptions.h:115
+#: ../src/keybind-descriptions.h:116 ../src/keybind-descriptions.h:117
+#: ../src/keybind-descriptions.h:118 ../src/keybind-descriptions.h:119
+#: ../src/keybind-descriptions.h:120 ../src/keybind-descriptions.h:121
+#: ../src/keybind-descriptions.h:122 ../src/keybind-descriptions.h:123
+#: ../src/keybind-descriptions.h:124 ../src/keybind-descriptions.h:125
+#: ../src/keybind-descriptions.h:126 ../src/keybind-descriptions.h:127
+msgid "Focus & Groups"
+msgstr "ფოკუსი და ჯგუფები"
+
+#: ../src/keybind-descriptions.h:114
+msgid "Focus next window"
+msgstr "შემდეგ ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:114
+msgid "FocusNextKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:115
+msgid "Focus previous window"
+msgstr "წინა ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:115
+msgid "FocusPrevKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:116
+msgid "Focus the window to the left"
+msgstr "მარცხენა ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:116
+msgid "FocusWindowLeftKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:117
+msgid "Focus the window to the right"
+msgstr "მარჯვენა ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:117
+msgid "FocusWindowRightKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:118
+msgid "Focus the window above"
+msgstr "ზემოთა ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:118
+msgid "FocusWindowUpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:119
+msgid "Focus the window below"
+msgstr "ქვემოთა ფანჯარაზე ფოკუსირება"
+
+#: ../src/keybind-descriptions.h:119
+msgid "FocusWindowDownKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:120
+msgid "Focus next window in group"
+msgstr "შემდეგ ფანჯარაზე ფოკუსირება ჯგუფში"
+
+#: ../src/keybind-descriptions.h:120
+msgid "GroupWindowNextKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:121
+msgid "Focus previous window in group"
+msgstr "წინა ფანჯარაზე ფოკუსირება ჯგუფში"
+
+#: ../src/keybind-descriptions.h:121
+msgid "GroupWindowPrevKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:122
+msgid "Switch to next application group"
+msgstr "შემდეგ აპლიკაციის ჯგუფზე გადართვა"
+
+#: ../src/keybind-descriptions.h:122
+msgid "GroupNextKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:123
+msgid "Switch to previous application group"
+msgstr "წინა აპლიკაციის ჯგუფზე გადართვა"
+
+#: ../src/keybind-descriptions.h:123
+msgid "GroupPrevKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:124
+msgid "Switch to next tab in group"
+msgstr "შემდეგ ჩანართზე გადართვა ჯგუფში"
+
+#: ../src/keybind-descriptions.h:124
+msgid "GroupTabNextKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:125
+msgid "Switch to previous tab in group"
+msgstr "წინა ჩანართზე გადართვა ჯგუფში"
+
+#: ../src/keybind-descriptions.h:125
+msgid "GroupTabPrevKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:126
+msgid "Attach window as tab"
+msgstr "ფანჯრის მიმაგრება ჩანართად"
+
+#: ../src/keybind-descriptions.h:126
+msgid "GroupTabAttachKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:127
+msgid "Detach tab from group"
+msgstr "ჩანართის ჯგუფიდან გამოყოფა"
+
+#: ../src/keybind-descriptions.h:127
+msgid "GroupTabDetachKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:129 ../src/keybind-descriptions.h:130
+#: ../src/keybind-descriptions.h:131 ../src/keybind-descriptions.h:132
+#: ../src/keybind-descriptions.h:133 ../src/keybind-descriptions.h:134
+#: ../src/keybind-descriptions.h:135 ../src/keybind-descriptions.h:136
+#: ../src/keybind-descriptions.h:137 ../src/keybind-descriptions.h:138
+#: ../src/keybind-descriptions.h:139 ../src/keybind-descriptions.h:140
+#: ../src/keybind-descriptions.h:141 ../src/keybind-descriptions.h:142
+#: ../src/keybind-descriptions.h:143 ../src/keybind-descriptions.h:144
+#: ../src/keybind-descriptions.h:145 ../src/keybind-descriptions.h:146
+#: ../src/keybind-descriptions.h:147 ../src/keybind-descriptions.h:148
+#: ../src/keybind-descriptions.h:149 ../src/keybind-descriptions.h:150
+#: ../src/keybind-descriptions.h:151 ../src/keybind-descriptions.h:152
+#: ../src/keybind-descriptions.h:153 ../src/keybind-descriptions.h:154
+#: ../src/keybind-descriptions.h:155 ../src/keybind-descriptions.h:156
+#: ../src/keybind-descriptions.h:157 ../src/keybind-descriptions.h:158
+#: ../src/keybind-descriptions.h:159 ../src/keybind-descriptions.h:160
+#: ../src/keybind-descriptions.h:161 ../src/keybind-descriptions.h:162
+#: ../src/keybind-descriptions.h:163 ../src/keybind-descriptions.h:164
+#: ../src/keybind-descriptions.h:165 ../src/keybind-descriptions.h:166
+#: ../src/keybind-descriptions.h:167 ../src/keybind-descriptions.h:168
+#: ../src/keybind-descriptions.h:169 ../src/keybind-descriptions.h:170
+#: ../src/keybind-descriptions.h:171 ../src/keybind-descriptions.h:172
+#: ../src/keybind-descriptions.h:173 ../src/keybind-descriptions.h:174
+#: ../src/keybind-descriptions.h:175 ../src/keybind-descriptions.h:176
+#: ../src/keybind-descriptions.h:177 ../src/winmenu.c:99
+#: ../src/workspace.c:1748
+msgid "Workspaces"
+msgstr "სამუშაო სივრცეები"
+
+#: ../src/keybind-descriptions.h:129
+msgid "Open workspace pager"
+msgstr "სამუშაო სივრცეების პეიჯერის გახსნა"
+
+#: ../src/keybind-descriptions.h:129
+msgid "WorkspaceMapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:130
+msgid "Switch to next workspace"
+msgstr "გადართვა შემდეგ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:130
+msgid "NextWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:131
+msgid "Switch to previous workspace"
+msgstr "გადართვა წინა სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:131
+msgid "PrevWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:132
+msgid "Switch to last used workspace"
+msgstr "გადართვა ბოლო გამოყენებულ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:132
+msgid "LastWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:133
+msgid "Switch to next ten workspaces"
+msgstr "გადართვა შემდეგ ათ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:133
+msgid "NextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:134
+msgid "Switch to previous ten workspaces"
+msgstr "გადართვა წინა ათ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:134
+msgid "PrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:135
+msgid "Switch to workspace on the left"
+msgstr "მარცხენა სამუშაო სივრცეზე გადართვა"
+
+#: ../src/keybind-descriptions.h:135
+msgid "LeftWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:136
+msgid "Switch to workspace on the right"
+msgstr "მარჯვენა სამუშაო სივრცეზე გადართვა"
+
+#: ../src/keybind-descriptions.h:136
+msgid "RightWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:137
+msgid "Switch to workspace above"
+msgstr "ზემოთა სამუშაო სივრცეზე გადართვა"
+
+#: ../src/keybind-descriptions.h:137
+msgid "UpWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:138
+msgid "Switch to workspace below"
+msgstr "ქვემოთა სამუშაო სივრცეზე გადართვა"
+
+#: ../src/keybind-descriptions.h:138
+msgid "DownWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:139
+msgid "Switch to workspace 1"
+msgstr "გადართვა სამუშაო სივრცე 1-ზე"
+
+#: ../src/keybind-descriptions.h:139
+msgid "Workspace1Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:140
+msgid "Switch to workspace 2"
+msgstr "გადართვა სამუშაო სივრცე 2-ზე"
+
+#: ../src/keybind-descriptions.h:140
+msgid "Workspace2Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:141
+msgid "Switch to workspace 3"
+msgstr "გადართვა სამუშაო სივრცე 3-ზე"
+
+#: ../src/keybind-descriptions.h:141
+msgid "Workspace3Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:142
+msgid "Switch to workspace 4"
+msgstr "გადართვა სამუშაო სივრცე 4-ზე"
+
+#: ../src/keybind-descriptions.h:142
+msgid "Workspace4Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:143
+msgid "Switch to workspace 5"
+msgstr "გადართვა სამუშაო სივრცე 5-ზე"
+
+#: ../src/keybind-descriptions.h:143
+msgid "Workspace5Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:144
+msgid "Switch to workspace 6"
+msgstr "გადართვა სამუშაო სივრცე 6-ზე"
+
+#: ../src/keybind-descriptions.h:144
+msgid "Workspace6Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:145
+msgid "Switch to workspace 7"
+msgstr "გადართვა სამუშაო სივრცე 7-ზე"
+
+#: ../src/keybind-descriptions.h:145
+msgid "Workspace7Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:146
+msgid "Switch to workspace 8"
+msgstr "გადართვა სამუშაო სივრცე 8-ზე"
+
+#: ../src/keybind-descriptions.h:146
+msgid "Workspace8Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:147
+msgid "Switch to workspace 9"
+msgstr "გადართვა სამუშაო სივრცე 9-ზე"
+
+#: ../src/keybind-descriptions.h:147
+msgid "Workspace9Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:148
+msgid "Switch to workspace 10"
+msgstr "გადართვა სამუშაო სივრცე 10-ზე"
+
+#: ../src/keybind-descriptions.h:148
+msgid "Workspace10Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:149
+msgid "Move window to next workspace"
+msgstr "ფანჯრის გადატანა შემდეგ სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:149
+msgid "MoveToNextWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:150
+msgid "Move window to previous workspace"
+msgstr "ფანჯრის გადატანა წინა სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:150
+msgid "MoveToPrevWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:151
+msgid "Move window to last used workspace"
+msgstr "ფანჯრის გადატანა ბოლო გამოყენებულ სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:151
+msgid "MoveToLastWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:152
+msgid "Move window to next ten workspaces"
+msgstr "ფანჯრის გადატანა შემდეგ ათ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:152
+msgid "MoveToNextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:153
+msgid "Move window to previous ten workspaces"
+msgstr "ფანჯრის გადატანა წინა ათ სამუშაო სივრცეზე"
+
+#: ../src/keybind-descriptions.h:153
+msgid "MoveToPrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:154
+msgid "Move window to workspace on the left"
+msgstr "ფანჯრის გადატანა მარცხენა სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:154
+msgid "MoveToLeftWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:155
+msgid "Move window to workspace on the right"
+msgstr "ფანჯრის გადატანა მარჯვენა სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:155
+msgid "MoveToRightWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:156
+msgid "Move window to workspace above"
+msgstr "ფანჯრის გადატანა ზემოთა სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:156
+msgid "MoveToUpWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:157
+msgid "Move window to workspace below"
+msgstr "ფანჯრის გადატანა ქვემოთა სამუშაო სივრცეში"
+
+#: ../src/keybind-descriptions.h:157
+msgid "MoveToDownWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:158
+msgid "Move window to workspace 1"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 1-ში"
+
+#: ../src/keybind-descriptions.h:158
+msgid "MoveToWorkspace1Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:159
+msgid "Move window to workspace 2"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 2-ში"
+
+#: ../src/keybind-descriptions.h:159
+msgid "MoveToWorkspace2Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:160
+msgid "Move window to workspace 3"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 3-ში"
+
+#: ../src/keybind-descriptions.h:160
+msgid "MoveToWorkspace3Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:161
+msgid "Move window to workspace 4"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 4-ში"
+
+#: ../src/keybind-descriptions.h:161
+msgid "MoveToWorkspace4Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:162
+msgid "Move window to workspace 5"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 5-ში"
+
+#: ../src/keybind-descriptions.h:162
+msgid "MoveToWorkspace5Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:163
+msgid "Move window to workspace 6"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 6-ში"
+
+#: ../src/keybind-descriptions.h:163
+msgid "MoveToWorkspace6Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:164
+msgid "Move window to workspace 7"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 7-ში"
+
+#: ../src/keybind-descriptions.h:164
+msgid "MoveToWorkspace7Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:165
+msgid "Move window to workspace 8"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 8-ში"
+
+#: ../src/keybind-descriptions.h:165
+msgid "MoveToWorkspace8Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:166
+msgid "Move window to workspace 9"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 9-ში"
+
+#: ../src/keybind-descriptions.h:166
+msgid "MoveToWorkspace9Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:167
+msgid "Move window to workspace 10"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 10-ში"
+
+#: ../src/keybind-descriptions.h:167
+msgid "MoveToWorkspace10Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:168
+msgid "Toggle window on workspace 1"
+msgstr "ფანჯრის სამუშაო სივრცე 1-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:168
+msgid "ToggleWorkspace1Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:169
+msgid "Toggle window on workspace 2"
+msgstr "ფანჯრის სამუშაო სივრცე 2-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:169
+msgid "ToggleWorkspace2Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:170
+msgid "Toggle window on workspace 3"
+msgstr "ფანჯრის სამუშაო სივრცე 3-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:170
+msgid "ToggleWorkspace3Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:171
+msgid "Toggle window on workspace 4"
+msgstr "ფანჯრის სამუშაო სივრცე 4-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:171
+msgid "ToggleWorkspace4Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:172
+msgid "Toggle window on workspace 5"
+msgstr "ფანჯრის სამუშაო სივრცე 5-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:172
+msgid "ToggleWorkspace5Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:173
+msgid "Toggle window on workspace 6"
+msgstr "ფანჯრის სამუშაო სივრცე 6-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:173
+msgid "ToggleWorkspace6Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:174
+msgid "Toggle window on workspace 7"
+msgstr "ფანჯრის სამუშაო სივრცე 7-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:174
+msgid "ToggleWorkspace7Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:175
+msgid "Toggle window on workspace 8"
+msgstr "ფანჯრის სამუშაო სივრცე 8-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:175
+msgid "ToggleWorkspace8Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:176
+msgid "Toggle window on workspace 9"
+msgstr "ფანჯრის სამუშაო სივრცე 9-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:176
+msgid "ToggleWorkspace9Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:177
+msgid "Toggle window on workspace 10"
+msgstr "ფანჯრის სამუშაო სივრცე 10-ზე გადართვა"
+
+#: ../src/keybind-descriptions.h:177
+msgid "ToggleWorkspace10Key"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:179 ../src/keybind-descriptions.h:180
+#: ../src/keybind-descriptions.h:181 ../src/keybind-descriptions.h:182
+#: ../src/keybind-descriptions.h:183 ../src/keybind-descriptions.h:184
+#: ../src/keybind-descriptions.h:185 ../src/keybind-descriptions.h:186
+#: ../src/keybind-descriptions.h:187 ../src/keybind-descriptions.h:188
+msgid "Tiling & Layout"
+msgstr "მოზაიკა და განლაგება"
+
+#: ../src/keybind-descriptions.h:179
+msgid "Cycle workspace tiling layout"
+msgstr "სამუშაო სივრცის მოზაიკის განლაგების შემდეგ ვარიანტზე გადართვა"
+
+#: ../src/keybind-descriptions.h:179
+msgid "LayoutCycleKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:180
+msgid "Cycle workspace tiling layout back"
+msgstr "სამუშაო სივრცის მოზაიკის განლაგების წინა ვარიანტზე გადართვა"
+
+#: ../src/keybind-descriptions.h:180
+msgid "LayoutCycleBackKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:181
+msgid "Swap tiling layout axis"
+msgstr "მოზაიკის განლაგების ღერძების გაცვლა"
+
+#: ../src/keybind-descriptions.h:181
+msgid "LayoutAxisKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:182
+msgid "Set workspace layout to float"
+msgstr "სამუშაო სივრცის განლაგების „მოცურავეზე“ დაყენება"
+
+#: ../src/keybind-descriptions.h:182
+msgid "LayoutFloatKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:183
+msgid "Increase layout master count"
+msgstr "მთავარების რაოდენობის გაზრდა"
+
+#: ../src/keybind-descriptions.h:183
+msgid "MasterCountIncKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:184
+msgid "Decrease layout master count"
+msgstr "მთავარების რაოდენობის შემცირება"
+
+#: ../src/keybind-descriptions.h:184
+msgid "MasterCountDecKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:185
+msgid "Increase layout master ratio"
+msgstr "მთავარების პროპორციის გაზრდა"
+
+#: ../src/keybind-descriptions.h:185
+msgid "MasterRatioIncKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:186
+msgid "Decrease layout master ratio"
+msgstr "მთავარების პროპორციის შემცირება"
+
+#: ../src/keybind-descriptions.h:186
+msgid "MasterRatioDecKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:187
+msgid "Toggle tiling for active window"
+msgstr "აქტიური ფანჯრის მოზაიკაში ჩართვა/გამორთვა"
+
+#: ../src/keybind-descriptions.h:187
+msgid "TilingToggleKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:188
+msgid "Swap active window into master"
+msgstr "აქტიური ფანჯრის გაცვლა მთავართან"
+
+#: ../src/keybind-descriptions.h:188
+msgid "TilingSwapMasterKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:190 ../src/keybind-descriptions.h:191
+#: ../src/keybind-descriptions.h:192 ../src/keybind-descriptions.h:193
+#: ../src/keybind-descriptions.h:194
+msgid "Window Marks"
+msgstr "ფანჯრის ნიშნულები"
+
+#: ../src/keybind-descriptions.h:190
+msgid "Mark window: set mark"
+msgstr "ფანჯრის ნიშნული: ნიშნულის დადება"
+
+#: ../src/keybind-descriptions.h:190
+msgid "MarkSetKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:191
+msgid "Mark window: unset mark"
+msgstr "ფანჯრის ნიშნული: ნიშნულის მოხსნა"
+
+#: ../src/keybind-descriptions.h:191
+msgid "MarkUnsetKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:192
+msgid "Mark window: bring marked window here"
+msgstr "ფანჯრის ნიშნული: მონიშნული ფანჯრის აქ მოყვანა"
+
+#: ../src/keybind-descriptions.h:192
+msgid "MarkBringKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:193
+msgid "Mark window: jump to marked window"
+msgstr "ფანჯრის ნიშნული: მონიშნულ ფანჯარაზე გადახტომა"
+
+#: ../src/keybind-descriptions.h:193
+msgid "MarkJumpKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:194
+msgid "Mark window: swap with marked window"
+msgstr "ფანჯრის ნიშნული: გაცვლა მონიშნულ ფანჯარასთან"
+
+#: ../src/keybind-descriptions.h:194
+msgid "MarkSwapKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:196
+msgid "Find application"
+msgstr "აპლიკაციის ძებნა"
+
+#: ../src/keybind-descriptions.h:196
+msgid "RunKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:197
+msgid "Show keyboard shortcuts"
+msgstr "კლავიატურის მალსახმობების ჩვენება"
+
+#: ../src/keybind-descriptions.h:197
+msgid "ShowKeybindsKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:198
+msgid "Exit Window Maker"
+msgstr "Window Maker-იდან გასვლა"
+
+#: ../src/keybind-descriptions.h:198
+msgid "ExitKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:199
+msgid "Lock screen"
+msgstr "ეკრანის დაბლოკვა"
+
+#: ../src/keybind-descriptions.h:199
+msgid "LockScreenKey"
+msgstr ""
+
+#: ../src/keybind-descriptions.h:200
+msgid "Open clipboard history"
+msgstr "ბუფერის ისტორიის გახსნა"
+
+#: ../src/keybind-descriptions.h:200
+msgid "ClipboardKey"
+msgstr ""
+
+#: ../src/keybind.c:837
+#, c-format
+msgid "exec %A(Find)"
+msgstr "exec %A(ძებნა)"
+
+#: ../src/keybind.c:1107
+msgid "Other"
+msgstr "სხვა"
+
+#: ../src/layout.c:44
+msgid "Float"
+msgstr "მოცურავე"
+
+#: ../src/layout.c:44
+msgid "Tile"
+msgstr "ფილა"
+
+#: ../src/layout.c:44
+msgid "Tile wide"
+msgstr "განიერი ფილა"
+
+#: ../src/layout.c:44
+msgid "Grid"
+msgstr "ბადე"
+
+#: ../src/layout.c:44
+msgid "Monocle"
+msgstr "მონოკლი"
+
+#: ../src/main.c:283
+msgid "failed to restart Window Maker."
+msgstr "Window Maker-ის გადატვირთვის შეცდომა."
+
+#: ../src/main.c:286
+#, c-format
+msgid "could not exec %s"
+msgstr "%s-ის გაშვების შეცდომა"
+
+#: ../src/main.c:308
+#, c-format
+msgid "the display name has an unexpected syntax: \"%s\""
+msgstr "საჩვენებელ სახელს მოულოდნელი სინტაქსი აქვს: \"%s\""
+
+#: ../src/main.c:319
+#, c-format
+msgid "the display name is too long: \"%s\""
+msgstr "ეკრანის სახელი ზედმეტად გრძელია: \"%s\""
+
+#: ../src/main.c:344
+msgid "Could not execute command: "
+msgstr "ვერ შევასრულე ბრძანება: "
+
+#: ../src/main.c:511
+#, c-format
+msgid "%s aborted.\n"
+msgstr "%s ავარიულად დასრულდა.\n"
+
+#: ../src/main.c:520
+#, c-format
+msgid "Usage: %s [options]\n"
+msgstr "გამოყენება: %s [პარამეტრები]\n"
+
+#: ../src/main.c:521
+msgid "The Window Maker window manager for the X window system"
+msgstr "Window Maker - ფანჯრების მმართველი X window system-ისტვის"
+
+#: ../src/main.c:523
+msgid " -display host:dpy\tdisplay to use"
+msgstr " -display host:dpy\tგამოსაყენებელი ეკრანი"
+
+#: ../src/main.c:525
+msgid " --replace\t\treplace running window manager"
+msgstr " --replace\t\tგაშვებული ფანჯრების მმართველის ჩანაცვლება"
+
+#: ../src/main.c:527
+msgid " --no-dock\t\tdo not open the application Dock"
+msgstr " --no-dock\t\tაპლიკაციების დოკი არ გაიხსნას"
+
+#: ../src/main.c:528
+msgid " --no-clip\t\tdo not open the workspace Clip"
+msgstr " --no-clip\t\tსამუშაო სივრცის კლიპი არ გაიხსნას"
+
+#: ../src/main.c:529
+msgid " --no-autolaunch\tdo not autolaunch applications"
+msgstr " --no-autolaunch\tაპლიკაციების ავტომატურად არგაშვება"
+
+#: ../src/main.c:530
+msgid " --no-drawer\t\tdisable drawers in the dock"
+msgstr " --no-drawer\t\tუჯრების გათიშვა დოკში"
+
+#: ../src/main.c:531
+msgid " --dont-restore\t\tdo not restore saved session"
+msgstr " --dont-restore\t\tშენახული სესიის არაღდგენა"
+
+#: ../src/main.c:532
+msgid " --clientid id\t\tsession management client ID"
+msgstr " --clientid id\t\tსესიის მართვის კლიენტის ID"
+
+#: ../src/main.c:534
+msgid " --locale locale\tlocale to use"
+msgstr " --locale ლოკალი\tგამოსაყენებელი ლოკალი"
+
+#: ../src/main.c:536
+msgid " --visual-id visualid\tvisual id of visual to use"
+msgstr " --visual-id visualid\tვიზუალის id გამოსაყენებლად"
+
+#: ../src/main.c:537
+msgid " --static\t\tdo not update or save configurations"
+msgstr " --static\t\tარ მოხდეს კონფიგურაციებს შენახვა, ან განახლება"
+
+#: ../src/main.c:539
+msgid " --no-polling\t\tdo not periodically check for configuration updates"
+msgstr ""
+" --no-polling\t\tარ მოხდეს კონფიგურაციის განახლებების პერიოდული შემოწმება"
+
+#: ../src/main.c:541
+msgid " --global_defaults_path\tprint the path for default config and exit"
+msgstr ""
+" --global_defaults_path\tნაგულისხმევი კონფიგურაციის ბილიკის გამოტანა და "
+"გასვლა"
+
+#: ../src/main.c:542
+msgid " --get-socketpath\tprint the IPC socket path for $DISPLAY and exit"
+msgstr ""
+" --get-socketpath\t$DISPLAY-სთვის IPC-ის სოკეტის ბილიკის გამოტანა და გასვლა"
+
+#: ../src/main.c:543
+msgid " --version\t\tprint version and exit"
+msgstr " --version\t\tვერსიის გამოტანა და გასვლა"
+
+#: ../src/main.c:544
+msgid " --help\t\t\tshow this message"
+msgstr " --help\t\t\tამ შეტყობინების ჩვენება"
+
+#: ../src/main.c:554
+#, c-format
+msgid "could not find user configuration directory (%s)."
+msgstr "მომხმარებლის კონფიგურაციის საქაღალდე ვერ მოიძებნა (%s)."
+
+#: ../src/main.c:557
+msgid ""
+"There was an error while creating the configuration directory, please make "
+"sure you have installed Window Maker correctly and run wmaker.inst"
+msgstr ""
+"შეცდომა კონფიგურაციის საქაღალდის შექმნისას. დარწმუნდით, რომ Window Maker "
+"სწორად გაქვთ დაყენებული და გაუშვით wmaker.inst"
+
+#: ../src/main.c:560
+#, c-format
+msgid "%s directory created with default configuration."
+msgstr "%s საქაღალდე შეიქმნა ნაგულისხმევი კონფიგურაციით."
+
+#: ../src/main.c:579
+msgid ""
+"could not initialise an inotify instance. Changes to the defaults database "
+"will require a restart to take effect. Check your kernel!"
+msgstr ""
+"inotify-ის გაშვებული ასლის ინიციალიზაციის შეცდომა. ნაგულისხმევების მონაცემთა "
+"ბაზის ცვლილებებს ძალაში შესასვლელად გადატვირთვა დასჭირდება. შეამოწმეთ "
+"გაშვებული ბირთვი!"
+
+#: ../src/main.c:590
+#, c-format
+msgid ""
+"could not add an inotify watch on path %s. Changes to the defaults database "
+"will require a restart to take effect."
+msgstr ""
+"inotify-ის დამატება ბილიკზე %s შეუძლებელია. ნაგულისხმევების მონაცემთა ბაზაში "
+"ცვლილებებს ძალაში შესასვლელად გადატვირთვა დასჭირდებათ."
+
+#: ../src/main.c:616
+#, c-format
+msgid "%s:could not execute initialization script"
+msgstr "%s:ინიციალიზაციის სკრიპტის შესრულება შეუძლებელია"
+
+#: ../src/main.c:630
+#, c-format
+msgid "%s:could not execute exit script"
+msgstr "%s:გასვლის სკრიპტის შესრულება შეუძლებელია"
+
+#: ../src/main.c:668 ../src/main.c:763 ../src/main.c:770 ../src/main.c:777
+#: ../src/main.c:787
+#, c-format
+msgid "too few arguments for %s"
+msgstr "ძალიან ცოტა არგუმენტი %s-ისთვის"
+
+#: ../src/main.c:731
+#, c-format
+msgid "option \"%s\" is deprecated, please remove it from your script"
+msgstr "პარამეტრი \"%s\" მოძველებულია. წაშალეთ ის თქვენი სკრიპტიდან"
+
+#: ../src/main.c:781
+#, c-format
+msgid "bad value for visualid: \"%s\""
+msgstr "არასწორი მნიშვნელობა visualid-ისთვის: \"%s\""
+
+#: ../src/main.c:797
+msgid ""
+"your version of Window Maker was compiled with INotify support, so \"--no-"
+"polling\" has no effect"
+msgstr ""
+"Window Maker-ის თქვენი ვერსია INotify-ის მხარდაჭერის გარეშეა აგებული, ამიტომ "
+"პარამეტრს \"--no-polling\" ძალა არ აქვს"
+
+#: ../src/main.c:803
+#, c-format
+msgid "%s: invalid argument '%s'\n"
+msgstr "%s: არასწორი არგუმენტი '%s'\n"
+
+#: ../src/main.c:804
+#, c-format
+msgid "Try '%s --help' for more information\n"
+msgstr "მეტი ინფორმაციისთვის სცადეთ '%s --help'\n"
+
+#: ../src/main.c:863 ../src/main.c:869
+#, c-format
+msgid "could not open display \"%s\""
+msgstr "გახსნის შეცდომა ეკრანისტვის \"%s\""
+
+#: ../src/menu.c:2791
+#, c-format
+msgid "bad value in menus state info: %s"
+msgstr "არასწორი მნიშვნელობა მენიუების მდგომარეობის ინფორმაციაში: %s"
+
+#: ../src/misc.c:111
+#, c-format
+msgid "can't convert \"%s\" to boolean"
+msgstr "\"%s\"-ის ლოგიკურ მნიშვნელობაში გადაყვანა შეუძლებელია"
+
+#: ../src/misc.c:587
+msgid "Program Arguments"
+msgstr "პროგრამის არგუმენტები"
+
+#: ../src/misc.c:593
+msgid "Enter command arguments:"
+msgstr "შეიყვანეთ ბრძანების არგუმენტები:"
+
+#: ../src/misc.c:631 ../src/misc.c:632
+msgid "Exit"
+msgstr "გასვლა"
+
+#: ../src/misc.c:632
+msgid "Are you sure you want to quit Window Maker?"
+msgstr "მართლა გნებავთ Window Maker-დან გასვლა?"
+
+#: ../src/misc.c:677 ../src/misc.c:683
+#, c-format
+msgid "bad window name value in %s state info"
+msgstr "არასწორი ფანჯრის სახელის მნიშვნელობა %s-ის მდგომარეობის ინფორმაციაში"
+
+#: ../src/misc.c:967 ../src/misc.c:982
+#, c-format
+msgid "%s failed, can't set workspace specific background image (%s)"
+msgstr ""
+"%s ჩავარდა. სამუშაო სივრცის სპეციფიკური ფონის სურათის (%s) დაყენება "
+"შეუძლებელია"
+
+#: ../src/misc.c:1009
+#, c-format
+msgid ""
+"could not set close-on-exec flag for bg_helper's communication file handle "
+"(%s)"
+msgstr ""
+"close-on-exec ალმის დაყენება bg_helper-ის კომუნიკაციის ფაილის დამმუშავებელზე "
+"(%s)"
+
+#: ../src/misc.c:1037
+msgid "background image helper message is too long"
+msgstr "ფონის გამოსახულების დამხმარის შეტყობინება ზედმეტად გრძელია"
+
+#: ../src/misc.c:1055
+msgid "could not send message to background image helper"
+msgstr "ფონის სურათის დამხმარე პროგრამისთვის შეტყობინების გაგზავნა შეუძლებელია"
+
+#: ../src/monitor.c:80
+msgid "trying to start alternate window manager..."
+msgstr "ალტერნატიული ფანჯრების მმართველის გაშვების მცდელობა..."
+
+#: ../src/monitor.c:86
+msgid "failed to start alternate window manager. Aborting."
+msgstr "ალტერნატიული ფანჯრების მმართველის გაშვება ჩავარდა. მუშაობა შეწყდება."
+
+#: ../src/monitor.c:116
+msgid "Error respawning Window Maker"
+msgstr "Window Maker-ის თავიდან გაშვების შეცდომა"
+
+#: ../src/monitor.c:123
+msgid "Error during monitoring of Window Maker process."
+msgstr "შეცდომა Window Maker-ის პროცესის მონიტორინგისას."
+
+#: ../src/monitor.c:148
+#, c-format
+msgid "Window Maker exited due to a crash (signal %i) and will be restarted."
+msgstr ""
+"Window Maker-მა მუშაობა ავარიის (სიგნალი %i) დაასრულა და ის თავიდან გაეშვება."
+
+#.
+#. *  1st %s is a function name
+#. *  2nd %s is an email address
+#. *  3rd %s is the name of the operating system
+#.
+#: ../src/osdep_stub.c:23
+#, c-format
+msgid ""
+"%s is not implemented on this platform; tell %s you are running %s release "
+"%s version %s"
+msgstr ""
+"%s ამ პლატფორმაზე არ არსებობს. უთხარით %s-ს, რომ გაშვებული გაქვთ %s ის "
+"რელიზი %s ვერსია %s"
+
+#: ../src/resources.c:111
+#, c-format
+msgid "could not parse color \"%s\""
+msgstr "დამუშავების შეცდომა ფერისთვის \"%s\""
+
+#: ../src/resources.c:116
+#, c-format
+msgid "could not allocate color \"%s\""
+msgstr "გამოყოფის შეცდომა ფერისთვის \"%s\""
+
+#: ../src/rootmenu.c:182
+msgid "Kill X session"
+msgstr "X-ის სესიის მოკვლა"
+
+#: ../src/rootmenu.c:183
+msgid ""
+"Kill Window System session?\n"
+"(all applications will be closed)"
+msgstr ""
+"მოკვდეს ფანჯრების სისტემის სესია?\n"
+"(დაიხურება ყველა გაშვებული აპლიკაცია)"
+
+#: ../src/rootmenu.c:486
+#, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\" for entry %s"
+msgstr "%s: არასწორი kbd-ის მალსახმობის სპეციფიკაცია \"%s\" ჩანაწერისთვის %s"
+
+#: ../src/rootmenu.c:494
+#, c-format
+msgid "%s: invalid key in shortcut \"%s\" for entry %s"
+msgstr "%s: არასწორი ღილაკი მალსახმობში \"%s\" ჩანაწერისთვის %s"
+
+#: ../src/rootmenu.c:545
+#, c-format
+msgid "%s: unmatched '\"' in menu file"
+msgstr "%s: შესაბამისი '\"' სიმბოლოს გარეშე მენიუს ფაილში"
+
+#: ../src/rootmenu.c:594
+#, c-format
+msgid "%s: missing command"
+msgstr "%s: ბრძანება ვერ ვიპოვე"
+
+#: ../src/rootmenu.c:650
+#, c-format
+msgid "invalid OPEN_MENU specification: %s"
+msgstr "არასწორი OPEN_MENU-ის სპეციფიკაცია: %s"
+
+#: ../src/rootmenu.c:721
+#, c-format
+msgid "%s:could not stat menu"
+msgstr "%s:მენიუ ვერ ვიპოვე"
+
+#: ../src/rootmenu.c:729
+#, c-format
+msgid "%s:could not stat menu:%s"
+msgstr "%s:მენიუ ვერ ვიპოვე:%s"
+
+#: ../src/rootmenu.c:745
+#, c-format
+msgid "too many parameters in OPEN_MENU: %s"
+msgstr "მეტისმეტად ბევრი პარამეტრი OPEN_MENU-ში: %s"
+
+#: ../src/rootmenu.c:783
+#, c-format
+msgid "invalid OPEN_PLMENU specification: %s"
+msgstr "არასწორი OPEN_PLMENU-ის სპეციფიკაცია: %s"
+
+#: ../src/rootmenu.c:839
+msgid ""
+"There are more than one WORKSPACE_MENU commands in the applications menu. "
+"Only one is allowed."
+msgstr ""
+"აპლიკაციების მენიუში არსებობს ერთზე მეტი WORKSPACE_MENU ბრძანება. "
+"დაშვებულია, მხოლოდ, ერთი."
+
+#: ../src/rootmenu.c:870
+msgid ""
+"There are more than one WINDOWS_MENU commands in the applications menu. Only "
+"one is allowed."
+msgstr ""
+"აპლიკაციების მენიუში არსებობს ერთზე მეტი WINDOWS_MENU ბრძანება. დაშვებულია, "
+"მხოლოდ, ერთი."
+
+#: ../src/rootmenu.c:875
+msgid "Window List"
+msgstr "ფანჯრების სია"
+
+#: ../src/rootmenu.c:902 ../src/rootmenu.c:919 ../src/rootmenu.c:936
+#: ../src/rootmenu.c:944
+#, c-format
+msgid "%s:missing parameter for menu command \"%s\""
+msgstr "%s:აკლია პარამეტრი მენიუს ბრძანებისთვის \"%s\""
+
+#: ../src/rootmenu.c:1015
+#, c-format
+msgid "%s:unknown command \"%s\" in menu config."
+msgstr "%s:უცნობი ბრძანება \"%s\" მენიუს კონფიგურაციაში."
+
+#: ../src/rootmenu.c:1022
+#, c-format
+msgid "%s:can't add shortcut for entry \"%s\""
+msgstr "%s:მალსახმობის დამატების შეცდომა ჩანაწერისთვის \"%s\""
+
+#: ../src/rootmenu.c:1054
+msgid "maximum menu nesting depth exceeded"
+msgstr "გადაჭარბებულია მენიუების ჩადგმის მაქსიმალური სიღრმე"
+
+#: ../src/rootmenu.c:1061 ../src/rootmenu.c:1107
+msgid "missing command in menu config"
+msgstr "მენიუს კონფიგურაციას ბრძანება აკლია"
+
+#: ../src/rootmenu.c:1089
+msgid "syntax error in menu file: END declaration missing"
+msgstr "სინტაქსის შეცდომა მენიუს ფაილში: აკლია END დეკლარაცია"
+
+#: ../src/rootmenu.c:1121
+msgid "invalid menu, no menu title given"
+msgstr "მენიუ არასწორია. მენიუს სათაურები მითითებული არაა"
+
+#: ../src/rootmenu.c:1138 ../src/rootmenu.c:1156 ../src/rootmenu.c:1164
+#: ../src/rootmenu.c:1169 ../src/rootmenu.c:1220 ../src/rootmenu.c:1251
+#, c-format
+msgid "could not open menu file \"%s\": %s"
+msgstr "გახსნის შეცდომა მენიუს ფაილისთვის \"%s\": %s"
+
+#: ../src/rootmenu.c:1173 ../src/rootmenu.c:1178
+#, c-format
+msgid "could not read menu pipe \"%s\": %s"
+msgstr "მენიუს კონვეიერის \"%s\" წაკითხვა შეუძლებელია: %s"
+
+#: ../src/rootmenu.c:1221
+msgid "pipe command for PropertyList is too long"
+msgstr "PropertyList-ის საკომუნიკაციო არხის ბრძანება მეტისმეტად გრძელია"
+
+#: ../src/rootmenu.c:1252
+msgid "pipe command is too long"
+msgstr "კომუნიკაციის არხის ბრძანება მეტისმეტად გრძელია"
+
+#: ../src/rootmenu.c:1373 ../src/rootmenu.c:1447 ../src/rootmenu.c:1492
+#: ../src/rootmenu.c:1504 ../src/rootmenu.c:1515
+#, c-format
+msgid "out of memory while constructing directory menu %s"
+msgstr "არასაკმარისი მეხსიერება საქაღალდის მენიუს %s აგებისას"
+
+#: ../src/rootmenu.c:1384
+#, c-format
+msgid "%s:could not stat file \"%s\" in menu directory"
+msgstr "%s:აღმოჩენის შეცდომა ფაილისთვის \"%s\" მენიუს საქაღალდისთვის"
+
+#: ../src/rootmenu.c:1456
+#, c-format
+msgid "ignoring directory menu entry with '\"' in its path: %s/%s"
+msgstr "გამოიტოვება საქაღალდის მენიუს პუნქტი '\"'-ით ბილიკში: %s/%s"
+
+#: ../src/rootmenu.c:1556
+msgid "Commands"
+msgstr "ბრძანებები"
+
+#: ../src/rootmenu.c:1559
+msgid "Restart"
+msgstr "გადატვირთვა"
+
+#: ../src/rootmenu.c:1560
+msgid "Exit..."
+msgstr "გასვლა..."
+
+#: ../src/rootmenu.c:1583
+#, c-format
+msgid "%s:maximum menu nesting depth exceeded"
+msgstr "%s:გადაჭარბებულია მენიუების ჩადგმის მაქსიმალური სიღრმე"
+
+#: ../src/rootmenu.c:1607
+#, c-format
+msgid "could not find menu file \"%s\" referenced in WMRootMenu"
+msgstr "ვერ ვიპოვე WMRootMenu-დან მიმართული მენიუს ფაილი \"%s\""
+
+#: ../src/rootmenu.c:1613
+#, c-format
+msgid "could not access menu \"%s\" referenced in WMRootMenu"
+msgstr "WMRootMenu-დან მიმართულ ფაილზე \"%s\" წვდომა აკრძალულია"
+
+#: ../src/rootmenu.c:1626
+#, c-format
+msgid ""
+"using default menu file \"%s\" as the menu referenced in WMRootMenu could "
+"not be found "
+msgstr ""
+"ჩაიტვირთება ნაგულისხმევი მენიუს ფაილი \"%s\" რადგან მენიუ, რომელსაც "
+"WMRootMenu-დან მიმართავენ, აღმოჩენილი არაა "
+
+#: ../src/rootmenu.c:1656 ../src/rootmenu.c:1716
+#, c-format
+msgid "%s:format error in root menu configuration \"%s\""
+msgstr "%s:ფორმატის შეცდომა ძირითადი მენიუს კონფიგურაციაში \"%s\""
+
+#: ../src/rootmenu.c:1844
+msgid "the applications menu could not be loaded, using a fallback"
+msgstr "აპლიკაციების მენიუს ჩატვირთვა ვერ მოხერხდა, გამოიყენება სათადო"
+
+#: ../src/rootmenu.c:1847
+msgid ""
+"The applications menu could not be loaded. Look at the console output for a "
+"detailed description of the errors."
+msgstr ""
+"აპლიკაციების მენიუს ჩატვირთვა შეუძლებელია. შეცდომების დეტალური აღწერის "
+"მისაღებად შეხედეთ კონსოლში გამოტანილ ინფორმაციას."
+
+#: ../src/screen.c:152
+msgid "another window manager is running"
+msgstr "გაშვებულია სხვა ფანჯრების მმართველი"
+
+#: ../src/screen.c:153
+msgid "use the --replace flag to replace it"
+msgstr "ჩასანაცვლებლად გამოიყენეთ პარამეტრი --replace"
+
+#: ../src/screen.c:189
+#, c-format
+msgid "waiting %ds for other window manager to exit"
+msgstr "%d წამი ველოდები სხვა ფანჯრების მმართველის დასრულებას"
+
+#: ../src/screen.c:202
+msgid "other window manager hasn't exited!"
+msgstr "სხვა ფანჯრების მმართველს მუშაობა არ დაუსრულებია!"
+
+#: ../src/screen.c:210
+msgid "replacing the other window manager"
+msgstr "სხვა ფანჯრების მმართველის ჩანაცვლება"
+
+#: ../src/screen.c:259
+#, c-format
+msgid "could not find button pixmap \"%s\" in PixmapPath"
+msgstr "ღილაკის რასტრული ფაილი \"%s\" ვერ მოიძებნა PixmapPath-ში"
+
+#: ../src/screen.c:265
+#, c-format
+msgid "could not load button pixmap \"%s\": %s"
+msgstr "ღილაკის რასტრული ფაილის \"%s\" ჩატვირთვა შეუძლებელია: %s"
+
+#: ../src/screen.c:507
+#, c-format
+msgid "could not load logo image for panels: %s"
+msgstr "პანელებისთვის ლოგოს გამოსახულების ჩატვირთვა შეუძლებელია: %s"
+
+#: ../src/screen.c:670
+#, c-format
+msgid "can't create Context on screen %d, %s"
+msgstr "კონტექსტის შექმნის შეცდომა ეკრანზე %d, %s"
+
+#: ../src/screen.c:688
+msgid "could not initialize WINGs widget set"
+msgstr "WINGs-ის ვიჯეტების ნაკრების ინიციალიზაცია ჩავარდა"
+
+#: ../src/screen.c:1043
+#, c-format
+msgid "could not save session state in %s"
+msgstr "%s-ში სესიის მდებარეობის შენახვა შეუძლებელია"
+
+#: ../src/screen.c:1323
+msgid "Unable to find a proper screenshot image format"
+msgstr "სწორი ეკრანის ანაბეჭდის გამოსახულების ფორმატის პოვნა შეუძლებელია"
+
+#: ../src/screen.c:1330
+msgid "Unable to create screenshot directory"
+msgstr "ეკრანის ანაბეჭდების საქაღალდის შექმნა შეუძლებელია"
+
+#: ../src/screen.c:1340
+msgid ""
+"Unsafe screenshot filename template, it should not contain a path separator"
+msgstr ""
+"სახიფათო ეკრანის ანაბეჭდის ფაილის სახელის ნიმუში. ის ბილიკის გამყოფს არ უნდა "
+"შეიცავდეს"
+
+#: ../src/screen.c:1358
+msgid "Could not generate a free screenshot filename"
+msgstr "თავისუფალი ეკრანის ანაბეჭდის ფაილის სახელის გენერაცია შეუძლებელია"
+
+#: ../src/stacking.c:90
+msgid "could not get window list!!"
+msgstr "ფანჯრების სიის მიღება შეუძლებელია!!"
+
+#: ../src/startup.c:123
+#, c-format
+msgid "internal X error: %s"
+msgstr "შიდა X-ის შეცდომა: %s"
+
+#: ../src/startup.c:476 ../src/startup.c:502 ../src/startup.c:513
+#, c-format
+msgid "could not read domain \"%s\" from defaults database"
+msgstr "ნაგულისხმევების მონაცემთა ბაზიდან დომენის \"%s\" წაკითხვა შეუძლებელია"
+
+#: ../src/startup.c:494
+#, c-format
+msgid "icon size is configured to %i, but it's too small. Using 16 instead"
+msgstr "ხატულას ზომა დაყენებულია %i-ზე, მაგრამ ძალიან პატარაა. გამოიყენება 16"
+
+#: ../src/startup.c:579
+msgid "RandR extension is not available"
+msgstr "გაფართოება RandR ხელმისაწვდომი არაა"
+
+#: ../src/startup.c:581
+msgid "RandR version check failed, RandR disabled"
+msgstr "RandR-ის ვერსიის შემოწმება ჩავარდა. RandR გათიშულია"
+
+#: ../src/startup.c:583
+#, c-format
+msgid "RandR version %u.%u found but RandR version >=1.5 required"
+msgstr "ნაპოვნია RandR-ის ვერსია %u.%u, მაგრამ საჭიროა RandR-ის ვერსია >=1.5"
+
+#: ../src/startup.c:611
+msgid "XKB is not supported. KbdModeLock is automatically disabled."
+msgstr "XKB მხარდაჭერილი არაა. KbdModeLock ავტომატურად გაითიშა."
+
+#: ../src/startup.c:651
+msgid "it seems that there is already a window manager running"
+msgstr "როგორც ჩანს, ფანჯრების მმართველი უკვე გაშვებულია"
+
+#: ../src/startup.c:657
+#, c-format
+msgid "could not manage screen %i"
+msgstr "%i-ე ეკრანის მართვა შეუძლებელია"
+
+#: ../src/startup.c:766
+msgid "could not manage any screen"
+msgstr "ეკრანების მართვა შეუძლებელია"
+
+#: ../src/superfluous.c:334
+#, c-format
+msgid "Impossible direction: %d"
+msgstr "შეუძლებელი მიმართულება: %d"
+
+#: ../src/texture.c:290
+#, c-format
+msgid "image file \"%s\" used as texture could not be found."
+msgstr "ტექსტურად გამოყენებული გამოსახულების ფაილი \"%s\" აღმოჩენილი არაა."
+
+#: ../src/texture.c:295
+#, c-format
+msgid "could not load texture pixmap \"%s\":%s"
+msgstr "ჩატვირთვის შეცდომა ტექსტური pixmap-ისთვის \"%s\":%s"
+
+#: ../src/texture.c:417
+msgid "could not allocate image buffer"
+msgstr "გამოსახულების ბუფერის გამოყოფა შეუძლებელია"
+
+#: ../src/wconfigmodel.c:59 ../src/wdefaults.c:187 ../src/wdefaults.c:292
+#, c-format
+msgid "unknown FrameInnerBorderSides token \"%s\""
+msgstr "უცნობი FrameInnerBorderSides ტოკენი \"%s\""
+
+#: ../src/wconfigmodel.c:147 ../src/wconfigmodel.c:334
+#: ../src/wconfigmodel.c:624
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be String."
+msgstr ""
+"პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს სტრიქონი."
+
+#: ../src/wconfigmodel.c:190
+#, c-format
+msgid "can't convert \"%s\" to boolean for key \"%s\""
+msgstr ""
+"\"%s\"-ის გადაყვანა ლოგიკურ მნიშვნელობაზე გასაღებისთვის \"%s\" შეუძლებელია"
+
+#: ../src/wconfigmodel.c:200
+#, c-format
+msgid "can't convert \"%s\" to integer for key \"%s\""
+msgstr "\"%s\"-ის გადაყვანა მთელ რიცხვში გასაღებისთვის \"%s\" შეუძლებელია"
+
+#: ../src/wconfigmodel.c:205
+#, c-format
+msgid "integer value \"%s\" for key \"%s\" is outside [%d..%d]"
+msgstr ""
+"მთელი მნიშვნელობა \"%s\" გასაღებისთვის \"%s\" დიაპაზონს გარეთაა [%d..%d]"
+
+#: ../src/wconfigmodel.c:244
+#, c-format
+msgid "wrong option value for key \"%s\"; got \"%s\", should be one of %s."
+msgstr ""
+"არასწორი პარამეტრის მნიშვნელობა გასაღებისთვის \"%s\". მივიღე \"%s\", უნდა "
+"იყოს %s."
+
+#: ../src/wconfigmodel.c:352
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of paths."
+msgstr ""
+"პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს ბილიკების "
+"მასივი."
+
+#: ../src/wconfigmodel.c:359 ../src/wconfigmodel.c:408
+#: ../src/wconfigmodel.c:466
+#, c-format
+msgid "Incorrect number of elements in array for key \"%s\"."
+msgstr "ელემენტების არასწორი რაოდენობა მასივში გასაღებისთვის \"%s\"."
+
+#: ../src/wconfigmodel.c:369
+#, c-format
+msgid "Wrong value for key \"%s\". Should be an array of paths."
+msgstr ""
+"დაუშვებელი მნიშვნელობა გასაღებისთვის \"%s\". უნდა იყოს ბილიკების მასივი."
+
+#: ../src/wconfigmodel.c:403
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be Coordinate."
+msgstr ""
+"პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს კოორდინატი."
+
+#: ../src/wconfigmodel.c:416
+#, c-format
+msgid "Wrong value for key \"%s\". Should be Coordinate."
+msgstr "არასწორი მნიშვნელობა გასაღებისთვის \"%s\". უნდა იყოს კოორდინატი."
+
+#: ../src/wconfigmodel.c:423
+#, c-format
+msgid "can't convert array to integers for \"%s\"."
+msgstr "მასივის მთელ რიცხვებში გადაყვანა შეუძლებელია \"%s\"-ისთვის."
+
+#: ../src/wconfigmodel.c:455
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of strings."
+msgstr ""
+"პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს სტრიქონების "
+"მასივი."
+
+#: ../src/wconfigmodel.c:481
+#, c-format
+msgid "Wrong value for key \"%s\". Should be an array of strings."
+msgstr ""
+"დაუშვებელი მნიშვნელობა გასაღებისთვის \"%s\". უნდა იყოს სტრიქონების მასივი."
+
+#: ../src/wconfigmodel.c:541 ../src/wconfigmodel.c:654
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be an array."
+msgstr "პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს მასივი."
+
+#: ../src/wconfigmodel.c:551
+#, c-format
+msgid "Invalid number of arguments for option \"%s\""
+msgstr "არგუმენტების არასწორი რაოდენობა პარამეტრისთვის \"%s\""
+
+#: ../src/wconfigmodel.c:557 ../src/wconfigmodel.c:566
+#: ../src/wconfigmodel.c:583 ../src/wconfigmodel.c:596
+#, c-format
+msgid "Invalid arguments for option \"%s\""
+msgstr "არასწორი არგუმენტები პარამეტრისთვის \"%s\""
+
+#: ../src/wconfigmodel.c:610
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be Key spec."
+msgstr ""
+"პარამეტრის დაუშვებელი ფორმატი გასაღებისთვის \"%s\". უნდა იყოს ღილაკის "
+"სპეციფიკაცია."
+
+#: ../src/wconfigmodel.c:630
+#, c-format
+msgid "Empty color for key \"%s\"."
+msgstr "ცარიელი ფერი გასაღებისთვის \"%s\"."
+
+#: ../src/wconfigmodel.c:807
+msgid ""
+"\"MinimizeAllKey\" was renamed to \"MiniaturizeAllKey\"; update your domain"
+msgstr ""
+"\"MinimizeAllKey\" გადაერქვა \"MiniaturizeAllKey\"-ად; განაახლეთ თქვენი "
+"დომენი"
+
+#: ../src/wdefaults.c:1169
+#, c-format
+msgid "icon \"%s\" doesn't exist, check your config files"
+msgstr "ხატულა \"%s\" არ არსებობს. შეამოწმეთ თქვენი კონფიგურაციის ფაილები"
+
+#: ../src/wdefaults.c:1203
+#, c-format
+msgid "error loading image file \"%s\": %s"
+msgstr "გამოსახულების ფაილის \"%s\" ჩატვირთვის შეცდომა: %s"
+
+#: ../src/wdefaults.c:1239
+#, c-format
+msgid "could not find default icon \"%s\""
+msgstr "ვერ ვიპოვე ნაგულისხმევი ხატულა \"%s\""
+
+#: ../src/window.c:4732 ../src/window.c:4916
+msgid ""
+"The NumLock, ScrollLock or similar key seems to be turned on. Turn it off or "
+"some mouse actions and keyboard shortcuts will not work."
+msgstr ""
+"როგორც ჩანს, ჩართულია NumLock, ScrollLock, ან მსგავსი ღილაკი. გამორთეთ "
+"ისინი, ან ზოგიერთი თაგუნას ქმედება და კლავიატურის მალსახმობი არ იმუშავებს."
+
+#: ../src/winmenu.c:90 ../src/winmenu.c:867
+msgid "Maximize"
+msgstr "გადიდება"
+
+#: ../src/winmenu.c:91 ../src/winmenu.c:877
+msgid "Fullscreen"
+msgstr "სრული ეკრანი"
+
+#: ../src/winmenu.c:92
+msgid "Region snap"
+msgstr "ზონაზე მიყრდნობა"
+
+#: ../src/winmenu.c:93
+msgid "Edge snap"
+msgstr "კიდეზე მიყრდნობა"
+
+#: ../src/winmenu.c:94 ../src/winmenu.c:856
+msgid "Miniaturize"
+msgstr "მინიატურიზაცია"
+
+#: ../src/winmenu.c:95 ../src/winmenu.c:894
+msgid "Shade"
+msgstr "დაჩრდილვა"
+
+#: ../src/winmenu.c:97
+msgid "Resize/Move"
+msgstr "ზომის შეცვლა/გადატანა"
+
+#: ../src/winmenu.c:98 ../src/winmenu.c:905
+msgid "Select"
+msgstr "არჩევა"
+
+#: ../src/winmenu.c:100
+msgid "Attributes..."
+msgstr "ატრიბუტები..."
+
+#: ../src/winmenu.c:101
+msgid "Options"
+msgstr "მორგება"
+
+#: ../src/winmenu.c:102
+msgid "Attach as Tab..."
+msgstr "ჩანართად მიმაგრება..."
+
+#: ../src/winmenu.c:103
+msgid "Detach Tab"
+msgstr "ჩანართის მოხსნა"
+
+#: ../src/winmenu.c:104
+msgid "Close Tab Group"
+msgstr "ჩანართების ჯგუფის დახურვა"
+
+#: ../src/winmenu.c:106
+msgid "Close"
+msgstr "დახურვა"
+
+#: ../src/winmenu.c:130 ../src/winspector.c:129
+msgid "Auto-hide on unfocus"
+msgstr "ავტომატური დამალვა ფოკუსის დაკარგვისას"
+
+#: ../src/winmenu.c:131 ../src/winspector.c:126
+msgid "Auto-miniaturize on unfocus"
+msgstr "ავტომატური მინიატურიზაცია ფოკუსის დაკარგვისას"
+
+#: ../src/winmenu.c:132
+msgid "Keep at bottom"
+msgstr "ქვემოთ შენარჩუნება"
+
+#: ../src/winmenu.c:133
+msgid "Keep on top"
+msgstr "ყველაზე ზემოთ ჩვენება"
+
+#: ../src/winmenu.c:134
+msgid "Lock position"
+msgstr "მდებარეობის დაბლოკვა"
+
+#: ../src/winmenu.c:135
+msgid "Lock size"
+msgstr "ზომის დაბლოკვა"
+
+#: ../src/winmenu.c:137
+msgid "Skip switch panel"
+msgstr "გადამრთველი პანელის გამოტოვება"
+
+#: ../src/winmenu.c:138
+msgid "Skip window list"
+msgstr "ფანჯრების სიის გამოტოვება"
+
+#: ../src/winmenu.c:150
+msgid "Vertical"
+msgstr "ვერტიკალური"
+
+#: ../src/winmenu.c:151
+msgid "Horizontal"
+msgstr "ჰორიზონტალური"
+
+#: ../src/winmenu.c:152
+msgid "Central"
+msgstr "ცენტრალური"
+
+#: ../src/winmenu.c:153
+msgid "Left half"
+msgstr "მარცხენა ნახევარი"
+
+#: ../src/winmenu.c:154
+msgid "Right half"
+msgstr "მარჯვენა ნახევარი"
+
+#: ../src/winmenu.c:155
+msgid "Top half"
+msgstr "ზედა ნახევარი"
+
+#: ../src/winmenu.c:156
+msgid "Bottom half"
+msgstr "ქვედა ნახევარი"
+
+#: ../src/winmenu.c:157
+msgid "Top left"
+msgstr "ზედა მარცხენა"
+
+#: ../src/winmenu.c:158
+msgid "Top right"
+msgstr "ზედა მარჯვენა"
+
+#: ../src/winmenu.c:159
+msgid "Bottom left"
+msgstr "ქვედა მარცხენა"
+
+#: ../src/winmenu.c:160
+msgid "Bottom right"
+msgstr "ქვედა მარჯვენა"
+
+#: ../src/winmenu.c:161 ../src/winmenu.c:681
+msgid "Tiled"
+msgstr "მოზაიკა"
+
+#: ../src/winmenu.c:260
+msgid "Move left"
+msgstr "გადატანა მარცხნივ"
+
+#: ../src/winmenu.c:261
+msgid "Move right"
+msgstr "გადატანა მარჯვნივ"
+
+#: ../src/winmenu.c:262
+msgid "Move up"
+msgstr "გადატანა ზემოთ"
+
+#: ../src/winmenu.c:263
+msgid "Move down"
+msgstr "გადატანა ქვემოთ"
+
+#: ../src/winmenu.c:264
+msgid "Grow left"
+msgstr "გაზრდა მარცხნივ"
+
+#: ../src/winmenu.c:265
+msgid "Grow right"
+msgstr "გაზრდა მარჯვნივ"
+
+#: ../src/winmenu.c:266
+msgid "Grow up"
+msgstr "გაზრდა ზემოთ"
+
+#: ../src/winmenu.c:267
+msgid "Grow down"
+msgstr "გაზრდა ქვემოთ"
+
+#: ../src/winmenu.c:268
+msgid "Shrink left"
+msgstr "შემცირება მარცხნივ"
+
+#: ../src/winmenu.c:269
+msgid "Shrink right"
+msgstr "შემცირება მარჯვნივ"
+
+#: ../src/winmenu.c:270
+msgid "Shrink up"
+msgstr "შემცირება ზემოთ"
+
+#: ../src/winmenu.c:271
+msgid "Shrink down"
+msgstr "შემცირება ქვემოთ"
+
+#: ../src/winmenu.c:374
+msgid ""
+"This will kill the application.\n"
+"Any unsaved changes will be lost.\n"
+"Please confirm."
+msgstr ""
+"ეს აპლიკაციას მოკლავს.\n"
+"შეუნახავი ცვლილებები დაიკარგება.\n"
+"დაადასტურეთ."
+
+#: ../src/winmenu.c:552
+#, c-format
+msgid "Set Shortcut %i"
+msgstr "%i-ე მალსახმობის დაყენება"
+
+#: ../src/winmenu.c:679
+msgid "Untiled"
+msgstr "მოზაიკის გარეშე"
+
+#: ../src/winmenu.c:710 ../src/winmenu.c:735 ../src/winmenu.c:761
+#: ../src/winmenu.c:782
+msgid "could not create submenu for window menu"
+msgstr "ფანჯრის მენიუსთვის ქვემენიუს შექმნა შეუძლებელია"
+
+#: ../src/winmenu.c:853
+msgid "Deminiaturize"
+msgstr "ჩაკეცვის გაუქმება"
+
+#: ../src/winmenu.c:863
+msgid "Unmaximize"
+msgstr "საწყის ზომაზე დაბრუნება"
+
+#: ../src/winmenu.c:874
+msgid "Exit Fullscreen"
+msgstr "სრული ეკრანიდან გასვლა"
+
+#: ../src/winmenu.c:891
+msgid "Unshade"
+msgstr "განჩრდილვა"
+
+#: ../src/winmenu.c:902
+msgid "Deselect"
+msgstr "არჩევის მოხსნა"
+
+#: ../src/winspector.c:97
+msgid "Disable titlebar"
+msgstr "სათაურის ზოლის გამორთვა"
+
+#: ../src/winspector.c:98
+msgid ""
+"Remove the titlebar of this window.\n"
+"To access the window commands menu of a window\n"
+"without its titlebar, press Control+Esc (or the\n"
+"equivalent shortcut, if you changed the default\n"
+"settings)."
+msgstr ""
+"ამ ფანჯრის სათაურის ზოლის მოცილება.\n"
+"ფანჯრის ბრძანებების მენიუსთან სათაურის\n"
+"ზოლის გარეშე წვდომისთვის დააჭირეთ ღილაკს\n"
+"Ctrl+Esc (ან ეკვივალენტურ მალსახმობს, თუ \n"
+"ნაგულისხმევი მალსახმობი შეცვალეთ)."
+
+#: ../src/winspector.c:104
+msgid "Disable resizebar"
+msgstr "ზომის შეცვლის ზოლის გამორთვა"
+
+#: ../src/winspector.c:105
+msgid "Remove the resizebar of this window."
+msgstr "ამ ფანჯრის ზომის შეცვლის ზოლის მოცილება."
+
+#: ../src/winspector.c:107
+msgid "Disable close button"
+msgstr "დახურვის ღილაკის გამორთვა"
+
+#: ../src/winspector.c:108
+msgid "Remove the `close window' button of this window."
+msgstr "'ფანჯრის დახურვის' ღილაკის მოცილება ამ ფანჯრიდან."
+
+#: ../src/winspector.c:110
+msgid "Disable miniaturize button"
+msgstr "ჩაკეცვის ღილაკის გამორთვა"
+
+#: ../src/winspector.c:111
+msgid "Remove the `miniaturize window' button of the window."
+msgstr "'ფანჯრის ჩაკეცვის' ღილაკის მოცილება ფანჯრიდან."
+
+#: ../src/winspector.c:113
+msgid "Disable border"
+msgstr "საზღვრის გამორთვა"
+
+#: ../src/winspector.c:114
+msgid "Remove the 1 pixel black border around the window."
+msgstr "1 პიქსელიანი შავი საზღვრის მოცილება ფანჯრის გარშემო."
+
+#: ../src/winspector.c:116
+msgid "Keep on top (floating)"
+msgstr "ზემოდან შენარჩუნება (მცურავი)"
+
+#: ../src/winspector.c:117
+msgid ""
+"Keep the window over other windows, not allowing\n"
+"them to cover it."
+msgstr ""
+"ამ ფანჯრის ყველა სხვა ფანჯარაზე ზემთ შენარჩუნება ისე,\n"
+"რომ სხვები მას ვერ დაფარავენ."
+
+#: ../src/winspector.c:120
+msgid "Keep at bottom (sunken)"
+msgstr "ქვემოთ შენარჩუნება (ჩაძირული)"
+
+#: ../src/winspector.c:121
+msgid "Keep the window under all other windows."
+msgstr "ფანჯრის შენარჩუნება ყველა სხვა ფანჯრის ქვეშ."
+
+#: ../src/winspector.c:124
+msgid "Make window present in all workspaces."
+msgstr "ფანჯრის გამოჩენა ყველა სამუშაო სივრცეში."
+
+#: ../src/winspector.c:127
+msgid "Miniaturize the window automatically when it loses focus."
+msgstr "ფანჯრის ავტომატური მინიატურიზაცია ფოკუსის დაკარგვისას."
+
+#: ../src/winspector.c:130
+msgid "Hide the window automatically when it loses focus."
+msgstr "ფანჯრის ავტომატური დამალვა ფოკუსის დაკარგვისას."
+
+#: ../src/winspector.c:132
+msgid "Start miniaturized"
+msgstr "ჩაკეცილად გაშვება"
+
+#: ../src/winspector.c:133
+msgid ""
+"Make the window be automatically miniaturized when it's\n"
+"first shown."
+msgstr ""
+"ფანჯრის ავტომატურად ჩაკეცილად ჩვენება მისი\n"
+"პირველად ჩვენებისას."
+
+#: ../src/winspector.c:136
+msgid "Start maximized"
+msgstr "გაშლილად გაშვება"
+
+#: ../src/winspector.c:137
+msgid ""
+"Make the window be automatically maximized when it's\n"
+"first shown."
+msgstr ""
+"ფანჯრის ავტომატურად მთელ ეკრანზე გაშლა მისი\n"
+"პირველად ჩვენებისას."
+
+#: ../src/winspector.c:140
+msgid "Full screen maximization"
+msgstr "სრულ ეკრანზე გაშლა"
+
+#: ../src/winspector.c:141
+msgid ""
+"Make the window use the whole screen space when it's\n"
+"maximized. The titlebar and resizebar will be moved\n"
+"to outside the screen."
+msgstr ""
+"ფანჯრისთვის მთელი ეკრანის სივრცის დათმობა,\n"
+"როცა ის გაშლილია. სათაურის და ზომის შეცვლის ზოლები\n"
+"ეკრანს გარეთ იქნება ნაჩვენები."
+
+#: ../src/winspector.c:145
+msgid "Swallow child window"
+msgstr "შვილობილი ფანჯრის ჩაქროლა"
+
+#: ../src/winspector.c:146
+msgid ""
+"When a child process of this window maps its own window,\n"
+"hide this one and place the child where it was. When the\n"
+"child closes, this window reappears."
+msgstr ""
+"როცა ამ ფანჯრის შვილობილი პროცესი საკუთარ ფანჯარას შექმნის,\n"
+"ეს ფანჯარა დაიმალება და შვილი მის ადგილას მოთავსდება.\n"
+"შვილის დახურვისას ეს ფანჯარა დაბრუნდება."
+
+#: ../src/winspector.c:151
+msgid "Do not bind keyboard shortcuts"
+msgstr "კლავიატურის მალსახმობების არმიბმა"
+
+#: ../src/winspector.c:152
+msgid ""
+"Do not bind keyboard shortcuts from Window Maker\n"
+"when this window is focused. This will allow the\n"
+"window to receive all key combinations regardless\n"
+"of your shortcut configuration."
+msgstr ""
+"Window Maker-ის კლავიატურის მალსახმობების გამორთვა,\n"
+"როცა ამ ფანჯარას ფოკუსი აქვს. ეს ფანჯარას საშუალებას მისცემს,\n"
+"თქვენი კლავიატურის მალსახმობების კონფიგურაციის მიუხედავად\n"
+"ყველა ღილაკის კომბინაცია მიიღოს."
+
+#: ../src/winspector.c:157
+msgid "Do not bind mouse clicks"
+msgstr "თაგუნას წკაპების არმიბმა"
+
+#: ../src/winspector.c:158
+msgid ""
+"Do not bind mouse actions, such as `Alt'+drag\n"
+"in the window (when Alt is the modifier you have\n"
+"configured)."
+msgstr ""
+"თაგუნას ქმედებების, როგორიცაა 'Alt'+გადათრევა\n"
+"გათიშვა ფანჯარაში (როცა Alt წარმოადგენს მოდიფიკატორს,\n"
+"რომელიც მითითებული გაქვთ)."
+
+#: ../src/winspector.c:162
+msgid "Do not show in the window list"
+msgstr "ფანჯრების სიაში არჩვენება"
+
+#: ../src/winspector.c:163
+msgid "Do not list the window in the window list menu."
+msgstr "ფანჯრის არჩასმა ფანჯრების სიის მენიუში."
+
+#: ../src/winspector.c:165
+msgid "Do not show in the switch panel"
+msgstr "პანელის გადართვაში არჩვენება"
+
+#: ../src/winspector.c:166
+msgid "Do not include in switch panel while cycling windows."
+msgstr "გადართვის პანელის არგამოჩენა ფანჯრებს შორის გადართვისას."
+
+#: ../src/winspector.c:168
+msgid "Do not let it take focus"
+msgstr "ფოკუსის აღების აკრძალვა"
+
+#: ../src/winspector.c:169
+msgid ""
+"Do not let the window take keyboard focus when you\n"
+"click on it."
+msgstr ""
+"ფანჯრისთვის კლავიატურის ფოკუსის მიღების\n"
+"უფლების არმიცემა, როცა ზედ დააწკაპუნებთ."
+
+#: ../src/winspector.c:172
+msgid "Keep inside screen"
+msgstr "ეკრანის შიგნით შენარჩუნება"
+
+#: ../src/winspector.c:173
+msgid ""
+"Do not allow the window to move itself completely\n"
+"outside the screen. For bug compatibility.\n"
+msgstr ""
+"ფანჯრისთვის თავისი თავის ეკრანსმიღმა\n"
+"სრულად გადატანის უფლების არმიცემა. შეცდომებთან თავსებადობისთვის.\n"
+
+#: ../src/winspector.c:176
+msgid "Ignore 'Hide Others'"
+msgstr "'სხვების დამალვის' იგნორი"
+
+#: ../src/winspector.c:177
+msgid ""
+"Do not hide the window when issuing the\n"
+"`HideOthers' command."
+msgstr ""
+"ფანჯრის არდამალვა\n"
+"'HideOthers' ბრძანების გაცემისას."
+
+#: ../src/winspector.c:180
+msgid "Ignore 'Save Session'"
+msgstr "'სესიის შენახვის' იგნორი"
+
+#: ../src/winspector.c:181
+msgid ""
+"Do not save the associated application in the\n"
+"session's state, so that it won't be restarted\n"
+"together with other applications when Window Maker\n"
+"starts."
+msgstr ""
+"არ მოხდეს აპლიკაციის შენახვა სესიის\n"
+"მდგომარეობაში. ასეთ შემთხვევაში ის არ\n"
+"გაეშვება სხვა აპლიკაციებთან ერთად\n"
+"Window Maker-ის ჩატვირთვისას."
+
+#: ../src/winspector.c:186
+msgid "Emulate application icon"
+msgstr "აპლიკაციის ხატულას ემულაცია"
+
+#: ../src/winspector.c:187
+msgid ""
+"Make this window act as an application that provides\n"
+"enough information to Window Maker for a dockable\n"
+"application icon to be created."
+msgstr ""
+"ამ ფანჯრის გადაკეთება ისე, თითქოს ის\n"
+"Window Maker-ს აწვდის საკმარის ინფორმაციას,\n"
+"რომ შეიქმნას მიმაგრებადი აპლიკაციის ხატულა."
+
+#: ../src/winspector.c:191
+msgid "Focus across workspaces"
+msgstr "ფოკუსი სამუშაო სივრცეებს შორის"
+
+#: ../src/winspector.c:192
+msgid ""
+"Allow Window Maker to switch workspace to satisfy\n"
+"a focus request (annoying)."
+msgstr ""
+"ფოკუსის მოთხოვნისას Window Maker-ისთვის\n"
+"სამუშაო სივრცის გადართვის უფლების მიცემა (თავს მოგაბეზრებთ)."
+
+#: ../src/winspector.c:195
+msgid "Do not let it be minimized"
+msgstr "ჩაკეცვის უფლების აკრძალვა"
+
+#: ../src/winspector.c:196
+msgid ""
+"Do not let the window of this application be\n"
+"minimized.\n"
+msgstr ""
+"ამ აპლიკაციის ფანჯრის ჩაკეტვის\n"
+"აკრძალვა.\n"
+
+#: ../src/winspector.c:199
+msgid "Ignore decoration changes"
+msgstr "დეკორაციის ცვლილებების იგნორი"
+
+#: ../src/winspector.c:200
+msgid ""
+"Ignore any request from the application to change\n"
+"window decorations (like hiding the titlebar).\n"
+msgstr ""
+"აპლიკაციებიდან ფანჯრის დეკორაციების შეცვლის\n"
+"(მაგ: სათაურის ზოლის დამალვის) მოთხოვნების იგნორი.\n"
+
+#: ../src/winspector.c:203
+msgid "Do not allow tab grouping"
+msgstr "ჩანართებად დაჯგუფების აკრძალვა"
+
+#: ../src/winspector.c:204
+msgid ""
+"Refuse this window as either the dragged window or the\n"
+"drop target when attaching windows into a tab group."
+msgstr ""
+"ამ ფანჯრის უარყოფა, როგორც გადმოსატანის, ისე\n"
+"მისაღების, როცა ფანჯრები ჩანართების ჯგუფში\n"
+"ემატება."
+
+#: ../src/winspector.c:207
+msgid "Do not tile"
+msgstr "მოზაიკაში არ ჩართო"
+
+#: ../src/winspector.c:208
+msgid ""
+"Exempt this window from the workspace tiling layout.\n"
+"It stays floating and the layout reflows around it."
+msgstr ""
+"ამ ფანჯრის გამოყოფა სამუშაო სივრცის მოზაიკის\n"
+"განლაგებიდან. ის მოცურავე დარჩება და განლაგება\n"
+"მის გარშემო ჩამოყალიბდება."
+
+#: ../src/winspector.c:212
+msgid "Disable language button"
+msgstr "ენის ღილაკის გამორთვა"
+
+#: ../src/winspector.c:213
+msgid "Remove the `toggle language' button of the window."
+msgstr "'ენის გადართვის' ღილაკის მოცილება ფანჯრიდან."
+
+#: ../src/winspector.c:217
+msgid "Start hidden"
+msgstr "დამალულად გაშვება"
+
+#: ../src/winspector.c:218
+msgid "Automatically hide application when it's started."
+msgstr "აპლიკაციის ავტომატური დამალვა მისი გაშვებისას."
+
+#: ../src/winspector.c:220
+msgid "No application icon"
+msgstr "აპლიკაციის ხატულას გარეშე"
+
+#: ../src/winspector.c:221
+msgid ""
+"Disable the application icon for the application.\n"
+"Note that you won't be able to dock it anymore,\n"
+"and any icons that are already docked will stop\n"
+"working correctly."
+msgstr ""
+"აპლიკაციისთვის ხატულას გათიშვა. გაითვალისწინეთ,\n"
+"რომ მის დოკზე მიმაგრებას ვეღარ მოახერხებთ\n"
+"და ყველა ხატულა, რომელიც უკვე მიმაგრებულია,\n"
+"სწორად მუშაობას შეწყვეტს."
+
+#: ../src/winspector.c:226
+msgid "Shared application icon"
+msgstr "გაზიარებული აპლიკაციის ხატულა"
+
+#: ../src/winspector.c:227
+msgid ""
+"Use a single shared application icon for all of\n"
+"the instances of this application.\n"
+msgstr ""
+"ერთი გაზიარებული აპლიკაციის ხატულას\n"
+"გამოყენება ამ აპლიკაციის ყველა გაშვებული ასლისთვის.\n"
+
+#: ../src/winspector.c:544
+#, c-format
+msgid "Could not find icon \"%s\" specified for this window"
+msgstr "ამ ფანჯრისთვის მითითებული ხატულა \"%s\" აღმოჩენილი არაა"
+
+#: ../src/winspector.c:567
+#, c-format
+msgid "Could not open specified icon \"%s\":%s"
+msgstr "მითითებული ხატულას \"%s\" გახსნა შეუძლებელია:%s"
+
+#: ../src/winspector.c:963
+#, c-format
+msgid ""
+"Ignore client supplied icon is set, but icon filename textbox is empty. "
+"Using client supplied icon"
+msgstr ""
+"კლიენტის მოწოდებული ხატულას იგნორი დაყენებულია, მაგრამ ხატულას ფაილის "
+"სახელის ველი ცარიელია. გამოყენებული იქნება კლიენტის მოწოდებული ხატულა"
+
+#: ../src/winspector.c:1171
+#, c-format
+msgid "Inspecting  %s.%s"
+msgstr "მოწმდება  %s.%s"
+
+#: ../src/winspector.c:1196
+msgid "Click in the window you wish to inspect."
+msgstr "დააწკაპუნეთ ფანჯარაზე, რომლის ინსპექციაც გსურთ."
+
+#: ../src/winspector.c:1221
+msgid ""
+"The configuration will apply to all\n"
+"windows that have their WM_CLASS\n"
+"property set to the above selected\n"
+"name, when saved."
+msgstr ""
+"კონფიგურაცია შენახვისას შეეხება\n"
+"ყველა ფანჯარას, რომელსაც აქვს\n"
+"დაყენებული თვისება WM_CLASS\n"
+"ყველა ზემოთ არჩეული სახელით."
+
+#: ../src/winspector.c:1244
+msgid "Save"
+msgstr "შენახვა"
+
+#: ../src/winspector.c:1252
+msgid "Apply"
+msgstr "გადატარება"
+
+#: ../src/winspector.c:1258
+msgid "Reload"
+msgstr "თავიდან ჩატვირთვა"
+
+#: ../src/winspector.c:1267 ../src/winspector.c:1277
+msgid "Window Specification"
+msgstr "ფანჯრის სპეციფიკაცია"
+
+#: ../src/winspector.c:1268
+msgid "Window Attributes"
+msgstr "ფანჯრის ატრიბუტები"
+
+#: ../src/winspector.c:1269
+msgid "Advanced Options"
+msgstr "დამატებითი პარამეტრები"
+
+#: ../src/winspector.c:1270
+msgid "Icon and Initial Workspace"
+msgstr "ხატულა და საწყისი სამუშაო სივრცე"
+
+#: ../src/winspector.c:1271
+msgid "Application Specific"
+msgstr "აპლიკაციაზე-დამოკიდებული"
+
+#: ../src/winspector.c:1284
+msgid "Defaults for all windows"
+msgstr "ნაგულისხმევი ყველა ფანჯრისთვის"
+
+#: ../src/winspector.c:1335
+msgid "Select window"
+msgstr "ფანჯრის არჩევა"
+
+#: ../src/winspector.c:1343
+msgid "Auto tab group by class"
+msgstr "ავტომატური ჩანართების ჯგუფი კლასის მიხედვით"
+
+#: ../src/winspector.c:1345
+msgid ""
+"When a new window of this class is opened and a tab group\n"
+"on the current workspace already contains a member of the\n"
+"same class, attach the new window to that group automatically."
+msgstr ""
+"როცა ამ კლასის ახალი ფანჯარა გაიხსნება და მიმდინარე\n"
+"სამუშაო სივრცეში ჩანართების ჯგუფს უკვე ჰყავს იმავე\n"
+"კლასის წევრი, ახალი ფანჯარა ავტომატურად შეუერთდება\n"
+"იმ ჯგუფს."
+
+#: ../src/winspector.c:1532
+msgid "Attributes"
+msgstr "ატრიბუტები"
+
+#: ../src/winspector.c:1612
+msgid "Advanced"
+msgstr "დამატებით"
+
+#: ../src/winspector.c:1667
+msgid "Application Icon"
+msgstr "აპლიკაციის ხატულა"
+
+#: ../src/winspector.c:1684
+msgid "Icon filename:"
+msgstr "ხატულას ფაილის სახელი:"
+
+#: ../src/winspector.c:1697
+msgid "Ignore client supplied icon"
+msgstr "კლიენტის მოწოდებული ხატულას იგნორი"
+
+#: ../src/winspector.c:1703
+msgid "Initial Workspaces"
+msgstr "საწყისი სამუშაო სივრცეები"
+
+#: ../src/winspector.c:1705
+msgid ""
+"The workspace(s) to place the window when it's first shown. An empty "
+"selection means no opinion, use the normal rules."
+msgstr ""
+"სამუშაო სივრცე(ები), სადაც ფანჯარა მოთავსდება პირველად ჩვენებისას. ცარიელი "
+"არჩევანი ნიშნავს უპირატესობის არქონას, გამოიყენება ჩვეულებრივი წესები."
+
+#: ../src/winspector.c:1713
+msgid "Nowhere in particular"
+msgstr "ზუსტად არსად"
+
+#: ../src/winspector.c:1736
+msgid "Application Attributes"
+msgstr "აპლიკაციის ატრიბუტები"
+
+#: ../src/wmspec.c:2775
+msgid ""
+" is not responding.\n"
+"\n"
+"You can wait for it to continue or force it to quit, losing any unsaved "
+"changes."
+msgstr ""
+" არ რეაგირებს.\n"
+"\n"
+"შეგიძლიათ დაელოდოთ ან ძალით დახუროთ იგი — ჩაუნახავი\n"
+"ცვლილებები დაიკარგება."
+
+#: ../src/wmspec.c:2779
+msgid "Application Not Responding"
+msgstr "აპლიკაცია არ რეაგირებს"
+
+#: ../src/wmspec.c:2780
+msgid "Force Quit"
+msgstr "ძალით დახურვა"
+
+#: ../src/wmspec.c:2780
+msgid "Wait"
+msgstr "მოლოდინი"
+
+#: ../src/workspace.c:269 ../src/workspace.c:1617
+#, c-format
+msgid "Workspace %i"
+msgstr "სამუშაო სივრცე %i"
+
+#: ../src/workspace.c:319
+#, c-format
+msgid "Workspace \"%s\" in use; cannot delete"
+msgstr "სამუშაო სივრცე \"%s\" გამოიყენება. წაშლა შეუძლებელია"
+
+#: ../src/workspace.c:1397
+#, c-format
+msgid "WorkspaceOutputs: unknown workspace \"%s\""
+msgstr "WorkspaceOutputs: უცნობი სამუშაო სივრცე \"%s\""
+
+#: ../src/workspace.c:1454
+#, c-format
+msgid "no workspace allowed on output \"%s\", created \"%s\""
+msgstr "გამოსასვლელზე \"%s\" სამუშაო სივრცე დაუშვებელია, შეიქმნა \"%s\""
+
+#: ../src/workspace.c:1471
+#, c-format
+msgid ""
+"no workspace allowed on output \"%s\" and at MAX_WORKSPACES, dropping "
+"WorkspaceOutputs pin on \"%s\""
+msgstr ""
+"გამოსასვლელზე \"%s\" სამუშაო სივრცე დაუშვებელია და მიღწეულია MAX_WORKSPACES-"
+"მდე, მოხსნილია WorkspaceOutputs-ის მიმაგრება \"%s\"-დან"
+
+#: ../src/workspace.c:1715 ../src/workspace.c:1732
+msgid "Layout"
+msgstr "განლაგება"
+
+#: ../src/workspace.c:1717
+msgid "could not create Layout menu"
+msgstr "განლაგების მენიუს შექმნა შეუძლებელია"
+
+#: ../src/workspace.c:1750
+msgid "could not create Workspace menu"
+msgstr "სამუშაო სივრცის მენიუს შექმნა შეუძლებელია"
+
+#: ../src/workspace.c:1757
+msgid "New"
+msgstr "ახალი"
+
+#: ../src/workspace.c:1758
+msgid "Destroy Last"
+msgstr "ბოლოს განადგურება"
+
+#: ../src/workspace.c:1760
+msgid "Last Used"
+msgstr "ბოლოს გამოყენებულები"
+
+#: ../src/wxkb.c:88
+#, c-format
+msgid "Alt is bound to %s, which is nonsensical"
+msgstr "Alt მიბმულია %s-ზე, რაც უაზრობაა"
+
+#: ../src/wxkb.c:91
+#, c-format
+msgid "Meta is bound to %s, which is nonsensical"
+msgstr "Meta მიბმულია %s-ზე, რაც უაზრობაა"
+
+#: ../src/wxkb.c:94
+#, c-format
+msgid "Super is bound to %s, which is nonsensical"
+msgstr "Super მიბმულია %s-ზე, რაც უაზრობაა"
+
+#: ../src/wxkb.c:97
+#, c-format
+msgid "Hyper is bound to %s, which is nonsensical"
+msgstr "Hyper მიბმულია %s-ზე, რაც უაზრობაა"
+
+#: ../src/wxkb.c:184
+msgid "XKB extension is not supported by the X server"
+msgstr "X სერვერი არ უჭერს მხარს XKB გაფართოებას"
+
+#: ../src/wxkb.c:198
+msgid "could not load the XKB keymap from the X server"
+msgstr "XKB-ის კლავიატურის რუკის X სერვერიდან ჩატვირთვა შეუძლებელია"
+
+#: ../src/wxkb.c:232
+msgid "could not reload the XKB keymap, key bindings keep the previous mapping"
+msgstr ""
+"XKB-ის კლავიატურის რუკის ხელახლა ჩატვირთვა შეუძლებელია, კლავიატურის "
+"მალსახმობები ინარჩუნებენ წინა ასახვას"
+
+#: ../src/wxkb.c:433
+#, c-format
+msgid "Can't convert keymask 0x%04X to a shortcut label"
+msgstr "ღილაკის ნიღბის 0x%04X მალსახმობების ჭდეში გადაყვანა შეუძლებელია"
+
+#: ../src/xdnd.c:207
+#, c-format
+msgid "wXDNDGetTypeList failed = %u"
+msgstr "wXDNDGetTypeList ჩავარდა = %u"
+
+#: ../src/xsmp.c:105
+msgid "lost connection to the session manager"
+msgstr "დაკარგულია კავშირი სესიის მმართველთან"
+
+#: ../src/xsmp.c:313
+msgid "could not register ICE connection watch"
+msgstr "ICE კავშირის მეთვალყურის რეგისტრაცია შეუძლებელია"
+
+#: ../src/xsmp.c:331
+#, c-format
+msgid "could not connect to the session manager: %s"
+msgstr "სესიის მმართველთან დაკავშირება შეუძლებელია: %s"
+
+#: ../src/xsettings.c:269
+#, c-format
+msgid "another XSETTINGS manager is running on screen %d"
+msgstr "ეკრანზე %d გაშვებულია სხვა XSETTINGS მმართველი"
+
+#: ../src/xsettings.c:275
+#, c-format
+msgid "could not claim the XSETTINGS selection for screen %d"
+msgstr "XSETTINGS შერჩევის დაკავება შეუძლებელია ეკრანისთვის %d"
+
+#: ../src/xsettings.c:318
+#, c-format
+msgid "another XSETTINGS manager is taking over screen %d"
+msgstr "სხვა XSETTINGS მმართველი იღებს ეკრანს %d"

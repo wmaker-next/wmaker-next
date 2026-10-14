@@ -5,7 +5,7 @@ CATALOGS = @WPREFSMOFILES@
 CLEANFILES = $(DOMAIN).pot $(CATALOGS)
 
 EXTRA_DIST = bg.po ca.po cs.po de.po es.po et.po fi.po fr.po fy.po hr.po hu.po \
-	it.po ja.po ko.po nl.po pt.po ru.po sk.po sr.po tr.po uk.po zh_CN.po   \
+	it.po ka.po ja.po ko.po nl.po pt.po ru.po sk.po sr.po tr.po uk.po zh_CN.po \
 	zh_TW.po
 
 POTFILES  = \

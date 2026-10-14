@@ -1,0 +1,171 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WRaster\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 18:45-0400\n"
+"PO-Revision-Date: 2026-09-21 05:24+0200\n"
+"Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
+"Language-Team: Georgian <(nothing)>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.9\n"
+
+msgid ""
+"wrlib: visual 0x%X is not TrueColor, indexed-colour visuals are no longer "
+"supported\n"
+msgstr ""
+"wrlib: ვიზუალი 0x%X TrueColor არ არის, ინდექსირებული ფერების ვიზუალები აღარ "
+"არის მხარდაჭერილი\n"
+
+msgid "a TrueColor visual is required"
+msgstr "საჭიროა TrueColor ვიზუალი"
+
+msgid "wrlib: error occurred while releasing shared segment, %s: %s\n"
+msgstr "wrlib: შეცდომა გაზიარებული სეგმენტის გათავისუფლებისას, %s: %s\n"
+
+msgid "wrlib: could not attach shared memory segment to server (error %d)\n"
+msgstr ""
+"wrlib: გაზიარებული მეხსიერების სეგმენტის სერვერთან მიმაგრება შეუძლებელია "
+"(შეცდომა %d)\n"
+
+msgid "wrlib: could not read HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილის \"%s\" წაკითხვა შეუძლებელია: %s\n"
+
+msgid "wrlib: no image %d in HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილში \"%s\" გამოსახულება %d არ არსებობს: %s\n"
+
+msgid "wrlib: could not decode HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილის \"%s\" დეკოდირება შეუძლებელია: %s\n"
+
+#: ../../wrlib/load.c:210
+#, c-format
+msgid "wrlib: out of memory for image cache\n"
+msgstr "wrlib: გამოსახულებების კეშისთვის მეხსიერება საკმარისი არაა\n"
+
+#: ../../wrlib/xpixmap.c:178
+#, c-format
+msgid "wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"
+msgstr ""
+"wrlib: ფუნქციისთვის RCreateImageFromDrawable გადაცემულია არასწორი ფანჯარა, "
+"ან pixman\n"
+
+#: ../../wrlib/context.c:67
+#, c-format
+msgid "wrlib: invalid value \"%s\" for %s\n"
+msgstr "wrlib: არასწორი მნიშვნელობა \"%s\" %s-ისთვის\n"
+
+#: ../../wrlib/misc.c:223
+msgid "no error"
+msgstr "შეცდომის გარეშე"
+
+#: ../../wrlib/misc.c:226
+msgid "could not open file"
+msgstr "ფაილის გახსნა შეუძლებელია"
+
+#: ../../wrlib/misc.c:229
+msgid "error reading from file"
+msgstr "ფაილიდან წაკითხვის შეცდომა"
+
+#: ../../wrlib/misc.c:232
+msgid "error writing to file"
+msgstr "ფაილში ჩაწერის შეცდომა"
+
+#. Known codes as per libWebP 0.4.1
+#: ../../wrlib/misc.c:235 ../../wrlib/load_webp.c:44
+msgid "out of memory"
+msgstr "არასაკმარისი მეხსიერება"
+
+#: ../../wrlib/misc.c:238
+msgid "invalid or corrupted image file"
+msgstr "არასწორი, ან დაზიანებული გამოსახულების ფაილი"
+
+#: ../../wrlib/misc.c:241
+msgid "image format is not supported"
+msgstr "გამოსახულების ფორმატი მხარდაჭერილი არაა"
+
+#: ../../wrlib/misc.c:244
+msgid "file does not contain requested image index"
+msgstr "ფაილი მოთხოვნილი გამოსახულების ინდექსს არ შეიცავს"
+
+#: ../../wrlib/misc.c:247
+msgid "request for an invalid Visual ID"
+msgstr "მოთხოვნა არასწორი ვიზუალის ID-ისთვის"
+
+#: ../../wrlib/misc.c:253
+msgid "internal X error"
+msgstr "X-ის შიდა შეცდომა"
+
+#: ../../wrlib/misc.c:257
+msgid "internal error"
+msgstr "შიდა შეცდომა"
+
+#: ../../wrlib/xutil.c:169 ../../wrlib/xutil.c:176
+#, c-format
+msgid "wrlib: could not allocate shared memory segment, %s: %s\n"
+msgstr ""
+"wrlib: გაზიარებული მეხსიერების სეგმენტის, %s, გამოყოფა შეუძლებელია: %s\n"
+
+#: ../../wrlib/load_ppm.c:54 ../../wrlib/load_ppm.c:61
+#: ../../wrlib/load_ppm.c:76
+#, c-format
+msgid "wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"
+msgstr "wrlib: EOF / ბაიტის წაკითხვის შეცდომა PPM ფაილიდან \"%s\"\n"
+
+#: ../../wrlib/load_ppm.c:90
+#, c-format
+msgid ""
+"wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"
+msgstr ""
+"wrlib: ნაგავი PPM ფაილში \"%s\", მოველოდი უნიშნო მთელ რიცხვს, მაგრამ მივიღე "
+"0x%02X\n"
+
+#: ../../wrlib/load_ppm.c:99 ../../wrlib/load_ppm.c:106
+#, c-format
+msgid ""
+"wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be "
+"processed\n"
+msgstr ""
+"wrlib: ASCII ათობითი მთელი რიცხვი PPM ფაილში \"%s\" დასამუშავებლად "
+"მეტისმეტად დიდია\n"
+
+#: ../../wrlib/load_webp.c:45
+msgid "invalid parameter"
+msgstr "არასწორი პარამეტრი"
+
+#: ../../wrlib/load_webp.c:46
+msgid "error in the bitstream"
+msgstr "შეცდომა ბიტურ ნაკადში"
+
+#: ../../wrlib/load_webp.c:47
+msgid "feature is not supported"
+msgstr "თვისება მხარდაჭერილი არაა"
+
+#: ../../wrlib/load_webp.c:48
+msgid "operation suspended"
+msgstr "ოპერაცია შეჩერდა"
+
+#: ../../wrlib/load_webp.c:49
+msgid "aborted by user"
+msgstr "შეწყვეტილია მომხმარებლის მიერ"
+
+#: ../../wrlib/load_webp.c:50
+msgid "not enough data"
+msgstr "არასაკმარისი მონაცემები"
+
+#: ../../wrlib/load_webp.c:59
+#, c-format
+msgid "unknown status code %d"
+msgstr "უცნობი სტატუსის კოდი %d"
+
+#: ../../wrlib/load_webp.c:92
+#, c-format
+msgid "wrlib: could not get features from WebP file \"%s\", %s\n"
+msgstr "wrlib: ვერ მივიღე თვისებები WebP ფაილიდან \"%s\", %s\n"
+
+#: ../../wrlib/load_webp.c:124
+#, c-format
+msgid "wrlib: failed to decode WebP from file \"%s\"\n"
+msgstr "wrlib: WebP-ის გაშიფვრის შეცდომა ფაილიდან \"%s\"\n"

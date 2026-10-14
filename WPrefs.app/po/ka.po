@@ -1,0 +1,4026 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WPrefs\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 18:45-0400\n"
+"PO-Revision-Date: 2026-09-22 08:21+0200\n"
+"Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
+"Language-Team: Georgian <(nothing)>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.9\n"
+
+#. Related to Window titles
+#: ../../WPrefs.app/Appearance.c:46
+msgid "Focused Window Title"
+msgstr "ფოკუსის მქონე ფანჯრის სათაური"
+
+#: ../../WPrefs.app/Appearance.c:48
+msgid "Unfocused Window Title"
+msgstr "ფოკუსის არმქონე ფანჯრის სათაური"
+
+#: ../../WPrefs.app/Appearance.c:50
+msgid "Owner of Focused Window Title"
+msgstr "ფოკუსის მქონე ფანჯრის სათაურის მფლობელი"
+
+#. Related to Menus
+#: ../../WPrefs.app/Appearance.c:54 ../../WPrefs.app/Appearance.c:1571
+#: ../../WPrefs.app/FontSimple.c:99
+msgid "Menu Title"
+msgstr "მენიუს სათაური"
+
+#: ../../WPrefs.app/Appearance.c:56
+msgid "Menu Item Text"
+msgstr "მენიუს პუნქტის ტექსტი"
+
+#: ../../WPrefs.app/Appearance.c:58
+msgid "Disabled Menu Item Text"
+msgstr "გათიშული მენიუს პუნქტის ტექსტი"
+
+#: ../../WPrefs.app/Appearance.c:60
+msgid "Menu Highlight Color"
+msgstr "მენიუს გამოკვეთის ფერი"
+
+#: ../../WPrefs.app/Appearance.c:62
+msgid "Highlighted Menu Text Color"
+msgstr "გამოკვეთილი მენიუს ტექსტის ფერი"
+
+#.
+#. * yuck kluge: the coordinate for HighlightTextColor are actually those of the last "Normal item"
+#. * at the bottom when user clicks it, the "yuck kluge" in the function 'previewClick' will swap it
+#. * for the MenuTextColor selection as user would expect
+#. *
+#. * Note that the entries are reffered by their index for performance
+#.
+#. Related to Window's border
+#: ../../WPrefs.app/Appearance.c:73
+msgid "Focused Window Border Color"
+msgstr "ფოკუსის მქონე ფანჯრის საზღვრის ფერი"
+
+#: ../../WPrefs.app/Appearance.c:75
+msgid "Window Border Color"
+msgstr "ფანჯრის საზღვრის ფერი"
+
+#: ../../WPrefs.app/Appearance.c:77
+msgid "Selected Window Border Color"
+msgstr "მონიშნული მქონე ფანჯრის საზღვრის ფერი"
+
+#. Related to Icons and Clip
+#: ../../WPrefs.app/Appearance.c:81
+msgid "Miniwindow Title"
+msgstr "მინიფანჯრის სათაური"
+
+#: ../../WPrefs.app/Appearance.c:83
+msgid "Miniwindow Title Back"
+msgstr "მინიფანჯრის სათაურის ფონი"
+
+#: ../../WPrefs.app/Appearance.c:85 ../../WPrefs.app/FontSimple.c:102
+msgid "Clip Title"
+msgstr "სამაგრის საუთაური"
+
+#: ../../WPrefs.app/Appearance.c:87
+msgid "Collapsed Clip Title"
+msgstr "ჩამოშლილი სამაგრის სათაური"
+
+#: ../../WPrefs.app/Appearance.c:384
+msgid "[Focused]"
+msgstr "[ფოკუსის მქონე]"
+
+#: ../../WPrefs.app/Appearance.c:385
+msgid "Titlebar of Focused Window"
+msgstr "ფოკუსის მქონე ფანჯრის სათაურის ზოლი"
+
+#: ../../WPrefs.app/Appearance.c:388
+msgid "[Unfocused]"
+msgstr "[ფოკუსის არმქონე]"
+
+#: ../../WPrefs.app/Appearance.c:389
+msgid "Titlebar of Unfocused Windows"
+msgstr "ფოკუსის არმქონე ფანჯრის სათაურის ზოლი"
+
+#: ../../WPrefs.app/Appearance.c:392
+msgid "[Owner of Focused]"
+msgstr "[ფოკუსის მქონის მფლობელი]"
+
+#: ../../WPrefs.app/Appearance.c:393
+msgid "Titlebar of Focused Window's Owner"
+msgstr "ფოკუსის მქონე ფანჯრის სათაურის ზოლის მფლობელი"
+
+#: ../../WPrefs.app/Appearance.c:396
+msgid "[Resizebar]"
+msgstr "[ზომის შეცვლის ზოლი]"
+
+#: ../../WPrefs.app/Appearance.c:397
+msgid "Window Resizebar"
+msgstr "ფანჯრის ზომის შეცვლის ზოლი"
+
+#: ../../WPrefs.app/Appearance.c:400
+msgid "[Menu Title]"
+msgstr "[მენიუს სათაური]"
+
+#: ../../WPrefs.app/Appearance.c:401
+msgid "Titlebar of Menus"
+msgstr "მენიუების სათაურის პანელი"
+
+#: ../../WPrefs.app/Appearance.c:404
+msgid "[Menu Item]"
+msgstr "[მენიუს პუნქტი]"
+
+#: ../../WPrefs.app/Appearance.c:405
+msgid "Menu Items"
+msgstr "მენიუს პუნქტები"
+
+#: ../../WPrefs.app/Appearance.c:408
+msgid "[Icon]"
+msgstr "[ხატულა]"
+
+#: ../../WPrefs.app/Appearance.c:409
+msgid "Icon Background"
+msgstr "ხატულას ფონი"
+
+#: ../../WPrefs.app/Appearance.c:412
+msgid "[Background]"
+msgstr "[ფონი]"
+
+#: ../../WPrefs.app/Appearance.c:413
+msgid "Workspace Background"
+msgstr "სამუშაო სივრცის ფონი"
+
+#: ../../WPrefs.app/Appearance.c:579 ../../WPrefs.app/TexturePanel.c:884
+#, c-format
+msgid "could not load file '%s': %s"
+msgstr "ჩატვირთვის შეცდომა ფაილისთვის '%s': %s"
+
+#: ../../WPrefs.app/Appearance.c:582
+#, c-format
+msgid "could not find file '%s' for texture type %s"
+msgstr "ვერ ვიპოვე ფაილი '%s' ტექსტურის ტიპისთვის %s"
+
+#: ../../WPrefs.app/Appearance.c:630 ../../WPrefs.app/Appearance.c:657
+#: ../../WPrefs.app/Appearance.c:692
+#, c-format
+msgid "unknown direction in '%s', falling back to diagonal"
+msgstr "უცნობი მიმართულება '%s'-ში. გადართვა დიაგონალურზე"
+
+#: ../../WPrefs.app/Appearance.c:740
+#, c-format
+msgid "type '%s' is not a supported type for a texture"
+msgstr "ტიპი '%s' ტექსტურისთვის მხარდაჭერილი ტიპი არაა"
+
+#: ../../WPrefs.app/Appearance.c:1112
+#, c-format
+msgid "could not remove file %s"
+msgstr "ვერ წაიშალა ფაილი: %s"
+
+#: ../../WPrefs.app/Appearance.c:1134
+msgid "Select File"
+msgstr "აირჩიეთ ფაილი"
+
+#: ../../WPrefs.app/Appearance.c:1347
+#, c-format
+msgid "could not read size of image from '%s', ignoring"
+msgstr "ვერ წავიკითხე გამოსახულების ზომა '%s'-დან. გამოტოვება"
+
+#: ../../WPrefs.app/Appearance.c:1352
+#, c-format
+msgid "image \"%s\" has an invalid depth of %u, ignoring"
+msgstr "გამოსახულებას \"%s\" აქვს დაუშვებელი სიღრმე %u, გამოტოვებულია"
+
+#: ../../WPrefs.app/Appearance.c:1358
+#, c-format
+msgid "could not create RImage for \"%s\": %s"
+msgstr "RImage-ის შექმნა '%s'-ისთვის შეუძლებელია: %s"
+
+#: ../../WPrefs.app/Appearance.c:1548
+msgid "Focused Window"
+msgstr "ფოკუსის მქონე ფანჯარა"
+
+#: ../../WPrefs.app/Appearance.c:1556
+msgid "Unfocused Window"
+msgstr "ფოკუსის არმქონე ფანჯარა"
+
+#: ../../WPrefs.app/Appearance.c:1564
+msgid "Owner of Focused Window"
+msgstr "ფოკუსის მქონე ფანჯრის მფლობელი"
+
+#: ../../WPrefs.app/Appearance.c:1578 ../../WPrefs.app/Appearance.c:1583
+msgid "Normal Item"
+msgstr "ნორმალური ელემენტი"
+
+#: ../../WPrefs.app/Appearance.c:1590
+msgid "Disabled Item"
+msgstr "გათიშული ელემენტი"
+
+#: ../../WPrefs.app/Appearance.c:1609
+msgid "Highlighted"
+msgstr "გამოკვეთილია"
+
+#: ../../WPrefs.app/Appearance.c:1674
+msgid "Icon Text"
+msgstr "ხატულას ტექსტი"
+
+#: ../../WPrefs.app/Appearance.c:1754 ../../WPrefs.app/Appearance.c:1761
+msgid "Clip"
+msgstr "სამაგრი"
+
+#: ../../WPrefs.app/Appearance.c:1758
+msgid "Coll."
+msgstr "Coll."
+
+#: ../../WPrefs.app/Appearance.c:1910
+msgid "Texture"
+msgstr "ტექსტურა"
+
+#: ../../WPrefs.app/Appearance.c:1933
+msgid ""
+"Double click in the texture you want to use\n"
+"for the selected item."
+msgstr ""
+"ორმაგი წკაპი ტექსტურაზე, რომელიც გნებავთ,\n"
+"მონიშნული ელემენტისთვის გამოიყენოთ."
+
+#: ../../WPrefs.app/Appearance.c:1945
+msgid "New"
+msgstr "ახალი"
+
+#: ../../WPrefs.app/Appearance.c:1949
+msgid "Create a new texture."
+msgstr "ახალი ტექსტურის შექმნა."
+
+#: ../../WPrefs.app/Appearance.c:1956
+msgid "Extract..."
+msgstr "ამოღება..."
+
+#: ../../WPrefs.app/Appearance.c:1960
+msgid "Extract texture(s) from a theme or a style file."
+msgstr "ტექსტურ(ებ)-ის ამოღება თემის, ან სტილის ფაილიდან."
+
+#: ../../WPrefs.app/Appearance.c:1969
+msgid "Edit"
+msgstr "ჩასწორება"
+
+#: ../../WPrefs.app/Appearance.c:1972
+msgid "Edit the highlighted texture."
+msgstr "გამოკვეთილი ტექსტურის ჩასწორება."
+
+#: ../../WPrefs.app/Appearance.c:1979 ../../WPrefs.app/TexturePanel.c:1228
+msgid "Delete"
+msgstr "წაშლა"
+
+#: ../../WPrefs.app/Appearance.c:1983
+msgid "Delete the highlighted texture."
+msgstr "გამოკვეთილი ტექსტურის წაშლა."
+
+#: ../../WPrefs.app/Appearance.c:1995
+msgid "Color"
+msgstr "ფერი"
+
+#: ../../WPrefs.app/Appearance.c:2051
+msgid "Options"
+msgstr "მორგება"
+
+#: ../../WPrefs.app/Appearance.c:2058
+msgid "Menu Style"
+msgstr "მენიუს სტილი"
+
+#: ../../WPrefs.app/Appearance.c:2076
+msgid "Title Alignment"
+msgstr "მოზაიკის სწორება"
+
+#: ../../WPrefs.app/Appearance.c:2312
+msgid "Appearance Preferences"
+msgstr "იერსახის პარამეტრები"
+
+#: ../../WPrefs.app/Appearance.c:2314
+msgid ""
+"Background texture configuration for windows,\n"
+"menus and icons."
+msgstr ""
+"ფონის ტექსტურის მორგება ფანჯრებისთვის,\n"
+"მენიუებისთვის და ხატულებისთვის."
+
+#: ../../WPrefs.app/Appearance.c:2351
+msgid "Extract Texture"
+msgstr "ტექსტურის ამოღება"
+
+#: ../../WPrefs.app/Appearance.c:2371
+msgid "Textures"
+msgstr "ტექსტურები"
+
+#: ../../WPrefs.app/Appearance.c:2380 ../../WPrefs.app/WPrefs.c:474
+msgid "Close"
+msgstr "დახურვა"
+
+#: ../../WPrefs.app/Appearance.c:2385
+msgid "Extract"
+msgstr "გაშლა"
+
+#: ../../WPrefs.app/Configurations.c:110 ../../WPrefs.app/Docks.c:182
+#: ../../WPrefs.app/HotCornerShortcuts.c:255 ../../WPrefs.app/Workspace.c:104
+#, c-format
+msgid "could not load image file %s"
+msgstr "ჩატვირთვის შეცდომა გამოსახულების ფაილისთვის %s"
+
+#: ../../WPrefs.app/Configurations.c:121
+msgid "Icon Slide Speed"
+msgstr "ხატულას სლაიდის სიჩქარე"
+
+#: ../../WPrefs.app/Configurations.c:127
+msgid "Shade Animation Speed"
+msgstr "დაჩრდილვის ანიმაციის სიჩქარე"
+
+#: ../../WPrefs.app/Configurations.c:159 ../../WPrefs.app/Configurations.c:171
+#: ../../WPrefs.app/Docks.c:224 ../../WPrefs.app/Docks.c:232
+#: ../../WPrefs.app/WPrefs.c:680 ../../WPrefs.app/WPrefs.c:701
+#: ../../WPrefs.app/WPrefs.c:715
+#, c-format
+msgid "could not load icon file %s"
+msgstr "ვერ ჩავტვირთე ხატულას ფაილი %s"
+
+#: ../../WPrefs.app/Configurations.c:186
+msgid "Smoothing"
+msgstr "გადარბილება"
+
+#: ../../WPrefs.app/Configurations.c:192
+msgid "Images"
+msgstr "გამოსახულებები"
+
+#: ../../WPrefs.app/Configurations.c:223
+msgid ""
+"Smooth scaled background images, neutralizing\n"
+"the `pixelization' effect. This will slow\n"
+"down loading of background images considerably."
+msgstr ""
+"ფონის სურათების გლუვი დამასშტაბება\n"
+"\"პიქსელაციის\" ეფექტის ნეიტრალიზაციით.\n"
+"ეს საკმაოდ შეანელებს ფონის სურათების ჩატვირთვას."
+
+#: ../../WPrefs.app/Configurations.c:231
+msgid "Font edges"
+msgstr "შრიფტის კიდეები"
+
+#: ../../WPrefs.app/Configurations.c:242
+msgid ""
+"Render fonts with antialiased (smooth) edges.\n"
+"Applies to all WINGs applications immediately."
+msgstr ""
+"შრიფტების გამოსახვა ანტიალიასური (გლუვი) კიდეებით.\n"
+"მყისიერად ვრცელდება ყველა WINGs აპლიკაციაზე."
+
+#: ../../WPrefs.app/Configurations.c:251
+msgid "Titlebar Style"
+msgstr "სათაურის ზოლის სტილი"
+
+#: ../../WPrefs.app/Configurations.c:319
+msgid "Animations and Sound"
+msgstr "ანიმაციები და ხმა"
+
+#: ../../WPrefs.app/Configurations.c:325
+msgid "Animations"
+msgstr "ანიმაციები"
+
+#: ../../WPrefs.app/Configurations.c:336
+msgid ""
+"Disable/enable animations such as those shown\n"
+"for window miniaturization, shading etc."
+msgstr ""
+"ფანჯრის მინიატურიზაციის, დაჩრდილვის და\n"
+"ა.შ. ნაჩვენები ანიმაციების ჩართვა/გამორთვა."
+
+#: ../../WPrefs.app/Configurations.c:343
+msgid "Superfluous"
+msgstr "ზედენადი"
+
+#: ../../WPrefs.app/Configurations.c:354
+msgid ""
+"Disable/enable `superfluous' features and\n"
+"animations. These include the `ghosting' of the\n"
+"dock when it's being moved to another edge and\n"
+"the explosion animation when undocking icons."
+msgstr ""
+"'ზედმეტი' ფუნქციებისა და ანიმაციების ჩართვა/გამორთვა.\n"
+"მათ შორისაა დოკის „აჩრდილი“ სხვა კიდეზე\n"
+"გადატანისას და აფეთქების ანიმაცია\n"
+"ხატულების დოკიდან მოხსნისას."
+
+#: ../../WPrefs.app/Configurations.c:363
+msgid "Sounds"
+msgstr "ხმები"
+
+#: ../../WPrefs.app/Configurations.c:374
+msgid ""
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
+msgstr ""
+"ხმოვანი ეფექტების ჩართვა/გამორთვა ფანჯრის ქმედებებისთვის, როგორიცაა\n"
+"დაჩრდილვა, მინიატურიზაცია და დოკში მოთავსება. საჭიროა გაშვებული wmsoundd\n"
+"დემონი."
+
+#: ../../WPrefs.app/Configurations.c:428
+msgid "Other Configurations"
+msgstr "სხვა კონფიგურაციები"
+
+#: ../../WPrefs.app/Configurations.c:429
+msgid ""
+"Animation speeds, titlebar styles and\n"
+"various option toggling."
+msgstr ""
+"ანიმაციების სიჩქარე, სათაურის ზოლის სტილები და\n"
+"სხვადასხვა პარამეტრის გადართვა."
+
+#: ../../WPrefs.app/Docks.c:27
+msgid "Clip autocollapsing delays"
+msgstr "სამაგრის ავტოჩამოშლის დაყოვნებები"
+
+#: ../../WPrefs.app/Docks.c:28
+msgid "Clip autoraising delays"
+msgstr "სამაგრის ავტოაწევის დაყოვნებები"
+
+#: ../../WPrefs.app/Docks.c:35
+msgid "Before auto-expansion"
+msgstr "ავტოგაფართოებამდე"
+
+#: ../../WPrefs.app/Docks.c:36
+msgid "Before auto-collapsing"
+msgstr "ავტოაკეცვამდე"
+
+#: ../../WPrefs.app/Docks.c:37
+msgid "Before auto-raising"
+msgstr "ავტოაწევამდე"
+
+#: ../../WPrefs.app/Docks.c:38
+msgid "Before auto-lowering"
+msgstr "ავტოჩამოწევამდე"
+
+#: ../../WPrefs.app/Docks.c:49
+msgid ""
+"Disable/enable the application Dock (the\n"
+"icon bar pinned to a screen edge)."
+msgstr ""
+"აპლიკაციების დოკის (ეკრანის კიდეზე დამაგრებული\n"
+"ხატულების ზოლის) ჩართვა/გამორთვა."
+
+#: ../../WPrefs.app/Docks.c:51
+msgid ""
+"Disable/enable the Clip (that thing with\n"
+"a paper clip icon)."
+msgstr ""
+"სამაგრის ( ის რაღაც, ქაღალდის\n"
+"სამაგრის ხატულათი) გათიშვა/ჩართვა."
+
+#: ../../WPrefs.app/Docks.c:53
+msgid ""
+"Disable/enable Drawers (a dock that stores\n"
+"application icons horizontally). The dock is required."
+msgstr ""
+"უჯრების (დოკის, რომელიც აპლიკაციის ხატულებს\n"
+"ჰორიზონტალურად ინახავს) ჩართვა/გამორთვა. დოკი აუცილებელია."
+
+#: ../../WPrefs.app/Docks.c:246 ../../WPrefs.app/Focus.c:256
+#: ../../WPrefs.app/HotCornerShortcuts.c:339
+#: ../../WPrefs.app/MouseSettings.c:570
+msgid "ms"
+msgstr "მწმ"
+
+#: ../../WPrefs.app/Docks.c:262
+msgid "Dock/Clip/Drawer"
+msgstr "დოკი/სამაგრი/უჯრა"
+
+#: ../../WPrefs.app/Docks.c:289
+msgid "Dock position"
+msgstr "დოკის მდებარეობა"
+
+#: ../../WPrefs.app/Docks.c:296
+msgid ""
+"The screen edge the Dock is pinned to. Apply moves a\n"
+"running Dock; dragging the Dock to another edge is\n"
+"kept for this session and overwritten on the next Apply."
+msgstr ""
+"ეკრანის კიდე, რომელზეც დამაგრებულია დოკი. „გადატარება“\n"
+"გადაადგილებს გაშვებულ დოკს; დოკის სხვა კიდეზე გადათრევა\n"
+"ინახება ამ სესიისთვის და გადაიწერება შემდეგი\n"
+"„გადატარებისას“."
+
+#: ../../WPrefs.app/Docks.c:365
+msgid "Dock Preferences"
+msgstr "დოკის მორგება"
+
+#: ../../WPrefs.app/Docks.c:367
+msgid ""
+"Dock and clip features.\n"
+"Enable/disable the Dock and Clip, and tune some delays."
+msgstr ""
+"დოკის და სამაგრის თვისებები.\n"
+"სამაგრის და დოკის ჩართვა/გამორთვა და ზოგიერთი დაყოვნების მორგება."
+
+#: ../../WPrefs.app/Expert.c:49
+msgid ""
+"Disable miniwindows (icons for minimized windows). For use with KDE/GNOME."
+msgstr ""
+"მინიფანჯრების (ხატულები ჩაკეცილი ფანჯრებისთვის). გამოიყენეთ KDE/GNOME-სთან "
+"მუშაობისას."
+
+#: ../../WPrefs.app/Expert.c:52
+msgid "Ignore decoration hints for GTK applications."
+msgstr "დეკორაციის მინიშნებების იგნორი GTK-ის აპლიკაციებისთვის."
+
+#: ../../WPrefs.app/Expert.c:55
+msgid "Enable workspace pager."
+msgstr "სამუშაო სივრცის პეიჯერის ჩართვა."
+
+#: ../../WPrefs.app/Expert.c:58
+msgid "Do not set non-WindowMaker specific parameters (do not use xset)."
+msgstr ""
+"არა-WindowMaker-ის სპეციფიკური პარამეტრების არდაყენება (xset-ის "
+"არგამოყენება)."
+
+#: ../../WPrefs.app/Expert.c:61
+msgid "Automatically save session when exiting Window Maker."
+msgstr "სესიის ავტომატური შენახვა Window Maker-დან გასვლისას."
+
+#: ../../WPrefs.app/Expert.c:64
+msgid "Use SaveUnder in window frames, icons, menus and other objects."
+msgstr ""
+"SaveUnder-ის გამოყენება ფანჯრის ჩარჩოებში, ხატულებში, მენიუებში და სხვა "
+"ობიექტებში."
+
+#: ../../WPrefs.app/Expert.c:67
+msgid "Disable confirmation panel for the Kill command."
+msgstr "დადასტურების პანელის გათიშვა მოკვლის ბრძანებისთვის."
+
+#: ../../WPrefs.app/Expert.c:70
+msgid "Disable selection animation for selected icons."
+msgstr "მონიშვნის ანიმაციის გათიშვა მონიშნული ხატულებისთვის."
+
+#: ../../WPrefs.app/Expert.c:73
+msgid "Blink the titlebar of windows that demand attention."
+msgstr "ყურადღების მომთხოვნი ფანჯრების სათაურის ზოლის ციმციმი."
+
+#: ../../WPrefs.app/Expert.c:76
+msgid "Cycle windows only on the active head."
+msgstr "ფანჯრების წრიული გადართვა, მხოლოდ, აქტიურ თავზე."
+
+#: ../../WPrefs.app/Expert.c:79
+msgid "Let a new window on another head take focus automatically."
+msgstr "სხვა მონიტორზე გახსნილმა ახალმა ფანჯარამ ავტომატურად მიიღოს ფოკუსი."
+
+#: ../../WPrefs.app/Expert.c:82
+msgid "Each monitor keeps its own active workspace (requires restart)."
+msgstr ""
+"თითოეული მონიტორი ინახავს საკუთარ აქტიურ სამუშაო სივრცეს (საჭიროებს "
+"გადატვირთვას)."
+
+#: ../../WPrefs.app/Expert.c:85
+msgid "Keep at least this many workspaces."
+msgstr "სამუშაო სივრცეების ეს მინიმალური რაოდენობა შენარჩუნდება."
+
+#: ../../WPrefs.app/Expert.c:89
+msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
+msgstr ""
+"ვირტუალური დესკტოპის ჩართვა (ეკრანზე დიდი, გადასაადგილებელი სამუშაო "
+"სივრცეები)."
+
+#: ../../WPrefs.app/Expert.c:93
+msgid "Cycle all windows from all workspaces."
+msgstr "ყველა ფანჯრის წრიული გადართვა ყველა სამუშაო სივრციდან."
+
+#: ../../WPrefs.app/Expert.c:96
+msgid "Ignore minimized windows when cycling."
+msgstr "ჩაკეცილი ფანჯრების იგნორი წრიული გადართვისას."
+
+#: ../../WPrefs.app/Expert.c:99
+msgid "Order the switch panel by creation time instead of focus history."
+msgstr "გადამრთველი პანელის დალაგება შექმნის დროით, ფოკუსის ისტორიის ნაცვლად."
+
+#: ../../WPrefs.app/Expert.c:102
+msgid "Show app icons in window list."
+msgstr "აპის ხატულების ჩვენება ფანჯრების სიაში."
+
+#: ../../WPrefs.app/Expert.c:105
+msgid "Show switch panel when cycling windows."
+msgstr "გადართვის პანელის ჩვენება ფანჯრებს შორის წრიული გადართვისას."
+
+#: ../../WPrefs.app/Expert.c:108
+msgid "Show every tab-group member in the window switch panel."
+msgstr "ყველა ჩანართის-ჯგუფის წევრის ჩვენება ფანჯრების გადამრთველ პანელში."
+
+#: ../../WPrefs.app/Expert.c:111
+msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
+msgstr ""
+"ჩანართების ჯგუფების გამოსახვა სათაურის ზოლის სეგმენტებად, [N/M] პრეფიქსის "
+"ნაცვლად."
+
+#: ../../WPrefs.app/Expert.c:114
+msgid "Accept tab drops anywhere on the target window, not just its titlebar."
+msgstr ""
+"ჩანართის ჩაგდების მიღება სამიზნე ფანჯრის ნებისმიერ ადგილას, მხოლოდ სათაურის "
+"ზოლზე კი არა."
+
+#: ../../WPrefs.app/Expert.c:117
+msgid "Show workspace title on Clip."
+msgstr "სამუშაო სივრცის სათაურის ჩვენება სამაგრზე."
+
+#: ../../WPrefs.app/Expert.c:120
+msgid ""
+"Skip empty workspaces when switching with Next/Prev/Left/Right/Up/Down keys."
+msgstr ""
+"ცარიელი სამუშაო სივრცეების გამოტოვება შემდეგი/წინა/მარცხენა/მარჯვენა/ზემოთ/"
+"ქვემოთ ღილაკებით გადართვისას."
+
+#: ../../WPrefs.app/Expert.c:123
+msgid "Highlight the icon of the application when it has the focus."
+msgstr "აპლიკაციის ხატულას გამოკვეთა, როცა მას ფოკუსი აქვს."
+
+#: ../../WPrefs.app/Expert.c:127
+msgid "Enable keyboard language switch button in window titlebars."
+msgstr "კლავიატურის ენის გადართვის ღილაკის ჩართვა ფანჯრის სათაურის ზოლებში."
+
+#: ../../WPrefs.app/Expert.c:131
+msgid "Snap a window to edge or corner by dragging."
+msgstr "ფანჯრის მიმაგრება წიბოზე, ან კუთხეზე გადათრევით."
+
+#: ../../WPrefs.app/Expert.c:134
+msgid "Distance from edge to begin window snap."
+msgstr "მანძილი წიბოდან ფანჯრის მიმაგრების დასაწყებად."
+
+#: ../../WPrefs.app/Expert.c:137
+msgid "Distance from corner to begin window snap."
+msgstr "მანძილი კუთხიდან ფანჯრის მიმაგრების დასაწყებად."
+
+#: ../../WPrefs.app/Expert.c:140
+msgid "Snap a window to the top to maximize it to the full screen."
+msgstr "მიამაგრეთ ფანჯარა ზედა მხარეს, რომ ის სრულ ეკრანზე გაიშალოს."
+
+#: ../../WPrefs.app/Expert.c:143
+msgid "Allow move half-maximized windows between multiple screens."
+msgstr ""
+"ნახევარ ეკრანზე გაშლილი ფანჯრების გადატანის დაშვება ერთზე მეტ ეკრანს შორის."
+
+#: ../../WPrefs.app/Expert.c:146
+msgid "Alternative transitions between states for half maximized windows."
+msgstr ""
+"ალტერნატიული გადასვლა ნახევრად გაფართოებული ფანჯრების მდგომარეობებს შორის."
+
+#: ../../WPrefs.app/Expert.c:149
+msgid "Move mouse pointer with half maximized windows."
+msgstr "თაგუნას მაჩვენებლის გადაადგილება ნახევრად გაშლილი ფანჯრებით."
+
+#: ../../WPrefs.app/Expert.c:152
+msgid "Open dialogs in the same workspace as their owners."
+msgstr "დიალოგების გახსნა იგივე სამუშაო სივრცეებში, სადაც მათი მფლობელებია."
+
+#: ../../WPrefs.app/Expert.c:155
+msgid "Wrap dock-attached icons around the screen edges."
+msgstr "დოკზე მიმაგრებული ხატულების გადატანა ეკრანის წიბოებს შორის."
+
+#: ../../WPrefs.app/Expert.c:158
+msgid "Double click on titlebar maximizes a window instead of shading it."
+msgstr "ორმაგი წკაპი სათაურის ზოლზე ფანჯარას გადიდებს მის დაჩრდილვის ნაცვლად."
+
+#: ../../WPrefs.app/Expert.c:161
+msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
+msgstr ""
+"ძირითადი მენიუს დახურვა თაგუნათი (მარჯვენა, ან მარცხენა) წკაპი ფოკუსის გარეთ "
+"ხდება."
+
+#: ../../WPrefs.app/Expert.c:164
+msgid "Keep dock on primary head."
+msgstr "სამაგრის შენარჩუნება ძირითად თავზე."
+
+#: ../../WPrefs.app/Expert.c:167
+msgid "Allow windows to take focus using mouse wheel."
+msgstr "ფანჯრებისთვის თაგუნას ბორბლით ფოკუსის აღების უფლების მიცემა."
+
+#: ../../WPrefs.app/Expert.c:171
+msgid "Automatically (de)activate monitors on hotplug events."
+msgstr ""
+"ეკრანების ავტომატური (დე)აქტივაცია ჩართულზე შეერთების/გამოერთების "
+"შემთხვევაში."
+
+#: ../../WPrefs.app/Expert.c:605
+msgid "Expert User Preferences"
+msgstr "ექსპერტი მომხმარებლის პარამეტრები"
+
+#: ../../WPrefs.app/Expert.c:607
+msgid ""
+"Options for people who know what they're doing...\n"
+"Also has some other misc. options."
+msgstr ""
+"პარამეტრები ხალხისთვის, ვინც იცის, რას აკეთებს...\n"
+"ასევე აქვს სხვა, დამატებითი პარამეტრებიც."
+
+#: ../../WPrefs.app/Focus.c:130 ../../WPrefs.app/HotCornerShortcuts.c:102
+#: ../../WPrefs.app/Icons.c:154 ../../WPrefs.app/Icons.c:352
+#: ../../WPrefs.app/Preferences.c:111 ../../WPrefs.app/WindowHandling.c:134
+#: ../../WPrefs.app/WindowHandling.c:152 ../../WPrefs.app/WindowHandling.c:171
+#, c-format
+msgid "OFF"
+msgstr "გამორთული"
+
+#: ../../WPrefs.app/Focus.c:175
+msgid "Input Focus Mode"
+msgstr "შეყვანის ფოკუსის რეჟიმი"
+
+#: ../../WPrefs.app/Focus.c:182
+msgid "Manual:  Click on the window to set keyboard input focus"
+msgstr ""
+"ხელით:  დააწკაპუნეთ ფანჯარაზე კლავიატურის შეყვანის ფოკუსის დასაყენებლად"
+
+#: ../../WPrefs.app/Focus.c:188
+msgid "Auto:  Set keyboard input focus to the window under the mouse pointer"
+msgstr ""
+"ავტო:  კლავიატურის შეყვანის ფოკუსის დაყენება ფანჯარაზე, რომელიც თაგუნას "
+"მაჩვენებლის ქვეშაა"
+
+#: ../../WPrefs.app/Focus.c:200
+msgid "Install colormap from the window..."
+msgstr "ფერების რუკის დაყენება ფანჯრიდან..."
+
+#: ../../WPrefs.app/Focus.c:202
+msgid ""
+"This option is for screens that can display only a limited number\n"
+"of colors at a time, so they use an indexed table of colors (called\n"
+"a ColorMap) that each application customizes for its needs, and\n"
+"WindowMaker will set the global ColorMap dynamically from the\n"
+"active application.\n"
+"You can know the capability of your screen in WindowMaker's info\n"
+"panel as the 'visual'."
+msgstr ""
+"ეს პარამეტრი ეკრანებისთვისაა, რომლებსაც, მხოლოდ შეზღუდული\n"
+"რაოდენობის ფერების რაოდენობის ჩვენება შეუძლიათ ერთდროულად,\n"
+"ასე რომ ისინი ფერების დაინდექსებულ ცხრილს იყენებენ (რომელსაც ფერთა\n"
+"რუკა ეწოდება), რომელსაც თითოეული აპლიკაცია ისე ირგებს, როგორც სჭირდება და\n"
+"WindowMaker დინამიკურად დააყენებს გლობალურ ფერთა რუკას აქტიური "
+"აპლიკაციიდან.\n"
+"თქვენი ეკრანის შესაძლებლობის გაგება WindowMaker-ის ინფორმაციის პანელში,\n"
+"visual-ის მნიშვნელობით შეგიძლიათ."
+
+#: ../../WPrefs.app/Focus.c:214
+msgid "...that has the input focus"
+msgstr "...რომელსაც აქვს შეყვანის ფოკუსი"
+
+#: ../../WPrefs.app/Focus.c:219
+msgid "...that's under the mouse pointer"
+msgstr "...რომელიც არის თაგუნას მაჩვენებლის ქვეშ"
+
+#: ../../WPrefs.app/Focus.c:228
+msgid "Automatic Window Raise Delay"
+msgstr "ფანჯრის ავტომატური ამოწევის დაყოვნება"
+
+#: ../../WPrefs.app/Focus.c:273
+msgid "Do not let applications receive the click used to focus windows"
+msgstr "აპლიკაცია არ მიღებს ფანჯარაზე ფოკუსის გადასატანად გამოყენებულ წკაპს"
+
+#: ../../WPrefs.app/Focus.c:278
+msgid "Automatically focus new windows"
+msgstr "ავტომატური ფოკუსი ახალგახსნილ ფანჯრებზე"
+
+#: ../../WPrefs.app/Focus.c:283
+msgid "Move pointer to focused window"
+msgstr "მაჩვენებლის ფოკუსირებულ ფანჯარაში გადატანა"
+
+#: ../../WPrefs.app/Focus.c:284
+msgid ""
+"Moves the pointer to the center of a window when focus is set by the\n"
+"keyboard, the window switcher, activation requests, or when a new\n"
+"window is created. Does not move the pointer when you focus a\n"
+"window by moving the mouse into it. Restoring windows from\n"
+"miniwindows or dock icons also moves the pointer."
+msgstr ""
+"მაჩვენებლის ფანჯრის ცენტრში გადატანა, როცა ფოკუსი ენიჭება\n"
+"კლავიატურით, ფანჯრების გადამრთველით, აქტივაციის მოთხოვნით ან\n"
+"ახალი ფანჯრის შექმნისას. მაჩვენებელი არ გადაადგილდება, როცა\n"
+"ფანჯარას ფოკუსს მაუსის შეყვანით ანიჭებთ. ფანჯრების აღდგენა\n"
+"მინიფანჯრებიდან ან დოკის ხატულებიდანაც გადაადგილებს მაჩვენებელს."
+
+#: ../../WPrefs.app/Focus.c:294
+msgid "Raise window when switching focus with keyboard"
+msgstr "ფანჯრის ამოწევა ფოკუსის კლავიატურით გადართვისას"
+
+#: ../../WPrefs.app/Focus.c:310
+msgid "Window Focus Preferences"
+msgstr "ფანჯრის ფოკუსის პარამეტრები"
+
+#: ../../WPrefs.app/Focus.c:311
+msgid "Keyboard focus switching policy and related options."
+msgstr "კლავიატურით ფოკუსის გადართვის პოლიტიკა და მსგავსი პარამეტრები."
+
+#: ../../WPrefs.app/FontSimple.c:98
+msgid "Window Title"
+msgstr "ფანჯრის სათაური"
+
+#: ../../WPrefs.app/FontSimple.c:100
+msgid "Menu Text"
+msgstr "მენიუს ტექსტი"
+
+#: ../../WPrefs.app/FontSimple.c:101
+msgid "Icon Title"
+msgstr "ხატულას სათაური"
+
+#: ../../WPrefs.app/FontSimple.c:103
+msgid "Desktop Caption"
+msgstr "სამუშაო მაგიდის წარწერა"
+
+#: ../../WPrefs.app/FontSimple.c:104
+msgid "System Font"
+msgstr "სისტემური ფონტი"
+
+#: ../../WPrefs.app/FontSimple.c:105
+msgid "Bold System Font"
+msgstr "სქელი სისტემური ფონტი"
+
+#: ../../WPrefs.app/FontSimple.c:662
+msgid "Sample Text"
+msgstr "ტექსტის მაგალითი"
+
+#: ../../WPrefs.app/FontSimple.c:679
+msgid "Family"
+msgstr "ოჯახი"
+
+#: ../../WPrefs.app/FontSimple.c:704
+msgid "Style"
+msgstr "სტილი"
+
+#: ../../WPrefs.app/FontSimple.c:707
+msgid "Size"
+msgstr "ზომა"
+
+#: ../../WPrefs.app/FontSimple.c:738
+msgid "Font Configuration"
+msgstr "ფონტის მორგება"
+
+#: ../../WPrefs.app/FontSimple.c:740
+msgid "Configure fonts for Window Maker titlebars, menus etc."
+msgstr ""
+"მოირგეთ ფონტები Window Maker-ის სათაურის ზოლებისთვის, მენიუებისთვის და ა.შ."
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:104 ../../WPrefs.app/Preferences.c:113
+#, c-format
+msgid "1 pixel"
+msgstr "1 პიქსელი"
+
+#. 2-4
+#: ../../WPrefs.app/HotCornerShortcuts.c:107 ../../WPrefs.app/Preferences.c:116
+#, c-format
+msgid "%i pixels"
+msgstr "%i პიქსელი"
+
+#. >4
+#: ../../WPrefs.app/HotCornerShortcuts.c:110 ../../WPrefs.app/Preferences.c:119
+#, c-format
+msgid "%i pixels "
+msgstr "%i პიქსელი "
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:155
+msgid "invalid data in option HotCornerActions."
+msgstr "არასწორი მონაცემები პარამეტრში HotCornerActions."
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:271
+msgid "Enable Hot Corners"
+msgstr "ცხელი კუთხეების ჩართვა"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:277
+msgid "Hot Corner Edge"
+msgstr "ცხელი კუთხის წიბო"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:302
+msgid ""
+"Instructions:\n"
+" - assign a command to a corner\n"
+" - or leave it empty\n"
+msgstr ""
+"ინსტრუქციები:\n"
+" - მიანიჭეთ ბრძანება კუთხეს\n"
+" - ან დატოვეთ ცარიელი\n"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:313
+msgid "Hot Corner Delay"
+msgstr "ცხელი კუთხის დაყოვნება"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:354
+msgid "Hot Corner Actions"
+msgstr "ცხელი კუთხის ქმედებები"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:470
+msgid "Hot Corner Shortcut Preferences"
+msgstr "ცხელი კუთხის მალსახმობების მორგება"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:471
+msgid ""
+"Choose actions to perform when you move the\n"
+"mouse pointer to the screen corners."
+msgstr ""
+"აირჩიეთ ქმედებები, რომლებიც შესრულდება,\n"
+"როცა თაგუნას მაჩვენებელს ეკრანის კუთხეებთან მიიტანთ."
+
+#: ../../WPrefs.app/Icons.c:179 ../../WPrefs.app/WPrefs.c:1230
+#, c-format
+msgid "bad value \"%s\" for option %s, using default \"%s\""
+msgstr ""
+"არასწორი მნიშვნელობა \"%s\" პარამეტრისთვის %s. გამოიყენება ნაგულისხმევი: "
+"\"%s\""
+
+#: ../../WPrefs.app/Icons.c:238
+msgid "Icon Positioning"
+msgstr "ხატულას მოთავსება"
+
+#: ../../WPrefs.app/Icons.c:317
+msgid "Icon Size"
+msgstr "ხატულების ზომა"
+
+#: ../../WPrefs.app/Icons.c:319
+msgid "The size of the dock/application icon and miniwindows"
+msgstr "დოკის/აპლიკაციის ხატულას და მინიფანჯრების ზომა"
+
+#: ../../WPrefs.app/Icons.c:336
+msgid "Mini-Previews for Icons"
+msgstr "მინიატურები ხატულებისთვის"
+
+#: ../../WPrefs.app/Icons.c:338
+msgid ""
+"The Mini-Preview provides a small view of the content of the\n"
+"window when the mouse is placed over the icon."
+msgstr ""
+"მინიატურა ხატულაზე თაგუნას გაჩერებისას\n"
+"ფანჯრის შემცველობის პატარა ხედს გაჩვენებთ."
+
+#: ../../WPrefs.app/Icons.c:360
+msgid "Iconification Animation"
+msgstr "ხატულაში ჩაკეცვის ანიმაცია"
+
+#: ../../WPrefs.app/Icons.c:380
+msgid "Auto-arrange icons"
+msgstr "ხატულების ავტოდალაგება"
+
+#: ../../WPrefs.app/Icons.c:382
+msgid "Keep icons and miniwindows arranged all the time."
+msgstr "ხატულების და მინიფანჯრების ყოველთვის დალაგებულად ქონა."
+
+#: ../../WPrefs.app/Icons.c:388
+msgid "Omnipresent miniwindows"
+msgstr "ყველგან წარმოდგენილი მინიფანჯრები"
+
+#: ../../WPrefs.app/Icons.c:390
+msgid "Make miniwindows be present in all workspaces."
+msgstr "მინიფანჯრების გამოჩენა ყველა სამუშაო სივრცეში."
+
+#: ../../WPrefs.app/Icons.c:396
+msgid "Single click activation"
+msgstr "ერთი წკაპით აქტივაცია"
+
+#: ../../WPrefs.app/Icons.c:398
+msgid "Launch applications and restore windows with a single click."
+msgstr "აპლიკაციების გაშვება და ფანჯრების აღდგენა ერთი წკაპით."
+
+#: ../../WPrefs.app/Icons.c:403
+msgid "Enforce icon margin"
+msgstr "ხატულას ნაძალადევი ზღვარი"
+
+#: ../../WPrefs.app/Icons.c:405
+msgid "Make sure that the icon image does not protrude into the icon frame."
+msgstr "ხატულას გამოსახულება ხატულას ჩარჩოს არ გასწევს."
+
+#: ../../WPrefs.app/Icons.c:454
+msgid "Icon Preferences"
+msgstr "ხატულას მორგება"
+
+#: ../../WPrefs.app/Icons.c:456
+msgid ""
+"Icon/Miniwindow handling options. Icon positioning\n"
+"area, sizes of icons, miniaturization animation style."
+msgstr ""
+"ხატულას/მინიფანჯრის დამუშავების პარამეტრები. ხატულა,\n"
+"მოთავსების არე, ხატულას ზომები, მინიატურიზაციის ანიმაციის სტილი."
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:275 ../../WPrefs.app/Menu.c:279
+#: ../../WPrefs.app/Menu.c:1919 ../../WPrefs.app/TexturePanel.c:1429
+#: ../../WPrefs.app/WPrefs.c:330
+msgid "Cancel"
+msgstr "გაუქმება"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:277
+msgid "Press the desired shortcut key(s) or click Cancel to stop capturing."
+msgstr ""
+"დააჭირეთ სასურველი მალსახმობის ღილაკ(ებ)-ს, ან, ჩაწერის გასაჩერებლად, "
+"დააწკაპუნეთ ღილაკზე 'გაუქმება'."
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:288
+msgid "Key shortcut already in use by the "
+msgstr "მალსახმობი უკვე გამოიყენება "
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:290 ../../WPrefs.app/Menu.c:1520
+#: ../../WPrefs.app/MouseSettings.c:149 ../../WPrefs.app/MouseSettings.c:168
+#: ../../WPrefs.app/TexturePanel.c:583 ../../WPrefs.app/TexturePanel.c:659
+#: ../../WPrefs.app/WPrefs.c:343 ../../WPrefs.app/WPrefs.c:868
+#: ../../WPrefs.app/WPrefs.c:872 ../../WPrefs.app/WPrefs.c:890
+#: ../../WPrefs.app/WPrefs.c:899 ../../WPrefs.app/WPrefs.c:909
+#: ../../WPrefs.app/WPrefs.c:945 ../../WPrefs.app/WPrefs.c:949
+#: ../../WPrefs.app/WPrefs.c:981
+msgid "Error"
+msgstr "შეცდომა"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:292 ../../WPrefs.app/Menu.c:1482
+#: ../../WPrefs.app/Menu.c:1520 ../../WPrefs.app/Menu.c:1573
+#: ../../WPrefs.app/MouseSettings.c:151 ../../WPrefs.app/MouseSettings.c:171
+#: ../../WPrefs.app/TexturePanel.c:583 ../../WPrefs.app/TexturePanel.c:661
+#: ../../WPrefs.app/TexturePanel.c:1423 ../../WPrefs.app/WPrefs.c:345
+#: ../../WPrefs.app/WPrefs.c:868 ../../WPrefs.app/WPrefs.c:872
+#: ../../WPrefs.app/WPrefs.c:893 ../../WPrefs.app/WPrefs.c:903
+#: ../../WPrefs.app/WPrefs.c:909 ../../WPrefs.app/WPrefs.c:918
+#: ../../WPrefs.app/WPrefs.c:945 ../../WPrefs.app/WPrefs.c:949
+#: ../../WPrefs.app/WPrefs.c:981
+msgid "OK"
+msgstr "დიახ"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:310
+#: ../../WPrefs.app/KeyboardShortcuts.c:497 ../../WPrefs.app/Menu.c:289
+#: ../../WPrefs.app/Menu.c:718
+msgid "Capture"
+msgstr "ჩაწერა"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:311
+msgid "Click on Capture to interactively define the shortcut key(s)."
+msgstr "დააწკაპუნეთ ჩაწერაზე მალსახმობის ღილაკ(ებ)-ის ინტერაქტიურად აღსაწერად."
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:453
+msgid "Actions"
+msgstr "ქმედებები"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:481
+msgid "Shortcut"
+msgstr "მალსახმობი"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:491 ../../WPrefs.app/Menu.c:724
+msgid "Clear"
+msgstr "გასუფთავება"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:505
+msgid "Click on Capture to interactively define the shortcut key."
+msgstr "დააწკაპუნეთ ჩაწერაზე მალსახმობის ღილაკის ინტერაქტიურად აღსაწერად."
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:546
+msgid "Keyboard Shortcut Preferences"
+msgstr "კლავიატურის მალსახმობების მორგება"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:548
+msgid ""
+"Change the keyboard shortcuts for actions such\n"
+"as changing workspaces and opening menus."
+msgstr ""
+"კლავიატურის მალსახმობების შეცვლა ისეთი ქმედებებისთვის,\n"
+"როგორიცაა სამუშაო სივრცეების გადართვა და მენიუების გახსნა."
+
+#: ../../WPrefs.app/Menu.c:255
+msgid "Select Program"
+msgstr "პროგრამის არჩევა"
+
+#: ../../WPrefs.app/Menu.c:410
+msgid "New Items"
+msgstr "ახალი ელემენტები"
+
+#: ../../WPrefs.app/Menu.c:411
+msgid "Sample Commands"
+msgstr "ბრძანების მაგალითები"
+
+#: ../../WPrefs.app/Menu.c:412
+msgid "Sample Submenus"
+msgstr "ქვემენიუს მაგალითები"
+
+#: ../../WPrefs.app/Menu.c:421
+msgid "Run Program"
+msgstr "პროგრამის გაშვება"
+
+#: ../../WPrefs.app/Menu.c:422
+msgid "Internal Command"
+msgstr "შიდა ბრძანება"
+
+#: ../../WPrefs.app/Menu.c:423
+msgid "Submenu"
+msgstr "ქვემენიუ"
+
+#: ../../WPrefs.app/Menu.c:424
+msgid "External Submenu"
+msgstr "გარე ქვემენიუ"
+
+#: ../../WPrefs.app/Menu.c:425
+msgid "Generated Submenu"
+msgstr "გენერირებული ქვემენიუ"
+
+#: ../../WPrefs.app/Menu.c:426
+msgid "Generated PL Menu"
+msgstr "გენერირებული PL მენიუ"
+
+#: ../../WPrefs.app/Menu.c:427
+msgid "Directory Contents"
+msgstr "საქაღალდის შემცველობა"
+
+#: ../../WPrefs.app/Menu.c:428
+msgid "Workspace Menu"
+msgstr "სამუშაო სივრცის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:429 ../../WPrefs.app/enumchoices.h:67
+#: ../../WPrefs.app/enumchoices.h:78
+msgid "Window List Menu"
+msgstr "ფანჯრების სიის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:442
+msgid "XTerm"
+msgstr "Xterm"
+
+#: ../../WPrefs.app/Menu.c:445
+msgid "rxvt"
+msgstr "rxvt"
+
+#: ../../WPrefs.app/Menu.c:448
+msgid "ETerm"
+msgstr "ETerm"
+
+#: ../../WPrefs.app/Menu.c:451
+msgid "Find..."
+msgstr "ძებნა..."
+
+#: ../../WPrefs.app/Menu.c:452
+#, c-format
+msgid "%A(Find)"
+msgstr "%A(ძებნა)"
+
+#: ../../WPrefs.app/Menu.c:454
+msgid "Firefox"
+msgstr "Firefox"
+
+#: ../../WPrefs.app/Menu.c:457
+msgid "gimp"
+msgstr "gimp"
+
+#: ../../WPrefs.app/Menu.c:460
+msgid "epic"
+msgstr "ეპიკი"
+
+#: ../../WPrefs.app/Menu.c:463
+msgid "ee"
+msgstr "ee"
+
+#: ../../WPrefs.app/Menu.c:466
+msgid "xv"
+msgstr "xv"
+
+#: ../../WPrefs.app/Menu.c:469
+msgid "Evince"
+msgstr "Evince"
+
+#: ../../WPrefs.app/Menu.c:472
+msgid "ghostview"
+msgstr "ghostview"
+
+#: ../../WPrefs.app/Menu.c:475 ../../WPrefs.app/Menu.c:743
+#: ../../src/keybind-descriptions.h:198
+msgid "Exit Window Maker"
+msgstr "გასვლა Window Maker-დან"
+
+#: ../../WPrefs.app/Menu.c:491
+msgid "Debian Menu"
+msgstr "Debian-ის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:494
+msgid "RedHat Menu"
+msgstr "RedHat-ის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:497
+msgid "Menu Conectiva"
+msgstr "Conectiva-ის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:500
+msgid "Themes"
+msgstr "თემები"
+
+#: ../../WPrefs.app/Menu.c:507
+msgid "Bg Images (scale)"
+msgstr "ფონის სურათები (გადიდება)"
+
+#: ../../WPrefs.app/Menu.c:514
+msgid "Bg Images (tile)"
+msgstr "ფონის სურათები (ფილები)"
+
+#: ../../WPrefs.app/Menu.c:521
+msgid "Assorted XTerms"
+msgstr "გალაგებული XTerm-ები"
+
+#: ../../WPrefs.app/Menu.c:523
+msgid "XTerm Yellow on Blue"
+msgstr "XTerm ყვითელი ლურჯზე"
+
+#: ../../WPrefs.app/Menu.c:526
+msgid "XTerm White on Black"
+msgstr "XTerm თეთრი შავზე"
+
+#: ../../WPrefs.app/Menu.c:529
+msgid "XTerm Black on White"
+msgstr "XTerm შავი თეთრზე"
+
+#: ../../WPrefs.app/Menu.c:532
+msgid "XTerm Black on Beige"
+msgstr "XTerm შავი ბეჟზე"
+
+#: ../../WPrefs.app/Menu.c:535
+msgid "XTerm White on Green"
+msgstr "XTerm თე"
+
+#: ../../WPrefs.app/Menu.c:538
+msgid "XTerm White on Olive"
+msgstr "XTerm თეთრი ზეთისხილისფერზე"
+
+#: ../../WPrefs.app/Menu.c:541
+msgid "XTerm Blue on Blue"
+msgstr "XTerm ლურჯი ლურჯზე"
+
+#: ../../WPrefs.app/Menu.c:544
+msgid "XTerm BIG FONTS"
+msgstr "XTerm დიდი ფონტები"
+
+#: ../../WPrefs.app/Menu.c:564
+msgid "Program to Run"
+msgstr "გასაშვები პროგრამა"
+
+#: ../../WPrefs.app/Menu.c:574
+msgid "Browse"
+msgstr "პოვნა"
+
+#: ../../WPrefs.app/Menu.c:583
+msgid "Run the program inside a Xterm"
+msgstr "პროგრამის გაშვება Xterm-ში"
+
+#: ../../WPrefs.app/Menu.c:592
+msgid "Path for Menu"
+msgstr "ბილიკი მენიუსთვის"
+
+#: ../../WPrefs.app/Menu.c:603
+msgid ""
+"Enter the path for a file containing a menu\n"
+"or a list of directories with the programs you\n"
+"want to have listed in the menu. Ex:\n"
+"$WMAKER_USER_DATA/menu\n"
+"or\n"
+"/usr/bin ~/xbin"
+msgstr ""
+"შეიყვანეთ ბილიკი ფაილისთვის, რომელიც შეიცავს\n"
+"მენიუს, ან საქაღალდეების სია პროგრამებით,\n"
+"რომლებიც გსურთ მენიუში გამოჩნდეს. მაგ.:\n"
+"$WMAKER_USER_DATA/menu\n"
+"ან\n"
+"/usr/bin ~/xbin"
+
+#: ../../WPrefs.app/Menu.c:616 ../../WPrefs.app/Menu.c:641
+msgid "Command"
+msgstr "ბრძანება"
+
+#: ../../WPrefs.app/Menu.c:627
+msgid ""
+"Enter a command that outputs a menu\n"
+"definition to stdout when invoked."
+msgstr ""
+"შეიყვანეთ ბრძანება, რომელიც გაშვებისას\n"
+"მენიუს აღწერას stdout-ზე გამოიტანს."
+
+#: ../../WPrefs.app/Menu.c:632 ../../WPrefs.app/Menu.c:657
+msgid ""
+"Cache menu contents after opening for\n"
+"the first time"
+msgstr ""
+"მენიუს შემცველობის დაკეშვა პირველად\n"
+"გახსნის შემდეგ"
+
+#: ../../WPrefs.app/Menu.c:652
+msgid ""
+"Enter a command that outputs a proplist menu\n"
+"definition to stdout when invoked."
+msgstr ""
+"შეიყვანეთ ბრძანება, რომელიც გამოძახებისას\n"
+"proplist მენიუს აღწერას stdout-ზე გამოიტანს."
+
+#: ../../WPrefs.app/Menu.c:666
+msgid "Command to Open Files"
+msgstr "ბრძანება ფაილების გასახსნელად"
+
+#: ../../WPrefs.app/Menu.c:677
+msgid ""
+"Enter the command you want to use to open the\n"
+"files in the directories listed below."
+msgstr ""
+"შეიყვანეთ ბრძანება, რომელიც გნებავთ, გამოიყენოთ\n"
+"ქვემოთ ჩამოთვლილ საქაღალდეებში არსებული ფაილების გასახსნელად."
+
+#: ../../WPrefs.app/Menu.c:685
+msgid "Directories with Files"
+msgstr "საქაღალდეები ფაილებით"
+
+#: ../../WPrefs.app/Menu.c:696
+msgid "Strip extensions from file names"
+msgstr "გაფართოებების წაკვეთა ფაილის სახელებიდან"
+
+#: ../../WPrefs.app/Menu.c:707
+msgid "Keyboard Shortcut"
+msgstr "კლავიატურის მალსახმობი"
+
+#: ../../WPrefs.app/Menu.c:739
+msgid "Arrange Icons"
+msgstr "ხატულების დალაგება"
+
+#: ../../WPrefs.app/Menu.c:740
+msgid "Hide All Windows Except For The Focused One"
+msgstr "ყველა ფანჯრის დამალვა ფოკუსის მქონეს გარდა"
+
+#: ../../WPrefs.app/Menu.c:741
+msgid "Show All Windows"
+msgstr "ყველა ფანჯრის ჩვენება"
+
+#: ../../WPrefs.app/Menu.c:744
+msgid "Exit X Session"
+msgstr "გასვლა X-ის სესიიდან"
+
+#: ../../WPrefs.app/Menu.c:745
+msgid "Restart Window Maker"
+msgstr "Window Maker-ის გადატვირთვა"
+
+#: ../../WPrefs.app/Menu.c:746
+msgid "Start Another Window Manager   : ("
+msgstr "სხვა ფანჯრების მმართველის გაშვება   : ("
+
+#: ../../WPrefs.app/Menu.c:748
+msgid "Save Current Session"
+msgstr "მიმდინარე სესიის შენახვა"
+
+#: ../../WPrefs.app/Menu.c:749
+msgid "Clear Saved Session"
+msgstr "შენახული სესიის გასუფთავება"
+
+#: ../../WPrefs.app/Menu.c:750
+msgid "Refresh Screen"
+msgstr "ეკრანის განახლება"
+
+#: ../../WPrefs.app/Menu.c:751
+msgid "Open Info Panel"
+msgstr "ინფორმაციის პანელის ჩვენება"
+
+#: ../../WPrefs.app/Menu.c:752
+msgid "Open Copyright Panel"
+msgstr "საავტორო უფლებების პანელის ჩვენება"
+
+#: ../../WPrefs.app/Menu.c:753
+msgid "Open Keyboard Shortcuts Panel"
+msgstr "კლავიატურის მალსახმობების პანელის გახსნა"
+
+#: ../../WPrefs.app/Menu.c:758
+msgid "Window Manager to Start"
+msgstr "გასაშვები ფანჯრების მმართველი"
+
+#: ../../WPrefs.app/Menu.c:771
+msgid "Do not confirm action."
+msgstr "ქმედების უარყოფა."
+
+#: ../../WPrefs.app/Menu.c:778
+msgid ""
+"<b>Instructions:</b>\n"
+"\n"
+" - drag items from the left to the menu to add new items\n"
+" - drag items out of the menu to remove items\n"
+" - drag items in menu to change their position\n"
+" - drag items with Control pressed to copy them\n"
+" - double click in a menu item to change the label\n"
+" - click on a menu item to change related information"
+msgstr ""
+"<b>ინსტრუქციები:</b>\n"
+"\n"
+" - გადაათრიეთ ელემენტები მარცხნიდან მენიუში ახლის დასამატებლად\n"
+" - გადაათრიეთ ელემენტები მენიუდან მათ წასაშლელად\n"
+" - გადაათრიეთ ელემენტები მენიუში მდებარეობის შესაცვლელად\n"
+" - გადაათრიეთ ელემენტები Ctrl დაჭერილით დასაკოპირებლად\n"
+" - ორმაგი წკაპი მენიუს პუნქტზე ჭდის შესაცვლელად\n"
+" - წკაპი მენიუს პუნქტზე დაკავშირებული ინფორმაციის შესაცვლელად"
+
+#: ../../WPrefs.app/Menu.c:787
+msgid " - click "
+msgstr " - დააწკაპუნეთ "
+
+#: ../../WPrefs.app/Menu.c:788 ../../WPrefs.app/Menu.c:1915
+#: ../../WPrefs.app/Menu.c:1919
+msgid "Load Default"
+msgstr "ნაგულისხმევის ჩატვირთვა"
+
+#: ../../WPrefs.app/Menu.c:789
+msgid "to reset the menu to the shipped default"
+msgstr "მენიუს საწყის მდგომარეობაში დასაბრუნებლად"
+
+#: ../../WPrefs.app/Menu.c:1069
+#, c-format
+msgid "unknown command '%s' in menu"
+msgstr "უცნობი ბრძანება '%s' მენიუში"
+
+#: ../../WPrefs.app/Menu.c:1093
+msgid ": Execute Program"
+msgstr ": პროგრამის შესრულება"
+
+#: ../../WPrefs.app/Menu.c:1097
+msgid ": Perform Internal Command"
+msgstr ": შიდა ბრძანების შესრულება"
+
+#: ../../WPrefs.app/Menu.c:1101
+msgid ": Open a Submenu"
+msgstr ": ქვემენიუს გახსნა"
+
+#: ../../WPrefs.app/Menu.c:1105
+msgid ": Program Generated Submenu"
+msgstr ": პროგრამის გენერირებული ქვემენიუ"
+
+#: ../../WPrefs.app/Menu.c:1109
+msgid ": Program Generated Proplist Submenu"
+msgstr ": პროგრამის გენერირებული Proplist ქვემენიუ"
+
+#: ../../WPrefs.app/Menu.c:1113
+msgid ": Directory Contents Menu"
+msgstr ": საქაღალდის შემცველობის მენიუ"
+
+#: ../../WPrefs.app/Menu.c:1117
+msgid ": Open Workspaces Submenu"
+msgstr ": სამუშაო სივრცეების ქვემენიუს გახსნა"
+
+#: ../../WPrefs.app/Menu.c:1121
+msgid ": Open Window List Submenu"
+msgstr ": ფანჯრების სიის ქვემენიუს გახსნა"
+
+#: ../../WPrefs.app/Menu.c:1337
+msgid "Remove Submenu"
+msgstr "ქვემენიუს წაშლა"
+
+#: ../../WPrefs.app/Menu.c:1338
+msgid ""
+"Removing this item will destroy all items inside\n"
+"the submenu. Do you really want to do that?"
+msgstr ""
+"ამ პუნქტის წაშლა ქვემენიუდან ყველა პუნქტს წაშლის.\n"
+"მართლა გნებავთ ამის გაკეთება?"
+
+#: ../../WPrefs.app/Menu.c:1340
+msgid "Yes"
+msgstr "დიახ"
+
+#: ../../WPrefs.app/Menu.c:1340
+msgid "No"
+msgstr "არა"
+
+#: ../../WPrefs.app/Menu.c:1340
+msgid "Yes, don't ask again"
+msgstr "დიახ, აღარ მკითხო"
+
+#: ../../WPrefs.app/Menu.c:1479
+#, c-format
+msgid "Invalid menu command \"%s\" with label \"%s\" cleared"
+msgstr "არასწორი მენიუს ბრძანება \"%s\" ჭდით \"%s\" გასუფთავდა"
+
+#: ../../WPrefs.app/Menu.c:1482 ../../WPrefs.app/Menu.c:1572
+#: ../../WPrefs.app/Menu.c:1592 ../../WPrefs.app/WPrefs.c:918
+msgid "Warning"
+msgstr "გაფრთხილება"
+
+#: ../../WPrefs.app/Menu.c:1511
+#, c-format
+msgid "Could not open default menu from '%s'"
+msgstr "ვერ გავხსენი ნაგულისხმევი მენიუ '%s'-დან"
+
+#: ../../WPrefs.app/Menu.c:1543
+msgid "WMRootMenu reference chain too deep, possible loop"
+msgstr "WMRootMenu-ის მიმართვების ჯაჭვი ზედმეტად ღრმაა, შესაძლოა მარყუჟია"
+
+#: ../../WPrefs.app/Menu.c:1566
+#, c-format
+msgid ""
+"The menu file \"%s\" referenced by WMRootMenu is read-only.\n"
+"You cannot use WPrefs to modify it."
+msgstr ""
+"მენიუს ფაილი \"%s\", რომელსაც WMRootMenu მიმართავს, მხოლოდ, წაკითხვადია.\n"
+"მის შესაცვლელად WPrefs-ს ვერ გამოიყენებთ."
+
+#: ../../WPrefs.app/Menu.c:1593
+msgid ""
+"The menu file format currently in use is not supported\n"
+"by this tool. Do you want to discard the current menu\n"
+"to use this tool?"
+msgstr ""
+"ამჟამად გამოყენებული მენიუს ფაილის ფორმატი ამ\n"
+"პროგრამის მიერ მხარდაჭერილი არაა. გნებავთ\n"
+"მიმდინარე მენიუს მოცილება ამ ხელსაწყოს გამოსაყენებლად?"
+
+#: ../../WPrefs.app/Menu.c:1596
+msgid "Yes, Discard and Update"
+msgstr "დიახ, მოცილება და განახლება"
+
+#: ../../WPrefs.app/Menu.c:1596
+msgid "No, Keep Current Menu"
+msgstr "არა, მიმდინარე მენიუს შენარჩუნება"
+
+#: ../../WPrefs.app/Menu.c:1615 ../../WPrefs.app/Menu.c:1940
+#, c-format
+msgid ""
+"When saved, the menu will be written to the file\n"
+"\"%s\"."
+msgstr ""
+"შენახვისას მენიუ ჩაიწერება ფაილში\n"
+"\"%s\"."
+
+#: ../../WPrefs.app/Menu.c:1916
+msgid ""
+"This will replace the menu being edited with\n"
+"the shipped default. The next Save writes it to\n"
+"the current menu file."
+msgstr ""
+"ეს შეცვლის რედაქტირებად მენიუს\n"
+"საწყისი ნაგულისხმევით. შემდეგი „შენახვა“\n"
+"ჩაწერს მას მიმდინარე მენიუს ფაილში."
+
+#: ../../WPrefs.app/Menu.c:1951
+msgid "Applications Menu Definition"
+msgstr "აპლიკაციის მენიუს აღწერა"
+
+#: ../../WPrefs.app/Menu.c:1953
+msgid "Edit the menu for launching applications."
+msgstr "მენიუს ჩასწორება აპლიკაციების გასაშვებად."
+
+#: ../../WPrefs.app/MenuPreferences.c:102
+msgid "Menu Scrolling Speed"
+msgstr "მენიუს გადახვევის სიჩქარე"
+
+#: ../../WPrefs.app/MenuPreferences.c:126
+msgid "Submenu Alignment"
+msgstr "ქვემენიუს სწორება"
+
+#: ../../WPrefs.app/MenuPreferences.c:150
+msgid "Always open submenus inside the screen, instead of scrolling."
+msgstr "ქვემენიუების ყოველთვის ეკრანის შიგნით გახსნა გადახვევის მაგიერ."
+
+#: ../../WPrefs.app/MenuPreferences.c:155
+msgid "Scroll off-screen menus when pointer is moved over them."
+msgstr ""
+"ეკრანგარეთ არსებული მენიუების გადახვევა, როცა ზედ მაჩვენებელს გაამოძრავებთ."
+
+#: ../../WPrefs.app/MenuPreferences.c:159
+msgid "Use h/j/k/l keys to select menu options."
+msgstr "h/j/k/l/ ღილაკების გამოყენება მენიუს პარამეტრების ასარჩევად."
+
+#: ../../WPrefs.app/MenuPreferences.c:175
+msgid "Menu Preferences"
+msgstr "მენიუს მორგება"
+
+#: ../../WPrefs.app/MenuPreferences.c:177
+msgid ""
+"Menu usability related options. Scrolling speed,\n"
+"alignment of submenus etc."
+msgstr ""
+"მენიუს გამოყენებადობის პარამეტრები: გადახვევის სიჩქარე,\n"
+"ქვემენიუების სწორება და სხვ."
+
+#: ../../WPrefs.app/MouseSettings.c:43
+msgid "Left Button"
+msgstr "მარცხენა ღილაკი"
+
+#: ../../WPrefs.app/MouseSettings.c:44
+msgid "Middle Button"
+msgstr "შუა ღილაკი"
+
+#: ../../WPrefs.app/MouseSettings.c:45
+msgid "Right Button"
+msgstr "მარჯვენა ღილაკი"
+
+#: ../../WPrefs.app/MouseSettings.c:46
+msgid "Back Button"
+msgstr "ღილაკი უკან"
+
+#: ../../WPrefs.app/MouseSettings.c:47
+msgid "Forward Button"
+msgstr "ღილაკი წინ"
+
+#: ../../WPrefs.app/MouseSettings.c:48
+msgid "Mouse Wheel"
+msgstr "თაგუნას რგოლი"
+
+#: ../../WPrefs.app/MouseSettings.c:49
+msgid "Mouse Wheel Tilt"
+msgstr "თაგუნას ბორბლის დახრა"
+
+#: ../../WPrefs.app/MouseSettings.c:150
+msgid "Invalid mouse acceleration value. Must be a positive real value."
+msgstr ""
+"არასწორი თაგუნას აჩქარების მნიშვნელობა. უნდა იყოს დადებითი რეალური "
+"მნიშვნელობა."
+
+#: ../../WPrefs.app/MouseSettings.c:170
+msgid ""
+"Invalid mouse acceleration threshold value. Must be the number of pixels to "
+"travel before accelerating."
+msgstr ""
+"არასწორი თაგუნას აჩქარების ზღვრის მნიშვნელობა. უნდა იყოს პიქსელების "
+"რაოდენობა, რომელიც მან აჩქარებამდე უნდა გაიაროს."
+
+#: ../../WPrefs.app/MouseSettings.c:280
+#, c-format
+msgid "bad value %s for option %s"
+msgstr "არასწორი მნიშვნელობა %s პარამეტრისთვის %s"
+
+#: ../../WPrefs.app/MouseSettings.c:339
+#, c-format
+msgid ""
+"modifier key %s for option ModifierKey was not recognized. Using %s as "
+"default"
+msgstr ""
+"მოდიფიკატორი ღილაკი %s პარამეტრისთვის ModifierKey უცნობია. გამოიყენება %s, "
+"როგორც ნაგულისხმევი"
+
+#: ../../WPrefs.app/MouseSettings.c:362
+msgid "could not retrieve keyboard modifier mapping"
+msgstr "კლავიატურის მოდიფიკატორის ასახვის მიღება შეუძლებელია"
+
+#: ../../WPrefs.app/MouseSettings.c:461
+msgid "Mouse Speed"
+msgstr "თაგუნას სიჩქარე"
+
+#: ../../WPrefs.app/MouseSettings.c:474 ../../WPrefs.app/WPrefs.c:627
+#: ../../WPrefs.app/WPrefs.c:643 ../../WPrefs.app/WindowHandling.c:358
+#: ../../WPrefs.app/WindowHandling.c:409 ../../WPrefs.app/WindowHandling.c:421
+#: ../../WPrefs.app/WindowHandling.c:440 ../../WPrefs.app/WindowHandling.c:452
+#, c-format
+msgid "could not load icon %s"
+msgstr "ხატულას %s ჩატვირთვა შეუძლებელია"
+
+#: ../../WPrefs.app/MouseSettings.c:491
+msgid "Accel.:"
+msgstr "აჩქ.:"
+
+#: ../../WPrefs.app/MouseSettings.c:502
+msgid "Threshold:"
+msgstr "ზღვარი:"
+
+#: ../../WPrefs.app/MouseSettings.c:515
+msgid "Mouse Grab Modifier"
+msgstr "თაგუნას ჩაჭერის მოდიფიკატორი"
+
+#: ../../WPrefs.app/MouseSettings.c:517
+msgid ""
+"Keyboard modifier to use for actions that\n"
+"involve dragging windows with the mouse,\n"
+"clicking inside the window."
+msgstr ""
+"კლავიატურის მოდიფიკატორი, რომელიც გამოყენებული\n"
+"იქნება ქმედებებისთვის, რომელიც შეიცავს ფანჯრების\n"
+"გადათრევას თაგუნათი და ფანჯრის შიგნით დაწკაპუნებას."
+
+#: ../../WPrefs.app/MouseSettings.c:533
+msgid "Double-Click Delay"
+msgstr "_ორმაგი წკაპის დაყოვნება"
+
+#: ../../WPrefs.app/MouseSettings.c:551
+msgid "Test"
+msgstr "შემოწმება"
+
+#: ../../WPrefs.app/MouseSettings.c:579
+msgid "Workspace Mouse Actions"
+msgstr "სამუშაო სივრცის თაგუნას ქმედებები"
+
+#: ../../WPrefs.app/MouseSettings.c:584
+msgid "Disable mouse actions"
+msgstr "თაგუნას ქმედებების გათიშვა"
+
+#: ../../WPrefs.app/MouseSettings.c:633
+#, c-format
+msgid "cannot open existing %s: %s"
+msgstr "ვერ გავხსენი არსებული %s: %s"
+
+#: ../../WPrefs.app/MouseSettings.c:638
+#, c-format
+msgid "could not create %s"
+msgstr "%s-ის შექმნის შეცდომა"
+
+#: ../../WPrefs.app/MouseSettings.c:653
+#, c-format
+msgid "could not create temporary file %s"
+msgstr "დროებითი ფაილის %s შექმნა შეუძლებელია"
+
+#: ../../WPrefs.app/MouseSettings.c:686
+#, c-format
+msgid "could not rename file %s to %s"
+msgstr "სახელის გადარქმევის შეცდომა %s-დან %s-ზე"
+
+#: ../../WPrefs.app/MouseSettings.c:692
+#, c-format
+msgid "could not set permission 0%03o on file \"%s\""
+msgstr "წვდომის 0%03o დაყენება ფაილზე \"%s\" შეუძლებელია"
+
+#: ../../WPrefs.app/MouseSettings.c:758
+msgid "Shift"
+msgstr "Shift"
+
+#: ../../WPrefs.app/MouseSettings.c:759
+msgid "Lock"
+msgstr "ჩაკეტვა"
+
+#: ../../WPrefs.app/MouseSettings.c:760
+msgid "Control"
+msgstr "Control"
+
+#: ../../WPrefs.app/MouseSettings.c:761
+msgid "Mod1"
+msgstr "Mod1"
+
+#: ../../WPrefs.app/MouseSettings.c:762
+msgid "Mod2"
+msgstr "Mod2"
+
+#: ../../WPrefs.app/MouseSettings.c:763
+msgid "Mod3"
+msgstr "Mod3"
+
+#: ../../WPrefs.app/MouseSettings.c:764
+msgid "Mod4"
+msgstr "Mod4"
+
+#: ../../WPrefs.app/MouseSettings.c:765
+msgid "Mod5"
+msgstr "Mod5"
+
+#: ../../WPrefs.app/MouseSettings.c:769
+msgid "Mouse Preferences"
+msgstr "თაგვის პარამეტრები"
+
+#: ../../WPrefs.app/MouseSettings.c:771
+msgid ""
+"Mouse speed/acceleration, double click delay,\n"
+"mouse button bindings etc."
+msgstr ""
+"თაგუნას სიჩქარე/აჩქარება, ორმაგი წკაპის დაყოვნება,\n"
+"თაგუნას ღილაკების ასახვა და სხვ."
+
+#: ../../WPrefs.app/Paths.c:88
+msgid "bad value in option IconPath. Using default path list"
+msgstr ""
+"არასწორი მნიშვნელობა პარამეტრისთვის IconPath. გამოიყენება ნაგულისხმევი "
+"ბილიკების სია"
+
+#: ../../WPrefs.app/Paths.c:105
+msgid "bad value in option PixmapPath. Using default path list"
+msgstr ""
+"არასწორი მნიშვნელობა პარამეტრისთვის PixmapPath. გამოიყენება ნაგულისხმევი "
+"ბილიკების სია"
+
+#: ../../WPrefs.app/Paths.c:121
+msgid "bad value in option SoundPath. Using default path list"
+msgstr ""
+"არასწორი მნიშვნელობა პარამეტრში SoundPath. გამოიყენება ნაგულისხმევი "
+"ბილიკების სია"
+
+#: ../../WPrefs.app/Paths.c:175
+msgid "Select directory"
+msgstr "აირჩიეთ საქაღალდე"
+
+#: ../../WPrefs.app/Paths.c:299
+msgid "Icon Search Paths"
+msgstr "ხატულას ძებნის ბილიკები"
+
+#: ../../WPrefs.app/Paths.c:310 ../../WPrefs.app/Paths.c:341
+#: ../../WPrefs.app/Paths.c:372 ../../WPrefs.app/TexturePanel.c:1222
+msgid "Add"
+msgstr "დამატება"
+
+#: ../../WPrefs.app/Paths.c:317 ../../WPrefs.app/Paths.c:348
+#: ../../WPrefs.app/Paths.c:379
+msgid "Remove"
+msgstr "წაშლა"
+
+#: ../../WPrefs.app/Paths.c:330
+msgid "Pixmap Search Paths"
+msgstr "Pixmap-ის ძებნის ბილიკები"
+
+#: ../../WPrefs.app/Paths.c:361
+msgid "Sound Search Paths"
+msgstr "ხმების ძებნის ბილიკები"
+
+#: ../../WPrefs.app/Paths.c:396
+msgid "Search Path Configuration"
+msgstr "ძებნის ბილიკების მორგება"
+
+#: ../../WPrefs.app/Paths.c:398
+msgid ""
+"Search paths to use when looking for pixmaps\n"
+"and icons."
+msgstr ""
+"ბილიკების ძებნა რასტრული სურათებისა\n"
+"და ხატულების ძიებისას."
+
+#: ../../WPrefs.app/Preferences.c:44
+msgid "incomplete window titles"
+msgstr "დაუსრულებელი ფანჯრის სათაურები"
+
+#: ../../WPrefs.app/Preferences.c:45
+msgid "miniwindow titles"
+msgstr "მინიფანჯრის სათაურები"
+
+#: ../../WPrefs.app/Preferences.c:46
+msgid "application/dock icons"
+msgstr "აპლიაცია/დოკის ხატულები"
+
+#: ../../WPrefs.app/Preferences.c:47
+msgid "internal help"
+msgstr "შიდა დახმარბა"
+
+#: ../../WPrefs.app/Preferences.c:56
+msgid "Disable AppIcon bounce"
+msgstr "აპლიკაციის ხატულას ხტუნვის გამორთვა"
+
+#: ../../WPrefs.app/Preferences.c:57
+msgid "By default, the AppIcon bounces when the application is launched"
+msgstr ""
+"ნაგულისხმევად აპლიკაციის ხატულა ხტუნავს, როცა მისი გაშვება მიმდინარეობს"
+
+#: ../../WPrefs.app/Preferences.c:59
+msgid "Bounce when the application wants attention"
+msgstr "ხტუნვა, როცა აპლიკაციას ყურადღება სჭირდება"
+
+#: ../../WPrefs.app/Preferences.c:62
+msgid "Raise AppIcon when bouncing"
+msgstr "აპლიკაციის ხატულას აწევა ხტუნვისას"
+
+#: ../../WPrefs.app/Preferences.c:63
+msgid ""
+"Otherwise you will not see it bouncing if\n"
+"there is a window in front of the AppIcon"
+msgstr ""
+"არადა, თქვენ ვერ დაინახავთ მის ხტუნვას,\n"
+"თუ აპლიკაციის წინ ფანჯარაა"
+
+#: ../../WPrefs.app/Preferences.c:191
+msgid "Size Display"
+msgstr "ზომის ჩვენება"
+
+#: ../../WPrefs.app/Preferences.c:193
+msgid ""
+"The position or style of the window size\n"
+"display that's shown when a window is resized."
+msgstr ""
+"ფანჯრის ზომის ჩვენების მდებარეობა,\n"
+"ან სტილი ფანჯრის ზომის შეცვლისას."
+
+#: ../../WPrefs.app/Preferences.c:207
+msgid "Position Display"
+msgstr "პოზიციის ჩვენება"
+
+#: ../../WPrefs.app/Preferences.c:209
+msgid ""
+"The position or style of the window position\n"
+"display that's shown when a window is moved."
+msgstr ""
+"ფანჯრის ზომის ჩვენების მდებარეობა,\n"
+"ან სტილი ფანჯრის გადაადგილებისას."
+
+#: ../../WPrefs.app/Preferences.c:223
+msgid "Show balloon for..."
+msgstr "ბუშტის ჩვენება რისთვის..."
+
+#: ../../WPrefs.app/Preferences.c:238
+msgid "AppIcon bouncing"
+msgstr "აპლიკაციის ხატულას ხტუნვა"
+
+#: ../../WPrefs.app/Preferences.c:260
+msgid "Workspace border"
+msgstr "სამუშაო სივრცის საზღვარი"
+
+#: ../../WPrefs.app/Preferences.c:276
+msgid "Left/Right"
+msgstr "მარჯვნივ/მარცხნივ"
+
+#: ../../WPrefs.app/Preferences.c:281
+msgid "Top/Bottom"
+msgstr "ზედა/ქვედა"
+
+#: ../../WPrefs.app/Preferences.c:297
+msgid "Miscellaneous Ergonomic Preferences"
+msgstr "სხვადასხვა ერგონომიკის პარამეტრები"
+
+#: ../../WPrefs.app/Preferences.c:298
+msgid ""
+"Various settings like balloon text, geometry\n"
+"displays etc."
+msgstr ""
+"სხვადასხვა პარამეტრები. მაგ: ბუშტის ტექსტი, გეომეტრია,\n"
+"ეკრანები და ა.შ."
+
+#: ../../WPrefs.app/TexturePanel.c:295
+msgid "Saturation"
+msgstr "გაჯერებულობა"
+
+#: ../../WPrefs.app/TexturePanel.c:297
+msgid "Brightness"
+msgstr "სიკაშკაშე"
+
+#: ../../WPrefs.app/TexturePanel.c:342 ../../WPrefs.app/TexturePanel.c:348
+msgid "Hue"
+msgstr "ტონი"
+
+#: ../../WPrefs.app/TexturePanel.c:580
+msgid "Could not load the selected file: "
+msgstr "მონიშნული ფაილის ჩატვირთვა შეუძლებელია: "
+
+#: ../../WPrefs.app/TexturePanel.c:630
+msgid "Open Image"
+msgstr "გამოსახულების გახსნა"
+
+#: ../../WPrefs.app/TexturePanel.c:660
+msgid "The selected file does not contain a supported image."
+msgstr "არჩეული ფაილი მხარდაჭერილ გამოსახულებას არ შეიცავს."
+
+#: ../../WPrefs.app/TexturePanel.c:1002
+#, c-format
+msgid "error creating texture %s"
+msgstr "შექმნის შეცდომა ტექსტურისთვის %s"
+
+#: ../../WPrefs.app/TexturePanel.c:1167
+msgid "Texture Panel"
+msgstr "ტექსტური პანელი"
+
+#: ../../WPrefs.app/TexturePanel.c:1174
+msgid "Texture Name"
+msgstr "ტექსტურის სახელი"
+
+#: ../../WPrefs.app/TexturePanel.c:1186
+msgid "Solid Color"
+msgstr "მყარი ფერი"
+
+#: ../../WPrefs.app/TexturePanel.c:1187
+msgid "Gradient Texture"
+msgstr "გრადიენტის ტექსტურა"
+
+#: ../../WPrefs.app/TexturePanel.c:1188
+msgid "Simple Gradient Texture"
+msgstr "მარტივი გრადიენტის ტექსტურა"
+
+#: ../../WPrefs.app/TexturePanel.c:1189
+msgid "Textured Gradient"
+msgstr "ტექსტურებით აწყობილი გრადიენტი"
+
+#: ../../WPrefs.app/TexturePanel.c:1190
+msgid "Image Texture"
+msgstr "გამოსახულების ტექსტურა"
+
+#: ../../WPrefs.app/TexturePanel.c:1198
+msgid "Default Color"
+msgstr "ნაგულისხმები ფერი"
+
+#: ../../WPrefs.app/TexturePanel.c:1210
+msgid "Gradient Colors"
+msgstr "გრადიენტის ფერები"
+
+#: ../../WPrefs.app/TexturePanel.c:1299
+msgid "Direction"
+msgstr "მიმართულება"
+
+#: ../../WPrefs.app/TexturePanel.c:1327
+msgid "Gradient"
+msgstr "გრადიენტი"
+
+#: ../../WPrefs.app/TexturePanel.c:1343
+msgid "Gradient Opacity"
+msgstr "გრადიენტის გაუმჭვირვალობა"
+
+#: ../../WPrefs.app/TexturePanel.c:1377
+msgid "Image"
+msgstr "გამოსახულება"
+
+#: ../../WPrefs.app/TexturePanel.c:1397
+msgid "Browse..."
+msgstr "პოვნა..."
+
+#: ../../WPrefs.app/TexturePanel.c:1409 ../../WPrefs.app/enumchoices.h:95
+msgid "Tile"
+msgstr "ფილა"
+
+#: ../../WPrefs.app/TexturePanel.c:1410
+msgid "Scale"
+msgstr "მასშტაბი"
+
+#: ../../WPrefs.app/TexturePanel.c:1411 ../../WPrefs.app/enumchoices.h:59
+#: ../../WPrefs.app/enumchoices.h:107 ../../WPrefs.app/enumchoices.h:190
+msgid "Center"
+msgstr "ცენტრი"
+
+#: ../../WPrefs.app/TexturePanel.c:1412
+msgid "Maximize"
+msgstr "გადიდება"
+
+#: ../../WPrefs.app/TexturePanel.c:1413
+msgid "Fill"
+msgstr "შევსება"
+
+#: ../../WPrefs.app/WPrefs.c:170
+msgid "Restart Required"
+msgstr "საჭიროა გადატვირთვა"
+
+#: ../../WPrefs.app/WPrefs.c:171
+msgid ""
+"One or more options you changed only take\n"
+"effect after Window Maker is restarted."
+msgstr ""
+"ერთი ან მეტი შეცვლილი პარამეტრი\n"
+"ძალაში შედის Window Maker-ის გადატვირთვის შემდეგ."
+
+#: ../../WPrefs.app/WPrefs.c:173
+msgid "Restart Now"
+msgstr "გადატვირთვა ახლავე"
+
+#: ../../WPrefs.app/WPrefs.c:173
+msgid "Later"
+msgstr "მოგვიანებით"
+
+#: ../../WPrefs.app/WPrefs.c:275
+#, c-format
+msgid "could not back up %s as %s"
+msgstr "%s-ის სარეზერვო ასლის შექმნა %s სახელით ვერ მოხერხდა"
+
+#: ../../WPrefs.app/WPrefs.c:324 ../../WPrefs.app/WPrefs.c:462
+msgid "Reset Defaults"
+msgstr "ნაგულისხმევების აღდგენა"
+
+#: ../../WPrefs.app/WPrefs.c:325
+msgid ""
+"This will discard the settings WPrefs manages\n"
+"(WindowMaker, WMSound, WMGLOBAL and the Applications\n"
+"Menu) and restore the shipped defaults. Session, dock\n"
+"and per-window attributes are not touched.\n"
+"\n"
+"Each replaced file is kept as a .wprefs-backup sibling."
+msgstr ""
+"ეს გააუქმებს პარამეტრებს, რომლებსაც WPrefs მართავს\n"
+"(WindowMaker, WMSound, WMGLOBAL და აპლიკაციების\n"
+"მენიუ) და აღადგენს საწყის ნაგულისხმევებს. სესია, დოკი\n"
+"და ფანჯრის ინდივიდუალური ატრიბუტები არ შეიცვლება.\n"
+"\n"
+"თითოეული შეცვლილი ფაილი ინახება .wprefs-backup\n"
+"დაბოლოვებით იმავე საქაღალდეში."
+
+#: ../../WPrefs.app/WPrefs.c:330
+msgid "Reset"
+msgstr "აღდგენა"
+
+#: ../../WPrefs.app/WPrefs.c:344
+msgid ""
+"Could not back up the current settings.\n"
+"Nothing was changed."
+msgstr ""
+"მიმდინარე პარამეტრების სარეზერვო ასლის შექმნა ვერ მოხერხდა.\n"
+"არაფერი შეცვლილა."
+
+#: ../../WPrefs.app/WPrefs.c:425 ../../WPrefs.app/WPrefs.c:501
+msgid "Window Maker Preferences"
+msgstr "Window Maker-ის მორგება"
+
+#: ../../WPrefs.app/WPrefs.c:429
+msgid "Preferences"
+msgstr "მორგება"
+
+#: ../../WPrefs.app/WPrefs.c:448
+msgid "Revert Page"
+msgstr "გვერდის დაბრუნება"
+
+#: ../../WPrefs.app/WPrefs.c:454
+msgid "Revert All"
+msgstr "ყველას დაბრუნება"
+
+#: ../../WPrefs.app/WPrefs.c:468
+msgid "Save"
+msgstr "შენახვა"
+
+#: ../../WPrefs.app/WPrefs.c:480
+msgid "Balloon Help"
+msgstr "დახმარების ბუშტი"
+
+#: ../../WPrefs.app/WPrefs.c:508
+#, c-format
+msgid "Version %s"
+msgstr "ვერსია %s"
+
+#: ../../WPrefs.app/WPrefs.c:515
+msgid "Starting..."
+msgstr "გაშვება..."
+
+#: ../../WPrefs.app/WPrefs.c:602
+#, c-format
+msgid "could not locate image file %s"
+msgstr "პოვნის შეცდომა გამოსახულების ფაილისთვის %s"
+
+#: ../../WPrefs.app/WPrefs.c:656
+#, c-format
+msgid "could not process icon %s: %s"
+msgstr "ხატულას %s დამუშავება შეუძლებელია: %s"
+
+#: ../../WPrefs.app/WPrefs.c:781
+#, c-format
+msgid "could not load image file %s:%s"
+msgstr "ჩატვირთვის შეცდომა გამოსახულების ფაილისთვის %s: %s"
+
+#: ../../WPrefs.app/WPrefs.c:801
+msgid "Loading Window Maker configuration files..."
+msgstr "Window Maker-ის კონფიგურაციის ფაილების ჩატვირთვა..."
+
+#: ../../WPrefs.app/WPrefs.c:806
+msgid "Initializing configuration panels..."
+msgstr "კონფიგურაციის პანელების ინიციალიზაცია..."
+
+#: ../../WPrefs.app/WPrefs.c:867 ../../WPrefs.app/WPrefs.c:944
+#, c-format
+msgid "Window Maker domain (%s) is corrupted!"
+msgstr "Window Maker-ის დომენი (%s) დაზიანებულია!"
+
+#: ../../WPrefs.app/WPrefs.c:871
+#, c-format
+msgid "Could not load Window Maker domain (%s) from defaults database."
+msgstr ""
+"Window Maker-ის დომენის (%s) ნაგულისხმევების მონაცემთა ბაზიდან ჩატვირთვა "
+"შეუძლებელია."
+
+#: ../../WPrefs.app/WPrefs.c:887
+msgid "could not extract version information from Window Maker"
+msgstr "Window Maker-დან ვერსიის ინფორმაციის ამოღება შეუძლებელია"
+
+#: ../../WPrefs.app/WPrefs.c:888
+msgid "Make sure wmaker is in your search path."
+msgstr "დარწმუნდით, რომ wmaker თქვენი ძებნის ბილიკშია."
+
+#: ../../WPrefs.app/WPrefs.c:892
+msgid ""
+"Could not extract version from Window Maker. Make sure it is correctly "
+"installed and is in your PATH environment variable."
+msgstr ""
+"Window Maker-დან ვერსიის ამოღება შეუძლებელია. დარწმუნდით, რომ ის სწორადაა "
+"დაყენებული და არის თქვენი გარემოს ცვლადში PATH."
+
+#: ../../WPrefs.app/WPrefs.c:900
+msgid ""
+"Could not extract version from Window Maker. Make sure it is correctly "
+"installed and the path where it installed is in the PATH environment "
+"variable."
+msgstr ""
+"Window Maker-დან ვერსიის ამოღება შეუძლებელია. დარწმუნდით, რომ ის სწორადაა "
+"დაყენებული და მისი ბილიკი არის თქვენი გარემოს ცვლადში PATH."
+
+#: ../../WPrefs.app/WPrefs.c:907
+#, c-format
+msgid ""
+"WPrefs only supports Window Maker 0.18.0 or newer.\n"
+"The version installed is %i.%i.%i\n"
+msgstr ""
+"WPrefs-ს, მხოლოდ, აქვს Window Maker 0.18.0-ის, ან უფრო ახლის მხარდაჭერა.\n"
+"დაყენებული ვერსიაა %i.%i.%i\n"
+
+#: ../../WPrefs.app/WPrefs.c:916
+#, c-format
+msgid ""
+"Window Maker %i.%i.%i, which is installed in your system, is not fully "
+"supported by this version of WPrefs."
+msgstr ""
+"Window Maker %i.%i.%i, რომელიც დაყენებული გაქვთ, WPrefs-ის ამ ვერსიის მიერ "
+"სრულად მხარდაჭერილი არაა."
+
+#: ../../WPrefs.app/WPrefs.c:925
+#, c-format
+msgid "could not run \"%s --global_defaults_path\"."
+msgstr "ვერ გავუშვი ბრძანება \"%s --global_defaults_path\"."
+
+#: ../../WPrefs.app/WPrefs.c:934
+msgid "global defaults path is too long"
+msgstr "გლობალური ნაგულისხმევების ბილიკი ზედმეტად გრძელია"
+
+#: ../../WPrefs.app/WPrefs.c:948
+#, c-format
+msgid "Could not load global Window Maker domain (%s)."
+msgstr "გლობალური Window Maker-ის დომენის (%s) ჩატვირთვა შეუძლებელია."
+
+#: ../../WPrefs.app/WPrefs.c:980
+#, c-format
+msgid "Window Maker sound domain (%s) is corrupted!"
+msgstr "Window Maker-ის ხმის დომენი (%s) დაზიანებულია!"
+
+#: ../../WPrefs.app/WPrefs.c:1189
+#, c-format
+msgid "bad value \"%s\" for option %s"
+msgstr "არასწორი მნიშვნელობა \"%s\" პარამეტრისთვის %s"
+
+#: ../../WPrefs.app/WindowHandling.c:194
+msgid "invalid data in option WindowPlaceOrigin. Using default (0,0)"
+msgstr ""
+"არასწორი მონაცემები პარამეტრში WindowPlaceOrigin. გამოიყენება ნაგულისხმევი "
+"(0,0)"
+
+#: ../../WPrefs.app/WindowHandling.c:298
+msgid "Window Placement"
+msgstr "ფანჯრის მდებარეობა"
+
+#: ../../WPrefs.app/WindowHandling.c:299
+msgid ""
+"How to place windows when they are first put\n"
+"on screen."
+msgstr ""
+"სად მოხდება ფანჯრების მოთავსება,\n"
+"როცა ისინი ეკრანზე პირველად ჩნდებიან."
+
+#: ../../WPrefs.app/WindowHandling.c:311
+msgid "Origin:"
+msgstr "საწყისი:"
+
+#: ../../WPrefs.app/WindowHandling.c:392
+msgid "Opaque Move/Resize"
+msgstr "დაბინდული გადატანა/ზომის შეცვლა"
+
+#: ../../WPrefs.app/WindowHandling.c:393
+msgid ""
+"Whether the window contents or only a frame should\n"
+"be displayed during a move or resize.\n"
+msgstr ""
+"გადაადგილებისას, ან ზომის შეცვლისას უნდა\n"
+"გამოჩნდეს ფანჯრის შემცველობა, თუ, მხოლოდ, ჩარჩო.\n"
+
+#: ../../WPrefs.app/WindowHandling.c:460
+msgid "by keyboard"
+msgstr "კლავიატურით"
+
+#: ../../WPrefs.app/WindowHandling.c:462
+msgid ""
+"When selected, moving or resizing windows\n"
+"using keyboard shortcuts will also display its\n"
+"content instead of just a frame."
+msgstr ""
+"როცა ჩართულია, ფანჯრების კლავიატურის მალსახმობებით\n"
+"ზომის შეცვლისას და გადაადგილებისას უბრალო\n"
+"ჩარჩოს მაგიერ ასევე გამოჩნდება ფანჯრის შემცველობა."
+
+#: ../../WPrefs.app/WindowHandling.c:473
+msgid "When maximizing..."
+msgstr "გადიდებისას..."
+
+#: ../../WPrefs.app/WindowHandling.c:476
+msgid "...do not cover:"
+msgstr "...არ დაფაროს:"
+
+#: ../../WPrefs.app/WindowHandling.c:483
+msgid "Icons"
+msgstr "ხატულები"
+
+#: ../../WPrefs.app/WindowHandling.c:488
+msgid "The dock"
+msgstr "დოკი"
+
+#: ../../WPrefs.app/WindowHandling.c:496
+msgid "Mod+Wheel"
+msgstr "Mod+ბორბალი"
+
+#: ../../WPrefs.app/WindowHandling.c:499
+msgid "Resize increment:"
+msgstr "ზომის ცვლის ზრდა:"
+
+#: ../../WPrefs.app/WindowHandling.c:520
+msgid "Edge Resistance"
+msgstr "წიბოს წინააღმდეგობა"
+
+#: ../../WPrefs.app/WindowHandling.c:522
+msgid ""
+"Edge resistance will make windows `resist'\n"
+"being moved further for the defined threshold\n"
+"when moved against other windows or the edges\n"
+"of the screen."
+msgstr ""
+"წიბოს წინაღობა ფანჯრებს 'გამძლეობას'\n"
+"შესძენს აღწერილი ზღვრით სხვა ფანჯრებისკენ,\n"
+"ან ეკრანის წიბოებისკენ\n"
+"გადაადგილებისას."
+
+#: ../../WPrefs.app/WindowHandling.c:541
+msgid "Resist"
+msgstr "წინააღმდეგობა"
+
+#: ../../WPrefs.app/WindowHandling.c:546
+msgid "Attract"
+msgstr "მიზიდვა"
+
+#: ../../WPrefs.app/WindowHandling.c:555
+msgid "Window Gap"
+msgstr "ფანჯრებს შორის სივრცე"
+
+#: ../../WPrefs.app/WindowHandling.c:557
+msgid ""
+"Margin (in pixels) left between windows and screen/window\n"
+"edges by edge-snap actions. 0 = flush."
+msgstr ""
+"სივრცე (პიქსელებში) ფანჯრებსა და ეკრანის/ფანჯრის\n"
+"კიდეებს შორის კიდეებზე მიყრდნობისას. 0 = მიყრდნობილი."
+
+#: ../../WPrefs.app/WindowHandling.c:578
+msgid "Dragging a maximized window..."
+msgstr "გაშლილი ფანჯრის გადათრევა..."
+
+#: ../../WPrefs.app/WindowHandling.c:607
+msgid "Window Handling Preferences"
+msgstr "ფანჯრის დამუშავების პარამეტრები"
+
+#: ../../WPrefs.app/WindowHandling.c:609
+msgid ""
+"Window handling options. Initial placement style\n"
+"edge resistance, opaque move etc."
+msgstr ""
+"ფანჯრის დამუშავების პარამეტრები. საწყისი მოთავსების სტილი,\n"
+"წიბოს წინაღობა, ბუნდოვანი გადატანა და ა.შ."
+
+#: ../../WPrefs.app/Workspace.c:164
+msgid "Workspace Navigation"
+msgstr "ნავიგაცია სამუშაო სივრცეში"
+
+#: ../../WPrefs.app/Workspace.c:169
+msgid "Wrap to the first workspace from the last workspace"
+msgstr "ბოლო სამუშაო სივრციდან პირველზე გადასვლა"
+
+#: ../../WPrefs.app/Workspace.c:185
+msgid "Switch workspaces while dragging windows"
+msgstr "სამუშაო სივრცეების გადართვა ფანჯრების გადათრევისას"
+
+#: ../../WPrefs.app/Workspace.c:201
+msgid "Automatically create new workspaces"
+msgstr "ახალი სამუშაო სივრცეების ავტომატურად შექმნა"
+
+#: ../../WPrefs.app/Workspace.c:217
+msgid "Automatically remove empty workspaces"
+msgstr "ცარიელი სამუშაო სივრცეების ავტომატურად წაშლა"
+
+#. WMSetLabelTextAlignment(panel->posL, WARight);
+#: ../../WPrefs.app/Workspace.c:233
+msgid "Position of workspace name display"
+msgstr "სამუშაო სივრცის სახელის ჩვენების ადგილი"
+
+#: ../../WPrefs.app/Workspace.c:258
+msgid "Default Workspace Layout"
+msgstr "სამუშაო სივრცის ნაგულისხმევი განლაგება"
+
+#: ../../WPrefs.app/Workspace.c:260
+msgid ""
+"Workspace layout applied to newly created workspaces.\n"
+"Existing workspaces keep whatever layout they were\n"
+"last set to. 'Float' is the ordinary unmanaged\n"
+"placement."
+msgstr ""
+"სამუშაო სივრცეების განლაგება ახალი სამუშაო სივრცეებისთვის.\n"
+"არსებული სივრცეები ინარჩუნებენ ბოლო\n"
+"დაყენებულ განლაგებას. „მოცურავე“ ჩვეულებრივი,\n"
+"მართვის გარეშე განთავსებაა."
+
+#: ../../WPrefs.app/Workspace.c:276
+msgid "Master count:"
+msgstr "მთავარების რაოდენობა:"
+
+#: ../../WPrefs.app/Workspace.c:286
+msgid "Master ratio:"
+msgstr "მთავარების პროპორცია:"
+
+#: ../../WPrefs.app/Workspace.c:331
+msgid "Workspace Preferences"
+msgstr "სამუშაო სივრცის მორგება"
+
+#: ../../WPrefs.app/Workspace.c:333
+msgid ""
+"Workspace navigation features\n"
+"and workspace name display settings."
+msgstr ""
+"სამუშაო სივრცის ნავიგაციის ფუნქციები და\n"
+"სამუშაო სივრცის სახელის ჩვენების პარამეტრები."
+
+#. Icons.c, key "IconificationStyle"
+#: ../../WPrefs.app/enumchoices.h:45
+msgid "Shrinking/Zooming"
+msgstr "დაპატარავება/გადიდება"
+
+#: ../../WPrefs.app/enumchoices.h:46
+msgid "Spinning/Twisting"
+msgstr "ტრიალი/გრეხა"
+
+#: ../../WPrefs.app/enumchoices.h:47
+msgid "3D-flipping"
+msgstr "3D-გადაყირავება"
+
+#. MouseSettings.c, keys "MouseWheelAction" / "MouseWheelTiltAction"
+#: ../../WPrefs.app/enumchoices.h:48 ../../WPrefs.app/enumchoices.h:65
+#: ../../WPrefs.app/enumchoices.h:76 ../../WPrefs.app/enumchoices.h:88
+msgid "None"
+msgstr "არცერთი"
+
+#. Appearance.c, key "TitleJustify", idx is WMAlignment
+#. Docks.c, key "DockEdge". Rows are in schema order, the values are
+#. * stored as the WDockEdge enumerators.
+#: ../../WPrefs.app/enumchoices.h:58 ../../WPrefs.app/enumchoices.h:211
+msgid "Left"
+msgstr "გავიდა"
+
+#: ../../WPrefs.app/enumchoices.h:60 ../../WPrefs.app/enumchoices.h:212
+msgid "Right"
+msgstr "მარჯვენა"
+
+#: ../../WPrefs.app/enumchoices.h:66 ../../WPrefs.app/enumchoices.h:77
+msgid "Applications Menu"
+msgstr "პროგრამების მენიუ"
+
+#: ../../WPrefs.app/enumchoices.h:68 ../../WPrefs.app/enumchoices.h:79
+msgid "Select Windows"
+msgstr "ფანჯრების მონიშვნა"
+
+#: ../../WPrefs.app/enumchoices.h:69 ../../WPrefs.app/enumchoices.h:80
+msgid "Previous Workspace"
+msgstr "წინა სამუშაო სივრცე"
+
+#: ../../WPrefs.app/enumchoices.h:70 ../../WPrefs.app/enumchoices.h:81
+msgid "Next Workspace"
+msgstr "შემდეგი სამუშაო სივრცე"
+
+#: ../../WPrefs.app/enumchoices.h:71 ../../WPrefs.app/enumchoices.h:82
+msgid "Previous Window"
+msgstr "წინა ფანჯარა"
+
+#: ../../WPrefs.app/enumchoices.h:72 ../../WPrefs.app/enumchoices.h:83
+msgid "Next Window"
+msgstr "შემდეგი ფანჯარა"
+
+#: ../../WPrefs.app/enumchoices.h:73
+msgid "Pan Viewport"
+msgstr "ვიუპორტის გადაადგილება"
+
+#: ../../WPrefs.app/enumchoices.h:89
+msgid "Switch Workspaces"
+msgstr "სამუშაო სივრცეების გადართვა"
+
+#: ../../WPrefs.app/enumchoices.h:90
+msgid "Switch Windows"
+msgstr "ფანჯრის გადართვა"
+
+#. Workspace.c, key "DefaultWorkspaceLayout"
+#: ../../WPrefs.app/enumchoices.h:94
+msgid "Float"
+msgstr "მოცურავე"
+
+#: ../../WPrefs.app/enumchoices.h:96
+msgid "Tile wide"
+msgstr "განიერი ფილა"
+
+#: ../../WPrefs.app/enumchoices.h:97
+msgid "Grid"
+msgstr "ბადე"
+
+#: ../../WPrefs.app/enumchoices.h:98
+msgid "Monocle"
+msgstr "მონოკლი"
+
+#. WindowHandling.c, key "WindowPlacement"
+#: ../../WPrefs.app/enumchoices.h:102
+msgid "Automatic"
+msgstr "ავტომატური"
+
+#: ../../WPrefs.app/enumchoices.h:103
+msgid "Random"
+msgstr "შემთხვევითი"
+
+#: ../../WPrefs.app/enumchoices.h:104
+msgid "Manual"
+msgstr "ხელით"
+
+#: ../../WPrefs.app/enumchoices.h:105
+msgid "Cascade"
+msgstr "კასკადი"
+
+#: ../../WPrefs.app/enumchoices.h:106
+msgid "Smart"
+msgstr "ჭკვიანი"
+
+#. Expert.c, key "TabAttachArea". Surfaced as an OPTION_WMAKER_ALT
+#. * checkbox that reads the value pair from the schema directly, this
+#. * table is here only so check_wprefs_schema asserts the enum stays
+#. * two-valued.
+#: ../../WPrefs.app/enumchoices.h:114
+msgid "Titlebar"
+msgstr "სათაურის ზოლი"
+
+#: ../../WPrefs.app/enumchoices.h:115
+msgid "Window"
+msgstr "ფანჯარა"
+
+#. Expert.c, key "SwitcherOrder". Surfaced as an OPTION_WMAKER_ALT
+#. * checkbox, this table only pins the value pair for check_wprefs_schema.
+#: ../../WPrefs.app/enumchoices.h:120
+msgid "Focus"
+msgstr "ფოკუსი"
+
+#: ../../WPrefs.app/enumchoices.h:121
+msgid "Age"
+msgstr "ასაკი"
+
+#. WindowHandling.c, key "DragMaximizedWindow"
+#: ../../WPrefs.app/enumchoices.h:125
+msgid "...changes its position (normal behavior)"
+msgstr "...ცვლის მის მდებარეობას (ნორმალური ქცევა)"
+
+#: ../../WPrefs.app/enumchoices.h:126
+msgid "...restores its unmaximized geometry"
+msgstr "...აღადგენს მის გაუშლელ გეომეტრიას"
+
+#: ../../WPrefs.app/enumchoices.h:127
+msgid "...considers the window now unmaximized"
+msgstr "...ჩათვლის, რომ ახლა ფანჯარა გაშლილი აღარაა"
+
+#: ../../WPrefs.app/enumchoices.h:128
+msgid "...does not move the window"
+msgstr "...არ გადაიტანს ფანჯარას"
+
+#. Preferences.c, key "ResizeDisplay"
+#. Preferences.c, key "MoveDisplay"
+#: ../../WPrefs.app/enumchoices.h:132 ../../WPrefs.app/enumchoices.h:139
+msgid "Corner of screen"
+msgstr "ეკრანის კუთხე"
+
+#: ../../WPrefs.app/enumchoices.h:133 ../../WPrefs.app/enumchoices.h:140
+msgid "Center of screen"
+msgstr "ეკრანის ცენტრი"
+
+#: ../../WPrefs.app/enumchoices.h:134 ../../WPrefs.app/enumchoices.h:141
+msgid "Center of resized window"
+msgstr "ზომაშეცვლილი ფანჯრის ცენტრი"
+
+#: ../../WPrefs.app/enumchoices.h:135 ../../WPrefs.app/enumchoices.h:142
+msgid "Disabled"
+msgstr "გამორთულია"
+
+#. Workspace.c, key "WorkspaceNameDisplayPosition" (KeychainDisplayPosition
+#. * has no UI). The popup's selected index is written as the enum value,
+#. * so rows must stay in value order. Pinned by check_wprefs_schema.
+#: ../../WPrefs.app/enumchoices.h:189
+msgid "Disable"
+msgstr "გამორთვა"
+
+#: ../../WPrefs.app/enumchoices.h:191 ../../WPrefs.app/enumchoices.h:213
+msgid "Top"
+msgstr "ზედა"
+
+#: ../../WPrefs.app/enumchoices.h:192 ../../WPrefs.app/enumchoices.h:214
+msgid "Bottom"
+msgstr "ქვემო"
+
+#: ../../WPrefs.app/enumchoices.h:193
+msgid "Top/Left"
+msgstr "ზედა/მარცხენა"
+
+#: ../../WPrefs.app/enumchoices.h:194
+msgid "Top/Right"
+msgstr "ზედა/მარჯვენა"
+
+#: ../../WPrefs.app/enumchoices.h:195
+msgid "Bottom/Left"
+msgstr "ქვედა/მარცხენა"
+
+#: ../../WPrefs.app/enumchoices.h:196
+msgid "Bottom/Right"
+msgstr "ქვედა/მარჯვენა"
+
+#: ../../WPrefs.app/main.c:58
+#, c-format
+msgid "usage: %s [options]\n"
+msgstr "გამოყენება: %s [პარამეტრები]\n"
+
+#: ../../WPrefs.app/main.c:59
+msgid "options:"
+msgstr "პარამეტრები:"
+
+#: ../../WPrefs.app/main.c:60
+msgid " -display <display>\tdisplay to be used"
+msgstr " -display <ეკრანი>\tეკრანი გამოსაყენებლად"
+
+#: ../../WPrefs.app/main.c:61
+msgid " --version\t\tprint version number and exit"
+msgstr " --version\t\tვერსიის ნომრის გამოტანა და გასვლა"
+
+#: ../../WPrefs.app/main.c:62
+msgid " --help\t\tprint this message and exit"
+msgstr " --help\t\tამ შეტყობინების გამოტანა და გასვლა"
+
+#: ../../WPrefs.app/main.c:118
+#, c-format
+msgid "too few arguments for %s"
+msgstr "ძალიან ცოტა არგუმენტი %s-ისთვის"
+
+#: ../../WPrefs.app/main.c:142
+#, c-format
+msgid "could not open display %s"
+msgstr "გახსნის შეცდომა ეკრანისთვის %s"
+
+#: ../../WPrefs.app/main.c:149
+msgid "could not initialize application"
+msgstr "აპლიკაციის ინიციალიზაცია შეუძლებელია"
+
+#: ../../WPrefs.app/xmodifier.c:152
+#, c-format
+msgid "%s is being used for both %s and %s"
+msgstr "%s გამოიყენება %s-სთვისაც და %s-სთვისაც"
+
+#: ../../src/keybind-descriptions.h:21 ../../src/keybind-descriptions.h:22
+#: ../../src/keybind-descriptions.h:23 ../../src/keybind-descriptions.h:24
+#: ../../src/keybind-descriptions.h:25 ../../src/keybind-descriptions.h:26
+#: ../../src/keybind-descriptions.h:27
+msgid "Virtual Desktop"
+msgstr "ვირტუალური დესკტოპი"
+
+#: ../../src/keybind-descriptions.h:21
+msgid "Move VirtualDesktop to next left edge"
+msgstr "ვირტუალური დესკტოპის მარცხენა კიდეზე გადაადგილება"
+
+#: ../../src/keybind-descriptions.h:21
+msgid "VirtualEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:22
+msgid "Move VirtualDesktop to next right edge"
+msgstr "ვირტუალური დესკტოპის მარჯვენა კიდეზე გადაადგილება"
+
+#: ../../src/keybind-descriptions.h:22
+msgid "VirtualEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:23
+msgid "Move VirtualDesktop to next top edge"
+msgstr "ვირტუალური დესკტოპის ზედა კიდეზე გადაადგილება"
+
+#: ../../src/keybind-descriptions.h:23
+msgid "VirtualEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:24
+msgid "Move VirtualDesktop to next bottom edge"
+msgstr "ვირტუალური დესკტოპის ქვედა კიდეზე გადაადგილება"
+
+#: ../../src/keybind-descriptions.h:24
+msgid "VirtualEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:25
+msgid "Move VirtualDesktop to its origin"
+msgstr "ვირტუალური დესკტოპის საწყის წერტილში დაბრუნება"
+
+#: ../../src/keybind-descriptions.h:25
+msgid "VirtualDesktopHomeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:26
+msgid "Center the focused window in the VirtualDesktop"
+msgstr "ფოკუსირებული ფანჯრის ცენტრში მოთავსება ვირტუალურ დესკტოპზე"
+
+#: ../../src/keybind-descriptions.h:26
+msgid "VirtualDesktopCenterKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:27
+msgid "Pin the focused window to the VirtualDesktop viewport"
+msgstr "ფოკუსირებული ფანჯრის დამაგრება ვირტუალური დესკტოპის ვიუპორტზე"
+
+#: ../../src/keybind-descriptions.h:27
+msgid "VirtualDesktopPinKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:34 ../../src/keybind-descriptions.h:196
+#: ../../src/keybind-descriptions.h:197 ../../src/keybind-descriptions.h:198
+#: ../../src/keybind-descriptions.h:199 ../../src/keybind-descriptions.h:200
+msgid "Session & Misc"
+msgstr "სესია და სხვა"
+
+#: ../../src/keybind-descriptions.h:34
+msgid "Toggle keyboard language"
+msgstr "კლავიატურის ენის გადართვა"
+
+#: ../../src/keybind-descriptions.h:34
+msgid "ToggleKbdModeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:40 ../../src/keybind-descriptions.h:41
+#: ../../src/keybind-descriptions.h:42
+msgid "Menus"
+msgstr "მენიუები"
+
+#: ../../src/keybind-descriptions.h:40
+msgid "Open applications menu"
+msgstr "აპლიკაციის მენიუს გახსნა"
+
+#: ../../src/keybind-descriptions.h:40
+msgid "RootMenuKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:41
+msgid "Open window list menu"
+msgstr "ფანჯრების სიის მენიუს გახსნა"
+
+#: ../../src/keybind-descriptions.h:41
+msgid "WindowListKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:42
+msgid "Open window commands menu"
+msgstr "ფანჯრის ბრძანებების მენიუ"
+
+#: ../../src/keybind-descriptions.h:42
+msgid "WindowMenuKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:44 ../../src/keybind-descriptions.h:45
+#: ../../src/keybind-descriptions.h:46 ../../src/keybind-descriptions.h:47
+#: ../../src/keybind-descriptions.h:48 ../../src/keybind-descriptions.h:49
+msgid "Dock & Screen"
+msgstr "დოკი და ეკრანი"
+
+#: ../../src/keybind-descriptions.h:44
+msgid "Raise/Lower Dock"
+msgstr "დოკის აწევა/დაწევა"
+
+#: ../../src/keybind-descriptions.h:44
+msgid "DockRaiseLowerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:45
+msgid "Raise/Lower Clip"
+msgstr "სამაგრის აწევა/დაწევა"
+
+#: ../../src/keybind-descriptions.h:45
+msgid "ClipRaiseLowerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:46
+msgid "Switch to next screen/monitor"
+msgstr "გადართვა შემდეგ ეკრანზე/მონიტორზე"
+
+#: ../../src/keybind-descriptions.h:46
+msgid "ScreenSwitchKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:47
+msgid "Capture the entire screen"
+msgstr "მთელი ეკრანის გადაღება"
+
+#: ../../src/keybind-descriptions.h:47
+msgid "ScreenCaptureKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:48
+msgid "Capture a window"
+msgstr "ფანჯრის გადაღება"
+
+#: ../../src/keybind-descriptions.h:48
+msgid "WindowCaptureKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:49
+msgid "Capture a portion of the screen"
+msgstr "ეკრანის ნაწილის გადაღება"
+
+#: ../../src/keybind-descriptions.h:49
+msgid "PartialCaptureKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:51 ../../src/keybind-descriptions.h:52
+#: ../../src/keybind-descriptions.h:53 ../../src/keybind-descriptions.h:54
+#: ../../src/keybind-descriptions.h:55 ../../src/keybind-descriptions.h:56
+#: ../../src/keybind-descriptions.h:57 ../../src/keybind-descriptions.h:58
+#: ../../src/keybind-descriptions.h:59 ../../src/keybind-descriptions.h:60
+#: ../../src/keybind-descriptions.h:61 ../../src/keybind-descriptions.h:62
+#: ../../src/keybind-descriptions.h:63 ../../src/keybind-descriptions.h:64
+#: ../../src/keybind-descriptions.h:65 ../../src/keybind-descriptions.h:66
+#: ../../src/keybind-descriptions.h:67 ../../src/keybind-descriptions.h:68
+#: ../../src/keybind-descriptions.h:69 ../../src/keybind-descriptions.h:70
+#: ../../src/keybind-descriptions.h:71 ../../src/keybind-descriptions.h:72
+#: ../../src/keybind-descriptions.h:73 ../../src/keybind-descriptions.h:74
+#: ../../src/keybind-descriptions.h:75 ../../src/keybind-descriptions.h:76
+#: ../../src/keybind-descriptions.h:77 ../../src/keybind-descriptions.h:78
+#: ../../src/keybind-descriptions.h:79 ../../src/keybind-descriptions.h:80
+#: ../../src/keybind-descriptions.h:81 ../../src/keybind-descriptions.h:82
+#: ../../src/keybind-descriptions.h:83 ../../src/keybind-descriptions.h:84
+#: ../../src/keybind-descriptions.h:85 ../../src/keybind-descriptions.h:86
+#: ../../src/keybind-descriptions.h:87 ../../src/keybind-descriptions.h:88
+#: ../../src/keybind-descriptions.h:89 ../../src/keybind-descriptions.h:90
+#: ../../src/keybind-descriptions.h:91 ../../src/keybind-descriptions.h:92
+#: ../../src/keybind-descriptions.h:93 ../../src/keybind-descriptions.h:94
+#: ../../src/keybind-descriptions.h:95 ../../src/keybind-descriptions.h:96
+#: ../../src/keybind-descriptions.h:97 ../../src/keybind-descriptions.h:98
+#: ../../src/keybind-descriptions.h:99 ../../src/keybind-descriptions.h:100
+#: ../../src/keybind-descriptions.h:101
+msgid "Windows"
+msgstr "ფანჯრები"
+
+#: ../../src/keybind-descriptions.h:51
+msgid "Miniaturize active window"
+msgstr "აქტიური ფანჯრის ჩაკეცვა"
+
+#: ../../src/keybind-descriptions.h:51
+msgid "MiniaturizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:52
+msgid "Miniaturize all windows"
+msgstr "ყველა ფანჯრის ჩაკეცვა"
+
+#: ../../src/keybind-descriptions.h:52
+msgid "MiniaturizeAllKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:53
+msgid "Miniaturize other windows"
+msgstr "სხვა ფანჯრების მინიატურიზაცია"
+
+#: ../../src/keybind-descriptions.h:53
+msgid "MiniaturizeOthersKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:54
+msgid "Hide active application"
+msgstr "აქტიური აპლიკაციის დამალვა"
+
+#: ../../src/keybind-descriptions.h:54
+msgid "HideKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:55
+msgid "Hide other applications"
+msgstr "სხვა აპლიკაციების დამალვა"
+
+#: ../../src/keybind-descriptions.h:55
+msgid "HideOthersKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:56
+msgid "Toggle show desktop (minimize/restore all)"
+msgstr "სამუშაო მაგიდის ჩვენების გადართვა (ყველას ჩაკეცვა/აღდგენა)"
+
+#: ../../src/keybind-descriptions.h:56
+msgid "ShowDesktopKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:57
+msgid "Show all windows"
+msgstr "ყველა ფანჯრის ჩვენება"
+
+#: ../../src/keybind-descriptions.h:57
+msgid "ShowAllKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:58
+msgid "Arrange icons"
+msgstr "ხატულების დალაგება"
+
+#: ../../src/keybind-descriptions.h:58
+msgid "ArrangeIconsKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:59
+msgid "Move/Resize active window"
+msgstr "აქტიური ფანჯრის გადატანა/ზომის შეცვლა"
+
+#: ../../src/keybind-descriptions.h:59
+msgid "MoveResizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:60
+msgid "Close active window"
+msgstr "აქტიური ფანჯრის დახურვა"
+
+#: ../../src/keybind-descriptions.h:60
+msgid "CloseKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:61
+msgid "Maximize active window"
+msgstr "აქტიური ფანჯრის გაშლა"
+
+#: ../../src/keybind-descriptions.h:61
+msgid "MaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:62
+msgid "Maximize active window vertically"
+msgstr "აქტიური ფანჯრის ვერტიკალური გაშლა"
+
+#: ../../src/keybind-descriptions.h:62
+msgid "VMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:63
+msgid "Maximize active window horizontally"
+msgstr "აქტიურად ფანჯრის ჰორიზონტალურად გაშლა"
+
+#: ../../src/keybind-descriptions.h:63
+msgid "HMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:64
+msgid "Maximize active window left half"
+msgstr "აქტიური ფანჯრის მარცხენა ნახევარზე გაშლა"
+
+#: ../../src/keybind-descriptions.h:64
+msgid "LHMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:65
+msgid "Maximize active window right half"
+msgstr "აქტიური ფანჯრის მარჯვენა ნახევარზე გაშლა"
+
+#: ../../src/keybind-descriptions.h:65
+msgid "RHMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:66
+msgid "Maximize active window top half"
+msgstr "აქტიური ფანჯრის ზედა ნახევარზე გაშლა"
+
+#: ../../src/keybind-descriptions.h:66
+msgid "THMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:67
+msgid "Maximize active window bottom half"
+msgstr "აქტიური ფანჯრის ქვედა ნახევარზე გაშლა"
+
+#: ../../src/keybind-descriptions.h:67
+msgid "BHMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:68
+msgid "Maximize active window top left corner"
+msgstr "აქტიური ფანჯრის გაშლა ზედა მარცხენა კუთხეში"
+
+#: ../../src/keybind-descriptions.h:68
+msgid "TLCMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:69
+msgid "Maximize active window top right corner"
+msgstr "აქტიური ფანჯრის გაშლა ზედა მარჯვენა კუთხეში"
+
+#: ../../src/keybind-descriptions.h:69
+msgid "TRCMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:70
+msgid "Maximize active window bottom left corner"
+msgstr "აქტიური ფანჯრის გაშლა ქვედა მარცხენა კუთხეში"
+
+#: ../../src/keybind-descriptions.h:70
+msgid "BLCMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:71
+msgid "Maximize active window bottom right corner"
+msgstr "აქტიური ფანჯრის გაშლა ქვედა მარჯვენა კუთხეში"
+
+#: ../../src/keybind-descriptions.h:71
+msgid "BRCMaximizeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:72
+msgid "Tile active window"
+msgstr "აქტიური ფანჯრის მოზაიკა"
+
+#: ../../src/keybind-descriptions.h:72
+msgid "MaximusKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:73
+msgid "Move active window to left edge"
+msgstr "აქტიური ფანჯრის მარცხენა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:73
+msgid "MoveToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:74
+msgid "Move active window to right edge"
+msgstr "აქტიური ფანჯრის მარჯვენა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:74
+msgid "MoveToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:75
+msgid "Move active window to top edge"
+msgstr "აქტიური ფანჯრის ზედა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:75
+msgid "MoveToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:76
+msgid "Move active window to bottom edge"
+msgstr "აქტიური ფანჯრის ქვედა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:76
+msgid "MoveToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:77
+msgid "Move active window to left screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის მარცხენა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:77
+msgid "MoveToEdgeLeftNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:78
+msgid "Move active window to right screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის მარჯვენა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:78
+msgid "MoveToEdgeRightNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:79
+msgid "Move active window to top screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის ზედა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:79
+msgid "MoveToEdgeUpNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:80
+msgid "Move active window to bottom screen edge"
+msgstr "აქტიური ფანჯრის ეკრანის ქვედა კიდეზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:80
+msgid "MoveToEdgeDownNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:81
+msgid "Grow active window to left edge"
+msgstr "აქტიური ფანჯრის გაზრდა მარცხენა კიდემდე"
+
+#: ../../src/keybind-descriptions.h:81
+msgid "GrowToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:82
+msgid "Grow active window to right edge"
+msgstr "აქტიური ფანჯრის გაზრდა მარჯვენა კიდემდე"
+
+#: ../../src/keybind-descriptions.h:82
+msgid "GrowToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:83
+msgid "Grow active window to top edge"
+msgstr "აქტიური ფანჯრის გაზრდა ზედა კიდემდე"
+
+#: ../../src/keybind-descriptions.h:83
+msgid "GrowToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:84
+msgid "Grow active window to bottom edge"
+msgstr "აქტიური ფანჯრის გაზრდა ქვედა კიდემდე"
+
+#: ../../src/keybind-descriptions.h:84
+msgid "GrowToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:85
+msgid "Shrink active window from left edge"
+msgstr "აქტიური ფანჯრის შემცირება მარცხენა კიდიდან"
+
+#: ../../src/keybind-descriptions.h:85
+msgid "ShrinkToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:86
+msgid "Shrink active window from right edge"
+msgstr "აქტიური ფანჯრის შემცირება მარჯვენა კიდიდან"
+
+#: ../../src/keybind-descriptions.h:86
+msgid "ShrinkToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:87
+msgid "Shrink active window from top edge"
+msgstr "აქტიური ფანჯრის შემცირება ზედა კიდიდან"
+
+#: ../../src/keybind-descriptions.h:87
+msgid "ShrinkToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:88
+msgid "Shrink active window from bottom edge"
+msgstr "აქტიური ფანჯრის შემცირება ქვედა კიდიდან"
+
+#: ../../src/keybind-descriptions.h:88
+msgid "ShrinkToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:89
+msgid "Toggle fullscreen for active window"
+msgstr "აქტიური ფანჯრის სრულ ეკრანზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:89
+msgid "ToggleFullscreenKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:90
+msgid "Center active window"
+msgstr "აქტიური ფანჯრის დაცენტრება"
+
+#: ../../src/keybind-descriptions.h:90
+msgid "CenterKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:91
+msgid "Toggle window on top status"
+msgstr "ფანჯრის ზემოთ შენარჩუნების სტატუსის გადართვა"
+
+#: ../../src/keybind-descriptions.h:91
+msgid "KeepOnTopKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:92
+msgid "Toggle window at bottom status"
+msgstr "ფანჯრის ქვემოთ შენარჩუნების სტატუსის გადართვა"
+
+#: ../../src/keybind-descriptions.h:92
+msgid "KeepAtBottomKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:93
+msgid "Toggle window omnipresent status"
+msgstr "ფანჯრის ყველგან ჩვენების სტატუსის გადართვა"
+
+#: ../../src/keybind-descriptions.h:93
+msgid "OmnipresentKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:94
+msgid "Raise active window"
+msgstr "აქტიური ფანჯრის აწევა"
+
+#: ../../src/keybind-descriptions.h:94
+msgid "RaiseKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:95
+msgid "Lower active window"
+msgstr "აქტიური ფანჯრის დაწევა"
+
+#: ../../src/keybind-descriptions.h:95
+msgid "LowerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:96
+msgid "Raise/Lower window under mouse pointer"
+msgstr "თაგუნას მაჩვენებლის ქვეშ არსებული ფანჯრის აწევა/დაწევა"
+
+#: ../../src/keybind-descriptions.h:96
+msgid "RaiseLowerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:97
+msgid "Shade active window"
+msgstr "აქტიური ფანჯრის დაჩრდილვა"
+
+#: ../../src/keybind-descriptions.h:97
+msgid "ShadeKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:98
+msgid "Select active window"
+msgstr "აქტიური ფანჯრის მონიშვნა"
+
+#: ../../src/keybind-descriptions.h:98
+msgid "SelectKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:99
+msgid "Launch new instance of application"
+msgstr "აპლიკაციის ახალი გაშვებული ასლის შექმნა"
+
+#: ../../src/keybind-descriptions.h:99
+msgid "WindowRelaunchKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:100
+msgid "Move to right/bottom/left/top head"
+msgstr "გადატანა მარჯვენა/ქვედა/მარცხენა/ზედა თავზე"
+
+#: ../../src/keybind-descriptions.h:100
+msgid "MoveTo12to6Head"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:101
+msgid "Move to left/top/right/bottom head"
+msgstr "გადატანა მარცხენა/ზედა/მარჯვენა/ქვედა თავზე"
+
+#: ../../src/keybind-descriptions.h:101
+msgid "MoveTo6to12Head"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:103 ../../src/keybind-descriptions.h:104
+#: ../../src/keybind-descriptions.h:105 ../../src/keybind-descriptions.h:106
+#: ../../src/keybind-descriptions.h:107 ../../src/keybind-descriptions.h:108
+#: ../../src/keybind-descriptions.h:109 ../../src/keybind-descriptions.h:110
+#: ../../src/keybind-descriptions.h:111 ../../src/keybind-descriptions.h:112
+msgid "Window Shortcuts"
+msgstr "ფანჯრის მალსახმობები"
+
+#: ../../src/keybind-descriptions.h:103
+msgid "Shortcut for window 1"
+msgstr "მალსახმობი ფანჯრისთვის 1"
+
+#: ../../src/keybind-descriptions.h:103
+msgid "WindowShortcut1Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:104
+msgid "Shortcut for window 2"
+msgstr "მალსახმობი ფანჯრისთვის 2"
+
+#: ../../src/keybind-descriptions.h:104
+msgid "WindowShortcut2Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:105
+msgid "Shortcut for window 3"
+msgstr "მალსახმობი ფანჯრისთვის 3"
+
+#: ../../src/keybind-descriptions.h:105
+msgid "WindowShortcut3Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:106
+msgid "Shortcut for window 4"
+msgstr "მალსახმობი ფანჯრისთვის 4"
+
+#: ../../src/keybind-descriptions.h:106
+msgid "WindowShortcut4Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:107
+msgid "Shortcut for window 5"
+msgstr "მალსახმობი ფანჯრისთვის 5"
+
+#: ../../src/keybind-descriptions.h:107
+msgid "WindowShortcut5Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:108
+msgid "Shortcut for window 6"
+msgstr "მალსახმობი ფანჯრისთვის 6"
+
+#: ../../src/keybind-descriptions.h:108
+msgid "WindowShortcut6Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:109
+msgid "Shortcut for window 7"
+msgstr "მალსახმობი ფანჯრისთვის 7"
+
+#: ../../src/keybind-descriptions.h:109
+msgid "WindowShortcut7Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:110
+msgid "Shortcut for window 8"
+msgstr "მალსახმობი ფანჯრისთვის 8"
+
+#: ../../src/keybind-descriptions.h:110
+msgid "WindowShortcut8Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:111
+msgid "Shortcut for window 9"
+msgstr "მალსახმობი ფანჯრისთვის 9"
+
+#: ../../src/keybind-descriptions.h:111
+msgid "WindowShortcut9Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:112
+msgid "Shortcut for window 10"
+msgstr "მალსახმობი ფანჯრისთვის 10"
+
+#: ../../src/keybind-descriptions.h:112
+msgid "WindowShortcut10Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:114 ../../src/keybind-descriptions.h:115
+#: ../../src/keybind-descriptions.h:116 ../../src/keybind-descriptions.h:117
+#: ../../src/keybind-descriptions.h:118 ../../src/keybind-descriptions.h:119
+#: ../../src/keybind-descriptions.h:120 ../../src/keybind-descriptions.h:121
+#: ../../src/keybind-descriptions.h:122 ../../src/keybind-descriptions.h:123
+#: ../../src/keybind-descriptions.h:124 ../../src/keybind-descriptions.h:125
+#: ../../src/keybind-descriptions.h:126 ../../src/keybind-descriptions.h:127
+msgid "Focus & Groups"
+msgstr "ფოკუსი და ჯგუფები"
+
+#: ../../src/keybind-descriptions.h:114
+msgid "Focus next window"
+msgstr "ფოკუსის გადართვა შემდეგ ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:114
+msgid "FocusNextKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:115
+msgid "Focus previous window"
+msgstr "ფოკუსის გადართვა წინა ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:115
+msgid "FocusPrevKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:116
+msgid "Focus the window to the left"
+msgstr "ფოკუსი მარცხნივ არსებულ ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:116
+msgid "FocusWindowLeftKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:117
+msgid "Focus the window to the right"
+msgstr "ფოკუსი მარჯვნივ არსებულ ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:117
+msgid "FocusWindowRightKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:118
+msgid "Focus the window above"
+msgstr "ფოკუსი ზემო ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:118
+msgid "FocusWindowUpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:119
+msgid "Focus the window below"
+msgstr "ფოკუსი ქვედა ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:119
+msgid "FocusWindowDownKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:120
+msgid "Focus next window in group"
+msgstr "შემდეგ ფანჯარაზე ფოკუსირება ჯგუფში"
+
+#: ../../src/keybind-descriptions.h:120
+msgid "GroupWindowNextKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:121
+msgid "Focus previous window in group"
+msgstr "წინა ფანჯარაზე ფოკუსირება ჯგუფში"
+
+#: ../../src/keybind-descriptions.h:121
+msgid "GroupWindowPrevKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:122
+msgid "Switch to next application group"
+msgstr "შემდეგ აპლიკაციის ჯგუფზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:122
+msgid "GroupNextKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:123
+msgid "Switch to previous application group"
+msgstr "წინა აპლიკაციის ჯგუფზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:123
+msgid "GroupPrevKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:124
+msgid "Switch to next tab in group"
+msgstr "შემდეგ ჩანართზე გადართვა ჯგუფში"
+
+#: ../../src/keybind-descriptions.h:124
+msgid "GroupTabNextKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:125
+msgid "Switch to previous tab in group"
+msgstr "წინა ჩანართზე გადართვა ჯგუფში"
+
+#: ../../src/keybind-descriptions.h:125
+msgid "GroupTabPrevKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:126
+msgid "Attach window as tab"
+msgstr "ფანჯრის მიმაგრება ჩანართად"
+
+#: ../../src/keybind-descriptions.h:126
+msgid "GroupTabAttachKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:127
+msgid "Detach tab from group"
+msgstr "ჩანართის ჯგუფიდან გამოყოფა"
+
+#: ../../src/keybind-descriptions.h:127
+msgid "GroupTabDetachKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:129 ../../src/keybind-descriptions.h:130
+#: ../../src/keybind-descriptions.h:131 ../../src/keybind-descriptions.h:132
+#: ../../src/keybind-descriptions.h:133 ../../src/keybind-descriptions.h:134
+#: ../../src/keybind-descriptions.h:135 ../../src/keybind-descriptions.h:136
+#: ../../src/keybind-descriptions.h:137 ../../src/keybind-descriptions.h:138
+#: ../../src/keybind-descriptions.h:139 ../../src/keybind-descriptions.h:140
+#: ../../src/keybind-descriptions.h:141 ../../src/keybind-descriptions.h:142
+#: ../../src/keybind-descriptions.h:143 ../../src/keybind-descriptions.h:144
+#: ../../src/keybind-descriptions.h:145 ../../src/keybind-descriptions.h:146
+#: ../../src/keybind-descriptions.h:147 ../../src/keybind-descriptions.h:148
+#: ../../src/keybind-descriptions.h:149 ../../src/keybind-descriptions.h:150
+#: ../../src/keybind-descriptions.h:151 ../../src/keybind-descriptions.h:152
+#: ../../src/keybind-descriptions.h:153 ../../src/keybind-descriptions.h:154
+#: ../../src/keybind-descriptions.h:155 ../../src/keybind-descriptions.h:156
+#: ../../src/keybind-descriptions.h:157 ../../src/keybind-descriptions.h:158
+#: ../../src/keybind-descriptions.h:159 ../../src/keybind-descriptions.h:160
+#: ../../src/keybind-descriptions.h:161 ../../src/keybind-descriptions.h:162
+#: ../../src/keybind-descriptions.h:163 ../../src/keybind-descriptions.h:164
+#: ../../src/keybind-descriptions.h:165 ../../src/keybind-descriptions.h:166
+#: ../../src/keybind-descriptions.h:167 ../../src/keybind-descriptions.h:168
+#: ../../src/keybind-descriptions.h:169 ../../src/keybind-descriptions.h:170
+#: ../../src/keybind-descriptions.h:171 ../../src/keybind-descriptions.h:172
+#: ../../src/keybind-descriptions.h:173 ../../src/keybind-descriptions.h:174
+#: ../../src/keybind-descriptions.h:175 ../../src/keybind-descriptions.h:176
+#: ../../src/keybind-descriptions.h:177
+msgid "Workspaces"
+msgstr "სამუშაო სივრცეები"
+
+#: ../../src/keybind-descriptions.h:129
+msgid "Open workspace pager"
+msgstr "სამუშაო სივრცის პეიჯერის გახსნა"
+
+#: ../../src/keybind-descriptions.h:129
+msgid "WorkspaceMapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:130
+msgid "Switch to next workspace"
+msgstr "გადართვა შემდეგ სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:130
+msgid "NextWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:131
+msgid "Switch to previous workspace"
+msgstr "გადართვა წინა სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:131
+msgid "PrevWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:132
+msgid "Switch to last used workspace"
+msgstr "გადართვა ბოლო სამუშაო სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:132
+msgid "LastWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:133
+msgid "Switch to next ten workspaces"
+msgstr "გადართვა შემდეგ ათ სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:133
+msgid "NextWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:134
+msgid "Switch to previous ten workspaces"
+msgstr "გადართვა წინა ათ სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:134
+msgid "PrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:135
+msgid "Switch to workspace on the left"
+msgstr "მარცხენა სამუშაო სივრცეზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:135
+msgid "LeftWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:136
+msgid "Switch to workspace on the right"
+msgstr "მარჯვენა სამუშაო სივრცეზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:136
+msgid "RightWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:137
+msgid "Switch to workspace above"
+msgstr "ზემოთა სამუშაო სივრცეზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:137
+msgid "UpWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:138
+msgid "Switch to workspace below"
+msgstr "ქვემოთა სამუშაო სივრცეზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:138
+msgid "DownWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:139
+msgid "Switch to workspace 1"
+msgstr "სამუშაო სივრცე 1-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:139
+msgid "Workspace1Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:140
+msgid "Switch to workspace 2"
+msgstr "სამუშაო სივრცე 2-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:140
+msgid "Workspace2Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:141
+msgid "Switch to workspace 3"
+msgstr "სამუშაო სივრცე 3-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:141
+msgid "Workspace3Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:142
+msgid "Switch to workspace 4"
+msgstr "სამუშაო სივრცე 4-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:142
+msgid "Workspace4Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:143
+msgid "Switch to workspace 5"
+msgstr "სამუშაო სივრცე 5-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:143
+msgid "Workspace5Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:144
+msgid "Switch to workspace 6"
+msgstr "სამუშაო სივრცე 6-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:144
+msgid "Workspace6Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:145
+msgid "Switch to workspace 7"
+msgstr "სამუშაო სივრცე 7-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:145
+msgid "Workspace7Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:146
+msgid "Switch to workspace 8"
+msgstr "სამუშაო სივრცე 8-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:146
+msgid "Workspace8Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:147
+msgid "Switch to workspace 9"
+msgstr "სამუშაო სივრცე 9-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:147
+msgid "Workspace9Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:148
+msgid "Switch to workspace 10"
+msgstr "გადართვა სამუშაო სივრცეზე 10"
+
+#: ../../src/keybind-descriptions.h:148
+msgid "Workspace10Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:149
+msgid "Move window to next workspace"
+msgstr "ფანჯრის გადატანა მომდევნო სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:149
+msgid "MoveToNextWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:150
+msgid "Move window to previous workspace"
+msgstr "ფანჯრის გადატანა წინა სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:150
+msgid "MoveToPrevWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:151
+msgid "Move window to last used workspace"
+msgstr "ფანჯრის გადატანა ბოლო სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:151
+msgid "MoveToLastWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:152
+msgid "Move window to next ten workspaces"
+msgstr "ფანჯრის გადატანა შემდეგ ათ სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:152
+msgid "MoveToNextWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:153
+msgid "Move window to previous ten workspaces"
+msgstr "ფანჯრის გადატანა წინა ათ სამუშაო სივრცეზე"
+
+#: ../../src/keybind-descriptions.h:153
+msgid "MoveToPrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:154
+msgid "Move window to workspace on the left"
+msgstr "ფანჯრის გადატანა მარცხენა სამუშაო სივრცეში"
+
+#: ../../src/keybind-descriptions.h:154
+msgid "MoveToLeftWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:155
+msgid "Move window to workspace on the right"
+msgstr "ფანჯრის გადატანა მარჯვენა სამუშაო სივრცეში"
+
+#: ../../src/keybind-descriptions.h:155
+msgid "MoveToRightWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:156
+msgid "Move window to workspace above"
+msgstr "ფანჯრის გადატანა ზემოთა სამუშაო სივრცეში"
+
+#: ../../src/keybind-descriptions.h:156
+msgid "MoveToUpWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:157
+msgid "Move window to workspace below"
+msgstr "ფანჯრის გადატანა ქვემოთა სამუშაო სივრცეში"
+
+#: ../../src/keybind-descriptions.h:157
+msgid "MoveToDownWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:158
+msgid "Move window to workspace 1"
+msgstr "ფანჯრის სამუშაო სივრცე 1-ზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:158
+msgid "MoveToWorkspace1Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:159
+msgid "Move window to workspace 2"
+msgstr "ფანჯრის სამუშაო სივრცე 2-ზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:159
+msgid "MoveToWorkspace2Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:160
+msgid "Move window to workspace 3"
+msgstr "ფანჯრის სამუშაო სივრცე 3-ზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:160
+msgid "MoveToWorkspace3Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:161
+msgid "Move window to workspace 4"
+msgstr "ფანჯრის სამუშაო სივრცე 4-ზე გადატანა"
+
+#: ../../src/keybind-descriptions.h:161
+msgid "MoveToWorkspace4Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:162
+msgid "Move window to workspace 5"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 5-ზე"
+
+#: ../../src/keybind-descriptions.h:162
+msgid "MoveToWorkspace5Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:163
+msgid "Move window to workspace 6"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 6-ზე"
+
+#: ../../src/keybind-descriptions.h:163
+msgid "MoveToWorkspace6Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:164
+msgid "Move window to workspace 7"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 7-ზე"
+
+#: ../../src/keybind-descriptions.h:164
+msgid "MoveToWorkspace7Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:165
+msgid "Move window to workspace 8"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 8-ზე"
+
+#: ../../src/keybind-descriptions.h:165
+msgid "MoveToWorkspace8Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:166
+msgid "Move window to workspace 9"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 9-ზე"
+
+#: ../../src/keybind-descriptions.h:166
+msgid "MoveToWorkspace9Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:167
+msgid "Move window to workspace 10"
+msgstr "ფანჯრის გადატანა სამუშაო სივრცე 10-ზე"
+
+#: ../../src/keybind-descriptions.h:167
+msgid "MoveToWorkspace10Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:168
+msgid "Toggle window on workspace 1"
+msgstr "ფანჯრის სამუშაო სივრცე 1-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:168
+msgid "ToggleWorkspace1Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:169
+msgid "Toggle window on workspace 2"
+msgstr "ფანჯრის სამუშაო სივრცე 2-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:169
+msgid "ToggleWorkspace2Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:170
+msgid "Toggle window on workspace 3"
+msgstr "ფანჯრის სამუშაო სივრცე 3-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:170
+msgid "ToggleWorkspace3Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:171
+msgid "Toggle window on workspace 4"
+msgstr "ფანჯრის სამუშაო სივრცე 4-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:171
+msgid "ToggleWorkspace4Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:172
+msgid "Toggle window on workspace 5"
+msgstr "ფანჯრის სამუშაო სივრცე 5-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:172
+msgid "ToggleWorkspace5Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:173
+msgid "Toggle window on workspace 6"
+msgstr "ფანჯრის სამუშაო სივრცე 6-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:173
+msgid "ToggleWorkspace6Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:174
+msgid "Toggle window on workspace 7"
+msgstr "ფანჯრის სამუშაო სივრცე 7-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:174
+msgid "ToggleWorkspace7Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:175
+msgid "Toggle window on workspace 8"
+msgstr "ფანჯრის სამუშაო სივრცე 8-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:175
+msgid "ToggleWorkspace8Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:176
+msgid "Toggle window on workspace 9"
+msgstr "ფანჯრის სამუშაო სივრცე 9-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:176
+msgid "ToggleWorkspace9Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:177
+msgid "Toggle window on workspace 10"
+msgstr "ფანჯრის სამუშაო სივრცე 10-ზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:177
+msgid "ToggleWorkspace10Key"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:179 ../../src/keybind-descriptions.h:180
+#: ../../src/keybind-descriptions.h:181 ../../src/keybind-descriptions.h:182
+#: ../../src/keybind-descriptions.h:183 ../../src/keybind-descriptions.h:184
+#: ../../src/keybind-descriptions.h:185 ../../src/keybind-descriptions.h:186
+#: ../../src/keybind-descriptions.h:187 ../../src/keybind-descriptions.h:188
+msgid "Tiling & Layout"
+msgstr "მოზაიკა და განლაგება"
+
+#: ../../src/keybind-descriptions.h:179
+msgid "Cycle workspace tiling layout"
+msgstr "სამუშაო სივრცის მოზაიკის განლაგების შემდეგ ვარიანტზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:179
+msgid "LayoutCycleKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:180
+msgid "Cycle workspace tiling layout back"
+msgstr "სამუშაო სივრცის მოზაიკის განლაგების წინა ვარიანტზე გადართვა"
+
+#: ../../src/keybind-descriptions.h:180
+msgid "LayoutCycleBackKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:181
+msgid "Swap tiling layout axis"
+msgstr "მოზაიკის განლაგების ღერძების გაცვლა"
+
+#: ../../src/keybind-descriptions.h:181
+msgid "LayoutAxisKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:182
+msgid "Set workspace layout to float"
+msgstr "სამუშაო სივრცის განლაგების „მოცურავეზე“ დაყენება"
+
+#: ../../src/keybind-descriptions.h:182
+msgid "LayoutFloatKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:183
+msgid "Increase layout master count"
+msgstr "მთავარების რაოდენობის გაზრდა"
+
+#: ../../src/keybind-descriptions.h:183
+msgid "MasterCountIncKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:184
+msgid "Decrease layout master count"
+msgstr "მთავარების რაოდენობის შემცირება"
+
+#: ../../src/keybind-descriptions.h:184
+msgid "MasterCountDecKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:185
+msgid "Increase layout master ratio"
+msgstr "მთავარების პროპორციის გაზრდა"
+
+#: ../../src/keybind-descriptions.h:185
+msgid "MasterRatioIncKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:186
+msgid "Decrease layout master ratio"
+msgstr "მთავარების პროპორციის შემცირება"
+
+#: ../../src/keybind-descriptions.h:186
+msgid "MasterRatioDecKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:187
+msgid "Toggle tiling for active window"
+msgstr "აქტიური ფანჯრის მოზაიკაში ჩართვა/გამორთვა"
+
+#: ../../src/keybind-descriptions.h:187
+msgid "TilingToggleKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:188
+msgid "Swap active window into master"
+msgstr "აქტიური ფანჯრის გაცვლა მთავართან"
+
+#: ../../src/keybind-descriptions.h:188
+msgid "TilingSwapMasterKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:190 ../../src/keybind-descriptions.h:191
+#: ../../src/keybind-descriptions.h:192 ../../src/keybind-descriptions.h:193
+#: ../../src/keybind-descriptions.h:194
+msgid "Window Marks"
+msgstr "ფანჯრის ნიშნულები"
+
+#: ../../src/keybind-descriptions.h:190
+msgid "Mark window: set mark"
+msgstr "ფანჯრის დანიშვნა: მარკერის დაყენება"
+
+#: ../../src/keybind-descriptions.h:190
+msgid "MarkSetKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:191
+msgid "Mark window: unset mark"
+msgstr "ფანჯრის დანიშვნა: მარკერის მოხსნა"
+
+#: ../../src/keybind-descriptions.h:191
+msgid "MarkUnsetKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:192
+msgid "Mark window: bring marked window here"
+msgstr "ფანჯრის დანიშვნა: მარკერიანი ფანჯრის აქ მოტანა"
+
+#: ../../src/keybind-descriptions.h:192
+msgid "MarkBringKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:193
+msgid "Mark window: jump to marked window"
+msgstr "ფანჯრის დანიშვნა: გადასვლა მარკერიან ფანჯარაზე"
+
+#: ../../src/keybind-descriptions.h:193
+msgid "MarkJumpKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:194
+msgid "Mark window: swap with marked window"
+msgstr "ფანჯრის დანიშვნა: გაცვლა მარკერიან ფანჯარასთან"
+
+#: ../../src/keybind-descriptions.h:194
+msgid "MarkSwapKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:196
+msgid "Find application"
+msgstr "აპლიკაციის ძებნა"
+
+#: ../../src/keybind-descriptions.h:196
+msgid "RunKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:197
+msgid "Show keyboard shortcuts"
+msgstr "კლავიატურის მალსახმობების ჩვენება"
+
+#: ../../src/keybind-descriptions.h:197
+msgid "ShowKeybindsKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:198
+msgid "ExitKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:199
+msgid "Lock screen"
+msgstr "ეკრანის დაბლოკვა"
+
+#: ../../src/keybind-descriptions.h:199
+msgid "LockScreenKey"
+msgstr ""
+
+#: ../../src/keybind-descriptions.h:200
+msgid "Open clipboard history"
+msgstr "ბუფერის ისტორიის გახსნა"
+
+#: ../../src/keybind-descriptions.h:200
+msgid "ClipboardKey"
+msgstr ""
