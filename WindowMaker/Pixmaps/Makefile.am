@@ -4,7 +4,6 @@ pixmapdatadir = $(pkgdatadir)/Pixmaps
 pixmapdata_DATA = tile.tiff \
 		tile.xpm \
 		swtile.png \
-		swtile_arrow.png \
 		swback.png \
 		swback2.png \
 		button_close.xpm \

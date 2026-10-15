@@ -76,7 +76,6 @@ struct SwitchPanel {
 
 	RImage *tileTmp;
 	RImage *tile;
-	RImage *tileArrow;
 
 	WMFont *font;
 	WMColor *white;
@@ -252,6 +251,42 @@ static bool isGroupDrillable(WWindow *rep)
 	return n > 1;
 }
 
+/* Solid white down-pointing triangle with a black outline at the
+ * bottom edge of the selected tile, in the style of the drawer icon
+ * arrow, marking a group whose windows the sub-strip can show. */
+static void draw_drill_arrow(RImage *img)
+{
+	RColor white, dark;
+	int w = img->width / 6;
+	int h = w / 2;
+	int cx = img->width / 2;
+	int y0 = img->height - 2 - h;
+	int i;
+
+	if (w < 4)
+		return;
+
+	white.red = 255;
+	white.green = 255;
+	white.blue = 255;
+	white.alpha = 255;
+	dark.red = 0;
+	dark.green = 0;
+	dark.blue = 0;
+	dark.alpha = 255;
+
+	for (i = -1; i <= h; i++) {
+		int half = w * (h - i) / (2 * h) + 1;
+
+		RDrawLine(img, cx - half, y0 + i, cx + half, y0 + i, &dark);
+	}
+	for (i = 0; i < h; i++) {
+		int half = w * (h - i) / (2 * h);
+
+		RDrawLine(img, cx - half, y0 + i, cx + half, y0 + i, &white);
+	}
+}
+
 static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim, bool force, Strip strip)
 {
 	WMArray *winArr = *windows_of(panel, strip);
@@ -263,6 +298,7 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 	RImage *image = NULL;
 	int flags;
 	int desired = 0;
+	bool arrow = false;
 
 	/* This whole function is a no-op if we aren't drawing the panel */
 	if (!panel->scr->swtileImage)
@@ -288,7 +324,6 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 	if (image && icon) {
 		RImage *back;
 		int opaq = (dim) ? 75 : 255;
-		RImage *tile;
 		WMPoint pos;
 		int bg_y;
 		xcb_pixmap_t p;
@@ -317,18 +352,20 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 		}
 
 		if (selected && panel->tile) {
-			tile = panel->tile;
-			if (strip == STRIP_MAIN && panel->mode == CYCLE_GROUP &&
-			    !panel->drilled && panel->tileArrow &&
-			    isGroupDrillable(WMGetFromArray(winArr, idecks)))
-				tile = panel->tileArrow;
-			RCombineArea(back, tile, 0, 0, tile->width, tile->height,
-				     (back->width - tile->width) / 2, (back->height - tile->height) / 2);
+			RCombineArea(back, panel->tile, 0, 0, panel->tile->width, panel->tile->height,
+				     (back->width - panel->tile->width) / 2,
+				     (back->height - panel->tile->height) / 2);
+			arrow = (strip == STRIP_MAIN && panel->mode == CYCLE_GROUP &&
+				 !panel->drilled &&
+				 isGroupDrillable(WMGetFromArray(winArr, idecks)));
 		}
 
 		RCombineAreaWithOpaqueness(back, image, 0, 0, image->width, image->height,
 					   (back->width - image->width) / 2, (back->height - image->height) / 2,
 					   opaq);
+
+		if (arrow)
+			draw_drill_arrow(back);
 
 		RConvertImage(panel->scr->rcontext, back, &p);
 		xcb_change_window_attributes(wdisp->conn, WMWidgetXID(icon), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ p });
@@ -494,18 +531,6 @@ static RImage *getTile(WScreen *scr)
 	return stile;
 }
 
-static RImage *getTileArrow(WScreen *scr)
-{
-	RImage *scaled;
-
-	if (!scr->swtileArrowImage)
-		return NULL;
-	scaled = RScaleImage(scr->swtileArrowImage, icon_tile_size, icon_tile_size);
-	if (!scaled)
-		return RRetainImage(scr->swtileArrowImage);
-	return scaled;
-}
-
 static void apply_panel_bg(WSwitchPanel *panel)
 {
 	xcb_pixmap_t pixmap, mask;
@@ -665,6 +690,8 @@ WWindow *wSwitchPanelUndrill(WSwitchPanel *panel)
 	}
 	panel->drilled = false;
 	panel->drillPreview = false;
+	if (panel->win && panel->current >= 0)
+		changeImage(panel, panel->current, 1, false, true, STRIP_MAIN);
 	if (panel->win && rep)
 		drawTitle(panel, panel->current, panelLabelForWindow(panel, rep), STRIP_MAIN);
 	return rep;
@@ -753,8 +780,11 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 		}
 	}
 
-	if (set_drilled)
+	if (set_drilled) {
 		panel->drilled = true;
+		if (panel->current >= 0)
+			changeImage(panel, panel->current, 1, false, true, STRIP_MAIN);
+	}
 	if (panel->win)
 		drawTitle(panel, panel->subCurrent, panelLabelForWindow(panel, firstSub), STRIP_SUB);
 	return firstSub;
@@ -781,6 +811,8 @@ WWindow *wSwitchPanelPreviewDrill(WSwitchPanel *panel)
 	if (!firstSub)
 		return rep;
 	panel->drillPreview = true;
+	if (panel->win && panel->current >= 0)
+		changeImage(panel, panel->current, 1, false, true, STRIP_MAIN);
 	return rep;
 }
 
@@ -850,7 +882,6 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 
 	panel->tileTmp = RCreateImage(icon_tile_size, icon_tile_size, 1);
 	panel->tile = getTile(panel->scr);
-	panel->tileArrow = getTileArrow(panel->scr);
 	if (panel->tile && panel->scr->swbackImage[8])
 		panel->bg = createBackImage(panel->scr, width + 2 * border_space, height + 2 * border_space);
 
@@ -861,9 +892,6 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 		if (panel->tile)
 			RReleaseImage(panel->tile);
 		panel->tile = NULL;
-		if (panel->tileArrow)
-			RReleaseImage(panel->tileArrow);
-		panel->tileArrow = NULL;
 		if (panel->tileTmp)
 			RReleaseImage(panel->tileTmp);
 		panel->tileTmp = NULL;
@@ -986,9 +1014,6 @@ void wSwitchPanelDestroy(WSwitchPanel *panel)
 
 	if (panel->tile)
 		RReleaseImage(panel->tile);
-
-	if (panel->tileArrow)
-		RReleaseImage(panel->tileArrow);
 
 	if (panel->tileTmp)
 		RReleaseImage(panel->tileTmp);

@@ -346,7 +346,6 @@ typedef struct _WScreen {
 	/* per-screen realised switch-panel/placement state */
 	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to this screen */
 	struct RImage *swtileImage;
-	struct RImage *swtileArrowImage;
 	struct RImage *swbackImage[9];
 	union WTexture *wsmbackTexture;
 	char *hot_corner_actions[4];       /* Action of each corner */
