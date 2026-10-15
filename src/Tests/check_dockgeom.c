@@ -256,6 +256,83 @@ static void test_strut(void)
 	}
 }
 
+static void test_compress_fits(void)
+{
+	int seeds[3] = { 0, 5, 10 };
+	int cells[4], idx[4], i;
+
+	/* strictly inside the run: untouched */
+	for (i = 0; i < 3; i++) {
+		cells[i] = seeds[i];
+		idx[i] = i;
+	}
+	wDockGeomCompressAlong(cells, idx, 3, 16);
+	CHECK(cells[0] == 0 && cells[1] == 5 && cells[2] == 10);
+	CHECK(idx[0] == 0 && idx[1] == 1 && idx[2] == 2);
+
+	/* boundary: a span of 8 cells fits a run of 8 */
+	cells[0] = 0;
+	cells[1] = 7;
+	idx[0] = 0;
+	idx[1] = 1;
+	wDockGeomCompressAlong(cells, idx, 2, 8);
+	CHECK(cells[0] == 0 && cells[1] == 7);
+
+	/* one cell over the run compresses */
+	cells[0] = 0;
+	cells[1] = 8;
+	wDockGeomCompressAlong(cells, idx, 2, 8);
+	CHECK(cells[0] == 0 && cells[1] == 7);
+
+	/* a single tile and an empty call never divide by zero */
+	cells[0] = 0;
+	wDockGeomCompressAlong(cells, idx, 1, 1);
+	CHECK(cells[0] == 0);
+	wDockGeomCompressAlong(cells, idx, 0, 4);
+}
+
+static void test_compress_order(void)
+{
+	int cells[4] = { 0, 3, 6, 9 };
+	int idx[4] = { 7, 8, 9, 10 };
+
+	/* proportional squeeze keeps the order and shrinks the gaps */
+	wDockGeomCompressAlong(cells, idx, 4, 5);
+	CHECK(cells[0] == 0 && cells[1] == 1 && cells[2] == 3 && cells[3] == 4);
+	CHECK(idx[0] == 7 && idx[1] == 8 && idx[2] == 9 && idx[3] == 10);
+}
+
+static void test_compress_no_shared_cells(void)
+{
+	int cells[4], idx[4], i;
+
+	/* four icons onto a two-cell run: every icon keeps its own
+	 * cell, the ones that do not fit extend past the run instead
+	 * of stacking on the last visible cell */
+	for (i = 0; i < 4; i++) {
+		cells[i] = i;
+		idx[i] = i;
+	}
+	wDockGeomCompressAlong(cells, idx, 4, 2);
+	CHECK(cells[0] == 0 && cells[1] == 1 && cells[2] == 2 && cells[3] == 3);
+
+	/* the same on the negative side: packing away from the main
+	 * tile stays strictly monotonic */
+	cells[0] = -5;
+	cells[1] = -4;
+	cells[2] = -3;
+	cells[3] = 0;
+	wDockGeomCompressAlong(cells, idx, 4, 2);
+	CHECK(cells[0] == -3 && cells[1] == -2 && cells[2] == -1 && cells[3] == 0);
+
+	/* all negative */
+	cells[0] = -6;
+	cells[1] = -4;
+	cells[2] = -2;
+	wDockGeomCompressAlong(cells, idx, 3, 2);
+	CHECK(cells[0] == -3 && cells[1] == -2 && cells[2] == -1);
+}
+
 int main(void)
 {
 	test_origin_screen();
@@ -264,6 +341,9 @@ int main(void)
 	test_names();
 	test_hysteresis();
 	test_transpose();
+	test_compress_fits();
+	test_compress_order();
+	test_compress_no_shared_cells();
 	test_strut();
 
 	return check_report("check_dockgeom");

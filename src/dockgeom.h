@@ -56,6 +56,14 @@ WDockEdge wDockGeomNearestEdge(WMRect rect, int px, int py, WDockEdge current,
 void wDockGeomTranspose(WDockEdge edge_from, WDockEdge edge_to,
 			int *xindex, int *yindex);
 
+/* Squeeze an along-axis layout onto a run of new_cells whole icons.
+ * cells[] holds one entry per icon or drawer tile, idx[] is an opaque
+ * tag permuted alongside. A layout that fits is untouched, otherwise
+ * offsets map proportionally onto the run, the main tile stays at 0
+ * and every entry keeps a cell of its own, past the run when it no
+ * longer fits. */
+void wDockGeomCompressAlong(int *cells, int *idx, int n, int new_cells);
+
 /* The 12 _NET_WM_STRUT_PARTIAL CARDINALs in EWMH order (left, right,
  * top, bottom thicknesses, then the four start/end pairs). Thickness
  * is clipped to the head size on the dock's axis, the span is the

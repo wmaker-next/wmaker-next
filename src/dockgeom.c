@@ -178,6 +178,78 @@ void wDockGeomTranspose(WDockEdge edge_from, WDockEdge edge_to,
 	*yindex = yi;
 }
 
+void wDockGeomCompressAlong(int *cells, int *idx, int n, int new_cells)
+{
+	int min_cell, max_cell;
+	int i, j;
+	int num, den, pos_budget, neg_budget, cell, prev;
+
+	if (n < 1 || new_cells < 1)
+		return;
+
+	min_cell = max_cell = cells[0];
+	for (i = 1; i < n; i++) {
+		if (cells[i] < min_cell)
+			min_cell = cells[i];
+		if (cells[i] > max_cell)
+			max_cell = cells[i];
+	}
+
+	/* a layout that fits the run is left untouched */
+	if (max_cell - min_cell < new_cells)
+		return;
+
+	/* stable insertion sort by cell, ties keep their input order */
+	for (i = 1; i < n; i++) {
+		int c = cells[i];
+		int t = idx[i];
+
+		j = i - 1;
+		while (j >= 0 && cells[j] > c) {
+			cells[j + 1] = cells[j];
+			idx[j + 1] = idx[j];
+			j--;
+		}
+		cells[j + 1] = c;
+		idx[j + 1] = t;
+	}
+
+	num = new_cells - 1;
+	den = max_cell - min_cell;
+	pos_budget = (num * max_cell + den / 2) / den;
+	neg_budget = num - pos_budget;
+
+	/* positives pack upward from the main tile, negatives downward.
+	 * Every entry keeps a cell of its own: entries past the last
+	 * visible cell extend beyond the run instead of sharing one, so
+	 * sliding the dock along the edge reaches them */
+	prev = 0;
+	for (i = 0; i < n; i++) {
+		if (cells[i] < 0)
+			continue;
+		if (cells[i] == 0) {
+			prev = 0;
+			continue;
+		}
+		cell = (cells[i] * pos_budget + den / 2) / den;
+		if (cell <= prev)
+			cell = prev + 1;
+		prev = cell;
+		cells[i] = cell;
+	}
+
+	prev = 0;
+	for (i = n - 1; i >= 0; i--) {
+		if (cells[i] >= 0)
+			continue;
+		cell = -((-cells[i]) * neg_budget + den / 2) / den;
+		if (cell >= prev)
+			cell = prev - 1;
+		prev = cell;
+		cells[i] = cell;
+	}
+}
+
 void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 		    int thickness, uint32_t out[12])
 {

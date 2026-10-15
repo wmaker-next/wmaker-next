@@ -691,6 +691,238 @@ check "drawer compressed with the layout" \
 msg exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
 
+# ---- an edge move with wrap on keeps the slot order ----------------------
+
+note "a bottom to right drag does not let the wrap pass reorder icons"
+# With WrapAppiconsInDock on (the default), the drag clamps the along
+# axis to the live run so the transposed layout cannot overflow and
+# let the wrap pass cycle icons to the far end. DisableClip keeps the
+# tile census free of the workspace clips at (0, 0).
+LD_LIBRARY_PATH="$WMLIBS" "$WDWRITE" WindowMaker DisableClip YES >>"$LOG" 2>&1
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+      { Command = "/bin/true"; Name = wrapone.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "2,0"; },
+      { Command = "/bin/true"; Name = wraptwo.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "4,0"; }
+    );
+    Position = "0,$((H - ISZ))";
+    Edge = Bottom;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "wrap drag: seeded on the bottom shelf" \
+	wait_for 50 tile_at "$((2 * ISZ))" "$((H - ISZ))"
+drag_from_to 32 "$((H - ISZ + 32))" 980 620
+# the transposed run is 5 cells: the main tile clamps at H - 5 * ISZ and
+# the two apps keep slots 2 and 4 below it, blanks at 1 and 3
+check "wrap drag: main tile clamped with the whole run on screen" \
+	wait_for 50 tile_at "$((W - ISZ))" "$((H - 5 * ISZ))"
+check "wrap drag: first app kept slot 2 below the main tile" \
+	tile_at "$((W - ISZ))" "$((H - 3 * ISZ))"
+check "wrap drag: second app kept slot 4 below the main tile" \
+	tile_at "$((W - ISZ))" "$((H - ISZ))"
+check "wrap drag: the blanks survived, no tile at slot 1" \
+	not_tile_at "$((W - ISZ))" "$((H - 4 * ISZ))"
+check "wrap drag: the blanks survived, no tile at slot 3" \
+	not_tile_at "$((W - ISZ))" "$((H - 2 * ISZ))"
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+
+# ---- wrap off restores the free slide along the edge ---------------------
+
+note "wrap off lets the drag push the tail past the screen edge"
+# WrapAppiconsInDock = NO means leave icons off screen, so the drag is
+# not clamped to the live run. Same gesture as the wrap drag above, the
+# release at (980, 620) lands the main tile at 620 - 32 (the grab
+# offset) and the apps at slots 2 and 4 below it, slot 4 past the edge.
+LD_LIBRARY_PATH="$WMLIBS" "$WDWRITE" WindowMaker WrapAppiconsInDock NO >>"$LOG" 2>&1
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+      { Command = "/bin/true"; Name = freeone.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "2,0"; },
+      { Command = "/bin/true"; Name = freetwo.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "4,0"; }
+    );
+    Position = "0,$((H - ISZ))";
+    Edge = Bottom;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "free slide: seeded on the bottom shelf" \
+	wait_for 50 tile_at "$((2 * ISZ))" "$((H - ISZ))"
+drag_from_to 32 "$((H - ISZ + 32))" 980 620
+check "free slide: main tile follows the pointer below the clamp spot" \
+	wait_for 50 tile_at "$((W - ISZ))" 588
+check "free slide: the clamp spot 5 slots up is empty" \
+	not_tile_at "$((W - ISZ))" "$((H - 5 * ISZ))"
+check "free slide: first app kept slot 2 below the main tile" \
+	tile_at "$((W - ISZ))" 716
+check "free slide: second app slid past the edge at slot 4" \
+	tile_at "$((W - ISZ))" 844
+check "free slide: the blanks survived, no tile at slot 1" \
+	not_tile_at "$((W - ISZ))" 652
+check "free slide: the blanks survived, no tile at slot 3" \
+	not_tile_at "$((W - ISZ))" 780
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+LD_LIBRARY_PATH="$WMLIBS" "$WDWRITE" WindowMaker WrapAppiconsInDock YES >>"$LOG" 2>&1
+
+# ---- a same-edge slide with wrap on cycles the icons back ----------------
+
+note "wrap on wraps a slid-off tail back into the visible run"
+# A same-edge slide is free in both wrap modes. With wrap on the icons
+# that pass the end of the edge wrap to the far end of the run instead
+# of staying off screen. DisableClip is still YES.
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+      { Command = "/bin/true"; Name = cycleone.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,2"; },
+      { Command = "/bin/true"; Name = cycletwo.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,4"; }
+    );
+    Position = "$((W - ISZ)),0";
+    Edge = Right;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "cycle: seeded down the right edge" \
+	wait_for 50 tile_at "$((W - ISZ))" "$((2 * ISZ))"
+drag_from_to "$((W - ISZ + 32))" 32 "$((W - 8))" 736
+check "cycle: main tile slid to the bottom of the right edge" \
+	wait_for 50 tile_at "$((W - ISZ))" "$((H - ISZ))"
+check "cycle: first app wrapped back to the top of the run" \
+	tile_at "$((W - ISZ))" "$ISZ"
+check "cycle: second app wrapped back below it" \
+	tile_at "$((W - ISZ))" "$((3 * ISZ))"
+check "cycle: nothing left past the bottom edge" \
+	not_tile_at "$((W - ISZ))" "$((H + ISZ))"
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+
+# ---- wrap on pulls a half-hidden icon back into the run ------------------
+
+note "wrap on recovers an icon stuck half past the edge"
+# The wrap target of an icon in the partial band at the edge is itself,
+# so it snaps to the far end of the run. The same seed and a shorter
+# slide leaves the first app half past the bottom edge at 588 + 2 * ISZ.
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+      { Command = "/bin/true"; Name = partialone.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,2"; },
+      { Command = "/bin/true"; Name = partialtwo.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,4"; }
+    );
+    Position = "$((W - ISZ)),0";
+    Edge = Right;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "partial: seeded down the right edge" \
+	wait_for 50 tile_at "$((W - ISZ))" "$((2 * ISZ))"
+drag_from_to "$((W - ISZ + 32))" 32 "$((W - 8))" 620
+check "partial: main tile stopped at 620 - 32" \
+	wait_for 50 tile_at "$((W - ISZ))" 588
+check "partial: half-hidden app wrapped to the top of the run" \
+	tile_at "$((W - ISZ))" 12
+check "partial: second app wrapped back at 76" \
+	tile_at "$((W - ISZ))" 76
+check "partial: nothing left past the bottom edge" \
+	not_tile_at "$((W - ISZ))" 716
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+
+# ---- compression never stacks two icons on one cell ----------------------
+
+note "a compressed layout keeps one cell per icon"
+# 15 icons on a 16-cell bottom edge moving to the 12-cell left edge:
+# the layout compresses, but two icons must never share a cell, the
+# tail ends past the visible run. DisableClip is still YES from the
+# wrap drag section, so the tile census sees dock icons only.
+APPS=""
+i=1
+while [ "$i" -le 14 ]; do
+	[ "$i" -gt 1 ] && APPS="$APPS,"
+	APPS="$APPS
+      { Command = \"/bin/true\"; Name = pack$i.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = \"$i,0\"; }"
+	i=$((i + 1))
+done
+# the domain already says Left from the compression section above, a
+# same-value wdwrite would not register as a config change
+LD_LIBRARY_PATH="$WMLIBS" "$WDWRITE" WindowMaker DockEdge Bottom >>"$LOG" 2>&1
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+$APPS
+    );
+    Position = "0,$((H - ISZ))";
+    Edge = Bottom;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "pack: seeded on the bottom shelf" \
+	wait_for 50 tile_at "$((14 * ISZ))" "$((H - ISZ))"
+set_edge Left || fatal "wdwrite DockEdge Left failed"
+check "pack: main tile at the top of the left edge" \
+	wait_for 50 tile_at 0 0
+check "pack: icons keep their order down the column" \
+	wait_for 50 tile_at 0 "$((11 * ISZ))"
+check "pack: the tail sits past the visible run, not stacked on it" \
+	wait_for 50 tile_at 0 "$((13 * ISZ))"
+check "pack: nothing beyond the last icon" \
+	not_tile_at 0 "$((15 * ISZ))"
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+
 note "dock orient drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
 [ "$FAILED" -eq 0 ] && [ "$PASSED" -gt 0 ]

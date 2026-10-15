@@ -136,6 +136,9 @@ static int indexOfHole(WDock *drawer, WAppIcon *moving_aicon, int redocking);
 static void drawerConsolidateIcons(WDock *drawer);
 
 static int onScreen(WScreen *scr, int x, int y);
+static int dock_clamp_along_pixel(WScreen *scr, WDockEdge edge, int along,
+				  int neg_extent, int pos_extent);
+static void dock_live_span(const WDock *dock, int *neg, int *pos);
 
 static void make_keys(void)
 {
@@ -835,10 +838,14 @@ static void dock_origin(WScreen *scr, WDockEdge edge, int *x, int *y)
 }
 
 /* Clamp an (x, y) candidate inside the screen, then restore the pinned
- * axis for the edge so the clamp cannot pull the dock off it. */
-static void dock_keep_on_edge(WScreen *scr, WDockEdge edge, int *x, int *y)
+ * axis for the edge so the clamp cannot pull the dock off it. While icon
+ * wrapping is on, a drag that switched edges is clamped to the live run
+ * so the transposed layout cannot overflow and let the wrap pass reorder
+ * icons. Same-edge slides and oversized runs stay free. */
+static void dock_keep_on_edge(WScreen *scr, WDockEdge edge, bool edge_switched, int *x, int *y)
 {
-	int ox, oy;
+	WMRect rect = dock_anchor_rect(scr);
+	int ox, oy, neg, pos;
 
 	dock_origin(scr, edge, &ox, &oy);
 	wScreenKeepInside(scr, x, y, ICON_SIZE, ICON_SIZE);
@@ -846,6 +853,16 @@ static void dock_keep_on_edge(WScreen *scr, WDockEdge edge, int *x, int *y)
 		*y = oy;
 	else
 		*x = ox;
+	if (!edge_switched || !wdisp->flags.wrap_appicons_in_dock)
+		return;
+	dock_live_span(scr->dock, &neg, &pos);
+	if (wDockEdgeHorizontal(edge)) {
+		if (neg + pos <= (int)rect.size.width)
+			*x = dock_clamp_along_pixel(scr, edge, *x, neg, pos);
+	} else {
+		if (neg + pos <= (int)rect.size.height)
+			*y = dock_clamp_along_pixel(scr, edge, *y, neg, pos);
+	}
 }
 
 /* Clamp an along-axis pixel coordinate so a run reaching neg_extent
@@ -3632,14 +3649,28 @@ static void dock_along_span(const WDock *dock, const int *drawer_off,
 	*pos_out = pos;
 }
 
-/* One entry of the along-axis compression pass: a dock icon or a
- * drawer main tile, identified by its along cell and where to write
- * the compressed value back */
-struct dock_along_slot {
-	int along;
-	int slot;
-	bool is_drawer;
-};
+/* Live along-axis extents of the dock run, for the drag clamp */
+static void dock_live_span(const WDock *dock, int *neg, int *pos)
+{
+	WScreen *scr = dock->screen_ptr;
+	WDrawerChain *dc;
+	int *off;
+	int n, i;
+
+	n = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next)
+		n++;
+	off = wmalloc(sizeof(int) * (n > 0 ? n : 1));
+	i = 0;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next, i++) {
+		if (wDockEdgeHorizontal(dock->edge))
+			off[i] = dc->adrawer->x_pos - dock->x_pos;
+		else
+			off[i] = dc->adrawer->y_pos - dock->y_pos;
+	}
+	dock_along_span(dock, off, n, neg, pos);
+	wfree(off);
+}
 
 /*
  * Move the dock to another screen edge. The saved indices stay
@@ -3649,7 +3680,8 @@ struct dock_along_slot {
  * the same fraction of the usable run, and a layout that cannot fit
  * the shorter side (the bottom edge is usually longer than the sides)
  * has its along offsets compressed proportionally, so icons stay on
- * screen instead of being pushed past it. The drawer strip follows
+ * screen instead of being pushed past it. Icons that still do not fit
+ * keep their own cells past the visible run. The drawer strip follows
  * the perpendicular axis and every drawer keeps its along-axis pixel
  * offset from the dock. Icons that no longer fit the new on-screen
  * run stay in the array, they are never dropped here: the next
@@ -3663,14 +3695,13 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 	WDockEdge old_edge = dock->edge;
 	WAppIcon *btn;
 	WDrawerChain *dc;
-	struct dock_along_slot *slots;
 	WMRect rect;
 	int *drawer_off;
-	int i, j, n, m, x, y, ox, oy, along;
+	int *cells, *idx;
+	int i, n, m, m_dock, x, y, ox, oy, along;
 	int neg_pre, pos_pre, neg_new, pos_new;
 	int old_usable, new_usable;
-	int old_len, new_len, new_cells, min_along, max_along;
-	int pos_budget, neg_budget, num, den, cell, prev;
+	int old_len, new_len, new_cells;
 
 	if (new_edge == dock->edge)
 		return;
@@ -3704,109 +3735,37 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 	if (new_cells < 1)
 		new_cells = 1;
 
-	/* how far along the edge the layout reaches, in cells */
-	min_along = 0;
-	max_along = 0;
+	/* a layout that cannot fit the new side is compressed
+	 * proportionally, the main tile stays at cell 0, icons that
+	 * still do not fit keep their own cells past the visible run */
+	cells = wmalloc(sizeof(int) * (dock->max_icons + n));
+	idx = wmalloc(sizeof(int) * (dock->max_icons + n));
+	m = 0;
 	for (i = 0; i < dock->max_icons; i++) {
 		btn = dock->icon_array[i];
 		if (!btn)
 			continue;
-		cell = wDockAlongIndex(btn, old_edge);
-		if (cell < min_along)
-			min_along = cell;
-		if (cell > max_along)
-			max_along = cell;
+		cells[m] = wDockAlongIndex(btn, old_edge);
+		idx[m] = i;
+		m++;
 	}
+	m_dock = m;
 	for (i = 0; i < n; i++) {
-		cell = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
-		if (cell < min_along)
-			min_along = cell;
-		if (cell > max_along)
-			max_along = cell;
+		cells[m] = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+		idx[m] = m_dock + i;
+		m++;
 	}
-
-	/* a layout that cannot fit the new side is compressed: every
-	 * along offset maps onto the same fraction of the new run, so
-	 * wide bottom-edge gaps shrink instead of pushing the far icons
-	 * off the side edge. The main tile stays at cell 0, icons above
-	 * or left of it (negative along) compress toward it, the rest
-	 * away from it */
-	if (max_along - min_along >= new_cells) {
-		slots = wmalloc(sizeof(*slots) * (dock->max_icons + n));
-		m = 0;
-		for (i = 0; i < dock->max_icons; i++) {
-			btn = dock->icon_array[i];
-			if (!btn)
-				continue;
-			slots[m].along = wDockAlongIndex(btn, old_edge);
-			slots[m].slot = i;
-			slots[m].is_drawer = false;
-			m++;
-		}
-		for (i = 0; i < n; i++) {
-			slots[m].along = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
-			slots[m].slot = i;
-			slots[m].is_drawer = true;
-			m++;
-		}
-		for (i = 1; i < m; i++) {
-			struct dock_along_slot tmp = slots[i];
-
-			j = i - 1;
-			while (j >= 0 && slots[j].along > tmp.along) {
-				slots[j + 1] = slots[j];
-				j--;
-			}
-			slots[j + 1] = tmp;
-		}
-		num = new_cells - 1;
-		den = max_along - min_along;
-		pos_budget = (num * (max_along - 0) + den / 2) / den;
-		neg_budget = num - pos_budget;
-		/* positives pack upward from the main tile */
-		prev = 0;
-		for (i = 0; i < m; i++) {
-			if (slots[i].along < 0)
-				continue;
-			if (slots[i].along == 0) {
-				prev = 0;
-				continue;
-			}
-			cell = (slots[i].along * pos_budget + (max_along - min_along) / 2)
-				/ den;
-			if (cell <= prev)
-				cell = prev + 1;
-			if (cell > new_cells - 1)
-				cell = new_cells - 1;
-			prev = cell;
-			if (slots[i].is_drawer)
-				drawer_off[slots[i].slot] = cell * ICON_SIZE;
-			else if (wDockEdgeHorizontal(old_edge))
-				dock->icon_array[slots[i].slot]->xindex = cell;
-			else
-				dock->icon_array[slots[i].slot]->yindex = cell;
-		}
-		/* negatives pack downward from the main tile */
-		prev = 0;
-		for (i = m - 1; i >= 0; i--) {
-			if (slots[i].along >= 0)
-				continue;
-			cell = -((-slots[i].along) * neg_budget + (max_along - min_along) / 2)
-				/ den;
-			if (cell >= prev)
-				cell = prev - 1;
-			if (cell < -(new_cells - 1))
-				cell = -(new_cells - 1);
-			prev = cell;
-			if (slots[i].is_drawer)
-				drawer_off[slots[i].slot] = cell * ICON_SIZE;
-			else if (wDockEdgeHorizontal(old_edge))
-				dock->icon_array[slots[i].slot]->xindex = cell;
-			else
-				dock->icon_array[slots[i].slot]->yindex = cell;
-		}
-		wfree(slots);
+	wDockGeomCompressAlong(cells, idx, m, new_cells);
+	for (i = 0; i < m; i++) {
+		if (idx[i] >= m_dock)
+			drawer_off[idx[i] - m_dock] = cells[i] * ICON_SIZE;
+		else if (wDockEdgeHorizontal(old_edge))
+			dock->icon_array[idx[i]]->xindex = cells[i];
+		else
+			dock->icon_array[idx[i]]->yindex = cells[i];
 	}
+	wfree(cells);
+	wfree(idx);
 
 	/* rescale the dock's own offset to the same fraction of the
 	 * usable run on the new side */
@@ -4700,6 +4659,31 @@ static WDockEdge wDockEdgeAtPointer(WScreen *scr, int px, int py, WDockEdge curr
 	return wDockGeomNearestEdge(rect, px, py, current, ICON_SIZE);
 }
 
+/* Wrapped along-axis pixel for a position off the visible run. The
+ * modulo lands in the partial band at the far edge for an icon that
+ * just crossed the near edge, so such a target snaps to the far end of
+ * the anchor rect instead. */
+static int dock_wrap_along_pixel(const WDock *dock, int pos)
+{
+	WMRect rect = dock_anchor_rect(dock->screen_ptr);
+	int run = wDockAlongLimit(dock) * ICON_SIZE;
+	int lo, hi, wrapped;
+
+	if (wDockEdgeHorizontal(dock->edge)) {
+		lo = (int)rect.pos.x;
+		hi = lo + (int)rect.size.width - ICON_SIZE;
+	} else {
+		lo = (int)rect.pos.y;
+		hi = lo + (int)rect.size.height - ICON_SIZE;
+	}
+
+	wrapped = (pos + run) % run;
+	if (wrapped < lo || wrapped > hi)
+		wrapped = (pos < lo) ? hi : lo;
+
+	return wrapped;
+}
+
 /* Wrap the along index of the icons that ended off the visible run
  * (WrapAppiconsInDock). The modulo is the along limit, not max_icons,
  * so icons wrap inside the visible run rather than into the spare
@@ -4708,7 +4692,6 @@ static void dock_wrap_icons(WScreen *scr, WDock *dock)
 {
 	WAppIcon *tmpaicon;
 	WDrawerChain *dc;
-	int run = wDockAlongLimit(dock) * ICON_SIZE;
 	int i, j, ok, new_pix, new_index;
 
 	for (i = 0; i < dock->max_icons; i++) {
@@ -4718,7 +4701,7 @@ static void dock_wrap_icons(WScreen *scr, WDock *dock)
 		if (onScreen(scr, tmpaicon->x_pos, tmpaicon->y_pos))
 			continue;
 		if (wDockEdgeHorizontal(dock->edge)) {
-			new_pix = (tmpaicon->x_pos + run) % run;
+			new_pix = dock_wrap_along_pixel(dock, tmpaicon->x_pos);
 			new_index = (new_pix - dock->x_pos) / ICON_SIZE;
 			if (!onScreen(scr, new_pix, tmpaicon->y_pos))
 				continue;
@@ -4734,7 +4717,7 @@ static void dock_wrap_icons(WScreen *scr, WDock *dock)
 				continue;
 			wDockReattachIcon(dock, tmpaicon, new_index, tmpaicon->yindex);
 		} else {
-			new_pix = (tmpaicon->y_pos + run) % run;
+			new_pix = dock_wrap_along_pixel(dock, tmpaicon->y_pos);
 			new_index = (new_pix - dock->y_pos) / ICON_SIZE;
 			if (!onScreen(scr, tmpaicon->x_pos, new_pix))
 				continue;
@@ -4758,7 +4741,7 @@ static void dock_wrap_icons(WScreen *scr, WDock *dock)
 		if (onScreen(scr, main_tile->x_pos, main_tile->y_pos))
 			continue;
 		if (wDockEdgeHorizontal(dock->edge)) {
-			new_pix = (main_tile->x_pos + run) % run;
+			new_pix = dock_wrap_along_pixel(dock, main_tile->x_pos);
 			new_index = (new_pix - dock->x_pos) / ICON_SIZE;
 			if (!onScreen(scr, new_pix, main_tile->y_pos))
 				continue;
@@ -4774,7 +4757,7 @@ static void dock_wrap_icons(WScreen *scr, WDock *dock)
 				continue;
 			moveDock(dc->adrawer, new_pix, dc->adrawer->y_pos);
 		} else {
-			new_pix = (main_tile->y_pos + run) % run;
+			new_pix = dock_wrap_along_pixel(dock, main_tile->y_pos);
 			new_index = (new_pix - dock->y_pos) / ICON_SIZE;
 			if (!onScreen(scr, main_tile->x_pos, new_pix))
 				continue;
@@ -4803,6 +4786,7 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 	int shad_x = x, shad_y = y;
 	xcb_generic_event_t *ev = NULL;
 	int grabbed = 0, done, i, idx;
+	bool edge_switched = false;
 	xcb_pixmap_t ghost = XCB_NONE;
 	int superfluous = w_global.config->superfluous;	/* we catch it to avoid problems */
 
@@ -4878,12 +4862,13 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 							      ((xcb_motion_notify_event_t *)ev)->root_y,
 							      dock->edge);
 				if (new_edge != dock->edge) {
+					edge_switched = true;
 					wDockSetEdge(dock, new_edge);
 					wArrangeIcons(scr, false);
 				}
 				/* the pinned axis stays on the edge, the
 				 * free axis follows the pointer */
-				dock_keep_on_edge(scr, dock->edge, &x, &y);
+				dock_keep_on_edge(scr, dock->edge, edge_switched, &x, &y);
 				moveDock(dock, x, y);
 				if (wdisp->flags.wrap_appicons_in_dock)
 					dock_wrap_icons(scr, dock);
