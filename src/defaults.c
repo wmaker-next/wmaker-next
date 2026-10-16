@@ -2128,7 +2128,10 @@ static int setWorkspaceSpecificBack(WScreen *scr, void *tdata, void *bar)
 			SendHelperMessage(scr, 'U', i + 1, NULL);
 		}
 	}
-	sleep(1);
+
+	/* the helper reads the pipe at its own pace, the kernel buffers
+	 * the messages and order is preserved, no acknowledgment and
+	 * no wait is needed here */
 
 	WMReleasePropList(value);
 	return 0;
