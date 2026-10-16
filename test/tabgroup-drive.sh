@@ -252,6 +252,11 @@ sleep 0.5
 # --sync so wmaker's grabbed event loop sees motion before the release
 drag_btn() {
     dbbtn=$1; dbsx=$2; dbsy=$3; dbtx=$4; dbty=$5
+    # xdotool --sync waits for the pointer to leave its pre-move spot,
+    # so a synced warp onto a spot the pointer already occupies (the
+    # previous drop left it at the titlebar centre) would stall it for
+    # 15s. Start one pixel off to keep every synced warp a real motion
+    xdo mousemove $((dbsx + 1)) $((dbsy + 1))
     xdo mousemove --sync "$dbsx" "$dbsy"
     xdo mousedown "$dbbtn"; sleep 0.15
     xdo mousemove --sync $((dbsx + 12)) $((dbsy + 4)); sleep 0.1
@@ -582,6 +587,9 @@ sleep 0.2
 # order is now [J, K, L], L still active, segment 0 should activate termJ
 frame_geom "$TL" || fail "frame geometry lookup after reorder failed"
 SY=$(seg_y)
+# the drag release already parked the pointer on segment 0, so the
+# synced move back there would be a no-op warp that stalls xdotool
+xdo mousemove "$(( $(seg_x 0 3) + 1 ))" "$((SY + 1))"
 xdo mousemove --sync "$(seg_x 0 3)" "$SY"; sleep 0.1
 xdo click 1
 wait_for 30 is_viewable "$TJ" \
