@@ -39,107 +39,115 @@
  *                1 1 1 /10
  *----------------------------------------------------------------------
  */
-int RBlurImage(RImage * image)
-{
-	register int x, y;
-	register int tmp;
-	unsigned char *ptr, *nptr;
-	unsigned char *pptr = NULL, *tmpp;
-	int ch = image->format == RRGBAFormat ? 4 : 3;
-
-	pptr = malloc(image->width * ch);
-	if (!pptr) {
-		RErrorCode = RERR_NOMEMORY;
-		return 0;
-	}
 #define MASK(prev, cur, next, ch)\
     (*(prev-ch) + *prev + *(prev+ch)\
     +*(cur-ch) + 2 * *cur + *(cur+ch)\
     +*(next-ch) + *next + *(next+ch)) / 10
 
-	memcpy(pptr, image->data, image->width * ch);
+int RBlurImage(RImage * image)
+{
+	register int x, y;
+	unsigned char *ptr, *nptr;
+	unsigned char *pptr, *cptr;
+	unsigned char *pbuf, *cbuf, *swp;
+	int ch = image->format == RRGBAFormat ? 4 : 3;
+	int stride = image->width * ch;
 
-	ptr = image->data;
-	nptr = ptr + image->width * ch;
-	tmpp = pptr;
+	/* only the interior is convolved, with less than three rows
+	 * there is no interior */
+	if (image->height < 3)
+		return 1;
 
-	if (ch == 3) {
-		ptr += 3;
-		nptr += 3;
-		pptr += 3;
-
-		for (y = 1; y < image->height - 1; y++) {
-
-			for (x = 1; x < image->width - 1; x++) {
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 3);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 3);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 3);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-			}
-			pptr = tmpp;
-			ptr += 6;
-			nptr += 6;
-			pptr += 6;
-		}
-	} else {
-		ptr += 4;
-		nptr += 4;
-		pptr += 4;
-
-		for (y = 1; y < image->height - 1; y++) {
-			for (x = 1; x < image->width - 1; x++) {
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 4);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 4);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 4);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-
-				tmp = *ptr;
-				*ptr = MASK(pptr, ptr, nptr, 4);
-				*pptr = tmp;
-				ptr++;
-				nptr++;
-				pptr++;
-			}
-			pptr = tmpp;
-			ptr += 8;
-			nptr += 8;
-			pptr += 8;
-		}
+	pbuf = malloc(stride);
+	cbuf = malloc(stride);
+	if (!pbuf || !cbuf) {
+		free(pbuf);
+		free(cbuf);
+		RErrorCode = RERR_NOMEMORY;
+		return 0;
 	}
 
-	free(tmpp);
+	memcpy(pbuf, image->data, stride);
+	memcpy(cbuf, image->data + stride, stride);
+
+	for (y = 1; y < image->height - 1; y++) {
+		/* pbuf holds the unblurred previous row, cbuf the
+		 * unblurred current row, nptr is the next row which is
+		 * still untouched in the image */
+		ptr = image->data + (size_t)y * stride;
+		nptr = ptr + stride;
+		pptr = pbuf;
+		cptr = cbuf;
+
+		if (ch == 3) {
+			ptr += 3;
+			nptr += 3;
+			pptr += 3;
+			cptr += 3;
+
+			for (x = 1; x < image->width - 1; x++) {
+				*ptr = MASK(pptr, cptr, nptr, 3);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+
+				*ptr = MASK(pptr, cptr, nptr, 3);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+
+				*ptr = MASK(pptr, cptr, nptr, 3);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+			}
+		} else {
+			ptr += 4;
+			nptr += 4;
+			pptr += 4;
+			cptr += 4;
+
+			for (x = 1; x < image->width - 1; x++) {
+				*ptr = MASK(pptr, cptr, nptr, 4);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+
+				*ptr = MASK(pptr, cptr, nptr, 4);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+
+				*ptr = MASK(pptr, cptr, nptr, 4);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+
+				*ptr = MASK(pptr, cptr, nptr, 4);
+				ptr++;
+				nptr++;
+				pptr++;
+				cptr++;
+			}
+		}
+
+		/* the row just blurred is the previous row of the next
+		 * pass, so refill its old buffer with the next row while
+		 * it is still unmodified */
+		swp = pbuf;
+		pbuf = cbuf;
+		cbuf = swp;
+		memcpy(cbuf, image->data + (size_t)(y + 1) * stride, stride);
+	}
+
+	free(pbuf);
+	free(cbuf);
 
 	return 1;
 }

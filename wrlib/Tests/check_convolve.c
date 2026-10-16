@@ -1,5 +1,6 @@
 /*
- *  check_convolve - automated tests for RGrayscaleImage / RStackBlurImage
+ *  check_convolve - automated tests for RGrayscaleImage / RBlurImage /
+ *  RStackBlurImage
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -188,6 +189,85 @@ static void test_blur_noop(void)
 	RReleaseImage(img);
 }
 
+/* A single impulse of 100 on a zero field must spread as the documented
+ * 1 1 1 / 1 2 1 / 1 1 1 mask over 10: the centre becomes 20, the eight
+ * surrounding interior samples 10, and the border rows/columns, which
+ * are never convolved, stay 0. Exercises both pixel formats. */
+static void test_blur3_impulse(void)
+{
+	RImage *img;
+	unsigned char *d;
+	int x, y, i, ch, alpha, got, want;
+
+	for (alpha = 0; alpha <= 1; alpha++) {
+		ch = alpha ? 4 : 3;
+
+		img = RCreateImage(5, 5, alpha);
+		CHECK(img != NULL);
+		if (!img)
+			return;
+		memset(img->data, 0, (size_t)5 * 5 * ch);
+		for (i = 0; i < 3; i++)
+			img->data[(2 * 5 + 2) * ch + i] = 100;
+
+		CHECK(RBlurImage(img) == 1);
+
+		d = img->data;
+		for (y = 0; y < 5; y++) {
+			for (x = 0; x < 5; x++) {
+				if (x == 2 && y == 2)
+					want = 20;
+				else if (x >= 1 && x <= 3 && y >= 1 && y <= 3)
+					want = 10;
+				else
+					want = 0;
+
+				for (i = 0; i < 3; i++) {
+					got = d[(y * 5 + x) * ch + i];
+					if (got != want) {
+						fprintf(stderr,
+							"FAIL blur3-impulse: alpha=%d (%d,%d) ch%d -> %d, want %d\n",
+							alpha, x, y, i, got, want);
+						check_failures++;
+					}
+				}
+			}
+		}
+		RReleaseImage(img);
+	}
+}
+
+/* Images without an interior must come back untouched. */
+static void test_blur3_tiny(void)
+{
+	RImage *img;
+	unsigned char *d;
+	int h, alpha, ch, n, i, untouched;
+
+	for (alpha = 0; alpha <= 1; alpha++) {
+		for (h = 1; h <= 2; h++) {
+			img = RCreateImage(4, h, alpha);
+			CHECK(img != NULL);
+			if (!img)
+				return;
+			ch = alpha ? 4 : 3;
+			n = 4 * h * ch;
+			d = img->data;
+			for (i = 0; i < n; i++)
+				d[i] = (unsigned char)(i + 1);
+
+			CHECK(RBlurImage(img) == 1);
+
+			untouched = 1;
+			for (i = 0; i < n; i++)
+				untouched &= (d[i] == (unsigned char)(i + 1));
+			CHECK(untouched);
+
+			RReleaseImage(img);
+		}
+	}
+}
+
 int main(void)
 {
 	test_grayscale_rgb();
@@ -195,6 +275,8 @@ int main(void)
 	test_blur_flat();
 	test_blur_impulse();
 	test_blur_noop();
+	test_blur3_impulse();
+	test_blur3_tiny();
 
 	return check_report("check_convolve");
 }
