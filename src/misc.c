@@ -30,7 +30,6 @@
 #include <math.h>
 #include <time.h>
 #include <errno.h>
-#include <poll.h>
 
 #include <WINGs/WUtil.h>
 #include <WINGs/WINGsP.h>
@@ -43,7 +42,6 @@
 #include "GNUstep.h"
 #include "screen.h"
 #include "wcore.h"
-#include "window.h"
 #include "framewin.h"
 #include "dialog.h"
 #include "dialog_run.h"
@@ -111,51 +109,6 @@ int WMPLGetBool(WMPropList *value)
 		wwarning(_("can't convert \"%s\" to boolean"), val);
 		return 0;
 	}
-}
-
-static long long monotonic_ms(void)
-{
-	struct timespec ts;
-
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
-
-/* Wait up to timeout_ms (-1 waits forever) for an X event matching
- * mask, restricted to window when window != None, blocking on poll()
- * between queue checks. True if an event was taken, False on timeout
- * or poll error. Interruptions consume the deadline rather than
- * restarting the full timeout. */
-bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms)
-{
-	struct pollfd pfd;
-	long long deadline;
-	int ret;
-
-	if (timeout_ms < 0)
-		deadline = -1;
-	else
-		deadline = monotonic_ms() + timeout_ms;
-
-	while (!WXEvqTakeMask(dpy, mask, window, ev)) {
-		pfd.fd = xcb_get_file_descriptor(dpy);
-		pfd.events = POLLIN;
-		if (deadline >= 0) {
-			timeout_ms = (int)(deadline - monotonic_ms());
-			if (timeout_ms <= 0)
-				return false;
-		}
-		ret = poll(&pfd, 1, timeout_ms);
-		if (ret < 0) {
-			if (errno == EINTR)
-				continue;
-			return false;
-		}
-		if (ret == 0)
-			return false;
-		wXFlush(dpy);
-	}
-	return true;
 }
 
 static void eatExpose(void)
@@ -419,6 +372,29 @@ char *FindImage(const char *paths, const char *file)
  * so the cold-boot round-trip budget does not want them at startup. */
 #define WMSEL_TAG_COUNT 4
 
+/* bound on the whole clipboard read, a hostile or hung selection
+ * owner must not be able to stall the wait longer than this */
+#define WMSEL_RETRIEVAL_TIMEOUT_MS 1000
+
+/* the fields a SELECTION_NOTIFY must carry to be ours, the property
+ * is the tag the request was made with */
+struct SelNotifyMatch {
+	xcb_atom_t selection;
+	xcb_atom_t target;
+	xcb_atom_t property;
+};
+
+/* drop replies from earlier timed-out requests, they name another tag
+ * property, XCB_NONE (owner refused) still matches */
+static bool matchSelNotify(const xcb_generic_event_t *event, void *cdata)
+{
+	const xcb_selection_notify_event_t *sn = (const xcb_selection_notify_event_t *)event;
+	const struct SelNotifyMatch *m = cdata;
+
+	return sn->selection == m->selection && sn->target == m->target
+	       && (sn->property == m->property || sn->property == XCB_NONE);
+}
+
 static xcb_atom_t wmsel_tag_atom(unsigned int slot)
 {
 	static xcb_atom_t tags[WMSEL_TAG_COUNT];
@@ -449,8 +425,8 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 	xcb_atom_t property;
 	char *data;
 	size_t len;
-	long long deadline;
 	unsigned int slot;
+	struct SelNotifyMatch match;
 
 	slot = sel_tag_rot++ % WMSEL_TAG_COUNT;
 	property = wmsel_tag_atom(slot);
@@ -459,30 +435,19 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 
 	wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, property, screen->info_window, XCB_CURRENT_TIME);
 
-	/* bound the wait with a local monotonic deadline so a hostile
-	 * or hung selection owner cannot stall us, this loop never
-	 * re-enters the WINGs event loop so a WINGs timer would not
-	 * fire here (WM-2026-20) */
-	deadline = monotonic_ms() + 1000;
+	match.selection = selection;
+	match.target = XCB_ATOM_STRING;
+	match.property = property;
 
-	for (;;) {
-		if (WXEvqTakeTyped(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window, &ev)) {
-			sn = (xcb_selection_notify_event_t *)ev;
-			/* only our own request's reply names our tag
-			 * property, a late reply from an earlier
-			 * timed-out request is dropped here */
-			if (sn->selection == selection && sn->target == XCB_ATOM_STRING
-			    && (sn->property == property || sn->property == XCB_NONE))
-				break;
-			free(ev);
-		} else {
-			if (monotonic_ms() >= deadline) {
-				wwarning("selection retrieval timed out");
-				return NULL;
-			}
-			wusleep(10000);
-		}
+	/* the bounded wait never re-enters the WINGs event loop so a
+	 * WINGs timer would not fire here either (WM-2026-20) */
+	if (!WXEvqTakeTypedTimed(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window,
+				 matchSelNotify, &match, &ev, WMSEL_RETRIEVAL_TIMEOUT_MS)) {
+		wwarning("selection retrieval timed out");
+		return NULL;
 	}
+
+	sn = (xcb_selection_notify_event_t *)ev;
 
 	/* nobody owns the selection or the current owner has
 	 * nothing to do with what we need */

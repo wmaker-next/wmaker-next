@@ -193,9 +193,9 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 		free(ev);
 		ev = NULL;
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = wMaskEventTimed(wdisp->conn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
+			gotEvent = WXEvqTakeMaskTimed(wdisp->conn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = wMaskEventTimed(wdisp->conn, eventMask, XCB_NONE, &ev, -1);
+			gotEvent = WXEvqTakeMaskTimed(wdisp->conn, eventMask, XCB_NONE, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {

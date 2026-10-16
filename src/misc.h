@@ -31,7 +31,6 @@
 bool wFetchName(xcb_connection_t *dpy, xcb_window_t win, char **winname);
 bool wGetIconName(xcb_connection_t *dpy, xcb_window_t win, char **iconname);
 bool UpdateDomainFile(WDDomain * domain);
-bool wMaskEventTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **ev, int timeout_ms);
 
 void move_window(xcb_window_t win, int from_x, int from_y, int to_x, int to_y);
 void slide_windows(xcb_window_t wins[], int n, int from_x, int from_y, int to_x, int to_y,

@@ -198,7 +198,7 @@ static bool replace_existing_wm(WScreen *scr)
 			if (remain < 0)
 				remain = 0;
 
-			if (!wMaskEventTimed(wdisp->conn, XCB_EVENT_MASK_STRUCTURE_NOTIFY, wm, &event, remain)) {
+			if (!WXEvqTakeMaskTimed(wdisp->conn, XCB_EVENT_MASK_STRUCTURE_NOTIFY, wm, &event, remain)) {
 				wwarning(_("other window manager hasn't exited!"));
 				return false;
 			}
