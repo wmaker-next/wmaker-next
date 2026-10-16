@@ -1218,9 +1218,13 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 		ctrlmode = 1;
 	}
 
-	wXSync(wdisp->conn);
-	wusleep(10000);
-	wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
+	/* the grab is a checked round-trip, the reply cannot precede the
+	 * processing of anything queued before it */
+	if (wXGrabKeyboard(wdisp->conn, root, false, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME)
+	    != XCB_GRAB_STATUS_SUCCESS) {
+		wwarning(_("could not grab the keyboard for keyboard move/resize"));
+		return 0;
+	}
 
 	if (!wwin->flags.selected) {
 		wUnselectWindows(scr);
