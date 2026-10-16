@@ -724,7 +724,8 @@ void WMSetViewNextResponder(WMView *view, WMView *responder);
  * xcb_generic_event_t.
  *
  * Ownership: events handed out by WXEvqNext / WXEvqTakeMask /
- * WXEvqTakeTyped / WMNextEvent / WMMaskEvent are owned by the caller,
+ * WXEvqTakeMaskTimed / WXEvqTakeTyped / WXEvqTakeTypedTimed /
+ * WMNextEvent / WMMaskEvent are owned by the caller,
  * free() them exactly once when done. WMHandleEvent() only borrows the
  * buffer it is given: it never frees it and never substitutes a
  * different buffer (motion/expose compression collapses matching
@@ -769,6 +770,24 @@ bool WXEvqTakeMask(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window,
 
 bool WXEvqTakeTyped(xcb_connection_t *dpy, int type, xcb_window_t window,
                     xcb_generic_event_t **event_ret);
+
+/* blocking take variants, waiting up to timeout_ms (negative waits
+ * forever) for a matching event and blocking on poll() on the X fd
+ * between queue checks. True if an event was taken, false on timeout,
+ * poll error or dead connection. Interruptions consume the deadline
+ * rather than restarting the full timeout. The wait never dispatches
+ * anything else, a caller that needs WINGs timers or IPC serviced
+ * mid-wait must not use these. */
+bool WXEvqTakeMaskTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **event_ret, int timeout_ms);
+
+/* match, when not NULL, is applied to every typed event taken from
+ * the queue, non-matching events are freed and the wait continues
+ * until a matching one arrives or the deadline expires, which lets a
+ * caller drop stale late replies while waiting. A NULL match takes
+ * the first typed event. */
+typedef bool WXEvqMatchProc(const xcb_generic_event_t *event, void *cdata);
+
+bool WXEvqTakeTypedTimed(xcb_connection_t *dpy, int type, xcb_window_t window, WXEvqMatchProc *match, void *cdata, xcb_generic_event_t **event_ret, int timeout_ms);
 
 int WXEvqDropRange(xcb_connection_t *dpy, unsigned long begin, unsigned long end,
                    uint32_t mask);

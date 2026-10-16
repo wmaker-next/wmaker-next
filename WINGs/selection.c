@@ -19,7 +19,6 @@
  */
 
 #include <stdlib.h>
-#include <poll.h>
 #include <time.h>
 
 
@@ -347,35 +346,35 @@ static int xgetprop(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t prop, lo
 	return WXPropSuccess;
 }
 
+/* the fields a PropertyNotify must carry to be the owner's answer,
+ * anything else stays queued for the normal dispatch */
+struct IncrPropMatch {
+	xcb_atom_t where;
+	uint8_t state;
+};
+
+static bool matchIncrProp(const xcb_generic_event_t *event, void *cdata)
+{
+	const xcb_property_notify_event_t *pe = (const xcb_property_notify_event_t *)event;
+	const struct IncrPropMatch *m = cdata;
+
+	return pe->atom == m->where && pe->state == m->state;
+}
+
 static bool waitPropertyNewValue(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t where)
 {
-	struct pollfd pfd;
-	xcb_generic_event_t *ev;
-	int waited = 0;
+	struct IncrPropMatch match;
+	xcb_generic_event_t *ev = NULL;
 
-	pfd.fd = xcb_get_file_descriptor(dpy);
-	pfd.events = POLLIN;
-
-	for (;;) {
-		/* take the property events from the WINGs queue so the
-		 * drain is not flipped and non-matching events stay
-		 * queued for the normal dispatch after we return */
-		while (WXEvqTakeTyped(dpy, XCB_PROPERTY_NOTIFY, win, &ev)) {
-			const xcb_property_notify_event_t *pe =
-				(const xcb_property_notify_event_t *)ev;
-
-			if (pe->atom == where && pe->state == XCB_PROPERTY_NEW_VALUE) {
-				free(ev);
-				return true;
-			}
-			free(ev);
-		}
-		if (waited >= INCR_CHUNK_TIMEOUT_MS)
-			return false;
-		wXFlush(dpy);
-		poll(&pfd, 1, 100);
-		waited += 100;
-	}
+	/* take the property events from the WINGs queue so the drain is
+	 * not flipped and non-matching events stay queued for the
+	 * normal dispatch after we return */
+	match.where = where;
+	match.state = XCB_PROPERTY_NEW_VALUE;
+	if (!WXEvqTakeTypedTimed(dpy, XCB_PROPERTY_NOTIFY, win, matchIncrProp, &match, &ev, INCR_CHUNK_TIMEOUT_MS))
+		return false;
+	free(ev);
+	return true;
 }
 
 static WMData *readIncrSelection(xcb_connection_t *dpy, xcb_window_t win, xcb_atom_t where)

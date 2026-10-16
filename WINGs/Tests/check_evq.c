@@ -326,6 +326,77 @@ static void test_take_mask(void)
 	CHECK(!WXEvqPending(NULL));
 }
 
+/* ---- timed takes: headless coverage, only the queue checks and the
+ *      zero-timeout return are reachable without an X server, the
+ *      blocking poll path needs a live connection ---------------------- */
+
+static xcb_atom_t match_want_property;
+
+static bool matchSelProperty(const xcb_generic_event_t *event, void *cdata)
+{
+	const xcb_selection_notify_event_t *sn = (const xcb_selection_notify_event_t *)event;
+
+	(void) cdata;
+	return sn->property == match_want_property;
+}
+
+static void test_take_typed_timed(void)
+{
+	xcb_selection_notify_event_t *stale, *fresh;
+	xcb_generic_event_t *e;
+
+	/* an already-queued event is returned without reaching the
+	 * poll path, even with an infinite timeout */
+	load(XCB_EXPOSE, 11, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	CHECK(WXEvqTakeTypedTimed(NULL, XCB_EXPOSE, XCB_NONE, NULL, NULL, &e, -1)
+	      && e->full_sequence == 2);
+	free(e);
+	e = NULL;
+	CHECK(!WXEvqPending(NULL));
+
+	/* no match and a zero timeout: false without blocking */
+	CHECK(!WXEvqTakeTypedTimed(NULL, XCB_EXPOSE, XCB_NONE, NULL, NULL, &e, 0));
+
+	/* the match callback drops non-matching events and keeps
+	 * waiting, here the first SELECTION_NOTIFY is a stale reply
+	 * from an earlier timed-out request naming another property */
+	stale = (xcb_selection_notify_event_t *)mkraw(XCB_SELECTION_NOTIFY, 1);
+	stale->requestor = 77;
+	stale->property = 1000;
+	W_XEvqPutRaw(stale);
+	fresh = (xcb_selection_notify_event_t *)mkraw(XCB_SELECTION_NOTIFY, 2);
+	fresh->requestor = 77;
+	fresh->property = 1001;
+	W_XEvqPutRaw(fresh);
+
+	match_want_property = 1001;
+	CHECK(WXEvqTakeTypedTimed(NULL, XCB_SELECTION_NOTIFY, 77, matchSelProperty, NULL, &e, 0)
+	      && e->full_sequence == 2);
+	free(e);
+	e = NULL;
+	CHECK(!WXEvqPending(NULL));
+}
+
+static void test_take_mask_timed(void)
+{
+	xcb_generic_event_t *e;
+
+	load(XCB_KEY_PRESS, 10, 1, XCB_EXPOSE, 11, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	CHECK(WXEvqTakeMaskTimed(NULL, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &e, -1)
+	      && e->full_sequence == 2);
+	free(e);
+	e = NULL;
+
+	/* zero timeout with a non-matching event queued: false without
+	 * blocking */
+	CHECK(!WXEvqTakeMaskTimed(NULL, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &e, 0));
+	CHECK(WXEvqTakeMaskTimed(NULL, XCB_EVENT_MASK_KEY_PRESS, XCB_NONE, &e, 0)
+	      && e->full_sequence == 1);
+	free(e);
+	e = NULL;
+	CHECK(!WXEvqPending(NULL));
+}
+
 /* ---- drop-range by serial -------------------------------------------- */
 
 static void test_drop_range(void)
@@ -448,6 +519,8 @@ int main(void)
 	test_peek();
 	test_take_typed();
 	test_take_mask();
+	test_take_typed_timed();
+	test_take_mask_timed();
 	test_drop_range();
 	test_extension_no_window();
 	test_connection_dead();

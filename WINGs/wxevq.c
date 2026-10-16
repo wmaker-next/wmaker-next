@@ -24,6 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <errno.h>
+#include <poll.h>
+#include <time.h>
+
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
@@ -385,6 +389,119 @@ bool WXEvqTakeTyped(xcb_connection_t *dpy, int type, xcb_window_t window,
 		return takeMatching(pp, event_ret);
 	}
 	return false;
+}
+
+/* ---- timed takes ------------------------------------------------------ */
+
+/* one monotonic millisecond clock for the timed waits, deadlines are
+ * absolute so a poll interruption shrinks the remaining wait instead
+ * of restarting the full timeout */
+static long long evq_monotonic_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/* shared mechanics of the *Timed take variants: run take() until it
+ * reports an event or the deadline expires, blocking on poll() on the
+ * X fd between queue checks, so requests queued before the wait are
+ * flushed by drain() and answered while we block. timeout_ms < 0
+ * waits forever. True if an event was taken, false on timeout, poll
+ * error or dead connection. */
+typedef bool WXEvqTakeStep(xcb_connection_t *dpy, void *arg, xcb_generic_event_t **event_ret);
+
+static bool waitTakeTimed(xcb_connection_t *dpy, WXEvqTakeStep *take, void *arg, xcb_generic_event_t **event_ret, int timeout_ms)
+{
+	struct pollfd pfd;
+	long long deadline;
+	int ret;
+
+	if (timeout_ms < 0)
+		deadline = -1;
+	else
+		deadline = evq_monotonic_ms() + timeout_ms;
+
+	while (!take(dpy, arg, event_ret)) {
+		if (deadline >= 0) {
+			timeout_ms = (int)(deadline - evq_monotonic_ms());
+			if (timeout_ms <= 0)
+				return false;
+		}
+		pfd.fd = xcb_get_file_descriptor(dpy);
+		pfd.events = POLLIN;
+		ret = poll(&pfd, 1, timeout_ms);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return false;
+		}
+		if (ret == 0)
+			return false;
+		/* a wake with no event behind it happens when the
+		 * connection died and the registered dead hook returned,
+		 * stop instead of spinning on the dead fd */
+		if (xcb_connection_has_error(dpy))
+			return false;
+	}
+	return true;
+}
+
+struct TakeMaskArg {
+	uint32_t mask;
+	xcb_window_t window;
+};
+
+static bool takeMasked(xcb_connection_t *dpy, void *arg_, xcb_generic_event_t **event_ret)
+{
+	struct TakeMaskArg *arg = arg_;
+
+	return WXEvqTakeMask(dpy, arg->mask, arg->window, event_ret);
+}
+
+bool WXEvqTakeMaskTimed(xcb_connection_t *dpy, uint32_t mask, xcb_window_t window, xcb_generic_event_t **event_ret, int timeout_ms)
+{
+	struct TakeMaskArg arg;
+
+	arg.mask = mask;
+	arg.window = window;
+	return waitTakeTimed(dpy, takeMasked, &arg, event_ret, timeout_ms);
+}
+
+struct TakeTypedArg {
+	int type;
+	xcb_window_t window;
+	WXEvqMatchProc *match;
+	void *cdata;
+};
+
+/* take typed events until one passes match, a NULL match takes the
+ * first typed event, non-matching events are freed */
+static bool takeTypedMatched(xcb_connection_t *dpy, void *arg_, xcb_generic_event_t **event_ret)
+{
+	struct TakeTypedArg *arg = arg_;
+	xcb_generic_event_t *e;
+
+	while (WXEvqTakeTyped(dpy, arg->type, arg->window, &e)) {
+		if (!arg->match || arg->match(e, arg->cdata)) {
+			*event_ret = e;
+			return true;
+		}
+		free(e);
+	}
+	return false;
+}
+
+bool WXEvqTakeTypedTimed(xcb_connection_t *dpy, int type, xcb_window_t window, WXEvqMatchProc *match, void *cdata, xcb_generic_event_t **event_ret, int timeout_ms)
+{
+	struct TakeTypedArg arg;
+
+	arg.type = type;
+	arg.window = window;
+	arg.match = match;
+	arg.cdata = cdata;
+	return waitTakeTimed(dpy, takeTypedMatched, &arg, event_ret, timeout_ms);
 }
 
 /* drop every queued event whose type maps to a bit in mask and whose
