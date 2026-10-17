@@ -255,6 +255,22 @@ AS_IF([test "x$debug" = "xyes"],
      dnl compiler support C11's static_assert
      AX_CFLAGS_GCC_OPTION([-Wsizeof-array-argument])
      dnl
+     dnl Catch malloc(sizeof(ptr)) where the size of the pointed-to
+     dnl type is not the size of the whole object
+     AX_CFLAGS_GCC_OPTION([-Walloc-size])
+     dnl
+     dnl Catch calloc(nb, sizeof) argument transpositions
+     AX_CFLAGS_GCC_OPTION([-Wcalloc-transposed-args])
+     dnl
+     dnl A struct ending with a flexible array member must not be
+     dnl embedded in another struct, the padding would corrupt the
+     dnl array
+     AX_CFLAGS_GCC_OPTION([-Wflex-array-member-not-at-end])
+     dnl
+     dnl gcc 15, warn when a string initializer fills the whole array
+     dnl so no NUL terminator is stored, as in four-char constants
+     AX_CFLAGS_GCC_OPTION([-Wunterminated-string-initialization])
+     dnl
      dnl Prototype of function must be explicit, no deprecated K&R syntax
      dnl and no empty argument list which prevents compiler from doing
      dnl type checking when using the function
