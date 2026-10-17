@@ -5934,7 +5934,12 @@ static void *stbi__tga_load(stbi__context *s, int *x, int *y, int *comp, int req
       for (i=0; i < tga_height; ++i) {
          int row = tga_inverted ? tga_height -i - 1 : i;
          stbi_uc *tga_row = tga_data + row*tga_width*tga_comp;
-         stbi__getn(s, tga_row, tga_width * tga_comp);
+         //   a truncated file must fail the load, the buffer is not
+         //   zeroed and unchecked short reads would expose the heap
+         if (!stbi__getn(s, tga_row, tga_width * tga_comp)) {
+            STBI_FREE(tga_data);
+            return stbi__errpuc("outofdata", "Corrupt TGA");
+         }
       }
    } else  {
       //   do I need to load a palette?
