@@ -29,6 +29,7 @@
 #ifdef USE_XSYNC
 #include <xcb/sync.h>
 #endif
+#include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -2792,11 +2793,20 @@ static void handlePingTimeout(void *cdata)
 			/* first Force Quit asks nicely, a second one (after
 			 * the next ping also times out) escalates */
 			if (!wwin->net_ping.term_sent) {
-				kill((pid_t)pid, SIGTERM);
-				wwin->net_ping.term_sent = 1;
-				wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
-			} else {
-				kill((pid_t)pid, SIGKILL);
+				if (kill((pid_t)pid, SIGTERM) == 0) {
+					wwin->net_ping.term_sent = 1;
+					wNETWMPingWindow(wwin, wdisp->timestamp.last_event);
+				} else {
+					wwarning(_("could not signal process %d (%s), "
+						   "dropping its X connection instead"),
+						 pid, strerror(errno));
+					wClientKill(wwin);
+				}
+			} else if (kill((pid_t)pid, SIGKILL) != 0) {
+				wwarning(_("could not kill process %d (%s), "
+					   "dropping its X connection instead"),
+					 pid, strerror(errno));
+				wClientKill(wwin);
 			}
 		} else {
 			wClientKill(wwin);
