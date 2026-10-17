@@ -4,9 +4,10 @@
  * the drive can locate the window before it is reparented.
  *
  * Environment knobs:
- *   TINYWIN_NAME   title (default "tinywin")
- *   TINYWIN_GEOM   final geometry (default "200x150+540+325")
- *   TINYWIN_DELAY  microseconds between map and resize (default 200000)
+ *   TINYWIN_NAME    title (default "tinywin")
+ *   TINYWIN_GEOM    final geometry (default "200x150+540+325")
+ *   TINYWIN_DELAY   microseconds between map and resize (default 200000)
+ *   TINYWIN_MAXSIZE WM_NORMAL_HINTS PMaxSize "WxH" (none by default)
  */
 #define _POSIX_C_SOURCE 200809L
 #include <X11/Xatom.h>
@@ -14,12 +15,14 @@
 #include <X11/Xutil.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 int main(void)
 {
 	const char *name = getenv("TINYWIN_NAME");
 	const char *geom = getenv("TINYWIN_GEOM");
+	const char *maxsize = getenv("TINYWIN_MAXSIZE");
 	const char *delay = getenv("TINYWIN_DELAY");
 	struct timespec ts;
 	unsigned long usec;
@@ -57,6 +60,19 @@ int main(void)
 	protos[1] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
 	XSetWMProtocols(dpy, w, protos, 2);
 	XStoreName(dpy, w, name);
+
+	if (maxsize && *maxsize) {
+		unsigned int mw, mh;
+		XSizeHints hints;
+
+		memset(&hints, 0, sizeof(hints));
+		if (sscanf(maxsize, "%ux%u", &mw, &mh) == 2 && mw > 0 && mh > 0) {
+			hints.flags = PMaxSize;
+			hints.max_width = (int)mw;
+			hints.max_height = (int)mh;
+			XSetWMNormalHints(dpy, w, &hints);
+		}
+	}
 
 	printf("0x%lx\n", (unsigned long)w);
 	fflush(stdout);

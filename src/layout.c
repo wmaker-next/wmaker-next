@@ -291,9 +291,11 @@ static int collect_tileable(WScreen *scr, int workspace, int head,
 }
 
 static void apply_tiled_geometry(WWindow *wwin, int x, int y,
-				 unsigned int cw, unsigned int ch, bool full)
+				 unsigned int cw, unsigned int ch, bool full,
+				 int cell_w, int cell_h)
 {
 	int maxed;
+	int il, ir, it, ib, fb, fw, fh, aw, ah;
 
 	if (!wwin->flags.tiled) {
 		if (!wwin->flags.maximized)
@@ -302,7 +304,24 @@ static void apply_tiled_geometry(WWindow *wwin, int x, int y,
 	}
 	/* a cell covering the whole usable area reports as maximized so
 	 * the window menu, titlebar button and _NET_WM_STATE match what
-	 * is on screen */
+	 * is on screen, but not when the size hints shrank the frame
+	 * below the cell. Rounding to resize increments is tolerated */
+	if (full) {
+		wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
+		fb = HAS_BORDER(wwin) ? wFrameBorderWidth(wwin) : 0;
+		fw = (int)cw + il + ir + 2 * fb;
+		fh = (int)ch + wwin->frame->top_width + wwin->frame->bottom_width
+		     + it + ib + 2 * fb;
+		aw = ah = 0;
+		if (wwin->normal_hints && !wwin->flags.maximized) {
+			if (wwin->normal_hints->width_inc > 1)
+				aw = wwin->normal_hints->width_inc - 1;
+			if (wwin->normal_hints->height_inc > 1)
+				ah = wwin->normal_hints->height_inc - 1;
+		}
+		if (fw + aw < cell_w || fh + ah < cell_h)
+			full = false;
+	}
 	maxed = full ? (MAX_VERTICAL | MAX_HORIZONTAL) : 0;
 	if (wwin->flags.maximized != maxed || wwin->flags.old_maximized) {
 		wwin->flags.old_maximized = 0;
@@ -333,7 +352,7 @@ static void configure_into_cell(WWindow *wwin, WLayoutRect r, bool full)
 	unsigned int cw, ch;
 
 	tiled_client_size(wwin, r.w, r.h, &cw, &ch);
-	apply_tiled_geometry(wwin, r.x, r.y, cw, ch, full);
+	apply_tiled_geometry(wwin, r.x, r.y, cw, ch, full, r.w, r.h);
 }
 
 /* Pack one column of tiled windows with window_gap between neighbours.
@@ -370,7 +389,7 @@ static int pack_column(WWindow **wins, int cnt, bool pack_x,
 			fy = by + used + i * gap;
 		}
 		tiled_client_size(wwin, vw, vh, &cw, &ch);
-		apply_tiled_geometry(wwin, fx, fy, cw, ch, full);
+		apply_tiled_geometry(wwin, fx, fy, cw, ch, full, vw, vh);
 		fw = (int)cw + il + ir + 2 * fb;
 		fh = (int)ch + wwin->frame->top_width + wwin->frame->bottom_width
 		     + it + ib + 2 * fb;

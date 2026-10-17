@@ -3,9 +3,13 @@
 # set-layout tile via IPC, assert their frame-outer geometries against
 # the expected 0.55 master/stack split, cycle through grid and monocle,
 # then set-layout float and check the original geometries are restored.
-# Finally map a 131-window herd (past the former 128-window collection
-# cap) plus the three xterms and require every window to land in one of
-# the two tile columns.
+# Next check the maximized reporting of a full-area tile: granted for a
+# lone increment-hinted client, dropped when a second window joins, and
+# withheld when the constrained frame comes back below the cell (a
+# PMaxSize-capped client rides the almost-fullscreen fallback). Finally
+# map a 131-window herd
+# (past the former 128-window collection cap) and require every window
+# to land in one of the two tile columns.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -242,6 +246,60 @@ msg get_workspaces | grep -q 'layout = float' \
 expect_rect "float restore W1" "$(frame_geom "$W1")" $G1_ORIG 4
 expect_rect "float restore W2" "$(frame_geom "$W2")" $G2_ORIG 4
 expect_rect "float restore W3" "$(frame_geom "$W3")" $G3_ORIG 4
+
+# --- maximized state on full-area tiles --------------------------------------
+# A single tileable window fills the whole usable area and reports
+# maximized. The xterm's resize increments round it below the cell by
+# less than one increment, which stays within the grant. A client that
+# asks beyond its PMaxSize in both dimensions does not fill the cell
+# either: wmaker does not clamp tile sizes to PMaxSize, so
+# wWindowConstrainSize substitutes its almost-fullscreen fallback
+# (screen minus twice the icon size) and the maximized state must stay
+# withheld.
+has_state() {
+    DISPLAY=$DPY xprop -id "$1" -notype _NET_WM_STATE 2>/dev/null | grep -q "$2"
+}
+is_maximized() { has_state "$1" MAXIMIZED_VERT && has_state "$1" MAXIMIZED_HORZ; }
+not_maximized() { ! has_state "$1" MAXIMIZED_VERT && ! has_state "$1" MAXIMIZED_HORZ; }
+
+note "close lxb and lxc, tile lxa alone"
+DISPLAY=$DPY xdotool windowclose "$W1" >>"$LOG" 2>&1 || true
+DISPLAY=$DPY xdotool windowclose "$W2" >>"$LOG" 2>&1 || true
+lxa_alone() { [ -z "$(xt_client lxb)" ] && [ -z "$(xt_client lxc)" ]; }
+wait_for 60 lxa_alone || fail "lxb/lxc did not close"
+msg -q set-layout tile || fail "set-layout tile rejected"
+wait_for 30 is_maximized "$W3" \
+    || fail "full-area tile did not report maximized"
+note "ok: full-area tile reports maximized"
+
+note "spawn a PMaxSize-capped client"
+lxmax_up() { [ -n "$(xt_client lxmax)" ]; }
+TINYWIN_NAME=lxmax TINYWIN_GEOM=400x300+300+300 TINYWIN_MAXSIZE=500x400 \
+    DISPLAY=$DPY "$HERDCLIENT" >>"$LOG" 2>&1 &
+echo "$!" >> "$PIDFILE"
+wait_for 60 lxmax_up || fail "capped client did not map"
+Wmax=$(xt_client lxmax)
+wait_for 30 not_maximized "$W3" \
+    || fail "master kept the maximized state once a second window joined"
+note "ok: two-window tile reports no maximized state"
+
+note "close lxa, leave the capped client alone"
+DISPLAY=$DPY xdotool windowclose "$W3" >>"$LOG" 2>&1 || true
+lxa_gone() { [ -z "$(xt_client lxa)" ]; }
+wait_for 60 lxa_gone || fail "lxa did not close"
+wait_for 60 not_maximized "$Wmax" \
+    || fail "full-area tile with a PMaxSize-capped client claims maximized state"
+set -- $(frame_geom "$Wmax")
+[ "$3" -ge 1000 ] && [ "$3" -lt 1180 ] && [ "$4" -ge 640 ] && [ "$4" -lt 780 ] \
+    || fail "capped client is neither almost-fullscreen nor below the cell: got ${3}x${4}"
+note "ok: capped tile stays unmaximized below the cell (${3}x${4})"
+
+note "close the capped client"
+DISPLAY=$DPY xdotool windowclose "$Wmax" >>"$LOG" 2>&1 || true
+lxmax_gone() { [ -z "$(xt_client lxmax)" ]; }
+wait_for 60 lxmax_gone || fail "capped client did not close"
+msg -q set-layout float || fail "set-layout float rejected"
+sleep 0.3
 
 # --- herd past the former 128-window collection cap -------------------------
 note "spawn 131-window herd"
