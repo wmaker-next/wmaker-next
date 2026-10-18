@@ -1380,14 +1380,8 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		wwin->flags.maximized = wstate->maximized;
 		WRESTORESLOT(auto_hide_on_unfocus, auto_hide_on_unfocus);
 		WRESTORESLOT(auto_miniaturize_on_unfocus, auto_miniaturize_on_unfocus);
-		if (wstate->no_movable_state
-		    && (wstate->no_movable_state <= 2 || !wwin->domain_flags.no_movable))
-			WRESTOREHINTFLAG(wwin, no_movable,
-					 (wstate->no_movable_state - 1) & 1);
-		if (wstate->no_resizable_state
-		    && (wstate->no_resizable_state <= 2 || !wwin->domain_flags.no_resizable))
-			WRESTOREHINTFLAG(wwin, no_resizable,
-					 (wstate->no_resizable_state - 1) & 1);
+		WRESTORESLOT(no_movable, no_movable);
+		WRESTORESLOT(no_resizable, no_resizable);
 		if (wstate->no_titlebar_set == 1
 		    || (wstate->no_titlebar_set == 2 && !wwin->domain_flags.no_titlebar)) {
 			WRESTOREHINTFLAG(wwin, no_titlebar, wstate->no_titlebar);
@@ -4178,9 +4172,11 @@ static int getSavedStateCk(xcb_window_t window, WXCookie state_ck, WXCookie mark
 		decodeSavedTriState(data[13], &(*state)->auto_miniaturize_on_unfocus,
 				    &(*state)->auto_miniaturize_on_unfocus_set);
 	if (count >= 15)
-		(*state)->no_movable_state = data[14];
+		decodeSavedTriState(data[14], &(*state)->no_movable,
+				    &(*state)->no_movable_set);
 	if (count >= 16)
-		(*state)->no_resizable_state = data[15];
+		decodeSavedTriState(data[15], &(*state)->no_resizable,
+				    &(*state)->no_resizable_set);
 	raw = count >= 17 ? data[16] : 0;
 	(*state)->stacking_level = (raw >= 1 && raw <= 3) ? (int)raw : 0;
 	if (count >= 18)

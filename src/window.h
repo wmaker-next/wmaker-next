@@ -576,8 +576,10 @@ typedef struct WSavedState {
     int auto_hide_on_unfocus_set;
     int auto_miniaturize_on_unfocus;
     int auto_miniaturize_on_unfocus_set;
-    int no_movable_state;   /* user lock: 0 unset, 1 unlocked, 2 locked */
-    int no_resizable_state;
+    int no_movable;
+    int no_movable_set;
+    int no_resizable;
+    int no_resizable_set;
     int stacking_level;	       /* 0 unset, 1 normal, 2 floating, 3 sunken */
     int skip_window_list;      /* user value, valid when _set is 1 */
     int skip_window_list_set;
