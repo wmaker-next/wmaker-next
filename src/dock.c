@@ -3694,6 +3694,7 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 	WScreen *scr = dock->screen_ptr;
 	WDockEdge old_edge = dock->edge;
 	WAppIcon *btn;
+	WAppIcon **btns;
 	WDrawerChain *dc;
 	WMRect rect;
 	int *drawer_off;
@@ -3737,7 +3738,12 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 
 	/* a layout that cannot fit the new side is compressed
 	 * proportionally, the main tile stays at cell 0, icons that
-	 * still do not fit keep their own cells past the visible run */
+	 * still do not fit keep their own cells past the visible run.
+	 * Dock icons are tagged with their dense ordinal and recovered
+	 * through btns, not their icon_array slot: the array is sparse
+	 * after detachments, so a raw slot can collide with the drawer
+	 * ordinals that follow. */
+	btns = wmalloc(sizeof(WAppIcon *) * dock->max_icons);
 	cells = wmalloc(sizeof(int) * (dock->max_icons + n));
 	idx = wmalloc(sizeof(int) * (dock->max_icons + n));
 	m = 0;
@@ -3746,7 +3752,8 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 		if (!btn)
 			continue;
 		cells[m] = wDockAlongIndex(btn, old_edge);
-		idx[m] = i;
+		btns[m] = btn;
+		idx[m] = m;
 		m++;
 	}
 	m_dock = m;
@@ -3760,12 +3767,13 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 		if (idx[i] >= m_dock)
 			drawer_off[idx[i] - m_dock] = cells[i] * ICON_SIZE;
 		else if (wDockEdgeHorizontal(old_edge))
-			dock->icon_array[idx[i]]->xindex = cells[i];
+			btns[idx[i]]->xindex = cells[i];
 		else
-			dock->icon_array[idx[i]]->yindex = cells[i];
+			btns[idx[i]]->yindex = cells[i];
 	}
 	wfree(cells);
 	wfree(idx);
+	wfree(btns);
 
 	/* rescale the dock's own offset to the same fraction of the
 	 * usable run on the new side */

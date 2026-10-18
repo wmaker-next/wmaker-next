@@ -923,6 +923,63 @@ check "pack: nothing beyond the last icon" \
 msg exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
 
+# ---- a sparse dock survives the edge flip --------------------------------
+
+note "a sparse dock with holes survives the edge flip"
+# Detaching icons NULLs their icon_array slots without compaction, so
+# after the two detachments the survivor at slot 3 carries a raw slot
+# index past the live count of two. The edge write-back used to tag
+# icons with that raw slot and misread it as a drawer ordinal,
+# indexing past the one-int drawer_off (ASan heap overflow); the tags
+# are dense ordinals now. DisableClip keeps the tile census free of
+# the workspace clips.
+LD_LIBRARY_PATH="$WMLIBS" "$WDWRITE" WindowMaker DisableClip YES >>"$LOG" 2>&1
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+      { Command = "-"; Name = Logo.WMDock;
+        AutoLaunch = No; Forced = No; Lock = Yes;
+        Position = "0,0"; },
+      { Command = "/bin/true"; Name = sparseone.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,1"; },
+      { Command = "/bin/true"; Name = sparsetwo.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,2"; },
+      { Command = "/bin/true"; Name = sparsethree.DO;
+        AutoLaunch = No; Forced = No; Lock = No; BuggyApplication = No;
+        Position = "0,3"; }
+    );
+    Position = "0,0";
+    Edge = Left;
+    Lowered = No;
+  };
+  Workspaces = ( { Name = "Main"; } );
+}
+WMEOD
+start_wmaker
+check "sparse: four icons seeded down the left edge" \
+	wait_for 50 tile_at 0 "$((3 * ISZ))"
+# clear of any earlier drop point before the synced warps, a synced
+# move onto an occupied spot stalls xdotool
+DISPLAY=$DPY xdotool mousemove 200 200
+sleep 0.2
+drag_from_to 32 $((ISZ + ISZ / 2)) 300 300
+drag_from_to 32 $((2 * ISZ + ISZ / 2)) 360 300
+sleep 1.5
+check "sparse: the two detached icons left the dock" \
+	wait_for 20 not_tile_at 0 "$ISZ"
+set_edge Bottom || fatal "wdwrite DockEdge Bottom failed"
+check "sparse: wmaker alive after the edge flip" \
+	wait_for 20 ipc_ready
+check "sparse: main tile on the bottom edge" \
+	wait_for 50 tile_at 0 "$((H - ISZ))"
+check "sparse: the surviving icon follows at along cell 3" \
+	wait_for 50 tile_at "$((3 * ISZ))" "$((H - ISZ))"
+msg exit >>"$LOG" 2>&1
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker refused to exit"
+
 note "dock orient drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
 [ "$FAILED" -eq 0 ] && [ "$PASSED" -gt 0 ]
