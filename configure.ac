@@ -276,6 +276,13 @@ AS_IF([test "x$debug" = "xyes"],
      dnl type checking when using the function
      WM_CFLAGS_GCC_OPTION_STRICTPROTO
      dnl
+     dnl Check printf/scanf format strings against argument types, including
+     dnl the non-literal and security checks that plain -Wformat omits
+     AX_CFLAGS_GCC_OPTION([-Wformat=2])
+     dnl
+     dnl Catch signed/unsigned mismatches that -Wformat=2 does not diagnose
+     AX_CFLAGS_GCC_OPTION([-Wformat-signedness])
+     dnl
      dnl Proper attributes helps the compiler to produce better code
      WM_CFLAGS_CHECK_FIRST([format attribute suggest],
          [-Wsuggest-attribute=format  dnl new gcc syntax

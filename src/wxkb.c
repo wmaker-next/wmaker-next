@@ -430,7 +430,7 @@ const char *wXModifierToShortcutLabel(int mask)
 		}
 	}
 
-	wwarning(_("Can't convert keymask 0x%04X to a shortcut label"), mask);
+	wwarning(_("Can't convert keymask 0x%04X to a shortcut label"), (unsigned int)mask);
 	return NULL;
 }
 

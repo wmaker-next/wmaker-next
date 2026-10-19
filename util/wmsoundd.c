@@ -42,8 +42,12 @@
 #include <sys/inotify.h>
 #endif
 
+#pragma GCC diagnostic push
+/* older PipeWire headers use %u for __LINE__ in a static inline helper */
+#pragma GCC diagnostic ignored "-Wformat"
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
+#pragma GCC diagnostic pop
 #include <sndfile.h>
 
 #include <WINGs/WUtil.h>

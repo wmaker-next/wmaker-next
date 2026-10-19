@@ -30,6 +30,6 @@ void WSetGeometryViewShownSize(WGeometryView *gview, unsigned width, unsigned he
 {
 	char buffer[64];
 
-	snprintf(buffer, sizeof(buffer), "%+5i x %+5i    ", width, height);
+	snprintf(buffer, sizeof(buffer), "%+5i x %+5i    ", (int)width, (int)height);
 	WSetOSDViewText(gview, buffer);
 }

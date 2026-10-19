@@ -28,7 +28,8 @@ static void check_pixel(RImage *img, int x, int y, int er, int eg, int eb, const
 	}
 	if (c.red != er || c.green != eg || c.blue != eb) {
 		fprintf(stderr, "FAIL %s: (%d,%d) got %02x/%02x/%02x want %02x/%02x/%02x\n",
-			what, x, y, c.red, c.green, c.blue, er, eg, eb);
+			what, x, y, c.red, c.green, c.blue,
+			(unsigned int)er, (unsigned int)eg, (unsigned int)eb);
 		check_failures++;
 	}
 }

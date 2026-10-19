@@ -2834,7 +2834,7 @@ static void test_titlebar_layout_build(void)
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
 			if (layout.side[r] != cases[i].side[r]) {
 				fprintf(stderr,
-					"FAIL titlebar_layout case '%s': role %d side=%d expected=%d\n",
+					"FAIL titlebar_layout case '%s': role %d side=%u expected=%u\n",
 					cases[i].name, r, layout.side[r], cases[i].side[r]);
 				check_failures++;
 			}

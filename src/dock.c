@@ -1591,7 +1591,7 @@ void wClipIconPaint(WAppIcon *aicon)
 	length = strlen(workspace->name);
 	ws_name = wmalloc(length + 1);
 	snprintf(ws_name, length + 1, "%s", workspace->name);
-	snprintf(ws_number, sizeof ws_number, "%u", scr->current_workspace + 1);
+	snprintf(ws_number, sizeof ws_number, "%u", (unsigned int)(scr->current_workspace + 1));
 	nlength = strlen(ws_number);
 
 	if (wdisp->flags.noclip || !workspace->clip->collapsed)

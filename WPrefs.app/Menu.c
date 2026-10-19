@@ -1509,6 +1509,9 @@ static WMPropList *getDefaultMenu(_Panel * panel)
 		int len;
 
 		msg = _("Could not open default menu from '%s'");
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+		/* the translated message is a printf-format string */
 		len = snprintf(NULL, 0, msg, menuPath);
 		if (len < 0) {
 			buffer = wstrdup(msg);
@@ -1516,6 +1519,7 @@ static WMPropList *getDefaultMenu(_Panel * panel)
 			buffer = wmalloc((size_t)len + 1);
 			snprintf(buffer, (size_t)len + 1, msg, menuPath);
 		}
+#pragma GCC diagnostic pop
 		WMRunAlertPanel(WMWidgetScreen(panel->parent), panel->parent,
 				_("Error"), buffer, _("OK"), NULL, NULL);
 		wfree(buffer);

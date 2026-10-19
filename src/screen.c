@@ -1333,7 +1333,11 @@ void ScreenCapture(WScreen *scr, int mode)
 
 	s = time(NULL);
 	tm_info = localtime(&s);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+	/* the template is user configuration, intentionally not a literal */
 	strftime(filename_date_part, sizeof(filename_date_part), w_global.config->screenshot_filename_template, tm_info);
+#pragma GCC diagnostic pop
 
 	if (strchr(filename_date_part, '/') != NULL) {
 		wfree(screenshot_dir);

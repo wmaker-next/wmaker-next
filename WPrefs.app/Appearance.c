@@ -479,7 +479,8 @@ static void dumpRImage(const char *path, RImage * image)
 		werror("%s", path);
 		return;
 	}
-	fprintf(f, "%02x%02x%1x", image->width, image->height, channels);
+	fprintf(f, "%02x%02x%1x", (unsigned int)image->width,
+		(unsigned int)image->height, (unsigned int)channels);
 
 	fwrite(image->data, 1, image->width * image->height * channels, f);
 

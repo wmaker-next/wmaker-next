@@ -272,7 +272,11 @@ int wWorkspaceNew(WScreen *scr)
 				name_length = strlen(new_name) + 8;
 			}
 			wspace->name = wmalloc(name_length);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+			/* the translated name is a printf-format string */
 			snprintf(wspace->name, name_length, new_name, scr->workspace_count);
+#pragma GCC diagnostic pop
 		}
 
 		if (!wdisp->flags.noclip)

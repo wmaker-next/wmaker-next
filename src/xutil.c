@@ -216,5 +216,5 @@ void FormatXError(unsigned int error_code, unsigned int major,
 	if (i > size - 30)
 		return;
 	buffer += p;
-	snprintf(buffer, size - i, "	Error serial: %li\n", serial);
+	snprintf(buffer, size - i, "	Error serial: %lu\n", serial);
 }

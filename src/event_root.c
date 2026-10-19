@@ -328,7 +328,7 @@ static void handleSelectionRequest(xcb_generic_event_t *ev)
 		char *tgtname = wXGetAtomName(wdisp->conn, e->target);
 
 		wwarning("received SelectionRequest(%s) for target=\"%s\" from requestor 0x%lX but we have no answer",
-		         selname ? selname : "?", tgtname ? tgtname : "?", (long) e->requestor);
+		         selname ? selname : "?", tgtname ? tgtname : "?", (unsigned long) e->requestor);
 		free(selname);
 		free(tgtname);
 	}

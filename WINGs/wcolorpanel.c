@@ -2653,27 +2653,29 @@ static void grayBrightnessTextFieldCallback(void *observerData, WMNotification *
 
 /******************* RGB Panel Functions *****************/
 
+static void rgbValueToText(char *buf, size_t size, int rgbState, int value)
+{
+	switch (rgbState) {
+	case RGBdec:
+		snprintf(buf, size, "%d", value);
+		break;
+	case RGBhex:
+		snprintf(buf, size, "%0X", (unsigned int)value);
+		break;
+	default:
+		buf[0] = '\0';
+	}
+}
+
 void rgbIntToChar(W_ColorPanel *panel, int *value)
 {
 	char tmp[4];
-	const char *format;
 
-	switch (panel->rgbState) {
-	case RGBdec:
-		format = "%d";
-		break;
-	case RGBhex:
-		format = "%0X";
-		break;
-	default:
-		format = "";
-	}
-
-	snprintf(tmp, sizeof(tmp), format, value[0]);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, value[0]);
 	WMSetTextFieldText(panel->rgbRedT, tmp);
-	snprintf(tmp, sizeof(tmp), format, value[1]);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, value[1]);
 	WMSetTextFieldText(panel->rgbGreenT, tmp);
-	snprintf(tmp, sizeof(tmp), format, value[2]);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, value[2]);
 	WMSetTextFieldText(panel->rgbBlueT, tmp);
 }
 
@@ -3702,7 +3704,6 @@ static void grayInit(W_ColorPanel * panel)
 static void rgbInit(W_ColorPanel * panel)
 {
 	char tmp[4];
-	const char *format;
 
 	if (panel->color.set != cpRGB)
 		convertCPColor(&panel->color);
@@ -3711,23 +3712,11 @@ static void rgbInit(W_ColorPanel * panel)
 	WMSetSliderValue(panel->rgbGreenS, panel->color.rgb.green);
 	WMSetSliderValue(panel->rgbBlueS, panel->color.rgb.blue);
 
-	switch (panel->rgbState) {
-	case RGBdec:
-		format = "%d";
-		break;
-	case RGBhex:
-		format = "%0X";
-		break;
-	default:
-		/* Avoid compiler warning */
-		format = "";
-	}
-
-	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.red);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, panel->color.rgb.red);
 	WMSetTextFieldText(panel->rgbRedT, tmp);
-	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.green);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, panel->color.rgb.green);
 	WMSetTextFieldText(panel->rgbGreenT, tmp);
-	snprintf(tmp, sizeof(tmp), format, panel->color.rgb.blue);
+	rgbValueToText(tmp, sizeof(tmp), panel->rgbState, panel->color.rgb.blue);
 	WMSetTextFieldText(panel->rgbBlueT, tmp);
 }
 

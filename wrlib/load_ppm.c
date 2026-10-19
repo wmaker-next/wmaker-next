@@ -87,7 +87,7 @@ static int pm_getuint(FILE *const ifP, const char *filename)
 	} while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
 
 	if (ch < '0' || ch > '9') {
-		fprintf(stderr, _("wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"), filename, (int)ch);
+		fprintf(stderr, _("wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"), filename, (unsigned int)ch);
 		return -1;
 	}
 

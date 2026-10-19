@@ -54,7 +54,7 @@ const char *wgethomedir(void)
 
 	user = getpwuid(getuid());
 	if (!user) {
-		werror(_("could not get password entry for UID %i"), getuid());
+		werror(_("could not get password entry for UID %i"), (int)getuid());
 		home = "/";
 		return home;
 	}

@@ -2625,7 +2625,7 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		src_indication = event->data.data32[4];
 
 		if (src_indication > 1)
-			wwarning("_NET_WM_FULLSCREEN_MONITORS source indication %ld not supported", src_indication);
+			wwarning("_NET_WM_FULLSCREEN_MONITORS source indication %lu not supported", src_indication);
 
 		wFullscreenMonitorsWindow(wwin, top, bottom, left, right);
 		return true;

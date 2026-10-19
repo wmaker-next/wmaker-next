@@ -1649,7 +1649,7 @@ WMPropList *WMCreatePropListFromDescription(const char *desc)
 
 	if (strnlen(desc, MAX_PROPLIST_INPUT + 1) > MAX_PROPLIST_INPUT) {
 		wwarning(_("property list description larger than %d bytes, rejected"),
-			 MAX_PROPLIST_INPUT);
+			 (int)MAX_PROPLIST_INPUT);
 		return NULL;
 	}
 

@@ -124,7 +124,7 @@ void menu_parser_free_macros(WMenuParser parser)
 		wfree(macro);
 	}
 #ifdef DEBUG
-	printf(__FILE__ ": %d macros\n", count);
+	printf(__FILE__ ": %u macros\n", count);
 #endif
 	parser->macros = NULL; // Security
 }
@@ -670,7 +670,7 @@ static void mpm_get_user_name(WParserMacro *this, WMenuParser parser)
 		error_no_username:
 			WMenuParserError(parser, _("could not determine %s"), "USER" );
 			/* Fall back on numeric id - better than nothing */
-			snprintf((char *) this->value, sizeof(this->value), "%d", getuid() );
+			snprintf((char *) this->value, sizeof(this->value), "%u", (unsigned int)getuid() );
 			return;
 		}
 		user = pw_user->pw_name;
@@ -686,7 +686,7 @@ static void mpm_get_user_id(WParserMacro *this, WMenuParser parser)
 	(void) parser;
 
 	if (this->value[0] != '\0') return; // Already evaluated, re-use previous
-	snprintf((char *) this->value, sizeof(this->value), "%d", getuid() );
+	snprintf((char *) this->value, sizeof(this->value), "%u", (unsigned int)getuid() );
 }
 
 /* Small helper to automate creation of one pre-defined macro in the parser */

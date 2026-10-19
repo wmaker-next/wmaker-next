@@ -526,8 +526,12 @@ static void draw_clock(void)
 
 	now = time(NULL);
 	localtime_r(&now, &tm);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+	/* both formats come from the command line */
 	strftime(tbuf, sizeof(tbuf), time_fmt, &tm);
 	strftime(dbuf, sizeof(dbuf), date_fmt, &tm);
+#pragma GCC diagnostic pop
 
 	/* %e space-pads single-digit days, drop a leading blank so the
 	 * centred date does not look shifted */

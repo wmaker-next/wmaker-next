@@ -204,10 +204,10 @@ static WMPropList *makeWindowState(WWindow * wwin, WApplication * wapp)
 
 		shaded = wwin->flags.shaded ? sYes : sNo;
 		miniaturized = wwin->flags.miniaturized ? sYes : sNo;
-		snprintf(buffer, sizeof(buffer), "0x%04X", wwin->flags.maximized);
+		snprintf(buffer, sizeof(buffer), "0x%04X", (unsigned int)wwin->flags.maximized);
 		maximized = WMCreatePLString(buffer);
 		hidden = wwin->flags.hidden ? sYes : sNo;
-		snprintf(buffer, sizeof(buffer), "%ix%i+%i+%i",
+		snprintf(buffer, sizeof(buffer), "%ux%u+%i+%i",
 			 wwin->client.width, wwin->client.height, wwin->frame_x, wwin->frame_y);
 		geometry = WMCreatePLString(buffer);
 
@@ -524,7 +524,7 @@ static WSavedState *getWindowState(WScreen * scr, WMPropList * win_state)
 
 	value = WMGetFromPLDictionary(win_state, sGeometry);
 	if (value && WMIsPLString(value)) {
-		if (!(sscanf(WMGetFromPLString(value), "%ix%i+%i+%i",
+		if (!(sscanf(WMGetFromPLString(value), "%ux%u+%i+%i",
 			     &state->w, &state->h, &state->x, &state->y) == 4 && (state->w > 0 && state->h > 0))) {
 			state->w = 0;
 			state->h = 0;
