@@ -1,12 +1,19 @@
-# Window Maker
+# 🧊 Window Maker
 
-Window Maker is a fast X11 window manager emulating the NeXTSTEP look
-and feel. It is easy to configure and the entire appearance is
+![License](https://img.shields.io/badge/license-GPL-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-X11-lightgrey?style=flat-square)
+![Toolkit](https://img.shields.io/badge/toolkit-libxcb-informational?style=flat-square)
+![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)
+
+## 🚀 Overview
+
+Window Maker is a fast X11 window manager that emulates the NeXTSTEP
+look and feel. It is easy to configure and the entire appearance is
 controlled through WPrefs.
 
-> This is the `next` branch, where active development happens.
+> 🌱 This is the `next` branch, where active development happens.
 
-## Highlights
+## ✨ Highlights
 
 - **Modern text rendering** — every string is shaped and drawn through
   Pango and cairo, so complex scripts (Arabic, Devanagari, CJK, ...)
@@ -30,7 +37,7 @@ controlled through WPrefs.
 - **Drag a file onto the dock** to create a launcher.
 - **Sound events** through an optional daemon.
 
-## New utilities
+## 🧰 New utilities
 
 | Binary | What it does |
 |---|---|
@@ -40,7 +47,7 @@ controlled through WPrefs.
 | `wmsoundd` | sound event daemon (PipeWire) |
 | `wmtouchd` | touchpad gesture daemon (libinput) |
 
-## Driving the window manager
+## 🎛 Driving the window manager
 
 The running window manager exposes a Unix-socket IPC channel.
 `wmakermsg` sends commands, queries state, and subscribes to events:
@@ -57,7 +64,7 @@ The wire format is documented in `doc/wmaker-ipc.txt`, the client
 helpers live in `<WINGs/WIPC.h>`, and `wmakermsg(1)` covers the
 command-line interface.
 
-## Build
+## 🔨 Build
 
 ```sh
 ./autogen.sh
@@ -70,7 +77,7 @@ Build dependencies include libxcb and its utility modules, xkbcommon,
 libev, cairo with the xcb backend and Pango. The complete list is in
 `INSTALL-WMAKER`.
 
-## Test
+## 🧪 Test
 
 ```sh
 make check          # unit suites — no X server needed
@@ -81,7 +88,7 @@ make checkpatch     # style + commit-message lint
 Every feature ships with a driver that runs it under AddressSanitizer
 on a private X server and asserts the observable result.
 
-## Documentation
+## 📚 Documentation
 
 - **`NEWS`** — the changelog. Read this first.
 - **`INSTALL-WMAKER`** — build dependencies and configure options.
@@ -91,11 +98,22 @@ on a private X server and asserts the observable result.
 - **`BUGFORM`** — bug-report template.
 - **`TODO`** — plans for the future.
 
-## Contact
+## 🐞 Bugs and feedback
 
-- Web: <http://windowmaker.org>
+Found a bug or have a suggestion? Open an issue and include the steps
+to reproduce it, your distribution, and the relevant `NEWS` entry if
+possible. `BUGFORM` has the full template.
 
-## Copyright
+## 🤝 Contributing
+
+Contributions are welcome. Fork the repository, make your change, and
+run `make check` and `make checkpatch` before opening a pull request.
+
+## 🌐 Contact
+
+- Web: <https://wmaker-next.github.io/>
+
+## 📜 Copyright
 
 Window Maker is copyrighted by the Window Maker Team, Alfredo K.
 Kojima and Dan Pascu and is licensed through the GNU General Public
