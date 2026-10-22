@@ -181,6 +181,10 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
  * the per-shortcut modifier and need no re-grab here. */
 void wRegrabWindowMouseGrabs(WScreen *scr);
 
+/* Re-issue the passive key grabs for every managed window. Call once
+ * after a batch of keybinding changes, not per binding. */
+void wRegrabFocusedWindowKeys(WScreen *scr);
+
 /* Re-apply every FONT_SPEC entry; used after a WINGs font-cache detach so
  * WM-side font pointers re-open under the current antialias flag. */
 unsigned int wConfigForceReapplyFonts(WScreen *scr);

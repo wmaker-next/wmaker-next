@@ -511,13 +511,13 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 	wXSettingsRefresh(scr);
 }
 
-void wReadKeybindings(WScreen *scr, WMPropList *dict)
+void wReadKeybindings(WScreen *scr, WMPropList *dict, bool *batch_changed)
 {
 	const WConfig *config;
 	WConfig *owned_config = NULL;
 	const WConfigEntry *schema;
 	size_t i, count;
-	bool keybindings_changed = false;
+	bool changed = false;
 
 	config = w_global.config;
 	if (!config) {
@@ -539,11 +539,19 @@ void wReadKeybindings(WScreen *scr, WMPropList *dict)
 		(void)wConfigApplyKeyBinding(scr, schema[i].key, schema[i].min_value,
 					     binding->spec, schema[i].default_value,
 					     &binding_changed);
-		keybindings_changed = keybindings_changed || binding_changed;
+		changed = changed || binding_changed;
 	}
 
-	if (keybindings_changed)
+	/* Only the first caller sees a difference, so share the result. */
+	if (batch_changed) {
+		*batch_changed = *batch_changed || changed;
+		changed = *batch_changed;
+	}
+
+	if (changed) {
+		wRegrabFocusedWindowKeys(scr);
 		wKeyTreeRebuild(scr);
+	}
 
 	wConfigDestroy(owned_config);
 }
@@ -2355,7 +2363,7 @@ static void store_key_binding(int binding_index, const WShortKey *shortcut)
 	}
 }
 
-static void regrab_focused_window_keys(WScreen *scr)
+void wRegrabFocusedWindowKeys(WScreen *scr)
 {
 	WWindow *wwin;
 
@@ -2410,6 +2418,8 @@ unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 	WShortKey shortcut;
 	bool changed;
 
+	(void)scr;
+
 	if (binding_changed)
 		*binding_changed = false;
 	if (binding_index < 0 || binding_index >= WKBD_LAST)
@@ -2427,7 +2437,6 @@ unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 	if (binding_changed)
 		*binding_changed = changed;
 
-	regrab_focused_window_keys(scr);
 	wShortKeyFree(&shortcut);
 
 	return key_binding_refresh_mask(binding_index);

@@ -372,11 +372,13 @@ void wDisplaySetOff(bool off, WDisplayPowerSource source)
 void wRereadKeybindings(void)
 {
 	int j;
+	bool changed = false;
 
 	for (j = 0; j < wdisp->screen_count; j++) {
 		WScreen *scr = wScreenWithNumber(j);
 		if (scr)
-			wReadKeybindings(scr, w_global.domain.wmaker->dictionary);
+			wReadKeybindings(scr, w_global.domain.wmaker->dictionary,
+					 &changed);
 	}
 }
 

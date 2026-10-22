@@ -1378,11 +1378,16 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 						  schema[i].min_value, binding->spec,
 						  schema[i].default_value,
 						  &binding_changed);
-		keybindings_changed = keybindings_changed || binding_changed;
+		/* Key off the change set, not binding_changed: the globals
+		 * are already updated for the second screen's pass. */
+		keybindings_changed = true;
 	}
 
-	if (scr && keybindings_changed)
-		wKeyTreeRebuild(scr);
+	if (keybindings_changed) {
+		wRegrabFocusedWindowKeys(scr);
+		if (scr)
+			wKeyTreeRebuild(scr);
+	}
 
 	/* AntialiasedText lives in the WMGLOBAL domain (not a WCFG_SCHEMA
 	 * key), so it has no change bit; re-read it on every reload and, if

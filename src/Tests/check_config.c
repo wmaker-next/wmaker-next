@@ -53,9 +53,11 @@ static int workspace_background_saw_smooth;
 static int key_binding_updates;
 static int key_binding_changed_updates;
 static int key_binding_seen[WKBD_LAST];
+static char *stub_binding_spec[WKBD_LAST];
 static char *last_key_binding_spec;
 static int last_key_binding_index;
 static int key_tree_rebuilds;
+static int key_regrabs;
 static int regrab_mouse_grabs;
 static int refresh_miniwindows;
 static int screen_apply_icon_size;
@@ -359,9 +361,19 @@ unsigned int wConfigApplyKeyBinding(WScreen *scr, const char *key,
 	key_binding_updates++;
 	last_key_binding_index = binding_index;
 	replace_test_string(&last_key_binding_spec, spec);
-	if (binding_index >= 0 && binding_index < WKBD_LAST)
+	if (binding_index >= 0 && binding_index < WKBD_LAST) {
+		bool changed = (stub_binding_spec[binding_index] == NULL) !=
+		    (spec == NULL) ||
+		    (spec && strcmp(stub_binding_spec[binding_index], spec) != 0);
+
 		key_binding_seen[binding_index]++;
-	if (binding_changed) {
+		replace_test_string(&stub_binding_spec[binding_index], spec);
+		if (binding_changed) {
+			*binding_changed = changed;
+			if (changed)
+				key_binding_changed_updates++;
+		}
+	} else if (binding_changed) {
 		*binding_changed = true;
 		key_binding_changed_updates++;
 	}
@@ -383,6 +395,12 @@ void wRegrabWindowMouseGrabs(WScreen *scr)
 {
 	(void)scr;
 	regrab_mouse_grabs++;
+}
+
+void wRegrabFocusedWindowKeys(WScreen *scr)
+{
+	(void)scr;
+	key_regrabs++;
 }
 
 void SendHelperMessage(WScreen *scr, char type, int workspace, const char *msg)
@@ -443,6 +461,7 @@ static void reset_phase4_counters(void)
 	key_binding_updates = 0;
 	key_binding_changed_updates = 0;
 	key_tree_rebuilds = 0;
+	key_regrabs = 0;
 	regrab_mouse_grabs = 0;
 	refresh_miniwindows = 0;
 	screen_apply_icon_size = 0;
@@ -466,6 +485,8 @@ static void reset_phase4_counters(void)
 	memset(key_binding_seen, 0, sizeof(key_binding_seen));
 	replace_test_string(&switch_panel_tile, NULL);
 	replace_test_string(&switch_panel_background, NULL);
+	for (size_t i = 0; i < WKBD_LAST; i++)
+		replace_test_string(&stub_binding_spec[i], NULL);
 	replace_test_string(&last_key_binding_spec, NULL);
 	replace_test_string(&last_modifier_key_spec, NULL);
 	replace_test_string(&last_texture_spec, NULL);
@@ -1862,6 +1883,7 @@ static void test_runtime_apply_phase4(void)
 	CHECK(key_binding_seen[WKBD_WORKSPACE1] == 1);
 	CHECK(key_binding_changed_updates == 2);
 	CHECK(key_tree_rebuilds == 1);
+	CHECK(key_regrabs == 1);
 	CHECK(refresh == WCFG_REFRESH_WORKSPACE_MENU);
 
 out:
@@ -1916,6 +1938,47 @@ out:
 		WMReleasePropList(old_dict);
 	if (new_dict)
 		WMReleasePropList(new_dict);
+}
+
+/* The per-screen "changed" result is false from the second screen on,
+ * but every screen must still regrab. */
+static void test_keybinding_regrab_all_screens(void)
+{
+	WMPropList *old_dict, *new_dict;
+	WConfig *old_config, *new_config;
+	WConfigChanges changes;
+	WScreen screen0, screen1;
+
+	reset_preferences();
+	memset(&screen0, 0, sizeof(screen0));
+	memset(&screen1, 0, sizeof(screen1));
+	old_dict = dict_from_desc("{ RootMenuKey = F12; }");
+	new_dict = dict_from_desc("{ RootMenuKey = \"Mod1+X\"; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	wConfigCacheWindowMaker(old_dict);
+	old_config = w_global.config;
+	new_config = wConfigReadWindowMaker(new_dict);
+	wConfigPrepareRuntimeDefaults(new_dict, old_config, new_config, &changes);
+	w_global.config = new_config;
+	wdisp->config = new_config;
+
+	wConfigApplyRuntime(&screen0, old_config, new_config, &changes);
+	CHECK(key_regrabs == 1);
+	CHECK(key_tree_rebuilds == 1);
+	wConfigApplyRuntime(&screen1, old_config, new_config, &changes);
+	CHECK(key_binding_changed_updates == 1);
+	CHECK(key_regrabs == 2);
+	CHECK(key_tree_rebuilds == 2);
+	wConfigDestroy(old_config);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
 }
 
 static void test_runtime_apply_uses_cached_old_config(void)
@@ -2885,6 +2948,7 @@ int main(void)
 	test_wConfigClone();
 	test_inner_frame_live_apply();
 	test_empty_color_uses_default();
+	test_keybinding_regrab_all_screens();
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();

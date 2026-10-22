@@ -43,7 +43,7 @@ void wDefaultsMergeGlobalMenus(WDDomain *menuDomain);
 void wReadDefaults(WScreen *scr, const struct WConfig *old_config,
                    const struct WConfig *new_config,
                    const struct WConfigChanges *changes);
-void wReadKeybindings(WScreen *scr, WMPropList *dict);
+void wReadKeybindings(WScreen *scr, WMPropList *dict, bool *batch_changed);
 void wDefaultUpdateIcons(WScreen *scr);
 void wDefaultsCheckDomains(void *arg);
 void wDefaultFillAttributes(const char *instance, const char *class,
