@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <float.h>
 #include <math.h>
 #include <string.h>
@@ -58,6 +60,12 @@ _Static_assert(MAX_WORKSPACES <= 64,
 
 #define MC_DESTROY_LAST 1
 #define MC_LAST_USED    2
+#ifdef VIRTUAL_DESKTOP
+/* keep restored viewport scalars well inside int so later world
+ * coordinate sums cannot overflow */
+#define RESTORE_COORD_LIMIT (INT_MAX / 16)
+#endif
+#define RESTORE_MASTER_COUNT_MAX 32
 /* index of the first workspace menu entry, recorded per menu by
  * wWorkspaceMenuMake: the Layout cascade shifts it on the titled menu */
 #define MC_WORKSPACE1(menu)	((menu)->ws_entry_base)
@@ -1933,6 +1941,29 @@ void wWorkspaceSaveState(WScreen * scr, WMPropList * old_state)
 	WMReleasePropList(parr);
 }
 
+/* parse an integer slot strictly, then clamp it to [min, max] */
+static bool restore_int(WMPropList *pl, long min, long max, int *out)
+{
+	char *s = WMGetFromPLString(pl);
+	char *end;
+	long v;
+
+	if (!s || *s == '\0')
+		return false;
+
+	errno = 0;
+	v = strtol(s, &end, 10);
+	if (end == s || *end != '\0' || errno == ERANGE)
+		return false;
+
+	if (v < min)
+		v = min;
+	if (v > max)
+		v = max;
+	*out = (int)v;
+	return true;
+}
+
 void wWorkspaceRestoreState(WScreen *scr)
 {
 	WMPropList *parr, *pstr, *wks_state, *clip_state;
@@ -1979,15 +2010,21 @@ void wWorkspaceRestoreState(WScreen *scr)
 				scr->workspaces[i]->layout =
 					wLayoutFromName(WMGetFromPLString(pstr));
 			pstr = WMGetFromPLDictionary(wks_state, dMasterCount);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->master_count =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int master_count;
+
+				if (restore_int(pstr, 0, RESTORE_MASTER_COUNT_MAX,
+						&master_count))
+					scr->workspaces[i]->master_count =
+						(short)master_count;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dMasterRatio);
 			if (pstr && WMIsPLString(pstr)) {
 				ratio = wstrtod(WMGetFromPLString(pstr), &end);
 				if (end != WMGetFromPLString(pstr)
 				    && *end == '\0' && isfinite(ratio)
-				    && ratio >= -FLT_MAX && ratio <= FLT_MAX)
+				    && ratio >= -(double)FLT_MAX
+				    && ratio <= (double)FLT_MAX)
 					scr->workspaces[i]->master_ratio =
 						(float)ratio;
 			}
@@ -1999,29 +2036,51 @@ void wWorkspaceRestoreState(WScreen *scr)
 			 * wVdeskSetViewport would shift them by the saved
 			 * view delta and break the restore. */
 			pstr = WMGetFromPLDictionary(wks_state, dVdeskX);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->vdesk_x =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, -RESTORE_COORD_LIMIT,
+						RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->vdesk_x = v;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dVdeskY);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->vdesk_y =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, -RESTORE_COORD_LIMIT,
+						RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->vdesk_y = v;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dVdeskW);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->vdesk_w =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, 0, RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->vdesk_w = v;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dVdeskH);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->vdesk_h =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, 0, RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->vdesk_h = v;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dViewX);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->view_x =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, -RESTORE_COORD_LIMIT,
+						RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->view_x = v;
+			}
 			pstr = WMGetFromPLDictionary(wks_state, dViewY);
-			if (pstr && WMIsPLString(pstr))
-				scr->workspaces[i]->view_y =
-					atoi(WMGetFromPLString(pstr));
+			if (pstr && WMIsPLString(pstr)) {
+				int v;
+
+				if (restore_int(pstr, -RESTORE_COORD_LIMIT,
+						RESTORE_COORD_LIMIT, &v))
+					scr->workspaces[i]->view_y = v;
+			}
 #endif
 		}
 
