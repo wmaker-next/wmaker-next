@@ -136,7 +136,7 @@ RImage *RLoadSVG(const char *file_name, unsigned width, unsigned height)
 		target_w = target_h = RLOAD_SVG_DEFAULT_SIZE;
 	}
 
-	if (!RImageDimensionsWithinLimits(target_w, target_h)) {
+	if (!RImageWorkingSetWithinLimits(target_w, target_h, 8U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		g_object_unref(handle);
 		return NULL;

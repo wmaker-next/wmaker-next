@@ -31,8 +31,10 @@
 
 #define R_IMAGE_MAX_WIDTH 20000U
 #define R_IMAGE_MAX_HEIGHT 20000U
+/* total decoder working set, not just one output buffer */
+#define R_IMAGE_MAX_BYTES UINT64_C(0x80000000)
 /* 20000^2*4 < 2G */
-#define R_IMAGE_MAX_PIXELS (UINT64_C(0x80000000) / 4U)
+#define R_IMAGE_MAX_PIXELS (R_IMAGE_MAX_BYTES / 4U)
 
 static inline int RImageDimensionsWithinLimits(uint64_t width, uint64_t height)
 {
@@ -40,6 +42,17 @@ static inline int RImageDimensionsWithinLimits(uint64_t width, uint64_t height)
 	       width <= R_IMAGE_MAX_WIDTH &&
 	       height <= R_IMAGE_MAX_HEIGHT &&
 	       width <= R_IMAGE_MAX_PIXELS / height;
+}
+
+/* Decoders that keep a full intermediate image alive next to the output
+ * pass the total bytes per pixel they need. Reject before allocating so a
+ * tiny compressed header cannot force a multi-buffer allocation. */
+static inline int RImageWorkingSetWithinLimits(uint64_t width, uint64_t height,
+					       uint64_t bytes_per_pixel)
+{
+	return bytes_per_pixel > 0 &&
+	       RImageDimensionsWithinLimits(width, height) &&
+	       width * height <= R_IMAGE_MAX_BYTES / bytes_per_pixel;
 }
 
 typedef enum {

@@ -31,10 +31,23 @@
 #include "wr_i18n.h"
 
 
+static void free_png_rows(png_bytep *rows, png_uint_32 height)
+{
+	png_uint_32 y;
+
+	if (!rows)
+		return;
+	for (y = 0; y < height; y++)
+		free(rows[y]);
+	free(rows);
+}
+
 RImage *RLoadPNG(RContext *context, const char *file)
 {
 	char *tmp;
-	RImage *image = NULL;
+	/* image, png_rows and saved_height are read in the setjmp cleanup
+	 * and are written after it, so keep them volatile across longjmp */
+	RImage * volatile image = NULL;
 	FILE *f;
 	png_structp png;
 	png_infop pinfo, einfo;
@@ -42,9 +55,10 @@ RImage *RLoadPNG(RContext *context, const char *file)
 	int alpha;
 	int x, y, i;
 	double gamma, sgamma;
-	png_uint_32 width, height;
+	png_uint_32 width, height = 0;
+	volatile png_uint_32 saved_height = 0;
 	int depth, junk, color_type;
-	png_bytep *png_rows;
+	png_bytep * volatile png_rows = NULL;
 	unsigned char *ptr;
 
 	f = fopen(file, "rb");
@@ -83,6 +97,10 @@ RImage *RLoadPNG(RContext *context, const char *file)
 #endif
 		fclose(f);
 		png_destroy_read_struct(&png, &pinfo, &einfo);
+		if (png_rows) {
+			free_png_rows(png_rows, saved_height);
+			png_rows = NULL;
+		}
 		if (image)
 			RReleaseImage(image);
 		return NULL;
@@ -93,6 +111,7 @@ RImage *RLoadPNG(RContext *context, const char *file)
 	png_read_info(png, pinfo);
 
 	png_get_IHDR(png, pinfo, &width, &height, &depth, &color_type, &junk, &junk, &junk);
+	saved_height = height;
 
 	/* sanity check */
 	if (width < 1 || height < 1) {
@@ -107,6 +126,14 @@ RImage *RLoadPNG(RContext *context, const char *file)
 		alpha = 1;
 	else
 		alpha = (color_type & PNG_COLOR_MASK_ALPHA);
+
+	/* the decoded rows and the RImage are alive together */
+	if (!RImageWorkingSetWithinLimits(width, height, alpha ? 8U : 6U)) {
+		fclose(f);
+		png_destroy_read_struct(&png, &pinfo, &einfo);
+		RErrorCode = RERR_BADIMAGEFILE;
+		return NULL;
+	}
 
 	/* allocate RImage */
 	image = RCreateImage(width, height, alpha);
@@ -180,10 +207,8 @@ RImage *RLoadPNG(RContext *context, const char *file)
 			fclose(f);
 			RReleaseImage(image);
 			png_destroy_read_struct(&png, &pinfo, &einfo);
-			while (y-- > 0)
-				if (png_rows[y])
-					free(png_rows[y]);
-			free(png_rows);
+			free_png_rows(png_rows, height);
+			png_rows = NULL;
 			return NULL;
 		}
 	}
@@ -212,9 +237,7 @@ RImage *RLoadPNG(RContext *context, const char *file)
 			}
 		}
 	}
-	for (y = 0; y < height; y++)
-		if (png_rows[y])
-			free(png_rows[y]);
-	free(png_rows);
+	free_png_rows(png_rows, height);
+	png_rows = NULL;
 	return image;
 }

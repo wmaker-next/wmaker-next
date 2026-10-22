@@ -80,10 +80,8 @@ RImage *RLoadTIFF(const char *file, int index)
 		 ((sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA) || (sampleinfo[0] == EXTRASAMPLE_UNASSALPHA)));
 	amode = (extrasamples == 1 && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA);
 
-	/* match the cap RCreateImage() applies so an oversized header
-	 * cannot force a multi-gigabyte _TIFFmalloc() before RCreateImage()
-	 * rejects it */
-	if (!RImageDimensionsWithinLimits(width, height)) {
+	/* the RGBA staging buffer and the RImage are alive together */
+	if (!RImageWorkingSetWithinLimits(width, height, alpha ? 8U : 7U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		TIFFClose(tif);
 		return NULL;

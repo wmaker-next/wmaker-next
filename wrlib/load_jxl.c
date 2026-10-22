@@ -93,14 +93,17 @@ RImage *RLoadJXL(const char *file)
 			width = info.xsize;
 			height = info.ysize;
 
-			if (!RImageDimensionsWithinLimits(width, height)) {
+			/* Check if image has alpha channel */
+			has_alpha = (info.alpha_bits > 0);
+
+			/* the RImage and the decoder output buffer are alive
+			 * together */
+			if (!RImageWorkingSetWithinLimits(width, height,
+							 has_alpha ? 8U : 6U)) {
 				RErrorCode = RERR_BADIMAGEFILE;
 				goto error;
 			}
 
-			/* Check if image has alpha channel */
-			has_alpha = (info.alpha_bits > 0);
-			
 			/* Set pixel format based on alpha channel presence */
 			if (has_alpha) {
 				format.num_channels = 4;  /* RGBA */

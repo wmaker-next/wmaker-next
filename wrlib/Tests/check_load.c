@@ -36,6 +36,7 @@
 #include <WINGs/WUtil.h>
 
 #include "check_common.h"
+#include "imgformat.h"
 
 /* RLoadImage is annotated nonnull(context) but the PNM and normalized-XPM
  * dispatches never touch it, and these tests must run without a Display.
@@ -231,6 +232,20 @@ static void test_stb_formats(void)
 		CHECK(img->data[7] == 255);                /* opaque */
 		RReleaseImage(img);
 	}
+
+	/* a tiny GIF can claim a 16385x16385 canvas; stb allocates two
+	 * full RGBA canvases before returning, so both the single-frame
+	 * and indexed paths must reject it before allocating */
+	static const unsigned char gif_huge[] = {
+		'G', 'I', 'F', '8', '9', 'a',
+		0x01, 0x40, 0x01, 0x40,            /* logical screen 16385x16385 */
+		0x80, 0, 0,                        /* GCT present, 2 entries */
+		0, 0, 0, 255, 255, 255,            /* palette */
+		0x3b
+	};
+	p = write_sample("huge.gif", gif_huge, sizeof(gif_huge));
+	CHECK(load_noctx(p) == NULL);
+	CHECK(load_noctx_index(p, 1) == NULL);
 
 	/* unrecognised content with no ImageMagick falls through to a
 	 * format error rather than crashing the stb fallback */
@@ -832,6 +847,20 @@ static void test_cache(void)
 	RReleaseCache();
 }
 
+static void test_working_set_limits(void)
+{
+	/* 5000x5000 RGBA with a full-size intermediate stays under 2G */
+	CHECK(RImageWorkingSetWithinLimits(5000, 5000, 8));
+	/* 20000x20000 needs more than one full RGBA buffer */
+	CHECK(!RImageWorkingSetWithinLimits(20000, 20000, 8));
+	CHECK(!RImageWorkingSetWithinLimits(20000, 20000, 6));
+	/* one full RGBA buffer still fits the generic cap */
+	CHECK(RImageWorkingSetWithinLimits(20000, 20000, 4));
+	CHECK(!RImageWorkingSetWithinLimits(0, 1, 4));
+	CHECK(!RImageWorkingSetWithinLimits(1, 1, 0));
+	CHECK(!RImageWorkingSetWithinLimits(20001, 1, 4));
+}
+
 int main(void)
 {
 	srcdir = getenv("srcdir");
@@ -846,6 +875,7 @@ int main(void)
 	test_pnm();
 	test_pnm_golden();
 	test_pnm_reject();
+	test_working_set_limits();
 	test_stb_formats();
 	test_xpm_transparent();
 	test_xpm_extended();

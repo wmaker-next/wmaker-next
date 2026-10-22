@@ -107,13 +107,15 @@ RImage *RLoadHEIF(const char *file, int index)
 
 	width = heif_image_handle_get_width(handle);
 	height = heif_image_handle_get_height(handle);
-	if (!RImageDimensionsWithinLimits(width, height)) {
+	has_alpha = heif_image_handle_has_alpha_channel(handle);
+	bytes_per_pixel = has_alpha ? 4 : 3;
+
+	/* the libheif plane and the RImage are alive together */
+	if (!RImageWorkingSetWithinLimits(width, height,
+					 (uint64_t)bytes_per_pixel * 2U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto error;
 	}
-
-	has_alpha = heif_image_handle_has_alpha_channel(handle);
-	bytes_per_pixel = has_alpha ? 4 : 3;
 
 	err = heif_decode_image(handle, &heif_img, heif_colorspace_RGB,
 				has_alpha ? heif_chroma_interleaved_RGBA :

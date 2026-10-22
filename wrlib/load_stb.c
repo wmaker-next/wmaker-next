@@ -56,6 +56,30 @@
  * inputs as the native loaders, before allocating */
 #define STBI_MAX_DIMENSIONS  20000
 
+/* stb's GIF decoder keeps the RGBA output, the previous RGBA frame and
+ * the history plane alive at once (9 bytes/pixel); leave headroom for
+ * the returned RImage and allocator overhead. */
+#define STBI_GIF_BYTES_PER_PIXEL 16U
+
+/* stb allocates its decoded buffer before image_from_stbi() sees it.
+ * The 3/4-component buffer is adopted, while 1/2-component buffers are
+ * copied into a fresh RImage. */
+static uint64_t stbiWorkingBytes(int components)
+{
+	switch (components) {
+	case 1:
+		return 4;	/* grey source plus RGB RImage */
+	case 2:
+		return 6;	/* grey+alpha source plus RGBA RImage */
+	case 3:
+		return 3;	/* adopted RGB buffer */
+	case 4:
+		return 4;	/* adopted RGBA buffer */
+	default:
+		return 8;	/* unknown, be conservative */
+	}
+}
+
 #define STBI_ONLY_PNM
 #define STBI_ONLY_BMP
 #define STBI_ONLY_TGA
@@ -133,6 +157,14 @@ RImage *RLoadStb(const char *file)
 	int w, h, n;
 	unsigned char *data;
 
+	if (stbi_info(file, &w, &h, &n) &&
+	    !RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
+					  stbiWorkingBytes(n) *
+					  (stbi_is_16_bit(file) ? 2U : 1U))) {
+		RErrorCode = RERR_BADIMAGEFILE;
+		return NULL;
+	}
+
 	data = stbi_load(file, &w, &h, &n, 0);
 	if (!data) {
 		const char *reason = stbi_failure_reason();
@@ -155,14 +187,30 @@ RImage *RLoadStbGIF(const char *file, int index)
 	unsigned char *raw, *frames, *one;
 	size_t flen;
 	int w, h, z, n;
+	int iw, ih, in;
 	int *delays = NULL;
 
-	if (index <= 0)
+	if (index <= 0) {
+		if (stbi_info(file, &iw, &ih, &in) &&
+		    !RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
+						  STBI_GIF_BYTES_PER_PIXEL)) {
+			RErrorCode = RERR_BADIMAGEFILE;
+			return NULL;
+		}
 		return RLoadStb(file);
+	}
 
 	raw = RReadWholeFile(file, &flen);
 	if (!raw)
 		return NULL;
+
+	if (stbi_info_from_memory(raw, (int)flen, &iw, &ih, &in) &&
+	    !RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
+					  STBI_GIF_BYTES_PER_PIXEL)) {
+		free(raw);
+		RErrorCode = RERR_BADIMAGEFILE;
+		return NULL;
+	}
 
 	frames = stbi_load_gif_from_memory(raw, (int)flen, &delays,
 					   &w, &h, &z, &n, 4);
