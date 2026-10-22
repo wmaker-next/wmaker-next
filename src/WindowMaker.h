@@ -24,6 +24,7 @@
 #include "wconfig.h"
 #include <assert.h>
 #include <limits.h>
+#include <signal.h>
 #include <xcb/xcb.h>
 #include <WINGs/WINGs.h>
 #include <WINGs/WXCore.h>
@@ -399,8 +400,8 @@ extern WDisplay *wdisp;
 extern struct wmaker_global_variables {
 	/* Tracking of the state of the program */
 	struct {
-		wprog_state state;
-		wprog_state signal_state;
+		volatile sig_atomic_t state;
+		volatile sig_atomic_t signal_state;
 	} program;
 
 	/* locale to use. NULL==POSIX or C */

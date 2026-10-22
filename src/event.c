@@ -92,7 +92,7 @@ typedef struct DeadProcesses {
 
 /* stack of dead processes */
 static DeadProcesses deadProcesses[MAX_DEAD_PROCESSES];
-static int deadProcessPtr = 0;
+static volatile sig_atomic_t deadProcessPtr;
 
 typedef struct DeathHandler {
 	WDeathHandler *callback;
@@ -159,8 +159,15 @@ static void handleDeadProcess(void)
 	DeathHandler *tmp;
 	const char *source;
 	pid_t dead_pid;
+	sigset_t sigchld, oldmask;
 	int i, ws, slot;
 	unsigned int es;
+
+	/* the queue is filled from the SIGCHLD handler, keep it from
+	 * appending while the index is drained */
+	sigemptyset(&sigchld);
+	sigaddset(&sigchld, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &sigchld, &oldmask);
 
 	for (i = 0; i < deadProcessPtr; i++) {
 		wWindowDeleteSavedStatesForPID(deadProcesses[i].pid);
@@ -206,6 +213,8 @@ static void handleDeadProcess(void)
 			}
 		}
 	}
+
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
 
 /* ------------------------------------------------------------------ *
