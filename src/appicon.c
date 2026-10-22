@@ -832,7 +832,11 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	WScreen *scr = icon->core->screen_ptr;
 	WDock *originalDock = aicon->dock; /* can be NULL */
 	WDock *lastDock = originalDock;
-	WDock *allDocks[scr->drawer_count + 2]; /* clip, dock and drawers (order determined at runtime) */
+	/* clip, dock and drawers (order determined at runtime), plus
+	 * originalDock when it is not one of them */
+	int drawer_count = 0;
+	int dock_count;
+	WDock **allDocks;
 	WDrawerChain *dc;
 	bool dockable, ondock;
 	bool grabbed = false;
@@ -891,6 +895,12 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	 * - Then, the "dock" (WM_DOCK)
 	 * - Finally, the clip
 	 */
+	/* derive the bound from the live list, not scr->drawer_count */
+	for (dc = scr->drawers; dc != NULL; dc = dc->next)
+		drawer_count++;
+	dock_count = drawer_count + 3;
+	allDocks = wmalloc(sizeof(*allDocks) * (size_t)dock_count);
+
 	i = 0;
 	if (originalDock != NULL)
 		allDocks[ i++ ] = originalDock;
@@ -906,7 +916,7 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	    originalDock != scr->workspaces[scr->current_workspace]->clip)
 		allDocks[ i++ ] = scr->workspaces[scr->current_workspace]->clip;
 
-	for ( ; i < scr->drawer_count + 2; i++) /* In case the clip, the dock, or both, are disabled */
+	for ( ; i < dock_count; i++) /* In case the clip, the dock, or both, are disabled */
 		allDocks[ i ] = NULL;
 
 	wins[0] = icon->core->window;
@@ -976,7 +986,7 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 
 			WDock *theNewDock = NULL;
 			if (!((((xcb_motion_notify_event_t *)ev)->state) & MOD_MASK) || aicon->launching || aicon->lock || originalDock == NULL) {
-				for (i = 0; dockable && i < scr->drawer_count + 2; i++) {
+				for (i = 0; dockable && i < dock_count; i++) {
 					WDock *theDock = allDocks[i];
 					if (theDock == NULL)
 						break;
@@ -1179,10 +1189,12 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 				/* Need to rearrange unless moving from dock to dock */
 				wArrangeIcons(scr, true);
 			free(ev);
+			wfree(allDocks);
 			return hasMoved;
 		}
 	}
 
+	wfree(allDocks);
 	return hasMoved;
 }
 
