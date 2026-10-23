@@ -225,7 +225,7 @@ configure-documentation:
 		--ignore-prg-optional 'with-pic,with-aix-soname,enable-pic,enable-aix-soname #libtool 2.5 renamed --with- to --enable-' \
 		--ignore-prg-optional 'enable-cxx-stdlib #new in libtool 2.6.0'
 
-.PHONY:	configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-options check-cppcheck memcheck asan run bench
+.PHONY:	configure-documentation check-manifest check-pkgconfig maintainer-check check-drive check-options check-cppcheck memcheck asan run bench fuzz
 
 # Integration drivers under test/ start a private X server and run the
 # just-built window manager inside it. They are deliberately not part
@@ -358,6 +358,22 @@ bench:
 	@echo
 	@echo '################ idle wakeups ################'
 	@BENCH=1 "$(top_srcdir)/test/idle-wakeups-drive.sh" || true
+
+# Build the on-demand libFuzzer harnesses. They need a compiler with
+# libFuzzer support (Clang); the configure probe gates this target.
+fuzz:
+if HAVE_FUZZER
+	$(MAKE) -C wrlib libwraster.la
+	$(MAKE) -C WINGs libWUtil.la libWINGs.la
+	$(MAKE) -C wrlib/Tests fuzz_wrlib
+	$(MAKE) -C WINGs/Tests fuzz_proplist fuzz_wxprop
+	@echo "Fuzz harnesses built. Run them with a corpus directory, e.g.:"
+	@echo "  wrlib/Tests/fuzz_wrlib corpus/ -max_total_time=600"
+else
+	@echo "Fuzz harnesses require a compiler with libFuzzer support (-fsanitize=fuzzer)." >&2
+	@echo "Reconfigure with CC=clang and -fsanitize=fuzzer-no-link in CFLAGS." >&2
+	@exit 1
+endif
 
 # Launch the just-built Window Maker inside a Xephyr window for visual
 # inspection. Passes RUN_DISPLAY, RUN_GEOMETRY, and RUN_CLIENTS through

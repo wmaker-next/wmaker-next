@@ -172,6 +172,24 @@ AS_IF([test "x$asan" = "xyes"],
 AM_CONDITIONAL([HAVE_ASAN], [test "x$asan" = "xyes"])
 
 
+dnl libFuzzer Harness Support
+dnl =========================
+dnl libFuzzer is a Clang runtime; detect it so the on-demand harness
+dnl targets are only defined for a compiler that can link them.
+AC_CACHE_CHECK([whether $CC supports -fsanitize=fuzzer],
+               [wmaker_cv_fuzzer],
+    [wm_save_LDFLAGS="$LDFLAGS"
+     LDFLAGS="$LDFLAGS -fsanitize=fuzzer"
+     AC_LINK_IFELSE(
+         [AC_LANG_SOURCE([int LLVMFuzzerTestOneInput(const unsigned char *data,
+                                                     unsigned long size)
+                          { (void)data; (void)size; return 0; }])],
+         [wmaker_cv_fuzzer=yes],
+         [wmaker_cv_fuzzer=no])
+     LDFLAGS="$wm_save_LDFLAGS"])
+AM_CONDITIONAL([HAVE_FUZZER], [test "x$wmaker_cv_fuzzer" = "xyes"])
+
+
 dnl Native CPU Optimizations Option
 dnl =================
 m4_divert_push([INIT_PREPARE])dnl

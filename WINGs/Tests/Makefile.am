@@ -6,15 +6,16 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = wtest wmquery wmfile fonttest testmywidget
 
 # libFuzzer harnesses for the property-list parser and the WXProp
-# property decode core, built on demand only (e.g. `make fuzz_proplist`)
-# and only under a clang sanitizer configure (-fsanitize=fuzzer comes
-# from the per-program LDFLAGS, a plain gcc build never links them).
+# property decode core, built on demand only (e.g. `make fuzz` or
+# `make fuzz_proplist`) and only when the configured compiler supports
+# libFuzzer (-fsanitize=fuzzer comes from the per-program LDFLAGS).
 # Recipe:
 #   ./configure CC=clang \
 #     CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=undefined -g -O1" \
 #     LDFLAGS="-fsanitize=address,undefined"
-#   make -C WINGs/Tests fuzz_proplist fuzz_wxprop
+#   make fuzz
 #   WINGs/Tests/fuzz_proplist corpus/ -fork=14 -ignore_crashes=1 -max_total_time=600
+if HAVE_FUZZER
 EXTRA_PROGRAMS += fuzz_proplist fuzz_wxprop
 
 fuzz_proplist_SOURCES = fuzz_proplist.c
@@ -22,8 +23,20 @@ fuzz_proplist_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 fuzz_proplist_LDFLAGS = -fsanitize=fuzzer
 
 fuzz_wxprop_SOURCES = fuzz_wxprop.c
-fuzz_wxprop_LDADD = $(top_builddir)/WINGs/libWINGs.la @INTLIBS@
+fuzz_wxprop_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 fuzz_wxprop_LDFLAGS = -fsanitize=fuzzer
+else
+fuzz_proplist:
+	@echo "$@ requires a compiler with libFuzzer support (-fsanitize=fuzzer)." >&2
+	@echo "Reconfigure with CC=clang and -fsanitize=fuzzer-no-link in CFLAGS." >&2
+	@exit 1
+
+fuzz_wxprop:
+	@echo "$@ requires a compiler with libFuzzer support (-fsanitize=fuzzer)." >&2
+	@echo "Reconfigure with CC=clang and -fsanitize=fuzzer-no-link in CFLAGS." >&2
+	@exit 1
+endif
 
 # the demos' data files: logo.xpm/upbtn.xpm are #included at compile
 # time (wmquery/wmfile) and loaded at runtime (wtest/fonttest), the

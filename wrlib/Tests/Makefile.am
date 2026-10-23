@@ -7,16 +7,23 @@ AUTOMAKE_OPTIONS =
 EXTRA_PROGRAMS = testdraw testgrad testrot view bench_image
 
 # libFuzzer harness for the libwraster decoders, built on demand only
-# (e.g. `make fuzz_wrlib`) and only under a clang sanitizer configure
-# (see WINGs/Tests/Makefile.am for the recipe; a magic-prefix selector
-# byte steers the payload into each format's identFile() branch, so the
-# harness stays on the public API)
+# (e.g. `make fuzz` or `make fuzz_wrlib`) and only when the configured
+# compiler supports libFuzzer (see WINGs/Tests/Makefile.am for the recipe;
+# a magic-prefix selector byte steers the payload into each format's
+# identFile() branch, so the harness stays on the public API)
+if HAVE_FUZZER
 EXTRA_PROGRAMS += fuzz_wrlib
 
 fuzz_wrlib_SOURCES = fuzz_wrlib.c
 fuzz_wrlib_LDADD = $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la
 fuzz_wrlib_LDFLAGS = -fsanitize=fuzzer
+else
+fuzz_wrlib:
+	@echo "fuzz_wrlib requires a compiler with libFuzzer support (-fsanitize=fuzzer)." >&2
+	@echo "Reconfigure with CC=clang and -fsanitize=fuzzer-no-link in CFLAGS." >&2
+	@exit 1
+endif
 
 # automated decoder tests, run by `make check`
 check_PROGRAMS = check_load check_convolve check_image check_palette check_xside
