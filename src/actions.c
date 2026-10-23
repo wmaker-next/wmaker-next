@@ -2355,19 +2355,26 @@ void wHideOtherApplications(WWindow *awin)
 {
 	WWindow *wwin;
 	WApplication *tapp;
+	WScreen *scr;
 	xcb_window_t *ids;
+	xcb_window_t anchor;
 	unsigned int wcount = 0;
 	int i;
 
 	if (!awin)
 		return;
 
+	scr = awin->screen_ptr;
+	anchor = awin->client_win;
+
 	/* Snapshot the focus chain first: wIconifyWindow()/wHideApplication()
 	 * can rewire it via wSetFocusTo() focus migration, so walking it
 	 * live can skip the window that migrated to the head. Client ids
-	 * are stored because wIconifyWindow() can free a window mid-sweep. */
+	 * are stored because wIconifyWindow() can free a window mid-sweep,
+	 * and the anchor is re-resolved the same way because its own client
+	 * can be destroyed while a sibling's dispatch runs. */
 	ids = wmalloc(sizeof(xcb_window_t));
-	wwin = awin->screen_ptr->focused_window;
+	wwin = scr->focused_window;
 	while (wwin) {
 		ids[wcount++] = wwin->client_win;
 		ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
@@ -2375,11 +2382,14 @@ void wHideOtherApplications(WWindow *awin)
 	}
 
 	for (i = 0; i < wcount; i++) {
+		awin = wWindowFor(anchor);
+		if (!awin)
+			break;
 		wwin = wWindowFor(ids[i]);
 		if (!wwin)
 			continue;
 		if (wwin != awin
-		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
+		    && WWIN_PRIMARY_WS(wwin) == scr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
 		    && wGetWindowOfInspectorForWindow(wwin) != awin && !WFLAGP(wwin, no_hide_others)) {
@@ -2409,19 +2419,26 @@ void wHideOtherApplications(WWindow *awin)
 void wMiniaturizeOtherApplications(WWindow *awin)
 {
 	WWindow *wwin;
+	WScreen *scr;
 	xcb_window_t *ids;
+	xcb_window_t anchor;
 	unsigned int wcount = 0;
 	int i;
 
 	if (!awin)
 		return;
 
+	scr = awin->screen_ptr;
+	anchor = awin->client_win;
+
 	/* Snapshot the focus chain first: wIconifyWindow() can rewire it
 	 * via wSetFocusTo() focus migration, so walking it live can skip
 	 * the window that migrated to the head. Client ids are stored
-	 * because wIconifyWindow() can free a window mid-sweep. */
+	 * because wIconifyWindow() can free a window mid-sweep, and the
+	 * anchor is re-resolved the same way because its own client can be
+	 * destroyed while a sibling's dispatch runs. */
 	ids = wmalloc(sizeof(xcb_window_t));
-	wwin = awin->screen_ptr->focused_window;
+	wwin = scr->focused_window;
 	while (wwin) {
 		ids[wcount++] = wwin->client_win;
 		ids = wrealloc(ids, sizeof(xcb_window_t) * (wcount + 1));
@@ -2429,11 +2446,14 @@ void wMiniaturizeOtherApplications(WWindow *awin)
 	}
 
 	for (i = 0; i < wcount; i++) {
+		awin = wWindowFor(anchor);
+		if (!awin)
+			break;
 		wwin = wWindowFor(ids[i]);
 		if (!wwin)
 			continue;
 		if (wwin != awin
-		    && WWIN_PRIMARY_WS(wwin) == awin->screen_ptr->current_workspace
+		    && WWIN_PRIMARY_WS(wwin) == scr->current_workspace
 		    && !(wwin->flags.miniaturized || wwin->flags.hidden)
 		    && !wwin->flags.internal_window
 		    && !wGroupIsInactiveMember(wwin)
