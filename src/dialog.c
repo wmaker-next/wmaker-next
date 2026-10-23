@@ -238,6 +238,28 @@ typedef struct {
 
 static InfoPanel *infoPanel = NULL;
 
+static int compareFormatNames(const void *a, const void *b)
+{
+	return strcmp(*(const char *const *)a, *(const char *const *)b);
+}
+
+static const char *const supportNames[] = {
+#ifdef USE_MAGICK
+	"ImageMagick",
+#endif
+#ifdef USE_MWM_HINTS
+	"MWM",
+#endif
+	"WMSPEC",
+#ifdef USE_DOCK_XDND
+	"XDnD",
+#endif
+#ifdef USE_XRES
+	"XRes",
+#endif
+	NULL
+};
+
 static void destroyInfoPanel(WCoreWindow *foo, void *data, xcb_generic_event_t *event)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -318,6 +340,7 @@ void wShowInfoPanel(WScreen *scr)
 	WMPoint center;
 	char **strl;
 	int i, width = 50, sepHeight;
+	int formatCount;
 	char *visuals[] = {
 		"StaticGray",
 		"GrayScale",
@@ -500,6 +523,9 @@ void wShowInfoPanel(WScreen *scr)
 
 	strbuf = wstrappend(strbuf, _("Image formats: "));
 	strl = RSupportedFileFormats();
+	for (formatCount = 0; strl[formatCount] != NULL; formatCount++)
+		;
+	qsort(strl, formatCount, sizeof(*strl), compareFormatNames);
 	separator = NULL;
 	for (i = 0; strl[i] != NULL; i++) {
 		if (separator != NULL)
@@ -509,24 +535,13 @@ void wShowInfoPanel(WScreen *scr)
 	}
 
 	strbuf = wstrappend(strbuf, _("\nAdditional support for: "));
-	strbuf = wstrappend(strbuf, "WMSPEC");
-
-#ifdef USE_MWM_HINTS
-	strbuf = wstrappend(strbuf, ", MWM");
-#endif
-
-#ifdef USE_DOCK_XDND
-	strbuf = wstrappend(strbuf, ", XDnD");
-#endif
-
-#ifdef USE_XRES
-	strbuf = wstrappend(strbuf, ", XRes");
-#endif
-
-#ifdef USE_MAGICK
-	strbuf = wstrappend(strbuf, ", ImageMagick");
-#endif
-
+	separator = NULL;
+	for (i = 0; supportNames[i] != NULL; i++) {
+		if (separator != NULL)
+			strbuf = wstrappend(strbuf, separator);
+		strbuf = wstrappend(strbuf, supportNames[i]);
+		separator = ", ";
+	}
 	strbuf = wstrappend(strbuf, _("\n"));
 	strbuf = wstrappend(strbuf, "RandR: ");
 	snprintf(buffer, sizeof(buffer), scr->xine_info.count > 1 ? _("%d head(s) found") : _("%d head found"), scr->xine_info.count);
