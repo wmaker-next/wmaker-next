@@ -37,22 +37,36 @@ enum {
 	MAGIC_XPMDATA		/* RGetImageFromXPMData on in-memory lines */
 };
 
-static const char *const magics[] = {
-	[MAGIC_NONE] = NULL,
-	[MAGIC_PNG] = "\x89PNG\r\n\x1a\n",
-	[MAGIC_GIF] = "GIF89a",
-	[MAGIC_BMP] = "BM",
-	[MAGIC_JPEG] = "\xff\xd8\xff",
-	[MAGIC_TIFF] = "II*\0",
-	[MAGIC_WEBP] = "RIFF\0\0\0\0WEBP",
-	[MAGIC_JXL] = "\xff\x0a",
-	[MAGIC_XPM] = "/* XPM */\nstatic char *x[] = {\n",
-	[MAGIC_PPM] = "P6\n8 8\n255\n",
-	[MAGIC_HEIF] = "\0\0\0\x18ftypavif",
-	[MAGIC_XPMDATA] = NULL
+struct magic_prefix {
+	const char *bytes;
+	size_t len;
+};
+
+/* the prefixes carry embedded NULs, so the length must come from the
+ * literal instead of strlen() */
+#define MAGIC_PREFIX(s) { s, sizeof(s) - 1 }
+
+static const struct magic_prefix magics[] = {
+	[MAGIC_NONE] = { NULL, 0 },
+	[MAGIC_PNG] = MAGIC_PREFIX("\x89PNG\r\n\x1a\n"),
+	[MAGIC_GIF] = MAGIC_PREFIX("GIF89a"),
+	[MAGIC_BMP] = MAGIC_PREFIX("BM"),
+	[MAGIC_JPEG] = MAGIC_PREFIX("\xff\xd8\xff"),
+	[MAGIC_TIFF] = MAGIC_PREFIX("II*\0"),
+	[MAGIC_WEBP] = MAGIC_PREFIX("RIFF\0\0\0\0WEBPVP8 "),
+	[MAGIC_JXL] = MAGIC_PREFIX("\xff\x0a"),
+	[MAGIC_XPM] = MAGIC_PREFIX("/* XPM */\nstatic char *x[] = {\n"),
+	[MAGIC_PPM] = MAGIC_PREFIX("P6\n8 8\n255\n"),
+	[MAGIC_HEIF] = MAGIC_PREFIX("\0\0\0\030ftypavif"),
+	[MAGIC_XPMDATA] = { NULL, 0 }
 };
 
 static char tmp_path[64];
+
+/* zeroed fake context: the decoders read attribs->flags/depth for PNG
+ * gamma and treat xc == NULL as "no server" for XPM colour names */
+static RContextAttributes fake_attribs;
+static RContext fake_context = { .attribs = &fake_attribs };
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
@@ -62,22 +76,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	return 0;
 }
 
-/* RLoadImageAtSize and RGetImageFromXPMData are annotated
- * nonnull(context) but run headless with NULL (see check_load.c);
- * suppress the compile-time warning for these wrappers only. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnonnull"
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((no_sanitize("nonnull-attribute")))
-#endif
 static RImage *load_headless(const char *path, int index, unsigned w, unsigned h)
 {
-	return RLoadImageAtSize(NULL, path, index, w, h);
+	return RLoadImageAtSize(&fake_context, path, index, w, h);
 }
 
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((no_sanitize("nonnull-attribute")))
-#endif
 static RImage *decode_xpmdata(const uint8_t *data, size_t size)
 {
 	char *copy;
@@ -118,12 +121,11 @@ static RImage *decode_xpmdata(const uint8_t *data, size_t size)
 		lines[n] = NULL;
 	}
 
-	img = RGetImageFromXPMData(NULL, lines);
+	img = RGetImageFromXPMData(&fake_context, lines);
 	free(lines);
 	free(copy);
 	return img;
 }
-#pragma GCC diagnostic pop
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
@@ -145,15 +147,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	if (sel == MAGIC_XPMDATA) {
 		img = decode_xpmdata(data + 4, payload);
 	} else {
-		const char *magic = magics[sel];
-		size_t mlen = magic ? strlen(magic) : 0;
+		const struct magic_prefix *magic = &magics[sel];
+		size_t mlen = magic->len;
 		FILE *f;
 
 		buf = malloc(mlen + payload);
 		if (!buf)
 			return 0;
 		if (mlen)
-			memcpy(buf, magic, mlen);
+			memcpy(buf, magic->bytes, mlen);
 		memcpy(buf + mlen, data + 4, payload);
 
 		f = fopen(tmp_path, "wb");
@@ -169,6 +171,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		fclose(f);
 		free(buf);
 
+		RReleaseCache();
 		img = load_headless(tmp_path, index, w, h);
 	}
 
