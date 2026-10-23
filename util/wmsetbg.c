@@ -1710,6 +1710,10 @@ int main(int argc, char **argv)
 	bool texture_from_p;
 	bool any_spec;
 	const char *connect_name;
+	WMPropList *pl;
+	WMPropList *plStyle;
+	WMPropList *plPath;
+	WMPropList *plColor;
 
 	defSpec.name = NULL;
 	defSpec.image = NULL;
@@ -1962,26 +1966,37 @@ int main(int argc, char **argv)
 
 		if (!texture) {
 			if (strcmp(style, "solid") == 0) {
-				WMPropList *pl = WMCreatePLArray(WMCreatePLString("solid"),
-								 WMCreatePLString(back_color),
-								 NULL);
+				plStyle = WMCreatePLString("solid");
+				plColor = WMCreatePLString(back_color);
+				pl = WMCreatePLArray(plStyle, plColor, NULL);
 				gen_texture = WMGetPropListDescription(pl, false);
 				WMReleasePropList(pl);
+				WMReleasePropList(plStyle);
+				WMReleasePropList(plColor);
 				texture = gen_texture;
 			} else if (image_name) {
 				char *image_path = getFullPixmapPath(image_name);
-				/* build the (style, path, color) array via the proplist
-				 * API so quotes and backslashes in the path are escaped
-				 * in the serialized description, instead of breaking
-				 * out of a hand-built "..." */
-				WMPropList *pl = WMCreatePLArray(WMCreatePLString(style),
-								 WMCreatePLString(image_path),
-								 WMCreatePLString(back_color),
-								 NULL);
-				gen_texture = WMGetPropListDescription(pl, false);
-				WMReleasePropList(pl);
-				wfree(image_path);
-				texture = gen_texture;
+
+				if (!image_path) {
+					wwarning("could not resolve the path for image %s",
+						 image_name);
+				} else {
+					/* build the (style, path, color) array via the proplist
+					 * API so quotes and backslashes in the path are escaped
+					 * in the serialized description, instead of breaking
+					 * out of a hand-built "..." */
+					plStyle = WMCreatePLString(style);
+					plPath = WMCreatePLString(image_path);
+					plColor = WMCreatePLString(back_color);
+					pl = WMCreatePLArray(plStyle, plPath, plColor, NULL);
+					gen_texture = WMGetPropListDescription(pl, false);
+					WMReleasePropList(pl);
+					WMReleasePropList(plStyle);
+					WMReleasePropList(plPath);
+					WMReleasePropList(plColor);
+					wfree(image_path);
+					texture = gen_texture;
+				}
 			}
 		}
 
