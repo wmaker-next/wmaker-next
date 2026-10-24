@@ -28,6 +28,11 @@ struct wmaker_global_variables w_global;
 
 static WDisplay test_display;
 WDisplay *wdisp = &test_display;
+
+void wCursorHideApplyConfig(WScreen *scr)
+{
+	(void)scr;
+}
 static int usable_area_updates;
 static int root_mask_updates;
 static int double_click_delay;
@@ -901,6 +906,10 @@ static void test_defaults(void)
 	CHECK(config->hot_corner_edge == 2);
 	CHECK(config->find_mouse_duration == 1000);
 	CHECK(config->find_mouse_radius == 0);
+	CHECK(config->auto_hide_cursor == 0);
+	CHECK(config->hide_cursor_after_keyboard == 1);
+	CHECK(config->hide_cursor_after_idle == 0);
+	CHECK(config->hide_cursor_idle_delay == 5000);
 	CHECK(config->window_list_app_icons == 0);
 	CHECK(config->mouse_wheel_focus == 0);
 	CHECK(config->keychain_timeout_delay == 500);
@@ -1152,6 +1161,10 @@ static void test_valid_parse(void)
 			      "HotCornerEdge = 4; WindowListAppIcons = YES; "
 			      "FindMouseDuration = 1500; "
 			      "FindMouseRadius = 333; "
+			      "AutoHideCursor = YES; "
+			      "HideCursorAfterKeyboard = NO; "
+			      "HideCursorAfterIdle = YES; "
+			      "HideCursorIdleDelay = 12000; "
 			      "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
 			      "KeychainDisplayPosition = topleft; "
 			      "ShowClipTitle = NO; "
@@ -1284,6 +1297,10 @@ static void test_valid_parse(void)
 	CHECK(config->hot_corner_edge == 4);
 	CHECK(config->find_mouse_duration == 1500);
 	CHECK(config->find_mouse_radius == 333);
+	CHECK(config->auto_hide_cursor == 1);
+	CHECK(config->hide_cursor_after_keyboard == 0);
+	CHECK(config->hide_cursor_after_idle == 1);
+	CHECK(config->hide_cursor_idle_delay == 12000);
 	CHECK(config->window_list_app_icons == 1);
 	CHECK(config->mouse_wheel_focus == 1);
 	CHECK(config->keychain_timeout_delay == 88);
@@ -1444,6 +1461,8 @@ static void test_invalid_fallback(void)
 			      "NoWindowOverDock = maybe; ResizeDisplay = nowhere; "
 			      "HotCornerDelay = bad; DialogHistoryLines = bad; "
 			      "FindMouseDuration = 1; FindMouseRadius = 5000; "
+			      "AutoHideCursor = maybe; HideCursorAfterKeyboard = maybe; "
+			      "HideCursorAfterIdle = maybe; HideCursorIdleDelay = 3600001; "
 			      "ScrollableMenus = maybe; MenuScrollSpeed = nowhere; "
 			      "ClipAutoraiseDelay = \"-1\"; AlignSubmenus = maybe; "
 			      "OpaqueMove = maybe; SnapEdgeDetect = bad; "
@@ -1501,6 +1520,10 @@ static void test_invalid_fallback(void)
 	CHECK(config->hot_corner_delay == 250);
 	CHECK(config->find_mouse_duration == 1000);
 	CHECK(config->find_mouse_radius == 0);
+	CHECK(config->auto_hide_cursor == 0);
+	CHECK(config->hide_cursor_after_keyboard == 1);
+	CHECK(config->hide_cursor_after_idle == 0);
+	CHECK(config->hide_cursor_idle_delay == 5000);
 	CHECK(config->history_lines == 500);
 	CHECK(config->scrollable_menus == 1);
 	CHECK(config->wrap_menus == 0);
@@ -2543,6 +2566,38 @@ second_out:
 		WMReleasePropList(new_dict);
 }
 
+static void test_cursor_hide_live_reload(void)
+{
+	WMPropList *old_dict, *new_dict;
+	unsigned int refresh;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ AutoHideCursor = NO; "
+				  "HideCursorAfterKeyboard = YES; "
+				  "HideCursorAfterIdle = NO; "
+				  "HideCursorIdleDelay = 5000; }");
+	new_dict = dict_from_desc("{ AutoHideCursor = YES; "
+				  "HideCursorAfterKeyboard = NO; "
+				  "HideCursorAfterIdle = YES; "
+				  "HideCursorIdleDelay = 42000; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->auto_hide_cursor == 1);
+	CHECK(w_global.config->hide_cursor_after_keyboard == 0);
+	CHECK(w_global.config->hide_cursor_after_idle == 1);
+	CHECK(w_global.config->hide_cursor_idle_delay == 42000);
+	CHECK(refresh == 0);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	reset_preferences();
+}
+
 /* wConfigClone deep-copies a WConfig: the clone is value-equal to the
  * source (no diff), mutating one field on the clone flags exactly that key,
  * and both can be destroyed independently without aliasing/double-free. */
@@ -2967,6 +3022,7 @@ int main(void)
 	test_runtime_apply_phase4();
 	test_runtime_apply_phase5();
 	test_runtime_apply_phase7();
+	test_cursor_hide_live_reload();
 	test_wConfigClone();
 	test_inner_frame_live_apply();
 	test_empty_color_uses_default();

@@ -22,6 +22,9 @@ POTFILES  = \
 	$(top_srcdir)/src/cmdexpand.c \
 	$(top_srcdir)/src/colormap.c \
 	$(top_srcdir)/src/config-schema.c \
+	$(top_srcdir)/src/cursor.c \
+	$(top_srcdir)/src/cursor_find.c \
+	$(top_srcdir)/src/cursor_hide.c \
 	$(top_srcdir)/src/cycling.c \
 	$(top_srcdir)/src/defaults.c \
 	$(top_srcdir)/src/desktopfile.c \
@@ -38,8 +41,6 @@ POTFILES  = \
 	$(top_srcdir)/src/event_input.c \
 	$(top_srcdir)/src/event_root.c \
 	$(top_srcdir)/src/event_ext.c \
-	$(top_srcdir)/src/cursor.c \
-	$(top_srcdir)/src/cursor_find.c \
 	$(top_srcdir)/src/focusmodel.c \
 	$(top_srcdir)/src/framewin.c \
 	$(top_srcdir)/src/geometry.c \

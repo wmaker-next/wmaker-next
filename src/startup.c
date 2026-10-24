@@ -46,6 +46,10 @@
 #ifdef USE_XCB_SCREENSAVER
 #include <xcb/screensaver.h>
 #endif
+#include <xcb/xfixes.h>
+#ifdef USE_XCB_XINPUT
+#include <xcb/xinput.h>
+#endif
 
 #include <xcb/xproto.h>
 
@@ -77,6 +81,7 @@
 #include "switchmenu.h"
 #include "tabgroup.h"
 #include "wconfigmodel.h"
+#include "cursor_hide.h"
 #ifdef USE_DOCK_XDND
 #include "xdnd.h"
 #endif
@@ -328,6 +333,10 @@ void StartUp(bool defaultScreenOnly)
 	WXColor black;
 	xcb_connection_t *xc = wdisp->conn;
 	const xcb_query_extension_reply_t *xer;
+	xcb_xfixes_query_version_reply_t *xfixrep;
+#ifdef USE_XCB_XINPUT
+	xcb_input_xi_query_version_reply_t *xirep;
+#endif
 #ifdef USE_XSYNC
 	xcb_sync_initialize_reply_t *syncr;
 #endif
@@ -536,6 +545,10 @@ void StartUp(bool defaultScreenOnly)
 #ifdef USE_XCB_SCREENSAVER
 	xcb_prefetch_extension_data(xc, &xcb_screensaver_id);
 #endif
+	xcb_prefetch_extension_data(xc, &xcb_xfixes_id);
+#ifdef USE_XCB_XINPUT
+	xcb_prefetch_extension_data(xc, &xcb_input_id);
+#endif
 
 #ifdef USE_XSHAPE
 	xer = xcb_get_extension_data(xc, &xcb_shape_id);
@@ -606,6 +619,33 @@ void StartUp(bool defaultScreenOnly)
 	}
 #endif
 
+	xer = xcb_get_extension_data(xc, &xcb_xfixes_id);
+	wdisp->xext.xfixes.supported = false;
+	if (xer && xer->present) {
+		xfixrep = xcb_xfixes_query_version_reply(xc,
+			xcb_xfixes_query_version(xc, 4, 0), NULL);
+		if (xfixrep) {
+			wdisp->xext.xfixes.supported =
+				xfixrep->major_version >= 4;
+			free(xfixrep);
+		}
+	}
+
+#ifdef USE_XCB_XINPUT
+	xer = xcb_get_extension_data(xc, &xcb_input_id);
+	wdisp->xext.xinput.supported = false;
+	if (xer && xer->present) {
+		wdisp->xext.xinput.major_opcode = xer->major_opcode;
+		xirep = xcb_input_xi_query_version_reply(xc,
+			xcb_input_xi_query_version(xc, 2, 0), NULL);
+		if (xirep) {
+			wdisp->xext.xinput.supported =
+				xirep->major_version >= 2;
+			free(xirep);
+		}
+	}
+#endif
+
 	/* wXkbInit() negotiates XkbUseExtension, loads the keymap and state,
 	 * selects per-device events, derives the named-modifier and lock
 	 * masks, and writes wdisp->xext.xkb and shortcut.modifiers_mask.
@@ -626,6 +666,7 @@ void StartUp(bool defaultScreenOnly)
 	 * DispatchEvent() was hooked above as the WINGs extra event
 	 * handler so events on non-view windows reach the table */
 	wEventInitDispatch();
+	wCursorHideInit();
 
 	if (defaultScreenOnly)
 		max = 1;

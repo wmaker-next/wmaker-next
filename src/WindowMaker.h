@@ -342,6 +342,17 @@ typedef struct WDisplay {
 		} screensaver;
 #endif
 
+		struct {
+			bool supported;
+		} xfixes;
+
+#ifdef USE_XCB_XINPUT
+		struct {
+			bool supported;
+			uint8_t major_opcode;
+		} xinput;
+#endif
+
 		int dummy;
 	} xext;
 

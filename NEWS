@@ -3,6 +3,20 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Auto-hide the cursor
+--------------------
+
+AutoHideCursor hides the pointer after non-modifier keyboard input or
+after the pointer has been idle, and shows it again on intentional
+movement, a button press, or the wheel. The defaults are
+AutoHideCursor (master switch, off by default),
+HideCursorAfterKeyboard (on by default), HideCursorAfterIdle (off by
+default) and HideCursorIdleDelay (milliseconds, 1000..3600000,
+default 5000). The feature uses XFixes plus optional XInput2 raw
+events, so an idle desktop gains no timers or event selections while
+it is disabled. The master switch is also available in the Expert User
+Preferences panel.
+
 Find the mouse pointer
 ----------------------
 

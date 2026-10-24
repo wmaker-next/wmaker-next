@@ -360,6 +360,14 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DOUBLE_CLICK_TIME, "DoubleClickTime", INT, double_click_time, "250", \
 	  NULL, 1, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(AUTO_HIDE_CURSOR, "AutoHideCursor", BOOL, auto_hide_cursor, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(HIDE_CURSOR_AFTER_KEYBOARD, "HideCursorAfterKeyboard", BOOL, \
+	  hide_cursor_after_keyboard, "YES", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(HIDE_CURSOR_AFTER_IDLE, "HideCursorAfterIdle", BOOL, \
+	  hide_cursor_after_idle, "NO", NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(HIDE_CURSOR_IDLE_DELAY, "HideCursorIdleDelay", INT, \
+	  hide_cursor_idle_delay, "5000", NULL, 1000, 3600000, WCFG_RUNTIME_RELOAD, 0) \
 	_(SAVE_SESSION_ON_EXIT, "SaveSessionOnExit", BOOL, save_session_on_exit, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(MENU_SCROLL_SPEED, "MenuScrollSpeed", ENUM, menu_scroll_speed, "fast", \

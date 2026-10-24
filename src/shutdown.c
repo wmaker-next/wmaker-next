@@ -37,6 +37,7 @@
 #include "screen.h"
 #include "shutdown.h"
 #include "cursor_find.h"
+#include "cursor_hide.h"
 #include "xsettings.h"
 #include "ipc.h"
 #include "xsmp.h"
@@ -68,6 +69,8 @@ static void restoreWindows(WScreen * scr);
 void Shutdown(WShutdownMode mode, bool external)
 {
 	int i;
+
+	wCursorHideShutdown();
 
 	/* a deliberate exit or restart must not look like a crash to the
 	 * session manager, drop the restart hint and close the ICE

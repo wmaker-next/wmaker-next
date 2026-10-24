@@ -31,6 +31,10 @@
 	MouseWheelFocus = NO;
 	FindMouseDuration = 1000;
 	FindMouseRadius = 0;
+	AutoHideCursor = NO;
+	HideCursorAfterKeyboard = YES;
+	HideCursorAfterIdle = NO;
+	HideCursorIdleDelay = 5000;
 	PixmapPath = (
 		"$WMAKER_USER_DATA/Pixmaps",
 		"$WMAKER_USER_DATA/Backgrounds",

@@ -27,6 +27,7 @@
 #include "wconfigmodel.h"
 #include "hotcorner.h"
 #include "cursor_find.h"
+#include "cursor_hide.h"
 #include "misc.h"
 #include "window.h"
 
@@ -1416,6 +1417,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wHotCornersUpdate(scr);
 	if (scr && update_findmouse)
 		wFindMouseApplyConfig(scr);
+
+	wCursorHideApplyConfig(scr);
 
 	return refresh;
 }

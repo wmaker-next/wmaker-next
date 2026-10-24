@@ -36,6 +36,7 @@
 #include "xinerama.h"
 #include "cursor.h"
 #include "cursor_find.h"
+#include "cursor_hide.h"
 
 #define FM_CORE_WIDTH	4
 #define FM_EDGE_WIDTH	1
@@ -385,6 +386,8 @@ void wFindMouseShow(WScreen *scr)
 
 	if (!scr)
 		return;
+
+	wCursorHideReveal();
 	if (!findMouseAvailable())
 		return;
 

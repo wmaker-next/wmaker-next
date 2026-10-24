@@ -881,6 +881,21 @@ WM_OPTIONAL_DEP([XCB_SCREENSAVER], [xcb-screensaver], [have_xcb_screensaver],
     [MIT-SCREEN-SAVER])
 
 
+dnl xcb-xinput delivers raw key, button and motion events on the root
+dnl window regardless of focus or grabs, so the auto-hide cursor
+dnl feature can observe input over client windows without polling
+dnl ships in the libxcb tarball but distros split it into its own -dev
+dnl package so probe softly
+WM_OPTIONAL_DEP([XCB_XINPUT], [xcb-xinput], [have_xcb_xinput],
+    [with], [xcb-xinput],
+    [--without-xcb-xinput],
+    [do not use XInput2 raw events for cursor auto-hide],
+    [AC_DEFINE([USE_XCB_XINPUT], [1],
+               [defined when xcb-xinput is available so wmaker can observe raw input])
+     supported_xext="$supported_xext XInput2"],
+    [XInput2])
+
+
 dnl xcb subset for libwraster: the X-side of wrlib (RContext, RConvertImage,
 dnl RCreateImageFromDrawable) talks to the server via xcb only so the shared
 dnl object links without libX11/libXext. xcb-image gives the native ZPixmap

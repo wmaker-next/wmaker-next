@@ -622,6 +622,14 @@ Do not use the @emph{MIT-SCREEN-SAVER} extension. With it the window manager rec
 notify when the X server blanks or DPMS-powers the display so decorative animations and the
 urgent-icon bounce can disarm while the output is dark.
 
+@item --without-xcb-xinput
+Do not use @emph{XInput2} raw events. With it the window manager can hide the pointer after
+non-modifier keyboard input or pointer inactivity and show it again on intentional movement,
+using raw events selected on the root window so input over client windows is observed. The
+@code{AutoHideCursor}, @code{HideCursorAfterKeyboard}, @code{HideCursorAfterIdle} and
+@code{HideCursorIdleDelay} defaults control the feature and remain inert when the extension
+is unavailable.
+
 @item --disable-wmlock
 Do not build the @command{wmlock} screen locker. By default it is built when either PAM
 (@file{security/pam_appl.h} and @code{-lpam}) or OpenBSD @code{bsd_auth} is found, and

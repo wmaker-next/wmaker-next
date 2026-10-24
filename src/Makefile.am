@@ -46,6 +46,12 @@ wmaker_SOURCES = 	\
 	cmdexpand.c \
 	calc.c \
 	calc.h \
+	cursor.c \
+	cursor.h \
+	cursor_find.c \
+	cursor_find.h \
+	cursor_hide.c \
+	cursor_hide.h \
 	geometry.c \
 	geometry.h \
 	cycling.c \
@@ -79,10 +85,6 @@ wmaker_SOURCES = 	\
 	extend_pixmaps.h \
 	framewin.c \
 	framewin.h \
-	cursor.c \
-	cursor.h \
-	cursor_find.c \
-	cursor_find.h \
 	geomview.c \
 	geomview.h \
 	osdview.c \
@@ -222,6 +224,7 @@ AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
 	-I$(top_srcdir)/WINGs -I$(top_builddir)/WINGs \
 	@XCB_CFLAGS@ \
 	@XCB_SCREENSAVER_CFLAGS@ \
+	@XCB_XINPUT_CFLAGS@ \
 	@STARTUP_NOTIFICATION_CFLAGS@ \
 	@XSMP_CFLAGS@ \
 	@HEADER_SEARCH_PATH@
@@ -236,6 +239,7 @@ wmaker_LDADD = \
 	@XSMP_LIBS@ \
 	@XCB_LIBS@ \
 	@XCB_SCREENSAVER_LIBS@ \
+	@XCB_XINPUT_LIBS@ \
 	@XRES_LIBS@ \
 	@CAIRO_LIBS@ \
 	@LIBM@ \
