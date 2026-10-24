@@ -1309,6 +1309,8 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 			check "stale-launch _NET_STARTUP_ID does not steal focus" wait_for 30 active_window_is "$CLIENT_XID"
 			check "stale-launch _NET_STARTUP_ID gets _NET_WM_STATE_DEMANDS_ATTENTION" \
 				wait_for 40 window_atom_has "$CLIENT2_XID" _NET_WM_STATE _NET_WM_STATE_DEMANDS_ATTENTION
+			check "stale-launch _NET_STARTUP_ID stays below the focused window" \
+				wait_for 40 stacking_above "$CLIENT_XID" "$CLIENT2_XID"
 			stop_second_client
 		else
 			record_fail "could not launch sn-stale client"
@@ -1323,6 +1325,8 @@ if [ "$CLIENT_BUILT" -eq 1 ]; then
 		if start_second_client EWMH_CLIENT_NAME=sn-fresh \
 				EWMH_CLIENT_STARTUP_ID="ewmh-drive/sn2_TIME201000"; then
 			check "fresh-launch _NET_STARTUP_ID takes focus" wait_for 40 active_window_is "$CLIENT2_XID"
+			check "fresh-launch _NET_STARTUP_ID takes the top of the stack" \
+				wait_for 40 stacking_above "$CLIENT2_XID" "$CLIENT_XID"
 			stop_second_client
 		else
 			record_fail "could not launch sn-fresh client"

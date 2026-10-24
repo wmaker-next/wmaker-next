@@ -2013,6 +2013,15 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 					 * user notices it has mapped */
 					wwin->flags.net_demands_attention = 1;
 					wAppBounceWhileUrgent(wApplicationOf(wwin->main_window));
+					/* a stale launch must not cover the window
+					 * the user is working in, keep it directly
+					 * below the current focus */
+					if (wwin->net_user_time_set && wwin->net_user_time != 0
+					    && scr->focused_window && scr->focused_window->frame
+					    && scr->focused_window != wwin
+					    && WINDOW_LEVEL(scr->focused_window) == WINDOW_LEVEL(wwin))
+						MoveInStackListUnder(scr->focused_window->frame->core,
+								     wwin->frame->core);
 				}
 			}
 		}
