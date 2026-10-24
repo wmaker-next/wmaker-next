@@ -763,8 +763,11 @@ static void wRandR_Update(WScreen *scr)
 		}
 	}
 
-	/* Refresh usable areas and EWMH hints */
+	/* Refresh usable areas and EWMH hints. The desktop geometry is
+	 * the framebuffer size, so it changes with the RandR mode too;
+	 * _NET_WORKAREA alone would leave clients tracking the old size. */
 	wScreenUpdateUsableArea(scr);
+	wNETWMUpdateDesktop(scr);
 	wNETWMUpdateWorkarea(scr);
 
 	/* head geometry changed, republish XSETTINGS (a no-op when the

@@ -411,8 +411,17 @@ void wNETWMUpdateDesktop(WScreen *scr)
 	count = scr->workspace_count * 2;
 	views = wmalloc(sizeof(uint32_t) * count);
 #ifdef VIRTUAL_DESKTOP
-	sizes[0] = scr->workspaces[scr->current_workspace]->vdesk_w;
-	sizes[1] = scr->workspaces[scr->current_workspace]->vdesk_h;
+	/* The virtual desktop extent only replaces the framebuffer size
+	 * while viewport panning is enabled. With it off the EWMH desktop
+	 * geometry must follow scr_width/scr_height, including a RandR
+	 * mode change that leaves the per-workspace vdesk fields stale. */
+	if (w_global.config->vdesk_enable) {
+		sizes[0] = scr->workspaces[scr->current_workspace]->vdesk_w;
+		sizes[1] = scr->workspaces[scr->current_workspace]->vdesk_h;
+	} else {
+		sizes[0] = scr->scr_width;
+		sizes[1] = scr->scr_height;
+	}
 #else
 	sizes[0] = scr->scr_width;
 	sizes[1] = scr->scr_height;
