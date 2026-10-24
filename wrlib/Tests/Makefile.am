@@ -26,12 +26,16 @@ fuzz_wrlib:
 endif
 
 # automated decoder tests, run by `make check`
-check_PROGRAMS = check_load check_convolve check_image check_palette check_xside
+check_PROGRAMS = check_load check_save check_convolve check_image check_palette check_xside
 TESTS = $(check_PROGRAMS)
 AM_TESTS_ENVIRONMENT = srcdir='$(srcdir)'; export srcdir;
 
 check_load_SOURCES = check_load.c
 check_load_LDADD = $(top_builddir)/wrlib/libwraster.la \
+	$(top_builddir)/WINGs/libWUtil.la
+
+check_save_SOURCES = check_save.c
+check_save_LDADD = $(top_builddir)/wrlib/libwraster.la \
 	$(top_builddir)/WINGs/libWUtil.la
 
 $(top_builddir)/WINGs/libWUtil.la:

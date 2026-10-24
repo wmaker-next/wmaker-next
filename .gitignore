@@ -89,6 +89,7 @@ wrlib/Tests/testgrad
 wrlib/Tests/testrot
 wrlib/Tests/view
 wrlib/Tests/check_load
+wrlib/Tests/check_save
 wrlib/Tests/check_convolve
 
 WINGs/Examples/colorpick
