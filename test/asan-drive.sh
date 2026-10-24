@@ -726,5 +726,15 @@ kill -TERM "$WMAKER_PID"
 wait_for 100 pid_gone "$WMAKER_PID"
 kill -0 "$WMAKER_PID" 2>/dev/null && { note "wmaker still up, SIGKILL"; kill -9 "$WMAKER_PID"; }
 
+# asan-drive keeps abort_on_error=0 so its assertions still run, which
+# means a report does not change the process status by itself. Treat any
+# AddressSanitizer, LeakSanitizer or UBSan report as a failure here,
+# including the LeakSanitizer output written after the clean exit above.
+if grep -qE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$LOG"; then
+    printf '\n=== sanitizer reports in %s ===\n' "$LOG"
+    grep -nE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$LOG"
+    FAIL=1
+fi
+
 note "done; log at $LOG"
 exit $FAIL

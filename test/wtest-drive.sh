@@ -67,7 +67,7 @@ note "run wtest against $DPY"
 # the WMApp/WMMenu objects it builds are process-lifetime by design and
 # wmlib has no teardown API, so leak detection stays off for the run
 # itself (ASan and UBSan still check it)
-if DISPLAY=$DPY ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0" \
+if DISPLAY=$DPY ASAN_OPTIONS="$(drive_asan_options)" \
 	"$ROOT/test/wtest" >"$OUT" 2>&1; then
 	ok "wtest exited 0"
 else

@@ -76,7 +76,7 @@ echo $! >> "$PIDFILE"
 wait_for 40 sh -c "DISPLAY=$DPY xdpyinfo >/dev/null 2>&1" || fail "Xvfb failed to start"
 
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0" \
+ASAN_OPTIONS="$(drive_asan_options)" \
 DISPLAY=$DPY \
 XDG_RUNTIME_DIR="$RUNTIME" \
 WMAKER_USER_ROOT="$WMHOME" \

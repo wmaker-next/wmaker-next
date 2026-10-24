@@ -206,14 +206,14 @@ drive_leg() {
 		# the shim preloads ahead of libasan, whose link-order check
 		# would otherwise abort the instrumented binary at startup
 		LD_LIBRARY_PATH="$WMLIBS" LD_PRELOAD="$SHIM" XKB_SHIM_NO_EXT=1 \
-			ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0:verify_asan_link_order=0" \
+			ASAN_OPTIONS="$(drive_asan_options):verify_asan_link_order=0" \
 			DISPLAY=$DPY "$WMAKER" --for-real >>"$_WMLOG" 2>&1 & ;;
 	no-map)
 		LD_LIBRARY_PATH="$WMLIBS" LD_PRELOAD="$SHIM" XKB_SHIM_NO_MAP=1 \
-			ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0:verify_asan_link_order=0" \
+			ASAN_OPTIONS="$(drive_asan_options):verify_asan_link_order=0" \
 			DISPLAY=$DPY "$WMAKER" --for-real >>"$_WMLOG" 2>&1 & ;;
 	"")
-		LD_LIBRARY_PATH="$WMLIBS" ASAN_OPTIONS="abort_on_error=0:halt_on_error=0" \
+		LD_LIBRARY_PATH="$WMLIBS" ASAN_OPTIONS="$(drive_asan_options)" \
 			DISPLAY=$DPY "$WMAKER" --for-real \
 			>>"$_WMLOG" 2>&1 & ;;
 	esac

@@ -89,7 +89,7 @@ start_monitor() {
 	# below into a clean exit and the monitor would never see
 	# WIFSIGNALED. Non-sanitizer builds ignore the variable.
 	setsid env LD_LIBRARY_PATH="$WMLIBS" DISPLAY="$DPY" \
-		ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0:handle_segv=0" \
+		ASAN_OPTIONS="$(drive_asan_options):handle_segv=0" \
 		XDG_RUNTIME_DIR="$RUNTIME" WMAKER_USER_ROOT="$WMHOME" \
 		"$ROOT/src/.libs/wmaker" >>"$LOG" 2>&1 &
 	echo $!

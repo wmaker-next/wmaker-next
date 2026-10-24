@@ -137,7 +137,7 @@ msg() {
 
 start_wmaker() {
 	LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-	ASAN_OPTIONS="abort_on_error=0:halt_on_error=0:detect_leaks=0" \
+	ASAN_OPTIONS="$(drive_asan_options)" \
 	DISPLAY=$DPY \
 	"$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
 	WMAKER_PID=$!

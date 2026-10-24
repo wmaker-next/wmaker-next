@@ -306,19 +306,35 @@ memcheck:
 	  *)  echo "FAIL  memcheck (rc=$$rc)" ;; \
 	esac; exit $$rc
 
-# run the sanitizer drive against an --enable-asan build. Valgrind and
-# ASan cannot share a build, so this is separate from 'make memcheck'.
-# Gated on the configure flag so a normal build says so instead of
-# failing; the driver needs the nested Xephyr server 'make run' uses.
+# run the feature drivers and the aggregate sanitizer drive against an
+# --enable-asan build. Valgrind and ASan cannot share a build, so this is
+# separate from 'make memcheck'. WM_ASAN_STRICT makes the drivers abort on
+# the first sanitizer report; WM_ASAN_LOGDIR collects those reports in one
+# place so a driver cannot pass just because its assertions still ran.
+# Gated on the configure flags so a normal build says so instead of failing;
+# asan-drive.sh needs the nested Xephyr server 'make run' uses.
 asan:
 if HAVE_ASAN
 if HAVE_XEPHYR
-	@$(top_srcdir)/test/asan-drive.sh; rc=$$?; \
-	case $$rc in \
-	  0)  echo "PASS  asan" ;; \
-	  77) echo "SKIP  asan (drive tools not installed)" ;; \
-	  *)  echo "FAIL  asan (rc=$$rc)" ;; \
-	esac; exit $$rc
+	@asanlog=$$(mktemp -d /tmp/wmaker-asan-suite.XXXXXX) || exit 1; \
+	ASAN_OPTIONS="abort_on_error=1:halt_on_error=1:detect_leaks=0:log_path=$$asanlog/asan" \
+	WM_ASAN_STRICT=1 WM_ASAN_LOGDIR="$$asanlog" $(MAKE) check-drive; \
+	drive_rc=$$?; \
+	if grep -rqE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$$asanlog"; then \
+	  echo "=== sanitizer reports from the feature drives ==="; \
+	  grep -rHnE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$$asanlog"; \
+	  drive_rc=1; \
+	fi; \
+	$(top_srcdir)/test/asan-drive.sh; \
+	asan_rc=$$?; \
+	rm -rf "$$asanlog"; \
+	if [ $$drive_rc -eq 0 ] && [ $$asan_rc -eq 0 ]; then \
+	  echo "PASS  asan"; exit 0; \
+	elif [ $$drive_rc -eq 77 ] && [ $$asan_rc -eq 77 ]; then \
+	  echo "SKIP  asan (drive tools not installed)"; exit 77; \
+	else \
+	  echo "FAIL  asan (feature drives rc=$$drive_rc, asan-drive rc=$$asan_rc)"; exit 1; \
+	fi
 else
 	@echo "Xephyr was not found at configure time, install xserver-xephyr"
 	@echo "and re-run configure to use 'make asan'"
