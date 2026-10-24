@@ -375,23 +375,30 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 		break;
 	case WKBD_KEEP_ON_TOP:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+			bool on = wwin->frame->core->stacking->window_level != WMFloatingLevel;
+
 			CloseWindowMenu(scr);
 
-			if (wwin->frame->core->stacking->window_level != WMFloatingLevel)
-				ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
-			else
-				ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+			/* keep the per-window flag in step with the level so
+			 * _NET_WM_STATE_ABOVE is published and the choice persists */
+			WSETPERWINDOWFLAG(wwin, floating, on);
+			WSETPERWINDOWFLAG(wwin, sunken, 0);
+			ChangeStackingLevel(wwin->frame->core,
+					    on ? WMFloatingLevel : WMNormalLevel);
 		}
 		break;
 
 	case WKBD_KEEP_AT_BOTTOM:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+			bool on = wwin->frame->core->stacking->window_level != WMSunkenLevel;
+
 			CloseWindowMenu(scr);
 
-			if (wwin->frame->core->stacking->window_level != WMSunkenLevel)
-				ChangeStackingLevel(wwin->frame->core, WMSunkenLevel);
-			else
-				ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+			/* same for _NET_WM_STATE_BELOW */
+			WSETPERWINDOWFLAG(wwin, sunken, on);
+			WSETPERWINDOWFLAG(wwin, floating, 0);
+			ChangeStackingLevel(wwin->frame->core,
+					    on ? WMSunkenLevel : WMNormalLevel);
 		}
 		break;
 	case WKBD_OMNIPRESENT:

@@ -167,23 +167,26 @@ static void execWindowOptionCommand(WMenu * menu, WMenuEntry * entry)
 {
 	WWindow *wwin = (WWindow *) entry->clientdata;
 	int skip;
+	bool on;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
 
 	switch (entry->order) {
 	case WO_KEEP_AT_BOTTOM:
-		if (wwin->frame->core->stacking->window_level != WMSunkenLevel)
-			ChangeStackingLevel(wwin->frame->core, WMSunkenLevel);
-		else
-			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+		on = wwin->frame->core->stacking->window_level != WMSunkenLevel;
+		WSETPERWINDOWFLAG(wwin, sunken, on);
+		WSETPERWINDOWFLAG(wwin, floating, 0);
+		ChangeStackingLevel(wwin->frame->core,
+				    on ? WMSunkenLevel : WMNormalLevel);
 		break;
 
 	case WO_KEEP_ON_TOP:
-		if (wwin->frame->core->stacking->window_level != WMFloatingLevel)
-			ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
-		else
-			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+		on = wwin->frame->core->stacking->window_level != WMFloatingLevel;
+		WSETPERWINDOWFLAG(wwin, floating, on);
+		WSETPERWINDOWFLAG(wwin, sunken, 0);
+		ChangeStackingLevel(wwin->frame->core,
+				    on ? WMFloatingLevel : WMNormalLevel);
 		break;
 
 	case WO_LOCK_POSITION:

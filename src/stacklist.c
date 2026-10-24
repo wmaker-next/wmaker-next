@@ -274,6 +274,9 @@ void wStackChangeLevel(WStackCtx *ctx, WCoreWindow *frame, int new_level)
 	wStackRemove(ctx, frame);
 	frame->stacking->window_level = new_level;
 	wStackAdd(ctx, frame);
+
+	if (ctx->changed_notify)
+		ctx->changed_notify(frame, "level");
 }
 
 void wStackReconcile(WStackCtx *ctx, const xcb_window_t *order, int count)

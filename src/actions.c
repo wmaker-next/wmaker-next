@@ -1525,16 +1525,6 @@ void wUnfullscreenWindow(WWindow *wwin)
 
 	wwin->flags.fullscreen = false;
 
-	if (wwin->frame->core->stacking->window_level == WMFullscreenLevel) {
-		if (WFLAGP(wwin, sunken)) {
-			ChangeStackingLevel(wwin->frame->core, WMSunkenLevel);
-		} else if (WFLAGP(wwin, floating)) {
-			ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
-		} else {
-			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
-		}
-	}
-
 	/* restore exactly the pre-fullscreen state first, including the
 	 * maximize flag, so old_geometry and the borders rebuild see the
 	 * geometry that was current at wFullscreenWindow time */
@@ -1555,6 +1545,23 @@ void wUnfullscreenWindow(WWindow *wwin)
 		else
 			wUnmaximizeWindow(wwin);
 	}
+
+	/* Restack out of the fullscreen layer after the geometry,
+	 * decoration and maximize restore: the level change republishes
+	 * _NET_WM_STATE through the stacking notification, and that write
+	 * must not drop the fullscreen bit before the restore configures
+	 * are on the wire, or a client requesting its own geometry on the
+	 * state change gets the restore configures racing its granted
+	 * reply. */
+	if (wwin->frame->core->stacking->window_level == WMFullscreenLevel) {
+		if (WFLAGP(wwin, sunken))
+			ChangeStackingLevel(wwin->frame->core, WMSunkenLevel);
+		else if (WFLAGP(wwin, floating))
+			ChangeStackingLevel(wwin->frame->core, WMFloatingLevel);
+		else
+			ChangeStackingLevel(wwin->frame->core, WMNormalLevel);
+	}
+
 	/*
 	   // seems unnecessary, but also harmless (doesn't generate flicker) -Dan
 	   wFrameWindowPaint(wwin->frame);

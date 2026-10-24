@@ -311,10 +311,11 @@ static void test_change_level(void)
 	}
 	CHECK(WMGetFromBag(ts.levels, 0) == b);
 	CHECK(WMHashGet(ts.by_window, (void *)(uintptr_t) a->window) == a);
-	/* only the internal remove posts a reset, the re-add posts no
-	 * change */
+	/* the internal remove posts a reset and the level change posts a
+	 * change so the state hint is refreshed */
 	CHECK(ts.reset_calls == 1);
-	CHECK(ts.changed_calls == 0);
+	CHECK(ts.changed_calls == 1);
+	CHECK(strcmp(ts.last_detail, "level") == 0);
 
 	/* demotion: same, the top of the now nonempty lower level */
 	wStackChangeLevel(&ts.ctx, a, 0);
