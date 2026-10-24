@@ -1188,13 +1188,13 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	int h = wwin->frame->core->height;
 	int scr_width = wwin->screen_ptr->scr_width;
 	int scr_height = wwin->screen_ptr->scr_height;
-	int it = 0, ib = 0;
-	int vert_border;
+	int il = 0, ir = 0, it = 0, ib = 0;
+	int vert_border, horz_border;
 	int src_x = wwin->frame_x;
 	int src_y = wwin->frame_y;
 	int original_w = w;
 	int original_h = h;
-	int done, off_x, off_y, ww, wh;
+	int done, off_x, off_y, ww, wh, cw;
 	int kspeed = _KS;
 	int opaqueMoveResize = w_global.config->opaque_move_resize_keyboard;
 	xcb_timestamp_t lastTime = 0;
@@ -1211,8 +1211,9 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 	ctrlmode = done = off_x = off_y = 0;
 
 	if (HAS_BORDER(wwin))
-		wFrameInnerBorderWidths(wwin, NULL, NULL, &it, &ib);
+		wFrameInnerBorderWidths(wwin, &il, &ir, &it, &ib);
 	vert_border = wwin->frame->top_width + wwin->frame->bottom_width + it + ib;
+	horz_border = il + ir;
 
 	if (modes == RESIZABLE_BIT) {
 		ctrlmode = 1;
@@ -1362,7 +1363,9 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 				ww = w;
 				wh = h;
 				wh -= vert_border;
-				wWindowConstrainSize(wwin, (unsigned int *)&ww, (unsigned int *)&wh);
+				cw = ww - horz_border;
+				wWindowConstrainSize(wwin, (unsigned int *)&cw, (unsigned int *)&wh);
+				ww = cw + horz_border;
 				wh += vert_border;
 
 				if (w_global.config->ws_cycle) {
@@ -1445,7 +1448,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 			showPosition(wwin, src_x + off_x, src_y + off_y);
 
 		if (opaqueMoveResize)
-			wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww, wh - vert_border);
+			wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww - horz_border,
+					 wh - vert_border);
 
 		if (done) {
 			wWireframeHide(scr);
@@ -1486,7 +1490,8 @@ int wKeyboardMoveResizeWindow(WWindow * wwin)
 					if (wh != original_h)
 						wwin->flags.maximized &= ~(MAX_VERTICAL | MAX_LEFTHALF | MAX_RIGHTHALF | MAX_MAXIMUS | MAX_CENTRAL);
 
-					wWindowConfigure(wwin, src_x + off_x, src_y + off_y, ww, wh - vert_border);
+					wWindowConfigure(wwin, src_x + off_x, src_y + off_y,
+							 ww - horz_border, wh - vert_border);
 					wWindowSynthConfigureNotify(wwin);
 				}
 				wwin->last_head = wGetHeadForWindow(wwin);
