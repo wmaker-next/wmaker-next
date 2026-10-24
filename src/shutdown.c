@@ -36,6 +36,7 @@
 #include "event.h"
 #include "screen.h"
 #include "shutdown.h"
+#include "cursor_find.h"
 #include "xsettings.h"
 #include "ipc.h"
 #include "xsmp.h"
@@ -72,6 +73,8 @@ void Shutdown(WShutdownMode mode, bool external)
 	 * session manager, drop the restart hint and close the ICE
 	 * connection before tearing down screens */
 	wXSMPDisconnect();
+
+	wFindMouseShutdown();
 
 	switch (mode) {
 	case WSLogoutMode:

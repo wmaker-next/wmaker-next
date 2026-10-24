@@ -47,6 +47,7 @@
 	_("ScreenCaptureKey",  N_("Dock & Screen"), N_("Capture the entire screen")) \
 	_("WindowCaptureKey",  N_("Dock & Screen"), N_("Capture a window")) \
 	_("PartialCaptureKey", N_("Dock & Screen"), N_("Capture a portion of the screen")) \
+	_("FindMouseKey",      N_("Dock & Screen"), N_("Find the mouse pointer")) \
 	\
 	_("MiniaturizeKey",       N_("Windows"), N_("Miniaturize active window")) \
 	_("MiniaturizeAllKey",    N_("Windows"), N_("Miniaturize all windows")) \

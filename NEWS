@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Find the mouse pointer
+----------------------
+
+A new FindMouse action highlights the pointer with a ring that follows
+it for a moment. Bind FindMouseKey (unbound by default) or run
+`wmakermsg action FindMouse`. The ring is click-through and works
+without a compositor, and it uses the focused titlebar's text and
+background colours. FindMouseDuration sets the lifetime in milliseconds
+(default 1000). FindMouseRadius sets the ring radius in pixels. The
+default 0 sizes it from the monitor under the pointer (one twelfth of
+its smaller side, clamped to 32..1024). A positive value overrides that
+with an explicit pixel radius.
+
 Workspace layout menu
 ---------------------
 

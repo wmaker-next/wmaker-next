@@ -357,6 +357,7 @@ typedef struct _WScreen {
     struct W_OSDView *workspace_name_osd;  /* workspace-switch name popup */
 
     struct WWireframe *wireframe;      /* move/resize outline window */
+	struct WFindMouse *findmouse;
 
     /* state and other informations */
     short cascade_index;	       /* for cascade window placement */

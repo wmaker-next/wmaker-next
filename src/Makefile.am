@@ -79,6 +79,10 @@ wmaker_SOURCES = 	\
 	extend_pixmaps.h \
 	framewin.c \
 	framewin.h \
+	cursor.c \
+	cursor.h \
+	cursor_find.c \
+	cursor_find.h \
 	geomview.c \
 	geomview.h \
 	osdview.c \

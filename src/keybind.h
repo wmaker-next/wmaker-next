@@ -213,6 +213,9 @@ enum {
 	/* run ClipboardCommand */
 	WKBD_CLIPBOARD,
 
+	/* highlight the mouse pointer */
+	WKBD_FINDMOUSE,
+
 #ifdef KEEP_XKB_LOCK_STATUS
 	WKBD_TOGGLE,
 #endif

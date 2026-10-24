@@ -245,6 +245,10 @@
 	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_FOCUS, "MouseWheelFocus", BOOL, mouse_wheel_focus, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(FIND_MOUSE_DURATION, "FindMouseDuration", INT, find_mouse_duration, "1000", \
+	  NULL, 250, 30000, WCFG_RUNTIME_RELOAD, 0) \
+	_(FIND_MOUSE_RADIUS, "FindMouseRadius", INT, find_mouse_radius, "0", \
+	  NULL, 0, 1024, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_TIMEOUT_DELAY, "KeychainTimeoutDelay", INT, keychain_timeout_delay, "500", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEYCHAIN_DISPLAY_POSITION, "KeychainDisplayPosition", ENUM, \
@@ -779,6 +783,7 @@
 	_(PARTIAL_CAPTURE_KEY, "PartialCaptureKey", "None", WKBD_PRINTP) \
 	_(LOCK_SCREEN_KEY, "LockScreenKey", "None", WKBD_LOCKSCREEN) \
 	_(CLIPBOARD_KEY, "ClipboardKey", "Mod4+v", WKBD_CLIPBOARD) \
+	_(FIND_MOUSE_KEY, "FindMouseKey", "None", WKBD_FINDMOUSE) \
 	_(MARK_SET_KEY, "MarkSetKey", "None", WKBD_MARK_SET) \
 	_(MARK_UNSET_KEY, "MarkUnsetKey", "None", WKBD_MARK_UNSET) \
 	_(MARK_BRING_KEY, "MarkBringKey", "None", WKBD_MARK_BRING) \

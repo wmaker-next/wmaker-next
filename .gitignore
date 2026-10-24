@@ -55,6 +55,7 @@ src/wmaker
 test/wtest
 test/dockapp-client
 test/appmenu-client
+test/findmouse-client
 test/shots/current/
 
 util/convertfonts

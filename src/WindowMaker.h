@@ -312,6 +312,7 @@ typedef struct WDisplay {
 		struct {
 			bool supported;
 			int event_base;
+			int major_version, minor_version;
 		} shape;
 #endif
 

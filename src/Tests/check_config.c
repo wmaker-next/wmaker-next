@@ -117,6 +117,11 @@ void wHotCornersUpdate(WScreen *scr)
 	(void)scr;
 }
 
+void wFindMouseApplyConfig(WScreen *scr)
+{
+	(void)scr;
+}
+
 void W_setconf_doubleClickDelay(int value)
 {
 	double_click_delay = value;
@@ -894,6 +899,8 @@ static void test_defaults(void)
 	CHECK(config->hot_corners == 0);
 	CHECK(config->hot_corner_delay == 250);
 	CHECK(config->hot_corner_edge == 2);
+	CHECK(config->find_mouse_duration == 1000);
+	CHECK(config->find_mouse_radius == 0);
 	CHECK(config->window_list_app_icons == 0);
 	CHECK(config->mouse_wheel_focus == 0);
 	CHECK(config->keychain_timeout_delay == 500);
@@ -1143,6 +1150,8 @@ static void test_valid_parse(void)
 #endif
 			      "HotCorners = YES; HotCornerDelay = 77; "
 			      "HotCornerEdge = 4; WindowListAppIcons = YES; "
+			      "FindMouseDuration = 1500; "
+			      "FindMouseRadius = 333; "
 			      "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
 			      "KeychainDisplayPosition = topleft; "
 			      "ShowClipTitle = NO; "
@@ -1273,6 +1282,8 @@ static void test_valid_parse(void)
 	CHECK(config->hot_corners == 1);
 	CHECK(config->hot_corner_delay == 77);
 	CHECK(config->hot_corner_edge == 4);
+	CHECK(config->find_mouse_duration == 1500);
+	CHECK(config->find_mouse_radius == 333);
 	CHECK(config->window_list_app_icons == 1);
 	CHECK(config->mouse_wheel_focus == 1);
 	CHECK(config->keychain_timeout_delay == 88);
@@ -1432,6 +1443,7 @@ static void test_invalid_fallback(void)
 			      "EdgeResistance = bad; MiniPreviewSize = bad; "
 			      "NoWindowOverDock = maybe; ResizeDisplay = nowhere; "
 			      "HotCornerDelay = bad; DialogHistoryLines = bad; "
+			      "FindMouseDuration = 1; FindMouseRadius = 5000; "
 			      "ScrollableMenus = maybe; MenuScrollSpeed = nowhere; "
 			      "ClipAutoraiseDelay = \"-1\"; AlignSubmenus = maybe; "
 			      "OpaqueMove = maybe; SnapEdgeDetect = bad; "
@@ -1487,6 +1499,8 @@ static void test_invalid_fallback(void)
 	CHECK(config->no_window_over_dock == 0);
 	CHECK(config->size_display == WDIS_CENTER);
 	CHECK(config->hot_corner_delay == 250);
+	CHECK(config->find_mouse_duration == 1000);
+	CHECK(config->find_mouse_radius == 0);
 	CHECK(config->history_lines == 500);
 	CHECK(config->scrollable_menus == 1);
 	CHECK(config->wrap_menus == 0);
@@ -1658,6 +1672,8 @@ static void test_runtime_apply(void)
 #endif
 				  "HotCorners = YES; HotCornerDelay = 77; "
 				  "HotCornerEdge = 4; WindowListAppIcons = YES; "
+				  "FindMouseDuration = 1500; "
+				  "FindMouseRadius = 333; "
 				  "MouseWheelFocus = YES; KeychainTimeoutDelay = 88; "
 				  "KeychainDisplayPosition = topleft; "
 				  "ShowClipTitle = NO; "
@@ -1755,6 +1771,8 @@ static void test_runtime_apply(void)
 	CHECK(w_global.config->hot_corners == 1);
 	CHECK(w_global.config->hot_corner_delay == 77);
 	CHECK(w_global.config->hot_corner_edge == 4);
+	CHECK(w_global.config->find_mouse_duration == 1500);
+	CHECK(w_global.config->find_mouse_radius == 333);
 	CHECK(w_global.config->window_list_app_icons == 1);
 	CHECK(w_global.config->mouse_wheel_focus == 1);
 	CHECK(w_global.config->keychain_timeout_delay == 88);
@@ -2664,6 +2682,8 @@ static void test_deleted_key_keeps_current(void)
 				  "DontConfirmKill = YES; EdgeResistance = 66; "
 				  "WindowTitleBalloons = NO; NoWindowOverDock = YES; "
 				  "HotCorners = YES; KeychainTimeoutDelay = 88; "
+				  "FindMouseDuration = 900; "
+				  "FindMouseRadius = 77; "
 				  "KeychainDisplayPosition = topleft; "
 				  "DialogHistoryLines = 12; "
 				  "AutoFocus = YES; WrapMenus = YES; "
@@ -2705,6 +2725,8 @@ static void test_deleted_key_keeps_current(void)
 	CHECK(w_global.config->menu_text_clearance == 5);
 	CHECK(w_global.config->no_window_over_dock == 1);
 	CHECK(w_global.config->hot_corners == 1);
+	CHECK(w_global.config->find_mouse_duration == 900);
+	CHECK(w_global.config->find_mouse_radius == 77);
 	CHECK(w_global.config->keychain_timeout_delay == 88);
 	CHECK(w_global.config->keychain_display_position == WD_TOPLEFT);
 	CHECK(w_global.config->history_lines == 12);

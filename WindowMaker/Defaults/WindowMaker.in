@@ -29,6 +29,8 @@
 	MouseWheelAction = None;
 	MouseWheelTiltAction = None;
 	MouseWheelFocus = NO;
+	FindMouseDuration = 1000;
+	FindMouseRadius = 0;
 	PixmapPath = (
 		"$WMAKER_USER_DATA/Pixmaps",
 		"$WMAKER_USER_DATA/Backgrounds",
@@ -360,6 +362,7 @@
 	PartialCaptureKey = None;
 	LockScreenKey = None;
 	ClipboardKey = Mod4+v;
+	FindMouseKey = None;
 	MarkSetKey = None;
 	MarkUnsetKey = None;
 	MarkBringKey = None;

@@ -26,6 +26,7 @@
 #include "config-schema.h"
 #include "wconfigmodel.h"
 #include "hotcorner.h"
+#include "cursor_find.h"
 #include "misc.h"
 #include "window.h"
 
@@ -1132,6 +1133,7 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	bool update_usable_area = false;
 	bool update_root_mask = false;
 	bool update_hot_corners = false;
+	bool update_findmouse = false;
 	bool arrange_all_icons = false;
 	bool sticky_icons_changed = false;
 	bool keybindings_changed = false;
@@ -1192,6 +1194,9 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 	if (wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_EDGE))
 		update_hot_corners = true;
+	if (wConfigChangesHas(changes, WCFG_KEY_FIND_MOUSE_DURATION) ||
+	    wConfigChangesHas(changes, WCFG_KEY_FIND_MOUSE_RADIUS))
+		update_findmouse = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER))
 		update_usable_area = true;
 	if (wConfigChangesHas(changes, WCFG_KEY_WORKSPACE_BORDER_SIZE))
@@ -1409,6 +1414,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wScreenUpdateRootEventMask(scr);
 	if (scr && update_hot_corners)
 		wHotCornersUpdate(scr);
+	if (scr && update_findmouse)
+		wFindMouseApplyConfig(scr);
 
 	return refresh;
 }

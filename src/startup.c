@@ -541,8 +541,16 @@ void StartUp(bool defaultScreenOnly)
 	xer = xcb_get_extension_data(xc, &xcb_shape_id);
 	wdisp->xext.shape.supported = xer && xer->present;
 	if (wdisp->xext.shape.supported) {
+		xcb_shape_query_version_reply_t *shr;
+
 		wdisp->xext.shape.event_base = xer->first_event;
-		free(xcb_shape_query_version_reply(xc, xcb_shape_query_version(xc), NULL));
+		shr = xcb_shape_query_version_reply(xc,
+			xcb_shape_query_version(xc), NULL);
+		if (shr) {
+			wdisp->xext.shape.major_version = shr->major_version;
+			wdisp->xext.shape.minor_version = shr->minor_version;
+		}
+		free(shr);
 	}
 #endif
 

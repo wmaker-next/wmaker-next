@@ -63,6 +63,7 @@
 #include "switchmenu.h"
 #include "wsmap.h"
 #include "hotcorner.h"
+#include "cursor_find.h"
 #include "wsound.h"
 
 #include "config-schema.h"
@@ -838,6 +839,10 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 
 	case WKBD_SWITCH_SCREEN:
 		warpPointerToNextMonitor(scr);
+		break;
+
+	case WKBD_FINDMOUSE:
+		wFindMouseShow(scr);
 		break;
 
 	case WKBD_RUN:
