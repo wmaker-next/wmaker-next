@@ -215,7 +215,7 @@ static void pushDelayButton(WMWidget * w, void *data)
 	else if (w == panel->hcdelayB[2])
 		WMSetTextFieldText(panel->hcdelayT, "500");
 	else if (w == panel->hcdelayB[3])
-		WMSetTextFieldText(panel->hcdelayT, "700");
+		WMSetTextFieldText(panel->hcdelayT, "750");
 	else if (w == panel->hcdelayB[4])
 		WMSetTextFieldText(panel->hcdelayT, "1000");
 }

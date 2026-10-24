@@ -301,14 +301,19 @@ static void showData(_Panel * panel)
 	WMSetTextFieldText(panel->acceT, buffer);
 
 	 /**/ b = GetIntegerForKey("DoubleClickTime");
-	/* find best match */
-	a = -1;
-	for (i = 0; i < wlengthof(panel->ddelaB); i++) {
-		if (DELAY(i) == b)
+	if (b <= 0)
+		b = GetDefaultIntegerForKey("DoubleClickTime");
+	/* select the closest preset, the actual value stays in the text field */
+	a = 0;
+	for (i = 1; i < wlengthof(panel->ddelaB); i++) {
+		int di = DELAY(i) - b;
+		int da = DELAY(a) - b;
+
+		if ((di < 0 ? -di : di) < (da < 0 ? -da : da))
 			a = i;
 	}
-	if (a >= 0)
-		WMPerformButtonClick(panel->ddelaB[a]);
+	if (b > 0)
+		WMSetButtonSelected(panel->ddelaB[a], true);
 	snprintf(buffer, sizeof(buffer), "%i", b);
 	WMSetTextFieldText(panel->ddelaT, buffer);
 
