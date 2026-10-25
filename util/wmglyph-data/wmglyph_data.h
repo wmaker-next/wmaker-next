@@ -1,6 +1,6 @@
-/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 17.0.0).
+/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 18.0.0).
  * Do not edit — regenerate with gen-data.py.
- * UnicodeData.txt (c) 1991-2025 Unicode, Inc. — see UNICODE-LICENSE.
+ * UnicodeData.txt (c) 1991-2026 Unicode, Inc. — see UNICODE-LICENSE.
  */
 
 #ifndef WMGLYPH_DATA_H
@@ -26,7 +26,7 @@ extern const struct WmglyphChar wmglyph_chars[];
 extern const int wmglyph_block_count;
 extern const int wmglyph_char_count;
 
-#define WMGLYPH_BLOCK_COUNT 329
-#define WMGLYPH_CHAR_COUNT 79226
+#define WMGLYPH_BLOCK_COUNT 334
+#define WMGLYPH_CHAR_COUNT 79988
 
 #endif /* WMGLYPH_DATA_H */

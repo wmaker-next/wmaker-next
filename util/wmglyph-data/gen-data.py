@@ -10,14 +10,14 @@ Usage:
     ./gen-data.py
 
 Inputs (in the same directory):
-    UnicodeData.txt  — Unicode 17.0.0 UCD
-    Blocks.txt       — Unicode 17.0.0 block ranges
+    UnicodeData.txt  — Unicode 18.0.0 UCD
+    Blocks.txt       — Unicode 18.0.0 block ranges
 
 Outputs:
     wmglyph_data.c   — generated data tables (committed to the repo)
     wmglyph_data.h   — generated header (committed to the repo)
 
-The Unicode data files are © 1991-2025 Unicode, Inc. and are distributed
+The Unicode data files are © 1991-2026 Unicode, Inc. and are distributed
 under the Unicode License v3 (see UNICODE-LICENSE in this directory).
 The generated files are derived works and are likewise subject to the
 Unicode License v3.
@@ -26,7 +26,8 @@ Hangul syllables and the BMP CJK ideographs exist in UnicodeData.txt
 only as <First>/<Last> range pairs with algorithmic names. Those pairs
 are expanded by formula (jamo composition, resp. "CJK UNIFIED
 IDEOGRAPH-XXXX"). Surrogates, private use, and the astral ideograph
-ranges (CJK extensions B onwards, Tangut) are not expanded.
+ranges (CJK extensions B onwards, Tangut, Jurchen, Seal) are not
+expanded.
 """
 
 import os
@@ -139,9 +140,9 @@ def c_escape(s):
 
 
 def emit_header(f, block_count, char_count):
-    f.write("/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 17.0.0).\n")
+    f.write("/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 18.0.0).\n")
     f.write(" * Do not edit — regenerate with gen-data.py.\n")
-    f.write(" * UnicodeData.txt (c) 1991-2025 Unicode, Inc. — see UNICODE-LICENSE.\n")
+    f.write(" * UnicodeData.txt (c) 1991-2026 Unicode, Inc. — see UNICODE-LICENSE.\n")
     f.write(" */\n\n")
     f.write("#ifndef WMGLYPH_DATA_H\n")
     f.write("#define WMGLYPH_DATA_H\n\n")
@@ -167,9 +168,9 @@ def emit_header(f, block_count, char_count):
 
 
 def emit_source(f, blocks, chars):
-    f.write("/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 17.0.0).\n")
+    f.write("/* Auto-generated from UnicodeData.txt + Blocks.txt (Unicode 18.0.0).\n")
     f.write(" * Do not edit — regenerate with gen-data.py.\n")
-    f.write(" * UnicodeData.txt (c) 1991-2025 Unicode, Inc. — see UNICODE-LICENSE.\n")
+    f.write(" * UnicodeData.txt (c) 1991-2026 Unicode, Inc. — see UNICODE-LICENSE.\n")
     f.write(" */\n\n")
     f.write('#include "wmglyph_data.h"\n\n')
 

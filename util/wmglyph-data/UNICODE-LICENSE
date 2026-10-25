@@ -41,7 +41,7 @@ authorization of the copyright holder.
 ---
 
 The files UnicodeData.txt and Blocks.txt in this directory are
-distributed under the Unicode License v3 above. They are © 1991-2025
+distributed under the Unicode License v3 above. They are © 1991-2026
 Unicode, Inc. The generated files wmglyph_data.c and wmglyph_data.h
 are derived from these data files and are likewise subject to the
 Unicode License v3. All other source files in the wmaker-next project
