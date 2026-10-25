@@ -30,6 +30,26 @@ default 0 sizes it from the monitor under the pointer (one twelfth of
 its smaller side, clamped to 32..1024). A positive value overrides that
 with an explicit pixel radius.
 
+Accent Picker
+-------------------
+
+Builds configured with `--enable-xkb-multilingual` gain an opt-in
+Accent Picker for accented letters, currency signs, and other special
+characters. Both triggers ship disabled so an upgrade never takes a key
+away from applications. The recommended first setting is
+`AccentPickerKey = Menu`: hold Menu, press a base key, tap the same key
+again to cycle the variants, and release Menu to insert the selection.
+Escape cancels. A dedicated modifier can be used instead with
+`AccentPickerModifier`, for example CapsLock mapped to Hyper with
+`setxkbmap -option caps:hyper`. `AccentPickerSets` chooses the character
+sets, defaulting to `("auto", "Currency")`, and `auto` derives language
+sets from all configured XKB layouts. IPA is never selected by `auto`.
+Per-base overrides can be added with the `AccentPickerVariants`
+dictionary. The candidate popup lays variants out horizontally, clicking
+a variant inserts it immediately, and clicking outside cancels.
+`--enable-modelock` remains accepted as a deprecated alias for the
+canonical configure option.
+
 Workspace layout menu
 ---------------------
 

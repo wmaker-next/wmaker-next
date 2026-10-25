@@ -369,9 +369,9 @@ to get a complete list of options that are available.
 
 @item
 Run configure with the options you want.
-For example, if you want to use the @option{--enable-modelock} option, type:
+For example, if you want to use the @option{--enable-xkb-multilingual} option, type:
 @example
-./configure --enable-modelock
+./configure --enable-xkb-multilingual
 @end example
 
 @item
@@ -439,9 +439,9 @@ language support is described in the dedicated
 These options can be passed to the configure script to enable/disable
 some @sc{Window Maker} features. Example:
 @example
-./configure --enable-modelock --disable-tiff
+./configure --enable-xkb-multilingual --disable-tiff
 @end example
-will configure @sc{Window Maker} with @emph{modelock} supported and disable @emph{tiff} support.
+will configure @sc{Window Maker} with XKB multilingual support and disable @emph{tiff} support.
 Normally, you won't need any of them.
 
 To get the list of all options, run @command{./configure --help}
@@ -586,9 +586,11 @@ if the extension cannot be used;
 if you specify @option{--disable-@emph{FEATURE}} then it will not check for the extension.
 
 @table @option
-@item --enable-modelock
-XKB language status lock support. If you don't know what it is you probably don't need it.
-The default is to not enable it.
+@item --enable-xkb-multilingual
+XKB multilingual keyboard support: the titlebar keyboard language status and the
+optional Accent Picker. If you don't know what it is you probably
+don't need it. The default is to not enable it. The old @option{--enable-modelock}
+spelling is accepted as a deprecated alias.
 
 @item --disable-shm
 Disable use of the @emph{MIT shared memory} extension.

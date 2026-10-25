@@ -733,7 +733,10 @@ static bool is_non_schema_defaults_key(const char *key)
 #endif
 #ifndef KEEP_XKB_LOCK_STATUS
 	if (strcmp(key, "KbdModeLock") == 0 ||
-	    strcmp(key, "ToggleKbdModeKey") == 0)
+	    strcmp(key, "ToggleKbdModeKey") == 0 ||
+	    strcmp(key, "AccentPickerModifier") == 0 ||
+	    strcmp(key, "AccentPickerSets") == 0 ||
+	    strcmp(key, "AccentPickerKey") == 0)
 		return true;
 #endif
 #ifndef VIRTUAL_DESKTOP
@@ -917,6 +920,13 @@ static void test_defaults(void)
 	CHECK(config->show_clip_title == 1);
 #ifdef KEEP_XKB_LOCK_STATUS
 	CHECK(config->modelock == 0);
+	CHECK(strcmp(config->accent_picker_modifier, "None") == 0);
+	CHECK(config->accent_picker_sets.count == 2);
+	CHECK(config->accent_picker_sets.items != NULL);
+	if (config->accent_picker_sets.items && config->accent_picker_sets.count == 2) {
+		CHECK(strcmp(config->accent_picker_sets.items[0], "auto") == 0);
+		CHECK(strcmp(config->accent_picker_sets.items[1], "Currency") == 0);
+	}
 #endif
 	CHECK(config->history_lines == 500);
 	CHECK(config->cycle_active_head_only == 0);
@@ -1019,6 +1029,9 @@ static void test_defaults(void)
 	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWNEXT].spec, "Mod4+grave") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_GROUPWINDOWPREV].spec, "Mod4+Shift+grave") == 0);
 	CHECK(strcmp(config->key_bindings[WKBD_MOVE_TO_EDGE_LEFT].spec, "None") == 0);
+#ifdef KEEP_XKB_LOCK_STATUS
+	CHECK(strcmp(config->key_bindings[WKBD_ACCENTPICKER].spec, "None") == 0);
+#endif
 	CHECK(strcmp(config->lock_screen_command, "wmlock") == 0);
 	CHECK(strcmp(config->clipboard_command, "wmakermsg send_tick wmclipd-popup") == 0);
 	wConfigDestroy(config);

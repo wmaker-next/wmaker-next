@@ -28,14 +28,14 @@ base_args=$(./config.status --config) || exit 2
 echo "option-matrix: base configuration: $base_args"
 
 MINIMAL="--disable-wmreplace --disable-animations --disable-mwm-hints \
---disable-modelock --disable-virtual-desktop --disable-usermenu \
+--disable-xkb-multilingual --disable-virtual-desktop --disable-usermenu \
 --disable-boehm-gc --disable-wmlock --disable-xsmp --disable-xdnd \
 --disable-shape --disable-randr --disable-xsync --disable-shm \
 --disable-res --without-startup-notification --without-xcb-screensaver \
 --without-libarchive --without-pipewire --without-libinput \
 --disable-png --disable-jpeg --disable-jxl --disable-tiff \
 --disable-webp --disable-heif --disable-svg --disable-magick"
-MAXIMAL="--enable-wmreplace --enable-modelock --enable-virtual-desktop \
+MAXIMAL="--enable-wmreplace --enable-xkb-multilingual --enable-virtual-desktop \
 --enable-usermenu --enable-boehm-gc --enable-wmlock"
 
 jobs=$(nproc 2>/dev/null) || jobs=1

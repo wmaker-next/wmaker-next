@@ -57,6 +57,7 @@
 #include "event.h"
 #include "osdview.h"
 #include "wxkb.h"
+#include "accent_picker.h"
 #include "winmenu.h"
 #include "layout.h"
 #include "switchmenu.h"
@@ -210,6 +211,10 @@ static void handleKeyPress(xcb_generic_event_t *ev)
 
 	if (!scr)
 		return;
+#ifdef KEEP_XKB_LOCK_STATUS
+	if (wAccentPickerHandleKeyPress(scr, (xcb_key_press_event_t *)ev))
+		return;
+#endif
 	wwin = scr->focused_window;
 
 	/* ignore CapsLock */
@@ -539,6 +544,11 @@ static void handleButtonPress(xcb_generic_event_t *ev)
 	if (!scr)
 		return;
 
+#ifdef KEEP_XKB_LOCK_STATUS
+	if (wAccentPickerHandleButtonPress(scr, (xcb_button_press_event_t *)ev))
+		return;
+#endif
+
 #ifdef BALLOON_TEXT
 	wBalloonHide(scr);
 #endif
@@ -824,9 +834,25 @@ static void handleFocusIn(xcb_generic_event_t *ev)
 	}
 }
 
+#ifdef KEEP_XKB_LOCK_STATUS
+static void handleKeyRelease(xcb_generic_event_t *ev)
+{
+	const xcb_key_release_event_t *e =
+		(const xcb_key_release_event_t *)ev;
+	WScreen *scr = wScreenForRootWindow(e->root);
+
+	if (scr)
+		wAccentPickerHandleKeyRelease(scr,
+			(xcb_key_release_event_t *)ev);
+}
+#endif
+
 void wEventInputRegister(void)
 {
 	wEventRegisterHandler(XCB_KEY_PRESS, handleKeyPress);
+#ifdef KEEP_XKB_LOCK_STATUS
+	wEventRegisterHandler(XCB_KEY_RELEASE, handleKeyRelease);
+#endif
 	wEventRegisterHandler(XCB_BUTTON_PRESS, handleButtonPress);
 	wEventRegisterHandler(XCB_MOTION_NOTIFY, handleMotionNotify);
 	wEventRegisterHandler(XCB_ENTER_NOTIFY, handleEnterNotify);

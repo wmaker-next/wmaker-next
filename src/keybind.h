@@ -218,6 +218,7 @@ enum {
 
 #ifdef KEEP_XKB_LOCK_STATUS
 	WKBD_TOGGLE,
+	WKBD_ACCENTPICKER,
 #endif
 	/* tab-group cycling and management */
 	WKBD_GROUPTAB_NEXT,

@@ -41,6 +41,7 @@
 #include "WindowMaker.h"
 #include "def_pixmaps.h"
 #include "screen.h"
+#include "accent_picker.h"
 #include "config-schema.h"
 #include "texture.h"
 #include "xsettings.h"
@@ -695,6 +696,10 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		wfree(scr);
 		return NULL;
 	}
+
+#ifdef KEEP_XKB_LOCK_STATUS
+	wAccentPickerInit(scr);
+#endif
 
 	scr->black = WMBlackColor(scr->wmscreen);
 	scr->white = WMWhiteColor(scr->wmscreen);
@@ -1432,6 +1437,9 @@ void ScreenCapture(WScreen *scr, int mode)
 
 void wScreenDestroy(WScreen *scr)
 {
+#ifdef KEEP_XKB_LOCK_STATUS
+	wAccentPickerDestroy(scr);
+#endif
 	wStartupNotifyShutdown(scr);
 #ifdef USE_RANDR
 	wRandRTeardown(scr);

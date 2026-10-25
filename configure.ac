@@ -660,16 +660,39 @@ dnl link plain system libraries.
 dnl XKB keyboard language status
 dnl ============================
 m4_divert_push([INIT_PREPARE])dnl
-AC_ARG_ENABLE([modelock],
-    [AS_HELP_STRING([--enable-modelock], [XKB keyboard language status support])],
+enable_accentpicker_canonical=unset
+enable_accentpicker_alias=unset
+AC_ARG_ENABLE([xkb-multilingual],
+    [AS_HELP_STRING([--enable-xkb-multilingual],
+        [XKB multilingual keyboard support (layout status and accent picker)])],
     [AS_CASE([$enableval],
-        [yes|no], [],
-        [AC_MSG_ERROR([bad value '$enableval' for --enable-modelock])])],
-    [enable_modelock=no])
+        [yes|no], [enable_accentpicker_canonical=$enableval],
+        [AC_MSG_ERROR([bad value '$enableval' for --enable-xkb-multilingual])])],
+    [])
+AC_ARG_ENABLE([modelock],
+    [AS_HELP_STRING([--enable-modelock],
+        [deprecated alias for --enable-xkb-multilingual])],
+    [AS_CASE([$enableval],
+        [yes|no], [enable_accentpicker_alias=$enableval],
+        [AC_MSG_ERROR([bad value '$enableval' for --enable-modelock])])
+     AC_MSG_WARN([--enable-modelock is deprecated, use --enable-xkb-multilingual])],
+    [])
+AS_IF([test "x$enable_accentpicker_canonical" != xunset &&
+       test "x$enable_accentpicker_alias" != xunset &&
+       test "x$enable_accentpicker_canonical" != "x$enable_accentpicker_alias"],
+    [AC_MSG_ERROR([--enable-xkb-multilingual and --enable-modelock disagree])])
+if test "x$enable_accentpicker_canonical" != xunset; then
+    enable_xkb_multilingual=$enable_accentpicker_canonical
+elif test "x$enable_accentpicker_alias" != xunset; then
+    enable_xkb_multilingual=$enable_accentpicker_alias
+else
+    enable_xkb_multilingual=no
+fi
 m4_divert_pop([INIT_PREPARE])dnl
 
-AS_IF([test "x$enable_modelock" = "xyes"],
+AS_IF([test "x$enable_xkb_multilingual" = "xyes"],
     [AC_DEFINE([XKB_MODELOCK], [1], [whether XKB language MODELOCK should be enabled])])
+AM_CONDITIONAL([BUILD_ACCENTPICKER], [test "x$enable_xkb_multilingual" = "xyes"])
 
 
 dnl XDND Drag-nd-Drop support
@@ -830,7 +853,7 @@ dnl xcb-xinerama is the generated module for the head fallback in
 dnl src/xinerama.c (servers exposing Xinerama without a RandR description,
 dnl e.g. nested servers, and builds without RandR).
 WM_REQUIRE_DEP([XCB],
-    [xcb >= 1.15 xcb-icccm >= 0.3.8 xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xcb-xinerama xcb-cursor xkbcommon xkbcommon-x11 >= 0.4.1],
+    [xcb >= 1.15 xcb-icccm >= 0.3.8 xcb-randr xcb-shape xcb-sync xcb-xkb xcb-xfixes xcb-xtest xcb-xinerama xcb-cursor xkbcommon >= 0.8.0 xkbcommon-x11 >= 0.4.1],
     [libxcb >= 1.15, xcb-icccm >= 0.3.8, xcb-randr/shape/sync/xkb/xfixes/xtest/xinerama, xcb-cursor and xkbcommon/-x11 are required])
 dnl AC_PATH_XTRA put the base X11 lib dir into LDFLAGS above, on NetBSD that
 dnl is /usr/X11R7/lib which still carries the pre-0.3.8 libxcb-icccm.so.1, so

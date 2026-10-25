@@ -3,6 +3,11 @@ AUTOMAKE_OPTIONS = subdir-objects
 check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_calc check_xsmp check_layout check_geometry check_dockgeom check_stacklist check_placecompute check_wsplan check_focusmodel check_dockslots check_xlibfree check_xerror check_xsettings
 TESTS = $(check_PROGRAMS)
 
+if BUILD_ACCENTPICKER
+check_PROGRAMS += check_accent_picker
+TESTS += check_accent_picker
+endif
+
 # libFuzzer harnesses for the two X-bound parse cores extracted from
 # src/ (the WMMenu text protocol and the XDND uri-list split), built on
 # demand only under a clang sanitizer configure, same recipe as the
@@ -43,7 +48,8 @@ EXTRA_DIST = \
 	xdg/share/applications/editor.desktop \
 	xdg/share/applications/multi.desktop \
 	xdg/share/applications/mimeinfo.cache \
-	xdg/config/mimeapps.list
+	xdg/config/mimeapps.list \
+	check_accent_picker.c
 
 check_config_SOURCES = \
 	check_config.c \
@@ -115,6 +121,15 @@ check_dockgeom_SOURCES = \
 	../dockgeom.c
 
 check_dockgeom_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_accent_picker_SOURCES = \
+	check_accent_picker.c \
+	../accent_data.c \
+	../accent_data.h
+
+check_accent_picker_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
 

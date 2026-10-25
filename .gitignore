@@ -116,6 +116,7 @@ WINGs/Tests/check_wxparse
 WINGs/Tests/check_xbm
 WINGs/Extras/tableview
 src/Tests/check_calc
+src/Tests/check_accent_picker
 src/Tests/check_xerror
 src/Tests/check_config
 src/Tests/check_dockgeom

@@ -55,6 +55,7 @@
 #include "wconfigmodel.h"
 #include "keybind.h"
 #include "wxkb.h"
+#include "accent_picker.h"
 #include "icon.h"
 #include "main.h"
 #include "actions.h"
@@ -435,6 +436,9 @@ void wReadDefaults(WScreen *scr, const WConfig *old_config,
 	unsigned int needs_refresh;
 
 	needs_refresh = wConfigApplyRuntime(scr, old_config, new_config, changes);
+#ifdef KEEP_XKB_LOCK_STATUS
+	wAccentPickerApplyConfig(scr);
+#endif
 
 	if (needs_refresh != 0 && !scr->flags.startup) {
 		int foo;

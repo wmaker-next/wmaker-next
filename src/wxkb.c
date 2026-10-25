@@ -23,10 +23,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/xkb.h>
+#include <xcb/xtest.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-x11.h>
 
@@ -48,6 +50,10 @@ static int32_t device_id = -1;
  * lookup against the local keymap, recomputed on every refresh */
 static unsigned int MetaMask, AltMask, SuperMask, HyperMask, ModeMask;
 static unsigned int NumLockMask, ScrollLockMask;
+
+/* keycodes present in the core modifier mapping, rebuilt on every
+ * keyboard change so grab and spare-keycode scans stay local */
+static unsigned char modifier_keycodes[256];
 
 /* modifier-map slot indexes, the Xlib ShiftMapIndex..Mod5MapIndex
  * values; xcb's modifier mapping is the same slot order */
@@ -73,6 +79,30 @@ static const char *index_to_name(int idx)
 	}
 }
 
+static void refreshModifierKeycodes(void)
+{
+	xcb_get_modifier_mapping_cookie_t ck;
+	xcb_get_modifier_mapping_reply_t *rep;
+	xcb_keycode_t *map;
+	int per_mod, i, total;
+
+	memset(modifier_keycodes, 0, sizeof(modifier_keycodes));
+	ck = xcb_get_modifier_mapping(wdisp->conn);
+	rep = xcb_get_modifier_mapping_reply(wdisp->conn, ck, NULL);
+	if (!rep)
+		return;
+	per_mod = rep->keycodes_per_modifier;
+	total = per_mod * 8;
+	map = xcb_get_modifier_mapping_keycodes(rep);
+	for (i = 0; i < total; i++) {
+		xcb_keycode_t kc = map[i];
+
+		if (kc != 0)
+			modifier_keycodes[kc] = 1;
+	}
+	free(rep);
+}
+
 /* the shared classification against the local keymap, recomputed on
  * every keyboard change */
 static void resolveModifiers(void)
@@ -80,6 +110,7 @@ static void resolveModifiers(void)
 	WXModifierSlots slots;
 	const char *warn;
 
+	refreshModifierKeycodes();
 	W_XkbModifierSlots(wdisp->conn, keymap, &slots);
 
 	/* a named modifier bound to the Shift, Lock or Control columns
@@ -294,14 +325,15 @@ xkb_keysym_t wXkbKeycodeToKeysym(xkb_keycode_t kc, int level)
 	return XKB_KEY_NoSymbol;
 }
 
-/* first keycode whose keysym list (effective layout, then any layout)
- * contains ks */
-xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
+static bool find_keycode_level(xkb_keysym_t ks, xcb_keycode_t *out_kc,
+			       xkb_layout_index_t *out_layout,
+			       xkb_level_index_t *out_level)
 {
-	xkb_keycode_t kc, min_kc, max_kc;
+	unsigned int kc;
+	xcb_keycode_t min_kc, max_kc;
 
 	if (!keymap || ks == XKB_KEY_NoSymbol)
-		return 0;
+		return false;
 
 	min_kc = xkb_keymap_min_keycode(keymap);
 	max_kc = xkb_keymap_max_keycode(keymap);
@@ -313,16 +345,22 @@ xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
 
 			if (lay == XKB_LAYOUT_INVALID)
 				continue;
-			nlev = xkb_keymap_num_levels_for_key(keymap, kc, lay);
+			nlev = xkb_keymap_num_levels_for_key(keymap,
+					(xcb_keycode_t)kc, lay);
 			for (lev = 0; lev < nlev; lev++) {
 				const xkb_keysym_t *syms;
 				int n, i;
 
 				n = xkb_keymap_key_get_syms_by_level(keymap,
 						kc, lay, lev, &syms);
-				for (i = 0; i < n; i++)
-					if (syms[i] == ks)
-						return kc;
+				for (i = 0; i < n; i++) {
+					if (syms[i] != ks)
+						continue;
+					*out_kc = (xcb_keycode_t)kc;
+					*out_layout = lay;
+					*out_level = lev;
+					return true;
+				}
 			}
 		}
 	}
@@ -342,13 +380,31 @@ xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
 
 				n = xkb_keymap_key_get_syms_by_level(keymap,
 						kc, lay, lev, &syms);
-				for (i = 0; i < n; i++)
-					if (syms[i] == ks)
-						return kc;
+				for (i = 0; i < n; i++) {
+					if (syms[i] != ks)
+						continue;
+					*out_kc = (xcb_keycode_t)kc;
+					*out_layout = lay;
+					*out_level = lev;
+					return true;
+				}
 			}
 		}
 	}
-	return 0;
+	return false;
+}
+
+/* first keycode whose keysym list (effective layout, then any layout)
+ * contains ks */
+xkb_keycode_t wXkbKeysymToKeycode(xkb_keysym_t ks)
+{
+	xcb_keycode_t kc;
+	xkb_layout_index_t lay;
+	xkb_level_index_t lev;
+
+	if (!find_keycode_level(ks, &kc, &lay, &lev))
+		return 0;
+	return kc;
 }
 
 xkb_keysym_t wXkbStateKeysym(xkb_keycode_t kc)
@@ -488,6 +544,387 @@ int wXkbGetGroup(void)
 	free(r);
 	return group;
 }
+
+/* ---[ accent-picker injection ]------------------------------------------ */
+
+xcb_keycode_t wXkbMinKeycode(void)
+{
+	if (!keymap)
+		return 0;
+	return xkb_keymap_min_keycode(keymap);
+}
+
+xcb_keycode_t wXkbMaxKeycode(void)
+{
+	if (!keymap)
+		return 0;
+	return xkb_keymap_max_keycode(keymap);
+}
+
+bool wXkbKeycodeIsModifier(xcb_keycode_t kc)
+{
+	return modifier_keycodes[kc] != 0;
+}
+
+static void syncServer(void)
+{
+	xcb_get_input_focus_reply_t *rep;
+
+	rep = xcb_get_input_focus_reply(wdisp->conn,
+					xcb_get_input_focus(wdisp->conn), NULL);
+	free(rep);
+}
+
+static bool fakeKey(xcb_keycode_t kc, bool press)
+{
+	if (kc == 0)
+		return false;
+	xcb_test_fake_input(wdisp->conn,
+			    press ? XCB_KEY_PRESS : XCB_KEY_RELEASE,
+			    kc, XCB_CURRENT_TIME, XCB_NONE, 0, 0, 0);
+	return true;
+}
+
+bool wXkbTestAvailable(void)
+{
+	static int available = -1;
+	const xcb_query_extension_reply_t *ext;
+	xcb_test_get_version_reply_t *rep;
+
+	if (available >= 0)
+		return available != 0;
+	ext = xcb_get_extension_data(wdisp->conn, &xcb_test_id);
+	if (!ext || !ext->present) {
+		available = 0;
+		wwarning(_("XTest extension is not available, accent picker cannot inject text"));
+		return false;
+	}
+	rep = xcb_test_get_version_reply(wdisp->conn,
+			xcb_test_get_version(wdisp->conn, XCB_TEST_MAJOR_VERSION,
+					     XCB_TEST_MINOR_VERSION), NULL);
+	available = rep != NULL;
+	free(rep);
+	if (!available)
+		wwarning(_("XTest extension is not usable, accent picker cannot inject text"));
+	return available != 0;
+}
+
+static xcb_keycode_t keysymKeycode(xkb_keysym_t ks)
+{
+	return wXkbKeysymToKeycode(ks);
+}
+
+static xcb_keycode_t modifierKeycode(xkb_keysym_t first, xkb_keysym_t second)
+{
+	xcb_keycode_t kc = keysymKeycode(first);
+
+	if (kc == 0 && second != XKB_KEY_NoSymbol)
+		kc = keysymKeycode(second);
+	return kc;
+}
+
+static bool keyDown(const char *keys, xcb_keycode_t kc)
+{
+	if (kc == 0)
+		return false;
+	return (keys[kc >> 3] & (1 << (kc & 7))) != 0;
+}
+
+static bool typeKeysym(xkb_keysym_t ks)
+{
+	xcb_keycode_t kc, shift, level3;
+	xkb_layout_index_t layout;
+	xkb_level_index_t level;
+	xkb_mod_mask_t masks[8];
+	xkb_mod_index_t shift_idx, level3_idx, mod5_idx;
+	xkb_mod_mask_t allowed = 0;
+	xkb_mod_mask_t chosen = 0;
+	char keys[32];
+	xcb_query_keymap_reply_t *krep;
+	bool need_shift, need_level3;
+	bool taken_shift = false, taken_level3 = false;
+	int n, i;
+
+	if (!find_keycode_level(ks, &kc, &layout, &level))
+		return false;
+	/* only use the direct path when the found layout is the one the
+	 * key currently uses. Keysyms that only exist in another group are
+	 * injected through the spare-keycode remap instead. */
+	if (state && xkb_state_key_get_layout(state, kc) != layout)
+		return false;
+
+	shift_idx = xkb_keymap_mod_get_index(keymap, "Shift");
+	level3_idx = xkb_keymap_mod_get_index(keymap, "LevelThree");
+	mod5_idx = xkb_keymap_mod_get_index(keymap, "Mod5");
+	if (shift_idx != XKB_MOD_INVALID)
+		allowed |= (xkb_mod_mask_t)1 << shift_idx;
+	if (level3_idx != XKB_MOD_INVALID)
+		allowed |= (xkb_mod_mask_t)1 << level3_idx;
+	if (mod5_idx != XKB_MOD_INVALID)
+		allowed |= (xkb_mod_mask_t)1 << mod5_idx;
+
+	n = xkb_keymap_key_get_mods_for_level(keymap, kc, layout, level,
+					      masks, sizeof(masks) / sizeof(masks[0]));
+	for (i = 0; i < n; i++) {
+		if ((masks[i] & ~allowed) == 0) {
+			chosen = masks[i];
+			break;
+		}
+	}
+	if (n > 0 && i == n)
+		return false;
+
+	need_shift = shift_idx != XKB_MOD_INVALID &&
+		(chosen & ((xkb_mod_mask_t)1 << shift_idx)) != 0;
+	need_level3 = (level3_idx != XKB_MOD_INVALID &&
+		(chosen & ((xkb_mod_mask_t)1 << level3_idx)) != 0) ||
+		(mod5_idx != XKB_MOD_INVALID &&
+		(chosen & ((xkb_mod_mask_t)1 << mod5_idx)) != 0);
+
+	krep = xcb_query_keymap_reply(wdisp->conn,
+				      xcb_query_keymap(wdisp->conn), NULL);
+	if (!krep)
+		return false;
+	memcpy(keys, krep->keys, sizeof(keys));
+	free(krep);
+
+	shift = modifierKeycode(XKB_KEY_Shift_L, XKB_KEY_Shift_R);
+	level3 = modifierKeycode(XKB_KEY_ISO_Level3_Shift, XKB_KEY_Alt_R);
+
+	if (need_shift && !keyDown(keys, shift))
+		taken_shift = fakeKey(shift, true);
+	if (need_level3 && !keyDown(keys, level3))
+		taken_level3 = fakeKey(level3, true);
+
+	fakeKey(kc, true);
+	fakeKey(kc, false);
+
+	if (taken_level3)
+		fakeKey(level3, false);
+	if (taken_shift)
+		fakeKey(shift, false);
+	xcb_flush(wdisp->conn);
+	return true;
+}
+
+static xcb_keycode_t spareKeycode(const char *keys)
+{
+	unsigned int kc;
+	xcb_keycode_t min_kc, max_kc;
+
+	if (!keymap)
+		return 0;
+	min_kc = xkb_keymap_min_keycode(keymap);
+	max_kc = xkb_keymap_max_keycode(keymap);
+
+	for (kc = min_kc; kc <= max_kc; kc++) {
+		xkb_layout_index_t nlay, lay;
+		bool used = false;
+
+		if (wXkbKeycodeIsModifier((xcb_keycode_t)kc) ||
+		    keyDown(keys, (xcb_keycode_t)kc))
+			continue;
+		nlay = xkb_keymap_num_layouts_for_key(keymap, (xcb_keycode_t)kc);
+		for (lay = 0; lay < nlay && !used; lay++) {
+			xkb_level_index_t nlev, lev;
+
+			nlev = xkb_keymap_num_levels_for_key(keymap,
+					(xcb_keycode_t)kc, lay);
+			for (lev = 0; lev < nlev; lev++) {
+				const xkb_keysym_t *syms;
+				int n = xkb_keymap_key_get_syms_by_level(keymap,
+						(xcb_keycode_t)kc, lay, lev, &syms);
+
+				if (n > 0 && syms[0] != XKB_KEY_NoSymbol) {
+					used = true;
+					break;
+				}
+			}
+		}
+		if (!used)
+			return (xcb_keycode_t)kc;
+	}
+	return 0;
+}
+
+static bool remapTypeKeysym(xkb_keysym_t ks)
+{
+	xcb_keycode_t kc;
+	xcb_get_keyboard_mapping_reply_t *rep;
+	xcb_keysym_t *original, *replacement;
+	char keys[32];
+	xcb_query_keymap_reply_t *krep;
+	struct timespec settle = { 0, 5000000 };
+	int per, i;
+	bool ok = false;
+
+	krep = xcb_query_keymap_reply(wdisp->conn,
+				      xcb_query_keymap(wdisp->conn), NULL);
+	if (!krep)
+		return false;
+	memcpy(keys, krep->keys, sizeof(keys));
+	free(krep);
+
+	kc = spareKeycode(keys);
+	if (kc == 0) {
+		static bool warned;
+
+		if (!warned) {
+			wwarning(_("accent picker: no spare keycode for text injection"));
+			warned = true;
+		}
+		return false;
+	}
+
+	rep = xcb_get_keyboard_mapping_reply(wdisp->conn,
+			xcb_get_keyboard_mapping(wdisp->conn, kc, 1), NULL);
+	if (!rep)
+		return false;
+	per = rep->keysyms_per_keycode;
+	if (per > xcb_get_keyboard_mapping_keysyms_length(rep))
+		per = xcb_get_keyboard_mapping_keysyms_length(rep);
+	if (per <= 0) {
+		free(rep);
+		return false;
+	}
+	original = wmalloc((size_t)per * sizeof(xcb_keysym_t));
+	replacement = wmalloc((size_t)per * sizeof(xcb_keysym_t));
+	if (!original || !replacement) {
+		wfree(original);
+		wfree(replacement);
+		free(rep);
+		return false;
+	}
+	memcpy(original, xcb_get_keyboard_mapping_keysyms(rep),
+	       (size_t)per * sizeof(xcb_keysym_t));
+	free(rep);
+
+	for (i = 0; i < per; i++)
+		replacement[i] = (xcb_keysym_t)ks;
+
+	xcb_change_keyboard_mapping(wdisp->conn, 1, kc, (uint8_t)per, replacement);
+	xcb_flush(wdisp->conn);
+	syncServer();
+	nanosleep(&settle, NULL);
+
+	ok = fakeKey(kc, true) && fakeKey(kc, false);
+	xcb_flush(wdisp->conn);
+	{
+		/* let clients process the key event before the mapping is
+		 * restored, otherwise they resolve it against the old map */
+		struct timespec hold = { 0, 100000000 };
+
+		nanosleep(&hold, NULL);
+	}
+	syncServer();
+
+	xcb_change_keyboard_mapping(wdisp->conn, 1, kc, (uint8_t)per, original);
+	xcb_flush(wdisp->conn);
+	syncServer();
+
+	wfree(original);
+	wfree(replacement);
+	return ok;
+}
+
+bool wXkbTypeText(const char *utf8)
+{
+	const char *p;
+	size_t len;
+
+	if (!utf8 || !*utf8)
+		return false;
+	if (!wXkbTestAvailable())
+		return false;
+
+	len = strlen(utf8);
+	p = utf8;
+	while ((size_t)(p - utf8) < len) {
+		unsigned char c = (unsigned char)*p;
+		uint32_t cp;
+		int n;
+		xkb_keysym_t ks;
+
+		if (c < 0x80) {
+			cp = c;
+			n = 1;
+		} else if ((c & 0xe0) == 0xc0 && p + 1 < utf8 + len) {
+			cp = ((uint32_t)(c & 0x1f) << 6) |
+			     ((uint32_t)p[1] & 0x3f);
+			n = 2;
+		} else if ((c & 0xf0) == 0xe0 && p + 2 < utf8 + len) {
+			cp = ((uint32_t)(c & 0x0f) << 12) |
+			     (((uint32_t)p[1] & 0x3f) << 6) |
+			     ((uint32_t)p[2] & 0x3f);
+			n = 3;
+		} else if ((c & 0xf8) == 0xf0 && p + 3 < utf8 + len) {
+			cp = ((uint32_t)(c & 0x07) << 18) |
+			     (((uint32_t)p[1] & 0x3f) << 12) |
+			     (((uint32_t)p[2] & 0x3f) << 6) |
+			     ((uint32_t)p[3] & 0x3f);
+			n = 4;
+		} else {
+			return false;
+		}
+
+		ks = xkb_utf32_to_keysym(cp);
+		if (ks == XKB_KEY_NoSymbol)
+			return false;
+		if (!typeKeysym(ks) && !remapTypeKeysym(ks))
+			return false;
+		p += n;
+	}
+	return true;
+}
+
+static bool modifierDown(unsigned int mask)
+{
+	xcb_get_modifier_mapping_cookie_t ck;
+	xcb_get_modifier_mapping_reply_t *rep;
+	xcb_keycode_t *map;
+	char keys[32];
+	xcb_query_keymap_reply_t *krep;
+	int per, slot, i;
+	bool down = false;
+
+	if (mask == 0)
+		return false;
+	slot = 0;
+	while (slot < 8 && !(mask & (1u << slot)))
+		slot++;
+	if (slot >= 8)
+		return false;
+
+	krep = xcb_query_keymap_reply(wdisp->conn,
+				      xcb_query_keymap(wdisp->conn), NULL);
+	if (!krep)
+		return false;
+	memcpy(keys, krep->keys, sizeof(keys));
+	free(krep);
+
+	ck = xcb_get_modifier_mapping(wdisp->conn);
+	rep = xcb_get_modifier_mapping_reply(wdisp->conn, ck, NULL);
+	if (!rep)
+		return false;
+	per = rep->keycodes_per_modifier;
+	map = xcb_get_modifier_mapping_keycodes(rep);
+	for (i = 0; i < per; i++) {
+		xcb_keycode_t kc = map[slot * per + i];
+
+		if (kc != 0 && keyDown(keys, kc)) {
+			down = true;
+			break;
+		}
+	}
+	free(rep);
+	return down;
+}
+
+bool wXkbModifierDown(unsigned int mask)
+{
+	return modifierDown(mask);
+}
+
 #endif /* KEEP_XKB_LOCK_STATUS */
 
 /* ---[ lock-modifier grab fan-out ]-------------------------------------- */

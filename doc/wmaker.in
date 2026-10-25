@@ -32,6 +32,55 @@ clipboard history manager, use:
 ClipboardKey = "Mod4+v";
 ClipboardCommand = "wmakermsg send_tick wmclipd-popup";
 .EE
+.SH "ACCENT PICKER"
+When Window Maker is configured with
+.BR \-\-enable\-xkb\-multilingual ,
+an optional Accent Picker can insert accented and other special
+characters without changing the XKB layout. It is disabled by default so
+upgrades never take a key away from applications. To enable the held
+trigger, set in the WindowMaker defaults domain:
+.EX
+AccentPickerKey = "Menu";
+.EE
+Hold
+.BR Menu ,
+press a base key, tap the same base key again to cycle the variants,
+and release
+.B Menu
+to insert the selected variant. Space, the arrow keys, and
+.B j
+/
+.B k
+also cycle. Escape cancels without inserting anything.
+.PP
+For modifier mode, map an unused key to Hyper outside Window Maker:
+.EX
+setxkbmap \-option caps:hyper
+.EE
+then set:
+.EX
+AccentPickerModifier = Hyper;
+.EE
+Hold Hyper and press a base key. Space cycles the variants and releasing
+Hyper inserts the selection. Without a Space press the original base
+character is inserted, so the feature never swallows an ordinary key.
+.PP
+The active character sets are chosen with
+.BR AccentPickerSets ,
+a proplist array of set names. The
+.I auto
+token derives sets from the configured XKB layouts, the
+.I all
+token enables every built-in set, and IPA is only enabled explicitly or
+by
+.IR all .
+The default is:
+.EX
+AccentPickerSets = ("auto", "Currency");
+.EE
+Per-base overrides can be added in the
+.B AccentPickerVariants
+dictionary in the WindowMaker defaults domain.
 .SH "OPTIONS"
 .TP
 .BI \-\-clientid " id"

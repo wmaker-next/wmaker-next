@@ -58,6 +58,7 @@
 #include "event.h"
 #include "osdview.h"
 #include "wxkb.h"
+#include "accent_picker.h"
 #include "winmenu.h"
 #include "layout.h"
 #include "switchmenu.h"
@@ -913,6 +914,9 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 			wDockRaiseLower(scr->dock);
 		break;
 #ifdef KEEP_XKB_LOCK_STATUS
+	case WKBD_ACCENTPICKER:
+		wAccentPickerOpen(scr, wwin, event);
+		break;
 	case WKBD_TOGGLE:
 		if (w_global.config->modelock) {
 			/*toggle */

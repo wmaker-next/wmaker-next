@@ -67,6 +67,8 @@ POTFILES  = \
 	$(top_srcdir)/src/placecompute.c \
 	$(top_srcdir)/src/placement.c \
 	$(top_srcdir)/src/properties.c \
+	$(top_srcdir)/src/accent_data.c \
+	$(top_srcdir)/src/accent_picker.c \
 	$(top_srcdir)/src/randr.c \
 	$(top_srcdir)/src/resources.c \
 	$(top_srcdir)/src/rootmenu.c \

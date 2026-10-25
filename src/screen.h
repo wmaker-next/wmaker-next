@@ -419,6 +419,10 @@ typedef struct _WScreen {
     int helper_fd;
     pid_t helper_pid;
 
+#ifdef KEEP_XKB_LOCK_STATUS
+	struct W_AccentPicker *accentpicker; /* accent picker state */
+#endif
+
     int ipc_fd;                        /* listening AF_UNIX socket, -1 if disabled */
     char *ipc_path;                    /* bound path, unlinked at shutdown */
     WMHandlerID ipc_listen;            /* accept-ready input handler */

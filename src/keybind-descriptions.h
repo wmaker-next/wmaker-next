@@ -31,7 +31,8 @@
 
 #ifdef KEEP_XKB_LOCK_STATUS
 #define WCFG_KEYBIND_LOCK(_) \
-	_("ToggleKbdModeKey", N_("Session & Misc"), N_("Toggle keyboard language"))
+	_("ToggleKbdModeKey", N_("Session & Misc"), N_("Toggle keyboard language")) \
+	_("AccentPickerKey", N_("Session & Misc"), N_("Pick accented and special characters"))
 #else
 #define WCFG_KEYBIND_LOCK(_)
 #endif

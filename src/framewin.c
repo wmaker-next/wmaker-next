@@ -799,6 +799,16 @@ void wFrameWindowDestroy(WFrameWindow * fwin)
 	if (fwin->titlebar_icon_mask != XCB_NONE)
 		xcb_free_pixmap(wdisp->conn, fwin->titlebar_icon_mask);
 
+#ifdef XKB_BUTTON_HINT
+	for (i = 0; i < 2; i++) {
+		if (fwin->languagebutton_image[i]) {
+			if (!fwin->languagebutton_image[i]->shared)
+				wPixmapDestroy(fwin->languagebutton_image[i]);
+			fwin->languagebutton_image[i] = NULL;
+		}
+	}
+#endif
+
 	if (fwin->resizebar)
 		wCoreDestroy(fwin->resizebar);
 

@@ -60,6 +60,15 @@ const char *wXkbLayoutName(int idx);
 #ifdef KEEP_XKB_LOCK_STATUS
 void wXkbLockGroup(int group);
 int  wXkbGetGroup(void);
+
+/* ---[ accent-picker text injection ]------------------------------------- */
+
+bool wXkbTypeText(const char *utf8);
+bool wXkbTestAvailable(void);
+xcb_keycode_t wXkbMinKeycode(void);
+xcb_keycode_t wXkbMaxKeycode(void);
+bool wXkbKeycodeIsModifier(xcb_keycode_t kc);
+bool wXkbModifierDown(unsigned int mask);
 #endif
 
 /* ---[ lock-modifier grab fan-out ]--------------------------------------

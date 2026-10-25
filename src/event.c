@@ -47,6 +47,7 @@
 #include "stacking.h"
 #include "event.h"
 #include "wxkb.h"
+#include "accent_picker.h"
 #include "ipc.h"
 #include <WINGs/WINGsP.h>
 
@@ -376,9 +377,13 @@ void wRereadKeybindings(void)
 
 	for (j = 0; j < wdisp->screen_count; j++) {
 		WScreen *scr = wScreenWithNumber(j);
-		if (scr)
+		if (scr) {
 			wReadKeybindings(scr, w_global.domain.wmaker->dictionary,
 					 &changed);
+#ifdef KEEP_XKB_LOCK_STATUS
+			wAccentPickerLayoutChanged(scr);
+#endif
+		}
 	}
 }
 

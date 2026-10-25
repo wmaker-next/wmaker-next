@@ -259,6 +259,10 @@
 	WCFG_IF_XKB_LOCK( \
 	_(KBD_MODE_LOCK, "KbdModeLock", BOOL, modelock, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(ACCENT_PICKER_MODIFIER, "AccentPickerModifier", STRING, accent_picker_modifier, "None", \
+	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
+	_(ACCENT_PICKER_SETS, "AccentPickerSets", STRING_ARRAY, accent_picker_sets, \
+	  "(\"auto\", \"Currency\")", NULL, 1, 64, WCFG_RUNTIME_RELOAD, 0) \
 	) \
 	_(DIALOG_HISTORY_LINES, "DialogHistoryLines", INT, history_lines, "500", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
@@ -799,6 +803,7 @@
 	_(MARK_SWAP_KEY, "MarkSwapKey", "None", WKBD_MARK_SWAP) \
 	WCFG_IF_XKB_LOCK( \
 	_(TOGGLE_KBD_MODE_KEY, "ToggleKbdModeKey", "None", WKBD_TOGGLE) \
+	_(ACCENT_PICKER_KEY, "AccentPickerKey", "None", WKBD_ACCENTPICKER) \
 	)
 
 #endif

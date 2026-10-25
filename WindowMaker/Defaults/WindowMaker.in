@@ -177,6 +177,23 @@
 	ClipTitleFont = "Sans:bold:pixelsize=10";
 	ShowClipTitle = YES;
 	KbdModeLock = NO;
+	/*
+	 * Accent Picker is disabled by default so upgrades never take a key
+	 * away from applications. To enable the held trigger:
+	 *   AccentPickerKey = Menu;
+	 * Then hold Menu, press a letter, tap the letter again to cycle,
+	 * release Menu to commit. Escape cancels.
+	 *
+	 * Optional modifier mode: map CapsLock to Hyper with
+	 *   setxkbmap -option caps:hyper
+	 * then set AccentPickerModifier = Hyper and press Hyper+letter.
+	 * Space cycles and releasing Hyper commits.
+	 *
+	 * AccentPickerSets = ("auto", "Currency");
+	 * AccentPickerSets = ("auto", "Currency", "IPA");
+	 */
+	AccentPickerModifier = None;
+	AccentPickerSets = ("auto", "Currency");
 	LargeDisplayFont = "Sans:pixelsize=24";
 	HighlightColor = white;
 	HighlightTextColor = black;
@@ -373,6 +390,7 @@
 	MarkJumpKey = None;
 	MarkSwapKey = None;
 	ToggleKbdModeKey = None;
+	AccentPickerKey = None;
 	NormalCursor = (builtin, left_ptr);
 	ArrowCursor = (builtin, top_left_arrow);
 	MoveCursor = (builtin, fleur);

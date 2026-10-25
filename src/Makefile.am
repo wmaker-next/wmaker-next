@@ -199,6 +199,9 @@ wmaker_SOURCES = 	\
 if USE_DOCK_XDND
 wmaker_SOURCES += xdnd.c xdnduri.c
 endif
+if BUILD_ACCENTPICKER
+wmaker_SOURCES += accent_picker.c accent_picker.h accent_data.c accent_data.h
+endif
 if USE_MWM_HINTS
 wmaker_SOURCES += motif.h motif.c
 endif
@@ -229,6 +232,8 @@ AM_CPPFLAGS = $(DFLAGS) @XRES_CFLAGS@ \
 	@XSMP_CFLAGS@ \
 	@HEADER_SEARCH_PATH@
 
+
+$(wmaker_OBJECTS): $(top_builddir)/config.h $(top_builddir)/config-paths.h
 
 wmaker_LDADD = \
 	libwconfigschema.la \
