@@ -12,7 +12,7 @@
 #include <WINGs/WUtil.h>
 
 #include "keybind.h"
-#include "config-schema-def.h"
+#include "config_schema_def.h"
 
 typedef struct _WScreen WScreen;
 

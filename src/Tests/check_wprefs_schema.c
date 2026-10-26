@@ -1,7 +1,7 @@
 /*
  * check_wprefs_schema - assert WPrefs enum-choice tables and the
  * WindowMaker config schema agree on every enum-typed key WPrefs
- * exposes. Adding a value to config-schema-def.h without adding it to
+ * exposes. Adding a value to config_schema_def.h without adding it to
  * WPrefs.app/enumchoices.h (or vice versa) fails make check, every
  * schema enum key must be either offered by WPrefs or explicitly
  * listed as having no UI, and keys whose UI stores a popup or radio
@@ -14,7 +14,7 @@
 #include <string.h>
 #include <strings.h>
 
-#include "config-schema.h"
+#include "config_schema.h"
 
 /* enumchoices.h carries N_()-wrapped UI labels we discard here */
 #ifndef N_
@@ -125,7 +125,7 @@ static const size_t wprefs_choice_count =
 /* Schema values WPrefs deliberately does not offer. Adding here needs
  * a reason, removing the underlying cause should remove the row. */
 static const struct choice wprefs_hidden[] = {
-	/* config-values.h marks WIS_RANDOM "secret" */
+	/* config_values.h marks WIS_RANDOM "secret" */
 	{ "IconificationStyle", "random" },
 };
 
@@ -226,7 +226,7 @@ static void test_wprefs_values_in_schema(void)
 }
 
 /* Every non-alias schema value for a WPrefs-controlled key must be
- * offered by WPrefs, so a value added to config-schema-def.h without a
+ * offered by WPrefs, so a value added to config_schema_def.h without a
  * matching enumchoices.h row fails here. */
 static void test_schema_values_in_wprefs(void)
 {

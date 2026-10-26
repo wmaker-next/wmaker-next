@@ -55,7 +55,7 @@ void WSetOSDViewTransparent(WOSDView *view, bool transparent);
 void WSetOSDViewAlpha(WOSDView *view, double alpha);
 
 /* Move 'view' onto the head under the pointer at one of the WD_*
- * anchor positions from config-values.h, 'pad' pixels from the
+ * anchor positions from config_values.h, 'pad' pixels from the
  * anchored edge(s). WD_NONE is treated as WD_CENTER, callers gate
  * visibility on WD_NONE themselves. */
 void wPlaceOSDOnHead(struct _WScreen *scr, WOSDView *view, int wd_pos, int pad);

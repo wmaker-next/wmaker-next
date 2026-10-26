@@ -23,16 +23,16 @@
 #include <math.h>
 
 #include "layout.h"
-#include "config-values.h"
+#include "config_values.h"
 
 _Static_assert((int)WLAYOUT_FLOAT == (int)WVL_FLOAT
 	       && (int)WLAYOUT_TILE == (int)WVL_TILE
 	       && (int)WLAYOUT_TILE_H == (int)WVL_TILE_H
 	       && (int)WLAYOUT_GRID == (int)WVL_GRID
 	       && (int)WLAYOUT_MONOCLE == (int)WVL_MONOCLE,
-	       "config-values.h WVL_* must match WLayout ordering");
+	       "config_values.h WVL_* must match WLayout ordering");
 
-/* Indexed by WLayout, matches the WConfig enum table in config-schema.c and
+/* Indexed by WLayout, matches the WConfig enum table in config_schema.c and
  * the WMState per-workspace Layout key. */
 static const char *layout_names[WLAYOUT_COUNT] = {
 	"float", "tile", "tileh", "grid", "monocle"

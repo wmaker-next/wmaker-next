@@ -67,9 +67,9 @@
 #include "cursor_find.h"
 #include "wsound.h"
 
-#include "config-schema.h"
-#include "config-schema-def.h"
-#include "keybind-descriptions.h"
+#include "config_schema.h"
+#include "config_schema_def.h"
+#include "keybind_descriptions.h"
 #include "dialog.h"
 
 static void hideLayoutOSD(void *data)
@@ -1095,7 +1095,7 @@ const char *wKeybindActionName(int index)
 
 /* Grouping and description for every schema key-binding row, from the
  * table shared with WPrefs so the two cannot drift. See
- * keybind-descriptions.h. */
+ * keybind_descriptions.h. */
 static const struct {
 	const char *key;
 	const char *category;

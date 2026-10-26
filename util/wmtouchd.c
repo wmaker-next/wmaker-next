@@ -50,7 +50,7 @@
 #include <WINGs/WUtil.h>
 #include <WINGs/WIPC.h>
 
-#include "wmtouch-core.h"
+#include "wmtouch_core.h"
 
 #define PROG "wmtouchd"
 #define RECONNECT_BACKOFF_MS 500

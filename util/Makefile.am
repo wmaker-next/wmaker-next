@@ -27,7 +27,7 @@ wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 bin_PROGRAMS += wmclipd
 wmclipd_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@
-wmclipd_SOURCES = wmclipd.c clip-common.c clip-common.h xcconn.c xcconn.h
+wmclipd_SOURCES = wmclipd.c clip_common.c clip_common.h xcconn.c xcconn.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
@@ -61,20 +61,20 @@ endif
 
 if BUILD_WTOUCH
 bin_PROGRAMS += wmtouchd
-wmtouchd_SOURCES = wmtouchd.c wmtouch-core.c wmtouch-core.h
+wmtouchd_SOURCES = wmtouchd.c wmtouch_core.c wmtouch_core.h
 wmtouchd_CFLAGS = @WTOUCH_CFLAGS@
 wmtouchd_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@WTOUCH_LIBS@ $(liblist)
 endif
-EXTRA_DIST += wmtouch-core.c wmtouch-core.h
+EXTRA_DIST += wmtouch_core.c wmtouch_core.h
 
 wxcopy_CFLAGS = @XCB_CORE_CFLAGS@
 wxcopy_SOURCES = wxcopy.c xcconn.c xcconn.h
 wxcopy_LDADD = @XCB_CORE_LIBS@
 
 wxpaste_CFLAGS = @XCB_CORE_CFLAGS@
-wxpaste_SOURCES = wxpaste.c clip-common.c clip-common.h xcconn.c xcconn.h
+wxpaste_SOURCES = wxpaste.c clip_common.c clip_common.h xcconn.c xcconn.h
 wxpaste_LDADD = @XCB_CORE_LIBS@
 
 getstyle_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
@@ -144,7 +144,7 @@ wmiv_LDADD = \
 	@CAIRO_LIBS@ @PTHREAD_LIBS@ @LIBEXIF@ \
 	@LIBARCHIVE_LIBS@ @LIBM@
 
-wmiv_SOURCES = wmiv.c wmiv_icon.h clip-common.c clip-common.h xcconn.c xcconn.h
+wmiv_SOURCES = wmiv.c wmiv_icon.h clip_common.c clip_common.h xcconn.c xcconn.h
 
 CLEANFILES = wmaker.inst
 

@@ -759,7 +759,7 @@ dnl Virtual desktop (viewport panning over a desktop larger than the screen)
 dnl ======================================================
 dnl VIRTUAL_DESKTOP symbol, default-on so the code is compiled in by
 dnl default and `make check` exercises it. The feature remains opt-in at
-dnl runtime via EnableVirtualDesktop (default "NO" in config-schema-def.h);
+dnl runtime via EnableVirtualDesktop (default "NO" in config_schema_def.h);
 dnl --disable-virtual-desktop is the escape hatch for a smaller binary or
 dnl stricter attack-surface removal.
 m4_divert_push([INIT_PREPARE])dnl

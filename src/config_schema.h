@@ -9,7 +9,7 @@
 #include <limits.h>
 
 #include "wconfigmodel.h"
-#include "config-schema-public.h"
+#include "config_schema_public.h"
 
 typedef enum {
 	WCFG_BOOL,

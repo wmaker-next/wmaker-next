@@ -18,7 +18,7 @@
 #include <xkbcommon/xkbcommon-x11.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#include "clip-common.h"
+#include "clip_common.h"
 #include "xcconn.h"
 #include <WINGs/WXCore.h>
 

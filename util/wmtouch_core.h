@@ -1,5 +1,5 @@
 /*
- *  wmtouch-core - touchpad gesture recognition and WMTouch domain parsing
+ *  wmtouch_core - touchpad gesture recognition and WMTouch domain parsing
  *
  *  Copyright (c) 2026 Window Maker Team
  *

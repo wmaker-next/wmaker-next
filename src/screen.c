@@ -42,7 +42,7 @@
 #include "def_pixmaps.h"
 #include "screen.h"
 #include "accent_picker.h"
-#include "config-schema.h"
+#include "config_schema.h"
 #include "texture.h"
 #include "xsettings.h"
 #include "pixmap.h"

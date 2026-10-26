@@ -21,7 +21,7 @@ POTFILES  = \
 	$(top_srcdir)/src/client.c \
 	$(top_srcdir)/src/cmdexpand.c \
 	$(top_srcdir)/src/colormap.c \
-	$(top_srcdir)/src/config-schema.c \
+	$(top_srcdir)/src/config_schema.c \
 	$(top_srcdir)/src/cursor.c \
 	$(top_srcdir)/src/cursor_find.c \
 	$(top_srcdir)/src/cursor_hide.c \
@@ -49,7 +49,7 @@ POTFILES  = \
 	$(top_srcdir)/src/hotcorner.c \
 	$(top_srcdir)/src/icon.c \
 	$(top_srcdir)/src/ipc.c \
-	$(top_srcdir)/src/keybind-descriptions.h \
+	$(top_srcdir)/src/keybind_descriptions.h \
 	$(top_srcdir)/src/keybind.c \
 	$(top_srcdir)/src/keytree.c \
 	$(top_srcdir)/src/layout.c \

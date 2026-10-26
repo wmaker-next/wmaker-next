@@ -32,7 +32,7 @@ POTFILES  = \
 	$(top_srcdir)/WPrefs.app/enumchoices.h \
 	$(top_srcdir)/WPrefs.app/main.c \
 	$(top_srcdir)/WPrefs.app/xmodifier.c \
-	$(top_srcdir)/src/keybind-descriptions.h
+	$(top_srcdir)/src/keybind_descriptions.h
 
 # not_yet_fully_implemented
 #	$(top_srcdir)/WPrefs.app/KeyboardSettings.c \

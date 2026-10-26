@@ -4,7 +4,7 @@
  *  Copyright (c) 2026 Window Maker Team
  *
  *  Covers the deterministic state machine and the WMTouch domain parser
- *  with no libinput and no device. Links ../wmtouch-core.c + libWUtil.
+ *  with no libinput and no device. Links ../wmtouch_core.c + libWUtil.
  */
 
 #include <stdio.h>
@@ -12,7 +12,7 @@
 
 #include <WINGs/WUtil.h>
 
-#include "wmtouch-core.h"
+#include "wmtouch_core.h"
 #include "check_common.h"
 
 /* first action of a gesture chain, or NULL when the gesture is inert */
@@ -425,5 +425,5 @@ int main(void)
 	test_domain();
 	test_domain_chains();
 	test_replay_parser();
-	return check_report("wmtouch-core");
+	return check_report("wmtouch_core");
 }

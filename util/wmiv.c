@@ -70,7 +70,7 @@
 #define FILE_SEPARATOR '/'
 
 /* CHUNK size for INCR (bytes). Tune if desired. */
-#include "clip-common.h"
+#include "clip_common.h"
 #include "xcconn.h"
 
 #define CLIPBOARD_PASTE_TIMEOUT_MS 5000

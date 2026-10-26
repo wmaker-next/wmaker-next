@@ -51,7 +51,7 @@
 #include "event.h"
 #include "resources.h"
 #include "defaults.h"
-#include "config-schema.h"
+#include "config_schema.h"
 #include "wconfigmodel.h"
 #include "keybind.h"
 #include "wxkb.h"

@@ -4,7 +4,7 @@
  * table, default value and integer bounds, looked up by proplist key
  * name, so callers do not need WConfigEntry, WConfigKey or wconfigmodel.h.
  *
- * The full internal API lives in config-schema.h.
+ * The full internal API lives in config_schema.h.
  */
 
 #ifndef WMCONFIG_SCHEMA_PUBLIC_H_

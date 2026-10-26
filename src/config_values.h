@@ -20,7 +20,7 @@
 
 /*
  * Integer values that an enum-typed key in the WindowMaker defaults
- * domain can resolve to, lifted out of WindowMaker.h so config-schema.c
+ * domain can resolve to, lifted out of WindowMaker.h so config_schema.c
  * and WPrefs can name them without pulling in the rest of that header.
  * A few non-configurable internal indices (ACTION_*, WS_*, CLIP_*) are
  * kept here too because they sat in the same contiguous block and have

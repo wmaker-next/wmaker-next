@@ -9,7 +9,7 @@
 
 #include "WindowMaker.h"
 #include "dockgeom.h"
-#include "config-schema.h"
+#include "config_schema.h"
 
 #define FIELD(name) offsetof(WConfig, name), sizeof(((WConfig *)0)->name)
 #define NUM2STRING_(x) #x

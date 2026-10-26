@@ -28,7 +28,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
-#include "clip-common.h"
+#include "clip_common.h"
 #include "xcconn.h"
 
 #define MAXDATA		(4*1024*1024)

@@ -15,7 +15,7 @@
 #include "screen.h"
 #include "window.h"
 #include "dockgeom.h"
-#include "config-schema.h"
+#include "config_schema.h"
 #include "wconfigmodel.h"
 
 #include "check_common.h"

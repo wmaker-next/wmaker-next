@@ -1,5 +1,5 @@
 /*
- *  clip-common.c - shared X selection / INCR transfer helpers
+ *  clip_common.c - shared X selection / INCR transfer helpers
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -23,7 +23,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "clip-common.h"
+#include "clip_common.h"
 
 long long clip_monotonic_ms(void)
 {

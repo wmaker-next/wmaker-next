@@ -20,7 +20,7 @@
 
 #include "WPrefs.h"
 #include "enumchoices.h"
-#include "config-values.h"
+#include "config_values.h"
 
 typedef struct _Panel {
 	WMBox *box;

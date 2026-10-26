@@ -12,7 +12,7 @@ DRIVE_TESTS += wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipb
 
 AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_srcdir)/util -I$(top_srcdir)/test @HEADER_SEARCH_PATH@
 
-wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip-common.c ../xcconn.c
+wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip_common.c ../xcconn.c
 wmclipd_cliptest_CFLAGS = @XCB_CFLAGS@
 wmclipd_cliptest_LDADD = @XCB_LIBS@
 
@@ -22,7 +22,7 @@ check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 check_wmakermsg_SOURCES = check_wmakermsg.c
 check_wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
-check_wtouch_SOURCES = check_wtouch.c ../wmtouch-core.c ../wmtouch-core.h
+check_wtouch_SOURCES = check_wtouch.c ../wmtouch_core.c ../wmtouch_core.h
 check_wtouch_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 EXTRA_DIST = wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \

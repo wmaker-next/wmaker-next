@@ -55,7 +55,7 @@ WPrefs_SOURCES = \
 
 WPrefs_TRANSLATABLE_FILES = \
 	enumchoices.h \
-	keybind-descriptions.h
+	keybind_descriptions.h
 
 # not_yet_fully_implemented
 #WPrefs_SOURCES += \

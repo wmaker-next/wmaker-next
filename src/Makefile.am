@@ -7,22 +7,22 @@ SUBDIRS = . Tests
 
 EXTRA_DIST =
 
-# config-schema.c compiles to a self-contained object (sole external
+# config_schema.c compiles to a self-contained object (sole external
 # reference is strcasecmp), so build it once as a noinst archive that
 # wmaker, WPrefs.app and src/Tests/check_config all link against.
 noinst_LTLIBRARIES = libwconfigschema.la
 libwconfigschema_la_SOURCES = \
-	config-schema.c \
-	config-schema.h \
-	config-schema-def.h \
-	config-schema-public.h \
-	config-values.h \
-	keybind-descriptions.h
+	config_schema.c \
+	config_schema.h \
+	config_schema_def.h \
+	config_schema_public.h \
+	config_values.h \
+	keybind_descriptions.h
 
-# keybind-descriptions.h holds localized strings; opt it in to the
+# keybind_descriptions.h holds localized strings; opt it in to the
 # translation-source consistency check (see po/check-local).
 wmaker_TRANSLATABLE_FILES = \
-	keybind-descriptions.h
+	keybind_descriptions.h
 
 wmaker_SOURCES = 	\
 	GNUstep.h \

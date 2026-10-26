@@ -39,8 +39,8 @@
 
 /* Shared WindowMaker defaults schema, enum-string tables and the
  * matching value constants (WKF_*, SPEED_*, WB_*, ...). */
-#include "config-schema-public.h"
-#include "config-values.h"
+#include "config_schema_public.h"
+#include "config_values.h"
 
 /*
  * The macro 'wlengthof' should be used as much as possible, this macro

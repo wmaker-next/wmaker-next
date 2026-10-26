@@ -33,7 +33,7 @@
 #include "WindowMaker.h"
 #include "screen.h"
 #include "xinerama.h"
-#include "config-values.h"
+#include "config_values.h"
 #include "osdview.h"
 
 #define OSDVIEW_PAD_W 8

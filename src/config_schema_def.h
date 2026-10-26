@@ -3,7 +3,7 @@
  *
  * Each entry describes one configuration key. The list is expanded at
  * three sites: the WConfigKey enum and the WConfig struct (wconfigmodel.h),
- * and the config_schema[] table (config-schema.c). Adding a plain scalar
+ * and the config_schema[] table (config_schema.c). Adding a plain scalar
  * key now means adding one row here.
  *
  * WCFG_SCHEMA(_) columns:

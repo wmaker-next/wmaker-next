@@ -116,7 +116,7 @@ typedef struct WObjDescriptor {
  * read from the TitlebarLeft/TitlebarRight defaults at startup and
  * stored in WScreen.titlebar_layout. These types live here, not in
  * framewin.h, because screen.h embeds WTitlebarLayout and
- * config-schema-def.h is reached via wconfigmodel.h before any frame
+ * config_schema_def.h is reached via wconfigmodel.h before any frame
  * header.
  */
 typedef enum {
@@ -165,7 +165,7 @@ typedef enum {
 	WCUR_LAST
 } w_cursor;
 
-#include "config-values.h"
+#include "config_values.h"
 
 /* program states */
 typedef enum {

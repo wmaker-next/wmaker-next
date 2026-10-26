@@ -1,5 +1,5 @@
 /*
- *  wmtouch-core - touchpad gesture recognition and WMTouch domain parsing
+ *  wmtouch_core - touchpad gesture recognition and WMTouch domain parsing
  *
  *  Copyright (c) 2026 Window Maker Team
  *
@@ -23,7 +23,7 @@
 #include <string.h>
 #include <strings.h>
 
-#include "wmtouch-core.h"
+#include "wmtouch_core.h"
 
 #define THRESHOLD_MIN 1
 #define THRESHOLD_MAX 10000

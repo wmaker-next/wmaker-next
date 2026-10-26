@@ -19,7 +19,7 @@
  */
 
 #include "WPrefs.h"
-#include "keybind-descriptions.h"
+#include "keybind_descriptions.h"
 #include <ctype.h>
 
 #include <xkbcommon/xkbcommon.h>
@@ -61,7 +61,7 @@ typedef struct _Panel {
 /*
  * List of user definable shortcut keys, from the table shared with the
  * window manager so the two cannot drift. See
- * ../src/keybind-descriptions.h. The list is sorted by title below.
+ * ../src/keybind_descriptions.h. The list is sorted by title below.
  */
 static struct keyOption {
 	const char *key;

@@ -1,5 +1,5 @@
 /*
- *  clip-common.h - shared X selection / INCR transfer helpers
+ *  clip_common.h - shared X selection / INCR transfer helpers
  *
  *  Copyright (c) 2026 Window Maker Team
  *

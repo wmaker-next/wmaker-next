@@ -49,7 +49,7 @@
 #include <wraster.h>
 
 #include "config.h"
-#include "clip-common.h"
+#include "clip_common.h"
 #include "xcconn.h"
 
 #define IPC_RECONNECT_MS   1000

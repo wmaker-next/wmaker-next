@@ -42,7 +42,7 @@
 #include "workspace.h"
 #include "defaults.h"
 #include "desktopfile.h"
-#include "config-schema-public.h"
+#include "config_schema_public.h"
 #include "wdefaults.h"
 #include "icon.h"
 #include "misc.h"

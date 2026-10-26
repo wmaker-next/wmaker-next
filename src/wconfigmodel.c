@@ -23,7 +23,7 @@
 #ifdef VIRTUAL_DESKTOP
 #include "vdesk.h"
 #endif
-#include "config-schema.h"
+#include "config_schema.h"
 #include "wconfigmodel.h"
 #include "hotcorner.h"
 #include "cursor_find.h"
