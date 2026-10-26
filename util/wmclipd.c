@@ -3651,6 +3651,19 @@ int main(int argc, char **argv)
 	clip_incr_send_cancel(xc, &incr);
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
+	if (popup_wscr) {
+		if (popup_bold_font) {
+			WMReleaseFont(popup_bold_font);
+			popup_bold_font = NULL;
+		}
+		if (popup_norm_font) {
+			WMReleaseFont(popup_norm_font);
+			popup_norm_font = NULL;
+		}
+		WMShutdownScreen(popup_wscr);
+		popup_wscr = NULL;
+		WMShutdownFonts();
+	}
 	if (xc)
 		xcb_disconnect(xc);
 	return 0;

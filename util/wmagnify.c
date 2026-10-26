@@ -306,7 +306,9 @@ static void closeWindow(WMWidget * w, void *d)
 
 	windowCount--;
 	if (windowCount == 0) {
+		WMShutdownScreen(scr);
 		WMReleaseApplication();
+		WMShutdownFonts();
 		exit(0);
 	} else {
 		WMDeleteTimerHandler(data->tid);

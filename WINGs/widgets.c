@@ -743,6 +743,7 @@ WMScreen *WMCreateScreenWithRContext(xcb_connection_t * display, int screen, RCo
 {
 	W_Screen *scrPtr;
 	static int initialized = 0;
+	static int fcInitialized;
 	int i;
 	int exists[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 	xcb_list_properties_cookie_t pck;
@@ -784,10 +785,12 @@ WMScreen *WMCreateScreenWithRContext(xcb_connection_t * display, int screen, RCo
 
 	scrPtr->rootWin = wXRootWindow(display, screen);
 
-	/* WMCreateFont() calls FcNameParse() before anything else has
-	 * initialised fontconfig (XftFontOpenName used to do it as a
-	 * side effect), so do it once here and silence the warning */
-	FcInit();
+	/* FcPatternGetString() warns unless FcInit() was called. Do it once,
+	 * WMShutdownFonts() balances a single reference. */
+	if (!fcInitialized) {
+		FcInit();
+		fcInitialized = 1;
+	}
 
 	scrPtr->fontCache = WMCreateHashTable(WMStringPointerHashCallbacks);
 	scrPtr->drawableSize = WMCreateHashTable(WMIntHashCallbacks);
@@ -1009,6 +1012,28 @@ void WMSetWidgetDefaultBoldFont(WMScreen * scr, WMFont * font)
 {
 	WMReleaseFont(scr->boldFont);
 	scr->boldFont = WMRetainFont(font);
+}
+
+/* Widgets borrow normalFont/boldFont without retaining, so destroy the
+ * windows before releasing them. boldFont may alias normalFont. */
+void WMShutdownScreen(WMScreen *scr)
+{
+	WMFont *normal, *bold;
+
+	if (!scr)
+		return;
+
+	while (scr->windowList)
+		WMDestroyWidget((WMWidget *) scr->windowList);
+
+	normal = scr->normalFont;
+	bold = scr->boldFont;
+	scr->normalFont = NULL;
+	scr->boldFont = NULL;
+	if (normal)
+		WMReleaseFont(normal);
+	if (bold && bold != normal)
+		WMReleaseFont(bold);
 }
 
 void WMHangData(WMWidget * widget, void *data)

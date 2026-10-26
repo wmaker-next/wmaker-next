@@ -633,6 +633,16 @@ util_env() {
         "$@"
 }
 
+# exec so $! is the tool, not a wrapper subshell.
+util_env_exec() {
+    exec env DISPLAY="$DPY" \
+        LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:symbolize=1" \
+        UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0" \
+        LSAN_OPTIONS="suppressions=$ROOT/test/lsan-suppressions.txt:print_suppressions=0" \
+        "$@"
+}
+
 run_util() {
     local name=$1; shift
     note "  $name $*"
@@ -640,6 +650,24 @@ run_util() {
     local rc=$?
     [ "$rc" -eq 0 ] || printf '  -> exit %d\n' "$rc" | tee -a "$LOG"
     return "$rc"
+}
+
+# Start a long-running util, then SIGTERM it so LSan sees the
+# steady-state heap.
+run_daemon() {
+    local name=$1 settle=$2; shift 2
+    note "  $name $*"
+    util_env_exec "$ROOT/util/.libs/$name" "$@" >>"$LOG" 2>&1 &
+    local dpid=$!
+    echo "$dpid" >> "$PIDFILE"
+    sleep "$settle"
+    kill -TERM "$dpid" 2>/dev/null
+    if wait_for 40 pid_gone "$dpid"; then
+        return 0
+    fi
+    kill -9 "$dpid" 2>/dev/null
+    printf '  -> %s did not exit on SIGTERM\n' "$name" | tee -a "$LOG"
+    return 1
 }
 
 # all of these run with WMAKER_USER_ROOT pointing at the isolated copy
@@ -667,6 +695,12 @@ if [ -x "$ROOT/util/.libs/wmtouchd" ]; then
     printf '{ ThreeFingerRight = "NextWorkspace"; }\n' >"$WMHOME/asan-wmtouch"
     run_util wmtouchd --source-events "$WMHOME/asan-gestures" \
         --config "$WMHOME/asan-wmtouch"
+fi
+if [ -x "$ROOT/util/.libs/wmclipd" ]; then
+    run_daemon wmclipd 1 --clipboard --debug
+fi
+if [ -x "$ROOT/util/.libs/wmsoundd" ]; then
+    run_daemon wmsoundd 2 -d "$DPY" --debug
 fi
 
 # --- resource realisation failures (resource_retry_default call sites) ------
@@ -699,6 +733,9 @@ note "GUI tools"
 run_gui "$ROOT/util/.libs/wmagnify" "Magnify"
 xdo mousemove 400 300; sleep 0.3; xdo mousemove 500 400; sleep 0.3
 close_gui wmagnify
+
+run_gui "$ROOT/util/.libs/wmglyph" "wmglyph"
+close_gui wmglyph
 
 run_gui "$ROOT/util/.libs/wmiv" "wmiv" "$ROOT/wrlib/Tests/test.png"
 [ -n "$GUI_WIN" ] && xdo key --window "$GUI_WIN" Right Left plus minus 2>/dev/null

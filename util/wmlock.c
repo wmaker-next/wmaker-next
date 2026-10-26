@@ -852,6 +852,12 @@ static void cleanup(void)
 		wXSync(xc);
 	}
 	wXSync(xc);
+
+	if (wscr) {
+		WMShutdownScreen(wscr);
+		wscr = NULL;
+		WMShutdownFonts();
+	}
 }
 
 static void usage(int status) __attribute__((noreturn));

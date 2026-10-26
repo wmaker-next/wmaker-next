@@ -549,3 +549,15 @@ void WMFlushFontCache(WMScreen *scr)
 	if (!scr->boldFont)
 		scr->boldFont = scr->normalFont;
 }
+
+/* Exit-only. Pango's font map holds an FcConfig reference past
+ * pango_fc_font_map_shutdown(), so release it before FcFini(). */
+void WMShutdownFonts(void)
+{
+	PangoFontMap *fontmap = pango_cairo_font_map_get_default();
+
+	if (fontmap)
+		pango_fc_font_map_shutdown(PANGO_FC_FONT_MAP(fontmap));
+	FcConfigDestroy(FcConfigGetCurrent());
+	FcFini();
+}

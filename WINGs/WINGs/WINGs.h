@@ -655,6 +655,9 @@ WMScreen* WMCreateScreen(xcb_connection_t *display, int screen);
 
 WMScreen* WMCreateSimpleApplicationScreen(xcb_connection_t *display, int screen);
 
+/* Exit-only, destroys the screen's windows and default fonts. */
+void WMShutdownScreen(WMScreen *scr);
+
 void WMScreenMainLoop(WMScreen *scr);
 
 void WMBreakModalLoop(WMScreen *scr);
@@ -873,6 +876,9 @@ char* WMGetFontName(WMFont *font);
 unsigned int WMFontHeight(WMFont *font);
 
 void WMGetScaleBaseFromSystemFont(WMScreen *scrPtr, int *alphabetWidth, int *fontHeight);
+
+/* Exit-only, releases Pango and fontconfig caches after all screens. */
+void WMShutdownFonts(void);
 
 void WMSetWidgetDefaultFont(WMScreen *scr, WMFont *font);
 

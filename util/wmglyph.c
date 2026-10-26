@@ -551,8 +551,16 @@ static noreturn void quit(WMWidget *self, void *data)
 	GlyphApp *app = data;
 
 	(void)self;
-	if (app && app->visibleIdx)
-		free(app->visibleIdx);
+	if (app) {
+		if (app->font)
+			WMReleaseFont(app->font);
+		if (app->smallFont)
+			WMReleaseFont(app->smallFont);
+		WMShutdownScreen(app->scr);
+		WMShutdownFonts();
+		if (app->visibleIdx)
+			free(app->visibleIdx);
+	}
 	exit(0);
 }
 

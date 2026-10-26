@@ -10,3 +10,5 @@ leak:libfontconfig.so
 leak:libpangoxft-1.0.so
 leak:libglib-2.0.so
 leak:libgobject-2.0.so
+# PipeWire keeps module bookkeeping past pw_deinit().
+leak:libpipewire-0.3.so
