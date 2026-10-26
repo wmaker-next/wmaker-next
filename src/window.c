@@ -1409,6 +1409,10 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 				window_level = WMSunkenLevel;
 				break;
 			}
+			if (wstate->stacking_level == 2)
+				WRESTOREHINTFLAG(wwin, floating, 1);
+			else if (wstate->stacking_level == 3)
+				WRESTOREHINTFLAG(wwin, sunken, 1);
 		}
 		if (wwin->flags.maximized) {
 			wwin->old_geometry.x = wstate->x;
