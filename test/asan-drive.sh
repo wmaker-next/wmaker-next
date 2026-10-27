@@ -23,12 +23,14 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/test/drive-common.sh"
 DPY=${ASAN_DRIVE_DISPLAY:-:$(drive_default_display)}
 LOG=/tmp/wmaker-asan.log
+SUBLOG=/tmp/wmaker-asan-subscriber.log
 PIDFILE=/tmp/asan-drive.pids
 # freshly built ASan-instrumented libWINGs/libWUtil/libwraster, not the
 # installed copies in /lib, applied only to the wmaker process below
 WMLIBS="$ROOT/WINGs/.libs:$ROOT/wrlib/.libs"
 : > "$PIDFILE"
 : > "$LOG"
+: > "$SUBLOG"
 
 # isolate everything we run from the real config root so the driver never
 # touches the user's defaults, dock state, session or cached pixmaps
@@ -221,6 +223,34 @@ wm_ready() {
 wait_for 120 wm_ready
 note "wmaker pid=$WMAKER_PID, root props:"
 DISPLAY=$DPY xprop -root _NET_SUPPORTING_WM_CHECK _NET_NUMBER_OF_DESKTOPS _NET_DESKTOP_NAMES 2>&1 | tee -a "$LOG"
+
+# --- long-lived IPC event subscriber ----------------------------------------
+# Hold one streaming client open across every manage/unmanage, workspace,
+# child-exit and dialog event the rest of this drive produces, then stop it
+# with SIGTERM before wmaker's own clean exit. This LSan-gates the
+# per-client queue/drain buffers, which the query-only wmakermsg callers
+# never keep alive long enough to grow.
+note "IPC event subscriber"
+IPC_SOCKET=$(LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" --get-socketpath)
+case "$IPC_SOCKET" in
+/*) ;;
+*) warn "wmakermsg --get-socketpath returned '$IPC_SOCKET'"; IPC_SOCKET= ;;
+esac
+IPC_SUB_PID=
+if [ -n "$IPC_SOCKET" ]; then
+    LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:symbolize=1:fast_unwind_on_malloc=0" \
+    UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0" \
+    LSAN_OPTIONS="suppressions=$ROOT/test/lsan-suppressions.txt:print_suppressions=0" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" -s "$IPC_SOCKET" \
+        -m window workspace shutdown child_exit dialog tick >>"$SUBLOG" 2>&1 &
+    IPC_SUB_PID=$!
+    echo "$IPC_SUB_PID" >> "$PIDFILE"
+    sleep 0.3
+    kill -0 "$IPC_SUB_PID" 2>/dev/null \
+        || warn "IPC event subscriber exited before the drive started"
+fi
 
 # --- map more clients while wmaker is running (MapRequest path) -------------
 note "map clients post-startup"
@@ -755,6 +785,18 @@ if [ -n "$GUI_WIN" ]; then
 fi
 close_gui WPrefs
 
+# --- stop the IPC event subscriber ------------------------------------------
+# SIGTERM while wmaker is still up so the subscriber's own teardown path and
+# LSan run, then its log joins the sanitizer gate below.
+if [ -n "${IPC_SUB_PID:-}" ]; then
+    note "stop IPC event subscriber (SIGTERM)"
+    kill -TERM "$IPC_SUB_PID" 2>/dev/null
+    if ! wait_for 40 pid_gone "$IPC_SUB_PID"; then
+        kill -9 "$IPC_SUB_PID" 2>/dev/null
+        warn "IPC event subscriber did not exit on SIGTERM"
+    fi
+fi
+
 # --- clean exit so LSan runs ------------------------------------------------
 note "request clean exit"
 # SIGTERM goes through handleExitSig -> Shutdown(WSExitMode) -> Exit(),
@@ -770,6 +812,11 @@ kill -0 "$WMAKER_PID" 2>/dev/null && { note "wmaker still up, SIGKILL"; kill -9 
 if grep -qE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$LOG"; then
     printf '\n=== sanitizer reports in %s ===\n' "$LOG"
     grep -nE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$LOG"
+    FAIL=1
+fi
+if grep -qE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$SUBLOG"; then
+    printf '\n=== sanitizer reports in %s ===\n' "$SUBLOG"
+    grep -nE 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:' "$SUBLOG"
     FAIL=1
 fi
 

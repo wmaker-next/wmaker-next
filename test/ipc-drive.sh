@@ -211,6 +211,27 @@ note "start wmaker (readiness via get_version poll)"
 start_wmaker || fatal "wmaker did not answer get_version within 8s"
 record_pass "IPC readiness poll succeeds"
 
+# ---- socket layout and permissions ---------------------------------------
+# one managed screen owns one listener, and the socket directory and node
+# must stay private even though the /tmp fallback name is predictable
+note "socket layout"
+SOCKDIR=${SOCKET%/*}
+sock_count=0
+for sock in "$SOCKDIR"/ipc.*; do
+	[ -S "$sock" ] && sock_count=$((sock_count + 1))
+done
+check "one IPC socket for one managed screen" [ "$sock_count" -eq 1 ]
+dir_mode=$(LC_ALL=C ls -ld "$SOCKDIR" 2>/dev/null | awk '{print $1}')
+case "$dir_mode" in
+drwx------) record_pass "IPC socket directory is 0700" ;;
+*) record_fail "IPC socket directory mode is '$dir_mode', expected drwx------" ;;
+esac
+sock_mode=$(LC_ALL=C ls -l "$SOCKET" 2>/dev/null | awk '{print $1}')
+case "$sock_mode" in
+srw-------) record_pass "IPC socket is 0600" ;;
+*) record_fail "IPC socket mode is '$sock_mode', expected srw-------" ;;
+esac
+
 # ---- Xft.dpi from RESOURCE_MANAGER --------------------------------------
 
 log_has_dpi() {
@@ -751,6 +772,14 @@ fi
 stop_monitor
 msg -q exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID"
+
+note "socket teardown"
+check "IPC socket unlinked on clean exit" [ ! -e "$SOCKET" ]
+no_ipc_listener() {
+	! LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+		"$WMAKERMSG" -s "$SOCKET" -q get_version >/dev/null 2>&1
+}
+check "no IPC listener accepts after clean exit" no_ipc_listener
 
 # ----------------------------------------------------------------------
 
