@@ -790,10 +790,14 @@ static void handleLeaveNotify(xcb_generic_event_t *ev)
 	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
 
-	if (e->mode == XCB_NOTIFY_MODE_NORMAL &&
-	    wHotCornerForWindow(scr, e->event)) {
-		wHotCornersLeave(scr);
-		return;
+	if (e->mode == XCB_NOTIFY_MODE_NORMAL) {
+		int corner = wHotCornerForWindow(scr, e->event);
+
+		if (corner) {
+			if (!wHotCornerContainsPoint(scr, corner, e->root_x, e->root_y))
+				wHotCornersLeave(scr);
+			return;
+		}
 	}
 
 	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t) e->event);

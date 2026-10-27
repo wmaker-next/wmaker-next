@@ -1204,6 +1204,8 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		update_usable_area = true;
 #ifdef VIRTUAL_DESKTOP
 	if (wConfigChangesHas(changes, WCFG_KEY_ENABLE_VIRTUAL_DESKTOP) ||
+	    wConfigChangesHas(changes, WCFG_KEY_HOT_CORNERS) ||
+	    wConfigChangesHas(changes, WCFG_KEY_HOT_CORNER_EDGE) ||
 	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_BORDERSIZE) ||
 	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_RESISTANCE) ||
 	    wConfigChangesHas(changes, WCFG_KEY_VIRTUALEDGE_ATTRACTION)) {

@@ -65,7 +65,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
   HotCorners = YES;
   HotCornerDelay = 100;
   HotCornerEdge = 10;
-  HotCornerActions = ("touch $MARK/tl", "touch $MARK/tr",
+  HotCornerActions = ("touch $MARK/tl", "ShowDesktop",
                       "NextWorkspace", "touch $MARK/br");
   RootMenuKey = "Control+Shift+R";
 }
@@ -175,6 +175,105 @@ xdo mousemove 1 $((H-2))
 wait_for 30 ws_changed "$WS0" \
     || fail "bottom-left corner did not switch workspace"
 note "ok: bottom-left corner switched workspace"
+
+# --- 5b. a second built-in action: ShowDesktop ------------------------------
+showing_desktop() {
+    DISPLAY=$DPY xprop -root _NET_SHOWING_DESKTOP 2>/dev/null | sed -n 's/.*= //p'
+}
+sd_changed() { [ -n "$(showing_desktop)" ] && [ "$(showing_desktop)" != "$1" ]; }
+note "top-right corner toggles showing-desktop"
+SD0=$(showing_desktop)
+[ -n "$SD0" ] || fail "could not read _NET_SHOWING_DESKTOP"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+xdo mousemove $((W-2)) 1
+wait_for 30 sd_changed "$SD0" \
+    || fail "top-right corner did not toggle showing-desktop"
+SD1=$(showing_desktop)
+note "ok: top-right corner toggled showing-desktop"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+xdo mousemove $((W-2)) 1
+wait_for 30 sd_changed "$SD1" \
+    || fail "top-right corner did not toggle showing-desktop back"
+note "ok: top-right corner toggled showing-desktop back"
+
+# --- 5c. virtual desktop edge strips must not cover the corners -------------
+cat >"$WMHOME/Defaults/WindowMaker" <<EOF
+{
+  HotCorners = YES;
+  HotCornerDelay = 100;
+  HotCornerEdge = 10;
+  HotCornerActions = ("touch $MARK/tl", "ShowDesktop",
+                      "NextWorkspace", "touch $MARK/br");
+  EnableVirtualDesktop = YES;
+  VirtualEdgeBorderSize = 2;
+  RootMenuKey = "Control+Shift+R";
+}
+EOF
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" -q reconfigure >>"$LOG" 2>&1 \
+    || fail "reconfigure for virtual desktop failed"
+edge_ready() {
+    DISPLAY=$DPY xwininfo -root -tree 2>/dev/null | grep -Eq "([0-9]{3,}x2|2x[0-9]{3,})"
+}
+pointer_is() {
+    eval "$(DISPLAY=$DPY xdotool getmouselocation --shell)"
+    [ "$X" = "$1" ] && [ "$Y" = "$2" ]
+}
+if wait_for 20 edge_ready; then
+    note "corner guard keeps edge scroll off the approach"
+    rm -f "$MARK/tl"
+    xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+    xdo mousemove 12 1
+    sleep 0.8
+    pointer_is 12 1 || fail "edge scroll grabbed the pointer inside the corner guard"
+    [ ! -f "$MARK/tl" ] || fail "hot corner fired inside the guard outside its edge"
+    note "ok: pointer stayed in the corner guard"
+    hit_corner 1 1 tl "top-left corner over virtual desktop edge strip"
+else
+    note "skipping: virtual desktop edge windows not built"
+fi
+
+# --- 5d. a mapped action must not retrigger while the pointer stays put ----
+cat >"$WMHOME/Defaults/WindowMaker" <<EOF
+{
+  HotCorners = YES;
+  HotCornerDelay = 100;
+  HotCornerEdge = 10;
+  HotCornerActions = ("xterm -class HotCornerRepeat -e sleep 60",
+                      "None", "None", "None");
+  EnableVirtualDesktop = YES;
+  VirtualEdgeBorderSize = 2;
+  RootMenuKey = "Control+Shift+R";
+}
+EOF
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    DISPLAY=$DPY "$ROOT/util/.libs/wmakermsg" -q reconfigure >>"$LOG" 2>&1 \
+    || fail "reconfigure for the repeat test failed"
+hotcorner_repeat_count() {
+    local n=0
+    local w
+    for w in $(DISPLAY=$DPY xdotool search --class HotCornerRepeat 2>/dev/null); do
+        DISPLAY=$DPY xprop -id "$w" WM_STATE 2>/dev/null | grep -q Normal && n=$((n + 1))
+    done
+    echo "$n"
+}
+repeat_started() { [ "$(hotcorner_repeat_count)" -ge 1 ]; }
+repeat_two() { [ "$(hotcorner_repeat_count)" -ge 2 ]; }
+note "hot corner mapped action fires once per corner entry"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.1
+xdo mousemove 1 1
+wait_for 30 repeat_started || fail "top-left repeat action did not fire"
+sleep 2
+[ "$(hotcorner_repeat_count)" = "1" ] \
+    || fail "top-left repeat action fired again without leaving the corner"
+note "ok: only one action while the pointer stayed in the corner"
+xdo mousemove $((W/2)) $((H/2)); sleep 0.2
+xdo mousemove 1 1
+wait_for 30 repeat_two || fail "top-left repeat action did not fire on re-entry"
+note "ok: a second action fired after leaving and re-entering"
+for w in $(DISPLAY=$DPY xdotool search --class HotCornerRepeat 2>/dev/null); do
+    DISPLAY=$DPY wmctrl -i -c "$w" 2>/dev/null
+done
 
 # --- 6. a None corner is inert ----------------------------------------------
 # Rewire the bottom-left corner from NextWorkspace to None: hitting it

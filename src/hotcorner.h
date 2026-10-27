@@ -21,6 +21,8 @@
 #ifndef WMHOTCORNER_H
 #define WMHOTCORNER_H
 
+#include <stdbool.h>
+
 #include "screen.h"
 
 #define CORNER_NONE        0
@@ -32,6 +34,8 @@
 void wHotCornersUpdate(WScreen *scr);
 void wHotCornersRaise(WScreen *scr);
 int  wHotCornerForWindow(WScreen *scr, xcb_window_t w);
+int  wHotCornerEdgeForRect(WMRect r);
+bool wHotCornerContainsPoint(WScreen *scr, int corner, int x, int y);
 void wHotCornersEnter(WScreen *scr, int corner);
 void wHotCornersLeave(WScreen *scr);
 

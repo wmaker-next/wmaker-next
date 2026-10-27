@@ -60,6 +60,19 @@ static void destroy_windows(WScreen *scr)
 	scr->hot_corner_win_count = 0;
 }
 
+int wHotCornerEdgeForRect(WMRect r)
+{
+	int edge = w_global.config->hot_corner_edge;
+	int limit = WMIN((int)r.size.width, (int)r.size.height) / 2;
+
+	if (edge < 1)
+		edge = 1;
+	if (limit < 1)
+		limit = 1;
+
+	return WMIN(edge, limit);
+}
+
 /*
  * (Re)create, place, map or tear down the per-head InputOnly corner
  * windows according to the current HotCorners / HotCornerEdge settings
@@ -68,7 +81,7 @@ static void destroy_windows(WScreen *scr)
  */
 void wHotCornersUpdate(WScreen *scr)
 {
-	int heads, want, edge, h, i;
+	int heads, want, h, i;
 
 	if (!scr)
 		return;
@@ -78,10 +91,6 @@ void wHotCornersUpdate(WScreen *scr)
 		destroy_windows(scr);
 		return;
 	}
-
-	edge = w_global.config->hot_corner_edge;
-	if (edge < 1)
-		edge = 1;
 
 	heads = wXineramaHeads(scr);
 	want = heads * 4;
@@ -106,12 +115,7 @@ void wHotCornersUpdate(WScreen *scr)
 	for (h = 0; h < heads; h++) {
 		WMRect r = wGetRectForHead(scr, h);
 		int x[4], y[4];
-		/* keep opposite corners from overlapping and dimensions sane,
-		 * HotCornerEdge has no schema upper bound */
-		int e = WMIN(edge, WMIN((int)r.size.width, (int)r.size.height) / 2);
-
-		if (e < 1)
-			e = 1;
+		int e = wHotCornerEdgeForRect(r);
 
 		x[0] = r.pos.x;                     y[0] = r.pos.y;
 		x[1] = r.pos.x + r.size.width  - e; y[1] = r.pos.y;
@@ -154,8 +158,47 @@ int wHotCornerForWindow(WScreen *scr, xcb_window_t w)
 	return CORNER_NONE;
 }
 
+bool wHotCornerContainsPoint(WScreen *scr, int corner, int x, int y)
+{
+	int heads = wXineramaHeads(scr);
+	int h;
+
+	for (h = 0; h < heads; h++) {
+		WMRect r = wGetRectForHead(scr, h);
+		int e = wHotCornerEdgeForRect(r);
+		int cx, cy;
+
+		switch (corner) {
+		case CORNER_TOPLEFT:
+			cx = r.pos.x;
+			cy = r.pos.y;
+			break;
+		case CORNER_TOPRIGHT:
+			cx = r.pos.x + r.size.width - e;
+			cy = r.pos.y;
+			break;
+		case CORNER_BOTTOMLEFT:
+			cx = r.pos.x;
+			cy = r.pos.y + r.size.height - e;
+			break;
+		case CORNER_BOTTOMRIGHT:
+			cx = r.pos.x + r.size.width - e;
+			cy = r.pos.y + r.size.height - e;
+			break;
+		default:
+			return false;
+		}
+
+		if (x >= cx && x < cx + e && y >= cy && y < cy + e)
+			return true;
+	}
+	return false;
+}
+
 void wHotCornersEnter(WScreen *scr, int corner)
 {
+	if (scr->flags.in_hot_corner == corner && !scr->hot_corner_timer)
+		return;
 	scr->flags.in_hot_corner = corner;
 	if (!scr->hot_corner_timer)
 		scr->hot_corner_timer =

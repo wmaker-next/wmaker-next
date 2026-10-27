@@ -38,6 +38,7 @@
 #include "wmspec.h"
 #include "vdesk.h"
 #include "layout.h"
+#include "hotcorner.h"
 
 typedef struct _delay_configure {
 	xcb_window_t *wins;
@@ -587,6 +588,7 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 #define TOP_EDGE    0x04
 #define BOTTOM_EDGE 0x08
 #define ALL_EDGES   0x0F
+#define VEDGE_CORNER_APPROACH 24
 
 WMHashTable *wVEdgeTable = NULL;
 
@@ -654,44 +656,52 @@ static void createEdges(WScreen *scr)
 
 	for (head = 0; head < wXineramaHeads(scr); ++head) {
 		WMRect rect = wGetRectForHead(scr, head);
+		int width = (int)rect.size.width;
+		int height = (int)rect.size.height;
+		int guard = 0;
 
-		if (hasEdges[head] & TOP_EDGE) {
+		if (w_global.config->hot_corners) {
+			guard = wHotCornerEdgeForRect(rect) + VEDGE_CORNER_APPROACH;
+			guard = WMIN(guard, WMIN(width, height) / 2);
+		}
+
+		if ((hasEdges[head] & TOP_EDGE) && width > 2 * guard) {
 			edges[nr_edges] = xcb_generate_id(wdisp->conn);
 			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
-					  scr->root_win, rect.pos.x, rect.pos.y,
-					  rect.size.width, thickness, 0,
+					  scr->root_win, rect.pos.x + guard, rect.pos.y,
+					  width - 2 * guard, thickness, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
 			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_u);
 			++nr_edges;
 		}
-		if (hasEdges[head] & BOTTOM_EDGE) {
+		if ((hasEdges[head] & BOTTOM_EDGE) && width > 2 * guard) {
 			edges[nr_edges] = xcb_generate_id(wdisp->conn);
 			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
-					  scr->root_win, rect.pos.x,
+					  scr->root_win, rect.pos.x + guard,
 					  rect.pos.y + rect.size.height - thickness,
-					  rect.size.width, thickness, 0,
+					  width - 2 * guard, thickness, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
 			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_d);
 			++nr_edges;
 		}
-		if (hasEdges[head] & LEFT_EDGE) {
+		if ((hasEdges[head] & LEFT_EDGE) && height > 2 * guard) {
 			edges[nr_edges] = xcb_generate_id(wdisp->conn);
 			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
-					  scr->root_win, rect.pos.x, rect.pos.y,
-					  thickness, rect.size.height, 0,
+					  scr->root_win, rect.pos.x, rect.pos.y + guard,
+					  thickness, height - 2 * guard, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
 			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_l);
 			++nr_edges;
 		}
-		if (hasEdges[head] & RIGHT_EDGE) {
+		if ((hasEdges[head] & RIGHT_EDGE) && height > 2 * guard) {
 			edges[nr_edges] = xcb_generate_id(wdisp->conn);
 			xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, edges[nr_edges],
 					  scr->root_win,
-					  rect.pos.x + rect.size.width - thickness, rect.pos.y,
-					  thickness, rect.size.height, 0,
+					  rect.pos.x + rect.size.width - thickness, rect.pos.y + guard,
+					  thickness, height - 2 * guard, 0,
 					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
 					  vmask, (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_VISIBILITY_CHANGE });
 			WMHashInsert(wVEdgeTable, (void *)(uintptr_t) edges[nr_edges], vdHandleEnter_r);
@@ -752,6 +762,7 @@ void wWorkspaceRaiseEdge(WScreen *scr)
 			xcb_configure_window(wdisp->conn, scr->virtual_edges[i], XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
 	}
 	toggle ^= 1;
+	wHotCornersRaise(scr);
 }
 
 void wWorkspaceLowerEdge(WScreen *scr)
