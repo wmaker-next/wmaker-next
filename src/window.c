@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 #include <math.h>
 #include <ctype.h>
 #include <unistd.h>
@@ -3115,38 +3116,52 @@ void wWindowConstrainSize(WWindow *wwin, unsigned int *nwidth, unsigned int *nhe
 		width = wwin->screen_ptr->scr_width - 2 * w_global.config->icon_size;
 	}
 
-	/* aspect ratio code borrowed from olwm */
+	/* aspect ratio code borrowed from olwm. The client controls the
+	 * hint numbers, so evaluate the products in 64-bit and clamp the
+	 * quotients before narrowing back to int. */
 	if (minAX > 0) {
+		int64_t v;
+
 		/* adjust max aspect ratio */
-		if (!(maxAX == 1 && maxAY == 1) && width * maxAY > height * maxAX) {
+		if (!(maxAX == 1 && maxAY == 1) &&
+		    (int64_t)width * maxAY > (int64_t)height * maxAX) {
 			if (maxAX > maxAY) {
-				height = (width * maxAY) / maxAX;
+				v = ((int64_t)width * maxAY) / maxAX;
+				height = v > INT_MAX ? INT_MAX : (int)v;
 				if (height > maxH) {
 					height = maxH;
-					width = (height * maxAX) / maxAY;
+					v = ((int64_t)height * maxAX) / maxAY;
+					width = v > INT_MAX ? INT_MAX : (int)v;
 				}
 			} else {
-				width = (height * maxAX) / maxAY;
+				v = ((int64_t)height * maxAX) / maxAY;
+				width = v > INT_MAX ? INT_MAX : (int)v;
 				if (width > maxW) {
 					width = maxW;
-					height = (width * maxAY) / maxAX;
+					v = ((int64_t)width * maxAY) / maxAX;
+					height = v > INT_MAX ? INT_MAX : (int)v;
 				}
 			}
 		}
 
 		/* adjust min aspect ratio */
-		if (!(minAX == 1 && minAY == 1) && width * minAY < height * minAX) {
+		if (!(minAX == 1 && minAY == 1) &&
+		    (int64_t)width * minAY < (int64_t)height * minAX) {
 			if (minAX > minAY) {
-				height = (width * minAY) / minAX;
+				v = ((int64_t)width * minAY) / minAX;
+				height = v > INT_MAX ? INT_MAX : (int)v;
 				if (height < minH) {
 					height = minH;
-					width = (height * minAX) / minAY;
+					v = ((int64_t)height * minAX) / minAY;
+					width = v > INT_MAX ? INT_MAX : (int)v;
 				}
 			} else {
-				width = (height * minAX) / minAY;
+				v = ((int64_t)height * minAX) / minAY;
+				width = v > INT_MAX ? INT_MAX : (int)v;
 				if (width < minW) {
 					width = minW;
-					height = (width * minAY) / minAX;
+					v = ((int64_t)width * minAY) / minAX;
+					height = v > INT_MAX ? INT_MAX : (int)v;
 				}
 			}
 		}

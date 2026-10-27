@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
+#include <limits.h>
 
 #include "WindowMaker.h"
 #include "framewin.h"
@@ -2078,29 +2080,29 @@ static void shared_edge_dim_range(WWindow *wwin, int horizontal, int other,
 
 	if (horizontal) {
 		if (maxax > 0 && !(maxax == 1 && maxay == 1)) {
-			int m = other * maxax / maxay;
+			int64_t m = (int64_t)other * maxax / maxay;
 
 			if (m < maxv)
-				maxv = m;
+				maxv = m < INT_MIN ? INT_MIN : (int)m;
 		}
 		if (minax > 0 && !(minax == 1 && minay == 1)) {
-			int m = (other * minax + minay - 1) / minay;
+			int64_t m = ((int64_t)other * minax + minay - 1) / minay;
 
 			if (m > minv)
-				minv = m;
+				minv = m > INT_MAX ? INT_MAX : (int)m;
 		}
 	} else {
 		if (maxax > 0 && !(maxax == 1 && maxay == 1)) {
-			int m = (other * maxay + maxax - 1) / maxax;
+			int64_t m = ((int64_t)other * maxay + maxax - 1) / maxax;
 
 			if (m > minv)
-				minv = m;
+				minv = m > INT_MAX ? INT_MAX : (int)m;
 		}
 		if (minax > 0 && !(minax == 1 && minay == 1)) {
-			int m = other * minay / minax;
+			int64_t m = (int64_t)other * minay / minax;
 
 			if (m < maxv)
-				maxv = m;
+				maxv = m < INT_MIN ? INT_MIN : (int)m;
 		}
 	}
 
@@ -2115,7 +2117,7 @@ static int shared_edge_snap_dim(WWindow *wwin, int horizontal, int dim,
 				int lo, int hi)
 {
 	int base = 1, inc = 1;
-	int k, rem, floorv, ceilv;
+	int64_t k, rem, floorv, ceilv;
 
 	if (wwin->normal_hints) {
 		base = horizontal ? wwin->normal_hints->base_width
@@ -2131,8 +2133,8 @@ static int shared_edge_snap_dim(WWindow *wwin, int horizontal, int dim,
 	if (base < 1)
 		base = 1;
 
-	k = (dim - base) / inc;
-	rem = (dim - base) % inc;
+	k = ((int64_t)dim - base) / inc;
+	rem = ((int64_t)dim - base) % inc;
 	if (rem < 0) {
 		k--;
 		rem += inc;
@@ -2142,11 +2144,11 @@ static int shared_edge_snap_dim(WWindow *wwin, int horizontal, int dim,
 
 	if (floorv >= lo && floorv <= hi) {
 		if (ceilv >= lo && ceilv <= hi && ceilv - dim < dim - floorv)
-			return ceilv;
-		return floorv;
+			return (int)ceilv;
+		return (int)floorv;
 	}
 	if (ceilv >= lo && ceilv <= hi)
-		return ceilv;
+		return (int)ceilv;
 
 	return dim;
 }
