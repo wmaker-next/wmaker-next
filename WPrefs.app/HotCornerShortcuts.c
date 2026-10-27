@@ -48,7 +48,8 @@ typedef struct _Panel {
 	WMLabel *icornerL;
 
 	WMFrame *hcactionsF;
-	WMTextField *hcactionsT[4];
+	WMPopUpButton *hcactionsP[4];
+	char *hcactions[4];
 
 	char hotcornerDelaySelected;
 } _Panel;
@@ -57,6 +58,27 @@ typedef struct _Panel {
 
 #define DELAY_ICON "timer%i"
 #define DELAY_ICON_S "timer%is"
+
+struct _HotCornerAction {
+	const char *db;
+	const char *label;
+};
+
+static const struct _HotCornerAction hotCornerActions[] = {
+	{ "None", N_("None") },
+	{ "ShowDesktop", N_("Show Desktop") },
+	{ "ShowAll", N_("Show All Windows") },
+	{ "MiniaturizeAll", N_("Minimize All Windows") },
+	{ "NextWorkspace", N_("Next Workspace") },
+	{ "PrevWorkspace", N_("Previous Workspace") },
+	{ "LockScreen", N_("Lock Screen") }
+};
+
+#define HOTCORNER_ACTION_COUNT \
+	(sizeof(hotCornerActions) / sizeof(hotCornerActions[0]))
+#define HOTCORNER_ACTION_CUSTOM HOTCORNER_ACTION_COUNT
+
+#define HOTCORNER_CUSTOM_LABEL _("Custom action...")
 
 static void updateControlsSensitivity(_Panel *panel)
 {
@@ -71,8 +93,8 @@ static void updateControlsSensitivity(_Panel *panel)
 	for (i = 0; i < 5; i++)
 		WMSetButtonEnabled(panel->hcdelayB[i], enabled);
 	WMSetTextFieldEditable(panel->hcdelayT, enabled);
-	for (i = 0; i < (int)(sizeof(panel->hcactionsT) / sizeof(WMTextField *)); i++)
-		WMSetTextFieldEditable(panel->hcactionsT[i], enabled);
+	for (i = 0; i < (int)(sizeof(panel->hcactionsP) / sizeof(WMPopUpButton *)); i++)
+		WMSetPopUpButtonEnabled(panel->hcactionsP[i], enabled);
 
 	WMSetLabelTextColor(panel->hceL, color);
 	WMReleaseColor(color);
@@ -109,6 +131,108 @@ static void edgeCallback(WMWidget * w, void *data)
 		/* >4 */
 		snprintf(buffer, sizeof(buffer), _("%i pixels "), i);	/* note space! */
 	WMSetLabelText(panel->hceL, buffer);
+}
+
+static void resetCustomLabel(WMPopUpButton *popup)
+{
+	WMSetMenuItemTitle(WMGetPopUpButtonMenuItem(popup, (int)HOTCORNER_ACTION_CUSTOM),
+			   HOTCORNER_CUSTOM_LABEL);
+}
+
+static bool isBuiltinAction(const char *value)
+{
+	int i;
+
+	if (!value || value[0] == '\0')
+		return true;
+
+	for (i = 0; i < (int)HOTCORNER_ACTION_COUNT; i++) {
+		if (strcasecmp(value, hotCornerActions[i].db) == 0)
+			return true;
+	}
+	return false;
+}
+
+static void setCornerAction(_Panel *panel, int i, const char *value)
+{
+	WMPopUpButton *popup = panel->hcactionsP[i];
+	const char *stored = hotCornerActions[0].db;
+	char *copy;
+	int j, found = -1;
+
+	resetCustomLabel(popup);
+
+	if (value && value[0] != '\0' && strcasecmp(value, "None") != 0) {
+		for (j = 0; j < (int)HOTCORNER_ACTION_COUNT; j++) {
+			if (strcasecmp(value, hotCornerActions[j].db) == 0) {
+				found = j;
+				break;
+			}
+		}
+		if (found >= 0) {
+			WMSetPopUpButtonSelectedItem(popup, found);
+			stored = hotCornerActions[found].db;
+		} else {
+			WMSetMenuItemTitle(WMGetPopUpButtonMenuItem(popup, (int)HOTCORNER_ACTION_CUSTOM),
+					   value);
+			WMSetPopUpButtonSelectedItem(popup, (int)HOTCORNER_ACTION_CUSTOM);
+			stored = value;
+		}
+	} else {
+		WMSetPopUpButtonSelectedItem(popup, 0);
+	}
+
+	copy = wstrdup(stored);
+	if (panel->hcactions[i])
+		wfree(panel->hcactions[i]);
+	panel->hcactions[i] = copy;
+}
+
+static void cornerActionChanged(WMWidget *w, void *data)
+{
+	_Panel *panel = (_Panel *)data;
+	WMPopUpButton *popup = (WMPopUpButton *)w;
+	char *text;
+	int i, index;
+
+	for (i = 0; i < 4; i++) {
+		if (panel->hcactionsP[i] == popup)
+			break;
+	}
+	if (i == 4)
+		return;
+
+	index = WMGetPopUpButtonSelectedItem(popup);
+	if (index >= 0 && index < (int)HOTCORNER_ACTION_COUNT) {
+		if (panel->hcactions[i])
+			wfree(panel->hcactions[i]);
+		panel->hcactions[i] = wstrdup(hotCornerActions[index].db);
+		resetCustomLabel(popup);
+		return;
+	}
+
+	text = WMRunInputPanel(WMWidgetScreen(panel->parent), NULL,
+			       _("Hot Corner Action"),
+			       _("Enter a built-in action name or a shell command:"),
+			       isBuiltinAction(panel->hcactions[i]) ? "" : panel->hcactions[i],
+			       _("OK"), _("Cancel"));
+	if (text) {
+		setCornerAction(panel, i, text);
+		wfree(text);
+	} else {
+		setCornerAction(panel, i, panel->hcactions[i]);
+	}
+}
+
+static void fillActionPopup(_Panel *panel, WMPopUpButton *popup)
+{
+	int i;
+
+	for (i = 0; i < (int)HOTCORNER_ACTION_COUNT; i++)
+		WMAddPopUpButtonItem(popup, _(hotCornerActions[i].label));
+	WMAddPopUpButtonItem(popup, HOTCORNER_CUSTOM_LABEL);
+	WMSetPopUpButtonSelectedItem(popup, 0);
+	WMSetPopUpButtonAction(popup, cornerActionChanged, panel);
 }
 
 static void showData(_Panel * panel)
@@ -151,20 +275,17 @@ static void showData(_Panel * panel)
 	WMSetButtonSelected(panel->hcB, GetBoolForKey("HotCorners"));
 
 	array = GetObjectForKey("HotCornerActions");
-	if (array && (!WMIsPLArray(array) || WMGetPropListItemCount(array) != sizeof(panel->hcactionsT) / sizeof(WMTextField *))) {
+	if (array && (!WMIsPLArray(array) ||
+		      WMGetPropListItemCount(array) != sizeof(panel->hcactionsP) / sizeof(panel->hcactionsP[0]))) {
 		wwarning(_("invalid data in option HotCornerActions."));
-	} else {
-		/* an empty field stores "None", so a refresh must also
-		 * clear the fields whose value is None or missing */
-		for (i = 0; i < sizeof(panel->hcactionsT) / sizeof(WMTextField *); i++) {
-			const char *val = NULL;
+		array = NULL;
+	}
 
-			if (array)
-				val = WMGetFromPLString(WMGetFromPLArray(array, i));
+	for (i = 0; i < (int)(sizeof(panel->hcactionsP) / sizeof(panel->hcactionsP[0])); i++) {
+		WMPropList *item = array ? WMGetFromPLArray(array, i) : NULL;
+		const char *val = (item && WMIsPLString(item)) ? WMGetFromPLString(item) : NULL;
 
-			WMSetTextFieldText(panel->hcactionsT[i],
-					   (val && strcasecmp(val, "None") != 0) ? val : "");
-		}
+		setCornerAction(panel, i, val);
 	}
 
 	updateControlsSensitivity(panel);
@@ -190,15 +311,20 @@ static void storeData(_Panel * panel)
 	SetIntegerForKey(WMGetSliderValue(panel->hceS), "HotCornerEdge");
 
 	list = WMCreatePLArray(NULL, NULL);
-	for (i = 0; i < sizeof(panel->hcactionsT) / sizeof(WMTextField *); i++) {
+	for (i = 0; i < (int)(sizeof(panel->hcactionsP) / sizeof(panel->hcactionsP[0])); i++) {
 		const char *val;
+		int index = WMGetPopUpButtonSelectedItem(panel->hcactionsP[i]);
 
-		str = WMGetTextFieldText(panel->hcactionsT[i]);
-		val = (str && str[0] != '\0') ? str : "None";
+		if (index == (int)HOTCORNER_ACTION_CUSTOM)
+			val = (panel->hcactions[i] && panel->hcactions[i][0]) ? panel->hcactions[i] : "None";
+		else if (index >= 0 && index < (int)HOTCORNER_ACTION_COUNT)
+			val = hotCornerActions[index].db;
+		else
+			val = "None";
+
 		tmp = WMCreatePLString(val);
 		WMAddToPLArray(list, tmp);
 		WMReleasePropList(tmp);
-		wfree(str);
 	}
 	SetObjectForKey(list, "HotCornerActions");
 }
@@ -300,8 +426,9 @@ static void createPanel(Panel * p)
 	WMMoveWidget(panel->hcdescL, 15, 10);
 	WMSetLabelText(panel->hcdescL,
 		       _("Instructions:\n"
-			 " - assign a command to a corner\n"
-			 " - or leave it empty\n"));
+			 " - choose an action per corner\n"
+			 " - None disables a corner\n"
+			 " - custom accepts key names or commands\n"));
 
 	WMMapSubwidgets(panel->hcdescF);
 
@@ -375,9 +502,10 @@ static void createPanel(Panel * p)
 		WMReleasePixmap(nicon);
 	}
 
-	panel->hcactionsT[0] = WMCreateTextField(panel->hcactionsF);
-	WMResizeWidget(panel->hcactionsT[0], 180, 20);
-	WMMoveWidget(panel->hcactionsT[0], 45, 20);
+	panel->hcactionsP[0] = WMCreatePopUpButton(panel->hcactionsF);
+	WMResizeWidget(panel->hcactionsP[0], 180, 20);
+	WMMoveWidget(panel->hcactionsP[0], 45, 20);
+	fillActionPopup(panel, panel->hcactionsP[0]);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
 	WMResizeWidget(panel->icornerL, 20, 20);
@@ -396,9 +524,10 @@ static void createPanel(Panel * p)
 		WMReleasePixmap(nicon);
 	}
 
-	panel->hcactionsT[1] = WMCreateTextField(panel->hcactionsF);
-	WMResizeWidget(panel->hcactionsT[1], 180, 20);
-	WMMoveWidget(panel->hcactionsT[1], 45, 50);
+	panel->hcactionsP[1] = WMCreatePopUpButton(panel->hcactionsF);
+	WMResizeWidget(panel->hcactionsP[1], 180, 20);
+	WMMoveWidget(panel->hcactionsP[1], 45, 50);
+	fillActionPopup(panel, panel->hcactionsP[1]);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
 	WMResizeWidget(panel->icornerL, 20, 20);
@@ -416,9 +545,10 @@ static void createPanel(Panel * p)
 		WMSetLabelImage(panel->icornerL, nicon);
 		WMReleasePixmap(nicon);
 	}
-	panel->hcactionsT[2] = WMCreateTextField(panel->hcactionsF);
-	WMResizeWidget(panel->hcactionsT[2], 180, 20);
-	WMMoveWidget(panel->hcactionsT[2], 45, 80);
+	panel->hcactionsP[2] = WMCreatePopUpButton(panel->hcactionsF);
+	WMResizeWidget(panel->hcactionsP[2], 180, 20);
+	WMMoveWidget(panel->hcactionsP[2], 45, 80);
+	fillActionPopup(panel, panel->hcactionsP[2]);
 
 	panel->icornerL = WMCreateLabel(panel->hcactionsF);
 	WMResizeWidget(panel->icornerL, 20, 20);
@@ -437,9 +567,10 @@ static void createPanel(Panel * p)
 		WMReleasePixmap(nicon);
 	}
 
-	panel->hcactionsT[3] = WMCreateTextField(panel->hcactionsF);
-	WMResizeWidget(panel->hcactionsT[3], 180, 20);
-	WMMoveWidget(panel->hcactionsT[3], 45, 110);
+	panel->hcactionsP[3] = WMCreatePopUpButton(panel->hcactionsF);
+	WMResizeWidget(panel->hcactionsP[3], 180, 20);
+	WMMoveWidget(panel->hcactionsP[3], 45, 110);
+	fillActionPopup(panel, panel->hcactionsP[3]);
 
 	WMMapSubwidgets(panel->hcactionsF);
 
@@ -459,6 +590,11 @@ static void prepareForClose(_Panel *panel)
 	WMReleasePixmap(panel->icon);
 	for (i = 0; i < sizeof(panel->quarter) / sizeof(xcb_pixmap_t); i++)
 		wXFreePixmap(scr->display, panel->quarter[i]);
+	for (i = 0; i < (int)(sizeof(panel->hcactions) / sizeof(panel->hcactions[0])); i++) {
+		if (panel->hcactions[i])
+			wfree(panel->hcactions[i]);
+		panel->hcactions[i] = NULL;
+	}
 }
 
 Panel *InitHotCornerShortcuts(WMWidget *parent)

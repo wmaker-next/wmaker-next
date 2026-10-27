@@ -3,6 +3,16 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Hot corner action chooser
+-------------------------
+
+The Hot Corner Shortcut Preferences panel replaces the free-form command
+fields with per-corner action pop-ups listing the built-in actions for
+showing the desktop, showing all windows, minimizing all windows,
+switching workspaces and locking the screen. A final "Custom action..."
+entry accepts any key binding name or shell command, so existing
+configurations keep working unchanged.
+
 Auto-hide the cursor
 --------------------
 
