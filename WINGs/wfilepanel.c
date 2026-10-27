@@ -733,18 +733,36 @@ static void goFloppy(WMWidget *widget, void *p_panel)
 	WMFilePanel *panel = p_panel;
 	struct stat filestat;
 	WMScreen *scr = WMWidgetScreen(panel->win);
-	char buffer[512];
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) widget;
 
 	if (stat(WINGsConfiguration.floppyPath, &filestat)) {
-		snprintf(buffer, sizeof(buffer), _("An error occurred browsing '%s'."), WINGsConfiguration.floppyPath);
-		showError(scr, panel->win, buffer);
+		int len = snprintf(NULL, 0, _("An error occurred browsing '%s'."),
+				   WINGsConfiguration.floppyPath);
+
+		if (len >= 0) {
+			char *buffer = wmalloc((size_t)len + 1);
+
+			snprintf(buffer, (size_t)len + 1,
+				 _("An error occurred browsing '%s'."),
+				 WINGsConfiguration.floppyPath);
+			showError(scr, panel->win, buffer);
+			wfree(buffer);
+		}
 		return;
 	} else if (!S_ISDIR(filestat.st_mode)) {
-		snprintf(buffer, sizeof(buffer), _("'%s' is not a directory."), WINGsConfiguration.floppyPath);
-		showError(scr, panel->win, buffer);
+		int len = snprintf(NULL, 0, _("'%s' is not a directory."),
+				   WINGsConfiguration.floppyPath);
+
+		if (len >= 0) {
+			char *buffer = wmalloc((size_t)len + 1);
+
+			snprintf(buffer, (size_t)len + 1, _("'%s' is not a directory."),
+				 WINGsConfiguration.floppyPath);
+			showError(scr, panel->win, buffer);
+			wfree(buffer);
+		}
 		return;
 	}
 
