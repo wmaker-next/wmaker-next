@@ -880,6 +880,7 @@ static void test_defaults(void)
 	CHECK(config->mouse_button9 == WA_NONE);
 	CHECK(config->mouse_wheel_scroll == WA_NONE);
 	CHECK(config->mouse_wheel_tilt == WA_NONE);
+	CHECK(config->extra_mouse_buttons.count == 0);
 	CHECK(config->dont_confirm_kill == 0);
 	CHECK(config->window_balloon == 1);
 	CHECK(config->miniwin_title_balloon == 0);
@@ -1156,6 +1157,8 @@ static void test_valid_parse(void)
 			      "MouseForwardButtonAction = OpenApplicationsMenu; "
 			      "MouseWheelAction = SwitchWorkspaces; "
 			      "MouseWheelTiltAction = SwitchWindows; "
+			      "ExtraMouseButtons = (\"10 SelectWindows\", "
+			      "\"11 MoveToNextWorkspace\"); "
 			      "DontConfirmKill = YES; WindowTitleBalloons = NO; "
 			      "MiniwindowTitleBalloons = YES; "
 			      "MiniwindowPreviewBalloons = YES; "
@@ -1283,6 +1286,9 @@ static void test_valid_parse(void)
 	CHECK(config->mouse_button9 == WA_OPEN_APPMENU);
 	CHECK(config->mouse_wheel_scroll == WA_SWITCH_WORKSPACES);
 	CHECK(config->mouse_wheel_tilt == WA_SWITCH_WINDOWS);
+	CHECK(config->extra_mouse_buttons.count == 2);
+	CHECK(strcmp(config->extra_mouse_buttons.items[0], "10 SelectWindows") == 0);
+	CHECK(strcmp(config->extra_mouse_buttons.items[1], "11 MoveToNextWorkspace") == 0);
 	CHECK(config->dont_confirm_kill == 1);
 	CHECK(config->window_balloon == 0);
 	CHECK(config->miniwin_title_balloon == 1);

@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -64,6 +65,7 @@
 #include "wsmap.h"
 #include "hotcorner.h"
 #include "wsound.h"
+#include "config_schema_public.h"
 
 
 #define MOD_MASK wdisp->modifier_mask
@@ -473,6 +475,45 @@ static void executeWheelAction(WScreen *scr, int button, int action)
 	}
 }
 
+static int extraMouseButtonAction(int button)
+{
+	const WConfigStringArray *extra = &w_global.config->extra_mouse_buttons;
+	const WConfigEnum *actions = wConfigSchemaEnumTable("MouseLeftButtonAction");
+	size_t i;
+
+	if (!actions)
+		return WA_NONE;
+
+	for (i = 0; i < extra->count; i++) {
+		const WConfigEnum *e;
+		const char *item = extra->items[i];
+		char *end;
+		long n;
+
+		if (!item)
+			continue;
+
+		n = strtol(item, &end, 10);
+		if (end == item || n < 10 || n > 255 || n != button)
+			continue;
+
+		while (*end == ' ' || *end == '\t')
+			end++;
+		if (!*end)
+			continue;
+
+		for (e = actions; e->string; e++) {
+			if (!e->is_alias && strcasecmp(e->string, end) == 0)
+				return e->value;
+		}
+
+		wwarning(_("invalid action \"%s\" for button %ld in ExtraMouseButtons"), end, n);
+		return WA_NONE;
+	}
+
+	return WA_NONE;
+}
+
 static void executeButtonAction(WScreen *scr, xcb_generic_event_t *event, int action)
 {
 	WWindow *wwin;
@@ -564,6 +605,11 @@ static void handleButtonPress(xcb_generic_event_t *ev)
 			executeButtonAction(scr, ev, w_global.config->mouse_button8);
 		} else if (e->detail == Button9 && w_global.config->mouse_button9 != WA_NONE) {
 			executeButtonAction(scr, ev, w_global.config->mouse_button9);
+		} else if (e->detail > Button9) {
+			int action = extraMouseButtonAction(e->detail);
+
+			if (action != WA_NONE)
+				executeButtonAction(scr, ev, action);
 		} else if (e->detail == XCB_BUTTON_INDEX_4 && w_global.config->mouse_wheel_scroll != WA_NONE) {
 			executeWheelAction(scr, e->detail, w_global.config->mouse_wheel_scroll);
 		} else if (e->detail == XCB_BUTTON_INDEX_5 && w_global.config->mouse_wheel_scroll != WA_NONE) {

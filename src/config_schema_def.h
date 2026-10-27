@@ -179,6 +179,8 @@
 	_(MOUSE_FORWARD_BUTTON_ACTION, "MouseForwardButtonAction", ENUM, mouse_button9, \
 	  "None", mouse_button_actions, INT_MIN, INT_MAX, \
 	  WCFG_RUNTIME_RELOAD, 0) \
+	_(EXTRA_MOUSE_BUTTONS, "ExtraMouseButtons", STRING_ARRAY, extra_mouse_buttons, \
+	  "()", NULL, 0, 16, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_ACTION, "MouseWheelAction", ENUM, mouse_wheel_scroll, "None", \
 	  mouse_wheel_actions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(MOUSE_WHEEL_TILT_ACTION, "MouseWheelTiltAction", ENUM, mouse_wheel_tilt, "None", \

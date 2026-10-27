@@ -13,6 +13,15 @@ switching workspaces and locking the screen. A final "Custom action..."
 entry accepts any key binding name or shell command, so existing
 configurations keep working unchanged.
 
+Extra mouse button bindings
+---------------------------
+
+Buttons 10 and higher can be bound to root-window mouse actions through
+the new ExtraMouseButtons defaults array, for example
+`("10 SelectWindows", "11 MoveToNextWorkspace")`. There is no WPrefs UI.
+The key is intended for expert configuration. Buttons 1-9 keep their
+existing dedicated bindings.
+
 Auto-hide the cursor
 --------------------
 

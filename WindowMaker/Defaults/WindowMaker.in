@@ -26,6 +26,7 @@
 	MouseRightButtonAction = OpenApplicationsMenu;
 	MouseBackwardButtonAction = None;
 	MouseForwardButtonAction = None;
+	ExtraMouseButtons = ();
 	MouseWheelAction = None;
 	MouseWheelTiltAction = None;
 	MouseWheelFocus = NO;

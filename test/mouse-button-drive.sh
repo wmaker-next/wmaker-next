@@ -168,6 +168,26 @@ check "middle click goes back to desktop 1" desktop_is 1
 xdo click 2; sleep 0.3
 check "middle click goes back to desktop 0" desktop_is 0
 
+# --- 5. ExtraMouseButtons: Button10 via config ------------------------------
+note "configure ExtraMouseButtons for Button10"
+wdwrite WindowMaker ExtraMouseButtons '("10 MoveToNextWorkspace")'
+msg -q reconfigure || fail "reconfigure rejected"
+sleep 0.3
+
+xdo click 10; sleep 0.3
+check "Button10 advances to desktop 1" desktop_is 1
+xdo click 10; sleep 0.3
+check "Button10 advances to desktop 2" desktop_is 2
+
+wdwrite WindowMaker ExtraMouseButtons '("10 MoveToPrevWorkspace")'
+msg -q reconfigure || fail "reconfigure rejected"
+sleep 0.3
+
+xdo click 10; sleep 0.3
+check "Button10 goes back to desktop 1" desktop_is 1
+xdo click 10; sleep 0.3
+check "Button10 goes back to desktop 0" desktop_is 0
+
 # --- teardown ----------------------------------------------------------------
 note "mouse-button drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
