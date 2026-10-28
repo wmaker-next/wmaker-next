@@ -1121,6 +1121,8 @@ static void test_defaults_file_matches_schema(void)
 	WMReleasePropList(dict);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverlength-strings"
 static void test_valid_parse(void)
 {
 	WMPropList *dict;
@@ -1421,6 +1423,7 @@ static void test_valid_parse(void)
 	wConfigDestroy(config);
 	WMReleasePropList(dict);
 }
+#pragma GCC diagnostic pop
 
 static void test_static_apply(void)
 {

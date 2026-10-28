@@ -699,7 +699,6 @@ static void heif_expect(const char *what, RImage *img)
 static void test_heif(void)
 {
 	const char *p;
-	RImage *img;
 	/* a 24-byte ftyp box with MP4's primary brand "isom": ISO-BMFF
 	 * itself, but never a HEIF image (split so "ftyp" does not
 	 * extend the \x18 escape) */
@@ -710,6 +709,8 @@ static void test_heif(void)
 	CHECK(load_noctx(p) == NULL);
 
 #ifdef USE_HEIF
+	RImage *img;
+
 	/* the committed fixtures sniff as HEIF regardless of what codecs
 	 * the linked libheif can actually decode */
 	p = fixture_path("heif-test.avif");

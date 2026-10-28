@@ -1009,6 +1009,7 @@ static char *extract_archive(const char *filename)
 	Convert current RImage to specified format using RSaveRawImage
 	Returns 0 on success (buffer & size filled), -1 on failure
 */
+#if defined(USE_PNG) || defined(USE_JPEG)
 static int convert_image_to_format(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
 {
 	if (!image || !format || !out_buf || !out_size) {
@@ -1025,6 +1026,7 @@ static int convert_image_to_format(RImage *image, const char *format, unsigned c
 
 	return 0;
 }
+#endif
 
 /*
 	Free current clipboard data (both PNG and JPEG).
@@ -1393,6 +1395,9 @@ static int clipboard_candidate_targets(xcb_atom_t *targets)
 {
 	int count = 0;
 
+#if !defined(USE_PNG) && !defined(USE_JPEG)
+	(void)targets;
+#endif
 #ifdef USE_PNG
 	targets[count++] = png_atom;
 #endif

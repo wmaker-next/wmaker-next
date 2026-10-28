@@ -176,7 +176,7 @@ void *wretain(void *ptr)
 
 void wfree(void *ptr)
 {
-	if (ptr)
+	if (ptr) {
 #ifdef USE_BOEHM_GC
 		/* This should eventually be removed, once the criss-cross
 		 * of wmalloc()d memory being free()d, malloc()d memory being
@@ -192,6 +192,7 @@ void wfree(void *ptr)
 #else
 		free(ptr);
 #endif
+	}
 	ptr = NULL;
 }
 

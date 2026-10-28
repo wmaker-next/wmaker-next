@@ -42,12 +42,12 @@
 #include "wr_i18n.h"
 
 
+#ifdef USE_XSHM
+
 static void wrxcb_sync(xcb_connection_t *xc)
 {
 	free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
 }
-
-#ifdef USE_XSHM
 
 /*
  * Anonymous shared mapping for the AttachFd path. memfd_create on Linux

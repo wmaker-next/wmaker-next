@@ -40,6 +40,12 @@ int RSaveImage(RImage *image, const char *filename, const char *format)
 
 int RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, size_t *out_size)
 {
+#if !defined(USE_PNG) && !defined(USE_JPEG)
+	(void)image;
+	(void)format;
+	(void)out_buf;
+	(void)out_size;
+#endif
 #ifdef USE_PNG
 	if (strcasecmp(format, "PNG") == 0)
 		return RSaveRawPNG(image, NULL, out_buf, out_size);
@@ -59,6 +65,9 @@ int RSaveRawImage(RImage *image, const char *format, unsigned char **out_buf, si
 
 int RSaveTitledImage(RImage *image, const char *filename, const char *format, char *title)
 {
+#if !defined(USE_PNG) && !defined(USE_JPEG)
+	(void)title;
+#endif
 #ifdef USE_PNG
 	if (strcasecmp(format, "PNG") == 0)
 		return RSavePNG(image, filename, title);

@@ -66,11 +66,6 @@ typedef struct _WBalloon {
 	char ignoreTimer;
 } WBalloon;
 
-#define TOP	0
-#define BOTTOM	1
-#define LEFT	0
-#define RIGHT	2
-
 static int countLines(const char *text)
 {
 	const char *p = text;
@@ -167,6 +162,11 @@ static void freeContents(WScreen *scr)
 
 #ifdef SHAPED_BALLOON
 
+#define TOP	0
+#define BOTTOM	1
+#define LEFT	0
+#define RIGHT	2
+
 #define SPACE 12
 
 
@@ -247,6 +247,8 @@ static void showText(WScreen *scr, int x, int y, int h, int w, const char *text)
 	xcb_pixmap_t pixmap;
 	WMFont *font = scr->info_text_font;
 	cairo_t *cr;
+
+	(void)w;
 
 	freeContents(scr);
 
