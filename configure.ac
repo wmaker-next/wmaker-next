@@ -504,6 +504,11 @@ WM_FUNC_SECURE_GETENV
 AC_CHECK_FUNCS(gethostname strcasecmp strncasecmp \
 	       setsid mallinfo2 mkstemp sysconf fmemopen accept4 \
 	       memfd_create shm_mkstemp newlocale strtod_l)
+dnl wstrtod() pins '.' as the decimal separator with a C locale, which
+dnl needs the POSIX.1-2008 *_l conversion pair.
+AS_IF([test "x$ac_cv_func_newlocale" = xno ||
+       test "x$ac_cv_func_strtod_l" = xno],
+      [AC_MSG_ERROR([newlocale and strtod_l are required for locale-independent parsing])])
 AC_CHECK_DECLS([SHM_ANON], [], [], [[#include <sys/mman.h>]])
 AC_SEARCH_LIBS([strerror], [cposix])
 

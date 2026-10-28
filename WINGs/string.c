@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <locale.h>
+#include <stdatomic.h>
 #ifdef HAVE_BSD_STRING_H
 #include <bsd/string.h>
 #endif
@@ -442,12 +443,24 @@ char *wshellquote(const char *s)
 double wstrtod(const char *s, char **end)
 {
 #if defined(HAVE_STRTOD_L) && defined(HAVE_NEWLOCALE)
-	static locale_t cloc;
+	static _Atomic(locale_t) cloc;
+	locale_t loc = atomic_load_explicit(&cloc, memory_order_acquire);
 
-	if (!cloc)
-		cloc = newlocale(LC_NUMERIC_MASK, "C", NULL);
-	if (cloc)
-		return strtod_l(s, end, cloc);
-#endif
+	if (!loc) {
+		locale_t fresh = newlocale(LC_NUMERIC_MASK, "C", NULL);
+		locale_t expected = NULL;
+
+		if (!fresh)
+			return strtod(s, end);
+		if (atomic_compare_exchange_strong(&cloc, &expected, fresh))
+			loc = fresh;
+		else {
+			freelocale(fresh);
+			loc = expected;
+		}
+	}
+	return strtod_l(s, end, loc);
+#else
 	return strtod(s, end);
+#endif
 }

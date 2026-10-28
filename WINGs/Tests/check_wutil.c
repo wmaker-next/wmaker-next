@@ -21,6 +21,7 @@
  */
 
 #include <errno.h>
+#include <locale.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,7 +232,8 @@ static void test_wtrimspace(void)
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 static void test_wstrtod(void)
 {
-	char *end;
+	char *end, *saved;
+	const char *current;
 	double d;
 
 	d = wstrtod("0.7", &end);
@@ -252,6 +254,24 @@ static void test_wstrtod(void)
 
 	CHECK(isnan(wstrtod("nan", &end)) && *end == '\0');
 	CHECK(isinf(wstrtod("-inf", &end)) && *end == '\0');
+
+	/* '.' stays the separator when LC_NUMERIC uses ',' */
+	saved = NULL;
+	current = setlocale(LC_ALL, NULL);
+	if (current)
+		saved = wstrdup(current);
+	if ((setlocale(LC_ALL, "de_DE.UTF-8")
+	     || setlocale(LC_ALL, "fr_FR.UTF-8")
+	     || setlocale(LC_ALL, "en_DK.UTF-8"))
+	    && localeconv()->decimal_point[0] == ',') {
+		d = wstrtod("0.7", &end);
+		CHECK(d == 0.7 && *end == '\0');
+		d = wstrtod("0,7", &end);
+		CHECK(d == 0.0 && *end == ',');
+	}
+	setlocale(LC_ALL, saved ? saved : "C");
+	if (saved)
+		wfree(saved);
 }
 #pragma GCC diagnostic pop
 
