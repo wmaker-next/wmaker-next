@@ -568,6 +568,9 @@ static void wRandR_Update(WScreen *scr)
 	bool applied;
 	int old_heads;
 	int i, h, k;
+#ifdef VIRTUAL_DESKTOP
+	int ws;
+#endif
 
 	/* When HotplugMonitor is enabled, actively manage CRTC lifecycle.
 	 * This needs the full per-output/per-CRTC view (connection state,
@@ -765,8 +768,17 @@ static void wRandR_Update(WScreen *scr)
 
 	/* Refresh usable areas and EWMH hints. The desktop geometry is
 	 * the framebuffer size, so it changes with the RandR mode too;
-	 * _NET_WORKAREA alone would leave clients tracking the old size. */
+	 * _NET_WORKAREA alone would leave clients tracking the old size.
+	 * With the virtual desktop on the hint comes from the per-
+	 * workspace extent instead, which the mode change does not
+	 * recompute. */
 	wScreenUpdateUsableArea(scr);
+#ifdef VIRTUAL_DESKTOP
+	if (w_global.config->vdesk_enable) {
+		for (ws = 0; ws < scr->workspace_count; ws++)
+			wVdeskUpdateGeometry(scr, ws);
+	}
+#endif
 	wNETWMUpdateDesktop(scr);
 	wNETWMUpdateWorkarea(scr);
 
