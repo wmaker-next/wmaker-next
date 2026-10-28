@@ -116,6 +116,10 @@ int main(int argc, char **argv)
 	}
 
 	colors = malloc(sizeof(RColor *) * (ncolors + 1));
+	if (!colors) {
+		fprintf(stderr, "out of memory\n");
+		exit(1);
+	}
 	for (i = 0; i < ncolors; i++) {
 		if (color_name[i][0] == '#') {
 			if (!PARSE_HASH_COLOR(color_name[i], cr)
@@ -142,6 +146,10 @@ int main(int argc, char **argv)
 		}
 		{
 			colors[i] = malloc(sizeof(RColor));
+			if (!colors[i]) {
+				fprintf(stderr, "out of memory\n");
+				exit(1);
+			}
 			colors[i]->red = cr >> 8;
 			colors[i]->green = cg >> 8;
 			colors[i]->blue = cb >> 8;

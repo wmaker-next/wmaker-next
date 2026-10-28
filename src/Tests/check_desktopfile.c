@@ -39,11 +39,25 @@ static void test_mime_for_path(void)
 	CHECK(wXDGMimeTypeForPath("/tmp/noext") == NULL);
 }
 
+static void write_probe(const char *dir, const char *name, const char *data,
+			char *path, size_t size)
+{
+	FILE *f;
+
+	snprintf(path, size, "%s/%s", dir, name);
+	f = fopen(path, "wb");
+	if (!f) {
+		perror(path);
+		exit(2);
+	}
+	fputs(data, f);
+	fclose(f);
+}
+
 static void test_mime_magic(void)
 {
 	char tmpl[] = "/tmp/wmaker-sniff-XXXXXX";
 	char *dir, file[PATH_MAX + 64];
-	FILE *f;
 
 	/* the magic fixture lives alongside globs2, write a few
 	 * extensionless probe files the sniffer can read */
@@ -54,29 +68,18 @@ static void test_mime_magic(void)
 		return;
 	}
 
-	snprintf(file, sizeof(file), "%s/probe-pdf", dir);
-	f = fopen(file, "wb");
-	fputs("%PDF-1.5\nrest", f);
-	fclose(f);
+	write_probe(dir, "probe-pdf", "%PDF-1.5\nrest", file, sizeof(file));
 	CHECK_STR(wXDGMimeTypeForPath(file), "application/pdf");
 
-	snprintf(file, sizeof(file), "%s/probe-script", dir);
-	f = fopen(file, "wb");
-	fputs("#!/bin/sh\necho hi\n", f);
-	fclose(f);
+	write_probe(dir, "probe-script", "#!/bin/sh\necho hi\n", file, sizeof(file));
 	CHECK_STR(wXDGMimeTypeForPath(file), "text/x-shellscript");
 
-	snprintf(file, sizeof(file), "%s/probe-misc", dir);
-	f = fopen(file, "wb");
-	fputs("plain text without a signature\n", f);
-	fclose(f);
+	write_probe(dir, "probe-misc", "plain text without a signature\n",
+		    file, sizeof(file));
 	CHECK(wXDGMimeTypeForPath(file) == NULL);
 
 	/* extension match takes precedence over content */
-	snprintf(file, sizeof(file), "%s/probe.txt", dir);
-	f = fopen(file, "wb");
-	fputs("%PDF-1.5\n", f);
-	fclose(f);
+	write_probe(dir, "probe.txt", "%PDF-1.5\n", file, sizeof(file));
 	CHECK_STR(wXDGMimeTypeForPath(file), "text/plain");
 
 	(void)wspawnvp_wait((char *[]){"rm", "-rf", dir, NULL});

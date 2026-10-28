@@ -45,6 +45,10 @@ static xcb_generic_event_t *mkraw(int type, unsigned long seq)
 {
 	xcb_generic_event_t *xe = malloc(sizeof(*xe));
 
+	if (!xe) {
+		perror("malloc");
+		exit(2);
+	}
 	memset(xe, 0, sizeof(*xe));
 	xe->response_type = type;
 	xe->full_sequence = seq;

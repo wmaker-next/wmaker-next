@@ -102,6 +102,18 @@ static char *write_sample(const char *name, const void *data, size_t len)
 	return path;
 }
 
+static void append_bytes(const char *path, const void *data, size_t len)
+{
+	FILE *f = fopen(path, "ab");
+
+	if (!f) {
+		perror(path);
+		exit(2);
+	}
+	fwrite(data, 1, len, f);
+	fclose(f);
+}
+
 static void expect_image(const char *what, RImage *img, int w, int h,
 			 int r, int g, int b)
 {
@@ -129,7 +141,6 @@ static void test_pnm(void)
 {
 	const char *s;
 	char *p;
-	FILE *f;
 
 	/* P1 ascii bitmap, 2x1, pixels 1 0 -> black white */
 	s = "P1\n2 1\n1 0\n";
@@ -149,25 +160,19 @@ static void test_pnm(void)
 	/* P4 binary bitmap, 2x1, byte 0x80 -> first pixel set (black) */
 	s = "P4\n2 1\n";
 	p = write_sample("b.pbm", s, strlen(s));
-	f = fopen(p, "ab");
-	fputc(0x80, f);
-	fclose(f);
+	append_bytes(p, (const unsigned char[]){0x80}, 1);
 	expect_image("P4", load_noctx(p), 2, 1, 0, 0, 0);
 
 	/* P5 binary graymap, 2x1, max 255, bytes 64 200 */
 	s = "P5\n2 1\n255\n";
 	p = write_sample("b.pgm", s, strlen(s));
-	f = fopen(p, "ab");
-	fputc(0x40, f); fputc(0xc8, f);
-	fclose(f);
+	append_bytes(p, (const unsigned char[]){0x40, 0xc8}, 2);
 	expect_image("P5", load_noctx(p), 2, 1, 64, 64, 64);
 
 	/* P6 binary pixmap, 1x1, max 255, bytes 10 20 30 */
 	s = "P6\n1 1\n255\n";
 	p = write_sample("b.ppm", s, strlen(s));
-	f = fopen(p, "ab");
-	fputc(10, f); fputc(20, f); fputc(30, f);
-	fclose(f);
+	append_bytes(p, (const unsigned char[]){10, 20, 30}, 3);
 	expect_image("P6", load_noctx(p), 1, 1, 10, 20, 30);
 }
 
