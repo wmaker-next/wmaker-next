@@ -7034,7 +7034,8 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
             }
             memcpy( out + ((layers - 1) * stride), u, stride );
             if (layers >= 2) {
-               two_back = out - 2 * stride;
+		// frame two back within the accumulated frames, for disposal method 3
+		two_back = out + (layers - 2) * stride;
             }
 
             if (delays) {

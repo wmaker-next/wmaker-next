@@ -238,6 +238,145 @@ static void test_stb_formats(void)
 		RReleaseImage(img);
 	}
 
+	/* two-frame animation on the indexed (compositing) path */
+	static const unsigned char gif_anim[] = {
+		'G', 'I', 'F', '8', '9', 'a',
+		2, 0, 1, 0,                        /* logical screen 2x1 */
+		0xf0, 0, 0,                        /* GCT present, 2 entries */
+		255, 0, 0, 0, 255, 0,              /* palette: red, green */
+		0x2c, 0, 0, 0, 0, 2, 0, 1, 0, 0,   /* frame 0: 2x1 */
+		2, 2, 0x44, 0x0a, 0,
+		0x2c, 0, 0, 0, 0, 2, 0, 1, 0, 0,   /* frame 1: 2x1 */
+		2, 2, 0x44, 0x0a, 0,
+		0x3b
+	};
+	p = write_sample("anim.gif", gif_anim, sizeof(gif_anim));
+	img = load_noctx_index(p, 1);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF frame 1: RLoadImage NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->width == 2 && img->height == 1);
+		CHECK(img->format == RRGBAFormat);
+		CHECK(img->data[0] == 255 && img->data[1] == 0 &&
+		      img->data[2] == 0);
+		CHECK(img->data[4] == 0 && img->data[5] == 255 &&
+		      img->data[6] == 0);
+		CHECK(img->data[3] == 255 && img->data[7] == 255);
+		RReleaseImage(img);
+	}
+
+	/* three-frame animation exercising disposal method 3. Frame 0 draws
+	 * both pixels, frame 1 (dispose to previous) paints only pixel 0,
+	 * so decoding frame 2 must restore pixel 0 from frame 0 before it
+	 * paints pixel 1. Reading the wrong source crashed the decoder. */
+	static const unsigned char gif_dispose[] = {
+		'G', 'I', 'F', '8', '9', 'a',
+		2, 0, 1, 0,                        /* logical screen 2x1 */
+		0xf1, 0, 0,                        /* GCT present, 4 entries */
+		10, 20, 30,  200, 100, 50,         /* palette: dark, light */
+		1, 2, 3,  0, 0, 0,                 /* palette: blue, black */
+		0x21, 0xf9, 4, 0x04, 0, 0, 0, 0,   /* frame 0: dispose 1 */
+		0x2c, 0, 0, 0, 0, 2, 0, 1, 0, 0,
+		2, 2, 0x44, 0x0a, 0,               /* pixels [0,1] */
+		0x21, 0xf9, 4, 0x0c, 0, 0, 0, 0,   /* frame 1: dispose 3 */
+		0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0,
+		2, 2, 0x54, 0x01, 0,               /* pixel [2] at x=0 */
+		0x21, 0xf9, 4, 0x04, 0, 0, 0, 0,   /* frame 2: dispose 1 */
+		0x2c, 1, 0, 0, 0, 1, 0, 1, 0, 0,
+		2, 2, 0x4c, 0x01, 0,               /* pixel [1] at x=1 */
+		0x3b
+	};
+	p = write_sample("dispose.gif", gif_dispose, sizeof(gif_dispose));
+	img = load_noctx_index(p, 1);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF disposal frame 1: NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->data[0] == 1 && img->data[1] == 2 &&
+		      img->data[2] == 3);                  /* painted blue */
+		CHECK(img->data[4] == 200 && img->data[5] == 100 &&
+		      img->data[6] == 50);                 /* frame 0 pixel 1 */
+		RReleaseImage(img);
+	}
+	img = load_noctx_index(p, 2);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF disposal frame 2: NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->data[0] == 10 && img->data[1] == 20 &&
+		      img->data[2] == 30);                 /* restored */
+		CHECK(img->data[4] == 200 && img->data[5] == 100 &&
+		      img->data[6] == 50);                 /* painted */
+		RReleaseImage(img);
+	}
+
+	/* an index past the last frame still returns the last decoded frame */
+	img = load_noctx_index(p, 9);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF disposal clamp: NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->data[0] == 10 && img->data[1] == 20 &&
+		      img->data[2] == 30);
+		CHECK(img->data[4] == 200 && img->data[5] == 100 &&
+		      img->data[6] == 50);
+		RReleaseImage(img);
+	}
+
+	/* frame 3 disposes to the previous graphic after several frames, so
+	 * the two-back reference must be frame 1, not frame 0. Frame 1 is
+	 * blue/black, frame 3 paints only pixel 1, leaving pixel 0 blue. */
+	static const unsigned char gif_ring[] = {
+		'G', 'I', 'F', '8', '9', 'a',
+		2, 0, 1, 0,                        /* logical screen 2x1 */
+		0xf1, 0, 0,                        /* GCT present, 4 entries */
+		10, 20, 30,  200, 100, 50,         /* dark, light */
+		1, 2, 3,  0, 0, 0,                 /* blue, black */
+		0x21, 0xf9, 4, 0x04, 0, 0, 0, 0,   /* frame 0: dispose 1 */
+		0x2c, 0, 0, 0, 0, 2, 0, 1, 0, 0,
+		2, 2, 0x44, 0x0a, 0,               /* pixels [0,1] */
+		0x21, 0xf9, 4, 0x04, 0, 0, 0, 0,   /* frame 1: dispose 1 */
+		0x2c, 0, 0, 0, 0, 2, 0, 1, 0, 0,
+		2, 2, 0xd4, 0x0a, 0,               /* pixels [2,3] */
+		0x21, 0xf9, 4, 0x0c, 0, 0, 0, 0,   /* frame 2: dispose 3 */
+		0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0,
+		2, 2, 0x54, 0x01, 0,               /* pixel [2] at x=0 */
+		0x21, 0xf9, 4, 0x04, 0, 0, 0, 0,   /* frame 3: dispose 1 */
+		0x2c, 1, 0, 0, 0, 1, 0, 1, 0, 0,
+		2, 2, 0x4c, 0x01, 0,               /* pixel [1] at x=1 */
+		0x3b
+	};
+	p = write_sample("ring.gif", gif_ring, sizeof(gif_ring));
+	img = load_noctx_index(p, 2);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF ring frame 2: NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->data[0] == 1 && img->data[1] == 2 &&
+		      img->data[2] == 3);                  /* blue */
+		CHECK(img->data[4] == 0 && img->data[5] == 0 &&
+		      img->data[6] == 0);                  /* black */
+		RReleaseImage(img);
+	}
+	img = load_noctx_index(p, 3);
+	if (!img) {
+		fprintf(stderr, "FAIL GIF ring frame 3: NULL (%s)\n",
+			RMessageForError(RErrorCode));
+		check_failures++;
+	} else {
+		CHECK(img->data[0] == 1 && img->data[1] == 2 &&
+		      img->data[2] == 3);                  /* from frame 1 */
+		CHECK(img->data[4] == 200 && img->data[5] == 100 &&
+		      img->data[6] == 50);                 /* painted */
+		RReleaseImage(img);
+	}
+
 	/* a tiny GIF can claim a 16385x16385 canvas; stb allocates two
 	 * full RGBA canvases before returning, so both the single-frame
 	 * and indexed paths must reject it before allocating */

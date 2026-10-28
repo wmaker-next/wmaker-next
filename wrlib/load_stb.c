@@ -61,6 +61,11 @@
  * the returned RImage and allocator overhead. */
 #define STBI_GIF_BYTES_PER_PIXEL 16U
 
+/* Indexed decoding keeps stb's three planes, copies of the previous two
+ * frames and the returned image, so peak use is 21 bytes/pixel instead
+ * of growing with the frame count. */
+#define STBI_GIF_STREAM_BYTES_PER_PIXEL 21U
+
 /* stb allocates its decoded buffer before image_from_stbi() sees it.
  * The 3/4-component buffer is adopted, while 1/2-component buffers are
  * copied into a fresh RImage. */
@@ -177,18 +182,23 @@ RImage *RLoadStb(const char *file)
 	return image_from_stbi(data, w, h, n);
 }
 
-/* GIF with frame selection. stbi_load_gif_from_memory composites every
- * frame with correct disposal and returns one w*h*4*nframes buffer, so
- * frame N is just an offset into it. The simple stbi_load() path is
- * used for index <= 0 to avoid holding the full animation in memory for
- * the common single-frame case. */
+/* GIF with frame selection. Indexed decoding walks the frames with stb's
+ * compositing loop but keeps only the two previous frames needed by
+ * disposal method 3, so memory does not grow with the frame count. The
+ * simple stbi_load() path is used for index <= 0. */
 RImage *RLoadStbGIF(const char *file, int index)
 {
-	unsigned char *raw, *frames, *one;
-	size_t flen;
-	int w, h, z, n;
+	unsigned char *raw, *one = NULL;
+	unsigned char *prev[2] = { NULL, NULL };
+	size_t flen, stride = 0;
+	uint64_t pixels;
+	int w = 0, h = 0;
 	int iw, ih, in;
-	int *delays = NULL;
+	int frame = 0, newest = 0, comp = 0;
+	int rc;
+	stbi__context s;
+	stbi__gif g;
+	stbi_uc *u;
 
 	if (index <= 0) {
 		if (stbi_info(file, &iw, &ih, &in) &&
@@ -204,33 +214,90 @@ RImage *RLoadStbGIF(const char *file, int index)
 	if (!raw)
 		return NULL;
 
-	if (stbi_info_from_memory(raw, (int)flen, &iw, &ih, &in) &&
-	    !RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
-					  STBI_GIF_BYTES_PER_PIXEL)) {
+	if (!stbi_info_from_memory(raw, (int)flen, &iw, &ih, &in)) {
+		free(raw);
+		RErrorCode = RERR_BADIMAGEFILE;
+		return NULL;
+	}
+	pixels = (uint64_t)iw * (uint64_t)ih;
+	if (!RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
+					  STBI_GIF_STREAM_BYTES_PER_PIXEL) ||
+	    (uint64_t)flen > R_IMAGE_MAX_BYTES -
+			     pixels * STBI_GIF_STREAM_BYTES_PER_PIXEL) {
 		free(raw);
 		RErrorCode = RERR_BADIMAGEFILE;
 		return NULL;
 	}
 
-	frames = stbi_load_gif_from_memory(raw, (int)flen, &delays,
-					   &w, &h, &z, &n, 4);
-	free(raw);
-	free(delays);
-	if (!frames) {
+	stbi__start_mem(&s, raw, (int)flen);
+	if (!stbi__gif_test(&s)) {
+		free(raw);
 		RErrorCode = RERR_BADIMAGEFILE;
 		return NULL;
 	}
-	if (index >= z)
-		index = z - 1;
 
-	one = malloc((size_t)w * h * 4);
+	/* keep only the two previous composited frames needed by disposal
+	 * method 3 instead of accumulating every frame in the buffer */
+	memset(&g, 0, sizeof(g));
+	rc = RERR_BADIMAGEFILE;
+	for (;;) {
+		u = stbi__gif_load_next(&s, &g, &comp, 4,
+					frame >= 2 ? prev[newest ^ 1] : NULL);
+		if (u == (stbi_uc *)&s) {
+			if (frame == 0)
+				goto done;
+			one = malloc(stride);
+			if (!one) {
+				rc = RERR_NOMEMORY;
+				goto done;
+			}
+			memcpy(one, prev[newest], stride);
+			break;
+		}
+		if (!u)
+			goto done;
+
+		if (frame == 0) {
+			w = g.w;
+			h = g.h;
+			pixels = (uint64_t)w * (uint64_t)h;
+			if (!RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
+							  STBI_GIF_STREAM_BYTES_PER_PIXEL) ||
+			    (uint64_t)flen > R_IMAGE_MAX_BYTES -
+					     pixels * STBI_GIF_STREAM_BYTES_PER_PIXEL) {
+				rc = RERR_BADIMAGEFILE;
+				goto done;
+			}
+			stride = (size_t)w * (size_t)h * 4;
+			prev[0] = malloc(stride);
+			prev[1] = malloc(stride);
+			if (!prev[0] || !prev[1]) {
+				rc = RERR_NOMEMORY;
+				goto done;
+			}
+		}
+
+		if (frame == index) {
+			one = g.out;
+			g.out = NULL;
+			break;
+		}
+
+		newest ^= 1;
+		memcpy(prev[newest], u, stride);
+		frame++;
+	}
+
+done:
+	free(g.out);
+	free(g.background);
+	free(g.history);
+	free(prev[0]);
+	free(prev[1]);
+	free(raw);
 	if (!one) {
-		stbi_image_free(frames);
-		RErrorCode = RERR_NOMEMORY;
+		RErrorCode = rc;
 		return NULL;
 	}
-	memcpy(one, frames + (size_t)index * w * h * 4, (size_t)w * h * 4);
-	stbi_image_free(frames);
-
 	return image_from_stbi(one, w, h, 4);
 }
