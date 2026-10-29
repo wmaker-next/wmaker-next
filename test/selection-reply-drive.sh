@@ -154,7 +154,7 @@ note "ok: timed-out read is empty"
 # read's one-second window, the fresh owner answers 0.8s in, so the
 # stale notify is on the queue first when the wait starts
 note "fresh owner: read must see its text, not the late stale reply"
-DISPLAY=$DPY "$CLIENT" FRESH_TEXT 800 >>"$LOG" 2>&1 &
+DISPLAY=$DPY "$CLIENT" FRESH_TEXT 800 >"$RUNTIME/fresh.log" 2>>"$LOG" &
 echo "$!" >> "$PIDFILE"
 read_sel || fail "could not trigger the second selection read"
 wait_for 40 out_is FRESH_TEXT || fail "late reply consumed: got '$(cat "$MARK/out")' instead of FRESH_TEXT"
@@ -165,6 +165,19 @@ note "later read: must still see the fresh owner"
 read_sel || fail "could not trigger the third selection read"
 wait_for 40 out_is FRESH_TEXT || fail "third read got '$(cat "$MARK/out")' instead of FRESH_TEXT"
 note "ok: later read stable"
+
+note "requestors remain distinct after more than four reads"
+i=0
+while [ "$i" -lt 4 ]; do
+    read_sel || fail "could not trigger repeated selection read"
+    wait_for 40 out_is FRESH_TEXT || fail "repeated selection read failed"
+    i=$((i + 1))
+done
+[ "$(grep -c '^requestor ' "$RUNTIME/fresh.log")" -eq 6 ] \
+    || fail "fresh owner did not receive all six requests"
+[ "$(grep '^requestor ' "$RUNTIME/fresh.log" | sort -u | wc -l)" -eq 6 ] \
+    || fail "selection requestors were reused"
+note "ok: six distinct requestors"
 
 kill -TERM "$WMAKER_PID" 2>/dev/null
 wait_for 50 pid_gone "$WMAKER_PID"

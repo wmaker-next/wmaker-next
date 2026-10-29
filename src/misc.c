@@ -365,13 +365,6 @@ char *FindImage(const char *paths, const char *file)
 	return path;
 }
 
-/* Selection reads rotate through these properties so a reply left
- * over from a previous timed-out request cannot be consumed as the
- * current one's result, the wait drops notifies naming another tag.
- * The tags are interned on the first read: selection reads are rare,
- * so the cold-boot round-trip budget does not want them at startup. */
-#define WMSEL_TAG_COUNT 4
-
 /* bound on the whole clipboard read, a hostile or hung selection
  * owner must not be able to stall the wait longer than this */
 #define WMSEL_RETRIEVAL_TIMEOUT_MS 1000
@@ -395,45 +388,39 @@ static bool matchSelNotify(const xcb_generic_event_t *event, void *cdata)
 	       && (sn->property == m->property || sn->property == XCB_NONE);
 }
 
-static xcb_atom_t wmsel_tag_atom(unsigned int slot)
-{
-	static xcb_atom_t tags[WMSEL_TAG_COUNT];
-	static bool inited;
-	char *names[WMSEL_TAG_COUNT];
-	char buf[32];
-	unsigned int i;
-
-	if (!inited) {
-		for (i = 0; i < WMSEL_TAG_COUNT; i++) {
-			snprintf(buf, sizeof(buf), "_WINDOWMAKER_SEL_TAG_%u", i);
-			names[i] = wstrdup(buf);
-		}
-		WXInternAtomBatch(wdisp->conn, names, WMSEL_TAG_COUNT, tags);
-		for (i = 0; i < WMSEL_TAG_COUNT; i++)
-			wfree(names[i]);
-		inited = true;
-	}
-	return tags[slot];
-}
-
 static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 {
-	static unsigned int sel_tag_rot;
-
 	xcb_selection_notify_event_t *sn;
 	xcb_generic_event_t *ev = NULL;
 	xcb_atom_t property;
+	xcb_window_t requestor;
 	char *data;
 	size_t len;
-	unsigned int slot;
 	struct SelNotifyMatch match;
 
-	slot = sel_tag_rot++ % WMSEL_TAG_COUNT;
-	property = wmsel_tag_atom(slot);
+	/* A fresh requestor also isolates late refusals with property=None.
+	 * X clients can still forge a reply to the current requestor. */
+	property = WXInternAtom(wdisp->conn, "_WINDOWMAKER_SEL_TAG");
+	if (property == XCB_NONE) {
+		wwarning("could not create selection property");
+		return NULL;
+	}
+	requestor = xcb_generate_id(wdisp->conn);
+	if (!WXCheckVoid(wdisp->conn,
+			 xcb_create_window_checked(wdisp->conn, XCB_COPY_FROM_PARENT, requestor,
+						   screen->root_win, 0, 0, 1, 1, 0,
+						   XCB_WINDOW_CLASS_INPUT_OUTPUT,
+						   XCB_COPY_FROM_PARENT, 0, NULL))) {
+		wwarning("could not create selection requestor");
+		return NULL;
+	}
 
-	WXDeleteProperty(wdisp->conn, screen->info_window, property);
-
-	wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, property, screen->info_window, XCB_CURRENT_TIME);
+	if (!wXConvertSelection(wdisp->conn, selection, XCB_ATOM_STRING, property,
+				requestor, XCB_CURRENT_TIME)) {
+		xcb_destroy_window(wdisp->conn, requestor);
+		wwarning("could not request text selection");
+		return NULL;
+	}
 
 	match.selection = selection;
 	match.target = XCB_ATOM_STRING;
@@ -441,8 +428,9 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 
 	/* the bounded wait never re-enters the WINGs event loop so a
 	 * WINGs timer would not fire here either (WM-2026-20) */
-	if (!WXEvqTakeTypedTimed(wdisp->conn, XCB_SELECTION_NOTIFY, screen->info_window,
+	if (!WXEvqTakeTypedTimed(wdisp->conn, XCB_SELECTION_NOTIFY, requestor,
 				 matchSelNotify, &match, &ev, WMSEL_RETRIEVAL_TIMEOUT_MS)) {
+		xcb_destroy_window(wdisp->conn, requestor);
 		wwarning("selection retrieval timed out");
 		return NULL;
 	}
@@ -453,11 +441,13 @@ static char *getClipboardSelection(WScreen * screen, xcb_atom_t selection)
 	 * nothing to do with what we need */
 	if (sn->property == XCB_NONE) {
 		free(ev);
+		xcb_destroy_window(wdisp->conn, requestor);
 		return NULL;
 	}
 
-	data = WXGetLatin1String(wdisp->conn, screen->info_window, property, &len);
+	data = WXGetLatin1String(wdisp->conn, requestor, property, &len);
 	free(ev);
+	xcb_destroy_window(wdisp->conn, requestor);
 	if (!data) {
 		wwarning("invalid data in text selection");
 		return NULL;

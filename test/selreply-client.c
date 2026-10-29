@@ -46,6 +46,8 @@ int main(int argc, char **argv)
 		if (ev.type != SelectionRequest)
 			continue;
 		req = &ev.xselectionrequest;
+		printf("requestor 0x%lx\n", (unsigned long)req->requestor);
+		fflush(stdout);
 
 		ts.tv_sec = delay_ms / 1000;
 		ts.tv_nsec = (delay_ms % 1000) * 1000000L;
