@@ -37,6 +37,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 
 #include <WINGs/WUtil.h>
@@ -311,7 +312,8 @@ static void test_socket_dir(void)
 	char tmpl[] = "/tmp/check_ipc_dir_XXXXXX";
 	char priv[256], pub[256], missing[256], file[256];
 	char spath[320];
-	int fd;
+	struct sockaddr_un addr;
+	int fd, server;
 
 	if (!mkdtemp(tmpl))
 		return;
@@ -334,6 +336,30 @@ static void test_socket_dir(void)
 	errno = 0;
 	CHECK(wIPCConnect(spath) < 0);
 	CHECK(errno == ENOENT);
+
+	/* A private directory with a real socket remains usable. */
+	server = socket(AF_UNIX, SOCK_STREAM, 0);
+	CHECK(server >= 0);
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/priv/sock", tmpl);
+	CHECK(bind(server, (struct sockaddr *)&addr, sizeof(addr)) == 0);
+	CHECK(listen(server, 1) == 0);
+	fd = wIPCConnect(spath);
+	CHECK(fd >= 0);
+	if (fd >= 0)
+		close(fd);
+	close(server);
+	unlink(spath);
+
+	fd = open(spath, O_CREAT | O_WRONLY, 0600);
+	CHECK(fd >= 0);
+	if (fd >= 0)
+		close(fd);
+	errno = 0;
+	CHECK(wIPCConnect(spath) < 0);
+	CHECK(errno == EACCES);
+	unlink(spath);
 
 	/* group/other-accessible directory is rejected before connect() */
 	snprintf(spath, sizeof(spath), "%s/sock", pub);

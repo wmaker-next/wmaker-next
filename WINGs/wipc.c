@@ -136,12 +136,12 @@ char *wIPCSocketPath(const char *display)
 /* the socket directory must be a real directory owned by us with no
  * group or other access, matching the server-side check, so a local
  * attacker cannot pre-create the predictable /tmp fallback and collect
- * our frames. A missing directory is left to connect() to report. */
-static int socket_dir_ok(const char *path)
+ * our frames. Capture its identity so replacement during connect is
+ * detected before any frames are sent. */
+static int socket_dir_stat(const char *path, struct stat *st)
 {
 	const char *slash;
 	char *dir;
-	struct stat st;
 	size_t len;
 	int ok;
 
@@ -156,11 +156,15 @@ static int socket_dir_ok(const char *path)
 		memcpy(dir, path, len);
 	}
 
-	if (lstat(dir, &st) < 0)
+	if (lstat(dir, st) < 0) {
+		ok = 0;
+	} else if (!S_ISDIR(st->st_mode) || st->st_uid != getuid() ||
+		   (st->st_mode & 077) != 0) {
+		errno = EACCES;
+		ok = 0;
+	} else {
 		ok = 1;
-	else
-		ok = S_ISDIR(st.st_mode) && st.st_uid == getuid() &&
-		     (st.st_mode & 077) == 0;
+	}
 	xfree(dir);
 	return ok;
 }
@@ -168,13 +172,18 @@ static int socket_dir_ok(const char *path)
 int wIPCConnect(const char *path)
 {
 	struct sockaddr_un addr;
+	struct stat dir_before, dir_after, socket_before, socket_after;
 	int fd, flags;
 
 	if (!path || strlen(path) >= sizeof(addr.sun_path)) {
 		errno = ENAMETOOLONG;
 		return -1;
 	}
-	if (!socket_dir_ok(path)) {
+	if (!socket_dir_stat(path, &dir_before))
+		return -1;
+	if (lstat(path, &socket_before) < 0)
+		return -1;
+	if (!S_ISSOCK(socket_before.st_mode) || socket_before.st_uid != getuid()) {
 		errno = EACCES;
 		return -1;
 	}
@@ -195,6 +204,14 @@ int wIPCConnect(const char *path)
 		int saved = errno;
 		close(fd);
 		errno = saved;
+		return -1;
+	}
+	if (!socket_dir_stat(path, &dir_after) || lstat(path, &socket_after) < 0 ||
+	    dir_before.st_dev != dir_after.st_dev || dir_before.st_ino != dir_after.st_ino ||
+	    socket_before.st_dev != socket_after.st_dev || socket_before.st_ino != socket_after.st_ino ||
+	    !S_ISSOCK(socket_after.st_mode) || socket_after.st_uid != getuid()) {
+		close(fd);
+		errno = EACCES;
 		return -1;
 	}
 	return fd;
@@ -309,4 +326,3 @@ int wIPCRecv(int fd, uint32_t *type, char **payload, uint32_t *len)
 	*payload = buf;
 	return 0;
 }
-
