@@ -233,21 +233,24 @@ static void test_strut(void)
 {
 	/* full root */
 	check_strut(WDOCK_EDGE_LEFT, ISZ, 0, 1079, 0, 0, 1920, 1080);
-	check_strut(WDOCK_EDGE_RIGHT, ISZ, 0, 1079, 0, 0, 1920, 1080);
-	check_strut(WDOCK_EDGE_TOP, ISZ, 0, 1919, 0, 0, 1920, 1080);
-	check_strut(WDOCK_EDGE_BOTTOM, ISZ, 0, 1919, 0, 0, 1920, 1080);
+	check_strut(WDOCK_EDGE_RIGHT, ISZ, 0, 1079, 0, 0, 3840, 1080);
+	check_strut(WDOCK_EDGE_TOP, ISZ, 0, 3839, 0, 0, 3840, 1080);
+	check_strut(WDOCK_EDGE_BOTTOM, ISZ, 0, 3839, 0, 0, 3840, 1080);
 
-	/* a head not at the root origin still produces root coordinates */
-	check_strut(WDOCK_EDGE_LEFT, ISZ, 0, 599, 1920, 0, 800, 600);
-	check_strut(WDOCK_EDGE_RIGHT, ISZ, 0, 599, 1920, 0, 800, 600);
+	/* Inner edges cannot be expressed as root-edge struts. */
+	check_strut(WDOCK_EDGE_LEFT, 0, 0, 0, 1920, 0, 800, 600);
+	check_strut(WDOCK_EDGE_RIGHT, 0, 0, 0, 1920, 0, 800, 600);
 	check_strut(WDOCK_EDGE_TOP, ISZ, 1920, 2719, 1920, 0, 800, 600);
-	check_strut(WDOCK_EDGE_BOTTOM, ISZ, 1920, 2719, 1920, 0, 800, 600);
+	check_strut(WDOCK_EDGE_BOTTOM, 0, 0, 0, 1920, 0, 800, 600);
+	check_strut(WDOCK_EDGE_RIGHT, ISZ, 0, 599, 3040, 0, 800, 600);
+	check_strut(WDOCK_EDGE_BOTTOM, ISZ, 1920, 2719, 1920, 480, 800, 600);
+	check_strut(WDOCK_EDGE_TOP, 0, 0, 0, 1920, 480, 800, 600);
 
 	/* thickness clipped to the head size on the dock's axis */
 	{
 		uint32_t out[12];
 
-		wDockGeomStrut(head_rect(), 3840, 1080, WDOCK_EDGE_LEFT,
+		wDockGeomStrut(mkrect(0, 0, 800, 600), 3840, 1080, WDOCK_EDGE_LEFT,
 			       10000, out);
 		CHECK(out[0] == 800);
 		wDockGeomStrut(head_rect(), 3840, 1080, WDOCK_EDGE_TOP,

@@ -131,7 +131,8 @@ With `NoWindowOverDock` set, the reservation is now also published to
 other clients as `_NET_WM_STRUT` and `_NET_WM_STRUT_PARTIAL` on the
 info window, covering only the head the dock touches. Wmaker's own
 placement keeps using its internal inset, and `_NET_WORKAREA` still does
-not include the dock.
+not include the dock. A dock on an inner monitor edge has no external
+strut, since EWMH struts must extend from a root-screen edge.
 
 The `dock-launch SLOT` slot and the `child_exit` event slot are now the
 dock's along-axis index rather than always the Y cell: they equal the

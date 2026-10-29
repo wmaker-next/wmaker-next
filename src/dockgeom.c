@@ -257,7 +257,16 @@ void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 
 	memset(out, 0, sizeof(uint32_t) * 12);
 
-	if (thickness <= 0)
+	if (thickness <= 0 || root_w <= 0 || root_h <= 0 ||
+	    rect.size.width <= 0 || rect.size.height <= 0)
+		return;
+
+	/* EWMH cannot describe an inner edge without reserving the space
+	 * between it and the root edge. Do not publish a misleading strut. */
+	if ((edge == WDOCK_EDGE_LEFT && rect.pos.x != 0) ||
+	    (edge == WDOCK_EDGE_RIGHT && rect.pos.x + rect.size.width != root_w) ||
+	    (edge == WDOCK_EDGE_TOP && rect.pos.y != 0) ||
+	    (edge == WDOCK_EDGE_BOTTOM && rect.pos.y + rect.size.height != root_h))
 		return;
 
 	if (wDockEdgeHorizontal(edge)) {
@@ -277,6 +286,8 @@ void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 	}
 	if (start < 0)
 		start = 0;
+	if (start > end)
+		return;
 
 	switch (edge) {
 	case WDOCK_EDGE_LEFT:

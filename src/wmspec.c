@@ -501,6 +501,11 @@ void wDockPublishStrut(WScreen *scr)
 	wDockGeomStrut(rect, scr->scr_width, scr->scr_height, scr->dock->edge,
 		       w_global.config->icon_size + DOCK_EXTRA_SPACE, data);
 
+	if (!(data[0] || data[1] || data[2] || data[3])) {
+		wDockClearStrut(scr);
+		return;
+	}
+
 	legacy[0] = data[0];
 	legacy[1] = data[1];
 	legacy[2] = data[2];
