@@ -73,6 +73,7 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
 }
 EOF
 export WMAKER_USER_ROOT="$WMHOME"
+unset WMAKER_USER_XDG
 export XDG_RUNTIME_DIR="$RUNTIME"
 unset WMAKER_IPC_SOCKET
 
@@ -332,6 +333,8 @@ for hx in $(DISPLAY=$DPY xdotool search --name '^lxherd$' 2>/dev/null) \
           $(xt_client lxa) $(xt_client lxb) $(xt_client lxc); do
     set -- $(frame_geom "$hx")
     hxx=$1
+    [ "$2" -ge 0 ] && [ $(($2 + $4)) -le "$H" ] \
+        || fail "window $hx exceeds usable height: y=$2 height=$4"
     if [ "$hxx" -le 16 ]; then
         masters=$((masters + 1))
     elif [ "$hxx" -ge 644 ] && [ "$hxx" -le 676 ]; then
@@ -344,6 +347,24 @@ done
 [ "$strays" -eq 0 ] || fail "$strays of $((HERD + 3)) windows were left out of the tiling"
 [ "$masters" -eq 1 ] || fail "expected exactly one master column window, got $masters"
 note "ok: herd tiled, $masters master and $stackers stack windows"
+
+note "check crowded layouts with a 50-pixel gap"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "$ROOT/util/.libs/wdwrite" WindowMaker WindowGap 50 >>"$LOG" 2>&1 \
+    || fail "could not set WindowGap"
+msg -q reconfigure || fail "reconfigure rejected"
+for layout in float tile tileh grid; do
+    msg -q set-layout "$layout" || fail "set-layout $layout rejected"
+    [ "$layout" = float ] && continue
+    sleep 0.5
+    for hx in $(DISPLAY=$DPY xdotool search --name '^lxherd$' 2>/dev/null); do
+        set -- $(frame_geom "$hx")
+        [ "$1" -ge 0 ] && [ "$2" -ge 0 ] &&
+            [ $(($1 + $3)) -le "$W" ] && [ $(($2 + $4)) -le "$H" ] \
+            || fail "$layout window $hx exceeds usable area: ($1,$2 ${3}x${4})"
+    done
+    note "ok: crowded $layout stays within the usable area"
+done
 
 # --- teardown --------------------------------------------------------------
 kill -TERM "$WMAKER_PID" 2>/dev/null

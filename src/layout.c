@@ -389,10 +389,12 @@ static int pack_column(WWindow **wins, int cnt, bool pack_x,
 			fy = by + used + i * gap;
 		}
 		tiled_client_size(wwin, vw, vh, &cw, &ch);
-		apply_tiled_geometry(wwin, fx, fy, cw, ch, full, vw, vh);
 		fw = (int)cw + il + ir + 2 * fb;
 		fh = (int)ch + wwin->frame->top_width + wwin->frame->bottom_width
 		     + it + ib + 2 * fb;
+		fx = WMAX(area.x1, WMIN(fx, area.x2 - fw));
+		fy = WMAX(area.y1, WMIN(fy, area.y2 - fh));
+		apply_tiled_geometry(wwin, fx, fy, cw, ch, full, vw, vh);
 		used += pack_x ? fw : fh;
 		if (wide < (pack_x ? fh : fw))
 			wide = pack_x ? fh : fw;

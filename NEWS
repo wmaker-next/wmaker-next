@@ -823,6 +823,9 @@ The existing WindowGap option now also spaces the tile, tileh and
 grid cells: gaps sit between neighbouring windows and columns while
 the outer edges stay flush with the usable area (monocle stays
 gap-free), and changing the value re-flows the current workspace.
+When minimum sizes or gaps exhaust the available space, windows may
+overlap instead of drifting off-screen. A window whose own minimum size
+exceeds the usable area still extends beyond it.
 
 Cairo and PangoCairo are now required build dependencies
 --------------------------------------------------------
@@ -5284,5 +5287,3 @@ them for a while.
 	remove the files in /usr/local/share/WindowMaker before installation
 
 	the /usr/local/share/pixmaps directory can be removed
-
-
