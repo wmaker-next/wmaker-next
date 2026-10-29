@@ -557,11 +557,8 @@ void wLayoutSetWorkspace(WScreen *scr, int workspace, WLayout layout)
 
 void wLayoutSetWindowTiled(WWindow *wwin, bool tiled)
 {
-	WScreen *scr;
-
 	if (!wwin || !wwin->frame)
 		return;
-	scr = wwin->screen_ptr;
 	if (tiled) {
 		wwin->flags.no_tiling = 0;
 	} else {
@@ -569,7 +566,27 @@ void wLayoutSetWindowTiled(WWindow *wwin, bool tiled)
 		if (wwin->flags.tiled)
 			restore_tiled_window(wwin);
 	}
-	wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+	wLayoutApplyForWindow(wwin);
+}
+
+int wLayoutWorkspaceForWindow(WWindow *wwin)
+{
+	int workspace;
+
+	if (!wwin || !wwin->frame)
+		return -1;
+	workspace = wWorkspaceForHead(wwin->screen_ptr, wWindowEffectiveHead(wwin));
+	if (workspace < 0 || workspace >= wwin->screen_ptr->workspace_count)
+		return -1;
+	return WWIN_ON_WORKSPACE(wwin, workspace) ? workspace : -1;
+}
+
+void wLayoutApplyForWindow(WWindow *wwin)
+{
+	int workspace = wLayoutWorkspaceForWindow(wwin);
+
+	if (workspace >= 0)
+		wLayoutApply(wwin->screen_ptr, workspace);
 }
 
 void wLayoutSwapMaster(WScreen *scr, int workspace, WWindow *wwin)

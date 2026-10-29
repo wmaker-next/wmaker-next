@@ -1669,7 +1669,7 @@ int wMouseMoveWindow(WWindow * wwin, xcb_generic_event_t * ev)
 					 * the window from the layout */
 					wwin->flags.tiled = 0;
 					wwin->flags.no_tiling = 1;
-					wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+					wLayoutApplyForWindow(wwin);
 				}
 
 				if (wwin->flags.maximized) {
@@ -2721,7 +2721,7 @@ void wMouseResizeWindow(WWindow * wwin, xcb_generic_event_t * ev)
 						 * it */
 						wwin->flags.tiled = 0;
 						wwin->flags.no_tiling = 1;
-						wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+						wLayoutApplyForWindow(wwin);
 					}
 
 					wXTranslateCoordinates(wdisp->conn, root, wwin->frame->core->window,

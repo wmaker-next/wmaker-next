@@ -164,6 +164,66 @@ sleep 0.3
 is_mapped "$XID" || fail "not mapped on member workspace 1"
 ok "mapped on wsb"
 
+note "toggle tiling on a non-primary member workspace"
+DISPLAY=$DPY xdotool windowactivate --sync "$XID"
+msg -q set-layout tile || fail "set-layout tile rejected"
+is_tiled() { msg get_window_tree | grep -q '"tiled":"YES"'; }
+wait_for 30 is_tiled || {
+    msg get_window_tree >>"$LOG"
+    fail "initial layout did not tile window on workspace 1"
+}
+msg -q action TilingToggle "$XIDHEX" || fail "untile action rejected"
+sleep 0.3
+is_tiled && fail "untile action did not restore window"
+msg -q action TilingToggle "$XIDHEX" || fail "tile action rejected"
+wait_for 30 is_tiled || fail "tile action did not apply on workspace 1"
+ok "tile action used the visible workspace rather than the primary"
+
+note "repack after unmaximize and iconify on a non-primary workspace"
+DISPLAY=$DPY xterm -title wmpeer -geometry 60x8+80+80 -e 'sleep 300' >>"$LOG" 2>&1 &
+echo "$!" >> "$PIDFILE"
+peer_mapped() { [ -n "$(xt_client wmpeer)" ]; }
+wait_for 60 peer_mapped || fail "peer xterm did not map"
+PEER=$(xt_client wmpeer)
+PEERHEX=$(printf '0x%x' "$PEER")
+msg -q -- window-workspace "$PEERHEX" 0 || fail "peer primary workspace change rejected"
+msg -q -- window-workspace "$PEERHEX" +1 || fail "peer membership change rejected"
+peer_width() {
+    DISPLAY=$DPY xwininfo -id "$PEER" 2>/dev/null | awk '/^  Width:/ {print $2; exit}'
+}
+peer_full() { _w=$(peer_width); [ -n "$_w" ] && [ "$_w" -ge 950 ]; }
+peer_split() { _w=$(peer_width); [ -n "$_w" ] && [ "$_w" -lt 800 ]; }
+wait_for 30 peer_split || fail "two windows did not tile side by side"
+DISPLAY=$DPY xdotool windowactivate --sync "$XID"
+msg -q action Maximize "$XIDHEX" || fail "maximize action rejected"
+msg -q action Maximize "$XIDHEX" || fail "unmaximize action rejected"
+wait_for 30 peer_full || fail "unmaximize did not repack the visible workspace"
+ok "unmaximize repacked the visible workspace"
+
+msg -q action TilingToggle "$XIDHEX" || fail "retile action rejected"
+wait_for 30 peer_split || fail "retile did not restore the two-window layout"
+msg -q action Miniaturize "$XIDHEX" || fail "miniaturize action rejected"
+wait_for 30 peer_full || fail "iconify did not repack the visible workspace"
+ok "iconify repacked the visible workspace"
+
+DISPLAY=$DPY xdotool windowactivate --sync "$XID"
+wait_for 30 peer_split || fail "deiconify did not repack the visible workspace"
+ok "deiconify repacked the visible workspace"
+
+DISPLAY=$DPY xdotool windowclose "$PEER" >>"$LOG" 2>&1
+peer_gone() { [ -z "$(xt_client wmpeer)" ]; }
+wait_for 60 peer_gone || fail "peer xterm did not close"
+window_full() {
+    _w=$(DISPLAY=$DPY xwininfo -id "$XID" 2>/dev/null | awk '/^  Width:/ {print $2; exit}')
+    [ -n "$_w" ] && [ "$_w" -ge 950 ]
+}
+wait_for 30 window_full || fail "closing a non-primary member did not repack the workspace"
+ok "closing a non-primary member repacked the visible workspace"
+msg -q -- window-workspace "$XIDHEX" 0 || fail "restore primary workspace rejected"
+msg -q -- window-workspace "$XIDHEX" +1 || fail "restore workspace membership rejected"
+DISPLAY=$DPY xdotool windowactivate --sync "$XID"
+msg -q set-layout float || fail "set-layout float rejected"
+
 note "switch to wsc"
 msg -q workspace 2 || fail "workspace 2 rejected"
 sleep 0.3

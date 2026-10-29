@@ -2062,7 +2062,7 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 		wWindowTrySwallow(wwin);
 
 	if (wwin && wwin->frame)
-		wLayoutApply(scr, WWIN_PRIMARY_WS(wwin));
+		wLayoutApplyForWindow(wwin);
 
 	/* Initial static- and dynamic-rule decoration apply (including the
 	 * first wWindowReapplyDecorativeAttrs() from wWindowUpdateName)
@@ -2228,7 +2228,7 @@ void wUnmanageWindow(WWindow *wwin, bool restore, bool destroyed)
 	WWindow *newFocusedWindow = NULL;
 	int wasFocused;
 	WScreen *scr = wwin->screen_ptr;
-	int wwin_workspace = WWIN_PRIMARY_WS(wwin);
+	int wwin_workspace = wLayoutWorkspaceForWindow(wwin);
 
 	/* if this window was swallowed by a terminal, restore the terminal */
 	wWindowUnswallow(wwin);

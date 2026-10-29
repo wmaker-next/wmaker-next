@@ -1402,10 +1402,12 @@ static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, i
 
 void wUnmaximizeWindow(WWindow *wwin)
 {
-	int x, y, w, h;
+	int x, y, w, h, layout_workspace;
 
 	if (!wwin->flags.maximized)
 		return;
+
+	layout_workspace = wwin->flags.tiled ? wLayoutWorkspaceForWindow(wwin) : -1;
 
 	if (wwin->flags.shaded) {
 		wwin->flags.skip_next_animation = 1;
@@ -1433,7 +1435,8 @@ void wUnmaximizeWindow(WWindow *wwin)
 	if (wwin->flags.tiled) {
 		wwin->flags.tiled = 0;
 		wwin->flags.no_tiling = 1;
-		wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
+		if (layout_workspace >= 0)
+			wLayoutApply(wwin->screen_ptr, layout_workspace);
 	}
 
 	WMPostNotificationName(WMNChangedState, wwin, "maximize");
@@ -2104,7 +2107,7 @@ void wIconifyWindow(WWindow *wwin)
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(wwin->screen_ptr, true);
 
-	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
+	wLayoutApplyForWindow(wwin);
 }
 
 void wDeiconifyWindow(WWindow *wwin)
@@ -2227,7 +2230,7 @@ void wDeiconifyWindow(WWindow *wwin)
 
 	w_global.ignore_workspace_change = false;
 
-	wLayoutApply(wwin->screen_ptr, WWIN_PRIMARY_WS(wwin));
+	wLayoutApplyForWindow(wwin);
 }
 
 /* Re-evaluate every miniaturized window against the current

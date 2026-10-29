@@ -60,6 +60,12 @@ struct WWindow;
  * compute, then wWindowConfigure each. No-op when layout == WLAYOUT_FLOAT. */
 void wLayoutApply(struct _WScreen *scr, int workspace);
 
+/* Return the visible member workspace on the window's head, or -1. */
+int wLayoutWorkspaceForWindow(struct WWindow *wwin);
+
+/* Reapply the workspace currently visible on the window's head. */
+void wLayoutApplyForWindow(struct WWindow *wwin);
+
 /* Restore every tiled window on the workspace to its saved old_geometry.
  * Called when the workspace layout is switched back to WLAYOUT_FLOAT. */
 void wLayoutRestore(struct _WScreen *scr, int workspace);
