@@ -1105,6 +1105,29 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	WCairoEnd(cr);
 }
 
+/* blink the selected entry before its callback is invoked */
+static void blinkMenuEntry(WMenu *menu, int index)
+{
+#if (MENU_BLINK_COUNT > 0 && MENU_BLINK_DELAY > 0)
+	int i;
+
+	if (w_global.config->no_animations)
+		return;
+
+	for (i = 0; i < MENU_BLINK_COUNT; i++) {
+		paintEntry(menu, index, false);
+		wXSync(wdisp->conn);
+		wusleep(MENU_BLINK_DELAY);
+		paintEntry(menu, index, true);
+		wXSync(wdisp->conn);
+		wusleep(MENU_BLINK_DELAY);
+	}
+#else
+	(void) menu;
+	(void) index;
+#endif
+}
+
 static void move_menus(WMenu * menu, int x, int y)
 {
 	while (menu->parent) {
@@ -1334,19 +1357,7 @@ static int keyboardMenu(WMenu * menu)
 	}
 
 	if (entry && entry->callback != NULL && entry->flags.enabled && entry->cascade < 0) {
-#if (MENU_BLINK_COUNT > 0)
-		int sel = menu->selected_entry;
-		int i;
-
-		for (i = 0; i < MENU_BLINK_COUNT; i++) {
-			paintEntry(menu, sel, false);
-			wXSync(wdisp->conn);
-			wusleep(MENU_BLINK_DELAY);
-			paintEntry(menu, sel, true);
-			wXSync(wdisp->conn);
-			wusleep(MENU_BLINK_DELAY);
-		}
-#endif
+		blinkMenuEntry(menu, menu->selected_entry);
 		selectEntry(menu, -1);
 
 		if (!menu->flags.buttoned) {
@@ -1647,7 +1658,8 @@ static void closeCascade(WMenu * menu)
 		selectEntry(menu, -1);
 		wXSync(wdisp->conn);
 #if (MENU_BLINK_DELAY > 2)
-		wusleep(MENU_BLINK_DELAY / 2);
+		if (!w_global.config->no_animations)
+			wusleep(MENU_BLINK_DELAY / 2);
 #endif
 		wMenuUnmap(menu);
 		while (parent != NULL
@@ -2398,19 +2410,8 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 		entry = menu->entries[menu->selected_entry];
 		if (entry->callback != NULL && entry->flags.enabled && entry->cascade < 0) {
 			/* blink and erase menu selection */
-#if (MENU_BLINK_DELAY > 0)
-			int sel = menu->selected_entry;
-			int i;
+			blinkMenuEntry(menu, menu->selected_entry);
 
-			for (i = 0; i < MENU_BLINK_COUNT; i++) {
-				paintEntry(menu, sel, false);
-				wXSync(wdisp->conn);
-				wusleep(MENU_BLINK_DELAY);
-				paintEntry(menu, sel, true);
-				wXSync(wdisp->conn);
-				wusleep(MENU_BLINK_DELAY);
-			}
-#endif
 			/* unmap the menu, its parents and call the callback */
 			if (!menu->flags.buttoned && (!menu->flags.app_menu || menu->parent != NULL)) {
 				closeCascade(menu);
