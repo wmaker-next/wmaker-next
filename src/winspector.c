@@ -302,6 +302,7 @@ static WMPropList *Yes, *No;
 
 static char *spec_text;
 static void applySettings(WMWidget *button, void *panel);
+static void applySettingsInternal(WMWidget *button, void *panel, bool per_window);
 
 static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypos, bool showSelectPanel);
 
@@ -639,7 +640,7 @@ static void saveSettings(WMWidget *button, void *client_data)
 	int ws_count, j;
 
 	/* Save will apply the changes and save them */
-	applySettings(panel->applyBtn, panel);
+	applySettingsInternal(panel->applyBtn, panel, false);
 
 	if (WMGetButtonSelected(panel->instRb) != 0) {
 		key = WMCreatePLString(wwin->wm_instance);
@@ -798,11 +799,22 @@ static void saveSettings(WMWidget *button, void *client_data)
 	UpdateDomainFile(db);
 	wWindowAttrsReload();
 
+	/* Saved choices are domain values, including choices previously
+	 * applied as per-window overrides. Hint-carried values were skipped. */
+	for (i = 0; i < wlengthof(window_attribute); i++) {
+		if (!get_attr_flag(&wwin->hint_flags, window_attribute[i].attr))
+			set_attr_flag(&wwin->domain_flags, window_attribute[i].attr);
+	}
+	for (i = 0; i < wlengthof(advanced_option); i++) {
+		if (!get_attr_flag(&wwin->hint_flags, advanced_option[i].attr))
+			set_attr_flag(&wwin->domain_flags, advanced_option[i].attr);
+	}
+
 	/* clean up */
 	WMPLSetCaseSensitive(false);
 }
 
-static void applySettings(WMWidget *button, void *client_data)
+static void applySettingsInternal(WMWidget *button, void *client_data, bool per_window)
 {
 	InspectorPanel *panel = (InspectorPanel *) client_data;
 	WWindow *wwin = panel->inspected;
@@ -835,6 +847,8 @@ static void applySettings(WMWidget *button, void *client_data)
 		 * user-chosen, dropping the hint-carried mark. */
 		if (get_attr_flag(&wwin->user_flags, window_attribute[i].attr) != val) {
 			clear_attr_flag(&wwin->hint_flags, window_attribute[i].attr);
+			if (per_window)
+				clear_attr_flag(&wwin->domain_flags, window_attribute[i].attr);
 			if (window_attribute[i].attr == WATTR_NO_TITLEBAR)
 				wwin->hint_flags.no_shadeable = 0;
 		}
@@ -870,8 +884,11 @@ static void applySettings(WMWidget *button, void *client_data)
 	for (i = 0; i < wlengthof(advanced_option); i++) {
 		val = WMGetButtonSelected(panel->moreChk[i]) != 0;
 
-		if (get_attr_flag(&wwin->user_flags, advanced_option[i].attr) != val)
+		if (get_attr_flag(&wwin->user_flags, advanced_option[i].attr) != val) {
 			clear_attr_flag(&wwin->hint_flags, advanced_option[i].attr);
+			if (per_window)
+				clear_attr_flag(&wwin->domain_flags, advanced_option[i].attr);
+		}
 
 		if (val)
 			set_attr_flag(&wwin->user_flags, advanced_option[i].attr);
@@ -1029,6 +1046,11 @@ static void applySettings(WMWidget *button, void *client_data)
 	wNETFrameExtents(wwin);
 }
 
+static void applySettings(WMWidget *button, void *client_data)
+{
+	applySettingsInternal(button, client_data, true);
+}
+
 static void revertSettings(WMWidget *button, void *client_data)
 {
 	InspectorPanel *panel = (InspectorPanel *) client_data;
@@ -1110,7 +1132,7 @@ static void revertSettings(WMWidget *button, void *client_data)
 	/* must auto apply, so that there wno't be internal
 	 * inconsistencies between the state in the flags and
 	 * the actual state of the window */
-	applySettings(panel->applyBtn, panel);
+	applySettingsInternal(panel->applyBtn, panel, false);
 }
 
 static void chooseIconCallback(WMWidget *self, void *clientData)

@@ -304,5 +304,53 @@ else
 	record_fail "deliberate NoTitlebar restores across a warm restart (relY=$(client_rely "$XID_A"))"
 fi
 
+note "phase 7: Apply overrides the domain only for this window"
+DISPLAY=$DPY xdotool windowactivate --sync "$XID_A"
+open_inspector
+wait_for 50 panel_up || fatal "inspector panel did not reopen"
+panel_content || fatal "panel content window not found"
+PANEL_CONTENT_H=$(panel_content_h)
+SAVE_Y=$((PANEL_CONTENT_H - 26))
+click_at 30 191
+click_at 145 "$SAVE_Y"
+if wait_for 20 a_rely_ge 10 && domain_has 'NoTitlebar = Yes'; then
+	record_pass "Apply shows the titlebar without changing the domain"
+else
+	record_fail "Apply did not override the domain"
+fi
+stop_wmaker
+start_wmaker
+wait_for 50 managed || fatal "windows did not come back after Apply restart"
+if wait_for 20 a_rely_ge 10 && domain_has 'NoTitlebar = Yes'; then
+	record_pass "Apply override survives restart while the domain remains set"
+else
+	record_fail "Apply override was lost across restart (relY=$(client_rely "$XID_A"))"
+fi
+
+note "phase 8: Save returns the applied choice to domain control"
+DISPLAY=$DPY xdotool windowactivate --sync "$XID_A"
+open_inspector
+wait_for 50 panel_up || fatal "inspector panel did not reopen for Save"
+panel_content || fatal "panel content window not found"
+PANEL_CONTENT_H=$(panel_content_h)
+SAVE_Y=$((PANEL_CONTENT_H - 26))
+click_at 30 191
+click_at 145 "$SAVE_Y"
+click_at 30 191
+click_at 235 "$SAVE_Y"
+stop_wmaker
+cat >"$DOMAIN" <<'EOF'
+{
+  WmstateTest = { NoTitlebar = Yes; };
+}
+EOF
+start_wmaker
+wait_for 50 managed || fatal "windows did not come back after Save restart"
+if wait_for 20 a_rely_lt 10; then
+	record_pass "domain change wins after saving an applied override"
+else
+	record_fail "saved override still masks the domain (relY=$(client_rely "$XID_A"))"
+fi
+
 note "hint-inspector drive finished: $PASSED passed, $FAILED failed"
 [ "$FAILED" -eq 0 ]
