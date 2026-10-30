@@ -14,7 +14,7 @@
 #    when it approaches within EdgeResistance. Attraction=YES also
 #    snaps to neighbour window edges.
 #
-# 3. Maximus — find_Maximus_geometry() (actions.c:980): MaximusKey
+# 3. Maximus — find_maximus_geometry() (actions.c:980): MaximusKey
 #    maximises the focused window but clamps its left edge to the
 #    right edge of an obstructing neighbour with vertical overlap,
 #    instead of going all the way to the screen edge.
@@ -291,7 +291,7 @@ check "wmaker alive after resize snap test" ipc_ready
 close_xt "$W2" "$XT_PID"
 
 # =================================================================
-# Section 3: Maximus tiled maximization (find_Maximus_geometry, actions.c:980)
+# Section 3: Maximus tiled maximization (find_maximus_geometry, actions.c:980)
 # =================================================================
 note "Section 3: Maximus tiled maximization"
 note "MaximusKey=Mod4+m, neighbour clamps left edge"
@@ -303,7 +303,7 @@ sleep 0.3
 
 # two windows with vertical overlap but NO horizontal overlap:
 # A on the left (right edge ~586), B on the right (left edge 650).
-# find_Maximus_geometry requires obs.right < orig.left for the
+# find_maximus_geometry requires obs.right < orig.left for the
 # left-edge clamp to fire, so B must start completely to the right of A.
 WA=$(spawn_xt maxA 80x12+100+200)
 WA_PID=$XT_PID
@@ -329,7 +329,7 @@ sleep 0.5
 set -- $(frame_geom "$WB"); MX=$1; MY=$2; MW=$3; MH=$4
 note "after Maximus: maxB frame ($MX,$MY ${MW}x${MH})"
 
-# find_Maximus_geometry clamps new.left to obs.right+1 where
+# find_maximus_geometry clamps new.left to obs.right+1 where
 # obs.right = neighbour frame_x + core->width. The frame outer
 # left of the maximised window should be near the neighbour's
 # frame outer right edge, not at the screen left edge (0).

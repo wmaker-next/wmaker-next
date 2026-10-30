@@ -62,7 +62,7 @@
 #define atan2f(y, x) ((float)atan((double)(y) / (double)(x)))
 #endif
 
-static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, int *new_y,
+static void find_maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, int *new_y,
 				  unsigned int *new_width, unsigned int *new_height);
 
 /******* Local Variables *******/
@@ -577,7 +577,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 	}
 
 	if (directions & MAX_MAXIMUS) {
-		find_Maximus_geometry(wwin, usableArea, &maximus_x, &maximus_y, &maximus_width, &maximus_height);
+		find_maximus_geometry(wwin, usableArea, &maximus_x, &maximus_y, &maximus_width, &maximus_height);
 		new_width = maximus_width - adj_size;
 		new_height = maximus_height - adj_size;
 		new_x = maximus_x;
@@ -1300,7 +1300,7 @@ static void set_window_coords(WWindow *wwin, win_coords *obs)
  * The original window 'orig' will be maximized to new coordinates 'new'.
  * The windows obstructing the maximization of 'orig' are denoted 'obs'.
  */
-static void find_Maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, int *new_y,
+static void find_maximus_geometry(WWindow *wwin, WArea usableArea, int *new_x, int *new_y,
 				  unsigned int *new_width, unsigned int *new_height)
 {
 	WWindow *tmp;
