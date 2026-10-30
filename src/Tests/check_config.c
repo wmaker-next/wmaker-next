@@ -850,6 +850,8 @@ static void test_defaults(void)
 	CHECK(config->enable_workspace_pager == 0);
 	CHECK(config->per_head_workspaces == 0);
 	CHECK(config->switch_panel_icon_size == 64);
+	CHECK_STR(config->switch_panel_label_format, "%T");
+	CHECK_STR(config->switch_panel_group_label_format, "%I");
 	CHECK(config->icon_yard == (IY_BOTTOM | IY_LEFT | IY_HORIZ));
 	CHECK(strcmp(config->pixmap_path, EXPECTED_PIXMAP_PATH) == 0);
 	CHECK(strcmp(config->icon_path, EXPECTED_ICON_PATH) == 0);
@@ -1135,7 +1137,10 @@ static void test_valid_parse(void)
 			      "DisableDrawers = YES; ClipMergedInDock = YES; "
 			      "DisableMiniwindows = YES; EnableWorkspacePager = YES; "
 			      "PerHeadWorkspaces = YES; "
-			      "SwitchPanelIconSize = 40; IconPosition = trv; "
+			      "SwitchPanelIconSize = 40; "
+			      "SwitchPanelLabelFormat = \"%I - %T\"; "
+			      "SwitchPanelGroupLabelFormat = \"%I [%W]\"; "
+			      "IconPosition = trv; "
 			      "PixmapPath = (\"/tmp/pix\", \"/tmp/bg\"); "
 			      "IconPath = (\"/tmp/icons\"); StickyIcons = YES; "
 			      "WrapAppiconsInDock = NO; "
@@ -1260,6 +1265,8 @@ static void test_valid_parse(void)
 	CHECK(config->enable_workspace_pager == 1);
 	CHECK(config->per_head_workspaces == 1);
 	CHECK(config->switch_panel_icon_size == 40);
+	CHECK_STR(config->switch_panel_label_format, "%I - %T");
+	CHECK_STR(config->switch_panel_group_label_format, "%I [%W]");
 	CHECK(config->icon_yard == (IY_TOP | IY_RIGHT | IY_VERT));
 	CHECK(strcmp(config->pixmap_path, "/tmp/pix:/tmp/bg") == 0);
 	CHECK(strcmp(config->icon_path, "/tmp/icons") == 0);
@@ -1463,6 +1470,7 @@ static void test_invalid_fallback(void)
 			      "RaiseDelay = \"-1\"; WorkspaceNameDisplayPosition = edge; "
 			      "WindowPlacement = nowhere; DoubleClickTime = 0; "
 			      "DisableDock = maybe; SwitchPanelIconSize = bad; "
+			      "SwitchPanelLabelFormat = (); SwitchPanelGroupLabelFormat = (bad); "
 			      "ModifierKey = (); "
 			      "IconPosition = middle; PixmapPath = bad; "
 			      "IconPath = (); StickyIcons = maybe; "
@@ -1506,6 +1514,8 @@ static void test_invalid_fallback(void)
 	CHECK(config->icon_size == 64);
 	CHECK(config->disable_dock == 0);
 	CHECK(config->switch_panel_icon_size == 64);
+	CHECK_STR(config->switch_panel_label_format, "%T");
+	CHECK_STR(config->switch_panel_group_label_format, "%I");
 	CHECK(strcmp(config->modifier_key, "Mod1") == 0);
 	CHECK(config->icon_yard == (IY_BOTTOM | IY_LEFT | IY_HORIZ));
 	CHECK(strcmp(config->pixmap_path, EXPECTED_PIXMAP_PATH) == 0);
@@ -2294,6 +2304,32 @@ out:
 	wConfigClearWindowMaker();
 }
 
+static void test_switch_panel_label_formats_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ SwitchPanelLabelFormat = \"%T\"; "
+				  "SwitchPanelGroupLabelFormat = \"%I\"; }");
+	new_dict = dict_from_desc("{ SwitchPanelLabelFormat = \"%S %T\"; "
+				  "SwitchPanelGroupLabelFormat = \"%i [%W]\"; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, old_dict, NULL);
+	CHECK_STR(w_global.config->switch_panel_label_format, "%T");
+	CHECK_STR(w_global.config->switch_panel_group_label_format, "%I");
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK_STR(w_global.config->switch_panel_label_format, "%S %T");
+	CHECK_STR(w_global.config->switch_panel_group_label_format, "%i [%W]");
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
 /* PixmapPath is resolved at texture/cursor/switch-panel apply time and the
  * result cached for the session, so a runtime PixmapPath change must force
  * a re-apply of every such consumer (and tell a running background helper
@@ -3055,6 +3091,7 @@ int main(void)
 	test_dock_edge_roundtrip();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
+	test_switch_panel_label_formats_live_apply();
 	test_pixmap_path_live_apply();
 	test_schema_requires_restart();
 	test_disable_miniwindows_live_apply();

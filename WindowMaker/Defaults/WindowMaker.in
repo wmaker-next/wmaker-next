@@ -17,6 +17,9 @@
 	DisableMiniwindows = NO;
 	EnableWorkspacePager = NO;
 	SwitchPanelIconSize = 64;
+	/* Label fields: T/t title, I/i class, C instance, W/w workspace, S/s state. */
+	SwitchPanelLabelFormat = "%T";
+	SwitchPanelGroupLabelFormat = "%I";
 	IconPosition = blh;
 	IconificationStyle = Zoom;
 	EnforceIconMargin = YES;

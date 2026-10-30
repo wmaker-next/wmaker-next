@@ -175,6 +175,13 @@ esac
 wait_for 80 ipc_ready || fatal "wmaker IPC did not come up at $SOCKET"
 sleep 0.5
 
+note "configure switch panel label formats"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitchPanelLabelFormat '"%I - %T"' || fatal "window label write failed"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitchPanelGroupLabelFormat '"%s %I"' || fatal "group label write failed"
+msg -q reconfigure || fatal "label format reconfigure rejected"
+
 # --- spawn xterms -----------------------------------------------------------
 # Two plain xterms share WM_CLASS "XTerm" for intra-app cycle (CYCLE_CLASS_ONLY).
 # Three with distinct -class (Alpha, Beta, Gamma) for app-group cycle and
@@ -371,6 +378,24 @@ LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
     "$WDWRITE" WindowMaker SwitchPanelIconSize 64
 msg -q reconfigure || true
 sleep 0.2
+
+note "switch panel label format runtime reconfigure"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitchPanelLabelFormat '"%S %-20T %i"' || fatal "window label write failed"
+LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DISPLAY=$DPY \
+    "$WDWRITE" WindowMaker SwitchPanelGroupLabelFormat '"%I [%W]"' || fatal "group label write failed"
+msg -q reconfigure || fatal "label format reconfigure rejected"
+xdo windowactivate "$AC"; sleep 0.3
+before=$(active_window)
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.3
+check "panel appears after label format reconfigure" test -n "$(panel_window)"
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.3
+after=$(active_window)
+check "cycle after label format reconfigure changes selection" [ "$before" != "$after" ]
+check "panel closes after label format reconfigure" test -z "$(panel_window)"
+check "wmaker alive after label format reconfigure" ipc_ready
 
 # --- 9. Drill into a group's windows (grave/Down + Right) ---------------------
 note "CYCLE_GROUP drill: Down drills, Right cycles within the sub-strip"

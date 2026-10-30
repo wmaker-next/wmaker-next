@@ -80,6 +80,7 @@ POTFILES  = \
 	$(top_srcdir)/src/startup.c \
 	$(top_srcdir)/src/startup_notify.c \
 	$(top_srcdir)/src/superfluous.c \
+	$(top_srcdir)/src/swlabel.c \
 	$(top_srcdir)/src/switchpanel.c \
 	$(top_srcdir)/src/switchmenu.c \
 	$(top_srcdir)/src/tabgroup.c \

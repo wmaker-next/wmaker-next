@@ -133,6 +133,7 @@ src/Tests/check_dockslots
 src/Tests/check_focusmodel
 src/Tests/check_placecompute
 src/Tests/check_stacklist
+src/Tests/check_swlabel
 src/Tests/check_wsplan
 wrlib/Tests/bench_image
 wrlib/Tests/check_image

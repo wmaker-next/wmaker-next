@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Switch panel label formats
+--------------------------
+
+SwitchPanelLabelFormat controls individual window labels and
+SwitchPanelGroupLabelFormat controls app-group labels. Their defaults
+are "%T" and "%I", preserving the previous labels in common paths.
+Fields are %T (title), %t (title if different from class), %I (class),
+%i (trimmed class), %C (instance), %W (workspace), %w (workspace when
+there is more than one), %S (state) and %s (short state). Use %% for a
+literal percent, and an optional width and minus sign for padding, for
+example "%S %-20T %i". Width counts characters, not pixels, so padding
+with the panel's proportional font does not guarantee alignment.
+Changes take effect on the next cycle without restarting. Typeahead
+continues to match the raw class or title.
+
 Hot corner action chooser
 -------------------------
 

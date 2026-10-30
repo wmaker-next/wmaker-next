@@ -131,6 +131,8 @@ wmaker_SOURCES = 	\
 	session.c \
 	shutdown.h \
 	shutdown.c \
+	swlabel.c \
+	swlabel.h \
 	switchpanel.c \
 	switchpanel.h \
 	stacking.c \

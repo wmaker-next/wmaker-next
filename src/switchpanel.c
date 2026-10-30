@@ -32,6 +32,7 @@
 #include "window.h"
 #include "defaults.h"
 #include "switchpanel.h"
+#include "swlabel.h"
 #include "tabgroup.h"
 #include "misc.h"
 #include "xinerama.h"
@@ -553,7 +554,7 @@ static void apply_panel_bg(WSwitchPanel *panel)
 		xcb_free_pixmap(wdisp->conn, mask);
 }
 
-static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip strip)
+static void drawTitle(WSwitchPanel *panel, int idecks, char *title, Strip strip)
 {
 	char *ntitle;
 	int width = WMWidgetWidth(panel->win);
@@ -590,19 +591,64 @@ static void drawTitle(WSwitchPanel *panel, int idecks, const char *title, Strip 
 				     WMWidgetHeight(panel->win) - border_space - label_height +
 				     WMFontHeight(panel->font) / 2, ntitle, strlen(ntitle));
 	} else {
-		if (ntitle)
-			WMSetLabelText(panel->label, ntitle);
+		WMSetLabelText(panel->label, ntitle ? ntitle : "");
 	}
 
 	if (ntitle)
 		free(ntitle);
+	if (title)
+		wfree(title);
 }
 
-static const char *panelLabelForWindow(WSwitchPanel *panel, WWindow *wwin)
+static void fillLabelFields(WSwitchPanel *panel, WWindow *wwin, WSwitchLabelFields *fields)
 {
-	if (panel->mode == CYCLE_GROUP && !panel->drilled && !panel->drillPreview && wwin->wm_class)
-		return wwin->wm_class;
-	return wwin->frame->title;
+	int workspace = WWIN_PRIMARY_WS(wwin);
+
+	fields->title = wwin->frame->title;
+	fields->wm_class = wwin->wm_class;
+	fields->wm_instance = wwin->wm_instance;
+	fields->workspace = workspace >= 0 && workspace < panel->scr->workspace_count
+		? panel->scr->workspaces[workspace]->name : NULL;
+	fields->workspace_count = panel->scr->workspace_count;
+	if (wwin->flags.fullscreen) {
+		fields->state_long = "Full";
+		fields->state_short = "F";
+	} else if (wwin->flags.maximized) {
+		fields->state_long = "Max";
+		fields->state_short = "M";
+	} else if (wwin->flags.shaded) {
+		fields->state_long = "Shade";
+		fields->state_short = "S";
+	} else if (wwin->flags.miniaturized) {
+		fields->state_long = "Min";
+		fields->state_short = "m";
+	} else {
+		fields->state_long = "-";
+		fields->state_short = "-";
+	}
+}
+
+static char *panelLabelForWindow(WSwitchPanel *panel, WWindow *wwin, Strip strip)
+{
+	WSwitchLabelFields fields;
+	const char *format;
+	char *label;
+	bool group = panel->mode == CYCLE_GROUP && strip == STRIP_MAIN;
+
+	fillLabelFields(panel, wwin, &fields);
+	format = group ? w_global.config->switch_panel_group_label_format
+		       : w_global.config->switch_panel_label_format;
+	if (!format || !*format)
+		format = group ? "%I" : "%T";
+	label = wSwitchPanelFormatLabel(format, &fields);
+	if (group && label && !*label) {
+		wfree(label);
+		format = w_global.config->switch_panel_label_format;
+		if (!format || !*format)
+			format = "%T";
+		label = wSwitchPanelFormatLabel(format, &fields);
+	}
+	return label;
 }
 
 static void free_sub_strip(WSwitchPanel *panel)
@@ -693,7 +739,7 @@ WWindow *wSwitchPanelUndrill(WSwitchPanel *panel)
 	if (panel->win && panel->current >= 0)
 		changeImage(panel, panel->current, 1, false, true, STRIP_MAIN);
 	if (panel->win && rep)
-		drawTitle(panel, panel->current, panelLabelForWindow(panel, rep), STRIP_MAIN);
+		drawTitle(panel, panel->current, panelLabelForWindow(panel, rep, STRIP_MAIN), STRIP_MAIN);
 	return rep;
 }
 
@@ -786,7 +832,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 			changeImage(panel, panel->current, 1, false, true, STRIP_MAIN);
 	}
 	if (panel->win)
-		drawTitle(panel, panel->subCurrent, panelLabelForWindow(panel, firstSub), STRIP_SUB);
+		drawTitle(panel, panel->subCurrent, panelLabelForWindow(panel, firstSub, STRIP_SUB), STRIP_SUB);
 	return firstSub;
 }
 
@@ -1091,7 +1137,7 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 		scrollIcons(panel, *current - *firstVisible - visibleCount + 1, strip);
 
 	if (panel->win) {
-		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
+		drawTitle(panel, *current, panelLabelForWindow(panel, wwin, strip), strip);
 		if (*current != orig)
 			changeImage(panel, orig, 0, dim, false, strip);
 		changeImage(panel, *current, 1, false, false, strip);
@@ -1125,7 +1171,7 @@ WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back, Strip strip)
 		for (WMArrayFirst(winArr, &(i)); (i) != WANotFound; WMArrayNext(winArr, &(i)))
 			changeImage(panel, i, i == *current, false, false, strip);
 
-		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
+		drawTitle(panel, *current, panelLabelForWindow(panel, wwin, strip), strip);
 	}
 
 	return wwin;
@@ -1185,7 +1231,7 @@ WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, St
 		scrollIcons(panel, *current - *firstVisible - visibleCount + 1, strip);
 
 	if (panel->win) {
-		drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
+		drawTitle(panel, *current, panelLabelForWindow(panel, wwin, strip), strip);
 		changeImage(panel, *current, 1, false, false, strip);
 	}
 
@@ -1234,7 +1280,7 @@ WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, xcb_generic_event_t *event
 
 			wwin = WMGetFromArray(winArr, focus);
 
-			drawTitle(panel, *current, panelLabelForWindow(panel, wwin), strip);
+			drawTitle(panel, *current, panelLabelForWindow(panel, wwin, strip), strip);
 
 			return wwin;
 		}

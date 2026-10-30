@@ -106,6 +106,10 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(SWITCH_PANEL_LABEL_FORMAT, "SwitchPanelLabelFormat", STRING, switch_panel_label_format, "%T", \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(SWITCH_PANEL_GROUP_LABEL_FORMAT, "SwitchPanelGroupLabelFormat", STRING, switch_panel_group_label_format, "%I", \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_POSITION, "IconPosition", ENUM, icon_yard, "blh", \
 	  icon_positions, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(PIXMAP_PATH, "PixmapPath", PATH_LIST, pixmap_path, DEF_PIXMAP_PATHS, \
