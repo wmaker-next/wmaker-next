@@ -544,6 +544,9 @@ void W_PaintPixmap(cairo_t *cr, WMPixmap *pixmap, int x, int y);
  * cairo target at (dx, dy) */
 void W_PaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
                      int sx, int sy, int w, int h, int dx, int dy);
+/* true when d was created at logical*uiScale device pixels, in which
+ * case width/height receive the recorded device extents */
+int WMGetDrawableScaledSize(W_Screen *scr, xcb_drawable_t d, int *width, int *height);
 /* one-shot server-side copy: open a transient cr on dst, blit, close */
 void W_CopyArea(W_Screen *scr, xcb_drawable_t src, int srcW, int srcH,
                     int sx, int sy, int w, int h, xcb_drawable_t dst, int dx, int dy);

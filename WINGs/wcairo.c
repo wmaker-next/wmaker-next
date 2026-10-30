@@ -115,6 +115,26 @@ void WMScreenAbandonDrawable(WMScreen *scr, xcb_drawable_t d)
 		WMHashRemove(scr->drawableSize, (const void *)(uintptr_t)d);
 }
 
+int WMGetDrawableScaledSize(W_Screen *scr, xcb_drawable_t d, int *width, int *height)
+{
+	void *val;
+	uintptr_t packed;
+
+	if (!scr || !scr->drawableSize || d == XCB_NONE)
+		return 0;
+	val = WMHashGet(scr->drawableSize, (const void *)(uintptr_t)d);
+	if (!val)
+		return 0;
+	packed = (uintptr_t)val;
+	if (!(packed & DRAWABLE_SIZE_SCALED_BIT))
+		return 0;
+	if (width)
+		*width = (int)((packed >> 16) & 0x7fff);
+	if (height)
+		*height = (int)(packed & 0xffff);
+	return 1;
+}
+
 static int lookupDrawableSize(W_Screen *scr, xcb_drawable_t d, int *w, int *h, int *scaled)
 {
 	xcb_connection_t *xc;
@@ -431,6 +451,25 @@ void W_PaintPixmap(cairo_t *cr, WMPixmap *pix, int x, int y)
 {
 	RContext *rc = pix->screen->rcontext;
 	cairo_surface_t *ps, *ms;
+	int dw, dh;
+
+	/* a device-resolution source blits at 1:1 so the caller's scaled
+	 * CTM does not up-scale it a second time */
+	if (pix->depth != 1 && pix->mask == XCB_NONE &&
+	    WMGetDrawableScaledSize(pix->screen, pix->pixmap, &dw, &dh)) {
+		double s = WMScreenUIScale(pix->screen);
+
+		ps = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pix->pixmap,
+					      rc->xvisual, dw, dh);
+		cairo_save(cr);
+		cairo_identity_matrix(cr);
+		cairo_set_source_surface(cr, ps, x * s, y * s);
+		cairo_rectangle(cr, x * s, y * s, pix->width * s, pix->height * s);
+		cairo_fill(cr);
+		cairo_restore(cr);
+		cairo_surface_destroy(ps);
+		return;
+	}
 
 	if (pix->depth == 1) {
 		ps = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
