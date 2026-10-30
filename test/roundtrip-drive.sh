@@ -35,7 +35,7 @@ WMAKERMSG="$ROOT/util/.libs/wmakermsg"
 . "$ROOT/test/drive-common.sh"
 REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:$(drive_default_display)}
 PROXY=${ROUNDTRIP_DRIVE_PROXY:-:$(drive_default_display 1)}
-LIMIT=${ROUNDTRIP_LIMIT:-250}
+LIMIT=${ROUNDTRIP_LIMIT:-260}
 TRACE=/tmp/roundtrip-drive.trace
 LOG=/tmp/roundtrip-drive.log
 BENCH=${BENCH:-0}
