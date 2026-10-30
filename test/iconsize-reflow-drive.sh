@@ -148,7 +148,23 @@ note "baseline 64x64 tiles: $baseline_64, 96x96 tiles: $baseline_96"
 check "dock tile exists at 64x64 (default)" [ "$baseline_64" -ge 1 ]
 check "no 96x96 tiles at baseline" [ "$baseline_96" -eq 0 ]
 
-# --- 2. Reconfigure IconSize=96 ---------------------------------------------
+# --- 2. inotify reload without wmakermsg reconfigure -------------------------
+# wdwrite only rewrites Defaults/WindowMaker, the inotify watcher must
+# drive wDefaultsCheckDomains() -> wReadDefaults() -> REFRESH_ICON_TILE
+# and reflow the dock on its own.
+note "inotify reload: IconSize=96 without reconfigure"
+wdwrite WindowMaker IconSize 96
+inotify_96() { [ "$(tile_count_by_size 96 96)" -ge 1 ]; }
+wait_for 50 inotify_96
+check "inotify reload applies IconSize=96 without reconfigure" inotify_96
+check "no 64x64 tiles after inotify reload" [ "$(tile_count_by_size 64 64)" -eq 0 ]
+
+wdwrite WindowMaker IconSize 64
+inotify_64() { [ "$(tile_count_by_size 64 64)" -ge 1 ]; }
+wait_for 50 inotify_64
+check "inotify reload restores IconSize=64" inotify_64
+
+# --- 3. Reconfigure IconSize=96 ---------------------------------------------
 note "reconfigure IconSize=96"
 wdwrite WindowMaker IconSize 96
 msg -q reconfigure || fail "reconfigure rejected"
@@ -161,7 +177,7 @@ check "dock tile resized to 96x96 after reconfigure" [ "$after_96" -ge 1 ]
 check "no 64x64 tiles remain after reconfigure" [ "$after_64" -eq 0 ]
 check "wmaker alive after IconSize reconfigure" ipc_ready
 
-# --- 3. Reconfigure back to 64 ----------------------------------------------
+# --- 4. Reconfigure back to 64 ----------------------------------------------
 note "reconfigure IconSize back to 64"
 wdwrite WindowMaker IconSize 64
 msg -q reconfigure || fail "reconfigure rejected"

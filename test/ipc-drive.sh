@@ -694,6 +694,23 @@ MON_PID=
 wait_for 50 pid_gone "$WMAKER_PID"
 check "wmaker process exits on SIGTERM" pid_gone "$WMAKER_PID"
 
+# ---- row 5b: SIGHUP and SIGINT reach the same orderly-exit path ---------
+
+for sig_name in HUP INT; do
+	note "SIG$sig_name -> orderly exit"
+	start_wmaker || fatal "could not relaunch wmaker for SIG$sig_name row"
+	start_monitor shutdown tick \
+		|| record_fail "could not subscribe for SIG$sig_name"
+	kill -s "$sig_name" "$WMAKER_PID"
+	wait_for 50 evlog_has 'change = exit'
+	check "SIG$sig_name delivers shutdown {change=exit}" \
+		evlog_has 'change = exit'
+	wait_for 50 pid_gone "$MON_PID"
+	MON_PID=
+	wait_for 50 pid_gone "$WMAKER_PID"
+	check "wmaker process exits on SIG$sig_name" pid_gone "$WMAKER_PID"
+done
+
 # ---- rows 6-7: source=menu and source=helper death handlers ------------
 # These need a wmaker instance with HotCorners (to reach
 # ExecuteShellCommand without driving a menu) and WorkspaceSpecificBack

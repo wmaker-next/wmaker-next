@@ -1,11 +1,14 @@
 #!/bin/sh
 # Drive the IPC surface that ipc-drive.sh skips: action Hide,
-# action HideOthers, ShowAll, ArrangeIcons, and a window-workspace smoke
-# (deep +N/-N/N coverage lives in wsmask-drive.sh).
+# action HideOthers, ShowAll, ArrangeIcons, a window-workspace smoke
+# (deep +N/-N/N coverage lives in wsmask-drive.sh), and the
+# workspace-delete in-use rejection.
 #
 # Each is asserted via the EWMH atoms the WM-side handlers publish:
 #   action Hide / action HideOthers / ShowAll  -> _NET_WM_STATE_HIDDEN
 #   window-workspace                           -> _NET_WM_DESKTOP
+#   workspace-delete (in use)                  -> exit 2, unchanged count,
+#                                                 no modal dialog
 #   ArrangeIcons                              -> exit 0, wmaker alive,
 #                                                 _NET_CLIENT_LIST intact
 #
@@ -109,6 +112,12 @@ net_current_desktop() {
 # _NET_SHOWING_DESKTOP as a bare number (1 while show-desktop is active)
 net_showing_desktop() {
 	DISPLAY=$DPY xprop -root _NET_SHOWING_DESKTOP 2>/dev/null \
+		| sed -n 's/.*= //p'
+}
+
+# _NET_NUMBER_OF_DESKTOPS as a bare number
+net_number_of_desktops() {
+	DISPLAY=$DPY xprop -root _NET_NUMBER_OF_DESKTOPS 2>/dev/null \
 		| sed -n 's/.*= //p'
 }
 
@@ -317,6 +326,23 @@ check "window-workspace A -> 2 exits 0" [ $? -eq 0 ]
 wf_desktop_2() { [ "$(net_wm_desktop "$XA")" = "2" ]; }
 wait_for 30 wf_desktop_2
 check "A _NET_WM_DESKTOP = 2 after move" wf_desktop_2
+
+# workspace-delete pre-checks sole membership instead of calling
+# wWorkspaceDelete(), whose modal "in use" dialog would block the IPC
+# reply forever. A is the only window on desktop 2 here, so the verb
+# must reject without raising the dialog or changing anything.
+note "workspace-delete refuses an in-use workspace"
+ws_count_before=$(net_number_of_desktops)
+msg -q workspace-delete 2 >/dev/null 2>&1
+check "workspace-delete on in-use workspace exits 2" [ $? -eq 2 ]
+check "in-use workspace still present" \
+	[ "$(net_number_of_desktops)" = "$ws_count_before" ]
+check "A stays on desktop 2 after refused delete" \
+	[ "$(net_wm_desktop "$XA")" = "2" ]
+check "wmaker alive after refused delete" ipc_ready
+# if the pre-check ever regresses the modal is still up, dismiss it so
+# the remaining rows are not wedged behind it
+DISPLAY=$DPY xdotool key Escape >/dev/null 2>&1
 
 # bring A back to workspace 0 so the trailing ShowAll deiconifies on
 # the workspace the drive is viewing
