@@ -453,6 +453,9 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 
 	updateSettingsPanelIcon(panel);
 
+	pwidth = WSCALE(scr, pwidth);
+	pheight = WSCALE(scr, pheight);
+
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,

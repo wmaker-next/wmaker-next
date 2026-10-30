@@ -1238,6 +1238,7 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	xcb_window_t parent;
 	char *str = NULL, *tmp = NULL;
 	int x, y, btn_width, frame_width;
+	int pwidth, pheight;
 	WMButton *selectedBtn = NULL;
 
 	spec_text = _("The configuration will apply to all\n"
@@ -1411,8 +1412,12 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 		changePage(panel->pagePopUp, panel);
 	}
 
+	pwidth = WSCALE(scr, PWIDTH);
+	pheight = WSCALE(scr, PHEIGHT);
+
 	parent = xcb_generate_id(wdisp->conn);
-	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, PWIDTH, PHEIGHT, 0,
+	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win,
+			  0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 	panel->parent = parent;
@@ -1425,16 +1430,17 @@ static InspectorPanel *createInspectorForWindow(WWindow *wwin, int xpos, int ypo
 	if (xpos == UNDEFINED_POS) {
 		x = wwin->frame_x + wwin->frame->core->width / 2;
 		y = wwin->frame_y + wwin->frame->top_width * 2;
-		if (y + PHEIGHT > scr->scr_height)
-			y = scr->scr_height - PHEIGHT - 30;
-		if (x + PWIDTH > scr->scr_width)
-			x = scr->scr_width - PWIDTH;
+		if (y + pheight > scr->scr_height)
+			y = scr->scr_height - pheight - 30;
+		if (x + pwidth > scr->scr_width)
+			x = scr->scr_width - pwidth;
 	} else {
 		x = xpos;
 		y = ypos;
 	}
 
-	panel->frame = wManageInternalWindow(scr, parent, wwin->client_win, "Inspector", x, y, PWIDTH, PHEIGHT);
+	panel->frame = wManageInternalWindow(scr, parent, wwin->client_win, "Inspector",
+					     x, y, pwidth, pheight);
 
 	if (!selectedBtn)
 		selectedBtn = panel->defaultRb;

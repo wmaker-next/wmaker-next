@@ -64,8 +64,8 @@ int wMessageDialog(WScreen *scr, const char *title, const char *message, const c
 	wIPCEmitDialog(scr, "message", title, message);
 
 	panel = WMCreateScaledAlertPanel(scr->wmscreen, NULL, title, message, defBtn, altBtn, othBtn);
-	pwidth = WMWidgetWidth(panel->win);
-	pheight = WMWidgetHeight(panel->win);
+	pwidth = WSCALE(scr, WMWidgetWidth(panel->win));
+	pheight = WSCALE(scr, WMWidgetHeight(panel->win));
 
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
@@ -128,6 +128,9 @@ int wExitDialog(WScreen *scr, const char *title, const char *message, const char
 	WMRealizeWidget(saveSessionBtn);
 	WMMapWidget(saveSessionBtn);
 
+	pwidth = WSCALE(scr, pwidth);
+	pheight = WSCALE(scr, pheight);
+
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
@@ -172,8 +175,8 @@ int wInputDialog(WScreen *scr, const char *title, const char *message, char **te
 	int pwidth, pheight;
 
 	panel = WMCreateScaledInputPanel(scr->wmscreen, NULL, title, message, *text, _("OK"), _("Cancel"));
-	pwidth = WMWidgetWidth(panel->win);
-	pheight = WMWidgetHeight(panel->win);
+	pwidth = WSCALE(scr, WMWidgetWidth(panel->win));
+	pheight = WSCALE(scr, WMWidgetHeight(panel->win));
 
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
@@ -579,6 +582,9 @@ void wShowInfoPanel(WScreen *scr)
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 
+	pwidth = WSCALE(scr, pwidth);
+	pheight = WSCALE(scr, pheight);
+
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
 			  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
@@ -686,6 +692,9 @@ void wShowLegalPanel(WScreen *scr)
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
 	WMMapSubwidgets(panel->frame);
+
+	pwidth = WSCALE(scr, pwidth);
+	pheight = WSCALE(scr, pheight);
 
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
@@ -968,6 +977,9 @@ void wShowShortcutsPanel(WScreen *scr)
 
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
+
+	pwidth = WSCALE(scr, pwidth);
+	pheight = WSCALE(scr, pheight);
 
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,

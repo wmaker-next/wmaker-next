@@ -2049,8 +2049,8 @@ int wAdvancedInputDialog(WScreen *scr, const char *title, const char *message, c
 	p->scr = scr;
 	WMCreateEventHandler(WMWidgetView(p->panel->text), XCB_EVENT_MASK_KEY_PRESS, handleHistoryKeyPress, p);
 	widenInputDialog(scr, p->panel);
-	pwidth = WMWidgetWidth(p->panel->win);
-	pheight = WMWidgetHeight(p->panel->win);
+	pwidth = WSCALE(scr, WMWidgetWidth(p->panel->win));
+	pheight = WSCALE(scr, WMWidgetHeight(p->panel->win));
 
 	parent = xcb_generate_id(wdisp->conn);
 	xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, parent, scr->root_win, 0, 0, pwidth, pheight, 0,
