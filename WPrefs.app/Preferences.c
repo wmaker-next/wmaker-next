@@ -121,6 +121,19 @@ static void borderCallback(WMWidget * w, void *data)
 	WMSetLabelText(panel->borderL, buffer);
 }
 
+static void bounceMasterCallback(WMWidget *w, void *data)
+{
+	_Panel *panel = (_Panel *) data;
+	bool disabled;
+	int i;
+
+	(void) w;
+
+	disabled = WMGetButtonSelected(panel->bounceB[0]);
+	for (i = 1; i < wlengthof(appicon_bouncing); i++)
+		WMSetButtonEnabled(panel->bounceB[i], !disabled);
+}
+
 static void showData(_Panel * panel)
 {
 	char *str;
@@ -149,6 +162,7 @@ static void showData(_Panel * panel)
 		if (GetStringForKey(appicon_bouncing[x].db_key))
 			WMSetButtonSelected(panel->bounceB[x], GetBoolForKey(appicon_bouncing[x].db_key));
 	}
+	bounceMasterCallback(NULL, panel);
 
 	for (x = 0; x < wlengthof(balloon_choices); x++)
 		WMSetButtonSelected(panel->ballB[x], GetBoolForKey(balloon_choices[x].db_key));
@@ -251,6 +265,7 @@ static void createPanel(Panel * p)
 			WMSetBalloonTextForView(_(appicon_bouncing[i].balloon_msg),
 			                        WMWidgetView(panel->bounceB[i]));
 	}
+	WMSetButtonAction(panel->bounceB[0], bounceMasterCallback, panel);
 
 	WMMapSubwidgets(panel->optF);
 
