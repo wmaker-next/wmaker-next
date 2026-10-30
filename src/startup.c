@@ -176,6 +176,18 @@ static void handleSigPipeInput(int fd, int mask, void *cdata)
 	DispatchEvent(NULL);
 }
 
+/* Queue a transparent restart and wake the event loop so the state
+ * flag is acted on even when the connection is otherwise idle.
+ */
+void wRequestRestart(void)
+{
+	WCHANGE_STATE(WSTATE_NEED_RESTART);
+	if (sig_pipe[1] >= 0) {
+		ssize_t r = write(sig_pipe[1], "x", 1);
+		(void) r;
+	}
+}
+
 /*
  *----------------------------------------------------------------------
  * handleExitSig--

@@ -2,9 +2,10 @@
 # Verify the XSETTINGS manager end to end: an independent client
 # (test/xsettings-client.c) resolves the _XSETTINGS_S0 selection, parses
 # the _XSETTINGS_SETTINGS payload on the wire and a GTK and a Qt client
-# consume the same values, while Xft.dpi and WMGLOBAL font changes are
-# republished live. Also checks that wmaker yields the selection to
-# another manager and releases it on exit.
+# consume the same values, while an Xft.dpi change restarts wmaker and
+# republishes, and a WMGLOBAL font change republishes live. Also checks
+# that wmaker yields the selection to another manager and releases it on
+# exit.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -121,8 +122,8 @@ SERIAL0=$(printf '%s\n' "$OUT" | awk -F'\t' '$1 == "serial" {print $2; exit}')
 [ -n "$SERIAL0" ] && [ "$SERIAL0" -ge 1 ] || fail "no usable serial in the payload"
 note "ok: initial payload with serial $SERIAL0"
 
-# --- 2: live Xft.dpi change -------------------------------------------------
-note "live Xft.dpi republish"
+# --- 2: Xft.dpi change restarts wmaker and republishes ----------------------
+note "Xft.dpi change restarts and republishes"
 : > "$RUNTIME/watch.out"
 xclient --watch >"$RUNTIME/watch.out" 2>>"$LOG" &
 WATCH_PID=$!
@@ -130,18 +131,20 @@ echo "$WATCH_PID" >> "$PIDFILE"
 sleep 0.3
 printf 'Xft.dpi: 144\n' | DISPLAY=$DPY xrdb -merge
 dpi_updated() { grep -Fq 'Xft/DPI	integer	147456' "$RUNTIME/watch.out"; }
-wait_for 50 dpi_updated || fail "Xft/DPI was not republished after the xrdb change"
+wait_for 100 dpi_updated || fail "Xft/DPI was not republished after the xrdb change"
+# WMScreenReadUIScale() only logs this at startup, so it proves wmaker
+# restarted rather than merely refreshing the live payload
+dpi_applied() { grep -Fq 'Xft.dpi 144' "$LOG"; }
+wait_for 100 dpi_applied || fail "wmaker did not restart after the Xft.dpi change"
+wait_for 100 ipc_ready || fail "wmaker did not come back after the Xft.dpi restart"
 new_serial() {
     awk -F'\t' '$1 == "serial" {print $2}' "$RUNTIME/watch.out" | tail -1
 }
-serial_advanced() {
-    s=$(new_serial)
-    [ -n "$s" ] && [ "$s" -gt "$SERIAL0" ]
-}
-wait_for 50 serial_advanced || fail "serial did not advance past $SERIAL0"
+SERIAL0=$(new_serial)
+[ -n "$SERIAL0" ] && [ "$SERIAL0" -ge 1 ] || fail "no usable serial in the restarted payload"
 kill "$WATCH_PID" 2>/dev/null
 wait "$WATCH_PID" 2>/dev/null
-note "ok: republished with serial $(new_serial)"
+note "ok: restarted and republished with serial $SERIAL0"
 
 # --- 3: live font change through the WMGLOBAL domain ------------------------
 note "live Gtk/FontName republish"

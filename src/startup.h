@@ -23,4 +23,7 @@
 
 void StartUp(bool defaultScreenOnly);
 
+/* request a transparent WM restart from main-loop context */
+void wRequestRestart(void);
+
 #endif /* WMSTARTUP_H */

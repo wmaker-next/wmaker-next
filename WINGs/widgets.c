@@ -1291,7 +1291,7 @@ static const char *findResourceValue(const char *buf, const char *key)
  * reported physical size is unreliable (Xvfb reports 100 dpi, some
  * multi-head and projector setups report nonsense) and that would
  * change font sizes on setups that never set Xft.dpi. */
-void WMScreenReadUIScale(WMScreen *scr)
+static double readUIScale(WMScreen *scr, double *dpi)
 {
 	const char *val;
 	char *rm;
@@ -1309,12 +1309,29 @@ void WMScreenReadUIScale(WMScreen *scr)
 	s = d > 0.0 ? d / 96.0 : 1.0;
 	if (s > 4.0)
 		s = 4.0;
+	if (s < 1.0)
+		s = 1.0;
+	if (dpi)
+		*dpi = d;
+	return s;
+}
+
+void WMScreenReadUIScale(WMScreen *scr)
+{
+	double d, s;
+
+	s = readUIScale(scr, &d);
 	if (scr->uiScale <= 0.0 || (s - scr->uiScale) * (s - scr->uiScale) > 0.0001) {
 		scr->uiScale = s;
 		if (d > 0.0)
 			wmessage("screen %d: Xft.dpi %.0f (scale %.2f)",
 				 scr->screen, d, s);
 	}
+}
+
+double WMScreenPeekUIScale(WMScreen *scr)
+{
+	return readUIScale(scr, NULL);
 }
 
 unsigned int WMScreenWidth(WMScreen * scr)

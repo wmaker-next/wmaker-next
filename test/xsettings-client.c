@@ -139,14 +139,92 @@ static int parse_payload(const unsigned char *p, unsigned long len,
 	return 0;
 }
 
+/* BadWindow here means the manager destroyed its selection window
+ * between our XGetSelectionOwner() and XGetWindowProperty() calls, a
+ * normal part of a restart. Report it through x_error and let the
+ * caller re-resolve the selection instead of aborting the client.
+ */
+static int x_error;
+
+static int trapXError(Display *dpy, XErrorEvent *ev)
+{
+	(void)dpy;
+
+	if (ev->error_code == BadWindow || ev->error_code == BadDrawable) {
+		x_error = 1;
+		return 0;
+	}
+	fprintf(stderr, "unexpected X error %d (request %d)\n",
+		ev->error_code, ev->request_code);
+	exit(1);
+}
+
+static int watch_window(Display *dpy, Window win)
+{
+	x_error = 0;
+	XSelectInput(dpy, win, PropertyChangeMask | StructureNotifyMask);
+	XSync(dpy, False);
+	if (x_error) {
+		x_error = 0;
+		return 0;
+	}
+	return 1;
+}
+
+/* read the payload from owner, print it when print is set, and hand
+ * back the header serial. Returns 1 on success, 0 when the owner is
+ * alive but has not published a payload yet, -1 when the owner is gone
+ * and -2 when the payload is malformed.
+ */
+static int fetch_settings(Display *dpy, Window owner, Atom prop, Atom type,
+			  int print, unsigned int *serial_out)
+{
+	unsigned char *data;
+	Atom rtype;
+	int rformat, rc;
+	unsigned long nitems, bytes;
+
+	data = NULL;
+	x_error = 0;
+	rc = XGetWindowProperty(dpy, owner, prop, 0, 65536, False, type,
+				&rtype, &rformat, &nitems, &bytes, &data);
+	if (x_error) {
+		x_error = 0;
+		if (data)
+			XFree(data);
+		return -1;
+	}
+	if (rc != Success) {
+		if (data)
+			XFree(data);
+		return -1;
+	}
+	if (rtype != type || rformat != 8 || !data) {
+		if (data)
+			XFree(data);
+		return 0;
+	}
+	*serial_out = 0;
+	if (parse_payload(data, nitems, serial_out, print) != 0) {
+		XFree(data);
+		fprintf(stderr, "malformed settings payload\n");
+		return -2;
+	}
+	if (print)
+		fflush(stdout);
+	XFree(data);
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	Display *dpy;
 	int screen = -1, watch = 0, dump = 1, serial_only = 0, steal = 0, owner_only = 0;
 	char selname[32];
-	Atom sel, prop, type;
-	Window owner;
-	int i, j;
+	Atom sel, prop, type, manager;
+	Window owner, root;
+	unsigned int serial;
+	int i, rc;
 
 	for (i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--watch") == 0) {
@@ -174,11 +252,13 @@ int main(int argc, char **argv)
 	}
 	if (screen < 0)
 		screen = DefaultScreen(dpy);
+	root = DefaultRootWindow(dpy);
 
 	snprintf(selname, sizeof(selname), "_XSETTINGS_S%d", screen);
 	sel = XInternAtom(dpy, selname, False);
 	prop = XInternAtom(dpy, atom_settings, False);
 	type = XInternAtom(dpy, atom_settings, False);
+	manager = XInternAtom(dpy, "MANAGER", False);
 
 	if (owner_only) {
 		Window w = XGetSelectionOwner(dpy, sel);
@@ -205,58 +285,77 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	XSetErrorHandler(trapXError);
+
 	owner = XGetSelectionOwner(dpy, sel);
 	if (owner == None) {
 		fprintf(stderr, "no %s owner\n", selname);
 		return 1;
 	}
 
-	for (j = 0;; j++) {
-		unsigned char *data;
-		Atom rtype;
-		int rformat;
-		unsigned long nitems, bytes;
-		unsigned int serial;
-
-		if (XGetWindowProperty(dpy, owner, prop, 0, 65536, False, type,
-				       &rtype, &rformat, &nitems, &bytes, &data)
-		    != Success) {
-			fprintf(stderr, "GetProperty failed\n");
-			return 1;
-		}
-		if (rtype != type || rformat != 8 || !data) {
-			if (data)
-				XFree(data);
-			fprintf(stderr, "unexpected property type %lu format %d\n",
-				(unsigned long)rtype, rformat);
-			return 1;
-		}
-		serial = 0;
-		if (parse_payload(data, nitems, &serial, dump && !serial_only) != 0) {
-			XFree(data);
-			fprintf(stderr, "malformed settings payload\n");
-			return 1;
-		}
-		XFree(data);
-		if (serial_only) {
-			printf("%u\n", serial);
-			fflush(stdout);
-			return 0;
-		}
-		if (!watch)
-			return 0;
+	rc = fetch_settings(dpy, owner, prop, type, dump && !serial_only, &serial);
+	if (rc < 0) {
+		fprintf(stderr, "cannot read %s\n", atom_settings);
+		return 1;
+	}
+	if (rc == 0) {
+		fprintf(stderr, "no %s payload\n", atom_settings);
+		return 1;
+	}
+	if (serial_only) {
+		printf("%u\n", serial);
 		fflush(stdout);
+		return 0;
+	}
+	if (!watch)
+		return 0;
 
-		/* first iteration only: subscribe to republishes */
-		if (j == 0)
-			XSelectInput(dpy, owner, PropertyChangeMask);
+	/* follow the manager selection across a restart: the old owner is
+	 * destroyed and the new one announces itself with a MANAGER
+	 * ClientMessage on the root window
+	 */
+	if (!watch_window(dpy, root) || !watch_window(dpy, owner)) {
+		fprintf(stderr, "cannot watch the XSETTINGS selection\n");
+		return 1;
+	}
 
-		for (;;) {
-			XEvent ev;
+	for (;;) {
+		XEvent ev;
 
-			XNextEvent(dpy, &ev);
-			if (ev.type == PropertyNotify)
-				break;
+		XNextEvent(dpy, &ev);
+		if (ev.type == PropertyNotify) {
+			if (ev.xproperty.window != owner || ev.xproperty.atom != prop)
+				continue;
+			rc = fetch_settings(dpy, owner, prop, type, 1, &serial);
+			if (rc == -2)
+				return 1;
+			if (rc >= 0)
+				continue;
+			owner = XGetSelectionOwner(dpy, sel);
+			if (owner == None)
+				continue;
+			if (watch_window(dpy, owner) &&
+			    fetch_settings(dpy, owner, prop, type, 1, &serial) == -2)
+				return 1;
+		} else if (ev.type == DestroyNotify) {
+			if (ev.xdestroywindow.window == owner)
+				owner = None;
+		} else if (ev.type == ClientMessage) {
+			Window next;
+
+			if (ev.xclient.message_type != manager ||
+			    ev.xclient.format != 32 ||
+			    (Atom) ev.xclient.data.l[1] != sel)
+				continue;
+			next = XGetSelectionOwner(dpy, sel);
+			if (next == None) {
+				owner = None;
+				continue;
+			}
+			owner = next;
+			if (watch_window(dpy, owner) &&
+			    fetch_settings(dpy, owner, prop, type, 1, &serial) == -2)
+				return 1;
 		}
 	}
 }

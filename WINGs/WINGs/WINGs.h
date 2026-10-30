@@ -671,11 +671,13 @@ xcb_connection_t* WMScreenDisplay(WMScreen *scr);
 
 int WMScreenDepth(WMScreen *scr);
 
-/* Xft.dpi/96 (or a physical-size fallback), read once at screen
- * creation and refreshed via WMScreenReadUIScale(). Multiply logical
- * pixel dimensions by this to get device pixels. */
+/* Xft.dpi/96, read once per screen. Values below 1.0 are clamped to
+ * 1.0. Runtime changes are detected by WMScreenPeekUIScale() and
+ * applied by restarting the WM.
+ */
 double WMScreenUIScale(WMScreen *scr);
 void WMScreenReadUIScale(WMScreen *scr);
+double WMScreenPeekUIScale(WMScreen *scr);
 
 void WMSetFocusToWidget(WMWidget *widget);
 

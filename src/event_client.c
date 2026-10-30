@@ -40,6 +40,38 @@
 #include "event.h"
 #include "xsettings.h"
 #include "properties.h"
+#include "startup.h"
+
+#define UI_SCALE_RESTART_DELAY 300
+
+static WMHandlerID ui_scale_restart_timer;
+
+static void uiScaleRestart(void *data)
+{
+	(void)data;
+
+	ui_scale_restart_timer = NULL;
+	wRequestRestart();
+}
+
+/* compare the configured Xft.dpi with the scale the session was laid
+ * out with, uiScale itself is startup-only so this is the only signal
+ * that a restart is needed
+ */
+static bool uiScaleDiffers(void)
+{
+	int i;
+
+	for (i = 0; i < wdisp->screen_count; i++) {
+		WMScreen *scr = wScreenWithNumber(i)->wmscreen;
+		double applied = WMScreenUIScale(scr);
+		double configured = WMScreenPeekUIScale(scr);
+
+		if ((applied - configured) * (applied - configured) > 0.0001)
+			return true;
+	}
+	return false;
+}
 
 
 static int matchWindow(const void *item, const void *cdata)
@@ -298,12 +330,24 @@ static void handlePropertyNotify(xcb_generic_event_t *ev)
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (scr && scr->root_win == e->window) {
 			/* xrdb writes RESOURCE_MANAGER only on screen 0's
-			 * root, but Xft.dpi is a session-wide value so a
-			 * change there re-reads for every managed screen */
+			 * root. A changed Xft.dpi cannot be applied to a
+			 * running session because wm-side frames and the
+			 * WINGs view tree keep their device geometry, so
+			 * restart once the resource database settles.
+			 */
 			if (e->atom == XCB_ATOM_RESOURCE_MANAGER) {
-				int i;
-				for (i = 0; i < wdisp->screen_count; i++)
-					WMScreenReadUIScale(wScreenWithNumber(i)->wmscreen);
+				if (uiScaleDiffers()) {
+					if (ui_scale_restart_timer)
+						WMDeleteTimerHandler(ui_scale_restart_timer);
+					ui_scale_restart_timer =
+					    WMAddTimerHandler(UI_SCALE_RESTART_DELAY,
+							      uiScaleRestart, NULL);
+					return;
+				}
+				if (ui_scale_restart_timer) {
+					WMDeleteTimerHandler(ui_scale_restart_timer);
+					ui_scale_restart_timer = NULL;
+				}
 				/* the UI scale the XSETTINGS payload derives
 				 * Xft/DPI from may have changed with it */
 				wXSettingsRefreshAll();
