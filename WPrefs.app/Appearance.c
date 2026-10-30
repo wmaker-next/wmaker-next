@@ -769,6 +769,26 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 	return pixmap;
 }
 
+/* render a texture at device resolution for the preview compositor.
+ * The result must be released with WMScreenAbandonDrawable() before
+ * the pixmap is freed so the drawableSize cache does not keep a dead
+ * entry. */
+static xcb_pixmap_t renderPreviewTexture(WMScreen *scr, WMPropList *texture,
+					 int width, int height, int border)
+{
+	double s = WMScreenUIScale(scr);
+	xcb_pixmap_t pix;
+
+	if (s <= 1.0001)
+		return renderTexture(scr, texture, width, height, NULL, border);
+
+	pix = renderTexture(scr, texture, (int)(width * s + 0.5),
+			    (int)(height * s + 0.5), NULL, border);
+	if (pix != XCB_NONE)
+		WMScreenNoteDrawableSizeScaled(scr, pix, width, height);
+	return pix;
+}
+
 static xcb_pixmap_t renderMenu(_Panel * panel, WMPropList * texture, int width, int iheight)
 {
 	WMScreen *scr = WMWidgetScreen(panel->parent);
@@ -778,20 +798,20 @@ static xcb_pixmap_t renderMenu(_Panel * panel, WMPropList * texture, int width, 
 
 	switch (panel->menuStyle) {
 	case MSTYLE_NORMAL:
-		tmp = renderTexture(scr, texture, width, iheight, NULL, RBEV_RAISED2);
+		tmp = renderPreviewTexture(scr, texture, width, iheight, RBEV_RAISED2);
 
-		pix = wXCreatePixmap(dpy, tmp, width, iheight * 4, WMScreenDepth(scr));
-		WMScreenNoteDrawableSize(scr, pix, width, iheight * 4);
+		pix = W_CreateScaledPixmap(scr, width, iheight * 4);
 		for (i = 0; i < 4; i++)
 			W_CopyArea(scr, tmp, width, iheight,
 				       0, 0, width, iheight, pix, 0, iheight * i);
+		WMScreenAbandonDrawable(scr, tmp);
 		wXFreePixmap(dpy, tmp);
 		break;
 	case MSTYLE_SINGLE:
-		pix = renderTexture(scr, texture, width, iheight * 4, NULL, MENU_BEVEL);
+		pix = renderPreviewTexture(scr, texture, width, iheight * 4, MENU_BEVEL);
 		break;
 	case MSTYLE_FLAT:
-		pix = renderTexture(scr, texture, width, iheight * 4, NULL, RBEV_RAISED2);
+		pix = renderPreviewTexture(scr, texture, width, iheight * 4, RBEV_RAISED2);
 		break;
 	default:
 		pix = XCB_NONE;
@@ -816,11 +836,12 @@ static void renderPreview(_Panel *panel, int part, int relief)
 	x = textureOptions[part].preview.pos.x;
 	y = textureOptions[part].preview.pos.y;
 
-	pix = renderTexture(scr, titem->prop, w, h, NULL, relief);
+	pix = renderPreviewTexture(scr, titem->prop, w, h, relief);
 
 	W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
 	W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
+	WMScreenAbandonDrawable(scr, pix);
 	wXFreePixmap(WMScreenDisplay(scr), pix);
 }
 
@@ -834,15 +855,13 @@ static void updatePreviewBox(_Panel * panel, int elements)
 	if (panel->preview == XCB_NONE) {
 		WMPixmap *p;
 
-		panel->previewNoText = wXCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						      PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
-		panel->previewBack = wXCreatePixmap(dpy, WMWidgetXID(panel->parent),
-						    PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr));
-		WMScreenNoteDrawableSize(scr, panel->previewNoText, PREVIEW_WIDTH, PREVIEW_HEIGHT);
-		WMScreenNoteDrawableSize(scr, panel->previewBack, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+		panel->preview = W_CreateScaledPixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+		panel->previewNoText = W_CreateScaledPixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+		panel->previewBack = W_CreateScaledPixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT);
 
-		p = WMCreatePixmap(scr, PREVIEW_WIDTH, PREVIEW_HEIGHT, WMScreenDepth(scr), false);
-		panel->preview = WMGetPixmapXID(p);
+		p = WMCreatePixmapFromXPixmaps(scr, panel->preview, XCB_NONE,
+					       PREVIEW_WIDTH, PREVIEW_HEIGHT,
+					       WMScreenDepth(scr));
 		WMSetLabelImage(panel->prevL, p);
 		WMReleasePixmap(p);
 	}
@@ -854,7 +873,7 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		item = WMGetListItem(panel->texLs,
 				     panel->textureIndex[PBACKGROUND]);
 		titem = (TextureListItem *) item->clientData;
-		tmp = renderTexture(scr, titem->prop, PREVIEW_WIDTH, PREVIEW_HEIGHT, NULL, 0);
+		tmp = renderPreviewTexture(scr, titem->prop, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0);
 
 		W_CopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->preview, 0, 0);
@@ -862,6 +881,7 @@ static void updatePreviewBox(_Panel * panel, int elements)
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewNoText, 0, 0);
 		W_CopyArea(scr, tmp, PREVIEW_WIDTH, PREVIEW_HEIGHT, 0, 0,
 			       PREVIEW_WIDTH, PREVIEW_HEIGHT, panel->previewBack, 0, 0);
+		WMScreenAbandonDrawable(scr, tmp);
 		wXFreePixmap(dpy, tmp);
 	}
 
@@ -903,6 +923,7 @@ static void updatePreviewBox(_Panel * panel, int elements)
 		W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->preview, x, y);
 		W_CopyArea(scr, pix, w, h, 0, 0, w, h, panel->previewNoText, x, y);
 
+		WMScreenAbandonDrawable(scr, pix);
 		wXFreePixmap(dpy, pix);
 
 		colorUpdate |= 1 << MITEM_COL | 1 << MDISAB_COL |
