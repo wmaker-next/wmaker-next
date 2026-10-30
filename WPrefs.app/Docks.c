@@ -3,6 +3,7 @@
  *  WPrefs - Window Maker Preferences Program
  *
  *  Copyright (c) 2012 Daniel Déchelotte (heavily inspired from file (c) Alfredo K. Kojima)
+ *  Copyright (c) 2013-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

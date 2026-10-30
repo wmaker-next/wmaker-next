@@ -3,10 +3,8 @@
  *  Window Maker window manager
  *
  *  Copyright (c) 1998-2003 Alfredo K. Kojima
- *
- *  This code slightly based on fvwm code,
  *  Copyright (c) Rob Nation and others
- *  but completely rewritten.
+ *  Copyright (c) 2009-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +18,8 @@
  *
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
+ *  This code slightly based on fvwm code, but completely rewritten.
  */
 
 #include "wconfig.h"

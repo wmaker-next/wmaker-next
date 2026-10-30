@@ -2,7 +2,7 @@
  *  WINGs WMTextField: single-line text entry widget
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  Copyright (c) 2026 Window Maker Team
+ *  Copyright (c) 2009-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

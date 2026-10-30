@@ -1,6 +1,7 @@
 /* alpha_combine.c - Alpha channel combination, based on Gimp 1.1.24
  * The GIMP -- an image manipulation program
  * Copyright (C) 1995 Spencer Kimball and Peter Mattis
+ * Copyright (c) 2012-2026 Window Maker Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public

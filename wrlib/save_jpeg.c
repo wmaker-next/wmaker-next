@@ -2,7 +2,7 @@
  *
  * Raster graphics library
  *
- * Copyright (c) 2023-2025 Window Maker Team
+ * Copyright (c) 2023-2026 Window Maker Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public

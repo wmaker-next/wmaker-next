@@ -4,6 +4,10 @@
  * Authors: Alfredo K. Kojima <kojima@windowmaker.info>
  *          Dan Pascu         <dan@windowmaker.info>
  *
+ * Copyright (c) 2000-2014 Alfredo K. Kojima
+ * Copyright (c) 2000-2006 Dan Pascu
+ * Copyright (c) 2009-2014 Window Maker Team
+ *
  * This code is released to the Public Domain, but
  * proper credit is always appreciated :)
  */

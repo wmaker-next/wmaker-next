@@ -7,6 +7,8 @@ Perpetrator: Sudish Joseph <sj@eng.mindspring.net>, Sept. 1997. */
 
 /*
  * More changes for WPrefs by Alfredo Kojima, Aug 1998
+ *
+ * Copyright (c) 2009-2026 Window Maker Team
  */
 
 /* The event_stream interface for X11 with Xt, and/or tty frames.

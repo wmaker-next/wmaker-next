@@ -3,6 +3,7 @@
  *  WindowMaker window manager
  *
  *  Copyright (c) 2004 Dan Pascu
+ *  Copyright (c) 2009-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

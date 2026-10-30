@@ -3,7 +3,7 @@
  *  WindowMaker window manager
  *
  *  Copyright (c) 1997-2003 Alfredo K. Kojima
- *  (cowardly remade from wdwrite.c; by judas@hell on Jan 26 2001)
+ *  Copyright (c) 2009-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  *
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
+ *  (cowardly remade from wdwrite.c; by judas@hell on Jan 26 2001)
  */
 
 #ifdef __GLIBC__

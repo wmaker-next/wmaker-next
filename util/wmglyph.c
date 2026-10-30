@@ -10,10 +10,6 @@
  *
  *  Copyright (c) 2026 Window Maker Team
  *
- *  The Unicode character/block data in wmglyph_data.{c,h} is derived from
- *  UnicodeData.txt and Blocks.txt (c) 1991-2026 Unicode, Inc., distributed
- *  under the Unicode License v3 — see util/wmglyph-data/UNICODE-LICENSE.
- *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -26,6 +22,11 @@
  *
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
+ *  The Unicode character/block data in wmglyph_data.{c,h} is derived from
+ *  UnicodeData.txt and Blocks.txt (c) 1991-2026 Unicode, Inc., distributed
+ *  under the Unicode License v3 — see util/wmglyph-data/UNICODE-LICENSE.
+ *
  */
 
 #ifdef __GLIBC__

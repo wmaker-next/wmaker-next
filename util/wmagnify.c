@@ -3,6 +3,9 @@
  *
  * 2000/5/21  Alfredo K. Kojima
  *
+ * Copyright (c) 2000 Alfredo K. Kojima
+ * Copyright (c) 2009-2026 Window Maker Team
+ *
  * This program is in the Public Domain.
  */
 #include <config.h>

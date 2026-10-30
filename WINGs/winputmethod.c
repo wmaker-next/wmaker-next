@@ -10,7 +10,7 @@
  *  commit_string callback and is inserted at the cursor of the focused
  *  view. Xlib's protocol-XIM transport is retired.
  *
- *  Copyright (c) 2026 Window Maker Team
+ *  Copyright (c) 2009-2026 Window Maker Team
  *
  *  This library is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU Library General Public License as published by

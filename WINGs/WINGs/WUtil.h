@@ -3,6 +3,7 @@
  *  Copyright (c) 1998 scottc
  *  Copyright (c) 1999-2004 Dan Pascu
  *  Copyright (c) 1999-2000 Alfredo K. Kojima
+ *  Copyright (c) 2010-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

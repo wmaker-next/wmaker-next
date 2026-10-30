@@ -2,7 +2,6 @@
  *
  *  WPrefs - Window Maker Preferences Program
  *
- *  Copyright (c) 2014-2026 Window Maker Team
  *  Copyright (c) 1998-2003 Alfredo K. Kojima
  *  Copyright (c) 2009-2026 Window Maker Team
  *

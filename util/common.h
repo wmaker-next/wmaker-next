@@ -3,6 +3,7 @@
  *
  * Copyright (c) 1997-2003 Alfredo K. Kojima
  * Copyright (c) 2004 Dan Pascu
+ * Copyright (c) 2013-2026 Window Maker Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public

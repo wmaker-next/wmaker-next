@@ -1,6 +1,7 @@
 /* menuparser.h
  *
  *  Copyright (c) 2012 Christophe Curis
+ *  Copyright (c) 2012-2026 Window Maker Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
