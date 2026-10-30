@@ -47,21 +47,21 @@ static const struct {
 	{ "FTitleColor", "white", N_("Focused Window Title"),
 	  { { 30, 10 }, { 190, 20 } }, { 5, 10 } },
 	{ "UTitleColor", "black", N_("Unfocused Window Title"),
-	  { { 30, 40 }, { 190, 20 } }, { 5, 40 } },
+	  { { 30, 37 }, { 190, 20 } }, { 5, 37 } },
 	{ "PTitleColor", "white", N_("Owner of Focused Window Title"),
-	  { { 30, 70 }, { 190, 20 } }, { 5, 70 } },
+	  { { 30, 64 }, { 190, 20 } }, { 5, 64 } },
 
 	/* Related to Menus */
 	{ "MenuTitleColor", "white", N_("Menu Title") ,
-	  { { 30, 120 }, { 90, 20 } }, { 5, 120 } },
+	  { { 30, 107 }, { 90, 20 } }, { 5, 107 } },
 	{ "MenuTextColor", "black", N_("Menu Item Text") ,
-	  { { 30, 140 }, { 90, 20 } }, { 5, 140 } },
+	  { { 30, 127 }, { 90, 20 } }, { 5, 127 } },
 	{ "MenuDisabledColor", "#616161", N_("Disabled Menu Item Text") ,
-	  { { 30, 160 }, { 90, 20 } }, { 5, 160 } },
+	  { { 30, 147 }, { 90, 20 } }, { 5, 147 } },
 	{ "HighlightColor", "white", N_("Menu Highlight Color") ,
-	  { { 30, 180 }, { 90, 20 } }, { 5, 180 } },
+	  { { 30, 167 }, { 90, 20 } }, { 5, 167 } },
 	{ "HighlightTextColor", "black", N_("Highlighted Menu Text Color") ,
-	  { { 30, 200 }, { 90, 20 } }, { 5, 180 } },
+	  { { 30, 187 }, { 90, 20 } }, { 5, 167 } },
 	/*
 	 * yuck kluge: the coordinate for HighlightTextColor are actually those of the last "Normal item"
 	 * at the bottom when user clicks it, the "yuck kluge" in the function 'previewClick' will swap it
@@ -387,23 +387,23 @@ static const struct {
 
 #define PUNFOCUSED    1
 	{ "UTitleBack", "(solid, gray)", N_("[Unfocused]"),
-	  { { 30, 40 }, { 190, 20 } }, { 5, 40 }, N_("Titlebar of Unfocused Windows") },
+	  { { 30, 37 }, { 190, 20 } }, { 5, 37 }, N_("Titlebar of Unfocused Windows") },
 
 #define POWNER        2
 	{ "PTitleBack", "(solid, \"#616161\")", N_("[Owner of Focused]"),
-	  { { 30, 70 }, { 190, 20 } }, { 5, 70 }, N_("Titlebar of Focused Window's Owner") },
+	  { { 30, 64 }, { 190, 20 } }, { 5, 64 }, N_("Titlebar of Focused Window's Owner") },
 
 #define PRESIZEBAR    3
 	{ "ResizebarBack", "(solid, gray)", N_("[Resizebar]"),
-	  { { 30, 100 }, { 190, 9 } }, { 5, 100 }, N_("Window Resizebar") },
+	  { { 30, 91 }, { 190, 9 } }, { 5, 91 }, N_("Window Resizebar") },
 
 #define PMTITLE       4
 	{ "MenuTitleBack", "(solid, black)", N_("[Menu Title]"),
-	  { { 30, 120 }, { 90, 20 } }, { 5, 120 }, N_("Titlebar of Menus") },
+	  { { 30, 107 }, { 90, 20 } }, { 5, 107 }, N_("Titlebar of Menus") },
 
 #define PMITEM        5
 	{ "MenuTextBack", "(solid, gray)", N_("[Menu Item]"),
-	  { { 30, 140 }, { 90, 20 * 4 } }, { 5, 160 }, N_("Menu Items") },
+	  { { 30, 127 }, { 90, 20 * 4 } }, { 5, 147 }, N_("Menu Items") },
 
 #define PICON         6
 	{ "IconBack", "(solid, gray)", N_("[Icon]"),
@@ -1505,16 +1505,16 @@ static void strokeFrameBorder(cairo_t *cr, WMColor *color)
 {
 	W_SetSourceColor(cr, color);
 	cairo_set_line_width(cr, 1.0);
-	cairo_rectangle(cr, 29 + 0.5, 39 + 0.5, 190, 20);
-	cairo_rectangle(cr, 29 + 0.5, 69 + 0.5, 190, 20);
-	cairo_move_to(cr,  30 + 0.5, 100);
-	cairo_line_to(cr,  30 + 0.5, 109 + 0.5);
-	cairo_line_to(cr, 220 + 0.5, 109 + 0.5);
-	cairo_line_to(cr, 220 + 0.5, 100);
-	cairo_move_to(cr,  29 + 0.5, 221);
-	cairo_line_to(cr,  29 + 0.5, 119 + 0.5);
-	cairo_line_to(cr, 119 + 0.5, 119 + 0.5);
-	cairo_line_to(cr, 119 + 0.5, 221);
+	cairo_rectangle(cr, 29 + 0.5, 36 + 0.5, 190, 20);
+	cairo_rectangle(cr, 29 + 0.5, 63 + 0.5, 190, 20);
+	cairo_move_to(cr,  30 + 0.5, 91);
+	cairo_line_to(cr,  30 + 0.5, 100 + 0.5);
+	cairo_line_to(cr, 220 + 0.5, 100 + 0.5);
+	cairo_line_to(cr, 220 + 0.5, 91);
+	cairo_move_to(cr,  29 + 0.5, 208);
+	cairo_line_to(cr,  29 + 0.5, 106 + 0.5);
+	cairo_line_to(cr, 119 + 0.5, 106 + 0.5);
+	cairo_line_to(cr, 119 + 0.5, 208);
 	cairo_stroke(cr);
 }
 
@@ -1572,52 +1572,52 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 	}
 	if (elements & (1 << UTITLE_COL)) {
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 40, 190, 20, 30, 40);
+				30, 37, 190, 20, 30, 37);
 		paintText(crd, panel->colors[UTITLE_COL],
-			  panel->boldFont, 30, 40, 190, 20,
+			  panel->boldFont, 30, 37, 190, 20,
 			  panel->titleAlignment,
 			  _("Unfocused Window"));
 	}
 	if (elements & (1 << OTITLE_COL)) {
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 70, 190, 20, 30, 70);
+				30, 64, 190, 20, 30, 64);
 		paintText(crd, panel->colors[OTITLE_COL],
-			  panel->boldFont, 30, 70, 190, 20,
+			  panel->boldFont, 30, 64, 190, 20,
 			  panel->titleAlignment,
 			  _("Owner of Focused Window"));
 	}
 	if (elements & (1 << MTITLE_COL)) {
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 120, 90, 20, 30, 120);
+				30, 107, 90, 20, 30, 107);
 		paintText(crd, panel->colors[MTITLE_COL],
-			  panel->boldFont, 30, 120, 90, 20, WALeft,
+			  panel->boldFont, 30, 107, 90, 20, WALeft,
 			  _("Menu Title"));
 	}
 	if (elements & (1 << MITEM_COL)) {
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 140, 90, 20, 30, 140);
+				30, 127, 90, 20, 30, 127);
 		paintText(crd, panel->colors[MITEM_COL],
-			  panel->normalFont, 30, 140, 90, 20, WALeft,
+			  panel->normalFont, 30, 127, 90, 20, WALeft,
 			  _("Normal Item"));
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 200, 90, 20, 30, 200);
+				30, 187, 90, 20, 30, 187);
 		paintText(crd, panel->colors[MITEM_COL],
-			  panel->normalFont, 30, 200, 90, 20, WALeft,
+			  panel->normalFont, 30, 187, 90, 20, WALeft,
 			  _("Normal Item"));
 	}
 	if (elements & (1 << MDISAB_COL)) {
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 160, 90, 20, 30, 160);
+				30, 147, 90, 20, 30, 147);
 		paintText(crd, panel->colors[MDISAB_COL],
-			  panel->normalFont, 30, 160, 90, 20, WALeft,
+			  panel->normalFont, 30, 147, 90, 20, WALeft,
 			  _("Disabled Item"));
 	}
 	if (elements & (1 << MHIGH_COL)) {
 		W_SetSourceColor(crd, panel->colors[MHIGH_COL]);
-		cairo_rectangle(crd, 31, 181, 87, 17);
+		cairo_rectangle(crd, 31, 168, 87, 17);
 		cairo_fill(crd);
 		W_SetSourceColor(crn, panel->colors[MHIGH_COL]);
-		cairo_rectangle(crn, 31, 181, 87, 17);
+		cairo_rectangle(crn, 31, 168, 87, 17);
 		cairo_fill(crn);
 		elements |= 1 << MHIGHT_COL;
 	}
@@ -1626,9 +1626,9 @@ static void updateColorPreviewBox(_Panel * panel, int elements)
 		 * before this reads pnot back through a fresh surface */
 		cairo_surface_flush(cairo_get_target(crn));
 		W_PaintArea(crd, scr, pnot, PREVIEW_WIDTH, PREVIEW_HEIGHT,
-				30, 180, 90, 20, 30, 180);
+				30, 167, 90, 20, 30, 167);
 		paintText(crd, panel->colors[MHIGHT_COL],
-			  panel->normalFont, 30, 180, 90, 20, WALeft,
+			  panel->normalFont, 30, 167, 90, 20, WALeft,
 			  _("Highlighted"));
 	}
 	if (elements & (1 << FBORDER_COL)) {
