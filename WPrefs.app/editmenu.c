@@ -449,7 +449,16 @@ WEditMenu *WCreateEditMenu(WMScreen * scr, const char *title)
 
 WEditMenu *WCreateEditMenuPad(WMWidget * parent)
 {
-	return makeEditMenu(WMWidgetScreen(parent), parent, NULL);
+	WMScreen *scr = WMWidgetScreen(parent);
+	WEditMenu *pad;
+
+	pad = makeEditMenu(scr, parent, NULL);
+
+	/* factory pads use tighter rows so the item palette fits the panel */
+	pad->itemHeight = WMFontHeight(scr->normalFont) + 4;
+	updateMenuContents(pad);
+
+	return pad;
 }
 
 void WSetEditMenuDelegate(WEditMenu * mPtr, WEditMenuDelegate * delegate)
