@@ -65,6 +65,15 @@ typedef struct W_MultiSelectPopUpButton {
 #define CHECK_X		 6
 #define CHECK_INDENT	20
 
+/* the menu view is a scaled top-level window, so device-space
+ * parameters (root positions, auto-scroll math) need logical values
+ * multiplied by the screen scale
+ */
+static int multiDevice(W_Screen *scr, int v)
+{
+	return (int)(v * scr->uiScale + 0.5);
+}
+
 static void destroyMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr);
 static void paintMultiSelectPopUpButton(MultiSelectPopUpButton *bPtr);
 
@@ -490,6 +499,7 @@ static void popUpMenu(MultiSelectPopUpButton *bPtr)
 	W_Screen *scr = bPtr->view->screen;
 	xcb_window_t dummyW;
 	int scrHeight = scr->rootView->size.height;
+	int menuHeight;
 	int x, y;
 
 	if (!bPtr->flags.enabled)
@@ -506,16 +516,17 @@ static void popUpMenu(MultiSelectPopUpButton *bPtr)
 	wXTranslateCoordinates(scr->display, bPtr->view->window, scr->rootWin,
 			      0, 0, &x, &y, &dummyW);
 
-	y += bPtr->view->size.height;
+	y += multiDevice(scr, bPtr->view->size.height);
 
 	if (W_VIEW_WIDTH(bPtr->menuView) != W_VIEW_WIDTH(bPtr->view)
 	    || W_VIEW_HEIGHT(bPtr->menuView) != W_VIEW_HEIGHT(bPtr->view))
 		resizeMenu(bPtr);
 
+	menuHeight = multiDevice(scr, bPtr->menuView->size.height);
+
 	/* menus taller than the screen keep the bottom-edge autoscroll */
-	if (y + bPtr->menuView->size.height > scrHeight
-	    && bPtr->menuView->size.height <= scrHeight)
-		y = scrHeight - bPtr->menuView->size.height;
+	if (y + menuHeight > scrHeight && menuHeight <= scrHeight)
+		y = scrHeight - menuHeight;
 	if (y < 0)
 		y = 0;
 
@@ -552,23 +563,27 @@ static void popDownMenu(MultiSelectPopUpButton *bPtr)
 static void autoScroll(void *data)
 {
 	MultiSelectPopUpButton *bPtr = (MultiSelectPopUpButton *)data;
-	int scrHeight = WMWidgetScreen(bPtr)->rootView->size.height;
+	W_Screen *scr = bPtr->view->screen;
+	int scrHeight = scr->rootView->size.height;
+	int itemHeight = multiDevice(scr, bPtr->view->size.height);
+	int menuHeight = multiDevice(scr, bPtr->menuView->size.height);
+	int step = multiDevice(scr, 5);
 	int repeat = 0;
 	int dy = 0;
 
 	if (bPtr->scrollStartY >= scrHeight - 1
-	    && bPtr->menuView->pos.y + bPtr->menuView->size.height >= scrHeight - 1) {
+	    && bPtr->menuView->pos.y + menuHeight >= scrHeight - 1) {
 		repeat = 1;
-		if (bPtr->menuView->pos.y + bPtr->menuView->size.height - 5 <= scrHeight - 1)
-			dy = scrHeight - 1 - (bPtr->menuView->pos.y + bPtr->menuView->size.height);
+		if (bPtr->menuView->pos.y + menuHeight - step <= scrHeight - 1)
+			dy = scrHeight - 1 - (bPtr->menuView->pos.y + menuHeight);
 		else
-			dy = -5;
+			dy = -step;
 	} else if (bPtr->scrollStartY <= 1 && bPtr->menuView->pos.y < 1) {
 		repeat = 1;
-		if (bPtr->menuView->pos.y + 5 > 1)
+		if (bPtr->menuView->pos.y + step > 1)
 			dy = 1 - bPtr->menuView->pos.y;
 		else
-			dy = 5;
+			dy = step;
 	}
 
 	if (repeat) {
@@ -578,7 +593,7 @@ static void autoScroll(void *data)
 
 		oldItem = bPtr->highlightedItem;
 		bPtr->highlightedItem = (bPtr->scrollStartY - bPtr->menuView->pos.y)
-		    / bPtr->view->size.height;
+		    / itemHeight;
 
 		if (oldItem != bPtr->highlightedItem) {
 			WMMenuItem *item;

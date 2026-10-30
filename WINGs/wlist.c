@@ -86,6 +86,14 @@ typedef struct W_List {
 #define SCROLL_DELAY    100
 #define TYPEAHEAD_CLEAR_DELAY 700
 
+/* the list view is a scaled window, so xcb_clear_area needs logical
+ * units converted to device pixels
+ */
+static int listDevice(W_Screen *scr, int v)
+{
+	return (int)(v * scr->uiScale + 0.5);
+}
+
 static void destroyList(List * lPtr);
 static void paintList(List * lPtr);
 
@@ -566,7 +574,12 @@ static void paintList(List * lPtr)
 		if (lPtr->topItem + lPtr->fullFitLines + lPtr->flags.dontFitAll > itemCount) {
 
 			lim = itemCount - lPtr->topItem;
-			xcb_clear_area(scrPtr->display, false, lPtr->view->window, 19, 2 + lim * lPtr->itemHeight, lPtr->view->size.width - 21, lPtr->view->size.height - lim * lPtr->itemHeight - 3);
+			xcb_clear_area(scrPtr->display, false, lPtr->view->window,
+				       listDevice(scrPtr, 19),
+				       listDevice(scrPtr, 2 + lim * lPtr->itemHeight),
+				       listDevice(scrPtr, lPtr->view->size.width - 21),
+				       listDevice(scrPtr, lPtr->view->size.height
+						  - lim * lPtr->itemHeight - 3));
 		} else {
 			lim = lPtr->fullFitLines + lPtr->flags.dontFitAll;
 		}

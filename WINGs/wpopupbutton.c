@@ -72,6 +72,15 @@ typedef struct W_PopUpButton {
 #define DEFAULT_HEIGHT 	20
 #define DEFAULT_CAPTION	""
 
+/* the popup menu view is a scaled top-level window, so device-space
+ * parameters (root positions, xcb_clear_area) need logical values
+ * multiplied by the screen scale
+ */
+static int popupDevice(W_Screen *scr, int v)
+{
+	return (int)(v * scr->uiScale + 0.5);
+}
+
 static void destroyPopUpButton(PopUpButton * bPtr);
 static void paintPopUpButton(PopUpButton * bPtr);
 
@@ -430,7 +439,10 @@ static void paintMenuEntry(PopUpButton * bPtr, int index, int highlight)
 	yo = (itemHeight - WMFontHeight(scr->normalFont)) / 2;
 
 	if (!highlight) {
-		xcb_clear_area(scr->display, false, bPtr->menuView->window, 0, index * itemHeight, width, itemHeight);
+		xcb_clear_area(scr->display, false, bPtr->menuView->window, 0,
+			       popupDevice(scr, index * itemHeight),
+			       popupDevice(scr, width),
+			       popupDevice(scr, itemHeight));
 		return;
 	}
 
@@ -540,6 +552,8 @@ static void popUpMenu(PopUpButton * bPtr)
 	W_Screen *scr = bPtr->view->screen;
 	xcb_window_t dummyW;
 	int scrWidth = scr->rootView->size.width;
+	int itemHeight;
+	int menuWidth;
 	int x, y;
 
 	if (!bPtr->flags.enabled)
@@ -555,17 +569,20 @@ static void popUpMenu(PopUpButton * bPtr)
 
 	wXTranslateCoordinates(scr->display, bPtr->view->window, scr->rootWin, 0, 0, &x, &y, &dummyW);
 
+	itemHeight = popupDevice(scr, bPtr->view->size.height);
+
 	if (bPtr->flags.pullsDown) {
-		y += bPtr->view->size.height;
+		y += itemHeight;
 	} else {
-		y -= bPtr->view->size.height * bPtr->selectedItemIndex;
+		y -= itemHeight * bPtr->selectedItemIndex;
 	}
 
 	if (W_VIEW_WIDTH(bPtr->menuView) != W_VIEW_WIDTH(bPtr->view))
 		resizeMenu(bPtr);
 
-	if (x + bPtr->menuView->size.width > scrWidth)
-		x = scrWidth - bPtr->menuView->size.width;
+	menuWidth = popupDevice(scr, bPtr->menuView->size.width);
+	if (x + menuWidth > scrWidth)
+		x = scrWidth - menuWidth;
 	if (x < 0)
 		x = 0;
 
@@ -592,26 +609,30 @@ static void popDownMenu(PopUpButton * bPtr)
 static void autoScroll(void *data)
 {
 	PopUpButton *bPtr = (PopUpButton *) data;
-	int scrHeight = WMWidgetScreen(bPtr)->rootView->size.height;
+	W_Screen *scr = bPtr->view->screen;
+	int scrHeight = scr->rootView->size.height;
+	int itemHeight = popupDevice(scr, bPtr->view->size.height);
+	int menuHeight = popupDevice(scr, bPtr->menuView->size.height);
+	int step = popupDevice(scr, 5);
 	int repeat = 0;
 	int dy = 0;
 
 	if (bPtr->scrollStartY >= scrHeight - 1
-	    && bPtr->menuView->pos.y + bPtr->menuView->size.height >= scrHeight - 1) {
+	    && bPtr->menuView->pos.y + menuHeight >= scrHeight - 1) {
 		repeat = 1;
 
-		if (bPtr->menuView->pos.y + bPtr->menuView->size.height - 5 <= scrHeight - 1) {
-			dy = scrHeight - 1 - (bPtr->menuView->pos.y + bPtr->menuView->size.height);
-		} else
-			dy = -5;
+		if (bPtr->menuView->pos.y + menuHeight - step <= scrHeight - 1)
+			dy = scrHeight - 1 - (bPtr->menuView->pos.y + menuHeight);
+		else
+			dy = -step;
 
 	} else if (bPtr->scrollStartY <= 1 && bPtr->menuView->pos.y < 1) {
 		repeat = 1;
 
-		if (bPtr->menuView->pos.y + 5 > 1)
+		if (bPtr->menuView->pos.y + step > 1)
 			dy = 1 - bPtr->menuView->pos.y;
 		else
-			dy = 5;
+			dy = step;
 	}
 
 	if (repeat) {
@@ -621,7 +642,7 @@ static void autoScroll(void *data)
 
 		oldItem = bPtr->highlightedItem;
 		bPtr->highlightedItem = (bPtr->scrollStartY - bPtr->menuView->pos.y)
-		    / bPtr->view->size.height;
+		    / itemHeight;
 
 		if (oldItem != bPtr->highlightedItem) {
 			WMMenuItem *item;
