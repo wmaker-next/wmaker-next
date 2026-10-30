@@ -202,21 +202,33 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 	case WKBD_ROOTMENU:
 		if (!CheckFullScreenWindowFocused(scr)) {
 			WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
+			/* Grab before the menu is built so keys typed while it
+			 * is being realized cannot leak to the focused client. */
+			wXGrabKeyboard(wdisp->conn, scr->root_win, true,
+				       XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 			OpenRootMenu(scr, rect.pos.x + rect.size.width / 2, rect.pos.y + rect.size.height / 2,
 				     true);
+			wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 		}
 		break;
 	case WKBD_WINDOWLIST:
 		if (!CheckFullScreenWindowFocused(scr)) {
 			WMRect rect = wGetRectForHead(scr, wGetHeadForPointerLocation(scr));
+			wXGrabKeyboard(wdisp->conn, scr->root_win, true,
+				       XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 			OpenSwitchMenu(scr, rect.pos.x + rect.size.width / 2, rect.pos.y + rect.size.height / 2,
 				       true);
+			wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
 		}
 		break;
 
 	case WKBD_WINDOWMENU:
-		if (ISMAPPED(wwin) && ISFOCUSED(wwin))
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin)) {
+			wXGrabKeyboard(wdisp->conn, scr->root_win, true,
+				       XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_CURRENT_TIME);
 			OpenWindowMenu(wwin, wwin->frame_x, wwin->frame_y + wwin->frame->top_width, true);
+			wXUngrabKeyboard(wdisp->conn, XCB_CURRENT_TIME);
+		}
 		break;
 	case WKBD_MINIATURIZEALL:
 		CloseWindowMenu(scr);
