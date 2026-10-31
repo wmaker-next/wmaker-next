@@ -375,29 +375,28 @@ static int appIsUrgent(WApplication *wapp)
 	return wApplicationUrgentWindow(wapp) != NULL;
 }
 
+static bool urgentBounceEnabled(void)
+{
+	return !w_global.display_off && w_global.config->bounce_appicons_when_urgent
+	    && !w_global.config->no_animations && !w_global.config->do_not_make_appicons_bounce;
+}
+
 static void doAppUrgentBounce(void *arg)
 {
 	WApplication *wapp = (WApplication *)arg;
 
-	/* do not keep waking every URGENT_BOUNCE_DELAY into a dark
-	 * panel, wDisplaySetOff(False) re-arms via
-	 * wAppBounceWhileUrgent() when the output comes back */
-	if (w_global.display_off) {
+	if (!urgentBounceEnabled() || !appIsUrgent(wapp)) {
 		WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
 		return;
 	}
 
-	if (appIsUrgent(wapp)) {
-		if(w_global.config->bounce_appicons_when_urgent) wAppBounce(wapp);
-	} else {
-		WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
-	}
+	wAppBounce(wapp);
 }
 
 void wAppBounceWhileUrgent(WApplication *wapp)
 {
 	if (!wapp) return;
-	if (appIsUrgent(wapp)) {
+	if (urgentBounceEnabled() && appIsUrgent(wapp)) {
 		if (!wapp->urgent_bounce_timer) {
 			wapp->urgent_bounce_timer = WMAddPersistentTimerHandler(URGENT_BOUNCE_DELAY, doAppUrgentBounce, wapp);
 			doAppUrgentBounce(wapp);

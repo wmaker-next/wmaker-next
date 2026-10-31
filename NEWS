@@ -999,11 +999,14 @@ Decorative work pauses while the display is off
 -----------------------------------------------
 
 Window Maker now tracks whether any output is actually showing the
-framebuffer. While the display is off the urgent-icon bounce and
-selection-ants timers disarm and every miniaturize, shade, slide and
-workspace-name animation takes the instant path so an idle laptop
-reaches zero scheduled wakeups even when a background client raises
-the urgency hint. The state is detected natively from RandR (lid
+framebuffer. While the display is off the selection-ants timer disarms
+and every miniaturize, shade, slide and workspace-name animation takes
+the instant path so an idle laptop reaches zero scheduled wakeups even
+when a background client raises the urgency hint. The urgent-icon
+bounce timer only runs while BounceAppIconsWhenUrgent is on, app icon
+bouncing and animations are enabled, and the display is on; runtime
+preference changes and the display coming back re-evaluate applications
+that are still urgent. The state is detected natively from RandR (lid
 close disconnects the internal output) and from MIT-SCREEN-SAVER
 notify (DPMS blank, idle timeout) when the build found
 xcb-screensaver, and can be driven by a lid or screensaver hook with

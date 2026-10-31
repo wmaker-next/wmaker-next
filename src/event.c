@@ -324,21 +324,17 @@ void wDisplaySetOff(bool off, WDisplayPowerSource source)
 		return;
 	w_global.display_off = off;
 
-	/* the marching-ants, urgent-bounce and urgent-blink timers tear
-	 * themselves down on their next fire when display_off is set, so
-	 * going dark needs no walk, only the resume path has to re-arm
-	 * whatever is still selected or still urgent */
-	if (!off) {
-		for (j = 0; j < wdisp->screen_count; j++) {
-			scr = wScreenWithNumber(j);
-			if (!scr)
-				continue;
+	for (j = 0; j < wdisp->screen_count; j++) {
+		scr = wScreenWithNumber(j);
+		if (!scr)
+			continue;
+		wapp = scr->wapp_list;
+		while (wapp) {
+			wAppBounceWhileUrgent(wapp);
+			wapp = wapp->next;
+		}
+		if (!off) {
 			wIconResumeBlink(scr);
-			wapp = scr->wapp_list;
-			while (wapp) {
-				wAppBounceWhileUrgent(wapp);
-				wapp = wapp->next;
-			}
 			wwin = scr->focused_window;
 			while (wwin) {
 				wWindowUrgentBlink(wwin);

@@ -36,6 +36,7 @@
 
 #include "WindowMaker.h"
 #include "actions.h"
+#include "application.h"
 #include "dock.h"
 #include "icon.h"
 #include "screen.h"
@@ -1319,6 +1320,14 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 	}
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_DISABLE_MINIWINDOWS))
 		wRefreshMiniwindows(scr);
+	if (scr && (wConfigChangesHas(changes, WCFG_KEY_BOUNCE_APPICONS_WHEN_URGENT) ||
+		    wConfigChangesHas(changes, WCFG_KEY_DO_NOT_MAKE_APPICONS_BOUNCE) ||
+		    wConfigChangesHas(changes, WCFG_KEY_DISABLE_ANIMATIONS))) {
+		WApplication *wapp;
+
+		for (wapp = scr->wapp_list; wapp; wapp = wapp->next)
+			wAppBounceWhileUrgent(wapp);
+	}
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_BLINK_TITLEBAR_WHEN_URGENT)) {
 		WWindow *wwin = scr->focused_window;
 

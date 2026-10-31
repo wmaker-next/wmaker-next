@@ -35,6 +35,7 @@
 #include "WindowMaker.h"
 #include "screen.h"
 #include "window.h"
+#include "application.h"
 #include "dockgeom.h"
 #include "config_schema.h"
 #include "wconfigmodel.h"
@@ -72,6 +73,7 @@ static int modifier_short_label_updates;
 static int hot_corner_updates;
 static int modifier_key_updates;
 static int urgent_blink_calls;
+static int urgent_bounce_calls;
 static int background_spec_updates;
 static int workspace_specific_background_updates;
 static int workspace_background_updates;
@@ -178,6 +180,12 @@ void wWindowUrgentBlink(WWindow *wwin)
 {
 	(void)wwin;
 	urgent_blink_calls++;
+}
+
+void wAppBounceWhileUrgent(WApplication *wapp)
+{
+	(void)wapp;
+	urgent_bounce_calls++;
 }
 
 void wScreenApplyIconSize(WScreen *scr)
@@ -502,6 +510,7 @@ static void reset_phase4_counters(void)
 	aa_current = 0;
 	system_color_refreshes = 0;
 	urgent_blink_calls = 0;
+	urgent_bounce_calls = 0;
 	texture_spec_updates = 0;
 	font_spec_updates = 0;
 	color_spec_updates = 0;
@@ -2301,6 +2310,56 @@ out:
 	wConfigClearWindowMaker();
 }
 
+static void test_urgent_bounce_live_apply(void)
+{
+	static const char * const keys[] = {
+		"BounceAppIconsWhenUrgent",
+		"DoNotMakeAppIconsBounce",
+		"DisableAnimations"
+	};
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	WApplication apps[2];
+	char old_desc[128], new_desc[128];
+	size_t i;
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	memset(apps, 0, sizeof(apps));
+	screen.wapp_list = &apps[0];
+	apps[0].next = &apps[1];
+
+	for (i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+		snprintf(old_desc, sizeof(old_desc), "{ %s = NO; }", keys[i]);
+		snprintf(new_desc, sizeof(new_desc), "{ %s = YES; }", keys[i]);
+		old_dict = dict_from_desc(old_desc);
+		new_dict = dict_from_desc(new_desc);
+		if (!old_dict || !new_dict) {
+			if (old_dict)
+				WMReleasePropList(old_dict);
+			if (new_dict)
+				WMReleasePropList(new_dict);
+			continue;
+		}
+
+		urgent_bounce_calls = 0;
+		apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+		CHECK(urgent_bounce_calls == 2);
+
+		urgent_bounce_calls = 0;
+		apply_runtime_defaults_for_test(&screen, old_dict, new_dict);
+		CHECK(urgent_bounce_calls == 2);
+
+		urgent_bounce_calls = 0;
+		apply_runtime_defaults_for_test(&screen, old_dict, old_dict);
+		CHECK(urgent_bounce_calls == 0);
+
+		WMReleasePropList(old_dict);
+		WMReleasePropList(new_dict);
+	}
+	wConfigClearWindowMaker();
+}
+
 /* SwitchPanelIconSize is re-read by wInitSwitchPanel() on every Alt-Tab
  * and the cached SwitchPanelImages tile is stored at source resolution
  * and scaled per construction, so unfreezing alone makes the next panel
@@ -3117,6 +3176,7 @@ int main(void)
 	test_schema_requires_restart();
 	test_disable_miniwindows_live_apply();
 	test_blink_titlebar_when_urgent_live_apply();
+	test_urgent_bounce_live_apply();
 	test_icon_size_live_apply();
 	test_modifier_key_live_apply();
 	test_force_reapply_fonts();
