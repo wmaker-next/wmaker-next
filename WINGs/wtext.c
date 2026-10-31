@@ -1370,6 +1370,7 @@ static void scrollersCallBack(WMWidget * w, void *self)
 typedef struct {
 	TextBlock *tb;
 	unsigned short begin, end;	/* what part of the text block */
+	int width;
 } myLineItems;
 
 static int layOutLine(Text * tPtr, myLineItems * items, int nitems, int x, int y)
@@ -1406,8 +1407,9 @@ static int layOutLine(Text * tPtr, myLineItems * items, int nitems, int x, int y
 			line_height = WMAX(line_height, font->height + max_d);
 			text = &(tb->text[items[i].begin]);
 			len = items[i].end - items[i].begin;
+			items[i].width = WMWidthOfString(font, text, len);
 			if (tPtr->flags.alignment != WALeft)
-				lw += WMWidthOfString(font, text, len);
+				lw += items[i].width;
 		}
 	}
 
@@ -1454,16 +1456,19 @@ static int layOutLine(Text * tPtr, myLineItems * items, int nitems, int x, int y
 			}
 		} else {
 			font = (tPtr->flags.monoFont) ? tPtr->dFont : tb->d.font;
-			len = items[i].end - items[i].begin;
-			text = &(tb->text[items[i].begin]);
 
 			tb->sections[n].y = y + line_height - font->y;
-			tb->sections[n].w =
-			    WMWidthOfString(font,
-					    &(tb->text[tb->sections[n].begin]),
-					    tb->sections[n].end - tb->sections[n].begin);
+			if (tbsame != tb) {
+				tb->sections[n].w = items[i].width;
+			} else {
+				/* Shaping can make cumulative widths non-additive. */
+				tb->sections[n].w =
+				    WMWidthOfString(font,
+						    &(tb->text[tb->sections[n].begin]),
+						    tb->sections[n].end - tb->sections[n].begin);
+			}
 
-			x += WMWidthOfString(font, text, len);
+			x += items[i].width;
 		}
 
 		tbsame = tb;
@@ -2650,13 +2655,16 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 			wXFreePixmap(tPtr->view->screen->display, tPtr->db);
 		}
 		if (tPtr->gfxItems)
-			WMEmptyArray(tPtr->gfxItems);
+			WMFreeArray(tPtr->gfxItems);
 #if DO_BLINK
 		if (tPtr->timerID)
 			WMDeleteTimerHandler(tPtr->timerID);
 #endif
 		WMReleaseFont(tPtr->dFont);
 		WMReleaseColor(tPtr->dColor);
+		if (tPtr->dBulletPix)
+			WMReleasePixmap(tPtr->dBulletPix);
+		wfree(tPtr->margins);
 		WMDeleteSelectionHandler(tPtr->view, XCB_ATOM_PRIMARY, XCB_CURRENT_TIME);
 		WMRemoveNotificationObserver(tPtr);
 
