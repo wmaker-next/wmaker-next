@@ -4,8 +4,9 @@
 # the _XSETTINGS_SETTINGS payload on the wire and a GTK and a Qt client
 # consume the same values, while an Xft.dpi change restarts wmaker and
 # republishes, and a WMGLOBAL font change republishes live. Also checks
-# that wmaker yields the selection to another manager and releases it on
-# exit.
+# that wmaker yields the selection to another manager, reclaims it when
+# that manager exits (both when the rival was already running at startup
+# and when it steals a selection wmaker owned) and releases it on exit.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -87,7 +88,14 @@ xvfb_ready() {
 }
 wait_for 40 xvfb_ready || fail "Xvfb failed to start"
 
-note "start wmaker"
+note "start a rival XSETTINGS manager"
+DISPLAY=$DPY "$CLIENT" --hold >"$RUNTIME/hold.out" 2>>"$LOG" &
+HOLD_PID=$!
+echo "$HOLD_PID" >> "$PIDFILE"
+hold_ready() { grep -Fq holding "$RUNTIME/hold.out"; }
+wait_for 40 hold_ready || fail "the rival manager did not claim the selection"
+
+note "start wmaker while the selection is taken"
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 ASAN_OPTIONS="$(drive_asan_options)" \
 DISPLAY=$DPY \
@@ -100,6 +108,16 @@ SOCKET=$(LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 ipc_ready() { msg -q get_version >/dev/null 2>&1; }
 wait_for 120 ipc_ready || fail "wmaker did not come up"
 sleep 0.3
+
+# --- 0: a rival owned the selection at startup -----------------------------
+note "startup rival exit and reclaim"
+grep -q 'another XSETTINGS manager is running' "$LOG" \
+    || fail "wmaker did not notice the rival XSETTINGS manager"
+kill "$HOLD_PID" 2>/dev/null
+wait "$HOLD_PID" 2>/dev/null
+reclaimed() { xclient --serial >/dev/null 2>&1; }
+wait_for 60 reclaimed || fail "wmaker did not claim the selection after the rival exited"
+note "ok: reclaimed after the startup rival exited"
 
 # --- 1: initial payload -----------------------------------------------------
 note "initial payload"
@@ -125,7 +143,7 @@ note "ok: initial payload with serial $SERIAL0"
 # --- 2: Xft.dpi change restarts wmaker and republishes ----------------------
 note "Xft.dpi change restarts and republishes"
 : > "$RUNTIME/watch.out"
-xclient --watch >"$RUNTIME/watch.out" 2>>"$LOG" &
+DISPLAY=$DPY "$CLIENT" --watch >"$RUNTIME/watch.out" 2>>"$LOG" &
 WATCH_PID=$!
 echo "$WATCH_PID" >> "$PIDFILE"
 sleep 0.3
@@ -215,6 +233,14 @@ wait_for 20 grep -q 'another XSETTINGS manager is taking over' "$LOG" \
     || fail "wmaker did not notice the lost XSETTINGS selection"
 msg -q get_version >/dev/null || fail "wmaker wedged after losing the selection"
 note "ok: wmaker yielded and stayed alive"
+
+note "reclaim after the stealing manager exits"
+reclaimed_after_steal() {
+    xclient 2>/dev/null | grep -Fq 'Xft/DPI	integer	147456'
+}
+wait_for 60 reclaimed_after_steal \
+    || fail "wmaker did not reclaim the selection after the stealing manager exited"
+note "ok: reclaimed after the stealing manager exited"
 
 # --- 7: the selection is released on exit -----------------------------------
 note "selection released on exit"

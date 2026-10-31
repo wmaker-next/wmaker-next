@@ -34,6 +34,8 @@
  * --serial: print the current serial number and exit.
  * --steal: claim the _XSETTINGS_S<n> selection on a private window,
  * forcing a SelectionClear on the current manager, and exit.
+ * --hold: claim the _XSETTINGS_S<n> selection and stay alive until
+ * killed, so a manager started afterwards sees another owner.
  * --owner: print the hex id of the selection owner window and exit.
  */
 #include <stdio.h>
@@ -219,7 +221,7 @@ static int fetch_settings(Display *dpy, Window owner, Atom prop, Atom type,
 int main(int argc, char **argv)
 {
 	Display *dpy;
-	int screen = -1, watch = 0, dump = 1, serial_only = 0, steal = 0, owner_only = 0;
+	int screen = -1, watch = 0, dump = 1, serial_only = 0, steal = 0, hold = 0, owner_only = 0;
 	char selname[32];
 	Atom sel, prop, type, manager;
 	Window owner, root;
@@ -233,13 +235,15 @@ int main(int argc, char **argv)
 			serial_only = 1;
 		} else if (strcmp(argv[i], "--steal") == 0) {
 			steal = 1;
+		} else if (strcmp(argv[i], "--hold") == 0) {
+			hold = 1;
 		} else if (strcmp(argv[i], "--owner") == 0) {
 			owner_only = 1;
 		} else if (strcmp(argv[i], "--screen") == 0 && i + 1 < argc) {
 			screen = atoi(argv[++i]);
 		} else {
 			fprintf(stderr,
-				"usage: %s [--screen N] [--watch] [--serial] [--steal] [--owner]\n",
+				"usage: %s [--screen N] [--watch] [--serial] [--steal] [--hold] [--owner]\n",
 				argv[0]);
 			return 2;
 		}
@@ -283,6 +287,21 @@ int main(int argc, char **argv)
 		printf("stolen\n");
 		fflush(stdout);
 		return 0;
+	}
+
+	if (hold) {
+		Window win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
+						 0, 0, 4, 4, 0, 0, 0);
+
+		XSetSelectionOwner(dpy, sel, win, CurrentTime);
+		if (XGetSelectionOwner(dpy, sel) != win) {
+			fprintf(stderr, "could not take %s\n", selname);
+			return 1;
+		}
+		printf("holding\n");
+		fflush(stdout);
+		for (;;)
+			pause();
 	}
 
 	XSetErrorHandler(trapXError);

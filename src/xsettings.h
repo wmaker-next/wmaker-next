@@ -97,8 +97,10 @@ bool wXSettingsPangoFontName(const char *spec, double dpi,
 
 /* --- manager ----------------------------------------------------------- */
 
-/* Claim _XSETTINGS_S<screen> and publish the initial settings. A no-op
- * when another XSETTINGS manager already owns the selection. */
+/* Claim _XSETTINGS_S<screen> and publish the initial settings. When
+ * another XSETTINGS manager already owns the selection, leave it alone
+ * and keep checking in the background so the selection is claimed once
+ * that manager exits. */
 void wXSettingsInit(struct _WScreen *scr);
 
 /* Re-collect the values derived from the current configuration and
@@ -114,7 +116,8 @@ void wXSettingsRefreshAll(void);
 void wXSettingsShutdown(struct _WScreen *scr);
 
 /* Another manager took the selection away, mark the screen as no
- * longer publishing. Cheap to call for every SelectionClear. */
+ * longer publishing and retry if that manager exits. Cheap to call for
+ * every SelectionClear. */
 void wXSettingsSelectionClear(const xcb_selection_clear_event_t *ev);
 
 #endif /* WM_XSETTINGS_H_ */

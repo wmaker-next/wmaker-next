@@ -34,12 +34,19 @@
 #include "screen.h"
 #include "xsettings.h"
 
+/* How often to look for the selection becoming free after another
+ * manager owned it at startup or took it from us. The timer only runs
+ * while we do not own the selection, so the normal case has no added
+ * wakeups. */
+#define XSETTINGS_RETRY_MS 2000
+
 typedef struct WXSettings {
 	struct _WScreen *scr;
 	xcb_window_t win;
 	xcb_atom_t sel_atom;
 	xcb_atom_t prop_atom;
 	bool owned;
+	WMHandlerID retry_timer;
 	uint32_t serial;
 	/* last published table, names are literals so only sval is owned */
 	WXSetting set[WXSETTINGS_MAX];
@@ -240,6 +247,49 @@ void wXSettingsRefreshAll(void)
 	}
 }
 
+/* Claim the manager selection when it is free. Never take it away
+ * from a live manager: a non-free selection is left to the retry
+ * timer. Returns true when this process owns it after the call. */
+static bool claim(WXSettings *xs)
+{
+	xcb_window_t owner;
+
+	owner = wXGetSelectionOwner(wdisp->conn, xs->sel_atom);
+	if (owner && owner != xs->win)
+		return false;
+
+	wXSetSelectionOwner(wdisp->conn, xs->sel_atom, xs->win, XCB_CURRENT_TIME);
+	if (wXGetSelectionOwner(wdisp->conn, xs->sel_atom) != xs->win)
+		return false;
+
+	xs->owned = true;
+
+	/* ICCCM 2.8 manager selection: announce the takeover on the root
+	 * window so clients waiting for a MANAGER message notice us */
+	WXSendClientMessage(wdisp->conn, xs->scr->root_win, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+			    xs->scr->root_win, wx_static_atoms[W_ATOM_MANAGER],
+			    (long)XCB_CURRENT_TIME, (long)xs->sel_atom,
+			    (long)xs->win, 0, 0);
+
+	wXSettingsRefresh(xs->scr);
+	return true;
+}
+
+static void retryClaim(void *data)
+{
+	WXSettings *xs = (WXSettings *)data;
+
+	if (!xs->owned && claim(xs))
+		WMDeleteTimerHandlerPtr(&xs->retry_timer);
+}
+
+static void armRetry(WXSettings *xs)
+{
+	if (!xs->retry_timer)
+		xs->retry_timer = WMAddPersistentTimerHandler(XSETTINGS_RETRY_MS,
+							      retryClaim, xs);
+}
+
 void wXSettingsInit(struct _WScreen *scr)
 {
 	char name[32];
@@ -264,28 +314,19 @@ void wXSettingsInit(struct _WScreen *scr)
 			  0, NULL);
 	scr->xsettings = xs;
 
-	owner = wXGetSelectionOwner(wdisp->conn, xs->sel_atom);
-	if (owner && owner != xs->win) {
-		wmessage(_("another XSETTINGS manager is running on screen %d"), scr->screen);
+	if (claim(xs))
 		return;
-	}
 
-	wXSetSelectionOwner(wdisp->conn, xs->sel_atom, xs->win, XCB_CURRENT_TIME);
-	if (wXGetSelectionOwner(wdisp->conn, xs->sel_atom) != xs->win) {
+	owner = wXGetSelectionOwner(wdisp->conn, xs->sel_atom);
+	if (owner && owner != xs->win)
+		wmessage(_("another XSETTINGS manager is running on screen %d"), scr->screen);
+	else
 		wwarning(_("could not claim the XSETTINGS selection for screen %d"),
 			 scr->screen);
-		return;
-	}
-	xs->owned = true;
 
-	/* ICCCM 2.8 manager selection: announce the takeover on the root
-	 * window so clients waiting for a MANAGER message notice us */
-	WXSendClientMessage(wdisp->conn, scr->root_win, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-			    scr->root_win, wx_static_atoms[W_ATOM_MANAGER],
-			    (long)XCB_CURRENT_TIME, (long)xs->sel_atom,
-			    (long)xs->win, 0, 0);
-
-	wXSettingsRefresh(scr);
+	/* the other manager may exit later, keep trying without taking
+	 * the selection from anyone who still owns it */
+	armRetry(xs);
 }
 
 void wXSettingsShutdown(struct _WScreen *scr)
@@ -294,6 +335,8 @@ void wXSettingsShutdown(struct _WScreen *scr)
 
 	if (!xs)
 		return;
+
+	WMDeleteTimerHandlerPtr(&xs->retry_timer);
 
 	if (xs->owned) {
 		WXDeleteProperty(wdisp->conn, xs->win, xs->prop_atom);
@@ -316,6 +359,9 @@ void wXSettingsSelectionClear(const xcb_selection_clear_event_t *ev)
 		if (xs && xs->owned && ev->owner == xs->win && ev->selection == xs->sel_atom) {
 			xs->owned = false;
 			wmessage(_("another XSETTINGS manager is taking over screen %d"), i);
+			/* that manager may exit later, reclaim the selection
+			 * once it is free again */
+			armRetry(xs);
 		}
 	}
 }

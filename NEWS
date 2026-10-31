@@ -885,10 +885,21 @@ current display:
 
 When Xft.dpi is not set nothing changes: the scale is 1.0 rather than
 guessed from the reported physical screen size, which is unreliable.
-Changing Xft.dpi at runtime updates the stored scale but existing
-windows keep their size until Window Maker is restarted. Dock and
-appicon size follows the IconSize preference as before, and the
-titlebar button glyphs are fixed-size bitmaps that stay unscaled.
+Changing Xft.dpi at runtime cannot be applied to the live session,
+because frames and the WINGs view tree keep the device geometry they
+were built with, so Window Maker transparently restarts once the
+resource database settles. Unrelated resource edits do not restart it.
+Dock and appicon size follows the IconSize preference as before, and
+the titlebar button glyphs are fixed-size bitmaps that stay unscaled.
+Window Maker also claims the `_XSETTINGS_S<screen>` selection and publishes
+`Xft/DPI`, `Gtk/FontName`, the icon theme and the font antialias,
+hinting and subpixel values through `_XSETTINGS_SETTINGS`, so GTK, Qt
+and other toolkits follow the same DPI, font and icon theme the window
+manager uses. The values are re-derived from the live configuration
+and republished only on a content change, and the selection is released
+on shutdown. When another settings manager already owns the selection
+at startup, or takes it over, Window Maker leaves it alone, checks in
+the background, and claims and republishes once that manager exits.
 
 XDG data and cache directories are split from the configuration root
 --------------------------------------------------------------------
