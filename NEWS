@@ -3,6 +3,19 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Multiple X screens
+------------------
+
+On a display with more than one X screen, session state is now stored
+per screen as WMState.<screen> so independent instances no longer
+overwrite each other. A secondary-only instance imports the legacy
+WMState file once on first start. Xft.dpi is read from the managed
+screen first and falls back to screen 0 when the key is absent there,
+and changes on screen 0 are monitored even when only another screen is
+managed. The XKB language label, root-menu VISUAL, DEPTH, SCR_WIDTH and
+SCR_HEIGHT macros, and cut-buffer paste now use the screen they belong
+to.
+
 Switch panel label formats
 --------------------------
 

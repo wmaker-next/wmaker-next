@@ -162,11 +162,17 @@ check "four corner windows created on screen 1" [ "$C1" -eq 4 ]
 check "wmaker alive after reload fan-out" kill -0 "$WMAKER_PID"
 
 # --- teardown ------------------------------------------------------------------
-note "multi-screen drive summary"
-printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
-
 msg 0 -q exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID"
 kill -0 "$WMAKER_PID" 2>/dev/null && fail "wmaker did not exit cleanly"
+
+# a display with more than one X screen keys WMState on the X screen
+check "WMState.0 written" test -f "$WMHOME/Defaults/WMState.0"
+check "WMState.1 written" test -f "$WMHOME/Defaults/WMState.1"
+check "no bare WMState on a multi-screen display" \
+    test ! -e "$WMHOME/Defaults/WMState"
+
+note "multi-screen drive summary"
+printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
 
 [ "$FAILED" -eq 0 ] && [ "$PASSED" -gt 0 ]

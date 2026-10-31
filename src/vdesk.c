@@ -457,6 +457,9 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 	WMRect head_rect;
 	WMPoint center;
 
+	if (!scr)
+		return;
+
 	/* run the loop in the geometry of the head whose edge sentinel
 	 * fired, so the warp target, the pan step origin and the pointer
 	 * clamps never reach past that head */

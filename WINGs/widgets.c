@@ -1282,30 +1282,39 @@ static const char *findResourceValue(const char *buf, const char *key)
 	return NULL;
 }
 
-/* read Xft.dpi from the RESOURCE_MANAGER property, xrdb writes that
- * property only on screen 0's root regardless of which screen the
- * caller manages so we always read from DefaultRootWindow, no
- * xcb-util-xrm dependency because Xft.dpi is by convention a plain
- * literal key with no wildcard resolution. When the key is absent the
- * scale is 1.0 rather than derived from HeightMMOfScreen because the
- * reported physical size is unreliable (Xvfb reports 100 dpi, some
- * multi-head and projector setups report nonsense) and that would
- * change font sizes on setups that never set Xft.dpi. */
-static double readUIScale(WMScreen *scr, double *dpi)
+/* read Xft.dpi from one screen's RESOURCE_MANAGER property, returning
+ * false when the property or the key is absent. xcb-util-xrm is not
+ * needed because Xft.dpi is by convention a plain literal key with no
+ * wildcard resolution. */
+static bool readDPIOnScreen(WMScreen *scr, int screen, double *dpi)
 {
 	const char *val;
 	char *rm;
+
+	*dpi = 0.0;
+	rm = WXGetLatin1String(scr->display, wXRootWindow(scr->display, screen),
+			       XCB_ATOM_RESOURCE_MANAGER, NULL);
+	if (!rm)
+		return false;
+	val = findResourceValue(rm, "Xft.dpi");
+	if (!val) {
+		wfree(rm);
+		return false;
+	}
+	*dpi = strtod(val, NULL);
+	wfree(rm);
+	return true;
+}
+
+/* Read Xft.dpi from the screen's own root first, then screen 0. Missing
+ * keys keep 1.0 rather than using physical size, and values below 1.0
+ * are clamped because only the up-scale path is implemented. */
+static double readUIScale(WMScreen *scr, double *dpi)
+{
 	double d, s;
 
-	d = 0.0;
-	rm = WXGetLatin1String(scr->display, wXRootWindow(scr->display, scr->screen),
-			       XCB_ATOM_RESOURCE_MANAGER, NULL);
-	if (rm) {
-		val = findResourceValue(rm, "Xft.dpi");
-		if (val)
-			d = strtod(val, NULL);
-		wfree(rm);
-	}
+	if (!readDPIOnScreen(scr, scr->screen, &d) && scr->screen != 0)
+		readDPIOnScreen(scr, 0, &d);
 	s = d > 0.0 ? d / 96.0 : 1.0;
 	if (s > 4.0)
 		s = 4.0;

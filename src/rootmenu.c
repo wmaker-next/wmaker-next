@@ -61,7 +61,7 @@ static WMenu *readMenuPipe(WScreen * scr, char **file_name);
 static WMenu *readPLMenuPipe(WScreen * scr, char **file_name);
 static WMenu *readMenuFile(WScreen *scr, const char *file_name);
 static WMenu *readMenuDirectory(WScreen *scr, const char *title, char **file_name, const char *command);
-static void menu_parser_register_macros(WMenuParser parser);
+static void menu_parser_register_macros(WMenuParser parser, WScreen *scr);
 
 typedef struct Shortcut {
 	struct Shortcut *next;
@@ -1099,7 +1099,7 @@ static WMenu *readMenu(WScreen *scr, const char *flat_file, FILE *file)
 	char *title, *command, *params, *shortcut;
 
 	parser = WMenuParserCreate(flat_file, file, DEF_CONFIG_PATHS);
-	menu_parser_register_macros(parser);
+	menu_parser_register_macros(parser, scr);
 
 	while (WMenuParserGetLine(parser, &title, &command, &params, &shortcut)) {
 
@@ -1281,7 +1281,7 @@ static int myCompare(const void *d1, const void *d2)
 }
 
 /***** Preset some macro for file parser *****/
-static void menu_parser_register_macros(WMenuParser parser)
+static void menu_parser_register_macros(WMenuParser parser, WScreen *scr)
 {
 	xcb_screen_t *xscr;
 	xcb_visualtype_t *visual;
@@ -1291,8 +1291,8 @@ static void menu_parser_register_macros(WMenuParser parser)
 	WMenuParserRegisterSimpleMacro(parser, "__VERSION__", VERSION);
 
 	// All macros below were historically defined by WindowMaker
-	xscr = wXScreenOf(wdisp->conn, wdisp->default_screen);
-	visual = wXDefaultVisualType(wdisp->conn, wdisp->default_screen);
+	xscr = wXScreenOf(wdisp->conn, scr->screen);
+	visual = wXDefaultVisualType(wdisp->conn, scr->screen);
 	snprintf(buf, sizeof(buf), "%d", visual->_class);
 	WMenuParserRegisterSimpleMacro(parser, "VISUAL", buf);
 

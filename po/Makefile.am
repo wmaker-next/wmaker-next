@@ -101,6 +101,7 @@ POTFILES  = \
 	$(top_srcdir)/src/wsplan.c \
 	$(top_srcdir)/src/wsound.c \
 	$(top_srcdir)/src/wxkb.c \
+	$(top_srcdir)/src/xkb_label.c \
 	$(top_srcdir)/src/xdnd.c \
 	$(top_srcdir)/src/xdnduri.c \
 	$(top_srcdir)/src/xinerama.c \

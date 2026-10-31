@@ -299,7 +299,7 @@ WScreen *wScreenForRootWindow(xcb_window_t window)
 {
 	int i;
 
-	if (wdisp->screen_count == 1)
+	if (wXScreenCount(wdisp->conn) == 1)
 		return wdisp->screens[0];
 
 	/* Since the number of heads will probably be small (normally 2),
@@ -315,14 +315,20 @@ WScreen *wScreenForRootWindow(xcb_window_t window)
 WScreen *wScreenForWindow(xcb_window_t window)
 {
 	WXWindowAttributes attr;
+	int i;
 
-	if (wdisp->screen_count == 1)
+	if (wXScreenCount(wdisp->conn) == 1)
 		return wdisp->screens[0];
 
-	if (wXGetWindowAttributes(wdisp->conn, window, &attr, NULL))
-		return wScreenForRootWindow(attr.root);
+	for (i = 0; i < wdisp->screen_count; i++)
+		if (wdisp->screens[i]->root_win == window)
+			return wdisp->screens[i];
 
-	return NULL;
+	if (!wXGetWindowAttributes(wdisp->conn, window, &attr, NULL))
+		return NULL;
+	if (attr.root == window)
+		return NULL;
+	return wScreenForRootWindow(attr.root);
 }
 
 /*
@@ -340,6 +346,7 @@ void StartUp(bool defaultScreenOnly)
 	static const char empty_bits[(16 * 16) / 8];
 	struct sigaction sig_action;
 	int i, j, max;
+	int haveScreenZero;
 	char **formats;
 	xcb_pixmap_t cur;
 	WXColor black;
@@ -416,7 +423,7 @@ void StartUp(bool defaultScreenOnly)
 	wdisp->cursor[WCUR_CAPTURE] = wXLoadCursor(wdisp->conn, 0, "crosshair");
 
 	memset(&black, 0, sizeof(black));
-	cur = wXCreateBitmapFromData(wdisp->conn, wXRootWindow(wdisp->conn, 0), empty_bits, 16, 16);
+	cur = wXCreateBitmapFromData(wdisp->conn, wXRootWindow(wdisp->conn, wdisp->default_screen), empty_bits, 16, 16);
 	wdisp->cursor[WCUR_EMPTY] = wXCreatePixmapCursor(wdisp->conn, cur, cur, &black, &black, 0, 0);
 	xcb_free_pixmap(wdisp->conn, cur);
 
@@ -720,6 +727,22 @@ void StartUp(bool defaultScreenOnly)
 			}
 		}
 		wdisp->screen_count++;
+	}
+
+	/* A secondary-only instance must still notice RESOURCE_MANAGER
+	 * changes on screen 0's root, where xrdb may publish Xft.dpi.
+	 * This changes only this client's event mask on that root, so a
+	 * window manager running there is not affected. */
+	haveScreenZero = 0;
+	for (j = 0; j < wdisp->screen_count; j++)
+		if (wdisp->screens[j]->screen == 0)
+			haveScreenZero = 1;
+	if (!haveScreenZero) {
+		uint32_t mask = XCB_EVENT_MASK_PROPERTY_CHANGE;
+
+		xcb_change_window_attributes(wdisp->conn,
+					     wXRootWindow(wdisp->conn, 0),
+					     XCB_CW_EVENT_MASK, &mask);
 	}
 
 	/* bind the per-screen IPC sockets before session restore and dock

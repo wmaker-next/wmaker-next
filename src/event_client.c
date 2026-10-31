@@ -74,6 +74,26 @@ static bool uiScaleDiffers(void)
 }
 
 
+static void handleResourceManagerChange(void)
+{
+	if (uiScaleDiffers()) {
+		if (ui_scale_restart_timer)
+			WMDeleteTimerHandler(ui_scale_restart_timer);
+		ui_scale_restart_timer =
+		    WMAddTimerHandler(UI_SCALE_RESTART_DELAY,
+				      uiScaleRestart, NULL);
+		return;
+	}
+	if (ui_scale_restart_timer) {
+		WMDeleteTimerHandler(ui_scale_restart_timer);
+		ui_scale_restart_timer = NULL;
+	}
+	/* the UI scale the XSETTINGS payload derives Xft/DPI from may
+	 * have changed with it */
+	wXSettingsRefreshAll();
+}
+
+
 static int matchWindow(const void *item, const void *cdata)
 {
 	return (((WFakeGroupLeader *) item)->origLeader == (xcb_window_t)(uintptr_t) cdata);
@@ -105,6 +125,8 @@ static void handleMapRequest(xcb_generic_event_t *ev)
 	}
 
 	scr = wScreenForRootWindow(e->parent);
+	if (!scr)
+		return;
 
 	wwin = wManageWindow(scr, e->window, NULL);
 
@@ -329,31 +351,24 @@ static void handlePropertyNotify(xcb_generic_event_t *ev)
 	} else {
 		WScreen *scr = wScreenForRootWindow(e->window);
 		if (scr && scr->root_win == e->window) {
-			/* xrdb writes RESOURCE_MANAGER only on screen 0's
-			 * root. A changed Xft.dpi cannot be applied to a
-			 * running session because wm-side frames and the
+			/* xrdb may publish RESOURCE_MANAGER on any screen's
+			 * root, and a change to Xft.dpi cannot be applied to
+			 * a running session because wm-side frames and the
 			 * WINGs view tree keep their device geometry, so
 			 * restart once the resource database settles.
 			 */
 			if (e->atom == XCB_ATOM_RESOURCE_MANAGER) {
-				if (uiScaleDiffers()) {
-					if (ui_scale_restart_timer)
-						WMDeleteTimerHandler(ui_scale_restart_timer);
-					ui_scale_restart_timer =
-					    WMAddTimerHandler(UI_SCALE_RESTART_DELAY,
-							      uiScaleRestart, NULL);
-					return;
-				}
-				if (ui_scale_restart_timer) {
-					WMDeleteTimerHandler(ui_scale_restart_timer);
-					ui_scale_restart_timer = NULL;
-				}
-				/* the UI scale the XSETTINGS payload derives
-				 * Xft/DPI from may have changed with it */
-				wXSettingsRefreshAll();
+				handleResourceManagerChange();
 				return;
 			}
 			wNETWMCheckRootHintChange(scr, e->atom);
+			return;
+		}
+		/* a secondary-only instance still watches screen 0's root,
+		 * where xrdb may be the only place Xft.dpi is published */
+		if (e->window == wXRootWindow(wdisp->conn, 0)) {
+			if (e->atom == XCB_ATOM_RESOURCE_MANAGER)
+				handleResourceManagerChange();
 			return;
 		}
 		/* a client may carry _NET_WM_USER_TIME on a separate

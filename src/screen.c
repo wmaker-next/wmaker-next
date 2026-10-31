@@ -902,6 +902,17 @@ void wScreenUpdateUsableArea(WScreen *scr)
 	wLayoutApply(scr, scr->current_workspace);
 }
 
+static char *sessionStatePath(WScreen *scr)
+{
+	char buf[16];
+
+	if (wXScreenCount(wdisp->conn) == 1)
+		return wdefaultspathfordomain("WMState");
+
+	snprintf(buf, sizeof(buf), "WMState.%i", scr->screen);
+	return wdefaultspathfordomain(buf);
+}
+
 void wScreenRestoreState(WScreen * scr)
 {
 	WMPropList *state;
@@ -912,16 +923,13 @@ void wScreenRestoreState(WScreen * scr)
 
 	make_keys();
 
-	if (wdisp->screen_count == 1) {
-		path = wdefaultspathfordomain("WMState");
-	} else {
-		char buf[16];
-		snprintf(buf, sizeof(buf), "WMState.%i", scr->screen);
-		path = wdefaultspathfordomain(buf);
-	}
+	path = sessionStatePath(scr);
 	scr->session_state = WMReadPropListFromFile(path);
 	wfree(path);
-	if (!scr->session_state && wdisp->screen_count > 1) {
+	/* import the legacy bare file only into the first managed screen,
+	 * so a secondary-only instance can migrate its old session once */
+	if (!scr->session_state && wXScreenCount(wdisp->conn) > 1
+	    && scr == wdisp->screens[0]) {
 		path = wdefaultspathfordomain("WMState");
 		scr->session_state = WMReadPropListFromFile(path);
 		wfree(path);
@@ -1038,13 +1046,7 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 
 	wMenuSaveState(scr);
 
-	if (wdisp->screen_count == 1) {
-		str = wdefaultspathfordomain("WMState");
-	} else {
-		char buf[16];
-		snprintf(buf, sizeof(buf), "WMState.%i", scr->screen);
-		str = wdefaultspathfordomain(buf);
-	}
+	str = sessionStatePath(scr);
 	if (!WMWritePropListToFile(scr->session_state, str)) {
 		werror(_("could not save session state in %s"), str);
 	}

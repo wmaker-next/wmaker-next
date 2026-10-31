@@ -69,6 +69,7 @@
 #include "misc.h"
 #include "startup.h"
 #include "wxkb.h"
+#include "xkb_label.h"
 #include "tabgroup.h"
 #include "winmenu.h"
 #include "osdep.h"
@@ -5136,40 +5137,18 @@ static void windowCloseDblClick(WCoreWindow *sender, void *data, xcb_generic_eve
 /* Helper function to extract the 2-letter language code for a given XKB group index */
 void wWindowGetLanguageLabel(int group_index, char *label)
 {
-	char *prop, *end, *layout, *tok;
-	size_t len, f;
-	int g;
+	char *prop;
+	size_t len;
 
-	/* Default to empty - will fallback to pixmap if we can't get the label */
-	label[0] = '\0';
-
-	/* _XKB_RULES_NAMES on the default root is a STRING property holding
-	 * five NUL-separated fields, rules\0model\0layout\0variant\0options,
-	 * walk to the third field then take the group_index-th comma token */
-	prop = WXGetLatin1String(wdisp->conn, wXRootWindow(wdisp->conn, wdisp->default_screen),
+	/* _XKB_RULES_NAMES is server-global and published on screen 0's
+	 * root, even when this instance manages only a secondary screen */
+	prop = WXGetLatin1String(wdisp->conn, wXRootWindow(wdisp->conn, 0),
 				 wx_static_atoms[W_ATOM_XKB_RULES_NAMES], &len);
-	if (!prop)
+	if (!prop) {
+		label[0] = '\0';
 		return;
-	end = prop + len;
-
-	layout = prop;
-	for (f = 0; f < 2 && layout < end; f++)
-		layout += strlen(layout) + 1;
-
-	if (layout < end && *layout) {
-		tok = layout;
-		for (g = 0; g < group_index && tok; g++) {
-			tok = strchr(tok, ',');
-			if (tok)
-				tok++;
-		}
-		if (tok && *tok && *tok != ',') {
-			label[0] = (char) toupper((unsigned char) tok[0]);
-			label[1] = (tok[1] && tok[1] != ',')
-				   ? (char) tolower((unsigned char) tok[1]) : '\0';
-			label[2] = '\0';
-		}
 	}
+	wXkbExtractLanguageLabel(prop, len, group_index, label);
 	wfree(prop);
 }
 

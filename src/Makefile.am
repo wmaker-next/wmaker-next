@@ -168,6 +168,8 @@ wmaker_SOURCES = 	\
 	xsettings.c \
 	wxkb.c \
 	wxkb.h \
+	xkb_label.c \
+	xkb_label.h \
 	xutil.c \
 	xutil.h \
 	wconfig.h \

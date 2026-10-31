@@ -487,7 +487,7 @@ static char *getTextSelection(WScreen * screen, xcb_atom_t selection)
 		break;
 	}
 	if (buffer >= 0)
-		return wXFetchBuffer(wdisp->conn, wdisp->default_screen, NULL, buffer);
+		return wXFetchBuffer(wdisp->conn, screen->screen, NULL, buffer);
 
 	return getClipboardSelection(screen, selection);
 }

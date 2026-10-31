@@ -739,6 +739,8 @@ static void handleEnterNotify(xcb_generic_event_t *ev)
 	 * sizes the buffer past the 32 wire bytes and fills it there */
 	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
+	if (!scr)
+		return;
 
 	if (WXEvqTakeTyped(wdisp->conn, XCB_LEAVE_NOTIFY, e->event, &peek)) {
 		/* already left the window..., the lookahead is consumed
@@ -834,6 +836,8 @@ static void handleLeaveNotify(xcb_generic_event_t *ev)
 	WScreen *scr = wScreenForRootWindow(e->root);
 
 	if (wEventCrossingIgnored(ev->full_sequence))
+		return;
+	if (!scr)
 		return;
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL) {

@@ -259,7 +259,9 @@ xcb_visualtype_t *wXDefaultVisualType(xcb_connection_t *dpy, int screen_number);
 
 /* Theme cursor load (xcb-cursor, core-font fallback included). The
  * name is the core cursor-font glyph name, which coincides with the
- * theme cursor name. Returns XCB_CURSOR_NONE on failure. */
+ * theme cursor name. The Xcursor theme is server-global, so the cache
+ * is built from screen 0 and screen_number is ignored. Returns
+ * XCB_CURSOR_NONE on failure. */
 xcb_cursor_t wXLoadCursor(xcb_connection_t *dpy, int screen_number, const char *name);
 
 /* XCreatePixmapCursor equivalent, Xlib argument shape. */

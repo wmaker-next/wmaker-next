@@ -697,24 +697,19 @@ static xcb_connection_t *cursor_ctx_conn;
 
 xcb_cursor_t wXLoadCursor(xcb_connection_t *dpy, int screen_number, const char *name)
 {
-	xcb_screen_iterator_t sit;
 	xcb_screen_t *scr;
+
+	/* the Xcursor theme is server-global, so the cached context is
+	 * built from screen 0 and screen_number is ignored */
+	(void)screen_number;
 
 	if (cursor_ctx && cursor_ctx_conn != dpy) {
 		xcb_cursor_context_free(cursor_ctx);
 		cursor_ctx = NULL;
 	}
 	if (cursor_ctx == NULL) {
-		sit = xcb_setup_roots_iterator(xcb_get_setup(dpy));
-		scr = sit.data;
-		for (; sit.rem; xcb_screen_next(&sit)) {
-			if (screen_number == 0) {
-				scr = sit.data;
-				break;
-			}
-			screen_number--;
-		}
-		if (xcb_cursor_context_new(dpy, scr, &cursor_ctx) < 0)
+		scr = wXScreenOf(dpy, 0);
+		if (!scr || xcb_cursor_context_new(dpy, scr, &cursor_ctx) < 0)
 			return XCB_CURSOR_NONE;
 		cursor_ctx_conn = dpy;
 	}
