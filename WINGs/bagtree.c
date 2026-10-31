@@ -277,6 +277,7 @@ static W_Node *rbTreeDelete(W_Bag * tree, W_Node * node)
 {
 	W_Node *nil = tree->nil;
 	W_Node *x, *y;
+	void *removed;
 
 	if (node->left == nil || node->right == nil) {
 		y = node;
@@ -302,8 +303,10 @@ static W_Node *rbTreeDelete(W_Bag * tree, W_Node * node)
 		}
 	}
 	if (y != node) {
+		removed = node->data;
 		node->index = y->index;
 		node->data = y->data;
+		y->data = removed;
 	}
 	if (y->color == 'B') {
 		rbDeleteFixup(tree, x);

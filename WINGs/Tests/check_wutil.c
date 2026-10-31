@@ -351,6 +351,70 @@ static int int_compare(const void *a, const void *b)
 	return (int)(long)a - (int)(long)b;
 }
 
+static void free_bag_item(void *data)
+{
+	wfree(data);
+}
+
+static void fill_bag_with_values(WMBag *bag, int count)
+{
+	int i;
+
+	for (i = 0; i < count; i++) {
+		int *value = wmalloc(sizeof(int));
+
+		*value = i;
+		WMPutInBag(bag, value);
+	}
+}
+
+static void test_bag_two_child_delete(void)
+{
+	WMBag *bag;
+	int *value;
+
+	bag = WMCreateTreeBagWithDestructor(free_bag_item);
+	fill_bag_with_values(bag, 3);
+	CHECK(WMDeleteFromBag(bag, 1) == 1);
+	CHECK(WMGetBagItemCount(bag) == 2);
+	value = WMGetFromBag(bag, 0);
+	CHECK(value && *value == 0);
+	value = WMGetFromBag(bag, 1);
+	CHECK(value && *value == 2);
+	WMFreeBag(bag);
+
+	bag = WMCreateTreeBagWithDestructor(free_bag_item);
+	fill_bag_with_values(bag, 3);
+	CHECK(WMRemoveFromBag(bag, WMGetFromBag(bag, 1)) == 1);
+	CHECK(WMGetBagItemCount(bag) == 2);
+	value = WMGetFromBag(bag, 0);
+	CHECK(value && *value == 0);
+	value = WMGetFromBag(bag, 1);
+	CHECK(value && *value == 2);
+	WMFreeBag(bag);
+
+	bag = WMCreateTreeBagWithDestructor(free_bag_item);
+	fill_bag_with_values(bag, 3);
+	CHECK(WMEraseFromBag(bag, 1) == 1);
+	CHECK(WMGetBagItemCount(bag) == 2);
+	value = WMGetFromBag(bag, 0);
+	CHECK(value && *value == 0);
+	CHECK(WMGetFromBag(bag, 1) == NULL);
+	value = WMGetFromBag(bag, 2);
+	CHECK(value && *value == 2);
+	WMFreeBag(bag);
+
+	bag = WMCreateTreeBagWithDestructor(free_bag_item);
+	fill_bag_with_values(bag, 3);
+	CHECK(WMReplaceInBag(bag, 1, NULL) == NULL);
+	CHECK(WMGetBagItemCount(bag) == 2);
+	value = WMGetFromBag(bag, 0);
+	CHECK(value && *value == 0);
+	value = WMGetFromBag(bag, 2);
+	CHECK(value && *value == 2);
+	WMFreeBag(bag);
+}
+
 static void test_bag(void)
 {
 	WMBag *bag = WMCreateTreeBag();
@@ -627,6 +691,7 @@ int main(void)
 	test_intern();
 	test_array();
 	test_bag();
+	test_bag_two_child_delete();
 	test_hashtable();
 	test_data();
 	test_spawn();
