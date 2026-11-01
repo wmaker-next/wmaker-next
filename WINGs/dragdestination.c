@@ -425,10 +425,9 @@ storeDropData(WMView * destView, xcb_atom_t selection, xcb_atom_t target, xcb_ti
 	(void) cdata;
 	(void) refused;
 
-	if (data != NULL)
-		dataToStore = WMRetainData(data);
-
 	if (XDND_DEST_INFO(info) != NULL && XDND_DROP_DATAS(info) != NULL) {
+		if (data != NULL)
+			dataToStore = WMRetainData(data);
 		WMAddToArray(XDND_DROP_DATAS(info), dataToStore);
 		W_SendDnDClientMessage(scr->display, WMViewXID(destView),
 				       scr->xdndSelectionAtom, WMViewXID(destView), 0, 0, 0, 0);
