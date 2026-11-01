@@ -158,6 +158,9 @@ static WMData *convertSelection(WMView * view, xcb_atom_t selection, xcb_atom_t 
 
 	*type = target;
 
+	if (typeName == NULL)
+		return NULL;
+
 	if (view->dragSourceProcs->fetchDragData != NULL) {
 		data = view->dragSourceProcs->fetchDragData(view, typeName);
 	} else {
