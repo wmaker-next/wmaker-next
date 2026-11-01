@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <limits.h>
+#include <stdint.h>
 #include "WUtil.h"
 
 typedef struct W_Data {
@@ -236,11 +237,21 @@ void WMAppendDataBytes(WMData * aData, const void *bytes, unsigned length)
 {
 	unsigned oldLength = aData->length;
 	unsigned newLength;
+	unsigned int offset = 0;
+	int aliased = 0;
+	const unsigned char *source = bytes;
 
 	/* refuse appends that would wrap the 32-bit length, otherwise the
 	 * capacity check below passes and memcpy() overruns the buffer */
 	wassertr(length <= UINT_MAX - oldLength);
 	newLength = oldLength + length;
+
+	if (bytes != NULL && aData->bytes != NULL &&
+	    (uintptr_t)bytes >= (uintptr_t)aData->bytes &&
+	    (uintptr_t)bytes - (uintptr_t)aData->bytes < oldLength) {
+		aliased = 1;
+		offset = (unsigned int)((uintptr_t)bytes - (uintptr_t)aData->bytes);
+	}
 
 	if (newLength > aData->capacity) {
 		unsigned nextCapacity = aData->capacity + aData->growth;
@@ -261,8 +272,10 @@ void WMAppendDataBytes(WMData * aData, const void *bytes, unsigned length)
 		WMSetDataCapacity(aData, nextCapacity);
 		aData->growth = nextGrowth;
 	}
+	if (aliased)
+		source = (unsigned char *)aData->bytes + offset;
 	if (length > 0)
-		memcpy((unsigned char *)aData->bytes + oldLength, bytes, length);
+		memmove((unsigned char *)aData->bytes + oldLength, source, length);
 	aData->length = newLength;
 }
 

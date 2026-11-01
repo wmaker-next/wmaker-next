@@ -606,6 +606,29 @@ static void test_data(void)
 	WMReleaseData(d);
 }
 
+static void test_data_self_append(void)
+{
+	unsigned char raw[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+	const unsigned char *bytes;
+	WMData *d;
+
+	d = WMCreateDataWithBytes(raw, sizeof(raw));
+	WMAppendData(d, d);
+	CHECK(WMGetDataLength(d) == sizeof(raw) * 2);
+	bytes = WMDataBytes(d);
+	CHECK(memcmp(bytes, raw, sizeof(raw)) == 0);
+	CHECK(memcmp(bytes + sizeof(raw), raw, sizeof(raw)) == 0);
+	WMReleaseData(d);
+
+	d = WMCreateDataWithBytes(raw, sizeof(raw));
+	WMAppendDataBytes(d, (const unsigned char *)WMDataBytes(d) + 2, 4);
+	CHECK(WMGetDataLength(d) == sizeof(raw) + 4);
+	bytes = WMDataBytes(d);
+	CHECK(memcmp(bytes, raw, sizeof(raw)) == 0);
+	CHECK(memcmp(bytes + sizeof(raw), raw + 2, 4) == 0);
+	WMReleaseData(d);
+}
+
 static int child_exit_status(pid_t pid)
 {
 	int status;
@@ -815,6 +838,7 @@ int main(void)
 	test_bag_two_child_delete();
 	test_hashtable();
 	test_data();
+	test_data_self_append();
 	test_spawn();
 
 	return check_report("check_wutil");
