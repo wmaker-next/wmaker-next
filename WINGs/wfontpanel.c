@@ -601,13 +601,15 @@ static void listFamilies(WMScreen * scr, WMFontPanel * panel)
 	pat = FcPatternCreate();
 	os = FcObjectSetBuild(FC_FAMILY, FC_STYLE, NULL);
 	fs = FcFontList(0, pat, os);
+	if (os)
+		FcObjectSetDestroy(os);
+	if (pat)
+		FcPatternDestroy(pat);
 	if (!fs) {
 		WMRunAlertPanel(scr, panel->win, _("Error"),
 				_("Could not init font config library\n"), _("OK"), NULL, NULL);
 		return;
 	}
-	if (pat)
-		FcPatternDestroy(pat);
 
 	families = WMCreateHashTable(WMStringPointerHashCallbacks);
 
