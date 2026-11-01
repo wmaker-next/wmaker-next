@@ -1977,6 +1977,7 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 
 	/* Destroy wheelBackImg, so it'll update properly */
 	if (panel->selectionBackImg) {
+		WMScreenAbandonDrawable(scr, panel->selectionBackImg);
 		wXFreePixmap(WMWidgetScreen(panel->win)->display, panel->selectionBackImg);
 		panel->selectionBackImg = XCB_NONE;
 	}
@@ -2122,6 +2123,7 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 	wXUngrabPointer(scr->display, XCB_CURRENT_TIME);
 	xcb_free_cursor(scr->display, magCursor);
 
+	WMScreenAbandonDrawable(scr, panel->magnifyGlass->magPix);
 	xcb_free_pixmap(scr->display, panel->magnifyGlass->magPix);
 	panel->magnifyGlass->magPix = XCB_NONE;
 #ifndef USE_XSHAPE
