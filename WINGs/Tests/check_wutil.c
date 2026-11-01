@@ -28,9 +28,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
+#include <utime.h>
 
 #include <WINGs/WUtil.h>
+#include <WINGs/WINGsP.h>
 
 #include "check_common.h"
 
@@ -415,6 +418,78 @@ static void test_bag_two_child_delete(void)
 	WMFreeBag(bag);
 }
 
+static void test_userdefaults_sync(void)
+{
+	char tmpl[] = "/tmp/check_wutil_ud_XXXXXX";
+	char path[1024];
+	char *dir;
+	struct utimbuf ut;
+	WMUserDefaults *ud;
+	WMPropList *key, *value, *key2, *value2, *dict;
+	time_t newer;
+
+	dir = mkdtemp(tmpl);
+	CHECK(dir != NULL);
+	snprintf(path, sizeof(path), "%s/domain", dir);
+
+	key = WMCreatePLString("Disk");
+	value = WMCreatePLString("initial");
+	dict = WMCreatePLDictionary(key, value, NULL);
+	CHECK(dict != NULL);
+	CHECK(WMWritePropListToFile(dict, path));
+	WMReleasePropList(dict);
+	WMReleasePropList(key);
+	WMReleasePropList(value);
+
+	ud = WMGetDefaultsFromPath(path);
+	CHECK(ud != NULL);
+	WMSetUDStringForKey(ud, "LocalValue", "Local");
+
+	key = WMCreatePLString("Disk");
+	value = WMCreatePLString("changed");
+	key2 = WMCreatePLString("External");
+	value2 = WMCreatePLString("ExternalValue");
+	dict = WMCreatePLDictionary(key, value, key2, value2, NULL);
+	CHECK(dict != NULL);
+	CHECK(WMWritePropListToFile(dict, path));
+	WMReleasePropList(dict);
+	WMReleasePropList(key);
+	WMReleasePropList(value);
+	WMReleasePropList(key2);
+	WMReleasePropList(value2);
+
+	newer = time(NULL) + 5;
+	ut.actime = newer;
+	ut.modtime = newer;
+	CHECK(utime(path, &ut) == 0);
+
+	W_InitNotificationCenter();
+	WMSynchronizeUserDefaults(ud);
+	W_ReleaseNotificationCenter();
+
+	dict = WMReadPropListFromFile(path);
+	CHECK(dict != NULL);
+	if (dict) {
+		key = WMCreatePLString("Local");
+		value = WMGetFromPLDictionary(dict, key);
+		CHECK(value && WMIsPLString(value));
+		if (value && WMIsPLString(value))
+			CHECK(strcmp(WMGetFromPLString(value), "LocalValue") == 0);
+		WMReleasePropList(key);
+
+		key = WMCreatePLString("External");
+		value = WMGetFromPLDictionary(dict, key);
+		CHECK(value && WMIsPLString(value));
+		if (value && WMIsPLString(value))
+			CHECK(strcmp(WMGetFromPLString(value), "ExternalValue") == 0);
+		WMReleasePropList(key);
+
+		WMReleasePropList(dict);
+	}
+
+	wspawnvp_wait((char *[]){ "rm", "-rf", dir, NULL });
+}
+
 static void test_bag(void)
 {
 	WMBag *bag = WMCreateTreeBag();
@@ -690,6 +765,7 @@ int main(void)
 	test_wpathdir();
 	test_intern();
 	test_array();
+	test_userdefaults_sync();
 	test_bag();
 	test_bag_two_child_delete();
 	test_hashtable();

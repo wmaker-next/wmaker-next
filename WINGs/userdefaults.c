@@ -307,7 +307,7 @@ void WMEnableUDPeriodicSynchronization(WMUserDefaults * database, bool enable)
 
 void WMSynchronizeUserDefaults(WMUserDefaults * database)
 {
-	bool fileIsNewer = false, release = false, notify = false;
+	bool fileIsNewer = false, release = false, notify = false, saved = true;
 	WMPropList *plF, *key;
 	char *path;
 	struct stat stbuf;
@@ -332,13 +332,17 @@ void WMSynchronizeUserDefaults(WMUserDefaults * database)
 				key = database->searchList[0];
 				WMPutInPLDictionary(database->defaults, key, plF);
 				notify = true;
+				if (!WMWritePropListToFile(database->appDomain, path))
+					saved = false;
 			} else {
 				/* something happened with the file. just overwrite it */
 				wwarning(_("cannot read domain from file '%s' when syncing"), path);
-				WMWritePropListToFile(database->appDomain, path);
+				if (!WMWritePropListToFile(database->appDomain, path))
+					saved = false;
 			}
 		} else if (database->dirty) {
-			WMWritePropListToFile(database->appDomain, path);
+			if (!WMWritePropListToFile(database->appDomain, path))
+				saved = false;
 		} else if (fileIsNewer) {
 			plF = WMReadPropListFromFile(path);
 			if (plF) {
@@ -350,11 +354,13 @@ void WMSynchronizeUserDefaults(WMUserDefaults * database)
 			} else {
 				/* something happened with the file. just overwrite it */
 				wwarning(_("cannot read domain from file '%s' when syncing"), path);
-				WMWritePropListToFile(database->appDomain, path);
+				if (!WMWritePropListToFile(database->appDomain, path))
+					saved = false;
 			}
 		}
 
-		database->dirty = 0;
+		if (saved)
+			database->dirty = 0;
 
 		if (stat(path, &stbuf) >= 0)
 			database->timestamp = stbuf.st_mtime;
@@ -382,10 +388,11 @@ void WMSaveUserDefaults(WMUserDefaults * database)
 		} else {
 			path = database->path;
 		}
-		WMWritePropListToFile(database->appDomain, path);
-		database->dirty = 0;
-		if (stat(path, &stbuf) >= 0)
-			database->timestamp = stbuf.st_mtime;
+		if (WMWritePropListToFile(database->appDomain, path)) {
+			database->dirty = 0;
+			if (stat(path, &stbuf) >= 0)
+				database->timestamp = stbuf.st_mtime;
+		}
 		if (release)
 			wfree(path);
 	}
