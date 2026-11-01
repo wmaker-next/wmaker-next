@@ -325,6 +325,7 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 
 	if (image && icon) {
 		RImage *back;
+		RImage *out;
 		int opaq = (dim) ? 75 : 255;
 		WMPoint pos;
 		int bg_y;
@@ -369,10 +370,20 @@ static void changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 		if (arrow)
 			draw_drill_arrow(back);
 
-		RConvertImage(panel->scr->rcontext, back, &p);
+		out = back;
+		if (panel->scr->ui_scale > 1.0001) {
+			int dev = (int)(icon_tile_size * panel->scr->ui_scale + 0.5);
+
+			out = RScaleImage(back, dev, dev);
+			if (!out)
+				out = back;
+		}
+		RConvertImage(panel->scr->rcontext, out, &p);
 		xcb_change_window_attributes(wdisp->conn, WMWidgetXID(icon), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ p });
 		xcb_clear_area(wdisp->conn, 0, WMWidgetXID(icon), 0, 0, 0, 0);
 		xcb_free_pixmap(wdisp->conn, p);
+		if (out != back)
+			RReleaseImage(out);
 	}
 
 	if (!panel->bg && !panel->tile && selected)
@@ -535,12 +546,24 @@ static RImage *getTile(WScreen *scr)
 
 static void apply_panel_bg(WSwitchPanel *panel)
 {
+	RImage *bg;
 	xcb_pixmap_t pixmap, mask;
 
 	if (!panel->bg || !panel->win)
 		return;
 
-	RConvertImageMask(panel->scr->rcontext, panel->bg, &pixmap, &mask, 250);
+	bg = panel->bg;
+	if (panel->scr->ui_scale > 1.0001) {
+		int w = (int)(WMWidgetWidth(panel->win) * panel->scr->ui_scale + 0.5);
+		int h = (int)(WMWidgetHeight(panel->win) * panel->scr->ui_scale + 0.5);
+
+		bg = RScaleImage(panel->bg, w, h);
+		if (!bg)
+			bg = panel->bg;
+	}
+	RConvertImageMask(panel->scr->rcontext, bg, &pixmap, &mask, 250);
+	if (bg != panel->bg)
+		RReleaseImage(bg);
 	xcb_change_window_attributes(wdisp->conn, WMWidgetXID(panel->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
 #ifdef USE_XSHAPE
