@@ -276,6 +276,16 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	font->y = ascent;
 	pango_font_metrics_unref(metrics);
 
+	/* Hint the layout at the resolution the glyphs are painted at. */
+	if (scrPtr->uiScale > 1.0001) {
+		PangoMatrix matrix = PANGO_MATRIX_INIT;
+
+		pango_matrix_scale(&matrix, scrPtr->uiScale, scrPtr->uiScale);
+		pango_context_set_matrix(context, &matrix);
+		pango_layout_context_changed(font->layout);
+		pango_layout_context_changed(font->wrapLayout);
+	}
+
 	pango_font_description_free(description);
 	g_object_unref(context);
 	FcPatternDestroy(pattern);
