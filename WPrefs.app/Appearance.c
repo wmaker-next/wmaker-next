@@ -2250,6 +2250,24 @@ static void storeData(_Panel * panel)
 	SetStringForKey(wintitle_align[panel->titleAlignment].db_value, "TitleJustify");
 }
 
+static void freeTextureListItem(_Panel *panel, WMListItem *item)
+{
+	TextureListItem *titem = (TextureListItem *) item->clientData;
+
+	if (!titem)
+		return;
+
+	wfree(titem->title);
+	wfree(titem->texture);
+	wfree(titem->path);
+	WMReleasePropList(titem->prop);
+	if (titem->preview) {
+		WMScreenAbandonDrawable(WMWidgetScreen(panel->texLs), titem->preview);
+		wXFreePixmap(WMScreenDisplay(WMWidgetScreen(panel->texLs)), titem->preview);
+	}
+	wfree(titem);
+}
+
 static void prepareForClose(_Panel * panel)
 {
 	WMPropList *textureList;
@@ -2299,10 +2317,17 @@ static void prepareForClose(_Panel * panel)
 	WMReleasePropList(textureList);
 
 	WMSynchronizeUserDefaults(udb);
+
+	while ((i = WMGetListNumberOfRows(panel->texLs)) > 0) {
+		item = WMGetListItem(panel->texLs, i - 1);
+		freeTextureListItem(panel, item);
+		WMRemoveListItem(panel->texLs, i - 1);
+	}
 }
 
 static void undo(_Panel *panel)
 {
+	WMListItem *item;
 	int i;
 
 	/* Drop every list row so the per-option rows re-land at 0..7,
@@ -2310,21 +2335,9 @@ static void undo(_Panel *panel)
 	 * untouched TextureList of the WPrefs app domain. */
 	i = WMGetListNumberOfRows(panel->texLs);
 	while (i > 0) {
-		WMListItem *item = WMGetListItem(panel->texLs, i - 1);
-		TextureListItem *titem = (TextureListItem *) item->clientData;
+		item = WMGetListItem(panel->texLs, i - 1);
 
-		if (titem) {
-			wfree(titem->title);
-			wfree(titem->texture);
-			/* the texture file stays: the saved TextureList
-			 * still references it */
-			wfree(titem->path);
-			WMReleasePropList(titem->prop);
-			if (titem->preview)
-				wXFreePixmap(WMScreenDisplay(WMWidgetScreen(panel->texLs)),
-					     titem->preview);
-			wfree(titem);
-		}
+		freeTextureListItem(panel, item);
 		WMRemoveListItem(panel->texLs, i - 1);
 		i--;
 	}
