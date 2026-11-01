@@ -143,14 +143,16 @@ void WMSetLabelRelief(WMLabel * lPtr, WMReliefType relief)
 
 void WMSetLabelText(WMLabel * lPtr, const char *text)
 {
+	char *newCaption;
+
+	if (text != NULL)
+		newCaption = wstrdup(text);
+	else
+		newCaption = NULL;
+
 	if (lPtr->caption)
 		wfree(lPtr->caption);
-
-	if (text != NULL) {
-		lPtr->caption = wstrdup(text);
-	} else {
-		lPtr->caption = NULL;
-	}
+	lPtr->caption = newCaption;
 	if (lPtr->flags.useMarkup)
 		labelApplyText(lPtr);
 	if (lPtr->view->flags.realized) {

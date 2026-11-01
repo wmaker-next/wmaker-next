@@ -176,6 +176,41 @@ static void check_monofont(WMScreen *screen)
 	WMReleaseFont(font);
 }
 
+static void check_setter_self_assignment(WMScreen *screen)
+{
+	WMWindow *window;
+	WMLabel *label;
+	WMTextField *field;
+	WMMenuItem *item;
+	WMFont *font;
+
+	window = WMCreateWindow(screen, "check-setters");
+	label = WMCreateLabel(window);
+	field = WMCreateTextField(window);
+
+	WMSetLabelText(label, "label");
+	WMSetLabelText(label, WMGetLabelText(label));
+	CHECK_STR(WMGetLabelText(label), "label");
+
+	font = WMCreateFont(screen, "sans:pixelsize=14");
+	WMSetTextFieldFont(field, font);
+	WMSetTextFieldFont(field, WMGetTextFieldFont(field));
+	CHECK(WMGetTextFieldFont(field) == font);
+	WMReleaseFont(font);
+
+	item = WMCreateMenuItem();
+	WMSetMenuItemTitle(item, "entry");
+	WMSetMenuItemTitle(item, WMGetMenuItemTitle(item));
+	CHECK_STR(WMGetMenuItemTitle(item), "entry");
+
+	WMSetMenuItemShortcut(item, "A");
+	WMSetMenuItemShortcut(item, WMGetMenuItemShortcut(item));
+	CHECK_STR(WMGetMenuItemShortcut(item), "A");
+	WMDestroyMenuItem(item);
+
+	WMDestroyWidget(window);
+}
+
 int main(int argc, char **argv)
 {
 	xcb_connection_t *connection;
@@ -199,6 +234,7 @@ int main(int argc, char **argv)
 	check_alignment(screen, WACenter);
 	check_alignment(screen, WARight);
 	check_monofont(screen);
+	check_setter_self_assignment(screen);
 	WMShutdownScreen(screen);
 	WMShutdownFonts();
 	wutil_shutdown();

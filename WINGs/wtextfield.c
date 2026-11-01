@@ -700,11 +700,14 @@ void WMSetTextFieldPrevTextField(WMTextField * tPtr, WMTextField * prev)
 
 void WMSetTextFieldFont(WMTextField * tPtr, WMFont * font)
 {
+	WMFont *newFont;
+
 	CHECK_CLASS(tPtr, WC_TextField);
 
+	newFont = WMRetainFont(font);
 	if (tPtr->font)
 		WMReleaseFont(tPtr->font);
-	tPtr->font = WMRetainFont(font);
+	tPtr->font = newFont;
 
 	tPtr->offsetWidth = WMAX((tPtr->view->size.height - WMFontHeight(tPtr->font)) / 2, 1);
 

@@ -115,10 +115,13 @@ unsigned WMGetMenuItemShortcutModifierMask(WMMenuItem * item)
 
 void WMSetMenuItemShortcut(WMMenuItem * item, const char *shortcut)
 {
+	char *newShortcut;
+
+	newShortcut = wstrdup(shortcut);
+
 	if (item->shortcutKey)
 		wfree(item->shortcutKey);
-
-	item->shortcutKey = wstrdup(shortcut);
+	item->shortcutKey = newShortcut;
 }
 
 void WMSetMenuItemShortcutModifierMask(WMMenuItem * item, unsigned mask)
@@ -154,13 +157,16 @@ void *WMGetMenuItemData(WMMenuItem * item)
 
 void WMSetMenuItemTitle(WMMenuItem * item, const char *title)
 {
-	if (item->title)
-		wfree(item->title);
+	char *newTitle;
 
 	if (title)
-		item->title = wstrdup(title);
+		newTitle = wstrdup(title);
 	else
-		item->title = NULL;
+		newTitle = NULL;
+
+	if (item->title)
+		wfree(item->title);
+	item->title = newTitle;
 }
 
 char *WMGetMenuItemTitle(WMMenuItem * item)
