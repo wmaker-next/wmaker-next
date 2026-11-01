@@ -281,6 +281,9 @@ static bool backupUserFile(const char *path)
 		if (fwrite(buf, 1, n, dst) != n)
 			ok = false;
 
+	if (ok && src && ferror(src))
+		ok = false;
+
 	if (dst && fclose(dst) != 0)
 		ok = false;
 	if (src)
