@@ -183,6 +183,7 @@ static void menuItemEdited(struct WEditMenuDelegate *delegate, WEditMenu * menu,
 static bool shouldRemoveItem(struct WEditMenuDelegate *delegate, WEditMenu * menu, WEditMenuItem * item);
 
 static void freeItemData(ItemData * data);
+static void freeTemplateData(ItemData *data);
 
 
 static WEditMenuDelegate menuDelegate = {
@@ -328,7 +329,9 @@ static ItemData *putNewItem(_Panel * panel, WEditMenu * menu, int type, const ch
 
 	data = wmalloc(sizeof(ItemData));
 	data->type = type;
-	WSetEditMenuItemData(item, data, (WMCallback *) freeItemData);
+	/* factory/template strings are static literals, so only the
+	 * container is owned here */
+	WSetEditMenuItemData(item, data, (WMCallback *) freeTemplateData);
 	WSetEditMenuItemImage(item, panel->markerPix[type]);
 
 	return data;
@@ -873,6 +876,11 @@ static void createPanel(_Panel * p)
 
 	if (panel->menu)
 		WEditMenuShowAt(panel->menu, pos.x, pos.y);
+}
+
+static void freeTemplateData(ItemData *data)
+{
+	wfree(data);
 }
 
 static void freeItemData(ItemData * data)

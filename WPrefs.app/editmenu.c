@@ -55,6 +55,7 @@ typedef struct W_EditMenu {
 	WMView *view;
 
 	struct W_EditMenu *parent;
+	EditMenuItem *parentItem;	/* cascade owner, NULL for top-level menus */
 
 	WMArray *items;		/* EditMenuItem */
 
@@ -534,6 +535,7 @@ void WSetEditMenuSubmenu(WEditMenu * mPtr, WEditMenuItem * item, WEditMenu * sub
 {
 	item->submenu = submenu;
 	submenu->parent = mPtr;
+	submenu->parentItem = item;
 
 	paintEditMenuItem(item);
 }
@@ -1379,6 +1381,9 @@ static void handleItemClick(xcb_generic_event_t * event, void *data)
 static void destroyEditMenu(WEditMenu * mPtr)
 {
 	WMRemoveNotificationObserver(mPtr);
+
+	if (mPtr->parentItem)
+		mPtr->parentItem->submenu = NULL;
 
 	WMFreeArray(mPtr->items);
 
