@@ -158,6 +158,8 @@ char *capture_shortcut(W_Screen *scr, bool *capturing, bool convert_case)
 	while (*capturing) {
 		wXAllowEvents(dpy, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
 		WMNextEvent(dpy, &ev);
+		if (!ev)
+			break;
 		if ((ev->response_type & 0x7f) == XCB_KEY_PRESS && (((xcb_key_press_event_t *)ev)->detail) != 0) {
 			numlock_mask = NumLockMask(scr);
 
@@ -197,6 +199,8 @@ char *capture_shortcut(W_Screen *scr, bool *capturing, bool convert_case)
 		ev = NULL;
 		wXAllowEvents(dpy, XCB_ALLOW_ASYNC_KEYBOARD, XCB_CURRENT_TIME);
 		WMNextEvent(dpy, &ev);
+		if (!ev)
+			break;
 		if ((ev->response_type & 0x7f) == XCB_KEY_PRESS && (((xcb_key_press_event_t *)ev)->detail) != 0) {
 			numlock_mask = NumLockMask(scr);
 			ksym = W_XkbKeysymForKeycode(scr, (((xcb_key_press_event_t *)ev)->detail),
