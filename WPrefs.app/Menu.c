@@ -963,7 +963,7 @@ static ItemData *parseCommand(WMPropList * item)
 			return NULL;
 		}
 
-		while (isspace(*p) && *p)
+		while (*p && isspace(*p))
 			p++;
 		if (*p == '|') {
 			if (*(p + 1) == '|') {
@@ -1018,8 +1018,13 @@ static ItemData *parseCommand(WMPropList * item)
 	} else if (strcmp(command, "OPEN_PLMENU") == 0) {
 		char *p;
 
+		if (parameter == NULL) {
+			wfree(data);
+			return NULL;
+		}
+
 		p = parameter;
-		while (isspace(*p) && *p)
+		while (*p && isspace(*p))
 			p++;
 		if (*p == '|') {
 			if (*(p + 1) == '|') {
