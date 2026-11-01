@@ -360,6 +360,8 @@ void WMFreeFilePanel(WMFilePanel * panel)
 		WMWidgetScreen(panel->win)->sharedOpenPanel = NULL;
 	}
 	WMRemoveNotificationObserver(panel);
+	WMDeleteEventHandler(WMWidgetView(panel->win), XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+			     handleEvents, panel);
 	WMUnmapWidget(panel->win);
 	WMDestroyWidget(panel->win);
 	wfree(panel);

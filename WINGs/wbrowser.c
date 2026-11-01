@@ -1116,8 +1116,10 @@ int WMAddBrowserColumn(WMBrowser * bPtr)
 	bPtr->columnCount++;
 	clist = wmalloc(sizeof(WMList *) * bPtr->columnCount);
 	tlist = wmalloc(sizeof(char *) * bPtr->columnCount);
-	memcpy(clist, bPtr->columns, sizeof(WMList *) * (bPtr->columnCount - 1));
-	memcpy(tlist, bPtr->titles, sizeof(char *) * (bPtr->columnCount - 1));
+	if (index > 0) {
+		memcpy(clist, bPtr->columns, sizeof(WMList *) * index);
+		memcpy(tlist, bPtr->titles, sizeof(char *) * index);
+	}
 	if (bPtr->columns)
 		wfree(bPtr->columns);
 	if (bPtr->titles)
