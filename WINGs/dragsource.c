@@ -704,11 +704,14 @@ static xcb_window_t findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 	WMScreen *scr = sourceScreen(info);
 	unsigned nchildren;
 	xcb_window_t *children = windowChildren(scr->display, scr->rootWin, &nchildren);
+	xcb_window_t dest;
 	int i;
 	WXWindowAttributes attr;
 
-	if (isXdndAware(scr, scr->rootWin))
+	if (isXdndAware(scr, scr->rootWin)) {
+		wfree(children);
 		return scr->rootWin;
+	}
 
 	/* exclude drag icon (and upper) from search */
 	for (i = nchildren - 1; i >= 0; i--) {
@@ -720,6 +723,7 @@ static xcb_window_t findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 
 	if (i < 0) {
 		/* root window has no child under drag icon, and is not xdnd aware. */
+		wfree(children);
 		return XCB_NONE;
 	}
 
@@ -730,11 +734,14 @@ static xcb_window_t findDestination(WMDraggingInfo * info, WMPoint * mousePos)
 		    && mousePos->x >= attr.x
 		    && mousePos->y >= attr.y
 		    && mousePos->x < attr.x + attr.width && mousePos->y < attr.y + attr.height) {
-			return lookForAwareWindow(scr, mousePos, children[i]);
+			dest = lookForAwareWindow(scr, mousePos, children[i]);
+			wfree(children);
+			return dest;
 		}
 	}
 
 	/* No child window under drag pointer */
+	wfree(children);
 	return XCB_NONE;
 }
 
