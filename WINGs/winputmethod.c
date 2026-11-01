@@ -90,7 +90,7 @@ static void im_bypass_mark(unsigned long serial)
 		im_bypass_count++;
 }
 
-static bool im_bypass_check(unsigned long serial)
+static bool im_bypass_remove(unsigned long serial)
 {
 	int i;
 
@@ -546,7 +546,7 @@ bool W_IMForwardKey(W_View *view, xcb_generic_event_t *event)
 		return false;
 
 	/* event was re-injected by forward_event callback: process normally */
-	if (im_bypass_check(event->full_sequence))
+	if (im_bypass_remove(event->full_sequence))
 		return false;
 
 	/* keysym classification only needs the keycode, resolved against
@@ -559,7 +559,10 @@ bool W_IMForwardKey(W_View *view, xcb_generic_event_t *event)
 	/* the echo comes back with only the 16-bit wire sequence, the
 	 * bypass ring resolves it via the true value marked here */
 	im_bypass_mark(event->full_sequence);
-	xcb_xim_forward_event(im, view->xcbxic, (xcb_key_press_event_t *)event);
+	if (!xcb_xim_forward_event(im, view->xcbxic, (xcb_key_press_event_t *)event)) {
+		im_bypass_remove(event->full_sequence);
+		return false;
+	}
 	return true;
 }
 
