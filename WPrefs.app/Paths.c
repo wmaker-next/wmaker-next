@@ -96,6 +96,8 @@ static void showData(_Panel * panel)
 	} else {
 		for (i = 0; i < WMGetPropListItemCount(array); i++) {
 			val = WMGetFromPLArray(array, i);
+			if (!val || !WMIsPLString(val))
+				continue;
 			addPathToList(panel->icoL, -1, WMGetFromPLString(val));
 		}
 	}
@@ -112,6 +114,8 @@ static void showData(_Panel * panel)
 	} else {
 		for (i = 0; i < WMGetPropListItemCount(array); i++) {
 			val = WMGetFromPLArray(array, i);
+			if (!val || !WMIsPLString(val))
+				continue;
 			addPathToList(panel->pixL, -1, WMGetFromPLString(val));
 		}
 	}
@@ -127,6 +131,8 @@ static void showData(_Panel * panel)
 	} else {
 		for (i = 0; i < WMGetPropListItemCount(array); i++) {
 			val = WMGetFromPLArray(array, i);
+			if (!val || !WMIsPLString(val))
+				continue;
 			addPathToList(panel->sndL, -1, WMGetFromPLString(val));
 		}
 	}
