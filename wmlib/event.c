@@ -31,16 +31,24 @@ enum {
 	wmSelectItem = 1
 };
 
-static wmMenuEntry *findEntry(WMMenu *menu, int tag)
+static wmMenuEntry *findEntry(WMMenu *menu, int tag, WMMenu **path, int depth)
 {
 	wmMenuEntry *entry = menu->first;
 	wmMenuEntry *tmp;
+	int i;
+
+	if (depth > WMMENU_MAX_DEPTH)
+		return NULL;
+	for (i = 0; i < depth; i++)
+		if (path[i] == menu)
+			return NULL;
+	path[depth] = menu;
 
 	while (entry) {
 		if (entry->tag == tag)
 			return entry;
 		if (entry->cascade) {
-			tmp = findEntry(entry->cascade, tag);
+			tmp = findEntry(entry->cascade, tag, path, depth + 1);
 			if (tmp)
 				return tmp;
 		}
@@ -52,10 +60,11 @@ static wmMenuEntry *findEntry(WMMenu *menu, int tag)
 static void wmHandleMenuEvents(WMAppContext *app, xcb_client_message_event_t *event)
 {
 	wmMenuEntry *entry;
+	WMMenu *path[WMMENU_MAX_DEPTH + 1];
 
 	switch (event->data.data32[1]) {
 	case wmSelectItem:
-		entry = findEntry(app->main_menu, (int)event->data.data32[2]);
+		entry = findEntry(app->main_menu, (int)event->data.data32[2], path, 0);
 		if (entry && entry->callback) {
 			(*entry->callback) (entry->clientData, (int)event->data.data32[2],
 					    (xcb_timestamp_t) event->data.data32[0]);

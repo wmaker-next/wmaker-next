@@ -19,6 +19,7 @@
  *  License along with this library; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,10 +68,16 @@ WMMenuAddItem(WMMenu *menu, char *text, WMMenuAction action,
 {
 	wmMenuEntry *entry;
 	size_t entryline_size;
+	const unsigned char *p;
 
-	/* max size of right side text */
-	if (rtext && strlen(rtext) > 4)
-		return -1;
+	/* right side text is a single wire token */
+	if (rtext) {
+		if (rtext[0] == '\0' || strlen(rtext) > 4)
+			return -1;
+		for (p = (const unsigned char *)rtext; *p; p++)
+			if (isspace(*p))
+				return -1;
+	}
 
 	/* max size of menu text */
 	if (strlen(text) > 255)
@@ -122,6 +129,9 @@ int WMMenuAddSubmenu(WMMenu *menu, char *text, WMMenu *submenu)
 	wmMenuEntry *entry;
 	size_t entryline_size;
 
+	if (menu == submenu)
+		return -1;
+
 	/* max size of menu text */
 	if (strlen(text) > 255)
 		return -1;
@@ -163,34 +173,55 @@ int WMMenuAddSubmenu(WMMenu *menu, char *text, WMMenu *submenu)
 	return entry->tag;
 }
 
-static int countItems(WMMenu *menu)
+static int countItems(WMMenu *menu, WMMenu **path, int depth)
 {
 	wmMenuEntry *entry = menu->first;
-	int c;
+	int c, i, sub;
+
+	if (depth > WMMENU_MAX_DEPTH)
+		return -1;
+	for (i = 0; i < depth; i++)
+		if (path[i] == menu)
+			return -1;
+	path[depth] = menu;
 
 	c = 1;
 	while (entry) {
 		c++;
-		if (entry->cascade)
-			c += countItems(entry->cascade);
+		if (entry->cascade) {
+			sub = countItems(entry->cascade, path, depth + 1);
+			if (sub < 0)
+				return -1;
+			c += sub;
+		}
 		entry = entry->next;
 	}
 	c++;
 	return c;
 }
 
-static void addItems(char **slist, int *index, WMMenu *menu)
+static int addItems(char **slist, int *index, WMMenu *menu,
+		    WMMenu **path, int depth)
 {
 	wmMenuEntry *entry = menu->first;
+	int i;
+
+	if (depth > WMMENU_MAX_DEPTH)
+		return -1;
+	for (i = 0; i < depth; i++)
+		if (path[i] == menu)
+			return -1;
+	path[depth] = menu;
 
 	slist[(*index)++] = menu->entryline;
 	while (entry) {
 		slist[(*index)++] = entry->entryline;
-		if (entry->cascade)
-			addItems(slist, index, entry->cascade);
+		if (entry->cascade && addItems(slist, index, entry->cascade, path, depth + 1) < 0)
+			return -1;
 		entry = entry->next;
 	}
 	slist[(*index)++] = menu->entryline2;
+	return 0;
 }
 
 int WMRealizeMenus(WMAppContext *app)
@@ -199,12 +230,15 @@ int WMRealizeMenus(WMAppContext *app)
 	size_t total, n;
 	char **slist;
 	unsigned char *data, *p;
+	WMMenu *path[WMMENU_MAX_DEPTH + 1];
 
 	if (!app->main_menu)
 		return 0;
 
 	/* first count how many menu items there are */
-	count = countItems(app->main_menu);
+	count = countItems(app->main_menu, path, 0);
+	if (count < 0)
+		return 0;
 	if (count == 0)
 		return 1;
 
@@ -215,7 +249,10 @@ int WMRealizeMenus(WMAppContext *app)
 
 	slist[0] = "WMMenu 0";
 	i = 1;
-	addItems(slist, &i, app->main_menu);
+	if (addItems(slist, &i, app->main_menu, path, 0) < 0) {
+		free(slist);
+		return 0;
+	}
 
 	/* the property is a text-property string list: every entry is
 	 * NUL-terminated, matching XStringListToTextProperty() */

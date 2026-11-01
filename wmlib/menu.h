@@ -24,6 +24,9 @@
 
 #define WMMENU_PROPNAME	"_WINDOWMAKER_MENU"
 
+/* Keep the realized tree within the depth accepted by the reader. */
+#define WMMENU_MAX_DEPTH 64
+
 typedef struct _wmMenuEntry {
 	struct _wmMenuEntry *next;
 	struct _wmMenuEntry *prev;
