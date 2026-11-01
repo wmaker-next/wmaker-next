@@ -34,11 +34,13 @@
 #define MAX_SECTIONS 32
 
 typedef struct _WPrefs {
+	WMScreen *scr;
 	WMWindow *win;
 
 	WMScrollView *scrollV;
 	WMFrame *buttonF;
 	WMButton *sectionB[MAX_SECTIONS];
+	void *panels[MAX_SECTIONS];
 
 	int sectionCount;
 
@@ -59,6 +61,7 @@ typedef struct _WPrefs {
 } _WPrefs;
 
 static _WPrefs WPrefs;
+static bool shuttingDown;
 
 /* system wide defaults dictionary. Read-only */
 static WMPropList *GlobalDB = NULL;
@@ -91,9 +94,7 @@ static noreturn void quit(WMWidget *w, void *data)
 	(void) w;
 	(void) data;
 
-	prepareForClose();
-
-	WMReleaseApplication();
+	WPrefsShutdown();
 	exit(0);
 }
 
@@ -398,6 +399,59 @@ static void prepareForClose(void)
 		if (rec->callbacks.prepareForClose && (rec->callbacks.flags & INITIALIZED_PANEL))
 			(*rec->callbacks.prepareForClose) ((Panel *) rec);
 	}
+}
+
+void WPrefsShutdown(void)
+{
+	WMScreen *scr = WPrefs.scr;
+	xcb_connection_t *xc = scr ? WMScreenDisplay(scr) : NULL;
+	int i;
+
+	if (shuttingDown)
+		return;
+	shuttingDown = true;
+
+	prepareForClose();
+
+	WMShutdownScreen(scr);
+
+	for (i = 0; i < WPrefs.sectionCount; i++) {
+		wfree(WPrefs.panels[i]);
+		WPrefs.panels[i] = NULL;
+	}
+
+	if (WindowMakerDB) {
+		WMReleasePropList(WindowMakerDB);
+		WindowMakerDB = NULL;
+	}
+	if (GlobalDB) {
+		WMReleasePropList(GlobalDB);
+		GlobalDB = NULL;
+	}
+	if (WMSoundDB) {
+		WMReleasePropList(WMSoundDB);
+		WMSoundDB = NULL;
+	}
+	if (WMSoundGlobalDB) {
+		WMReleasePropList(WMSoundGlobalDB);
+		WMSoundGlobalDB = NULL;
+	}
+	if (WindowMakerDBPath) {
+		wfree(WindowMakerDBPath);
+		WindowMakerDBPath = NULL;
+	}
+	if (WMSoundDBPath) {
+		wfree(WMSoundDBPath);
+		WMSoundDBPath = NULL;
+	}
+
+	WMShutdownFonts();
+	WMReleaseApplication();
+	RShutdown();
+	wutil_shutdown();
+
+	if (xc)
+		xcb_disconnect(xc);
 }
 
 static void toggleBalloons(WMWidget *w, void *data)
@@ -708,6 +762,8 @@ void SetButtonAlphaImage(WMScreen *scr, WMButton *bPtr, const char *file)
 	}
 
 	WMSetButtonImage(bPtr, icon);
+	if (icon)
+		WMReleasePixmap(icon);
 
 	color.red = 0xff;
 	color.green = 0xff;
@@ -748,6 +804,7 @@ void AddSection(Panel * panel, const char *iconFile)
 	WMMapWidget(bPtr);
 
 	WPrefs.sectionB[WPrefs.sectionCount] = bPtr;
+	WPrefs.panels[WPrefs.sectionCount] = panel;
 
 	if (WPrefs.sectionCount > 0)
 		WMGroupButtons(WPrefs.sectionB[0], bPtr);
@@ -791,6 +848,7 @@ void Initialize(WMScreen * scr)
 	}
 
 	memset(&WPrefs, 0, sizeof(_WPrefs));
+	WPrefs.scr = scr;
 	createMainWindow(scr);
 
 	WMRealizeWidget(WPrefs.win);

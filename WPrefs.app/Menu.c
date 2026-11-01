@@ -1631,6 +1631,14 @@ static void showData(_Panel * panel)
 	WMReleasePropList(pmenu);
 }
 
+static void prepareForClose(_Panel *panel)
+{
+	if (panel->menuPath) {
+		wfree(panel->menuPath);
+		panel->menuPath = NULL;
+	}
+}
+
 static bool notblank(const char *s)
 {
 	if (s) {
@@ -1969,6 +1977,7 @@ Panel *InitMenu(WMWidget *parent)
 	panel->callbacks.undoChanges = undo;
 	panel->callbacks.showPanel = showMenus;
 	panel->callbacks.hidePanel = hideMenus;
+	panel->callbacks.prepareForClose = prepareForClose;
 
 	AddSection(panel, ICON_FILE);
 

@@ -106,6 +106,9 @@ void CreateImages(WMScreen *scr, RContext *rc, RImage *xis, const char *file,
 
 WMWindow *GetWindow(void);
 
+/* Release the screen, widgets, fonts, domains and WINGs state before exit. */
+void WPrefsShutdown(void);
+
 /* manipulate the dictionary for the WindowMaker domain */
 
 WMPropList *GetObjectForKey(const char *defaultName);

@@ -178,4 +178,8 @@ int main(int argc, char **argv)
 		WMHandleEvent(event);
 		free(event);
 	}
+
+	WPrefsShutdown();
+
+	return 0;
 }
