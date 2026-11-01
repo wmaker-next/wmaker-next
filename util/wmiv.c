@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <signal.h>
 #include <time.h>
 #include <math.h>
 #include <ftw.h>
@@ -114,6 +115,12 @@ int max_width = 0;
 int max_height = 0;
 
 /* Archive support */
+typedef struct TempDirEntry {
+	char *path;
+	struct TempDirEntry *next;
+} TempDirEntry;
+
+static TempDirEntry *temp_dirs;
 static char *temp_dir = NULL;
 static char *paste_temp_dir = NULL;
 static bool is_archive = false;
@@ -128,6 +135,8 @@ bool slideshow_flag = false;
 int slideshow_delay = 5;
 pthread_t tid = 0;
 #endif
+static int sig_pipe[2] = { -1, -1 };
+static volatile sig_atomic_t caught_signal;
 unsigned current_index = 1;
 unsigned max_index = 1;
 
@@ -297,8 +306,8 @@ static xcb_generic_event_t *wmiv_q_take_if(wmiv_event_pred pred, void *arg)
 
 static xcb_generic_event_t *wmiv_q_wait(int timeout_ms)
 {
-	struct pollfd pfd;
-	int rc;
+	struct pollfd pfd[2];
+	int nfds, rc;
 
 	for (;;) {
 		wmiv_q_pump();
@@ -307,11 +316,18 @@ static xcb_generic_event_t *wmiv_q_wait(int timeout_ms)
 		if (xcb_connection_has_error(xc))
 			return NULL;
 
-		pfd.fd = xcb_get_file_descriptor(xc);
+		nfds = 1;
+		pfd[0].fd = xcb_get_file_descriptor(xc);
 
-		pfd.events = POLLIN;
-		pfd.revents = 0;
-		rc = poll(&pfd, 1, timeout_ms);
+		pfd[0].events = POLLIN;
+		pfd[0].revents = 0;
+		if (sig_pipe[0] >= 0) {
+			pfd[nfds].fd = sig_pipe[0];
+			pfd[nfds].events = POLLIN;
+			pfd[nfds].revents = 0;
+			nfds++;
+		}
+		rc = poll(pfd, nfds, timeout_ms);
 		if (rc < 0) {
 			if (errno == EINTR)
 				continue;
@@ -319,7 +335,9 @@ static xcb_generic_event_t *wmiv_q_wait(int timeout_ms)
 		}
 		if (rc == 0)
 			return NULL;
-		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+		if (pfd[0].revents & (POLLERR | POLLHUP | POLLNVAL))
+			return NULL;
+		if (nfds > 1 && (pfd[1].revents & POLLIN))
 			return NULL;
 	}
 }
@@ -347,13 +365,20 @@ static xcb_generic_event_t *wmiv_q_match(wmiv_event_pred pred, void *arg,
 		if (remaining <= 0)
 			return NULL;
 
-		struct pollfd pfd;
+		struct pollfd pfd[2];
+		int nfds = 1;
 
-		pfd.fd = xcb_get_file_descriptor(xc);
+		pfd[0].fd = xcb_get_file_descriptor(xc);
 
-		pfd.events = POLLIN;
-		pfd.revents = 0;
-		int rc = poll(&pfd, 1, remaining);
+		pfd[0].events = POLLIN;
+		pfd[0].revents = 0;
+		if (sig_pipe[0] >= 0) {
+			pfd[nfds].fd = sig_pipe[0];
+			pfd[nfds].events = POLLIN;
+			pfd[nfds].revents = 0;
+			nfds++;
+		}
+		int rc = poll(pfd, nfds, remaining);
 
 		if (rc < 0) {
 			if (errno == EINTR)
@@ -362,7 +387,9 @@ static xcb_generic_event_t *wmiv_q_match(wmiv_event_pred pred, void *arg,
 		}
 		if (rc == 0)
 			return NULL;
-		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+		if (pfd[0].revents & (POLLERR | POLLHUP | POLLNVAL))
+			return NULL;
+		if (nfds > 1 && (pfd[1].revents & POLLIN))
 			return NULL;
 	}
 }
@@ -645,19 +672,44 @@ static int remove_temp_file(const char *fpath, const struct stat *sb, int typefl
 	return remove(fpath);
 }
 
+static void remove_temp_tree(char *path)
+{
+	if (WMIV_DEBUG)
+		fprintf(stderr, "Cleaning up temporary directory: %s\n", path);
+	nftw(path, remove_temp_file, 64, FTW_DEPTH | FTW_PHYS);
+	free(path);
+}
+
 /*
-	Remove the temporary directory and its contents
+	Remove all archived-image temporary directories and their contents
 */
 static void cleanup_temp_dir(void)
 {
-	if (temp_dir) {
-		if (WMIV_DEBUG)
-			fprintf(stderr, "Cleaning up temporary directory: %s\n", temp_dir);
-		nftw(temp_dir, remove_temp_file, 64, FTW_DEPTH | FTW_PHYS);
-		free(temp_dir);
-		temp_dir = NULL;
+	TempDirEntry *entry = temp_dirs;
+
+	while (entry) {
+		TempDirEntry *next = entry->next;
+
+		remove_temp_tree(entry->path);
+		free(entry);
+		entry = next;
 	}
+	temp_dirs = NULL;
+	temp_dir = NULL;
 	is_archive = false;
+}
+
+/* remove the newest extraction tree after a failed extraction */
+static void discard_temp_dir(void)
+{
+	TempDirEntry *entry = temp_dirs;
+
+	if (entry) {
+		temp_dirs = entry->next;
+		remove_temp_tree(entry->path);
+		free(entry);
+	}
+	temp_dir = NULL;
 }
 
 static void cleanup_paste_temp_dir(void)
@@ -669,6 +721,37 @@ static void cleanup_paste_temp_dir(void)
 		free(paste_temp_dir);
 		paste_temp_dir = NULL;
 	}
+}
+
+static void on_quit_signal(int sig)
+{
+	unsigned char byte = 1;
+	ssize_t rc;
+
+	caught_signal = sig;
+	rc = write(sig_pipe[1], &byte, 1);
+	(void)rc;
+}
+
+static void install_signal_handlers(void)
+{
+	struct sigaction sa;
+
+	if (pipe(sig_pipe) < 0) {
+		sig_pipe[0] = sig_pipe[1] = -1;
+		return;
+	}
+	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = on_quit_signal;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
 }
 
 /*
@@ -944,6 +1027,7 @@ static int extract_archive_libarchive(const char *filename, const char *dest_dir
 static char *extract_archive(const char *filename)
 {
 #ifdef HAVE_LIBARCHIVE
+	TempDirEntry *entry;
 	char *temp_template = NULL;
 	int result;
 
@@ -961,6 +1045,17 @@ static char *extract_archive(const char *filename)
 		return NULL;
 	}
 
+	entry = malloc(sizeof(*entry));
+	if (!entry) {
+		perror("malloc");
+		remove_temp_tree(temp_dir);
+		temp_dir = NULL;
+		return NULL;
+	}
+	entry->path = temp_dir;
+	entry->next = temp_dirs;
+	temp_dirs = entry;
+
 	if (WMIV_DEBUG)
 		fprintf(stderr, "Created temporary directory: %s\n", temp_dir);
 
@@ -969,12 +1064,12 @@ static char *extract_archive(const char *filename)
 		result = extract_archive_libarchive(filename, temp_dir);
 	} else {
 		fprintf(stderr, "Error: unknown archive type\n");
-		cleanup_temp_dir();
+		discard_temp_dir();
 		return NULL;
 	}
 
 	if (result != 0) {
-		cleanup_temp_dir();
+		discard_temp_dir();
 		return NULL;
 	}
 
@@ -3113,6 +3208,8 @@ int main(int argc, char **argv)
 	/* Register cleanup function for temporary directory */
 	atexit(cleanup_temp_dir);
 #endif
+
+	install_signal_handlers();
 	xc = xcconn_open(NULL, APPNAME, 0, &screen_num);
 
 	if (!xc) {
@@ -3302,6 +3399,8 @@ int main(int argc, char **argv)
 			CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS : -1);
 
 		if (!ev) {
+			if (caught_signal)
+				break;
 			if (xcb_connection_has_error(xc) || !incr.active)
 				break;
 			if (clip_incr_send_check(xc, &incr, clip_monotonic_ms(),
