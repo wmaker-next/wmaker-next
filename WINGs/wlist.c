@@ -522,6 +522,13 @@ static void paintItem(List * lPtr, int index)
 	tlen = strlen(itemPtr->text);
 
 	if (lPtr->flags.userDrawn) {
+		cr = WCairoBeginForDrawable(scr, d);
+		if (cr) {
+			W_SetSourceColor(cr, view->backColor);
+			cairo_paint(cr);
+		}
+		WCairoEnd(cr);
+
 		rect.size.width = width;
 		rect.size.height = height;
 		rect.pos.x = 0;
@@ -541,8 +548,7 @@ static void paintItem(List * lPtr, int index)
 		back = (itemPtr->selected ? lPtr->selColor : view->backColor);
 		cr = WCairoBeginForDrawable(scr, d);
 		W_SetSourceColor(cr, back);
-		cairo_rectangle(cr, 0, 0, width, height);
-		cairo_fill(cr);
+		cairo_paint(cr);
 		W_PaintText(cr, scr->normalFont, 4, 0, width, WALeft,
 				 scr->black, false, itemPtr->text, tlen);
 		WCairoEnd(cr);
@@ -568,6 +574,13 @@ static void paintList(List * lPtr)
 
 	if (!lPtr->view->flags.mapped)
 		return;
+
+	cr = WCairoBeginForDrawable(scrPtr, lPtr->view->window);
+	if (cr) {
+		W_SetSourceColor(cr, lPtr->view->backColor);
+		cairo_paint(cr);
+		WCairoEnd(cr);
+	}
 
 	itemCount = WMGetArrayItemCount(lPtr->items);
 	if (itemCount > 0) {

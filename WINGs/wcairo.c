@@ -343,7 +343,7 @@ void W_SetSourceXColor(cairo_t *cr, const WXColor *color)
 }
 
 /* the FillStippled darkGray-over-gray checkerboard the widget-slot
- * and progress-bar interiors use: mask darkGray through a 2x2 A8
+ * and progress-bar interiors use: mask darkGray through an A8
  * checkerboard tiled with EXTEND_REPEAT so bits=1 land darkGray and
  * bits=0 leave whatever gray fill sits below untouched. Built as a
  * client-side image surface (not the server-side scr->stipple bitmap)
@@ -352,25 +352,60 @@ void W_SetSourceXColor(cairo_t *cr, const WXColor *color)
 void W_StippleFill(cairo_t *cr, W_Screen *scr, int x, int y, int w, int h)
 {
 	static cairo_pattern_t *pat;
+	static double patScale;
 	cairo_surface_t *stip;
+	cairo_matrix_t matrix;
 	unsigned char *data;
-	int stride;
+	double sx, x0, y0, x1, y1;
+	int tile, i, j, stride;
 
-	if (!pat) {
-		stip = cairo_image_surface_create(CAIRO_FORMAT_A8, 2, 2);
+	if (w <= 0 || h <= 0)
+		return;
+
+	cairo_get_matrix(cr, &matrix);
+	sx = sqrt(matrix.xx * matrix.xx + matrix.xy * matrix.xy);
+	if (sx < 1.0)
+		sx = 1.0;
+
+	if (!pat || fabs(sx - patScale) > 1e-6) {
+		if (pat)
+			cairo_pattern_destroy(pat);
+		for (tile = 2; tile < 64; tile++) {
+			double q = tile / sx;
+
+			if (fabs(q - 2.0 * rint(q / 2.0)) < 1e-6)
+				break;
+		}
+		stip = cairo_image_surface_create(CAIRO_FORMAT_A8, tile, tile);
 		data = cairo_image_surface_get_data(stip);
 		stride = cairo_image_surface_get_stride(stip);
-		data[0] = 0xff; data[1] = 0x00;
-		data[stride] = 0x00; data[stride + 1] = 0xff;
+		for (j = 0; j < tile; j++) {
+			for (i = 0; i < tile; i++) {
+				int cx = (int)floor((i + 0.5) / sx);
+				int cy = (int)floor((j + 0.5) / sx);
+
+				data[j * stride + i] = ((cx + cy) & 1) ? 0x00 : 0xff;
+			}
+		}
 		cairo_surface_mark_dirty(stip);
 		pat = cairo_pattern_create_for_surface(stip);
 		cairo_surface_destroy(stip);
 		cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
 		cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
+		patScale = sx;
 	}
 
+	x0 = x;
+	y0 = y;
+	x1 = x + w;
+	y1 = y + h;
+	cairo_user_to_device(cr, &x0, &y0);
+	cairo_user_to_device(cr, &x1, &y1);
+
 	cairo_save(cr);
-	cairo_rectangle(cr, x, y, w, h);
+	cairo_identity_matrix(cr);
+	cairo_rectangle(cr, floor(x0), floor(y0), ceil(x1) - floor(x0),
+			ceil(y1) - floor(y0));
 	cairo_clip(cr);
 	W_SetSourceColor(cr, scr->darkGray);
 	cairo_mask(cr, pat);
@@ -401,15 +436,27 @@ void W_PaintArea(cairo_t *cr, W_Screen *scr, xcb_drawable_t src, int srcW, int s
 
 	v = (uintptr_t)WMHashGet(scr->drawableSize, (const void *)(uintptr_t)src);
 	if ((v & DRAWABLE_SIZE_SCALED_BIT) && scr->uiScale > 1.0001) {
+		cairo_pattern_t *pat;
+		int dx0, dy0, dx1, dy1;
+
 		s = scr->uiScale;
+		dx0 = (int)round(dx * s);
+		dy0 = (int)round(dy * s);
+		dx1 = (int)round((dx + w) * s);
+		dy1 = (int)round((dy + h) * s);
 		ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)src,
 					      rc->xvisual,
 					      (int)((v >> 16) & 0x7fff),
 					      (int)(v & 0xffff));
 		cairo_save(cr);
 		cairo_identity_matrix(cr);
-		cairo_set_source_surface(cr, ss, (dx - sx) * s, (dy - sy) * s);
-		cairo_rectangle(cr, dx * s, dy * s, w * s, h * s);
+		cairo_set_source_surface(cr, ss, dx0 - (int)round(sx * s),
+					 dy0 - (int)round(sy * s));
+		pat = cairo_get_source(cr);
+		cairo_pattern_set_extend(pat, CAIRO_EXTEND_PAD);
+		cairo_pattern_set_filter(pat, CAIRO_FILTER_NEAREST);
+		cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
+		cairo_rectangle(cr, dx0, dy0, dx1 - dx0, dy1 - dy0);
 		cairo_fill(cr);
 		cairo_restore(cr);
 		cairo_surface_destroy(ss);
