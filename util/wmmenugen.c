@@ -198,9 +198,11 @@ int main(int argc, char **argv)
 
 static int dirParseFunc(const char *filename, const struct stat *st, int tflags, struct FTW *ftw)
 {
-	(void)st;
 	(void)tflags;
 	(void)ftw;
+
+	if (!st || !S_ISREG(st->st_mode))
+		return 0;
 
 	if (validateFilename &&
 	    !validateFilename(filename, st, tflags, ftw))

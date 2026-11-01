@@ -110,6 +110,11 @@ int main(int argc, char **argv)
 		WMReleasePropList(key);
 		return 1;	/* bad domain */
 	}
+	if (!WMIsPLDictionary(dict)) {
+		WMReleasePropList(key);
+		WMReleasePropList(dict);
+		return 1;
+	}
 
 	value = WMGetFromPLDictionary(dict, key);
 	WMReleasePropList(key);

@@ -205,6 +205,8 @@ int main(int argc, char **argv)
 	int buffer = 0;
 	char *buf;
 	int status;
+	size_t done;
+	ssize_t n;
 	char *display_name = "";
 	char *selection_name = NULL;
 
@@ -267,10 +269,23 @@ int main(int argc, char **argv)
 	if (buf == NULL) {
 		status = 1;
 	} else {
-		if (write(STDOUT_FILENO, buf, l) == -1)
-			status = errno;
-		else
-			status = 0;
+		done = 0;
+		status = 0;
+		while (done < (size_t)l) {
+			n = write(STDOUT_FILENO, buf + done, (size_t)l - done);
+
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				status = errno;
+				break;
+			}
+			if (n == 0) {
+				status = EIO;
+				break;
+			}
+			done += (size_t)n;
+		}
 	}
 	xcb_disconnect(c);
 	exit(status);

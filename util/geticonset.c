@@ -93,6 +93,12 @@ int main(int argc, char **argv)
 		wfree(path);
 		return 1;
 	}
+	if (!WMIsPLDictionary(all_windows)) {
+		printf("%s: configuration file \"%s\" is not a dictionary.\n", prog_name, path);
+		WMReleasePropList(all_windows);
+		wfree(path);
+		return 1;
+	}
 
 	iconset = WMCreatePLDictionary(NULL, NULL);
 

@@ -674,10 +674,10 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 			RReleaseImage(image);
 			goto error;
 		}
+		rcolor.red = color.red >> 8;
+		rcolor.green = color.green >> 8;
+		rcolor.blue = color.blue >> 8;
 		if (!wXAllocColor(xc, rc->cmap, &color)) {
-			rcolor.red = color.red >> 8;
-			rcolor.green = color.green >> 8;
-			rcolor.blue = color.blue >> 8;
 			RGetClosestXColor(rc, &rcolor, &px32);
 			color.pixel = px32;
 		} else {

@@ -97,9 +97,23 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (!WMIsPLDictionary(all_windows)) {
+		printf("%s: configuration file \"%s\" is not a dictionary.\n", prog_name, path);
+		WMReleasePropList(all_windows);
+		wfree(path);
+		return 1;
+	}
+
 	iconset = WMReadPropListFromFile(argv[0]);
 	if (!iconset) {
 		printf("%s: could not load icon set file \"%s\".\n", prog_name, argv[0]);
+		WMReleasePropList(all_windows);
+		wfree(path);
+		return 1;
+	}
+	if (!WMIsPLDictionary(iconset)) {
+		printf("%s: icon set file \"%s\" is not a dictionary.\n", prog_name, argv[0]);
+		WMReleasePropList(iconset);
 		WMReleasePropList(all_windows);
 		wfree(path);
 		return 1;

@@ -192,19 +192,23 @@ static void hackPaths(WMPropList * style, const char *prefix)
 	WMPropList *keys;
 	WMPropList *key;
 	WMPropList *value;
+	const char *keyname;
 	int i;
 
 	keys = WMGetPLDictionaryKeys(style);
 
 	for (i = 0; i < WMGetPropListItemCount(keys); i++) {
 		key = WMGetFromPLArray(keys, i);
+		keyname = WMGetFromPLString(key);
+		if (!keyname)
+			continue;
 
 		value = WMGetFromPLDictionary(style, key);
 		if (!value)
 			continue;
 
 		if (WMIsPLString(value) &&
-		    isPixmapStringOption(WMGetFromPLString(key))) {
+		    isPixmapStringOption(keyname)) {
 			const char *name = WMGetFromPLString(value);
 			char *dir, *full;
 
@@ -218,7 +222,7 @@ static void hackPaths(WMPropList * style, const char *prefix)
 			continue;
 		}
 
-		if (strcasecmp(WMGetFromPLString(key), "WorkspaceSpecificBack") == 0) {
+		if (strcasecmp(keyname, "WorkspaceSpecificBack") == 0) {
 			if (WMIsPLArray(value)) {
 				int j;
 				WMPropList *texture;
@@ -251,6 +255,7 @@ static void hackPaths(WMPropList * style, const char *prefix)
 static WMPropList *getColor(WMPropList * texture)
 {
 	WMPropList *value, *type;
+	const char *s1, *s2;
 	char *str;
 
 	type = WMGetFromPLArray(texture, 0);
@@ -260,6 +265,9 @@ static WMPropList *getColor(WMPropList * texture)
 	value = NULL;
 
 	str = WMGetFromPLString(type);
+	if (!str)
+		return NULL;
+
 	if (strcasecmp(str, "solid") == 0) {
 		value = WMGetFromPLArray(texture, 1);
 	} else if (strcasecmp(str, "dgradient") == 0
@@ -270,8 +278,11 @@ static WMPropList *getColor(WMPropList * texture)
 
 		c1 = WMGetFromPLArray(texture, 1);
 		c2 = WMGetFromPLArray(texture, 2);
-		if (sscanf(WMGetFromPLString(c1), "#%2x%2x%2x", &r1, &g1, &b1) == 3
-		    && sscanf(WMGetFromPLString(c2), "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
+		s1 = c1 ? WMGetFromPLString(c1) : NULL;
+		s2 = c2 ? WMGetFromPLString(c2) : NULL;
+		if (s1 && s2 &&
+		    sscanf(s1, "#%2x%2x%2x", &r1, &g1, &b1) == 3
+		    && sscanf(s2, "#%2x%2x%2x", &r2, &g2, &b2) == 3) {
 			snprintf(buffer, sizeof(buffer), "#%02x%02x%02x", (r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
 			return WMCreatePLString(buffer);
 		} else {
@@ -423,6 +434,7 @@ int main(int argc, char **argv)
 	char *path;
 	char *file = NULL;
 	struct stat st;
+	size_t homelen;
 	int i, ch, ignflag = 0;
 	int ignoreCount = 0;
 	char *ignoreList[MAX_OPTIONS];
@@ -512,12 +524,14 @@ int main(int argc, char **argv)
 
 		buf[strlen(buf) - 6 /* strlen("/style") */] = '\0';
 		homedir = wstrdup(wgethomedir());
-		if (strlen(homedir) > 1	&&	/* this is insane, wgethomedir() returns `/' on error */
-		    strncmp(homedir, buf, strlen(homedir)) == 0) {
+		homelen = strlen(homedir);
+		if (homelen > 1	&&	/* this is insane, wgethomedir() returns `/' on error */
+		    strncmp(homedir, buf, homelen) == 0 &&
+		    (buf[homelen] == '/' || buf[homelen] == '\0')) {
 			/* theme pack is under ${HOME}; exchange ${HOME} part
 			 * for `~' so it gets portable references to the user home dir */
 			*buf = '~';
-			memmove(buf + 1, buf + strlen(homedir), strlen(buf) - strlen(homedir) + 1);
+			memmove(buf + 1, buf + homelen, strlen(buf) - homelen + 1);
 		}
 		wfree(homedir);
 

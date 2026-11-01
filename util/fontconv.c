@@ -131,9 +131,8 @@ static char *mapWeightToName(str * weight)
 		return "";
 
 	for (i = 0; i < wlengthof(normalNames); i++) {
-		if (strlen(normalNames[i]) == weight->len && strncmp(normalNames[i], weight->str, weight->len)) {
+		if (strlen(normalNames[i]) == weight->len && strncmp(normalNames[i], weight->str, weight->len) == 0)
 			return "";
-		}
 	}
 
 	snprintf(buf, sizeof(buf), ":%.*s", weight->len, weight->str);
@@ -210,6 +209,9 @@ static char *xlfdToFc(const char *xlfd, const char *useFamily, bool keepXLFD)
 /* return converted font (if conversion is needed) else the original font */
 char *convertFont(char *font, bool keepXLFD)
 {
+	if (!font || !*font)
+		return font;
+
 	if (font[0] == '-') {
 		if (MB_CUR_MAX < 2) {
 			return xlfdToFc(font, NULL, keepXLFD);

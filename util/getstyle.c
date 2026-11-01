@@ -222,6 +222,12 @@ static void makeThemePack(WMPropList * style, const char *themeName)
 	char *themeDir;
 	const char *user_library;
 
+	if (!themeName || !*themeName || strchr(themeName, '/') ||
+	    strcmp(themeName, ".") == 0 || strcmp(themeName, "..") == 0) {
+		wwarning("invalid theme pack name");
+		return;
+	}
+
 	user_library = wuserdatapath();
 	if (user_library == NULL)
 		return;

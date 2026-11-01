@@ -121,6 +121,13 @@ int main(int argc, char **argv)
 			WMReleasePropList(value);
 			return 1;
 		}
+		if (!WMIsPLDictionary(dict)) {
+			werror("domain file '%s' does not contain a dictionary", path);
+			WMReleasePropList(dict);
+			WMReleasePropList(key);
+			WMReleasePropList(value);
+			return 1;
+		}
 		WMPutInPLDictionary(dict, key, value);
 	} else if (errno == ENOENT) {
 		dict = WMCreatePLDictionary(key, value, NULL);
