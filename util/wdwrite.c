@@ -28,11 +28,13 @@
  */
 #include "config.h"
 
+#include <errno.h>
 #include <getopt.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef HAVE_STDNORETURN
@@ -62,6 +64,7 @@ int main(int argc, char **argv)
 	char path[PATH_MAX];
 	char *dpath;
 	WMPropList *key, *value, *dict;
+	struct stat st;
 	int ch;
 
 	struct option longopts[] = {
@@ -110,11 +113,22 @@ int main(int argc, char **argv)
 	snprintf(path, sizeof(path), "%s", dpath);
 	wfree(dpath);
 
-	dict = WMReadPropListFromFile(path);
-	if (!dict) {
+	if (stat(path, &st) == 0) {
+		dict = WMReadPropListFromFile(path);
+		if (!dict) {
+			werror("could not read domain file '%s'", path);
+			WMReleasePropList(key);
+			WMReleasePropList(value);
+			return 1;
+		}
+		WMPutInPLDictionary(dict, key, value);
+	} else if (errno == ENOENT) {
 		dict = WMCreatePLDictionary(key, value, NULL);
 	} else {
-		WMPutInPLDictionary(dict, key, value);
+		werror("could not access domain file '%s'", path);
+		WMReleasePropList(key);
+		WMReleasePropList(value);
+		return 1;
 	}
 	WMReleasePropList(key);
 	WMReleasePropList(value);
