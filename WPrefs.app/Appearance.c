@@ -562,6 +562,7 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 	RImage *timage = NULL;
 	xcb_pixmap_t pixmap;
 	RContext *rc = WMScreenRContext(scr);
+	WMPropList *fallback = NULL;
 	char *str;
 	RColor rcolor;
 
@@ -585,7 +586,8 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 			timage = NULL;
 		}
 		if (!timage) {
-			texture = WMCreatePropListFromDescription("(solid, black)");
+			fallback = WMCreatePropListFromDescription("(solid, black)");
+			texture = fallback;
 			type = "solid";
 		}
 	}
@@ -745,8 +747,11 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 		}
 	}
 
-	if (!image)
+	if (!image) {
+		if (fallback)
+			WMReleasePropList(fallback);
 		return XCB_NONE;
+	}
 
 	if (path) {
 		dumpRImage(path, image);
@@ -765,6 +770,9 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 
 	RConvertImage(rc, image, &pixmap);
 	RReleaseImage(image);
+
+	if (fallback)
+		WMReleasePropList(fallback);
 
 	return pixmap;
 }
