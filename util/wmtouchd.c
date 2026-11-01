@@ -837,7 +837,8 @@ static int event_loop(int fd, struct libinput *li)
 	for (;;) {
 		struct pollfd pfd[4];
 		int nfds = 0, rc, self_idx, inot_idx = -1, li_idx = -1, ipc_idx;
-		long long now;
+		int timeout;
+		long long now, remaining;
 
 		now = monotonic_ms();
 		if (g.pending && now >= g.pending_deadline) {
@@ -871,7 +872,13 @@ static int event_loop(int fd, struct libinput *li)
 		pfd[nfds].events = POLLIN;
 		nfds++;
 
-		rc = poll(pfd, nfds, -1);
+		timeout = -1;
+		if (g.pending) {
+			remaining = g.pending_deadline - monotonic_ms();
+			timeout = remaining > 0 ? (int)remaining : 0;
+		}
+
+		rc = poll(pfd, nfds, timeout);
 		if (rc < 0) {
 			if (errno == EINTR)
 				continue;
