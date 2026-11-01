@@ -253,6 +253,7 @@ static void browseForFile(WMWidget * self, void *clientData)
 	}
 
 	WMSetFilePanelCanChooseDirectories(filePanel, false);
+	WMSetFilePanelCanChooseFiles(filePanel, true);
 
 	if (WMRunModalFilePanelForDirectory(filePanel, panel->parent, oldprog, _("Select Program"), NULL) == true) {
 		newprog = WMGetFilePanelFileName(filePanel);
