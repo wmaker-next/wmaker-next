@@ -389,10 +389,62 @@ void WMSetColorPanelAction(WMColorPanel * panel, WMAction2 * action, void *data)
 	panel->clientData = data;
 }
 
+static WMPixmap *makeSliderBackground(WMScreen *scr, WMFont *font,
+				     WMColor *textColor, const char *label,
+				     RImage *image)
+{
+	WMPixmap *pixmap;
+	xcb_pixmap_t pix;
+	cairo_t *cr;
+
+	if (!image)
+		return NULL;
+	if (!RConvertImage(scr->rcontext, image, &pix)) {
+		RReleaseImage(image);
+		return NULL;
+	}
+	RReleaseImage(image);
+
+	WMScreenNoteDrawableSizeScaled(scr, pix, 141, 16);
+	pixmap = WMCreatePixmapFromXPixmaps(scr, pix, XCB_NONE, 141, 16, scr->depth);
+	cr = WCairoBeginForDrawable(scr, pix);
+	if (cr) {
+		int ty = (int)floor((16.0 - (double)WMFontHeight(font)) / 2.0);
+
+		W_PaintText(cr, font, 10, ty, 100, WALeft, textColor, false,
+			    label, strlen(label));
+		WCairoEnd(cr);
+	}
+	return pixmap;
+}
+
+static WMPixmap *makeGradientSlider(WMScreen *scr, WMFont *font,
+				    WMColor *textColor, const char *label,
+				    RColor *from, RColor *to)
+{
+	double s = WMScreenUIScale(scr);
+	int w = (int)(141 * s + 0.5);
+	int h = (int)(16 * s + 0.5);
+
+	return makeSliderBackground(scr, font, textColor, label,
+				    RRenderGradient(w, h, from, to, RGRD_HORIZONTAL));
+}
+
+static WMPixmap *makeMultiGradientSlider(WMScreen *scr, WMFont *font,
+					 WMColor *textColor, const char *label,
+					 RColor **colors)
+{
+	double s = WMScreenUIScale(scr);
+	int w = (int)(141 * s + 0.5);
+	int h = (int)(16 * s + 0.5);
+
+	return makeSliderBackground(scr, font, textColor, label,
+				    RRenderMultiGradient(w, h, colors, RGRD_HORIZONTAL));
+}
+
 static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 {
 	WMColorPanel *panel;
-	RImage *image;
 	WMPixmap *pixmap;
 	RColor from;
 	RColor to;
@@ -583,20 +635,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 255;
 	to.blue = 255;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
-					 false, _("Brightness"), strlen(_("Brightness")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->white,
+				       _("Brightness"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->grayBrightnessS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -662,20 +704,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 0;
 	to.blue = 0;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
-					 false, _("Red"), strlen(_("Red")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->white,
+				       _("Red"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->rgbRedS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -698,20 +730,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 255;
 	to.blue = 0;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
-					 false, _("Green"), strlen(_("Green")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->white,
+				       _("Green"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->rgbGreenS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -734,20 +756,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 0;
 	to.blue = 255;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->white,
-					 false, _("Blue"), strlen(_("Blue")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->white,
+				       _("Blue"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->rgbBlueS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -814,20 +826,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 255;
 	to.blue = 255;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
-					 false, _("Cyan"), strlen(_("Cyan")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->black,
+				       _("Cyan"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->cmykCyanS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -850,20 +852,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 0;
 	to.blue = 255;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
-					 false, _("Magenta"), strlen(_("Magenta")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->black,
+				       _("Magenta"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->cmykMagentaS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -887,20 +879,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 255;
 	to.blue = 0;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
-					 false, _("Yellow"), strlen(_("Yellow")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->black,
+				       _("Yellow"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->cmykYellowS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -925,20 +907,10 @@ static WMColorPanel *makeColorPanel(WMScreen * scrPtr, const char *name)
 	to.green = 0;
 	to.blue = 0;
 
-	image = RRenderGradient(141, 16, &from, &to, RGRD_HORIZONTAL);
-	pixmap = WMCreatePixmapFromRImage(scrPtr, image, 0);
-	RReleaseImage(image);
-
-	if (pixmap) {
-		cr = WCairoBeginForDrawable(scrPtr, pixmap->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scrPtr->black,
-					 false, _("Black"), strlen(_("Black")));
-			WCairoEnd(cr);
-		}
-	} else {
+	pixmap = makeGradientSlider(scrPtr, panel->font12, scrPtr->black,
+				       _("Black"), &from, &to);
+	if (!pixmap)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->cmykBlackS, pixmap);
 	WMReleasePixmap(pixmap);
@@ -1863,6 +1835,8 @@ static WMView *magnifyCreateView(W_ColorPanel * panel)
 {
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	WMView *magView;
+	double s = scr->uiScale;
+	int w, h;
 
 	magView = W_CreateTopView(scr);
 	if (!magView)
@@ -1874,7 +1848,11 @@ static WMView *magnifyCreateView(W_ColorPanel * panel)
 	magView->attribs.override_redirect = true;
 	magView->attribs.save_under = true;
 
-	W_ResizeView(magView, Cursor_mask_width, Cursor_mask_height);
+	if (s < 1.0)
+		s = 1.0;
+	w = (int)(Cursor_mask_width / s + 0.5);
+	h = (int)(Cursor_mask_height / s + 0.5);
+	W_ResizeView(magView, w, h);
 
 	W_RealizeView(magView);
 
@@ -2043,6 +2021,14 @@ static void magnifyPutCursor(WMWidget * w, void *data)
 			panel->lastChanged = panel->mode;
 
 			WMSetButtonSelected(panel->magnifyBtn, false);
+			break;
+
+		case XCB_KEY_PRESS:
+			if (W_EventKeysym(scr, (const xcb_key_press_event_t *)event) == XKB_KEY_Escape) {
+				magDestroyImage(panel->magnifyGlass->image);
+				panel->magnifyGlass->image = NULL;
+				WMSetButtonSelected(panel->magnifyBtn, false);
+			}
 			break;
 
 		case XCB_MOTION_NOTIFY:
@@ -3006,9 +2992,7 @@ static void hsbUpdateBrightnessGradient(W_ColorPanel * panel)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	RColor from;
 	CPColor to;
-	RImage *sliderImg;
 	WMPixmap *sliderPxmp;
-	cairo_t *cr;
 
 	from.red = from.green = from.blue = 0;
 	to.hsv = panel->color.hsv;
@@ -3017,20 +3001,10 @@ static void hsbUpdateBrightnessGradient(W_ColorPanel * panel)
 
 	convertCPColor(&to);
 
-	sliderImg = RRenderGradient(141, 16, &from, &(to.rgb), RGRD_HORIZONTAL);
-	sliderPxmp = WMCreatePixmapFromRImage(scr, sliderImg, 0);
-	RReleaseImage(sliderImg);
-
-	if (sliderPxmp) {
-		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft, scr->white,
-					 false, _("Brightness"), strlen(_("Brightness")));
-			WCairoEnd(cr);
-		}
-	} else {
+	sliderPxmp = makeGradientSlider(scr, panel->font12, scr->white,
+					 _("Brightness"), &from, &(to.rgb));
+	if (!sliderPxmp)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->hsbBrightnessS, sliderPxmp);
 	WMReleasePixmap(sliderPxmp);
@@ -3041,9 +3015,7 @@ static void hsbUpdateSaturationGradient(W_ColorPanel * panel)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	CPColor from;
 	CPColor to;
-	RImage *sliderImg;
 	WMPixmap *sliderPxmp;
-	cairo_t *cr;
 
 	from.hsv = panel->color.hsv;
 	from.hsv.saturation = 0;
@@ -3055,21 +3027,11 @@ static void hsbUpdateSaturationGradient(W_ColorPanel * panel)
 	to.set = cpHSV;
 	convertCPColor(&to);
 
-	sliderImg = RRenderGradient(141, 16, &(from.rgb), &(to.rgb), RGRD_HORIZONTAL);
-	sliderPxmp = WMCreatePixmapFromRImage(scr, sliderImg, 0);
-	RReleaseImage(sliderImg);
-
-	if (sliderPxmp) {
-		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft,
-					 from.hsv.value < 128 ? scr->white : scr->black, false,
-					 _("Saturation"), strlen(_("Saturation")));
-			WCairoEnd(cr);
-		}
-	} else {
+	sliderPxmp = makeGradientSlider(scr, panel->font12,
+					 from.hsv.value < 128 ? scr->white : scr->black,
+					 _("Saturation"), &(from.rgb), &(to.rgb));
+	if (!sliderPxmp)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->hsbSaturationS, sliderPxmp);
 	WMReleasePixmap(sliderPxmp);
@@ -3080,9 +3042,7 @@ static void hsbUpdateHueGradient(W_ColorPanel * panel)
 	W_Screen *scr = WMWidgetScreen(panel->win);
 	RColor **colors = NULL;
 	RHSVColor hsvcolor;
-	RImage *sliderImg;
 	WMPixmap *sliderPxmp;
-	cairo_t *cr;
 	int i;
 
 	hsvcolor = panel->color.hsv;
@@ -3095,21 +3055,11 @@ static void hsbUpdateHueGradient(W_ColorPanel * panel)
 	}
 	colors[7] = NULL;
 
-	sliderImg = RRenderMultiGradient(141, 16, colors, RGRD_HORIZONTAL);
-	sliderPxmp = WMCreatePixmapFromRImage(scr, sliderImg, 0);
-	RReleaseImage(sliderImg);
-
-	if (sliderPxmp) {
-		cr = WCairoBeginForDrawable(scr, sliderPxmp->pixmap);
-		if (cr) {
-			W_PaintText(cr, panel->font12, 2, 0, 100, WALeft,
-					 hsvcolor.value < 128 ? scr->white : scr->black, false,
-					 _("Hue"), strlen(_("Hue")));
-			WCairoEnd(cr);
-		}
-	} else {
+	sliderPxmp = makeMultiGradientSlider(scr, panel->font12,
+						hsvcolor.value < 128 ? scr->white : scr->black,
+						_("Hue"), colors);
+	if (!sliderPxmp)
 		wwarning(_("Color Panel: Could not allocate memory"));
-	}
 
 	WMSetSliderImage(panel->hsbHueS, sliderPxmp);
 	WMReleasePixmap(sliderPxmp);
@@ -3862,19 +3812,26 @@ static void convertCPColor(CPColor * color)
 
 static RColor ulongToRColor(WMScreen * scr, unsigned long value)
 {
+	RContext *rc = scr->rcontext;
+	xcb_visualtype_t *vis = rc->xvisual;
+	unsigned long rmax = vis->red_mask >> rc->red_offset;
+	unsigned long gmax = vis->green_mask >> rc->green_offset;
+	unsigned long bmax = vis->blue_mask >> rc->blue_offset;
+	unsigned long r = (value & vis->red_mask) >> rc->red_offset;
+	unsigned long g = (value & vis->green_mask) >> rc->green_offset;
+	unsigned long b = (value & vis->blue_mask) >> rc->blue_offset;
 	RColor color;
-	WXColor *xcolor = NULL;
 
-	xcolor = wmalloc(sizeof(WXColor));
-	xcolor->pixel = value;
-	wXQueryColor(scr->display, scr->rcontext->cmap, xcolor);
-
-	color.red = xcolor->red >> 8;
-	color.green = xcolor->green >> 8;
-	color.blue = xcolor->blue >> 8;
+	if (!rmax)
+		rmax = 1;
+	if (!gmax)
+		gmax = 1;
+	if (!bmax)
+		bmax = 1;
+	color.red = (unsigned char)((r * 255 + rmax / 2) / rmax);
+	color.green = (unsigned char)((g * 255 + gmax / 2) / gmax);
+	color.blue = (unsigned char)((b * 255 + bmax / 2) / bmax);
 	color.alpha = 0;
-
-	wfree(xcolor);
 
 	return color;
 }

@@ -38,7 +38,6 @@ int main(int argc, char **argv)
 {
 	xcb_connection_t *xc;
 	int sn;
-	static xcb_connection_t *xc;
 	WMScreen *scr;
 	WMColorPanel *panel;
 

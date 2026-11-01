@@ -39,7 +39,7 @@ void show(WMWidget * self, void *data)
 	WMLabel *l = (WMLabel *) data;
 	d = WMGetHangedData(self);
 	snprintf(buf, sizeof(buf), "%"PRIiPTR" -  0x%"PRIxPTR" - 0%"PRIoPTR,
-	         (intptr_t) d, (intptr_t) d, (intptr_t) d);
+		(intptr_t) d, (uintptr_t) d, (uintptr_t) d);
 	WMSetLabelText(l, buf);
 }
 
@@ -54,7 +54,6 @@ int main(int argc, char **argv)
 {
 	xcb_connection_t *xc;
 	int sn;
-	static xcb_connection_t *xc;
 	WMWindow *win;
 	WMScreen *scr;
 	WMButton *lab, *l0 = NULL;
