@@ -182,51 +182,37 @@ bool wmconfig_validate_file(const char *filename, const struct stat *st, int tfl
 /* get a line allocating label, key and value as necessary */
 static void parse_wmconfig_line(char **label, char **key, char **value, const char *line)
 {
-	const char *p;
-	int kstart, kend;
+	const char *p = line;
+	const char *start;
 
-	p = line;
 	*label = *key = *value = NULL;
-	kstart = kend = 0;
 
-	/* skip whitespace */
-	while (isspace(*(p + kstart)))
-		kstart++;
+	while (isspace((unsigned char)*p))
+		p++;
 
-	kend = kstart;
-	/* find end of label */
-	while (*(p + kend) && !isspace(*(p + kend)))
-		kend++;
+	start = p;
+	while (*p && !isspace((unsigned char)*p))
+		p++;
+	*label = wstrndup(start, (size_t)(p - start));
 
-	/* label */
-	*label = wstrndup(p + kstart, kend - kstart);
-	kstart = kend + 1;
+	while (isspace((unsigned char)*p))
+		p++;
 
-	/* skip whitespace */
-	while (isspace(*(p + kstart)))
-		kstart++;
+	start = p;
+	while (*p && !isspace((unsigned char)*p))
+		p++;
+	*key = wstrndup(start, (size_t)(p - start));
 
-	kend = kstart;
-	/* find end of key */
-	while (*(p + kend) && !isspace(*(p + kend)))
-		kend++;
+	while (*p && *p != '"')
+		p++;
+	if (*p != '"')
+		return;
+	p++;
 
-	/* key */
-	*key = wstrndup(p + kstart, kend - kstart);
-	kstart = kend + 1;
-
-	/* skip until after " */
-	while (*(p + kstart) && *(p + kstart) != '"')
-		kstart++;
-	kstart++;
-
-	kend = kstart;
-	/* skip until " */
-	while (*(p + kend) && *(p + kend) != '"')
-		kend++;
-
-	/* value */
-	*value = wstrndup(p + kstart, kend - kstart);
+	start = p;
+	while (*p && *p != '"')
+		p++;
+	*value = wstrndup(start, (size_t)(p - start));
 }
 
 /* normalize and convert one wmconfig-format entry to wm format */
