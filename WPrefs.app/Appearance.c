@@ -565,13 +565,15 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 	WMPropList *fallback = NULL;
 	char *str;
 	RColor rcolor;
+	size_t typeLen;
 
 	type = WMGetFromPLString(WMGetFromPLArray(texture, 0));
 
 	if (!type)
 		return XCB_NONE;
-	if (strcasecmp(&type[1], "pixmap") == 0 ||
-	    (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T')) {
+	typeLen = strlen(type);
+	if ((typeLen > 1 && strcasecmp(&type[1], "pixmap") == 0) ||
+	    (typeLen > 2 && strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T')) {
 		char *path;
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 1));
@@ -609,17 +611,17 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
 		str2rcolor(scr,str, &c1[1]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 3));
-		t1 = atoi(str);
+		t1 = str ? atoi(str) : 0;
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 4));
 		str2rcolor(scr,str, &c2[0]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 5));
 		str2rcolor(scr,str, &c2[1]);
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 6));
-		t2 = atoi(str);
+		t2 = str ? atoi(str) : 0;
 
 		image = RRenderInterwovenGradient(width, height, c1, t1, c2, t2);
-	} else if (strcasecmp(&type[1], "gradient") == 0) {
+	} else if (typeLen > 1 && strcasecmp(&type[1], "gradient") == 0) {
 		RGradientStyle style;
 		RColor rcolor2;
 
@@ -644,7 +646,7 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 		str2rcolor(scr,str, &rcolor2);
 
 		image = RRenderGradient(width, height, &rcolor, &rcolor2, style);
-	} else if (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T') {
+	} else if (typeLen > 2 && strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'T') {
 		RGradientStyle style;
 		RColor rcolor2;
 		int i;
@@ -675,12 +677,13 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 		image = RMakeTiledImage(timage, width, height);
 		RReleaseImage(timage);
 
-		i = atoi(WMGetFromPLString(WMGetFromPLArray(texture, 2)));
+		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
+		i = str ? atoi(str) : 0;
 
 		RCombineImagesWithOpaqueness(image, grad, i);
 		RReleaseImage(grad);
 
-	} else if (strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'M') {
+	} else if (typeLen > 2 && strcasecmp(&type[2], "gradient") == 0 && toupper(type[0]) == 'M') {
 		RGradientStyle style;
 		RColor **colors;
 		int i, j;
@@ -718,7 +721,7 @@ static xcb_pixmap_t renderTexture(WMScreen * scr, WMPropList * texture, int widt
 				wfree(colors[i]);
 			wfree(colors);
 		}
-	} else if (strcasecmp(&type[1], "pixmap") == 0) {
+	} else if (typeLen > 1 && strcasecmp(&type[1], "pixmap") == 0) {
 		RColor color;
 
 		str = WMGetFromPLString(WMGetFromPLArray(texture, 2));
