@@ -306,7 +306,7 @@ static void storeData(_Panel * panel)
 	if (*end != '\0')
 		i = 0;
 	SetIntegerForKey(i, "HotCornerDelay");
-	free(str);
+	wfree(str);
 
 	SetIntegerForKey(WMGetSliderValue(panel->hceS), "HotCornerEdge");
 
