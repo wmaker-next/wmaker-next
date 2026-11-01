@@ -59,6 +59,8 @@ static void test_reader_accept(void)
 				"actions = (\"restart\", \"exit {no}\");};}") == 1);
 	/* quoted key spelling */
 	CHECK(wipcreply_success("{\"success\" = YES;}") == 1);
+	/* the last duplicate success value wins */
+	CHECK(wipcreply_success("{success = NO;success = YES;}") == 1);
 }
 
 /* ---- reply reader: well-formed refusals ------------------------------ */
@@ -74,6 +76,7 @@ static void test_reader_refuse(void)
 	CHECK(wipcreply_success("{error = \"no such window\";}") == 0);
 	/* YES inside an error string must not be mistaken for success */
 	CHECK(wipcreply_success("{error = \"it said YES\";success = NO;}") == 0);
+	CHECK(wipcreply_success("{success = YES;success = NO;}") == 0);
 	/* escaped content is never a plain YES */
 	CHECK(wipcreply_success("{success = \"Y\\\\ES\";}") == 0);
 	/* a non-string success value */
@@ -112,6 +115,17 @@ static void test_reader_hostile(void)
 	for (i = 0; i < 64; i++)
 		memcpy(buf + 19 + 2 * i, "{a=", 3);
 	buf[19 + 2 * 64] = '\0';
+	CHECK(wipcreply_success(buf) == -1);
+
+	/* the cap must reject a terminated over-depth value */
+	memcpy(buf, "{success = YES;x = ", 19);
+	for (i = 0; i < 32; i++)
+		buf[19 + i] = '{';
+	for (i = 0; i < 32; i++)
+		buf[19 + 32 + i] = '}';
+	buf[19 + 64] = ';';
+	buf[19 + 65] = '}';
+	buf[19 + 66] = '\0';
 	CHECK(wipcreply_success(buf) == -1);
 
 	/* large flat payload scans in linear time */
