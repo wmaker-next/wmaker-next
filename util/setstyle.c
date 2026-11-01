@@ -136,10 +136,11 @@ static bool isPixmapStringOption(const char *option)
 
 static void prefixPathInArray(WMPropList *arr, int idx, const char *prefix)
 {
-	WMPropList *file = WMGetFromPLArray(arr, idx);
+	WMPropList *file, *fullpl;
 	const char *name;
 	char *dir, *full;
 
+	file = WMGetFromPLArray(arr, idx);
 	if (!file || !WMIsPLString(file))
 		return;
 	name = WMGetFromPLString(file);
@@ -150,8 +151,10 @@ static void prefixPathInArray(WMPropList *arr, int idx, const char *prefix)
 	full = wstrconcat(dir, name);
 	wfree(dir);
 
+	fullpl = WMCreatePLString(full);
 	WMDeleteFromPLArray(arr, idx);
-	WMInsertInPLArray(arr, idx, WMCreatePLString(full));
+	WMInsertInPLArray(arr, idx, fullpl);
+	WMReleasePropList(fullpl);
 	wfree(full);
 }
 
@@ -209,6 +212,7 @@ static void hackPaths(WMPropList * style, const char *prefix)
 
 		if (WMIsPLString(value) &&
 		    isPixmapStringOption(keyname)) {
+			WMPropList *fullpl;
 			const char *name = WMGetFromPLString(value);
 			char *dir, *full;
 
@@ -217,7 +221,9 @@ static void hackPaths(WMPropList * style, const char *prefix)
 			dir = wstrconcat(prefix, "/");
 			full = wstrconcat(dir, name);
 			wfree(dir);
-			WMPutInPLDictionary(style, key, WMCreatePLString(full));
+			fullpl = WMCreatePLString(full);
+			WMPutInPLDictionary(style, key, fullpl);
+			WMReleasePropList(fullpl);
 			wfree(full);
 			continue;
 		}

@@ -119,6 +119,23 @@ static char *run_tool_capture(char *const argv[], int *status)
 	return wspawnvp_capture(argv, 256 * 1024, status);
 }
 
+static void write_wm_defaults(const char *data)
+{
+	char *path = wdefaultspathfordomain("WindowMaker");
+
+	CHECK(path != NULL);
+	if (!path)
+		return;
+	CHECK(wmkdirhier(path) == 1);
+	CHECK(write_file(path, data));
+	wfree(path);
+}
+
+static void theme_path(char *buf, size_t len, const char *name, const char *leaf)
+{
+	snprintf(buf, len, "%s/Themes/%s.themed%s", wuserdatapath(), name, leaf);
+}
+
 static void test_wdwrite_non_dictionary(void)
 {
 	char *path, *before, *after;
@@ -356,6 +373,83 @@ static void test_wmmenugen_wmconfig(void)
 	wfree(out);
 }
 
+static void test_getstyle_pack_failure(void)
+{
+	char cfg[PATH_MAX * 3], style[PATH_MAX], dir[PATH_MAX];
+	char *pixpath, *out;
+	int status;
+
+	pixpath = wstrconcat(tmpdir, "/missing-pixmaps");
+	snprintf(cfg, sizeof(cfg),
+		 "{\n"
+		 "\tCloseButtonPixmap = \"missing.png\";\n"
+		 "\tPixmapPath = (\"%s\");\n"
+		 "}\n", pixpath);
+	wfree(pixpath);
+	write_wm_defaults(cfg);
+
+	out = run_tool_capture((char *[]){ (char *)tool_path("getstyle"),
+					   "-p", "checkfail", NULL }, &status);
+	CHECK(status != 0);
+	wfree(out);
+
+	theme_path(style, sizeof(style), "checkfail", "/style");
+	theme_path(dir, sizeof(dir), "checkfail", "");
+	CHECK(access(style, F_OK) != 0);
+	CHECK(access(dir, F_OK) != 0);
+}
+
+static void test_getstyle_pack_success(void)
+{
+	char cfg[PATH_MAX * 3], pix[PATH_MAX], style[PATH_MAX], copied[PATH_MAX];
+	char *data, *out;
+	int status;
+
+	snprintf(pix, sizeof(pix), "%s/pix.png", tmpdir);
+	CHECK(write_file(pix, "pixmap data"));
+	snprintf(cfg, sizeof(cfg),
+		 "{\n"
+		 "\tWorkspaceBack = (tpixmap, \"%s\", 0);\n"
+		 "\tCloseButtonPixmap = \"%s\";\n"
+		 "}\n", pix, pix);
+	write_wm_defaults(cfg);
+
+	out = run_tool_capture((char *[]){ (char *)tool_path("getstyle"),
+					   "-p", "checksuccess", NULL }, &status);
+	CHECK(status == 0);
+	wfree(out);
+
+	theme_path(style, sizeof(style), "checksuccess", "/style");
+	theme_path(copied, sizeof(copied), "checksuccess", "/pix.png");
+	CHECK(access(copied, F_OK) == 0);
+
+	data = read_file(style);
+	CHECK(data != NULL);
+	CHECK(data && strstr(data, "WorkspaceBack = (tpixmap, pix.png, 0)") != NULL);
+	CHECK(data && strstr(data, "CloseButtonPixmap = pix.png") != NULL);
+	CHECK(data && strstr(data, tmpdir) == NULL);
+	free(data);
+}
+
+static void test_getstyle_non_string_texture(void)
+{
+	char cfg[] = "{\n"
+		     "\tWorkspaceBack = (tpixmap, (nested, array), 0);\n"
+		     "}\n";
+	char style[PATH_MAX];
+	char *out;
+	int status;
+
+	write_wm_defaults(cfg);
+	out = run_tool_capture((char *[]){ (char *)tool_path("getstyle"),
+					   "-p", "checktexture", NULL }, &status);
+	CHECK(status == 0);
+	wfree(out);
+
+	theme_path(style, sizeof(style), "checktexture", "/style");
+	CHECK(access(style, F_OK) == 0);
+}
+
 int main(void)
 {
 	top_builddir = getenv("top_builddir");
@@ -376,6 +470,9 @@ int main(void)
 	test_wmmenugen_fifo();
 	test_wmmenugen_xdg();
 	test_wmmenugen_wmconfig();
+	test_getstyle_pack_failure();
+	test_getstyle_pack_success();
+	test_getstyle_non_string_texture();
 
 	wspawnvp_wait((char *[]){ "rm", "-rf", tmpdir, NULL });
 

@@ -197,22 +197,95 @@ static bool isFontOption(const char *option)
 	return false;
 }
 
-static void findCopyFile(const char *dir, const char *file)
+static bool findCopyFile(const char *dir, const char *file)
 {
 	char *fullPath;
+	int ret;
 
 	fullPath = wfindfileinarray(PixmapPath, file);
 	if (!fullPath) {
 		wwarning("Could not find file %s", file);
-		if (ThemePath)
-			(void)wrmdirhier(ThemePath);
-		return;
+		return false;
 	}
-	wcopy_file(dir, fullPath, file);
+	ret = wcopy_file(dir, fullPath, file);
 	wfree(fullPath);
+	return ret == 0;
 }
 
-static void makeThemePack(WMPropList * style, const char *themeName)
+static void putPLString(WMPropList *dict, WMPropList *key, const char *value)
+{
+	WMPropList *pl;
+
+	pl = WMCreatePLString(value);
+	WMPutInPLDictionary(dict, key, pl);
+	WMReleasePropList(pl);
+}
+
+static void replacePLArrayString(WMPropList *arr, int index, const char *value)
+{
+	WMPropList *pl;
+
+	pl = WMCreatePLString(value);
+	WMDeleteFromPLArray(arr, index);
+	WMInsertInPLArray(arr, index, pl);
+	WMReleasePropList(pl);
+}
+
+static bool copyPixmapFromArray(WMPropList *arr, int index, const char *dir)
+{
+	WMPropList *file;
+	const char *path, *p;
+	char *base;
+
+	file = WMGetFromPLArray(arr, index);
+	if (!file || !WMIsPLString(file))
+		return true;
+	path = WMGetFromPLString(file);
+	if (!path || !*path)
+		return true;
+
+	p = strrchr(path, '/');
+	if (p) {
+		base = wstrdup(p + 1);
+		if (wcopy_file(dir, path, base) != 0) {
+			wfree(base);
+			return false;
+		}
+		replacePLArrayString(arr, index, base);
+		wfree(base);
+	} else if (!findCopyFile(dir, path)) {
+		return false;
+	}
+	return true;
+}
+
+static bool copyPixmapString(WMPropList *style, WMPropList *key, const char *dir)
+{
+	WMPropList *value;
+	const char *file, *p;
+	char *base;
+
+	value = WMGetFromPLDictionary(style, key);
+	file = WMGetFromPLString(value);
+	if (!file || !*file)
+		return true;
+
+	p = strrchr(file, '/');
+	if (p) {
+		base = wstrdup(p + 1);
+		if (wcopy_file(dir, file, base) != 0) {
+			wfree(base);
+			return false;
+		}
+		putPLString(style, key, base);
+		wfree(base);
+	} else if (!findCopyFile(dir, file)) {
+		return false;
+	}
+	return true;
+}
+
+static bool makeThemePack(WMPropList *style, const char *themeName)
 {
 	WMPropList *keys;
 	WMPropList *key;
@@ -221,16 +294,17 @@ static void makeThemePack(WMPropList * style, const char *themeName)
 	size_t themeNameLen;
 	char *themeDir;
 	const char *user_library;
+	bool ok = true;
 
 	if (!themeName || !*themeName || strchr(themeName, '/') ||
 	    strcmp(themeName, ".") == 0 || strcmp(themeName, "..") == 0) {
 		wwarning("invalid theme pack name");
-		return;
+		return false;
 	}
 
 	user_library = wuserdatapath();
 	if (user_library == NULL)
-		return;
+		return false;
 	themeNameLen = strlen(user_library) + sizeof(THEME_SUBPATH) + strlen(themeName) + sizeof(THEME_EXTDIR) + 1;
 	themeDir = wmalloc(themeNameLen);
 	snprintf(themeDir, themeNameLen,
@@ -240,39 +314,29 @@ static void makeThemePack(WMPropList * style, const char *themeName)
 
 	if (!wmkdirhier(themeDir)) {
 		wwarning("Could not make theme dir %s\n", themeDir);
-		return;
+		wfree(themeDir);
+		ThemePath = NULL;
+		return false;
 	}
 
 	keys = WMGetPLDictionaryKeys(style);
 
-	for (i = 0; i < WMGetPropListItemCount(keys); i++) {
+	for (i = 0; ok && i < WMGetPropListItemCount(keys); i++) {
 		key = WMGetFromPLArray(keys, i);
 
 		value = WMGetFromPLDictionary(style, key);
 		if (value && WMIsPLString(value) &&
 		    isPixmapStringOption(WMGetFromPLString(key))) {
-			const char *file = WMGetFromPLString(value);
-			const char *p;
-			char *base;
-
-			if (!file || !*file)
-				continue;
-			p = strrchr(file, '/');
-			if (p) {
-				base = wstrdup(p + 1);
-				wcopy_file(themeDir, file, base);
-				WMPutInPLDictionary(style, key, WMCreatePLString(base));
-				wfree(base);
-			} else {
-				findCopyFile(themeDir, file);
-			}
+			ok = copyPixmapString(style, key, themeDir);
 			continue;
 		}
 		if (value && WMIsPLArray(value) && WMGetPropListItemCount(value) > 2) {
 			WMPropList *type;
-			char *t;
+			const char *t;
 
 			type = WMGetFromPLArray(value, 0);
+			if (!type || !WMIsPLString(type))
+				continue;
 			t = WMGetFromPLString(type);
 			if (t == NULL)
 				continue;
@@ -284,64 +348,25 @@ static void makeThemePack(WMPropList * style, const char *themeName)
 			    strcasecmp(t, "tdgradient") == 0 ||
 			    strcasecmp(t, "tvgradient") == 0 ||
 			    strcasecmp(t, "thgradient") == 0) {
-
-				WMPropList *file;
-				char *p;
-				char *newPath;
-
-				file = WMGetFromPLArray(value, 1);
-
-				p = strrchr(WMGetFromPLString(file), '/');
-				if (p) {
-					newPath = wstrdup(p + 1);
-
-					wcopy_file(themeDir, WMGetFromPLString(file), newPath);
-
-					WMDeleteFromPLArray(value, 1);
-					WMInsertInPLArray(value, 1, WMCreatePLString(newPath));
-					free(newPath);
-				} else {
-					findCopyFile(themeDir, WMGetFromPLString(file));
-				}
+				ok = copyPixmapFromArray(value, 1, themeDir);
 			} else if (strcasecmp(t, "bitmap") == 0) {
-
-				WMPropList *file;
-				char *p;
-				char *newPath;
-
-				file = WMGetFromPLArray(value, 1);
-
-				p = strrchr(WMGetFromPLString(file), '/');
-				if (p) {
-					newPath = wstrdup(p + 1);
-
-					wcopy_file(themeDir, WMGetFromPLString(file), newPath);
-
-					WMDeleteFromPLArray(value, 1);
-					WMInsertInPLArray(value, 1, WMCreatePLString(newPath));
-					free(newPath);
-				} else {
-					findCopyFile(themeDir, WMGetFromPLString(file));
-				}
-
-				file = WMGetFromPLArray(value, 2);
-
-				p = strrchr(WMGetFromPLString(file), '/');
-				if (p) {
-					newPath = wstrdup(p + 1);
-
-					wcopy_file(themeDir, WMGetFromPLString(file), newPath);
-
-					WMDeleteFromPLArray(value, 2);
-					WMInsertInPLArray(value, 2, WMCreatePLString(newPath));
-					free(newPath);
-				} else {
-					findCopyFile(themeDir, WMGetFromPLString(file));
-				}
+				ok = copyPixmapFromArray(value, 1, themeDir);
+				if (ok)
+					ok = copyPixmapFromArray(value, 2, themeDir);
 			}
 		}
 	}
 	WMReleasePropList(keys);
+
+	if (!ok) {
+		(void)wrmdirhier(themeDir);
+		(void)rmdir(themeDir);
+		wfree(themeDir);
+		ThemePath = NULL;
+		return false;
+	}
+
+	return true;
 }
 
 int main(int argc, char **argv)
@@ -463,10 +488,8 @@ int main(int argc, char **argv)
 	if (make_pack) {
 		char *path;
 
-		makeThemePack(style, style_file);
-
-		if (ThemePath == NULL) {
-			werror("could not determine theme path");
+		if (!makeThemePack(style, style_file)) {
+			werror("could not create theme pack");
 			WMReleasePropList(style);
 			WMReleasePropList(prop);
 			return 1;
