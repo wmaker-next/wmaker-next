@@ -153,6 +153,7 @@ int WMMenuAddSubmenu(WMMenu *menu, char *text, WMMenu *submenu)
 	entry->shortcut = NULL;
 	entry->callback = NULL;
 	entry->clientData = NULL;
+	entry->free = NULL;
 	entry->tag = menu->appcontext->last_menu_tag++;
 	entry->cascade = submenu;
 	entry->enabled = 1;

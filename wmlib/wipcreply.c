@@ -223,11 +223,10 @@ int wipcreply_success(const char *desc)
 		s.p++;
 
 		if (match) {
-			/* only YES accepts, anything else is a refusal */
+			/* only YES accepts, later duplicates override */
 			if (!read_token(&s, &text, &tlen, &plain))
 				return -1;
-			if (plain && is_word(text, tlen, "YES"))
-				yes = 1;
+			yes = plain && is_word(text, tlen, "YES");
 		} else if (!skip_value(&s, 0)) {
 			return -1;
 		}

@@ -72,7 +72,7 @@ static int sendIPCBody(const char *body)
 	if (ok) {
 		if (wIPCRecv(fd, &rtype, &rbuf, &rlen) == 0) {
 			/* 1 accepted, 0 refused, -1 malformed reply */
-			ok = (wipcreply_success(rbuf) == 1);
+			ok = (rtype == WIPC_COMMAND && wipcreply_success(rbuf) == 1);
 			free(rbuf);
 		} else {
 			ok = 0;
