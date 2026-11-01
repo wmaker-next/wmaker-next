@@ -180,6 +180,7 @@ static void showData(_Panel * panel)
 {
 	char *str;
 	WMPropList *arr;
+	WMPropList *xpl, *ypl;
 	int x, y;
 
 	str = GetStringForKey("WindowPlacement");
@@ -193,10 +194,14 @@ static void showData(_Panel * panel)
 	y = 0;
 	if (arr && (!WMIsPLArray(arr) || WMGetPropListItemCount(arr) != 2)) {
 		wwarning(_("invalid data in option WindowPlaceOrigin. Using default (0,0)"));
-	} else {
-		if (arr) {
-			x = atoi(WMGetFromPLString(WMGetFromPLArray(arr, 0)));
-			y = atoi(WMGetFromPLString(WMGetFromPLArray(arr, 1)));
+	} else if (arr) {
+		xpl = WMGetFromPLArray(arr, 0);
+		ypl = WMGetFromPLArray(arr, 1);
+		if (WMIsPLString(xpl) && WMIsPLString(ypl)) {
+			x = atoi(WMGetFromPLString(xpl));
+			y = atoi(WMGetFromPLString(ypl));
+		} else {
+			wwarning(_("invalid data in option WindowPlaceOrigin. Using default (0,0)"));
 		}
 	}
 
