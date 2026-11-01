@@ -2052,6 +2052,7 @@ bool WMWritePropListToFile(WMPropList * plist, const char *path)
 	mask = umask(S_IRWXG | S_IRWXO);
 	if ((fd = mkstemp(thePath)) < 0) {
 		werror(_("mkstemp (%s) failed"), thePath);
+		umask(mask);
 		goto failure;
 	}
 	umask(mask);

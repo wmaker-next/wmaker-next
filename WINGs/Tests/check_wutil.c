@@ -629,6 +629,41 @@ static void test_data_self_append(void)
 	WMReleaseData(d);
 }
 
+static void test_proplist_umask(void)
+{
+	char tmpl[] = "/tmp/check_wutil_umask_XXXXXX";
+	char path[1024];
+	char name[300];
+	char *dir;
+	mode_t saved, current;
+	WMPropList *key, *value, *dict;
+	bool written;
+
+	dir = mkdtemp(tmpl);
+	CHECK(dir != NULL);
+	memset(name, 'a', sizeof(name) - 1);
+	name[sizeof(name) - 1] = '\0';
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+
+	key = WMCreatePLString("Key");
+	value = WMCreatePLString("Value");
+	dict = WMCreatePLDictionary(key, value, NULL);
+	CHECK(dict != NULL);
+
+	saved = umask(022);
+	written = WMWritePropListToFile(dict, path);
+	current = umask(0);
+	umask(saved);
+
+	CHECK(!written);
+	CHECK(current == 022);
+
+	WMReleasePropList(dict);
+	WMReleasePropList(key);
+	WMReleasePropList(value);
+	wspawnvp_wait((char *[]){ "rm", "-rf", dir, NULL });
+}
+
 static int child_exit_status(pid_t pid)
 {
 	int status;
@@ -839,6 +874,7 @@ int main(void)
 	test_hashtable();
 	test_data();
 	test_data_self_append();
+	test_proplist_umask();
 	test_spawn();
 
 	return check_report("check_wutil");
