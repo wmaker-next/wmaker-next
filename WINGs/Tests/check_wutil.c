@@ -117,6 +117,50 @@ static void test_array(void)
 	WMFreeArray(a);
 }
 
+static void test_array_range(void)
+{
+	WMArray *a = WMCreateArray(0);
+	WMArray *sub;
+	WMRange range;
+	int i;
+
+	range = wmkrange(0, 1);
+	sub = WMGetSubarrayWithRange(a, range);
+	CHECK(WMGetArrayItemCount(sub) == 0);
+	WMFreeArray(sub);
+
+	for (i = 0; i < 5; i++)
+		WMAddToArray(a, (void *)(long)i);
+
+	range = wmkrange(2, 2);
+	sub = WMGetSubarrayWithRange(a, range);
+	CHECK(WMGetArrayItemCount(sub) == 2);
+	CHECK((long)WMGetFromArray(sub, 0) == 2);
+	CHECK((long)WMGetFromArray(sub, 1) == 3);
+	WMFreeArray(sub);
+
+	range = wmkrange(3, 100);
+	sub = WMGetSubarrayWithRange(a, range);
+	CHECK(WMGetArrayItemCount(sub) == 2);
+	CHECK((long)WMGetFromArray(sub, 0) == 3);
+	CHECK((long)WMGetFromArray(sub, 1) == 4);
+	WMFreeArray(sub);
+
+	range = wmkrange(-4, 2);
+	sub = WMGetSubarrayWithRange(a, range);
+	CHECK(WMGetArrayItemCount(sub) == 2);
+	CHECK((long)WMGetFromArray(sub, 0) == 0);
+	CHECK((long)WMGetFromArray(sub, 1) == 1);
+	WMFreeArray(sub);
+
+	range = wmkrange(10, 1);
+	sub = WMGetSubarrayWithRange(a, range);
+	CHECK(WMGetArrayItemCount(sub) == 0);
+	WMFreeArray(sub);
+
+	WMFreeArray(a);
+}
+
 static void test_hashtable(void)
 {
 	WMHashTable *t = WMCreateHashTable(WMStringHashCallbacks);
@@ -765,6 +809,7 @@ int main(void)
 	test_wpathdir();
 	test_intern();
 	test_array();
+	test_array_range();
 	test_userdefaults_sync();
 	test_bag();
 	test_bag_two_child_delete();

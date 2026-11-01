@@ -297,14 +297,14 @@ WMArray *WMGetSubarrayWithRange(WMArray * array, WMRange aRange)
 {
 	WMArray *newArray;
 
-	if (aRange.count <= 0 || array == NULL)
+	if (aRange.count <= 0 || array == NULL || array->itemCount <= 0)
 		return WMCreateArray(0);
 
 	if (aRange.position < 0)
 		aRange.position = 0;
 	if (aRange.position >= array->itemCount)
-		aRange.position = array->itemCount - 1;
-	if (aRange.position + aRange.count > array->itemCount)
+		return WMCreateArray(0);
+	if (aRange.count > array->itemCount - aRange.position)
 		aRange.count = array->itemCount - aRange.position;
 
 	newArray = WMCreateArray(aRange.count);
