@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_swlabel check_calc check_xsmp check_layout check_geometry check_dockgeom check_stacklist check_placecompute check_wsplan check_focusmodel check_dockslots check_xlibfree check_xerror check_xsettings check_xkb_label
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_swlabel check_calc check_xsmp check_layout check_geometry check_dockgeom check_stacklist check_placecompute check_wsplan check_focusmodel check_dockslots check_xlibfree check_xerror check_xsettings check_xkb_label check_appmenu
 TESTS = $(check_PROGRAMS)
 
 if BUILD_ACCENTPICKER
@@ -101,6 +101,9 @@ check_cmdexpand_LDADD = \
 
 check_swlabel_SOURCES = check_swlabel.c ../swlabel.c
 check_swlabel_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+check_appmenu_SOURCES = check_appmenu.c ../appmenuparse.c
+check_appmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 check_calc_SOURCES = \
 	check_calc.c \

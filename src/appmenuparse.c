@@ -97,7 +97,7 @@ static WAppMenuNode *parse_menu(WAppMenuParseCtx *ctx, int depth)
 			ctx->index++;
 			break;
 
-		} else if (command == WAM_NORMAL_ITEM || command == WAM_KIND_DOUBLE_ITEM) {
+		} else if (command == WAM_NORMAL_ITEM || command == WAM_DOUBLE_ITEM) {
 			WAppMenuNode *entry;
 
 			if (command == WAM_NORMAL_ITEM) {
