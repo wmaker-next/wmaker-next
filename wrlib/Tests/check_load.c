@@ -174,6 +174,48 @@ static void test_pnm(void)
 	p = write_sample("b.ppm", s, strlen(s));
 	append_bytes(p, (const unsigned char[]){10, 20, 30}, 3);
 	expect_image("P6", load_noctx(p), 1, 1, 10, 20, 30);
+
+	/* header tokens may share a line and carry comments between fields */
+	s = "P3 1 1 255 10 20 30\n";
+	p = write_sample("c.ppm", s, strlen(s));
+	expect_image("P3 inline header", load_noctx(p), 1, 1, 10, 20, 30);
+
+	s = "P3 # type\n1 1 # size\n255 # max\n10 20 30\n";
+	p = write_sample("d.ppm", s, strlen(s));
+	expect_image("P3 commented header", load_noctx(p), 1, 1, 10, 20, 30);
+
+	/* binary samples are scaled to the 8-bit output range by maxval */
+	s = "P5\n1 1\n15\n";
+	p = write_sample("c.pgm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){15}, 1);
+	expect_image("P5 maxval 15", load_noctx(p), 1, 1, 255, 255, 255);
+
+	s = "P6\n1 1\n15\n";
+	p = write_sample("c.ppm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){15, 0, 7}, 3);
+	expect_image("P6 maxval 15", load_noctx(p), 1, 1, 255, 0, 119);
+
+	/* non-full-range 16-bit maxval is applied the same way */
+	s = "P5\n1 1\n1000\n";
+	p = write_sample("e.pgm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0x03, 0xe8}, 2);
+	expect_image("P5 maxval 1000", load_noctx(p), 1, 1, 255, 255, 255);
+
+	s = "P6\n1 1\n1000\n";
+	p = write_sample("e.ppm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0x01, 0xf4, 0x00, 0x00, 0x03, 0xe8}, 6);
+	expect_image("P6 maxval 1000", load_noctx(p), 1, 1, 127, 0, 255);
+
+	s = "P6\n1 1\n65535\n";
+	p = write_sample("d.ppm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0xff, 0x00, 0x00, 0xff, 0x80, 0x80}, 6);
+	expect_image("P6 16-bit network order", load_noctx(p), 1, 1, 254, 0, 128);
+
+	/* a whitespace raster byte is data, not header separator */
+	s = "P4\n1 1\n";
+	p = write_sample("e.pbm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0x20}, 1);
+	expect_image("P4 whitespace raster", load_noctx(p), 1, 1, 255, 255, 255);
 }
 
 /* Formats wrlib has no native loader for, decoded via the vendored
@@ -424,12 +466,29 @@ static void expect_golden(const char *what, RImage *img, int w, int h,
 	RReleaseImage(img);
 }
 
-/* Golden-file decode tests for all six PNM variants. These pin the exact
- * output of the current loader so behaviour stays identical when the
- * backend is later swapped (stb_image only handles P5/P6 natively). Each
- * fixture is a 3x2 image with a known pattern, and both the first and the
- * last pixel are checked so row stride and end-of-buffer placement are
- * covered as well as the basic colour mapping. */
+static void test_pnm_edges(void)
+{
+	const char *s;
+	char *p;
+
+	/* P1 raster digits may be adjacent: "10" is black then white */
+	s = "P1\n2 1\n10\n";
+	p = write_sample("f.pbm", s, strlen(s));
+	expect_golden("P1 adjacent digits", load_noctx(p), 2, 1,
+		      0, 0, 0, 255, 255, 255);
+
+	/* 16-bit samples are big-endian in the file, not host-endian */
+	s = "P5\n2 1\n65535\n";
+	p = write_sample("f.pgm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0xff, 0x00, 0x00, 0xff}, 4);
+	expect_golden("P5 16-bit network order", load_noctx(p), 2, 1,
+		      254, 254, 254, 0, 0, 0);
+}
+
+/* Golden-file decode tests for all six PNM variants. Each fixture is a 3x2
+ * image with a known pattern, and both the first and the last pixel are
+ * checked so row stride and end-of-buffer placement are covered as well as
+ * the basic colour mapping. */
 static void test_pnm_golden(void)
 {
 	const char *p;
@@ -478,9 +537,8 @@ static void test_pnm_reject(void)
 	img = load_noctx(p);
 	CHECK(img == NULL);
 
-	/* 16-bit P6 is accepted via stb_image and downconverted to 8-bit
-	 * (the previous bespoke loader rejected maxval > 255). Six 0x78
-	 * bytes are three big-endian 0x7878 samples, 0x7878>>8 == 0x78. */
+	/* 16-bit P6 is accepted and downconverted to 8-bit. Six 0x78
+	 * bytes are three big-endian 0x7878 samples, which scale to 0x78. */
 	s = "P6\n1 1\n65535\nxxxxxx";
 	p = write_sample("wide.ppm", s, strlen(s));
 	img = load_noctx(p);
@@ -491,7 +549,24 @@ static void test_pnm_reject(void)
 		RReleaseImage(img);
 	}
 
-	/* truncated P6 pixel block must still be rejected */
+	/* truncated binary rasters must be rejected, including a P4 with no
+	 * raster bytes at all */
+	s = "P4\n2 1\n";
+	p = write_sample("short.pbm", s, strlen(s));
+	img = load_noctx(p);
+	CHECK(img == NULL);
+
+	s = "P4\n10 2\n";
+	p = write_sample("partial.pbm", s, strlen(s));
+	append_bytes(p, (const unsigned char[]){0xff}, 1);
+	img = load_noctx(p);
+	CHECK(img == NULL);
+
+	s = "P5\n2 1\n255\nx";
+	p = write_sample("short.pgm", s, strlen(s));
+	img = load_noctx(p);
+	CHECK(img == NULL);
+
 	s = "P6\n2 2\n255\nrgb";
 	p = write_sample("short.ppm", s, strlen(s));
 	img = load_noctx(p);
@@ -1018,6 +1093,7 @@ int main(void)
 	}
 
 	test_pnm();
+	test_pnm_edges();
 	test_pnm_golden();
 	test_pnm_reject();
 	test_working_set_limits();

@@ -1,9 +1,9 @@
 /* ppm.c - load PPM image from file
  *
- * Raster graphics library
+ *  Raster graphics library
  *
- * Copyright (c) 1997-2003 Alfredo K. Kojima
- * Copyright (c) 2013-2026 Window Maker Team
+ *  Copyright (c) 1997-2003 Alfredo K. Kojima
+ *  Copyright (c) 2013-2026 Window Maker Team
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -30,98 +30,110 @@
 #include "imgformat.h"
 #include "wr_i18n.h"
 
+typedef struct {
+	FILE *file;
+	const char *filename;
+	int pushback;
+	int has_pushback;
+} PmReader;
 
-/*
- * fileio.c - routines to read elements based on Netpbm
- *
- * Copyright (C) 1988 by Jef Poskanzer.
- *
- * Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee is hereby granted, provided
- * that the above copyright notice appear in all copies and that both that
- * copyright notice and this permission notice appear in supporting
- * documentation.  This software is provided "as is" without express or
- * implied warranty.
- */
-
-static char pm_getc(FILE *const fileP, const char *filename)
+static int pm_read_byte(PmReader *reader)
 {
-	int ich;
-	char ch;
-
-	ich = getc(fileP);
-	if (ich == EOF)
-		fprintf(stderr, _("wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"), filename);
-	ch = (char)ich;
-
-	if (ch == '#') {
-		do {
-			ich = getc(fileP);
-			if (ich == EOF) {
-				fprintf(stderr, _("wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"), filename);
-				return '\n';
-			}
-			ch = (char)ich;
-		} while (ch != '\n' && ch != '\r');
+	if (reader->has_pushback) {
+		reader->has_pushback = 0;
+		return reader->pushback;
 	}
-	return ch;
+	return getc(reader->file);
 }
 
-static unsigned char pm_getrawbyte(FILE *const file, const char *filename)
+static void pm_unread_byte(PmReader *reader, int c)
 {
-	int iby;
-
-	iby = getc(file);
-	if (iby == EOF)
-		fprintf(stderr, _("wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"), filename);
-	return (unsigned char)iby;
+	if (c == EOF)
+		return;
+	reader->pushback = c;
+	reader->has_pushback = 1;
 }
 
-static int pm_getuint(FILE *const ifP, const char *filename)
+static int pm_is_space(int c)
 {
-	char ch;
-	unsigned int i;
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f';
+}
 
-	do {
-		ch = pm_getc(ifP, filename);
-	} while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
+static int pm_skip_space(PmReader *reader)
+{
+	int c;
 
-	if (ch < '0' || ch > '9') {
-		fprintf(stderr, _("wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"), filename, (unsigned int)ch);
+	for (;;) {
+		c = pm_read_byte(reader);
+		if (c == EOF)
+			return 0;
+		if (pm_is_space(c))
+			continue;
+		if (c == '#') {
+			do {
+				c = pm_read_byte(reader);
+			} while (c != EOF && c != '\n' && c != '\r');
+			if (c == EOF)
+				return -1;
+			continue;
+		}
+		pm_unread_byte(reader, c);
+		return 0;
+	}
+}
+
+static int pm_read_uint(PmReader *reader, int *value)
+{
+	int c;
+	unsigned int result = 0;
+
+	if (pm_skip_space(reader) < 0)
+		return -1;
+
+	c = pm_read_byte(reader);
+	if (c < '0' || c > '9') {
+		if (c != EOF)
+			fprintf(stderr, _("wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"),
+				reader->filename, (unsigned int)c);
 		return -1;
 	}
 
-	i = 0;
 	do {
-		unsigned int const digitVal = ch - '0';
+		unsigned int digit = (unsigned int)(c - '0');
 
-		if (i > INT_MAX / 10) {
-			fprintf(stderr, _("wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be processed\n"), filename);
+		if (result > (unsigned int)INT_MAX / 10 ||
+		    (result == (unsigned int)INT_MAX / 10 && digit > (unsigned int)INT_MAX % 10)) {
+			fprintf(stderr, _("wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be processed\n"),
+				reader->filename);
 			return -1;
 		}
+		result = result * 10 + digit;
+		c = pm_read_byte(reader);
+	} while (c >= '0' && c <= '9');
 
-		i *= 10;
-
-		if (i > INT_MAX - digitVal) {
-			fprintf(stderr, _("wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be processed\n"), filename);
-			return -1;
-		}
-
-		i += digitVal;
-
-		ch = pm_getc(ifP, filename);
-	} while (ch >= '0' && ch <= '9');
-
-	return i;
+	pm_unread_byte(reader, c);
+	*value = (int)result;
+	return 0;
 }
-/* end of fileio.c re-used code */
-/******************************************************************************************/
 
-/* P2/P3 ASCII graymap and pixmap. The binary P5/P6 variants are routed
- * to stb_image from RLoadPPM() so only the plain encoding is handled
- * here. */
-static RImage *load_ascii_pnm(FILE *file, int w, int h, int max, int channels,
-			      const char *filename)
+/* consume the single whitespace character before a binary raster */
+static int pm_read_separator(PmReader *reader)
+{
+	int c = pm_read_byte(reader);
+
+	if (c == EOF || !pm_is_space(c))
+		return -1;
+	if (c == '\r') {
+		int next = pm_read_byte(reader);
+
+		if (next != '\n')
+			pm_unread_byte(reader, next);
+	}
+	return 0;
+}
+
+/* P2/P3 ASCII graymap and pixmap */
+static RImage *load_ascii_pnm(PmReader *reader, int w, int h, int max, int channels)
 {
 	RImage *image;
 	unsigned char *ptr;
@@ -137,17 +149,16 @@ static RImage *load_ascii_pnm(FILE *file, int w, int h, int max, int channels,
 	for (y = 0; y < h; y++) {
 		for (x = 0; x < w; x++) {
 			for (c = 0; c < channels; c++) {
-				val = pm_getuint(file, filename);
-				if (val > max || val < 0) {
+				if (pm_read_uint(reader, &val) < 0 || val > max) {
 					RErrorCode = RERR_BADIMAGEFILE;
 					RReleaseImage(image);
 					return NULL;
 				}
 				val = val * 255 / max;
-				*(ptr++) = val;
+				*(ptr++) = (unsigned char)val;
 				if (channels == 1) {
-					*(ptr++) = val;
-					*(ptr++) = val;
+					*(ptr++) = (unsigned char)val;
+					*(ptr++) = (unsigned char)val;
 				}
 			}
 		}
@@ -155,17 +166,28 @@ static RImage *load_ascii_pnm(FILE *file, int w, int h, int max, int channels,
 	return image;
 }
 
-/* PBM: support for portable bitmap ascii and binary encoding */
-static RImage *load_bitmap(FILE *file, int w, int h, int max, int raw, const char *filename)
+static int pm_read_pbm_pixel(PmReader *reader)
+{
+	int c;
+
+	if (pm_skip_space(reader) < 0)
+		return -1;
+
+	c = pm_read_byte(reader);
+	if (c != '0' && c != '1') {
+		if (c != EOF)
+			fprintf(stderr, _("wrlib: invalid digit in plain PBM file \"%s\"\n"), reader->filename);
+		return -1;
+	}
+	return c - '0';
+}
+
+/* P1/P4: portable bitmap */
+static RImage *load_bitmap(PmReader *reader, int w, int h, int type)
 {
 	RImage *image;
 	int val;
 	unsigned char *ptr;
-
-	if (raw != '1' && raw != '4') {
-		RErrorCode = RERR_BADFORMAT;
-		return NULL;
-	}
 
 	image = RCreateImage(w, h, 0);
 	if (!image) {
@@ -174,43 +196,102 @@ static RImage *load_bitmap(FILE *file, int w, int h, int max, int raw, const cha
 	}
 
 	ptr = image->data;
-	if (raw == '1') {
-		int i = 0;
+	if (type == '1') {
+		int i;
 
-		while (i < w * h) {
-			val = pm_getuint(file, filename);
-
-			if (val > max || val < 0) {
+		for (i = 0; i < w * h; i++) {
+			val = pm_read_pbm_pixel(reader);
+			if (val < 0) {
 				RErrorCode = RERR_BADIMAGEFILE;
 				RReleaseImage(image);
 				return NULL;
 			}
-
-			val = (val == 0) ? 255 : 0;
-			*(ptr++) = val;
-			*(ptr++) = val;
-			*(ptr++) = val;
-			i++;
+			val = val ? 0 : 255;
+			*(ptr++) = (unsigned char)val;
+			*(ptr++) = (unsigned char)val;
+			*(ptr++) = (unsigned char)val;
 		}
 	} else {
-		if (raw == '4') {
-			unsigned char buf;
-			int bitshift;
-			int x, y;
+		int x, y, bitshift = -1;
+		int buf = 0;
 
-			for (y = 0; y < h; y++) {
-				bitshift = -1;
-				for (x = 0; x < w; x++) {
-					if (bitshift == -1) {
-						buf = pm_getrawbyte(file, filename);
-						bitshift = 7;
+		for (y = 0; y < h; y++) {
+			bitshift = -1;
+			for (x = 0; x < w; x++) {
+				if (bitshift == -1) {
+					buf = pm_read_byte(reader);
+					if (buf == EOF) {
+						RErrorCode = RERR_BADIMAGEFILE;
+						RReleaseImage(image);
+						return NULL;
 					}
-					val = (buf >> bitshift) & 1;
-					val = (val == 0) ? 255 : 0;
-					--bitshift;
-					*(ptr++) = val;
-					*(ptr++) = val;
-					*(ptr++) = val;
+					bitshift = 7;
+				}
+				val = (buf >> bitshift) & 1;
+				val = val ? 0 : 255;
+				--bitshift;
+				*(ptr++) = (unsigned char)val;
+				*(ptr++) = (unsigned char)val;
+				*(ptr++) = (unsigned char)val;
+			}
+		}
+	}
+	return image;
+}
+
+static int pm_read_sample(PmReader *reader, int bytes)
+{
+	int hi, lo;
+
+	hi = pm_read_byte(reader);
+	if (hi == EOF)
+		return -1;
+	if (bytes == 1)
+		return hi;
+
+	lo = pm_read_byte(reader);
+	if (lo == EOF)
+		return -1;
+	return (hi << 8) | lo;
+}
+
+/* P5/P6 binary graymap and pixmap, samples stored most-significant byte first */
+static RImage *load_binary_pnm(PmReader *reader, int w, int h, int max, int channels)
+{
+	RImage *image;
+	unsigned char *ptr;
+	int x, y, c, val;
+	int sample_bytes = (max > 255) ? 2 : 1;
+
+	image = RCreateImage(w, h, 0);
+	if (!image) {
+		RErrorCode = RERR_NOMEMORY;
+		return NULL;
+	}
+
+	ptr = image->data;
+	for (y = 0; y < h; y++) {
+		for (x = 0; x < w; x++) {
+			if (channels == 1) {
+				val = pm_read_sample(reader, sample_bytes);
+				if (val < 0 || val > max) {
+					RErrorCode = RERR_BADIMAGEFILE;
+					RReleaseImage(image);
+					return NULL;
+				}
+				val = val * 255 / max;
+				*(ptr++) = (unsigned char)val;
+				*(ptr++) = (unsigned char)val;
+				*(ptr++) = (unsigned char)val;
+			} else {
+				for (c = 0; c < 3; c++) {
+					val = pm_read_sample(reader, sample_bytes);
+					if (val < 0 || val > max) {
+						RErrorCode = RERR_BADIMAGEFILE;
+						RReleaseImage(image);
+						return NULL;
+					}
+					*(ptr++) = (unsigned char)(val * 255 / max);
 				}
 			}
 		}
@@ -222,9 +303,8 @@ RImage *RLoadPPM(const char *file_name)
 {
 	FILE *file;
 	RImage *image = NULL;
-	char buffer[256];
-	int w, h, m;
-	int type;
+	PmReader reader;
+	int w, h, max, type, c;
 
 	file = fopen(file_name, "rb");
 	if (!file) {
@@ -232,79 +312,60 @@ RImage *RLoadPPM(const char *file_name)
 		return NULL;
 	}
 
-	/* get signature */
-	if (!fgets(buffer, 255, file)) {
-		RErrorCode = RERR_BADIMAGEFILE;
-		fclose(file);
-		return NULL;
-	}
+	reader.file = file;
+	reader.filename = file_name;
+	reader.pushback = 0;
+	reader.has_pushback = 0;
 
-	/* accept bitmaps, pixmaps or graymaps */
-	if (buffer[0] != 'P' || (buffer[1] < '1' || buffer[1] > '6')) {
+	c = pm_read_byte(&reader);
+	if (c != 'P') {
 		RErrorCode = RERR_BADFORMAT;
-		fclose(file);
-		return NULL;
+		goto done;
 	}
 
-	type = buffer[1];
-
-	/* Binary graymap/pixmap (P5/P6) go through stb_image, which reads
-	 * the pixel block in one fread instead of byte-at-a-time and is
-	 * the reference PNM reader for the project. ASCII PNM (P1/P2/P3)
-	 * and binary PBM (P4) are not supported by stb so the
-	 * Netpbm-derived parser below handles those. */
-	if (type == '5' || type == '6') {
-		fclose(file);
-		return RLoadStb(file_name);
+	c = pm_read_byte(&reader);
+	if (c < '1' || c > '6') {
+		RErrorCode = RERR_BADFORMAT;
+		goto done;
 	}
+	type = c;
 
-	/* skip comments */
-	while (1) {
-		if (!fgets(buffer, 255, file)) {
-			RErrorCode = RERR_BADIMAGEFILE;
-			fclose(file);
-			return NULL;
-		}
-
-		if (buffer[0] != '#')
-			break;
-	}
-
-	/* get size, header fields are ASCII decimal per the PNM spec, and a
-	 * 9-digit field width keeps the conversion inside INT_MAX so the
-	 * range checks below and in RCreateImage() see a defined value */
-	if (sscanf(buffer, "%9d %9d", &w, &h) != 2 || w < 1 || h < 1) {
-		/* Short file */
+	if (pm_read_uint(&reader, &w) < 0 || pm_read_uint(&reader, &h) < 0 ||
+	    w < 1 || h < 1 ||
+	    !RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h, 3U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
-		fclose(file);
-		return NULL;
+		goto done;
 	}
 
-	if (type == '2' || type == '3') {
-		if (!fgets(buffer, 255, file)) {
+	if (type == '2' || type == '3' || type == '5' || type == '6') {
+		if (pm_read_uint(&reader, &max) < 0 || max < 1 || max > 65535) {
 			RErrorCode = RERR_BADIMAGEFILE;
-			fclose(file);
-			return NULL;
-		}
-		/* get max value */
-		if (sscanf(buffer, "%9d", &m) != 1 || m < 1 || m > 255) {
-			RErrorCode = RERR_BADIMAGEFILE;
-			fclose(file);
-			return NULL;
+			goto done;
 		}
 	} else {
-		m = 1;
+		max = 1;
+	}
+
+	if (type == '4' || type == '5' || type == '6') {
+		if (pm_read_separator(&reader) < 0) {
+			RErrorCode = RERR_BADIMAGEFILE;
+			goto done;
+		}
 	}
 
 	if (type == '1' || type == '4') {
-		/* Portable Bit Map: P1 is for 'plain' (ascii, rare), P4 for 'regular' (binary) */
-		image = load_bitmap(file, w, h, m, type, file_name);
+		image = load_bitmap(&reader, w, h, type);
 	} else if (type == '2') {
-		image = load_ascii_pnm(file, w, h, m, 1, file_name);
+		image = load_ascii_pnm(&reader, w, h, max, 1);
 	} else if (type == '3') {
-		image = load_ascii_pnm(file, w, h, m, 3, file_name);
+		image = load_ascii_pnm(&reader, w, h, max, 3);
+	} else if (type == '5') {
+		image = load_binary_pnm(&reader, w, h, max, 1);
+	} else {
+		image = load_binary_pnm(&reader, w, h, max, 3);
 	}
 
+done:
 	fclose(file);
 	return image;
 }
