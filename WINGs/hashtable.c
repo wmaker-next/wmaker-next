@@ -258,11 +258,13 @@ void *WMHashInsert(WMHashTable * table, const void *key, const void *data)
 
 	if (replacing) {
 		const void *old;
+		const void *newKey;
 
 		old = item->data;
+		newKey = DUPKEY(table, key);
 		item->data = data;
 		RELKEY(table, item->key);
-		item->key = DUPKEY(table, key);
+		item->key = newKey;
 
 		return (void *)old;
 	} else {

@@ -164,6 +164,7 @@ static void test_array_range(void)
 static void test_hashtable(void)
 {
 	WMHashTable *t = WMCreateHashTable(WMStringHashCallbacks);
+	void *key;
 
 	CHECK(WMHashGet(t, "missing") == NULL);
 
@@ -179,6 +180,10 @@ static void test_hashtable(void)
 	/* overwrite */
 	WMHashInsert(t, "two", (void *)22L);
 	CHECK((long)WMHashGet(t, "two") == 22);
+
+	CHECK(WMHashGetItemAndKey(t, "two", NULL, &key));
+	WMHashInsert(t, key, (void *)222L);
+	CHECK((long)WMHashGet(t, "two") == 222);
 
 	WMFreeHashTable(t);
 }
