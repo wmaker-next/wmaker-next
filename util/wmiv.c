@@ -1946,6 +1946,9 @@ RImage *draw_failed_image(void)
 */
 int full_screen(void)
 {
+	if (!fullscreen_flag && !current_link)
+		return EXIT_FAILURE;
+
 	if (fullscreen_flag) {
 		fullscreen_flag = false;
 		zoom_factor = 0;
@@ -2162,8 +2165,12 @@ void linked_list_free(linked_list_t *list)
 int zoom_in_out(int z)
 {
 	RImage *old_img = img;
-	RImage *tmp = load_oriented_image(ctx, current_link->data, 0);
+	RImage *tmp;
 
+	if (!current_link)
+		return EXIT_FAILURE;
+
+	tmp = load_oriented_image(ctx, current_link->data, 0);
 	if (!tmp)
 		return EXIT_FAILURE;
 
@@ -2231,6 +2238,9 @@ int zoom_out(void)
 int zoom_reset(void)
 {
 	RImage *tmp;
+
+	if (!current_link)
+		return EXIT_FAILURE;
 
 	if (fullscreen_flag) {
 		tmp = load_oriented_image(ctx, current_link->data, 0);
