@@ -71,9 +71,12 @@ typedef struct IconPanel {
 	WMList *iconList;
 	WMFont *normalfont;
 
-	WMButton *previewButton;
-
+	WMFrame *previewFrame;
 	WMLabel *iconView;
+
+	WMFrame *modeFrame;
+	WMButton *textButton;
+	WMButton *imageButton;
 
 	WMLabel *fileLabel;
 	WMTextField *fileField;
@@ -86,6 +89,7 @@ typedef struct IconPanel {
 	short done;
 	short result;
 	short preview;
+	bool imageMode;
 } IconPanel;
 
 static void listPixmaps(WScreen *scr, WMList *lPtr, const char *path)
@@ -331,6 +335,56 @@ static void drawIconProc(WMList * lPtr, int index, xcb_drawable_t d, char *text,
 	wXFlush(wdisp->conn);
 }
 
+static WMList *createIconList(IconPanel *panel, bool thumbnails)
+{
+	WMList *list;
+	int wmScaleWidth, wmScaleHeight;
+
+	WMGetScaleBaseFromSystemFont(WMWidgetScreen(panel->win), &wmScaleWidth, &wmScaleHeight);
+
+	list = WMCreateList(panel->win);
+	WMResizeWidget(list, WMScaleX(220), WMScaleY(170));
+	WMMoveWidget(list, WMScaleX(280), WMScaleY(30));
+	WMSetListAction(list, listCallback, panel);
+	WMHangData(list, panel);
+
+	if (thumbnails) {
+		WMSetListUserDrawItemHeight(list, 68);
+		WMSetListUserDrawProc(list, drawIconProc);
+	}
+
+	return list;
+}
+
+static void replaceIconList(IconPanel *panel, bool thumbnails)
+{
+	WMList *oldList = panel->iconList;
+	WMList *newList;
+	int selectedRow, topItem, count, i;
+
+	selectedRow = WMGetListSelectedItemRow(oldList);
+	topItem = WMGetListPosition(oldList);
+	count = WMGetListNumberOfRows(oldList);
+
+	panel->imageMode = thumbnails;
+
+	newList = createIconList(panel, thumbnails);
+	panel->iconList = newList;
+
+	for (i = 0; i < count; i++)
+		WMAddListItem(newList, WMGetListItem(oldList, i)->text);
+
+	WMRealizeWidget(newList);
+	WMMapWidget(newList);
+
+	if (selectedRow >= 0)
+		WMSelectListItem(newList, selectedRow);
+
+	WMSetListPosition(newList, topItem);
+
+	WMDestroyWidget(oldList);
+}
+
 static void buttonCallback(void *self, void *clientData)
 {
 	WMButton *bPtr = (WMButton *) self;
@@ -339,17 +393,16 @@ static void buttonCallback(void *self, void *clientData)
 	if (bPtr == panel->okButton) {
 		panel->done = true;
 		panel->result = true;
+		WMBreakModalLoop(WMWidgetScreen(panel->win));
 	} else if (bPtr == panel->cancelButton) {
 		panel->done = true;
 		panel->result = false;
-	} else if (bPtr == panel->previewButton) {
-	/**** Previewer ****/
-		WMSetButtonEnabled(bPtr, false);
-		WMSetListUserDrawItemHeight(panel->iconList, 68);
-		WMSetListUserDrawProc(panel->iconList, drawIconProc);
-		WMRedisplayWidget(panel->iconList);
-		/* for draw proc to access screen/gc */
-	/*** end preview ***/
+		WMBreakModalLoop(WMWidgetScreen(panel->win));
+	} else if (bPtr == panel->textButton || bPtr == panel->imageButton) {
+		bool thumbnails = WMGetButtonSelected(panel->imageButton) != 0;
+
+		if (thumbnails != panel->imageMode)
+			replaceIconList(panel, thumbnails);
 	}
 #if 0
 	else if (bPtr == panel->chooseButton) {
@@ -372,72 +425,20 @@ static void buttonCallback(void *self, void *clientData)
 static void keyPressHandler(xcb_generic_event_t * event, void *data)
 {
 	IconPanel *panel = (IconPanel *) data;
-	char buffer[32];
 	xkb_keysym_t ksym;
-	int iidx;
-	int didx;
-	int item = 0;
-	WMList *list = NULL;
 
 	if ((event->response_type & 0x7f) == XCB_KEY_RELEASE)
 		return;
 
-	buffer[0] = 0;
-	wXkbStateUtf8(((xcb_key_press_event_t *)event)->detail, buffer, sizeof(buffer));
 	ksym = wXkbKeycodeToKeysym(((xcb_key_press_event_t *)event)->detail, 0);
 
-	iidx = WMGetListSelectedItemRow(panel->iconList);
-	didx = WMGetListSelectedItemRow(panel->dirList);
-
 	switch (ksym) {
-	case XKB_KEY_Up:
-		if (iidx > 0)
-			item = iidx - 1;
-		else
-			item = iidx;
-		list = panel->iconList;
-		break;
-	case XKB_KEY_Down:
-		if (iidx < WMGetListNumberOfRows(panel->iconList) - 1)
-			item = iidx + 1;
-		else
-			item = iidx;
-		list = panel->iconList;
-		break;
-	case XKB_KEY_Home:
-		item = 0;
-		list = panel->iconList;
-		break;
-	case XKB_KEY_End:
-		item = WMGetListNumberOfRows(panel->iconList) - 1;
-		list = panel->iconList;
-		break;
-	case XKB_KEY_Next:
-		if (didx < WMGetListNumberOfRows(panel->dirList) - 1)
-			item = didx + 1;
-		else
-			item = didx;
-		list = panel->dirList;
-		break;
-	case XKB_KEY_Prior:
-		if (didx > 0)
-			item = didx - 1;
-		else
-			item = 0;
-		list = panel->dirList;
-		break;
 	case XKB_KEY_Return:
 		WMPerformButtonClick(panel->okButton);
 		break;
 	case XKB_KEY_Escape:
 		WMPerformButtonClick(panel->cancelButton);
 		break;
-	}
-
-	if (list) {
-		WMSelectListItem(list, item);
-		WMSetListPosition(list, item - 5);
-		listCallback(list, panel);
 	}
 }
 
@@ -447,10 +448,12 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	WWindow *wwin;
 	WWindow *prevFocused;
 	xcb_window_t parent;
+	xcb_window_t owner;
 	IconPanel *panel;
 	WMColor *color;
 	WMFont *boldFont;
 	bool result;
+	bool setModal = false;
 	int wmScaleWidth, wmScaleHeight;
 	int pwidth, pheight;
 	static const char *prefix = NULL;
@@ -464,7 +467,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	panel->win = WMCreateWindow(scr->wmscreen, "iconChooser");
 	WMGetScaleBaseFromSystemFont(scr->wmscreen, &wmScaleWidth, &wmScaleHeight);
-	pwidth = WMScaleX(450);
+	pwidth = WMScaleX(620);
 	pheight = WMScaleY(280);
 	WMResizeWidget(panel->win, pwidth, pheight);
 
@@ -474,7 +477,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	panel->normalfont = WMSystemFontOfSize(WMWidgetScreen(panel->win), WMScaleY(12));
 
 	panel->dirLabel = WMCreateLabel(panel->win);
-	WMResizeWidget(panel->dirLabel, WMScaleX(200), WMScaleY(20));
+	WMResizeWidget(panel->dirLabel, WMScaleX(260), WMScaleY(20));
 	WMMoveWidget(panel->dirLabel, WMScaleX(10), WMScaleY(7));
 	WMSetLabelText(panel->dirLabel, _("Directories"));
 	WMSetLabelFont(panel->dirLabel, boldFont);
@@ -483,8 +486,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	WMSetLabelRelief(panel->dirLabel, WRSunken);
 
 	panel->iconLabel = WMCreateLabel(panel->win);
-	WMResizeWidget(panel->iconLabel, WMScaleX(140), WMScaleY(20));
-	WMMoveWidget(panel->iconLabel, WMScaleX(215), WMScaleY(7));
+	WMResizeWidget(panel->iconLabel, WMScaleX(220), WMScaleY(20));
+	WMMoveWidget(panel->iconLabel, WMScaleX(280), WMScaleY(7));
 	WMSetLabelText(panel->iconLabel, _("Icons"));
 	WMSetLabelFont(panel->iconLabel, boldFont);
 	WMSetLabelTextAlignment(panel->iconLabel, WACenter);
@@ -504,26 +507,40 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	WMSetLabelRelief(panel->iconLabel, WRSunken);
 
 	panel->dirList = WMCreateList(panel->win);
-	WMResizeWidget(panel->dirList, WMScaleX(200), WMScaleY(170));
+	WMResizeWidget(panel->dirList, WMScaleX(260), WMScaleY(170));
 	WMMoveWidget(panel->dirList, WMScaleX(10), WMScaleY(30));
 	WMSetListAction(panel->dirList, listCallback, panel);
 
-	panel->iconList = WMCreateList(panel->win);
-	WMResizeWidget(panel->iconList, WMScaleX(140), WMScaleY(170));
-	WMMoveWidget(panel->iconList, WMScaleX(215), WMScaleY(30));
-	WMSetListAction(panel->iconList, listCallback, panel);
+	panel->iconList = createIconList(panel, false);
 
-	WMHangData(panel->iconList, panel);
+	panel->modeFrame = WMCreateFrame(panel->win);
+	WMResizeWidget(panel->modeFrame, WMScaleX(100), WMScaleY(70));
+	WMMoveWidget(panel->modeFrame, WMScaleX(510), WMScaleY(130));
+	WMSetFrameTitle(panel->modeFrame, _("List Mode"));
 
-	panel->previewButton = WMCreateCommandButton(panel->win);
-	WMResizeWidget(panel->previewButton, WMScaleX(75), WMScaleY(26));
-	WMMoveWidget(panel->previewButton, WMScaleX(365), WMScaleY(130));
-	WMSetButtonText(panel->previewButton, _("Preview"));
-	WMSetButtonAction(panel->previewButton, buttonCallback, panel);
+	panel->textButton = WMCreateButton(panel->modeFrame, WBTRadio);
+	WMResizeWidget(panel->textButton, WMScaleX(84), WMScaleY(18));
+	WMMoveWidget(panel->textButton, WMScaleX(8), WMScaleY(20));
+	WMSetButtonText(panel->textButton, _("Names"));
+	WMSetButtonSelected(panel->textButton, true);
+	WMSetButtonAction(panel->textButton, buttonCallback, panel);
 
-	panel->iconView = WMCreateLabel(panel->win);
-	WMResizeWidget(panel->iconView, WMScaleX(75), WMScaleY(75));
-	WMMoveWidget(panel->iconView, WMScaleX(365), WMScaleY(40));
+	panel->imageButton = WMCreateButton(panel->modeFrame, WBTRadio);
+	WMResizeWidget(panel->imageButton, WMScaleX(84), WMScaleY(18));
+	WMMoveWidget(panel->imageButton, WMScaleX(8), WMScaleY(38));
+	WMSetButtonText(panel->imageButton, _("Thumbs"));
+	WMSetButtonAction(panel->imageButton, buttonCallback, panel);
+
+	WMGroupButtons(panel->textButton, panel->imageButton);
+
+	panel->previewFrame = WMCreateFrame(panel->win);
+	WMResizeWidget(panel->previewFrame, WMScaleX(100), WMScaleY(95));
+	WMMoveWidget(panel->previewFrame, WMScaleX(510), WMScaleY(30));
+	WMSetFrameTitle(panel->previewFrame, _("Preview"));
+
+	panel->iconView = WMCreateLabel(panel->previewFrame);
+	WMResizeWidget(panel->iconView, WMScaleX(82), WMScaleY(70));
+	WMMoveWidget(panel->iconView, WMScaleX(9), WMScaleY(20));
 	WMSetLabelImagePosition(panel->iconView, WIPOverlaps);
 	WMSetLabelRelief(panel->iconView, WRSunken);
 	WMSetLabelTextAlignment(panel->iconView, WACenter);
@@ -535,20 +552,20 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	panel->fileField = WMCreateTextField(panel->win);
 	WMSetViewNextResponder(WMWidgetView(panel->fileField), WMWidgetView(panel->win));
-	WMResizeWidget(panel->fileField, WMScaleX(345), WMScaleY(20));
+	WMResizeWidget(panel->fileField, WMScaleX(515), WMScaleY(20));
 	WMMoveWidget(panel->fileField, WMScaleX(95), WMScaleY(210));
 	WMSetTextFieldEditable(panel->fileField, false);
 
 	panel->okButton = WMCreateCommandButton(panel->win);
 	WMResizeWidget(panel->okButton, WMScaleX(80), WMScaleY(26));
-	WMMoveWidget(panel->okButton, WMScaleX(360), WMScaleY(242));
+	WMMoveWidget(panel->okButton, WMScaleX(530), WMScaleY(242));
 	WMSetButtonText(panel->okButton, _("OK"));
 	WMSetButtonEnabled(panel->okButton, false);
 	WMSetButtonAction(panel->okButton, buttonCallback, panel);
 
 	panel->cancelButton = WMCreateCommandButton(panel->win);
 	WMResizeWidget(panel->cancelButton, WMScaleX(80), WMScaleY(26));
-	WMMoveWidget(panel->cancelButton, WMScaleX(270), WMScaleY(242));
+	WMMoveWidget(panel->cancelButton, WMScaleX(440), WMScaleY(242));
 	WMSetButtonText(panel->cancelButton, _("Cancel"));
 	WMSetButtonAction(panel->cancelButton, buttonCallback, panel);
 #if 0
@@ -560,6 +577,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 #endif
 	WMRealizeWidget(panel->win);
 	WMMapSubwidgets(panel->win);
+	WMMapSubwidgets(panel->previewFrame);
+	WMMapSubwidgets(panel->modeFrame);
 
 	pwidth = WSCALE(scr, pwidth);
 	pheight = WSCALE(scr, pheight);
@@ -595,8 +614,9 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	 * wUnmanageWindow() would otherwise hand focus to the next
 	 * window in the focus list */
 	prevFocused = scr->focused_window;
+	owner = for_window ? for_window->client_win : XCB_NONE;
 
-	wwin = wManageInternalWindow(scr, parent, for_window ? for_window->client_win : XCB_NONE,
+	wwin = wManageInternalWindow(scr, parent, owner,
 				     title, center.x, center.y, pwidth, pheight);
 	wfree(title);
 
@@ -605,8 +625,8 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	 * via wwin->event_mask */
 	wwin->client_leader = WMWidgetXID(panel->win);
 
-	if (for_window)
-		WXSetTransientFor(wdisp->conn, parent, for_window->client_win);
+	if (owner != XCB_NONE)
+		WXSetTransientFor(wdisp->conn, parent, owner);
 
 	/* put icon paths in the list */
 	listIconPaths(panel->dirList);
@@ -615,16 +635,17 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 
 	wWindowMap(wwin);
 	wSetFocusTo(scr, wwin);
+	WMSetFocusToWidget(panel->dirList);
 
-	while (!panel->done) {
-		xcb_generic_event_t *event = NULL;
-
-		WMNextEvent(wdisp->conn, &event);
-		if (!event)
-			break;
-		WMHandleEvent(event);
-		free(event);
+	if (w_global.program.state == WSTATE_NORMAL) {
+		WCHANGE_STATE(WSTATE_MODAL);
+		setModal = true;
 	}
+
+	WMRunModalLoop(WMWidgetScreen(panel->win), WMWidgetView(panel->win));
+
+	if (setModal && w_global.program.state == WSTATE_MODAL)
+		WCHANGE_STATE(WSTATE_NORMAL);
 
 	if (panel->result) {
 		char *defaultPath, *wantedPath;
@@ -670,7 +691,7 @@ bool wIconChooserDialog(WScreen *scr, char **file, const char *instance, const c
 	/* hand focus back to the opener. Clicking its WINGs widgets never
 	 * moves WM focus, so fall back to whoever held focus before if
 	 * the opener is gone */
-	if (for_window && wWindowFor(for_window->client_win) == for_window)
+	if (for_window && wWindowFor(owner) == for_window)
 		wSetFocusTo(scr, for_window);
 	else if (prevFocused && prevFocused->screen_ptr == scr &&
 		 wWindowFor(prevFocused->client_win) == prevFocused)
