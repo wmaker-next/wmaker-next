@@ -254,6 +254,10 @@ static void lookup_available_fonts(_Panel * panel)
 		}
 
 		FcFontSetDestroy(fonts);
+	} else {
+		panel->fonts = wmalloc(sizeof(FontList));
+		panel->fonts->familyn = 0;
+		panel->fonts->families = wmalloc(sizeof(FontFamily) * 2);
 	}
 	if (os)
 		FcObjectSetDestroy(os);
@@ -730,6 +734,22 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
+static void prepareForClose(_Panel *panel)
+{
+	int i;
+
+	if (!panel->fonts)
+		return;
+
+	for (i = 0; i < panel->fonts->familyn; i++) {
+		wfree(panel->fonts->families[i].styles);
+		wfree(panel->fonts->families[i].name);
+	}
+	wfree(panel->fonts->families);
+	wfree(panel->fonts);
+	panel->fonts = NULL;
+}
+
 Panel *InitFontSimple(WMWidget *parent)
 {
 	_Panel *panel;
@@ -745,6 +765,7 @@ Panel *InitFontSimple(WMWidget *parent)
 	panel->callbacks.createWidgets = createPanel;
 	panel->callbacks.updateDomain = storeData;
 	panel->callbacks.undoChanges = showData;
+	panel->callbacks.prepareForClose = prepareForClose;
 
 	AddSection(panel, ICON_FILE);
 
