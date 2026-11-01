@@ -107,10 +107,9 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 			continue;
 
 		if (strcmp(lastlabel, label) != 0) {
-			if (wmc_to_wm(&wmc, &wm)) {
+			if (wmc_to_wm(&wmc, &wm))
 				(*addWMMenuEntryCallback)(wm);
-				init_wmconfig_storage(&wmc);
-			}
+			init_wmconfig_storage(&wmc);
 
 			wfree(lastlabel);
 			lastlabel = wstrdup(label);
@@ -118,16 +117,24 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 		wfree(label);
 
 		if (key && value) {
-			if (strcmp(key, "name") == 0)
+			if (strcmp(key, "name") == 0) {
+				wfree(wmc->Name);
 				wmc->Name = value;
-			else if (strcmp(key, "exec") == 0)
+			} else if (strcmp(key, "exec") == 0) {
+				wfree(wmc->Exec);
 				wmc->Exec = value;
-			else if (strcmp(key, "group") == 0)
+			} else if (strcmp(key, "group") == 0) {
+				wfree(wmc->Category);
 				wmc->Category = value;
-			else if (strcmp(key, "restart") == 0)
+			} else if (strcmp(key, "restart") == 0) {
+				wfree(wmc->Restart);
 				wmc->Restart = value;
-			else if (strcmp(key, "terminal") == 0)
+			} else if (strcmp(key, "terminal") == 0) {
 				wmc->Flags |= F_TERMINAL;
+				wfree(value);
+			} else {
+				wfree(value);
+			}
 		}
 
 		wfree(key);
@@ -137,10 +144,11 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 
 	wfree(lastlabel);
 
-	if (wmc_to_wm(&wmc, &wm)) {
+	if (wmc_to_wm(&wmc, &wm))
 		(*addWMMenuEntryCallback)(wm);
-		init_wmconfig_storage(&wmc);
-	}
+	init_wmconfig_storage(&wmc);
+	wfree(wmc);
+	wfree(wm);
 }
 
 /* an example to illustrate validateFilename.
@@ -265,6 +273,7 @@ static bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 
 	(*wm)->Name = (*wmc)->Name;
 	(*wm)->CmdLine = (*wmc)->Exec;
+	(*wm)->Path = NULL;
 	(*wm)->SubMenu = (*wmc)->Category;
 	(*wm)->Flags = (*wmc)->Flags;
 
@@ -279,6 +288,9 @@ static void init_wmconfig_storage(WMConfigMenuEntry **wmc)
 	if ((*wmc)->Name)
 		wfree((*wmc)->Name);
 	(*wmc)->Name = NULL;
+	if ((*wmc)->Exec)
+		wfree((*wmc)->Exec);
+	(*wmc)->Exec = NULL;
 	if ((*wmc)->Restart)
 		wfree((*wmc)->Restart);
 	(*wmc)->Restart = NULL;

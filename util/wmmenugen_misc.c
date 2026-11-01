@@ -169,3 +169,31 @@ bool fileInPath(const char *file)
 
 	return false;
 }
+
+/* like fileInPath() but the whole name is one executable, escaped
+ * spaces and all */
+bool fileInPathExact(const char *file)
+{
+	char *path, *t;
+
+	if (!file || !*file)
+		return false;
+
+	if (*file == '/')
+		return true;
+
+	if (strchr(file, '/'))
+		return false;
+
+	path = getenv("PATH");
+	if (!path)
+		return false;
+
+	t = wfindfile(path, file);
+	if (t) {
+		wfree(t);
+		return true;
+	}
+	return false;
+}
+

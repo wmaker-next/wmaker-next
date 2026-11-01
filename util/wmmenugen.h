@@ -39,6 +39,7 @@
 typedef struct {
 	char		*Name;		/* display name; submenu path of submenu */
 	char		*CmdLine;	/* command to execute, NULL if submenu */
+	char		*Path;		/* working directory, may be NULL */
 	char		*SubMenu;	/* submenu to place entry in; only used when an entry is */
 					/* added to the tree by the parser; new entries created in */
 					/* main (submenu creation) should set this to NULL */
@@ -59,6 +60,7 @@ typedef void cb_add_menu_entry(WMMenuEntry *entry);
 void  parse_locale(const char *what, char **env_lang, char **env_ctry, char **env_enc, char **env_mod);
 char *find_terminal_emulator(void);
 bool fileInPath(const char *file);
+bool fileInPathExact(const char *file);
 
 /* implemented parsers
  */

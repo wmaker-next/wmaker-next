@@ -114,6 +114,11 @@ static int run_tool_timeout(char *const argv[], int seconds)
 	return -2;
 }
 
+static char *run_tool_capture(char *const argv[], int *status)
+{
+	return wspawnvp_capture(argv, 256 * 1024, status);
+}
+
 static void test_wdwrite_non_dictionary(void)
 {
 	char *path, *before, *after;
@@ -196,6 +201,161 @@ static void test_wmmenugen_fifo(void)
 	wfree(dir);
 }
 
+static void test_wmmenugen_xdg(void)
+{
+	char dir[PATH_MAX], args[PATH_MAX + 32], trail[PATH_MAX + 32];
+	char tryexec[PATH_MAX + 32], missing[PATH_MAX + 32];
+	char dups[PATH_MAX + 32], term[PATH_MAX + 32];
+	char *saved_path, *out;
+	int status;
+
+	snprintf(dir, sizeof(dir), "%s/xdg", tmpdir);
+	CHECK(mkdir(dir, 0700) == 0);
+
+	snprintf(args, sizeof(args), "%s/args.desktop", dir);
+	CHECK(write_file(args, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=Args\n"
+			       "Exec=/bin/echo \"hello world\"\n"));
+
+	snprintf(trail, sizeof(trail), "%s/trailing.desktop", dir);
+	CHECK(write_file(trail, "[Desktop Entry]\n"
+				"Type=Application\n"
+				"Name=Trailing\n"
+				"Exec=/bin/echo foo\\\n"));
+
+	snprintf(tryexec, sizeof(tryexec), "%s/tryexec.desktop", dir);
+	CHECK(write_file(tryexec, "[Desktop Entry]\n"
+				  "Type=Application\n"
+				  "Name=TryExec\n"
+				  "TryExec=/bin/true\n"
+				  "Exec=/bin/echo --version\n"
+				  "Path=/tmp\n"));
+
+	snprintf(missing, sizeof(missing), "%s/missingtry.desktop", dir);
+	CHECK(write_file(missing, "[Desktop Entry]\n"
+				  "Type=Application\n"
+				  "Name=MissingTry\n"
+				  "TryExec=/nonexistent/tryexec\n"
+				  "Exec=/bin/echo should-not-appear\n"));
+
+	snprintf(dups, sizeof(dups), "%s/dups.desktop", dir);
+	CHECK(write_file(dups, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=First\n"
+			       "Name=Second\n"
+			       "Exec=/bin/true\n"
+			       "Exec=/bin/false\n"
+			       "Path=/tmp\n"
+			       "Path=/var\n"
+			       "Categories=Utility;\n"
+			       "Categories=Network;\n"));
+
+	snprintf(term, sizeof(term), "%s/term.desktop", dir);
+	CHECK(write_file(term, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=TermEntry\n"
+			       "Terminal=true\n"
+			       "Exec=/bin/echo \"hello world\"\n"
+			       "Path=/tmp\n"));
+
+	/* quoted Exec arguments stay one shell word */
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "/bin/echo 'hello world'") != NULL);
+	wfree(out);
+
+	/* a trailing backslash must not run past the value buffer */
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, trail, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "/bin/echo foo") != NULL);
+	wfree(out);
+
+	/* TryExec is an availability check, Path is the working directory */
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, tryexec, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "cd /tmp && /bin/echo --version") != NULL);
+	CHECK(out && strstr(out, "/bin/true") == NULL);
+	wfree(out);
+
+	/* a missing TryExec suppresses the entry */
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, missing, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "MissingTry") == NULL);
+	CHECK(out && strstr(out, "should-not-appear") == NULL);
+	wfree(out);
+
+	/* the last duplicate key wins */
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", dups, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Second") != NULL);
+	CHECK(out && strstr(out, "/bin/false") != NULL);
+	CHECK(out && strstr(out, "cd /var") != NULL);
+	CHECK(out && strstr(out, "Network") != NULL);
+	CHECK(out && strstr(out, "First") == NULL);
+	CHECK(out && strstr(out, "Utility") == NULL);
+	wfree(out);
+
+	/* terminal arguments stay separate words */
+	setenv("WMMENU_TERMINAL", "checkterm", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, term, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "cd /tmp && checkterm -e /bin/echo 'hello world'") != NULL);
+	wfree(out);
+
+	/* with no terminal available the terminal entry is skipped */
+	saved_path = getenv("PATH") ? wstrdup(getenv("PATH")) : NULL;
+	unsetenv("WMMENU_TERMINAL");
+	setenv("PATH", "/nonexistent", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", args, term, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Args") != NULL);
+	CHECK(out && strstr(out, "TermEntry") == NULL);
+	CHECK(out && strstr(out, "(null)") == NULL);
+	wfree(out);
+	if (saved_path) {
+		setenv("PATH", saved_path, 1);
+		wfree(saved_path);
+	} else {
+		unsetenv("PATH");
+	}
+}
+
+static void test_wmmenugen_wmconfig(void)
+{
+	char file[PATH_MAX + 32];
+	char *out;
+	int status;
+
+	snprintf(file, sizeof(file), "%s/wmconfig", tmpdir);
+	CHECK(write_file(file, "bad name \"Stale\"\n"
+			       "bad group \"StaleGroup\"\n"
+			       "bad exec \"nonexistentcmd\"\n"
+			       "good exec \"/bin/true\"\n"));
+
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:wmconfig", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "/bin/true") != NULL);
+	CHECK(out && strstr(out, "Stale") == NULL);
+	wfree(out);
+}
+
 int main(void)
 {
 	top_builddir = getenv("top_builddir");
@@ -207,10 +367,15 @@ int main(void)
 		return 2;
 	}
 	setenv("WMAKER_USER_ROOT", tmpdir, 1);
+	unsetenv("WMAKER_USER_XDG");
+	unsetenv("WMAKER_USER_DATA");
+	unsetenv("WMAKER_USER_CACHE");
 
 	test_wdwrite_non_dictionary();
 	test_icons_non_dictionary();
 	test_wmmenugen_fifo();
+	test_wmmenugen_xdg();
+	test_wmmenugen_wmconfig();
 
 	wspawnvp_wait((char *[]){ "rm", "-rf", tmpdir, NULL });
 

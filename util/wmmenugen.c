@@ -38,6 +38,7 @@ static int dirParseFunc(const char *filename, const struct stat *st, int tflags,
 static int menuSortFunc(const void *left, const void *right);
 static int nodeFindSubMenuByNameFunc(const void *item, const void *cdata);
 static WMTreeNode *findPositionInMenu(const char *submenu);
+static char *buildMenuCommand(const WMMenuEntry *wm);
 
 
 typedef void fct_parse_menufile(const char *file, cb_add_menu_entry *addWMMenuEntryCallback);
@@ -88,6 +89,7 @@ int main(int argc, char **argv)
 {
 	struct stat st;
 	int i;
+	char *desc;
 	/* assemblePLMenuFunc passes this around by pointer, no need to
 	 * heap-allocate it */
 	int previousDepth = -1;
@@ -191,7 +193,11 @@ int main(int argc, char **argv)
 		WMAddToArray(plMenuNodes, first);
 	}
 
-	puts(WMGetPropListDescription((WMPropList *)WMGetFromArray(plMenuNodes, 0), true));
+	desc = WMGetPropListDescription((WMPropList *)WMGetFromArray(plMenuNodes, 0), true);
+	if (desc) {
+		puts(desc);
+		wfree(desc);
+	}
 
 	return 0;
 }
@@ -230,6 +236,7 @@ static void addWMMenuEntryCallback(WMMenuEntry *aEntry)
 		root = (WMMenuEntry *)wmalloc(sizeof(WMMenuEntry));
 		root->Name = "Applications";
 		root->CmdLine = NULL;
+		root->Path = NULL;
 		root->SubMenu = NULL;
 		root->Flags = 0;
 		menu = WMCreateTreeNode(root);
@@ -244,9 +251,64 @@ static void addWMMenuEntryCallback(WMMenuEntry *aEntry)
 	wm->Flags = aEntry->Flags;
 	wm->Name = wstrdup(aEntry->Name);
 	wm->CmdLine = wstrdup(aEntry->CmdLine);
+	wm->Path = aEntry->Path ? wstrdup(aEntry->Path) : NULL;
 	wm->SubMenu = NULL;
 	WMAddItemToTree(at, wm);
 
+}
+
+/* Build the shell command for a menu entry. The command line is already
+ * shell-quoted when it comes from the XDG parser, so only the terminal
+ * and working directory need to be added. */
+static char *buildMenuCommand(const WMMenuEntry *wm)
+{
+	char *cmd, *quoted, *tmp;
+
+	if (wm->Flags & F_TERMINAL) {
+		if (!terminal) {
+			wwarning("no terminal emulator found for menu entry \"%s\"", wm->Name);
+			return NULL;
+		}
+		quoted = wshellquote(terminal);
+		if (!quoted)
+			return NULL;
+		tmp = wstrconcat(quoted, " -e ");
+		wfree(quoted);
+		if (!tmp)
+			return NULL;
+		cmd = wstrconcat(tmp, wm->CmdLine);
+		wfree(tmp);
+	} else {
+		cmd = wstrdup(wm->CmdLine);
+	}
+	if (!cmd)
+		return NULL;
+
+	if (wm->Path && *wm->Path) {
+		quoted = wshellquote(wm->Path);
+		if (!quoted) {
+			wfree(cmd);
+			return NULL;
+		}
+		tmp = wstrconcat("cd ", quoted);
+		wfree(quoted);
+		if (!tmp) {
+			wfree(cmd);
+			return NULL;
+		}
+		quoted = wstrconcat(tmp, " && ");
+		wfree(tmp);
+		if (!quoted) {
+			wfree(cmd);
+			return NULL;
+		}
+		tmp = wstrconcat(quoted, cmd);
+		wfree(quoted);
+		wfree(cmd);
+		cmd = tmp;
+	}
+
+	return cmd;
 }
 
 /* creates the proplist menu out of the abstract menu representation in `menu'.
@@ -289,39 +351,36 @@ static void assemblePLMenuFunc(WMTreeNode *aNode, void *data)
 			tmp3 = WMCreatePLString(wm->CmdLine);
 			WMAddToPLArray(pl, WMCreatePLArray(tmp1, tmp2, tmp3, NULL));
 			WMReleasePropList(tmp3);
+			WMReleasePropList(tmp2);
+			WMReleasePropList(tmp1);
 		} else if (wm->Flags & F_RESTART_SELF) {/* RESTART */
 			tmp1 = WMCreatePLString(_("Restart Window Maker"));
 			tmp2 = WMCreatePLString("RESTART");
 			WMAddToPLArray(pl, WMCreatePLArray(tmp1, tmp2, NULL));
+			WMReleasePropList(tmp2);
+			WMReleasePropList(tmp1);
 		} else if (wm->Flags & F_QUIT) {	/* EXIT */
 			tmp1 = WMCreatePLString(_("Exit Window Maker"));
 			tmp2 = WMCreatePLString("EXIT");
 			WMAddToPLArray(pl, WMCreatePLArray(tmp1, tmp2, NULL));
+			WMReleasePropList(tmp2);
+			WMReleasePropList(tmp1);
 		} else {				/* plain simple command */
-			char buf[1024];
-			WMPropList *tmp3;
+			char *cmd = buildMenuCommand(wm);
 
-			memset(buf, 0, sizeof(buf));
-			if (wm->Flags & F_TERMINAL) {
-				/* the result is a SHEXEC entry that goes through
-				 * /bin/sh -c, so both the terminal and the desktop
-				 * entry's Exec value must be quoted as shell words */
-				char *quoted_cmd = wshellquote(wm->CmdLine);
-				char *quoted_term = wshellquote(terminal);
-				snprintf(buf, sizeof(buf), "%s -e %s", quoted_term, quoted_cmd);
-				wfree(quoted_cmd);
-				wfree(quoted_term);
-			} else {
-				snprintf(buf, sizeof(buf), "%s", wm->CmdLine);
+			if (cmd) {
+				WMPropList *tmp3;
+
+				tmp1 = WMCreatePLString(wm->Name);
+				tmp2 = WMCreatePLString("SHEXEC");
+				tmp3 = WMCreatePLString(cmd);
+				WMAddToPLArray(pl, WMCreatePLArray(tmp1, tmp2, tmp3, NULL));
+				WMReleasePropList(tmp3);
+				WMReleasePropList(tmp2);
+				WMReleasePropList(tmp1);
+				wfree(cmd);
 			}
-			tmp1 = WMCreatePLString(wm->Name);
-			tmp2 = WMCreatePLString("SHEXEC");
-			tmp3 = WMCreatePLString(buf);
-			WMAddToPLArray(pl, WMCreatePLArray(tmp1, tmp2, tmp3, NULL));
-			WMReleasePropList(tmp3);
 		}
-		WMReleasePropList(tmp1);
-		WMReleasePropList(tmp2);
 
 		WMAddToArray(plMenuNodes, pl);
 	}
@@ -377,6 +436,7 @@ static WMTreeNode *findPositionInMenu(const char *submenu)
 			wm->Flags = 0;
 			wm->Name = wstrdup(q);
 			wm->CmdLine = NULL;
+			wm->Path = NULL;
 			wm->SubMenu = NULL;
 			node = WMAddNodeToTree(pnode, WMCreateTreeNode(wm));
 		}

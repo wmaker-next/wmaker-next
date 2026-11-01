@@ -25,10 +25,9 @@
  * http://standards.freedesktop.org/menu-spec/menu-spec-1.1.html
  *
  * We will only deal with Type == "Application" entries in [Desktop Entry]
- * groups. Since there is no passing of file name arguments or anything of
- * the sort to applications from the menu, execname is determined as follows:
- * - If `TryExec' is present, use that;
- * - else use `Exec' with any switches stripped
+ * groups. `TryExec', when present, only checks that the application is
+ * available. The menu command comes from `Exec', with field codes stripped
+ * and each argument kept as a separate shell word.
  *
  * Only the (first, though there should not be more than one) `Main Category'
  * is used to place the entry in a submenu.
@@ -47,6 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "wmmenugen.h"
 
@@ -76,7 +76,8 @@ static bool getBooleanValue(const char *line);
 static void  getMenuHierarchyFor(char **xdgmenuspec);
 static bool compare_matchlevel(int *current_level, const char *found_locale);
 static bool  xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wmentry);
-static char *parse_xdg_exec(char *exec);
+static char *parse_xdg_exec(const char *exec);
+static bool  try_exec_available(const char *file);
 static void  init_xdg_storage(XDGMenuEntry *xdg);
 static void  init_wm_storage(WMMenuEntry *wm);
 
@@ -85,7 +86,7 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 {
 	FILE *fp;
 	char buf[1024];
-	char *p, *tmp, *key;
+	char *p, *tmp = NULL, *key;
 	WMMenuEntry *wm;
 	XDGMenuEntry *xdg;
 	int InGroup;
@@ -194,110 +195,201 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 	if (InGroup && xdg_to_wm(xdg, wm))
 		(*addWMMenuEntryCallback)(wm);
 
+	init_xdg_storage(xdg);
+	init_wm_storage(wm);
+	wfree(xdg);
+	wfree(wm);
 }
 
 
 /* coerce an xdg entry type into a wm entry type
  */
+static bool try_exec_available(const char *file)
+{
+	if (!file || !*file)
+		return false;
+	/* the unescaped value names one executable, escaped spaces are
+	 * part of the file name and must not split it */
+	if (file[0] == '/')
+		return access(file, X_OK) == 0;
+	return fileInPathExact(file);
+}
+
 static bool xdg_to_wm(XDGMenuEntry *xdg, WMMenuEntry *wm)
 {
 	char *p;
 
-	/* Exec or TryExec is mandatory */
-	if (!(xdg->Exec || xdg->TryExec))
+	/* Exec is mandatory, TryExec only checks availability */
+	if (!xdg->Exec)
+		return false;
+	if (xdg->TryExec && !try_exec_available(xdg->TryExec))
 		return false;
 
-	/* if there's no Name, use the first word of Exec or TryExec
-	 */
-	if (xdg->Name) {
-		wm->Name = xdg->Name;
-	} else  {
-		if (xdg->TryExec)
-			wm->Name = wstrdup(xdg->TryExec);
-		else /* xdg->Exec */
-			wm->Name = wstrdup(xdg->Exec);
+	/* if there's no Name, use the first word of Exec */
+	if (!xdg->Name) {
+		xdg->Name = wstrdup(xdg->Exec);
 
-		p = strchr(wm->Name, ' ');
+		p = strchr(xdg->Name, ' ');
 		if (p)
 			*p = '\0';
 	}
+	wm->Name = xdg->Name;
 
-	if (xdg->TryExec)
-		wm->CmdLine = xdg->TryExec;
-	else { /* xdg->Exec */
-		wm->CmdLine = parse_xdg_exec(xdg->Exec);
-		if (!wm->CmdLine)
-			return false;
-	}
+	wm->CmdLine = parse_xdg_exec(xdg->Exec);
+	if (!wm->CmdLine)
+		return false;
 
+	wm->Path = xdg->Path;
 	wm->SubMenu = xdg->Category;
-	wm->Flags = xdg->Flags;
-	if (wm->CmdLine != xdg->TryExec)
-		wm->Flags |= F_FREE_CMD_LINE;
+	wm->Flags = xdg->Flags | F_FREE_CMD_LINE;
 
 	return true;
 }
 
-static char *parse_xdg_exec(char *exec)
+static bool appendArgChar(char **buf, size_t *len, size_t *cap, char c)
 {
-	char *cmd_line, *dst, *src;
-	bool quoted = false;
+	char *tmp;
 
-	cmd_line = wstrdup(exec);
+	if (*len + 1 >= *cap) {
+		size_t newcap = *cap ? *cap * 2 : 32;
 
-	for (dst = src = cmd_line; *src; src++) {
-		if (quoted) {
-			if (*src == '"')
-				quoted = false;
-			else if (*src == '\\')
-				switch (*++src) {
-				case '"':
-				case '`':
-				case '$':
-				case '\\':
-					*dst++ = *src;
-					break;
-				default:
-					goto err_out;
+		tmp = wrealloc(*buf, newcap);
+		if (!tmp)
+			return false;
+		*buf = tmp;
+		*cap = newcap;
+	}
+	(*buf)[(*len)++] = c;
+	(*buf)[*len] = '\0';
+	return true;
+}
+
+static char *join_argv(char **argv, int argc)
+{
+	char *result, *p, *quoted;
+	size_t total = 0;
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		quoted = wshellquote(argv[i]);
+		if (!quoted)
+			return NULL;
+		total += strlen(quoted) + (i ? 1 : 0);
+		wfree(quoted);
+	}
+
+	result = wmalloc(total + 1);
+	p = result;
+	for (i = 0; i < argc; i++) {
+		size_t len;
+
+		quoted = wshellquote(argv[i]);
+		if (!quoted) {
+			wfree(result);
+			return NULL;
+		}
+		len = strlen(quoted);
+		if (i)
+			*p++ = ' ';
+		memcpy(p, quoted, len);
+		p += len;
+		wfree(quoted);
+	}
+	*p = '\0';
+	return result;
+}
+
+static char *parse_xdg_exec(const char *exec)
+{
+	char **argv = NULL;
+	int argc = 0, cap = 0;
+	char *arg = NULL, *result = NULL;
+	size_t arglen = 0, argcap = 0;
+	const char *src = exec;
+	bool quoted, saw_quote;
+
+	for (;;) {
+		while (isspace((unsigned char)*src))
+			src++;
+		if (*src == '\0')
+			break;
+
+		arg = NULL;
+		arglen = 0;
+		argcap = 0;
+		quoted = false;
+		saw_quote = false;
+
+		while (*src && (quoted || !isspace((unsigned char)*src))) {
+			if (quoted) {
+				if (*src == '"') {
+					quoted = false;
+					src++;
+				} else if (*src == '\\') {
+					src++;
+					if (*src == '\0')
+						goto fail;
+					if (*src != '"' && *src != '`' &&
+					    *src != '$' && *src != '\\')
+						goto fail;
+					if (!appendArgChar(&arg, &arglen, &argcap, *src++))
+						goto fail;
+				} else if (!appendArgChar(&arg, &arglen, &argcap, *src++)) {
+					goto fail;
 				}
-			else
-				*dst++ = *src;
-		} else {
-			if (*src == '"')
+			} else if (*src == '"') {
 				quoted = true;
-			else if (*src == '%') {
+				saw_quote = true;
+				src++;
+			} else if (*src == '%') {
 				src++;
 				if (*src == '\0')
 					break;
-				if (*src == '%')
-					*dst++ = *src;
-				else if (strchr ("fFuUdDnNickvm", *src))
-					/*
-					 * Skip valid field-code.
-					 */
-					;
-				else
-					/*
-					 * Invalid field-code.
-					 */
-					goto err_out;
-			} else
-				*dst++ = *src;
+				if (*src == '%') {
+					if (!appendArgChar(&arg, &arglen, &argcap, *src++))
+						goto fail;
+				} else if (strchr("fFuUdDnNickvm", *src)) {
+					src++;
+				} else {
+					goto fail;
+				}
+			} else if (!appendArgChar(&arg, &arglen, &argcap, *src++)) {
+				goto fail;
+			}
 		}
+
+		if (quoted)
+			goto fail;
+
+		if (arglen > 0 || saw_quote) {
+			if (argc == cap) {
+				int newcap = cap ? cap * 2 : 8;
+				char **newargv = wrealloc(argv, sizeof(char *) * newcap);
+
+				if (!newargv)
+					goto fail;
+				argv = newargv;
+				cap = newcap;
+			}
+			if (!arg)
+				arg = wstrdup("");
+			argv[argc++] = arg;
+			arg = NULL;
+		}
+		wfree(arg);
 	}
 
-	if (quoted)
-		goto err_out;
+	if (argc == 0)
+		goto fail;
 
-	do
-		*dst = '\0';
-	while (dst > cmd_line && isspace(*--dst));
+	result = join_argv(argv, argc);
 
-	return cmd_line;
-
-err_out:
-	wfree(cmd_line);
-	return NULL;
+fail:
+	wfree(arg);
+	while (argc > 0)
+		wfree(argv[--argc]);
+	wfree(argv);
+	return result;
 }
 
 /* (re-)initialize a XDGMenuEntry storage
@@ -334,6 +426,7 @@ static void init_wm_storage(WMMenuEntry *wm)
 
 	wm->Name = NULL;
 	wm->CmdLine = NULL;
+	wm->Path = NULL;
 	wm->Flags = 0;
 }
 
@@ -368,7 +461,7 @@ static void getKey(char **target, const char *line)
 static void getStringValue(char **target, const char *line)
 {
 	const char *p;
-	char *q;
+	char *q, *value;
 	int kstart;
 
 	p = line;
@@ -383,13 +476,15 @@ static void getStringValue(char **target, const char *line)
 	while (*(p + kstart) && isspace(*(p + kstart)))
 		kstart++;
 
-	*target = wstrdup(p + kstart);
+	value = wstrdup(p + kstart);
 
-	for (p = q = *target; *p; p++) {
+	for (p = q = value; *p; p++) {
 		if (*p != '\\') {
 			*q++ = *p;
 		} else {
-			switch (*++p) {
+			if (*++p == '\0')
+				break;
+			switch (*p) {
 			case 's':  *q++ = ' ';  break;
 			case 'n':  *q++ = '\n'; break;
 			case 't':  *q++ = '\t'; break;
@@ -404,6 +499,9 @@ static void getStringValue(char **target, const char *line)
 		}
 	}
 	*q = '\0';
+
+	wfree(*target);
+	*target = value;
 }
 
 /* get a localized string value from line. allocates target, which must be wfreed later.
@@ -445,12 +543,16 @@ static void getLocalizedStringValue(char **target, const char *line, int *match_
 	/* if there is no value yet and this is the default key, return */
 	if (!*target && !locale) {
 		*match_level = MATCH_DEFAULT;
+		wfree(*target);
 		*target = wstrdup(p + kstart);
 		return;
 	}
 
 	if (compare_matchlevel(match_level, locale)) {
-		*target = wstrdup(p + kstart);
+		char *value = wstrdup(p + kstart);
+
+		wfree(*target);
+		*target = value;
 	}
 
 	wfree(locale);
@@ -461,7 +563,7 @@ static void getLocalizedStringValue(char **target, const char *line, int *match_
 /* get a boolean value from line */
 static bool getBooleanValue(const char *line)
 {
-	char *p;
+	char *p = NULL;
 	int ret;
 
 	getStringValue(&p, line);
