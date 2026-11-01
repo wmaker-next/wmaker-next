@@ -357,6 +357,41 @@ static void test_wexpandpath(void)
 	wfree(p);
 }
 
+static void test_findfileinarray_mixed(void)
+{
+	char dir[] = "/tmp/check_wutil_find_XXXXXX";
+	char file[sizeof(dir) + 8];
+	WMPropList *array, *dict, *str;
+	char *found;
+	FILE *f;
+
+	if (!mkdtemp(dir))
+		return;
+
+	snprintf(file, sizeof(file), "%s/needle", dir);
+	f = fopen(file, "w");
+	CHECK(f != NULL);
+	if (f)
+		fclose(f);
+
+	dict = WMCreatePLDictionary(NULL, NULL);
+	str = WMCreatePLString(dir);
+	array = WMCreatePLArray(dict, str, NULL);
+	WMReleasePropList(dict);
+	WMReleasePropList(str);
+
+	found = wfindfileinarray(array, "needle");
+	CHECK(found != NULL);
+	if (found) {
+		CHECK(strcmp(found, file) == 0);
+		wfree(found);
+	}
+
+	WMReleasePropList(array);
+	unlink(file);
+	rmdir(dir);
+}
+
 static void test_wpathdir(void)
 {
 	char *d;
@@ -864,6 +899,7 @@ int main(void)
 	test_wtrimspace();
 	test_wstrtod();
 	test_wexpandpath();
+	test_findfileinarray_mixed();
 	test_wpathdir();
 	test_intern();
 	test_array();

@@ -1145,8 +1145,10 @@ void WMSetViewDragImage(WMView * view, WMPixmap * dragImage)
 
 void WMReleaseViewDragImage(WMView * view)
 {
-	if (view->dragImage != NULL)
+	if (view->dragImage != NULL) {
 		WMReleasePixmap(view->dragImage);
+		view->dragImage = NULL;
+	}
 }
 
 /* Create a drag handler, associating drag event masks with dragEventProc */

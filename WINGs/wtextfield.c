@@ -180,8 +180,12 @@ static void normalizeRange(TextField * tPtr, WMRange * range)
 		}
 	}
 
-	if (range->position + range->count > tPtr->textLen)
+	if (range->position >= tPtr->textLen) {
+		range->position = tPtr->textLen;
+		range->count = 0;
+	} else if (range->position + range->count > tPtr->textLen) {
 		range->count = tPtr->textLen - range->position;
+	}
 }
 
 static void memmv(char *dest, const char *src, int size)

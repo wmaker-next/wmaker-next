@@ -275,13 +275,11 @@ void WMSetWindowCloseAction(WMWindow * win, WMAction * action, void *clientData)
 
 			atoms = WXGetWMProtocols(scr->display, win->view->window, &count);
 			if (atoms && count > 0) {
-				newAtoms = wmalloc((count - 1) * sizeof(xcb_atom_t));
+				newAtoms = wmalloc(count * sizeof(xcb_atom_t));
 				ncount = 0;
 				for (i = 0; i < count; i++) {
-					if (atoms[i] != scr->deleteWindowAtom) {
-						newAtoms[i] = atoms[i];
-						ncount++;
-					}
+					if (atoms[i] != scr->deleteWindowAtom)
+						newAtoms[ncount++] = atoms[i];
 				}
 				WXSetWMProtocols(scr->display, win->view->window, newAtoms, ncount);
 				if (atoms)

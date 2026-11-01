@@ -531,6 +531,9 @@ static void updateScrollerProportion(ScrollView * sPtr)
 	float prop, value;
 	float oldV, oldP;
 
+	if (!sPtr->contentView)
+		return;
+
 	if (sPtr->flags.hasHScroller) {
 		oldV = WMGetScrollerValue(sPtr->hScroller);
 		oldP = WMGetScrollerKnobProportion(sPtr->hScroller);

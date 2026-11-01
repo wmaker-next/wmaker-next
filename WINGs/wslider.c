@@ -452,15 +452,20 @@ static int getSliderPart(Slider * sPtr, int x, int y)
 static int valueForMousePoint(Slider * sPtr, int x, int y)
 {
 	WMSize size = sPtr->view->size;
-	int f;
+	int f, extent;
 
-	if (sPtr->flags.vertical) {
-		f = (y - sPtr->knobThickness / 2) * (MAXV - MINV)
-		    / ((int)size.height - 2 - sPtr->knobThickness);
-	} else {
-		f = (x - sPtr->knobThickness / 2) * (MAXV - MINV)
-		    / ((int)size.width - 2 - sPtr->knobThickness);
-	}
+	if (sPtr->flags.vertical)
+		extent = (int)size.height - 2 - sPtr->knobThickness;
+	else
+		extent = (int)size.width - 2 - sPtr->knobThickness;
+
+	if (extent <= 0)
+		return sPtr->minValue;
+
+	if (sPtr->flags.vertical)
+		f = (y - sPtr->knobThickness / 2) * (MAXV - MINV) / extent;
+	else
+		f = (x - sPtr->knobThickness / 2) * (MAXV - MINV) / extent;
 
 	f += sPtr->minValue;
 	if (f < sPtr->minValue)

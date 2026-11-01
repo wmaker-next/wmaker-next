@@ -1163,6 +1163,7 @@ static void destroyBrowser(WMBrowser * bPtr)
 			wfree(bPtr->titles[i]);
 	}
 	wfree(bPtr->titles);
+	wfree(bPtr->columns);
 
 	wfree(bPtr->pathSeparator);
 

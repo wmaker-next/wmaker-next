@@ -409,9 +409,11 @@ char *wfindfileinarray(WMPropList *array, const char *file)
 		char *p;
 
 		prop = WMGetFromPLArray(array, i);
-		if (!prop)
+		if (!prop || !WMIsPLString(prop))
 			continue;
 		p = WMGetFromPLString(prop);
+		if (!p)
+			continue;
 
 		len = strlen(p);
 		path = wmalloc(len + flen + 2);

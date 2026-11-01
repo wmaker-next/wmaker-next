@@ -250,6 +250,8 @@ void W_FreeViewXdndPart(WMView * view)
 	if (view->dragDestinationProcs)
 		wfree(view->dragDestinationProcs);
 
-	if (view->dragImage)
+	if (view->dragImage) {
 		WMReleasePixmap(view->dragImage);
+		view->dragImage = NULL;
+	}
 }

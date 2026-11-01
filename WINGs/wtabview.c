@@ -305,7 +305,9 @@ void WMInsertItemInTabView(WMTabView * tPtr, int index, WMTabViewItem * item)
 		tPtr->maxItems += 10;
 	}
 
-	if (index > tPtr->itemCount)
+	if (index < 0)
+		index = 0;
+	else if (index > tPtr->itemCount)
 		index = tPtr->itemCount;
 
 	if (index == 0 && tPtr->items[0]) {

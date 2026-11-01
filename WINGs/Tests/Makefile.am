@@ -44,7 +44,7 @@ endif
 EXTRA_DIST = logo.xpm upbtn.xpm wm.html wm.png
 
 # automated unit tests, run by `make check`
-check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im check_menuparser check_wxparse check_xbm check_selection check_wtext
+check_PROGRAMS = check_wutil check_proplist check_handlers check_ipc check_evq check_im check_menuparser check_wxparse check_xbm check_selection check_wtext check_application
 TESTS = $(check_PROGRAMS)
 
 check_wutil_SOURCES = check_wutil.c
@@ -106,6 +106,10 @@ check_selection_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 check_wtext_SOURCES = check_wtext.c
 check_wtext_LDADD = $(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la @XCB_LIBS@ @INTLIBS@
+
+check_application_SOURCES = check_application.c
+check_application_LDADD = $(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 
 LDADD= $(top_builddir)/WINGs/libWINGs.la $(top_builddir)/wrlib/libwraster.la \

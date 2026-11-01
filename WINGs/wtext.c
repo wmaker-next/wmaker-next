@@ -2664,6 +2664,12 @@ static void handleEvents(xcb_generic_event_t * event, void *data)
 		WMReleaseColor(tPtr->dColor);
 		if (tPtr->dBulletPix)
 			WMReleasePixmap(tPtr->dBulletPix);
+		if (tPtr->fgColor)
+			WMReleaseColor(tPtr->fgColor);
+		if (tPtr->bgColor)
+			WMReleaseColor(tPtr->bgColor);
+		if (tPtr->bgPixmap)
+			WMReleasePixmap(tPtr->bgPixmap);
 		wfree(tPtr->margins);
 		WMDeleteSelectionHandler(tPtr->view, XCB_ATOM_PRIMARY, XCB_CURRENT_TIME);
 		WMRemoveNotificationObserver(tPtr);
@@ -3435,6 +3441,8 @@ void *WMRemoveTextBlock(WMText * tPtr)
 	if (tPtr->currentTextBlock == tPtr->firstTextBlock) {
 		if (tPtr->currentTextBlock->next)
 			tPtr->currentTextBlock->next->prior = NULL;
+		else
+			tPtr->lastTextBlock = NULL;
 
 		tPtr->firstTextBlock = tPtr->currentTextBlock->next;
 		tPtr->currentTextBlock = tPtr->firstTextBlock;

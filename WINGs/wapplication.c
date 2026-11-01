@@ -97,6 +97,13 @@ void WMReleaseApplication(void) {
 		wfree(WMApplication.argv);
 		WMApplication.argv = NULL;
 	}
+
+	if (WMApplication.resourcePath) {
+		wfree(WMApplication.resourcePath);
+		WMApplication.resourcePath = NULL;
+	}
+
+	_WINGS_progname = NULL;
 }
 
 void WMSetResourcePath(const char *path)

@@ -49,11 +49,16 @@ static void syslog_open(const char *prog_name)
 
 static void syslog_message(int prio, const char *prog_name, const char *msg)
 {
+	size_t skip;
+
 	if (!syslog_initialized)
 		syslog_open(prog_name);
 
 	//jump over the program name cause syslog is already displaying it
-	syslog(prio, "%s", msg + strlen(prog_name));
+	skip = strlen(prog_name);
+	if (skip > strlen(msg))
+		skip = strlen(msg);
+	syslog(prio, "%s", msg + skip);
 }
 
 void w_syslog_close(void)

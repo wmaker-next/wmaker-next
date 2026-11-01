@@ -115,6 +115,7 @@ WINGs/Tests/check_menuparser
 WINGs/Tests/check_selection
 WINGs/Tests/check_wxparse
 WINGs/Tests/check_wtext
+WINGs/Tests/check_application
 WINGs/Tests/check_xbm
 WINGs/Extras/tableview
 src/Tests/check_calc
