@@ -705,7 +705,7 @@ static void storeCommandInScript(const char *cmd, const char *line)
 	}
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	char buffer[64];
 	int i;
@@ -755,6 +755,8 @@ static void storeData(_Panel * panel)
 	SetStringForKey(tmp, "ModifierKey");
 
 	wfree(tmp);
+
+	return true;
 }
 
 Panel *InitMouseSettings(WMWidget *parent)

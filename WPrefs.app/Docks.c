@@ -93,7 +93,7 @@ typedef struct _Panel {
 #define DELAY_ICON_S "timer%is"
 
 static void showData(_Panel *panel);
-static void storeData(_Panel *panel);
+static bool storeData(_Panel *panel);
 
 
 static void pushAutoDelayButton(WMWidget *w, void *data)
@@ -313,7 +313,7 @@ static void createPanel(Panel *p)
 	showData(panel);
 }
 
-static void storeData(_Panel *panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 	for (i = 0; i < wlengthof(auto_delay); i++)
@@ -334,6 +334,8 @@ static void storeData(_Panel *panel)
 			break;
 		}
 	}
+
+	return true;
 }
 
 static void showData(_Panel *panel)

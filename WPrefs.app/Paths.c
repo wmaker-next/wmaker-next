@@ -240,7 +240,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 	}
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	WMPropList *list;
 	WMPropList *tmp;
@@ -276,6 +276,8 @@ static void storeData(_Panel * panel)
 	}
 	SetSoundObjectForKey(list, "SoundPath");
 	WMReleasePropList(list);
+
+	return true;
 }
 
 static void createPanel(Panel * p)

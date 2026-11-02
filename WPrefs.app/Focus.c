@@ -102,7 +102,7 @@ static void showData(_Panel * panel)
 	WMSetButtonSelected(panel->craisB, GetBoolForKey("CirculateRaise"));
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	char *str;
 	int i;
@@ -120,6 +120,8 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AutoFocus");
 	SetBoolForKey(WMGetButtonSelected(panel->warpFocB), "PointerFollowsFocus");
 	SetBoolForKey(WMGetButtonSelected(panel->craisB), "CirculateRaise");
+
+	return true;
 }
 
 static void pushDelayButton(WMWidget * w, void *data)

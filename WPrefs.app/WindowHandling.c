@@ -240,7 +240,7 @@ static void showData(_Panel * panel)
 		WMPerformButtonClick(panel->resaB);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	WMPropList *arr;
 	WMPropList *x, *y;
@@ -275,6 +275,8 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->resrB), "Attraction");
 
 	WMReleasePropList(arr);
+
+	return true;
 }
 
 static void createPanel(Panel * p)

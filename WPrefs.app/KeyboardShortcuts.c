@@ -519,7 +519,7 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 	char *str;
@@ -540,6 +540,8 @@ static void storeData(_Panel * panel)
 			SetStringForKey("None", keyOptions[i].key);
 		}
 	}
+
+	return true;
 }
 
 Panel *InitKeyboardShortcuts(WMWidget *parent)

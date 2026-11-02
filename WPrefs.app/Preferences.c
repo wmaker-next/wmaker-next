@@ -168,7 +168,7 @@ static void showData(_Panel * panel)
 		WMSetButtonSelected(panel->ballB[x], GetBoolForKey(balloon_choices[x].db_key));
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	bool lr, tb;
 	int i;
@@ -189,6 +189,8 @@ static void storeData(_Panel * panel)
 
 	for (i = 0; i < wlengthof(balloon_choices); i++)
 		SetBoolForKey(WMGetButtonSelected(panel->ballB[i]), balloon_choices[i].db_key);
+
+	return true;
 }
 
 static void createPanel(Panel * p)

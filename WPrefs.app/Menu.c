@@ -1851,18 +1851,21 @@ static WMPropList *buildPLFromMenu(_Panel * panel)
 	return menu;
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	WMPropList *menu;
+	bool saved;
 
 	if (panel->dontSave)
-		return;
+		return true;
 
 	menu = buildPLFromMenu(panel);
 
-	WMWritePropListToFile(menu, panel->menuPath);
+	saved = WMWritePropListToFile(menu, panel->menuPath);
 
 	WMReleasePropList(menu);
+
+	return saved;
 }
 
 static void showMenus(_Panel * panel)

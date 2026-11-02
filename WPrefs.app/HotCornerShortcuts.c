@@ -291,7 +291,7 @@ static void showData(_Panel * panel)
 	updateControlsSensitivity(panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	WMPropList *list;
 	WMPropList *tmp;
@@ -327,6 +327,8 @@ static void storeData(_Panel * panel)
 		WMReleasePropList(tmp);
 	}
 	SetObjectForKey(list, "HotCornerActions");
+
+	return true;
 }
 
 static void pushDelayButton(WMWidget * w, void *data)

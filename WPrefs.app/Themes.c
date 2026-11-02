@@ -198,8 +198,9 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
+	return true;
 }
 
 Panel *InitThemes(WMWidget *parent)

@@ -82,7 +82,7 @@ static bool TIFFOK = false;
 static void loadConfigurations(WMScreen * scr, WMWindow * mainw);
 static void loadSoundDomain(WMScreen *scr, WMWindow *mainw);
 
-static void savePanelData(Panel * panel);
+static bool savePanelData(Panel *panel);
 
 static void prepareForClose(void);
 
@@ -142,9 +142,23 @@ static bool changedStartupOnlyKey(WMPropList *before, WMPropList *after)
 	return hit;
 }
 
+static void reportSaveError(WMScreen *scr, const char *path)
+{
+	char *msg;
+
+	if (path)
+		msg = wstrconcat(_("Could not save settings to "), path);
+	else
+		msg = wstrdup(_("Could not save settings."));
+
+	WMRunAlertPanel(scr, WPrefs.win, _("Error"), msg, _("OK"), NULL, NULL);
+	wfree(msg);
+}
+
 static void save(WMWidget * w, void *data)
 {
 	int i, res;
+	bool saved = true;
 	WMPropList *p1, *p2;
 	WMPropList *keyList;
 	WMPropList *key;
@@ -160,8 +174,15 @@ static void save(WMWidget * w, void *data)
 	/*    puts("gathering data"); */
 	for (i = 0; i < WPrefs.sectionCount; i++) {
 		PanelRec *rec = WMGetHangedData(WPrefs.sectionB[i]);
-		if ((rec->callbacks.flags & INITIALIZED_PANEL))
-			savePanelData((Panel *) rec);
+		if ((rec->callbacks.flags & INITIALIZED_PANEL) && !savePanelData((Panel *) rec))
+			saved = false;
+	}
+
+	if (!saved) {
+		if (snapshot)
+			WMReleasePropList(snapshot);
+		reportSaveError(WMWidgetScreen(w), NULL);
+		return;
 	}
 
 	/* Detect edits to keys the window manager freezes for the session,
@@ -203,12 +224,18 @@ static void save(WMWidget * w, void *data)
 	WMReleasePropList(keyList);
 	/*    puts("storing data"); */
 
-	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
+	if (!WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath)) {
+		reportSaveError(WMWidgetScreen(w), WindowMakerDBPath);
+		return;
+	}
 
 	/* The Sound panel edits a separate domain; persist it alongside the
 	 * main one so the wmsoundd daemon (inotify-watching the file) reloads. */
-	if (WMSoundDB && WMSoundDBPath)
-		WMWritePropListToFile(WMSoundDB, WMSoundDBPath);
+	if (WMSoundDB && WMSoundDBPath
+	    && !WMWritePropListToFile(WMSoundDB, WMSoundDBPath)) {
+		reportSaveError(WMWidgetScreen(w), WMSoundDBPath);
+		return;
+	}
 
 	reply = wIPCCommand(NULL, verb);
 	if (reply) {
@@ -373,7 +400,10 @@ static void resetDefaults(WMWidget *w, void *data)
 		unlink(rootmenuPath);
 	wfree(rootmenuPath);
 
-	WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath);
+	if (!WMWritePropListToFile(WindowMakerDB, WindowMakerDBPath)) {
+		reportSaveError(scr, WindowMakerDBPath);
+		return;
+	}
 
 	/* every initialized panel re-reads the cleared dictionaries */
 	undoAll(NULL, NULL);
@@ -606,13 +636,14 @@ static void hidePanel(Panel * panel)
 		(*rec->callbacks.hidePanel) (panel);
 }
 
-static void savePanelData(Panel * panel)
+static bool savePanelData(Panel *panel)
 {
 	PanelRec *rec = (PanelRec *) panel;
 
-	if (rec->callbacks.updateDomain) {
-		(*rec->callbacks.updateDomain) (panel);
-	}
+	if (rec->callbacks.updateDomain)
+		return (*rec->callbacks.updateDomain) (panel);
+
+	return true;
 }
 
 static void changeSection(WMWidget * self, void *data)

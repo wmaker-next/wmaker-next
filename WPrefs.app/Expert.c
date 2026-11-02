@@ -551,7 +551,7 @@ static void createPanel(Panel *p)
 	showData(panel);
 }
 
-static void storeDefaults(_Panel *panel)
+static bool storeDefaults(_Panel *panel)
 {
 	WMUserDefaults *udb = WMGetStandardUserDefaults();
 	int i;
@@ -596,6 +596,8 @@ static void storeDefaults(_Panel *panel)
 		}
 		}
 	}
+
+	return true;
 }
 
 Panel *InitExpert(WMWidget *parent)

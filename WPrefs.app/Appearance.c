@@ -2226,7 +2226,7 @@ static void showData(_Panel * panel)
 	WMSetButtonSelected(panel->taliB[panel->titleAlignment], true);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	TextureListItem *titem;
 	WMListItem *item;
@@ -2251,6 +2251,8 @@ static void storeData(_Panel * panel)
 
 	SetStringForKey(menu_style[panel->menuStyle].db_value, "MenuStyle");
 	SetStringForKey(wintitle_align[panel->titleAlignment].db_value, "TitleJustify");
+
+	return true;
 }
 
 static void freeTextureListItem(_Panel *panel, WMListItem *item)

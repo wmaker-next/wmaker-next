@@ -604,7 +604,7 @@ static void showData(_Panel * panel)
 	selectedOption(panel->optionP, panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 	WMMenuItem *item;
@@ -632,6 +632,8 @@ static void storeData(_Panel * panel)
 			}
 		}
 	}
+
+	return true;
 }
 
 static void createPanel(Panel * p)

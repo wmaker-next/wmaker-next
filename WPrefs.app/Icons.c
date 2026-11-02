@@ -413,7 +413,7 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 
@@ -444,6 +444,8 @@ static void storeData(_Panel * panel)
 
 	wm_enum_popup_store(panel->animP, icon_animation,
 			   wlengthof(icon_animation), "IconificationStyle");
+
+	return true;
 }
 
 Panel *InitIcons(WMWidget *parent)

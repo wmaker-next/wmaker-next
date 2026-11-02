@@ -300,13 +300,13 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	int tmp = WMGetPopUpButtonSelectedItem(panel->posP);
 	char *s;
 
 	if (tmp < 0)
-		return;
+		return true;
 	SetBoolForKey(!WMGetButtonSelected(panel->linkB), "DontLinkWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->cyclB), "CycleWorkspaces");
 	SetBoolForKey(WMGetButtonSelected(panel->newB), "AdvanceToNewWorkspace");
@@ -321,6 +321,8 @@ static void storeData(_Panel * panel)
 	SetIntegerForKey(wConfigSchemaParseInt("LayoutMasterCount", s), "LayoutMasterCount");
 	wfree(s);
 	SetIntegerForKey(WMGetSliderValue(panel->mrS), "LayoutMasterRatio");
+
+	return true;
 }
 
 Panel *InitWorkspace(WMWidget *parent)

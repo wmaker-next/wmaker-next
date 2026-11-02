@@ -69,7 +69,7 @@ static void showData(_Panel * panel)
 	WMSetButtonSelected(panel->autoC, GetBoolForKey("ViKeyMenus"));
 }
 
-static void storeData(_Panel * panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 
@@ -84,6 +84,8 @@ static void storeData(_Panel * panel)
 	SetBoolForKey(WMGetButtonSelected(panel->wrapB), "WrapMenus");
 	SetBoolForKey(WMGetButtonSelected(panel->autoB), "ScrollableMenus");
 	SetBoolForKey(WMGetButtonSelected(panel->autoC), "ViKeyMenus");
+
+	return true;
 }
 
 static void createPanel(Panel * p)

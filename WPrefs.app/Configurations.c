@@ -388,7 +388,7 @@ static void createPanel(Panel *p)
 	showData(panel);
 }
 
-static void storeData(_Panel *panel)
+static bool storeData(_Panel *panel)
 {
 	int i;
 
@@ -418,6 +418,8 @@ static void storeData(_Panel *panel)
 	SetBoolForKey(!WMGetButtonSelected(panel->sfxB), "DisableSound");
 	SetBoolForKey(WMGetButtonSelected(panel->smoB), "SmoothWorkspaceBack");
 	SetWMGlobalBoolForKey(WMGetButtonSelected(panel->aaB), "AntialiasedText");
+
+	return true;
 }
 
 Panel *InitConfigurations(WMWidget *parent)
