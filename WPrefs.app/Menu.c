@@ -924,26 +924,52 @@ static void freeItemData(ItemData * data)
 #undef CFREE
 }
 
+static bool getMenuStringAt(WMPropList *item, int index, bool required, char **value)
+{
+	WMPropList *p;
+
+	*value = NULL;
+	if (!WMIsPLArray(item))
+		return false;
+
+	p = WMGetFromPLArray(item, index);
+	if (!p)
+		return !required;
+	if (!WMIsPLString(p))
+		return false;
+
+	*value = WMGetFromPLString(p);
+	return true;
+}
+
+static char *menuItemTitle(WMPropList *item)
+{
+	char *title;
+
+	if (!getMenuStringAt(item, 0, true, &title))
+		return NULL;
+
+	return title;
+}
+
 static ItemData *parseCommand(WMPropList * item)
 {
 	ItemData *data = wmalloc(sizeof(ItemData));
-	WMPropList *p;
 	char *command = NULL;
 	char *parameter = NULL;
 	char *shortcut = NULL;
 	int i = 1;
 
-	p = WMGetFromPLArray(item, i++);
-	command = WMGetFromPLString(p);
+	if (!getMenuStringAt(item, i++, true, &command))
+		goto invalid;
 	if (strcmp(command, "SHORTCUT") == 0) {
-		p = WMGetFromPLArray(item, i++);
-		shortcut = WMGetFromPLString(p);
-		p = WMGetFromPLArray(item, i++);
-		command = WMGetFromPLString(p);
+		if (!getMenuStringAt(item, i++, true, &shortcut))
+			goto invalid;
+		if (!getMenuStringAt(item, i++, true, &command))
+			goto invalid;
 	}
-	p = WMGetFromPLArray(item, i++);
-	if (p)
-		parameter = WMGetFromPLString(p);
+	if (!getMenuStringAt(item, i++, false, &parameter))
+		goto invalid;
 
 	if (strcmp(command, "EXEC") == 0 || strcmp(command, "SHEXEC") == 0) {
 
@@ -1096,6 +1122,10 @@ static ItemData *parseCommand(WMPropList * item)
 	}
 
 	return data;
+
+invalid:
+	wfree(data);
+	return NULL;
 }
 
 static void updateFrameTitle(_Panel * panel, const char *title, InfoType type)
@@ -1451,49 +1481,62 @@ static WEditMenu *buildSubmenu(_Panel * panel, WMPropList * pl)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WEditMenu *menu;
 	WEditMenuItem *item;
-	char *title;
+	const char *title = NULL;
+	const char *itemTitle;
 	WMPropList *tp, *bp;
+	int count = 0;
 	int i;
 
-	tp = WMGetFromPLArray(pl, 0);
-	title = WMGetFromPLString(tp);
+	if (WMIsPLArray(pl)) {
+		count = WMGetPropListItemCount(pl);
+		if (count > 0) {
+			tp = WMGetFromPLArray(pl, 0);
+			if (WMIsPLString(tp))
+				title = WMGetFromPLString(tp);
+		}
+	}
+	if (!title)
+		title = _("Applications");
 
 	menu = WCreateEditMenu(scr, title);
 
-	for (i = 1; i < WMGetPropListItemCount(pl); i++) {
+	for (i = 1; i < count; i++) {
 		WMPropList *pi;
 
 		pi = WMGetFromPLArray(pl, i);
+		itemTitle = menuItemTitle(pi);
+		if (!itemTitle)
+			continue;
 
-		tp = WMGetFromPLArray(pi, 0);
 		bp = WMGetFromPLArray(pi, 1);
-
-		title = WMGetFromPLString(tp);
 
 		if (!bp || WMIsPLArray(bp)) {	/* it's a submenu */
 			WEditMenu *submenu;
 
 			submenu = buildSubmenu(panel, pi);
 
-			item = WAddMenuItemWithTitle(menu, title);
+			item = WAddMenuItemWithTitle(menu, itemTitle);
 
 			WSetEditMenuSubmenu(menu, item, submenu);
 		} else {
 			ItemData *data;
+			WMPropList *cp;
+			const char *command;
+			char buf[256];
 
 			data = parseCommand(pi);
 
 			if (data != NULL) {
-				item = WAddMenuItemWithTitle(menu, title);
+				item = WAddMenuItemWithTitle(menu, itemTitle);
 				if (panel->markerPix[data->type])
 					WSetEditMenuItemImage(item, panel->markerPix[data->type]);
 				WSetEditMenuItemData(item, data, (WMCallback *) freeItemData);
 			} else {
-				char buf[256];
+				cp = WMGetFromPLArray(pi, 1);
+				command = (cp && WMIsPLString(cp)) ? WMGetFromPLString(cp) : "";
 
 				snprintf(buf, sizeof(buf), _("Invalid menu command \"%s\" with label \"%s\" cleared"),
-					WMGetFromPLString(WMGetFromPLArray(pi, 1)),
-					WMGetFromPLString(WMGetFromPLArray(pi, 0)));
+					command, itemTitle);
 				WMRunAlertPanel(scr, panel->parent, _("Warning"), buf, _("OK"), NULL, NULL);
 			}
 
@@ -1677,7 +1720,7 @@ static WMPropList *processData(const char *title, ItemData * data)
 	static WMPropList *poplmenu = NULL;
 	int i;
 
-	if (data == NULL)
+	if (data == NULL || title == NULL)
 		return NULL;
 
 	if (!pscut) {
@@ -1813,7 +1856,13 @@ static WMPropList *processSubmenu(WEditMenu * menu)
 	char *s;
 	int i;
 
+	if (!menu)
+		return NULL;
+
 	s = WGetEditMenuTitle(menu);
+	if (!s)
+		return NULL;
+
 	title = WMCreatePLString(s);
 
 	pmenu = WMCreatePLArray(title, NULL);
@@ -1860,6 +1909,8 @@ static bool storeData(_Panel *panel)
 		return true;
 
 	menu = buildPLFromMenu(panel);
+	if (!menu)
+		return false;
 
 	saved = WMWritePropListToFile(menu, panel->menuPath);
 
