@@ -1555,7 +1555,7 @@ static void createDropList(WMInputPanelWithHistory *p)
 static void placeDropList(WMInputPanelWithHistory *p, int rows)
 {
 	WArea ua;
-	int x, y, w, h, head, max_rows, fh, fy, bw, ow;
+	int x, y, wdev, wlog, hdev, hlog, head, max_rows, fh, fy, bw, ow, gap;
 	unsigned long *bpixel;
 
 	max_rows = w_global.config->run_popup_rows;
@@ -1568,23 +1568,27 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 
 	/* Replicate the dialog's outer border on the popup, matching the
 	 * frame's focused/unfocused pixel. The popup interior is sized to
-	 * core->width and placed at frame_x so border and content align. */
+	 * core->width and placed at frame_x so border and content align.
+	 * core geometry and frame_x/y are device pixels, while WM widgets
+	 * and font metrics stay logical. */
 	bw = 0;
 	bpixel = NULL;
 	if (p->wwin->frame) {
 		bw = HAS_BORDER(p->wwin) ? wFrameBorderWidth(p->wwin) : 0;
 		fh = p->wwin->frame->core->height;
+		wdev = p->wwin->frame->core->width;
 		bpixel = (p->wwin->frame->flags.state == WS_FOCUSED)
 				? p->wwin->frame->focused_border_pixel
 				: p->wwin->frame->border_pixel;
 	} else {
-		fh = WMWidgetHeight(p->panel->win);
+		wlog = WMWidgetWidth(p->panel->win);
+		wdev = WSCALE(p->scr, wlog);
+		fh = WSCALE(p->scr, WMWidgetHeight(p->panel->win));
 	}
+	wlog = WUNSCALE(p->scr, wdev);
 	fy = p->wwin->frame_y;
 
-	w = p->wwin->frame ? p->wwin->frame->core->width
-			   : WMWidgetWidth(p->panel->win);
-	ow = w + 2 * bw;
+	ow = wdev + 2 * bw;
 
 	if (bw > 0) {
 		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ bw });
@@ -1594,23 +1598,27 @@ static void placeDropList(WMInputPanelWithHistory *p, int rows)
 		xcb_configure_window(wdisp->conn, WMWidgetXID(p->dropWin), XCB_CONFIG_WINDOW_BORDER_WIDTH, (const uint32_t[]){ 0 });
 	}
 
-	h = rows * p->dropItemH + 4;
+	gap = WSCALE(p->scr, 8);
+	hlog = rows * p->dropItemH + 4;
+	hdev = WSCALE(p->scr, hlog);
 	x = p->wwin->frame_x;
-	y = fy + fh + 8;
+	y = fy + fh + gap;
 
 	head = wGetHeadForWindow(p->wwin);
 	ua = wGetUsableAreaForHead(p->scr, head, NULL, true);
-	if (y + h > ua.y2 && fy - h - 8 >= ua.y1)
-		y = fy - h - 8;
-	else if (y + h > ua.y2)
-		h = ua.y2 - y - 8 > p->dropItemH + 4 ? ua.y2 - y - 8 : h;
+	if (y + hdev > ua.y2 && fy - hdev - gap >= ua.y1)
+		y = fy - hdev - gap;
+	else if (y + hdev > ua.y2)
+		hdev = ua.y2 - y - gap > WSCALE(p->scr, p->dropItemH + 4)
+				? ua.y2 - y - gap : hdev;
 	if (x + ow > ua.x2)
 		x = ua.x2 - ow;
 	if (x < ua.x1)
 		x = ua.x1;
 
-	WMResizeWidget(p->dropWin, w, h);
-	WMResizeWidget(p->dropList, w, h);
+	hlog = WUNSCALE(p->scr, hdev);
+	WMResizeWidget(p->dropWin, wlog, hlog);
+	WMResizeWidget(p->dropList, wlog, hlog);
 	WMMoveWidget(p->dropWin, x, y);
 }
 
