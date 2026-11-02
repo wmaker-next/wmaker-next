@@ -209,7 +209,9 @@ static void handleKeyPress(xcb_generic_event_t *ev)
 	WKeyNode  *siblings;
 	WKeyNode  *match;
 	WKeyAction *act;
+	WKeyAction *snapshot;
 	int modifiers;
+	int i, nacts;
 
 	if (!scr)
 		return;
@@ -431,15 +433,37 @@ static void handleKeyPress(xcb_generic_event_t *ev)
 	}
 
 	/* Execute all leaf actions for this key sequence */
-	for (act = match->actions; act != NULL; act = act->next) {
-		if (act->type == WKN_MENU) {
-			WMenu *menu  = (WMenu *) act->u.menu.menu;
-			WMenuEntry *entry = (WMenuEntry *) act->u.menu.entry;
+	nacts = 0;
+	for (act = match->actions; act != NULL; act = act->next)
+		nacts++;
+	if (nacts > 0) {
+		unsigned int generation = w_global.shortcut.action_generation;
 
-			(*entry->callback)(menu, entry);
-		} else {
-			wKeybindDispatch(act->u.wkbd_idx, scr, wwin, ev);
+		snapshot = wmalloc((size_t)nacts * sizeof(WKeyAction));
+		for (act = match->actions, i = 0; act != NULL; act = act->next, i++) {
+			snapshot[i].type = act->type;
+			snapshot[i].u = act->u;
 		}
+		if (wwin)
+			wretain(wwin);
+		for (i = 0; i < nacts; i++) {
+			act = &snapshot[i];
+			if (generation != w_global.shortcut.action_generation)
+				break;
+			if (wwin && wwin->flags.destroyed)
+				break;
+			if (act->type == WKN_MENU) {
+				WMenu *menu  = (WMenu *) act->u.menu.menu;
+				WMenuEntry *entry = (WMenuEntry *) act->u.menu.entry;
+
+				(*entry->callback)(menu, entry);
+			} else {
+				wKeybindDispatch(act->u.wkbd_idx, scr, wwin, ev);
+			}
+		}
+		if (wwin)
+			wrelease(wwin);
+		wfree(snapshot);
 	}
 }
 

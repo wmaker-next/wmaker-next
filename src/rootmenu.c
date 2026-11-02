@@ -1760,6 +1760,7 @@ void wRootMenuReparse(WScreen *scr)
 		if (scr->root_menu)
 			wMenuDestroy(scr->root_menu, true);
 		scr->root_menu = menu;
+		w_global.shortcut.action_generation++;
 	}
 
 	if (scr->flags.root_menu_changed_shortcuts)
@@ -1850,6 +1851,7 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 
 			menu = makeDefaultMenu(scr);
 			scr->root_menu = menu;
+			w_global.shortcut.action_generation++;
 		}
 		menu = scr->root_menu;
 	} else {
@@ -1858,6 +1860,7 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 			wMenuDestroy(scr->root_menu, true);
 		}
 		scr->root_menu = menu;
+		w_global.shortcut.action_generation++;
 	}
 	if (menu) {
 		int newx, newy;

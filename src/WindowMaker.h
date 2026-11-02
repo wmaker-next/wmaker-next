@@ -497,6 +497,9 @@ extern struct wmaker_global_variables {
 		 */
 		WKeyNode    *curpos;
 		WMHandlerID  chain_timeout_handler; /* non-NULL while chain timer is armed */
+		/* bumped when the key tree or a root menu is rebuilt, so a
+		 * multi-action dispatch can notice its snapshot went stale */
+		unsigned int action_generation;
 	} shortcut;
 } w_global;
 

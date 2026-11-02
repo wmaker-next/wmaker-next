@@ -600,6 +600,8 @@ void wKeyTreeRebuild(WScreen *scr)
 			wCancelKeyChain(wScreenWithNumber(i));
 	}
 
+	w_global.shortcut.action_generation++;
+
 	/* Parameter not used */
 	(void)scr;
 
