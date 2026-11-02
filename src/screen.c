@@ -1269,6 +1269,7 @@ static void hideMiniScreenshot(void *data)
 		WXWindowAttributes attr;
 
 		WMDeleteTimerHandler(scr->mini_screenshot_timer);
+		scr->mini_screenshot_timer = NULL;
 		if (wXGetWindowAttributes(wdisp->conn, scr->mini_screenshot, &attr, NULL))
 			slide_window(scr->mini_screenshot, attr.x, attr.y, attr.x + attr.width, attr.y);
 		xcb_unmap_window(wdisp->conn, scr->mini_screenshot);
@@ -1291,6 +1292,7 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 				  XCB_WINDOW_CLASS_COPY_FROM_PARENT, XCB_COPY_FROM_PARENT,
 				  XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL, (const uint32_t[]){ 0, 0});
 		scr->mini_screenshot = win;
+		scr->mini_screenshot_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideMiniScreenshot, scr);
 	}
 	RConvertImage(scr->rcontext, img, &pix);
 	xcb_change_window_attributes(wdisp->conn, scr->mini_screenshot, XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pix });
@@ -1302,7 +1304,6 @@ static void showMiniScreenshot(WScreen *scr, RImage *img)
 	wXFlush(wdisp->conn);
 
 	scr->mini_screenshot_timeout = time(NULL) + 2;
-	scr->mini_screenshot_timer = WMAddTimerHandler(WORKSPACE_NAME_FADE_DELAY, hideMiniScreenshot, scr);
 }
 
 void ScreenCapture(WScreen *scr, int mode)
