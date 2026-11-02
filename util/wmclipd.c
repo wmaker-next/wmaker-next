@@ -2859,14 +2859,58 @@ static void activate_entry(int row, xcb_timestamp_t ts)
 	debug_log("activated history entry %d", row);
 }
 
+static void release_popup_thumbnails(void)
+{
+	WMHashEnumerator e;
+	WMPixmap *pix;
+
+	if (!popup_thumbs)
+		return;
+	e = WMEnumerateHashTable(popup_thumbs);
+	while ((pix = WMNextHashEnumeratorItem(&e)) != NULL)
+		WMReleasePixmap(pix);
+	WMFreeHashTable(popup_thumbs);
+	popup_thumbs = NULL;
+}
+
+static void destroy_popup(void)
+{
+	if (!popup_wscr)
+		return;
+
+	release_popup_thumbnails();
+	if (popup_bold_font) {
+		WMReleaseFont(popup_bold_font);
+		popup_bold_font = NULL;
+	}
+	if (popup_norm_font) {
+		WMReleaseFont(popup_norm_font);
+		popup_norm_font = NULL;
+	}
+	WMShutdownScreen(popup_wscr);
+	popup_wscr = NULL;
+	popup_win = NULL;
+	popup_list = NULL;
+	popup_mapped = 0;
+	popup_clicked_row = -1;
+}
+
 static void ensure_popup(void)
 {
 	uint32_t attr[2];
 	int wmScaleW, wmScaleH;
 	static int app_inited = 0;
+	double applied, configured;
 
-	if (popup_wscr)
-		return;
+	if (popup_wscr) {
+		applied = WMScreenUIScale(popup_wscr);
+		configured = WMScreenPeekUIScale(popup_wscr);
+		if ((applied - configured) * (applied - configured) <= 0.0001)
+			return;
+		debug_log("UI scale changed (%.2f -> %.2f), rebuilding popup",
+			  applied, configured);
+		destroy_popup();
+	}
 
 	if (!app_inited) {
 		int ac = 1;
@@ -3654,16 +3698,7 @@ int main(int argc, char **argv)
 	clear_buffer(&clipboard_buffer);
 	clear_buffer(&primary_buffer);
 	if (popup_wscr) {
-		if (popup_bold_font) {
-			WMReleaseFont(popup_bold_font);
-			popup_bold_font = NULL;
-		}
-		if (popup_norm_font) {
-			WMReleaseFont(popup_norm_font);
-			popup_norm_font = NULL;
-		}
-		WMShutdownScreen(popup_wscr);
-		popup_wscr = NULL;
+		destroy_popup();
 		WMShutdownFonts();
 	}
 	if (xc)
