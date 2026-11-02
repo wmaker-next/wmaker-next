@@ -629,13 +629,8 @@ void StartUp(bool defaultScreenOnly)
 #ifdef USE_XCB_SCREENSAVER
 	xer = xcb_get_extension_data(xc, &xcb_screensaver_id);
 	wdisp->xext.screensaver.supported = xer && xer->present;
-	if (wdisp->xext.screensaver.supported) {
+	if (wdisp->xext.screensaver.supported)
 		wdisp->xext.screensaver.event_base = xer->first_event;
-		free(xcb_screensaver_query_version_reply(xc,
-			xcb_screensaver_query_version(xc,
-				XCB_SCREENSAVER_MAJOR_VERSION,
-				XCB_SCREENSAVER_MINOR_VERSION), NULL));
-	}
 #endif
 
 	xer = xcb_get_extension_data(xc, &xcb_xfixes_id);
