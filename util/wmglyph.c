@@ -432,14 +432,19 @@ static void onButtonPress(xcb_generic_event_t *event, void *data)
 		 * re-asserting ownership, or they pile up and every
 		 * paste gets served once per stale handler. */
 		WMView *view = WMWidgetView(app->grid);
+		const char *copiedSuffix = "";
 		if (app->ownsSel) {
 			WMDeleteSelectionHandler(view, XCB_ATOM_PRIMARY, XCB_CURRENT_TIME);
 			WMDeleteSelectionHandler(view, app->clipboardAtom, XCB_CURRENT_TIME);
 			app->ownsSel = false;
 		}
-		if (WMCreateSelectionHandler(view, XCB_ATOM_PRIMARY, ((xcb_button_press_event_t *)event)->time, &selProcs, app)
-		    && WMCreateSelectionHandler(view, app->clipboardAtom, ((xcb_button_press_event_t *)event)->time, &selProcs, app)) {
-			app->ownsSel = true;
+		if (WMCreateSelectionHandler(view, XCB_ATOM_PRIMARY, ((xcb_button_press_event_t *)event)->time, &selProcs, app)) {
+			if (WMCreateSelectionHandler(view, app->clipboardAtom, ((xcb_button_press_event_t *)event)->time, &selProcs, app)) {
+				app->ownsSel = true;
+				copiedSuffix = "   (copied)";
+			} else {
+				WMDeleteSelectionHandler(view, XCB_ATOM_PRIMARY, XCB_CURRENT_TIME);
+			}
 		}
 
 		const char *blockName = wmglyph_blocks[wmglyph_chars[charIdx].block].name;
@@ -448,8 +453,8 @@ static void onButtonPress(xcb_generic_event_t *event, void *data)
 		char *escName = g_markup_escape_text(wmglyph_chars[charIdx].name, -1);
 		char msg[512];
 		snprintf(msg, sizeof(msg),
-		         "<b>%s</b>  U+%04X  %s  %s   (copied)",
-		         escBlock, cp, escBuf, escName);
+			 "<b>%s</b>  U+%04X  %s  %s%s",
+			 escBlock, cp, escBuf, escName, copiedSuffix);
 		WMSetLabelText(app->status, msg);
 		g_free(escBlock);
 		g_free(escBuf);
