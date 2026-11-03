@@ -3332,6 +3332,7 @@ static void show_clipboard_popup(bool keyed)
 			   ((((xcb_key_press_event_t *)ev)->state) & XCB_MOD_MASK_SHIFT)) {
 				history_clear_non_pinned();
 				if (history.count == 0) {
+					WMClearList(popup_list);
 					done = true;
 					esc_cancel = true;
 				} else {
@@ -3344,6 +3345,7 @@ static void show_clipboard_popup(bool keyed)
 
 				history_remove_entry(row);
 				if (history.count == 0) {
+					WMClearList(popup_list);
 					done = true;
 					esc_cancel = true;
 				} else {
