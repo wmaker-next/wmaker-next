@@ -156,6 +156,12 @@ static void test_open_command(void)
 	CHECK_STR(cmd, "multi '/tmp/a b.gz' and '/tmp/a b.gz' "
 		       "then '/tmp/a b.gz' also '/tmp/a b.gz' done");
 	wfree(cmd);
+
+	/* a field code inside quotes is rejected instead of being
+	 * expanded into the surrounding shell quoting */
+	cmd = wXDGOpenCommandFor("/tmp/$(touch pwned).qtd");
+	CHECK_STR(cmd, "xdg-open '/tmp/$(touch pwned).qtd'");
+	wfree(cmd);
 }
 
 static void touch(const char *dir, const char *name)

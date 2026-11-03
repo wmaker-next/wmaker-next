@@ -6,3 +6,4 @@
 80:text/heavy:*.heavy.txt
 50:text/x-c++src:*.C:cs
 50:image/png:*.png
+50:text/x-quoted:*.qtd

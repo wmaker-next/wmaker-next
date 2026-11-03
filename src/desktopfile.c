@@ -1112,12 +1112,54 @@ const char *wXDGDefaultAppFor(const char *mimetype)
 	return WMHashGet(mime_default, mimetype);
 }
 
+static bool execHasQuotedFieldCode(const char *exec)
+{
+	bool squote = false, dquote = false;
+
+	while (*exec) {
+		if (squote) {
+			if (*exec == '%' && exec[1] && strchr("fFuUc", exec[1]))
+				return true;
+			if (*exec == '\'')
+				squote = false;
+			exec++;
+			continue;
+		}
+		if (dquote) {
+			if (*exec == '%' && exec[1] && strchr("fFuUc", exec[1]))
+				return true;
+			if (*exec == '\\' && exec[1] &&
+			    strchr("\"\\$`", exec[1])) {
+				exec += 2;
+				continue;
+			}
+			if (*exec == '"')
+				dquote = false;
+			exec++;
+			continue;
+		}
+		if (*exec == '\\' && exec[1]) {
+			exec += 2;
+			continue;
+		}
+		if (*exec == '\'')
+			squote = true;
+		else if (*exec == '"')
+			dquote = true;
+		exec++;
+	}
+	return false;
+}
+
 static char *substituteExecPath(const char *exec_raw, const char *path,
 				const char *name)
 {
 	const char *src, *run;
 	char *out, *qpath, *qname, *seg;
 	int saw_file = 0;
+
+	if (execHasQuotedFieldCode(exec_raw))
+		return NULL;
 
 	qpath = wshellquote(path);
 	qname = name ? wshellquote(name) : NULL;
@@ -1167,6 +1209,8 @@ char *wXDGAppOpenCommand(const WXDGApp *app, const char *path)
 	char *cmd, *wrapped;
 
 	cmd = substituteExecPath(app->exec_raw, path, app->name);
+	if (!cmd)
+		return NULL;
 	if (app->terminal) {
 		term = getenv("WMAKER_TERM");
 		if (!term || !term[0])
@@ -1188,13 +1232,15 @@ char *wXDGOpenCommandFor(const char *path)
 	id = type ? wXDGDefaultAppFor(type) : NULL;
 	app = id ? wXDGAppById(id) : NULL;
 
-	if (!app || !app->exec_raw) {
-		qpath = wshellquote(path);
-		cmd = wstrconcat("xdg-open ", qpath);
-		wfree(qpath);
-		return cmd;
+	if (app && app->exec_raw) {
+		cmd = wXDGAppOpenCommand(app, path);
+		if (cmd)
+			return cmd;
 	}
-	return wXDGAppOpenCommand(app, path);
+	qpath = wshellquote(path);
+	cmd = wstrconcat("xdg-open ", qpath);
+	wfree(qpath);
+	return cmd;
 }
 
 /* ---- fuzzy matcher ----------------------------------------------- */

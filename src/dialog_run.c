@@ -1785,8 +1785,8 @@ static bool enterOpenWith(WMInputPanelWithHistory *p)
 	WMArray *handlers, *sub;
 	WXDGApp *a;
 	const char *base;
-	char *label;
-	int i, n;
+	char *cmd, *label;
+	int i, n, added = 0;
 
 	if (p->outer_variants || !p->variants || p->varpos <= 0)
 		return false;
@@ -1803,16 +1803,23 @@ static bool enterOpenWith(WMInputPanelWithHistory *p)
 	sub = WMCreateArrayWithDestructor(n, freeVariant);
 	for (i = 0; i < n; i++) {
 		a = WMGetFromArray(handlers, i);
+		cmd = wXDGAppOpenCommand(a, cur->doc_path);
+		if (!cmd)
+			continue;
 		label = wstrconcat(base, " \xe2\x80\x94 ");
 		label = wstrappend(label, a->name);
-		v = makeVariant(wXDGAppOpenCommand(a, cur->doc_path),
-				label, RUN_RANK_DOC_PREFIX, true);
+		v = makeVariant(cmd, label, RUN_RANK_DOC_PREFIX, true);
 		v->frec_key = cur->doc_path;
 		if (a->icon)
 			v->icon_hint = a->icon[0] == '/'
 				     ? wstrdup(a->icon)
 				     : wstrconcat("apps:", a->icon);
 		WMAddToArray(sub, v);
+		added++;
+	}
+	if (added < 2) {
+		WMFreeArray(sub);
+		return false;
 	}
 	p->outer_variants = p->variants;
 	p->outer_varpos = p->varpos;
