@@ -40,6 +40,9 @@ typedef struct _Panel {
 	WMLabel *actL;
 	WMList *actLs;
 
+	WMFrame *filterF;
+	WMButton *filterB[2];
+
 	WMFrame *shoF;
 	WMTextField *shoT;
 	WMButton *cleB;
@@ -53,11 +56,20 @@ typedef struct _Panel {
 	WMFont *font;
 
 	bool capturing;
+	bool assignedOnly;
 	char **shortcuts;
+	int *shownActions;
+	int shownCount;
 	int actionCount;
 } _Panel;
 
 #define ICON_FILE	"keyshortcuts"
+
+#define ACTION_HEADER_Y		9
+#define ACTION_HEADER_HEIGHT	20
+#define ACTION_LIST_Y		31
+#define ACTION_LIST_HEIGHT	191
+#define SHORTCUT_Y		78
 
 /*
  * List of user definable shortcut keys, from the table shared with the
@@ -269,6 +281,59 @@ static int isKeySet(_Panel *panel, char *keystr)
 	return -1;
 }
 
+static int actionForRow(_Panel *panel, int row)
+{
+	if (row < 0 || row >= panel->shownCount)
+		return -1;
+
+	return panel->shownActions[row];
+}
+
+static void rebuildActionList(_Panel *panel)
+{
+	int selected = -1;
+	int selectRow = -1;
+	int row;
+	int i;
+
+	row = WMGetListSelectedItemRow(panel->actLs);
+	if (row >= 0)
+		selected = actionForRow(panel, row);
+
+	WMClearList(panel->actLs);
+	panel->shownCount = 0;
+
+	for (i = 0; i < panel->actionCount; i++) {
+		if (panel->assignedOnly && !panel->shortcuts[i])
+			continue;
+
+		panel->shownActions[panel->shownCount] = i;
+		WMAddListItem(panel->actLs, _(keyOptions[i].title));
+		if (i == selected)
+			selectRow = panel->shownCount;
+		panel->shownCount++;
+	}
+
+	if (selectRow >= 0)
+		WMSelectListItem(panel->actLs, selectRow);
+
+	WMRedisplayWidget(panel->actLs);
+}
+
+static void filterClick(WMWidget *w, void *data)
+{
+	_Panel *panel = (_Panel *) data;
+
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void) w;
+
+	panel->assignedOnly = WMGetButtonSelected(panel->filterB[1]);
+	rebuildActionList(panel);
+
+	if (WMGetListSelectedItemRow(panel->actLs) < 0)
+		WMSetTextFieldText(panel->shoT, NULL);
+}
+
 static void captureClick(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
@@ -285,9 +350,10 @@ static void captureClick(WMWidget * w, void *data)
 		if (shortcut) {
 			int key_idx = -1;
 			int row = WMGetListSelectedItemRow(panel->actLs);
+			int action = actionForRow(panel, row);
 
 			key_idx = isKeySet(panel, shortcut);
-			if (key_idx >= 0 && (key_idx != row)) {
+			if (key_idx >= 0 && (key_idx != action)) {
 				char *msg;
 
 				msg = wstrconcat(_("Key shortcut already in use by the "), _(keyOptions[key_idx].title));
@@ -299,10 +365,10 @@ static void captureClick(WMWidget * w, void *data)
 				wfree(shortcut);
 			} else {
 				WMSetTextFieldText(panel->shoT, shortcut);
-				if (row >= 0) {
-					if (panel->shortcuts[row])
-						wfree(panel->shortcuts[row]);
-					panel->shortcuts[row] = shortcut;
+				if (action >= 0) {
+					if (panel->shortcuts[action])
+						wfree(panel->shortcuts[action]);
+					panel->shortcuts[action] = shortcut;
 
 					WMRedisplayWidget(panel->actLs);
 				} else {
@@ -321,6 +387,7 @@ static void clearShortcut(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
 	int row = WMGetListSelectedItemRow(panel->actLs);
+	int action = actionForRow(panel, row);
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) w;
@@ -330,11 +397,11 @@ static void clearShortcut(WMWidget * w, void *data)
 
 	WMSetTextFieldText(panel->shoT, NULL);
 
-	if (row >= 0) {
-		if (panel->shortcuts[row])
-			wfree(panel->shortcuts[row]);
-		panel->shortcuts[row] = NULL;
-		WMRedisplayWidget(panel->actLs);
+	if (action >= 0) {
+		if (panel->shortcuts[action])
+			wfree(panel->shortcuts[action]);
+		panel->shortcuts[action] = NULL;
+		rebuildActionList(panel);
 	}
 }
 
@@ -342,29 +409,36 @@ static void typedKeys(void *observerData, WMNotification * notification)
 {
 	_Panel *panel = (_Panel *) observerData;
 	int row = WMGetListSelectedItemRow(panel->actLs);
+	int action = actionForRow(panel, row);
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) notification;
 
-	if (row < 0)
+	if (action < 0)
 		return;
 
-	if (panel->shortcuts[row])
-		wfree(panel->shortcuts[row]);
-	panel->shortcuts[row] = WMGetTextFieldText(panel->shoT);
-	if (strlen(panel->shortcuts[row]) == 0) {
-		wfree(panel->shortcuts[row]);
-		panel->shortcuts[row] = NULL;
+	if (panel->shortcuts[action])
+		wfree(panel->shortcuts[action]);
+	panel->shortcuts[action] = WMGetTextFieldText(panel->shoT);
+	if (strlen(panel->shortcuts[action]) == 0) {
+		wfree(panel->shortcuts[action]);
+		panel->shortcuts[action] = NULL;
 	}
-	WMRedisplayWidget(panel->actLs);
+
+	if (panel->assignedOnly && !panel->shortcuts[action])
+		rebuildActionList(panel);
+	else
+		WMRedisplayWidget(panel->actLs);
 }
 
 static void listClick(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
 	int row = WMGetListSelectedItemRow(w);
+	int action = actionForRow(panel, row);
 
-	WMSetTextFieldText(panel->shoT, panel->shortcuts[row]);
+	if (action >= 0)
+		WMSetTextFieldText(panel->shoT, panel->shortcuts[action]);
 }
 
 static void showData(_Panel * panel)
@@ -388,7 +462,7 @@ static void showData(_Panel * panel)
 			panel->shortcuts[i] = NULL;
 		}
 	}
-	WMRedisplayWidget(panel->actLs);
+	rebuildActionList(panel);
 }
 
 static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, int state, WMRect * rect)
@@ -405,7 +479,7 @@ static void paintItem(WMList * lPtr, int index, xcb_drawable_t d, char *text, in
 
 	WMPaintColorSwatch(backColor, d, x, y, width, height);
 
-	if (panel->shortcuts[index]) {
+	if (panel->shortcuts[panel->shownActions[index]]) {
 		WMPixmap *pix = WMGetSystemPixmap(scr, WSICheckMark);
 		WMSize size = WMGetPixmapSize(pix);
 
@@ -429,6 +503,21 @@ static int cmpKeyOptions(const void *v1, const void *v2)
 	return 0;
 }
 
+static int centeredFrameY(WMScreen *scr, int headerY, int headerHeight)
+{
+	WMFont *font;
+	int offset;
+
+	font = WMDefaultSystemFont(scr);
+	offset = (headerHeight - WMFontHeight(font) + 1) / 2;
+	WMReleaseFont(font);
+
+	if (offset < 0)
+		offset = 0;
+
+	return headerY + offset;
+}
+
 
 static void createPanel(Panel * p)
 {
@@ -436,7 +525,6 @@ static void createPanel(Panel * p)
 	WMScreen *scr = WMWidgetScreen(panel->parent);
 	WMColor *color;
 	WMFont *boldFont;
-	int i;
 
 	panel->capturing = 0;
 
@@ -452,8 +540,8 @@ static void createPanel(Panel * p)
 
 	/* **************** Actions **************** */
 	panel->actL = WMCreateLabel(panel->box);
-	WMResizeWidget(panel->actL, 314, 20);
-	WMMoveWidget(panel->actL, 9, 9);
+	WMResizeWidget(panel->actL, 314, ACTION_HEADER_HEIGHT);
+	WMMoveWidget(panel->actL, 9, ACTION_HEADER_Y);
 	WMSetLabelFont(panel->actL, boldFont);
 	WMSetLabelText(panel->actL, _("Actions"));
 	WMSetLabelRelief(panel->actL, WRSunken);
@@ -464,47 +552,70 @@ static void createPanel(Panel * p)
 	WMSetLabelTextColor(panel->actL, panel->white);
 
 	panel->actLs = WMCreateList(panel->box);
-	WMResizeWidget(panel->actLs, 314, 191);
-	WMMoveWidget(panel->actLs, 9, 31);
+	WMResizeWidget(panel->actLs, 314, ACTION_LIST_HEIGHT);
+	WMMoveWidget(panel->actLs, 9, ACTION_LIST_Y);
 	WMSetListUserDrawProc(panel->actLs, paintItem);
 	WMHangData(panel->actLs, panel);
 
 	qsort(keyOptions, wlengthof(keyOptions), sizeof(keyOptions[0]), cmpKeyOptions);
-	for (i = 0; i < wlengthof(keyOptions); i++) {
-		WMAddListItem(panel->actLs, _(keyOptions[i].title));
-	}
 	WMSetListAction(panel->actLs, listClick, panel);
 
-	panel->actionCount = WMGetListNumberOfRows(panel->actLs);
+	panel->actionCount = wlengthof(keyOptions);
 	panel->shortcuts = wmalloc(sizeof(char *) * panel->actionCount);
+	panel->shownActions = wmalloc(sizeof(int) * panel->actionCount);
+
+    /***************** Actions List Filter *****************/
+
+	panel->filterF = WMCreateFrame(panel->box);
+	WMResizeWidget(panel->filterF, 178, 62);
+	WMMoveWidget(panel->filterF, 333,
+		     centeredFrameY(scr, ACTION_HEADER_Y, ACTION_HEADER_HEIGHT));
+	WMSetFrameTitle(panel->filterF, _("List Mode"));
+
+	panel->filterB[0] = WMCreateRadioButton(panel->filterF);
+	WMResizeWidget(panel->filterB[0], 160, 20);
+	WMMoveWidget(panel->filterB[0], 9, 17);
+	WMSetButtonText(panel->filterB[0], _("All Actions"));
+	WMSetButtonAction(panel->filterB[0], filterClick, panel);
+
+	panel->filterB[1] = WMCreateRadioButton(panel->filterF);
+	WMResizeWidget(panel->filterB[1], 160, 20);
+	WMMoveWidget(panel->filterB[1], 9, 37);
+	WMSetButtonText(panel->filterB[1], _("Assigned Actions"));
+	WMSetButtonAction(panel->filterB[1], filterClick, panel);
+
+	WMGroupButtons(panel->filterB[0], panel->filterB[1]);
+	WMSetButtonSelected(panel->filterB[0], true);
+
+	WMMapSubwidgets(panel->filterF);
 
     /***************** Shortcut ****************/
 
 	panel->shoF = WMCreateFrame(panel->box);
-	WMResizeWidget(panel->shoF, 178, 214);
-	WMMoveWidget(panel->shoF, 333, 8);
+	WMResizeWidget(panel->shoF, 178, ACTION_LIST_Y + ACTION_LIST_HEIGHT - SHORTCUT_Y);
+	WMMoveWidget(panel->shoF, 333, SHORTCUT_Y);
 	WMSetFrameTitle(panel->shoF, _("Shortcut"));
 
 	panel->shoT = WMCreateTextField(panel->shoF);
 	WMResizeWidget(panel->shoT, 160, 20);
-	WMMoveWidget(panel->shoT, 9, 65);
+	WMMoveWidget(panel->shoT, 9, 22);
 	WMAddNotificationObserver(typedKeys, panel, WMTextDidChangeNotification, panel->shoT);
 
 	panel->cleB = WMCreateCommandButton(panel->shoF);
 	WMResizeWidget(panel->cleB, 75, 24);
-	WMMoveWidget(panel->cleB, 9, 95);
+	WMMoveWidget(panel->cleB, 9, 50);
 	WMSetButtonText(panel->cleB, _("Clear"));
 	WMSetButtonAction(panel->cleB, clearShortcut, panel);
 
 	panel->defB = WMCreateCommandButton(panel->shoF);
 	WMResizeWidget(panel->defB, 75, 24);
-	WMMoveWidget(panel->defB, 94, 95);
+	WMMoveWidget(panel->defB, 94, 50);
 	WMSetButtonText(panel->defB, _("Capture"));
 	WMSetButtonAction(panel->defB, captureClick, panel);
 
 	panel->instructionsL = WMCreateLabel(panel->shoF);
-	WMResizeWidget(panel->instructionsL, 160, 55);
-	WMMoveWidget(panel->instructionsL, 9, 140);
+	WMResizeWidget(panel->instructionsL, 160, 56);
+	WMMoveWidget(panel->instructionsL, 9, 80);
 	WMSetLabelTextAlignment(panel->instructionsL, WACenter);
 	WMSetLabelWraps(panel->instructionsL, true);
 	WMSetLabelText(panel->instructionsL, _("Click on Capture to interactively define the shortcut key."));
