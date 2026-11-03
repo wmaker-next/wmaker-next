@@ -1362,9 +1362,10 @@ xcb_pixmap_t wXCreatePixmapFromBitmapData(xcb_connection_t *dpy, xcb_drawable_t 
 	xcb_create_pixmap(dpy, depth, pix, d, width, height);
 
 	gc = xcb_generate_id(dpy);
+	/* values follow the mask bit order: function, plane mask, fg, bg */
 	xcb_create_gc(dpy, gc, pix, XCB_GC_FUNCTION | XCB_GC_FOREGROUND
 		      | XCB_GC_BACKGROUND | XCB_GC_PLANE_MASK,
-		      (const uint32_t[]){ XCB_GX_COPY, fg, bg, ~0u });
+		      (const uint32_t[]){ XCB_GX_COPY, ~0u, fg, bg });
 	/* the bits come across as a plane, an XCopyArea between the
 	 * depth-1 bitmap and the depth- pixmap would BadMatch */
 	xcb_copy_plane(dpy, bitmap, pix, gc, 0, 0, 0, 0, width, height, 1);
