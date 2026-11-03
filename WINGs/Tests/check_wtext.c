@@ -176,6 +176,58 @@ static void check_monofont(WMScreen *screen)
 	WMReleaseFont(font);
 }
 
+static void check_long_line(WMScreen *screen)
+{
+	const unsigned int len = 65529;
+	WMWindow *window;
+	WMText *text;
+	WMFont *font;
+	WMColor *color;
+	char *line, *stream;
+	void *block;
+	unsigned int i;
+
+	window = WMCreateWindow(screen, "check-wtext-long");
+	text = WMCreateText(window);
+	WMResizeWidget(text, 400, 180);
+	font = WMCreateFont(screen, "sans:pixelsize=14");
+	CHECK(font != NULL);
+	if (!font)
+		exit(1);
+	color = WMBlackColor(screen);
+	WMSetTextDefaultFont(text, font);
+	WMRealizeWidget(window);
+
+	line = wmalloc(len + 1);
+	for (i = 0; i < len; i++)
+		line[i] = (i + 1 == len) ? 'z' : 'a';
+	line[len] = 0;
+
+	WMAppendTextStream(text, line);
+	stream = WMGetTextStream(text);
+	CHECK(stream != NULL && strlen(stream) == len);
+	if (stream) {
+		CHECK(stream[0] == 'a' && stream[len - 1] == 'z');
+		wfree(stream);
+	}
+	WMClearText(text);
+
+	block = WMCreateTextBlockWithText(text, line, font, color, 1, len);
+	CHECK(block != NULL);
+	if (block) {
+		WMAppendTextBlock(text, block);
+		stream = WMGetTextStream(text);
+		CHECK(stream != NULL && strlen(stream) == len);
+		if (stream)
+			wfree(stream);
+	}
+	WMClearText(text);
+
+	wfree(line);
+	WMDestroyWidget(window);
+	WMReleaseFont(font);
+}
+
 static void check_setter_self_assignment(WMScreen *screen)
 {
 	WMWindow *window;
@@ -234,6 +286,7 @@ int main(int argc, char **argv)
 	check_alignment(screen, WACenter);
 	check_alignment(screen, WARight);
 	check_monofont(screen);
+	check_long_line(screen);
 	check_setter_self_assignment(screen);
 	WMShutdownScreen(screen);
 	WMShutdownFonts();

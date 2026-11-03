@@ -46,10 +46,10 @@
    o  there may be many Sections per TextBlock, hence the array */
 typedef struct {
 	unsigned int x, y;	/* where to draw it from */
-	unsigned short w, h;	/* its width and height  */
-	unsigned short begin;	/* where the layout begins */
-	unsigned short end;	/* where it ends */
-	unsigned short max_d;	/* a quick hack for layOut if(laidOut) */
+	unsigned int w, h;	/* its width and height  */
+	unsigned int begin;	/* where the layout begins */
+	unsigned int end;	/* where it ends */
+	unsigned int max_d;	/* a quick hack for layOut if(laidOut) */
 	unsigned short last:1;	/* is it the last section on a "line"? */
 	unsigned int _y:31;	/* the "line" it and other textblocks are on */
 } Section;
@@ -72,15 +72,15 @@ typedef struct _TextBlock {
 		WMPixmap *pixmap;	/* the pixmap */
 	} d;			/* description */
 
-	unsigned short used;	/* number of chars in this block */
-	unsigned short allocated;	/* size of allocation (in chars) */
+	unsigned int used;	/* number of chars in this block */
+	unsigned int allocated;	/* size of allocation (in chars) */
 	WMColor *color;		/* the color */
 
 	Section *sections;	/* the region for layouts (a growable array) */
 	/* an _array_! of size _nsections_ */
 
-	unsigned short s_begin;	/* where the selection begins */
-	unsigned short s_end;	/* where it ends */
+	unsigned int s_begin;	/* where the selection begins */
+	unsigned int s_end;	/* where it ends */
 
 	unsigned int first:1;	/* first TextBlock in paragraph */
 	unsigned int blank:1;	/* ie. blank paragraph */
@@ -131,8 +131,8 @@ typedef struct W_Text {
 
 	WMPoint clicked;	/* where in the _document_ was clicked */
 
-	unsigned short tpos;	/* the position in the currentTextBlock */
-	unsigned short docWidth;	/* the width of the entire document */
+	unsigned int tpos;	/* the position in the currentTextBlock */
+	unsigned int docWidth;	/* the width of the entire document */
 	unsigned int docHeight;	/* the height of the entire document */
 
 	TextBlock *firstTextBlock;
@@ -284,7 +284,8 @@ static int newMargin(Text * tPtr, WMRulerMargins * margins)
 
 static bool sectionWasSelected(Text * tPtr, TextBlock * tb, xcb_rectangle_t * rect, int s)
 {
-	unsigned short i, w, lw, selected = false, extend = false;
+	unsigned int i, w, lw;
+	bool selected = false, extend = false;
 	myRect sel;
 
 	/* if selection rectangle completely encloses the section */
@@ -1369,7 +1370,7 @@ static void scrollersCallBack(WMWidget * w, void *self)
 
 typedef struct {
 	TextBlock *tb;
-	unsigned short begin, end;	/* what part of the text block */
+	unsigned int begin, end;	/* what part of the text block */
 	int width;
 } myLineItems;
 
@@ -1957,7 +1958,7 @@ static void insertTextInteractively(Text * tPtr, char *text, int len)
 		} else {
 			if (tPtr->tpos > 0 && tPtr->tpos < tb->used && !tb->graphic && tb->text) {
 
-				unsigned short savePos = tPtr->tpos;
+				unsigned int savePos = tPtr->tpos;
 				void *ntb = WMCreateTextBlockWithText(tPtr, &tb->text[tPtr->tpos],
 								      tb->d.font, tb->color, true,
 								      tb->used - tPtr->tpos);
@@ -2938,7 +2939,7 @@ static WMArray *getStreamObjects(WMText * tPtr, int sel)
 	WMArray *array;
 	WMData *data;
 	char *stream;
-	unsigned short len;
+	unsigned int len;
 	char *start, *fa, *desc;
 
 	stream = getStream(tPtr, sel, 1);
@@ -3276,7 +3277,7 @@ void *WMCreateTextBlockWithPixmap(WMText * tPtr, WMPixmap * p,
 }
 
 void *WMCreateTextBlockWithText(WMText * tPtr, const char *text, WMFont * font, WMColor * color,
-				unsigned short first, unsigned short len)
+				unsigned short first, unsigned int len)
 {
 	TextBlock *tb;
 
@@ -3857,7 +3858,7 @@ void WMThawText(WMText * tPtr)
 }
 
 /* find first occurrence of a string */
-static const char *mystrstr(const char *haystack, const char *needle, unsigned short len, const char *end, bool caseSensitive)
+static const char *mystrstr(const char *haystack, const char *needle, unsigned int len, const char *end, bool caseSensitive)
 {
 	const char *ptr;
 
@@ -3879,7 +3880,7 @@ static const char *mystrstr(const char *haystack, const char *needle, unsigned s
 }
 
 /* find last occurrence of a string */
-static const char *mystrrstr(const char *haystack, const char *needle, unsigned short len, const char *end, bool caseSensitive)
+static const char *mystrrstr(const char *haystack, const char *needle, unsigned int len, const char *end, bool caseSensitive)
 {
 	const char *ptr;
 
@@ -3903,7 +3904,7 @@ bool WMFindInTextStream(WMText * tPtr, const char *needle, bool direction, bool 
 {
 	TextBlock *tb;
 	const char *mark = NULL;
-	unsigned short pos;
+	unsigned int pos;
 
 #if 0
 	if (!(tb = tPtr->currentTextBlock)) {

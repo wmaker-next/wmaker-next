@@ -1943,8 +1943,8 @@ void* WMCreateTextBlockWithPixmap(WMText *tPtr, WMPixmap *p, const char *descrip
                                   unsigned short extraInfo);
 
 void* WMCreateTextBlockWithText(WMText *tPtr, const char *text, WMFont *font,
-                                WMColor *color, unsigned short first,
-                                unsigned short length);
+				WMColor *color, unsigned short first,
+				unsigned int length);
 
 void WMSetTextBlockProperties(WMText *tPtr, void *vtb, unsigned int first,
                               unsigned int kanji, unsigned int underlined,
