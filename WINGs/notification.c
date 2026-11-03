@@ -536,11 +536,15 @@ WMEnqueueCoalesceNotification(WMNotificationQueue * queue,
 void W_FlushASAPNotificationQueue(void)
 {
 	WMNotificationQueue *queue = notificationQueueList;
+	WMNotification *notification;
 
 	while (queue) {
 		while (WMGetArrayItemCount(queue->asapQueue)) {
-			WMPostNotification(WMGetFromArray(queue->asapQueue, 0));
+			notification = WMGetFromArray(queue->asapQueue, 0);
+			WMRetainNotification(notification);
 			WMDeleteFromArray(queue->asapQueue, 0);
+			WMPostNotification(notification);
+			WMReleaseNotification(notification);
 		}
 
 		queue = queue->next;
@@ -550,11 +554,15 @@ void W_FlushASAPNotificationQueue(void)
 void W_FlushIdleNotificationQueue(void)
 {
 	WMNotificationQueue *queue = notificationQueueList;
+	WMNotification *notification;
 
 	while (queue) {
 		while (WMGetArrayItemCount(queue->idleQueue)) {
-			WMPostNotification(WMGetFromArray(queue->idleQueue, 0));
+			notification = WMGetFromArray(queue->idleQueue, 0);
+			WMRetainNotification(notification);
 			WMDeleteFromArray(queue->idleQueue, 0);
+			WMPostNotification(notification);
+			WMReleaseNotification(notification);
 		}
 
 		queue = queue->next;
