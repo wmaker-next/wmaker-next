@@ -124,6 +124,23 @@ static void colorChangedObserver(void *data, WMNotification * notification)
 	WMPostNotificationName(WMColorWellDidChangeNotification, cPtr, NULL);
 }
 
+static void colorPanelClosedObserver(void *data, WMNotification *notification)
+{
+	WMColorWell *cPtr = (WMColorWell *) data;
+	W_Screen *scr = cPtr->view->screen;
+
+	/* Parameter not used, but tell the compiler that it is ok */
+	(void) notification;
+
+	if (!cPtr->flags.active)
+		return;
+
+	cPtr->flags.active = 0;
+	W_SetViewBackgroundColor(cPtr->view, scr->gray);
+	if (cPtr->view->flags.realized && cPtr->view->flags.mapped)
+		paintColorWell(cPtr);
+}
+
 static void updateColorCallback(void *self, void *data)
 {
 	WMColorPanel *panel = (WMColorPanel *) self;
@@ -186,6 +203,7 @@ WMColorWell *WMCreateColorWell(WMWidget * parent)
 	cPtr->color = WMBlackColor(WMWidgetScreen(cPtr));
 
 	WMAddNotificationObserver(colorChangedObserver, cPtr, WMColorPanelColorChangedNotification, NULL);
+	WMAddNotificationObserver(colorPanelClosedObserver, cPtr, WMColorPanelClosedNotification, NULL);
 
 	WMSetViewDragSourceProcs(cPtr->colorView, &_DragSourceProcs);
 	WMSetViewDragDestinationProcs(cPtr->colorView, &_DragDestinationProcs);
@@ -368,6 +386,8 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 	WMColorWell *cPtr = (ColorWell *) data;
 	WMScreen *scr = WMWidgetScreen(cPtr);
 	WMColorPanel *cpanel;
+	W_View *top;
+	WMWidget *topWidget;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) event;
@@ -385,6 +405,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 	}
 	cpanel = WMGetColorPanel(scr);
 
+	top = W_TopLevelOfView(cPtr->view);
+	topWidget = top ? WMWidgetOfView(top) : NULL;
+	if (topWidget && WMWidgetClass(topWidget) == WC_Window)
+		WMSetColorPanelOwner(cpanel, (WMWindow *) topWidget);
+
 	WMSetColorPanelAction(cpanel, updateColorCallback, cPtr);
 
 	if (cPtr->color)
@@ -394,7 +419,23 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 
 static void destroyColorWell(ColorWell * cPtr)
 {
+	WMScreen *scr = WMWidgetScreen(cPtr);
+	WMColorPanel *cpanel = WMGetExistingColorPanel(scr);
+	WMWindow *owner = NULL;
+	W_View *top;
+
 	WMRemoveNotificationObserver(cPtr);
+
+	if (cpanel) {
+		top = W_TopLevelOfView(cPtr->view);
+		if (top && top->flags.alreadyDead) {
+			WMWidget *topWidget = WMWidgetOfView(top);
+
+			if (topWidget && WMWidgetClass(topWidget) == WC_Window)
+				owner = (WMWindow *) topWidget;
+		}
+		W_DetachColorWellFromPanel(cpanel, cPtr, owner);
+	}
 
 	if (cPtr->color)
 		WMReleaseColor(cPtr->color);

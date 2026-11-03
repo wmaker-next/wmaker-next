@@ -399,6 +399,8 @@ void W_DragDestinationStateHandler(WMDraggingInfo *info,
 
 void W_DragDestinationInfoClear(WMDraggingInfo *info);
 
+void W_DetachColorWellFromPanel(WMColorPanel *panel, void *well, WMWindow *owner);
+
 void W_FreeViewXdndPart(WMView *view);
 
 

@@ -744,6 +744,12 @@ void ShowTexturePanel(TexturePanel *panel)
 
 void HideTexturePanel(TexturePanel *panel)
 {
+	WMScreen *scr = WMWidgetScreen(panel->win);
+	WMColorPanel *cpanel = WMGetExistingColorPanel(scr);
+
+	if (cpanel && WMGetColorPanelOwner(cpanel) == panel->win)
+		WMCloseColorPanel(cpanel);
+
 	WMUnmapWidget(panel->win);
 }
 

@@ -71,6 +71,7 @@
 #endif
 
 const char *WMColorPanelColorChangedNotification = "WMColorPanelColorChangedNotification";
+const char *WMColorPanelClosedNotification = "WMColorPanelClosedNotification";
 
 /*
  * Bitmaps for magnifying glass cursor
@@ -147,6 +148,7 @@ typedef struct WheelMatrix {
 
 typedef struct W_ColorPanel {
 	WMWindow *win;
+	WMWindow *owner;
 	WMFont *font8;
 	WMFont *font12;
 	void *clientData;
@@ -387,6 +389,22 @@ void WMSetColorPanelAction(WMColorPanel * panel, WMAction2 * action, void *data)
 {
 	panel->action = action;
 	panel->clientData = data;
+}
+
+void W_DetachColorWellFromPanel(WMColorPanel *panel, void *well, WMWindow *owner)
+{
+	if (!panel)
+		return;
+
+	if (panel->clientData == well) {
+		panel->action = NULL;
+		panel->clientData = NULL;
+	}
+
+	if (owner && panel->owner == owner) {
+		panel->owner = NULL;
+		WMChangePanelOwner(panel->win, NULL);
+	}
 }
 
 static WMPixmap *makeSliderBackground(WMScreen *scr, WMFont *font,
@@ -1131,6 +1149,30 @@ WMColorPanel *WMGetColorPanel(WMScreen * scrPtr)
 	return panel;
 }
 
+WMColorPanel *WMGetExistingColorPanel(WMScreen *scrPtr)
+{
+	return scrPtr->sharedColorPanel;
+}
+
+void WMSetColorPanelOwner(WMColorPanel *panel, WMWindow *owner)
+{
+	/* the color well inside the panel is a child of the panel itself,
+	 * keep the owner that brought the panel up */
+	if (!panel || !owner || owner == panel->win)
+		return;
+
+	panel->owner = owner;
+	WMChangePanelOwner(panel->win, owner);
+}
+
+WMWindow *WMGetColorPanelOwner(WMColorPanel *panel)
+{
+	if (!panel)
+		return NULL;
+
+	return panel->owner;
+}
+
 void WMFreeColorPanel(WMColorPanel * panel)
 {
 	W_Screen *scr;
@@ -1145,6 +1187,8 @@ void WMFreeColorPanel(WMColorPanel * panel)
 
 	WMRemoveNotificationObserver(panel);
 	WMUnmapWidget(panel->win);
+
+	WMPostNotificationName(WMColorPanelClosedNotification, panel, NULL);
 
 	/* fonts */
 	WMReleaseFont(panel->font8);

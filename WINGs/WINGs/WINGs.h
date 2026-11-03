@@ -1681,6 +1681,12 @@ int WMGetProgressIndicatorValue(WMProgressIndicator *progressindicator);
 
 WMColorPanel* WMGetColorPanel(WMScreen *scrPtr);
 
+WMColorPanel *WMGetExistingColorPanel(WMScreen *scrPtr);
+
+void WMSetColorPanelOwner(WMColorPanel *panel, WMWindow *owner);
+
+WMWindow *WMGetColorPanelOwner(WMColorPanel *panel);
+
 void WMFreeColorPanel(WMColorPanel *panel);
 
 void WMShowColorPanel(WMColorPanel *panel);
@@ -1696,6 +1702,8 @@ void WMSetColorPanelPickerMode(WMColorPanel *panel, WMColorPanelMode mode);
 void WMSetColorPanelAction(WMColorPanel *panel, WMAction2 *action, void *data);
 
 extern const char *WMColorPanelColorChangedNotification;
+
+extern const char *WMColorPanelClosedNotification;
 
 /* ---[ WINGs/wcolorwell.c ]---------------------------------------------- */
 
