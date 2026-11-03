@@ -2749,12 +2749,6 @@ static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck)
 
 	pid = (int)wwin->client_pid;
 	machine = WXRcvString(wdisp->conn, machine_ck, NULL);
-	if (pid <= 0) {
-		wfree(machine);
-		return;
-	}
-	if (!machine)
-		return;
 
 	/* Retain the already-fetched WM_CLIENT_MACHINE string on WWindow so
 	 * the dynamic-rule MatchMachine predicate can read it without a
@@ -2762,15 +2756,19 @@ static void cacheLocalPid(WWindow *wwin, WXCookie machine_ck)
 	 * empty string is dropped to NULL, mirroring wm_role handling.
 	 * The inspector re-apply path re-runs this after manage time, so
 	 * release any prior value first. */
-	if (machine[0] != '\0') {
-		wfree(wwin->wm_machine);
+	wfree(wwin->wm_machine);
+	wwin->wm_machine = NULL;
+	if (machine && machine[0] != '\0')
 		wwin->wm_machine = machine;
-	} else
+	else
 		wfree(machine);
+
+	if (pid <= 0)
+		return;
 
 	if (gethostname(host, sizeof(host)) == 0) {
 		host[sizeof(host) - 1] = '\0';
-		if (strcmp(host, wwin->wm_machine ? wwin->wm_machine : "") == 0)
+		if (wwin->wm_machine && strcmp(host, wwin->wm_machine) == 0)
 			wwin->net_ping.pid = pid;
 	}
 }
