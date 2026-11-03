@@ -1546,6 +1546,17 @@ static void toggleAutoMiniaturizeOnUnfocus(WMWidget *self, void *client_data)
 	WMSetButtonEnabled(panel->attrChk[other], !WMGetButtonSelected(self));
 }
 
+static int listFrameHeight(WMWidget *win, int rows)
+{
+	WMFont *font = WMSystemFontOfSize(WMWidgetScreen(win), 0);
+	int titleHeight = font ? (int)WMFontHeight(font) : 0;
+
+	if (font)
+		WMReleaseFont(font);
+
+	return 20 * rows + 32 - titleHeight / 2;
+}
+
 static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, int frame_width)
 {
 	int i, j, tmp;
@@ -1559,15 +1570,8 @@ static void create_tab_window_attributes(WWindow *wwin, InspectorPanel *panel, i
 	panel->attrFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->attrFrm, _("Attributes"));
 	WMMoveWidget(panel->attrFrm, 15, 45);
-	/* Match moreFrm's height so both tab pages present the same frame
-	 * size. window_attribute[] has 14 entries (the XKB NO_LANGUAGE_BUTTON
-	 * is in advanced_option[], not here), so the XKB-tall frame just has
-	 * more bottom margin. */
-#ifdef XKB_BUTTON_HINT
-	WMResizeWidget(panel->attrFrm, frame_width, 320);
-#else
-	WMResizeWidget(panel->attrFrm, frame_width, 300);
-#endif
+	WMResizeWidget(panel->attrFrm, frame_width,
+		       listFrameHeight(panel->win, (int)wlengthof(window_attribute)));
 
 	for (i = 0; i < wlengthof(window_attribute); i++)
 		order[i] = i;
@@ -1639,11 +1643,8 @@ static void create_tab_window_advanced(WWindow *wwin, InspectorPanel *panel, int
 	panel->moreFrm = WMCreateFrame(panel->win);
 	WMSetFrameTitle(panel->moreFrm, _("Advanced"));
 	WMMoveWidget(panel->moreFrm, 15, 45);
-#ifdef XKB_BUTTON_HINT
-	WMResizeWidget(panel->moreFrm, frame_width, 320);
-#else
-	WMResizeWidget(panel->moreFrm, frame_width, 300);
-#endif
+	WMResizeWidget(panel->moreFrm, frame_width,
+		       20 * (int)wlengthof(advanced_option) + 20);
 
 	for (i = 0; i < wlengthof(advanced_option); i++)
 		order[i] = i;
@@ -1763,7 +1764,8 @@ static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int fr
 		panel->appFrm = WMCreateFrame(panel->win);
 		WMSetFrameTitle(panel->appFrm, _("Application Attributes"));
 		WMMoveWidget(panel->appFrm, 15, 50);
-		WMResizeWidget(panel->appFrm, frame_width, 240);
+		WMResizeWidget(panel->appFrm, frame_width,
+			       listFrameHeight(panel->win, (int)wlengthof(application_attr)));
 
 		for (i = 0; i < wlengthof(application_attr); i++)
 			order[i] = i;
@@ -1791,7 +1793,7 @@ static void create_tab_app_specific(WWindow *wwin, InspectorPanel *panel, int fr
 				flag = get_attr_flag(&wapp->main_window_desc->client_flags, application_attr[idx].attr);
 
 			panel->appChk[idx] = WMCreateSwitchButton(panel->appFrm);
-			WMMoveWidget(panel->appChk[idx], 10, 20 * (i + 1));
+			WMMoveWidget(panel->appChk[idx], 10, 20 * (i + 1) - 4);
 			WMResizeWidget(panel->appChk[idx], 205, 20);
 			WMSetButtonSelected(panel->appChk[idx], flag);
 			WMSetButtonText(panel->appChk[idx], _(application_attr[idx].caption));
