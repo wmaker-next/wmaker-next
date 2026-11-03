@@ -904,6 +904,8 @@ void WMDrawImageString(WMScreen *scr, xcb_drawable_t d, WMColor *color,
 
 int WMWidthOfString(WMFont *font, const char *text, int length);
 
+int WMHeightOfString(WMFont *font, const char *text, int length);
+
 /* Record d's size for the cairo surface acquisition path so painting
  * on d never needs a synchronous geometry read. Called from the
  * window create and resize chokepoints, callers that create Pixmaps

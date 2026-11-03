@@ -429,6 +429,17 @@ int WMWidthOfString(WMFont * font, const char *text, int length)
 	return width;
 }
 
+int WMHeightOfString(WMFont * font, const char *text, int length)
+{
+	int height;
+
+	wassertrv(font != NULL && text != NULL, 0);
+
+	setLayoutText(font->layout, text, length);
+	pango_layout_get_pixel_size(font->layout, NULL, &height);
+	return height;
+}
+
 /* Render the layout at (x, y). The font description is at logical
  * pixelsize so on a scaled cairo context (WINGs W_View drawables) the
  * CTM carries the layout to device size. On an unscaled context

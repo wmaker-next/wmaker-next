@@ -498,6 +498,13 @@ static inline int frame_title_max_height(const WFrameWindow *fwin)
 				   : w_global.config->window_title_max_height;
 }
 
+static inline int frame_title_vertical_offset(const WFrameWindow *fwin, int h)
+{
+	int y = ((int)fwin->titlebar->height - h) / 2;
+
+	return y > 0 ? y : 0;
+}
+
 WFrameWindow *wFrameWindowCreate(WScreen * scr, int wlevel, int x, int y,
 				 int width, int height, int flags,
 				 WTexture ** title_texture, WTexture ** resize_texture,
@@ -1582,12 +1589,8 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			}
 		}
 
-		y = frame_title_clearance(fwin) + TITLEBAR_EXTEND_SPACE;
 		h = WSCALE(scr, WMFontHeight(*fwin->font));
-		if (y * 2 + h > frame_title_max_height(fwin))
-			y = (frame_title_max_height(fwin) - h) / 2;
-		if (y * 2 + h < frame_title_min_height(fwin))
-			y = (frame_title_min_height(fwin) - h) / 2;
+		y = frame_title_vertical_offset(fwin, h);
 
 		/* tab-group segmented titlebar branches before the
 		 * single-title icon and text path, each segment owns its
@@ -1639,6 +1642,8 @@ void wFrameWindowPaint(WFrameWindow * fwin)
 			title = ShrinkString(*fwin->font, fwin->title, WUNSCALE(scr, fwin->titlebar->width - lofs - rofs));
 			titlelen = strlen(title);
 			w = WSCALE(scr, WMWidthOfString(*fwin->font, title, titlelen));
+			h = WSCALE(scr, WMHeightOfString(*fwin->font, title, titlelen));
+			y = frame_title_vertical_offset(fwin, h);
 
 			switch (fwin->flags.justification) {
 			case WTJ_LEFT:
@@ -2104,7 +2109,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	small_px = WMFontHeight(*fwin->font) * 55 / 100;
 	small = WMBoldSystemFontOfSize(scr->wmscreen, small_px);
 	text_width = WSCALE(scr, WMWidthOfString(small, fwin->language_label, strlen(fwin->language_label)));
-	text_height = WSCALE(scr, WMFontHeight(small));
+	text_height = WSCALE(scr, WMHeightOfString(small, fwin->language_label, strlen(fwin->language_label)));
 
 	key_width = button->width - border_thickness;
 	key_height = button->height - border_thickness;
@@ -2117,7 +2122,7 @@ void wFrameWindowUpdateLanguageButton(WFrameWindow * fwin)
 	count = TS_NEW_GEOM(w_global.config->new_style) ? 2 : 1;
 	silver = NULL;
 	tx = (key_width - text_width) / 2;
-	ty = (key_height - text_height) / 2;
+	ty = (button->height - text_height) / 2 - (button->height - key_height) / 2;
 
 	for (i = 0; i < count; i++) {
 		tmp[i] = xcb_generate_id(wdisp->conn);
