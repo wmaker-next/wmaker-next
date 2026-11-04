@@ -339,6 +339,29 @@ static void ipc_drop(struct WIPCClient *c)
 
 /* ---- broadcast ------------------------------------------------------- */
 
+bool wIPCIsSubscribed(WScreen *only, uint32_t ev)
+{
+	uint32_t bit;
+	struct WIPCClient *c;
+	WScreen *scr;
+	int i;
+
+	if (ev >= WIPC_EV_COUNT)
+		return false;
+	bit = 1u << ev;
+
+	for (i = 0; i < wdisp->screen_count; i++) {
+		scr = wScreenWithNumber(i);
+		if (!scr || (only && scr != only))
+			continue;
+		for (c = scr->ipc_clients; c; c = c->next) {
+			if (c->sub_mask & bit)
+				return true;
+		}
+	}
+	return false;
+}
+
 static void ipc_broadcast_buf(WScreen *only, uint32_t ev,
 			      const char *body, size_t len)
 {
@@ -366,6 +389,8 @@ void wIPCBroadcast(WScreen *scr, uint32_t ev, WMPropList *pl)
 	size_t len = 0;
 
 	if (ev >= WIPC_EV_COUNT)
+		return;
+	if (!wIPCIsSubscribed(scr, ev))
 		return;
 	if (pl) {
 		body = WMGetPropListDescription(pl, false);
@@ -1577,13 +1602,15 @@ static void handle_send_tick(struct WIPCClient *c, const char *body)
 	if (pl && WMIsPLString(pl))
 		payload = WMGetFromPLString(pl);
 
-	ev = WMCreatePLDictionary(NULL, NULL);
-	pl_dict_put(ev, "first", pl_bool(0));
-	pl_dict_put(ev, "payload", pl_string(payload));
-	if (wClipboardTakeKeyHint())
-		pl_dict_put(ev, "keyed", pl_bool(1));
-	wIPCBroadcast(NULL, WIPC_EV_TICK, ev);
-	WMReleasePropList(ev);
+	if (wIPCIsSubscribed(NULL, WIPC_EV_TICK)) {
+		ev = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(ev, "first", pl_bool(0));
+		pl_dict_put(ev, "payload", pl_string(payload));
+		if (wClipboardTakeKeyHint())
+			pl_dict_put(ev, "keyed", pl_bool(1));
+		wIPCBroadcast(NULL, WIPC_EV_TICK, ev);
+		WMReleasePropList(ev);
+	}
 	if (pl)
 		WMReleasePropList(pl);
 
@@ -1927,12 +1954,14 @@ void wIPCServerStop(WScreen *scr, const char *mode)
 		scr->ipc_listen = NULL;
 	}
 
-	ev = WMCreatePLDictionary(NULL, NULL);
-	pl_dict_put(ev, "change", pl_string(mode));
-	/* screen-scoped here, every screen's stop is called separately
-	 * from Shutdown() so subscribers on each socket see exactly one */
-	wIPCBroadcast(scr, WIPC_EV_SHUTDOWN, ev);
-	WMReleasePropList(ev);
+	if (wIPCIsSubscribed(scr, WIPC_EV_SHUTDOWN)) {
+		ev = WMCreatePLDictionary(NULL, NULL);
+		pl_dict_put(ev, "change", pl_string(mode));
+		/* screen-scoped here, every screen's stop is called separately
+		 * from Shutdown() so subscribers on each socket see exactly one */
+		wIPCBroadcast(scr, WIPC_EV_SHUTDOWN, ev);
+		WMReleasePropList(ev);
+	}
 
 	ipc_final_drain(scr);
 
@@ -1952,6 +1981,8 @@ void wIPCEmitChildExit(int pid, int wait_status, const char *source, int slot)
 {
 	WMPropList *d;
 
+	if (!wIPCIsSubscribed(NULL, WIPC_EV_CHILD_EXIT))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "pid", pl_int(pid));
 	pl_dict_put(d, "wait_status", pl_int(wait_status));
@@ -1972,6 +2003,8 @@ void wIPCEmitDialog(WScreen *scr, const char *kind,
 	WMPropList *d;
 
 	(void)scr;
+	if (!wIPCIsSubscribed(NULL, WIPC_EV_DIALOG))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "kind", pl_string(kind));
 	pl_dict_put(d, "title", pl_string(title));
@@ -1999,6 +2032,8 @@ void wIPCEmitDisplayPower(int off, const char *source)
 {
 	WMPropList *d;
 
+	if (!wIPCIsSubscribed(NULL, WIPC_EV_DISPLAY_POWER))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "state", pl_string(off ? "off" : "on"));
 	pl_dict_put(d, "source", pl_string(source));
@@ -2011,6 +2046,8 @@ void wIPCEmitScreenshot(WScreen *scr, const char *path, int mode)
 {
 	WMPropList *d;
 
+	if (!wIPCIsSubscribed(scr, WIPC_EV_SCREENSHOT))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "path", pl_string(path));
 	pl_dict_put(d, "mode", pl_string(screenshot_mode_name(mode)));
@@ -2024,6 +2061,8 @@ void wIPCEmitSound(WScreen *scr, const char *event)
 {
 	WMPropList *d;
 
+	if (!wIPCIsSubscribed(scr, WIPC_EV_SOUND))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "event", pl_string(event));
 	pl_dict_put(d, "screen", pl_int(scr->screen));
@@ -2038,6 +2077,8 @@ static void emit_workspace(WScreen *scr, const char *change, int idx)
 {
 	WMPropList *d;
 
+	if (!wIPCIsSubscribed(scr, WIPC_EV_WORKSPACE))
+		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "change", pl_string(change));
 	pl_dict_put(d, "index", pl_int(idx));
@@ -2076,7 +2117,7 @@ static void emit_window(WWindow *wwin, const char *change)
 	WMPropList *d;
 	char xid[32];
 
-	if (!wwin)
+	if (!wwin || !wIPCIsSubscribed(wwin->screen_ptr, WIPC_EV_WINDOW))
 		return;
 	d = WMCreatePLDictionary(NULL, NULL);
 	pl_dict_put(d, "change", pl_string(change));

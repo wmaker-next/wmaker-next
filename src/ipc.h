@@ -20,6 +20,7 @@
 #ifndef _WM_IPC_H_
 #define _WM_IPC_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <WINGs/WIPC.h>
@@ -48,6 +49,10 @@ void wIPCServerStop(struct _WScreen *scr, const char *mode);
  * added here), pl is serialised once and the buffer reused for every
  * recipient, pl may be NULL for an empty payload */
 void wIPCBroadcast(struct _WScreen *scr, uint32_t ev, struct W_PropList *pl);
+
+/* true when at least one client would receive ev, scr == NULL checks
+ * every screen like wIPCBroadcast() */
+bool wIPCIsSubscribed(struct _WScreen *scr, uint32_t ev);
 
 /* convenience emitters used outside ipc.c so callers do not build
  * proplists by hand */
