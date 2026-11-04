@@ -347,9 +347,13 @@ typedef struct _WScreen {
 	/* per-screen realised switch-panel/placement state */
 	WCoord window_place_origin;        /* WindowPlaceOrigin clamped to this screen */
 	struct RImage *swtileImage;
+	struct RImage *swtileScaled;
+	short swtileScaledSize;
 	struct RImage *swbackImage[9];
 	union WTexture *wsmbackTexture;
 	char *hot_corner_actions[4];       /* Action of each corner */
+	xcb_window_t *restackBuffer;
+	int restackBufferCapacity;
 
     struct WDialogData *dialog_data;
 

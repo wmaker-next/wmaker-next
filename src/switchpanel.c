@@ -532,16 +532,20 @@ static RImage *createBackImage(WScreen *scr, int width, int height)
 
 static RImage *getTile(WScreen *scr)
 {
-	RImage *stile;
-
 	if (!scr->swtileImage)
 		return NULL;
 
-	stile = RScaleImage(scr->swtileImage, icon_tile_size, icon_tile_size);
-	if (!stile)
+	if (scr->swtileScaled && scr->swtileScaledSize == icon_tile_size)
+		return RRetainImage(scr->swtileScaled);
+
+	if (scr->swtileScaled)
+		RReleaseImage(scr->swtileScaled);
+	scr->swtileScaled = RScaleImage(scr->swtileImage, icon_tile_size, icon_tile_size);
+	scr->swtileScaledSize = icon_tile_size;
+	if (!scr->swtileScaled)
 		return RRetainImage(scr->swtileImage);
 
-	return stile;
+	return RRetainImage(scr->swtileScaled);
 }
 
 static void apply_panel_bg(WSwitchPanel *panel)

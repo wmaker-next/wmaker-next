@@ -130,11 +130,15 @@ void CommitStacking(WScreen * scr)
 	nwindows = scr->window_count;
 	if (nwindows == 0)
 		return;
-	windows = wmalloc(sizeof(xcb_window_t) * nwindows);
+	if (nwindows > scr->restackBufferCapacity) {
+		scr->restackBuffer = wrealloc(scr->restackBuffer,
+					      sizeof(xcb_window_t) * nwindows);
+		scr->restackBufferCapacity = nwindows;
+	}
+	windows = scr->restackBuffer;
 
 	i = wStackCollectWindows(&ctx, windows, nwindows);
 	wXRestackWindows(wdisp->conn, windows, i);
-	wfree(windows);
 	wHotCornersRaise(scr);
 #ifdef VIRTUAL_DESKTOP
 	wWorkspaceRaiseEdge(scr);

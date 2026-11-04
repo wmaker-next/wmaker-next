@@ -1444,6 +1444,14 @@ void wScreenDestroy(WScreen *scr)
 #ifdef KEEP_XKB_LOCK_STATUS
 	wAccentPickerDestroy(scr);
 #endif
+	if (scr->restackBuffer)
+		wfree(scr->restackBuffer);
+	scr->restackBuffer = NULL;
+	scr->restackBufferCapacity = 0;
+	if (scr->swtileScaled)
+		RReleaseImage(scr->swtileScaled);
+	scr->swtileScaled = NULL;
+	scr->swtileScaledSize = 0;
 	wStartupNotifyShutdown(scr);
 #ifdef USE_RANDR
 	wRandRTeardown(scr);

@@ -2483,6 +2483,14 @@ static void release_switch_panel_back_images(WScreen *scr)
 	}
 }
 
+static void release_switch_panel_scaled_tile(WScreen *scr)
+{
+	if (scr->swtileScaled)
+		RReleaseImage(scr->swtileScaled);
+	scr->swtileScaled = NULL;
+	scr->swtileScaledSize = 0;
+}
+
 void wConfigApplySwitchPanelImages(WScreen *scr,
 				   const WConfigSwitchPanelImages *images)
 {
@@ -2493,6 +2501,7 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		return;
 
 	if (!images || !images->tile) {
+		release_switch_panel_scaled_tile(scr);
 		if (scr->swtileImage)
 			RReleaseImage(scr->swtileImage);
 		scr->swtileImage = NULL;
@@ -2560,6 +2569,7 @@ void wConfigApplySwitchPanelImages(WScreen *scr,
 		wwarning(_("Could not find image \"%s\" for option \"%s\""),
 			 images->tile, "SwitchPanelImages");
 	} else {
+		release_switch_panel_scaled_tile(scr);
 		if (scr->swtileImage)
 			RReleaseImage(scr->swtileImage);
 		scr->swtileImage = RLoadImage(scr->rcontext, path, 0);
