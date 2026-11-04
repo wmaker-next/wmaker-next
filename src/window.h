@@ -489,6 +489,7 @@ typedef struct WWindow {
 						 * layer supplied at the last
 						 * re-eval/map-time apply, so the next
 						 * re-eval can revert them to baseline */
+	unsigned int attrs_generation;	/* wDefaultAttrsGeneration() at last apply */
 
 	/* invoked from wWindowMove()/wWindowConfigure() after geometry is
 	 * final, so an attached overlay can track the window */

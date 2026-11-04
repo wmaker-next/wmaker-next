@@ -147,6 +147,7 @@ char *find_in_icon_cache(const char *file_name,
 			 const char *winstance, const char *wclass);
 
 bool wDefaultHasDynamicRules(void);
+unsigned int wDefaultAttrsGeneration(void);
 
 /* Bytes of a client-supplied window title handed to regexec() for a
  * MatchTitle predicate. The property reader caps WM_NAME/_NET_WM_NAME

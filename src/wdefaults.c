@@ -116,6 +116,7 @@ typedef struct WDynamicRule {
 
 static WDynamicRule *dynamic_rules;
 static int dynamic_rule_count;
+static unsigned int attrs_generation;
 
 #define WATTR_NAME_ROW(K, name, flag) name,
 static const char * const attr_bool_names[WATTR_BOOL_COUNT] = {
@@ -622,10 +623,17 @@ bool wDefaultHasDynamicRules(void)
 	return dynamic_rule_count > 0;
 }
 
+unsigned int wDefaultAttrsGeneration(void)
+{
+	return attrs_generation;
+}
+
 void wWindowAttrsReload(void)
 {
 	WMPropList *dict, *keys, *rules_array;
 	int i, count, rcount, j;
+
+	attrs_generation++;
 
 	/* icon lookups must re-decode after the reload */
 	RReleaseCache();

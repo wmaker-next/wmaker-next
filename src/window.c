@@ -2749,6 +2749,8 @@ static void wWindowReapplyDecorativeAttrs(WWindow *wwin)
 	if (!wwin->frame)
 		return;
 
+	wwin->attrs_generation = wDefaultAttrsGeneration();
+
 	if (!wDefaultHasDynamicRules()) {
 		static const WWindowAttributes zero;
 		WWindowAttributes *old = &wwin->regex_applied_mask;
@@ -2999,6 +3001,7 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 	const char *title;
 	char buf[512];
 	WWindow *act;
+	bool same_title;
 
 	if (!wwin->frame)
 		return;
@@ -3010,11 +3013,16 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 
 	/* keep the dynamic-rule title predicate source in sync with the
 	 * undecorated client title before any re-evaluation runs */
-	if (wwin->wm_title) {
-		wfree(wwin->wm_title);
-		wwin->wm_title = NULL;
+	same_title = wwin->wm_title && !wwin->flags.initializing &&
+		wwin->attrs_generation == wDefaultAttrsGeneration() &&
+		strcmp(wwin->wm_title, title) == 0;
+	if (!same_title) {
+		if (wwin->wm_title) {
+			wfree(wwin->wm_title);
+			wwin->wm_title = NULL;
+		}
+		wwin->wm_title = wstrdup(title);
 	}
-	wwin->wm_title = wstrdup(title);
 
 	/* Re-apply [N/M] prefix when this window is part of a tab group and
 	 * the segmented titlebar renderer is off */
@@ -3045,6 +3053,9 @@ void wWindowUpdateName(WWindow *wwin, const char *newTitle)
 	 * has been committed. The other six sources are read once at manage
 	 * time. Rules keyed purely on them stay constant. The first call at
 	 * map time seeds regex_applied_mask from zero. */
+	if (same_title)
+		return;
+
 	wWindowReapplyDecorativeAttrs(wwin);
 }
 
