@@ -254,13 +254,21 @@ static bool claim(WXSettings *xs)
 {
 	xcb_window_t owner;
 
-	owner = wXGetSelectionOwner(wdisp->conn, xs->sel_atom);
-	if (owner && owner != xs->win)
+	if (!wXGrabServer(wdisp->conn))
 		return false;
 
-	wXSetSelectionOwner(wdisp->conn, xs->sel_atom, xs->win, XCB_CURRENT_TIME);
-	if (wXGetSelectionOwner(wdisp->conn, xs->sel_atom) != xs->win)
+	owner = wXGetSelectionOwner(wdisp->conn, xs->sel_atom);
+	if (owner && owner != xs->win) {
+		wXUngrabServer(wdisp->conn);
 		return false;
+	}
+
+	wXSetSelectionOwner(wdisp->conn, xs->sel_atom, xs->win, XCB_CURRENT_TIME);
+	if (wXGetSelectionOwner(wdisp->conn, xs->sel_atom) != xs->win) {
+		wXUngrabServer(wdisp->conn);
+		return false;
+	}
+	wXUngrabServer(wdisp->conn);
 
 	xs->owned = true;
 
@@ -338,9 +346,12 @@ void wXSettingsShutdown(struct _WScreen *scr)
 
 	WMDeleteTimerHandlerPtr(&xs->retry_timer);
 
-	if (xs->owned) {
-		WXDeleteProperty(wdisp->conn, xs->win, xs->prop_atom);
-		wXSetSelectionOwner(wdisp->conn, xs->sel_atom, XCB_NONE, XCB_CURRENT_TIME);
+	if (xs->owned && wXGrabServer(wdisp->conn)) {
+		if (wXGetSelectionOwner(wdisp->conn, xs->sel_atom) == xs->win) {
+			WXDeleteProperty(wdisp->conn, xs->win, xs->prop_atom);
+			wXSetSelectionOwner(wdisp->conn, xs->sel_atom, XCB_NONE, XCB_CURRENT_TIME);
+		}
+		wXUngrabServer(wdisp->conn);
 	}
 	settings_free_values(xs->set, xs->n);
 	xcb_destroy_window(wdisp->conn, xs->win);
