@@ -413,6 +413,12 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
                          unsigned width, unsigned height)
 	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1, 2);
 
+#ifdef USE_SVG
+RImage *RLoadSVGFromData(const char *data, size_t size,
+			 unsigned int width, unsigned int height)
+	__wrlib_useresult __wrlib_nonalias __wrlib_nonnull(1);
+#endif
+
 RImage* RRetainImage(RImage *image);
 
 void RReleaseImage(RImage *image)

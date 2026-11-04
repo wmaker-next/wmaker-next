@@ -40,13 +40,14 @@
 
 #include <wraster.h>
 #include "WindowMaker.h"
-#include "def_pixmaps.h"
 #include "screen.h"
 #include "accent_picker.h"
 #include "config_schema.h"
 #include "texture.h"
 #include "xsettings.h"
 #include "pixmap.h"
+#include "def_pixmaps.h"
+#include "def_svgs.h"
 #include "menu.h"
 #include "window.h"
 #include "main.h"
@@ -285,14 +286,19 @@ static WPixmap *load_button_file(WScreen *scr, const char *file)
 }
 
 static WPixmap *load_button_slot(WScreen *scr, const char *file,
-				 char **pred_xpm, char **next_xpm)
+				 char **pred_xpm, char **next_xpm, int svg_glyph)
 {
+	bool next = (w_global.config->new_style == TS_NEXT);
 	WPixmap *pix;
 
 	pix = load_button_file(scr, file);
-	if (!pix)
-		pix = wPixmapCreateFromXPMData(scr,
-			(w_global.config->new_style == TS_NEXT) ? next_xpm : pred_xpm);
+	if (!pix) {
+		pix = wPixmapCreateFromXPMData(scr, next ? next_xpm : pred_xpm);
+		if (pix) {
+			pix->svg_glyph = svg_glyph;
+			pix->svg_next = next;
+		}
+	}
 	if (pix)
 		pix->shared = 1;
 	return pix;
@@ -304,33 +310,129 @@ static void allocButtonPixmaps(WScreen *scr)
 
 	scr->b_pixmaps[WBUT_CLOSE] =
 	    load_button_slot(scr, cfg->close_button_pixmap,
-			     PRED_CLOSE_XPM, NEXT_CLOSE_XPM);
+			     PRED_CLOSE_XPM, NEXT_CLOSE_XPM, WBTN_SVG_CLOSE);
 	scr->b_pixmaps[WBUT_BROKENCLOSE] =
 	    load_button_slot(scr, cfg->broken_close_button_pixmap,
-			     PRED_BROKEN_CLOSE_XPM, NEXT_BROKEN_CLOSE_XPM);
+			     PRED_BROKEN_CLOSE_XPM, NEXT_BROKEN_CLOSE_XPM,
+			     WBTN_SVG_BROKEN_CLOSE);
 	scr->b_pixmaps[WBUT_ICONIFY] =
 	    load_button_slot(scr, cfg->miniaturize_button_pixmap,
-			     PRED_ICONIFY_XPM, NEXT_ICONIFY_XPM);
+			     PRED_ICONIFY_XPM, NEXT_ICONIFY_XPM, WBTN_SVG_ICONIFY);
 	scr->b_pixmaps[WBUT_MAXIMIZE] =
 	    load_button_slot(scr, cfg->maximize_button_pixmap,
-			     PRED_MAXIMIZE_XPM, NEXT_MAXIMIZE_XPM);
+			     PRED_MAXIMIZE_XPM, NEXT_MAXIMIZE_XPM, WBTN_SVG_MAXIMIZE);
 	scr->b_pixmaps[WBUT_RESTORE] =
 	    load_button_slot(scr, cfg->restore_button_pixmap,
-			     PRED_RESTORE_XPM, NEXT_RESTORE_XPM);
+			     PRED_RESTORE_XPM, NEXT_RESTORE_XPM, WBTN_SVG_RESTORE);
 	scr->b_pixmaps[WBUT_KILL] =
 	    load_button_slot(scr, cfg->kill_button_pixmap,
-			     PRED_KILL_XPM, NEXT_KILL_XPM);
+			     PRED_KILL_XPM, NEXT_KILL_XPM, WBTN_SVG_KILL);
 #ifdef XKB_BUTTON_HINT
 	scr->b_pixmaps[WBUT_XKBGROUP1] =
-	    load_button_slot(scr, NULL, PRED_XKBGROUP1_XPM, NEXT_XKBGROUP1_XPM);
+	    load_button_slot(scr, NULL, PRED_XKBGROUP1_XPM, NEXT_XKBGROUP1_XPM,
+			     WBTN_SVG_NONE);
 	scr->b_pixmaps[WBUT_XKBGROUP2] =
-	    load_button_slot(scr, NULL, PRED_XKBGROUP2_XPM, NEXT_XKBGROUP2_XPM);
+	    load_button_slot(scr, NULL, PRED_XKBGROUP2_XPM, NEXT_XKBGROUP2_XPM,
+			     WBTN_SVG_NONE);
 	scr->b_pixmaps[WBUT_XKBGROUP3] =
-	    load_button_slot(scr, NULL, PRED_XKBGROUP3_XPM, NEXT_XKBGROUP3_XPM);
+	    load_button_slot(scr, NULL, PRED_XKBGROUP3_XPM, NEXT_XKBGROUP3_XPM,
+			     WBTN_SVG_NONE);
 	scr->b_pixmaps[WBUT_XKBGROUP4] =
-	    load_button_slot(scr, NULL, PRED_XKBGROUP4_XPM, NEXT_XKBGROUP4_XPM);
+	    load_button_slot(scr, NULL, PRED_XKBGROUP4_XPM, NEXT_XKBGROUP4_XPM,
+			     WBTN_SVG_NONE);
 #endif
 }
+
+#ifdef USE_SVG
+struct WButtonGlyphCacheEntry {
+	int glyph;
+	int size;
+	unsigned int next:1;
+	WPixmap *pix;
+	struct WButtonGlyphCacheEntry *next_entry;
+};
+
+struct WButtonGlyphCache {
+	struct WButtonGlyphCacheEntry *head;
+};
+
+static WPixmap *buttonGlyphCreate(WScreen *scr, const WPixmap *src, int size)
+{
+	const char *svg;
+	RImage *image;
+	WPixmap *pix;
+
+	svg = src->svg_next ? button_svg_next[src->svg_glyph]
+			    : button_svg_pred[src->svg_glyph];
+	if (!svg)
+		return NULL;
+
+	image = RLoadSVGFromData(svg, strlen(svg), size, size);
+	if (!image)
+		return NULL;
+
+	pix = wmalloc(sizeof(WPixmap));
+	if (!RConvertImageMask(scr->rcontext, image, &pix->image, &pix->mask, 128)) {
+		RReleaseImage(image);
+		wfree(pix);
+		return NULL;
+	}
+	pix->width = size;
+	pix->height = size;
+	pix->depth = scr->w_depth;
+	pix->themed = src->svg_next;
+	RReleaseImage(image);
+
+	return pix;
+}
+
+WPixmap *wButtonGlyphGet(WScreen *scr, const WPixmap *src, int size)
+{
+	struct WButtonGlyphCache *cache;
+	struct WButtonGlyphCacheEntry *entry;
+
+	if (!scr->button_glyph_cache)
+		scr->button_glyph_cache = wmalloc(sizeof(struct WButtonGlyphCache));
+	cache = scr->button_glyph_cache;
+
+	for (entry = cache->head; entry; entry = entry->next_entry) {
+		if (entry->glyph == src->svg_glyph && entry->size == size
+		    && entry->next == src->svg_next)
+			return entry->pix;
+	}
+
+	entry = wmalloc(sizeof(struct WButtonGlyphCacheEntry));
+	entry->glyph = src->svg_glyph;
+	entry->size = size;
+	entry->next = src->svg_next;
+	entry->pix = buttonGlyphCreate(scr, src, size);
+	if (!entry->pix) {
+		wfree(entry);
+		return NULL;
+	}
+	entry->next_entry = cache->head;
+	cache->head = entry;
+
+	return entry->pix;
+}
+
+void wButtonGlyphCacheDestroy(WScreen *scr)
+{
+	struct WButtonGlyphCache *cache = scr->button_glyph_cache;
+	struct WButtonGlyphCacheEntry *entry;
+
+	if (!cache)
+		return;
+
+	while ((entry = cache->head)) {
+		cache->head = entry->next_entry;
+		wPixmapDestroy(entry->pix);
+		wfree(entry);
+	}
+	wfree(cache);
+	scr->button_glyph_cache = NULL;
+}
+#endif
 
 static int get_dot_mult(void)
 {
@@ -1441,6 +1543,9 @@ void ScreenCapture(WScreen *scr, int mode)
 
 void wScreenDestroy(WScreen *scr)
 {
+#ifdef USE_SVG
+	wButtonGlyphCacheDestroy(scr);
+#endif
 #ifdef KEEP_XKB_LOCK_STATUS
 	wAccentPickerDestroy(scr);
 #endif

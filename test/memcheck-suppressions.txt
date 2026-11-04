@@ -4,8 +4,9 @@
 # before exit: the screen render context, the per-screen fonts, the
 # workspace menu and the switch-panel font are kept until the process
 # dies. Those allocations, and the caches that fontconfig, pango, glib,
-# gobject and expat keep for their own process lifetime, are therefore
-# reported as lost. Match on the library frame rather than a full wmaker
+# gobject, expat, librsvg and libxml2 keep for their own process
+# lifetime, are therefore reported as lost. Match on the library frame
+# rather than a full wmaker
 # call path so these stay valid across source changes and do not hide a
 # regression in a different caller.
 #
@@ -70,5 +71,26 @@
    match-leak-kinds: definite,indirect,possible
    ...
    obj:*/libexpat.so*
+   ...
+}
+
+# librsvg keeps CSS, font and render caches alive for the process
+# lifetime after rasterising the built-in button glyphs.
+{
+   librsvg-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/librsvg-2.so*
+   ...
+}
+
+# libxml2, reachable through librsvg's SVG document parser.
+{
+   libxml2-lifetime-cache
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible
+   ...
+   obj:*/libxml2.so*
    ...
 }

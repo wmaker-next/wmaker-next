@@ -22,6 +22,16 @@
 
 #include "screen.h"
 
+enum {
+	WBTN_SVG_NONE = 0,
+	WBTN_SVG_CLOSE,
+	WBTN_SVG_BROKEN_CLOSE,
+	WBTN_SVG_KILL,
+	WBTN_SVG_ICONIFY,
+	WBTN_SVG_MAXIMIZE,
+	WBTN_SVG_RESTORE
+};
+
 typedef struct WPixmap {
     xcb_pixmap_t image;	       /* icon image */
     xcb_pixmap_t mask;	       /* icon mask */
@@ -35,6 +45,8 @@ typedef struct WPixmap {
 					* with XCopyArea so its own colours
 					* survive instead of being filled
 					* through the mask in title_color */
+	int svg_glyph;		       /* WBTN_SVG_* source, 0 for a pixmap */
+	unsigned int svg_next:1;	       /* render the NEXT style backplate */
 } WPixmap;
 
 
@@ -46,5 +58,10 @@ WPixmap *wPixmapCreateFromXBMData(WScreen *scr, char *data, char *mask,
                                   int width, int height, unsigned long fg,
                                   unsigned long bg);
 void wPixmapDestroy(WPixmap *pix);
+
+#ifdef USE_SVG
+extern WPixmap *wButtonGlyphGet(struct _WScreen *scr, const struct WPixmap *src, int size);
+void wButtonGlyphCacheDestroy(struct _WScreen *scr);
+#endif
 
 #endif

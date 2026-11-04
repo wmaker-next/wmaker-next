@@ -84,7 +84,7 @@ static RImage *rimage_from_argb32(cairo_surface_t *surface)
 	return image;
 }
 
-RImage *RLoadSVG(const char *file_name, unsigned width, unsigned height)
+RImage *RLoadSVGFromData(const char *data, size_t size, unsigned int width, unsigned int height)
 {
 	RImage *image;
 	RsvgHandle *handle;
@@ -92,25 +92,18 @@ RImage *RLoadSVG(const char *file_name, unsigned width, unsigned height)
 	GError *gerr;
 	cairo_surface_t *surface;
 	cairo_t *cr;
-	unsigned char *data;
-	size_t size;
 	gdouble iw, ih;
 	unsigned target_w, target_h;
 
 	image = NULL;
 	gerr = NULL;
 
-	data = RReadWholeFile(file_name, &size);
-	if (!data)
-		return NULL;
-	if (size > RLOAD_SVG_MAX_BYTES) {
+	if (size == 0 || size > RLOAD_SVG_MAX_BYTES) {
 		RErrorCode = RERR_BADIMAGEFILE;
-		free(data);
 		return NULL;
 	}
 
-	handle = rsvg_handle_new_from_data(data, size, &gerr);
-	free(data);
+	handle = rsvg_handle_new_from_data((const guint8 *)data, size, &gerr);
 	if (!handle) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		if (gerr)
@@ -171,5 +164,20 @@ RImage *RLoadSVG(const char *file_name, unsigned width, unsigned height)
 
 	image = rimage_from_argb32(surface);
 	cairo_surface_destroy(surface);
+	return image;
+}
+
+RImage *RLoadSVG(const char *file_name, unsigned int width, unsigned int height)
+{
+	RImage *image;
+	unsigned char *data;
+	size_t size;
+
+	data = RReadWholeFile(file_name, &size);
+	if (!data)
+		return NULL;
+
+	image = RLoadSVGFromData((const char *)data, size, width, height);
+	free(data);
 	return image;
 }

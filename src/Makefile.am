@@ -57,6 +57,7 @@ wmaker_SOURCES = 	\
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
+	def_svgs.h \
 	defaults.c \
 	defaults.h \
 	desktopfile.c \

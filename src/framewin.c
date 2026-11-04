@@ -2227,6 +2227,19 @@ static void paintButton(WCoreWindow *button, WTexture *texture, WMColor *color,
 	int left = 0, width = 0;
 	int bw = button->width, bh = button->height;
 	int rw, rh, stencil;
+#ifdef USE_SVG
+	int gsize;
+	WPixmap *scaled;
+
+	if (image && image->svg_glyph != WBTN_SVG_NONE) {
+		gsize = ((bw < bh ? bw : bh) + 1) / 2;
+		if (gsize < 1)
+			gsize = 1;
+		scaled = wButtonGlyphGet(scr, image, gsize);
+		if (scaled)
+			image = scaled;
+	}
+#endif
 
 	/* a theme-supplied colour pixmap must keep its own colours, the
 	 * from_xpm path stencils the mask in title_color which would turn

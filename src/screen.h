@@ -78,6 +78,8 @@ typedef enum {
     MARK_CAPTURE_SWAP  = 4
 } WMarkCaptureMode;
 
+struct WButtonGlyphCache;
+
 /*
  * each WScreen is saved into a context associated with its root window
  */
@@ -286,6 +288,7 @@ typedef struct _WScreen {
     WMColor *icon_title_color;	       /* icon title color */
 
     struct WPixmap *b_pixmaps[PRED_BPIXMAPS]; /* internal pixmaps for buttons*/
+	struct WButtonGlyphCache *button_glyph_cache; /* scaled SVG button glyphs */
     WTitlebarLayout titlebar_layout;          /* parsed TitlebarLeft/Right */
     struct WPixmap *menu_radio_indicator;/* left menu indicator */
     struct WPixmap *menu_check_indicator;/* left menu indicator for checkmark */
