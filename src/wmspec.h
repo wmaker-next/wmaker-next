@@ -49,7 +49,7 @@
 #define _NET_WM_MOVERESIZE_CANCEL           11	/* cancel operation */
 
 void wNETWMInitStuff(WScreen *scr);
-void wNETWMCleanup(WScreen *scr);
+void wNETWMCleanup(WScreen *scr, bool keep_current_desktop);
 void wNETWMFlushClientLists(WScreen *scr);
 void wNETWMUpdateWorkarea(WScreen *scr);
 bool wNETWMGetUsableArea(WScreen *scr, int head, WArea *area);
@@ -96,6 +96,7 @@ void wNETWMSyncRequestSend(WWindow *wwin);
 bool wNETWMSyncRequestPending(WWindow *wwin);
 bool wNETWMSyncRequestHandleAlarm(xcb_generic_event_t *event);
 int wNETWMGetCurrentDesktopFromHint(WScreen *scr);
+int wNETWMGetDesktopHint(xcb_window_t root);
 char *wNETWMGetIconName(xcb_window_t window);
 char *wNETWMGetWindowName(xcb_window_t window);
 void wNETWMUpdateVisibleName(WWindow *wwin, const char *visible, const char *client_name);

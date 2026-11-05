@@ -345,8 +345,9 @@ void StartUp(bool defaultScreenOnly)
 {
 	static const char empty_bits[(16 * 16) / 8];
 	struct sigaction sig_action;
-	int i, j, max;
+	int i, j, max, nscreens;
 	int haveScreenZero;
+	int *desktopHint;
 	char **formats;
 	xcb_pixmap_t cur;
 	WXColor black;
@@ -706,6 +707,20 @@ void StartUp(bool defaultScreenOnly)
 	 * and the per-screen apply realises every resource */
 	wConfigPrepareRuntimeDefaults(wmaker_dict, NULL, new_config, &changes);
 
+	/* read _NET_CURRENT_DESKTOP before wScreenInit() creates the first
+	 * workspace and republishes it as 0 */
+	nscreens = wXScreenCount(wdisp->conn);
+	desktopHint = wmalloc(sizeof(int) * (size_t)(nscreens > 0 ? nscreens : 1));
+	for (j = 0; j < nscreens; j++)
+		desktopHint[j] = -1;
+	if (defaultScreenOnly || max == 1) {
+		j = wdisp->default_screen;
+		desktopHint[j] = wNETWMGetDesktopHint(wXRootWindow(wdisp->conn, j));
+	} else {
+		for (j = 0; j < max; j++)
+			desktopHint[j] = wNETWMGetDesktopHint(wXRootWindow(wdisp->conn, j));
+	}
+
 	/* manage the screens */
 	for (j = 0; j < max; j++) {
 		if (defaultScreenOnly || max == 1) {
@@ -751,7 +766,7 @@ void StartUp(bool defaultScreenOnly)
 	for (j = 0; j < wdisp->screen_count; j++) {
 		int lastDesktop;
 
-		lastDesktop = wNETWMGetCurrentDesktopFromHint(wdisp->screens[j]);
+		lastDesktop = desktopHint[wdisp->screens[j]->screen];
 
 		/* mark the screen as being brought up before OpenRootMenu()
 		 * runs from wScreenRestoreState(): with no readable WMRootMenu
@@ -852,6 +867,7 @@ void StartUp(bool defaultScreenOnly)
 		WMAddTimerHandler(3000, wDefaultsCheckDomains, NULL);
 #endif
 
+	wfree(desktopHint);
 }
 
 static bool windowInList(xcb_window_t window, xcb_window_t * list, int count)

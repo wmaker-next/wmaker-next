@@ -507,7 +507,7 @@ noreturn void wAbort(int dumpCore)
 	for (i = 0; wdisp && i < wdisp->screen_count; i++) {
 		scr = wScreenWithNumber(i);
 		if (scr)
-			RestoreDesktop(scr);
+			RestoreDesktop(scr, false);
 	}
 	printf(_("%s aborted.\n"), ProgName);
 	if (dumpCore)

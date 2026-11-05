@@ -105,7 +105,7 @@ void Shutdown(WShutdownMode mode, bool external)
 				if (mode == WSKillMode)
 					wipeDesktop(scr);
 				else
-					RestoreDesktop(scr);
+					RestoreDesktop(scr, false);
 				wScreenDestroy(scr);
 			}
 		}
@@ -130,7 +130,7 @@ void Shutdown(WShutdownMode mode, bool external)
 				/* restart re-execs wmaker only, clients stay
 				 * mapped, so the window list is trustworthy */
 				wScreenSaveState(scr, false);
-				RestoreDesktop(scr);
+				RestoreDesktop(scr, true);
 				wScreenDestroy(scr);
 			}
 		}
@@ -201,7 +201,7 @@ static void restoreWindows(WScreen * scr)
  *
  *----------------------------------------------------------------------
  */
-void RestoreDesktop(WScreen * scr)
+void RestoreDesktop(WScreen *scr, bool keep_desktop_hint)
 {
 	if (scr->helper_pid > 0) {
 		kill(scr->helper_pid, SIGTERM);
@@ -218,7 +218,7 @@ void RestoreDesktop(WScreen * scr)
 	xcb_set_input_focus(wdisp->conn, XCB_INPUT_FOCUS_PARENT, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	wColormapInstallForWindow(scr, NULL);
 	PropCleanUp(scr->root_win);
-	wNETWMCleanup(scr);
+	wNETWMCleanup(scr, keep_desktop_hint);
 	wXSettingsShutdown(scr);
 	wXSync(wdisp->conn);
 }

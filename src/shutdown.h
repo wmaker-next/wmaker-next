@@ -30,6 +30,6 @@ typedef enum {
 } WShutdownMode;
 
 void Shutdown(WShutdownMode mode, bool external);
-void RestoreDesktop(WScreen *scr);
+void RestoreDesktop(WScreen *scr, bool keep_desktop_hint);
 
 #endif  /* SHUTDOWN_H */

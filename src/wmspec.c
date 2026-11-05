@@ -447,13 +447,19 @@ void wNETWMUpdateDesktop(WScreen *scr)
 	wfree(views);
 }
 
-int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
+int wNETWMGetDesktopHint(xcb_window_t root)
 {
 	int32_t desktop;
 
-	if (WXGetCardinalSigned(wdisp->conn, scr->root_win, net_current_desktop, &desktop))
+	if (WXGetCardinalSigned(wdisp->conn, root,
+				wx_static_atoms[W_ATOM_NET_CURRENT_DESKTOP], &desktop))
 		return desktop;
 	return -1;
+}
+
+int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
+{
+	return wNETWMGetDesktopHint(scr->root_win);
 }
 
 /* ---- dock edge reservation ------------------------------------------- */
@@ -975,9 +981,13 @@ void wNETWMInitStuff(WScreen *scr)
 	wScreenUpdateUsableArea(scr);
 }
 
-void wNETWMCleanup(WScreen *scr)
+void wNETWMCleanup(WScreen *scr, bool keep_current_desktop)
 {
-#define WNET_CLEAN_(var, id)	WXDeleteProperty(wdisp->conn, scr->root_win, var)
+#define WNET_CLEAN_(var, id)						\
+	do {								\
+		if (!keep_current_desktop || var != net_current_desktop)	\
+			WXDeleteProperty(wdisp->conn, scr->root_win, var);	\
+	} while (0)
 	WNET_ATOMS(WNET_CLEAN_)
 #undef WNET_CLEAN_
 }
@@ -3362,6 +3372,7 @@ static void wsobserver(void *self, WMNotification *notif)
 	if (strcmp(name, WMNWorkspaceCreated) == 0) {
 		updateWorkspaceCount(scr);
 		updateWorkspaceNames(scr);
+		updateCurrentWorkspace(scr);
 		wNETWMUpdateDesktop(scr);
 		wNETWMUpdateWorkarea(scr);
 		wNETWMUpdateDesktopLayout(scr);
