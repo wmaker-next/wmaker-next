@@ -462,6 +462,8 @@ static char *wx_decode_element(xcb_connection_t *dpy, xcb_atom_t encoding,
 	return NULL;
 }
 
+#define WX_MAX_TEXT_ELEMENTS 4096
+
 /* Split an 8-bit text property into its NUL-separated elements and
  * decode each one. A trailing empty piece (the terminating NUL some
  * clients store) is dropped, matching the text-list semantics
@@ -483,8 +485,16 @@ static char **wx_decode_text_property(xcb_connection_t *dpy, const unsigned char
 			continue;
 
 		if (i > start || (i == start && i < len)) {
-			char *s = wx_decode_element(dpy, encoding, bytes + start,
-						    i - start);
+			char *s;
+
+			if (n >= WX_MAX_TEXT_ELEMENTS) {
+				while (n > 0)
+					wfree(list[--n]);
+				wfree(list);
+				return NULL;
+			}
+			s = wx_decode_element(dpy, encoding, bytes + start,
+					      i - start);
 
 			if (!s) {
 				while (n > 0)
@@ -530,7 +540,7 @@ char **WXRcvTextPropertyList(xcb_connection_t *dpy, WXCookie ck, int *count)
 	r = xcb_get_property_reply(dpy, wx_xck(ck), NULL);
 	if (!r)
 		return NULL;
-	if (r->type == XCB_ATOM_NONE || r->format != 8) {
+	if (r->type == XCB_ATOM_NONE || r->format != 8 || r->bytes_after != 0) {
 		free(r);
 		return NULL;
 	}
