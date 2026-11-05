@@ -2213,7 +2213,7 @@ static int setWidgetColor(WScreen *scr, void *tdata, void *foo)
 	}
 	scr->widget_texture = *(WTexSolid **) texture;
 
-	return 0;
+	return REFRESH_WINDOW_TEXTURES | REFRESH_MENU_TITLE_TEXTURE;
 }
 
 static int setFTitleBack(WScreen *scr, void *tdata, void *foo)

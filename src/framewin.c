@@ -1350,6 +1350,14 @@ static void updateTexture(WFrameWindow * fwin)
 						xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
 			}
 		}
+		if (!TS_NEW_GEOM(w_global.config->new_style)) {
+			pixel = (w_global.config->new_style == TS_OLD)
+				? fwin->screen_ptr->widget_texture->normal.pixel
+				: fwin->screen_ptr->widget_texture->dark.pixel;
+			for (r = 0; r < WTB_ROLE_COUNT; r++)
+				if (fwin->buttons[r])
+					xcb_change_window_attributes(wdisp->conn, fwin->buttons[r]->window, XCB_CW_BACK_PIXEL, (const uint32_t[]){ pixel });
+		}
 		xcb_clear_area(wdisp->conn, 0, fwin->titlebar->window, 0, 0, 0, 0);
 
 		for (r = 0; r < WTB_ROLE_COUNT; r++) {
