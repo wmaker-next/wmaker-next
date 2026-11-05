@@ -93,4 +93,6 @@ void wDockGeomCompressAlong(int *cells, int *idx, int n, int new_cells);
 void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 		    int thickness, uint32_t out[12]);
 
+bool wDockHeadOnEdge(WMRect head, int root_w, int root_h, WDockEdge edge);
+
 #endif /* WMDOCKGEOM_H_ */

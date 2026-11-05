@@ -466,14 +466,17 @@ int wNETWMGetCurrentDesktopFromHint(WScreen *scr)
  * scr->netdata->strut, otherwise the inset would be applied twice.
  * Only NoWindowOverDock=YES publishes, and the span is the head(s) the
  * dock's main tile actually overlaps, so a dock on the right of head 0
- * does not reserve head 1.
+ * does not reserve head 1. A head that only grazes the tile at a corner
+ * without reaching the dock's edge is ignored.
  */
 void wDockPublishStrut(WScreen *scr)
 {
 	WMRect rect, head, u;
+	WMRect touched, on_edge;
 	uint32_t data[12];
 	uint32_t legacy[4];
-	bool any = false;
+	bool any_touched = false;
+	bool any_on_edge = false;
 	int h;
 
 	if (!scr || !scr->netdata)
@@ -488,15 +491,29 @@ void wDockPublishStrut(WScreen *scr)
 		if (!wAppIconTouchesHead(scr->dock->icon_array[0], h))
 			continue;
 		head = wGetRectForHead(scr, h);
-		if (any) {
-			wGetRectUnion(&rect, &head, &u);
-			rect = u;
+		if (any_touched) {
+			wGetRectUnion(&touched, &head, &u);
+			touched = u;
 		} else {
-			rect = head;
-			any = true;
+			touched = head;
+			any_touched = true;
+		}
+		if (!wDockHeadOnEdge(head, scr->scr_width, scr->scr_height,
+				   scr->dock->edge))
+			continue;
+		if (any_on_edge) {
+			wGetRectUnion(&on_edge, &head, &u);
+			on_edge = u;
+		} else {
+			on_edge = head;
+			any_on_edge = true;
 		}
 	}
-	if (!any)
+	if (any_on_edge)
+		rect = on_edge;
+	else if (any_touched)
+		rect = touched;
+	else
 		rect = wmkrect(0, 0, scr->scr_width, scr->scr_height);
 
 	wDockGeomStrut(rect, scr->scr_width, scr->scr_height, scr->dock->edge,

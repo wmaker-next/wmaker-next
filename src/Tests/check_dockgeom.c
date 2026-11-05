@@ -280,6 +280,26 @@ static void test_strut(void)
 	}
 }
 
+static void test_head_on_edge(void)
+{
+	WMRect left = mkrect(0, 0, 1920, 1080);
+	WMRect below = mkrect(0, 1080, 1920, 600);
+	WMRect corner = mkrect(3040, 480, 800, 600);
+
+	CHECK(wDockHeadOnEdge(left, 3840, 1680, WDOCK_EDGE_LEFT));
+	CHECK(wDockHeadOnEdge(left, 3840, 1680, WDOCK_EDGE_TOP));
+	CHECK(!wDockHeadOnEdge(left, 3840, 1680, WDOCK_EDGE_RIGHT));
+	CHECK(!wDockHeadOnEdge(left, 3840, 1680, WDOCK_EDGE_BOTTOM));
+
+	CHECK(wDockHeadOnEdge(below, 3840, 1680, WDOCK_EDGE_LEFT));
+	CHECK(wDockHeadOnEdge(below, 3840, 1680, WDOCK_EDGE_BOTTOM));
+	CHECK(!wDockHeadOnEdge(below, 3840, 1680, WDOCK_EDGE_TOP));
+
+	CHECK(!wDockHeadOnEdge(corner, 3840, 1680, WDOCK_EDGE_TOP));
+	CHECK(wDockHeadOnEdge(corner, 3840, 1680, WDOCK_EDGE_RIGHT));
+	CHECK(!wDockHeadOnEdge(corner, 3840, 1680, WDOCK_EDGE_BOTTOM));
+}
+
 static void test_compress_fits(void)
 {
 	int seeds[3] = { 0, 5, 10 };
@@ -369,6 +389,7 @@ int main(void)
 	test_compress_order();
 	test_compress_no_shared_cells();
 	test_strut();
+	test_head_on_edge();
 
 	return check_report("check_dockgeom");
 }

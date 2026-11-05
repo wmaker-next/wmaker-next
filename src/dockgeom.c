@@ -271,6 +271,25 @@ void wDockGeomCompressAlong(int *cells, int *idx, int n, int new_cells)
 	}
 }
 
+bool wDockHeadOnEdge(WMRect head, int root_w, int root_h, WDockEdge edge)
+{
+	int x2 = head.pos.x + (int)head.size.width;
+	int y2 = head.pos.y + (int)head.size.height;
+
+	switch (edge) {
+	case WDOCK_EDGE_LEFT:
+		return head.pos.x == 0;
+	case WDOCK_EDGE_RIGHT:
+		return x2 == root_w;
+	case WDOCK_EDGE_TOP:
+		return head.pos.y == 0;
+	case WDOCK_EDGE_BOTTOM:
+		return y2 == root_h;
+	}
+
+	return false;
+}
+
 void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 		    int thickness, uint32_t out[12])
 {
