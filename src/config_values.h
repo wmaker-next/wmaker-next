@@ -72,6 +72,9 @@
 #define ACTION_CHANGE_STATE	4
 
 
+/* mouse acceleration denominator, the numerator is the config value */
+#define MOUSE_ACCELERATION_DENOM 10
+
 /* speeds */
 #define SPEED_ULTRAFAST 0
 #define SPEED_FAST	1

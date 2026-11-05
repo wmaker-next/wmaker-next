@@ -95,6 +95,8 @@
 	RaiseAppIconsWhenBouncing = NO;
 	DoNotMakeAppIconsBounce = NO;
 	DoubleClickTime = 250;
+	MouseAcceleration = 20;
+	MouseThreshold = 4;
 	ClipAutoraiseDelay = 600;
 	ClipAutolowerDelay = 1000;
 	ClipAutoexpandDelay = 600;

@@ -1241,6 +1241,13 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		wRefreshKeyChainOSD(scr);
 	if (wConfigChangesHas(changes, WCFG_KEY_DOUBLE_CLICK_TIME))
 		W_setconf_doubleClickDelay(new_config->double_click_time);
+	if (wdisp && wdisp->conn &&
+	    (wConfigChangesHas(changes, WCFG_KEY_MOUSE_ACCELERATION) ||
+	     wConfigChangesHas(changes, WCFG_KEY_MOUSE_THRESHOLD)))
+		wXChangePointerControl(wdisp->conn, true, true,
+				       new_config->mouse_acceleration,
+				       MOUSE_ACCELERATION_DENOM,
+				       new_config->mouse_threshold);
 	if (scr) {
 		double uiscale = WMScreenUIScale(scr->wmscreen);
 

@@ -58,6 +58,10 @@ void wCursorHideApplyConfig(WScreen *scr)
 static int usable_area_updates;
 static int root_mask_updates;
 static int double_click_delay;
+static int pointer_control_updates;
+static int last_pointer_accel_num;
+static int last_pointer_accel_den;
+static int last_pointer_threshold;
 static int arrange_icons_all;
 static int arrange_icons_visible;
 static int workspace_force_changes;
@@ -153,6 +157,18 @@ void wFindMouseApplyConfig(WScreen *scr)
 void W_setconf_doubleClickDelay(int value)
 {
 	double_click_delay = value;
+}
+
+void wXChangePointerControl(xcb_connection_t *dpy, bool do_accel, bool do_threshold,
+			    int acc_num, int acc_denom, int threshold)
+{
+	(void)dpy;
+	(void)do_accel;
+	(void)do_threshold;
+	pointer_control_updates++;
+	last_pointer_accel_num = acc_num;
+	last_pointer_accel_den = acc_denom;
+	last_pointer_threshold = threshold;
 }
 
 double WMScreenUIScale(WMScreen *scr)
@@ -488,6 +504,10 @@ void wRefreshKeyChainOSD(WScreen *scr)
 
 static void reset_phase4_counters(void)
 {
+	pointer_control_updates = 0;
+	last_pointer_accel_num = 0;
+	last_pointer_accel_den = 0;
+	last_pointer_threshold = 0;
 	switch_panel_updates = 0;
 	modifier_label_updates = 0;
 	modifier_short_label_updates = 0;
@@ -987,6 +1007,8 @@ static void test_defaults(void)
 	CHECK(config->wrap_menus == 0);
 	CHECK(config->scrollable_menus == 1);
 	CHECK(config->double_click_time == 250);
+	CHECK(config->mouse_acceleration == 20);
+	CHECK(config->mouse_threshold == 4);
 	CHECK(config->save_session_on_exit == 0);
 	CHECK(config->menu_scroll_speed == SPEED_FAST);
 	CHECK(config->icon_slide_speed == SPEED_FAST);
@@ -1238,6 +1260,7 @@ static void test_valid_parse(void)
 			      "WindowPlacement = Center; WorkspaceBorder = AllDirections; "
 			      "WorkspaceBorderSize = 7; WrapMenus = YES; "
 			      "ScrollableMenus = NO; DoubleClickTime = 333; "
+			      "MouseAcceleration = 35; MouseThreshold = 7; "
 			      "SaveSessionOnExit = YES; MenuScrollSpeed = UltraSlow; "
 			      "IconSlideSpeed = Medium; ShadeSpeed = Slow; "
 			      "BounceAppIconsWhenUrgent = NO; "
@@ -1391,6 +1414,8 @@ static void test_valid_parse(void)
 	CHECK(config->wrap_menus == 1);
 	CHECK(config->scrollable_menus == 0);
 	CHECK(config->double_click_time == 333);
+	CHECK(config->mouse_acceleration == 35);
+	CHECK(config->mouse_threshold == 7);
 	CHECK(config->save_session_on_exit == 1);
 	CHECK(config->menu_scroll_speed == SPEED_ULTRASLOW);
 	CHECK(config->icon_slide_speed == SPEED_MEDIUM);
@@ -2196,6 +2221,37 @@ static void test_focus_mode_live_apply(void)
 	CHECK(w_global.config->focus_mode == WKF_SLOPPY);
 
 out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
+static void test_mouse_pointer_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ MouseAcceleration = 20; MouseThreshold = 4; }");
+	new_dict = dict_from_desc("{ MouseAcceleration = 35; MouseThreshold = 7; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	wdisp->conn = (xcb_connection_t *)(uintptr_t)1;
+	pointer_control_updates = 0;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(pointer_control_updates == 1);
+	CHECK(last_pointer_accel_num == 35);
+	CHECK(last_pointer_accel_den == MOUSE_ACCELERATION_DENOM);
+	CHECK(last_pointer_threshold == 7);
+
+	pointer_control_updates = 0;
+	apply_runtime_defaults_for_test(NULL, new_dict, new_dict);
+	CHECK(pointer_control_updates == 0);
+
+out:
+	wdisp->conn = NULL;
 	if (old_dict)
 		WMReleasePropList(old_dict);
 	if (new_dict)
@@ -3168,6 +3224,7 @@ int main(void)
 	test_runtime_apply_uses_cached_old_config();
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();
+	test_mouse_pointer_live_apply();
 	test_dock_edge_roundtrip();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();

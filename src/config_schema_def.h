@@ -391,6 +391,10 @@
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DOUBLE_CLICK_TIME, "DoubleClickTime", INT, double_click_time, "250", \
 	  NULL, 1, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(MOUSE_ACCELERATION, "MouseAcceleration", INT, mouse_acceleration, "20", \
+	  NULL, 0, 32767, WCFG_RUNTIME_RELOAD, 0) \
+	_(MOUSE_THRESHOLD, "MouseThreshold", INT, mouse_threshold, "4", \
+	  NULL, 0, 32767, WCFG_RUNTIME_RELOAD, 0) \
 	_(AUTO_HIDE_CURSOR, "AutoHideCursor", BOOL, auto_hide_cursor, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(HIDE_CURSOR_AFTER_KEYBOARD, "HideCursorAfterKeyboard", BOOL, \

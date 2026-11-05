@@ -26,7 +26,6 @@
 /* This structure containts the list of all the check-buttons to display in the
  * expert tab of the window with the corresponding information for effect.
  * Defaults for OPTION_WMAKER* keys come from the shared config schema.
- * OPTION_USERDEF goes to the WPrefs app domain.
  * OPTION_WMAKER_ALT maps a checkbox onto a two-value enum key, the schema
  * default is written when unchecked and the other enum value when checked.
  */
@@ -37,7 +36,6 @@ static struct expert_option {
 		OPTION_WMAKER,
 		OPTION_WMAKER_ARRAY,
 		OPTION_WMAKER_ALT,
-		OPTION_USERDEF,
 		OPTION_WMAKER_INT
 	} class;
 
@@ -53,9 +51,6 @@ static struct expert_option {
 
 	{ N_("Enable workspace pager."),
 	  OPTION_WMAKER, "EnableWorkspacePager" },
-
-	{ N_("Do not set non-WindowMaker specific parameters (do not use xset)."),
-	  OPTION_USERDEF, "NoXSetStuff" },
 
 	{ N_("Automatically save session when exiting Window Maker."),
 	  OPTION_WMAKER, "SaveSessionOnExit" },
@@ -420,7 +415,6 @@ static int cmpExpertOptions(const void *v1, const void *v2)
 }
 static void showData(_Panel *panel)
 {
-	WMUserDefaults *udb = WMGetStandardUserDefaults();
 	int i, state;
 
 	for (i = 0; i < wlengthof(expert_options); i++) {
@@ -447,10 +441,6 @@ static void showData(_Panel *panel)
 					str && strcasecmp(str, pair[1]) == 0;
 				WMSetButtonSelected(panel->swi[i], state);
 			}
-			break;
-
-		case OPTION_USERDEF:
-			WMSetButtonSelected(panel->swi[i], WMGetUDBoolForKey(udb, expert_options[i].op_name));
 			break;
 
 		case OPTION_WMAKER_INT:
@@ -553,7 +543,6 @@ static void createPanel(Panel *p)
 
 static bool storeDefaults(_Panel *panel)
 {
-	WMUserDefaults *udb = WMGetStandardUserDefaults();
 	int i;
 
 	for (i = 0; i < wlengthof(expert_options); i++) {
@@ -579,10 +568,6 @@ static bool storeDefaults(_Panel *panel)
 					SetStringForKey(pair[WMGetButtonSelected(panel->swi[i]) ? 1 : 0],
 							expert_options[i].op_name);
 			}
-			break;
-
-		case OPTION_USERDEF:
-			WMSetUDBoolForKey(udb, WMGetButtonSelected(panel->swi[i]), expert_options[i].op_name);
 			break;
 
 		case OPTION_WMAKER_INT:

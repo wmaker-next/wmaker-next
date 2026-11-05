@@ -1,5 +1,5 @@
 
-/* MouseSettings.c- mouse options (some are equivalent to xset)
+/* MouseSettings.c- mouse options
  *
  *  WPrefs - Window Maker Preferences Program
  *
@@ -24,15 +24,6 @@
 #include "enumchoices.h"
 
 #include <xkbcommon/xkbcommon.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <math.h>
-
-
-#define XSET	"xset"
 
 
 static const struct {
@@ -288,6 +279,13 @@ static void showData(_Panel * panel)
 	toggle_disabling_of_mouse_actions(panel->disaB, panel);
 
 	 /**/ getMouseParameters(dpy, &accel, &a);
+	str = GetStringForKey("MouseAcceleration");
+	if (str)
+		accel = (float)GetIntegerForKey("MouseAcceleration") /
+		    (float)MOUSE_ACCELERATION_DENOM;
+	str = GetStringForKey("MouseThreshold");
+	if (str)
+		a = GetIntegerForKey("MouseThreshold");
 	panel->maxThreshold = wXDisplayWidth(dpy, sn);
 	if (a > panel->maxThreshold) {
 		panel->maxThreshold = a;
@@ -619,111 +617,34 @@ static void createPanel(Panel * p)
 	showData(panel);
 }
 
-static void storeCommandInScript(const char *cmd, const char *line)
-{
-	char *path;
-	FILE *f;
-	char buffer[128];
-	mode_t permissions;
-
-	/* Calculate permission to be Executable but taking into account user's umask */
-	permissions = umask(0);
-	umask(permissions);
-	permissions = (S_IRWXU | S_IRWXG | S_IRWXO) & (~permissions);
-
-	path = wstrconcat(wuserdatapath(), "/autostart");
-
-	f = fopen(path, "rb");
-	if (!f) {
-		if (errno != ENOENT) {
-			werror(_("cannot open existing %s: %s"), path, strerror(errno));
-			goto end;
-		}
-		f = fopen(path, "wb");
-		if (!f) {
-			werror(_("could not create %s"), path);
-			goto end;
-		}
-		fprintf(f, "#!/bin/sh\n");
-		fputs(line, f);
-		fputs("\n", f);
-	} else {
-		int len = strlen(cmd);
-		int ok = 0;
-		char *tmppath;
-		FILE *fo;
-
-		tmppath = wstrconcat(wuserdatapath(), "/autostart.tmp");
-		fo = fopen(tmppath, "wb");
-		if (!fo) {
-			werror(_("could not create temporary file %s"), tmppath);
-			wfree(tmppath);
-			goto end;
-		}
-
-		while (!feof(f)) {
-			if (!fgets(buffer, 127, f)) {
-				break;
-			}
-			if (buffer[0] == '\n') {
-				/* don't write empty lines, else the file will grow
-				 * indefinitely (one '\n' added at end of file on each save).
-				 */
-				continue;
-			}
-			if (strncmp(buffer, cmd, len) == 0) {
-				if (!ok) {
-					fputs(line, fo);
-					fputs("\n", fo);
-					ok = 1;
-				}
-			} else {
-				fputs(buffer, fo);
-			}
-		}
-		if (!ok) {
-			fputs(line, fo);
-			fputs("\n", fo);
-		}
-		fsync(fileno(fo));
-		fclose(fo);
-
-		if (rename(tmppath, path) != 0) {
-			werror(_("could not rename file %s to %s"), tmppath, path);
-			unlink(tmppath);
-		}
-		wfree(tmppath);
-	}
-	if (chmod(path, permissions) != 0)
-		wwarning(_("could not set permission 0%03o on file \"%s\""), permissions, path);
-
- end:
-	wfree(path);
-	if (f) {
-		fsync(fileno(f));	/* this may be rw */
-		fclose(f);
-	}
-}
-
 static bool storeData(_Panel *panel)
 {
-	char buffer[64];
-	int i;
+	int i, threshold;
+	float accel;
 	char *tmp, *p;
-	WMUserDefaults *udb = WMGetStandardUserDefaults();
 
-	if (!WMGetUDBoolForKey(udb, "NoXSetStuff")) {
-		tmp = WMGetTextFieldText(panel->threT);
-		if (strlen(tmp) == 0) {
-			wfree(tmp);
-			tmp = wstrdup("4");
-		}
+	accel = panel->acceleration;
+	tmp = WMGetTextFieldText(panel->acceT);
+	if (sscanf(tmp, "%f", &accel) != 1 || accel < 0)
+		accel = panel->acceleration;
+	wfree(tmp);
+	panel->acceleration = accel;
+	SetIntegerForKey(wConfigSchemaClampInt("MouseAcceleration",
+			(int)(accel * MOUSE_ACCELERATION_DENOM + 0.5F)),
+			 "MouseAcceleration");
 
-		snprintf(buffer, sizeof(buffer), XSET " m %i/%i %s\n", (int)(panel->acceleration * 10), 10, tmp);
-		storeCommandInScript(XSET " m", buffer);
-
-		wfree(tmp);
-	}
+	if (GetStringForKey("MouseThreshold"))
+		threshold = GetIntegerForKey("MouseThreshold");
+	else
+		threshold = GetDefaultIntegerForKey("MouseThreshold");
+	tmp = WMGetTextFieldText(panel->threT);
+	if (strlen(tmp) == 0)
+		threshold = GetDefaultIntegerForKey("MouseThreshold");
+	else if (sscanf(tmp, "%i", &i) == 1 && i >= 0)
+		threshold = i;
+	wfree(tmp);
+	SetIntegerForKey(wConfigSchemaClampInt("MouseThreshold", threshold),
+			 "MouseThreshold");
 
 	tmp = WMGetTextFieldText(panel->ddelaT);
 	if (sscanf(tmp, "%i", &i) == 1 && i > 0)
