@@ -194,6 +194,9 @@ void wWindowDestroy(WWindow *wwin)
 {
 	int i;
 
+	if (!wwin || !wwin->screen_ptr || wwin->flags.destroyed)
+		return;
+
 	if (wwin->screen_ptr->cmap_window == wwin)
 		wwin->screen_ptr->cmap_window = NULL;
 
