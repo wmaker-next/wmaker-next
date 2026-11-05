@@ -382,6 +382,7 @@ char *wXDGFindThemeIcon(const char *name, const char *context,
 
 static WMArray *app_cache;
 static WMHashTable *app_by_id;
+static WMHashTable *app_seen_ids;
 static WMHashTable *apps_for_mime;	/* type -> WMArray of WXDGApp* */
 static WMArray *apps_for_mime_empty;
 static char *app_dir_path[XDG_MAX_APP_DIRS];
@@ -458,8 +459,9 @@ static void appCacheAdd(const char *path, const char *id)
 	WXDGApp *a;
 	const char *term;
 
-	if (WMHashGet(app_by_id, id))
+	if (WMHashGet(app_seen_ids, id))
 		return;
+	WMHashInsert(app_seen_ids, id, (void *) 1);
 
 	if (!wDesktopEntryRead(path, &de))
 		return;
@@ -596,6 +598,7 @@ WMArray *wXDGAppList(void)
 
 	app_cache = WMCreateArrayWithDestructor(64, freeXDGApp);
 	app_by_id = WMCreateHashTable(WMStringPointerHashCallbacks);
+	app_seen_ids = WMCreateHashTable(WMStringHashCallbacks);
 	apps_for_mime = WMCreateHashTable(WMStringHashCallbacks);
 	app_dir_count = 0;
 	wXDGForEachDataDir("applications", scanAppRoot, NULL);
@@ -632,6 +635,10 @@ void wXDGAppListInvalidate(void)
 	if (app_by_id) {
 		WMFreeHashTable(app_by_id);
 		app_by_id = NULL;
+	}
+	if (app_seen_ids) {
+		WMFreeHashTable(app_seen_ids);
+		app_seen_ids = NULL;
 	}
 	if (apps_for_mime) {
 		e = WMEnumerateHashTable(apps_for_mime);

@@ -188,6 +188,79 @@ static int docFind(WMArray *docs, const char *base)
 	return 0;
 }
 
+static void test_hidden_override(void)
+{
+	char tmpl[] = "/tmp/wmaker-xdgapps-XXXXXX";
+	char user[PATH_MAX + 32], sys[PATH_MAX + 32];
+	char user_app[PATH_MAX + 48], sys_app[PATH_MAX + 48];
+	char path[PATH_MAX + 64];
+	const char *prev_data = getenv("XDG_DATA_HOME");
+	const char *prev_dirs = getenv("XDG_DATA_DIRS");
+	const char *prev_home = getenv("HOME");
+	char *save_data = prev_data ? wstrdup(prev_data) : NULL;
+	char *save_dirs = prev_dirs ? wstrdup(prev_dirs) : NULL;
+	char *save_home = prev_home ? wstrdup(prev_home) : NULL;
+	char *root;
+	WMArray *list;
+	WXDGApp *a;
+	int i, found = 0;
+
+	root = mkdtemp(tmpl);
+	if (!root) {
+		perror("mkdtemp");
+		check_failures++;
+		return;
+	}
+	snprintf(user, sizeof(user), "%s/user", root);
+	snprintf(sys, sizeof(sys), "%s/sys", root);
+	snprintf(user_app, sizeof(user_app), "%s/applications", user);
+	snprintf(sys_app, sizeof(sys_app), "%s/applications", sys);
+	mkdir(user, 0700);
+	mkdir(sys, 0700);
+	mkdir(user_app, 0700);
+	mkdir(sys_app, 0700);
+
+	write_probe(user_app, "dup.desktop",
+		    "[Desktop Entry]\nType=Application\nHidden=true\n",
+		    path, sizeof(path));
+	write_probe(sys_app, "dup.desktop",
+		    "[Desktop Entry]\nType=Application\nName=System Dup\n"
+		    "Exec=true\n", path, sizeof(path));
+
+	setenv("XDG_DATA_HOME", user, 1);
+	setenv("XDG_DATA_DIRS", sys, 1);
+	setenv("HOME", "/nonexistent", 1);
+	wXDGAppListInvalidate();
+	list = wXDGAppList();
+
+	CHECK(wXDGAppById("dup.desktop") == NULL);
+	for (i = 0; i < WMGetArrayItemCount(list); i++) {
+		a = WMGetFromArray(list, i);
+		if (strcmp(a->id, "dup.desktop") == 0)
+			found = 1;
+	}
+	CHECK(!found);
+
+	if (save_data)
+		setenv("XDG_DATA_HOME", save_data, 1);
+	else
+		unsetenv("XDG_DATA_HOME");
+	if (save_dirs)
+		setenv("XDG_DATA_DIRS", save_dirs, 1);
+	else
+		unsetenv("XDG_DATA_DIRS");
+	if (save_home)
+		setenv("HOME", save_home, 1);
+	else
+		unsetenv("HOME");
+	wfree(save_data);
+	wfree(save_dirs);
+	wfree(save_home);
+	wXDGAppListInvalidate();
+
+	(void)wspawnvp_wait((char *[]){"rm", "-rf", root, NULL});
+}
+
 static void test_doc_list(void)
 {
 	WMArray *docs;
@@ -429,6 +502,7 @@ int main(void)
 	test_apps_for_mime();
 	test_default_app();
 	test_open_command();
+	test_hidden_override();
 	test_doc_list();
 	test_fuzzy_score();
 	test_frecency_score();
