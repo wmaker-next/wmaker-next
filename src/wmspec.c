@@ -2633,8 +2633,11 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		/* synthesized motion event in wire form, moveres only
 		 * reads the pointer position and the target window */
 		fake_event = calloc(1, sizeof(*fake_event));
-		if (!fake_event)
+		if (!fake_event) {
+			wwin->moveresize.active = 0;
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
 			return true;
+		}
 		fake_event->response_type = XCB_MOTION_NOTIFY;
 		fake_event->root_x = x_root;
 		fake_event->root_y = y_root;
