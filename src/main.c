@@ -575,7 +575,7 @@ static void inotifyWatchConfig(void)
 {
 	char *watchPath = NULL;
 
-	w_global.inotify.fd_event_queue = inotify_init();	/* Initialise an inotify instance */
+	w_global.inotify.fd_event_queue = inotify_init1(IN_NONBLOCK);
 	if (w_global.inotify.fd_event_queue < 0) {
 		wwarning(_("could not initialise an inotify instance."
 			   " Changes to the defaults database will require"

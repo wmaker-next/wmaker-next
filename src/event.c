@@ -552,9 +552,16 @@ static void handle_inotify_events(void)
 	                    buff, sizeof(buff) );
 
 	if (eventQLength < 0) {
-		wwarning(_("read problem when trying to get INotify event: %s"), strerror(errno));
+#if EAGAIN != EWOULDBLOCK
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+#else
+		if (errno != EAGAIN)
+#endif
+			wwarning(_("read problem when trying to get INotify event: %s"), strerror(errno));
 		return;
 	}
+	if (eventQLength == 0)
+		return;
 
 	/* check what events occurred */
 	while (i < eventQLength) {
