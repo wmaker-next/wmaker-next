@@ -789,6 +789,8 @@ static void updateWindowOpacity(WWindow *wwin)
 void wNETWMUpdateDesktopLayout(WScreen *scr)
 {
 	uint32_t v[4];
+	uint32_t *list;
+	size_t count;
 	int n, cols, rows;
 
 	scr->net_desktop_layout.orientation = 0;
@@ -796,8 +798,19 @@ void wNETWMUpdateDesktopLayout(WScreen *scr)
 	scr->net_desktop_layout.cols = WMAX(1, scr->workspace_count);
 	scr->net_desktop_layout.rows = 1;
 
-	if (!WXGetCardinalN(wdisp->conn, scr->root_win, net_desktop_layout, v, 4))
+	list = WXGetCardinalList(wdisp->conn, scr->root_win,
+				 net_desktop_layout, 4, &count);
+	if (!list)
 		return;
+	if (count < 3) {
+		wfree(list);
+		return;
+	}
+	v[0] = list[0];
+	v[1] = list[1];
+	v[2] = list[2];
+	v[3] = (count > 3) ? list[3] : 0;
+	wfree(list);
 
 	/* the property is client-set on root, clamp before any signed
 	 * arithmetic so a hostile pager cannot overflow rows*cols */
