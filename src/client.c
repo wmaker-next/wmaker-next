@@ -657,11 +657,10 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 		} else if (atom == wdisp->atom.gnustep.wm_attr) {
 			GNUstepWMAttributes *attr;
 
-			PropGetGNUstepWMAttr(wwin->client_win, &attr);
-
-			wWindowUpdateGNUstepAttr(wwin, attr);
-
-			wfree(attr);
+			if (PropGetGNUstepWMAttr(wwin->client_win, &attr)) {
+				wWindowUpdateGNUstepAttr(wwin, attr);
+				wfree(attr);
+			}
 		} else {
 			wNETWMCheckClientHintChange(wwin, atom);
 		}
