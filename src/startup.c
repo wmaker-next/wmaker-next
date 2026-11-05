@@ -99,7 +99,8 @@
 #endif
 
 /***** Local *****/
-static void manageAllWindows(WScreen * scr, int crashed);
+static void manageAllWindows(WScreen *scr, int crashed, int last_desktop);
+static void restoreStartupFocus(WScreen *scr);
 
 /* primary error path, in-stream errors from xcb-issued reply-less
  * requests reach the WINGs event queue as response_type 0 and land
@@ -707,8 +708,6 @@ void StartUp(bool defaultScreenOnly)
 	 * and the per-screen apply realises every resource */
 	wConfigPrepareRuntimeDefaults(wmaker_dict, NULL, new_config, &changes);
 
-	/* read _NET_CURRENT_DESKTOP before wScreenInit() creates the first
-	 * workspace and republishes it as 0 */
 	nscreens = wXScreenCount(wdisp->conn);
 	desktopHint = wmalloc(sizeof(int) * (size_t)(nscreens > 0 ? nscreens : 1));
 	for (j = 0; j < nscreens; j++)
@@ -789,7 +788,7 @@ void StartUp(bool defaultScreenOnly)
 		if (wdisp->flags.restarting == 0 && !wdisp->flags.norestore)
 			wSessionQueueSavedState(wdisp->screens[j]);
 
-		manageAllWindows(wdisp->screens[j], wdisp->flags.restarting == 2);
+		manageAllWindows(wdisp->screens[j], wdisp->flags.restarting == 2, lastDesktop);
 
 		if (wdisp->flags.restarting == 0 && !wdisp->flags.norestore)
 			wSessionCleanupUnmatchedSavedState();
@@ -833,11 +832,15 @@ void StartUp(bool defaultScreenOnly)
 			 * HeadWorkspaces by wScreenRestoreState, just bring
 			 * each head to its workspace and set the mirror. */
 			int h;
+			wdisp->screens[j]->flags.suppress_switch_focus =
+				!!wdisp->flags.restarting;
 			for (h = 0; h < wHeadCount(wdisp->screens[j]); h++)
 				wWorkspaceForceChangeOnHead(wdisp->screens[j],
 					wdisp->screens[j]->head_workspace[h], h);
+			wdisp->screens[j]->flags.suppress_switch_focus = 0;
 			wWorkspaceSetCurrentHead(wdisp->screens[j],
 				wdisp->screens[j]->xine_info.primary_head);
+			restoreStartupFocus(wdisp->screens[j]);
 		} else if (lastDesktop >= 0) {
 			wWorkspaceForceChange(wdisp->screens[j], lastDesktop);
 		} else {
@@ -890,7 +893,32 @@ static bool windowInList(xcb_window_t window, xcb_window_t * list, int count)
  * reparented/managed.
  *-----------------------------------------------------------------------
  */
-static void manageAllWindows(WScreen * scr, int crashRecovery)
+static void restoreStartupFocus(WScreen *scr)
+{
+	xcb_window_t xid = scr->startup_focus_win;
+	WWindow *fwin;
+
+	scr->startup_focus_win = XCB_NONE;
+	if (!wdisp->flags.restarting || xid == XCB_NONE)
+		return;
+
+	fwin = wWindowFor(xid);
+	if (fwin && fwin->screen_ptr == scr
+	    && !WFLAGP(fwin, no_focusable) && !fwin->flags.hidden
+	    && !fwin->flags.miniaturized) {
+		wSetFocusTo(scr, fwin);
+		return;
+	}
+
+	for (fwin = scr->focused_window; fwin; fwin = fwin->prev)
+		if (!fwin->flags.hidden && !fwin->flags.miniaturized
+		    && !WFLAGP(fwin, no_focusable))
+			break;
+	if (fwin)
+		wSetFocusTo(scr, fwin);
+}
+
+static void manageAllWindows(WScreen *scr, int crashRecovery, int last_desktop)
 {
 	xcb_window_t root, parent;
 	xcb_window_t *children;
@@ -1076,11 +1104,19 @@ static void manageAllWindows(WScreen * scr, int crashRecovery)
 		free(ev);
 	}
 	scr->last_workspace = 0;
+
+	if (!w_global.config->per_head_workspaces)
+		restoreStartupFocus(scr);
+
 	if (w_global.config->per_head_workspaces) {
+		scr->flags.suppress_switch_focus = !!wdisp->flags.restarting;
 		wWorkspaceReconcileHeads(scr);
 		wWorkspaceForceChangeOnHead(scr,
 			scr->head_workspace[scr->xine_info.primary_head],
 			scr->xine_info.primary_head);
+		scr->flags.suppress_switch_focus = 0;
+	} else if (wdisp->flags.restarting && last_desktop >= 0) {
+		wWorkspaceForceChange(scr, last_desktop);
 	} else {
 		wWorkspaceForceChange(scr, 0);
 	}

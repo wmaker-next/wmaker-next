@@ -1019,30 +1019,8 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		if (scr->focused_window && scr->focused_window->flags.mapped && !foc) {
 			foc = scr->focused_window;
 		}
-		if (w_global.config->focus_mode == WKF_CLICK) {
-			wSetFocusTo(scr, foc);
-			if (!w_global.pointer_driven_change) {
-				if (foc)
-					warpPointerToFocusedWindow(foc);
-				else
-					warpPointerToMonitor(scr);
-			}
-		} else {
-			unsigned int mask;
-			int foo;
-			xcb_window_t bar, win;
-			WWindow *tmp;
-
-			tmp = NULL;
-			if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
-				tmp = wWindowFor(win);
-
-			/* If there's a window under the pointer, focus it.
-			 * (we ate all other focus events above, so it's
-			 * certainly not focused). Otherwise focus last
-			 * focused, or the root (depending on sloppiness)
-			 */
-			if (!tmp && w_global.config->focus_mode == WKF_SLOPPY) {
+		if (!scr->flags.suppress_switch_focus) {
+			if (w_global.config->focus_mode == WKF_CLICK) {
 				wSetFocusTo(scr, foc);
 				if (!w_global.pointer_driven_change) {
 					if (foc)
@@ -1051,7 +1029,31 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 						warpPointerToMonitor(scr);
 				}
 			} else {
-				wSetFocusTo(scr, tmp);
+				unsigned int mask;
+				int foo;
+				xcb_window_t bar, win;
+				WWindow *tmp;
+
+				tmp = NULL;
+				if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+					tmp = wWindowFor(win);
+
+				/* If there's a window under the pointer, focus it.
+				 * (we ate all other focus events above, so it's
+				 * certainly not focused). Otherwise focus last
+				 * focused, or the root (depending on sloppiness)
+				 */
+				if (!tmp && w_global.config->focus_mode == WKF_SLOPPY) {
+					wSetFocusTo(scr, foc);
+					if (!w_global.pointer_driven_change) {
+						if (foc)
+							warpPointerToFocusedWindow(foc);
+						else
+							warpPointerToMonitor(scr);
+					}
+				} else {
+					wSetFocusTo(scr, tmp);
+				}
 			}
 		}
 	}
@@ -1254,23 +1256,8 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 
 		if (scr->focused_window && scr->focused_window->flags.mapped && !foc)
 			foc = scr->focused_window;
-		if (w_global.config->focus_mode == WKF_CLICK) {
-			wSetFocusTo(scr, foc);
-			if (!w_global.pointer_driven_change) {
-				if (foc)
-					warpPointerToFocusedWindow(foc);
-				else
-					warpPointerToMonitor(scr);
-			}
-		} else {
-			unsigned int mask;
-			int foo;
-			xcb_window_t bar, win;
-			WWindow *ptmp = NULL;
-
-			if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
-				ptmp = wWindowFor(win);
-			if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY) {
+		if (!scr->flags.suppress_switch_focus) {
+			if (w_global.config->focus_mode == WKF_CLICK) {
 				wSetFocusTo(scr, foc);
 				if (!w_global.pointer_driven_change) {
 					if (foc)
@@ -1278,8 +1265,25 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 					else
 						warpPointerToMonitor(scr);
 				}
-			} else
-				wSetFocusTo(scr, ptmp);
+			} else {
+				unsigned int mask;
+				int foo;
+				xcb_window_t bar, win;
+				WWindow *ptmp = NULL;
+
+				if (wXQueryPointer(wdisp->conn, scr->root_win, &bar, &win, &foo, &foo, &foo, &foo, &mask))
+					ptmp = wWindowFor(win);
+				if (!ptmp && w_global.config->focus_mode == WKF_SLOPPY) {
+					wSetFocusTo(scr, foc);
+					if (!w_global.pointer_driven_change) {
+						if (foc)
+							warpPointerToFocusedWindow(foc);
+						else
+							warpPointerToMonitor(scr);
+					}
+				} else
+					wSetFocusTo(scr, ptmp);
+			}
 		}
 	}
 

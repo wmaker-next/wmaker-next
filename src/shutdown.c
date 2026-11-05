@@ -130,7 +130,9 @@ void Shutdown(WShutdownMode mode, bool external)
 				/* restart re-execs wmaker only, clients stay
 				 * mapped, so the window list is trustworthy */
 				wScreenSaveState(scr, false);
+				scr->flags.ignore_focus_events = 1;
 				RestoreDesktop(scr, true);
+				scr->flags.ignore_focus_events = 0;
 				wScreenDestroy(scr);
 			}
 		}

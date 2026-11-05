@@ -101,6 +101,7 @@ static WMPropList *dWorkspace;
 static WMPropList *dDock;
 static WMPropList *dClip;
 static WMPropList *dDrawers = NULL;
+static WMPropList *dFocusedWindow;
 
 static void make_keys(void)
 {
@@ -112,6 +113,7 @@ static void make_keys(void)
 	dDock = WMCreatePLString("Dock");
 	dClip = WMCreatePLString("Clip");
 	dDrawers = WMCreatePLString("Drawers");
+	dFocusedWindow = WMCreatePLString("FocusedWindow");
 }
 
 /*
@@ -1017,7 +1019,7 @@ static char *sessionStatePath(WScreen *scr)
 
 void wScreenRestoreState(WScreen * scr)
 {
-	WMPropList *state;
+	WMPropList *state, *foo;
 	char *path;
 
 	OpenRootMenu(scr, -10000, -10000, false);
@@ -1039,6 +1041,15 @@ void wScreenRestoreState(WScreen * scr)
 
 	if (!scr->session_state)
 		scr->session_state = WMCreatePLDictionary(NULL, NULL);
+
+	scr->startup_focus_win = XCB_NONE;
+	foo = WMGetFromPLDictionary(scr->session_state, dFocusedWindow);
+	if (foo != NULL && WMIsPLString(foo)) {
+		const char *fval = WMGetFromPLString(foo);
+
+		if (fval && fval[0] != '\0')
+			scr->startup_focus_win = (xcb_window_t)strtoul(fval, NULL, 10);
+	}
 
 	if (!wdisp->flags.nodock) {
 		state = WMGetFromPLDictionary(scr->session_state, dDock);
@@ -1076,10 +1087,13 @@ void wScreenRestoreState(WScreen * scr)
 void wScreenSaveState(WScreen *scr, bool preserve_session)
 {
 	WWindow *wwin;
-	char *str;
+	char *str, fbuf[24];
 	WMPropList *old_state, *foo;
+	xcb_window_t focus_win;
 
 	make_keys();
+
+	focus_win = scr->focused_window ? scr->focused_window->client_win : XCB_NONE;
 
 	/* save state of windows */
 	wwin = scr->focused_window;
@@ -1141,6 +1155,12 @@ void wScreenSaveState(WScreen *scr, bool preserve_session)
 		foo = WMGetFromPLDictionary(old_state, dWorkspace);
 		if (foo != NULL)
 			WMPutInPLDictionary(scr->session_state, dWorkspace, foo);
+	}
+
+	if (focus_win != XCB_NONE) {
+		snprintf(fbuf, sizeof(fbuf), "%lu", (unsigned long)focus_win);
+		WMPutInPLDictionary(scr->session_state, dFocusedWindow,
+				    WMCreatePLString(fbuf));
 	}
 
 	/* clean up */

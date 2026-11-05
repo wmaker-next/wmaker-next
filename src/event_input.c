@@ -885,17 +885,23 @@ static void handleFocusIn(xcb_generic_event_t *ev)
 {
 	const xcb_focus_in_event_t *e;
 	WWindow *wwin;
-	xcb_generic_event_t *junk = NULL;
+	xcb_generic_event_t *newest = NULL;
+	xcb_generic_event_t *tmp;
 
-	/* applications that like stealing the focus, only the last
-	 * FocusIn currently queued matters */
-	while (WXEvqTakeTyped(wdisp->conn, XCB_FOCUS_IN, XCB_NONE, &junk))
-		free(junk);
+	while (WXEvqTakeTyped(wdisp->conn, XCB_FOCUS_IN, XCB_NONE, &tmp)) {
+		if (newest)
+			free(newest);
+		newest = tmp;
+	}
+	if (newest)
+		ev = newest;
 	e = (const xcb_focus_in_event_t *)ev;
 
 	if (e->mode == XCB_NOTIFY_MODE_UNGRAB
 	    || e->mode == XCB_NOTIFY_MODE_GRAB
 	    || e->detail > XCB_NOTIFY_DETAIL_NONLINEAR_VIRTUAL) {
+		if (newest)
+			free(newest);
 		return;
 	}
 
@@ -910,6 +916,8 @@ static void handleFocusIn(xcb_generic_event_t *ev)
 		if (scr)
 			wSetFocusTo(scr, NULL);
 	}
+	if (newest)
+		free(newest);
 }
 
 #ifdef KEEP_XKB_LOCK_STATUS

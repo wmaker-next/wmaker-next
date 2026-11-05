@@ -371,6 +371,7 @@ typedef struct _WScreen {
     short cascade_index;	       /* for cascade window placement */
 
     WMPropList *session_state;
+	xcb_window_t startup_focus_win;   /* pre-restart focused client, from WMState */
 
     /* for double-click detection */
     xcb_timestamp_t last_click_time;
@@ -451,6 +452,7 @@ typedef struct _WScreen {
         unsigned int doing_alt_tab:1;
         unsigned int jump_back_pending:1;
         unsigned int ignore_focus_events:1;
+	unsigned int suppress_switch_focus:1;
         unsigned int need_restack:1;   /* stacking list changed, X side
                                         * stale until CommitStacking() */
 	unsigned int manage_burst:1;   /* inside manageAllWindows(), EWMH

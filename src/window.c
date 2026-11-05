@@ -1990,7 +1990,8 @@ WWindow *wManageWindow(WScreen *scr, xcb_window_t window,
 	wFrameWindowChangeState(wwin->frame, WS_UNFOCUSED);
 
 	if (!wwin->flags.miniaturized && wWindowIsVisibleOnAnyHead(wwin) && !wwin->flags.hidden) {
-		if (((transientOwner && transientOwner->flags.focused)
+		if (!(scr->flags.startup && wdisp->flags.restarting)
+		    && ((transientOwner && transientOwner->flags.focused)
 		     || w_global.config->auto_focus) && !WFLAGP(wwin, no_focusable)) {
 
 			/* only auto_focus if the pointer is on the same X screen,
