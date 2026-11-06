@@ -1050,12 +1050,14 @@ static void setupTexture(RContext * rc, BackgroundTexture ** textures, int *maxT
 		*maxTextures = workspace;
 }
 
-static xcb_pixmap_t duplicatePixmap(RContext *rc, xcb_pixmap_t pixmap, int width, int height)
+static xcb_pixmap_t duplicatePixmap(RContext *rc, xcb_pixmap_t pixmap)
 {
 	xcb_connection_t *txc;
 	int tsn = 0;
 	xcb_pixmap_t copyP;
 	xcb_gcontext_t tgc;
+	xcb_rectangle_t rect = { 0, 0, scrWidth, scrHeight };
+	uint32_t gcvals[2];
 	xcb_get_input_focus_cookie_t ck;
 	xcb_get_input_focus_reply_t *rep;
 	xcb_generic_error_t *err;
@@ -1072,10 +1074,12 @@ static xcb_pixmap_t duplicatePixmap(RContext *rc, xcb_pixmap_t pixmap, int width
 	wXSync(xc);
 
 	copyP = xcb_generate_id(txc);
-	xcb_create_pixmap(txc, rc->depth, copyP, root, width, height);
+	xcb_create_pixmap(txc, rc->depth, copyP, root, scrWidth, scrHeight);
 	tgc = xcb_generate_id(txc);
-	xcb_create_gc(txc, tgc, copyP, 0, NULL);
-	xcb_copy_area(txc, pixmap, copyP, tgc, 0, 0, 0, 0, width, height);
+	gcvals[0] = XCB_FILL_STYLE_TILED;
+	gcvals[1] = pixmap;
+	xcb_create_gc(txc, tgc, copyP, XCB_GC_FILL_STYLE | XCB_GC_TILE, gcvals);
+	xcb_poly_fill_rectangle(txc, copyP, tgc, 1, &rect);
 	xcb_free_gc(txc, tgc);
 
 	xcb_set_close_down_mode(txc, XCB_CLOSE_DOWN_RETAIN_PERMANENT);
@@ -1173,8 +1177,7 @@ static void changeTexture(RContext *rc, BackgroundTexture * texture)
 
 	wXSync(xc);
 
-	setPixmapProperty(duplicatePixmap(rc, texture->pixmap, texture->width,
-					  texture->height));
+	setPixmapProperty(duplicatePixmap(rc, texture->pixmap));
 }
 
 static int readmsg(int fd, char *buffer, int size)
