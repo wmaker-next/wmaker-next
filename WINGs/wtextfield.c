@@ -223,33 +223,38 @@ static void snapshotClipboard(TextField *tPtr)
 
 static int incrToFit(TextField * tPtr)
 {
-	int vp = tPtr->viewPosition;
+	int vp = tPtr->textLen;
 
-	while (tPtr->usableWidth > 0
-	       && TEXT_WIDTH(tPtr, tPtr->viewPosition) > tPtr->usableWidth) {
-		int adv = oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
-					     tPtr->textLen - tPtr->viewPosition);
-		if (adv <= 0)
+	while (vp > tPtr->viewPosition) {
+		int prev = vp + oneUTF8CharBackward(&tPtr->text[vp], vp);
+
+		if (TEXT_WIDTH(tPtr, prev) > tPtr->usableWidth)
 			break;
-		tPtr->viewPosition += adv;
+		vp = prev;
 	}
-	return vp != tPtr->viewPosition;
+	if (vp <= tPtr->viewPosition)
+		return 0;
+
+	tPtr->viewPosition = vp;
+	return 1;
 }
 
 static int incrToFit2(TextField * tPtr)
 {
-	int vp = tPtr->viewPosition;
+	int vp = tPtr->cursorPosition;
 
-	while (tPtr->usableWidth > 0
-	       && TEXT_WIDTH2(tPtr, tPtr->viewPosition, tPtr->cursorPosition)
-		  >= tPtr->usableWidth) {
-		int adv = oneUTF8CharForward(&tPtr->text[tPtr->viewPosition],
-					     tPtr->cursorPosition - tPtr->viewPosition);
-		if (adv <= 0)
+	while (vp > tPtr->viewPosition) {
+		int prev = vp + oneUTF8CharBackward(&tPtr->text[vp], vp);
+
+		if (TEXT_WIDTH2(tPtr, prev, tPtr->cursorPosition) >= tPtr->usableWidth)
 			break;
-		tPtr->viewPosition += adv;
+		vp = prev;
 	}
-	return vp != tPtr->viewPosition;
+	if (vp <= tPtr->viewPosition)
+		return 0;
+
+	tPtr->viewPosition = vp;
+	return 1;
 }
 
 static void decrToFit(TextField * tPtr)
