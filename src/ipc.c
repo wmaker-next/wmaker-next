@@ -486,7 +486,7 @@ static verb_rc verb_reconfigure(WScreen *scr, WMPropList *args,
 	(void)args;
 	(void)err;
 	(void)reply;
-	wDefaultsCheckDomains(NULL);
+	wDefaultsReconfigure();
 	return VERB_OK;
 }
 

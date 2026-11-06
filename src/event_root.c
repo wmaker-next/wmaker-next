@@ -98,7 +98,7 @@ static void handleClientMessage(xcb_generic_event_t *ev)
 		 * `wmakermsg reconfigure` */
 		if (strncmp(command, "Reconfigure", sizeof("Reconfigure")) == 0) {
 			wwarning(_("Got Reconfigure command over the deprecated X channel, use wmakermsg"));
-			wDefaultsCheckDomains(NULL);
+			wDefaultsReconfigure();
 		} else {
 			wwarning(_("Got unknown command %s over the deprecated X channel"), command);
 		}

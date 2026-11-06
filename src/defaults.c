@@ -93,6 +93,7 @@ static WConfigUpdateCallback setUTitleBack;
 static WConfigUpdateCallback setTabInactiveTitleBack;
 static WConfigUpdateCallback setResizebarBack;
 static WConfigUpdateCallback setWorkspaceBack;
+static time_t workspace_back_applied;
 static WConfigUpdateCallback setWorkspaceSpecificBack;
 static WConfigUpdateCallback setMenuTitleColor;
 static WConfigUpdateCallback setMenuTextColor;
@@ -2163,6 +2164,8 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) bar;
 
+	workspace_back_applied = time(NULL);
+
 	if (scr->flags.backimage_helper_launched) {
 		char *str;
 
@@ -2199,6 +2202,26 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 	WMReleasePropList(value);
 
 	return 0;
+}
+
+void wDefaultsReconfigure(void)
+{
+	int i;
+
+	wDefaultsCheckDomains(NULL);
+
+	if (time(NULL) - workspace_back_applied <= 1)
+		return;
+
+	for (i = 0; i < wdisp->screen_count; i++) {
+		WScreen *scr = wScreenWithNumber(i);
+
+		if (!scr)
+			continue;
+		(void) wConfigApplyWorkspaceBackgroundSpec(scr, "WorkspaceBack",
+		    WCFG_BACKGROUND_WORKSPACE, &w_global.config->workspace_back,
+		    "(solid, \"rgb:50/50/75\")");
+	}
 }
 
 static int setWidgetColor(WScreen *scr, void *tdata, void *foo)
