@@ -449,6 +449,11 @@ void WMInsertTextFieldText(WMTextField * tPtr, const char *text, int position)
 
 	len = strlen(text);
 
+	if (tPtr->selection.count != 0) {
+		lostSelection(tPtr->view, XCB_ATOM_PRIMARY, NULL);
+		tPtr->selection.count = 0;
+	}
+
 	/* check if buffer will hold the text */
 	if (len + tPtr->textLen >= tPtr->bufferSize) {
 		tPtr->bufferSize = tPtr->textLen + len + TEXT_BUFFER_INCR;
@@ -476,6 +481,8 @@ void WMInsertTextFieldText(WMTextField * tPtr, const char *text, int position)
 		}
 	}
 
+	tPtr->selection.position = tPtr->cursorPosition;
+
 	paintTextField(tPtr);
 }
 
@@ -487,6 +494,11 @@ void WMDeleteTextFieldRange(WMTextField * tPtr, WMRange range)
 
 	if (!range.count)
 		return;
+
+	if (tPtr->selection.count != 0) {
+		lostSelection(tPtr->view, XCB_ATOM_PRIMARY, NULL);
+		tPtr->selection.count = 0;
+	}
 
 	memmv(&(tPtr->text[range.position]), &(tPtr->text[range.position + range.count]),
 	      tPtr->textLen - (range.position + range.count) + 1);
@@ -506,6 +518,8 @@ void WMDeleteTextFieldRange(WMTextField * tPtr, WMRange range)
 		incrToFit2(tPtr);
 	}
 
+	tPtr->selection.position = tPtr->cursorPosition;
+
 	paintTextField(tPtr);
 }
 
@@ -522,6 +536,11 @@ void WMSetTextFieldText(WMTextField * tPtr, const char *text)
 
 	if ((text && strcmp(tPtr->text, text) == 0) || (!text && tPtr->textLen == 0))
 		return;
+
+	if (tPtr->selection.count != 0) {
+		lostSelection(tPtr->view, XCB_ATOM_PRIMARY, NULL);
+		tPtr->selection.count = 0;
+	}
 
 	if (text == NULL) {
 		tPtr->text[0] = 0;
