@@ -160,7 +160,7 @@ void PropSetIconTileHint(WScreen * scr, RImage * image)
 		imageAtom = wx_static_atoms[W_ATOM_RGBA_IMAGE];
 	}
 
-	tmp = malloc(image->width * image->height * 4 + 4);
+	tmp = wmalloc(image->width * image->height * 4 + 4);
 	if (!tmp) {
 		wwarning("could not allocate memory to set _WINDOWMAKER_ICON_TILE hint");
 		return;

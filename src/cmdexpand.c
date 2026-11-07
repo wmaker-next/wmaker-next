@@ -64,7 +64,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 
 	len = strlen(cmdline);
 	olen = len + 1;
-	out = malloc(olen);
+	out = wmalloc(olen);
 	if (!out) {
 		wwarning(_("out of memory during expansion of \"%s\""), cmdline);
 		return NULL;
@@ -117,7 +117,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 						 (unsigned int)scr->focused_window->client_win);
 					slen = strlen(tmpbuf);
 					olen += slen;
-					nout = realloc(out, olen);
+					nout = wrealloc(out, olen);
 					if (!nout) {
 						wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%w", cmdline);
 						goto error;
@@ -134,7 +134,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 				snprintf(tmpbuf, sizeof(tmpbuf), "0x%x", (unsigned int)scr->current_workspace + 1);
 				slen = strlen(tmpbuf);
 				olen += slen;
-				nout = realloc(out, olen);
+				nout = wrealloc(out, olen);
 				if (!nout) {
 					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%W", cmdline);
 					goto error;
@@ -151,7 +151,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 				if (user_input) {
 					slen = strlen(user_input);
 					olen += slen;
-					nout = realloc(out, olen);
+					nout = wrealloc(out, olen);
 					if (!nout) {
 						wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%a", cmdline);
 						wfree(user_input);
@@ -178,7 +178,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 				if (scr->xdest_is_gnustep)
 					slen += 12;	/* "-GSFilePath " */
 				olen += slen;
-				nout = realloc(out, olen);
+				nout = wrealloc(out, olen);
 				if (!nout) {
 					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%d", cmdline);
 					goto error;
@@ -208,7 +208,7 @@ char *ExpandOptions(WScreen *scr, const char *cmdline)
 					slen += 12;	/* "-GSFilePath " */
 #endif
 				olen += slen;
-				nout = realloc(out, olen);
+				nout = wrealloc(out, olen);
 				if (!nout) {
 					wwarning(_("out of memory during expansion of '%s' for command \"%s\""), "%s", cmdline);
 					goto error;
