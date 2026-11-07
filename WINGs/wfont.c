@@ -217,6 +217,7 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	PangoFontDescription *description;
 	double size;
 	int ascent, descent;
+	void *old;
 
 	if (fontName && fontName[0] == '-') {
 		fname = xlfdToFcName(fontName);
@@ -290,7 +291,9 @@ WMFont *WMCreateFont(WMScreen * scrPtr, const char *fontName)
 	g_object_unref(context);
 	FcPatternDestroy(pattern);
 
-	assert(WMHashInsert(scrPtr->fontCache, font->name, font) == NULL);
+	old = WMHashInsert(scrPtr->fontCache, font->name, font);
+	assert(old == NULL);
+	(void)old;
 
 	return font;
 }
