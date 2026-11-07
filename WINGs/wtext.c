@@ -183,16 +183,6 @@ typedef struct W_Text {
 	WMArray *xdndDestinationTypes;
 } Text;
 
-/* not used */
-#if 0
-#define NOTIFY(T,C,N,A) {\
-    WMNotification *notif = WMCreateNotification(N,T,A);\
-    if ((T)->delegate && (T)->delegate->C)\
-        (*(T)->delegate->C)((T)->delegate,notif);\
-    WMPostNotification(notif);\
-    WMReleaseNotification(notif);}
-#endif
-
 #define TYPETEXT 0
 
 #if 0
@@ -2565,10 +2555,6 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 						insertTextInteractively(tPtr, text, n);
 
 					wfree(text);
-#if 0
-					NOTIFY(tPtr, didChange, WMTextDidChangeNotification,
-					       (void *)WMInsertTextEvent);
-#endif
 					updateCursorPosition(tPtr);
 					paintText(tPtr);
 
