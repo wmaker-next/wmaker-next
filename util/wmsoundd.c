@@ -268,6 +268,13 @@ static void pw_play(const void *samples, size_t size, int channels, int rate)
 		PW_KEY_MEDIA_ROLE, "Event",
 		NULL);
 	pw_state.stream = pw_stream_new(pw_state.core, PROG, props);
+	if (!pw_state.stream) {
+		fprintf(stderr, PROG ": cannot create the audio stream\n");
+		wfree((void *)pw_state.samples);
+		pw_state.samples = NULL;
+		pw_state.sample_size = 0;
+		return;
+	}
 	spa_zero(pw_state.stream_listener);
 	pw_stream_add_listener(pw_state.stream, &pw_state.stream_listener,
 			       &stream_events, NULL);
