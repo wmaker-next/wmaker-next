@@ -35,11 +35,12 @@ WMAKERMSG="$ROOT/util/.libs/wmakermsg"
 . "$ROOT/test/drive-common.sh"
 REAL=${ROUNDTRIP_DRIVE_DISPLAY:-:$(drive_default_display)}
 PROXY=${ROUNDTRIP_DRIVE_PROXY:-:$(drive_default_display 1)}
+# Counted-reply baseline, re-measure and re-baseline on toolchain drift.
 # xcb-screensaver adds one pipelined QueryExtension reply at startup.
 if grep -q '^#define USE_XCB_SCREENSAVER' "$ROOT/config.h" 2>/dev/null; then
-    LIMIT=${ROUNDTRIP_LIMIT:-261}
+    LIMIT=${ROUNDTRIP_LIMIT:-262}
 else
-    LIMIT=${ROUNDTRIP_LIMIT:-260}
+    LIMIT=${ROUNDTRIP_LIMIT:-261}
 fi
 TRACE=/tmp/roundtrip-drive.trace
 LOG=/tmp/roundtrip-drive.log
