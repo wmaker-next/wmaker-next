@@ -529,8 +529,12 @@ static void draw_clock(void)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	/* both formats come from the command line */
-	strftime(tbuf, sizeof(tbuf), time_fmt, &tm);
-	strftime(dbuf, sizeof(dbuf), date_fmt, &tm);
+	if (strftime(tbuf, sizeof(tbuf), time_fmt, &tm) == 0)
+		strftime(tbuf, sizeof(tbuf), "%H:%M", &tm);
+	if (strftime(dbuf, sizeof(dbuf), date_fmt, &tm) == 0)
+		strftime(dbuf, sizeof(dbuf), "%Y-%m-%d", &tm);
+	tbuf[sizeof(tbuf) - 1] = '\0';
+	dbuf[sizeof(dbuf) - 1] = '\0';
 #pragma GCC diagnostic pop
 
 	/* %e space-pads single-digit days, drop a leading blank so the
