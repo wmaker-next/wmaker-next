@@ -204,15 +204,20 @@ sub shell_quote {
 $kde2cf="$ENV{'HOME'}/.kde/share/config/kdeglobals";
 $kde1cf="$ENV{'HOME'}/.kderc";
 $kdeLanguage = "";
+$kdeCfgOpen = 0;
 
 # Open the file, if it exists, otherwise provide a default language.
 unless(open KDERC, '<', $kde2cf) {
   unless(open KDERC, '<', $kde1cf) {
     $kdeLanguage = "C";
+  } else {
+    $kdeCfgOpen = 1;
   }
+} else {
+  $kdeCfgOpen = 1;
 }
 
-if ( $kdeLanguage == ""){
+if ($kdeCfgOpen) {
   $kdeLanguage = "C";
   # Search through the contents of the file
   while($line = <KDERC>) {
@@ -376,7 +381,7 @@ sub process_dir {
 	}
 	# Extract the Name of the Application
 	elsif ($line =~ /^Name\[?\]?=/
-	       && (!$gotDef || !gotLang)) {
+	       && (!$gotDef && !$gotLang)) {
 	  $pname = $line;
 	  $pname =~ s/^Name\[?\]?=//s;
 	  $gotDef = 1;
