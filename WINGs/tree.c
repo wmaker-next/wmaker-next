@@ -254,23 +254,23 @@ WMTreeNode *WMFindInTreeWithDepthLimit(WMTreeNode * aTree, WMMatchDataProc * mat
 	return findNodeInTree(aTree, match, cdata, limit);
 }
 
-void WMTreeWalk(WMTreeNode * aNode, WMTreeWalkProc * walk, void *data, bool DepthFirst)
+void WMTreeWalk(WMTreeNode *aNode, WMTreeWalkProc *walk, void *data, bool preOrder)
 {
 	int i;
 	WMTreeNode *leaf;
 
 	wassertr(aNode != NULL);
 
-	if (DepthFirst)
+	if (preOrder)
 		(*walk)(aNode, data);
 
 	if (aNode->leaves) {
 		for (i = 0; i < WMGetArrayItemCount(aNode->leaves); i++) {
 			leaf = (WMTreeNode *)WMGetFromArray(aNode->leaves, i);
-			WMTreeWalk(leaf, walk, data, DepthFirst);
+			WMTreeWalk(leaf, walk, data, preOrder);
 		}
 	}
 
-	if (!DepthFirst)
+	if (!preOrder)
 		(*walk)(aNode, data);
 }

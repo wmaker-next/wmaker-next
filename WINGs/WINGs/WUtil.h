@@ -753,7 +753,7 @@ WMTreeNode *WMFindInTreeWithDepthLimit(WMTreeNode * aTree, WMMatchDataProc * mat
 #define WMGetFirstInTree(aTree, cdata) WMFindInTree(aTree, NULL, cdata)
 
 /* Walk every node of aNode with `walk' */
-void WMTreeWalk(WMTreeNode *aNode, WMTreeWalkProc * walk, void *data, bool DepthFirst);
+void WMTreeWalk(WMTreeNode *aNode, WMTreeWalkProc *walk, void *data, bool preOrder);
 
 /* ---[ WINGs/data.c ]---------------------------------------------------- */
 
