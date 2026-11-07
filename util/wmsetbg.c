@@ -373,8 +373,12 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 			timage = RMakeTiledImage(image, width, height);
 			if (!timage) {
 				wwarning("could not tile texture:%s", RMessageForError(RErrorCode));
+				if (fimage)
+					RReleaseImage(image);
 				return;
 			}
+			if (fimage)
+				RReleaseImage(image);
 			fimage = true;
 			image = timage;
 		}
