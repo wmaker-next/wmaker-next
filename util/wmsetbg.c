@@ -886,16 +886,13 @@ static bool parseBackColor(RContext *rc, const char *str, WXColor *color, RColor
 		rcolor->red = rcolor->green = rcolor->blue = 0;
 		return false;
 	}
+	rcolor->red = color->red >> 8;
+	rcolor->green = color->green >> 8;
+	rcolor->blue = color->blue >> 8;
 	if (!wXAllocColor(xc, rc->cmap, color)) {
-		rcolor->red = color->red >> 8;
-		rcolor->green = color->green >> 8;
-		rcolor->blue = color->blue >> 8;
 		RGetClosestXColor(rc, rcolor, &px32);
 		color->pixel = px32;
 	} else {
-		rcolor->red = 0;
-		rcolor->green = 0;
-		rcolor->blue = 0;
 		wXFreeColors(xc, rc->cmap, &color->pixel, 1, 0);
 	}
 	return true;
@@ -1021,7 +1018,7 @@ static void setupTexture(RContext * rc, BackgroundTexture ** textures, int *maxT
 	}
 
 	/* check if the same texture is already created */
-	for (i = 0; i < *maxTextures; i++) {
+	for (i = 0; i <= *maxTextures; i++) {
 		if (textures[i] && strcasecmp(textures[i]->spec, texture) == 0) {
 			newTexture = textures[i];
 			break;
