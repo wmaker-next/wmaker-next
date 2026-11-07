@@ -1702,7 +1702,7 @@ RImage *load_oriented_image(RContext *context, const char *file, int index)
 		ExifByteOrder byteOrder = exif_data_get_byte_order(exifData);
 		ExifEntry *exifEntry = exif_data_get_entry(exifData, EXIF_TAG_ORIENTATION);
 
-		if (exifEntry)
+		if (exifEntry && exifEntry->data && exifEntry->size >= 2)
 			orientation = exif_get_short(exifEntry->data, byteOrder);
 
 		exif_data_free(exifData);
@@ -1792,6 +1792,19 @@ int change_title(char *filename)
 	return EXIT_SUCCESS;
 }
 
+/* the old pixmap is kept when the conversion fails */
+static int set_image_pixmap(RImage *image)
+{
+	xcb_pixmap_t new_pix;
+
+	if (!RConvertImage(ctx, image, &new_pix))
+		return 0;
+	if (pix)
+		xcb_free_pixmap(xc, pix);
+	pix = new_pix;
+	return 1;
+}
+
 /*
 	Rescale the current image based on the screen size
 	Returns EXIT_SUCCESS on success, EXIT_FAILURE on failure
@@ -1846,7 +1859,7 @@ int rescale_image(void)
 		}
 		RReleaseImage(old_img);
 	}
-	if (!RConvertImage(ctx, img, &pix)) {
+	if (!set_image_pixmap(img)) {
 		fprintf(stderr, "Error: %s\n", RMessageForError(RErrorCode));
 		return EXIT_FAILURE;
 	}
@@ -2297,7 +2310,9 @@ int zoom_in_out(int z)
 	}
 	RReleaseImage(old_img);
 	RReleaseImage(tmp);
-	xcb_free_pixmap(xc, (xcb_pixmap_t)pix);
+	if (pix)
+		xcb_free_pixmap(xc, (xcb_pixmap_t)pix);
+	pix = 0;
 
 	merge_with_background(img);
 	if (!RConvertImage(ctx, img, &pix)) {
