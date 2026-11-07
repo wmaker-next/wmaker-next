@@ -784,6 +784,7 @@ static void history_add_from_buffer(const ClipBuffer *buf)
 	if (history.count > 0 && history.entries[0] &&
 	    history_entry_matches(history.entries[0], buf)) {
 		/* re-copying the same content restarts its TTL */
+		history.entries[0]->wall_time = time(NULL);
 		history.entries[0]->mono_ms = clip_monotonic_ms();
 		return;
 	}
