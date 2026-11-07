@@ -1187,11 +1187,7 @@ void WMCloseWindow(WMWindow *win);
 
 void WMSetButtonAction(WMButton *bPtr, WMAction *action, void *clientData);
 
-#define WMCreateCommandButton(parent) \
-    WMCreateCustomButton((parent), WBBSpringLoadedMask\
-    |WBBPushInMask\
-    |WBBPushLightMask\
-    |WBBPushChangeMask)
+WMButton* WMCreateCommandButton(WMWidget *parent);
 
 #define WMCreateRadioButton(parent) \
     WMCreateButton((parent), WBTRadio)

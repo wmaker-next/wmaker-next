@@ -241,6 +241,14 @@ WMButton *WMCreateButton(WMWidget * parent, WMButtonType type)
 	return bPtr;
 }
 
+WMButton *WMCreateCommandButton(WMWidget *parent)
+{
+	return WMCreateCustomButton(
+		parent,
+		WBBSpringLoadedMask|WBBPushInMask|WBBPushLightMask|WBBPushChangeMask
+	);
+}
+
 static void updateDisabledMask(WMButton * bPtr)
 {
 	WMScreen *scr = WMWidgetScreen(bPtr);
