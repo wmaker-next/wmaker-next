@@ -92,7 +92,10 @@ fi
 set -e
 CC=`which1 cc`
 [ "x$CC" = "x" ] && CC=`which1 gcc`
-[ "x$CC" = "x" ] && "$MYNAME: no cc, gcc found - can't preprocess" >&2 && exit 1
+if [ "x$CC" = "x" ]; then
+    echo "$MYNAME: no cc, gcc found - can't preprocess" >&2
+    exit 1
+fi
 
 #
 # Use the "parse as if it's C option" if cc is gcc, because
