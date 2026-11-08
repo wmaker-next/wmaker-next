@@ -60,6 +60,14 @@
 #define REPLY_TIMEOUT_MS 2000
 #define MAX_WARNED 64
 
+/* one owed reply per sent action chain, consumed in send order */
+struct pending_chain {
+	char **names;
+	int count;
+	long long deadline;
+	struct pending_chain *next;
+};
+
 static struct {
 	WMTouchConfig cfg;
 	WMPropList *domain;
@@ -71,10 +79,8 @@ static struct {
 	const char *config_override;
 
 	int ipc_fd;
-	int pending;
-	char **pending_names;
-	int pending_count;
-	long long pending_deadline;
+	struct pending_chain *pending_head;
+	struct pending_chain *pending_tail;
 	int sync_replay;
 
 	char *warned[MAX_WARNED];
@@ -349,34 +355,74 @@ static char *action_payload(const char *const *names, int count)
 	return body;
 }
 
-/* Drop any outstanding pending-reply wait */
-static void pending_clear(void)
+static void chain_free(struct pending_chain *c)
 {
 	int i;
 
-	g.pending = 0;
-	for (i = 0; i < g.pending_count; i++)
-		wfree(g.pending_names[i]);
-	if (g.pending_names)
-		wfree(g.pending_names);
-	g.pending_names = NULL;
-	g.pending_count = 0;
+	for (i = 0; i < c->count; i++)
+		wfree(c->names[i]);
+	if (c->names)
+		wfree(c->names);
+	wfree(c);
 }
 
-/* Arm (or replace) the wait for the reply to one sent chain */
-static void pending_set(const char *const *names, int count)
+static void pending_clear(void)
 {
+	struct pending_chain *c, *next;
+
+	for (c = g.pending_head; c; c = next) {
+		next = c->next;
+		chain_free(c);
+	}
+	g.pending_head = NULL;
+	g.pending_tail = NULL;
+}
+
+/* one entry per sent chain, wmaker answers in send order */
+static void pending_push(const char *const *names, int count)
+{
+	struct pending_chain *c;
 	int i;
 
-	pending_clear();
 	if (count <= 0)
 		return;
-	g.pending_names = wmalloc((size_t)count * sizeof(char *));
+	c = wmalloc(sizeof(*c));
+	c->names = wmalloc((size_t)count * sizeof(char *));
 	for (i = 0; i < count; i++)
-		g.pending_names[i] = wstrdup(names[i]);
-	g.pending_count = count;
-	g.pending = 1;
-	g.pending_deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
+		c->names[i] = wstrdup(names[i]);
+	c->count = count;
+	c->deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
+	c->next = NULL;
+	if (g.pending_tail)
+		g.pending_tail->next = c;
+	else
+		g.pending_head = c;
+	g.pending_tail = c;
+}
+
+static void pending_pop(void)
+{
+	struct pending_chain *c = g.pending_head;
+
+	if (!c)
+		return;
+	g.pending_head = c->next;
+	if (!g.pending_head)
+		g.pending_tail = NULL;
+	chain_free(c);
+}
+
+static void pending_expire(void)
+{
+	long long now = monotonic_ms();
+
+	while (g.pending_head && now >= g.pending_head->deadline) {
+		if (g.verbose)
+			fprintf(stderr, PROG ": dropping reply for '%s'\n",
+				g.pending_head->count > 0
+				? g.pending_head->names[0] : "?");
+		pending_pop();
+	}
 }
 
 /* NULL when the result dict reports success, otherwise the error text */
@@ -412,14 +458,17 @@ static void warn_failed(const char *name, const char *err)
 
 /* A batch reply is one result dict for a single-command send, or an
  * array of per-command results in batch order for a chain. Each failed
- * element is correlated with its name and warned once. */
+ * element is correlated with the names of the oldest owed chain and
+ * warned once. */
 static void handle_reply(const char *body)
 {
 	WMPropList *d, *item;
+	struct pending_chain *c;
 	const char *err, *name;
 	int i, n;
 
-	if (!body || !g.pending)
+	c = g.pending_head;
+	if (!body || !c)
 		return;
 	d = WMCreatePropListFromDescription(body);
 	if (!d)
@@ -432,22 +481,18 @@ static void handle_reply(const char *body)
 			err = reply_error(item);
 			if (!err)
 				continue;
-			name = i < g.pending_count ? g.pending_names[i] : NULL;
+			name = i < c->count ? c->names[i] : NULL;
 			warn_failed(name, err);
 		}
 	} else {
 		err = reply_error(d);
 		if (err)
-			warn_failed(g.pending_count > 0
-				    ? g.pending_names[0] : NULL, err);
+			warn_failed(c->count > 0 ? c->names[0] : NULL, err);
 	}
 	WMReleasePropList(d);
 }
 
-/* Send one action chain as a single ordered IPC batch. If the previous
- * reply is still outstanding the new chain supersedes it (debug-logged)
- * and the old wait is abandoned. A chain whose reply never arrives
- * within REPLY_TIMEOUT_MS is dropped without touching the connection. */
+/* one record per send, only its reply or its deadline removes it */
 static void queue_action(const char *const *names, int count)
 {
 	char *body;
@@ -458,23 +503,16 @@ static void queue_action(const char *const *names, int count)
 				names[0]);
 		return;
 	}
-	if (g.pending && g.verbose)
-		fprintf(stderr, PROG ": action '%s' superseded '%s'\n",
-			names[0],
-			g.pending_names ? g.pending_names[0] : "?");
-	pending_set(names, count);
 
 	body = action_payload(names, count);
 	if (body) {
-		if (wIPCSend(g.ipc_fd, WIPC_COMMAND, body, strlen(body)) < 0) {
-			if (g.verbose)
-				fprintf(stderr, PROG ": send failed: %s\n",
-					strerror(errno));
-			pending_clear();
+		if (wIPCSend(g.ipc_fd, WIPC_COMMAND, body, strlen(body)) >= 0) {
+			pending_push(names, count);
+		} else if (g.verbose) {
+			fprintf(stderr, PROG ": send failed: %s\n",
+				strerror(errno));
 		}
 		wfree(body);
-	} else {
-		pending_clear();
 	}
 }
 
@@ -500,17 +538,19 @@ static int read_reply_frame(void)
 		wfree(body);
 		return 0;
 	}
-	if (g.pending)
+	if (g.pending_head)
 		handle_reply(body);
 	wfree(body);
 	return 1;
 }
 
-/* End the pending wait once a reply frame was consumed or the connection
- * failed; a dropped event frame leaves it armed. */
 static void service_reply(void)
 {
-	if (read_reply_frame() != 0)
+	int rc = read_reply_frame();
+
+	if (rc > 0)
+		pending_pop();
+	else if (rc < 0)
 		pending_clear();
 }
 
@@ -526,17 +566,20 @@ static void send_action_sync(const char *const *names, int count)
 	if (!body)
 		return;
 	if (wIPCSend(g.ipc_fd, WIPC_COMMAND, body, strlen(body)) >= 0) {
-		pending_set(names, count);
+		pending_push(names, count);
 		deadline = monotonic_ms() + REPLY_TIMEOUT_MS;
-		while (g.pending && monotonic_ms() < deadline) {
+		while (g.pending_head && monotonic_ms() < deadline) {
 			struct pollfd pfd = { .fd = g.ipc_fd, .events = POLLIN };
+			long long rem = deadline - monotonic_ms();
+			int pr;
 
-			if (poll(&pfd, 1,
-				 (int)(deadline - monotonic_ms())) > 0
-			    && (pfd.revents & POLLIN))
+			pr = poll(&pfd, 1, rem <= 0 ? 0 : (int)rem);
+			if (pr <= 0 || (pfd.revents & (POLLERR | POLLHUP)))
+				break;
+			if (pfd.revents & POLLIN)
 				service_reply();
 		}
-		if (g.pending && g.verbose)
+		if (g.pending_head && g.verbose)
 			fprintf(stderr, PROG ": no reply for '%s'\n", names[0]);
 	}
 	pending_clear();
@@ -838,15 +881,10 @@ static int event_loop(int fd, struct libinput *li)
 		struct pollfd pfd[4];
 		int nfds = 0, rc, self_idx, inot_idx = -1, li_idx = -1, ipc_idx;
 		int timeout;
-		long long now, remaining;
+		long long remaining;
 
-		now = monotonic_ms();
-		if (g.pending && now >= g.pending_deadline) {
-			if (g.verbose)
-				fprintf(stderr, PROG ": dropping reply for '%s'\n",
-					g.pending_names ? g.pending_names[0] : "?");
-			drop_pending_reply();
-		}
+		if (g.pending_head)
+			pending_expire();
 
 		self_idx = nfds;
 		pfd[nfds].fd = g.selfpipe[0];
@@ -873,8 +911,8 @@ static int event_loop(int fd, struct libinput *li)
 		nfds++;
 
 		timeout = -1;
-		if (g.pending) {
-			remaining = g.pending_deadline - monotonic_ms();
+		if (g.pending_head) {
+			remaining = g.pending_head->deadline - monotonic_ms();
 			timeout = remaining > 0 ? (int)remaining : 0;
 		}
 
@@ -910,8 +948,8 @@ static int event_loop(int fd, struct libinput *li)
 
 			if (rc < 0)
 				return -1;
-			if (rc > 0 && g.pending)
-				drop_pending_reply();
+			if (rc > 0)
+				pending_pop();
 		}
 	}
 }
