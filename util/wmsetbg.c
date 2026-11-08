@@ -568,9 +568,9 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 		RGradientStyle gtype;
 		int iwidth, iheight;
 
-		colors = wmalloc(sizeof(RColor *) * (count - 1));
+		colors = wmalloc(sizeof(RColor *) * count);
 
-		for (i = 2; i < count; i++) {
+		for (i = 1; i < count; i++) {
 			val = WMGetFromPLArray(texarray, i);
 			if (!WMIsPLString(val)) {
 				wwarning("could not parse texture %s", text);
@@ -590,11 +590,11 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 				wfree(colors);
 				goto error;
 			}
-			colors[i - 2] = wmalloc(sizeof(RColor));
+			colors[i - 1] = wmalloc(sizeof(RColor));
 
-			colors[i - 2]->red = color.red >> 8;
-			colors[i - 2]->green = color.green >> 8;
-			colors[i - 2]->blue = color.blue >> 8;
+			colors[i - 1]->red = color.red >> 8;
+			colors[i - 1]->green = color.green >> 8;
+			colors[i - 1]->blue = color.blue >> 8;
 		}
 
 		switch (type[1]) {
