@@ -38,6 +38,7 @@
 #include "WindowMaker.h"
 #include "screen.h"
 #include "window.h"
+#include "framewin.h"
 #include "keybind.h"
 #include "defaults.h"
 #include "event.h"
@@ -93,6 +94,13 @@ typedef struct W_AccentPicker {
 
 	xcb_window_t focus_target;
 	WMHandlerID poll_timer;
+
+	/* popup anchor, snapshotted when the session starts so the popup
+	 * cannot jump while variants are scrolled */
+	bool anchor_on_focus;
+	int anchor_x, anchor_y;
+	int anchor_head;
+	int focus_x, focus_y, focus_w, focus_h;
 
 	WMWindow *popup;
 	WMView *strip;
@@ -269,21 +277,13 @@ static void hidePopup(W_AccentPicker *ap)
 static void placePopup(W_AccentPicker *ap)
 {
 	WArea ua;
-	xcb_window_t child;
 	double scale;
-	int px = 0, py = 0, dummy;
-	unsigned int mask;
 	int head, maxText = 0, maxColumns, columns, rows;
 	int w, h, x, y, i, deviceW, deviceH;
 	int headWidth, headHeight, logicalWidth, logicalHeight;
 	int availableWidth;
 
-	if (!wXQueryPointer(wdisp->conn, ap->scr->root_win, NULL, &child,
-			    &px, &py, &dummy, &dummy, &mask)) {
-		px = ap->scr->scr_width / 2;
-		py = ap->scr->scr_height / 2;
-	}
-	head = wGetHeadForPointerLocation(ap->scr);
+	head = ap->anchor_head;
 	ua = wGetUsableAreaForHead(ap->scr, head, NULL, true);
 
 	scale = WMScreenUIScale(ap->scr->wmscreen);
@@ -332,16 +332,23 @@ static void placePopup(W_AccentPicker *ap)
 	deviceW = (int)(w * scale + 0.5);
 	deviceH = (int)(h * scale + 0.5);
 
-	x = px - deviceW / 2;
+	if (ap->anchor_on_focus) {
+		wplacepopupnearrect(ap->focus_x, ap->focus_y,
+				    ap->focus_w, ap->focus_h,
+				    deviceW, deviceH,
+				    ua.x1, ua.y1, ua.x2 - ua.x1, ua.y2 - ua.y1,
+				    &x, &y);
+	} else {
+		x = ap->anchor_x - deviceW / 2;
+		if (ap->anchor_y - deviceH - 4 >= ua.y1)
+			y = ap->anchor_y - deviceH - 4;
+		else
+			y = ap->anchor_y + 16;
+	}
 	if (x + deviceW > ua.x2)
 		x = ua.x2 - deviceW;
 	if (x < ua.x1)
 		x = ua.x1;
-
-	if (py - deviceH - 4 >= ua.y1)
-		y = py - deviceH - 4;
-	else
-		y = py + 16;
 	if (y + deviceH > ua.y2)
 		y = ua.y2 - deviceH;
 	if (y < ua.y1)
@@ -502,6 +509,50 @@ static void modifierPoll(void *data)
 	ap->poll_timer = WMAddTimerHandler(AP_POLL_MS, modifierPoll, ap);
 }
 
+static void snapshotAnchor(W_AccentPicker *ap)
+{
+	WWindow *wwin = ap->scr->focused_window;
+	WMRect rect;
+	WMPoint point;
+	xcb_window_t child;
+	unsigned int mask;
+	bool have_focus = false, have_pointer, pointer_on_focus_head;
+	int dummy, head_focus = -1, head_pointer;
+
+	rect.pos.x = rect.pos.y = 0;
+	rect.size.width = rect.size.height = 0;
+
+	if (wwin && wwin->frame) {
+		rect.pos.x = wwin->frame_x;
+		rect.pos.y = wwin->frame_y;
+		rect.size.width = wwin->frame->core->width;
+		rect.size.height = wwin->frame->core->height;
+		if (rect.size.width > 0 && rect.size.height > 0) {
+			have_focus = true;
+			head_focus = wGetHeadForRect(ap->scr, rect);
+		}
+	}
+
+	have_pointer = wXQueryPointer(wdisp->conn, ap->scr->root_win, NULL, &child,
+				      &point.x, &point.y, &dummy, &dummy, &mask);
+	if (!have_pointer) {
+		point.x = ap->scr->scr_width / 2;
+		point.y = ap->scr->scr_height / 2;
+	}
+	head_pointer = wGetHeadForPoint(ap->scr, point);
+	pointer_on_focus_head = have_pointer && head_pointer == head_focus;
+
+	wpickpopupanchor(have_focus, rect.pos.x, rect.pos.y,
+			 rect.size.width, rect.size.height, pointer_on_focus_head,
+			 point.x, point.y, &ap->anchor_x, &ap->anchor_y);
+	ap->anchor_on_focus = have_focus && !pointer_on_focus_head;
+	ap->anchor_head = ap->anchor_on_focus ? head_focus : head_pointer;
+	ap->focus_x = rect.pos.x;
+	ap->focus_y = rect.pos.y;
+	ap->focus_w = rect.size.width;
+	ap->focus_h = rect.size.height;
+}
+
 static bool startSession(W_AccentPicker *ap, bool modifier_mode,
 			 xcb_keycode_t trigger)
 {
@@ -524,6 +575,7 @@ static bool startSession(W_AccentPicker *ap, bool modifier_mode,
 	clearVariants(ap);
 	ap->trigger_keycode = trigger;
 	ap->focus_target = currentFocus();
+	snapshotAnchor(ap);
 
 	if (ap->held_trigger) {
 		if (wXGrabKeyboard(wdisp->conn, ap->scr->root_win, false,
