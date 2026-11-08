@@ -2168,6 +2168,62 @@ out:
 	wConfigClearWindowMaker();
 }
 
+/* Every display_positions spelling parses to its WD_* constant on both
+ * keys that share the table. */
+static void test_display_position_values(void)
+{
+	static const struct {
+		const char *name;
+		int value;
+	} cases[] = {
+		{ "none", WD_NONE },
+		{ "center", WD_CENTER },
+		{ "top", WD_TOP },
+		{ "bottom", WD_BOTTOM },
+		{ "left", WD_LEFT },
+		{ "right", WD_RIGHT },
+		{ "topleft", WD_TOPLEFT },
+		{ "topright", WD_TOPRIGHT },
+		{ "bottomleft", WD_BOTTOMLEFT },
+		{ "bottomright", WD_BOTTOMRIGHT },
+		{ "TopLeft", WD_TOPLEFT },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+
+		dict = dict_from_desc("{ }");
+		if (!dict)
+			continue;
+		dict_put_string(dict, "WorkspaceNameDisplayPosition", cases[i].name);
+		dict_put_string(dict, "KeychainDisplayPosition", cases[i].name);
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config) {
+			if (config->workspace_name_display_position != cases[i].value) {
+				fprintf(stderr,
+					"FAIL display_position '%s': workspace=%d expected=%d\n",
+					cases[i].name,
+					config->workspace_name_display_position,
+					cases[i].value);
+				check_failures++;
+			}
+			if (config->keychain_display_position != cases[i].value) {
+				fprintf(stderr,
+					"FAIL display_position '%s': keychain=%d expected=%d\n",
+					cases[i].name,
+					config->keychain_display_position,
+					cases[i].value);
+				check_failures++;
+			}
+			wConfigDestroy(config);
+		}
+		WMReleasePropList(dict);
+	}
+}
+
 /* FocusMode is read per-event with no cached derivative, so unfreezing it
  * is enough: a runtime change must propagate to w_global.config. */
 /* DockEdge: each of the four names parses to its WDockEdge value and
@@ -3225,6 +3281,7 @@ int main(void)
 	test_startup_only_frozen_across_reload();
 	test_focus_mode_live_apply();
 	test_mouse_pointer_live_apply();
+	test_display_position_values();
 	test_dock_edge_roundtrip();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();

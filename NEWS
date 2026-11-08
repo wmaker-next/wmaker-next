@@ -3,6 +3,15 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Workspace and keychain popup positions
+--------------------------------------
+
+WorkspaceNameDisplayPosition and KeychainDisplayPosition accept two new
+values, left and right, placing the popup at the middle of the left or
+right edge of the head under the pointer. Existing values keep their
+meaning, and the workspace preferences panel offers the two new
+positions.
+
 Multiple X screens
 ------------------
 

@@ -358,6 +358,14 @@ void wPlaceOSDOnHead(WScreen *scr, WOSDView *osd, int wd_pos, int pad)
 		px = rect.pos.x + (rect.size.width - w) / 2;
 		py = rect.pos.y + rect.size.height - h - pad;
 		break;
+	case WD_LEFT:
+		px = rect.pos.x + pad;
+		py = rect.pos.y + (rect.size.height - h) / 2;
+		break;
+	case WD_RIGHT:
+		px = rect.pos.x + rect.size.width - w - pad;
+		py = rect.pos.y + (rect.size.height - h) / 2;
+		break;
 	case WD_TOPLEFT:
 		px = rect.pos.x + pad;
 		py = rect.pos.y + pad;

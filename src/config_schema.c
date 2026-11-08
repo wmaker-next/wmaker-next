@@ -212,6 +212,8 @@ static const WConfigEnum display_positions[] = {
 	{"center", WD_CENTER, 0},
 	{"top", WD_TOP, 0},
 	{"bottom", WD_BOTTOM, 0},
+	{"left", WD_LEFT, 0},
+	{"right", WD_RIGHT, 0},
 	{"topleft", WD_TOPLEFT, 0},
 	{"topright", WD_TOPRIGHT, 0},
 	{"bottomleft", WD_BOTTOMLEFT, 0},

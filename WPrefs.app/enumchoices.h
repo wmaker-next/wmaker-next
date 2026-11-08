@@ -191,6 +191,8 @@
 	R("center",      N_("Center")) \
 	R("top",         N_("Top")) \
 	R("bottom",      N_("Bottom")) \
+	R("left",        N_("Left")) \
+	R("right",       N_("Right")) \
 	R("topleft",     N_("Top/Left")) \
 	R("topright",    N_("Top/Right")) \
 	R("bottomleft",  N_("Bottom/Left")) \

@@ -127,15 +127,17 @@
 #define WA_MOVE_NEXTWINDOW      9
 #define WA_VIRTUAL_DESKTOP_PAN  10
 
-/* workspace display position */
+/* screen display position */
 #define WD_NONE		0
 #define WD_CENTER	1
 #define WD_TOP		2
 #define WD_BOTTOM	3
-#define WD_TOPLEFT	4
-#define WD_TOPRIGHT	5
-#define WD_BOTTOMLEFT	6
-#define WD_BOTTOMRIGHT	7
+#define WD_LEFT		4
+#define WD_RIGHT	5
+#define WD_TOPLEFT	6
+#define WD_TOPRIGHT	7
+#define WD_BOTTOMLEFT	8
+#define WD_BOTTOMRIGHT	9
 
 /* titlebar style */
 #define TS_NEW		0
