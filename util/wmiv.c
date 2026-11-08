@@ -1821,11 +1821,6 @@ int rescale_image(void)
 		max_height_tmp -= extents.top + extents.bottom;
 	}
 
-	/* check if there is already a zoom factor applied */
-	if (fabsf(zoom_factor) <= 0.0f) {
-		final_width = img->width + (int)(img->width * zoom_factor);
-		final_height = img->height + (int)(img->height * zoom_factor);
-	}
 	if ((max_width_tmp < final_width) || (max_height_tmp < final_height)) {
 		double val = 0;
 
@@ -2063,7 +2058,7 @@ int full_screen(void)
 		back_from_fullscreen = true;
 	} else {
 		fullscreen_flag = true;
-		zoom_factor = 1000;
+		zoom_factor = 0;
 		RReleaseImage(img);
 		img = load_oriented_image(ctx, current_link->data, 0);
 		if (!img)
@@ -2274,6 +2269,7 @@ int zoom_in_out(int z)
 {
 	RImage *old_img = img;
 	RImage *tmp;
+	int new_width, new_height;
 
 	if (!current_link)
 		return EXIT_FAILURE;
@@ -2282,31 +2278,29 @@ int zoom_in_out(int z)
 	if (!tmp)
 		return EXIT_FAILURE;
 
-	if (z) {
+	if (z)
 		zoom_factor += 0.2f;
-		img = RScaleImage(tmp, tmp->width + (int)(tmp->width * zoom_factor),
-				tmp->height + (int)(tmp->height * zoom_factor));
-		if (!img) {
-			img = old_img;
-			RReleaseImage(tmp);
-			return EXIT_FAILURE;
-		}
-	} else {
+	else
 		zoom_factor -= 0.2f;
-		int new_width = tmp->width + (int) (tmp->width * zoom_factor);
-		int new_height = tmp->height + (int)(tmp->height * zoom_factor);
 
-		if ((new_width <= 0) || (new_height <= 0)) {
-			zoom_factor += 0.2f;
-			RReleaseImage(tmp);
-			return EXIT_FAILURE;
-		}
-		img = RScaleImage(tmp, new_width, new_height);
-		if (!img) {
-			img = old_img;
-			RReleaseImage(tmp);
-			return EXIT_FAILURE;
-		}
+	new_width = tmp->width + (int)(tmp->width * zoom_factor);
+	new_height = tmp->height + (int)(tmp->height * zoom_factor);
+
+	if (!z && ((new_width <= 0) || (new_height <= 0))) {
+		zoom_factor += 0.2f;
+		RReleaseImage(tmp);
+		return EXIT_FAILURE;
+	}
+	if (new_width > (int)R_IMAGE_MAX_WIDTH)
+		new_width = R_IMAGE_MAX_WIDTH;
+	if (new_height > (int)R_IMAGE_MAX_HEIGHT)
+		new_height = R_IMAGE_MAX_HEIGHT;
+
+	img = RScaleImage(tmp, new_width, new_height);
+	if (!img) {
+		img = old_img;
+		RReleaseImage(tmp);
+		return EXIT_FAILURE;
 	}
 	RReleaseImage(old_img);
 	RReleaseImage(tmp);

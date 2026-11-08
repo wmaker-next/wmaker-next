@@ -30,8 +30,8 @@
 
 #include <stdint.h>
 
-#define R_IMAGE_MAX_WIDTH 20000U
-#define R_IMAGE_MAX_HEIGHT 20000U
+#include "wraster.h"
+
 /* total decoder working set, not just one output buffer */
 #define R_IMAGE_MAX_BYTES UINT64_C(0x80000000)
 /* 20000^2*4 < 2G */

@@ -392,6 +392,9 @@ int RGetClosestXColor(RContext *context, const RColor *color, uint32_t *pixel)
 /*
  * RImage creation
  */
+#define R_IMAGE_MAX_WIDTH 20000U
+#define R_IMAGE_MAX_HEIGHT 20000U
+
 RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 	__wrlib_useresult __wrlib_nonalias;
 
