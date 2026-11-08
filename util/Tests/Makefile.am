@@ -4,19 +4,26 @@ check_PROGRAMS = check_wmgenmenu check_wmakermsg
 TESTS = check_wmgenmenu check_wmakermsg
 DRIVE_TESTS =
 check_PROGRAMS += wmclipd_cliptest
+check_PROGRAMS += check_clip_geom
+TESTS += check_clip_geom
 check_PROGRAMS += check_wtouch
 TESTS += check_wtouch
 check_PROGRAMS += check_util_tools
 TESTS += check_util_tools
 DRIVE_TESTS += wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
+	wmclipd-place.sh \
 	wxcopy-wxpaste.sh
 
 AM_CPPFLAGS = $(DFLAGS) -I$(top_srcdir)/WINGs -I$(top_srcdir)/util -I$(top_srcdir)/test @HEADER_SEARCH_PATH@
 
-wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip_common.c ../xcconn.c
+wmclipd_cliptest_SOURCES = wmclipd_cliptest.c ../clip_common.c ../clip_geom.c ../xcconn.c
 wmclipd_cliptest_CFLAGS = @XCB_CFLAGS@
-wmclipd_cliptest_LDADD = @XCB_LIBS@
+wmclipd_cliptest_LDADD = @XCB_LIBS@ $(top_builddir)/WINGs/libwipc.la
+
+check_clip_geom_SOURCES = check_clip_geom.c ../clip_geom.c
+check_clip_geom_CFLAGS = @XCB_CFLAGS@
+check_clip_geom_LDADD = @XCB_LIBS@
 
 check_wmgenmenu_SOURCES = check_wmgenmenu.c
 check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
@@ -32,6 +39,7 @@ check_util_tools_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 EXTRA_DIST = wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
+	wmclipd-place.sh \
 	wxcopy-wxpaste.sh
 
 TESTS_ENVIRONMENT = \

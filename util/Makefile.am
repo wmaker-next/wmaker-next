@@ -27,7 +27,7 @@ wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 bin_PROGRAMS += wmclipd
 wmclipd_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@
-wmclipd_SOURCES = wmclipd.c clip_common.c clip_common.h xcconn.c xcconn.h
+wmclipd_SOURCES = wmclipd.c clip_common.c clip_common.h clip_geom.c clip_geom.h xcconn.c xcconn.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \

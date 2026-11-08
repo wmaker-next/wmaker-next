@@ -26,13 +26,20 @@
  * back from CLIPBOARD, including INCR transfers in both directions. It can
  * also own PRIMARY and serve XA_STRING text, which is what the plain
  * xcb paste clients (wxpaste) request.
+ *
+ * The placement drive test additionally maps a focusable window, warps
+ * the pointer, prints the head list and impersonates the wmaker IPC
+ * endpoint to trigger the popup.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 
 #include <xcb/xcb.h>
 #include <xkbcommon/xkbcommon.h>
@@ -40,8 +47,10 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "clip_common.h"
+#include "clip_geom.h"
 #include "xcconn.h"
 #include <WINGs/WXCore.h>
+#include <WINGs/WIPC.h>
 
 #define CHUNK_SIZE 32768
 
@@ -323,7 +332,7 @@ static int send_ctrl_v(const char *window_id)
 	ev.same_screen = 1;
 	ev.time = XCB_TIME_CURRENT_TIME;
 
-	xcb_set_input_focus(xc, target, XCB_INPUT_FOCUS_PARENT,
+	xcb_set_input_focus(xc, XCB_INPUT_FOCUS_PARENT, target,
 			    XCB_TIME_CURRENT_TIME);
 	WXSendEvent32(xc, &ev, sizeof(ev), 0, target, XCB_EVENT_MASK_KEY_PRESS);
 
@@ -385,6 +394,164 @@ static int read_clipboard(void)
 	printf("%zu %lu\n", data_len, checksum);
 
 	free(data);
+	return 0;
+}
+
+static int show_heads(void)
+{
+	ClipHead heads[CLIP_MAX_HEADS];
+	int n, i;
+
+	n = clipQueryHeads(xc, root_window, heads, CLIP_MAX_HEADS);
+	printf("%d\n", n);
+	for (i = 0; i < n; i++)
+		printf("%d %d %d %d\n", heads[i].x, heads[i].y, heads[i].w, heads[i].h);
+	return 0;
+}
+
+static int map_focus_window(int x, int y, int w, int h)
+{
+	xcb_generic_error_t *err;
+	uint32_t vals[4];
+
+	vals[0] = (uint32_t)x;
+	vals[1] = (uint32_t)y;
+	vals[2] = (uint32_t)w;
+	vals[3] = (uint32_t)h;
+	xcb_configure_window(xc, win,
+			     XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+			     XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+			     vals);
+	/* sync after the map so the window is viewable before the focus
+	 * request, nested servers reject the focus of a just-mapped window
+	 * otherwise */
+	err = xcb_request_check(xc, xcb_map_window_checked(xc, win));
+	free(err);
+	err = xcb_request_check(xc, xcb_set_input_focus_checked(xc,
+				XCB_INPUT_FOCUS_PARENT, win, XCB_CURRENT_TIME));
+	free(err);
+	printf("mapped 0x%lx at %d,%d %dx%d\n", (unsigned long)win, x, y, w, h);
+	fflush(stdout);
+	for (;;)
+		pause();
+	return 0;
+}
+
+static int warp_pointer(int x, int y)
+{
+	xcb_query_pointer_reply_t *pr;
+
+	xcb_warp_pointer(xc, XCB_NONE, root_window, 0, 0, 0, 0,
+			 (int16_t)x, (int16_t)y);
+	xcb_flush(xc);
+
+	pr = xcb_query_pointer_reply(xc, xcb_query_pointer(xc, root_window), NULL);
+	if (!pr) {
+		printf("warped: query failed\n");
+		return 2;
+	}
+	printf("warped: %d,%d\n", pr->root_x, pr->root_y);
+	fflush(stdout);
+	free(pr);
+
+	/* hold the connection: nested servers can resync the pointer from
+	 * their host window when the warping client disconnects */
+	for (;;)
+		pause();
+	return 0;
+}
+
+static int show_pointer(void)
+{
+	xcb_query_pointer_reply_t *pr;
+	xcb_get_input_focus_reply_t *fr;
+
+	pr = xcb_query_pointer_reply(xc, xcb_query_pointer(xc, root_window), NULL);
+	if (!pr) {
+		printf("pointer: query failed\n");
+		return 2;
+	}
+	printf("pointer: %d,%d child 0x%x\n", pr->root_x, pr->root_y,
+	       (unsigned int)pr->child);
+	free(pr);
+
+	fr = xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL);
+	if (!fr) {
+		printf("focus: query failed\n");
+		return 2;
+	}
+	printf("focus: 0x%x\n", (unsigned int)fr->focus);
+	free(fr);
+	return 0;
+}
+
+/* Impersonate the wmaker IPC endpoint: accept wmclipd's event
+ * subscription and push one popup tick event, then hold the connection
+ * open until the test kills us. */
+static int fake_tick(void)
+{
+	static const char tick_body[] =
+		"{first = NO;keyed = YES;payload = \"wmclipd-popup\";}";
+	struct sockaddr_un addr;
+	char *path, *body;
+	char parent[sizeof(addr.sun_path)];
+	uint32_t type, len;
+	size_t plen;
+	int lfd, cfd;
+
+	path = wIPCSocketPath(NULL);
+	if (strlen(path) >= sizeof(addr.sun_path)) {
+		fprintf(stderr, "fake-tick: socket path too long: %s\n", path);
+		return 2;
+	}
+
+	/* wIPCConnect requires the socket directory to be 0700-owned */
+	snprintf(parent, sizeof(parent), "%s", path);
+	plen = strlen(parent);
+	while (plen > 1 && parent[plen - 1] != '/')
+		plen--;
+	if (plen > 1)
+		parent[plen - 1] = '\0';
+	if (mkdir(parent, 0700) < 0 && errno != EEXIST) {
+		perror(parent);
+		return 2;
+	}
+
+	lfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (lfd < 0) {
+		perror("socket");
+		return 2;
+	}
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	memcpy(addr.sun_path, path, strlen(path) + 1);
+	unlink(path);
+	if (bind(lfd, (struct sockaddr *)&addr, sizeof(addr)) < 0 ||
+	    listen(lfd, 1) < 0) {
+		perror(path);
+		return 2;
+	}
+	printf("fake-tick listening on %s\n", path);
+	fflush(stdout);
+
+	cfd = accept(lfd, NULL, NULL);
+	if (cfd < 0) {
+		perror("accept");
+		return 2;
+	}
+	if (wIPCRecv(cfd, &type, &body, &len) == 0)
+		free(body);
+
+	if (wIPCSend(cfd, WIPC_EVENT_BIT | WIPC_EV_TICK, tick_body,
+		     strlen(tick_body)) < 0) {
+		perror("fake-tick: tick send");
+		return 2;
+	}
+	printf("tick sent\n");
+	fflush(stdout);
+
+	for (;;)
+		pause();
 	return 0;
 }
 
@@ -459,8 +626,19 @@ int main(int argc, char **argv)
 		return send_ctrl_v(argv[2]);
 	if (argc >= 2 && strcmp(argv[1], "read-clipboard") == 0)
 		return read_clipboard();
+	if (argc >= 2 && strcmp(argv[1], "heads") == 0)
+		return show_heads();
+	if (argc >= 6 && strcmp(argv[1], "map-window") == 0)
+		return map_focus_window(atoi(argv[2]), atoi(argv[3]),
+					atoi(argv[4]), atoi(argv[5]));
+	if (argc >= 4 && strcmp(argv[1], "warp") == 0)
+		return warp_pointer(atoi(argv[2]), atoi(argv[3]));
+	if (argc >= 2 && strcmp(argv[1], "pointer") == 0)
+		return show_pointer();
+	if (argc >= 2 && strcmp(argv[1], "fake-tick") == 0)
+		return fake_tick();
 
-	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|serve-string|send-ctrl-v|read-clipboard [arg]\n",
+	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|serve-string|send-ctrl-v|read-clipboard|heads|map-window|warp|pointer|fake-tick [arg]\n",
 		argv[0]);
 	return 2;
 }

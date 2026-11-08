@@ -50,6 +50,7 @@
 
 #include "config.h"
 #include "clip_common.h"
+#include "clip_geom.h"
 #include "xcconn.h"
 
 #define IPC_RECONNECT_MS   1000
@@ -2518,6 +2519,12 @@ static int parse_args(int argc, char **argv)
 
 static int popup_clicked_row = -1;
 static int popup_x, popup_y, popup_w, popup_h;
+/* placement anchor and clamp area, snapshotted when the popup opens so
+ * history refreshes cannot move it while it is on screen */
+static int popup_anchor_x, popup_anchor_y;
+static bool popup_anchor_on_focus;
+static int popup_focus_x, popup_focus_y, popup_focus_w, popup_focus_h;
+static int popup_clamp_x, popup_clamp_y, popup_clamp_w, popup_clamp_h;
 
 static const char *entry_type_label(xcb_atom_t type)
 {
@@ -2742,40 +2749,121 @@ static void get_work_area(int *ax, int *ay, int *aw, int *ah)
 	wfree(areas);
 }
 
-static void place_popup(int rows)
+static bool rect_intersect(int ax, int ay, int aw, int ah,
+			   int bx, int by, int bw, int bh,
+			   int *x, int *y, int *w, int *h)
 {
-	int rx, ry;
-	int ax, ay, aw, ah;
+	int x1 = ax > bx ? ax : bx;
+	int y1 = ay > by ? ay : by;
+	int x2a = ax + aw, y2a = ay + ah;
+	int x2b = bx + bw, y2b = by + bh;
+	int x2 = x2a < x2b ? x2a : x2b;
+	int y2 = y2a < y2b ? y2a : y2b;
+
+	if (x2 <= x1 || y2 <= y1)
+		return false;
+	*x = x1;
+	*y = y1;
+	*w = x2 - x1;
+	*h = y2 - y1;
+	return true;
+}
+
+static void snapshot_popup_anchor(xcb_window_t focus_win)
+{
+	ClipHead heads[CLIP_MAX_HEADS];
+	int nheads, hi_focus = -1, hi_pointer = -1, hi = -1;
+	int fx = 0, fy = 0, fw = 0, fh = 0;
+	int px = 0, py = 0, ax, ay, aw, ah;
+	bool have_focus, have_pointer, pointer_on_focus_head;
 
 	get_work_area(&ax, &ay, &aw, &ah);
+	nheads = clipQueryHeads(xc, root_window, heads, CLIP_MAX_HEADS);
+
+	have_focus = clipWindowRootRect(xc, root_window, focus_win,
+					&fx, &fy, &fw, &fh);
+	if (have_focus)
+		hi_focus = clipHeadForRect(heads, nheads, fx, fy, fw, fh);
+
+	have_pointer = wXQueryPointer(xc, root_window, NULL, NULL,
+				      &px, &py, NULL, NULL, NULL);
+	if (!have_pointer) {
+		px = ax + aw / 2;
+		py = ay + ah / 2;
+	}
+	hi_pointer = clipHeadForRect(heads, nheads, px, py, 1, 1);
+	pointer_on_focus_head = have_focus && have_pointer &&
+				hi_focus >= 0 && hi_focus == hi_pointer;
+
+	debug_log("popup anchor: focus %s 0x%x rect %d,%d %dx%d head %d, "
+		  "pointer %d,%d head %d, heads %d",
+		  have_focus ? "yes" : "no", (unsigned int)focus_win,
+		  fx, fy, fw, fh, hi_focus, px, py, hi_pointer, nheads);
+
+	wpickpopupanchor(have_focus, fx, fy, fw, fh, pointer_on_focus_head,
+			 px, py, &popup_anchor_x, &popup_anchor_y);
+	popup_anchor_on_focus = have_focus && !pointer_on_focus_head;
+	popup_focus_x = fx;
+	popup_focus_y = fy;
+	popup_focus_w = fw;
+	popup_focus_h = fh;
+
+	if (popup_anchor_on_focus && hi_focus >= 0)
+		hi = hi_focus;
+	else if (!popup_anchor_on_focus && hi_pointer >= 0)
+		hi = hi_pointer;
+
+	if (hi < 0 || !rect_intersect(heads[hi].x, heads[hi].y,
+				      heads[hi].w, heads[hi].h,
+				      ax, ay, aw, ah,
+				      &popup_clamp_x, &popup_clamp_y,
+				      &popup_clamp_w, &popup_clamp_h)) {
+		popup_clamp_x = ax;
+		popup_clamp_y = ay;
+		popup_clamp_w = aw;
+		popup_clamp_h = ah;
+	}
+}
+
+static void place_popup(int rows)
+{
+	int ax = popup_clamp_x, ay = popup_clamp_y;
+	int aw = popup_clamp_w, ah = popup_clamp_h;
 
 	popup_w = aw * 40 / 100;
 	if (popup_w > 400)
 		popup_w = 400;
 	if (popup_w < 200)
 		popup_w = 200;
+	if (popup_w > aw)
+		popup_w = aw;
 
 	popup_h = rows * popup_item_h + 4;
 	if (popup_h > ah)
 		popup_h = ah;
 
-	if (wXQueryPointer(xc, root_window, NULL, NULL,
-			   &rx, &ry, NULL, NULL, NULL)) {
-		popup_x = rx - popup_w / 2;
-		popup_y = ry - popup_item_h / 2;
+	if (popup_anchor_on_focus) {
+		wplacepopupnearrect(popup_focus_x, popup_focus_y,
+				    popup_focus_w, popup_focus_h,
+				    popup_w, popup_h,
+				    ax, ay, aw, ah, &popup_x, &popup_y);
 	} else {
-		popup_x = ax + (aw - popup_w) / 2;
-		popup_y = ay + (ah - popup_h) / 2;
+		popup_x = popup_anchor_x - popup_w / 2;
+		popup_y = popup_anchor_y - popup_item_h / 2;
 	}
 
-	if (popup_x < ax)
-		popup_x = ax;
 	if (popup_x + popup_w > ax + aw)
 		popup_x = ax + aw - popup_w;
-	if (popup_y < ay)
-		popup_y = ay;
+	if (popup_x < ax)
+		popup_x = ax;
 	if (popup_y + popup_h > ay + ah)
 		popup_y = ay + ah - popup_h;
+	if (popup_y < ay)
+		popup_y = ay;
+
+	debug_log("popup placed at %d,%d %dx%d anchor=%s",
+		  popup_x, popup_y, popup_w, popup_h,
+		  popup_anchor_on_focus ? "focus" : "pointer");
 }
 
 static void refresh_popup_list(void)
@@ -3161,6 +3249,18 @@ static void show_clipboard_popup(bool keyed)
 		return;
 	}
 
+	/* Save the currently focused window so we can send a Ctrl+V
+	 * paste keystroke to it after committing the selection, and so
+	 * the popup anchors to the window the user is typing in. */
+	fck = xcb_get_input_focus(xc);
+	frep = xcb_get_input_focus_reply(xc, fck, NULL);
+	if (frep) {
+		focus_save = frep->focus;
+		free(frep);
+	}
+	focus_target = focus_save;
+	snapshot_popup_anchor(focus_save);
+
 	refresh_popup_list();
 	WMMapWidget(popup_win);
 	wXRaiseWindow(xc, WMWidgetXID(popup_win));
@@ -3186,16 +3286,6 @@ static void show_clipboard_popup(bool keyed)
 	/* a keyed tick means the chord was held at dispatch, even if it
 	 * was already released before the popup started */
 	release_commits = keyed || modifier_is_down();
-
-	/* Save the currently focused window so we can send a Ctrl+V
-	 * paste keystroke to it after committing the selection. */
-	fck = xcb_get_input_focus(xc);
-	frep = xcb_get_input_focus_reply(xc, fck, NULL);
-	if (frep) {
-		focus_save = frep->focus;
-		free(frep);
-	}
-	focus_target = focus_save;
 
 	/* The wmaker keybinding uses a passive XGrabKey that stays active
 	 * while the modifier (e.g. Super) is held. Retry until the user
