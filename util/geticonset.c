@@ -85,6 +85,9 @@ int main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (argc > 1)
+		print_help(0, 1);
+
 	path = wdefaultspathfordomain("WMWindowAttributes");
 
 	all_windows = WMReadPropListFromFile(path);
