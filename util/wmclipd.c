@@ -1208,6 +1208,7 @@ static int history_write_file(const char *path, const unsigned char *data,
 	const unsigned char *p;
 	size_t remaining;
 	ssize_t w;
+	struct stat st;
 	int fd, ok, closed;
 
 	tmp = wmalloc(strlen(path) + 5);
@@ -1226,6 +1227,14 @@ static int history_write_file(const char *path, const unsigned char *data,
 	}
 
 	ok = 1;
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || fchmod(fd, 0600) < 0) {
+		debug_log("history: cannot secure %s: %s", tmp, strerror(errno));
+		close(fd);
+		unlink(tmp);
+		wfree(tmp);
+		return -1;
+	}
+
 	p = data;
 	remaining = len;
 	while (remaining > 0) {
