@@ -237,6 +237,7 @@ static WMenu *configureUserMenu(WScreen *scr, WMPropList *plum, int depth)
 
 			title = WMGetFromPLArray(elem, idx++);
 			command = WMGetFromPLArray(elem, idx++);
+			params = NULL;
 			if (WMGetPropListItemCount(elem) >= 3)
 				params = WMGetFromPLArray(elem, idx++);
 
