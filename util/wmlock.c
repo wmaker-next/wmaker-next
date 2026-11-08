@@ -261,11 +261,21 @@ static int authenticate(const char *user)
 
 	(void)user;
 	rc = pam_authenticate(pamh, 0);
-	if (rc == PAM_SUCCESS)
-		pam_setcred(pamh, PAM_REFRESH_CRED);
-	else
+	if (rc != PAM_SUCCESS) {
 		diag("pam_authenticate: %s", pam_strerror(pamh, rc));
-	return rc == PAM_SUCCESS;
+		return 0;
+	}
+	rc = pam_acct_mgmt(pamh, 0);
+	if (rc != PAM_SUCCESS) {
+		diag("pam_acct_mgmt: %s", pam_strerror(pamh, rc));
+		return 0;
+	}
+	rc = pam_setcred(pamh, PAM_REFRESH_CRED);
+	if (rc != PAM_SUCCESS) {
+		diag("pam_setcred: %s", pam_strerror(pamh, rc));
+		return 0;
+	}
+	return 1;
 #elif defined(HAVE_BSD_AUTH)
 	/* auth_userokay frees a non-NULL password and may write to user,
 	 * so hand it private copies */
