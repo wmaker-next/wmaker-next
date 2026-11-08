@@ -843,7 +843,7 @@ static void handleEnterNotify(xcb_generic_event_t *ev)
 	}
 
 	if (e->event == e->root
-	    && e->detail == XCB_NOTIFY_MODE_NORMAL
+	    && e->mode == XCB_NOTIFY_MODE_NORMAL
 	    && e->detail != XCB_NOTIFY_DETAIL_INFERIOR && w_global.config->focus_mode != WKF_CLICK) {
 
 		wSetFocusTo(scr, scr->focused_window);
