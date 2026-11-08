@@ -498,7 +498,7 @@ int main(int argc, char **argv)
 	gshift = mask_shift(gmask);
 	bshift = mask_shift(bmask);
 
-	scr = WMCreateScreen(xconn, 0);
+	scr = WMCreateScreen(xconn, xsn);
 
 	cursorColor1 = WMCreateNamedColor(scr, "#ff0000", false);
 	cursorColor2 = WMCreateNamedColor(scr, "#00ff00", false);
