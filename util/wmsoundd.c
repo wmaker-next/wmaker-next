@@ -232,13 +232,13 @@ static void *sound_decode(const char *path, int *out_channels,
 	got = sf_readf_short(sndfile, samples, frames);
 	sf_close(sndfile);
 	close(fd);
-	if (got != frames) {
+	if (got <= 0) {
 		wfree(samples);
 		return NULL;
 	}
 	*out_channels = sfinfo.channels;
 	*out_rate = sfinfo.samplerate;
-	*out_size = (size_t)frames * sfinfo.channels * sizeof(short);
+	*out_size = (size_t)got * sfinfo.channels * sizeof(short);
 	return samples;
 }
 
