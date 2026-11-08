@@ -71,6 +71,69 @@ static void test_wstrndup(void)
 	wfree(s);
 }
 
+static void test_popup_anchor(void)
+{
+	int ax, ay;
+
+	/* no focused window: always the pointer */
+	wpickpopupanchor(false, 10, 20, 30, 40, false, 100, 200, &ax, &ay);
+	CHECK(ax == 100 && ay == 200);
+	wpickpopupanchor(false, 10, 20, 30, 40, true, 100, 200, &ax, &ay);
+	CHECK(ax == 100 && ay == 200);
+
+	/* pointer on the focused window's head: the pointer */
+	wpickpopupanchor(true, 10, 20, 30, 40, true, 100, 200, &ax, &ay);
+	CHECK(ax == 100 && ay == 200);
+
+	/* pointer on another head: the focus rect center */
+	wpickpopupanchor(true, 10, 20, 30, 40, false, 100, 200, &ax, &ay);
+	CHECK(ax == 10 + 30 / 2 && ay == 20 + 40 / 2);
+
+	wpickpopupanchor(true, -5, -7, 11, 13, false, 0, 0, &ax, &ay);
+	CHECK(ax == -5 + 11 / 2 && ay == -7 + 13 / 2);
+}
+
+static void test_popup_nearrect(void)
+{
+	int x, y;
+
+	/* fits inside the window: centered on it */
+	wplacepopupnearrect(100, 100, 300, 300, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(x == 100 + (300 - 200) / 2);
+	CHECK(y == 100 + (300 - 43) / 2);
+
+	/* too small a window: just below it, centered on it */
+	wplacepopupnearrect(150, 150, 60, 40, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(x == 150 + (60 - 200) / 2);
+	CHECK(y == 150 + 40 + 4);
+
+	/* fits in width but not in height: still beside the window */
+	wplacepopupnearrect(150, 150, 300, 40, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(y == 150 + 40 + 4);
+
+	/* no room below: above the window */
+	wplacepopupnearrect(150, 540, 60, 40, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(y == 540 - 43 - 4);
+
+	/* horizontal clamp into the usable area */
+	wplacepopupnearrect(350, 100, 40, 40, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(x == 400 - 200);
+	wplacepopupnearrect(10, 100, 20, 40, 200, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(x == 0);
+
+	/* popup larger than the usable area clamps into it */
+	wplacepopupnearrect(10, 10, 100, 100, 500, 43,
+			    0, 0, 400, 600, &x, &y);
+	CHECK(x == 0);
+	CHECK(y == 10 + 100 + 4);
+}
+
 static void test_intern(void)
 {
 	const char *a, *b, *c;
@@ -899,6 +962,8 @@ int main(void)
 	test_userpaths();
 	test_wstrlcpy();
 	test_wstrndup();
+	test_popup_anchor();
+	test_popup_nearrect();
 	test_wshellquote();
 	test_wtoken();
 	test_wtrimspace();

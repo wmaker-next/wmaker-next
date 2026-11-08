@@ -332,6 +332,24 @@ char *wshellquote(const char *s);
 
 WMRange wmkrange(int start, int count);
 
+/* Choose the root-coordinate anchor point for a popup shown while the
+ * user is typing. The pointer is the anchor when the focused window is
+ * on the same head or there is no focused window, the center of the
+ * focused window's rect otherwise. */
+void wpickpopupanchor(bool have_focus, int focus_x, int focus_y,
+		      int focus_w, int focus_h, bool pointer_on_focus_head,
+		      int pointer_x, int pointer_y, int *anchor_x, int *anchor_y);
+
+/* Place a popup of size pw x ph by the focused window's rect (the
+ * anchor wpickpopupanchor() picked): centered on the rect when the
+ * popup fits inside it so it never hides a small window, just below the
+ * rect otherwise, above it when there is no room below. The result is
+ * clamped into the usable area ux,uy uw x uh. */
+void wplacepopupnearrect(int fx, int fy, int fw, int fh,
+			 int pw, int ph,
+			 int ux, int uy, int uw, int uh,
+			 int *px, int *py);
+
 /* An application must call this function before exiting, to let WUtil do some internal cleanup */
 void wutil_shutdown(void);
 

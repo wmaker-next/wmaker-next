@@ -34,6 +34,46 @@ WMRange wmkrange(int start, int count)
 	return range;
 }
 
+void wpickpopupanchor(bool have_focus, int focus_x, int focus_y,
+		      int focus_w, int focus_h, bool pointer_on_focus_head,
+		      int pointer_x, int pointer_y, int *anchor_x, int *anchor_y)
+{
+	if (have_focus && !pointer_on_focus_head) {
+		*anchor_x = focus_x + focus_w / 2;
+		*anchor_y = focus_y + focus_h / 2;
+	} else {
+		*anchor_x = pointer_x;
+		*anchor_y = pointer_y;
+	}
+}
+
+void wplacepopupnearrect(int fx, int fy, int fw, int fh,
+			 int pw, int ph,
+			 int ux, int uy, int uw, int uh,
+			 int *px, int *py)
+{
+	int x, y;
+
+	x = fx + (fw - pw) / 2;
+	if (pw <= fw && ph <= fh) {
+		y = fy + (fh - ph) / 2;
+	} else {
+		y = fy + fh + 4;
+		if (y + ph > uy + uh)
+			y = fy - ph - 4;
+	}
+	if (x + pw > ux + uw)
+		x = ux + uw - pw;
+	if (x < ux)
+		x = ux;
+	if (y + ph > uy + uh)
+		y = uy + uh - ph;
+	if (y < uy)
+		y = uy;
+	*px = x;
+	*py = y;
+}
+
 /*
  * wutil_shutdown - cleanup in WUtil when user program wants to exit
  */
