@@ -21,6 +21,7 @@
  */
 
 #include <libgen.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -197,3 +198,51 @@ bool fileInPathExact(const char *file)
 	return false;
 }
 
+#define MAX_LINE_BYTES (1024 * 1024)
+
+/* one whole line per call, so a long Exec= value is not split into
+ * fragments. Returns 1 on success, 0 at end of file, -1 when an
+ * overlong line was discarded */
+int wmmenu_read_line(FILE *fp, char **out)
+{
+	char chunk[1024];
+	char *line = NULL;
+	size_t len = 0, cap = 0;
+
+	*out = NULL;
+	if (!fgets(chunk, (int)sizeof(chunk), fp))
+		return 0;
+
+	for (;;) {
+		size_t n = strlen(chunk);
+		int complete = n > 0 && chunk[n - 1] == '\n';
+
+		if (len + n + 1 > MAX_LINE_BYTES) {
+			while (!complete) {
+				if (!fgets(chunk, (int)sizeof(chunk), fp))
+					break;
+				n = strlen(chunk);
+				complete = n > 0 && chunk[n - 1] == '\n';
+			}
+			wfree(line);
+			fprintf(stderr, "wmmenugen: ignoring overlong input line\n");
+			return -1;
+		}
+		if (len + n + 1 > cap) {
+			cap = cap ? cap * 2 : 256;
+			while (cap < len + n + 1)
+				cap *= 2;
+			line = wrealloc(line, cap);
+		}
+		memcpy(line + len, chunk, n);
+		len += n;
+		if (complete || !fgets(chunk, (int)sizeof(chunk), fp))
+			break;
+	}
+
+	while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+		len--;
+	line[len] = '\0';
+	*out = line;
+	return 1;
+}

@@ -21,6 +21,8 @@
 #ifndef WMMENUGEN_H
 #define WMMENUGEN_H
 
+#include <stdio.h>
+
 #include <WINGs/WUtil.h>
 
 #include "../src/wconfig.h"
@@ -61,6 +63,7 @@ void  parse_locale(const char *what, char **env_lang, char **env_ctry, char **en
 char *find_terminal_emulator(void);
 bool fileInPath(const char *file);
 bool fileInPathExact(const char *file);
+int wmmenu_read_line(FILE *fp, char **out);
 
 /* implemented parsers
  */

@@ -51,10 +51,10 @@ static void init_wmconfig_storage(WMConfigMenuEntry **wmc);
 void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 {
 	FILE *fp;
-	char buf[1024];
-	char *p, *lastlabel, *label, *key, *value;
+	char *buf, *p, *lastlabel, *label, *key, *value;
 	WMConfigMenuEntry *wmc;
 	WMMenuEntry *wm;
+	int rc;
 
 	lastlabel = label = key = value = NULL;
 
@@ -75,36 +75,40 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 
 	wm = (WMMenuEntry *)wmalloc(sizeof(WMMenuEntry));
 
-	memset(buf, 0, sizeof(buf));
-
-	while (fgets(buf, sizeof(buf), fp)) {
+	while ((rc = wmmenu_read_line(fp, &buf)) != 0) {
+		if (rc < 0)
+			continue;
 
 		p = buf;
 
 		/* skip whitespaces */
-		while (isspace(*p))
+		while (isspace((unsigned char)*p))
 			p++;
 		/* skip comments, empty lines */
-		if (*p == '\r' || *p == '\n' || *p == '#') {
-			memset(buf, 0, sizeof(buf));
+		if (*p == '\0' || *p == '#') {
+			wfree(buf);
 			continue;
 		}
-		/* trim crlf */
-		buf[strcspn(buf, "\r\n")] = '\0';
-		if (strlen(buf) == 0)
-			continue;
 
 		parse_wmconfig_line(&label, &key, &value, p);
 
 		if (label && strlen(label) == 0) {
 			wfree(label);
+			wfree(key);
+			wfree(value);
+			wfree(buf);
 			continue;
 		}
 		if (!lastlabel && label)
 			lastlabel = wstrdup(label);
 
-		if (!lastlabel || !label)
+		if (!lastlabel || !label) {
+			wfree(label);
+			wfree(key);
+			wfree(value);
+			wfree(buf);
 			continue;
+		}
 
 		if (strcmp(lastlabel, label) != 0) {
 			if (wmc_to_wm(&wmc, &wm))
@@ -138,6 +142,7 @@ void parse_wmconfig(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 		}
 
 		wfree(key);
+		wfree(buf);
 	}
 
 	fclose(fp);
@@ -257,8 +262,10 @@ static bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 	/* if there's no Category, use "Applications"; apparently "no category"
 	 * can manifest both as no `group' descriptor at all, or a group
 	 * descriptor of "" */
-	if (!(*wmc)->Category || !*(*wmc)->Category)
+	if (!(*wmc)->Category || !*(*wmc)->Category) {
+		wfree((*wmc)->Category);
 		(*wmc)->Category = wstrdup("Applications");
+	}
 
 	/* the `restart' type is used for restart, restart other
 	 * wm and quit current wm too. separate these cases. */

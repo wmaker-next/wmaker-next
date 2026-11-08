@@ -85,11 +85,10 @@ static void  init_wm_storage(WMMenuEntry *wm);
 void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 {
 	FILE *fp;
-	char buf[1024];
-	char *p, *tmp = NULL, *key;
+	char *buf, *p, *tmp = NULL, *key;
 	WMMenuEntry *wm;
 	XDGMenuEntry *xdg;
-	int InGroup;
+	int InGroup, rc;
 
 	fp = fopen(file, "r");
 	if (!fp) {
@@ -102,24 +101,21 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 	xdg = (XDGMenuEntry *)wmalloc(sizeof(XDGMenuEntry));
 	wm = (WMMenuEntry *)wmalloc(sizeof(WMMenuEntry));
 	InGroup = 0;
-	memset(buf, 0, sizeof(buf));
 
-	while (fgets(buf, sizeof(buf), fp)) {
+	while ((rc = wmmenu_read_line(fp, &buf)) != 0) {
+		if (rc < 0)
+			continue;
 
 		p = buf;
 
 		/* skip whitespaces */
-		while (isspace(*p))
+		while (isspace((unsigned char)*p))
 			p++;
 		/* skip comments, empty lines */
-		if (*p == '\r' || *p == '\n' || *p == '#') {
-			memset(buf, 0, sizeof(buf));
+		if (*p == '\0' || *p == '#') {
+			wfree(buf);
 			continue;
 		}
-		/* trim crlf */
-		buf[strcspn(buf, "\r\n")] = '\0';
-		if (strlen(buf) == 0)
-			continue;
 
 		if (strcmp(p, "[Desktop Entry]") == 0) {
 			/* if currently processing a group, we've just hit the
@@ -132,23 +128,26 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 			init_wm_storage(wm);
 			InGroup = 1;
 			/* start processing group */
-			memset(buf, 0, sizeof(buf));
+			wfree(buf);
 			continue;
 		} else if (p[0] == '[') {
 			/* If we find a new group and the previous group was the main one,
 			 * we stop all further processing
 			 */
-			if (InGroup) break;
+			if (InGroup) {
+				wfree(buf);
+				break;
+			}
 		}
 
 		if (!InGroup) {
-			memset(buf, 0, sizeof(buf));
+			wfree(buf);
 			continue;
 		}
 
 		getKey(&key, p);
 		if (key == NULL) { /* not `key' = `value' */
-			memset(buf, 0, sizeof(buf));
+			wfree(buf);
 			continue;
 		}
 
@@ -185,6 +184,7 @@ void parse_xdg(const char *file, cb_add_menu_entry *addWMMenuEntryCallback)
 
 		wfree(key);
 		key = NULL;
+		wfree(buf);
 	}
 
 	fclose(fp);
@@ -446,12 +446,12 @@ static void getKey(char **target, const char *line)
 	kstart = 0;
 
 	/* skip whitespace */
-	while (isspace(*(p + kstart)))
+	while (isspace((unsigned char)*(p + kstart)))
 		kstart++;
 
 	/* skip up until first whitespace or '[' (localestring) or '=' */
 	kend = kstart + 1;
-	while (*(p + kend) && !isspace(*(p + kend)) && *(p + kend) != '=' && *(p + kend) != '[')
+	while (*(p + kend) && !isspace((unsigned char)*(p + kend)) && *(p + kend) != '=' && *(p + kend) != '[')
 		kend++;
 
 	*target = wstrndup(p + kstart, kend - kstart);
