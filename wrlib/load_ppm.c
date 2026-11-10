@@ -332,7 +332,7 @@ RImage *RLoadPPM(const char *file_name)
 
 	if (pm_read_uint(&reader, &w) < 0 || pm_read_uint(&reader, &h) < 0 ||
 	    w < 1 || h < 1 ||
-	    !RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h, 3U)) {
+	    !RImageLoadWorkingSetWithinLimits((uint64_t)w, (uint64_t)h, 3U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto done;
 	}

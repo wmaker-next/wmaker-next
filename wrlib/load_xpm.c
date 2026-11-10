@@ -69,10 +69,38 @@ struct xpm_line_source {
 static const char *xpm_next_line(struct xpm_line_source *src)
 {
 	if (src->file) {
-		ssize_t len = getline(&src->buf, &src->bufcap, src->file);
+		size_t len = 0, cap, max_len;
+		char *buf;
+		int ch;
 
-		if (len < 0 || len > MAX_XPM_LINE)
+		if (!RImageLoadLimit)
 			return NULL;
+		max_len = RImageLoadLimit - 1 < MAX_XPM_LINE ?
+			  (size_t)(RImageLoadLimit - 1) : MAX_XPM_LINE;
+		while ((ch = fgetc(src->file)) != EOF) {
+			if (len >= max_len) {
+				RErrorCode = RERR_BADIMAGEFILE;
+				return NULL;
+			}
+			if (len + 1 >= src->bufcap) {
+				cap = src->bufcap ? src->bufcap * 2 : 128;
+				if (cap > max_len + 1)
+					cap = max_len + 1;
+				buf = realloc(src->buf, cap);
+				if (!buf) {
+					RErrorCode = RERR_NOMEMORY;
+					return NULL;
+				}
+				src->buf = buf;
+				src->bufcap = cap;
+			}
+			src->buf[len++] = ch;
+			if (ch == '\n')
+				break;
+		}
+		if (!len)
+			return NULL;
+		src->buf[len] = '\0';
 		return src->buf;
 	}
 	if (src->data_index >= src->data_count)
@@ -476,7 +504,10 @@ static RImage *xpm_parse(struct xpm_line_source *src, int w, int h,
 		goto bad_format;
 	if (ccount < 1 || ccount > MAX_XPM_COLORS)
 		goto bad_format;
-	if (w < 1 || h < 1)
+	if (w < 1 || h < 1 ||
+	    !RImageLoadWorkingSetWithinLimits((uint64_t)w, (uint64_t)h, 4U) ||
+	    (uint64_t)ccount * (4U + sizeof(*symbol_table)) >
+	    RImageLoadLimit - (uint64_t)w * (uint64_t)h * 4U)
 		goto bad_format;
 
 	color_table[0] = malloc(ccount);

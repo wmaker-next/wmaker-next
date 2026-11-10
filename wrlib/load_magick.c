@@ -77,7 +77,7 @@ RImage *RLoadMagick(const char *file_name)
 	h = MagickGetImageHeight(m_wand);
 
 	/* Magick's Q16 pixel cache and the RImage copy are alive together */
-	if (!RImageWorkingSetWithinLimits(w, h, 12U)) {
+	if (!RImageLoadWorkingSetWithinLimits(w, h, 12U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto bye;
 	}
@@ -91,7 +91,7 @@ RImage *RLoadMagick(const char *file_name)
 	w = MagickGetImageWidth(m_wand);
 	h = MagickGetImageHeight(m_wand);
 
-	if (!RImageWorkingSetWithinLimits(w, h, 12U)) {
+	if (!RImageLoadWorkingSetWithinLimits(w, h, 12U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto bye;
 	}

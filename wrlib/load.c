@@ -39,6 +39,8 @@
  * matches the most restrictive existing caller */
 #define RREAD_FILE_MAX ((size_t)1 << 28)
 
+_Thread_local uint64_t RImageLoadLimit = R_IMAGE_MAX_BYTES;
+
 unsigned char *RReadWholeFile(const char *path, size_t *out_size)
 {
 	FILE *f;
@@ -59,7 +61,8 @@ unsigned char *RReadWholeFile(const char *path, size_t *out_size)
 		fclose(f);
 		return NULL;
 	}
-	if (len == 0 || (size_t)len > RREAD_FILE_MAX) {
+	if (len == 0 || (size_t)len > RREAD_FILE_MAX ||
+	    (uint64_t)len > RImageLoadLimit) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		fclose(f);
 		return NULL;
@@ -235,6 +238,19 @@ void RReleaseCache(void)
 RImage *RLoadImage(RContext *context, const char *file, int index)
 {
 	return RLoadImageAtSize(context, file, index, 0, 0);
+}
+
+RImage *RLoadImageAtSizeLimited(RContext *context, const char *file, int index,
+				unsigned int width, unsigned int height, size_t max_bytes)
+{
+	uint64_t saved = RImageLoadLimit;
+	RImage *image;
+
+	if (max_bytes < RImageLoadLimit)
+		RImageLoadLimit = max_bytes;
+	image = RLoadImageAtSize(context, file, index, width, height);
+	RImageLoadLimit = saved;
+	return image;
 }
 
 RImage *RLoadImageAtSize(RContext *context, const char *file, int index,

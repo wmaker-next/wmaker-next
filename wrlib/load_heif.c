@@ -111,7 +111,7 @@ RImage *RLoadHEIF(const char *file, int index)
 	bytes_per_pixel = has_alpha ? 4 : 3;
 
 	/* the libheif plane and the RImage are alive together */
-	if (!RImageWorkingSetWithinLimits(width, height,
+	if (!RImageLoadWorkingSetWithinLimits(width, height,
 					 (uint64_t)bytes_per_pixel * 2U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		goto error;
@@ -159,6 +159,8 @@ RImage *RLoadHEIF(const char *file, int index)
 	return image;
 
 error:
+	if (image)
+		RReleaseImage(image);
 	if (heif_img)
 		heif_image_release(heif_img);
 	if (handle)

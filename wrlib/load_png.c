@@ -129,7 +129,7 @@ RImage *RLoadPNG(RContext *context, const char *file)
 		alpha = (color_type & PNG_COLOR_MASK_ALPHA);
 
 	/* the decoded rows and the RImage are alive together */
-	if (!RImageWorkingSetWithinLimits(width, height, alpha ? 8U : 6U)) {
+	if (!RImageLoadWorkingSetWithinLimits(width, height, alpha ? 8U : 6U)) {
 		fclose(f);
 		png_destroy_read_struct(&png, &pinfo, &einfo);
 		RErrorCode = RERR_BADIMAGEFILE;

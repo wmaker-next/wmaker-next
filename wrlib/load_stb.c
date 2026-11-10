@@ -52,7 +52,7 @@
 #pragma GCC diagnostic ignored "-Wundef"
 #endif
 
-/* match RImageDimensionsWithinLimits() so stb rejects the same oversize
+/* match RImageLoadDimensionsWithinLimits() so stb rejects the same oversize
  * inputs as the native loaders, before allocating */
 #define STBI_MAX_DIMENSIONS  20000
 
@@ -116,7 +116,7 @@ static RImage *image_from_stbi(unsigned char *data, int w, int h, int n)
 		RErrorCode = RERR_BADIMAGEFILE;
 		return NULL;
 	}
-	if (!RImageDimensionsWithinLimits((unsigned)w, (unsigned)h)) {
+	if (!RImageLoadDimensionsWithinLimits((unsigned int)w, (unsigned int)h)) {
 		stbi_image_free(data);
 		RErrorCode = RERR_BADIMAGEFILE;
 		return NULL;
@@ -159,11 +159,28 @@ static RImage *image_from_stbi(unsigned char *data, int w, int h, int n)
 
 RImage *RLoadStb(const char *file)
 {
-	int w, h, n;
+	int w = 0, h = 0, n = 0;
 	unsigned char *data;
+	unsigned char *raw;
+	size_t len;
+
+	if (RImageLoadLimit < R_IMAGE_MAX_BYTES) {
+		raw = RReadWholeFile(file, &len);
+		if (!raw)
+			return NULL;
+		if (!stbi_info_from_memory(raw, (int)len, &w, &h, &n) ||
+		    !RImageLoadWorkingSetWithinLimits((uint64_t)w, (uint64_t)h, 16U)) {
+			free(raw);
+			RErrorCode = RERR_BADIMAGEFILE;
+			return NULL;
+		}
+		data = stbi_load_from_memory(raw, (int)len, &w, &h, &n, 0);
+		free(raw);
+		return image_from_stbi(data, w, h, n);
+	}
 
 	if (stbi_info(file, &w, &h, &n) &&
-	    !RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
+	    !RImageLoadWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
 					  stbiWorkingBytes(n) *
 					  (stbi_is_16_bit(file) ? 2U : 1U))) {
 		RErrorCode = RERR_BADIMAGEFILE;
@@ -202,7 +219,7 @@ RImage *RLoadStbGIF(const char *file, int index)
 
 	if (index <= 0) {
 		if (stbi_info(file, &iw, &ih, &in) &&
-		    !RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
+		    !RImageLoadWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
 						  STBI_GIF_BYTES_PER_PIXEL)) {
 			RErrorCode = RERR_BADIMAGEFILE;
 			return NULL;
@@ -220,9 +237,9 @@ RImage *RLoadStbGIF(const char *file, int index)
 		return NULL;
 	}
 	pixels = (uint64_t)iw * (uint64_t)ih;
-	if (!RImageWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
+	if (!RImageLoadWorkingSetWithinLimits((uint64_t)iw, (uint64_t)ih,
 					  STBI_GIF_STREAM_BYTES_PER_PIXEL) ||
-	    (uint64_t)flen > R_IMAGE_MAX_BYTES -
+	    (uint64_t)flen > RImageLoadLimit -
 			     pixels * STBI_GIF_STREAM_BYTES_PER_PIXEL) {
 		free(raw);
 		RErrorCode = RERR_BADIMAGEFILE;
@@ -261,9 +278,9 @@ RImage *RLoadStbGIF(const char *file, int index)
 			w = g.w;
 			h = g.h;
 			pixels = (uint64_t)w * (uint64_t)h;
-			if (!RImageWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
+			if (!RImageLoadWorkingSetWithinLimits((uint64_t)w, (uint64_t)h,
 							  STBI_GIF_STREAM_BYTES_PER_PIXEL) ||
-			    (uint64_t)flen > R_IMAGE_MAX_BYTES -
+			    (uint64_t)flen > RImageLoadLimit -
 					     pixels * STBI_GIF_STREAM_BYTES_PER_PIXEL) {
 				rc = RERR_BADIMAGEFILE;
 				goto done;

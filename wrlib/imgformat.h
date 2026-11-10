@@ -37,6 +37,8 @@
 /* 20000^2*4 < 2G */
 #define R_IMAGE_MAX_PIXELS (R_IMAGE_MAX_BYTES / 4U)
 
+extern _Thread_local uint64_t RImageLoadLimit;
+
 static inline int RImageDimensionsWithinLimits(uint64_t width, uint64_t height)
 {
 	return width >= 1 && height >= 1 &&
@@ -54,6 +56,19 @@ static inline int RImageWorkingSetWithinLimits(uint64_t width, uint64_t height,
 	return bytes_per_pixel > 0 &&
 	       RImageDimensionsWithinLimits(width, height) &&
 	       width * height <= R_IMAGE_MAX_BYTES / bytes_per_pixel;
+}
+
+static inline int RImageLoadDimensionsWithinLimits(uint64_t width, uint64_t height)
+{
+	return RImageDimensionsWithinLimits(width, height) &&
+	       width <= (RImageLoadLimit / 4U) / height;
+}
+
+static inline int RImageLoadWorkingSetWithinLimits(uint64_t width, uint64_t height,
+						   uint64_t bytes_per_pixel)
+{
+	return RImageWorkingSetWithinLimits(width, height, bytes_per_pixel) &&
+	       width * height <= RImageLoadLimit / bytes_per_pixel;
 }
 
 typedef enum {

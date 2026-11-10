@@ -62,6 +62,14 @@ static RImage *load_noctx_sized(const char *path, unsigned w, unsigned h)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((no_sanitize("nonnull-attribute")))
 #endif
+static RImage *load_noctx_limited(const char *path, size_t limit)
+{
+	return RLoadImageAtSizeLimited(NULL, path, 0, 0, 0, limit);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("nonnull-attribute")))
+#endif
 static RImage *load_noctx_index(const char *path, int index)
 {
 	return RLoadImageAtSize(NULL, path, index, 0, 0);
@@ -239,6 +247,13 @@ static void test_stb_formats(void)
 		30,20,10, 60,50,40, 0,0
 	};
 	p = write_sample("a.bmp", bmp, sizeof(bmp));
+	RReleaseCache();
+	CHECK(load_noctx_limited(p, 32) == NULL);
+	img = load_noctx_limited(p, sizeof(bmp));
+	CHECK(img != NULL);
+	if (img)
+		RReleaseImage(img);
+	RReleaseCache();
 	expect_image("BMP", load_noctx(p), 2, 1, 10, 20, 30);
 
 	/* 2x1 24-bit TGA, type 2 uncompressed, top-left origin */
@@ -1081,6 +1096,42 @@ static void test_working_set_limits(void)
 	CHECK(!RImageWorkingSetWithinLimits(20001, 1, 4));
 }
 
+static void test_limited_load(void)
+{
+	const char *s = "P6\n2 1\n255\n";
+	const char *xpm = "/* XPM */\n\"1 1 1 1\",\n\"x c #ff0000\",\n\"x\"\n";
+	char *path = write_sample("limited.ppm", s, strlen(s));
+	RImage *image;
+
+	append_bytes(path, (const unsigned char[]){10, 20, 30, 40, 50, 60}, 6);
+	RReleaseCache();
+	image = load_noctx_limited(path, 5);
+	CHECK(image == NULL);
+	image = load_noctx_limited(path, 8);
+	CHECK(image != NULL);
+	if (image)
+		RReleaseImage(image);
+	image = load_noctx_limited(path, 7);
+	CHECK(image == NULL);
+	image = load_noctx(path);
+	CHECK(image != NULL);
+	if (image)
+		RReleaseImage(image);
+
+	path = write_sample("limited.xpm", xpm, strlen(xpm));
+	RReleaseCache();
+	CHECK(load_noctx_limited(path, 15) == NULL);
+	image = load_noctx_limited(path, 16);
+	CHECK(image != NULL);
+	if (image)
+		RReleaseImage(image);
+	RReleaseCache();
+	image = load_noctx(path);
+	CHECK(image != NULL);
+	if (image)
+		RReleaseImage(image);
+}
+
 int main(void)
 {
 	srcdir = getenv("srcdir");
@@ -1097,6 +1148,7 @@ int main(void)
 	test_pnm_golden();
 	test_pnm_reject();
 	test_working_set_limits();
+	test_limited_load();
 	test_stb_formats();
 	test_xpm_transparent();
 	test_xpm_extended();

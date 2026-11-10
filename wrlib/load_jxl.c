@@ -98,7 +98,7 @@ RImage *RLoadJXL(const char *file)
 
 			/* the RImage and the decoder output buffer are alive
 			 * together */
-			if (!RImageWorkingSetWithinLimits(width, height,
+			if (!RImageLoadWorkingSetWithinLimits(width, height,
 							 has_alpha ? 8U : 6U)) {
 				RErrorCode = RERR_BADIMAGEFILE;
 				goto error;

@@ -41,7 +41,7 @@ RImage *RCreateImage(unsigned width, unsigned height, int alpha)
 {
 	RImage *image = NULL;
 
-	if (!RImageDimensionsWithinLimits(width, height)) {
+	if (!RImageLoadDimensionsWithinLimits(width, height)) {
 		/* dimensions may come from untrusted image headers */
 		RErrorCode = RERR_NOMEMORY;
 		return NULL;

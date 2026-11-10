@@ -82,7 +82,7 @@ RImage *RLoadTIFF(const char *file, int index)
 	amode = (extrasamples == 1 && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA);
 
 	/* the RGBA staging buffer and the RImage are alive together */
-	if (!RImageWorkingSetWithinLimits(width, height, alpha ? 8U : 7U)) {
+	if (!RImageLoadWorkingSetWithinLimits(width, height, alpha ? 8U : 7U)) {
 		RErrorCode = RERR_BADIMAGEFILE;
 		TIFFClose(tif);
 		return NULL;
