@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -381,6 +382,41 @@ static void test_take_typed_timed(void)
 	CHECK(!WXEvqPending(NULL));
 }
 
+static int pipe_hits;
+
+static void pipeReadable(int fd, int mask, void *cdata)
+{
+	char buf[8];
+
+	(void)mask;
+	(void)cdata;
+	CHECK(read(fd, buf, sizeof(buf)) > 0);
+	pipe_hits++;
+}
+
+static void test_take_mask_timed_defers_input(void)
+{
+	WMHandlerID hid;
+	xcb_generic_event_t *e = NULL;
+	int fds[2], rc;
+
+	rc = pipe(fds);
+	CHECK(rc == 0);
+	if (rc != 0)
+		return;
+	pipe_hits = 0;
+	hid = WMAddInputHandler(fds[0], WIReadMask, pipeReadable, NULL);
+	CHECK(write(fds[1], "x", 1) == 1);
+
+	CHECK(!WXEvqTakeMaskTimed(NULL, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &e, 200));
+	CHECK(pipe_hits == 0);
+	CHECK(e == NULL);
+
+	WMDeleteInputHandler(hid);
+	close(fds[0]);
+	close(fds[1]);
+}
+
 static void test_take_mask_timed(void)
 {
 	xcb_generic_event_t *e;
@@ -524,6 +560,7 @@ int main(void)
 	test_take_typed();
 	test_take_mask();
 	test_take_typed_timed();
+	test_take_mask_timed_defers_input();
 	test_take_mask_timed();
 	test_drop_range();
 	test_extension_no_window();

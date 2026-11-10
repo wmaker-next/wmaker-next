@@ -404,45 +404,31 @@ static long long evq_monotonic_ms(void)
 	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
-/* shared mechanics of the *Timed take variants: run take() until it
- * reports an event or the deadline expires, blocking on poll() on the
- * X fd between queue checks, so requests queued before the wait are
- * flushed by drain() and answered while we block. timeout_ms < 0
- * waits forever. True if an event was taken, false on timeout, poll
- * error or dead connection. */
+/* Timed takes do not dispatch unrelated callbacks while their caller
+ * holds modal state. */
 typedef bool WXEvqTakeStep(xcb_connection_t *dpy, void *arg, xcb_generic_event_t **event_ret);
 
 static bool waitTakeTimed(xcb_connection_t *dpy, WXEvqTakeStep *take, void *arg, xcb_generic_event_t **event_ret, int timeout_ms)
 {
 	struct pollfd pfd;
 	long long deadline;
-	int ret;
+	int rc;
 
-	if (timeout_ms < 0)
-		deadline = -1;
-	else
-		deadline = evq_monotonic_ms() + timeout_ms;
-
+	deadline = (timeout_ms < 0) ? -1 : evq_monotonic_ms() + timeout_ms;
 	while (!take(dpy, arg, event_ret)) {
 		if (deadline >= 0) {
 			timeout_ms = (int)(deadline - evq_monotonic_ms());
 			if (timeout_ms <= 0)
 				return false;
 		}
-		pfd.fd = xcb_get_file_descriptor(dpy);
+		pfd.fd = dpy ? xcb_get_file_descriptor(dpy) : -1;
 		pfd.events = POLLIN;
-		ret = poll(&pfd, 1, timeout_ms);
-		if (ret < 0) {
-			if (errno == EINTR)
-				continue;
+		rc = poll(&pfd, 1, timeout_ms);
+		if (rc < 0 && errno == EINTR)
+			continue;
+		if (rc <= 0)
 			return false;
-		}
-		if (ret == 0)
-			return false;
-		/* a wake with no event behind it happens when the
-		 * connection died and the registered dead hook returned,
-		 * stop instead of spinning on the dead fd */
-		if (xcb_connection_has_error(dpy))
+		if (dpy && xcb_connection_has_error(dpy))
 			return false;
 	}
 	return true;
