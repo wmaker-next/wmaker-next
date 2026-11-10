@@ -192,10 +192,13 @@ static RXImage *image2Bitmap(RContext * ctx, RImage * image, int threshold)
 int RConvertImage(RContext * context, RImage * image, xcb_pixmap_t * pixmap)
 {
 	RXImage *ximg = NULL;
+	xcb_generic_error_t *error;
 
 	assert(context != NULL);
 	assert(image != NULL);
 	assert(pixmap != NULL);
+
+	*pixmap = XCB_NONE;
 
 	ximg = image2TrueColor(context, image);
 	if (!ximg) {
@@ -203,8 +206,17 @@ int RConvertImage(RContext * context, RImage * image, xcb_pixmap_t * pixmap)
 	}
 
 	*pixmap = xcb_generate_id(context->xc);
-	xcb_create_pixmap(context->xc, context->depth, *pixmap, context->drawable,
-			  image->width, image->height);
+	error = xcb_request_check(context->xc,
+				  xcb_create_pixmap_checked(context->xc, context->depth,
+							    *pixmap, context->drawable,
+							    image->width, image->height));
+	if (error) {
+		free(error);
+		*pixmap = XCB_NONE;
+		RErrorCode = RERR_XERROR;
+		RDestroyXImage(context, ximg);
+		return 0;
+	}
 	r_put_ximage(context, *pixmap, context->copy_xgc, ximg, 0, 0, 0, 0, image->width, image->height);
 	RDestroyXImage(context, ximg);
 
@@ -216,11 +228,14 @@ int RConvertImageMask(RContext * context, RImage * image, xcb_pixmap_t * pixmap,
 	xcb_gcontext_t gc;
 	uint32_t gcvals[3];
 	RXImage *ximg = NULL;
+	xcb_generic_error_t *error;
 
 	assert(context != NULL);
 	assert(image != NULL);
 	assert(pixmap != NULL);
 	assert(mask != NULL);
+
+	*pixmap = *mask = XCB_NONE;
 
 	if (!RConvertImage(context, image, pixmap))
 		return 0;
@@ -233,17 +248,41 @@ int RConvertImageMask(RContext * context, RImage * image, xcb_pixmap_t * pixmap,
 	ximg = image2Bitmap(context, image, threshold);
 
 	if (!ximg) {
+		xcb_free_pixmap(context->xc, *pixmap);
+		*pixmap = XCB_NONE;
 		return 0;
 	}
 	*mask = xcb_generate_id(context->xc);
-	xcb_create_pixmap(context->xc, 1, *mask, context->drawable,
-			  image->width, image->height);
+	error = xcb_request_check(context->xc,
+				  xcb_create_pixmap_checked(context->xc, 1, *mask,
+							    context->drawable,
+							    image->width, image->height));
+	if (error) {
+		free(error);
+		*mask = XCB_NONE;
+		xcb_free_pixmap(context->xc, *pixmap);
+		*pixmap = XCB_NONE;
+		RDestroyXImage(context, ximg);
+		RErrorCode = RERR_XERROR;
+		return 0;
+	}
 	gcvals[0] = context->black;
 	gcvals[1] = context->white;
 	gcvals[2] = 0;
 	gc = xcb_generate_id(context->xc);
-	xcb_create_gc(context->xc, gc, *mask,
-		      XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_GRAPHICS_EXPOSURES, gcvals);
+	error = xcb_request_check(context->xc,
+				  xcb_create_gc_checked(context->xc, gc, *mask,
+							 XCB_GC_FOREGROUND | XCB_GC_BACKGROUND |
+							 XCB_GC_GRAPHICS_EXPOSURES, gcvals));
+	if (error) {
+		free(error);
+		xcb_free_pixmap(context->xc, *mask);
+		xcb_free_pixmap(context->xc, *pixmap);
+		*mask = *pixmap = XCB_NONE;
+		RDestroyXImage(context, ximg);
+		RErrorCode = RERR_XERROR;
+		return 0;
+	}
 	r_put_ximage(context, *mask, gc, ximg, 0, 0, 0, 0, image->width, image->height);
 	RDestroyXImage(context, ximg);
 	xcb_free_gc(context->xc, gc);

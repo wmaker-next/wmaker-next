@@ -139,7 +139,7 @@ static void selected_workspace_callback(WMWidget *w, void *data)
 
 static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 {
-	xcb_pixmap_t pixmap, mask;
+	xcb_pixmap_t pixmap = XCB_NONE, mask = XCB_NONE;
 
 	if (wsmap->scr->wsmbackTexture->any.type == WTEX_PIXMAP) {
 		RImage *tmp = wTextureRenderImage(wsmap->scr->wsmbackTexture, wsmap->wswidth, wsmap->wsheight, WREL_FLAT);
@@ -147,11 +147,11 @@ static void set_workspace_map_background_image(WWorkspaceMap *wsmap)
 		if (!tmp)
 			return;
 
-		RConvertImageMask(wsmap->scr->rcontext, tmp, &pixmap, &mask, 250);
-		RReleaseImage(tmp);
-
-		if (!pixmap)
+		if (!RConvertImageMask(wsmap->scr->rcontext, tmp, &pixmap, &mask, 250)) {
+			RReleaseImage(tmp);
 			return;
+		}
+		RReleaseImage(tmp);
 
 		xcb_change_window_attributes(wdisp->conn, WMWidgetXID(wsmap->win), XCB_CW_BACK_PIXMAP, (const uint32_t[]){ pixmap });
 
