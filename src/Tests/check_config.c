@@ -913,6 +913,7 @@ static void test_defaults(void)
 	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
+	CHECK_STR(config->clipboard_filename_template, "clipboard_%Y-%m-%d_at_%H:%M:%S");
 	CHECK(config->menu_style == MS_NORMAL);
 	CHECK(config->title_justification == WTJ_CENTER);
 	CHECK(config->window_title_clearance == 0);
@@ -1199,6 +1200,7 @@ static void test_valid_parse(void)
 			      "WindowPlaceOrigin = (600, \"-3\"); "
 			      "KeepDockOnPrimaryHead = YES; "
 			      "ScreenshotFilenameTemplate = \"shot_%H\"; "
+			      "ClipboardFilenameTemplate = \"clip_%H\"; "
 			      "MenuStyle = flat; TitleJustify = Right; "
 			      "WindowTitleExtendSpace = 1; "
 			      "WindowTitleMinHeight = 2; "
@@ -1329,6 +1331,7 @@ static void test_valid_parse(void)
 	CHECK(config->window_place_origin.y == -3);
 	CHECK(config->keep_dock_on_primary_head == 1);
 	CHECK(strcmp(config->screenshot_filename_template, "shot_%H") == 0);
+	CHECK_STR(config->clipboard_filename_template, "clip_%H");
 	CHECK(config->menu_style == MS_FLAT);
 	CHECK(config->title_justification == WTJ_RIGHT);
 	CHECK(config->window_title_clearance == 1);
@@ -1534,6 +1537,7 @@ static void test_invalid_fallback(void)
 			      "KeepDockOnPrimaryHead = maybe; "
 			      "DockEdge = nowhere; "
 			      "ScreenshotFilenameTemplate = (bad); "
+			      "ClipboardFilenameTemplate = (bad); "
 			      "MenuStyle = diagonal; TitleJustify = middle; "
 			      "WindowTitleExtendSpace = bad; "
 			      "WindowTitleMaxHeight = bad; "
@@ -1583,6 +1587,7 @@ static void test_invalid_fallback(void)
 	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
+	CHECK_STR(config->clipboard_filename_template, "clipboard_%Y-%m-%d_at_%H:%M:%S");
 	CHECK(config->menu_style == MS_NORMAL);
 	CHECK(config->title_justification == WTJ_CENTER);
 	CHECK(config->window_title_clearance == 0);

@@ -37,6 +37,7 @@
 
 #include <xcb/xcb.h>
 #include <xcb/xfixes.h>
+#include <xcb-imdkit/encoding.h>
 
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xcb/xtest.h>
@@ -52,6 +53,7 @@
 #include "clip_common.h"
 #include "clip_geom.h"
 #include "xcconn.h"
+#include "../src/wconfig.h"
 
 #define IPC_RECONNECT_MS   1000
 #define SELECTION_WAIT_MS  1000
@@ -67,6 +69,9 @@
 #define CLIP_POPUP_PREVIEW_LEN   64
 #define CLIP_POPUP_PIN_CHAR      "\xF0\x9F\x93\x8C"  /* U+1F4CC pushpin */
 #define CLIP_POPUP_PIN_LEN       4
+#define CLIP_EXPORT_MAX_TRIES    10000
+#define CLIP_EXPORT_STEM_SIZE    256
+#define CLIP_BASE64_MAX_INPUT    ((size_t)1024 * 1024)
 
 typedef enum {
 	CONTENT_EMPTY,
@@ -117,6 +122,7 @@ static int run_screenshots;
 static int history_capacity = CLIP_HISTORY_DEFAULT_CAPACITY;
 static int history_enabled;
 static int persist_enabled;
+static int history_writes_suppressed;
 static char *history_file_override;
 static long long ttl_seconds;
 static int verbose;
@@ -140,6 +146,14 @@ static ClipBuffer clipboard_buffer;
 static ClipBuffer primary_buffer;
 static ClipIncrSend incr;
 static ClipBuffer *incr_source;
+static uint64_t clipboard_generation;
+static uint64_t primary_generation;
+static struct {
+	int active;
+	xcb_window_t target;
+	uint64_t clipboard_generation;
+	uint64_t primary_generation;
+} pending_base64_paste;
 
 static xcb_timestamp_t primary_pending_ts;
 static long long primary_pending_deadline;
@@ -197,13 +211,21 @@ static void usage(FILE *out)
 		"  --persist      Save the history ring to disk on clean exit (SIGTERM/SIGINT\n"
 		"                 or X disconnect) and restore it on the next start. History\n"
 		"                 can contain secrets, so this is opt-in. Default file:\n"
-		"                 $XDG_STATE_HOME/WindowMaker/wmclipd-history, mode 0600.\n"
+		"                 $XDG_STATE_HOME/WindowMaker/wmclipd-history, mode 0600\n"
+		"                 (fallback ~/.local/state).\n"
 		"  --screenshots  Subscribe to Window Maker screenshot IPC events and publish them to CLIPBOARD.\n"
 		"                 The singular --screenshot is accepted as an alias.\n"
 		"  --ttl DURATION Expire history entries after DURATION, e.g. 30s, 10m, 2h, 1d\n"
 		"                 (combinations like 1h30m are accepted, a bare number means\n"
 		"                 seconds; minimum 5s, maximum 365d). 0 disables (default).\n"
-		"  --version, -v  Print version information and exit.\n",
+		"  --version, -v  Print version information and exit.\n"
+		"Popup: b copies a Base64 data URI to CLIPBOARD and PRIMARY and submits\n"
+		"       Shift+Insert after held modifiers are released. Input is limited to 1 MiB.\n"
+		"       s saves the selected entry to $XDG_DATA_HOME/WindowMaker/Clipboard\n"
+		"       (fallback ~/.local/share), copies its UTF-8 path to both selections,\n"
+		"       and dismisses the popup without pasting or adding it to history.\n"
+		"       Text exports retain their original encoding. The file remains if\n"
+		"       selection publication fails.\n",
 		prog, prog, prog, CLIP_HISTORY_DEFAULT_CAPACITY);
 }
 
@@ -314,6 +336,350 @@ static int is_image_atom(xcb_atom_t atom)
 	return atom == atom_png || atom == atom_jpeg;
 }
 
+static int valid_utf8(const unsigned char *data, size_t size)
+{
+	size_t i = 0, need, j;
+	unsigned char c, second;
+
+	while (i < size) {
+		c = data[i];
+		if (c < 0x80) {
+			i++;
+			continue;
+		}
+		if (c >= 0xc2 && c <= 0xdf)
+			need = 2;
+		else if (c >= 0xe0 && c <= 0xef)
+			need = 3;
+		else if (c >= 0xf0 && c <= 0xf4)
+			need = 4;
+		else
+			return 0;
+		if (need > size - i)
+			return 0;
+		second = data[i + 1];
+		if ((second & 0xc0) != 0x80 ||
+		    (c == 0xe0 && second < 0xa0) ||
+		    (c == 0xed && second >= 0xa0) ||
+		    (c == 0xf0 && second < 0x90) ||
+		    (c == 0xf4 && second >= 0x90))
+			return 0;
+		for (j = 2; j < need; j++) {
+			if ((data[i + j] & 0xc0) != 0x80)
+				return 0;
+		}
+		i += need;
+	}
+	return 1;
+}
+
+static int append_compound_piece(unsigned char *out, size_t capacity, size_t *used,
+				 const unsigned char *prefix, size_t prefix_size,
+				 const unsigned char *data, size_t size, size_t characters)
+{
+	unsigned char input[1100];
+	char *decoded;
+	size_t length, count, i;
+	static int initialized;
+
+	if (prefix_size > sizeof(input) || size > sizeof(input) - prefix_size)
+		return 0;
+	if (!initialized) {
+		xcb_compound_text_init();
+		initialized = 1;
+	}
+	memcpy(input, prefix, prefix_size);
+	memcpy(input + prefix_size, data, size);
+	decoded = xcb_compound_text_to_utf8((char *)input, prefix_size + size, &length);
+	if (!decoded)
+		return 0;
+	count = 0;
+	for (i = 0; i < length; i++) {
+		if (((unsigned char)decoded[i] & 0xc0) != 0x80)
+			count++;
+	}
+	/* Some converters silently discard an incomplete final character. */
+	if (count != characters || !valid_utf8((unsigned char *)decoded, length) ||
+	    length > capacity - *used) {
+		free(decoded);
+		return 0;
+	}
+	memcpy(out + *used, decoded, length);
+	*used += length;
+	free(decoded);
+	return 1;
+}
+
+static int compound_extended(const unsigned char *data, size_t size, size_t *consumed,
+			     unsigned char *out, size_t capacity, size_t *used)
+{
+	unsigned char prefix[64];
+	size_t length, name_len, pos, end, start, characters, width, header;
+
+	if (size < 7 || data[0] != 0x1b || data[1] != '%' || data[2] != '/' ||
+	    !(data[4] & 0x80) || !(data[5] & 0x80))
+		return 0;
+	length = ((size_t)(data[4] & 0x7f) << 7) | (data[5] & 0x7f);
+	if (length > size - 6)
+		return 0;
+	name_len = 0;
+	while (name_len < length && data[6 + name_len] != 0x02)
+		name_len++;
+	if (name_len == length || name_len + 7 > sizeof(prefix))
+		return 0;
+	if (data[3] == '1' &&
+	    ((name_len == 10 && memcmp(data + 6, "iso8859-14", 10) == 0) ||
+	     (name_len == 10 && memcmp(data + 6, "iso8859-15", 10) == 0))) {
+		width = 1;
+	} else if (data[3] == '2' &&
+		   ((name_len == 6 && memcmp(data + 6, "big5-0", 6) == 0) ||
+		    (name_len == 11 && memcmp(data + 6, "big5hkscs-0", 11) == 0) ||
+		    (name_len == 5 && memcmp(data + 6, "gbk-0", 5) == 0))) {
+		width = 2;
+	} else {
+		return 0;
+	}
+	header = name_len + 7;
+	memcpy(prefix, data, header);
+	pos = header;
+	end = 6 + length;
+	while (pos < end) {
+		start = pos;
+		characters = 0;
+		while (pos < end && pos - start < 1024) {
+			if (width > end - pos)
+				return 0;
+			if (pos - start + width > 1024)
+				break;
+			pos += width;
+			characters++;
+		}
+		length = name_len + 1 + pos - start;
+		prefix[4] = (unsigned char)(0x80 | (length >> 7));
+		prefix[5] = (unsigned char)(0x80 | (length & 0x7f));
+		if (!append_compound_piece(out, capacity, used, prefix, header,
+					   data + start, pos - start, characters))
+			return 0;
+	}
+	*consumed = end;
+	return 1;
+}
+
+static int compound_text_to_utf8(const unsigned char *data, size_t size,
+				 unsigned char **result, size_t *result_size)
+{
+	unsigned char gl[4] = { 0x1b, '(', 'B', 0 }, gr[4] = { 0x1b, '-', 'A', 0 };
+	unsigned char *out, *prefix;
+	size_t i, start, used, capacity, gl_len, gr_len, width, gl_width, gr_width;
+	size_t prefix_len, chars, consumed;
+	int utf8_mode, high;
+
+	if (size > (SIZE_MAX - 1) / 4)
+		return 0;
+	capacity = size * 4;
+	out = wmalloc(capacity + 1);
+	i = 0;
+	used = 0;
+	gl_len = gr_len = 3;
+	gl_width = gr_width = 1;
+	utf8_mode = 0;
+	while (i < size) {
+		if (data[i] == 0x1b) {
+			if (size - i >= 3 && data[i + 1] == '%' && data[i + 2] == 'G') {
+				utf8_mode = 1;
+				i += 3;
+			} else if (size - i >= 3 && data[i + 1] == '%' && data[i + 2] == '@') {
+				utf8_mode = 0;
+				i += 3;
+			} else if (!utf8_mode && size - i >= 3 &&
+				   (data[i + 1] == '(' || data[i + 1] == ')' || data[i + 1] == '-')) {
+				prefix = data[i + 1] == '(' ? gl : gr;
+				memcpy(prefix, data + i, 3);
+				if (prefix == gl) {
+					gl_len = 3;
+					gl_width = 1;
+				} else {
+					gr_len = 3;
+					gr_width = 1;
+				}
+				i += 3;
+				if (!append_compound_piece(out, capacity, &used, prefix, 3,
+							   data + i, 0, 0))
+					goto invalid;
+			} else if (!utf8_mode && size - i >= 4 && data[i + 1] == '$' &&
+				   (data[i + 2] == '(' || data[i + 2] == ')')) {
+				prefix = data[i + 2] == '(' ? gl : gr;
+				memcpy(prefix, data + i, 4);
+				if (prefix == gl) {
+					gl_len = 4;
+					gl_width = 2;
+				} else {
+					gr_len = 4;
+					gr_width = 2;
+				}
+				i += 4;
+				if (!append_compound_piece(out, capacity, &used, prefix, 4,
+							   data + i, 0, 0))
+					goto invalid;
+			} else if (!utf8_mode && size - i >= 3 && data[i + 1] == '%' &&
+				   data[i + 2] == '/' &&
+				   compound_extended(data + i, size - i, &consumed,
+						     out, capacity, &used)) {
+				i += consumed;
+			} else {
+				goto invalid;
+			}
+			continue;
+		}
+		if (utf8_mode) {
+			start = i;
+			while (i < size && data[i] != 0x1b)
+				i++;
+			if (!valid_utf8(data + start, i - start))
+				goto invalid;
+			memcpy(out + used, data + start, i - start);
+			used += i - start;
+			continue;
+		}
+		if (data[i] < 0x20 || data[i] == 0x20 || data[i] == 0x7f) {
+			out[used++] = data[i++];
+			continue;
+		}
+		if (data[i] == 0x9b)
+			goto invalid;
+		high = data[i] >= 0x80;
+		prefix = high ? gr : gl;
+		prefix_len = high ? gr_len : gl_len;
+		width = high ? gr_width : gl_width;
+		start = i;
+		chars = 0;
+		while (i < size && i - start + width <= 1024) {
+			if (data[i] == 0x1b || data[i] == 0x9b || data[i] <= 0x20 ||
+			    data[i] == 0x7f || (data[i] >= 0x80) != high)
+				break;
+			if (width > size - i)
+				goto invalid;
+			if (width == 2 &&
+			    (data[i] < (high ? 0xa1 : 0x21) || data[i] > (high ? 0xfe : 0x7e) ||
+			     data[i + 1] < (high ? 0xa1 : 0x21) ||
+			     data[i + 1] > (high ? 0xfe : 0x7e)))
+				goto invalid;
+			i += width;
+			chars++;
+		}
+		if (!chars || !append_compound_piece(out, capacity, &used, prefix, prefix_len,
+						      data + start, i - start, chars))
+			goto invalid;
+	}
+	out[used] = '\0';
+	*result = out;
+	*result_size = used;
+	return 1;
+
+invalid:
+	wfree(out);
+	return 0;
+}
+
+static char *base64_encode_uri(const char *prefix, const unsigned char *data, size_t size,
+			       size_t *result_size)
+{
+	static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	char *out;
+	size_t prefix_len, encoded, i, j;
+	uint32_t value;
+
+	prefix_len = strlen(prefix);
+	if (size > SIZE_MAX - 2)
+		return NULL;
+	encoded = (size + 2) / 3;
+	if (encoded > (SIZE_MAX - prefix_len - 1) / 4)
+		return NULL;
+	encoded *= 4;
+	out = wmalloc(prefix_len + encoded + 1);
+	memcpy(out, prefix, prefix_len);
+	j = prefix_len;
+	for (i = 0; i < size; i += 3) {
+		value = (uint32_t)data[i] << 16;
+		if (size - i > 1)
+			value |= (uint32_t)data[i + 1] << 8;
+		if (size - i > 2)
+			value |= data[i + 2];
+		out[j++] = alphabet[(value >> 18) & 63];
+		out[j++] = alphabet[(value >> 12) & 63];
+		out[j++] = size - i > 1 ? alphabet[(value >> 6) & 63] : '=';
+		out[j++] = size - i > 2 ? alphabet[value & 63] : '=';
+	}
+	out[j] = '\0';
+	*result_size = j;
+	return out;
+}
+
+static char *entry_base64_uri(const ClipHistoryEntry *entry, size_t *result_size)
+{
+	unsigned char *converted;
+	const unsigned char *data;
+	const char *prefix;
+	char *uri;
+	size_t size, i, n;
+
+	if (!entry->data || entry->size > CLIP_BASE64_MAX_INPUT) {
+		fprintf(stderr, "%s: cannot encode missing or oversized clipboard data\n", prog);
+		return NULL;
+	}
+	converted = NULL;
+	data = entry->data;
+	size = entry->size;
+	if (entry->type == atom_png)
+		prefix = "data:image/png;base64,";
+	else if (entry->type == atom_jpeg)
+		prefix = "data:image/jpeg;base64,";
+	else if (is_text_atom(entry->type)) {
+		prefix = "data:text/plain;charset=utf-8;base64,";
+		if (entry->type == XCB_ATOM_STRING) {
+			converted = wmalloc(size * 2 + 1);
+			n = 0;
+			for (i = 0; i < size; i++) {
+				if (data[i] < 0x80) {
+					converted[n++] = data[i];
+				} else {
+					converted[n++] = 0xc0 | (data[i] >> 6);
+					converted[n++] = 0x80 | (data[i] & 0x3f);
+				}
+			}
+			data = converted;
+			size = n;
+		} else if (entry->type == atom_text || entry->type == atom_compound_text) {
+			if (!compound_text_to_utf8(data, size, &converted, &n)) {
+				fprintf(stderr, "%s: invalid or unsupported compound text\n", prog);
+				return NULL;
+			}
+			data = converted;
+			size = n;
+		} else if (!valid_utf8(data, size)) {
+			fprintf(stderr, "%s: clipboard text is not valid UTF-8\n", prog);
+			return NULL;
+		}
+	} else {
+		fprintf(stderr, "%s: cannot encode unsupported clipboard type\n", prog);
+		return NULL;
+	}
+	uri = base64_encode_uri(prefix, data, size, result_size);
+	wfree(converted);
+	if (!uri)
+		fprintf(stderr, "%s: encoded clipboard data is too large\n", prog);
+	return uri;
+}
+
+static int buffer_is_saved_path(const ClipBuffer *buf)
+{
+	return buf->kind == CONTENT_CAPTURED && buf->type == atom_utf8 &&
+	       buf->data && buf->path && buf->uri &&
+	       strlen(buf->path) == buf->size &&
+	       memcmp(buf->data, buf->path, buf->size) == 0 &&
+	       valid_utf8(buf->data, buf->size);
+}
+
 static int selection_type_matches_target(xcb_atom_t target, xcb_atom_t actual)
 {
 	if (actual == target)
@@ -331,6 +697,10 @@ static void clear_buffer(ClipBuffer *buf)
 	wfree(buf->data);
 	wfree(buf->path);
 	wfree(buf->uri);
+	if (buf == &clipboard_buffer)
+		clipboard_generation++;
+	else if (buf == &primary_buffer)
+		primary_generation++;
 	memset(buf, 0, sizeof(*buf));
 }
 
@@ -524,6 +894,77 @@ static int claim_selection(xcb_atom_t selection, ClipBuffer *buf,
 	return 1;
 }
 
+enum {
+	PUBLISHED_CLIPBOARD = 1,
+	PUBLISHED_PRIMARY = 2,
+	PUBLISHED_BOTH = PUBLISHED_CLIPBOARD | PUBLISHED_PRIMARY
+};
+
+static int publish_to_both_selections(ClipBuffer *staged_clipboard,
+				      int (*claim)(xcb_atom_t, ClipBuffer *, xcb_timestamp_t))
+{
+	ClipBuffer staged_primary = { 0 };
+	int published = 0;
+
+	staged_primary.kind = staged_clipboard->kind;
+	staged_primary.type = staged_clipboard->type;
+	staged_primary.size = staged_clipboard->size;
+	staged_primary.data = wmalloc(staged_primary.size + 1);
+	memcpy(staged_primary.data, staged_clipboard->data, staged_primary.size);
+	staged_primary.data[staged_primary.size] = '\0';
+	if (staged_clipboard->path)
+		staged_primary.path = wstrdup(staged_clipboard->path);
+	if (staged_clipboard->uri)
+		staged_primary.uri = wstrdup(staged_clipboard->uri);
+
+	if (claim(atom_clipboard, staged_clipboard, XCB_CURRENT_TIME)) {
+		clear_buffer(&clipboard_buffer);
+		clipboard_buffer = *staged_clipboard;
+		*staged_clipboard = (ClipBuffer){ 0 };
+		published |= PUBLISHED_CLIPBOARD;
+	} else {
+		clear_buffer(staged_clipboard);
+	}
+	if (claim(atom_primary, &staged_primary, XCB_CURRENT_TIME)) {
+		clear_buffer(&primary_buffer);
+		primary_buffer = staged_primary;
+		primary_pending_deadline = 0;
+		published |= PUBLISHED_PRIMARY;
+	} else {
+		clear_buffer(&staged_primary);
+	}
+	return published;
+}
+
+static int publish_base64_entry_with_claim(const ClipHistoryEntry *entry,
+					  int (*claim)(xcb_atom_t, ClipBuffer *, xcb_timestamp_t))
+{
+	ClipBuffer staged = { 0 };
+	size_t size;
+	int published;
+
+	staged.data = (unsigned char *)entry_base64_uri(entry, &size);
+	if (!staged.data)
+		return 0;
+	staged.kind = CONTENT_CAPTURED;
+	staged.type = atom_utf8;
+	staged.size = size;
+	published = publish_to_both_selections(&staged, claim);
+	if (published != PUBLISHED_BOTH) {
+		fprintf(stderr, "%s: Base64 publication: CLIPBOARD %s, PRIMARY %s\n",
+			prog, published & PUBLISHED_CLIPBOARD ? "published" : "not published",
+			published & PUBLISHED_PRIMARY ? "published" : "not published");
+		return 0;
+	}
+	debug_log("published Base64 text to CLIPBOARD and PRIMARY");
+	return 1;
+}
+
+static int publish_base64_entry(const ClipHistoryEntry *entry)
+{
+	return publish_base64_entry_with_claim(entry, claim_selection);
+}
+
 static int capture_selection(xcb_atom_t selection, ClipBuffer *buf,
 			     xcb_timestamp_t timestamp, int claim_after_capture)
 {
@@ -613,6 +1054,10 @@ static int copy_captured_payload(ClipBuffer *dst, const ClipBuffer *src)
 		memcpy(dst->data, src->data, src->size);
 	dst->size = src->size;
 	dst->type = src->type;
+	if (src->path)
+		dst->path = wstrdup(src->path);
+	if (src->uri)
+		dst->uri = wstrdup(src->uri);
 	return 1;
 }
 
@@ -621,9 +1066,18 @@ static int copy_captured_payload(ClipBuffer *dst, const ClipBuffer *src)
 static void history_free_entry(ClipHistoryEntry *e)
 {
 	WMPixmap *thumb;
+	WMListItem *item;
+	int i;
 
 	if (!e)
 		return;
+	if (popup_active && popup_list) {
+		for (i = 0; i < WMGetListNumberOfRows(popup_list); i++) {
+			item = WMGetListItem(popup_list, i);
+			if (item && item->clientData == e)
+				item->clientData = NULL;
+		}
+	}
 	if (popup_thumbs) {
 		thumb = WMHashGet(popup_thumbs, (void *)(intptr_t)e);
 		if (thumb) {
@@ -768,6 +1222,12 @@ static int history_entry_matches(const ClipHistoryEntry *e, const ClipBuffer *bu
 		return 0;
 	if (e->size > 0 && memcmp(e->data, buf->data, e->size) != 0)
 		return 0;
+	if (!!e->image_path != !!buf->path ||
+	    (e->image_path && strcmp(e->image_path, buf->path) != 0))
+		return 0;
+	if (!!e->uri != !!buf->uri ||
+	    (e->uri && strcmp(e->uri, buf->uri) != 0))
+		return 0;
 	return 1;
 }
 
@@ -775,18 +1235,25 @@ static void history_add_from_buffer(const ClipBuffer *buf)
 {
 	ClipHistoryEntry *e;
 	ClipHistoryEntry **new_entries;
+	int i;
 
 	if (!history_enabled || buf->kind == CONTENT_EMPTY)
 		return;
 	if (buf->size == 0 || buf->size > CLIP_HISTORY_MAX_BYTES)
 		return;
 
-	/* dedup consecutive identical entries */
-	if (history.count > 0 && history.entries[0] &&
-	    history_entry_matches(history.entries[0], buf)) {
-		/* re-copying the same content restarts its TTL */
-		history.entries[0]->wall_time = time(NULL);
-		history.entries[0]->mono_ms = clip_monotonic_ms();
+	for (i = 0; i < history.count; i++) {
+		if (!history_entry_matches(history.entries[i], buf))
+			continue;
+		e = history.entries[i];
+		e->wall_time = time(NULL);
+		e->mono_ms = clip_monotonic_ms();
+		if (i > 0) {
+			memmove(history.entries + 1, history.entries,
+				sizeof(*history.entries) * (size_t)i);
+			history.entries[0] = e;
+			popup_history_dirty = 1;
+		}
 		return;
 	}
 
@@ -927,6 +1394,7 @@ static void history_expire_entries(void)
 	}
 	if (expired > 0) {
 		history.count = j;
+		popup_history_dirty = 1;
 		debug_log("history: expired %d entr%s (ttl %llds)",
 			  expired, expired == 1 ? "y" : "ies", ttl_seconds);
 	}
@@ -996,7 +1464,7 @@ static void history_toggle_pin(int row)
 /* --- History persistence ---------------------------------------------- */
 
 #define CLIP_HISTORY_MAGIC       "WMCLPHST"
-#define CLIP_HISTORY_VERSION     1u
+#define CLIP_HISTORY_VERSION     2u
 #define CLIP_HISTORY_MAX_ENTRIES 1000
 #define CLIP_HISTORY_NAME_MAX    256
 
@@ -1151,14 +1619,12 @@ static char *history_state_path(void)
 
 	if (history_file_override)
 		return wstrdup(history_file_override);
-
 	state = getenv("XDG_STATE_HOME");
 	if (state && state[0] == '/') {
 		dir = wstrconcat(state, "/" PACKAGE_TARNAME);
 	} else {
 		home = getenv("HOME");
-		dir = wstrconcat(home ? home : "",
-				 "/.local/state/" PACKAGE_TARNAME);
+		dir = wstrconcat(home ? home : "", "/.local/state/" PACKAGE_TARNAME);
 	}
 	path = wstrappend(dir, "/wmclipd-history");
 	return path;
@@ -1210,7 +1676,7 @@ static int history_write_file(const char *path, const unsigned char *data,
 	size_t remaining;
 	ssize_t w;
 	struct stat st;
-	int fd, ok, closed;
+	int fd, ok, closed, saved_errno;
 
 	tmp = wmalloc(strlen(path) + 5);
 	sprintf(tmp, "%s.tmp", path);
@@ -1246,22 +1712,32 @@ static int history_write_file(const char *path, const unsigned char *data,
 			ok = 0;
 			break;
 		}
+		if (w == 0) {
+			errno = EIO;
+			ok = 0;
+			break;
+		}
 		p += w;
 		remaining -= w;
 	}
 	if (ok && fsync(fd) < 0)
 		ok = 0;
+	saved_errno = errno;
 	closed = close(fd) == 0;
-	if (ok && !closed)
+	if (ok && !closed) {
+		saved_errno = errno;
 		ok = 0;
+	}
 
 	if (ok && rename(tmp, path) < 0) {
 		debug_log("history: cannot rename %s: %s", tmp, strerror(errno));
+		saved_errno = errno;
 		ok = 0;
 	}
 	if (!ok) {
 		unlink(tmp);
 		wfree(tmp);
+		errno = saved_errno;
 		return -1;
 	}
 	wfree(tmp);
@@ -1294,12 +1770,12 @@ static int history_buf_reserve(unsigned char **pbuf, size_t *pcap, size_t need)
 static void history_save(void)
 {
 	unsigned char *buf, *p;
-	size_t cap, len, namelen, pathlen, urilen;
+	size_t cap, len, namelen, pathlen, urilen, record_len;
 	char *path, name[CLIP_HISTORY_NAME_MAX];
 	ClipHistoryEntry *e;
-	int i, nsaved, nlen;
+	int i, nsaved, nlen, failed;
 
-	if (!persist_enabled || !history_enabled)
+	if (!persist_enabled || !history_enabled || history_writes_suppressed)
 		return;
 
 	path = history_state_path();
@@ -1307,6 +1783,7 @@ static void history_save(void)
 	cap = 0;
 	len = 0;
 	nsaved = 0;
+	failed = 0;
 
 	if (history_buf_reserve(&buf, &cap, 16) == 0) {
 		memcpy(buf, CLIP_HISTORY_MAGIC, 8);
@@ -1326,13 +1803,20 @@ static void history_save(void)
 				continue;
 			}
 			namelen = (size_t)nlen;
-			pathlen = e->kind == CONTENT_SCREENSHOT && e->image_path ?
-				  strlen(e->image_path) : 0;
-			urilen = e->kind == CONTENT_SCREENSHOT && e->uri ?
-				 strlen(e->uri) : 0;
-			if (history_buf_reserve(&buf, &cap, len + 4 + namelen + 16 +
-						e->size + 4 + pathlen + 4 + urilen) < 0)
+			pathlen = e->image_path ? strlen(e->image_path) : 0;
+			urilen = e->uri ? strlen(e->uri) : 0;
+			if (pathlen > UINT32_MAX || urilen > UINT32_MAX ||
+			    pathlen > SIZE_MAX - urilen ||
+			    pathlen + urilen > SIZE_MAX - (28 + namelen + e->size) ||
+			    len > SIZE_MAX - (28 + namelen + e->size + pathlen + urilen)) {
+				failed = 1;
 				break;
+			}
+			record_len = 28 + namelen + e->size + pathlen + urilen;
+			if (history_buf_reserve(&buf, &cap, len + record_len) < 0) {
+				failed = 1;
+				break;
+			}
 			p = buf + len;
 			p[0] = (unsigned char)e->kind;
 			p[1] = e->pinned ? 1 : 0;
@@ -1344,19 +1828,17 @@ static void history_save(void)
 			p += 16;
 			memcpy(p, e->data, e->size);
 			p += e->size;
-			if (e->kind == CONTENT_SCREENSHOT) {
-				put_u32(p, (uint32_t)pathlen);
-				p += 4;
-				if (pathlen > 0) {
-					memcpy(p, e->image_path, pathlen);
-					p += pathlen;
-				}
-				put_u32(p, (uint32_t)urilen);
-				p += 4;
-				if (urilen > 0) {
-					memcpy(p, e->uri, urilen);
-					p += urilen;
-				}
+			put_u32(p, (uint32_t)pathlen);
+			p += 4;
+			if (pathlen > 0) {
+				memcpy(p, e->image_path, pathlen);
+				p += pathlen;
+			}
+			put_u32(p, (uint32_t)urilen);
+			p += 4;
+			if (urilen > 0) {
+				memcpy(p, e->uri, urilen);
+				p += urilen;
 			}
 			len = (size_t)(p - buf);
 			nsaved++;
@@ -1364,8 +1846,8 @@ static void history_save(void)
 		put_u32(buf + 12, (uint32_t)nsaved);
 	}
 
-	if (len == 0) {
-		debug_log("history: cannot build the state buffer");
+	if (len == 0 || failed) {
+		fprintf(stderr, "%s: history: cannot build the state buffer\n", prog);
 		wfree(buf);
 		wfree(path);
 		return;
@@ -1374,23 +1856,34 @@ static void history_save(void)
 	if (history_write_file(path, buf, len) == 0) {
 		debug_log("history: saved %d entr%s to %s", nsaved,
 			  nsaved == 1 ? "y" : "ies", path);
+	} else {
+		fprintf(stderr, "%s: history: cannot save %s: %s\n",
+			prog, path, strerror(errno));
 	}
 
 	wfree(buf);
 	wfree(path);
 }
 
+static void history_reject(const char *path)
+{
+	fprintf(stderr, "%s: history: rejected %s, persistence disabled for this session\n",
+		prog, path);
+	history_writes_suppressed = 1;
+}
+
 static void history_load(void)
 {
 	ClipHistoryEntry **loaded, *e;
-	unsigned char hdr[16], *buf;
+	unsigned char hdr[16], extra, *buf;
 	const unsigned char *payload;
 	char *path, *imgpath, *uri, tname[CLIP_HISTORY_NAME_MAX];
 	struct stat st, pst;
-	uint64_t limit;
+	uint64_t limit, raw_size, raw_wall;
+	uint32_t version, count;
 	ssize_t got;
 	size_t dlen, off, pos, namelen, pathlen, urilen, size;
-	long long age, mono_now, left;
+	long long age, mono_now;
 	time_t now, wall;
 	int fd, n, i, kind, pinned, loaded_count, broken;
 	xcb_atom_t type;
@@ -1399,24 +1892,29 @@ static void history_load(void)
 		return;
 
 	path = history_state_path();
-	fd = open(path, O_RDONLY | O_NOFOLLOW);
+	fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
 	if (fd < 0) {
-		if (errno != ENOENT)
+		if (errno != ENOENT) {
 			debug_log("history: cannot open %s: %s", path, strerror(errno));
+			history_reject(path);
+		}
 		wfree(path);
 		return;
 	}
 	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode)) {
 		debug_log("history: %s is not a regular file", path);
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
 	limit = (uint64_t)history.capacity *
 		((uint64_t)CLIP_HISTORY_MAX_BYTES + 4096) + 65536;
-	if ((uint64_t)st.st_size > limit) {
+	if (st.st_size < 0 || (uint64_t)st.st_size > limit ||
+	    (uint64_t)st.st_size > SIZE_MAX) {
 		debug_log("history: %s is too large, ignoring", path);
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
@@ -1425,6 +1923,7 @@ static void history_load(void)
 	if (dlen < sizeof(hdr)) {
 		debug_log("history: %s has no valid header", path);
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
@@ -1445,23 +1944,28 @@ static void history_load(void)
 	    memcmp(hdr, CLIP_HISTORY_MAGIC, 8) != 0) {
 		debug_log("history: %s has no valid header", path);
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
-	if (get_u32(hdr + 8) != CLIP_HISTORY_VERSION) {
+	version = get_u32(hdr + 8);
+	if (version != 1 && version != CLIP_HISTORY_VERSION) {
 		debug_log("history: %s has unsupported version %u",
 			  path, get_u32(hdr + 8));
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
-	n = (int)get_u32(hdr + 12);
-	if (n > CLIP_HISTORY_MAX_ENTRIES) {
+	count = get_u32(hdr + 12);
+	if (count > CLIP_HISTORY_MAX_ENTRIES) {
 		debug_log("history: %s declares too many entries", path);
 		close(fd);
+		history_reject(path);
 		wfree(path);
 		return;
 	}
+	n = (int)count;
 
 	buf = wmalloc(dlen);
 	memcpy(buf, hdr, sizeof(hdr));
@@ -1477,16 +1981,23 @@ static void history_load(void)
 			break;
 		off += (size_t)got;
 	}
+	do {
+		got = read(fd, &extra, 1);
+	} while (got < 0 && errno == EINTR);
 	close(fd);
 
 	loaded = wmalloc(sizeof(ClipHistoryEntry *) * (size_t)(n > 0 ? n : 1));
 	loaded_count = 0;
-	broken = 0;
+	broken = off != dlen || got != 0;
 	mono_now = clip_monotonic_ms();
 	now = time(NULL);
 	pos = 16;
+	imgpath = NULL;
+	uri = NULL;
+	if (now < 0 || mono_now < 0)
+		broken = 1;
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n && !broken; i++) {
 		imgpath = NULL;
 		uri = NULL;
 
@@ -1499,7 +2010,8 @@ static void history_load(void)
 		namelen = get_u16(buf + pos + 2);
 		if ((kind != CONTENT_CAPTURED && kind != CONTENT_SCREENSHOT) ||
 		    namelen == 0 || namelen >= sizeof(tname) ||
-		    dlen - pos < 4 + namelen) {
+		    dlen - pos < 4 + namelen ||
+		    memchr(buf + pos + 4, '\0', namelen)) {
 			broken = 1;
 			break;
 		}
@@ -1512,24 +2024,29 @@ static void history_load(void)
 			broken = 1;
 			break;
 		}
-		wall = (time_t)get_u64(buf + pos);
-		size = (size_t)get_u64(buf + pos + 8);
+		raw_wall = get_u64(buf + pos);
+		raw_size = get_u64(buf + pos + 8);
 		pos += 16;
-		if (size > CLIP_HISTORY_MAX_BYTES || dlen - pos < size) {
+		wall = (time_t)raw_wall;
+		if (raw_wall > LLONG_MAX || wall < 0 || (uint64_t)wall != raw_wall ||
+		    raw_size > CLIP_HISTORY_MAX_BYTES || raw_size > SIZE_MAX ||
+		    raw_size > dlen - pos) {
 			broken = 1;
 			break;
 		}
+		size = (size_t)raw_size;
 		payload = buf + pos;
 		pos += size;
 
-		if (kind == CONTENT_SCREENSHOT) {
+		if (version >= 2 || kind == CONTENT_SCREENSHOT) {
 			if (dlen - pos < 4) {
 				broken = 1;
 				break;
 			}
 			pathlen = get_u32(buf + pos);
 			pos += 4;
-			if (pathlen > dlen - pos) {
+			if (pathlen > dlen - pos || pathlen == SIZE_MAX ||
+			    memchr(buf + pos, '\0', pathlen)) {
 				broken = 1;
 				break;
 			}
@@ -1545,7 +2062,8 @@ static void history_load(void)
 			}
 			urilen = get_u32(buf + pos);
 			pos += 4;
-			if (urilen > dlen - pos) {
+			if (urilen > dlen - pos || urilen == SIZE_MAX ||
+			    memchr(buf + pos, '\0', urilen)) {
 				broken = 1;
 				break;
 			}
@@ -1562,11 +2080,15 @@ static void history_load(void)
 				  tname);
 			wfree(imgpath);
 			wfree(uri);
+			imgpath = NULL;
+			uri = NULL;
 			continue;
 		}
 		if (size == 0) {
 			wfree(imgpath);
 			wfree(uri);
+			imgpath = NULL;
+			uri = NULL;
 			continue;
 		}
 		if (kind == CONTENT_SCREENSHOT) {
@@ -1574,21 +2096,22 @@ static void history_load(void)
 				debug_log("history: screenshot file is gone, dropped");
 				wfree(imgpath);
 				wfree(uri);
+				imgpath = NULL;
+				uri = NULL;
 				continue;
 			}
 		}
 
 		if (ttl_seconds > 0 && !pinned) {
-			left = (long long)wall + ttl_seconds - (long long)now;
-			if (left <= 0) {
+			age = now > wall ? (long long)now - (long long)wall : 0;
+			if (age >= ttl_seconds) {
 				debug_log("history: dropped expired entry");
 				wfree(imgpath);
 				wfree(uri);
+				imgpath = NULL;
+				uri = NULL;
 				continue;
 			}
-			age = (long long)now - (long long)wall;
-			if (age < 0)
-				age = 0;
 		} else {
 			age = 0;
 		}
@@ -1611,11 +2134,20 @@ static void history_load(void)
 		loaded[loaded_count++] = e;
 	}
 
+	if (pos != dlen)
+		broken = 1;
 	if (broken) {
 		debug_log("history: %s is corrupt or truncated after %d entries",
 			  path, loaded_count);
 		wfree(imgpath);
 		wfree(uri);
+		for (i = 0; i < loaded_count; i++)
+			history_free_entry(loaded[i]);
+		wfree(loaded);
+		wfree(buf);
+		history_reject(path);
+		wfree(path);
+		return;
 	}
 
 	if (loaded_count > 0) {
@@ -1692,6 +2224,12 @@ static int make_targets(const ClipBuffer *buf, xcb_atom_t *atoms)
 
 	if (buf->kind == CONTENT_CAPTURED) {
 		add_atom_unique(atoms, &count, buf->type);
+		if (buffer_is_saved_path(buf)) {
+			add_atom_unique(atoms, &count, atom_uri_list);
+			add_atom_unique(atoms, &count, atom_text_plain);
+			add_atom_unique(atoms, &count, atom_text_plain_utf8);
+			return count;
+		}
 		if (is_text_atom(buf->type)) {
 			add_atom_unique(atoms, &count, atom_utf8);
 			add_atom_unique(atoms, &count, XCB_ATOM_STRING);
@@ -1735,6 +2273,17 @@ static int payload_for_request(ClipBuffer *buf, xcb_atom_t target,
 	}
 
 	if (buf->kind == CONTENT_CAPTURED) {
+		if (buffer_is_saved_path(buf)) {
+			if (target == atom_uri_list) {
+				*data = (const unsigned char *)buf->uri;
+				*size = strlen(buf->uri);
+				*type = atom_uri_list;
+				return 1;
+			}
+			if (target != atom_utf8 && target != atom_text_plain &&
+			    target != atom_text_plain_utf8)
+				return 0;
+		}
 		if (target == buf->type ||
 		    (is_text_atom(target) && is_text_atom(buf->type))) {
 			*data = buf->data;
@@ -1832,6 +2381,8 @@ static void handle_selection_clear(xcb_selection_clear_event_t *ev)
 	else
 		return;
 
+	if (selection_owner(ev->selection) == owner_window)
+		return;
 	buf->owns = 0;
 	debug_log("lost %s ownership", debug_selection_name(ev->selection));
 	if (!run_clipboard)
@@ -1877,6 +2428,8 @@ static void handle_selection_change(xcb_xfixes_selection_notify_event_t *ev)
 			primary_pending_deadline = 0;
 		return;
 	}
+	if (selection_owner(ev->selection) == owner_window)
+		return;
 
 	debug_log("selection changed: %s owner=0x%x",
 		  debug_selection_name(ev->selection),
@@ -1921,12 +2474,11 @@ static void flush_primary_pending(void)
 		return;
 
 	primary_pending_deadline = 0;
-	primary_buffer.owns = 0;
-
 	source_owner = selection_owner(atom_primary);
 	if (source_owner == 0 || source_owner == owner_window)
 		return;
 
+	primary_buffer.owns = 0;
 	captured = capture_selection(atom_primary, &primary_buffer,
 				     primary_pending_ts, 0);
 	if (!captured)
@@ -1991,13 +2543,16 @@ static char *file_uri_from_path(const char *path)
 	size_t len;
 
 	len = strlen(path);
+	if (len > (SIZE_MAX - 10) / 3)
+		return NULL;
 	uri = wmalloc(7 + len * 3 + 3);
 	out = uri;
 	memcpy(out, "file://", 7);
 	out += 7;
 
 	for (p = (const unsigned char *)path; *p; p++) {
-		if (isalnum(*p) || *p == '/' || *p == '-' || *p == '_' ||
+		if ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+		    (*p >= '0' && *p <= '9') || *p == '/' || *p == '-' || *p == '_' ||
 		    *p == '.' || *p == '~') {
 			*out++ = (char)*p;
 		} else {
@@ -2010,6 +2565,386 @@ static char *file_uri_from_path(const char *path)
 	*out++ = '\n';
 	*out = '\0';
 	return uri;
+}
+
+static int read_export_template_domain(const char *path, char **value)
+{
+	WMPropList *domain, *entry;
+	struct stat st;
+	int fd, result;
+
+	fd = open(path, O_RDONLY | O_NONBLOCK);
+	if (fd < 0) {
+		if (errno == ENOENT)
+			return 0;
+		fprintf(stderr, "%s: cannot open defaults domain %s: %s\n",
+			prog, path, strerror(errno));
+		return -1;
+	}
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode)) {
+		fprintf(stderr, "%s: defaults domain %s is not a readable regular file\n", prog, path);
+		close(fd);
+		return -1;
+	}
+	if (close(fd) < 0) {
+		fprintf(stderr, "%s: cannot close defaults domain %s: %s\n",
+			prog, path, strerror(errno));
+		return -1;
+	}
+
+	WMPLSetCaseSensitive(false);
+	domain = WMReadPropListFromFile(path);
+	if (!domain || !WMIsPLDictionary(domain)) {
+		fprintf(stderr, "%s: invalid defaults domain %s\n", prog, path);
+		if (domain)
+			WMReleasePropList(domain);
+		WMPLSetCaseSensitive(true);
+		return -1;
+	}
+	entry = WMGetFromPLDictionaryByName(domain, "ClipboardFilenameTemplate");
+	result = 0;
+	if (entry) {
+		if (!WMIsPLString(entry)) {
+			fprintf(stderr, "%s: ClipboardFilenameTemplate in %s must be a string\n",
+				prog, path);
+			result = -1;
+		} else {
+			*value = wstrdup(WMGetFromPLString(entry));
+			result = 1;
+		}
+	}
+	WMReleasePropList(domain);
+	WMPLSetCaseSensitive(true);
+	return result;
+}
+
+static int read_export_template(const char *user_path, const char *global_path, char **value)
+{
+	int result;
+
+	*value = NULL;
+	result = read_export_template_domain(user_path, value);
+	if (result == 0)
+		result = read_export_template_domain(global_path, value);
+	if (result < 0)
+		return 0;
+	if (result == 0)
+		*value = wstrdup(DEF_CLIPBOARD_FILENAME_TEMPLATE);
+	return 1;
+}
+
+static int valid_export_template(const char *format)
+{
+	const unsigned char *p;
+	int modifier;
+
+	for (p = (const unsigned char *)format; *p; p++) {
+		if (*p != '%')
+			continue;
+		p++;
+		if (!*p)
+			return 0;
+		while (*p && strchr("-_0^#", *p))
+			p++;
+		while (*p >= '0' && *p <= '9')
+			p++;
+		modifier = 0;
+		if (*p == 'E' || *p == 'O')
+			modifier = *p++;
+		if (!*p)
+			return 0;
+		if (modifier == 'E' && !strchr("cCxXyY", *p))
+			return 0;
+		if (modifier == 'O' && !strchr("deHImMSuUVwWy", *p))
+			return 0;
+		if (!modifier && !strchr("%aAbBcCdDeFgGhHIjklmMnPprRsStTuUVwWxXyYzZ", *p))
+			return 0;
+	}
+	return 1;
+}
+
+static int format_export_stem(const char *format, time_t now, char *stem, size_t size)
+{
+	struct tm local;
+	const unsigned char *p;
+	size_t length;
+
+	if (!*format || !valid_export_template(format) || !localtime_r(&now, &local))
+		return 0;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+	length = strftime(stem, size, format, &local);
+#pragma GCC diagnostic pop
+	if (length == 0 || strcmp(stem, ".") == 0 || strcmp(stem, "..") == 0)
+		return 0;
+	for (p = (const unsigned char *)stem; *p; p++) {
+		if (*p == '/' || *p == '\\' || *p < 0x20 || *p == 0x7f)
+			return 0;
+	}
+	return 1;
+}
+
+static char *clipboard_export_directory(void)
+{
+	const char *data, *home;
+	char *base;
+
+	data = getenv("XDG_DATA_HOME");
+	if (data && data[0] == '/') {
+		base = wstrdup(data);
+	} else {
+		home = getenv("HOME");
+		if (!home || home[0] != '/' || strspn(home, "/") == strlen(home))
+			return NULL;
+		base = wstrconcat(home, "/.local/share");
+	}
+	return wstrappend(base, "/" PACKAGE_TARNAME "/Clipboard");
+}
+
+static int open_export_directory(const char *directory)
+{
+	char *path, *part, *save;
+	struct stat st;
+	mode_t mask;
+	int fd, next, saved_errno, made;
+
+	path = wstrdup(directory);
+	fd = open("/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+	if (fd < 0) {
+		wfree(path);
+		return -1;
+	}
+	save = NULL;
+	for (part = strtok_r(path, "/", &save); part; part = strtok_r(NULL, "/", &save)) {
+		if (strcmp(part, ".") == 0)
+			continue;
+		if (strcmp(part, "..") == 0) {
+			errno = EINVAL;
+			goto fail;
+		}
+		next = openat(fd, part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+		if (next < 0 && errno == ENOENT) {
+			mask = umask(0077);
+			made = mkdirat(fd, part, 0700);
+			saved_errno = errno;
+			umask(mask);
+			errno = saved_errno;
+			if (made < 0 && errno != EEXIST)
+				goto fail;
+			next = openat(fd, part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+		}
+		if (next < 0)
+			goto fail;
+		close(fd);
+		fd = next;
+	}
+	if (fstat(fd, &st) < 0)
+		goto fail;
+	if (st.st_uid != geteuid() || (st.st_mode & 077) != 0) {
+		errno = EACCES;
+		goto fail;
+	}
+	wfree(path);
+	return fd;
+
+fail:
+	saved_errno = errno;
+	close(fd);
+	wfree(path);
+	errno = saved_errno;
+	return -1;
+}
+
+static char *export_entry_file(const ClipHistoryEntry *entry, const char *user_domain,
+			       const char *global_domain)
+{
+	char stem[CLIP_EXPORT_STEM_SIZE], name[CLIP_EXPORT_STEM_SIZE];
+	char *format, *directory, *path;
+	const char *extension;
+	size_t off, dirlen, namelen;
+	long name_max;
+	ssize_t written;
+	int dirfd, fd, i, saved_errno, ok;
+	time_t now;
+
+	if (entry->type == atom_png)
+		extension = ".png";
+	else if (entry->type == atom_jpeg)
+		extension = ".jpg";
+	else if (is_text_atom(entry->type))
+		extension = ".txt";
+	else {
+		fprintf(stderr, "%s: cannot export an unsupported clipboard type\n", prog);
+		return NULL;
+	}
+	if (!entry->data) {
+		fprintf(stderr, "%s: cannot export a clipboard entry without data\n", prog);
+		return NULL;
+	}
+	if (!read_export_template(user_domain, global_domain, &format))
+		return NULL;
+	now = time(NULL);
+	ok = now != (time_t)-1 && format_export_stem(format, now, stem, sizeof(stem) - 9);
+	wfree(format);
+	if (!ok) {
+		fprintf(stderr, "%s: invalid or unsafe ClipboardFilenameTemplate expansion\n", prog);
+		return NULL;
+	}
+	directory = clipboard_export_directory();
+	if (!directory) {
+		fprintf(stderr, "%s: cannot determine an absolute clipboard export directory\n", prog);
+		return NULL;
+	}
+	dirfd = open_export_directory(directory);
+	if (dirfd < 0) {
+		fprintf(stderr, "%s: cannot open clipboard export directory %s: %s\n",
+			prog, directory, strerror(errno));
+		wfree(directory);
+		return NULL;
+	}
+	errno = 0;
+	name_max = fpathconf(dirfd, _PC_NAME_MAX);
+	if (name_max < 0 && errno != 0) {
+		fprintf(stderr, "%s: cannot determine clipboard filename limit: %s\n",
+			prog, strerror(errno));
+		close(dirfd);
+		wfree(directory);
+		return NULL;
+	}
+	if (name_max < 0)
+		name_max = 255;
+	if (strlen(stem) + 5 + strlen(extension) > (size_t)name_max) {
+		fprintf(stderr, "%s: clipboard filename is too long\n", prog);
+		close(dirfd);
+		wfree(directory);
+		return NULL;
+	}
+	dirlen = strlen(directory);
+	if (dirlen > SIZE_MAX - sizeof(name) - 2) {
+		fprintf(stderr, "%s: clipboard export path is too long\n", prog);
+		close(dirfd);
+		wfree(directory);
+		return NULL;
+	}
+	path = wmalloc(dirlen + sizeof(name) + 2);
+	fd = -1;
+	for (i = 0; i < CLIP_EXPORT_MAX_TRIES; i++) {
+		if (i == 0)
+			snprintf(name, sizeof(name), "%s%s", stem, extension);
+		else
+			snprintf(name, sizeof(name), "%s_%d%s", stem, i, extension);
+		fd = openat(dirfd, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+		if (fd >= 0 || errno != EEXIST)
+			break;
+	}
+	if (fd < 0) {
+		fprintf(stderr, "%s: cannot create clipboard export: %s\n", prog, strerror(errno));
+		close(dirfd);
+		wfree(directory);
+		wfree(path);
+		return NULL;
+	}
+	namelen = strlen(name);
+	memcpy(path, directory, dirlen);
+	path[dirlen] = '/';
+	memcpy(path + dirlen + 1, name, namelen + 1);
+	off = 0;
+	ok = fchmod(fd, 0600) == 0;
+	while (ok && off < entry->size) {
+		written = write(fd, entry->data + off, entry->size - off);
+		if (written < 0 && errno == EINTR)
+			continue;
+		if (written <= 0) {
+			if (written == 0)
+				errno = EIO;
+			ok = 0;
+			break;
+		}
+		off += (size_t)written;
+	}
+	saved_errno = errno;
+	if (close(fd) < 0 && ok) {
+		ok = 0;
+		saved_errno = errno;
+	}
+	if (!ok) {
+		fprintf(stderr, "%s: cannot write clipboard export %s: %s\n",
+			prog, path, strerror(saved_errno));
+		if (unlinkat(dirfd, name, 0) < 0)
+			fprintf(stderr, "%s: cannot remove incomplete export %s: %s\n",
+				prog, path, strerror(errno));
+		wfree(path);
+		path = NULL;
+	}
+	close(dirfd);
+	wfree(directory);
+	return path;
+}
+
+static int save_history_entry_with_domains(const ClipHistoryEntry *original, const char *user_domain,
+					   const char *global_domain,
+					   int (*claim)(xcb_atom_t, ClipBuffer *, xcb_timestamp_t))
+{
+	ClipBuffer staged = { 0 };
+	char *path, *uri;
+	size_t pathlen;
+	int published;
+
+	path = export_entry_file(original, user_domain, global_domain);
+	if (!path)
+		return 0;
+	pathlen = strlen(path);
+	if (!valid_utf8((const unsigned char *)path, pathlen)) {
+		fprintf(stderr, "%s: saved %s but clipboard update failed: path is not UTF-8\n",
+			prog, path);
+		wfree(path);
+		return 0;
+	}
+	uri = file_uri_from_path(path);
+	if (!uri || pathlen > CLIP_HISTORY_MAX_BYTES) {
+		fprintf(stderr, "%s: saved %s but clipboard update failed: path is too long\n",
+			prog, path);
+		wfree(uri);
+		wfree(path);
+		return 0;
+	}
+	staged.kind = CONTENT_CAPTURED;
+	staged.data = (unsigned char *)wstrdup(path);
+	staged.size = pathlen;
+	staged.type = atom_utf8;
+	staged.path = wstrdup(path);
+	staged.uri = uri;
+	published = publish_to_both_selections(&staged, claim);
+	if (published != PUBLISHED_BOTH) {
+		fprintf(stderr, "%s: saved %s but selection publication incomplete: "
+			"CLIPBOARD %s, PRIMARY %s\n", prog, path,
+			published & PUBLISHED_CLIPBOARD ? "published" : "not published",
+			published & PUBLISHED_PRIMARY ? "published" : "not published");
+		wfree(path);
+		return 0;
+	}
+	debug_log("saved clipboard entry and copied its path to both selections");
+	wfree(path);
+	return 1;
+}
+
+static int save_history_entry(ClipHistoryEntry *original)
+{
+	char *user_domain, *global_domain;
+	int result;
+
+	user_domain = wdefaultspathfordomain("WindowMaker");
+	global_domain = wglobaldefaultspathfordomain("WindowMaker");
+	if (!user_domain || !global_domain) {
+		fprintf(stderr, "%s: cannot resolve WindowMaker defaults domains\n", prog);
+		wfree(user_domain);
+		wfree(global_domain);
+		return 0;
+	}
+	result = save_history_entry_with_domains(original, user_domain, global_domain, claim_selection);
+	wfree(user_domain);
+	wfree(global_domain);
+	return result;
 }
 
 static int read_file_bounded(const char *path, unsigned char **data_out,
@@ -2091,6 +3026,7 @@ static int publish_screenshot(const char *path)
 	unsigned char *data = NULL;
 	size_t size = 0;
 	xcb_atom_t image_type;
+	char *uri;
 
 	debug_log("publishing screenshot: %s", path ? path : "");
 
@@ -2118,6 +3054,12 @@ static int publish_screenshot(const char *path)
 		wfree(data);
 		return 0;
 	}
+	uri = file_uri_from_path(path);
+	if (!uri) {
+		fprintf(stderr, "%s: screenshot path is too long for a file URI\n", prog);
+		wfree(data);
+		return 0;
+	}
 
 	clear_buffer(&clipboard_buffer);
 	clipboard_buffer.kind = CONTENT_SCREENSHOT;
@@ -2125,7 +3067,7 @@ static int publish_screenshot(const char *path)
 	clipboard_buffer.size = size;
 	clipboard_buffer.type = image_type;
 	clipboard_buffer.path = wstrdup(path);
-	clipboard_buffer.uri = file_uri_from_path(path);
+	clipboard_buffer.uri = uri;
 
 	history_add_from_buffer(&clipboard_buffer);
 
@@ -3063,7 +4005,7 @@ static void ensure_popup(void)
 				     attr);
 }
 
-static int modifier_is_down(void)
+static int query_modifier_state(int *down)
 {
 	char keys[32];
 	unsigned int i;
@@ -3081,34 +4023,50 @@ static int modifier_is_down(void)
 	krep = xcb_query_keymap_reply(xc, kck, NULL);
 	if (!krep)
 		return 0;
+	*down = 0;
 	memcpy(keys, krep->keys, sizeof(keys));
 	free(krep);
 
 	for (i = 0; i < sizeof(mods) / sizeof(mods[0]); i++) {
 		xcb_keycode_t code = W_KeysymToKeycode(popup_wscr, mods[i]);
-		if (code > 0 && (keys[code >> 3] & (1 << (code & 7))))
-			return 1;
+		if (code > 0 && (keys[code >> 3] & (1 << (code & 7)))) {
+			*down = 1;
+			break;
+		}
 	}
-	return 0;
+	return 1;
+}
+
+static int modifier_is_down(void)
+{
+	int down;
+
+	return query_modifier_state(&down) && down;
 }
 
 static void drain_popup_ipc(void)
 {
 	struct pollfd pfd;
+	int rc;
 
 	if (popup_ipc_fd < 0)
 		return;
 	pfd.fd = popup_ipc_fd;
 	pfd.events = POLLIN;
-	while (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) {
-		if (!handle_ipc_frame(popup_ipc_fd)) {
+	while ((rc = poll(&pfd, 1, 0)) > 0) {
+		if ((pfd.revents & POLLIN) && handle_ipc_frame(popup_ipc_fd)) {
+			pfd.revents = 0;
+			continue;
+		}
+		if (pfd.revents & (POLLIN | POLLERR | POLLHUP | POLLNVAL)) {
 			debug_log("IPC disconnected during popup drain");
 			close(popup_ipc_fd);
 			popup_ipc_fd = -1;
-			return;
 		}
-		pfd.revents = 0;
+		return;
 	}
+	if (rc < 0 && errno != EINTR)
+		fprintf(stderr, "%s: popup IPC poll failed: %s\n", prog, strerror(errno));
 }
 
 static void service_popup_tick(void)
@@ -3154,73 +4112,168 @@ static int have_xtest(void)
 	return xtest_available;
 }
 
-/* Send a paste keystroke to the target window. XTest injects at the
- * server level so events appear as real hardware keypresses (no
- * send_event flag), which terminals like xterm accept. xcb_send_event
- * is the fallback for servers without XTest. */
-static void send_paste_key(xcb_window_t target, xcb_keycode_t key,
-			   unsigned int modifiers)
+typedef enum {
+	PASTE_SYNTHETIC_FAILED = -3,
+	PASTE_MISSING_KEY = -2,
+	PASTE_XTEST_FAILED = -1,
+	PASTE_XTEST = 1,
+	PASTE_SYNTHETIC = 2
+} PasteResult;
+
+static int checked_request(xcb_void_cookie_t cookie)
 {
+	xcb_generic_error_t *error = xcb_request_check(xc, cookie);
+	int ok = !error && !xcb_connection_has_error(xc);
+
+	free(error);
+	return ok;
+}
+
+static PasteResult send_paste_key(xcb_window_t target, xcb_keycode_t key,
+				  unsigned int modifiers)
+{
+	xcb_keycode_t shift, ctrl;
+	int ok, key_sent;
+	union {
+		xcb_key_press_event_t k;
+		char buf[32];
+	} kev;
+
+	shift = modifiers & XCB_MOD_MASK_SHIFT ?
+		W_KeysymToKeycode(popup_wscr, XKB_KEY_Shift_L) : 0;
+	ctrl = modifiers & XCB_MOD_MASK_CONTROL ?
+		W_KeysymToKeycode(popup_wscr, XKB_KEY_Control_L) : 0;
+	if (!key || ((modifiers & XCB_MOD_MASK_SHIFT) && !shift) ||
+	    ((modifiers & XCB_MOD_MASK_CONTROL) && !ctrl))
+		return PASTE_MISSING_KEY;
+	ok = 1;
 	if (have_xtest()) {
-		/* press modifier, press key, release key, release modifier */
-		if (modifiers & XCB_MOD_MASK_SHIFT) {
-			xcb_keycode_t shift = W_KeysymToKeycode(popup_wscr,
-							 XKB_KEY_Shift_L);
-			xcb_test_fake_input(xc, XCB_KEY_PRESS, shift,
-					    XCB_CURRENT_TIME, 0, 0, 0, 0);
+		key_sent = 0;
+		if (shift)
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_PRESS, shift,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
+		if (ctrl)
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_PRESS, ctrl,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
+		if (ok) {
+			key_sent = 1;
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_PRESS, key,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
 		}
-		if (modifiers & XCB_MOD_MASK_CONTROL) {
-			xcb_keycode_t ctrl = W_KeysymToKeycode(popup_wscr,
-							 XKB_KEY_Control_L);
-			xcb_test_fake_input(xc, XCB_KEY_PRESS, ctrl,
-					    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		}
-		xcb_test_fake_input(xc, XCB_KEY_PRESS, key,
-				    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		xcb_test_fake_input(xc, XCB_KEY_RELEASE, key,
-				    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		if (modifiers & XCB_MOD_MASK_CONTROL) {
-			xcb_keycode_t ctrl = W_KeysymToKeycode(popup_wscr,
-							 XKB_KEY_Control_L);
-			xcb_test_fake_input(xc, XCB_KEY_RELEASE, ctrl,
-					    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		}
-		if (modifiers & XCB_MOD_MASK_SHIFT) {
-			xcb_keycode_t shift = W_KeysymToKeycode(popup_wscr,
-							 XKB_KEY_Shift_L);
-			xcb_test_fake_input(xc, XCB_KEY_RELEASE, shift,
-					    XCB_CURRENT_TIME, 0, 0, 0, 0);
-		}
-		xcb_flush(xc);
-	} else {
-		union {
-			xcb_key_press_event_t k;
-			char buf[32];
-		} kev;
-
-		memset(&kev, 0, sizeof(kev));
-		kev.k.response_type = XCB_KEY_PRESS;
-		kev.k.event = target;
-		kev.k.root = root_window;
-		kev.k.time = XCB_CURRENT_TIME;
-		kev.k.detail = key;
-		kev.k.state = modifiers;
-		xcb_send_event(xc, 1, target, XCB_EVENT_MASK_KEY_PRESS, kev.buf);
-
-		kev.k.response_type = XCB_KEY_RELEASE;
-		xcb_send_event(xc, 1, target, XCB_EVENT_MASK_KEY_RELEASE,
-			       kev.buf);
-
-		xcb_flush(xc);
+		if (key_sent)
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_RELEASE, key,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
+		if (ctrl)
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_RELEASE, ctrl,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
+		if (shift)
+			ok &= checked_request(xcb_test_fake_input_checked(xc, XCB_KEY_RELEASE, shift,
+									 XCB_CURRENT_TIME, 0, 0, 0, 0));
+		return ok ? PASTE_XTEST : PASTE_XTEST_FAILED;
 	}
+	memset(&kev, 0, sizeof(kev));
+	kev.k.response_type = XCB_KEY_PRESS;
+	kev.k.event = target;
+	kev.k.root = root_window;
+	kev.k.time = XCB_CURRENT_TIME;
+	kev.k.detail = key;
+	kev.k.state = modifiers;
+	ok &= checked_request(xcb_send_event_checked(xc, 1, target, XCB_EVENT_MASK_KEY_PRESS,
+						     kev.buf));
+	kev.k.response_type = XCB_KEY_RELEASE;
+	ok &= checked_request(xcb_send_event_checked(xc, 1, target, XCB_EVENT_MASK_KEY_RELEASE,
+						     kev.buf));
+	return ok ? PASTE_SYNTHETIC : PASTE_SYNTHETIC_FAILED;
+}
+
+static void cancel_pending_base64_paste(const char *reason)
+{
+	if (!pending_base64_paste.active)
+		return;
+	fprintf(stderr, "%s: Base64 paste cancelled: %s\n", prog, reason);
+	pending_base64_paste.active = 0;
+}
+
+static int pending_base64_ownership_intact(void)
+{
+	return clipboard_generation == pending_base64_paste.clipboard_generation &&
+	       primary_generation == pending_base64_paste.primary_generation &&
+	       clipboard_buffer.owns && primary_buffer.owns &&
+	       selection_owner(atom_clipboard) == owner_window &&
+	       selection_owner(atom_primary) == owner_window;
+}
+
+static void service_pending_base64_paste(void)
+{
+	xcb_get_input_focus_reply_t *focus;
+	xcb_get_window_attributes_reply_t *attrs;
+	xcb_window_t target;
+	xcb_keycode_t key;
+	PasteResult result;
+	int down;
+
+	if (!pending_base64_paste.active)
+		return;
+	target = pending_base64_paste.target;
+	if (target == XCB_NONE || target == XCB_INPUT_FOCUS_POINTER_ROOT ||
+	    target == root_window || target == WMWidgetXID(popup_win)) {
+		cancel_pending_base64_paste("no usable focus target");
+		return;
+	}
+	if (!pending_base64_ownership_intact()) {
+		cancel_pending_base64_paste("generated selection ownership was lost");
+		return;
+	}
+	if (!query_modifier_state(&down)) {
+		cancel_pending_base64_paste("cannot query modifier state");
+		return;
+	}
+	if (down)
+		return;
+	attrs = xcb_get_window_attributes_reply(xc, xcb_get_window_attributes(xc, target), NULL);
+	if (!attrs) {
+		cancel_pending_base64_paste("focus target no longer exists");
+		return;
+	}
+	free(attrs);
+	if (!checked_request(xcb_set_input_focus_checked(xc, XCB_INPUT_FOCUS_POINTER_ROOT,
+							 target, XCB_CURRENT_TIME))) {
+		cancel_pending_base64_paste("cannot focus target");
+		return;
+	}
+	if (!pending_base64_ownership_intact()) {
+		cancel_pending_base64_paste("generated selection ownership was lost");
+		return;
+	}
+	focus = xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL);
+	if (!focus || focus->focus != target) {
+		free(focus);
+		cancel_pending_base64_paste("cannot focus target");
+		return;
+	}
+	free(focus);
+	key = W_KeysymToKeycode(popup_wscr, XKB_KEY_Insert);
+	result = send_paste_key(target, key, XCB_MOD_MASK_SHIFT);
+	pending_base64_paste.active = 0;
+	if (result == PASTE_MISSING_KEY)
+		fprintf(stderr, "%s: Base64 paste failed: missing Shift or Insert keycode\n", prog);
+	else if (result == PASTE_XTEST_FAILED)
+		fprintf(stderr, "%s: Base64 paste failed: XTest key event submission failed\n", prog);
+	else if (result == PASTE_SYNTHETIC_FAILED)
+		fprintf(stderr, "%s: Base64 paste failed: synthetic key event submission failed\n", prog);
+	else
+		debug_log("submitted Base64 Shift+Insert via %s to 0x%x",
+			  result == PASTE_XTEST ? "XTest" : "synthetic events",
+			  (unsigned int)target);
 }
 
 static void show_clipboard_popup(bool keyed)
 {
 	xcb_keycode_t vKey, upKey, downKey, homeKey, endKey, pgupKey, pgdnKey;
 	xcb_keycode_t returnKey, escapeKey, shiftLKey, shiftRKey;
-	xcb_keycode_t jKey, kKey, pKey, delKey;
+	xcb_keycode_t jKey, kKey, pKey, bKey, sKey, delKey;
 	bool done = false, esc_cancel = false, commit = false;
+	bool base64_published = false;
 	bool release_commits, chord_handoff, grab_failed;
 	int commit_row = -1;
 	int i;
@@ -3228,15 +4281,18 @@ static void show_clipboard_popup(bool keyed)
 	int rx, ry;
 	long long last_mod_check = 0;
 	xcb_timestamp_t commit_ts = XCB_CURRENT_TIME;
-	struct pollfd pfd;
+	struct pollfd fds[2];
 	xcb_generic_event_t *ev = NULL;
 	xcb_window_t focus_save = XCB_NONE;
 	xcb_window_t focus_target = XCB_NONE;
 	xcb_get_input_focus_cookie_t fck;
 	xcb_get_input_focus_reply_t *frep;
+	WMListItem *selected_item;
+	PasteResult paste_result;
 
 	if (popup_active)
 		return;
+	cancel_pending_base64_paste("another popup was opened");
 	if (!history_enabled || history.count == 0) {
 		debug_log("popup requested but history is empty");
 		return;
@@ -3266,6 +4322,7 @@ static void show_clipboard_popup(bool keyed)
 	wXRaiseWindow(xc, WMWidgetXID(popup_win));
 	wXFlush(xc);
 	popup_mapped = 1;
+	debug_log("popup window 0x%x", (unsigned int)WMWidgetXID(popup_win));
 
 	vKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_v);
 	upKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Up);
@@ -3281,6 +4338,8 @@ static void show_clipboard_popup(bool keyed)
 	jKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_j);
 	kKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_k);
 	pKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_p);
+	bKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_b);
+	sKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_s);
 	delKey = W_KeysymToKeycode(popup_wscr, XKB_KEY_Delete);
 
 	/* a keyed tick means the chord was held at dispatch, even if it
@@ -3323,6 +4382,17 @@ static void show_clipboard_popup(bool keyed)
 
 	while (!done && running) {
 		xcb_generic_event_t *sev = NULL;
+
+		drain_popup_ipc();
+		if (primary_pending_deadline > 0 &&
+		    clip_monotonic_ms() >= primary_pending_deadline)
+			flush_primary_pending();
+		history_expire_entries();
+		if (history.count == 0) {
+			done = true;
+			esc_cancel = true;
+			break;
+		}
 
 		/* without a keyboard grab no KEY_RELEASE is ever delivered
 		 * and an event stream would starve the poll check below,
@@ -3384,11 +4454,16 @@ static void show_clipboard_popup(bool keyed)
 		/* bounded wait so a SIGTERM that only clears `running`
 		 * unwedges the popup instead of blocking forever */
 		if (!WXEvqPending(xc)) {
-			pfd.fd = xcb_get_file_descriptor(xc);
-			pfd.events = POLLIN;
-			pfd.revents = 0;
-			if (poll(&pfd, 1, CLIP_POPUP_POLL_MS) < 0 && errno != EINTR)
+			fds[0].fd = xcb_get_file_descriptor(xc);
+			fds[0].events = POLLIN;
+			fds[0].revents = 0;
+			fds[1].fd = popup_ipc_fd;
+			fds[1].events = POLLIN;
+			fds[1].revents = 0;
+			if (poll(fds, 2, CLIP_POPUP_POLL_MS) < 0 && errno != EINTR)
 				done = true;
+			else if (fds[1].revents)
+				continue;
 			else if ((release_commits || chord_handoff) &&
 				 !modifier_is_down()) {
 				commit_row = WMGetListSelectedItemRow(popup_list);
@@ -3472,6 +4547,20 @@ static void show_clipboard_popup(bool keyed)
 				history_toggle_pin(row);
 				WMRedisplayWidget(popup_list);
 				wXFlush(xc);
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == bKey ||
+				   (((xcb_key_press_event_t *)ev)->detail) == sKey) {
+				selected_item = WMGetListSelectedItem(popup_list);
+				if (row >= 0 && row < history.count && selected_item &&
+				    selected_item->clientData == history.entries[row]) {
+					if (((xcb_key_press_event_t *)ev)->detail == bKey)
+						base64_published = publish_base64_entry(history.entries[row]);
+					else
+						save_history_entry(history.entries[row]);
+				} else {
+					fprintf(stderr, "%s: no surviving clipboard entry for action\n", prog);
+				}
+				done = true;
+				esc_cancel = true;
 			} else if ((((xcb_key_press_event_t *)ev)->detail) == delKey &&
 			   ((((xcb_key_press_event_t *)ev)->state) & XCB_MOD_MASK_SHIFT)) {
 				history_clear_non_pinned();
@@ -3532,6 +4621,8 @@ static void show_clipboard_popup(bool keyed)
 			    (((xcb_key_press_event_t *)ev)->detail) == jKey ||
 			    (((xcb_key_press_event_t *)ev)->detail) == kKey ||
 			    (((xcb_key_press_event_t *)ev)->detail) == pKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == bKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == sKey ||
 			    (((xcb_key_press_event_t *)ev)->detail) == delKey ||
 			    (((xcb_key_press_event_t *)ev)->detail) == shiftLKey ||
 			    (((xcb_key_press_event_t *)ev)->detail) == shiftRKey)
@@ -3581,6 +4672,12 @@ static void show_clipboard_popup(bool keyed)
 	hide_popup();
 	wXFlush(xc);
 
+	if (base64_published) {
+		pending_base64_paste.target = focus_target;
+		pending_base64_paste.clipboard_generation = clipboard_generation;
+		pending_base64_paste.primary_generation = primary_generation;
+		pending_base64_paste.active = 1;
+	}
 	if (commit && !esc_cancel && commit_row >= 0 && commit_row < history.count) {
 		activate_entry(commit_row, commit_ts);
 
@@ -3606,16 +4703,20 @@ static void show_clipboard_popup(bool keyed)
 			if (is_image) {
 				xcb_keycode_t v_kc = W_KeysymToKeycode(popup_wscr, XKB_KEY_v);
 				if (v_kc > 0) {
-					send_paste_key(focus_target, v_kc, XCB_MOD_MASK_CONTROL);
-					debug_log("sent Ctrl+V paste to 0x%x",
-						  (unsigned int)focus_target);
+					paste_result = send_paste_key(focus_target, v_kc, XCB_MOD_MASK_CONTROL);
+					if (paste_result > 0)
+						debug_log("submitted Ctrl+V to 0x%x", (unsigned int)focus_target);
+					else
+						fprintf(stderr, "%s: image paste key submission failed\n", prog);
 				}
 			} else {
 				xcb_keycode_t insert_kc = W_KeysymToKeycode(popup_wscr, XKB_KEY_Insert);
 				if (insert_kc > 0) {
-					send_paste_key(focus_target, insert_kc, XCB_MOD_MASK_SHIFT);
-					debug_log("sent Shift+Insert paste to 0x%x",
-						  (unsigned int)focus_target);
+					paste_result = send_paste_key(focus_target, insert_kc, XCB_MOD_MASK_SHIFT);
+					if (paste_result > 0)
+						debug_log("submitted Shift+Insert to 0x%x", (unsigned int)focus_target);
+					else
+						fprintf(stderr, "%s: text paste key submission failed\n", prog);
 				}
 			}
 		}
@@ -3734,6 +4835,9 @@ int main(int argc, char **argv)
 			if (timeout < 0 || st_ms < timeout)
 				timeout = st_ms;
 		}
+		if (pending_base64_paste.active &&
+		    (timeout < 0 || timeout > CLIP_POPUP_POLL_MS))
+			timeout = CLIP_POPUP_POLL_MS;
 		if (history_enabled) {
 			long long dl = history_next_expiry(now);
 			long long dl_ms;
@@ -3787,9 +4891,11 @@ int main(int argc, char **argv)
 			}
 			service_popup_tick();
 		}
+		service_pending_base64_paste();
 	}
 
 	debug_log("stopping");
+	cancel_pending_base64_paste("daemon is stopping");
 	history_save();
 	history_clear_all();
 	if (popup_ipc_fd >= 0)

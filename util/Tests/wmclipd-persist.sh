@@ -184,6 +184,7 @@ printf 'PASS: entries past the TTL are skipped on load\n'
 # A garbage file must not crash the daemon.
 HIST_BAD="$RUNTIME/hist-bad"
 printf 'garbage, not a state file' > "$HIST_BAD"
+cp "$HIST_BAD" "$HIST_BAD.expected"
 start_wmclipd --persist --history-file "$HIST_BAD"
 wait_for 30 log_has "history: $HIST_BAD has no valid header" ||
 	fail "corrupt state file was not reported"
@@ -191,16 +192,21 @@ sleep 1
 kill -0 "$WMCLIPD_PID" 2>/dev/null ||
 	fail "daemon crashed on a corrupt state file"
 stop_pid "$WMCLIPD_PID"
-printf 'PASS: garbage state file is reported and ignored\n'
+cmp "$HIST_BAD" "$HIST_BAD.expected" ||
+	fail "corrupt state file was overwritten"
+printf 'PASS: garbage state file is reported and preserved\n'
 
-# A truncated file keeps the entries parsed so far (none here).
+# A truncated file is rejected and preserved.
 HIST_TRUNC="$RUNTIME/hist-trunc"
 head -c 24 "$HIST" > "$HIST_TRUNC"
+cp "$HIST_TRUNC" "$HIST_TRUNC.expected"
 start_wmclipd --persist --history-file "$HIST_TRUNC"
 wait_for 30 log_has "history: $HIST_TRUNC is corrupt or truncated after 0 entries" ||
 	fail "truncated state file was not detected"
 stop_pid "$WMCLIPD_PID"
-printf 'PASS: truncated state file keeps the readable prefix\n'
+cmp "$HIST_TRUNC" "$HIST_TRUNC.expected" ||
+	fail "truncated state file was overwritten"
+printf 'PASS: truncated state file is rejected and preserved\n'
 
 # Without --persist no state file or directory is created.
 NOSTATE_HOME="$RUNTIME/fakehome"

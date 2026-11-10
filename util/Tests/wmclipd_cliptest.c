@@ -67,7 +67,7 @@ static xcb_atom_t atom_property;
 static unsigned char *payload;
 static size_t payload_len;
 
-static int serve_text_mode;
+static xcb_atom_t serve_type;
 
 static ClipIncrSend transfer;
 
@@ -95,33 +95,21 @@ static void serve_request(xcb_selection_request_event_t *req, int use_incr)
 
 	if (req->target == atom_targets) {
 		targets[0] = atom_targets;
-		targets[1] = serve_text_mode ? XCB_ATOM_STRING : atom_png;
+		targets[1] = serve_type;
 		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
 				    property, XCB_ATOM_ATOM, 32, 2, targets);
 		send_selection_notify(req, property);
 		return;
 	}
 
-	if (serve_text_mode) {
-		if (req->target == XCB_ATOM_STRING) {
-			xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
-					    property, XCB_ATOM_STRING, 8,
-					    payload_len, payload);
-			send_selection_notify(req, property);
-		} else {
-			send_selection_notify(req, XCB_ATOM_NONE);
-		}
-		return;
-	}
-
-	if (req->target != atom_png) {
+	if (req->target != serve_type) {
 		send_selection_notify(req, XCB_ATOM_NONE);
 		return;
 	}
 
 	if (use_incr) {
 		if (!clip_incr_send_start(xc, &transfer, req, atom_incr,
-					   atom_png, payload, payload_len,
+					   serve_type, payload, payload_len,
 					   CHUNK_SIZE)) {
 			send_selection_notify(req, XCB_ATOM_NONE);
 			return;
@@ -129,7 +117,7 @@ static void serve_request(xcb_selection_request_event_t *req, int use_incr)
 		send_selection_notify(req, property);
 	} else {
 		xcb_change_property(xc, XCB_PROP_MODE_REPLACE, req->requestor,
-				    property, atom_png, 8, payload_len,
+				    property, serve_type, 8, payload_len,
 				    payload);
 		send_selection_notify(req, property);
 	}
@@ -147,6 +135,30 @@ static xcb_window_t selection_owner(xcb_atom_t selection)
 	owner = rep ? rep->owner : 0;
 	free(rep);
 	return owner;
+}
+
+static int send_stale_clear(xcb_atom_t selection)
+{
+	union {
+		xcb_selection_clear_event_t event;
+		char bytes[32];
+	} message;
+	xcb_generic_error_t *error;
+	xcb_window_t owner;
+
+	owner = selection_owner(selection);
+	if (!owner)
+		return 2;
+	memset(&message, 0, sizeof(message));
+	message.event.response_type = XCB_SELECTION_CLEAR;
+	message.event.owner = owner;
+	message.event.selection = selection;
+	error = xcb_request_check(xc, xcb_send_event_checked(xc, 0, owner, 0, message.bytes));
+	if (error) {
+		free(error);
+		return 2;
+	}
+	return 0;
 }
 
 static int serve_selection(xcb_atom_t selection, int use_incr, const char *ready)
@@ -249,6 +261,20 @@ static int serve_clipboard_file(const char *path, int use_incr)
 	return serve_selection(atom_clipboard, use_incr, NULL);
 }
 
+static int serve_typed_file(const char *name, const char *path)
+{
+	xcb_intern_atom_reply_t *reply;
+
+	reply = xcb_intern_atom_reply(xc, xcb_intern_atom(xc, 0, strlen(name), name), NULL);
+	if (!reply)
+		return 2;
+	serve_type = reply->atom;
+	free(reply);
+	if (!load_payload_file(path))
+		return 2;
+	return serve_selection(atom_clipboard, 0, NULL);
+}
+
 static int serve_string(const char *text)
 {
 	payload_len = strlen(text);
@@ -258,7 +284,7 @@ static int serve_string(const char *text)
 		return 2;
 	}
 	memcpy(payload, text, payload_len);
-	serve_text_mode = 1;
+	serve_type = XCB_ATOM_STRING;
 	return serve_selection(atom_primary, 0, "owning PRIMARY, serving STRING");
 }
 
@@ -340,6 +366,32 @@ static int send_ctrl_v(const char *window_id)
 	WXSendEvent32(xc, &ev, sizeof(ev), 0, target, XCB_EVENT_MASK_KEY_RELEASE);
 	xcb_flush(xc);
 
+	return 0;
+}
+
+static int send_popup_b(const char *window_id)
+{
+	xcb_key_press_event_t event;
+	xcb_generic_error_t *error;
+	xcb_keycode_t keycode;
+	xcb_window_t target;
+
+	target = (xcb_window_t)strtoul(window_id, NULL, 0);
+	keycode = keycode_for_keysym(xc, XKB_KEY_b);
+	if (!target || !keycode)
+		return 2;
+	memset(&event, 0, sizeof(event));
+	event.response_type = XCB_KEY_PRESS;
+	event.event = target;
+	event.root = root_window;
+	event.detail = keycode;
+	error = xcb_request_check(xc, xcb_send_event_checked(xc, 0, target,
+							    XCB_EVENT_MASK_KEY_PRESS,
+							    (char *)&event));
+	if (error) {
+		free(error);
+		return 2;
+	}
 	return 0;
 }
 
@@ -437,6 +489,49 @@ static int map_focus_window(int x, int y, int w, int h)
 	return 0;
 }
 
+static int receive_paste_keys(void)
+{
+	xcb_generic_error_t *error;
+	xcb_generic_event_t *event;
+	xcb_key_press_event_t *key_event;
+	xcb_keycode_t insert;
+	uint32_t mask, size[2];
+
+	insert = keycode_for_keysym(xc, XKB_KEY_Insert);
+	if (!insert)
+		return 2;
+	mask = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
+	xcb_change_window_attributes(xc, win, XCB_CW_EVENT_MASK, &mask);
+	size[0] = 200;
+	size[1] = 100;
+	xcb_configure_window(xc, win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, size);
+	error = xcb_request_check(xc, xcb_map_window_checked(xc, win));
+	if (error) {
+		free(error);
+		return 2;
+	}
+	error = xcb_request_check(xc, xcb_set_input_focus_checked(xc, XCB_INPUT_FOCUS_PARENT,
+								  win, XCB_CURRENT_TIME));
+	if (error) {
+		free(error);
+		return 2;
+	}
+	printf("paste receiver ready 0x%x\n", (unsigned int)win);
+	fflush(stdout);
+	while ((event = xcb_wait_for_event(xc))) {
+		if ((event->response_type & 0x7f) == XCB_KEY_PRESS) {
+			key_event = (xcb_key_press_event_t *)event;
+			if (key_event->detail == insert) {
+				printf("paste key state=0x%x synthetic=%d\n", key_event->state,
+				       !!(event->response_type & 0x80));
+				fflush(stdout);
+			}
+		}
+		free(event);
+	}
+	return 1;
+}
+
 static int warp_pointer(int x, int y)
 {
 	xcb_query_pointer_reply_t *pr;
@@ -488,10 +583,13 @@ static int show_pointer(void)
 /* Impersonate the wmaker IPC endpoint: accept wmclipd's event
  * subscription and push one popup tick event, then hold the connection
  * open until the test kills us. */
-static int fake_tick(void)
+static int fake_tick(int keyed)
 {
-	static const char tick_body[] =
+	static const char keyed_body[] =
 		"{first = NO;keyed = YES;payload = \"wmclipd-popup\";}";
+	static const char unkeyed_body[] =
+		"{first = NO;keyed = NO;payload = \"wmclipd-popup\";}";
+	const char *tick_body = keyed ? keyed_body : unkeyed_body;
 	struct sockaddr_un addr;
 	char *path, *body;
 	char parent[sizeof(addr.sun_path)];
@@ -586,6 +684,7 @@ static int init_x11(void)
 	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
 	if (!rep) goto fail;
 	atom_png = rep->atom; free(rep);
+	serve_type = atom_png;
 	rep = xcb_intern_atom_reply(xc, cookies[i++], NULL);
 	if (!rep) goto fail;
 	atom_incr = rep->atom; free(rep);
@@ -620,10 +719,14 @@ int main(int argc, char **argv)
 		return serve_clipboard_file(argv[2], 0);
 	if (argc >= 3 && strcmp(argv[1], "serve-clipboard-file-incr") == 0)
 		return serve_clipboard_file(argv[2], 1);
+	if (argc >= 4 && strcmp(argv[1], "serve-clipboard-typed") == 0)
+		return serve_typed_file(argv[2], argv[3]);
 	if (argc >= 2 && strcmp(argv[1], "serve-string") == 0)
 		return serve_string(argc >= 3 ? argv[2] : "wmclipd cliptest");
 	if (argc >= 3 && strcmp(argv[1], "send-ctrl-v") == 0)
 		return send_ctrl_v(argv[2]);
+	if (argc >= 3 && strcmp(argv[1], "send-popup-b") == 0)
+		return send_popup_b(argv[2]);
 	if (argc >= 2 && strcmp(argv[1], "read-clipboard") == 0)
 		return read_clipboard();
 	if (argc >= 2 && strcmp(argv[1], "heads") == 0)
@@ -635,10 +738,14 @@ int main(int argc, char **argv)
 		return warp_pointer(atoi(argv[2]), atoi(argv[3]));
 	if (argc >= 2 && strcmp(argv[1], "pointer") == 0)
 		return show_pointer();
+	if (argc >= 2 && strcmp(argv[1], "receive-paste") == 0)
+		return receive_paste_keys();
+	if (argc >= 3 && strcmp(argv[1], "stale-clear") == 0)
+		return send_stale_clear(strcmp(argv[2], "primary") == 0 ? atom_primary : atom_clipboard);
 	if (argc >= 2 && strcmp(argv[1], "fake-tick") == 0)
-		return fake_tick();
+		return fake_tick(argc < 3 || strcmp(argv[2], "unkeyed") != 0);
 
-	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|serve-string|send-ctrl-v|read-clipboard|heads|map-window|warp|pointer|fake-tick [arg]\n",
+	fprintf(stderr, "usage: %s serve-primary-direct|serve-primary-incr|serve-clipboard-file|serve-clipboard-file-incr|serve-clipboard-typed|serve-string|send-ctrl-v|send-popup-b|read-clipboard|heads|map-window|warp|pointer|receive-paste|stale-clear|fake-tick [arg]\n",
 		argv[0]);
 	return 2;
 }

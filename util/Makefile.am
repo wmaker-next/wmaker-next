@@ -26,13 +26,13 @@ wdread_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 wmakermsg_LDADD = $(top_builddir)/WINGs/libWUtil.la $(liblist)
 
 bin_PROGRAMS += wmclipd
-wmclipd_CFLAGS = @XCB_CFLAGS@ @CAIRO_CFLAGS@
+wmclipd_CFLAGS = @XCB_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @CAIRO_CFLAGS@
 wmclipd_SOURCES = wmclipd.c clip_common.c clip_common.h clip_geom.c clip_geom.h xcconn.c xcconn.h
 wmclipd_LDADD = \
 	$(top_builddir)/WINGs/libWINGs.la \
 	$(top_builddir)/WINGs/libWUtil.la \
 	$(top_builddir)/wrlib/libwraster.la \
-	@XCB_LIBS@ $(liblist)
+	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ $(liblist)
 
 if BUILD_WMLOCK
 bin_PROGRAMS += wmlock

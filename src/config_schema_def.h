@@ -155,6 +155,9 @@
 	_(SCREENSHOT_FILENAME_TEMPLATE, "ScreenshotFilenameTemplate", STRING, \
 	  screenshot_filename_template, DEF_SCREENSHOT_FILENAME_TEMPLATE, \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(CLIPBOARD_FILENAME_TEMPLATE, "ClipboardFilenameTemplate", STRING, \
+	  clipboard_filename_template, DEF_CLIPBOARD_FILENAME_TEMPLATE, \
+	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(LOCK_SCREEN_COMMAND, "LockScreenCommand", STRING, lock_screen_command, \
 	  "wmlock", NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(CLIPBOARD_COMMAND, "ClipboardCommand", STRING, clipboard_command, \

@@ -3,6 +3,27 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Clipboard history exports
+-------------------------
+
+The wmclipd history popup can save the selected entry's original bytes
+with `s` and copy the new file path to CLIPBOARD and PRIMARY without
+adding it to history or pasting. Exports are stored in
+`$XDG_DATA_HOME/WindowMaker/Clipboard`, with a `~/.local/share` fallback.
+ClipboardFilenameTemplate controls the filename stem and is reloaded
+for each save. Exported files may contain sensitive data.
+
+Matching clipboard entries are now deduplicated across the full history.
+Optional persistent history remains in the XDG state directory. Its new
+format preserves saved-path metadata and reads older history files, but
+older versions of wmclipd cannot read the new format. A rejected history
+file is left unchanged for the rest of the session.
+
+The popup's `b` action converts an entry of up to 1 MiB to a Base64 data
+URI, publishes it to CLIPBOARD and PRIMARY, and submits Shift+Insert after
+held modifiers are released. The generated URI is not added to history.
+Paste submission cannot confirm that the receiving application pasted it.
+
 Workspace and keychain popup positions
 --------------------------------------
 

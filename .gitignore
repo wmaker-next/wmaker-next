@@ -76,6 +76,7 @@ util/Tests/check_wmakermsg
 util/Tests/check_wtouch
 util/Tests/check_util_tools
 util/Tests/check_clip_geom
+util/Tests/check_wmclipd_history
 util/wmgenmenu
 util/wmglyph
 util/wmiv

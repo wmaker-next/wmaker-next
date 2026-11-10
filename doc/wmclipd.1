@@ -27,6 +27,9 @@ the
 .B CLIPBOARD POPUP
 section below. Entries can additionally be expired after a fixed age with
 .BR \-\-ttl .
+Capturing an entry already in the ring moves the existing entry to the front
+and refreshes its age while preserving its pin state. Entries match only if
+their content type, bytes, and any path and URI metadata match.
 .PP
 Screenshot payloads are offered as
 .B image/png
@@ -162,6 +165,8 @@ directory, by default
 .IB $XDG_STATE_HOME /WindowMaker/wmclipd-history
 (fallback
 .IR ~/.local/state/WindowMaker/wmclipd-history ).
+If an existing history file cannot be read or is invalid, it is left unchanged
+and history saving is disabled for that session.
 Screenshot entries whose backing file no longer exists at load time are
 dropped, and non-pinned entries whose
 .B \-\-ttl
@@ -210,6 +215,46 @@ eviction, from
 .B \-\-ttl
 expiry and from the clear-all key; they are shown with a pin marker.
 .TP
+.B b
+Encode the selected entry as a Base64 data URI and publish it as UTF-8 text
+to CLIPBOARD and PRIMARY without adding the generated URI to history.
+The original stored input is limited to 1 MiB. PNG and JPEG bytes are
+encoded unchanged. UTF-8 text is validated, STRING is converted from
+Latin-1, and TEXT and COMPOUND_TEXT are decoded as compound text.
+Invalid or unsupported text is rejected without changing either selection.
+.IP
+After the popup closes, wmclipd submits Shift+Insert to the previously
+focused window, even for an image entry. If an invocation modifier is still
+held, submission waits until it is released while clipboard and IPC events
+continue to be processed. The pending paste is cancelled if either generated
+selection is lost, the target becomes unusable, or another popup opens.
+If publication succeeds but paste submission fails, the generated selections
+remain available. If only one selection claim succeeds, the result is
+reported on standard error and no paste key is sent. Key-event submission
+does not confirm that the receiving application pasted the data.
+.TP
+.B s
+Save the selected entry's original bytes under
+.IB $XDG_DATA_HOME /WindowMaker/Clipboard/
+(fallback
+.IR ~/.local/share/WindowMaker/Clipboard/ ).
+PNG and JPEG entries use
+.B .png
+and
+.BR .jpg .
+Text entries use
+.B .txt
+and retain their original encoding, which is not necessarily UTF-8.
+The popup dismisses whether the action succeeds or fails. On success, the
+absolute path is copied to CLIPBOARD and PRIMARY as UTF-8 text and as a percent-encoded
+.B text/uri-list
+with a CRLF terminator. No paste key is sent and the path is not added to
+history. The original entry and history ordering are unchanged, even if all
+entries are pinned. The saved file remains if the path is not UTF-8 or a
+selection claim fails. If only one claim succeeds, that selection retains the
+path. Partial successes and other errors are reported on standard error.
+Exports can contain sensitive clipboard contents.
+.TP
 .B Delete
 Remove the selected entry from the ring. The live CLIPBOARD selection is
 unaffected. If no entries remain, the popup dismisses.
@@ -237,6 +282,16 @@ keybinding), explicit Return or click is required.
 .B DISPLAY
 X display used for the clipboard owner window and for resolving the Window
 Maker IPC socket.
+.TP
+.B HOME
+Fallback base for the state and export directories when the corresponding
+XDG variable is unset or not absolute.
+.TP
+.B XDG_DATA_HOME
+Absolute base directory for saved clipboard exports.
+.TP
+.B XDG_STATE_HOME
+Absolute base directory for persistent history.
 .TP
 .B WMAKER_IPC_SOCKET
 Overrides the Window Maker IPC socket path used by

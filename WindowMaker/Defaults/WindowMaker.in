@@ -140,6 +140,7 @@
 	NoWindowOverIcons = NO;
 	WindowPlaceOrigin = (64, 0);
 	ScreenshotFilenameTemplate = "screenshot_%Y-%m-%d_at_%H:%M:%S";
+	ClipboardFilenameTemplate = "clipboard_%Y-%m-%d_at_%H:%M:%S";
 	LockScreenCommand = wmlock;
 	ClipboardCommand = "wmakermsg send_tick wmclipd-popup";
 	DisplayOffCommand = "";

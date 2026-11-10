@@ -32,6 +32,18 @@ clipboard history manager, use:
 ClipboardKey = "Mod4+v";
 ClipboardCommand = "wmakermsg send_tick wmclipd-popup";
 .EE
+.PP
+.B ClipboardFilenameTemplate
+in the WindowMaker defaults domain controls the filename stem for
+.BR wmclipd (1)
+exports. It defaults to
+.IR "clipboard_%Y-%m-%d_at_%H:%M:%S" ,
+uses
+.BR strftime (3)
+with local time, and is reloaded for each save. The user value takes precedence
+over the global value. Empty, invalid, overlong, or unsafe expansions are
+rejected. The extension and collision suffix are added by wmclipd.
+Exported files may contain sensitive clipboard contents.
 .SH "ACCENT PICKER"
 When Window Maker is configured with
 .BR \-\-enable\-xkb\-multilingual ,

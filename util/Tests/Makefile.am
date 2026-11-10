@@ -6,12 +6,15 @@ DRIVE_TESTS =
 check_PROGRAMS += wmclipd_cliptest
 check_PROGRAMS += check_clip_geom
 TESTS += check_clip_geom
+check_PROGRAMS += check_wmclipd_history
+TESTS += check_wmclipd_history
 check_PROGRAMS += check_wtouch
 TESTS += check_wtouch
 check_PROGRAMS += check_util_tools
 TESTS += check_util_tools
 DRIVE_TESTS += wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
+	wmclipd-actions.sh \
 	wmclipd-place.sh \
 	wxcopy-wxpaste.sh
 
@@ -24,6 +27,14 @@ wmclipd_cliptest_LDADD = @XCB_LIBS@ $(top_builddir)/WINGs/libwipc.la
 check_clip_geom_SOURCES = check_clip_geom.c ../clip_geom.c
 check_clip_geom_CFLAGS = @XCB_CFLAGS@
 check_clip_geom_LDADD = @XCB_LIBS@
+
+check_wmclipd_history_SOURCES = check_wmclipd_history.c ../clip_common.c ../clip_geom.c ../xcconn.c
+check_wmclipd_history_CFLAGS = @XCB_CFLAGS@ @XCB_IMDKIT_CFLAGS@ @CAIRO_CFLAGS@
+check_wmclipd_history_LDADD = \
+	$(top_builddir)/WINGs/libWINGs.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	$(top_builddir)/wrlib/libwraster.la \
+	@XCB_LIBS@ @XCB_IMDKIT_LIBS@ @INTLIBS@
 
 check_wmgenmenu_SOURCES = check_wmgenmenu.c
 check_wmgenmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
@@ -39,6 +50,7 @@ check_util_tools_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
 EXTRA_DIST = wmclipd-clipboard.sh wmclipd-ttl.sh wmclipd-persist.sh wmiv-clipboard-paste.sh \
 	wmclipd-asan.sh \
+	wmclipd-actions.sh \
 	wmclipd-place.sh \
 	wxcopy-wxpaste.sh
 
