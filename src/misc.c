@@ -672,15 +672,55 @@ bool GetCanonicalShortcutLabel(unsigned int modifiers, xkb_keysym_t ksym, char *
 }
 
 /* Convert a canonical keysym name (as produced by wXkbKeysymName, e.g.
- * "odiaeresis", "plus", "0x010000e0") to its printable UTF-8 glyph for
- * display purposes. Returns 'name' unchanged when there is no printable
- * form (function keys, dead keys, control characters, space, ...).
+ * "odiaeresis", "plus", "0x010000e0") to its display form: the printable
+ * UTF-8 glyph when there is one, a keyboard symbol for the editing and
+ * navigation keys, or 'name' unchanged (function keys, dead keys, ...).
  * 'buf' must be at least 8 bytes. */
 static const char *keysym_name_to_display(const char *name, char *buf, size_t bufsz)
 {
+	static const struct {
+		const char *name;
+		const char *glyph;
+	} symbols[] = {
+		{ "BackSpace",    "⌫" },
+		{ "Delete",       "⌦" },
+		{ "Clear",        "⌧" },
+		{ "Tab",          "⇥" },
+		{ "ISO_Left_Tab", "⇤" },
+		{ "Return",       "↵" },
+		{ "Escape",       "⎋" },
+		{ "Caps_Lock",    "⇪" },
+		{ "Left",         "←" },
+		{ "Up",           "↑" },
+		{ "Right",        "→" },
+		{ "Down",         "↓" },
+		{ "Prior",        "⇞" },
+		{ "Next",         "⇟" },
+		{ "Home",         "↖" },
+		{ "End",          "↘" },
+		{ "space",        "␣" },
+		{ "XF86Eject",    "⏏" },
+		{ "KP_Delete",    "⌦" },
+		{ "KP_Tab",       "⇥" },
+		{ "KP_Enter",     "⌤" },
+		{ "KP_Left",      "←" },
+		{ "KP_Up",        "↑" },
+		{ "KP_Right",     "→" },
+		{ "KP_Down",      "↓" },
+		{ "KP_Prior",     "⇞" },
+		{ "KP_Next",      "⇟" },
+		{ "KP_Home",      "↖" },
+		{ "KP_End",       "↘" },
+		{ NULL, NULL }
+	};
 	xkb_keysym_t ks;
 	unsigned char c0;
-	int n;
+	int n, i;
+
+	for (i = 0; symbols[i].name; i++) {
+		if (strcmp(name, symbols[i].name) == 0)
+			return symbols[i].glyph;
+	}
 
 	ks = wXkbKeysymFromName(name);
 	if (ks == XKB_KEY_NoSymbol)

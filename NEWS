@@ -13,6 +13,14 @@ that leaves fullscreen first and then restores the pre-maximize
 geometry. The new RestoreGeometryKey binding triggers the same action
 from the keyboard and defaults to unbound.
 
+Shortcut key labels
+-------------------
+
+Shortcut labels now use the standard keyboard symbols for the editing
+and navigation keys (Backspace, Delete, Tab, Return, Escape, Caps Lock,
+the arrows, Page Up/Down, Home/End and Space, with their keypad
+variants) instead of their raw keysym names.
+
 Clipboard history exports
 -------------------------
 
