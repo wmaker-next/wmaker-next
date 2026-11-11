@@ -20,7 +20,7 @@ LDADD= libWUtil.la libWINGs.la $(top_builddir)/wrlib/libwraster.la @INTLIBS@
 libWINGs_la_LIBADD = libWUtil.la $(top_builddir)/wrlib/libwraster.la @XCB_LIBS@ @XCB_IMDKIT_LIBS@ @FCLIBS@ @LIBM@ @CAIRO_LIBS@
 libWUtil_la_LIBADD = @LIBBSD@ @LIBEV_LIBS@ @INTLIBS@ libwipc.la
 
-EXTRA_DIST = BUGS make-rgb
+EXTRA_DIST = BUGS COPYING.LIB make-rgb
 
 
 # wbutton.c

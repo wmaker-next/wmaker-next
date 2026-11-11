@@ -35,4 +35,4 @@ pkgconfig_DATA = wmlib.pc
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-EXTRA_DIST = wmlib.pc.in
+EXTRA_DIST = COPYING.LIB wmlib.pc.in

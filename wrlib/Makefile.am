@@ -5,7 +5,7 @@ DIST_SUBDIRS = $(SUBDIRS)
 
 AUTOMAKE_OPTIONS =
 
-EXTRA_DIST = stb_image.h stb_image_resize2.h
+EXTRA_DIST = COPYING stb_image.h stb_image_resize2.h
 
 lib_LTLIBRARIES = libwraster.la
 
