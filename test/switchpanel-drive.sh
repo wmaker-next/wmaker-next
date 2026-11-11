@@ -881,6 +881,50 @@ check "app icon and miniwindow gone before the panel is released" \
 xdo keyup alt; sleep 0.5
 check "wmaker alive after app icon Delete" ipc_ready
 
+# --- 24. Drilled sub-strip fits its icons, and undrill shrinks back --------
+note "drill: panel widens for the group's icons and shrinks on undrill"
+for i in 1 2 3 4 5 6 7 8; do
+    spawn_term wide$i Wide 80x24+50+350
+done
+for t in wide1 wide2 wide3 wide4 wide5 wide6 wide7 wide8; do
+    wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^$t\$' 2>/dev/null | grep -q ." \
+        || fatal "$t did not map"
+done
+for t in wide1 wide2 wide3 wide4 wide5 wide6 wide7 wide8; do
+    xdo windowactivate "$(find_client "$t")"; sleep 0.15
+done
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key w; sleep 0.2
+w_grp=$(panel_width)
+xdo key Down; sleep 0.3
+w_drill=$(panel_width)
+xdo key Up; sleep 0.3
+w_back=$(panel_width)
+xdo keyup super; sleep 0.3
+drill_grew() { [ -n "$w_grp" ] && [ -n "$w_drill" ] && [ "$w_drill" -gt "$w_grp" ]; }
+drill_shrank() { [ -n "$w_back" ] && [ "$w_back" -eq "$w_grp" ]; }
+check "drill widened the panel for the group's icons ($w_grp -> $w_drill)" drill_grew
+check "undrill shrank the panel back ($w_drill -> $w_back)" drill_shrank
+
+# switching groups while drilled must resize for the new group's icons:
+# the group strip follows MRU, so make Wide and XTerm adjacent (Wide first)
+xdo windowactivate "$(find_client delB)"; sleep 0.2
+xdo windowactivate "$(find_client wide1)"; sleep 0.3
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key x; sleep 0.2
+xdo key Down; sleep 0.3
+w_small=$(panel_width)
+xdo keydown shift; sleep 0.1
+xdo key Tab; sleep 0.3
+xdo keyup shift
+w_big=$(panel_width)
+xdo keyup super; sleep 0.3
+switch_grew() { [ -n "$w_small" ] && [ -n "$w_big" ] && [ "$w_big" -gt "$w_small" ]; }
+check "group switch while drilled grew for the bigger group ($w_small -> $w_big)" switch_grew
+check "wmaker alive after drill width round-trip" ipc_ready
+
 # --- teardown --------------------------------------------------------------
 note "switchpanel drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"

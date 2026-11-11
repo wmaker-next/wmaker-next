@@ -1086,6 +1086,74 @@ static void free_sub_strip(WSwitchPanel *panel)
 	panel->subSlotCount = 0;
 }
 
+/* panel geometry for one row of count icon tiles */
+static bool strip_size_for_count(WSwitchPanel *panel, int count, WSwitchPanelSize *size)
+{
+	WSwitchPanelSizing siz;
+
+	if (count < 1)
+		return false;
+
+	memset(&siz, 0, sizeof(siz));
+	siz.icon_size = icon_size;
+	siz.count = count;
+	siz.border = border_space;
+	siz.label_height = label_height;
+	siz.extra_h = panel->extra_h;
+	siz.head_w = panel->target_rect.size.width;
+	siz.head_h = panel->target_rect.size.height;
+	siz.ui_scale = WMScreenUIScale(panel->scr->wmscreen);
+	siz.opt_in_fit = panel->opt_in_fit;
+
+	if (wSwitchPanelCalcSize(&siz, size, NULL) != 0)
+		return false;
+	return size->tile == icon_tile_size;
+}
+
+static void resize_panel_to_count(WSwitchPanel *panel, int count)
+{
+	WSwitchPanelSize size;
+	int pw, ph;
+
+	if (!panel->win || count < 1)
+		return;
+	if (!strip_size_for_count(panel, count, &size))
+		return;
+
+	pw = size.panel_width;
+	ph = size.panel_height;
+	if (panel->drilled || panel->drillPreview) {
+		WSwitchPanelSize sub;
+
+		ph += panel->subHeightExtra;
+		if (panel->subWindows &&
+		    strip_size_for_count(panel, WMGetArrayItemCount(panel->subWindows), &sub))
+			pw = WMAX(pw, sub.strip_width + 2 * border_space);
+	}
+	if (pw == WMWidgetWidth(panel->win) && ph == WMWidgetHeight(panel->win))
+		return;
+	if (!replace_panel_bg(panel, pw, ph))
+		return;
+
+	WMResizeWidget(panel->win, pw, ph);
+	if (panel->iconViewport)
+		WMResizeWidget(panel->iconViewport, size.strip_width, icon_tile_size);
+	WMResizeWidget(panel->iconBox, size.full_width, icon_tile_size);
+	if (panel->subViewport)
+		WMResizeWidget(panel->subViewport, pw - 2 * border_space, icon_tile_size);
+	if (panel->label) {
+		WMResizeWidget(panel->label, pw - 2 * border_space, label_height);
+		WMMoveWidget(panel->label, border_space,
+			     border_space + icon_tile_size + 5 +
+			     (panel->drilled || panel->drillPreview ? panel->subHeightExtra : 0));
+	}
+	panel->visibleCount = size.visible;
+	if (panel->subWindows)
+		panel->subVisibleCount = WMIN(WMGetArrayItemCount(panel->subWindows),
+					      (pw - 2 * border_space) / icon_tile_size);
+	place_panel(panel);
+}
+
 static WWindow *populate_sub_strip_new(WSwitchPanel *panel, WWindow *groupRep)
 {
 	WWindow *wwin;
@@ -1135,7 +1203,9 @@ static WWindow *populate_sub_strip_new(WSwitchPanel *panel, WWindow *groupRep)
 			}
 		}
 	}
-	panel->subVisibleCount = WMIN(subCount, panel->visibleCount);
+	panel->subVisibleCount = WMIN(subCount, panel->win ?
+		(WMWidgetWidth(panel->win) - 2 * border_space) / icon_tile_size :
+		panel->visibleCount);
 	panel->subFirstVisible = 0;
 	panel->subCurrent = WMGetFirstInArray(panel->subWindows, groupRep);
 	if (panel->subCurrent < 0)
@@ -1209,22 +1279,27 @@ static WWindow *populate_sub_strip(WSwitchPanel *panel, WWindow *groupRep)
 WWindow *wSwitchPanelUndrill(WSwitchPanel *panel)
 {
 	WWindow *rep;
-	int pw, ph, origHeight;
+	WSwitchPanelSize size;
+	int pw, ph, origWidth;
 
 	if (!panel->drilled && !panel->drillPreview)
 		return NULL;
 	rep = WMGetFromArray(panel->windows, panel->current);
 	if (panel->win) {
 		pw = WMWidgetWidth(panel->win);
-		ph = WMWidgetHeight(panel->win);
-		origHeight = ph - panel->subHeightExtra;
+		ph = WMWidgetHeight(panel->win) - panel->subHeightExtra;
+		origWidth = pw;
+		if (strip_size_for_count(panel, WMGetArrayItemCount(panel->windows), &size))
+			origWidth = size.panel_width;
 		/* a failed rebuild keeps the panel and its interaction
 		 * state as they are */
-		if (origHeight >= 1 && replace_panel_bg(panel, pw, origHeight)) {
-			WMResizeWidget(panel->win, pw, origHeight);
-			if (panel->label)
+		if (ph >= 1 && replace_panel_bg(panel, origWidth, ph)) {
+			WMResizeWidget(panel->win, origWidth, ph);
+			if (panel->label) {
+				WMResizeWidget(panel->label, origWidth - 2 * border_space, label_height);
 				WMMoveWidget(panel->label, border_space,
 					     border_space + icon_tile_size + 5);
+			}
 			place_panel(panel);
 		} else {
 			wwarning(_("switch panel: cannot rebuild the panel background, keeping its size"));
@@ -1248,7 +1323,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 	WWindow *rep, *firstSub;
 	RImage *old_bg;
 	PanelBackground bg;
-	int pw, ph, newHeight;
+	int pw, ph, newWidth, newHeight;
 	bool grow;
 
 	if (panel->mode != CYCLE_GROUP)
@@ -1284,6 +1359,7 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 			WMMapWidget(panel->subBox);
 			WMMapSubwidgets(panel->subBox);
 		}
+		resize_panel_to_count(panel, WMGetArrayItemCount(panel->windows));
 		return WMGetFromArray(panel->windows, panel->current);
 	}
 
@@ -1317,13 +1393,18 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 	 * the growth before anything is mapped or resized */
 	grow = panel->win && !panel->drilled && !panel->drillPreview;
 	if (grow) {
+		WSwitchPanelSize size;
+
 		pw = WMWidgetWidth(panel->win);
 		ph = WMWidgetHeight(panel->win);
+		newWidth = pw;
 		newHeight = ph + panel->subHeightExtra;
+		if (strip_size_for_count(panel, WMGetArrayItemCount(panel->subWindows), &size))
+			newWidth = WMAX(pw, size.strip_width + 2 * border_space);
 		if (newHeight < 1 ||
-		    !wSwitchPanelWidgetSizeOk(pw, newHeight,
+		    !wSwitchPanelWidgetSizeOk(newWidth, newHeight,
 					     WMScreenUIScale(panel->scr->wmscreen)) ||
-		    !prepare_replacement_bg(panel, pw, newHeight, &bg)) {
+		    !prepare_replacement_bg(panel, newWidth, newHeight, &bg)) {
 			wwarning(_("switch panel: sub-strip does not fit the panel, skipping it"));
 			free_sub_strip(panel);
 			if (panel->subViewport)
@@ -1351,12 +1432,21 @@ static WWindow *show_sub_strip(WSwitchPanel *panel, bool set_drilled)
 		WMMapWidget(panel->subViewport);
 
 		if (grow) {
-			WMResizeWidget(panel->win, pw, newHeight);
-			if (panel->label)
+			WMResizeWidget(panel->win, newWidth, newHeight);
+			if (panel->subViewport)
+				WMResizeWidget(panel->subViewport, newWidth - 2 * border_space,
+					       icon_tile_size);
+			panel->subVisibleCount = WMIN(WMGetArrayItemCount(panel->subWindows),
+						      (newWidth - 2 * border_space) / icon_tile_size);
+			if (panel->label) {
+				WMResizeWidget(panel->label, newWidth - 2 * border_space, label_height);
 				WMMoveWidget(panel->label, border_space,
 					     border_space + icon_tile_size + 5 +
 					     panel->subHeightExtra);
+			}
 			place_panel(panel);
+		} else {
+			resize_panel_to_count(panel, WMGetArrayItemCount(panel->windows));
 		}
 	}
 
@@ -2019,53 +2109,6 @@ static bool replace_window_at(WSwitchPanel *panel, int idx, WWindow *wwin, Strip
 	return true;
 }
 
-static void resize_panel_to_count(WSwitchPanel *panel, int count)
-{
-	WSwitchPanelSizing siz;
-	WSwitchPanelSize size;
-	int pw, ph;
-
-	if (!panel->win || count < 1)
-		return;
-
-	memset(&siz, 0, sizeof(siz));
-	siz.icon_size = icon_size;
-	siz.count = count;
-	siz.border = border_space;
-	siz.label_height = label_height;
-	siz.extra_h = panel->extra_h;
-	siz.head_w = panel->target_rect.size.width;
-	siz.head_h = panel->target_rect.size.height;
-	siz.ui_scale = WMScreenUIScale(panel->scr->wmscreen);
-	siz.opt_in_fit = panel->opt_in_fit;
-
-	if (wSwitchPanelCalcSize(&siz, &size, NULL) != 0)
-		return;
-	if (size.tile != icon_tile_size)
-		return;
-
-	pw = size.panel_width;
-	ph = size.panel_height;
-	if (panel->drilled || panel->drillPreview)
-		ph += panel->subHeightExtra;
-	if (pw == WMWidgetWidth(panel->win) && ph == WMWidgetHeight(panel->win))
-		return;
-	if (!replace_panel_bg(panel, pw, ph))
-		return;
-
-	WMResizeWidget(panel->win, pw, ph);
-	if (panel->iconViewport)
-		WMResizeWidget(panel->iconViewport, size.strip_width, icon_tile_size);
-	WMResizeWidget(panel->iconBox, size.full_width, icon_tile_size);
-	if (panel->label) {
-		WMResizeWidget(panel->label, size.strip_width, label_height);
-		WMMoveWidget(panel->label, border_space,
-			     border_space + icon_tile_size + 5 +
-			     (panel->drilled || panel->drillPreview ? panel->subHeightExtra : 0));
-	}
-	panel->visibleCount = size.visible;
-	place_panel(panel);
-}
 
 static void shrink_sub_box(WSwitchPanel *panel)
 {
