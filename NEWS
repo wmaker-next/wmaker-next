@@ -2069,6 +2069,12 @@ adding newly connected monitors to the right of the existing layout.
 This option is also available in WPrefs expert panel under
 "Automatically (de)activate monitors on hotplug events".
 
+Configured workspace backgrounds are re-rendered when RandR changes the
+screen size or monitor layout, including changes made by external tools.
+External wallpaper setters are not tracked and their images may be replaced
+by the configured background. Set WorkspaceBack and WorkspaceSpecificBack
+to empty arrays to leave the wallpaper to another application.
+
 
 Titlebar language button revamp
 -------------------------------

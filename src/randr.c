@@ -28,6 +28,7 @@
 
 #include "randr.h"
 #include "window.h"
+#include "defaults.h"
 #include "framewin.h"
 #include "xinerama.h"
 #include "wmspec.h"
@@ -416,7 +417,20 @@ static bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
 							  * max_x / scr->scr_width);
 			int mm_h = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->height_in_millimeters
 							  * max_y / scr->scr_height);
-			xcb_randr_set_screen_size(wdisp->conn, scr->root_win, max_x, max_y, mm_w, mm_h);
+			xcb_generic_error_t *error;
+
+			if (mm_w < 1)
+				mm_w = 1;
+			if (mm_h < 1)
+				mm_h = 1;
+			error = xcb_request_check(wdisp->conn,
+					xcb_randr_set_screen_size_checked(wdisp->conn, scr->root_win,
+								      max_x, max_y, mm_w, mm_h));
+			if (error) {
+				wwarning("RandR: failed to shrink framebuffer to %dx%d (X error %u)",
+					 max_x, max_y, error->error_code);
+				free(error);
+			}
 		}
 	}
 
@@ -432,7 +446,6 @@ static bool wRandR_AutoDeactivate(WScreen *scr, WRandRState *state, WRandRResour
  * Returns True if at least one output was activated */
 static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResources *sr)
 {
-	bool activated = false;
 	int i, j;
 
 	for (i = 0; i < state->n_outputs; i++) {
@@ -447,15 +460,21 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		int mode_w = 0, mode_h = 0;
 		int new_x = 0;
 		int new_vw, new_vh;
+		xcb_get_geometry_reply_t *geometry;
+		xcb_randr_get_screen_size_range_reply_t *range;
+		xcb_generic_error_t *error;
 
 		/* Only process newly connected outputs that have no CRTC yet */
-		if (!o->connected || o->crtc != XCB_NONE)
+		if (!o->connected || o->crtc != XCB_NONE || o->stale)
 			continue;
 
 		oi = xcb_randr_get_output_info_reply(wdisp->conn,
 				xcb_randr_get_output_info(wdisp->conn, o->xid, sr->timestamp), NULL);
-		if (!oi)
+		if (!oi || oi->status != XCB_RANDR_SET_CONFIG_SUCCESS) {
+			wwarning("RandR: could not query output %s for activation", o->name);
+			free(oi);
 			continue;
+		}
 
 		oi_crtcs = xcb_randr_get_output_info_crtcs(oi);
 		oi_ncrtc = xcb_randr_get_output_info_crtcs_length(oi);
@@ -475,23 +494,28 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 
 			ci = xcb_randr_get_crtc_info_reply(wdisp->conn,
 					xcb_randr_get_crtc_info(wdisp->conn, oi_crtcs[j], sr->timestamp), NULL);
-			if (!ci)
+			if (!ci || ci->status != XCB_RANDR_SET_CONFIG_SUCCESS) {
+				wwarning("RandR: could not query CRTC for output %s", o->name);
+				free(ci);
 				continue;
+			}
 
 			if (xcb_randr_get_crtc_info_outputs_length(ci) == 0) {
 				poss = xcb_randr_get_crtc_info_possible(ci);
 				npos = xcb_randr_get_crtc_info_possible_length(ci);
 				for (k = 0; k < npos; k++) {
 					if (poss[k] == o->xid) {
-						free_crtc = oi_crtcs[j];
 						if (ci->rotations & XCB_RANDR_ROTATION_ROTATE_0)
 							rotation = XCB_RANDR_ROTATION_ROTATE_0;
 						else if (ci->rotations & XCB_RANDR_ROTATION_ROTATE_90)
 							rotation = XCB_RANDR_ROTATION_ROTATE_90;
 						else if (ci->rotations & XCB_RANDR_ROTATION_ROTATE_180)
 							rotation = XCB_RANDR_ROTATION_ROTATE_180;
-						else
+						else if (ci->rotations & XCB_RANDR_ROTATION_ROTATE_270)
 							rotation = XCB_RANDR_ROTATION_ROTATE_270;
+						else
+							continue;
+						free_crtc = oi_crtcs[j];
 						break;
 					}
 				}
@@ -527,7 +551,7 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		for (j = 0; j < state->n_outputs; j++) {
 			WRandROutput *a = &state->outputs[j];
 
-			if (a->crtc != XCB_NONE && a->w > 0) {
+			if (!a->stale && a->crtc != XCB_NONE && a->w > 0) {
 				int right = a->x + a->w;
 
 				if (right > new_x)
@@ -536,28 +560,64 @@ static bool wRandR_AutoActivate(WScreen *scr, WRandRState *state, WRandRResource
 		}
 
 		/* Expand virtual framebuffer if the new head exceeds current size */
-		new_vw = new_x + mode_w;
-		new_vh = mode_h > scr->scr_height ? mode_h : scr->scr_height;
-
-		if (new_vw > scr->scr_width || new_vh > scr->scr_height) {
-			int mm_w = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->width_in_millimeters
-						  * new_vw / scr->scr_width);
-			int mm_h = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->height_in_millimeters
-						  * new_vh / scr->scr_height);
-			xcb_randr_set_screen_size(wdisp->conn, scr->root_win, new_vw, new_vh, mm_w, mm_h);
+		geometry = xcb_get_geometry_reply(wdisp->conn,
+				xcb_get_geometry(wdisp->conn, scr->root_win), NULL);
+		range = xcb_randr_get_screen_size_range_reply(wdisp->conn,
+				xcb_randr_get_screen_size_range(wdisp->conn, scr->root_win), NULL);
+		if (!geometry || !range || geometry->width == 0 || geometry->height == 0) {
+			wwarning("RandR: could not query screen geometry and limits for output %s", o->name);
+			free(geometry);
+			free(range);
+			continue;
 		}
+		if (!wRandRScreenSizeForMode(mode_w, mode_h, rotation, new_x,
+					     geometry->width, geometry->height,
+					     range->min_width, range->min_height,
+					     range->max_width, range->max_height,
+					     &new_vw, &new_vh)) {
+			wwarning("RandR: output %s would exceed the maximum screen size %dx%d",
+				 o->name, range->max_width, range->max_height);
+			free(geometry);
+			free(range);
+			continue;
+		}
+		free(range);
+
+		if (new_vw > geometry->width || new_vh > geometry->height) {
+			int mm_w = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->width_in_millimeters
+						  * new_vw / geometry->width);
+			int mm_h = (int)((long)wXScreenOf(wdisp->conn, scr->screen)->height_in_millimeters
+						  * new_vh / geometry->height);
+			if (mm_w < 1)
+				mm_w = 1;
+			if (mm_h < 1)
+				mm_h = 1;
+			error = xcb_request_check(wdisp->conn,
+					xcb_randr_set_screen_size_checked(wdisp->conn, scr->root_win,
+								      new_vw, new_vh, mm_w, mm_h));
+			if (error) {
+				wwarning("RandR: failed to resize framebuffer for output %s (X error %u)",
+					 o->name, error->error_code);
+				free(error);
+				free(geometry);
+				continue;
+			}
+		}
+		free(geometry);
 
 		if (setCrtcConfig(sr, free_crtc, new_x, 0, best_mode, rotation,
 						  &o->xid, 1) == XCB_RANDR_SET_CONFIG_SUCCESS) {
 			wwarning("RandR: auto-activated output %s at +%d+0", o->name, new_x);
-			activated = true;
+			return true;
 		} else {
 			wwarning("RandR: failed to auto-activate output %s", o->name);
 		}
 	}
 
-	return activated;
+	return false;
 }
+
+static void wRandRDebounceTimerFired(void *data);
 
 /* Synchronize RandR state with the X server */
 static void wRandR_Update(WScreen *scr)
@@ -565,8 +625,10 @@ static void wRandR_Update(WScreen *scr)
 	WRandRState *state = (WRandRState *)scr->randr_state;
 	char *old_name[WM_MAX_HEADS];
 	int old_ws[WM_MAX_HEADS];
-	bool applied;
+	WMRect old_screens[WM_MAX_HEADS];
+	bool applied, geometry_changed;
 	int old_heads;
+	int old_width, old_height;
 	int i, h, k;
 #ifdef VIRTUAL_DESKTOP
 	int ws;
@@ -578,7 +640,8 @@ static void wRandR_Update(WScreen *scr)
 	 * the resources walk is confined to this branch. */
 	if (w_global.config->hotplug_monitor) {
 		WRandRResources sr;
-		bool changed;
+		bool changed = false;
+		bool snapshot_complete = true;
 		int j;
 
 		/* Assume all outputs removed until server confirms */
@@ -596,8 +659,12 @@ static void wRandR_Update(WScreen *scr)
 
 			oi = xcb_randr_get_output_info_reply(wdisp->conn,
 					xcb_randr_get_output_info(wdisp->conn, sr.outputs[i], sr.timestamp), NULL);
-			if (!oi)
+			if (!oi || oi->status != XCB_RANDR_SET_CONFIG_SUCCESS) {
+				wwarning("RandR: could not query output 0x%x", sr.outputs[i]);
+				free(oi);
+				snapshot_complete = false;
 				continue;
+			}
 
 			/* Match by XID (stable across reconfigures) */
 			for (j = 0; j < state->n_outputs; j++) {
@@ -617,6 +684,10 @@ static void wRandR_Update(WScreen *scr)
 							   xcb_randr_get_output_info_name_length(oi));
 			}
 
+			if (!found) {
+				wwarning("RandR: too many outputs to manage safely");
+				snapshot_complete = false;
+			}
 			if (found) {
 				found->stale = false;
 				found->connected = (oi->connection == XCB_RANDR_CONNECTION_CONNECTED);
@@ -630,13 +701,18 @@ static void wRandR_Update(WScreen *scr)
 
 					ci = xcb_randr_get_crtc_info_reply(wdisp->conn,
 							xcb_randr_get_crtc_info(wdisp->conn, oi->crtc, sr.timestamp), NULL);
-					if (ci) {
+					if (ci && ci->status == XCB_RANDR_SET_CONFIG_SUCCESS) {
 						found->x = ci->x;
 						found->y = ci->y;
 						found->w = ci->width;
 						found->h = ci->height;
 						found->rotation = ci->rotation;
 						free(ci);
+					} else {
+						wwarning("RandR: could not query CRTC for output %s",
+							 found->name);
+						free(ci);
+						snapshot_complete = false;
 					}
 				}
 			}
@@ -644,8 +720,11 @@ static void wRandR_Update(WScreen *scr)
 			free(oi);
 		}
 
-		changed  = wRandR_AutoDeactivate(scr, state, &sr);
-		changed |= wRandR_AutoActivate(scr, state, &sr);
+		if (snapshot_complete) {
+			changed = wRandR_AutoDeactivate(scr, state, &sr);
+			if (!changed)
+				changed = wRandR_AutoActivate(scr, state, &sr);
+		}
 
 		free(sr.reply);
 
@@ -661,15 +740,22 @@ static void wRandR_Update(WScreen *scr)
 
 		/* Our SetCrtcConfig calls generate a fresh RandR event burst,
 		 * the debounced re-entry will rebuild the head list then */
-		if (changed)
+		if (changed) {
+			WMDeleteTimerHandlerPtr(&scr->randr_debounce_timer);
+			scr->randr_debounce_timer =
+				WMAddTimerHandler(RANDR_DEBOUNCE_DELAY, wRandRDebounceTimerFired, scr);
 			return;
+		}
 	}
 
 	/* Snapshot per-head workspace by output name before head indices
 	 * are reordered, so each monitor keeps its workspace after the
 	 * geometry rebuild. */
 	old_heads = wHeadCount(scr);
+	old_width = scr->scr_width;
+	old_height = scr->scr_height;
 	for (h = 0; h < old_heads; h++) {
+		old_screens[h] = wGetRectForHead(scr, h);
 		old_name[h] = scr->head_output_name[h]
 			? wstrdup(scr->head_output_name[h]) : NULL;
 		old_ws[h] = scr->head_workspace[h];
@@ -701,6 +787,22 @@ static void wRandR_Update(WScreen *scr)
 			if (old_name[h])
 				wfree(old_name[h]);
 		return;
+	}
+
+	geometry_changed = old_width != scr->scr_width || old_height != scr->scr_height ||
+			   old_heads != wHeadCount(scr);
+	if (!geometry_changed) {
+		for (h = 0; h < old_heads; h++) {
+			WMRect current = wGetRectForHead(scr, h);
+
+			if (old_screens[h].pos.x != current.pos.x ||
+			    old_screens[h].pos.y != current.pos.y ||
+			    old_screens[h].size.width != current.size.width ||
+			    old_screens[h].size.height != current.size.height) {
+				geometry_changed = true;
+				break;
+			}
+		}
 	}
 
 	if (w_global.config->per_head_workspaces) {
@@ -798,6 +900,9 @@ static void wRandR_Update(WScreen *scr)
 		wWorkspaceReconcileHeads(scr);
 		wWorkspaceSetCurrentHead(scr, wGetActiveHead(scr));
 	}
+
+	if (geometry_changed)
+		wDefaultRefreshWorkspaceBackground(scr);
 
 	/* Rearrange miniaturized and appicons into the icon yard */
 	wArrangeIcons(scr, true);

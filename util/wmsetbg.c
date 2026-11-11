@@ -1181,6 +1181,57 @@ static void changeTexture(RContext *rc, BackgroundTexture * texture)
 	setPixmapProperty(duplicatePixmap(rc, texture->pixmap));
 }
 
+static bool refreshTextures(RContext *rc, BackgroundTexture **textures, int maxTextures)
+{
+	xcb_get_geometry_reply_t *geometry;
+	WMRect *old_screens;
+	int i, j;
+
+	geometry = xcb_get_geometry_reply(xc, xcb_get_geometry(xc, root), NULL);
+	if (!geometry || geometry->width == 0 || geometry->height == 0) {
+		wwarning("could not query root window geometry for background refresh");
+		free(geometry);
+		return false;
+	}
+	scrWidth = geometry->width;
+	scrHeight = geometry->height;
+	free(geometry);
+
+	old_screens = xineInfo.screens;
+	xineInfo.screens = NULL;
+	xineInfo.count = 0;
+	if (!initRandR())
+		initXinerama();
+	if (old_screens)
+		wfree(old_screens);
+
+	for (i = 0; i <= maxTextures; i++) {
+		BackgroundTexture *old = textures[i];
+		BackgroundTexture *new_texture;
+
+		if (!old)
+			continue;
+		for (j = 0; j < i; j++) {
+			if (textures[j] == old)
+				break;
+		}
+		if (j < i)
+			continue;
+		new_texture = parseTexture(rc, old->spec);
+		if (!new_texture) {
+			wwarning("could not refresh workspace %d background", i);
+			continue;
+		}
+		new_texture->refcount = old->refcount;
+		for (j = i; j <= maxTextures; j++) {
+			if (textures[j] == old)
+				textures[j] = new_texture;
+		}
+		freeTexture(rc, old);
+	}
+	return true;
+}
+
 static int readmsg(int fd, char *buffer, int size)
 {
 	int count;
@@ -1204,6 +1255,7 @@ static int readmsg(int fd, char *buffer, int size)
  * Message Format:
  * sizeSntexture_spec - sets the texture for workspace n
  * sizeCn - change background texture to the one for workspace n
+ * sizeRn - refresh textures and change to workspace n
  * sizePpath - set the pixmap search path
  *
  * n is 4 bytes
@@ -1286,6 +1338,15 @@ static noreturn void helperLoop(RContext * rc)
 			} else {
 				changeTexture(rc, textures[workspace]);
 			}
+			break;
+
+		case 'R':
+			if (!refreshTextures(rc, textures, maxTextures))
+				break;
+			if (!textures[workspace])
+				changeTexture(rc, textures[0]);
+			else
+				changeTexture(rc, textures[workspace]);
 			break;
 
 		case 'P':

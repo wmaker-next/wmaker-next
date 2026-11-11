@@ -46,6 +46,7 @@ void wReadDefaults(WScreen *scr, const struct WConfig *old_config,
                    const struct WConfigChanges *changes);
 void wReadKeybindings(WScreen *scr, WMPropList *dict, bool *batch_changed);
 void wDefaultUpdateIcons(WScreen *scr);
+void wDefaultRefreshWorkspaceBackground(WScreen *scr);
 void wDefaultsCheckDomains(void *arg);
 void wDefaultsReconfigure(void);
 void wDefaultFillAttributes(const char *instance, const char *class,

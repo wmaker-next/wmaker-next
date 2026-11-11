@@ -38,6 +38,7 @@
 
 #include "config_values.h"
 #include "geometry.h"
+#include "randr.h"
 
 #include "check_common.h"
 
@@ -305,6 +306,37 @@ static void test_mask_bits(void)
 	CHECK(YNegative == 0x0020);
 }
 
+#ifdef USE_RANDR
+static void test_randr_screen_size(void)
+{
+	int width, height;
+
+	CHECK(wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_0,
+				      1920, 1920, 1080, 1, 1, 8192, 8192,
+				      &width, &height));
+	CHECK(width == 3840 && height == 1080);
+	CHECK(wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_90,
+				      1920, 1920, 1080, 1, 1, 8192, 8192,
+				      &width, &height));
+	CHECK(width == 3000 && height == 1920);
+	CHECK(wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_270 |
+				      XCB_RANDR_ROTATION_REFLECT_X, 1920,
+				      4000, 1080, 1, 1, 8192, 8192,
+				      &width, &height));
+	CHECK(width == 4000 && height == 1920);
+	CHECK(wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_180,
+				      0, 1024, 768, 2048, 1200, 8192, 8192,
+				      &width, &height));
+	CHECK(width == 2048 && height == 1200);
+	CHECK(!wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_90,
+				       1920, 1920, 1080, 1, 1, 2999, 8192,
+				       &width, &height));
+	CHECK(!wRandRScreenSizeForMode(1920, 1080, XCB_RANDR_ROTATION_ROTATE_270,
+				       1920, 1920, 1080, 1, 1, 8192, 1919,
+				       &width, &height));
+}
+#endif
+
 int main(void)
 {
 	test_full_spec();
@@ -316,6 +348,9 @@ int main(void)
 	test_clamp_to_area();
 	test_place_limits();
 	test_mask_bits();
+#ifdef USE_RANDR
+	test_randr_screen_size();
+#endif
 
 	return check_report("check_geometry");
 }

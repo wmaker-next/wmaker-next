@@ -2204,6 +2204,18 @@ static int setWorkspaceBack(WScreen *scr, void *tdata, void *bar)
 	return 0;
 }
 
+void wDefaultRefreshWorkspaceBackground(WScreen *scr)
+{
+	if (scr->flags.backimage_helper_launched) {
+		SendHelperMessage(scr, 'R', scr->current_workspace + 1, NULL);
+		return;
+	}
+
+	(void) wConfigApplyWorkspaceBackgroundSpec(scr, "WorkspaceBack",
+	    WCFG_BACKGROUND_WORKSPACE, &w_global.config->workspace_back,
+	    "(solid, \"rgb:50/50/75\")");
+}
+
 void wDefaultsReconfigure(void)
 {
 	int i;
