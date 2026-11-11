@@ -1,9 +1,9 @@
 # cppcheck suppressions for the check-cppcheck gate.
-# 
+#
 # Cosmetic check IDs are disabled tree-wide with the reason inline.
 # Per-site entries carry their own reason; the line numbers are
 # anchored to the current tree and are refreshed when the code moves.
-# 
+#
 # Syntax: <id>[:file[:line]]
 
 # --- cosmetic check IDs, disabled tree-wide -----------------------------
@@ -34,24 +34,25 @@ unknownMacro
 # cppcheck cannot parse two constructs the compiler accepts (an
 # initializer list in wmsoundd, a paren grouping in wtableview)
 syntaxError
-# pre-existing printf/scanf signedness warts, tracked for a dedicated
+# check-level=normal branch-limiting notices are tool output, not code
+# findings
+normalCheckLevelMaxBranches
+# small integer sentinels and tag values stored in void * (menu
+# shortcuts, hash payloads, table column ids) are an intentional idiom
+# and round-trip on every supported target
+intToPointerCast
+# pre-existing printf/scanf signedness wart, tracked for a dedicated
 # format-signedness cleanup pass
-invalidScanfArgType_int
-invalidPrintfArgType_sint
 invalidPrintfArgType_uint
 # widget-struct members kept for the shared layout shape or reserved
 # fields; deleting members across WINGs is invasive for zero behavior
 # change
 unusedStructMember
 # sample and test sources keep their unused locals for clarity
-unusedVariable:WINGs/Examples/colorpick.c
-unusedVariable:WINGs/Examples/fontl.c
 unusedVariable:WINGs/Examples/puzzle.c
 unusedVariable:WINGs/Tests/testmywidget.c
 unusedVariable:WINGs/Tests/wmfile.c
 unusedVariable:WINGs/Tests/wmquery.c
-unusedVariable:WINGs/Tests/wtest.c
-unassignedVariable:wrlib/Tests/check_load.c
 
 # --- false positives, per site ------------------------------------------
 # wmalloc() zero-fills and stack structs whose consumers read only the
@@ -59,15 +60,16 @@ unassignedVariable:wrlib/Tests/check_load.c
 uninitvar:src/moveres.c
 uninitvar:WPrefs.app/editmenu.c
 uninitvar:src/dock.c
-uninitvar:src/event_input.c
 uninitvar:src/placement.c
-uninitvar:src/stacking.c
 uninitvar:src/wmspec.c
 uninitvar:src/startup_notify.c
 uninitvar:WINGs/selection.c
 uninitvar:WINGs/wfontpanel.c
 uninitvar:WINGs/wcolorpanel.c
 uninitStructMember:WINGs/wcolorpanel.c
+# the levels bag holds fully built frames but stores them as void *, so
+# the walked fields look uninitialized to value flow
+uninitvar:src/stacklist.c
 # swin is assigned by the WM_ETARETI_ARRAY for-init before every use;
 # cppcheck fails to expand the macro and sees the pointer as never set
 uninitvar:src/keybind.c
@@ -76,42 +78,58 @@ preprocessorErrorDirective:wrlib/wraster.h
 # the member mirrors the shared two-column WPREFS_TABLE_workspace_layouts
 # shape consumed by check_wprefs_schema; only the label column is used here
 unusedStructMember:WPrefs.app/Workspace.c
-# checkWorkspaceChange() can cross the workspace through crossWorkspace(),
-# mutating current_workspace between the two reads; cppcheck's value flow
-# stops at the first call and cannot see it
-knownConditionTrueFalse:src/moveres.c:1637
-# the idle pan timer callback mutates timed_out inside
-# W_HandleInputEvents, invisible to value flow
-oppositeInnerCondition:src/vdesk.c:471
-# cppcheck reads the again-label flow out of order; the init is read by
-# the walk below
-redundantInitialization:src/stacking.c:189
-# i is bounded by beforecrlf on the walks above; value flow does not
-# connect them
-arrayIndexThenCheck:WINGs/wmisc.c:150
-# the int-to-long widening for the time math is intended
-truncLongCastAssignment:src/screen.c:860
-# debug hygiene in the free wrapper, no outside effect intended
-uselessAssignmentPtrArg:WINGs/memory.c:195
-# flag is normalized from any nonzero bool before the compare
-selfAssignment:WINGs/wlabel.c:187
-# defensive guards after early returns; value flow sees one caller
-nullPointerRedundantCheck:src/dock.c:974
-nullPointerRedundantCheck:src/rootmenu.c:525
-nullPointerRedundantCheck:WINGs/string.c:225
-nullPointerRedundantCheck:WINGs/string.c:228
-nullPointerRedundantCheck:WINGs/wtext.c:1191
-# the value flow of the item loop is lost to the unexpanded
-# WM_ITERATE_ARRAY macro, which makes i and itemHeight look dead
-knownArgument:WINGs/wmultiselectpopup.c:428
-knownArgument:WINGs/wpopupbutton.c:456
-# the if and its equivalent assignment read clearer than a bare
-# assignment; value flow proves them identical
-duplicateConditionalAssign:WINGs/wtext.c:3680
-# the else-if restates the opposite of the 127 arm on purpose for the
-# reader; the arms do not merge cleanly
-multiCondition:src/main.c:348
+# workspace_count never exceeds MAX_WORKSPACES (wWorkspaceNew refuses to
+# grow past it), so the fill loop covers every index the planners read
+uninitvar:src/workspace.c:686
+uninitvar:src/workspace.c:804
+uninitvar:src/workspace.c:828
 # prop is read only when got is true, and got is set together with prop
 uninitvar:util/wxpaste.c
-# new_screens is allocated with wmalloc(), which zero-fills
-uninitvar:src/randr.c
+# orig_x/orig_y carry the last pointer sample into the next while(1)
+# pass; value flow does not cross the switch back-edge
+unreadVariable:src/moveres.c:2811
+unreadVariable:src/moveres.c:2812
+# the idle pan timer callback mutates timed_out inside
+# W_HandleInputEvents, invisible to value flow
+oppositeInnerCondition:src/vdesk.c:523
+# separateCommand's tmp is both the walk cursor and next_token's
+# out-param; the do-while re-checks it after every call
+nullPointerRedundantCheck:src/rootmenu.c:534
+# wstrconcat returns early for every null combination; both arguments
+# are non-null past the case split
+nullPointerRedundantCheck:WINGs/string.c:250
+nullPointerRedundantCheck:WINGs/string.c:253
+# the value flow of the item loop is lost to the unexpanded
+# WM_ITERATE_ARRAY macro, which makes i and itemHeight look dead
+knownArgument:WINGs/wmultiselectpopup.c:470
+knownArgument:WINGs/wmultiselectpopup.c:473
+knownArgument:WINGs/wpopupbutton.c:498
+
+# --- real findings, accepted as-is, per site ----------------------------
+# ptr = NULL is debug hygiene in the free wrapper; no outside effect is
+# intended
+uselessAssignmentPtrArg:WINGs/memory.c:197
+# flag is normalized from any nonzero bool before the compare
+selfAssignment:WINGs/wlabel.c:212
+# the if and its equivalent assignment read clearer than a bare
+# assignment; value flow proves them identical
+duplicateConditionalAssign:WINGs/wtext.c:3688
+# the else-if restates the opposite of the 127 arm on purpose for the
+# reader; the arms do not merge cleanly
+multiCondition:src/main.c:349
+# the zero initializer is defensive; every path that reads textRight
+# assigns it first
+unreadVariable:src/dialog.c:849
+# wlist is reassigned at the again: label before any read; the
+# initializer only mirrors wStackLower's declaration shape
+redundantInitialization:src/stacklist.c:61
+# the cleanup loop is a no-op for the empty input it guards, kept
+# beside the matching free in the parse path
+unsignedLessThanZero:src/Tests/fuzz_appmenu.c:64
+# done is set before break to document the exit reason; the loop
+# condition is its only reader
+unreadVariable:util/wmclipd.c:4392
+unreadVariable:util/wmclipd.c:4406
+# the head-area product of two ints fits in 32 bits for any X11
+# geometry; the widening is only the accumulator type
+truncLongCastAssignment:src/screen.c:977
