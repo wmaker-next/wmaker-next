@@ -34,6 +34,7 @@
 #include "screen.h"
 #include "xinerama.h"
 #include "config_values.h"
+#include "geometry.h"
 #include "osdview.h"
 
 #define OSDVIEW_PAD_W 8
@@ -342,52 +343,12 @@ static void handleEvents(xcb_generic_event_t *event, void *clientData)
 void wPlaceOSDOnHead(WScreen *scr, WOSDView *osd, int wd_pos, int pad)
 {
 	WMRect rect;
-	int head, w, h, px, py;
+	WMPoint p;
+	int head;
 
 	head = wGetHeadForPointerLocation(scr);
 	rect = wGetRectForHead(scr, head);
-	w = W_VIEW_WIDTH(osd->view);
-	h = W_VIEW_HEIGHT(osd->view);
-
-	switch (wd_pos) {
-	case WD_TOP:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + pad;
-		break;
-	case WD_BOTTOM:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + rect.size.height - h - pad;
-		break;
-	case WD_LEFT:
-		px = rect.pos.x + pad;
-		py = rect.pos.y + (rect.size.height - h) / 2;
-		break;
-	case WD_RIGHT:
-		px = rect.pos.x + rect.size.width - w - pad;
-		py = rect.pos.y + (rect.size.height - h) / 2;
-		break;
-	case WD_TOPLEFT:
-		px = rect.pos.x + pad;
-		py = rect.pos.y + pad;
-		break;
-	case WD_TOPRIGHT:
-		px = rect.pos.x + rect.size.width - w - pad;
-		py = rect.pos.y + pad;
-		break;
-	case WD_BOTTOMLEFT:
-		px = rect.pos.x + pad;
-		py = rect.pos.y + rect.size.height - h - pad;
-		break;
-	case WD_BOTTOMRIGHT:
-		px = rect.pos.x + rect.size.width - w - pad;
-		py = rect.pos.y + rect.size.height - h - pad;
-		break;
-	case WD_CENTER:
-	default:
-		px = rect.pos.x + (rect.size.width - w) / 2;
-		py = rect.pos.y + (rect.size.height - h) / 2;
-		break;
-	}
-
-	W_MoveView(osd->view, px, py);
+	p = wGetOSDPointToPlaceRect(rect, wd_pos, W_VIEW_WIDTH(osd->view),
+				    W_VIEW_HEIGHT(osd->view), pad);
+	W_MoveView(osd->view, p.x, p.y);
 }

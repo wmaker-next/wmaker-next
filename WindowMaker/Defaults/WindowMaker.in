@@ -16,7 +16,18 @@
 	ClipMergedInDock = NO;
 	DisableMiniwindows = NO;
 	EnableWorkspacePager = NO;
+	/* 1..16667, values outside the range fall back to 64. Very large
+	 * sizes can exceed the switch panel resource budget and cycle
+	 * without a visible panel. */
 	SwitchPanelIconSize = 64;
+	/* center, top, bottom, left, right or a corner like topleft.
+	 * top/bottom/left/right mean the matching edge center. */
+	SwitchPanelPlacement = center;
+	/* Empty or "Cursor" targets the head holding the pointer,
+	 * "Window" the head holding the focused window. Otherwise a
+	 * case-sensitive RandR monitor name, "name:" plus a literal
+	 * monitor name, or "#N" for an unnamed head index. */
+	SwitchPanelMonitor = "";
 	/* Label fields: T/t title, I/i class, C instance, W/w workspace, S/s state. */
 	SwitchPanelLabelFormat = "%T";
 	SwitchPanelGroupLabelFormat = "%I";

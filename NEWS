@@ -25,6 +25,23 @@ managed. The XKB language label, root-menu VISUAL, DEPTH, SCR_WIDTH and
 SCR_HEIGHT macros, and cut-buffer paste now use the screen they belong
 to.
 
+Switch panel placement
+----------------------
+
+SwitchPanelPlacement chooses where the switch panel (Alt-Tab) appears:
+"center" (the default), an edge name like "top", or a corner like
+"topleft". SwitchPanelMonitor chooses the head. Its default keeps the
+historical head under the pointer, with "Cursor", "Window", a RandR
+monitor name or "#0" for an unnamed head as alternatives. Both keys
+are runtime-reloadable, have no WPrefs panel, and are set with
+wdwrite. An oversized panel is anchored at the head origin on each
+overflowing axis, and the panel is re-placed when the app-group
+sub-strip opens or closes, so the default center placement re-centers
+instead of growing downward from a fixed corner. SwitchPanelIconSize
+now accepts 1 to 16667 and falls back to 64 with a warning outside
+that range. Very large sizes can exceed the switch panel resource
+budget, then cycling continues without a visible panel.
+
 Switch panel label formats
 --------------------------
 

@@ -933,6 +933,7 @@ W_View *W_CreateRootView(W_Screen *screen);
 void W_DestroyView(W_View *view);
 
 void W_RealizeView(W_View *view);
+bool W_RealizeViewChecked(W_View *view);
 
 void W_RedisplayView(WMView *view);
 

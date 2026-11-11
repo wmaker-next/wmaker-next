@@ -29,6 +29,11 @@ PASSED=0
 FAILED=0
 
 cleanup() {
+    # release any cycling modifier an aborted test left logically held:
+    # XTEST presses outlive the client that sent them and would pin
+    # StartWindozeCycle in its event wait with the panel still mapped
+    DISPLAY=$DPY xdotool keyup alt 2>/dev/null
+    DISPLAY=$DPY xdotool keyup super 2>/dev/null
     while read -r p; do
         [ -n "$p" ] && kill "$p" 2>/dev/null
     done < "$PIDFILE"

@@ -54,6 +54,8 @@ wmaker_SOURCES = 	\
 	cursor_hide.h \
 	geometry.c \
 	geometry.h \
+	headresolve.c \
+	headresolve.h \
 	cycling.c \
 	cycling.h \
 	def_pixmaps.h \
@@ -95,6 +97,8 @@ wmaker_SOURCES = 	\
 	osdep.h \
 	icon.c \
 	icon.h \
+	iconscale.c \
+	iconscale.h \
 	ipc.c \
 	ipc.h \
 	keybind.c \
@@ -132,8 +136,10 @@ wmaker_SOURCES = 	\
 	session.c \
 	shutdown.h \
 	shutdown.c \
-	swlabel.c \
-	swlabel.h \
+	swp_label.c \
+	swp_label.h \
+	swp_size.c \
+	swp_size.h \
 	switchpanel.c \
 	switchpanel.h \
 	stacking.c \

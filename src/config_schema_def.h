@@ -126,7 +126,12 @@
 	_(ENABLE_WORKSPACE_PAGER, "EnableWorkspacePager", BOOL, enable_workspace_pager, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_ICON_SIZE, "SwitchPanelIconSize", INT, switch_panel_icon_size, "64", \
-	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	  NULL, 1, 16667, WCFG_RUNTIME_RELOAD, 0) \
+	_(SWITCH_PANEL_PLACEMENT, "SwitchPanelPlacement", ENUM, \
+	  switch_panel_placement, "center", switch_panel_placements, INT_MIN, INT_MAX, \
+	  WCFG_RUNTIME_RELOAD, 0) \
+	_(SWITCH_PANEL_MONITOR, "SwitchPanelMonitor", STRING, switch_panel_monitor, "", \
+	  NULL, 0, 0, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_LABEL_FORMAT, "SwitchPanelLabelFormat", STRING, switch_panel_label_format, "%T", \
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SWITCH_PANEL_GROUP_LABEL_FORMAT, "SwitchPanelGroupLabelFormat", STRING, switch_panel_group_label_format, "%I", \

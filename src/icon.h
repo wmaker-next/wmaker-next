@@ -24,6 +24,7 @@
 
 #include "wcore.h"
 #include "window.h"
+#include "iconscale.h"
 
 #define TILE_NORMAL	0
 #define TILE_CLIP	1
@@ -72,7 +73,6 @@ void update_icon_pixmap(WIcon *icon);
 int wIconChangeImageFile(WIcon *icon, const char *file);
 
 int wIconEffectiveSize(void);
-RImage *wIconValidateIconSize(RImage *icon, int max_size);
 RImage *get_rimage_icon_from_wm_hints(WIcon *icon);
 RImage *wWindowGetIconImage(WWindow *wwin);
 

@@ -138,7 +138,11 @@ src/Tests/check_dockslots
 src/Tests/check_focusmodel
 src/Tests/check_placecompute
 src/Tests/check_stacklist
-src/Tests/check_swlabel
+src/Tests/check_swp_label
+src/Tests/check_swp_size
+src/Tests/check_iconfit
+src/Tests/check_headresolve
+src/Tests/check_icon_scale_failure
 src/Tests/check_wsplan
 src/Tests/check_appmenu
 src/Tests/check_xkb_label

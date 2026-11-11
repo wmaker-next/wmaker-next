@@ -204,12 +204,14 @@ W_View *W_CreateUnmanagedTopView(W_Screen * screen)
 	return view;
 }
 
-void W_RealizeView(W_View * view)
+static bool realize_view(W_View *view, bool checked)
 {
 	xcb_window_t parentWID;
 	xcb_connection_t *dpy = view->screen->display;
 	W_View *ptr;
 	xcb_visualtype_t *visual;
+	xcb_generic_error_t *error;
+	xcb_void_cookie_t cookie;
 	int depth;
 	uint32_t vals[15];
 
@@ -218,14 +220,14 @@ void W_RealizeView(W_View * view)
 
 	if (view->parent && !view->parent->flags.realized) {
 		wwarning("trying to realize widget of unrealized parent");
-		return;
+		return false;
 	}
 
 	if (!view->flags.realized) {
 
 		if (view->parent == NULL) {
 			wwarning("trying to realize widget without parent");
-			return;
+			return false;
 		}
 
 		visual = view->screen->visual;
@@ -252,14 +254,32 @@ void W_RealizeView(W_View * view)
 
 		parentWID = view->parent->window;
 		view->window = xcb_generate_id(dpy);
-		xcb_create_window(dpy, depth, view->window, parentWID,
-				  VDEV(view->screen, view->pos.x),
-				  VDEV(view->screen, view->pos.y),
-				  VDEV(view->screen, view->size.width),
-				  VDEV(view->screen, view->size.height), 0,
-				  XCB_WINDOW_CLASS_INPUT_OUTPUT,
-				  visual ? visual->visual_id : XCB_COPY_FROM_PARENT,
-				  wXWindowAttrValues(&view->attribs, view->attribFlags, vals), vals);
+		if (checked) {
+			cookie = xcb_create_window_checked(dpy, depth, view->window, parentWID,
+					 VDEV(view->screen, view->pos.x),
+					 VDEV(view->screen, view->pos.y),
+					 VDEV(view->screen, view->size.width),
+					 VDEV(view->screen, view->size.height), 0,
+					 XCB_WINDOW_CLASS_INPUT_OUTPUT,
+					 visual ? visual->visual_id : XCB_COPY_FROM_PARENT,
+					 wXWindowAttrValues(&view->attribs, view->attribFlags, vals), vals);
+			error = xcb_request_check(dpy, cookie);
+			if (error || xcb_connection_has_error(dpy)) {
+				wwarning("could not create widget window");
+				free(error);
+				view->window = XCB_NONE;
+				return false;
+			}
+		} else {
+			xcb_create_window(dpy, depth, view->window, parentWID,
+					  VDEV(view->screen, view->pos.x),
+					  VDEV(view->screen, view->pos.y),
+					  VDEV(view->screen, view->size.width),
+					  VDEV(view->screen, view->size.height), 0,
+					  XCB_WINDOW_CLASS_INPUT_OUTPUT,
+					  visual ? visual->visual_id : XCB_COPY_FROM_PARENT,
+					  wXWindowAttrValues(&view->attribs, view->attribFlags, vals), vals);
+		}
 
 		WMHashInsert(ViewTable, (void *)(uintptr_t) view->window, view);
 		WMScreenNoteDrawableSizeScaled(view->screen, view->window,
@@ -278,10 +298,22 @@ void W_RealizeView(W_View * view)
 	/* realize children */
 	ptr = view->childrenList;
 	while (ptr != NULL) {
-		W_RealizeView(ptr);
+		if (!realize_view(ptr, checked))
+			return false;
 
 		ptr = ptr->nextSister;
 	}
+	return true;
+}
+
+void W_RealizeView(W_View *view)
+{
+	(void)realize_view(view, false);
+}
+
+bool W_RealizeViewChecked(W_View *view)
+{
+	return realize_view(view, true);
 }
 
 void W_ReparentView(W_View * view, W_View * newParent, int x, int y)

@@ -37,6 +37,8 @@ struct WIPCClient;
  * and dock auto-launch so spawned children inherit a live socket */
 void wIPCServerStart(struct _WScreen *scr);
 
+int wIPCWaitForCycle(struct _WScreen *scr, int timeout_ms);
+
 /* queue a shutdown event to subscribers, drain pending writes for a short
  * bounded interval, then close every client and unlink the socket, mode
  * is one of "exit" or "restart" and goes into the event payload, called

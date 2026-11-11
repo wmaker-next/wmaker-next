@@ -2588,6 +2588,243 @@ out:
 /* wConfigSchemaRequiresRestart() is the WPrefs-visible view of the
  * WCFG_STARTUP_ONLY schema flag: nonzero for a still-frozen key, zero for
  * a runtime-reload key or an unknown key. */
+/* SwitchPanelPlacement: every spelling and every rejection */
+static void test_switch_panel_placement_values(void)
+{
+	static const struct {
+		const char *name;
+		int value;
+	} cases[] = {
+		{ "center", WD_CENTER },
+		{ "top", WD_TOP },
+		{ "bottom", WD_BOTTOM },
+		{ "left", WD_LEFT },
+		{ "right", WD_RIGHT },
+		{ "topleft", WD_TOPLEFT },
+		{ "topright", WD_TOPRIGHT },
+		{ "bottomleft", WD_BOTTOMLEFT },
+		{ "bottomright", WD_BOTTOMRIGHT },
+		{ "TopLeft", WD_TOPLEFT },
+		{ "BOTTOMRIGHT", WD_BOTTOMRIGHT },
+	};
+	static const char * const rejected[] = {
+		"none", "edge", "", "top left", "center2", "middle",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+
+		dict = dict_from_desc("{ }");
+		if (!dict)
+			continue;
+		dict_put_string(dict, "SwitchPanelPlacement", cases[i].name);
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config && config->switch_panel_placement != cases[i].value) {
+			fprintf(stderr,
+				"FAIL placement '%s': got %d expected %d\n",
+				cases[i].name, config->switch_panel_placement,
+				cases[i].value);
+			check_failures++;
+		}
+		if (config)
+			wConfigDestroy(config);
+		WMReleasePropList(dict);
+	}
+
+	for (i = 0; i < sizeof(rejected) / sizeof(rejected[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+
+		dict = dict_from_desc("{ }");
+		if (!dict)
+			continue;
+		dict_put_string(dict, "SwitchPanelPlacement", rejected[i]);
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config) {
+			CHECK(config->switch_panel_placement == WD_CENTER);
+			wConfigDestroy(config);
+		}
+		WMReleasePropList(dict);
+	}
+
+	{
+		WMPropList *dict = dict_from_desc("{ SwitchPanelPlacement = (); }");
+		WConfig *config;
+
+		if (dict) {
+			config = wConfigReadWindowMaker(dict);
+			CHECK(config != NULL);
+			if (config) {
+				CHECK(config->switch_panel_placement == WD_CENTER);
+				wConfigDestroy(config);
+			}
+			WMReleasePropList(dict);
+		}
+	}
+	{
+		WMPropList *dict = dict_from_desc("{ SwitchPanelPlacement = (top, left); }");
+		WConfig *config;
+
+		if (dict) {
+			config = wConfigReadWindowMaker(dict);
+			CHECK(config != NULL);
+			if (config) {
+				CHECK(config->switch_panel_placement == WD_CENTER);
+				wConfigDestroy(config);
+			}
+			WMReleasePropList(dict);
+		}
+	}
+}
+
+/* SwitchPanelMonitor: STRING data kept verbatim, not topology */
+static void test_switch_panel_monitor_strings(void)
+{
+	static const char * const kept[] = {
+		"", "HDMI-1", "eDP-1", "#0", "#5abc", "#2147483648",
+		"#-1", "not an output", "é",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(kept) / sizeof(kept[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+
+		dict = dict_from_desc("{ }");
+		if (!dict)
+			continue;
+		dict_put_string(dict, "SwitchPanelMonitor", kept[i]);
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config) {
+			CHECK_STR(config->switch_panel_monitor, kept[i]);
+			wConfigDestroy(config);
+		}
+		WMReleasePropList(dict);
+	}
+
+	{
+		WMPropList *dict = dict_from_desc("{ SwitchPanelMonitor = (); }");
+		WConfig *config;
+
+		if (dict) {
+			config = wConfigReadWindowMaker(dict);
+			CHECK(config != NULL);
+			if (config) {
+				CHECK_STR(config->switch_panel_monitor, "");
+				wConfigDestroy(config);
+			}
+			WMReleasePropList(dict);
+		}
+	}
+}
+
+/* SwitchPanelIconSize bounds, invalid values adopt 64 */
+static void test_switch_panel_icon_size_bounds(void)
+{
+	static const char * const accepted[] = {
+		"{ SwitchPanelIconSize = 1; }", "{ SwitchPanelIconSize = 64; }",
+		"{ SwitchPanelIconSize = 16667; }",
+	};
+	static const char * const rejected[] = {
+		"{ SwitchPanelIconSize = 0; }", "{ SwitchPanelIconSize = \"-5\"; }",
+		"{ SwitchPanelIconSize = \"-2147483648\"; }",
+		"{ SwitchPanelIconSize = 16668; }", "{ SwitchPanelIconSize = 2147483647; }",
+		"{ SwitchPanelIconSize = \"bad\"; }", "{ SwitchPanelIconSize = (); }",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(accepted) / sizeof(accepted[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+		int want = (i == 0) ? 1 : (i == 1) ? 64 : 16667;
+
+		dict = dict_from_desc(accepted[i]);
+		if (!dict)
+			continue;
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config) {
+			CHECK(config->switch_panel_icon_size == want);
+			wConfigDestroy(config);
+		}
+		WMReleasePropList(dict);
+	}
+
+	for (i = 0; i < sizeof(rejected) / sizeof(rejected[0]); i++) {
+		WMPropList *dict;
+		WConfig *config;
+
+		dict = dict_from_desc(rejected[i]);
+		if (!dict)
+			continue;
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config != NULL);
+		if (config) {
+			CHECK(config->switch_panel_icon_size == 64);
+			wConfigDestroy(config);
+		}
+		WMReleasePropList(dict);
+	}
+
+	{
+		WMPropList *old_dict, *new_dict;
+
+		reset_preferences();
+		old_dict = dict_from_desc("{ SwitchPanelIconSize = 40; }");
+		new_dict = dict_from_desc("{ SwitchPanelIconSize = 0; }");
+		if (old_dict && new_dict)
+			apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+		CHECK(w_global.config->switch_panel_icon_size == 64);
+		if (old_dict)
+			WMReleasePropList(old_dict);
+		if (new_dict)
+			WMReleasePropList(new_dict);
+		wConfigClearWindowMaker();
+	}
+}
+
+/* both keys reload at runtime. Reset keys explicitly: removing a
+ * runtime key keeps the adopted value */
+static void test_switch_panel_placement_live_apply(void)
+{
+	WMPropList *old_dict, *new_dict;
+
+	reset_preferences();
+	old_dict = dict_from_desc("{ SwitchPanelPlacement = topleft; "
+				  "SwitchPanelMonitor = \"HDMI-1\"; }");
+	new_dict = dict_from_desc("{ SwitchPanelPlacement = bottomright; "
+				  "SwitchPanelMonitor = \"#1\"; }");
+	if (!old_dict || !new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->switch_panel_placement == WD_BOTTOMRIGHT);
+	CHECK_STR(w_global.config->switch_panel_monitor, "#1");
+
+	WMReleasePropList(new_dict);
+	new_dict = dict_from_desc("{ SwitchPanelPlacement = edge; "
+				  "SwitchPanelMonitor = \"DP-2\"; }");
+	if (!new_dict)
+		goto out;
+	apply_runtime_defaults_for_test(NULL, new_dict, old_dict);
+	CHECK(w_global.config->switch_panel_placement == WD_CENTER);
+	CHECK_STR(w_global.config->switch_panel_monitor, "DP-2");
+
+	CHECK(!wConfigSchemaRequiresRestart("SwitchPanelPlacement"));
+	CHECK(!wConfigSchemaRequiresRestart("SwitchPanelMonitor"));
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	wConfigClearWindowMaker();
+}
+
 static void test_schema_requires_restart(void)
 {
 	const WConfigEntry *schema;
@@ -3285,6 +3522,10 @@ int main(void)
 	test_dock_edge_roundtrip();
 	test_enable_workspace_pager_live_apply();
 	test_switch_panel_icon_size_live_apply();
+	test_switch_panel_placement_values();
+	test_switch_panel_monitor_strings();
+	test_switch_panel_icon_size_bounds();
+	test_switch_panel_placement_live_apply();
 	test_switch_panel_label_formats_live_apply();
 	test_pixmap_path_live_apply();
 	test_schema_requires_restart();

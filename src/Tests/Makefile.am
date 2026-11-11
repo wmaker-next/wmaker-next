@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_swlabel check_calc check_xsmp check_layout check_geometry check_dockgeom check_stacklist check_placecompute check_wsplan check_focusmodel check_dockslots check_xlibfree check_xerror check_xsettings check_xkb_label check_appmenu
+check_PROGRAMS = check_config check_wdefaults check_wprefs_schema check_desktopfile check_cmdexpand check_swp_label check_swp_size check_iconfit check_icon_scale_failure check_headresolve check_calc check_xsmp check_layout check_geometry check_dockgeom check_stacklist check_placecompute check_wsplan check_focusmodel check_dockslots check_xlibfree check_xerror check_xsettings check_xkb_label check_appmenu
 TESTS = $(check_PROGRAMS)
 
 if BUILD_ACCENTPICKER
@@ -99,9 +99,6 @@ check_cmdexpand_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
 
-check_swlabel_SOURCES = check_swlabel.c ../swlabel.c
-check_swlabel_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
-
 check_appmenu_SOURCES = check_appmenu.c ../appmenuparse.c
 check_appmenu_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
 
@@ -121,6 +118,41 @@ check_geometry_SOURCES = \
 check_geometry_LDADD = \
 	$(top_builddir)/WINGs/libWUtil.la \
 	@INTLIBS@
+
+check_headresolve_SOURCES = \
+	check_headresolve.c \
+	../headresolve.c
+
+check_headresolve_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@
+
+check_swp_label_SOURCES = check_swp_label.c ../swp_label.c
+check_swp_label_LDADD = $(top_builddir)/WINGs/libWUtil.la @INTLIBS@
+
+check_swp_size_SOURCES = \
+	check_swp_size.c \
+	../swp_size.c
+
+check_swp_size_LDADD = \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@ \
+	@LIBM@
+
+check_iconfit_SOURCES = \
+	check_iconfit.c \
+	../iconscale.c \
+	../swp_size.c
+
+check_iconfit_LDADD = \
+	$(top_builddir)/wrlib/libwraster.la \
+	$(top_builddir)/WINGs/libWUtil.la \
+	@INTLIBS@ \
+	@LIBM@
+
+check_icon_scale_failure_SOURCES = \
+	check_icon_scale_failure.c \
+	../iconscale.c
 
 check_dockgeom_SOURCES = \
 	check_dockgeom.c \

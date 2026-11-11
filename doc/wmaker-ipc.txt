@@ -122,6 +122,10 @@ recursively launch the configured locker.
 
 Command verbs (request type 0)
 ------------------------------
+While a window cycle is open, reconfigure, info, get-keybinds and
+queries remain available. Other commands return an error until the
+cycle ends.
+
     reconfigure
     restart [WM]
     exit

@@ -44,10 +44,12 @@ POTFILES  = \
 	$(top_srcdir)/src/focusmodel.c \
 	$(top_srcdir)/src/framewin.c \
 	$(top_srcdir)/src/geometry.c \
+	$(top_srcdir)/src/headresolve.c \
 	$(top_srcdir)/src/geomview.c \
 	$(top_srcdir)/src/osdview.c \
 	$(top_srcdir)/src/hotcorner.c \
 	$(top_srcdir)/src/icon.c \
+	$(top_srcdir)/src/iconscale.c \
 	$(top_srcdir)/src/ipc.c \
 	$(top_srcdir)/src/keybind_descriptions.h \
 	$(top_srcdir)/src/keybind.c \
@@ -80,7 +82,8 @@ POTFILES  = \
 	$(top_srcdir)/src/startup.c \
 	$(top_srcdir)/src/startup_notify.c \
 	$(top_srcdir)/src/superfluous.c \
-	$(top_srcdir)/src/swlabel.c \
+	$(top_srcdir)/src/swp_label.c \
+	$(top_srcdir)/src/swp_size.c \
 	$(top_srcdir)/src/switchpanel.c \
 	$(top_srcdir)/src/switchmenu.c \
 	$(top_srcdir)/src/tabgroup.c \

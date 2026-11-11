@@ -81,6 +81,128 @@ AccentPickerSets = ("auto", "Currency");
 Per-base overrides can be added in the
 .B AccentPickerVariants
 dictionary in the WindowMaker defaults domain.
+.SH "SWITCH PANEL"
+The switch panel (the Alt-Tab popup) can be placed on a chosen screen
+position of a chosen head. Both settings live in the WindowMaker
+defaults domain and are written with
+.BR wdwrite (1).
+Neither has a WPrefs panel, and changing them does not move a switch
+panel that is already open. The new values apply on the next switch
+panel invocation.
+Removing either key on runtime reload retains its current value.
+Writing an empty
+.B SwitchPanelMonitor
+explicitly restores pointer-head selection.
+.PP
+.B SwitchPanelPlacement
+selects the position within the target head. Accepted values are
+.BR center ,
+.BR top ,
+.BR bottom ,
+.BR left ,
+.BR right ,
+.BR topleft ,
+.BR topright ,
+.BR bottomleft
+and
+.BR bottomright ,
+matched case-insensitively.
+.BR top ,
+.BR bottom ,
+.BR left
+and
+.BR right
+mean the matching edge center. The default is
+.BR center .
+A panel that is too large for the head is anchored at the head origin
+on the axes where it does not fit, keeping one icon visible whenever
+the window list is not empty.
+.PP
+.B SwitchPanelMonitor
+selects the head the panel appears on. The default is empty, which
+targets the head holding the pointer. A value is one of the reserved
+keywords, an escaped monitor name, a plain monitor name, or an index
+token:
+.IP \(bu 2
+.BR Cursor ,
+matched case-insensitively, is the reserved keyword for the head
+holding the pointer, the same as the empty default.
+.B Window
+is the reserved keyword for the head holding the window that is
+focused when the cycle starts. When there is no eligible focused
+window, the pointer head is used instead. The keywords are recognized
+before any name lookup, so they select their dynamic mode even when a
+monitor carries the same name.
+.IP \(bu 2
+The case-sensitive prefix
+.B name:
+selects the exact RandR monitor name that follows it. Use it to target
+a monitor whose name would otherwise read as a keyword or an index
+token, for example
+.B "name:Cursor"
+or
+.BR "name:#0" .
+The name after the prefix is never interpreted, so
+.B "name:name:foo"
+selects a monitor actually called
+.BR name:foo ,
+while
+.B name:foo
+selects one called
+.BR foo .
+An empty
+.B name:
+is unresolvable.
+.IP \(bu 2
+Plain monitor names match exactly and case-sensitively, including
+names that begin with
+.BR # .
+Names identify the current monitor objects, not a permanent physical
+display identity. List them with
+.BR "xrandr \-\-listactivemonitors" .
+.IP \(bu 2
+An index token is
+.BI # N
+with non-negative decimal digits only, and addresses the zero-based
+head index
+.I N
+only when that head has no monitor name. So
+.B #0
+names an unnamed head, never a head that carries a name such as
+.BR HDMI-1 .
+Strings like
+.BR #5abc ,
+.BR #+5
+and
+.BR #-1
+are not index tokens and resolve to nothing.
+.PP
+An unknown name, an empty escaped name, a malformed or out-of-range
+index, or a name that disappears after a reconfiguration behaves as if
+the setting were unset: the panel appears on the pointer head and a
+diagnostic is logged once per unresolved value. The value itself is
+kept in the domain, so it can resolve again after a topology change.
+Head indices can change when monitors are added or removed. Prefer
+monitor names. On a single-head setup without a monitor name, the
+empty default and
+.B #0
+both refer to the whole screen.
+.PP
+The default configuration keeps the historical icon count heuristic.
+Choosing a non-center placement, a named or indexed head, or a resolved
+.B Window
+head enables a fit that accounts for the full panel borders in device
+pixels.
+.B SwitchPanelIconSize
+is accepted from 1 to 16667. Any other value logs a warning and uses
+the default 64. The accepted range is a syntax and dimension bound,
+not a promise that every size can show a panel: each panel raster or
+pixmap is limited to 16 MiB and the estimated peak of the panel pixel
+allocations to 64 MiB, and wrlib and the X protocol cap image and
+window dimensions. A very large icon size or window count that exceeds
+one of these limits logs the actual reason and falls back to cycling
+without a visible panel. Icon sizes 1, 2 and 3 render real icons in
+positive, bounded dimensions.
 .SH "OPTIONS"
 .TP
 .BI \-\-clientid " id"

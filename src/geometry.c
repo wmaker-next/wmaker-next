@@ -19,10 +19,22 @@
 
 #include "wconfig.h"
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "config_values.h"
 #include "geometry.h"
+
+/* saturate a wide placement result into the int coordinates X uses */
+static int sat_coord(long long v)
+{
+	if (v > INT_MAX)
+		return INT_MAX;
+	if (v < INT_MIN)
+		return INT_MIN;
+	return (int)v;
+}
 
 /* strict digit scan: no leading-whitespace skipping, no sign; the
  * accumulator wraps modulo 2^64, exactly the semantics the huge-value
@@ -142,4 +154,97 @@ int wParseGeometry(const char *string, int *x, int *y,
 	if (have_y)
 		*y = yval;
 	return mask;
+}
+
+WMPoint wGetPointToPlaceRect(WMRect area, int wd_pos, int width, int height, int pad)
+{
+	long long ax = area.pos.x, ay = area.pos.y;
+	long long aw = area.size.width, ah = area.size.height;
+	long long px, py;
+	WMPoint p;
+
+	switch (wd_pos) {
+	case WD_TOP:
+		px = ax + (aw - width) / 2;
+		py = ay + pad;
+		break;
+	case WD_BOTTOM:
+		px = ax + (aw - width) / 2;
+		py = ay + ah - height - pad;
+		break;
+	case WD_LEFT:
+		px = ax + pad;
+		py = ay + (ah - height) / 2;
+		break;
+	case WD_RIGHT:
+		px = ax + aw - width - pad;
+		py = ay + (ah - height) / 2;
+		break;
+	case WD_TOPLEFT:
+		px = ax + pad;
+		py = ay + pad;
+		break;
+	case WD_TOPRIGHT:
+		px = ax + aw - width - pad;
+		py = ay + pad;
+		break;
+	case WD_BOTTOMLEFT:
+		px = ax + pad;
+		py = ay + ah - height - pad;
+		break;
+	case WD_BOTTOMRIGHT:
+		px = ax + aw - width - pad;
+		py = ay + ah - height - pad;
+		break;
+	case WD_CENTER:
+	default:
+		px = ax + (aw - width) / 2;
+		py = ay + (ah - height) / 2;
+		break;
+	}
+
+	p.x = sat_coord(px);
+	p.y = sat_coord(py);
+	return p;
+}
+
+WMPoint wGetOSDPointToPlaceRect(WMRect area, int wd_pos, int width, int height, int pad)
+{
+	WMPoint p = wGetPointToPlaceRect(area, wd_pos, width, height, pad);
+
+	if (area.size.width < (unsigned int)width &&
+	    (wd_pos == WD_CENTER || wd_pos == WD_TOP || wd_pos == WD_BOTTOM ||
+	     wd_pos < WD_CENTER || wd_pos > WD_BOTTOMRIGHT))
+		p.x = area.pos.x + (area.size.width - width) / 2;
+	if (area.size.height < (unsigned int)height &&
+	    (wd_pos == WD_CENTER || wd_pos == WD_LEFT || wd_pos == WD_RIGHT ||
+	     wd_pos < WD_CENTER || wd_pos > WD_BOTTOMRIGHT))
+		p.y = area.pos.y + (area.size.height - height) / 2;
+	return p;
+}
+
+WMPoint wClampPointToArea(WMRect area, int x, int y, int width, int height)
+{
+	long long ax = area.pos.x, ay = area.pos.y;
+	long long aw = area.size.width, ah = area.size.height;
+	long long px = x, py = y;
+	WMPoint p;
+
+	if (aw <= width)
+		px = ax;
+	else if (px < ax)
+		px = ax;
+	else if (px > ax + aw - width)
+		px = ax + aw - width;
+
+	if (ah <= height)
+		py = ay;
+	else if (py < ay)
+		py = ay;
+	else if (py > ay + ah - height)
+		py = ay + ah - height;
+
+	p.x = sat_coord(px);
+	p.y = sat_coord(py);
+	return p;
 }

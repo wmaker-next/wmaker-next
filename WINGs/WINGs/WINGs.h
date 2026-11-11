@@ -1083,6 +1083,7 @@ void WMMapSubwidgets(WMWidget *w);
 void WMUnmapSubwidgets(WMWidget *w);
 
 void WMRealizeWidget(WMWidget *w);
+bool WMRealizeWidgetChecked(WMWidget *w);
 
 void WMReparentWidget(WMWidget *w, WMWidget *newParent, int x, int y);
 

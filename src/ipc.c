@@ -1131,6 +1131,12 @@ static WMPropList *handle_one_command(WScreen *scr, WMPropList *cmd, int *final)
 		return pl_result(0, msg);
 	}
 
+	if (scr->flags.doing_alt_tab &&
+	    strcmp(name, "reconfigure") != 0 &&
+	    strcmp(name, "info") != 0 &&
+	    strcmp(name, "get-keybinds") != 0)
+		return pl_result(0, "command unavailable while cycling windows");
+
 	rc = verbs[i].fn(scr, cmd, &err, &reply);
 	if (rc == VERB_FINAL)
 		*final = 1;
@@ -1832,6 +1838,54 @@ static void ipc_accept_cb(int fd, int mask, void *data)
 
 	c->next = scr->ipc_clients;
 	scr->ipc_clients = c;
+}
+
+int wIPCWaitForCycle(WScreen *scr, int timeout_ms)
+{
+	struct WIPCClient *c;
+	struct pollfd *fds;
+	int count = 2, i, rc, fd;
+	short events;
+
+	for (c = scr->ipc_clients; c; c = c->next)
+		if (!c->busy)
+			count++;
+	fds = wmalloc(sizeof(*fds) * count);
+	fds[0].fd = xcb_get_file_descriptor(wdisp->conn);
+	fds[0].events = POLLIN;
+	fds[1].fd = scr->ipc_fd;
+	fds[1].events = POLLIN;
+	i = 2;
+	for (c = scr->ipc_clients; c; c = c->next) {
+		if (c->busy)
+			continue;
+		fds[i].fd = c->fd;
+		fds[i].events = POLLIN | (c->out ? POLLOUT : 0);
+		i++;
+	}
+	rc = poll(fds, count, timeout_ms);
+	if (rc > 0) {
+		if (fds[1].revents & POLLIN)
+			ipc_accept_cb(scr->ipc_fd, WIReadMask, scr);
+		for (i = 2; i < count; i++) {
+			fd = fds[i].fd;
+			events = fds[i].revents;
+			if (!events)
+				continue;
+			for (c = scr->ipc_clients; c && c->fd != fd; c = c->next)
+				;
+			if (!c)
+				continue;
+			if (events & (POLLIN | POLLHUP | POLLERR | POLLNVAL))
+				ipc_read_cb(fd, WIReadMask, c);
+			for (c = scr->ipc_clients; c && c->fd != fd; c = c->next)
+				;
+			if (c && (events & POLLOUT))
+				ipc_try_write(c);
+		}
+	}
+	wfree(fds);
+	return rc;
 }
 
 /* ---- start / stop ---------------------------------------------------- */

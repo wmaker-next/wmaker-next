@@ -221,6 +221,21 @@ static const WConfigEnum display_positions[] = {
 	{NULL, 0, 0}
 };
 
+/* Switch-panel placement shares the display_positions spellings but
+ * has no "none": a suppressed panel is SwitchPanelImages = (). */
+static const WConfigEnum switch_panel_placements[] = {
+	{"center", WD_CENTER, 0},
+	{"top", WD_TOP, 0},
+	{"bottom", WD_BOTTOM, 0},
+	{"left", WD_LEFT, 0},
+	{"right", WD_RIGHT, 0},
+	{"topleft", WD_TOPLEFT, 0},
+	{"topright", WD_TOPRIGHT, 0},
+	{"bottomleft", WD_BOTTOMLEFT, 0},
+	{"bottomright", WD_BOTTOMRIGHT, 0},
+	{NULL, 0, 0}
+};
+
 static const WConfigEnum speeds[] = {
 	{"UltraFast", SPEED_ULTRAFAST, 0},
 	{"Fast", SPEED_FAST, 0},

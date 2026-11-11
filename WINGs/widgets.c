@@ -1067,6 +1067,11 @@ void WMRealizeWidget(WMWidget * w)
 	W_RealizeView(W_VIEW(w));
 }
 
+bool WMRealizeWidgetChecked(WMWidget *w)
+{
+	return W_RealizeViewChecked(W_VIEW(w));
+}
+
 void WMMapWidget(WMWidget * w)
 {
 	W_MapView(W_VIEW(w));

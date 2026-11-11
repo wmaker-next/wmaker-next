@@ -30,11 +30,13 @@
 #include "wconfig.h"
 #include <stdbool.h>
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <WINGs/WUtil.h>
 
+#include "config_values.h"
 #include "geometry.h"
 
 #include "check_common.h"
@@ -155,6 +157,141 @@ static void test_partial_and_missing(void)
 	CHECK(wParseGeometry(NULL, &x, &y, &w, &h) == NoValue);
 }
 
+/* raw anchors for all nine positions */
+static void test_place_rect_anchors(void)
+{
+	WMRect area = { { 100, 200 }, { 800, 600 } };
+	WMPoint p;
+
+	/* center, and WD_NONE and unknown values default onto it */
+	p = wGetPointToPlaceRect(area, WD_CENTER, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + (600 - 100) / 2);
+	p = wGetPointToPlaceRect(area, WD_NONE, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + (600 - 100) / 2);
+	p = wGetPointToPlaceRect(area, 4242, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + (600 - 100) / 2);
+	p = wGetPointToPlaceRect(area, -1, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + (600 - 100) / 2);
+
+	/* edges: centered axis centers, anchored axis sits pad in */
+	p = wGetPointToPlaceRect(area, WD_TOP, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + 8);
+	p = wGetPointToPlaceRect(area, WD_BOTTOM, 200, 100, 8);
+	CHECK(p.x == 100 + (800 - 200) / 2 && p.y == 200 + 600 - 100 - 8);
+	p = wGetPointToPlaceRect(area, WD_LEFT, 200, 100, 8);
+	CHECK(p.x == 100 + 8 && p.y == 200 + (600 - 100) / 2);
+	p = wGetPointToPlaceRect(area, WD_RIGHT, 200, 100, 8);
+	CHECK(p.x == 100 + 800 - 200 - 8 && p.y == 200 + (600 - 100) / 2);
+
+	/* corners: pad on both anchored edges */
+	p = wGetPointToPlaceRect(area, WD_TOPLEFT, 200, 100, 8);
+	CHECK(p.x == 108 && p.y == 208);
+	p = wGetPointToPlaceRect(area, WD_TOPRIGHT, 200, 100, 8);
+	CHECK(p.x == 100 + 800 - 200 - 8 && p.y == 208);
+	p = wGetPointToPlaceRect(area, WD_BOTTOMLEFT, 200, 100, 8);
+	CHECK(p.x == 108 && p.y == 200 + 600 - 100 - 8);
+	p = wGetPointToPlaceRect(area, WD_BOTTOMRIGHT, 200, 100, 8);
+	CHECK(p.x == 100 + 800 - 200 - 8 && p.y == 200 + 600 - 100 - 8);
+}
+
+/* offset and negative origins */
+static void test_place_rect_origins(void)
+{
+	WMRect neg = { { -1920, -100 }, { 1920, 1080 } };
+	WMRect zero = { { 0, 0 }, { 512, 384 } };
+	WMPoint p;
+
+	p = wGetPointToPlaceRect(neg, WD_TOPLEFT, 64, 32, 0);
+	CHECK(p.x == -1920 && p.y == -100);
+	p = wGetPointToPlaceRect(neg, WD_BOTTOMRIGHT, 64, 32, 16);
+	CHECK(p.x == -1920 + 1920 - 64 - 16 && p.y == -100 + 1080 - 32 - 16);
+	p = wGetPointToPlaceRect(neg, WD_CENTER, 64, 32, 0);
+	CHECK(p.x == -1920 + (1920 - 64) / 2 && p.y == -100 + (1080 - 32) / 2);
+
+	p = wGetPointToPlaceRect(zero, WD_CENTER, 512, 384, 0);
+	CHECK(p.x == 0 && p.y == 0);
+}
+
+static void test_oversized_osd(void)
+{
+	WMRect area = { { 100, 200 }, { 100, 100 } };
+	WMRect zero = { { 0, 0 }, { 100, 100 } };
+	WMPoint p;
+	int width = 200, height = 201;
+
+	p = wGetOSDPointToPlaceRect(zero, WD_CENTER, 200, 200, 8);
+	CHECK(p.x == 2147483598 && p.y == 2147483598);
+	p = wGetOSDPointToPlaceRect(zero, WD_TOP, 200, 200, 8);
+	CHECK(p.x == 2147483598 && p.y == 8);
+	p = wGetOSDPointToPlaceRect(zero, WD_LEFT, 200, 200, 8);
+	CHECK(p.x == 8 && p.y == 2147483598);
+	p = wGetOSDPointToPlaceRect(zero, WD_NONE, 200, 200, 8);
+	CHECK(p.x == 2147483598 && p.y == 2147483598);
+	p = wGetOSDPointToPlaceRect(zero, 999, 200, 200, 8);
+	CHECK(p.x == 2147483598 && p.y == 2147483598);
+	p = wGetOSDPointToPlaceRect(area, WD_CENTER, width, height, 8);
+	CHECK(p.x == (int)(area.pos.x + (area.size.width - width) / 2));
+	CHECK(p.y == (int)(area.pos.y + (area.size.height - height) / 2));
+	p = wGetOSDPointToPlaceRect(area, WD_TOP, width, height, 8);
+	CHECK(p.x == (int)(area.pos.x + (area.size.width - width) / 2));
+	CHECK(p.y == area.pos.y + 8);
+	p = wGetPointToPlaceRect(area, WD_CENTER, width, height, 8);
+	CHECK(p.x == 50 && p.y == 150);
+}
+
+/* switch-panel constraint: clamp on fitting axes, origin otherwise */
+static void test_clamp_to_area(void)
+{
+	WMRect area = { { 100, 200 }, { 800, 600 } };
+	WMPoint p;
+
+	/* the far endpoint of the clamp range is inclusive */
+	p = wClampPointToArea(area, 100, 200, 800, 100);
+	CHECK(p.x == 100 && p.y == 200);
+	p = wClampPointToArea(area, 100, 700, 800, 100);
+	CHECK(p.x == 100 && p.y == 700);
+	p = wClampPointToArea(area, 100, 701, 800, 100);
+	CHECK(p.x == 100 && p.y == 700);
+
+	p = wClampPointToArea(area, 50, 900, 200, 100);
+	CHECK(p.x == 100 && p.y == 200 + 600 - 100);
+	p = wClampPointToArea(area, 850, 400, 200, 100);
+	CHECK(p.x == 100 + 800 - 200 && p.y == 400);
+
+	p = wClampPointToArea(area, 400, 400, 200, 100);
+	CHECK(p.x == 400 && p.y == 400);
+
+	/* oversized on either or both axes anchors at the origin */
+	p = wClampPointToArea(area, 0, 400, 900, 100);
+	CHECK(p.x == 100 && p.y == 400);
+	p = wClampPointToArea(area, 400, 0, 200, 900);
+	CHECK(p.x == 400 && p.y == 200);
+	p = wClampPointToArea(area, -50, -50, 900, 900);
+	CHECK(p.x == 100 && p.y == 200);
+}
+
+/* integer-limit sentinels saturate instead of wrapping */
+static void test_place_limits(void)
+{
+	WMRect hi = { { INT_MAX - 10, INT_MAX - 10 }, { 20, 20 } };
+	WMRect lo = { { INT_MIN, INT_MIN }, { 10, 10 } };
+	WMPoint p;
+
+	p = wGetPointToPlaceRect(hi, WD_BOTTOMRIGHT, 4, 4, 4);
+	CHECK(p.x == INT_MAX && p.y == INT_MAX);
+	p = wGetPointToPlaceRect(hi, WD_TOPLEFT, 4, 4, INT_MAX);
+	CHECK(p.x == INT_MAX && p.y == INT_MAX);
+	p = wGetPointToPlaceRect(lo, WD_TOP, 4, 4, INT_MIN);
+	CHECK(p.x == INT_MIN + (10 - 4) / 2 && p.y == INT_MIN);
+	/* a saturated anchor stays inside a range that would overflow */
+	p = wClampPointToArea(hi, INT_MAX, INT_MAX, 4, 4);
+	CHECK(p.x == INT_MAX && p.y == INT_MAX);
+	p = wClampPointToArea(lo, INT_MIN, INT_MIN, 4, 4);
+	CHECK(p.x == INT_MIN && p.y == INT_MIN);
+	p = wClampPointToArea(hi, INT_MAX - 10, INT_MAX - 10, 4, 4);
+	CHECK(p.x == INT_MAX - 10 && p.y == INT_MAX - 10);
+}
+
 static void test_mask_bits(void)
 {
 	/* the bit values are the Xutil.h XParseGeometry contract */
@@ -173,6 +310,11 @@ int main(void)
 	test_full_spec();
 	test_prefix_and_signs();
 	test_partial_and_missing();
+	test_place_rect_anchors();
+	test_place_rect_origins();
+	test_oversized_osd();
+	test_clamp_to_area();
+	test_place_limits();
 	test_mask_bits();
 
 	return check_report("check_geometry");

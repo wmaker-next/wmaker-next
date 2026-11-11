@@ -168,6 +168,8 @@ static int wprefs_hides(const char *key, const char *value)
 static const char *const wprefs_no_ui[] = {
 	/* position of the keychain OSD, wdwrite only */
 	"KeychainDisplayPosition",
+	/* switch panel placement, wdwrite only */
+	"SwitchPanelPlacement",
 	/* run-dialog text matching, dialog-side knob */
 	"RunDialogMatching",
 };

@@ -55,7 +55,6 @@
 
 #define MOD_MASK wdisp->modifier_mask
 #define CACHE_ICON_PATH "/CachedPixmaps"
-#define ICON_BORDER 3
 
 static void miniwindowExpose(WObjDescriptor *desc, xcb_generic_event_t *event);
 static void miniwindowMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event);
@@ -448,29 +447,6 @@ int wIconEffectiveSize(void)
 		size = (size >> 2) << 2;
 	}
 	return size;
-}
-
-RImage *wIconValidateIconSize(RImage *icon, int max_size)
-{
-	RImage *nimage;
-
-	if (!icon)
-		return NULL;
-
-	/* We should hold "ICON_BORDER" (~2) pixels to include the icon border */
-	if (((max_size + ICON_BORDER) < icon->width) ||
-	    ((max_size + ICON_BORDER) < icon->height)) {
-		if (icon->width > icon->height)
-			nimage = RScaleImage(icon, max_size - ICON_BORDER,
-					     (icon->height * (max_size - ICON_BORDER) / icon->width));
-		else
-			nimage = RScaleImage(icon, (icon->width * (max_size - ICON_BORDER) / icon->height),
-					     max_size - ICON_BORDER);
-		RReleaseImage(icon);
-		icon = nimage;
-	}
-
-	return icon;
 }
 
 int wIconChangeImageFile(WIcon *icon, const char *file)

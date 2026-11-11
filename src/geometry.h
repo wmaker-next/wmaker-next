@@ -20,6 +20,8 @@
 #ifndef WMGEOMETRY_H_
 #define WMGEOMETRY_H_
 
+#include <WINGs/WINGs.h>
+
 /* XParseGeometry mask bits, the Xutil.h spellings under project
  * ownership (referenced by the tests in src/Tests/check_geometry.c). */
 enum {
@@ -44,5 +46,16 @@ enum {
  * unset out-params are left untouched. */
 int wParseGeometry(const char *string, int *x, int *y,
 		   unsigned int *width, unsigned int *height);
+
+/* Raw anchor of a width x height rect inside 'area' at a WD_* display
+ * position, 'pad' pixels from each anchored edge. WD_NONE and unknown
+ * values use the center anchor. No clamping. Device pixels, signed
+ * saturated arithmetic. */
+WMPoint wGetPointToPlaceRect(WMRect area, int wd_pos, int width, int height, int pad);
+WMPoint wGetOSDPointToPlaceRect(WMRect area, int wd_pos, int width, int height, int pad);
+
+/* Clamp a fitting rect inside 'area', anchor a non-fitting one at the
+ * area origin. Saturated like wGetPointToPlaceRect. */
+WMPoint wClampPointToArea(WMRect area, int x, int y, int width, int height);
 
 #endif /* WMGEOMETRY_H_ */

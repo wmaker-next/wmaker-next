@@ -43,10 +43,37 @@
 #include "workspace.h"
 #include "switchpanel.h"
 #include "hotcorner.h"
+#include "ipc.h"
 #include <WINGs/WINGs.h>
 
 /* delay in milliseconds before auto-drilling into a group */
 #define AUTO_DRILL_DELAY 800
+
+static bool cycle_take_event(WScreen *scr, uint32_t mask, xcb_generic_event_t **event, int timeout_ms)
+{
+	struct timespec ts;
+	long long deadline = -1, now;
+	int rc;
+
+	if (timeout_ms >= 0) {
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		deadline = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + timeout_ms;
+	}
+	while (!WXEvqTakeMask(wdisp->conn, mask, XCB_NONE, event)) {
+		if (deadline >= 0) {
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			now = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+			if (now >= deadline)
+				return false;
+			timeout_ms = (int)(deadline - now);
+		}
+		rc = wIPCWaitForCycle(scr, timeout_ms);
+		if (rc == 0 || (rc < 0 && errno != EINTR) ||
+		    xcb_connection_has_error(wdisp->conn))
+			return false;
+	}
+	return true;
+}
 
 static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 {
@@ -140,7 +167,7 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 	xcb_generic_event_t *ev = NULL;
 
 
-	if (!wwin)
+	if (!wwin || scr->flags.doing_alt_tab)
 		return;
 
 	switch (mode) {
@@ -193,9 +220,9 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 		free(ev);
 		ev = NULL;
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = WXEvqTakeMaskTimed(wdisp->conn, eventMask, XCB_NONE, &ev, AUTO_DRILL_DELAY);
+			gotEvent = cycle_take_event(scr, eventMask, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = WXEvqTakeMaskTimed(wdisp->conn, eventMask, XCB_NONE, &ev, -1);
+			gotEvent = cycle_take_event(scr, eventMask, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {
@@ -289,8 +316,6 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 					newFocused = wSwitchPanelSelectNext(swpanel, back, false, CYCLE_GROUP, STRIP_SUB);
 				} else {
 					/* transition from preview to drilled */
-					if (wSwitchPanelIsDrillPreview(swpanel))
-						wSwitchPanelUndrill(swpanel);
 					newFocused = wSwitchPanelDrill(swpanel);
 				}
 				oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
