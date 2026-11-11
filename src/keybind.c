@@ -276,6 +276,17 @@ void wKeybindDispatch(int command, WScreen *scr, WWindow *wwin, xcb_generic_even
 			wMiniaturizeOtherApplications(wwin);
 		}
 		break;
+	case WKBD_RESTORE:
+		if (ISMAPPED(wwin) && ISFOCUSED(wwin)
+		    && (wwin->flags.maximized || wwin->flags.fullscreen)) {
+			CloseWindowMenu(scr);
+
+			if (wwin->flags.fullscreen)
+				wUnfullscreenWindow(wwin);
+			else
+				wUnmaximizeWindow(wwin);
+		}
+		break;
 	case WKBD_MAXIMIZE:
 		if (ISMAPPED(wwin) && ISFOCUSED(wwin) && IS_RESIZABLE(wwin)) {
 			CloseWindowMenu(scr);

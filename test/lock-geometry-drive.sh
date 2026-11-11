@@ -192,14 +192,15 @@ find_lockterm() {
 # open the window menu from the keyboard and execute the Options submenu
 # entry at index $1 (2 = Lock position, 3 = Lock size). A freshly mapped
 # menu has no preselection (Down x1 -> row 0) and Options is main-menu
-# row 11, so 12 Downs. Entering the cascade preselects row 0 (Keep at
+# row 9 while the Restore geometry entry is hidden, so 10 Downs.
+# Entering the cascade preselects row 0 (Keep at
 # bottom), so submenu index N needs Down xN.
 toggle_option() {
 	focus_term
 	xdo key ctrl+Escape
 	sleep 0.4
 	i=0
-	while [ "$i" -lt 12 ]; do
+	while [ "$i" -lt 10 ]; do
 		xdo key Down
 		i=$((i + 1))
 		sleep 0.05

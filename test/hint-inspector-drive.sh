@@ -15,7 +15,8 @@
 #      gets a titlebar (the untouched Save leaked nothing), and the
 #      deliberate choice restores across a warm restart.
 # The inspector is driven through WindowMenuKey ("Attributes..." is
-# window_menu_entries index 10, 11 Downs from the unselected state)
+# window_menu_entries index 9, 9 Downs from the unselected state while
+# the Restore geometry entry is hidden)
 # and fixed panel geometry (attributes page: checkbox rows every 20px
 # from y=61, row 6 = "Disable titlebar", row 9 = "Keep on top").
 set -u
@@ -146,7 +147,7 @@ open_inspector() {
 	DISPLAY=$DPY xdotool key ctrl+Escape
 	sleep 0.4
 	DISPLAY=$DPY xdotool key --delay 150 \
-		Down Down Down Down Down Down Down Down Down Down Down
+		Down Down Down Down Down Down Down Down Down
 	sleep 0.3
 	DISPLAY=$DPY xdotool key Return
 	sleep 0.3

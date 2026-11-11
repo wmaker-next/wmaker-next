@@ -3,6 +3,16 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Window menu geometry entries
+----------------------------
+
+The window menu's Maximize and Fullscreen entries moved to the top of
+the Region snap sub-menu. While a window is maximized in any way or
+fullscreen, the window menu now starts with a "Restore geometry" entry
+that leaves fullscreen first and then restores the pre-maximize
+geometry. The new RestoreGeometryKey binding triggers the same action
+from the keyboard and defaults to unbound.
+
 Clipboard history exports
 -------------------------
 

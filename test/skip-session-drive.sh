@@ -96,13 +96,13 @@ xterm_xids() {
 		| sed -n '/class = XTerm/{s/.*id = \(0x[0-9a-fA-F]*\);.*/\1/p;}'
 }
 # open the focused window's menu (WindowMenuKey) and walk to
-# Options > Skip window list (window_menu_entries index 11, options
-# index 8)
+# Options > Skip window list (window_menu_entries index 9 while the
+# Restore geometry entry is hidden, options index 8)
 menu_toggle_skip_window_list() {
 	DISPLAY=$DPY xdotool key ctrl+Escape
 	sleep 0.4
 	DISPLAY=$DPY xdotool key --delay 150 \
-		Down Down Down Down Down Down Down Down Down Down Down Down Right
+		Down Down Down Down Down Down Down Down Down Down Right
 	sleep 0.4
 	DISPLAY=$DPY xdotool key --delay 150 Down Down Down Down Down Down Down Down
 	DISPLAY=$DPY xdotool key Return

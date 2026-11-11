@@ -1072,6 +1072,12 @@ static void paintEntry(WMenu * menu, int index, int selected)
 		case MI_SNAP_TILED:
 			indicator = scr->menu_snap_tiled_indicator;
 			break;
+		case MI_MAXIMIZE:
+			indicator = scr->menu_maximize_indicator;
+			break;
+		case MI_FULLSCREEN:
+			indicator = scr->menu_fullscreen_indicator;
+			break;
 		case MI_NONE:
 		default:
 			break;

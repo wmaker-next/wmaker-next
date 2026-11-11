@@ -692,6 +692,7 @@
 	_(ARRANGE_ICONS_KEY, "ArrangeIconsKey", "None", WKBD_ARRANGEICONS) \
 	_(MOVE_RESIZE_KEY, "MoveResizeKey", "None", WKBD_MOVERESIZE) \
 	_(CLOSE_KEY, "CloseKey", "None", WKBD_CLOSE) \
+	_(RESTORE_GEOMETRY_KEY, "RestoreGeometryKey", "None", WKBD_RESTORE) \
 	_(MAXIMIZE_KEY, "MaximizeKey", "None", WKBD_MAXIMIZE) \
 	_(V_MAXIMIZE_KEY, "VMaximizeKey", "None", WKBD_VMAXIMIZE) \
 	_(H_MAXIMIZE_KEY, "HMaximizeKey", "None", WKBD_HMAXIMIZE) \

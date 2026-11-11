@@ -137,7 +137,7 @@ x xdotool keyup alt 2>/dev/null; sleep 1
 # --- window menu, cascade, and the Attributes inspector --------------------
 x wmctrl -a memcheck-a 2>/dev/null; sleep 1
 x xdotool key ctrl+Escape 2>/dev/null; sleep 2
-n=0; while [ "$n" -lt 11 ]; do
+n=0; while [ "$n" -lt 9 ]; do
     x xdotool key Down 2>/dev/null; sleep 0.3; n=$((n + 1))
 done
 x xdotool key Return 2>/dev/null; sleep 3
@@ -148,7 +148,7 @@ else
 fi
 # second window menu: open the Region snap cascade
 x xdotool key ctrl+Escape 2>/dev/null; sleep 2
-x xdotool key Down Down Down 2>/dev/null; sleep 1
+x xdotool key Down 2>/dev/null; sleep 1
 x xdotool key Right 2>/dev/null; sleep 1
 x xdotool key Down 2>/dev/null; sleep 1
 x xdotool key Escape 2>/dev/null; sleep 1

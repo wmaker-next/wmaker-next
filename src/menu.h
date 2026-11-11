@@ -41,6 +41,8 @@
 #define MI_SNAP_BR	15
 #define MI_SNAP_TILED	16
 #define MI_CENTRAL	17
+#define MI_MAXIMIZE	18
+#define MI_FULLSCREEN	19
 
 typedef struct WMenuEntry {
 	int order;

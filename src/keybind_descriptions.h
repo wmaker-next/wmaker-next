@@ -81,6 +81,7 @@
 	_("ArrangeIconsKey",      N_("Windows"), N_("Arrange icons")) \
 	_("MoveResizeKey",        N_("Windows"), N_("Move/Resize active window")) \
 	_("CloseKey",             N_("Windows"), N_("Close active window")) \
+	_("RestoreGeometryKey",   N_("Windows"), N_("Restore active window geometry")) \
 	_("MaximizeKey",          N_("Windows"), N_("Maximize active window")) \
 	_("VMaximizeKey",         N_("Windows"), N_("Maximize active window vertically")) \
 	_("HMaximizeKey",         N_("Windows"), N_("Maximize active window horizontally")) \

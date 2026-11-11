@@ -64,8 +64,7 @@ static WMenu *makeEdgeSnapMenu(WScreen *scr);
  */
 enum
 {
-	MC_MAXIMIZE,
-	MC_FULLSCREEN,
+	MC_RESTORE,
 	MC_REGION_SNAP,
 	MC_EDGE_SNAP,
 	MC_MINIATURIZE,
@@ -88,8 +87,7 @@ static const struct {
 	const char *label;
 	WMenu *(*generate_submenu)(WScreen *scr);
 } window_menu_entries[] = {
-	[MC_MAXIMIZE]    = { N_("Maximize"), NULL },
-	[MC_FULLSCREEN]  = { N_("Fullscreen"), NULL },
+	[MC_RESTORE]     = { N_("Restore geometry"), NULL },
 	[MC_REGION_SNAP] = { N_("Region snap"), makeRegionSnapMenu },
 	[MC_EDGE_SNAP]   = { N_("Edge snap"), makeEdgeSnapMenu },
 	[MC_MINIATURIZE] = { N_("Miniaturize"), NULL },
@@ -139,6 +137,8 @@ static const char *const menu_options_entries[] = {
 	[WO_SKIP_WINDOW_LIST]    = N_("Skip window list")
 };
 
+#define MENU_FULLSCREEN_ACTION (-1)
+
 /*
  * Defines the menu entries for the Region snap sub-menu
  */
@@ -148,6 +148,8 @@ static const struct {
 	unsigned int shortcut_idx;
 	int maxim_direction;
 } menu_maximize_entries[] = {
+	{ MI_MAXIMIZE, N_("Maximize"), WKBD_MAXIMIZE, MAX_VERTICAL | MAX_HORIZONTAL },
+	{ MI_FULLSCREEN, N_("Fullscreen"), WKBD_FULLSCREEN, MENU_FULLSCREEN_ACTION },
 	{ MI_SNAP_V, N_("Vertical"), WKBD_VMAXIMIZE, MAX_VERTICAL },
 	{ MI_SNAP_H, N_("Horizontal"), WKBD_HMAXIMIZE, MAX_HORIZONTAL },
 	{ MI_CENTRAL, N_("Central"), WKBD_CENTRAL, MAX_CENTRAL },
@@ -243,6 +245,14 @@ static void execMaximizeCommand(WMenu * menu, WMenuEntry * entry)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
 
+	if (direction == MENU_FULLSCREEN_ACTION) {
+		if (wwin->flags.fullscreen)
+			wUnfullscreenWindow(wwin);
+		else
+			wFullscreenWindow(wwin);
+		return;
+	}
+
 	if (direction == MAX_MAXIMUS
 	    && wwin->screen_ptr->workspaces[WWIN_PRIMARY_WS(wwin)]->layout != WLAYOUT_FLOAT) {
 		wLayoutSetWindowTiled(wwin, wwin->flags.no_tiling);
@@ -292,67 +302,6 @@ static void execEdgeSnap(WMenu *menu, WMenuEntry *entry)
 	}
 }
 
-static void updateUnmaximizeShortcut(WMenuEntry * entry, int flags)
-{
-	int key;
-
-	switch (flags & (MAX_HORIZONTAL | MAX_VERTICAL | MAX_LEFTHALF | MAX_RIGHTHALF | MAX_TOPHALF | MAX_BOTTOMHALF | MAX_MAXIMUS | MAX_CENTRAL)) {
-	case MAX_HORIZONTAL:
-		key = WKBD_HMAXIMIZE;
-		break;
-
-	case MAX_VERTICAL:
-		key = WKBD_VMAXIMIZE;
-		break;
-
-	case MAX_CENTRAL:
-		key = WKBD_CENTRAL;
-		break;
-
-	case MAX_LEFTHALF | MAX_VERTICAL:
-		key = WKBD_LHMAXIMIZE;
-		break;
-
-	case MAX_RIGHTHALF | MAX_VERTICAL:
-		key = WKBD_RHMAXIMIZE;
-		break;
-
-	case MAX_TOPHALF | MAX_HORIZONTAL:
-		key = WKBD_THMAXIMIZE;
-		break;
-
-	case MAX_BOTTOMHALF | MAX_HORIZONTAL:
-		key = WKBD_BHMAXIMIZE;
-		break;
-
-	case MAX_LEFTHALF | MAX_TOPHALF:
-		key = WKBD_LTCMAXIMIZE;
-		break;
-
-	case MAX_RIGHTHALF | MAX_TOPHALF:
-		key = WKBD_RTCMAXIMIZE;
-		break;
-
-	case MAX_LEFTHALF | MAX_BOTTOMHALF:
-		key = WKBD_LBCMAXIMIZE;
-		break;
-
-	case MAX_RIGHTHALF | MAX_BOTTOMHALF:
-		key = WKBD_RBCMAXIMIZE;
-		break;
-
-	case MAX_MAXIMUS:
-		key = WKBD_MAXIMUS;
-		break;
-
-	default:
-		key = WKBD_MAXIMIZE;
-		break;
-	}
-
-	wMenuEntrySetShortcutText(entry, GetShortcutKey(wKeyBindings[key]));
-}
-
 static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 {
 	WWindow *wwin = (WWindow *) entry->clientdata;
@@ -393,19 +342,11 @@ static void execMenuCommand(WMenu * menu, WMenuEntry * entry)
 		}
 		break;
 
-	case MC_MAXIMIZE:
-		if (wwin->flags.maximized)
-			wUnmaximizeWindow(wwin);
-		else
-			wMaximizeWindow(wwin, MAX_VERTICAL | MAX_HORIZONTAL,
-					wGetHeadForWindow(wwin));
-		break;
-
-	case MC_FULLSCREEN:
+	case MC_RESTORE:
 		if (wwin->flags.fullscreen)
 			wUnfullscreenWindow(wwin);
-		else
-			wFullscreenWindow(wwin);
+		else if (wwin->flags.maximized)
+			wUnmaximizeWindow(wwin);
 		break;
 
 	case MC_SHADE:
@@ -669,6 +610,10 @@ static void updateMaximizeMenu(WMenu * menu, WWindow * wwin)
 		smenu->entries[i]->clientdata = wwin;
 		wMenuEntrySetShortcutText(smenu->entries[i],
 					  GetShortcutKey(wKeyBindings[menu_maximize_entries[i].shortcut_idx]));
+		if (menu_maximize_entries[i].maxim_direction == MENU_FULLSCREEN_ACTION)
+			wMenuSetEnabled(smenu, i, wwin->flags.fullscreen || IS_RESIZABLE(wwin));
+		else if (menu_maximize_entries[i].maxim_direction == (MAX_VERTICAL | MAX_HORIZONTAL))
+			wMenuSetEnabled(smenu, i, IS_RESIZABLE(wwin));
 		if (menu_maximize_entries[i].maxim_direction == MAX_MAXIMUS) {
 			wfree(smenu->entries[i]->text);
 			if (wwin->screen_ptr->workspaces[WWIN_PRIMARY_WS(wwin)]->layout != WLAYOUT_FLOAT
@@ -855,27 +800,9 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 
 	wMenuSetEnabled(menu, MC_MINIATURIZE, !WFLAGP(wwin, no_miniaturizable));
 
-	if (wwin->flags.maximized) {
-		wfree(menu->entries[MC_MAXIMIZE]->text);
-		menu->entries[MC_MAXIMIZE]->text = wstrdup(_("Unmaximize"));
-		updateUnmaximizeShortcut(menu->entries[MC_MAXIMIZE], wwin->flags.maximized);
-	} else {
-		wfree(menu->entries[MC_MAXIMIZE]->text);
-		menu->entries[MC_MAXIMIZE]->text = wstrdup(_("Maximize"));
-		wMenuEntrySetShortcutText(menu->entries[MC_MAXIMIZE], GetShortcutKey(wKeyBindings[WKBD_MAXIMIZE]));
-	}
-	wMenuSetEnabled(menu, MC_MAXIMIZE, IS_RESIZABLE(wwin));
-
-	if (wwin->flags.fullscreen) {
-		wfree(menu->entries[MC_FULLSCREEN]->text);
-		menu->entries[MC_FULLSCREEN]->text = wstrdup(_("Exit Fullscreen"));
-	} else {
-		wfree(menu->entries[MC_FULLSCREEN]->text);
-		menu->entries[MC_FULLSCREEN]->text = wstrdup(_("Fullscreen"));
-	}
-	wMenuEntrySetShortcutText(menu->entries[MC_FULLSCREEN],
-				  GetShortcutKey(wKeyBindings[WKBD_FULLSCREEN]));
-	wMenuSetEnabled(menu, MC_FULLSCREEN, wwin->flags.fullscreen || IS_RESIZABLE(wwin));
+	wMenuSetHidden(menu, MC_RESTORE, !(wwin->flags.maximized || wwin->flags.fullscreen));
+	wMenuEntrySetShortcutText(menu->entries[MC_RESTORE],
+				  GetShortcutKey(wKeyBindings[WKBD_RESTORE]));
 
 	wMenuSetEnabled(menu, MC_MOVERESIZE, IS_RESIZABLE(wwin)
 			&& !wwin->flags.miniaturized);
@@ -910,9 +837,6 @@ static void updateMenuForWindow(WMenu * menu, WWindow * wwin)
 		wMenuSetEnabled(menu, MC_PROPERTIES, false);
 	}
 
-	/* Update shortcut labels except for (Un)Maximize which is
-	 * handled separately.
-	 */
 	wMenuEntrySetShortcutText(menu->entries[MC_MINIATURIZE], GetShortcutKey(wKeyBindings[WKBD_MINIATURIZE]));
 	wMenuEntrySetShortcutText(menu->entries[MC_SHADE], GetShortcutKey(wKeyBindings[WKBD_SHADE]));
 	wMenuEntrySetShortcutText(menu->entries[MC_HIDE], GetShortcutKey(wKeyBindings[WKBD_HIDE]));

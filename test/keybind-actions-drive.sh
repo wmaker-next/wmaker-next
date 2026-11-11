@@ -168,6 +168,8 @@ cat >"$WMHOME/Defaults/WindowMaker" <<EOF
   CenterKey = "Control+Shift+c";
   ShadeKey = "Control+Shift+h";
   MaximizeKey = "Control+Shift+x";
+  RestoreGeometryKey = "Control+Shift+z";
+  ToggleFullscreenKey = "Control+Shift+k";
   LayoutCycleKey = "Control+Shift+f";
   LayoutFloatKey = "Control+Shift+d";
   MasterCountIncKey = "Control+Shift+1";
@@ -395,6 +397,38 @@ xdo key ctrl+shift+x >>"$LOG" 2>&1
 wait_for 40 sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT" \
     || fail "MaximizeKey did not unmaximize the window"
 check "MaximizeKey unmaximizes the window" \
+    sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT"
+
+note "restore geometry key"
+focus_win "$A_WID" || fail "could not focus client A for RestoreGeometryKey"
+xdo key ctrl+shift+x >>"$LOG" 2>&1
+wait_for 40 has_state "$A_WID" _NET_WM_STATE_MAXIMIZED_VERT \
+    || fail "setup for RestoreGeometryKey did not maximize the window"
+xdo key ctrl+shift+z >>"$LOG" 2>&1
+wait_for 40 sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT" \
+    || fail "RestoreGeometryKey did not unmaximize the window"
+check "RestoreGeometryKey unmaximizes the window" \
+    sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT"
+
+note "restore geometry key, fullscreen then maximize"
+focus_win "$A_WID" || fail "could not focus client A for RestoreGeometryKey"
+xdo key ctrl+shift+x >>"$LOG" 2>&1
+wait_for 40 has_state "$A_WID" _NET_WM_STATE_MAXIMIZED_VERT \
+    || fail "setup for RestoreGeometryKey did not maximize the window"
+xdo key ctrl+shift+k >>"$LOG" 2>&1
+wait_for 40 has_state "$A_WID" _NET_WM_STATE_FULLSCREEN \
+    || fail "setup for RestoreGeometryKey did not fullscreen the window"
+xdo key ctrl+shift+z >>"$LOG" 2>&1
+wait_for 40 no_state "$A_WID" _NET_WM_STATE_FULLSCREEN \
+    || fail "RestoreGeometryKey did not exit fullscreen"
+check "RestoreGeometryKey exits fullscreen first" \
+    no_state "$A_WID" _NET_WM_STATE_FULLSCREEN
+check "RestoreGeometryKey keeps the pre-fullscreen maximize state" \
+    has_state "$A_WID" _NET_WM_STATE_MAXIMIZED_VERT
+xdo key ctrl+shift+z >>"$LOG" 2>&1
+wait_for 40 sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT" \
+    || fail "RestoreGeometryKey did not unmaximize after fullscreen"
+check "RestoreGeometryKey then unmaximizes the window" \
     sh -c "! DISPLAY=$DPY xprop -id $A_WID _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_MAXIMIZED_VERT"
 
 # --- 4. layout keys --------------------------------------------------------

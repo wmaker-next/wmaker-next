@@ -261,6 +261,7 @@
 	ArrangeIconsKey = None;
 	MoveResizeKey = None;
 	CloseKey = None;
+	RestoreGeometryKey = None;
 	MaximizeKey = None;
 	VMaximizeKey = None;
 	HMaximizeKey = None;

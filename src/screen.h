@@ -307,6 +307,8 @@ typedef struct _WScreen {
     struct WPixmap *menu_snap_br_indicator;  /* for bottom right snap window */
     struct WPixmap *menu_snap_tiled_indicator;  /* for tiled window */
     struct WPixmap *menu_central_indicator;  /* for central window */
+    struct WPixmap *menu_maximize_indicator;
+    struct WPixmap *menu_fullscreen_indicator;
 
     int app_menu_x, app_menu_y;	       /* position for application menus */
 
