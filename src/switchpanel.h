@@ -39,6 +39,12 @@ WWindow *wSwitchPanelSelectNext(WSwitchPanel *panel, int back, int ignore_minimi
 WWindow *wSwitchPanelSelectFirst(WSwitchPanel *panel, int back, Strip strip);
 WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, Strip strip);
 
+WWindow *wSwitchPanelSelected(WSwitchPanel *panel, Strip strip);
+
+bool wSwitchPanelHolds(WSwitchPanel *panel, WWindow *wwin);
+
+WWindow *wSwitchPanelRemoveWindow(WSwitchPanel *panel, WWindow *wwin, Strip strip);
+
 WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, xcb_generic_event_t *event);
 
 xcb_window_t wSwitchPanelGetWindow(WSwitchPanel *swpanel);

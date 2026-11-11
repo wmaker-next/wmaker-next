@@ -222,6 +222,7 @@ static void doAppBounce(void *arg)
 	if (!aicon) {
 		/* the app icon vanished under the bounce, finish the
 		 * lifecycle the normal end would have run */
+		data->wapp->bounce_data = NULL;
 		data->wapp->flags.bouncing = 0;
 		WMDeleteTimerHandler(data->timer);
 		wApplicationDestroy(data->wapp);
@@ -270,9 +271,23 @@ reinit:
 
 	xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos });
 	aicon->icon->core->screen_ptr->flags.need_restack = 1;
+	data->wapp->bounce_data = NULL;
 	data->wapp->flags.bouncing = 0;
 	WMDeleteTimerHandler(data->timer);
 	wApplicationDestroy(data->wapp);
+	free(data);
+}
+
+void wAppBounceCancel(WApplication *wapp)
+{
+	AppBouncerData *data = wapp->bounce_data;
+
+	if (!data)
+		return;
+
+	wapp->bounce_data = NULL;
+	wapp->flags.bouncing = 0;
+	WMDeleteTimerHandler(data->timer);
 	free(data);
 }
 
@@ -357,6 +372,7 @@ void wAppBounce(WApplication *wapp)
 
 		++wapp->refcount;
 		wapp->flags.bouncing = 1;
+		wapp->bounce_data = data;
 
 		data->wapp = wapp;
 		data->count = data->pow = 0;

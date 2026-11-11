@@ -34,6 +34,7 @@
 #include "framewin.h"
 #include "keybind.h"
 #include "actions.h"
+#include "client.h"
 #include "wxkb.h"
 #include "stacking.h"
 #include "cycling.h"
@@ -44,12 +45,44 @@
 #include "switchpanel.h"
 #include "hotcorner.h"
 #include "ipc.h"
+#include "wmspec.h"
 #include <WINGs/WINGs.h>
 
 /* delay in milliseconds before auto-drilling into a group */
 #define AUTO_DRILL_DELAY 800
 
-static bool cycle_take_event(WScreen *scr, uint32_t mask, xcb_generic_event_t **event, int timeout_ms)
+/* Events of windows the panel still holds go back on the queue: the
+ * panel and the cycle reference their WWindow until the cycle ends */
+static bool cycle_teardown_take(WSwitchPanel *panel, xcb_generic_event_t **event)
+{
+	xcb_generic_event_t *stash[8];
+	xcb_generic_event_t *ev;
+	WWindow *wwin;
+	xcb_window_t win;
+	int type, i, n = 0;
+
+	while (n < (int)(sizeof(stash) / sizeof(stash[0])) &&
+	       (WXEvqTakeTyped(wdisp->conn, XCB_DESTROY_NOTIFY, XCB_NONE, &ev) ||
+		WXEvqTakeTyped(wdisp->conn, XCB_UNMAP_NOTIFY, XCB_NONE, &ev))) {
+		type = ev->response_type & 0x7f;
+		win = (type == XCB_DESTROY_NOTIFY) ? ((xcb_destroy_notify_event_t *)ev)->window
+						   : ((xcb_unmap_notify_event_t *)ev)->window;
+		wwin = wWindowFor(win);
+		if (!wSwitchPanelHolds(panel, wwin)) {
+			for (i = n - 1; i >= 0; i--)
+				WXEvqPutBack(stash[i]);
+			*event = ev;
+			return true;
+		}
+		stash[n++] = ev;
+	}
+	for (i = n - 1; i >= 0; i--)
+		WXEvqPutBack(stash[i]);
+	return false;
+}
+
+static bool cycle_take_event(WScreen *scr, uint32_t mask, WSwitchPanel *panel,
+			     xcb_generic_event_t **event, int timeout_ms)
 {
 	struct timespec ts;
 	long long deadline = -1, now;
@@ -60,6 +93,8 @@ static bool cycle_take_event(WScreen *scr, uint32_t mask, xcb_generic_event_t **
 		deadline = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + timeout_ms;
 	}
 	while (!WXEvqTakeMask(wdisp->conn, mask, XCB_NONE, event)) {
+		if (cycle_teardown_take(panel, event))
+			return true;
 		if (deadline >= 0) {
 			clock_gettime(CLOCK_MONOTONIC, &ts);
 			now = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
@@ -156,6 +191,8 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 	xcb_keycode_t         hyperRKey      = wXkbKeysymToKeycode(XKB_KEY_Hyper_R);
 	xcb_keycode_t         escapeKey      = wXkbKeysymToKeycode(XKB_KEY_Escape);
 	xcb_keycode_t         returnKey      = wXkbKeysymToKeycode(XKB_KEY_Return);
+	xcb_keycode_t         deleteKey      = wXkbKeysymToKeycode(XKB_KEY_Delete);
+	xcb_keycode_t         kpDeleteKey    = wXkbKeysymToKeycode(XKB_KEY_KP_Delete);
 	bool            esc_cancel     = false;
 	bool            somethingElse  = false;
 	bool            done           = false;
@@ -220,9 +257,9 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 		free(ev);
 		ev = NULL;
 		if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled)
-			gotEvent = cycle_take_event(scr, eventMask, &ev, AUTO_DRILL_DELAY);
+			gotEvent = cycle_take_event(scr, eventMask, swpanel, &ev, AUTO_DRILL_DELAY);
 		else
-			gotEvent = cycle_take_event(scr, eventMask, &ev, -1);
+			gotEvent = cycle_take_event(scr, eventMask, swpanel, &ev, -1);
 
 		if (!gotEvent) {
 			if (mode == CYCLE_GROUP && !wSwitchPanelIsDrilled(swpanel) && !wSwitchPanelIsDrillPreview(swpanel) && !autoDrilled) {
@@ -304,6 +341,33 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 				/* Close the switch panel without eating the keypress */
 				done = true;
 
+			} else if ((((xcb_key_press_event_t *)ev)->detail) == deleteKey ||
+				   (((xcb_key_press_event_t *)ev)->detail) == kpDeleteKey) {
+
+				Strip s = wSwitchPanelIsDrilled(swpanel) ? STRIP_SUB : STRIP_MAIN;
+				WWindow *target = wSwitchPanelSelected(swpanel, s);
+
+				if (target && !WFLAGP(target, no_closable) &&
+				    (target->flags.internal_window || target->protocols.DELETE_WINDOW)) {
+					xcb_timestamp_t ts = ((xcb_key_press_event_t *)ev)->time;
+					bool internal = target->flags.internal_window;
+
+					newFocused = wSwitchPanelRemoveWindow(swpanel, target, s);
+					if (!internal) {
+						wClientSendProtocol(target, wdisp->atom.wm.delete_window, ts);
+						wNETWMPingWindow(target, ts);
+					}
+					if (!newFocused)
+						done = true;
+					else
+						oldFocused = change_focus_and_raise(newFocused, oldFocused, swpanel, scr, false);
+					if (internal && target->frame->on_click_button[WTB_CLOSE])
+						(*target->frame->on_click_button[WTB_CLOSE])(NULL, target, NULL);
+					if (oldFocused == target)
+						oldFocused = newFocused;
+				}
+				autoDrilled = false;
+
 			} else if (mode == CYCLE_GROUP
 				   && ((((xcb_key_press_event_t *)ev)->detail) == graveKey || (((xcb_key_press_event_t *)ev)->detail) == downKey)) {
 
@@ -371,7 +435,9 @@ void StartWindozeCycle(WScreen *scr, WWindow *wwin, bool next, CycleMode mode)
 			if (mode == CYCLE_GROUP && (((xcb_key_press_event_t *)ev)->detail) == graveKey)
 				break;
 
-			if ((((xcb_key_press_event_t *)ev)->detail) == returnKey)
+			if ((((xcb_key_press_event_t *)ev)->detail) == returnKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == deleteKey ||
+			    (((xcb_key_press_event_t *)ev)->detail) == kpDeleteKey)
 				break;
 
 			/* a lookup letter's release is part of the consumed keystroke */

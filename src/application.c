@@ -233,12 +233,7 @@ void wApplicationDestroy(WApplication *wapp)
 		return;
 
 	WMDeleteTimerHandlerPtr(&wapp->urgent_bounce_timer);
-	if (wapp->flags.bouncing) {
-		/* event.c:handleDestroyNotify forced this destroy
-		   and thereby overlooked the bounce callback */
-		wapp->refcount = 1;
-		return;
-	}
+	wAppBounceCancel(wapp);
 
 	scr = wapp->main_window_desc->screen_ptr;
 

@@ -96,6 +96,12 @@ panel_window() {
     DISPLAY=$DPY xdotool search --name '^Window Maker Switch Panel$' 2>/dev/null \
         | tail -n 1
 }
+panel_width() {
+    panel=$(panel_window)
+    [ -n "$panel" ] || return 1
+    DISPLAY=$DPY xwininfo -id "$panel" 2>/dev/null \
+        | sed -n 's/^  Width: \([0-9][0-9]*\)$/\1/p'
+}
 panel_height() {
     panel=$(panel_window)
     [ -n "$panel" ] || return 1
@@ -121,12 +127,20 @@ cat >"$WMHOME/Defaults/WindowMaker" <<'EOF'
   DisableClip = YES;
   DisableDrawers = YES;
   StrictWindozeCycle = YES;
+  WrapMenus = NO;
+  ScrollableMenus = NO;
 }
 EOF
 cat >"$WMHOME/Defaults/WMWindowAttributes" <<'EOF'
 {
   "*" = { NoAppIcon = YES; };
+  "AppIcon" = { NoAppIcon = NO; SharedAppIcon = YES; };
 }
+EOF
+# One INFO_PANEL entry so the internal-panel Delete path can be driven.
+cat >"$WMHOME/Defaults/WMRootMenu" <<'EOF'
+("Root",
+ ("Info", INFO_PANEL))
 EOF
 
 # --- Xephyr ----------------------------------------------------------------
@@ -693,6 +707,179 @@ after=$(active_window)
 check "Focus order after flip-back: Alt+Tab picks next-most-recent again ($after = $OC)" \
     [ "$after" = "$OC" ]
 check "wmaker alive after SwitcherOrder round-trip" ipc_ready
+
+# --- 18. Delete closes the highlighted window --------------------------------
+note "Delete: closes the highlighted window mid-cycle"
+# Two disposable xterms. Activate delA then delB so the flat panel opened
+# from delB highlights delA and Delete closes delA.
+spawn_term delA "" 80x24+50+600
+spawn_term delB "" 80x24+250+600
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^delA\$' 2>/dev/null | grep -q ." \
+    || fatal "delA did not map"
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^delB\$' 2>/dev/null | grep -q ." \
+    || fatal "delB did not map"
+DA=$(find_client delA)
+DB=$(find_client delB)
+DB_HEX=$(printf '0x%x' "$DB")
+note "delA=$DA delB=$DB"
+xdo windowactivate "$DA"; sleep 0.2
+xdo windowactivate "$DB"; sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key Delete; sleep 0.3
+# the cycle stays open after the close and the selection moves on
+xdo key Tab; sleep 0.2
+xdo keyup alt; sleep 0.5
+check "Delete closed the highlighted window delA" \
+    wait_for 60 sh -c "! DISPLAY=$DPY xdotool search --name '^delA\$' 2>/dev/null | grep -q ."
+check "cycle continued after Delete (focus moved off delB, got $(active_window))" \
+    [ "$(active_window)" != "$DB_HEX" ]
+check "delB survived the Delete of its neighbour" \
+    wait_for 5 sh -c "DISPLAY=$DPY xdotool search --name '^delB\$' 2>/dev/null | grep -q ."
+check "wmaker alive after Delete close" ipc_ready
+
+# --- 19. Delete peels an app-group tile ---------------------------------------
+note "Delete: app-group tile keeps its slot while the group has windows"
+# Three xterms share the class Peeled, so the app-group panel shows them
+# as one tile. Activate peelC last: it becomes the group representative.
+spawn_term peelA Peeled 80x24+450+600
+spawn_term peelB Peeled 80x24+650+600
+spawn_term peelC Peeled 80x24+850+600
+for t in peelA peelB peelC; do
+    wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^$t\$' 2>/dev/null | grep -q ." \
+        || fatal "$t did not map"
+done
+PA=$(find_client peelA)
+PB=$(find_client peelB)
+PC=$(find_client peelC)
+PC_HEX=$(printf '0x%x' "$PC")
+note "peelA=$PA peelB=$PB peelC=$PC"
+xdo windowactivate "$PA"; sleep 0.2
+xdo windowactivate "$PB"; sleep 0.2
+xdo windowactivate "$PC"; sleep 0.3
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+# Jump to the Peeled group tile and delete its representative.
+xdo key p; sleep 0.2
+xdo key Delete; sleep 0.3
+xdo keyup super; sleep 0.5
+check "group Delete closed the group rep peelC" \
+    wait_for 60 sh -c "! DISPLAY=$DPY xdotool search --name '^peelC\$' 2>/dev/null | grep -q ."
+check "group tile peeled to a remaining Peeled window" \
+    [ "$(wm_class_of "$(active_window)")" = "Peeled" ]
+check "peel selection is no longer the closed rep" \
+    [ "$(active_window)" != "$PC_HEX" ]
+check "wmaker alive after group Delete" ipc_ready
+
+# --- 20. Delete on a drilled sub-strip entry ---------------------------------
+note "Delete: drilled sub-strip entry closes and the cycle continues"
+# peelA and peelB remain, drill into the Peeled group and delete the
+# sub-strip entry the selection moves to.
+xdo windowactivate "$PA"; sleep 0.2
+xdo windowactivate "$PB"; sleep 0.3
+xdo keydown super; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key p; sleep 0.2
+xdo key Down; sleep 0.2
+xdo key Right; sleep 0.2
+xdo key Delete; sleep 0.3
+xdo keyup super; sleep 0.5
+peel_left() {
+    DISPLAY=$DPY xdotool search --name '^peel[AB]$' 2>/dev/null | grep -c .
+}
+check "sub-strip Delete closed exactly one Peeled window (left $(peel_left))" \
+    [ "$(peel_left)" = 1 ]
+check "wmaker alive after sub-strip Delete" ipc_ready
+
+# --- 21. Delete closes an internal panel (Info) ------------------------------
+note "Delete: closes wmaker's own Info panel"
+info_open() { msg get_windows 2>/dev/null | grep -q 'Info'; }
+info_gone() { ! msg get_windows 2>/dev/null | grep -q 'Info'; }
+# Button3 opens the root menu at the pointer, its entry list is the only
+# child below the menu title (geometry probe follows rootmenu-drive.sh).
+CX=1200
+CY=100
+xdo mousemove "$CX" "$CY"
+xdo mousedown 3
+ENTRY_WIN=$(DISPLAY=$DPY xwininfo -root -tree 2>/dev/null \
+    | awk -v cx="$CX" -v cy="$CY" '
+        /^     0x/ { fx=""; fy=""; fw="";
+            if (match($0, /[0-9]+x[0-9]+\+-?[0-9]+\+-?[0-9]+/)) {
+                split(substr($0,RSTART,RLENGTH), g, /[x+]/);
+                fw=g[1]; fx=g[3]; fy=g[4];
+            }
+            inframe = (fx!="" && fy==cy && fx<=cx && cx<=fx+fw);
+            next; }
+        inframe && /^        0x/ {
+            if (match($0, /[0-9]+x[0-9]+\+-?[0-9]+\+-?[0-9]+  \+-?[0-9]+\+-?[0-9]+$/)) {
+                split(substr($0,RSTART,RLENGTH), g, /[x+ ]+/);
+                if (g[6] > cy) { print g[5] " " g[6] " " g[2]; exit; }
+            } }')
+if [ -n "$ENTRY_WIN" ]; then
+    set -- $ENTRY_WIN
+    EX=$1; EY=$2; EH=$3
+    xdo mousemove "$((EX + 6))" "$((EY + (EH + 1) / 2))"
+fi
+xdo mouseup 3
+check "Info panel opened from the root menu" wait_for 40 info_open
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+xdo key i; sleep 0.2
+xdo key Delete; sleep 0.3
+xdo keyup alt; sleep 0.5
+check "Delete closed the Info panel" wait_for 60 info_gone
+check "wmaker alive after internal-panel Delete" ipc_ready
+
+# --- 22. Delete shrinks the panel and unmanages at once ---------------------
+note "Delete: panel shrinks and the closed window leaves the managed list"
+spawn_term shrinkA "" 80x24+50+350
+spawn_term shrinkB "" 80x24+300+350
+spawn_term shrinkC "" 80x24+550+350
+for t in shrinkA shrinkB shrinkC; do
+    wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^$t\$' 2>/dev/null | grep -q ." \
+        || fatal "$t did not map"
+done
+SA=$(find_client shrinkA)
+SB=$(find_client shrinkB)
+SC=$(find_client shrinkC)
+note "shrinkA=$SA shrinkB=$SB shrinkC=$SC"
+shrink_b_gone() { ! msg get_windows 2>/dev/null | grep -q 'shrinkB'; }
+xdo windowactivate "$SA"; sleep 0.2
+xdo windowactivate "$SB"; sleep 0.2
+xdo windowactivate "$SC"; sleep 0.3
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+w3=$(panel_width)
+xdo key Delete; sleep 0.3
+check "closed window unmanaged while the panel is still open" wait_for 40 shrink_b_gone
+w2=$(panel_width)
+width_shrank() { [ -n "$w3" ] && [ -n "$w2" ] && [ "$w2" -lt "$w3" ]; }
+check "panel width shrank with its entries ($w3 -> $w2)" width_shrank
+xdo keyup alt; sleep 0.5
+check "wmaker alive after Delete shrink" ipc_ready
+
+# --- 23. Delete tears the application icon down mid-cycle -------------------
+note "Delete: app icon goes away with the closed window"
+icon_tiles() { DISPLAY=$DPY xwininfo -root -tree 2>/dev/null | grep ' 64x64+'; }
+icon_tiles_count() { icon_tiles | grep -c .; }
+t0=$(icon_tiles_count)
+spawn_term iconapp AppIcon 80x24+50+350
+wait_for 40 sh -c "DISPLAY=$DPY xdotool search --name '^iconapp\$' 2>/dev/null | grep -q ." \
+    || fatal "iconapp did not map"
+IA=$(find_client iconapp)
+note "iconapp=$IA base tiles=$t0"
+xdo windowminimize "$IA"; sleep 0.5
+check "app icon and miniwindow present while minimized" [ "$(icon_tiles_count)" -ge "$((t0 + 2))" ]
+xdo keydown alt; sleep 0.1
+xdo key Tab; sleep 0.2
+# letter lookup jumps to the minimized window (title iconapp)
+xdo key i; sleep 0.2
+xdo key Delete; sleep 0.3
+icon_tiles_gone() { [ "$(icon_tiles_count)" -le "$t0" ]; }
+check "app icon and miniwindow gone before the panel is released" \
+    wait_for 40 icon_tiles_gone
+xdo keyup alt; sleep 0.5
+check "wmaker alive after app icon Delete" ipc_ready
 
 # --- teardown --------------------------------------------------------------
 note "switchpanel drive summary"

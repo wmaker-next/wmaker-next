@@ -5096,28 +5096,35 @@ static void titlebarMouseDown(WCoreWindow *sender, void *data, xcb_generic_event
 static void windowCloseClick(WCoreWindow *sender, void *data, xcb_generic_event_t *event)
 {
 	WWindow *wwin = data;
+	xcb_button_press_event_t *ev = (xcb_button_press_event_t *)event;
+	unsigned int state = 0;
+	unsigned int detail = XCB_BUTTON_INDEX_1;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) sender;
 
-	((xcb_button_press_event_t *)event)->state &= w_global.shortcut.modifiers_mask;
+	if (ev) {
+		ev->state &= w_global.shortcut.modifiers_mask;
+		state = ev->state;
+		detail = ev->detail;
+	}
 
 	CloseWindowMenu(wwin->screen_ptr);
 
-	if (((xcb_button_press_event_t *)event)->detail < XCB_BUTTON_INDEX_1 || ((xcb_button_press_event_t *)event)->detail > XCB_BUTTON_INDEX_3)
+	if (detail < XCB_BUTTON_INDEX_1 || detail > XCB_BUTTON_INDEX_3)
 		return;
 
 	/* shift-click on a tab-grouped window closes every member */
-	if ((((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_SHIFT) && wwin->tab_group) {
+	if ((state & XCB_MOD_MASK_SHIFT) && wwin->tab_group) {
 		wGroupCloseAll(wwin->tab_group);
 		return;
 	}
 
 	/* if control-click, kill the client */
-	if (((xcb_button_press_event_t *)event)->state & XCB_MOD_MASK_CONTROL) {
+	if (state & XCB_MOD_MASK_CONTROL) {
 		wClientKill(wwin);
 	} else {
-		if (wwin->protocols.DELETE_WINDOW && ((xcb_button_press_event_t *)event)->state == 0) {
+		if (wwin->protocols.DELETE_WINDOW && state == 0) {
 			/* send delete message */
 			wClientSendProtocol(wwin, wdisp->atom.wm.delete_window,
 									  wdisp->timestamp.last_event);

@@ -600,8 +600,8 @@ picks up its new Mod4+grave default automatically. A custom
 GroupNextKey binding now drives the app-group switcher. Intra-app
 falls back to Mod4+grave.
 
-Letter-key window lookup in the Alt+Tab switch panel
------------------------------------------------------
+Letter-key window lookup and Delete in the Alt+Tab switch panel
+---------------------------------------------------------------
 
 While the switch panel is open, pressing a letter key moves the
 selection to the next entry whose displayed label starts with that
@@ -610,8 +610,15 @@ class (`WM_CLASS`) in the app-group switcher and the window title
 everywhere else, so in the flat panel and in the intra-app switcher
 the letter matches the title. Shift+letter scans backward,
 mirroring Shift+Tab. An unmatched letter is ignored, so several
-letters can be tried in one cycle. A non-letter key still dismisses
+letters can be tried in one cycle. Any other key still dismisses
 the panel as before.
+
+Delete (or keypad Delete) instead closes the highlighted window and
+drops its tile, the same graceful close as the CloseKey binding. A
+group tile peels to another window of its group until the group
+empties, the panel shrinks with the tiles that remain, and closing the
+last window ends the cycle. A closed client's frame and application
+icon go away at once instead of lingering until the cycle ends.
 
 wmglyph Unicode glyph selector
 ------------------------------

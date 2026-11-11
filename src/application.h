@@ -24,24 +24,25 @@
 
 /* for tracking single application instances */
 typedef struct WApplication {
-    struct WApplication *next;
-    struct WApplication *prev;
+	struct WApplication *next;
+	struct WApplication *prev;
 
-    xcb_window_t main_window;		       /* ID of the group leader */
-    struct WWindow *main_window_desc;  /* main (leader) window descriptor */
-    WMenu *menu;		       /* application menu */
-    struct WAppIcon *app_icon;
-    int refcount;
-    struct WWindow *last_focused;      /* focused window before hide */
-    int last_workspace;		       /* last workspace used to work on the
-                                        * app */
-    WMHandlerID urgent_bounce_timer;
-    struct {
-        unsigned int skip_next_animation:1;
-        unsigned int hidden:1;
-        unsigned int emulated:1;
-        unsigned int bouncing:1;
-    } flags;
+	xcb_window_t main_window;		/* ID of the group leader */
+	struct WWindow *main_window_desc;	/* main (leader) window descriptor */
+	WMenu *menu;				/* application menu */
+	struct WAppIcon *app_icon;
+	int refcount;
+	struct WWindow *last_focused;		/* focused window before hide */
+	int last_workspace;			/* last workspace used to work on the
+						   app */
+	WMHandlerID urgent_bounce_timer;
+	void *bounce_data;
+	struct {
+		unsigned int skip_next_animation:1;
+		unsigned int hidden:1;
+		unsigned int emulated:1;
+		unsigned int bouncing:1;
+	} flags;
 } WApplication;
 
 
@@ -52,6 +53,7 @@ struct WWindow *wApplicationUrgentWindow(WApplication *wapp);
 
 void wAppBounce(WApplication *);
 void wAppBounceWhileUrgent(WApplication *);
+void wAppBounceCancel(WApplication *wapp);
 void wApplicationActivate(WApplication *);
 void wApplicationDeactivate(WApplication *);
 #endif

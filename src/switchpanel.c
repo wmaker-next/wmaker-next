@@ -51,6 +51,7 @@
 struct SwitchPanel {
 	WScreen *scr;
 	WMWindow *win;
+	WMFrame *iconViewport;
 	WMFrame *iconBox;
 
 	WMArray *icons;
@@ -61,6 +62,7 @@ struct SwitchPanel {
 	int current;
 	int firstVisible;
 	int visibleCount;
+	int extra_h;
 	CycleMode mode;
 
 	/* sub-strip (drilled group) state */
@@ -526,18 +528,17 @@ static bool changeImage(WSwitchPanel *panel, int idecks, int selected, bool dim,
 	return true;
 }
 
-static bool addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwin, int x, int y, Strip strip)
+/* NULL with *ok = false on failure, NULL with *ok = true when the window
+ * has no icon source at all */
+static RImage *tile_image_for_window(WSwitchPanel *panel, WWindow *wwin, bool *ok)
 {
-	WMFrame *icon = WMCreateFrame(parent);
 	RImage *image = NULL;
 	WApplication *wapp;
 	RImage *original;
 	char *path;
 	long long available;
 
-	WMSetFrameRelief(icon, WRFlat);
-	WMResizeWidget(icon, icon_tile_size, icon_tile_size);
-	WMMoveWidget(icon, x, y);
+	*ok = true;
 
 	/* Prefer the per-window _NET_WM_ICON so windows that share a
 	 * group leader but ship distinct icons (a browser and its addon
@@ -567,8 +568,8 @@ static bool addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwi
 			if (!image) {
 				wwarning(_("switch panel: cannot load icon \"%s\" within its resource budget"), path);
 				wfree(path);
-				WMDestroyWidget(icon);
-				return false;
+				*ok = false;
+				return NULL;
 			}
 			wfree(path);
 		}
@@ -580,8 +581,8 @@ static bool addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwi
 	if (original && !image) {
 		wwarning(_("switch panel: cannot scale an icon"));
 		RReleaseImage(original);
-		WMDestroyWidget(icon);
-		return false;
+		*ok = false;
+		return NULL;
 	}
 
 	/* the validator can keep an image larger than the tile at small
@@ -597,12 +598,31 @@ static bool addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwi
 			if (!fitted) {
 				wwarning(_("switch panel: cannot scale an icon"));
 				RReleaseImage(image);
-				WMDestroyWidget(icon);
-				return false;
+				*ok = false;
+				return NULL;
 			}
 			RReleaseImage(image);
 			image = fitted;
 		}
+	}
+
+	return image;
+}
+
+static bool addIconForWindow(WSwitchPanel *panel, WMWidget *parent, WWindow *wwin, int x, int y, Strip strip)
+{
+	WMFrame *icon = WMCreateFrame(parent);
+	RImage *image;
+	bool ok;
+
+	WMSetFrameRelief(icon, WRFlat);
+	WMResizeWidget(icon, icon_tile_size, icon_tile_size);
+	WMMoveWidget(icon, x, y);
+
+	image = tile_image_for_window(panel, wwin, &ok);
+	if (!ok) {
+		WMDestroyWidget(icon);
+		return false;
 	}
 
 	WMAddToArray(*images_of(panel, strip), image);
@@ -1125,7 +1145,6 @@ static WWindow *populate_sub_strip_new(WSwitchPanel *panel, WWindow *groupRep)
 
 static bool render_sub_strip(WSwitchPanel *panel, bool selected)
 {
-	WWindow *wwin;
 	int i;
 
 	if (!panel->subBox)
@@ -1133,7 +1152,7 @@ static bool render_sub_strip(WSwitchPanel *panel, bool selected)
 	if (!WMRealizeWidgetChecked(panel->subViewport) ||
 	    !WMRealizeWidgetChecked(panel->subBox))
 		return false;
-	WM_ITERATE_ARRAY(panel->subWindows, wwin, i) {
+	for (i = 0; i < WMGetArrayItemCount(panel->subWindows); i++) {
 		if (!changeImage(panel, i, selected && i == panel->subCurrent,
 				 false, true, STRIP_SUB))
 			return false;
@@ -1510,6 +1529,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 
 	icon_tile_size = size.tile;
 	panel->visibleCount = size.visible;
+	panel->extra_h = siz.extra_h;
 
 	if (!panel->snap_tile_image)
 		return panel;
@@ -1585,6 +1605,7 @@ WSwitchPanel *wInitSwitchPanel(WScreen *scr, WWindow *curwin, CycleMode mode)
 	WMResizeWidget(viewport, size.strip_width, icon_tile_size);
 	WMMoveWidget(viewport, border_space, border_space);
 	WMSetFrameRelief(viewport, WRFlat);
+	panel->iconViewport = viewport;
 
 	panel->iconBox = WMCreateFrame(viewport);
 	WMMoveWidget(panel->iconBox, 0, 0);
@@ -1860,6 +1881,264 @@ WWindow *wSwitchPanelSelectByKey(WSwitchPanel *panel, int key_char, int back, St
 	}
 
 	return wwin;
+}
+
+WWindow *wSwitchPanelSelected(WSwitchPanel *panel, Strip strip)
+{
+	WMArray *winArr = *windows_of(panel, strip);
+	int *current = current_of(panel, strip);
+
+	if (!winArr || *current < 0 || *current >= WMGetArrayItemCount(winArr))
+		return NULL;
+	return WMGetFromArray(winArr, *current);
+}
+
+bool wSwitchPanelHolds(WSwitchPanel *panel, WWindow *wwin)
+{
+	if (!panel || !wwin)
+		return false;
+	return WMGetFirstInArray(panel->windows, wwin) != WANotFound ||
+	       (panel->subWindows && WMGetFirstInArray(panel->subWindows, wwin) != WANotFound);
+}
+
+static void reflow_strip_icons(WSwitchPanel *panel, Strip strip)
+{
+	WMArray *iconArr = *icons_of(panel, strip);
+	WMFrame *icon;
+	int i, x;
+
+	if (!iconArr)
+		return;
+	WM_ITERATE_ARRAY(iconArr, icon, i) {
+		if (wSwitchPanelIconPos(i, icon_tile_size, &x))
+			WMMoveWidget(icon, x, 0);
+	}
+}
+
+static void strip_shrink_fixup(WSwitchPanel *panel, Strip strip)
+{
+	WMArray *winArr = *windows_of(panel, strip);
+	int *current = current_of(panel, strip);
+	int *firstVisible = firstVisible_of(panel, strip);
+	int *visibleCount = visibleCount_of(panel, strip);
+	int count = WMGetArrayItemCount(winArr);
+
+	if (*visibleCount > count)
+		*visibleCount = count;
+	if (count == 0) {
+		*current = 0;
+		*firstVisible = 0;
+		return;
+	}
+	if (*current >= count)
+		*current = count - 1;
+	if (*firstVisible > *current)
+		*firstVisible = *current;
+	if (*visibleCount > 0 && *firstVisible > count - *visibleCount)
+		*firstVisible = count - *visibleCount;
+	if (panel->win && iconbox_of(panel, strip))
+		WMMoveWidget(iconbox_of(panel, strip), -*firstVisible * icon_tile_size, 0);
+}
+
+static void redraw_strip(WSwitchPanel *panel, Strip strip)
+{
+	WMArray *winArr = *windows_of(panel, strip);
+	int *current = current_of(panel, strip);
+	int i;
+
+	if (!panel->win)
+		return;
+	for (i = 0; i < WMGetArrayItemCount(winArr); i++)
+		changeImage(panel, i, i == *current, false, true, strip);
+	if (*current >= 0 && *current < WMGetArrayItemCount(winArr))
+		drawTitle(panel, *current,
+			  panelLabelForWindow(panel, WMGetFromArray(winArr, *current), strip), strip);
+}
+
+static void strip_delete_at(WSwitchPanel *panel, int idx, Strip strip)
+{
+	WMArray *iconArr = *icons_of(panel, strip);
+	WMArray *imageArr = *images_of(panel, strip);
+	WMFrame *icon = NULL;
+	RImage *image = NULL;
+
+	if (iconArr) {
+		icon = WMGetFromArray(iconArr, idx);
+		WMDeleteFromArray(iconArr, idx);
+	}
+	if (imageArr) {
+		image = WMGetFromArray(imageArr, idx);
+		WMDeleteFromArray(imageArr, idx);
+	}
+	WMDeleteFromArray(*flags_of(panel, strip), idx);
+	WMDeleteFromArray(*windows_of(panel, strip), idx);
+	if (icon)
+		WMDestroyWidget(icon);
+	if (image)
+		RReleaseImage(image);
+}
+
+static WWindow *group_replacement_rep(WSwitchPanel *panel, WWindow *rep)
+{
+	WMArray *group;
+	WWindow *wwin, *found = NULL;
+	int i;
+
+	group = makeWindowListArray(rep, panel->snap_tile_image, CYCLE_CLASS_ONLY);
+	WM_ITERATE_ARRAY(group, wwin, i) {
+		if (wwin != rep) {
+			found = wwin;
+			break;
+		}
+	}
+	WMFreeArray(group);
+	return found;
+}
+
+static bool replace_window_at(WSwitchPanel *panel, int idx, WWindow *wwin, Strip strip)
+{
+	WMArray *winArr = *windows_of(panel, strip);
+	WMArray *imageArr = *images_of(panel, strip);
+	RImage *image, *old_image;
+	bool ok;
+
+	if (!panel->win || !imageArr) {
+		WMReplaceInArray(winArr, idx, wwin);
+		return true;
+	}
+
+	image = tile_image_for_window(panel, wwin, &ok);
+	if (!ok)
+		return false;
+
+	old_image = WMGetFromArray(imageArr, idx);
+	WMReplaceInArray(imageArr, idx, image);
+	WMReplaceInArray(winArr, idx, wwin);
+	if (old_image)
+		RReleaseImage(old_image);
+	return true;
+}
+
+static void resize_panel_to_count(WSwitchPanel *panel, int count)
+{
+	WSwitchPanelSizing siz;
+	WSwitchPanelSize size;
+	int pw, ph;
+
+	if (!panel->win || count < 1)
+		return;
+
+	memset(&siz, 0, sizeof(siz));
+	siz.icon_size = icon_size;
+	siz.count = count;
+	siz.border = border_space;
+	siz.label_height = label_height;
+	siz.extra_h = panel->extra_h;
+	siz.head_w = panel->target_rect.size.width;
+	siz.head_h = panel->target_rect.size.height;
+	siz.ui_scale = WMScreenUIScale(panel->scr->wmscreen);
+	siz.opt_in_fit = panel->opt_in_fit;
+
+	if (wSwitchPanelCalcSize(&siz, &size, NULL) != 0)
+		return;
+	if (size.tile != icon_tile_size)
+		return;
+
+	pw = size.panel_width;
+	ph = size.panel_height;
+	if (panel->drilled || panel->drillPreview)
+		ph += panel->subHeightExtra;
+	if (pw == WMWidgetWidth(panel->win) && ph == WMWidgetHeight(panel->win))
+		return;
+	if (!replace_panel_bg(panel, pw, ph))
+		return;
+
+	WMResizeWidget(panel->win, pw, ph);
+	if (panel->iconViewport)
+		WMResizeWidget(panel->iconViewport, size.strip_width, icon_tile_size);
+	WMResizeWidget(panel->iconBox, size.full_width, icon_tile_size);
+	if (panel->label) {
+		WMResizeWidget(panel->label, size.strip_width, label_height);
+		WMMoveWidget(panel->label, border_space,
+			     border_space + icon_tile_size + 5 +
+			     (panel->drilled || panel->drillPreview ? panel->subHeightExtra : 0));
+	}
+	panel->visibleCount = size.visible;
+	place_panel(panel);
+}
+
+static void shrink_sub_box(WSwitchPanel *panel)
+{
+	int width;
+
+	if (!panel->subBox || !panel->subWindows)
+		return;
+	if (!wSwitchPanelStripWidth(WMGetArrayItemCount(panel->subWindows),
+				    icon_tile_size,
+				    WMScreenUIScale(panel->scr->wmscreen), &width))
+		return;
+	WMResizeWidget(panel->subBox, width, icon_tile_size);
+}
+
+WWindow *wSwitchPanelRemoveWindow(WSwitchPanel *panel, WWindow *wwin, Strip strip)
+{
+	WWindow *sel;
+	bool main_removed = false;
+	int idx;
+
+	if (!panel || !wwin)
+		return wSwitchPanelSelected(panel, strip);
+
+	if (strip == STRIP_SUB && panel->subWindows) {
+		idx = WMGetFirstInArray(panel->subWindows, wwin);
+		if (idx >= 0) {
+			strip_delete_at(panel, idx, STRIP_SUB);
+			strip_shrink_fixup(panel, STRIP_SUB);
+			reflow_strip_icons(panel, STRIP_SUB);
+			redraw_strip(panel, STRIP_SUB);
+			shrink_sub_box(panel);
+		}
+	}
+
+	idx = WMGetFirstInArray(panel->windows, wwin);
+	if (idx >= 0) {
+		WWindow *replacement = NULL;
+
+		if (panel->mode == CYCLE_GROUP)
+			replacement = group_replacement_rep(panel, wwin);
+		if (!replacement || !replace_window_at(panel, idx, replacement, STRIP_MAIN)) {
+			strip_delete_at(panel, idx, STRIP_MAIN);
+			strip_shrink_fixup(panel, STRIP_MAIN);
+			reflow_strip_icons(panel, STRIP_MAIN);
+			main_removed = true;
+		}
+		redraw_strip(panel, STRIP_MAIN);
+	}
+
+	if (panel->drilled || panel->drillPreview) {
+		if (strip == STRIP_MAIN && idx >= 0) {
+			if (main_removed) {
+				if (WMGetArrayItemCount(panel->windows) > 0)
+					wSwitchPanelUndrill(panel);
+			} else {
+				wSwitchPanelRefreshSub(panel);
+			}
+		} else if (panel->subWindows && WMGetArrayItemCount(panel->subWindows) < 2 &&
+			   WMGetArrayItemCount(panel->windows) > 0) {
+			wSwitchPanelUndrill(panel);
+		}
+	}
+
+	if (main_removed) {
+		resize_panel_to_count(panel, WMGetArrayItemCount(panel->windows));
+		strip_shrink_fixup(panel, STRIP_MAIN);
+		redraw_strip(panel, STRIP_MAIN);
+	}
+
+	sel = wSwitchPanelSelected(panel, strip);
+	if (!sel)
+		sel = wSwitchPanelSelected(panel, STRIP_MAIN);
+	return sel;
 }
 
 WWindow *wSwitchPanelHandleEvent(WSwitchPanel *panel, xcb_generic_event_t *event)
