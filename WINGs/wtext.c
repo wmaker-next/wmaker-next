@@ -1020,8 +1020,9 @@ static void cursorToTextPosition(Text * tPtr, int x, int y)
 	while (!done && tb) {
 
 		if (tPtr->flags.monoFont && tb->graphic) {
-			if ((dir ? tb->next : tb->prior))
-				tb = (dir ? tb->next : tb->prior);
+			if (!(dir ? tb->next : tb->prior))
+				break;
+			tb = (dir ? tb->next : tb->prior);
 			continue;
 		}
 
@@ -1068,6 +1069,8 @@ static void cursorToTextPosition(Text * tPtr, int x, int y)
 	while (tb) {
 
 		if (tPtr->flags.monoFont && tb->graphic) {
+			if (!(dir ? tb->next : tb->prior))
+				break;
 			tb = (dir ? tb->next : tb->prior);
 			continue;
 		}
@@ -1132,8 +1135,7 @@ static void cursorToTextPosition(Text * tPtr, int x, int y)
 			break;
 		}
 
-		if (tb)
-			s = (dir ? 0 : tb->nsections - 1);
+		s = (dir ? 0 : tb->nsections - 1);
 	}
 
 	/* we have said TextBlock, now where within it? */
