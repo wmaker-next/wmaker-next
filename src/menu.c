@@ -2210,8 +2210,10 @@ static void menuMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 		if (!close_on_exit && (bev->state & XCB_MOD_MASK_CONTROL) && smenu && entry->flags.editable) {
 			char buffer[128];
 			char *name;
-			int number = entry_no - 3; /* Entries "New", "Destroy Last" and "Last Used" appear before workspaces */
+			int number = entry_no - smenu->ws_entry_base;
 
+			if (number < 0 || number >= scr->workspace_count)
+				goto byebye;
 			name = wstrdup(scr->workspaces[number]->name);
 			snprintf(buffer, sizeof(buffer), _("Type the name for workspace %i:"), number + 1);
 
