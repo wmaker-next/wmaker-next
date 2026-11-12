@@ -35,6 +35,12 @@ OLD_MENU=menu
 NEW_MENU=WMRootMenu
 if [ $# = 1 ]
 then
+    case "$1" in
+    */*|.*)
+	echo "$MYNAME: invalid menu-file specifier \"$1\"" >&2
+	exit 1
+	;;
+    esac
     if [ -s "$WLW/menu.$1" ]
     then
 	OLD_MENU="menu.$1"
@@ -123,6 +129,7 @@ perl - $T <<-'EOF' > $T-p
 		push @foo,$_;
 	}
 	for (@foo) {
+		s/\\/\\\\/g;
 		s/\s*$//;
 		s/^(\s*)"*(Workspaces*)"*\s\s*(WORKSPACE_MENU)/\1(\2, \3),/;
 		s/^(\s*)("[^"]*")\s+MENU/\1($v\n\1\2,/;
