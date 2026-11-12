@@ -540,24 +540,25 @@ static void getLocalizedStringValue(char **target, const char *line, int *match_
 	kstart++;
 
 	/* skip whitespace */
-	while (isspace(*(p + kstart)))
+	while (isspace((unsigned char)*(p + kstart)))
 		kstart++;
 
 	if (sqbstart > 0 && sqbend > sqbstart)
 		locale = wstrndup(p + sqbstart, sqbend - sqbstart);
 
-	/* if there is no value yet and this is the default key, return */
-	if (!*target && !locale) {
-		char *value = wstrdup(p + kstart);
+	if (!locale) {
+		/* the unlocalized key is the plain fallback: it replaces
+		 * only another fallback, a matched localized value wins
+		 * regardless of file order */
+		if (*match_level <= MATCH_DEFAULT) {
+			char *value = wstrdup(p + kstart);
 
-		unescapeValue(value);
-		*match_level = MATCH_DEFAULT;
-		wfree(*target);
-		*target = value;
-		return;
-	}
-
-	if (compare_matchlevel(match_level, locale)) {
+			unescapeValue(value);
+			wfree(*target);
+			*target = value;
+			*match_level = MATCH_DEFAULT;
+		}
+	} else if (compare_matchlevel(match_level, locale)) {
 		char *value = wstrdup(p + kstart);
 
 		unescapeValue(value);
