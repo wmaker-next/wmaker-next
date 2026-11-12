@@ -457,26 +457,9 @@ static void getKey(char **target, const char *line)
 	*target = wstrndup(p + kstart, kend - kstart);
 }
 
-/* get a string value from line. allocates target, which must be wfreed later. */
-static void getStringValue(char **target, const char *line)
+static void unescapeValue(char *value)
 {
-	const char *p;
-	char *q, *value;
-	int kstart;
-
-	p = line;
-	kstart = 0;
-
-	/* skip until after '=' */
-	while (*(p + kstart) && *(p + kstart) != '=')
-		kstart++;
-	kstart++;
-
-	/* skip whitespace */
-	while (*(p + kstart) && isspace(*(p + kstart)))
-		kstart++;
-
-	value = wstrdup(p + kstart);
+	char *p, *q;
 
 	for (p = q = value; *p; p++) {
 		if (*p != '\\') {
@@ -499,6 +482,29 @@ static void getStringValue(char **target, const char *line)
 		}
 	}
 	*q = '\0';
+}
+
+/* get a string value from line. allocates target, which must be wfreed later. */
+static void getStringValue(char **target, const char *line)
+{
+	const char *p;
+	char *value;
+	int kstart;
+
+	p = line;
+	kstart = 0;
+
+	/* skip until after '=' */
+	while (*(p + kstart) && *(p + kstart) != '=')
+		kstart++;
+	kstart++;
+
+	/* skip whitespace */
+	while (*(p + kstart) && isspace((unsigned char)*(p + kstart)))
+		kstart++;
+
+	value = wstrdup(p + kstart);
+	unescapeValue(value);
 
 	wfree(*target);
 	*target = value;
@@ -542,15 +548,19 @@ static void getLocalizedStringValue(char **target, const char *line, int *match_
 
 	/* if there is no value yet and this is the default key, return */
 	if (!*target && !locale) {
+		char *value = wstrdup(p + kstart);
+
+		unescapeValue(value);
 		*match_level = MATCH_DEFAULT;
 		wfree(*target);
-		*target = wstrdup(p + kstart);
+		*target = value;
 		return;
 	}
 
 	if (compare_matchlevel(match_level, locale)) {
 		char *value = wstrdup(p + kstart);
 
+		unescapeValue(value);
 		wfree(*target);
 		*target = value;
 	}
