@@ -33,6 +33,7 @@
 #include "xcconn.h"
 
 #define MAXDATA		(4*1024*1024)
+#define SELECTION_WAIT_MS 1000
 
 static const char *prog_name;
 
@@ -55,6 +56,8 @@ static xcb_timestamp_t getTimestamp(xcb_connection_t *c, xcb_window_t win)
 	xcb_generic_event_t *ev;
 	xcb_property_notify_event_t *pn;
 	xcb_timestamp_t t = XCB_CURRENT_TIME;
+	long long deadline = clip_monotonic_ms() + SELECTION_WAIT_MS;
+	int wait_ms;
 	bool got = false;
 
 	xcb_change_window_attributes(c, win, XCB_CW_EVENT_MASK,
@@ -64,9 +67,11 @@ static xcb_timestamp_t getTimestamp(xcb_connection_t *c, xcb_window_t win)
 	xcb_flush(c);
 
 	while (!got) {
-		if (!clip_wait_event(c, &ev, 1000)) {
+		wait_ms = (int)(deadline - clip_monotonic_ms());
+		if (wait_ms <= 0)
 			break;
-		}
+		if (!clip_wait_event(c, &ev, wait_ms))
+			break;
 		pn = (xcb_property_notify_event_t *) ev;
 		if ((ev->response_type & 0x7f) == XCB_PROPERTY_NOTIFY && pn->window == win) {
 			t = pn->time;
@@ -92,32 +97,44 @@ static bool selectionNotifyMatches(xcb_generic_event_t *ev, SelectionWaitData *w
 	return sn->requestor == wait->requestor && sn->selection == wait->selection;
 }
 
-static char *fetchSelection(xcb_connection_t *c, int screen, const char *selection, int *length)
+/* Returns 1 on success, which may be an empty selection, 0 on failure. */
+static int fetchSelection(xcb_connection_t *c, int screen, const char *selection,
+			  char **data_out, int *length)
 {
-	xcb_intern_atom_cookie_t ck1, ck2;
-	xcb_intern_atom_reply_t *r1, *r2;
-	xcb_atom_t selatom, clipatom, prop;
+	xcb_intern_atom_cookie_t ck1, ck2, ck3;
+	xcb_intern_atom_reply_t *r1, *r2, *r3;
+	xcb_get_selection_owner_cookie_t ock;
+	xcb_get_selection_owner_reply_t *orp;
+	xcb_atom_t selatom, clipatom, incratom, prop = XCB_ATOM_NONE;
 	xcb_window_t win;
 	xcb_timestamp_t now;
-	xcb_get_property_cookie_t pck;
-	xcb_get_property_reply_t *prep;
 	xcb_generic_event_t *ev;
 	SelectionWaitData wait;
-	char *result = NULL;
+	unsigned char *data;
+	xcb_atom_t type;
+	size_t dlen;
+	long long deadline;
+	int wait_ms;
+	int had_owner = 0;
 	bool got = false;
 
+	*data_out = NULL;
 	*length = 0;
 
 	ck1 = xcb_intern_atom(c, 0, strlen(selection), selection);
 	ck2 = xcb_intern_atom(c, 0, strlen("CLIPBOARD"), "CLIPBOARD");
+	ck3 = xcb_intern_atom(c, 0, strlen("INCR"), "INCR");
 	r1 = xcb_intern_atom_reply(c, ck1, NULL);
 	r2 = xcb_intern_atom_reply(c, ck2, NULL);
+	r3 = xcb_intern_atom_reply(c, ck3, NULL);
 	selatom = r1 ? r1->atom : XCB_ATOM_NONE;
 	clipatom = r2 ? r2->atom : XCB_ATOM_NONE;
+	incratom = r3 ? r3->atom : XCB_ATOM_NONE;
 	free(r1);
 	free(r2);
+	free(r3);
 	if (selatom == XCB_ATOM_NONE || clipatom == XCB_ATOM_NONE)
-		return NULL;
+		return 0;
 
 	win = xcb_generate_id(c);
 	xcb_create_window(c, XCB_COPY_FROM_PARENT, win, xcconn_root(c, screen),
@@ -131,13 +148,24 @@ static char *fetchSelection(xcb_connection_t *c, int screen, const char *selecti
 
 	wait.requestor = win;
 	wait.selection = selatom;
+	/* a property-less SelectionNotify then means the owner refused,
+	 * which must not masquerade as an empty selection */
+	ock = xcb_get_selection_owner(c, selatom);
+	orp = xcb_get_selection_owner_reply(c, ock, NULL);
+	if (orp) {
+		had_owner = orp->owner != XCB_ATOM_NONE;
+		free(orp);
+	}
 	xcb_convert_selection(c, win, selatom, XCB_ATOM_STRING, clipatom, now);
 	xcb_flush(c);
 
+	deadline = clip_monotonic_ms() + SELECTION_WAIT_MS;
 	while (!got) {
-		if (!clip_wait_event(c, &ev, 1000)) {
+		wait_ms = (int)(deadline - clip_monotonic_ms());
+		if (wait_ms <= 0)
 			break;
-		}
+		if (!clip_wait_event(c, &ev, wait_ms))
+			break;
 		if (selectionNotifyMatches(ev, &wait)) {
 			prop = ((xcb_selection_notify_event_t *) ev)->property;
 			got = true;
@@ -146,25 +174,27 @@ static char *fetchSelection(xcb_connection_t *c, int screen, const char *selecti
 	}
 
 	if (got && prop != XCB_ATOM_NONE) {
-		pck = xcb_get_property(c, false, win, prop, XCB_ATOM_STRING, 0, MAXDATA / 4);
-		prep = xcb_get_property_reply(c, pck, NULL);
-		if (prep && prep->type == XCB_ATOM_STRING && prep->format == 8 &&
-		    prep->bytes_after == 0 && prep->value_len > 0 &&
-		    prep->value_len <= INT_MAX) {
-			size_t n = prep->value_len;
-
-			result = malloc(n + 1);
-			if (result) {
-				memcpy(result, xcb_get_property_value(prep), n);
-				result[n] = '\0';
-				*length = (int) n;
-			}
+		data = clip_retrieve_property(c, win, prop, incratom, MAXDATA,
+					      CLIP_DEFAULT_INCR_SEND_TIMEOUT_MS,
+					      NULL, NULL, &type, &dlen);
+		if (!data) {
+			xcb_destroy_window(c, win);
+			return 0;
 		}
-		free(prep);
+		*data_out = (char *)data;
+		if (dlen <= INT_MAX)
+			*length = (int)dlen;
+	} else if (got && !had_owner) {
+		*data_out = NULL;
+		*length = 0;
+	} else {
+		/* refused by the owner, or no reply */
+		xcb_destroy_window(c, win);
+		return 0;
 	}
 
 	xcb_destroy_window(c, win);
-	return result;
+	return 1;
 }
 
 static char *fetchBuffer(xcb_connection_t *c, int buffer, int *length)
@@ -258,19 +288,20 @@ int main(int argc, char **argv)
 	}
 	c = xcconn_open(display_name, prog_name, 1, &sn);
 
-	if (selection_name)
-		buf = fetchSelection(c, sn, selection_name, &l);
-	else
-		buf = NULL;
-
-	if (buf == NULL)
-		buf = fetchBuffer(c, buffer, &l);
-
-	if (buf == NULL) {
-		status = 1;
+	status = 0;
+	if (selection_name) {
+		if (!fetchSelection(c, sn, selection_name, &buf, &l)) {
+			xcb_disconnect(c);
+			exit(1);
+		}
 	} else {
+		buf = fetchBuffer(c, buffer, &l);
+		if (buf == NULL)
+			status = 1;
+	}
+
+	if (status == 0) {
 		done = 0;
-		status = 0;
 		while (done < (size_t)l) {
 			n = write(STDOUT_FILENO, buf + done, (size_t)l - done);
 
