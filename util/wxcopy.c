@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -188,6 +189,10 @@ int main(int argc, char **argv)
 			 * grow by doubling, not by the minimum needed for the
 			 * current line.
 			 */
+			if (buf_len > (SIZE_MAX - nl - 1) / 2) {
+				fprintf(stderr, "%s: out of memory\n", prog_name);
+				exit(1);
+			}
 			buf_len = 2 * buf_len + nl + 1;
 			/* some realloc implementations don't do malloc if buf==NULL */
 			if (buf == NULL) {
