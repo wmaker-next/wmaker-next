@@ -234,18 +234,20 @@ static bool wmc_to_wm(WMConfigMenuEntry **wmc, WMMenuEntry **wm)
 	char *p;
 	size_t slen;
 
-	/* only Exec is mandatory, and it's better exist in a known place */
-	if (!((*wmc)->Exec &&
-	     *(*wmc)->Exec &&
-	     fileInPath((*wmc)->Exec)))
+	/* only Exec is mandatory */
+	if (!((*wmc)->Exec && *(*wmc)->Exec))
 		return false;
 
 	/* normalize Exec: wmconfig tends to stick an ampersand
 	 * at the end of everything, which we don't need */
 	slen = strlen((*wmc)->Exec) - 1;
 	p = (*wmc)->Exec;
-	while (slen > 0 && (isspace(*(p + slen)) || *(p + slen) == '&'))
+	while (slen > 0 && (isspace((unsigned char)*(p + slen)) || *(p + slen) == '&'))
 		*(p + slen--) = '\0';
+
+	/* and it's better exist in a known place */
+	if (!fileInPath((*wmc)->Exec))
+		return false;
 
 	/* if there's no Name, use the first word of Exec; still better
 	 * than nothing. i realize it's highly arguable whether `xterm' from
