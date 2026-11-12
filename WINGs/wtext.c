@@ -959,12 +959,12 @@ static void updateCursorPosition(Text * tPtr)
 
 	/* scroll the bars if the cursor is not visible */
 	if (tPtr->flags.editable && tPtr->cursor.x != -23) {
-		if (tPtr->cursor.y + tPtr->cursor.h > tPtr->vpos + tPtr->visible.y + tPtr->visible.h) {
+		if (tPtr->cursor.y + tPtr->cursor.h > tPtr->vpos + tPtr->visible.h) {
 			tPtr->vpos +=
 			    (tPtr->cursor.y + tPtr->cursor.h + 10
-			     - (tPtr->vpos + tPtr->visible.y + tPtr->visible.h));
-		} else if (tPtr->cursor.y < tPtr->vpos + tPtr->visible.y) {
-			tPtr->vpos -= (tPtr->vpos + tPtr->visible.y - tPtr->cursor.y);
+			     - (tPtr->vpos + tPtr->visible.h));
+		} else if (tPtr->cursor.y < tPtr->vpos) {
+			tPtr->vpos = tPtr->cursor.y > 0 ? (unsigned int)tPtr->cursor.y : 0;
 		}
 
 	}
@@ -1193,13 +1193,13 @@ static void cursorToTextPosition(Text * tPtr, int x, int y)
 
 	/* scroll the bars if the cursor is not visible */
 	if (tPtr->flags.editable && tPtr->cursor.x != -23) {
-		if (tPtr->cursor.y + tPtr->cursor.h > tPtr->vpos + tPtr->visible.y + tPtr->visible.h) {
+		if (tPtr->cursor.y + tPtr->cursor.h > tPtr->vpos + tPtr->visible.h) {
 			tPtr->vpos +=
 			    (tPtr->cursor.y + tPtr->cursor.h + 10
-			     - (tPtr->vpos + tPtr->visible.y + tPtr->visible.h));
+			     - (tPtr->vpos + tPtr->visible.h));
 			updateScrollers(tPtr);
-		} else if (tPtr->cursor.y < tPtr->vpos + tPtr->visible.y) {
-			tPtr->vpos -= (tPtr->vpos + tPtr->visible.y - tPtr->cursor.y);
+		} else if (tPtr->cursor.y < tPtr->vpos) {
+			tPtr->vpos = tPtr->cursor.y > 0 ? (unsigned int)tPtr->cursor.y : 0;
 			updateScrollers(tPtr);
 		}
 
