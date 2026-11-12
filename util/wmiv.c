@@ -2419,9 +2419,13 @@ int change_image(int way)
 						tmp_link = list.first;
 					else
 						tmp_link = current_link->next;
+				if (tmp_link == current_link)
+					tmp_link = NULL;
 				linked_list_del(&list, current_link);
 				current_link = tmp_link;
 				max_index = list.count;
+				if (!current_link)
+					return EXIT_FAILURE;
 				return change_image(way);
 			}
 		} else {
