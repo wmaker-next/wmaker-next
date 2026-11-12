@@ -324,6 +324,10 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 	int w, h;
 	bool fimage = false;
 	RImage *timage;
+	xcb_pixmap_t pixmap;
+	cairo_surface_t *ss;
+	cairo_t *cr;
+	int sx = 0, sy = 0;
 
 	switch (toupper(type)) {
 	case 'S':
@@ -366,71 +370,61 @@ applyImage(RContext * rc, BackgroundTexture * texture, RImage * image, char type
 			fimage = true;
 			image = simage;
 		}
-
-		__attribute__((fallthrough));
+		break;
 	case 'T':
 		if (image->width != width || image->height != height) {
 			timage = RMakeTiledImage(image, width, height);
 			if (!timage) {
 				wwarning("could not tile texture:%s", RMessageForError(RErrorCode));
-				if (fimage)
-					RReleaseImage(image);
 				return;
 			}
-			if (fimage)
-				RReleaseImage(image);
 			fimage = true;
 			image = timage;
 		}
-		__attribute__((fallthrough));
-	case 'C':
-		{
-			xcb_pixmap_t pixmap;
-			cairo_surface_t *ss;
-			cairo_t *cr;
-			int sx = 0, sy = 0;
-
-			if (!RConvertImage(rc, image, &pixmap)) {
-				wwarning("could not convert texture:%s", RMessageForError(RErrorCode));
-				if (fimage)
-					RReleaseImage(image);
-				return;
-			}
-
-			if (image->height < height) {
-				h = image->height;
-				y += (height - h) / 2;
-			} else {
-				sy = (image->height - height) / 2;
-				h = height;
-			}
-			if (image->width < width) {
-				w = image->width;
-				x += (width - w) / 2;
-			} else {
-				sx = (image->width - width) / 2;
-				w = width;
-			}
-
-			cr = cairo_begin_pixmap(rc, texture->pixmap,
-						texture->width, texture->height);
-			ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pixmap,
-						      rc->xvisual,
-						      image->width, image->height);
-			cairo_set_source_surface(cr, ss, x - sx, y - sy);
-			cairo_rectangle(cr, x, y, w, h);
-			cairo_fill(cr);
-			cairo_surface_destroy(ss);
-			cairo_surface_flush(cairo_get_target(cr));
-			cairo_destroy(cr);
-
-			wXFreePixmap(xc, pixmap);
-			if (fimage) {
-				RReleaseImage(image);
-			}
-		}
 		break;
+	case 'C':
+		break;
+	default:
+		return;
 	}
+
+	if (!RConvertImage(rc, image, &pixmap)) {
+		wwarning("could not convert texture:%s", RMessageForError(RErrorCode));
+		if (fimage)
+			RReleaseImage(image);
+		return;
+	}
+
+	if (image->height < height) {
+		h = image->height;
+		y += (height - h) / 2;
+	} else {
+		sy = (image->height - height) / 2;
+		h = height;
+	}
+	if (image->width < width) {
+		w = image->width;
+		x += (width - w) / 2;
+	} else {
+		sx = (image->width - width) / 2;
+		w = width;
+	}
+
+	cr = cairo_begin_pixmap(rc, texture->pixmap,
+				texture->width, texture->height);
+	ss = cairo_xcb_surface_create(rc->xc, (xcb_drawable_t)pixmap,
+				      rc->xvisual,
+				      image->width, image->height);
+	cairo_set_source_surface(cr, ss, x - sx, y - sy);
+	cairo_rectangle(cr, x, y, w, h);
+	cairo_fill(cr);
+	cairo_surface_destroy(ss);
+	cairo_surface_flush(cairo_get_target(cr));
+	cairo_destroy(cr);
+
+	wXFreePixmap(xc, pixmap);
+	if (fimage)
+		RReleaseImage(image);
 }
 
 static BackgroundTexture *parseTexture(RContext * rc, char *text)
