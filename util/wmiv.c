@@ -843,7 +843,8 @@ static char *find_image_directory_depth(const char *start_dir, int depth)
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 			continue;
 
-		snprintf(full_path, sizeof(full_path), "%s/%s", start_dir, entry->d_name);
+		if (snprintf(full_path, sizeof(full_path), "%s/%s", start_dir, entry->d_name) >= (int)sizeof(full_path))
+			continue;
 		if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode))
 			image_count++;
 	}
@@ -863,7 +864,8 @@ static char *find_image_directory_depth(const char *start_dir, int depth)
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 			continue;
 
-		snprintf(full_path, sizeof(full_path), "%s/%s", start_dir, entry->d_name);
+		if (snprintf(full_path, sizeof(full_path), "%s/%s", start_dir, entry->d_name) >= (int)sizeof(full_path))
+			continue;
 		if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode)) {
 			result = find_image_directory_depth(full_path, depth + 1);
 			if (result)
@@ -2269,6 +2271,7 @@ int zoom_in_out(int z)
 {
 	RImage *old_img = img;
 	RImage *tmp;
+	float old_zoom = zoom_factor;
 	int new_width, new_height;
 
 	if (!current_link)
@@ -2287,7 +2290,7 @@ int zoom_in_out(int z)
 	new_height = tmp->height + (int)(tmp->height * zoom_factor);
 
 	if (!z && ((new_width <= 0) || (new_height <= 0))) {
-		zoom_factor += 0.2f;
+		zoom_factor = old_zoom;
 		RReleaseImage(tmp);
 		return EXIT_FAILURE;
 	}
@@ -2297,22 +2300,21 @@ int zoom_in_out(int z)
 		new_height = R_IMAGE_MAX_HEIGHT;
 
 	img = RScaleImage(tmp, new_width, new_height);
+	RReleaseImage(tmp);
 	if (!img) {
 		img = old_img;
-		RReleaseImage(tmp);
+		zoom_factor = old_zoom;
+		return EXIT_FAILURE;
+	}
+
+	merge_with_background(img);
+	if (!set_image_pixmap(img)) {
+		zoom_factor = old_zoom;
+		RReleaseImage(img);
+		img = old_img;
 		return EXIT_FAILURE;
 	}
 	RReleaseImage(old_img);
-	RReleaseImage(tmp);
-	if (pix)
-		xcb_free_pixmap(xc, (xcb_pixmap_t)pix);
-	pix = 0;
-
-	merge_with_background(img);
-	if (!RConvertImage(ctx, img, &pix)) {
-		fprintf(stderr, "Error: %s\n", RMessageForError(RErrorCode));
-		return EXIT_FAILURE;
-	}
 	resize_window(win, img->width, img->height);
 	return EXIT_SUCCESS;
 }
@@ -2503,13 +2505,16 @@ link_t *connect_dir(char *dirpath, linked_list_t *list)
 	}
 	for (idx = 0; idx < dv; idx++) {
 			struct stat stDirInfo;
+			int r;
 
 			if (dirpath[strlen(dirpath)-1] == FILE_SEPARATOR)
-				snprintf(path, PATH_MAX, "%s%s", dirpath, dir[idx]->d_name);
+				r = snprintf(path, PATH_MAX, "%s%s", dirpath, dir[idx]->d_name);
 			else
-				snprintf(path, PATH_MAX, "%s%c%s", dirpath, FILE_SEPARATOR, dir[idx]->d_name);
+				r = snprintf(path, PATH_MAX, "%s%c%s", dirpath, FILE_SEPARATOR, dir[idx]->d_name);
 
 			free(dir[idx]);
+			if (r < 0 || r >= PATH_MAX)
+				continue;
 			if ((lstat(path, &stDirInfo) == 0) && !S_ISDIR(stDirInfo.st_mode))
 				linked_list_add(list, strdup(path));
 	}
