@@ -1913,30 +1913,37 @@ int maximize_image(void)
 */
 int merge_with_background(RImage *i)
 {
-	if (i) {
-		RImage *back;
+	RImage *back;
+	unsigned char *data;
+	int x, y;
 
-		back = RCreateImage(i->width, i->height, true);
-		if (back) {
-			int opaq = 255;
-			int x, y;
+	if (!i)
+		return EXIT_FAILURE;
 
-			RFillImage(back, &lightGray);
-			for (x = 0; x <= i->width; x += 8) {
-				if (x/8 % 2)
-					y = 8;
-				else
-					y = 0;
-				for (; y <= i->height; y += 16)
-					ROperateRectangle(back, RAddOperation, x, y, x+8, y+8, &darkGray);
-			}
+	/* the checkerboard can only show through transparency */
+	if (i->format != RRGBAFormat)
+		return EXIT_SUCCESS;
 
-			RCombineImagesWithOpaqueness(i, back, opaq);
-			RReleaseImage(back);
-			return EXIT_SUCCESS;
-		}
+	back = RCreateImage(i->width, i->height, true);
+	if (!back)
+		return EXIT_FAILURE;
+
+	RFillImage(back, &lightGray);
+	for (x = 0; x <= i->width; x += 8) {
+		if (x/8 % 2)
+			y = 8;
+		else
+			y = 0;
+		for (; y <= i->height; y += 16)
+			ROperateRectangle(back, RCopyOperation, x, y, x+8, y+8, &darkGray);
 	}
-	return EXIT_FAILURE;
+
+	RCombineImages(back, i);
+	data = i->data;
+	i->data = back->data;
+	back->data = data;
+	RReleaseImage(back);
+	return EXIT_SUCCESS;
 }
 
 /*
@@ -3166,7 +3173,7 @@ int main(int argc, char **argv)
 	/* Init colors */
 	lightGray.red = lightGray.green = lightGray.blue = 211;
 	darkGray.red = darkGray.green = darkGray.blue = 169;
-	lightGray.alpha = darkGray.alpha = 1;
+	lightGray.alpha = darkGray.alpha = 255;
 	black.red = black.green = black.blue = 0;
 	red.red = 255;
 	red.green = red.blue = 0;
