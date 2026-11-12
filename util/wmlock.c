@@ -116,6 +116,8 @@ static int verbose;
 static xcb_connection_t *xc;
 static int nscreens;
 static struct cover *covers;
+/* the WINGs widgets live on this screen's cover, the others stay black */
+static int lock_sn;
 
 static xcb_window_t focus_save_win;
 static int focus_save_revert;
@@ -130,7 +132,7 @@ static char password[512];
 
 /* idle clock view: while no key, button or motion has arrived for
  * idle_timeout seconds the prompt is unmapped and a large time + date is
- * painted straight onto covers[0].win, the blurred background pixmap is
+ * painted straight onto covers[lock_sn].win, the blurred background pixmap is
  * the cover's XSetWindowBackgroundPixmap so XClearWindow is the erase
  * primitive in both directions of the toggle */
 static int idle_clock = 1;
@@ -377,10 +379,10 @@ static int create_covers(WMScreen *scr)
 				      XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
 				      XCB_CW_EVENT_MASK, vals), vals);
 
-		/* the WINGs RContext is bound to screen 0, only that one can
-		 * use the wrlib pipeline for the blurred snapshot, the rest
-		 * stay solid black */
-		if (i == 0) {
+		/* the WINGs RContext is bound to the lock screen, only that
+		 * one can use the wrlib pipeline for the blurred snapshot,
+		 * the rest stay solid black */
+		if (i == lock_sn) {
 			covers[i].bg = make_background(rc, covers[i].root, &bg_bright);
 			if (covers[i].bg != XCB_NONE)
 				xcb_change_window_attributes(xc, covers[i].win,
@@ -416,11 +418,11 @@ static int grab_inputs(void)
 	kb = pt = -1;
 	for (i = 0; i < GRAB_TRIES; i++) {
 		if (kb != WXGrabSuccess)
-			kb = wXGrabKeyboard(xc, covers[0].win, true,
+			kb = wXGrabKeyboard(xc, covers[lock_sn].win, true,
 					    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 					    XCB_CURRENT_TIME);
 		if (pt != WXGrabSuccess)
-			pt = wXGrabPointer(xc, covers[0].win, false,
+			pt = wXGrabPointer(xc, covers[lock_sn].win, false,
 					  XCB_EVENT_MASK_BUTTON_PRESS |
 					  XCB_EVENT_MASK_BUTTON_RELEASE |
 					  XCB_EVENT_MASK_POINTER_MOTION,
@@ -557,8 +559,8 @@ static void draw_clock(void)
 	if (strcmp(key, clock_shown) == 0)
 		return;
 
-	sw = wXDisplayWidth(xc, 0);
-	sh = wXDisplayHeight(xc, 0);
+	sw = wXDisplayWidth(xc, lock_sn);
+	sh = wXDisplayHeight(xc, lock_sn);
 	th = (int)WMFontHeight(font_time);
 	dh = (int)WMFontHeight(font_date);
 	tw = WMWidthOfString(font_time, tbuf, (int)strlen(tbuf));
@@ -566,10 +568,10 @@ static void draw_clock(void)
 	total = th + CLOCK_GAP + dh;
 	y = (sh - total) / 2;
 
-	wXClearArea(xc, covers[0].win, 0, 0, 0, 0, false);
-	WMDrawString(wscr, covers[0].win, col_clock, font_time,
+	wXClearArea(xc, covers[lock_sn].win, 0, 0, 0, 0, false);
+	WMDrawString(wscr, covers[lock_sn].win, col_clock, font_time,
 		     (sw - tw) / 2, y, tbuf, (int)strlen(tbuf));
-	WMDrawString(wscr, covers[0].win, col_clock, font_date,
+	WMDrawString(wscr, covers[lock_sn].win, col_clock, font_date,
 		     (sw - dw) / 2, y + th + CLOCK_GAP, dp, (int)strlen(dp));
 	wXFlush(xc);
 
@@ -588,7 +590,7 @@ static void enter_idle(void)
 static void leave_idle(void)
 {
 	idle_mode = 0;
-	wXClearArea(xc, covers[0].win, 0, 0, 0, 0, false);
+	wXClearArea(xc, covers[lock_sn].win, 0, 0, 0, 0, false);
 	WMMapWidget(panel->win);
 	WMSetFocusToWidget(panel->text);
 	wXFlush(xc);
@@ -641,8 +643,8 @@ static void run_lock(WMScreen *scr, const char *user)
 	int sw, sh, pw, ph, fails, woke;
 
 	wscr = scr;
-	sw = wXDisplayWidth(xc, 0);
-	sh = wXDisplayHeight(xc, 0);
+	sw = wXDisplayWidth(xc, lock_sn);
+	sh = wXDisplayHeight(xc, lock_sn);
 
 	font_time = WMSystemFontOfSize(scr, CLOCK_TIME_SIZE);
 	font_date = WMSystemFontOfSize(scr, CLOCK_DATE_SIZE);
@@ -660,8 +662,11 @@ static void run_lock(WMScreen *scr, const char *user)
 
 	/* place the panel inside the cover so stacking is never a question,
 	 * the cover already has override_redirect so the WM never sees it */
-	xcb_reparent_window(xc, pwin, covers[0].win,
-			    (int16_t)((sw - pw) / 2), (int16_t)((sh - ph) / 2));
+	if (!WXCheckVoid(xc,
+			 xcb_reparent_window_checked(xc, pwin, covers[lock_sn].win,
+						     (int16_t)((sw - pw) / 2),
+						     (int16_t)((sh - ph) / 2))))
+		fatal("cannot reparent the unlock prompt into the lock cover");
 	panel->result = WAPROther;
 
 	last_activity = time(NULL);
@@ -765,7 +770,7 @@ static void run_lock(WMScreen *scr, const char *user)
 				leave_idle();
 			continue;
 		} else if ((ev->response_type & 0x7f) == XCB_EXPOSE) {
-			if ((((xcb_expose_event_t *)ev)->window) == covers[0].win) {
+			if ((((xcb_expose_event_t *)ev)->window) == covers[lock_sn].win) {
 				if (idle_mode && (((xcb_expose_event_t *)ev)->count) == 0) {
 					clock_shown[0] = '\0';
 					draw_clock();
@@ -1009,7 +1014,10 @@ int main(int argc, char **argv)
 	scr = WMCreateSimpleApplicationScreen(xc, sn);
 	if (!scr)
 		fatal("cannot initialize application");
+	lock_sn = sn;
 	nscreens = wXScreenCount(xc);
+	if (lock_sn < 0 || lock_sn >= nscreens)
+		lock_sn = 0;
 
 	ck = xcb_get_input_focus(xc);
 	rep = xcb_get_input_focus_reply(xc, ck, NULL);
@@ -1025,14 +1033,18 @@ int main(int argc, char **argv)
 	if (!create_covers(scr))
 		fatal("out of memory");
 
-	/* the grab target must be viewable, map screen 0 first and sync
-	 * so the server has it before the keyboard grab runs */
-	wXMapRaised(xc, covers[0].win);
+	/* the grab target must be viewable, map the lock screen's cover
+	 * first and sync so the server has it before the keyboard grab
+	 * runs */
+	wXMapRaised(xc, covers[lock_sn].win);
 	wXSync(xc);
 	if (!grab_inputs())
 		return 1;
-	for (i = 1; i < nscreens; i++)
+	for (i = 0; i < nscreens; i++) {
+		if (i == lock_sn)
+			continue;
 		wXMapRaised(xc, covers[i].win);
+	}
 	wXSync(xc);
 
 #ifdef __linux__
