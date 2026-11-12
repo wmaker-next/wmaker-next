@@ -303,12 +303,16 @@ sub process_dir {
 
   my $OUT = @_[0];
   my $path = @_[1];
+  my $depth = @_[2];
   my $item;
   my @tld;
   my @tlf;
   my @klist;
   my ($gotLang, $gotDef, $gotExec, $inTerm);
   my $inDesktop;
+
+  $depth = 0 unless defined $depth;
+  return if $depth >= 64;
 
   # tld == Top Level Directory.
   opendir(TLD, $path) || return;
@@ -319,6 +323,7 @@ sub process_dir {
   # subroutine.
   while (defined($file = readdir(TLD))) {
     next if $file =~ /^\./;
+    next if (-l "$path/$file" && -d "$path/$file");
     if (-d "$path/$file") {
       @tld = (@tld, $file);
     }
@@ -335,7 +340,7 @@ sub process_dir {
   foreach $item(@tld) {
     my $menu_item = menu_quote($item);
     print $OUT "\"$menu_item\" MENU\n";
-    process_dir($OUT, "$path/$item");
+    process_dir($OUT, "$path/$item", $depth + 1);
     print $OUT "\"$menu_item\" END\n";
   }
 
