@@ -173,7 +173,7 @@ static void updateImage(BufferData * data, int rx, int ry)
 	int gx, gy, gw, gh;
 	int xoffs, yoffs;
 	int stride;
-	xcb_image_t *image;
+	xcb_image_t *image = NULL;
 	uint32_t *buf;
 	cairo_surface_t *ss, *ds;
 	cairo_pattern_t *pat;
@@ -205,19 +205,28 @@ static void updateImage(BufferData * data, int rx, int ry)
 		gh = (int)vscr->height_in_pixels - gy;
 	}
 
-	image = xcb_image_get(vconn, wXRootWindow(vconn, vsn),
-			      gx, gy, gw, gh, ~(uint32_t)0,
-			      XCB_IMAGE_FORMAT_Z_PIXMAP);
-	if (!image) {
-		/* Xlib died on the protocol error instead; skipping the
-		 * refresh keeps the window alive */
-		return;
+	/* the pointer can be on a screen the view does not cover, where
+	 * the clamped region is empty or negative */
+	if (gw <= 0 || gh <= 0) {
+		gw = 0;
+		gh = 0;
+	} else {
+		image = xcb_image_get(vconn, wXRootWindow(vconn, vsn),
+				      gx, gy, gw, gh, ~(uint32_t)0,
+				      XCB_IMAGE_FORMAT_Z_PIXMAP);
+		if (!image) {
+			/* Xlib died on the protocol error instead; skipping the
+			 * refresh keeps the window alive */
+			return;
+		}
 	}
 
 	stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, data->width);
 	buf = wmalloc(stride * data->height);
-	unpack_image(data, image, xoffs, yoffs, buf, stride);
-	xcb_image_destroy(image);
+	if (image) {
+		unpack_image(data, image, xoffs, yoffs, buf, stride);
+		xcb_image_destroy(image);
+	}
 
 	rc = WMScreenRContext(scr);
 	ss = cairo_image_surface_create_for_data((unsigned char *)buf,
