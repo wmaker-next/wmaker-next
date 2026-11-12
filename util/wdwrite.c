@@ -30,7 +30,6 @@
 
 #include <errno.h>
 #include <getopt.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +60,6 @@ static noreturn void print_help(int print_usage, int exitval)
 
 int main(int argc, char **argv)
 {
-	char path[PATH_MAX];
 	char *dpath;
 	WMPropList *key, *value, *dict;
 	struct stat st;
@@ -110,42 +108,45 @@ int main(int argc, char **argv)
 		WMReleasePropList(value);
 		return 1;
 	}
-	snprintf(path, sizeof(path), "%s", dpath);
-	wfree(dpath);
 
-	if (stat(path, &st) == 0) {
-		dict = WMReadPropListFromFile(path);
+	if (stat(dpath, &st) == 0) {
+		dict = WMReadPropListFromFile(dpath);
 		if (!dict) {
-			werror("could not read domain file '%s'", path);
+			werror("could not read domain file '%s'", dpath);
 			WMReleasePropList(key);
 			WMReleasePropList(value);
+			wfree(dpath);
 			return 1;
 		}
 		if (!WMIsPLDictionary(dict)) {
-			werror("domain file '%s' does not contain a dictionary", path);
+			werror("domain file '%s' does not contain a dictionary", dpath);
 			WMReleasePropList(dict);
 			WMReleasePropList(key);
 			WMReleasePropList(value);
+			wfree(dpath);
 			return 1;
 		}
 		WMPutInPLDictionary(dict, key, value);
 	} else if (errno == ENOENT) {
 		dict = WMCreatePLDictionary(key, value, NULL);
 	} else {
-		werror("could not access domain file '%s'", path);
+		werror("could not access domain file '%s'", dpath);
 		WMReleasePropList(key);
 		WMReleasePropList(value);
+		wfree(dpath);
 		return 1;
 	}
 	WMReleasePropList(key);
 	WMReleasePropList(value);
 
-	if (!WMWritePropListToFile(dict, path)) {
-		werror("could not write to %s", path);
+	if (!WMWritePropListToFile(dict, dpath)) {
+		werror("could not write to %s", dpath);
 		WMReleasePropList(dict);
+		wfree(dpath);
 		return 1;
 	}
 	WMReleasePropList(dict);
+	wfree(dpath);
 
 	return 0;
 }
