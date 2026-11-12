@@ -607,13 +607,22 @@ static void updateMaximizeMenu(WMenu * menu, WWindow * wwin)
 	int i;
 
 	for (i = 0; i < smenu->entry_no; i++) {
+		int active;
+
 		smenu->entries[i]->clientdata = wwin;
 		wMenuEntrySetShortcutText(smenu->entries[i],
 					  GetShortcutKey(wKeyBindings[menu_maximize_entries[i].shortcut_idx]));
-		if (menu_maximize_entries[i].maxim_direction == MENU_FULLSCREEN_ACTION)
+		if (menu_maximize_entries[i].maxim_direction == MENU_FULLSCREEN_ACTION) {
+			active = wwin->flags.fullscreen;
 			wMenuSetEnabled(smenu, i, wwin->flags.fullscreen || IS_RESIZABLE(wwin));
-		else if (menu_maximize_entries[i].maxim_direction == (MAX_VERTICAL | MAX_HORIZONTAL))
-			wMenuSetEnabled(smenu, i, IS_RESIZABLE(wwin));
+		} else {
+			active = (wwin->flags.maximized == menu_maximize_entries[i].maxim_direction);
+			if (menu_maximize_entries[i].maxim_direction == MAX_MAXIMUS)
+				active = active || wwin->flags.tiled;
+			if (menu_maximize_entries[i].maxim_direction == (MAX_VERTICAL | MAX_HORIZONTAL))
+				wMenuSetEnabled(smenu, i, IS_RESIZABLE(wwin));
+		}
+		smenu->entries[i]->flags.indicator_on = active;
 		if (menu_maximize_entries[i].maxim_direction == MAX_MAXIMUS) {
 			wfree(smenu->entries[i]->text);
 			if (wwin->screen_ptr->workspaces[WWIN_PRIMARY_WS(wwin)]->layout != WLAYOUT_FLOAT

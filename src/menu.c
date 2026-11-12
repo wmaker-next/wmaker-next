@@ -901,6 +901,11 @@ static void drawFrame(cairo_t *cr, WTexSolid *aux, int y, int w, int h, int type
 	cairo_restore(cr);
 }
 
+static int isSnapIndicator(int type)
+{
+	return type >= MI_SNAP_V && type <= MI_FULLSCREEN;
+}
+
 static void paintEntry(WMenu * menu, int index, int selected)
 {
 	WScreen *scr = menu->frame->screen_ptr;
@@ -1016,7 +1021,8 @@ static void paintEntry(WMenu * menu, int index, int selected)
 	}
 
 	/* draw indicator */
-	if (entry->flags.indicator && entry->flags.indicator_on) {
+	if (entry->flags.indicator &&
+	    (entry->flags.indicator_on || isSnapIndicator(entry->flags.indicator_type))) {
 		int iw, ih;
 		WPixmap *indicator = NULL;
 
@@ -1089,7 +1095,10 @@ static void paintEntry(WMenu * menu, int index, int selected)
 			/* the indicator is a shape-only glyph: fill the text
 			 * colour through its mask so it tracks the selected
 			 * and disabled states like the label does */
-			W_SetSourceColor(cr, color);
+			if (isSnapIndicator(entry->flags.indicator_type) && !entry->flags.indicator_on)
+				W_SetSourceColor(cr, scr->dtext_color);
+			else
+				W_SetSourceColor(cr, color);
 			msurf = cairo_xcb_surface_create_for_bitmap(rc->xc, rc->xscreen,
 								    (xcb_pixmap_t)indicator->mask,
 								    iw, ih);

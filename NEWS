@@ -11,7 +11,9 @@ the Region snap sub-menu. While a window is maximized in any way or
 fullscreen, the window menu now starts with a "Restore geometry" entry
 that leaves fullscreen first and then restores the pre-maximize
 geometry. The new RestoreGeometryKey binding triggers the same action
-from the keyboard and defaults to unbound.
+from the keyboard and defaults to unbound. The Region snap glyphs show
+the state: the entry matching the window's current geometry is drawn
+in full contrast while the others are dimmed.
 
 Shortcut key labels
 -------------------
