@@ -31,7 +31,6 @@
 #include "config.h"
 
 #include <getopt.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +60,6 @@ static noreturn void print_help(int print_usage, int exitval)
 
 int main(int argc, char **argv)
 {
-	char path[PATH_MAX];
 	char *dpath;
 	WMPropList *key, *value, *dict;
 	int ch;
@@ -102,10 +100,9 @@ int main(int argc, char **argv)
 		WMReleasePropList(key);
 		return 1;
 	}
-	snprintf(path, sizeof(path), "%s", dpath);
-	wfree(dpath);
 
-	dict = WMReadPropListFromFile(path);
+	dict = WMReadPropListFromFile(dpath);
+	wfree(dpath);
 	if (dict == NULL) {
 		WMReleasePropList(key);
 		return 1;	/* bad domain */
