@@ -496,7 +496,9 @@ static void performDragOperation(WMView * self, WMArray * dropData, WMArray * op
 	if (data != NULL) {
 		colorName = (char *)WMDataBytes(data);
 		color = WMCreateNamedColor(W_VIEW_SCREEN(self), colorName, true);
-		WMSetColorWellColor(self->self, color);
-		WMReleaseColor(color);
+		if (color) {
+			WMSetColorWellColor(self->self, color);
+			WMReleaseColor(color);
+		}
 	}
 }
