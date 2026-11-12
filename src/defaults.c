@@ -145,8 +145,13 @@ static bool domain_file_changed(WDDomain *db)
 	if (st.st_mtim.tv_sec == db->timestamp.tv_sec &&
 	    st.st_mtim.tv_nsec <= db->timestamp.tv_nsec)
 		return false;
-	db->timestamp = st.st_mtim;
+	db->pending = st.st_mtim;
 	return true;
+}
+
+static void domain_file_commit(WDDomain *db)
+{
+	db->timestamp = db->pending;
 }
 
 static WMPropList *readGlobalDomain(const char *domainName, bool requireDictionary)
@@ -253,6 +258,7 @@ WDDomain *wDefaultsInitDomain(const char *domain, bool requireDictionary)
 	if (domain_file_changed(db)) {
 		db->dictionary = WMReadPropListFromFile(db->path);
 		if (db->dictionary) {
+			domain_file_commit(db);
 			if (requireDictionary && !WMIsPLDictionary(db->dictionary)) {
 				WMReleasePropList(db->dictionary);
 				db->dictionary = NULL;
@@ -297,6 +303,7 @@ static WMPropList *reload_domain_dict(WDDomain *domain, const char *name)
 			WMReleasePropList(shared);
 		return NULL;
 	}
+	domain_file_commit(domain);
 	if (!WMIsPLDictionary(dict)) {
 		wwarning(_("Domain %s (%s) of defaults database is corrupted!"),
 			 name, domain->path);
@@ -316,7 +323,7 @@ static WMPropList *reload_domain_dict(WDDomain *domain, const char *name)
 void wDefaultsCheckDomains(void* arg)
 {
 	WScreen *scr;
-	WMPropList *dict;
+	WMPropList *dict, *probe;
 	int i;
 
 	/* Parameter not used, but tell the compiler that it is ok */
@@ -382,6 +389,7 @@ void wDefaultsCheckDomains(void* arg)
 	if (domain_file_changed(w_global.domain.root_menu)) {
 		dict = WMReadPropListFromFile(w_global.domain.root_menu->path);
 		if (dict) {
+			domain_file_commit(w_global.domain.root_menu);
 			if (!WMIsPLArray(dict) && !WMIsPLString(dict)) {
 				WMReleasePropList(dict);
 				dict = NULL;
@@ -413,15 +421,24 @@ void wDefaultsCheckDomains(void* arg)
 		 * but its unconditional wConfigApplyAntialiasedText() detects
 		 * the AA change, detaches the WINGs font cache and re-opens the
 		 * WM-side fonts, returning the font refresh mask that
-		 * wReadDefaults posts as appearance notifications. */
-		WMReloadConfiguration();
-		for (i = 0; i < wdisp->screen_count; i++) {
-			scr = wScreenWithNumber(i);
-			if (scr) {
-				WConfigChanges no_changes;
+		 * wReadDefaults posts as appearance notifications. The re-read
+		 * hides parse failures behind an empty dictionary, so probe the
+		 * file first and keep the stamp uncommitted when it is not
+		 * readable yet. */
+		probe = WMReadPropListFromFile(w_global.domain.wmglobal->path);
 
-				memset(&no_changes, 0, sizeof(no_changes));
-				wReadDefaults(scr, w_global.config, w_global.config, &no_changes);
+		if (probe) {
+			WMReleasePropList(probe);
+			domain_file_commit(w_global.domain.wmglobal);
+			WMReloadConfiguration();
+			for (i = 0; i < wdisp->screen_count; i++) {
+				scr = wScreenWithNumber(i);
+				if (scr) {
+					WConfigChanges no_changes;
+
+					memset(&no_changes, 0, sizeof(no_changes));
+					wReadDefaults(scr, w_global.config, w_global.config, &no_changes);
+				}
 			}
 		}
 	}

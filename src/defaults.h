@@ -32,6 +32,8 @@ typedef struct WDDomain {
 	 * back-to-back wdwrite calls) are still picked up by the inotify
 	 * reload, every section-16 target carries POSIX-2008 st_mtim */
 	struct timespec timestamp;
+	/* candidate for timestamp, committed after the parse succeeds */
+	struct timespec pending;
 } WDDomain;
 
 struct WConfig;
