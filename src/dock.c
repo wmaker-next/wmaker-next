@@ -1542,6 +1542,7 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 	if (type == WM_DRAWER) {
 		drawerAppendToChain(scr, dock);
 		dock->auto_collapse = 1;
+		update_icon_pixmap(dock->icon_array[0]->icon);
 	}
 
 	return dock;
@@ -2287,6 +2288,9 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	}
 
 finish:
+	if (type == WM_DRAWER && dock->icon_array[0])
+		update_icon_pixmap(dock->icon_array[0]->icon);
+
 	WMReleasePropList(dock_state);
 
 	return dock;
@@ -5624,6 +5628,9 @@ static void removeDrawerCallback(WMenu *menu, WMenuEntry *entry)
 }
 
 
+#define DRAWER_ARROW_PX(v) ((v) * ICON_SIZE / 64)
+#define DRAWER_ARROW_REACH 11
+
 void wDrawerIconPaint(WAppIcon *dicon)
 {
 	xcb_window_t win = dicon->icon->core->window;
@@ -5631,6 +5638,8 @@ void wDrawerIconPaint(WAppIcon *dicon)
 	WMColor *color;
 	cairo_t *cr;
 	int c = ICON_SIZE / 2;
+	int tip = DRAWER_ARROW_PX(5);
+	int base = DRAWER_ARROW_PX(10);
 
 	wIconPaint(dicon->icon);
 
@@ -5647,27 +5656,27 @@ void wDrawerIconPaint(WAppIcon *dicon)
 	switch (dicon->dock->edge) {
 	case WDOCK_EDGE_RIGHT:
 		fillArrow(cr, color,
-			  10, c - 5,
-			  10, c + 5,
-			  5,  c);
+			  base, c - tip,
+			  base, c + tip,
+			  tip,  c);
 		break;
 	case WDOCK_EDGE_LEFT:
 		fillArrow(cr, color,
-			  ICON_SIZE - 1 - 10, c - 5,
-			  ICON_SIZE - 1 - 10, c + 5,
-			  ICON_SIZE - 1 - 5,  c);
+			  ICON_SIZE - 1 - base, c - tip,
+			  ICON_SIZE - 1 - base, c + tip,
+			  ICON_SIZE - 1 - tip,  c);
 		break;
 	case WDOCK_EDGE_TOP:
 		fillArrow(cr, color,
-			  c - 5, ICON_SIZE - 1 - 10,
-			  c + 5, ICON_SIZE - 1 - 10,
-			  c, ICON_SIZE - 1 - 5);
+			  c - tip, ICON_SIZE - 1 - base,
+			  c + tip, ICON_SIZE - 1 - base,
+			  c, ICON_SIZE - 1 - tip);
 		break;
 	case WDOCK_EDGE_BOTTOM:
 		fillArrow(cr, color,
-			  c - 5, 10,
-			  c + 5, 10,
-			  c, 5);
+			  c - tip, base,
+			  c + tip, base,
+			  c, tip);
 		break;
 	}
 	WCairoEnd(cr);
@@ -5680,6 +5689,7 @@ RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile)
 	RColor dark;
 	RColor light;
 	int c, m = ICON_SIZE / 2;
+	int reach, inner, half;
 
 	dark.alpha = 0;
 	dark.red = dark.green = dark.blue = 60;
@@ -5688,51 +5698,54 @@ RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile)
 	light.red = light.green = light.blue = 80;
 
 	c = m;
+	reach = DRAWER_ARROW_PX(11);
+	inner = DRAWER_ARROW_PX(4);
+	half = DRAWER_ARROW_PX(7);
 
 	/* arrow bevel pointing at the drawer contents */
 	if (!scr->dock) {
 		/* assume a right-side dock, the tile is built before the
 		 * dock exists */
-		ROperateLine(tile, RSubtractOperation, 11, c - 7,
-			4, c, &dark);       /* / */
-		ROperateLine(tile, RSubtractOperation, 11, c + 7,
-			4, c, &dark);       /* \ */
-		ROperateLine(tile, RAddOperation,      11, c - 7,
-			11, c + 7, &light); /* | */
+		ROperateLine(tile, RSubtractOperation, reach, c - half,
+			inner, c, &dark);       /* / */
+		ROperateLine(tile, RSubtractOperation, reach, c + half,
+			inner, c, &dark);       /* \ */
+		ROperateLine(tile, RAddOperation,      reach, c - half,
+			reach, c + half, &light); /* | */
 	} else {
 		switch (scr->dock->edge) {
 		case WDOCK_EDGE_LEFT:
-			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, c - 7,
-				ICON_SIZE-1 - 4, c, &dark);      /* \ */
-			ROperateLine(tile, RAddOperation,      ICON_SIZE-1 - 11, c + 7,
-				ICON_SIZE-1 - 4, c, &light);     /* / */
-			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - 11, c - 7,
-				ICON_SIZE-1 - 11, c + 7, &dark); /* | */
+			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - reach, c - half,
+				ICON_SIZE-1 - inner, c, &dark);      /* \ */
+			ROperateLine(tile, RAddOperation,      ICON_SIZE-1 - reach, c + half,
+				ICON_SIZE-1 - inner, c, &light);     /* / */
+			ROperateLine(tile, RSubtractOperation, ICON_SIZE-1 - reach, c - half,
+				ICON_SIZE-1 - reach, c + half, &dark); /* | */
 			break;
 		case WDOCK_EDGE_TOP:
-			ROperateLine(tile, RSubtractOperation, c - 7, ICON_SIZE-1 - 11,
-				c, ICON_SIZE-1 - 4, &dark);       /* \ */
-			ROperateLine(tile, RSubtractOperation, c + 7, ICON_SIZE-1 - 11,
-				c, ICON_SIZE-1 - 4, &dark);       /* / */
-			ROperateLine(tile, RAddOperation,      c - 7, ICON_SIZE-1 - 11,
-				c + 7, ICON_SIZE-1 - 11, &light); /* - */
+			ROperateLine(tile, RSubtractOperation, c - half, ICON_SIZE-1 - reach,
+				c, ICON_SIZE-1 - inner, &dark);       /* \ */
+			ROperateLine(tile, RSubtractOperation, c + half, ICON_SIZE-1 - reach,
+				c, ICON_SIZE-1 - inner, &dark);       /* / */
+			ROperateLine(tile, RAddOperation,      c - half, ICON_SIZE-1 - reach,
+				c + half, ICON_SIZE-1 - reach, &light); /* - */
 			break;
 		case WDOCK_EDGE_BOTTOM:
-			ROperateLine(tile, RSubtractOperation, c - 7, 11,
-				c, 4, &dark);       /* / */
-			ROperateLine(tile, RSubtractOperation, c + 7, 11,
-				c, 4, &dark);       /* \ */
-			ROperateLine(tile, RAddOperation,      c - 7, 11,
-				c + 7, 11, &light); /* - */
+			ROperateLine(tile, RSubtractOperation, c - half, reach,
+				c, inner, &dark);       /* / */
+			ROperateLine(tile, RSubtractOperation, c + half, reach,
+				c, inner, &dark);       /* \ */
+			ROperateLine(tile, RAddOperation,      c - half, reach,
+				c + half, reach, &light); /* - */
 			break;
 		case WDOCK_EDGE_RIGHT:
 		default:
-			ROperateLine(tile, RSubtractOperation, 11, c - 7,
-				4, c, &dark);       /* / */
-			ROperateLine(tile, RSubtractOperation, 11, c + 7,
-				4, c, &dark);       /* \ */
-			ROperateLine(tile, RAddOperation,      11, c - 7,
-				11, c + 7, &light); /* | */
+			ROperateLine(tile, RSubtractOperation, reach, c - half,
+				inner, c, &dark);       /* / */
+			ROperateLine(tile, RSubtractOperation, reach, c + half,
+				inner, c, &dark);       /* \ */
+			ROperateLine(tile, RAddOperation,      reach, c - half,
+				reach, c + half, &light); /* | */
 			break;
 		}
 	}
@@ -5744,6 +5757,42 @@ int wIsADrawer(WAppIcon *aicon)
 {
 	return aicon && aicon->dock &&
 		aicon->dock->type == WM_DRAWER && aicon->dock->icon_array[0] == aicon;
+}
+
+void wDrawerIconTileShift(WIcon *icon, int *dx, int *dy)
+{
+	WScreen *scr;
+	WDrawerChain *dc;
+
+	*dx = 0;
+	*dy = 0;
+
+	if (!icon || !icon->core)
+		return;
+
+	scr = icon->core->screen_ptr;
+	for (dc = scr->drawers; dc != NULL; dc = dc->next) {
+		WDock *drawer = dc->adrawer;
+
+		if (!drawer->icon_array[0] || drawer->icon_array[0]->icon != icon)
+			continue;
+
+		switch (drawer->edge) {
+		case WDOCK_EDGE_RIGHT:
+			*dx = DRAWER_ARROW_PX(DRAWER_ARROW_REACH) / 2;
+			break;
+		case WDOCK_EDGE_LEFT:
+			*dx = -DRAWER_ARROW_PX(DRAWER_ARROW_REACH) / 2;
+			break;
+		case WDOCK_EDGE_TOP:
+			*dy = -DRAWER_ARROW_PX(DRAWER_ARROW_REACH) / 2;
+			break;
+		case WDOCK_EDGE_BOTTOM:
+			*dy = DRAWER_ARROW_PX(DRAWER_ARROW_REACH) / 2;
+			break;
+		}
+		return;
+	}
 }
 
 

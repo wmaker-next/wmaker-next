@@ -44,6 +44,7 @@
 #include "application.h"
 #include "defaults.h"
 #include "appicon.h"
+#include "dock.h"
 #include "wmspec.h"
 #include "misc.h"
 #include "startup.h"
@@ -348,6 +349,14 @@ static void icon_update_pixmap(WIcon *icon, RImage *image)
 		     ? w_global.config->icon_size - theight : image->height);
 		y = theight + (w_global.config->icon_size - theight - h) / 2;
 		sy = (image->height - h) / 2;
+
+		if (icon->tile_type == TILE_DRAWER) {
+			int dx, dy;
+
+			wDrawerIconTileShift(icon, &dx, &dy);
+			x = WMIN(WMAX(x + dx, 0), w_global.config->icon_size - (int)w);
+			y = WMIN(WMAX(y + dy, 0), w_global.config->icon_size - (int)h);
+		}
 
 		RCombineArea(tile, image, sx, sy, w, h, x, y);
 	}

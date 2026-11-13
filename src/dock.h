@@ -136,6 +136,7 @@ WMPropList *wClipSaveWorkspaceState(WScreen *scr, int workspace);
 WAppIcon *wClipRestoreState(WScreen *scr, WMPropList *clip_state);
 
 void wDrawerIconPaint(WAppIcon *dicon);
+void wDrawerIconTileShift(WIcon *icon, int *dx, int *dy);
 void wDrawersSaveState(WScreen *scr);
 void wDrawersRestoreState(WScreen *scr);
 int wIsADrawer(WAppIcon *aicon);
