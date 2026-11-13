@@ -2580,6 +2580,9 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		int grab;
 		int tries;
 
+		if (!wwin->frame)
+			return true;
+
 		if (direction == _NET_WM_MOVERESIZE_CANCEL) {
 			if (wwin->moveresize.active) {
 				xcb_button_release_event_t fake;
@@ -2620,10 +2623,10 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 
 		/* Check if operation is allowed */
 		if (direction == _NET_WM_MOVERESIZE_MOVE) {
-			if (WFLAGP(wwin, no_movable))
+			if (!IS_MOVABLE(wwin))
 				return true;
 		} else if (direction >= 0 && direction <= _NET_WM_MOVERESIZE_SIZE_LEFT) {
-			if (WFLAGP(wwin, no_resizable))
+			if (!IS_RESIZABLE(wwin) || wwin->flags.shaded)
 				return true;
 		} else {
 			return true;
@@ -2677,6 +2680,11 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 		else
 			wMouseResizeWindow(wwin, (xcb_generic_event_t *)fake_event);
 		free(fake_event);
+
+		if (wwin->moveresize.active) {
+			wXUngrabPointer(wdisp->conn, XCB_CURRENT_TIME);
+			wwin->moveresize.active = 0;
+		}
 
 		return true;
 
