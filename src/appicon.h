@@ -63,8 +63,6 @@ typedef struct WAppIcon {
 	unsigned int relaunching:1;	 /* launching 2nd instance */
 	unsigned int forced_dock:1;
 	unsigned int auto_launch:1;	 /* launch app on startup */
-	unsigned int remote_start:1;
-	unsigned int updated:1;
 	unsigned int editing:1;		 /* editing docked icon */
 	unsigned int drop_launch:1;	 /* launching from drop action */
 	unsigned int paste_launch:1;	 /* launching from paste action */
@@ -77,6 +75,14 @@ typedef struct WAppIcon {
 WAppIcon *wAppIconCreateForDock(WScreen *scr, const char *command, const char *wm_instance,
 				const char *wm_class, int tile);
 bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event);
+
+/* Takes ownership of a wfree-compatible string, caller must not free it.
+ * NULL, "" and "-" normalize to NULL. */
+void wAppIconSetCommand(WAppIcon *aicon, char *command);
+void wAppIconSetPasteCommand(WAppIcon *aicon, char *command);
+#ifdef USE_DOCK_XDND
+void wAppIconSetDnDCommand(WAppIcon *aicon, char *command);
+#endif
 
 void wAppIconDestroy(WAppIcon *aicon);
 void wAppIconPaint(WAppIcon *aicon);

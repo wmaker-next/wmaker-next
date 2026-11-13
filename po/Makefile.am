@@ -13,6 +13,7 @@ EXTRA_DIST = be.po bg.po bs.po ca.po cs.po da.po de.po el.po es.po et.po \
 POTFILES  = \
 	$(top_srcdir)/src/actions.c \
 	$(top_srcdir)/src/appicon.c \
+	$(top_srcdir)/src/appicon_command.c \
 	$(top_srcdir)/src/application.c \
 	$(top_srcdir)/src/appmenu.c \
 	$(top_srcdir)/src/appmenuparse.c \

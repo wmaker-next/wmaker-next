@@ -357,11 +357,8 @@ void wClientCheckProperty(WWindow *wwin, xcb_atom_t atom)
 				break;
 
 			command = GetCommandForWindow(wwin->main_window);
-			if (command) {
-				if (wapp->app_icon->command)
-					wfree(wapp->app_icon->command);
-				wapp->app_icon->command = command;
-			}
+			if (command)
+				wAppIconSetCommand(wapp->app_icon, command);
 		}
 		break;
 

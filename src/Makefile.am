@@ -31,6 +31,7 @@ wmaker_SOURCES = 	\
 	actions.h \
 	appicon.c \
 	appicon.h \
+	appicon_command.c \
 	application.c \
 	application.h \
 	appmenu.c \

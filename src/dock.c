@@ -547,19 +547,23 @@ static void keepIconsCallback(WMenu *menu, WMenuEntry *entry)
 		char *command = NULL;
 
 		if (!clickedIcon->command && !clickedIcon->editing) {
+			int ok;
+			bool gone;
+
 			clickedIcon->editing = 1;
-			if (wInputDialog(dock->screen_ptr, _("Keep Icon"),
-					 _("Type the command used to launch the application"), &command)) {
-				if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-					wfree(command);
-					command = NULL;
-				}
-				clickedIcon->command = command;
+			wretain(clickedIcon);
+			ok = wInputDialog(dock->screen_ptr, _("Keep Icon"),
+					  _("Type the command used to launch the application"), &command);
+			gone = clickedIcon->destroyed;
+			if (!gone) {
 				clickedIcon->editing = 0;
-			} else {
-				clickedIcon->editing = 0;
-				if (command)
-					wfree(command);
+				if (ok)
+					wAppIconSetCommand(clickedIcon, command);
+			} else if (command) {
+				wfree(command);
+			}
+			wrelease(clickedIcon);
+			if (gone || !ok) {
 				WMFreeArray(selectedIcons);
 				return;
 			}
@@ -2676,6 +2680,8 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 	WWindow *wwin;
 	bool lupdate_icon = false;
 	char *command = NULL;
+	char *generated_command = NULL;
+	size_t len = 0;
 	int index;
 
 	icon->editing = 0;
@@ -2704,11 +2710,7 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 						wrelease(icon);
 						return false;
 					}
-					if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-						wfree(command);
-						command = NULL;
-					}
-					icon->command = command;
+					wAppIconSetCommand(icon, command);
 					icon->editing = 0;
 				} else {
 					icon->editing = 0;
@@ -2787,16 +2789,18 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 
 #ifdef USE_DOCK_XDND
 	if (icon->command && !icon->dnd_command) {
-		int len = strlen(icon->command) + 8;
-		icon->dnd_command = wmalloc(len);
-		snprintf(icon->dnd_command, len, "%s %%d", icon->command);
+		len = strlen(icon->command) + 8;
+		generated_command = wmalloc(len);
+		snprintf(generated_command, len, "%s %%d", icon->command);
+		wAppIconSetDnDCommand(icon, generated_command);
 	}
 #endif
 
 	if (icon->command && !icon->paste_command) {
-		int len = strlen(icon->command) + 8;
-		icon->paste_command = wmalloc(len);
-		snprintf(icon->paste_command, len, "%s %%s", icon->command);
+		len = strlen(icon->command) + 8;
+		generated_command = wmalloc(len);
+		snprintf(generated_command, len, "%s %%s", icon->command);
+		wAppIconSetPasteCommand(icon, generated_command);
 	}
 
 	return true;
@@ -2852,11 +2856,7 @@ bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, i
 			/* icon->forced_dock = 1; */
 			if (wInputDialog(src->screen_ptr, _("Dock Icon"),
 					 _("Type the command used to launch the application"), &command)) {
-				if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-					wfree(command);
-					command = NULL;
-				}
-				icon->command = command;
+				wAppIconSetCommand(icon, command);
 			} else {
 				icon->editing = 0;
 				if (command)
@@ -2960,20 +2960,11 @@ void wDockDetach(WDock *dock, WAppIcon *icon)
 	if (icon->icon->selected)
 		wIconSelect(icon->icon);
 
-	if (icon->command) {
-		wfree(icon->command);
-		icon->command = NULL;
-	}
+	wAppIconSetCommand(icon, NULL);
 #ifdef USE_DOCK_XDND
-	if (icon->dnd_command) {
-		wfree(icon->dnd_command);
-		icon->dnd_command = NULL;
-	}
+	wAppIconSetDnDCommand(icon, NULL);
 #endif
-	if (icon->paste_command) {
-		wfree(icon->paste_command);
-		icon->paste_command = NULL;
-	}
+	wAppIconSetPasteCommand(icon, NULL);
 
 	for (index = 1; index < dock->max_icons; index++)
 		if (dock->icon_array[index] == icon)

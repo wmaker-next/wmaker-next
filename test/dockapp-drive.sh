@@ -185,6 +185,39 @@ drag_to_slot() {
 
 WMSTATE="$WMHOME/Defaults/WMState"
 state_has() { grep -qF "$1" "$WMSTATE"; }
+entry_command_is() {
+	awk -v key="$1" -v expected="$2" '
+		/^[[:space:]]*{[[:space:]]*$/ { named = 0; count = 0; valid = 1 }
+		$1 == "Name" && $3 == "datest.DockApp;" { named = 1 }
+		$1 == key {
+			count++
+			line = $0
+			sub(/^[[:space:]]*/, "", line)
+			if (line != expected) valid = 0
+		}
+		/^[[:space:]]*},?[[:space:]]*$/ {
+			if (named) {
+				seen++
+				if (count != 1 || !valid) failed = 1
+			}
+		}
+		END { exit !(seen > 0 && !failed) }
+	' "$WMSTATE"
+}
+entry_command_absent() {
+	awk -v key="$1" '
+		/^[[:space:]]*{[[:space:]]*$/ { named = 0; count = 0 }
+		$1 == "Name" && $3 == "datest.DockApp;" { named = 1 }
+		$1 == key { count++ }
+		/^[[:space:]]*},?[[:space:]]*$/ {
+			if (named) {
+				seen++
+				if (count != 0) failed = 1
+			}
+		}
+		END { exit !(seen > 0 && !failed) }
+	' "$WMSTATE"
+}
 entry_has() { grep -B2 -A7 -F "Name = $1;" "$WMSTATE" | grep -qF "$2"; }
 
 # helper_out: print the window ids the helper wrote at startup
@@ -308,6 +341,12 @@ wait_for 50 pid_gone "$WMAKER_PID"
 [ -f "$WMSTATE" ] || fatal "WMState was not written"
 check "WMState Name = datest.DockApp" state_has 'Name = datest.DockApp;'
 check "WMState Command = helper path" state_has "Command = \"$HELPER\";"
+check "WMState PasteCommand = helper path with %s" \
+	entry_command_is PasteCommand "PasteCommand = \"$HELPER %s\";"
+if grep -q '^#define USE_DOCK_XDND 1' "$ROOT/config.h"; then
+	check "WMState DropCommand = helper path with %d" \
+		entry_command_is DropCommand "DropCommand = \"$HELPER %d\";"
+fi
 check "WMState entry AutoLaunch = No" \
 	entry_has 'datest.DockApp' 'AutoLaunch = No;'
 check "WMState entry Forced = No" \
@@ -448,6 +487,26 @@ fi
 
 msg exit >>"$LOG" 2>&1
 wait_for 50 pid_gone "$WMAKER_PID"
+
+check "PasteCommand survives restore and save without duplication" \
+	entry_command_is PasteCommand "PasteCommand = \"$HELPER %s\";"
+if grep -q '^#define USE_DOCK_XDND 1' "$ROOT/config.h"; then
+	check "DropCommand survives restore and save without duplication" \
+		entry_command_is DropCommand "DropCommand = \"$HELPER %d\";"
+fi
+
+note "restore the dockapp without secondary commands"
+sed '/^[[:space:]]*PasteCommand = /d; /^[[:space:]]*DropCommand = /d' \
+	"$WMSTATE" > "$RUNTIME/WMState.no-secondary" || fatal "could not remove secondary commands"
+mv "$RUNTIME/WMState.no-secondary" "$WMSTATE" || fatal "could not update WMState"
+start_wmaker
+check "dockapp re-attaches without secondary commands" wait_for 100 tile_reattached
+msg exit >>"$LOG" 2>&1 || fatal "could not save restored WMState"
+wait_for 50 pid_gone "$WMAKER_PID" || fatal "wmaker did not exit"
+check "restore does not regenerate PasteCommand" entry_command_absent PasteCommand
+if grep -q '^#define USE_DOCK_XDND 1' "$ROOT/config.h"; then
+	check "restore does not regenerate DropCommand" entry_command_absent DropCommand
+fi
 
 note "dockapp drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"

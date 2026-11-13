@@ -147,6 +147,7 @@ src/Tests/check_icon_scale_failure
 src/Tests/check_wsplan
 src/Tests/check_appmenu
 src/Tests/check_xkb_label
+src/Tests/check_appiconcommands
 wrlib/Tests/bench_image
 wrlib/Tests/check_image
 wrlib/Tests/check_palette

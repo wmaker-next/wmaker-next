@@ -41,45 +41,6 @@
 #include "xinerama.h"
 
 
-static void updateCommand(WAppIcon * icon, char *command)
-{
-	if (icon->command)
-		wfree(icon->command);
-	if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-		wfree(command);
-		command = NULL;
-	}
-	icon->command = command;
-
-	if (!icon->wm_class && !icon->wm_instance && icon->command && strlen(icon->command) > 0) {
-		icon->forced_dock = 1;
-	}
-}
-
-static void updatePasteCommand(WAppIcon * icon, char *command)
-{
-	if (icon->paste_command)
-		wfree(icon->paste_command);
-	if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-		wfree(command);
-		command = NULL;
-	}
-	icon->paste_command = command;
-}
-
-#ifdef USE_DOCK_XDND
-static void updateDNDCommand(WAppIcon * icon, char *command)
-{
-	if (icon->dnd_command)
-		wfree(icon->dnd_command);
-	if (command && (command[0] == 0 || (command[0] == '-' && command[1] == 0))) {
-		wfree(command);
-		command = NULL;
-	}
-	icon->dnd_command = command;
-}
-#endif	/* USE_DOCK_XDND */
-
 static void updateSettingsPanelIcon(AppSettingsPanel * panel)
 {
 	char *file;
@@ -204,22 +165,14 @@ static void panelBtnCallback(WMWidget * self, void *data)
 		if (text)
 			wfree(text);
 
-		/* cannot free text from this, because it will be not be duplicated
-		 * in updateCommand */
-		text = WMGetTextFieldText(panel->commandField);
-		if (text[0] == 0) {
-			wfree(text);
-			text = NULL;
-		}
-		updateCommand(panel->editedIcon, text);
+		wAppIconSetCommand(panel->editedIcon, WMGetTextFieldText(panel->commandField));
+		if (!panel->editedIcon->wm_class && !panel->editedIcon->wm_instance &&
+		    panel->editedIcon->command && panel->editedIcon->command[0] != '\0')
+			panel->editedIcon->forced_dock = 1;
 #ifdef USE_DOCK_XDND
-		/* cannot free text from this, because it will be not be duplicated
-		 * in updateDNDCommand */
-		text = WMGetTextFieldText(panel->dndCommandField);
-		updateDNDCommand(panel->editedIcon, text);
+		wAppIconSetDnDCommand(panel->editedIcon, WMGetTextFieldText(panel->dndCommandField));
 #endif
-		text = WMGetTextFieldText(panel->pasteCommandField);
-		updatePasteCommand(panel->editedIcon, text);
+		wAppIconSetPasteCommand(panel->editedIcon, WMGetTextFieldText(panel->pasteCommandField));
 
 		panel->editedIcon->auto_launch = WMGetButtonSelected(panel->autoLaunchBtn);
 
