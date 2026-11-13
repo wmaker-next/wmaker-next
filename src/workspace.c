@@ -321,6 +321,8 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 	uint64_t old_mask, new_mask;
 	int old_primary, new_primary;
 	int i, j;
+	bool deleted_is_current, deleted_is_last;
+	bool deleted_on_head[WM_MAX_HEADS], deleted_last_on_head[WM_MAX_HEADS];
 
 	if (workspace <= 0)
 		return false;
@@ -337,6 +339,13 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 			return false;
 		}
 		tmp = tmp->prev;
+	}
+
+	deleted_is_current = (scr->current_workspace == workspace);
+	deleted_is_last = (scr->last_workspace == workspace);
+	for (i = 0; i < wHeadCount(scr); i++) {
+		deleted_on_head[i] = (scr->head_workspace[i] == workspace);
+		deleted_last_on_head[i] = (scr->last_head_workspace[i] == workspace);
 	}
 
 	/* Compact every non-omnipresent membership set along with the
@@ -403,6 +412,39 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 		}
 	}
 
+	/* the deleted workspace can still be the displayed one: its clip was
+	   freed and equal indices now name the replacement workspace */
+	if (scr->current_workspace >= scr->workspace_count)
+		scr->current_workspace = scr->workspace_count - 1;
+
+	if (deleted_is_current && !w_global.config->per_head_workspaces) {
+		wWorkspaceForceChange(scr, scr->current_workspace);
+		scr->last_workspace = 0;
+		if (!wdisp->flags.noclip && scr->workspaces[scr->current_workspace]->clip)
+			wDockShowIcons(scr->workspaces[scr->current_workspace]->clip);
+	}
+	if (deleted_is_last || scr->last_workspace >= scr->workspace_count)
+		scr->last_workspace = 0;
+
+	if (w_global.config->per_head_workspaces) {
+		int h;
+
+		for (h = 0; h < wHeadCount(scr); h++) {
+			if (deleted_on_head[h] || scr->head_workspace[h] >= scr->workspace_count) {
+				int to = scr->head_workspace[h];
+
+				if (to >= scr->workspace_count)
+					to = scr->workspace_count - 1;
+				if (!wWorkspaceIsAllowedOnHead(scr, to, h))
+					to = wWorkspaceDefaultForHead(scr, h);
+				wWorkspaceForceChangeOnHead(scr, to, h);
+			}
+			if (deleted_last_on_head[h] || scr->last_head_workspace[h] >= scr->workspace_count)
+				scr->last_head_workspace[h] = 0;
+		}
+		wWorkspaceSetCurrentHead(scr, wGetActiveHead(scr));
+	}
+
 	for (i = 0; i < scr->workspace_count; i++)
 		wLayoutApply(scr, i);
 
@@ -431,26 +473,6 @@ bool wWorkspaceDelete(WScreen * scr, int workspace)
 	}
 	wNETWMUpdateDesktop(scr);
 	WMPostNotificationName(WMNWorkspaceDestroyed, scr, (void *)(uintptr_t) workspace);
-
-	if (scr->current_workspace >= scr->workspace_count)
-		wWorkspaceChange(scr, scr->workspace_count - 1);
-	if (scr->last_workspace >= scr->workspace_count)
-		scr->last_workspace = 0;
-
-	if (w_global.config->per_head_workspaces) {
-		int h;
-		for (h = 0; h < wHeadCount(scr); h++) {
-			if (scr->head_workspace[h] >= scr->workspace_count) {
-				int to = scr->workspace_count - 1;
-				if (!wWorkspaceIsAllowedOnHead(scr, to, h))
-					to = wWorkspaceDefaultForHead(scr, h);
-				wWorkspaceForceChangeOnHead(scr, to, h);
-			}
-			if (scr->last_head_workspace[h] >= scr->workspace_count)
-				scr->last_head_workspace[h] = 0;
-		}
-		wWorkspaceSetCurrentHead(scr, wGetActiveHead(scr));
-	}
 
 	return true;
 }
