@@ -610,6 +610,14 @@ void wWorkspaceChange(WScreen *scr, int workspace)
 		return;
 	}
 
+	if (workspace < 0)
+		return;
+	if (workspace > scr->workspace_count - 1) {
+		if (!w_global.config->ws_advance || workspace >= MAX_WORKSPACES)
+			return;
+		wWorkspaceMake(scr, workspace - scr->workspace_count + 1);
+	}
+
 	if (workspace != scr->current_workspace)
 		wWorkspaceForceChange(scr, workspace);
 }
