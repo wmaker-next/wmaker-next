@@ -996,7 +996,7 @@ void wWorkspaceForceChange(WScreen * scr, int workspace)
 		while (toUnmapCount > 0)
 		{
 			tmp = toUnmap[--toUnmapCount];
-			if (tmp->flags.miniaturized) {
+			if (tmp->flags.miniaturized && tmp->icon) {
 				xcb_unmap_window(wdisp->conn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {
@@ -1250,7 +1250,7 @@ void wWorkspaceForceChangeOnHead(WScreen *scr, int workspace, int head)
 
 		while (toUnmapCount > 0) {
 			tmp = toUnmap[--toUnmapCount];
-			if (tmp->flags.miniaturized) {
+			if (tmp->flags.miniaturized && tmp->icon) {
 				xcb_unmap_window(wdisp->conn, tmp->icon->core->window);
 				tmp->icon->mapped = 0;
 			} else {

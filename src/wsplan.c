@@ -42,7 +42,7 @@ void wWorkspaceWindowDecision(bool per_head, bool sticky_icons,
 			     !win->omnipresent)) {
 				if (n < max) {
 					out[n].win = win->win;
-					out[n].kind = win->miniaturized ? WWS_UNMAP_ICON : WWS_UNMAP;
+					out[n].kind = (win->miniaturized && win->has_icon) ? WWS_UNMAP_ICON : WWS_UNMAP;
 					out[n].focus_priority = WWS_FOCUS_NONE;
 					n++;
 				}
@@ -108,7 +108,7 @@ void wWorkspaceWindowDecision(bool per_head, bool sticky_icons,
 		    (!sticky_icons && win->miniaturized && win->has_icon)) {
 			if (n < max) {
 				out[n].win = win->win;
-				out[n].kind = win->miniaturized ? WWS_UNMAP_ICON : WWS_UNMAP;
+				out[n].kind = (win->miniaturized && win->has_icon) ? WWS_UNMAP_ICON : WWS_UNMAP;
 				out[n].focus_priority = WWS_FOCUS_NONE;
 				n++;
 			}

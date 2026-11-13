@@ -340,11 +340,58 @@ static void test_directional(void)
 				   occupied, allowed) == 2);
 }
 
+static void test_no_icon_unmap(void)
+{
+	WWsWinIn in;
+	WWsStep steps[WWS_MAX_STEPS];
+	int n;
+
+	/* miniaturized without an icon: the unmap must not claim one */
+	fill_in(&in, false);
+	in.miniaturized = true;
+	in.has_icon = false;
+	in.shaded = true;
+	run(false, false, &in, steps, &n);
+	CHECK(n == 1);
+	CHECK(steps[0].kind == WWS_UNMAP);
+
+	fill_in(&in, false);
+	in.miniaturized = true;
+	in.has_icon = false;
+	in.mapped = true;
+	run(false, false, &in, steps, &n);
+	CHECK(n == 1);
+	CHECK(steps[0].kind == WWS_UNMAP);
+
+	fill_in(&in, false);
+	in.miniaturized = true;
+	in.has_icon = false;
+	in.shaded = true;
+	run(true, false, &in, steps, &n);
+	CHECK(n == 1);
+	CHECK(steps[0].kind == WWS_UNMAP);
+
+	fill_in(&in, false);
+	in.miniaturized = true;
+	in.shaded = true;
+	run(false, false, &in, steps, &n);
+	CHECK(n == 1);
+	CHECK(steps[0].kind == WWS_UNMAP_ICON);
+
+	fill_in(&in, false);
+	in.miniaturized = true;
+	in.shaded = true;
+	run(true, false, &in, steps, &n);
+	CHECK(n == 1);
+	CHECK(steps[0].kind == WWS_UNMAP_ICON);
+}
+
 int main(void)
 {
 	test_single_ws_plain();
 	test_single_ws_focus_claims();
 	test_icons();
+	test_no_icon_unmap();
 	test_per_head();
 	test_layout_grid();
 	test_neighbour();
