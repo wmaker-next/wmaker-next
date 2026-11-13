@@ -71,8 +71,7 @@ typedef struct W_AccentPicker {
 	unsigned int installed_mask;
 	unsigned int installed_numlock;
 	unsigned int installed_scrolllock;
-	xcb_keycode_t installed_min;
-	xcb_keycode_t installed_max;
+	unsigned char installed_kc[32];
 
 	xcb_keycode_t trigger_keycode;
 	xcb_keycode_t base_keycode;
@@ -450,7 +449,6 @@ static void finish(W_AccentPicker *ap, bool commit)
 	text[0] = '\0';
 	if (!ap->active)
 		return;
-
 	inject = commit && !ap->cancelled;
 	if (inject && ap->focus_target != XCB_NONE &&
 	    currentFocus() != ap->focus_target)
@@ -623,7 +621,6 @@ static void setBase(W_AccentPicker *ap, xcb_keycode_t kc, const char *utf8,
 				       norm, upper, &count);
 	wfree(norm);
 	ap->variant_count = (int)count;
-
 	if (ap->variant_count <= 0) {
 		ap->selected = -1;
 		hidePopup(ap);
@@ -696,39 +693,46 @@ static int navDelta(xkb_keysym_t ks)
  * config and grabs
  * ---------------------------------------------------------------- */
 
-static void grabCombo(W_AccentPicker *ap, xcb_keycode_t kc, unsigned int mods)
+static int comboList(unsigned int mods, unsigned int num, unsigned int scroll,
+		     unsigned int *out)
 {
-	xcb_window_t root = ap->scr->root_win;
+	unsigned int locks[4];
+	int i, n = 0;
 
-	wXGrabKey(wdisp->conn, kc, mods, root, false,
-		  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-	wXGrabKey(wdisp->conn, kc, mods | XCB_MOD_MASK_LOCK, root, false,
-		  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-#ifdef NUMLOCK_HACK
-	wHackedGrabKey(kc, mods, root, false,
-		       XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-#endif
+	locks[0] = 0;
+	locks[1] = num;
+	locks[2] = scroll;
+	locks[3] = num | scroll;
+	for (i = 0; i < 4; i++) {
+		out[n++] = mods | locks[i];
+		out[n++] = mods | locks[i] | XCB_MOD_MASK_LOCK;
+	}
+	return n;
+}
+
+static void grabCombo(W_AccentPicker *ap, xcb_keycode_t kc, unsigned int mods,
+		      unsigned int num, unsigned int scroll)
+{
+	unsigned int combos[8];
+	xcb_window_t root = ap->scr->root_win;
+	int i, n;
+
+	n = comboList(mods, num, scroll, combos);
+	for (i = 0; i < n; i++)
+		wXGrabKey(wdisp->conn, kc, combos[i], root, false,
+			  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 }
 
 static void ungrabCombo(W_AccentPicker *ap, xcb_keycode_t kc, unsigned int mods,
 			unsigned int num, unsigned int scroll)
 {
-	unsigned int locks[4];
-	int n = 0, i;
+	unsigned int combos[8];
 	xcb_window_t root = ap->scr->root_win;
+	int i, n;
 
-	locks[n++] = 0;
-	if (num)
-		locks[n++] = num;
-	if (scroll)
-		locks[n++] = scroll;
-	if (num && scroll)
-		locks[n++] = num | scroll;
-
-	for (i = 0; i < n; i++) {
-		wXUngrabKey(wdisp->conn, kc, mods | locks[i], root);
-		wXUngrabKey(wdisp->conn, kc, mods | XCB_MOD_MASK_LOCK | locks[i], root);
-	}
+	n = comboList(mods, num, scroll, combos);
+	for (i = 0; i < n; i++)
+		wXUngrabKey(wdisp->conn, kc, combos[i], root);
 }
 
 static void removeGrabs(W_AccentPicker *ap)
@@ -737,7 +741,9 @@ static void removeGrabs(W_AccentPicker *ap)
 
 	if (!ap->installed_mask)
 		return;
-	for (kc = ap->installed_min; kc <= ap->installed_max; kc++) {
+	for (kc = 0; kc < 256; kc++) {
+		if (!(ap->installed_kc[kc >> 3] & (1 << (kc & 7))))
+			continue;
 		ungrabCombo(ap, (xcb_keycode_t)kc, ap->installed_mask,
 			    ap->installed_numlock, ap->installed_scrolllock);
 		ungrabCombo(ap, (xcb_keycode_t)kc,
@@ -746,35 +752,93 @@ static void removeGrabs(W_AccentPicker *ap)
 	}
 	xcb_flush(wdisp->conn);
 	ap->installed_mask = 0;
+	memset(ap->installed_kc, 0, sizeof(ap->installed_kc));
 }
 
 static void installGrabs(W_AccentPicker *ap, unsigned int mask)
 {
-	unsigned int kc;
+	unsigned char wanted[32];
+	unsigned int old_combos[16], new_combos[16];
+	unsigned int kc, num, scroll;
 	xcb_keycode_t min_kc, max_kc;
+	bool same_sig, want, have;
+	int no, nn, i, j;
 
-	removeGrabs(ap);
-	if (!mask)
+	if (!mask) {
+		removeGrabs(ap);
 		return;
+	}
 
 	min_kc = wXkbMinKeycode();
 	max_kc = wXkbMaxKeycode();
 	if (!min_kc || !max_kc || max_kc < min_kc)
+		/* keep the current grabs, a later reload retries */
 		return;
 
+	num = wXkbNumLockMask();
+	scroll = wXkbScrollLockMask();
+
+	memset(wanted, 0, sizeof(wanted));
 	for (kc = min_kc; kc <= max_kc; kc++) {
 		if (wXkbKeycodeIsModifier((xcb_keycode_t)kc))
 			continue;
-		grabCombo(ap, (xcb_keycode_t)kc, mask);
-		grabCombo(ap, (xcb_keycode_t)kc, mask | XCB_MOD_MASK_SHIFT);
+		wanted[kc >> 3] |= (1 << (kc & 7));
+	}
+
+	same_sig = (mask == ap->installed_mask &&
+		    num == ap->installed_numlock &&
+		    scroll == ap->installed_scrolllock);
+
+	/* grab first: a same-client GrabKey replaces its own passive
+	 * grab within one request, so a kept combination never drops */
+	for (kc = 0; kc < 256; kc++) {
+		if (!(wanted[kc >> 3] & (1 << (kc & 7))))
+			continue;
+		if (same_sig && (ap->installed_kc[kc >> 3] & (1 << (kc & 7))))
+			continue;
+		grabCombo(ap, (xcb_keycode_t)kc, mask, num, scroll);
+		grabCombo(ap, (xcb_keycode_t)kc, mask | XCB_MOD_MASK_SHIFT,
+			  num, scroll);
+	}
+
+	for (kc = 0; kc < 256; kc++) {
+		have = (ap->installed_kc[kc >> 3] & (1 << (kc & 7))) != 0;
+		want = (wanted[kc >> 3] & (1 << (kc & 7))) != 0;
+		if (!have || (same_sig && want))
+			continue;
+		if (!want) {
+			ungrabCombo(ap, (xcb_keycode_t)kc, ap->installed_mask,
+				    ap->installed_numlock,
+				    ap->installed_scrolllock);
+			ungrabCombo(ap, (xcb_keycode_t)kc,
+				    ap->installed_mask | XCB_MOD_MASK_SHIFT,
+				    ap->installed_numlock,
+				    ap->installed_scrolllock);
+			continue;
+		}
+		no = comboList(ap->installed_mask, ap->installed_numlock,
+			       ap->installed_scrolllock, old_combos);
+		no += comboList(ap->installed_mask | XCB_MOD_MASK_SHIFT,
+				ap->installed_numlock, ap->installed_scrolllock,
+				old_combos + no);
+		nn = comboList(mask, num, scroll, new_combos);
+		nn += comboList(mask | XCB_MOD_MASK_SHIFT, num, scroll,
+				new_combos + nn);
+		for (i = 0; i < no; i++) {
+			for (j = 0; j < nn && new_combos[j] != old_combos[i]; j++)
+				;
+			if (j < nn)
+				continue;
+			wXUngrabKey(wdisp->conn, (xcb_keycode_t)kc,
+				    old_combos[i], ap->scr->root_win);
+		}
 	}
 	xcb_flush(wdisp->conn);
 
+	memcpy(ap->installed_kc, wanted, sizeof(wanted));
 	ap->installed_mask = mask;
-	ap->installed_min = min_kc;
-	ap->installed_max = max_kc;
-	ap->installed_numlock = wXkbNumLockMask();
-	ap->installed_scrolllock = wXkbScrollLockMask();
+	ap->installed_numlock = num;
+	ap->installed_scrolllock = scroll;
 }
 
 static bool user_map_valid(const char *base, WMPropList *value)
@@ -956,7 +1020,7 @@ static unsigned int wantedMask(bool *invalid)
 void wAccentPickerApplyConfig(WScreen *scr)
 {
 	W_AccentPicker *ap;
-	unsigned int mask, old;
+	unsigned int mask;
 	bool invalid;
 
 	if (!scr)
@@ -1012,10 +1076,8 @@ void wAccentPickerApplyConfig(WScreen *scr)
 		}
 	}
 
-	old = ap->installed_mask;
 	ap->modifier_mask = mask;
-	if (old != mask)
-		installGrabs(ap, mask);
+	installGrabs(ap, mask);
 }
 
 void wAccentPickerCancel(WScreen *scr)
@@ -1033,7 +1095,6 @@ void wAccentPickerCancel(WScreen *scr)
 void wAccentPickerLayoutChanged(WScreen *scr)
 {
 	W_AccentPicker *ap;
-	unsigned int mask;
 
 	if (!scr)
 		return;
@@ -1043,10 +1104,7 @@ void wAccentPickerLayoutChanged(WScreen *scr)
 
 	finish(ap, false);
 	rebuildSets(ap);
-
-	mask = ap->installed_mask;
-	if (mask)
-		installGrabs(ap, mask);
+	installGrabs(ap, ap->modifier_mask);
 }
 
 /* ---------------------------------------------------------------- *
