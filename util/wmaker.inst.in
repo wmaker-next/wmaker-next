@@ -34,17 +34,32 @@ make_dir() {
 #
 # Copy files, rewriting any user-root placeholder to the resolved paths.
 # The substitutions are no-ops on files that do not contain a placeholder.
+# The paths come from the environment and are inserted literally: sed
+# would treat &, \ and the delimiter in them as replacement syntax and
+# choke on embedded newlines, so the rewrite runs through awk instead.
 #
 copy() {
 	source="$1"
 	target="$2"
 	rm -f "$target"
-	sed -e "s|\$WMAKER_USER_ROOT|$GSDIR|g" \
-	    -e "s|\$WMAKER_USER_DATA|$WDATADIR|g" \
-	    -e "s|\$WMAKER_USER_CACHE|$WCACHEDIR|g" \
-	    -e "s|\$HOME/GNUstep|$GSDIR|g" \
-	    -e "s|~/GNUstep|$GSDIR|g" \
-	    "$source" > "$target"
+	GSDIR="$GSDIR" WDATADIR="$WDATADIR" WCACHEDIR="$WCACHEDIR" \
+	awk '
+	function replace_all(s, from, to,    out, p) {
+		out = ""
+		while ((p = index(s, from)) > 0) {
+			out = out substr(s, 1, p - 1) to
+			s = substr(s, p + length(from))
+		}
+		return out s
+	}
+	{
+		$0 = replace_all($0, "$WMAKER_USER_ROOT", ENVIRON["GSDIR"])
+		$0 = replace_all($0, "$WMAKER_USER_DATA", ENVIRON["WDATADIR"])
+		$0 = replace_all($0, "$WMAKER_USER_CACHE", ENVIRON["WCACHEDIR"])
+		$0 = replace_all($0, "$HOME/GNUstep", ENVIRON["GSDIR"])
+		$0 = replace_all($0, "~/GNUstep", ENVIRON["GSDIR"])
+		print
+	}' "$source" > "$target"
 }
 
 #
