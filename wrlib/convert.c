@@ -189,9 +189,23 @@ static RXImage *image2Bitmap(RContext * ctx, RImage * image, int threshold)
 	return ximg;
 }
 
+static RXImage *image2TrueColorPixmap(RContext *context, RImage *image, xcb_pixmap_t *pixmap,
+				      xcb_void_cookie_t *create_ck)
+{
+	RXImage *ximg = image2TrueColor(context, image);
+
+	if (!ximg)
+		return NULL;
+	*pixmap = xcb_generate_id(context->xc);
+	*create_ck = xcb_create_pixmap_checked(context->xc, context->depth, *pixmap,
+					       context->drawable, image->width, image->height);
+	return ximg;
+}
+
 int RConvertImage(RContext * context, RImage * image, xcb_pixmap_t * pixmap)
 {
-	RXImage *ximg = NULL;
+	RXImage *ximg;
+	xcb_void_cookie_t create_ck;
 	xcb_generic_error_t *error;
 
 	assert(context != NULL);
@@ -200,16 +214,12 @@ int RConvertImage(RContext * context, RImage * image, xcb_pixmap_t * pixmap)
 
 	*pixmap = XCB_NONE;
 
-	ximg = image2TrueColor(context, image);
+	ximg = image2TrueColorPixmap(context, image, pixmap, &create_ck);
 	if (!ximg) {
 		return 0;
 	}
 
-	*pixmap = xcb_generate_id(context->xc);
-	error = xcb_request_check(context->xc,
-				  xcb_create_pixmap_checked(context->xc, context->depth,
-							    *pixmap, context->drawable,
-							    image->width, image->height));
+	error = xcb_request_check(context->xc, create_ck);
 	if (error) {
 		free(error);
 		*pixmap = XCB_NONE;
@@ -227,8 +237,9 @@ int RConvertImageMask(RContext * context, RImage * image, xcb_pixmap_t * pixmap,
 {
 	xcb_gcontext_t gc;
 	uint32_t gcvals[3];
-	RXImage *ximg = NULL;
-	xcb_generic_error_t *error;
+	RXImage *color, *ximg;
+	xcb_void_cookie_t ck_pix, ck_mask, ck_gc;
+	xcb_generic_error_t *err_pix, *err_mask, *err_gc;
 
 	assert(context != NULL);
 	assert(image != NULL);
@@ -237,53 +248,58 @@ int RConvertImageMask(RContext * context, RImage * image, xcb_pixmap_t * pixmap,
 
 	*pixmap = *mask = XCB_NONE;
 
-	if (!RConvertImage(context, image, pixmap))
-		return 0;
-
 	if (image->format == RRGBFormat) {
 		*mask = XCB_NONE;
-		return 1;
+		return RConvertImage(context, image, pixmap);
 	}
 
 	ximg = image2Bitmap(context, image, threshold);
-
 	if (!ximg) {
-		xcb_free_pixmap(context->xc, *pixmap);
-		*pixmap = XCB_NONE;
+		*pixmap = *mask = XCB_NONE;
 		return 0;
 	}
-	*mask = xcb_generate_id(context->xc);
-	error = xcb_request_check(context->xc,
-				  xcb_create_pixmap_checked(context->xc, 1, *mask,
-							    context->drawable,
-							    image->width, image->height));
-	if (error) {
-		free(error);
-		*mask = XCB_NONE;
-		xcb_free_pixmap(context->xc, *pixmap);
-		*pixmap = XCB_NONE;
+	color = image2TrueColorPixmap(context, image, pixmap, &ck_pix);
+	if (!color) {
 		RDestroyXImage(context, ximg);
-		RErrorCode = RERR_XERROR;
+		*pixmap = *mask = XCB_NONE;
 		return 0;
 	}
 	gcvals[0] = context->black;
 	gcvals[1] = context->white;
 	gcvals[2] = 0;
+	*mask = xcb_generate_id(context->xc);
+	ck_mask = xcb_create_pixmap_checked(context->xc, 1, *mask,
+					    context->drawable, image->width, image->height);
 	gc = xcb_generate_id(context->xc);
-	error = xcb_request_check(context->xc,
-				  xcb_create_gc_checked(context->xc, gc, *mask,
-							 XCB_GC_FOREGROUND | XCB_GC_BACKGROUND |
-							 XCB_GC_GRAPHICS_EXPOSURES, gcvals));
-	if (error) {
-		free(error);
-		xcb_free_pixmap(context->xc, *mask);
-		xcb_free_pixmap(context->xc, *pixmap);
-		*mask = *pixmap = XCB_NONE;
+	ck_gc = xcb_create_gc_checked(context->xc, gc, *mask,
+				      XCB_GC_FOREGROUND | XCB_GC_BACKGROUND |
+				      XCB_GC_GRAPHICS_EXPOSURES, gcvals);
+
+	/* Check the newest cookie first. One barrier covers the whole
+	 * batch and the older checks pick up errors already read. */
+	err_gc = xcb_request_check(context->xc, ck_gc);
+	err_mask = xcb_request_check(context->xc, ck_mask);
+	err_pix = xcb_request_check(context->xc, ck_pix);
+	if (err_pix || err_mask || err_gc) {
+		free(err_pix);
+		free(err_mask);
+		free(err_gc);
+		if (!err_gc)
+			xcb_free_gc(context->xc, gc);
+		if (!err_mask)
+			xcb_free_pixmap(context->xc, *mask);
+		if (!err_pix)
+			xcb_free_pixmap(context->xc, *pixmap);
+		*pixmap = *mask = XCB_NONE;
+		RDestroyXImage(context, color);
 		RDestroyXImage(context, ximg);
 		RErrorCode = RERR_XERROR;
 		return 0;
 	}
+
+	r_put_ximage(context, *pixmap, context->copy_xgc, color, 0, 0, 0, 0, image->width, image->height);
 	r_put_ximage(context, *mask, gc, ximg, 0, 0, 0, 0, image->width, image->height);
+	RDestroyXImage(context, color);
 	RDestroyXImage(context, ximg);
 	xcb_free_gc(context->xc, gc);
 
