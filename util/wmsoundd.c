@@ -108,6 +108,11 @@ static struct {
 static volatile sig_atomic_t shutdown_pending;
 static volatile sig_atomic_t sighup_pending;
 
+/* signal-to-poll wakeup: the handler writes one byte so the poll in
+ * ipc_loop() cannot miss a signal delivered between the pending-flag
+ * check and the syscall */
+static int sig_pipe[2] = { -1, -1 };
+
 static long long monotonic_ms(void)
 {
 	struct timespec ts;
@@ -506,10 +511,16 @@ static int inotify_drain(void)
 
 static void on_signal(int sig)
 {
+	unsigned char byte = 1;
+	ssize_t rc;
+
 	if (sig == SIGTERM || sig == SIGINT)
 		shutdown_pending = 1;
 	else if (sig == SIGHUP)
 		sighup_pending = 1;
+
+	rc = write(sig_pipe[1], &byte, 1);
+	(void)rc;
 }
 
 /* Give the PipeWire data thread time to finish the sample queued at
@@ -537,8 +548,10 @@ static int ipc_loop(int fd)
 	char *body;
 	WMPropList *pl, *k, *v;
 	const char *event;
-	struct pollfd pfd[2];
+	struct pollfd pfd[3];
+	unsigned char sigbuf[64];
 	int nfds, rc;
+	ssize_t n;
 
 	for (;;) {
 		if (shutdown_pending)
@@ -554,23 +567,33 @@ static int ipc_loop(int fd)
 		pfd[0].fd = fd;
 		pfd[0].events = POLLIN;
 		nfds = 1;
+		pfd[nfds].fd = sig_pipe[0];
+		pfd[nfds].events = POLLIN;
+		nfds++;
 #ifdef HAVE_INOTIFY
 		if (g.inotify_fd >= 0) {
-			pfd[1].fd = g.inotify_fd;
-			pfd[1].events = POLLIN;
-			nfds = 2;
+			pfd[nfds].fd = g.inotify_fd;
+			pfd[nfds].events = POLLIN;
+			nfds++;
 		}
 #endif
-		/* poll so inotify and IPC wake the same loop; signal
-		 * delivery interrupts poll via EINTR and we re-check flags */
+		/* poll so inotify and IPC wake the same loop; a signal
+		 * wakes it through the self-pipe even when it lands just
+		 * before the poll */
 		rc = poll(pfd, nfds, -1);
 		if (rc < 0) {
 			if (errno == EINTR)
 				continue;
 			return -1;
 		}
+		if (pfd[1].revents & POLLIN) {
+			do {
+				n = read(sig_pipe[0], sigbuf, sizeof(sigbuf));
+			} while (n > 0);
+			continue;
+		}
 #ifdef HAVE_INOTIFY
-		if (nfds > 1 && (pfd[1].revents & POLLIN)) {
+		if (nfds > 2 && (pfd[2].revents & POLLIN)) {
 			if (inotify_drain())
 				domain_load();
 		}
@@ -618,6 +641,7 @@ int main(int argc, char **argv)
 	unsigned backoff;
 	long long started, giveup_deadline;
 	int status = 0, rc, stable;
+	struct sigaction sa;
 
 	struct option longopts[] = {
 		{ "help",    no_argument,       NULL, 'h' },
@@ -649,10 +673,26 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (pipe(sig_pipe) < 0) {
+		perror(PROG ": pipe");
+		return 1;
+	}
+	/* nonblocking so a signal burst cannot deadlock in the handler */
+	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+
 	signal(SIGPIPE, SIG_IGN);
-	signal(SIGTERM, on_signal);
-	signal(SIGINT, on_signal);
-	signal(SIGHUP, on_signal);
+
+	/* no SA_RESTART: a signal caught inside a blocking read
+	 * must abort it instead of resuming the wait */
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = on_signal;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
 
 	pw_init(&argc, &argv);
 	pw_state.thread_loop = pw_thread_loop_new(PROG, NULL);
