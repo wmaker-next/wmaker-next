@@ -4534,8 +4534,7 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 	if (!dock->menu->flags.realized)
 		wMenuRealize(dock->menu);
 
-	if (dock->type == WM_CLIP || dock->type == WM_DRAWER) {
-		/*x_pos = ((xcb_button_press_event_t *)event)->root_x+2; */
+	if (dock->type == WM_CLIP) {
 		x_pos = ((xcb_button_press_event_t *)event)->root_x - dock->menu->frame->core->width / 2 - 1;
 		if (x_pos < 0) {
 			x_pos = 0;
@@ -4543,6 +4542,11 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 			x_pos = scr->scr_width - dock->menu->frame->core->width - 4;
 		}
 		y_pos = ((xcb_button_press_event_t *)event)->root_y + 2;
+		if (y_pos < 0) {
+			y_pos = 0;
+		} else if (y_pos + dock->menu->frame->core->height > scr->scr_height - 2) {
+			y_pos = scr->scr_height - dock->menu->frame->core->height - 4;
+		}
 	} else {
 		int menu_w = dock->menu->frame->core->width;
 		int menu_h = dock->menu->frame->core->height;
