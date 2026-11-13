@@ -1018,6 +1018,18 @@ void wAccentPickerApplyConfig(WScreen *scr)
 		installGrabs(ap, mask);
 }
 
+void wAccentPickerCancel(WScreen *scr)
+{
+	W_AccentPicker *ap;
+
+	if (!scr)
+		return;
+	ap = scr->accentpicker;
+	if (!ap)
+		return;
+	finish(ap, false);
+}
+
 void wAccentPickerLayoutChanged(WScreen *scr)
 {
 	W_AccentPicker *ap;

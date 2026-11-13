@@ -46,6 +46,7 @@
 #include "wmspec.h"
 #include "event.h"
 #include "wxkb.h"
+#include "accent_picker.h"
 #ifdef USE_RANDR
 # include "randr.h"
 #endif
@@ -119,6 +120,14 @@ static void handleXkbIndicatorStateNotify(void)
 		}
 	}
 }
+
+static void cancelAccentPickers(void)
+{
+	int i;
+
+	for (i = 0; i < wdisp->screen_count; i++)
+		wAccentPickerCancel(wScreenWithNumber(i));
+}
 #endif	/* KEEP_XKB_LOCK_STATUS */
 
 static void handleXkbEvent(xcb_generic_event_t *ev)
@@ -137,6 +146,12 @@ static void handleXkbEvent(xcb_generic_event_t *ev)
 
 	if (xkb_type == XCB_XKB_NEW_KEYBOARD_NOTIFY
 	    || xkb_type == XCB_XKB_MAP_NOTIFY) {
+		/* drop picker sessions before the keymap reload, a
+		 * session must not outlive its map and the reload is
+		 * slow enough for a release poll to commit in between */
+#ifdef KEEP_XKB_LOCK_STATUS
+		cancelAccentPickers();
+#endif
 		wRefreshKeybindings();
 	}
 #ifdef KEEP_XKB_LOCK_STATUS

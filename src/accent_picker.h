@@ -34,6 +34,7 @@ struct WWindow;
 void wAccentPickerInit(struct _WScreen *scr);
 void wAccentPickerDestroy(struct _WScreen *scr);
 void wAccentPickerApplyConfig(struct _WScreen *scr);
+void wAccentPickerCancel(struct _WScreen *scr);
 void wAccentPickerLayoutChanged(struct _WScreen *scr);
 bool wAccentPickerIsActive(struct _WScreen *scr);
 
