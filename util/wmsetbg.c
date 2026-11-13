@@ -1069,12 +1069,27 @@ static xcb_pixmap_t duplicatePixmap(RContext *rc, xcb_pixmap_t pixmap)
 	wXSync(xc);
 
 	copyP = xcb_generate_id(txc);
-	xcb_create_pixmap(txc, rc->depth, copyP, root, scrWidth, scrHeight);
+	if (!WXCheckVoid(txc, xcb_create_pixmap_checked(txc, rc->depth, copyP, root,
+							scrWidth, scrHeight))) {
+		xcb_disconnect(txc);
+		return XCB_NONE;
+	}
 	tgc = xcb_generate_id(txc);
 	gcvals[0] = XCB_FILL_STYLE_TILED;
 	gcvals[1] = pixmap;
-	xcb_create_gc(txc, tgc, copyP, XCB_GC_FILL_STYLE | XCB_GC_TILE, gcvals);
-	xcb_poly_fill_rectangle(txc, copyP, tgc, 1, &rect);
+	if (!WXCheckVoid(txc, xcb_create_gc_checked(txc, tgc, copyP,
+						    XCB_GC_FILL_STYLE | XCB_GC_TILE,
+						    gcvals))) {
+		xcb_free_pixmap(txc, copyP);
+		xcb_disconnect(txc);
+		return XCB_NONE;
+	}
+	if (!WXCheckVoid(txc, xcb_poly_fill_rectangle_checked(txc, copyP, tgc, 1, &rect))) {
+		xcb_free_gc(txc, tgc);
+		xcb_free_pixmap(txc, copyP);
+		xcb_disconnect(txc);
+		return XCB_NONE;
+	}
 	xcb_free_gc(txc, tgc);
 
 	xcb_set_close_down_mode(txc, XCB_CLOSE_DOWN_RETAIN_PERMANENT);
@@ -1155,6 +1170,7 @@ static void setPixmapProperty(xcb_pixmap_t pixmap)
 static void changeTexture(RContext *rc, BackgroundTexture * texture)
 {
 	uint32_t back_pixel;
+	xcb_pixmap_t copy;
 
 	if (!texture) {
 		return;
@@ -1172,7 +1188,9 @@ static void changeTexture(RContext *rc, BackgroundTexture * texture)
 
 	wXSync(xc);
 
-	setPixmapProperty(duplicatePixmap(rc, texture->pixmap));
+	copy = duplicatePixmap(rc, texture->pixmap);
+	if (copy != XCB_NONE)
+		setPixmapProperty(copy);
 }
 
 static bool refreshTextures(RContext *rc, BackgroundTexture **textures, int maxTextures)
