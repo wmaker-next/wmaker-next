@@ -284,9 +284,12 @@ static void handleUnmapNotify(xcb_generic_event_t *ev)
 	if (!wwin)
 		return;
 
-	/* whether the event is a Withdrawal request */
-	if (e->event == wwin->screen_ptr->root_win && ((ev->response_type & 0x80) != 0))
+	/* the ICCCM withdrawal is the one deliberate synthetic unmap */
+	if (ev->response_type & 0x80) {
+		if (e->event != wwin->screen_ptr->root_win)
+			return;
 		withdraw = true;
+	}
 
 	if (wwin->client_win != e->event && !withdraw)
 		return;

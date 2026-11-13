@@ -424,6 +424,14 @@ void DispatchEvent(xcb_generic_event_t *event)
 		return;
 
 	type = event->response_type & 0x7f;
+
+	/* XSendEvent forgeries must not drive bindings or button
+	 * actions. Legitimately synthetic protocol traffic passes */
+	if ((event->response_type & 0x80) &&
+	    (type == XCB_KEY_PRESS || type == XCB_KEY_RELEASE ||
+	     type == XCB_BUTTON_PRESS || type == XCB_BUTTON_RELEASE))
+		return;
+
 	wSaveTimestamp(event);
 
 	/* events are the raw wire buffers the queue drained, handlers
