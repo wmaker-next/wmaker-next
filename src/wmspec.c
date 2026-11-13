@@ -2455,9 +2455,16 @@ bool wNETWMProcessClientMessage(const xcb_client_message_event_t *event)
 
 	} else if (event->type == net_moveresize_window) {
 		xcb_configure_request_event_t xcre;
-		unsigned long flags = (unsigned long)event->data.data32[0];
-		int gravity = flags & 0xff;
-		int saved_gravity = wwin->normal_hints->win_gravity;
+		unsigned long flags;
+		int gravity;
+		int saved_gravity;
+
+		if (wwin->flags.internal_window || !wwin->normal_hints)
+			return true;
+
+		flags = (unsigned long)event->data.data32[0];
+		gravity = flags & 0xff;
+		saved_gravity = wwin->normal_hints->win_gravity;
 
 		/*
 		 * Reuse the ConfigureRequest path so frame extents, size
