@@ -131,11 +131,14 @@ run_case()
 	sleep 1.2
 
 	# the wmiv window can be found by xdotool before it has selected
-	# KeyPressMask, and a synthetic KeyPress sent in that gap is
-	# silently dropped, so re-send Ctrl+V while polling the title
+	# KeyPressMask, and a key press sent in that gap is silently
+	# dropped, so re-send Ctrl+V while polling the title. The keys go
+	# through XTEST because wmiv ignores XSendEvent-forged input.
 	tries=6
 	while [ "$tries" -gt 0 ]; do
-		DISPLAY=$DPY "$CLIPTEST" send-ctrl-v "$WMIV_WIN" >>"$LOG" 2>&1 ||
+		DISPLAY=$DPY xdotool windowfocus --sync "$WMIV_WIN" >>"$LOG" 2>&1 ||
+			fail "$mode: failed to focus wmiv"
+		DISPLAY=$DPY xdotool key --clearmodifiers ctrl+v >>"$LOG" 2>&1 ||
 			fail "$mode: failed to send Ctrl+V"
 		wait_for 10 title_has_paste_path && break
 		tries=$((tries - 1))

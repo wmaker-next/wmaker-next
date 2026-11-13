@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <signal.h>
+#include <stdint.h>
 #include <time.h>
 #include <math.h>
 #include <ftw.h>
@@ -131,6 +132,10 @@ bool back_from_fullscreen = false;
 bool ignore_unknown_file_format = false;
 
 #ifdef HAVE_PTHREAD
+static pthread_mutex_t slideshow_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t slideshow_cond = PTHREAD_COND_INITIALIZER;
+static bool slideshow_running;
+static uint32_t slideshow_token[2];
 bool slideshow_flag = false;
 int slideshow_delay = 5;
 pthread_t tid = 0;
@@ -182,7 +187,6 @@ static xcb_atom_t incr_atom = XCB_ATOM_NONE;
 /* --- xkbcommon-x11 keyboard mapping --- */
 static struct xkb_context *xkb_ctx;
 static struct xkb_keymap *xkb_keymap;
-static xcb_keycode_t right_keycode;
 
 /* --- Thin app-owned event queue (mirrors WINGs/wxevq.c) --- */
 typedef struct wmiv_event_queue_node {
@@ -486,6 +490,7 @@ static xcb_atom_t atom_net_wm_state;
 static xcb_atom_t atom_net_wm_state_fullscreen;
 static xcb_atom_t atom_wm_protocols;
 static xcb_atom_t atom_wm_delete_window;
+static xcb_atom_t atom_wmiv_slideshow_tick;
 static xcb_atom_t atom_utf8_string;
 static xcb_atom_t atom_net_wm_icon;
 
@@ -753,6 +758,27 @@ static void install_signal_handlers(void)
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGHUP, &sa, NULL);
 }
+
+#ifdef HAVE_PTHREAD
+static void init_slideshow_token(void)
+{
+	int rfd = open("/dev/urandom", O_RDONLY);
+
+	slideshow_token[0] = (uint32_t)getpid() ^ (uint32_t)time(NULL);
+	slideshow_token[1] = (uint32_t)clock();
+	if (rfd >= 0) {
+		if (read(rfd, slideshow_token, sizeof(slideshow_token)) !=
+		    (ssize_t)sizeof(slideshow_token)) {
+			/* keep the mixed fallback */
+		}
+		close(rfd);
+	}
+}
+#else
+static void init_slideshow_token(void)
+{
+}
+#endif
 
 /*
 	Check if file has archive extension
@@ -2480,36 +2506,91 @@ int change_image(int way)
 
 #ifdef HAVE_PTHREAD
 /*
-	Send an X event to display the next image at every delay set to slideshow_delay
+	Tick the main loop to display the next image at every delay set to
+	slideshow_delay. The trigger is an internal ClientMessage tagged
+	with a per-process token.
 */
 void *slideshow(void *arg)
 {
 	(void) arg;
 
-	xcb_key_press_event_t event;
-
-	memset(&event, 0, sizeof(event));
-	event.response_type = XCB_KEY_PRESS;
-	event.event = win;
-	event.root = root_window;
-	event.detail = right_keycode;
-	event.root_x = 1;
-	event.root_y = 1;
-	event.event_x = 1;
-	event.event_y = 1;
-	event.same_screen = 1;
-	event.time = XCB_TIME_CURRENT_TIME;
-
+	pthread_mutex_lock(&slideshow_mutex);
 	while (slideshow_flag) {
-		xcb_send_event(xc, 1, win, XCB_EVENT_MASK_KEY_PRESS,
-			       (const char *)&event);
-		xcb_flush(xc);
+		struct timespec ts;
 
-		/* default sleep time between moving to next image */
-		sleep(slideshow_delay);
+		pthread_mutex_unlock(&slideshow_mutex);
+		send_client_message(win, 0, win, atom_wmiv_slideshow_tick,
+				    slideshow_token[0], slideshow_token[1],
+				    0, 0, 0);
+		pthread_mutex_lock(&slideshow_mutex);
+		if (!slideshow_flag)
+			break;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += slideshow_delay;
+		pthread_cond_timedwait(&slideshow_cond, &slideshow_mutex, &ts);
 	}
-	tid = 0;
+	slideshow_running = false;
+	pthread_mutex_unlock(&slideshow_mutex);
 	return arg;
+}
+
+static void slideshow_stop(void)
+{
+	pthread_mutex_lock(&slideshow_mutex);
+	slideshow_flag = false;
+	pthread_cond_signal(&slideshow_cond);
+	pthread_mutex_unlock(&slideshow_mutex);
+}
+
+static void slideshow_join(void)
+{
+	slideshow_stop();
+	if (tid) {
+		pthread_join(tid, NULL);
+		tid = 0;
+	}
+}
+
+/* returns 1 when a slideshow is running or was just started */
+static int slideshow_start(void)
+{
+	int rc;
+
+	pthread_mutex_lock(&slideshow_mutex);
+	if (slideshow_running) {
+		pthread_mutex_unlock(&slideshow_mutex);
+		return 1;
+	}
+	pthread_mutex_unlock(&slideshow_mutex);
+
+	if (tid) {
+		pthread_join(tid, NULL);
+		tid = 0;
+	}
+	if (!current_link)
+		return 0;
+
+	pthread_mutex_lock(&slideshow_mutex);
+	slideshow_flag = true;
+	slideshow_running = true;
+	rc = pthread_create(&tid, NULL, &slideshow, NULL);
+	if (rc != 0) {
+		slideshow_flag = false;
+		slideshow_running = false;
+		tid = 0;
+	}
+	pthread_mutex_unlock(&slideshow_mutex);
+	return rc == 0;
+}
+
+static int slideshow_wants_tick(void)
+{
+	int on;
+
+	pthread_mutex_lock(&slideshow_mutex);
+	on = slideshow_flag;
+	pthread_mutex_unlock(&slideshow_mutex);
+	return on;
 }
 #endif
 
@@ -3030,6 +3111,12 @@ static void initiate_file_drag(void)
 			break;
 		uint8_t rt = ev->response_type & 0x7f;
 
+		if ((ev->response_type & 0x80) &&
+		    (rt == XCB_MOTION_NOTIFY || rt == XCB_BUTTON_RELEASE)) {
+			free(ev);
+			continue;
+		}
+
 		if (rt == XCB_MOTION_NOTIFY) {
 			xcb_motion_notify_event_t *mn = (xcb_motion_notify_event_t *)ev;
 			xcb_window_t over = wmiv_xdnd_find_target(root_window,
@@ -3131,10 +3218,6 @@ static void init_xkb(void)
 {
 	int32_t device_id;
 
-	xkb_keycode_t min_kc, max_kc;
-	const xkb_keysym_t *syms;
-	int n;
-
 	if (!xkb_x11_setup_xkb_extension(xc,
 					 XKB_X11_MIN_MAJOR_XKB_VERSION,
 					 XKB_X11_MIN_MINOR_XKB_VERSION,
@@ -3156,19 +3239,6 @@ static void init_xkb(void)
 						    XKB_KEYMAP_COMPILE_NO_FLAGS);
 	if (!xkb_keymap)
 		return;
-
-	/* Find the Right arrow keycode for the slideshow thread */
-	min_kc = xkb_keymap_min_keycode(xkb_keymap);
-	max_kc = xkb_keymap_max_keycode(xkb_keymap);
-
-	for (xkb_keycode_t kc = min_kc; kc <= max_kc; kc++) {
-		n = xkb_keymap_key_get_syms_by_level(xkb_keymap, kc, 0, 0, &syms);
-
-		if (n > 0 && syms[0] == XKB_KEY_Right) {
-			right_keycode = kc;
-			break;
-		}
-	}
 }
 
 /*
@@ -3257,6 +3327,8 @@ int main(int argc, char **argv)
 #endif
 
 	install_signal_handlers();
+	init_slideshow_token();
+
 	xc = xcconn_open(NULL, APPNAME, 0, &screen_num);
 
 	if (!xc) {
@@ -3286,6 +3358,7 @@ int main(int argc, char **argv)
 	atom_net_wm_state_fullscreen = intern_atom("_NET_WM_STATE_FULLSCREEN");
 	atom_wm_protocols = intern_atom("WM_PROTOCOLS");
 	atom_wm_delete_window = intern_atom("WM_DELETE_WINDOW");
+	atom_wmiv_slideshow_tick = intern_atom("_WMIV_SLIDESHOW_TICK");
 	atom_utf8_string = intern_atom("UTF8_STRING");
 	atom_net_wm_icon = intern_atom("_NET_WM_ICON");
 
@@ -3462,6 +3535,14 @@ int main(int argc, char **argv)
 		}
 		uint8_t rt = ev->response_type & 0x7f;
 
+		/* synthetic key and button events are not real input */
+		if ((ev->response_type & 0x80) &&
+		    (rt == XCB_KEY_PRESS || rt == XCB_BUTTON_PRESS ||
+		     rt == XCB_BUTTON_RELEASE || rt == XCB_MOTION_NOTIFY)) {
+			free(ev);
+			continue;
+		}
+
 		if (rt == 0) {
 			if (clip_incr_send_handle_error(&incr,
 					((xcb_generic_error_t *)ev)->resource_id) &&
@@ -3476,6 +3557,16 @@ int main(int argc, char **argv)
 			unsigned char *dropBuffer;
 			int length;
 
+#ifdef HAVE_PTHREAD
+			if (cm->type == atom_wmiv_slideshow_tick) {
+				if (cm->data.data32[0] == slideshow_token[0] &&
+				    cm->data.data32[1] == slideshow_token[1] &&
+				    slideshow_wants_tick())
+					change_image(NEXT);
+				free(ev);
+				continue;
+			}
+#endif
 			if (wmiv_xdnd_handle_message(cm, &dropBuffer, &length)) {
 				char *handled_uri_header = "file://";
 				char *filename_separator = "\n";
@@ -3727,8 +3818,7 @@ int main(int argc, char **argv)
 
 			keysym = keycode_to_keysym(ke->detail, level);
 #ifdef HAVE_PTHREAD
-			if (keysym != XKB_KEY_Right)
-				slideshow_flag = false;
+			slideshow_stop();
 #endif
 			/* Detect Ctrl+C: state contains ControlMask */
 			if ((ke->state & XCB_KEY_BUT_MASK_CONTROL) && (keysym == XKB_KEY_c || keysym == XKB_KEY_C)) {
@@ -3769,14 +3859,8 @@ int main(int argc, char **argv)
 #ifdef HAVE_PTHREAD
 			case XKB_KEY_F5:
 			case XKB_KEY_d:
-				if (!tid) {
-					if (current_link && !slideshow_flag) {
-						slideshow_flag = true;
-						pthread_create(&tid, NULL, &slideshow, NULL);
-					} else {
-						fprintf(stderr, "Error: can't start slideshow\n");
-					}
-				}
+				if (!slideshow_start())
+					fprintf(stderr, "Error: can't start slideshow\n");
 				break;
 #endif
 			case XKB_KEY_q:
@@ -3811,6 +3895,11 @@ int main(int argc, char **argv)
 			free(ev);
 		}
 	}
+
+#ifdef HAVE_PTHREAD
+	/* the thread uses libxcb, so it must exit first */
+	slideshow_join();
+#endif
 
 	if (img)
 		RReleaseImage(img);
