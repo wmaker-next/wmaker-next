@@ -90,6 +90,44 @@ static void handle_key(xcb_keycode_t kc, int down)
 	fflush(stdout);
 }
 
+static int pointer_grabbed(void)
+{
+	xcb_connection_t *probe;
+	xcb_screen_t *screen;
+	xcb_grab_pointer_reply_t *reply;
+	int status;
+
+	probe = xcb_connect(NULL, NULL);
+	if (xcb_connection_has_error(probe)) {
+		fprintf(stderr, "could not connect to X server\n");
+		xcb_disconnect(probe);
+		return 2;
+	}
+	screen = xcb_setup_roots_iterator(xcb_get_setup(probe)).data;
+	reply = xcb_grab_pointer_reply(probe,
+		xcb_grab_pointer(probe, 0, screen->root, XCB_EVENT_MASK_BUTTON_PRESS,
+				 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+				 XCB_NONE, XCB_NONE, XCB_CURRENT_TIME), NULL);
+	if (!reply) {
+		fprintf(stderr, "could not query pointer grab\n");
+		xcb_disconnect(probe);
+		return 2;
+	}
+	status = reply->status;
+	free(reply);
+	if (status == XCB_GRAB_STATUS_SUCCESS) {
+		xcb_ungrab_pointer(probe, XCB_CURRENT_TIME);
+		xcb_flush(probe);
+	}
+	xcb_disconnect(probe);
+	if (status == XCB_GRAB_STATUS_ALREADY_GRABBED)
+		return 0;
+	if (status == XCB_GRAB_STATUS_SUCCESS)
+		return 1;
+	fprintf(stderr, "unexpected pointer grab status %d\n", status);
+	return 2;
+}
+
 int main(int argc, char **argv)
 {
 	xcb_screen_t *screen;
@@ -103,6 +141,8 @@ int main(int argc, char **argv)
 	uint16_t want;
 	uint16_t parts;
 
+	if (argc > 1 && strcmp(argv[1], "--pointer-grabbed") == 0)
+		return pointer_grabbed();
 	if (argc > 1)
 		seconds = atoi(argv[1]);
 	if (seconds <= 0)

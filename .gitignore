@@ -57,6 +57,7 @@ test/dockapp-client
 test/appmenu-client
 test/findmouse-client
 test/gafocus-client
+test/accent-picker-client
 test/shots/current/
 
 util/convertfonts

@@ -56,6 +56,34 @@ pid_gone() { ! kill -0 "$1" 2>/dev/null; }
 
 xdo() { DISPLAY=$DPY xdotool "$@"; sleep 0.15; }
 popup_id() { DISPLAY=$DPY xwininfo -root -tree 2>/dev/null | awk '/"accentPicker"/ { print $1; exit }'; }
+popup_mapped() {
+    qa_popup=$(popup_id)
+    [ -n "$qa_popup" ] && DISPLAY=$DPY xwininfo -id "$qa_popup" 2>/dev/null | grep -q 'Map State: IsViewable'
+}
+popup_unmapped() {
+    DISPLAY=$DPY xwininfo -id "$1" 2>/dev/null | grep -q 'Map State: IsUnMapped'
+}
+require_pointer_free() {
+    DISPLAY=$DPY "$CLIENT" --pointer-grabbed >>"$LOG" 2>&1
+    case $? in
+        0) fatal "pointer was already grabbed" ;;
+        1) return 0 ;;
+        *) fatal "pointer grab probe failed" ;;
+    esac
+}
+wait_for_pointer_grab() {
+    qa_n=80
+    while [ "$qa_n" -gt 0 ]; do
+        DISPLAY=$DPY "$CLIENT" --pointer-grabbed >>"$LOG" 2>&1
+        case $? in
+            0) return 0 ;;
+            1) sleep 0.1 ;;
+            *) fatal "pointer grab probe failed" ;;
+        esac
+        qa_n=$((qa_n - 1))
+    done
+    return 1
+}
 
 for tool in Xvfb xdpyinfo xwininfo xdotool xprop gcc pkg-config; do
     command -v "$tool" >/dev/null 2>&1 || skip_all "$tool not installed"
@@ -278,10 +306,14 @@ run_modifier_cases() {
     check "Super+Shift+e uses uppercase variants" expect_only "É"
 
     case_begin
+    require_pointer_free
     xdo keydown Super_L
     xdo key q
+    wait_for_pointer_grab \
+        || fatal "accent picker did not open"
     xdo keyup Super_L
     check "a base with no variants inserts the base" expect_only "q"
+    require_pointer_free
 
     case_begin
     xdo keydown Super_L
@@ -351,8 +383,13 @@ run_auto_cases() {
     case_begin
     xdo keydown Super_L
     xdo key e
+    wait_for 80 popup_mapped \
+        || fatal "accent picker did not open"
     DISPLAY=$DPY setxkbmap -layout us,fr >>"$LOG" 2>&1
-    sleep 0.4
+    wait_for 80 sh -c "DISPLAY=$DPY setxkbmap -query | grep -q us,fr" \
+        || fatal "layout change did not apply"
+    wait_for 80 popup_unmapped "$qa_popup" \
+        || fatal "keymap change did not cancel the picker"
     xdo keyup Super_L
     check "layout change cancels without inserting" expect_none
 }
