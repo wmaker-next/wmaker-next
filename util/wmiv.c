@@ -1813,10 +1813,15 @@ static int set_image_pixmap(RImage *image)
 */
 int rescale_image(void)
 {
-	long final_width = img->width;
-	long final_height = img->height;
+	long final_width;
+	long final_height;
 	int max_width_tmp = max_width;
 	int max_height_tmp = max_height;
+
+	if (!img)
+		return EXIT_FAILURE;
+	final_width = img->width;
+	final_height = img->height;
 
 	if (!fullscreen_flag) {
 		max_width_tmp -= extents.left + extents.right;
@@ -2070,10 +2075,13 @@ int full_screen(void)
 		zoom_factor = 0;
 		RReleaseImage(img);
 		img = load_oriented_image(ctx, current_link->data, 0);
-		if (!img)
+		if (!img) {
 			img = draw_failed_image();
-		else
+			if (!img)
+				return EXIT_FAILURE;
+		} else {
 			merge_with_background(img);
+		}
 	}
 
 	send_client_message(root_window, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
@@ -2385,59 +2393,73 @@ int change_image(int way)
 		int old_img_height = img->height;
 
 		RReleaseImage(img);
+		img = NULL;
 
-		if (way == NEXT) {
-			current_link = current_link->next;
-			current_index++;
-		} else {
-			current_link = current_link->prev;
-			current_index--;
-		}
-		if (current_link == NULL) {
+		for (;;) {
+			link_t *tmp_link;
+
 			if (way == NEXT) {
-				current_link = list.first;
-				current_index = 1;
+				current_link = current_link->next;
+				current_index++;
 			} else {
-				current_link = list.last;
-				current_index = max_index;
+				current_link = current_link->prev;
+				current_index--;
 			}
-		}
-		if (WMIV_DEBUG)
-			fprintf(stderr, "Current file is> %s\n", (char *)current_link->data);
-		img = load_oriented_image(ctx, current_link->data, 0);
-		if (!img) {
+			if (current_link == NULL) {
+				if (way == NEXT) {
+					current_link = list.first;
+					current_index = 1;
+				} else {
+					current_link = list.last;
+					current_index = max_index;
+				}
+			}
+			if (WMIV_DEBUG)
+				fprintf(stderr, "Current file is> %s\n", (char *)current_link->data);
+			img = load_oriented_image(ctx, current_link->data, 0);
+			if (img) {
+				merge_with_background(img);
+				break;
+			}
+
 			if (strlen((char *)current_link->data) == 0)
 				fprintf(stderr, "Error: %s\n", RMessageForError(RErrorCode));
 			else
 				fprintf(stderr, "Error: %s %s\n", (char *)current_link->data, RMessageForError(RErrorCode));
-			img = draw_failed_image();
-			if (ignore_unknown_file_format) {
-				link_t *tmp_link;
 
-				if (WMIV_DEBUG)
-					fprintf(stderr, "Skipping file...\n");
-				if (way == NEXT)
-					if (!current_link->prev)
-						tmp_link = list.last;
-					else
-						tmp_link = current_link->prev;
-				else
-					if (!current_link->next)
-						tmp_link = list.first;
-					else
-						tmp_link = current_link->next;
-				if (tmp_link == current_link)
-					tmp_link = NULL;
-				linked_list_del(&list, current_link);
-				current_link = tmp_link;
-				max_index = list.count;
-				if (!current_link)
-					return EXIT_FAILURE;
-				return change_image(way);
+			if (!ignore_unknown_file_format) {
+				img = draw_failed_image();
+				break;
 			}
-		} else {
-			merge_with_background(img);
+
+			/* the entry is dropped without ever being shown, so
+			 * continue from the side its successor is reached
+			 * from instead of building a placeholder */
+			if (WMIV_DEBUG)
+				fprintf(stderr, "Skipping file...\n");
+			if (way == NEXT)
+				if (!current_link->prev)
+					tmp_link = list.last;
+				else
+					tmp_link = current_link->prev;
+			else
+				if (!current_link->next)
+					tmp_link = list.first;
+				else
+					tmp_link = current_link->next;
+			if (tmp_link == current_link)
+				tmp_link = NULL;
+			linked_list_del(&list, current_link);
+			current_link = tmp_link;
+			max_index = list.count;
+			if (!current_link) {
+				img = draw_failed_image();
+				return EXIT_FAILURE;
+			}
 		}
+
+		if (!img)
+			return EXIT_FAILURE;
 		rescale_image();
 		if (win) {
 			if (!fullscreen_flag) {
@@ -3316,6 +3338,8 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (!img)
+		return EXIT_FAILURE;
 	merge_with_background(img);
 
 	/* Create window */
@@ -3547,29 +3571,51 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (!fullscreen_flag && rt == XCB_CONFIGURE_NOTIFY) {
-			xcb_configure_notify_event_t *xce = (xcb_configure_notify_event_t *)ev;
+			xcb_get_geometry_reply_t *geo;
+			int win_w, win_h;
+
+			/* a forged event can claim any size, the drawable geometry
+			 * is the authority for the rescale below */
+			geo = xcb_get_geometry_reply(xc, xcb_get_geometry(xc, win), NULL);
+			if (!geo) {
+				free(ev);
+				continue;
+			}
+			win_w = geo->width;
+			win_h = geo->height;
+			free(geo);
+			if (win_w < 1)
+				win_w = 1;
+			if (win_h < 1)
+				win_h = 1;
+			if (win_w > max_width)
+				win_w = max_width;
+			if (win_h > max_height)
+				win_h = max_height;
 
 			/* there is no file loaded and the window is resized */
 			if (!current_link) {
-				resize_window(win, img->width, img->height);
+				if (img)
+					resize_window(win, img->width, img->height);
 				free(ev);
 				continue;
 			}
 
-			if (xce->width != img->width || xce->height != img->height) {
+			if (img && (win_w != img->width || win_h != img->height)) {
 				RImage *old_img = img;
+				RImage *loaded;
 
-				img = load_oriented_image(ctx, current_link->data, 0);
-				if (!img) {
+				loaded = load_oriented_image(ctx, current_link->data, 0);
+				if (!loaded) {
 					/* keep the old img and window size */
-					img = old_img;
 					resize_window(win, img->width, img->height);
 				} else {
 					RImage *tmp2;
 
+					img = loaded;
 					if (!back_from_fullscreen) {
 						/* manually resized window */
-						tmp2 = RScaleImage(img, xce->width, xce->height);
+						tmp2 = RScaleImage(img, win_w, win_h);
 					}
 					else {
 						/* back from fullscreen mode, maybe img was rotated */
@@ -3577,19 +3623,30 @@ int main(int argc, char **argv)
 						back_from_fullscreen = false;
 						clear_window(win);
 					}
-					merge_with_background(tmp2);
-					if (RConvertImage(ctx, tmp2, &pix)) {
-						RReleaseImage(old_img);
-						img = RCloneImage(tmp2);
-						RReleaseImage(tmp2);
-						change_title((char *)current_link->data);
-						xcb_flush(xc);
-						free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
-						wmiv_q_drain_to(XCB_CONFIGURE_NOTIFY);
-						rescale_image();
+					if (!tmp2) {
+						RReleaseImage(img);
+						img = old_img;
 						resize_window(win, img->width, img->height);
-						redraw_window(0);
-
+					} else {
+						merge_with_background(tmp2);
+						if (set_image_pixmap(tmp2)) {
+							RReleaseImage(old_img);
+							if (tmp2 != img)
+								RReleaseImage(img);
+							img = tmp2;
+							change_title((char *)current_link->data);
+							xcb_flush(xc);
+							free(xcb_get_input_focus_reply(xc, xcb_get_input_focus(xc), NULL));
+							wmiv_q_drain_to(XCB_CONFIGURE_NOTIFY);
+							rescale_image();
+							resize_window(win, img->width, img->height);
+							redraw_window(0);
+						} else {
+							RReleaseImage(tmp2);
+							if (tmp2 != img)
+								RReleaseImage(img);
+							img = old_img;
+						}
 					}
 				}
 			}
@@ -3599,7 +3656,7 @@ int main(int argc, char **argv)
 		if (fullscreen_flag && rt == XCB_CONFIGURE_NOTIFY) {
 			xcb_configure_notify_event_t *xce = (xcb_configure_notify_event_t *)ev;
 
-			if (xce->width != img->width || xce->height != img->height)
+			if (img && (xce->width != img->width || xce->height != img->height))
 				maximize_image();
 			free(ev);
 			continue;
