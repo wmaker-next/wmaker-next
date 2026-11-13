@@ -251,10 +251,12 @@ log_count() { log_since | grep -c "$1"; }
 # The baseline fixture runs at 96 dpi so the UI scale is exactly 1.
 printf 'Xft.dpi: 96\n' | DISPLAY=$DPY xrdb -merge >>"$LOG" 2>&1
 note "start wmaker"
+# the shim preloads ahead of libasan, whose link-order check would
+# otherwise abort the instrumented binary at startup
 LD_LIBRARY_PATH="$WMLIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
     LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$FAULT_SHIM" \
     WMAKER_PANEL_FAULT_PATH="$FAULT_PATH" \
-    ASAN_OPTIONS="$(drive_asan_options)" \
+    ASAN_OPTIONS="$(drive_asan_options):verify_asan_link_order=0" \
     DISPLAY=$DPY \
     "$ROOT/src/.libs/wmaker" --for-real >>"$LOG" 2>&1 &
 WMAKER_PID=$!
