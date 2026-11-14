@@ -130,6 +130,7 @@ bool wXDNDProcessSelection(xcb_generic_event_t *event)
 		if (scr->xdestring[0])
 			wDockReceiveDNDDrop(scr, event);
 		wfree(scr->xdestring);	/* this xdestring is not from Xlib (no XFree) */
+		scr->xdestring = NULL;
 		if (scr->xdndpath) {
 			wfree(scr->xdndpath);
 			scr->xdndpath = NULL;
