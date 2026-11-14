@@ -1865,13 +1865,14 @@ static void deleteTextInteractively(Text * tPtr, xkb_keysym_t ksym)
 		/* no more chars, and it's marked as blank? */
 		if (tb->blank) {
 			TextBlock *sibling = (back ? tb->prior : tb->next);
+			bool wasGraphic = tb->graphic;
 
-			if (tb->used == 0 || tb->graphic)
+			if (tb->used == 0 || wasGraphic)
 				WMDestroyTextBlock(tPtr, WMRemoveTextBlock(tPtr));
 
 			if (sibling) {
 				tPtr->currentTextBlock = sibling;
-				if (tb->graphic)
+				if (wasGraphic)
 					tPtr->tpos = (back ? 1 : 0);
 				else
 					tPtr->tpos = (back ? sibling->used : 0);
