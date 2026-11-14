@@ -1175,6 +1175,9 @@ static WEditMenu *duplicateMenu(WEditMenu * menu)
 		if (menu->delegate && menu->delegate->itemCloned) {
 			(*menu->delegate->itemCloned) (menu->delegate, menu, item, nitem);
 		}
+
+		if (item->submenu)
+			WSetEditMenuSubmenu(nmenu, nitem, duplicateMenu(item->submenu));
 	}
 
 	WMRealizeWidget(nmenu);
