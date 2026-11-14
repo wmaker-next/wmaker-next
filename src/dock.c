@@ -5999,6 +5999,33 @@ static void drawerConsolidateIcons(WDock *drawer)
 	}
 }
 
+static bool drawerMagTaken(WDock *drawer, WAppIcon *self, int mag)
+{
+	int i;
+
+	for (i = 1; i < drawer->max_icons; i++) {
+		WAppIcon *ai = drawer->icon_array[i];
+
+		if (ai && ai != self &&
+		    WMAX(abs(ai->xindex), abs(ai->yindex)) == mag)
+			return true;
+	}
+	return false;
+}
+
+/* keep restored contents visible: no cell 0, no stacking */
+static int drawerFreeMag(WDock *drawer, WAppIcon *self, int mag)
+{
+	int m;
+
+	if (mag > 0 && !drawerMagTaken(drawer, self, mag))
+		return mag;
+	for (m = 1; m < drawer->max_icons; m++)
+		if (!drawerMagTaken(drawer, self, m))
+			return m;
+	return mag;
+}
+
 
 
 /* similar to wDockRestoreState, but a lot a specific stuff too... */
@@ -6140,6 +6167,7 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 			 * magnitudes */
 			wDockGeomAcrossSign(drawer->edge, &axis, &sign);
 			mag = WMAX(abs(aicon->xindex), abs(aicon->yindex));
+			mag = drawerFreeMag(drawer, aicon, mag);
 			if (axis == 'x') {
 				aicon->xindex = sign * mag;
 				aicon->yindex = 0;

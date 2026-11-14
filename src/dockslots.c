@@ -290,7 +290,7 @@ WDockSnapResult wDockSnapDrawerPure(WDockEdge edge, bool along_ok,
 
 	r.accepted = true;
 	dock_snap_ret(edge, &r.xindex, &r.yindex, across, 0);
-	r.shift_into_drawer = (hole < across);
+	r.shift_into_drawer = (abs(hole) > abs(across));
 	if (hole < across) {
 		r.shift_start = hole + 1;
 		r.shift_count = across - hole;

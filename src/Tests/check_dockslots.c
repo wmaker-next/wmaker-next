@@ -241,14 +241,14 @@ static void test_drawer_snap(void)
 	CHECK(res.accepted);
 	CHECK(res.xindex == 3 && res.yindex == 0);
 	CHECK(res.shift_start == 3 && res.shift_count == 1);
-	CHECK(res.shift_into_drawer == true);
+	CHECK(res.shift_into_drawer == false);
 
 	/* redocking clamps the requested cell to icon_count - 1 */
 	res = wDockSnapDrawerPure(WDOCK_EDGE_LEFT, true, 5, 3, 1, true);
 	CHECK(res.accepted);
 	CHECK(res.xindex == 2 && res.yindex == 0);
 	CHECK(res.shift_start == 2 && res.shift_count == 1);
-	CHECK(res.shift_into_drawer == true);
+	CHECK(res.shift_into_drawer == false);
 
 	/* a hole at 1 with the drop at 3 shifts the two icons between
 	 * them toward the dock */
@@ -256,7 +256,27 @@ static void test_drawer_snap(void)
 	CHECK(res.accepted);
 	CHECK(res.xindex == 3 && res.yindex == 0);
 	CHECK(res.shift_start == 2 && res.shift_count == 2);
+	CHECK(res.shift_into_drawer == false);
+
+	/* drop nearer the dock than the hole: the icon slides deeper */
+	res = wDockSnapDrawerPure(WDOCK_EDGE_LEFT, true, 1, 3, 2, false);
+	CHECK(res.accepted);
+	CHECK(res.xindex == 1 && res.yindex == 0);
+	CHECK(res.shift_start == 1 && res.shift_count == 1);
 	CHECK(res.shift_into_drawer == true);
+
+	/* right-edge drawers carry negative indices */
+	res = wDockSnapDrawerPure(WDOCK_EDGE_RIGHT, true, -1, 3, -2, false);
+	CHECK(res.accepted);
+	CHECK(res.xindex == -1 && res.yindex == 0);
+	CHECK(res.shift_start == -1 && res.shift_count == 1);
+	CHECK(res.shift_into_drawer == true);
+
+	res = wDockSnapDrawerPure(WDOCK_EDGE_RIGHT, true, -3, 3, -1, false);
+	CHECK(res.accepted);
+	CHECK(res.xindex == -3 && res.yindex == 0);
+	CHECK(res.shift_start == -3 && res.shift_count == 2);
+	CHECK(res.shift_into_drawer == false);
 
 	/* the wrong strip row refuses */
 	res = wDockSnapDrawerPure(WDOCK_EDGE_LEFT, false, 3, 3, 1, false);
