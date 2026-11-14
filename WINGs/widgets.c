@@ -874,6 +874,9 @@ WMScreen *WMCreateScreenWithRContext(xcb_connection_t * display, int screen, RCo
 		wwarning(_("could not load any fonts. Make sure your font installation"
 			   " and locale settings are correct."));
 
+		if (scrPtr->boldFont)
+			WMReleaseFont(scrPtr->boldFont);
+		W_DeinitXkb(scrPtr);
 		return NULL;
 	}
 
