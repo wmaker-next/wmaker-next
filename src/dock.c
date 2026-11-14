@@ -1229,17 +1229,17 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Autocollapse"), toggleAutoCollapseCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Collapse"), toggleAutoCollapseCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Autoraise"), toggleAutoRaiseLowerCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Raise"), toggleAutoRaiseLowerCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Autoattract Icons"), toggleAutoAttractCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Attract Icons"), toggleAutoAttractCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
@@ -1402,7 +1402,7 @@ static WMenu *dockMenuCreate(WScreen *scr, int type)
 		if (type == WM_CLIP)
 			entry = wMenuAddCallback(menu, _("Clip Options"), NULL, NULL);
 		else /* if (type == WM_DRAWER) */
-			entry = wMenuAddCallback(menu, _("Drawer options"), NULL, NULL);
+			entry = wMenuAddCallback(menu, _("Drawer Options"), NULL, NULL);
 
 		if (scr->clip_options == NULL)
 			scr->clip_options = makeClipOptionsMenu(scr);
@@ -1462,7 +1462,7 @@ static WMenu *dockMenuCreate(WScreen *scr, int type)
 
 	entry = wMenuAddCallback(menu, _("Kill"), killCallback, NULL);
 	wfree(entry->text);
-	entry->text = _("Kill"); /* can be: Remove drawer */
+	entry->text = _("Kill"); /* can be: Remove Drawer */
 
 	if (type == WM_CLIP)
 		scr->clip_menu = menu;
@@ -4524,7 +4524,7 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 	entry->clientdata = aicon;
 	if (wIsADrawer(aicon)) {
 		entry->callback = removeDrawerCallback;
-		entry->text = _("Remove drawer");
+		entry->text = _("Remove Drawer");
 		wMenuSetEnabled(dock->menu, index, true);
 	} else {
 		entry->callback = killCallback;
