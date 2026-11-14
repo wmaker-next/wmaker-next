@@ -1027,6 +1027,7 @@ static void switchWSCommand(WMenu *menu, WMenuEntry *entry)
 	WDock *src, *dest;
 	WMArray *selectedIcons;
 	int x, y;
+	int i;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
@@ -1052,6 +1053,14 @@ static void switchWSCommand(WMenu *menu, WMenuEntry *entry)
 		if (wDockFindFreeSlot(dest, &x, &y)) {
 			wDockMoveIconBetweenDocks(src, dest, icon, x, y);
 			xcb_unmap_window(wdisp->conn, icon->icon->core->window);
+		}
+	} else {
+		for (i = 1; i < src->max_icons; i++) {
+			btn = src->icon_array[i];
+			if (btn && wDockFindFreeSlot(dest, &x, &y)) {
+				wDockMoveIconBetweenDocks(src, dest, btn, x, y);
+				xcb_unmap_window(wdisp->conn, btn->icon->core->window);
+			}
 		}
 	}
 	WMFreeArray(selectedIcons);
@@ -4445,7 +4454,8 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 		if (dock->type == WM_CLIP) {
 			/* this is the workspace submenu part */
 			entry = dock->menu->entries[++index];
-			if (n_selected > 1)
+			if (n_selected > 1 ||
+			    (n_selected == 0 && aicon == scr->clip_icon && dock->icon_count > 2))
 				entry->text = _("Move Icons To");
 			else
 				entry->text = _("Move Icon To");
@@ -4453,7 +4463,7 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 			if (scr->clip_submenu)
 				updateWorkspaceMenu(scr->clip_submenu, aicon);
 
-			wMenuSetEnabled(dock->menu, index, !aicon->omnipresent);
+			wMenuSetEnabled(dock->menu, index, !aicon->omnipresent && dock->icon_count > 1);
 		}
 
 		/* remove icon(s) */
