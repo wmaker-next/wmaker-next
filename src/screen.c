@@ -1083,6 +1083,9 @@ void wScreenRestoreState(WScreen * scr)
 		wWorkspaceRestoreHeadState(scr);
 	}
 
+	/* the per-clip restore leaves the shared tile on the last clip */
+	wClipUpdateForWorkspaceChange(scr, scr->current_workspace);
+
 	wScreenUpdateUsableArea(scr);
 }
 

@@ -2179,6 +2179,11 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		}
 	}
 
+	/* the app restore loop below starts past the clip tile in slot 0 */
+	if (dock->icon_array[0])
+		ChangeStackingLevel(dock->icon_array[0]->icon->core,
+				    dock->lowered ? WMNormalLevel : WMDockLevel);
+
 	/* restore collapsed state */
 	dock->collapsed = 0;
 
@@ -4299,10 +4304,21 @@ void wDockTrackWindowLaunch(WDock *dock, xcb_window_t window, const char *wm_ins
 	}
 }
 
+/* the tile window is shared by every workspace clip */
+static void clipTileSyncLevel(WDock *clip)
+{
+	if (!clip || !clip->screen_ptr->clip_icon)
+		return;
+
+	ChangeStackingLevel(clip->screen_ptr->clip_icon->icon->core,
+			    clip->lowered ? WMNormalLevel : WMDockLevel);
+}
+
 void wClipUpdateForWorkspaceChange(WScreen *scr, int workspace)
 {
 	if (!wdisp->flags.noclip) {
 		scr->clip_icon->dock = scr->workspaces[workspace]->clip;
+		clipTileSyncLevel(scr->workspaces[workspace]->clip);
 		if (scr->current_workspace != workspace) {
 			WDock *old_clip = scr->workspaces[scr->current_workspace]->clip;
 			WAppIconChain *chain = scr->global_icons;
@@ -4349,6 +4365,7 @@ void wClipRepointForActiveHead(WScreen *scr, int old_workspace, int new_workspac
 
 	new_clip = scr->workspaces[new_workspace]->clip;
 	scr->clip_icon->dock = new_clip;
+	clipTileSyncLevel(new_clip);
 
 	if (old_workspace >= 0 && old_workspace < scr->workspace_count) {
 		old_clip = scr->workspaces[old_workspace]->clip;
