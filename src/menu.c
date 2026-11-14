@@ -815,6 +815,13 @@ void wMenuDestroy(WMenu * menu, int recurse)
 	/* remove any pending timers */
 	WMDeleteTimerHandlerPtr(&menu->timer);
 
+	if (menu->jump_back) {
+		WMDeleteTimerWithClientData(menu->jump_back);
+		wfree(menu->jump_back);
+		menu->jump_back = NULL;
+		menu->menu->screen_ptr->flags.jump_back_pending = 0;
+	}
+
 	/* call destroy handler */
 	if (menu->on_destroy)
 		(*menu->on_destroy) (menu);
