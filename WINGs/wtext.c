@@ -3463,23 +3463,15 @@ void WMDestroyTextBlock(WMText * tPtr, void *vtb)
 {
 	TextBlock *tb = (TextBlock *) vtb;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) tPtr;
-
 	if (!tb)
 		return;
 
 	if (tb->graphic) {
 		if (tb->object) {
-			/* naturally, there's a danger to destroying widgets whose action
-			 * brings us here: ie. press a button to destroy it...
-			 * need to find a safer way. till then... this stays commented out */
-			/* 5 months later... destroy it 10 seconds after now which should
-			 * be enough time for the widget's action to be completed... :-) */
-			/* This is a bad assumption. Just destroy the widget here.
-			 * if the caller needs it, it can protect it with W_RetainView()
-			 * WMAddTimerHandler(10000, destroyWidget, (void *)tb->d.widget);*/
-			WMDestroyWidget(tb->d.widget);
+			/* during text teardown the embedded widget view was
+			 * already destroyed with the other children */
+			if (!tPtr->view->flags.alreadyDead)
+				WMDestroyWidget(tb->d.widget);
 		} else {
 			WMReleasePixmap(tb->d.pixmap);
 		}
