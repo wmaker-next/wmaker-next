@@ -36,6 +36,7 @@ void DispatchEvent(xcb_generic_event_t *event);
 void ProcessPendingEvents(void);
 WMagicNumber wAddDeathHandler(pid_t pid, WDeathHandler *callback, void *cdata,
 			      const char *source, int slot);
+void wDeleteDeathHandlersForData(void *cdata);
 #ifdef HAVE_INOTIFY
 void wInotifyCleanup(void);
 #endif

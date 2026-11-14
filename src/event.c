@@ -142,6 +142,21 @@ static void wdelete_death_handler(WMagicNumber id)
 	WMRemoveFromArray(deathHandlers, handler);
 }
 
+void wDeleteDeathHandlersForData(void *cdata)
+{
+	DeathHandler *handler;
+	int i;
+
+	if (!deathHandlers)
+		return;
+
+	for (i = WMGetArrayItemCount(deathHandlers) - 1; i >= 0; i--) {
+		handler = WMGetFromArray(deathHandlers, i);
+		if (handler->client_data == cdata)
+			wdelete_death_handler(handler);
+	}
+}
+
 void NotifyDeadProcess(pid_t pid, int wait_status)
 {
 	/* called from the SIGCHLD handler, so only async-signal-safe

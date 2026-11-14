@@ -354,6 +354,7 @@ void wAppIconDestroy(WAppIcon * aicon)
 	WScreen *scr = aicon->icon->core->screen_ptr;
 
 	WMDeleteTimerHandlerPtr(&aicon->launch_timer);
+	wDeleteDeathHandlersForData(aicon);
 	wStartupNotifyForgetIcon(aicon);
 	RemoveFromStackList(aicon->icon->core);
 	wIconDestroy(aicon->icon);

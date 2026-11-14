@@ -4056,7 +4056,7 @@ static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state)
 				state->workspace = scr->current_workspace;
 		}
 		wWindowAddSavedState(btn->wm_instance, btn->wm_class, cmdline, pid, state);
-		wAddDeathHandler(pid, trackDeadProcess, btn->dock, "dock", wDockIconSlot(btn));
+		wAddDeathHandler(pid, trackDeadProcess, btn, "dock", wDockIconSlot(btn));
 	} else {
 		wStartupLaunchAbort(ls.sn);
 		if (state)
@@ -4370,48 +4370,39 @@ void wClipRepointForActiveHead(WScreen *scr, int old_workspace, int new_workspac
 
 static void trackDeadProcess(pid_t pid, unsigned int status, void *cdata)
 {
-	WDock *dock = cdata;
-	WAppIcon *icon;
-	int i;
+	WAppIcon *icon = cdata;
+	WScreen *scr = icon->icon->core->screen_ptr;
+	char *cmd;
 
-	wStartupLaunchChildExited(dock->screen_ptr, pid);
+	wStartupLaunchChildExited(scr, pid);
 
-	for (i = 0; i < dock->max_icons; i++) {
-		icon = dock->icon_array[i];
-		if (!icon)
-			continue;
+	if (icon->pid != pid)
+		return;
 
-		if (icon->pid == pid) {
-			/* the startup-notification timeout may already have
-			 * cleared launching for a window we never managed to
-			 * attach by class or pid, only reset running when no
-			 * main_window was recorded so a forking launcher whose
-			 * spawned process exits does not detach a live app */
-			if (!icon->relaunching && icon->main_window == XCB_NONE)
-				icon->running = 0;
-			if (icon->launching)
-				wDockFinishLaunch(icon);
-			icon->pid = 0;
-			if (status == 127) {
-				char msg[PATH_MAX];
-				char *cmd;
+	/* the startup-notification timeout may already have
+	 * cleared launching for a window we never managed to
+	 * attach by class or pid, only reset running when no
+	 * main_window was recorded so a forking launcher whose
+	 * spawned process exits does not detach a live app */
+	if (!icon->relaunching && icon->main_window == XCB_NONE)
+		icon->running = 0;
+	if (icon->launching)
+		wDockFinishLaunch(icon);
+	icon->pid = 0;
+	if (status == 127) {
+		char msg[PATH_MAX];
 
+		cmd = icon->command;
+		if (icon->paste_launch)
+			cmd = icon->paste_command;
 #ifdef USE_DOCK_XDND
-				if (icon->drop_launch)
-					cmd = icon->dnd_command;
-				else
+		if (icon->drop_launch)
+			cmd = icon->dnd_command;
 #endif
-				if (icon->paste_launch)
-					cmd = icon->paste_command;
-				else
-					cmd = icon->command;
 
-				snprintf(msg, sizeof(msg), _("Could not execute command \"%s\""), cmd);
+		snprintf(msg, sizeof(msg), _("Could not execute command \"%s\""), cmd);
 
-				wMessageDialog(dock->screen_ptr, _("Error"), msg, _("OK"), NULL, NULL);
-			}
-			break;
-		}
+		wMessageDialog(scr, _("Error"), msg, _("OK"), NULL, NULL);
 	}
 }
 
