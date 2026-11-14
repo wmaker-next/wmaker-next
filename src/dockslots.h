@@ -59,6 +59,9 @@ bool wDockFindCornerSlotPure(int corner, int hcount, int vcount,
 			     const unsigned char *hmap, const unsigned char *vmap,
 			     int *x_pos, int *y_pos);
 
+/* renumber each line through the tile onto a contiguous 1..n run */
+void wDockCompactClipPure(int *x, int *y, int n);
+
 /* main dock snap decision along the dock axis. icon_along[i] (i in
  * [0, 2*detach_threshold], the requested slot at index
  * detach_threshold) is set when another appicon sits at that along

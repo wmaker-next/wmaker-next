@@ -27,6 +27,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dockslots.h"
 
@@ -135,6 +136,56 @@ bool wDockFindCornerSlotPure(int corner, int hcount, int vcount,
 	}
 
 	return done;
+}
+
+static int cells_gcd(int x, int y)
+{
+	while (y != 0) {
+		int t = x % y;
+
+		x = y;
+		y = t;
+	}
+	return x;
+}
+
+void wDockCompactClipPure(int *x, int *y, int n)
+{
+	int *ox, *oy;
+	int i, j, gi, gj, rank;
+
+	if (n < 1)
+		return;
+
+	ox = wmalloc(n * sizeof(int));
+	oy = wmalloc(n * sizeof(int));
+	memcpy(ox, x, n * sizeof(int));
+	memcpy(oy, y, n * sizeof(int));
+
+	for (i = 0; i < n; i++) {
+		gi = cells_gcd(ox[i] < 0 ? -ox[i] : ox[i], oy[i] < 0 ? -oy[i] : oy[i]);
+		if (gi == 0)
+			continue;
+		rank = 1;
+		for (j = 0; j < n; j++) {
+			if (j == i)
+				continue;
+			gj = cells_gcd(ox[j] < 0 ? -ox[j] : ox[j], oy[j] < 0 ? -oy[j] : oy[j]);
+			if (gj == 0)
+				continue;
+			if (ox[j] * oy[i] != ox[i] * oy[j])
+				continue;
+			if (ox[j] * ox[i] + oy[j] * oy[i] <= 0)
+				continue;
+			if (gj < gi || (gj == gi && j < i))
+				rank++;
+		}
+		x[i] = ox[i] / gi * rank;
+		y[i] = oy[i] / gi * rank;
+	}
+
+	wfree(ox);
+	wfree(oy);
 }
 
 /* ret for a WM_DOCK/WM_DRAWER snap: across on the across axis, along

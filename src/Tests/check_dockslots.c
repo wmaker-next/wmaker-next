@@ -287,6 +287,45 @@ static void test_drawer_snap(void)
 	CHECK(!res.accepted);
 }
 
+static void test_clip_compact(void)
+{
+	int x[4], y[4];
+
+	/* a line closes ranks keeping order: 1, 3, 5 becomes 1, 2, 3 */
+	x[0] = -1; y[0] = 0;
+	x[1] = -3; y[1] = 0;
+	x[2] = -5; y[2] = 0;
+	wDockCompactClipPure(x, y, 3);
+	CHECK(x[0] == -1 && y[0] == 0);
+	CHECK(x[1] == -2 && y[1] == 0);
+	CHECK(x[2] == -3 && y[2] == 0);
+
+	/* a run not touching the tile is pulled in: 2, 3 becomes 1, 2 */
+	x[0] = 0; y[0] = 2;
+	x[1] = 0; y[1] = 3;
+	wDockCompactClipPure(x, y, 2);
+	CHECK(x[0] == 0 && y[0] == 1);
+	CHECK(x[1] == 0 && y[1] == 2);
+
+	/* each line compacts on its own */
+	x[0] = -2; y[0] = 0;
+	x[1] = 0; y[1] = 3;
+	x[2] = 2; y[2] = 2;
+	x[3] = 4; y[3] = 4;
+	wDockCompactClipPure(x, y, 4);
+	CHECK(x[0] == -1 && y[0] == 0);
+	CHECK(x[1] == 0 && y[1] == 1);
+	CHECK(x[2] == 1 && y[2] == 1);
+	CHECK(x[3] == 2 && y[3] == 2);
+
+	/* a cell not on a line through the tile is left alone */
+	x[0] = 2; y[0] = 1;
+	x[1] = -3; y[1] = 0;
+	wDockCompactClipPure(x, y, 2);
+	CHECK(x[0] == 2 && y[0] == 1);
+	CHECK(x[1] == -1 && y[1] == 0);
+}
+
 int main(void)
 {
 	test_slot_map();
@@ -295,6 +334,7 @@ int main(void)
 	test_main_snap();
 	test_clip_snap();
 	test_drawer_snap();
+	test_clip_compact();
 
 	return check_report("check_dockslots");
 }

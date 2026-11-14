@@ -55,6 +55,7 @@ typedef struct WDock {
     unsigned int mapped:1;
     unsigned int lowered:1;
     unsigned int attract_icons:1;      /* If clip should attract app-icons */
+    unsigned int auto_compact:1;
 
     unsigned int lclip_button_pushed:1;
     unsigned int rclip_button_pushed:1;
@@ -91,6 +92,7 @@ void wSlideAppiconsDelta(WAppIcon **appicons, int n, int dx_cells, int dy_cells,
 void wSlideAppiconsAcross(WAppIcon **appicons, int n, const WDock *drawer,
 			  bool into_drawer);
 void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking);
+void wClipFillTheGap(WDock *clip, WAppIcon *aicon);
 
 void wDockFinishLaunch(WAppIcon *icon);
 void wDockTrackWindowLaunch(WDock *dock, xcb_window_t window, const char *wm_instance,

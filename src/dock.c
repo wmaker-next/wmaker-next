@@ -89,6 +89,7 @@ static WMPropList *dName, *dForced, *dBuggyApplication, *dYes, *dNo;
 static WMPropList *dDisplayName, *dComment;
 static WMPropList *dDock, *dClip;
 static WMPropList *dAutoAttractIcons;
+static WMPropList *dAutoCompact;
 
 static WMPropList *dPosition, *dApplications, *dLowered, *dCollapsed, *dEdge;
 
@@ -168,6 +169,7 @@ static void make_keys(void)
 	dAutoCollapse = WMCreatePLString("AutoCollapse");
 	dAutoRaiseLower = WMCreatePLString("AutoRaiseLower");
 	dAutoAttractIcons = WMCreatePLString("AutoAttractIcons");
+	dAutoCompact = WMCreatePLString("AutoCompact");
 
 	dOmnipresent = WMCreatePLString("Omnipresent");
 
@@ -473,6 +475,8 @@ static void removeIcons(WMArray *icons, WDock *dock)
 
 	WM_ITERATE_ARRAY(icons, aicon, it) {
 		keepit = aicon->running && wApplicationOf(aicon->main_window);
+		if (dock->type == WM_CLIP)
+			wClipFillTheGap(dock, aicon);
 		wDockDetach(dock, aicon);
 		if (keepit) {
 			PlaceIcon(dock->screen_ptr, &aicon->x_pos, &aicon->y_pos,
@@ -634,6 +638,19 @@ static void toggleAutoAttractCallback(WMenu *menu, WMenuEntry *entry)
 			}
 		}
 	}
+}
+
+static void toggleAutoCompactCallback(WMenu *menu, WMenuEntry *entry)
+{
+	WDock *dock = (WDock *) entry->clientdata;
+
+	assert(entry->clientdata != NULL);
+
+	dock->auto_compact = !dock->auto_compact;
+
+	entry->flags.indicator_on = dock->auto_compact;
+
+	wMenuPaint(menu);
 }
 
 static void selectCallback(WMenu *menu, WMenuEntry *entry)
@@ -1180,7 +1197,7 @@ static void updateClipOptionsMenu(WMenu *menu, WDock *dock)
 	entry = menu->entries[index];
 	entry->flags.indicator_on = !dock->lowered;
 	entry->clientdata = dock;
-	wMenuSetEnabled(menu, index, dock->type == WM_CLIP);
+	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
 
 	/* collapsed */
 	entry = menu->entries[++index];
@@ -1196,12 +1213,19 @@ static void updateClipOptionsMenu(WMenu *menu, WDock *dock)
 	entry = menu->entries[++index];
 	entry->flags.indicator_on = dock->auto_raise_lower;
 	entry->clientdata = dock;
-	wMenuSetEnabled(menu, index, dock->lowered && (dock->type == WM_CLIP));
+	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
+	wMenuSetEnabled(menu, index, dock->lowered);
 
 	/* attract icons */
 	entry = menu->entries[++index];
 	entry->flags.indicator_on = dock->attract_icons;
 	entry->clientdata = dock;
+
+	/* auto compact */
+	entry = menu->entries[++index];
+	entry->flags.indicator_on = dock->auto_compact;
+	entry->clientdata = dock;
+	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
 
 	menu->flags.realized = 0;
 	wMenuRealize(menu);
@@ -1244,6 +1268,11 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
+	entry = wMenuAddCallback(menu, _("Auto Compact"), toggleAutoCompactCallback, NULL);
+	entry->flags.indicator = 1;
+	entry->flags.indicator_on = 1;
+	entry->flags.indicator_type = MI_CHECK;
+
 	menu->flags.realized = 0;
 	wMenuRealize(menu);
 
@@ -1254,7 +1283,6 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 static void setDockPositionNormalCallback(WMenu *menu, WMenuEntry *entry)
 {
 	WDock *dock = (WDock *) entry->clientdata;
-	WDrawerChain *dc;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
@@ -1265,10 +1293,6 @@ static void setDockPositionNormalCallback(WMenu *menu, WMenuEntry *entry)
 	if (dock->auto_raise_lower)
 	{
 		dock->auto_raise_lower = 0;
-		// Only for aesthetic purposes, can be removed when Autoraise status is no longer exposed in drawer option menu
-		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
-			dc->adrawer->auto_raise_lower = 0;
-		}
 	}
 	else
 	{
@@ -1281,7 +1305,6 @@ static void setDockPositionNormalCallback(WMenu *menu, WMenuEntry *entry)
 static void setDockPositionAutoRaiseLowerCallback(WMenu *menu, WMenuEntry *entry)
 {
 	WDock *dock = (WDock *) entry->clientdata;
-	WDrawerChain *dc;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
@@ -1294,17 +1317,12 @@ static void setDockPositionAutoRaiseLowerCallback(WMenu *menu, WMenuEntry *entry
 		toggleLowered(dock);
 	}
 	dock->auto_raise_lower = 1;
-	// Only for aesthetic purposes, can be removed when Autoraise status is no longer exposed in drawer option menu
-	for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
-		dc->adrawer->auto_raise_lower = 1;
-	}
 	entry->flags.indicator_on = 1;
 }
 
 static void setDockPositionKeepOnTopCallback(WMenu *menu, WMenuEntry *entry)
 {
 	WDock *dock = (WDock *) entry->clientdata;
-	WDrawerChain *dc;
 
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) menu;
@@ -1312,10 +1330,6 @@ static void setDockPositionKeepOnTopCallback(WMenu *menu, WMenuEntry *entry)
 	if (entry->flags.indicator_on) // already set, nothing to do
 		return;
 	dock->auto_raise_lower = 0;
-	// Only for aesthetic purposes, can be removed when Autoraise status is no longer exposed in drawer option menu
-	for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
-		dc->adrawer->auto_raise_lower = 0;
-	}
 	toggleLowered(dock);
 	entry->flags.indicator_on = 1;
 }
@@ -1544,6 +1558,7 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 	dock->auto_lower_magic = NULL;
 	dock->auto_raise_magic = NULL;
 	dock->attract_icons = 0;
+	dock->auto_compact = 0;
 	dock->lowered = 1;
 	dock->icon_array[0] = btn;
 	wRaiseFrame(btn->icon->core);
@@ -1791,6 +1806,11 @@ static WMPropList *dockSaveState(WDock *dock)
 
 		value = (dock->attract_icons ? dYes : dNo);
 		WMPutInPLDictionary(dock_state, dAutoAttractIcons, value);
+
+		if (dock->type == WM_CLIP) {
+			value = (dock->auto_compact ? dYes : dNo);
+			WMPutInPLDictionary(dock_state, dAutoCompact, value);
+		}
 	}
 
 	if (dock->type == WM_DOCK || dock->type == WM_CLIP) {
@@ -2191,6 +2211,16 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		} else {
 			if (strcasecmp(WMGetFromPLString(value), "YES") == 0)
 				dock->attract_icons = 1;
+		}
+	}
+
+	/* restore auto compact state */
+	value = WMGetFromPLDictionary(dock_state, dAutoCompact);
+	if (value) {
+		if (!WMIsPLString(value)) {
+			COMPLAIN("AutoCompact");
+		} else {
+			dock->auto_compact = (strcasecmp(WMGetFromPLString(value), "YES") == 0);
 		}
 	}
 
@@ -2815,9 +2845,52 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 	return true;
 }
 
+static void clipCompactRay(WDock *clip, int hx, int hy, WAppIcon *skip)
+{
+	WAppIcon *members[clip->icon_count];
+	int xs[clip->icon_count], ys[clip->icon_count];
+	int i, n = 0;
+
+	if (hx == 0 && hy == 0)
+		return;
+
+	for (i = 1; i < clip->max_icons; i++) {
+		WAppIcon *ai = clip->icon_array[i];
+
+		if (!ai || ai == skip)
+			continue;
+		if (ai->xindex * hy != hx * ai->yindex ||
+		    ai->xindex * hx + ai->yindex * hy <= 0)
+			continue;
+		members[n] = ai;
+		xs[n] = ai->xindex;
+		ys[n] = ai->yindex;
+		n++;
+	}
+	if (n < 1)
+		return;
+
+	wDockCompactClipPure(xs, ys, n);
+
+	for (i = 0; i < n; i++) {
+		WAppIcon *ai = members[i];
+		int ox = ai->x_pos, oy = ai->y_pos;
+
+		if (ai->xindex == xs[i] && ai->yindex == ys[i])
+			continue;
+		ai->xindex = xs[i];
+		ai->yindex = ys[i];
+		ai->x_pos = clip->x_pos + xs[i] * ICON_SIZE;
+		ai->y_pos = clip->y_pos + ys[i] * ICON_SIZE;
+		slide_window(ai->icon->core->window, ox, oy, ai->x_pos, ai->y_pos);
+		save_appicon(ai);
+	}
+}
+
 void wDockReattachIcon(WDock *dock, WAppIcon *icon, int x, int y)
 {
 	int index;
+	int ox = icon->xindex, oy = icon->yindex;
 
 	for (index = 1; index < dock->max_icons; index++) {
 		if (dock->icon_array[index] == icon)
@@ -2830,6 +2903,11 @@ void wDockReattachIcon(WDock *dock, WAppIcon *icon, int x, int y)
 
 	icon->x_pos = dock->x_pos + x * ICON_SIZE;
 	icon->y_pos = dock->y_pos + y * ICON_SIZE;
+
+	if (dock->type == WM_CLIP && dock->auto_compact) {
+		clipCompactRay(dock, ox, oy, NULL);
+		clipCompactRay(dock, x, y, NULL);
+	}
 }
 
 bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, int y)
@@ -5932,9 +6010,10 @@ void wSlideAppiconsAcross(WAppIcon **appicons, int n, const WDock *drawer,
 void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking)
 {
 	int i, j;
-	int index_of_hole = indexOfHole(drawer, aicon, redocking);
+	int index_of_hole;
 	WAppIcon *aicons_to_shift[drawer->icon_count];
 
+	index_of_hole = indexOfHole(drawer, aicon, redocking);
 	j = 0;
 	for (i = 0; i < drawer->max_icons; i++) {
 		WAppIcon *ai = drawer->icon_array[i];
@@ -5950,6 +6029,14 @@ void wDrawerFillTheGap(WDock *drawer, WAppIcon *aicon, bool redocking)
 	wSlideAppiconsAcross(aicons_to_shift, j, drawer, false);
 }
 
+void wClipFillTheGap(WDock *clip, WAppIcon *aicon)
+{
+	if (!clip->auto_compact)
+		return;
+
+	clipCompactRay(clip, aicon->xindex, aicon->yindex, aicon);
+}
+
 
 static void drawerConsolidateIcons(WDock *drawer)
 {
@@ -5957,6 +6044,7 @@ static void drawerConsolidateIcons(WDock *drawer)
 	int maxRemaining = 0;
 	int sum = 0;
 	int i;
+
 	for (i = 0; i < drawer->max_icons; i++) {
 		WAppIcon *ai = drawer->icon_array[i];
 		if (ai == NULL)

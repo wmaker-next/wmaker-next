@@ -296,6 +296,8 @@ void removeAppIconFor(WApplication *wapp)
 		wapp->app_icon->running = 0;
 		if (wapp->app_icon->dock->type == WM_DRAWER) {
 			wDrawerFillTheGap(wapp->app_icon->dock, wapp->app_icon, true);
+		} else if (wapp->app_icon->dock->type == WM_CLIP) {
+			wClipFillTheGap(wapp->app_icon->dock, wapp->app_icon);
 		}
 		wDockDetach(wapp->app_icon->dock, wapp->app_icon);
 	} else {
@@ -827,6 +829,37 @@ void appIconMouseDown(WObjDescriptor * desc, xcb_generic_event_t * event)
 	}
 }
 
+static void clipReattachAfterFail(WDock *clip, WAppIcon *aicon,
+				  int from_x, int from_y, int to_x, int to_y)
+{
+	WScreen *scr = clip->screen_ptr;
+	WAppIconChain *chain;
+	int x = aicon->xindex, y = aicon->yindex;
+	bool taken = false;
+	int i;
+
+	for (i = 1; i < clip->max_icons; i++) {
+		WAppIcon *ai = clip->icon_array[i];
+
+		if (ai && ai != aicon && ai->xindex == x && ai->yindex == y) {
+			taken = true;
+			break;
+		}
+	}
+	for (chain = scr->global_icons; !taken && chain; chain = chain->next) {
+		if (chain->aicon != aicon && chain->aicon->xindex == x &&
+		    chain->aicon->yindex == y)
+			taken = true;
+	}
+	if (taken) {
+		wDockFindFreeSlot(clip, &x, &y);
+		to_x = clip->x_pos + x * ICON_SIZE;
+		to_y = clip->y_pos + y * ICON_SIZE;
+	}
+	slide_window(aicon->icon->core->window, from_x, from_y, to_x, to_y);
+	wDockReattachIcon(clip, aicon, x, y);
+}
+
 bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 {
 	WIcon *icon = aicon->icon;
@@ -1006,6 +1039,8 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 				/* Leave lastDock in the state we found it */
 				if (lastDock->type == WM_DRAWER) {
 					wDrawerFillTheGap(lastDock, aicon, (lastDock == originalDock));
+				} else if (lastDock->type == WM_CLIP && lastDock == originalDock) {
+					wClipFillTheGap(lastDock, aicon);
 				}
 				if (collapsed) {
 					lastDock->collapsed = 1;
@@ -1117,8 +1152,12 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 								// Trust the appicon is inserted at exactly the same place, so its oldX/oldY are consistent with its "new" location?
 							}
 
-							slide_window(icon->core->window, x, y, oldX, oldY);
-							wDockReattachIcon(originalDock, aicon, aicon->xindex, aicon->yindex);
+							if (originalDock->type == WM_CLIP) {
+								clipReattachAfterFail(originalDock, aicon, x, y, oldX, oldY);
+							} else {
+								slide_window(icon->core->window, x, y, oldX, oldY);
+								wDockReattachIcon(originalDock, aicon, aicon->xindex, aicon->yindex);
+							}
 						}
 						else {
 							if (originalDock->auto_collapse && !originalDock->collapsed) {
@@ -1154,6 +1193,8 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 					} else {
 						wSoundPlay(scr, WSOUND_UNDOCK);
 					}
+					if (originalDock->type == WM_CLIP)
+						wClipFillTheGap(originalDock, aicon);
 					wDockDetach(originalDock, aicon);
 					if (originalDock->auto_collapse && !originalDock->collapsed) {
 						originalDock->collapsed = 1;
