@@ -2828,7 +2828,7 @@ static void performDragOperation(WMView * self, WMArray * dropData, WMArray * op
 		/* only one required type, implies only one drop data */
 
 		/* get application/X-color if any */
-		data = (WMData *) WMPopFromArray(dropData);
+		data = (WMData *) WMGetFromArray(dropData, 0);
 		if (data != NULL) {
 			colorName = (char *)WMDataBytes(data);
 			color = WMCreateNamedColor(W_VIEW_SCREEN(self), colorName, true);
