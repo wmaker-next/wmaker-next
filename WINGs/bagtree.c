@@ -21,6 +21,7 @@
  *  License along with this library; if not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -410,11 +411,24 @@ void WMAppendBag(WMBag * self, WMBag * bag)
 void WMPutInBag(WMBag * self, void *item)
 {
 	W_Node *ptr;
+	W_Node *max;
+	int index;
+
+	max = treeMaximum(self->root, self->nil);
+	if (max == self->nil) {
+		index = 0;
+	} else {
+		if (max->index == INT_MAX) {
+			wwarning("WMPutInBag: bag index space exhausted");
+			return;
+		}
+		index = max->index + 1;
+	}
 
 	ptr = wmalloc(sizeof(W_Node));
 
 	ptr->data = item;
-	ptr->index = self->count;
+	ptr->index = index;
 	ptr->left = self->nil;
 	ptr->right = self->nil;
 	ptr->parent = self->nil;
