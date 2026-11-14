@@ -54,6 +54,7 @@ typedef struct WAppIcon {
 	xcb_window_t main_window;
 	struct WDock *dock;		 /* In which dock is docked. */
 	struct _AppSettingsPanel *panel; /* Settings Panel */
+	WMagicNumber launch_timer;	 /* buggy-app launch feedback */
 	unsigned int docked:1;
 	unsigned int omnipresent:1;	 /* If omnipresent when
 					  * docked in clip */

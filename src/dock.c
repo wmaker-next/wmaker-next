@@ -99,6 +99,8 @@ static WMPropList *dDrawers = NULL;
 
 static void dockIconPaint(WAppIcon *btn);
 
+static void dockIconPaintTimer(void *cdata);
+
 static void iconMouseDown(WObjDescriptor *desc, xcb_generic_event_t *event);
 
 static pid_t execCommand(WAppIcon *btn, const char *command, WSavedState *state);
@@ -1120,7 +1122,8 @@ static void launchDockedApplication(WAppIcon *btn, bool withSelection)
 				btn->launching = 1;
 				dockIconPaint(btn);
 				btn->launching = 0;
-				WMAddTimerHandler(200, (WMCallback *) dockIconPaint, btn);
+				WMDeleteTimerHandlerPtr(&btn->launch_timer);
+				btn->launch_timer = WMAddTimerHandler(200, dockIconPaintTimer, btn);
 			} else {
 				dockIconPaint(btn);
 			}
@@ -1597,6 +1600,10 @@ void wDockDestroy(WDock *dock)
 	}
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(dock->screen_ptr, true);
+	WMDeleteTimerHandlerPtr(&dock->auto_collapse_magic);
+	WMDeleteTimerHandlerPtr(&dock->auto_expand_magic);
+	WMDeleteTimerHandlerPtr(&dock->auto_raise_magic);
+	WMDeleteTimerHandlerPtr(&dock->auto_lower_magic);
 	wfree(dock->icon_array);
 	if (dock->menu && dock->type != WM_CLIP)
 		wMenuDestroy(dock->menu, true);
@@ -1654,6 +1661,14 @@ static void clipIconExpose(WObjDescriptor *desc, xcb_generic_event_t *event)
 	(void) event;
 
 	wClipIconPaint(desc->parent);
+}
+
+static void dockIconPaintTimer(void *cdata)
+{
+	WAppIcon *btn = cdata;
+
+	btn->launch_timer = NULL;
+	dockIconPaint(btn);
 }
 
 static void dockIconPaint(WAppIcon *btn)
@@ -5676,6 +5691,8 @@ static void drawerDestroy(WDock *drawer)
 	}
 
 	WMDeleteTimerHandlerPtr(&drawer->auto_collapse_magic);
+	WMDeleteTimerHandlerPtr(&drawer->auto_expand_magic);
+	WMDeleteTimerHandlerPtr(&drawer->auto_raise_magic);
 	WMDeleteTimerHandlerPtr(&drawer->auto_lower_magic);
 
 	wAppIconDestroy(drawer->icon_array[0]);
