@@ -96,6 +96,11 @@ static void chooseIconCallback(WMWidget * self, void *clientData)
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
 
+	if (!panel->editedIcon) {
+		DestroyDockAppSettingsPanel(panel);
+		return;
+	}
+
 	panel->choosingIcon = 1;
 
 	WMSetButtonEnabled(panel->browseBtn, false);
@@ -128,6 +133,11 @@ static void panelBtnCallback(WMWidget * self, void *data)
 	WMButton *btn = self;
 	AppSettingsPanel *panel = (AppSettingsPanel *) data;
 	char *text;
+
+	if (!panel->editedIcon) {
+		DestroyDockAppSettingsPanel(panel);
+		return;
+	}
 
 	if (panel->okBtn == btn) {
 		text = WMGetTextFieldText(panel->iconField);
@@ -236,6 +246,7 @@ void ShowDockAppSettingsPanel(WAppIcon * aicon)
 	panel = wmalloc(sizeof(AppSettingsPanel));
 
 	panel->editedIcon = aicon;
+	wretain(aicon);
 
 	aicon->panel = panel;
 	aicon->editing = 1;
@@ -487,9 +498,12 @@ void DestroyDockAppSettingsPanel(AppSettingsPanel * panel)
 
 	xcb_destroy_window(wdisp->conn, panel->parent);
 
-	panel->editedIcon->panel = NULL;
-
-	panel->editedIcon->editing = 0;
+	if (panel->editedIcon) {
+		panel->editedIcon->panel = NULL;
+		panel->editedIcon->editing = 0;
+		wrelease(panel->editedIcon);
+		panel->editedIcon = NULL;
+	}
 
 	wfree(panel);
 }

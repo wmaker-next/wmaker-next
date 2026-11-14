@@ -42,6 +42,7 @@
 #include "actions.h"
 #include "stacking.h"
 #include "dock.h"
+#include "dockedapp.h"
 #include "main.h"
 #include "defaults.h"
 #include "workspace.h"
@@ -355,6 +356,18 @@ void wAppIconDestroy(WAppIcon * aicon)
 
 	WMDeleteTimerHandlerPtr(&aicon->launch_timer);
 	wDeleteDeathHandlersForData(aicon);
+
+	/* a deferred settings-panel teardown must not name this icon, and
+	 * its retain is dropped here because it can no longer be released
+	 * through panel->editedIcon */
+	if (aicon->panel) {
+		if (aicon->panel->editedIcon == aicon) {
+			aicon->panel->editedIcon = NULL;
+			wrelease(aicon);
+		}
+		aicon->panel = NULL;
+	}
+
 	wStartupNotifyForgetIcon(aicon);
 	RemoveFromStackList(aicon->icon->core);
 	wIconDestroy(aicon->icon);
