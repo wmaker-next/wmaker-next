@@ -599,7 +599,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 			} else {
 				new_height = (wwin->old_geometry.height) ? wwin->old_geometry.height : wwin->frame->core->height;
 				new_height += wwin->frame->top_width + wwin->frame->bottom_width;
-				new_y = half_scr_height - new_height / 2;
+				new_y = usableArea.y1 + half_scr_height - new_height / 2;
 			}
 			if (wwin->frame->core->width > (usableArea.x2 - usableArea.x1)) {
 				new_x = usableArea.x1;
@@ -607,7 +607,7 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 			}
 			else {
 				new_width = (wwin->old_geometry.width) ? wwin->old_geometry.width : wwin->frame->core->width;
-				new_x = half_scr_width - new_width / 2;
+				new_x = usableArea.x1 + half_scr_width - new_width / 2;
 			}
 		}
 		/* set default values if no option set then */
@@ -625,25 +625,25 @@ void wMaximizeWindow(WWindow *wwin, int directions, int head)
 			new_width = half_scr_width - adj_size;
 			new_x = usableArea.x1;
 			if (directions & MAX_CENTRAL) {
-				new_y = half_scr_height - wwin->old_geometry.height / 2;
+				new_y = usableArea.y1 + half_scr_height - wwin->old_geometry.height / 2;
 			}
 		} else if (directions & MAX_RIGHTHALF) {
 			new_width = half_scr_width - adj_size;
 			new_x = usableArea.x1 + half_scr_width;
 			if (directions & MAX_CENTRAL)
-				new_y = half_scr_height - wwin->old_geometry.height / 2;
+				new_y = usableArea.y1 + half_scr_height - wwin->old_geometry.height / 2;
 		}
 		/* top|bottom position */
 		if (directions & MAX_TOPHALF) {
 			new_height = half_scr_height - adj_size;
 			new_y = usableArea.y1;
 			if (directions & MAX_CENTRAL)
-				new_x = half_scr_width - wwin->old_geometry.width / 2;
+				new_x = usableArea.x1 + half_scr_width - wwin->old_geometry.width / 2;
 		} else if (directions & MAX_BOTTOMHALF) {
 			new_height = half_scr_height - adj_size;
 			new_y = usableArea.y1 + half_scr_height;
 			if (directions & MAX_CENTRAL)
-				new_x = half_scr_width - wwin->old_geometry.width / 2;
+				new_x = usableArea.x1 + half_scr_width - wwin->old_geometry.width / 2;
 		}
 
 		/* vertical|horizontal position */
