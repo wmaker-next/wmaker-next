@@ -124,12 +124,12 @@ RImage *RLoadSVGFromData(const char *data, size_t size, unsigned int width, unsi
 		target_h = height;
 	} else if (rsvg_handle_get_intrinsic_size_in_pixels(handle, &iw, &ih) &&
 		   isfinite(iw) && isfinite(ih) && iw >= 1.0 && ih >= 1.0) {
+		if (iw > RLOAD_SVG_DEFAULT_SIZE)
+			iw = RLOAD_SVG_DEFAULT_SIZE;
+		if (ih > RLOAD_SVG_DEFAULT_SIZE)
+			ih = RLOAD_SVG_DEFAULT_SIZE;
 		target_w = (unsigned)(iw + 0.5);
 		target_h = (unsigned)(ih + 0.5);
-		if (target_w > RLOAD_SVG_DEFAULT_SIZE)
-			target_w = RLOAD_SVG_DEFAULT_SIZE;
-		if (target_h > RLOAD_SVG_DEFAULT_SIZE)
-			target_h = RLOAD_SVG_DEFAULT_SIZE;
 	} else {
 		target_w = target_h = RLOAD_SVG_DEFAULT_SIZE;
 	}
