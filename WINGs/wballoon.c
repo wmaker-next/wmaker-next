@@ -41,6 +41,8 @@ typedef struct W_Balloon {
 
 	WMHandlerID noDelayTimer;
 
+	W_View *pendingView;
+
 	int delay;
 
 	xcb_window_t forWindow;	/* window for which the balloon
@@ -62,6 +64,12 @@ typedef struct W_Balloon {
 #define NO_DELAY_DELAY		150
 
 static void destroyBalloon(Balloon * bPtr);
+
+static void cancelShowTimer(Balloon *bPtr)
+{
+	WMDeleteTimerHandlerPtr(&bPtr->timer);
+	bPtr->pendingView = NULL;
+}
 
 static void handleEvents(xcb_generic_event_t * event, void *data);
 
@@ -113,6 +121,9 @@ void WMSetBalloonTextForView(const char *text, WMView * view)
 		oldText = WMHashGet(scr->balloon->table, view);
 
 		WMHashRemove(scr->balloon->table, view);
+
+		if (scr->balloon->pendingView == view)
+			cancelShowTimer(scr->balloon);
 	}
 
 	if (oldText) {
@@ -172,7 +183,7 @@ void W_BalloonHandleLeaveView(WMView * view)
 			W_UnmapView(bPtr->view);
 			bPtr->noDelayTimer = WMAddTimerHandler(NO_DELAY_DELAY, clearNoDelay, bPtr);
 		}
-		WMDeleteTimerHandlerPtr(&bPtr->timer);
+		cancelShowTimer(bPtr);
 
 		bPtr->forWindow = XCB_NONE;
 	}
@@ -193,6 +204,7 @@ static void showBalloon(void *data)
 	xcb_window_t foo;
 
 	bPtr->timer = NULL;
+	bPtr->pendingView = NULL;
 
 	text = WMHashGet(bPtr->table, view);
 	if (!text)
@@ -224,17 +236,16 @@ void W_BalloonHandleEnterView(WMView * view)
 		return;
 	}
 
-	WMDeleteTimerHandlerPtr(&bPtr->timer);
+	cancelShowTimer(bPtr);
 
 	WMDeleteTimerHandlerPtr(&bPtr->noDelayTimer);
 
 	bPtr->forWindow = view->window;
 
 	if (bPtr->flags.noDelay) {
-		bPtr->timer = NULL;
-
 		showBalloon(view);
 	} else {
+		bPtr->pendingView = view;
 		bPtr->timer = WMAddTimerHandler(bPtr->delay, showBalloon, view);
 	}
 }
@@ -360,6 +371,9 @@ static void destroyBalloon(Balloon * bPtr)
 {
 	WMHashEnumerator e;
 	char *str;
+
+	cancelShowTimer(bPtr);
+	WMDeleteTimerHandlerPtr(&bPtr->noDelayTimer);
 
 	e = WMEnumerateHashTable(bPtr->table);
 
