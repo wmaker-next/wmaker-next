@@ -1034,6 +1034,8 @@ void WMShutdownScreen(WMScreen *scr)
 		WMReleaseFont(normal);
 	if (bold && bold != normal)
 		WMReleaseFont(bold);
+
+	W_DeinitXkb(scr);
 }
 
 void WMHangData(WMWidget * widget, void *data)
