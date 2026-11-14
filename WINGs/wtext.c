@@ -3719,14 +3719,15 @@ WMFont *WMGetTextDefaultFont(WMText * tPtr)
 
 void WMSetTextDefaultColor(WMText * tPtr, WMColor * color)
 {
-	if (tPtr->dColor)
-		WMReleaseColor(tPtr->dColor);
+	WMColor *old = tPtr->dColor;
 
 	if (color) {
 		tPtr->dColor = WMRetainColor(color);
 	} else {
 		tPtr->dColor = WMBlackColor(tPtr->view->screen);
 	}
+	if (old)
+		WMReleaseColor(old);
 }
 
 WMColor *WMGetTextDefaultColor(WMText * tPtr)

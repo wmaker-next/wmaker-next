@@ -910,23 +910,25 @@ int WMGetTabViewItemIdentifier(WMTabViewItem * item)
 
 void WMSetTabViewFont(WMTabView * tPtr, WMFont * font)
 {
-	if (tPtr->font)
-		WMReleaseFont(tPtr->font);
+	WMFont *old = tPtr->font;
 
 	tPtr->font = WMRetainFont(font);
+	if (old)
+		WMReleaseFont(old);
 	tPtr->tabHeight = WMFontHeight(tPtr->font) + 3;
 	recalcTabWidth(tPtr);
 }
 
 void WMSetTabViewItemLabel(WMTabViewItem * item, const char *label)
 {
-	if (item->label)
-		wfree(item->label);
+	char *old = item->label;
 
 	if (label)
 		item->label = wstrdup(label);
 	else
 		item->label = NULL;
+	if (old)
+		wfree(old);
 
 	if (item->tabView)
 		recalcTabWidth(item->tabView);

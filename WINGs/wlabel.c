@@ -94,13 +94,15 @@ WMLabel *WMCreateLabel(WMWidget * parent)
 
 void WMSetLabelImage(WMLabel * lPtr, WMPixmap * image)
 {
-	if (lPtr->image != NULL)
-		WMReleasePixmap(lPtr->image);
+	WMPixmap *old = lPtr->image;
 
 	if (image)
 		lPtr->image = WMRetainPixmap(image);
 	else
 		lPtr->image = NULL;
+
+	if (old != NULL)
+		WMReleasePixmap(old);
 
 	if (lPtr->view->flags.realized) {
 		paintLabel(lPtr);
@@ -167,12 +169,14 @@ WMFont *WMGetLabelFont(WMLabel * lPtr)
 
 void WMSetLabelFont(WMLabel * lPtr, WMFont * font)
 {
-	if (lPtr->font != NULL)
-		WMReleaseFont(lPtr->font);
+	WMFont *old = lPtr->font;
+
 	if (font)
 		lPtr->font = WMRetainFont(font);
 	else
 		lPtr->font = NULL;
+	if (old != NULL)
+		WMReleaseFont(old);
 
 	if (lPtr->layout) {
 		WMFont *base = font ? font : lPtr->view->screen->normalFont;
@@ -188,9 +192,11 @@ void WMSetLabelFont(WMLabel * lPtr, WMFont * font)
 
 void WMSetLabelTextColor(WMLabel * lPtr, WMColor * color)
 {
-	if (lPtr->textColor)
-		WMReleaseColor(lPtr->textColor);
+	WMColor *old = lPtr->textColor;
+
 	lPtr->textColor = WMRetainColor(color);
+	if (old)
+		WMReleaseColor(old);
 
 	if (lPtr->view->flags.realized) {
 		paintLabel(lPtr);

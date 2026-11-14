@@ -320,9 +320,11 @@ void WMSetButtonImageDefault(WMButton * bPtr)
 
 void WMSetButtonImage(WMButton * bPtr, WMPixmap * image)
 {
-	if (bPtr->image != NULL)
-		WMReleasePixmap(bPtr->image);
+	WMPixmap *old = bPtr->image;
+
 	bPtr->image = WMRetainPixmap(image);
+	if (old != NULL)
+		WMReleasePixmap(old);
 
 	if (bPtr->dimage) {
 		bPtr->dimage->pixmap = XCB_NONE;
@@ -344,9 +346,11 @@ void WMSetButtonImage(WMButton * bPtr, WMPixmap * image)
 
 void WMSetButtonAltImage(WMButton * bPtr, WMPixmap * image)
 {
-	if (bPtr->altImage != NULL)
-		WMReleasePixmap(bPtr->altImage);
+	WMPixmap *old = bPtr->altImage;
+
 	bPtr->altImage = WMRetainPixmap(image);
+	if (old != NULL)
+		WMReleasePixmap(old);
 
 	if (bPtr->view->flags.realized) {
 		paintButton(bPtr);
@@ -410,26 +414,29 @@ void WMSetButtonAltText(WMButton * bPtr, const char *text)
 
 void WMSetButtonTextColor(WMButton * bPtr, WMColor * color)
 {
-	if (bPtr->textColor)
-		WMReleaseColor(bPtr->textColor);
+	WMColor *old = bPtr->textColor;
 
 	bPtr->textColor = WMRetainColor(color);
+	if (old)
+		WMReleaseColor(old);
 }
 
 void WMSetButtonAltTextColor(WMButton * bPtr, WMColor * color)
 {
-	if (bPtr->altTextColor)
-		WMReleaseColor(bPtr->altTextColor);
+	WMColor *old = bPtr->altTextColor;
 
 	bPtr->altTextColor = WMRetainColor(color);
+	if (old)
+		WMReleaseColor(old);
 }
 
 void WMSetButtonDisabledTextColor(WMButton * bPtr, WMColor * color)
 {
-	if (bPtr->disTextColor)
-		WMReleaseColor(bPtr->disTextColor);
+	WMColor *old = bPtr->disTextColor;
 
 	bPtr->disTextColor = WMRetainColor(color);
+	if (old)
+		WMReleaseColor(old);
 }
 
 void WMSetButtonSelected(WMButton * bPtr, int isSelected)
@@ -467,10 +474,11 @@ void WMSetButtonBordered(WMButton * bPtr, int isBordered)
 
 void WMSetButtonFont(WMButton * bPtr, WMFont * font)
 {
-	if (bPtr->font)
-		WMReleaseFont(bPtr->font);
+	WMFont *old = bPtr->font;
 
 	bPtr->font = WMRetainFont(font);
+	if (old)
+		WMReleaseFont(old);
 }
 
 void WMSetButtonEnabled(WMButton * bPtr, bool flag)

@@ -590,9 +590,11 @@ void W_RedisplayView(W_View * view)
 
 void W_SetViewBackgroundColor(W_View * view, WMColor * color)
 {
-	if (view->backColor)
-		WMReleaseColor(view->backColor);
+	WMColor *old = view->backColor;
+
 	view->backColor = WMRetainColor(color);
+	if (old)
+		WMReleaseColor(old);
 
 	view->attribFlags |= XCB_CW_BACK_PIXEL;
 	view->attribFlags &= ~XCB_CW_BACK_PIXMAP;
@@ -605,12 +607,15 @@ void W_SetViewBackgroundColor(W_View * view, WMColor * color)
 
 void W_SetViewBackgroundPixmap(W_View *view, WMPixmap *pix)
 {
+	WMPixmap *old;
+
 	if (!pix)
 		return;
 
-	if (view->backImage)
-		WMReleasePixmap(view->backImage);
+	old = view->backImage;
 	view->backImage = WMRetainPixmap(pix);
+	if (old != NULL)
+		WMReleasePixmap(old);
 
 	view->attribFlags |= XCB_CW_BACK_PIXMAP;
 	view->attribFlags &= ~XCB_CW_BACK_PIXEL;
