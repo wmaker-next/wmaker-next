@@ -410,10 +410,18 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 
 		for (i = 0; i < RImageCacheSize; i++) {
 			if (!RImageCache[i].file) {
-				RImageCache[i].file = copy_cache_filename(file);
-				if (!RImageCache[i].file)
-					break;
-				RImageCache[i].image = RCloneImage(image);
+				RImage *cached = RCloneImage(image);
+				char *cache_file;
+
+				if (!cached)
+					return image;
+				cache_file = copy_cache_filename(file);
+				if (!cache_file) {
+					RReleaseImage(cached);
+					return image;
+				}
+				RImageCache[i].file = cache_file;
+				RImageCache[i].image = cached;
 				RImageCache[i].last_modif = st.st_mtim;
 				RImageCache[i].last_use = time(NULL);
 				RImageCache[i].width = key_w;
@@ -431,14 +439,20 @@ RImage *RLoadImageAtSize(RContext *context, const char *file, int index,
 
 		/* if no slot available, dump least recently used one */
 		if (!done) {
-			char *cache_file = copy_cache_filename(file);
+			RImage *cached = RCloneImage(image);
+			char *cache_file;
 
-			if (!cache_file)
+			if (!cached)
 				return image;
+			cache_file = copy_cache_filename(file);
+			if (!cache_file) {
+				RReleaseImage(cached);
+				return image;
+			}
 			free(RImageCache[oldest_idx].file);
 			RReleaseImage(RImageCache[oldest_idx].image);
 			RImageCache[oldest_idx].file = cache_file;
-			RImageCache[oldest_idx].image = RCloneImage(image);
+			RImageCache[oldest_idx].image = cached;
 			RImageCache[oldest_idx].last_modif = st.st_mtim;
 			RImageCache[oldest_idx].last_use = time(NULL);
 			RImageCache[oldest_idx].width = key_w;
