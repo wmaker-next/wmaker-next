@@ -177,8 +177,16 @@ WMPixmap *WMCreateScaledBlendedPixmapFromFile(WMScreen *scrPtr, const char *file
 			new_width  = height * image->width / image->height;
 			new_height = height;
 		}
+		if (new_width < 1)
+			new_width = 1;
+		if (new_height < 1)
+			new_height = 1;
 
 		new_image = RSmoothScaleImage(image, new_width, new_height);
+		if (!new_image) {
+			RReleaseImage(image);
+			return NULL;
+		}
 		RReleaseImage(image);
 		image = new_image;
 	}
