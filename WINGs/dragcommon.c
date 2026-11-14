@@ -242,7 +242,17 @@ void W_HandleDNDClientMessage(WMView * toplevel, xcb_client_message_event_t * ev
 /* called in destroyView (wview.c) */
 void W_FreeViewXdndPart(WMView * view)
 {
+	WMDraggingInfo *info = &W_VIEW_SCREEN(view)->dragInfo;
+
 	WMUnregisterViewDraggedTypes(view);
+
+	if ((info->sourceInfo && info->sourceInfo->sourceView == view) ||
+	    (info->destInfo && info->destInfo->destView == view)) {
+		W_DragSourceStopTimer();
+		W_DragDestinationStopTimer();
+		W_DragSourceInfoClear(info);
+		W_DragDestinationInfoClear(info);
+	}
 
 	if (view->dragSourceProcs)
 		wfree(view->dragSourceProcs);

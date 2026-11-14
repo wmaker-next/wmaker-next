@@ -105,6 +105,28 @@ static void endDragProcess(WMDraggingInfo * info, bool deposited)
 	XDND_SOURCE_INFO(info) = NULL;
 }
 
+/* teardown without the endedDrag callback, for a dying source view */
+void W_DragSourceInfoClear(WMDraggingInfo *info)
+{
+	WMScreen *scr;
+
+	if (XDND_SOURCE_INFO(info) == NULL)
+		return;
+
+	scr = W_VIEW_SCREEN(XDND_SOURCE_VIEW(info));
+
+	W_DragSourceStopTimer();
+	wfree(XDND_SELECTION_PROCS(info));
+
+	if (XDND_DRAG_CURSOR(info) != XCB_NONE) {
+		xcb_free_cursor(scr->display, XDND_DRAG_CURSOR(info));
+		XDND_DRAG_CURSOR(info) = XCB_NONE;
+	}
+
+	wfree(XDND_SOURCE_INFO(info));
+	XDND_SOURCE_INFO(info) = NULL;
+}
+
 /* ----- drag cursor ----- */
 static void initDragCursor(WMDraggingInfo * info)
 {
