@@ -807,8 +807,11 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 				}
 				paintMenuEntry(bPtr, bPtr->highlightedItem, false);
 				popDownMenu(bPtr);
+				if (bPtr->menuView->flags.mapped)
+					popDownMenu(bPtr);
 				if (bPtr->action)
 					(*bPtr->action) (bPtr, bPtr->clientData);
+				break;
 			}
 		}
 		if (bPtr->menuView->flags.mapped)
