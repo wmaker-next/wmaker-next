@@ -2793,23 +2793,38 @@ static WMDragSourceProcs _DragSourceProcs = {
 	fetchDragData
 };
 
-static WMArray *requiredDataTypes(WMView * self, WMDragOperationType request, WMArray * sourceDataTypes)
+static bool dropIsOk(WMDragOperationType request, WMArray *sourceDataTypes)
 {
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) request;
-	(void) sourceDataTypes;
+	WMArrayIterator iter;
+	char *type;
 
-	return ((Text *) self->self)->xdndDestinationTypes;
+	if (request == WDOperationCopy) {
+		WM_ITERATE_ARRAY(sourceDataTypes, type, iter) {
+			if (type != NULL && strcmp(type, XDND_COLOR_DATA_TYPE) == 0)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+static WMArray *requiredDataTypes(WMView *self, WMDragOperationType request, WMArray *sourceDataTypes)
+{
+	if (dropIsOk(request, sourceDataTypes))
+		return ((Text *) self->self)->xdndDestinationTypes;
+	else
+		return NULL;
 }
 
 static WMDragOperationType allowedOperation(WMView * self, WMDragOperationType request, WMArray * sourceDataTypes)
 {
 	/* Parameter not used, but tell the compiler that it is ok */
 	(void) self;
-	(void) request;
-	(void) sourceDataTypes;
 
-	return WDOperationCopy;
+	if (dropIsOk(request, sourceDataTypes))
+		return WDOperationCopy;
+	else
+		return WDOperationNone;
 }
 
 static void performDragOperation(WMView * self, WMArray * dropData, WMArray * operations, WMPoint * dropLocation)
