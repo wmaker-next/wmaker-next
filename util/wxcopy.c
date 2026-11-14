@@ -181,6 +181,10 @@ int main(int argc, char **argv)
 		if (nl == 0) {
 			break;
 		}
+		if (l > SIZE_MAX - nl - 1) {
+			fprintf(stderr, "%s: out of memory\n", prog_name);
+			exit(1);
+		}
 		if (buf_len == 0) {
 			nbuf = malloc(buf_len = l + nl + 1);
 		} else if (buf_len < l + nl + 1) {
