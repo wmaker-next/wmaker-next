@@ -494,6 +494,16 @@ void wMenuRemoveItem(WMenu * menu, int index)
 	if (index >= menu->entry_no)
 		return;
 
+	if (menu->selected_entry == index)
+		selectEntry(menu, -1);
+	else if (menu->selected_entry > index)
+		menu->selected_entry--;
+
+	if (menu->brother->selected_entry == index)
+		selectEntry(menu->brother, -1);
+	else if (menu->brother->selected_entry > index)
+		menu->brother->selected_entry--;
+
 	/* destroy cascade menu */
 	wMenuEntryRemoveCascade(menu, menu->entries[index]);
 
