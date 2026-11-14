@@ -212,12 +212,11 @@ autoPlace(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ, int *x_ret, int
 	  bool ignore_sunken)
 {
 	int x, y;
-	int sw, sh;
 	unsigned int fw = width, fh = height;	/* frame-inclusive */
 
 	expand_dims(env, &fw, &fh);
-	sw = env->usable.x2 - env->usable.x1;
-	sh = env->usable.y2 - env->usable.y1;
+	if (fw > INT_MAX || fh > INT_MAX)
+		return false;
 
 	/* try placing at center first, passing the raw dims so the
 	 * expansion happens exactly once inside center_place */
@@ -229,8 +228,8 @@ autoPlace(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ, int *x_ret, int
 	}
 
 	/* this was based on fvwm2's smart placement */
-	for (y = Y_ORIGIN; (y + fh) < sh; y += PLACETEST_VSTEP) {
-		for (x = X_ORIGIN; (x + fw) < sw; x += PLACETEST_HSTEP) {
+	for (y = Y_ORIGIN; y < env->usable.y2 - (int)fh; y += PLACETEST_VSTEP) {
+		for (x = X_ORIGIN; x < env->usable.x2 - (int)fw; x += PLACETEST_HSTEP) {
 			if (occ_has_space(occ, n_occ, x, y,
 					  fw, fh, ignore_sunken)) {
 				*x_ret = x;
