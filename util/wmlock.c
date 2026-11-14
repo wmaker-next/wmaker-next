@@ -706,7 +706,7 @@ static void run_lock(WMScreen *scr, const char *user)
 						  XCB_CONFIG_WINDOW_WIDTH |
 						  XCB_CONFIG_WINDOW_HEIGHT, &wc);
 				wXClearArea(xc, covers[i].win, 0, 0, 0, 0, false);
-				if (i == 0) {
+				if (i == lock_sn) {
 					wc.x = (((xcb_configure_notify_event_t *)ev)->width - pw) / 2;
 					wc.y = (((xcb_configure_notify_event_t *)ev)->height - ph) / 2;
 					wXConfigureWindow(xc, pwin,
