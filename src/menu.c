@@ -1145,9 +1145,15 @@ static void blinkMenuEntry(WMenu *menu, int index)
 
 static void move_menus(WMenu * menu, int x, int y)
 {
+	int opened_left;
+
 	while (menu->parent) {
+		opened_left = menu->flags.open_to_left;
+		if (opened_left)
+			x += MENUW(menu);
 		menu = menu->parent;
-		x -= MENUW(menu);
+		if (!opened_left)
+			x -= MENUW(menu);
 		if (!w_global.config->align_menus && menu->selected_entry >= 0) {
 			y -= menuVisibleSlot(menu, menu->selected_entry) * menu->entry_height;
 		}
@@ -1535,7 +1541,10 @@ static void selectEntry(WMenu * menu, int entry_no)
 {
 	WMenuEntry *entry;
 	WMenu *submenu;
+	WScreen *scr;
+	WMRect menu_rect, rect;
 	int old_entry;
+	int x, y, x_left, x_right;
 
 	if (menu->entries == NULL)
 		return;
@@ -1591,8 +1600,6 @@ static void selectEntry(WMenu * menu, int entry_no)
 
 			/* map cascade */
 			if (!submenu->flags.mapped) {
-				int x, y;
-
 				if (!submenu->flags.realized)
 					wMenuRealize(submenu);
 				if (w_global.config->wrap_menus) {
@@ -1616,7 +1623,22 @@ static void selectEntry(WMenu * menu, int entry_no)
 						}
 					}
 				} else {
-					x = menu->frame_x + MENUW(menu);
+					scr = menu->frame->screen_ptr;
+					menu_rect.pos.x = menu->frame_x;
+					menu_rect.pos.y = menu->frame_y;
+					menu_rect.size.width = MENUW(menu);
+					menu_rect.size.height = MENUH(menu);
+					rect = wGetRectForHead(scr, wGetHeadForRect(scr, menu_rect));
+					x_left = menu->frame_x - MENUW(submenu);
+					x_right = menu->frame_x + MENUW(menu);
+
+					if (x_right + MENUW(submenu) >= rect.pos.x + (int)rect.size.width
+					    && x_left >= rect.pos.x) {
+						x = x_left;
+						submenu->flags.open_to_left = 1;
+					} else {
+						x = x_right;
+					}
 				}
 
 			if (w_global.config->align_menus) {
@@ -2478,6 +2500,7 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 {
 	WMenu *submenu;
 	int i;
+	int sx;
 
 	if (!menu)
 		return;
@@ -2492,20 +2515,22 @@ void wMenuMove(WMenu * menu, int x, int y, int submenus)
 		if (i >= 0 && menu->cascades) {
 			submenu = menu->cascades[i];
 			if (submenu->flags.mapped && !submenu->flags.buttoned) {
+				sx = submenu->flags.open_to_left ? x - MENUW(submenu) : x + MENUW(menu);
 				if (w_global.config->align_menus) {
-					wMenuMove(submenu, x + MENUW(menu), y, submenus);
+					wMenuMove(submenu, sx, y, submenus);
 				} else {
-					wMenuMove(submenu, x + MENUW(menu),
+					wMenuMove(submenu, sx,
 						  y + submenu->entry_height * menuVisibleSlot(menu, menu->selected_entry), submenus);
 				}
 			}
 		}
 	}
 	if (submenus < 0 && menu->parent != NULL && menu->parent->flags.mapped && !menu->parent->flags.buttoned) {
+		sx = menu->flags.open_to_left ? x + MENUW(menu) : x - MENUW(menu->parent);
 		if (w_global.config->align_menus) {
-			wMenuMove(menu->parent, x - MENUW(menu->parent), y, submenus);
+			wMenuMove(menu->parent, sx, y, submenus);
 		} else {
-			wMenuMove(menu->parent, x - MENUW(menu->parent), menu->frame_y
+			wMenuMove(menu->parent, sx, menu->frame_y
 				  - menu->parent->entry_height * menuVisibleSlot(menu->parent, menu->parent->selected_entry), submenus);
 		}
 	}
