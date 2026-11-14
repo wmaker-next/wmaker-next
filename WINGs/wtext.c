@@ -2756,13 +2756,16 @@ static bool acceptDropOperation(WMView * self, WMDragOperationType allowedOperat
 	return (allowedOperation == WDOperationCopy);
 }
 
+#define XDND_TEXT_DATA_TYPE "text/plain"
+#define XDND_COLOR_DATA_TYPE "application/X-color"
+
 static WMData *fetchDragData(WMView * self, char *type)
 {
 	TextBlock *tb = ((WMText *) self->self)->currentTextBlock;
 	char *desc;
 	WMData *data;
 
-	if (strcmp(type, "text/plain")) {
+	if (strcmp(type, XDND_TEXT_DATA_TYPE) == 0) {
 		if (!tb)
 			return NULL;
 
@@ -2969,8 +2972,6 @@ static WMArray *getStreamObjects(WMText * tPtr, int sel)
 	return array;
 }
 
-#define XDND_TEXT_DATA_TYPE "text/plain"
-#define XDND_COLOR_DATA_TYPE "application/X-color"
 static WMArray *getXdndSourceTypeArray(void)
 {
 	WMArray *types = WMCreateArray(1);
