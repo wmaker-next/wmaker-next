@@ -341,6 +341,9 @@ void WMInsertItemInTabView(WMTabView * tPtr, int index, WMTabViewItem * item)
 			     tPtr->view->size.height - tPtr->tabHeight);
 	}
 
+	if (tPtr->selectedItem < 0)
+		tPtr->selectedItem = index;
+
 	if (index == 0) {
 		W_MapTabViewItem(item);
 	}
@@ -357,20 +360,41 @@ void WMRemoveTabViewItem(WMTabView * tPtr, WMTabViewItem * item)
 
 	for (i = 0; i < tPtr->itemCount; i++) {
 		if (tPtr->items[i] == item) {
+			int selected = tPtr->selectedItem;
+			bool wasVisible = (i == selected);
+
+			if (wasVisible)
+				W_UnmapTabViewItem(item);
+
 			if (i < tPtr->itemCount - 1)
 				memmove(&tPtr->items[i], &tPtr->items[i + 1],
 				        (tPtr->itemCount - i - 1) * sizeof(WMTabViewItem *));
-			else
-				tPtr->items[i] = NULL;
+			tPtr->items[tPtr->itemCount - 1] = NULL;
 
 			W_SetTabViewItemParent(item, NULL);
 
 			tPtr->itemCount--;
+			recalcTabWidth(tPtr);
+
+			if (selected > i)
+				tPtr->selectedItem = selected - 1;
+			else if (selected >= tPtr->itemCount)
+				tPtr->selectedItem = tPtr->itemCount - 1;
+
+			if (wasVisible && tPtr->itemCount > 0) {
+				WMTabViewItem *sel = tPtr->items[tPtr->selectedItem];
+
+				W_MapTabViewItem(sel);
+				if (tPtr->delegate && tPtr->delegate->didSelectItem)
+					(*tPtr->delegate->didSelectItem) (tPtr->delegate, tPtr, sel);
+			}
 			break;
 		}
 	}
 	if (tPtr->delegate && tPtr->delegate->didChangeNumberOfItems)
 		(*tPtr->delegate->didChangeNumberOfItems) (tPtr->delegate, tPtr);
+	if (W_VIEW_REALIZED(tPtr->view))
+		paintTabView(tPtr);
 }
 
 static bool isInside(int x, int y, int width, int height, int px, int py)
@@ -398,14 +422,22 @@ WMTabViewItem *WMTabViewItemAtPoint(WMTabView * tPtr, int x, int y)
 	int count = tPtr->visibleTabs;
 	int first = tPtr->firstVisible;
 
+	if (tPtr->itemCount <= 0)
+		return NULL;
+
+	if (first < 0 || first > tPtr->itemCount)
+		first = 0;
+	if (count > tPtr->itemCount - first)
+		count = tPtr->itemCount - first;
+
 	if (tPtr->flags.dontFitAll) {
-		i = tPtr->selectedItem - tPtr->firstVisible;
-		if (i >= 0 && i < tPtr->visibleTabs
+		i = tPtr->selectedItem - first;
+		if (i >= 0 && i < count
 		    && isInside(positionOfTab(tPtr, tPtr->selectedItem), 0,
 				W_TabViewItemTabWidth(tPtr->items[tPtr->selectedItem]), tPtr->tabHeight, x, y)) {
 			return tPtr->items[tPtr->selectedItem];
 		}
-	} else {
+	} else if (tPtr->selectedItem >= 0 && tPtr->selectedItem < tPtr->itemCount) {
 		i = tPtr->selectedItem;
 		if (isInside(positionOfTab(tPtr, i), 0,
 			     W_TabViewItemTabWidth(tPtr->items[i]), tPtr->tabHeight, x, y)) {
@@ -673,6 +705,11 @@ static void paintTabView(TabView * tPtr)
 		int ty;
 		int twidth, theight;
 
+		if (first < 0 || first > tPtr->itemCount)
+			first = 0;
+		if (count > tPtr->itemCount - first)
+			count = tPtr->itemCount - first;
+
 		ty = 2;
 		theight = tPtr->tabHeight;
 
@@ -690,7 +727,7 @@ static void paintTabView(TabView * tPtr)
 		} else {
 			moreAtLeft = 0;
 			moreAtRight = 0;
-			selectedIsVisible = 1;
+			selectedIsVisible = (tPtr->selectedItem >= 0 && tPtr->selectedItem < tPtr->itemCount);
 		}
 
 		if (moreAtRight) {
