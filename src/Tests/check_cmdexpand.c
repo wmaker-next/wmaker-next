@@ -84,7 +84,7 @@ static void test_plain_text(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "hello world") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 #ifdef USE_DOCK_XDND
@@ -98,7 +98,7 @@ static void test_dnd_without_gnustep(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app  \"file1\" \"file2\"") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 static void test_dnd_with_gnustep(void)
@@ -112,7 +112,7 @@ static void test_dnd_with_gnustep(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app -GSFilePath  \"file1\" \"file2\"") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 static void test_dnd_single_file_gnustep(void)
@@ -126,7 +126,7 @@ static void test_dnd_single_file_gnustep(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app -GSFilePath  \"file.txt\"") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 static void test_dnd_null_xdestring(void)
@@ -139,7 +139,7 @@ static void test_dnd_null_xdestring(void)
 	CHECK(out == NULL);
 	CHECK(scr.flags.dnd_data_convertion_status == 1);
 	if (out)
-		free(out);
+		wfree(out);
 }
 #endif	/* USE_DOCK_XDND */
 
@@ -152,7 +152,7 @@ static void test_selection_without_gnustep(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app /test/selection/path") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 #ifdef USE_DOCK_XDND
@@ -166,7 +166,7 @@ static void test_selection_with_gnustep(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app -GSFilePath /test/selection/path") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 #endif	/* USE_DOCK_XDND */
 
@@ -179,7 +179,7 @@ static void test_escaped_percent(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app %d") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 static void test_workspace(void)
@@ -192,7 +192,7 @@ static void test_workspace(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app 0x1") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 /* the string handed back by getuserinput() must be freed by
@@ -206,7 +206,7 @@ static void test_user_input(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app typed input") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 /* each %a occurrence gets its own string from getuserinput(); none may
@@ -220,7 +220,7 @@ static void test_user_input_twice(void)
 	CHECK(out != NULL);
 	CHECK(out && strcmp(out, "app typed input typed input") == 0);
 	if (out)
-		free(out);
+		wfree(out);
 }
 
 /* a canceled prompt aborts the whole command: ExpandOptions returns
