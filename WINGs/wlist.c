@@ -1091,6 +1091,16 @@ static void typeaheadTimeout(void *data)
 	}
 }
 
+static bool isViewable(W_View *view)
+{
+	while (view) {
+		if (!view->flags.mapped)
+			return false;
+		view = view->parent;
+	}
+	return true;
+}
+
 static void handleActionEvents(xcb_generic_event_t * event, void *data)
 {
 	List *lPtr = (List *) data;
@@ -1101,7 +1111,6 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 	xkb_keysym_t ksym;
 	WXLookupStatus status;
 	int len;
-	WXWindowAttributes wattr;
 
 	CHECK_CLASS(data, WC_List);
 
@@ -1258,7 +1267,7 @@ static void handleActionEvents(xcb_generic_event_t * event, void *data)
 		if (((xcb_key_press_event_t *)event)->state & (XCB_MOD_MASK_CONTROL | scr->altModifierMask))
 			break;
 
-		if (!(wXGetWindowAttributes(scr->display, lPtr->view->window, &wattr, NULL) && wattr.map_state == XCB_MAP_STATE_VIEWABLE))
+		if (!isViewable(lPtr->view))
 			break;
 
 		len = W_LookupString(lPtr->view, (const xcb_key_press_event_t *)event, buffer, (int)sizeof(buffer) - 1, &ksym, &status);
