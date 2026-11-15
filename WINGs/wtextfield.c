@@ -780,7 +780,10 @@ static void paintCursor(TextField * tPtr)
 	else
 		text = tPtr->text;
 
-	cx = WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]), tPtr->cursorPosition - tPtr->viewPosition);
+	cx = 0;
+	if (tPtr->cursorPosition > tPtr->viewPosition)
+		cx = WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]),
+				     tPtr->cursorPosition - tPtr->viewPosition);
 
 	switch (tPtr->flags.alignment) {
 	case WARight:
@@ -915,26 +918,28 @@ static void paintTextField(TextField * tPtr)
 				  tPtr->textLen - tPtr->viewPosition);
 
 		if (tPtr->selection.count) {
-			int count, count2;
+			int start, end;
 
-			count = tPtr->selection.count < 0
+			start = tPtr->selection.count < 0
 			    ? tPtr->selection.position + tPtr->selection.count : tPtr->selection.position;
-			count2 = abs(tPtr->selection.count);
-			if (count < tPtr->viewPosition) {
-				count2 = abs(count2 - abs(tPtr->viewPosition - count));
-				count = tPtr->viewPosition;
+			end = start + abs(tPtr->selection.count);
+			if (start < tPtr->viewPosition)
+				start = tPtr->viewPosition;
+			if (end > tPtr->textLen)
+				end = tPtr->textLen;
+
+			if (start < end) {
+				rx = tx + WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]),
+							  start - tPtr->viewPosition);
+
+				W_SetSourceColor(cr, screen->gray);
+				cairo_rectangle(cr, rx, ty,
+						WMWidthOfString(tPtr->font, &(text[start]), end - start),
+						WMFontHeight(tPtr->font));
+				cairo_fill(cr);
+				W_DrawString(cr, color, tPtr->font, rx, ty,
+						  &(text[start]), end - start);
 			}
-
-			rx = tx + WMWidthOfString(tPtr->font, &(text[tPtr->viewPosition]),
-			                          count - tPtr->viewPosition);
-
-			W_SetSourceColor(cr, screen->gray);
-			cairo_rectangle(cr, rx, ty,
-					WMWidthOfString(tPtr->font, &(text[count]), count2),
-					WMFontHeight(tPtr->font));
-			cairo_fill(cr);
-			W_DrawString(cr, color, tPtr->font, rx, ty,
-					  &(text[count]), count2);
 		}
 		cairo_restore(cr);
 	} else if (tPtr->placeholderText) {
@@ -1821,21 +1826,31 @@ static void handleTextFieldActionEvents(xcb_generic_event_t * event, void *data)
 			} else {
 				int pos, cnt;
 				char *txt;
+
 				pos = tPtr->selection.position;
 				cnt = tPtr->selection.count;
-				txt = tPtr->text;
-				while (pos >= 0) {
-					if (txt[pos] == ' ' || txt[pos] == '\t')
-						break;
+				if (cnt < 0) {
+					pos += cnt;
+					cnt = -cnt;
+				}
+				if (pos < 0) {
+					cnt += pos;
+					pos = 0;
+				}
+				if (pos > tPtr->textLen)
+					pos = tPtr->textLen;
+				if (cnt > tPtr->textLen - pos)
+					cnt = tPtr->textLen - pos;
+				if (pos == tPtr->textLen && pos > 0)
 					pos--;
-				}
-				pos++;
-
-				while (pos + cnt < tPtr->textLen) {
-					if (txt[pos + cnt] == ' ' || txt[pos + cnt] == '\t')
-						break;
+				txt = tPtr->text;
+				while (pos > 0 && txt[pos] != ' ' && txt[pos] != '\t')
+					pos--;
+				if (txt[pos] == ' ' || txt[pos] == '\t')
+					pos++;
+				while (pos + cnt < tPtr->textLen && txt[pos + cnt] != ' '
+				    && txt[pos + cnt] != '\t')
 					cnt++;
-				}
 				tPtr->selection.position = pos;
 				tPtr->selection.count = cnt;
 			}
